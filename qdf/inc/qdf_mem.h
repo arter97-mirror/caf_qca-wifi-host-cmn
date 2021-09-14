@@ -888,4 +888,21 @@ int32_t qdf_heap_mem_stats_read(void);
  */
 int32_t qdf_skb_mem_stats_read(void);
 
+/**
+ * qdf_mem_vfree() - Free the virtual memory pointed to by ptr
+ * @ptr: Pointer to the starting address of the memory to
+ * be freed.
+ *
+ * Return: None
+ */
+#define qdf_mem_vfree(ptr)   __qdf_mem_vfree(ptr)
+
+/**
+ * qdf_mem_valloc() - Allocate virtual memory for the given
+ * size
+ * @size: Number of bytes of memory to be allocated
+ *
+ * Return: Pointer to the starting address of the allocated virtual memory
+ */
+#define qdf_mem_valloc(size) __qdf_mem_valloc(size, __func__, __LINE__)
 #endif /* __QDF_MEMORY_H */
