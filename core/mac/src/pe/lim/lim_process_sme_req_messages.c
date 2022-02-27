@@ -5240,17 +5240,9 @@ QDF_STATUS cm_process_disconnect_req(struct scheduler_msg *msg)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
-/**
- * wma_get_mld_info_sta() - get peer_mld_addr and assoc peer flag for sta
- * @req: cm_peer_create_req
- * @peer_mld_addr: peer mld mac addr
- * @is_assoc_peer: is assoc peer
- *
- * Return: void
- */
-static void wma_get_mld_info_sta(struct cm_peer_create_req *req,
-				 uint8_t **peer_mld_addr,
-				 bool *is_assoc_peer)
+void lim_get_mld_info_sta(struct cm_peer_create_req *req,
+			  uint8_t **peer_mld_addr,
+			  bool *is_assoc_peer)
 {
 	if (!qdf_is_macaddr_zero(&req->mld_mac)) {
 		*peer_mld_addr = req->mld_mac.bytes;
@@ -5260,31 +5252,51 @@ static void wma_get_mld_info_sta(struct cm_peer_create_req *req,
 		*is_assoc_peer = false;
 	}
 }
-#else
-static void wma_get_mld_info_sta(struct cm_peer_create_req *req,
-				 uint8_t **peer_mld_addr,
-				 bool *is_assoc_peer)
-{
-	*peer_mld_addr = NULL;
-	*is_assoc_peer = false;
-}
 #endif
 
 QDF_STATUS cm_process_peer_create(struct scheduler_msg *msg)
 {
 	struct cm_peer_create_req *req;
+	struct wlan_objmgr_peer *peer;
 	QDF_STATUS status;
 	uint8_t *peer_mld_addr = NULL;
 	bool is_assoc_peer = false;
+	struct mac_context *mac_ctx = cds_get_context(QDF_MODULE_ID_PE);
 
-	if (!msg || !msg->bodyptr) {
-		mlme_err("msg or msg->bodyptr is NULL");
+	if (!msg || !msg->bodyptr || !mac_ctx) {
+		mlme_err("%s is NULL",
+			 !msg ? "msg" : !mac_ctx ? "mac" : "bodyptr");
 		return QDF_STATUS_E_INVAL;
 	}
 
 	req = msg->bodyptr;
 
-	wma_get_mld_info_sta(req, &peer_mld_addr, &is_assoc_peer);
+	/*
+	 * If a ranging peer already exists with bss peer mac, first delete it
+	 * and then proceed with the BSS peer creation
+	 */
+	peer = wlan_objmgr_get_peer_by_mac(mac_ctx->psoc, req->peer_mac.bytes,
+					   WLAN_MLME_CM_ID);
+	if (peer) {
+		if (wlan_peer_get_peer_type(peer) != WLAN_PEER_RTT_PASN)
+			goto continue_peer_create;
+
+		mlme_info("vdev:%d Ranging peer exists with same mac: " QDF_MAC_ADDR_FMT " resume after deleting it",
+			  req->vdev_id, QDF_MAC_ADDR_REF(req->peer_mac.bytes));
+
+		status = wma_remove_existing_pasn_peer(mac_ctx->psoc, req);
+		if (QDF_IS_STATUS_ERROR(status))
+			goto continue_peer_create;
+
+		wlan_objmgr_peer_release_ref(peer, WLAN_MLME_CM_ID);
+
+		return QDF_STATUS_SUCCESS;
+	}
+
+continue_peer_create:
+	wlan_objmgr_peer_release_ref(peer, WLAN_MLME_CM_ID);
+
+	lim_get_mld_info_sta(req, &peer_mld_addr, &is_assoc_peer);
 	status = wma_add_bss_peer_sta(req->vdev_id, req->peer_mac.bytes, true,
 				      peer_mld_addr, is_assoc_peer);
 
