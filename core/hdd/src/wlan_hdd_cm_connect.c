@@ -987,10 +987,13 @@ hdd_cm_connect_success_pre_user_update(struct wlan_objmgr_vdev *vdev,
 		/* If roaming is set check if FW roaming/LFR3  */
 		ucfg_mlme_get_roaming_offload(hdd_ctx->psoc, &is_roam_offload);
 
-	if (is_roam_offload)
+	if (is_roam_offload){
 		/* for LFR 3 get authenticated info from resp */
 		is_auth_required = hdd_cm_is_roam_auth_required(sta_ctx, rsp);
-
+		if (is_auth_required)
+			wlan_acquire_peer_key_wakelock(hdd_ctx->pdev,
+						       rsp->bssid.bytes);
+	}
 	if (ucfg_ipa_is_enabled() && !is_auth_required)
 		ucfg_ipa_wlan_evt(hdd_ctx->pdev, adapter->dev,
 				  adapter->device_mode,
