@@ -118,61 +118,6 @@ static void osif_cm_set_auth_type(struct wlan_cm_connect_req *connect_req,
 	QDF_SET_PARAM(connect_req->crypto.auth_type, crypto_auth_type);
 }
 
-#ifdef CFG80211_MULTI_AKM_CONNECT_SUPPORT
-static void
-osif_cm_set_akm_params(struct wlan_cm_connect_req *connect_req,
-		       const struct cfg80211_connect_params *req)
-{
-	uint32_t i = 0;
-	wlan_crypto_key_mgmt akm;
-
-	/* Fill AKM suites */
-	if (req->crypto.n_connect_akm_suites) {
-		for (i = 0; i < req->crypto.n_connect_akm_suites &&
-		     i < WLAN_CM_MAX_CONNECT_AKMS; i++) {
-			akm = osif_nl_to_crypto_akm_type(
-					req->crypto.connect_akm_suites[i]);
-			QDF_SET_PARAM(connect_req->crypto.akm_suites, akm);
-		}
-	} else {
-		QDF_SET_PARAM(connect_req->crypto.akm_suites,
-			      WLAN_CRYPTO_KEY_MGMT_NONE);
-	}
-}
-
-static int
-osif_cm_get_num_akm_suites(const struct cfg80211_connect_params *req)
-{
-	return req->crypto.n_connect_akm_suites;
-}
-
-static uint32_t*
-osif_cm_get_akm_suites(const struct cfg80211_connect_params *req)
-{
-	return (uint32_t *)req->crypto.connect_akm_suites;
-}
-#else
-static void
-osif_cm_set_akm_params(struct wlan_cm_connect_req *connect_req,
-		       const struct cfg80211_connect_params *req)
-{
-	uint32_t i = 0;
-	wlan_crypto_key_mgmt akm;
-
-	/* Fill AKM suites */
-	if (req->crypto.n_akm_suites) {
-		for (i = 0; i < req->crypto.n_akm_suites &&
-		     i < NL80211_MAX_NR_AKM_SUITES; i++) {
-			akm = osif_nl_to_crypto_akm_type(
-					req->crypto.akm_suites[i]);
-			QDF_SET_PARAM(connect_req->crypto.akm_suites, akm);
-		}
-	} else {
-		QDF_SET_PARAM(connect_req->crypto.akm_suites,
-			      WLAN_CRYPTO_KEY_MGMT_NONE);
-	}
-}
-
 static int
 osif_cm_get_num_akm_suites(const struct cfg80211_connect_params *req)
 {
@@ -184,13 +129,38 @@ osif_cm_get_akm_suites(const struct cfg80211_connect_params *req)
 {
 	return (uint32_t *)req->crypto.akm_suites;
 }
+
+#ifdef CFG80211_MULTI_AKM_CONNECT_SUPPORT
+#define MAX_AKM_SUITES WLAN_CM_MAX_CONNECT_AKMS
+#else
+#define MAX_AKM_SUITES NL80211_MAX_NR_AKM_SUITES
 #endif
+static void
+osif_cm_set_akm_params(struct wlan_cm_connect_req *connect_req,
+		       const struct cfg80211_connect_params *req)
+{
+	uint32_t i;
+	wlan_crypto_key_mgmt akm;
+
+	/* Fill AKM suites */
+	if (req->crypto.n_akm_suites) {
+		for (i = 0; i < req->crypto.n_akm_suites &&
+		     i < MAX_AKM_SUITES; i++) {
+			akm = osif_nl_to_crypto_akm_type(
+					req->crypto.akm_suites[i]);
+			QDF_SET_PARAM(connect_req->crypto.akm_suites, akm);
+		}
+	} else {
+		QDF_SET_PARAM(connect_req->crypto.akm_suites,
+			      WLAN_CRYPTO_KEY_MGMT_NONE);
+	}
+}
 
 static
 QDF_STATUS osif_cm_set_crypto_params(struct wlan_cm_connect_req *connect_req,
 				     const struct cfg80211_connect_params *req)
 {
-	uint32_t i = 0;
+	uint32_t i;
 	QDF_STATUS status;
 	wlan_crypto_cipher_type cipher = WLAN_CRYPTO_CIPHER_NONE;
 
