@@ -114,4 +114,18 @@
 	(defined  IEEE80211_MLD_MAX_NUM_LINKS))
 #define CFG80211_SINGLE_NETDEV_MULTI_LINK_SUPPORT 1
 #endif
+
+/*
+ * CFG80211_MULTI_AKM_CONNECT_SUPPORT
+ * used to indicate the Linux kernel contains support for multi AKM connect
+ * support
+ *
+ * This feature was backported to Android Common Kernel 5.15 via:
+ * https://android-review.googlesource.com/c/kernel/common/+/2115619
+ */
+#if (defined(__ANDROID_COMMON_KERNEL__) && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)) && \
+	(LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)))
+#define CFG80211_MULTI_AKM_CONNECT_SUPPORT 1
+#endif
 #endif
