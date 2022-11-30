@@ -1072,7 +1072,7 @@ __lim_process_sm_power_save_update(struct mac_context *mac, uint8_t *pRxPacketIn
 	}
 
 	if (state == pSta->htMIMOPSState) {
-		pe_err("The PEER is already set in the same mode");
+		pe_debug_rl("The PEER is already set in the same mode");
 		return;
 	}
 
@@ -2034,7 +2034,7 @@ void lim_process_action_frame(struct mac_context *mac_ctx,
 		}
 		break;
 	default:
-		pe_warn("Action category: %d not handled",
+		pe_warn_rl("Action category: %d not handled",
 			action_hdr->category);
 		break;
 	}
