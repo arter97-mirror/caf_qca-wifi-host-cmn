@@ -1381,6 +1381,7 @@ enum _ol_ath_param_t {
 #endif
 	/* Display the current 6G client type */
 	OL_ATH_PARAM_DISPLAY_CLIENT_TYPE = 511,
+	OL_ATH_PARAM_MBSS_GET_GROUP_SIZE = 512,
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
@@ -3649,6 +3650,8 @@ struct vendor_commands radio_vendor_cmds[] = {
 	{"g_dev_deployment_type",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_GET_DEV_DEPLOYMENT_TYPE, GET_PARAM, 0},
 #endif
+	{"g_mbss_group_size",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_MBSS_GET_GROUP_SIZE, GET_PARAM, 0},
 };
 #endif
 
