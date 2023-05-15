@@ -323,7 +323,7 @@ void qca_multi_link_init_module(void)
 	qdf_spinlock_create(&qca_multi_link_cfg.radio_lock);
 
 	memset(&qca_multi_link_cfg.qca_ml_stats, 0x0, sizeof(qca_multi_link_radio_node_t));
-	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_INFO,
+	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
 		FL("\n******QCA Repeater Initialization Done***********\n"));
 }
 
