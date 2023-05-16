@@ -659,7 +659,7 @@ struct reg_domain_pair {
 		SP(VLP to be added later)
  * @APL4_6G_11: Super domain APL3_6G_11 for Costa Rica LPI and VLP
  * @APL5_6G_12: Super domain for future purpose
- * @APL5_6G_13: Super domain APL3_6G_13 for CHILE
+ * @APL7_6G_13: Super domain APL7_6G_13 for CHILE
  * @FCC1_6G_14: Super domain FCC1_6G_14 for DOMINICAN REPUBLIC
  * @MKK2_6G_16: Super domain MKK2_6G_16 for Japan LPI and VLP support for 320 MHz
  */
@@ -681,7 +681,7 @@ enum reg_super_domain_6g {
 	FCC2_6G_10 = 0x10,
 	APL4_6G_11 = 0x11,
 	APL5_6G_12 = 0x12,
-	APL5_6G_13 = 0x13,
+	APL7_6G_13 = 0x13,
 	FCC1_6G_14 = 0x14,
 	MKK2_6G_16 = 0x16,
 };
