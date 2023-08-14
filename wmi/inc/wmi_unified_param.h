@@ -5301,6 +5301,7 @@ typedef enum {
 	wmi_service_thermal_stats_temp_range_supported,
 #endif
 	wmi_service_hw_mode_policy_offload_support,
+	wmi_service_radar_flags_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -5458,6 +5459,7 @@ struct wmi_host_fw_abi_ver {
  *                                       inclusive of SP power mode.
  * @afc_timer_check_disable: Disables AFC Timer related checks in FW
  * @afc_req_id_check_disable: Disables AFC Request ID check in FW
+ * @is_full_bw_nol_supported: Is full bandwidth needed to put to NOL
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -5574,6 +5576,7 @@ typedef struct {
 	bool is_6ghz_sp_pwrmode_supp_enabled;
 	bool afc_timer_check_disable;
 	bool afc_req_id_check_disable;
+	bool is_full_bw_nol_supported;
 } target_resource_config;
 
 /**

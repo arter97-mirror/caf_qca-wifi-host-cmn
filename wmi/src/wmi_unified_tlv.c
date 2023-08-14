@@ -7346,6 +7346,22 @@ void wmi_set_nan_channel_support(wmi_resource_config *resource_cfg)
 }
 #endif
 
+#ifdef MOBILE_DFS_SUPPORT
+static inline
+void wmi_copy_full_bw_nol_cfg(wmi_resource_config *resource_cfg,
+			      target_resource_config *tgt_res_cfg)
+{
+	WMI_RSRC_CFG_HOST_SERVICE_FLAG_RADAR_FLAGS_FULL_BW_NOL_SET(resource_cfg->host_service_flags,
+								   tgt_res_cfg->is_full_bw_nol_supported);
+}
+#else
+static inline
+void wmi_copy_full_bw_nol_cfg(wmi_resource_config *resource_cfg,
+			      target_resource_config *tgt_res_cfg)
+{
+}
+#endif
+
 static
 void wmi_copy_resource_config(wmi_resource_config *resource_cfg,
 				target_resource_config *tgt_res_cfg)
@@ -7611,6 +7627,8 @@ void wmi_copy_resource_config(wmi_resource_config *resource_cfg,
 
 	WMI_RSRC_CFG_FLAGS2_RX_PEER_METADATA_VERSION_SET(resource_cfg->flags2,
 						 tgt_res_cfg->target_cap_flags);
+	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
+
 }
 
 /* copy_hw_mode_id_in_init_cmd() - Helper routine to copy hw_mode in init cmd
@@ -13500,6 +13518,7 @@ static QDF_STATUS extract_dfs_radar_detection_event_tlv(
 	if (radar_found->pdev_id == WMI_HOST_PDEV_ID_INVALID)
 		return QDF_STATUS_E_FAILURE;
 
+	qdf_mem_zero(radar_found, sizeof(struct radar_found_info));
 	radar_found->detection_mode = radar_event->detection_mode;
 	radar_found->chan_freq = radar_event->chan_freq;
 	radar_found->chan_width = radar_event->chan_width;
@@ -13509,6 +13528,19 @@ static QDF_STATUS extract_dfs_radar_detection_event_tlv(
 	radar_found->is_chirp = radar_event->is_chirp;
 	radar_found->freq_offset = radar_event->freq_offset;
 	radar_found->sidx = radar_event->sidx;
+
+	if (is_service_enabled_tlv(wmi_handle,
+				   WMI_SERVICE_RADAR_FLAGS_SUPPORT)) {
+		WMI_RADAR_FLAGS *radar_flags;
+
+		radar_flags = param_tlv->radar_flags;
+		if (radar_flags) {
+			radar_found->is_full_bw_nol =
+			WMI_RADAR_FLAGS_FULL_BW_NOL_GET(radar_flags->flags);
+			wmi_debug("Is full bw nol %d",
+				  radar_found->is_full_bw_nol);
+		}
+	}
 
 	wmi_debug("processed radar found event pdev %d,"
 		  "Radar Event Info:pdev_id %d,timestamp %d,chan_freq  (dur) %d,"
@@ -17351,6 +17383,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif
 	wmi_service[wmi_service_hw_mode_policy_offload_support] =
 			WMI_SERVICE_HW_MODE_POLICY_OFFLOAD_SUPPORT;
+	wmi_service[wmi_service_radar_flags_support] =
+			WMI_SERVICE_RADAR_FLAGS_SUPPORT;
 }
 
 /**
