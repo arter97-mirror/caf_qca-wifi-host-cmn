@@ -5040,4 +5040,21 @@ bool policy_mgr_is_sap_allowed_on_indoor(struct wlan_objmgr_pdev *pdev,
 
 bool policy_mgr_get_nan_sap_scc_on_lte_coex_chnl(struct wlan_objmgr_psoc *psoc);
 
+/**
+ * policy_mgr_sap_on_non_psc_channel() - Check if STA operates in PSC or Non-PSC
+ *					 channel to restart SAP on Non-PSC
+ *					 channel
+ * @psoc: PSOC object information
+ * @intf_ch_freq: input/out interference channel frequency to sap
+ * @sap_vdev_id: SAP vdev id
+ *
+ * This function is to check if STA operates in PSC or Non-PSC channel
+ * to restart SAP on Non-PSC channel.
+ *
+ * Return: None
+ */
+void
+policy_mgr_sap_on_non_psc_channel(struct wlan_objmgr_psoc *psoc,
+				  qdf_freq_t *intf_ch_freq,
+				  uint8_t sap_vdev_id);
 #endif /* __WLAN_POLICY_MGR_API_H */
