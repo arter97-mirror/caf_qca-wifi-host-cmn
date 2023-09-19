@@ -93,8 +93,11 @@ osif_twt_disable_complete_cb(struct wlan_objmgr_psoc *psoc,
 	twt_en_priv->pdev_id = event->pdev_id;
 	twt_en_priv->status = event->status;
 
-	osif_request_complete(request);
-	osif_request_put(request);
+	/*If the event is from pdev0, that means twt disable is done*/
+	if (event->pdev_id == 0) {
+		osif_request_complete(request);
+		osif_request_put(request);
+	}
 	return QDF_STATUS_SUCCESS;
 }
 
