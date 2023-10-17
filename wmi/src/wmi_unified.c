@@ -1753,6 +1753,25 @@ static inline void wmi_log_cmd_id(uint32_t cmd_id, uint32_t tag)
 		 wmi_id_to_name(cmd_id), cmd_id, tag);
 }
 
+static inline void wmi_log_event_id(uint32_t event_id, uint32_t tag)
+{
+	wmi_debug("receive WMI event:%s event_id:%d htc_tag:%d",
+		 wmi_id_to_name(event_id), event_id, tag);
+}
+
+static inline void wmi_log_rx_event_id(uint32_t rx_event_id, uint32_t tag)
+{
+	wmi_debug("receive RX WMI event:%s event_id:%d htc_tag:%d",
+		 wmi_id_to_name(rx_event_id), rx_event_id, tag);
+}
+
+static inline void wmi_log_cmd_comp_id(uint32_t cmd_cmp_id, uint32_t tag)
+{
+	wmi_debug("Send WMI command complete:%s command_id:%d htc_tag:%d",
+		 wmi_id_to_name(cmd_cmp_id), cmd_cmp_id, tag);
+}
+
+
 /**
  * wmi_is_pm_resume_cmd() - check if a cmd is part of the resume sequence
  * @cmd_id: command to check
@@ -2425,6 +2444,7 @@ static void wmi_process_control_rx(struct wmi_unified *wmi_handle,
 				((uint8_t *) data +
 				wmi_handle->soc->buf_offset_event));
 		} else {
+			wmi_log_rx_event_id(id, 0);
 			WMI_RX_EVENT_RECORD(wmi_handle, id, ((uint8_t *) data +
 				wmi_handle->soc->buf_offset_event));
 		}
@@ -2651,7 +2671,7 @@ void __wmi_control_rx(struct wmi_unified *wmi_handle, wmi_buf_t evt_buf)
 		} else {
 			uint8_t *tmpbuf = (uint8_t *)data +
 					wmi_handle->soc->buf_offset_event;
-
+			wmi_log_event_id(id, 0);
 			WMI_EVENT_RECORD(wmi_handle, id, tmpbuf);
 			wmi_specific_evt_record(wmi_handle, id, tmpbuf);
 		}
@@ -3186,6 +3206,7 @@ static void wmi_htc_tx_complete(void *ctx, HTC_PACKET *htc_pkt)
 			WMI_MGMT_COMMAND_TX_CMP_RECORD(wmi_handle, cmd_id,
 						       offset_ptr);
 		} else {
+			wmi_log_cmd_comp_id(cmd_id, htc_pkt->PktInfo.AsTx.Tag);
 			WMI_COMMAND_TX_CMP_RECORD(wmi_handle, cmd_id,
 						  offset_ptr, dma_addr,
 						  phy_addr);
