@@ -2937,12 +2937,19 @@ int wma_peer_delete_handler(void *handle, uint8_t *cmd_param_info,
 	return status;
 }
 
+extern void hdd_ioctl_log_buffer(int log_id, uint32_t count);
+
 static
 void wma_trigger_recovery_assert_on_fw_timeout(uint16_t wma_msg,
 					       enum qdf_hang_reason reason)
 {
+	int id;
 	wma_err("%s timed out, triggering recovery",
 		 mac_trace_get_wma_msg_string(wma_msg));
+	for (id = 0; id < 8; id++)
+	{
+		hdd_ioctl_log_buffer(id, 50);
+	}
 	qdf_trigger_self_recovery(NULL, reason);
 }
 

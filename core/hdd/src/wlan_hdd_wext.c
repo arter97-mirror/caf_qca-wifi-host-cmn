@@ -8791,7 +8791,7 @@ static int printk_adapter(void *priv, const char *fmt, ...)
 	return ret;
 }
 
-static void hdd_ioctl_log_buffer(int log_id, uint32_t count)
+void hdd_ioctl_log_buffer(int log_id, uint32_t count)
 {
 	qdf_abstract_print *print = &printk_adapter;
 
