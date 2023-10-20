@@ -29,6 +29,7 @@
 #include "pld_internal.h"
 #include "pld_pcie.h"
 #include "osif_psoc_sync.h"
+#include "cds_api.h"
 
 #ifdef CONFIG_PCI
 
@@ -85,14 +86,19 @@ static void pld_pcie_remove(struct pci_dev *pdev)
 	struct pld_context *pld_context;
 	int errno;
 	struct osif_psoc_sync *psoc_sync;
+	enum cds_driver_state state;
 
-	errno = osif_psoc_sync_trans_start_wait(&pdev->dev, &psoc_sync);
-	if (errno)
-		return;
+	state = cds_get_driver_state();
+	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_PCIE_LINK_RESUME_FAIL)){
+		errno = osif_psoc_sync_trans_start_wait(&pdev->dev, &psoc_sync);
+		if (errno)
+			return;
+	}
 
 	osif_psoc_sync_unregister(&pdev->dev);
 
-	osif_psoc_sync_wait_for_ops(psoc_sync);
+	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_PCIE_LINK_RESUME_FAIL))
+		osif_psoc_sync_wait_for_ops(psoc_sync);
 
 	pld_context = pld_get_global_context();
 
@@ -104,8 +110,10 @@ static void pld_pcie_remove(struct pci_dev *pdev)
 	pld_del_dev(pld_context, &pdev->dev);
 
 out:
-	osif_psoc_sync_trans_stop(psoc_sync);
-	osif_psoc_sync_destroy(psoc_sync);
+	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_PCIE_LINK_RESUME_FAIL)){
+		osif_psoc_sync_trans_stop(psoc_sync);
+		osif_psoc_sync_destroy(psoc_sync);
+	}
 }
 
 #ifdef CONFIG_PLD_PCIE_CNSS
@@ -286,6 +294,9 @@ enum pld_bus_event pld_bus_event_type_convert(enum cnss_bus_event_type etype)
 	case BUS_EVENT_PCI_LINK_DOWN:
 		pld_etype = PLD_BUS_EVENT_PCIE_LINK_DOWN;
 		break;
+	case BUS_EVENT_PCI_LINK_RESUME_FAIL:
+		pld_etype = PLD_BUS_EVENT_PCIE_LINK_RESUME_FAIL;
+		break;
 	default:
 		break;
 	}
@@ -304,11 +315,12 @@ enum pld_bus_event pld_bus_event_type_convert(enum cnss_bus_event_type etype)
  * Return: 0 for success, non zero for error code
  */
 static int pld_pcie_update_event(struct pci_dev *pdev,
-				 struct cnss_uevent_data *uevent_data)
+				 void *uevent)
 {
 	struct pld_context *pld_context;
 	struct pld_uevent_data data = {0};
 	struct cnss_hang_event *hang_event;
+	struct cnss_uevent_data *uevent_data = (struct cnss_uevent_data *)uevent;
 
 	pld_context = pld_get_global_context();
 
@@ -694,7 +706,7 @@ struct cnss_wlan_driver pld_pcie_ops = {
 	.crash_shutdown = pld_pcie_crash_shutdown,
 	.modem_status   = pld_pcie_notify_handler,
 	.update_status  = pld_pcie_uevent,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
 	.update_event = pld_pcie_update_event,
 #endif
 #ifdef CONFIG_PM
