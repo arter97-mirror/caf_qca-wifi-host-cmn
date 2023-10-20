@@ -410,7 +410,6 @@ ucfg_mlme_send_ch_width_update_with_notify(struct wlan_objmgr_psoc *psoc,
 
 	status = wlan_mlme_send_ch_width_update_with_notify(psoc, vdev,
 							    vdev_id, ch_width);
-
 release:
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
 
