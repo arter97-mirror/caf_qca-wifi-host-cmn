@@ -542,6 +542,8 @@ static void hif_pci_device_reset(struct hif_pci_softc *sc)
 
 	if (!mem)
 		return;
+        
+        msleep(100);
 
 	hif_err("Reset Device");
 
