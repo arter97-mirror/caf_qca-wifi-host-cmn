@@ -1382,6 +1382,7 @@ enum _ol_ath_param_t {
 	/* Display the current 6G client type */
 	OL_ATH_PARAM_DISPLAY_CLIENT_TYPE = 511,
 	OL_ATH_PARAM_MBSS_GET_GROUP_SIZE = 512,
+	OL_ATH_PARAM_RTT_SKIP_VDEV_RESTART = 513,
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
@@ -3511,6 +3512,8 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_AFC_CHAN_SEL_CONFIG,
 		GET_PARAM, 0},
 #endif
+	{"rtt_skip_vdev_restart",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RTT_SKIP_VDEV_RESTART, SET_PARAM, 1},
 	{"enable_rtt",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RTT_ENABLE, SET_PARAM, 1},
 	{"switch_rtt_role",
