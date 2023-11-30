@@ -41,7 +41,7 @@ QDF_STATUS wlan_sawf_init(void)
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_info("SAWF: SAWF ctx is initialized");
+	qdf_debug("SAWF: SAWF ctx is initialized");
 	return QDF_STATUS_SUCCESS;
 }
 
