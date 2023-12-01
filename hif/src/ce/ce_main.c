@@ -3670,6 +3670,7 @@ int hif_config_ce_by_id(struct hif_softc *scn, int pipe_num)
 	pipe_info->ce_hdl = ce_init(scn, pipe_num, attr);
 	ce_state = scn->ce_id_to_state[pipe_num];
 	if (!ce_state) {
+		rv = QDF_STATUS_E_FAILURE;
 		A_TARGET_ACCESS_UNLIKELY(scn);
 		goto err;
 	}
