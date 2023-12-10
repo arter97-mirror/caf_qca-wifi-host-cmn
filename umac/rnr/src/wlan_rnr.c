@@ -23,11 +23,22 @@ struct rnr_global_info g_rnr_info;
 
 void wlan_rnr_init_cnt(void)
 {
+	if (g_rnr_info.init_done)
+		return;
+
 	qdf_atomic_init(&(g_rnr_info.vdev_lower_band_cnt));
 	qdf_atomic_init(&(g_rnr_info.vdev_6ghz_band_cnt));
+	g_rnr_info.init_done = true;
 }
 
 qdf_export_symbol(wlan_rnr_init_cnt);
+
+void wlan_rnr_deinit_cnt(void)
+{
+	g_rnr_info.init_done = false;
+}
+
+qdf_export_symbol(wlan_rnr_deinit_cnt);
 
 void wlan_rnr_lower_band_vdev_inc(void)
 {

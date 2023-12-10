@@ -27,6 +27,7 @@
  */
 struct rnr_global_info {
 #define EMA_AP_MAX_GROUPS 8
+	bool init_done;
 	qdf_atomic_t vdev_lower_band_cnt;
 	qdf_atomic_t vdev_6ghz_band_cnt;
 	uint32_t rnr_mbss_idx_map[EMA_AP_MAX_GROUPS];
@@ -116,6 +117,7 @@ int32_t wlan_lower_band_ap_cnt_get(void);
  */
 void wlan_rnr_init_cnt(void);
 
+void wlan_rnr_deinit_cnt(void);
 /**
  * wlan_gbl_6ghz_pdev_get - Retrieve 6Ghz pdev pointer
  *
