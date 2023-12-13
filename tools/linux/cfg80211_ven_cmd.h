@@ -1447,6 +1447,7 @@ enum _ol_ath_param_t {
 #ifdef QCA_R2P_UPDATE_ENABLED
 	OL_ATH_PARAM_R2P_HCHAN_RESTORE = 527,
 #endif
+	OL_ATH_PARAM_ACS_SEC20_WEIGHTAGE = 528,
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
@@ -3348,6 +3349,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ACS_FAR_RANGE_WEIGHTAGE, SET_PARAM, 1},
 	{"get_acs_far_range_weightage",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ACS_FAR_RANGE_WEIGHTAGE, GET_PARAM, 0},
+	{"set_acs_sec20_weightage",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ACS_SEC20_WEIGHTAGE, SET_PARAM, 1},
+	{"get_acs_sec20_weightage",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ACS_SEC20_WEIGHTAGE, GET_PARAM, 0},
 	{"set_mgmt_ttl",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_MGMT_TTL, SET_PARAM, 1},
 	{"get_mgmt_ttl",
