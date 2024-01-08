@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3059,15 +3059,16 @@ static inline void *dp_srng_dst_get_next(struct dp_soc *dp_soc,
  * @hal_ring: opaque pointer to the HAL Rx Destination ring
  * @num_entries: Entry count
  *
- * Return: None
+ * Return: HAL ring descriptor
  */
-static inline void dp_srng_dst_inv_cached_descs(struct dp_soc *dp_soc,
-						hal_ring_handle_t hal_ring_hdl,
-						uint32_t num_entries)
+static inline void *dp_srng_dst_inv_cached_descs(struct dp_soc *dp_soc,
+						 hal_ring_handle_t hal_ring_hdl,
+						 uint32_t num_entries)
 {
 	hal_soc_handle_t hal_soc = dp_soc->hal_soc;
 
-	hal_srng_dst_inv_cached_descs(hal_soc, hal_ring_hdl, num_entries);
+	return hal_srng_dst_inv_cached_descs(hal_soc, hal_ring_hdl,
+					     num_entries);
 }
 #else
 static inline void *dp_srng_dst_get_next(struct dp_soc *dp_soc,
@@ -3078,10 +3079,11 @@ static inline void *dp_srng_dst_get_next(struct dp_soc *dp_soc,
 	return hal_srng_dst_get_next(hal_soc, hal_ring_hdl);
 }
 
-static inline void dp_srng_dst_inv_cached_descs(struct dp_soc *dp_soc,
-						hal_ring_handle_t hal_ring_hdl,
-						uint32_t num_entries)
+static inline void *dp_srng_dst_inv_cached_descs(struct dp_soc *dp_soc,
+						 hal_ring_handle_t hal_ring_hdl,
+						 uint32_t num_entries)
 {
+	return NULL;
 }
 #endif /* QCA_CACHED_RING_DESC */
 
