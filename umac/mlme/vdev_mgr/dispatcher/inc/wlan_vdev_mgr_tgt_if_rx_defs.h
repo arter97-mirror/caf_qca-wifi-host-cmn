@@ -77,8 +77,8 @@ static inline char *string_from_rsp_bit(enum wlan_vdev_mgr_tgt_if_rsp_bit bit)
 #define PEER_DELETE_ALL_RESPONSE_TIMER (6000 + PMO_RESUME_TIMEOUT)
 #else
 #define START_RESPONSE_TIMER           6000
-#define STOP_RESPONSE_TIMER            4000
-#define DELETE_RESPONSE_TIMER          4000
+#define STOP_RESPONSE_TIMER            1000
+#define DELETE_RESPONSE_TIMER          1000
 #define PEER_DELETE_ALL_RESPONSE_TIMER 6000
 #endif
 
