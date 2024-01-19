@@ -5389,6 +5389,7 @@ int hdd_vdev_destroy(struct hdd_adapter *adapter)
 	uint8_t vdev_id;
 	struct wlan_objmgr_vdev *vdev;
 	long rc;
+	enum cds_driver_state state;
 
 	vdev_id = adapter->vdev_id;
 	hdd_nofl_debug("destroying vdev %d", vdev_id);
@@ -5442,19 +5443,20 @@ int hdd_vdev_destroy(struct hdd_adapter *adapter)
 		hdd_err("failed to delete vdev; status:%d", status);
 		goto send_status;
 	}
-
-	/* block on a completion variable until sme session is closed */
-	rc = wait_for_completion_timeout(
-			&adapter->vdev_destroy_event,
-			msecs_to_jiffies(SME_CMD_VDEV_CREATE_DELETE_TIMEOUT));
-	if (!rc) {
-		hdd_err("timed out waiting for sme vdev delete");
-		clear_bit(SME_SESSION_OPENED, &adapter->event_flags);
-		sme_cleanup_session(hdd_ctx->mac_handle, vdev_id);
-		qdf_trigger_self_recovery(hdd_ctx->psoc,
-					  QDF_VDEV_DELETE_RESPONSE_TIMED_OUT);
+	state = cds_get_driver_state();
+	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+		/* block on a completion variable until sme session is closed */
+		rc = wait_for_completion_timeout(
+				&adapter->vdev_destroy_event,
+				msecs_to_jiffies(SME_CMD_VDEV_CREATE_DELETE_TIMEOUT));
+		if (!rc) {
+			hdd_err("timed out waiting for sme vdev delete");
+			clear_bit(SME_SESSION_OPENED, &adapter->event_flags);
+			sme_cleanup_session(hdd_ctx->mac_handle, vdev_id);
+			qdf_trigger_self_recovery(hdd_ctx->psoc,
+						  QDF_VDEV_DELETE_RESPONSE_TIMED_OUT);
+		}
 	}
-
 	hdd_nofl_debug("vdev %d destroyed successfully", vdev_id);
 
 send_status:

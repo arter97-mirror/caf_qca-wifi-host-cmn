@@ -877,6 +877,7 @@ QDF_STATUS pmo_core_psoc_suspend_target(struct wlan_objmgr_psoc *psoc,
 					int disable_target_intr)
 {
 	QDF_STATUS status;
+	enum cds_driver_state state;
 	struct pmo_suspend_params param;
 	struct pmo_psoc_priv_obj *psoc_ctx;
 	void *dp_soc = pmo_core_psoc_get_dp_handle(psoc);
@@ -893,16 +894,17 @@ QDF_STATUS pmo_core_psoc_suspend_target(struct wlan_objmgr_psoc *psoc,
 		goto out;
 
 	pmo_tgt_update_target_suspend_flag(psoc, true);
-
-	status = qdf_wait_for_event_completion(&psoc_ctx->wow.target_suspend,
-					       PMO_TARGET_SUSPEND_TIMEOUT);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		pmo_err("Failed to get ACK from firmware for pdev suspend");
-		pmo_tgt_update_target_suspend_flag(psoc, false);
-		if (!psoc_ctx->wow.target_suspend.force_set)
-			qdf_trigger_self_recovery(psoc, QDF_SUSPEND_TIMEOUT);
+	state = cds_get_driver_state();
+	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+		status = qdf_wait_for_event_completion(&psoc_ctx->wow.target_suspend,
+						       PMO_TARGET_SUSPEND_TIMEOUT);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			pmo_err("Failed to get ACK from firmware for pdev suspend");
+			pmo_tgt_update_target_suspend_flag(psoc, false);
+			if (!psoc_ctx->wow.target_suspend.force_set)
+				qdf_trigger_self_recovery(psoc, QDF_SUSPEND_TIMEOUT);
+		}
 	}
-
 out:
 	pmo_exit();
 

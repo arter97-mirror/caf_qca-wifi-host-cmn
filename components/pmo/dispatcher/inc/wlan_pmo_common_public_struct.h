@@ -176,7 +176,7 @@ enum pmo_suspend_mode {
 	PMO_FULL_POWER_DOWN
 };
 
-#define PMO_TARGET_SUSPEND_TIMEOUT   (4000)
+#define PMO_TARGET_SUSPEND_TIMEOUT   (1000)
 #define PMO_WAKE_LOCK_TIMEOUT        1000
 #define PMO_RESUME_TIMEOUT           (4000)
 
