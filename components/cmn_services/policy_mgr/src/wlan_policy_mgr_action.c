@@ -1676,6 +1676,7 @@ bool policy_mgr_is_sap_restart_required_after_sta_disconnect(
 	QDF_STATUS status;
 	uint32_t sta_gc_present = 0;
 	qdf_freq_t user_config_freq = 0;
+	enum reg_wifi_band user_band, op_band;
 
 	if (intf_ch_freq)
 		*intf_ch_freq = 0;
@@ -1765,9 +1766,17 @@ bool policy_mgr_is_sap_restart_required_after_sta_disconnect(
 			break;
 		}
 
+		/*
+		 * STA got disconnected & SAP has previously moved to 2.4 GHz
+		 * due to concurrency, then move SAP back to user configured
+		 * frequency if the user configured band is better than
+		 * the current operating band.
+		 */
+		op_band = wlan_reg_freq_to_band(op_ch_freq_list[i]);
+		user_band = wlan_reg_freq_to_band(user_config_freq);
+
 		if (!sta_gc_present && user_config_freq &&
-		    WLAN_REG_IS_24GHZ_CH_FREQ(op_ch_freq_list[i]) &&
-		    WLAN_REG_IS_5GHZ_CH_FREQ(user_config_freq)) {
+		    op_band < user_band) {
 			curr_sap_freq = op_ch_freq_list[i];
 			policy_mgr_debug("Move sap to user configured freq: %d",
 					 user_config_freq);
