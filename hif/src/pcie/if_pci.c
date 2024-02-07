@@ -502,6 +502,7 @@ static void hif_pci_device_reset(struct hif_pci_softc *sc)
 	int i;
 	uint32_t val;
 	struct hif_softc *scn = HIF_GET_SOFTC(sc);
+	enum cds_driver_state state;
 
 	if (!scn->hostdef)
 		return;
@@ -515,11 +516,15 @@ static void hif_pci_device_reset(struct hif_pci_softc *sc)
 
 	if (!mem)
 		return;
-        
-        msleep(100);
-
+    state = cds_get_driver_state();
+	if(__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+		hif_err("device lost connection, ignore Reset Device");
+		return;
+	}
 	hif_err("Reset Device");
+    msleep(100);
 
+ 
 	/*
 	 * NB: If we try to write SOC_GLOBAL_RESET_ADDRESS without first
 	 * writing WAKE_V, the Target may scribble over Host memory!

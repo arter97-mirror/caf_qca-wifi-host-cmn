@@ -32,6 +32,7 @@
 #include <wlan_vdev_mlme_main.h>
 #include <wmi_unified_vdev_api.h>
 #include <target_if_psoc_wake_lock.h>
+#include <cds_api.h>
 
 static inline
 void target_if_vdev_mgr_handle_recovery(struct wlan_objmgr_psoc *psoc,
@@ -41,6 +42,7 @@ void target_if_vdev_mgr_handle_recovery(struct wlan_objmgr_psoc *psoc,
 {
 	mlme_nofl_err("PSOC_%d VDEV_%d: %s rsp timeout", wlan_psoc_get_id(psoc),
 		      vdev_id, string_from_rsp_bit(rsp_pos));
+	cds_set_driver_state(CDS_DRIVER_STATE_LOST_CONNECTION);
 	if (target_if_vdev_mgr_is_panic_allowed())
 		qdf_trigger_self_recovery(psoc, recovery_reason);
 	else
