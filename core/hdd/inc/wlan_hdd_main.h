@@ -2146,6 +2146,7 @@ enum wlan_state_ctrl_str_id {
  * @get_sta_user_notif: Get station notifier callback to handle port_id on
  *			userspace application close/abort
  * @usd_adapter: adapter on which USD frames to be forwarded to userspace
+ * @pm_state: pcie bus suspend resume state
  */
 struct hdd_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -2449,6 +2450,7 @@ struct hdd_context {
 #ifdef FEATURE_WLAN_SUPPORT_USD
 	struct hdd_adapter *usd_adapter;
 #endif
+	int bus_pm_state;
 };
 
 /**
