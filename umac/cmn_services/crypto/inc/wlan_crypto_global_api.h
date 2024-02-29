@@ -746,12 +746,13 @@ void wlan_crypto_restore_keys(struct wlan_objmgr_vdev *vdev);
  *
  * This function gets called from ucfg to check RSN match.
  *
- * Return: true or false
+ * Return: QDF_STATUS
  */
-bool wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
-				 uint8_t vdev_id, uint8_t *ie_ptr,
-				 uint16_t ie_len, struct wlan_crypto_params *
-				 peer_crypto_params);
+QDF_STATUS
+wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
+			    uint8_t vdev_id, uint8_t *ie_ptr,
+			    uint16_t ie_len, struct wlan_crypto_params *
+			    peer_crypto_params);
 
 /**
  * wlan_crypto_check_wpa_match() - called by ucfg to check for WPA match
@@ -763,12 +764,13 @@ bool wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
  *
  * This function gets called from ucfg to check WPA match.
  *
- * Return: true or false
+ * Return: QDF_STATUS
  */
-bool wlan_crypto_check_wpa_match(struct wlan_objmgr_psoc *psoc,
-				 uint8_t vdev_id, uint8_t *ie_ptr,
-				 uint16_t ie_len, struct wlan_crypto_params *
-				 peer_crypto_params);
+QDF_STATUS
+wlan_crypto_check_wpa_match(struct wlan_objmgr_psoc *psoc,
+			    uint8_t vdev_id, uint8_t *ie_ptr,
+			    uint16_t ie_len, struct wlan_crypto_params *
+			    peer_crypto_params);
 
 /**
  * wlan_crypto_parse_rsnxe_ie() - parse RSNXE IE
