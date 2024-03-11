@@ -38,36 +38,45 @@ static const struct module_name g_dbr_module_name[DBR_MODULE_MAX] = {
 	[DBR_MODULE_CFR]      = {"CFR"},
 };
 
-static uint8_t get_num_dbr_modules_per_pdev(struct wlan_objmgr_pdev *pdev)
+static void populate_target_support_flag(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_objmgr_psoc *psoc;
 	struct wlan_psoc_host_dbr_ring_caps *dbr_ring_cap;
-	uint8_t num_dbr_ring_caps, cap_idx, pdev_id, num_modules;
+	uint8_t num_dbr_ring_caps, cap_idx, pdev_id, srng_idx, mod_id;
 	struct target_psoc_info *tgt_psoc_info;
+	struct direct_buf_rx_pdev_obj *dbr_pdev_obj;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 
 	if (!psoc) {
 		direct_buf_rx_err("psoc is null");
-		return 0;
+		return;
 	}
 
 	tgt_psoc_info = wlan_psoc_get_tgt_if_handle(psoc);
 	if (!tgt_psoc_info) {
 		direct_buf_rx_err("target_psoc_info is null");
-		return 0;
+		return;
 	}
+
+	dbr_pdev_obj = wlan_objmgr_pdev_get_comp_private_obj
+				(pdev, WLAN_TARGET_IF_COMP_DIRECT_BUF_RX);
+	if (!dbr_pdev_obj) {
+		direct_buf_rx_err("failed to get dbr pdev obj");
+		return;
+	}
+
 	num_dbr_ring_caps = target_psoc_get_num_dbr_ring_caps(tgt_psoc_info);
 	dbr_ring_cap = target_psoc_get_dbr_ring_caps(tgt_psoc_info);
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
-	num_modules = 0;
 
 	for (cap_idx = 0; cap_idx < num_dbr_ring_caps; cap_idx++) {
-		if (dbr_ring_cap[cap_idx].pdev_id == pdev_id)
-			num_modules++;
+		if (dbr_ring_cap[cap_idx].pdev_id == pdev_id) {
+			mod_id = dbr_ring_cap[cap_idx].mod_id;
+			for (srng_idx = 0; srng_idx < DBR_SRNG_NUM; srng_idx++)
+				dbr_pdev_obj->dbr_mod_param[mod_id][srng_idx].target_support = true;
+		}
 	}
-
-	return num_modules;
 }
 
 static QDF_STATUS populate_dbr_cap_mod_param(struct wlan_objmgr_pdev *pdev,
@@ -120,6 +129,28 @@ static QDF_STATUS populate_dbr_cap_mod_param(struct wlan_objmgr_pdev *pdev,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+/**
+ * check_target_support() - Check if a module is supported by the target
+ * @dbr_pdev_obj: Pointer to the DBR pdev object
+ * @mod_id: Module ID to check for target support
+ *
+ * This function checks if the specified module is supported by the target
+ * hardware based on the capabilities advertised during initialization.
+ *
+ * Return: true if the module is supported, false otherwise
+ */
+static inline bool
+check_target_support(struct direct_buf_rx_pdev_obj *dbr_pdev_obj,
+		     uint8_t mod_id)
+{
+	if (mod_id >= DBR_MODULE_MAX) {
+		direct_buf_rx_err("Invalid module id %d", mod_id);
+		return false;
+	}
+	return dbr_pdev_obj->dbr_mod_param[mod_id][0].target_support;
+}
+
 #ifdef DIRECT_BUF_RX_DEBUG
 static inline struct direct_buf_rx_module_debug *
 target_if_get_dbr_mod_debug_from_dbr_pdev_obj(
@@ -141,7 +172,7 @@ target_if_get_dbr_mod_debug_from_dbr_pdev_obj(
 		return NULL;
 	}
 
-	if (mod_id >= dbr_pdev_obj->num_modules) {
+	if (!check_target_support(dbr_pdev_obj, mod_id)) {
 		direct_buf_rx_err("Module %d not supported in target", mod_id);
 		return NULL;
 	}
@@ -357,7 +388,6 @@ QDF_STATUS target_if_direct_buf_rx_pdev_create_handler(
 	struct direct_buf_rx_pdev_obj *dbr_pdev_obj;
 	struct direct_buf_rx_psoc_obj *dbr_psoc_obj;
 	struct wlan_objmgr_psoc *psoc;
-	uint8_t num_modules;
 	QDF_STATUS status;
 
 	direct_buf_rx_enter();
@@ -402,19 +432,10 @@ QDF_STATUS target_if_direct_buf_rx_pdev_create_handler(
 	dbr_psoc_obj->dbr_pdev_obj[wlan_objmgr_pdev_get_pdev_id(pdev)] =
 								dbr_pdev_obj;
 
-	num_modules = get_num_dbr_modules_per_pdev(pdev);
-	direct_buf_rx_debug("Number of modules = %d pdev %d DBR pdev obj %pK",
-			    num_modules, wlan_objmgr_pdev_get_pdev_id(pdev),
-			    dbr_pdev_obj);
-	dbr_pdev_obj->num_modules = num_modules;
-
-	if (!dbr_pdev_obj->num_modules) {
-		direct_buf_rx_info("Number of modules = %d", num_modules);
-		return QDF_STATUS_SUCCESS;
-	}
+	dbr_pdev_obj->num_modules = DBR_MODULE_MAX;
 
 	direct_buf_rx_debug("sring number = %d", DBR_SRNG_NUM);
-	dbr_pdev_obj->dbr_mod_param = qdf_mem_malloc(num_modules *
+	dbr_pdev_obj->dbr_mod_param = qdf_mem_malloc(DBR_MODULE_MAX *
 				DBR_SRNG_NUM *
 				sizeof(struct direct_buf_rx_module_param));
 
@@ -422,6 +443,8 @@ QDF_STATUS target_if_direct_buf_rx_pdev_create_handler(
 		direct_buf_rx_err("alloc dbr mod param fail");
 		goto dbr_mod_param_fail;
 	}
+
+	populate_target_support_flag(pdev);
 
 	if (target_if_direct_buf_rx_alloc_mod_debug(dbr_pdev_obj) !=
 		QDF_STATUS_SUCCESS)
@@ -465,6 +488,9 @@ QDF_STATUS target_if_direct_buf_rx_pdev_destroy_handler(
 
 	num_modules = dbr_pdev_obj->num_modules;
 	for (mod_idx = 0; mod_idx < num_modules; mod_idx++) {
+		if (!check_target_support(dbr_pdev_obj, mod_idx))
+			continue;
+
 		/*
 		 * If the module didn't stop the ring debug by this time,
 		 * it will result in memory leak of its ring debug entries.
@@ -1741,9 +1767,9 @@ QDF_STATUS target_if_direct_buf_rx_module_register(
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (mod_id >= dbr_pdev_obj->num_modules) {
+	if (!check_target_support(dbr_pdev_obj, mod_id)) {
 		direct_buf_rx_err("Module %d not supported in target", mod_id);
-		return QDF_STATUS_E_FAILURE;
+		return QDF_STATUS_E_NOSUPPORT;
 	}
 
 	for (srng_id = 0; srng_id < DBR_SRNG_NUM; srng_id++) {
@@ -1798,9 +1824,9 @@ QDF_STATUS target_if_direct_buf_rx_module_unregister(
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (mod_id >= dbr_pdev_obj->num_modules) {
+	if (!check_target_support(dbr_pdev_obj, mod_id)) {
 		direct_buf_rx_err("Module %d not supported in target", mod_id);
-		return QDF_STATUS_E_FAILURE;
+		return QDF_STATUS_E_NOSUPPORT;
 	}
 
 	for (srng_id = 0; srng_id < DBR_SRNG_NUM; srng_id++) {
@@ -2164,6 +2190,13 @@ static int target_if_direct_buf_rx_rsp_event_handler(ol_scn_t scn,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	if (!check_target_support(dbr_pdev_obj, dbr_rsp.mod_id)) {
+		direct_buf_rx_err("no target support for mod_id %d",
+				  dbr_rsp.mod_id);
+		wlan_objmgr_pdev_release_ref(pdev, dbr_mod_id);
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
 	dbr_buf_pool = mod_param->dbr_buf_pool;
 	dbr_rsp.dbr_entries = qdf_mem_malloc(dbr_rsp.num_buf_release_entry *
 					sizeof(struct direct_buf_rx_entry));
@@ -2432,6 +2465,9 @@ QDF_STATUS target_if_direct_buf_rx_print_ring_stat(
 	direct_buf_rx_debug("| Module ID |    Module    | Head Idx | Tail Idx |");
 	direct_buf_rx_debug("--------------------------------------------------");
 	for (mod_idx = 0; mod_idx < num_modules; mod_idx++) {
+		if (!check_target_support(dbr_pdev_obj, mod_idx))
+			continue;
+
 		for (srng_id = 0; srng_id < DBR_SRNG_NUM; srng_id++) {
 			mod_param =
 				&dbr_pdev_obj->dbr_mod_param[mod_idx][srng_id];
