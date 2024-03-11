@@ -2957,6 +2957,7 @@ wlan_hdd_update_dbs_scan_and_fw_mode_config(void)
 	uint32_t chnl_sel_logic_conc = 0;
 	struct hdd_context *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
 	uint8_t dual_mac_feature = DISABLE_DBS_CXN_AND_SCAN;
+	enum cds_driver_state state;
 
 	if (!hdd_ctx) {
 		hdd_err("HDD context is NULL");
@@ -3013,17 +3014,22 @@ wlan_hdd_update_dbs_scan_and_fw_mode_config(void)
 	status = policy_mgr_reset_dual_mac_configuration(hdd_ctx->psoc);
 	if (QDF_IS_STATUS_ERROR(status))
 		return status;
-
-	status = sme_soc_set_dual_mac_config(cfg);
-	if (QDF_IS_STATUS_SUCCESS(status)) {
-		/* wait for sme_soc_set_dual_mac_config to complete */
-		status =
-		    policy_mgr_wait_for_dual_mac_configuration(hdd_ctx->psoc);
-	} else {
-		hdd_err("sme_soc_set_dual_mac_config failed %d", status);
+	state = cds_get_driver_state();
+	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+		status = sme_soc_set_dual_mac_config(cfg);
+		if (QDF_IS_STATUS_SUCCESS(status)) {
+			/* wait for sme_soc_set_dual_mac_config to complete */
+			status =
+			    policy_mgr_wait_for_dual_mac_configuration(hdd_ctx->psoc);
+		} else {
+			hdd_err("sme_soc_set_dual_mac_config failed %d", status);
+			return status;
+		}
+	}else{
+		status = QDF_STATUS_E_FAILURE;
+		hdd_err("sme_soc_set_dual_mac_config, device lost connection, status %d", status);
 		return status;
 	}
-
 	return status;
 }
 
@@ -5456,6 +5462,10 @@ int hdd_vdev_destroy(struct hdd_adapter *adapter)
 			qdf_trigger_self_recovery(hdd_ctx->psoc,
 						  QDF_VDEV_DELETE_RESPONSE_TIMED_OUT);
 		}
+	}else{
+		hdd_err("sme vdev delete failed, device lost connection");
+		clear_bit(SME_SESSION_OPENED, &adapter->event_flags);
+		sme_cleanup_session(hdd_ctx->mac_handle, vdev_id);
 	}
 	hdd_nofl_debug("vdev %d destroyed successfully", vdev_id);
 

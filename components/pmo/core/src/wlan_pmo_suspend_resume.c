@@ -888,14 +888,14 @@ QDF_STATUS pmo_core_psoc_suspend_target(struct wlan_objmgr_psoc *psoc,
 
 	cdp_process_target_suspend_req(dp_soc, OL_TXRX_PDEV_ID);
 	qdf_event_reset(&psoc_ctx->wow.target_suspend);
-	param.disable_target_intr = disable_target_intr;
-	status = pmo_tgt_psoc_send_supend_req(psoc, &param);
-	if (status != QDF_STATUS_SUCCESS)
-		goto out;
-
-	pmo_tgt_update_target_suspend_flag(psoc, true);
 	state = cds_get_driver_state();
 	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+		param.disable_target_intr = disable_target_intr;
+		status = pmo_tgt_psoc_send_supend_req(psoc, &param);
+		if (status != QDF_STATUS_SUCCESS)
+			goto out;
+
+		pmo_tgt_update_target_suspend_flag(psoc, true);
 		status = qdf_wait_for_event_completion(&psoc_ctx->wow.target_suspend,
 						       PMO_TARGET_SUSPEND_TIMEOUT);
 		if (QDF_IS_STATUS_ERROR(status)) {
@@ -904,7 +904,11 @@ QDF_STATUS pmo_core_psoc_suspend_target(struct wlan_objmgr_psoc *psoc,
 			if (!psoc_ctx->wow.target_suspend.force_set)
 				qdf_trigger_self_recovery(psoc, QDF_SUSPEND_TIMEOUT);
 		}
+	}else{
+		pmo_err("send pdev suspend failed, device lost connection");
+		pmo_tgt_update_target_suspend_flag(psoc, false);
 	}
+		
 out:
 	pmo_exit();
 

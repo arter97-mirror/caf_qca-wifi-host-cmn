@@ -1907,6 +1907,7 @@ static int wma_remove_bss_peer(tp_wma_handle wma, uint32_t vdev_id,
 	int ret_value = 0;
 	QDF_STATUS qdf_status;
 	struct qdf_mac_addr bssid;
+	enum cds_driver_state state;
 
 	if (WMA_IS_VDEV_IN_NDI_MODE(wma->interfaces, vdev_id)) {
 		mac_addr = cdp_get_vdev_mac_addr(soc, vdev_id);
@@ -1934,6 +1935,12 @@ static int wma_remove_bss_peer(tp_wma_handle wma, uint32_t vdev_id,
 
 	if (cds_is_driver_recovering())
 		return -EINVAL;
+	state = cds_get_driver_state();
+	if(__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+		wma_err("Failed to send delete sta req, device lost connection vdev_id %d", vdev_id);
+		vdev_stop_resp->status = QDF_STATUS_E_NOMEM;
+		return -EINVAL;
+	}
 
 	if (wmi_service_enabled(wma->wmi_handle,
 				wmi_service_sync_delete_cmds)) {
@@ -2937,19 +2944,13 @@ int wma_peer_delete_handler(void *handle, uint8_t *cmd_param_info,
 	return status;
 }
 
-extern void hdd_ioctl_log_buffer(int log_id, uint32_t count);
-
 static
 void wma_trigger_recovery_assert_on_fw_timeout(uint16_t wma_msg,
 					       enum qdf_hang_reason reason)
 {
-	int id;
 	wma_err("%s timed out, triggering recovery",
 		 mac_trace_get_wma_msg_string(wma_msg));
-	for (id = 0; id < 8; id++)
-	{
-		hdd_ioctl_log_buffer(id, 50);
-	}
+	cds_set_driver_state(CDS_DRIVER_STATE_LOST_CONNECTION);
 	qdf_trigger_self_recovery(NULL, reason);
 }
 

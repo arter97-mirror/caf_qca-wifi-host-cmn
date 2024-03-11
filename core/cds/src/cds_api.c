@@ -1030,7 +1030,7 @@ static inline void cds_suspend_target(tp_wma_handle wma_handle)
 	/* Suspend the target and disable interrupt */
 	status = ucfg_pmo_psoc_suspend_target(wma_handle->psoc, 1);
 	if (status)
-		cds_err("Failed to suspend target, status = %d", status);
+		cds_err("Failed to suspend target, status = 0x%x", status);
 }
 #endif /* HIF_USB */
 
@@ -1935,6 +1935,7 @@ static void cds_trigger_recovery_handler(const char *func, const uint32_t line)
 	qdf_runtime_lock_t rtl;
 	qdf_device_t qdf;
 	bool ssr_ini_enabled = cds_is_self_recovery_enabled();
+	enum cds_driver_state state = cds_get_driver_state();
 
 	/* NOTE! This code path is delicate! Think very carefully before
 	 * modifying the content or order of the following. Please review any
@@ -1970,6 +1971,12 @@ static void cds_trigger_recovery_handler(const char *func, const uint32_t line)
 	     qdf->bus_type == QDF_BUS_TYPE_IPCI) && !ssr_ini_enabled) {
 		QDF_DEBUG_PANIC("WLAN recovery is not enabled (via %s:%d)",
 				func, line);
+		return;
+	}
+
+	/* ignore recovery if chip lost connection; it would be a waste anyway */
+	if(__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+		cds_info("WLAN lost connection; ignore recovery");
 		return;
 	}
 
