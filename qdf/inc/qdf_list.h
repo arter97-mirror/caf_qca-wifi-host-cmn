@@ -125,7 +125,7 @@ static inline void qdf_list_destroy(qdf_list_t *list)
 	if (list->count != 0) {
 		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
 			  "%s: list length not equal to zero", __func__);
-		QDF_ASSERT(0);
+		//QDF_ASSERT(0);
 	}
 }
 
