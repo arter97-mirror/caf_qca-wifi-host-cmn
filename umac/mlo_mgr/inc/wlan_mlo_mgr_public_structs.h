@@ -1660,6 +1660,8 @@ struct mlo_mlme_ext_ops {
  * link rejction in link recfg
  * @mlo_mgr_osif_link_switch_notification: Notify OSIF on start of link switch
  * @mlo_mgr_osif_update_link_state: update link state in OSIF
+ * @mlo_mgr_osif_chan_switch_notification: Callback to update standby link chan
+ *                                         info to HDD on channel switch.
  */
 struct mlo_osif_ext_ops {
 	QDF_STATUS
@@ -1687,6 +1689,10 @@ struct mlo_osif_ext_ops {
 
 	void (*mlo_mgr_osif_update_link_state)(uint8_t vdev_id,
 					       bool is_link_active);
+
+	QDF_STATUS
+	(*mlo_mgr_osif_chan_switch_notification)(
+					struct qdf_mac_addr *link_mac_address);
 };
 
 /* maximum size of vdev bitmap array for MLO link set active command */

@@ -2539,6 +2539,11 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 
 	mlo_mgr_update_csa_link_info(pdev, mlo_dev_ctx, csa_param, link_id);
 
+	/* sending csa event notification to userspace for standby link */
+	status = mlo_mgr_standby_link_csa_notify(&link_info->ap_link_addr);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
 	params.link_id = link_info->link_id;
 	params.chan = qdf_mem_malloc(sizeof(struct wlan_channel));
 	if (!params.chan) {
@@ -2595,6 +2600,35 @@ static void mlo_sta_handle_link_reconfig_standby_link(
 				vdev_mlme,
 				reconfig_info);
 	}
+}
+
+QDF_STATUS mlo_mgr_standby_link_csa_notify(
+			struct qdf_mac_addr *link_mac_address)
+{
+	struct mlo_mgr_context *g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	QDF_STATUS (*chan_switch_hdd_cb)(struct qdf_mac_addr *link_mac_address);
+
+	if (!g_mlo_ctx) {
+		mlo_err("mlo context is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	chan_switch_hdd_cb =
+		g_mlo_ctx->osif_ops->mlo_mgr_osif_chan_switch_notification;
+	if (!chan_switch_hdd_cb) {
+		mlo_err("chan_switch_hdd_cb is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	status = chan_switch_hdd_cb(link_mac_address);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("Standby link csa notify to user space failed BSSID: "
+			QDF_MAC_ADDR_FMT,
+			QDF_MAC_ADDR_REF(link_mac_address->bytes));
+	}
+
+	return status;
 }
 #else
 static void mlo_sta_handle_link_reconfig_standby_link(
