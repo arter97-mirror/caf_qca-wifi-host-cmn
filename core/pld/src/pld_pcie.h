@@ -517,6 +517,12 @@ static inline int pld_pcie_set_gen_speed(struct device *dev, u8 pcie_gen_speed)
 }
 #endif
 
+static inline int pld_pcie_set_lost_connection(struct device *dev, u8 lost_connection)
+{
+	return cnss_set_lost_connection(dev, lost_connection);
+}
+
+
 static inline void pld_pcie_link_down(struct device *dev)
 {
 	cnss_pci_link_down(dev);

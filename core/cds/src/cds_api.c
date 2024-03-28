@@ -1977,6 +1977,7 @@ static void cds_trigger_recovery_handler(const char *func, const uint32_t line)
 	/* ignore recovery if chip lost connection; it would be a waste anyway */
 	if(__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
 		cds_info("WLAN lost connection; ignore recovery");
+		pld_set_pcie_lost_connection(qdf->dev, 1);
 		return;
 	}
 

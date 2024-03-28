@@ -725,6 +725,21 @@ int pld_set_pcie_gen_speed(struct device *dev, u8 pcie_gen_speed)
 	return ret;
 }
 
+int pld_set_pcie_lost_connection(struct device *dev, u8 lost_connection)
+{
+	int ret = -EINVAL;
+
+	switch (pld_get_bus_type(dev)) {
+	case PLD_BUS_TYPE_PCIE:
+		ret = pld_pcie_set_lost_connection(dev, lost_connection);
+		break;
+	default:
+		pr_err("Invalid device type\n");
+		break;
+	}
+	return ret;
+}
+
 /**
  * pld_is_pci_link_down() - Notification for pci link down event
  * @dev: device

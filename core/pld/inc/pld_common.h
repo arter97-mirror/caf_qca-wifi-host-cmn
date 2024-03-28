@@ -555,6 +555,7 @@ void pld_allow_l1(struct device *dev);
  * Return: 0 for success. Negative error codes.
  */
 int pld_set_pcie_gen_speed(struct device *dev, u8 pcie_gen_speed);
+int pld_set_pcie_lost_connection(struct device *dev, u8 pcie_gen_speed);
 
 void pld_is_pci_link_down(struct device *dev);
 int pld_shadow_control(struct device *dev, bool enable);
