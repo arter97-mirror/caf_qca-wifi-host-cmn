@@ -1032,6 +1032,8 @@ mlo_roam_copy_reassoc_rsp(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_NULL_VALUE;
 
 	wlan_cm_free_connect_resp(sta_ctx->copied_reassoc_rsp);
+	sta_ctx->copied_reassoc_rsp = NULL;
+
 	/* Free assoc rsp, so that reassoc rsp can be used during
 	 * reassociation.
 	 */
