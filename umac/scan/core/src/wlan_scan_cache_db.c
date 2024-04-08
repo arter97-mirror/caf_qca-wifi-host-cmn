@@ -892,7 +892,7 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 		}
 	}
 
-	scan_node = qdf_mem_malloc(sizeof(*scan_node));
+	scan_node = qdf_mem_malloc_atomic(sizeof(*scan_node));
 	if (!scan_node) {
 		/* release ref taken for dup node */
 		if (is_dup_found)
