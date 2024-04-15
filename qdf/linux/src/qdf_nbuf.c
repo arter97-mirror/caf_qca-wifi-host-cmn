@@ -1269,17 +1269,18 @@ __qdf_nbuf_data_get_dhcp_subtype(uint8_t *data)
 	return subtype;
 }
 
+#if 0 // keh comment
 /**
- * __qdf_nbuf_data_get_eapol_subtype() - get the subtype
- *            of EAPOL packet.
+ * __qdf_nbuf_data_get_eapol_key() - Get EAPOL key
+ *
  * @data: Pointer to EAPOL packet data buffer
  *
- * This func. returns the subtype of EAPOL packet.
+ * This func. returns the key type of EAPOL packet.
  *
  * Return: subtype of the EAPOL packet.
  */
-enum qdf_proto_subtype
-__qdf_nbuf_data_get_eapol_subtype(uint8_t *data)
+static inline enum qdf_proto_subtype
+__qdf_nbuf_data_get_eapol_key(uint8_t *data)
 {
 	uint16_t eapol_key_info;
 	enum qdf_proto_subtype subtype = QDF_PROTO_INVALID;
@@ -1308,6 +1309,213 @@ __qdf_nbuf_data_get_eapol_subtype(uint8_t *data)
 
 	return subtype;
 }
+#endif
+
+#define EAPOL_WPA_KEY_INFO_KEY_TYPE BIT(3)
+#define EAPOL_WPA_KEY_INFO_ACK BIT(7)
+#define EAPOL_WPA_KEY_INFO_MIC BIT(8)
+#define EAPOL_WPA_KEY_INFO_ENCR_KEY_DATA BIT(12) /* IEEE 802.11i/RSN only */
+
+/**
+ * __qdf_nbuf_data_get_eapol_key() - Get EAPOL key
+ * @data: Pointer to EAPOL packet data buffer
+ *
+ * We can distinguish M1/M3 from M2/M4 by the ack bit in the keyinfo field
+ * The ralationship between the ack bit and EAPOL type is as follows:
+ *
+ *  EAPOL type  |   M1    M2   M3  M4
+ * --------------------------------------
+ *     Ack      |   1     0    1   0
+ * --------------------------------------
+ *
+ * Then, we can differentiate M1 from M3, M2 from M4 by below methods:
+ * M2/M4: by keyDataLength or Nonce value being 0 for M4.
+ * M1/M3: by the mic/encrKeyData bit in the keyinfo field.
+ *
+ * Return: subtype of the EAPOL packet.
+ */
+static inline enum qdf_proto_subtype
+__qdf_nbuf_data_get_eapol_key(uint8_t *data)
+{
+	uint16_t key_info, key_data_length;
+	enum qdf_proto_subtype subtype;
+	uint64_t *key_nonce;
+	bool pairwise;
+
+	key_info = qdf_ntohs((uint16_t)(*(uint16_t *)
+			(data + EAPOL_KEY_INFO_OFFSET)));
+
+	key_data_length = qdf_ntohs((uint16_t)(*(uint16_t *)
+				(data + EAPOL_KEY_DATA_LENGTH_OFFSET)));
+	key_nonce = (uint64_t *)(data + EAPOL_WPA_KEY_NONCE_OFFSET);
+	pairwise = key_info & EAPOL_WPA_KEY_INFO_KEY_TYPE;
+
+	if (key_info & EAPOL_WPA_KEY_INFO_ACK)
+		if (key_info &
+		    (EAPOL_WPA_KEY_INFO_MIC | EAPOL_WPA_KEY_INFO_ENCR_KEY_DATA))
+			subtype = pairwise ?
+				  QDF_PROTO_EAPOL_M3 : QDF_PROTO_EAPOL_G1;
+		else
+			subtype = QDF_PROTO_EAPOL_M1;
+	else
+		if (key_data_length == 0 ||
+		    !((*key_nonce) || (*(key_nonce + 1)) ||
+		      (*(key_nonce + 2)) || (*(key_nonce + 3))))
+			subtype = pairwise ?
+				  QDF_PROTO_EAPOL_M4 : QDF_PROTO_EAPOL_G2;
+		else
+			subtype = QDF_PROTO_EAPOL_M2;
+
+	return subtype;
+}
+
+/**
+ * __qdf_nbuf_data_get_exp_msg_type() - Get EAP expanded msg type
+ * @data: Pointer to EAPOL packet data buffer
+ * @code: EAP code
+ *
+ * Return: subtype of the EAPOL packet.
+ */
+static inline enum qdf_proto_subtype
+__qdf_nbuf_data_get_exp_msg_type(uint8_t *data, uint8_t code)
+{
+	uint8_t msg_type;
+	uint8_t opcode = *(data + EAP_EXP_MSG_OPCODE_OFFSET);
+
+	switch (opcode) {
+	case WSC_START:
+		return QDF_PROTO_EAP_WSC_START;
+	case WSC_ACK:
+		return QDF_PROTO_EAP_WSC_ACK;
+	case WSC_NACK:
+		return QDF_PROTO_EAP_WSC_NACK;
+	case WSC_MSG:
+		msg_type = *(data + EAP_EXP_MSG_TYPE_OFFSET);
+		switch (msg_type) {
+		case EAP_EXP_TYPE_M1:
+			return QDF_PROTO_EAP_M1;
+		case EAP_EXP_TYPE_M2:
+			return QDF_PROTO_EAP_M2;
+		case EAP_EXP_TYPE_M3:
+			return QDF_PROTO_EAP_M3;
+		case EAP_EXP_TYPE_M4:
+			return QDF_PROTO_EAP_M4;
+		case EAP_EXP_TYPE_M5:
+			return QDF_PROTO_EAP_M5;
+		case EAP_EXP_TYPE_M6:
+			return QDF_PROTO_EAP_M6;
+		case EAP_EXP_TYPE_M7:
+			return QDF_PROTO_EAP_M7;
+		case EAP_EXP_TYPE_M8:
+			return QDF_PROTO_EAP_M8;
+		default:
+			break;
+		}
+		break;
+	case WSC_DONE:
+		return QDF_PROTO_EAP_WSC_DONE;
+	case WSC_FRAG_ACK:
+		return QDF_PROTO_EAP_WSC_FRAG_ACK;
+	default:
+		break;
+	}
+	switch (code) {
+	case QDF_EAP_REQUEST:
+		return QDF_PROTO_EAP_REQUEST;
+	case QDF_EAP_RESPONSE:
+		return QDF_PROTO_EAP_RESPONSE;
+	default:
+		return QDF_PROTO_INVALID;
+	}
+}
+
+/**
+ * __qdf_nbuf_data_get_eap_type() - Get EAP type
+ * @data: Pointer to EAPOL packet data buffer
+ * @code: EAP code
+ *
+ * Return: subtype of the EAPOL packet.
+ */
+static inline enum qdf_proto_subtype
+__qdf_nbuf_data_get_eap_type(uint8_t *data, uint8_t code)
+{
+	uint8_t type = *(data + EAP_TYPE_OFFSET);
+
+	switch (type) {
+	case EAP_PACKET_TYPE_EXP:
+		return __qdf_nbuf_data_get_exp_msg_type(data, code);
+	case EAP_PACKET_TYPE_ID:
+		switch (code) {
+		case QDF_EAP_REQUEST:
+			return QDF_PROTO_EAP_REQ_ID;
+		case QDF_EAP_RESPONSE:
+			return QDF_PROTO_EAP_RSP_ID;
+		default:
+			return QDF_PROTO_INVALID;
+		}
+	default:
+		switch (code) {
+		case QDF_EAP_REQUEST:
+			return QDF_PROTO_EAP_REQUEST;
+		case QDF_EAP_RESPONSE:
+			return QDF_PROTO_EAP_RESPONSE;
+		default:
+			return QDF_PROTO_INVALID;
+		}
+	}
+}
+
+/**
+ * __qdf_nbuf_data_get_eap_code() - Get EAPOL code
+ * @data: Pointer to EAPOL packet data buffer
+ *
+ * Return: subtype of the EAPOL packet.
+ */
+static inline enum qdf_proto_subtype
+__qdf_nbuf_data_get_eap_code(uint8_t *data)
+{
+	uint8_t code = *(data + EAP_CODE_OFFSET);
+
+	switch (code) {
+	case QDF_EAP_REQUEST:
+	case QDF_EAP_RESPONSE:
+		return __qdf_nbuf_data_get_eap_type(data, code);
+	case QDF_EAP_SUCCESS:
+		return QDF_PROTO_EAP_SUCCESS;
+	case QDF_EAP_FAILURE:
+		return QDF_PROTO_EAP_FAILURE;
+	case QDF_EAP_INITIATE:
+		return QDF_PROTO_EAP_INITIATE;
+	case QDF_EAP_FINISH:
+		return QDF_PROTO_EAP_FINISH;
+	default:
+		return QDF_PROTO_INVALID;
+	}
+}
+
+
+enum qdf_proto_subtype
+__qdf_nbuf_data_get_eapol_subtype(uint8_t *data)
+{
+	uint8_t pkt_type = *(data + EAPOL_PACKET_TYPE_OFFSET);
+
+	switch (pkt_type) {
+	case EAPOL_PACKET_TYPE_EAP:
+		return __qdf_nbuf_data_get_eap_code(data);
+	case EAPOL_PACKET_TYPE_START:
+		return QDF_PROTO_EAPOL_START;
+	case EAPOL_PACKET_TYPE_LOGOFF:
+		return QDF_PROTO_EAPOL_LOGOFF;
+	case EAPOL_PACKET_TYPE_KEY:
+		return __qdf_nbuf_data_get_eapol_key(data);
+	case EAPOL_PACKET_TYPE_ASF:
+		return QDF_PROTO_EAPOL_ASF;
+	default:
+		return QDF_PROTO_INVALID;
+	}
+}
+
+qdf_export_symbol(__qdf_nbuf_data_get_eapol_subtype);
 
 /**
  * __qdf_nbuf_data_get_arp_subtype() - get the subtype
