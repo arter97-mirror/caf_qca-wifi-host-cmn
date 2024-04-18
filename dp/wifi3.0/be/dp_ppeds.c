@@ -1053,12 +1053,15 @@ struct dp_tx_desc_s *dp_ppeds_tx_desc_alloc(struct dp_soc_be *be_soc)
 
 		/* Pool is exhausted */
 		if (!tx_desc) {
-
-			/* Try to borrow from regular tx desc pools */
-			tx_desc = dp_tx_borrow_tx_desc(&be_soc->soc);
-			if (!tx_desc) {
-				TX_DESC_LOCK_UNLOCK(&pool->lock);
-				goto failed;
+			if (qdf_atomic_read(&be_soc->borrow_count) <
+					be_soc->borrow_limit) {
+				/* Try to borrow from regular tx desc pools */
+				tx_desc = dp_tx_borrow_tx_desc(&be_soc->soc);
+				if (!tx_desc) {
+					TX_DESC_LOCK_UNLOCK(&pool->lock);
+					goto failed;
+				}
+				qdf_atomic_inc(&be_soc->borrow_count);
 			}
 		} else {
 			tx_desc->flags = 0;
@@ -1096,6 +1099,15 @@ qdf_nbuf_t dp_ppeds_tx_desc_free(struct dp_soc *soc, struct dp_tx_desc_s *tx_des
 	struct dp_ppeds_tx_desc_pool_s *pool = NULL;
 	qdf_nbuf_t nbuf = NULL;
 
+	if (tx_desc->pool_id != DP_TX_PPEDS_POOL_ID) {
+		nbuf = tx_desc->nbuf;
+		dp_tx_desc_free(soc, tx_desc, tx_desc->pool_id);
+		__dp_tx_outstanding_dec(soc);
+		qdf_atomic_dec(&be_soc->borrow_count);
+
+		return nbuf;
+	}
+
 	pool = &be_soc->ppeds_tx_desc;
 
 	TX_DESC_LOCK_LOCK(&pool->lock);
@@ -1105,7 +1117,8 @@ qdf_nbuf_t dp_ppeds_tx_desc_free(struct dp_soc *soc, struct dp_tx_desc_s *tx_des
 		pool->hotlist = tx_desc;
 		pool->hot_list_len++;
 	} else {
-		__dp_tx_outstanding_dec(soc);
+		if (tx_desc->nbuf)
+			__dp_tx_outstanding_dec(soc);
 
 		nbuf = tx_desc->nbuf;
 		tx_desc->nbuf = NULL;
@@ -2074,6 +2087,8 @@ QDF_STATUS dp_ppeds_start_soc_be(struct dp_soc *soc)
 
 	be_soc->ppeds_stopped = 0;
 
+	qdf_atomic_set(&be_soc->borrow_count, 0);
+
 	dp_info("starting ppe ds for soc %pK ", soc);
 
 	/* Complete the EDMA UMAC reset during instance start */
@@ -2272,6 +2287,10 @@ QDF_STATUS dp_ppeds_init_soc_be(struct dp_soc *soc)
 
 	be_soc->dp_ppeds_txdesc_hotlist_len =
 	wlan_cfg_get_dp_soc_ppeds_tx_desc_hotlist_len(soc->wlan_cfg_ctx);
+	be_soc->borrow_limit =
+	wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(soc->wlan_cfg_ctx);
+
+	qdf_atomic_init(&be_soc->borrow_count);
 
 	return dp_hw_cookie_conversion_init(be_soc, &be_soc->ppeds_tx_cc_ctx);
 }
