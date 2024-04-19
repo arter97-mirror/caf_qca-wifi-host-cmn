@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1206,30 +1206,6 @@ static void mlme_init_wds_config_cfg(struct wlan_objmgr_psoc *psoc,
 
 #ifdef CONFIG_BAND_6GHZ
 /**
- * mlme_init_disable_vlp_sta_conn_to_sp_ap() - initialize disable vlp STA
- *                                             connection to sp AP flag
- * @psoc: Pointer to PSOC
- * @gen: pointer to generic CFG items
- *
- * Return: None
- */
-static void mlme_init_disable_vlp_sta_conn_to_sp_ap(
-						struct wlan_objmgr_psoc *psoc,
-						struct wlan_mlme_generic *gen)
-{
-	gen->disable_vlp_sta_conn_to_sp_ap =
-		cfg_default(CFG_DISABLE_VLP_STA_CONN_TO_SP_AP);
-}
-#else
-static void mlme_init_disable_vlp_sta_conn_to_sp_ap(
-						struct wlan_objmgr_psoc *psoc,
-						struct wlan_mlme_generic *gen)
-{
-}
-#endif
-
-#ifdef CONFIG_BAND_6GHZ
-/**
  * mlme_init_standard_6ghz_conn_policy() - initialize standard 6GHz
  *                                         policy connection flag
  * @psoc: Pointer to PSOC
@@ -1422,7 +1398,6 @@ static void mlme_init_generic_cfg(struct wlan_objmgr_psoc *psoc,
 	mlme_init_emlsr_mode(psoc, gen);
 	mlme_init_tl2m_negotiation_support(psoc, gen);
 	mlme_init_standard_6ghz_conn_policy(psoc, gen);
-	mlme_init_disable_vlp_sta_conn_to_sp_ap(psoc, gen);
 }
 
 static void mlme_init_edca_ani_cfg(struct wlan_objmgr_psoc *psoc,

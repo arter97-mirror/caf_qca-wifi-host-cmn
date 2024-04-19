@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1474,7 +1474,6 @@ struct wlan_mlme_aux_dev_caps {
  * @tx_retry_multiplier: TX xretry extension parameter
  * @mgmt_hw_tx_retry_count: MGMT HW tx retry count for frames
  * @std_6ghz_conn_policy: 6GHz standard connection policy
- * @disable_vlp_sta_conn_to_sp_ap: Disable VLP STA connection to SP AP
  * @eht_mode: EHT mode of operation
  * @t2lm_negotiation_support: T2LM negotiation supported enum value
  * @enable_emlsr_mode: 11BE eMLSR mode support
@@ -1536,7 +1535,6 @@ struct wlan_mlme_generic {
 	uint8_t mgmt_hw_tx_retry_count[CFG_FRAME_TYPE_MAX];
 #ifdef CONFIG_BAND_6GHZ
 	bool std_6ghz_conn_policy;
-	bool disable_vlp_sta_conn_to_sp_ap;
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
 	enum wlan_eht_mode eht_mode;
