@@ -295,6 +295,32 @@ void ucfg_ipa_uc_force_pipe_shutdown(struct wlan_objmgr_pdev *pdev);
  */
 void ucfg_ipa_flush(struct wlan_objmgr_pdev *pdev);
 
+#ifdef WLAN_STA_SEAMLESS_ROAMING
+/**
+ * ucfg_ipa_sw_routing_set() - IPA sw routing set
+ * @pdev: pdev obj
+ * @net_dev: Interface net device
+ * @device_mode: Net interface device mode
+ * @session_id: vdev id
+ * @mac_addr: MAC address of the wlan client
+ * @is_enable: set ipa sw routing enable/disable
+ *
+ * Return: None
+ */
+void ucfg_ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+			     qdf_netdev_t net_dev, uint8_t device_mode,
+			     uint8_t session_id, uint8_t *mac_addr,
+			     bool is_enable);
+#else
+static inline
+void ucfg_ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+			     qdf_netdev_t net_dev, uint8_t device_mode,
+			     uint8_t session_id, uint8_t *mac_addr,
+			     bool is_enable)
+{
+}
+#endif
+
 /**
  * ucfg_ipa_suspend() - Suspend IPA
  * @pdev: pdev obj
@@ -749,6 +775,14 @@ void ucfg_ipa_uc_force_pipe_shutdown(struct wlan_objmgr_pdev *pdev)
 
 static inline
 void ucfg_ipa_flush(struct wlan_objmgr_pdev *pdev)
+{
+}
+
+static inline
+void ucfg_ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+			     qdf_netdev_t net_dev, uint8_t device_mode,
+			     uint8_t session_id, uint8_t *mac_addr,
+			     bool is_enable)
 {
 }
 

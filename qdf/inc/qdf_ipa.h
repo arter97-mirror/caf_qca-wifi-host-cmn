@@ -41,6 +41,8 @@
  * @QDF_WDI_ENABLE: WDI enable complete
  * @QDF_WDI_DISABLE: WDI teardown
  * @QDF_FWR_SSR_BEFORE_SHUTDOWN: WLAN FW recovery
+ * @QDF_IPA_SW_ROUTING_ENABLE: Switch to SW Path
+ * @QDF_IPA_SW_ROUTING_DISABLE: Switch to IPA path
  * @QDF_IPA_WLAN_EVENT_MAX: Max value for the enum
  */
 typedef enum {
@@ -58,6 +60,8 @@ typedef enum {
 	QDF_WDI_ENABLE,
 	QDF_WDI_DISABLE,
 	QDF_FWR_SSR_BEFORE_SHUTDOWN,
+	QDF_IPA_SW_ROUTING_ENABLE,
+	QDF_IPA_SW_ROUTING_DISABLE,
 	QDF_IPA_WLAN_EVENT_MAX
 } qdf_ipa_wlan_event;
 

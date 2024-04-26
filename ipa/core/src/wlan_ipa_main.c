@@ -635,6 +635,36 @@ void ipa_flush(struct wlan_objmgr_pdev *pdev)
 	return wlan_ipa_flush(ipa_obj);
 }
 
+#ifdef WLAN_STA_SEAMLESS_ROAMING
+void ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+			qdf_netdev_t net_dev, uint8_t device_mode,
+			uint8_t session_id, uint8_t *mac_addr,
+			bool is_enable)
+{
+	struct wlan_ipa_priv *ipa_obj;
+	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
+
+	if (!ipa_config_is_enabled()) {
+		ipa_info("ipa is disabled");
+		return;
+	}
+
+	if (!ipa_cb_is_ready()) {
+		ipa_info("ipa is not ready");
+		return;
+	}
+
+	ipa_obj = ipa_psoc_get_priv_obj(psoc);
+	if (!ipa_obj) {
+		ipa_err("IPA object is NULL");
+		return;
+	}
+
+	wlan_ipa_sw_routing_set(ipa_obj, net_dev, device_mode,
+				session_id, mac_addr, is_enable);
+}
+#endif
+
 QDF_STATUS ipa_suspend(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_ipa_priv *ipa_obj;

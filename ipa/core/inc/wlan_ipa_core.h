@@ -725,6 +725,32 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx);
  */
 void wlan_ipa_flush(struct wlan_ipa_priv *ipa_ctx);
 
+#ifdef WLAN_STA_SEAMLESS_ROAMING
+/**
+ * wlan_ipa_sw_routing_set() - IPA sw routing set
+ * @ipa_ctx: IPA context
+ * @net_dev: Interface net device
+ * @device_mode: Net interface device mode
+ * @session_id: vdev id
+ * @mac_addr: MAC address of the wlan client
+ * @is_enable: set ipa sw routing enable/disable
+ *
+ * Return: None
+ */
+void wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
+			     qdf_netdev_t net_dev, uint8_t device_mode,
+			     uint8_t session_id, uint8_t *mac_addr,
+			     bool is_enable);
+#else
+static inline
+void wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
+			     qdf_netdev_t net_dev, uint8_t device_mode,
+			     uint8_t session_id, uint8_t *mac_addr,
+			     bool is_enable)
+{
+}
+#endif
+
 /**
  * wlan_ipa_suspend() - Suspend IPA
  * @ipa_ctx: IPA context

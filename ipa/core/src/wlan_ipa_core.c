@@ -3622,7 +3622,9 @@ static QDF_STATUS wlan_ipa_send_msg(struct wlan_ipa_iface_context *iface,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_mem_copy(QDF_IPA_WLAN_MSG_MAC_ADDR(msg), mac_addr, QDF_NET_ETH_LEN);
+	if (mac_addr)
+		qdf_mem_copy(QDF_IPA_WLAN_MSG_MAC_ADDR(msg), mac_addr,
+			     QDF_NET_ETH_LEN);
 	QDF_IPA_WLAN_MSG_NETDEV_IF_ID(msg) = net_dev->ifindex;
 
 	if (type == QDF_IPA_AP_CONNECT)
@@ -6919,6 +6921,36 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx)
 	ipa_log_debug("exit: ret=%d", status);
 	return status;
 }
+
+#ifdef WLAN_STA_SEAMLESS_ROAMING
+void wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
+			     qdf_netdev_t net_dev, uint8_t device_mode,
+			     uint8_t session_id, uint8_t *mac_addr,
+			     bool is_enable)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_ipa_iface_context *iface_ctx = NULL;
+	qdf_ipa_wlan_event type;
+
+	if (ipa_ctx && device_mode == QDF_STA_MODE) {
+		iface_ctx = wlan_ipa_get_iface_by_mode_netdev(
+				ipa_ctx, net_dev, QDF_STA_MODE,
+				session_id);
+		if (is_enable)
+			type = QDF_IPA_SW_ROUTING_ENABLE;
+		else
+			type = QDF_IPA_SW_ROUTING_DISABLE;
+
+		ipa_debug("set ipa sw routing %s",
+			  is_enable ? "enable" : "disable");
+		status = wlan_ipa_send_msg(iface_ctx, net_dev,
+					   type, mac_addr);
+		if (status != QDF_STATUS_SUCCESS)
+			ipa_err("set ipa sw routing %s failed!",
+				is_enable ? "enable" : "disable");
+	}
+}
+#endif
 
 /**
  * wlan_ipa_uc_send_evt() - send event to ipa

@@ -229,6 +229,20 @@ void ucfg_ipa_flush(struct wlan_objmgr_pdev *pdev)
 
 qdf_export_symbol(ucfg_ipa_flush);
 
+#ifdef WLAN_STA_SEAMLESS_ROAMING
+void ucfg_ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+			     qdf_netdev_t net_dev, uint8_t device_mode,
+			     uint8_t session_id, uint8_t *mac_addr,
+			     bool is_enable)
+
+{
+	ipa_sw_routing_set(pdev, net_dev, device_mode,
+			   session_id, mac_addr, is_enable);
+}
+
+qdf_export_symbol(ucfg_ipa_sw_routing_set);
+#endif
+
 QDF_STATUS ucfg_ipa_suspend(struct wlan_objmgr_pdev *pdev)
 {
 	return ipa_suspend(pdev);
