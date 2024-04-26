@@ -428,6 +428,11 @@ void ipa_uc_force_pipe_shutdown(struct wlan_objmgr_pdev *pdev);
  */
 void ipa_flush(struct wlan_objmgr_pdev *pdev);
 
+QDF_STATUS ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+			      qdf_netdev_t net_dev, uint8_t device_mode,
+			      uint8_t session_id, uint8_t *mac_addr,
+			      bool is_enable);
+
 /**
  * ipa_suspend() - Suspend IPA
  * @pdev: pdev obj

@@ -3021,7 +3021,8 @@ void wlan_ipa_uc_bw_monitor(struct wlan_ipa_priv *ipa_ctx, bool stop)
  *
  * Return: QDF STATUS
  */
-static QDF_STATUS wlan_ipa_send_msg(qdf_netdev_t net_dev,
+static QDF_STATUS wlan_ipa_send_msg(struct wlan_ipa_iface_context *iface,
+				    qdf_netdev_t net_dev,
 				    qdf_ipa_wlan_event type,
 				    const uint8_t *mac_addr)
 {
@@ -3037,7 +3038,9 @@ static QDF_STATUS wlan_ipa_send_msg(qdf_netdev_t net_dev,
 	QDF_IPA_SET_META_MSG_TYPE(&meta, type);
 	strscpy(QDF_IPA_WLAN_MSG_NAME(msg), net_dev->name,
 		IPA_RESOURCE_NAME_MAX);
-	qdf_mem_copy(QDF_IPA_WLAN_MSG_MAC_ADDR(msg), mac_addr, QDF_NET_ETH_LEN);
+
+	if (mac_addr)
+		qdf_mem_copy(QDF_IPA_WLAN_MSG_MAC_ADDR(msg), mac_addr, QDF_NET_ETH_LEN);
 	QDF_IPA_WLAN_MSG_NETDEV_IF_ID(msg) = net_dev->ifindex;
 
 	if (type == QDF_IPA_AP_CONNECT)
@@ -5940,6 +5943,60 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx)
 	qdf_mutex_release(&ipa_ctx->ipa_lock);
 
 	ipa_debug("exit: ret=%d", status);
+	return status;
+}
+
+QDF_STATUS wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
+				   qdf_netdev_t net_dev,
+				   uint8_t device_mode,
+				   uint8_t session_id,
+				   uint8_t *mac_addr,
+				   bool is_enable)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_ipa_iface_context *iface;
+
+	iface = wlan_ipa_get_iface_by_mode_netdev(ipa_ctx,
+						  net_dev,
+						  QDF_STA_MODE,
+						  session_id);
+
+	if (ipa_ctx->roaming && is_enable) {
+		ipa_err("has already Enabled IPA SW Routing, return!");
+		return status;
+	}
+	if (!ipa_ctx->roaming && !is_enable) {
+		ipa_err("IPA SW Routing has already been Disabled, return!");
+		return status;
+	}
+
+	if (device_mode == QDF_STA_MODE) {
+		if (is_enable) {
+			qdf_spin_lock_bh(&ipa_ctx->pm_lock);
+			ipa_ctx->roaming = true;
+			qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
+			status = wlan_ipa_send_msg(iface, net_dev,
+						   QDF_IPA_SW_ROUTING_ENABLE,
+						   mac_addr);
+			if (status != QDF_STATUS_SUCCESS)
+				ipa_err("QDF_IPA_SW_ROUTING_ENABLE send failed %u", status);
+			else
+				ipa_debug("Roaming Start: QDF_IPA_SW_ROUTING_ENABLE send successfully");
+
+		} else {
+			status = wlan_ipa_send_msg(iface, net_dev,
+						   QDF_IPA_SW_ROUTING_DISABLE,
+						   mac_addr);
+			if (status != QDF_STATUS_SUCCESS)
+				ipa_err("QDF_IPA_SW_ROUTING_DISABLE send failed %u", status);
+			else
+				ipa_debug("Roaming End: QDF_IPA_SW_ROUTING_DISABLE send successfully");
+
+			qdf_spin_lock_bh(&ipa_ctx->pm_lock);
+			ipa_ctx->roaming = false;
+			qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
+		}
+	}
 	return status;
 }
 
