@@ -790,6 +790,7 @@ QDF_STATUS ipa_send_mcc_scc_msg(struct wlan_objmgr_pdev *pdev,
 
 QDF_STATUS ipa_wlan_evt(struct wlan_objmgr_pdev *pdev, qdf_netdev_t net_dev,
 			uint8_t device_mode, uint8_t session_id,
+			bool is_seamless_roam,
 			enum wlan_ipa_wlan_event ipa_event_type,
 			const uint8_t *mac_addr, bool is_2g_iface)
 {
@@ -806,8 +807,8 @@ QDF_STATUS ipa_wlan_evt(struct wlan_objmgr_pdev *pdev, qdf_netdev_t net_dev,
 	}
 
 	return wlan_ipa_wlan_evt(net_dev, device_mode, session_id,
-				 ipa_event_type, mac_addr, is_2g_iface,
-				 ipa_obj);
+				 is_seamless_roam, ipa_event_type,
+				 mac_addr, is_2g_iface, ipa_obj);
 }
 
 int ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
@@ -1193,7 +1194,7 @@ void wlan_ipa_obj_ipa_evt_wq_handler(void *ctx)
 		}
 		ipa_wlan_evt(ipa_ctx->pdev_obj, ipa_ctx->net_dev,
 			     ipa_ctx->device_mode, ipa_ctx->vdev_id,
-			     ipa_ctx->event, ipa_ctx->mac_addr,
+			     false, ipa_ctx->event, ipa_ctx->mac_addr,
 			     ipa_ctx->ch_freq);
 
 		/* Clean Interface for STA/AP disconnect event */

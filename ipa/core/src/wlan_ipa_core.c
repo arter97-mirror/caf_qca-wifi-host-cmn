@@ -3939,6 +3939,7 @@ void wlan_ipa_init_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
  * @net_dev: Interface net device
  * @device_mode: Net interface device mode
  * @session_id: session id for the event
+ * @is_seamless_roam: True if this is a seamless roam event
  * @type: event enum of type ipa_wlan_event
  * @mac_addr: MAC address associated with the event
  * @is_2g_iface: @net_dev is 2G or not for QDF_IPA_STA_CONNECT and
@@ -3951,6 +3952,7 @@ void wlan_ipa_init_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
  */
 static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 				      uint8_t session_id,
+				      bool is_seamless_roam,
 				      qdf_ipa_wlan_event type,
 				      const uint8_t *mac_addr, bool is_2g_iface,
 				      struct wlan_ipa_priv *ipa_obj)
@@ -4119,11 +4121,24 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 	case QDF_IPA_STA_CONNECT:
 		qdf_mutex_acquire(&ipa_ctx->event_lock);
 
-		/* STA already connected and without disconnect, connect again
-		 * This is Roaming scenario, clean up ipa iface first, then add
-		 * ipa iface later, sta_connected-- first, sta_connected++
-		 * later to reflect real sta number on DUT.
+		/* For the seamless roam scenario, all the APs have the same SSID and
+		 * getway, so do not need to send the disconnect & re-connect ipa msg.
 		 */
+		if (is_seamless_roam) {
+			ipa_info("IPA Roaming event detected from BSSID: "QDF_MAC_ADDR_FMT
+				 " -> BSSID: "QDF_MAC_ADDR_FMT,
+				 QDF_MAC_ADDR_REF(ipa_ctx->iface_context[wlan_ipa_get_ifaceid(
+						  ipa_ctx, session_id)].bssid.bytes),
+				 QDF_MAC_ADDR_REF(mac_addr));
+			ipa_ctx->vdev_to_iface[session_id] =
+				 wlan_ipa_get_ifaceid(ipa_ctx, session_id);
+			wlan_ipa_save_bssid_iface_ctx(ipa_ctx,
+						      ipa_ctx->vdev_to_iface[session_id],
+						      mac_addr);
+			qdf_mutex_release(&ipa_ctx->event_lock);
+			return QDF_STATUS_SUCCESS;
+		}
+
 		if (ipa_ctx->sta_connected) {
 			iface_ctx = wlan_ipa_get_iface_by_mode_netdev(
 					ipa_ctx, net_dev, QDF_STA_MODE,
@@ -4807,6 +4822,7 @@ static uint8_t wlan_ipa_device_mode_switch(uint8_t device_mode)
  * @net_dev: Interface net device
  * @device_mode: Net interface device mode
  * @session_id: session id for the event
+ * @is_seamless_roam: True if this is a seamless roam event
  * @ipa_event_type: event enum of type wlan_ipa_wlan_event
  * @mac_addr: MAC address associated with the event
  * @is_2g_iface: @net_dev is 2g interface or not
@@ -4815,7 +4831,7 @@ static uint8_t wlan_ipa_device_mode_switch(uint8_t device_mode)
  * Return: QDF_STATUS
  */
 QDF_STATUS wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
-		      uint8_t session_id,
+		      uint8_t session_id, bool is_seamless_roam,
 		      enum wlan_ipa_wlan_event ipa_event_type,
 		      const uint8_t *mac_addr, bool is_2g_iface,
 		      struct wlan_ipa_priv *ipa_obj)
@@ -4829,7 +4845,8 @@ QDF_STATUS wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 	if ((device_mode == QDF_STA_MODE) ||
 	    (device_mode == QDF_SAP_MODE))
 		status  = __wlan_ipa_wlan_evt(net_dev, device_mode,
-					      session_id, type, mac_addr,
+					      session_id, is_seamless_roam,
+					      type, mac_addr,
 					      is_2g_iface, ipa_obj);
 
 	return status;
@@ -4868,6 +4885,7 @@ wlan_ipa_uc_proc_pending_event(struct wlan_ipa_priv *ipa_ctx, bool is_loading)
 			__wlan_ipa_wlan_evt(pending_event->net_dev,
 					   pending_event->device_mode,
 					   pending_event->session_id,
+					   false,
 					   pending_event->type,
 					   pending_event->mac_addr,
 					   pending_event->is_2g_iface, ipa_ctx);

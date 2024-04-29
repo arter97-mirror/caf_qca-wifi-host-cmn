@@ -353,6 +353,7 @@ QDF_STATUS ucfg_ipa_send_mcc_scc_msg(struct wlan_objmgr_pdev *pdev,
  * @net_dev: Interface net device
  * @device_mode: Net interface device mode
  * @session_id: session id for the event
+ * @is_roam: is roaming for the ipa event
  * @ipa_event_type: event enum of type ipa_wlan_event
  * @mac_addr: MAC address associated with the event
  * @is_2g_iface: true if interface is operating on 2G band, otherwise false
@@ -361,7 +362,7 @@ QDF_STATUS ucfg_ipa_send_mcc_scc_msg(struct wlan_objmgr_pdev *pdev,
  */
 QDF_STATUS ucfg_ipa_wlan_evt(struct wlan_objmgr_pdev *pdev,
 			     qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id,
+			     uint8_t session_id, bool is_roam,
 			     enum wlan_ipa_wlan_event ipa_event_type,
 			     const uint8_t *mac_addr, bool is_2g_iface);
 
@@ -791,7 +792,7 @@ QDF_STATUS ucfg_ipa_send_mcc_scc_msg(struct wlan_objmgr_pdev *pdev,
 static inline
 QDF_STATUS ucfg_ipa_wlan_evt(struct wlan_objmgr_pdev *pdev,
 			     qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id,
+			     uint8_t session_id, bool is_roam,
 			     enum wlan_ipa_wlan_event ipa_event_type,
 			     const uint8_t *mac_addr, bool is_2g_iface)
 {

@@ -275,12 +275,13 @@ qdf_export_symbol(ucfg_ipa_send_mcc_scc_msg);
 
 QDF_STATUS ucfg_ipa_wlan_evt(struct wlan_objmgr_pdev *pdev,
 			     qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id,
+			     uint8_t session_id, bool is_seamless_roam,
 			     enum wlan_ipa_wlan_event ipa_event_type,
 			     const uint8_t *mac_addr, bool is_2g_iface)
 {
 	return ipa_wlan_evt(pdev, net_dev, device_mode, session_id,
-			    ipa_event_type, mac_addr, is_2g_iface);
+			    is_seamless_roam, ipa_event_type, mac_addr,
+			    is_2g_iface);
 }
 
 qdf_export_symbol(ucfg_ipa_wlan_evt);

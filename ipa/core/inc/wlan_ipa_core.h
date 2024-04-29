@@ -769,6 +769,7 @@ static inline void wlan_ipa_mcc_work_handler(void *data)
  * @net_dev: Interface net device
  * @device_mode: Net interface device mode
  * @session_id: session id for the event
+ * @is_roam: is roaming for the ipa event
  * @ipa_event_type: event enum of type ipa_wlan_event
  * @mac_addr: MAC address associated with the event
  * @is_2g_iface: true if interface is operating on 2G band, otherwise false
@@ -777,7 +778,7 @@ static inline void wlan_ipa_mcc_work_handler(void *data)
  * Return: QDF_STATUS
  */
 QDF_STATUS wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
-			     uint8_t session_id,
+			     uint8_t session_id, bool is_roam,
 			     enum wlan_ipa_wlan_event ipa_event_type,
 			     const uint8_t *mac_addr, bool is_2g_iface,
 			     struct wlan_ipa_priv *ipa_obj);
