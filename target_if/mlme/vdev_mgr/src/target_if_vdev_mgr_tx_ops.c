@@ -36,6 +36,7 @@
 #include <wlan_cmn.h>
 #include <wmi_unified_vdev_api.h>
 #include <cdp_txrx_ctrl.h>
+#include <cds_api.h>
 #include <target_if_psoc_timer_tx_ops.h>
 #include <target_if_psoc_wake_lock.h>
 
@@ -148,7 +149,14 @@ static QDF_STATUS target_if_vdev_mgr_rsp_timer_start(
 
 	/* reference taken for timer start, will be released with stop */
 	wlan_objmgr_psoc_get_ref(psoc, WLAN_PSOC_TARGET_IF_ID);
-	qdf_timer_start(&vdev_rsp->rsp_timer, vdev_rsp->expire_time);
+	if (!cds_is_target_lost_connection())
+	{
+		qdf_timer_start(&vdev_rsp->rsp_timer, vdev_rsp->expire_time);
+	}
+	else
+	{
+		qdf_timer_start(&vdev_rsp->rsp_timer, 100);
+	}
 
 	return QDF_STATUS_SUCCESS;
 }

@@ -29,6 +29,10 @@
 
 typedef struct __qdf_timer_t qdf_timer_t;
 
+
+/*#define qdf_timer_init(hdl, timer, func, arg, type) \
+	qdf_timer_init_debug(hdl, timer, func, arg, type, \
+				__FILE__, __LINE__)*/
 /**
  * qdf_timer_init() - initialize a timer
  * @hdl: OS handle
@@ -44,6 +48,14 @@ typedef struct __qdf_timer_t qdf_timer_t;
  *
  * Return: QDF_STATUS
  */
+/*static inline QDF_STATUS
+qdf_timer_init_debug(qdf_handle_t hdl, qdf_timer_t *timer, qdf_timer_func_t func,
+	       void *arg, QDF_TIMER_TYPE type, char *file_name, uint32_t line_num)
+{
+	pr_err("%s %d\n", file_name, line_num);
+	return __qdf_timer_init(timer, func, arg, type);
+}*/
+
 static inline QDF_STATUS
 qdf_timer_init(qdf_handle_t hdl, qdf_timer_t *timer, qdf_timer_func_t func,
 	       void *arg, QDF_TIMER_TYPE type)
