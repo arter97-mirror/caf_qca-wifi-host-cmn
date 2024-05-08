@@ -5754,6 +5754,8 @@ typedef enum {
 	PDEV_PARAM(pdev_param_atf_vi_dedicated_time,
 		   PDEV_PARAM_ATF_VI_DEDICATED_TIME),
 	PDEV_PARAM(pdev_param_ul_ofdma_rtd, PDEV_PARAM_UL_OFDMA_RTD),
+	PDEV_PARAM(pdev_param_scan_mode,
+		   PDEV_PARAM_SCAN_MODE),
 	pdev_param_max,
 } wmi_conv_pdev_params_id;
 
