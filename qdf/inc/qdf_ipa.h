@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -40,6 +41,8 @@
 typedef enum {
 	QDF_IPA_CLIENT_CONNECT,
 	QDF_IPA_CLIENT_DISCONNECT,
+	QDF_IPA_SW_ROUTING_ENABLE,
+	QDF_IPA_SW_ROUTING_DISABLE,
 	QDF_IPA_AP_CONNECT,
 	QDF_IPA_AP_DISCONNECT,
 	QDF_IPA_STA_CONNECT,

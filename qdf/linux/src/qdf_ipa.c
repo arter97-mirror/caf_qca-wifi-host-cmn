@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -35,6 +36,12 @@ static uint8_t __qdf_to_ipa_wlan_event(int qdf_ipa_event)
 		break;
 	case QDF_IPA_CLIENT_DISCONNECT:
 		ipa_event = WLAN_CLIENT_DISCONNECT;
+		break;
+	case QDF_IPA_SW_ROUTING_ENABLE:
+		ipa_event = SW_ROUTING_ENABLE;
+		break;
+	case QDF_IPA_SW_ROUTING_DISABLE:
+		ipa_event = SW_ROUTING_DISABLE;
 		break;
 	case QDF_IPA_AP_CONNECT:
 		ipa_event = WLAN_AP_CONNECT;
