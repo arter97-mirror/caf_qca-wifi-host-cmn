@@ -51,7 +51,6 @@ static void tgt_mc_cp_stats_extract_tx_power(struct wlan_objmgr_psoc *psoc,
 	struct pdev_cp_stats *pdev_cp_stats_priv;
 
 	if (!ev->pdev_stats) {
-		cp_stats_err("no pdev stats");
 		return;
 	}
 
@@ -485,7 +484,6 @@ static void tgt_mc_cp_stats_extract_peer_stats(struct wlan_objmgr_psoc *psoc,
 extd2_stats:
 
 	if (!ev->peer_adv_stats) {
-		cp_stats_err("no peer_extd2 stats");
 		goto complete;
 	}
 	selected = ev->num_peer_adv_stats;
@@ -587,7 +585,7 @@ static void tgt_mc_cp_stats_extract_vdev_summary_stats(
 	}
 
 	if (i == ev->num_summary_stats) {
-		cp_stats_err("vdev_id %d not found", last_req.vdev_id);
+		cp_stats_debug("vdev_id %d not found", last_req.vdev_id);
 		return;
 	}
 
@@ -647,7 +645,6 @@ static void tgt_mc_cp_stats_extract_vdev_chain_rssi_stats(
 	struct vdev_cp_stats *vdev_cp_stats_priv;
 
 	if (!ev->vdev_chain_rssi) {
-		cp_stats_err("no vdev chain rssi stats");
 		return;
 	}
 
