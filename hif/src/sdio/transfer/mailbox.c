@@ -43,6 +43,7 @@
 #include "if_sdio.h"
 #include "regtable.h"
 #include "transfer.h"
+#include <uapi/linux/sched/types.h>
 
 /* by default setup a bounce buffer for the data packets,
  * if the underlying host controller driver
@@ -1940,6 +1941,7 @@ QDF_STATUS hif_disable_func(struct hif_sdio_dev *device,
 QDF_STATUS hif_enable_func(struct hif_softc *ol_sc, struct hif_sdio_dev *device,
 			   struct sdio_func *func, bool resume)
 {
+	struct sched_param param = {.sched_priority = 99};
 	int ret = QDF_STATUS_SUCCESS;
 
 	HIF_ENTER();
@@ -1963,6 +1965,7 @@ QDF_STATUS hif_enable_func(struct hif_softc *ol_sc, struct hif_sdio_dev *device,
 				__func__);
 			return QDF_STATUS_E_FAILURE;
 		}
+		sched_setscheduler(device->async_task, SCHED_FIFO, &param);
 		device->is_disabled = false;
 		wake_up_process(device->async_task);
 	}
