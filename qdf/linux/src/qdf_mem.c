@@ -2234,7 +2234,10 @@ void *qdf_mem_dma_alloc(qdf_device_t osdev, void *dev, qdf_size_t size,
 static inline void *qdf_mem_dma_alloc(qdf_device_t osdev, void *dev,
 				      qdf_size_t size, qdf_dma_addr_t *paddr)
 {
-	return dma_alloc_coherent(dev, size, paddr, qdf_mem_malloc_flags());
+	if (size > PAGE_SIZE)
+		return dma_alloc_coherent(dev, size, paddr, qdf_mem_malloc_flags());
+	else 
+		return dma_alloc_coherent(dev, PAGE_SIZE, paddr, qdf_mem_malloc_flags());
 }
 #endif
 

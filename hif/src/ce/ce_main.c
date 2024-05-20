@@ -3132,6 +3132,7 @@ static inline QDF_STATUS hif_alloc_rri_on_ddr(struct hif_softc *scn)
 	}
 
 	scn->paddr_rri_on_ddr = paddr_rri_on_ddr;
+	hif_info("scn->vaddr_rri_on_ddr %p, scn->paddr_rri_on_ddr 0x%x",scn->vaddr_rri_on_ddr, scn->paddr_rri_on_ddr);
 
 	qdf_mem_zero(scn->vaddr_rri_on_ddr, CE_COUNT * sizeof(uint32_t));
 
