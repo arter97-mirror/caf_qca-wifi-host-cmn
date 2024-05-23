@@ -307,6 +307,31 @@ static inline bool cds_is_target_asserting(void)
 }
 
 /**
+ * cds_is_target_lost_connection() - Is target lost connection
+ *
+ * Return: true if target lost connection
+ */
+static inline bool cds_is_target_lost_connection(void)
+{
+	enum cds_driver_state state = cds_get_driver_state();
+
+	return __CDS_IS_DRIVER_STATE(state, CDS_DRIVER_STATE_LOST_CONNECTION);
+}
+
+/**
+ * cds_is_target_pcie_link_resume_failed() - Is target pcie link resume failed
+ *
+ * Return: true if target pcie link resume failed
+ */
+static inline bool cds_is_target_pcie_link_resume_failed(void)
+{
+	enum cds_driver_state state = cds_get_driver_state();
+
+	return __CDS_IS_DRIVER_STATE(state, CDS_DRIVER_STATE_PCIE_LINK_RESUME_FAIL);
+}
+
+
+/**
  * cds_init() - Initialize CDS
  *
  * This function allocates the resource required for CDS, but does not

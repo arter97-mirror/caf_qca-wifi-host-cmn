@@ -1329,7 +1329,18 @@ int __wlan_hdd_validate_context(struct hdd_context *hdd_ctx, const char *func)
 			  func, cds_get_driver_state());
 		return -EAGAIN;
 	}
+	
+	if (cds_is_target_lost_connection()) {
+		hdd_debug("Target lost connection (via %s); state:0x%x",
+			  func, cds_get_driver_state());
+		return -ENODEV;
+	}
 
+	if (cds_is_target_pcie_link_resume_failed()) {
+		hdd_debug("Target pcie link resume failed (via %s); state:0x%x",
+			  func, cds_get_driver_state());
+		return -ENODEV;
+	}
 	return 0;
 }
 
