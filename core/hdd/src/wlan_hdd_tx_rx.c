@@ -75,6 +75,8 @@
 #include "wlan_hdd_object_manager.h"
 #include "wlan_ipa_ucfg_api.h"
 
+#include <wlan_hdd_ether.h>
+
 #if defined(QCA_LL_TX_FLOW_CONTROL_V2) || defined(QCA_LL_PDEV_TX_FLOW_CONTROL)
 /*
  * Mapping Linux AC interpretation to SME AC.
@@ -961,7 +963,6 @@ static void wlan_hdd_fix_broadcast_eapol(struct hdd_adapter *adapter,
 #endif /* HANDLE_BROADCAST_EAPOL_TX_FRAME */
 
 #define MAX_ROAMING_TX_QUEUE_NUM 1000
-
 void wlan_skb_dequeu(void *data)
 {
 	struct hdd_adapter *adapter = (struct hdd_adapter *)data;
@@ -969,7 +970,27 @@ void wlan_skb_dequeu(void *data)
 	uint32_t dequeued = 0;
 	void *soc = cds_get_context(QDF_MODULE_ID_SOC);
 
-	hdd_info("the Enqueued tx num is %d", qdf_atomic_read(&adapter->tx_enq_num));
+	hdd_info("the high pri Enqueued tx num is %d", qdf_atomic_read(&adapter->tx_hi_enq_num));
+	qdf_spin_lock_bh(&adapter->skb_lock);
+	while (((skb = qdf_nbuf_queue_remove(&adapter->skb_hi_queue_head)) !=
+	       NULL)) {
+		dequeued++;
+		qdf_atomic_dec(&adapter->tx_hi_enq_num);
+		if (hdd_skb_nontso_linearize(skb) != QDF_STATUS_SUCCESS ||
+			!adapter->tx_fn || adapter->tx_fn(soc, adapter->vdev_id, (qdf_nbuf_t)skb)) {
+			hdd_debug("Failed to send the high pri dequeued tx packet, drop it!");
+			qdf_net_buf_debug_release_skb(skb);
+			kfree_skb(skb);
+			++adapter->stats.tx_dropped;
+			++adapter->hdd_stats.tx_rx_stats.tx_dropped;
+		}
+	}
+	qdf_spin_unlock_bh(&adapter->skb_lock);
+	hdd_info("the Dequeued high pri tx num is %d, the rest Enqueued high pri tx num is %d",
+		 dequeued, qdf_atomic_read(&adapter->tx_hi_enq_num));
+
+	dequeued = 0;
+	hdd_info("the Enqueued normal pri tx num is %d", qdf_atomic_read(&adapter->tx_enq_num));
 	qdf_spin_lock_bh(&adapter->skb_lock);
 	while (((skb = qdf_nbuf_queue_remove(&adapter->skb_queue_head)) !=
 	       NULL)) {
@@ -978,7 +999,7 @@ void wlan_skb_dequeu(void *data)
 		if (hdd_skb_nontso_linearize(skb) != QDF_STATUS_SUCCESS ||
 		    !adapter->tx_fn || adapter->tx_fn(soc, adapter->vdev_id,
 		    (qdf_nbuf_t)skb)) {
-			hdd_debug("Failed to send the packet, drop it!");
+			hdd_debug("Failed to send the normal pri dequeued packet, drop it!");
 			qdf_net_buf_debug_release_skb(skb);
 			kfree_skb(skb);
 			++adapter->stats.tx_dropped;
@@ -986,8 +1007,63 @@ void wlan_skb_dequeu(void *data)
 		}
 	}
 	qdf_spin_unlock_bh(&adapter->skb_lock);
-	hdd_info("the Dequeued tx num is %d, the rest Enqueued tx num is %d",
+	hdd_info("the Dequeued normal pri tx num is %d, the rest normal pri enqueued tx num is %d",
 		 dequeued, qdf_atomic_read(&adapter->tx_enq_num));
+}
+
+static bool hdd_dscp_is_high_priority(struct hdd_context *hdd_ctx,
+				      unsigned char dscp)
+{
+	bool is_high_pri = false;
+	struct hdd_config *config = hdd_ctx->config;
+	int i;
+
+	for (i = 0; i < config->tx_dscp_high_pri_arr_num; i++) {
+		if (dscp == config->tx_dscp_high_pri_arr[i]) {
+			hdd_debug("match the high priority dscp(%d)", dscp);
+			is_high_pri = true;
+			break;
+		}
+	}
+
+	return is_high_pri;
+}
+
+static bool hdd_is_tx_high_priority_pkt(struct hdd_context *hdd_ctx,
+					struct sk_buff *skb)
+{
+	unsigned char dscp;
+	unsigned char tos;
+	union generic_ethhdr *eth_hdr;
+	struct iphdr *ip_hdr;
+	struct ipv6hdr *ipv6hdr;
+	unsigned char *pkt;
+
+	hdd_enter();
+
+	pkt = skb->data;
+	eth_hdr = (union generic_ethhdr *)pkt;
+
+	hdd_debug("proto is 0x%04x", skb->protocol);
+
+	if (eth_hdr->eth_II.h_proto == htons(ETH_P_IP)) {
+		ip_hdr = (struct iphdr *)&pkt[sizeof(eth_hdr->eth_II)];
+		tos = ip_hdr->tos;
+		hdd_debug("Ethernet II IP Packet, tos is %d", tos);
+
+	} else if (eth_hdr->eth_II.h_proto == htons(ETH_P_IPV6)) {
+		ipv6hdr = ipv6_hdr(skb);
+		tos = ntohs(*(const __be16 *)ipv6hdr) >> 4;
+		hdd_debug("Ethernet II IPv6 Packet, tos is %d", tos);
+	}  else {
+		hdd_debug("not ip packet, return as normal priority pkt");
+		return false;
+	}
+
+	dscp = (tos >> 2) & 0x3f;
+	hdd_debug("tos is %d, dscp is %d", tos, dscp);
+
+    return hdd_dscp_is_high_priority(hdd_ctx, dscp);
 }
 
 /**
@@ -1223,10 +1299,17 @@ static void __hdd_hard_start_xmit(struct sk_buff *skb,
 					  QDF_MAC_ADDR_FMT), QDF_MAC_ADDR_REF(
 					  mac_addr_tx_allowed.bytes));
 				/* eapol will not come here */
-				qdf_spin_lock_bh(&adapter->skb_lock);
-				qdf_atomic_inc(&adapter->tx_enq_num);
-				qdf_nbuf_queue_add(&adapter->skb_queue_head, (qdf_nbuf_t)skb);
-				qdf_spin_unlock_bh(&adapter->skb_lock);
+				if (hdd_is_tx_high_priority_pkt(hdd_ctx, skb)) {
+					qdf_spin_lock_bh(&adapter->skb_lock);
+					qdf_atomic_inc(&adapter->tx_hi_enq_num);
+					qdf_nbuf_queue_add(&adapter->skb_hi_queue_head, (qdf_nbuf_t)skb);
+					qdf_spin_unlock_bh(&adapter->skb_lock);
+				} else {
+					qdf_spin_lock_bh(&adapter->skb_lock);
+					qdf_atomic_inc(&adapter->tx_enq_num);
+					qdf_nbuf_queue_add(&adapter->skb_queue_head, (qdf_nbuf_t)skb);
+					qdf_spin_unlock_bh(&adapter->skb_lock);
+				}
 				return;
 			} else {
 				QDF_TRACE(QDF_MODULE_ID_HDD_DATA,
@@ -3727,6 +3810,11 @@ void hdd_dp_cfg_update(struct wlan_objmgr_psoc *psoc,
 	config->cfg_wmi_credit_cnt = cfg_get(psoc, CFG_DP_HTC_WMI_CREDIT_CNT);
 	hdd_dp_dp_trace_cfg_update(config, psoc);
 	hdd_dp_nud_tracking_cfg_update(config, psoc);
+
+	qdf_uint8_array_parse(cfg_get(psoc, CFG_TX_DSCP_HIGH_PRI_ARRAY),
+			      config->tx_dscp_high_pri_arr,
+			      sizeof(config->tx_dscp_high_pri_arr),
+			      (qdf_size_t *)&config->tx_dscp_high_pri_arr_num);
 }
 
 bool wlan_hdd_rx_rpm_mark_last_busy(struct hdd_context *hdd_ctx,
