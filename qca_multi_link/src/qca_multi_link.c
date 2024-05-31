@@ -1101,7 +1101,8 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 			 * Compare the physical device and check if the destination is a client
 			 * on the same radio, then enqueue directly to AP vap.
 			 */
-			if ((qca_ml_entry.qal_fdb_ieee80211_ptr->iftype == NL80211_IFTYPE_AP)
+			if (((qca_ml_entry.qal_fdb_ieee80211_ptr->iftype == NL80211_IFTYPE_AP)
+				|| (qca_ml_entry.qal_fdb_ieee80211_ptr->iftype == NL80211_IFTYPE_AP_VLAN))
 				&& (qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy == sta_wiphy)) {
 				QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Unicast Sec STA enqueue to bridge through primary for\
 					shost %pM dhost %pM \n"), eh->ether_shost, eh->ether_dhost);
