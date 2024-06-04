@@ -502,7 +502,6 @@ static void hif_pci_device_reset(struct hif_pci_softc *sc)
 	int i;
 	uint32_t val;
 	struct hif_softc *scn = HIF_GET_SOFTC(sc);
-	enum cds_driver_state state;
 
 	if (!scn->hostdef)
 		return;
@@ -516,8 +515,7 @@ static void hif_pci_device_reset(struct hif_pci_softc *sc)
 
 	if (!mem)
 		return;
-    state = cds_get_driver_state();
-	if(__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+	if(cds_is_target_lost_connection()){
 		hif_err("device lost connection, ignore Reset Device");
 		return;
 	}

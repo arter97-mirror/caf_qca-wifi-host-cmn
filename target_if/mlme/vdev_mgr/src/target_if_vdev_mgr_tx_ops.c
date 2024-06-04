@@ -149,14 +149,7 @@ static QDF_STATUS target_if_vdev_mgr_rsp_timer_start(
 
 	/* reference taken for timer start, will be released with stop */
 	wlan_objmgr_psoc_get_ref(psoc, WLAN_PSOC_TARGET_IF_ID);
-	if (!cds_is_target_lost_connection())
-	{
-		qdf_timer_start(&vdev_rsp->rsp_timer, vdev_rsp->expire_time);
-	}
-	else
-	{
-		qdf_timer_start(&vdev_rsp->rsp_timer, 100);
-	}
+	qdf_timer_start(&vdev_rsp->rsp_timer, vdev_rsp->expire_time);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -553,7 +546,10 @@ static QDF_STATUS target_if_vdev_mgr_delete_send(
 		return QDF_STATUS_E_INVAL;
 	}
 
-	vdev_rsp->expire_time = DELETE_RESPONSE_TIMER;
+	if (!cds_is_target_lost_connection())
+		vdev_rsp->expire_time = DELETE_RESPONSE_TIMER;
+	else
+		vdev_rsp->expire_time = 200;
 	target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp,
 					   DELETE_RESPONSE_BIT);
 	target_if_wake_lock_timeout_acquire(psoc, DELETE_WAKELOCK);
