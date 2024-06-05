@@ -32,8 +32,9 @@ qal_bridge_fdb_register_notify(qal_notify_blk_t nb)
 	if (!nb)
 		return QDF_STATUS_E_INVAL;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	br_fdb_register_notify(nb);
-
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -45,8 +46,9 @@ qal_bridge_fdb_unregister_notify(qal_notify_blk_t nb)
 	if (!nb)
 		return QDF_STATUS_E_INVAL;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	br_fdb_unregister_notify(nb);
-
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -60,7 +62,11 @@ qal_bridge_fdb_has_entry(qal_netdev_t dev, const char *addr, uint16_t vid)
 	if (!netif_is_bridge_port(dev))
 		return NULL;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	return br_fdb_has_entry(dev, addr, vid);
+#else
+	return NULL;
+#endif
 }
 
 qdf_export_symbol(qal_bridge_fdb_has_entry);
@@ -97,8 +103,9 @@ qal_bridge_fdb_update_register_notify(qal_notify_blk_t nb)
 	if (!nb)
 		return QDF_STATUS_E_INVAL;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	br_fdb_update_register_notify(nb);
-
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -110,8 +117,9 @@ qal_bridge_fdb_update_unregister_notify(qal_notify_blk_t nb)
 	if (!nb)
 		return QDF_STATUS_E_INVAL;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
 	br_fdb_update_unregister_notify(nb);
-
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 
