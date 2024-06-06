@@ -1441,9 +1441,27 @@ util_scan_parse_vendor_ie(struct scan_cache_entry *scan_params,
 						sizeof(struct ie_header);
 	} else if (is_qcn_oui((uint8_t *)ie)) {
 		scan_params->ie_list.qcn = (uint8_t *)ie;
+	} else if (is_vendor_wifi6_rsno_oui((uint8_t *)ie)) {
+		scan_params->ie_list.wifi6_rsno = (uint8_t *)ie;
+	} else if (is_vendor_rsnxo_oui((uint8_t *)ie)) {
+		scan_params->ie_list.rsnxo = (uint8_t *)ie;
+	} else if (is_vendor_wifi7_rsno_oui((uint8_t *)ie)) {
+		scan_params->ie_list.wifi7_rsno = (uint8_t *)ie;
 	}
 
 	return QDF_STATUS_SUCCESS;
+}
+
+static void
+util_scan_override_rsnxo_ie(struct scan_cache_entry *scan_params)
+{
+	if (!util_scan_entry_rsnxo(scan_params))
+		return;
+
+	/* RSNXO IE is valid only if either of RSNO1 or RSNO2 is present */
+	if (!util_scan_entry_wifi6_rsno(scan_params) &&
+	    !util_scan_entry_wifi7_rsno(scan_params))
+		scan_params->ie_list.rsnxo = NULL;
 }
 
 static QDF_STATUS
@@ -1719,6 +1737,8 @@ util_scan_populate_bcn_ie_list(struct wlan_objmgr_pdev *pdev,
 			sizeof(struct ie_header) +
 			ie->ie_len);
 	}
+
+	util_scan_override_rsnxo_ie(scan_params);
 
 	return QDF_STATUS_SUCCESS;
 
