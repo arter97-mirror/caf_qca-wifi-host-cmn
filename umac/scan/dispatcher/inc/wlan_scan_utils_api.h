@@ -804,6 +804,9 @@ util_scan_copy_beacon_data(struct scan_cache_entry *new_entry,
 		ie_lst->t2lm[i] = conv_ptr(ie_lst->t2lm[i], old_ptr, new_ptr);
 #endif
 	ie_lst->qcn = conv_ptr(ie_lst->qcn, old_ptr, new_ptr);
+	ie_lst->wifi6_rsno = conv_ptr(ie_lst->wifi6_rsno, old_ptr, new_ptr);
+	ie_lst->rsnxo = conv_ptr(ie_lst->rsnxo, old_ptr, new_ptr);
+	ie_lst->wifi7_rsno = conv_ptr(ie_lst->wifi7_rsno, old_ptr, new_ptr);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -973,6 +976,42 @@ static inline uint8_t*
 util_scan_entry_rsn(struct scan_cache_entry *scan_entry)
 {
 	return scan_entry->ie_list.rsn;
+}
+
+/**
+ * util_scan_entry_wifi6_rsno()- function to read wifi6 RSNO/RSNO1 element
+ * @scan_entry: scan entry
+ *
+ * Return: wifi6 RSN if present or NULL if ie is not present
+ */
+static inline uint8_t*
+util_scan_entry_wifi6_rsno(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.wifi6_rsno;
+}
+
+/**
+ * util_scan_entry_wifi7_rsno()- function to read wifi7 RSNO/RSNO2 element
+ * @scan_entry: scan entry
+ *
+ * Return: wifi7 RSN if present or NULL if ie is not present
+ */
+static inline uint8_t*
+util_scan_entry_wifi7_rsno(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.wifi7_rsno;
+}
+
+/*
+ * util_scan_entry_rsnxo() - function to read RSNXO element
+ * @scan_entry: scan entry
+ *
+ * Return: RSNXO if present or NULL if ie is not present
+ */
+static inline uint8_t*
+util_scan_entry_rsnxo(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.rsnxo;
 }
 
 /**
