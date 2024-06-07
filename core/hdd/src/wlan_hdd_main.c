@@ -6174,7 +6174,7 @@ static int hdd_send_coex_config_params(struct hdd_context *hdd_ctx,
 		coex_cfg_params.config_arg1 = 0;
 		break;
 	case WLAN_COEX_BTC_CHAIN_MODE_SEPARATED:
-		coex_cfg_params.config_arg1 = 2;
+		coex_cfg_params.config_arg1 = 1;
 		break;
 	default:
 		coex_cfg_params.config_arg1 = config.btc_mode;
