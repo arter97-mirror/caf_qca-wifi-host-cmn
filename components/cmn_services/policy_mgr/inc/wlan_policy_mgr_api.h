@@ -5057,4 +5057,19 @@ void
 policy_mgr_sap_on_non_psc_channel(struct wlan_objmgr_psoc *psoc,
 				  qdf_freq_t *intf_ch_freq,
 				  uint8_t sap_vdev_id);
+
+/**
+ * policy_mgr_modify_pcl_for_vlp_channels() - Update weightage for VLP channels.
+ *
+ * @psoc: Pointer to the psoc
+ * @pdev: Pointer to the pdev
+ * @pcl: PCL channel list
+ * @num_pcl: Length of the PCL channel list
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS policy_mgr_modify_pcl_for_vlp_channels(struct wlan_objmgr_psoc *psoc,
+						  struct wlan_objmgr_pdev *pdev,
+						  struct weighed_pcl *pcl,
+						  uint32_t num_pcl);
 #endif /* __WLAN_POLICY_MGR_API_H */
