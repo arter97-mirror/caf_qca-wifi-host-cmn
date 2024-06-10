@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5834,4 +5834,19 @@ QDF_STATUS policy_mgr_get_pcl_ch_list_for_ll_sap(
  */
 bool policy_mgr_is_given_freq_5g_low(struct wlan_objmgr_psoc *psoc,
 				     qdf_freq_t given_freq);
+
+/**
+ * policy_mgr_modify_pcl_for_vlp_channels() - Update weightage for VLP channels.
+ *
+ * @psoc: Pointer to the psoc
+ * @pdev: Pointer to the pdev
+ * @pcl: PCL channel list
+ * @num_pcl: Length of the PCL channel list
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS policy_mgr_modify_pcl_for_vlp_channels(struct wlan_objmgr_psoc *psoc,
+						  struct wlan_objmgr_pdev *pdev,
+						  struct weighed_pcl *pcl,
+						  uint32_t num_pcl);
 #endif /* __WLAN_POLICY_MGR_API_H */
