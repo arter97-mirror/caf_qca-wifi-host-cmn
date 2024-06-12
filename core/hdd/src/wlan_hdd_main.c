@@ -2968,7 +2968,6 @@ wlan_hdd_update_dbs_scan_and_fw_mode_config(void)
 	uint32_t chnl_sel_logic_conc = 0;
 	struct hdd_context *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
 	uint8_t dual_mac_feature = DISABLE_DBS_CXN_AND_SCAN;
-	enum cds_driver_state state;
 
 	if (!hdd_ctx) {
 		hdd_err("HDD context is NULL");
@@ -3025,8 +3024,7 @@ wlan_hdd_update_dbs_scan_and_fw_mode_config(void)
 	status = policy_mgr_reset_dual_mac_configuration(hdd_ctx->psoc);
 	if (QDF_IS_STATUS_ERROR(status))
 		return status;
-	state = cds_get_driver_state();
-	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+	if(!cds_is_target_lost_connection()){
 		status = sme_soc_set_dual_mac_config(cfg);
 		if (QDF_IS_STATUS_SUCCESS(status)) {
 			/* wait for sme_soc_set_dual_mac_config to complete */
@@ -5406,7 +5404,6 @@ int hdd_vdev_destroy(struct hdd_adapter *adapter)
 	uint8_t vdev_id;
 	struct wlan_objmgr_vdev *vdev;
 	long rc;
-	enum cds_driver_state state;
 
 	vdev_id = adapter->vdev_id;
 	hdd_nofl_debug("destroying vdev %d", vdev_id);
@@ -5460,8 +5457,7 @@ int hdd_vdev_destroy(struct hdd_adapter *adapter)
 		hdd_err("failed to delete vdev; status:%d", status);
 		goto send_status;
 	}
-	state = cds_get_driver_state();
-	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+	if(!cds_is_target_lost_connection()){
 		/* block on a completion variable until sme session is closed */
 		rc = wait_for_completion_timeout(
 				&adapter->vdev_destroy_event,

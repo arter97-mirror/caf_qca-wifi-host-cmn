@@ -1907,7 +1907,6 @@ static int wma_remove_bss_peer(tp_wma_handle wma, uint32_t vdev_id,
 	int ret_value = 0;
 	QDF_STATUS qdf_status;
 	struct qdf_mac_addr bssid;
-	enum cds_driver_state state;
 
 	if (WMA_IS_VDEV_IN_NDI_MODE(wma->interfaces, vdev_id)) {
 		mac_addr = cdp_get_vdev_mac_addr(soc, vdev_id);
@@ -1935,8 +1934,7 @@ static int wma_remove_bss_peer(tp_wma_handle wma, uint32_t vdev_id,
 
 	if (cds_is_driver_recovering())
 		return -EINVAL;
-	state = cds_get_driver_state();
-	if(__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+	if(cds_is_target_lost_connection()){
 		wma_err("Failed to send delete sta req, device lost connection vdev_id %d", vdev_id);
 		vdev_stop_resp->status = QDF_STATUS_E_NOMEM;
 		return -EINVAL;
