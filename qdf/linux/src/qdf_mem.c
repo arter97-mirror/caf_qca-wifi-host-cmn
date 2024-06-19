@@ -2252,7 +2252,10 @@ qdf_mem_dma_free(void *dev, qdf_size_t size, void *vaddr, qdf_dma_addr_t paddr)
 static inline void
 qdf_mem_dma_free(void *dev, qdf_size_t size, void *vaddr, qdf_dma_addr_t paddr)
 {
+	if (size > PAGE_SIZE)
 	dma_free_coherent(dev, size, vaddr, paddr);
+	else 
+		dma_free_coherent(dev, PAGE_SIZE, vaddr, paddr);
 }
 #endif
 
