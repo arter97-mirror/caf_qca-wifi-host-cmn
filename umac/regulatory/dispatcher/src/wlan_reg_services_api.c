@@ -2099,3 +2099,11 @@ wlan_reg_unregister_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 	reg_unregister_is_chan_connected_callback(psoc,
 					(reg_is_chan_connected_callback)cbk);
 }
+
+#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
+bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				     qdf_freq_t freq)
+{
+	return reg_is_vlp_depriority_freq(pdev, freq);
+}
+#endif
