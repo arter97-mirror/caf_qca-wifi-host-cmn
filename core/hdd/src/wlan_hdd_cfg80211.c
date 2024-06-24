@@ -20136,6 +20136,119 @@ static int wlan_hdd_cfg80211_set_trace_level(struct wiphy *wiphy,
 	return errno;
 }
 
+const struct nla_policy
+qca_wlan_vendor_p2p_chan_switch_params[CHAN_USAGE_REQ_CHAN_LIST_MAX + 1] = {
+	[CHAN_USAGE_REQ_CHAN_LIST_CHAN] = {.type = NLA_U8},
+	[CHAN_USAGE_REQ_CHAN_LIST_OP_CLASS] = {.type = NLA_U8},
+};
+
+const struct nla_policy
+qca_wlan_vendor_p2p_chan_req_mode[CHAN_USAGE_REQ_MAX + 1] = {
+	[CHAN_USAGE_REQ_MODE] = {.type = NLA_U8},
+	[CHAN_USAGE_REQ_CHAN_LIST] = {.type = NLA_NESTED},
+};
+
+static int __wlan_hdd_cfg80211_p2p_chan_usage_req(struct wiphy *wiphy,
+						  struct wireless_dev *wdev,
+						  const void *data,
+						  int data_len)
+{
+	qdf_freq_t freq;
+	uint16_t ch_width;
+	uint8_t chan = 0, opclass = 0;
+	uint8_t reg_cc[REG_ALPHA2_LEN + 1];
+	struct hdd_context *hdd_ctx = wiphy_priv(wiphy);
+	struct nlattr *tb1[CHAN_USAGE_REQ_MAX + 1];
+	struct nlattr *tb2[CHAN_USAGE_REQ_CHAN_LIST_MAX + 1];
+	struct hdd_adapter *adapter = WLAN_HDD_GET_PRIV_PTR(wdev->netdev);
+
+	hdd_enter();
+
+	if (hdd_get_conparam() == QDF_GLOBAL_FTM_MODE) {
+		hdd_err_rl("Command not allowed in FTM mode");
+		return -EINVAL;
+	}
+
+	if (wlan_hdd_validate_context(hdd_ctx))
+		return -EINVAL;
+
+	if (adapter->device_mode != QDF_P2P_CLIENT_MODE &&
+	    adapter->device_mode != QDF_P2P_GO_MODE)
+		return -EINVAL;
+
+	if (wlan_cfg80211_nla_parse(tb1, CHAN_USAGE_REQ_MAX, data, data_len,
+				    qca_wlan_vendor_p2p_chan_req_mode)) {
+		hdd_debug("Failed to parse mode switch attribute");
+		return -EINVAL;
+	}
+
+	if (!tb1[CHAN_USAGE_REQ_MODE] ||
+	    (nla_get_u8(tb1[CHAN_USAGE_REQ_MODE]) !=
+	     QCA_CHAN_USAGE_MODE_CHANNEL_SWITCH_REQ)) {
+		hdd_debug("Required attribute not set or invalid usage mode");
+		return -EINVAL;
+	}
+
+	if (tb1[CHAN_USAGE_REQ_CHAN_LIST]) {
+		if (wlan_cfg80211_nla_parse_nested(tb2,
+						   CHAN_USAGE_REQ_CHAN_LIST,
+						   tb1[CHAN_USAGE_REQ_CHAN_LIST],
+						   qca_wlan_vendor_p2p_chan_switch_params)) {
+			hdd_debug("Failed to parse channel switch params");
+			return -EINVAL;
+		}
+
+		if (tb2[CHAN_USAGE_REQ_CHAN_LIST_CHAN] &&
+		    tb2[CHAN_USAGE_REQ_CHAN_LIST_OP_CLASS]) {
+			chan = nla_get_u8(tb2[CHAN_USAGE_REQ_CHAN_LIST_CHAN]);
+			opclass =
+			    nla_get_u8(tb2[CHAN_USAGE_REQ_CHAN_LIST_OP_CLASS]);
+			hdd_debug("CSA opclass %d chan %d", opclass, chan);
+		}
+	}
+
+	if (adapter->device_mode == QDF_P2P_GO_MODE) {
+		if (wlan_reg_is_6ghz_op_class(hdd_ctx->pdev, opclass)) {
+			freq = wlan_reg_chan_opclass_to_freq(chan, opclass,
+							     false);
+		} else {
+			freq = wlan_reg_legacy_chan_to_freq(hdd_ctx->pdev,
+							    chan);
+		}
+
+		wlan_reg_read_current_country(hdd_ctx->psoc, reg_cc);
+		ch_width = wlan_reg_dmn_get_chanwidth_from_opclass(reg_cc, chan,
+								   opclass);
+		policy_mgr_change_sap_channel_with_csa(hdd_ctx->psoc,
+						       adapter->deflink->vdev_id,
+						       freq, ch_width, true);
+	} else {
+		ucfg_p2p_send_chan_switch_req(hdd_ctx->psoc,
+					      adapter->deflink->vdev_id,
+					      chan, opclass);
+	}
+
+	return 0;
+}
+
+static int wlan_hdd_cfg80211_p2p_chan_usage_req(struct wiphy *wiphy,
+						struct wireless_dev *wdev,
+						const void *data, int data_len)
+{
+	int errno;
+	struct osif_vdev_sync *vdev_sync;
+
+	errno = osif_vdev_sync_op_start(wdev->netdev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = __wlan_hdd_cfg80211_p2p_chan_usage_req(wiphy, wdev,
+						       data, data_len);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
 /**
  * __wlan_hdd_cfg80211_set_nud_stats() - set arp stats command to firmware
  * @wiphy: pointer to wireless wiphy structure.
@@ -23103,6 +23216,7 @@ const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] = {
 	FEATURE_SAR_LIMITS_VENDOR_COMMANDS
 	BCN_RECV_FEATURE_VENDOR_COMMANDS
 	FEATURE_VENDOR_SUBCMD_SET_TRACE_LEVEL
+	FEATURE_AP_ASSIST_P2P_DFS_GROUP
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
 	{
 		.info.vendor_id = QCA_NL80211_VENDOR_ID,

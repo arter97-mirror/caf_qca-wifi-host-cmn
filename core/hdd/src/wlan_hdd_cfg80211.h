@@ -427,6 +427,37 @@ extern const struct nla_policy
 			      QCA_WLAN_VENDOR_ATTR_SET_TRACE_LEVEL_MAX)	\
 },
 
+#define CHAN_USAGE_REQ_CHAN_LIST_MAX \
+			QCA_WLAN_VENDOR_ATTR_CHAN_USAGE_REQ_CHAN_LIST_MAX
+
+#define CHAN_USAGE_REQ_CHAN_LIST_CHAN \
+			QCA_WLAN_VENDOR_ATTR_CHAN_USAGE_REQ_CHAN_LIST_CHAN
+
+#define CHAN_USAGE_REQ_CHAN_LIST_OP_CLASS \
+			QCA_WLAN_VENDOR_ATTR_CHAN_USAGE_REQ_CHAN_LIST_OP_CLASS
+
+#define CHAN_USAGE_REQ_MAX       QCA_WLAN_VENDOR_ATTR_CHAN_USAGE_REQ_MAX
+#define CHAN_USAGE_REQ_MODE      QCA_WLAN_VENDOR_ATTR_CHAN_USAGE_REQ_MODE
+#define CHAN_USAGE_REQ_CHAN_LIST QCA_WLAN_VENDOR_ATTR_CHAN_USAGE_REQ_CHAN_LIST
+
+extern const struct nla_policy
+qca_wlan_vendor_p2p_chan_switch_params[CHAN_USAGE_REQ_CHAN_LIST_MAX + 1];
+
+extern const struct nla_policy
+qca_wlan_vendor_p2p_chan_req_mode[CHAN_USAGE_REQ_MAX + 1];
+
+#define FEATURE_AP_ASSIST_P2P_DFS_GROUP					\
+{									\
+	.info.vendor_id = QCA_NL80211_VENDOR_ID,			\
+	.info.subcmd = QCA_NL80211_VENDOR_SUBCMD_CHAN_USAGE_REQ,	\
+	.flags = WIPHY_VENDOR_CMD_NEED_WDEV |				\
+		 WIPHY_VENDOR_CMD_NEED_NETDEV |				\
+		 WIPHY_VENDOR_CMD_NEED_RUNNING,				\
+	.doit = wlan_hdd_cfg80211_p2p_chan_usage_req,			\
+	vendor_command_policy(qca_wlan_vendor_p2p_chan_req_mode,	\
+			      CHAN_USAGE_REQ_MAX)			\
+},
+
 /**
  * hdd_cfg80211_wiphy_alloc() - Allocate wiphy
  *
