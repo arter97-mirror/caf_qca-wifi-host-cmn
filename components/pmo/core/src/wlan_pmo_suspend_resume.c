@@ -877,7 +877,6 @@ QDF_STATUS pmo_core_psoc_suspend_target(struct wlan_objmgr_psoc *psoc,
 					int disable_target_intr)
 {
 	QDF_STATUS status;
-	enum cds_driver_state state;
 	struct pmo_suspend_params param;
 	struct pmo_psoc_priv_obj *psoc_ctx;
 	void *dp_soc = pmo_core_psoc_get_dp_handle(psoc);
@@ -888,8 +887,7 @@ QDF_STATUS pmo_core_psoc_suspend_target(struct wlan_objmgr_psoc *psoc,
 
 	cdp_process_target_suspend_req(dp_soc, OL_TXRX_PDEV_ID);
 	qdf_event_reset(&psoc_ctx->wow.target_suspend);
-	state = cds_get_driver_state();
-	if(!__CDS_IS_DRIVER_STATE(state,CDS_DRIVER_STATE_LOST_CONNECTION)){
+	if(!cds_is_target_lost_connection()){
 		param.disable_target_intr = disable_target_intr;
 		status = pmo_tgt_psoc_send_supend_req(psoc, &param);
 		if (status != QDF_STATUS_SUCCESS)

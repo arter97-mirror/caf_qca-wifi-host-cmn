@@ -1189,8 +1189,10 @@ QDF_STATUS vdevmgr_mlme_ext_hdl_destroy(struct vdev_mlme_obj *vdev_mlme)
 
 	if (!vdev_mlme->ext_vdev_ptr)
 		return status;
-
-	status = vdev_mgr_delete_send(vdev_mlme);
+	if (!cds_is_target_lost_connection())
+		status = vdev_mgr_delete_send(vdev_mlme);
+	else
+		status = QDF_STATUS_E_ABORTED;
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlme_err("Failed to send vdev delete to firmware");
 			 rsp.vdev_id = vdev_id;
