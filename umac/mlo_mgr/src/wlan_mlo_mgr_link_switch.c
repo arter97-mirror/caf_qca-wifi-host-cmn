@@ -1718,6 +1718,11 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 	uint8_t i, vdev_id, num_links = 0;
 	struct mlo_link_info *link_info;
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
+	bool is_cb_register = false;
+
+	if (mlo_ctx && mlo_ctx->osif_ops &&
+	    mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state)
+		is_cb_register = true;
 
 	num_links = mlo_get_sta_num_links(mld_ctx);
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
@@ -1748,6 +1753,11 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 		mlo_mgr_update_policy_mgr_disabled_links_info(
 				psoc, vdev_id, link_info->link_id,
 				link_info->is_link_active);
+
+		if (is_cb_register)
+			mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state(
+						link_info->vdev_id,
+						link_info->is_link_active);
 	}
 }
 
