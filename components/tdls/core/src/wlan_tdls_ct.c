@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -508,6 +508,9 @@ tdls_implicit_send_discovery_request(struct tdls_vdev_priv_obj *tdls_vdev_obj)
 	struct tdls_peer *temp_peer;
 	struct tdls_soc_priv_obj *tdls_psoc;
 	struct tdls_osif_indication tdls_ind;
+	struct wlan_objmgr_peer *peer;
+	uint8_t peer_vdev_id;
+	enum wlan_peer_type peer_type;
 
 	tdls_psoc = wlan_vdev_get_tdls_soc_obj(tdls_vdev_obj->vdev);
 	if (!tdls_psoc) {
@@ -525,6 +528,18 @@ tdls_implicit_send_discovery_request(struct tdls_vdev_priv_obj *tdls_vdev_obj)
 	if (!curr_peer) {
 		tdls_err("curr_peer is NULL");
 		return;
+	}
+
+	peer = wlan_objmgr_get_peer_by_mac(wlan_vdev_get_psoc(tdls_vdev_obj->vdev),
+					   curr_peer->peer_mac.bytes,
+					   WLAN_TDLS_NB_ID);
+	if (peer) {
+		peer_vdev_id = wlan_vdev_get_id(wlan_peer_get_vdev(peer));
+		peer_type = wlan_peer_get_peer_type(peer);
+		tdls_notice("Peer (type = %d) exists on vdev:%d, don't initiate discovery",
+			    peer_type, peer_vdev_id);
+		wlan_objmgr_peer_release_ref(peer, WLAN_TDLS_NB_ID);
+		goto done;
 	}
 
 	/* This function is called in mutex_lock */
