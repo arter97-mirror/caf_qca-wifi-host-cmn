@@ -3954,6 +3954,7 @@ int hif_pci_addr_in_boundary(struct hif_softc *scn, uint32_t offset)
 	    tgt_info->target_type == TARGET_TYPE_QCA6490 ||
 	    tgt_info->target_type == TARGET_TYPE_QCN7605 ||
 	    tgt_info->target_type == TARGET_TYPE_QCA8074 ||
+	    tgt_info->target_type == TARGET_TYPE_AR6320 ||
 	    tgt_info->target_type == TARGET_TYPE_KIWI) {
 		/*
 		 * Need to consider offset's memtype for QCA6290/QCA8074,
