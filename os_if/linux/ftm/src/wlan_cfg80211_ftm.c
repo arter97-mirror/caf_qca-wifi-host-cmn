@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2018 The Linux Foundation. All rights reserved.
- *
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -15,7 +16,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /**
  * DOC: implementation of the driver FTM functions interfacing with linux kernel
  */
@@ -111,6 +111,7 @@ wlan_cfg80211_ftm_testmode_cmd(struct wlan_objmgr_pdev *pdev,
 
 qdf_export_symbol(wlan_cfg80211_ftm_testmode_cmd);
 
+#ifdef QCA_WIFI_FTM_NL80211
 QDF_STATUS
 wlan_cfg80211_ftm_rx_event(struct wlan_objmgr_pdev *pdev,
 				uint8_t *data, uint32_t len)
@@ -150,3 +151,4 @@ nla_put_failure:
 
 	return QDF_STATUS_E_INVAL;
 }
+#endif
