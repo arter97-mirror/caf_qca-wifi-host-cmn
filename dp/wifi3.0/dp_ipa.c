@@ -177,6 +177,8 @@ QDF_STATUS dp_ipa_handle_rx_buf_smmu_mapping(struct dp_soc *soc,
 	    !qdf_mem_smmu_s1_enabled(soc->osdev))
 		return QDF_STATUS_SUCCESS;
 
+	if (wlan_ipa_is_shared_smmu_enabled())
+		return QDF_STATUS_SUCCESS;
 	/*
 	 * Even if ipa pipes is disabled, but if it's unmap
 	 * operation and nbuf has done ipa smmu map before,
@@ -3504,7 +3506,8 @@ QDF_STATUS dp_ipa_enable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 	qdf_atomic_set(&soc->ipa_pipes_enabled, 1);
 	DP_IPA_EP_SET_TX_DB_PA(soc, ipa_res);
 
-	if (!ipa_config_is_opt_wifi_dp_enabled()) {
+	if (!ipa_config_is_opt_wifi_dp_enabled() &&
+	    !wlan_ipa_is_shared_smmu_enabled()) {
 		qdf_atomic_set(&soc->ipa_map_allowed, 1);
 		dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, pdev, true,
 						       __func__, __LINE__);
@@ -3570,7 +3573,8 @@ QDF_STATUS dp_ipa_disable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 
 	qdf_atomic_set(&soc->ipa_pipes_enabled, 0);
 
-	if (!ipa_config_is_opt_wifi_dp_enabled()) {
+	if (!ipa_config_is_opt_wifi_dp_enabled() &&
+	    !wlan_ipa_is_shared_smmu_enabled()) {
 		qdf_atomic_set(&soc->ipa_map_allowed, 0);
 		dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, pdev, false,
 						       __func__, __LINE__);
@@ -3999,6 +4003,10 @@ QDF_STATUS dp_ipa_tx_buf_smmu_mapping(
 		dp_debug("SMMU S1 disabled");
 		return QDF_STATUS_SUCCESS;
 	}
+
+	if (wlan_ipa_is_shared_smmu_enabled())
+		return QDF_STATUS_SUCCESS;
+
 	ret = __dp_ipa_tx_buf_smmu_mapping(soc, pdev, true, func, line);
 	if (ret)
 		return ret;
@@ -4026,6 +4034,9 @@ QDF_STATUS dp_ipa_tx_buf_smmu_unmapping(
 		dp_err("Invalid pdev instance pdev_id:%d", pdev_id);
 		return QDF_STATUS_E_FAILURE;
 	}
+
+	if (wlan_ipa_is_shared_smmu_enabled())
+		return QDF_STATUS_SUCCESS;
 
 	if (__dp_ipa_tx_buf_smmu_mapping(soc, pdev, false, func, line) ||
 	    dp_ipa_tx_alt_buf_smmu_mapping(soc, pdev, false, func, line))
