@@ -867,6 +867,7 @@ enum {
 #endif
 	IEEE80211_PARAM_LIST_REG_CHAN = 819,
 	IEEE80211_PARAM_PURE_11AX_ENABLE = 820,
+	IEEE80211_PARAM_HE_ULOFDMA_DCM =821,
 };
 
 enum {
@@ -2618,6 +2619,9 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"g_assoc_reject", IEEE80211_PARAM_ASSOC_REJECT, GET_PARAM, 0},
 #endif
 	{"pure_11ax", IEEE80211_PARAM_PURE_11AX_ENABLE, SET_PARAM, 1},
+	{"he_ulofdma_dcm",        IEEE80211_PARAM_HE_ULOFDMA_DCM, SET_PARAM, 1},
+	{"g_he_ulofdma_dcm",    IEEE80211_PARAM_HE_ULOFDMA_DCM, GET_PARAM, 0},
+
 };
 
 struct vendor_commands radio_vendor_cmds[] = {
