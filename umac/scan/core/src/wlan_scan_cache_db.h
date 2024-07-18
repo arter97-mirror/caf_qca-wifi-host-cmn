@@ -374,6 +374,22 @@ struct scan_cache_entry *
 scm_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 			    struct qdf_mac_addr *bssid);
 
+/*
+ * scm_scan_get_entry_by_bssid_and_security() - function to get scan entry
+ * from bssid and the crypto params of the vdev
+ * @pdev: pdev object
+ * @bssid: bssid to be fetched from scan db
+ * @vdev_id: vdev id
+ *
+ * This API returns the scan entry with proper security_info.
+ *
+ * Return : scan entry if found, else NULL
+ */
+struct scan_cache_entry *
+scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
+					 struct qdf_mac_addr *bssid,
+					 uint8_t vdev_id);
+
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
  * scm_get_mld_addr_by_link_addr() - function to fetch the peer mld address from

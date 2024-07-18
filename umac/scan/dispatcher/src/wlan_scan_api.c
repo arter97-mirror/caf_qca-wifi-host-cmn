@@ -916,6 +916,14 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
 	return scm_scan_get_scan_entry_by_mac_freq(pdev, bssid, freq);
 }
 
+struct scan_cache_entry *
+wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
+				      struct qdf_mac_addr *bssid,
+				      uint8_t vdev_id)
+{
+	return scm_scan_get_entry_by_bssid_and_security(pdev, bssid, vdev_id);
+}
+
 #ifdef WLAN_AUX_SUPPORT
 bool wlan_scan_get_aux_support(struct wlan_objmgr_psoc *psoc)
 

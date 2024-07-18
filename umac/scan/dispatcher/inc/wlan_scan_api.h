@@ -55,6 +55,22 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
 				     struct qdf_mac_addr *bssid,
 				     uint16_t freq);
 
+/*
+ * wlan_scan_entry_by_bssid_and_security() - API to get scan entry
+ * from the bssid and crypto params of the vdev
+ * @pdev: pointer to pdev object
+ * @bssid: pointer to mac addr
+ * @vdev_id: vdev id
+ *
+ * Return: scan entry if found, else NULL
+ *
+ * Caller needs to free the scan entry after use
+ */
+struct scan_cache_entry *
+wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
+				      struct qdf_mac_addr *bssid,
+				      uint8_t vdev_id);
+
 /**
  * wlan_scan_cfg_set_active_2g_dwelltime() - API to set scan active 2g dwelltime
  * @psoc: pointer to psoc object
