@@ -2700,7 +2700,7 @@ void cm_update_per_peer_crypto_params(struct wlan_objmgr_vdev *vdev,
 /*
  * Buffer len size to add the dynamic connect req debug info
  * 8 (hidden info) + 19 (OWE info) + 5 (WPS) + 6 (OSEN) +
- * 14 (RSN OVERRIDE) + 31 (ML info) + 10 extra
+ * 14 (RSN OVERRIDE) + 8 (RSNO) + 31 (ML info) + 10 extra
  */
 #define CM_DUMP_MAX_LEN 93
 
@@ -2727,6 +2727,10 @@ static void cm_dump_connect_req(struct wlan_objmgr_psoc *psoc,
 	if (req->force_rsne_override)
 		len += qdf_scnprintf(log_str + len, str_len - len,
 				     "[RSN OVERRIDE]");
+	if (req->rsno_gen_used > RSN_LEGACY)
+		len += qdf_scnprintf(log_str + len, str_len - len, "[RSNO_%d]",
+				     req->rsno_gen_used - 1);
+
 	if (wlan_vdev_mlme_is_mlo_vdev(vdev))
 		len += util_scan_get_ml_info(req->bss->entry, log_str,
 					     str_len, len);
@@ -2741,8 +2745,7 @@ static void cm_dump_connect_req(struct wlan_objmgr_psoc *psoc,
 		       req->bss->entry->phy_mode,
 		       neg_sec_info->key_mgmt, neg_sec_info->ucastcipherset,
 		       neg_sec_info->mcastcipherset,
-		       country_code[0],
-		       country_code[1], log_str);
+		       country_code[0], country_code[1], log_str);
 }
 
 QDF_STATUS
@@ -2808,6 +2811,8 @@ cm_resume_connect_after_peer_create(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 	if (util_scan_entry_is_hidden_ap(req.bss->entry) &&
 	    QDF_HAS_PARAM(neg_sec_info->key_mgmt, WLAN_CRYPTO_KEY_MGMT_OWE))
 		req.owe_trans_ssid = cm_req->connect_req.req.ssid;
+
+	req.rsno_gen_used = neg_sec_info->rsn_gen_selected;
 
 	cm_dump_connect_req(psoc, cm_ctx->vdev, &req, conn_req, neg_sec_info);
 	cm_cp_stats_cstats_log_connecting_event(cm_ctx->vdev, &req, cm_req);

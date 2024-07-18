@@ -1555,6 +1555,13 @@ bool wlan_cm_is_eht_allowed_for_current_security(struct wlan_objmgr_psoc *psoc,
 	mlie_present = entry->ie_list.multi_link_bv ? true : false;
 
 	neg_sec_info = &entry->neg_sec_info;
+
+	if (neg_sec_info->rsn_gen_selected == RSNO_GEN_WIFI6) {
+		mlme_debug(QDF_MAC_ADDR_FMT ":MLO is not allowed for RSNO1 connection",
+			   QDF_MAC_ADDR_REF(entry->bssid.bytes));
+		return false;
+	}
+
 	if (neg_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED) {
 		/* For entreprise APs, only check if PMF is enabled or not */
 		if (WLAN_CRYPTO_IS_AKM_ENTERPRISE(neg_sec_info->key_mgmt))

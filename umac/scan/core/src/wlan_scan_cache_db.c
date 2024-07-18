@@ -2406,6 +2406,19 @@ bool scm_scan_entries_contain_cmn_akm(struct scan_cache_entry *entry1,
 	entry1_sec_info = &entry1->neg_sec_info;
 	entry2_sec_info = &entry2->neg_sec_info;
 
+	/*
+	 * All the partners should use the same generation of
+	 * RSN(O) element.The secure AKM chosen should be same
+	 * across partners.
+	 */
+	if (entry1_sec_info->rsn_gen_selected !=
+	    entry2_sec_info->rsn_gen_selected) {
+		scm_debug("RSN generation mismatch %x %x",
+			  entry1_sec_info->rsn_gen_selected,
+			  entry2_sec_info->rsn_gen_selected);
+		return false;
+	}
+
 	/* Check if MFPC is equal */
 	if ((entry1_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED) ^
 	    (entry2_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED)) {
