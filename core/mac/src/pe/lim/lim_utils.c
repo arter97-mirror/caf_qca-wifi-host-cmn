@@ -12366,12 +12366,14 @@ uint16_t lim_get_tpe_ie_length(enum phy_ch_width chan_width,
 		switch (tpe_ie[idx].max_tx_pwr_interpret) {
 		case LOCAL_EIRP:
 		case REGULATORY_CLIENT_EIRP:
+		case ADDITIONAL_REGULATORY_CLIENT_EIRP:
 			/* Maximum Transmit Power For 320 MHz */
 			if (tpe_ie[idx].ext_max_tx_power.ext_max_tx_power_local_eirp.max_tx_power_for_320)
 				total_ie_len += 1;
 			break;
 		case LOCAL_EIRP_PSD:
 		case REGULATORY_CLIENT_EIRP_PSD:
+		case ADDITIONAL_REGULATORY_CLIENT_EIRP_PSD:
 			if (!tpe_ie[idx].ext_max_tx_power.ext_max_tx_power_reg_psd.ext_count)
 				break;
 

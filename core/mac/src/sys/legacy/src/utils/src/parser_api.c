@@ -10637,7 +10637,8 @@ QDF_STATUS lim_ieee80211_unpack_tpe(const uint8_t *tpe_ie,
 
 	/* Get number of tx power included in IE based on interpret value */
 	if (dot11f_tpe->max_tx_pwr_interpret == 0 ||
-	    dot11f_tpe->max_tx_pwr_interpret == 2) {
+	    dot11f_tpe->max_tx_pwr_interpret == 2 ||
+	    dot11f_tpe->max_tx_pwr_interpret == 4) {
 		dot11f_tpe->num_tx_power = dot11f_tpe->max_tx_pwr_count + 1;
 	} else {
 		if (!dot11f_tpe->max_tx_pwr_count) {
@@ -10697,6 +10698,27 @@ QDF_STATUS lim_ieee80211_unpack_tpe(const uint8_t *tpe_ie,
 		}
 		ext_psd_count = dot11f_tpe->ext_max_tx_power.ext_max_tx_power_reg_psd.ext_count;
 		qdf_mem_copy(dot11f_tpe->ext_max_tx_power.ext_max_tx_power_reg_psd.max_tx_psd_power,
+			     buf, ext_psd_count);
+
+		buf += ext_psd_count;
+		ie_len -= ext_psd_count;
+		break;
+	case 4:
+		dot11f_tpe->ext_max_tx_power.ext_max_tx_power_addn_reg_eirp.max_tx_power_for_320 = *buf;
+		dot11f_tpe->num_tx_power++;
+		buf += 1;
+		ie_len -= 1;
+		break;
+	case 5:
+		tmp = *buf;
+		buf += 1;
+		ie_len -= 1;
+		dot11f_tpe->ext_max_tx_power.ext_max_tx_power_addn_reg_psd.ext_count = tmp >> 0 & 0xf;
+		if (unlikely(ie_len < (tmp >> 0 & 0xf)))
+			return QDF_STATUS_E_BADMSG;
+
+		ext_psd_count = dot11f_tpe->ext_max_tx_power.ext_max_tx_power_addn_reg_psd.ext_count;
+		qdf_mem_copy(dot11f_tpe->ext_max_tx_power.ext_max_tx_power_addn_reg_psd.max_tx_psd_power,
 			     buf, ext_psd_count);
 
 		buf += ext_psd_count;

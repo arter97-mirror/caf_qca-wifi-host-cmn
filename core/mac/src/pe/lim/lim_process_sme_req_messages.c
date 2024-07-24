@@ -5847,9 +5847,12 @@ lim_get_eirp_320_power_from_tpe_ie(tDot11fIEtransmit_power_env *tpe)
 	if (tpe->max_tx_pwr_interpret == LOCAL_EIRP)
 		eirp_power_320_Mhz =
 			tpe->ext_max_tx_power.ext_max_tx_power_local_eirp.max_tx_power_for_320;
-	else
+	else if (tpe->max_tx_pwr_interpret == REGULATORY_CLIENT_EIRP)
 		eirp_power_320_Mhz =
 			tpe->ext_max_tx_power.ext_max_tx_power_reg_eirp.max_tx_power_for_320;
+	else if (tpe->max_tx_pwr_interpret == ADDITIONAL_REGULATORY_CLIENT_EIRP)
+		eirp_power_320_Mhz =
+			tpe->ext_max_tx_power.ext_max_tx_power_addn_reg_eirp.max_tx_power_for_320;
 
 	return eirp_power_320_Mhz;
 }
@@ -5896,9 +5899,12 @@ lim_update_ext_tpe_power(struct mac_context *mac, struct pe_session *session,
 		if (tpe->max_tx_pwr_interpret == LOCAL_EIRP_PSD)
 			ext_psd_count =
 			tpe->ext_max_tx_power.ext_max_tx_power_local_psd.ext_count;
-		else
+		else if (tpe->max_tx_pwr_interpret == REGULATORY_CLIENT_EIRP_PSD)
 			ext_psd_count =
 			tpe->ext_max_tx_power.ext_max_tx_power_reg_psd.ext_count;
+		else
+			ext_psd_count =
+			tpe->ext_max_tx_power.ext_max_tx_power_addn_reg_psd.ext_count;
 
 		if (existing_pwr_count >= MAX_NUM_PWR_LEVEL) {
 			pe_debug("already updated %d psd powers",
@@ -5934,9 +5940,12 @@ lim_update_ext_tpe_power(struct mac_context *mac, struct pe_session *session,
 			if (tpe->max_tx_pwr_interpret == LOCAL_EIRP_PSD)
 				psd_pwr =
 					tpe->ext_max_tx_power.ext_max_tx_power_local_psd.max_tx_psd_power[j];
-			else
+			else if (tpe->max_tx_pwr_interpret == REGULATORY_CLIENT_EIRP_PSD)
 				psd_pwr =
 					tpe->ext_max_tx_power.ext_max_tx_power_reg_psd.max_tx_psd_power[j];
+			else
+				psd_pwr =
+					tpe->ext_max_tx_power.ext_max_tx_power_addn_reg_psd.max_tx_psd_power[j];
 
 			/* Don't add punctured power in tpe power array */
 			if (psd_pwr == PUNCTURED_CHAN_POWER) {
