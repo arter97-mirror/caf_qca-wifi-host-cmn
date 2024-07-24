@@ -731,14 +731,16 @@ wlan_rptr_core_ss_parse_scan_entries(struct wlan_objmgr_vdev *vdev,
 			OS_MEMSET(pdev_priv->preferred_bssid, 0,
 				  QDF_MAC_ADDR_SIZE);
 #ifdef CONFIG_DRONE_MESH_SUPPORT
-			/* Select the best bssid based on the rssi */
-			if(g_priv->rssi_based_bssid){
-				if(!g_priv->num_stavaps_up) {
-					ucfg_scan_db_iterate(pdev, wlan_rptr_get_rssi_based_bssid, (void *)vdev);
-					/* Resetting the max rssi value */
-					pdev_priv->max_rssi = MESH_SUPPORT_RSSI_LOW;
-				}
-			}/* Root AP gets preference if rssi based bssid feature is disable */
+			if (!vdev->mlo_dev_ctx){
+				/* Select the best bssid based on the rssi */
+				if(g_priv->rssi_based_bssid){
+					if(!g_priv->num_stavaps_up) {
+						ucfg_scan_db_iterate(pdev, wlan_rptr_get_rssi_based_bssid, (void *)vdev);
+						/* Resetting the max rssi value */
+						pdev_priv->max_rssi = MESH_SUPPORT_RSSI_LOW;
+					}
+				}/* Root AP gets preference if rssi based bssid feature is disable */
+			}
 #endif
 			ucfg_scan_db_iterate(pdev, wlan_rptr_get_rootap_bssid,
 					     (void *)vdev);
