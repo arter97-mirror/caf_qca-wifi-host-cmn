@@ -1248,9 +1248,8 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 			continue;
 		}
 		if (util_scan_entry_rsn(scan_entry)) {
-			status = wlan_crypto_rsnie_check(
-					&sec_params,
-					util_scan_entry_rsn(scan_entry));
+			status = util_scan_is_valid_rsn_present(scan_entry,
+								&sec_params);
 			if (QDF_IS_STATUS_ERROR(status) &&
 			    !scm_is_p2p_wildcard_ssid(scan_entry)) {
 				scm_nofl_debug(QDF_MAC_ADDR_FMT ": Drop frame(%d) with invalid RSN IE freq %d, parse status %d",
@@ -1276,8 +1275,8 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 				qdf_mem_free(scan_node);
 				continue;
 			}
-			status = wlan_crypto_rsnie_check(&sec_params,
-					util_scan_entry_rsn(scan_entry));
+			status = util_scan_is_valid_rsn_present(scan_entry,
+								&sec_params);
 			if (QDF_IS_STATUS_ERROR(status)) {
 				scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) with invalid RSN IE in 6GHz(%d), parse status %d",
 					    QDF_MAC_ADDR_REF(
