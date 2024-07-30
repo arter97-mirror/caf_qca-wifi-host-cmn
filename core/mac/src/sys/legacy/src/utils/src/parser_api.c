@@ -13603,6 +13603,43 @@ compute_len:
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef CONFIG_BAND_6GHZ
+#define CHAN_ENUM_6GHZ MIN_6GHZ_CHANNEL + 1
+#else
+#define CHAN_ENUM_6GHZ MAX_5GHZ_CHANNEL
+#endif
+
+QDF_STATUS
+populate_dot11f_reg_connectivity(struct mac_context *mac_ctx,
+				 tDot11fIEreg_connect *dot11f)
+{
+	dot11f->present = 1;
+
+	if (QDF_IS_STATUS_SUCCESS(wlan_reg_check_if_6g_pwr_type_supp_for_chan(
+				  mac_ctx->pdev, REG_VERY_LOW_POWER_AP,
+				  CHAN_ENUM_6GHZ)) ||
+	    QDF_IS_STATUS_SUCCESS(wlan_reg_check_if_6g_pwr_type_supp_for_chan(
+				  mac_ctx->pdev, REG_INDOOR_AP,
+				  CHAN_ENUM_6GHZ))) {
+		pe_debug("Indoor AP connectivity is valid");
+		dot11f->indoor_ap_valid = 1;
+		dot11f->indoor_ap_support = 1;
+	}
+
+	if (QDF_IS_STATUS_SUCCESS(wlan_reg_check_if_6g_pwr_type_supp_for_chan(
+				  mac_ctx->pdev, REG_VERY_LOW_POWER_AP,
+				  CHAN_ENUM_6GHZ)) ||
+	    QDF_IS_STATUS_SUCCESS(wlan_reg_check_if_6g_pwr_type_supp_for_chan(
+				  mac_ctx->pdev, REG_STANDARD_POWER_AP,
+				  CHAN_ENUM_6GHZ))) {
+		pe_debug("SP AP connectivity is valid");
+		dot11f->sp_ap_valid = 1;
+		dot11f->sp_ap_support = 1;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
  * populate_dot11f_mlo_partner_sta_cap() - populate mlo sta partner capability

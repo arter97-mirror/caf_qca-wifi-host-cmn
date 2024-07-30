@@ -365,6 +365,9 @@ lim_send_probe_req_mgmt_frame(struct mac_context *mac_ctx,
 
 	populate_dot11f_eht_caps(mac_ctx, pesession, &pr->eht_cap);
 
+	/* Populate Non-AP STA Regulatory connectivity element */
+	populate_dot11f_reg_connectivity(mac_ctx, &pr->reg_connect);
+
 	if (addn_ielen && additional_ie) {
 		qdf_mem_zero((uint8_t *)&extracted_ext_cap,
 			sizeof(tDot11fIEExtCap));
@@ -3355,6 +3358,9 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 		populate_dot11f_eht_caps(mac_ctx, pe_session, &frm->eht_cap);
 		lim_strip_mlo_ie(mac_ctx, add_ie, &add_ie_len);
 	}
+
+	/* Populate Non-AP STA Regulatory connectivity element */
+	populate_dot11f_reg_connectivity(mac_ctx, &frm->reg_connect);
 
 	if (pe_session->is11Rconnection) {
 		struct bss_description *bssdescr;
