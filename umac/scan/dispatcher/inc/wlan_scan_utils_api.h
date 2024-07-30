@@ -972,23 +972,13 @@ util_scan_entry_xrates(struct scan_cache_entry *scan_entry)
  * API, function to read rsn IE and return the
  * pointer to RSN data
  *
- * Legacy RSN data = rsn ie + length of TYPE+LEN elements
- * Vendor RSN data = rsn ie + length of TYPE+LEN elements + OUI length(4 bytes)
  *
  * Return: rsnie data or NULL if ie is not present
- * Note: Use util_scan_get_rsn_len() to get the length
  */
 static inline uint8_t*
 util_scan_entry_rsn(struct scan_cache_entry *scan_entry)
 {
-	if (scan_entry->ie_list.wifi7_rsno)
-		return scan_entry->ie_list.wifi7_rsno;
-	if (scan_entry->ie_list.wifi6_rsno)
-		return scan_entry->ie_list.wifi6_rsno;
-	if (scan_entry->ie_list.rsn)
-		return scan_entry->ie_list.rsn;
-
-	return NULL;
+	return scan_entry->ie_list.rsn;
 }
 
 /**
@@ -1885,14 +1875,7 @@ util_scan_entry_mbo_oce(struct scan_cache_entry *scan_entry)
 static inline uint8_t *
 util_scan_entry_rsnxe(struct scan_cache_entry *scan_entry)
 {
-	if (!scan_entry)
-		return NULL;
-	if (scan_entry->ie_list.rsnxo)
-		return scan_entry->ie_list.rsnxo;
-	if (scan_entry->ie_list.rsnxe)
-		return scan_entry->ie_list.rsnxe;
-
-	return NULL;
+	return scan_entry->ie_list.rsnxe;
 }
 
 /**
@@ -1907,13 +1890,8 @@ util_scan_entry_rsnxe(struct scan_cache_entry *scan_entry)
 static inline uint8_t
 util_scan_get_rsnx_len(struct scan_cache_entry *scan_entry)
 {
-	if (!scan_entry)
-		return 0;
-	if (scan_entry->ie_list.rsnxo)
-		return scan_entry->ie_list.rsnxo[1] - 4;
 	if (scan_entry->ie_list.rsnxe)
 		return scan_entry->ie_list.rsnxe[1];
-
 	return 0;
 }
 
@@ -2138,4 +2116,17 @@ uint8_t *util_scan_entry_rsnxe_by_gen(struct scan_cache_entry *scan_entry,
  */
 uint8_t util_get_rsnxe_len_by_gen(struct scan_cache_entry *scan_entry,
 				  uint8_t rsno_gen);
+/*
+ * util_scan_is_valid_rsn_present() - API to validate the RSN(O) IE
+ * @entry: scan entry
+ * @params: security params of the RSN IE
+ *
+ * Parse each of the RSN(O) elements starting from legacy RSN and the frame is
+ * eligible is only if one of the RSN(O) IEs have a valid crypto configuration.
+ *
+ * Return: QDF STATUS
+ */
+QDF_STATUS
+util_scan_is_valid_rsn_present(struct scan_cache_entry *entry,
+			       struct wlan_crypto_params *params);
 #endif

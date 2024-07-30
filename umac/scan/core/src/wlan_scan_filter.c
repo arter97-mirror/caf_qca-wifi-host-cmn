@@ -326,7 +326,8 @@ static bool scm_check_rsn(struct scan_filter *filter,
 				QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
 				mrsn_gen, status);
 			match = false;
-			break;
+			mrsn_gen--;
+			continue;
 		}
 
 		is_adaptive_11r = db_entry->adaptive_11r_ap &&
