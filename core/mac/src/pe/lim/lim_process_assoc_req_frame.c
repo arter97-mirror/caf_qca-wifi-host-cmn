@@ -1542,6 +1542,28 @@ static bool lim_is_ocv_enable_in_assoc_req(struct mac_context *mac_ctx,
 	return false;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * lim_mlo_save_mld_info() - Save the mld and operation capability info
+ * @sta_ds: Pointer to internal STA Datastructure
+ * @mld_info: MLD and operation capability structure
+ *
+ * Return: void
+ */
+static inline void
+lim_mlo_save_mld_info(tpDphHashNode sta_ds,
+		      struct wlan_mlo_mld_cap *mld_info)
+{
+	sta_ds->mld_info = *mld_info;
+}
+#else
+static inline void
+lim_mlo_save_mld_info(tpDphHashNode sta_ds,
+		      struct wlan_mlo_mld_cap *mld_info)
+{
+}
+#endif
+
 /**
  * lim_update_sta_ds() - updates ds dph entry
  * @mac_ctx: pointer to Global MAC structure
@@ -1791,6 +1813,18 @@ static bool lim_update_sta_ds(struct mac_context *mac_ctx, tSirMacAddr sa,
 
 	lim_mlo_save_mlo_info(sta_ds, &assoc_req->mlo_info);
 
+	lim_mlo_save_eml_info(sta_ds, &assoc_req->eml_info);
+
+	lim_mlo_save_mld_info(sta_ds, &assoc_req->mld_info);
+
+	/*
+	 * Move forward to update sta_ds->ch_width for 6 GHz before call
+	 * lim_populate_matching_rate_set and lim_populate_eht_mcs_set
+	 */
+	lim_update_stads_he_6ghz_op(session, sta_ds);
+	lim_update_sta_ds_op_classes(assoc_req, sta_ds);
+	lim_update_stads_eht_bw_320mhz(session, sta_ds);
+
 	if (lim_populate_matching_rate_set(mac_ctx, sta_ds,
 			&(assoc_req->supportedRates),
 			&(assoc_req->extendedRates),
@@ -1831,9 +1865,6 @@ static bool lim_update_sta_ds(struct mac_context *mac_ctx, tSirMacAddr sa,
 			 ((sta_ds->supportedRates.vhtTxMCSMap & MCSMAPMASK2x2)
 			  == MCSMAPMASK2x2) ? 1 : 2;
 	}
-	lim_update_stads_he_6ghz_op(session, sta_ds);
-	lim_update_sta_ds_op_classes(assoc_req, sta_ds);
-	lim_update_stads_eht_bw_320mhz(session, sta_ds);
 
 	/* Add STA context at MAC HW (BMU, RHP & TFP) */
 	sta_ds->qosMode = false;

@@ -8255,6 +8255,8 @@ void lim_update_sta_mlo_info(struct pe_session *session,
 		pe_debug("mld mac " QDF_MAC_ADDR_FMT " assoc peer %d",
 			 QDF_MAC_ADDR_REF(add_sta_params->mld_mac_addr),
 			 add_sta_params->is_assoc_peer);
+		add_sta_params->eml_info = sta_ds->eml_info;
+		add_sta_params->mld_info = sta_ds->mld_info;
 		return;
 	}
 
@@ -8415,7 +8417,7 @@ static void lim_populate_eht_160_mcs_set(struct mac_context *mac_ctx,
 			fw_5g_eht_cap->bw_160_tx_max_nss_for_mcs_10_and_11);
 	rates->bw_160_rx_max_nss_for_mcs_10_and_11 =
 		QDF_MIN(peer_eht_caps->bw_160_rx_max_nss_for_mcs_10_and_11,
-			fw_5g_eht_cap->bw_160_tx_max_nss_for_mcs_10_and_11);
+			fw_5g_eht_cap->bw_160_rx_max_nss_for_mcs_10_and_11);
 	rates->bw_160_tx_max_nss_for_mcs_0_to_9 =
 		QDF_MIN(peer_eht_caps->bw_160_tx_max_nss_for_mcs_0_to_9,
 			fw_5g_eht_cap->bw_160_tx_max_nss_for_mcs_0_to_9);
@@ -8490,7 +8492,7 @@ QDF_STATUS lim_populate_eht_mcs_set(struct mac_context *mac_ctx,
 				    struct supported_rates *rates,
 				    tDot11fIEeht_cap *peer_eht_caps,
 				    struct pe_session *session_entry,
-				    uint8_t nss)
+				    enum phy_ch_width ch_width)
 {
 	if ((!peer_eht_caps) || (!peer_eht_caps->present)) {
 		pe_debug("peer not eht capable or eht_caps NULL");
@@ -8501,7 +8503,9 @@ QDF_STATUS lim_populate_eht_mcs_set(struct mac_context *mac_ctx,
 		return QDF_STATUS_SUCCESS;
 	}
 
-	switch (session_entry->ch_width) {
+	pe_debug("bw is %d", ch_width);
+
+	switch (ch_width) {
 	case CH_WIDTH_320MHZ:
 		lim_populate_eht_320_mcs_set(mac_ctx, rates, peer_eht_caps);
 		fallthrough;

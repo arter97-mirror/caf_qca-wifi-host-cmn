@@ -14689,7 +14689,7 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 						hdd_ctx->pdev,
 						link_info->vdev_id);
 
-		sme_set_per_link_ba_mode(mac_handle, set_val);
+		sme_config_ba_mode_all_vdevs(mac_handle, set_val);
 
 		if (!cfg_val) {
 			ret_val = wma_cli_set_command(
@@ -14771,7 +14771,7 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 			/* Configure ADDBA req buffer size to 64 */
 			set_val = HDD_BA_MODE_64;
 
-		sme_set_per_link_ba_mode(mac_handle, set_val);
+		sme_config_ba_mode_all_vdevs(mac_handle, set_val);
 
 		ret_val = wma_cli_set_command(link_info->vdev_id,
 					      GEN_VDEV_PARAM_AMPDU,
@@ -25449,7 +25449,8 @@ wlan_hdd_mlo_copy_partner_addr_from_mlie(struct wlan_objmgr_vdev *vdev,
 	}
 
 	status = util_get_bvmlie_persta_partner_info(ml_ie, ml_ie_len,
-						     &partner_info);
+						     &partner_info,
+						     WLAN_FC0_STYPE_INVALID);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlo_dev_lock_release(mlo_dev_ctx);
 		hdd_err("Unable to find per-sta profile in ML IE");
