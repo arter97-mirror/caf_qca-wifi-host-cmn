@@ -226,18 +226,22 @@ uint32_t qca_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *peer_mac,
 				 uint32_t dscp_pcp, bool pcp)
 {
 	osif_dev *osdev;
-	struct net_device *dev = netdev;
 	struct wlan_objmgr_vdev *vdev = NULL;
 	struct wlan_objmgr_psoc *psoc = NULL;
 	ol_txrx_soc_handle soc_txrx_handle;
 	cdp_config_param_type val = {0};
+	uint8_t vdev_id;
 
-	if (!netdev->ieee80211_ptr)
+	if (!netdev || !netdev->ieee80211_ptr) {
+		sawf_err("Invalid netdev");
 		return DP_SAWF_PEER_Q_INVALID;
+	}
 
 	vdev = qca_sawf_get_vdev(netdev, peer_mac, NULL);
 	if (!vdev)
 		return DP_SAWF_PEER_Q_INVALID;
+
+	vdev_id = wlan_vdev_get_id(vdev);
 
 	if (!wlan_vdev_mlme_is_mlo_vdev(vdev) || !vdev->mlo_dev_ctx)
 		return DP_SAWF_PEER_Q_INVALID;
@@ -269,26 +273,28 @@ uint32_t qca_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *peer_mac,
 		return DP_SAWF_PEER_Q_INVALID;
 	}
 
-#ifdef WLAN_FEATURE_11BE_MLO
-	if (osdev->dev_type == OSIF_NETDEV_TYPE_MLO) {
-		struct osif_mldev *mldev;
+#ifdef QCA_SUPPORT_WDS_EXTENDED
+	if (osdev->dev_type == OSIF_NETDEV_TYPE_WDS_EXT) {
+		osif_peer_dev *osifp;
 
-		mldev = ath_netdev_priv(netdev);
-		if (!mldev) {
-			qdf_err("Invalid mldev");
-			return DP_SAWF_PEER_Q_INVALID;
-		}
+		osifp = ath_netdev_priv(netdev);
 
-		osdev = osifp_peer_find_hash_find_osdev(mldev, peer_mac);
-		if (!osdev) {
-			qdf_err("Invalid link osdev");
-			return DP_SAWF_PEER_Q_INVALID;
-		}
+		peer_mac = osifp->peer_mac_addr;
 
-		dev = osdev->netdev;
+		goto process_peer;
 	}
 #endif
-	return cdp_sawf_get_peer_msduq(soc_txrx_handle, dev,
+
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) {
+		struct wlan_objmgr_peer *bss_peer;
+
+		bss_peer = wlan_vdev_get_bsspeer(vdev);
+
+		peer_mac = bss_peer->macaddr;
+	}
+
+process_peer:
+	return cdp_sawf_get_peer_msduq(soc_txrx_handle, vdev_id,
 				       peer_mac, dscp_pcp, pcp);
 }
 

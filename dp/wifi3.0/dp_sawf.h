@@ -569,7 +569,8 @@ struct dp_peer_sawf {
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO_3_LINK_TX
-uint16_t dp_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *dest_mac,
+uint16_t dp_sawf_get_peer_msduq(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+				uint8_t *peer_mac,
 				uint32_t dscp_pcp, bool pcp);
 QDF_STATUS
 dp_sawf_3_link_peer_flow_count(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
