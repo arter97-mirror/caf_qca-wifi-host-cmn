@@ -248,7 +248,7 @@ void wlan_rptr_core_global_set_feat_cap(uint32_t cap);
 void wlan_rptr_core_global_clear_feat_cap(uint32_t cap);
 uint8_t wlan_rptr_core_global_is_feat_cap_set(uint32_t cap);
 void wlan_rptr_core_reset_pdev_flags(struct wlan_objmgr_pdev *pdev);
-void wlan_rptr_core_reset_global_flags(void);
+void wlan_rptr_core_reset_global_flags(struct wlan_objmgr_pdev *pdev);
 struct wlan_rptr_global_priv *wlan_rptr_get_global_ctx(void);
 #if REPEATER_SAME_SSID
 void wlan_rptr_core_global_same_ssid_disable(u_int32_t value);

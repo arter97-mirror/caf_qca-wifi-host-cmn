@@ -40,6 +40,9 @@
 #ifdef CONFIG_AFC_SUPPORT
 #define AFC_MAX_BSSID 10
 #endif
+#ifdef IOT_DRONE_MESH
+#include "cfg_ucfg_api.h"
+#endif
 
 static struct wlan_rptr_global_priv g_rptr_ctx;
 static struct wlan_rptr_global_priv *gp_rptr_ctx;
@@ -351,12 +354,15 @@ void wlan_rptr_core_reset_pdev_flags(struct wlan_objmgr_pdev *pdev)
 		pdev_priv->pdev_feature_caps = 0;
 }
 
-void wlan_rptr_core_reset_global_flags(void)
+void wlan_rptr_core_reset_global_flags(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_rptr_global_priv *g_priv = NULL;
 #if REPEATER_SAME_SSID
 	wlan_rptr_same_ssid_feature_t   *ss_info;
 	int i;
+#endif
+#ifdef IOT_DRONE_MESH
+	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
 #endif
 
 	g_priv = wlan_rptr_get_global_ctx();
@@ -367,7 +373,15 @@ void wlan_rptr_core_reset_global_flags(void)
 		g_priv->reconfiguration_timeout = 60;
 #if REPEATER_SAME_SSID
 		ss_info = &g_priv->ss_info;
-		ss_info->same_ssid_disable = 0;
+#ifdef IOT_DRONE_MESH
+		if (cfg_get(psoc,CFG_DP_IOT_MESH_ENABLE)) {
+			ss_info->same_ssid_disable = 1;
+		} else {
+#endif
+			ss_info->same_ssid_disable = 0;
+#ifdef IOT_DRONE_MESH
+		}
+#endif
 		ss_info->num_rptr_clients = 0;
 		ss_info->ap_preference = ap_preference_type_init;
 		ss_info->extender_info = 0;

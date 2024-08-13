@@ -293,7 +293,7 @@ qdf_export_symbol(wlan_rptr_global_is_feat_cap_set);
 void wlan_rptr_reset_flags(struct wlan_objmgr_pdev *pdev)
 {
 	wlan_rptr_core_reset_pdev_flags(pdev);
-	wlan_rptr_core_reset_global_flags();
+	wlan_rptr_core_reset_global_flags(pdev);
 }
 
 qdf_export_symbol(wlan_rptr_reset_flags);
