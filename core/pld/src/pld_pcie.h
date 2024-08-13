@@ -281,12 +281,12 @@ static inline int pld_pcie_power_off(struct device *dev)
 
 static inline int pld_pcie_force_assert_target(struct device *dev)
 {
-	return -EINVAL;
+	return -EOPNOTSUPP;
 }
 
 static inline int pld_pcie_collect_rddm(struct device *dev)
 {
-	return 0;
+	return -EINVAL;
 }
 
 static inline int pld_pcie_get_user_msi_assignment(struct device *dev,
