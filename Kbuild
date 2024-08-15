@@ -3574,6 +3574,9 @@ ccflags-y += -DWLAN_MAX_PDEVS=$(CONFIG_WLAN_MAX_PDEVS)
 CONFIG_WLAN_MAX_VDEVS ?= 6
 ccflags-y += -DWLAN_MAX_VDEVS=$(CONFIG_WLAN_MAX_VDEVS)
 
+CONFIG_WLAN_CE4_SZ_QCN7605 ?= 4096
+ccflags-y += -DWLAN_CE4_SZ_QCN7605=$(CONFIG_WLAN_CE4_SZ_QCN7605)
+
 #Maximum pending commands for a vdev is calculated in vdev create handler
 #by WLAN_SER_MAX_PENDING_CMDS/WLAN_SER_MAX_VDEVS. For SAP case, we will need
 #to accommodate 32 Pending commands to handle multiple STA sending
