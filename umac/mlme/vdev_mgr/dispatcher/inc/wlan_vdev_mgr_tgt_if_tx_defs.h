@@ -867,6 +867,7 @@ struct vdev_set_mu_snif_param {
  * @vdevid_trans: id of transmitting vdev for MBSS IE
  * @special_vdev_mode: indicates special vdev mode
  * @mlo_mac: Multilink Operation MAC address
+ * @wfd_mode: WFD mode
  */
 struct vdev_create_params {
 	uint8_t vdev_id;
@@ -883,6 +884,10 @@ struct vdev_create_params {
 #ifdef WLAN_FEATURE_11BE_MLO
 	uint8_t mlo_mac[QDF_MAC_ADDR_SIZE];
 #endif
+#ifdef FEATURE_WLAN_SUPPORT_USD
+	uint32_t wfd_mode;
+#endif
+
 };
 
 /**

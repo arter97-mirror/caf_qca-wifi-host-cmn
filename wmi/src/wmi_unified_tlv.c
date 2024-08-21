@@ -1019,6 +1019,76 @@ send_over_wmi:
 	return wmi_unified_cmd_send(wmi_handle, buf, buflen, cmd_id);
 }
 
+#ifdef FEATURE_WLAN_SUPPORT_USD
+/**
+ * wmi_vdev_add_p2p_mode_tlv() - add P2P mode TLv in VDEV create command
+ * @buf_ptr: pointer to TLV buffer
+ * @param: pointer to hold Vdev create parameter
+ *
+ * Return: pointer to TLV buffer
+ */
+static uint8_t *
+wmi_vdev_add_p2p_mode_tlv(uint8_t *buf_ptr, struct vdev_create_params *param)
+{
+	uint32_t mode;
+	wmi_vdev_create_wfdr2_mode_params *wfd_param;
+
+	switch (param->wfd_mode) {
+	case P2P_MODE_WFD_R2:
+		mode  = WMI_VDEV_CREATE_WFDR2_MODE;
+		break;
+	case P2P_MODE_WFD_PCC:
+		mode = WMI_VDEV_CREATE_WFDR2_PCC_MODE;
+		break;
+	default:
+		wmi_debug("TLV not required for P2P mode %d", param->wfd_mode);
+		return buf_ptr;
+	}
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       sizeof(wmi_vdev_create_wfdr2_mode_params));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	wfd_param = (wmi_vdev_create_wfdr2_mode_params *)buf_ptr;
+	wfd_param->wfdr2_mode = mode;
+	WMITLV_SET_HDR(&wfd_param->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_create_wfdr2_mode_params,
+		       WMITLV_GET_STRUCT_TLVLEN(
+					wmi_vdev_create_wfdr2_mode_params));
+	buf_ptr += sizeof(wmi_vdev_create_wfdr2_mode_params);
+
+	return buf_ptr;
+}
+
+/**
+ * wmi_vdev_calculate_p2p_mode_tlv_size() - calculate P2P mode TLV size
+ * @param: pointer to hold Vdev create parameter
+ *
+ * Return: TLV size
+ */
+static uint8_t
+wmi_vdev_calculate_p2p_mode_tlv_size(struct vdev_create_params *param)
+{
+	if (param->wfd_mode != P2P_MODE_WFD_R2 &&
+	    param->wfd_mode != P2P_MODE_WFD_PCC)
+		return 0;
+
+	return (WMI_TLV_HDR_SIZE + sizeof(wmi_vdev_create_wfdr2_mode_params));
+}
+#else
+static inline uint8_t *
+wmi_vdev_add_p2p_mode_tlv(uint8_t *buf_ptr, struct vdev_create_params *param)
+{
+	return buf_ptr;
+}
+
+static inline uint8_t
+wmi_vdev_calculate_p2p_mode_tlv_size(struct vdev_create_params *param)
+{
+	return 0;
+}
+#endif
+
 /**
  * send_vdev_create_cmd_tlv() - send VDEV create command to fw
  * @wmi_handle: wmi handle
@@ -1041,6 +1111,7 @@ static QDF_STATUS send_vdev_create_cmd_tlv(wmi_unified_t wmi_handle,
 
 	len += (num_bands * sizeof(*txrx_streams) + WMI_TLV_HDR_SIZE);
 	len += vdev_create_mlo_params_size(param);
+	len += wmi_vdev_calculate_p2p_mode_tlv_size(param);
 
 	buf = wmi_buf_alloc(wmi_handle, len);
 	if (!buf)
@@ -1093,6 +1164,8 @@ static QDF_STATUS send_vdev_create_cmd_tlv(wmi_unified_t wmi_handle,
 
 	buf_ptr += (num_bands * sizeof(wmi_vdev_txrx_streams));
 	buf_ptr = vdev_create_add_mlo_params(buf_ptr, param);
+
+	buf_ptr = wmi_vdev_add_p2p_mode_tlv(buf_ptr, param);
 
 	wmi_mtrace(WMI_VDEV_CREATE_CMDID, cmd->vdev_id, 0);
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len, WMI_VDEV_CREATE_CMDID);

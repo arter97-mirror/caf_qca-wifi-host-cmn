@@ -295,6 +295,7 @@
  * @mataddr:        MAT address
  * @mldaddr:        MLD address
  * @mlo_sap_sync_disable:  flag for disable mlo sap sync between vdevs
+ * @wfd_mode: WFD mode
  */
 struct wlan_vdev_create_params {
 	enum QDF_OPMODE opmode;
@@ -305,6 +306,9 @@ struct wlan_vdev_create_params {
 	uint8_t mataddr[QDF_MAC_ADDR_SIZE];
 	uint8_t mldaddr[QDF_MAC_ADDR_SIZE];
 	bool mlo_sap_sync_disable;
+#ifdef FEATURE_WLAN_SUPPORT_USD
+	uint32_t wfd_mode;
+#endif
 };
 
 /**
@@ -365,6 +369,7 @@ struct wlan_channel {
  * WLAN_VDEV_FEXT2_MLO feature flag in vdev MLME
  * @mlo_sap_sync_disable: flag to disable mlo sap vdev sync
  * @rsno_gen_supported: RSNO generation supported for connection
+ * @wfd_mode: WFD mode
  */
 struct wlan_objmgr_vdev_mlme {
 	enum QDF_OPMODE vdev_opmode;
@@ -399,6 +404,9 @@ struct wlan_objmgr_vdev_mlme {
 #endif
 #endif
 	uint8_t rsno_gen_supported;
+#ifdef FEATURE_WLAN_SUPPORT_USD
+	uint32_t wfd_mode;
+#endif
 };
 
 /**
@@ -2759,4 +2767,24 @@ wlan_vdev_read_skip_pumac_cnt(struct wlan_objmgr_vdev *vdev)
  * Return: STA peer count
  */
 uint8_t wlan_vdev_get_peer_sta_count(struct wlan_objmgr_vdev *vdev);
+
+#ifdef FEATURE_WLAN_SUPPORT_USD
+/**
+ * wlan_vdev_mlme_get_wfd_mode() - get WFD mode from VDEV MLME object
+ * @vdev: VDEV object
+ *
+ * Return: WFD mode
+ */
+static inline uint8_t
+wlan_vdev_mlme_get_wfd_mode(struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.wfd_mode;
+}
+#else
+static inline uint8_t
+wlan_vdev_mlme_get_wfd_mode(struct wlan_objmgr_vdev *vdev)
+{
+	return 0xFF;
+}
+#endif /* FEATURE_WLAN_SUPPORT_USD */
 #endif /* _WLAN_OBJMGR_VDEV_OBJ_H_*/
