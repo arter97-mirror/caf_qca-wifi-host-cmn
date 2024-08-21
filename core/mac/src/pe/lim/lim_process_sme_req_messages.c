@@ -6297,7 +6297,10 @@ parse_punctured_psd_tpe:
 					single_tpe.tx_power[i];
 		}
 
-		curr_freq = bonded_freq->start_freq;
+		if (!bonded_freq)
+			curr_freq = curr_op_freq;
+		else
+			curr_freq = bonded_freq->start_freq;
 		ext_power_updated =
 				lim_update_ext_tpe_power(mac, session,
 							 &single_tpe,
