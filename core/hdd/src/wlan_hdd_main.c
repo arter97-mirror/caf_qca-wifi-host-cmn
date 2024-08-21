@@ -8086,6 +8086,33 @@ hdd_vdev_configure_opmode_params(struct hdd_context *hdd_ctx,
 	hdd_vdev_configure_rtscts_enable(hdd_ctx, vdev);
 }
 
+#ifdef FEATURE_WLAN_SUPPORT_USD
+/**
+ * hdd_vdev_populate_wfd_mode - populate WFD mode in VDEV create params for
+ * P2P GO only.
+ * @adapter: pointer to adapter object
+ * @vdev_params: vdev params
+ *
+ * Return void
+ */
+static void
+hdd_vdev_populate_wfd_mode(struct hdd_adapter *adapter,
+			   struct wlan_vdev_create_params *vdev_params)
+{
+	if (adapter->device_mode == QDF_P2P_GO_MODE ||
+	    adapter->device_mode == QDF_P2P_CLIENT_MODE)
+		vdev_params->wfd_mode = adapter->wfd_mode;
+	else
+		vdev_params->wfd_mode = P2P_MODE_WFD_INVALID;
+}
+#else
+static inline void
+hdd_vdev_populate_wfd_mode(struct hdd_adapter *adapter,
+			   struct wlan_vdev_create_params *vdev_params)
+{
+}
+#endif
+
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(CFG80211_11BE_BASIC) && \
 	defined(WLAN_HDD_MULTI_VDEV_SINGLE_NDEV)
 #ifdef WLAN_FEATURE_MULTI_LINK_SAP
@@ -8115,6 +8142,7 @@ hdd_populate_vdev_create_params(struct wlan_hdd_link_info *link_info,
 	vdev_params->opmode = adapter->device_mode;
 	vdev_params->size_vdev_priv = sizeof(struct vdev_osif_priv);
 	hdd_vdev_params_mlo_sap_sync_disable(vdev_params);
+	hdd_vdev_populate_wfd_mode(adapter, vdev_params);
 
 	if (hdd_adapter_is_ml_adapter(adapter)) {
 		qdf_ether_addr_copy(vdev_params->mldaddr,
@@ -8150,6 +8178,7 @@ hdd_populate_vdev_create_params(struct wlan_hdd_link_info *link_info,
 
 	hdd_enter_dev(adapter->dev);
 	mlo_adapter_info = &adapter->mlo_adapter_info;
+	hdd_vdev_populate_wfd_mode(adapter, vdev_params);
 
 	ucfg_psoc_mlme_get_11be_capab(hdd_ctx->psoc, &eht_capab);
 	if (mlo_adapter_info->is_ml_adapter && eht_capab &&
@@ -8192,6 +8221,7 @@ hdd_populate_vdev_create_params(struct wlan_hdd_link_info *link_info,
 
 	vdev_params->opmode = adapter->device_mode;
 	qdf_ether_addr_copy(vdev_params->macaddr, adapter->mac_addr.bytes);
+	hdd_vdev_populate_wfd_mode(adapter, vdev_params);
 	vdev_params->size_vdev_priv = sizeof(struct vdev_osif_priv);
 
 	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)vdev_params->macaddr)) {

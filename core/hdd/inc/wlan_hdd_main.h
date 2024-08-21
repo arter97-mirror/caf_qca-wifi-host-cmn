@@ -1346,6 +1346,7 @@ struct get_station_client_info {
  *		      based on wlm mode
  * @discon_link_info: link_info pointer on which post disconnect stats to be
  *                    fetched
+ * @wfd_mode: WFD mode for P2P interface
  */
 struct hdd_adapter {
 	uint32_t magic;
@@ -1544,6 +1545,9 @@ struct hdd_adapter {
 	struct get_station_client_info sta_client_info[GET_STA_MAX_HOST_CLIENT];
 	bool wlm_ll_conn_flag;
 	struct wlan_hdd_link_info *discon_link_info;
+#ifdef FEATURE_WLAN_SUPPORT_USD
+	uint8_t wfd_mode;
+#endif
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(link_info) (&(link_info)->session.station)
