@@ -97,11 +97,64 @@
 #define EAPOL_KEY_INFO_OFFSET			19
 #define EAPOL_PKT_LEN_OFFSET            16
 #define EAPOL_KEY_LEN_OFFSET            21
+
+#define EAPOL_KEY_DATA_LENGTH_OFFSET		111
+#define EAPOL_WPA_KEY_NONCE_OFFSET		31
+
+#define EAPOL_PACKET_TYPE_EAP			0
+#define EAPOL_PACKET_TYPE_START			1
+#define EAPOL_PACKET_TYPE_LOGOFF		2
+#define EAPOL_PACKET_TYPE_KEY			3
+#define EAPOL_PACKET_TYPE_ASF			4
+
+#define EAPOL_KEY_TYPE_MASK			0x0800
+#define EAPOL_KEY_ENCRYPTED_MASK		0x0010
+
+#if 0 // keh comment
 #define EAPOL_MASK				0x8013
 #define EAPOL_M1_BIT_MASK			0x8000
 #define EAPOL_M2_BIT_MASK			0x0001
 #define EAPOL_M3_BIT_MASK			0x8013
 #define EAPOL_M4_BIT_MASK			0x0003
+#endif
+
+/* EAP Related Mask */
+#define EAP_CODE_OFFSET				18
+#define EAP_LENGTH_OFFSET			20
+#define EAP_TYPE_OFFSET				22
+#define QDF_EAP_REQUEST				1
+#define QDF_EAP_RESPONSE			2
+#define QDF_EAP_SUCCESS				3
+#define QDF_EAP_FAILURE				4
+#define QDF_EAP_INITIATE			5
+#define QDF_EAP_FINISH				6
+
+#define EAP_PACKET_TYPE_ID 0x01
+#define EAP_PACKET_TYPE_EXP 0xFE
+
+#define EAP_EXP_TYPE_WSC_START 0x01
+#define EAP_EXP_TYPE_M1 0x04
+#define EAP_EXP_TYPE_M2 0x05
+#define EAP_EXP_TYPE_M3 0x07
+#define EAP_EXP_TYPE_M4 0x08
+#define EAP_EXP_TYPE_M5 0x09
+#define EAP_EXP_TYPE_M6 0x0A
+#define EAP_EXP_TYPE_M7 0x0B
+#define EAP_EXP_TYPE_M8 0x0C
+#define EAP_EXP_TYPE_WSC_DONE 0x0F
+
+#define EAP_EXP_MSG_OPCODE_OFFSET 0x1E
+#define EAP_EXP_MSG_TYPE_OFFSET 0x29
+
+enum wsc_op_code {
+	WSC_UPNP = 0, /* No OP Code in UPnP transport */
+	WSC_START = 0x01,
+	WSC_ACK = 0x02,
+	WSC_NACK = 0x03,
+	WSC_MSG = 0x04,
+	WSC_DONE = 0x05,
+	WSC_FRAG_ACK = 0x06
+};
 
 /* ARP Related MASK */
 #define QDF_NBUF_PKT_ARP_OPCODE_OFFSET	20
