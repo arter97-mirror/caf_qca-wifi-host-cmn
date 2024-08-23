@@ -96,6 +96,8 @@ struct hdd_context;
 
 #endif
 
+#define TX_DSCP_HIGH_PRI_ARRAY_MAX_LEN 64
+
 /*
  * Type declarations
  */
@@ -265,6 +267,8 @@ struct hdd_config {
 #ifdef FEATURE_CLUB_LL_STATS_AND_GET_STATION
 	uint32_t sta_stats_cache_expiry_time;
 #endif
+	uint8_t tx_dscp_high_pri_arr[TX_DSCP_HIGH_PRI_ARRAY_MAX_LEN];
+	uint32_t tx_dscp_high_pri_arr_num;
 };
 
 /**

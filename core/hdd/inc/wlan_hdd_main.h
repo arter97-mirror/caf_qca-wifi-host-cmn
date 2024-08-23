@@ -1439,6 +1439,9 @@ struct hdd_adapter {
 	atomic_t tx_enq_num;
 	qdf_spinlock_t skb_lock;
 	qdf_work_t skb_work;
+
+	qdf_nbuf_queue_t skb_hi_queue_head;
+	atomic_t tx_hi_enq_num;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(adapter) (&(adapter)->session.station)

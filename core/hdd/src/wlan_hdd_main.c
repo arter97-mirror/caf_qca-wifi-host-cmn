@@ -5242,6 +5242,8 @@ hdd_alloc_station_adapter(struct hdd_context *hdd_ctx, tSirMacAddr mac_addr,
 	qdf_spinlock_create(&adapter->skb_lock);
 	qdf_nbuf_queue_init(&adapter->skb_queue_head);
 	qdf_atomic_init(&adapter->tx_enq_num);
+	qdf_nbuf_queue_init(&adapter->skb_hi_queue_head);
+	qdf_atomic_init(&adapter->tx_hi_enq_num);
 
 	return adapter;
 
@@ -7080,6 +7082,7 @@ QDF_STATUS hdd_stop_adapter(struct hdd_context *hdd_ctx,
 
 		qdf_spinlock_destroy(&adapter->skb_lock);
 		qdf_nbuf_queue_free(&adapter->skb_queue_head);
+		qdf_nbuf_queue_free(&adapter->skb_hi_queue_head);
 		qdf_destroy_work(0, &adapter->skb_work);
 
 		if (adapter->device_mode == QDF_STA_MODE) {
