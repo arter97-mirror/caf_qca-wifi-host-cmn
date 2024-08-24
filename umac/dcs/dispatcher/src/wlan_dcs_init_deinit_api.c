@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,6 +23,7 @@
 #include "../../core/src/wlan_dcs.h"
 #include "cfg_dcs.h"
 #include "cfg_ucfg_api.h"
+#include "qdf_util.h"
 
 /**
  * wlan_dcs_psoc_obj_create_notification() - dcs psoc create handler
@@ -161,6 +162,31 @@ QDF_STATUS wlan_dcs_disable(struct wlan_objmgr_psoc *psoc)
 	return wlan_dcs_detach(psoc);
 }
 
+#ifdef WLAN_FEATURE_VDEV_DCS
+static void
+wlan_dcs_psoc_int_vdev(struct wlan_objmgr_psoc *psoc,
+		       struct dcs_pdev_priv_obj *dcs_pdev_priv)
+{
+	uint8_t mode;
+	uint32_t ini_val;
+
+	for (mode = 0; mode < MAX_DCS_MODE_NUM; mode++) {
+		ini_val = cfg_get(psoc, CFG_DCS_ENABLE_PER_MODE);
+		dcs_pdev_priv->dcs_host_params.dcs_enable_cfg_per_mode[mode].val =
+				QDF_GET_BITS(ini_val, mode * 8, 8);
+		ini_val = cfg_get(psoc, CFG_DCS_INTFR_DETECTION_THRESHOLD_PER_MODE);
+		dcs_pdev_priv->dcs_host_params.intfr_detection_threshold_per_mode[mode] =
+				QDF_GET_BITS(ini_val, mode * 8, 8);
+	}
+}
+#else
+static void
+wlan_dcs_psoc_int_vdev(struct wlan_objmgr_psoc *psoc,
+		       struct dcs_pdev_priv_obj *dcs_pdev_priv)
+{
+}
+#endif
+
 QDF_STATUS wlan_dcs_psoc_open(struct wlan_objmgr_psoc *psoc)
 {
 	struct dcs_psoc_priv_obj *dcs_psoc_obj;
@@ -209,6 +235,8 @@ QDF_STATUS wlan_dcs_psoc_open(struct wlan_objmgr_psoc *psoc)
 			cfg_get(psoc, CFG_DCS_DISABLE_THRESHOLD_PER_5MINS);
 		dcs_pdev_priv->dcs_freq_ctrl_params.restart_delay =
 				cfg_get(psoc, CFG_DCS_RESTART_DELAY);
+
+		wlan_dcs_psoc_int_vdev(psoc, dcs_pdev_priv);
 
 		qdf_timer_init(NULL, &dcs_pdev_priv->dcs_disable_timer,
 			       wlan_dcs_disable_timer_fn,

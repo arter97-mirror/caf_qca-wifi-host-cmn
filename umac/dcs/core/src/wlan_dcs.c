@@ -33,6 +33,9 @@
 #include "wlan_policy_mgr_ll_sap.h"
 #endif
 #include <wlan_reg_services_api.h>
+#ifdef WLAN_FEATURE_VDEV_DCS
+#include "wlan_mlme_api.h"
+#endif
 
 struct dcs_pdev_priv_obj *
 wlan_dcs_get_pdev_private_obj(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id)
@@ -146,6 +149,56 @@ QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 }
 
 #ifdef WLAN_FEATURE_VDEV_DCS
+/**
+ * wlan_get_dcs_mode() - Get SAP/Go DCS mode
+ * for provided ap policy
+ * @psoc: psoc object
+ * @vdev_id: vdev id
+ *
+ * Return: DCS mode
+ */
+static enum wlan_dcs_mode
+wlan_get_dcs_mode(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id)
+{
+	struct wlan_objmgr_vdev *vdev;
+	enum QDF_OPMODE mode;
+	enum host_concurrent_ap_policy profile =
+					HOST_CONCURRENT_AP_POLICY_UNSPECIFIED;
+	enum wlan_dcs_mode dcs_mode;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_POLICY_MGR_ID);
+	if (!vdev) {
+		dcs_debug("Invalid vdev %d: ", vdev_id);
+		return MAX_DCS_MODE_NUM;
+	}
+
+	mode = wlan_vdev_mlme_get_opmode(vdev);
+	if (mode != QDF_SAP_MODE && mode != QDF_P2P_GO_MODE) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_POLICY_MGR_ID);
+		dcs_debug("Invalid vdev opmode %d", mode);
+		return MAX_DCS_MODE_NUM;
+	}
+
+	if (mode == QDF_P2P_GO_MODE)
+		dcs_mode = DCS_GO;
+
+	profile = wlan_mlme_get_ap_policy(vdev);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_POLICY_MGR_ID);
+
+	if (profile == HOST_CONCURRENT_AP_POLICY_XR)
+		dcs_mode = DCS_XR;
+	else if (profile == HOST_CONCURRENT_AP_POLICY_GAMING_AUDIO ||
+		 profile ==
+		 HOST_CONCURRENT_AP_POLICY_LOSSLESS_AUDIO_STREAMING)
+		dcs_mode = DCS_XPAN;
+	else
+		dcs_mode = DCS_SAP;
+	dcs_debug("vdev id %d dcs mode %d", vdev_id, dcs_mode);
+
+	return dcs_mode;
+}
+
 QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 				      uint32_t mac_id,
 				      uint8_t vdev_id)
@@ -154,6 +207,7 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 	struct dcs_pdev_priv_obj *dcs_pdev_priv;
 	uint32_t dcs_enable;
 	QDF_STATUS status;
+	enum wlan_dcs_mode mode;
 
 	if (!psoc) {
 		dcs_err("psoc is null");
@@ -166,11 +220,14 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_NULL_VALUE;
 	}
 
-	if (policy_mgr_is_vdev_ll_lt_sap(psoc, vdev_id))
-		dcs_enable = dcs_pdev_priv->dcs_host_params.dcs_enable;
-	else
-		dcs_enable = (dcs_pdev_priv->dcs_host_params.dcs_enable &
-				dcs_pdev_priv->dcs_host_params.dcs_enable_cfg);
+	mode = wlan_get_dcs_mode(psoc, vdev_id);
+	if (mode >= MAX_DCS_MODE_NUM) {
+		dcs_err("Invalid mode %d", mode);
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	dcs_enable = dcs_pdev_priv->dcs_host_params.dcs_enable &
+		     dcs_pdev_priv->dcs_host_params.dcs_enable_cfg_per_mode[mode].val;
 
 	dcs_tx_ops = target_if_dcs_get_tx_ops(psoc);
 
@@ -418,22 +475,55 @@ copy_stats:
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
+
+#ifdef WLAN_FEATURE_VDEV_DCS
+static uint32_t
+wlan_dcs_get_intfr_detection_threshold(struct wlan_objmgr_psoc *psoc,
+				       uint8_t vdev_id,
+				       struct pdev_dcs_params dcs_host_params)
+{
+	enum wlan_dcs_mode mode;
+
+	if (target_if_vdev_level_dcs_is_supported(psoc)) {
+		mode = wlan_get_dcs_mode(psoc, vdev_id);
+		if (mode >= MAX_DCS_MODE_NUM)
+			return dcs_host_params.intfr_detection_threshold_per_mode[DCS_SAP];
+		return dcs_host_params.intfr_detection_threshold_per_mode[mode];
+	} else {
+		return dcs_host_params.intfr_detection_threshold;
+	}
+}
+#else
+static uint32_t
+wlan_dcs_get_intfr_detection_threshold(struct wlan_objmgr_psoc *psoc,
+				       uint8_t vdev_id,
+				       struct pdev_dcs_params dcs_host_params)
+{
+	return dcs_host_params.intfr_detection_threshold;
+}
+
+#endif
+
 /**
  * wlan_dcs_wlan_interference_process() - dcs detection algorithm handling
+ * @psoc: psoc pointer
+ * @vdev_id: vdev id
  * @curr_stats: current target im stats pointer
  * @dcs_pdev_priv: dcs pdev priv pointer
  *
  * Return: true or false means start dcs callback handler or not
  */
 static bool
-wlan_dcs_wlan_interference_process(
-				struct wlan_host_dcs_im_tgt_stats *curr_stats,
-				struct dcs_pdev_priv_obj *dcs_pdev_priv)
+wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
+				   uint8_t vdev_id,
+				   struct wlan_host_dcs_im_tgt_stats *curr_stats,
+				   struct dcs_pdev_priv_obj *dcs_pdev_priv)
 {
 	struct wlan_host_dcs_im_tgt_stats *prev_stats;
 	struct pdev_dcs_params dcs_host_params;
 	struct pdev_dcs_im_stats *p_dcs_im_stats;
 	bool start_dcs_cbk_handler = false;
+	uint32_t intfr_detection_threshold;
 
 	uint32_t reg_tsf_delta = 0;
 	uint32_t scaled_reg_tsf_delta;
@@ -698,8 +788,12 @@ wlan_dcs_wlan_interference_process(
 			(tx_err >= dcs_host_params.tx_err_threshold))))
 		p_dcs_im_stats->im_intfr_cnt++;
 
-	if (p_dcs_im_stats->im_intfr_cnt >=
-		dcs_host_params.intfr_detection_threshold) {
+	intfr_detection_threshold =
+		wlan_dcs_get_intfr_detection_threshold(psoc,
+						       vdev_id,
+						       dcs_host_params);
+
+	if (p_dcs_im_stats->im_intfr_cnt >= intfr_detection_threshold) {
 		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL)) {
 			dcs_debug("interference threshold exceeded");
 			dcs_debug("unused_cu: %u, too_any_phy_errors: %u, total_wasted_cu: %u, reg_tx_cu: %u, reg_rx_cu: %u",
@@ -2033,6 +2127,7 @@ wlan_dcs_process(struct wlan_objmgr_psoc *psoc,
 {
 	struct dcs_pdev_priv_obj *dcs_pdev_priv;
 	bool start_dcs_cbk_handler = false;
+	uint8_t vdev_id;
 
 	if (!psoc || !event) {
 		dcs_err("psoc or event is NULL");
@@ -2062,11 +2157,14 @@ wlan_dcs_process(struct wlan_objmgr_psoc *psoc,
 			break;
 
 		if (dcs_pdev_priv->dcs_host_params.dcs_enable &
-		    WLAN_HOST_DCS_WLANIM)
+		    WLAN_HOST_DCS_WLANIM) {
+			vdev_id = event->dcs_param.vdev_id;
 			start_dcs_cbk_handler =
-				wlan_dcs_wlan_interference_process(
+				wlan_dcs_wlan_interference_process(psoc,
+							vdev_id,
 							&event->wlan_stat,
 							dcs_pdev_priv);
+		}
 		if (dcs_pdev_priv->user_cb &&
 		    dcs_pdev_priv->dcs_host_params.notify_user) {
 			dcs_pdev_priv->dcs_host_params.notify_user = 0;
