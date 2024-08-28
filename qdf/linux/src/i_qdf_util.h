@@ -67,6 +67,8 @@ typedef siphash_aligned_key_t __qdf_siphash_aligned_key_t;
 typedef siphash_key_t __qdf_siphash_aligned_key_t;
 #endif
 
+typedef struct page *__qdf_page_t;
+
 /* Generic compiler-dependent macros if defined by the OS */
 #define __qdf_wait_queue_interruptible(wait_queue, condition) \
 	wait_event_interruptible(wait_queue, condition)
@@ -562,4 +564,15 @@ static inline uint64_t __qdf_siphash(const void *data, size_t len,
 	return siphash(data, len, key);
 }
 
+/**
+ * __qdf_virt_to_head_page: Get head page reference for the address
+ *
+ * @addr: virtual address
+ *
+ * Return: Page reference
+ */
+static inline __qdf_page_t __qdf_virt_to_head_page(void *addr)
+{
+	return virt_to_head_page(addr);
+}
 #endif /*_I_QDF_UTIL_H*/

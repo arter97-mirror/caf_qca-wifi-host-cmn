@@ -334,8 +334,6 @@ struct spectral_process_phyerr_info_gen2 {
 #define SSCAN_SUMMARY_REPORT_HDR_B_GAINCHANGE_SIZE_GEN3_V1      (1)
 #define SSCAN_SUMMARY_REPORT_HDR_C_GAINCHANGE_POS_GEN3_V2       (16)
 #define SSCAN_SUMMARY_REPORT_HDR_C_GAINCHANGE_SIZE_GEN3_V2      (1)
-#define SSCAN_SUMMARY_REPORT_PAD_HDR_A_BLANKING_POS_GEN3_V2     (0)
-#define SSCAN_SUMMARY_REPORT_PAD_HDR_A_BLANKING_SIZE_GEN3_V2    (32)
 #define SSCAN_SUMMARY_REPORT_PAD_HDR_A_BLANKING_TAG_GEN3_V2     (0xc0debeaf)
 #define SPECTRAL_REPORT_LTS_HDR_LENGTH_POS_GEN3                 (0)
 #define SPECTRAL_REPORT_LTS_HDR_LENGTH_SIZE_GEN3                (16)
@@ -1142,7 +1140,7 @@ struct per_session_report_info {
 	uint32_t sscan_cfreq1;
 	uint32_t sscan_cfreq2;
 	enum phy_ch_width sscan_bw;
-	uint8_t num_spans;
+	int8_t num_spans;
 	bool valid;
 };
 

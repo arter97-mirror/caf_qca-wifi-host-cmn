@@ -36,6 +36,8 @@
 typedef __qdf_wait_queue_head_t qdf_wait_queue_head_t;
 typedef __qdf_siphash_aligned_key_t qdf_siphash_aligned_key_t;
 
+typedef __qdf_page_t qdf_page_t;
+
 /**
  * qdf_unlikely - Compiler-dependent macro denoting code unlikely to execute
  * @_expr: expression to be checked
@@ -996,5 +998,17 @@ static inline uint64_t qdf_siphash(const void *data, size_t len,
 				   const qdf_siphash_aligned_key_t *key)
 {
 	return __qdf_siphash(data, len, key);
+}
+
+/**
+ * qdf_virt_to_head_page: Get head page reference for the address
+ *
+ * @addr: virtual address
+ *
+ * Return: Page reference
+ */
+static inline qdf_page_t qdf_virt_to_head_page(void *addr)
+{
+	return __qdf_virt_to_head_page(addr);
 }
 #endif /*_QDF_UTIL_H*/

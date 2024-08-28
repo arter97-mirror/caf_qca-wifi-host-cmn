@@ -2832,8 +2832,8 @@ dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 		}
 
 		if (peer->vdev->opmode == wlan_op_mode_sta)
-			dp_rx_mlo_update_ast_idx(peer->vdev, ast_hash,
-						 hw_peer_id);
+			dp_rx_mlo_update_ast_idx(peer->vdev, hw_peer_id,
+						 ast_hash);
 
 		/* Add ast entry incase self ast entry is
 		 * deleted due to DP CP sync issue
@@ -3051,10 +3051,13 @@ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 							   DP_NON_QOS_TID,
 							   peer->rx_tid[DP_NON_QOS_TID].hw_qdesc_paddr);
 			}
+
+			__dp_peer_event_notify(soc, CDP_PEER_EVENT_MAP,
+					       peer->peer_id,
+					       peer->vdev->vdev_id,
+					       peer->mac_addr.raw);
 		}
 
-		__dp_peer_event_notify(soc, CDP_PEER_EVENT_MAP, peer->peer_id,
-				       peer->vdev->vdev_id, peer->mac_addr.raw);
 		err = dp_peer_map_ast(soc, peer, peer_mac_addr, hw_peer_id,
 				      vdev_id, ast_hash, is_wds);
 	}
@@ -3196,7 +3199,7 @@ dp_rx_peer_unmap_handler(struct dp_soc *soc, uint16_t peer_id,
 
 	dp_update_vdev_stats_on_peer_unmap(vdev, peer);
 
-	__dp_peer_event_notify(soc, CDP_PEER_EVENT_UNMAP, peer->peer_id,
+	__dp_peer_event_notify(soc, CDP_PEER_EVENT_UNMAP, peer_id,
 			       peer->vdev->vdev_id, peer->mac_addr.raw);
 	dp_peer_update_state(soc, peer, DP_PEER_STATE_INACTIVE);
 	dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
@@ -3551,6 +3554,12 @@ QDF_STATUS dp_peer_delay_stats_ctx_alloc(struct dp_soc *soc,
 			struct cdp_delay_rx_stats *rx_delay =
 			&txrx_peer->delay_stats->delay_tid_stats[tid][ctx_id].rx_delay;
 
+			tx_delay->max_window_size =
+				wlan_cfg_get_dp_stats_max_window_size(
+							soc->wlan_cfg_ctx);
+			tx_delay->max_pkt_per_window_size =
+				wlan_cfg_get_dp_stats_max_pkt_per_window_size(
+							soc->wlan_cfg_ctx);
 			dp_hist_init(&tx_delay->tx_swq_delay,
 				     CDP_HIST_TYPE_SW_ENQEUE_DELAY);
 			dp_hist_init(&tx_delay->hwtx_delay,
@@ -3863,13 +3872,16 @@ dp_clear_peer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 }
 
 QDF_STATUS dp_get_vdevid(struct cdp_soc_t *soc_hdl, uint8_t *peer_mac,
-			 uint8_t *vdev_id)
+			 enum cdp_peer_type peer_type, uint8_t *vdev_id)
 {
+	struct cdp_peer_info peer_info = { 0 };
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
-	struct dp_peer *peer =
-		dp_peer_find_hash_find(soc, peer_mac, 0, DP_VDEV_ALL,
-				       DP_MOD_ID_CDP);
+	struct dp_peer *peer;
 
+	DP_PEER_INFO_PARAMS_INIT(&peer_info, DP_VDEV_ALL, peer_mac,
+				 false, peer_type);
+
+	peer =  dp_peer_hash_find_wrapper(soc, &peer_info, DP_MOD_ID_CDP);
 	if (!peer)
 		return QDF_STATUS_E_FAILURE;
 

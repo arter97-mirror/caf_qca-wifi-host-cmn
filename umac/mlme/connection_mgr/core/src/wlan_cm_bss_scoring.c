@@ -122,7 +122,8 @@
 #define CM_SECURITY_INDEX_WEIGHTAGE 0x00643219
 
 #define CM_BEST_CANDIDATE_MAX_BSS_SCORE (CM_BEST_CANDIDATE_MAX_WEIGHT * 100)
-#define CM_AVOID_CANDIDATE_MIN_SCORE 1
+#define CM_AVOID_CANDIDATE_NON_ML_MIN_SCORE 1
+#define CM_AVOID_CANDIDATE_ML_MIN_SCORE 2
 
 #define CM_GET_SCORE_PERCENTAGE(value32, bw_index) \
 	QDF_GET_BITS(value32, (8 * (bw_index)), 8)
@@ -626,6 +627,22 @@ static uint32_t cm_get_sta_nss(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+static uint32_t wlan_cm_get_min_score(struct scan_cache_entry *entry)
+{
+	if (!entry->ie_list.multi_link_bv)
+		return CM_AVOID_CANDIDATE_NON_ML_MIN_SCORE;
+	/* Add more weigh for candidate with partner link */
+	return CM_AVOID_CANDIDATE_ML_MIN_SCORE +
+	       (CM_AVOID_CANDIDATE_ML_MIN_SCORE * entry->ml_info.num_links);
+}
+#else
+static uint32_t wlan_cm_get_min_score(struct scan_cache_entry *entry)
+{
+	return CM_AVOID_CANDIDATE_NON_ML_MIN_SCORE;
+}
+#endif
+
 #ifdef CONN_MGR_ADV_FEATURE
 static bool
 cm_get_pcl_weight_of_channel(uint32_t chan_freq,
@@ -941,7 +958,9 @@ cm_calculate_bandwidth(struct scan_cache_entry *entry,
 		bw_above_20 = phy_config->bw_above_20_5ghz;
 	}
 
-	if (IS_WLAN_PHYMODE_160MHZ(entry->phy_mode))
+	if (IS_WLAN_PHYMODE_320MHZ(entry->phy_mode))
+		ch_width = CH_WIDTH_320MHZ;
+	else if (IS_WLAN_PHYMODE_160MHZ(entry->phy_mode))
 		ch_width = CH_WIDTH_160MHZ;
 	else if (IS_WLAN_PHYMODE_80MHZ(entry->phy_mode))
 		ch_width = CH_WIDTH_80MHZ;
@@ -1027,6 +1046,8 @@ static uint16_t cm_get_etp_he_ntone(enum phy_ch_width ch_width)
 		n_sd = 980, n_seg = 2;
 	else if (ch_width == CH_WIDTH_160MHZ)
 		n_sd = 1960;
+	else if (ch_width == CH_WIDTH_320MHZ)
+		n_sd = 3920;
 
 	return (n_sd * n_seg);
 }
@@ -1174,6 +1195,9 @@ calculate_bit_per_tone(int32_t rssi, enum phy_ch_width ch_width)
 	int32_t bit_per_tone;
 	int32_t lut_in_idx;
 
+	if (ch_width > CH_WIDTH_160MHZ)
+		ch_width = CH_WIDTH_160MHZ;
+
 	noise_floor_db_boost = TWO_IN_DB * ch_width;
 	noise_floor_dbm = WLAN_NOISE_FLOOR_DBM_DEFAULT + noise_floor_db_boost +
 			SNR_MARGIN_DB;
@@ -1212,10 +1236,12 @@ cm_calculate_etp(struct wlan_objmgr_psoc *psoc,
 	uint32_t ppdu_payload_dur_us = 0, mpdu_per_ampdu, mpdu_per_ppdu;
 	uint32_t single_ppdu_dur_us, estimated_throughput_mbps, data_rate_kbps;
 	struct htcap_cmn_ie *htcap;
+	uint32_t min_score = wlan_cm_get_min_score(entry);
 
 	htcap = (struct htcap_cmn_ie *)util_scan_entry_htcap(entry);
-	if (ch_width > CH_WIDTH_160MHZ)
-		return CM_AVOID_CANDIDATE_MIN_SCORE;
+	if (ch_width >= CH_WIDTH_INVALID || ch_width == CH_WIDTH_5MHZ ||
+	    ch_width == CH_WIDTH_10MHZ)
+		return min_score;
 
 	if (is_he)
 		ntone = cm_get_etp_he_ntone(ch_width);
@@ -1227,7 +1253,7 @@ cm_calculate_etp(struct wlan_objmgr_psoc *psoc,
 		cm_get_etp_max_bits_per_sc_1000x_for_nss(psoc, entry,
 							 max_nss, phy_config);
 	if (rssi < WLAN_NOISE_FLOOR_DBM_DEFAULT)
-		return CM_AVOID_CANDIDATE_MIN_SCORE;
+		return min_score;
 
 	log_2_snr_tone_1000x = calculate_bit_per_tone(rssi, ch_width);
 
@@ -1246,8 +1272,8 @@ cm_calculate_etp(struct wlan_objmgr_psoc *psoc,
 				IS_ASSOC_LINK(ml_flag) ? "Candidate" : "Partner",
 				QDF_MAC_ADDR_REF(entry->bssid.bytes),
 				entry->channel.chan_freq, data_rate_kbps,
-				CM_AVOID_CANDIDATE_MIN_SCORE);
-		return CM_AVOID_CANDIDATE_MIN_SCORE;
+				min_score);
+		return min_score;
 	}
 	/* compute MPDU_p_PPDU */
 	if (is_ht) {
@@ -1283,8 +1309,8 @@ cm_calculate_etp(struct wlan_objmgr_psoc *psoc,
 		 etp_param->airtime_fraction) /
 		 CM_MAX_ESTIMATED_AIR_TIME_FRACTION;
 
-	if (estimated_throughput_mbps < CM_AVOID_CANDIDATE_MIN_SCORE)
-		estimated_throughput_mbps = CM_AVOID_CANDIDATE_MIN_SCORE;
+	if (estimated_throughput_mbps < min_score)
+		estimated_throughput_mbps = min_score;
 	if (estimated_throughput_mbps > CM_BEST_CANDIDATE_MAX_BSS_SCORE)
 		estimated_throughput_mbps = CM_BEST_CANDIDATE_MAX_BSS_SCORE;
 
@@ -1379,7 +1405,7 @@ cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 				 entry->rssi_raw,
 				 phy_config,
 				 ml_flag);
-	if (bss_mlo_type == SLO)
+	if (bss_mlo_type == SLO || bss_mlo_type == MLO_TYPE_MAX)
 		return score;
 	wlan_mlme_get_mlo_prefer_percentage(psoc, &mlo_prefer_percentage);
 	if (mlo_prefer_percentage) {
@@ -1904,7 +1930,10 @@ enum MLO_TYPE cm_bss_mlo_type(struct wlan_objmgr_psoc *psoc,
 	bool is_hw_emlsr_cap = false;
 
 	mlo_link_num = cm_get_sta_mlo_conn_max_num(psoc);
-	if (!ml_ie || !entry->ml_info.num_links || mlo_link_num == 1)
+	if (!ml_ie)
+		return MLO_TYPE_MAX;
+
+	if (!entry->ml_info.num_links || mlo_link_num == 1)
 		return SLO;
 
 	is_hw_emlsr_cap = is_cm_hw_emlsr_capable(psoc);
@@ -2571,9 +2600,11 @@ static void cm_vendor_specific_boost(struct wlan_objmgr_psoc *psoc,
 	int per_link_boost;
 	int32_t score = entry->bss_score;
 
-	if (!entry->ie_list.multi_link_bv)
+	if (!entry->ie_list.multi_link_bv) {
+		mlme_debug(QDF_MAC_ADDR_FMT "entry with mlo type %d",
+			   QDF_MAC_ADDR_REF(entry->bssid.bytes), bss_mlo_type);
 		return;
-
+	}
 	switch (bss_mlo_type) {
 	case MLMR:
 		/* Add boost of 15% per link for MLMR candidate */
@@ -3000,6 +3031,11 @@ void cm_print_candidate_list(qdf_list_t *candidate_list)
 		mlme_err("failed to get front of candidate_list");
 		return;
 	}
+
+	scan_entry = qdf_container_of(cur_node, struct scan_cache_node, node);
+	mlme_nofl_debug("Sorted candidate list for SSID: "QDF_SSID_FMT,
+			QDF_SSID_REF(scan_entry->entry->ssid.length,
+			scan_entry->entry->ssid.ssid));
 	while (cur_node) {
 		qdf_list_peek_next(candidate_list, cur_node, &next_node);
 
@@ -3529,7 +3565,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 		} else if (denylist_action == CM_DLM_AVOID) {
 			/* add min score so that it is added back in the end */
 			scan_entry->entry->bss_score =
-					CM_AVOID_CANDIDATE_MIN_SCORE;
+				wlan_cm_get_min_score(scan_entry->entry);
 			mlme_nofl_debug("Candidate("QDF_MAC_ADDR_FMT" freq %d): rssi %d, is in Avoidlist, give min score %d",
 					QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
 					scan_entry->entry->channel.chan_freq,
@@ -3632,6 +3668,7 @@ void cm_update_dlm_mlo_score(struct wlan_objmgr_pdev *pdev,
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
 	QDF_STATUS status;
 	enum cm_denylist_action denylist_action;
+	uint32_t min_score;
 
 	/* Get cur node next to prev candidate */
 	if (qdf_list_peek_next(scan_list, prev_node, &cur_node) !=
@@ -3646,11 +3683,10 @@ void cm_update_dlm_mlo_score(struct wlan_objmgr_pdev *pdev,
 					      node);
 		denylist_action = wlan_denylist_action_on_bssid(
 						pdev, scan_entry->entry);
+		min_score = wlan_cm_get_min_score(scan_entry->entry);
 		if (denylist_action == CM_DLM_AVOID &&
-		    scan_entry->entry->bss_score !=
-		    CM_AVOID_CANDIDATE_MIN_SCORE) {
-			scan_entry->entry->bss_score =
-						CM_AVOID_CANDIDATE_MIN_SCORE;
+		    scan_entry->entry->bss_score != min_score) {
+			scan_entry->entry->bss_score = min_score;
 
 			mlme_nofl_debug("Candidate("QDF_MAC_ADDR_FMT" freq %d): rssi %d, is in Avoidlist, give min score %d",
 					QDF_MAC_ADDR_REF(

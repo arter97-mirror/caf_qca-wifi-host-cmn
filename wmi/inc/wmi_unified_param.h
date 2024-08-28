@@ -2141,10 +2141,12 @@ struct mlo_prb_resp_tmpl_ml_info {
  * @prb_rsp_template_frm: pointer to template probe response template
  * @prb_rsp_template_len: length of probe response template
  * @cu_ml_info: Impacted link critical update information
+ * @go_ignore_non_p2p_probe_req: go ignore non-p2p probe req
  */
 struct wmi_probe_resp_params {
 	uint8_t *prb_rsp_template_frm;
 	uint32_t prb_rsp_template_len;
+	bool go_ignore_non_p2p_probe_req;
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct mlo_prb_resp_tmpl_ml_info cu_ml_info;
 #endif
@@ -5506,6 +5508,7 @@ typedef enum {
 	wmi_mlo_teardown_complete_event_id,
 	wmi_mlo_link_set_active_resp_eventid,
 	wmi_mlo_link_removal_eventid,
+	wmi_mlo_tlt_selection_for_tid_eventid,
 	wmi_mlo_link_disable_request_eventid,
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 	wmi_mlo_link_switch_request_eventid,
@@ -5984,6 +5987,10 @@ typedef enum {
 		   PDEV_PARAM_PWR_REDUCTION_IN_QUARTER_DB),
 	PDEV_PARAM(pdev_param_scan_mode,
 		   PDEV_PARAM_SCAN_MODE),
+	PDEV_PARAM(pdev_param_dstall_consecutive_tx_no_ack_interval,
+		   PDEV_PARAM_DSTALL_CONSECUTIVE_TX_NO_ACK_INTERVAL),
+	PDEV_PARAM(pdev_param_dstall_consecutive_tx_no_ack_threshold,
+		   PDEV_PARAM_DSTALL_CONSECUTIVE_TX_NO_ACK_THRESHOLD),
 	pdev_param_max,
 } wmi_conv_pdev_params_id;
 
@@ -6743,6 +6750,9 @@ typedef enum {
 #endif
 	wmi_service_support_ap_suspend_resume,
 	wmi_service_epm,
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+	wmi_service_mlo_sap_emlsr_support,
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -6828,6 +6838,7 @@ typedef enum {
  * @WMI_HOST_VENDOR1_REQ1_VERSION_3_30: Major version 3, minor version 30
  * @WMI_HOST_VENDOR1_REQ1_VERSION_3_40: Major version 3, minor version 40
  * @WMI_HOST_VENDOR1_REQ1_VERSION_4_00: Major version 4, minor version 00
+ * @WMI_HOST_VENDOR1_REQ1_VERSION_4_10: Major version 4, minor version 10
  */
 typedef enum {
 	WMI_HOST_VENDOR1_REQ1_VERSION_3_00 = 0,
@@ -6836,6 +6847,7 @@ typedef enum {
 	WMI_HOST_VENDOR1_REQ1_VERSION_3_30 = 3,
 	WMI_HOST_VENDOR1_REQ1_VERSION_3_40 = 4,
 	WMI_HOST_VENDOR1_REQ1_VERSION_4_00 = 5,
+	WMI_HOST_VENDOR1_REQ1_VERSION_4_10 = 6,
 } WMI_HOST_VENDOR1_REQ1_VERSION;
 
 /**
@@ -10556,6 +10568,16 @@ struct wmi_host_mu_on_off_params {
 	uint8_t vdev_id;
 	uint32_t mu_on_duration;
 	uint32_t mu_off_duration;
+};
+
+/**
+ * struct wmi_sta_vdev_report_ap_oper_bw_params - AP's reported operating BW params
+ * @vdev_id: vdev ID
+ * @ap_phymode: Current Operating AP's phymode
+ */
+struct wmi_sta_vdev_report_ap_oper_bw_params {
+	uint8_t vdev_id;
+	enum wlan_phymode ap_phymode;
 };
 
 #endif /* _WMI_UNIFIED_PARAM_H_ */

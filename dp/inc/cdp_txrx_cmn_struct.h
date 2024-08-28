@@ -424,6 +424,12 @@ enum cdp_host_reo_dest_ring {
     cdp_host_reo_dest_ring_2 = 2,
     cdp_host_reo_dest_ring_3 = 3,
     cdp_host_reo_dest_ring_4 = 4,
+#ifdef CONFIG_BERYLLIUM
+    cdp_host_reo_dest_ring_5 = 7,
+    cdp_host_reo_dest_ring_6 = 8,
+    cdp_host_reo_dest_ring_7 = 9,
+    cdp_host_reo_dest_ring_8 = 10,
+#endif
 };
 
 enum htt_cmn_t2h_en_stats_type {
@@ -713,8 +719,10 @@ enum cdp_sec_type {
  * @sec_type: sec_type to be passed to HAL
  * @is_tx_sniffer: Indicates if the packet has to be sniffed
  * @is_intrabss_fwd:
+ * @is_dms_pkt: If the packet is dms supported or not
+ * @reserved: reserved bits for new field additions
  * @ppdu_cookie: 16-bit ppdu cookie that has to be replayed back in completions
- * @is_wds_extended:
+ * @is_wds_extended_mc_bc: Identifier for a MCAST/BCAST packet
  * @is_mlo_mcast: Indicates if mlo_mcast enable or not
  *
  * This structure holds the parameters needed in the exception path of tx
@@ -726,10 +734,12 @@ struct cdp_tx_exception_metadata {
 	uint16_t tx_encap_type;
 	enum cdp_sec_type sec_type;
 	uint8_t is_tx_sniffer :1,
-		is_intrabss_fwd :1;
+		is_intrabss_fwd :1,
+		is_dms_pkt :1,
+		reserved :5;
 	uint16_t ppdu_cookie;
 #ifdef QCA_SUPPORT_WDS_EXTENDED
-	uint8_t is_wds_extended;
+	uint8_t is_wds_extended_mc_bc;
 #endif
 #if defined(WLAN_MCAST_MLO) || defined(WLAN_MCAST_MLO_SAP)
 	uint8_t is_mlo_mcast;
@@ -1332,6 +1342,7 @@ struct cdp_soc_t {
  * @CDP_CONFIG_IN_TWT: In TWT session or not
  * @CDP_CONFIG_MLD_PEER_VDEV: Change MLD peer's vdev
  * @CDP_CONFIG_PEER_FREQ: Set peer frequency
+ * @CDP_CONFIG_PEER_DMS: Dms capability of peer
  */
 enum cdp_peer_param_type {
 	CDP_CONFIG_NAWDS,
@@ -1340,6 +1351,7 @@ enum cdp_peer_param_type {
 	CDP_CONFIG_IN_TWT,
 	CDP_CONFIG_MLD_PEER_VDEV,
 	CDP_CONFIG_PEER_FREQ,
+	CDP_CONFIG_PEER_DMS,
 };
 
 /**
@@ -1423,6 +1435,7 @@ enum cdp_pdev_param_type {
  *
  * @cdp_peer_param_nawds: Enable nawds mode
  * @cdp_peer_param_isolation: Enable isolation
+ * @cdp_peer_param_dms: Enable dms
  * @cdp_peer_param_in_twt: in TWT session or not
  * @cdp_peer_param_nac: Enable nac
  * @cdp_peer_param_freq: Peer frequency
@@ -1527,6 +1540,7 @@ typedef union cdp_config_param_t {
 	/* peer params */
 	bool cdp_peer_param_nawds;
 	bool cdp_peer_param_isolation;
+	bool cdp_peer_param_dms;
 	uint8_t cdp_peer_param_nac;
 	bool cdp_peer_param_in_twt;
 	uint32_t cdp_peer_param_freq;
@@ -2683,6 +2697,7 @@ struct cdp_tx_completion_msdu {
  * @ast_index: ast index in multi-user case
  * @tid: TID number
  * @num_msdu: Number of MSDUs in PPDU
+ * @enc_type: Encryption type
  * @tcp_msdu_count: Number of TCP MSDUs in PPDU
  * @udp_msdu_count: Number of UDP MSDUs in PPDU
  * @other_msdu_count: Number of MSDUs other than UDP and TCP MSDUs in PPDU
@@ -2707,6 +2722,7 @@ struct cdp_tx_completion_msdu {
  * @rix: rate index
  * @mpdu_retries: retries of mpdu in rx
  * @rx_time_us: Rx duration
+ * @retried_msdu_count: retries of msdu in rx
  */
 struct cdp_rx_stats_ppdu_user {
 	uint16_t peer_id;
@@ -2723,6 +2739,7 @@ struct cdp_rx_stats_ppdu_user {
 	uint32_t ast_index;
 	uint32_t tid;
 	uint32_t num_msdu;
+	uint8_t enc_type;
 	uint16_t  tcp_msdu_count;
 	uint16_t  udp_msdu_count;
 	uint16_t  other_msdu_count;
@@ -2747,6 +2764,7 @@ struct cdp_rx_stats_ppdu_user {
 	uint32_t rix;
 	uint32_t mpdu_retries;
 	uint16_t rx_time_us;
+	uint16_t retried_msdu_count;
 };
 
 /**

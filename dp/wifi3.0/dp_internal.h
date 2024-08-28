@@ -78,6 +78,20 @@ struct htt_dbgfs_cfg {
 	qdf_debugfs_file_t m;
 };
 
+/**
+ * struct dp_rx_defrag_cipher: structure to indicate cipher header
+ * @ic_name: Name
+ * @ic_header: header length
+ * @ic_trailer: trail length
+ * @ic_miclen: MIC length
+ */
+struct dp_rx_defrag_cipher {
+	const char *ic_name;
+	uint16_t ic_header;
+	uint8_t ic_trailer;
+	uint8_t ic_miclen;
+};
+
 /* Cookie MSB bits assigned for different use case.
  * Note: User can't use last 3 bits, as it is reserved for pdev_id.
  * If in future number of pdev are more than 3.
@@ -331,11 +345,13 @@ QDF_STATUS dp_mon_soc_detach(struct dp_soc *soc)
  * dp_rx_err_match_dhost() - function to check whether dest-mac is correct
  * @eh: Ethernet header of incoming packet
  * @vdev: dp_vdev object of the VAP on which this data packet is received
+ * @is_ml: Whether the peer is MLD or not
  *
  * Return: 1 if the destination mac is correct,
  *         0 if this frame is not correctly destined to this VAP/MLD
  */
-int dp_rx_err_match_dhost(qdf_ether_header_t *eh, struct dp_vdev *vdev);
+int dp_rx_err_match_dhost(qdf_ether_header_t *eh, struct dp_vdev *vdev,
+			  bool is_ml);
 
 #ifdef MONITOR_MODULARIZED_ENABLE
 static inline bool dp_monitor_modularized_enable(void)
@@ -1059,6 +1075,14 @@ static inline void
 dp_monitor_update_mac_vdev_map(struct dp_vdev *vdev)
 {
 }
+
+static inline void
+dp_mon_rx_config_packet_type_subtype(struct dp_soc *soc,
+				     uint32_t *msg_word,
+				     struct htt_rx_ring_tlv_filter *tlv_filter,
+				     uint32_t htt_ring_id)
+{
+}
 #endif /* !WIFI_MONITOR_SUPPORT */
 
 /**
@@ -1160,6 +1184,20 @@ void DP_PRINT_STATS(const char *fmt, ...);
 	if (likely(_handle)) \
 		_handle->stats._field += _delta; \
 }
+
+#ifdef QCA_DP_PROTOCOL_STATS
+#define DP_TX_PROTO_STATS_INC(_handle, _proto, _ring, _level, _field, _delta) \
+{ \
+	if (_proto == 3) \
+		_handle->stats.tx.proto.tx_proto[_ring][_level].l3[_field] += _delta; \
+	if (_proto == 4) \
+		_handle->stats.tx.proto.tx_proto[_ring][_level].l4[_field] += _delta; \
+	if (_proto == 5) \
+		_handle->stats.tx.proto.tx_proto[_ring][_level].l5[_field] += _delta; \
+}
+#else
+#define DP_TX_PROTO_STATS_INC(_handle, _proto, _ring, _level, _field, _delta)
+#endif /* QCA_DP_PROTOCOL_STATS */
 
 #define DP_PEER_LINK_STATS_INC(_handle, _field, _delta, _link) \
 { \
@@ -1491,6 +1529,23 @@ void DP_PRINT_STATS(const char *fmt, ...);
 #define DP_RX_HIST_STATS_PER_PDEV()
 #define DP_TX_HIST_STATS_PER_PDEV()
 #endif /* DISABLE_DP_STATS */
+
+#ifdef QCA_DP_PROTOCOL_STATS
+#define DP_PEER_INC_PROTO_STATS(_handle, _link, _field) \
+{ \
+	if (likely(_handle)) \
+		(_handle)->stats[_link].per_pkt_stats._field++; \
+}
+
+#define DP_INC_PROTO_STATS(_handle, _field) \
+{ \
+	if (likely(_handle)) \
+		(_handle)->stats._field++; \
+}
+#else
+#define DP_PEER_INC_PROTO_STATS(_handle, _link, _field)
+#define DP_INC_PROTO_STATS(_handle, _field)
+#endif /* QCA_DP_PROTOCOL_STATS */
 
 #define FRAME_MASK_IPV4_ARP   0x1
 #define FRAME_MASK_IPV4_DHCP  0x2
@@ -1966,6 +2021,52 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 #define DP_UPDATE_PROTOCOL_COUNT_STATS(_tgtobj, _srcobj)
 #endif
 
+#ifdef QCA_DP_PROTOCOL_STATS
+#define DP_UPDATE_PROTOCOL_STATS(_tgtobj, _srcobj) \
+{ \
+	uint8_t i, j; \
+	for (i = 0; i < RX_UPD_LEVEL_MAX; i++) { \
+		for (j = 0; j < CDP_PKT_TYPE_L3_MAX; j++) { \
+			(_tgtobj)->rx.proto.rx_proto[i].l3[j] +=\
+				(_srcobj)->rx.proto.rx_proto[i].l3[j]; \
+		} \
+		for (j = 0; j < CDP_PKT_TYPE_L4_MAX; j++) { \
+			(_tgtobj)->rx.proto.rx_proto[i].l4[j] +=\
+				(_srcobj)->rx.proto.rx_proto[i].l4[j]; \
+		} \
+		for (j = 0; j < CDP_PKT_TYPE_L5_MAX; j++) { \
+			(_tgtobj)->rx.proto.rx_proto[i].l5[j] +=\
+				(_srcobj)->rx.proto.rx_proto[i].l5[j]; \
+		} \
+	} \
+}
+
+#define DP_UPDATE_TX_PROTOCOL_VDEV_STATS(_tgtobj, _srcobj) \
+{\
+	uint8_t type, ring_id, level; \
+	for (level = 0; level < TX_UPD_LEVEL_MAX; level++) { \
+		for (ring_id = 0; ring_id < CDP_MAX_TX_DATA_RINGS; ring_id++) { \
+			for (type = 0; type < CDP_PKT_TYPE_L3_MAX; type++) { \
+				_tgtobj.tx.proto.tx_proto[ring_id][level].l3[type] += \
+				_srcobj->tx.proto.tx_proto[ring_id][level].l3[type]; \
+			} \
+			for (type = 0; type < CDP_PKT_TYPE_L4_MAX; type++) { \
+				_tgtobj.tx.proto.tx_proto[ring_id][level].l4[type] += \
+				_srcobj->tx.proto.tx_proto[ring_id][level].l4[type]; \
+			}		\
+			for (type = 0; type < CDP_PKT_TYPE_L5_MAX; type++) { \
+				_tgtobj.tx.proto.tx_proto[ring_id][level].l5[type] += \
+				_srcobj->tx.proto.tx_proto[ring_id][level].l5[type]; \
+			} \
+		} \
+	} \
+}
+
+#else
+#define DP_UPDATE_TX_PROTOCOL_VDEV_STATS(_tgtobj, _srcobj)
+#define DP_UPDATE_PROTOCOL_STATS(_tgtobj, _srcobj)
+#endif /* QCA_DP_PROTOCOL_STATS */
+
 #ifdef WLAN_FEATURE_11BE
 #define DP_UPDATE_11BE_STATS(_tgtobj, _srcobj) \
 	do { \
@@ -2100,6 +2201,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 		_tgtobj->tx.inval_link_id_pkt_cnt += \
 					_srcobj->tx.inval_link_id_pkt_cnt; \
 		_tgtobj->tx.retry_count += _srcobj->tx.retry_count; \
+		_tgtobj->tx.total_msdu_retries += _srcobj->tx.total_msdu_retries; \
 		_tgtobj->tx.multiple_retry_count += \
 					_srcobj->tx.multiple_retry_count; \
 		_tgtobj->tx.tx_success_twt.num += \
@@ -2188,6 +2290,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 		} \
 		DP_IPA_UPDATE_PER_PKT_RX_STATS(_tgtobj, _srcobj); \
 		DP_UPDATE_PROTOCOL_COUNT_STATS(_tgtobj, _srcobj); \
+		DP_UPDATE_PROTOCOL_STATS(_tgtobj, _srcobj); \
 	} while (0)
 
 #define DP_UPDATE_PER_PKT_STATS(_tgtobj, _srcobj) \
@@ -2293,8 +2396,11 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 		\
 		for (i = 0; i < CDP_RSSI_CHAIN_LEN; i++) \
 			_tgtobj->tx.rssi_chain[i] = _srcobj->tx.rssi_chain[i]; \
+		_tgtobj->tx.tx_ppdu_duration += _srcobj->tx.tx_ppdu_duration; \
 		_tgtobj->rx.mpdu_cnt_fcs_ok += _srcobj->rx.mpdu_cnt_fcs_ok; \
 		_tgtobj->rx.mpdu_cnt_fcs_err += _srcobj->rx.mpdu_cnt_fcs_err; \
+		_tgtobj->rx.rx_total.num += _srcobj->rx.rx_total.num; \
+		_tgtobj->rx.rx_total.bytes += _srcobj->rx.rx_total.bytes; \
 		_tgtobj->rx.non_ampdu_cnt += _srcobj->rx.non_ampdu_cnt; \
 		_tgtobj->rx.ampdu_cnt += _srcobj->rx.ampdu_cnt; \
 		_tgtobj->rx.rx_mpdus += _srcobj->rx.rx_mpdus; \
@@ -2307,6 +2413,8 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 		_tgtobj->rx.avg_snr = _srcobj->rx.avg_snr; \
 		_tgtobj->rx.rx_snr_measured_time = \
 					_srcobj->rx.rx_snr_measured_time; \
+		_tgtobj->rx.retried_msdu_count += \
+					_srcobj->rx.retried_msdu_count; \
 		_tgtobj->rx.snr = _srcobj->rx.snr; \
 		_tgtobj->rx.last_snr = _srcobj->rx.last_snr; \
 		_tgtobj->rx.nss_info = _srcobj->rx.nss_info; \
@@ -2360,6 +2468,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 		for (i = 0; i < MAX_BW; i++) { \
 			_tgtobj->rx.bw[i] += _srcobj->rx.bw[i]; \
 		} \
+		_tgtobj->rx.rx_ppdu_duration += _srcobj->rx.rx_ppdu_duration; \
 		DP_UPDATE_11BE_STATS(_tgtobj, _srcobj); \
 	} while (0)
 
@@ -2848,6 +2957,7 @@ void dp_peer_cleanup(struct dp_vdev *vdev, struct dp_peer *peer);
  * @dp_pdev: struct dp_pdev *
  * @rx_desc_pool: Rx desc pool
  * @dp_buf_page_frag_alloc_enable: is frag alloc enable
+ * @mac_id: MAC ID
  *
  * Return: QDF_STATUS
  */
@@ -2856,7 +2966,8 @@ dp_pdev_nbuf_alloc_and_map(struct dp_soc *dp_soc,
 			   struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
 			   struct dp_pdev *dp_pdev,
 			   struct rx_desc_pool *rx_desc_pool,
-			   bool dp_buf_page_frag_alloc_enable);
+			   bool dp_buf_page_frag_alloc_enable,
+			   uint32_t mac_id);
 
 #ifdef DP_PEER_EXTENDED_API
 /**
@@ -2929,6 +3040,7 @@ QDF_STATUS dp_peer_state_update(struct cdp_soc_t *soc, uint8_t *peer_mac,
  * dp_get_vdevid() - Get virtual interface id which peer registered
  * @soc_hdl: datapath soc handle
  * @peer_mac: peer mac address
+ * @peer_type: peer type
  * @vdev_id: virtual interface id which peer registered
  *
  * Get virtual interface id which peer registered
@@ -2936,7 +3048,7 @@ QDF_STATUS dp_peer_state_update(struct cdp_soc_t *soc, uint8_t *peer_mac,
  * Return: QDF_STATUS_SUCCESS registration success
  */
 QDF_STATUS dp_get_vdevid(struct cdp_soc_t *soc_hdl, uint8_t *peer_mac,
-			 uint8_t *vdev_id);
+			 enum cdp_peer_type peer_type, uint8_t *vdev_id);
 
 struct cdp_vdev *dp_get_vdev_by_peer_addr(struct cdp_pdev *pdev_handle,
 		struct qdf_mac_addr peer_addr);
@@ -3023,7 +3135,7 @@ void dp_set_peer_as_tdls_peer(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 #else
 static inline
 QDF_STATUS dp_get_vdevid(struct cdp_soc_t *soc_hdl, uint8_t *peer_mac,
-			 uint8_t *vdev_id)
+			 enum cdp_peer_type peer_type, uint8_t *vdev_id)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }
@@ -3338,6 +3450,8 @@ uint16_t dp_tx_me_send_convert_ucast(struct cdp_soc_t *soc, uint8_t vdev_id,
 void dp_tx_me_alloc_descriptor(struct cdp_soc_t *soc, uint8_t pdev_id);
 
 void dp_tx_me_free_descriptor(struct cdp_soc_t *soc, uint8_t pdev_id);
+bool dp_peer_check_dms_capable_by_mac(struct cdp_soc_t *soc, uint8_t vdev_id,
+				      uint8_t *mac_addr);
 
 /**
  * dp_h2t_ext_stats_msg_send(): function to construct HTT message to pass to FW
@@ -3490,6 +3604,18 @@ void dp_update_delay_stats(struct cdp_tid_tx_stats *tstats,
 			   struct cdp_tid_rx_stats *rstats, uint32_t delay,
 			   uint8_t tid, uint8_t mode, uint8_t ring_id,
 			   bool delay_in_us);
+
+#ifdef WLAN_FEATURE_UL_JITTER
+/**
+ * dp_update_jitter_stats() - Update delay jitter statistics in structure
+ *				and fill min, max and avg delay
+ * @tstats: tid tx stats
+ * @jitter: jitter in us
+ *
+ * Return: none
+ */
+void dp_update_jitter_stats(struct cdp_tid_tx_stats *tstats, uint32_t jitter);
+#endif
 
 /**
  * dp_print_ring_stats(): Print tail and head pointer

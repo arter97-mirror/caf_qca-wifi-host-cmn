@@ -1149,6 +1149,10 @@ struct hal_hw_txrx_ops {
 
 	void (*hal_rx_proc_phyrx_other_receive_info_tlv)(void *rx_tlv_hdr,
 							void *ppdu_info_handle);
+	void (*hal_rx_ru_info_details)(void *rx_tlv_hdr,
+				       void *ppdu_info_handle);
+	void (*hal_rx_proc_phyrx_all_sigb_tlv)(void *rx_tlv_hdr,
+					       void *ppdu_info_handle);
 	void (*hal_rx_dump_msdu_end_tlv)(void *pkt_tlvs, uint8_t dbg_level);
 	void (*hal_rx_dump_rx_attention_tlv)(void *pkt_tlvs, uint8_t dbg_level);
 	void (*hal_rx_dump_msdu_start_tlv)(void *pkt_tlvs, uint8_t dbg_level);
@@ -1281,6 +1285,9 @@ struct hal_hw_txrx_ops {
 	uint32_t (*hal_rx_flow_setup_cmem_fse)(
 				struct hal_soc *soc, uint32_t cmem_ba,
 				uint32_t table_offset, uint8_t *rx_flow);
+	QDF_STATUS (*hal_rx_flow_delete_cmem_fse)(struct hal_soc *soc,
+						  uint32_t cmem_ba,
+						  uint32_t table_offset);
 	uint32_t (*hal_rx_flow_get_cmem_fse_ts)(struct hal_soc *soc,
 						uint32_t fse_offset);
 	void (*hal_rx_flow_get_cmem_fse)(struct hal_soc *soc,
@@ -1717,6 +1724,7 @@ void hal_peach_attach(struct hal_soc *hal_soc);
 void hal_qcn9224v2_attach(struct hal_soc *hal_soc);
 void hal_wcn6450_attach(struct hal_soc *hal_soc);
 void hal_wcn7750_attach(struct hal_soc *hal_soc);
+void hal_qcc2072_attach(struct hal_soc *hal_soc);
 
 /**
  * hal_soc_to_hal_soc_handle() - API to convert hal_soc to opaque

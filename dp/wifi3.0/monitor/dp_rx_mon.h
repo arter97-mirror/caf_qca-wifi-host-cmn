@@ -63,6 +63,10 @@
 #define DP_RX_MON_SNAP_SIZE 4
 #define DP_RX_MON_DECAP_HDR_SIZE 14
 
+#define DP_RX_MON_FCS_LEN 4
+#define DP_RX_MON_QOS_LEN 2
+#define DP_RX_MON_DSTODS_MASK 0xff00
+#define DP_RX_MON_DSTODS_BITS 8
 
 /**
  * enum dp_mon_reap_status - monitor status ring ppdu status
@@ -827,18 +831,21 @@ dp_mon_rx_stats_update_rssi_dbm_params(struct dp_mon_pdev *mon_pdev,
  * @ppdu_info: Structure for rx ppdu info
  * @nbuf: Qdf nbuf abstraction for linux skb
  * @mac_id: mac id
+ * @tlv_status: TLV status
  *
  * Return: 0 on success, 1 on failure
  */
 int
 dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 			      struct hal_rx_ppdu_info *ppdu_info,
-			      qdf_nbuf_t nbuf, uint8_t mac_id);
+			      qdf_nbuf_t nbuf, uint8_t mac_id,
+			      uint32_t tlv_status);
 #else
 static inline int
 dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 			      struct hal_rx_ppdu_info *ppdu_info,
-			      qdf_nbuf_t nbuf, uint8_t mac_id)
+			      qdf_nbuf_t nbuf, uint8_t mac_id,
+			      uint32_t tlv_status)
 {
 	return 0;
 }

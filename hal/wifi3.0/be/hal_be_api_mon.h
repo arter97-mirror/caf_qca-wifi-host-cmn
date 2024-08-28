@@ -25,7 +25,6 @@ defined(WLAN_PKT_CAPTURE_RX_2_0)
 #include <mon_destination_ring.h>
 #include <mon_drop.h>
 #endif
-#include <hal_be_hw_headers.h>
 #include "hal_api_mon.h"
 #include <hal_generic_api.h>
 #include <hal_generic_api.h>
@@ -202,7 +201,7 @@ defined(QCA_SINGLE_WIFI_3_0)
 #define RX_MON_MPDU_START_WMASK_V2            0x007F8
 #define RX_MON_MPDU_END_WMASK_V2              0xFF
 #define RX_MON_MSDU_END_WMASK                 0x0AE1
-#define RX_MON_PPDU_END_USR_STATS_WMASK       0xB7F
+#define RX_MON_PPDU_END_USR_STATS_WMASK       0xF7F
 
 #define MAX_USR_INFO_STR_CNT	4
 
@@ -429,6 +428,9 @@ struct rx_ppdu_end_user_mon_data {
 		 ampdu_delim_ok_count_13_7         :  7;
 	uint32_t mpdu_err_byte_count               : 25,
 		 ampdu_delim_ok_count_20_14        :  7;
+	uint32_t non_consecutive_delimiter_err     : 16,
+		 retried_msdu_count                : 16;
+	uint32_t ht_control_null_field             : 32;
 	uint32_t sw_response_reference_ptr_ext     : 32;
 	uint32_t corrupted_due_to_fifo_delay       :  1,
 		 frame_control_info_null_valid     :  1,
@@ -658,6 +660,9 @@ struct rx_ppdu_end_user_mon_data {
 		 ampdu_delim_err_count             : 25;
 	uint32_t ampdu_delim_ok_count_20_14        :  7,
 		 mpdu_err_byte_count               : 25;
+	uint32_t retried_msdu_count                : 16,
+		 non_consecutive_delimiter_err     : 16;
+	uint32_t ht_control_null_field             : 32;
 	uint32_t sw_response_reference_ptr_ext     : 32;
 	uint32_t reserved_23a                      :  3,
 		 retried_mpdu_count                : 11,
@@ -932,6 +937,8 @@ hal_rx_populate_mu_user_info(hal_rx_mon_ppdu_end_user_t *rx_ppdu_end_user,
 		ppdu_info->rx_status.tcp_msdu_count;
 	mon_rx_user_status->udp_msdu_count =
 		ppdu_info->rx_status.udp_msdu_count;
+	mon_rx_user_status->retried_msdu_count =
+		rx_ppdu_end_user->retried_msdu_count;
 	mon_rx_user_status->other_msdu_count =
 		ppdu_info->rx_status.other_msdu_count;
 	mon_rx_user_status->frame_control = ppdu_info->rx_status.frame_control;
@@ -1134,6 +1141,8 @@ enum hal_tx_tlv_status {
 	HAL_MON_TX_MSDU_START,
 	HAL_MON_TX_BUFFER_ADDR,
 	HAL_MON_TX_DATA,
+	HAL_MON_TX_MSDU_END,
+	HAL_MON_TX_MPDU_END,
 
 	HAL_MON_TX_FES_STATUS_START,
 
@@ -1142,6 +1151,7 @@ enum hal_tx_tlv_status {
 
 	HAL_MON_TX_FES_STATUS_START_PPDU,
 	HAL_MON_TX_FES_STATUS_USER_PPDU,
+	HAL_MON_TX_FES_STATUS_ACK_BA,
 	HAL_MON_TX_QUEUE_EXTENSION,
 
 	HAL_MON_RX_FRAME_BITMAP_ACK,
@@ -1493,8 +1503,12 @@ struct hal_tx_status_info {
  * @is_used: boolean flag to identify valid ppdu info
  * @is_data: boolean flag to identify data frame
  * @cur_usr_idx: Current user index of the PPDU
+ * @ack_recvd: boolean flag to indicate if ack is received
+ * @cts_recvd: boolean flag to indicate if cts is received
+ * @su_or_mu: type of transmission used like su, mu, mu_su transmission.
  * @reserved: for future purpose
  * @prot_tlv_status: protection tlv status
+ * @ack_rssi: rssi of received ack. Valid only if ack_recvd is set
  * @tx_tlv_info: store tx tlv info for recording
  * @packet_info: packet information
  * @rx_status: monitor mode rx status information
@@ -1506,9 +1520,13 @@ struct hal_tx_ppdu_info {
 		 is_used	:1,
 		 is_data	:1,
 		 cur_usr_idx	:8,
-		 reserved	:15;
+		 ack_recvd	:1,
+		 cts_recvd	:1,
+		 su_or_mu	:2,
+		 reserved	:10;
 
 	uint32_t prot_tlv_status;
+	int8_t ack_rssi;
 
 #ifdef MONITOR_TLV_RECORDING_ENABLE
 	struct hal_tx_tlv_info tx_tlv_info;
@@ -1884,47 +1902,6 @@ hal_rx_parse_eht_mumimo_user_info(uint32_t *eht_user_info,
 			   QDF_MON_STATUS_EHT_USER_SPATIAL_CONFIG_SHIFT);
 }
 
-static inline uint32_t
-hal_rx_parse_eht_sig_mumimo_user_info(struct hal_soc *hal_soc, void *tlv,
-				      struct hal_rx_ppdu_info *ppdu_info)
-{
-	struct hal_eht_sig_mu_mimo_user_info *user_info;
-	struct mon_rx_status *rx_status;
-	struct mon_rx_user_status *rx_user_status;
-	uint32_t *eht_user_info;
-	uint32_t user_idx, i;
-	uint32_t *user_field;
-
-	i = 0;
-	rx_status = &ppdu_info->rx_status;
-	user_field = (uint32_t *)((uint8_t *)tlv + ppdu_info->tlv_aggr.rd_idx);
-
-	while ((i++ < MAX_USR_INFO_STR_CNT) &&
-	       (ppdu_info->tlv_aggr.rd_idx < ppdu_info->tlv_aggr.cur_len)) {
-		user_idx = rx_status->num_eht_user_info_valid;
-		rx_user_status = &ppdu_info->rx_user_status[user_idx];
-		user_info = (struct hal_eht_sig_mu_mimo_user_info *)user_field;
-		eht_user_info = &rx_user_status->eht_user_info;
-
-		hal_rx_parse_eht_mumimo_user_info(eht_user_info, user_info);
-		rx_status->mcs = user_info->mcs;
-
-		/* CRC for matched user block */
-		rx_user_status->eht_known |=
-			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_KNOWN |
-			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_TAIL_KNOWN;
-		rx_user_status->eht_data[7] |=
-			(user_info->crc <<
-			 QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_SHIFT);
-
-		ppdu_info->tlv_aggr.rd_idx += 4;
-		user_field++;
-		rx_status->num_eht_user_info_valid++;
-	}
-
-	return HAL_TLV_STATUS_PPDU_NOT_DONE;
-}
-
 static inline void
 hal_rx_parse_eht_sig_mumimo_all_user_info(struct hal_soc *hal_soc, void *tlv,
 					  struct hal_rx_ppdu_info *ppdu_info)
@@ -1935,7 +1912,7 @@ hal_rx_parse_eht_sig_mumimo_all_user_info(struct hal_soc *hal_soc, void *tlv,
 
 	user_info = (struct hal_eht_sig_mu_mimo_user_info *)tlv;
 
-	eht_user_info = &ppdu_info->rx_status.eht_user_info[user_idx];
+	eht_user_info = &ppdu_info->rx_user_status[user_idx].eht_user_info;
 
 	hal_rx_parse_eht_mumimo_user_info(eht_user_info, user_info);
 
@@ -1965,47 +1942,6 @@ hal_rx_parse_eht_non_mumimo_user_info(uint32_t *eht_user_info,
 }
 
 static inline void
-hal_rx_parse_eht_sig_non_mumimo_user_info(struct hal_soc *hal_soc, void *tlv,
-					  struct hal_rx_ppdu_info *ppdu_info)
-{
-	struct hal_eht_sig_non_mu_mimo_user_info *user_info;
-	struct mon_rx_status *rx_status;
-	struct mon_rx_user_status *rx_user_status;
-	uint32_t *eht_user_info;
-	uint32_t user_idx, i;
-	uint32_t *user_field;
-
-	i = 0;
-	rx_status = &ppdu_info->rx_status;
-	user_field = (uint32_t *)((uint8_t *)tlv + ppdu_info->tlv_aggr.rd_idx);
-
-	while ((i++ < MAX_USR_INFO_STR_CNT) &&
-	       (ppdu_info->tlv_aggr.rd_idx < ppdu_info->tlv_aggr.cur_len)) {
-		user_idx = rx_status->num_eht_user_info_valid;
-
-		rx_user_status = &ppdu_info->rx_user_status[user_idx];
-		user_info =
-			(struct hal_eht_sig_non_mu_mimo_user_info *)user_field;
-		eht_user_info = &rx_user_status->eht_user_info;
-		hal_rx_parse_eht_non_mumimo_user_info(eht_user_info, user_info);
-
-		ppdu_info->rx_status.mcs = user_info->mcs;
-
-		/* CRC for matched user block */
-		rx_user_status->eht_known |=
-			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_KNOWN |
-			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_TAIL_KNOWN;
-		rx_user_status->eht_data[7] |=
-			(user_info->crc <<
-			 QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_SHIFT);
-
-		ppdu_info->tlv_aggr.rd_idx += 4;
-		user_field++;
-		rx_status->num_eht_user_info_valid++;
-	}
-}
-
-static inline void
 hal_rx_parse_eht_sig_non_mumimo_all_user_info(struct hal_soc *hal_soc,
 					      void *tlv, struct hal_rx_ppdu_info
 					      *ppdu_info)
@@ -2016,7 +1952,7 @@ hal_rx_parse_eht_sig_non_mumimo_all_user_info(struct hal_soc *hal_soc,
 
 	user_info = (struct hal_eht_sig_non_mu_mimo_user_info *)tlv;
 
-	eht_user_info = &ppdu_info->rx_status.eht_user_info[user_idx];
+	eht_user_info = &ppdu_info->rx_user_status[user_idx].eht_user_info;
 
 	hal_rx_parse_eht_non_mumimo_user_info(eht_user_info, user_info);
 
@@ -2104,6 +2040,189 @@ hal_rx_parse_eht_sig_ndp(struct hal_soc *hal_soc, void *tlv,
 
 	ppdu_info->rx_status.eht_data[0] |= (eht_sig_ndp->crc <<
 					QDF_MON_STATUS_EHT_CRC1_SHIFT);
+
+	return HAL_TLV_STATUS_PPDU_NOT_DONE;
+}
+
+static inline uint32_t
+hal_rx_parse_ru_allocation_be(struct hal_soc *hal_soc, void *tlv,
+			      struct hal_rx_ppdu_info *ppdu_info)
+{
+	uint64_t *ehtsig_tlv = (uint64_t *)tlv;
+	struct hal_eht_sig_ofdma_cmn_eb1 *ofdma_cmn_eb1;
+	struct hal_eht_sig_ofdma_cmn_eb2 *ofdma_cmn_eb2;
+	uint8_t num_ru_allocation_known = 0;
+
+	ofdma_cmn_eb1 = (struct hal_eht_sig_ofdma_cmn_eb1 *)ehtsig_tlv;
+	ofdma_cmn_eb2 = (struct hal_eht_sig_ofdma_cmn_eb2 *)(ehtsig_tlv + 1);
+
+	switch (ppdu_info->u_sig_info.bw) {
+	case HAL_EHT_BW_320_2:
+	case HAL_EHT_BW_320_1:
+		num_ru_allocation_known += 4;
+
+		ppdu_info->rx_status.eht_data[3] |=
+			(ofdma_cmn_eb2->ru_allocation2_6 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION2_6_SHIFT);
+		ppdu_info->rx_status.eht_data[3] |=
+			(ofdma_cmn_eb2->ru_allocation2_5 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION2_5_SHIFT);
+		ppdu_info->rx_status.eht_data[3] |=
+			(ofdma_cmn_eb2->ru_allocation2_4 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION2_4_SHIFT);
+		ppdu_info->rx_status.eht_data[2] |=
+			(ofdma_cmn_eb2->ru_allocation2_3 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION2_3_SHIFT);
+		fallthrough;
+	case HAL_EHT_BW_160:
+		num_ru_allocation_known += 2;
+
+		ppdu_info->rx_status.eht_data[2] |=
+			(ofdma_cmn_eb2->ru_allocation2_2 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION2_2_SHIFT);
+		ppdu_info->rx_status.eht_data[2] |=
+			(ofdma_cmn_eb2->ru_allocation2_1 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION2_1_SHIFT);
+		fallthrough;
+	case HAL_EHT_BW_80:
+		num_ru_allocation_known += 1;
+
+		ppdu_info->rx_status.eht_data[1] |=
+			(ofdma_cmn_eb1->ru_allocation1_2 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION1_2_SHIFT);
+		fallthrough;
+	case HAL_EHT_BW_40:
+	case HAL_EHT_BW_20:
+		num_ru_allocation_known += 1;
+
+		ppdu_info->rx_status.eht_data[1] |=
+			(ofdma_cmn_eb1->ru_allocation1_1 <<
+			 QDF_MON_STATUS_EHT_RU_ALLOCATION1_1_SHIFT);
+		break;
+	default:
+		break;
+	}
+
+	ppdu_info->rx_status.eht_known |=
+			(num_ru_allocation_known <<
+			 QDF_MON_STATUS_EHT_NUM_KNOWN_RU_ALLOCATIONS_SHIFT);
+
+	return HAL_TLV_STATUS_PPDU_NOT_DONE;
+}
+
+static inline uint32_t
+hal_rx_parse_eht_sig_mumimo_user_info_be(struct hal_soc *hal_soc, void *tlv,
+					 struct hal_rx_ppdu_info *ppdu_info)
+{
+	struct hal_eht_sig_mu_mimo_user_info *user_info;
+	uint32_t user_idx = ppdu_info->rx_status.num_eht_user_info_valid;
+
+	user_info = (struct hal_eht_sig_mu_mimo_user_info *)tlv;
+
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+				QDF_MON_STATUS_EHT_USER_STA_ID_KNOWN |
+				QDF_MON_STATUS_EHT_USER_MCS_KNOWN |
+				QDF_MON_STATUS_EHT_USER_CODING_KNOWN |
+				QDF_MON_STATUS_EHT_USER_SPATIAL_CONFIG_KNOWN;
+
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+		(user_info->sta_id << QDF_MON_STATUS_EHT_USER_STA_ID_SHIFT);
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+		(user_info->mcs << QDF_MON_STATUS_EHT_USER_MCS_SHIFT);
+	ppdu_info->rx_status.mcs = user_info->mcs;
+
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+		(user_info->coding << QDF_MON_STATUS_EHT_USER_CODING_SHIFT);
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+				(user_info->spatial_coding <<
+				 QDF_MON_STATUS_EHT_USER_SPATIAL_CONFIG_SHIFT);
+
+	/* CRC for matched user block */
+	ppdu_info->rx_status.eht_known |=
+			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_KNOWN |
+			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_TAIL_KNOWN;
+	ppdu_info->rx_status.eht_data[7] |=
+		(user_info->crc << QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_SHIFT);
+
+	ppdu_info->rx_status.num_eht_user_info_valid++;
+
+	return HAL_TLV_STATUS_PPDU_NOT_DONE;
+}
+
+static inline uint32_t
+hal_rx_parse_eht_sig_non_mumimo_user_info_be(struct hal_soc *hal_soc, void *tlv,
+					     struct hal_rx_ppdu_info *ppdu_info)
+{
+	struct hal_eht_sig_non_mu_mimo_user_info *user_info;
+	uint32_t user_idx = ppdu_info->rx_status.num_eht_user_info_valid;
+
+	user_info = (struct hal_eht_sig_non_mu_mimo_user_info *)tlv;
+
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+				QDF_MON_STATUS_EHT_USER_STA_ID_KNOWN |
+				QDF_MON_STATUS_EHT_USER_MCS_KNOWN |
+				QDF_MON_STATUS_EHT_USER_CODING_KNOWN |
+				QDF_MON_STATUS_EHT_USER_NSS_KNOWN |
+				QDF_MON_STATUS_EHT_USER_BEAMFORMING_KNOWN;
+
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+		(user_info->sta_id << QDF_MON_STATUS_EHT_USER_STA_ID_SHIFT);
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+		(user_info->mcs << QDF_MON_STATUS_EHT_USER_MCS_SHIFT);
+	ppdu_info->rx_status.mcs = user_info->mcs;
+
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+		(user_info->nss << QDF_MON_STATUS_EHT_USER_NSS_SHIFT);
+	ppdu_info->rx_status.nss = user_info->nss + 1;
+
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+				(user_info->beamformed <<
+				 QDF_MON_STATUS_EHT_USER_BEAMFORMING_SHIFT);
+	ppdu_info->rx_status.eht_user_info[user_idx] |=
+		(user_info->coding << QDF_MON_STATUS_EHT_USER_CODING_SHIFT);
+
+	/* CRC for matched user block */
+	ppdu_info->rx_status.eht_known |=
+			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_KNOWN |
+			QDF_MON_STATUS_EHT_USER_ENC_BLOCK_TAIL_KNOWN;
+	ppdu_info->rx_status.eht_data[7] |=
+		(user_info->crc << QDF_MON_STATUS_EHT_USER_ENC_BLOCK_CRC_SHIFT);
+
+	ppdu_info->rx_status.num_eht_user_info_valid++;
+
+	return HAL_TLV_STATUS_PPDU_NOT_DONE;
+}
+
+static inline uint32_t
+hal_rx_parse_eht_sig_non_ofdma_be(struct hal_soc *hal_soc, void *tlv,
+				  struct hal_rx_ppdu_info *ppdu_info)
+{
+	void *user_info = (void *)((uint8_t *)tlv + 4);
+
+	hal_rx_parse_usig_overflow(hal_soc, tlv, ppdu_info);
+	hal_rx_parse_non_ofdma_users(hal_soc, tlv, ppdu_info);
+
+	if (hal_rx_is_mu_mimo_user(hal_soc, ppdu_info))
+		hal_rx_parse_eht_sig_mumimo_user_info_be(hal_soc, user_info,
+							 ppdu_info);
+	else
+		hal_rx_parse_eht_sig_non_mumimo_user_info_be(hal_soc, user_info,
+							     ppdu_info);
+
+	return HAL_TLV_STATUS_PPDU_NOT_DONE;
+}
+
+static inline uint32_t
+hal_rx_parse_eht_sig_ofdma_be(struct hal_soc *hal_soc, void *tlv,
+			      struct hal_rx_ppdu_info *ppdu_info)
+{
+	uint64_t *eht_sig_tlv = (uint64_t *)tlv;
+	void *user_info = (void *)(eht_sig_tlv + 2);
+
+	hal_rx_parse_usig_overflow(hal_soc, tlv, ppdu_info);
+	hal_rx_parse_ru_allocation_be(hal_soc, tlv, ppdu_info);
+	hal_rx_parse_eht_sig_non_mumimo_user_info_be(hal_soc, user_info,
+						     ppdu_info);
 
 	return HAL_TLV_STATUS_PPDU_NOT_DONE;
 }
@@ -2284,13 +2403,16 @@ hal_rx_update_su_evm_info(void *rx_tlv,
 
 /**
  * hal_rx_mon_phyrx_other_receive_info_tlv() - API to get tlv info
+ * @hal_soc: hal soc handle
  * @rx_tlv_hdr: RX TLV header
  * @ppdu_info_hdl: Handle to PPDU info to update
  *
  * Return: None
  */
 static inline void
-hal_rx_mon_phyrx_other_receive_info_tlv(void *rx_tlv_hdr, void *ppdu_info_hdl)
+hal_rx_mon_phyrx_other_receive_info_tlv(struct hal_soc *hal_soc,
+					void *rx_tlv_hdr,
+					void *ppdu_info_hdl)
 {
 	uint32_t tlv_len, tlv_tag;
 	void *rx_tlv;
@@ -2307,10 +2429,12 @@ hal_rx_mon_phyrx_other_receive_info_tlv(void *rx_tlv_hdr, void *ppdu_info_hdl)
 
 	if (!tlv_len)
 		return;
+
 	switch (tlv_tag) {
 	case WIFIPHYRX_OTHER_RECEIVE_INFO_EVM_DETAILS_E:
 		/* Skip TLV length to get TLV content */
 		rx_tlv = (uint8_t *)rx_tlv + HAL_RX_TLV64_HDR_SIZE;
+
 		ppdu_info->evm_info.number_of_symbols = HAL_RX_GET(rx_tlv,
 			PHYRX_OTHER_RECEIVE_INFO,
 			EVM_DETAILS_NUMBER_OF_DATA_SYM);
@@ -2322,6 +2446,9 @@ hal_rx_mon_phyrx_other_receive_info_tlv(void *rx_tlv_hdr, void *ppdu_info_hdl)
 			EVM_DETAILS_NUMBER_OF_STREAMS);
 		hal_rx_update_su_evm_info(rx_tlv, ppdu_info_hdl);
 		break;
+	case WIFIPHYRX_OTHER_RECEIVE_INFO_RU_DETAILS_E:
+		hal_rx_ru_info_details(hal_soc, rx_tlv, ppdu_info);
+		break;
 	default:
 		qdf_debug("%s unhandled TLV type: %d, TLV len:%d",
 			  __func__, tlv_tag, tlv_len);
@@ -2331,14 +2458,16 @@ hal_rx_mon_phyrx_other_receive_info_tlv(void *rx_tlv_hdr, void *ppdu_info_hdl)
 #else
 /**
  * hal_rx_mon_phyrx_other_receive_info_tlv() - API to get tlv info
+ * @hal_soc: hal soc handle
  * @rx_tlv_hdr: RX TLV header
  * @ppdu_info_hdl: Handle to PPDU info to update
  *
  * Return: None
  */
 static inline
-void hal_rx_mon_phyrx_other_receive_info_tlv(void *rx_tlv_hdr,
-						   void *ppdu_info_hdl)
+void hal_rx_mon_phyrx_other_receive_info_tlv(struct hal_soc *hal_soc,
+					     void *rx_tlv_hdr,
+					     void *ppdu_info_hdl)
 {
 }
 #endif /* WLAN_SA_API_ENABLE */
@@ -2636,7 +2765,8 @@ hal_rx_parse_receive_user_info(struct hal_soc *hal_soc, uint8_t *tlv,
 
 		if (ppdu_info->rx_status.reception_type ==
 		    HAL_RX_TYPE_MU_OFDMA) {
-			ppdu_info->rx_status.he_mu_flags = 1;
+			if (ppdu_info->rx_status.mu_dl_ul != HAL_RX_TYPE_UL)
+				ppdu_info->rx_status.he_mu_flags = 1;
 
 			/* HE-data1 */
 			mon_rx_user_status->he_data1 |=
@@ -3273,6 +3403,7 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		case TARGET_TYPE_QCN9000:
 		case TARGET_TYPE_QCN6122:
 		case TARGET_TYPE_QCN6432:
+		case TARGET_TYPE_QCA5424:
 #ifdef QCA_WIFI_QCA6390
 		case TARGET_TYPE_QCA6390:
 #endif
@@ -3322,6 +3453,7 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		case TARGET_TYPE_QCA6490:
 		case TARGET_TYPE_QCA6750:
 		case TARGET_TYPE_WCN7750:
+		case TARGET_TYPE_QCC2072:
 			ppdu_info->rx_status.nss = 0;
 			break;
 		default:
@@ -3870,8 +4002,8 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		break;
 	}
 	case WIFIPHYRX_OTHER_RECEIVE_INFO_E:
-		hal_rx_mon_phyrx_other_receive_info_tlv(rx_tlv_hdr,
-							 ppdu_info);
+		hal_rx_mon_phyrx_other_receive_info_tlv(hal, rx_tlv_hdr,
+							ppdu_info);
 		break;
 	case WIFIPHYRX_GENERIC_U_SIG_E:
 		hal_rx_parse_u_sig_hdr(hal, rx_tlv, ppdu_info);
@@ -3896,8 +4028,7 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		ppdu_info->ppdu_msdu_info[ppdu_info->fcs_ok_cnt].first_msdu_payload =
 			rx_tlv;
 		ppdu_info->ppdu_msdu_info[ppdu_info->fcs_ok_cnt].payload_len = tlv_len;
-		if (!ppdu_info->msdu_info.first_msdu_payload)
-			ppdu_info->msdu_info.first_msdu_payload = rx_tlv;
+		ppdu_info->msdu_info.first_msdu_payload = rx_tlv;
 		ppdu_info->msdu_info.payload_len = tlv_len;
 		ppdu_info->user_id = user_id;
 		ppdu_info->hdr_len = tlv_len;
@@ -4028,6 +4159,7 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 	case WIFIMON_DROP_E:
 		hal_rx_update_ppdu_drop_cnt(rx_tlv, ppdu_info);
 		hal_rx_record_tlv_info(ppdu_info, tlv_tag);
+		ppdu_info->is_drop_ppdu = true;
 		return HAL_TLV_STATUS_MON_DROP;
 	case 0:
 		hal_rx_record_tlv_info(ppdu_info, tlv_tag);

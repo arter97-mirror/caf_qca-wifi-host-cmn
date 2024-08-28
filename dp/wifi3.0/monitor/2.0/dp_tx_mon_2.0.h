@@ -446,7 +446,9 @@ struct dp_tx_ppdu_info {
  * @pkt_buf_recv: tx monitor packet buffer received
  * @pkt_buf_free: tx monitor packet buffer free
  * @pkt_buf_processed: tx monitor packet buffer processed
+ * @pkt_buf_drop: tx monitor packet buffer dropped due to mpdu incomplete
  * @pkt_buf_to_stack: tx monitor packet buffer send to stack
+ * @pkt_buf_radiotap_err: tx monitor packet buffer dropped due to radiotap err
  * @status_buf_recv: tx monitor status buffer received
  * @status_buf_free: tx monitor status buffer free
  * @totat_tx_mon_replenish_cnt: tx monitor replenish count
@@ -466,7 +468,9 @@ struct dp_tx_monitor_drop_stats {
 	uint64_t pkt_buf_recv;
 	uint64_t pkt_buf_free;
 	uint64_t pkt_buf_processed;
+	uint64_t pkt_buf_drop;
 	uint64_t pkt_buf_to_stack;
+	uint64_t pkt_buf_radiotap_err;
 
 	uint64_t status_buf_recv;
 	uint64_t status_buf_free;
@@ -748,6 +752,9 @@ QDF_STATUS dp_tx_mon_soc_detach_2_0(struct dp_soc *soc, uint32_t lmac_id);
 void dp_tx_mon_soc_deinit_2_0(struct dp_soc *soc, uint32_t lmac_id);
 void dp_print_pdev_tx_monitor_stats_2_0(struct dp_pdev *pdev);
 QDF_STATUS
+dp_get_pdev_tx_capture_stats_2_0(struct dp_pdev *pdev,
+				 struct cdp_pdev_tx_capture_stats *stats);
+QDF_STATUS
 dp_tx_mon_buffers_alloc(struct dp_soc *soc, uint32_t size);
 void
 dp_tx_mon_buffers_free(struct dp_soc *soc);
@@ -827,6 +834,13 @@ void dp_tx_mon_soc_deinit_2_0(struct dp_soc *soc, uint32_t lmac_id)
 static inline void
 dp_print_pdev_tx_monitor_stats_2_0(struct dp_pdev *pdev)
 {
+}
+
+static inline QDF_STATUS
+dp_get_pdev_tx_capture_stats_2_0(struct dp_pdev *pdev,
+				 struct cdp_pdev_tx_capture_stats *stats)
+{
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline QDF_STATUS

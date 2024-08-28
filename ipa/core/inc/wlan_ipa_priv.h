@@ -223,6 +223,19 @@ enum wlan_ipa_wdi_opt_dpath_resp_code {
 };
 
 /**
+ * enum wlan_ipa_opt_dp_ctrl_add_resp: filter add response
+ * in opt_dp_ctrl
+ * @WLAN_IPA_CTRL_FLT_ADD_INPROGRESS: flt add inprogress
+ * @WLAN_IPA_CTRL_FLT_ADD_SUCCESS: flt add success
+ * @WLAN_IPA_CTRL_FLT_ADD_FAILURE: flt add failure
+ */
+enum wlan_ipa_opt_dp_ctrl_add_resp {
+	WLAN_IPA_CTRL_FLT_ADD_INPROGRESS = 0,
+	WLAN_IPA_CTRL_FLT_ADD_SUCCESS = 1,
+	WLAN_IPA_CTRL_FLT_ADD_FAILURE = 2
+};
+
+/**
  * struct llc_snap_hdr - LLC snap header
  * @dsap: Destination service access point
  * @ssap: Source service access point
@@ -239,18 +252,18 @@ struct llc_snap_hdr {
 /**
  * struct wlan_ipa_tx_hdr - header type which IPA should handle to TX packet
  * @eth:      ether II header
- * @llc_snap: LLC snap header
+ * @llc_snapp: LLC snap header
  */
 struct wlan_ipa_tx_hdr {
 	qdf_ether_header_t eth;
-	struct llc_snap_hdr llc_snap;
+	struct llc_snap_hdr llc_snapp;
 } qdf_packed;
 
 #if defined(QCA_WIFI_QCA6290) || defined(QCA_WIFI_QCA6390) || \
     defined(QCA_WIFI_QCA6490) || defined(QCA_WIFI_QCA6750) || \
     defined(QCA_WIFI_WCN7850) || defined(QCA_WIFI_QCN9000) || \
     defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
-    defined(QCA_WIFI_WCN7750)
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
 /**
  * struct frag_header - fragment header type registered to IPA hardware
  * @length:    fragment length
@@ -290,7 +303,7 @@ struct frag_header {
     defined(QCA_WIFI_QCA6490) || defined(QCA_WIFI_QCA6750) || \
     defined(QCA_WIFI_WCN7850) || defined(QCA_WIFI_QCN9000) || \
     defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
-    defined(QCA_WIFI_WCN7750)
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
 /**
  * struct ipa_header - ipa header type registered to IPA hardware
  * @reserved: Reserved not used
@@ -942,6 +955,9 @@ struct wlan_ipa_priv {
 	qdf_ipa_wdi_hdl_t hdl;
 	bool opt_dp_ctrl_wlan_shutdown;
 	bool opt_dp_ctrl_ssr;
+	bool opt_dp_ctrl_flt_cleaned;
+	qdf_event_t ipa_ctrl_flt_rm_shutdown_evt;
+	bool ipa_opt_dp_ctrl_debug;
 #ifdef IPA_OPT_WIFI_DP
 	struct wifi_dp_flt_setup dp_cce_super_rule_flt_param;
 	struct wifi_dp_tx_flt_setup dp_tx_super_rule_flt_param;
@@ -950,6 +966,7 @@ struct wlan_ipa_priv {
 	qdf_event_t ipa_opt_dp_ctrl_clk_evt;
 	qdf_wake_lock_t opt_dp_wake_lock;
 	struct opt_dp_ctrl_stats ctrl_stats;
+	qdf_runtime_lock_t opt_dp_runtime_lock;
 #endif
 #if defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 	struct wlan_ipa_evt_wq *ipa_evt_wq;

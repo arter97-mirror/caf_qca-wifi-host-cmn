@@ -291,6 +291,7 @@ void dp_mon_filter_h2t_setup(struct dp_soc *soc, struct dp_pdev *pdev,
  *
  * Return: true if yes, false if not
  */
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 static inline
 bool dp_mon_skip_filter_config(struct dp_soc *soc)
 {
@@ -302,6 +303,13 @@ bool dp_mon_skip_filter_config(struct dp_soc *soc)
 	else
 		return false;
 }
+#else
+static inline
+bool dp_mon_skip_filter_config(struct dp_soc *soc)
+{
+	return false;
+}
+#endif
 
 /**
  * dp_update_num_mac_rings() - Update number of MAC rings based on connection
@@ -741,6 +749,7 @@ void dp_mon_filter_adjust(struct dp_pdev *pdev, struct dp_mon_filter *filter)
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_QCC2072:
 		filter->tlv_filter.msdu_start = 0;
 		filter->tlv_filter.mpdu_end = 0;
 		filter->tlv_filter.packet_header = 0;
@@ -1025,6 +1034,66 @@ static void dp_mon_reset_local_pkt_capture_rx_filter(struct dp_pdev *pdev)
 	dp_mon_pdev_filter_init(mon_pdev);
 }
 
+#ifdef FEATURE_ML_LOCAL_PKT_CAPTURE
+static inline void
+dp_mon_init_local_pkt_capture_queue(struct dp_pdev *pdev)
+{
+	uint8_t mac_id;
+	struct dp_mon_mac *mon_mac;
+
+	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
+		mon_mac = dp_get_mon_mac(pdev, mac_id);
+		qdf_spin_lock_bh(&mon_mac->lpc_lock);
+		qdf_nbuf_queue_init(&mon_mac->msdu_queue);
+		qdf_nbuf_queue_init(&mon_mac->mpdu_queue);
+		mon_mac->first_mpdu = true;
+		qdf_spin_unlock_bh(&mon_mac->lpc_lock);
+	}
+}
+
+static inline void
+dp_mon_free_local_pkt_capture_queue(struct dp_pdev *pdev)
+{
+	uint8_t mac_id;
+	struct dp_mon_mac *mon_mac;
+
+	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
+		mon_mac = dp_get_mon_mac(pdev, mac_id);
+		qdf_spin_lock_bh(&mon_mac->lpc_lock);
+		qdf_nbuf_queue_free(&mon_mac->msdu_queue);
+		qdf_nbuf_queue_free(&mon_mac->mpdu_queue);
+		qdf_spin_unlock_bh(&mon_mac->lpc_lock);
+	}
+}
+#else
+static inline void
+dp_mon_init_local_pkt_capture_queue(struct dp_pdev *pdev)
+{
+	uint8_t mac_id = 0;
+	struct dp_mon_mac *mon_mac;
+
+	mon_mac = dp_get_mon_mac(pdev, mac_id);
+	qdf_spin_lock_bh(&mon_mac->lpc_lock);
+	qdf_nbuf_queue_init(&mon_mac->msdu_queue);
+	qdf_nbuf_queue_init(&mon_mac->mpdu_queue);
+	mon_mac->first_mpdu = true;
+	qdf_spin_unlock_bh(&mon_mac->lpc_lock);
+}
+
+static inline void
+dp_mon_free_local_pkt_capture_queue(struct dp_pdev *pdev)
+{
+	uint8_t mac_id = 0;
+	struct dp_mon_mac *mon_mac;
+
+	mon_mac = dp_get_mon_mac(pdev, mac_id);
+	qdf_spin_lock_bh(&mon_mac->lpc_lock);
+	qdf_nbuf_queue_free(&mon_mac->msdu_queue);
+	qdf_nbuf_queue_free(&mon_mac->mpdu_queue);
+	qdf_spin_unlock_bh(&mon_mac->lpc_lock);
+}
+#endif
+
 QDF_STATUS dp_mon_start_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 					  uint8_t pdev_id,
 					  struct cdp_monitor_filter *filter)
@@ -1077,6 +1146,7 @@ QDF_STATUS dp_mon_start_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 
 	dp_mon_filter_debug("local pkt capture tx filter set");
 
+	dp_mon_init_local_pkt_capture_queue(pdev);
 	dp_mon_set_local_pkt_capture_running(mon_pdev, true);
 	return status;
 }
@@ -1106,6 +1176,7 @@ QDF_STATUS dp_mon_stop_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 		return QDF_STATUS_SUCCESS;
 	}
 
+	dp_mon_set_local_pkt_capture_running(mon_pdev, false);
 	qdf_spin_lock_bh(&mon_mac->mon_lock);
 	dp_mon_reset_local_pkt_capture_rx_filter(pdev);
 	status = dp_mon_filter_update(pdev);
@@ -1122,7 +1193,8 @@ QDF_STATUS dp_mon_stop_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 	qdf_spin_unlock_bh(&mon_mac->mon_lock);
 	dp_mon_filter_debug("local pkt capture stopped");
 
-	dp_mon_set_local_pkt_capture_running(mon_pdev, false);
+	dp_mon_free_local_pkt_capture_queue(pdev);
+
 	return QDF_STATUS_SUCCESS;
 }
 
