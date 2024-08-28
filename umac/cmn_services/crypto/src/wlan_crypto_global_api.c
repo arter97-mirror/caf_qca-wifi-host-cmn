@@ -222,6 +222,44 @@ QDF_STATUS wlan_crypto_set_vdev_param(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+QDF_STATUS wlan_crypto_set_vdev_akm_roam(struct wlan_objmgr_vdev *vdev,
+					 int n_connect_akm_suites,
+					 uint32_t value)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_crypto_comp_priv *crypto_priv;
+
+	crypto_priv = (struct wlan_crypto_comp_priv *)
+					wlan_get_vdev_crypto_obj(vdev);
+
+	if (!crypto_priv) {
+		crypto_err("crypto_priv NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (n_connect_akm_suites <= 1) {
+		crypto_info("No need to set akm for roam");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	crypto_priv->akms_roam = value;
+
+	return status;
+}
+
+uint32_t wlan_crypto_get_vdev_akm_roam(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_crypto_comp_priv *crypto_priv;
+
+	crypto_priv = (struct wlan_crypto_comp_priv *)
+					wlan_get_vdev_crypto_obj(vdev);
+	if (crypto_priv)
+		return crypto_priv->akms_roam;
+
+	crypto_err("crypto_priv NULL");
+	return 0;
+}
+
 QDF_STATUS wlan_crypto_set_peer_param(struct wlan_objmgr_peer *peer,
 				wlan_crypto_param_type param,
 				uint32_t value)

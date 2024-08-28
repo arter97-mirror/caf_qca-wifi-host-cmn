@@ -73,6 +73,30 @@ QDF_STATUS wlan_crypto_set_vdev_param(struct wlan_objmgr_vdev *vdev,
 					uint32_t value);
 
 /**
+ * wlan_crypto_set_vdev_akm_roam() - set akm to vdev for roam
+ * @vdev: vdev
+ * @n_connect_akm_suites: number of akm suites in connect req
+ * @value: akm value to be set
+ *
+ * This function sets akm to vdev for roam
+ *
+ * Return: QDF_STATUS_SUCCESS - in case of success
+ */
+QDF_STATUS wlan_crypto_set_vdev_akm_roam(struct wlan_objmgr_vdev *vdev,
+					 int n_connect_akm_suites,
+					 uint32_t value);
+
+/**
+ * wlan_crypto_get_vdev_akm_roam() - get akm from vdev for roam
+ * @vdev: vdev
+ *
+ * This function gets akm from vdev for roam
+ *
+ * Return: akm value
+ */
+uint32_t wlan_crypto_get_vdev_akm_roam(struct wlan_objmgr_vdev *vdev);
+
+/**
  * wlan_crypto_set_peer_param() - called by ucfg to set crypto param
  *
  * @peer: peer
