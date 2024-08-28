@@ -181,11 +181,13 @@ bool wlan_p2p_fw_support_ap_assist_dfs_group(struct wlan_objmgr_psoc *psoc)
 QDF_STATUS wlan_p2p_get_ap_assist_dfs_params(struct wlan_objmgr_vdev *vdev,
 					     bool *is_dfs_owner,
 					     bool *is_valid_ap_assist,
+					     bool *is_usr_restrict_csa,
 					     struct qdf_mac_addr *ap_bssid,
 					     uint8_t *opclass, uint8_t *chan)
 {
 	return p2p_get_ap_assist_dfs_params(vdev, is_dfs_owner,
-					    is_valid_ap_assist, ap_bssid,
+					    is_valid_ap_assist,
+					    is_usr_restrict_csa, ap_bssid,
 					    opclass, chan);
 }
 

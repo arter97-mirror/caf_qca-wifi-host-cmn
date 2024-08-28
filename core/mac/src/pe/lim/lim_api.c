@@ -732,8 +732,8 @@ void lim_fill_dfs_p2p_group_params(struct pe_session *pe_session)
 	}
 
 	wlan_p2p_get_ap_assist_dfs_params(pe_session->vdev, &is_dfs_owner,
-					  &is_valid_ap_assist, &ap_bssid,
-					  NULL, NULL);
+					  &is_valid_ap_assist, NULL,
+					  &ap_bssid, NULL, NULL);
 
 	if (is_dfs_owner || !is_valid_ap_assist)
 		return;

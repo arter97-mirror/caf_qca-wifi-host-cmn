@@ -7944,7 +7944,7 @@ hdd_check_ap_assist_dfs_group_start_req(struct wlan_hdd_link_info *link_info,
 	}
 
 	status = ucfg_p2p_get_ap_assist_dfs_params(vdev, &is_go_dfs_owner,
-						   &is_valid_ap_assist,
+						   &is_valid_ap_assist, NULL,
 						   &ap_bssid, NULL, NULL);
 
 	if (is_go_dfs_owner || !is_valid_ap_assist || !is_fw_cap) {

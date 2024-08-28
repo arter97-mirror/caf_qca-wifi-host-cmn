@@ -910,7 +910,7 @@ int hdd_validate_channel_and_bandwidth(struct hdd_adapter *adapter,
 
 		vdev_freq = wlan_get_operation_chan_freq(vdev);
 		ucfg_p2p_get_ap_assist_dfs_params(vdev, &is_go_dfs_owner,
-						  &is_valid_ap_assist,
+						  &is_valid_ap_assist, NULL,
 						  NULL, &opclass, &ap_chan);
 		if (!wlan_reg_is_6ghz_op_class(hdd_ctx->pdev, opclass))
 			ap_freq = wlan_reg_legacy_chan_to_freq(hdd_ctx->pdev,

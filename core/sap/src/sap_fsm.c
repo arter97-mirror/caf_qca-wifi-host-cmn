@@ -4172,7 +4172,8 @@ static QDF_STATUS sap_fsm_state_starting(struct sap_context *sap_ctx,
 			wlan_p2p_get_ap_assist_dfs_params(sap_ctx->vdev,
 							  &is_dfs_owner,
 							  &is_valid_ap_assist,
-							  NULL, NULL, NULL);
+							  NULL, NULL,
+							  NULL, NULL);
 			if (!is_dfs_owner && is_valid_ap_assist)
 				is_dfs = false;
 		}

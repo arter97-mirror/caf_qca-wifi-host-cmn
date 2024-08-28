@@ -1063,7 +1063,7 @@ QDF_STATUS if_mgr_validate_candidate(struct wlan_objmgr_vdev *vdev,
 						      true, chan_freq, true);
 		wlan_p2p_get_ap_assist_dfs_params(vdev, &is_dfs_owner,
 						  &is_valid_ap_assist,
-						  NULL, NULL, NULL);
+						  NULL, NULL, NULL, NULL);
 		if (is_dfs_owner)
 			goto end;
 
