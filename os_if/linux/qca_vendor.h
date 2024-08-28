@@ -10903,6 +10903,14 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_SCS_TRAFFIC_SUPPORT = 73,
 
+	/* 8-bit unsigned value to disable or not disable the channel switch
+	 * initiation in P2P GO mode.
+	 * 0 - Not-disable, 1 - Disable
+	 *
+	 * This attribute is used for testing purposes.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_DISABLE_CHAN_SWITCH_INITIATION = 74,
+
 	/* 8-bit unsigned value. This indicates number of random PMKIDs to be
 	 * added in the RSNE of the (Re)Association request frames. This is
 	 * exclusively used for the scenarios where the device is used as a test
