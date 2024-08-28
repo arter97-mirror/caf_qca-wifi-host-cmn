@@ -2301,7 +2301,7 @@ bool lim_process_sae_preauth_frame(struct mac_context *mac, uint8_t *rx_pkt)
 
 #define WLAN_MIN_AUTH_FRM_ALGO_FIELD_LEN 2
 
-#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+#ifdef WLAN_FEATURE_LFR3
 static void lim_process_ft_sae_auth_frame(struct mac_context *mac,
 					  struct pe_session *pe_session,
 					  uint8_t *body, uint16_t frame_len)
