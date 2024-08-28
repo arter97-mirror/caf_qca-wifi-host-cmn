@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -399,8 +399,8 @@ typedef void (*crypto_add_key_callback)(void *context,
  * @crypto_params:    crypto params for the peer
  * @crypto_key: crypto keys structure for the peer
  * @fils_aead_set:    fils params for this peer
+ * @akms_roam:    akms used in roam
  * @add_key_ctx: Opaque context to be used by the caller to associate the
- *  add key request with the response
  * @add_key_cb: Callback function to be called with the add key result
  *
  */
@@ -408,6 +408,7 @@ struct wlan_crypto_comp_priv {
 	struct wlan_crypto_params crypto_params;
 	struct wlan_crypto_keys crypto_key;
 	uint8_t fils_aead_set;
+	uint32_t akms_roam;
 	void *add_key_ctx;
 	crypto_add_key_callback add_key_cb;
 };

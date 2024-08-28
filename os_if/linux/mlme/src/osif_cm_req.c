@@ -37,6 +37,7 @@
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 #include <wlan_mlo_mgr_setup.h>
 #endif
+#include "wlan_crypto_global_api.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0) && \
 LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0) && \
@@ -751,6 +752,7 @@ int osif_cm_connect(struct net_device *dev, struct wlan_objmgr_vdev *vdev,
 	QDF_STATUS status;
 	struct qdf_mac_addr bssid = QDF_MAC_ADDR_BCAST_INIT;
 	struct wlan_objmgr_vdev *temp_vdev;
+	int n_connect_akm_suites;
 
 	if (req->bssid)
 		qdf_mem_copy(bssid.bytes, req->bssid,
@@ -811,6 +813,11 @@ int osif_cm_connect(struct net_device *dev, struct wlan_objmgr_vdev *vdev,
 	status = osif_cm_set_crypto_params(connect_req, req);
 	if (QDF_IS_STATUS_ERROR(status))
 		goto connect_start_fail;
+
+	n_connect_akm_suites = osif_cm_get_num_akm_suites(req);
+	wlan_crypto_set_vdev_akm_roam(vdev,
+				      n_connect_akm_suites,
+				      connect_req->crypto.akm_suites);
 
 	connect_req->ht_caps = req->ht_capa.cap_info;
 	connect_req->ht_caps_mask = req->ht_capa_mask.cap_info;
