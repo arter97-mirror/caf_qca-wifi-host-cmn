@@ -3393,6 +3393,8 @@ struct set_ps_mode_params {
  * @dcoffpercent: dc off percentage
  * @priority: priority
  * @pout_reduction_db: Pout reduction (0.25 dB scaling factor)
+ * @tx_chain_mask: tx chainmask value
+ * @duty_cycle: duty cycle per zone in ms
  */
 typedef struct {
 	uint32_t tmplwm;
@@ -3400,6 +3402,8 @@ typedef struct {
 	uint32_t dcoffpercent;
 	uint32_t priority;
 	uint32_t pout_reduction_db;
+	uint32_t tx_chain_mask;
+	uint32_t duty_cycle;
 } tt_level_config;
 
 /**
@@ -6768,6 +6772,10 @@ typedef enum {
 	wmi_service_usd_support,
 #endif
 	wmi_service_use_sta_vdev_for_p2p_device,
+	wmi_service_is_target_ipa,
+	wmi_service_therm_throt_tx_chain_mask,
+	wmi_service_therm_throt_5_levels,
+
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

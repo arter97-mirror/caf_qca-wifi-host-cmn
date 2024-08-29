@@ -9755,8 +9755,8 @@ static QDF_STATUS send_thermal_mitigation_param_cmd_tlv(
 	tt_conf->dc = param->dc;
 	tt_conf->dc_per_event = param->dc_per_event;
 	tt_conf->therm_throt_levels = param->num_thermal_conf;
-	wmi_debug("Total thermal throttle levels: %u",
-		  tt_conf->therm_throt_levels);
+	wmi_debug("Total thermal throttle levels: %u Global dc value: %d",
+		  tt_conf->therm_throt_levels, tt_conf->dc = param->dc);
 	wmi_fill_client_id_priority(tt_conf, param);
 	buf_ptr = (uint8_t *) ++tt_conf;
 	/* init TLV params */
@@ -9775,10 +9775,13 @@ static QDF_STATUS send_thermal_mitigation_param_cmd_tlv(
 		lvl_conf->prio = param->levelconf[i].priority;
 		lvl_conf->pout_reduction_25db =
 				param->levelconf[i].pout_reduction_db;
-		wmi_debug("Thermal level config:\nLevel %u Low threshold %u High threshold %u\n Duty cycle off %u Priority %u Pout reduction %u",
+		lvl_conf->tx_chain_mask = param->levelconf[i].tx_chain_mask;
+		lvl_conf->duty_cycle = param->levelconf[i].duty_cycle;
+		wmi_debug("Thermal level config:\nLevel %u Low threshold %u High threshold %u\n Duty cycle off %u Priority %u Pout reduction %u Tx chainmask %u Dc value %u",
 			  i, lvl_conf->temp_lwm, lvl_conf->temp_hwm,
 			  lvl_conf->dc_off_percent, lvl_conf->prio,
-			  lvl_conf->pout_reduction_25db);
+			  lvl_conf->pout_reduction_25db, lvl_conf->tx_chain_mask,
+			  lvl_conf->duty_cycle);
 		lvl_conf++;
 	}
 
@@ -24552,6 +24555,12 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif
 	wmi_service[wmi_service_use_sta_vdev_for_p2p_device] =
 				WMI_SERVICE_USE_STA_VDEV_FOR_P2P_DEVICE;
+	wmi_service[wmi_service_is_target_ipa] =
+				WMI_SERVICE_IS_TARGET_IPA;
+	wmi_service[wmi_service_therm_throt_tx_chain_mask] =
+				WMI_SERVICE_THERM_THROT_TX_CHAIN_MASK;
+	wmi_service[wmi_service_therm_throt_5_levels] =
+				WMI_SERVICE_THERM_THROT_5_LEVELS;
 }
 
 /**
