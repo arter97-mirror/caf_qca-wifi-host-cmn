@@ -13712,6 +13712,7 @@ static struct cdp_scs_ops dp_ops_scs = {
 static struct cdp_fse_ops dp_ops_fse = {
 	.fse_rule_add = dp_rx_sfe_add_flow_entry,
 	.fse_rule_delete = dp_rx_sfe_delete_flow_entry,
+	.fse_rule_dump = dp_rx_flow_dump_hal_fse_entries,
 };
 #endif
 

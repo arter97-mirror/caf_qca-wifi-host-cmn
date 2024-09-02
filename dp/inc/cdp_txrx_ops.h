@@ -2752,6 +2752,8 @@ struct cdp_fse_ops {
 			   uint32_t *src_ip, uint32_t src_port,
 			   uint32_t *dest_ip, uint32_t dest_port,
 			   uint8_t protocol, uint8_t version, uint8_t pdev_id);
+	QDF_STATUS
+	(*fse_rule_dump)(struct cdp_soc_t *soc_hdl, uint8_t pdev_id);
 };
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 

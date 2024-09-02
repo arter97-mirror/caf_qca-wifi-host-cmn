@@ -6504,6 +6504,17 @@ QDF_STATUS
 dp_rx_flow_invalidate_fse_entry(struct dp_pdev *pdev, struct dp_rx_fse *fse,
 				struct cdp_rx_flow_info *rx_flow_info,
 				bool delete_entry);
+
+/**
+ * dp_rx_flow_dump_hal_fse_entries() - Print flow search entries though HAL
+ * @soc_hdl: CDP SoC Handle
+ * @pdev_id: Respective pdev_id
+ *
+ * Return: None
+ */
+QDF_STATUS
+dp_rx_flow_dump_hal_fse_entries(struct cdp_soc_t *soc_hdl, uint8_t pdev_id);
+
 #endif /* #WLAN_SUPPORT_RX_FLOW_TAG */
 
 /**
