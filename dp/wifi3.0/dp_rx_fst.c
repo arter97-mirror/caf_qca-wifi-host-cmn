@@ -193,6 +193,38 @@ void dp_rx_flow_dump_flow_entry(struct dp_rx_fst *fst,
 }
 
 /**
+ * dp_rx_flow_dump_hal_fse_entries() - Print flow search entries though HAL
+ * @soc_hdl: CDP SoC Handle
+ * @pdev_id: pdev_id
+ *
+ * Return: Success if request is accepted else failure
+ */
+QDF_STATUS
+dp_rx_flow_dump_hal_fse_entries(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
+{
+	struct wlan_cfg_dp_soc_ctxt *cfg;
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_rx_fst *fst;
+
+	if (qdf_unlikely(!soc))
+		return QDF_STATUS_E_FAILURE;
+
+	cfg = soc->wlan_cfg_ctx;
+
+	if (qdf_unlikely(!wlan_cfg_is_rx_flow_tag_enabled(cfg))) {
+		qdf_err("RX Flow tag feature disabled");
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	fst = soc->pdev_list[pdev_id]->rx_fst;
+	qdf_spin_lock_bh(&fst->fst_lock);
+	hal_rx_dump_fse_table(fst->hal_rx_fst);
+	qdf_spin_unlock_bh(&fst->fst_lock);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * dp_rx_flow_compute_flow_hash() - Print flow search entry from 5-tuple
  * @fst: Rx FST Handle
  * @rx_flow_info: DP Rx Flow 5-tuple programmed by upper layer

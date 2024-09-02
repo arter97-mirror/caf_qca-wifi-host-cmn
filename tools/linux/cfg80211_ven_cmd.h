@@ -1563,7 +1563,9 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_NXT_RDR_WIDTH = 558,
 	OL_ATH_PARAM_IS_BEACON_UPDATE = 559,
 	OL_ATH_PARAM_RXCHAINSOFT = 560,
-
+#if defined(WLAN_SUPPORT_RX_FLOW_TAG)
+	OL_ATH_PARAM_FST_ENTRY = 561,
+#endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -4117,6 +4119,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_IS_BEACON_UPDATE, SET_PARAM, 1},
 	{"get_bcnupdate",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_IS_BEACON_UPDATE, GET_PARAM, 0},
+#if defined(WLAN_SUPPORT_RX_FLOW_TAG)
+	{"display_fst_info",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_FST_ENTRY, GET_PARAM, 0},
+#endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 };
 #endif
 
