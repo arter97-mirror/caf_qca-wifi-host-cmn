@@ -603,10 +603,10 @@ void dp_peer_find_id_to_obj_remove(struct dp_soc *soc,
  *
  * Return: true if peer found else return false
  */
-static bool dp_peer_exist_on_pdev(struct dp_soc *soc,
-				  uint8_t *peer_mac_addr,
-				  int mac_addr_is_aligned,
-				  struct dp_pdev *pdev)
+bool dp_peer_exist_on_pdev(struct dp_soc *soc,
+			   uint8_t *peer_mac_addr,
+			   int mac_addr_is_aligned,
+			   struct dp_pdev *pdev)
 {
 	union dp_align_mac_addr local_mac_addr_aligned, *mac_addr;
 	unsigned int index;
@@ -958,7 +958,7 @@ static void dp_peer_ast_hash_detach(struct dp_soc *soc)
  * Return: AST hash
  */
 static inline uint32_t dp_peer_ast_hash_index(struct dp_soc *soc,
-	union dp_align_mac_addr *mac_addr)
+					      union dp_align_mac_addr *mac_addr)
 {
 	uint32_t index;
 
@@ -1222,7 +1222,7 @@ static inline QDF_STATUS dp_peer_map_ast(struct dp_soc *soc,
 				  ase_list_elem);
 	}
 
-	if (ast_entry || (peer->vdev && peer->vdev->proxysta_vdev)) {
+	if (ast_entry && (ast_entry->type == CDP_TXRX_AST_TYPE_WDS)) {
 		if (soc->cdp_soc.ol_ops->peer_map_event) {
 			soc->cdp_soc.ol_ops->peer_map_event(
 			soc->ctrl_psoc, peer->peer_id,
