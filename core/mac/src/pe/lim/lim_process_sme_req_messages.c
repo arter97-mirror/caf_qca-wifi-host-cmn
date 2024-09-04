@@ -2834,7 +2834,7 @@ lim_fill_dot11_mode(struct mac_context *mac_ctx, struct pe_session *session,
 static bool lim_enable_twt(struct mac_context *mac_ctx, tDot11fBeaconIEs *ie)
 {
 	struct s_ext_cap *ext_cap;
-	bool twt_support_in_11n = false;
+	bool twt_req_ht_vht = false;
 	bool twt_request = false;
 
 	if (!ie) {
@@ -2851,13 +2851,13 @@ static bool lim_enable_twt(struct mac_context *mac_ctx, tDot11fBeaconIEs *ie)
 		return true;
 	}
 
-	wlan_twt_cfg_get_support_in_11n(mac_ctx->psoc,
-					&twt_support_in_11n);
+	wlan_twt_cfg_get_req_support_for_ht_vht(mac_ctx->psoc,
+						&twt_req_ht_vht);
 	ext_cap = (struct s_ext_cap *)ie->ExtCap.bytes;
-	if (twt_support_in_11n && ie->ExtCap.present &&
+	if (twt_req_ht_vht && ie->ExtCap.present &&
 	    ext_cap->twt_responder_support) {
-		pe_debug("TWT is supported for 11n, twt_support_in_11n %d, ext_cap %d, twt_responder support %d",
-			 twt_support_in_11n, ie->ExtCap.present,
+		pe_debug("TWT is supported for 11n, twt_req_ht_vht %d, ext_cap %d, twt_responder support %d",
+			 twt_req_ht_vht, ie->ExtCap.present,
 			 ext_cap->twt_responder_support);
 		return true;
 	}

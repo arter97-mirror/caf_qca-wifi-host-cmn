@@ -1236,7 +1236,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	int8_t rssi;
 	QDF_STATUS status;
 	enum ani_akm_type auth_type;
-	bool sha384_akm, twt_support_in_11n = false;
+	bool sha384_akm, twt_req_ht_vht = false;
 	struct s_ext_cap *ext_cap;
 
 	assoc_cnf.resultCode = eSIR_SME_SUCCESS;
@@ -1601,9 +1601,9 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 				&assoc_rsp->he_op);
 
 	} else {
-		wlan_twt_cfg_get_support_in_11n(mac_ctx->psoc,
-						&twt_support_in_11n);
-		if (twt_support_in_11n && session_entry->htCapability &&
+		wlan_twt_cfg_get_req_support_for_ht_vht(mac_ctx->psoc,
+							&twt_req_ht_vht);
+		if (twt_req_ht_vht && session_entry->htCapability &&
 		    assoc_rsp->HTCaps.present && assoc_rsp->ExtCap.present) {
 			ext_cap = (struct s_ext_cap *)assoc_rsp->ExtCap.bytes;
 			lim_set_twt_ext_capabilities(

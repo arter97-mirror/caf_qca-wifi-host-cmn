@@ -60,6 +60,13 @@ ucfg_twt_cfg_set_responder(struct wlan_objmgr_psoc *psoc, bool val)
 }
 
 QDF_STATUS
+ucfg_twt_get_responder_support_for_ht_vht_mode(struct wlan_objmgr_psoc *psoc,
+					       bool *val)
+{
+	return wlan_twt_get_responder_support_for_ht_vht_mode(psoc, val);
+}
+
+QDF_STATUS
 ucfg_twt_setup_req(struct wlan_objmgr_psoc *psoc,
 		   struct twt_add_dialog_param *params,
 		   void *context)

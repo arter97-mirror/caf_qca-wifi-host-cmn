@@ -5366,7 +5366,7 @@ __wlan_hdd_cfg80211_get_features(struct wiphy *wiphy,
 	struct sk_buff *skb = NULL;
 	uint32_t dbs_capability = 0;
 	bool one_by_one_dbs, two_by_two_dbs;
-	bool value, twt_req, twt_res;
+	bool value, twt_req, twt_res, twt_res_supp_ht_vht;
 	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
 	QDF_STATUS status;
 	int ret_val;
@@ -5435,11 +5435,20 @@ __wlan_hdd_cfg80211_get_features(struct wiphy *wiphy,
 
 	hdd_get_twt_requestor(hdd_ctx->psoc, &twt_req);
 	hdd_get_twt_responder(hdd_ctx->psoc, &twt_res);
+	hdd_get_twt_responder_support_for_ht_vht_mode(hdd_ctx->psoc,
+						      &twt_res_supp_ht_vht);
 	hdd_debug("twt_req:%d twt_res:%d", twt_req, twt_res);
 
-	if (twt_req || twt_res) {
-		wlan_cfg80211_set_feature(feature_flags,
-					  QCA_WLAN_VENDOR_FEATURE_TWT);
+	if (twt_req || twt_res || twt_res_supp_ht_vht) {
+		if (twt_req || twt_res) {
+			wlan_cfg80211_set_feature(
+						feature_flags,
+						QCA_WLAN_VENDOR_FEATURE_TWT);
+			if (twt_res_supp_ht_vht)
+				wlan_cfg80211_set_feature(
+					feature_flags,
+					QCA_WLAN_VENDOR_FEATURE_HT_VHT_TWT_RESPONDER);
+		}
 
 		wlan_cfg80211_set_feature(feature_flags,
 					  QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT);
