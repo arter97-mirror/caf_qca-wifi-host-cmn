@@ -322,6 +322,7 @@ struct basic_peer_data_link {
 struct basic_peer_ctrl_tx {
 	u_int32_t cs_tx_mgmt;
 	u_int32_t cs_is_tx_not_ok;
+	u_int32_t cs_bandwidth;
 };
 
 struct basic_peer_ctrl_rx {
@@ -1044,6 +1045,7 @@ struct advance_psoc_data_rx {
 #define STATS_IF_FC0_TYPE_DATA               0x08
 #define STATS_IF_FC0_SUBTYPE_MASK            0xf0
 #define STATS_IF_RSSI_CHAIN_MAX              8
+#define STATS_IF_RSSI_INVALID                ((int16_t)-128)
 
 #define STATS_IF_TXCAP_MAX_TYPE \
 	((STATS_IF_FC0_TYPE_DATA >> STATS_IF_FC0_TYPE_SHIFT) + 1)
@@ -1319,6 +1321,8 @@ struct debug_peer_data_rx {
 
 struct debug_peer_data_link {
 	struct basic_peer_data_link b_link;
+	int16_t ack_rssi[STATS_IF_RSSI_CHAIN_MAX];
+	int16_t noise_floor;
 	uint32_t last_ack_rssi;
 	uint32_t avg_ack_rssi;
 };

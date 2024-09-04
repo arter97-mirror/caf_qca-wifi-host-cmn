@@ -186,6 +186,20 @@ enum stats_if_peer_rate_stats_type {
 	STATS_IF_PEER_AVG_RATE_STATS,
 };
 
+enum stats_if_cwm_width {
+	STATS_IF_CWM_WIDTH20,
+	STATS_IF_CWM_WIDTH40,
+	STATS_IF_CWM_WIDTH80,
+	STATS_IF_CWM_WIDTH160,
+	STATS_IF_CWM_WIDTH80_80,
+#ifdef WLAN_FEATURE_11BE
+	STATS_IF_CWM_WIDTH320,
+#endif /* WLAN_FEATURE_11BE */
+
+	STATS_IF_CWM_WIDTH_MAX,
+	STATS_IF_CWM_WIDTHINVALID = 0xff    /* user invalid value */
+};
+
 struct stats_if_rdk_rx_rate_stats {
 	uint32_t ratecode;
 	uint32_t rate;

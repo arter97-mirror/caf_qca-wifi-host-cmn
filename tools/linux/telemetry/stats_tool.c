@@ -669,6 +669,33 @@ static char *macaddr_to_str(u_int8_t *addr)
 	return string;
 }
 
+static void display_band_width(enum stats_if_cwm_width ni_chwidth)
+{
+	switch (ni_chwidth) {
+	case STATS_IF_CWM_WIDTH20:
+		STATS_32(stdout, "Band Width", 20);
+		break;
+	case STATS_IF_CWM_WIDTH40:
+		STATS_32(stdout, "Band Width", 40);
+		break;
+	case STATS_IF_CWM_WIDTH80:
+		STATS_32(stdout, "Band Width", 80);
+		break;
+	case STATS_IF_CWM_WIDTH160:
+	case STATS_IF_CWM_WIDTH80_80:
+		STATS_32(stdout, "Band Width", 160);
+		break;
+#ifdef WLAN_FEATURE_11BE
+	case STATS_IF_CWM_WIDTH320:
+		STATS_32(stdout, "Band Width", 320);
+		break;
+#endif
+	default:
+		STATS_UNVLBL(stdout, "Band Width:", "Unknown");
+		break;
+	}
+}
+
 void print_basic_data_tx_stats(struct basic_data_tx_stats *tx)
 {
 	STATS_64(stdout, "Tx Success", tx->tx_success.num);
@@ -723,6 +750,7 @@ void print_basic_sta_ctrl_tx(struct basic_peer_ctrl_tx *tx)
 {
 	STATS_32(stdout, "Tx Management", tx->cs_tx_mgmt);
 	STATS_32(stdout, "Tx Not Ok", tx->cs_is_tx_not_ok);
+	display_band_width(tx->cs_bandwidth);
 }
 
 void print_basic_sta_ctrl_rx(struct basic_peer_ctrl_rx *rx)
@@ -3020,9 +3048,19 @@ void print_debug_sta_data_rx(struct debug_peer_data_rx *rx)
 
 void print_debug_sta_data_link(struct debug_peer_data_link *link)
 {
+	uint8_t i;
+
 	print_basic_sta_data_link(&link->b_link);
 	STATS_32(stdout, "Last ack rssi", link->last_ack_rssi);
 	STATS_32(stdout, "Average ack rssi", link->avg_ack_rssi);
+	for (i = 0; i < STATS_IF_RSSI_CHAIN_MAX; i++) {
+		if (link->ack_rssi[i] != STATS_IF_RSSI_INVALID) {
+			STATS_8(stdout, "Ack RSSI chain:", (i + 1));
+			STATS_16_SIGNED(stdout, "\tRSSI:", link->ack_rssi[i]);
+			STATS_16_SIGNED(stdout, "\tSNR:",
+					link->ack_rssi[i] - link->noise_floor);
+		}
+	}
 }
 
 void print_debug_sta_data_rate(struct debug_peer_data_rate *rate)
