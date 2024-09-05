@@ -1813,6 +1813,31 @@ dfs_deliver_punc_cac_completion_events(struct wlan_dfs *dfs,
 }
 
 /**
+ * dfs_deliver_punc_cac_start_events() - Deliver punctured CAC start event
+ * @dfs: Pointer to structure wlan_dfs.
+ * @dfs_punc: Pointer to dfs puncturing sm group.
+ *
+ * Return: None
+ */
+static void
+dfs_deliver_punc_cac_start_events(struct wlan_dfs *dfs,
+				  struct dfs_punc_obj *dfs_punc)
+{
+	uint16_t punc_freq_list[N_MAX_PUNC_SM];
+	uint8_t n_punc_channels;
+	uint8_t i;
+
+	n_punc_channels = dfs_generate_punc_list_from_sm(dfs_punc, punc_freq_list);
+	for (i = 0; i < n_punc_channels; i++) {
+		if (!dfs_is_freq_in_nol(dfs, punc_freq_list[i])) {
+			utils_dfs_deliver_event(dfs->dfs_pdev_obj,
+						punc_freq_list[i],
+						WLAN_EV_CAC_STARTED);
+		}
+	}
+}
+
+/**
  * dfs_puncturing_sm_transition_to() - Wrapper API to transition the Puncturing SM state.
  * @dfs_punc: Pointer to struct dfs_punc_obj that indicates the active SM.
  * @state:    State to which the SM is transitioning to.
@@ -2036,6 +2061,7 @@ static void dfs_puncturing_state_cac_wait_entry(void *ctx)
 	struct dfs_punc_obj *dfs_punc = (struct dfs_punc_obj *)ctx;
 
 	dfs_puncturing_set_curr_state(dfs_punc, DFS_S_CAC_WAIT);
+	dfs_deliver_punc_cac_start_events(dfs_punc->dfs, dfs_punc);
 }
 
 /**
