@@ -958,6 +958,7 @@ struct regulatory_channel {
 #ifdef CONFIG_BAND_6GHZ
 	bool psd_flag;
 	uint16_t psd_eirp;
+	enum reg_6g_ap_type power_type;
 #endif
 };
 

@@ -6363,3 +6363,20 @@ QDF_STATUS reg_is_chwidth_supported(struct wlan_objmgr_pdev *pdev,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+static inline bool reg_is_within_range_inclusive(enum channel_enum left,
+						 enum channel_enum right,
+						 enum channel_enum idx)
+{
+	return (idx >= left) && (idx <= right);
+}
+
+uint16_t reg_convert_enum_to_6g_idx(enum channel_enum ch_idx)
+{
+	if (!reg_is_within_range_inclusive(MIN_6GHZ_CHANNEL,
+					   MAX_6GHZ_CHANNEL,
+					   ch_idx))
+		return INVALID_CHANNEL;
+
+	return (ch_idx - MIN_6GHZ_CHANNEL);
+}
