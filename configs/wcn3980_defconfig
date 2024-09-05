@@ -1,0 +1,2 @@
+include $(WLAN_ROOT)/configs/default_defconfig
+
