@@ -23978,14 +23978,14 @@ static int wlan_hdd_add_key_sap(struct wlan_hdd_link_info *link_info,
 
 	if (hostapd_state->bss_state == BSS_START) {
 		errno =
-		wlan_cfg80211_crypto_add_key(vdev,
+		wlan_cfg80211_crypto_add_key(vdev, NULL,
 					     (pairwise ?
 					      WLAN_CRYPTO_KEY_TYPE_UNICAST :
 					      WLAN_CRYPTO_KEY_TYPE_GROUP),
 					     key_index, true);
 		if (!errno)
 			wma_update_set_key(link_info->vdev_id, pairwise,
-					   key_index, cipher);
+					   key_index, NULL, cipher);
 	}
 	hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 
@@ -23994,7 +23994,8 @@ static int wlan_hdd_add_key_sap(struct wlan_hdd_link_info *link_info,
 
 static int wlan_hdd_add_key_sta(struct wlan_objmgr_pdev *pdev,
 				struct wlan_hdd_link_info *link_info,
-				bool pairwise, u8 key_index, bool *ft_mode)
+				bool pairwise, u8 key_index,
+				const uint8_t *peer_mac, bool *ft_mode)
 {
 	struct wlan_objmgr_vdev *vdev;
 	int errno;
@@ -24013,7 +24014,7 @@ static int wlan_hdd_add_key_sta(struct wlan_objmgr_pdev *pdev,
 	vdev = hdd_objmgr_get_vdev_by_user(link_info, WLAN_OSIF_ID);
 	if (!vdev)
 		return -EINVAL;
-	errno = wlan_cfg80211_crypto_add_key(vdev, (pairwise ?
+	errno = wlan_cfg80211_crypto_add_key(vdev, peer_mac, (pairwise ?
 					     WLAN_CRYPTO_KEY_TYPE_UNICAST :
 					     WLAN_CRYPTO_KEY_TYPE_GROUP),
 					     key_index, true);
@@ -24421,8 +24422,10 @@ done:
 	case QDF_STA_MODE:
 	case QDF_P2P_CLIENT_MODE:
 	case QDF_NAN_DISC_MODE:
-		errno = wlan_hdd_add_key_sta(hdd_ctx->pdev, link_info, pairwise,
-					     key_index, &ft_mode);
+		errno = wlan_hdd_add_key_sta(hdd_ctx->pdev, link_info,
+					     pairwise, key_index,
+					     (const uint8_t *)mac_address.bytes,
+					     &ft_mode);
 		if (ft_mode)
 			return 0;
 		break;
@@ -24431,7 +24434,7 @@ done:
 	}
 	if (!errno && (adapter->device_mode != QDF_SAP_MODE))
 		wma_update_set_key(wlan_vdev_get_id(vdev), pairwise, key_index,
-				   cipher);
+				   (const uint8_t *)mac_address.bytes, cipher);
 
 	hdd_exit();
 	return errno;
@@ -24487,12 +24490,16 @@ QDF_STATUS wlan_hdd_send_key_vdev(struct wlan_objmgr_vdev *vdev,
 			     vdev_id, mac_address.bytes);
 
 	errno = wlan_hdd_add_key_sta(hdd_ctx->pdev, link_info,
-				     pairwise, key_index, &ft_mode);
+				     pairwise, key_index,
+				     (const uint8_t *)mac_address.bytes,
+				     &ft_mode);
 	if (ft_mode)
 		return QDF_STATUS_SUCCESS;
 
 	if (!errno)
-		wma_update_set_key(vdev_id, pairwise, key_index, cipher_type);
+		wma_update_set_key(vdev_id, pairwise, key_index,
+				   (const uint8_t *)mac_address.bytes,
+				   cipher_type);
 	else
 		status = QDF_STATUS_E_FAILURE;
 
@@ -25294,8 +25301,7 @@ static int wlan_hdd_cfg80211_del_key(struct wiphy *wiphy,
 #endif
 static int __wlan_hdd_cfg80211_set_default_key(struct wiphy *wiphy,
 					       struct net_device *ndev,
-					       int link_id,
-					       u8 key_index,
+					       int link_id, u8 key_index,
 					       bool unicast, bool multicast)
 {
 	struct hdd_adapter *adapter = WLAN_HDD_GET_PRIV_PTR(ndev);
@@ -25339,7 +25345,7 @@ static int __wlan_hdd_cfg80211_set_default_key(struct wiphy *wiphy,
 	if (!vdev)
 		return -EINVAL;
 
-	crypto_key = wlan_crypto_get_key(vdev, key_index);
+	crypto_key = wlan_crypto_get_key(vdev, NULL, key_index);
 	if (!crypto_key) {
 		hdd_err("Invalid NULL key info");
 		ret = -EINVAL;
@@ -25356,12 +25362,15 @@ static int __wlan_hdd_cfg80211_set_default_key(struct wiphy *wiphy,
 	    (adapter->device_mode == QDF_P2P_CLIENT_MODE)) {
 		ret =
 		wlan_cfg80211_crypto_add_key(vdev,
+					     (const uint8_t *)crypto_key->macaddr,
 					     (unicast ?
 					      WLAN_CRYPTO_KEY_TYPE_UNICAST :
 					      WLAN_CRYPTO_KEY_TYPE_GROUP),
 					     key_index, true);
-		wma_update_set_key(adapter->deflink->vdev_id, unicast,
-				   key_index, crypto_key->cipher_type);
+		wma_update_set_key(adapter->deflink->vdev_id,
+				   unicast, key_index,
+				   (const uint8_t *)crypto_key->macaddr,
+				   crypto_key->cipher_type);
 	}
 
 	if (adapter->device_mode == QDF_SAP_MODE ||
