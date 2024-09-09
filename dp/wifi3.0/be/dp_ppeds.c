@@ -340,9 +340,15 @@ static void dp_ppeds_get_vdev_vp_config_be(struct dp_vdev_be *be_vdev,
 	vp_cfg->to_fw = ppe_vp_profile->to_fw;
 	vp_cfg->drop_prec_enable = ppe_vp_profile->drop_prec_enable;
 
-	vp_cfg->bank_id = be_vdev->bank_id;
-	vp_cfg->pmac_id = vdev->lmac_id;
 	vp_cfg->vdev_id = vdev->vdev_id;
+
+	if (ppe_vp_profile->ref_count == 1) {
+		vp_cfg->pmac_id = vdev->lmac_id;
+		vp_cfg->bank_id = be_vdev->bank_id;
+	} else {
+		vp_cfg->pmac_id = PPE_VP_CFG_WILDCARD_LMAC_ID;
+		vp_cfg->bank_id = be_vdev->splitphy_ds_bank_id;
+	}
 }
 
 /**
@@ -501,13 +507,15 @@ static int dp_ppeds_alloc_vp_tbl_entry_be(struct dp_soc_be *be_soc,
  * dp_ppeds_alloc_ppe_vp_profile_be() - PPE VP profile alloc
  * @be_soc: BE SoC
  * @ppe_vp_profile: ppe vp profile
+ * @vp_num: vp number
  *
  * PPE VP profile alloc
  *
  * Return: Return PPE VP index to be used
  */
 static int dp_ppeds_alloc_ppe_vp_profile_be(struct dp_soc_be *be_soc,
-					    struct dp_ppe_vp_profile **ppe_vp_profile)
+					    struct dp_ppe_vp_profile **ppe_vp_profile,
+					    int vp_num)
 {
 	int num_ppe_vp_max, i;
 
@@ -515,6 +523,15 @@ static int dp_ppeds_alloc_ppe_vp_profile_be(struct dp_soc_be *be_soc,
 		hal_tx_get_num_ppe_vp_tbl_entries(be_soc->soc.hal_soc);
 
 	qdf_mutex_acquire(&be_soc->ppe_vp_tbl_lock);
+
+	for (i = 0; i < num_ppe_vp_max; i++) {
+		if (be_soc->ppe_vp_profile[i].is_configured &&
+			vp_num == be_soc->ppe_vp_profile[i].vp_num) {
+			dp_info("vp profile with num %d is reused", vp_num);
+			goto end;
+		}
+	}
+
 	if (be_soc->num_ppe_vp_profiles == num_ppe_vp_max) {
 		qdf_mutex_release(&be_soc->ppe_vp_tbl_lock);
 		dp_err("Maximum ppe_vp count reached for soc");
@@ -542,6 +559,8 @@ static int dp_ppeds_alloc_ppe_vp_profile_be(struct dp_soc_be *be_soc,
 	}
 
 	be_soc->ppe_vp_profile[i].is_configured = true;
+end:
+	be_soc->ppe_vp_profile[i].ref_count++;
 	*ppe_vp_profile = &be_soc->ppe_vp_profile[i];
 	qdf_mutex_release(&be_soc->ppe_vp_tbl_lock);
 	return i;
@@ -596,15 +615,18 @@ static void dp_ppeds_dealloc_vp_tbl_entry_be(struct dp_soc_be *be_soc,
  * dp_ppeds_dealloc_ppe_vp_profile_be() - PPE VP profile dealloc
  * @be_soc: BE SoC
  * @ppe_vp_profile_idx: PPE VP profile index
+ * @vdev_opmode: vdev op mode
  *
  * PPE VP profile entry dealloc
  *
  * Return: void
  */
 static void dp_ppeds_dealloc_ppe_vp_profile_be(struct dp_soc_be *be_soc,
-					       int ppe_vp_profile_idx)
+					       int ppe_vp_profile_idx,
+					       enum wlan_op_mode vdev_opmode)
 {
 	int num_ppe_vp_max;
+	struct dp_ppe_vp_profile *vp_profile;
 
 	num_ppe_vp_max =
 		hal_tx_get_num_ppe_vp_tbl_entries(be_soc->soc.hal_soc);
@@ -624,8 +646,22 @@ static void dp_ppeds_dealloc_ppe_vp_profile_be(struct dp_soc_be *be_soc,
 		return;
 	}
 
-	be_soc->ppe_vp_profile[ppe_vp_profile_idx].is_configured = false;
-	be_soc->num_ppe_vp_profiles--;
+	be_soc->ppe_vp_profile[ppe_vp_profile_idx].ref_count--;
+
+	if (!be_soc->ppe_vp_profile[ppe_vp_profile_idx].ref_count) {
+		vp_profile = &be_soc->ppe_vp_profile[ppe_vp_profile_idx];
+
+		be_soc->ppe_vp_profile[ppe_vp_profile_idx].is_configured = false;
+		be_soc->num_ppe_vp_profiles--;
+
+		dp_ppeds_dealloc_vp_tbl_entry_be(be_soc,
+				vp_profile->ppe_vp_num_idx);
+		/*
+		 * For STA mode ast index table reg also needs to be cleaned
+		 */
+		if (vdev_opmode == wlan_op_mode_sta)
+			dp_ppeds_dealloc_vp_search_idx_tbl_entry_be(be_soc, vp_profile->search_idx_reg_num);
+	}
 	qdf_mutex_release(&be_soc->ppe_vp_tbl_lock);
 }
 
@@ -1706,6 +1742,20 @@ fail:
 	return ret;
 }
 
+static inline void dp_ppeds_set_splitphy_bank_id(struct dp_vdev_be *be_vdev,
+						 struct dp_vdev *ptnr_vdev,
+						 void *arg)
+{
+	struct dp_vdev_be *ptnr_vdev_be = dp_get_be_vdev_from_dp_vdev(ptnr_vdev);
+	struct dp_soc_be *ptnr_be_soc = dp_get_be_soc_from_dp_soc(ptnr_vdev->pdev->soc);
+
+	if (be_vdev->vdev.pdev->soc == ptnr_vdev->pdev->soc) {
+		ptnr_vdev_be->splitphy_ds_bank_id =
+				dp_tx_get_bank_profile(ptnr_be_soc, ptnr_vdev_be, false);
+		/* update the partner vp profile */
+		dp_tx_ppeds_vp_profile_update(ptnr_be_soc, ptnr_vdev_be);
+	}
+}
 /**
  * dp_ppeds_attach_vdev_be() - PPE DS table entry alloc
  * @soc_hdl: CDP SoC Tx/Rx handle
@@ -1766,7 +1816,7 @@ QDF_STATUS dp_ppeds_attach_vdev_be(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	/*
 	 * Allocate a PPE-VP profile for a vap / wds_ext node.
 	 */
-	ppe_vp_profile_idx = dp_ppeds_alloc_ppe_vp_profile_be(be_soc, &vp_profile);
+	ppe_vp_profile_idx = dp_ppeds_alloc_ppe_vp_profile_be(be_soc, &vp_profile, vp_num);
 	if (!vp_profile) {
 		dp_err("%p: Failed to allocate VP profile for VP :%d", be_soc, vp_num);
 		ret = QDF_STATUS_E_RESOURCES;
@@ -1774,34 +1824,46 @@ QDF_STATUS dp_ppeds_attach_vdev_be(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	}
 
 	be_vdev = dp_get_be_vdev_from_dp_vdev(vdev);
-	ppe_vp_idx = dp_ppeds_alloc_vp_tbl_entry_be(be_soc, be_vdev);
-	if (ppe_vp_idx < 0) {
-		dp_err("%p: Failed to allocate PPE VP idx for vdev_id:%d", be_soc, vdev->vdev_id);
-		ret = QDF_STATUS_E_RESOURCES;
-		goto fail2;
-	}
 
-	/*
-	 * For STA mode AST override is used; So a index register table would be needed
-	 */
-	if (vdev->opmode == wlan_op_mode_sta) {
-		ppe_vp_search_tbl_idx = dp_ppeds_alloc_vp_search_idx_tbl_entry_be(be_soc, be_vdev);
-		if (ppe_vp_search_tbl_idx < 0) {
-			dp_err("%p: Failed to allocate PPE VP search table idx for vdev_id:%d",
-				be_soc, vdev->vdev_id);
+	if (vp_profile->ref_count == 1) {
+		ppe_vp_idx = dp_ppeds_alloc_vp_tbl_entry_be(be_soc, be_vdev);
+		if (ppe_vp_idx < 0) {
+			dp_err("%p: Failed to allocate PPE VP idx for vdev_id:%d", be_soc, vdev->vdev_id);
 			ret = QDF_STATUS_E_RESOURCES;
-			goto fail3;
+			goto fail2;
 		}
 
-		vp_profile->search_idx_reg_num = ppe_vp_search_tbl_idx;
-	}
+		/*
+		 * For STA mode AST override is used; So a index register table would be needed
+		 */
+		if (vdev->opmode == wlan_op_mode_sta) {
+			ppe_vp_search_tbl_idx = dp_ppeds_alloc_vp_search_idx_tbl_entry_be(be_soc, be_vdev);
+			if (ppe_vp_search_tbl_idx < 0) {
+				dp_err("%p: Failed to allocate PPE VP search table idx for vdev_id:%d",
+						be_soc, vdev->vdev_id);
+				ret = QDF_STATUS_E_RESOURCES;
+				goto fail2;
+			}
 
-	vp_profile->vp_num = vp_num;
-	vp_profile->ppe_vp_num_idx = ppe_vp_idx;
-	vp_profile->to_fw = 0;
-	vp_profile->use_ppe_int_pri = 0;
-	vp_profile->drop_prec_enable = 0;
-	vp_profile->vdev_id = vdev_id;
+			vp_profile->search_idx_reg_num = ppe_vp_search_tbl_idx;
+		}
+
+		vp_profile->vp_num = vp_num;
+		vp_profile->ppe_vp_num_idx = ppe_vp_idx;
+		vp_profile->to_fw = 0;
+		vp_profile->use_ppe_int_pri = 0;
+		vp_profile->drop_prec_enable = 0;
+		vp_profile->vdev_id = vdev_id;
+	} else {
+		be_vdev->splitphy_ds_bank_id =
+				dp_tx_get_bank_profile(be_soc, be_vdev, false);
+		dp_mlo_iter_ptnr_vdev(be_soc, be_vdev,
+				dp_ppeds_set_splitphy_bank_id,
+				NULL,
+				DP_MOD_ID_DS,
+				DP_LINK_VDEV_ITER,
+				0);
+	}
 
 	/*
 	 * For the sta mode fill up the index reg number.
@@ -1854,12 +1916,9 @@ fail4:
 	if (dp_peer)
 		dp_peer_unref_delete(dp_peer, DP_MOD_ID_CDP);
 
-	if (!wds_ext_mode)
-		dp_ppeds_dealloc_vp_search_idx_tbl_entry_be(be_soc, vp_profile->search_idx_reg_num);
-fail3:
-	dp_ppeds_dealloc_vp_tbl_entry_be(be_soc, vp_profile->ppe_vp_num_idx);
 fail2:
-	dp_ppeds_dealloc_ppe_vp_profile_be(be_soc, ppe_vp_profile_idx);
+	dp_ppeds_dealloc_ppe_vp_profile_be(be_soc, ppe_vp_profile_idx,
+					   vdev->opmode);
 fail1:
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 fail0:
@@ -1936,15 +1995,8 @@ void dp_ppeds_detach_vdev_be(struct cdp_soc_t *soc_hdl, uint8_t vdev_id, struct 
 		return;
 	}
 
-	/*
-	 * For STA mode ast index table reg also needs to be cleaned
-	 */
-	if (vdev->opmode == wlan_op_mode_sta) {
-		dp_ppeds_dealloc_vp_search_idx_tbl_entry_be(be_soc, vp_profile->search_idx_reg_num);
-	}
-
-	dp_ppeds_dealloc_vp_tbl_entry_be(be_soc, vp_profile->ppe_vp_num_idx);
-	dp_ppeds_dealloc_ppe_vp_profile_be(be_soc, ppe_vp_profile_idx);
+	dp_ppeds_dealloc_ppe_vp_profile_be(be_soc, ppe_vp_profile_idx,
+					   vdev->opmode);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 }
@@ -1989,18 +2041,9 @@ void dp_ppeds_detach_vp_profile(struct dp_soc_be *be_soc,
 
 			ppe_ds_wlan_vp_free(be_soc->ppeds_handle,
 					    ppe_vp_profile->vp_num);
-			/*
-			 * For STA mode ast index table reg
-			 * also needs to be cleaned.
-			 */
-			if (be_vdev->vdev.opmode == wlan_op_mode_sta) {
-				dp_ppeds_dealloc_vp_search_idx_tbl_entry_be(
-					be_soc,
-					ppe_vp_profile->search_idx_reg_num);
-			}
 
-			dp_ppeds_dealloc_vp_tbl_entry_be(be_soc, i);
-			dp_ppeds_dealloc_ppe_vp_profile_be(be_soc, i);
+			dp_ppeds_dealloc_ppe_vp_profile_be(be_soc, i,
+							be_vdev->vdev.opmode);
 		}
 	}
 }
