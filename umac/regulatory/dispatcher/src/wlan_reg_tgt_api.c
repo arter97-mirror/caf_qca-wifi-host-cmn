@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -76,6 +76,14 @@ QDF_STATUS tgt_reg_process_master_chan_list_ext(struct cur_regulatory_info
 
 	return reg_process_master_chan_list_ext(reg_info);
 }
+
+#ifdef CONFIG_REG_CLIENT
+QDF_STATUS tgt_reg_process_c2c_detect_evt(struct wlan_objmgr_psoc *psoc,
+					  bool indoor_ap_found)
+{
+	return reg_process_c2c_detect_evt(psoc, indoor_ap_found);
+}
+#endif
 
 QDF_STATUS
 tgt_reg_set_both_psd_eirp_preferred_support(struct wlan_objmgr_psoc *psoc,

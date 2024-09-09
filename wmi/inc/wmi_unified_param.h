@@ -1758,12 +1758,14 @@ struct ap_ps_params {
  * @append: append to existing chan list
  * @max_bw_support_present: max BW support present
  * @ch_param: pointer to channel_paramw
+ * @is_c2c_supp: is C2C supported for country
  */
 struct scan_chan_list_params {
 	uint32_t pdev_id;
 	uint16_t nallchans;
 	bool append;
 	bool max_bw_support_present;
+	bool is_c2c_supp;
 	QDF_FLEX_ARRAY(struct channel_param, ch_param);
 };
 
@@ -5439,6 +5441,7 @@ typedef enum {
 	wmi_pdev_csa_switch_count_status_event_id,
 	wmi_reg_chan_list_cc_event_id,
 	wmi_reg_chan_list_cc_ext_event_id,
+	wmi_c2c_detect_event_id,
 #ifdef CONFIG_AFC_SUPPORT
 	wmi_afc_event_id,
 #endif

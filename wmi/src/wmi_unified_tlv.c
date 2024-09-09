@@ -4998,13 +4998,17 @@ static QDF_STATUS send_scan_chan_list_cmd_tlv(wmi_unified_t wmi_handle,
 			       WMITLV_GET_STRUCT_TLVLEN
 			       (wmi_scan_chan_list_cmd_fixed_param));
 
-		wmi_debug("no of channels = %d, len = %d", num_send_chans, len);
+		wmi_debug("no of channels = %d, len = %d, is_c2c_supp = %d",
+			  num_send_chans, len, chan_list->is_c2c_supp);
 
 		if (num_sends)
 			cmd->flags |= APPEND_TO_EXISTING_CHAN_LIST;
 
 		if (chan_list->max_bw_support_present)
 			cmd->flags |= CHANNEL_MAX_BANDWIDTH_VALID;
+
+		if (chan_list->is_c2c_supp)
+			cmd->flags |= WMI_SCAN_TO_DETECT_6GHZ_C2C_AP;
 
 		cmd->pdev_id = wmi_handle->ops->convert_pdev_id_host_to_target(
 						wmi_handle,
@@ -18190,6 +18194,34 @@ static QDF_STATUS extract_reg_chan_list_ext_update_event_tlv(
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef CONFIG_REG_CLIENT
+/**
+ * extract_reg_c2c_detect_event_tlv() - Extract C2C detect event tlv
+ * @evt_buf: Event buffer pointer
+ * @indoor_ap_found: Indoor AP found flag
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_reg_c2c_detect_event_tlv(uint8_t *evt_buf, bool *indoor_ap_found)
+{
+	WMI_C2C_DETECT_EVENTID_param_tlvs *param_buf;
+	wmi_c2c_detect_event_fixed_param *fixed_param;
+
+	param_buf = (WMI_C2C_DETECT_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("invalid channel list event buf");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	*indoor_ap_found = fixed_param->lpi_ap_detect;
+	wmi_debug("Is indoor AP detected = %u", *indoor_ap_found);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 #ifdef CONFIG_AFC_SUPPORT
 /**
  * copy_afc_chan_eirp_info() - Copy the channel EIRP object from
@@ -22299,6 +22331,21 @@ bool is_both_psd_eirp_support_present_for_sp(wmi_unified_t wmi_handle,
 			param->is_power_type_client_sp));
 }
 
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+static uint32_t get_wmi_6ghz_power_mode(uint32_t power_type_6ghz)
+{
+	if (power_type_6ghz == REG_INDOOR_ENABLED_AP)
+		return 4;
+
+	return power_type_6ghz;
+}
+#else
+static inline uint32_t get_wmi_6ghz_power_mode(uint32_t power_type_6ghz)
+{
+	return power_type_6ghz;
+}
+#endif
+
 /**
  * send_set_tpc_power_cmd_tlv() - Sends the set TPC power level to FW
  * @wmi_handle: wmi handle
@@ -22342,11 +22389,12 @@ static QDF_STATUS send_set_tpc_power_cmd_tlv(wmi_unified_t wmi_handle,
 	tpc_power_info_param->vdev_id = vdev_id;
 	tpc_power_info_param->psd_power = param->is_psd_power;
 	tpc_power_info_param->eirp_power = param->eirp_power;
-	tpc_power_info_param->power_type_6ghz = param->power_type_6g;
+	tpc_power_info_param->power_type_6ghz =
+				get_wmi_6ghz_power_mode(param->power_type_6g);
 	wmi_debug("eirp_power = %d is_psd_power = %d",
 		  tpc_power_info_param->eirp_power,
 		  tpc_power_info_param->psd_power);
-	reg_print_ap_power_type_6ghz(tpc_power_info_param->power_type_6ghz);
+	reg_print_ap_power_type_6ghz(param->power_type_6g);
 
 	buf_ptr += sizeof(wmi_vdev_set_tpc_power_fixed_param);
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
@@ -23617,6 +23665,10 @@ struct wmi_ops tlv_ops =  {
 #ifdef CONFIG_BAND_6GHZ
 	.extract_reg_chan_list_ext_update_event =
 		extract_reg_chan_list_ext_update_event_tlv,
+#ifdef CONFIG_REG_CLIENT
+	.extract_reg_c2c_detect_event =
+		extract_reg_c2c_detect_event_tlv,
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 	.extract_afc_event = extract_afc_event_tlv,
 #endif
@@ -24140,6 +24192,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_reg_chan_list_cc_event_id] = WMI_REG_CHAN_LIST_CC_EVENTID;
 	event_ids[wmi_reg_chan_list_cc_ext_event_id] =
 					WMI_REG_CHAN_LIST_CC_EXT_EVENTID;
+	event_ids[wmi_c2c_detect_event_id] =
+					WMI_C2C_DETECT_EVENTID;
 #ifdef CONFIG_AFC_SUPPORT
 	event_ids[wmi_afc_event_id] = WMI_AFC_EVENTID,
 #endif

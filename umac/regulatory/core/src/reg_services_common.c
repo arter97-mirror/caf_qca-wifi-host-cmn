@@ -4107,6 +4107,8 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 		ap_pwr_mode = REG_AP_SP;
 	else if (ap_pwr_type == REG_VERY_LOW_POWER_AP)
 		ap_pwr_mode = REG_AP_VLP;
+	else if (ap_pwr_type == REG_INDOOR_ENABLED_AP)
+		ap_pwr_mode = REG_AP_C2C;
 	else
 		ap_pwr_mode = REG_INVALID_PWR_MODE;
 
@@ -4833,10 +4835,8 @@ decide_power_type:
 		*power_type = REG_INDOOR_AP;
 	else if (min_chan_flags & REGULATORY_CHAN_AFC)
 		*power_type = REG_STANDARD_POWER_AP;
-	else if (min_chan_flags & REGULATORY_CHAN_INDOOR_ONLY)
-		*power_type = REG_INDOOR_AP;
 	else
-		*power_type = REG_VERY_LOW_POWER_AP;
+		reg_get_cur_6g_ap_pwr_type(pdev, power_type);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -8591,16 +8591,21 @@ QDF_STATUS reg_get_client_power_for_6ghz_ap(struct wlan_objmgr_pdev *pdev,
 					    enum reg_6g_client_type client_type,
 					    qdf_freq_t chan_freq,
 					    bool *is_psd, int16_t *tx_power,
-					    int16_t *eirp_psd_power)
+					    int16_t *eirp_psd_power,
+					    bool get_vlp_pwr)
 {
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
 	enum reg_6g_ap_type ap_pwr_type;
 	struct regulatory_channel *master_chan_list;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
-	status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
-	if (!QDF_IS_STATUS_SUCCESS(status))
-		return status;
+	if (get_vlp_pwr) {
+		ap_pwr_type = REG_VERY_LOW_POWER_AP;
+	} else {
+		status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
+		if (!QDF_IS_STATUS_SUCCESS(status))
+			return status;
+	}
 
 	pdev_priv_obj = reg_get_pdev_obj(pdev);
 	if (!pdev_priv_obj) {

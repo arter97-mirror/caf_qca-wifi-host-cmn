@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -45,6 +45,17 @@ QDF_STATUS tgt_reg_process_master_chan_list(struct cur_regulatory_info
 QDF_STATUS tgt_reg_process_master_chan_list_ext(struct cur_regulatory_info
 						*reg_info);
 
+#ifdef CONFIG_REG_CLIENT
+/**
+ * tgt_reg_process_c2c_detect_evt() - Process C2C update event.
+ * @psoc: PSOC pointer.
+ * @indoor_ap_found: Indoor AP detected flag.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS tgt_reg_process_c2c_detect_evt(struct wlan_objmgr_psoc *psoc,
+					  bool indoor_ap_found);
+#endif
 /**
  * tgt_reg_set_both_psd_eirp_preferred_support() - Set PSD and EIRP as the
  * preferred support for TPC power command.

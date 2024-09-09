@@ -404,6 +404,20 @@ static void wlan_lmac_if_umac_rx_ops_register_wifi_pos(
 }
 #endif /* WIFI_POS_CONVERGED */
 
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+static void wlan_lmac_if_register_c2c_detect_event_handler(
+				struct wlan_lmac_if_rx_ops *rx_ops)
+{
+	rx_ops->reg_rx_ops.c2c_detect_evt_handler =
+				tgt_reg_process_c2c_detect_evt;
+}
+#else
+static inline void wlan_lmac_if_register_c2c_detect_event_handler(
+				struct wlan_lmac_if_rx_ops *rx_ops)
+{
+}
+#endif
+
 #ifdef CONFIG_BAND_6GHZ
 static void wlan_lmac_if_register_master_list_ext_handler(
 					struct wlan_lmac_if_rx_ops *rx_ops)
@@ -517,6 +531,7 @@ static void wlan_lmac_if_umac_reg_rx_ops_register(
 		tgt_reg_process_master_chan_list;
 
 	wlan_lmac_if_register_master_list_ext_handler(rx_ops);
+	wlan_lmac_if_register_c2c_detect_event_handler(rx_ops);
 
 	rx_ops->reg_rx_ops.reg_11d_new_cc_handler =
 		tgt_reg_process_11d_new_country;

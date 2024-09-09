@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -531,6 +531,107 @@ static QDF_STATUS tgt_if_regulatory_unregister_master_list_ext_handler(
 			wmi_handle, wmi_reg_chan_list_cc_ext_event_id);
 }
 
+#ifdef CONFIG_REG_CLIENT
+/**
+ * tgt_reg_c2c_detect_event_handler() - C2C detect event handler
+ * @handle: scn handle
+ * @event_buf: pointer to event buffer
+ * @len: buffer length
+ *
+ * Return: 0 on success
+ */
+static int tgt_reg_c2c_detect_event_handler(ol_scn_t handle,
+					    uint8_t *event_buf,
+					    uint32_t len)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_reg_rx_ops *reg_rx_ops;
+	bool indoor_ap_found;
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+
+	TARGET_IF_ENTER();
+	psoc = target_if_get_psoc_from_scn_hdl(handle);
+	if (!psoc) {
+		target_if_err("psoc ptr is NULL");
+		return -EINVAL;
+	}
+
+	reg_rx_ops = target_if_regulatory_get_rx_ops(psoc);
+	if (!reg_rx_ops) {
+		target_if_err("reg_rx_ops is NULL");
+		return -EINVAL;
+	}
+
+	if (!reg_rx_ops->c2c_detect_evt_handler) {
+		target_if_err("c2c_detect_event_handler is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("invalid wmi handle");
+		return -EINVAL;
+	}
+
+	status = wmi_extract_reg_c2c_detect_event(wmi_handle, event_buf,
+						  &indoor_ap_found);
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
+		target_if_err("Extraction of c2c detect event failed");
+		return -EFAULT;
+	}
+
+	status = reg_rx_ops->c2c_detect_evt_handler(psoc, indoor_ap_found);
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
+		target_if_err("Failed to process c2c_detect_event_handler");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+/**
+ * tgt_if_regulatory_register_c2c_detect_event_handler() - Register C2C detect
+ * event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS tgt_if_regulatory_register_c2c_detect_event_handler(
+	struct wlan_objmgr_psoc *psoc, void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_register_event_handler(
+			wmi_handle, wmi_c2c_detect_event_id,
+			tgt_reg_c2c_detect_event_handler,
+			WMI_RX_SERIALIZER_CTX);
+}
+
+/**
+ * tgt_if_regulatory_unregister_c2c_detect_event_handler() - Unregister C2C
+ * detect event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS tgt_if_regulatory_unregister_c2c_detect_event_handler(
+	struct wlan_objmgr_psoc *psoc, void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_unregister_event_handler(
+			wmi_handle, wmi_c2c_detect_event_id);
+}
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 /**
  * tgt_afc_event_handler() - Handler for AFC Event
@@ -849,6 +950,30 @@ static QDF_STATUS tgt_if_regulatory_get_pdev_id_from_phy_id(
 
 	return QDF_STATUS_SUCCESS;
 }
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+/**
+ * target_if_register_c2c_detect_event_handler() - Register C2C detect
+ * event handler
+ * @reg_ops: Regulatory TX ops pointer
+ *
+ * Return: None
+ */
+static void target_if_register_c2c_detect_event_handler(
+				struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+	reg_ops->register_c2c_detect_event_handler =
+		tgt_if_regulatory_register_c2c_detect_event_handler;
+
+	reg_ops->unregister_c2c_detect_event_handler =
+		tgt_if_regulatory_unregister_c2c_detect_event_handler;
+}
+#else
+static inline void target_if_register_c2c_detect_event_handler(
+				struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+}
+#endif
 
 #ifdef CONFIG_BAND_6GHZ
 static void target_if_register_master_ext_handler(
@@ -1467,6 +1592,8 @@ QDF_STATUS target_if_register_regulatory_tx_ops(
 	target_if_register_master_ext_handler(reg_ops);
 
 	target_if_register_afc_event_handler(reg_ops);
+
+	target_if_register_c2c_detect_event_handler(reg_ops);
 
 	reg_ops->set_country_code = tgt_if_regulatory_set_country_code;
 

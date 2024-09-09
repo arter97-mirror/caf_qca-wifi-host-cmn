@@ -2465,6 +2465,10 @@ QDF_STATUS (*extract_reg_chan_list_ext_update_event)(wmi_unified_t wmi_handle,
 						     struct cur_regulatory_info
 						     *reg_info,
 						     uint32_t len);
+#ifdef CONFIG_REG_CLIENT
+QDF_STATUS (*extract_reg_c2c_detect_event)(uint8_t *evt_buf,
+					   bool *indoor_ap_found);
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 QDF_STATUS
 (*extract_afc_event)(wmi_unified_t wmi_handle,

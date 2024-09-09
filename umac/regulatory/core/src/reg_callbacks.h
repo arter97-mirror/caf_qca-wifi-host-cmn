@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -110,7 +110,6 @@ reg_register_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 void
 reg_unregister_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 			reg_get_connected_chan_for_mode_callback cbk);
-
 #else
 static inline void reg_register_chan_change_callback(
 		struct wlan_objmgr_psoc *psoc, reg_chan_change_callback cbk,
@@ -154,6 +153,40 @@ reg_register_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 static inline void
 reg_unregister_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 				reg_get_connected_chan_for_mode_callback cbk)
+{
+}
+#endif
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+/**
+ * reg_register_c2c_detect_callback() - Register C2C detect callback
+ * @psoc: PSOC object.
+ * @cbk: Pointer to callback function.
+ *
+ * Return: None.
+ */
+void reg_register_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+				      reg_c2c_detect_callback cbk);
+
+/**
+ * reg_unregister_c2c_detect_callback() - Unregister C2C detect callback
+ * @psoc: PSOC object.
+ * @cbk: Pointer to callback function.
+ *
+ * Return: None.
+ */
+void reg_unregister_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+					reg_c2c_detect_callback cbk);
+#else
+static inline void
+reg_register_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+				 reg_c2c_detect_callback cbk)
+{
+}
+
+static inline void
+reg_unregister_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+				   reg_c2c_detect_callback cbk)
 {
 }
 #endif

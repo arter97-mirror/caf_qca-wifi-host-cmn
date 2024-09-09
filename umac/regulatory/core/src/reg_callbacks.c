@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -503,3 +503,39 @@ reg_unregister_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 		psoc_priv_obj->conn_chan_cb.cbk = NULL;
 	qdf_spin_unlock_bh(&psoc_priv_obj->cbk_list_lock);
 }
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+void reg_register_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+				      reg_c2c_detect_callback cbk)
+{
+	struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj;
+
+	psoc_priv_obj = reg_get_psoc_obj(psoc);
+	if (!psoc_priv_obj) {
+		reg_err("reg psoc private obj is NULL");
+		return;
+	}
+
+	qdf_spin_lock_bh(&psoc_priv_obj->cbk_list_lock);
+	if (!psoc_priv_obj->c2c_cbk.cbk)
+		psoc_priv_obj->c2c_cbk.cbk = cbk;
+	qdf_spin_unlock_bh(&psoc_priv_obj->cbk_list_lock);
+}
+
+void reg_unregister_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+					reg_c2c_detect_callback cbk)
+{
+	struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj;
+
+	psoc_priv_obj = reg_get_psoc_obj(psoc);
+	if (!psoc_priv_obj) {
+		reg_err("reg psoc private obj is NULL");
+		return;
+	}
+
+	qdf_spin_lock_bh(&psoc_priv_obj->cbk_list_lock);
+	if (psoc_priv_obj->c2c_cbk.cbk == cbk)
+		psoc_priv_obj->c2c_cbk.cbk = NULL;
+	qdf_spin_unlock_bh(&psoc_priv_obj->cbk_list_lock);
+}
+#endif

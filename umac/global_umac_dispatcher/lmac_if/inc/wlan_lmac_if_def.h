@@ -1219,6 +1219,10 @@ struct wlan_lmac_if_ftm_rx_ops {
  * 6GHz 80p80 channel.
  * @is_freq_80p80_supported: Callback function to check if the given primary
  * frequency supports 80P80 mode of operation.
+ * @register_c2c_detect_event_handler: Pointer to register c2c
+ *                                     detect event handler
+ * @unregister_c2c_detect_event_handler: Pointer to unregister c2c detect
+ *                                 event handler
  */
 struct wlan_lmac_if_reg_tx_ops {
 	QDF_STATUS (*register_master_handler)(struct wlan_objmgr_psoc *psoc,
@@ -1263,6 +1267,12 @@ struct wlan_lmac_if_reg_tx_ops {
 	QDF_STATUS (*init_dfs_nol)(struct wlan_objmgr_pdev *pdev);
 	QDF_STATUS (*get_opclass_tbl_idx)(struct wlan_objmgr_pdev *pdev,
 					  uint8_t *opclass_tbl_idx);
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+	QDF_STATUS (*register_c2c_detect_event_handler)(
+			struct wlan_objmgr_psoc *psoc, void *arg);
+	QDF_STATUS (*unregister_c2c_detect_event_handler)(
+			struct wlan_objmgr_psoc *psoc, void *arg);
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 	QDF_STATUS (*send_afc_ind)(struct wlan_objmgr_psoc *psoc,
 				   uint8_t pdev_id,
@@ -2190,6 +2200,7 @@ struct wlan_lmac_if_mgmt_txrx_rx_ops {
  *		rate2power update response from fw.
  * @reg_is_5dot9_ghz_supported: Function pointer to get the 5.9GHz support
  * information.
+ * @c2c_detect_evt_handler: Pointer to C2C detect event handler.
  */
 struct wlan_lmac_if_reg_rx_ops {
 	QDF_STATUS (*master_list_handler)(struct cur_regulatory_info
@@ -2197,6 +2208,10 @@ struct wlan_lmac_if_reg_rx_ops {
 #ifdef CONFIG_BAND_6GHZ
 	QDF_STATUS (*master_list_ext_handler)(struct cur_regulatory_info
 					      *reg_info);
+#ifdef CONFIG_REG_CLIENT
+	QDF_STATUS (*c2c_detect_evt_handler)(struct wlan_objmgr_psoc *psoc,
+					     bool indoor_ap_found);
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 	QDF_STATUS (*afc_event_handler)(struct afc_regulatory_info *afc_info);
 #endif
