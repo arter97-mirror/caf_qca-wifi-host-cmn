@@ -1840,7 +1840,8 @@ void dp_tx_deinit_bank_profiles(struct dp_soc_be *be_soc)
 
 static
 void dp_tx_get_vdev_bank_config(struct dp_vdev_be *be_vdev,
-				union hal_tx_bank_config *bank_config)
+				union hal_tx_bank_config *bank_config,
+				bool vdev_id_check)
 {
 	struct dp_vdev *vdev = &be_vdev->vdev;
 
@@ -1880,13 +1881,14 @@ void dp_tx_get_vdev_bank_config(struct dp_vdev_be *be_vdev,
 	bank_config->dscp_tid_map_id = vdev->dscp_tid_map_id;
 
 	/* Disabling vdev id check for now. Needs revist. */
-	bank_config->vdev_id_check_en = be_vdev->vdev_id_check_en;
+	bank_config->vdev_id_check_en = vdev_id_check;
 
 	bank_config->pmac_id = vdev->lmac_id;
 }
 
 int dp_tx_get_bank_profile(struct dp_soc_be *be_soc,
-			   struct dp_vdev_be *be_vdev)
+			   struct dp_vdev_be *be_vdev,
+			   bool vdev_id_check)
 {
 	char *temp_str = "";
 	bool found_match = false;
@@ -1897,7 +1899,7 @@ int dp_tx_get_bank_profile(struct dp_soc_be *be_soc,
 	union hal_tx_bank_config vdev_config = {0};
 
 	/* convert vdev params into hal_tx_bank_config */
-	dp_tx_get_vdev_bank_config(be_vdev, &vdev_config);
+	dp_tx_get_vdev_bank_config(be_vdev, &vdev_config, vdev_id_check);
 
 	DP_TX_BANK_LOCK_ACQUIRE(&be_soc->tx_bank_lock);
 	/* go over all banks and find a matching/unconfigured/unused bank */
@@ -1968,19 +1970,25 @@ inc_ref_and_return:
 	return bank_id;
 }
 
-void dp_tx_put_bank_profile(struct dp_soc_be *be_soc,
-			    struct dp_vdev_be *be_vdev)
+void dp_tx_put_bank_profile(struct dp_soc_be *be_soc, uint8_t bank_id)
 {
 	DP_TX_BANK_LOCK_ACQUIRE(&be_soc->tx_bank_lock);
-	qdf_atomic_dec(&be_soc->bank_profiles[be_vdev->bank_id].ref_count);
+	qdf_atomic_dec(&be_soc->bank_profiles[bank_id].ref_count);
 	DP_TX_BANK_LOCK_RELEASE(&be_soc->tx_bank_lock);
 }
 
 void dp_tx_update_bank_profile(struct dp_soc_be *be_soc,
 			       struct dp_vdev_be *be_vdev)
 {
-	dp_tx_put_bank_profile(be_soc, be_vdev);
-	be_vdev->bank_id = dp_tx_get_bank_profile(be_soc, be_vdev);
+	if (be_vdev->splitphy_ds_bank_id != DP_BE_INVALID_BANK_ID) {
+		dp_tx_put_bank_profile(be_soc, be_vdev->splitphy_ds_bank_id);
+		be_vdev->splitphy_ds_bank_id = dp_tx_get_bank_profile(be_soc,
+								be_vdev, false);
+	}
+
+	dp_tx_put_bank_profile(be_soc, be_vdev->bank_id);
+	be_vdev->bank_id = dp_tx_get_bank_profile(be_soc, be_vdev,
+						  be_vdev->vdev_id_check_en);
 	be_vdev->vdev.bank_id = be_vdev->bank_id;
 }
 

@@ -181,20 +181,21 @@ void dp_tx_deinit_bank_profiles(struct dp_soc_be *soc);
  * dp_tx_get_bank_profile() - get TX bank profile for vdev
  * @soc: DP soc handle
  * @be_vdev: BE vdev pointer
+ * @vdev_id_check: vdev_id check needed
  *
  * Return: bank profile allocated to vdev or DP_BE_INVALID_BANK_ID
  */
 int dp_tx_get_bank_profile(struct dp_soc_be *soc,
-			   struct dp_vdev_be *be_vdev);
+			   struct dp_vdev_be *be_vdev, bool vdev_id_check);
 
 /**
  * dp_tx_put_bank_profile() - release TX bank profile for vdev
  * @soc: DP soc handle
- * @be_vdev: pointer to be_vdev structure
+ * @bank_id: bank id
  *
  * Return: None
  */
-void dp_tx_put_bank_profile(struct dp_soc_be *soc, struct dp_vdev_be *be_vdev);
+void dp_tx_put_bank_profile(struct dp_soc_be *soc, uint8_t bank_id);
 
 /**
  * dp_tx_update_bank_profile() - release existing and allocate new bank profile
