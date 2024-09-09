@@ -6974,16 +6974,7 @@ cm_find_roam_candidate(struct wlan_objmgr_pdev *pdev,
 }
 
 #if (defined(CONNECTIVITY_DIAG_EVENT) && defined(WLAN_FEATURE_ROAM_OFFLOAD))
-/**
- * cm_roam_reject_reassoc_event() - Send connectivity diag log
- * event while rejecting reassoc request to connected BSSID
- * @psoc: Pointer to PSOC object
- * @vdev: Pointer to vdev object
- * @bssid: connected BSSID
- *
- * Return: None
- */
-static inline void
+void
 cm_roam_reject_reassoc_event(struct wlan_objmgr_psoc *psoc,
 			     struct wlan_objmgr_vdev *vdev,
 			     struct qdf_mac_addr *bssid)
@@ -7062,25 +7053,11 @@ cm_roam_reject_reassoc_event(struct wlan_objmgr_psoc *psoc,
 
 	cm_roam_cancel_event(vdev_id, ROAM_FAIL_REASON_REASSOC_TO_SAME_AP, 0);
 }
-#else
-static inline void
-cm_roam_reject_reassoc_event(struct wlan_objmgr_psoc *psoc,
-			     struct wlan_objmgr_vdev *vdev,
-			     struct qdf_mac_addr *bssid)
-{}
 #endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
-/**
- * cm_is_bssid_present_on_any_assoc_link() - Check if bssid belongs to any
- *                                           assoc link
- * @vdev: VDEV pointer
- * @bssid: bssid pointer
- *
- * Return: True if bssid belongs to any assoc else return false
- */
-static bool cm_is_bssid_present_on_any_assoc_link(struct wlan_objmgr_vdev *vdev,
-						  struct qdf_mac_addr *bssid)
+bool cm_is_bssid_present_on_any_assoc_link(struct wlan_objmgr_vdev *vdev,
+					   struct qdf_mac_addr *bssid)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
 	struct mlo_link_info *links_info;
@@ -7109,8 +7086,8 @@ static bool cm_is_bssid_present_on_any_assoc_link(struct wlan_objmgr_vdev *vdev,
 	return false;
 }
 #else
-static bool cm_is_bssid_present_on_any_assoc_link(struct wlan_objmgr_vdev *vdev,
-						  struct qdf_mac_addr *bssid)
+bool cm_is_bssid_present_on_any_assoc_link(struct wlan_objmgr_vdev *vdev,
+					   struct qdf_mac_addr *bssid)
 {
 	struct qdf_mac_addr connected_bssid;
 	QDF_STATUS status;

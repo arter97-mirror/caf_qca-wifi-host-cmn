@@ -286,6 +286,25 @@ ucfg_wlan_cm_roam_invoke(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 	return wlan_cm_roam_invoke(pdev, vdev_id, bssid, ch_freq, source);
 }
 
+uint32_t ucfg_cm_roam_get_roam_score_algo(struct wlan_objmgr_pdev *pdev)
+{
+	return wlan_cm_roam_get_roam_score_algo(pdev);
+}
+
+bool
+ucfg_cm_is_bssid_present_on_any_assoc_link(struct wlan_objmgr_vdev *vdev,
+					   struct qdf_mac_addr *target_bssid)
+{
+	return wlan_cm_is_bssid_present_on_any_assoc_link(vdev, target_bssid);
+}
+
+void ucfg_cm_roam_reject_reassoc_event(struct wlan_objmgr_pdev *pdev,
+				       struct wlan_objmgr_vdev *vdev,
+				       struct qdf_mac_addr *connected_bssid)
+{
+	wlan_cm_roam_reject_reassoc_event(pdev, vdev, connected_bssid);
+}
+
 #ifdef WLAN_FEATURE_HOST_ROAM
 void ucfg_cm_set_ft_pre_auth_state(struct wlan_objmgr_vdev *vdev, bool state)
 {
