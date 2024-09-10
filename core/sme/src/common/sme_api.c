@@ -16007,6 +16007,9 @@ int sme_update_eht_caps(mac_handle_t mac_handle, uint8_t session_id,
 	case EHT_TX_BFEE_SOUNDING_FEEDBACK_RATELIMIT:
 		cfg_eht_cap->tb_sounding_feedback_rl = cfg_val;
 		break;
+	case EHT_TX_TRIG_SU_BFORMING_FEEDBACK:
+		cfg_eht_cap->trig_su_bforming_feedback = cfg_val;
+		break;
 	default:
 		sme_debug("default: Unhandled cap type %d", cap_type);
 		return -EINVAL;

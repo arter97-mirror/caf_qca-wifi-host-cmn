@@ -3913,6 +3913,7 @@ void sme_set_nss_capability(mac_handle_t mac_handle, uint8_t vdev_id,
  * @EHT_TX_BFEE_SS_320MHZ: TX beamformee for 320 MHz
  * @EHT_TX_BFEE_SOUNDING_FEEDBACK_RATELIMIT: TX beamformee sounding feedback
  * ratelimit
+ * @EHT_TX_TRIG_SU_BFORMING_FEEDBACK: Triggered SU Beamforming Feedback
  */
 enum sme_eht_tx_bfee_cap_type {
 	EHT_TX_BFEE_ENABLE = 1,
@@ -3920,6 +3921,7 @@ enum sme_eht_tx_bfee_cap_type {
 	EHT_TX_BFEE_SS_160MHZ = 3,
 	EHT_TX_BFEE_SS_320MHZ = 4,
 	EHT_TX_BFEE_SOUNDING_FEEDBACK_RATELIMIT = 5,
+	EHT_TX_TRIG_SU_BFORMING_FEEDBACK = 6,
 };
 
 #ifdef WLAN_FEATURE_11BE
