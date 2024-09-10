@@ -1797,6 +1797,7 @@ static void hif_reg_write_work(void *arg)
 
 		qdf_trace_dp_del_reg_write(ring_id, q_elem->enqueue_val,
 					   q_elem->dequeue_val,
+					   q_elem->work_scheduled_time,
 					   q_elem->enqueue_time,
 					   q_elem->dequeue_time);
 		num_processed++;

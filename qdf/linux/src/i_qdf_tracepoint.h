@@ -294,6 +294,7 @@ bool __qdf_trace_dp_del_reg_write_enabled(void)
  * @srng_id: srng id
  * @enq_val: enqueue value
  * @deq_val: dequeue value
+ * @sched_time: scheduled time
  * @enq_time: enqueue time
  * @deq_time: dequeue time
  *
@@ -301,10 +302,10 @@ bool __qdf_trace_dp_del_reg_write_enabled(void)
  */
 static inline
 void __qdf_trace_dp_del_reg_write(uint8_t srng_id, uint32_t enq_val,
-				  uint32_t deq_val, uint64_t enq_time,
-				  uint64_t deq_time)
+				  uint32_t deq_val, uint64_t sched_time,
+				  uint64_t enq_time, uint64_t deq_time)
 {
-	trace_dp_del_reg_write(srng_id, enq_val, deq_val, enq_time,
+	trace_dp_del_reg_write(srng_id, enq_val, deq_val, sched_time, enq_time,
 			       deq_time);
 }
 

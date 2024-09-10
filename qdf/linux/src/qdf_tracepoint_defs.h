@@ -214,12 +214,13 @@ DEFINE_EVENT(dp_trace_pkt_class, dp_tx_comp_pkt,
 
 TRACE_EVENT(dp_del_reg_write,
 	    TP_PROTO(uint8_t srng_id, uint32_t enq_val, uint32_t deq_val,
-		     uint64_t enq_time, uint64_t deq_time),
-	    TP_ARGS(srng_id, enq_val, deq_val, enq_time, deq_time),
+		     uint64_t sched_time, uint64_t enq_time, uint64_t deq_time),
+	    TP_ARGS(srng_id, enq_val, deq_val, sched_time, enq_time, deq_time),
 	    TP_STRUCT__entry(
 		__field(uint8_t, srng_id)
 		__field(uint32_t, enq_val)
 		__field(uint32_t, deq_val)
+		__field(uint64_t, sched_time)
 		__field(uint64_t, enq_time)
 		__field(uint64_t, deq_time)
 	    ),
@@ -227,12 +228,13 @@ TRACE_EVENT(dp_del_reg_write,
 		__entry->srng_id = srng_id;
 		__entry->enq_val = enq_val;
 		__entry->deq_val = deq_val;
+		__entry->sched_time = sched_time;
 		__entry->enq_time = enq_time;
 		__entry->deq_time = deq_time;
 	    ),
-	    TP_printk("srng_id=%u enq_val=%u deq_val=%u enq_time=0x%llx deq_time=0x%llx",
+	    TP_printk("srng_id=%u enq_val=%u deq_val=%u sched_time=0x%llx enq_time=0x%llx deq_time=0x%llx",
 		      __entry->srng_id, __entry->enq_val, __entry->deq_val,
-		      __entry->enq_time, __entry->deq_time)
+		      __entry->sched_time, __entry->enq_time, __entry->deq_time)
 );
 
 TRACE_EVENT(dp_ce_tasklet_sched_latency,
