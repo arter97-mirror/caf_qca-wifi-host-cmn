@@ -926,4 +926,14 @@ p2p_set_rand_mac_for_p2p_dev(struct wlan_objmgr_psoc *soc,
 			     uint32_t vdev_id, uint32_t freq,
 			     uint64_t rnd_cookie, uint32_t duration);
 
+/**
+ * p2p_is_p2p_go_noa_in_progress() - Check whether P2P GO single shot noa
+ * is in progress or not
+ * @pdev: PDEV object manager for P2P GO
+ * @vdev_id: vdev id
+ *
+ * Return: True/False
+ */
+bool p2p_is_p2p_go_noa_in_progress(struct wlan_objmgr_pdev *pdev,
+				   uint8_t vdev_id);
 #endif /* _WLAN_P2P_MAIN_H_ */

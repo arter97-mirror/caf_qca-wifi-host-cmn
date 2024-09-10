@@ -842,3 +842,9 @@ uint8_t ucfg_p2p_psoc_priv_get_sta_vdev_id(struct wlan_objmgr_psoc *psoc)
 {
 	return p2p_psoc_priv_get_sta_vdev_id(psoc);
 }
+
+bool ucfg_p2p_is_p2p_go_noa_in_progress(struct wlan_objmgr_pdev *pdev,
+					uint8_t vdev_id)
+{
+	return p2p_is_p2p_go_noa_in_progress(pdev, vdev_id);
+}

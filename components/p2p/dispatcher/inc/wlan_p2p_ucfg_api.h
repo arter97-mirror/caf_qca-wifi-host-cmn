@@ -675,4 +675,15 @@ void ucfg_p2p_psoc_priv_set_sta_vdev_id(struct wlan_objmgr_psoc *psoc,
  * Return: vdev_id
  */
 uint8_t ucfg_p2p_psoc_priv_get_sta_vdev_id(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * ucfg_p2p_is_p2p_go_noa_in_progress() - Check whether P2P GO single shot noa
+ * is in progress or not
+ * @pdev: PDEV object manager for P2P GO
+ * @vdev_id: vdev id
+ *
+ * Return: True/False
+ */
+bool ucfg_p2p_is_p2p_go_noa_in_progress(struct wlan_objmgr_pdev *pdev,
+					uint8_t vdev_id);
 #endif /* _WLAN_P2P_UCFG_API_H_ */
