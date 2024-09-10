@@ -85,6 +85,8 @@ static int ol_ath_set_rx_monitor_filter_mon_2_0(struct ieee80211com *ic,
 	uint8_t pdev_id = wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj);
 	int filter_type = MON_FILTER_TYPE_GET(value);
 	struct ieee80211vap *vap = NULL;
+	osif_dev *osifp = NULL;
+	struct net_device *mon_netdev = NULL;
 
 	if (!ic->ic_mon_vap) {
 		qdf_err("Monitor VAP doesn't exist");
@@ -92,6 +94,7 @@ static int ol_ath_set_rx_monitor_filter_mon_2_0(struct ieee80211com *ic,
 	}
 
 	vap = ic->ic_mon_vap;
+	osifp = (osif_dev *)vap->iv_ifp;
 	soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
 
 	mon_config = qdf_mem_malloc(sizeof(struct lite_mon_config));
@@ -104,9 +107,11 @@ static int ol_ath_set_rx_monitor_filter_mon_2_0(struct ieee80211com *ic,
 	mon_config->cmdtype = LITE_MON_SET_FILTER;
 	mon_config->debug = LITE_MON_TRACE_INFO;
 
-	strlcpy(mon_config->data.filter_config.interface_name,
-		vap->iv_netdev_name,
-		sizeof(mon_config->data.filter_config.interface_name));
+	mon_netdev = osif_get_monitor_netdev(osifp);
+	if (mon_netdev)
+		strlcpy(mon_config->data.filter_config.interface_name,
+			mon_netdev->name,
+			sizeof(mon_config->data.filter_config.interface_name));
 
 	if (cdp_is_lite_mon_enabled(soc_txrx_handle,
 				    pdev_id,
@@ -1418,7 +1423,7 @@ int wlan_set_lite_monitor_config(void *vscn,
 		if (strlen(ifname)) {
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
 			if (monitor_osif_is_mld_ifname(ifname)) {
-				dp_mon_err("Output interface should not be mld interface");
+				dp_mon_err("Output interface should not be non monitor mld interface");
 				retval = -EINVAL;
 				goto fail;
 			}
@@ -1525,6 +1530,8 @@ int wlan_get_lite_monitor_config(void *vscn,
 	struct wlan_objmgr_vdev *vdev = NULL;
 	struct vdev_osif_priv *osif_priv = NULL;
 	int retval = 0;
+	osif_dev *osifp = NULL;
+	struct net_device *mon_netdev = NULL;
 
 	config = qdf_mem_malloc(sizeof(struct cdp_lite_mon_filter_config));
 	if (!config) {
@@ -1563,9 +1570,12 @@ int wlan_get_lite_monitor_config(void *vscn,
 							    WLAN_LITE_MON_ID);
 		if (vdev) {
 			osif_priv = wlan_vdev_get_ospriv(vdev);
-			strlcpy(mon_config->data.filter_config.interface_name,
-				osif_priv->wdev->netdev->name,
-				sizeof(mon_config->data.filter_config.interface_name));
+			osifp = (osif_dev *)osif_priv->legacy_osif_priv;
+			mon_netdev = osif_get_monitor_netdev(osifp);
+			if (mon_netdev)
+				strlcpy(mon_config->data.filter_config.interface_name,
+					mon_netdev->name,
+					sizeof(mon_config->data.filter_config.interface_name));
 			wlan_objmgr_vdev_release_ref(vdev, WLAN_LITE_MON_ID);
 		}
 	}

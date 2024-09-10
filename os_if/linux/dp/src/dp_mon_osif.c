@@ -98,6 +98,7 @@ void *monitor_osif_get_vdev_by_name(char *name)
 				}
 			}
 			if (link_id == IEEE80211_MLD_MAX_NUM_LINKS) {
+				qdf_err("Requested link is not part of monitor mld %s", dev->name);
 				qdf_net_if_release_dev((struct qdf_net_if *)dev);
 				return NULL;
 			}
@@ -129,12 +130,23 @@ bool monitor_osif_is_mld_ifname(char *name)
 	if (dev) {
 		osifp = ath_netdev_priv(dev);
 		if (osifp && osifp->dev_type == OSIF_NETDEV_TYPE_MLO) {
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+			struct osif_mldev *mldev;
+			mldev = ath_netdev_priv(dev);
+			if (mldev->wdev.iftype == NL80211_IFTYPE_MONITOR) {
+				/*
+				 * Block all MLD interfaces expect monitor MLD interface
+				 * Monitor MLD interface is valid, hence return false
+				 */
+				qdf_net_if_release_dev((struct qdf_net_if *)dev);
+				return false;
+			}
+#endif
 			qdf_net_if_release_dev((struct qdf_net_if *)dev);
 			return true;
 		}
 		qdf_net_if_release_dev((struct qdf_net_if *)dev);
 	}
-
 	return false;
 }
 #endif
