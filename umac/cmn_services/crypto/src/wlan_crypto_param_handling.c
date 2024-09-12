@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -195,4 +195,18 @@ QDF_STATUS wlan_crypto_set_key_mgmt(
 int32_t wlan_crypto_get_key_mgmt(struct wlan_crypto_params *crypto_params)
 {
 	return crypto_params->key_mgmt;
+}
+
+QDF_STATUS wlan_crypto_set_random_pmkid(
+				struct wlan_crypto_params *crypto_params,
+				uint32_t value)
+{
+	crypto_params->random_pmkid_cnt = value;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+int32_t wlan_crypto_get_random_pmkid(struct wlan_crypto_params *crypto_params)
+{
+	return crypto_params->random_pmkid_cnt;
 }
