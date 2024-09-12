@@ -523,10 +523,11 @@ struct reduced_neighbor_report {
 	struct rnr_bss_info bss_info[MAX_RNR_BSS];
 };
 
-#define SCAN_SECURITY_TYPE_WEP 0x01
-#define SCAN_SECURITY_TYPE_WPA 0x02
-#define SCAN_SECURITY_TYPE_WAPI 0x04
-#define SCAN_SECURITY_TYPE_RSN 0x08
+#define SCAN_SECURITY_TYPE_WEP    0x01
+#define SCAN_SECURITY_TYPE_WPA    0x02
+#define SCAN_SECURITY_TYPE_WAPI   0x04
+#define SCAN_SECURITY_TYPE_RSN    0x08
+#define SCAN_SECURITY_TYPE_RSNO   0x10
 
 #ifdef WLAN_FEATURE_11BE_MLO
 #define MLD_MAX_LINKS 4
