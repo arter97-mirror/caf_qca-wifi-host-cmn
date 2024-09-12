@@ -3798,6 +3798,10 @@ int wma_peer_delete_handler(void *handle, uint8_t *cmd_param_info,
 		wma_pasn_peer_delete_handler(wma->psoc, macaddr, event->vdev_id,
 					     req_msg->user_data);
 		break;
+	case WMA_DELETE_NDP_PEER_RSP:
+		wma_send_msg_high_priority(wma, WMA_DELETE_STA_RSP,
+					   req_msg->user_data, 0);
+		break;
 	default:
 		break;
 	}
@@ -3890,11 +3894,13 @@ void wma_hold_req_timer(void *data)
 		wma_send_add_bss_resp(wma, tgt_req->vdev_id,
 				      QDF_STATUS_E_TIMEOUT);
 	} else if ((tgt_req->msg_type == WMA_DELETE_STA_REQ) &&
-		(tgt_req->type == WMA_DELETE_STA_RSP_START)) {
+		   (tgt_req->type == WMA_DELETE_STA_RSP_START ||
+		    tgt_req->type == WMA_DELETE_NDP_PEER_RSP)) {
 		tpDeleteStaParams params =
 				(tpDeleteStaParams) tgt_req->user_data;
 		params->status = QDF_STATUS_E_TIMEOUT;
-		wma_err("WMA_DEL_STA_REQ timed out");
+		wma_err("WMA_DEL_STA_REQ timed out for rsp type %d",
+			tgt_req->type);
 		wma_debug("Sending del sta rsp to umac (mac:"QDF_MAC_ADDR_FMT", status:%d)",
 			 QDF_MAC_ADDR_REF(params->staMac), params->status);
 
