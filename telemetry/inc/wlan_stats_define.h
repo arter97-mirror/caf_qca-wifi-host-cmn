@@ -125,7 +125,8 @@
 #define STATS_DEBUG_VAP_DATA_MASK                      \
 	(STATS_BASIC_VAP_DATA_MASK |                   \
 	 STATS_FEAT_FLG_ME | STATS_FEAT_FLG_RAW |      \
-	 STATS_FEAT_FLG_TSO)
+	 STATS_FEAT_FLG_TSO | STATS_FEAT_FLG_RATE |    \
+	 STATS_FEAT_FLG_LINK)
 #define STATS_DEBUG_STA_CTRL_MASK     STATS_BASIC_STA_CTRL_MASK
 #define STATS_DEBUG_STA_DATA_MASK                      \
 	(STATS_BASIC_STA_DATA_MASK | STATS_FEAT_FLG_TXCAP | \
@@ -344,6 +345,7 @@ struct basic_vdev_data_tx {
 	struct basic_data_tx_stats tx;
 	struct pkt_info ingress;
 	struct pkt_info processed;
+	struct pkt_info tx_data;
 	struct pkt_info dropped;
 };
 
@@ -584,6 +586,15 @@ struct stats_if_tid_tx_stats {
 	u_int64_t swdrop_cnt[STATS_IF_TX_MAX_DROP];
 	u_int64_t tqm_status_cnt[STATS_IF_MAX_TX_TQM_STATUS];
 	u_int64_t htt_status_cnt[STATS_IF_MAX_TX_HTT_STATUS];
+};
+
+struct stats_if_vdev_mgmt_stats {
+	uint64_t tx_20TU_prb_resp;
+	uint64_t tx_20TU_prb_interval;
+	uint64_t ntx_pfl_rollback_stats;
+	uint64_t ie_overflow_stats;
+	uint64_t offchan_tx_dpp_queued;
+	uint64_t total_offchan_tx_dpp_completion;
 };
 
 struct stats_if_sawf_delay_stats {
@@ -876,6 +887,9 @@ struct advance_vdev_ctrl_tx {
 	u_int64_t cs_fils_frames_sent_fail;
 	u_int64_t cs_tx_offload_prb_resp_succ_cnt;
 	u_int64_t cs_tx_offload_prb_resp_fail_cnt;
+	u_int64_t cs_fils_enable;
+	u_int64_t cs_tx_20TU_prb_resp;
+	u_int64_t cs_tx_20TU_prb_interval;
 };
 
 struct advance_vdev_ctrl_rx {
@@ -1420,11 +1434,13 @@ struct debug_vdev_data_tx {
 	uint32_t invalid_peer_id_in_exc_path;
 	uint32_t tx_mcast_drop;
 	uint32_t fw2wbm_tx_drop;
+	uint64_t tx_datapyld_bytes;
 };
 
 struct debug_vdev_data_rx {
 	struct basic_vdev_data_rx b_rx;
 	struct debug_data_rx_stats dbg_rx;
+	uint64_t rx_datapyld_bytes;
 };
 
 struct debug_vdev_data_me {
@@ -1433,6 +1449,13 @@ struct debug_vdev_data_me {
 	uint32_t dropped_send_fail;
 	uint32_t fail_seg_alloc;
 	uint32_t clone_fail;
+};
+
+struct debug_vdev_data_rate {
+	uint64_t ucast_last_tx_rate;
+	uint64_t ucast_last_tx_rate_mcs;
+	uint64_t mcast_last_tx_rate;
+	uint64_t mcast_last_tx_rate_mcs;
 };
 
 struct debug_vdev_data_raw {
@@ -1447,6 +1470,15 @@ struct debug_vdev_data_tso {
 	uint32_t dropped_target;
 };
 
+struct debug_vdev_data_link {
+	uint16_t m1_packet_cnt;
+	uint16_t m2_packet_cnt;
+	uint16_t m3_packet_cnt;
+	uint16_t m4_packet_cnt;
+	uint16_t g1_packet_cnt;
+	uint16_t g2_packet_cnt;
+};
+
 /* Debug Peer control */
 struct debug_vdev_ctrl_tx {
 	struct basic_vdev_ctrl_tx b_tx;
@@ -1457,6 +1489,8 @@ struct debug_vdev_ctrl_tx {
 	uint64_t cs_tx_nonode;
 	uint64_t cs_tx_cipher_err;
 	uint64_t cs_tx_not_ok;
+	uint64_t offchan_tx_dpp_queued;
+	uint64_t total_offchan_tx_dpp_completion;
 };
 
 struct debug_vdev_ctrl_rx {
@@ -1496,6 +1530,8 @@ struct debug_vdev_ctrl_wmi {
 
 struct debug_vdev_ctrl_link {
 	struct basic_vdev_ctrl_link b_link;
+	uint64_t ntx_pfl_rollback_stats;
+	uint64_t ie_overflow_stats;
 };
 
 /* Debug Radio data */

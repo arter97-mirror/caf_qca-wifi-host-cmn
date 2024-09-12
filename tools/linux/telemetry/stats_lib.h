@@ -407,8 +407,10 @@ struct debug_vdev_data {
 	struct debug_vdev_data_tx *tx;
 	struct debug_vdev_data_rx *rx;
 	struct debug_vdev_data_me *me;
+	struct debug_vdev_data_rate *rate;
 	struct debug_vdev_data_raw *raw;
 	struct debug_vdev_data_tso *tso;
+	struct debug_vdev_data_link *link;
 };
 
 /* Debug vdev control stats holder */

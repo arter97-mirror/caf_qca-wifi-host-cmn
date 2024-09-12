@@ -1901,6 +1901,10 @@ static void parse_debug_vap(struct nlattr *rattr, struct stats_obj *obj)
 				(void **)&data->me,
 				sizeof(struct debug_vdev_data_me));
 
+		extract_nl_data(tb[QCA_WLAN_VENDOR_ATTR_FEAT_RATE],
+				(void **)&data->rate,
+				sizeof(struct debug_vdev_data_rate));
+
 		extract_nl_data(tb[QCA_WLAN_VENDOR_ATTR_FEAT_RAW],
 				(void **)&data->raw,
 				sizeof(struct debug_vdev_data_raw));
@@ -1908,6 +1912,10 @@ static void parse_debug_vap(struct nlattr *rattr, struct stats_obj *obj)
 		extract_nl_data(tb[QCA_WLAN_VENDOR_ATTR_FEAT_TSO],
 				(void **)&data->tso,
 				sizeof(struct debug_vdev_data_tso));
+
+		extract_nl_data(tb[QCA_WLAN_VENDOR_ATTR_FEAT_LINK],
+				(void **)&data->link,
+				sizeof(struct debug_vdev_data_link));
 
 		obj->stats = data;
 		break;
@@ -3990,10 +3998,14 @@ static void free_debug_vap(struct stats_obj *vap)
 				free(data->rx);
 			if (data->me)
 				free(data->me);
+			if (data->rate)
+				free(data->rate);
 			if (data->raw)
 				free(data->raw);
 			if (data->tso)
 				free(data->tso);
+			if (data->link)
+				free(data->link);
 		}
 		break;
 	case STATS_TYPE_CTRL:

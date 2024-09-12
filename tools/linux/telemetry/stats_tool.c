@@ -783,6 +783,9 @@ void print_basic_vap_data_tx(struct basic_vdev_data_tx *tx)
 		pkt = &tx->processed;
 		STATS_64(stdout, "Tx Ingress Processed", pkt->num);
 		STATS_64(stdout, "Tx Ingress Processed Bytes", pkt->bytes);
+		pkt = &tx->tx_data;
+		STATS_64(stdout, "Tx Data Packets", pkt->num);
+		STATS_64(stdout, "Tx Data Bytes", pkt->bytes);
 		pkt = &tx->dropped;
 		STATS_64(stdout, "Tx Ingress Dropped", pkt->num);
 		STATS_64(stdout, "Tx Ingress Dropped Bytes", pkt->bytes);
@@ -1944,6 +1947,7 @@ void print_advance_vap_ctrl_tx(struct advance_vdev_ctrl_tx *tx)
 	STATS_64(stdout, "Tx Off Channel Fail Count", tx->cs_tx_offchan_fail);
 	STATS_64(stdout, "Tx Beacon Count", tx->cs_tx_bcn_success);
 	STATS_64(stdout, "Tx Beacon Outage Count", tx->cs_tx_bcn_outage);
+	STATS_64(stdout, "FILS enable", tx->cs_fils_enable);
 	STATS_64(stdout, "Tx FILS Frame Sent Count", tx->cs_fils_frames_sent);
 	STATS_64(stdout, "Tx FILS Frame Sent Fail",
 		 tx->cs_fils_frames_sent_fail);
@@ -1951,6 +1955,9 @@ void print_advance_vap_ctrl_tx(struct advance_vdev_ctrl_tx *tx)
 		 tx->cs_tx_offload_prb_resp_succ_cnt);
 	STATS_64(stdout, "Tx Offload Probe Response Fail Count",
 		 tx->cs_tx_offload_prb_resp_fail_cnt);
+	STATS_64(stdout, "20TU probe response status", tx->cs_tx_20TU_prb_resp);
+	STATS_64(stdout, "20TU probe response interval",
+		 tx->cs_tx_20TU_prb_interval);
 }
 
 void print_advance_vap_ctrl_rx(struct advance_vdev_ctrl_rx *rx)
@@ -3274,10 +3281,23 @@ void print_debug_vap_data_me(struct debug_vdev_data_me *me)
 	STATS_32(stdout, "NBUF clone failure", me->clone_fail);
 }
 
+void print_debug_vap_data_rate(struct debug_vdev_data_rate *rate)
+{
+	STATS_64(stdout, "Last Tx rate for unicast Packets",
+		 rate->ucast_last_tx_rate);
+	STATS_64(stdout, "Last Tx rate for unicast Packets(mcs)",
+		 rate->ucast_last_tx_rate_mcs);
+	STATS_64(stdout, "Last Tx rate for multicast Packets",
+		 rate->mcast_last_tx_rate);
+	STATS_64(stdout, "Last Tx rate for multicast Packets(mcs)",
+		 rate->mcast_last_tx_rate_mcs);
+}
+
 void print_debug_vap_data_tx(struct debug_vdev_data_tx *tx)
 {
 	print_basic_vap_data_tx(&tx->b_tx);
 	print_debug_data_tx_stats(&tx->dbg_tx);
+	STATS_64(stdout, "Tx Data Payload Bytes", tx->tx_datapyld_bytes);
 	STATS_PRINT("\tPackets dropped on the Tx ingress side:\n");
 	STATS_64(stdout, "Packets dropped Desc Not Available", tx->desc_na.num);
 	STATS_64(stdout, "Bytes dropped Desc Not Available", tx->desc_na.bytes);
@@ -3318,6 +3338,7 @@ void print_debug_vap_data_rx(struct debug_vdev_data_rx *rx)
 {
 	print_basic_vap_data_rx(&rx->b_rx);
 	print_debug_data_rx_stats(&rx->dbg_rx);
+	STATS_64(stdout, "Rx Data Payload Bytes", rx->rx_datapyld_bytes);
 }
 
 void print_debug_vap_data_raw(struct debug_vdev_data_raw *raw)
@@ -3337,12 +3358,26 @@ void print_debug_vap_data_tso(struct debug_vdev_data_tso *tso)
 	STATS_32(stdout, "Packets dropped by target", tso->dropped_target);
 }
 
+void print_debug_vap_data_link(struct debug_vdev_data_link *link)
+{
+	STATS_16(stdout, "TX/RX EAPOL M1 Packet Count", link->m1_packet_cnt);
+	STATS_16(stdout, "TX/RX EAPOL M2 Packet Count", link->m2_packet_cnt);
+	STATS_16(stdout, "TX/RX EAPOL M3 Packet Count", link->m3_packet_cnt);
+	STATS_16(stdout, "TX/RX EAPOL M4 Packet Count", link->m4_packet_cnt);
+	STATS_16(stdout, "TX/RX EAPOL g1 Packet Count", link->g1_packet_cnt);
+	STATS_16(stdout, "TX/RX EAPOL g2 Packet Count", link->g2_packet_cnt);
+}
+
 void print_debug_vap_ctrl_tx(struct debug_vdev_ctrl_tx *tx)
 {
 	print_basic_vap_ctrl_tx(&tx->b_tx);
 	STATS_64(stdout, "Tx SWBA Beacon interval Counter", tx->cs_tx_bcn_swba);
 	STATS_64(stdout, "Tx failed due to no Node", tx->cs_tx_nonode);
 	STATS_64(stdout, "Tx Not ok set in descriptor", tx->cs_tx_not_ok);
+	STATS_64(stdout, "Total number of dpp offchan tx mgmt frames queued",
+		 tx->offchan_tx_dpp_queued);
+	STATS_64(stdout, "Total number of dpp offchan tx mgmt frames completed",
+		 tx->total_offchan_tx_dpp_completion);
 }
 
 void print_debug_vap_ctrl_rx(struct debug_vdev_ctrl_rx *rx)
@@ -3397,6 +3432,10 @@ void print_debug_vap_ctrl_wmi(struct debug_vdev_ctrl_wmi *wmi)
 void print_debug_vap_ctrl_link(struct debug_vdev_ctrl_link *link)
 {
 	print_basic_vap_ctrl_link(&link->b_link);
+	STATS_64(stdout, "Non-Tx Profile rollback count when ema_ext enabled",
+		 link->ntx_pfl_rollback_stats);
+	STATS_64(stdout, "IE Overflow count for Tx/Non-Tx VAP Beacon resource overflow",
+		 link->ie_overflow_stats);
 }
 
 void print_debug_vap_data(struct stats_obj *vap)
@@ -3422,6 +3461,10 @@ void print_debug_vap_data(struct stats_obj *vap)
 		STATS_PRINT("ME Stats\n");
 		print_debug_vap_data_me(data->me);
 	}
+	if (data->rate) {
+		STATS_PRINT("RATE Stats\n");
+		print_debug_vap_data_rate(data->rate);
+	}
 	if (data->raw) {
 		STATS_PRINT("RAW Stats\n");
 		print_debug_vap_data_raw(data->raw);
@@ -3429,6 +3472,10 @@ void print_debug_vap_data(struct stats_obj *vap)
 	if (data->tso) {
 		STATS_PRINT("TSO Stats\n");
 		print_debug_vap_data_tso(data->tso);
+	}
+	if (data->link) {
+		STATS_PRINT("LINK Stats\n");
+		print_debug_vap_data_link(data->link);
 	}
 }
 

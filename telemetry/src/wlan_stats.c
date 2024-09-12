@@ -51,6 +51,36 @@ static uint8_t get_monitor_version(struct wlan_objmgr_pdev *pdev)
 	return ic->ic_monitor_version;
 }
 
+static void wlan_vdev_get_vap_mgmt_stats(struct wlan_objmgr_vdev *vdev,
+					 struct stats_if_vdev_mgmt_stats *stats)
+{
+	struct ieee80211vap *vap;
+
+	if (!vdev) {
+		qdf_err("vdev is NULL");
+		return;
+	}
+
+	vap = wlan_vdev_get_mlme_ext_obj(vdev);
+	if (!vap) {
+		qdf_err("vap is NULL");
+		return;
+	}
+
+	stats->tx_20TU_prb_resp = vap->iv_he_6g_bcast_prob_rsp;
+	stats->tx_20TU_prb_interval = vap->iv_he_6g_bcast_prob_rsp_intval;
+	stats->ntx_pfl_rollback_stats = vap->iv_mbss.ntx_pfl_rollback_stats;
+	stats->ie_overflow_stats = vap->iv_mbss.ie_overflow_stats;
+	if (!vap->iv_dpp_vap_mode) {
+		stats->offchan_tx_dpp_queued = 0;
+		stats->total_offchan_tx_dpp_completion = 0;
+	} else {
+		stats->offchan_tx_dpp_queued = vap->num_offchan_tx_dpp_queued;
+		stats->total_offchan_tx_dpp_completion =
+			vap->num_offchan_tx_dpp_completion;
+	}
+}
+
 /* Global structure for stats work*/
 static struct stats_work_context g_stats_ctx = {0};
 
@@ -294,11 +324,14 @@ static void fill_basic_vdev_data_tx(struct basic_vdev_data_tx *data,
 				    struct cdp_vdev_stats *vdev_stats)
 {
 	struct cdp_tx_ingress_stats *tx_i = &vdev_stats->tx_i;
+	struct cdp_tx_stats *tx = &vdev_stats->tx;
 
 	fill_basic_data_tx_stats(&data->tx, &vdev_stats->tx);
 	data->ingress.num = tx_i->rcvd.num;
 	data->ingress.bytes = tx_i->rcvd.bytes;
 	data->processed.num = tx_i->processed.num;
+	data->tx_data.num = tx->ucast.num + tx->mcast.num;
+	data->tx_data.bytes = tx->ucast.bytes + tx->mcast.bytes;
 	data->processed.bytes = tx_i->processed.bytes;
 	data->dropped.num = tx_i->dropped.dropped_pkt.num;
 	data->dropped.bytes = tx_i->dropped.dropped_pkt.bytes;
@@ -660,10 +693,17 @@ static QDF_STATUS get_basic_vdev_ctrl_tx(struct unified_stats *stats,
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS get_basic_vdev_data_rx(struct unified_stats *stats,
+static QDF_STATUS get_basic_vdev_data_rx(struct wlan_objmgr_psoc *psoc,
+					 struct unified_stats *stats,
 					 struct cdp_vdev_stats *vdev_stats)
 {
 	struct basic_vdev_data_rx *data = NULL;
+	ol_txrx_soc_handle soc_txrx_handle;
+	cdp_config_param_type value = {0};
+
+	soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
+	cdp_txrx_get_psoc_param(soc_txrx_handle, CDP_CFG_VDEV_STATS_HW_OFFLOAD,
+				&value);
 
 	if (!stats || !vdev_stats) {
 		qdf_err("Invalid Input!");
@@ -675,6 +715,15 @@ static QDF_STATUS get_basic_vdev_data_rx(struct unified_stats *stats,
 		return QDF_STATUS_E_NOMEM;
 	}
 	fill_basic_vdev_data_rx(data, &vdev_stats->rx);
+	/* Update total received packet number when HW offload is enabled */
+	if (value.cdp_psoc_param_vdev_stats_hw_offload) {
+		data->rx.total_rcvd.num = vdev_stats->rx_i.reo_rcvd_pkt.num +
+					  vdev_stats->rx_i.null_q_desc_pkt.num +
+					  vdev_stats->rx_i.routed_eapol_pkt.num;
+		data->rx.total_rcvd.bytes = vdev_stats->rx_i.reo_rcvd_pkt.bytes +
+					    vdev_stats->rx_i.null_q_desc_pkt.bytes +
+					    vdev_stats->rx_i.routed_eapol_pkt.bytes;
+	}
 
 	stats->feat[INX_FEAT_RX] = data;
 	stats->size[INX_FEAT_RX] = sizeof(struct basic_vdev_data_rx);
@@ -1056,7 +1105,7 @@ static QDF_STATUS get_basic_vdev_data(struct wlan_objmgr_psoc *psoc,
 			stats_collected = true;
 	}
 	if (feat & STATS_FEAT_FLG_RX) {
-		ret = get_basic_vdev_data_rx(stats, vdev_stats);
+		ret = get_basic_vdev_data_rx(psoc, stats, vdev_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch vdev Basic RX stats!");
 		else
@@ -2996,10 +3045,12 @@ static QDF_STATUS get_advance_vdev_data_nawds(struct unified_stats *stats,
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS get_advance_vdev_ctrl_tx(struct unified_stats *stats,
+static QDF_STATUS get_advance_vdev_ctrl_tx(struct wlan_objmgr_vdev *vdev,
+					   struct unified_stats *stats,
 					   struct vdev_ic_cp_stats *cp_stats)
 {
 	struct advance_vdev_ctrl_tx *ctrl = NULL;
+	struct stats_if_vdev_mgmt_stats mgmt_stats = {0};
 
 	if (!stats || !cp_stats) {
 		qdf_err("Invalid Input!");
@@ -3024,6 +3075,11 @@ static QDF_STATUS get_advance_vdev_ctrl_tx(struct unified_stats *stats,
 		cp_stats->stats.cs_tx_offload_prb_resp_succ_cnt;
 	ctrl->cs_tx_offload_prb_resp_fail_cnt =
 		cp_stats->stats.cs_tx_offload_prb_resp_fail_cnt;
+	ctrl->cs_fils_enable = wlan_vdev_get_fils_val(vdev);
+
+	wlan_vdev_get_vap_mgmt_stats(vdev, &mgmt_stats);
+	ctrl->cs_tx_20TU_prb_resp = mgmt_stats.tx_20TU_prb_resp;
+	ctrl->cs_tx_20TU_prb_interval = mgmt_stats.tx_20TU_prb_interval;
 
 	stats->feat[INX_FEAT_TX] = ctrl;
 	stats->size[INX_FEAT_TX] = sizeof(struct advance_vdev_ctrl_tx);
@@ -3245,7 +3301,7 @@ static QDF_STATUS get_advance_vdev_ctrl(struct wlan_objmgr_vdev *vdev,
 		goto get_failed;
 	}
 	if (feat & STATS_FEAT_FLG_TX) {
-		ret = get_advance_vdev_ctrl_tx(stats, cp_stats);
+		ret = get_advance_vdev_ctrl_tx(vdev, stats, cp_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch vdev Advance TX Stats!");
 		else
@@ -4859,11 +4915,54 @@ get_failed:
 	return ret;
 }
 
-static QDF_STATUS get_debug_vdev_data_tx(struct unified_stats *stats,
+#ifdef QCA_SUPPORT_EAPOL_OVER_CONTROL_PORT
+static void wlan_vdev_get_vap_eapol_stats(struct debug_vdev_data_link *data,
+					  struct wlan_objmgr_vdev *vdev)
+{
+	struct ieee80211vap *vap;
+	struct ieee80211com *ic;
+
+	if (!vdev) {
+		qdf_err("vdev is NULL");
+		return;
+	}
+
+	vap = wlan_vdev_get_mlme_ext_obj(vdev);
+	if (!vap) {
+		qdf_err("vap is NULL");
+		return;
+	}
+
+	ic = wlan_vdev_get_ic(vdev);
+	if (!ic) {
+		qdf_err("ic is NULL");
+		return;
+	}
+
+	if (ic->enable_eapol_over_nl) {
+		data->m1_packet_cnt = vap->iv_m1_packet_cnt;
+		data->m2_packet_cnt = vap->iv_m2_packet_cnt;
+		data->m3_packet_cnt = vap->iv_m3_packet_cnt;
+		data->m4_packet_cnt = vap->iv_m4_packet_cnt;
+		data->g1_packet_cnt = vap->iv_g1_packet_cnt;
+		data->g2_packet_cnt = vap->iv_g2_packet_cnt;
+	}
+}
+#else
+static void wlan_vdev_get_vap_eapol_stats(struct debug_vdev_data_link *data,
+					  struct wlan_objmgr_vdev *vdev)
+{
+}
+#endif
+
+static QDF_STATUS get_debug_vdev_data_tx(struct wlan_objmgr_vdev *vdev,
+					 struct unified_stats *stats,
 					 struct cdp_vdev_stats *vdev_stats)
 {
 	struct debug_vdev_data_tx *data = NULL;
 	struct cdp_tx_ingress_stats *tx_i = NULL;
+	uint64_t ucast_tx_datapyld_bytes;
+	uint64_t mcast_tx_datapyld_bytes;
 
 	if (!stats || !vdev_stats) {
 		qdf_err("Invalid Input!");
@@ -4903,6 +5002,19 @@ static QDF_STATUS get_debug_vdev_data_tx(struct unified_stats *stats,
 	data->tx_mcast_drop = tx_i->dropped.tx_mcast_drop;
 	data->fw2wbm_tx_drop = tx_i->dropped.fw2wbm_tx_drop;
 
+	if (vdev_stats->tx.ucast.bytes >=
+			(vdev_stats->tx.ucast.num) * ETH_HLEN)
+		ucast_tx_datapyld_bytes = vdev_stats->tx.ucast.bytes -
+			(vdev_stats->tx.ucast.num) * ETH_HLEN;
+
+	if (vdev_stats->tx.mcast.bytes >=
+			(vdev_stats->tx.mcast.num) * ETH_HLEN)
+		mcast_tx_datapyld_bytes = vdev_stats->tx.mcast.bytes -
+			(vdev_stats->tx.mcast.num) * ETH_HLEN;
+
+	data->tx_datapyld_bytes = ucast_tx_datapyld_bytes +
+				  mcast_tx_datapyld_bytes;
+
 	stats->feat[INX_FEAT_TX] = data;
 	stats->size[INX_FEAT_TX] = sizeof(struct debug_vdev_data_tx);
 
@@ -4913,6 +5025,8 @@ static QDF_STATUS get_debug_vdev_data_rx(struct unified_stats *stats,
 					 struct cdp_vdev_stats *vdev_stats)
 {
 	struct debug_vdev_data_rx *data = NULL;
+	uint64_t ucast_rx_datapyld_bytes = 0;
+	uint64_t mcast_rx_datapyld_bytes = 0;
 
 	if (!stats || !vdev_stats) {
 		qdf_err("Invalid Input!");
@@ -4926,8 +5040,49 @@ static QDF_STATUS get_debug_vdev_data_rx(struct unified_stats *stats,
 	fill_basic_vdev_data_rx(&data->b_rx, &vdev_stats->rx);
 	fill_debug_data_rx_stats(&data->dbg_rx, &vdev_stats->rx);
 
+	if (vdev_stats->rx.unicast.bytes >=
+			(vdev_stats->rx.unicast.num) * ETH_HLEN)
+		ucast_rx_datapyld_bytes = vdev_stats->rx.unicast.bytes -
+			(vdev_stats->rx.unicast.num) * ETH_HLEN;
+
+	if (vdev_stats->rx.multicast.bytes >=
+			(vdev_stats->rx.multicast.num) * ETH_HLEN)
+		mcast_rx_datapyld_bytes = vdev_stats->rx.multicast.bytes -
+			(vdev_stats->rx.multicast.num) * ETH_HLEN;
+
+	data->rx_datapyld_bytes = ucast_rx_datapyld_bytes +
+				  mcast_rx_datapyld_bytes;
+
 	stats->feat[INX_FEAT_RX] = data;
 	stats->size[INX_FEAT_RX] = sizeof(struct debug_vdev_data_rx);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS get_debug_vdev_data_rate(struct unified_stats *stats,
+					   struct cdp_vdev_stats *vdev_stats)
+{
+	struct debug_vdev_data_rate *data;
+	struct cdp_tx_stats *tx;
+
+	if (!stats || !vdev_stats) {
+		qdf_err("Invalid Input!");
+		return QDF_STATUS_E_INVAL;
+	}
+	tx = &vdev_stats->tx;
+
+	data = qdf_mem_malloc(sizeof(struct debug_vdev_data_rate));
+	if (!data) {
+		qdf_err("Allocation Failed!");
+		return QDF_STATUS_E_NOMEM;
+	}
+	data->ucast_last_tx_rate = tx->last_tx_rate;
+	data->ucast_last_tx_rate_mcs = tx->last_tx_rate_mcs;
+	data->mcast_last_tx_rate = tx->mcast_last_tx_rate;
+	data->mcast_last_tx_rate_mcs = tx->mcast_last_tx_rate_mcs;
+
+	stats->feat[INX_FEAT_RATE] = data;
+	stats->size[INX_FEAT_RATE] = sizeof(struct debug_vdev_data_rate);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -5013,6 +5168,26 @@ static QDF_STATUS get_debug_vdev_data_tso(struct unified_stats *stats,
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS get_debug_vdev_data_link(struct wlan_objmgr_vdev *vdev,
+					   struct unified_stats *stats)
+{
+	struct debug_vdev_data_link *data;
+
+	data = qdf_mem_malloc(sizeof(struct debug_vdev_data_link));
+	if (!data) {
+		qdf_err("Allocation Failed!");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	/* EAPOL STATS */
+	wlan_vdev_get_vap_eapol_stats(data, vdev);
+
+	stats->feat[INX_FEAT_LINK] = data;
+	stats->size[INX_FEAT_LINK] = sizeof(struct debug_vdev_data_link);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS get_debug_vdev_data(struct wlan_objmgr_psoc *psoc,
 				      struct wlan_objmgr_vdev *vdev,
 				      struct unified_stats *stats,
@@ -5054,7 +5229,7 @@ static QDF_STATUS get_debug_vdev_data(struct wlan_objmgr_psoc *psoc,
 		goto get_failed;
 	}
 	if (feat & STATS_FEAT_FLG_TX) {
-		ret = get_debug_vdev_data_tx(stats, vdev_stats);
+		ret = get_debug_vdev_data_tx(vdev, stats, vdev_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch vdev Debug TX Stats!");
 		else
@@ -5064,6 +5239,13 @@ static QDF_STATUS get_debug_vdev_data(struct wlan_objmgr_psoc *psoc,
 		ret = get_debug_vdev_data_rx(stats, vdev_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch vdev Debug RX Stats!");
+		else
+			stats_collected = true;
+	}
+	if (feat & STATS_FEAT_FLG_RATE) {
+		ret = get_debug_vdev_data_rate(stats, vdev_stats);
+		if (ret != QDF_STATUS_SUCCESS)
+			qdf_err("Unable to fetch vdev Advance RATE Stats!");
 		else
 			stats_collected = true;
 	}
@@ -5088,6 +5270,13 @@ static QDF_STATUS get_debug_vdev_data(struct wlan_objmgr_psoc *psoc,
 		else
 			stats_collected = true;
 	}
+	if (feat & STATS_FEAT_FLG_LINK) {
+		ret = get_debug_vdev_data_link(vdev, stats);
+		if (ret != QDF_STATUS_SUCCESS)
+			qdf_err("Unable to fetch vdev Debug LINK Stats!");
+		else
+			stats_collected = true;
+	}
 
 get_failed:
 	qdf_mem_free(vdev_stats);
@@ -5097,10 +5286,12 @@ get_failed:
 	return ret;
 }
 
-static QDF_STATUS get_debug_vdev_ctrl_tx(struct unified_stats *stats,
+static QDF_STATUS get_debug_vdev_ctrl_tx(struct wlan_objmgr_vdev *vdev,
+					 struct unified_stats *stats,
 					 struct vdev_ic_cp_stats *cp_stats)
 {
 	struct debug_vdev_ctrl_tx *ctrl = NULL;
+	struct stats_if_vdev_mgmt_stats mgmt_stats = {0};
 
 	if (!stats || !cp_stats) {
 		qdf_err("Invalid Input!");
@@ -5120,6 +5311,10 @@ static QDF_STATUS get_debug_vdev_ctrl_tx(struct unified_stats *stats,
 	ctrl->cs_tx_nonode = cp_stats->stats.cs_tx_nonode;
 	ctrl->cs_tx_cipher_err = cp_stats->stats.cs_tx_cipher_err;
 	ctrl->cs_tx_not_ok = cp_stats->stats.cs_tx_not_ok;
+	wlan_vdev_get_vap_mgmt_stats(vdev, &mgmt_stats);
+	ctrl->offchan_tx_dpp_queued = mgmt_stats.offchan_tx_dpp_queued;
+	ctrl->total_offchan_tx_dpp_completion =
+				mgmt_stats.total_offchan_tx_dpp_completion;
 
 	stats->feat[INX_FEAT_TX] = ctrl;
 	stats->size[INX_FEAT_TX] = sizeof(struct debug_vdev_ctrl_tx);
@@ -5206,6 +5401,7 @@ static QDF_STATUS get_debug_vdev_ctrl_link(struct unified_stats *stats,
 					   struct wlan_objmgr_vdev *vdev)
 {
 	struct debug_vdev_ctrl_link *ctrl;
+	struct stats_if_vdev_mgmt_stats mgmt_stats = {0};
 
 	if (!stats || !vdev) {
 		qdf_err("Invalid Input!");
@@ -5217,6 +5413,10 @@ static QDF_STATUS get_debug_vdev_ctrl_link(struct unified_stats *stats,
 		return QDF_STATUS_E_NOMEM;
 	}
 	fill_basic_vdev_ctrl_link(&ctrl->b_link, vdev);
+	wlan_vdev_get_vap_mgmt_stats(vdev, &mgmt_stats);
+
+	ctrl->ntx_pfl_rollback_stats = mgmt_stats.ntx_pfl_rollback_stats;
+	ctrl->ie_overflow_stats = mgmt_stats.ie_overflow_stats;
 
 	stats->feat[INX_FEAT_LINK] = ctrl;
 	stats->size[INX_FEAT_LINK] = sizeof(struct debug_vdev_ctrl_link);
@@ -5277,7 +5477,7 @@ static QDF_STATUS get_debug_vdev_ctrl(struct wlan_objmgr_vdev *vdev,
 		goto get_failed;
 	}
 	if (feat & STATS_FEAT_FLG_TX) {
-		ret = get_debug_vdev_ctrl_tx(stats, cp_stats);
+		ret = get_debug_vdev_ctrl_tx(vdev, stats, cp_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch vdev Debug TX Stats!");
 		else
