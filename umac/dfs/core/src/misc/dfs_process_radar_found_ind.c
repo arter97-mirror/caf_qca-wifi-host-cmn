@@ -416,6 +416,45 @@ dfs_compute_radar_found_cfreq(struct wlan_dfs *dfs,
 		}
 	}
 }
+
+#ifdef MOBILE_DFS_SUPPORT
+static void
+dfs_reset_center_freq_and_offset(struct wlan_dfs *dfs,
+				 uint32_t *freq_center,
+				 struct freqs_offsets *freq_offset)
+{
+	int i;
+	struct dfs_channel *curchan = dfs->dfs_curchan;
+
+	if (!WLAN_IS_CHAN_MODE_160(curchan))
+		return;
+
+	if (freq_offset->offset[0] < 0)
+		*freq_center -= 40;
+	else if (freq_offset->offset[0] > 0)
+		*freq_center += 40;
+	else /* report on center frequency, no reset center freq or offset */
+		return;
+
+	for (i = 0; i < DFS_NUM_FREQ_OFFSET; i++) {
+		if (freq_offset->offset[i] < 0)
+			freq_offset->offset[i] += 40;
+		else if (freq_offset->offset[i] > 0)
+			freq_offset->offset[i] -= 40;
+		dfs_info(dfs, WLAN_DEBUG_DFS,
+			 "center freq %d offset %d",
+			 *freq_center,
+			 freq_offset->offset[i]);
+	}
+}
+#else
+static inline void
+dfs_reset_center_freq_and_offset(struct wlan_dfs *dfs,
+				 uint32_t *freq_center,
+				 struct freqs_offsets *freq_offset)
+{
+}
+#endif
 #endif
 
 /**
@@ -479,6 +518,9 @@ dfs_find_radar_affected_subchans_for_freq(struct wlan_dfs *dfs,
 			freq_offset.offset[LEFT_CH] -= DFS_CHIRP_OFFSET;
 			freq_offset.offset[RIGHT_CH] += DFS_CHIRP_OFFSET;
 		}
+		dfs_reset_center_freq_and_offset(dfs,
+						 &freq_center,
+						 &freq_offset);
 		dfs_radar_chan_for_80(&freq_offset, freq_center);
 	} else {
 		dfs_err(dfs, WLAN_DEBUG_DFS,
