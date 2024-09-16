@@ -3792,6 +3792,10 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		ppdu_info->rx_status.he_flags2 |= value;
 		value = HAL_RX_GET(he_sig_a_mu_dl_info,
 				   HE_SIG_A_MU_DL_INFO, COMP_MODE_SIG_B);
+		if (value)
+			ppdu_info->rx_status.reception_type =
+							HAL_RX_TYPE_MU_MIMO;
+
 		value = value << QDF_MON_STATUS_SIG_B_COMPRESSION_FLAG_2_SHIFT;
 		ppdu_info->rx_status.he_flags2 |= value;
 		value = HAL_RX_GET(he_sig_a_mu_dl_info,
@@ -3799,7 +3803,6 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		value = value - 1;
 		value = value << QDF_MON_STATUS_NUM_SIG_B_SYMBOLS_SHIFT;
 		ppdu_info->rx_status.he_flags2 |= value;
-		ppdu_info->rx_status.reception_type = HAL_RX_TYPE_MU_MIMO;
 		break;
 	}
 	case WIFIPHYRX_HE_SIG_A_MU_UL_E:
