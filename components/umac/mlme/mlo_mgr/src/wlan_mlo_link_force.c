@@ -3975,6 +3975,41 @@ ml_nlink_handle_legacy_intf_emlsr(struct wlan_objmgr_psoc *psoc,
 }
 
 /**
+ * mlo_is_valid_nan_p2p_concurrency() - Check if NAN+P2P concurrency is valid
+ * @psoc: PSOC object information
+ * @mode_lst: Legacy active modes present in policy mgr
+ * @vdev_lst: vdev_lst corresponds to @mode_lst
+ * @num_legacy_vdev: Number of legacy vdevs present in policy mgr
+ *
+ * This API is to decide whether any ML-STA links to be made inactive inorder
+ * to allow the concurrency.
+ * NAN+P2P+ML-STA can be supported on a mac even if these lead to 3-ch MCC.
+ * So, don't make any link inactive when NAN + non-LL P2P is present
+ *
+ * Return: True when ML-STA+NAN+P2P is a valid concurrency
+ */
+static bool
+mlo_is_valid_nan_p2p_concurrency(struct wlan_objmgr_psoc *psoc,
+				 enum policy_mgr_con_mode *mode_lst,
+				 uint8_t *vdev_lst,
+				 uint8_t num_legacy_vdev)
+{
+	uint8_t i;
+
+	if (!wlan_nan_is_sta_p2p_ndp_supported(psoc) ||
+	    !wlan_nan_is_disc_active(psoc))
+		return false;
+
+	for (i = 0; i < num_legacy_vdev; i++)
+		if ((mode_lst[i] == PM_P2P_GO_MODE ||
+		     mode_lst[i] == PM_P2P_CLIENT_MODE) &&
+		    !policy_mgr_is_vdev_high_tput_or_low_latency(psoc,
+								 vdev_lst[i]))
+			return true;
+	return false;
+}
+
+/**
  * ml_nlink_handle_legacy_intf() - Check force inactive needed
  * with legacy interface
  * @psoc: PSOC object information
@@ -3998,6 +4033,11 @@ ml_nlink_handle_legacy_intf(struct wlan_objmgr_psoc *psoc,
 					psoc, vdev_lst,
 					freq_lst, mode_lst,
 					QDF_ARRAY_SIZE(vdev_lst));
+
+	if (mlo_is_valid_nan_p2p_concurrency(psoc, mode_lst, vdev_lst,
+					     num_legacy_vdev))
+		return;
+
 	if (wlan_nan_is_disc_active(psoc)) {
 		if (num_legacy_vdev < MAX_LEGACY_CONCURRENCT_MODES &&
 		    wlan_nan_get_5ghz_social_ch_freq(pdev)) {
