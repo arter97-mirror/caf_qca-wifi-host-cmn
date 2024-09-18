@@ -116,6 +116,26 @@ qca_sawf_get_vdev(struct net_device *netdev,
 #endif
 
 	vdev = osdev->ctrl_vdev;
+
+	return vdev;
+}
+
+static struct wlan_objmgr_vdev *
+qca_sawf_get_ref_vdev(struct net_device *netdev,
+		      uint8_t *mac_addr, uint8_t *peer_mac,
+		      wlan_objmgr_ref_dbgid id)
+{
+	struct wlan_objmgr_vdev *vdev;
+	QDF_STATUS status;
+
+	vdev = qca_sawf_get_vdev(netdev, mac_addr, peer_mac);
+	if (!vdev)
+		return NULL;
+
+	status = wlan_objmgr_vdev_try_get_ref(vdev, id);
+	if (QDF_IS_STATUS_ERROR(status))
+		return NULL;
+
 	return vdev;
 }
 
@@ -130,12 +150,13 @@ uint16_t qca_sawf_get_msduq(struct net_device *netdev, uint8_t *peer_mac,
 	osif_peer_dev *osifp;
 #endif
 	uint8_t vdev_id;
+	uint16_t queue_id;
 
 	if (!wlan_service_id_valid(service_id) ||
 	    !wlan_service_id_configured(service_id))
 		return DP_SAWF_PEER_Q_INVALID;
 
-	vdev = qca_sawf_get_vdev(netdev, peer_mac, NULL);
+	vdev = qca_sawf_get_ref_vdev(netdev, peer_mac, NULL, WLAN_SAWF_ID);
 	if (!vdev) {
 		sawf_err("Invalid vdev");
 		return DP_SAWF_PEER_Q_INVALID;
@@ -146,6 +167,7 @@ uint16_t qca_sawf_get_msduq(struct net_device *netdev, uint8_t *peer_mac,
 	psoc = wlan_vdev_get_psoc(vdev);
 	if (!psoc) {
 		sawf_err("Invalid psoc");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return DP_SAWF_PEER_Q_INVALID;
 	}
 
@@ -153,6 +175,7 @@ uint16_t qca_sawf_get_msduq(struct net_device *netdev, uint8_t *peer_mac,
 
 	osdev = ath_netdev_priv(netdev);
 	if (!osdev) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		sawf_err("Invalid osdev");
 		return DP_SAWF_PEER_Q_INVALID;
 	}
@@ -165,8 +188,12 @@ uint16_t qca_sawf_get_msduq(struct net_device *netdev, uint8_t *peer_mac,
 	}
 #endif
 
-	return dp_sawf_get_msduq(soc_txrx_handle, vdev_id,
-				 peer_mac, service_id);
+	queue_id = dp_sawf_get_msduq(soc_txrx_handle, vdev_id,
+				     peer_mac, service_id);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
+
+	return queue_id;
 }
 
 /* qca_sawf_get_default_msduq() - Return default msdu queue_id
@@ -191,7 +218,7 @@ static uint16_t qca_sawf_get_default_msduq(struct net_device *netdev,
 	struct wlan_objmgr_psoc *psoc = NULL;
 	uint16_t queue_id = DP_SAWF_PEER_Q_INVALID;
 
-	vdev = qca_sawf_get_vdev(netdev, peer_mac, NULL);
+	vdev = qca_sawf_get_ref_vdev(netdev, peer_mac, NULL, WLAN_SAWF_ID);
 	if (vdev) {
 		psoc = wlan_vdev_get_psoc(vdev);
 
@@ -210,6 +237,8 @@ static uint16_t qca_sawf_get_default_msduq(struct net_device *netdev,
 							     peer_mac))
 				queue_id = SVC_ID_TO_QUEUE_ID(service_id);
 		}
+
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 	}
 
 	return queue_id;
@@ -234,45 +263,57 @@ uint32_t qca_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *peer_mac,
 	ol_txrx_soc_handle soc_txrx_handle;
 	cdp_config_param_type val = {0};
 	uint8_t vdev_id;
+	uint16_t queue_id;
 
 	if (!netdev || !netdev->ieee80211_ptr) {
 		sawf_err("Invalid netdev");
 		return DP_SAWF_PEER_Q_INVALID;
 	}
 
-	vdev = qca_sawf_get_vdev(netdev, peer_mac, NULL);
+	vdev = qca_sawf_get_ref_vdev(netdev, peer_mac, NULL, WLAN_SAWF_ID);
 	if (!vdev)
 		return DP_SAWF_PEER_Q_INVALID;
 
 	vdev_id = wlan_vdev_get_id(vdev);
 
-	if (!wlan_vdev_mlme_is_mlo_vdev(vdev) || !vdev->mlo_dev_ctx)
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev) || !vdev->mlo_dev_ctx) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return DP_SAWF_PEER_Q_INVALID;
+	}
 
 	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
+	if (!psoc) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return DP_SAWF_PEER_Q_INVALID;
+	}
 
-	if (!cfg_get(psoc, CFG_TGT_MLO_3_LINK_TX))
+	if (!cfg_get(psoc, CFG_TGT_MLO_3_LINK_TX)) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return DP_SAWF_PEER_Q_INVALID;
+	}
 
 	soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
 
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE) {
-		if (vdev->mlo_dev_ctx->mlo_max_recom_simult_links != 3)
+		if (vdev->mlo_dev_ctx->mlo_max_recom_simult_links != 3) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 			return DP_SAWF_PEER_Q_INVALID;
+		}
 	} else if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) {
 		cdp_txrx_get_vdev_param(soc_txrx_handle,
 					wlan_vdev_get_id(vdev),
 					CDP_ENABLE_WDS, &val);
-		if (!val.cdp_vdev_param_wds)
+		if (!val.cdp_vdev_param_wds) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 			return DP_SAWF_PEER_Q_INVALID;
+		}
 	}
 	/* Check enable config else return DP_SAWF_PEER_Q_INVALID */
 
 	osdev = ath_netdev_priv(netdev);
 	if (!osdev) {
 		qdf_err("Invalid osdev");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return DP_SAWF_PEER_Q_INVALID;
 	}
 
@@ -297,8 +338,12 @@ uint32_t qca_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *peer_mac,
 	}
 
 process_peer:
-	return cdp_sawf_get_peer_msduq(soc_txrx_handle, vdev_id,
-				       peer_mac, dscp_pcp, pcp);
+	queue_id = cdp_sawf_get_peer_msduq(soc_txrx_handle, vdev_id,
+					   peer_mac, dscp_pcp, pcp);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
+
+	return queue_id;
 }
 
 static inline
@@ -315,15 +360,19 @@ void qca_sawf_3_link_peer_dl_flow_count(struct net_device *netdev, uint8_t *mac_
 	if (!netdev || !netdev->ieee80211_ptr)
 		return;
 
-	vdev = qca_sawf_get_vdev(netdev, mac_addr, NULL);
+	vdev = qca_sawf_get_ref_vdev(netdev, mac_addr, NULL, WLAN_SAWF_ID);
 	if (!vdev)
 		return;
 	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
+	if (!psoc) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return;
+	}
 
-	if (!cfg_get(psoc, CFG_TGT_MLO_3_LINK_TX))
+	if (!cfg_get(psoc, CFG_TGT_MLO_3_LINK_TX)) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return;
+	}
 
 	qdf_mem_copy(macaddr.bytes, mac_addr, QDF_MAC_ADDR_SIZE);
 
@@ -343,6 +392,8 @@ void qca_sawf_3_link_peer_dl_flow_count(struct net_device *netdev, uint8_t *mac_
 
 	cdp_sawf_3_link_peer_flow_count(soc_txrx_handle, macaddr.bytes, peer_id,
 					mark_metadata);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 }
 #else
 uint32_t qca_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *peer_mac,
@@ -435,15 +486,19 @@ void qca_sawf_peer_config_ul(struct net_device *netdev, uint8_t *mac_addr,
 	if (!netdev->ieee80211_ptr)
 		return;
 
-	vdev = qca_sawf_get_vdev(netdev, mac_addr, NULL);
+	vdev = qca_sawf_get_ref_vdev(netdev, mac_addr, NULL, WLAN_SAWF_ID);
 	if (!vdev)
 		return;
 	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
+	if (!psoc) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return;
+	}
 
-	if (cfg_get(psoc, CFG_OL_SAWF_UL_FSE_ENABLE))
+	if (cfg_get(psoc, CFG_OL_SAWF_UL_FSE_ENABLE)) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return;
+	}
 
 	soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
 
@@ -462,6 +517,8 @@ void qca_sawf_peer_config_ul(struct net_device *netdev, uint8_t *mac_addr,
 				service_interval, burst_size,
 				min_tput, max_latency,
 				add_or_sub, peer_id);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 }
 
 static inline
@@ -480,12 +537,15 @@ void qca_sawf_peer_dl_flow_count(struct net_device *netdev, uint8_t *mac_addr,
 	if (!netdev || !netdev->ieee80211_ptr)
 		return;
 
-	vdev = qca_sawf_get_vdev(netdev, mac_addr, NULL);
+	vdev = qca_sawf_get_ref_vdev(netdev, mac_addr, NULL, WLAN_SAWF_ID);
 	if (!vdev)
 		return;
 	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
+	if (!psoc) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return;
+	}
+
 	soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
 
 	osdev = ath_netdev_priv(netdev);
@@ -501,6 +561,8 @@ void qca_sawf_peer_dl_flow_count(struct net_device *netdev, uint8_t *mac_addr,
 	cdp_sawf_peer_flow_count(soc_txrx_handle, mac_addr,
 				 svc_id, direction, start_or_stop,
 				 peer_mac_addr, peer_id, flow_count);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 }
 
 
@@ -1110,7 +1172,8 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 	 */
 	qca_sawf_store_input_params(wp, user_p);
 
-	vdev = qca_sawf_get_vdev(wifi_netdev, wifi_mac, peer_mac);
+	vdev = qca_sawf_get_ref_vdev(wifi_netdev, wifi_mac, peer_mac,
+				     WLAN_SAWF_ID);
 
 	if (!vdev) {
 		sawf_err("Invalid vdev");
@@ -1120,20 +1183,28 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 	/*
 	 * if ssid_len is 0, ssid match is ignored.
 	 */
-	if (wp->ssid_len && !wlan_dessired_ssid_found(vdev, wp->ssid, wp->ssid_len))
+	if (wp->ssid_len && !wlan_dessired_ssid_found(vdev, wp->ssid, wp->ssid_len)) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return false;
+	}
 
 #ifdef WLAN_FEATURE_11BE_MLO
 	if (vdev->mlo_dev_ctx) {
-		if (!qca_sawf_check_mlo_params(wifi_netdev, peer_mac, vdev, wp, present_p))
+		if (!qca_sawf_check_mlo_params(wifi_netdev, peer_mac, vdev, wp, present_p)) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 			return false;
+		}
 	} else
 #endif
-		if (!qca_sawf_check_slo_params(wifi_netdev, peer_mac, vdev, wp, present_p))
+		if (!qca_sawf_check_slo_params(wifi_netdev, peer_mac, vdev, wp, present_p)) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 			return false;
+		}
 
-	if (!qca_sawf_match_input_output_params(wifi_netdev, wp, user_p, present_p))
+	if (!qca_sawf_match_input_output_params(wifi_netdev, wp, user_p, present_p)) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 		return false;
+	}
 
 	if (dir == SAWF_DOWNLINK)
 		tid = dscp_tid_map[wp->dscp];
@@ -1142,9 +1213,13 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 
 	access_category = TID_TO_WME_AC(tid);
 	if (wp->valid_flags & QCA_SAWF_AC_VALID) {
-		if (access_category != wp->ac)
+		if (access_category != wp->ac) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 			return false;
+		}
 	}
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_SAWF_ID);
 
 	sawf_err("Direction:%d WiFi rule matched ", dir);
 
