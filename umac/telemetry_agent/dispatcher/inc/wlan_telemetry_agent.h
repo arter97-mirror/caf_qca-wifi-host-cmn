@@ -297,13 +297,15 @@ QDF_STATUS telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid,
  * @max_tput: pointer to memory to fill max throughput
  * @avg_tput: pointer to memory to fill avg throughput
  * @per: pointer to memory to fill PER
+ * @retries_pct: pointer to memory to fill retries pct
  *
  * Return: QDF_STATUS_SUCCESS on success
  */
 QDF_STATUS telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid,
 				   uint8_t queue,
 				   uint32_t *min_tput, uint32_t *max_tput,
-				   uint32_t *avg_tput, uint32_t *per);
+				   uint32_t *avg_tput, uint32_t *per,
+				   uint32_t *retries_pct);
 
 
 /**
@@ -525,7 +527,8 @@ static inline
 QDF_STATUS telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid,
 				   uint8_t queue,
 				   uint32_t *min_tput, uint32_t *max_tput,
-				   uint32_t *avg_tput, uint32_t *per) {
+				   uint32_t *avg_tput, uint32_t *per,
+				   uint32_t *retries_pct) {
 	return QDF_STATUS_SUCCESS;
 }
 

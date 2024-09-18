@@ -1625,6 +1625,8 @@ print_advance_sta_data_sawf_tx(struct advance_peer_data_sawftx *data,
 			    data->tx[0][0].avg_throughput);
 		STATS_PRINT("Tx_info_PER                = %u\n",
 			    data->tx[0][0].per);
+		STATS_PRINT("Tx_info_RETRIES_PCT        = %u\n",
+			    data->tx[0][0].retries_pct);
 		STATS_PRINT("Tx_info_ingress_rate       = %u\n",
 			    data->tx[0][0].ingress_rate);
 

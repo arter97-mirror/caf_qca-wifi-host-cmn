@@ -507,13 +507,14 @@ qdf_export_symbol(telemetry_sawf_get_rate);
 QDF_STATUS telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid,
 				   uint8_t queue,
 				   uint32_t *min_tput, uint32_t *max_tput,
-				   uint32_t *avg_tput, uint32_t *per)
+				   uint32_t *avg_tput, uint32_t *per,
+				   uint32_t *retries_pct)
 {
 	if (g_agent_ops) {
 		if (g_agent_ops->sawf_pull_tx_rate(telemetry_ctx, tid, queue,
 						min_tput, max_tput,
 						avg_tput,
-						per))
+						per, retries_pct))
 			return QDF_STATUS_E_FAILURE;
 	}
 	return QDF_STATUS_SUCCESS;

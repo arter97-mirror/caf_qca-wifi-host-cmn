@@ -633,6 +633,7 @@ struct stats_if_sawf_tx_stats {
 	uint32_t max_throughput;
 	uint32_t avg_throughput;
 	uint32_t per;
+	uint32_t retries_pct;
 	uint32_t ingress_rate;
 	uint32_t retry_count;
 	uint32_t multiple_retry_count;

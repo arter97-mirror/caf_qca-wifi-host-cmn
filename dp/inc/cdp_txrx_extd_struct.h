@@ -241,6 +241,11 @@ struct sawf_fw_mpdu_stats {
  * @tx_failed: tx failure count
  * @queue_depth: transmit queue-depth
  * @throughput: throughput
+ * @min_throughput: min_throughput
+ * @max_throughput: max_throughput
+ * @avg_throughput: avg_throughput
+ * @per: packet error rate
+ * @retries_pct: retries percentage
  * @ingress_rate: ingress-rate
  * @tid: tid used for transmit
  * @msduq: msdu-queue used for transmit
@@ -275,6 +280,7 @@ struct sawf_tx_stats {
 	uint32_t max_throughput;
 	uint32_t avg_throughput;
 	uint32_t per;
+	uint32_t retries_pct;
 	uint32_t ingress_rate;
 	uint32_t total_retries_count;
 	uint32_t retry_count;
