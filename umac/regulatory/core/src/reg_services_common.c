@@ -2032,6 +2032,20 @@ bool reg_is_6ghz_chan_freq(uint16_t freq)
 	return REG_IS_6GHZ_FREQ(freq);
 }
 
+qdf_freq_t reg_get_thresh_priority_freq(struct wlan_objmgr_pdev *pdev)
+{
+        struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+
+        pdev_priv_obj = reg_get_pdev_obj(pdev);
+
+        if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
+                reg_err("reg pdev private obj is NULL");
+                return 0;
+        }
+
+        return pdev_priv_obj->reg_6g_thresh_priority_freq;
+}
+
 #ifdef CONFIG_6G_FREQ_OVERLAP
 bool reg_is_range_overlap_6g(qdf_freq_t low_freq, qdf_freq_t high_freq)
 {
@@ -5864,7 +5878,7 @@ QDF_STATUS reg_get_client_power_for_6ghz_ap(struct wlan_objmgr_pdev *pdev,
  *
  * Return: Return the number of reg rules for a given ap power type
  */
-static uint8_t
+uint8_t
 reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				 enum reg_6g_ap_type ap_pwr_type)
 {

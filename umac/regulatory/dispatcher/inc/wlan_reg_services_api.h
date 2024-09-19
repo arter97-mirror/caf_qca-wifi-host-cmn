@@ -1625,6 +1625,12 @@ enum band_info wlan_reg_band_bitmap_to_band_info(uint32_t band_bitmap);
 
 #if defined(CONFIG_BAND_6GHZ)
 /**
+ * wlan_reg_get_thresh_priority_freq() - Get the prioritized frequency value
+ * @pdev: pdev pointer
+ */
+qdf_freq_t wlan_reg_get_thresh_priority_freq(struct wlan_objmgr_pdev *pdev);
+
+/**
  * wlan_reg_get_cur_6g_ap_pwr_type() - Get the current 6G regulatory AP power
  * type.
  * @pdev: Pointer to PDEV object.
@@ -1636,6 +1642,18 @@ enum band_info wlan_reg_band_bitmap_to_band_info(uint32_t band_bitmap);
 QDF_STATUS
 wlan_reg_get_cur_6g_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				enum reg_6g_ap_type *reg_cur_6g_ap_pwr_type);
+
+/**
+ * wlan_reg_get_num_rules_of_ap_pwr_type() - Get the number of reg rules
+ * present for a given ap power type
+ * @pdev: Pointer to pdev
+ * @ap_pwr_type: AP power type
+ *
+ * Return: Return the number of reg rules for a given ap power type
+ */
+uint8_t
+wlan_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
+				      enum reg_6g_ap_type ap_pwr_type);
 
 /**
  * wlan_reg_get_cur_6g_client_type() - Get the current 6G regulatory client
@@ -1887,4 +1905,44 @@ bool wlan_reg_is_ext_tpc_supported(struct wlan_objmgr_psoc *psoc);
 QDF_STATUS wlan_reg_is_chwidth_supported(struct wlan_objmgr_pdev *pdev,
 					 enum phy_ch_width ch_width,
 					 bool *is_supported);
+
+/**
+ * wlan_reg_find_non_punctured_bw() - Given the input puncture pattern and the
+ * total BW of the channel, find the non-punctured bandwidth.
+ * @bw: Total bandwidth of the channel
+ * @in_punc_pattern: Input puncture pattern
+ *
+ * Return: non-punctured bw in MHz
+ */
+#ifdef WLAN_FEATURE_11BE
+uint16_t
+wlan_reg_find_non_punctured_bw(uint16_t bw,  uint16_t in_punc_pattern);
+#else
+static inline uint16_t
+wlan_reg_find_non_punctured_bw(uint16_t bw,  uint16_t in_punc_pattern)
+{
+	return 0;
+}
+#endif
+
+#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
+/**
+ * wlan_reg_is_vlp_depriority_freq() - Check if the frequency is VLP deprority
+ * frequency.
+ *
+ * @pdev: Pointer to pdev
+ * @freq: Frequency in MHz
+ *
+ * Return: True if frequency is deprority frequency, else false.
+ */
+bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				     qdf_freq_t freq);
+#else
+static inline
+bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				     qdf_freq_t freq)
+{
+	return false;
+}
+#endif
 #endif

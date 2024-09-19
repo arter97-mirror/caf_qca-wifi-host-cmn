@@ -756,6 +756,8 @@ static void reg_propagate_6g_mas_channel_list(
 	pdev_priv_obj->reg_6g_superid =
 		mas_chan_params->reg_6g_superid;
 	pdev_priv_obj->reg_cur_6g_ap_pwr_type = REG_INDOOR_AP;
+	pdev_priv_obj->reg_6g_thresh_priority_freq =
+		mas_chan_params->reg_6g_thresh_priority_freq;
 }
 #else
 static inline void reg_propagate_6g_mas_channel_list(
@@ -2311,6 +2313,8 @@ static void reg_store_regulatory_ext_info_to_socpriv(
 					regulat_info->rnr_tpe_usable;
 	soc_reg->mas_chan_params[phy_id].unspecified_ap_usable =
 					regulat_info->unspecified_ap_usable;
+        soc_reg->mas_chan_params[phy_id].reg_6g_thresh_priority_freq =
+                                regulat_info->reg_6g_thresh_priority_freq;
 
 	for (i = 0; i < REG_CURRENT_MAX_AP_TYPE; i++) {
 		soc_reg->domain_code_6g_ap[i] =

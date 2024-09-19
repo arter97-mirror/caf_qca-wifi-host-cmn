@@ -1304,6 +1304,11 @@ enum band_info wlan_reg_band_bitmap_to_band_info(uint32_t band_bitmap)
 #endif
 
 #if defined(CONFIG_BAND_6GHZ)
+qdf_freq_t wlan_reg_get_thresh_priority_freq(struct wlan_objmgr_pdev *pdev)
+{
+        return reg_get_thresh_priority_freq(pdev);
+}
+
 QDF_STATUS wlan_reg_get_rnr_tpe_usable(struct wlan_objmgr_pdev *pdev,
 				       bool *reg_rnr_tpe_usable)
 {
@@ -1387,6 +1392,15 @@ wlan_reg_set_ap_pwr_and_update_chan_list(struct wlan_objmgr_pdev *pdev,
 
 qdf_export_symbol(wlan_reg_set_ap_pwr_and_update_chan_list);
 
+uint8_t
+wlan_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
+				      enum reg_6g_ap_type ap_pwr_type)
+{
+	return reg_get_num_rules_of_ap_pwr_type(pdev, ap_pwr_type);
+}
+
+qdf_export_symbol(wlan_reg_get_num_rules_of_ap_pwr_type);
+
 #endif /* CONFIG_BAND_6GHZ */
 
 bool wlan_reg_is_ext_tpc_supported(struct wlan_objmgr_psoc *psoc)
@@ -1431,3 +1445,19 @@ QDF_STATUS wlan_reg_is_chwidth_supported(struct wlan_objmgr_pdev *pdev,
 }
 
 qdf_export_symbol(wlan_reg_is_chwidth_supported);
+
+#ifdef WLAN_FEATURE_11BE
+uint16_t
+wlan_reg_find_non_punctured_bw(uint16_t bw,  uint16_t in_punc_pattern)
+{
+	return reg_find_non_punctured_bw(bw, in_punc_pattern);
+}
+#endif
+
+#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
+bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				     qdf_freq_t freq)
+{
+	return reg_is_vlp_depriority_freq(pdev, freq);
+}
+#endif
