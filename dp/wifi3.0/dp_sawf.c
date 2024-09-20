@@ -3556,6 +3556,17 @@ fail:
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef QCA_PEER_EXT_STATS
+QDF_STATUS
+dp_txrx_pull_tx_peer_stats(uint8_t *peer_mac, uint32_t *min_tput,
+			   uint32_t *max_tput, uint32_t *avg_tput,
+			   uint32_t *per, uint32_t *retries_pct)
+{
+	return telemetry_pull_tx_peer_stats(peer_mac, min_tput, max_tput,
+					    avg_tput, per, retries_pct);
+}
+#endif
+
 #ifdef SAWF_ADMISSION_CONTROL
 QDF_STATUS
 dp_sawf_get_peer_admctrl_stats(struct cdp_soc_t *soc, uint8_t *mac, void *data,
@@ -4074,6 +4085,16 @@ dp_sawf_get_peer_tx_stats(struct cdp_soc_t *soc,
 {
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef QCA_PEER_EXT_STATS
+QDF_STATUS
+dp_txrx_pull_tx_peer_stats(uint8_t *peer_mac, uint32_t *min_tput,
+			   uint32_t *max_tput, uint32_t *avg_tput,
+			   uint32_t *per, uint32_t *retries_pct)
+{
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
 
 QDF_STATUS
 dp_sawf_get_tx_stats(void *arg, uint64_t *in_bytes, uint64_t *in_cnt,

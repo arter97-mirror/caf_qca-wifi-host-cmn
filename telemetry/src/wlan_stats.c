@@ -2084,7 +2084,37 @@ get_advance_peer_data_sawftx(struct sawf_tx_stats *sawf_tx_stats,
 }
 #endif
 
-static QDF_STATUS get_advance_peer_data_tx(struct unified_stats *stats,
+#ifdef QCA_PEER_EXT_STATS
+void get_advance_peer_ext_data_tx(ol_txrx_soc_handle soc,
+				  uint8_t *mac_addr,
+				  struct advance_peer_data_tx *data)
+{
+	uint32_t min_throughput = 0, max_throughput = 0, avg_throughput = 0;
+	uint32_t packet_error_rate = 0, retries_percentage = 0;
+
+	cdp_pull_tx_peer_stats(soc, mac_addr, &min_throughput,
+		&max_throughput, &avg_throughput, &packet_error_rate,
+		&retries_percentage);
+
+	data->adv_tx.min_throughput = min_throughput;
+	data->adv_tx.max_throughput = max_throughput;
+	data->adv_tx.avg_throughput = avg_throughput;
+	data->adv_tx.packet_error_rate = packet_error_rate;
+	data->adv_tx.retries_percentage = retries_percentage;
+}
+#else
+void get_advance_peer_ext_data_tx(ol_txrx_soc_handle soc,
+				  uint8_t *mac_addr,
+				  struct advance_peer_data_tx *data)
+{
+	return;
+}
+#endif
+
+
+static QDF_STATUS get_advance_peer_data_tx(ol_txrx_soc_handle soc,
+					   uint8_t *mac_addr,
+					   struct unified_stats *stats,
 					   struct cdp_peer_stats *peer_stats)
 {
 	struct advance_peer_data_tx *data = NULL;
@@ -2100,6 +2130,8 @@ static QDF_STATUS get_advance_peer_data_tx(struct unified_stats *stats,
 	}
 	fill_basic_peer_data_tx(&data->b_tx, &peer_stats->tx);
 	fill_advance_data_tx_stats(&data->adv_tx, &peer_stats->tx);
+
+	get_advance_peer_ext_data_tx(soc, mac_addr, data);
 
 	stats->feat[INX_FEAT_TX] = data;
 	stats->size[INX_FEAT_TX] = sizeof(struct advance_peer_data_tx);
@@ -2535,7 +2567,7 @@ static QDF_STATUS get_advance_peer_data(struct wlan_objmgr_psoc *psoc,
 		}
 	}
 	if (feat & STATS_FEAT_FLG_TX) {
-		ret = get_advance_peer_data_tx(stats, peer_stats);
+		ret = get_advance_peer_data_tx(dp_soc, peer_mac, stats, peer_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch peer Advance TX stats!");
 		else

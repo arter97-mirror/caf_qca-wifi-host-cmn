@@ -439,6 +439,27 @@ QDF_STATUS telemetry_peer_sla_detect(uint8_t *peer_mac,
 	return QDF_STATUS_SUCCESS;
 }
 qdf_export_symbol(telemetry_peer_sla_detect);
+
+QDF_STATUS telemetry_pull_tx_peer_stats(uint8_t *peer_mac,
+					uint32_t *min_tput,
+					uint32_t *max_tput,
+					uint32_t *avg_tput,
+					uint32_t *per,
+					uint32_t *retries_pct)
+{
+	if (g_agent_ops) {
+		if (g_agent_ops->agent_pull_tx_peer_stats(peer_mac,
+							  min_tput,
+							  max_tput,
+							  avg_tput,
+							  per,
+							  retries_pct))
+			return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+qdf_export_symbol(telemetry_pull_tx_peer_stats);
 #endif
 
 QDF_STATUS telemetry_sawf_update_delay(void *telemetry_ctx, uint8_t tid,
