@@ -978,6 +978,17 @@ bool qca_sdwf_validate_wifi_port_params(struct qca_sawf_wifi_port_params *wp)
 	return true;
 }
 
+bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
+					uint8_t *dest_mac,
+					struct net_device *src_dev,
+					uint8_t *src_mac,
+					uint8_t priority,
+					struct qca_sawf_wifi_port_params *wp)
+{
+	return qca_sdwf_match_wifi_port_params(dst_dev, dest_mac,
+					priority, wp);
+}
+
 /*
  * qca_sdwf_match_wifi_port_params
  *
@@ -1127,6 +1138,16 @@ bool qca_sdwf_match_wifi_port_params(struct net_device *netdev,
 {
 	return true;
 }
+
+bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
+					uint8_t *dest_mac,
+					struct net_device *src_dev,
+					uint8_t *src_mac,
+					uint8_t priority,
+					struct qca_sawf_wifi_port_params *wp)
+{
+	return true;
+}
 #endif
 
 uint16_t qca_sawf_get_msdu_queue(struct net_device *netdev,
@@ -1148,3 +1169,4 @@ qdf_export_symbol(qca_sawf_unregister_flow_deprioritize_callback);
 qdf_export_symbol(qca_sawf_flow_deprioritize_response);
 qdf_export_symbol(qca_sdwf_match_wifi_port_params);
 qdf_export_symbol(qca_sdwf_validate_wifi_port_params);
+qdf_export_symbol(qca_sdwf_match_wifi_port_params_v2);

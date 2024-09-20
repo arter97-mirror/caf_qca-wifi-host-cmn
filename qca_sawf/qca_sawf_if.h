@@ -310,6 +310,26 @@ bool qca_sdwf_match_wifi_port_params(struct net_device *netdev,
 				     struct qca_sawf_wifi_port_params *wp);
 
 /*
+ * qca_sdwf_match_wifi_port_params_v2() - Check if wifi port params match
+ *
+ * @dst_dev: Destination netdevice
+ * @dst_mac: Destination mac address
+ * @src_dev: Source netdevice
+ * @src_mac: Source mac address
+ * @priority: Traffic priority set by user
+ * @wp: SWDF wifi parameters parsed and sent by SPM
+ *
+ * Return: true if rule match found else false
+ */
+bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
+					uint8_t *dest_mac,
+					struct net_device *src_dev,
+					uint8_t *src_mac,
+					uint8_t priority,
+					struct qca_sawf_wifi_port_params *wp);
+
+
+/*
  * qca_sdwf_validate_wifi_port_params() - Check if wifi port params are valid
  *
  * @wp: SWDF wifi parameters parsed and sent by SPM
