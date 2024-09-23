@@ -2989,6 +2989,90 @@ lim_strip_rsno_ie(struct mac_context *mac_ctx, uint8_t *add_ie,
 			     NULL, 0);
 }
 
+static
+QDF_STATUS lim_fill_wifi_gen_cap_ie(struct pe_session *pe_session,
+				    uint8_t **ie_buf, uint8_t *ie_len)
+{
+	uint8_t *cap_ie = NULL, *buf = NULL;
+	uint8_t supp_gen = 0, cert_gen = 0;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+
+	/*
+	 * EID		0xDD
+	 * IE_LEN	0X0B
+	 * OUI		"\x50\x6F\x9A"
+	 * OUI_LENGTH	0x03
+	 * OUI_TYPE	0x23
+	 */
+
+	cap_ie = qdf_mem_malloc(WFA_CAPABILITIES_IE_LENGTH + 2);
+	if (!cap_ie) {
+		pe_err("no mem for cap_ie");
+		return status;
+	}
+
+	buf = cap_ie;
+	*buf = WLAN_ELEMID_VENDOR;
+	buf++;
+
+	*buf = WFA_CAPABILITIES_IE_LENGTH;
+	buf++;
+
+	/* Fill the WFA Vendor specific OUI(0x50 0x6F 0x9A) */
+	qdf_mem_copy(buf, WFA_CAPABILITIES_OUI, WFA_CAPABILITIES_OUI_LENGTH);
+	buf += WFA_CAPABILITIES_OUI_LENGTH;
+
+	/* Fill the WFA Vendor specific OUI Type (0x23) */
+	*buf = WFA_CAPABILITIES_OUI_TYPE;
+	buf++;
+
+	/* Fill WFA Capabilities length. Currently no capabilities for WFA. */
+	*buf = WFA_CAPABILITIES_LENGTH;
+	buf++;
+
+	/* Fill WFA Capabilities Attribute Info
+	 * attribute - WiFi generation indication
+	 * attribute id - 0x01
+	 * attribute length - 0x04
+	 */
+	*buf = WIFI_GENERATION_CAPABILITY_ATTR_ID;
+	buf++;
+
+	*buf = WIFI_GENERATION_CAPABILITY_ATTR_LENGTH;
+	buf++;
+
+	/* Fill attribute data */
+	*buf = WIFI_SUPPORTED_GENERATIONS_LENGTH;
+	buf++;
+
+	/* Get supported wifi generation info advertised  by FW */
+	status = wlan_mlme_get_supported_wifi_generations_info(
+						pe_session->mac_ctx->psoc,
+						&supp_gen, &cert_gen);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		pe_err("Unable to get supported wifi generations info");
+		qdf_mem_free(cap_ie);
+		return status;
+	}
+
+	pe_nofl_rl_info("WiFi Generations Supported, Certified: [0x%x, 0x%x]",
+			supp_gen, cert_gen);
+
+	*buf = supp_gen;
+	buf++;
+
+	*buf = WIFI_CERTIFIED_GENERATIONS_LENGTH;
+	buf++;
+
+	*buf = cert_gen;
+	buf++;
+
+	*ie_len = WFA_CAPABILITIES_IE_LENGTH + 2;
+	*ie_buf = cap_ie;
+
+	return status;
+}
+
 /**
  * lim_send_assoc_req_mgmt_frame() - Send association request
  * @mac_ctx: Handle to MAC context
@@ -3041,6 +3125,7 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 	uint16_t mlo_ie_len = 0, fils_hlp_ie_len = 0;
 	uint8_t *fils_hlp_ie = NULL;
 	struct cm_roam_values_copy mdie_cfg = {0};
+	uint8_t *wfa_gen_cap_ie = NULL, wfa_gen_cap_ie_len = 0;
 
 	if (!pe_session) {
 		pe_err("pe_session is NULL");
@@ -3549,6 +3634,13 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 		goto end;
 	}
 
+	qdf_status = lim_fill_wifi_gen_cap_ie(pe_session, &wfa_gen_cap_ie,
+					      &wfa_gen_cap_ie_len);
+	if (QDF_IS_STATUS_ERROR(qdf_status)) {
+		pe_err("Failed to fill WFA Generation Capability IE");
+		goto end;
+	}
+
 	/*
 	 * Do unpack to populate the add_ie buffer to frm structure
 	 * before packing the frm structure. In this way, the IE ordering
@@ -3598,8 +3690,7 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 	bytes = payload + sizeof(tSirMacMgmtHdr) + aes_block_size_len +
 		rsnx_ie_len + mbo_ie_len + adaptive_11r_ie_len +
 		mscs_ext_ie_len + vendor_ie_len + mlo_ie_len + fils_hlp_ie_len +
-		eht_cap_ie_len;
-
+		eht_cap_ie_len + wfa_gen_cap_ie_len;
 
 	qdf_status = cds_packet_alloc((uint16_t) bytes, (void **)&frame,
 				(void **)&packet);
@@ -3689,6 +3780,16 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 			mlo_ie_len = 0;
 		}
 		payload = payload + mlo_ie_len;
+	}
+
+	/*
+	 * Copy the WFA Vendor specific WiFi generation capability IE
+	 * to the end of the assoc request frame
+	 */
+	if (wfa_gen_cap_ie_len) {
+		qdf_mem_copy(frame + sizeof(tSirMacMgmtHdr) + payload,
+			     wfa_gen_cap_ie, wfa_gen_cap_ie_len);
+		payload += wfa_gen_cap_ie_len;
 	}
 
 	if (pe_session->assoc_req) {
@@ -3786,6 +3887,7 @@ end:
 	qdf_mem_free(mscs_ext_ie);
 
 	/* Free up buffer allocated for mlm_assoc_req */
+	qdf_mem_free(wfa_gen_cap_ie);
 	qdf_mem_free(adaptive_11r_ie);
 	qdf_mem_free(mlm_assoc_req);
 	qdf_mem_free(add_ie);
