@@ -122,22 +122,18 @@ dp_rx_mon_status_buf_validate(struct dp_pdev *pdev,
 
 	mon_status_srng = soc->rxdma_mon_status_ring[mac_id].hal_srng;
 
-	qdf_assert(mon_status_srng);
-	if (!mon_status_srng || !hal_srng_initialized(mon_status_srng)) {
+	if (!mon_status_srng ||
+	    !hal_srng_initialized(mon_status_srng)) {
 		dp_rx_mon_dest_debug("%pK: HAL Monitor Status Ring Init Failed -- %pK",
 				     soc, mon_status_srng);
-		QDF_ASSERT(0);
 		return status;
 	}
 
 	hal_soc = soc->hal_soc;
 
-	qdf_assert(hal_soc);
-
-	if (qdf_unlikely(hal_srng_access_start(hal_soc, mon_status_srng))) {
+	if (!hal_soc || qdf_unlikely(hal_srng_access_start(hal_soc, mon_status_srng))) {
 		dp_rx_mon_dest_debug("%pK: HAL SRNG access Failed -- %pK",
 				     soc, mon_status_srng);
-		QDF_ASSERT(0);
 		return status;
 	}
 
@@ -988,6 +984,12 @@ uint32_t dp_rx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 	mon_pdev = pdev->monitor_pdev;
 
+	hal_soc = soc->hal_soc;
+	if (!hal_soc) {
+		dp_rx_mon_dest_err("hal_soc is null for soc = %pK", soc);
+		return work_done;
+	}
+
 	qdf_spin_lock_bh(&mon_mac->mon_lock);
 	if (qdf_unlikely(!dp_soc_is_full_mon_enable(pdev))) {
 		work_done += dp_rx_mon_status_process(soc, int_ctx,
@@ -1008,10 +1010,6 @@ uint32_t dp_rx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 				     soc, mon_dest_srng);
 		goto done1;
 	}
-
-	hal_soc = soc->hal_soc;
-
-	qdf_assert_always(hal_soc && pdev);
 
 	if (qdf_unlikely(dp_srng_access_start(int_ctx, soc, mon_dest_srng))) {
 		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_DEBUG,
