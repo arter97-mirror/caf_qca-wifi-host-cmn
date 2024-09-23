@@ -918,9 +918,11 @@ enum {
 	IEEE80211_PARAM_DISABLE_LPI_ANT_OPTIMIZATION = 835,
 	IEEE80211_PARAM_RECOVERY_STATE = 836,
 
+	/* Add QCA enums above */
+	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
+	IEEE80211_PARAM_CUST_END, /* Cust enum end */
 	IEEE80211_PARAM_LAST,
 	IEEE80211_PARAM_MAX = IEEE80211_PARAM_LAST - 1,
-	/* Customer enums */
 };
 
 enum {
@@ -1559,9 +1561,11 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_START_AID = 556,
 	OL_ATH_PARAM_DISABLE_LPI_ANT = 557,
 
+	/* Add QCA enums above */
+	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
+	OL_ATH_PARAM_CUST_END, /* Cust enum end */
 	OL_ATH_PARAM_LAST,
 	OL_ATH_PARAM_MAX = OL_ATH_PARAM_LAST - 1,
-	/* Customer enums */
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
