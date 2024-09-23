@@ -979,7 +979,6 @@ cdp_set_monitor_mode(ol_txrx_soc_handle soc, uint8_t vdev_id,
 {
 	if (!soc || !soc->ops) {
 		dp_cdp_debug("Invalid Instance:");
-		QDF_BUG(0);
 		return 0;
 	}
 
@@ -1381,7 +1380,6 @@ cdp_get_mon_vdev_from_pdev(ol_txrx_soc_handle soc, uint8_t pdev_id)
 {
 	if (!soc || !soc->ops) {
 		dp_cdp_debug("Invalid Instance:");
-		QDF_BUG(0);
 		return -EINVAL;
 	}
 
@@ -3216,7 +3214,6 @@ cdp_enable_mon_reap_timer(ol_txrx_soc_handle soc,
 	if (!soc || !soc->ops) {
 		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
 			  "%s invalid instance", __func__);
-		QDF_BUG(0);
 		return false;
 	}
 

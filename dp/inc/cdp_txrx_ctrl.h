@@ -114,7 +114,6 @@ cdp_update_mon_mac_filter(ol_txrx_soc_handle soc,
 {
 	if (!soc || !soc->ops) {
 		dp_cdp_debug("Invalid Instance:");
-		QDF_BUG(0);
 		return QDF_STATUS_E_FAILURE;
 	}
 
