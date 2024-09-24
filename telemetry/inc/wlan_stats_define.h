@@ -673,6 +673,13 @@ struct advance_data_tx_stats {
 	uint32_t mpdu_success_with_retries;
 	u_int32_t wme_ac_type[STATS_IF_WME_AC_MAX];
 	u_int64_t wme_ac_type_bytes[STATS_IF_WME_AC_MAX];
+#ifdef QCA_PEER_EXT_STATS
+	uint32_t min_throughput;
+	uint32_t max_throughput;
+	uint32_t avg_throughput;
+	uint32_t packet_error_rate;
+	uint32_t retries_percentage;
+#endif
 };
 
 struct advance_data_rx_stats {
