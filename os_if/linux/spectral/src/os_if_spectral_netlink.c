@@ -312,7 +312,11 @@ os_if_spectral_prep_skb(struct wlan_objmgr_pdev *pdev,
 			     sizeof(struct spectral_samp_msg));
 		buf = NLMSG_DATA(spectral_nlh);
 	} else if (buf_type == SPECTRAL_MSG_BUF_SAVED) {
-		QDF_ASSERT(ps->skb[smsg_type]);
+		if (!ps->skb[smsg_type]) {
+			osif_err("skb is not allocated for msg_type: %d",
+				 smsg_type);
+			return NULL;
+		}
 		spectral_nlh = (struct nlmsghdr *)ps->skb[smsg_type]->data;
 		buf = NLMSG_DATA(spectral_nlh);
 	} else {
