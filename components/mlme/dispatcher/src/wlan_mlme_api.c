@@ -8879,3 +8879,21 @@ wlan_mlme_get_p2p_device_mac_addr(struct wlan_objmgr_vdev *vdev,
 {
 	return mlme_get_p2p_device_mac_addr(vdev, mac_addr);
 }
+
+QDF_STATUS
+wlan_mlme_get_supported_wifi_generations_info(struct wlan_objmgr_psoc *psoc,
+					      uint8_t *supp, uint8_t *cert)
+{
+	struct target_psoc_info *tgt_hdl;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl) {
+		mlme_err("target psoc info is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*supp = target_psoc_get_supp_wifi_gen_info(tgt_hdl);
+	*cert = target_psoc_get_cert_wifi_gen_info(tgt_hdl);
+
+	return QDF_STATUS_SUCCESS;
+}

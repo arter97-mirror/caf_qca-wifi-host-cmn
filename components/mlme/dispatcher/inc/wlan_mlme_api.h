@@ -5283,6 +5283,7 @@ wlan_mlme_get_sap_dfs_puncture(struct wlan_objmgr_psoc *psoc);
 QDF_STATUS
 wlan_mlme_set_sap_dfs_puncture(struct wlan_objmgr_psoc *psoc,
 			       bool enable_sap_dfs_puncture);
+
 /**
  * wlan_mlme_set_p2p_device_mac_addr() - set p2p device interface mac
  * address in sta vdev mlme object
@@ -5305,4 +5306,18 @@ wlan_mlme_set_p2p_device_mac_addr(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS
 wlan_mlme_get_p2p_device_mac_addr(struct wlan_objmgr_vdev *vdev,
 				  struct qdf_mac_addr *mac_addr);
+
+/**
+ * wlan_mlme_get_supported_wifi_generations_info - Get supported wifi
+ * generations information of the target
+ *
+ * @psoc: pointer to psoc object
+ * @supp: supported wifi generations by target
+ * @cert: wfa certified wifi generations supported by target
+ *
+ * Return: QDF Status
+ */
+QDF_STATUS
+wlan_mlme_get_supported_wifi_generations_info(struct wlan_objmgr_psoc *psoc,
+					      uint8_t *supp, uint8_t *cert);
 #endif /* _WLAN_MLME_API_H_ */
