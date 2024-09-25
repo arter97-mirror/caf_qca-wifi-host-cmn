@@ -15534,6 +15534,89 @@ extract_num_max_mlo_link(wmi_service_ready_ext2_event_fixed_param *ev,
 }
 #endif
 
+#define WIFI_GEN_IND_BIT_VALUE 1
+
+static inline void
+wmi_host_set_supported_wifi_generation_bitmap(uint32_t wifi_gen,
+					      uint8_t *bitmap)
+{
+	uint8_t value = 0;
+
+	if (WMI_SUPPORTED_WIFI_4_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_4_GENERATION_SET(value,
+						    WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_5_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_5_GENERATION_SET(value,
+						    WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_6_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_6_GENERATION_SET(value,
+						    WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_7_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_7_GENERATION_SET(value,
+						    WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_8_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_8_GENERATION_SET(value,
+						    WIFI_GEN_IND_BIT_VALUE);
+
+	*bitmap = value;
+}
+
+static inline void
+wmi_host_set_certified_wifi_generation_bitmap(uint32_t wifi_gen,
+					      uint8_t *bitmap)
+{
+	uint8_t value = 0;
+
+	if (WMI_SUPPORTED_WIFI_4_CERTIFIED_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_4_CERTIFIED_GENERATION_SET(value,
+							WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_5_CERTIFIED_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_5_CERTIFIED_GENERATION_SET(value,
+							WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_6_CERTIFIED_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_6_CERTIFIED_GENERATION_SET(value,
+							WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_7_CERTIFIED_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_7_CERTIFIED_GENERATION_SET(value,
+							WIFI_GEN_IND_BIT_VALUE);
+
+	if (WMI_SUPPORTED_WIFI_8_CERTIFIED_GENERATION_GET(wifi_gen))
+		WMI_SUPPORTED_WIFI_8_CERTIFIED_GENERATION_SET(value,
+							WIFI_GEN_IND_BIT_VALUE);
+
+	*bitmap = value;
+}
+
+static inline void
+extract_wifi_generations_info(wmi_service_ready_ext2_event_fixed_param *ev,
+			      struct wlan_psoc_host_service_ext2_param *param)
+{
+	uint8_t supp, cert = 0;
+
+	if (!ev) {
+		wmi_err("Invalid wmi_srv_ready_2");
+		return;
+	}
+
+	wmi_host_set_supported_wifi_generation_bitmap(
+					ev->supported_wifi_generations, &supp);
+	wmi_host_set_certified_wifi_generation_bitmap(
+					ev->supported_wifi_generations, &cert);
+
+	param->supp_wifi_gen = supp;
+	param->cert_wifi_gen = cert;
+
+	wmi_debug("Supported_wifi: 0x%x Certified_wifi: 0x%x",
+		  param->supp_wifi_gen, param->cert_wifi_gen);
+}
+
 /**
  * extract_service_ready_ext2_tlv() - extract service ready ext2 params from
  * event
@@ -15624,6 +15707,8 @@ extract_service_ready_ext2_tlv(wmi_unified_t wmi_handle, uint8_t *event,
 	extract_num_max_mlo_link(ev, param);
 
 	param->num_aux_dev_caps = param_buf->num_aux_dev_caps;
+
+	extract_wifi_generations_info(ev, param);
 
 	return QDF_STATUS_SUCCESS;
 }

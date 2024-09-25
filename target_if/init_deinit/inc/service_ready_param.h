@@ -562,6 +562,8 @@ struct wlan_psoc_host_service_ext_param {
  * @sar_flag: SAR flag info
  * @fw_support_opt_dp_ctrl: FW support OPT_DP_CTRL
  * @tx_vdev_nss_support: FW supports Vdev Tx NSS report
+ * @supp_wifi_gen: Supported WiFi generations by the target
+ * @cert_wifi_gen: Supported WFA certified WiFi generations
  */
 struct wlan_psoc_host_service_ext2_param {
 	uint8_t reg_db_version_major;
@@ -608,6 +610,8 @@ struct wlan_psoc_host_service_ext2_param {
 	uint32_t sar_flag;
 	bool fw_support_opt_dp_ctrl;
 	bool tx_vdev_nss_support;
+	uint8_t supp_wifi_gen;
+	uint8_t cert_wifi_gen;
 };
 
 #endif /* _SERVICE_READY_PARAM_H_*/

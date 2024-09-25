@@ -3171,4 +3171,38 @@ static inline void target_if_set_num_max_mlo_link(struct wlan_objmgr_psoc *psoc,
 {
 }
 #endif
+
+/**
+ * target_psoc_get_supp_wifi_gen_info() - Get supported wifi generations info
+ *
+ * @tgt_hdl: target_psoc_info pointer
+ *
+ * return: 0 if invalid or not supported by FW
+ * 	   else bitmap of Supported wifi generations by target
+ */
+static inline
+uint8_t target_psoc_get_supp_wifi_gen_info(struct target_psoc_info *tgt_hdl)
+{
+	if (!tgt_hdl)
+		return 0;
+
+	return tgt_hdl->info.service_ext2_param.supp_wifi_gen;
+}
+
+/**
+ * target_psoc_get_cert_wifi_gen_info() - Get certified wifi generations info
+ *
+ * @tgt_hdl: target_psoc_info pointer
+ *
+ * return: 0 if invalid or not supported by FW
+ * 	   else bitmap of WFA certified wifi generations supported by target
+ */
+static inline
+uint8_t target_psoc_get_cert_wifi_gen_info(struct target_psoc_info *tgt_hdl)
+{
+	if (!tgt_hdl)
+		return 0;
+
+	return tgt_hdl->info.service_ext2_param.cert_wifi_gen;
+}
 #endif
