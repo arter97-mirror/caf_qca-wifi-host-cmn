@@ -1040,7 +1040,8 @@ bool qca_sdwf_match_wifi_port_params(struct net_device *netdev,
 				     uint8_t *dest_mac, uint8_t priority,
 				     struct qca_sawf_wifi_port_params *wp)
 {
-	return qca_sdwf_match_wifi_port_params_v2(netdev, dest_mac, NULL, NULL, priority, wp);
+	return qca_sdwf_match_wifi_port_params_v2(netdev, dest_mac,
+						  NULL, NULL, priority, wp);
 }
 
 bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
@@ -1057,7 +1058,7 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 	uint8_t peer_mac[QDF_MAC_ADDR_SIZE];
 	struct net_device *wifi_netdev = NULL;
 	uint8_t wifi_mac[QDF_MAC_ADDR_SIZE];
-	bool dir;
+	bool dir, wifi_flow = false;
 	uint8_t tid;
 
 	if (!dst_dev || !wp) {
@@ -1067,16 +1068,14 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 
 	qca_sawf_print_wifi_params(dst_dev, dest_mac, src_dev, src_mac, wp);
 
-	if (!dst_dev->ieee80211_ptr)
-		return false;
-
-	if (dst_dev->ieee80211_ptr) {
+	if (dst_dev && dst_dev->ieee80211_ptr) {
 		wifi_netdev = dst_dev;
 		qdf_copy_macaddr((struct qdf_mac_addr *)wifi_mac,
 				 (struct qdf_mac_addr *)dest_mac);
 		dir = SAWF_DOWNLINK;
+		wifi_flow = true;
 
-	} else {
+	} else if (src_dev && src_dev->ieee80211_ptr) {
 		uint8_t local_mac[QDF_MAC_ADDR_SIZE];
 		wifi_netdev = src_dev;
 		qdf_copy_macaddr((struct qdf_mac_addr *)wifi_mac,
@@ -1093,7 +1092,12 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 				 (struct qdf_mac_addr *)local_mac);
 
 		dir = SAWF_UPLINK;
+		wifi_flow = true;
 	}
+
+	/* Not a wifi flow, mo match required */
+	if (!wifi_flow)
+		return false;
 
 	/*
 	 * If parameters are invalid, return false;
@@ -1134,7 +1138,7 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 	if (dir == SAWF_DOWNLINK)
 		tid = dscp_tid_map[wp->dscp];
 	else
-		tid = wp->priority;
+		tid = priority;
 
 	access_category = TID_TO_WME_AC(tid);
 	if (wp->valid_flags & QCA_SAWF_AC_VALID) {
