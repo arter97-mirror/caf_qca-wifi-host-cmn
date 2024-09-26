@@ -3726,6 +3726,7 @@ static QDF_STATUS lim_tdls_setup_add_sta(struct mac_context *mac,
 {
 	tpDphHashNode sta = NULL;
 	struct wlan_objmgr_peer *peer;
+	enum wlan_peer_type peer_type;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	uint16_t aid = 0;
 	uint8_t peer_vdev_id;
@@ -3749,13 +3750,14 @@ static QDF_STATUS lim_tdls_setup_add_sta(struct mac_context *mac,
 					   WLAN_TDLS_NB_ID);
 	if (peer) {
 		peer_vdev_id = wlan_vdev_get_id(wlan_peer_get_vdev(peer));
+		peer_type = wlan_peer_get_peer_type(peer);
 		wlan_objmgr_peer_release_ref(peer, WLAN_TDLS_NB_ID);
 
 		if (pAddStaReq->tdls_oper == TDLS_OPER_ADD) {
-			pe_err("vdev:%d peer: " QDF_MAC_ADDR_FMT " already exist on vdev:%d, cannot add new entry",
+			pe_err("vdev:%d peer: " QDF_MAC_ADDR_FMT " peer_type:%d already exist on vdev:%d, cannot add new entry",
 			       pe_session->vdev_id,
 			       QDF_MAC_ADDR_REF(pAddStaReq->peermac.bytes),
-			       peer_vdev_id);
+			       peer_type, peer_vdev_id);
 			return QDF_STATUS_E_EXISTS;
 		}
 	}
@@ -4150,6 +4152,7 @@ QDF_STATUS lim_process_sme_tdls_add_sta_req(struct mac_context *mac,
 	struct tdls_add_sta_req *add_sta_req = msg;
 	struct pe_session *pe_session;
 	uint8_t session_id;
+	QDF_STATUS status;
 
 	pe_debug("vdev:%d TDLS Add STA Request Received",
 		 add_sta_req->session_id);
@@ -4188,11 +4191,15 @@ QDF_STATUS lim_process_sme_tdls_add_sta_req(struct mac_context *mac,
 
 
 	/* To start with, send add STA request to HAL */
-	if (QDF_STATUS_E_FAILURE == lim_tdls_setup_add_sta(mac, add_sta_req, pe_session)) {
-		pe_err("Add TDLS Station request failed");
+	status = lim_tdls_setup_add_sta(mac, add_sta_req, pe_session);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		pe_err("vdev:%d Add TDLS Station request failed",
+		       pe_session->vdev_id);
 		goto lim_tdls_add_sta_error;
 	}
+
 	return QDF_STATUS_SUCCESS;
+
 lim_tdls_add_sta_error:
 	lim_send_sme_tdls_add_sta_rsp(mac,
 				      add_sta_req->session_id,
