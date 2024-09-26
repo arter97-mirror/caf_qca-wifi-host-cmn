@@ -35,7 +35,7 @@
 #include "wlan_tdls_ucfg_api.h"
 #include "wlan_cm_roam_api.h"
 #include "wlan_cfg80211_tdls.h"
-#include "wlan_nan_api_i.h"
+#include "wlan_nan_api.h"
 #include "wlan_mlme_vdev_mgr_interface.h"
 
 /* Global tdls soc pvt object

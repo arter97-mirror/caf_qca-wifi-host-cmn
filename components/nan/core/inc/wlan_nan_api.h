@@ -281,6 +281,14 @@ qdf_freq_t wlan_nan_sap_override_freq(struct wlan_objmgr_psoc *psoc,
 				      uint32_t vdev_id,
 				      qdf_freq_t chan_freq);
 
+/**
+ * wlan_nan_is_disc_active() - Check if NAN discovery is active
+ * @psoc: Pointer to PSOC object
+ *
+ * Return: True if Discovery is active
+ */
+bool wlan_nan_is_disc_active(struct wlan_objmgr_psoc *psoc);
+
 #else /* WLAN_FEATURE_NAN */
 static inline QDF_STATUS nan_init(void)
 {
@@ -369,6 +377,11 @@ qdf_freq_t wlan_nan_sap_override_freq(struct wlan_objmgr_psoc *psoc,
 	return chan_freq;
 }
 
+static inline
+bool wlan_nan_is_disc_active(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
 #endif /* WLAN_FEATURE_NAN */
 
 #if defined(WLAN_FEATURE_NAN) && defined(WLAN_FEATURE_11BE_MLO)

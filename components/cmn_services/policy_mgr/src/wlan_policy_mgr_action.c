@@ -1943,6 +1943,13 @@ bool policy_mgr_is_sap_freq_allowed(struct wlan_objmgr_psoc *psoc,
 		return true;
 	}
 
+	/*
+	 * No need to check for SAP + NAN
+	 * concurrency when NAN is not presetn.
+	 */
+	if (!wlan_nan_is_disc_active(psoc))
+		return false;
+
 	nan_2g_freq =
 		policy_mgr_mode_specific_get_channel(psoc, PM_NAN_DISC_MODE);
 	nan_5g_freq = wlan_nan_get_5ghz_social_ch_freq(pm_ctx->pdev);

@@ -48,14 +48,6 @@ uint8_t wlan_nan_get_vdev_id_from_bssid(struct wlan_objmgr_pdev *pdev,
 					wlan_objmgr_ref_dbgid dbg_id);
 
 /**
- * wlan_nan_is_disc_active() - Check if NAN discovery is active
- * @psoc: Pointer to PSOC object
- *
- * Return: True if Discovery is active
- */
-bool wlan_nan_is_disc_active(struct wlan_objmgr_psoc *psoc);
-
-/**
  * wlan_nan_is_eht_capable() - Get NAN EHT capability
  * @psoc: pointer to psoc object
  *
@@ -161,12 +153,6 @@ uint8_t wlan_nan_get_vdev_id_from_bssid(struct wlan_objmgr_pdev *pdev,
 					wlan_objmgr_ref_dbgid dbg_id)
 {
 	return INVALID_VDEV_ID;
-}
-
-static inline
-bool wlan_nan_is_disc_active(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
 }
 
 static inline bool
