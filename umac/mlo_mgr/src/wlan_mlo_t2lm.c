@@ -1031,8 +1031,16 @@ static bool ttlm_subst_ap_btm_inprogress_event(void *ctx, uint16_t event,
 	switch (event) {
 	case WLAN_TTLM_SM_EV_BTM_LINK_DISABLE:
 		status = ttlm_handle_btm_link_disable_t2lm_frame(ml_peer, data);
-		if (QDF_IS_STATUS_ERROR(status))
+		if (QDF_IS_STATUS_ERROR(status)) {
+			ttlm_sm_transition_to(ml_peer, WLAN_TTLM_S_NEGOTIATED);
 			event_handled = false;
+			break;
+		}
+
+		status = qdf_mc_timer_start(&ml_peer->ttlm_request_timer,
+					    TTLM_REQUEST_TIMEOUT);
+		if (QDF_IS_STATUS_ERROR(status))
+			t2lm_err("Failed to start the timer");
 		break;
 	case WLAN_TTLM_SM_EV_RX_ACTION_RSP:
 		status = ttlm_handle_rx_action_rsp_in_sta_in_progress_state(ml_peer, data);
