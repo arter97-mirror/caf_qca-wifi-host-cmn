@@ -738,10 +738,14 @@ struct cdp_cmn_ops {
 	void (*set_rtpm_tput_policy)(struct cdp_soc_t *soc, bool val);
 #endif
 
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
+#if defined(WLAN_FEATURE_11BE_MLO)
+	void (*txrx_ppeds_cfg_astidx_cache_mapping)(struct cdp_soc_t *soc,
+						    uint8_t vdev_id);
+#if defined(WLAN_MLO_MULTI_CHIP)
 	void (*txrx_recovery_vdev_flush_peers)(struct cdp_soc_t *soc,
 					       uint8_t vdev_id,
 					       bool mlo_peers_only);
+#endif
 #endif
 	QDF_STATUS (*txrx_umac_reset_deinit)(ol_txrx_soc_handle soc,
 					     uint8_t recovery_type);

@@ -3077,23 +3077,6 @@ void dp_rx_reset_roaming_peer(struct dp_soc *soc, uint8_t vdev_id,
 }
 #endif
 
-#ifdef WLAN_SUPPORT_PPEDS
-static void
-dp_tx_ppeds_cfg_astidx_cache_mapping(struct dp_soc *soc, struct dp_vdev *vdev,
-				     bool peer_map)
-{
-	if (soc->arch_ops.dp_tx_ppeds_cfg_astidx_cache_mapping)
-		soc->arch_ops.dp_tx_ppeds_cfg_astidx_cache_mapping(soc, vdev,
-								   peer_map);
-}
-#else
-static void
-dp_tx_ppeds_cfg_astidx_cache_mapping(struct dp_soc *soc, struct dp_vdev *vdev,
-				     bool peer_map)
-{
-}
-#endif
-
 QDF_STATUS
 dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 		       uint16_t hw_peer_id, uint8_t vdev_id,
@@ -3146,8 +3129,6 @@ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 					   CDP_LINK_PEER_TYPE);
 
 		if (peer) {
-			bool peer_map = true;
-
 			/* Updating ast_hash and ast_idx in peer level */
 			peer->ast_hash = ast_hash;
 			peer->ast_idx = hw_peer_id;
@@ -3166,11 +3147,13 @@ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 
 				dp_info("bss ast_hash 0x%x, ast_index 0x%x",
 					ast_hash, hw_peer_id);
+
 				vdev->bss_ast_hash = ast_hash;
 				vdev->bss_ast_idx = hw_peer_id;
 
-				dp_tx_ppeds_cfg_astidx_cache_mapping(soc, vdev,
-								     peer_map);
+				dp_tx_cfg_astidx_cache_mapping_wrapper(soc,
+								       peer,
+								       vdev);
 			}
 
 			/* Add ast entry incase self ast entry is
@@ -3336,7 +3319,7 @@ dp_rx_peer_unmap_handler(struct dp_soc *soc, uint16_t peer_id,
 	if (wlan_op_mode_sta == vdev->opmode && !peer->is_tdls_peer) {
 		bool peer_map = false;
 
-		dp_tx_ppeds_cfg_astidx_cache_mapping(soc, vdev, peer_map);
+		dp_tx_cfg_astidx_cache_mapping(soc, vdev, peer_map);
 	}
 
 	dp_peer_find_id_to_obj_remove(soc, peer_id);

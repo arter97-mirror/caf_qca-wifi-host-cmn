@@ -407,7 +407,25 @@ cdp_vdev_detach(ol_txrx_soc_handle soc, uint8_t vdev_id,
 						       callback, cb_context);
 }
 
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
+#if defined(WLAN_FEATURE_11BE_MLO)
+static inline void
+cdp_ppeds_cfg_astidx_cache_mapping(struct cdp_soc_t *soc, uint8_t vdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance:");
+		QDF_BUG(0);
+		return;
+	}
+
+	if (!soc->ops->cmn_drv_ops ||
+	    !soc->ops->cmn_drv_ops->txrx_ppeds_cfg_astidx_cache_mapping)
+		return;
+
+	soc->ops->cmn_drv_ops->txrx_ppeds_cfg_astidx_cache_mapping(soc,
+								   vdev_id);
+}
+
+#if defined(WLAN_MLO_MULTI_CHIP)
 static inline void
 cdp_vdev_recovery_flush_peers(ol_txrx_soc_handle soc,
 			      uint8_t vdev_id,
@@ -427,6 +445,7 @@ cdp_vdev_recovery_flush_peers(ol_txrx_soc_handle soc,
 							      vdev_id,
 							      mlo_peers_only);
 }
+#endif
 #endif
 
 static inline int

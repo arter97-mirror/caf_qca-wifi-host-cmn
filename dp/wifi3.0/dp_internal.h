@@ -150,6 +150,22 @@ void dp_peer_unmap_track_resume(struct dp_soc *soc)
 {}
 #endif
 
+#ifdef WLAN_SUPPORT_PPEDS
+static inline void
+dp_tx_cfg_astidx_cache_mapping(struct dp_soc *soc, struct dp_vdev *vdev,
+			       bool peer_map)
+{
+	if (soc->arch_ops.dp_tx_ppeds_cfg_astidx_cache_mapping)
+		soc->arch_ops.dp_tx_ppeds_cfg_astidx_cache_mapping(soc, vdev,
+								   peer_map);
+}
+#else
+static inline void
+dp_tx_cfg_astidx_cache_mapping(struct dp_soc *soc, struct dp_vdev *vdev,
+			       bool peer_map)
+{
+}
+#endif
 /**
  * struct htt_dbgfs_cfg - structure to maintain required htt data
  * @msg_word: htt msg sent to upper layer
@@ -3357,7 +3373,6 @@ void dp_reset_global_tx_desc_cleanup_flag(struct dp_soc *soc);
  */
 bool dp_get_global_tx_desc_cleanup_flag(struct dp_soc *soc);
 
-
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 /**
  * dp_umac_reset_complete_umac_recovery() - Complete Umac reset session
@@ -6277,6 +6292,17 @@ void dp_update_vdev_basic_stats(struct dp_txrx_peer *txrx_peer,
 void dp_get_vdev_stats_for_unmap_peer_legacy(struct dp_vdev *vdev,
 					     struct dp_peer *peer);
 
+/**
+ * dp_tx_cfg_astidx_cache_mapping_wrapper() - wrapper to ast cache mapping API
+ * @soc: DP SOC handle
+ * @peer: peer pointer
+ * @vdev: vdev handle
+ *
+ * Return: None
+ */
+void
+dp_tx_cfg_astidx_cache_mapping_wrapper(struct dp_soc *soc, struct dp_peer *peer,
+				       struct dp_vdev *vdev);
 #ifdef WLAN_FEATURE_TX_LATENCY_STATS
 /**
  * dp_h2t_tx_latency_stats_cfg_msg_send(): send HTT message for tx latency

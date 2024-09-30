@@ -6041,6 +6041,20 @@ dp_txrx_peer_reset_local_link_id(struct dp_txrx_peer *txrx_peer)
 }
 #endif
 
+void
+dp_tx_cfg_astidx_cache_mapping_wrapper(struct dp_soc *soc, struct dp_peer *peer,
+				       struct dp_vdev *vdev)
+{
+	bool peer_map = true;
+
+	qdf_spin_lock_bh(&soc->peer_map_lock);
+
+	if (!peer || dp_peer_is_primary_link_peer(peer))
+		dp_tx_cfg_astidx_cache_mapping(soc, vdev, peer_map);
+
+	qdf_spin_unlock_bh(&soc->peer_map_lock);
+}
+
 /**
  * dp_peer_create_wifi3() - attach txrx peer
  * @soc_hdl: Datapath soc handle
@@ -13169,7 +13183,24 @@ dp_check_vdev_tx_delay_stats_enabled(struct cdp_soc_t *soc_hdl,
 }
 #endif
 
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
+#if defined(WLAN_FEATURE_11BE_MLO)
+static inline void
+dp_ds_cfg_astidx_cache_mapping(struct cdp_soc_t *cdp_soc, uint8_t vdev_id)
+{
+	struct dp_soc *soc = (struct dp_soc *)cdp_soc;
+	struct dp_vdev *vdev;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+
+	if (!vdev)
+		return;
+
+	dp_tx_cfg_astidx_cache_mapping_wrapper(soc, NULL, vdev);
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+}
+
+#if defined(WLAN_MLO_MULTI_CHIP)
 static void
 dp_recovery_vdev_flush_peers(struct cdp_soc_t *cdp_soc,
 			     uint8_t vdev_id,
@@ -13186,6 +13217,7 @@ dp_recovery_vdev_flush_peers(struct cdp_soc_t *cdp_soc,
 	dp_vdev_flush_peers((struct cdp_vdev *)vdev, false, mlo_peers_only);
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 }
+#endif
 #endif
 #ifdef QCA_GET_TSF_VIA_REG
 /**
@@ -13447,8 +13479,12 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 #ifdef WLAN_FEATURE_PKT_CAPTURE_V2
 	.set_pkt_capture_mode = dp_set_pkt_capture_mode,
 #endif
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
+#if defined(WLAN_FEATURE_11BE_MLO)
+	.txrx_ppeds_cfg_astidx_cache_mapping =
+					dp_ds_cfg_astidx_cache_mapping,
+#if defined(WLAN_MLO_MULTI_CHIP)
 	.txrx_recovery_vdev_flush_peers = dp_recovery_vdev_flush_peers,
+#endif
 #endif
 	.txrx_umac_reset_deinit = dp_soc_umac_reset_deinit,
 	.txrx_umac_reset_init = dp_soc_umac_reset_init,
