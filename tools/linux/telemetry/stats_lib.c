@@ -2519,7 +2519,7 @@ static int get_mld_link_id(char *ifname, char *link_name)
 	if ((strlcpy(path, ifname, bufsize) >= bufsize) ||
 	    (strlcat(path, "/", bufsize) >= bufsize) ||
 	    (strlcat(path, link_name, bufsize) >= bufsize) ||
-	    (strlcat(path, "/link_id_", bufsize) >= bufsize) ||
+	    (strlcat(path, "/hw_link_id_", bufsize) >= bufsize) ||
 	    (strlcat(path, link_name, bufsize) >= bufsize)) {
 		STATS_ERR("Error creating pathname %s\n", path);
 		return MLO_INVALID_LINK_ID;
