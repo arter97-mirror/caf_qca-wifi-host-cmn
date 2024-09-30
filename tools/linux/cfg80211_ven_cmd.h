@@ -1560,6 +1560,7 @@ enum _ol_ath_param_t {
 #endif /* UMAC_SUPPORT_ACS */
 	OL_ATH_PARAM_START_AID = 556,
 	OL_ATH_PARAM_DISABLE_LPI_ANT = 557,
+	OL_ATH_PARAM_NXT_RDR_WIDTH = 558,
 
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
@@ -3645,6 +3646,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_FREQ, SET_PARAM, 1},
 	{"getNxtRadarFreq",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_FREQ, GET_PARAM, 0},
+	{"setNxtRadarWidth",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_WIDTH, SET_PARAM, 1},
+	{"getNxtRadarWidth",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_WIDTH, GET_PARAM, 0},
 	{"rpt_max_phy",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RPT_MAX_PHY, SET_PARAM, 1},
 	{"g_rpt_max_phy",
