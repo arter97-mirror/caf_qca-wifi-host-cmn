@@ -1735,11 +1735,18 @@ void dfs_start_punc_cac_timer(struct dfs_punc_obj *dfs_punc_arr,
 			      bool is_weather_chan)
 {
 	uint32_t punc_cac_timeout;
+	bool is_dfsreg_etsi = (utils_get_dfsdomain(dfs_punc_arr->dfs->dfs_pdev_obj) == DFS_ETSI_REGION);
 
-	if (is_weather_chan)
+	/* For ETSI domain, use PRECAC timer of 6 minutes for regular channels
+	* and 60 mins for Weather radar channels.
+	* For FCC domain, use RCAC timer of 1 minute.
+	*/
+	if (is_dfsreg_etsi && is_weather_chan)
 		punc_cac_timeout = MIN_WEATHER_PRECAC_DURATION;
-	else
+	else if (is_dfsreg_etsi)
 		punc_cac_timeout = MIN_PRECAC_DURATION;
+	else
+		punc_cac_timeout = MIN_RCAC_DURATION;
 
 	qdf_hrtimer_start(&dfs_punc_arr->dfs_punc_cac_timer,
 			  qdf_time_ms_to_ktime(punc_cac_timeout),
