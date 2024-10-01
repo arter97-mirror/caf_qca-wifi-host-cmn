@@ -1215,23 +1215,66 @@ wlan_sawf_send_disable_svc_to_target(struct wlan_sawf_svc_class_params *svc)
 /***************************
  * WLAN CFG80211 interface *
  ***************************/
+
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+static struct wireless_dev *
+wlan_sawf_get_wdev_from_vdev(struct wlan_objmgr_vdev *vdev)
+{
+	struct vdev_osif_priv *osif_priv;
+	struct net_device *ml_netdev;
+
+	ml_netdev = osif_vdev_get_mld_netdev(vdev);
+	if (ml_netdev)
+		return ml_netdev->ieee80211_ptr;
+
+	/*
+	 * If VDEV is not a part of single MLD wiphy, then find wdev
+	 * from vdev priv
+	 */
+	osif_priv = wlan_vdev_get_ospriv(vdev);
+	if (!osif_priv->wdev) {
+		sawf_err("wdev not found");
+		return NULL;
+	}
+
+	return osif_priv->wdev;
+}
+#else
+static struct wireless_dev *
+wlan_sawf_get_wdev_from_vdev(struct wlan_objmgr_vdev *vdev)
+{
+	struct vdev_osif_priv *osif_priv;
+
+	osif_priv = wlan_vdev_get_ospriv(vdev);
+	return osif_priv->wdev;
+}
+#endif
+
 static void
 wlan_sawf_send_rule_add_req(struct wlan_objmgr_peer *peer,
 			    struct wlan_sawf_rule *rule,
 			    uint32_t rule_id, uint8_t svc_id)
 {
 	struct wlan_objmgr_vdev *vdev;
-	struct vdev_osif_priv *osif_vdev;
+	struct wireless_dev *wdev;
 
 	vdev = wlan_peer_get_vdev(peer);
-	osif_vdev  = wlan_vdev_get_ospriv(vdev);
+	if (!vdev) {
+		sawf_err("Invalid vdev");
+		return;
+	}
 
 	rule->rule_id = rule_id;
 	rule->req_type = WLAN_CFG80211_SAWF_RULE_ADD;
 	rule->service_class_id = svc_id;
 
-	wlan_cfg80211_sawf_send_rule(osif_vdev->wdev->wiphy, osif_vdev->wdev,
-				     rule);
+	wdev = wlan_sawf_get_wdev_from_vdev(vdev);
+	if (!wdev) {
+		sawf_err("Unable to add rule due to NULL wdev");
+		return;
+	}
+
+	wlan_cfg80211_sawf_send_rule(wdev->wiphy, wdev, rule);
 }
 
 static void
