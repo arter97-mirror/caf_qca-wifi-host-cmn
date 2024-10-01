@@ -723,13 +723,15 @@ void dp_print_pdev_tx_capture_stats_1_0(struct dp_pdev *pdev)
  * @pdev: Datapath pdev handle
  * @peer: Datapath peer
  * @mac_addr: peer mac address
+ * @frame_ctrl_type: frame control type
  *
  * Return: true if feature is enabled on a per-pdev basis or if
  * enabled for the given peer when per-peer mode is set, false otherwise
  */
 inline bool
 dp_peer_or_pdev_tx_cap_enabled(struct dp_pdev *pdev,
-			       struct dp_peer *peer, uint8_t *mac_addr)
+			       struct dp_peer *peer, uint8_t *mac_addr,
+			       uint8_t frame_ctrl_type)
 {
 	bool flag = false;
 	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
@@ -751,7 +753,12 @@ dp_peer_or_pdev_tx_cap_enabled(struct dp_pdev *pdev,
 			peer->monitor_peer->tx_cap_enabled = 1;
 
 		return flag;
+	} else if ((mon_pdev->tx_capture_enabled ==
+		    CDP_TX_ENH_CAPTURE_NON_DATA_CAPTURE) &&
+		   (frame_ctrl_type == IEEE80211_FC0_TYPE_MGT)) {
+		return true;
 	}
+
 	return false;
 }
 
@@ -937,7 +944,9 @@ void dp_peer_tx_cap_tid_queue_flush(struct dp_soc *soc, struct dp_peer *peer,
 	if (qdf_unlikely(!pdev))
 		return;
 
-	if (!dp_peer_or_pdev_tx_cap_enabled(pdev, peer, peer->mac_addr.raw) ||
+	if (!dp_peer_or_pdev_tx_cap_enabled(pdev, peer,
+					    peer->mac_addr.raw,
+					    IEEE80211_FC0_TYPE_DATA) ||
 	    qdf_unlikely(!mon_peer))
 		return;
 
@@ -1304,6 +1313,29 @@ bool dp_action_frame_is_hostgen(int category, int action)
 	return retval;
 }
 
+#define GET_FRAME_CTRL_TYPE(frame_ctrl)	((frame_ctrl) & IEEE80211_FC0_TYPE_MASK)
+
+/**
+ * dp_tx_cap_check_valid_mode - Add condition check to process ppdu info
+ * @mon_pdev: Monitor pdev
+ * @frame_ctrl_type: Frame control type
+ *
+ * Return: true if feature is disabled or non-full capture mode is enabled with
+ * frame control type is data, false otherwise
+ */
+static inline
+bool dp_tx_cap_check_valid_mode(struct dp_mon_pdev *mon_pdev,
+				uint8_t frame_ctrl_type)
+{
+	if (CDP_TX_ENH_CAPTURE_DISABLED == mon_pdev->tx_capture_enabled ||
+	    ((CDP_TX_ENH_CAPTURE_NON_DATA_CAPTURE ==
+	      mon_pdev->tx_capture_enabled) &&
+	     IEEE80211_FC0_TYPE_DATA == frame_ctrl_type))
+		return true;
+
+	return false;
+}
+
 /*
  * dp_deliver_mgmt_frm: Process
  * @pdev: DP PDEV handle
@@ -1323,10 +1355,7 @@ void dp_deliver_mgmt_frm(struct dp_pdev *pdev, qdf_nbuf_t nbuf)
 		return;
 	}
 	if (mon_pdev->mon_version == MONITOR_VERSION_1 &&
-	    ((mon_pdev->tx_capture_enabled ==
-	      CDP_TX_ENH_CAPTURE_ENABLE_ALL_PEERS) ||
-	     (mon_pdev->tx_capture_enabled ==
-	      CDP_TX_ENH_CAPTURE_ENDIS_PER_PEER))) {
+	    CDP_TX_ENH_CAPTURE_DISABLED != mon_pdev->tx_capture_enabled) {
 		/* invoke WDI event handler here send mgmt pkt here */
 		struct ieee80211_frame *wh;
 		uint8_t type, subtype;
@@ -1353,7 +1382,8 @@ void dp_deliver_mgmt_frm(struct dp_pdev *pdev, qdf_nbuf_t nbuf)
 			return;
 		}
 
-		if (!dp_peer_or_pdev_tx_cap_enabled(pdev, NULL, wh->i_addr1)) {
+		if (!dp_peer_or_pdev_tx_cap_enabled(pdev, NULL, wh->i_addr1,
+						    IEEE80211_FC0_TYPE_MGT)) {
 			qdf_nbuf_free(nbuf);
 			return;
 		}
@@ -2143,7 +2173,8 @@ QDF_STATUS dp_tx_add_to_comp_queue_1_0(struct dp_soc *soc,
 
 	peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_TX_CAPTURE);
 	if (peer &&
-	    dp_peer_or_pdev_tx_cap_enabled(pdev, peer, peer->mac_addr.raw) &&
+	    dp_peer_or_pdev_tx_cap_enabled(pdev, peer, peer->mac_addr.raw,
+					   IEEE80211_FC0_TYPE_DATA) &&
 	    ((ts->status == HAL_TX_TQM_RR_FRAME_ACKED) ||
 	    (ts->status == HAL_TX_TQM_RR_REM_CMD_TX) ||
 	    ((ts->status == HAL_TX_TQM_RR_REM_CMD_AGED) && ts->transmit_cnt))) {
@@ -2585,6 +2616,13 @@ QDF_STATUS
 dp_config_enh_tx_capture_1_0(struct dp_pdev *pdev, uint8_t val, uint8_t mac_id)
 {
 	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
+
+	/* add sanity test */
+	if (val == CDP_TX_ENH_PKT_CAP_CUSTOM_CLASSIFY ||
+	    val >= CDP_TX_ENH_CAPTURE_MAX) {
+		qdf_err("Supported mode are [0, 1, 2, 4]\n");
+		return QDF_STATUS_E_INVAL;
+	}
 
 	qdf_atomic_set(&mon_pdev->tx_capture.tx_cap_usr_mode, val);
 
@@ -4924,8 +4962,8 @@ dp_check_mgmt_ctrl_ppdu(struct dp_pdev *pdev,
 	peer = DP_TX_PEER_GET_REF(pdev, ppdu_desc->user[0].peer_id);
 	if (peer && !peer->bss_peer) {
 		if (!dp_peer_or_pdev_tx_cap_enabled(pdev, peer,
-						    ppdu_desc->user[0].mac_addr
-						    )) {
+						    ppdu_desc->user[0].mac_addr,
+						    IEEE80211_FC0_TYPE_MGT)) {
 			qdf_nbuf_free(nbuf_ppdu_desc);
 			status = QDF_STATUS_SUCCESS;
 			DP_TX_PEER_DEL_REF(peer);
@@ -4939,14 +4977,14 @@ dp_check_mgmt_ctrl_ppdu(struct dp_pdev *pdev,
 		      (subtype == MGMT_SUBTYPE_PROBE_RESP >> 4 ||
 		       subtype == MGMT_SUBTYPE_DISASSOC >> 4 ||
 		       subtype == MGMT_SUBTYPE_DEAUTH >> 4 ||
-		       subtype == MGMT_SUBTYPE_AUTH >> 4))) {
-			if (!dp_peer_or_pdev_tx_cap_enabled(pdev, NULL,
-							    ppdu_desc->user[0]
-							    .mac_addr)) {
-				qdf_nbuf_free(nbuf_ppdu_desc);
-				status = QDF_STATUS_SUCCESS;
-				goto exit;
-			}
+		       subtype == MGMT_SUBTYPE_AUTH >> 4)) &&
+		    (!dp_peer_or_pdev_tx_cap_enabled(pdev, NULL,
+						     ppdu_desc->user[0]
+						     .mac_addr,
+						     IEEE80211_FC0_TYPE_MGT))) {
+			qdf_nbuf_free(nbuf_ppdu_desc);
+			status = QDF_STATUS_SUCCESS;
+			goto exit;
 		}
 	}
 
@@ -5161,27 +5199,26 @@ insert_mgmt_buf_to_queue:
 			wh = (struct ieee80211_frame *)
 				(qdf_nbuf_data(mgmt_ctl_nbuf));
 
-			if (type == IEEE80211_FC0_TYPE_MGT &&
-			    (subtype == MGMT_SUBTYPE_PROBE_RESP >> 4 ||
-			     subtype == MGMT_SUBTYPE_DISASSOC >> 4 ||
-			     subtype == MGMT_SUBTYPE_DEAUTH >> 4 ||
-			     subtype == MGMT_SUBTYPE_AUTH >> 4)) {
-				if (!dp_peer_or_pdev_tx_cap_enabled(pdev,
-								    NULL,
-								    wh->i_addr1
-								    )) {
-					qdf_nbuf_free(nbuf_ppdu_desc);
-					qdf_nbuf_free(mgmt_ctl_nbuf);
+			if ((type == IEEE80211_FC0_TYPE_MGT &&
+			     (subtype == MGMT_SUBTYPE_PROBE_RESP >> 4 ||
+			      subtype == MGMT_SUBTYPE_DISASSOC >> 4 ||
+			      subtype == MGMT_SUBTYPE_DEAUTH >> 4 ||
+			      subtype == MGMT_SUBTYPE_AUTH >> 4)) &&
+			    (!dp_peer_or_pdev_tx_cap_enabled(pdev, NULL,
+							     wh->i_addr1,
+							     IEEE80211_FC0_TYPE_MGT))) {
+				qdf_nbuf_free(nbuf_ppdu_desc);
+				qdf_nbuf_free(mgmt_ctl_nbuf);
 
-					if (mem_limit_flag) {
-						uint32_t nbytes = dp_tx_capt_get_q_bytes(retries_q);
-						qdf_atomic_sub(nbytes,
-							       &mon_soc->dp_soc_tx_capt.ppdu_mgmt_bytes);
-					}
-					TX_CAP_NBUF_QUEUE_FREE(retries_q);
-					status = QDF_STATUS_SUCCESS;
-					goto exit;
+				if (mem_limit_flag) {
+					uint32_t nbytes = dp_tx_capt_get_q_bytes(retries_q);
+
+					qdf_atomic_sub(nbytes,
+						       &mon_soc->dp_soc_tx_capt.ppdu_mgmt_bytes);
 				}
+				TX_CAP_NBUF_QUEUE_FREE(retries_q);
+				status = QDF_STATUS_SUCCESS;
+				goto exit;
 			}
 
 			while (qdf_nbuf_queue_len(retries_q)) {
@@ -6040,7 +6077,8 @@ dp_tx_cap_proc_per_ppdu_info(struct dp_pdev *pdev, qdf_nbuf_t nbuf_ppdu,
 			if ((peer->bss_peer && !is_mcast) ||
 			    !(mon_peer->tx_capture.is_tid_initialized) ||
 			    !dp_peer_or_pdev_tx_cap_enabled(pdev,
-				peer, peer->mac_addr.raw)) {
+				peer, peer->mac_addr.raw,
+				IEEE80211_FC0_TYPE_DATA)) {
 				user->skip = 1;
 				goto free_nbuf_dec_ref;
 			}
@@ -6464,6 +6502,9 @@ void dp_tx_ppdu_stats_process(void *context)
 		STAILQ_FOREACH_SAFE(sched_ppdu_info,
 				    &sched_ppdu_queue,
 				    ppdu_info_queue_elem, tmp_ppdu_info) {
+			struct cdp_tx_completion_ppdu *ppdu_desc;
+			uint16_t frame_ctrl_le;
+
 			ppdu_info = sched_ppdu_info;
 			pdev->stats.tx_ppdu_proc++;
 
@@ -6480,13 +6521,14 @@ void dp_tx_ppdu_stats_process(void *context)
 
 			qdf_assert_always(nbuf_ppdu);
 
-			/* check tx capture disable */
-			if (mon_pdev->tx_capture_enabled ==
-			    CDP_TX_ENH_CAPTURE_DISABLED) {
-				struct cdp_tx_completion_ppdu *ppdu_desc;
-
-				ppdu_desc = (struct cdp_tx_completion_ppdu *)
+			ppdu_desc = (struct cdp_tx_completion_ppdu *)
 					qdf_nbuf_data(nbuf_ppdu);
+
+			frame_ctrl_le = qdf_cpu_to_le16(ppdu_desc->frame_ctrl);
+
+			/* check tx capture disable */
+			if (dp_tx_cap_check_valid_mode(mon_pdev,
+			    GET_FRAME_CTRL_TYPE(frame_ctrl_le))) {
 				/**
 				 * Deliver PPDU stats only for valid (acked)
 				 * data frames if sniffer mode is not enabled.
@@ -6530,9 +6572,6 @@ void dp_tx_ppdu_stats_process(void *context)
 
 				continue;
 			} else {
-				struct cdp_tx_completion_ppdu *ppdu_desc = NULL;
-				ppdu_desc = (struct cdp_tx_completion_ppdu *)qdf_nbuf_data(nbuf_ppdu);
-
 				tx_cap_debugfs_log_ppdu_desc(pdev, nbuf_ppdu);
 
 				/* process ppdu_info on tx capture turned on */
@@ -6905,7 +6944,8 @@ QDF_STATUS dp_send_cts_frame_to_stack(struct dp_soc *soc,
 	if (!peer)
 		return QDF_STATUS_E_FAILURE;
 
-	if (!dp_peer_or_pdev_tx_cap_enabled(pdev, NULL, peer->mac_addr.raw)) {
+	if (!dp_peer_or_pdev_tx_cap_enabled(pdev, NULL, peer->mac_addr.raw,
+					    IEEE80211_FC0_TYPE_CTL)) {
 		DP_TX_PEER_DEL_REF(peer);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -7323,7 +7363,8 @@ QDF_STATUS dp_send_noack_frame_to_stack(struct dp_soc *soc,
 	if (!peer)
 		return QDF_STATUS_E_FAILURE;
 
-	if (!dp_peer_or_pdev_tx_cap_enabled(pdev, peer, peer->mac_addr.raw)) {
+	if (!dp_peer_or_pdev_tx_cap_enabled(pdev, peer, peer->mac_addr.raw,
+					    IEEE80211_FC0_TYPE_MGT)) {
 		DP_TX_PEER_DEL_REF(peer);
 		return QDF_STATUS_E_FAILURE;
 	}
