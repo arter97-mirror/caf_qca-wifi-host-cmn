@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -661,7 +661,7 @@ void dp_rx_fst_update_cmem_params(struct dp_soc *soc, uint16_t num_entries,
 	fst->cmem_ba = cmem_ba_lo;
 
 	/* Address is not NULL then address is already known during init */
-	if (dp_ctx->fst_cmem_base == 0)
+	if (dp_ctx->fst_in_cmem && dp_ctx->fst_cmem_base == 0)
 		qdf_event_set(&fst->cmem_resp_event);
 }
 
