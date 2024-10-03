@@ -264,6 +264,72 @@ bool dp_peer_check_wds_ext_peer(struct dp_peer *peer)
 
 	return false;
 }
+#ifdef IPA_OFFLOAD
+static QDF_STATUS
+dp_peer_wds_ext_set_peer_bit(struct dp_peer *peer)
+{
+	struct dp_vdev *vdev = peer->vdev;
+	struct dp_txrx_peer *txrx_peer;
+
+	if (!vdev->wds_ext_enabled)
+		return QDF_STATUS_E_INVAL;
+
+	txrx_peer = dp_get_txrx_peer(peer);
+	if (!txrx_peer)
+		return QDF_STATUS_E_INVAL;
+
+	if (qdf_atomic_test_bit(WDS_EXT_PEER_INIT_BIT,
+				&txrx_peer->wds_ext.init))
+		return QDF_STATUS_E_ALREADY;
+
+	qdf_atomic_test_and_set_bit(WDS_EXT_PEER_INIT_BIT,
+				    &txrx_peer->wds_ext.init);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+dp_peer_wds_ext_create(struct dp_soc *soc, struct dp_peer *peer)
+{
+	struct dp_vdev *vdev = peer->vdev;
+	struct dp_txrx_peer *ta_txrx_peer;
+	uint8_t wds_ext_src_mac[QDF_MAC_ADDR_SIZE];
+	struct dp_peer *ta_base_peer;
+
+	if (!vdev->wds_ext_enabled)
+		return QDF_STATUS_E_INVAL;
+
+	ta_txrx_peer = dp_get_txrx_peer(peer);
+	if (!ta_txrx_peer)
+		return QDF_STATUS_E_INVAL;
+
+	if (ta_txrx_peer->is_mld_peer) {
+		ta_base_peer = dp_get_primary_link_peer_by_id(
+						soc,
+						ta_txrx_peer->peer_id,
+						DP_MOD_ID_IPA);
+	} else {
+		ta_base_peer = dp_peer_get_ref_by_id(
+						soc,
+						ta_txrx_peer->peer_id,
+						DP_MOD_ID_IPA);
+	}
+	if (!ta_base_peer)
+		return QDF_STATUS_E_INVAL;
+
+	qdf_mem_copy(wds_ext_src_mac, &ta_base_peer->mac_addr.raw[0],
+		     QDF_MAC_ADDR_SIZE);
+	dp_peer_unref_delete(ta_base_peer, DP_MOD_ID_IPA);
+
+	soc->cdp_soc.ol_ops->rx_wds_ext_peer_learn(
+					ta_txrx_peer->vdev->pdev->soc->ctrl_psoc,
+					ta_txrx_peer->peer_id,
+					ta_txrx_peer->vdev->vdev_id,
+					wds_ext_src_mac);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 #else
 bool dp_peer_check_wds_ext_peer(struct dp_peer *peer)
 {
@@ -1357,7 +1423,17 @@ static inline
 void dp_peer_map_ipa_evt(struct dp_soc *soc, struct dp_peer *peer,
 			 struct dp_ast_entry *ast_entry, uint8_t *mac_addr)
 {
+	QDF_STATUS status;
+
 	if (ast_entry && (ast_entry->type == CDP_TXRX_AST_TYPE_WDS)) {
+		status = dp_peer_wds_ext_set_peer_bit(peer);
+		if (status == QDF_STATUS_SUCCESS) {
+			qdf_info("%pK set WDS EXT bit", soc);
+			if (dp_peer_wds_ext_create(soc, peer) == QDF_STATUS_SUCCESS)
+				qdf_info("%pK: WDS_EXT Netdev got created", soc);
+			else
+				qdf_err("%pK Failed to create WDS EXT Netdev", soc);
+		}
 		if (soc->cdp_soc.ol_ops->peer_map_event) {
 			soc->cdp_soc.ol_ops->peer_map_event(
 			soc->ctrl_psoc, ast_entry->peer_id,
