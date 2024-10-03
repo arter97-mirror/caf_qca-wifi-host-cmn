@@ -5964,11 +5964,12 @@ bool hdd_allow_new_intf(struct hdd_context *hdd_ctx,
 /**
  *hdd_set_disconnect_link_info_cb() - set STA disconnected link info
  *@vdev_id: vdev_id
+ *@is_disconnect_sent: Is disconnect sent OTA
  *
  * Return: None
  */
 void
-hdd_set_disconnect_link_info_cb(uint8_t vdev_id);
+hdd_set_disconnect_link_info_cb(uint8_t vdev_id, bool is_disconnect_sent);
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /*

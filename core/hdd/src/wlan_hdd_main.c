@@ -23493,7 +23493,7 @@ out:
 	return status;
 }
 
-void hdd_set_disconnect_link_info_cb(uint8_t vdev_id)
+void hdd_set_disconnect_link_info_cb(uint8_t vdev_id, bool is_disconnect_sent)
 {
 	struct hdd_adapter *adapter;
 	struct wlan_hdd_link_info *link_info;
@@ -23520,12 +23520,14 @@ void hdd_set_disconnect_link_info_cb(uint8_t vdev_id)
 	 * sent successfully OTA. If any case disconnect not sent OTA
 	 * will force update with the active link_info.
 	 */
-	if (adapter->discon_link_info ||
-	    wlan_vdev_mlme_is_mlo_link_vdev(link_info->vdev))
+	if (!is_disconnect_sent &&
+	    (adapter->discon_link_info ||
+	     wlan_vdev_mlme_is_mlo_link_vdev(link_info->vdev)))
 		return;
 
 	adapter->discon_link_info = link_info;
-	hdd_debug("vdev_id %d", link_info->vdev_id);
+	hdd_debug("vdev_id %d is_disconnect_sent %d", link_info->vdev_id,
+		  is_disconnect_sent);
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
