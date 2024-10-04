@@ -3303,21 +3303,14 @@ lim_is_single_link_mlo_sta(struct pe_session *session)
 }
 #endif
 
-/**
- * lim_disable_ht_he_dynamic_smps() - disable dynamic SMPS for STA/P2P client
- *@session: pe session
- *@chan_freq: channel frequency
- *
- * When connecting with a 2.4 GHz only STA or a P2P client, disable STA HT and
- * HE dynamic SMPS capabilities.
- *
- * Return: None
- */
-static void
+void
 lim_disable_ht_he_dynamic_smps(struct pe_session *session,
 			       qdf_freq_t chan_freq)
 {
-	bool is_2g_only_sta = false;
+	bool is_non_sta_mode = false, is_2g_only_sta = false;
+
+	if (session->opmode != QDF_STA_MODE)
+		is_non_sta_mode = true;
 
 	if (session->opmode == QDF_STA_MODE &&
 	    wlan_reg_is_24ghz_ch_freq(chan_freq)) {
@@ -3328,7 +3321,7 @@ lim_disable_ht_he_dynamic_smps(struct pe_session *session,
 		}
 	}
 
-	if (is_2g_only_sta || session->opmode == QDF_P2P_CLIENT_MODE) {
+	if (is_non_sta_mode || is_2g_only_sta) {
 		lim_disable_ht_dynamic_smps(session);
 		lim_disable_he_dynamic_smps(session);
 	}

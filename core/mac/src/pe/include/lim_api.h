@@ -638,6 +638,20 @@ void lim_set_twt_ext_capabilities(struct mac_context *mac_ctx,
  */
 void lim_get_basic_rates(tSirMacRateSet *b_rates, uint32_t chan_freq);
 
+/**
+ * lim_disable_ht_he_dynamic_smps() - disable dynamic SMPS for STA/P2P client
+ *@session: pe session
+ *@chan_freq: channel frequency
+ *
+ * When connecting with a 2.4 GHz only STA or a P2P client, disable STA HT and
+ * HE dynamic SMPS capabilities.
+ *
+ * Return: None
+ */
+void
+lim_disable_ht_he_dynamic_smps(struct pe_session *session,
+			       qdf_freq_t chan_freq);
+
 #define FW_CTS2SELF_PROFILE 34
 
 /**

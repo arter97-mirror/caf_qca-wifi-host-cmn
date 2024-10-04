@@ -29,6 +29,7 @@
 
 #include "sch_api.h"
 #include "lim_utils.h"
+#include "lim_api.h"
 #include "lim_types.h"
 #include "lim_security_utils.h"
 #include "lim_prop_exts_utils.h"
@@ -5984,6 +5985,11 @@ QDF_STATUS lim_send_ies_per_band(struct mac_context *mac_ctx, uint8_t vdev_id,
 	QDF_STATUS status_vht = QDF_STATUS_SUCCESS;
 	QDF_STATUS status_he = QDF_STATUS_SUCCESS;
 	QDF_STATUS status_eht = QDF_STATUS_SUCCESS;
+	struct pe_session *session;
+
+	session = pe_find_session_by_vdev_id(mac_ctx, vdev_id);
+	if (session)
+		lim_disable_ht_he_dynamic_smps(session, session->curr_op_freq);
 
 	/*
 	 * Note: Do not use Dot11f VHT structure, since 1 byte present flag in

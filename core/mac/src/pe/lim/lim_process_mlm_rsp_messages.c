@@ -23,6 +23,7 @@
 #include "sch_api.h"
 #include "utils_api.h"
 #include "lim_utils.h"
+#include "lim_api.h"
 #include "lim_assoc_utils.h"
 #include "lim_security_utils.h"
 #include "lim_ser_des_utils.h"
@@ -2135,6 +2136,10 @@ static void lim_process_ap_mlm_add_bss_rsp(struct mac_context *mac,
 		pe_session->limSystemRole = eLIM_AP_ROLE;
 
 		lim_fill_dfs_p2p_group_params(pe_session);
+
+		/* Reset HT and HE SMPS caps as it's not required for SAP */
+		lim_disable_ht_he_dynamic_smps(pe_session,
+					       pe_session->curr_op_freq);
 
 		sch_edca_profile_update(mac, pe_session, NULL);
 		/* For dual AP case, delete pre auth node if any */
