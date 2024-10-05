@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -322,6 +322,7 @@ typedef struct sLimMlmDisassocReq {
 
 typedef struct sLimMlmDisassocCnf {
 	tSirMacAddr peerMacAddr;
+	tSirMacAddr peerMldAddr;
 	tSirResultCodes resultCode;
 	uint16_t disassocTrigger;
 	uint16_t aid;
@@ -1397,12 +1398,35 @@ void lim_send_sme_disassoc_deauth_ntf(struct mac_context *mac_ctx,
 				QDF_STATUS status, uint32_t *ctx);
 
 #ifdef FEATURE_WLAN_TDLS
-QDF_STATUS lim_process_sme_del_all_tdls_peers(struct mac_context *p_mac,
-						 uint32_t *msg_buf);
+/**
+ * lim_process_sme_del_all_tdls_peers(): process delete tdls peers
+ * @mac: pointer to mac context
+ * @msg_buf: message buffer
+ *
+ * This function processes request to delete tdls peers
+ *
+ * Return: Success: QDF_STATUS_SUCCESS Failure: Error value
+ */
+QDF_STATUS
+lim_process_sme_del_all_tdls_peers(struct mac_context *mac, uint32_t *msg_buf);
+
+/**
+ * lim_delete_all_tdls_peers() - Delete all TDLS peers
+ * @vdev: Pointer to vdev object
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS lim_delete_all_tdls_peers(struct wlan_objmgr_vdev *vdev);
 #else
 static inline
 QDF_STATUS lim_process_sme_del_all_tdls_peers(struct mac_context *p_mac,
 						 uint32_t *msg_buf)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS lim_delete_all_tdls_peers(struct wlan_objmgr_vdev *vdev)
 {
 	return QDF_STATUS_SUCCESS;
 }
@@ -1779,7 +1803,6 @@ QDF_STATUS lim_sta_mlme_vdev_disconnect_bss(struct vdev_mlme_obj *vdev_mlme,
  * lim_process_assoc_req_frame()
  * @mac_ctx: pointer to Global MAC structure
  * @session: pointer to pe session entry
- * @assoc_req: pointer to ASSOC/REASSOC Request frame
  * @sta_ds: station dph entry
  * @assoc_req_copied: boolean to indicate if assoc req was copied to tmp above
  *
@@ -1789,7 +1812,6 @@ QDF_STATUS lim_sta_mlme_vdev_disconnect_bss(struct vdev_mlme_obj *vdev_mlme,
  */
 void lim_process_assoc_cleanup(struct mac_context *mac_ctx,
 			       struct pe_session *session,
-			       tpSirAssocReq assoc_req,
 			       tpDphHashNode sta_ds,
 			       bool assoc_req_copied);
 

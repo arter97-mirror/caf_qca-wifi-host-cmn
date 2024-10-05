@@ -465,35 +465,6 @@ int wlan_hdd_qmi_put_suspend(void)
 }
 #endif /* end if of WLAN_FEATURE_WMI_SEND_RECV_QMI */
 
-/*
- * wlan_hdd_is_mlo_connection() - Check if connection is legacy or mlo
- * @link_info: Link info pointer in HDD adapter
- *
- * Return: True if MLO connection, else False
- */
-static bool wlan_hdd_is_mlo_connection(struct wlan_hdd_link_info *link_info)
-{
-	struct wlan_objmgr_vdev *vdev;
-	bool ret = false;
-
-	if (!link_info) {
-		hdd_err("Invalid link_info");
-		return ret;
-	}
-
-	vdev = hdd_objmgr_get_vdev_by_user(link_info, WLAN_OSIF_STATS_ID);
-	if (!vdev) {
-		hdd_err("invalid vdev");
-		return ret;
-	}
-
-	if (wlan_vdev_mlme_is_mlo_vdev(vdev))
-		ret = true;
-
-	hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_STATS_ID);
-	return ret;
-}
-
 static struct wlan_hdd_link_info *
 hdd_get_link_info_by_bssid(struct hdd_context *hdd_ctx, const uint8_t *bssid)
 {
@@ -569,40 +540,6 @@ wlan_hdd_get_bss_peer_mld_mac(struct wlan_hdd_link_info *link_info,
 	hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_STATS_ID);
 	return status;
 }
-
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
-static bool
-wlan_hdd_is_link_switch_in_progress(struct wlan_hdd_link_info *link_info)
-{
-	struct wlan_objmgr_vdev *vdev;
-	bool ret = false;
-
-	if (!link_info) {
-		hdd_err_rl("Invalid link info");
-		return ret;
-	}
-
-	if (!wlan_hdd_is_mlo_connection(link_info))
-		return ret;
-
-	vdev = hdd_objmgr_get_vdev_by_user(link_info, WLAN_OSIF_STATS_ID);
-	if (!vdev) {
-		hdd_err("invalid vdev");
-		return ret;
-	}
-
-	ret = mlo_mgr_is_link_switch_in_progress(vdev);
-
-	hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_STATS_ID);
-	return ret;
-}
-#else
-static inline bool
-wlan_hdd_is_link_switch_in_progress(struct wlan_hdd_link_info *link_info)
-{
-	return false;
-}
-#endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 
 /**
  * wlan_hdd_copy_sinfo_to_link_info() - Copy sinfo to link_info
@@ -764,12 +701,6 @@ wlan_hdd_get_bss_peer_mld_mac(struct wlan_hdd_link_info *link_info,
 			      struct qdf_mac_addr *mld_mac)
 {
 	return QDF_STATUS_E_FAILURE;
-}
-
-static inline bool
-wlan_hdd_is_link_switch_in_progress(struct wlan_hdd_link_info *link_info)
-{
-	return false;
 }
 
 static inline void
@@ -1309,32 +1240,33 @@ bool hdd_get_interface_info(struct wlan_hdd_link_info *link_info,
 	     (QDF_P2P_CLIENT_MODE == adapter->device_mode) ||
 	     (QDF_P2P_DEVICE_MODE == adapter->device_mode))) {
 		sta_ctx = WLAN_HDD_GET_STATION_CTX_PTR(link_info);
-		if (hdd_cm_is_disconnected(link_info))
-			info->state = WIFI_DISCONNECTED;
 
-		if (hdd_cm_is_connecting(link_info)) {
+		if (QDF_STA_MODE == adapter->device_mode &&
+		    link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
+			info->state = WIFI_ASSOCIATED;
+		} else if (hdd_cm_is_disconnected(link_info)) {
+			info->state = WIFI_DISCONNECTED;
+		} else if (hdd_cm_is_connecting(link_info)) {
 			hdd_debug("Session ID %d, Connection is in progress",
 				  link_info->vdev_id);
 			info->state = WIFI_ASSOCIATING;
+		} else if (hdd_cm_is_vdev_associated(link_info)) {
+			if (!sta_ctx->conn_info.is_authenticated) {
+				hdd_err("client " QDF_MAC_ADDR_FMT " is in the middle of WPS/EAPOL exchange.",
+					QDF_MAC_ADDR_REF(mac->bytes));
+				info->state = WIFI_AUTHENTICATING;
+			} else {
+				info->state = WIFI_ASSOCIATED;
+			}
 		}
-		if (hdd_cm_is_vdev_associated(link_info) &&
-		    !sta_ctx->conn_info.is_authenticated) {
-			hdd_err("client " QDF_MAC_ADDR_FMT
-				" is in the middle of WPS/EAPOL exchange.",
-				QDF_MAC_ADDR_REF(mac->bytes));
-			info->state = WIFI_AUTHENTICATING;
-		}
-		if (hdd_cm_is_vdev_associated(link_info) ||
-		    link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
-			info->state = WIFI_ASSOCIATED;
+
+		if (info->state == WIFI_ASSOCIATED) {
 			qdf_copy_macaddr(&info->bssid,
 					 &sta_ctx->conn_info.bssid);
 			qdf_mem_copy(info->ssid,
 				     sta_ctx->conn_info.ssid.SSID.ssId,
 				     sta_ctx->conn_info.ssid.SSID.length);
-			/*
-			 * NULL Terminate the string
-			 */
+			/* NULL Terminate the string */
 			info->ssid[sta_ctx->conn_info.ssid.SSID.length] = 0;
 		}
 	}
