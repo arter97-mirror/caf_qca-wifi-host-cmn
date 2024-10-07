@@ -1302,6 +1302,38 @@ void wlan_scan_runtime_pm_deinit(struct wlan_objmgr_pdev *pdev)
 	qdf_runtime_lock_deinit(&scan_priv->runtime_pm_lock);
 }
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static inline void
+wlan_cfg80211_scan_deinit_cache_scan(struct osif_scan_pdev *scan_priv)
+{
+	if (scan_priv->cache_scan_report) {
+		qdf_mem_free(scan_priv->cache_scan_report->freq_list);
+		qdf_mem_free(scan_priv->cache_scan_report->bss_list);
+		qdf_mem_free(scan_priv->cache_scan_report);
+		scan_priv->cache_scan_report = NULL;
+	}
+	qdf_event_destroy(&scan_priv->cache_scan_report_event);
+	qdf_atomic_init(&scan_priv->cache_scan_report_req_cnt);
+}
+
+static inline void
+wlan_cfg80211_scan_init_cache_scan(struct osif_scan_pdev *scan_priv)
+{
+	qdf_atomic_init(&scan_priv->cache_scan_report_req_cnt);
+	qdf_event_create(&scan_priv->cache_scan_report_event);
+}
+#else
+static inline void
+wlan_cfg80211_scan_deinit_cache_scan(struct osif_scan_pdev *scan_priv)
+{
+}
+
+static inline void
+wlan_cfg80211_scan_init_cache_scan(struct osif_scan_pdev *scan_priv)
+{
+}
+#endif
+
 QDF_STATUS wlan_cfg80211_scan_priv_init(struct wlan_objmgr_pdev *pdev)
 {
 	struct pdev_osif_priv *osif_priv;
@@ -1325,6 +1357,8 @@ QDF_STATUS wlan_cfg80211_scan_priv_init(struct wlan_objmgr_pdev *pdev)
 	qdf_list_create(&scan_priv->scan_req_q, WLAN_MAX_SCAN_COUNT);
 	qdf_mutex_create(&scan_priv->scan_req_q_lock);
 	qdf_wake_lock_create(&scan_priv->scan_wake_lock, "scan_wake_lock");
+	wlan_cfg80211_scan_init_cache_scan(scan_priv);
+	wlan_scan_register_cached_scan_ev_handler(pdev);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -1340,6 +1374,8 @@ QDF_STATUS wlan_cfg80211_scan_priv_deinit(struct wlan_objmgr_pdev *pdev)
 
 	wlan_cfg80211_cleanup_scan_queue(pdev, NULL);
 	scan_priv = osif_priv->osif_scan;
+	wlan_scan_deregister_cached_scan_ev_handler(pdev);
+	wlan_cfg80211_scan_deinit_cache_scan(scan_priv);
 	qdf_wake_lock_destroy(&scan_priv->scan_wake_lock);
 	qdf_mutex_destroy(&scan_priv->scan_req_q_lock);
 	qdf_list_destroy(&scan_priv->scan_req_q);

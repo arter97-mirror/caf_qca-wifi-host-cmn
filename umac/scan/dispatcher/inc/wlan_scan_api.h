@@ -598,4 +598,39 @@ wlan_scan_entries_contain_cmn_akm(struct scan_cache_entry *entry1,
 {
 	return scm_scan_entries_contain_cmn_akm(entry1, entry2);
 }
+
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static inline bool
+wlan_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
+{
+	return scm_scan_get_cached_scan_report_fw_cap(pdev);
+}
+
+/**
+ * wlan_scan_register_cached_scan_ev_handler() - Wrapper API to register
+ * callback function to handle cached scan report
+ * @pdev: PDEV object manager
+ *
+ * Return: void
+ */
+void wlan_scan_register_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * wlan_scan_deregister_cached_scan_ev_handler() - Wrapper API to deregister
+ * callback function to handle cached scan report.
+ * @pdev: PDEV object manager.
+ * Returun: void
+ */
+void wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev);
+#else
+static inline void
+wlan_scan_register_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
+{
+}
+
+static inline void
+wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
+{
+}
+#endif
 #endif

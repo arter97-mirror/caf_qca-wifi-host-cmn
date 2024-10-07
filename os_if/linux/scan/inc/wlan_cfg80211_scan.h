@@ -31,6 +31,7 @@
 #include <qca_vendor.h>
 #include <wlan_scan_public_structs.h>
 #include <qdf_list.h>
+#include <qdf_util.h>
 #include <qdf_types.h>
 #include <wlan_scan_ucfg_api.h>
 #include <wlan_mgmt_txrx_utils_api.h>

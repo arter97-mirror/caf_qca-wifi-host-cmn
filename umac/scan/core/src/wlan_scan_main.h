@@ -980,4 +980,20 @@ QDF_STATUS wlan_scan_vdev_created_notification(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS wlan_scan_vdev_destroyed_notification(struct wlan_objmgr_vdev *vdev,
 	void *arg_list);
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+/**
+ * scm_scan_get_cached_scan_report_fw_cap() - API to get FW capability to
+ * send cached scan report.
+ * @pdev: PDEV object manager.
+ *
+ * Return: True if FW supports else return false.
+ */
+bool scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev);
+#else
+static inline bool
+scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
+{
+	return false;
+}
+#endif
 #endif

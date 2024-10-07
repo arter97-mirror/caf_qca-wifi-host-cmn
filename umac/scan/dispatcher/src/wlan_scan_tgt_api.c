@@ -414,3 +414,19 @@ tgt_scan_set_max_active_scans(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+bool tgt_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_lmac_if_scan_tx_ops *scan_ops;
+
+	if (!pdev)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	scan_ops = wlan_psoc_get_scan_txops(wlan_pdev_get_psoc(pdev));
+	if (scan_ops && scan_ops->get_cached_scan_report_fw_cap)
+		return scan_ops->get_cached_scan_report_fw_cap(pdev);
+
+	return QDF_STATUS_E_NULL_VALUE;
+}
+#endif

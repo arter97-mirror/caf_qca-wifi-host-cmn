@@ -937,3 +937,31 @@ bool wlan_scan_get_aux_support(struct wlan_objmgr_psoc *psoc)
 	return aux_scan;
 }
 #endif
+
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+void wlan_scan_register_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
+{
+	struct pdev_scan_ev_handler *pdev_ev_handler;
+
+	pdev_ev_handler = wlan_pdev_get_pdev_scan_ev_handlers(pdev);
+	if (!pdev_ev_handler) {
+		scm_debug("null pdev_ev_handler");
+		return;
+	}
+
+	pdev_ev_handler->cached_scan_ev_handler =
+				scm_scan_cached_scan_report_ev_handler;
+}
+
+void wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
+{
+	struct pdev_scan_ev_handler *pdev_ev_handler;
+
+	pdev_ev_handler = wlan_pdev_get_pdev_scan_ev_handlers(pdev);
+	if (!pdev_ev_handler)
+		return;
+
+	if (pdev_ev_handler->cached_scan_ev_handler)
+		pdev_ev_handler->cached_scan_ev_handler = NULL;
+}
+#endif

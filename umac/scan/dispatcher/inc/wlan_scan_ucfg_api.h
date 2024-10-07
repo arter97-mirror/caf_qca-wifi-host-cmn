@@ -1173,4 +1173,10 @@ bool ucfg_scan_is_snr_monitor_enabled(struct wlan_objmgr_psoc *psoc)
 {
 	return wlan_scan_is_snr_monitor_enabled(psoc);
 }
+
+static inline bool
+ucfg_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
+{
+	return scm_scan_get_cached_scan_report_fw_cap(pdev);
+}
 #endif
