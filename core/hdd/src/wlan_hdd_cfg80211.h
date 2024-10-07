@@ -325,6 +325,7 @@ typedef enum {
 /* Support changing MAC address without iface reset(down and up) */
 #define WIFI_FEATURE_DYNAMIC_SET_MAC    0x10000000
 #define WIFI_FEATURE_SET_LATENCY_MODE   0x40000000 /* Set latency mode */
+#define WIFI_FEATURE_CACHED_SCAN_RESULTS 0x2000000000
 
 #define WIFI_FEATURE_MAX_BIT_POS 64
 

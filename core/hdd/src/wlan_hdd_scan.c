@@ -1295,6 +1295,53 @@ int wlan_hdd_scan_abort(struct wlan_hdd_link_info *link_info)
 	return 0;
 }
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static int
+__wlan_hdd_cfg80211_fetch_zero_power_scan_report(struct wiphy *wiphy,
+						 struct wireless_dev *wdev)
+{
+	QDF_STATUS status;
+	struct hdd_context *hdd_ctx = wiphy_priv(wiphy);
+
+	if (QDF_GLOBAL_FTM_MODE == hdd_get_conparam() ||
+	    QDF_GLOBAL_MONITOR_MODE == hdd_get_conparam()) {
+		hdd_err_rl("Command not allowed in FTM/Monitor mode");
+		return -EINVAL;
+	}
+
+	if (wlan_hdd_validate_context(hdd_ctx))
+		return -EINVAL;
+
+	status = wlan_cfg80211_scan_request_cached_scan_report(wiphy, wdev,
+							       hdd_ctx->pdev);
+	if (QDF_IS_STATUS_ERROR(status))
+		hdd_debug("Failed to get scan report %d", status);
+
+	return qdf_status_to_os_return(status);
+}
+
+int wlan_hdd_cfg80211_fetch_zero_power_scan_report(struct wiphy *wiphy,
+						   struct wireless_dev *wdev,
+						   const void *data,
+						   int data_len)
+{
+	struct osif_vdev_sync *vdev_sync;
+	int errno;
+
+	hdd_enter_dev(wdev->netdev);
+
+	errno = osif_vdev_sync_op_start(wdev->netdev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = __wlan_hdd_cfg80211_fetch_zero_power_scan_report(wiphy, wdev);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
+#endif
+
 #ifdef FEATURE_WLAN_SCAN_PNO
 /**
  * __wlan_hdd_cfg80211_sched_scan_start() - cfg80211 scheduled scan(pno) start
