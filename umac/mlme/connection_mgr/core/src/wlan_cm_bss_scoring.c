@@ -801,8 +801,8 @@ cm_calculate_sae_pk_ap_weightage(struct scan_cache_entry *entry,
 	const uint8_t *rsnxe_cap;
 	uint8_t cap_len;
 
-	rsnxe_ie = util_scan_entry_rsnxe(entry);
-
+	rsnxe_ie = util_scan_entry_rsnxe_by_gen(entry,
+					entry->neg_sec_info.rsn_gen_selected);
 	rsnxe_cap = wlan_crypto_parse_rsnxe_ie(rsnxe_ie, &cap_len);
 
 	if (!rsnxe_cap)

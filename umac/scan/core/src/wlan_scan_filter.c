@@ -293,9 +293,11 @@ static bool scm_check_rsn(struct scan_filter *filter,
 	bool is_adaptive_11r;
 	QDF_STATUS status;
 	struct wlan_crypto_params *ap_crypto;
-	bool match;
+	bool match = false;
+	uint8_t *rsn = NULL;
+	uint8_t mrsn_gen = filter->mrsno_gen;
 
-	if (!util_scan_entry_rsn(db_entry)) {
+	if (!util_scan_entry_rsn_by_gen(db_entry, RSN_LEGACY)) {
 		scm_debug(QDF_MAC_ADDR_FMT" : doesn't have RSN IE",
 			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes));
 		return false;
@@ -304,24 +306,53 @@ static bool scm_check_rsn(struct scan_filter *filter,
 	ap_crypto = qdf_mem_malloc(sizeof(*ap_crypto));
 	if (!ap_crypto)
 		return false;
-	status = wlan_crypto_rsnie_check(ap_crypto,
-					 util_scan_entry_rsn(db_entry));
-	if (QDF_IS_STATUS_ERROR(status)) {
-		scm_err(QDF_MAC_ADDR_FMT": failed to parse RSN IE, status %d",
-			QDF_MAC_ADDR_REF(db_entry->bssid.bytes), status);
-		qdf_mem_free(ap_crypto);
-		return false;
+
+	if (mrsn_gen < RSN_LEGACY || mrsn_gen > RSNO_GEN_MAX) {
+		scm_debug("Invalid mrsn gen %d", mrsn_gen);
+		mrsn_gen = RSN_LEGACY;
 	}
 
-	is_adaptive_11r = db_entry->adaptive_11r_ap &&
-				filter->enable_adaptive_11r;
+	do {
+		qdf_mem_zero(ap_crypto, sizeof(*ap_crypto));
+		rsn = util_scan_entry_rsn_by_gen(db_entry, mrsn_gen);
+		if (!rsn) {
+			mrsn_gen--;
+			continue;
+		}
 
-	/* If adaptive 11r is enabled set the FT AKM for AP */
-	if (is_adaptive_11r)
-		scm_check_and_update_adaptive_11r_key_mgmt_support(ap_crypto);
+		status = wlan_crypto_rsnie_check(ap_crypto, rsn);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			scm_err(QDF_MAC_ADDR_FMT ": failed to parse RSN IE gen %d, status %d",
+				QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
+				mrsn_gen, status);
+			match = false;
+			break;
+		}
 
-	match = scm_chk_crypto_params(filter, ap_crypto, is_adaptive_11r,
-				      db_entry, security);
+		is_adaptive_11r = db_entry->adaptive_11r_ap &&
+					filter->enable_adaptive_11r;
+
+		/* If adaptive 11r is enabled set the FT AKM for AP */
+		if (is_adaptive_11r)
+			scm_check_and_update_adaptive_11r_key_mgmt_support(ap_crypto);
+
+		match = scm_chk_crypto_params(filter, ap_crypto,
+					      is_adaptive_11r, db_entry,
+					      security);
+		if (!match) {
+			mrsn_gen--;
+			continue;
+		}
+
+		security->rsn_gen_selected = mrsn_gen;
+		if (mrsn_gen > RSN_LEGACY)
+			scm_debug(QDF_MAC_ADDR_FMT " RSN gen selected %d",
+				  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
+				  security->rsn_gen_selected);
+
+		/* match is true */
+	} while (!match && mrsn_gen >= RSN_LEGACY);
+
 	qdf_mem_free(ap_crypto);
 
 	return match;
