@@ -5602,6 +5602,10 @@ typedef enum {
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	wmi_mgmt_srng_reap_eventid,
 #endif
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	wmi_scan_cache_result_eventid,
+#endif
+
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -6776,7 +6780,9 @@ typedef enum {
 	wmi_service_therm_throt_tx_chain_mask,
 	wmi_service_therm_throt_5_levels,
 	wmi_service_mrsno_support,
-
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	wmi_service_scan_cache_report_support,
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

@@ -191,10 +191,13 @@ struct cb_handler {
  * struct pdev_scan_ev_handler - pdev scan event handlers
  * @handler_cnt: number of valid entries in @cb_handler
  * @cb_handlers: array of registered scan handlers
+ * @cached_scan_ev_handler: Callback to handle cached scan report from FW.
  */
 struct pdev_scan_ev_handler {
 	uint32_t handler_cnt;
 	struct cb_handler cb_handlers[MAX_SCAN_EVENT_HANDLERS_PER_PDEV];
+	QDF_STATUS (*cached_scan_ev_handler)(struct wlan_objmgr_pdev *pdev,
+					     void *cached_scan_report);
 };
 
 /**
