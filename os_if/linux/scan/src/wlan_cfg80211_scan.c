@@ -1546,6 +1546,69 @@ wlan_cfg80211_allow_simultaneous_scan(struct wlan_objmgr_psoc *psoc)
 }
 #endif
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+#define CLEAR_CACHED_SCAN_REPORT(report) \
+	while ((report)) { \
+		qdf_mem_free((report)->bss_list); \
+		qdf_mem_free((report)->freq_list); \
+		qdf_mem_free((report)); \
+		(report) = NULL; \
+	} \
+
+QDF_STATUS
+wlan_cfg80211_scan_request_cached_scan_report(struct wiphy *wiphy,
+					      struct wireless_dev *wdev,
+					      struct wlan_objmgr_pdev *pdev)
+{
+	QDF_STATUS status;
+	struct pdev_osif_priv *osif_priv;
+	struct osif_scan_pdev *osif_scan;
+
+	if (!pdev)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!wlan_scan_get_cached_scan_report_fw_cap(pdev)) {
+		osif_debug("No FW support");
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	osif_priv = wlan_pdev_get_ospriv(pdev);
+	if (!osif_priv) {
+		osif_debug("Invalid osif priv object");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	status = wlan_objmgr_pdev_try_get_ref(pdev, WLAN_SCAN_ID);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	osif_scan = osif_priv->osif_scan;
+	qdf_wake_lock_acquire(&osif_scan->scan_wake_lock,
+			      WIFI_POWER_EVENT_WAKELOCK_SCAN);
+	qdf_runtime_pm_prevent_suspend(&osif_scan->runtime_pm_lock);
+
+	if (qdf_atomic_inc_return(&osif_scan->cache_scan_report_req_cnt) == 1) {
+		CLEAR_CACHED_SCAN_REPORT(osif_scan->cache_scan_report);
+
+		status = wlan_scan_request_cached_scan_report(pdev);
+		if (QDF_IS_STATUS_ERROR(status))
+			goto cleanup;
+	}
+
+	status = qdf_event_reset(&osif_scan->cache_scan_report_event);
+	status = qdf_wait_for_event_completion(&osif_scan->cache_scan_report_event,
+					       SCAN_CACHE_REPORT_TIMEOUT_MS);
+
+cleanup:
+	qdf_atomic_dec(&osif_scan->cache_scan_report_req_cnt);
+	qdf_runtime_pm_allow_suspend(&osif_scan->runtime_pm_lock);
+	qdf_wake_lock_release(&osif_scan->scan_wake_lock,
+			      WIFI_POWER_EVENT_WAKELOCK_SCAN);
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_SCAN_ID);
+	return status;
+}
+#endif
+
 enum scan_priority convert_nl_scan_priority_to_internal(
 	enum qca_wlan_vendor_scan_priority nl_scan_priority)
 {

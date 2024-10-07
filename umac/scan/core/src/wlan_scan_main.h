@@ -989,6 +989,18 @@ QDF_STATUS wlan_scan_vdev_destroyed_notification(struct wlan_objmgr_vdev *vdev,
  * Return: True if FW supports else return false.
  */
 bool scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * scm_scan_request_cached_scan_report() - API to send cache scan report request
+ * command to FW.
+ * @pdev: PDEV object manager.
+ *
+ * The API send command to FW to get the cached scan report of scan entries
+ * received while device in WOW.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS scm_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev);
 #else
 static inline bool
 scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)

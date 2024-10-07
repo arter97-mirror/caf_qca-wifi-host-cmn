@@ -130,4 +130,9 @@ bool scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
 {
 	return tgt_scan_get_cached_scan_report_fw_cap(pdev);
 }
+
+QDF_STATUS scm_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev)
+{
+	return tgt_scan_request_cached_scan_report(pdev);
+}
 #endif

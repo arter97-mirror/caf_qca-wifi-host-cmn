@@ -429,4 +429,18 @@ bool tgt_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
 
 	return QDF_STATUS_E_NULL_VALUE;
 }
+
+QDF_STATUS tgt_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_lmac_if_scan_tx_ops *scan_ops;
+
+	if (!pdev)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	scan_ops = wlan_psoc_get_scan_txops(wlan_pdev_get_psoc(pdev));
+	if (scan_ops && scan_ops->get_cached_scan_report)
+		return scan_ops->get_cached_scan_report(pdev);
+
+	return QDF_STATUS_E_NULL_VALUE;
+}
 #endif

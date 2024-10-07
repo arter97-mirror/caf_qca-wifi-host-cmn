@@ -600,6 +600,29 @@ wlan_scan_entries_contain_cmn_akm(struct scan_cache_entry *entry1,
 }
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+/**
+ * wlan_cfg80211_scan_request_cached_scan_report() - Function to send command
+ * to FW to get the cached scan report.
+ * @wiphy: Global WIPHY pointer.
+ * @wdev: WDEV pointer on the interface.
+ * @pdev: PDEV object manager.
+ *
+ * The API checks the FW capability on whether a request can be sent to FW
+ * to get cached scan report while the device is in WOW and waits for FW
+ * response. To avoid entering WOW while waiting, the API takes wakelock and
+ * RTPM lock. The wait will resume on FW event completing the event or when
+ * timeouts.
+ *
+ * On success, in the same context a vendor response is sent with the fetched
+ * scan report.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_cfg80211_scan_request_cached_scan_report(struct wiphy *wiphy,
+					      struct wireless_dev *wdev,
+					      struct wlan_objmgr_pdev *pdev);
+
 static inline bool
 wlan_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
 {
@@ -622,6 +645,12 @@ void wlan_scan_register_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev);
  * Returun: void
  */
 void wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev);
+
+static inline QDF_STATUS
+wlan_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev)
+{
+	return scm_scan_request_cached_scan_report(pdev);
+}
 #else
 static inline void
 wlan_scan_register_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)

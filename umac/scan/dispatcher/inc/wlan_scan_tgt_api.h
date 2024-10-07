@@ -161,5 +161,14 @@ tgt_scan_set_max_active_scans(struct wlan_objmgr_psoc *psoc,
  * Return: %true if FW supports else %false.
  */
 bool tgt_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * tgt_scan_request_cached_scan_report() - Send command to FW to request
+ * cached scan report.
+ * @pdev: PDEV object manager.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS tgt_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev);
 #endif
 #endif

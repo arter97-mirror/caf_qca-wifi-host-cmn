@@ -22987,6 +22987,35 @@ extract_mgmt_srng_reap_event_tlv(wmi_unified_t wmi_handle, uint8_t *evt_buf,
 }
 #endif
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static QDF_STATUS send_get_cached_scan_report_cmd_tlv(wmi_unified_t wmi_handle)
+{
+	wmi_buf_t wmi_buf;
+	QDF_STATUS status;
+	wmi_get_scan_cache_result_cmd_fixed_param *cmd;
+
+	/* Allocate the memory */
+	wmi_buf = wmi_buf_alloc(wmi_handle, sizeof(*cmd));
+	if (!wmi_buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_get_scan_cache_result_cmd_fixed_param *)wmi_buf_data(wmi_buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_get_scan_cache_result_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_get_scan_cache_result_cmd_fixed_param));
+
+	wmi_mtrace(WMI_GET_SCAN_CACHE_RESULT_CMDID, NO_SESSION, 0);
+	status = wmi_unified_cmd_send(wmi_handle, wmi_buf, sizeof(*cmd),
+				      WMI_GET_SCAN_CACHE_RESULT_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send get cached scan report %d", status);
+		wmi_buf_free(wmi_buf);
+	}
+
+	return status;
+}
+#endif
+
 struct wmi_ops tlv_ops =  {
 	.send_vdev_create_cmd = send_vdev_create_cmd_tlv,
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
@@ -23514,6 +23543,9 @@ struct wmi_ops tlv_ops =  {
 	.send_opm_stats_cmd = send_opm_stats_cmd_tlv,
 #endif
 	.send_sta_vdev_report_ap_oper_bw_cmd = send_sta_vdev_report_ap_oper_bw_cmd_tlv,
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	.send_get_cached_scan_report_cmd = send_get_cached_scan_report_cmd_tlv,
+#endif
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO

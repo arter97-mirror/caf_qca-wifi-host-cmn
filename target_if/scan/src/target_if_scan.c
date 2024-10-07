@@ -550,6 +550,20 @@ bool target_if_is_platform_eht_capable(struct wlan_objmgr_psoc *psoc,
 #endif
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static QDF_STATUS
+target_if_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_pdev(pdev);
+	if (!wmi_handle) {
+		target_if_err("Invalid WMI handle");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	return wmi_unified_cached_scan_report_cmd_send(wmi_handle);
+}
+
 static bool
 target_if_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
 {
