@@ -5247,28 +5247,6 @@ wlan_hdd_cfg80211_set_scanning_mac_oui(struct wiphy *wiphy,
 	return errno;
 }
 
-#define NUM_BITS_IN_BYTE       8
-
-/**
- * wlan_hdd_cfg80211_set_feature() - Set the bitmask for supported features
- * @feature_flags: pointer to the byte array of features.
- * @feature: Feature to be turned ON in the byte array.
- *
- * Return: None
- *
- * This is called to turn ON or SET the feature flag for the requested feature.
- **/
-static void wlan_hdd_cfg80211_set_feature(uint8_t *feature_flags,
-					  uint8_t feature)
-{
-	uint32_t index;
-	uint8_t bit_mask;
-
-	index = feature / NUM_BITS_IN_BYTE;
-	bit_mask = 1 << (feature % NUM_BITS_IN_BYTE);
-	feature_flags[index] |= bit_mask;
-}
-
 /**
  * wlan_hdd_set_ndi_feature() - Set NDI related features
  * @feature_flags: pointer to the byte array of features.
@@ -5279,8 +5257,8 @@ static void wlan_hdd_cfg80211_set_feature(uint8_t *feature_flags,
 (defined CFG80211_CHANGE_NETDEV_REGISTRATION_SEMANTICS))
 static void wlan_hdd_set_ndi_feature(uint8_t *feature_flags)
 {
-	wlan_hdd_cfg80211_set_feature(feature_flags,
-				      QCA_WLAN_VENDOR_FEATURE_USE_ADD_DEL_VIRTUAL_INTF_FOR_NDI);
+	wlan_cfg80211_set_feature(feature_flags,
+				  QCA_WLAN_VENDOR_FEATURE_USE_ADD_DEL_VIRTUAL_INTF_FOR_NDI);
 }
 #else
 static inline void wlan_hdd_set_ndi_feature(uint8_t *feature_flags)
@@ -5299,8 +5277,8 @@ static inline void wlan_hdd_set_ll_lt_sap_feature(struct wlan_objmgr_psoc *psoc,
 		hdd_debug("ll_lt_sap feature is disabled in FW");
 		return;
 	}
-	wlan_hdd_cfg80211_set_feature(feature_flags,
-				      QCA_WLAN_VENDOR_FEATURE_ENHANCED_AUDIO_EXPERIENCE_OVER_WLAN);
+	wlan_cfg80211_set_feature(feature_flags,
+				  QCA_WLAN_VENDOR_FEATURE_ENHANCED_AUDIO_EXPERIENCE_OVER_WLAN);
 }
 
 #ifdef FEATURE_WLAN_SUPPORT_USD
@@ -5319,8 +5297,8 @@ static inline void wlan_hdd_set_usd_feature(struct wlan_objmgr_psoc *psoc,
 		return;
 	}
 
-	wlan_hdd_cfg80211_set_feature(feature_flags,
-				      QCA_WLAN_VENDOR_FEATURE_NAN_USD_OFFLOAD);
+	wlan_cfg80211_set_feature(feature_flags,
+				  QCA_WLAN_VENDOR_FEATURE_NAN_USD_OFFLOAD);
 }
 #else
 static inline void wlan_hdd_set_usd_feature(struct wlan_objmgr_psoc *psoc,
@@ -5375,38 +5353,38 @@ __wlan_hdd_cfg80211_get_features(struct wiphy *wiphy,
 
 	if (roaming_offload_enabled(hdd_ctx)) {
 		hdd_debug("Key Mgmt Offload is supported");
-		wlan_hdd_cfg80211_set_feature(feature_flags,
-				QCA_WLAN_VENDOR_FEATURE_KEY_MGMT_OFFLOAD);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_KEY_MGMT_OFFLOAD);
 	}
 
-	wlan_hdd_cfg80211_set_feature(feature_flags,
-				QCA_WLAN_VENDOR_FEATURE_SUPPORT_HW_MODE_ANY);
+	wlan_cfg80211_set_feature(feature_flags,
+				  QCA_WLAN_VENDOR_FEATURE_SUPPORT_HW_MODE_ANY);
 	if (policy_mgr_is_scan_simultaneous_capable(hdd_ctx->psoc))
-		wlan_hdd_cfg80211_set_feature(feature_flags,
-			QCA_WLAN_VENDOR_FEATURE_OFFCHANNEL_SIMULTANEOUS);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_OFFCHANNEL_SIMULTANEOUS);
 
 	if (policy_mgr_is_hw_dbs_capable(hdd_ctx->psoc))
-		wlan_hdd_cfg80211_set_feature(feature_flags,
-			QCA_WLAN_VENDOR_FEATURE_CONCURRENT_BAND_SESSIONS);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_CONCURRENT_BAND_SESSIONS);
 
 	if (wma_is_p2p_lo_capable())
-		wlan_hdd_cfg80211_set_feature(feature_flags,
-			QCA_WLAN_VENDOR_FEATURE_P2P_LISTEN_OFFLOAD);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_P2P_LISTEN_OFFLOAD);
 
 	value = false;
 	status = ucfg_mlme_get_oce_sta_enabled_info(hdd_ctx->psoc, &value);
 	if (QDF_IS_STATUS_ERROR(status))
 		hdd_err("could not get OCE STA enable info");
 	if (value)
-		wlan_hdd_cfg80211_set_feature(feature_flags,
-					      QCA_WLAN_VENDOR_FEATURE_OCE_STA);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_OCE_STA);
 
 	value = false;
 	status = ucfg_mlme_get_oce_sap_enabled_info(hdd_ctx->psoc, &value);
 	if (QDF_IS_STATUS_ERROR(status))
 		hdd_err("could not get OCE SAP enable info");
 	if (value)
-		wlan_hdd_cfg80211_set_feature(feature_flags,
+		wlan_cfg80211_set_feature(feature_flags,
 					  QCA_WLAN_VENDOR_FEATURE_OCE_STA_CFON);
 
 	value = false;
@@ -5415,7 +5393,7 @@ __wlan_hdd_cfg80211_get_features(struct wiphy *wiphy,
 		hdd_err("could not get FT-Adaptive 11R info");
 	if (value) {
 		hdd_debug("FT-Adaptive 11R is Enabled");
-		wlan_hdd_cfg80211_set_feature(feature_flags,
+		wlan_cfg80211_set_feature(feature_flags,
 					  QCA_WLAN_VENDOR_FEATURE_ADAPTIVE_11R);
 	}
 
@@ -5424,12 +5402,11 @@ __wlan_hdd_cfg80211_get_features(struct wiphy *wiphy,
 	hdd_debug("twt_req:%d twt_res:%d", twt_req, twt_res);
 
 	if (twt_req || twt_res) {
-		wlan_hdd_cfg80211_set_feature(feature_flags,
-					      QCA_WLAN_VENDOR_FEATURE_TWT);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_TWT);
 
-		wlan_hdd_cfg80211_set_feature(
-				feature_flags,
-				QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_TWT_ASYNC_SUPPORT);
 	}
 
 	/* Check the kernel version for upstream commit aced43ce780dc5 that
@@ -5438,18 +5415,17 @@ __wlan_hdd_cfg80211_get_features(struct wiphy *wiphy,
 	 */
 #if defined CFG80211_USER_HINT_CELL_BASE_SELF_MANAGED || \
 	    (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0))
-	wlan_hdd_cfg80211_set_feature(feature_flags,
-			QCA_WLAN_VENDOR_FEATURE_SELF_MANAGED_REGULATORY);
+	wlan_cfg80211_set_feature(feature_flags,
+				  QCA_WLAN_VENDOR_FEATURE_SELF_MANAGED_REGULATORY);
 #endif
 
 	if (wlan_hdd_thermal_config_support())
-		wlan_hdd_cfg80211_set_feature(feature_flags,
-					QCA_WLAN_VENDOR_FEATURE_THERMAL_CONFIG);
+		wlan_cfg80211_set_feature(feature_flags,
+					  QCA_WLAN_VENDOR_FEATURE_THERMAL_CONFIG);
 
 	wlan_hdd_set_ndi_feature(feature_flags);
-	wlan_hdd_cfg80211_set_feature(
-				feature_flags,
-				QCA_WLAN_VENDOR_FEATURE_AP_ALLOWED_FREQ_LIST);
+	wlan_cfg80211_set_feature(feature_flags,
+				  QCA_WLAN_VENDOR_FEATURE_AP_ALLOWED_FREQ_LIST);
 	wlan_wifi_pos_cfg80211_set_features(hdd_ctx->psoc, feature_flags);
 	wlan_hdd_set_ll_lt_sap_feature(hdd_ctx->psoc, feature_flags);
 	wlan_hdd_set_usd_feature(hdd_ctx->psoc, feature_flags);
