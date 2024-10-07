@@ -7255,6 +7255,81 @@ wlan_convert_bitmap_to_band(uint8_t bitmap)
 	return band;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO
+QDF_STATUS
+cm_roam_mlo_setup_event(struct wlan_objmgr_vdev *vdev,
+			struct roam_frame_info *frame_data,
+			struct roam_mlo_link_info *link_info)
+{
+	uint8_t i;
+
+	WLAN_HOST_DIAG_EVENT_DEF(wlan_diag_event, struct wlan_diag_mlo_setup);
+
+	if (!mlo_is_mld_sta(vdev))
+		return;
+
+	if (!link_info->present)
+		return;
+
+	qdf_mem_zero(&wlan_diag_event, sizeof(struct wlan_diag_mlo_setup));
+
+	wlan_diag_event.diag_cmn.ktime_us = qdf_ktime_to_us(qdf_ktime_get());
+	wlan_diag_event.diag_cmn.timestamp_us = qdf_get_time_of_the_day_us();
+	wlan_diag_event.version = DIAG_MLO_SETUP_VERSION_V3;
+
+	for (i = 0; i < link_info->num_links; i++) {
+		wlan_diag_event.mlo_cmn_info[i].link_id =
+				link_info->ml_info[i].link_id;
+		wlan_diag_event.mlo_cmn_info[i].vdev_id =
+				wlan_vdev_get_id(vdev);
+		wlan_diag_event.mlo_cmn_info[i].band =
+		wlan_convert_reg_to_diag_band(link_info->ml_info[i].band);
+
+		qdf_mem_copy(wlan_diag_event.mlo_cmn_info[i].link_addr,
+			     link_info->ml_info[i].link_addr.bytes,
+			     QDF_MAC_ADDR_SIZE);
+
+		wlan_diag_event.mlo_cmn_info[i].status =
+			link_info->ml_info[i].link_accepted ? ACCEPTED_LINK_STATUS : REJECTED_LINK_STATUS;
+
+		/*
+		 * Below parameter are populated to cmn ext fields of the
+		 * wlan_diag_mlo_setup structure. cmn ext structure has the same
+		 * parameters present in the wlan_diag_mlo_cmn_info structure as
+		 * wlan_diag_mlo_cmn_info  structure will not be used further.
+		 * Any new field added for MLO SETUP event logging will be part
+		 * of the cmn ext field of wlan_diag_mlo_setup structure.
+		 */
+
+		wlan_diag_event.mlo_cmn_info_ext[i].link_id =
+						link_info->ml_info[i].link_id;
+		wlan_diag_event.mlo_cmn_info_ext[i].vdev_id =
+						wlan_vdev_get_id(vdev);
+
+		qdf_mem_copy(wlan_diag_event.mlo_cmn_info_ext[i].link_addr,
+			     link_info->ml_info[i].link_addr.bytes,
+			     QDF_MAC_ADDR_SIZE);
+
+		wlan_diag_event.mlo_cmn_info_ext[i].band =
+		wlan_convert_reg_to_diag_band(link_info->ml_info[i].band);
+
+		wlan_diag_event.mlo_cmn_info_ext[i].status =
+			link_info->ml_info[i].link_accepted ? ACCEPTED_LINK_STATUS : REJECTED_LINK_STATUS;
+
+		wlan_diag_event.mlo_cmn_info_ext[i].freq =
+						link_info->ml_info[i].freq;
+	}
+
+	wlan_diag_event.num_links = link_info->num_links;
+	wlan_diag_event.num_link_ext = link_info->num_links;
+
+	wlan_diag_event.ext_link_info_size =
+			sizeof(struct wlan_diag_mlo_cmn_info_ext);
+
+	WLAN_HOST_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_MLO_SETUP);
+}
+#endif
+
 QDF_STATUS
 cm_roam_mgmt_frame_event(struct wlan_objmgr_vdev *vdev,
 			 struct roam_frame_info *frame_data,
@@ -7354,7 +7429,10 @@ cm_roam_mgmt_frame_event(struct wlan_objmgr_vdev *vdev,
 	WLAN_HOST_DIAG_EVENT_REPORT(&wlan_diag_event, diag_event);
 	if (wlan_diag_event.subtype == WLAN_CONN_DIAG_REASSOC_RESP_EVENT ||
 	    wlan_diag_event.subtype == WLAN_CONN_DIAG_ASSOC_RESP_EVENT) {
-		wlan_connectivity_mlo_setup_event(vdev, is_mlo);
+		if (frame_data->link_info.present)
+			cm_roam_mlo_setup_info(vdev, frame_data);
+		else
+			wlan_connectivity_mlo_setup_event(vdev, is_mlo);
 
 		/*
 		 * Send STA info event when roaming is successful
