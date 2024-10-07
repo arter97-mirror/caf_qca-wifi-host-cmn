@@ -163,16 +163,17 @@ bool util_is_rsnxe_h2e_capable(const uint8_t *rsnxe)
 bool util_scan_entry_sae_h2e_capable(struct scan_cache_entry *scan_entry)
 {
 	const uint8_t *rsnxe;
+	uint8_t rsn_sel = scan_entry->neg_sec_info.rsn_gen_selected;
 
 	/* If RSN caps are not there, then return false */
-	if (!util_scan_entry_rsn(scan_entry))
+	if (!util_scan_entry_rsn_by_gen(scan_entry, rsn_sel))
 		return false;
 
 	/* If not SAE AKM no need to check H2E capability */
 	if (!WLAN_CRYPTO_IS_AKM_SAE(scan_entry->neg_sec_info.key_mgmt))
 		return false;
 
-	rsnxe = util_scan_entry_rsnxe(scan_entry);
+	rsnxe = util_scan_entry_rsnxe_by_gen(scan_entry, rsn_sel);
 	return util_is_rsnxe_h2e_capable(rsnxe);
 }
 
@@ -4305,3 +4306,51 @@ util_scan_entry_renew_timestamp(struct wlan_objmgr_pdev *pdev,
 		scan_obj->cb.inform_beacon(pdev, scan_entry);
 }
 
+uint8_t*
+util_scan_entry_rsn_by_gen(struct scan_cache_entry *scan_entry,
+			   uint8_t rsno_gen)
+{
+	if (!scan_entry)
+		return NULL;
+
+	if (rsno_gen == RSN_LEGACY)
+		return util_scan_entry_rsn(scan_entry);
+	if (rsno_gen == RSNO_GEN_WIFI7)
+		return util_scan_entry_wifi7_rsno(scan_entry);
+	if (rsno_gen == RSNO_GEN_WIFI6)
+		return util_scan_entry_wifi6_rsno(scan_entry);
+
+	return NULL;
+}
+
+uint8_t*
+util_scan_entry_rsnxe_by_gen(struct scan_cache_entry *scan_entry,
+			     uint8_t rsno_gen)
+{
+	if (!scan_entry)
+		return NULL;
+
+	if (rsno_gen == RSN_LEGACY)
+		return scan_entry->ie_list.rsnxe;
+
+	return util_scan_entry_rsnxo(scan_entry);
+}
+
+uint8_t
+util_get_rsnxe_len_by_gen(struct scan_cache_entry *scan_entry,
+			  uint8_t rsno_gen)
+{
+	if (!scan_entry)
+		return 0;
+
+	if (rsno_gen == RSN_LEGACY) {
+		if (scan_entry->ie_list.rsnxe)
+			return scan_entry->ie_list.rsnxe[1];
+		return 0;
+	}
+
+	if (util_scan_entry_rsnxo(scan_entry))
+		return scan_entry->ie_list.rsnxo[1] - 4;
+
+	return 0;
+}

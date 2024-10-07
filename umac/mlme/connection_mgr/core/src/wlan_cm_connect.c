@@ -1158,6 +1158,7 @@ static inline void cm_update_advance_filter(struct wlan_objmgr_pdev *pdev,
 		wlan_cm_dual_sta_roam_update_connect_channels(psoc, filter);
 	filter->dot11mode = cm_req->req.dot11mode_filter;
 	cm_update_fils_scan_filter(filter, cm_req);
+	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(cm_ctx->vdev);
 }
 
 static void cm_update_security_filter(struct scan_filter *filter,
@@ -1575,9 +1576,8 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 	bool security_valid_for_6ghz;
 	const uint8_t *rsnxe;
 
-	rsnxe = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RSNXE,
-					 cm_req->req.assoc_ie.ptr,
-					 cm_req->req.assoc_ie.len);
+	rsnxe = wlan_get_rsnxe_data_from_ie_ptr(cm_req->req.assoc_ie.ptr,
+						cm_req->req.assoc_ie.len);
 	security_valid_for_6ghz =
 		wlan_cm_6ghz_allowed_for_akm(wlan_pdev_get_psoc(pdev),
 					     cm_req->req.crypto.akm_suites,

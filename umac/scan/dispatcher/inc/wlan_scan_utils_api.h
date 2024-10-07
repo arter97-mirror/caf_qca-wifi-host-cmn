@@ -35,6 +35,7 @@
 #ifdef WLAN_FEATURE_11BE_MLO
 #include "wlan_mlo_mgr_public_structs.h"
 #endif
+#include "wlan_objmgr_global_obj.h"
 
 #define ASCII_SPACE_CHARACTER 32
 
@@ -968,14 +969,26 @@ util_scan_entry_xrates(struct scan_cache_entry *scan_entry)
  * util_scan_entry_rsn()- function to read rsn IE
  * @scan_entry: scan entry
  *
- * API, function to read rsn IE
+ * API, function to read rsn IE and return the
+ * pointer to RSN data
  *
- * Return: rsnie or NULL if ie is not present
+ * Legacy RSN data = rsn ie + length of TYPE+LEN elements
+ * Vendor RSN data = rsn ie + length of TYPE+LEN elements + OUI length(4 bytes)
+ *
+ * Return: rsnie data or NULL if ie is not present
+ * Note: Use util_scan_get_rsn_len() to get the length
  */
 static inline uint8_t*
 util_scan_entry_rsn(struct scan_cache_entry *scan_entry)
 {
-	return scan_entry->ie_list.rsn;
+	if (scan_entry->ie_list.wifi7_rsno)
+		return scan_entry->ie_list.wifi7_rsno;
+	if (scan_entry->ie_list.wifi6_rsno)
+		return scan_entry->ie_list.wifi6_rsno;
+	if (scan_entry->ie_list.rsn)
+		return scan_entry->ie_list.rsn;
+
+	return NULL;
 }
 
 /**
@@ -1049,24 +1062,6 @@ util_scan_entry_single_pmk(struct wlan_objmgr_psoc *psoc,
 	return false;
 }
 #endif
-
-/**
- * util_scan_get_rsn_len()- function to read rsn IE length if present
- * @scan_entry: scan entry
- *
- * API, function to read rsn length if present
- *
- * Return: rsnie length
- */
-static inline uint8_t
-util_scan_get_rsn_len(struct scan_cache_entry *scan_entry)
-{
-	if (scan_entry && scan_entry->ie_list.rsn)
-		return scan_entry->ie_list.rsn[1] + 2;
-	else
-		return 0;
-}
-
 
 /**
  * util_scan_entry_wpa() - function to read wpa IE
@@ -1882,14 +1877,44 @@ util_scan_entry_mbo_oce(struct scan_cache_entry *scan_entry)
  * util_scan_entry_rsnxe() - function to read RSNXE ie
  * @scan_entry: scan entry
  *
- * API, function to read RSNXE ie
+ * API, function to read RSNXE data
  *
- * Return: RSNXE ie
+ * Return: RSNXE data
+ * Note: Use util_scan_get_rsnx_len() to get the length of RSNXE data
  */
 static inline uint8_t *
 util_scan_entry_rsnxe(struct scan_cache_entry *scan_entry)
 {
-	return scan_entry->ie_list.rsnxe;
+	if (!scan_entry)
+		return NULL;
+	if (scan_entry->ie_list.rsnxo)
+		return scan_entry->ie_list.rsnxo;
+	if (scan_entry->ie_list.rsnxe)
+		return scan_entry->ie_list.rsnxe;
+
+	return NULL;
+}
+
+/**
+ * util_scan_get_rsnx_len()- function to read RSNX IE length if present
+ * @scan_entry: scan entry
+ *
+ * API, function to read rsn length. If present return the len of the
+ * RSNX data
+ *
+ * Return: rsnie data length
+ */
+static inline uint8_t
+util_scan_get_rsnx_len(struct scan_cache_entry *scan_entry)
+{
+	if (!scan_entry)
+		return 0;
+	if (scan_entry->ie_list.rsnxo)
+		return scan_entry->ie_list.rsnxo[1] - 4;
+	if (scan_entry->ie_list.rsnxe)
+		return scan_entry->ie_list.rsnxe[1];
+
+	return 0;
 }
 
 /**
@@ -2055,7 +2080,6 @@ util_scan_get_6g_oper_channel(uint8_t *he_op_ie)
 enum wlan_phymode
 util_scan_get_phymode(struct wlan_objmgr_pdev *pdev,
 		      struct scan_cache_entry *scan_params);
-#endif
 
 /*
  * util_is_bssid_non_tx() - Is the given BSSID a non-tx neighbor
@@ -2082,3 +2106,36 @@ void
 util_scan_entry_renew_timestamp(struct wlan_objmgr_pdev *pdev,
 				struct scan_cache_entry *scan_entry);
 
+/*
+ * util_scan_entry_rsn_by_gen() = Get the RSN(O) IE based on the generation
+ * specified
+ * @scan_entry: pointer to scan entry
+ * @rsno_gen: Generation of RSN used
+ *
+ * Return: Pointer to RSN(O) IE
+ */
+uint8_t *util_scan_entry_rsn_by_gen(struct scan_cache_entry *scan_entry,
+				    uint8_t rsno_gen);
+
+/*
+ * util_scan_entry_rsnxe_by_gen() = Get the RSNX(O) IE based on the generation
+ * specified
+ * @scan_entry: pointer to scan entry
+ * @rsno_gen: Generation of RSN used
+ *
+ * Return: Pointer to RSNX(O) IE
+ */
+uint8_t *util_scan_entry_rsnxe_by_gen(struct scan_cache_entry *scan_entry,
+				      uint8_t rsno_gen);
+
+/*
+ * util_get_rsnxe_len_by_gen() - Get the RSNX(O) IE length based on the
+ * generation specified
+ * @scan_entry: pointer to scan entry
+ * @rsno_gen: Generation of RSN used
+ *
+ * Return: Length of RSNX(O) IE
+ */
+uint8_t util_get_rsnxe_len_by_gen(struct scan_cache_entry *scan_entry,
+				  uint8_t rsno_gen);
+#endif

@@ -778,6 +778,7 @@ enum dot11_mode_filter {
  * @band_bitmap: Allowed band bit map, BIT0: 2G, BIT1: 5G, BIT2: 6G
  * @link_id: IEEE link ID to match if @match_link_id is set to %true
  * @mld_addr: MLD addr to match if @match_mld_addr is set to true.
+ * @mrsno_gen: MRSNO generation supported
  */
 struct scan_filter {
 	uint8_t enable_adaptive_11r:1,
@@ -819,6 +820,7 @@ struct scan_filter {
 	uint8_t link_id;
 	struct qdf_mac_addr mld_addr;
 #endif
+	uint8_t mrsno_gen;
 };
 
 /**
