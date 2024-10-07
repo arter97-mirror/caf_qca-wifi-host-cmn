@@ -23014,6 +23014,92 @@ static QDF_STATUS send_get_cached_scan_report_cmd_tlv(wmi_unified_t wmi_handle)
 
 	return status;
 }
+
+static void *
+extract_cached_scan_report_ev_params_tlv(wmi_unified_t wmi_handle,
+					 void *ev_data, uint32_t data_len)
+{
+	uint32_t malloc_len, idx;
+	wmi_scan_cache_info *ev_bss_data;
+	struct wlan_scan_cache_bss *bss_info;
+	struct wlan_scan_cache_scan_report *scan_report;
+	WMI_SCAN_CACHE_RESULT_EVENTID_param_tlvs *ev_buf;
+
+	ev_buf = (WMI_SCAN_CACHE_RESULT_EVENTID_param_tlvs *)ev_data;
+
+	scan_report = qdf_mem_malloc(sizeof(*scan_report));
+	if (!scan_report)
+		return NULL;
+
+	if (ev_buf->num_scan_freq_list) {
+		malloc_len = ev_buf->num_scan_freq_list * sizeof(uint32_t);
+		scan_report->freq_list = qdf_mem_malloc(malloc_len);
+		if (!scan_report->freq_list)
+			goto mem_free;
+
+		qdf_mem_copy(scan_report->freq_list, ev_buf->scan_freq_list,
+			     ev_buf->num_scan_freq_list * sizeof(uint32_t));
+	} else {
+		scan_report->freq_list = NULL;
+	}
+	scan_report->num_freq = ev_buf->num_scan_freq_list;
+	wmi_debug("Freq list %d, bss list %d",
+		  scan_report->num_freq, ev_buf->num_scan_cache_info);
+
+	if (!ev_buf->num_scan_cache_info) {
+		scan_report->bss_list = NULL;
+		scan_report->num_bss = 0;
+		return scan_report;
+	}
+
+	malloc_len =
+		ev_buf->num_scan_cache_info * sizeof(*scan_report->bss_list);
+	scan_report->bss_list =	qdf_mem_malloc(malloc_len);
+	if (!scan_report->bss_list)
+		goto mem_free;
+
+	ev_bss_data = ev_buf->scan_cache_info;
+	bss_info = scan_report->bss_list;
+	for (idx = 0; idx < ev_buf->num_scan_cache_info; idx++) {
+		bss_info = &scan_report->bss_list[idx];
+		bss_info->age_ms = ev_bss_data[idx].age_ms;
+		bss_info->cap_info = ev_bss_data[idx].capability;
+		bss_info->flags = ev_bss_data[idx].flags;
+		bss_info->rssi = ev_bss_data[idx].rssi;
+		bss_info->primary_freq =
+			ev_bss_data[idx].chanspec.primary_frequency;
+		bss_info->ccfs0_mhz =
+			ev_bss_data[idx].chanspec.center_frequency0;
+		bss_info->ccfs1_mhz =
+			ev_bss_data[idx].chanspec.center_frequency1;
+		bss_info->ch_width =
+			wmi_map_ch_width(ev_bss_data[idx].chanspec.width);
+		WMI_MAC_ADDR_TO_CHAR_ARRAY(&ev_bss_data[idx].bssid,
+					   &bss_info->bssid.bytes[0]);
+		if (ev_bss_data[idx].ssid.ssid_len > WLAN_SSID_MAX_LEN)
+			ev_bss_data[idx].ssid.ssid_len = WLAN_SSID_MAX_LEN;
+		qdf_mem_copy(bss_info->ssid.ssid, ev_bss_data[idx].ssid.ssid,
+			     ev_bss_data[idx].ssid.ssid_len);
+		bss_info->ssid.length = ev_bss_data[idx].ssid.ssid_len;
+		wmi_debug("age %d, cap 0x%x, flags 0x%x, rssi %d, freq %d, ccfs0 %d, ccfs1 %d, bw %d, BSSID: " QDF_MAC_ADDR_FMT ", SSID: " QDF_SSID_FMT,
+			  bss_info->age_ms, bss_info->cap_info,
+			  bss_info->flags, bss_info->rssi,
+			  bss_info->primary_freq, bss_info->ccfs0_mhz,
+			  bss_info->ccfs1_mhz, bss_info->ch_width,
+			  QDF_MAC_ADDR_REF(bss_info->bssid.bytes),
+			  QDF_SSID_REF(bss_info->ssid.length,
+				       bss_info->ssid.ssid));
+	}
+	scan_report->num_bss = ev_buf->num_scan_cache_info;
+
+	return scan_report;
+
+mem_free:
+	qdf_mem_free(scan_report->freq_list);
+	qdf_mem_free(scan_report);
+
+	return NULL;
+}
 #endif
 
 struct wmi_ops tlv_ops =  {
@@ -23545,6 +23631,8 @@ struct wmi_ops tlv_ops =  {
 	.send_sta_vdev_report_ap_oper_bw_cmd = send_sta_vdev_report_ap_oper_bw_cmd_tlv,
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 	.send_get_cached_scan_report_cmd = send_get_cached_scan_report_cmd_tlv,
+	.extract_cached_scan_report_ev_params =
+				extract_cached_scan_report_ev_params_tlv,
 #endif
 };
 

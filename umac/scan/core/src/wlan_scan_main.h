@@ -1001,6 +1001,19 @@ bool scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev);
  * Return: QDF_STATUS
  */
 QDF_STATUS scm_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * scm_scan_cached_scan_report_ev_handler() - Process the event data from FW
+ * for cached scan report.
+ * @pdev: PDEV object manager.
+ * @cached_scan_report: Pointer to extracted scan report
+ *
+ * Calls wrapper API to handle the FW data. Callee to consume the data.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS scm_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
+						  void *cached_scan_report);
 #else
 static inline bool
 scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)

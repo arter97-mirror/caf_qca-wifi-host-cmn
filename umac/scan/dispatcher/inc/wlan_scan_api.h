@@ -623,6 +623,23 @@ wlan_cfg80211_scan_request_cached_scan_report(struct wiphy *wiphy,
 					      struct wireless_dev *wdev,
 					      struct wlan_objmgr_pdev *pdev);
 
+/**
+ * wlan_scan_cached_scan_report_ev_handler() - Handler API for received
+ * cached scan report from FW.
+ * @pdev: PDEV object manager
+ * @data: Pointer to data extracted from FW event.
+ *
+ * The API completes the data processing for any waiting threads to consume and
+ * if no threads are waiting the buffer pointed by @data is consumed by this
+ * API. The API makes sure to typecast or conversions if any for the consumers
+ * to use.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS
+wlan_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
+					void *data);
+
 static inline bool
 wlan_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
 {

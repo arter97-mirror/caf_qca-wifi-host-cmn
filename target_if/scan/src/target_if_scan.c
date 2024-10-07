@@ -400,6 +400,61 @@ target_if_obss_scan_disable(struct wlan_objmgr_psoc *psoc,
 }
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static int
+target_if_scan_cached_scan_report_handler(ol_scn_t scn, uint8_t *data,
+					  uint32_t data_len)
+{
+	QDF_STATUS status;
+	wmi_unified_t wmi_handle;
+	struct wlan_objmgr_pdev *pdev;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_scan_rx_ops *scan_rx_ops;
+	struct wlan_scan_cache_scan_report *scan_report;
+
+	if (!scn || !data) {
+		target_if_err("scn: 0x%pK, data: 0x%pK", scn, data);
+		return -EINVAL;
+	}
+
+	pdev = target_if_get_pdev_from_scn_hdl(scn);
+	if (!pdev) {
+		target_if_err("null pdev");
+		return -EINVAL;
+	}
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		target_if_err("null psoc");
+		return -EINVAL;
+	}
+
+	scan_rx_ops = target_if_scan_get_rx_ops(psoc);
+	if (!scan_rx_ops || !scan_rx_ops->cached_scan_report_ev_handler) {
+		target_if_err("scan_rx_ops or handler is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("wmi_handle is NULL");
+		return -EINVAL;
+	}
+
+	scan_report = wmi_extract_cached_scan_report_ev_params(wmi_handle, data,
+							       data_len);
+	if (!scan_report)
+		return -EINVAL;
+
+	status = scan_rx_ops->cached_scan_report_ev_handler(pdev, scan_report);
+
+	qdf_mem_free(scan_report->freq_list);
+	qdf_mem_free(scan_report->bss_list);
+	qdf_mem_free(scan_report);
+	scan_report = NULL;
+
+	return 0;
+}
+
 static inline QDF_STATUS
 target_if_scan_register_cached_scan_report_handler(wmi_unified_t wmi_handle)
 {

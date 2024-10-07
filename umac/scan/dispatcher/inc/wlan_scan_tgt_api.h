@@ -170,5 +170,16 @@ bool tgt_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev);
  * Return: QDF_STATUS.
  */
 QDF_STATUS tgt_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * tgt_scan_cached_scan_report_ev_handler() - Handler to process FW cached
+ * scan report event.
+ * @pdev: PDEV object manager.
+ * @cached_scan_report: Pointer to cached scan report to be consumed by callee.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS tgt_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
+						  void *cached_scan_report);
 #endif
 #endif

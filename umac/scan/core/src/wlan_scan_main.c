@@ -135,4 +135,11 @@ QDF_STATUS scm_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev)
 {
 	return tgt_scan_request_cached_scan_report(pdev);
 }
+
+QDF_STATUS scm_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
+						  void *cached_scan_report)
+{
+	wlan_scan_cached_scan_report_ev_handler(pdev, cached_scan_report);
+	return QDF_STATUS_SUCCESS;
+}
 #endif

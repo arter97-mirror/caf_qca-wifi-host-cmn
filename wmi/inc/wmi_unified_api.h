@@ -5410,5 +5410,18 @@ wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd(
  * Return: QDF_STATUS.
  */
 QDF_STATUS wmi_unified_cached_scan_report_cmd_send(wmi_unified_t wmi_handle);
+
+/**
+ * wmi_extract_cached_scan_report_ev_params() - WMI interface to convert
+ * FW data to host data for cached scan report.
+ * @wmi_handle: Handle to WMI
+ * @ev_data: Pointer to event data
+ * @data_len: Length of bytes pointed by @ev_data
+ *
+ * Return: Pointer to extracted host buffer on success or %NULL.
+ */
+void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
+					       void *ev_data,
+					       uint32_t data_len);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

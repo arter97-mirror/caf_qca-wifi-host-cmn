@@ -443,4 +443,17 @@ QDF_STATUS tgt_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev)
 
 	return QDF_STATUS_E_NULL_VALUE;
 }
+
+QDF_STATUS tgt_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
+						  void *cached_scan_report)
+{
+	struct pdev_scan_ev_handler *pdev_ev_handler;
+
+	pdev_ev_handler = wlan_pdev_get_pdev_scan_ev_handlers(pdev);
+	if (!pdev_ev_handler || !pdev_ev_handler->cached_scan_ev_handler)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	pdev_ev_handler->cached_scan_ev_handler(pdev, cached_scan_report);
+	return QDF_STATUS_SUCCESS;
+}
 #endif
