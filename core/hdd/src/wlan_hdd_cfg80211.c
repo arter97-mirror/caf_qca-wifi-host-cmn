@@ -5311,6 +5311,20 @@ static inline void wlan_hdd_set_usd_feature(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+static inline void wlan_hdd_set_mrsno_feature(struct wlan_objmgr_psoc *psoc,
+					      uint8_t *feature_flags)
+{
+	bool val = false;
+
+	if (QDF_IS_STATUS_ERROR(ucfg_mlme_get_mrsno_support(psoc, &val)) ||
+	    !val)
+		return;
+
+	hdd_debug("Target supports MRSNO");
+	wlan_cfg80211_set_feature(feature_flags,
+				  QCA_WLAN_VENDOR_FEATURE_RSN_OVERRIDE_STA);
+}
+
 #define MAX_CONCURRENT_CHAN_ON_24G    2
 #define MAX_CONCURRENT_CHAN_ON_5G     2
 
@@ -5433,6 +5447,7 @@ __wlan_hdd_cfg80211_get_features(struct wiphy *wiphy,
 	wlan_wifi_pos_cfg80211_set_features(hdd_ctx->psoc, feature_flags);
 	wlan_hdd_set_ll_lt_sap_feature(hdd_ctx->psoc, feature_flags);
 	wlan_hdd_set_usd_feature(hdd_ctx->psoc, feature_flags);
+	wlan_hdd_set_mrsno_feature(hdd_ctx->psoc, feature_flags);
 
 	skb = wlan_cfg80211_vendor_cmd_alloc_reply_skb(wiphy,
 						       sizeof(feature_flags) +
