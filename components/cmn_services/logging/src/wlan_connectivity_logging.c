@@ -631,8 +631,6 @@ wlan_populate_roam_mld_log_param(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
-#define REJECTED_LINK_STATUS 1
-
 void
 wlan_connectivity_mlo_setup_event(struct wlan_objmgr_vdev *vdev,
 				  bool is_band_present)
@@ -1173,6 +1171,23 @@ wlan_connectivity_connecting_event(struct wlan_objmgr_vdev *vdev,
 		wlan_mlme_get_bt_profile_con(wlan_vdev_get_psoc(vdev));
 
 	WLAN_HOST_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_CONN);
+}
+
+enum wlan_diag_wifi_band
+wlan_convert_reg_to_diag_band(enum reg_wifi_band reg_band)
+{
+	switch (reg_band) {
+	case REG_BAND_2G:
+		return WLAN_24GHZ_BAND;
+	case REG_BAND_5G:
+		return WLAN_5GHZ_BAND;
+	case REG_BAND_6G:
+		return WLAN_6GHZ_BAND;
+	case REG_BAND_UNKNOWN:
+		fallthrough;
+	default:
+		return WLAN_INVALID_BAND;
+	}
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
