@@ -688,6 +688,19 @@ int wma_smps_mode_to_force_mode_param(uint8_t smps_mode)
 
 #ifdef WLAN_FEATURE_STATS_EXT
 #ifdef FEATURE_STATS_EXT_V2
+static void wma_stats_ext_print(wmi_stats_ext_event_vdev_ext_t *vdev_ext_stats)
+{
+	wma_debug("mpdu_enque 0x%x mpdu_requeue 0x%x rssi %d tx_bytes 0x%x rx_bytes 0x%x tx_mcs 0x%x rx_mcs 0x%x freq %d vdev_id %d",
+		  vdev_ext_stats->mpdu_enqueue,
+		  vdev_ext_stats->mpdu_requeued,
+		  vdev_ext_stats->beacon_rssi, vdev_ext_stats->tx_bytes,
+		  vdev_ext_stats->rx_bytes,
+		  vdev_ext_stats->tx_mcs[0],
+		  vdev_ext_stats->rx_mcs[0],
+		  vdev_ext_stats->freq,
+		  vdev_ext_stats->vdev_id);
+}
+
 int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
 				uint32_t len)
 {
@@ -701,6 +714,7 @@ int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
 	struct cdp_txrx_ext_stats ext_stats = {0};
 	struct cdp_soc_t *soc_hdl = cds_get_context(QDF_MODULE_ID_SOC);
 	wmi_partner_link_stats *link_stats;
+	wmi_stats_ext_event_vdev_ext_t *vdev_ext_stats;
 
 	wma_debug("Posting stats ext event to SME");
 
@@ -781,6 +795,27 @@ int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
 				link_stats++;
 			}
 		}
+	}
+
+	if (stats_ext_info->data_type ==
+	    WMI_STATS_EXT_EVENT_DATA_TYPE_VDEV_EXT) {
+		vdev_ext_stats = (wmi_stats_ext_event_vdev_ext_t *)buf_ptr;
+		wma_stats_ext_print(vdev_ext_stats);
+
+		link_stats = param_buf->partner_link_stats;
+		if (param_buf->num_partner_link_stats && link_stats) {
+			for (i = 0; i < param_buf->num_partner_link_stats; i++) {
+				vdev_ext_stats =
+					(wmi_stats_ext_event_vdev_ext_t *)
+					param_buf->partner_link_data +
+					link_stats->offset;
+				wma_stats_ext_print(vdev_ext_stats);
+				link_stats++;
+			}
+		}
+
+	} else {
+		wma_debug("Legacy data structure");
 	}
 
 	cds_msg.type = eWNI_SME_STATS_EXT_EVENT;
