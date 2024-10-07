@@ -993,4 +993,32 @@ wlan_mlo_ap_vdev_find_assoc_entry(struct wlan_objmgr_vdev *vdev,
  * Return: void
  */
 void wlan_mlo_ap_delete_assoc_list_entries(void *ctx);
+
+/**
+ * wlan_mlo_dev_get_link_vdevs() - API to get link vdevs from ML partner info
+ * @vdev: Objmgr vdev object
+ * @ml_dev: ML dev context
+ * @ml_info: MLO partner info
+ * @link_vdevs: List of vdevs to be populated from ml_info
+ *
+ * API to get link vdevs from ML partner info
+ *
+ * Return: QDF_STATUS_SUCCESS if link vdevs are found, error otherwise
+ */
+QDF_STATUS wlan_mlo_dev_get_link_vdevs(
+			struct wlan_objmgr_vdev *vdev,
+			struct wlan_mlo_dev_context *ml_dev,
+			struct mlo_partner_info *ml_info,
+			struct wlan_objmgr_vdev *link_vdevs[]);
+
+/**
+ * wlan_mlo_dev_release_link_vdevs() - API to release vdev ref
+ * @link_vdevs: List of vdevs
+ *
+ * API to release vdev ref
+ *
+ * Return: void
+ */
+void wlan_mlo_dev_release_link_vdevs(
+			struct wlan_objmgr_vdev *link_vdevs[]);
 #endif
