@@ -3129,6 +3129,8 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		unsigned long tid = 0;
 		uint16_t seq = 0;
 
+		ppdu_info->rx_user_status[user_id].sw_peer_id =
+				rx_ppdu_end_user->sw_peer_id;
 		ppdu_info->rx_status.ast_index =
 				rx_ppdu_end_user->ast_index;
 
