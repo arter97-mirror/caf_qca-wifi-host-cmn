@@ -277,9 +277,11 @@ endif
 # are originally defined from kernel Kconfig/defconfig. KBUILD_EXTRA_SYMBOLS
 # is also needed to indicate all the symbols from these drivers.
 ifneq ($(WLAN_PLATFORM_KBUILD_OPTIONS),)
+ifneq ($(LOCAL_DEV_NAME), qca6174)
 KBUILD_OPTIONS += $(foreach wlan_platform_kbuild_option, \
 		   $(WLAN_PLATFORM_KBUILD_OPTIONS), \
 		   $(wlan_platform_kbuild_option))
+endif
 
 KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(shell pwd)/$(call intermediates-dir-for,DLKM,wlan-platform-module-symvers)/Module.symvers
 endif
