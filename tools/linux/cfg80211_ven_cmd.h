@@ -3707,7 +3707,6 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_SPECIAL_PARAM_SHIFT | OL_SPECIAL_PARAM_RADIO_MGMT_RETRY_LIMIT, SET_PARAM, 1},
 	{"setHALparam",         35808, SET_PARAM, 1},
 	{"getHALparam",         35809, GET_PARAM, 0},
-	{"get_aggr_burst",      35821, GET_PARAM, 0},
 	{"get_cfr_capture_status",
 	 OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_CFR_CAPTURE_STATUS, GET_PARAM, 0},
 	{"non_inherit_enable",
