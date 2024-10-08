@@ -14585,6 +14585,9 @@ static struct cdp_ipa_ops dp_ops_ipa = {
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	.ipa_opt_dp_ctrl_debug_enable = dp_ipa_opt_dp_ctrl_debug_enable,
 #endif
+#ifdef IPA_WDI3_PENDING_BUFF_REPORT
+	.ipa_is_completion_pending = dp_ipa_is_completion_pending,
+#endif
 #endif
 #ifdef IPA_WDS_EASYMESH_FEATURE
 	.ipa_ast_create = dp_ipa_ast_create,

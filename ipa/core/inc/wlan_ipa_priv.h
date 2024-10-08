@@ -995,6 +995,7 @@ struct wlan_ipa_priv {
 #if defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 	struct wlan_ipa_evt_wq *ipa_evt_wq;
 #endif
+	bool ipa_tx_pending;
 };
 
 #define WLAN_IPA_WLAN_FRAG_HEADER        sizeof(struct frag_header)
