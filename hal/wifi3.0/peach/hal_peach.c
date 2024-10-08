@@ -2452,6 +2452,21 @@ void hal_txmon_get_frame_timestamp_peach(uint32_t tlv_tag, void *tx_tlv,
 }
 #endif
 
+/**
+ * hal_srng_dst_get_num_avail_words_peach - Get num available words
+ * @hal_ring_hdl: HAL ring handle
+ *
+ * Return: num available words
+ */
+static inline uint16_t
+hal_srng_dst_get_num_avail_words_peach(hal_ring_handle_t hal_ring_hdl)
+{
+	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
+	uint32_t ring_status = SRNG_DST_REG_READ(srng, STATUS);
+
+	return SRNG_MS(SRNG_DST_HW_FLD(STATUS, NUM_AVAIL_WORDS), ring_status);
+}
+
 static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2741,6 +2756,8 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
 	hal_soc->ops->hal_rx_flow_cmem_update_reo_dst_ind =
 				hal_rx_flow_cmem_update_reo_dst_ind;
+	hal_soc->ops->hal_srng_dst_get_num_avail_words =
+				hal_srng_dst_get_num_avail_words_peach;
 };
 
 struct hal_hw_srng_config hw_srng_table_peach[] = {
@@ -3212,6 +3229,7 @@ static inline void hal_srng_hw_reg_offset_init_peach(struct hal_soc *hal_soc)
 	hw_reg_offset[DST_MSI2_DATA] = REG_OFFSET(DST, MSI2_DATA),
 	hw_reg_offset[DST_PRODUCER_INT2_SETUP] =
 					REG_OFFSET(DST, PRODUCER_INT2_SETUP);
+	hw_reg_offset[DST_STATUS] = REG_OFFSET(DST, STATUS);
 	hal_srng_hw_reg_offset_init_misc_1_peach(hal_soc);
 }
 

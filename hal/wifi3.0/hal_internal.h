@@ -428,6 +428,7 @@ enum SRNG_REGISTERS {
 #ifdef CONFIG_BERYLLIUM
 	DST_PRODUCER_INT2_SETUP,
 #endif
+	DST_STATUS,
 
 	SRC_HP,
 	SRC_TP,
@@ -1513,6 +1514,8 @@ struct hal_hw_txrx_ops {
 						    uint32_t cmem_ba,
 						    uint32_t flow_idx,
 						    uint8_t reo_dest_ind);
+	uint16_t (*hal_srng_dst_get_num_avail_words)(
+			hal_ring_handle_t hal_ring_hdl);
 };
 
 /**
