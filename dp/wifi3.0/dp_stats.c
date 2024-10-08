@@ -8449,6 +8449,40 @@ void dp_print_per_ring_stats(struct dp_soc *soc)
 	}
 }
 
+#if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+static inline void dp_txrx_path_stats_ext_drop(struct dp_pdev *pdev)
+{
+		DP_PRINT_STATS("Push Head fail Tx Drop: %u",
+			       pdev->stats.tx_i.dropped.push_head_fail);
+		DP_PRINT_STATS("Prep MetaData fail Tx Drop: %u",
+			       pdev->stats.tx_i.dropped.prep_metadata_fail);
+		DP_PRINT_STATS("Multipass fail Tx Drop: %u",
+			       pdev->stats.tx_i.dropped.multipass_en);
+}
+
+static inline
+void dp_update_pdev_ingress_stats_ext_drop(struct dp_pdev *tgtobj,
+					   struct dp_vdev *srcobj, int idx)
+{
+		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, dropped.push_head_fail,
+				  idx);
+		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i,
+				  dropped.prep_metadata_fail, idx);
+		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, dropped.multipass_en,
+				  idx);
+}
+#else
+static inline void dp_txrx_path_stats_ext_drop(struct dp_pdev *pdev)
+{
+}
+
+static inline
+void dp_update_pdev_ingress_stats_ext_drop(struct dp_pdev *tgtobj,
+					   struct dp_vdev *srcobj, int idx)
+{
+}
+#endif
+
 void dp_txrx_path_stats(struct dp_soc *soc)
 {
 	uint8_t error_code;
@@ -8533,6 +8567,7 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 		DP_PRINT_STATS("SW tso fail cnt: %u",
 			       pdev->soc->stats.tx.sw_tso_fail);
 
+		dp_txrx_path_stats_ext_drop(pdev);
 		buf = dp_stats_str;
 		buf_len = DP_STATS_STR_LEN;
 		pos = 0;
@@ -10400,6 +10435,7 @@ void dp_update_pdev_ingress_stats(struct dp_pdev *tgtobj,
 		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, mesh.exception_fw, idx);
 		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, mesh.completion_fw,
 				  idx);
+		dp_update_pdev_ingress_stats_ext_drop(tgtobj, srcobj, idx);
 	}
 	DP_STATS_AGGR_PKT(tgtobj, srcobj, rx_i.reo_rcvd_pkt);
 	DP_STATS_AGGR_PKT(tgtobj, srcobj, rx_i.null_q_desc_pkt);

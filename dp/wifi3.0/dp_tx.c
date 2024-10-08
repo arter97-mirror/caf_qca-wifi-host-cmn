@@ -588,7 +588,6 @@ static uint8_t dp_tx_prepare_htt_metadata(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		hdr = qdf_nbuf_push_head(nbuf, htt_desc_size_aligned);
 		if (!hdr) {
 			dp_tx_err("Error in filling HTT metadata");
-
 			return 0;
 		}
 		qdf_mem_copy(hdr, desc_ext, htt_desc_size);
@@ -1256,6 +1255,41 @@ dp_tx_is_wds_ast_override_en(struct dp_soc *soc,
 }
 #endif
 
+#if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+static inline
+void dp_tx_multipass_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+	DP_STATS_INC(vdev, tx_i[xmit_type].dropped.multipass_en, 1);
+}
+
+static inline
+void dp_tx_pushhead_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+	DP_STATS_INC(vdev, tx_i[xmit_type].dropped.push_head_fail, 1);
+}
+
+static inline
+void dp_tx_metadatafail_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+	DP_STATS_INC(vdev, tx_i[xmit_type].dropped.prep_metadata_fail, 1);
+}
+#else
+static inline
+void dp_tx_multipass_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+}
+
+static inline
+void dp_tx_pushhead_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+}
+
+static inline
+void dp_tx_metadatafail_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+}
+#endif
+
 /**
  * dp_tx_prepare_desc_single() - Allocate and prepare Tx descriptor
  * @vdev: DP vdev handle
@@ -1319,8 +1353,10 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 			vdev->qdf_opmode);
 
 	if (qdf_unlikely(vdev->multipass_en)) {
-		if (!dp_tx_multipass_process(soc, vdev, nbuf, msdu_info))
+		if (!dp_tx_multipass_process(soc, vdev, nbuf, msdu_info)) {
+			dp_tx_multipass_pkt_drop(vdev, xmit_type);
 			goto failure;
+		}
 	}
 
 	/* Packets marked by upper layer (OS-IF) to be sent to FW */
@@ -1379,13 +1415,16 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 
 		if (qdf_nbuf_push_head(nbuf, align_pad) == NULL) {
 			dp_tx_err("qdf_nbuf_push_head failed");
+			dp_tx_pushhead_pkt_drop(vdev, xmit_type);
 			goto failure;
 		}
 
 		htt_hdr_size = dp_tx_prepare_htt_metadata(vdev, nbuf,
 				msdu_info);
-		if (htt_hdr_size == 0)
+		if (htt_hdr_size == 0) {
+			dp_tx_metadatafail_pkt_drop(vdev, xmit_type);
 			goto failure;
+		}
 
 		tx_desc->length = qdf_nbuf_headlen(nbuf);
 		tx_desc->pkt_offset = align_pad + htt_hdr_size;

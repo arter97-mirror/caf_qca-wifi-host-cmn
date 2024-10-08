@@ -2608,6 +2608,31 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 					_srcobj->rx_i.routed_eapol_pkt.bytes; \
 	} while (0)
 
+#if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+#define DP_UPDATE_LINK_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx) \
+	do { \
+		_tgtobj->tx_i.dropped.push_head_fail += \
+			_srcobj->tx_i[idx].dropped.push_head_fail; \
+		_tgtobj->tx_i.dropped.prep_metadata_fail += \
+			_srcobj->tx_i[idx].dropped.prep_metadata_fail; \
+		_tgtobj->tx_i.dropped.multipass_en += \
+			_srcobj->tx_i[idx].dropped.multipass_en; \
+	} while (0)
+
+#define DP_UPDATE_MLD_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx) \
+	do { \
+		_tgtobj->tx_i[idx].dropped.push_head_fail += \
+			_srcobj->tx_i[idx].dropped.push_head_fail; \
+		_tgtobj->tx_i[idx].dropped.prep_metadata_fail += \
+			_srcobj->tx_i[idx].dropped.prep_metadata_fail; \
+		_tgtobj->tx_i[idx].dropped.multipass_en += \
+			_srcobj->tx_i[idx].dropped.multipass_en; \
+	} while (0)
+#else
+#define DP_UPDATE_LINK_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, _xmit_type)
+#define DP_UPDATE_MLD_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, _xmit_type)
+#endif
+
 #define DP_UPDATE_LINK_VDEV_INGRESS_STATS(_tgtobj, _srcobj, _xmit_type) \
 	do { \
 		uint8_t i = 0; \
@@ -2745,6 +2770,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 				_srcobj->tx_i[idx].sniffer_rcvd.num; \
 			_tgtobj->tx_i.sniffer_rcvd.bytes += \
 				_srcobj->tx_i[idx].sniffer_rcvd.bytes; \
+			DP_UPDATE_LINK_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx); \
 		} \
 		_tgtobj->tx_i.dropped.dropped_pkt.num = \
 			_tgtobj->tx_i.dropped.dma_error + \
@@ -2910,6 +2936,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 				_tgtobj->tx_i[idx].dropped.invalid_peer_id_in_exc_path + \
 				_tgtobj->tx_i[idx].dropped.tx_mcast_drop + \
 				_tgtobj->tx_i[idx].dropped.fw2wbm_tx_drop; \
+			DP_UPDATE_MLD_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx); \
 		} \
 		DP_UPDATE_RX_INGRESS_STATS(_tgtobj, _srcobj); \
 	} while (0)
