@@ -974,10 +974,12 @@ QDF_STATUS wlan_dp_select_profile_cfg(struct wlan_objmgr_psoc *psoc)
 /**
  * wlan_dp_link_cdp_vdev_delete_notification() - CDP vdev delete notification
  * @context: osif_vdev handle
+ * @cdp_vdev: CDP vdev handle
  *
  * Return: None
  */
-void wlan_dp_link_cdp_vdev_delete_notification(void *context);
+void wlan_dp_link_cdp_vdev_delete_notification(ol_osif_vdev_handle context,
+					       struct cdp_vdev *cdp_vdev);
 
 /* DP CFG APIs - START */
 
@@ -1067,4 +1069,18 @@ static inline void dp_flow_priortization_deinit(struct wlan_dp_intf *dp_intf)
 void __wlan_dp_update_def_link(struct wlan_objmgr_psoc *psoc,
 			       struct qdf_mac_addr *intf_mac,
 			       struct wlan_objmgr_vdev *vdev);
+
+static inline bool wlan_dp_link_check_cdp_vdev(struct wlan_dp_link *dp_link,
+					       struct cdp_vdev *cdp_vdev)
+{
+	struct cdp_vdev *temp_cdp_vdev;
+
+	TAILQ_FOREACH(temp_cdp_vdev, &dp_link->cdp_vdev_list,
+		      cdp_vdev_list_elem) {
+		if (temp_cdp_vdev == cdp_vdev)
+			return true;
+	}
+
+	return false;
+}
 #endif
