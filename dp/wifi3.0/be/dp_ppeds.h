@@ -114,6 +114,15 @@ void dp_ppeds_stop_soc_be(struct dp_soc *soc);
 uint32_t dp_ppeds_get_node_id_be(struct cdp_soc_t *soc_hdl);
 
 /**
+ * dp_ppeds_process_mpsk_exception() - Process the MPSK exceptioned packets.
+ * @soc_hdl: CDP SoC Tx/Rx handle
+ * @skb: Socket Buffer
+ *
+ * Return: Result of the processing the exceptions
+ */
+bool dp_ppeds_process_mpsk_exception(struct cdp_soc_t *soc_hdl, qdf_nbuf_t skb);
+
+/**
  * dp_ppeds_stats_sync_be() - sync stats for DS mode.
  * @soc: CDP SoC Tx/Rx handle
  * @vdev_id: vdev id
