@@ -2285,6 +2285,7 @@ struct roam_msg_info {
  * @link_accepted: True if link status is accepted. Else link status is rejected
  * @link_band: Band information of the link
  * @freq: Frequency of the link
+ * @timestamp: FW timestamp (in milliseconds)
  */
 struct roam_ml_info {
 	struct qdf_mac_addr link_addr;
@@ -2292,6 +2293,7 @@ struct roam_ml_info {
 	bool link_accepted;
 	enum reg_wifi_band link_band;
 	uint32_t freq;
+	uint64_t timestamp;
 };
 
 /**

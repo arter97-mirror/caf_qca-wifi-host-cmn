@@ -5446,6 +5446,7 @@ ml_nlink_emlsr_downgrade_handler(struct wlan_objmgr_psoc *psoc,
 			}
 		}
 	}
+
 	/* small optimization, if 5G links num is less then 2, eMLSR is
 	 * not available, no need to send command.
 	 */

@@ -1173,23 +1173,6 @@ wlan_connectivity_connecting_event(struct wlan_objmgr_vdev *vdev,
 	WLAN_HOST_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_CONN);
 }
 
-enum wlan_diag_wifi_band
-wlan_convert_reg_to_diag_band(enum reg_wifi_band reg_band)
-{
-	switch (reg_band) {
-	case REG_BAND_2G:
-		return WLAN_24GHZ_BAND;
-	case REG_BAND_5G:
-		return WLAN_5GHZ_BAND;
-	case REG_BAND_6G:
-		return WLAN_6GHZ_BAND;
-	case REG_BAND_UNKNOWN:
-		fallthrough;
-	default:
-		return WLAN_INVALID_BAND;
-	}
-}
-
 #ifdef WLAN_FEATURE_11BE_MLO
 
 #define BAND_TO_BITMAP(band) (band - 1)
