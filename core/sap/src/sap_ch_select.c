@@ -993,6 +993,41 @@ static void sap_update_rssi_bsscount(struct sap_ch_info *ch_info,
 		case 7:
 			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
 			break;
+		/* Since SAP_MIN_RSSI is -100, using the -80
+		 * offset for rest of the subbands.
+		 */
+		case -8:
+		case 8:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
+		case -9:
+		case 9:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
+		case -10:
+		case 10:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
+		case -11:
+		case 11:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
+		case -12:
+		case 12:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
+		case -13:
+		case 13:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
+		case -14:
+		case 14:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
+		case -15:
+		case 15:
+			rsssi_effect = SAP_SUBBAND7_RSSI_EFFECT_PRIMARY;
+			break;
 		default:
 			rsssi_effect = 0;
 			break;
@@ -1124,6 +1159,42 @@ static void sap_interference_rssi_count_5G(struct sap_ch_info *spect_ch,
 		else if ((ch_freq0 - op_chan_freq) == -70)
 			offset = -7;
 		break;
+	case eHT_CHANNEL_WIDTH_320MHZ:
+		num_ch = 15;
+		if ((ch_freq0 - op_chan_freq) == 150)
+			offset = 1;
+		else if ((ch_freq0 - op_chan_freq) == 130)
+			offset = -1;
+		else if ((ch_freq0 - op_chan_freq) == 110)
+			offset = -2;
+		else if ((ch_freq0 - op_chan_freq) == 90)
+			offset = -3;
+		else if ((ch_freq0 - op_chan_freq) == 70)
+			offset = -4;
+		else if ((ch_freq0 - op_chan_freq) == 50)
+			offset = -5;
+		else if ((ch_freq0 - op_chan_freq) == 30)
+			offset = -6;
+		else if ((ch_freq0 - op_chan_freq) == 10)
+			offset = -7;
+		else if ((ch_freq0 - op_chan_freq) == -10)
+			offset = -8;
+		else if ((ch_freq0 - op_chan_freq) == -30)
+			offset = -9;
+		else if ((ch_freq0 - op_chan_freq) == -50)
+			offset = -10;
+		else if ((ch_freq0 - op_chan_freq) == -70)
+			offset = -11;
+		else if ((ch_freq0 - op_chan_freq) == -90)
+			offset = -12;
+		else if ((ch_freq0 - op_chan_freq) == -110)
+			offset = -13;
+		else if ((ch_freq0 - op_chan_freq) == -130)
+			offset = -14;
+		else if ((ch_freq0 - op_chan_freq) == -150)
+			offset = -15;
+		break;
+
 	default:
 		return;
 	}
