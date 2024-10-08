@@ -544,6 +544,17 @@ bool ucfg_p2p_is_fw_support_usd(struct wlan_objmgr_psoc *psoc);
 #endif /* FEATURE_WLAN_SUPPORT_USD */
 
 /**
+ * ucfg_p2p_is_vdev_wfd_r2_mode() - Wrapper API to get VDEV WFD mode of
+ * operation
+ * @vdev: VDEV object manager
+ *
+ * Returns %true if current mode support WFD-R2 else %false
+ *
+ * Return: bool
+ */
+bool ucfg_p2p_is_vdev_wfd_r2_mode(struct wlan_objmgr_vdev *vdev);
+
+/**
  * ucfg_p2p_fw_support_ap_assist_dfs_group() - Wrapper API to get the FW
  * support for assisted AP DFS P2P group operation
  * @psoc: PSOC object manager

@@ -725,6 +725,20 @@ QDF_STATUS p2p_send_usd_params(struct wlan_objmgr_psoc *psoc,
  * Return: true if USD is supported by FW else false
  */
 bool p2p_is_fw_support_usd(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * p2p_is_vdev_wfd_r2_mode() - Returns true if current mode of VDEV operation
+ * is WFD-R2.
+ * @vdev: VDEV object manager.
+ *
+ * Return: bool
+ */
+bool p2p_is_vdev_wfd_r2_mode(struct wlan_objmgr_vdev *vdev);
+#else
+static inline bool p2p_is_vdev_wfd_r2_mode(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
 #endif /* FEATURE_WLAN_SUPPORT_USD */
 
 /**

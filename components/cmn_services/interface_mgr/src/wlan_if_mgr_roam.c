@@ -988,7 +988,8 @@ QDF_STATUS if_mgr_validate_candidate(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_INVAL;
 
 	if (op_mode == QDF_P2P_CLIENT_MODE &&
-	    wlan_reg_is_dfs_for_freq(pdev, chan_freq)) {
+	    wlan_reg_is_dfs_for_freq(pdev, chan_freq) &&
+	    wlan_p2p_is_vdev_wfd_r2_mode(vdev)) {
 		const uint8_t *ie;
 		uint16_t ie_len;
 		bool is_dfs_owner = false, is_valid_ap_assist = false;

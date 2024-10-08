@@ -155,6 +155,11 @@ const uint8_t *wlan_p2p_parse_assoc_ie_for_device_info(const uint8_t *assoc_ie,
 	return p2p_parse_assoc_ie_for_device_info(assoc_ie, assoc_ie_len);
 }
 
+bool wlan_p2p_is_vdev_wfd_r2_mode(struct wlan_objmgr_vdev *vdev)
+{
+	return p2p_is_vdev_wfd_r2_mode(vdev);
+}
+
 QDF_STATUS
 wlan_p2p_extract_ap_assist_dfs_params(struct wlan_objmgr_vdev *vdev,
 				      const uint8_t *ie, uint16_t ie_len,

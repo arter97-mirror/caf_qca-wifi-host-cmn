@@ -122,6 +122,17 @@ const uint8_t *wlan_p2p_parse_assoc_ie_for_device_info(const uint8_t *assoc_ie,
 						       uint32_t assoc_ie_len);
 
 /**
+ * wlan_p2p_is_vdev_wfd_r2_mode() - Wrapper API to get VDEV WFD mode of
+ * operation
+ * @vdev: VDEV object manager
+ *
+ * Returns %true if current mode support WFD-R2 else %false
+ *
+ * Return: bool
+ */
+bool wlan_p2p_is_vdev_wfd_r2_mode(struct wlan_objmgr_vdev *vdev);
+
+/**
  * wlan_p2p_extract_ap_assist_dfs_params() - Wrapper API to check for P2P2 IE
  * @vdev: VDEV object manager pointer
  * @ie: Pointer to IE buffer

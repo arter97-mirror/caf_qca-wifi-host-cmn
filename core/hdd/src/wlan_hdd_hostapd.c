@@ -9003,6 +9003,10 @@ static int __wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 		}
 	}
 
+	vdev = hdd_objmgr_get_vdev_by_user(link_info, WLAN_OSIF_ID);
+	if (!vdev)
+		return -EINVAL;
+
 	if (adapter->device_mode == QDF_P2P_GO_MODE) {
 		struct hdd_adapter  *p2p_adapter;
 		struct wlan_hdd_link_info *p2p_link_info;
@@ -9014,13 +9018,16 @@ static int __wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 			wlan_hdd_cleanup_remain_on_channel_ctx(p2p_link_info);
 		}
 
-		if (wlan_reg_is_dfs_for_freq(hdd_ctx->pdev, freq)) {
+		if (wlan_reg_is_dfs_for_freq(hdd_ctx->pdev, freq) &&
+		    ucfg_p2p_is_vdev_wfd_r2_mode(vdev)) {
 			status = hdd_check_ap_assist_dfs_group_start_req(link_info,
 									 params->beacon.tail,
 									 params->beacon.tail_len,
 									 freq);
-			if (QDF_IS_STATUS_ERROR(status))
+			if (QDF_IS_STATUS_ERROR(status)) {
+				hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 				return -EINVAL;
+			}
 		}
 	}
 
@@ -9031,8 +9038,10 @@ static int __wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 		enum nl80211_channel_type channel_type;
 
 		old = ap_ctx->beacon;
-		if (old)
+		if (old) {
+			hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 			return -EALREADY;
+		}
 
 		if (policy_mgr_is_vdev_ll_lt_sap(hdd_ctx->psoc,
 						 link_info->vdev_id)) {
@@ -9050,6 +9059,7 @@ static int __wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 
 		if (status != 0) {
 			hdd_err("Error!!! Allocating the new beacon");
+			hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 			return -EINVAL;
 		}
 		ap_ctx->beacon = new;
@@ -9107,11 +9117,9 @@ static int __wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 						adapter->device_mode);
 		if (status != 0) {
 			hdd_err("Error Start bss Failed");
+			hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 			goto err_start_bss;
 		}
-		vdev = hdd_objmgr_get_vdev_by_user(link_info, WLAN_OSIF_ID);
-		if (!vdev)
-			return -EINVAL;
 
 		if (wlan_vdev_mlme_is_mlo_vdev(vdev))
 			link_id = wlan_vdev_get_link_id(vdev);
@@ -9147,6 +9155,8 @@ static int __wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 							  sta_inactivity_timer);
 			qdf_mem_free(sta_inactivity_timer);
 		}
+	} else {
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 	}
 
 	goto success;

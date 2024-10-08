@@ -4154,16 +4154,18 @@ static QDF_STATUS sap_fsm_state_starting(struct sap_context *sap_ctx,
 		if (WLAN_REG_IS_6GHZ_CHAN_FREQ(sap_ctx->chan_freq))
 			is_dfs = false;
 
-		wlan_p2p_get_ap_assist_dfs_params(sap_ctx->vdev, &is_dfs_owner,
-						  &is_valid_ap_assist, NULL,
-						  NULL, NULL);
+		if (is_dfs && wlan_p2p_is_vdev_wfd_r2_mode(sap_ctx->vdev)) {
+			wlan_p2p_get_ap_assist_dfs_params(sap_ctx->vdev,
+							  &is_dfs_owner,
+							  &is_valid_ap_assist,
+							  NULL, NULL, NULL);
+			if (!is_dfs_owner && is_valid_ap_assist)
+				is_dfs = false;
+		}
 
 		sap_debug("vdev %d freq %d, is_dfs %d is_dfs_owner %d is_valid_ap_assist %d",
 			  sap_ctx->vdev_id, sap_ctx->chan_freq, is_dfs,
 			  is_dfs_owner, is_valid_ap_assist);
-
-		if (is_dfs && !is_dfs_owner && is_valid_ap_assist)
-			is_dfs = false;
 
 		if (is_dfs) {
 			sap_dfs_info = &mac_ctx->sap.SapDfsInfo;

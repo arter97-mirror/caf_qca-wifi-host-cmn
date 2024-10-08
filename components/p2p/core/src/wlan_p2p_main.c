@@ -1961,6 +1961,19 @@ bool p2p_is_fw_support_usd(struct wlan_objmgr_psoc *psoc)
 {
 	return tgt_p2p_is_fw_support_usd(psoc);
 }
+
+bool p2p_is_vdev_wfd_r2_mode(struct wlan_objmgr_vdev *vdev)
+{
+	uint8_t wfd_mode;
+
+	wfd_mode = wlan_get_wfd_mode_from_vdev_id(wlan_vdev_get_psoc(vdev),
+						  wlan_vdev_get_id(vdev));
+	if (wfd_mode != P2P_MODE_WFD_R2 &&
+	    wfd_mode != P2P_MODE_WFD_PCC)
+		return false;
+
+	return true;
+}
 #endif /* FEATURE_WLAN_SUPPORT_USD */
 
 bool p2p_fw_support_ap_assist_dfs_group(struct wlan_objmgr_psoc *psoc)
@@ -1982,6 +1995,9 @@ bool p2p_fw_support_ap_assist_dfs_group(struct wlan_objmgr_psoc *psoc)
 
 QDF_STATUS p2p_validate_ap_assist_dfs_group(struct wlan_objmgr_vdev *vdev)
 {
+	if (!p2p_is_vdev_wfd_r2_mode(vdev))
+		return QDF_STATUS_SUCCESS;
+
 	switch (wlan_vdev_mlme_get_opmode(vdev)) {
 	case QDF_P2P_GO_MODE:
 		return p2p_check_ap_assist_dfs_group_go_with_csa(vdev);
