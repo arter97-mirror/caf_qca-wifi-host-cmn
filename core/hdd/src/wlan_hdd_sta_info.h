@@ -272,6 +272,10 @@ char *sta_info_string_from_dbgid(wlan_sta_info_dbgid id);
  * @tx_pkt_per_mcs: Number of tx rate counts for each MCS
  * @rx_pkt_per_mcs: Number of rx rate counts for each MCS
  * @vlan_id: VLAN id
+ * @tx_retries_ratio: cumulative retry counts among the last 100 packets
+ *  via ratio approximation.
+ * @tx_failed_retrylimit: failed packets due to the number of retransmission
+ *  attempts exceeding 802.11 retry limit.
  */
 struct hdd_station_info {
 	qdf_list_node_t sta_node;
@@ -343,6 +347,8 @@ struct hdd_station_info {
 	uint32_t *tx_pkt_per_mcs;
 	uint32_t *rx_pkt_per_mcs;
 	uint16_t vlan_id;
+	uint32_t tx_retries_ratio;
+	uint32_t tx_failed_retrylimit;
 };
 
 /**

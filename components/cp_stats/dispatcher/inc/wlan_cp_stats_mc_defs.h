@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -732,6 +732,10 @@ struct chain_rssi_event {
  * @num_rx_rate_counts: Num rx rate count for current peer
  * @tx_pkt_per_mcs: Number of tx packets for each MCS
  * @rx_pkt_per_mcs: Number of rx packets for each MCS
+ * @tx_retries_ratio: cumulative retry counts among
+ *  the last 100 packets via ratio approximation.
+ * @tx_failed_retrylimit: failed packets due to the number of
+ *  retransmission attempts exceeding 802.11 retry limit.
  */
 struct peer_stats_info_ext_event {
 	struct qdf_mac_addr peer_macaddr;
@@ -752,6 +756,8 @@ struct peer_stats_info_ext_event {
 	uint32_t num_rx_rate_counts;
 	uint32_t *tx_pkt_per_mcs;
 	uint32_t *rx_pkt_per_mcs;
+	uint32_t tx_retries_ratio;
+	uint32_t tx_failed_retrylimit;
 };
 
 /**
@@ -852,6 +858,10 @@ struct peer_stats_request_params {
  * @num_rx_rate_counts: Num rx rate count for current peer
  * @tx_pkt_per_mcs: Number of tx rate counts for each MCS
  * @rx_pkt_per_mcs: Number of rx rate counts for each MCS
+ * @tx_retries_ratio: cumulative retry counts among
+ *  the last 100 packets via ratio approximation.
+ * @tx_failed_retrylimit: failed packets due to the number of
+ *  retransmission attempts exceeding 802.11 retry limit.
  */
 typedef struct {
 	struct qdf_mac_addr peer_macaddr;
@@ -872,6 +882,8 @@ typedef struct {
 	uint32_t num_rx_rate_counts;
 	uint32_t *tx_pkt_per_mcs;
 	uint32_t *rx_pkt_per_mcs;
+	uint32_t tx_retries_ratio;
+	uint32_t tx_failed_retrylimit;
 } wmi_host_peer_stats_info;
 
 static inline bool is_noise_floor_invalid(uint32_t noise_floor)
