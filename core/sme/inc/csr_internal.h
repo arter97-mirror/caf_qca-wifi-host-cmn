@@ -228,6 +228,7 @@ struct csr_disconnect_stats {
  * @update_bcn_int: updated beacon interval
  * @is_bcn_recv_start: Allow to process bcn recv indication
  * @beacon_report_do_not_resume: Do not resume the beacon reporting after scan
+ * @dhcp_in_progress: flag to indicate if dhcp is in progress
  */
 struct csr_roam_session {
 	uint8_t vdev_id;
@@ -256,6 +257,7 @@ struct csr_roam_session {
 	uint8_t nss;
 	bool dhcp_done;
 	struct csr_disconnect_stats disconnect_stats;
+	bool dhcp_in_progress;
 };
 
 struct csr_roamstruct {

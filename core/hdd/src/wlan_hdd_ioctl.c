@@ -3260,6 +3260,11 @@ static int drv_cmd_set_suspend_mode(struct wlan_hdd_link_info *link_info,
 	else if (idle_monitor == 1)
 		hdd_enable_active_apf_mode(link_info);
 
+	if (sme_get_dhcp_status(hdd_ctx->mac_handle, link_info->vdev_id)) {
+		hdd_nofl_debug("DHCP in progress. Ignore SETSUSPEND command");
+		return 0;
+	}
+
 	status = ucfg_pmo_tgt_psoc_send_idle_roam_suspend_mode(hdd_ctx->psoc,
 							       idle_monitor);
 	if (QDF_IS_STATUS_ERROR(status)) {

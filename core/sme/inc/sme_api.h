@@ -542,6 +542,15 @@ QDF_STATUS sme_roam_ndi_stop(mac_handle_t mac_handle, uint8_t vdev_id);
 
 void sme_dhcp_done_ind(mac_handle_t mac_handle, uint8_t session_id);
 
+/**
+ * sme_get_dhcp_status() - API to check if dhcp is in progress
+ * @mac_handle: Opaque handle to the global MAC context
+ * @session_id: session id
+ *
+ * Return: True if dhcp in progress, else False
+ */
+bool sme_get_dhcp_status(mac_handle_t mac_handle, uint8_t session_id);
+
 /*
  * sme_roam_stop_bss() - To stop BSS for Soft AP. This is an asynchronous API.
  * @mac_handle - Global structure
