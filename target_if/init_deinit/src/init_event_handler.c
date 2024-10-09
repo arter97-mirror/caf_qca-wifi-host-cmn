@@ -517,6 +517,8 @@ exit:
 	return err_code;
 }
 
+#define WLAN_OPTIMIZE_POWER 0x2
+
 static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 							uint8_t *event,
 							uint32_t data_len)
@@ -529,6 +531,7 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 	wmi_legacy_service_ready_callback legacy_callback;
 	cdp_config_param_type val;
 	QDF_STATUS status;
+	bool opt_power = false;
 
 	if (!scn_handle) {
 		target_if_err("scn handle NULL in service ready ext2 handler");
@@ -638,8 +641,15 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 		err_code = init_deinit_populate_aux_dev_cap_ext2(psoc,
 								 wmi_handle,
 								 event, info);
-		if (err_code)
+		if (err_code) {
 			target_if_debug("failed to populate aux_dev cap ext2");
+		} else {
+			/* Intersect FW optimize power caps with the INI val */
+			opt_power = WLAN_OPTIMIZE_POWER &
+				info->aux_dev_caps[0].supported_modes_bitmap;
+			target_if_debug("FW optimize power: %d", opt_power);
+			info->wlan_res_cfg.enable_optimize_power &= opt_power;
+		}
 	}
 
 	if (wmi_service_enabled(wmi_handle,

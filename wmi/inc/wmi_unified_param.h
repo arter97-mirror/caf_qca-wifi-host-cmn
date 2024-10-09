@@ -7168,6 +7168,7 @@ struct target_feature_set {
  * @is_epm_supported: Is epm functionality supported
  * @con_mode_monitor: Device is in Full monitor mode
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
+ * @enable_optimize_power: Enable power optimization
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7313,6 +7314,7 @@ typedef struct {
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	bool mgmt_rx_srng_support;
 #endif
+	bool enable_optimize_power;
 } target_resource_config;
 
 /**
