@@ -20375,11 +20375,13 @@ int hdd_we_set_ch_width(struct hdd_adapter *adapter, int ch_width)
 	hdd_debug("wmi_vdev_param_chwidth val %d", ch_width);
 
 	for (i = 0; i < ARRAY_SIZE(chwidth_info); i++) {
-		if (chwidth_info[i].sir_chwidth_valid &&
-		    chwidth_info[i].sir_chwidth == ch_width)
-			return hdd_update_channel_width(
-					adapter, ch_width,
-					chwidth_info[i].bonding_mode);
+		if (!chwidth_info[i].sir_chwidth_valid ||
+		    chwidth_info[i].sir_chwidth != ch_width)
+			continue;
+
+		return hdd_update_channel_width(adapter, ch_width,
+						chwidth_info[i].bonding_mode,
+						false);
 	}
 
 	hdd_err("Invalid ch_width %d", ch_width);
