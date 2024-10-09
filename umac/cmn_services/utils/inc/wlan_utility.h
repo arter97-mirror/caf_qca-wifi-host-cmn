@@ -1174,4 +1174,14 @@ const uint8_t *wlan_get_rsnxe_data_from_ie_ptr(const uint8_t *ie_ptr,
  * Return: RSNO generation if present
  */
 const uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len);
+
+/*
+ * wlan_get_rsn_sel_ie_from_ie_ptr() - Get RSN selector IE from the beacon/
+ * assoc IEs
+ * @ie_ptr: pointer to ies
+ * @ie_len: length of ies in ie_ptr
+ *
+ * Return: RSN selector IE if present
+ */
+const uint8_t *wlan_get_rsn_sel_ie_from_ie_ptr(const uint8_t *ie, int len);
 #endif /* _WLAN_UTILITY_H_ */

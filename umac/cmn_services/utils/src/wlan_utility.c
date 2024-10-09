@@ -2537,3 +2537,9 @@ const uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len)
 
 	return 0;
 }
+
+const uint8_t *wlan_get_rsn_sel_ie_from_ie_ptr(const uint8_t *ie, int len)
+{
+	return wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_SELECTION,
+					       RSNO_OUI_SIZE, ie, len);
+}
