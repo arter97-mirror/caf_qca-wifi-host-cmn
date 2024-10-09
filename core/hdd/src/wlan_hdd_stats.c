@@ -6567,6 +6567,7 @@ static void wlan_hdd_fill_station_info(struct wlan_objmgr_psoc *psoc,
 	sinfo->tx_failed = stats->tx_failed;
 	sinfo->filled |= HDD_INFO_TX_FAILED;
 	sinfo->tx_retries = stats->tx_retries;
+	sinfo->filled |= HDD_INFO_TX_RETRIES;
 
 	/* sta flags */
 	hdd_fill_sta_flags(sinfo, stainfo);
