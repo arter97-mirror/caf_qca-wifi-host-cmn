@@ -669,6 +669,7 @@ dp_tx_me_send_convert_ucast(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			}
 			/* return if all clients are processed */
 			if (new_mac_idx == new_mac_cnt - 1) {
+				qdf_nbuf_unmap(vdev->osdev, nbuf, QDF_DMA_TO_DEVICE);
 				dp_vdev_unref_delete(soc, vdev,
 						     DP_MOD_ID_MCAST2UCAST);
 				qdf_nbuf_free(nbuf);
@@ -790,6 +791,7 @@ dp_tx_me_send_convert_ucast(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	}
 	qdf_mem_free(seg_info_head);
 
+	qdf_nbuf_unmap(vdev->osdev, nbuf, QDF_DMA_TO_DEVICE);
 	qdf_nbuf_free(nbuf);
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_MCAST2UCAST);
 	return new_mac_cnt;
