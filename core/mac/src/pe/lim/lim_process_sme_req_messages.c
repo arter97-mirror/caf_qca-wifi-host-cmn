@@ -4632,15 +4632,14 @@ void lim_set_emlsr_caps(struct mac_context *mac_ctx, struct pe_session *session)
 	if (!emlsr_cap)
 		return;
 
-	/* Check if vendor command chooses eMLSR mode */
+	/* Check if INI/vendor command for EMLSR is set */
 	wlan_mlme_get_emlsr_mode_enabled(mac_ctx->psoc, &emlsr_enabled);
 
 	/* Check if ML links are in 5 GHz + 6 GHz combination */
 	emlsr_band_check = lim_is_emlsr_band_supported(session);
 
 	emlsr_allowed = emlsr_cap && emlsr_enabled && emlsr_band_check;
-	emlsr_aux_support = WLAN_EMLSR_ENABLE &&
-			     wlan_mlme_is_aux_emlsr_support(mac_ctx->psoc);
+	emlsr_aux_support = wlan_mlme_is_aux_emlsr_support(mac_ctx->psoc);
 
 	if (emlsr_allowed || (emlsr_aux_support && emlsr_enabled)) {
 		wlan_vdev_obj_lock(session->vdev);
@@ -4653,7 +4652,8 @@ void lim_set_emlsr_caps(struct mac_context *mac_ctx, struct pe_session *session)
 	}
 
 	pe_debug("eMLSR vdev cap: %d", emlsr_allowed);
-	pe_debug("eMLSR aux support: %d", emlsr_aux_support);
+	pe_debug("eMLSR aux support: %d, eMLSR enabled: %d",
+		 emlsr_aux_support, emlsr_enabled);
 }
 #else
 static void lim_fill_ml_info(struct cm_vdev_join_req *req,

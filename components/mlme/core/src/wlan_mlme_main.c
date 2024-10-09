@@ -1303,7 +1303,7 @@ static void mlme_init_mgmt_hw_tx_retry_count_cfg(
 static void mlme_init_emlsr_mode(struct wlan_objmgr_psoc *psoc,
 				 struct wlan_mlme_generic *gen)
 {
-	gen->enable_emlsr_mode = cfg_default(CFG_EMLSR_MODE_ENABLE);
+	gen->enable_emlsr_mode = cfg_get(psoc, CFG_ENABLE_EMLSR_MODE);
 	gen->enable_sap_emlsr_mode = cfg_get(psoc, CFG_SAP_EMLSR_MODE_ENABLE);
 }
 

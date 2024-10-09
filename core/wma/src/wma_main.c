@@ -764,6 +764,8 @@ static void wma_set_default_tgt_config(tp_wma_handle wma_handle,
 	wma_set_peer_map_unmap_v2_config(wma_handle->psoc, tgt_cfg);
 
 	tgt_cfg->notify_frame_support = DP_MARK_NOTIFY_FRAME_SUPPORT;
+	tgt_cfg->enable_optimize_power =
+			cfg_get(wma_handle->psoc, CFG_ENABLE_OPTIMIZE_POWER);
 
 	if (wma_is_smem_mailbox_supported(wma_handle))
 		wma_set_smem_mailbox_feature(wma_handle, tgt_cfg);
