@@ -10401,8 +10401,8 @@ QDF_STATUS dp_get_per_link_peer_stats(struct dp_peer *peer,
 			link_peer = link_peers_info.link_peers[i];
 			if (qdf_unlikely(!link_peer))
 				continue;
-			dp_get_peer_per_pkt_stats(link_peer, peer_stats);
-			dp_get_peer_extd_stats(link_peer, peer_stats);
+			dp_get_peer_per_pkt_stats(link_peer, &peer_stats[i]);
+			dp_get_peer_extd_stats(link_peer, &peer_stats[i]);
 		}
 		dp_release_link_peers_ref(&link_peers_info,
 					  DP_MOD_ID_GENERIC_STATS);
