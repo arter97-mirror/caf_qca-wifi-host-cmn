@@ -1054,6 +1054,7 @@ static QDF_STATUS dp_peer_ast_entry_del_by_soc(struct cdp_soc_t *soc_handle,
 	struct dp_wds_entry *ent;
 	struct dp_peer *peer;
 	bool delete_in_fw;
+	uint8_t vdev_id;
 
 	if (dp_peer_check_ast_offload(soc))
 		return QDF_STATUS_SUCCESS;
@@ -1078,13 +1079,27 @@ static QDF_STATUS dp_peer_ast_entry_del_by_soc(struct cdp_soc_t *soc_handle,
 		return QDF_STATUS_E_INVAL;
 	}
 
+	if (qdf_unlikely(!peer->vdev)) {
+		dp_info_rl("Failed to get vdev for peer %u", ent->peer_id);
+		dp_peer_unref_delete(peer, DP_MOD_ID_AST);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = peer->vdev->vdev_id;
+
+	/* Send disconnect event to IPA driver */
+	if (soc->cdp_soc.ol_ops->peer_send_wds_disconnect)
+		soc->cdp_soc.ol_ops->peer_send_wds_disconnect(soc->ctrl_psoc,
+							      mac_addr,
+							      vdev_id);
+
 	/* Notify target to delete the WDS AST entry */
 	if (peer && dp_peer_state_cmp(peer, DP_PEER_STATE_LOGICAL_DELETE))
 		delete_in_fw = false;
 	else
 		delete_in_fw = true;
 
-	dp_del_wds_entry_wrapper(soc, peer->vdev->vdev_id, mac_addr,
+	dp_del_wds_entry_wrapper(soc, vdev_id, mac_addr,
 				 CDP_TXRX_AST_TYPE_WDS, delete_in_fw);
 
 	dp_peer_unref_delete(peer, DP_MOD_ID_AST);
@@ -5799,13 +5814,37 @@ static inline void dp_peer_ast_handle_roam_del(struct dp_soc *soc,
 
 	qdf_spin_unlock_bh(&soc->ast_lock);
 }
-#else
+#elif defined(FEATURE_WDS_AST_LEARNING) /* !FEATURE_AST */
+/**
+ * dp_peer_ast_handle_roam_del() - Delete peer_mac_addr from WDS hash table
+ *				   for roaming scenarios
+ * @soc: DP soc handle
+ * @pdev: DP pdev handle
+ * @peer_mac_addr: WDS peer mac address
+ *
+ * This branch is added for below driver configurations.
+ * FEATURE_WDS=y && FEATURE_AST=n && AST_OFFLOAD_ENABLE=n.
+ *
+ * When roaming scenarios happen (e.g. peer roaming from Agent AP to DUT
+ * AP), the WDS AST entry added earlier needs to be deleted.
+ * Disconnect event is also sent to IPA driver for the peer.
+ *
+ * Return: none
+ */
+static inline void dp_peer_ast_handle_roam_del(struct dp_soc *soc,
+					       struct dp_pdev *pdev,
+					       uint8_t *peer_mac_addr)
+{
+	dp_peer_ast_entry_del_by_soc((struct cdp_soc_t *)soc, peer_mac_addr,
+				     NULL, NULL);
+}
+#else /* !(FEATURE_AST && FEATURE_WDS_AST_LEARNING) */
 static inline void dp_peer_ast_handle_roam_del(struct dp_soc *soc,
 					       struct dp_pdev *pdev,
 					       uint8_t *peer_mac_addr)
 {
 }
-#endif
+#endif /* FEATURE_AST && FEATURE_WDS_AST_LEARNING */
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
