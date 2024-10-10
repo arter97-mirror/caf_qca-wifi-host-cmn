@@ -917,7 +917,7 @@ void wlan_rptr_core_global_disconnect_timeout_set(u32 value)
 	if (g_priv) {
 		RPTR_GLOBAL_LOCK(&g_priv->rptr_global_lock);
 		g_priv->disconnect_timeout = (u_int16_t)value;
-		RPTR_LOGI("RPTR disconnect_timeout:%d",
+		RPTR_LOGD("RPTR disconnect_timeout:%d",
 			  g_priv->disconnect_timeout);
 		RPTR_GLOBAL_UNLOCK(&g_priv->rptr_global_lock);
 	}
@@ -943,7 +943,7 @@ void wlan_rptr_core_global_reconfig_timeout_set(u32 value)
 	if (g_priv) {
 		RPTR_GLOBAL_LOCK(&g_priv->rptr_global_lock);
 		g_priv->reconfiguration_timeout = (u_int16_t)value;
-		RPTR_LOGI("RPTR reconfiguration_timeout:%d",
+		RPTR_LOGD("RPTR reconfiguration_timeout:%d",
 			  g_priv->reconfiguration_timeout);
 		RPTR_GLOBAL_UNLOCK(&g_priv->rptr_global_lock);
 	}
