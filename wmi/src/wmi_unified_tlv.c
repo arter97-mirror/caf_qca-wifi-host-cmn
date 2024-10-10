@@ -72,6 +72,9 @@
 #include "wlan_mlme_public_struct.h"
 #endif
 #include "cdp_txrx_cmn.h"
+#ifdef CONVERGED_P2P_ENABLE
+#include "wlan_p2p_api.h"
+#endif
 
 /*
  * If FW supports WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL,
@@ -14564,6 +14567,24 @@ static QDF_STATUS extract_vdev_roam_param_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef CONVERGED_P2P_ENABLE
+static void
+extract_vdev_scan_ev_flags(struct wlan_objmgr_psoc *psoc,
+			   struct scan_event *param,
+			   wmi_scan_event_fixed_param *evt)
+{
+	if (wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc))
+		param->flag = evt->flags;
+}
+#else
+static void
+extract_vdev_scan_ev_flags(struct wlan_objmgr_psoc *psoc,
+			   struct scan_event *param,
+			   wmi_scan_event_fixed_param *evt)
+{
+}
+#endif
+
 /**
  * extract_vdev_scan_ev_param_tlv() - extract vdev scan param from event
  * @wmi_handle: wmi handle
@@ -14655,7 +14676,8 @@ static QDF_STATUS extract_vdev_scan_ev_param_tlv(wmi_unified_t wmi_handle,
 	param->scan_id = evt->scan_id;
 	param->vdev_id = evt->vdev_id;
 	param->timestamp = evt->tsf_timestamp;
-	param->flag = evt->flags;
+	extract_vdev_scan_ev_flags(wmi_handle->soc->wmi_psoc, param, evt);
+
 
 	return QDF_STATUS_SUCCESS;
 }
