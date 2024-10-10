@@ -1328,6 +1328,11 @@ tdls_del_peer_serialize_callback(struct wlan_serialization_command *cmd,
 		/* command moved to active list
 		 */
 		status = tdls_activate_del_peer(req);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			status = tdls_internal_del_peer_rsp(req);
+			tdls_release_serialization_command(
+					req->vdev, WLAN_SER_CMD_TDLS_DEL_PEER);
+		}
 		break;
 
 	case WLAN_SER_CB_CANCEL_CMD:
