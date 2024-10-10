@@ -1105,6 +1105,12 @@ wlan_connectivity_connecting_event(struct wlan_objmgr_vdev *vdev,
 
 	WLAN_HOST_DIAG_EVENT_DEF(wlan_diag_event, struct wlan_diag_connect);
 
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE ||
+	    (wlan_vdev_mlme_is_mlo_vdev(vdev) &&
+	    (wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev) ||
+	    wlan_vdev_mlme_is_mlo_link_vdev(vdev))))
+		return;
+
 	if (!wlan_cm_is_first_candidate_connect_attempt(vdev))
 		return;
 
