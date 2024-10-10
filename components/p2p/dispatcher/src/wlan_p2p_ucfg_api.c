@@ -437,7 +437,7 @@ QDF_STATUS ucfg_p2p_mgmt_tx_cancel(struct wlan_objmgr_psoc *soc,
 	}
 	/* Filter gets cleaned up as part of P2P-GO off */
 	if (opmode == QDF_P2P_DEVICE_MODE &&
-	    ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(soc) &&
+	    wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(soc) &&
 	    !policy_mgr_mode_specific_get_channel(soc, PM_P2P_GO_MODE))
 		p2p_del_random_mac(soc, wlan_vdev_get_id(vdev), cookie);
 
@@ -838,7 +838,7 @@ void ucfg_p2p_set_sta_vdev_for_p2p_dev_operations(
 bool
 ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(struct wlan_objmgr_psoc *psoc)
 {
-	return p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc);
+	return wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc);
 }
 
 void ucfg_p2p_psoc_priv_set_sta_vdev_id(struct wlan_objmgr_psoc *psoc,

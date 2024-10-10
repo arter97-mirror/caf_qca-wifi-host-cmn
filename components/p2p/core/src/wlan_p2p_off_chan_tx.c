@@ -173,7 +173,7 @@ static QDF_STATUS p2p_vdev_check_valid(struct tx_action_context *tx_ctx)
 	if ((mode == QDF_STA_MODE &&
 	     tx_ctx->frame_info.sub_type == P2P_MGMT_PROBE_RSP &&
 	     (!(tx_ctx->opmode == QDF_P2P_DEVICE_MODE &&
-	      ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc)))) ||
+	      p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc)))) ||
 	    ((mode == QDF_SAP_MODE || mode == QDF_P2P_GO_MODE) &&
 	     ((tx_ctx->frame_info.sub_type == P2P_MGMT_PROBE_RSP) ||
 	     (tx_ctx->frame_info.sub_type == P2P_MGMT_DISASSOC) ||
@@ -3156,7 +3156,7 @@ void p2p_rand_mac_tx(struct wlan_objmgr_pdev *pdev,
 	 */
 	is_vdev_up = QDF_IS_STATUS_SUCCESS(wlan_vdev_is_up(vdev));
 	is_p2p_dev_frame = (tx_action->opmode == QDF_P2P_DEVICE_MODE &&
-		 ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(soc));
+		 p2p_is_sta_vdev_usage_allowed_for_p2p_dev(soc));
 	if ((!tx_action->no_ack || is_p2p_dev_frame) && tx_action->chan_freq &&
 	    tx_action->buf_len > MIN_MAC_HEADER_LEN &&
 	    p2p_is_vdev_support_rand_mac_by_id(soc, tx_action->vdev_id) &&

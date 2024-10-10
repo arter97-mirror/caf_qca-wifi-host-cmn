@@ -149,7 +149,7 @@ if_mgr_ap_start_bss_complete(struct wlan_objmgr_vdev *vdev,
 	 * P2P-GO channel
 	 */
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_P2P_GO_MODE &&
-	    ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc))
+	    wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc))
 		status = wlan_p2p_set_rand_mac_for_p2p_dev(psoc,
 				wlan_p2p_psoc_priv_get_sta_vdev_id(psoc),
 				policy_mgr_mode_specific_get_channel(psoc,
@@ -213,7 +213,7 @@ if_mgr_ap_stop_bss_complete(struct wlan_objmgr_vdev *vdev,
 	 * standalone cases.
 	 */
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_P2P_GO_MODE &&
-	    ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc))
+	    wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc))
 		status = wlan_p2p_del_random_mac(psoc,
 				wlan_p2p_psoc_priv_get_sta_vdev_id(psoc),
 						 0);

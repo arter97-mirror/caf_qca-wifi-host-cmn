@@ -237,4 +237,14 @@ wlan_p2p_set_rand_mac_for_p2p_dev(struct wlan_objmgr_psoc *soc,
 QDF_STATUS
 wlan_p2p_del_random_mac(struct wlan_objmgr_psoc *soc, uint32_t vdev_id,
 			uint64_t rnd_cookie);
+
+/**
+ * wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev() - Public API wrapper for
+ *				p2p_is_sta_vdev_usage_allowed_for_p2p_dev()
+ * @psoc: pointer to psoc
+ *
+ * Return: True/False
+ */
+bool
+wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(struct wlan_objmgr_psoc *psoc);
 #endif

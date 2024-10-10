@@ -129,8 +129,7 @@ static QDF_STATUS p2p_scan_start(struct p2p_roc_context *roc_ctx)
 	qdf_set_macaddr_broadcast(&req->scan_req.bssid_list[0]);
 
 	if (roc_ctx->opmode == QDF_P2P_DEVICE_MODE &&
-	    ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(
-						p2p_soc_obj->soc)) {
+	    p2p_is_sta_vdev_usage_allowed_for_p2p_dev(p2p_soc_obj->soc)) {
 		/* Fill same mac addr in scan_random.mac_addr which is received
 		 * from supplicant if roc type is OFF_CHANNEL_TX. Otherwise,
 		 * fill p2p interface mac address.
@@ -167,8 +166,8 @@ static QDF_STATUS p2p_scan_start(struct p2p_roc_context *roc_ctx)
 		    opmode == QDF_P2P_CLIENT_MODE ||
 		    opmode == QDF_P2P_GO_MODE ||
 		    (roc_ctx->opmode == QDF_P2P_DEVICE_MODE &&
-		     ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(
-						p2p_soc_obj->soc))) {
+		     p2p_is_sta_vdev_usage_allowed_for_p2p_dev(
+							p2p_soc_obj->soc))) {
 			if (go_num)
 			/* Check any P2P GO is already present or not. If it's
 			 * present then add fixed ROC timer value by 300ms

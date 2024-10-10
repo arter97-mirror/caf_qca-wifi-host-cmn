@@ -220,3 +220,9 @@ wlan_p2p_set_rand_mac_for_p2p_dev(struct wlan_objmgr_psoc *soc,
 	return p2p_set_rand_mac_for_p2p_dev(soc, vdev_id, freq, rnd_cookie,
 					    duration);
 }
+
+bool
+wlan_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(struct wlan_objmgr_psoc *psoc)
+{
+	return p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc);
+}
