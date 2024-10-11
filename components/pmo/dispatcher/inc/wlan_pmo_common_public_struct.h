@@ -377,6 +377,8 @@ enum pmo_page_fault_action {
  * @sta_mod_dtim: station modulated DTIM value
  * @sta_max_li_mod_dtim: station max listen interval DTIM value
  * @sta_forced_dtim: station forced DTIM value
+ * @wow_wakeup_event_mask: sta wow wakeup events bitmask lower 32 bits
+ * @wow_wakeup_event_mask_h32: sta wow wakeup events bitmask higher 32 bit
  * @wow_enable: enable wow with majic pattern match or pattern byte match
  * @power_save_mode: power save mode for psoc
  * @default_power_save_mode: default power save mode for psoc
@@ -463,6 +465,8 @@ struct pmo_psoc_cfg {
 	uint8_t sta_mod_dtim;
 	uint8_t sta_max_li_mod_dtim;
 	bool sta_forced_dtim;
+	uint32_t wow_wakeup_event_mask;
+	uint32_t wow_wakeup_event_mask_h32;
 	enum pmo_wow_enable_type wow_enable;
 	enum powersave_mode power_save_mode;
 	enum powersave_mode default_power_save_mode;

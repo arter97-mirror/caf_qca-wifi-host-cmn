@@ -846,6 +846,56 @@
 	0, \
 	"enable/disable ICMP offload")
 
+/*
+ * <ini>
+ * gWowWakeupEventMask - WoW wake up source event configuration (32bits)
+ * @Min: 0
+ * @Max: 0xFFFFFFFF
+ * @Default: 0xFFFFFFFF
+ *
+ * This ini is used to configure WoW wake up sources. Bit defined in
+ * WOW_WAKE_EVENT_TYPE in wmi_unified.h. Bit set means wakeup source enabled
+ * bit clear means wake up source disabled
+ * This ini cover lower 32 bits
+ *
+ * Supported Feature: STA WoW
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_WOW_WAKEUP_EVENT_MASK CFG_INI_UINT( \
+	"gWowWakeupEventMask", \
+	0, \
+	0xFFFFFFFF, \
+	0xFFFFFFFF, \
+	CFG_VALUE_OR_DEFAULT, "WoW Wakeup Event Mask Lower 32bits")
+
+/*
+ * <ini>
+ * gWowWakeupEventMaskH32 - WoW wake up source event configuration (32bits)
+ * @Min: 0
+ * @Max: 0xFFFFFFFF
+ * @Default: 0xFFFFFFFF
+ *
+ * This ini is used to configure WoW wake up sources. Bit defined in
+ * WOW_WAKE_EVENT_TYPE in wmi_unified.h. Bit set means wakeup source enabled
+ * bit clear means wake up source disabled
+ * This ini cover higher 32 bits
+ *
+ * Supported Feature: STA WoW
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_WOW_WAKEUP_EVENT_MASK_H32 CFG_INI_UINT( \
+	"gWowWakeupEventMaskH32", \
+	0, \
+	0xFFFFFFFF, \
+	0xFFFFFFFF, \
+	CFG_VALUE_OR_DEFAULT, "WoW Wakeup Event Mask Higher 32bits")
+
 #define CFG_PMO_COMMON_ALL \
 	CFG(CFG_ENABLE_SAP_SUSPEND) \
 	CFG(CFG_PMO_ENABLE_HOST_ARPOFFLOAD) \
@@ -878,6 +928,8 @@
 	CFG(CFG_HOST_ACTION_ON_PAGEFAULT) \
 	CFG(CFG_MIN_PAGEFAULT_WAKEUPS_FOR_ACTION) \
 	CFG(CFG_INTERVAL_FOR_PAGEFAULT_WAKEUP_COUNT) \
-	CFG(CFG_SSR_FREQUENCY_ON_PAGEFAULT)
+	CFG(CFG_SSR_FREQUENCY_ON_PAGEFAULT) \
+	CFG(CFG_WOW_WAKEUP_EVENT_MASK) \
+	CFG(CFG_WOW_WAKEUP_EVENT_MASK_H32)
 
 #endif /* WLAN_PMO_COMMON_CFG_H__ */

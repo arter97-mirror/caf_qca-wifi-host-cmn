@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -90,13 +90,14 @@ void pmo_set_wow_event_bitmap(WOW_WAKE_EVENT_TYPE event,
 
 /**
  * pmo_set_sta_wow_bitmask() - set predefined STA wow wakeup events
+ * @pmo_cfg: psoc pmo user configuration
  * @bitmask: bitmask field
  * @wow_bitmask_size: bitmask field size
  *
  * Return: none
  */
-void pmo_set_sta_wow_bitmask(uint32_t *bitmask, uint32_t wow_bitmask_size);
-
+void pmo_set_sta_wow_bitmask(struct pmo_psoc_cfg *pmo_cfg, uint32_t *bitmask,
+			     uint32_t wow_bitmask_size);
 /**
  * pmo_set_sap_wow_bitmask() - set predefined SAP wow wakeup events
  * @bitmask: bitmask field
