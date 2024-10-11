@@ -6755,9 +6755,11 @@ typedef enum {
 	wmi_service_mlo_sap_emlsr_support,
 #endif
 	wmi_service_ap_assisted_dfs_chan_p2p_session,
+	wmi_service_mrsno_support,
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_service_mlo_sap_concurrency_support,
 #endif
+
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
