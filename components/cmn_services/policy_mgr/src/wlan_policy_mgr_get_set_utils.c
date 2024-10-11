@@ -4443,8 +4443,13 @@ void policy_mgr_move_vdev_from_disabled_to_connection_tbl(
 	}
 
 	if (!policy_mgr_is_ml_vdev_id(psoc, vdev_id)) {
-		policy_mgr_err("vdev %d is not ML", vdev_id);
-		return;
+		if (!wlan_cm_is_roam_sync_in_progress(psoc, vdev_id)) {
+			policy_mgr_err("vdev %d is not ML", vdev_id);
+			return;
+		} else {
+			policy_mgr_debug("vdev %d is not ML in roam sync",
+					 vdev_id);
+		}
 	}
 
 	status = policy_mgr_delete_from_disabled_links(pm_ctx, vdev_id);
