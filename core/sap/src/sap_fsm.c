@@ -66,6 +66,7 @@
 #include "wlan_ll_sap_api.h"
 #include "wlan_nan_api.h"
 #include <wlan_p2p_api.h>
+#include <wlan_cfg80211_scan.h>
 
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -3730,6 +3731,12 @@ static QDF_STATUS sap_goto_starting(struct sap_context *sap_ctx,
 	sap_ctx->sap_radar_found_status = false;
 
 	sap_debug("session: %d", sap_ctx->sessionId);
+
+	/* Cancel all ongoing/pending scan requests */
+	if (wlan_get_pdev_status(mac_ctx->pdev) != SCAN_NOT_IN_PROGRESS)
+		wlan_abort_scan(mac_ctx->pdev,
+				wlan_objmgr_pdev_get_pdev_id(mac_ctx->pdev),
+				INVAL_VDEV_ID, INVAL_SCAN_ID, false);
 
 	qdf_status = sme_start_bss(mac_handle, sap_ctx->sessionId,
 				   &sap_ctx->sap_bss_cfg);
