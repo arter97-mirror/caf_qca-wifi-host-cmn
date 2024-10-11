@@ -5537,7 +5537,7 @@ close:
 	cds_close(hdd_ctx->psoc);
 
 psoc_close:
-	hdd_component_psoc_close(hdd_ctx->psoc);
+	hdd_component_psoc_close(hdd_ctx->psoc, cds_is_driver_recovering());
 	wlan_global_lmac_if_close(hdd_ctx->psoc);
 	cds_deinit_ini_config();
 
@@ -10335,10 +10335,15 @@ static void hdd_stop_station_adapter(struct hdd_adapter *adapter)
 		wlan_hdd_cleanup_actionframe(link_info);
 		wlan_hdd_flush_pmksa_cache(link_info);
 
-		if (mode == QDF_STA_MODE)
+		if (mode == QDF_STA_MODE) {
 			ucfg_ipa_flush_pending_vdev_events(
 						wlan_vdev_get_pdev(vdev),
 						link_info->vdev_id);
+
+			/* delete crypto keys for all links */
+			ucfg_cm_delete_crypto_keys_for_all_links(vdev);
+		}
+
 		hdd_objmgr_put_vdev_by_user(vdev, WLAN_INIT_DEINIT_ID);
 
 		if (mode == QDF_NAN_DISC_MODE)
@@ -18260,7 +18265,7 @@ int hdd_wlan_stop_modules(struct hdd_context *hdd_ctx, bool ftm_mode)
 			hdd_err("WBUFF de-init unsuccessful; status: %d",
 				qdf_status);
 
-		hdd_component_psoc_close(hdd_ctx->psoc);
+		hdd_component_psoc_close(hdd_ctx->psoc, is_recovery_stop);
 		/* pdev close and destroy use tx rx ops so call this here */
 		wlan_global_lmac_if_close(hdd_ctx->psoc);
 	}
@@ -21009,7 +21014,7 @@ err_dlm:
 	return status;
 }
 
-void hdd_component_psoc_close(struct wlan_objmgr_psoc *psoc)
+void hdd_component_psoc_close(struct wlan_objmgr_psoc *psoc, bool is_recovering)
 {
 	ucfg_dp_psoc_close(psoc);
 	ucfg_wifi_pos_psoc_close(psoc);
@@ -21023,7 +21028,7 @@ void hdd_component_psoc_close(struct wlan_objmgr_psoc *psoc)
 	ucfg_dlm_psoc_close(psoc);
 	ucfg_mlme_psoc_close(psoc);
 
-	if (!cds_is_driver_recovering() || cds_is_driver_unloading())
+	if (!is_recovering || cds_is_driver_unloading())
 		ucfg_crypto_flush_entries(psoc);
 }
 

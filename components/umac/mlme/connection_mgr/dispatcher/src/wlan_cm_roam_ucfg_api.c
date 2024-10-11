@@ -26,6 +26,7 @@
 #include "../../core/src/wlan_cm_roam_offload.h"
 #include "wlan_reg_ucfg_api.h"
 #include "wlan_mlo_mgr_sta.h"
+#include "../../core/src/wlan_cm_roam_i.h"
 
 bool ucfg_is_rso_enabled(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id)
 {
@@ -767,3 +768,10 @@ ucfg_cm_get_empty_scan_refresh_period_global(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+#ifdef WLAN_FEATURE_11BE_MLO
+void ucfg_cm_delete_crypto_keys_for_all_links(struct wlan_objmgr_vdev *vdev)
+{
+	cm_delete_crypto_keys_for_all_links(vdev);
+}
+#endif /* WLAN_FEATURE_11BE_MLO */

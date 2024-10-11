@@ -883,4 +883,20 @@ ucfg_cm_roaming_get_peer_mld_addr(struct wlan_objmgr_vdev *vdev)
 	return NULL;
 }
 #endif
+
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * ucfg_cm_delete_crypto_keys_for_all_links() - This API is wrapper for
+ * "cm_delete_crypto_keys_for_all_links" function
+ * @vdev: pointer to VDEV
+ *
+ * Return: none
+ */
+void ucfg_cm_delete_crypto_keys_for_all_links(struct wlan_objmgr_vdev *vdev);
+#else
+static inline
+void ucfg_cm_delete_crypto_keys_for_all_links(struct wlan_objmgr_vdev *vdev)
+{
+}
+#endif /* WLAN_FEATURE_11BE_MLO */
 #endif /* _WLAN_CM_ROAM_UCFG_API_H_ */

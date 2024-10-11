@@ -4885,13 +4885,15 @@ QDF_STATUS hdd_component_psoc_open(struct wlan_objmgr_psoc *psoc);
 /**
  * hdd_component_psoc_close() - Close the legacy components
  * @psoc: Pointer to psoc object
+ * @is_recovering: is driver recovery in progress
  *
  * This function closes the legacy components and resets the
  * component's private objects.
  *
  * Return: None
  */
-void hdd_component_psoc_close(struct wlan_objmgr_psoc *psoc);
+void hdd_component_psoc_close(struct wlan_objmgr_psoc *psoc,
+			      bool is_recovering);
 
 /**
  * hdd_component_psoc_enable() - Trigger psoc enable for CLD Components
