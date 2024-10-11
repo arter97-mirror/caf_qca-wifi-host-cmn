@@ -6775,6 +6775,7 @@ typedef enum {
 	wmi_service_is_target_ipa,
 	wmi_service_therm_throt_tx_chain_mask,
 	wmi_service_therm_throt_5_levels,
+	wmi_service_mrsno_support,
 
 	wmi_services_max,
 } wmi_conv_service_ids;

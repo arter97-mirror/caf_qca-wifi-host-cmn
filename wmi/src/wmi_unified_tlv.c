@@ -24583,6 +24583,7 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_THERM_THROT_TX_CHAIN_MASK;
 	wmi_service[wmi_service_therm_throt_5_levels] =
 				WMI_SERVICE_THERM_THROT_5_LEVELS;
+	wmi_service[wmi_service_mrsno_support] = WMI_SERVICE_MULTI_RSNO_SUPPORT;
 }
 
 /**
