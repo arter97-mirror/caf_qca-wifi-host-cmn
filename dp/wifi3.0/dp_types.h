@@ -1346,6 +1346,7 @@ struct reo_cmd_event_history {
  * @invalid_peer_unmap: Peer unmap with invalid peer id
  * @ml_peer_map: MLD peer map count
  * @ml_peer_unmap: MLD peer unmap count
+ * @peer_unmap_add: unmap old peer manuallly and replace with new peer
  */
 struct htt_t2h_msg_stats {
 	uint32_t peer_map;
@@ -1353,6 +1354,7 @@ struct htt_t2h_msg_stats {
 	uint32_t invalid_peer_unmap;
 	uint32_t ml_peer_map;
 	uint32_t ml_peer_unmap;
+	uint32_t peer_unmap_add;
 };
 
 #ifdef WLAN_DP_LOAD_BALANCE_SUPPORT
