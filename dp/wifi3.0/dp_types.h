@@ -4000,6 +4000,7 @@ struct dp_vdev_stats {
 
 /* VDEV structure for data path state */
 struct dp_vdev {
+	struct cdp_vdev cdp_vdev;
 	/* OS device abstraction */
 	qdf_device_t osdev;
 
@@ -4153,7 +4154,7 @@ struct dp_vdev {
 	ol_txrx_classify_critical_pkt_fp tx_classify_critical_pkt_cb;
 
 	/* delete notifier to DP component */
-	ol_txrx_vdev_delete_cb vdev_del_notify;
+	ol_txrx_vdev_del_notify_cb vdev_del_notify;
 
 	/* deferred vdev deletion state */
 	struct {
