@@ -366,7 +366,7 @@ struct cdp_cmn_ops {
 	 * Data Interface (B Interface)
 	 ********************************************************************/
 
-	QDF_STATUS
+	struct cdp_vdev *
 	(*txrx_vdev_register)(struct cdp_soc_t *soc, uint8_t vdev_id,
 			      ol_osif_vdev_handle osif_vdev,
 			      struct ol_txrx_ops *txrx_ops);
