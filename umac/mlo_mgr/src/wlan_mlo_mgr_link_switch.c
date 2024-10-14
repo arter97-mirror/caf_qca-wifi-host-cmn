@@ -111,17 +111,33 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 {
 	struct mlo_link_info *link_info;
 	uint8_t link_info_iter;
+	bool link_exist = false;
 
 	if (!vdev || !vdev->mlo_dev_ctx || !ap_link_addr)
 		return;
 
+	/* Check if link already exists */
 	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
-		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+		if (qdf_is_macaddr_equal(&link_info->ap_link_addr,
+					 (struct qdf_mac_addr *)ap_link_addr)) {
+			link_exist = true;
 			break;
-
+		}
 		link_info++;
+	}
+
+	/* Find first free link index if link does not exists */
+	if (!link_exist) {
+		link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+		for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+		     link_info_iter++) {
+			if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+				break;
+
+			link_info++;
+		}
 	}
 
 	if (link_info_iter == WLAN_MAX_ML_BSS_LINKS)
