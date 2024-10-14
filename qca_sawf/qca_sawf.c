@@ -1092,18 +1092,73 @@ bool qca_sdwf_validate_wifi_port_params(struct qca_sawf_wifi_port_params *wp)
 			return false;
 	}
 
-	if (wp->ssid_len > ACFG_MAX_SSID_LEN)
+	if (wp->ssid_len > MAX_SSID_LEN)
 		return false;
 
 	return true;
 }
 
-bool qca_sdwf_match_wifi_port_params(struct net_device *netdev,
-				     uint8_t *dest_mac, uint8_t priority,
-				     struct qca_sawf_wifi_port_params *wp)
+bool qca_sdwf_validate_wifi_port_params_v2(struct qca_sawf_wifi_port_params_v2 *params)
 {
-	return qca_sdwf_match_wifi_port_params_v2(netdev, dest_mac,
-						  NULL, NULL, priority, wp);
+	struct qca_sawf_wifi_port_params wp = {0};
+	uint8_t ssid[MAX_SSID_LEN + 1] = {0};
+	uint8_t bssid[MAC_ADDR_SIZE] = {0};
+	uint8_t ra_mac[MAC_ADDR_SIZE] = {0};
+	uint8_t ta_mac[MAC_ADDR_SIZE] = {0};
+
+	qdf_mem_copy(ssid, params->ssid, MAX_SSID_LEN + 1);
+	qdf_mem_copy(bssid, params->bssid, MAC_ADDR_SIZE);
+	qdf_mem_copy(ra_mac, params->ra_mac, MAC_ADDR_SIZE);
+	qdf_mem_copy(ta_mac, params->ta_mac, MAC_ADDR_SIZE);
+	wp.ssid = ssid;
+	wp.bssid = bssid;
+	wp.ra_mac = ra_mac;
+	wp.ta_mac = ta_mac;
+	qdf_mem_copy(&wp.band, &params->band, sizeof(struct qca_sawf_radio_params));
+	qdf_mem_copy(&wp.channel, &params->channel, sizeof(struct qca_sawf_radio_params));
+	qdf_mem_copy(&wp.bw, &params->bw, sizeof(struct qca_sawf_radio_params));
+	wp.ssid_len = params->ssid_len;
+	wp.dscp = params->dscp;
+	wp.pcp = params->pcp;
+	wp.ac = params->ac;
+	wp.valid_flags = params->valid_flags;
+	wp.priority = params->priority;
+
+	return qca_sdwf_validate_wifi_port_params(&wp);
+}
+
+bool qca_sdwf_match_wifi_port_params(struct net_device *dst_dev,
+				     uint8_t dest_mac[],
+				     struct net_device *src_dev,
+				     uint8_t src_mac[],
+				     uint8_t pri,
+				     struct qca_sawf_wifi_port_params_v2 *params)
+{
+	struct qca_sawf_wifi_port_params wp = {0};
+	uint8_t ssid[MAX_SSID_LEN + 1] = {0};
+	uint8_t bssid[MAC_ADDR_SIZE] = {0};
+	uint8_t ra_mac[MAC_ADDR_SIZE] = {0};
+	uint8_t ta_mac[MAC_ADDR_SIZE] = {0};
+
+	qdf_mem_copy(ssid, params->ssid, MAX_SSID_LEN + 1);
+	qdf_mem_copy(bssid, params->bssid, MAC_ADDR_SIZE);
+	qdf_mem_copy(ra_mac, params->ra_mac, MAC_ADDR_SIZE);
+	qdf_mem_copy(ta_mac, params->ta_mac, MAC_ADDR_SIZE);
+	wp.ssid = ssid;
+	wp.bssid = bssid;
+	wp.ra_mac = ra_mac;
+	wp.ta_mac = ta_mac;
+	qdf_mem_copy(&wp.band, &params->band, sizeof(struct qca_sawf_radio_params));
+	qdf_mem_copy(&wp.channel, &params->channel, sizeof(struct qca_sawf_radio_params));
+	qdf_mem_copy(&wp.bw, &params->bw, sizeof(struct qca_sawf_radio_params));
+	wp.ssid_len = params->ssid_len;
+	wp.dscp = params->dscp;
+	wp.pcp = params->pcp;
+	wp.ac = params->ac;
+	wp.valid_flags = params->valid_flags;
+	wp.priority = params->priority;
+
+	return qca_sdwf_match_wifi_port_params_v2(dst_dev, dest_mac, src_dev, src_mac, pri, &wp);
 }
 
 bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
@@ -1263,6 +1318,7 @@ void qca_sawf_config_ul(struct net_device *dst_dev, struct net_device *src_dev,
 /* Forward declaration */
 struct qca_sawf_connection_sync_param;
 struct qca_sawf_wifi_port_params;
+struct qca_sawf_wifi_port_params_v2;
 typedef struct qca_sawf_connection_sync_param qca_sawf_mcast_sync_param_t;
 struct qca_sawf_flow_deprioritize_params;
 struct qca_sawf_flow_deprioritize_resp_params;
@@ -1289,9 +1345,17 @@ bool qca_sdwf_validate_wifi_port_params(struct qca_sawf_wifi_port_params *wp)
 	return true;
 }
 
-bool qca_sdwf_match_wifi_port_params(struct net_device *netdev,
-				     uint8_t *dest_mac, uint8_t priority,
-				     struct qca_sawf_wifi_port_params *wp)
+bool qca_sdwf_validate_wifi_port_params_v2(struct qca_sawf_wifi_port_params_v2 *wp)
+{
+	return true;
+}
+
+bool qca_sdwf_match_wifi_port_params(struct net_device *dst_dev,
+				     uint8_t dest_mac[],
+				     struct net_device *src_dev,
+				     uint8_t src_mac[],
+				     uint8_t priority,
+				     struct qca_sawf_wifi_port_params_v2 *wp)
 {
 	return true;
 }
@@ -1327,3 +1391,4 @@ qdf_export_symbol(qca_sawf_flow_deprioritize_response);
 qdf_export_symbol(qca_sdwf_match_wifi_port_params);
 qdf_export_symbol(qca_sdwf_validate_wifi_port_params);
 qdf_export_symbol(qca_sdwf_match_wifi_port_params_v2);
+qdf_export_symbol(qca_sdwf_validate_wifi_port_params_v2);
