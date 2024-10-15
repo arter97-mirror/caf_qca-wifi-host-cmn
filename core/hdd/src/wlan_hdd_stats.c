@@ -5718,7 +5718,7 @@ wlan_hdd_fill_per_link_summary_stats(tCsrSummaryStatsInfo *stats,
 	status = ucfg_dp_get_per_link_peer_stats(soc, link_info->vdev_id,
 						 peer_mac, peer_stats,
 						 CDP_WILD_PEER_TYPE,
-						 WLAN_MAX_MLD);
+						 DP_STAT_NUM_SINGLE_LINK);
 
 	if (QDF_IS_STATUS_ERROR(status)) {
 		hdd_err("Unable to get per link peer stats for the peer: "
@@ -7720,7 +7720,7 @@ wlan_hdd_update_mlo_peer_stats(struct wlan_hdd_link_info *link_info,
 	ucfg_dp_get_per_link_peer_stats(soc, link_info->vdev_id,
 					peer_mac, peer_stats,
 					CDP_WILD_PEER_TYPE,
-					WLAN_MAX_MLD);
+					DP_STAT_NUM_SINGLE_LINK);
 
 	sinfo->tx_bytes = peer_stats->tx.tx_success.bytes;
 	sinfo->rx_bytes = peer_stats->rx.rcvd.bytes;
@@ -9652,7 +9652,7 @@ wlan_hdd_get_per_peer_stats(struct wlan_hdd_link_info *link_info,
 	status = ucfg_dp_get_per_link_peer_stats(soc, link_info->vdev_id,
 						 peer_mac, peer_stats,
 						 CDP_WILD_PEER_TYPE,
-						 WLAN_MAX_MLD);
+						 DP_STAT_NUM_SINGLE_LINK);
 	return status;
 }
 

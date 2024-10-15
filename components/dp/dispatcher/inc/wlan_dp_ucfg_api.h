@@ -1681,12 +1681,14 @@ QDF_STATUS ucfg_dp_txrx_ext_dump_stats(ol_txrx_soc_handle soc,
 QDF_STATUS ucfg_dp_txrx_set_cpu_mask(ol_txrx_soc_handle soc,
 				     qdf_cpu_mask *new_mask);
 
+#define DP_STAT_NUM_SINGLE_LINK 1
+#define DP_STAT_NUM_ALL_LINKS WLAN_MAX_MLD
 /**
  * ucfg_dp_get_per_link_peer_stats() - Call to get per link peer stats
  * @soc: soc handle
  * @vdev_id: vdev_id of vdev object
  * @peer_mac: mac address of the peer
- * @peer_stats: destination buffer
+ * @peer_stats: destination buffer, num_link * size of cdp_peer_stats
  * @peer_type: Peer type
  * @num_link: Number of ML links
  *
