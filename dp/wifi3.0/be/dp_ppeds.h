@@ -374,4 +374,111 @@ void
 dp_ppeds_tx_desc_pool_reset(struct dp_soc *soc,
 			    qdf_nbuf_t *nbuf_list);
 #endif /* DP_UMAC_HW_RESET_SUPPORT */
+/**
+ * dp_ppeds_fill_tx_desc_in_soc_be() - Initialize the global pool in be_soc structure.
+ * @soc: SoC
+ *
+ */
+inline void dp_ppeds_fill_tx_desc_in_soc_be(struct dp_soc *soc);
+
+/**
+ * dp_ppeds_clear_tx_desc_in_soc_be() - Clear the global pool in be_soc structure.
+ * @soc: SoC
+ *
+ */
+inline void dp_ppeds_clear_tx_desc_in_soc_be(struct dp_soc *soc);
+
+/**
+ * dp_ppeds_tx_desc_pool_alloc_be() - Checks if the pool is to be allocated
+ * in the respective context.
+ *
+ * Allocates the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_alloc_be(void);
+
+/**
+ * dp_ppeds_tx_desc_pool_free_be() - Checks if the pool is to be freed
+ * in the respective context.
+ *
+ * Frees the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_free_be(void);
+
+/**
+ * dp_ppeds_tx_desc_pool_init_be() - Checks if the pool is to be initialized
+ * in the respective context
+ *
+ * Initializes the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_init_be(void);
+
+/**
+ * dp_ppeds_tx_desc_pool_deinit_be() - Checks if the pool is to be deinitializes
+ * in the respective context
+ *
+ * Deintializes the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_deinit_be(void);
+
+/**
+ * dp_ppeds_tx_cookie_detach_be() - Checks if the cookie is to be detached
+ * in the respective context
+ *
+ * Detaches the cookie once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_cookie_detach_be(void);
+
+/**
+ * dp_ppeds_tx_cookie_attach_be() - Checks if the cookie is to be attached
+ * in the respective context
+ *
+ * Attaches the cookies once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_cookie_attach_be(void);
+
+/**
+ * dp_ppeds_tx_desc_pool_alloc_mem() - PPE DS allocate mem
+ *
+ * PPE DS allocate mem
+ */
+inline void dp_ppeds_tx_desc_pool_alloc_mem(void);
+
+/**
+ * dp_ppeds_tx_cookie_alloc_mem() - PPE DS cookie allocate mem
+ *
+ * PPE DS cookie allocate mem
+ */
+inline void dp_ppeds_tx_cookie_alloc_mem(void);
+
+/**
+ * dp_ppeds_tx_desc_pool_free_mem() - PPE DS free memory
+ *
+ * PPE DS free pool mem
+ */
+inline void dp_ppeds_tx_desc_pool_free_mem(void);
+
+/**
+ * dp_ppeds_tx_cookie_free_mem() - PPE DS free cookie memory
+ *
+ * PPE DS free cookie mem
+ */
+inline void dp_ppeds_tx_cookie_free_mem(void);
 #endif /* _DP_PPEDS_H_ */
