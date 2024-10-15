@@ -3332,7 +3332,8 @@ lim_disable_ht_he_dynamic_smps(struct pe_session *session,
 QDF_STATUS
 lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 		    struct bss_description *bss_desc,
-		    enum wlan_phymode phy_mode)
+		    enum wlan_phymode phy_mode,
+		    enum wlan_status_code *req_fail_status_code)
 {
 	uint8_t bss_chan_id;
 	tDot11fBeaconIEs *ie_struct;
@@ -3629,9 +3630,13 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 				bss_desc->chan_freq,
 				rf_mode_force_pwr_type);
 		if (QDF_IS_STATUS_ERROR(status)) {
+			if (req_fail_status_code)
+				*req_fail_status_code =
+					STATUS_PWR_CAPABILITY_NOT_VALID;
 			status = QDF_STATUS_E_NOSUPPORT;
 			goto send;
 		}
+
 		session->best_6g_power_type = power_type_6g;
 		mlme_set_best_6g_power_type(session->vdev, power_type_6g);
 
@@ -4672,6 +4677,7 @@ lim_fill_session_params(struct mac_context *mac_ctx,
 	struct mlme_legacy_priv *mlme_priv;
 	uint32_t assoc_ie_len;
 	bool eht_capab;
+	enum wlan_status_code req_fail_status_code = STATUS_UNSPECIFIED_FAILURE;
 
 	ie_len = util_scan_entry_ie_len(req->entry);
 	bss_len = (uint16_t)(offsetof(struct bss_description,
@@ -4713,12 +4719,14 @@ lim_fill_session_params(struct mac_context *mac_ctx,
 	session->ssidHidden = req->is_ssid_hidden;
 
 	status = lim_fill_pe_session(mac_ctx, session, bss_desc,
-				     req->entry->phy_mode);
+				     req->entry->phy_mode,
+				     &req_fail_status_code);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		pe_err("Failed to fill pe session vdev id %d",
 		       session->vdev_id);
 		qdf_mem_free(session->lim_join_req);
 		session->lim_join_req = NULL;
+		req->req_fail_status_code = req_fail_status_code;
 		return QDF_STATUS_E_FAILURE;
 	}
 
