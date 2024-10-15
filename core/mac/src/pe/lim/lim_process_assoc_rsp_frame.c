@@ -1207,7 +1207,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	tpDphHashNode sta_ds;
 	tpSirAssocRsp assoc_rsp;
 	tLimMlmAssocCnf assoc_cnf;
-	tSchBeaconStruct *beacon;
+	tSchBeaconStruct *beacon = NULL;
 	uint8_t ap_nss;
 	uint16_t aid;
 	int8_t rssi;
@@ -1250,9 +1250,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 			session_entry->limMlmState, rssi,
 			QDF_MAC_ADDR_REF(hdr->sa));
 
-	beacon = qdf_mem_malloc(sizeof(tSchBeaconStruct));
-	if (!beacon)
-		return;
 
 	if (((subtype == LIM_ASSOC) &&
 		(session_entry->limMlmState != eLIM_MLM_WT_ASSOC_RSP_STATE)) ||
@@ -1276,7 +1273,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 				mac_ctx->lim.retry_packet_cnt++;
 			}
 		}
-		qdf_mem_free(beacon);
 		return;
 	}
 	sir_copy_mac_addr(current_bssid, session_entry->bssId);
@@ -1293,7 +1289,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 
 			if (lim_is_roam_synch_in_progress(mac_ctx->psoc, session_entry)) {
 				session_entry->is_unexpected_peer_error = true;
-				qdf_mem_free(beacon);
 				return;
 			}
 			/*
@@ -1302,7 +1297,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 			 */
 			lim_send_join_fail_on_vdev(mac_ctx, session_entry,
 						   eSIR_SME_ASSOC_REFUSED);
-			qdf_mem_free(beacon);
 			return;
 		}
 	} else {
@@ -1319,7 +1313,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 
 			if (lim_is_roam_synch_in_progress(mac_ctx->psoc, session_entry)) {
 				session_entry->is_unexpected_peer_error = true;
-				qdf_mem_free(beacon);
 				return;
 			}
 
@@ -1329,14 +1322,12 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 			 */
 			lim_send_join_fail_on_vdev(mac_ctx, session_entry,
 						   eSIR_SME_REASSOC_REFUSED);
-			qdf_mem_free(beacon);
 			return;
 		}
 	}
 
 	assoc_rsp = qdf_mem_malloc(sizeof(*assoc_rsp));
 	if (!assoc_rsp) {
-		qdf_mem_free(beacon);
 		return;
 	}
 
@@ -1352,12 +1343,13 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	/* parse Re/Association Response frame. */
 	if (sir_convert_assoc_resp_frame2_struct(mac_ctx, session_entry, body,
 		frame_body_len, assoc_rsp) == QDF_STATUS_E_FAILURE) {
-		qdf_mem_free(assoc_rsp);
 		pe_err("Parse error Assoc resp subtype: %d" "length: %d",
 			frame_body_len, subtype);
-		qdf_mem_free(beacon);
-		return;
+		goto free_mem;
 	}
+
+	auth_type = session_entry->connected_akm;
+	sha384_akm = lim_is_sha384_akm(auth_type);
 
 	if (subtype == LIM_REASSOC) {
 		lim_cp_stats_cstats_log_assoc_resp_evt
@@ -1395,7 +1387,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 
 		if (frame_body_len < ies_offset) {
 			pe_err("frame body length is < ies_offset");
-			return;
+			goto free_mem;
 		}
 
 		status = lim_strip_and_decode_eht_op(
@@ -1408,7 +1400,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 
 		if (status != QDF_STATUS_SUCCESS) {
 			pe_err("Failed to extract eht op");
-			return;
+			goto free_mem;
 		}
 
 		status = lim_strip_and_decode_eht_cap(body + ies_offset,
@@ -1419,7 +1411,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 						      false);
 		if (status != QDF_STATUS_SUCCESS) {
 			pe_err("Failed to extract eht cap");
-			return;
+			goto free_mem;
 		}
 	}
 
@@ -1459,16 +1451,10 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	lim_update_ese_tspec(mac_ctx, session_entry, assoc_rsp);
 #endif
 
-	auth_type = session_entry->connected_akm;
-	sha384_akm = lim_is_sha384_akm(auth_type);
-
 	if (lim_get_capability_info(mac_ctx, &caps, session_entry)
 		!= QDF_STATUS_SUCCESS) {
-		clean_up_ft_sha384(assoc_rsp, sha384_akm);
-		qdf_mem_free(assoc_rsp);
-		qdf_mem_free(beacon);
 		pe_err("could not retrieve Capabilities");
-		return;
+		goto free_mem;
 	}
 	lim_copy_u16((uint8_t *) &mac_capab, caps);
 
@@ -1510,12 +1496,8 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	}
 	status = lim_handle_pmfcomeback_timer(session_entry, assoc_rsp);
 	/* return if retry again timer is started and ignore this assoc resp */
-	if (QDF_IS_STATUS_SUCCESS(status)) {
-		qdf_mem_free(beacon);
-		clean_up_ft_sha384(assoc_rsp, sha384_akm);
-		qdf_mem_free(assoc_rsp);
-		return;
-	}
+	if (QDF_IS_STATUS_SUCCESS(status))
+		goto free_mem;
 
 	/* Stop Association failure timer */
 	if (subtype == LIM_ASSOC)
@@ -1713,7 +1695,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 				lim_cache_emlsr_params(session_entry,
 						       assoc_rsp);
 			}
-			qdf_mem_free(beacon);
 			return;
 		}
 
@@ -1748,7 +1729,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 		}
 		if (!mlo_roam_is_auth_status_connected(mac_ctx->psoc,
 						       wlan_vdev_get_id(session_entry->vdev))) {
-			qdf_mem_free(beacon);
 			return;
 		}
 	}
@@ -1781,7 +1761,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 		 */
 		if (session_entry->limAssocResponseData != assoc_rsp)
 			qdf_mem_free(assoc_rsp);
-		qdf_mem_free(beacon);
 		return;
 	}
 	/* Delete Pre-auth context for the associated BSS */
@@ -1817,6 +1796,13 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	 * Extract the AP capabilities from the beacon that
 	 * was received earlier
 	 */
+	beacon = qdf_mem_malloc(sizeof(tSchBeaconStruct));
+	if (!beacon) {
+		clean_up_ft_sha384(assoc_rsp, sha384_akm);
+		if (session_entry->limAssocResponseData != assoc_rsp)
+			qdf_mem_free(assoc_rsp);
+		return;
+	}
 	ie_len = lim_get_ielen_from_bss_description(
 		&session_entry->lim_join_req->bssDescription);
 	ie = (uint8_t *)session_entry->lim_join_req->bssDescription.ieFields;
@@ -1935,7 +1921,7 @@ assocReject:
 			assoc_cnf.protStatusCode,
 			session_entry);
 	}
-
+free_mem:
 	qdf_mem_free(beacon);
 	qdf_mem_free(assoc_rsp->sha384_ft_subelem.gtk);
 	qdf_mem_free(assoc_rsp->sha384_ft_subelem.igtk);
