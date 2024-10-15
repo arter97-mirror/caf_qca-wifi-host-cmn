@@ -1,0 +1,590 @@
+/*
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * DOC: contains MLO manager public file containing link reconfiguration
+ * functionality
+ */
+#ifndef _WLAN_MLO_LINK_RECFG_H_
+#define _WLAN_MLO_LINK_RECFG_H_
+
+#include <wlan_mlo_mgr_public_structs.h>
+#include <wlan_cm_public_struct.h>
+
+/**
+ * enum wlan_link_recfg_sm_state - Link Reconfiguration states
+ * @WLAN_LINK_RECFG_S_INIT: Default state, IDLE state
+ * @WLAN_LINK_RECFG_S_INPROGRESS: State when Link Reconfig is in progress
+ * @WLAN_LINK_RECFG_S_COMPLETED: State when Link Reconfig is completed
+ * @WLAN_LINK_RECFG_S_ABORT: State when Link Reconfig is Aborted
+ * @WLAN_LINK_RECFG_S_MAX: Max State
+ * @WLAN_LINK_RECFG_SS_IDLE: Link Reconfig substate Idle
+ * @WLAN_LINK_RECFG_SS_ACTIVE: Link Reconfig request activated
+ * @WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_SET_LINK: Link Reconfig is Del link wait for set link cmd rsp
+ * @WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_LINK_SW: Link Reconfig is wait for link switch delete/disconnect
+ * @WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_ADD_CONN: Link Reconfig is Add link as partner
+ * @WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW: Link Reconfig is wait for link switch add/connect
+ * @WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_ADD_CONN: Link Reconfig is Aborted while add link
+ * @WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_LINK_SW: Link Reconfig is Aborted while wait for link switch
+ * @WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_SET_LINK: Link Reconfig is Aborted while wait for set link
+ * @WLAN_LINK_RECFG_SS_ADD_STANDBY_LINK: Link Reconfig for Add standby link
+ * @WLAN_LINK_RECFG_SS_DEL_STANDBY_LINK: Link Reconfig for Del standby link
+ * @WLAN_LINK_RECFG_SS_MAX: Max SubState
+ */
+enum wlan_link_recfg_sm_state {
+	WLAN_LINK_RECFG_S_INIT = 0,
+	WLAN_LINK_RECFG_S_INPROGRESS = 1,
+	WLAN_LINK_RECFG_S_COMPLETED = 2,
+	WLAN_LINK_RECFG_S_ABORT = 3,
+	WLAN_LINK_RECFG_S_MAX = 4,
+	/* substates */
+	WLAN_LINK_RECFG_SS_IDLE = 5,
+	WLAN_LINK_RECFG_SS_ACTIVE = 6,
+	WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_SET_LINK = 7,
+	WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_LINK_SW = 8,
+	WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_ADD_CONN = 9,
+	WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW = 10,
+	WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_ADD_CONN = 11,
+	WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_LINK_SW = 12,
+	WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_SET_LINK = 13,
+	WLAN_LINK_RECFG_SS_ADD_STANDBY_LINK = 14,
+	WLAN_LINK_RECFG_SS_DEL_STANDBY_LINK = 15,
+	WLAN_LINK_RECFG_SS_MAX,
+};
+
+/**
+ * enum wlan_link_recfg_sm_evt - Link Reconfig related events
+ * Note: make sure to update ttlm_sm_event_names on updating this enum
+ * @WLAN_LINK_RECFG_SM_EV_USER_REQ: Link Reconfiguration request from STA
+ * @WLAN_LINK_RECFG_SM_EV_FW_IND: Link Reconfiguration AP initiated request
+ * @WLAN_LINK_RECFG_SM_EV_ACTIVE: Link Reconfiguration is active
+ * @WLAN_LINK_RECFG_SM_EV_DEL_LINK: Link Reconfiguration for delete link
+ * @WLAN_LINK_RECFG_SM_EV_ADD_LINK: Link Reconfiguration for add link
+ * @WLAN_LINK_RECFG_SM_EV_DEL_STANDBY_LINK: Link Reconfiguration for del standby link
+ * @WLAN_LINK_RECFG_SM_EV_ADD_STANDBY_LINK: Link Reconfiguration for add standby link
+ * @WLAN_LINK_RECFG_SM_EV_XMIT_REQ: Link Reconfiguration event for TX req
+ * @WLAN_LINK_RECFG_SM_EV_XMIT_TX_DONE: Link Reconfiguration event for TX done
+ * @WLAN_LINK_RECFG_SM_EV_RX_RSP: Link Reconfiguration event for RX respone
+ * @WLAN_LINK_RECFG_SM_EV_RECV_SET_LINK_RSP: Link Reconfiguration received set link rsp
+ * @WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP: Link reconfiguration event for link switch.
+ * @WLAN_LINK_RECFG_SM_EV_ADD_CONN_RSP: Link Reconfiguration event for add connect rsp
+ * @WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND: Link Reconfiguration event for disconnect ind
+ * @WLAN_LINK_RECFG_SM_EV_ROAM_START_IND: Link Reconfiguration event for roam start ind
+ * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
+ */
+enum wlan_link_recfg_sm_evt {
+	WLAN_LINK_RECFG_SM_EV_USER_REQ = 0,
+	WLAN_LINK_RECFG_SM_EV_FW_IND = 1,
+	WLAN_LINK_RECFG_SM_EV_ACTIVE = 2,
+	WLAN_LINK_RECFG_SM_EV_DEL_LINK = 3,
+	WLAN_LINK_RECFG_SM_EV_ADD_LINK = 4,
+	WLAN_LINK_RECFG_SM_EV_DEL_STANDBY_LINK = 5,
+	WLAN_LINK_RECFG_SM_EV_ADD_STANDBY_LINK = 6,
+	WLAN_LINK_RECFG_SM_EV_XMIT_REQ = 7,
+	WLAN_LINK_RECFG_SM_EV_XMIT_TX_DONE = 8,
+	WLAN_LINK_RECFG_SM_EV_RX_RSP = 9,
+	WLAN_LINK_RECFG_SM_EV_RECV_SET_LINK_RSP = 10,
+	WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP = 11,
+	WLAN_LINK_RECFG_SM_EV_ADD_CONN_RSP = 12,
+	WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND = 13,
+	WLAN_LINK_RECFG_SM_EV_ROAM_START_IND = 14,
+	WLAN_LINK_RECFG_SM_EV_MAX = 15,
+};
+
+/**
+ * struct wlan_mlo_link_recfg_info - Data Structure for of link
+ * reconfiguration add/del information.
+ * @link_id: IEEE Link id
+ * @link_addr: AP Link address to be deleted/added
+ * @freq: channel frequency to be deleted/added
+ */
+typedef struct {
+	uint8_t link_id;
+	struct qdf_mac_addr link_addr;
+	uint8_t freq;
+} wlan_mlo_link_recfg_info;
+
+/**
+ * struct wlan_mlo_link_recfg_req - Data Structure because of link
+ *  reconfiguration request
+ * @vdev_id: Hold information regarding all the links of ml connection
+ * @add_link_info: Add link info struct
+ * @num_add_links: Number of links to be added
+ * @del_link_info: Delete link info struct
+ * @num_del_links:Number of links to be deleted
+ * @is_user_req: Request received from user/framework
+ * @is_curr_req: Is current link reconfig request active
+ */
+struct wlan_mlo_link_recfg_req {
+	uint8_t vdev_id;
+	wlan_mlo_link_recfg_info add_link_info[WLAN_MAX_ML_BSS_LINKS];
+	uint8_t num_add_links;
+	wlan_mlo_link_recfg_info del_link_info[WLAN_MAX_ML_BSS_LINKS];
+	uint8_t num_del_links;
+	bool is_user_req;
+	bool is_curr_req;
+};
+
+/**
+ * struct mlo_link_recfg_state_sm - Link Reconfig state machine
+ * @mlrc_sm_lock: SM lock
+ * @sm_hdl: SM handlers
+ * @link_recfg_state: Current state
+ * @link_recfg_substate: Current substate
+ */
+struct mlo_link_recfg_state_sm {
+#ifdef WLAN_CM_USE_SPINLOCK
+		qdf_spinlock_t mlrc_sm_lock;
+#else
+		qdf_mutex_t mlrc_sm_lock;
+#endif
+	struct wlan_sm *sm_hdl;
+	enum wlan_link_recfg_sm_state link_recfg_state;
+	enum wlan_link_recfg_sm_state link_recfg_substate;
+};
+
+/**
+ * struct mlo_link_recfg_context - Link reconfiguration data structure.
+ * @last_recfg_req: Last link recfg request received from FW
+ * @sm: Link reconfig state machine
+ */
+struct mlo_link_recfg_context {
+	struct wlan_mlo_link_recfg_req last_recfg_req;
+	struct mlo_link_recfg_state_sm sm;
+};
+
+#ifdef WLAN_MLO_USE_SPINLOCK
+/**
+ * ml_link_recfg_sm_lock_create - Create ML Recfg SM mutex/spinlock
+ * @mldev: ML device context
+ *
+ * Creates mutex/spinlock
+ *
+ * Return: void
+ */
+static inline void
+ml_link_recfg_sm_lock_create(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_spinlock_create(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+
+/**
+ * ml_link_recfg_sm_lock_destroy - Destroy ML Recfg SM mutex/spinlock
+ * @mldev:  ML device context
+ *
+ * Destroy mutex/spinlock
+ *
+ * Return: void
+ */
+static inline void
+ml_link_recfg_sm_lock_destroy(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_spinlock_destroy(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+
+/**
+ * ml_link_recfg_sm_lock_acquire - acquire CM SM mutex/spinlock
+ * @mldev:  ML device context
+ *
+ * acquire mutex/spinlock
+ *
+ * return: void
+ */
+static inline
+void ml_link_recfg_sm_lock_acquire(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_spin_lock_bh(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+
+/**
+ * ml_link_recfg_sm_lock_release - release MLO dev mutex/spinlock
+ * @mldev:  ML device context
+ *
+ * release mutex/spinlock
+ *
+ * return: void
+ */
+static inline
+void ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_spin_unlock_bh(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+#else
+static inline void
+ml_link_recfg_sm_lock_create(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_mutex_create(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+
+static inline void
+ml_link_recfg_sm_lock_destroy(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_mutex_destroy(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+
+static inline void
+ml_link_recfg_sm_lock_acquire(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_mutex_acquire(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+
+static inline void
+ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
+{
+	qdf_mutex_release(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
+}
+#endif
+
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+/**
+ * mlo_link_recfg_init_state() - Set the current state of link switch
+ * to init state.
+ * @mlo_dev_ctx: MLO dev context
+ *
+ * Sets the current state of link switch to MLO_LINK_SWITCH_STATE_IDLE with
+ * MLO dev context lock held.
+ *
+ * Return: void
+ */
+void mlo_link_recfg_init_state(struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/**
+ * mlo_link_recfg_trans_next_state() - Transition to next state based
+ * on current state.
+ * @mlo_dev_ctx: MLO dev context
+ *
+ * Move to next state in link recfg process based on current state with
+ * SM link reconfig lock held.
+ *
+ * Return: void
+ */
+QDF_STATUS
+mlo_link_recfg_trans_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/**
+ * mlo_link_recfg_trans_abort_state() - Transition to abort trans state.
+ * @mlo_dev_ctx: ML dev context pointer of VDEV
+ *
+ * Transition the current link recfg state to ABORT
+ * state, no further state transitions are allowed in the ongoing link recfg
+ * request.
+ *
+ * Return: void
+ */
+void
+mlo_link_recfg_trans_abort_state(struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/**
+ * mlo_is_link_recfg_in_progress() - Check in MLO dev context
+ * if the last received link recfg is in progress.
+ * @vdev: VDEV object manager
+ *
+ * The API is to be called for VDEV which has MLO dev context and link reconfig
+ * context initialized. Returns the value of 'is_in_progress' flag in last received
+ * link reconfig request.
+ *
+ * Return: bool
+ */
+bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_ser_link_recfg_cmd() - The API will serialize link reconfig
+ * command in serialization queue.
+ * @vdev: VDEV objmgr pointer
+ * @req: Link reconfig request parameters
+ *
+ * On receiving link reconfig request with valid parameters from FW or user,
+ * this API will serialize the link reconfig command to procced for link reconfig
+ * on @vdev once the command comes to active queue.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_ser_link_recfg_cmd(struct wlan_objmgr_vdev *vdev,
+				  struct wlan_mlo_link_recfg_req *req);
+
+/**
+ * mlo_remove_link_recfg_cmd() - The API will remove the link reconfig
+ * command from active serialization queue.
+ * @vdev: VDEV object manager
+ *
+ * Once link reconfig process on @vdev is completed either in success of failure
+ * case, the API removes the link reconfig command from serialization queue.
+ *
+ * Return: void
+ */
+void mlo_remove_link_recfg_cmd(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_link_recfg_notify() - API to notify registered link recfg notify
+ * callbacks.
+ * @vdev: VDEV object manager
+ * @req: Link recfg request params from FW.
+ *
+ * The API calls all the registered link recfg notifiers with appropriate
+ * reason for notifications. Callback handlers to take necessary action based
+ * on the reason.
+ * If any callback returns error API will return error or else success.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS
+mlo_link_recfg_notify(struct wlan_objmgr_vdev *vdev,
+		      struct wlan_mlo_link_recfg_req *req);
+
+/**
+ * mlo_link_recfg_validate_request() - Validate link reconfiguration request
+ * received from FW.
+ * @vdev: VDEV object manager
+ * @req: Request params from FW
+ *
+ * The API performs initial validation of link recfg params received from FW
+ * before serializing the link recfg cmd. If any of the params is invalid or
+ * the current status of MLO manager can't allow link recfg, the API returns
+ * failure and link recfg has to be terminated.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_link_recfg_validate_request(struct wlan_objmgr_vdev *vdev,
+				struct wlan_mlo_link_recfg_req *req);
+
+/**
+ * mlo_link_recfg_request_params() - Link recfg request params from FW.
+ * @psoc: PSOC object manager
+ * @evt_params: Link recfg params received from FW.
+ *
+ * The @params contain link recfg request parameters received from FW or user
+ * as an indication to host to trigger link recfg sequence.
+ * If the @params are not valid link recfg will be terminated.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_link_recfg_request_params(struct wlan_objmgr_psoc *psoc,
+					 void *evt_params);
+
+/**
+ * mlo_link_recfg_complete() - Link reconfiguration complete notification
+ * @vdev: VDV object manager
+ *
+ * Notify the status of link reconfiguration is
+ * completed.
+ *
+ * Return: QDF_STATUS;
+ */
+QDF_STATUS mlo_link_recfg_complete(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_link_recfg_init() - API to initialize link reconfiguration
+ * @psoc: PSOC object manager
+ * @ml_dev: MLO dev context
+ *
+ * Initializes the MLO link recfg context in @ml_dev and allocates various
+ * buffers needed.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_link_recfg_init(struct wlan_objmgr_psoc *psoc,
+			       struct wlan_mlo_dev_context *ml_dev);
+
+/**
+ * mlo_link_recfg_deinit() - API to de-initialize link recfg
+ * @ml_dev: MLO dev context
+ *
+ * De-initialize the MLO link reconfiguration context
+ * in @ml_dev on and frees memory
+ * allocated as part of initialization.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_link_recfg_deinit(struct wlan_mlo_dev_context *ml_dev);
+
+static inline bool
+mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev)
+{
+	return true;
+}
+
+/**
+ * mlo_link_recfg_get_state() - API to get SM link recfg state
+ * @mlo_dev_ctx: MLO dev context
+ *
+ * API to get current SM link reconfiguration state
+ *
+ * Return: QDF_STATUS
+ */
+enum wlan_link_recfg_sm_state
+mlo_link_recfg_get_state(struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/**
+ * mlo_link_recfg_get_substate() - API to get SM link recfg sub state
+ * @mlo_dev_ctx: MLO dev context
+ *
+ * API to get current SM link reconfiguration sub state
+ *
+ * Return: QDF_STATUS
+ */
+enum wlan_link_recfg_sm_state
+mlo_link_recfg_get_substate(struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/**
+ * mlo_link_recfg_sm_deliver_event() - Delivers event to Link Reconfiguraion
+ * manager SM
+ * @mlo_dev_ctx: ML dev context
+ * @event: Link reconfig SM event
+ * @data_len: data size
+ * @data: event data
+ *
+ * API to dispatch event to Link reconfig SM with lock. To be used while posting
+ * events from API called from public API. i.e. indication/response/request
+ * from any other module or NB/SB req/resp.
+ *
+ * Context: Can be called from any context, This should be called in case
+ * SM lock is not taken, the API will take the lock before posting to SM.
+ *
+ * Return: SUCCESS: on handling event
+ *         FAILURE: If event not handled
+ */
+QDF_STATUS
+mlo_link_recfg_sm_deliver_event(struct wlan_mlo_dev_context *mlo_dev_ctx,
+				enum wlan_link_recfg_sm_evt event,
+				uint16_t data_len, void *data);
+
+/**
+ * mlo_link_recfg_sm_deliver_event_sync() - Delivers event to Link Reconfiguration SM while
+ * holding lock
+ * @mlo_dev_ctx: mlo dev ctx
+ * @event: Link Reconfiguration event
+ * @data_len: data size
+ * @data: event data
+ *
+ * API to dispatch event to Link Reconfiguration SM without lock,
+ * in case lock is already held.
+ *
+ * Context: Can be called from any context, This should be called in case
+ * SM lock is already taken. If lock is not taken use
+ * mlo_mgr_link_recfg_sm_deliver_event API instead.
+ *
+ * Return: SUCCESS: on handling event
+ *         FAILURE: If event not handled
+ */
+QDF_STATUS
+mlo_link_recfg_sm_deliver_event_sync(struct wlan_mlo_dev_context *mlo_dev_ctx,
+				     enum wlan_link_recfg_sm_evt event,
+				     uint16_t data_len, void *data);
+#else
+static inline QDF_STATUS
+mlo_link_recfg_sm_deliver_event(struct wlan_mlo_dev_context *mlo_dev_ctx,
+				enum wlan_link_recfg_sm_evt event,
+				uint16_t data_len, void *data)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_sm_deliver_event_sync(struct wlan_mlo_dev_context *mlo_dev_ctx,
+				     enum wlan_link_recfg_sm_evt event,
+				     uint16_t data_len, void *data)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline enum wlan_link_recfg_sm_state
+mlo_link_recfg_get_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
+	return WLAN_LINK_RECFG_S_MAX;
+}
+
+static inline enum wlan_link_recfg_sm_state
+mlo_link_recfg_get_substate(struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
+	return WLAN_LINK_RECFG_SS_MAX;
+}
+
+static inline bool
+mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_init(struct wlan_objmgr_psoc *psoc,
+		    struct wlan_mlo_dev_context *ml_dev)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+mlo_link_recfg_init_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_trans_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
+	return QDF_STATUS_E_INVAL;
+}
+
+static inline void
+mlo_link_recfg_trans_abort_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
+}
+
+static inline bool
+mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+
+static inline QDF_STATUS
+mlo_ser_link_recfg_cmd(struct wlan_objmgr_vdev *vdev,
+		       struct wlan_mlo_link_recfg_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline void
+mlo_remove_link_recfg_cmd(struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_notify(struct wlan_objmgr_vdev *vdev,
+		      struct wlan_mlo_link_recfg_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_validate_request(struct wlan_objmgr_vdev *vdev,
+				struct wlan_mlo_link_recfg_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_request_params(struct wlan_objmgr_psoc *psoc,
+			      void *evt_params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_complete(struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+#endif

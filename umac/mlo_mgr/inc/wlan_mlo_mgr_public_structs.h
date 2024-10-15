@@ -1083,6 +1083,7 @@ struct wlan_mlo_link_mac_update {
  * @ptqm_migrate_timer: timer for ptqm migration
  * @mlo_peer_id_bmap: mlo_peer_id bitmap for ptqm migration
  * @link_ctx: link related information
+ * @link_recfg_ctx: link reconfig context
  * @mlo_max_recom_simult_links: Max Recommended Simultaneous Links
  * @mlo_extmld_cap_advertisement: Enable/disable Extended MLD Cap and OP
  *                                advertisement
@@ -1122,6 +1123,7 @@ struct wlan_mlo_dev_context {
 		[WLAN_UMAC_MLO_MAX_VDEVS];
 #endif
 	struct mlo_link_switch_context *link_ctx;
+	struct mlo_link_recfg_context *link_recfg_ctx;
 	uint8_t mlo_max_recom_simult_links;
 	bool mlo_extmld_cap_advertisement;
 };
