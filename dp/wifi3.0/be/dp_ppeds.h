@@ -19,6 +19,7 @@
 
 #define DP_PPEDS_TX_COMP_NAPI_BIT 16
 #define DP_PPEDS_NAPI_DONE_BIT 17
+#define PPE_VP_CFG_WILDCARD_LMAC_ID 3
 
 struct dp_ppe_ds_idxs {
 	uint32_t ppe2tcl_start_idx;
