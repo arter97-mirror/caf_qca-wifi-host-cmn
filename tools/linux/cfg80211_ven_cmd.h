@@ -916,6 +916,10 @@ enum {
 #endif
 	IEEE80211_PARAM_4ADDR_EAPOL = 834,
 	IEEE80211_PARAM_DISABLE_LPI_ANT_OPTIMIZATION = 835,
+#ifdef WLAN_FEATURE_VBSS
+	IEEE80211_PARAM_VBSS_ENABLE = 836,
+#endif /* WLAN_FEATURE_VBSS */
+
 	IEEE80211_PARAM_LAST,
 	IEEE80211_PARAM_MAX = IEEE80211_PARAM_LAST - 1,
 	/* Customer enums */
@@ -2737,6 +2741,9 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"hwcts2self_enable", IEEE80211_PARAM_HWCTS2SELF_OFDMA, SET_PARAM, 1},
 	{"set_4addr_eapol", IEEE80211_PARAM_4ADDR_EAPOL, SET_PARAM, 1},
 	{"get_4addr_eapol", IEEE80211_PARAM_4ADDR_EAPOL, GET_PARAM, 0},
+#ifdef WLAN_FEATURE_VBSS
+	{"get_vbss", IEEE80211_PARAM_VBSS_ENABLE, GET_PARAM, 0},
+#endif /* WLAN_FEATURE_VBSS */
 };
 
 struct vendor_commands radio_vendor_cmds[] = {
