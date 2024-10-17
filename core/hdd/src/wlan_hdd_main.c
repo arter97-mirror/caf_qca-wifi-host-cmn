@@ -8270,6 +8270,7 @@ hdd_use_sta_vdev_for_p2p_dev_upon_vdev_exhaust(struct hdd_context *hdd_ctx)
 		link_info->vdev_id = sta_adapter->deflink->vdev_id;
 		link_info->vdev = sta_vdev;
 		qdf_spin_unlock_bh(&link_info->vdev_lock);
+		set_bit(SME_SESSION_OPENED, &link_info->link_flags);
 		return true;
 	}
 
@@ -10687,9 +10688,15 @@ QDF_STATUS hdd_stop_adapter(struct hdd_context *hdd_ctx,
 	}
 
 	if (adapter->device_mode == QDF_P2P_DEVICE_MODE &&
-	    ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(hdd_ctx->psoc))
+	    ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(hdd_ctx->psoc)) {
 		ucfg_p2p_set_sta_vdev_for_p2p_dev_operations(hdd_ctx->psoc,
 							     false);
+		clear_bit(SME_SESSION_OPENED, &adapter->deflink->link_flags);
+		qdf_spin_lock_bh(&adapter->deflink->vdev_lock);
+		adapter->deflink->vdev_id = WLAN_INVALID_VDEV_ID;
+		adapter->deflink->vdev = NULL;
+		qdf_spin_unlock_bh(&adapter->deflink->vdev_lock);
+	}
 
 	if (adapter->device_mode == QDF_STA_MODE)
 		status = hdd_stop_link_adapter(hdd_ctx, adapter);
