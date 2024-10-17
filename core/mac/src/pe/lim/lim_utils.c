@@ -6080,6 +6080,15 @@ static void lim_update_ap_he_op(struct pe_session *session,
 						ch_params->ch_width;
 	}
 }
+
+void lim_print_he_channel_widths(tDot11fIEhe_cap *he_cap)
+{
+	pe_debug("HE width 0:%d 1:%d 2:%d 3:%d 4:%d 5:%d 6:%d",
+		 he_cap->chan_width_0, he_cap->chan_width_1,
+		 he_cap->chan_width_2, he_cap->chan_width_3,
+		 he_cap->chan_width_4, he_cap->chan_width_5,
+		 he_cap->chan_width_6);
+}
 #else
 static inline void
 lim_update_ext_cap_he_params(struct mac_context *mac_ctx,
@@ -7543,6 +7552,7 @@ void lim_copy_join_req_he_cap(struct pe_session *session)
 		session->he_config.chan_width_4 = 0;
 		session->he_config.chan_width_6 = 0;
 	}
+	lim_print_he_channel_widths(&session->he_config);
 }
 
 void lim_log_he_cap(struct mac_context *mac, tDot11fIEhe_cap *he_cap)

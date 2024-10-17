@@ -1672,6 +1672,13 @@ void lim_update_he_6ghz_band_caps(struct mac_context *mac,
 				  tDot11fIEhe_6ghz_band_cap *he_6ghz_band_cap,
 				  tpAddStaParams params);
 
+/*
+ * lim_print_he_channel_widths() - Print the HE channel widths
+ * he_cap: HE cap
+ *
+ * Return: None
+ */
+void lim_print_he_channel_widths(tDot11fIEhe_cap *he_cap);
 #else
 static inline void lim_add_he_cap(struct mac_context *mac_ctx,
 				  struct pe_session *pe_session,
@@ -1849,6 +1856,11 @@ static inline void
 lim_update_he_6ghz_band_caps(struct mac_context *mac,
 			     tDot11fIEhe_6ghz_band_cap *he_6ghz_band_cap,
 			     tpAddStaParams params)
+{
+}
+
+static inline
+void lim_print_he_channel_widths(tDot11fIEhe_cap *he_cap)
 {
 }
 #endif
