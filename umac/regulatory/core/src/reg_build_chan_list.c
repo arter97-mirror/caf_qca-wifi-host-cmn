@@ -3509,6 +3509,9 @@ void reg_compute_pdev_current_chan_list(struct wlan_regulatory_pdev_priv_obj
 						  pdev_priv_obj->
 						  cur_chan_list);
 
+	reg_update_max_bw_6ghz_chan(pdev_priv_obj->pdev_ptr,
+				    pdev_priv_obj->cur_chan_list);
+
 	reg_populate_secondary_cur_chan_list(pdev_priv_obj);
 
 	reg_modify_chan_list_for_cached_channels(pdev_priv_obj);
