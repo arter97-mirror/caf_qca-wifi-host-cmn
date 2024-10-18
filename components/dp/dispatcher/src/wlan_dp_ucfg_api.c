@@ -3203,6 +3203,18 @@ void ucfg_dp_set_mon_conf_flags(struct wlan_objmgr_psoc *psoc, uint32_t flags)
 	}
 
 	dp_ctx->monitor_flag = flags;
+
+	/* CDP SoC context will be NULL if the device is in
+	 * idle shutdown; Since the flags are set in dp_ctx, simply
+	 * return from here, ucfg_dp_recover_mon_conf_flags()
+	 * will take care of setting the monitor flags in CDP SoC
+	 * during cds_open() as part of idle restart.
+	 */
+	if (!dp_ctx->cdp_soc) {
+		dp_info("Failed to set flag %d, cdp_soc NULL", flags);
+		return;
+	}
+
 	val.cdp_monitor_flag = flags;
 	status = cdp_txrx_set_psoc_param(dp_ctx->cdp_soc,
 					 CDP_MONITOR_FLAG, val);
