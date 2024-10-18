@@ -217,6 +217,9 @@ __wlan_hdd_cfg80211_ll_lt_sap_high_ap_availability(struct wiphy *wiphy,
 	if (hdd_is_connection_in_progress(NULL, NULL))
 		return -EBUSY;
 
+	if (hdd_is_chan_switch_in_progress())
+		return -EBUSY;
+
 	if (wlan_cfg80211_nla_parse(
 			tb, QCA_WLAN_VENDOR_ATTR_HIGH_AP_AVAILABILITY_MAX,
 			data, data_len,
