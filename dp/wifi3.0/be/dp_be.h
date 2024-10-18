@@ -454,7 +454,7 @@ struct dp_vdev_be {
 	struct dp_vdev vdev;
 	int8_t bank_id;
 	uint8_t vdev_id_check_en;
-	uint8_t splitphy_ds_bank_id;
+	int8_t splitphy_ds_bank_id;
 #ifdef WLAN_MLO_MULTI_CHIP
 	struct cdp_vdev_stats mlo_stats;
 #endif
