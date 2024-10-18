@@ -64,6 +64,7 @@
 #include "wlan_connectivity_logging.h"
 #include "wlan_mlo_mgr_ap.h"
 #include "wlan_scan_api.h"
+#include "wlan_action_oui_main.h"
 
 /**
  *
@@ -8248,27 +8249,65 @@ static void lim_tx_mgmt_frame(struct mac_context *mac_ctx, uint8_t vdev_id,
 	qdf_mtrace(QDF_MODULE_ID_PE, QDF_MODULE_ID_WMA, TRACE_CODE_TX_MGMT,
 		   session_id, 0);
 
-	if (opmode != QDF_NAN_DISC_MODE) {
-		if (fc->subType == SIR_MAC_MGMT_AUTH) {
-			tpSirFTPreAuthReq pre_auth_req;
-			uint16_t auth_algo = *(uint16_t *)(frame +
-						sizeof(tSirMacMgmtHdr));
+	if (opmode == QDF_NAN_DISC_MODE)
+		goto tx_frame;
 
-			if (auth_algo == eSIR_AUTH_TYPE_SAE) {
-				if (session->ftPEContext.pFTPreAuthReq) {
-					pre_auth_req =
-					     session->ftPEContext.pFTPreAuthReq;
-					channel_freq =
-					    pre_auth_req->pre_auth_channel_freq;
+	if (fc->subType == SIR_MAC_MGMT_AUTH) {
+		tpSirFTPreAuthReq pre_auth_req;
+		uint16_t auth_algo = *(uint16_t *)(frame +
+				     sizeof(tSirMacMgmtHdr));
+		tpSirMacMgmtHdr mac_hdr = (tpSirMacMgmtHdr)frame;
+		struct scan_cache_entry *scan_entry;
+		struct action_oui_search_attr attr = {0};
+		struct qdf_mac_addr *bssid;
+
+		if (auth_algo == eSIR_AUTH_TYPE_SAE) {
+			if (wlan_cm_is_vdev_active(session->vdev)) {
+				bssid = (struct qdf_mac_addr *)mac_hdr->bssId;
+				/* Roaming Pre-auth frame */
+				scan_entry = wlan_scan_get_entry_by_bssid(mac_ctx->pdev,
+									  bssid);
+				if (!scan_entry) {
+					pe_debug(QDF_MAC_ADDR_FMT " scan entry not found",
+						 QDF_MAC_ADDR_REF(mac_hdr->bssId));
+					goto not_found;
 				}
+
+				channel_freq = scan_entry->channel.chan_freq;
+				if (WLAN_REG_IS_24GHZ_CH_FREQ(channel_freq)) {
+					attr.ie_data = util_scan_entry_ie_data(scan_entry);
+					attr.ie_length = util_scan_entry_ie_len(scan_entry);
+					if (wlan_action_oui_search(mac_ctx->psoc, &attr,
+								   ACTION_OUI_AUTH_ASSOC_6MBPS_2GHZ)) {
+						pe_debug("Send pre-auth with 6Mbps on freq %d",
+							 channel_freq);
+						min_rid = RATEID_6MBPS;
+						util_scan_free_cache_entry(scan_entry);
+						goto tx_frame;
+					}
+				}
+				util_scan_free_cache_entry(scan_entry);
+				goto set_freq;
+			}
+not_found:
+			if (session->ftPEContext.pFTPreAuthReq) {
+				pre_auth_req =
+					session->ftPEContext.pFTPreAuthReq;
+				channel_freq =
+					pre_auth_req->pre_auth_channel_freq;
+			}
+set_freq:
+			if (channel_freq) {
+				pe_debug("TX SAE pre-auth frame on freq %d",
+					 channel_freq);
 				pre_auth_freq = &channel_freq;
 			}
-			pe_debug("TX SAE pre-auth frame on freq %d",
-				 channel_freq);
 		}
-		min_rid = lim_get_min_session_txrate(session, pre_auth_freq);
-	}
 
+	}
+	min_rid = lim_get_min_session_txrate(session, pre_auth_freq);
+
+tx_frame:
 	qdf_status = wma_tx_frameWithTxComplete(mac_ctx, packet,
 					 (uint16_t)msg_len,
 					 TXRX_FRM_802_11_MGMT, ANI_TXDIR_TODS,
