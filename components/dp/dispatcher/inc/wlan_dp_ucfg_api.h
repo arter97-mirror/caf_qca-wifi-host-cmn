@@ -1295,6 +1295,39 @@ void ucfg_dp_rx_skip_fisa(uint32_t value)
 }
 #endif
 
+/**
+ * ucfg_dp_spm_dump_tx_aft() - Dump TX active flow table
+ * @psoc: Objmgr psoc handle
+ *
+ * Return: None
+ */
+void ucfg_dp_spm_dump_tx_aft(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * ucfg_dp_stc_print_classified_table() - Print classified flow table
+ * @psoc: Objmgr psoc handle
+ *
+ * Return: NULL
+ */
+void ucfg_dp_stc_print_classified_table(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * ucfg_dp_stc_print_sampling_table() - Print sampling flow table
+ * @psoc: Objmgr psoc handle
+ *
+ * Return: NULL
+ */
+void ucfg_dp_stc_print_sampling_table(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * ucfg_dp_stc_print_active_traffic_map() - Print active traffic map
+ *					    for all the peers
+ * @psoc: Objmgr psoc handle
+ *
+ * Return: NULL
+ */
+void ucfg_dp_stc_print_active_traffic_map(struct wlan_objmgr_psoc *psoc);
+
 #ifdef DP_TRAFFIC_END_INDICATION
 /**
  * ucfg_dp_traffic_end_indication_get() - Get data end indication info
