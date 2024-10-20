@@ -9494,6 +9494,7 @@ policy_mgr_is_link_active_allowed(struct wlan_objmgr_psoc *psoc,
 	uint16_t ch_freq, iter;
 	struct wlan_channel *chan_info;
 	struct mlo_link_info *link_info;
+	unsigned long act_link_bitmap = active_link_bitmap;
 
 	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
 	for (iter = 0; iter < WLAN_MAX_ML_BSS_LINKS; iter++) {
@@ -9511,7 +9512,7 @@ policy_mgr_is_link_active_allowed(struct wlan_objmgr_psoc *psoc,
 		ch_freq = chan_info->ch_freq;
 
 		if (qdf_test_bit(link_info->link_id,
-		    (unsigned long *)&active_link_bitmap) &&
+		    &act_link_bitmap) &&
 		    (wlan_reg_freq_to_band((qdf_freq_t)ch_freq) ==
 		     REG_BAND_2G)) {
 			policy_mgr_err("vdev: %d Invalid link activation for link: %d at freq: %d",
