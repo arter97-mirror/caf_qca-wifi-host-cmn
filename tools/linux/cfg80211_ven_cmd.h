@@ -1561,6 +1561,8 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_START_AID = 556,
 	OL_ATH_PARAM_DISABLE_LPI_ANT = 557,
 	OL_ATH_PARAM_NXT_RDR_WIDTH = 558,
+	OL_ATH_PARAM_IS_BEACON_UPDATE = 559,
+	OL_ATH_PARAM_RXCHAINSOFT = 560,
 
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
@@ -3362,6 +3364,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_TXCHAINSOFT, SET_PARAM, 1},
 	{"get_txchainsoft",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_TXCHAINSOFT, GET_PARAM, 0},
+	{"rxchainsoft",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RXCHAINSOFT, SET_PARAM, 1},
+	{"get_rxchainsoft",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RXCHAINSOFT, GET_PARAM, 0},
 	{"widebw_scan",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_WIDE_BAND_SCAN, SET_PARAM, 1},
 	{"g_widebw_scan",
@@ -4107,6 +4113,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_START_AID, SET_PARAM, 1},
 	{"get_start_aid",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_START_AID, GET_PARAM, 0},
+	{"bcnupdate",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_IS_BEACON_UPDATE, SET_PARAM, 1},
+	{"get_bcnupdate",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_IS_BEACON_UPDATE, GET_PARAM, 0},
 };
 #endif
 
