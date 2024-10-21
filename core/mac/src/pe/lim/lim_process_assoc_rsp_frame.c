@@ -1892,7 +1892,8 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 assocReject:
 	if (subtype == LIM_ASSOC ||
 	    (subtype == LIM_REASSOC &&
-	     session_entry->limMlmState == eLIM_MLM_WT_FT_REASSOC_RSP_STATE)) {
+	     (session_entry->limMlmState == eLIM_MLM_WT_FT_REASSOC_RSP_STATE ||
+	      !cm_is_vdev_roaming(session_entry->vdev)))) {
 		pe_err("Assoc Rejected by the peer mlmestate: %d sessionid: %d Reason: %d MACADDR:"
 			QDF_MAC_ADDR_FMT, session_entry->limMlmState,
 			session_entry->peSessionId, assoc_cnf.resultCode,
@@ -1907,7 +1908,8 @@ assocReject:
 			session_entry->pLimMlmJoinReq = NULL;
 		}
 
-		if (subtype == LIM_ASSOC) {
+		if (subtype == LIM_ASSOC ||
+		    !cm_is_vdev_roaming(session_entry->vdev)) {
 			lim_post_sme_message(mac_ctx, LIM_MLM_ASSOC_CNF,
 				(uint32_t *) &assoc_cnf);
 		} else {
