@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5673,6 +5673,25 @@ wlan_set_sap_user_config_freq(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+bool
+wlan_is_scc_tpc_power_supp_enabled(struct wlan_objmgr_vdev *vdev)
+{
+	wmi_unified_t wmi_handle;
+	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
+
+	if (!psoc)
+		return false;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle)
+		return false;
+
+	if (wmi_service_enabled(wmi_handle, wmi_service_scc_tpc_power_support))
+		return true;
+
+	return false;
+}
+
 #ifdef CONFIG_BAND_6GHZ
 bool
 wlan_get_tpc_update_required_for_sta(struct wlan_objmgr_vdev *vdev)
@@ -5700,6 +5719,9 @@ wlan_set_tpc_update_required_for_sta(struct wlan_objmgr_vdev *vdev, bool value)
 {
 	struct mlme_legacy_priv *mlme_priv;
 	enum QDF_OPMODE opmode;
+
+	if (wlan_is_scc_tpc_power_supp_enabled(vdev))
+		return QDF_STATUS_SUCCESS;
 
 	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
 	if (!mlme_priv) {

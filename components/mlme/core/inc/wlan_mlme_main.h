@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2158,4 +2158,13 @@ wlan_get_wfd_mode_from_vdev_id(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 	return 0xFF;
 }
 #endif /* FEATURE_WLAN_SUPPORT_USD */
+
+/**
+ * wlan_is_scc_tpc_power_supp_enabled() - Is FW SCC TPC support enabled
+ * @vdev: VDEV pointer
+ *
+ * Return: true if SCC TPC is supported else false
+ */
+bool
+wlan_is_scc_tpc_power_supp_enabled(struct wlan_objmgr_vdev *vdev);
 #endif

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -11629,6 +11629,9 @@ lim_update_tx_power(struct mac_context *mac_ctx, struct pe_session *sap_session,
 	if (!sta_mlme_obj || !sap_mlme_obj)
 		return QDF_STATUS_E_FAILURE;
 
+	if (wlan_is_scc_tpc_power_supp_enabled(sta_session->vdev))
+		return QDF_STATUS_SUCCESS;
+
 	if (restore_sta_power) {
 		/* SAP interface is removed, restore the STA power */
 		wlan_set_tpc_update_required_for_sta(sap_session->vdev, false);
@@ -11688,6 +11691,9 @@ lim_is_power_change_required_for_sta(struct mac_context *mac_ctx,
 		pe_err("vdev component object is NULL");
 		return false;
 	}
+
+	if (wlan_is_scc_tpc_power_supp_enabled(sap_session->vdev))
+		return false;
 
 	if (sta_session->curr_op_freq != sap_session->curr_op_freq)
 		return false;
