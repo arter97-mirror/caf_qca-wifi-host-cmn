@@ -567,7 +567,7 @@ mlo_mgr_link_rejection_handler(struct wlan_objmgr_vdev *vdev,
 		pdev = wlan_vdev_get_pdev(vdev);
 		ml_partner_info = &vdev->mlo_dev_ctx->sta_ctx->ml_partner_info;
 		qdf_mem_zero(&ap_info, sizeof(struct reject_ap_info));
-		ap_info.bssid = rejected_link_info->link_addr;
+		ap_info.bssid = rejected_link_info->ap_link_addr;
 		ap_info.reject_ap_type = DRIVER_AVOID_TYPE;
 		ap_info.reject_reason = REASON_LINK_REJECTED;
 		ap_info.source = ADDED_BY_DRIVER;
