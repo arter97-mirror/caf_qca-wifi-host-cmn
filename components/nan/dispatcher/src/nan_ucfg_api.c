@@ -1013,8 +1013,8 @@ ucfg_nan_disable_ndi(struct wlan_objmgr_psoc *psoc, uint32_t ndi_vdev_id)
 	struct nan_vdev_priv_obj *ndi_vdev_priv;
 	struct nan_datapath_end_all_ndps req = {0};
 	struct wlan_objmgr_vdev *ndi_vdev;
-	struct osif_request *request;
-	QDF_STATUS status;
+	struct osif_request *request = NULL;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	int err;
 	static const struct osif_request_params params = {
 		.priv_size = 0,
@@ -1046,6 +1046,12 @@ ucfg_nan_disable_ndi(struct wlan_objmgr_psoc *psoc, uint32_t ndi_vdev_id)
 		return QDF_STATUS_SUCCESS;
 	}
 	ucfg_nan_set_ndi_state(ndi_vdev, NAN_DATA_END_STATE);
+
+	if (cds_is_driver_recovering()) {
+		nan_clean_up_all_ndp_peers(psoc, ndi_vdev_id);
+		wlan_objmgr_vdev_release_ref(ndi_vdev, WLAN_NAN_ID);
+		goto cleanup;
+	}
 
 	request = osif_request_alloc(&params);
 	if (!request) {
@@ -1802,4 +1808,16 @@ bool ucfg_nan_get_prefer_nan_chan_for_p2p(struct wlan_objmgr_psoc *psoc)
 struct qdf_mac_addr *ucfg_nan_get_fw_addr(struct wlan_objmgr_psoc *psoc)
 {
 	return nan_get_fw_addr(psoc);
+}
+
+QDF_STATUS ucfg_nan_cache_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
+					    struct qdf_mac_addr *peer_mac_addr)
+{
+	return nan_cache_ndp_peer_mac_addr(psoc, peer_mac_addr);
+}
+
+QDF_STATUS ucfg_nan_remove_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
+					     struct qdf_mac_addr *peer_mac_addr)
+{
+	return nan_remove_ndp_peer_mac_addr(psoc, peer_mac_addr);
 }

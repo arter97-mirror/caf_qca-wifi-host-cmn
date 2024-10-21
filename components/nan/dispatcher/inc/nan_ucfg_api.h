@@ -604,6 +604,29 @@ bool ucfg_nan_get_prefer_nan_chan_for_p2p(struct wlan_objmgr_psoc *psoc);
  * Return: NAN MAC address
  */
 struct qdf_mac_addr *ucfg_nan_get_fw_addr(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * ucfg_nan_cache_ndp_peer_mac_addr() - This API is wrapper for function
+ * nan_cache_ndp_peer_mac_addr()
+ * @psoc: pointer to PSOC object
+ * @peer_mac_addr: peer mac address
+ *
+ * Return: QDF status
+ */
+QDF_STATUS ucfg_nan_cache_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
+					    struct qdf_mac_addr *peer_mac_addr);
+
+/**
+ * ucfg_nan_remove_ndp_peer_mac_addr() - This API is wrapper for function
+ * nan_remove_ndp_peer_mac_addr()
+ * @psoc: pointer to PSOC object
+ * @peer_mac_addr: peer mac address
+ *
+ * Return: QDF status
+ */
+QDF_STATUS
+ucfg_nan_remove_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
+				  struct qdf_mac_addr *peer_mac_addr);
 #else /* WLAN_FEATURE_NAN */
 
 static inline
