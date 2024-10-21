@@ -907,6 +907,21 @@ do {                                                                           \
 #define print_advance_data_be_stats(src, str) {}
 #endif /* WLAN_FEATURE_11BE */
 
+#ifdef QCA_PEER_EXT_STATS
+void print_advance_ext_data_tx_stats(struct advance_data_tx_stats *tx)
+{
+	STATS_32(stdout, "Tx min throughput", tx->min_throughput);
+	STATS_32(stdout, "Tx max throughput", tx->max_throughput);
+	STATS_32(stdout, "Tx average throughput", tx->avg_throughput);
+	STATS_32(stdout, "Tx packet error rate", tx->packet_error_rate);
+	STATS_32(stdout, "Tx retries percentage", tx->retries_percentage);
+}
+#else
+void print_advance_ext_data_tx_stats(struct advance_data_tx_stats *tx)
+{
+}
+#endif
+
 void print_advance_data_tx_stats(struct advance_data_tx_stats *tx)
 {
 	u_int8_t inx = 0;
@@ -927,6 +942,7 @@ void print_advance_data_tx_stats(struct advance_data_tx_stats *tx)
 	STATS_32(stdout, "Tx total_mpdu_retries", tx->total_mpdu_retries);
 	STATS_32(stdout, "Tx Release Source Not TQM", tx->release_src_not_tqm);
 	STATS_32(stdout, "Tx Invalid Link ID Packet Count", tx->inval_link_id);
+	print_advance_ext_data_tx_stats(tx);
 	STATS_32(stdout, "Tx PPDUs", tx->tx_ppdus);
 	STATS_32(stdout, "Tx MPDUs Success", tx->tx_mpdus_success);
 	STATS_32(stdout, "Tx MPDUs Treid", tx->tx_mpdus_tried);
@@ -1625,6 +1641,8 @@ print_advance_sta_data_sawf_tx(struct advance_peer_data_sawftx *data,
 			    data->tx[0][0].avg_throughput);
 		STATS_PRINT("Tx_info_PER                = %u\n",
 			    data->tx[0][0].per);
+		STATS_PRINT("Tx_info_RETRIES_PCT        = %u\n",
+			    data->tx[0][0].retries_pct);
 		STATS_PRINT("Tx_info_ingress_rate       = %u\n",
 			    data->tx[0][0].ingress_rate);
 

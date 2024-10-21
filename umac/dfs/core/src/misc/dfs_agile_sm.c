@@ -1735,11 +1735,18 @@ void dfs_start_punc_cac_timer(struct dfs_punc_obj *dfs_punc_arr,
 			      bool is_weather_chan)
 {
 	uint32_t punc_cac_timeout;
+	bool is_dfsreg_etsi = (utils_get_dfsdomain(dfs_punc_arr->dfs->dfs_pdev_obj) == DFS_ETSI_REGION);
 
-	if (is_weather_chan)
+	/* For ETSI domain, use PRECAC timer of 6 minutes for regular channels
+	* and 60 mins for Weather radar channels.
+	* For FCC domain, use RCAC timer of 1 minute.
+	*/
+	if (is_dfsreg_etsi && is_weather_chan)
 		punc_cac_timeout = MIN_WEATHER_PRECAC_DURATION;
-	else
+	else if (is_dfsreg_etsi)
 		punc_cac_timeout = MIN_PRECAC_DURATION;
+	else
+		punc_cac_timeout = MIN_RCAC_DURATION;
 
 	qdf_hrtimer_start(&dfs_punc_arr->dfs_punc_cac_timer,
 			  qdf_time_ms_to_ktime(punc_cac_timeout),
@@ -1809,6 +1816,31 @@ dfs_deliver_punc_cac_completion_events(struct wlan_dfs *dfs,
 		utils_dfs_deliver_event(dfs->dfs_pdev_obj,
 					punc_freq_list[i],
 					WLAN_EV_CAC_COMPLETED);
+	}
+}
+
+/**
+ * dfs_deliver_punc_cac_start_events() - Deliver punctured CAC start event
+ * @dfs: Pointer to structure wlan_dfs.
+ * @dfs_punc: Pointer to dfs puncturing sm group.
+ *
+ * Return: None
+ */
+static void
+dfs_deliver_punc_cac_start_events(struct wlan_dfs *dfs,
+				  struct dfs_punc_obj *dfs_punc)
+{
+	uint16_t punc_freq_list[N_MAX_PUNC_SM];
+	uint8_t n_punc_channels;
+	uint8_t i;
+
+	n_punc_channels = dfs_generate_punc_list_from_sm(dfs_punc, punc_freq_list);
+	for (i = 0; i < n_punc_channels; i++) {
+		if (!dfs_is_freq_in_nol(dfs, punc_freq_list[i])) {
+			utils_dfs_deliver_event(dfs->dfs_pdev_obj,
+						punc_freq_list[i],
+						WLAN_EV_CAC_STARTED);
+		}
 	}
 }
 
@@ -2036,6 +2068,7 @@ static void dfs_puncturing_state_cac_wait_entry(void *ctx)
 	struct dfs_punc_obj *dfs_punc = (struct dfs_punc_obj *)ctx;
 
 	dfs_puncturing_set_curr_state(dfs_punc, DFS_S_CAC_WAIT);
+	dfs_deliver_punc_cac_start_events(dfs_punc->dfs, dfs_punc);
 }
 
 /**

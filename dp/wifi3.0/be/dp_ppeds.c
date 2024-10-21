@@ -1552,6 +1552,50 @@ uint32_t dp_ppeds_get_node_id_be(struct cdp_soc_t *soc_hdl)
 	return be_soc->dp_ppeds_node_id;
 }
 
+bool dp_ppeds_process_mpsk_exception(struct cdp_soc_t *soc_hdl,
+				   qdf_nbuf_t nbuf) {
+	struct dp_peer *dp_peer = NULL;
+	struct dp_txrx_peer *txrx_peer = NULL;
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	uint16_t vlan_id = 0;
+	uint8_t tid = 0;
+	bool ret = false;
+	qdf_ether_header_t *eh;
+
+	eh = (qdf_ether_header_t *)qdf_nbuf_data(nbuf);
+
+	dp_peer = dp_find_peer_by_macaddr(soc, eh->ether_shost, DP_VDEV_ALL, DP_MOD_ID_DS);
+	if (!dp_peer) {
+		dp_err("%pK: No peer found for MPSK", soc);
+		return false;
+	}
+
+	txrx_peer = dp_get_txrx_peer(dp_peer);
+	if (!txrx_peer) {
+		dp_err("%pK: No txrx peer found for dp peer", dp_peer);
+		dp_peer_unref_delete(dp_peer, DP_MOD_ID_DS);
+		return false;
+	}
+
+	vlan_id = txrx_peer->vlan_id;
+
+	if (!vlan_id) {
+		dp_info("%pK: This is a classic client for MPSK", dp_peer);
+		dp_peer_unref_delete(dp_peer, DP_MOD_ID_DS);
+		return true;
+	}
+
+	/*
+	 * Add a VLAN header in the packet.
+	 */
+	tid = qdf_nbuf_get_tid_val(nbuf);
+	ret = dp_rx_multipass_add_vlan(txrx_peer, nbuf, tid);
+
+	dp_peer_unref_delete(dp_peer, DP_MOD_ID_DS);
+
+	return ret;
+}
+
 void dp_ppeds_stats_sync_be(struct cdp_soc_t *soc_hdl,
 			    uint16_t vdev_id,
 			    struct cdp_ds_vp_params *vp_params,

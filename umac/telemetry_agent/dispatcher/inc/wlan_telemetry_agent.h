@@ -297,13 +297,15 @@ QDF_STATUS telemetry_sawf_get_rate(void *telemetry_ctx, uint8_t tid,
  * @max_tput: pointer to memory to fill max throughput
  * @avg_tput: pointer to memory to fill avg throughput
  * @per: pointer to memory to fill PER
+ * @retries_pct: pointer to memory to fill retries pct
  *
  * Return: QDF_STATUS_SUCCESS on success
  */
 QDF_STATUS telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid,
 				   uint8_t queue,
 				   uint32_t *min_tput, uint32_t *max_tput,
-				   uint32_t *avg_tput, uint32_t *per);
+				   uint32_t *avg_tput, uint32_t *per,
+				   uint32_t *retries_pct);
 
 
 /**
@@ -351,6 +353,24 @@ QDF_STATUS telemetry_peer_sla_detect(uint8_t *peer_mac,
 				     uint32_t mcs_max_threshold,
 				     uint32_t min_thruput_rate,
 				     uint32_t max_thruput_rate);
+
+/**
+ * telemetry_pull_tx_peer_stats - pull tx peer stats
+ * @peer_mac: peer mac addr
+ * @min_tput: pointer to min threshold
+ * @max_tput: pointer to max threshold
+ * @avg_tput: pointer to average threshold
+ * @per: packet pointer to error rate
+ * @retries_pct: pointer to retries percentage
+ *
+ * Return: QDF_STATUS_SUCCESS on success
+ */
+QDF_STATUS telemetry_pull_tx_peer_stats(uint8_t *peer_mac,
+					uint32_t *min_tput,
+					uint32_t *max_tput,
+					uint32_t *avg_tput,
+					uint32_t *per,
+					uint32_t *retries_pct);
 #else
 #define wlan_telemetry_agent_dynamic_app_init_deinit_notify(param, service_id, service_data)
 #define wlan_telemetry_agent_application_init_notify(param, service_id, service_data)
@@ -485,6 +505,17 @@ QDF_STATUS telemetry_peer_sla_detect(uint8_t *peer_mac,
 }
 
 static inline
+QDF_STATUS telemetry_pull_tx_peer_stats(uint8_t *peer_mac,
+					uint32_t *min_tput,
+					uint32_t *max_tput,
+					uint32_t *avg_tput,
+					uint32_t *per,
+					uint32_t *retries_pct)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
 QDF_STATUS telemetry_sawf_update_delay(void *telemetry_ctx, uint8_t tid,
 				       uint8_t queue, uint64_t pass,
 				       uint64_t fail)
@@ -525,7 +556,8 @@ static inline
 QDF_STATUS telemetry_sawf_get_tx_rate(void *telemetry_ctx, uint8_t tid,
 				   uint8_t queue,
 				   uint32_t *min_tput, uint32_t *max_tput,
-				   uint32_t *avg_tput, uint32_t *per) {
+				   uint32_t *avg_tput, uint32_t *per,
+				   uint32_t *retries_pct) {
 	return QDF_STATUS_SUCCESS;
 }
 

@@ -29,7 +29,7 @@
 #define FLOW_DEPRIORITIZE  3
 #define QCA_SAWF_MCAST_IF_MAX 16
 #define MAC_ADDR_SIZE 6
-
+#define MAX_SSID_LEN 32
 #define MAX_NUM_MLO_VDEV 7
 
 enum QCA_VDEV_BAND {
@@ -216,6 +216,22 @@ struct qca_sawf_wifi_port_params {
 	uint8_t pcp;
 };
 
+struct qca_sawf_wifi_port_params_v2 {
+	uint8_t ssid[MAX_SSID_LEN + 1];
+	uint8_t bssid[MAC_ADDR_SIZE];
+	uint8_t ra_mac[MAC_ADDR_SIZE];
+	uint8_t ta_mac[MAC_ADDR_SIZE];
+	struct qca_sawf_radio_params band;
+	struct qca_sawf_radio_params channel;
+	struct qca_sawf_radio_params bw;
+	uint8_t ssid_len;
+	uint8_t dscp;
+	uint8_t pcp;
+	uint8_t ac;
+	uint8_t valid_flags;
+	uint8_t priority;
+};
+
 uint16_t qca_sawf_get_msduq(struct net_device *netdev,
 			    uint8_t *peer_mac, uint32_t service_id);
 uint16_t qca_sawf_get_msduq_v2(struct net_device *netdev, uint8_t *peer_mac,
@@ -306,8 +322,30 @@ void qca_sawf_flow_deprioritize_response(struct qca_sawf_flow_deprioritize_resp_
  */
 bool qca_sdwf_match_wifi_port_params(struct net_device *netdev,
 				     uint8_t *dest_mac,
+				     struct net_device *src_dev,
+				     uint8_t *src_mac,
 				     uint8_t priority,
-				     struct qca_sawf_wifi_port_params *wp);
+				     struct qca_sawf_wifi_port_params_v2 *wp);
+
+/*
+ * qca_sdwf_match_wifi_port_params_v2() - Check if wifi port params match
+ *
+ * @dst_dev: Destination netdevice
+ * @dst_mac: Destination mac address
+ * @src_dev: Source netdevice
+ * @src_mac: Source mac address
+ * @priority: Traffic priority set by user
+ * @wp: SWDF wifi parameters parsed and sent by SPM
+ *
+ * Return: true if rule match found else false
+ */
+bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
+					uint8_t *dest_mac,
+					struct net_device *src_dev,
+					uint8_t *src_mac,
+					uint8_t priority,
+					struct qca_sawf_wifi_port_params *wp);
+
 
 /*
  * qca_sdwf_validate_wifi_port_params() - Check if wifi port params are valid
@@ -318,4 +356,12 @@ bool qca_sdwf_match_wifi_port_params(struct net_device *netdev,
  */
 bool qca_sdwf_validate_wifi_port_params(struct qca_sawf_wifi_port_params *wp);
 
+/*
+ * qca_sdwf_validate_wifi_port_params() - Check if wifi port params are valid
+ *
+ * @wp: SWDF wifi parameters parsed and sent by SPM
+ *
+ * Return: true if parameters are valid, false if invalid
+ */
+bool qca_sdwf_validate_wifi_port_params_v2(struct qca_sawf_wifi_port_params_v2 *wp);
 #endif

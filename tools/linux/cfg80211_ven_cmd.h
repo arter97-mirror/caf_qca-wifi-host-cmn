@@ -828,7 +828,7 @@ enum {
 #endif
 	IEEE80211_PARAM_UPTIME            = 785,  /* Get VAP uptime */
 #ifdef WLAN_FEATURE_11BE
-	IEEE80211_PARAM_EHT_SUP_MCS15     = 786,   /* Set 11be - EHT MCS15 Support */
+	IEEE80211_PARAM_EHT_SUP_MCS15_IN_MRU     = 786,   /* Set 11be - EHT MCS15 In MRU Support */
 	IEEE80211_PARAM_EHT_MCS14_DUP_IN_6GHZ                   = 787, /* Set 11be - EHT MCS14 Duplicate in 6GHz */
 #endif /* WLAN_FEATURE_11BE */
 	IEEE80211_PARAM_DROP_3ADDR_MCAST  = 788,  /* Flag to enable/disable 3address multicast pkt drops */
@@ -918,9 +918,11 @@ enum {
 	IEEE80211_PARAM_DISABLE_LPI_ANT_OPTIMIZATION = 835,
 	IEEE80211_PARAM_RECOVERY_STATE = 836,
 
+	/* Add QCA enums above */
+	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
+	IEEE80211_PARAM_CUST_END, /* Cust enum end */
 	IEEE80211_PARAM_LAST,
 	IEEE80211_PARAM_MAX = IEEE80211_PARAM_LAST - 1,
-	/* Customer enums */
 };
 
 enum {
@@ -1558,10 +1560,13 @@ enum _ol_ath_param_t {
 #endif /* UMAC_SUPPORT_ACS */
 	OL_ATH_PARAM_START_AID = 556,
 	OL_ATH_PARAM_DISABLE_LPI_ANT = 557,
+	OL_ATH_PARAM_NXT_RDR_WIDTH = 558,
 
+	/* Add QCA enums above */
+	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
+	OL_ATH_PARAM_CUST_END, /* Cust enum end */
 	OL_ATH_PARAM_LAST,
 	OL_ATH_PARAM_MAX = OL_ATH_PARAM_LAST - 1,
-	/* Customer enums */
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
@@ -2645,8 +2650,8 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"get_eht_ul_ltf",       IEEE80211_PARAM_EHT_UL_LTF, GET_PARAM, 0},
 	{"eht_ltf",              IEEE80211_PARAM_EHT_LTF, SET_PARAM, 1},
 	{"get_eht_ltf",          IEEE80211_PARAM_EHT_LTF, GET_PARAM, 0},
-	{"eht_mcs15_supp",       IEEE80211_PARAM_EHT_SUP_MCS15, SET_PARAM, 1},
-	{"get_eht_mcs15_supp",   IEEE80211_PARAM_EHT_SUP_MCS15, GET_PARAM, 0},
+	{"eht_mcs15_supp_in_mru",       IEEE80211_PARAM_EHT_SUP_MCS15_IN_MRU, SET_PARAM, 1},
+	{"get_eht_mcs15_supp_in_mru",   IEEE80211_PARAM_EHT_SUP_MCS15_IN_MRU, GET_PARAM, 0},
 	{"eht_mcs14_dup_6ghz",   IEEE80211_PARAM_EHT_MCS14_DUP_IN_6GHZ, SET_PARAM, 1},
 	{"get_eht_mcs14_dup_6ghz", IEEE80211_PARAM_EHT_MCS14_DUP_IN_6GHZ, GET_PARAM, 0},
 	{"set_eht_ml_probe_req", IEEE80211_PARAM_EHT_ML_PROBE_REQ, SET_PARAM, 1},
@@ -3641,6 +3646,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_FREQ, SET_PARAM, 1},
 	{"getNxtRadarFreq",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_FREQ, GET_PARAM, 0},
+	{"setNxtRadarWidth",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_WIDTH, SET_PARAM, 1},
+	{"getNxtRadarWidth",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_NXT_RDR_WIDTH, GET_PARAM, 0},
 	{"rpt_max_phy",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RPT_MAX_PHY, SET_PARAM, 1},
 	{"g_rpt_max_phy",
@@ -3707,7 +3716,6 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_SPECIAL_PARAM_SHIFT | OL_SPECIAL_PARAM_RADIO_MGMT_RETRY_LIMIT, SET_PARAM, 1},
 	{"setHALparam",         35808, SET_PARAM, 1},
 	{"getHALparam",         35809, GET_PARAM, 0},
-	{"get_aggr_burst",      35821, GET_PARAM, 0},
 	{"get_cfr_capture_status",
 	 OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_CFR_CAPTURE_STATUS, GET_PARAM, 0},
 	{"non_inherit_enable",

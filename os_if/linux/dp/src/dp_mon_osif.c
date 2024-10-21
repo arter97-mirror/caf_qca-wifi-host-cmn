@@ -23,7 +23,7 @@
 void monitor_osif_process_rx_mpdu(osif_dev *osifp, qdf_nbuf_t mpdu_ind)
 {
 	skb_reset_mac_header(mpdu_ind);
-	mpdu_ind->dev       = osifp->netdev;
+	mpdu_ind->dev       = osif_get_monitor_netdev(osifp);
 	mpdu_ind->pkt_type  = PACKET_USER;
 	mpdu_ind->ip_summed = CHECKSUM_UNNECESSARY;
 	mpdu_ind->protocol  = qdf_cpu_to_le16(ETH_P_802_2);
@@ -33,10 +33,10 @@ void monitor_osif_process_rx_mpdu(osif_dev *osifp, qdf_nbuf_t mpdu_ind)
 
 void monitor_osif_deliver_tx_capture_data(osif_dev *osifp, struct sk_buff *skb)
 {
-	skb->dev = osifp->netdev;
+	skb->dev = osif_get_monitor_netdev(osifp);
+	skb->protocol = eth_type_trans(skb, osif_get_monitor_netdev(osifp));
 	skb->pkt_type = PACKET_USER;
 	skb->ip_summed = CHECKSUM_UNNECESSARY;
-	skb->protocol = eth_type_trans(skb, osifp->netdev);
 	nbuf_debug_del_record(skb);
 	netif_rx(skb);
 }
@@ -45,10 +45,10 @@ void monitor_osif_deliver_tx_capture_data(osif_dev *osifp, struct sk_buff *skb)
 void monitor_osif_deliver_rx_capture_undecoded_metadata(osif_dev *osifp,
 							struct sk_buff *skb)
 {
-	skb->dev = osifp->netdev;
+	skb->dev = osif_get_monitor_netdev(osifp);
+	skb->protocol = eth_type_trans(skb, osif_get_monitor_netdev(osifp));
 	skb->pkt_type = PACKET_USER;
 	skb->ip_summed = CHECKSUM_UNNECESSARY;
-	skb->protocol = eth_type_trans(skb, osifp->netdev);
 	nbuf_debug_del_record(skb);
 	netif_rx(skb);
 }
@@ -98,6 +98,7 @@ void *monitor_osif_get_vdev_by_name(char *name)
 				}
 			}
 			if (link_id == IEEE80211_MLD_MAX_NUM_LINKS) {
+				qdf_err("Requested link is not part of monitor mld %s", dev->name);
 				qdf_net_if_release_dev((struct qdf_net_if *)dev);
 				return NULL;
 			}
@@ -129,12 +130,23 @@ bool monitor_osif_is_mld_ifname(char *name)
 	if (dev) {
 		osifp = ath_netdev_priv(dev);
 		if (osifp && osifp->dev_type == OSIF_NETDEV_TYPE_MLO) {
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+			struct osif_mldev *mldev;
+			mldev = ath_netdev_priv(dev);
+			if (mldev->wdev.iftype == NL80211_IFTYPE_MONITOR) {
+				/*
+				 * Block all MLD interfaces expect monitor MLD interface
+				 * Monitor MLD interface is valid, hence return false
+				 */
+				qdf_net_if_release_dev((struct qdf_net_if *)dev);
+				return false;
+			}
+#endif
 			qdf_net_if_release_dev((struct qdf_net_if *)dev);
 			return true;
 		}
 		qdf_net_if_release_dev((struct qdf_net_if *)dev);
 	}
-
 	return false;
 }
 #endif

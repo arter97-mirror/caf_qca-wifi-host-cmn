@@ -750,55 +750,10 @@ bool dp_sawf_get_search_index(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	return status;
 }
 
-#ifdef QCA_SUPPORT_WDS_EXTENDED
-static struct dp_peer *dp_sawf_get_peer_from_wds_ext_dev(
-				struct net_device *netdev,
-				uint8_t *dest_mac,
-				struct dp_soc **soc,
-				enum dp_mod_id mod_id)
-{
-	osif_peer_dev *osifp = NULL;
-	osif_dev *osdev;
-	osif_dev *parent_osdev;
-	struct wlan_objmgr_vdev *vdev = NULL;
-
-	/*
-	 * Here netdev received need to be AP vlan netdev of type WDS EXT.
-	 */
-	osdev = ath_netdev_priv(netdev);
-	if (osdev->dev_type != OSIF_NETDEV_TYPE_WDS_EXT) {
-		qdf_debug("Dev type is not WDS EXT");
-		return NULL;
-	}
-
-	/*
-	 * Get the private structure of AP vlan dev.
-	 */
-	osifp = ath_netdev_priv(netdev);
-	parent_osdev = osif_wds_ext_get_parent_osif(osifp);
-	if (!parent_osdev) {
-		qdf_debug("Parent dev cannot be NULL");
-		return NULL;
-	}
-
-	/*
-	 * Vdev ctx are valid only in parent netdev.
-	 */
-	vdev = parent_osdev->ctrl_vdev;
-	*soc = (struct dp_soc *)wlan_psoc_get_dp_handle
-	      (wlan_pdev_get_psoc(wlan_vdev_get_pdev(vdev)));
-	if (!(*soc)) {
-		qdf_debug("Soc cannot be NULL");
-		return NULL;
-	}
-
-	return dp_peer_get_ref_by_id((*soc), osifp->peer_id, mod_id);
-}
-#endif
-
 static struct dp_peer *dp_find_peer_by_destmac(struct dp_soc *soc,
 		uint8_t *dest_mac,
-		uint8_t vdev_id)
+		uint8_t vdev_id,
+		enum dp_mod_id mod_id)
 {
 	bool ast_ind_disable = wlan_cfg_get_ast_indication_disable(
 							soc->wlan_cfg_ctx);
@@ -826,15 +781,14 @@ static struct dp_peer *dp_find_peer_by_destmac(struct dp_soc *soc,
 		if (peer_id == HTT_INVALID_PEER)
 			return NULL;
 
-		return dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_SAWF);
+		return dp_peer_get_ref_by_id(soc, peer_id, mod_id);
 	} else {
 		struct cdp_peer_info peer_info = {0};
 
 		DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, dest_mac, false,
 					 CDP_WILD_PEER_TYPE);
 
-		return dp_peer_hash_find_wrapper(soc, &peer_info,
-						 DP_MOD_ID_SAWF);
+		return dp_peer_hash_find_wrapper(soc, &peer_info, mod_id);
 	}
 }
 
@@ -912,7 +866,8 @@ dp_sawf_peer_flow_count(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 	if (peer_id != HTT_INVALID_PEER)
 		peer = dp_peer_get_ref_by_id(dpsoc, peer_id, DP_MOD_ID_SAWF);
 	else
-		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL);
+		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL,
+					       DP_MOD_ID_SAWF);
 
 	if (!peer) {
 		dp_sawf_err("Peer is NULL");
@@ -1053,7 +1008,8 @@ dp_sawf_peer_config_ul(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 	if (peer_id != HTT_INVALID_PEER)
 		peer = dp_peer_get_ref_by_id(dpsoc, peer_id, DP_MOD_ID_SAWF);
 	else
-		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL);
+		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL,
+					       DP_MOD_ID_SAWF);
 
 	if (!peer)
 		return QDF_STATUS_E_FAILURE;
@@ -1069,90 +1025,6 @@ dp_sawf_peer_config_ul(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 	dp_peer_unref_delete(peer, DP_MOD_ID_SAWF);
 
 	return status;
-}
-
-struct dp_peer *dp_sawf_get_peer(struct net_device *netdev, uint8_t *dest_mac,
-				 struct dp_soc **soc, enum dp_mod_id mod_id,
-				 bool use_bss_peer)
-{
-	osif_dev *osdev;
-	struct dp_peer *peer = NULL;
-	wlan_if_t vap;
-	struct wlan_objmgr_vdev *vdev;
-	struct wlan_objmgr_peer *bss_peer;
-	struct dp_peer *primary_link_peer = NULL;
-	uint8_t vdev_id;
-
-	if (!netdev->ieee80211_ptr) {
-		dp_sawf_debug("non vap netdevice");
-		return NULL;
-	}
-
-	osdev = ath_netdev_priv(netdev);
-#ifdef QCA_SUPPORT_WDS_EXTENDED
-	if (osdev->dev_type == OSIF_NETDEV_TYPE_WDS_EXT) {
-		peer = dp_sawf_get_peer_from_wds_ext_dev(netdev,
-							 dest_mac,
-							 soc,
-							 mod_id);
-		if (peer)
-			goto process_peer;
-
-		dp_sawf_info("Peer not found from WDS EXT dev");
-		return NULL;
-	}
-#endif
-	vap = osdev->os_if;
-	vdev = osdev->ctrl_vdev;
-	*soc = (struct dp_soc *)wlan_psoc_get_dp_handle
-	      (wlan_pdev_get_psoc(wlan_vdev_get_pdev(vdev)));
-	if (!*soc) {
-		dp_sawf_err("Soc cannot be NULL");
-		return NULL;
-	}
-
-	vdev_id = wlan_vdev_get_id(vdev);
-
-	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) {
-		if (!use_bss_peer)
-			return NULL;
-		bss_peer = wlan_vdev_get_bsspeer(vdev);
-		if (!bss_peer) {
-			dp_sawf_err("NULL peer");
-			return NULL;
-		}
-		peer = dp_find_peer_by_destmac(*soc, bss_peer->macaddr, vdev_id);
-	} else {
-		peer = dp_find_peer_by_destmac(*soc, dest_mac, vdev_id);
-	}
-
-	if (!peer) {
-		dp_sawf_err("NULL peer");
-		return NULL;
-	}
-
-#ifdef QCA_SUPPORT_WDS_EXTENDED
-process_peer:
-#endif
-	if (IS_MLO_DP_MLD_PEER(peer)) {
-		primary_link_peer = dp_get_primary_link_peer_by_id(*soc,
-					peer->peer_id,
-					mod_id);
-		if (!primary_link_peer) {
-			dp_peer_unref_delete(peer, mod_id);
-			dp_sawf_err("NULL peer");
-			return NULL;
-		}
-
-		/*
-		 * Release the MLD-peer reference.
-		 * Hold only primary link ref now.
-		 */
-		dp_peer_unref_delete(peer, mod_id);
-		peer = primary_link_peer;
-	}
-
-	return peer;
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_3_LINK_TX
@@ -1191,19 +1063,22 @@ static bool dp_is_mlo_3_link_war_needed(struct dp_peer *peer)
 	struct dp_soc *primary_link_soc = NULL;
 	uint32_t target_type;
 	bool war_needed = true;
+	struct dp_peer *mld_peer = NULL;
 
-	if (!IS_MLO_DP_LINK_PEER(peer))
-		return false;
+	if (IS_MLO_DP_LINK_PEER(peer))
+		mld_peer = DP_GET_MLD_PEER_FROM_PEER(peer);
+	else if (IS_MLO_DP_MLD_PEER(peer))
+		mld_peer = peer;
 
-	if (!peer->mld_peer) {
-		dp_sawf_err("mld peer is null for MLO capable peer");
+	if (!mld_peer) {
+		dp_sawf_debug("mld peer is null for MLO capable peer");
 		return false;
 	}
 
 	if (!dp_is_mlo_3_link_peer(peer))
 		return false;
 
-	primary_link_soc = peer->mld_peer->vdev->pdev->soc;
+	primary_link_soc = mld_peer->vdev->pdev->soc;
 	target_type = hal_get_target_type(primary_link_soc->hal_soc);
 	if (target_type != TARGET_TYPE_QCN9224)
 		war_needed = false;
@@ -1213,12 +1088,12 @@ static bool dp_is_mlo_3_link_war_needed(struct dp_peer *peer)
 
 uint32_t dscp_tid_map[WMI_HOST_DSCP_MAP_MAX] = {
 	0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 1, 1, 1, 1, 1, 1,
-	2, 2, 2, 2, 2, 2, 2, 2,
-	3, 3, 3, 3, 3, 3, 3, 3,
+	1, 1, 0, 1, 0, 1, 0, 1,
+	0, 2, 3, 2, 3, 2, 3, 2,
+	4, 3, 4, 3, 4, 3, 4, 3,
 	4, 4, 4, 4, 4, 4, 4, 4,
-	5, 5, 5, 5, 5, 5, 5, 5,
-	6, 6, 6, 6, 6, 6, 6, 6,
+	5, 5, 5, 5, 6, 5, 6, 5,
+	7, 6, 6, 6, 6, 6, 6, 6,
 	7, 7, 7, 7, 7, 7, 7, 7,
 };
 
@@ -1291,15 +1166,17 @@ static uint16_t dp_sawf_get_3_link_queue_id(struct dp_peer *peer, uint16_t tid)
 	return queue_id;
 }
 
-uint16_t dp_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *dest_mac,
+uint16_t dp_sawf_get_peer_msduq(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+				uint8_t *peer_mac,
 				uint32_t dscp_pcp, bool pcp)
 {
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_peer *peer = NULL;
-	struct dp_soc *soc = NULL;
 	struct dp_peer *mld_peer = NULL;
 	uint16_t queue_id = DP_SAWF_PEER_Q_INVALID;
 
-	peer = dp_sawf_get_peer(netdev, dest_mac, &soc, DP_MOD_ID_SAWF, true);
+	peer = dp_find_peer_by_destmac(soc, peer_mac, vdev_id,
+				       DP_MOD_ID_SAWF);
 	if (!peer) {
 		dp_sawf_debug("Peer is NULL");
 		return DP_SAWF_PEER_Q_INVALID;
@@ -1310,9 +1187,13 @@ uint16_t dp_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *dest_mac,
 		return DP_SAWF_PEER_Q_INVALID;
 	}
 
-	mld_peer = peer->mld_peer;
+	if (IS_MLO_DP_LINK_PEER(peer))
+		mld_peer = DP_GET_MLD_PEER_FROM_PEER(peer);
+	else if (IS_MLO_DP_MLD_PEER(peer))
+		mld_peer = peer;
+
 	if (!mld_peer) {
-		dp_sawf_err("mld peer is null for MLO capable peer");
+		dp_sawf_debug("mld peer is null for MLO capable peer");
 		dp_peer_unref_delete(peer, DP_MOD_ID_SAWF);
 		return DP_SAWF_PEER_Q_INVALID;
 	}
@@ -1342,7 +1223,8 @@ dp_sawf_3_link_peer_flow_count(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 	if (peer_id != HTT_INVALID_PEER)
 		peer = dp_peer_get_ref_by_id(dpsoc, peer_id, DP_MOD_ID_SAWF);
 	else
-		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL);
+		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL,
+					       DP_MOD_ID_SAWF);
 
 	if (!peer)
 		return QDF_STATUS_E_FAILURE;
@@ -1399,7 +1281,8 @@ dp_sawf_3_link_peer_set_tid_weight(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 	if (peer_id != HTT_INVALID_PEER)
 		peer = dp_peer_get_ref_by_id(dpsoc, peer_id, DP_MOD_ID_SAWF);
 	else
-		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL);
+		peer = dp_find_peer_by_destmac(dpsoc, mac_addr, DP_VDEV_ALL,
+					       DP_MOD_ID_SAWF);
 
 	if (!peer)
 		return QDF_STATUS_E_FAILURE;
@@ -1885,7 +1768,7 @@ uint16_t dp_sawf_get_msduq(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	static_tid = wlan_service_id_tid(service_id);
 	tid = static_tid;
 
-	peer = dp_find_peer_by_destmac(soc, dest_mac, vdev_id);
+	peer = dp_find_peer_by_destmac(soc, dest_mac, vdev_id, DP_MOD_ID_SAWF);
 	if (!peer) {
 		dp_sawf_debug("Peer is NULL");
 		return DP_SAWF_PEER_Q_INVALID;
@@ -3129,6 +3012,7 @@ static void dp_sawf_dump_tx_stats(struct sawf_tx_stats *tx_stats)
 	dp_sawf_print_stats("max throughput = %u", tx_stats->max_throughput);
 	dp_sawf_print_stats("avg throughput = %u", tx_stats->avg_throughput);
 	dp_sawf_print_stats("per = %u", tx_stats->per);
+	dp_sawf_print_stats("retries percentage = %u", tx_stats->retries_pct);
 	dp_sawf_print_stats("ingress rate = %u", tx_stats->ingress_rate);
 	dp_sawf_print_stats("reinject packet = %u", tx_stats->reinject_pkt);
 }
@@ -3179,6 +3063,7 @@ dp_sawf_copy_tx_stats(struct sawf_tx_stats *dst, struct sawf_tx_stats *src)
 	dst->max_throughput = src->max_throughput;
 	dst->avg_throughput = src->avg_throughput;
 	dst->per = src->per;
+	dst->retries_pct = src->retries_pct;
 	dst->multiple_retry_count = src->multiple_retry_count;
 	dst->failed_retry_count = src->failed_retry_count;
 	for (pream_type = 0; pream_type <  DOT11_MAX; pream_type++) {
@@ -3392,7 +3277,7 @@ dp_sawf_get_peer_tx_stats(struct cdp_soc_t *soc,
 	uint8_t tid, q_idx;
 	uint16_t host_q_id, host_q_idx;
 	uint32_t throughput, ingress_rate;
-	uint32_t min_tput, max_tput, avg_tput, per;
+	uint32_t min_tput, max_tput, avg_tput, per, retries_pct;
 	QDF_STATUS status;
 	uint8_t stats_cfg;
 
@@ -3475,13 +3360,14 @@ dp_sawf_get_peer_tx_stats(struct cdp_soc_t *soc,
 						sawf_ctx->telemetry_ctx,
 						tid, host_q_idx,
 						&min_tput, &max_tput,
-						&avg_tput, &per);
+						&avg_tput, &per, &retries_pct);
 				src->throughput = throughput;
 				src->ingress_rate = ingress_rate;
 				src->min_throughput = min_tput;
 				src->max_throughput = max_tput;
 				src->avg_throughput = avg_tput;
 				src->per = per;
+				src->retries_pct = retries_pct;
 
 				dp_sawf_print_stats("-- TID: %u MSDUQ: %u --",
 						    tid, q_idx);
@@ -3528,13 +3414,14 @@ dp_sawf_get_peer_tx_stats(struct cdp_soc_t *soc,
 					sawf_ctx->telemetry_ctx,
 					tid, host_q_idx,
 					&min_tput, &max_tput,
-					&avg_tput, &per);
+					&avg_tput, &per, &retries_pct);
 		src->throughput = throughput;
 		src->ingress_rate = ingress_rate;
 		src->min_throughput = min_tput;
 		src->max_throughput = max_tput;
 		src->avg_throughput = avg_tput;
 		src->per = per;
+		src->retries_pct = retries_pct;
 
 		dp_sawf_print_stats("----TID: %u MSDUQ: %u ----",
 				    tid, q_idx);
@@ -3555,6 +3442,17 @@ fail:
 		dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef QCA_PEER_EXT_STATS
+QDF_STATUS
+dp_txrx_pull_tx_peer_stats(uint8_t *peer_mac, uint32_t *min_tput,
+			   uint32_t *max_tput, uint32_t *avg_tput,
+			   uint32_t *per, uint32_t *retries_pct)
+{
+	return telemetry_pull_tx_peer_stats(peer_mac, min_tput, max_tput,
+					    avg_tput, per, retries_pct);
+}
+#endif
 
 #ifdef SAWF_ADMISSION_CONTROL
 QDF_STATUS
@@ -4074,6 +3972,16 @@ dp_sawf_get_peer_tx_stats(struct cdp_soc_t *soc,
 {
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef QCA_PEER_EXT_STATS
+QDF_STATUS
+dp_txrx_pull_tx_peer_stats(uint8_t *peer_mac, uint32_t *min_tput,
+			   uint32_t *max_tput, uint32_t *avg_tput,
+			   uint32_t *per, uint32_t *retries_pct)
+{
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
 
 QDF_STATUS
 dp_sawf_get_tx_stats(void *arg, uint64_t *in_bytes, uint64_t *in_cnt,

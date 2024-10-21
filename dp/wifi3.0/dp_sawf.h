@@ -500,6 +500,24 @@ QDF_STATUS
 dp_sawf_get_peer_tx_stats(struct cdp_soc_t *soc,
 			  uint32_t svc_id, uint8_t *mac, void *data);
 
+#ifdef QCA_PEER_EXT_STATS
+/**
+ * dp_txrx_pull_tx_peer_stats - pull tx peer stats
+ * @peer_mac: peer mac addr
+ * @min_tput: pointer to min threshold
+ * @max_tput: pointer to max threshold
+ * @avg_tput: pointer to average threshold
+ * @per: packet pointer to error rate
+ * @retries_pct: pointer to retries percentage
+ *
+ * Return: QDF_STATUS_SUCCESS on success
+ */
+QDF_STATUS
+dp_txrx_pull_tx_peer_stats(uint8_t *peer_mac, uint32_t *min_tput,
+			   uint32_t *max_tput, uint32_t *avg_tput,
+			   uint32_t *per, uint32_t *retries_pct);
+#endif
+
 /**
  * dp_sawf_get_peer_msduq_svc_params - get peer msduq svc info
  * @soc: soc handle
@@ -569,7 +587,8 @@ struct dp_peer_sawf {
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO_3_LINK_TX
-uint16_t dp_sawf_get_peer_msduq(struct net_device *netdev, uint8_t *dest_mac,
+uint16_t dp_sawf_get_peer_msduq(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+				uint8_t *peer_mac,
 				uint32_t dscp_pcp, bool pcp);
 QDF_STATUS
 dp_sawf_3_link_peer_flow_count(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
