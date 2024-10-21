@@ -1760,11 +1760,17 @@ int htt_h2t_tx_ring_cfg(struct htt_soc *htt_soc, int pdev_id,
 	HTT_H2T_MSG_TYPE_SET(*msg_word, HTT_H2T_MSG_TYPE_TX_MONITOR_CFG);
 
 	/*
-	 * pdev_id is indexed from 0 whereas mac_id is indexed from 1
-	 * SW_TO_SW and SW_TO_HW rings are unaffected by this
+	 * Set target_pdev_id to 0 if pdev_id is -1 for all MACs,
+	 * If pdev_id is indexed from 0 whereas mac_id is indexed from 1,
+	 * SW_TO_SW and SW_TO_HW rings are unaffected by this.
 	 */
-	target_pdev_id =
-	dp_get_target_pdev_id_for_host_pdev_id(soc->dp_soc, pdev_id);
+	if (pdev_id == HOST_PDEV_ID_ALL_MACS)
+		target_pdev_id = 0;
+	else
+		target_pdev_id =
+			dp_get_target_pdev_id_for_host_pdev_id(soc->dp_soc,
+							       pdev_id);
+	dp_info("pdev id %d, target_pdev_id %d", pdev_id, target_pdev_id);
 
 	HTT_TX_MONITOR_CFG_PDEV_ID_SET(*msg_word,
 				       target_pdev_id);
@@ -3808,7 +3814,9 @@ dp_tx_mon_ht2_ring_cfg(struct dp_soc *soc,
 		       enum dp_mon_filter_srng_type srng_type,
 		       struct htt_tx_ring_tlv_filter *tlv_filter)
 {
-	int mac_id;
+	int pdev_id;
+	int hal_ring_type, ring_buf_size;
+	hal_ring_handle_t hal_ring_hdl;
 	int max_mac_rings = wlan_cfg_get_num_mac_rings(pdev->wlan_cfg_ctx);
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct dp_mon_soc *mon_soc = soc->monitor_soc;
@@ -3826,27 +3834,17 @@ dp_tx_mon_ht2_ring_cfg(struct dp_soc *soc,
 	dp_mon_filter_info("%pK: srng type %d Max_mac_rings %d ",
 			   soc, srng_type, max_mac_rings);
 
-	for (mac_id = 0; mac_id < max_mac_rings; mac_id++) {
-		int mac_for_pdev =
-			dp_get_mac_id_for_pdev(mac_id, pdev->pdev_id);
-		int lmac_id = dp_get_lmac_id_for_pdev_id(soc, mac_id, pdev->pdev_id);
-		int hal_ring_type, ring_buf_size;
-		hal_ring_handle_t hal_ring_hdl;
+	pdev_id = HOST_PDEV_ID_ALL_MACS;
+	hal_ring_hdl =
+		mon_soc_be->tx_mon_dst_ring[0].hal_srng;
+	hal_ring_type = TX_MONITOR_DST;
+	ring_buf_size = 2048;
 
-		hal_ring_hdl =
-			mon_soc_be->tx_mon_dst_ring[lmac_id].hal_srng;
-		hal_ring_type = TX_MONITOR_DST;
-		ring_buf_size = 2048;
-
-		status = htt_h2t_tx_ring_cfg(soc->htt_handle, mac_for_pdev,
-					     hal_ring_hdl, hal_ring_type,
-					     ring_buf_size,
-					     tlv_filter,
-					     tx_cap_custom_classify);
-		if (status != QDF_STATUS_SUCCESS)
-			return status;
-	}
-
+	status = htt_h2t_tx_ring_cfg(soc->htt_handle, pdev_id,
+				     hal_ring_hdl, hal_ring_type,
+				     ring_buf_size,
+				     tlv_filter,
+				     tx_cap_custom_classify);
 	return status;
 }
 

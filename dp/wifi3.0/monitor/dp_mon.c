@@ -599,8 +599,12 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 	if (cdp_ops  && cdp_ops->soc_config_full_mon_mode)
 		cdp_ops->soc_config_full_mon_mode((struct cdp_pdev *)pdev,
 						  DP_FULL_MON_ENABLE);
-	dp_mon_filter_setup_mon_mode(pdev);
-	status = dp_mon_filter_update(pdev);
+
+	if (!dp_mon_mode_local_pkt_capture(soc)) {
+		dp_mon_filter_setup_mon_mode(pdev);
+		status = dp_mon_filter_update(pdev);
+	}
+
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_cdp_err("%pK: Failed to reset monitor filters", soc);
 		dp_mon_filter_reset_mon_mode(pdev);

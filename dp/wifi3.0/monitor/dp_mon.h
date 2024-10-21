@@ -5234,6 +5234,9 @@ dp_mon_mode_local_pkt_capture(struct dp_soc *soc)
 	 * as STA+MON mode, LPC otherwise.
 	 */
 	if (wlan_cfg_get_local_pkt_capture(soc->wlan_cfg_ctx) &&
+	    (soc->cdp_soc.ol_ops->get_con_mode &&
+	     soc->cdp_soc.ol_ops->get_con_mode() ==
+	     QDF_GLOBAL_MISSION_MODE) &&
 	    !(soc->mon_flags & QDF_MONITOR_FLAG_OTHER_BSS))
 		return true;
 
