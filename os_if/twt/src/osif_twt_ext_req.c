@@ -166,6 +166,8 @@ osif_twt_setup_req_type_to_cmd(u8 req_type, enum HOST_TWT_COMMAND *twt_cmd)
 		*twt_cmd = HOST_TWT_COMMAND_SUGGEST_TWT;
 	} else if (req_type == QCA_WLAN_VENDOR_TWT_SETUP_DEMAND) {
 		*twt_cmd = HOST_TWT_COMMAND_DEMAND_TWT;
+	} else if (req_type == QCA_WLAN_VENDOR_TWT_SETUP_ALTERNATE_TWT) {
+		*twt_cmd = HOST_TWT_COMMAND_ALTERNATE_TWT;
 	} else {
 		osif_err_rl("Invalid TWT_SETUP_REQ_TYPE %d", req_type);
 		return QDF_STATUS_E_INVAL;
@@ -1071,6 +1073,13 @@ int osif_twt_setup_req(struct wlan_objmgr_vdev *vdev,
 	ret = osif_twt_parse_add_dialog_attrs(tb2, &params);
 	if (ret)
 		return ret;
+
+	if (params.twt_cmd == HOST_TWT_COMMAND_ALTERNATE_TWT &&
+	    (mode != QDF_SAP_MODE && mode != QDF_P2P_GO_MODE)) {
+		osif_err("vdev %d twt_cmd type %d not supported for mode %d",
+			 vdev_id, params.twt_cmd, mode);
+			return -EOPNOTSUPP;
+	}
 
 	if (mode == QDF_STA_MODE || mode == QDF_P2P_CLIENT_MODE) {
 		bss_chan = wlan_vdev_mlme_get_bss_chan(vdev);
