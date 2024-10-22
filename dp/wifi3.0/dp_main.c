@@ -9935,6 +9935,8 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 	case CDP_FW_SUPPORT_ML_MON:
 		soc->features.fw_support_ml_monitor =
 				val.cdp_fw_support_ml_mon;
+		dp_info("FW support ML mon: %d",
+			soc->features.fw_support_ml_monitor);
 		break;
 	case CDP_MONITOR_FLAG:
 		soc->mon_flags = val.cdp_monitor_flag;
