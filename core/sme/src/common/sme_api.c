@@ -11910,6 +11910,7 @@ int sme_update_he_twt_req_support(mac_handle_t mac_handle, uint8_t session_id,
 	}
 	mac_ctx->mlme_cfg->he_caps.dot11_he_cap.twt_request = cfg_val;
 
+	ucfg_twt_cfg_set_requestor(mac_ctx->psoc, cfg_val);
 	csr_update_session_he_cap(mac_ctx, session);
 
 	return 0;
