@@ -318,13 +318,15 @@ typedef enum {
 #define WIFI_FEATURE_IE_ALLOWLIST       0x1000000 /* Support Probe IE allow
 						   * listing
 						   */
-#define WIFI_FEATURE_SCAN_RAND          0x2000000 /* Support MAC & Probe Sequence Number randomization */
-#define WIFI_FEATURE_SET_LATENCY_MODE   0x40000000 /* Set latency mode */
-/* Support changing MAC address without iface reset(down and up) */
-#define WIFI_FEATURE_DYNAMIC_SET_MAC    0x10000000
-
+/* Support MAC & Probe Sequence Number randomization */
+#define WIFI_FEATURE_SCAN_RAND          0x2000000
 /* Support Tx Power Limit setting */
 #define WIFI_FEATURE_SET_TX_POWER_LIMIT 0x4000000
+/* Support changing MAC address without iface reset(down and up) */
+#define WIFI_FEATURE_DYNAMIC_SET_MAC    0x10000000
+#define WIFI_FEATURE_SET_LATENCY_MODE   0x40000000 /* Set latency mode */
+
+#define WIFI_FEATURE_MAX_BIT_POS 64
 
 /* Add more features here */
 #define WIFI_TDLS_SUPPORT			BIT(0)
