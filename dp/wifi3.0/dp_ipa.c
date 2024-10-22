@@ -1836,22 +1836,6 @@ static int dp_rx_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 
-#if defined(QCA_IPA_LL_TX_FLOW_CONTROL) && defined(IPA_WDI3_TX_TWO_PIPES)
-int dp_ipa_uc_alt_attach(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	int error;
-
-	/* Setup 2nd TX pipe */
-	error = dp_ipa_tx_alt_pool_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA TX pool2 attach fail code %d",
-			  __func__, error);
-		return error;
-	}
-	return QDF_STATUS_SUCCESS;	/* success */
-}
-
 int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
 	int error;
@@ -1867,52 +1851,6 @@ int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 			  __func__, error);
 		if (error == -EFAULT)
 			dp_tx_ipa_uc_detach(soc, pdev);
-		return error;
-	}
-
-	/* Setup 2nd TX pipe */
-	error = dp_ipa_tx_alt_pool_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA TX pool2 attach fail code %d",
-			  __func__, error);
-		dp_tx_ipa_uc_detach(soc, pdev);
-		return error;
-	}
-
-	/* RX resource attach */
-	error = dp_rx_ipa_uc_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA UC RX attach fail code %d",
-			  __func__, error);
-		if (dp_ipa_is_alt_tx_required(soc))
-			dp_ipa_tx_alt_pool_detach(soc, pdev);
-		dp_tx_ipa_uc_detach(soc, pdev);
-		return error;
-	}
-
-	return QDF_STATUS_SUCCESS;	/* success */
-}
-#else
-int dp_ipa_uc_alt_attach(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	return QDF_STATUS_SUCCESS;	/* success */
-}
-
-int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	int error;
-
-	if (!wlan_cfg_is_ipa_enabled(soc->wlan_cfg_ctx))
-		return QDF_STATUS_SUCCESS;
-
-	/* TX resource attach */
-	error = dp_tx_ipa_uc_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA UC TX attach fail code %d",
-			  __func__, error);
 		return error;
 	}
 
@@ -1942,7 +1880,6 @@ int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 
 	return QDF_STATUS_SUCCESS;	/* success */
 }
-#endif
 #ifdef IPA_WDI3_VLAN_SUPPORT
 /**
  * dp_ipa_rx_alt_ring_resource_setup() - setup IPA 2nd RX ring resources
@@ -4219,7 +4156,7 @@ bool dp_ipa_get_opt_dp_ctrl_refill_cap(struct cdp_soc_t *soc_hdl)
 #endif
 #endif /* IPA_OPT_WIFI_DP */
 
-#ifdef IPA_WDS_EASYMESH_FEATURE
+#if defined (IPA_WDS_EASYMESH_FEATURE) || defined (QCA_IPA_LL_TX_FLOW_CONTROL)
 /**
  * dp_peer_get_ref_by_ast() - Returns peer object given the ast
  *                        mac address if ast_entry is active
@@ -4252,6 +4189,7 @@ static struct dp_peer *dp_peer_get_ref_by_ast(struct dp_soc *soc,
 	return peer;
 }
 
+#ifndef FEATURE_WDS_AST_LEARNING
 /**
  * dp_ipa_peer_check() - Check for peer for given mac
  * @soc: dp soc object
@@ -4278,6 +4216,68 @@ static bool dp_ipa_peer_check(struct dp_soc *soc,
 		return false;
 	}
 }
+#else /* FEATURE_WDS_AST_LEARNING */
+/**
+ * dp_ipa_peer_check() - Check for peer for given mac
+ * @soc: dp soc object
+ * @peer_mac_addr: peer mac address
+ * @vdev_id: vdev id
+ *
+ * This branch applies to FEATURE_WDS_AST_LEARNING=y, which is enabled with
+ * CONFIG_FEATURE_WDS=y, CONFIG_FEATURE_AST=n and CONFIG_AST_OFFLOAD_ENABLE=n.
+ *
+ * Under such configurations, wds peers are maintained only in the WDS Hash
+ * table. With that, two levels of search are done. First direct connected
+ * peers are checked against the peer hash table. If not found, wds peers
+ * are checked against the WDS Hash table.
+ *
+ * Note that with CONFIG_FEATURE_AST=n, peers are not maintained in the AST
+ * hash table.
+ *
+ * Return: true if peer is found, else false
+ */
+static bool dp_ipa_peer_check(struct dp_soc *soc,
+			      uint8_t *peer_mac_addr, uint8_t vdev_id)
+{
+	struct dp_wds_entry *wds_entry;
+	struct dp_vdev *vdev;
+	struct dp_peer *peer;
+	bool check_result;
+	uint16_t peer_id;
+
+	/* First check againest direct connected peers */
+	peer_id = dp_get_peer_id((ol_txrx_soc_handle)soc, vdev_id,
+				 peer_mac_addr);
+	if (peer_id != HTT_INVALID_PEER)
+		return true;
+
+	/* Next check againest wds peers */
+	wds_entry = dp_wds_hash_find_wds_entry(soc, peer_mac_addr);
+	if (!wds_entry || !wds_entry->is_mapped)
+		return false;
+
+	peer = dp_peer_get_ref_by_id(soc, wds_entry->peer_id, DP_MOD_ID_IPA);
+	if (!peer)
+		return false;
+
+	vdev = peer->vdev;
+	if (!vdev) {
+		check_result = false;
+		goto check_exit;
+	}
+
+	if (vdev->vdev_id != vdev_id) {
+		check_result = false;
+		goto check_exit;
+	}
+
+	check_result = true;
+
+check_exit:
+	dp_peer_unref_delete(peer, DP_MOD_ID_IPA);
+	return check_result;
+}
+#endif /* FEATURE_WDS_AST_LEARNING */
 #else
 static bool dp_ipa_peer_check(struct dp_soc *soc,
 			      uint8_t *peer_mac_addr, uint8_t vdev_id)
@@ -4440,6 +4440,9 @@ static bool dp_ipa_rx_intrabss_ucast_fwd(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	struct dp_be_intrabss_params params_out;
 	struct ethhdr *eh;
 	bool status = false;
+
+	if (qdf_unlikely(!src_vdev))
+		return status;
 
 	params_in.da_peer_id = DP_INVALID_PEER_ID;
 	params_in.dest_chip_id =
@@ -5081,8 +5084,9 @@ dp_ipa_txrx_get_pdev_stats(struct cdp_soc_t *soc, uint8_t pdev_id,
 	return QDF_STATUS_SUCCESS;
 }
 
-int dp_ipa_txrx_get_vdev_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			       void *buf, bool is_aggregate)
+QDF_STATUS
+dp_ipa_txrx_get_vdev_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			   void *buf, bool is_aggregate)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct cdp_vdev_stats *vdev_stats;
@@ -5090,13 +5094,13 @@ int dp_ipa_txrx_get_vdev_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 						     DP_MOD_ID_IPA);
 
 	if (!vdev)
-		return 1;
+		return QDF_STATUS_E_RESOURCES;
 
 	vdev_stats = (struct cdp_vdev_stats *)buf;
 	dp_ipa_aggregate_vdev_stats(vdev, buf);
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_IPA);
 
-	return 0;
+	return QDF_STATUS_SUCCESS;
 }
 
 /**

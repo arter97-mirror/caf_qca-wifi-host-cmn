@@ -2477,6 +2477,8 @@ void dp_soc_deinit(void *txrx_soc)
 
 	dp_soc_sawf_deinit(soc);
 
+	dp_peer_unmap_track_deinit(soc);
+
 	qdf_nbuf_queue_free(&soc->htt_stats.msg);
 
 	qdf_nbuf_queue_free(&soc->invalid_buf_queue);
@@ -3171,7 +3173,8 @@ QDF_STATUS dp_drain_txrx(struct cdp_soc_t *soc_handle, uint8_t rx_only)
 	dp_update_soft_irq_limits(soc, budget, budget);
 
 	for (i = 0; i < wlan_cfg_get_num_contexts(soc->wlan_cfg_ctx); i++) {
-		if (rx_only && !soc->intr_ctx[i].rx_ring_mask)
+		if (rx_only && (!soc->intr_ctx[i].rx_ring_mask &&
+				!soc->intr_ctx[i].rx_err_ring_mask))
 			continue;
 		soc->arch_ops.dp_service_srngs(&soc->intr_ctx[i], budget, cpu);
 	}
@@ -3866,6 +3869,7 @@ void *dp_soc_init(struct dp_soc *soc, HTC_HANDLE htc_handle,
 	qdf_spinlock_create(&soc->ast_lock);
 	dp_peer_mec_spinlock_create(soc);
 	dp_soc_sawf_init(soc);
+	dp_peer_unmap_track_init(soc);
 
 	qdf_spinlock_create(&soc->reo_desc_freelist_lock);
 	qdf_list_create(&soc->reo_desc_freelist, REO_DESC_FREELIST_SIZE);

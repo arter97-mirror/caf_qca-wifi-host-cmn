@@ -54,9 +54,10 @@ uint8_t *util_find_extn_eid(uint8_t eid, uint8_t extn_eid,
 	if (!frame)
 		return NULL;
 
-	while (len > MIN_IE_LEN && (frame[TAG_LEN_POS] != 0) &&
+	while (len > MIN_IE_LEN &&
 	       (len >= frame[TAG_LEN_POS] + MIN_IE_LEN)) {
-		if ((frame[ID_POS] == eid) &&
+		if ((frame[TAG_LEN_POS] != 0) &&
+		    (frame[ID_POS] == eid) &&
 		    (frame[ELEM_ID_EXTN_POS] == extn_eid))
 			return frame;
 
@@ -5507,7 +5508,8 @@ util_parse_pa_info_from_linkinfo(uint8_t *linkinfo,
 	linkinfo_currpos = linkinfo;
 	linkinfo_remlen = linkinfo_len;
 
-	while (linkinfo_remlen) {
+	while (linkinfo_remlen &&
+	       pa_info->num_links < QDF_ARRAY_SIZE(pa_info->link_info)) {
 		if (linkinfo_remlen <  sizeof(struct subelem_header)) {
 			mlo_err_rl("Remaining length in link info %zu octets is smaller than subelement header length %zu octets",
 				   linkinfo_remlen,

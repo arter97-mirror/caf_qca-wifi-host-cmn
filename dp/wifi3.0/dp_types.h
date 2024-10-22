@@ -3071,6 +3071,40 @@ struct dp_ipa_resources {
 };
 #endif
 
+#if defined(FEATURE_WDS) && !defined(FEATURE_AST) && \
+!defined(AST_OFFLOAD_ENABLE)
+#define FEATURE_WDS_AST_LEARNING 1
+
+#define DP_WDS_HASH_LOAD_MULTI 2
+#define DP_WDS_HASH_LOAD_SHIFT 0
+
+/**
+ * struct dp_wds_entry - WDS entry
+ *
+ * @mac_addr: WDS mac addr for this WDS entry. Same as @wds_macaddr in
+ *		struct wmi_peer_add_wds_entry_cmd_fixed_param
+ * @peer_id: peer id of @peer_macaddr in
+ *	       struct wmi_peer_add_wds_entry_cmd_fixed_param
+ * @hash_list_elem: node in soc WDS hash list (@mac_addr used as hash)
+ * @is_mapped: boolean flag to indicate if @mac_addr is mapped in target
+ *
+ * This structure is used under below driver configurations.
+ * FEATURE_WDS=y and FEATURE_AST=n and AST_OFFLOAD_ENABLE=n.
+ *
+ * Each entry contains mac_addr that is a WDS peer connected
+ * behind the repeater. @peer_id is the peer id of the STA vdev
+ * of the repeater which is directly connected to SAP vdev with
+ * @vdev_id.
+ */
+struct dp_wds_entry {
+	union dp_align_mac_addr mac_addr;
+	uint16_t peer_id;
+	bool is_mapped;
+
+	TAILQ_ENTRY(dp_wds_entry) hash_list_elem;
+};
+#endif
+
 /* SOC level structure for data path */
 struct dp_soc {
 	/**
@@ -3325,6 +3359,18 @@ struct dp_soc {
 	uint32_t peer_id_mask;
 #endif
 
+#ifdef DP_PEER_UNMAP_TRACK
+	/* flag to indicate if the timer start already */
+	bool peer_unmap_track_timer_start;
+	/* flag to indicate if the timer has to be suspended */
+	bool peer_unmap_track_timer_suspend;
+	/* protect peer_unmap_track_list */
+	qdf_spinlock_t peer_unmap_track_lock;
+	/* list to store dp_peer_unmap_track_elem */
+	qdf_list_t peer_unmap_track_list;
+	/* timer for peer unmap tracking */
+	qdf_timer_t peer_unmap_track_timer;
+#endif
 	/* rx peer metadata field shift and mask configuration */
 	uint8_t htt_peer_id_s;
 	uint32_t htt_peer_id_m;
@@ -3435,13 +3481,15 @@ struct dp_soc {
 #endif
 	qdf_atomic_t ipa_pipes_enabled;
 	bool ipa_first_tx_db_access;
-	qdf_spinlock_t rx_buf_map_lock;
-	uint8_t reo_ctx_lock_required[MAX_REO_DEST_RINGS];
-
 	struct dp_ipa_resources ipa_resource;
 	ipa_uc_op_cb_type ipa_uc_op_cb;
 	void *usr_ctxt;
 #endif /* IPA_OFFLOAD */
+
+#if defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK)
+	qdf_spinlock_t rx_buf_map_lock;
+	uint8_t reo_ctx_lock_required[MAX_REO_DEST_RINGS];
+#endif
 
 	/* Second ring used to replenish rx buffers */
 	struct dp_srng rx_refill_buf_ring2;
@@ -3652,6 +3700,19 @@ struct dp_soc {
 #ifdef WLAN_FEATURE_TX_LATENCY_STATS
 	/* callback function for tx latency stats */
 	cdp_tx_latency_cb tx_latency_cb;
+#endif
+
+#ifdef FEATURE_WDS_AST_LEARNING
+	/** @wds_lock: spinlock for WDS hash table */
+	qdf_spinlock_t wds_hash_lock;
+	struct {
+		/** @mask: mask bits */
+		uint32_t mask;
+		/** @idx_bits: index to shift bits */
+		uint32_t idx_bits;
+		/** @bins: WDS hash table */
+		TAILQ_HEAD(, dp_wds_entry) * bins;
+	} wds_hash;
 #endif
 
 #ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
@@ -4156,6 +4217,12 @@ struct dp_pdev {
 
 	/* To check if request is already sent for obss stats */
 	bool pending_fw_obss_stats_response;
+
+	/* qdf_event for vdev tx nss stats */
+	qdf_event_t vdev_tx_nss_stats_event;
+
+	/* To check if request is already sent for vdev tx nss stats */
+	bool pending_tx_nss_response;
 
 	/* User configured max number of tx buffers */
 	uint32_t num_tx_allowed;
@@ -4674,6 +4741,8 @@ struct dp_vdev {
 	bool eapol_over_control_port_disable;
 	bool dp_proto_stats;
 	bool dp_eapol_stats;
+	/* Tx NSS stats received from FW */
+	struct cdp_htt_stats_tx_vdev_nss_tlv tx_vdev_nss;
 };
 
 enum {
@@ -5927,4 +5996,9 @@ void dp_rx_update_protocol_stats(hal_soc_handle_t hal_soc,
 				 struct dp_txrx_peer *txrx_peer,
 				 uint8_t link_id, qdf_nbuf_t nbuf,
 				 uint8_t *rx_tlv_hdr, uint8_t level);
+
+void dp_rx_err_update_protocol_stats(struct dp_soc *soc, struct dp_pdev *pdev,
+				     qdf_nbuf_t nbuf,
+				     union hal_wbm_err_info_u *wbm_err,
+				     uint8_t *rx_tlv_hdr);
 #endif /* _DP_TYPES_H_ */

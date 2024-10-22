@@ -1050,6 +1050,13 @@
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_usd.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_SET_P2P_MODE: Vendor subcommand to configure
+ *	Wi-Fi Direct mode. This command sets the configuration through
+ *	the attributes defined in the enum qca_wlan_vendor_attr_set_p2p_mode.
+ *	It is applicable for P2P Group Owner only. This command is used before
+ *	starting the GO.
+ *
  */
 
 enum qca_nl80211_vendor_subcmds {
@@ -1328,6 +1335,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_ASYNC_STATS_POLICY = 247,
 	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_REPORT = 248,
 	QCA_NL80211_VENDOR_SUBCMD_USD = 249,
+	QCA_NL80211_VENDOR_SUBCMD_SET_P2P_MODE = 251,
 };
 
 enum qca_wlan_vendor_tos {
@@ -3351,6 +3359,9 @@ enum qca_wlan_vendor_scan_priority {
  *      when AP is operating as MLD to specify which link is requesting the
  *      scan or which link the scan result is for. No need of this attribute
  *      in other cases.
+ * @QCA_WLAN_VENDOR_ATTR_SCAN_SKIP_CHANNEL_RECENCY_PERIOD: Optional (u32). Skip
+ *	scanning channels which are scanned recently within configured time
+ *	(in ms).
  */
 enum qca_wlan_vendor_attr_scan {
 	QCA_WLAN_VENDOR_ATTR_SCAN_INVALID_PARAM = 0,
@@ -3368,6 +3379,7 @@ enum qca_wlan_vendor_attr_scan {
 	QCA_WLAN_VENDOR_ATTR_SCAN_DWELL_TIME = 12,
 	QCA_WLAN_VENDOR_ATTR_SCAN_PRIORITY = 13,
 	QCA_WLAN_VENDOR_ATTR_SCAN_LINK_ID = 15,
+	QCA_WLAN_VENDOR_ATTR_SCAN_SKIP_CHANNEL_RECENCY_PERIOD = 16,
 	QCA_WLAN_VENDOR_ATTR_SCAN_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_SCAN_MAX =
 	QCA_WLAN_VENDOR_ATTR_SCAN_AFTER_LAST - 1
@@ -6369,6 +6381,17 @@ enum qca_wlan_vendor_attr_config {
 	 * 0 - STA uses internal scoring algorithm to select a roam candidate
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_FOLLOW_AP_PREFERENCE_FOR_CNDS_SELECT = 121,
+
+	/* 16-bit unsigned value to configure P2P GO beacon interval in TUs.
+	 * This attribute is used to update the P2P GO beacon interval
+	 * dynamically.
+	 *
+	 * Updating the beacon interval while the GO continues operating the BSS
+	 * will likely interoperability issues and is not recommended to be
+	 * used. All the values should be multiples of the minimum used value to
+	 * minimize risk of issues.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL = 122,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
@@ -18888,5 +18911,40 @@ enum qca_wlan_vendor_attr_usd {
 	QCA_WLAN_VENDOR_ATTR_USD_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_USD_MAX =
 	QCA_WLAN_VENDOR_ATTR_USD_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_p2p_mode - Defines the values used with
+ * %QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_CONFIG.
+ *
+ * @QCA_P2P_MODE_WFD_R1: Wi-Fi Direct R1 only.
+ * @QCA_P2P_MODE_WFD_R2: Wi-Fi Direct R2 only.
+ * @QCA_P2P_MODE_WFD_PCC: P2P Connection Compatibility Mode which supports both
+ * Wi-Fi Direct R1 and R2.
+ */
+enum qca_wlan_vendor_p2p_mode {
+	QCA_P2P_MODE_WFD_R1 = 0,
+	QCA_P2P_MODE_WFD_R2 = 1,
+	QCA_P2P_MODE_WFD_PCC = 2,
+};
+
+/* enum qca_wlan_vendor_attr_set_p2p_mode: Attributes used by vendor command
+ * %QCA_NL80211_VENDOR_SUBCMD_SET_P2P_MODE.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_CONFIG: u8 attribute. Sets the P2P device
+ * mode. The values used are defined in enum qca_wlan_vendor_p2p_mode.
+ * This configuration is valid until the interface is brought up next time after
+ * this configuration and the driver shall use this configuration only when the
+ * interface is brought up in NL80211_IFTYPE_P2P_GO mode.
+ * When this parameter has not been set, the interface is brought up with
+ * Wi-Fi Direct R1 only configuration by default.
+ */
+enum qca_wlan_vendor_attr_set_p2p_mode {
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_CONFIG = 1,
+
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_MAX =
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_AFTER_LAST - 1,
 };
 #endif

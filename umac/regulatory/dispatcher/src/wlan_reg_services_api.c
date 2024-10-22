@@ -672,11 +672,6 @@ bool wlan_reg_is_etsi(uint8_t *country)
 	return reg_is_etsi_alpha2(country);
 }
 
-bool wlan_reg_ctry_support_vlp(uint8_t *country)
-{
-	return reg_ctry_support_vlp(country);
-}
-
 void wlan_reg_register_chan_change_callback(struct wlan_objmgr_psoc *psoc,
 					    void *cbk, void *arg)
 {
@@ -1617,6 +1612,15 @@ wlan_reg_country_chan_opclass_to_freq(struct wlan_objmgr_pdev *pdev,
 	return reg_country_chan_opclass_to_freq(pdev, country, chan, op_class,
 						strict);
 }
+
+qdf_freq_t
+wlan_reg_chan_opclass_to_freq_prefer_global(struct wlan_objmgr_pdev *pdev,
+					    const uint8_t *country,
+					    uint8_t chan_num, uint8_t opclass)
+{
+	return reg_chan_opclass_to_freq_prefer_global(pdev, country,
+						      chan_num, opclass);
+}
 #endif
 
 uint16_t wlan_reg_chan_opclass_to_freq(uint8_t chan,
@@ -2025,6 +2029,19 @@ wlan_reg_modify_indoor_concurrency(struct wlan_objmgr_pdev *pdev,
 		return reg_add_indoor_concurrency(pdev, vdev_id, freq, width);
 	else
 		return reg_remove_indoor_concurrency(pdev, vdev_id, freq);
+}
+#endif
+
+#if defined(WLAN_FEATURE_11BE) && defined(CONFIG_REG_CLIENT)
+uint8_t
+wlan_reg_get_320_bonded_chan_array(struct wlan_objmgr_pdev *pdev,
+				   qdf_freq_t freq,
+				   qdf_freq_t band_center_320,
+				   const struct bonded_channel_freq
+				   *bonded_chan_ptr[])
+{
+	return reg_get_bonded_chan_arr_for_320(pdev, freq, band_center_320,
+					       bonded_chan_ptr);
 }
 #endif
 

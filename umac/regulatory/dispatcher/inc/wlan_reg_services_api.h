@@ -1281,15 +1281,6 @@ bool wlan_reg_is_us(uint8_t *country);
  */
 bool wlan_reg_is_etsi(uint8_t *country);
 
-
-/**
- * wlan_reg_ctry_support_vlp() - Country supports VLP or not
- * @country: The country information
- *
- * Return: true or false
- */
-bool wlan_reg_ctry_support_vlp(uint8_t *country);
-
 /**
  * wlan_reg_set_country() - Set the current regulatory country
  * @pdev: The physical dev to set current country for
@@ -2239,6 +2230,17 @@ bool wlan_reg_is_5dot9_ghz_supported(struct wlan_objmgr_psoc *psoc);
 bool wlan_reg_is_6ghz_supported(struct wlan_objmgr_psoc *psoc);
 #endif
 
+/**
+ * wlan_reg_chan_opclass_to_freq() - Convert channel number and opclass to frequency
+ * @chan: IEEE Channel Number.
+ * @op_class: Opclass.
+ * @global_tbl_lookup: Global table lookup.
+ *
+ * Return: Channel center frequency else return 0.
+ */
+uint16_t wlan_reg_chan_opclass_to_freq(uint8_t chan, uint8_t op_class,
+				       bool global_tbl_lookup);
+
 #ifdef HOST_OPCLASS_EXT
 /**
  * wlan_reg_country_chan_opclass_to_freq() - Convert channel number to
@@ -2261,19 +2263,36 @@ wlan_reg_country_chan_opclass_to_freq(struct wlan_objmgr_pdev *pdev,
 				      const uint8_t country[3],
 				      uint8_t chan, uint8_t op_class,
 				      bool strict);
-#endif
 
 /**
- * wlan_reg_chan_opclass_to_freq() - Convert channel number and opclass to frequency
- * @chan: IEEE Channel Number.
- * @op_class: Opclass.
- * @global_tbl_lookup: Global table lookup.
+ * wlan_reg_chan_opclass_to_freq_prefer_global() - API to find the operating
+ * channel freq from chan num and opclass.
+ * @pdev: PDEV object manager pointer
+ * @country: Two byte CC pointer
+ * @chan_num: Channel index number.
+ * @opclass: Operating class
  *
- * Return: Channel center frequency else return 0.
+ * The API will check the global operating class table to convert the opclass
+ * chan_num tuple to channel frequency and if there is not entry in global
+ * opclass table for this tuple and if @country is not %NULL, then attempts to
+ * convert the opclass and chan_num to channel frequency using the country
+ * specific opclass table.
+ *
+ * Return: Valid channel frequency if success else zero
  */
-uint16_t wlan_reg_chan_opclass_to_freq(uint8_t chan,
-				       uint8_t op_class,
-				       bool global_tbl_lookup);
+qdf_freq_t
+wlan_reg_chan_opclass_to_freq_prefer_global(struct wlan_objmgr_pdev *pdev,
+					    const uint8_t *country,
+					    uint8_t chan_num, uint8_t opclass);
+#else
+static inline qdf_freq_t
+wlan_reg_chan_opclass_to_freq_prefer_global(struct wlan_objmgr_pdev *pdev,
+					    const uint8_t *country,
+					    uint8_t chan_num, uint8_t opclass)
+{
+	return wlan_reg_chan_opclass_to_freq(chan_num, opclass, true);
+}
+#endif
 
 /**
  * wlan_reg_compute_6g_center_freq_from_cfi() - Given the IEEE value of the
@@ -2360,6 +2379,28 @@ QDF_STATUS
 wlan_reg_modify_indoor_concurrency(struct wlan_objmgr_pdev *pdev,
 				   uint8_t vdev_id, uint32_t freq,
 				   enum phy_ch_width width, bool add);
+#endif
+
+#if defined(WLAN_FEATURE_11BE) && defined(CONFIG_REG_CLIENT)
+/**
+ * wlan_reg_get_320_bonded_chan_array() - Fetches a list of bonded channel ptrs
+ * for the given bonded channel array. If 320 band center is specified,
+ * return the bonded channel pointer comprising of given band center else
+ * return list of all available bonded channel pair.
+ *
+ * @pdev: Pointer to struct wlan_objmgr_pdev.
+ * @freq: Input frequency in MHz whose bonded channel pointer must be fetched.
+ * @band_center_320: Channel center frequency of 320 MHz channel.
+ * @bonded_chan_ptr: Pointer to hold the address of bonded_channel_freq index.
+ *
+ * Return: number of bonded channel arrays fetched.
+ */
+uint8_t
+wlan_reg_get_320_bonded_chan_array(struct wlan_objmgr_pdev *pdev,
+				   qdf_freq_t freq,
+				   qdf_freq_t band_center_320,
+				   const struct bonded_channel_freq
+				   *bonded_chan_ptr[]);
 #endif
 /**
  * wlan_reg_recompute_current_chan_list() - Recompute the current channel list
