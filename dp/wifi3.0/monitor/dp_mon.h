@@ -4173,11 +4173,13 @@ void dp_monitor_pdev_set_mon_vdev(struct dp_vdev *vdev)
 	/* Need to initialize both mon_mac to same vdev for ML LPC */
 	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
 		mon_mac = dp_get_mon_mac(vdev->pdev, mac_id);
-		if (!mon_mac->mvdev)
+		if (!mon_mac->mvdev) {
 			mon_mac->mvdev = vdev;
-		else
+			mon_mac->vdev_id = vdev->vdev_id;
+		} else {
 			dp_info("skip to set mvdev - vdev_id: %u, mac_id: %u",
 				vdev->vdev_id, mac_id);
+		}
 	}
 }
 

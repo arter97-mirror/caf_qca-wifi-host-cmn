@@ -85,6 +85,8 @@ struct dp_tx_queue;
 #define MAX_MON_LINK_DESC_BANKS 2
 #define DP_VDEV_ALL CDP_VDEV_ALL
 
+#define DP_INVALID_VDEV_ID 0xFF
+
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 #define WLAN_DP_RESET_MON_BUF_RING_FILTER
 #if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN6450)

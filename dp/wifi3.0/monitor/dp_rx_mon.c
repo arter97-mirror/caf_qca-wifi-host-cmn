@@ -1832,11 +1832,19 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 		    qdf_nbuf_t mpdu_buf)
 {
 	struct dp_mon_vdev *mon_vdev;
+	uint8_t vdev_id;
+	struct dp_vdev *vdev = NULL;
+	struct dp_soc *soc = pdev->soc;
 
-	if (qdf_unlikely(!mon_mac->mvdev)) {
-		dp_info_rl("Monitor vdev is NULL !!");
-		qdf_nbuf_free(mpdu_buf);
-		return;
+	if (qdf_unlikely(!soc))
+		goto fail_free;
+
+	vdev_id = mon_mac->vdev_id;
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_MISC);
+
+	if (!vdev || mon_mac->mvdev != vdev) {
+		dp_info_rl("Monitor vdev is invalid !!");
+		goto fail_free;
 	}
 
 	mon_mac->ppdu_info.rx_status.ppdu_id =
@@ -1848,17 +1856,23 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 	if (!qdf_nbuf_update_radiotap(&mon_mac->ppdu_info.rx_status, mpdu_buf,
 				      qdf_nbuf_headroom(mpdu_buf))) {
 		DP_STATS_INC(pdev, dropped.mon_radiotap_update_err, 1);
-		qdf_nbuf_free(mpdu_buf);
 		dp_err("radiotap_update_err");
-		return;
+		goto fail_free;
 	}
 
-	mon_vdev = mon_mac->mvdev->monitor_vdev;
+	mon_vdev = vdev->monitor_vdev;
 	if (qdf_likely(mon_vdev && mon_vdev->osif_rx_mon))
-		mon_vdev->osif_rx_mon(mon_mac->mvdev->osif_vdev,
+		mon_vdev->osif_rx_mon(vdev->osif_vdev,
 				      mpdu_buf, NULL);
-	else
-		qdf_nbuf_free(mpdu_buf);
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_MISC);
+	return;
+
+fail_free:
+	if (vdev)
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_MISC);
+
+	qdf_nbuf_free(mpdu_buf);
 }
 
 int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
