@@ -177,6 +177,24 @@ static struct ol_if_ops dp_ol_if_ops = {
 };
 #endif /* QCA_WIFI_QCA8074 */
 
+static scan_flush_recovery_callback cds_scan_flush_recovery_callback;
+
+void cds_register_scan_flush_recovery_callback(scan_flush_recovery_callback cb)
+{
+	cds_scan_flush_recovery_callback = cb;
+}
+
+void cds_unregister_scan_flush_recovery_callback(void)
+{
+	cds_scan_flush_recovery_callback = NULL;
+}
+
+void cds_scan_flush_on_recovery(void)
+{
+	if (cds_scan_flush_recovery_callback)
+		cds_scan_flush_recovery_callback();
+}
+
 static void cds_trigger_recovery_work(void *param);
 
 /**
@@ -2022,7 +2040,7 @@ static void cds_trigger_recovery_handler(const char *func, const uint32_t line)
 
 	cds_err("critical host timeout trigger fw recovery for reason code %d",
 		gp_cds_context->recovery_reason);
-
+	cds_scan_flush_on_recovery();
 	cds_set_recovery_in_progress(true);
 	cds_set_assert_target_in_progress(true);
 	if (pld_force_collect_target_dump(qdf->dev))

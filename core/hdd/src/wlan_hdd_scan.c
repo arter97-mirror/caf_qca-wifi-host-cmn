@@ -1616,6 +1616,31 @@ void wlan_hdd_cfg80211_abort_scan(struct wiphy *wiphy,
 }
 #endif
 
+static void hdd_scan_flush_cds_recovery_handler(void)
+{
+	struct hdd_context *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
+	struct wlan_objmgr_pdev *pdev;
+
+	if (wlan_hdd_validate_context(hdd_ctx))
+		return;
+
+	if (hdd_ctx->driver_status != DRIVER_MODULES_ENABLED ||
+	    !hdd_ctx->psoc)
+		return;
+
+	pdev = wlan_objmgr_get_pdev_by_id(hdd_ctx->psoc,
+					  0, WLAN_SCAN_ID);
+	if (!pdev) {
+		hdd_err("pdev is NULL");
+		return;
+	}
+
+	wlan_cfg80211_cleanup_scan_queue(pdev, NULL);
+
+	if (pdev)
+		wlan_objmgr_pdev_release_ref(pdev, WLAN_SCAN_ID);
+}
+
 /**
  * hdd_scan_context_destroy() - Destroy scan context
  * @hdd_ctx:	HDD context.
@@ -1626,6 +1651,7 @@ void wlan_hdd_cfg80211_abort_scan(struct wiphy *wiphy,
  */
 void hdd_scan_context_destroy(struct hdd_context *hdd_ctx)
 {
+	cds_unregister_scan_flush_recovery_callback();
 }
 
 /**
@@ -1638,5 +1664,7 @@ void hdd_scan_context_destroy(struct hdd_context *hdd_ctx)
  */
 int hdd_scan_context_init(struct hdd_context *hdd_ctx)
 {
+	cds_register_scan_flush_recovery_callback(
+			hdd_scan_flush_cds_recovery_handler);
 	return 0;
 }
