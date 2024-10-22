@@ -1325,6 +1325,8 @@ static QDF_STATUS util_scan_parse_mbssid(struct wlan_objmgr_pdev *pdev,
 					ielen - (pos - ie));
 		if (!tmp)
 			break;
+		if ((tmp + 2 + 4) > (ie + ielen))
+		    break;
 
 		mbssid_info.profile_count = 1 << tmp[2];
 		mbssid_end_pos = tmp + tmp[1] + 2;
