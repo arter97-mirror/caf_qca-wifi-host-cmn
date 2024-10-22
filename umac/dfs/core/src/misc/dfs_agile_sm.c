@@ -689,6 +689,7 @@ static bool dfs_agile_state_running_event(void *ctx,
 				  dfs->dfs_agile_precac_freq_mhz);
 			return true;
 		}
+		dfs_cancel_precac_timer(dfs);
 
 		if (dfs_is_agile_precac_enabled(dfs)) {
 			if (dfs_soc->ocac_status == OCAC_SUCCESS) {
