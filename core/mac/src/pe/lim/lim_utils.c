@@ -11368,8 +11368,6 @@ uint8_t lim_convert_phy_width_to_vht_width(enum phy_ch_width ch_width)
 		return WNI_CFG_VHT_CHANNEL_WIDTH_160MHZ;
 	if (ch_width == CH_WIDTH_80MHZ)
 		return WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
-	if (ch_width == CH_WIDTH_40MHZ || ch_width == CH_WIDTH_20MHZ)
-		return WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
 
 	return WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
 }
