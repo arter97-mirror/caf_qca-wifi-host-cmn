@@ -1451,6 +1451,7 @@ struct debug_vdev_data_tx {
 	uint32_t tx_mcast_drop;
 	uint32_t fw2wbm_tx_drop;
 	uint64_t tx_datapyld_bytes;
+	uint32_t osif_tx_drop;
 };
 
 struct debug_vdev_data_rx {
@@ -1574,6 +1575,7 @@ struct debug_pdev_data_tx {
 	uint8_t tx_dma_map_err;
 	uint8_t tx_hw_enqueue_dropped;
 	uint8_t tx_sw_enqueue_dropped;
+	uint32_t osif_tx_drop;
 };
 
 struct debug_pdev_data_rx {

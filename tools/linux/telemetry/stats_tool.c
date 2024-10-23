@@ -3352,6 +3352,7 @@ void print_debug_vap_data_tx(struct debug_vdev_data_tx *tx)
 		 tx->invalid_peer_id_in_exc_path);
 	STATS_32(stdout, "Tx mcast Drop", tx->tx_mcast_drop);
 	STATS_32(stdout, "Firmware to WBM Tx drop", tx->fw2wbm_tx_drop);
+	STATS_32(stdout, "OSIF TX Drop", tx->osif_tx_drop);
 }
 
 void print_debug_vap_data_rx(struct debug_vdev_data_rx *rx)
@@ -3580,6 +3581,7 @@ void print_debug_radio_data_tx(struct debug_pdev_data_tx *tx)
 	STATS_8(stdout, "Tx HW enqueue drops", tx->tx_hw_enqueue_dropped);
 	STATS_8(stdout, "Tx SW enqueue drops", tx->tx_sw_enqueue_dropped);
 	STATS_32(stdout, "SG desc cout", tx->sg_desc_cnt);
+	STATS_32(stdout, "OSIF TX Drop", tx->osif_tx_drop);
 }
 
 void print_debug_radio_data_rx(struct debug_pdev_data_rx *rx)
