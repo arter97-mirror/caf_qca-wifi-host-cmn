@@ -5062,14 +5062,26 @@ static inline
 void *dp_context_alloc_mem(struct dp_soc *soc, enum dp_ctxt_type ctxt_type,
 			   size_t ctxt_size)
 {
-	return qdf_mem_malloc(ctxt_size);
+	/* Always allocate continuous memory for monitor context used for
+	 * dma. For other contexts, use qdf_mem_common_alloc() to avoid
+	 * memory allocating failure when system don't have enough memory.
+	 */
+	if (ctxt_type == DP_MON_RX_DESC_POOL_TYPE ||
+	    ctxt_type == DP_MON_TX_DESC_POOL_TYPE)
+		return qdf_mem_malloc(ctxt_size);
+
+	return qdf_mem_common_alloc(ctxt_size);
 }
 
 static inline
 void dp_context_free_mem(struct dp_soc *soc, enum dp_ctxt_type ctxt_type,
 			 void *vaddr)
 {
-	qdf_mem_free(vaddr);
+	if (ctxt_type == DP_MON_RX_DESC_POOL_TYPE ||
+	    ctxt_type == DP_MON_TX_DESC_POOL_TYPE)
+		qdf_mem_free(vaddr);
+	else
+		qdf_mem_common_free(vaddr);
 }
 
 static inline
