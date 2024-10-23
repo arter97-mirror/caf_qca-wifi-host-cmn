@@ -5820,9 +5820,8 @@ QDF_STATUS cm_process_preauth_req(struct scheduler_msg *msg)
 
 bool lim_is_ap_power_type_6g_invalid(struct pe_session *session)
 {
-	if ((session->ap_defined_power_type_6g < REG_INDOOR_AP ||
-	     session->ap_defined_power_type_6g > REG_MAX_SUPP_AP_TYPE) &&
-	     session->ap_defined_power_type_6g != REG_INDOOR_SP_AP)
+	if (session->ap_defined_power_type_6g > REG_MAX_SUPP_AP_TYPE &&
+	    session->ap_defined_power_type_6g != REG_INDOOR_SP_AP)
 		return true;
 
 	return false;
