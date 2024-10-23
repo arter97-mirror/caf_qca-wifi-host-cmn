@@ -7712,7 +7712,6 @@ void hdd_reset_vdev_info(struct wlan_hdd_link_info *link_info)
 /**
  * hdd_create_p2p_device_vdev_during_sta_vdev_destroy()
  * @hdd_ctx: pointer to hdd_ctx
- * @vdev: pointer to vdev
  *
  * Create vdev for P2P-device during STA vdev destroy if P2P-device is using
  * STA vdev
@@ -7720,15 +7719,11 @@ void hdd_reset_vdev_info(struct wlan_hdd_link_info *link_info)
  * Return: None
  */
 static void
-hdd_create_p2p_device_vdev_during_sta_vdev_destroy(
-					struct hdd_context *hdd_ctx,
-					struct wlan_objmgr_vdev *vdev)
+hdd_create_p2p_device_vdev_during_sta_vdev_destroy(struct hdd_context *hdd_ctx)
 {
 	struct hdd_adapter *p2p_adapter;
 
-	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
-	    ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(
-							hdd_ctx->psoc)) {
+	if (ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(hdd_ctx->psoc)) {
 		/* create p2p device vdev if sta vdev gets deleted */
 		p2p_adapter = hdd_get_adapter(hdd_ctx, QDF_P2P_DEVICE_MODE);
 		if (!p2p_adapter) {
@@ -7791,7 +7786,9 @@ int hdd_vdev_destroy(struct wlan_hdd_link_info *link_info)
 	ret = hdd_vdev_destroy_event_wait(hdd_ctx, vdev);
 
 	ucfg_reg_11d_vdev_delete_update(psoc, op_mode, vdev_id);
-	hdd_create_p2p_device_vdev_during_sta_vdev_destroy(hdd_ctx, vdev);
+
+	if (op_mode == QDF_STA_MODE)
+		hdd_create_p2p_device_vdev_during_sta_vdev_destroy(hdd_ctx);
 
 	qdf_runtime_pm_allow_suspend(&hdd_ctx->runtime_context.vdev_destroy);
 	return ret;
