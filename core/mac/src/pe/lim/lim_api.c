@@ -4251,7 +4251,7 @@ lim_clear_ml_partner_info(struct pe_session *session_entry, int8_t idx)
 			continue;
 
 		mlo_mgr_clear_ap_link_info(session_entry->vdev,
-			partner_info->partner_link_info[idx].link_addr.bytes);
+			&partner_info->partner_link_info[idx].link_addr);
 		qdf_mem_zero(&partner_info->partner_link_info[idx],
 			     sizeof(struct mlo_link_info));
 		partner_info->partner_link_info[idx].link_id =

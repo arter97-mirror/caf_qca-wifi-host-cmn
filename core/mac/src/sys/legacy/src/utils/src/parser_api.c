@@ -4247,30 +4247,14 @@ static QDF_STATUS
 sir_copy_assoc_rsp_partner_info_to_session(struct pe_session *session_entry,
 					   struct mlo_partner_info *partner_info)
 {
-	uint16_t i, partner_idx = 0, j, link_id;
-	struct mlo_link_info *link_info;
 	struct mlo_partner_info *ml_partner_info =
 			&session_entry->ml_partner_info;
 
-	link_info = mlo_mgr_get_ap_link(session_entry->vdev);
-	if (!link_info)
-		return QDF_STATUS_E_FAILURE;
-
 	/* Clear the Partner info already filled from the join request */
 	qdf_mem_zero(ml_partner_info, sizeof(*ml_partner_info));
-	for (i = 1; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_id = link_info[i].link_id;
-		for (j = 0; j < partner_info->num_partner_links; j++) {
-			if (partner_info->partner_link_info[j].link_id !=
-			    link_id)
-				continue;
-
-			ml_partner_info->partner_link_info[partner_idx++] =
-					partner_info->partner_link_info[j];
-			break;
-		}
-	}
-	ml_partner_info->num_partner_links = partner_idx;
+	if (partner_info->num_partner_links)
+		qdf_mem_copy(ml_partner_info, partner_info,
+			     sizeof(*partner_info));
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -4309,16 +4293,15 @@ sir_convert_assoc_resp_frame2_mlo_struct(struct mac_context *mac,
 					    &partner_info,
 					    WLAN_FC0_STYPE_ASSOC_RESP);
 
-	sir_copy_assoc_rsp_partner_info_to_session(session_entry,
-						   &partner_info);
-
-	if (!wlan_cm_is_roam_sync_in_progress(mac->psoc,
+	if (session_entry->ml_partner_info.num_partner_links &&
+	    !wlan_cm_is_roam_sync_in_progress(mac->psoc,
 					      session_entry->vdev_id)) {
-		session_entry->ml_partner_info.num_partner_links =
-		QDF_MIN(
-		session_entry->ml_partner_info.num_partner_links,
-		session_entry->lim_join_req->partner_info.num_partner_links);
+		mlo_mgr_validate_connection_partner_links(session_entry->vdev,
+							  &partner_info);
+		sir_copy_assoc_rsp_partner_info_to_session(session_entry,
+							   &partner_info);
 	}
+
 	util_get_bvmlie_mldmacaddr(ml_ie, ml_ie_total_len,
 				   &mld_mac_addr);
 	qdf_mem_copy(ml_ie_info->mld_mac_addr,
