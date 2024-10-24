@@ -96,6 +96,13 @@ struct net_device *qca_multi_link_tbl_find_sta_or_ap(struct net_device *net_dev,
 	struct net_bridge_fdb_entry *search_fdb = NULL;
 	struct net_device *search_dev = NULL;
 	struct wireless_dev	*ieee80211_ptr = NULL;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev *osifp = NULL;
+	osif_dev *search_osifp = NULL;
+	osif_peer_dev *search_peer_osifp = NULL;
+	osif_dev *search_parent_osifp = NULL;
+	struct ieee80211com *search_ic = NULL;
+#endif
 	int i;
 	enum nl80211_iftype search_if_type;
 	struct net_bridge_port *p = br_port_get_rcu(net_dev);
@@ -130,9 +137,28 @@ struct net_device *qca_multi_link_tbl_find_sta_or_ap(struct net_device *net_dev,
 
 			search_dev = search_fdb->dst->dev;
 			ieee80211_ptr = search_dev->ieee80211_ptr;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+			search_osifp = ath_netdev_priv(search_dev);
+			osifp = (osif_dev *)ath_netdev_priv(net_dev);
+
+			if (ieee80211_ptr) {
+				if (search_osifp->dev_type == OSIF_NETDEV_TYPE_WDS_EXT) {
+					search_peer_osifp = (osif_peer_dev *)search_osifp;
+					search_parent_osifp = search_peer_osifp->parent_osif;
+					search_ic = search_parent_osifp->os_if->iv_ic;
+				} else {
+					search_ic = search_osifp->os_if->iv_ic;
+				}
+			}
+
+			if (ieee80211_ptr
+		&& (ieee80211_ptr->iftype == search_if_type)
+		&& (search_ic == osifp->os_if->iv_ic)) {
+#else
 			if (ieee80211_ptr
 		&& (ieee80211_ptr->iftype == search_if_type)
 		&& (ieee80211_ptr->wiphy == net_dev->ieee80211_ptr->wiphy)) {
+#endif
 				qal_vbus_rcu_read_unlock();
 				return search_dev;
 			}
@@ -203,6 +229,11 @@ QDF_STATUS qca_multi_link_tbl_has_entry(struct net_device *net_dev,
 	struct net_bridge_fdb_entry *fdb_entry = NULL;
 	struct net_bridge_port *fdb_port = NULL;
 	struct net_device *fdb_dev = NULL;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev  *osifp = NULL;
+	osif_peer_dev *peer_osifp = NULL;
+	osif_dev  *parent_osifp = NULL;
+#endif
 
 	if (!qca_ml_entry) {
 		qdf_err("qca_ml_entry is null for ifname:%s with mac:%pM\n", net_dev->name, addr);
@@ -228,6 +259,20 @@ QDF_STATUS qca_multi_link_tbl_has_entry(struct net_device *net_dev,
 
 	qca_ml_entry->qal_fdb_ieee80211_ptr = fdb_dev->ieee80211_ptr;
 	qca_ml_entry->qal_fdb_dev = fdb_dev;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (fdb_dev && fdb_dev->ieee80211_ptr) {
+		osifp = ath_netdev_priv(fdb_dev);
+		if (osifp->dev_type == OSIF_NETDEV_TYPE_WDS_EXT) {
+			peer_osifp = (osif_peer_dev *)osifp;
+			parent_osifp = peer_osifp->parent_osif;
+			qca_ml_entry->qal_fdb_ic = parent_osifp->os_if->iv_ic;
+			qca_ml_entry->qal_fdb_osifp = NULL;
+		} else {
+			qca_ml_entry->qal_fdb_osifp = osifp;
+			qca_ml_entry->qal_fdb_ic = osifp->os_if->iv_ic;
+		}
+	}
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	qca_ml_entry->qal_fdb_is_local =
 		test_bit(BR_FDB_LOCAL, &fdb_entry->flags);

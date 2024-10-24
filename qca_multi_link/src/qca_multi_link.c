@@ -22,20 +22,33 @@
 static bool is_initialized;
 qca_multi_link_parameters_t qca_multi_link_cfg;
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+static inline qca_multi_link_radio_node_t *
+		qca_multi_link_find_radio_node(struct ieee80211com *ic)
+#else
 static inline qca_multi_link_radio_node_t *
 		qca_multi_link_find_radio_node(struct wiphy *wiphy)
+#endif
 {
 	qdf_list_node_t *node = NULL, *next_node = NULL;
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (!ic) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
+			 FL(" Radio ic pointer is NULL"));
+		return NULL;
+	}
+#else
 	if (!wiphy) {
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
 			 FL(" Radio wiphy pointer is NULL\n"));
 		return NULL;
 	}
+#endif
 
 	if (qdf_list_empty(&qca_multi_link_cfg.radio_list)) {
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-			 FL(" Radio list is empty\n"));
+			 FL(" Radio list is empty"));
 		return NULL;
 	}
 
@@ -44,7 +57,11 @@ static inline qca_multi_link_radio_node_t *
 	while (next_node) {
 		qca_multi_link_radio_node_t *radio_node
 		= (qca_multi_link_radio_node_t *)next_node;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if (radio_node->ic == ic) {
+#else
 		if (radio_node->wiphy == wiphy) {
+#endif
 			return radio_node;
 		} else {
 			node = next_node;
@@ -59,6 +76,7 @@ static inline qca_multi_link_radio_node_t *
 	return NULL;
 }
 
+#ifndef ENABLE_CFG80211_BACKPORTS_MLO
 void qca_multi_link_add_mld_wiphy(struct wiphy *wiphy)
 {
 	int i;
@@ -94,13 +112,22 @@ static inline bool qca_multi_link_is_mlo_wiphy(struct wiphy *wiphy)
 
 	return false;
 }
+#endif
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+static inline bool is_fast_lane_radio(struct ieee80211com *fl_ic)
+#else
 static inline bool is_fast_lane_radio(struct wiphy *fl_wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(fl_ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(fl_wiphy);
+#endif
 	qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 	if (!radio_node) {
 		return false;
@@ -109,12 +136,20 @@ static inline bool is_fast_lane_radio(struct wiphy *fl_wiphy)
 	return radio_node->is_fast_lane;
 }
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+static inline bool is_no_backhaul_radio(struct ieee80211com *no_bl_ic)
+#else
 static inline bool is_no_backhaul_radio(struct wiphy *no_bl_wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(no_bl_ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(no_bl_wiphy);
+#endif
 	qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 	if (!radio_node) {
 		return false;
@@ -123,14 +158,24 @@ static inline bool is_no_backhaul_radio(struct wiphy *no_bl_wiphy)
 	return radio_node->no_backhaul;
 }
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+static inline bool is_other_fast_lane_radio_primary(struct ieee80211com *fl_ic)
+#else
 static inline bool is_other_fast_lane_radio_primary(struct wiphy *fl_wiphy)
+#endif
 {
 	QDF_STATUS status;
 	qdf_list_node_t *next_node = NULL;
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (!fl_ic) {
+		return false;
+	}
+#else
 	if (!fl_wiphy) {
 		return false;
 	}
+#endif
 
 	if (qdf_list_empty(&qca_multi_link_cfg.radio_list)) {
 		return false;
@@ -142,9 +187,15 @@ static inline bool is_other_fast_lane_radio_primary(struct wiphy *fl_wiphy)
 	while (QDF_IS_STATUS_SUCCESS(status)) {
 		qca_multi_link_radio_node_t *radio_node
 		= (qca_multi_link_radio_node_t *)next_node;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if ((radio_node->ic != fl_ic) &&
+		   (radio_node->is_fast_lane) &&
+		   (radio_node->ic  == qca_multi_link_cfg.primary_ic)) {
+#else
 		if ((radio_node->wiphy != fl_wiphy) &&
 		   (radio_node->is_fast_lane) &&
 		   (radio_node->wiphy  == qca_multi_link_cfg.primary_wiphy)) {
+#endif
 			qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 			return true;
 		}
@@ -161,6 +212,26 @@ static inline bool is_other_fast_lane_radio_primary(struct wiphy *fl_wiphy)
  * Return: true: if it primary radio
  *	   false: if it is secondary radio
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_is_primary_radio(struct ieee80211com *dev_ic)
+{
+	bool is_primary = false;
+
+	if (!qca_multi_link_cfg.primary_ic || !dev_ic) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+			FL("\nprimary_ic is NULL"));
+		is_primary = false;
+	} else {
+		is_primary = (dev_ic == qca_multi_link_cfg.primary_ic)?true:false;
+	}
+
+	if ((is_primary == false) && is_fast_lane_radio(dev_ic)) {
+		is_primary = is_other_fast_lane_radio_primary(dev_ic);
+	}
+
+	return is_primary;
+}
+#else
 bool qca_multi_link_is_primary_radio(struct wiphy *dev_wiphy)
 {
 	bool is_primary = false;
@@ -179,6 +250,7 @@ bool qca_multi_link_is_primary_radio(struct wiphy *dev_wiphy)
 
 	return is_primary;
 }
+#endif
 
 /**
  * qca_multi_link_need_procesing() - Check if repeater processing is required
@@ -201,6 +273,19 @@ static inline bool qca_multi_link_need_procesing(void)
  * Return: true: packet is from same device
  *	   false:  packet is not from same device
  */
+
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+static inline bool qca_multi_link_pktfrom_ownsrc(osif_dev *osifp, qdf_nbuf_t nbuf)
+{
+	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
+
+	if (qdf_is_macaddr_equal((struct qdf_mac_addr *)osifp->os_if->vdev_obj->vdev_mlme.macaddr,
+		(struct qdf_mac_addr *)eh->ether_shost)) {
+		return true;
+	}
+	return false;
+}
+#else
 static inline bool qca_multi_link_pktfrom_ownsrc(struct net_device *net_dev, qdf_nbuf_t nbuf)
 {
 	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
@@ -211,6 +296,7 @@ static inline bool qca_multi_link_pktfrom_ownsrc(struct net_device *net_dev, qdf
 	}
 	return false;
 }
+#endif
 
 /**
  * qca_multi_link_drop_secondary_mcast() - Check if mcast to be dropped on secondary
@@ -257,17 +343,25 @@ static inline bool qca_multi_link_drop_always_primary(bool is_primary, qdf_nbuf_
  *
  * Return: station vap netdevice pointer
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+static osif_dev *qca_multi_link_get_fast_lane_station_vap(struct ieee80211com *ic)
+#else
 static struct net_device *qca_multi_link_get_fast_lane_station_vap(struct wiphy *wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 	qdf_list_node_t *next_node = NULL, *node = NULL;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev *sta_osifp = NULL;
+#else
 	struct net_device *sta_dev = NULL;
+#endif
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
 	if (qdf_list_empty(&qca_multi_link_cfg.radio_list)) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-			 FL(" Radio list is empty\n"));
+			 FL(" Radio list is empty"));
 		return NULL;
 	}
 
@@ -276,10 +370,17 @@ static struct net_device *qca_multi_link_get_fast_lane_station_vap(struct wiphy 
 	while (next_node) {
 		radio_node
 		= (qca_multi_link_radio_node_t *)next_node;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if (radio_node->ic != ic && radio_node->is_fast_lane) {
+			sta_osifp = radio_node->sta_osifp;
+			qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
+			return sta_osifp;
+#else
 		if (radio_node->wiphy != wiphy && radio_node->is_fast_lane) {
 			sta_dev = radio_node->sta_dev;
 			qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 			return sta_dev;
+#endif
 		} else {
 			node = next_node;
 			next_node = NULL;
@@ -302,6 +403,21 @@ static struct net_device *qca_multi_link_get_fast_lane_station_vap(struct wiphy 
  *
  * Return: station vap netdevice pointer
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+osif_dev *qca_multi_link_get_station_vap(struct ieee80211com *ic)
+{
+	qca_multi_link_radio_node_t *radio_node = NULL;
+
+	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+	radio_node = qca_multi_link_find_radio_node(ic);
+	qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
+	if (!radio_node || !radio_node->sta_osifp) {
+		return NULL;
+	}
+
+	return radio_node->sta_osifp;
+}
+#else
 struct net_device *qca_multi_link_get_station_vap(struct wiphy *wiphy)
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
@@ -315,6 +431,7 @@ struct net_device *qca_multi_link_get_station_vap(struct wiphy *wiphy)
 
 	return radio_node->sta_dev;
 }
+#endif
 
 /**
  * qca_multi_link_deinit_module() - De-initialize the repeater base structute
@@ -327,7 +444,11 @@ void qca_multi_link_deinit_module(void)
 
 	qca_multi_link_cfg.total_stavaps_up = 0;
 	qca_multi_link_cfg.loop_detected = 0;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	qca_multi_link_cfg.primary_ic = NULL;
+#else
 	qca_multi_link_cfg.primary_wiphy = NULL;
+#endif
 	qdf_list_destroy(&qca_multi_link_cfg.radio_list);
 	is_initialized = false;
 	qca_multi_link_cfg.qca_ml_set_loop_detection = NULL;
@@ -336,7 +457,7 @@ void qca_multi_link_deinit_module(void)
 	qdf_spinlock_destroy(&qca_multi_link_cfg.radio_lock);
 
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_INFO,
-		FL("\n******QCA RPtr De-Init Done***********\n"));
+		FL("\n******QCA RPtr De-Init Done***********"));
 }
 
 qdf_export_symbol(qca_multi_link_deinit_module);
@@ -354,7 +475,11 @@ void qca_multi_link_init_module(struct qca_multi_link_ops *ml_ops)
 	is_initialized = true;
 	qca_multi_link_cfg.total_stavaps_up = 0;
 	qca_multi_link_cfg.loop_detected = 0;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	qca_multi_link_cfg.primary_ic = NULL;
+#else
 	qca_multi_link_cfg.primary_wiphy = NULL;
+#endif
 	qca_multi_link_cfg.qca_ml_set_loop_detection = NULL;
 	qca_multi_link_cfg.qca_ml_loop_detection_context = NULL;
 	qdf_list_create(&qca_multi_link_cfg.radio_list, QCA_MULTI_LINK_RADIO_LIST_SIZE);
@@ -363,7 +488,7 @@ void qca_multi_link_init_module(struct qca_multi_link_ops *ml_ops)
 	memset(&qca_multi_link_cfg.qca_ml_stats, 0x0, sizeof(qca_multi_link_radio_node_t));
 	qca_multi_link_cfg.qca_ml_ops = ml_ops;
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-		FL("\n******QCA Repeater Initialization Done***********\n"));
+		FL("\n******QCA Repeater Initialization Done***********"));
 }
 
 qdf_export_symbol(qca_multi_link_init_module);
@@ -404,7 +529,7 @@ void qca_multi_link_append_num_sta(bool inc_or_dec)
 		}
 	}
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_NONE,
-		FL("\nStation vap number in Repeater is val=%d***********\n"),
+		FL("\nStation vap number in Repeater is val=%d***********"),
 		qca_multi_link_cfg.total_stavaps_up);
 }
 
@@ -475,7 +600,7 @@ void qca_multi_link_set_dbdc_enable(bool val)
 		qca_multi_link_cfg.loop_detected = 0;
 	}
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-		FL("\nSetting DBDC enable = val%d\n"), val);
+		FL("\nSetting DBDC enable = val%d"), val);
 }
 
 qdf_export_symbol(qca_multi_link_set_dbdc_enable);
@@ -484,12 +609,19 @@ qdf_export_symbol(qca_multi_link_set_dbdc_enable);
  * qca_multi_link_get_primary_radio() - set the dbdc enable flag
  * @primary_wiphy: wiphy pointer of primary radio device
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+struct ieee80211com *qca_multi_link_get_primary_radio(void)
+{
+	return qca_multi_link_cfg.primary_ic;
+}
+#else
 struct wiphy *qca_multi_link_get_primary_radio(void)
 {
 	return qca_multi_link_cfg.primary_wiphy;
 }
 
 qdf_export_symbol(qca_multi_link_get_primary_radio);
+#endif
 
 /**
  * qca_multi_link_get_always_primary() - get the flag for always primary flag
@@ -506,6 +638,19 @@ qdf_export_symbol(qca_multi_link_get_always_primary);
  * qca_multi_link_set_primary_radio() - set the primary radio
  * @primary_wiphy: wiphy pointer of primary radio device
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+void qca_multi_link_set_primary_radio(struct ieee80211com *primary_ic)
+{
+	if (!primary_ic) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+			FL("\nNull ic in Setting primary radio"));
+		return;
+	}
+	qca_multi_link_cfg.primary_ic = primary_ic;
+	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_INFO,
+		FL("\n******Setting primary radio for ic ****%p"), primary_ic);
+}
+#else
 void qca_multi_link_set_primary_radio(struct wiphy *primary_wiphy)
 {
 	if (!primary_wiphy) {
@@ -517,6 +662,7 @@ void qca_multi_link_set_primary_radio(struct wiphy *primary_wiphy)
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_INFO,
 		FL("\n******Setting primary radio for wiphy****%p\n"), primary_wiphy);
 }
+#endif
 
 qdf_export_symbol(qca_multi_link_set_primary_radio);
 
@@ -527,12 +673,20 @@ qdf_export_symbol(qca_multi_link_set_primary_radio);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_remove_radio(struct ieee80211com *ic)
+#else
 bool qca_multi_link_remove_radio(struct wiphy *wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(wiphy);
+#endif
 	if (!radio_node) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
@@ -553,6 +707,51 @@ qdf_export_symbol(qca_multi_link_remove_radio);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_add_radio(struct ieee80211com *ic)
+{
+	qca_multi_link_radio_node_t *radio_node = NULL;
+
+	if (!ic) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
+			FL(" Radio could not be set - ic is NULL"));
+		return false;
+	}
+
+	/*
+	 * Check if Radio is already present in reppeater list.
+	 */
+	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+	radio_node = qca_multi_link_find_radio_node(ic);
+	qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
+	if (radio_node) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
+			FL(" Radio node already present"));
+		return false;
+	}
+
+	radio_node = qdf_mem_malloc(sizeof(qca_multi_link_radio_node_t));
+	if (!radio_node) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+			FL("Could not allocate node for ic %p"), ic);
+		return false;
+	}
+
+	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+	radio_node->ic = ic;
+
+	if (qdf_list_insert_front(&qca_multi_link_cfg.radio_list, &radio_node->node)
+		== QDF_STATUS_SUCCESS) {
+		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+			 FL("Adding radio node for ic%p"), ic);
+		return true;
+	}
+	qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
+	qdf_mem_free(radio_node);
+	return false;
+}
+#else
 bool qca_multi_link_add_radio(struct wiphy *wiphy)
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
@@ -595,7 +794,7 @@ bool qca_multi_link_add_radio(struct wiphy *wiphy)
 	qdf_mem_free(radio_node);
 	return false;
 }
-
+#endif
 qdf_export_symbol(qca_multi_link_add_radio);
 
 /**
@@ -605,12 +804,20 @@ qdf_export_symbol(qca_multi_link_add_radio);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_add_fastlane_radio(struct ieee80211com *fl_ic)
+#else
 bool qca_multi_link_add_fastlane_radio(struct wiphy *fl_wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(fl_ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(fl_wiphy);
+#endif
 	if (!radio_node) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
@@ -630,12 +837,20 @@ qdf_export_symbol(qca_multi_link_add_fastlane_radio);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_remove_fastlane_radio(struct ieee80211com *fl_ic)
+#else
 bool qca_multi_link_remove_fastlane_radio(struct wiphy *fl_wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(fl_ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(fl_wiphy);
+#endif
 	if (!radio_node) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
@@ -655,12 +870,20 @@ qdf_export_symbol(qca_multi_link_remove_fastlane_radio);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_add_no_backhaul_radio(struct ieee80211com *no_bl_ic)
+#else
 bool qca_multi_link_add_no_backhaul_radio(struct wiphy *no_bl_wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(no_bl_ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(no_bl_wiphy);
+#endif
 	if (!radio_node) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
@@ -680,12 +903,20 @@ qdf_export_symbol(qca_multi_link_add_no_backhaul_radio);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_remove_no_backhaul_radio(struct ieee80211com *no_bl_ic)
+#else
 bool qca_multi_link_remove_no_backhaul_radio(struct wiphy *no_bl_wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(no_bl_ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(no_bl_wiphy);
+#endif
 	if (!radio_node) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
@@ -705,18 +936,30 @@ qdf_export_symbol(qca_multi_link_remove_no_backhaul_radio);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_remove_station_vap(struct ieee80211com *ic)
+#else
 bool qca_multi_link_remove_station_vap(struct wiphy *wiphy)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(wiphy);
+#endif
 	if (!radio_node) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node->sta_osifp = NULL;
+#else
 	radio_node->sta_dev = NULL;
+#endif
 	radio_node->sta_mldev = NULL;
 	qdf_mem_set(radio_node->sta_mld_mac, ETH_ALEN, 0);
 	qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
@@ -734,39 +977,71 @@ qdf_export_symbol(qca_multi_link_remove_station_vap);
  * Return: false: addition not successful
  *	   true: addition is successful
  */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+bool qca_multi_link_add_station_vap(struct ieee80211com *ic, osif_dev *sta_osifp,
+				    struct net_device *sta_mldev, uint8_t *mld_mac)
+#else
 bool qca_multi_link_add_station_vap(struct wiphy *wiphy, struct net_device *sta_dev,
 				    struct net_device *sta_mldev, uint8_t *mld_mac)
+#endif
 {
 	qca_multi_link_radio_node_t *radio_node = NULL;
 
 	qdf_spin_lock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node = qca_multi_link_find_radio_node(ic);
+#else
 	radio_node = qca_multi_link_find_radio_node(wiphy);
+#endif
 	if (!radio_node) {
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (radio_node->sta_osifp) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
+			 FL("STA Device already mapped for ic %p"), ic);
+		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
+		return false;
+	}
+#else
 	if (radio_node->sta_dev) {
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
 			 FL("STA Device already mapped for wiphy%p\n"), wiphy);
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
 	}
-
+#endif
 	if (radio_node->sta_mldev) {
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
+			  FL("STA ML Device already mapped for ic %p"),
+			  ic);
+#else
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_WARN,
 			  FL("STA ML Device already mapped for wiphy%p\n"),
 			  wiphy);
+#endif
 		qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
 		return false;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	radio_node->sta_osifp = sta_osifp;
+#else
 	radio_node->sta_dev = sta_dev;
+#endif
 	radio_node->sta_mldev = sta_mldev;
 	qdf_mem_copy(radio_node->sta_mld_mac, mld_mac, QDF_MAC_ADDR_SIZE);
 	qdf_spin_unlock(&qca_multi_link_cfg.radio_lock);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+		 FL("STA Device mapped for ic %p"), ic);
+#else
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
 		 FL("STA Device mapped for wiphy%p\n"), wiphy);
+#endif
 	return true;
 }
 
@@ -794,7 +1069,7 @@ static qca_multi_link_status_t qca_multi_link_secondary_ap_rx(struct net_device 
 
 	ap_wiphy = ap_dev->ieee80211_ptr->wiphy;
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Secondary AP Rx: always_primary=%d, loop_detected=%d,\
-				drop_secondary_mcast=%d, shost %pM dhost %pM\n"),
+				drop_secondary_mcast=%d, shost %pM dhost %pM"),
 				qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected,
 				qca_multi_link_cfg.drop_secondary_mcast, eh->ether_shost, eh->ether_dhost);
 
@@ -839,7 +1114,7 @@ static qca_multi_link_status_t qca_multi_link_secondary_ap_rx(struct net_device 
 		sta_dev = qca_multi_link_get_station_vap(ap_wiphy);
 		if (!sta_dev) {
 			QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-				FL("Null STA device found %pM - Give to bridge\n"), eh->ether_shost);
+				FL("Null STA device found %pM - Give to bridge"), eh->ether_shost);
 			qca_multi_link_cfg.qca_ml_stats.ap_rx_sec_sta_null++;
 			return QCA_MULTI_LINK_PKT_DROP;
 		}
@@ -848,7 +1123,7 @@ static qca_multi_link_status_t qca_multi_link_secondary_ap_rx(struct net_device 
 						       QCA_MULTI_LINK_ENTRY_USER_ADDED);
 		qdf_net_if_hold_dev((struct qdf_net_if *)sta_dev);
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-			FL("shost %pM dhost %pM \n"), eh->ether_shost, eh->ether_dhost);
+			FL("shost %pM dhost %pM"), eh->ether_shost, eh->ether_dhost);
 
 		/*
 		 * For packets destined to sources on RootAP directly enq to STA vap.
@@ -921,7 +1196,7 @@ bool qca_multi_link_ap_rx(struct net_device *net_dev, qdf_nbuf_t nbuf)
 end:
 	if (drop_packet) {
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-			FL("\n STA TX - Drop Packet for Mac=%pM\n"), eh->ether_shost);
+			FL("\n STA TX - Drop Packet for Mac=%pM"), eh->ether_shost);
 		qdf_nbuf_free(nbuf);
 		return true;
 	}
@@ -940,29 +1215,45 @@ qdf_export_symbol(qca_multi_link_ap_rx);
  *	   QCA_MULTI_LINK_PKT_DROP: frame to be dropped.
  *	   QCA_MULTI_LINK_PKT_CONSUMED: frame is consumed.
  */
-static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device *net_dev,
+static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device *net_dev, osif_dev *osifp,
 							       qdf_nbuf_t nbuf,
 							       struct net_device **prim_dev,
 							       struct net_device *mld_ndev)
 {
 	uint8_t is_mcast;
 	qca_multi_link_tbl_entry_t qca_ml_entry;
-	struct wiphy *sta_wiphy = NULL;
 	struct net_device *sta_dev = net_dev;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211com *sta_ic = NULL;
+	osif_dev *sta_osifp = osifp;
+	osif_dev *prim_sta_osifp = NULL;
+	osif_dev *temp_osifp = NULL;
+#else
+	struct wiphy *sta_wiphy = NULL;
+	struct net_device *temp_wiphy;
+#endif
 	struct net_device *prim_sta_dev = NULL;
 	struct net_device *ap_dev = NULL;
 	QDF_STATUS qal_status = QDF_STATUS_E_FAILURE;
 	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
-	struct net_device *temp_wiphy;
-
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	sta_ic = sta_osifp->os_if->iv_ic;
+#else
 	sta_wiphy = sta_dev->ieee80211_ptr->wiphy;
+#endif
 	is_mcast = IEEE80211_IS_MULTICAST(eh->ether_dhost);
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Secondary STA Rx:osifp= %p always_primary=%d, loop_detected=%d,\
+			drop_secondary_mcast=%d, shost %pM dhost %pM is_mcast=%d"),
+			sta_osifp, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected,
+			qca_multi_link_cfg.drop_secondary_mcast, eh->ether_shost, eh->ether_dhost, is_mcast);
+#else
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Secondary STA Rx:ifname= %s always_primary=%d, loop_detected=%d,\
 			drop_secondary_mcast=%d, shost %pM dhost %pM is_mcast=%d\n"),
 			sta_dev->name, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected,
 			qca_multi_link_cfg.drop_secondary_mcast, eh->ether_shost, eh->ether_dhost, is_mcast);
-
+#endif
 	/*
 	 * Mcast packets handling.
 	 */
@@ -1005,6 +1296,17 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 			}
 		}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if (qca_ml_entry.qal_fdb_ieee80211_ptr && is_mld_netdev(qca_ml_entry.qal_fdb_dev)) {
+			temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+			if (temp_osifp) {
+				qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+				qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
+				qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
+				qca_ml_entry.qal_fdb_dev = NULL;
+			}
+		}
+#else
 		if (qca_ml_entry.qal_fdb_ieee80211_ptr && qca_multi_link_is_mlo_wiphy(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
 			temp_wiphy = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
 			if (temp_wiphy) {
@@ -1012,6 +1314,7 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 				qca_ml_entry.qal_fdb_ieee80211_ptr = qca_ml_entry.qal_fdb_dev->ieee80211_ptr;
 			}
 		}
+#endif
 		/*
 		 * Case 1:
 		 * ieee80211_ptr pointer being NULL indicates that the port
@@ -1023,7 +1326,11 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 		 * behind the repeater and the packet is a mcast looped packet.
 		 */
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if (qca_ml_entry.qal_fdb_ieee80211_ptr && (qca_ml_entry.qal_fdb_ic != sta_ic)) {
+#else
 		if (qca_ml_entry.qal_fdb_ieee80211_ptr && (qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy != sta_wiphy)) {
+#endif
 			if (!qca_multi_link_cfg.loop_detected) {
 				if ((qca_ml_entry.qal_fdb_is_local)
 					&& (qca_ml_entry.qal_fdb_ieee80211_ptr->iftype == NL80211_IFTYPE_STATION)) {
@@ -1033,7 +1340,7 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 							qca_multi_link_cfg.qca_ml_loop_detection_context,
 							true);
 					}
-					QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_INFO, FL("\n****Wifi Rptr Loop Detected****\n"));
+					QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_INFO, FL("\n****Wifi Rptr Loop Detected****"));
 				}
 			}
 			qca_multi_link_cfg.qca_ml_stats.sta_rx_sec_sta_mcast_dup_pkts++;
@@ -1052,9 +1359,15 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 		 * This check on secondary will take of the case where stations are connected to different RootAPs
 		 * and loop is not detected.
 		 */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if (qca_ml_entry.qal_fdb_osifp == sta_osifp) {
+			return QCA_MULTI_LINK_PKT_ALLOW;
+		}
+#else
 		if (qca_ml_entry.qal_fdb_dev == sta_dev) {
 			return QCA_MULTI_LINK_PKT_ALLOW;
 		}
+#endif
 
 		qca_multi_link_cfg.qca_ml_stats.sta_rx_sec_sta_mcast_drop++;
 		return QCA_MULTI_LINK_PKT_DROP;
@@ -1089,6 +1402,17 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 				return QCA_MULTI_LINK_PKT_DROP;
 			}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+			if (qca_ml_entry.qal_fdb_ieee80211_ptr && is_mld_netdev(qca_ml_entry.qal_fdb_dev)) {
+				temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+				if (temp_osifp) {
+					qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+					qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
+					qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
+					qca_ml_entry.qal_fdb_dev = NULL;
+				}
+			}
+#else
 			if (qca_multi_link_is_mlo_wiphy(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
 				temp_wiphy = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_dhost);
 				if (temp_wiphy) {
@@ -1096,29 +1420,66 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 					qca_ml_entry.qal_fdb_ieee80211_ptr = qca_ml_entry.qal_fdb_dev->ieee80211_ptr;
 				}
 			}
+#endif
 
 			/*
 			 * Compare the physical device and check if the destination is a client
 			 * on the same radio, then enqueue directly to AP vap.
 			 */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+			if (((qca_ml_entry.qal_fdb_ieee80211_ptr->iftype == NL80211_IFTYPE_AP)
+				|| (qca_ml_entry.qal_fdb_ieee80211_ptr->iftype == NL80211_IFTYPE_AP_VLAN))
+				&& (qca_ml_entry.qal_fdb_ic == sta_ic)) {
+#else
 			if ((qca_ml_entry.qal_fdb_ieee80211_ptr->iftype == NL80211_IFTYPE_AP)
 				&& (qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy == sta_wiphy)) {
+#endif
 				QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Unicast Sec STA enqueue to bridge through primary for\
-					shost %pM dhost %pM \n"), eh->ether_shost, eh->ether_dhost);
+					shost %pM dhost %pM "), eh->ether_shost, eh->ether_dhost);
 				/*
 				 * Find the primary station vap corresponding to the radio
 				 */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+				prim_sta_osifp = qca_multi_link_get_station_vap(qca_multi_link_cfg.primary_ic);
+				if (!prim_sta_osifp) {
+					QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+					FL("Null STA device found %pM - Give to bridge"), eh->ether_shost);
+					return QCA_MULTI_LINK_PKT_DROP;
+				}
+
+				if (prim_sta_osifp->mldev)
+					prim_sta_dev = prim_sta_osifp->mldev->mld_dev;
+				else
+					prim_sta_dev = prim_sta_osifp->netdev;
+#else
 				prim_sta_dev = qca_multi_link_get_station_vap(qca_multi_link_cfg.primary_wiphy);
+#endif
 				if (!prim_sta_dev) {
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+					if (is_fast_lane_radio(qca_multi_link_cfg.primary_ic)) {
+						prim_sta_osifp = qca_multi_link_get_fast_lane_station_vap(qca_multi_link_cfg.primary_ic);
+
+					if (!prim_sta_osifp) {
+						QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+						FL("Null STA device found %pM - Give to bridge"), eh->ether_shost);
+						return QCA_MULTI_LINK_PKT_DROP;
+					}
+
+					if (prim_sta_osifp->mldev)
+						prim_sta_dev = prim_sta_osifp->mldev->mld_dev;
+					else
+						prim_sta_dev = prim_sta_osifp->netdev;
+#else
 					if (is_fast_lane_radio(qca_multi_link_cfg.primary_wiphy)) {
 						prim_sta_dev = qca_multi_link_get_fast_lane_station_vap(qca_multi_link_cfg.primary_wiphy);
+#endif
 						if (prim_sta_dev) {
 							goto set_prim_dev;
 						}
 					}
 
 					QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-							FL("Null STA device found %pM - Give to bridge\n"), eh->ether_shost);
+							FL("Null STA device found %pM - Give to bridge"), eh->ether_shost);
 					return QCA_MULTI_LINK_PKT_DROP;
 				}
 set_prim_dev:
@@ -1135,7 +1496,7 @@ set_prim_dev:
 			 * station, give the packet to the first found AP vap entry in the bridge table.
 			 */
 			QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("No Fdb entry on sec radio\
-				for ucast pkt with dhost %pM \n"), eh->ether_dhost);
+				for ucast pkt with dhost %pM"), eh->ether_dhost);
 			/*
 			 * Find the AP vap corresponding to the station vap.
 			 */
@@ -1146,13 +1507,13 @@ set_prim_dev:
 
 			if (!ap_dev) {
 				QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-				FL("Null AP device found %pM - Drop\n"), eh->ether_shost);
+				FL("Null AP device found %pM - Drop"), eh->ether_shost);
 				qca_multi_link_cfg.qca_ml_stats.sta_rx_sec_sta_ucast_no_ap++;
 				return QCA_MULTI_LINK_PKT_DROP;
 			}
 
 			QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-				FL("shost %pM dhost %pM \n"), eh->ether_shost, eh->ether_dhost);
+				FL("shost %pM dhost %pM"), eh->ether_shost, eh->ether_dhost);
 
 			/*
 			 * For packets destined to sources on RootAP directly enq to STA vap.
@@ -1176,25 +1537,40 @@ set_prim_dev:
  *	   QCA_MULTI_LINK_PKT_DROP: frame to be dropped
  *	   QCA_MULTI_LINK_PKT_CONSUMED: frame is consumed.
  */
-static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *net_dev, qdf_nbuf_t nbuf,
+static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf_t nbuf,
 							     struct net_device *mld_ndev)
 {
 	uint8_t is_mcast;
 	qca_multi_link_tbl_entry_t qca_ml_entry;
-	struct wiphy *sta_wiphy = NULL;
 	struct net_device *sta_dev = net_dev;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211com *sta_ic = NULL;
+	osif_dev *sta_osifp = osifp;
+	osif_dev *temp_osifp = NULL;
+#else
+	struct wiphy *sta_wiphy = NULL;
+	struct net_device *temp_wiphy;
+#endif
 	QDF_STATUS qal_status = QDF_STATUS_E_FAILURE;
 	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
-	struct net_device *temp_wiphy;
-
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	sta_ic = sta_osifp->os_if->iv_ic;
+#else
 	sta_wiphy = sta_dev->ieee80211_ptr->wiphy;
+#endif
 	is_mcast = IEEE80211_IS_MULTICAST(eh->ether_dhost);
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Primary STA Rx: osifp=%p, always_primary=%d, loop_detected=%d,\
+			drop_secondary_mcast=%d, shost %pM dhost %pM is_mcast=%d"),
+			sta_osifp, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected,
+			qca_multi_link_cfg.drop_secondary_mcast, eh->ether_shost, eh->ether_dhost, is_mcast);
+#else
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Primary STA Rx: ifname=%s, always_primary=%d, loop_detected=%d,\
 			drop_secondary_mcast=%d, shost %pM dhost %pM is_mcast=%d\n"),
 			sta_dev->name, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected,
 			qca_multi_link_cfg.drop_secondary_mcast, eh->ether_shost, eh->ether_dhost, is_mcast);
-
+#endif
 	/*
 	 * Unicast Packets are allowed without any processing on Primary Station Vap.
 	 */
@@ -1250,6 +1626,17 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *
 		return QCA_MULTI_LINK_PKT_DROP;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (qca_ml_entry.qal_fdb_ieee80211_ptr && is_mld_netdev(qca_ml_entry.qal_fdb_dev)) {
+		temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+		if (temp_osifp) {
+			qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+			qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
+			qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
+			qca_ml_entry.qal_fdb_dev = NULL;
+		}
+	}
+#else
 	if (qca_multi_link_is_mlo_wiphy(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
 		temp_wiphy = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
 		if (temp_wiphy) {
@@ -1257,8 +1644,13 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *
 			qca_ml_entry.qal_fdb_ieee80211_ptr = qca_ml_entry.qal_fdb_dev->ieee80211_ptr;
 		}
 	}
+#endif
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if ((qca_ml_entry.qal_fdb_ic != sta_ic)) {
+#else
 	if ((qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy != sta_wiphy)) {
+#endif
 		if ((qca_ml_entry.qal_fdb_is_local)
 				&& (qca_ml_entry.qal_fdb_ieee80211_ptr->iftype
 				== NL80211_IFTYPE_STATION)) {
@@ -1270,7 +1662,7 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *
 							true);
 				}
 				QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_INFO,
-						FL("\n****Wifi Rptr Loop Detected****\n"));
+						FL("\n****Wifi Rptr Loop Detected****"));
 			}
 		} else {
 			if (!(qca_ml_entry.qal_fdb_is_local)
@@ -1293,7 +1685,11 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *
 	 * then the mcast packet is from a source on the RootAP side and we
 	 * should allow the packet.
 	 */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (qca_ml_entry.qal_fdb_osifp == sta_osifp) {
+#else
 	if (qca_ml_entry.qal_fdb_dev == sta_dev) {
+#endif
 		return QCA_MULTI_LINK_PKT_ALLOW;
 	}
 	qca_multi_link_cfg.qca_ml_stats.sta_rx_pri_sta_mcast_drop++;
@@ -1308,21 +1704,37 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *
  * Return: false: frame not consumed and should be processed further by caller
  *	   true: frame dropped/enqueued.
  */
-bool qca_multi_link_sta_rx(struct net_device *net_dev, qdf_nbuf_t nbuf, struct net_device **prim_dev,
+bool qca_multi_link_sta_rx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf_t nbuf, struct net_device **prim_dev,
 			   struct net_device *mld_ndev)
 {
 	uint8_t is_eapol;
 	bool is_primary = false;
-	struct wiphy *sta_wiphy = NULL;
 	struct net_device *sta_dev = NULL;
+	osif_dev *sta_osifp = NULL;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211com *sta_ic = NULL;
+#else
+	struct wiphy *sta_wiphy = NULL;
+#endif
 	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
 	bool drop_packet = false;
 	qca_multi_link_status_t status = QCA_MULTI_LINK_PKT_NONE;
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (!osifp) {
+		goto end;
+	} else {
+		if (!mld_ndev) {
+			sta_dev = net_dev;
+		}
+		sta_osifp = osifp;
+	}
+#else
 	if (!net_dev)
 		goto end;
 	else
 		sta_dev = net_dev;
+#endif
 
 	if (!qca_multi_link_need_procesing()) {
 		goto end;
@@ -1333,21 +1745,30 @@ bool qca_multi_link_sta_rx(struct net_device *net_dev, qdf_nbuf_t nbuf, struct n
 		goto end;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	sta_ic = sta_osifp->os_if->iv_ic;
+	is_primary = qca_multi_link_is_primary_radio(sta_ic);
+#else
 	sta_wiphy = sta_dev->ieee80211_ptr->wiphy;
 	is_primary = qca_multi_link_is_primary_radio(sta_wiphy);
+#endif
 
 	if (qca_multi_link_drop_always_primary(is_primary, nbuf)) {
 		drop_packet = true;
 		goto end;
 	}
 
+#ifndef ENABLE_CFG80211_BACKPORTS_MLO
 	qdf_net_if_hold_dev((struct qdf_net_if *)sta_dev);
+#endif
 	if (is_primary) {
-		status = qca_multi_link_primary_sta_rx(sta_dev, nbuf, mld_ndev);
+		status = qca_multi_link_primary_sta_rx(sta_dev, sta_osifp, nbuf, mld_ndev);
 	} else {
-		status = qca_multi_link_secondary_sta_rx(sta_dev, nbuf, prim_dev, mld_ndev);
+		status = qca_multi_link_secondary_sta_rx(sta_dev, sta_osifp, nbuf, prim_dev, mld_ndev);
 	}
+#ifndef ENABLE_CFG80211_BACKPORTS_MLO
 	qdf_net_if_release_dev((struct qdf_net_if *)sta_dev);
+#endif
 
 	if (status == QCA_MULTI_LINK_PKT_ALLOW) {
 		goto end;
@@ -1360,7 +1781,7 @@ bool qca_multi_link_sta_rx(struct net_device *net_dev, qdf_nbuf_t nbuf, struct n
 end:
 	if (drop_packet) {
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-			FL("\n STA RX - Drop Packet for Mac=%pM\n"), eh->ether_shost);
+			FL("\n STA RX - Drop Packet for Mac=%pM"), eh->ether_shost);
 		qdf_nbuf_free(nbuf);
 		return true;
 	}
@@ -1379,29 +1800,44 @@ qdf_export_symbol(qca_multi_link_sta_rx);
  *	   QCA_MULTI_LINK_PKT_DROP: frame to be dropped
  *	   QCA_MULTI_LINK_PKT_CONSUMED: frame is consumed.
  */
-static qca_multi_link_status_t qca_multi_link_secondary_sta_tx(struct net_device *net_dev, qdf_nbuf_t nbuf,
+static qca_multi_link_status_t qca_multi_link_secondary_sta_tx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf_t nbuf,
 							       struct net_device *mld_ndev)
 {
-	uint8_t is_mcast;
-	struct wiphy *sta_wiphy = NULL;
 	struct net_device *sta_dev = net_dev;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211com *sta_ic = NULL;
+	osif_dev *sta_osifp = osifp;
+	osif_dev *temp_osifp = NULL;
+#else
+	struct wiphy *sta_wiphy = NULL;
+	struct net_device *temp_wiphy;
+#endif
+	uint8_t is_mcast;
 	qca_multi_link_tbl_entry_t qca_ml_entry;
 	QDF_STATUS qal_status = QDF_STATUS_E_FAILURE;
 	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
-	struct net_device *temp_wiphy;
-
 	if (qca_multi_link_drop_always_primary(false, nbuf)) {
 		qca_multi_link_cfg.qca_ml_stats.sta_tx_sec_sta_alwys_prim++;
 		return QCA_MULTI_LINK_PKT_DROP;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	sta_ic = sta_osifp->os_if->iv_ic;
+#else
 	sta_wiphy = sta_dev->ieee80211_ptr->wiphy;
+#endif
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("STA Secondary Tx: osifp=%p, always_primary=%d, loop_detected=%d,\
+		drop_secondary_mcast=%d, shost %pM dhost %pM"),
+		sta_osifp, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected, qca_multi_link_cfg.drop_secondary_mcast,
+		eh->ether_shost, eh->ether_dhost);
+#else
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("STA Secondary Tx: ifname=%s, always_primary=%d, loop_detected=%d,\
 		drop_secondary_mcast=%d, shost %pM dhost %pM \n"),
 		sta_dev->name, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected, qca_multi_link_cfg.drop_secondary_mcast,
 		eh->ether_shost, eh->ether_dhost);
-
+#endif
 	/*
 	 * For a Secondary station, only Packets from clients on the same band are allowed for transmit.
 	 */
@@ -1433,6 +1869,17 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_tx(struct net_device
 		return QCA_MULTI_LINK_PKT_DROP;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (qca_ml_entry.qal_fdb_ieee80211_ptr && is_mld_netdev(qca_ml_entry.qal_fdb_dev)) {
+		temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+		if (temp_osifp) {
+			qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+			qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
+			qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
+			qca_ml_entry.qal_fdb_dev = NULL;
+		}
+	}
+#else
 	if (qca_multi_link_is_mlo_wiphy(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
 		temp_wiphy = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
 		if (temp_wiphy) {
@@ -1440,14 +1887,21 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_tx(struct net_device
 			qca_ml_entry.qal_fdb_ieee80211_ptr = qca_ml_entry.qal_fdb_dev->ieee80211_ptr;
 		}
 	}
+#endif
 
 	/*
 	 * Do the DBDC Fast Lane processing at the beginning and then fall back to normal DBDC STA TX
 	 * if either fast-lane is disabled or the TX is for non-fast lane radio.
 	 */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (is_fast_lane_radio(sta_ic) && is_fast_lane_radio(qca_ml_entry.qal_fdb_ic)) {
+		return QCA_MULTI_LINK_PKT_ALLOW;
+	}
+#else
 	if (is_fast_lane_radio(sta_wiphy) && is_fast_lane_radio(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
 		return QCA_MULTI_LINK_PKT_ALLOW;
 	}
+#endif
 
 	if (qca_multi_link_drop_secondary_mcast(nbuf)) {
 		qca_multi_link_cfg.qca_ml_stats.sta_tx_sec_sta_mcast_drop_sec++;
@@ -1458,9 +1912,13 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_tx(struct net_device
 	 * Compare the physical device and check if the source is a client
 	 * on the same radio.
 	 */
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (qca_ml_entry.qal_fdb_ic != sta_ic) {
+#else
 	if (qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy != sta_wiphy) {
+#endif
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("STA TX: Diff Band Primary drop\
-			shost %pM dhost %pM \n"), eh->ether_shost, eh->ether_dhost);
+			shost %pM dhost %pM"), eh->ether_shost, eh->ether_dhost);
 		qca_multi_link_cfg.qca_ml_stats.sta_tx_sec_sta_drop_dif_band++;
 		return QCA_MULTI_LINK_PKT_DROP;
 	}
@@ -1478,28 +1936,45 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_tx(struct net_device
  *	   QCA_MULTI_LINK_PKT_DROP: frame to be dropped
  *	   QCA_MULTI_LINK_PKT_CONSUMED: frame is consumed.
  */
-static qca_multi_link_status_t qca_multi_link_primary_sta_tx(struct net_device *net_dev, qdf_nbuf_t nbuf,
+static qca_multi_link_status_t qca_multi_link_primary_sta_tx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf_t nbuf,
 							     struct net_device *mld_ndev)
 {
-	struct wiphy *sta_wiphy = NULL;
 	struct net_device *sta_dev = net_dev;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211com *sta_ic = NULL;
+	osif_dev *sta_osifp = osifp;
+	osif_dev *sec_sta_osifp = NULL;
+	osif_dev *temp_osifp = NULL;
+#else
+	struct wiphy *sta_wiphy = NULL;
+	struct net_device *temp_wiphy;
+#endif
 	struct net_device *sec_sta_dev = NULL;
 	qca_multi_link_tbl_entry_t qca_ml_entry;
 	QDF_STATUS qal_status = QDF_STATUS_E_FAILURE;
 	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
-	struct net_device *temp_wiphy;
 
 	if (qca_multi_link_cfg.always_primary) {
 		return QCA_MULTI_LINK_PKT_ALLOW;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	sta_ic = sta_osifp->os_if->iv_ic;
+#else
 	sta_wiphy = sta_dev->ieee80211_ptr->wiphy;
+#endif
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Primary STA Tx: sta_osifp=%p, always_primary=%d, loop_detected=%d,\
+				drop_secondary_mcast=%d, shost %pM dhost %pM"),
+				sta_osifp, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected,
+				qca_multi_link_cfg.drop_secondary_mcast, eh->ether_shost, eh->ether_dhost);
+#else
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("Primary STA Tx: ifname=%s, always_primary=%d, loop_detected=%d,\
 				drop_secondary_mcast=%d, shost %pM dhost %pM \n"),
 				sta_dev->name, qca_multi_link_cfg.always_primary, qca_multi_link_cfg.loop_detected,
 				qca_multi_link_cfg.drop_secondary_mcast, eh->ether_shost, eh->ether_dhost);
-
+#endif
 	/*
 	 * For Primary station, packets allowed for transmission are:
 	 * 1) Packets from ethernet devices.
@@ -1533,6 +2008,17 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_tx(struct net_device *
 		return QCA_MULTI_LINK_PKT_ALLOW;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (qca_ml_entry.qal_fdb_ieee80211_ptr && is_mld_netdev(qca_ml_entry.qal_fdb_dev)) {
+		temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+		if (temp_osifp) {
+			qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+			qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
+			qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
+			qca_ml_entry.qal_fdb_dev = NULL;
+		}
+	}
+#else
 	if (qca_multi_link_is_mlo_wiphy(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
 		temp_wiphy = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
 		if (temp_wiphy) {
@@ -1540,19 +2026,53 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_tx(struct net_device *
 			qca_ml_entry.qal_fdb_ieee80211_ptr = qca_ml_entry.qal_fdb_dev->ieee80211_ptr;
 		}
 	}
+#endif
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
 	/*
 	 * Do the DBDC Fast Lane processing at the beginning and then fall back to normal DBDC STA TX
 	 * if either fast-lane is disabled or the TX is for non-fast lane radio.
 	 */
-	if (is_fast_lane_radio(sta_wiphy)
-		&& is_fast_lane_radio(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
+	if (is_fast_lane_radio(sta_ic)
+		&& is_fast_lane_radio(qca_ml_entry.qal_fdb_ic)) {
 		return QCA_MULTI_LINK_PKT_ALLOW;
 	}
 
 	/*
 	 * This flag will be set for radios which does not particpate in backhaul.
 	 */
+	if (is_no_backhaul_radio(qca_ml_entry.qal_fdb_ic)) {
+		return QCA_MULTI_LINK_PKT_ALLOW;
+	}
+
+	/*
+	 * Compare the physical device and check if the source is a client
+	 * on the same radio.
+	 */
+	if (qca_ml_entry.qal_fdb_ic != sta_ic) {
+		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("STA TX: Diff Band \
+			shost %pM dhost %pM"), eh->ether_shost, eh->ether_dhost);
+
+		/*
+		 * Find the station vap corresponding to the AP vap.
+		 */
+		sec_sta_osifp = qca_multi_link_get_station_vap(qca_ml_entry.qal_fdb_ic);
+		if (!sec_sta_osifp) {
+			QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
+				FL("Null STA device found %pM - Give to bridge"), eh->ether_shost);
+			return QCA_MULTI_LINK_PKT_DROP;
+		}
+
+		if (sec_sta_osifp->mldev)
+			sec_sta_dev = sec_sta_osifp->mldev->mld_dev;
+		else
+			sec_sta_dev = sec_sta_osifp->netdev;
+#else
+	if (is_fast_lane_radio(sta_wiphy)
+		&& is_fast_lane_radio(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
+		return QCA_MULTI_LINK_PKT_ALLOW;
+	}
+
 	if (is_no_backhaul_radio(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy)) {
 		return QCA_MULTI_LINK_PKT_ALLOW;
 	}
@@ -1563,17 +2083,20 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_tx(struct net_device *
 	 */
 	if (qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy != sta_wiphy) {
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG, FL("STA TX: Diff Band \
-			shost %pM dhost %pM \n"), eh->ether_shost, eh->ether_dhost);
+			shost %pM dhost %pM"), eh->ether_shost, eh->ether_dhost);
 
 		/*
 		 * Find the station vap corresponding to the AP vap.
 		 */
 		sec_sta_dev = qca_multi_link_get_station_vap(qca_ml_entry.qal_fdb_ieee80211_ptr->wiphy);
+#endif
+
 		if (!sec_sta_dev) {
 			QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-				FL("Null STA device found %pM - Give to bridge\n"), eh->ether_shost);
+				FL("Null STA device found %pM - Give to bridge"), eh->ether_shost);
 			return QCA_MULTI_LINK_PKT_DROP;
 		}
+
 		qdf_net_if_hold_dev((struct qdf_net_if *)sec_sta_dev);
 
 		/*
@@ -1595,12 +2118,20 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_tx(struct net_device *
  * Return: false: frame not consumed and should be processed further by caller
  *	   true: frame consumed
  */
-bool qca_multi_link_sta_tx(struct net_device *net_dev, qdf_nbuf_t nbuf, struct net_device *mld_ndev)
+bool qca_multi_link_sta_tx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf_t nbuf, struct net_device *mld_ndev)
 {
 	bool drop_packet = false;
 	bool is_primary = false;
-	struct wiphy *sta_wiphy = NULL;
 	struct net_device *sta_dev = net_dev;
+	osif_dev *sta_osifp = osifp;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211vap *vap = NULL;
+	struct ieee80211com *sta_ic = NULL;
+	vap = osifp->os_if;
+	sta_ic = vap->iv_ic;
+#else
+	struct wiphy *sta_wiphy = NULL;
+#endif
 	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
 	uint8_t is_mcast = IEEE80211_IS_MULTICAST(eh->ether_dhost);
 	qca_multi_link_status_t status = QCA_MULTI_LINK_PKT_NONE;
@@ -1618,20 +2149,31 @@ bool qca_multi_link_sta_tx(struct net_device *net_dev, qdf_nbuf_t nbuf, struct n
 		}
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	if (qca_multi_link_pktfrom_ownsrc(sta_osifp, nbuf)) {
+#else
 	if (qca_multi_link_pktfrom_ownsrc(sta_dev, nbuf)) {
+#endif
 		goto end;
 	}
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	is_primary = qca_multi_link_is_primary_radio(sta_ic);
+#else
 	sta_wiphy = sta_dev->ieee80211_ptr->wiphy;
 	is_primary = qca_multi_link_is_primary_radio(sta_wiphy);
 
 	qdf_net_if_hold_dev((struct qdf_net_if *)net_dev);
+#endif
 	if (is_primary) {
-		status = qca_multi_link_primary_sta_tx(sta_dev, nbuf, mld_ndev);
+		status = qca_multi_link_primary_sta_tx(sta_dev, sta_osifp, nbuf, mld_ndev);
 	} else {
-		status = qca_multi_link_secondary_sta_tx(sta_dev, nbuf, mld_ndev);
+		status = qca_multi_link_secondary_sta_tx(sta_dev, sta_osifp, nbuf, mld_ndev);
 	}
+
+#ifndef ENABLE_CFG80211_BACKPORTS_MLO
 	qdf_net_if_release_dev((struct qdf_net_if *)net_dev);
+#endif
 
 	if (status == QCA_MULTI_LINK_PKT_ALLOW) {
 		goto end;
@@ -1644,7 +2186,7 @@ bool qca_multi_link_sta_tx(struct net_device *net_dev, qdf_nbuf_t nbuf, struct n
 end:
 	if (drop_packet) {
 		QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-			FL("\n STA TX - Drop Packet for Mac=%pM\n"), eh->ether_shost);
+			FL("\n STA TX - Drop Packet for Mac=%pM"), eh->ether_shost);
 		qdf_nbuf_free(nbuf);
 		return true;
 	}
@@ -1666,7 +2208,7 @@ void qca_multi_link_set_dbdc_loop_detection_cb(
 	qca_multi_link_cfg.qca_ml_loop_detection_context = ctx;
 
 	QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
-		FL("\nSetting DBDC Loop detection ctx:%p\n"), ctx);
+		FL("\nSetting DBDC Loop detection ctx:%p"), ctx);
 }
 
 qdf_export_symbol(qca_multi_link_set_dbdc_loop_detection_cb);

@@ -785,9 +785,14 @@ wlan_rptr_pdev_ucfg_config_set(struct wlan_objmgr_pdev *pdev,
 	struct wlan_objmgr_psoc *psoc = NULL;
 	uint8_t pdev_id;
 	cdp_config_param_type val = {0};
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211com *ic = NULL;
+	struct ieee80211com *primary_ic = NULL;
+#else
 	struct pdev_osif_priv *pdev_ospriv = NULL;
 	struct wiphy *wiphy = NULL;
 	struct wiphy *primary_wiphy = NULL;
+#endif
 #endif
 
 	g_priv = wlan_rptr_get_global_ctx();
@@ -796,13 +801,29 @@ wlan_rptr_pdev_ucfg_config_set(struct wlan_objmgr_pdev *pdev,
 	psoc = wlan_pdev_get_psoc(pdev);
 	soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	sta_vdev = ext_cb->get_stavap(pdev);
+	ic = wlan_pdev_get_mlme_ext_obj(pdev);
+#else
 	pdev_ospriv = wlan_pdev_get_ospriv(pdev);
 	wiphy = pdev_ospriv->wiphy;
+#endif
 #endif
 
 	switch (param) {
 #if DBDC_REPEATER_SUPPORT
 	case OL_ATH_PARAM_PRIMARY_RADIO:
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if (ic) {
+			if (value) {
+				qca_multi_link_set_primary_radio(ic);
+			} else {
+				primary_ic = qca_multi_link_get_primary_radio();
+				if (primary_ic == ic)
+					qca_multi_link_set_primary_radio(NULL);
+			}
+		}
+#else
 		if (wiphy) {
 			if (value) {
 				qca_multi_link_set_primary_radio(wiphy);
@@ -812,6 +833,7 @@ wlan_rptr_pdev_ucfg_config_set(struct wlan_objmgr_pdev *pdev,
 					qca_multi_link_set_primary_radio(NULL);
 			}
 		}
+#endif
 		RPTR_LOGI("multi_link set primary radio flag as %d for pdev_id: %d",
 			  value, pdev_id);
 
@@ -849,10 +871,17 @@ wlan_rptr_pdev_ucfg_config_set(struct wlan_objmgr_pdev *pdev,
 		break;
 	case OL_ATH_PARAM_FAST_LANE:
 #if DBDC_REPEATER_SUPPORT
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+		if (value)
+			qca_multi_link_add_fastlane_radio(ic);
+		else
+			qca_multi_link_remove_fastlane_radio(ic);
+#else
 		if (value)
 			qca_multi_link_add_fastlane_radio(wiphy);
 		else
 			qca_multi_link_remove_fastlane_radio(wiphy);
+#endif
 
 		RPTR_LOGI("multi_link set fastlane flag as %d for pdev_id: %d",
 			  value, pdev_id);
@@ -1102,7 +1131,9 @@ wlan_rptr_conn_up_dbdc_process(struct wlan_objmgr_vdev *vdev,
 #endif
 	osif_dev *osdev;
 	struct ieee80211vap *vap = NULL;
-
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	struct ieee80211com *ic = NULL;
+#endif
 	vap = wlan_vdev_get_vap(vdev);
 
 	g_priv = wlan_rptr_get_global_ctx();
@@ -1129,8 +1160,14 @@ wlan_rptr_conn_up_dbdc_process(struct wlan_objmgr_vdev *vdev,
 
 	osdev = (osif_dev *)vap->iv_ifp;
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	ic = vap->iv_ic;
+	if (ic && osdev)
+		qca_multi_link_add_station_vap(ic, osdev, osif_get_mld_netdev(osdev), wlan_vdev_mlme_get_mldaddr(vdev));
+#else
 	if (wiphy && dev)
 		qca_multi_link_add_station_vap(wiphy, dev, osif_get_mld_netdev(osdev), wlan_vdev_mlme_get_mldaddr(vdev));
+#endif
 
 	qca_multi_link_append_num_sta(true);
 
@@ -1200,6 +1237,11 @@ wlan_rptr_conn_down_dbdc_process(struct wlan_objmgr_vdev *vdev,
 	struct wlan_rptr_pdev_priv *pdev_priv = NULL;
 	bool max_priority_stavap_disconnected = 0;
 	struct dbdc_flags flags;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev *osdev;
+	struct ieee80211vap *vap = NULL;
+	struct ieee80211com *ic = NULL;
+#endif
 
 	g_priv = wlan_rptr_get_global_ctx();
 	ext_cb = &g_priv->ext_cbacks;
@@ -1218,8 +1260,28 @@ wlan_rptr_conn_down_dbdc_process(struct wlan_objmgr_vdev *vdev,
 	g_priv->num_stavaps_up--;
 	RPTR_GLOBAL_UNLOCK(&g_priv->rptr_global_lock);
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	vap = wlan_vdev_get_vap(vdev);
+
+	if (!vap) {
+		RPTR_LOGE("vap is NULL");
+		return;
+	}
+
+	osdev = (osif_dev *)vap->iv_ifp;
+	ic = wlan_vdev_get_ic(vdev);
+
+	if (!ic) {
+		RPTR_LOGE("ic is NULL");
+		return;
+	}
+
+	if (ic && osdev)
+		qca_multi_link_remove_station_vap(ic);
+#else
 	if (wiphy && dev)
 		qca_multi_link_remove_station_vap(wiphy);
+#endif
 
 	qca_multi_link_append_num_sta(false);
 
