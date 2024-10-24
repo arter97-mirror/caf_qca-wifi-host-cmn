@@ -1032,6 +1032,24 @@ dp_peer_get_ast_info_by_soc_wifi3(struct cdp_soc_t *soc_hdl,
 	return true;
 }
 
+#if defined(IPA_WDS_EASYMESH_FEATURE)
+static inline void dp_peer_send_wds_disconnect(struct dp_soc *soc,
+					       uint8_t *mac_addr,
+					       uint8_t vdev_id
+)
+{
+	if (soc->cdp_soc.ol_ops->peer_send_wds_disconnect)
+		soc->cdp_soc.ol_ops->peer_send_wds_disconnect(soc->ctrl_psoc,
+							      mac_addr,
+							      vdev_id);
+}
+#else
+static inline void dp_peer_send_wds_disconnect(struct dp_soc *soc,
+					       uint8_t *mac_addr,
+					       uint8_t vdev_id)
+{
+}
+#endif
 /**
  * dp_peer_ast_entry_del_by_soc() - delete the wds entry from soc WDS hash table
  *				    with given mac address
@@ -1089,10 +1107,7 @@ static QDF_STATUS dp_peer_ast_entry_del_by_soc(struct cdp_soc_t *soc_handle,
 	vdev_id = peer->vdev->vdev_id;
 
 	/* Send disconnect event to IPA driver */
-	if (soc->cdp_soc.ol_ops->peer_send_wds_disconnect)
-		soc->cdp_soc.ol_ops->peer_send_wds_disconnect(soc->ctrl_psoc,
-							      mac_addr,
-							      vdev_id);
+	dp_peer_send_wds_disconnect(soc, mac_addr, vdev_id);
 
 	/* Notify target to delete the WDS AST entry */
 	if (peer && dp_peer_state_cmp(peer, DP_PEER_STATE_LOGICAL_DELETE))

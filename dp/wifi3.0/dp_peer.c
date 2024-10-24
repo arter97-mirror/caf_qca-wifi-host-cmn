@@ -2619,7 +2619,8 @@ dp_peer_clean_wds_entries(struct dp_soc *soc, struct dp_peer *peer,
 	    (free_wds_count != wds_deleted) && !ast_ind_disable) {
 		DP_STATS_INC(soc, ast.ast_mismatch, 1);
 		dp_alert("For peer %pK (mac: "QDF_MAC_ADDR_FMT")number of wds entries deleted by fw = %d during peer delete is not same as the numbers deleted by host = %d",
-			 peer, peer->mac_addr.raw, free_wds_count,
+			 peer, QDF_MAC_ADDR_REF(peer->mac_addr.raw),
+			 free_wds_count,
 			 wds_deleted);
 	}
 }
