@@ -2701,6 +2701,8 @@ void ce_disable_polling(void *cestate)
 
 #ifdef WLAN_FEATURE_SSR_DRIVER_DUMP
 #define MAX_CE_STR_LEN 50
+
+#ifdef QCA_WIFI_SUPPORT_SRNG
 /**
  * ce_ring_dump_register_region() - Register CE ring with SSR dump
  * @CE_state: CE_state pointer
@@ -2798,6 +2800,72 @@ ce_ring_dump_unregister_region(struct CE_state *CE_state, unsigned int CE_id)
 		qdf_ssr_driver_dump_unregister_region(srng);
 	}
 }
+#else
+/**
+ * ce_ring_dump_register_region() - Register CE ring with SSR dump
+ * @CE_state: CE_state pointer
+ * @CE_id: CE id
+ *
+ * Return: None
+ */
+static inline
+void ce_ring_dump_register_region(struct CE_state *CE_state, unsigned int CE_id)
+{
+	struct CE_ring_state *ce_ring;
+	char ce[MAX_CE_STR_LEN];
+	char CE_ring_state[MAX_CE_STR_LEN];
+
+	qdf_snprint(ce, MAX_CE_STR_LEN, "%s%d", "ce_", CE_id);
+	qdf_ssr_driver_dump_register_region(ce, CE_state, sizeof(*CE_state));
+
+	if (CE_state->dest_ring) {
+		ce_ring = CE_state->dest_ring;
+		qdf_snprint(CE_ring_state, MAX_CE_STR_LEN,
+			    "%s%s", ce, "_dest_ring");
+		qdf_ssr_driver_dump_register_region(CE_ring_state, ce_ring,
+						    sizeof(struct CE_ring_state)
+						   );
+	}
+
+	if (CE_state->src_ring) {
+		ce_ring = CE_state->src_ring;
+		qdf_snprint(CE_ring_state, MAX_CE_STR_LEN,
+			    "%s%s", ce, "_src_ring");
+		qdf_ssr_driver_dump_register_region(CE_ring_state, ce_ring,
+						    sizeof(struct CE_ring_state)
+						   );
+	}
+}
+
+/**
+ * ce_ring_dump_unregister_region() - Unregister CE ring with SSR dump
+ * @CE_state: CE_state pointer
+ * @CE_id: CE id
+ *
+ * Return: None
+ */
+static inline void
+ce_ring_dump_unregister_region(struct CE_state *CE_state, unsigned int CE_id)
+{
+	char ce[MAX_CE_STR_LEN];
+	char CE_ring_state[MAX_CE_STR_LEN];
+
+	qdf_snprint(ce, MAX_CE_STR_LEN, "%s%d", "ce_", CE_id);
+	qdf_ssr_driver_dump_unregister_region(ce);
+
+	if (CE_state->dest_ring) {
+		qdf_snprint(CE_ring_state, MAX_CE_STR_LEN,
+			    "%s%s", ce, "_dest_ring");
+		qdf_ssr_driver_dump_unregister_region(CE_ring_state);
+	}
+
+	if (CE_state->src_ring) {
+		qdf_snprint(CE_ring_state, MAX_CE_STR_LEN,
+			    "%s%s", ce, "_src_ring");
+		qdf_ssr_driver_dump_unregister_region(CE_ring_state);
+	}
+}
+#endif /* QCA_WIFI_SUPPORT_SRNG */
 #else
 static inline
 void ce_ring_dump_register_region(struct CE_state *CE_state, unsigned int CE_id)
