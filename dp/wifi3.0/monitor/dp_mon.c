@@ -7249,13 +7249,12 @@ QDF_STATUS dp_mon_soc_attach(struct dp_soc *soc)
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (soc->arch_ops.txrx_get_mon_context_size) {
+	if (soc->arch_ops.txrx_get_mon_context_size)
 		soc_context_size = soc->arch_ops.txrx_get_mon_context_size(DP_CONTEXT_TYPE_MON_SOC);
-		mon_soc = dp_context_alloc_mem(soc, DP_MON_SOC_TYPE,
-					       soc_context_size);
-	} else {
-		mon_soc = (struct dp_mon_soc *)qdf_mem_malloc(sizeof(*mon_soc));
-	}
+	else
+		soc_context_size = sizeof(*mon_soc);
+
+	mon_soc = dp_context_alloc_mem(soc, DP_MON_SOC_TYPE, soc_context_size);
 	if (!mon_soc) {
 		dp_mon_err("%pK: mem allocation failed", soc);
 		return QDF_STATUS_E_NOMEM;
@@ -7285,7 +7284,7 @@ QDF_STATUS dp_mon_soc_detach(struct dp_soc *soc)
 	dp_mon_cdp_ops_deregister(soc);
 	dp_monitor_soc_detach(soc);
 	soc->monitor_soc = NULL;
-	qdf_mem_free(mon_soc);
+	dp_context_free_mem(soc, DP_MON_SOC_TYPE, mon_soc);
 	return QDF_STATUS_SUCCESS;
 }
 
