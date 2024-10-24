@@ -24,6 +24,9 @@
 #include <linux/hashtable.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0))
+#include <linux/skbuff_ref.h>
+#endif
 #include <linux/skbuff.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
