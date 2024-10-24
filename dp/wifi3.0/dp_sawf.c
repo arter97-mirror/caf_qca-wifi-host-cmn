@@ -43,8 +43,6 @@
 #define SAWF_TAG_SHIFT 0x18
 #define SAWF_SERVICE_CLASS_SHIFT 0x10
 #define SAWF_SERVICE_CLASS_MASK 0xff
-#define SAWF_PEER_ID_SHIFT 0x6
-#define SAWF_PEER_ID_MASK 0x3ff
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
 #define SAWF_NW_DELAY_MASK 0x3ff
 #else
@@ -63,8 +61,6 @@
 #define SAWF_SERVICE_CLASS_GET(x) (((x) >> SAWF_SERVICE_CLASS_SHIFT) \
 	& SAWF_SERVICE_CLASS_MASK)
 #endif
-#define SAWF_PEER_ID_GET(x) (((x) >> SAWF_PEER_ID_SHIFT) \
-	& SAWF_PEER_ID_MASK)
 #define SAWF_MSDUQ_GET(x) ((x) & SAWF_MSDUQ_MASK)
 #define SAWF_TAG_IS_VALID(x) \
 	((SAWF_TAG_GET(x) == SAWF_VALID_TAG) ? true : false)
@@ -714,25 +710,24 @@ uint16_t dp_sawf_get_peerid(struct dp_soc *soc, uint8_t *dest_mac,
 	return peer_id;
 }
 
-bool dp_sawf_get_search_index(struct dp_soc *soc, qdf_nbuf_t nbuf,
-			      uint8_t vdev_id, uint16_t queue_id,
+bool dp_sawf_get_search_index(struct dp_soc *soc, uint8_t vdev_id,
+			      uint16_t peer_id, uint16_t queue_id,
 			      uint32_t *flow_index)
 {
 	struct dp_peer *peer = NULL;
-	uint16_t peer_id = SAWF_PEER_ID_GET(qdf_nbuf_get_mark(nbuf));
 	uint8_t index;
 	uint16_t dyn_ast_idx = 0;
 	bool status = false;
 
 	index = (queue_id - DP_SAWF_DEFAULT_Q_MAX) / DP_SAWF_TID_MAX;
 	if (index > DP_PEER_AST_FLOWQ_LOW_PRIO) {
-		dp_sawf_warn("Invalid index:%d", index);
+		dp_sawf_warn("Invalid index:%d queue_id:%u", index, queue_id);
 		return status;
 	}
 
 	peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_SAWF);
 	if (!peer) {
-		dp_sawf_warn("NULL peer");
+		dp_sawf_warn("NULL peer peer_id %u", peer_id);
 		return status;
 	}
 
