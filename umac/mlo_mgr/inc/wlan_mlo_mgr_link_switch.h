@@ -216,6 +216,21 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 				 struct wlan_channel channel);
 
 /**
+ * mlo_mgr_get_ap_link_info() - Get the pointer of link info matching
+ * AP mac addr/bssid.
+ * @vdev: VDEV object manager.
+ * @ap_link_addr: Pointer to AP BSSID MAC address.
+ *
+ * Returns the pointer to link info data structure matching with AP mac address
+ * field.
+ *
+ * Return: Valid pointer on match or else %NULL
+ */
+struct mlo_link_info *
+mlo_mgr_get_ap_link_info(struct wlan_objmgr_vdev *vdev,
+			 struct qdf_mac_addr *ap_link_addr);
+
+/**
  * mlo_mgr_clear_ap_link_info() - Clear AP link information
  * @vdev: Object Manager vdev
  * @ap_link_addr: AP link addresses
@@ -224,7 +239,7 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
  * Return: void
  */
 void mlo_mgr_clear_ap_link_info(struct wlan_objmgr_vdev *vdev,
-				uint8_t *ap_link_addr);
+				struct qdf_mac_addr *ap_link_addr);
 
 /**
  * mlo_mgr_reset_ap_link_info() - Reset AP links information

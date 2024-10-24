@@ -1461,6 +1461,133 @@ static void mlo_mgr_update_parnter_info(struct wlan_objmgr_vdev *vdev,
 		mlo_mgr_update_ap_mac(vdev, link_id, ap_link_addr);
 	}
 }
+
+void
+mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
+					  struct mlo_partner_info *partner_info)
+{
+	bool found;
+	QDF_STATUS status;
+	struct qdf_mac_addr assoc_bssid;
+	uint8_t idx, idx2, valid_partner_cnt = 0, required_partner_cnt = 0;
+	struct mlo_link_info *cur_link, *partner_link, *link_info;
+	struct mlo_link_info temp_info;
+
+	status = wlan_vdev_get_bss_peer_mac(vdev, &assoc_bssid);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_debug("Failed to get BSSID for VDEV %d",
+			  wlan_vdev_get_id(vdev));
+		goto fail;
+	}
+
+	/*
+	 * Start validating from first partner link with assumption that
+	 * driver reorders the VDEV entries before connection.
+	 * This code is not to be executed for roaming cases as the order may
+	 * change from any previous link switches.
+	 */
+	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[1];
+	for (idx = 1; idx < WLAN_MAX_ML_BSS_LINKS; idx++) {
+		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+			goto next_link;
+
+		found = false;
+		required_partner_cnt++;
+		for (idx2 = 0; idx2 < partner_info->num_partner_links; idx2++) {
+			cur_link = &partner_info->partner_link_info[idx2];
+			if (qdf_is_macaddr_equal(&cur_link->link_addr,
+						 &link_info->ap_link_addr) &&
+			    cur_link->link_id == link_info->link_id) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
+			qdf_zero_macaddr(&link_info->ap_link_addr);
+			qdf_mem_zero(link_info->link_chan_info,
+				     sizeof(*link_info->link_chan_info));
+			link_info->link_id = WLAN_INVALID_LINK_ID;
+			link_info->link_status_flags = 0;
+			goto next_link;
+		}
+
+		valid_partner_cnt++;
+		if (idx - 1 == idx2)
+			goto next_link;
+
+		/*
+		 * If the partner link found is not in same index as in
+		 * mlo_dev_ctx, realign the entry.
+		 */
+		temp_info = *cur_link;
+		partner_link = &partner_info->partner_link_info[idx - 1];
+		qdf_mem_copy(cur_link, partner_link, sizeof(*cur_link));
+		qdf_mem_copy(partner_link, &temp_info, sizeof(*partner_link));
+next_link:
+		link_info++;
+	}
+
+	if (valid_partner_cnt == required_partner_cnt &&
+	    valid_partner_cnt == partner_info->num_partner_links)
+		return;
+
+	if (!required_partner_cnt)
+		goto fail;
+
+	valid_partner_cnt = 0;
+	for (idx = 0; idx < partner_info->num_partner_links; idx++) {
+		link_info = &partner_info->partner_link_info[idx];
+		if (qdf_is_macaddr_equal(&assoc_bssid, &link_info->link_addr)) {
+			mlo_debug("Remove partner link with same BSSID " QDF_MAC_ADDR_FMT,
+				  QDF_MAC_ADDR_REF(link_info->link_addr.bytes));
+			qdf_mem_zero(link_info, sizeof(*link_info));
+			link_info->link_id = WLAN_INVALID_LINK_ID;
+			continue;
+		}
+
+		partner_link = mlo_mgr_get_ap_link_info(vdev,
+							&link_info->link_addr);
+		if (!partner_link ||
+		    partner_link->link_id != link_info->link_id) {
+			qdf_mem_zero(link_info, sizeof(*link_info));
+			link_info->link_id = WLAN_INVALID_LINK_ID;
+			continue;
+		}
+		valid_partner_cnt++;
+	}
+
+	if (partner_info->num_partner_links == valid_partner_cnt)
+		return;
+
+	mlo_debug("Partner links %d, valid links %d required %d",
+		  partner_info->num_partner_links, valid_partner_cnt,
+		  required_partner_cnt);
+
+	for (idx = 0; idx < partner_info->num_partner_links; idx++) {
+		cur_link = &partner_info->partner_link_info[idx];
+		if (cur_link->link_id != WLAN_INVALID_LINK_ID)
+			continue;
+
+		for (idx2 = idx + 1; idx2 < partner_info->num_partner_links;
+		     idx2++) {
+			partner_link = &partner_info->partner_link_info[idx2];
+			if (partner_link->link_id == WLAN_INVALID_LINK_ID)
+				continue;
+
+			qdf_mem_copy(cur_link, partner_link, sizeof(*cur_link));
+			qdf_mem_zero(partner_link, sizeof(*cur_link));
+			partner_link->link_id = WLAN_INVALID_LINK_ID;
+		}
+	}
+
+	partner_info->num_partner_links = valid_partner_cnt;
+	return;
+
+fail:
+	qdf_mem_zero(partner_info, sizeof(*partner_info));
+	mlo_debug("Clearing all partner links");
+}
 #else
 static inline
 void mlo_mgr_update_parnter_info(struct wlan_objmgr_vdev *vdev,
