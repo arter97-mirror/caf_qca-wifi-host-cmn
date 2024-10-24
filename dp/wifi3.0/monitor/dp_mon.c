@@ -7269,7 +7269,7 @@ QDF_STATUS dp_mon_soc_detach(struct dp_soc *soc)
 	dp_mon_cdp_ops_deregister(soc);
 	dp_monitor_soc_detach(soc);
 	soc->monitor_soc = NULL;
-	qdf_mem_free(mon_soc);
+	dp_context_free_mem(soc, DP_MON_SOC_TYPE, mon_soc);
 	return QDF_STATUS_SUCCESS;
 }
 
