@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5203,9 +5204,6 @@ error_addba_rsp:
 static void lim_tx_mgmt_frame(tpAniSirGlobal mac_ctx, uint8_t vdev_id,
 			      uint32_t msg_len, void *packet, uint8_t *frame)
 {
-#ifdef WLAN_DEBUG
-	tpSirMacFrameCtl fc = (tpSirMacFrameCtl)frame;
-#endif
 	QDF_STATUS qdf_status;
 	tpPESession session;
 	uint16_t auth_ack_status;
@@ -5234,8 +5232,7 @@ static void lim_tx_mgmt_frame(tpAniSirGlobal mac_ctx, uint8_t vdev_id,
 	MTRACE(qdf_trace(QDF_MODULE_ID_PE, TRACE_CODE_TX_COMPLETE,
 		session->peSessionId, qdf_status));
 	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
-		pe_err("*** Could not send Auth frame (subType: %d), retCode=%X ***",
-			fc->subType, qdf_status);
+		pe_err("Could not send Auth frame, retCode=%X", qdf_status);
 		mac_ctx->auth_ack_status = LIM_AUTH_ACK_RCD_FAILURE;
 		auth_ack_status = SENT_FAIL;
 		lim_diag_event_report(mac_ctx, WLAN_PE_DIAG_AUTH_ACK_EVENT,
