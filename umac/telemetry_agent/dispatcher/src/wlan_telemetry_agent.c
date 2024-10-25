@@ -250,6 +250,14 @@ void telemetry_sawf_peer_ctx_free(void *telemetry_ctx)
 
 qdf_export_symbol(telemetry_sawf_peer_ctx_free);
 
+void telemetry_sawf_peer_stats_reset(void *telemetry_ctx)
+{
+	if (g_agent_ops)
+		g_agent_ops->sawf_peer_stats_reset(telemetry_ctx);
+}
+
+qdf_export_symbol(telemetry_sawf_peer_stats_reset);
+
 QDF_STATUS telemetry_sawf_updt_tid_msduq(void *telemetry_ctx,
 					 uint8_t hostq_id,
 					 uint8_t tid, uint8_t msduq_idx)

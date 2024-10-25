@@ -80,6 +80,13 @@ void *telemetry_sawf_peer_ctx_alloc(void *soc, void *sawf_ctx,
 void telemetry_sawf_peer_ctx_free(void *telemetry_ctx);
 
 /**
+ * telemetry_sawf_peer_stats_reset - Reset SAWF peer telemetry stats
+ * @telemetry_ctx: opaque telemetry ctx
+ *
+ * Return: none
+ */
+void telemetry_sawf_peer_stats_reset(void *telemetry_ctx);
+/**
  * telemetry_sawf_updt_tid_msduq - Update tid and msduq-id
  * @telemetry_ctx: opaque telemetry ctx
  * @hostq_id: queue-id used in host
@@ -401,6 +408,9 @@ void *telemetry_sawf_peer_ctx_alloc(void *soc, void *sawf_ctx,
 {
 	return NULL;
 }
+
+static inline
+void telemetry_sawf_peer_stats_reset(void *telemetry_ctx) {}
 
 static inline
 void telemetry_sawf_peer_ctx_free(void *telemetry_ctx) {}

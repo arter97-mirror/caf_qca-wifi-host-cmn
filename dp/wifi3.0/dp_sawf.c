@@ -3899,6 +3899,56 @@ QDF_STATUS dp_sawf_init_telemetry_params(void)
 
 	return QDF_STATUS_SUCCESS;
 }
+
+static void dp_sawf_peer_stats_clear(struct dp_peer *peer)
+{
+	struct dp_txrx_peer *txrx_peer;
+	struct dp_peer_sawf_stats *sawf_stats;
+	uint8_t tid, msduq, idx;
+
+	txrx_peer = dp_get_txrx_peer(peer);
+	if (!txrx_peer) {
+		dp_sawf_warn("Invalid txrx peer");
+		return;
+	}
+
+	sawf_stats = txrx_peer->sawf_stats;
+	if (!sawf_stats) {
+		dp_sawf_warn("Invalid sawf stats");
+		return;
+	}
+
+	qdf_spin_lock_bh(&sawf_stats->stats.lock);
+	for (idx = 0; idx < DP_SAWF_Q_MAX; idx++) {
+		tid = sawf_stats->stats.delay[idx].tid;
+		msduq = sawf_stats->stats.delay[idx].msduq;
+
+		qdf_mem_zero(&sawf_stats->stats.tx_stats[idx],
+			     sizeof(struct sawf_tx_stats));
+		qdf_mem_zero(&sawf_stats->stats.delay[idx],
+			     sizeof(struct sawf_delay_stats));
+		sawf_stats->stats.delay[idx].tid = tid;
+		sawf_stats->stats.delay[idx].msduq = msduq;
+		sawf_stats->stats.tx_stats[idx].tid = tid;
+		sawf_stats->stats.tx_stats[idx].msduq = msduq;
+	}
+	qdf_spin_unlock_bh(&sawf_stats->stats.lock);
+}
+
+void
+dp_sawf_peer_stats_reset(struct dp_soc *soc,
+			 struct dp_peer *peer)
+{
+	struct dp_peer_sawf *sawf_ctx = NULL;
+
+	sawf_ctx = dp_peer_sawf_ctx_get(peer);
+
+	dp_sawf_peer_stats_clear(peer);
+
+	if (sawf_ctx)
+		telemetry_sawf_peer_stats_reset(sawf_ctx->telemetry_ctx);
+}
+
 #else
 QDF_STATUS
 dp_peer_sawf_stats_ctx_alloc(struct dp_soc *soc,
@@ -4056,5 +4106,11 @@ qdf_export_symbol(dp_sawf_set_sla_params);
 QDF_STATUS dp_sawf_init_telemetry_params(void)
 {
 	return QDF_STATUS_E_FAILURE;
+}
+
+void
+dp_sawf_peer_stats_reset(struct dp_soc *soc,
+			 struct dp_peer *peer)
+{
 }
 #endif
