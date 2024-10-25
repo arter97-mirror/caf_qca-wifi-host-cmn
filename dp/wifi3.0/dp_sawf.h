@@ -500,6 +500,16 @@ QDF_STATUS
 dp_sawf_get_peer_tx_stats(struct cdp_soc_t *soc,
 			  uint32_t svc_id, uint8_t *mac, void *data);
 
+/**
+ * dp_sawf_peer_stats_reset - Reset sawf peer stats
+ * @soc: dp_soc
+ * @peer: dp_peer
+ *
+ * Return: none
+ */
+void dp_sawf_peer_stats_reset(struct dp_soc *soc,
+			      struct dp_peer *peer);
+
 #ifdef QCA_PEER_EXT_STATS
 /**
  * dp_txrx_pull_tx_peer_stats - pull tx peer stats
