@@ -832,6 +832,11 @@ sch_set_fixed_beacon_fields(struct mac_context *mac_ctx, struct pe_session *sess
 		    session->dfsIncludeChanSwIe) {
 			populate_channel_switch_ann(mac_ctx, bcn_2, session);
 		}
+	} else if ((LIM_IS_AP_ROLE(session) || LIM_IS_P2P_DEVICE_GO(session)) &&
+		   session->dfsIncludeChanWrapperIe) {
+		populate_dot11f_chan_switch_wrapper(mac_ctx,
+						    &bcn_2->ChannelSwitchWrapper,
+						    session);
 	}
 
 	if (bcn_2->ext_chan_switch_ann.present || bcn_2->ChanSwitchAnn.present)
