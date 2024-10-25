@@ -749,28 +749,11 @@ peer_create_fail:
 	}
 }
 
-#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
-static QDF_STATUS
-cm_t2lm_validate_candidate(struct cnx_mgr *cm_ctx,
-			   struct scan_cache_entry *scan_entry)
-{
-	return wlan_t2lm_validate_candidate(cm_ctx, scan_entry);
-}
-#else
-static inline QDF_STATUS
-cm_t2lm_validate_candidate(struct cnx_mgr *cm_ctx,
-			   struct scan_cache_entry *scan_entry)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 static
 QDF_STATUS cm_if_mgr_validate_candidate(struct cnx_mgr *cm_ctx,
 					struct scan_cache_entry *scan_entry)
 {
 	struct if_mgr_event_data event_data = {0};
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	event_data.validate_bss_info.scan_entry = scan_entry;
 	event_data.validate_bss_info.chan_freq = scan_entry->channel.chan_freq;
@@ -778,10 +761,6 @@ QDF_STATUS cm_if_mgr_validate_candidate(struct cnx_mgr *cm_ctx,
 	qdf_copy_macaddr(&event_data.validate_bss_info.peer_addr,
 			 &scan_entry->bssid);
 	cm_candidate_mlo_update(&event_data.validate_bss_info);
-
-	status = cm_t2lm_validate_candidate(cm_ctx, scan_entry);
-	if (QDF_IS_STATUS_ERROR(status))
-		return status;
 
 	return if_mgr_deliver_event(cm_ctx->vdev,
 				    WLAN_IF_MGR_EV_VALIDATE_CANDIDATE,

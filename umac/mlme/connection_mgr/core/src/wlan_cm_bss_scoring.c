@@ -33,6 +33,7 @@
 #include "wlan_mlme_api.h"
 #include "wlan_wfa_tgt_if_tx_api.h"
 #include "wlan_action_oui_main.h"
+#include "wlan_t2lm_api.h"
 #endif
 #include "wlan_cm_main_api.h"
 #include "wlan_cm_public_struct.h"
@@ -2474,84 +2475,25 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 {}
 #endif
 
-/**
- * cm_calculate_ml_scores() - Calculate mlo score of AP
- * @psoc: Pointer to psoc object
- * @entry: Bss scan entry
- * @score_config: Score config
- * @phy_config: Self phy config
- * @scan_list: Scan entry list of bss candidates after filtering
- * @ml_flag: MLO flag
- * @bss_mlo_type: Bss MLO type
- * @pcl_chan_weight:  PCL channel weight
- * @rssi_prorated_pct: RSSI prorated pencentage
- * @rssi_score: Calculated RSSI
- *
- * For MLO AP, consider partner link to calculate combined score,
- * For legacy/SLO AP or link, get total score of RSSI, bandwidth,
- * congestion and band.
- *
- * Return: MLO score of AP
- */
-static int cm_calculate_ml_scores(struct wlan_objmgr_psoc *psoc,
-				  struct scan_cache_entry *entry,
-				  struct scoring_cfg *score_config,
-				  struct psoc_phy_config *phy_config,
-				  qdf_list_t *scan_list, uint8_t ml_flag,
-				  enum MLO_TYPE bss_mlo_type,
-				  int pcl_chan_weight,
-				  uint8_t *rssi_prorated_pct,
-				  int32_t *rssi_score)
+#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
+static QDF_STATUS cm_validate_t2lm_scan_entry(struct scan_cache_entry *entry)
 {
-	int32_t score = 0;
-	int32_t congestion_pct = 0;
-	int32_t bandwidth_score = 0;
-	int32_t congestion_score = 0;
-	uint8_t prorated_pcnt = 0;
-	int32_t band_score = 0;
-	struct weight_cfg *weight_config;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
-	weight_config = &score_config->weight_config;
-	if (IS_LINK_SCORE(ml_flag) || bss_mlo_type == SLO ||
-	    bss_mlo_type == MLSR || bss_mlo_type == EMLSR ||
-	    bss_mlo_type == MLO_TYPE_MAX ||
-	    !wlan_cm_is_eht_allowed_for_current_security(psoc, entry, false)) {
-		*rssi_score =
-			cm_calculate_rssi_score(&score_config->rssi_score,
-						entry->rssi_raw,
-						weight_config->rssi_weightage);
-		prorated_pcnt =
-			cm_get_rssi_prorate_pct(&score_config->rssi_score,
-						entry->rssi_raw,
-						weight_config->rssi_weightage);
-		score += *rssi_score;
-		bandwidth_score =
-			cm_get_bw_score(weight_config->chan_width_weightage,
-					cm_get_ch_width(entry, phy_config),
-					prorated_pcnt);
-		score += bandwidth_score;
+	if (!entry->ie_list.multi_link_bv || !entry->ie_list.t2lm[0])
+		return status;
 
-		congestion_score =
-			cm_calculate_congestion_score(entry,
-						      score_config,
-						      &congestion_pct, 0);
-		score += congestion_score * CM_SLO_CONGESTION_MAX_SCORE /
-			 CM_MAX_PCT_SCORE;
+	status = wlan_t2lm_validate_candidate(entry);
 
-		band_score = cm_get_band_score(entry->channel.chan_freq,
-					       score_config);
-		score += band_score;
-	} else {
-		score += cm_calculate_mlo_bss_score(psoc, entry, score_config,
-						    phy_config, scan_list,
-						    &prorated_pcnt,
-						    pcl_chan_weight);
-	}
-
-	*rssi_prorated_pct = prorated_pcnt;
-
-	return score;
+	return status;
 }
+#else
+static inline QDF_STATUS
+cm_validate_t2lm_scan_entry(struct scan_cache_entry *entry)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 static bool
 cm_check_and_update_bssid_hint_entry_bss_score(struct scan_cache_entry *entry,
@@ -2669,6 +2611,32 @@ static void cm_mlo_score_boost(struct weight_cfg *weight_config,
 #endif
 
 /**
+ * cm_skip_mlo_score() - Skip MLO score for some conditions
+ * @psoc:psoc object
+ * @entry: Bss scan entry
+ * @ml_flag: ML related bitmap
+ *           BIT(0): SET, if score is for link.
+ *           BIT(1): SET, if it is for Assoc link.
+ * @bss_mlo_type: MLO type
+ *
+ * Return: True or false based on condition
+ */
+static bool
+cm_skip_mlo_score(struct wlan_objmgr_psoc *psoc, struct scan_cache_entry *entry,
+		  uint8_t ml_flag, enum MLO_TYPE bss_mlo_type)
+{
+	if (IS_LINK_SCORE(ml_flag) || bss_mlo_type == SLO ||
+	    bss_mlo_type == MLSR || bss_mlo_type == EMLSR ||
+	    bss_mlo_type == MLO_TYPE_MAX ||
+	    !wlan_cm_is_eht_allowed_for_current_security(psoc, entry, false) ||
+	    (IS_ASSOC_LINK(ml_flag) &&
+	    QDF_IS_STATUS_ERROR(cm_validate_t2lm_scan_entry(entry))))
+		return true;
+
+	return false;
+}
+
+/**
  * cm_calculate_bss_score() - Calculate score of AP or 1 link of MLO AP
  * @psoc: Pointer to psoc object
  * @entry: Bss scan entry
@@ -2766,13 +2734,40 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 		return score;
 	}
 
-	ml_score += cm_calculate_ml_scores(psoc, entry, score_config,
-					   phy_config, scan_list,
-					   ml_flag, bss_mlo_type,
-					   pcl_chan_weight,
-					   &prorated_pcnt,
-					   &rssi_score);
-	score += ml_score;
+	if (cm_skip_mlo_score(psoc, entry, ml_flag, bss_mlo_type)) {
+		rssi_score =
+			cm_calculate_rssi_score(&score_config->rssi_score,
+						entry->rssi_raw,
+						weight_config->rssi_weightage);
+
+		prorated_pcnt =
+			cm_get_rssi_prorate_pct(&score_config->rssi_score,
+						entry->rssi_raw,
+						weight_config->rssi_weightage);
+		score += rssi_score;
+		bandwidth_score =
+			cm_get_bw_score(weight_config->chan_width_weightage,
+					cm_get_ch_width(entry, phy_config),
+					prorated_pcnt);
+		score += bandwidth_score;
+
+		congestion_score =
+			cm_calculate_congestion_score(entry,
+						      score_config,
+						      &congestion_pct, 0);
+		score += congestion_score * CM_SLO_CONGESTION_MAX_SCORE /
+			 CM_MAX_PCT_SCORE;
+
+		band_score = cm_get_band_score(entry->channel.chan_freq,
+					       score_config);
+		score += band_score;
+	} else {
+		ml_score = cm_calculate_mlo_bss_score(psoc, entry, score_config,
+						      phy_config, scan_list,
+						      &prorated_pcnt,
+						      pcl_chan_weight);
+		score += ml_score;
+	}
 
 	/*
 	 * Check if the given entry matches with the BSSID Hint after
@@ -2906,7 +2901,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	    util_scan_entry_wifi7_rsno(entry))
 		rsno = true;
 
-	if (bss_mlo_type == SLO || IS_LINK_SCORE(ml_flag))
+	if (cm_skip_mlo_score(psoc, entry, ml_flag, bss_mlo_type))
 		mlme_nofl_debug("%s("QDF_MAC_ADDR_FMT" freq %d): rssi %d HT %d VHT %d HE %d EHT %d su_bfer %d phy %d atf %d qbss %d cong_pct %d NSS %d ap_tx_pwr %d oce_subnet %d sae_pk_cap %d prorated_pcnt %d keymgmt 0x%x mlo type %d rsno %d rsnxo %d",
 				IS_ASSOC_LINK(ml_flag) ? "Candidate" : "Partner",
 				QDF_MAC_ADDR_REF(entry->bssid.bytes),
