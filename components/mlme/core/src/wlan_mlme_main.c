@@ -415,17 +415,63 @@ mlme_get_scan_phy_mode_for_chan_load(enum phy_ch_width scan_ch_width)
 		scan_phymode = SCAN_PHY_MODE_11BE_EHT160;
 		break;
 	default:
-		mlme_debug("Invalid scan_ch_width:%d", scan_ch_width);
+		mlme_debug("11BE: Invalid scan_ch_width:%d", scan_ch_width);
 		break;
 	}
 
 	return scan_phymode;
 }
-#else
-static inline enum scan_phy_mode
+
+#elif defined(WLAN_FEATURE_11AX)
+static enum scan_phy_mode
 mlme_get_scan_phy_mode_for_chan_load(enum phy_ch_width scan_ch_width)
 {
-	return SCAN_PHY_MODE_UNKNOWN;
+	enum scan_phy_mode scan_phymode = SCAN_PHY_MODE_UNKNOWN;
+
+	switch (scan_ch_width) {
+	case CH_WIDTH_20MHZ:
+		scan_phymode = SCAN_PHY_MODE_11AX_HE20;
+		break;
+	case CH_WIDTH_40MHZ:
+		scan_phymode = SCAN_PHY_MODE_11AX_HE40;
+		break;
+	case CH_WIDTH_80MHZ:
+		scan_phymode = SCAN_PHY_MODE_11AX_HE80;
+		break;
+	case CH_WIDTH_160MHZ:
+		scan_phymode = SCAN_PHY_MODE_11AX_HE160;
+		break;
+	default:
+		mlme_debug("11AX: Invalid scan_ch_width:%d", scan_ch_width);
+		break;
+	}
+
+	return scan_phymode;
+}
+
+#else
+static enum scan_phy_mode
+mlme_get_scan_phy_mode_for_chan_load(enum phy_ch_width scan_ch_width)
+{
+	enum scan_phy_mode scan_phymode = SCAN_PHY_MODE_11AC_VHT20;
+
+	switch (scan_ch_width) {
+	case CH_WIDTH_20MHZ:
+		scan_phymode = SCAN_PHY_MODE_11AC_VHT20;
+		break;
+	case CH_WIDTH_40MHZ:
+		scan_phymode = SCAN_PHY_MODE_11AC_VHT40;
+		break;
+	case CH_WIDTH_80MHZ:
+		scan_phymode = SCAN_PHY_MODE_11AC_VHT80;
+		break;
+	default:
+		mlme_debug("11AC: Invalid scan_ch_width:%d", scan_ch_width);
+		break;
+	}
+
+	return scan_phymode;
+
 }
 #endif
 
