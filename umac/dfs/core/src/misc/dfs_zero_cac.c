@@ -896,7 +896,6 @@ void dfs_process_ocac_complete(struct wlan_objmgr_pdev *pdev,
 	adfs_completion_status->center_freq2 = center_freq_mhz2;
 	adfs_completion_status->chan_width = chwidth;
 	dfs_soc_obj->ocac_status = ocac_status;
-	dfs_cancel_precac_timer(dfs);
 	dfs_agile_sm_deliver_evt(dfs_soc_obj,
 				 DFS_AGILE_SM_EV_AGILE_DONE,
 				 0, (void *)dfs);
