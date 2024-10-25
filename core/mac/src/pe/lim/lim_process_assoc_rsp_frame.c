@@ -1378,12 +1378,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	}
 
 	if (lim_is_session_eht_capable(session_entry)) {
-		uint8_t ies_offset;
-
-		if (subtype == LIM_ASSOC)
-			ies_offset = WLAN_ASSOC_RSP_IES_OFFSET;
-		else
-			ies_offset = WLAN_REASSOC_REQ_IES_OFFSET;
+		uint8_t ies_offset = WLAN_ASSOC_RSP_IES_OFFSET;
 
 		if (frame_body_len < ies_offset) {
 			pe_err("frame body length is < ies_offset");
@@ -1540,6 +1535,9 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 		   !assoc_rsp->eht_cap.present) ||
 		   (IS_DOT11_MODE_HE(session_entry->dot11mode) &&
 		    !assoc_rsp->he_cap.present)) {
+		pe_debug("mode - %d, EHT - %d, HE - %d",
+			 session_entry->dot11mode, assoc_rsp->eht_cap.present,
+			 assoc_rsp->he_cap.present);
 		pe_err("Mandatory cap is missing in assoc response, trigger disconnection");
 		assoc_cnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
 		assoc_cnf.protStatusCode = STATUS_DENIED_EHT_NOT_SUPPORTED;
