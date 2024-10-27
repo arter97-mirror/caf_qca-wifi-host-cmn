@@ -2246,6 +2246,11 @@ int wlan_hdd_sap_cfg_dfs_override(struct hdd_adapter *adapter)
 		return 0;
 
 	link_info = hdd_get_link_info_by_vdev(hdd_ctx, con_vdev_id);
+	if (!link_info) {
+		hdd_err("Invalid vdev");
+		return -EINVAL;
+	}
+
 	con_sap_adapter = link_info->adapter;
 	if (!con_sap_adapter)
 		return 0;
@@ -14624,6 +14629,10 @@ __wlan_hdd_cfg80211_wifi_configuration_set(struct wiphy *wiphy,
 			return -EINVAL;
 		}
 		link_info = hdd_get_link_info_by_link_id(adapter, link_id);
+		if (!link_info) {
+			hdd_err("invalid link_info");
+			return -EINVAL;
+		}
 	}
 
 	ret = hdd_set_independent_configuration(link_info, tb);
@@ -25185,6 +25194,10 @@ static int __wlan_hdd_cfg80211_change_bss(struct wiphy *wiphy,
 	link_id = hdd_nb_get_link_id_from_params(params, NB_CHANGE_BSS);
 
 	link_info = hdd_get_link_info_by_link_id(adapter, link_id);
+	if (!link_info) {
+		hdd_err("invalid link_info");
+		return -EINVAL;
+	}
 
 	if (wlan_hdd_validate_vdev_id(link_info->vdev_id))
 		return -EINVAL;
@@ -26402,7 +26415,7 @@ static int wlan_hdd_add_key_vdev(mac_handle_t mac_handle,
 	QDF_STATUS status;
 	struct wlan_objmgr_peer *peer;
 	struct hdd_context *hdd_ctx;
-	struct qdf_mac_addr mac_address;
+	struct qdf_mac_addr mac_address = {0};
 	int32_t cipher_cap, ucast_cipher = 0;
 	int errno = 0;
 	enum wlan_crypto_cipher_type cipher;
@@ -28136,6 +28149,10 @@ static int __wlan_hdd_set_txq_params(struct wiphy *wiphy,
 
 	link_id = hdd_nb_get_link_id_from_params(params, NB_SET_TXQ);
 	link_info = hdd_get_link_info_by_link_id(adapter, link_id);
+	if (!link_info) {
+		hdd_err("invalid link_info");
+		return -EINVAL;
+	}
 
 	status = sme_update_session_txq_edca_params(mac_handle,
 						    link_info->vdev_id,
@@ -29282,7 +29299,7 @@ __wlan_hdd_cfg80211_update_owe_info(struct wiphy *wiphy,
 {
 	struct hdd_context *hdd_ctx = wiphy_priv(wiphy);
 	struct hdd_adapter *adapter = WLAN_HDD_GET_PRIV_PTR(dev);
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
 	int errno;
 	struct sap_context *sap_ctx;
 	struct wlan_hdd_link_info *link_info = NULL;
