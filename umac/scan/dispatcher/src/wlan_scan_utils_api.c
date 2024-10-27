@@ -3314,7 +3314,7 @@ static uint32_t util_gen_new_ie(struct wlan_objmgr_pdev *pdev,
 		if (!(tmp_new[0] == WLAN_ELEMID_NONTX_BSSID_CAP ||
 		      tmp_new[0] == WLAN_ELEMID_SSID ||
 		      util_can_skip_mbssid_idx_ie(tmp_new) ||
-		      ((tmp_new[0] == WLAN_ELEMID_EXTN_ELEM) &&
+		      ((tmp_new[0] == WLAN_ELEMID_EXTN_ELEM) && tmp_new[1] &&
 		       (tmp_new[2] == WLAN_EXTN_ELEMID_NONINHERITANCE)))) {
 			if ((pos + tmp_new[1] + MIN_IE_LEN) <=
 			    (new_ie + ielen)) {
@@ -4259,6 +4259,11 @@ util_scan_entry_renew_timestamp(struct wlan_objmgr_pdev *pdev,
 	scan_entry->boottime_ns = qdf_get_bootbased_boottime_ns();
 
 	scan_obj = wlan_psoc_get_scan_obj(wlan_pdev_get_psoc(pdev));
+	if (!scan_obj) {
+		scm_err("scan_obj is NULL");
+		return;
+	}
+
 	if (scan_obj->cb.inform_beacon)
 		scan_obj->cb.inform_beacon(pdev, scan_entry);
 }
