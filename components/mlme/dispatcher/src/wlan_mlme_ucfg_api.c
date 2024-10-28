@@ -32,6 +32,7 @@
 #include "wlan_vdev_mgr_tgt_if_tx_api.h"
 #include "wlan_policy_mgr_public_struct.h"
 #include "spatial_reuse_api.h"
+#include "wlan_cm_roam_api.h"
 
 QDF_STATUS ucfg_mlme_global_init(void)
 {
@@ -1054,6 +1055,18 @@ ucfg_mlme_set_fast_roam_in_concurrency_enabled(struct wlan_objmgr_psoc *psoc,
 	mlme_obj->cfg.lfr.enable_fast_roam_in_concurrency = val;
 
 	return QDF_STATUS_SUCCESS;
+}
+
+bool
+ucfg_mlme_is_roaming_offload_enabled(struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj)
+		return false;
+
+	return wlan_is_roam_offload_enabled(mlme_obj->cfg.lfr);
 }
 
 #ifdef MULTI_CLIENT_LL_SUPPORT

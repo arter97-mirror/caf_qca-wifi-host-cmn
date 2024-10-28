@@ -15831,6 +15831,7 @@ static int __wlan_hdd_cfg80211_set_fast_roaming(struct wiphy *wiphy,
 	ret = qdf_status_to_os_return(qdf_status);
 
 	if (hdd_cm_is_vdev_associated(adapter) &&
+		ucfg_mlme_is_roaming_offload_enabled(hdd_ctx->psoc) &&
 	    roaming_enabled &&
 	    QDF_IS_STATUS_SUCCESS(qdf_status) && !is_fast_roam_enabled) {
 		INIT_COMPLETION(adapter->lfr_fw_status.disable_lfr_event);

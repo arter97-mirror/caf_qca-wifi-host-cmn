@@ -1365,6 +1365,10 @@ QDF_STATUS
 ucfg_mlme_set_fast_roam_in_concurrency_enabled(struct wlan_objmgr_psoc *psoc,
 					       bool val);
 
+bool
+ucfg_mlme_is_roaming_offload_enabled(struct wlan_objmgr_psoc *psoc);
+
+
 /**
  * ucfg_mlme_get_wmi_wq_watchdog_timeout() - Get timeout for wmi watchdog bite
  * @psoc: pointer to psoc object
