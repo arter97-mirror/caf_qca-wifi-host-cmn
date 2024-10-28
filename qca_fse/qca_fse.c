@@ -73,6 +73,9 @@ struct wlan_objmgr_vdev *qca_fse_get_vdev_from_dev(struct net_device *dev)
 		osdev = parent_osdev;
 	}
 #endif
+	if (osif_is_vap_in_recovery_mode(osdev))
+		return NULL;
+
 	vdev = osdev->ctrl_vdev;
 
 	return vdev;

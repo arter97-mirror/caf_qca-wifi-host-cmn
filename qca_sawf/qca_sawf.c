@@ -114,6 +114,8 @@ qca_sawf_get_vdev(struct net_device *netdev,
 		}
 	}
 #endif
+	if (osif_is_vap_in_recovery_mode(osdev))
+		return NULL;
 
 	vdev = osdev->ctrl_vdev;
 

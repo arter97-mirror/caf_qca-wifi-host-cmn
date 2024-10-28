@@ -86,6 +86,8 @@ qca_scs_get_vdev(struct net_device *netdev, uint8_t *mac_addr)
 		}
 	}
 #endif
+	if (osif_is_vap_in_recovery_mode(osdev))
+		return NULL;
 
 	vdev = osdev->ctrl_vdev;
 	return vdev;
