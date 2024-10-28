@@ -1419,44 +1419,44 @@ hal_rx_tlv_populate_mpdu_desc_info_7750(uint8_t *buf,
 static void hal_reo_status_get_header_7750(hal_ring_desc_t ring_desc, int b,
 					   void *h1)
 {
-	uint64_t *d = (uint64_t *)ring_desc;
-	uint64_t val1 = 0;
+	uint32_t *d = (uint32_t *)ring_desc;
+	uint32_t val1 = 0;
 	struct hal_reo_status_header *h =
 			(struct hal_reo_status_header *)h1;
 
-	/* Offsets of descriptor fields defined in HW headers start
-	 * from the field after TLV header
-	 */
-	d += HAL_GET_NUM_QWORDS(sizeof(struct tlv_32_hdr));
+	/* 4 bytes of TLV header */
+	d += HAL_GET_NUM_DWORDS(sizeof(struct tlv_32_hdr));
+
+	/* offset includes 4 bytes padding */
 
 	switch (b) {
 	case HAL_REO_QUEUE_STATS_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_GET_QUEUE_STATS_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_GET_QUEUE_STATS_STATUS,
 			STATUS_HEADER_REO_STATUS_NUMBER)];
 		break;
 	case HAL_REO_FLUSH_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_FLUSH_QUEUE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_FLUSH_QUEUE_STATUS,
 			STATUS_HEADER_REO_STATUS_NUMBER)];
 		break;
 	case HAL_REO_FLUSH_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_FLUSH_CACHE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_FLUSH_CACHE_STATUS,
 			STATUS_HEADER_REO_STATUS_NUMBER)];
 		break;
 	case HAL_REO_UNBLK_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_UNBLOCK_CACHE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_UNBLOCK_CACHE_STATUS,
 			STATUS_HEADER_REO_STATUS_NUMBER)];
 		break;
 	case HAL_REO_TIMOUT_LIST_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_FLUSH_TIMEOUT_LIST_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_FLUSH_TIMEOUT_LIST_STATUS,
 			STATUS_HEADER_REO_STATUS_NUMBER)];
 		break;
 	case HAL_REO_DESC_THRES_STATUS_TLV:
 		val1 =
-		  d[HAL_OFFSET_QW(REO_DESCRIPTOR_THRESHOLD_REACHED_STATUS,
+		  d[HAL_OFFSET_DW(REO_DESCRIPTOR_THRESHOLD_REACHED_STATUS,
 		  STATUS_HEADER_REO_STATUS_NUMBER)];
 		break;
 	case HAL_REO_UPDATE_RX_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_UPDATE_RX_REO_QUEUE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_UPDATE_RX_REO_QUEUE_STATUS,
 			STATUS_HEADER_REO_STATUS_NUMBER)];
 		break;
 	default:
@@ -1475,32 +1475,32 @@ static void hal_reo_status_get_header_7750(hal_ring_desc_t ring_desc, int b,
 			      REO_CMD_EXECUTION_STATUS, val1);
 	switch (b) {
 	case HAL_REO_QUEUE_STATS_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_GET_QUEUE_STATS_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_GET_QUEUE_STATS_STATUS,
 			STATUS_HEADER_TIMESTAMP)];
 		break;
 	case HAL_REO_FLUSH_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_FLUSH_QUEUE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_FLUSH_QUEUE_STATUS,
 			STATUS_HEADER_TIMESTAMP)];
 		break;
 	case HAL_REO_FLUSH_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_FLUSH_CACHE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_FLUSH_CACHE_STATUS,
 			STATUS_HEADER_TIMESTAMP)];
 		break;
 	case HAL_REO_UNBLK_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_UNBLOCK_CACHE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_UNBLOCK_CACHE_STATUS,
 			STATUS_HEADER_TIMESTAMP)];
 		break;
 	case HAL_REO_TIMOUT_LIST_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_FLUSH_TIMEOUT_LIST_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_FLUSH_TIMEOUT_LIST_STATUS,
 			STATUS_HEADER_TIMESTAMP)];
 		break;
 	case HAL_REO_DESC_THRES_STATUS_TLV:
 		val1 =
-		  d[HAL_OFFSET_QW(REO_DESCRIPTOR_THRESHOLD_REACHED_STATUS,
+		  d[HAL_OFFSET_DW(REO_DESCRIPTOR_THRESHOLD_REACHED_STATUS,
 		  STATUS_HEADER_TIMESTAMP)];
 		break;
 	case HAL_REO_UPDATE_RX_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_QW(REO_UPDATE_RX_REO_QUEUE_STATUS,
+		val1 = d[HAL_OFFSET_DW(REO_UPDATE_RX_REO_QUEUE_STATUS,
 			STATUS_HEADER_TIMESTAMP)];
 		break;
 	default:
@@ -2976,9 +2976,15 @@ struct hal_hw_srng_config hw_srng_table_7750[] = {
 	},
 	{ /* RXDMA_BUF */
 		.start_ring_id = HAL_SRNG_WMAC1_SW2RXDMA0_BUF0,
-#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)
+#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK) && \
+	defined(FEATURE_MGMT_RX_OVER_SRNG)
+		.max_rings = 5,
+#elif (defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)) || \
+	(defined(FEATURE_DIRECT_LINK) && defined(FEATURE_MGMT_RX_OVER_SRNG)) || \
+	(defined(IPA_OFFLOAD) && defined(FEATURE_MGMT_RX_OVER_SRNG))
 		.max_rings = 4,
-#elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK)
+#elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK) || \
+	defined(FEATURE_MGMT_RX_OVER_SRNG)
 		.max_rings = 3,
 #else
 		.max_rings = 2,

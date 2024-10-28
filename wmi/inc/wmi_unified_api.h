@@ -127,6 +127,10 @@
 #include "wlan_coex_public_structs.h"
 #endif
 
+#ifdef FEATURE_MGMT_RX_OVER_SRNG
+#include "wlan_mgmt_rx_srng_public_structs.h"
+#endif
+
 typedef qdf_nbuf_t wmi_buf_t;
 #define wmi_buf_data(_buf) qdf_nbuf_data(_buf)
 
@@ -5374,6 +5378,14 @@ wmi_extract_vendor_pdev_event(wmi_unified_t wmi_hdl,
 QDF_STATUS
 wmi_unified_sap_suspend_cmd_send(wmi_unified_t wmi_handle,
 				 struct vdev_suspend_params *param);
+#ifdef FEATURE_MGMT_RX_OVER_SRNG
+void wmi_rx_buf_srng(struct wmi_unified *wmi_handle, wmi_buf_t buf);
+
+QDF_STATUS
+wmi_unified_extract_mgmt_srng_reap_event(
+			wmi_unified_t wmi_handle, uint8_t *evt_buf,
+			struct mgmt_srng_reap_event_params *params);
+#endif
 
 /**
  * wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd() - WMI to send STA VDEV associated AP's

@@ -2511,7 +2511,8 @@ uint32_t wmi_critical_events_in_flight(struct wmi_unified *wmi)
 static bool
 wmi_is_event_critical(struct wmi_unified *wmi_handle, uint32_t event_id)
 {
-	if (wmi_handle->wmi_events[wmi_roam_synch_event_id] == event_id)
+	if (wmi_handle->wmi_events[wmi_roam_synch_event_id] == event_id ||
+	    wmi_handle->wmi_events[wmi_csa_handling_event_id] == event_id)
 		return true;
 
 	return false;
@@ -3923,3 +3924,10 @@ int __wmi_validate_handle(wmi_unified_t wmi_handle, const char *func)
 
         return 0;
 }
+
+#ifdef FEATURE_MGMT_RX_OVER_SRNG
+void wmi_rx_buf_srng(wmi_unified_t wmi_handle, wmi_buf_t evt_buf)
+{
+	wmi_process_control_rx(wmi_handle, evt_buf);
+}
+#endif

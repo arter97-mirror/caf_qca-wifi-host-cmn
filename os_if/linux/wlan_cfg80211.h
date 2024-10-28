@@ -202,6 +202,7 @@
  * the flow report sent for classified flow
  * @QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX: Event index for async
  * get station sent for ucast cmd
+ * @QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX: Idle shutdown event index
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -329,9 +330,7 @@ enum qca_nl80211_vendor_subcmds_index {
 	QCA_NL80211_VENDOR_SUBCMD_CONNECTED_CHANNEL_STATS_INDEX,
 #ifdef WLAN_FEATURE_11BE_MLO
 	QCA_NL80211_VENDOR_SUBCMD_TID_TO_LINK_MAP_INDEX,
-#ifdef CONN_MGR_ADV_FEATURE
 	QCA_NL80211_VENDOR_SUBCMD_LINK_RECONFIG_INDEX,
-#endif
 #endif
 	QCA_NL80211_VENDOR_SUBCMD_AUDIO_TRANSPORT_SWITCH_INDEX,
 #ifdef WLAN_FEATURE_TX_LATENCY_STATS
@@ -350,6 +349,7 @@ enum qca_nl80211_vendor_subcmds_index {
 	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_REPORT_INDEX,
 #endif
 	QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX,
+	QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX,
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \
@@ -652,6 +652,29 @@ static inline void wlan_cfg80211_unregister_netdevice(struct net_device *dev)
 }
 #endif
 
+#ifdef CFG80211_RU_PUNC_CHANDEF
+static inline
+void wlan_cfg80211_ch_switch_notify(struct net_device *dev,
+				    struct cfg80211_chan_def *chandef,
+				    unsigned int link_id,
+				    uint16_t puncture_bitmap)
+{
+	chandef->punctured = puncture_bitmap;
+	cfg80211_ch_switch_notify(dev, chandef, link_id);
+}
+
+static inline
+void wlan_cfg80211_ch_switch_started_notify(struct net_device *dev,
+					    struct cfg80211_chan_def *chandef,
+					    unsigned int link_id,
+					    uint8_t count, bool quiet,
+					    uint16_t puncture_bitmap)
+{
+	chandef->punctured = puncture_bitmap;
+	cfg80211_ch_switch_started_notify(dev, chandef, link_id,
+					  count, quiet);
+}
+#else
 #ifdef CFG80211_SINGLE_NETDEV_MULTI_LINK_SUPPORT
 #if defined(CFG80211_RU_PUNCT_NOTIFY) || \
 	defined(CFG80211_PUNCTURING_SINGLE_NETDEV_API)
@@ -761,5 +784,5 @@ void wlan_cfg80211_ch_switch_started_notify(struct net_device *dev,
 	cfg80211_ch_switch_started_notify(dev, chandef, count);
 }
 #endif
-
+#endif
 #endif

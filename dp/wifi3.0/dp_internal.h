@@ -68,6 +68,88 @@
 #define DP_VLAN_TAGGED_MULTICAST 1
 #define DP_VLAN_TAGGED_UNICAST 2
 
+#ifdef DP_PEER_UNMAP_TRACK
+/* timer expire in unit ms */
+#define DP_PEER_UNMAP_TRACK_TIMEOUT 3000
+
+/**
+ * struct dp_peer_unmap_track_elem - structure to maintain peer info for
+ *                                   HTT unmap tracking
+ * @node: node in list
+ * @peer: DP peer which waits HTT peer unmap
+ * @peer_id: Peer ID mapped before
+ * @track_start_time: Timestamp that peer unmap tracking start
+ */
+struct dp_peer_unmap_track_elem {
+	/* Do not add new entries here */
+	qdf_list_node_t node;
+	struct dp_peer *peer;
+	uint16_t peer_id;
+	uint64_t track_start_time;
+};
+
+/**
+ * dp_peer_unmap_track_update() - update for peer unmap tracking
+ * @soc: DP Soc
+ * @peer: DP peer handle
+ *
+ * If peer ID is still valid, then it means this peer has not received
+ * unmap before, queue one element into list and start timer to track
+ * peer unmap next.
+ *
+ * Return: None
+ */
+void dp_peer_unmap_track_update(struct dp_soc *soc, struct dp_peer *peer);
+
+/**
+ * dp_peer_unmap_track_init() - Initial DP peer unmap tracking
+ * @soc: DP Soc
+ *
+ * Return: None
+ */
+void dp_peer_unmap_track_init(struct dp_soc *soc);
+
+/**
+ * dp_peer_unmap_track_deinit() - De-initial DP peer unmap tracking
+ * @soc: DP Soc
+ *
+ * Return: None
+ */
+void dp_peer_unmap_track_deinit(struct dp_soc *soc);
+
+/**
+ * dp_peer_unmap_track_suspend() - Suspend dp peer unmap tracking
+ * @soc: DP Soc
+ *
+ * Return: None
+ */
+void dp_peer_unmap_track_suspend(struct dp_soc *soc);
+
+/**
+ * dp_peer_unmap_track_resume() - Resume dp peer unmap tracking
+ * @soc: DP Soc
+ *
+ * Return: None
+ */
+void dp_peer_unmap_track_resume(struct dp_soc *soc);
+#else
+static inline
+void dp_peer_unmap_track_update(struct dp_soc *soc, struct dp_peer *peer)
+{}
+static inline
+void dp_peer_unmap_track_init(struct dp_soc *soc)
+{}
+static inline
+void dp_peer_unmap_track_deinit(struct dp_soc *soc)
+{}
+static inline
+void dp_peer_unmap_track_suspend(struct dp_soc *soc)
+{}
+static inline
+void dp_peer_unmap_track_resume(struct dp_soc *soc)
+{}
+#endif
+
 /**
  * struct htt_dbgfs_cfg - structure to maintain required htt data
  * @msg_word: htt msg sent to upper layer
@@ -110,6 +192,9 @@ struct dp_rx_defrag_cipher {
 
 /* Reserve for HTT Stats OBSS PD support: 6th bit */
 #define DBG_STATS_COOKIE_HTT_OBSS BIT(6)
+
+/*  Reserve for HTT Stats Tx NSS support: 7th bit*/
+#define DBG_STATS_COOKIE_HTT_TX_NSS BIT(7)
 
 /*
  * Bitmap of HTT PPDU TLV types for Default mode
@@ -433,6 +518,14 @@ void dp_monitor_peer_get_stats(struct dp_soc *soc, struct dp_peer *peer,
 {
 }
 
+#ifdef QCA_PEER_EXT_STATS
+static inline
+void dp_monitor_get_peer_tx_stats(struct dp_soc *soc, struct dp_peer *peer,
+				  struct cdp_telemetry_peer_tx_ext_stats *stats)
+{
+}
+#endif
+
 static inline
 void dp_monitor_invalid_peer_update_pdev_stats(struct dp_soc *soc,
 					       struct dp_pdev *pdev)
@@ -579,6 +672,12 @@ static inline void dp_monitor_print_pdev_rx_mon_stats(struct dp_pdev *pdev)
 static inline QDF_STATUS dp_monitor_config_enh_tx_capture(struct dp_pdev *pdev,
 							  uint32_t val,
 							  uint8_t mac_id)
+{
+	return QDF_STATUS_E_INVAL;
+}
+
+static inline QDF_STATUS dp_mon_enh_tx_capt_wrapper(struct dp_pdev *pdev,
+						    cdp_config_param_type val)
 {
 	return QDF_STATUS_E_INVAL;
 }
@@ -4274,6 +4373,7 @@ dp_hal_srng_access_start(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
 static inline void
 dp_hal_srng_access_end(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
 {
+	hal_srng_delay_reg_force_write_detect(hal_ring_hdl);
 	hal_srng_access_end_unlocked(soc, hal_ring_hdl);
 }
 
@@ -4287,6 +4387,7 @@ dp_hal_srng_access_start(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
 static inline void
 dp_hal_srng_access_end(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
 {
+	hal_srng_delay_reg_force_write_detect(hal_ring_hdl);
 	hal_srng_access_end(soc, hal_ring_hdl);
 }
 #endif
@@ -5563,6 +5664,35 @@ dp_update_pdev_chan_util_stats(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 QDF_STATUS
 dp_get_pdev_erp_stats(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		      struct cdp_pdev_erp_stats *stats);
+
+#ifdef QCA_PEER_EXT_STATS
+/**
+ * dp_get_peer_tx_ext_stats() - API to get peer tx stats
+ * @soc_hdl: soc handle
+ * @addr: mac addr
+ * @stats: pointer to stats
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+dp_get_peer_tx_ext_stats(struct cdp_soc_t *soc_hdl, uint8_t *addr,
+			 void *stats);
+#else
+/**
+ * dp_get_peer_tx_ext_stats() - API to get peer tx stats
+ * @soc_hdl: soc handle
+ * @addr: mac addr
+ * @stats: pointer to stats
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+dp_get_peer_tx_ext_stats(struct cdp_soc_t *soc_hdl, uint8_t *addr,
+			 void *stats);
+{
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
 #endif /* WLAN_CONFIG_TELEMETRY_AGENT */
 
 #ifdef CONNECTIVITY_PKTLOG
@@ -5743,6 +5873,17 @@ static inline
 void dp_destroy_direct_link_refill_ring(struct cdp_soc_t *soc_hdl,
 					uint8_t pdev_id)
 {
+}
+#endif
+
+#ifdef FEATURE_MGMT_RX_OVER_SRNG
+QDF_STATUS
+dp_send_htt_mgmt_rx_buf_refil_srng_setup(struct cdp_soc_t *soc_hdl, void *srng);
+#else
+static inline QDF_STATUS
+dp_send_htt_mgmt_rx_buf_refil_srng_setup(struct cdp_soc_t *soc_hdl, void *srng)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 

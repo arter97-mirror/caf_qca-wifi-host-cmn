@@ -1810,7 +1810,9 @@ void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
 	wlan_diag_event.diag_cmn.ktime_us = qdf_ktime_to_us(qdf_ktime_get());
 	wlan_diag_event.diag_cmn.vdev_id = vdev_id;
 
-	wlan_diag_event.version = DIAG_MGMT_VERSION_V2;
+	wlan_diag_event.tx_fail_reason = wlan_get_qdf_to_diag_txrx_status(
+					 qdf_tx_status);
+	wlan_diag_event.version = DIAG_MGMT_VERSION_V3;
 
 	if (type == QDF_PROTO_TYPE_DHCP) {
 		wlan_diag_event.subtype =
@@ -3388,6 +3390,7 @@ struct category_name_info g_qdf_category_name[MAX_SUPPORTED_CATEGORY] = {
 	[QDF_MODULE_ID_COHOSTED_BSS] = {"COHOSTED_BSS"},
 	[QDF_MODULE_ID_TELEMETRY_AGENT] = {"TELEMETRY_AGENT"},
 	[QDF_MODULE_ID_RF_PATH_SWITCH] = {"Dynamic RF Path Switch"},
+	[QDF_MODULE_ID_MGMT_RX_SRNG] = {"MGMT_RX_SRNG"},
 	[QDF_MODULE_ID_ANY] = {"ANY"},
 };
 qdf_export_symbol(g_qdf_category_name);
@@ -3966,6 +3969,7 @@ static void set_default_trace_levels(struct category_info *cinfo)
 		[QDF_MODULE_ID_COHOSTED_BSS] = QDF_TRACE_LEVEL_INFO,
 		[QDF_MODULE_ID_TELEMETRY_AGENT] = QDF_TRACE_LEVEL_ERROR,
 		[QDF_MODULE_ID_RF_PATH_SWITCH] = QDF_TRACE_LEVEL_INFO,
+		[QDF_MODULE_ID_MGMT_RX_SRNG] = QDF_TRACE_LEVEL_INFO,
 		[QDF_MODULE_ID_ANY] = QDF_TRACE_LEVEL_INFO,
 	};
 

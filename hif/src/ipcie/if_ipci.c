@@ -914,9 +914,9 @@ bool hif_ipci_needs_bmi(struct hif_softc *scn)
 #ifdef FORCE_WAKE
 int hif_force_wake_request(struct hif_opaque_softc *hif_handle)
 {
-	uint32_t timeout = 0;
 	struct hif_softc *scn = (struct hif_softc *)hif_handle;
 	struct hif_ipci_softc *ipci_scn = HIF_GET_IPCI_SOFTC(scn);
+	uint32_t start_time, curr_time, end_time;
 
 	if (pld_force_wake_request(scn->qdf_dev->dev)) {
 		hif_err_rl("force wake request send failed");
@@ -924,18 +924,24 @@ int hif_force_wake_request(struct hif_opaque_softc *hif_handle)
 	}
 
 	HIF_STATS_INC(ipci_scn, mhi_force_wake_request_vote, 1);
+
+	start_time = curr_time = qdf_system_ticks_to_msecs(qdf_system_ticks());
+	end_time = start_time + FORCE_WAKE_DELAY_TIMEOUT_MS;
+
 	while (!pld_is_device_awake(scn->qdf_dev->dev) &&
-	       timeout <= FORCE_WAKE_DELAY_TIMEOUT_MS) {
+	       ((int)(end_time - curr_time) > 0)) {
 		if (qdf_in_interrupt())
 			qdf_mdelay(FORCE_WAKE_DELAY_MS);
 		else
-			qdf_sleep(FORCE_WAKE_DELAY_MS);
+			qdf_sleep_uninterruptible(FORCE_WAKE_DELAY_MS);
 
-		timeout += FORCE_WAKE_DELAY_MS;
+		curr_time = qdf_system_ticks_to_msecs(qdf_system_ticks());
 	}
 
 	if (pld_is_device_awake(scn->qdf_dev->dev) <= 0) {
-		hif_err("Unable to wake up mhi");
+		hif_err("Unable to wake up mhi, start time %u end time %u current time %u ref count %d",
+			start_time, end_time, curr_time,
+			pld_is_device_awake(scn->qdf_dev->dev));
 		HIF_STATS_INC(ipci_scn, mhi_force_wake_failure, 1);
 		hif_force_wake_release(hif_handle);
 		return -EINVAL;

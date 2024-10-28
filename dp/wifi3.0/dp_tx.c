@@ -2546,12 +2546,19 @@ dp_tx_update_mcast_param(uint16_t peer_id,
 #endif
 
 #ifdef DP_TX_SW_DROP_STATS_INC
+static bool dp_nbuf_is_eapol_pkt(qdf_nbuf_t nbuf)
+{
+	if (nbuf->protocol == QDF_NBUF_TRAC_EAPOL_ETH_TYPE)
+		return true;
+	return false;
+}
+
 static void tx_sw_drop_stats_inc(struct dp_pdev *pdev,
 				 qdf_nbuf_t nbuf,
-				 enum cdp_tx_sw_drop drop_code)
+				 enum cdp_tx_sw_drop drop_code, bool enable)
 {
 	/* EAPOL Drop stats */
-	if (qdf_nbuf_is_ipv4_eapol_pkt(nbuf)) {
+	if (enable && dp_nbuf_is_eapol_pkt(nbuf)) {
 		switch (drop_code) {
 		case TX_DESC_ERR:
 			DP_STATS_INC(pdev, eap_drop_stats.tx_desc_err, 1);
@@ -2578,7 +2585,7 @@ static void tx_sw_drop_stats_inc(struct dp_pdev *pdev,
 #else
 static void tx_sw_drop_stats_inc(struct dp_pdev *pdev,
 				 qdf_nbuf_t nbuf,
-				 enum cdp_tx_sw_drop drop_code)
+				 enum cdp_tx_sw_drop drop_code, bool enable)
 {
 }
 #endif
@@ -3223,6 +3230,7 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	uint8_t tid = msdu_info->tid;
 	struct cdp_tid_tx_stats *tid_stats = NULL;
 	qdf_dma_addr_t paddr;
+	bool enable_eapol_drop_stats = vdev->dp_eapol_stats;
 
 	/* Setup Tx descriptor for an MSDU, and MSDU extension descriptor */
 	tx_desc = dp_tx_prepare_desc_single(vdev, nbuf, tx_q->desc_pool_id,
@@ -3295,7 +3303,7 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	dp_tx_update_ts_on_enqueued(vdev, msdu_info, tx_desc);
 
-	tx_sw_drop_stats_inc(pdev, nbuf, drop_code);
+	tx_sw_drop_stats_inc(pdev, nbuf, drop_code, enable_eapol_drop_stats);
 	return NULL;
 
 release_desc:
@@ -3303,7 +3311,7 @@ release_desc:
 
 fail_return:
 	dp_tx_get_tid(vdev, nbuf, msdu_info);
-	tx_sw_drop_stats_inc(pdev, nbuf, drop_code);
+	tx_sw_drop_stats_inc(pdev, nbuf, drop_code, enable_eapol_drop_stats);
 	tid_stats = &pdev->stats.tid_stats.
 		    tid_tx_stats[tx_q->ring_id][tid];
 	tid_stats->swdrop_cnt[drop_code]++;
@@ -5406,10 +5414,53 @@ void dp_update_tx_delay_jitter_stats(struct dp_vdev *vdev,
 	stats->prev_delay = stats->curr_delay;
 	dp_update_jitter_stats(tstats, jitter);
 }
+
+/**
+ * dp_tx_update_delay_hist() - update ul delay hist for tsf autoreport enabled
+ * @vdev: vdev handle
+ * @ul_delay: UL delay value
+ *
+ * Return: none
+ */
+static inline
+void dp_tx_update_delay_hist(struct dp_vdev *vdev, uint32_t ul_delay)
+{
+	struct cdp_hist_stats *hist_stats;
+
+	hist_stats = &vdev->stats.tx.hwtx_delay_tsf;
+	hist_stats->hist.hist_type = CDP_HIST_TYPE_HW_COMP_DELAY_TSF;
+
+	dp_hist_update_stats(hist_stats, ul_delay);
+}
+
+/**
+ * dp_tx_print_ul_delay_hist() - print ul delay hist for tsf autoreport enabled
+ * @vdev: vdev handle
+ *
+ * Return: none
+ */
+static inline
+void dp_tx_print_ul_delay_hist(struct dp_vdev *vdev)
+{
+	dp_print_tsf_tx_delay_hist(&vdev->stats.tx.hwtx_delay_tsf, UL_DELAY);
+
+	qdf_mem_zero(&vdev->stats.tx.hwtx_delay_tsf,
+		     sizeof(struct cdp_hist_stats));
+}
 #else
 static inline
 void dp_update_tx_delay_jitter_stats(struct dp_vdev *vdev,
 				     uint8_t tid, uint8_t ring_id)
+{
+}
+
+static inline
+void dp_tx_update_delay_hist(struct dp_vdev *vdev, uint32_t ul_delay)
+{
+}
+
+static inline
+void dp_tx_print_ul_delay_hist(struct dp_vdev *vdev)
 {
 }
 #endif
@@ -6335,6 +6386,8 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	dp_debug("uplink_delay %u delay_accum %u pkts_accum %u", *val,
 		 delay_accum, pkts_accum);
 
+	dp_tx_print_ul_delay_hist(vdev);
+
 	/* Reset accumulated values to 0 */
 	qdf_atomic_set(&vdev->ul_delay_accum, 0);
 	qdf_atomic_set(&vdev->ul_pkts_accum, 0);
@@ -6374,6 +6427,8 @@ static void dp_tx_update_uplink_delay(struct dp_soc *soc, struct dp_vdev *vdev,
 	qdf_atomic_inc(&vdev->ul_pkts_accum);
 	*curr_ul_delay = ul_delay;
 
+	/* Update delay to histogram */
+	dp_tx_update_delay_hist(vdev, ul_delay);
 }
 #else /* !WLAN_FEATURE_TSF_UPLINK_DELAY */
 static inline
@@ -6392,6 +6447,7 @@ static void dp_tx_update_uplink_jitter(struct dp_soc *soc,
 {
 	uint32_t ul_jitter;
 	uint32_t prev_delay = qdf_atomic_read(&vdev->prev_delay);
+	struct cdp_hist_stats *hist_stats;
 
 	if (qdf_unlikely(!vdev)) {
 		dp_info_rl("vdev is null or delete in progress");
@@ -6401,6 +6457,7 @@ static void dp_tx_update_uplink_jitter(struct dp_soc *soc,
 	if (!qdf_atomic_read(&vdev->ul_delay_report))
 		return;
 
+	hist_stats = &vdev->stats.tx.hwtx_jitter_tsf;
 	if (curr_ul_delay > prev_delay)
 		ul_jitter = curr_ul_delay - prev_delay;
 	else
@@ -6409,6 +6466,10 @@ static void dp_tx_update_uplink_jitter(struct dp_soc *soc,
 	qdf_atomic_add(ul_jitter, &vdev->ul_jitter_accum);
 	qdf_atomic_inc(&vdev->ul_jitter_pkts_accum);
 	qdf_atomic_set(&vdev->prev_delay, curr_ul_delay);
+
+	/* Add delay jitter to histogram bucket */
+	hist_stats->hist.hist_type = CDP_HIST_TYPE_HW_COMP_DELAY_JITTER_TSF;
+	dp_hist_update_stats(hist_stats, ul_jitter);
 }
 #else
 static inline

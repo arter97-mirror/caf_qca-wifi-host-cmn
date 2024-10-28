@@ -301,6 +301,10 @@ void dp_mon_invalid_peer_update_pdev_stats(struct dp_pdev *pdev);
 QDF_STATUS dp_mon_peer_get_stats_param(struct dp_peer *peer,
 				       enum cdp_peer_stats_type type,
 				       cdp_peer_stats_param_t *buf);
+#ifdef QCA_PEER_EXT_STATS
+void dp_mon_peer_get_tx_ext_stats(struct dp_peer *peer,
+				  struct cdp_telemetry_peer_tx_ext_stats *stats);
+#endif
 #else
 static inline void dp_mon_peer_reset_stats(struct dp_peer *peer)
 {
@@ -323,6 +327,13 @@ QDF_STATUS dp_mon_peer_get_stats_param(struct dp_peer *peer,
 {
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef QCA_PEER_EXT_STATS
+void dp_mon_peer_get_tx_ext_stats(struct dp_peer *peer,
+				  struct cdp_telemetry_peer_tx_ext_stats *stats)
+{
+}
+#endif
 #endif
 
 /**
@@ -923,6 +934,10 @@ struct dp_mon_ops {
 	bool (*is_local_pkt_capture_running)(struct dp_pdev *pdev);
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
 	QDF_STATUS (*mon_config_mon_fcs_cap)(struct dp_pdev *pdev, uint8_t val);
+#ifdef QCA_PEER_EXT_STATS
+	void (*mon_peer_get_tx_ext_stats)
+		(struct dp_peer *peer, struct cdp_telemetry_peer_tx_ext_stats *stats);
+#endif
 };
 
 /**
@@ -1318,6 +1333,7 @@ struct  dp_mon_pdev {
 	/* Monitor FCS capture */
 	bool mon_fcs_cap;
 	uint8_t mu_sniffer_enabled;
+	uint8_t mon_version;
 };
 
 struct  dp_mon_vdev {
@@ -2320,6 +2336,27 @@ void dp_monitor_peer_get_stats(struct dp_soc *soc, struct dp_peer *peer,
 
 	monitor_ops->mon_peer_get_stats(peer, arg, type);
 }
+
+#ifdef QCA_PEER_EXT_STATS
+static inline
+void dp_monitor_get_peer_tx_stats(struct dp_soc *soc, struct dp_peer *peer,
+				  struct cdp_telemetry_peer_tx_ext_stats *stats)
+{
+	struct dp_mon_ops *monitor_ops;
+	struct dp_mon_soc *mon_soc = soc->monitor_soc;
+
+	if (!mon_soc)
+		return;
+
+	monitor_ops = mon_soc->mon_ops;
+	if (!monitor_ops || !monitor_ops->mon_peer_get_tx_ext_stats) {
+		dp_mon_debug("callback not registered");
+		return;
+	}
+
+	monitor_ops->mon_peer_get_tx_ext_stats(peer, stats);
+}
+#endif
 
 /**
  * dp_monitor_invalid_peer_update_pdev_stats() - Update pdev stats from
@@ -3446,6 +3483,25 @@ static inline QDF_STATUS dp_monitor_config_enh_tx_capture(struct dp_pdev *pdev,
 	}
 
 	return monitor_ops->mon_config_enh_tx_capture(pdev, val, mac_id);
+}
+
+/**
+ * dp_mon_enh_tx_capt_wrapper() - configure tx capture wrapper
+ * @pdev: Datapath PDEV handle
+ * @val: mode
+ *
+ * Return: status
+ */
+static inline QDF_STATUS
+dp_mon_enh_tx_capt_wrapper(struct dp_pdev *pdev, cdp_config_param_type val)
+{
+	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
+
+	mon_pdev->mon_version = val.cdp_monitor_version;
+
+	return dp_monitor_config_enh_tx_capture(pdev,
+						val.cdp_pdev_param_en_tx_cap,
+						0);
 }
 
 /**

@@ -729,6 +729,8 @@ enum vdev_start_resp_type {
  * @mlme_vdev_notify_mlo_sync_wait_entry:
  * @mlme_vdev_notify_link_update_event: callback for t2lm link enable/
  *                                           disable event
+ * @mlme_vdev_init_down:                callback to process event down in init
+ *                                      state
  */
 struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_validate_basic_params)(
@@ -821,6 +823,17 @@ struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_notify_link_update_event)(
 				struct wlan_objmgr_vdev *vdev,
 				void *t2lm);
+	void (*mlme_vdev_init_down)(struct vdev_mlme_obj *vdev_mlme);
+};
+
+/**
+ * struct p2p_device_mode_data - p2p device mode data
+ * @p2p_dev_addr: p2p device mac address
+ * @seq_num: sequence number used for p2p device frames when it's using STA vdev
+ */
+struct p2p_device_mode_data {
+	struct qdf_mac_addr p2p_dev_addr;
+	uint16_t seq_num;
 };
 
 /**
@@ -837,6 +850,7 @@ struct vdev_mlme_ops {
  * @reg_tpc_obj:          Regulatory transmit power info
  * @ml_reconfig_timer: VDEV ml reconfig timer
  * @ml_reconfig_started:  Flag to indicate reconfig status for vdev
+ * @p2p_dev_data: STA vdev support for p2p device
  */
 struct vdev_mlme_obj {
 	struct vdev_mlme_proto proto;
@@ -855,6 +869,9 @@ struct vdev_mlme_obj {
 	struct reg_tpc_power_info reg_tpc_obj;
 	qdf_timer_t ml_reconfig_timer;
 	bool ml_reconfig_started;
+#ifdef CONVERGED_P2P_ENABLE
+	struct p2p_device_mode_data p2p_dev_data;
+#endif
 };
 
 /**

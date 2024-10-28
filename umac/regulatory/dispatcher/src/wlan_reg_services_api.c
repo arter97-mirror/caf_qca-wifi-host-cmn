@@ -113,10 +113,12 @@ wlan_reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 				struct wlan_objmgr_pdev *pdev,
 				enum reg_6g_ap_type *pwr_type_6g,
 				enum reg_6g_ap_type ap_pwr_type,
-				uint32_t chan_freq)
+				uint32_t chan_freq,
+				int8_t rf_mode_force_pwr_type)
 {
 	return reg_get_best_6g_power_type(psoc, pdev, pwr_type_6g,
-					  ap_pwr_type, chan_freq);
+					  ap_pwr_type, chan_freq,
+					  rf_mode_force_pwr_type);
 }
 #endif
 
@@ -670,11 +672,6 @@ bool wlan_reg_is_us(uint8_t *country)
 bool wlan_reg_is_etsi(uint8_t *country)
 {
 	return reg_is_etsi_alpha2(country);
-}
-
-bool wlan_reg_ctry_support_vlp(uint8_t *country)
-{
-	return reg_ctry_support_vlp(country);
 }
 
 void wlan_reg_register_chan_change_callback(struct wlan_objmgr_psoc *psoc,
@@ -1307,6 +1304,29 @@ wlan_reg_get_bonded_chan_entry(qdf_freq_t freq, enum phy_ch_width chwidth,
 	return reg_get_bonded_chan_entry(freq, chwidth, cen320_freq);
 }
 
+#ifdef CONFIG_REG_CLIENT
+uint16_t wlan_reg_get_reg_punc_bitmap(struct ch_params *ch_params)
+{
+	return reg_get_reg_punc_bitmap(ch_params);
+}
+
+uint16_t wlan_reg_get_input_punc_bitmap(struct ch_params *ch_params)
+{
+	return reg_get_input_punc_bitmap(ch_params);
+}
+
+void wlan_reg_set_input_punc_bitmap(struct ch_params *ch_params,
+				    uint16_t punc_bitmap)
+{
+	return reg_set_input_punc_bitmap(ch_params, punc_bitmap);
+}
+
+void wlan_reg_set_non_eht_ch_params(struct ch_params *ch_params, bool val)
+{
+	return reg_set_non_eht_ch_params(ch_params, val);
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE
 #ifdef CONFIG_REG_6G_PWRMODE
 void
@@ -1593,6 +1613,15 @@ wlan_reg_country_chan_opclass_to_freq(struct wlan_objmgr_pdev *pdev,
 {
 	return reg_country_chan_opclass_to_freq(pdev, country, chan, op_class,
 						strict);
+}
+
+qdf_freq_t
+wlan_reg_chan_opclass_to_freq_prefer_global(struct wlan_objmgr_pdev *pdev,
+					    const uint8_t *country,
+					    uint8_t chan_num, uint8_t opclass)
+{
+	return reg_chan_opclass_to_freq_prefer_global(pdev, country,
+						      chan_num, opclass);
 }
 #endif
 
@@ -2002,6 +2031,19 @@ wlan_reg_modify_indoor_concurrency(struct wlan_objmgr_pdev *pdev,
 		return reg_add_indoor_concurrency(pdev, vdev_id, freq, width);
 	else
 		return reg_remove_indoor_concurrency(pdev, vdev_id, freq);
+}
+#endif
+
+#if defined(WLAN_FEATURE_11BE) && defined(CONFIG_REG_CLIENT)
+uint8_t
+wlan_reg_get_320_bonded_chan_array(struct wlan_objmgr_pdev *pdev,
+				   qdf_freq_t freq,
+				   qdf_freq_t band_center_320,
+				   const struct bonded_channel_freq
+				   *bonded_chan_ptr[])
+{
+	return reg_get_bonded_chan_arr_for_320(pdev, freq, band_center_320,
+					       bonded_chan_ptr);
 }
 #endif
 

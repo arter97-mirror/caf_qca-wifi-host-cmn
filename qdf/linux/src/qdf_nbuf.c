@@ -1416,17 +1416,21 @@ QDF_STATUS
 __qdf_nbuf_map_single(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
 {
 	qdf_dma_addr_t paddr;
+	QDF_STATUS ret;
 
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =
 		dma_map_single(osdev->dev, buf->data,
 				skb_end_pointer(buf) - buf->data,
 				__qdf_dma_dir_to_os(dir));
-	__qdf_record_nbuf_nbytes(
-		__qdf_nbuf_get_end_offset(buf), dir, true);
-	return dma_mapping_error(osdev->dev, paddr)
+
+	ret = dma_mapping_error(osdev->dev, paddr)
 		? QDF_STATUS_E_FAILURE
 		: QDF_STATUS_SUCCESS;
+	if (QDF_IS_STATUS_SUCCESS(ret))
+		__qdf_record_nbuf_nbytes(
+			__qdf_nbuf_get_end_offset(buf), dir, true);
+	return ret;
 }
 qdf_export_symbol(__qdf_nbuf_map_single);
 #endif
@@ -5030,12 +5034,14 @@ qdf_export_symbol(__qdf_nbuf_dma_map_info);
 void
 __qdf_nbuf_frag_info(struct sk_buff *skb, qdf_sglist_t  *sg)
 {
+	int i;
+
 	qdf_assert(skb);
 	sg->sg_segs[0].vaddr = skb->data;
 	sg->sg_segs[0].len   = skb->len;
 	sg->nsegs            = 1;
 
-	for (int i = 1; i <= sh->nr_frags; i++) {
+	for (i = 1; i <= sh->nr_frags; i++) {
 		skb_frag_t    *f        = &sh->frags[i - 1];
 
 		sg->sg_segs[i].vaddr    = (uint8_t *)(page_address(f->page) +

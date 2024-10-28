@@ -217,6 +217,8 @@ QDF_STATUS dp_ipa_handle_rx_buf_smmu_mapping(struct dp_soc *soc,
 	    !qdf_mem_smmu_s1_enabled(soc->osdev))
 		return QDF_STATUS_SUCCESS;
 
+	if (wlan_ipa_is_shared_smmu_enabled())
+		return QDF_STATUS_SUCCESS;
 	/*
 	 * Even if ipa pipes is disabled, but if it's unmap
 	 * operation and nbuf has done ipa smmu map before,
@@ -307,6 +309,7 @@ static QDF_STATUS __dp_ipa_tx_buf_smmu_mapping(
 #ifdef RX_DESC_MULTI_PAGE_ALLOC
 static QDF_STATUS dp_ipa_handle_rx_buf_pool_smmu_mapping(struct dp_soc *soc,
 							 bool create,
+							 bool is_ipa_deinit,
 							 const char *func,
 							 uint32_t line,
 							 uint8_t caller)
@@ -339,7 +342,8 @@ static QDF_STATUS dp_ipa_handle_rx_buf_pool_smmu_mapping(struct dp_soc *soc,
 			break;
 		rx_desc_elem = dp_rx_desc_find(page_id, offset, rx_pool);
 		rx_desc = &rx_desc_elem->rx_desc;
-		if ((!(rx_desc->in_use)) || rx_desc->unmapped)
+		if ((!(rx_desc->in_use)) || rx_desc->unmapped ||
+		    (rx_desc->is_ctrl_pkt && !is_ipa_deinit))
 			continue;
 		nbuf = rx_desc->nbuf;
 
@@ -361,6 +365,8 @@ static QDF_STATUS dp_ipa_handle_rx_buf_pool_smmu_mapping(struct dp_soc *soc,
 		ret = __dp_ipa_handle_buf_smmu_mapping(soc, nbuf,
 						       rx_pool->buf_size,
 						       create, func, line);
+		if (!create && qdf_unlikely(rx_desc->is_ctrl_pkt))
+			rx_desc->is_ctrl_pkt = 0;
 	}
 	dp_rx_buf_smmu_mapping_unlock(soc);
 	qdf_spin_unlock_bh(&rx_pool->lock);
@@ -372,6 +378,7 @@ static QDF_STATUS dp_ipa_handle_rx_buf_pool_smmu_mapping(struct dp_soc *soc,
 static QDF_STATUS dp_ipa_handle_rx_buf_pool_smmu_mapping(
 							 struct dp_soc *soc,
 							 bool create,
+							 bool is_ipa_deinit,
 							 const char *func,
 							 uint32_t line,
 							 uint8_t caller)
@@ -1834,22 +1841,6 @@ static int dp_rx_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 
-#if defined(QCA_IPA_LL_TX_FLOW_CONTROL) && defined(IPA_WDI3_TX_TWO_PIPES)
-int dp_ipa_uc_alt_attach(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	int error;
-
-	/* Setup 2nd TX pipe */
-	error = dp_ipa_tx_alt_pool_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA TX pool2 attach fail code %d",
-			  __func__, error);
-		return error;
-	}
-	return QDF_STATUS_SUCCESS;	/* success */
-}
-
 int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
 	int error;
@@ -1865,52 +1856,6 @@ int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 			  __func__, error);
 		if (error == -EFAULT)
 			dp_tx_ipa_uc_detach(soc, pdev);
-		return error;
-	}
-
-	/* Setup 2nd TX pipe */
-	error = dp_ipa_tx_alt_pool_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA TX pool2 attach fail code %d",
-			  __func__, error);
-		dp_tx_ipa_uc_detach(soc, pdev);
-		return error;
-	}
-
-	/* RX resource attach */
-	error = dp_rx_ipa_uc_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA UC RX attach fail code %d",
-			  __func__, error);
-		if (dp_ipa_is_alt_tx_required(soc))
-			dp_ipa_tx_alt_pool_detach(soc, pdev);
-		dp_tx_ipa_uc_detach(soc, pdev);
-		return error;
-	}
-
-	return QDF_STATUS_SUCCESS;	/* success */
-}
-#else
-int dp_ipa_uc_alt_attach(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	return QDF_STATUS_SUCCESS;	/* success */
-}
-
-int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	int error;
-
-	if (!wlan_cfg_is_ipa_enabled(soc->wlan_cfg_ctx))
-		return QDF_STATUS_SUCCESS;
-
-	/* TX resource attach */
-	error = dp_tx_ipa_uc_attach(soc, pdev);
-	if (error) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "%s: DP IPA UC TX attach fail code %d",
-			  __func__, error);
 		return error;
 	}
 
@@ -1940,7 +1885,6 @@ int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 
 	return QDF_STATUS_SUCCESS;	/* success */
 }
-#endif
 #ifdef IPA_WDI3_VLAN_SUPPORT
 /**
  * dp_ipa_rx_alt_ring_resource_setup() - setup IPA 2nd RX ring resources
@@ -3701,8 +3645,9 @@ QDF_STATUS dp_ipa_cleanup(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		status = QDF_STATUS_E_FAILURE;
 	}
 
-	dp_ipa_unmap_ring_doorbell_paddr(soc);
+	/* Unmap must be in the reverse order of map */
 	dp_ipa_unmap_rx_alt_ring_doorbell_paddr(soc);
+	dp_ipa_unmap_ring_doorbell_paddr(soc);
 
 	return status;
 }
@@ -3744,9 +3689,10 @@ QDF_STATUS dp_ipa_enable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 	qdf_atomic_set(&soc->ipa_pipes_enabled, 1);
 	DP_IPA_EP_SET_TX_DB_PA(soc, ipa_res);
 
-	if (!wlan_ipa_config_is_opt_wifi_dp_enabled()) {
+	if (!wlan_ipa_config_is_opt_wifi_dp_enabled() &&
+	    !wlan_ipa_is_shared_smmu_enabled()) {
 		qdf_atomic_set(&soc->ipa_map_allowed, 1);
-		dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, true,
+		dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, true, false,
 						       __func__, __LINE__,
 						       DP_RX_IPA_SMMU_POOL_MAP_ENABLE_PIPE);
 	}
@@ -3761,7 +3707,8 @@ QDF_STATUS dp_ipa_enable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		if (qdf_atomic_read(&soc->ipa_map_allowed)) {
 			qdf_atomic_set(&soc->ipa_map_allowed, 0);
 			dp_ipa_handle_rx_buf_pool_smmu_mapping(
-					soc, false, __func__, __LINE__, 0);
+					soc, false, false, __func__,
+					__LINE__, 0);
 		}
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -3804,9 +3751,10 @@ QDF_STATUS dp_ipa_disable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 
 	qdf_atomic_set(&soc->ipa_pipes_enabled, 0);
 
-	if (!wlan_ipa_config_is_opt_wifi_dp_enabled()) {
+	if (!wlan_ipa_config_is_opt_wifi_dp_enabled() &&
+	    !wlan_ipa_is_shared_smmu_enabled()) {
 		qdf_atomic_set(&soc->ipa_map_allowed, 0);
-		dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, false,
+		dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, false, false,
 						       __func__, __LINE__, 0);
 	}
 
@@ -3993,7 +3941,8 @@ dp_ipa_rx_buf_alloc_opt_dp_ctrl(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	dp_rx_desc_prep(rx_desc, &nbuf_frag_info);
 
 	if (!qdf_nbuf_is_rx_ipa_smmu_map(rx_desc->nbuf) &&
-	    qdf_mem_smmu_s1_enabled(soc->osdev)) {
+	    qdf_mem_smmu_s1_enabled(soc->osdev) &&
+	    !wlan_ipa_is_shared_smmu_enabled()) {
 		DP_STATS_INC(soc, rx.err.ipa_smmu_map_dup, 1);
 		qdf_nbuf_set_rx_ipa_smmu_map(rx_desc->nbuf, true);
 		qdf_nbuf_set_rx_ipa_smmu_map_caller(rx_desc->nbuf,
@@ -4019,6 +3968,7 @@ dp_ipa_rx_buf_alloc_opt_dp_ctrl(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	qdf_mem_copy(dst_addr, qdf_nbuf_data(nbuf), qdf_nbuf_len(nbuf));
 	qdf_nbuf_set_pktlen(rx_desc->nbuf, qdf_nbuf_len(nbuf));
 	rx_desc->in_use = 1;
+	rx_desc->is_ctrl_pkt = 1;
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -4738,6 +4688,10 @@ QDF_STATUS dp_ipa_tx_buf_smmu_mapping(
 		dp_debug("SMMU S1 disabled");
 		return QDF_STATUS_SUCCESS;
 	}
+
+	if (wlan_ipa_is_shared_smmu_enabled())
+		return QDF_STATUS_SUCCESS;
+
 	ret = __dp_ipa_tx_buf_smmu_mapping(soc, true, func, line);
 	if (ret)
 		return ret;
@@ -4764,6 +4718,9 @@ QDF_STATUS dp_ipa_tx_buf_smmu_unmapping(
 		return QDF_STATUS_SUCCESS;
 	}
 
+	if (wlan_ipa_is_shared_smmu_enabled())
+		return QDF_STATUS_SUCCESS;
+
 	if (__dp_ipa_tx_buf_smmu_mapping(soc, false, func, line))
 		return QDF_STATUS_E_FAILURE;
 
@@ -4777,7 +4734,7 @@ QDF_STATUS dp_ipa_tx_buf_smmu_unmapping(
 
 QDF_STATUS dp_ipa_rx_buf_pool_smmu_mapping(
 	struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
-	bool create, const char *func, uint32_t line)
+	bool is_ipa_deinit, bool create, const char *func, uint32_t line)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 
@@ -4785,7 +4742,8 @@ QDF_STATUS dp_ipa_rx_buf_pool_smmu_mapping(
 		dp_debug("SMMU S1 disabled");
 		return QDF_STATUS_SUCCESS;
 	}
-	dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, create, func, line,
+	dp_ipa_handle_rx_buf_pool_smmu_mapping(soc, create, is_ipa_deinit,
+					       func, line,
 					       DP_RX_IPA_SMMU_POOL_MAP_OPT_DP);
 	return QDF_STATUS_SUCCESS;
 }

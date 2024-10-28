@@ -641,17 +641,15 @@ static bool cm_bss_peer_is_assoc_peer(struct cm_connect_req *req)
 
 /**
  * cm_candidate_mlo_update() - handle mlo scenario for candidate validating
- * @scan_entry: scan result of the candidate
  * @validate_bss_info: candidate info to be updated
  *
  * Return: None
  */
 static void
-cm_candidate_mlo_update(struct scan_cache_entry *scan_entry,
-			struct validate_bss_data *validate_bss_info)
+cm_candidate_mlo_update(struct validate_bss_data *validate_bss_info)
 {
-	validate_bss_info->is_mlo = !!scan_entry->ie_list.multi_link_bv;
-	validate_bss_info->scan_entry = scan_entry;
+	validate_bss_info->is_mlo =
+		!!validate_bss_info->scan_entry->ie_list.multi_link_bv;
 }
 
 #else
@@ -677,8 +675,7 @@ static bool cm_bss_peer_is_assoc_peer(struct cm_connect_req *req)
 }
 
 static inline void
-cm_candidate_mlo_update(struct scan_cache_entry *scan_entry,
-			struct validate_bss_data *validate_bss_info)
+cm_candidate_mlo_update(struct validate_bss_data *validate_bss_info)
 {
 }
 #endif
@@ -775,11 +772,12 @@ QDF_STATUS cm_if_mgr_validate_candidate(struct cnx_mgr *cm_ctx,
 	struct if_mgr_event_data event_data = {0};
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
+	event_data.validate_bss_info.scan_entry = scan_entry;
 	event_data.validate_bss_info.chan_freq = scan_entry->channel.chan_freq;
 	event_data.validate_bss_info.beacon_interval = scan_entry->bcn_int;
 	qdf_copy_macaddr(&event_data.validate_bss_info.peer_addr,
 			 &scan_entry->bssid);
-	cm_candidate_mlo_update(scan_entry, &event_data.validate_bss_info);
+	cm_candidate_mlo_update(&event_data.validate_bss_info);
 
 	status = cm_t2lm_validate_candidate(cm_ctx, scan_entry);
 	if (QDF_IS_STATUS_ERROR(status))
@@ -1224,16 +1222,35 @@ static void cm_teardown_tdls(struct wlan_objmgr_vdev *vdev)
 	wlan_tdls_check_and_teardown_links_sync(psoc, vdev);
 }
 
-static void cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
-					struct wlan_cm_connect_req *req)
+static QDF_STATUS
+cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
+			    struct wlan_cm_connect_req *req)
 {
+	struct wlan_objmgr_psoc *psoc;
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc)
+		return QDF_STATUS_E_INVAL;
+
+	if (req->source == CM_OSIF_CONNECT &&
+	    !req->is_non_assoc_link &&
+	    wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
+	    policy_mgr_get_connection_count(psoc) > 1 &&
+	    !policy_mgr_allow_concurrency(psoc, PM_STA_MODE,
+					  0, HW_MODE_BW_NONE,
+					  0, wlan_vdev_get_id(vdev))) {
+		mlme_debug("sta 3 port conc check fail, can't allow sta");
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	if (!wlan_vdev_mlme_is_mlo_link_vdev(vdev))
 		cm_teardown_tdls(vdev);
 
 	wlan_cm_set_force_20mhz_in_24ghz(vdev,
 					 req->ht_caps & WLAN_HTCAP_C_CHWIDTH40);
-}
 
+	return QDF_STATUS_SUCCESS;
+}
 #else
 static inline bool
 cm_is_any_other_vdev_connecting_disconnecting(struct cnx_mgr *cm_ctx,
@@ -1369,9 +1386,11 @@ post_err:
 
 static inline void cm_teardown_tdls(struct wlan_objmgr_vdev *vdev) {}
 
-static inline void cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
-					       struct wlan_cm_connect_req *req)
+static inline QDF_STATUS
+cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
+			    struct wlan_cm_connect_req *req)
 {
+	return QDF_STATUS_SUCCESS;
 }
 
 #endif /* CONN_MGR_ADV_FEATURE */
@@ -1547,7 +1566,7 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 			    struct cnx_mgr *cm_ctx,
 			    struct cm_connect_req *cm_req,
 			    qdf_list_t **fetched_candidate_list,
-			    uint32_t *num_bss_found, bool calculate_bss_score)
+			    uint32_t *num_bss_found)
 {
 	struct scan_filter *filter;
 	uint32_t num_bss = 0;
@@ -1599,7 +1618,7 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 		cm_remove_mbssid_links_without_scan_entry(candidate_list);
 
 	op_mode = wlan_vdev_mlme_get_opmode(cm_ctx->vdev);
-	if (calculate_bss_score && num_bss && op_mode == QDF_STA_MODE &&
+	if (num_bss && op_mode == QDF_STA_MODE &&
 	    !cm_req->req.is_non_assoc_link)
 		cm_calculate_scores(cm_ctx, pdev, filter, candidate_list);
 	qdf_mem_free(filter);
@@ -1624,7 +1643,7 @@ static QDF_STATUS cm_connect_get_candidates(struct wlan_objmgr_pdev *pdev,
 	QDF_STATUS status;
 
 	status = cm_connect_fetch_candidates(pdev, cm_ctx, cm_req,
-					     &candidate_list, &num_bss, true);
+					     &candidate_list, &num_bss);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		if (candidate_list)
 			wlan_scan_purge_results(candidate_list);
@@ -1682,7 +1701,7 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 	}
 
 	status = cm_connect_fetch_candidates(pdev, cm_ctx, cm_req,
-					     &candidate_list, &num_bss, false);
+					     &candidate_list, &num_bss);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlme_debug(CM_PREFIX_FMT "failed to fetch bss: %d",
 			   CM_PREFIX_REF(vdev_id, cm_req->cm_id), num_bss);
@@ -2486,7 +2505,7 @@ QDF_STATUS cm_connect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 			wlan_crypto_free_vdev_key(cm_ctx->vdev);
 	}
 	cm_fill_vdev_crypto_params(cm_ctx, req);
-	cm_store_wep_key(cm_ctx, &req->crypto, *cm_id);
+	cm_store_wep_key(cm_ctx, req, *cm_id);
 
 	if (mlo_is_sta_bridge_vdev(cm_ctx->vdev))
 		status = QDF_STATUS_SUCCESS;
@@ -3367,6 +3386,27 @@ QDF_STATUS cm_bss_peer_create_resp_mlo_attach(struct wlan_objmgr_vdev *vdev,
 }
 #endif
 
+#ifdef CONN_MGR_ADV_FEATURE
+static inline
+QDF_STATUS cm_bss_peer_delete_for_new_req(struct wlan_objmgr_vdev *vdev,
+					  struct cnx_mgr *cm_ctx,
+					  wlan_cm_id cm_id)
+{
+	return mlme_cm_force_bss_peer_delete_req(vdev);
+}
+#else
+static inline
+QDF_STATUS cm_bss_peer_delete_for_new_req(struct wlan_objmgr_vdev *vdev,
+					  struct cnx_mgr *cm_ctx,
+					  wlan_cm_id cm_id)
+{
+	mlme_cm_bss_peer_delete_req(vdev);
+	cm_connect_handle_event_post_fail(cm_ctx, cm_id);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 QDF_STATUS cm_bss_peer_create_rsp(struct wlan_objmgr_vdev *vdev,
 				  QDF_STATUS status,
 				  struct qdf_mac_addr *peer_mac)
@@ -3405,8 +3445,8 @@ QDF_STATUS cm_bss_peer_create_rsp(struct wlan_objmgr_vdev *vdev,
 		if (QDF_IS_STATUS_SUCCESS(qdf_status))
 			return qdf_status;
 
-		mlme_cm_bss_peer_delete_req(vdev);
-		goto post_err;
+		cm_bss_peer_delete_for_new_req(vdev, cm_ctx, cm_id);
+		return qdf_status;
 	}
 
 next_candidate:
@@ -3594,7 +3634,9 @@ QDF_STATUS cm_connect_start_req(struct wlan_objmgr_vdev *vdev,
 	ucfg_cm_handle_legacy_conn_pre_start(wlan_vdev_get_psoc(vdev),
 					     wlan_vdev_get_id(vdev));
 
-	cm_handle_connect_start_req(vdev, req);
+	status = cm_handle_connect_start_req(vdev, req);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto err;
 
 	status = cm_sm_deliver_event(vdev, WLAN_CM_SM_EV_CONNECT_REQ,
 				     sizeof(*connect_req), connect_req);

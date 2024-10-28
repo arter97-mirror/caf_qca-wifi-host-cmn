@@ -1466,7 +1466,6 @@ uint16_t reg_chan_opclass_to_freq(uint8_t chan,
 		}
 		op_class_tbl++;
 	}
-	reg_err_rl("Invalid opclass");
 	return 0;
 }
 
@@ -1532,6 +1531,22 @@ qdf_freq_t reg_country_chan_opclass_to_freq(struct wlan_objmgr_pdev *pdev,
 	reg_debug_rl("Got invalid freq 0 for ch %d", chan);
 
 	return 0;
+}
+
+qdf_freq_t
+reg_chan_opclass_to_freq_prefer_global(struct wlan_objmgr_pdev *pdev,
+				       const uint8_t *country, uint8_t chan_num,
+				       uint8_t opclass)
+{
+	qdf_freq_t freq;
+
+	freq = reg_chan_opclass_to_freq(chan_num, opclass, true);
+	if (!freq && country) {
+		freq = reg_country_chan_opclass_to_freq(pdev, country, chan_num,
+							opclass, true);
+	}
+
+	return freq;
 }
 #endif
 

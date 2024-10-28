@@ -1387,6 +1387,8 @@ enum scan_completion_reason {
  * @scan_id: scan id
  * @timestamp: timestamp in microsec recorded by target for the scan event
  * @scan_start_req: scan request object used to start this scan
+ * @flag: Indicate scan type. BIT[0] indicate if scan type is for p2p or
+ * not when sta vdev gets use for p2p device operation
  */
 struct scan_event {
 	uint32_t vdev_id;
@@ -1397,6 +1399,7 @@ struct scan_event {
 	uint32_t scan_id;
 	uint32_t timestamp;
 	struct scan_start_request *scan_start_req;
+	uint32_t flag;
 };
 
 /**

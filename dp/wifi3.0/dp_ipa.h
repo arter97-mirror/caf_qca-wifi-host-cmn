@@ -477,7 +477,6 @@ bool dp_ipa_rx_intrabss_fwd(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			    qdf_nbuf_t nbuf, bool *fwd_success);
 int dp_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev);
 int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev);
-int dp_ipa_uc_alt_attach(struct dp_soc *soc, struct dp_pdev *pdev);
 
 /**
  * dp_ipa_ring_resource_setup() - setup IPA ring resources
@@ -579,6 +578,7 @@ QDF_STATUS dp_ipa_tx_buf_smmu_unmapping(struct cdp_soc_t *soc_hdl,
 					uint32_t line);
 QDF_STATUS dp_ipa_rx_buf_pool_smmu_mapping(struct cdp_soc_t *soc_hdl,
 					   uint8_t pdev_id,
+					   bool is_ipa_deinit,
 					   bool create,
 					   const char *func,
 					   uint32_t line);
@@ -745,11 +745,6 @@ static inline int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 
-static inline int dp_ipa_uc_alt_attach(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	return 0;
-}
-
 static inline int dp_ipa_ring_resource_setup(struct dp_soc *soc)
 {
 	return 0;
@@ -813,6 +808,7 @@ static inline QDF_STATUS dp_ipa_tx_buf_smmu_unmapping(struct cdp_soc_t *soc_hdl,
 static inline QDF_STATUS dp_ipa_rx_buf_pool_smmu_mapping(
 						      struct cdp_soc_t *soc_hdl,
 						      uint8_t pdev_id,
+						      bool is_ipa_deinit,
 						      bool create,
 						      const char *func,
 						      uint32_t line)

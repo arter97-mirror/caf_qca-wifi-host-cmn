@@ -1050,6 +1050,26 @@
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_usd.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_SET_P2P_MODE: Vendor subcommand to configure
+ *	Wi-Fi Direct mode. This command sets the configuration through
+ *	the attributes defined in the enum qca_wlan_vendor_attr_set_p2p_mode.
+ *	It is applicable for P2P Group Owner only. This command is used before
+ *	starting the GO.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN: If there are no active Wi-Fi
+ *	interfaces for a certain duration, the host driver might trigger idle
+ *	shutdown. The host driver rejects the user space commands between start
+ *	and completion of the idle shutdown. If a command is rejected, user
+ *	space can use this event to determine when to retry the specific
+ *	command.
+ *
+ *	This is a wiphy specific vendor event and it indicates user space that
+ *	the host driver has reached the idle timer and has started or completed
+ *	idle shutdown procedure.
+ *
+ *	The attributes used with this event are defined in
+ *	enum qca_wlan_vendor_attr_idle_shutdown.
  */
 
 enum qca_nl80211_vendor_subcmds {
@@ -1328,6 +1348,8 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_ASYNC_STATS_POLICY = 247,
 	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_REPORT = 248,
 	QCA_NL80211_VENDOR_SUBCMD_USD = 249,
+	QCA_NL80211_VENDOR_SUBCMD_SET_P2P_MODE = 251,
+	QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN = 254,
 };
 
 enum qca_wlan_vendor_tos {
@@ -1848,6 +1870,10 @@ enum qca_wlan_auth_type {
  * type for remote channel width greater than 160 MHz.
  * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_EHT_OPERATION: Attribute type for
  * sending EHT operation info.
+ * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ASSOCIATED_BW: Attribute type of u32
+ *  for sending the associated bandwidth.
+ *  Example: The driver will send an enum value of type nl80211_chan_width,
+ *  such as NL80211_CHAN_WIDTH_20_NOHT.
  * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AFTER_LAST: After last
  *
  */
@@ -1894,6 +1920,7 @@ enum qca_wlan_vendor_attr_get_station_info {
 	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_HE_OPERATION,
 	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_CH_WIDTH_V2,
 	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_EHT_OPERATION,
+	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ASSOCIATED_BW,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AFTER_LAST,
@@ -3351,6 +3378,9 @@ enum qca_wlan_vendor_scan_priority {
  *      when AP is operating as MLD to specify which link is requesting the
  *      scan or which link the scan result is for. No need of this attribute
  *      in other cases.
+ * @QCA_WLAN_VENDOR_ATTR_SCAN_SKIP_CHANNEL_RECENCY_PERIOD: Optional (u32). Skip
+ *	scanning channels which are scanned recently within configured time
+ *	(in ms).
  */
 enum qca_wlan_vendor_attr_scan {
 	QCA_WLAN_VENDOR_ATTR_SCAN_INVALID_PARAM = 0,
@@ -3368,6 +3398,7 @@ enum qca_wlan_vendor_attr_scan {
 	QCA_WLAN_VENDOR_ATTR_SCAN_DWELL_TIME = 12,
 	QCA_WLAN_VENDOR_ATTR_SCAN_PRIORITY = 13,
 	QCA_WLAN_VENDOR_ATTR_SCAN_LINK_ID = 15,
+	QCA_WLAN_VENDOR_ATTR_SCAN_SKIP_CHANNEL_RECENCY_PERIOD = 16,
 	QCA_WLAN_VENDOR_ATTR_SCAN_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_SCAN_MAX =
 	QCA_WLAN_VENDOR_ATTR_SCAN_AFTER_LAST - 1
@@ -5113,6 +5144,9 @@ enum qca_wlan_vendor_attr_nd_offload {
  *	with %QCA_WLAN_VENDOR_ATTR_CONFIG_AP_ALLOWED_FREQ_LIST.
  * @QCA_WLAN_VENDOR_FEATURE_ENHANCED_AUDIO_EXPERIENCE_OVER_WLAN: Flag indicates
  *	 that the device supports enhanced audio experience over WLAN feature.
+ * @QCA_WLAN_VENDOR_FEATURE_NAN_USD_OFFLOAD: Flag indicates that the driver
+ *	supports Unsynchronized Service Discovery to be offloaded to it.
+ *
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits
  */
 enum qca_wlan_vendor_features {
@@ -5140,6 +5174,7 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_AP = 21,
 	QCA_WLAN_VENDOR_FEATURE_AP_ALLOWED_FREQ_LIST = 22,
 	QCA_WLAN_VENDOR_FEATURE_ENHANCED_AUDIO_EXPERIENCE_OVER_WLAN = 23,
+	QCA_WLAN_VENDOR_FEATURE_NAN_USD_OFFLOAD = 26,
 	NUM_QCA_WLAN_VENDOR_FEATURES /* keep last */
 };
 
@@ -6984,6 +7019,8 @@ enum qca_wlan_vendor_external_acs_event_chan_power_info_attr {
  * defined in enum qca_wlan_vendor_attr_rropavail_info.
  * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_AFC_CAPABILITY: Flag attribute to
  * indicate if driver supports 6 GHz AFC trigger for External ACS.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_LINK_ID: LINK ID attribute (u8) is
+ * used to identify specific link affiliated to an AP MLD.
  */
 enum qca_wlan_vendor_attr_external_acs_event {
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_INVALID = 0,
@@ -7002,6 +7039,7 @@ enum qca_wlan_vendor_attr_external_acs_event {
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_POLICY = 13,
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_RROPAVAIL_INFO = 14,
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_AFC_CAPABILITY = 15,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_LINK_ID = 16,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_EVENT_LAST,
@@ -8832,6 +8870,9 @@ enum qca_wlan_vendor_attr_ll_stats_ext {
  * for EHT (IEEE 802.11be). Encoding for this attribute follows the
  * convention used in the Disabled Subchannel Bitmap field of the EHT Operation
  * element.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_LINK_ID: Mandatory on AP MLD (u8).
+ * Used with command to configure external ACS operation for a specific link
+ * affiliated to an AP MLD.
  */
 enum qca_wlan_vendor_attr_external_acs_channels {
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_CHANNEL_INVALID = 0,
@@ -8868,6 +8909,7 @@ enum qca_wlan_vendor_attr_external_acs_channels {
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_FREQUENCY_CENTER_SEG0 = 12,
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_FREQUENCY_CENTER_SEG1 = 13,
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_PUNCTURE_BITMAP = 14,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_LINK_ID = 15,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_EXTERNAL_ACS_CHANNEL_LAST,
@@ -17706,6 +17748,21 @@ enum qca_wlan_audio_transport_switch_status {
 };
 
 /**
+ * enum qca_wlan_audio_transport_switch_reason - Represents the reason of audio
+ * transport switch request.
+ *
+ * @QCA_WLAN_AUDIO_TRANSPORT_SWITCH_REASON_TERMINATING: Requester transport is
+ * terminating. After this indication, requester module may not be available to
+ * process further request on its transport. For ex: to handle a high priority
+ * concurrent interface, WLAN transport need to terminate and hence indicates
+ * switch to non-WLAN transport with reason terminating. User space modules
+ * switches to non-WLAN immediately without waiting for further confirmation.
+ */
+enum qca_wlan_audio_transport_switch_reason {
+	QCA_WLAN_AUDIO_TRANSPORT_SWITCH_REASON_TERMINATING = 0,
+};
+
+/**
  * enum qca_wlan_vendor_attr_audio_transport_switch - Attributes used by
  * %QCA_NL80211_VENDOR_SUBCMD_AUDIO_TRANSPORT_SWITCH vendor command.
  *
@@ -17719,11 +17776,18 @@ enum qca_wlan_audio_transport_switch_status {
  * the transport switch status from one of the values in enum
  * qca_wlan_audio_transport_switch_status. This is optional param and used in
  * both command and event path. This attribute must not be included in requests.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_AUDIO_TRANSPORT_SWITCH_REASON: u8 attribute. Indicates
+ * the transport switch reason from one of the values in enum
+ * qca_wlan_audio_transport_switch_reason. This is optional param and used in
+ * both command and event path.
  */
 enum qca_wlan_vendor_attr_audio_transport_switch {
 	QCA_WLAN_VENDOR_ATTR_AUDIO_TRANSPORT_SWITCH_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_AUDIO_TRANSPORT_SWITCH_TYPE = 1,
 	QCA_WLAN_VENDOR_ATTR_AUDIO_TRANSPORT_SWITCH_STATUS = 2,
+	QCA_WLAN_VENDOR_ATTR_AUDIO_TRANSPORT_SWITCH_REASON = 3,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_AUDIO_TRANSPORT_SWITCH_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_AUDIO_TRANSPORT_SWITCH_MAX =
@@ -18860,4 +18924,70 @@ enum qca_wlan_vendor_attr_usd {
 	QCA_WLAN_VENDOR_ATTR_USD_MAX =
 	QCA_WLAN_VENDOR_ATTR_USD_AFTER_LAST - 1,
 };
+
+/**
+ * enum qca_wlan_vendor_p2p_mode - Defines the values used with
+ * %QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_CONFIG.
+ *
+ * @QCA_P2P_MODE_WFD_R1: Wi-Fi Direct R1 only.
+ * @QCA_P2P_MODE_WFD_R2: Wi-Fi Direct R2 only.
+ * @QCA_P2P_MODE_WFD_PCC: P2P Connection Compatibility Mode which supports both
+ * Wi-Fi Direct R1 and R2.
+ */
+enum qca_wlan_vendor_p2p_mode {
+	QCA_P2P_MODE_WFD_R1 = 0,
+	QCA_P2P_MODE_WFD_R2 = 1,
+	QCA_P2P_MODE_WFD_PCC = 2,
+};
+
+/* enum qca_wlan_vendor_attr_set_p2p_mode: Attributes used by vendor command
+ * %QCA_NL80211_VENDOR_SUBCMD_SET_P2P_MODE.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_CONFIG: u8 attribute. Sets the P2P device
+ * mode. The values used are defined in enum qca_wlan_vendor_p2p_mode.
+ * This configuration is valid until the interface is brought up next time after
+ * this configuration and the driver shall use this configuration only when the
+ * interface is brought up in NL80211_IFTYPE_P2P_GO mode.
+ * When this parameter has not been set, the interface is brought up with
+ * Wi-Fi Direct R1 only configuration by default.
+ */
+enum qca_wlan_vendor_attr_set_p2p_mode {
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_CONFIG = 1,
+
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_MAX =
+	QCA_WLAN_VENDOR_ATTR_SET_P2P_MODE_AFTER_LAST - 1,
+};
+
+/*
+ * enum qca_wlan_idle_shutdown_status: Represents idle shutdown status.
+ *
+ * @QCA_WLAN_IDLE_SHUTDOWN_STARTED: Indicates idle shutdown is started in the
+ * host driver.
+ * @QCA_WLAN_IDLE_SHUTDOWN_COMPLETED: Indicates idle shutdown is completed in
+ * the host driver.
+ */
+enum qca_wlan_idle_shutdown_status {
+	QCA_WLAN_IDLE_SHUTDOWN_STARTED = 0,
+	QCA_WLAN_IDLE_SHUTDOWN_COMPLETED = 1,
+};
+
+/*
+ * enum qca_wlan_vendor_attr_idle_shutdown: Attributes used by vendor event
+ * %QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_IDLE_SHUTDOWN_STATUS: Required u8 attribute. Indicates
+ * the status of the idle shutdown from one of the values in enum
+ * qca_wlan_idle_shutdown_status.
+ */
+enum qca_wlan_vendor_attr_idle_shutdown {
+	QCA_WLAN_VENDOR_ATTR_IDLE_SHUTDOWN_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_IDLE_SHUTDOWN_STATUS = 1,
+
+	QCA_WLAN_VENDOR_ATTR_IDLE_SHUTDOWN_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_IDLE_SHUTDOWN_MAX =
+	QCA_WLAN_VENDOR_ATTR_IDLE_SHUTDOWN_AFTER_LAST - 1,
+};
+
 #endif

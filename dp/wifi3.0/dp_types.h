@@ -87,8 +87,7 @@ struct dp_tx_queue;
 
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 #define WLAN_DP_RESET_MON_BUF_RING_FILTER
-#if defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCA6750) || \
-    defined(QCA_WIFI_WCN6450)
+#if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN6450)
 #define MAX_TXDESC_POOLS 4
 #else
 #define MAX_TXDESC_POOLS 6
@@ -1779,6 +1778,7 @@ struct rx_refill_buff_pool {
 #define DP_PAGE_POOL_MAX 4
 
 struct dp_rx_pp_params {
+	qdf_list_node_t node;
 	qdf_page_pool_t pp;
 	size_t pool_size;
 	size_t pp_size;
@@ -1792,6 +1792,8 @@ struct dp_rx_page_pool {
 	size_t curr_pool_size;
 	size_t base_pool_size;
 	qdf_atomic_t update_in_progress;
+	qdf_timer_t pool_inactivity_timer;
+	qdf_list_t inactive_list;
 };
 #endif
 
@@ -2894,6 +2896,7 @@ struct dp_arch_ops {
  * @multi_rx_reorder_q_setup_support: multi rx reorder q setup at a time support
  * @fw_support_ml_monitor: FW support ML monitor mode
  * @dp_ipa_opt_dp_ctrl_refill: opt_dp_ctrl refill support
+ * @vdev_tx_nss_support: FW supports vdev Tx NSS report.
  */
 struct dp_soc_features {
 	uint8_t pn_in_reo_dest:1,
@@ -2906,6 +2909,7 @@ struct dp_soc_features {
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	bool dp_ipa_opt_dp_ctrl_refill;
 #endif
+	bool vdev_tx_nss_support;
 };
 
 enum sysfs_printing_mode {
@@ -3323,6 +3327,18 @@ struct dp_soc {
 	uint32_t peer_id_mask;
 #endif
 
+#ifdef DP_PEER_UNMAP_TRACK
+	/* flag to indicate if the timer start already */
+	bool peer_unmap_track_timer_start;
+	/* flag to indicate if the timer has to be suspended */
+	bool peer_unmap_track_timer_suspend;
+	/* protect peer_unmap_track_list */
+	qdf_spinlock_t peer_unmap_track_lock;
+	/* list to store dp_peer_unmap_track_elem */
+	qdf_list_t peer_unmap_track_list;
+	/* timer for peer unmap tracking */
+	qdf_timer_t peer_unmap_track_timer;
+#endif
 	/* rx peer metadata field shift and mask configuration */
 	uint8_t htt_peer_id_s;
 	uint32_t htt_peer_id_m;
@@ -3677,6 +3693,16 @@ struct dp_soc {
 	struct dp_rx_page_pool rx_pp[MAX_RXDESC_POOLS];
 #endif
 };
+
+/*
+ * cpu id is used as an index to set bits in service_rings_running
+ * in the service srng API. We need to make sure that the size of
+ * service_rings_running variable is big enough
+ */
+#ifndef CONFIG_X86
+QDF_COMPILE_TIME_ASSERT(num_cpu_check,
+	NR_CPUS <= (sizeof(((struct dp_soc *)0)->service_rings_running) * 8));
+#endif
 
 #define MAX_RX_MAC_RINGS 2
 /* Same as NAC_MAX_CLENT */
@@ -4144,6 +4170,12 @@ struct dp_pdev {
 
 	/* To check if request is already sent for obss stats */
 	bool pending_fw_obss_stats_response;
+
+	/* qdf_event for vdev tx nss stats */
+	qdf_event_t vdev_tx_nss_stats_event;
+
+	/* To check if request is already sent for vdev tx nss stats */
+	bool pending_tx_nss_response;
 
 	/* User configured max number of tx buffers */
 	uint32_t num_tx_allowed;
@@ -4661,6 +4693,9 @@ struct dp_vdev {
 #endif
 	bool eapol_over_control_port_disable;
 	bool dp_proto_stats;
+	bool dp_eapol_stats;
+	/* Tx NSS stats received from FW */
+	struct cdp_htt_stats_tx_vdev_nss_tlv tx_vdev_nss;
 };
 
 enum {
@@ -5914,4 +5949,9 @@ void dp_rx_update_protocol_stats(hal_soc_handle_t hal_soc,
 				 struct dp_txrx_peer *txrx_peer,
 				 uint8_t link_id, qdf_nbuf_t nbuf,
 				 uint8_t *rx_tlv_hdr, uint8_t level);
+
+void dp_rx_err_update_protocol_stats(struct dp_soc *soc, struct dp_pdev *pdev,
+				     qdf_nbuf_t nbuf,
+				     union hal_wbm_err_info_u *wbm_err,
+				     uint8_t *rx_tlv_hdr);
 #endif /* _DP_TYPES_H_ */

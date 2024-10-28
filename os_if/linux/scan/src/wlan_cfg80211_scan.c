@@ -46,6 +46,13 @@
 #endif
 #include "utils_mlo.h"
 
+#ifdef CONVERGED_P2P_ENABLE
+#include "wlan_mlme_ucfg_api.h"
+#include "wlan_p2p_ucfg_api.h"
+#endif
+
+#define INVALID_LINK_ID 255
+
 const struct nla_policy cfg80211_scan_policy[
 			QCA_WLAN_VENDOR_ATTR_SCAN_MAX + 1] = {
 	[QCA_WLAN_VENDOR_ATTR_SCAN_FLAGS] = {.type = NLA_U32},
@@ -434,7 +441,7 @@ int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_vdev *vdev,
 	   SCAN_NOT_IN_PROGRESS) {
 		status = wlan_abort_scan(pdev,
 				wlan_objmgr_pdev_get_pdev_id(pdev),
-				INVAL_VDEV_ID, INVAL_SCAN_ID, true);
+				INVAL_VDEV_ID, CANCEL_HOST_SCAN_ID, true);
 		if (QDF_IS_STATUS_ERROR(status))
 			return -EBUSY;
 	}
@@ -962,13 +969,14 @@ void wlan_cfg80211_scan_done(struct net_device *netdev,
  *
  * @req : Scan request
  * @aborted : true scan aborted false scan success
+ * @link_id : link id of the mld link
  *
  * This function sends scan completed callback event to NL.
  *
  * Return: none
  */
 static void wlan_vendor_scan_callback(struct cfg80211_scan_request *req,
-					bool aborted)
+					bool aborted, int link_id)
 {
 	struct sk_buff *skb;
 	struct nlattr *attr;
@@ -1025,6 +1033,9 @@ static void wlan_vendor_scan_callback(struct cfg80211_scan_request *req,
 	scan_status = (aborted == true) ? VENDOR_SCAN_STATUS_ABORTED :
 		VENDOR_SCAN_STATUS_NEW_RESULTS;
 	if (nla_put_u8(skb, QCA_WLAN_VENDOR_ATTR_SCAN_STATUS, scan_status))
+		goto nla_put_failure;
+
+	if (nla_put_u8(skb, QCA_WLAN_VENDOR_ATTR_SCAN_LINK_ID, link_id))
 		goto nla_put_failure;
 
 	wlan_cfg80211_vendor_event(skb, GFP_ATOMIC);
@@ -1144,6 +1155,7 @@ static void wlan_cfg80211_scan_done_callback(
 	QDF_STATUS status;
 	qdf_time_t scan_start_timestamp = 0;
 	uint32_t unique_bss_count = 0;
+	uint8_t link_id = INVALID_LINK_ID;
 
 	if (!event) {
 		osif_nofl_err("Invalid scan event received");
@@ -1211,6 +1223,8 @@ static void wlan_cfg80211_scan_done_callback(
 		}
 		goto allow_suspend;
 	}
+	/* Link id is required to send vendor scan callback */
+	link_id = wlan_vdev_get_link_id(vdev);
 
 	/*
 	 * Scan can be triggred from NL or vendor scan
@@ -1222,7 +1236,7 @@ static void wlan_cfg80211_scan_done_callback(
 	if (NL_SCAN == source)
 		wlan_cfg80211_scan_done(netdev, req, !success, osif_priv);
 	else
-		wlan_vendor_scan_callback(req, !success);
+		wlan_vendor_scan_callback(req, !success, link_id);
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_OSIF_ID);
 
@@ -1410,6 +1424,7 @@ void wlan_cfg80211_cleanup_scan_queue(struct wlan_objmgr_pdev *pdev,
 	struct pdev_osif_priv *osif_priv;
 	qdf_list_t scan_cleanup_q;
 	qdf_list_node_t *node = NULL;
+	int link_id = INVALID_LINK_ID;
 
 	if (!pdev) {
 		osif_err("pdev is Null");
@@ -1440,7 +1455,7 @@ void wlan_cfg80211_cleanup_scan_queue(struct wlan_objmgr_pdev *pdev,
 			wlan_cfg80211_scan_done(scan_req->dev, req,
 						aborted, osif_priv);
 		else
-			wlan_vendor_scan_callback(req, aborted);
+			wlan_vendor_scan_callback(req, aborted, link_id);
 
 		qdf_mem_free(scan_req);
 	}
@@ -1554,6 +1569,28 @@ bool wlan_is_scan_allowed(struct wlan_objmgr_vdev *vdev)
 
 	return true;
 }
+
+#ifdef CONVERGED_P2P_ENABLE
+static void
+wlan_handle_sta_vdev_for_p2p_device(struct wlan_objmgr_psoc *psoc,
+				    struct scan_start_request *req)
+{
+	struct qdf_mac_addr mac_addr = {0};
+
+	if (ucfg_p2p_is_sta_vdev_usage_allowed_for_p2p_dev(psoc)) {
+		wlan_mlme_get_p2p_device_mac_addr(req->vdev, &mac_addr);
+		qdf_mem_copy(req->scan_req.scan_random.mac_addr, &mac_addr,
+			     QDF_MAC_ADDR_SIZE);
+		req->scan_req.scan_random.randomize = true;
+		req->scan_req.scan_ctrl_flags_ext |= SCAN_FLAG_EXT_P2P_SCAN;
+	}
+}
+#else
+static void
+wlan_handle_sta_vdev_for_p2p_device(struct wlan_objmgr_psoc *psoc,
+				    struct scan_start_request *req)
+{}
+#endif
 
 int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 		       struct cfg80211_scan_request *request,
@@ -1826,6 +1863,9 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 	if (params->scan_probe_unicast_ra)
 		req->scan_req.scan_ctrl_flags_ext |=
 				SCAN_FLAG_EXT_FORCE_UNICAST_RA;
+
+	if (is_p2p_scan && params->opmode == QDF_P2P_DEVICE_MODE)
+		wlan_handle_sta_vdev_for_p2p_device(psoc, req);
 
 	osif_debug("scan_ctrl_flags_ext %0x",
 		   req->scan_req.scan_ctrl_flags_ext);
