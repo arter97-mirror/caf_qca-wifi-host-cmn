@@ -628,8 +628,8 @@ void qca_sawf_config_ul(struct net_device *dst_dev, struct net_device *src_dev,
 						   fw_mark_metadata);
 
 	if (rv_mark_metadata != DP_SAWF_META_DATA_INVALID &&
-	    (!wlan_service_id_valid(fw_service_id) &&
-	     !wlan_service_id_scs_valid(0, fw_service_id)) &&
+	    (!wlan_service_id_valid(rv_service_id) &&
+	     !wlan_service_id_scs_valid(0, rv_service_id)) &&
 	    add_or_sub == FLOW_STOP)
 		qca_sawf_3_link_peer_dl_flow_count(src_dev, src_mac,
 						   rv_mark_metadata);
