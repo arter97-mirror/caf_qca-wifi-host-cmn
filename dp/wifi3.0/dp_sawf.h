@@ -114,6 +114,12 @@
 	 DP_SAWF_QUEUE_ID_SET(queue_id))
 #endif
 
+#define SAWF_PEER_ID_SHIFT 0x6
+#define SAWF_PEER_ID_MASK 0x3ff
+
+#define SAWF_PEER_ID_GET(x) (((x) >> SAWF_PEER_ID_SHIFT) \
+	& SAWF_PEER_ID_MASK)
+
 #define DP_SAWF_INVALID_SVC_ID 0
 #define DP_SAWF_INVALID_TCL_CMD 0xffff
 
@@ -610,9 +616,10 @@ dp_sawf_3_link_peer_set_tid_weight(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 void dp_sawf_msduq_timer_handler(void *arg);
 uint16_t dp_sawf_get_msduq(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			   uint8_t *dest_mac, uint32_t service_id);
-bool dp_sawf_get_search_index(struct dp_soc *soc, qdf_nbuf_t nbuf,
-			      uint8_t vdev_id, uint16_t queue_id,
+bool dp_sawf_get_search_index(struct dp_soc *soc, uint8_t vdev_id,
+			      uint16_t peer_id, uint16_t queue_id,
 			      uint32_t *flow_index);
+
 uint32_t dp_sawf_queue_id_get(qdf_nbuf_t nbuf);
 uint16_t dp_sawf_tcl_cmd(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc,
 			 bool is_fast_tx);
