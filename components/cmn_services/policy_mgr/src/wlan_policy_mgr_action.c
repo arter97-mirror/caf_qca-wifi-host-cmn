@@ -3553,6 +3553,7 @@ policy_mgr_valid_sap_conc_channel_check(struct wlan_objmgr_psoc *psoc,
 	bool is_sta_sap_scc;
 	enum policy_mgr_con_mode con_mode;
 	uint32_t nan_2g_freq, nan_5g_freq;
+	uint8_t cc_mode;
 
 	pm_ctx = policy_mgr_get_context(psoc);
 	if (!pm_ctx) {
@@ -3592,6 +3593,8 @@ policy_mgr_valid_sap_conc_channel_check(struct wlan_objmgr_psoc *psoc,
 	nan_2g_freq =
 		policy_mgr_mode_specific_get_channel(psoc, PM_NAN_DISC_MODE);
 	nan_5g_freq = wlan_nan_get_5ghz_social_ch_freq(pm_ctx->pdev);
+
+	policy_mgr_get_mcc_scc_switch(psoc, &cc_mode);
 
 	sta_sap_scc_on_dfs_chan =
 		policy_mgr_is_sta_sap_scc_allowed_on_dfs_chan(psoc);
@@ -3669,12 +3672,23 @@ policy_mgr_valid_sap_conc_channel_check(struct wlan_objmgr_psoc *psoc,
 				return QDF_STATUS_E_FAILURE;
 			}
 		} else {
-			/* MCC not supported for non-DBS chip*/
+			/**
+			 * MCC supported for non-DBS chip only for cc_mode as
+			 * QDF_MCC_TO_SCC_WITH_PREFERRED_BAND
+			 */
 			ch_freq = 0;
 			if (con_mode == PM_SAP_MODE) {
-				policymgr_nofl_debug("MCC situation in non-dbs hw STA freq %d SAP freq %d not supported",
-						     *con_ch_freq, sap_ch_freq);
-				return QDF_STATUS_E_FAILURE;
+				if (cc_mode !=
+					QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) {
+					policymgr_nofl_debug("MCC situation in non-dbs hw STA freq %d SAP freq %d not supported",
+							     *con_ch_freq,
+							     sap_ch_freq);
+					return QDF_STATUS_E_FAILURE;
+				}
+
+				policymgr_nofl_debug("MCC situation in non-dbs hw STA freq %d SAP freq %d cc_mode %d",
+						     *con_ch_freq, sap_ch_freq,
+						     cc_mode);
 			} else {
 				policymgr_nofl_debug("MCC situation in non-dbs hw STA freq %d GO freq %d SCC not supported",
 						     *con_ch_freq, sap_ch_freq);

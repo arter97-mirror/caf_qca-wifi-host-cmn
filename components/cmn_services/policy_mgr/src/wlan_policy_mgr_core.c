@@ -4528,6 +4528,8 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 	qdf_freq_t ll_lt_sap_freq;
 	bool ml_sap_vdev = false;
 	uint32_t conc_sap_freq = 0;
+	uint8_t cc_mode;
+	bool is_dbs;
 
 	pm_ctx = policy_mgr_get_context(psoc);
 	if (!pm_ctx) {
@@ -4566,6 +4568,8 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 		allow_2ghz_only = true;
 
 	ll_lt_sap_freq = policy_mgr_get_ll_sap_freq(psoc);
+	policy_mgr_get_mcc_scc_switch(psoc, &cc_mode);
+	is_dbs = policy_mgr_is_hw_dbs_capable(psoc);
 
 	/*
 	 * The preferred force SCC channel is SAP original channel,
@@ -4584,6 +4588,23 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 		if (allow_2ghz_only && !WLAN_REG_IS_24GHZ_CH_FREQ(pcl_freq))
 			continue;
 		if (ml_sap_vdev && (conc_sap_freq == pcl_freq))
+			continue;
+
+		/**
+		 * Skip indoor/DFS channels for non-DBS chip, if STA+SAP
+		 * indoor/DFS SCC INI are disabled.
+		 */
+		if (!is_dbs &&
+		    cc_mode == QDF_MCC_TO_SCC_WITH_PREFERRED_BAND &&
+		    ((wlan_reg_is_dfs_for_freq(pm_ctx->pdev, pcl_freq) &&
+		      !policy_mgr_is_sap_allowed_on_dfs_freq(pm_ctx->pdev,
+							     vdev_id,
+							     pcl_freq)) ||
+		     (wlan_reg_is_freq_indoor(pm_ctx->pdev, pcl_freq) &&
+		      !policy_mgr_is_sap_go_interface_allowed_on_indoor(
+							pm_ctx->pdev,
+							vdev_id,
+							pcl_freq))))
 			continue;
 
 		/* Skip LL LT SAP freq and for SAP skip same mac freq */
@@ -4834,8 +4855,8 @@ policy_mgr_handle_sap_fav_channel(struct wlan_objmgr_psoc *psoc,
 }
 
 /**
- * policy_mgr_check_scc_channel_non_dbs() - Check if SAP/GO freq need to be
- * updated as per existing concurrency for non-dbs chip
+ * policy_mgr_check_scc_channel_non_dbs_sap_sap() - Check if SAP/GO freq need
+ * to be updated as per existing concurrency for non-dbs chip
  * @psoc: PSOC object information
  * @intf_ch_freq: Channel frequency of existing concurrency
  * @vdev_id: Vdev id of the SAP/GO
@@ -4846,10 +4867,10 @@ policy_mgr_handle_sap_fav_channel(struct wlan_objmgr_psoc *psoc,
  *
  * Return: Void
  */
-static
-void policy_mgr_check_scc_channel_non_dbs(struct wlan_objmgr_psoc *psoc,
-					  qdf_freq_t *intf_ch_freq,
-					  uint8_t vdev_id)
+static void
+policy_mgr_check_scc_channel_non_dbs_sap_sap(struct wlan_objmgr_psoc *psoc,
+					     qdf_freq_t *intf_ch_freq,
+					     uint8_t vdev_id)
 {
 	struct policy_mgr_psoc_priv_obj *pm_ctx;
 	QDF_STATUS status;
@@ -4927,15 +4948,26 @@ void policy_mgr_check_scc_channel(struct wlan_objmgr_psoc *psoc,
 		return;
 	}
 
-	/* Always do force SCC on non-DBS platforms */
-	if (!policy_mgr_is_hw_dbs_capable(psoc)) {
-		policy_mgr_check_scc_channel_non_dbs(psoc,
-						     intf_ch_freq, vdev_id);
-		return;
-	}
-
 	sta_count = policy_mgr_mode_specific_connection_count(psoc, PM_STA_MODE,
 							      NULL);
+
+	if (!policy_mgr_is_hw_dbs_capable(psoc)) {
+		if (!sta_count) {
+			policy_mgr_check_scc_channel_non_dbs_sap_sap(
+								psoc,
+								intf_ch_freq,
+								vdev_id);
+			return;
+		}
+
+		/**
+		 * If cc_mode is not QDF_MCC_TO_SCC_WITH_PREFERRED_BAND
+		 * then do SCC else fetch new freq
+		 */
+		if (cc_mode != QDF_MCC_TO_SCC_WITH_PREFERRED_BAND)
+			return;
+	}
+
 	if (pm_ctx->hdd_cbacks.wlan_get_sap_acs_band) {
 		status = pm_ctx->hdd_cbacks.wlan_get_sap_acs_band(psoc,
 								  vdev_id,
