@@ -52,6 +52,9 @@
 #define STATS_FEAT_FLG_DETER           0x01000000
 #define STATS_FEAT_FLG_WMM             0x02000000
 
+/* MBSSID FLAGS */
+#define MAX_MBSSID_GROUPS              9
+
 /* Add new feature flag above and update STATS_FEAT_FLG_ALL */
 #define STATS_FEAT_FLG_ALL             \
 	(STATS_FEAT_FLG_RX | STATS_FEAT_FLG_TX | STATS_FEAT_FLG_AST | \
@@ -69,7 +72,8 @@
 #define STATS_BASIC_RADIO_CTRL_MASK                    \
 	(STATS_FEAT_FLG_RX | STATS_FEAT_FLG_TX |       \
 	 STATS_FEAT_FLG_LINK)
-#define STATS_BASIC_RADIO_DATA_MASK    (STATS_FEAT_FLG_RX | STATS_FEAT_FLG_TX)
+#define STATS_BASIC_RADIO_DATA_MASK    (STATS_FEAT_FLG_RX | \
+					STATS_FEAT_FLG_TX | STATS_FEAT_FLG_LINK)
 #define STATS_BASIC_VAP_CTRL_MASK                      \
 	(STATS_FEAT_FLG_RX | STATS_FEAT_FLG_TX |       \
 	 STATS_FEAT_FLG_LINK)
@@ -378,6 +382,7 @@ struct basic_pdev_data_tx {
 	struct basic_data_tx_stats tx;
 	struct pkt_info ingress;
 	struct pkt_info processed;
+	struct pkt_info tx_data;
 	struct pkt_info dropped;
 };
 
@@ -387,10 +392,15 @@ struct basic_pdev_data_rx {
 	u_int64_t err_count;
 };
 
+struct basic_pdev_data_link {
+	uint32_t rx_rssi_comb;
+};
+
 /* Basic pdev Ctrl */
 struct basic_pdev_ctrl_tx {
 	u_int32_t cs_tx_mgmt;
 	u_int32_t cs_tx_frame_count;
+	u_int32_t cs_rtsgood;
 };
 
 struct basic_pdev_ctrl_rx {
@@ -406,6 +416,10 @@ struct basic_pdev_ctrl_link {
 	int16_t cs_chan_nf;
 	int16_t cs_chan_nf_sec80;
 	uint16_t cs_peer_count;
+	uint32_t cs_cycle_count;
+	uint32_t cs_created_vap;
+	uint32_t cs_active_vap;
+	uint32_t cs_rnr_count;
 };
 
 /* Basic psoc Data */
@@ -930,6 +944,8 @@ struct advance_pdev_data_tx {
 	struct histogram_stats tx_hist;
 	struct pkt_info sniffer_rcvd;
 	u_int32_t cce_classified;
+	uint8_t total_per;
+	uint8_t total_per_denomntr;
 	uint64_t rcvd_in_fast_xmit_flow;
 	uint32_t rcvd_per_core[STATS_IF_MAX_TX_DATA_RINGS];
 };
@@ -1782,8 +1798,24 @@ struct debug_pdev_ctrl_wmi {
 	uint32_t cs_wmi_tx_mgmt_completion_err;
 };
 
+struct stats_ctrl_mbssid {
+	bool is_mbssid_enabled;
+	u_int8_t  n_groups;
+	u_int32_t current_pp[MAX_MBSSID_GROUPS];
+	u_int32_t no_act_vaps[MAX_MBSSID_GROUPS];
+	u_int32_t tx_vap[MAX_MBSSID_GROUPS];
+};
+
 struct debug_pdev_ctrl_link {
 	struct basic_pdev_ctrl_link b_link;
+	struct stats_ctrl_mbssid stats_mbssid;
+	uint32_t total_act_vaps;
+	uint64_t cs_sta_xceed_rlim;
+	uint64_t cs_sta_xceed_vlim;
+	uint64_t cs_mlme_auth_attempt;
+	uint64_t cs_mlme_auth_success;
+	uint64_t cs_authorize_attempt;
+	uint64_t cs_authorize_success;
 };
 
 /* Debug psoc data */

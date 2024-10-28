@@ -142,6 +142,7 @@ struct basic_vdev_ctrl {
 struct basic_pdev_data {
 	struct basic_pdev_data_tx *tx;
 	struct basic_pdev_data_rx *rx;
+	struct basic_pdev_data_link *link;
 };
 
 /* Basic pdev control stats holder */

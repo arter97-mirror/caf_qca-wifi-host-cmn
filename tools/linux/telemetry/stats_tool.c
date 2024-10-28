@@ -832,6 +832,9 @@ void print_basic_radio_data_tx(struct basic_pdev_data_tx *tx)
 		pkt = &tx->processed;
 		STATS_64(stdout, "Tx Ingress Processed", pkt->num);
 		STATS_64(stdout, "Tx Ingress Processed Bytes", pkt->bytes);
+		pkt = &tx->tx_data;
+		STATS_64(stdout, "Tx Data Packets", pkt->num);
+		STATS_64(stdout, "Tx Data Bytes", pkt->bytes);
 		pkt = &tx->dropped;
 		STATS_64(stdout, "Tx Ingress Dropped", pkt->num);
 		STATS_64(stdout, "Tx Ingress Dropped Bytes", pkt->bytes);
@@ -848,11 +851,17 @@ void print_basic_radio_data_rx(struct basic_pdev_data_rx *rx)
 	}
 }
 
+void print_basic_radio_data_link(struct basic_pdev_data_link *link)
+{
+	STATS_32(stdout, "Rx RSSI", link->rx_rssi_comb);
+}
+
 void print_basic_radio_ctrl_tx(struct basic_pdev_ctrl_tx *tx)
 {
 	STATS_32(stdout, "Lithium_cycle_counts: Tx Frame Count",
 		 tx->cs_tx_frame_count);
 	STATS_32(stdout, "Tx Management", tx->cs_tx_mgmt);
+	STATS_32(stdout, "Tx Ctl Frames", tx->cs_rtsgood);
 }
 
 void print_basic_radio_ctrl_rx(struct basic_pdev_ctrl_rx *rx)
@@ -871,6 +880,11 @@ void print_basic_radio_ctrl_link(struct basic_pdev_ctrl_link *link)
 	STATS_16_SIGNED(stdout, "Channel NF", link->cs_chan_nf);
 	STATS_16_SIGNED(stdout, "Channel NF Sec80", link->cs_chan_nf_sec80);
 	STATS_16(stdout, "Number of connected clients", link->cs_peer_count);
+	STATS_32(stdout, "lithium_cycle_cnt: Cycle Cnt", link->cs_cycle_count);
+	STATS_PRINT("\tCo-located RNR stats:\n");
+	STATS_32(stdout, "\tCreated vap:", link->cs_created_vap);
+	STATS_32(stdout, "\tActive vap:", link->cs_active_vap);
+	STATS_32(stdout, "\tRNR count:", link->cs_rnr_count);
 }
 
 void print_basic_ap_data_tx(struct basic_psoc_data_tx *tx)
@@ -2012,6 +2026,8 @@ void print_advance_radio_data_tx(struct advance_pdev_data_tx *tx)
 		STATS_64(stdout, "Tx Inspect Packets", tx->inspect_pkts.num);
 		STATS_64(stdout, "Tx Inspect Bytes", tx->inspect_pkts.bytes);
 		STATS_32(stdout, "Tx CCE Classified", tx->cce_classified);
+		STATS_8(stdout, "Total PER (%)",
+			tx->total_per / tx->total_per_denomntr);
 		STATS_PRINT("\tTx packets sent per interrupt\n");
 		STATS_64(stdout, "Received in fast xmit flow",
 			 tx->rcvd_in_fast_xmit_flow);
@@ -2405,6 +2421,10 @@ void print_basic_radio_data(struct stats_obj *radio)
 	if (data->rx) {
 		STATS_PRINT("Rx Stats\n");
 		print_basic_radio_data_rx(data->rx);
+	}
+	if (data->link) {
+		STATS_PRINT("Link Stats\n");
+		print_basic_radio_data_link(data->link);
 	}
 }
 
@@ -4003,9 +4023,43 @@ void print_debug_radio_ctrl_wmi(struct debug_pdev_ctrl_wmi *wmi)
 		 wmi->cs_wmi_tx_mgmt_completion_err);
 }
 
+static void print_pdev_mbssid_stats(struct stats_ctrl_mbssid *mbssid_stats)
+{
+	uint8_t grp_id = 0;
+
+	if (mbssid_stats->is_mbssid_enabled) {
+		STATS_PRINT("\tMBSSID STATS:\n");
+		for (grp_id = 0; grp_id < mbssid_stats->n_groups; grp_id++) {
+			if (mbssid_stats->no_act_vaps[grp_id] == 0)
+				continue;
+
+			STATS_8(stdout, "\tGroup ID:", grp_id);
+			STATS_32(stdout, "\tCurrent profile periodicity:",
+				 mbssid_stats->current_pp[grp_id]);
+			STATS_32(stdout, "\tNumber of Active MBSSID Vaps:",
+				 mbssid_stats->no_act_vaps[grp_id]);
+			STATS_32(stdout, "\tTX Vap ID:",
+				 mbssid_stats->tx_vap[grp_id]);
+			STATS_PRINT("\n");
+		}
+	}
+}
+
 void print_debug_radio_ctrl_link(struct debug_pdev_ctrl_link *link)
 {
 	print_basic_radio_ctrl_link(&link->b_link);
+	STATS_64(stdout, "Connections refuse Radio limit",
+		 link->cs_sta_xceed_rlim);
+	STATS_64(stdout, "Connections refuse vap limit",
+		 link->cs_sta_xceed_vlim);
+	STATS_64(stdout, "802.11 Auth Attempts", link->cs_mlme_auth_attempt);
+	STATS_64(stdout, "802.11 Auth Success", link->cs_mlme_auth_success);
+	STATS_64(stdout, "MLME Authorize Attempts", link->cs_authorize_attempt);
+	STATS_64(stdout, "MLME Authorize Success", link->cs_authorize_success);
+	STATS_32(stdout, "Total Active Vaps", link->total_act_vaps);
+
+	/* MBSSID STATS*/
+	print_pdev_mbssid_stats(&link->stats_mbssid);
 }
 
 void print_debug_radio_data(struct stats_obj *radio)

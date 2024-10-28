@@ -1070,6 +1070,10 @@ static void parse_basic_radio(struct nlattr *rattr, struct stats_obj *obj)
 				(void **)&data->rx,
 				sizeof(struct basic_pdev_data_rx));
 
+		extract_nl_data(tb[QCA_WLAN_VENDOR_ATTR_FEAT_LINK],
+				(void **)&data->link,
+				sizeof(struct basic_pdev_data_link));
+
 		obj->stats = data;
 		break;
 	case STATS_TYPE_CTRL:
@@ -3655,6 +3659,8 @@ static void free_basic_radio(struct stats_obj *radio)
 				free(data->tx);
 			if (data->rx)
 				free(data->rx);
+			if (data->link)
+				free(data->link);
 		}
 		break;
 	case STATS_TYPE_CTRL:
