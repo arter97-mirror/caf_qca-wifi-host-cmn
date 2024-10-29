@@ -175,6 +175,9 @@
 #define MIN_RSSI_2G_TO_5G_ROAM 2
 #define CM_CFG_VALID_CHANNEL_LIST_LEN 100
 
+#define WLAN_ROAM_SCAN_TYPE_PARTIAL_SCAN 0
+#define WLAN_ROAM_SCAN_TYPE_FULL_SCAN 1
+
 /**
  * enum roam_trigger_sub_reason - Roam trigger sub reasons
  * @ROAM_TRIGGER_SUB_REASON_PERIODIC_TIMER: Roam scan triggered due to

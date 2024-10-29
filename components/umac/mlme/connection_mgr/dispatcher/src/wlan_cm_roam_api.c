@@ -5042,7 +5042,8 @@ cm_roam_stats_event_handler(struct wlan_objmgr_psoc *psoc,
 		if (stats_info->trigger[i].present) {
 			bool is_full_scan =
 				stats_info->scan[i].present &&
-				stats_info->scan[i].type;
+				(stats_info->scan[i].type ==
+				 WLAN_ROAM_SCAN_TYPE_FULL_SCAN);
 
 			cm_cp_stats_cstats_roam_scan_start
 				(vdev, &stats_info->trigger[i], is_full_scan);

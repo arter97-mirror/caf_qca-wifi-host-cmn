@@ -6707,9 +6707,6 @@ void cm_roam_candidate_info_event(struct wmi_roam_candidate_info *ap,
 				    EVENT_WLAN_ROAM_CAND_INFO);
 }
 
-#define WLAN_ROAM_SCAN_TYPE_PARTIAL_SCAN 0
-#define WLAN_ROAM_SCAN_TYPE_FULL_SCAN 1
-
 #ifdef WLAN_FEATURE_11BE_MLO
 static void
 cm_populate_roam_success_mlo_param(struct wlan_objmgr_psoc *psoc,
