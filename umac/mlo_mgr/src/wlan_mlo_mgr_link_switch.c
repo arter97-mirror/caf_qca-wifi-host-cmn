@@ -388,8 +388,7 @@ mlo_mgr_clear_rejected_partner_info(struct wlan_objmgr_vdev *vdev,
 {
 	struct mlo_link_info *link_info;
 	struct mlo_partner_info *partner_info;
-	uint8_t i;
-	uint8_t rejected_link_count = 0;
+	uint8_t i, rejected_link_count = 0;
 
 	if (!vdev || !vdev->mlo_dev_ctx || !vdev->mlo_dev_ctx->sta_ctx || !rejected_ap_link_addr)
 		return;
@@ -408,7 +407,8 @@ mlo_mgr_clear_rejected_partner_info(struct wlan_objmgr_vdev *vdev,
 				  link_info->link_id,
 				  QDF_MAC_ADDR_REF(link_info->link_addr.bytes));
 
-			mlo_mgr_clear_ap_link_info(vdev, &link_info->link_addr);
+			mlo_mgr_clear_ap_link_info(vdev,
+						   &link_info->link_addr);
 			qdf_zero_macaddr(&link_info->link_addr);
 			link_info->link_id = WLAN_INVALID_LINK_ID;
 			link_info->link_status_flags = 0;
@@ -447,8 +447,9 @@ mlo_mgr_get_rejected_links_info(struct wlan_objmgr_vdev *vdev,
 		return;
 
 	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	for (i = 0, link_cnt = 0; i < ml_partner_info->num_partner_links;
-	     i++, link_cnt++) {
+	for (i = 0, link_cnt = 0; i < ml_partner_info->num_partner_links &&
+	     link_cnt < ml_partner_info->num_partner_links;
+	     i++) {
 		link_info = mlo_mgr_get_ap_link_by_link_id(mlo_dev_ctx,
 							   ml_partner_info->partner_link_info[i].link_id);
 		if (!link_info || !link_info->link_status_code)
@@ -456,6 +457,7 @@ mlo_mgr_get_rejected_links_info(struct wlan_objmgr_vdev *vdev,
 
 		rej_links->num_rej_link_cnt++;
 		rej_links->rejected_link_ids[link_cnt] = link_info->link_id;
+		link_cnt++;
 	}
 }
 
