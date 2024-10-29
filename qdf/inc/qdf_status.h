@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -138,6 +138,8 @@ typedef enum {
 	QDF_STATUS_QMI_TXN_INIT_FAILED,
 	QDF_STATUS_QMI_SEND_REQ_FAILED,
 	QDF_STATUS_QMI_TXN_WAIT_FAILED,
+	QDF_STATUS_MCAST_CIPHER_ERROR,
+	QDF_STATUS_UCAST_CIPHER_ERROR,
 	QDF_STATUS_MAX
 } QDF_STATUS;
 
