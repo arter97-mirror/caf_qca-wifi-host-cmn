@@ -747,9 +747,13 @@ void osif_indicate_reassoc_results(struct wlan_objmgr_vdev *vdev,
 				    rsp->bssid.bytes, rsp->ssid.ssid,
 				    rsp->ssid.length);
 	if (!bss) {
-		osif_warn("BSS "QDF_MAC_ADDR_FMT" is null, issue disconnect",
-			  QDF_MAC_ADDR_REF(rsp->bssid.bytes));
-		goto issue_disconnect;
+		bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy, chan,
+					    rsp->bssid.bytes, NULL, 0);
+		if (!bss) {
+			osif_warn("BSS " QDF_MAC_ADDR_FMT " is null, issue disconnect",
+				  QDF_MAC_ADDR_REF(rsp->bssid.bytes));
+			goto issue_disconnect;
+		}
 	}
 
 	if (rsp->is_assoc)
