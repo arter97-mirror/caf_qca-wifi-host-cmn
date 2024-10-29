@@ -8721,8 +8721,8 @@ policy_mgr_single_wait_for_set_link(struct wlan_objmgr_psoc *psoc)
 	}
 
 	if (!policy_mgr_get_link_in_progress(pm_ctx)) {
-		policy_mgr_err("link is not in progress");
-		return QDF_STATUS_E_FAILURE;
+		policy_mgr_debug("link is not in progress");
+		return QDF_STATUS_CMD_NOT_QUEUED;
 	}
 
 	status =
