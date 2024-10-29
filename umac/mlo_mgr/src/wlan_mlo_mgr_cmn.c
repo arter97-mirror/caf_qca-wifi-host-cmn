@@ -812,6 +812,20 @@ void mlo_mlme_handle_sta_csa_param(struct wlan_objmgr_vdev *vdev,
 	mlo_ctx->mlme_ops->mlo_mlme_ext_handle_sta_csa_param(vdev, csa_param);
 }
 
+#ifdef WLAN_POLICY_MGR_ENABLE
+static bool mlo_get_vdev_is_force_inactive(struct wlan_objmgr_psoc *psoc,
+					   uint8_t vdev_id)
+{
+	return policy_mgr_vdev_is_force_inactive(psoc, vdev_id);
+}
+#else
+static inline bool mlo_get_vdev_is_force_inactive(struct wlan_objmgr_psoc *psoc,
+						  uint8_t vdev_id)
+{
+	return false;
+}
+#endif
+
 QDF_STATUS
 mlo_get_mlstats_vdev_params(struct wlan_objmgr_psoc *psoc,
 			    struct mlo_stats_vdev_params *info,
@@ -821,6 +835,7 @@ mlo_get_mlstats_vdev_params(struct wlan_objmgr_psoc *psoc,
 	struct wlan_objmgr_vdev *vdev;
 	int i;
 	uint16_t ml_vdev_cnt = 0;
+	uint16_t ml_active_vdev_cnt = 0;
 
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
 						    WLAN_MLO_MGR_ID);
@@ -832,9 +847,17 @@ mlo_get_mlstats_vdev_params(struct wlan_objmgr_psoc *psoc,
 	mlo_get_ml_vdev_list(vdev, &ml_vdev_cnt, ml_vdev_list);
 	for (i = 0; i < ml_vdev_cnt; i++) {
 		info->ml_vdev_id[i] = wlan_vdev_get_id(ml_vdev_list[i]);
+		if (mlo_get_vdev_is_force_inactive(psoc, info->ml_vdev_id[i])) {
+			mlo_nofl_debug_rl("Ignore stats on inactive link vdev %d",
+					  info->ml_vdev_id[i]);
+			mlo_release_vdev_ref(ml_vdev_list[i]);
+			continue;
+		}
+
+		ml_active_vdev_cnt++;
 		mlo_release_vdev_ref(ml_vdev_list[i]);
 	}
-	info->ml_vdev_count = ml_vdev_cnt;
+	info->ml_vdev_count = ml_active_vdev_cnt;
 	mlo_release_vdev_ref(vdev);
 
 	return QDF_STATUS_SUCCESS;
