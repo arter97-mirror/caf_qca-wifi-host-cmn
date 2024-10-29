@@ -881,6 +881,8 @@ enum wlan_status_code lim_check_rsn_ie(struct pe_session *session,
 	struct wlan_objmgr_vdev *vdev;
 	tSirMacRsnInfo *rsn_ie;
 	struct wlan_crypto_params peer_crypto_params;
+	enum wlan_status_code status_code = STATUS_SUCCESS;
+	QDF_STATUS status;
 
 	rsn_ie = qdf_mem_malloc(sizeof(*rsn_ie));
 	if (!rsn_ie) {
@@ -894,9 +896,12 @@ enum wlan_status_code lim_check_rsn_ie(struct pe_session *session,
 	rsn_ie->length = assoc_req->rsn.length + 2;
 	qdf_mem_copy(&rsn_ie->info[2], assoc_req->rsn.info,
 		     assoc_req->rsn.length);
-	if (wlan_crypto_check_rsn_match(mac_ctx->psoc, session->smeSessionId,
-					&rsn_ie->info[0], rsn_ie->length,
-					&peer_crypto_params)) {
+	status = wlan_crypto_check_rsn_match(mac_ctx->psoc,
+					     session->smeSessionId,
+					     &rsn_ie->info[0],
+					     rsn_ie->length,
+					     &peer_crypto_params);
+	if (QDF_IS_STATUS_SUCCESS(status)) {
 		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(mac_ctx->psoc,
 							session->smeSessionId,
 							WLAN_LEGACY_MAC_ID);
@@ -914,13 +919,19 @@ enum wlan_status_code lim_check_rsn_ie(struct pe_session *session,
 		qdf_mem_free(rsn_ie);
 		return lim_check_crypto_param(assoc_req, &peer_crypto_params);
 
+	} else if (status == QDF_STATUS_MCAST_CIPHER_ERROR) {
+		pe_err("Invalid rsn group cipher!");
+		status_code = STATUS_GROUP_CIPHER_NOT_VALID;
+	} else if (status == QDF_STATUS_UCAST_CIPHER_ERROR) {
+		pe_err("Invalid rsn pairwise cipher!");
+		status_code = STATUS_PAIRWISE_CIPHER_NOT_VALID;
 	} else {
-		qdf_mem_free(rsn_ie);
-		return STATUS_INVALID_IE;
+		pe_err("Invalid rsn ie!");
+		status_code = STATUS_INVALID_IE;
 	}
 
 	qdf_mem_free(rsn_ie);
-	return STATUS_SUCCESS;
+	return status_code;
 }
 
 static enum wlan_status_code lim_check_wpa_ie(struct pe_session *session,
@@ -932,6 +943,8 @@ static enum wlan_status_code lim_check_wpa_ie(struct pe_session *session,
 	uint32_t dot11f_status, written = 0, nbuffer = WLAN_MAX_IE_LEN;
 	tSirMacRsnInfo *wpa_ie;
 	struct wlan_crypto_params peer_crypto_params;
+	enum wlan_status_code status_code = STATUS_SUCCESS;
+	QDF_STATUS status;
 
 	buffer = qdf_mem_malloc(WLAN_MAX_IE_LEN);
 	if (!buffer) {
@@ -958,15 +971,27 @@ static enum wlan_status_code lim_check_wpa_ie(struct pe_session *session,
 	qdf_mem_copy(&wpa_ie->info[0], buffer, wpa_ie->length);
 	qdf_mem_free(buffer);
 
-	if (wlan_crypto_check_wpa_match(mac_ctx->psoc, session->smeSessionId,
-					&wpa_ie->info[0], wpa_ie->length,
-					&peer_crypto_params)) {
+	status = wlan_crypto_check_wpa_match(mac_ctx->psoc,
+					     session->smeSessionId,
+					     &wpa_ie->info[0],
+					     wpa_ie->length,
+					     &peer_crypto_params);
+	if (QDF_IS_STATUS_SUCCESS(status)) {
 		qdf_mem_free(wpa_ie);
 		return lim_check_crypto_param(assoc_req, &peer_crypto_params);
+	} else if (status == QDF_STATUS_MCAST_CIPHER_ERROR) {
+		pe_err("Invalid wpa group cipher!");
+		status_code = STATUS_GROUP_CIPHER_NOT_VALID;
+	} else if (status == QDF_STATUS_UCAST_CIPHER_ERROR) {
+		pe_err("Invalid wpa pairwise cipher!");
+		status_code = STATUS_PAIRWISE_CIPHER_NOT_VALID;
+	} else {
+		pe_err("Invalid wpa ie!");
+		status_code = STATUS_INVALID_IE;
 	}
 
 	qdf_mem_free(wpa_ie);
-	return STATUS_INVALID_IE;
+	return status_code;
 }
 
 /**
@@ -1060,41 +1085,45 @@ static bool lim_check_wpa_rsn_ie(struct pe_session *session,
 					   assoc_req->rsn.length,
 					   &dot11f_ie_rsn, false);
 		if (!DOT11F_SUCCEEDED(ret)) {
-			pe_err("Invalid RSN IE");
-			lim_send_assoc_rsp_mgmt_frame(
-				mac_ctx, STATUS_INVALID_IE, 1,
-				sa, sub_type, 0, session, false);
-			return false;
-		}
+			pe_err("Invalid RSN IE 0x%x", ret);
 
-		/* Check if the RSN version is supported */
-		if (SIR_MAC_OUI_VERSION_1 == dot11f_ie_rsn.version) {
-			/* check the groupwise and pairwise cipher suites */
-			status = lim_check_rsn_ie(session, mac_ctx, assoc_req,
-						  pmf_connection);
-			if (status != STATUS_SUCCESS) {
-				pe_warn("Re/Assoc rejected from: "
-					QDF_MAC_ADDR_FMT,
+			if (ret & DOT11F_BAD_FIXED_VALUE) {
+				pe_err("Re/Assoc rejected from: " QDF_MAC_ADDR_FMT,
 					QDF_MAC_ADDR_REF(sa));
-
-				lim_send_assoc_rsp_mgmt_frame(
-					mac_ctx, status, 1, sa, sub_type,
-					0, session, false);
-				return false;
+				/*
+				 * rcvd Assoc req frame with RSN IE but
+				 * IE version is wrong
+				 */
+				lim_send_assoc_rsp_mgmt_frame(mac_ctx,
+							      STATUS_UNSUPPORTED_RSN_IE_VERSION,
+							      1, sa, sub_type,
+							      0, session,
+							      false);
+			} else {
+				lim_send_assoc_rsp_mgmt_frame(mac_ctx,
+							      STATUS_INVALID_IE,
+							      1, sa, sub_type,
+							      0, session,
+							      false);
 			}
-		} else {
-			pe_warn("Re/Assoc rejected from: " QDF_MAC_ADDR_FMT,
-				QDF_MAC_ADDR_REF(sa));
-			/*
-			 * rcvd Assoc req frame with RSN IE but
-			 * IE version is wrong
-			 */
-			lim_send_assoc_rsp_mgmt_frame(
-				mac_ctx,
-				STATUS_UNSUPPORTED_RSN_IE_VERSION,
-				1, sa, sub_type, 0, session, false);
 			return false;
 		}
+
+		/* check the groupwise and pairwise cipher suites */
+		status = lim_check_rsn_ie(session, mac_ctx, assoc_req,
+					  pmf_connection);
+		if (status != STATUS_SUCCESS) {
+			pe_warn("Re/Assoc rejected from: "
+				QDF_MAC_ADDR_FMT,
+				QDF_MAC_ADDR_REF(sa));
+
+			lim_send_assoc_rsp_mgmt_frame(mac_ctx,
+						      status, 1,
+						      sa, sub_type,
+						      0, session, false);
+			return false;
+		}
+
 		*akm_type = lim_translate_rsn_oui_to_akm_type(
 						    dot11f_ie_rsn.akm_suite[0]);
 
