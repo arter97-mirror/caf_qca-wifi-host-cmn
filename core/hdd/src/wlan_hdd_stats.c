@@ -11245,7 +11245,7 @@ wlan_hdd_cfg80211_roam_events_callback(struct roam_stats_event *roam_stats,
 
 #ifdef WLAN_FEATURE_TX_LATENCY_STATS
 #define TX_LATENCY_BUCKET_DISTRIBUTION_LEN \
-	(sizeof(uint32_t) * CDP_TX_LATENCY_TYPE_MAX)
+	(sizeof(uint32_t) * CDP_TX_LATENCY_DISTR_LV_MAX)
 
 #define TX_LATENCY_ATTR(_name) QCA_WLAN_VENDOR_ATTR_TX_LATENCY_ ## _name
 
@@ -11491,6 +11491,8 @@ static uint32_t hdd_tx_latency_get_skb_len(uint32_t num)
 	/* QCA_WLAN_VENDOR_ATTR_TX_LATENCY_BUCKET_TYPE */
 	per_bucket_len += nla_total_size(sizeof(uint8_t));
 	/* QCA_WLAN_VENDOR_ATTR_TX_LATENCY_BUCKET_GRANULARITY */
+	per_bucket_len += nla_total_size(sizeof(uint32_t));
+	/* QCA_WLAN_VENDOR_ATTR_TX_LATENCY_BUCKET_AVERAGE */
 	per_bucket_len += nla_total_size(sizeof(uint32_t));
 	/* QCA_WLAN_VENDOR_ATTR_TX_LATENCY_BUCKET_DISTRIBUTION */
 	per_bucket_len += nla_total_size(TX_LATENCY_BUCKET_DISTRIBUTION_LEN);
