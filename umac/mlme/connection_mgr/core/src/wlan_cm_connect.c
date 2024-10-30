@@ -1997,8 +1997,12 @@ cm_modify_partner_info_based_on_dbs_or_sbs_mode(struct wlan_objmgr_vdev *vdev,
 
 	for (i = 0; i < partner_info->num_partner_links; i++) {
 		partner_freq = partner_info->partner_link_info[i].chan_freq;
-		if (!policy_mgr_2_freq_always_on_same_mac(psoc, assoc_freq,
-							  partner_freq)) {
+		if (!policy_mgr_is_hw_dbs_capable(psoc) &&
+		    !wlan_reg_is_24ghz_ch_freq(partner_freq)) {
+			/* prefer non 2.4 Ghz link for non DBS */
+			best_partner_idx_5g = i;
+		} else if (!policy_mgr_2_freq_always_on_same_mac(psoc,
+						assoc_freq, partner_freq)) {
 			if (wlan_reg_is_24ghz_ch_freq(partner_freq))
 				best_partner_idx_2g = i;
 			else
