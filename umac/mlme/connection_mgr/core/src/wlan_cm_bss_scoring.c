@@ -3673,6 +3673,10 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlme_err("failed to remove node for BSS "QDF_MAC_ADDR_FMT" from scan list",
 				 QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes));
+			if (force_connect_candidate->entry) {
+				util_scan_free_cache_entry(force_connect_candidate->entry);
+				qdf_mem_free(force_connect_candidate);
+			}
 			return;
 		}
 
@@ -3773,6 +3777,7 @@ void cm_update_dlm_mlo_score(struct wlan_objmgr_pdev *pdev,
 			}
 			*dlm_entry_updated = true;
 			util_scan_free_cache_entry(scan_entry->entry);
+			qdf_mem_free(scan_entry);
 		}
 		cur_node = next_node;
 		next_node = NULL;
