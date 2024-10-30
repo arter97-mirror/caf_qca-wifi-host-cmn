@@ -65,6 +65,10 @@ QDF_STATUS wlan_twt_cfg_init(struct wlan_objmgr_psoc *psoc)
 	twt_debug("req: %d resp: %d bcast_resp:%d", twt_cfg->twt_requestor,
 		  twt_cfg->twt_responder, twt_cfg->bcast_responder_enabled);
 
+	twt_nofl_debug("r_twt_req: %d r_twt_resp: %d",
+		       twt_cfg->rtwt_requestor_enabled,
+		       twt_cfg->rtwt_responder_enabled);
+
 	return QDF_STATUS_SUCCESS;
 }
 

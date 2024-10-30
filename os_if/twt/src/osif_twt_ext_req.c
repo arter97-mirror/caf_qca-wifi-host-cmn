@@ -73,6 +73,10 @@ qca_wlan_vendor_twt_add_dialog_policy[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_MAX + 1] = 
 	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_WAKE_TIME_TSF] = {.type = NLA_U64 },
 	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_ANNOUNCE_TIMEOUT] = {.type = NLA_U32 },
 	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RESPONDER_PM_MODE] = {.type = NLA_U8 },
+	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_DOWNLINK_TID_BITMAP] = {
+							.type = NLA_U32 },
+	[QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_UPLINK_TID_BITMAP] = {
+							.type = NLA_U32 },
 };
 
 static const struct nla_policy
@@ -175,6 +179,51 @@ osif_twt_setup_req_type_to_cmd(u8 req_type, enum HOST_TWT_COMMAND *twt_cmd)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_SUPPORT_BCAST_TWT
+#define BCAST_RECOMM_FOR_RTWT	(4)
+/**
+ * osif_twt_setup_get_rtwt_tids() - Get RTWT DL And UL TIDs
+ * @tb: nl attributes
+ * @params: wmi twt add dialog parameters
+ *
+ * Return: 0 on success and error on failure
+ */
+static int
+osif_twt_setup_get_rtwt_tids(struct nlattr **tb,
+			     struct twt_add_dialog_param *params)
+{
+	int cmd_id;
+
+	if (params->b_twt_recommendation != BCAST_RECOMM_FOR_RTWT)
+		return 0;
+
+	cmd_id = QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_DOWNLINK_TID_BITMAP;
+	if (!tb[cmd_id]) {
+		osif_err_rl("Missing downlink TID for RTWT scheduling");
+		return -EINVAL;
+	}
+	params->r_twt_dl_tid_bitmap = nla_get_u32(tb[cmd_id]);
+
+	cmd_id = QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_UPLINK_TID_BITMAP;
+	if (!tb[cmd_id]) {
+		osif_err_rl("Missing downlink TID for RTWT scheduling");
+		return -EINVAL;
+	}
+	params->r_twt_ul_tid_bitmap = nla_get_u32(tb[cmd_id]);
+
+	osif_debug("r_twt_dl_tid - 0x%x, r_twt_ul_tid - 0x%x",
+		   params->r_twt_dl_tid_bitmap, params->r_twt_ul_tid_bitmap);
+	return 0;
+}
+#else
+static int
+osif_twt_setup_get_rtwt_tids(struct nlattr **tb,
+			     struct twt_add_dialog_param *params)
+{
+	return 0;
+}
+#endif
+
 /**
  * osif_twt_parse_add_dialog_attrs() - Get TWT add dialog parameter
  * values from QCA_WLAN_VENDOR_ATTR_CONFIG_TWT_PARAMS
@@ -231,8 +280,11 @@ osif_twt_parse_add_dialog_attrs(struct nlattr **tb,
 	if (tb[cmd_id]) {
 		params->b_twt_recommendation = nla_get_u8(tb[cmd_id]);
 		osif_debug("TWT_SETUP_BCAST_RECOMM %d",
-			  params->b_twt_recommendation);
-	}
+			   params->b_twt_recommendation);
+		}
+
+	if (osif_twt_setup_get_rtwt_tids(tb, params))
+		return -EINVAL;
 
 	cmd_id = QCA_WLAN_VENDOR_ATTR_TWT_SETUP_BCAST_PERSISTENCE;
 	if (tb[cmd_id]) {
