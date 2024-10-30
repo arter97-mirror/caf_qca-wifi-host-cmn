@@ -3818,7 +3818,7 @@ wlansap_get_safe_channel_from_pcl_and_acs_range(struct sap_context *sap_ctx,
 	return wlansap_get_safe_channel(sap_ctx, ch_width, REG_BAND_6G);
 }
 
-static uint32_t wlansap_get_2g_first_safe_chan_freq(struct sap_context *sap_ctx)
+uint32_t wlansap_get_2g_first_safe_chan_freq(struct sap_context *sap_ctx)
 {
 	uint32_t i;
 	uint32_t freq;

@@ -362,6 +362,19 @@ static qdf_freq_t sap_random_channel_sel(struct sap_context *sap_ctx)
 				utils_dfs_get_vdev_random_channel_for_freq(
 					pdev, sap_ctx->vdev, flag, ch_params,
 					&hw_mode, &chan_freq, &acs_info))) {
+		/* Allow SAP in 2.4 GHz band if there are no 5 GHz safe channels
+		 * are available to choose.
+		 */
+		chan_freq = wlansap_get_2g_first_safe_chan_freq(sap_ctx);
+
+		if (chan_freq != INVALID_CHANNEL_ID) {
+			wlan_reg_set_channel_params_for_pwrmode(
+						pdev, chan_freq, 0,
+						ch_params,
+						REG_CURRENT_PWR_MODE);
+			goto update_params;
+		}
+
 		/* No available channel found */
 		sap_err("No available channel found!!!");
 		sap_signal_hdd_event(sap_ctx, NULL,
@@ -370,6 +383,7 @@ static qdf_freq_t sap_random_channel_sel(struct sap_context *sap_ctx)
 		return 0;
 	}
 
+update_params:
 	mac_ctx->sap.SapDfsInfo.new_chanWidth = ch_params->ch_width;
 	sap_ctx->ch_params.ch_width = ch_params->ch_width;
 	sap_ctx->ch_params.sec_ch_offset = ch_params->sec_ch_offset;
