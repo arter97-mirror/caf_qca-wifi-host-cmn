@@ -5234,6 +5234,14 @@ struct dp_peer_extd_tx_stats {
 	uint64_t tx_ppdu_duration;
 };
 
+struct dp_peer_ezmesh_tx_stats {
+	uint32_t tx_rate;
+	uint32_t last_tx_rate;
+	uint32_t last_ack_rssi;
+	uint32_t avg_ack_rssi;
+	uint32_t prev_ack_rssi;
+};
+
 /**
  * struct dp_peer_per_pkt_rx_stats - Peer Rx stats updated in per pkt Rx path
  * @rcvd_reo: Packets received on the reo ring
@@ -5423,6 +5431,12 @@ struct dp_peer_extd_rx_stats {
 	struct cdp_pkt_info rx_total;
 };
 
+struct dp_peer_ezmesh_rx_stats {
+	uint32_t avg_snr;
+	uint8_t snr;
+	uint8_t last_snr;
+};
+
 /**
  * struct dp_peer_per_pkt_stats - Per pkt stats for peer
  * @tx: Per pkt Tx stats
@@ -5443,11 +5457,17 @@ struct dp_peer_extd_stats {
 	struct dp_peer_extd_rx_stats rx;
 };
 
+struct dp_peer_ezmesh_stats {
+	struct dp_peer_ezmesh_tx_stats tx;
+	struct dp_peer_ezmesh_rx_stats rx;
+};
+
 /**
  * struct dp_peer_stats - Peer stats
  * @per_pkt_stats: Per packet path stats
  * @extd_stats: Extended path stats
  * @tx_latency: transmit latency stats
+ * @ezmesh_stats: stats for ezmesh
  */
 struct dp_peer_stats {
 	struct dp_peer_per_pkt_stats per_pkt_stats;
@@ -5456,6 +5476,9 @@ struct dp_peer_stats {
 #endif
 #ifdef WLAN_FEATURE_TX_LATENCY_STATS
 	struct dp_tx_latency tx_latency;
+#endif
+#ifdef WLAN_FEATURE_SON
+	struct dp_peer_ezmesh_stats ezmesh_stats;
 #endif
 };
 

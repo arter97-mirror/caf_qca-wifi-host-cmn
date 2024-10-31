@@ -10488,6 +10488,122 @@ dp_txrx_get_per_link_peer_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
 	return status;
 }
 
+#ifdef WLAN_FEATURE_SON
+#define INVALID_FREE_BUFF 0xffffffff
+
+/**
+ * dp_ezmesh_peer_stats_notify() - notify when peer_stats change
+ * @peer: DP peer
+ *
+ * Return: status success/failure
+ */
+static QDF_STATUS
+dp_ezmesh_peer_stats_notify(struct dp_peer *peer)
+{
+	struct cdp_interface_peer_stats peer_stats_intf = {0};
+	struct dp_peer_ezmesh_stats *ezmesh_stats = NULL;
+	struct dp_peer *tgt_peer = NULL;
+	struct dp_txrx_peer *txrx_peer = NULL;
+	struct dp_pdev *pdev = NULL;
+	uint8_t link_id;
+
+	tgt_peer = dp_get_tgt_peer_from_peer(peer);
+	if (qdf_unlikely(!tgt_peer))
+		return QDF_STATUS_E_FAULT;
+
+	txrx_peer = tgt_peer->txrx_peer;
+	if (!qdf_unlikely(txrx_peer))
+		return QDF_STATUS_E_FAULT;
+
+	pdev = peer->vdev->pdev;
+	link_id = dp_get_peer_link_id(peer);
+	ezmesh_stats = &txrx_peer->stats[link_id].ezmesh_stats;
+	if (ezmesh_stats->tx.last_ack_rssi !=
+			ezmesh_stats->tx.prev_ack_rssi)
+		peer_stats_intf.rssi_changed = true;
+
+	if ((ezmesh_stats->tx.last_ack_rssi &&
+	     peer_stats_intf.rssi_changed) ||
+	    (ezmesh_stats->tx.tx_rate &&
+	     ezmesh_stats->tx.tx_rate != ezmesh_stats->tx.last_tx_rate)) {
+		qdf_mem_copy(peer_stats_intf.peer_mac, peer->mac_addr.raw,
+			     QDF_MAC_ADDR_SIZE);
+		peer_stats_intf.vdev_id = peer->vdev->vdev_id;
+		peer_stats_intf.last_peer_tx_rate =
+					ezmesh_stats->tx.last_tx_rate;
+		peer_stats_intf.peer_tx_rate = ezmesh_stats->tx.tx_rate;
+		peer_stats_intf.peer_rssi = ezmesh_stats->rx.snr;
+		peer_stats_intf.ack_rssi = ezmesh_stats->tx.last_ack_rssi;
+		peer_stats_intf.avg_ack_rssi =
+				CDP_SNR_OUT(ezmesh_stats->tx.avg_ack_rssi);
+		peer_stats_intf.per = tgt_peer->stats.tx.last_per;
+		peer_stats_intf.free_buff = INVALID_FREE_BUFF;
+		dp_wdi_event_handler(WDI_EVENT_PEER_STATS, pdev->soc,
+				     (void *)&peer_stats_intf, 0,
+				     WDI_NO_VAL, pdev->pdev_id);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_ezmesh_update_peer_stats - will update ezmesh_stats from cdp_peer_stats
+ * @soc: soc handle
+ * @vdev_id: id of vdev handle
+ * @peer_stats: stats for updating ezmesh_stats in txrx_peer
+ * return : status success/failure
+ */
+static QDF_STATUS
+dp_ezmesh_update_peer_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
+			    struct cdp_peer_stats *peer_stats)
+{
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	struct dp_txrx_peer *txrx_peer;
+	uint8_t link_id;
+	struct dp_peer_ezmesh_stats *ezmesh_stats;
+
+	struct dp_peer *peer =
+		dp_peer_find_hash_find((struct dp_soc *)soc,
+				       peer_stats->mac_addr.bytes,
+				       0, vdev_id,
+				       DP_MOD_ID_CDP);
+	if (!peer)
+		return status;
+
+	txrx_peer = dp_get_txrx_peer(peer);
+	if (qdf_unlikely(!txrx_peer)) {
+		dp_err_rl("txrx_peer NULL for peer MAC: " QDF_MAC_ADDR_FMT,
+			  QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+		goto release_peer_ref;
+	}
+
+	link_id = dp_get_peer_link_id(peer);
+	ezmesh_stats = &txrx_peer->stats[link_id].ezmesh_stats;
+
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.tx_rate,
+				 peer_stats->tx.last_tx_rate,
+				 link_id);
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, rx.snr,
+				 peer_stats->rx.last_snr, link_id);
+
+	status = dp_ezmesh_peer_stats_notify(peer);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err_rl("peer stats notify fail, status=%d", status);
+		goto release_peer_ref;
+	}
+
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, rx.last_snr,
+				 peer_stats->rx.last_snr, link_id);
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.prev_ack_rssi,
+				 ezmesh_stats->tx.last_ack_rssi, link_id);
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.last_tx_rate,
+				 peer_stats->tx.last_tx_rate, link_id);
+release_peer_ref:
+	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+	return status;
+}
+#endif
+
 /**
  * dp_txrx_get_peer_stats_param() - will return specified cdp_peer_stats
  * @soc: soc handle
@@ -13635,6 +13751,9 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 	.txrx_stats_publish = dp_txrx_stats_publish,
 	.txrx_get_vdev_stats  = dp_txrx_get_vdev_stats,
 	.txrx_get_peer_stats = dp_txrx_get_peer_stats,
+#ifdef WLAN_FEATURE_SON
+	.txrx_update_son_peer_stats = dp_ezmesh_update_peer_stats,
+#endif
 	.txrx_get_peer_stats_based_on_peer_type =
 			dp_txrx_get_peer_stats_based_on_peer_type,
 	.txrx_get_soc_stats = dp_txrx_get_soc_stats,

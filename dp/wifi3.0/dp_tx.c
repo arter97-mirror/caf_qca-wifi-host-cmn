@@ -5828,6 +5828,38 @@ dp_tx_update_peer_extd_stats(struct hal_tx_completion_status *ts,
 }
 #endif
 
+#ifdef WLAN_FEATURE_SON
+/**
+ * dp_tx_update_peer_ezmesh_stats()- Update Tx ezmesh_stats for peer
+ *
+ * @ts: Tx compltion status
+ * @txrx_peer: datapath txrx_peer handle
+ * @link_id: Link id
+ *
+ * ezmesh requires avg_ack_rssi, last_ack_rssi, etc.
+ * They can be obtained from Tx compltion status.
+ * Return: void
+ */
+static inline void
+dp_tx_update_peer_ezmesh_stats(struct hal_tx_completion_status *ts,
+			       struct dp_txrx_peer *txrx_peer, uint8_t link_id)
+{
+	struct dp_peer_ezmesh_stats *ezmesh_stats;
+
+	ezmesh_stats = &txrx_peer->stats[link_id].ezmesh_stats;
+
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.last_ack_rssi,
+				 ts->ack_frame_rssi, link_id);
+	CDP_SNR_UPDATE_AVG(ezmesh_stats->tx.avg_ack_rssi, ts->ack_frame_rssi);
+}
+#else
+static inline void
+dp_tx_update_peer_ezmesh_stats(struct hal_tx_completion_status *ts,
+			       struct dp_txrx_peer *txrx_peer, uint8_t link_id)
+{
+}
+#endif
+
 #if defined(WLAN_FEATURE_11BE_MLO) && \
 	(defined(QCA_ENHANCED_STATS_SUPPORT) || \
 		defined(DP_MLO_LINK_STATS_SUPPORT))
@@ -6031,6 +6063,8 @@ dp_tx_update_peer_stats(struct dp_tx_desc_s *tx_desc,
 							qdf_system_ticks();
 
 		dp_tx_update_peer_extd_stats(ts, txrx_peer, link_id);
+
+		dp_tx_update_peer_ezmesh_stats(ts, txrx_peer, link_id);
 
 		return;
 	}

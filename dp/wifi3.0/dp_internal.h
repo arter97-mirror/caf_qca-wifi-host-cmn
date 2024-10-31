@@ -1468,6 +1468,13 @@ void DP_PRINT_STATS(const char *fmt, ...);
 }
 #endif
 
+#ifdef WLAN_FEATURE_SON
+#define DP_PEER_EZMESH_STATS_UPD(_handle, _field, _delta, _link) \
+{ \
+	DP_PEER_LINK_STATS_UPD(_handle, ezmesh_stats._field, _delta, _link); \
+}
+#endif
+
 #if defined(QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT) && \
 	defined(QCA_ENHANCED_STATS_SUPPORT)
 #define DP_PEER_TO_STACK_INCC_PKT(_handle, _count, _bytes, _cond) \
