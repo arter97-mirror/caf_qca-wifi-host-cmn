@@ -542,6 +542,27 @@ cdp_host_get_peer_stats(ol_txrx_soc_handle soc, uint8_t vdev_id,
 							     peer_stats);
 }
 
+/**
+ * cdp_son_update_peer_stats() - Call to update peer ezmesh stats
+ *
+ * @soc: soc handle
+ * @vdev_id: vdev_id of vdev object
+ * @peer_stats: stats from cdp to update peer stats
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_son_update_peer_stats(ol_txrx_soc_handle soc, uint8_t vdev_id,
+			  struct cdp_peer_stats *peer_stats)
+{
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_update_son_peer_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_update_son_peer_stats(soc,
+								    vdev_id,
+								    peer_stats);
+}
 
 /**
  * cdp_host_get_peer_stats_based_on_peer_type() - Fetch peer stats based on the
