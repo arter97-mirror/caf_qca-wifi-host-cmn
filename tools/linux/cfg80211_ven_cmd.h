@@ -2360,7 +2360,7 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"he_ul_ldpc",          IEEE80211_PARAM_HE_UL_LDPC, SET_PARAM, 1},
 	{"get_he_ul_ldpc",      IEEE80211_PARAM_HE_UL_LDPC, GET_PARAM, 0},
 	{"he_ul_stbc",          IEEE80211_PARAM_HE_UL_STBC, SET_PARAM, 1},
-	{"get_he_ul_stbc",      IEEE80211_PARAM_HE_UL_STBC, SET_PARAM, 1},
+	{"get_he_ul_stbc",      IEEE80211_PARAM_HE_UL_STBC, GET_PARAM, 0},
 	{"he_ul_mcs",           IEEE80211_PARAM_HE_UL_FIXED_RATE, SET_PARAM, 1},
 	{"get_he_ul_mcs",       IEEE80211_PARAM_HE_UL_FIXED_RATE, GET_PARAM, 0},
 #if WLAN_SER_DEBUG
@@ -2454,7 +2454,7 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"he_su_mu_ppdu_4x_ltf_800ns_gi",
 		IEEE80211_PARAM_HE_SU_MU_PPDU_4X_LTF_800NS_GI, SET_PARAM, 1},
 	{"get_he_su_mu_ppdu_4x_ltf_800ns_gi",
-		IEEE80211_PARAM_HE_SU_MU_PPDU_4X_LTF_800NS_GI, SET_PARAM, 1},
+		IEEE80211_PARAM_HE_SU_MU_PPDU_4X_LTF_800NS_GI, GET_PARAM, 0},
 	{"he_max_frag_msdu",        IEEE80211_PARAM_HE_MAX_FRAG_MSDU, SET_PARAM, 1},
 	{"get_he_max_frag_msdu",    IEEE80211_PARAM_HE_MAX_FRAG_MSDU, GET_PARAM, 0},
 	{"he_min_frag_size",        IEEE80211_PARAM_HE_MIN_FRAG_SIZE, SET_PARAM, 1},
