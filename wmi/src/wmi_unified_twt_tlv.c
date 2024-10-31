@@ -159,6 +159,7 @@ twt_add_dialog_set_bcast_twt_params(struct twt_add_dialog_param *params,
 	TWT_FLAGS_SET_BTWT_ID0(cmd->flags, params->flag_b_twt_id0);
 	cmd->b_twt_persistence = params->b_twt_persistence;
 	cmd->b_twt_recommendation = params->b_twt_recommendation;
+	wmi_debug("BTWT_Recommendation - %u", cmd->b_twt_recommendation);
 }
 #else
 static void
