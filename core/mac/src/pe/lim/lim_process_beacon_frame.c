@@ -667,7 +667,10 @@ lim_process_beacon_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 
 		lim_process_tpe_ie_from_beacon(mac_ctx, session,
 					       bss, &tpe_change);
-
+		if (!tpe_change) {
+			pe_nofl_rl_debug("no change in TPE IE");
+			goto end;
+		}
 		mlme_obj =
 			wlan_vdev_mlme_get_cmpt_obj(session->vdev);
 		if (!mlme_obj) {
