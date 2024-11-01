@@ -6176,8 +6176,9 @@ void lim_parse_tpe_ie(struct mac_context *mac, struct pe_session *session,
 		}
 
 		expect_num = lim_get_num_pwr_levels(false, session->ch_width);
-		single_tpe.max_tx_pwr_count =
-			QDF_MIN(single_tpe.max_tx_pwr_count, expect_num - 1);
+		if (expect_num > 0)
+			single_tpe.max_tx_pwr_count =
+				QDF_MIN(single_tpe.max_tx_pwr_count, expect_num - 1);
 
 		vdev_mlme->reg_tpc_obj.is_psd_power = false;
 		vdev_mlme->reg_tpc_obj.eirp_power = 0;

@@ -11132,6 +11132,11 @@ QDF_STATUS lim_set_session_channel_params(struct mac_context *mac,
 	band = wlan_reg_freq_to_band(session->curr_op_freq);
 	band_mask = 1 << band;
 
+	if (session->ch_width == CH_WIDTH_80P80MHZ) {
+		session->ch_width = CH_WIDTH_80MHZ;
+		session->ch_center_freq_seg1 = 0;
+	}
+
 	ch_params.ch_width = session->ch_width;
 	ch_params.mhz_freq_seg0 =
 		wlan_reg_chan_band_to_freq(mac->pdev,
