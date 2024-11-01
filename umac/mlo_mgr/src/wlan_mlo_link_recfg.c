@@ -30,6 +30,7 @@
 #include <wlan_mlo_mgr_roam.h>
 #include "wlan_dlm_api.h"
 #include "wlan_dp_ucfg_api.h"
+#include "target_if_mlo_mgr.h"
 #endif
 #include "host_diag_core_event.h"
 
@@ -347,6 +348,51 @@ mlo_ser_link_recfg_cmd(struct mlo_link_recfg_context *recfg_ctx,
 QDF_STATUS mlo_link_recfg_notify(struct wlan_objmgr_vdev *vdev,
 				 struct wlan_mlo_link_recfg_req *req)
 {
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+mlo_mgr_link_recfg_indication_event_handler(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_link_recfg_ind_param *evt_params)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_mlo_link_recfg_req recfg_req = {0};
+	QDF_STATUS status;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	if (!evt_params) {
+		mlo_err("Invalid params");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, evt_params->vdev_id,
+						    WLAN_LINK_RECFG_ID);
+	if (!vdev) {
+		mlo_err("Invalid link recfg VDEV %d", evt_params->vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	recfg_req.vdev_id = evt_params->vdev_id;
+	recfg_req.is_user_req = evt_params->trigger_reason ==
+				ROAM_TRIGGER_REASON_FORCED;
+	recfg_req.is_fw_ind_received = true;
+	recfg_req.add_link_info = evt_params->add_link;
+	recfg_req.del_link_info = evt_params->del_link;
+	recfg_req.fw_ind_param = *evt_params;
+	status = mlo_link_recfg_sm_deliver_event(
+				mlo_dev_ctx,
+				WLAN_LINK_RECFG_SM_EV_FW_IND,
+				sizeof(recfg_req), &recfg_req);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -728,13 +774,45 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 			bool success)
 {
 	struct wlan_mlo_link_recfg_req *recfg_req;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
+	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
+	QDF_STATUS status;
 
 	recfg_req = &recfg_ctx->last_recfg_req;
 
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc is null");
+		return;
+	}
+
+	mlo_tx_ops = target_if_mlo_get_tx_ops(psoc);
+	if (!mlo_tx_ops) {
+		mlo_err("tx_ops is null!");
+		return;
+	}
+
+	if (!mlo_tx_ops->send_mlo_link_recfg_complete_cmd) {
+		mlo_err("send_mlo_link_recfg_complete_cmd is null!");
+		return;
+	}
+
 	if (recfg_req->is_fw_ind_received) {
 		/* send wmi link config complete command to firmware
-		 * only if the fw has indicated event.
+		 * only if the fw has indicated event to host.
 		 */
+		complete_params.ap_mld_addr =
+				recfg_req->fw_ind_param.ap_mld_addr;
+		complete_params.reassoc_if_failure = false;
+		complete_params.status = success ? 0 : 1;
+		complete_params.vdev_id = recfg_req->fw_ind_param.vdev_id;
+		status = mlo_tx_ops->send_mlo_link_recfg_complete_cmd(
+						psoc, &complete_params);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("send_mlo_link_recfg_complete_cmd failed %d",
+				status);
+		}
 	}
 
 	/* reset state tran index and move to init state  */
@@ -1007,7 +1085,7 @@ mlo_link_recfg_subst_start_pending_exit(void *ctx)
 {
 }
 
-/* WLAN_LINK_RECFG_SS_START_ACTIVE */
+/* WLAN_LINK_RECFG_SS_START_ACTIVE: to handle usr link recfg request */
 static void
 mlo_link_recfg_subst_start_active_entry(void *ctx)
 {
@@ -1027,6 +1105,7 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
 	struct wlan_mlo_link_recfg_req *recfg_req;
+	struct wlan_mlo_link_recfg_req *fw_ind_recfg_req;
 	QDF_STATUS status;
 
 	switch (event) {
@@ -1041,6 +1120,8 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_FW_IND:
+		fw_ind_recfg_req =
+			(struct wlan_mlo_link_recfg_req *)event_data;
 		/* validate the target link recfg reason is "host force
 		 * reason" code. and check if indication param is same
 		 * as user requested in recfg_ctx->last_recfg_req,
@@ -1048,9 +1129,12 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 		 */
 		recfg_req = &recfg_ctx->last_recfg_req;
 		recfg_req->is_fw_ind_received = true;
+		recfg_req->add_link_info = fw_ind_recfg_req->add_link_info;
+		recfg_req->del_link_info = fw_ind_recfg_req->del_link_info;
+		recfg_req->fw_ind_param = fw_ind_recfg_req->fw_ind_param;
 		status = mlo_link_recfg_create_transition_list(
-			recfg_ctx,
-			&recfg_ctx->last_recfg_req);
+					recfg_ctx,
+					&recfg_ctx->last_recfg_req);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:

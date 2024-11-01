@@ -1684,6 +1684,7 @@ struct wlan_lmac_if_son_rx_ops {
  * @send_vdev_pause: function to send MLO vdev pause to FW
  * @peer_ptqm_migrate_send: API to send peer ptqm migration request to FW
  * @send_mlo_link_switch_cnf_cmd: Send link switch status to FW
+ * @send_mlo_link_recfg_complete_cmd: Send link recfg complete to FW
  * @send_wsi_link_info_cmd: send WSI link stats to FW
  */
 struct wlan_lmac_if_mlo_tx_ops {
@@ -1716,6 +1717,10 @@ struct wlan_lmac_if_mlo_tx_ops {
 	QDF_STATUS
 	(*send_mlo_link_switch_cnf_cmd)(struct wlan_objmgr_psoc *psoc,
 					struct wlan_mlo_link_switch_cnf *params);
+	QDF_STATUS
+	(*send_mlo_link_recfg_complete_cmd)(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_link_recfg_complete_params *params);
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 	QDF_STATUS (*send_wsi_link_info_cmd)(
 				struct wlan_objmgr_pdev *pdev,
@@ -1739,6 +1744,8 @@ typedef void (*trace_link_set_active_cb_type)(
  * switch request params from FW to host.
  * @mlo_link_state_switch_event_handler: Function pointer to handle link state
  * switch event
+ * @mlo_link_recfg_indication_event_handler: function to handle link recfg
+ * event
  * @trace_link_set_active_cb: callback to trace the set link command and event
  */
 struct wlan_lmac_if_mlo_rx_ops {
@@ -1769,6 +1776,10 @@ struct wlan_lmac_if_mlo_rx_ops {
 	QDF_STATUS
 	(*mlo_link_state_switch_event_handler)(struct wlan_objmgr_psoc *psoc,
 					       struct mlo_link_switch_state_info *info);
+	QDF_STATUS
+	(*mlo_link_recfg_indication_event_handler)(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_link_recfg_ind_param *evt_params);
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 	trace_link_set_active_cb_type trace_link_set_active_cb;
 };

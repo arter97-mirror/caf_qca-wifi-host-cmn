@@ -3312,6 +3312,17 @@ QDF_STATUS
 QDF_STATUS
 (*send_mlo_link_switch_req_cnf_cmd)(wmi_unified_t wmi_handle,
 				    struct wlan_mlo_link_switch_cnf *params);
+
+QDF_STATUS
+(*extract_mlo_link_recfg_indication_event)(
+				wmi_unified_t wmi_handle,
+				void *buf, uint8_t len,
+				struct wlan_mlo_link_recfg_ind_param *params);
+
+QDF_STATUS
+(*send_mlo_link_recfg_complete_cmd)(
+			wmi_unified_t wmi_handle,
+			struct wlan_mlo_link_recfg_complete_params *params);
 #endif
 #endif
 
@@ -4241,4 +4252,12 @@ enum phy_ch_width wmi_map_ch_width(A_UINT32 wmi_width);
  *         or WMI_HOST_MODE_UNKNOWN if the conversion fails
  */
 WMI_HOST_WLAN_PHY_MODE wmi_host_to_fw_phymode(enum wlan_phymode host_phymode);
+
+/**
+ * wmi_convert_fw_to_cm_trig_reason() - convert fw trigger reason to host
+ * @fw_trig_reason: fw roam trigger reason.
+ *
+ * Return: host trigger reason of enum roam_trigger_reason
+ */
+uint32_t wmi_convert_fw_to_cm_trig_reason(uint32_t fw_trig_reason);
 #endif

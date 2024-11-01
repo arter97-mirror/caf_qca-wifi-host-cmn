@@ -398,11 +398,96 @@ exit:
 	return status;
 }
 
+static QDF_STATUS
+target_if_send_mlo_link_recfg_complete_cmd(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_link_recfg_complete_params *params)
+{
+	struct wmi_unified *wmi_handle = NULL;
+
+	if (!psoc) {
+		target_if_err("null pdev");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!params) {
+		target_if_err("params is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("null wmi handle");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	return wmi_send_mlo_link_recfg_complete_cmd(wmi_handle, params);
+}
+
+static int
+target_if_mlo_link_recfg_indication_event_handler(ol_scn_t scn, uint8_t *data,
+						  uint32_t datalen)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wmi_unified *wmi_handle;
+	struct wlan_lmac_if_mlo_rx_ops *mlo_rx_ops;
+	QDF_STATUS status;
+	struct wlan_mlo_link_recfg_ind_param param = {0};
+
+	if (!scn || !data) {
+		target_if_err("scn: 0x%pK, data: 0x%pK", scn, data);
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		target_if_err("null psoc");
+		return -EINVAL;
+	}
+
+	if (!target_if_get_fw_link_reconfig_support(psoc)) {
+		target_if_debug("unexpected fw link recnfig not supported");
+		return -EINVAL;
+	}
+
+	mlo_rx_ops = target_if_mlo_get_rx_ops(psoc);
+	if (!mlo_rx_ops ||
+	    !mlo_rx_ops->mlo_link_recfg_indication_event_handler) {
+		target_if_err("callback not registered");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("wmi_handle is null");
+		return -EINVAL;
+	}
+
+	status = wmi_extract_mlo_link_recfg_indication_evt(wmi_handle, data,
+							   datalen, &param);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("Unable to extract link recfg ind fixed param, ret = %d",
+			      status);
+		goto exit;
+	}
+
+	status = mlo_rx_ops->mlo_link_recfg_indication_event_handler(
+							psoc, &param);
+
+exit:
+	return status;
+}
+
 static inline void
 target_if_mlo_register_link_switch_cnf_handler(struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops)
 {
 	mlo_tx_ops->send_mlo_link_switch_cnf_cmd =
 			target_if_send_mlo_link_switch_cnf_cmd;
+
+	mlo_tx_ops->send_mlo_link_recfg_complete_cmd =
+			target_if_send_mlo_link_recfg_complete_cmd;
+
 }
 
 static QDF_STATUS
@@ -426,6 +511,14 @@ target_if_mlo_register_link_switch_event_handler(struct wmi_unified *wmi_handle)
 	if (QDF_IS_STATUS_ERROR(status))
 		target_if_err("Register event:%d failed",
 			      wmi_mlo_link_state_switch_eventid);
+
+	status = wmi_unified_register_event_handler(
+			wmi_handle, wmi_mlo_link_recfg_indication_eventid,
+			target_if_mlo_link_recfg_indication_event_handler,
+			WMI_RX_SERIALIZER_CTX);
+	if (QDF_IS_STATUS_ERROR(status))
+		target_if_err("Register event:%d failed",
+			      wmi_mlo_link_recfg_indication_eventid);
 
 	return status;
 }

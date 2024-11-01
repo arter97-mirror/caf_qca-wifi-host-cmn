@@ -5519,6 +5519,7 @@ typedef enum {
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 	wmi_mlo_link_switch_request_eventid,
 	wmi_mlo_link_state_switch_eventid,
+	wmi_mlo_link_recfg_indication_eventid,
 #endif
 #endif
 	wmi_pdev_fips_extend_event_id,

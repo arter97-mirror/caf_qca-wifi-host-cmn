@@ -130,34 +130,6 @@ enum wlan_link_recfg_sm_evt {
 };
 
 /**
- * struct wlan_mlo_link_recfg_bss_info - Data Structure for one link of
- * reconfiguration add/del information.
- * @link_id: IEEE Link id
- * @link_addr: AP Link address to be deleted/added
- * @freq: channel frequency to be deleted/added
- * @vdev_id: assigned vdev id for add link only
- * @self_link_addr: self link address for add link only
- */
-struct wlan_mlo_link_recfg_bss_info {
-	uint8_t link_id;
-	struct qdf_mac_addr link_addr;
-	uint8_t freq;
-	uint8_t vdev_id;
-	struct qdf_mac_addr self_link_addr;
-};
-
-/**
- * struct wlan_mlo_link_recfg_info - Data Structure for of link
- * reconfiguration add/del information.
- * @link: ap link info
- * @num_links: number of ap bss info in list
- */
-struct wlan_mlo_link_recfg_info {
-	struct wlan_mlo_link_recfg_bss_info link[WLAN_MAX_ML_BSS_LINKS];
-	uint8_t num_links;
-};
-
-/**
  * struct wlan_mlo_link_recfg_req - Data Structure because of link
  *  reconfiguration request
  * @vdev_id: Hold information regarding all the links of ml connection
@@ -166,6 +138,7 @@ struct wlan_mlo_link_recfg_info {
  * @is_user_req: Request received from user/framework
  * @is_curr_req: Is current link reconfig request active
  * @is_fw_ind_received: if fw link recfg evt is received or not
+ * @fw_ind_param: received fw link recfg evt params
  */
 struct wlan_mlo_link_recfg_req {
 	uint8_t vdev_id;
@@ -174,6 +147,7 @@ struct wlan_mlo_link_recfg_req {
 	bool is_user_req;
 	bool is_curr_req;
 	bool is_fw_ind_received;
+	struct wlan_mlo_link_recfg_ind_param fw_ind_param;
 };
 
 typedef QDF_STATUS (*state_abort_handler)(struct wlan_objmgr_psoc *psoc);
@@ -296,6 +270,18 @@ ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+/**
+ * mlo_mgr_link_recfg_indication_event_handler() - Handle fw link recfg event
+ * @psoc: psoc object
+ * @evt_params: fw link recfg event data
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_mgr_link_recfg_indication_event_handler(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_link_recfg_ind_param *evt_params);
+
 /**
  * mlo_link_recfg_init_state() - Set the current state of link switch
  * to init state.
@@ -499,6 +485,14 @@ mlo_link_recfg_create_transition_list(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct wlan_mlo_link_recfg_req *recfg_req);
 #else
+static inline QDF_STATUS
+mlo_mgr_link_recfg_indication_event_handler(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_link_recfg_ind_param *evt_params)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline QDF_STATUS
 mlo_link_recfg_sm_deliver_event(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				enum wlan_link_recfg_sm_evt event,

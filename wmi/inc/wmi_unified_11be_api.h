@@ -252,6 +252,35 @@ wmi_send_mlo_link_switch_req_cnf_cmd(wmi_unified_t wmi,
 QDF_STATUS
 wmi_extract_mlo_link_switch_request_evt(struct wmi_unified *wmi, void *buf,
 					struct wlan_mlo_link_switch_req *req);
+
+/**
+ * wmi_send_mlo_link_recfg_complete_cmd() - Send link recfg complete wmi
+ * command
+ * @wmi: wmi handle
+ * @params: link recfg complete params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_send_mlo_link_recfg_complete_cmd(
+			wmi_unified_t wmi,
+			struct wlan_mlo_link_recfg_complete_params *params);
+
+/**
+ * wmi_extract_mlo_link_recfg_indication_evt() - Extract params TLV
+ * from the MLO link recfg indication WMI event.
+ * @wmi: wmi handle
+ * @buf: pointer to event buffer
+ * @len: length of wmi event
+ * @info: link add/del information of link recfg indication event
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_extract_mlo_link_recfg_indication_evt(
+				wmi_unified_t wmi,
+				void *buf, uint8_t len,
+				struct wlan_mlo_link_recfg_ind_param *info);
 #else
 static inline QDF_STATUS
 wmi_send_mlo_link_switch_req_cnf_cmd(wmi_unified_t wmi,
@@ -263,6 +292,23 @@ wmi_send_mlo_link_switch_req_cnf_cmd(wmi_unified_t wmi,
 static inline QDF_STATUS
 wmi_extract_mlo_link_switch_request_evt(struct wmi_unified *wmi, void *buf,
 					struct wlan_mlo_link_switch_req *req)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+wmi_send_mlo_link_recfg_complete_cmd(
+			wmi_unified_t wmi,
+			struct wlan_mlo_link_recfg_complete_params *params)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+wmi_extract_mlo_link_recfg_indication_evt(
+				wmi_unified_t wmi,
+				void *buf, uint8_t len,
+				struct wlan_mlo_link_recfg_ind_param *info)
 {
 	return QDF_STATUS_SUCCESS;
 }

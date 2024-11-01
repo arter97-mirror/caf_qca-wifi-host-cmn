@@ -20589,7 +20589,7 @@ convert_wtc_scan_mode(WMI_ROAM_TRIGGER_SCAN_MODE scan_mode)
 	}
 }
 
-static uint32_t wmi_convert_fw_to_cm_trig_reason(uint32_t fw_trig_reason)
+uint32_t wmi_convert_fw_to_cm_trig_reason(uint32_t fw_trig_reason)
 {
 	switch (fw_trig_reason) {
 	case WMI_ROAM_TRIGGER_REASON_NONE:
@@ -23691,6 +23691,8 @@ static void populate_tlv_events_id_mlo(WMI_EVT_ID *event_ids)
 			WMI_MLO_LINK_SWITCH_REQUEST_EVENTID;
 	event_ids[wmi_mlo_link_state_switch_eventid] =
 			WMI_MLO_LINK_STATE_SWITCH_EVENTID;
+	event_ids[wmi_mlo_link_recfg_indication_eventid] =
+			WMI_MLO_LINK_RECONFIG_START_INDICATION_EVENTID;
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 }
 #else /* WLAN_FEATURE_11BE_MLO */

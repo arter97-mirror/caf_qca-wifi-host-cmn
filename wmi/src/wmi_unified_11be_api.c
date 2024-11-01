@@ -116,6 +116,30 @@ wmi_extract_mlo_link_state_switch_evt(struct wmi_unified *wmi,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+QDF_STATUS
+wmi_send_mlo_link_recfg_complete_cmd(
+			wmi_unified_t wmi,
+			struct wlan_mlo_link_recfg_complete_params *params)
+{
+	if (wmi->ops->send_mlo_link_recfg_complete_cmd)
+		return wmi->ops->send_mlo_link_recfg_complete_cmd(wmi, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_mlo_link_recfg_indication_evt(
+				wmi_unified_t wmi,
+				void *buf, uint8_t len,
+				struct wlan_mlo_link_recfg_ind_param *info)
+{
+	if (wmi->ops->extract_mlo_link_recfg_indication_event)
+		return wmi->ops->extract_mlo_link_recfg_indication_event(
+							wmi, buf, len, info);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 
 QDF_STATUS wmi_send_mlo_link_state_request_cmd(

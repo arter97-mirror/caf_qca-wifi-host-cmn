@@ -274,6 +274,67 @@ typedef QDF_STATUS
 				   struct wlan_mlo_link_switch_req *lswitch_req,
 				   enum wlan_mlo_link_switch_notify_reason notify_reason);
 
+/**
+ * struct wlan_mlo_link_recfg_bss_info - Data Structure for one link of
+ * reconfiguration add/del information.
+ * @link_id: IEEE Link id
+ * @link_addr: AP Link address to be deleted/added
+ * @freq: channel frequency to be deleted/added
+ * @vdev_id: assigned vdev id for add link only
+ * @self_link_addr: self link address for add link only
+ */
+struct wlan_mlo_link_recfg_bss_info {
+	uint8_t link_id;
+	struct qdf_mac_addr link_addr;
+	uint8_t freq;
+	uint8_t vdev_id;
+	struct qdf_mac_addr self_link_addr;
+};
+
+/**
+ * struct wlan_mlo_link_recfg_info - Data Structure for of link
+ * reconfiguration add/del information.
+ * @link: ap link info
+ * @num_links: number of ap bss info in list
+ */
+struct wlan_mlo_link_recfg_info {
+	struct wlan_mlo_link_recfg_bss_info link[WLAN_MAX_ML_BSS_LINKS];
+	uint8_t num_links;
+};
+
+/*
+ * struct wlan_mlo_link_recfg_ind_param - Link recfg indication params
+ * @vdev_id: vdev id
+ * @ap_mld_addr: ap mld address
+ * @trigger_reason: link recfg trigger reason
+ * @trigger_result: link recfg result if trigger reason is
+ * ROAM_TRIGGER_REASON_FORCED
+ * @add_link: add link info
+ * @del_link: del link info
+ */
+struct wlan_mlo_link_recfg_ind_param {
+	uint8_t vdev_id;
+	struct qdf_mac_addr ap_mld_addr;
+	uint32_t trigger_reason;
+	uint32_t trigger_result;
+	struct wlan_mlo_link_recfg_info	add_link;
+	struct wlan_mlo_link_recfg_info del_link;
+};
+
+/*
+ * struct wlan_mlo_link_recfg_complete_params - Link recfg complete params
+ * @vdev_id: vdev id
+ * @ap_mld_addr: ap mld address
+ * @status: link recfg success or not
+ * @reassoc_if_failure: fw trigger reassoc or not if link recfg failed
+ */
+struct wlan_mlo_link_recfg_complete_params {
+	uint8_t vdev_id;
+	struct qdf_mac_addr ap_mld_addr;
+	uint32_t  status;
+	uint32_t  reassoc_if_failure;
+};
+
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /*
  * struct wlan_mlo_link_switch_notifier - Link switch notifier callbacks
