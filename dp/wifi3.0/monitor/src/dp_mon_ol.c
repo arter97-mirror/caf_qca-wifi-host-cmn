@@ -497,6 +497,7 @@ static void ol_ath_process_tx_frames(void *pdev_hdl, enum WDI_EVENT event,
 
 	if (!ic) {
 		qdf_nbuf_free(ptr_tx_info->mpdu_nbuf);
+		ptr_tx_info->mpdu_nbuf = NULL;
 		dp_mon_debug("ic is NULL");
 		return;
 	}
