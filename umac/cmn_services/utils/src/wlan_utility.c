@@ -2518,7 +2518,7 @@ const uint8_t *wlan_get_rsnxe_data_from_ie_ptr(const uint8_t *ie_ptr,
 	return NULL;
 }
 
-const uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len)
+uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len)
 {
 	const uint8_t *rsno = NULL;
 
