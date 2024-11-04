@@ -91,6 +91,8 @@ struct mgmt_srng_cfg {
 /**
  * struct mgmt_rx_srng_pdev_priv - mgmt_rx_srng component pdev priv
  * @pdev: pdev obj
+ * @new_skb_alloc_fail_cnt: Counter increments on each failure to allocate
+ * new skb to replenish the SRNG with new buffer.
  * @osdev: os dev
  * @hal_soc: opaque hal object
  * @mgmt_rx_srng_cfg: srng config
@@ -100,6 +102,7 @@ struct mgmt_srng_cfg {
  */
 struct mgmt_rx_srng_pdev_priv {
 	struct wlan_objmgr_pdev *pdev;
+	uint32_t new_skb_alloc_fail_cnt;
 	qdf_device_t osdev;
 	void *hal_soc;
 	struct mgmt_srng_cfg mgmt_rx_srng_cfg;
