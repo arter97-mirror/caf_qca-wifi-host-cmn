@@ -1674,6 +1674,7 @@ _conditional_srcs = {
             "components/umac/mlme/mlo_mgr/src/wlan_mlo_mgr_roam.c",
             "components/umac/mlme/mlo_mgr/src/wlan_t2lm_api.c",
             "components/umac/mlme/mlo_mgr/src/wlan_mlo_link_force.c",
+			"cmn/umac/mlo_mgr/src/wlan_mlo_link_recfg.c",
         ],
     },
     "CONFIG_WLAN_FEATURE_ACTION_OUI": {
