@@ -3229,6 +3229,7 @@ struct wlan_action_frame_args {
  * @primary_channel: HE 6GHz Primary channel number
  * @width: HE 6GHz BSS Channel Width
  * @duplicate_beacon: HE 6GHz Duplicate beacon field
+ * @reg_info: Power mode
  * @reserved: Reserved bits
  * @chan_freq_seg0: HE 6GHz Channel Centre Frequency Segment 0
  * @chan_freq_seg1: HE 6GHz Channel Centre Frequency Segment 1
@@ -3238,7 +3239,8 @@ struct he_oper_6g_param {
 	uint8_t primary_channel;
 	uint8_t width:2,
 		duplicate_beacon:1,
-		reserved:5;
+		reg_info:4,
+		reserved:1;
 	uint8_t chan_freq_seg0;
 	uint8_t chan_freq_seg1;
 	uint8_t minimum_rate;

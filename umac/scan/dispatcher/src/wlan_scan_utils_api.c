@@ -2563,6 +2563,29 @@ static inline void util_scan_update_ml_info(struct wlan_objmgr_pdev *pdev,
 }
 #endif
 
+#ifdef CONFIG_BAND_6GHZ
+static void util_scan_get_ap_pwr_type_6g(struct scan_cache_entry *scan_params)
+{
+	struct he_oper_6g_param *he_6g_params;
+	uint8_t *he_ops;
+
+	scan_params->ap_pwr_type_6g = REG_MAX_AP_TYPE;
+	he_ops = util_scan_entry_heop(scan_params);
+	if (!util_scan_entry_hecap(scan_params) || !he_ops)
+		return;
+
+	he_6g_params = util_scan_get_he_6g_params(he_ops);
+	if (!he_6g_params)
+		return;
+
+	scan_params->ap_pwr_type_6g = he_6g_params->reg_info;
+}
+#else
+static inline void
+util_scan_get_ap_pwr_type_6g(struct scan_cache_entry *scan_params)
+{}
+#endif
+
 static QDF_STATUS
 util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 			 uint8_t *frame, qdf_size_t frame_len,
@@ -2695,6 +2718,8 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 			return QDF_STATUS_E_FAILURE;
 		}
 	}
+
+	util_scan_get_ap_pwr_type_6g(scan_entry);
 
 	if (chan_freq)
 		scan_entry->channel.chan_freq = chan_freq;

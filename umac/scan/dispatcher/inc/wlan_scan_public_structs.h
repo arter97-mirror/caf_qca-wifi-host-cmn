@@ -647,6 +647,7 @@ enum number_of_partner_link {
  * @mlo_max_recom_simult_links: Max recommended simultaneous link
  * @non_intersected_phymode: Non intersected phy mode of the AP
  * @recv_freq: Frequency on which the frame is received
+ * @ap_pwr_type_6g: 6GHz AP power type
  */
 struct scan_cache_entry {
 	uint8_t frm_subtype;
@@ -706,6 +707,7 @@ struct scan_cache_entry {
 #endif
 	enum wlan_phymode non_intersected_phymode;
 	uint32_t recv_freq;
+	uint8_t ap_pwr_type_6g;
 };
 
 #define MAX_FAVORED_BSSID 16
