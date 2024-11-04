@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -6194,7 +6194,7 @@ void lim_parse_tpe_ie(struct mac_context *mac, struct pe_session *session,
 	pe_debug("psd_index: %u non_psd_index %u addn_non_psd_index %u addn_psd_index %u",
 		 psd_index, non_psd_index, addn_non_psd_index, addn_psd_index);
 
-	if (non_psd_set) {
+	if (non_psd_set && !(psd_set && !addn_non_psd_set)) {
 		if (conn_pwr_type_sp && addn_non_psd_set)
 			single_tpe = tpe_ies[addn_non_psd_index];
 		else if (local_eirp_set || reg_eirp_set)
@@ -6240,10 +6240,11 @@ void lim_parse_tpe_ie(struct mac_context *mac, struct pe_session *session,
 							curr_op_freq, 0,
 							&ch_params,
 							REG_CURRENT_PWR_MODE);
-			if (vdev_mlme->reg_tpc_obj.tpe[i] !=
+			if (!addn_psd_set && (
+			    vdev_mlme->reg_tpc_obj.tpe[i] !=
 			    single_tpe.tx_power[i] ||
 			    vdev_mlme->reg_tpc_obj.frequency[i] !=
-			    ch_params.mhz_freq_seg0)
+			    ch_params.mhz_freq_seg0))
 				*has_tpe_updated = true;
 			vdev_mlme->reg_tpc_obj.frequency[i] =
 							ch_params.mhz_freq_seg0;
