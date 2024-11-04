@@ -3140,4 +3140,8 @@
 #define FEATURE_WLAN_SUPPORT_USD (1)
 #endif
 
+#ifdef CONFIG_WLAN_SUPPORT_BCAST_TWT
+#define WLAN_SUPPORT_BCAST_TWT (1)
+#endif
+
 #endif /* CONFIG_TO_FEATURE_H */
