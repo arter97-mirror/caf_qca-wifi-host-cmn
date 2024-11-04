@@ -590,6 +590,20 @@ typedef struct {
 } wmi_host_peer_sta_kickout_event;
 
 /**
+ * struct wmi_host_peer_assoc_response_event - Peer assoc response event
+ * parameters
+ * @vdev_id: vdev id
+ * @mac_address: Peer Mac Address
+ * @status: Peer assoc command status
+ *
+ */
+struct wmi_host_peer_assoc_response_event {
+	uint32_t vdev_id;
+	struct qdf_mac_addr mac_address;
+	uint32_t status;
+};
+
+/**
  * struct wmi_host_peer_create_response_event - Peer Create response event param
  * @vdev_id: vdev id
  * @mac_address: Peer Mac Address
