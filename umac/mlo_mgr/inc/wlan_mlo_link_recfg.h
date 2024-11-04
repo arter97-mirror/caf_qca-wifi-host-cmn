@@ -237,12 +237,14 @@ struct mlo_link_recfg_state_sm {
  * @ml_dev: ml dev context
  * @last_recfg_req: Last link recfg request received from FW
  * @sm: link reconfig sm context
+ * @set_link_req: set link req for link recfg
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
 	struct wlan_mlo_dev_context *ml_dev;
 	struct wlan_mlo_link_recfg_req last_recfg_req;
 	struct mlo_link_recfg_state_sm sm;
+	struct mlo_link_set_active_req *set_link_req;
 };
 
 static inline void

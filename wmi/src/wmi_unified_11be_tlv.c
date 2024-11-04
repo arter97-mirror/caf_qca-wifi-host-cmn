@@ -586,6 +586,9 @@ force_reason_host_to_fw(enum mlo_link_force_reason host_reason,
 	case MLO_LINK_FORCE_REASON_LINK_REMOVAL:
 		*fw_reason =  WMI_MLO_LINK_FORCE_REASON_LINK_REMOVAL;
 		break;
+	case MLO_LINK_FORCE_REASON_LINK_DELETE:
+		*fw_reason = WMI_MLO_LINK_FORCE_REASON_LINK_DELETE;
+		break;
 	default:
 		wmi_err("Invalid force reason: %d", host_reason);
 		return QDF_STATUS_E_INVAL;

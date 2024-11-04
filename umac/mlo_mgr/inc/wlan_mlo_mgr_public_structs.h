@@ -761,12 +761,15 @@ enum mlo_link_force_mode {
  *  Set force specific links because of AP side link removal
  * @MLO_LINK_FORCE_REASON_TDLS:
  *  Set force specific links because of TDLS operation
+ * @MLO_LINK_FORCE_REASON_LINK_DELETE:
+ *  Set link inactive because of link deleted
  */
 enum mlo_link_force_reason {
 	MLO_LINK_FORCE_REASON_CONNECT    = 1,
 	MLO_LINK_FORCE_REASON_DISCONNECT = 2,
 	MLO_LINK_FORCE_REASON_LINK_REMOVAL = 3,
 	MLO_LINK_FORCE_REASON_TDLS = 4,
+	MLO_LINK_FORCE_REASON_LINK_DELETE = 6,
 };
 
 /**
@@ -1708,6 +1711,7 @@ struct mlo_link_num_param {
  * from set link event respone handler
  * @dont_reschedule_workqueue: don't reschedule force scc workqueue
  * after set link response
+ * @set_link_for_recfg: set link command for link recfg
  */
 struct mlo_control_flags {
 	bool overwrite_force_active_bitmap;
@@ -1716,6 +1720,7 @@ struct mlo_control_flags {
 	bool post_re_evaluate;
 	uint8_t post_re_evaluate_loops;
 	bool dont_reschedule_workqueue;
+	bool set_link_for_recfg;
 };
 
 /* struct ml_link_force_cmd - force command for links

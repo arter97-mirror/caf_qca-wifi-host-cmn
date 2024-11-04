@@ -580,6 +580,15 @@ mlo_process_link_set_active_resp(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS mlo_ser_set_link_req(struct mlo_link_set_active_req *req);
 
 /**
+ * mlo_link_recfg_set_link_resp_timeout() - handle set link timeout for
+ * link recfg
+ * @mlo_dev_ctx: mlo dev context
+ * Return: QDF_STATUS
+ */
+void
+mlo_link_recfg_set_link_resp_timeout(struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/**
  * typedef mlo_vdev_ops_handler() - API to have operation on ml vdevs
  * @vdev: vdev object
  * @arg: operation-specific argument

@@ -322,7 +322,7 @@ mlo_ser_link_recfg_cmd(struct mlo_link_recfg_context *recfg_ctx,
 	cmd.cmd_timeout_duration = MLO_LINK_RECFG_MAX_TIMEOUT;
 	cmd.vdev = vdev;
 	cmd.is_blocking = true;
-	cmd.umac_cmd = NULL;
+	cmd.umac_cmd = mlo_dev_ctx;
 
 	ser_cmd_status = wlan_serialization_request(&cmd);
 	switch (ser_cmd_status) {
