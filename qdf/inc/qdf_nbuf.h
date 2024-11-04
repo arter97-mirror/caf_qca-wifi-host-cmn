@@ -5707,6 +5707,17 @@ static inline void qdf_nbuf_set_hash(qdf_nbuf_t buf, uint32_t len)
 }
 
 /**
+ * qdf_nbuf_get_hash() - set the hash of the buf
+ * @buf: Network buf instance
+ *
+ * Return: Hash value
+ */
+static inline uint32_t qdf_nbuf_get_hash(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_hash(buf);
+}
+
+/**
  * qdf_nbuf_set_sw_hash() - set the sw hash of the buf
  * @buf: Network buf instance
  * @len: len to be set
