@@ -125,6 +125,18 @@ cds_send_delba(struct cdp_ctrl_objmgr_psoc *psoc,
 }
 
 /**
+ * cds_dp_trigger_recovery() - callback for DP trigger recovery
+ * @reason: reason for recovery
+ *
+ * Return: None
+ */
+static inline void
+cds_dp_trigger_recovery(enum qdf_hang_reason reason)
+{
+	cds_trigger_recovery(reason);
+}
+
+/**
  * wlan_dp_stc_peer_event_notify() - Handle the peer map/unmap events
  * @soc: CDP soc
  * @event: Peer event
@@ -149,6 +161,7 @@ static struct ol_if_ops dp_ol_if_ops = {
 	.get_con_mode = cds_get_conparam,
 	.send_delba = cds_send_delba,
 	.dp_rx_get_pending = dp_rx_tm_get_pending,
+	.dp_trigger_recovery = cds_dp_trigger_recovery,
 #ifdef DP_MEM_PRE_ALLOC
 	.dp_prealloc_get_context = dp_prealloc_get_context_memory,
 	.dp_prealloc_put_context = dp_prealloc_put_context_memory,
