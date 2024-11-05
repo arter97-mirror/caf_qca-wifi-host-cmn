@@ -1379,11 +1379,13 @@ struct wmi_host_link_state_params {
  * @link_id: link id
  * @ap_mld_mac: ap mld mac address
  * @chan: channel
+ * @op_code: operation for provided link
  */
 struct wmi_host_link_bss_params {
 	uint8_t link_id;
 	uint8_t ap_mld_mac[QDF_MAC_ADDR_SIZE];
 	struct wlan_channel chan;
+	uint8_t op_code;
 };
 
 #endif /* WLAN_FEATURE_11BE */

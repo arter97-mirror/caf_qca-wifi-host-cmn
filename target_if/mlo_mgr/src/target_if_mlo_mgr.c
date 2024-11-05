@@ -1015,6 +1015,7 @@ target_if_send_link_set_bss_params_cmd(struct wlan_objmgr_psoc *psoc,
 	qdf_mem_copy(&params.ap_mld_mac[0], &cmd->ap_mld_mac[0],
 		     QDF_MAC_ADDR_SIZE);
 
+	params.op_code = cmd->op_code;
 	params.chan.ch_freq = cmd->chan->ch_freq;
 	params.chan.ch_cfreq1 = cmd->chan->ch_cfreq1;
 	params.chan.ch_cfreq2 = cmd->chan->ch_cfreq2;

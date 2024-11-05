@@ -2350,6 +2350,7 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 				vdev,
 				(struct qdf_mac_addr *)&params.ap_mld_mac[0]);
 
+	params.op_code = MLO_LINK_BSS_OP_UPDATE;
 	params.chan->ch_freq = link_info->link_chan_info->ch_freq;
 	params.chan->ch_cfreq1 = link_info->link_chan_info->ch_cfreq1;
 	params.chan->ch_cfreq2 = link_info->link_chan_info->ch_cfreq2;
