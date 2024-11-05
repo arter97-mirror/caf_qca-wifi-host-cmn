@@ -182,6 +182,7 @@ struct eml_capabilities {
  * @tid_link_map_supported: TID link map support
  * @str_freq_separation: STR freq separation
  * @aar_support: AAR support
+ * @link_reconfig_operation_support: Link reconfig operation support (13th BIT)
  * @reserved: reserve
  */
 struct mld_capab_and_op {
@@ -190,7 +191,8 @@ struct mld_capab_and_op {
 	uint16_t tid_link_map_supported:2;
 	uint16_t str_freq_separation:5;
 	uint16_t aar_support:1;
-	uint16_t reserved:3;
+	uint16_t link_reconfig_operation_support:1;
+	uint16_t reserved:2;
 };
 
 /**

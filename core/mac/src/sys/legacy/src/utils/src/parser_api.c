@@ -55,6 +55,7 @@
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <lim_mlo.h>
 #include <utils_mlo.h>
+#include "target_if.h"
 #endif
 #ifdef WLAN_FEATURE_11BE
 #include "wlan_epcs_api.h"
@@ -12685,6 +12686,9 @@ populate_dot11f_mlo_caps(struct mac_context *mac_ctx,
 	mlo_ie->mld_capab_and_op_present = 1;
 	mlo_ie->mld_capab_and_op_info.tid_link_map_supported =
 		wlan_mlme_get_t2lm_negotiation_supported(mac_ctx->psoc);
+	mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support =
+		target_if_get_fw_link_reconfig_support(mac_ctx->psoc);
+
 	mlo_ie->reserved = 0;
 	mlo_ie->reserved_1 = 0;
 	mlo_ie->common_info_length = common_info_len;
@@ -13810,6 +13814,8 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 			wlan_mlme_get_t2lm_negotiation_supported(mac_ctx->psoc);
 		mlo_ie->mld_capab_and_op_info.str_freq_separation = 0;
 		mlo_ie->mld_capab_and_op_info.aar_support = 0;
+		mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support =
+			target_if_get_fw_link_reconfig_support(mac_ctx->psoc);
 	}
 
 	/* Check if STA supports EMLSR and vendor command prefers EMLSR mode */
@@ -14320,6 +14326,8 @@ QDF_STATUS populate_dot11f_mlo_ie(struct mac_context *mac_ctx,
 			wlan_mlme_get_t2lm_negotiation_supported(mac_ctx->psoc);
 		mlo_ie->mld_capab_and_op_info.str_freq_separation = 0;
 		mlo_ie->mld_capab_and_op_info.aar_support = 0;
+		mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support =
+				target_if_get_fw_link_reconfig_support(psoc);
 	}
 
 	/* Check if HW supports eMLSR mode */
@@ -14414,6 +14422,10 @@ QDF_STATUS populate_dot11f_mlo_ie(struct mac_context *mac_ctx,
 			     WLAN_ML_BV_CINFO_MLDCAPANDOP_TIDTOLINKMAPNEGSUPPORT_IDX,
 			     WLAN_ML_BV_CINFO_MLDCAPANDOP_TIDTOLINKMAPNEGSUPPORT_BITS,
 			     mlo_ie->mld_capab_and_op_info.tid_link_map_supported);
+		QDF_SET_BITS(*(uint16_t *)p_ml_ie,
+			     WLAN_ML_BV_CINFO_MLDCAPANDOP_LINK_RECONFIG_IDX,
+			     WLAN_ML_BV_CINFO_MLDCAPANDOP_LINK_RECONFIG_BITS,
+			     mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support);
 		p_ml_ie += WLAN_ML_BV_CINFO_MLDCAPANDOP_SIZE;
 		len_remaining -= WLAN_ML_BV_CINFO_MLDCAPANDOP_SIZE;
 	}
