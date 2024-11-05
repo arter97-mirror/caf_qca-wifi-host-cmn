@@ -2078,6 +2078,7 @@ void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 	tLimWiderBWChannelSwitchInfo *chnl_switch_info = NULL;
 	tLimChannelSwitchInfo *lim_ch_switch = NULL;
 	uint8_t link_id;
+	QDF_STATUS status;
 
 	if (!csa_params) {
 		pe_err("limMsgQ body ptr is NULL");
@@ -2407,7 +2408,7 @@ void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 	} else {
 		mlme_priv = wlan_vdev_mlme_get_ext_hdl(session_entry->vdev);
 		if (!mlme_priv)
-			return;
+			goto send_event;
 		mlme_priv->connect_info.assoc_chan_info.assoc_ch_width =
 						csa_params->new_ch_width;
 	}
@@ -2432,7 +2433,9 @@ void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 		goto send_event;
 	}
 
-	lim_prepare_for11h_channel_switch(mac_ctx, session_entry);
+	status = lim_prepare_for11h_channel_switch(mac_ctx, session_entry);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto send_event;
 
 	lim_flush_bssid(mac_ctx, session_entry->bssId);
 	session_entry->cal_tpc_post_csa = true;
@@ -2477,9 +2480,13 @@ void lim_handle_csa_offload_msg(struct mac_context *mac_ctx,
 		pe_debug("vdev_id: %d, csa param is already handled. return",
 			 session_id);
 		qdf_mem_free(csa_params);
-		return;
+		goto send_event;
 	}
 	lim_handle_sta_csa_param(mac_ctx, csa_params, true);
+	return;
+
+send_event:
+	wlan_mlme_send_csa_event_status_ind(session->vdev, 0);
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
