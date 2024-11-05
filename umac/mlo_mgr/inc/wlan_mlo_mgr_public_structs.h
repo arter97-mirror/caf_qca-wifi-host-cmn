@@ -1228,6 +1228,7 @@ struct wlan_mlo_msd_cap {
  * @str_freq_sep: Frequency separation suggested by STR non-AP MLD
  *                OR Type of AP-MLD
  * @aar_support: AAR Support
+ * @link_reconfig_operation_support: link reconfig support
  * @reserved: Reserved
  */
 struct wlan_mlo_mld_cap {
@@ -1236,7 +1237,8 @@ struct wlan_mlo_mld_cap {
 		 tid2link_neg_support:2,
 		 str_freq_sep:5,
 		 aar_support:1,
-		 reserved:3;
+		 link_reconfig_operation_support:1,
+		 reserved:2;
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM

@@ -3205,4 +3205,27 @@ uint8_t target_psoc_get_cert_wifi_gen_info(struct target_psoc_info *tgt_hdl)
 
 	return tgt_hdl->info.service_ext2_param.cert_wifi_gen;
 }
+
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * target_if_get_fw_link_reconfig_support() - Get if FW supports link reconfig
+ * or not
+ * @psoc: objmgr psoc
+ *
+ * Return: true if FW supports link reconfig else false
+ */
+static inline bool
+target_if_get_fw_link_reconfig_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return false;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+	return mac_phy_cap->mldcap.link_reconfig_operation_support;
+}
+#endif
 #endif
