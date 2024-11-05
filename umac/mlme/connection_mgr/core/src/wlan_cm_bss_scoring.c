@@ -2124,7 +2124,6 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 	uint8_t slp_percentage[MLD_MAX_LINKS - 1] = {0};
 	uint8_t mlo_vdev_num = WLAN_UMAC_MLO_MAX_VDEVS;
 	uint8_t num_partner_links = 0;
-	uint8_t mlo_link_num = cm_get_sta_mlo_conn_max_num(psoc);
 
 	wlan_psoc_mlme_get_11be_capab(psoc, &eht_capab);
 	if (!eht_capab)
@@ -2132,7 +2131,6 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 
 	num_partner_links = QDF_MIN(MLD_MAX_LINKS - 1,
 				    entry->ml_info.num_links);
-	num_partner_links = QDF_MIN(num_partner_links, mlo_link_num - 1);
 
 	weight_config = &score_params->weight_config;
 	freq_entry = entry->channel.chan_freq;
