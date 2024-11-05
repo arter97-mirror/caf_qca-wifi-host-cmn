@@ -77,11 +77,16 @@ struct cnx_mgr *cm_get_cm_ctx_fl(struct wlan_objmgr_vdev *vdev,
 {
 	struct vdev_mlme_obj *vdev_mlme;
 	struct cnx_mgr *cm_ctx = NULL;
+	enum QDF_OPMODE op_mode;
 
 	if (!vdev) {
 		mlme_rl_nofl_err("%s:%u: vdev is NULL", func, line);
 		return NULL;
 	}
+
+	op_mode = wlan_vdev_mlme_get_opmode(vdev);
+	if (op_mode != QDF_STA_MODE && op_mode != QDF_P2P_CLIENT_MODE)
+		return NULL;
 
 	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
 	if (vdev_mlme)
