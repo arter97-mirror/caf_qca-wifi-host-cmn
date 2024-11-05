@@ -865,6 +865,7 @@ enum policy_mgr_three_connection_mode {
 	PM_SAP_SAP_SCC_5_SAP_24_DBS,
 	PM_SAP_SAP_SCC_5_STA_24_DBS,
 	PM_SAP_SAP_STA_SCC_5_DBS,
+	PM_SAP_SAP_SCC_24_STA_5_DBS,
 	PM_MAX_THREE_CONNECTION_MODE
 };
 #endif
