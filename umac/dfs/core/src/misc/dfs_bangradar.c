@@ -27,6 +27,7 @@
 #include "wlan_dfs_tgt_api.h"
 #include "dfs_internal.h"
 #include <dfs_process_radar_found_ind.h>
+#include "wlan_dfs_utils_api.h"
 
 /**
  * dfs_is_320mhz_offset_invalid() - Check if the frequency offset is within the
@@ -370,3 +371,98 @@ int dfs_bang_radar(struct wlan_dfs *dfs, void *indata, uint32_t insize)
 	}
 	return error;
 }
+
+
+#ifdef QCA_DFS_SCAN_RADIO_RADAR
+/**
+ * dfs_send_nol_event_to_user_space() - Sends DFS NOL event to user space.
+ * @dfs: Pointer to wlan_dfs structure.
+ * @freq_list: Pointer to frequency list.
+ * @num_channels: Number of channels.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dfs_send_nol_event_to_user_space(struct wlan_dfs *dfs,
+				 uint16_t *freq_list,
+				 uint8_t num_channels)
+{
+	int i;
+
+	if (num_channels > MAX_20MHZ_SUBCHANS) {
+		dfs_err(dfs, WLAN_DEBUG_DFS,
+			"Invalid num channels: %d", num_channels);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	for (i = 0; i < num_channels; i++) {
+		if (!utils_is_dfs_chan_for_freq(dfs->dfs_pdev_obj,
+						freq_list[i])) {
+			dfs_info(dfs, WLAN_DEBUG_DFS, "ch=%d is not dfs, skip",
+				 freq_list[i]);
+			continue;
+		}
+
+		utils_dfs_deliver_event(dfs->dfs_pdev_obj,
+					freq_list[i],
+					WLAN_EV_NOL_STARTED);
+		dfs_info(dfs, WLAN_DEBUG_DFS, "ch=%d RADAR DETECTED ON CHAN: ",
+			 freq_list[i]);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+dfs_handle_scan_radio_radar(struct wlan_dfs *dfs,
+			    uint16_t *freq_list,
+			    uint8_t num_channels)
+{
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_target_tx_ops *tgt_tx_ops;
+	struct wlan_lmac_if_tx_ops *tx_ops;
+	uint32_t target_type;
+
+	psoc = wlan_pdev_get_psoc(dfs->dfs_pdev_obj);
+
+	if (!psoc) {
+		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,  "psoc is NULL");
+		return status;
+	}
+
+	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
+	if (!tx_ops) {
+		 dfs_info(dfs, WLAN_DEBUG_DFS_ALWAYS, "tx_ops is NULL");
+		 return status;
+	}
+	target_type = lmac_get_target_type(dfs->dfs_pdev_obj);
+	tgt_tx_ops = &tx_ops->target_tx_ops;
+
+	if (tgt_tx_ops->tgt_is_tgt_type_qcn9160 &&
+	    tgt_tx_ops->tgt_is_tgt_type_qcn9160(target_type) &&
+	    dfs->is_enable_york_dfs) {
+		status = dfs_send_nol_event_to_user_space(dfs,
+							  freq_list,
+							  num_channels);
+	}
+
+	return status;
+}
+
+void dfs_set_enable_york_dfs(struct wlan_dfs *dfs)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_dfs_tx_ops *dfs_tx_ops;
+
+	psoc = wlan_pdev_get_psoc(dfs->dfs_pdev_obj);
+	dfs_tx_ops = wlan_psoc_get_dfs_txops(psoc);
+
+	if (dfs_tx_ops->dfs_get_enable_york_dfs) {
+		dfs->is_enable_york_dfs =
+			dfs_tx_ops->dfs_get_enable_york_dfs(dfs->dfs_pdev_obj);
+	} else {
+		dfs->is_enable_york_dfs = false;
+	}
+}
+#endif
