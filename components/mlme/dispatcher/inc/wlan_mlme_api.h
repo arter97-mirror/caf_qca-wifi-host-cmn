@@ -3091,6 +3091,39 @@ wlan_mlme_set_t2lm_negotiation_supported(struct wlan_objmgr_psoc *psoc,
 					 uint8_t value);
 
 /**
+ * wlan_mlme_is_link_recfg_support() - Check if Link
+ * reconfiguration feature is supported
+ * @psoc: psoc context
+ *
+ * Return: bool (true/false)
+ */
+bool
+wlan_mlme_is_link_recfg_support(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_mlme_get_link_recfg_support() - Get the Link
+ * reconfiguration supported value
+ * @psoc: psoc context
+ *
+ * Return: bool (true/false) link reconfiguration
+ * supported value
+ */
+bool
+wlan_mlme_get_link_recfg_support(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_mlme_set_link_recfg_support() - Set the Link
+ * reconfiguration supported value
+ * @psoc: psoc context
+ * @value: link reconfiguration supported value
+ *
+ * Return: qdf status
+ */
+QDF_STATUS
+wlan_mlme_set_link_recfg_support(struct wlan_objmgr_psoc *psoc,
+				 bool value);
+
+/**
  * wlan_mlme_get_eht_mld_id() - Get the MLD ID of the requested BSS
  * @psoc: psoc context
  *
@@ -3121,6 +3154,25 @@ wlan_mlme_get_mlo_prefer_percentage(
 				struct wlan_objmgr_psoc *psoc,
 				int8_t *mlo_prefer_percentage);
 #else
+static inline bool
+wlan_mlme_is_link_recfg_support(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
+static inline bool
+wlan_mlme_get_link_recfg_support(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
+static inline QDF_STATUS
+wlan_mlme_set_link_recfg_support(struct wlan_objmgr_psoc *psoc,
+				 bool value)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline QDF_STATUS
 wlan_mlme_get_eht_mode(struct wlan_objmgr_psoc *psoc, enum wlan_eht_mode *value)
 {

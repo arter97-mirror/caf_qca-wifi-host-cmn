@@ -11088,7 +11088,6 @@ QDF_STATUS populate_dot11f_bcn_mlo_ie(struct mac_context *mac_ctx,
 							vdev_count;
 
 	mlo_ie->mld_capab_and_op_info.tid_link_map_supported = 1;
-
 	mlo_ie->common_info_length = common_info_length;
 	sch_info->mlo_ie_link_info_ofst = tmp_offset;
 
@@ -12687,8 +12686,7 @@ populate_dot11f_mlo_caps(struct mac_context *mac_ctx,
 	mlo_ie->mld_capab_and_op_info.tid_link_map_supported =
 		wlan_mlme_get_t2lm_negotiation_supported(mac_ctx->psoc);
 	mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support =
-		target_if_get_fw_link_reconfig_support(mac_ctx->psoc);
-
+		wlan_mlme_is_link_recfg_support(mac_ctx->psoc);
 	mlo_ie->reserved = 0;
 	mlo_ie->reserved_1 = 0;
 	mlo_ie->common_info_length = common_info_len;
@@ -13815,7 +13813,7 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 		mlo_ie->mld_capab_and_op_info.str_freq_separation = 0;
 		mlo_ie->mld_capab_and_op_info.aar_support = 0;
 		mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support =
-			target_if_get_fw_link_reconfig_support(mac_ctx->psoc);
+			wlan_mlme_is_link_recfg_support(mac_ctx->psoc);
 	}
 
 	/* Check if STA supports EMLSR and vendor command prefers EMLSR mode */
@@ -14327,7 +14325,7 @@ QDF_STATUS populate_dot11f_mlo_ie(struct mac_context *mac_ctx,
 		mlo_ie->mld_capab_and_op_info.str_freq_separation = 0;
 		mlo_ie->mld_capab_and_op_info.aar_support = 0;
 		mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support =
-				target_if_get_fw_link_reconfig_support(psoc);
+			wlan_mlme_is_link_recfg_support(mac_ctx->psoc);
 	}
 
 	/* Check if HW supports eMLSR mode */

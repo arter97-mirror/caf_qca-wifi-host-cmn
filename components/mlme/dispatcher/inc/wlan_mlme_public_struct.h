@@ -1500,6 +1500,7 @@ struct wlan_mlme_aux_dev_caps {
  * @enable_emlsr_mode: 11BE eMLSR mode support
  * @mld_id: MLD ID of requested BSS within ML probe request frame
  * @enable_sap_emlsr_mode: 11BE eMLSR mode support for sap
+ * @link_recfg_support: Link Reconfiguration feature support
  * @oem_eht_mlo_crypto_bitmap: Bitmap of APs allowed by OEMs to connect
  * in EHT/MLO.
  * @safe_mode_enable: safe mode to bypass some strict 6 GHz checks for
@@ -1566,6 +1567,7 @@ struct wlan_mlme_generic {
 	enum t2lm_negotiation_support t2lm_negotiation_support;
 	uint8_t mld_id;
 	bool enable_sap_emlsr_mode;
+	bool link_recfg_support;
 #endif
 #ifdef WLAN_FEATURE_11BE
 	uint32_t oem_eht_mlo_crypto_bitmap;

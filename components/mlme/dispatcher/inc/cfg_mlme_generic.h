@@ -1285,8 +1285,29 @@ enum wlan_epcs_frame {
 					"T2LM negotiation supported value")
 
 #define CFG_T2LM_NEGOTIATION_SUPPORTED CFG(CFG_T2LM_NEGOTIATION_SUPPORT)
+
+/*
+ * link_recfg_support - Enable Link Reconfig support
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This cfg is used to enable Link Reconfiguration support
+ *
+ *
+ * Supported Feature: STA
+ *
+ */
+#define CFG_LINK_RECFG_SUPPORT CFG_INI_BOOL( \
+		"link_recfg_support", \
+		0, \
+		"Enable/Disable Link Reconfiguration support")
+
+#define CFG_LINK_RECFG_SUPPORTED CFG(CFG_LINK_RECFG_SUPPORT)
+
 #else
 #define CFG_T2LM_NEGOTIATION_SUPPORTED
+#define CFG_LINK_RECFG_SUPPORTED
 #endif
 
 /*
@@ -1351,6 +1372,7 @@ enum wlan_epcs_frame {
 	CFG_SAP_EMLSR_MODE_ENABLED \
 	CFG_SR_ENABLE_MODES_ALL \
 	CFG_T2LM_NEGOTIATION_SUPPORTED \
+	CFG_LINK_RECFG_SUPPORTED \
 	CFG_RELAXED_LPI_CONN_POLICY \
 	CFG(CFG_REDUCE_PWR_SCAN_MODE)
 #endif /* __CFG_MLME_GENERIC_H */

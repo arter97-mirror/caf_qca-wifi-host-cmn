@@ -4280,6 +4280,40 @@ wlan_mlme_set_t2lm_negotiation_supported(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
+bool
+wlan_mlme_is_link_recfg_support(struct wlan_objmgr_psoc *psoc)
+{
+	return target_if_get_fw_link_reconfig_support(psoc) &&
+		wlan_mlme_get_link_recfg_support(psoc);
+}
+
+bool
+wlan_mlme_get_link_recfg_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj)
+		return false;
+
+	return mlme_obj->cfg.gen.link_recfg_support;
+}
+
+QDF_STATUS
+wlan_mlme_set_link_recfg_support(struct wlan_objmgr_psoc *psoc,
+				 bool value)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj)
+		return QDF_STATUS_E_FAILURE;
+
+	mlme_obj->cfg.gen.link_recfg_support = value;
+
+	return QDF_STATUS_SUCCESS;
+}
+
 uint8_t
 wlan_mlme_get_eht_mld_id(struct wlan_objmgr_psoc *psoc)
 {

@@ -1361,10 +1361,24 @@ static void mlme_init_emlsr_mode(struct wlan_objmgr_psoc *psoc,
  * Return: None
  */
 static void mlme_init_tl2m_negotiation_support(struct wlan_objmgr_psoc *psoc,
-						 struct wlan_mlme_generic *gen)
+					       struct wlan_mlme_generic *gen)
 {
 	gen->t2lm_negotiation_support = cfg_get(psoc,
 						CFG_T2LM_NEGOTIATION_SUPPORT);
+}
+
+/**
+ * mlme_init_link_recfg_support() - initialize Link Reconfig support
+ * @psoc: Pointer to PSOC
+ * @gen: pointer to generic CFG items
+ *
+ * Return: None
+ */
+static void mlme_init_link_recfg_support(struct wlan_objmgr_psoc *psoc,
+					 struct wlan_mlme_generic *gen)
+{
+	gen->link_recfg_support = cfg_get(psoc,
+					  CFG_LINK_RECFG_SUPPORT);
 }
 #else
 static void mlme_init_emlsr_mode(struct wlan_objmgr_psoc *psoc,
@@ -1373,7 +1387,12 @@ static void mlme_init_emlsr_mode(struct wlan_objmgr_psoc *psoc,
 }
 
 static void mlme_init_tl2m_negotiation_support(struct wlan_objmgr_psoc *psoc,
-						 struct wlan_mlme_generic *gen)
+					       struct wlan_mlme_generic *gen)
+{
+}
+
+static void mlme_init_link_recfg_support(struct wlan_objmgr_psoc *psoc,
+					 struct wlan_mlme_generic *gen)
 {
 }
 #endif
@@ -1470,6 +1489,7 @@ static void mlme_init_generic_cfg(struct wlan_objmgr_psoc *psoc,
 	mlme_init_tl2m_negotiation_support(psoc, gen);
 	mlme_init_standard_6ghz_conn_policy(psoc, gen);
 	mlme_init_relaxed_lpi_conn_policy(psoc, gen);
+	mlme_init_link_recfg_support(psoc, gen);
 }
 
 static void mlme_init_edca_ani_cfg(struct wlan_objmgr_psoc *psoc,
