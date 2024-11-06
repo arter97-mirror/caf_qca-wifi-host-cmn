@@ -2387,16 +2387,19 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 	bool eht_capab;
 	struct partner_link_info tmp_link_info;
 	uint32_t tmp_total_score = 0;
-	uint8_t mlo_support_link_num;
+	uint8_t mlo_support_link_num, num_partner_links;
 
 	wlan_psoc_mlme_get_11be_capab(psoc, &eht_capab);
 	if (!eht_capab)
 		return;
 
+	num_partner_links = QDF_MIN(MLD_MAX_LINKS - 1,
+				    entry->ml_info.num_links);
+
 	mlo_support_link_num = wlan_mlme_get_sta_mlo_conn_max_num(psoc);
 	link = &entry->ml_info.link_info[0];
 	freq_entry = entry->channel.chan_freq;
-	for (i = 0; i < entry->ml_info.num_links; i++) {
+	for (i = 0; i < num_partner_links; i++) {
 		if (!link[i].is_valid_link)
 			continue;
 
@@ -2436,10 +2439,10 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 	}
 
 	/* reorder the link idx per score */
-	for (j = 0; j < entry->ml_info.num_links; j++) {
+	for (j = 0; j < num_partner_links; j++) {
 		tmp_total_score = total_score[j];
 		best_partner_index = j;
-		for (i = j + 1; i < entry->ml_info.num_links; i++) {
+		for (i = j + 1; i < num_partner_links; i++) {
 			if (tmp_total_score < total_score[i]) {
 				tmp_total_score = total_score[i];
 				best_partner_index = i;
