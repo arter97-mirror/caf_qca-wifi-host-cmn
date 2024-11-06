@@ -13706,6 +13706,19 @@ QDF_STATUS populate_dot11f_auth_mlo_ie(struct mac_context *mac_ctx,
 	return QDF_STATUS_SUCCESS;
 }
 
+static inline void
+populate_dot11f_use_reporting_bss_ext_cap(tDot11fIEExtCap *reporting_ext_cap,
+					  tDot11fIEExtCap *reported_ext_cap)
+{
+	struct s_ext_cap *reporting_caps, *reported_caps;
+
+	reporting_caps = (struct s_ext_cap *)&reporting_ext_cap->bytes[0];
+	reported_caps = (struct s_ext_cap *)&reported_ext_cap->bytes[0];
+
+	if (reported_caps->scs != reporting_caps->scs)
+		reported_caps->scs = reporting_caps->scs;
+}
+
 QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 					    struct pe_session *pe_session,
 					    tDot11fAssocRequest *frm)
@@ -14106,6 +14119,9 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 		populate_dot11f_ext_cap(mac_ctx, true, &ext_cap, NULL);
 		populate_dot11f_btm_extended_caps(mac_ctx, pe_session,
 						  &ext_cap);
+		populate_dot11f_use_reporting_bss_ext_cap(&frm->ExtCap,
+							  &ext_cap);
+
 		if ((ext_cap.present && frm->ExtCap.present &&
 		     qdf_mem_cmp(&ext_cap, &frm->ExtCap, sizeof(ext_cap))) ||
 		     (ext_cap.present && !frm->ExtCap.present)) {
@@ -14114,7 +14130,7 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 					       len_remaining, &len_consumed);
 			p_sta_prof += len_consumed;
 			len_remaining -= len_consumed;
-		} else if (ext_cap.present && !frm->ExtCap.present) {
+		} else if (!ext_cap.present && frm->ExtCap.present) {
 			non_inher_ie_lists[non_inher_len++] = DOT11F_EID_EXTCAP;
 		}
 

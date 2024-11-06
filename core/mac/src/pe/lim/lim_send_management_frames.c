@@ -3364,21 +3364,6 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 		lim_strip_mlo_ie(mac_ctx, add_ie, &add_ie_len);
 	}
 
-	if (pe_session->lim_join_req->bssDescription.is_ml_ap &&
-	    pe_session->rsno_gen_used != RSNO_GEN_WIFI6)
-		is_ml_ap = true;
-
-	if (is_ml_ap)
-		mlo_ie_len = lim_fill_assoc_req_mlo_ie(mac_ctx, pe_session, frm);
-
-	/**
-	 * In case of ML connection, if ML IE length is 0 then return failure.
-	 */
-	if (is_ml_ap && mlo_is_mld_sta(pe_session->vdev) && !mlo_ie_len) {
-		pe_err("Failed to add ML IE for vdev:%d", pe_session->vdev_id);
-		goto end;
-	}
-
 	if (pe_session->is11Rconnection) {
 		struct bss_description *bssdescr;
 
@@ -3638,6 +3623,22 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 					      &wfa_gen_cap_ie_len);
 	if (QDF_IS_STATUS_ERROR(qdf_status)) {
 		pe_err("Failed to fill WFA Generation Capability IE");
+		goto end;
+	}
+
+	if (pe_session->lim_join_req->bssDescription.is_ml_ap &&
+	    pe_session->rsno_gen_used != RSNO_GEN_WIFI6)
+		is_ml_ap = true;
+
+	if (is_ml_ap)
+		mlo_ie_len = lim_fill_assoc_req_mlo_ie(mac_ctx, pe_session,
+						       frm);
+
+	/**
+	 * In case of ML connection, if ML IE length is 0 then return failure.
+	 */
+	if (is_ml_ap && mlo_is_mld_sta(pe_session->vdev) && !mlo_ie_len) {
+		pe_err("Failed to add ML IE for vdev:%d", pe_session->vdev_id);
 		goto end;
 	}
 
