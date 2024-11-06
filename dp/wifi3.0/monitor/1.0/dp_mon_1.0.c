@@ -437,8 +437,13 @@ QDF_STATUS dp_vdev_set_monitor_mode_buf_rings(struct dp_pdev *pdev)
 							   mac_id,
 							   pdev->pdev_id);
 
-			dp_rx_pdev_mon_buf_buffers_alloc(pdev, mac_for_pdev,
-							 FALSE);
+			/* Skip buffer allocation if dynamic resource manager
+			 * is enabled, these will be allocated from a different
+			 * context.
+			 */
+			if (!soc->features.dyn_resource_mgr_support)
+				dp_rx_pdev_mon_buf_buffers_alloc(
+					pdev, mac_for_pdev, FALSE);
 			mon_buf_ring =
 				&pdev->soc->rxdma_mon_buf_ring[mac_for_pdev];
 			/*

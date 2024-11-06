@@ -2906,6 +2906,7 @@ struct dp_arch_ops {
  * @fw_support_ml_monitor: FW support ML monitor mode
  * @dp_ipa_opt_dp_ctrl_refill: opt_dp_ctrl refill support
  * @vdev_tx_nss_support: FW supports vdev Tx NSS report.
+ * @dyn_resource_mgr_support: Dynamic RX buffer allocation support
  */
 struct dp_soc_features {
 	uint8_t pn_in_reo_dest:1,
@@ -2919,6 +2920,7 @@ struct dp_soc_features {
 	bool dp_ipa_opt_dp_ctrl_refill;
 #endif
 	bool vdev_tx_nss_support;
+	bool dyn_resource_mgr_support;
 };
 
 enum sysfs_printing_mode {

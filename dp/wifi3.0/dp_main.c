@@ -9978,6 +9978,12 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 		dp_info("FW supports Tx Vdev NSS report: %d",
 			soc->features.vdev_tx_nss_support);
 		break;
+	case CDP_DYN_RESOURCE_MGR_SUPPORT:
+		soc->features.dyn_resource_mgr_support =
+			val.cdp_dyn_resource_mgr_support;
+		dp_info("Dynamic resource manager support: %u",
+			soc->features.dyn_resource_mgr_support);
+		break;
 	default:
 		break;
 	}

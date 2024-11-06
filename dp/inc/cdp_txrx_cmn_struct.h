@@ -1712,6 +1712,7 @@ typedef union cdp_config_param_t {
 		uint16_t peer_id;
 		struct cdp_pkt_info pkts;
 	} pkt_info;
+	bool cdp_dyn_resource_mgr_support;
 } cdp_config_param_type;
 
 /**
@@ -1901,6 +1902,7 @@ enum cdp_vdev_param_type {
  * @CDP_SCAN_RADIO_SUPPORT: Scan Radio capability
  * @CDP_SAWF_MSDUQ_RECLAIM_SUPPORT: To initiate msduq reclaim related functions
  * @CDP_VDEV_TX_NSS_SUPPORT: FW Support vdev Tx NSS command
+ * @CDP_DYN_RESOURCE_MGR_SUPPORT: Dynamic RX buffer allocation support
  */
 enum cdp_psoc_param_type {
 	CDP_ENABLE_RATE_STATS,
@@ -1939,6 +1941,7 @@ enum cdp_psoc_param_type {
 	CDP_SAWF_MSDUQ_RECLAIM_SUPPORT,
 #endif
 	CDP_VDEV_TX_NSS_SUPPORT,
+	CDP_DYN_RESOURCE_MGR_SUPPORT,
 };
 
 #ifdef CONFIG_AP_PLATFORM
