@@ -5309,7 +5309,7 @@ dp_mon_pdev_filter_init(struct dp_mon_pdev *mon_pdev)
 		return;
 
 	mon_pdev->mon_filter_mode = MON_FILTER_ALL;
-	mon_pdev->fp_mgmt_filter = FILTER_MGMT_ALL;
+	mon_pdev->fp_mgmt_filter = FP_MGMT_FILTER;
 	mon_pdev->fp_ctrl_filter = FILTER_CTRL_ALL;
 	mon_pdev->fp_data_filter = FILTER_DATA_ALL;
 	mon_pdev->mo_mgmt_filter = FILTER_MGMT_ALL;

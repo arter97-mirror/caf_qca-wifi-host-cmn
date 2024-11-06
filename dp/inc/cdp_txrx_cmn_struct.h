@@ -175,6 +175,13 @@
 #define FILTER_DATA_DATA		0x0001
 #define FILTER_DATA_NULL		0x0008
 
+#if defined(QCA_WIFI_PEACH) || defined(QCA_WIFI_WCN7750)
+#define FP_MGMT_FILTER	FILTER_MGMT_ALL & \
+			~(FILTER_MGMT_PROBE_RES | FILTER_MGMT_BEACON)
+#else
+#define FP_MGMT_FILTER	FILTER_MGMT_ALL
+#endif
+
 /*
  * Monitor version 1 for LT chipset
  * Monitor version 2 for be+ chipsets
