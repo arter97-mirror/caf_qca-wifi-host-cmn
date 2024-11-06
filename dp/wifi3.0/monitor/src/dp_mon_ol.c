@@ -811,7 +811,7 @@ convert_mpdu_info_to_stats(struct cdp_rx_indication_mpdu_info *mpdu_info,
 	rx_status->chan_freq = mpdu_info->chan_freq;
 	rx_status->ppdu_id = mpdu_info->ppdu_id;
 	rx_status->rssi_comb = mpdu_info->rssi_comb;
-	rx_status->chan_noise_floor = mpdu_info->nf;
+	rx_status->hw_noise_floor = mpdu_info->nf;
 
 	rx_status->rate = mpdu_info->rate;
 	rx_status->nss = mpdu_info->nss;
