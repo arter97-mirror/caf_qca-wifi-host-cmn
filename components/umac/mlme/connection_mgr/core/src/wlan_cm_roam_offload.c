@@ -6289,7 +6289,8 @@ send_evt:
 	if (source == CM_ROAMING_HOST ||
 	    source == CM_ROAMING_NUD_FAILURE ||
 	    source == CM_ROAMING_LINK_REMOVAL ||
-	    source == CM_ROAMING_USER)
+	    source == CM_ROAMING_USER ||
+	    source == CM_ROAMING_STA_SAP_MCC)
 		rso_cfg->roam_invoke_source = source;
 
 	cm_req->roam_req.req.vdev_id = vdev_id;

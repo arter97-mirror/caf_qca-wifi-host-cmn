@@ -45,6 +45,7 @@
 #include "wlan_mlo_mgr_link_switch.h"
 #include "wlan_psoc_mlme_api.h"
 #include "wlan_policy_mgr_ll_sap.h"
+#include "wlan_cm_roam_api.h"
 
 enum policy_mgr_conc_next_action (*policy_mgr_get_current_pref_hw_mode_ptr)
 	(struct wlan_objmgr_psoc *psoc);
@@ -3270,6 +3271,89 @@ policy_mgr_switch_sap_vdev_table_sequence(struct policy_mgr_psoc_priv_obj *pm_ct
 	}
 }
 
+/*
+ * policy_mgr_trigger_roam_on_sta_sap_mcc() - Trigger roaming if current
+ * STA+SAP on MCC
+ * @pm_ctx: policy mgr ctx
+ * @sta_vdev_id: sta vdev_id
+ * @sta_freq: sta freq
+ * @sap freq: sap freq
+ *
+ * During concurrency, if STA+SAP is in MCC, then trigger roam by
+ * roaming invoke command.
+ */
+static void
+policy_mgr_trigger_roam_on_sta_sap_mcc(struct policy_mgr_psoc_priv_obj *pm_ctx,
+				       uint8_t sta_vdev_id, qdf_freq_t sta_freq,
+				       qdf_freq_t sap_freq)
+{
+	QDF_STATUS status;
+	struct qdf_mac_addr bssid;
+
+	/* trigger roaming */
+	policy_mgr_debug("STA(%d) + SAP(%d) in MCC, try roam on sta vdev %d, to move to SCC",
+			 sta_freq, sap_freq, sta_vdev_id);
+
+	/**
+	 * Keep Bssid as Broadcast, FW will select the candidate based on
+	 * FW scoring algorithm and current connection will be kept
+	 * if current AP has highest score and host will not do disconnect
+	 * if roam invoke fail.
+	 */
+	qdf_set_macaddr_broadcast(&bssid);
+	status = wlan_cm_roam_invoke(pm_ctx->pdev, sta_vdev_id, &bssid, 0,
+				     CM_ROAMING_STA_SAP_MCC);
+	if (QDF_IS_STATUS_ERROR(status))
+		policy_mgr_err("Vdev %d roam invoke failed", sta_vdev_id);
+}
+
+/**
+ * policy_mgr_handle_restart_failure_non_dbs() - Handle SAP restart failure for
+ * non-dbs target
+ * @pm_ctx: policy mgr ctx
+ * @sap_freq: SAP channel freq
+ *
+ * Return: None
+ */
+static void policy_mgr_handle_restart_failure_non_dbs(
+				struct policy_mgr_psoc_priv_obj *pm_ctx,
+				qdf_freq_t sap_freq)
+{
+	uint8_t sta_count, p2p_cli_count;
+	uint8_t sta_vdev_id_list[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
+	uint8_t p2p_cli_vdev_id_list[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
+	qdf_freq_t sta_op_ch_freq_list[MAX_NUMBER_OF_CONC_CONNECTIONS];
+	qdf_freq_t p2p_cli_op_ch_freq_list[MAX_NUMBER_OF_CONC_CONNECTIONS];
+	uint8_t vdev_id;
+	qdf_freq_t freq_1 = 0;
+
+	sta_count =
+		policy_mgr_get_mode_specific_conn_info(pm_ctx->psoc,
+						       sta_op_ch_freq_list,
+						       sta_vdev_id_list,
+						       PM_STA_MODE);
+	p2p_cli_count =
+		policy_mgr_get_mode_specific_conn_info(pm_ctx->psoc,
+						       p2p_cli_op_ch_freq_list,
+						       p2p_cli_vdev_id_list,
+						       PM_P2P_CLIENT_MODE);
+
+	if (sta_count + p2p_cli_count != 1)
+		return;
+
+	if (sta_count) {
+		vdev_id = sta_vdev_id_list[0];
+		freq_1 = sta_op_ch_freq_list[0];
+	} else if (p2p_cli_count) {
+		vdev_id = p2p_cli_vdev_id_list[0];
+		freq_1 = p2p_cli_op_ch_freq_list[0];
+	}
+
+	if (freq_1 != sap_freq)
+		policy_mgr_trigger_roam_on_sta_sap_mcc(pm_ctx, vdev_id, freq_1,
+						       sap_freq);
+}
+
 static void __policy_mgr_check_sta_ap_concurrent_ch_intf(
 				struct policy_mgr_psoc_priv_obj *pm_ctx)
 {
@@ -3280,6 +3364,7 @@ static void __policy_mgr_check_sta_ap_concurrent_ch_intf(
 	uint8_t vdev_id[MAX_NUMBER_OF_CONC_CONNECTIONS];
 	struct sta_ap_intf_check_work_ctx *work_info;
 	bool handled = false;
+	bool is_dbs;
 
 	if (!pm_ctx) {
 		policy_mgr_err("Invalid context");
@@ -3406,16 +3491,29 @@ static void __policy_mgr_check_sta_ap_concurrent_ch_intf(
 						  &vdev_id[0],
 						  cc_count);
 
+	is_dbs = policy_mgr_is_hw_dbs_capable(pm_ctx->psoc);
+
 	if (cc_count <= MAX_NUMBER_OF_CONC_CONNECTIONS)
 		for (i = 0; i < cc_count; i++) {
 			status = pm_ctx->hdd_cbacks.
 				wlan_hdd_get_channel_for_sap_restart
 					(pm_ctx->psoc, vdev_id[i], &ch_freq);
-			if (status == QDF_STATUS_SUCCESS) {
+			if (QDF_IS_STATUS_SUCCESS(status)) {
 				policy_mgr_debug("SAP vdev id %d restarts, old ch freq :%d new ch freq: %d",
 						 vdev_id[i],
 						 op_ch_freq_list[i], ch_freq);
-				break;
+				goto end;
+			}
+
+			if (!is_dbs && mcc_to_scc_switch ==
+				QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) {
+				/**
+				 * Trigger roaming if STA/P2P_CLI + SAP is in
+				 * MCC
+				 */
+				policy_mgr_handle_restart_failure_non_dbs(
+							pm_ctx,
+							op_ch_freq_list[i]);
 			}
 		}
 
