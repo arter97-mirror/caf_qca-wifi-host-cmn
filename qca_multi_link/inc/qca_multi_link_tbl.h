@@ -28,6 +28,10 @@
 #include <linux/etherdevice.h>
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+#include "osif_private.h"
+#include <ieee80211_var.h>
+#endif
 
 /**
  * qca_multi_link_entry_type - bridge entry type
@@ -45,6 +49,10 @@ typedef enum qca_multi_link_entry_type {
 typedef struct qca_multi_link_tbl_entry {
 	struct wireless_dev *qal_fdb_ieee80211_ptr;
 	struct net_device *qal_fdb_dev;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev *qal_fdb_osifp;
+	struct ieee80211com *qal_fdb_ic;
+#endif
 	uint8_t qal_fdb_is_local;
 	unsigned char qal_mac_addr[6];
 } qca_multi_link_tbl_entry_t;

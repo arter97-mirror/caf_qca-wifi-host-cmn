@@ -33,7 +33,11 @@
 #include <ieee80211_defines.h>
 #include <qca_multi_link_tbl.h>
 #include "if_upperproto.h"
-
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+#include "osif_private.h"
+#include <ieee80211_var.h>
+#include <ieee80211_cfg80211.h>
+#endif
 
 #define QCA_MULTI_LINK_RADIO_LIST_SIZE 6
 #define QCA_ML_MAX_MLO_GROUPS 2
@@ -97,7 +101,12 @@ typedef struct qca_multi_link_statistics {
  */
 typedef struct qca_multi_link_radio_list_node {
 	qdf_list_node_t node;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev *sta_osifp;
+	struct ieee80211com *ic;
+#else
 	struct wiphy *wiphy;
+#endif
 	bool no_backhaul;
 	bool is_fast_lane;
 	struct net_device *sta_dev;
@@ -106,7 +115,11 @@ typedef struct qca_multi_link_radio_list_node {
 } qca_multi_link_radio_node_t;
 
 struct qca_multi_link_ops {
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev * (*get_ml_link_entry_for_mld_dev)(struct net_device *link_dev, void *mac_addr);
+#else
 	struct net_device * (*get_ml_link_entry_for_mld_dev)(struct net_device *link_dev, void *mac_addr);
+#endif
 };
 
 /**
@@ -126,29 +139,44 @@ typedef struct qca_multi_link_parameters {
 	bool always_primary;
 	bool force_client_mcast_traffic;
 	bool drop_secondary_mcast;
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+	osif_dev *primary_osifp;
+	struct ieee80211com *primary_ic;
+#else
 	struct wiphy *primary_wiphy;
+#endif
 	uint8_t total_stavaps_up;
 	qdf_list_t radio_list;
 	qdf_spinlock_t radio_lock;
 	qca_ml_global_stats_t qca_ml_stats;
 	qca_multi_link_set_loop_detection_fn_t qca_ml_set_loop_detection;
 	void *qca_ml_loop_detection_context;
+#ifndef ENABLE_CFG80211_BACKPORTS_MLO
 	struct wiphy *mlo_wiphy[QCA_ML_MAX_MLO_GROUPS];
+#endif
 	struct qca_multi_link_ops *qca_ml_ops;
 } qca_multi_link_parameters_t;
 
+#ifdef ENABLE_CFG80211_BACKPORTS_MLO
+void qca_multi_link_set_primary_radio(struct ieee80211com *primary_ic);
+struct ieee80211com *qca_multi_link_get_primary_radio(void);
+osif_dev *qca_multi_link_get_station_vap(struct ieee80211com *ic);
+bool qca_multi_link_add_station_vap(struct ieee80211com *ic,
+				    osif_dev *sta_osifp,
+				    struct net_device *sta_mldev,
+				    uint8_t *mld_mac);
+bool qca_multi_link_remove_station_vap(struct ieee80211com *ic);
+bool qca_multi_link_add_radio(struct ieee80211com *ic);
+bool qca_multi_link_remove_radio(struct ieee80211com *ic);
+bool qca_multi_link_is_primary_radio(struct ieee80211com *dev_ic);
+bool qca_multi_link_add_fastlane_radio(struct ieee80211com *fl_ic);
+bool qca_multi_link_remove_fastlane_radio(struct ieee80211com *fl_ic);
+bool qca_multi_link_add_no_backhaul_radio(struct ieee80211com *no_bl_ic);
+bool qca_multi_link_remove_no_backhaul_radio(struct ieee80211com *no_bl_ic);
+
+#else
 void qca_multi_link_add_mld_wiphy(struct wiphy *wiphy);
 void qca_multi_link_del_mld_wiphy(struct wiphy *wiphy);
-void qca_multi_link_deinit_module(void);
-void qca_multi_link_init_module(struct qca_multi_link_ops *ml_ops);
-uint8_t qca_multi_link_get_num_sta(void);
-void qca_multi_link_append_num_sta(bool inc_or_dec);
-bool qca_multi_link_is_dbdc_processing_reqd(struct net_device *net_dev);
-void qca_multi_link_set_drop_sec_mcast(bool val);
-void qca_multi_link_set_force_client_mcast(bool val);
-void qca_multi_link_set_always_primary(bool val);
-bool qca_multi_link_get_always_primary(void);
-void qca_multi_link_set_dbdc_enable(bool val);
 struct wiphy *qca_multi_link_get_primary_radio(void);
 void qca_multi_link_set_primary_radio(struct wiphy *primary_wiphy);
 bool qca_multi_link_remove_radio(struct wiphy *wiphy);
@@ -163,13 +191,24 @@ bool qca_multi_link_add_station_vap(struct wiphy *wiphy,
 				    struct net_device *sta_mldev,
 				    uint8_t *mld_mac);
 bool qca_multi_link_ap_rx(struct net_device *net_dev, qdf_nbuf_t nbuf);
-bool qca_multi_link_sta_rx(struct net_device *net_dev, qdf_nbuf_t nbuf,
-			   struct net_device **prim_dev,
+bool qca_multi_link_is_primary_radio(struct wiphy *dev_wiphy);
+struct net_device *qca_multi_link_get_station_vap(struct wiphy *wiphy);
+#endif
+void qca_multi_link_deinit_module(void);
+void qca_multi_link_init_module(struct qca_multi_link_ops *ml_ops);
+bool qca_multi_link_sta_tx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf_t nbuf,
 			   struct net_device *mld_ndev);
-bool qca_multi_link_sta_tx(struct net_device *net_dev, qdf_nbuf_t nbuf,
+bool qca_multi_link_sta_rx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf_t nbuf,
+			   struct net_device **prim_dev,
 			   struct net_device *mld_ndev);
 void qca_multi_link_set_dbdc_loop_detection_cb(qca_multi_link_set_loop_detection_fn_t qca_ml_cb,
 					       void *ctx);
-bool qca_multi_link_is_primary_radio(struct wiphy *dev_wiphy);
-struct net_device *qca_multi_link_get_station_vap(struct wiphy *wiphy);
+void qca_multi_link_set_drop_sec_mcast(bool val);
+void qca_multi_link_set_force_client_mcast(bool val);
+void qca_multi_link_set_dbdc_enable(bool val);
+void qca_multi_link_set_always_primary(bool val);
+bool qca_multi_link_get_always_primary(void);
+uint8_t qca_multi_link_get_num_sta(void);
+void qca_multi_link_append_num_sta(bool inc_or_dec);
+bool qca_multi_link_is_dbdc_processing_reqd(struct net_device *net_dev);
 #endif
