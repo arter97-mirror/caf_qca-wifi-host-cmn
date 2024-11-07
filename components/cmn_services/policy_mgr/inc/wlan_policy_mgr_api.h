@@ -5477,6 +5477,17 @@ policy_mgr_update_active_mlo_num_nlink(struct wlan_objmgr_psoc *psoc,
 				       uint8_t vdev_id,
 				       uint8_t force_active_cnt);
 
+/**
+ * policy_mgr_mlo_sap_concurrency_allow() - Check if fw support mlo sap
+ * concurrency.
+ * @psoc: objmgr psoc
+ *
+ * This API is used to check if wlan firmware support mlo sap
+ * concurrency or not.
+ *
+ * Return: True if mlo sap concurrency support from fw, otherwise false.
+ */
+bool policy_mgr_mlo_sap_concurrency_allow(struct wlan_objmgr_psoc *psoc);
 #else
 static inline QDF_STATUS
 policy_mgr_ap_csa_request(struct wlan_objmgr_psoc *psoc,
@@ -5578,6 +5589,12 @@ void policy_mgr_handle_ml_sta_links_on_vdev_down(struct wlan_objmgr_psoc *psoc,
 						 enum QDF_OPMODE mode,
 						 uint8_t vdev_id)
 {
+}
+
+static inline
+bool policy_mgr_mlo_sap_concurrency_allow(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
 }
 #endif
 

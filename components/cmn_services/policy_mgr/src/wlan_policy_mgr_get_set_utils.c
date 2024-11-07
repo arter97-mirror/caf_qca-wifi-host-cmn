@@ -13941,6 +13941,26 @@ policy_mgr_find_current_hw_mode(struct wlan_objmgr_psoc *psoc)
 end:
 	return POLICY_MGR_HW_MODE_INVALID;
 }
+
+bool
+policy_mgr_mlo_sap_concurrency_allow(struct wlan_objmgr_psoc *psoc)
+{
+	struct wmi_unified *wmi_handle;
+
+	if (!psoc) {
+		mlme_err("PSOC is NULL");
+		return false;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		mlme_err("wmi_handle is null");
+		return false;
+	}
+
+	return (wmi_service_enabled(wmi_handle,
+				    wmi_service_mlo_sap_concurrency_support));
+}
 #endif
 
 bool
