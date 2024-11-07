@@ -24878,6 +24878,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_scan_cache_report_support] =
 			WMI_SERVICE_SCAN_CACHE_REPORT_SUPPORT;
 #endif
+#ifdef WLAN_FEATURE_11BE_MLO
+	wmi_service[wmi_service_mlo_sap_concurrency_support] =
+				WMI_SERVICE_MLO_SAP_CONCURRENCY_SUPPORT;
+#endif
 }
 
 /**
