@@ -23,6 +23,7 @@
 #include <wlan_objmgr_vdev_obj.h>
 #include <wlan_objmgr_peer_obj.h>
 #include <cdp_txrx_host_stats.h>
+#include <cdp_txrx_ctrl.h>
 #if CONFIG_SAWF
 #include <cdp_txrx_extd_struct.h>
 #include <cdp_txrx_sawf.h>
@@ -229,10 +230,12 @@ static void fill_basic_peer_data_tx(struct basic_peer_data_tx *data,
 }
 
 static void fill_basic_peer_ctrl_tx(struct basic_peer_ctrl_tx *ctrl,
+				    struct wlan_objmgr_peer *peer,
 				    struct peer_ic_cp_stats *peer_cp_stats)
 {
 	ctrl->cs_tx_mgmt = peer_cp_stats->cs_tx_mgmt;
 	ctrl->cs_is_tx_not_ok = peer_cp_stats->cs_is_tx_not_ok;
+	ctrl->cs_bandwidth = wlan_node_peer_get_chwidth(peer);
 }
 
 static void fill_basic_peer_data_rx(struct basic_peer_data_rx *data,
@@ -454,7 +457,8 @@ static QDF_STATUS get_basic_peer_data_tx(struct unified_stats *stats,
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS get_basic_peer_ctrl_tx(struct unified_stats *stats,
+static QDF_STATUS get_basic_peer_ctrl_tx(struct wlan_objmgr_peer *peer,
+					 struct unified_stats *stats,
 					 struct peer_ic_cp_stats *peer_cp_stats)
 {
 	struct basic_peer_ctrl_tx *ctrl = NULL;
@@ -468,7 +472,7 @@ static QDF_STATUS get_basic_peer_ctrl_tx(struct unified_stats *stats,
 		qdf_err("Allocation Failed!");
 		return QDF_STATUS_E_NOMEM;
 	}
-	fill_basic_peer_ctrl_tx(ctrl, peer_cp_stats);
+	fill_basic_peer_ctrl_tx(ctrl, peer, peer_cp_stats);
 
 	stats->feat[INX_FEAT_TX] = ctrl;
 	stats->size[INX_FEAT_TX] = sizeof(struct basic_peer_ctrl_tx);
@@ -966,7 +970,7 @@ static QDF_STATUS get_basic_peer_ctrl(struct wlan_objmgr_psoc *psoc,
 		goto get_failed;
 	}
 	if (feat & STATS_FEAT_FLG_TX) {
-		ret = get_basic_peer_ctrl_tx(stats, peer_cp_stats);
+		ret = get_basic_peer_ctrl_tx(peer, stats, peer_cp_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch Peer Basic TX stats!");
 		else
@@ -2333,7 +2337,8 @@ static QDF_STATUS get_advance_peer_data_nawds(struct unified_stats *stats,
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS get_advance_peer_ctrl_tx(struct unified_stats *stats,
+static QDF_STATUS get_advance_peer_ctrl_tx(struct wlan_objmgr_peer *peer,
+					   struct unified_stats *stats,
 					   struct peer_ic_cp_stats *cp_stats)
 {
 	struct advance_peer_ctrl_tx *ctrl = NULL;
@@ -2347,7 +2352,7 @@ static QDF_STATUS get_advance_peer_ctrl_tx(struct unified_stats *stats,
 		qdf_err("Allocation Failed!");
 		return QDF_STATUS_E_NOMEM;
 	}
-	fill_basic_peer_ctrl_tx(&ctrl->b_tx, cp_stats);
+	fill_basic_peer_ctrl_tx(&ctrl->b_tx, peer, cp_stats);
 
 	ctrl->cs_tx_assoc = cp_stats->cs_tx_assoc;
 	ctrl->cs_tx_assoc_fail = cp_stats->cs_tx_assoc_fail;
@@ -2719,7 +2724,7 @@ static QDF_STATUS get_advance_peer_ctrl(struct wlan_objmgr_psoc *psoc,
 			stats_collected = true;
 	}
 	if (feat & STATS_FEAT_FLG_TX) {
-		ret = get_advance_peer_ctrl_tx(stats, peer_cp_stats);
+		ret = get_advance_peer_ctrl_tx(peer, stats, peer_cp_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch peer Advance TX Stats!");
 		else
@@ -4330,9 +4335,12 @@ static QDF_STATUS get_debug_peer_data_rx(struct unified_stats *stats,
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS get_debug_peer_data_link(struct unified_stats *stats,
+static QDF_STATUS get_debug_peer_data_link(struct wlan_objmgr_pdev *pdev,
+					   struct unified_stats *stats,
 					   struct cdp_peer_stats *peer_stats)
 {
+	uint8_t i;
+	uint8_t loop_cnt;
 	struct debug_peer_data_link *data = NULL;
 
 	if (!stats || !peer_stats) {
@@ -4347,6 +4355,13 @@ static QDF_STATUS get_debug_peer_data_link(struct unified_stats *stats,
 	fill_basic_peer_data_link(&data->b_link, &peer_stats->rx);
 	data->last_ack_rssi = peer_stats->tx.last_ack_rssi;
 	data->avg_ack_rssi = CDP_SNR_OUT(peer_stats->tx.avg_ack_rssi);
+	data->noise_floor = wlan_objmgr_pdev_get_nf(pdev);
+
+	loop_cnt = qdf_min((uint8_t)CDP_RSSI_CHAIN_LEN,
+			   (uint8_t)STATS_IF_RSSI_CHAIN_MAX);
+
+	for (i = 0; i < loop_cnt; i++)
+		data->ack_rssi[i] = peer_stats->tx.rssi_chain[i];
 
 	stats->feat[INX_FEAT_LINK] = data;
 	stats->size[INX_FEAT_LINK] = sizeof(struct debug_peer_data_link);
@@ -4551,12 +4566,14 @@ static QDF_STATUS get_debug_peer_data(struct wlan_objmgr_psoc *psoc,
 	struct cdp_peer_stats *peer_stats = NULL;
 	struct cdp_peer_tx_capture_stats *cap = NULL;
 	struct cdp_peer_deter_stats *deter = NULL;
+	struct wlan_objmgr_pdev *pdev;
 	uint8_t vdev_id = 0;
 	void *dp_soc = NULL;
 	bool stats_collected = false;
 
 	vdev_id = wlan_vdev_get_id(vdev);
 	dp_soc = wlan_psoc_get_dp_handle(psoc);
+	pdev = wlan_vdev_get_pdev(vdev);
 	if (feat & ~STATS_FEAT_FLG_TXCAP) {
 		peer_stats = qdf_mem_malloc(sizeof(struct cdp_peer_stats));
 		if (!peer_stats) {
@@ -4586,7 +4603,7 @@ static QDF_STATUS get_debug_peer_data(struct wlan_objmgr_psoc *psoc,
 			stats_collected = true;
 	}
 	if (feat & STATS_FEAT_FLG_LINK) {
-		ret = get_debug_peer_data_link(stats, peer_stats);
+		ret = get_debug_peer_data_link(pdev, stats, peer_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch peer Debug LINK Stats!");
 		else
@@ -4643,7 +4660,8 @@ get_failed:
 	return ret;
 }
 
-static QDF_STATUS get_debug_peer_ctrl_tx(struct unified_stats *stats,
+static QDF_STATUS get_debug_peer_ctrl_tx(struct wlan_objmgr_peer *peer,
+					 struct unified_stats *stats,
 					 struct peer_ic_cp_stats *cp_stats,
 					 struct cdp_peer_stats *peer_stats)
 {
@@ -4658,7 +4676,7 @@ static QDF_STATUS get_debug_peer_ctrl_tx(struct unified_stats *stats,
 		qdf_err("Allocation Failed!");
 		return QDF_STATUS_E_NOMEM;
 	}
-	fill_basic_peer_ctrl_tx(&ctrl->b_tx, cp_stats);
+	fill_basic_peer_ctrl_tx(&ctrl->b_tx, peer, cp_stats);
 	ctrl->cs_ps_discard = cp_stats->cs_ps_discard;
 	ctrl->cs_psq_drops = cp_stats->cs_psq_drops;
 	ctrl->cs_tx_dropblock = cp_stats->cs_tx_dropblock;
@@ -4800,7 +4818,8 @@ static QDF_STATUS get_debug_peer_ctrl(struct wlan_objmgr_psoc *psoc,
 		goto get_failed;
 	}
 	if (feat & STATS_FEAT_FLG_TX) {
-		ret = get_debug_peer_ctrl_tx(stats, peer_cp_stats, peer_stats);
+		ret = get_debug_peer_ctrl_tx(peer, stats, peer_cp_stats,
+					     peer_stats);
 		if (ret != QDF_STATUS_SUCCESS)
 			qdf_err("Unable to fetch peer Debug TX Stats!");
 		else
