@@ -8664,6 +8664,26 @@ QDF_STATUS sme_set_p2p_go_bcn_int(mac_handle_t mac_handle, uint8_t vdev_id,
 	return status;
 }
 
+QDF_STATUS sme_set_btm_req_reject(mac_handle_t mac_handle, uint8_t vdev_id,
+				  uint8_t btm_reject)
+{
+	struct mac_context *mac = MAC_CONTEXT(mac_handle);
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (btm_reject)
+		status = cm_roam_send_disable_config(
+				mac->psoc, vdev_id,
+				WMI_VDEV_PARAM_ROAM_11KV_BTM_REJECT);
+	else
+		status = cm_roam_send_disable_config(mac->psoc, vdev_id,
+						     btm_reject);
+
+	if (QDF_IS_STATUS_ERROR(status))
+		sme_err("Unable to send BTM request reject config");
+
+	return status;
+}
+
 /**
  * sme_set_miracast() - Function to set miracast value to UMAC
  * @mac_handle:                Handle returned by macOpen
@@ -15562,6 +15582,10 @@ void sme_reset_he_caps(mac_handle_t mac_handle, uint8_t vdev_id)
 	if (mac_ctx->usr_cfg_disable_rsp_tx)
 		sme_set_cfg_disable_tx(mac_handle, vdev_id, 0);
 	mac_ctx->is_usr_cfg_amsdu_enabled = true;
+
+	/* reset the BTM request reject config */
+	cm_roam_send_disable_config(mac_ctx->psoc, vdev_id, 0);
+
 	status = wlan_scan_cfg_set_scan_mode_6g(mac_ctx->psoc,
 						SCAN_MODE_6G_ALL_CHANNEL);
 	if (QDF_IS_STATUS_ERROR(status))

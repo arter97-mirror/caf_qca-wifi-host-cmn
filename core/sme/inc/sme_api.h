@@ -4954,7 +4954,7 @@ QDF_STATUS sme_start_bss(mac_handle_t mac_handle, uint8_t vdev_id,
 
 /**
  * sme_set_p2p_go_bcn_int() - Sets the P2P GO beacon interval
- * @mac_handle: mac hancle
+ * @mac_handle: mac handle
  * @vdev_id: vdev id
  * @bcn_int: beacon interval value
  *
@@ -4962,6 +4962,18 @@ QDF_STATUS sme_start_bss(mac_handle_t mac_handle, uint8_t vdev_id,
  */
 QDF_STATUS sme_set_p2p_go_bcn_int(mac_handle_t mac_handle, uint8_t vdev_id,
 				  uint16_t bcn_int);
+
+/**
+ * sme_set_btm_req_reject() - Sets BTM request reject config to firmware
+ * @mac_handle: mac handle
+ * @vdev_id: vdev id
+ * @btm_reject: BTM request reject value
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS sme_set_btm_req_reject(mac_handle_t mac_handle, uint8_t vdev_id,
+				  uint8_t btm_reject);
+
 /**
  * sme_sap_ser_callback() - callback from serialization module
  * @cmd: serialization command

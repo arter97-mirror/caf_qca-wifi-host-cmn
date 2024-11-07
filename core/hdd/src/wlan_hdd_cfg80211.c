@@ -9153,6 +9153,8 @@ wlan_hdd_wifi_test_config_policy[
 			.type = NLA_U8},
 		[QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_EXTRA_LTF] = {
 			.type = NLA_U8},
+		[QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BTM_REQ_REJECT] = {
+			.type = NLA_U8},
 };
 
 /**
@@ -16606,6 +16608,18 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 					      adapter->device_mode);
 		if (ret_val)
 			sme_err("Failed to update extra EHT-LTF");
+	}
+
+	cmd_id = QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BTM_REQ_REJECT;
+	if (tb[cmd_id]) {
+		cfg_val = nla_get_u8(tb[cmd_id]);
+		hdd_debug("BTM request reject: %d", cfg_val);
+		ret_val = sme_set_btm_req_reject(hdd_ctx->mac_handle,
+						 link_info->vdev_id,
+						 cfg_val);
+
+		if (ret_val)
+			hdd_err("Failed to set BTM reject config");
 	}
 
 	if (update_sme_cfg)
