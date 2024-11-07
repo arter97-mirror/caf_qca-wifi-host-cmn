@@ -123,6 +123,12 @@ typedef uint32_t wlan_scan_id;
 #define ELEM_ID_LIST_LEN_POS 3
 #define ELEM_ID_LIST_POS 4
 
+/* Active dwell time and repeat probe time for p2p scan with bssid
+ * in msec
+ */
+#define P2P_ACTIVE_DWELL_TIME_WITH_BSSID 100
+#define P2P_REPEAT_PROBE_TIME_WITH_BSSID 10
+
 /* Active dwell time in low span scan mode(NL80211_SCAN_FLAG_LOW_SPAN)
  * in msec
  */
