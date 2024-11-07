@@ -203,6 +203,7 @@ typedef QDF_STATUS (*wlan_ser_umac_cmd_cb)(void *umac_cmd);
  * @WLAN_SER_CMD_SAP_BW_UPDATE: Cmd to serialize SAP BW update operation
  * @WLAN_SER_CMD_HIGH_AP_AVAILABILITY: Cmd to serialize high ap availability
  * operation
+ * @WLAN_SER_CMD_LINK_RECFG: Cmd to serialize Link recfg operation
  * @WLAN_SER_CMD_MAX: Max enumeration
  */
 enum wlan_serialization_cmd_type {
@@ -240,6 +241,7 @@ enum wlan_serialization_cmd_type {
 	WLAN_SER_CMD_MLO_VDEV_LINK_SWITCH,
 	WLAN_SER_CMD_SAP_BW_UPDATE,
 	WLAN_SER_CMD_HIGH_AP_AVAILABILITY,
+	WLAN_SER_CMD_LINK_RECFG,
 	WLAN_SER_CMD_MAX
 };
 
