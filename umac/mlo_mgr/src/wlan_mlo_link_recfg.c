@@ -25,14 +25,16 @@
 #include <wlan_cm_api.h>
 #include <wlan_crypto_def_i.h>
 #include <wlan_sm_engine.h>
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+#ifdef WLAN_FEATURE_11BE_MLO
 #include "wlan_cm_roam_api.h"
 #include <wlan_mlo_mgr_roam.h>
 #include "wlan_dlm_api.h"
 #include "wlan_dp_ucfg_api.h"
 #include "target_if_mlo_mgr.h"
+#include "utils_mlo.h"
 #endif
 #include "host_diag_core_event.h"
+#include "lim_types.h"
 
 static struct wlan_mlo_dev_context *
 mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
@@ -143,6 +145,22 @@ mlo_link_recfg_sm_transition_to(struct mlo_link_recfg_context *recfg_ctx,
 	wlan_sm_transition_to(recfg_ctx->sm.sm_hdl, state);
 }
 
+uint8_t
+mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req)
+{
+	if (!req)
+		return 0;
+
+	if (req->dialog_token == WLAN_MAX_DIALOG_TOKEN)
+		/* wrap is ok */
+		req->dialog_token = WLAN_MIN_DIALOG_TOKEN;
+	else
+		req->dialog_token += 1;
+
+	mlo_debug("gen dialog token %d", req->dialog_token);
+	return req->dialog_token;
+}
+
 /**
  * mlo_remove_link_recfg_cmd() - The API will remove the link reconfig
  * command from active serialization queue.
@@ -166,7 +184,7 @@ mlo_remove_link_recfg_cmd(struct mlo_link_recfg_context *recfg_ctx)
 		mlo_err("psoc null");
 		return QDF_STATUS_E_INVAL;
 	}
-	recfg_req = &recfg_ctx->last_recfg_req;
+	recfg_req = &recfg_ctx->curr_recfg_req;
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
 					psoc,
 					recfg_req->vdev_id,
@@ -310,7 +328,7 @@ mlo_ser_link_recfg_cmd(struct mlo_link_recfg_context *recfg_ctx,
 	}
 
 	mlo_dev_lock_acquire(mlo_dev_ctx);
-	qdf_mem_copy(&recfg_ctx->last_recfg_req, recfg_req,
+	qdf_mem_copy(&recfg_ctx->curr_recfg_req, recfg_req,
 		     sizeof(*recfg_req));
 	mlo_dev_lock_release(mlo_dev_ctx);
 
@@ -575,7 +593,7 @@ mlo_link_recfg_del_link_by_inact(
 		return QDF_STATUS_E_INVAL;
 	}
 
-	recfg_req = &recfg_ctx->last_recfg_req;
+	recfg_req = &recfg_ctx->curr_recfg_req;
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, recfg_req->vdev_id,
 						    WLAN_MLO_MGR_ID);
 	if (!vdev) {
@@ -608,12 +626,61 @@ mlo_link_recfg_del_link_by_inact(
 	return status;
 }
 
-static QDF_STATUS
+QDF_STATUS
 mlo_link_recfg_send_request_frame(
 		struct mlo_link_recfg_context *recfg_ctx,
 		struct mlo_link_recfg_state_req *req)
 {
-	return QDF_STATUS_SUCCESS;
+	struct wlan_action_frame_args args;
+	struct link_recfg_tx_result tx_result;
+	struct wlan_objmgr_vdev *vdev = NULL;
+	struct wlan_objmgr_peer *peer = NULL;
+	QDF_STATUS status;
+	uint8_t vdev_id;
+
+	if (!req) {
+		mlo_err("Link recfg req is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!recfg_ctx) {
+		mlo_err("Link recfg ctx is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	args.category = ACTION_CATEGORY_PROTECTED_EHT;
+	args.action = EHT_LINK_RECONFIG_REQUEST;
+	args.arg1 = mlo_link_recfg_dialog_token(req);
+
+	peer = wlan_objmgr_get_peer_by_mac(recfg_ctx->psoc,
+					   (uint8_t *)&req->peer_mac,
+					   WLAN_MLO_MGR_ID);
+	if (!peer) {
+		mlo_err("Peer is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	vdev = wlan_peer_get_vdev(peer);
+	if (!vdev) {
+		mlo_err("Vdev is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+	vdev_id = wlan_vdev_get_id(vdev);
+	status = lim_send_link_recfg_action_req_frame(vdev_id,
+						      (uint8_t *)&req->peer_mac,
+						      &args, req);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("Failed to send Link Reconfiguration action request frame");
+		tx_result.status = status;
+		mlo_link_recfg_sm_deliver_event(vdev->mlo_dev_ctx,
+						WLAN_LINK_RECFG_SM_EV_XMIT_STATUS,
+						sizeof(struct link_recfg_tx_result),
+						&tx_result);
+	}
+
+	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
+	return status;
 }
 
 static QDF_STATUS
@@ -810,16 +877,25 @@ mlo_link_recfg_del_link_completed(struct mlo_link_recfg_context *recfg_ctx)
 
 static void
 mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
-				 struct recfg_rsp *recfg_resp_data)
+				 struct link_recfg_rx_rsp *recfg_resp_data,
+				 uint16_t event_data_len)
 {
-	/* handle link recfg response frame */
+	if (!recfg_ctx || !recfg_resp_data || !event_data_len)
+		return;
+
+	if (QDF_IS_STATUS_ERROR(recfg_resp_data->status)) {
+		mlo_err("RX response failure");
+		goto end;
+	}
 
 	/* notify kernel/supplicant for del only req/rsp
 	 *	osif_notify_link_reconfig();
 	 */
+	mlo_err("RX response success");
 
 	/* handle link recfg link add rejected case */
 
+end:
 	mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
 }
 
@@ -857,7 +933,7 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
 	QDF_STATUS status;
 
-	recfg_req = &recfg_ctx->last_recfg_req;
+	recfg_req = &recfg_ctx->curr_recfg_req;
 
 	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
 	if (!psoc) {
@@ -900,6 +976,9 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 
 	/* remove reconfig ser command */
 	mlo_remove_link_recfg_cmd(recfg_ctx);
+
+	/* free link recfg ctx ies */
+	mlo_link_recfg_ctx_free_ies(recfg_ctx);
 }
 
 static enum wlan_link_recfg_sm_state
@@ -972,7 +1051,7 @@ mlo_link_recfg_ser_timeout_sm_handler(
 	default:
 		mlo_err("unexpected state %d when ser timeout vdev %d",
 			state,
-			recfg_ctx->last_recfg_req.vdev_id);
+			recfg_ctx->curr_recfg_req.vdev_id);
 		goto abort;
 	}
 
@@ -1003,7 +1082,7 @@ mlo_link_recfg_ser_timeout_sm_handler(
 	default:
 		mlo_err("unexpected substate %d when ser timeout vdev %d",
 			state,
-			recfg_ctx->last_recfg_req.vdev_id);
+			recfg_ctx->curr_recfg_req.vdev_id);
 		break;
 	}
 
@@ -1131,7 +1210,7 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
-		recfg_req = &recfg_ctx->last_recfg_req;
+		recfg_req = &recfg_ctx->curr_recfg_req;
 		if (recfg_req->is_user_req) {
 			/* for user initiated request, we need to send
 			 * wmi command to target to trigger recfg and
@@ -1149,7 +1228,7 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 			 */
 			status = mlo_link_recfg_create_transition_list(
 				recfg_ctx,
-				&recfg_ctx->last_recfg_req);
+				&recfg_ctx->curr_recfg_req);
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
@@ -1195,7 +1274,7 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
-		recfg_req = &recfg_ctx->last_recfg_req;
+		recfg_req = &recfg_ctx->curr_recfg_req;
 		if (recfg_req->is_user_req) {
 			/* send link reconfig wmi WMI_MLO_LINK_RECONFIG_CMDID
 			 * and wait for WLAN_LINK_RECFG_SM_EV_FW_IND
@@ -1209,17 +1288,17 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 			(struct wlan_mlo_link_recfg_req *)event_data;
 		/* validate the target link recfg reason is "host force
 		 * reason" code. and check if indication param is same
-		 * as user requested in recfg_ctx->last_recfg_req,
+		 * as user requested in recfg_ctx->curr_recfg_req,
 		 * then start link recfg
 		 */
-		recfg_req = &recfg_ctx->last_recfg_req;
+		recfg_req = &recfg_ctx->curr_recfg_req;
 		recfg_req->is_fw_ind_received = true;
 		recfg_req->add_link_info = fw_ind_recfg_req->add_link_info;
 		recfg_req->del_link_info = fw_ind_recfg_req->del_link_info;
 		recfg_req->fw_ind_param = fw_ind_recfg_req->fw_ind_param;
 		status = mlo_link_recfg_create_transition_list(
 					recfg_ctx,
-					&recfg_ctx->last_recfg_req);
+					&recfg_ctx->curr_recfg_req);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
@@ -1794,10 +1873,16 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
 		/* Handle tx failure		*/
+		mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
+		mlo_link_recfg_sm_deliver_event_sync(
+					recfg_ctx->ml_dev,
+					WLAN_LINK_RECFG_SM_EV_COMPLETED,
+					0, NULL);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
 		mlo_link_recfg_response_received(
-			recfg_ctx, (struct recfg_rsp *)event_data);
+			recfg_ctx, (struct link_recfg_rx_rsp *)event_data,
+			event_data_len);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
@@ -2188,4 +2273,404 @@ QDF_STATUS mlo_link_recfg_deinit(struct wlan_mlo_dev_context *ml_dev)
 	ml_dev->link_recfg_ctx = NULL;
 
 	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+mlo_link_recfg_if_add_link_accepted(
+			struct wlan_mlo_link_recfg_req *link_recfg_req)
+{
+	uint8_t i;
+
+	if (!link_recfg_req)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!link_recfg_req->add_link_info.num_links)
+		return QDF_STATUS_SUCCESS;
+
+	for (i = 0; i < link_recfg_req->add_link_info.num_links; i++) {
+		if (link_recfg_req->add_link_info.link[i].status_code ==
+			STATUS_SUCCESS)
+			return QDF_STATUS_SUCCESS;
+	}
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+static enum wlan_status_code
+mlo_link_recfg_find_link_status(uint8_t link_id,
+				struct wlan_mlo_link_recfg_rsp *link_recfg_rsp)
+{
+	uint8_t i;
+
+	for (i = 0; i < link_recfg_rsp->count; i++) {
+		if (link_id == link_recfg_rsp->recfg_status_list[i].link_id)
+			return link_recfg_rsp->recfg_status_list[i].status_code;
+	}
+
+	if (i == link_recfg_rsp->count)
+		mlo_err("link id not found");
+
+	return STATUS_UNSPECIFIED_FAILURE;
+}
+
+static QDF_STATUS
+mlo_link_recfg_update_result(struct mlo_link_recfg_context *ctx,
+			     struct wlan_mlo_link_recfg_rsp *link_recfg_rsp)
+{
+	uint8_t i;
+	uint8_t link_id;
+	struct wlan_mlo_link_recfg_req *link_recfg_req;
+	struct wlan_mlo_link_recfg_info *add_link_info;
+	struct wlan_mlo_link_recfg_info *del_link_info;
+
+	if (!ctx || !link_recfg_rsp)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	link_recfg_req = &ctx->curr_recfg_req;
+	if (!link_recfg_rsp->count) {
+		mlo_debug("Link recfg rsp count is 0");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	add_link_info = &link_recfg_req->add_link_info;
+	del_link_info = &link_recfg_req->del_link_info;
+
+	for (i = 0; i < add_link_info->num_links; i++) {
+		link_id = add_link_info->link[i].link_id;
+		add_link_info->link[i].status_code =  mlo_link_recfg_find_link_status(link_id,
+										      link_recfg_rsp);
+	}
+
+	for (i = 0; i < del_link_info->num_links; i++) {
+		link_id = del_link_info->link[i].link_id;
+		del_link_info->link[i].status_code =  mlo_link_recfg_find_link_status(link_id,
+										      link_recfg_rsp);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
+				  struct mlo_link_recfg_context *ctx,
+				  struct wlan_mlo_link_recfg_req *link_recfg_req,
+				  struct wlan_action_frame_args *action_frm,
+				  uint16_t frm_len,
+				  uint16_t *ie_offset)
+{
+	uint8_t i;
+	uint8_t link_id;
+	struct wlan_mlo_link_recfg_info *add_link_info;
+	struct element_info org_assoc_rsp;
+	QDF_STATUS status;
+
+	if (!ctx || !link_recfg_req)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	add_link_info = &link_recfg_req->add_link_info;
+	if (!add_link_info->num_links)
+		return QDF_STATUS_SUCCESS;
+
+	mlo_get_assoc_rsp(vdev, &org_assoc_rsp);
+	if (!org_assoc_rsp.len) {
+		mlo_err("Org Assoc response frame len is 0");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	for (i = 0; i < add_link_info->num_links; i++) {
+		struct element_info link_assoc_rsp;
+
+		if (add_link_info->link[i].status_code == STATUS_SUCCESS) {
+			link_id = add_link_info->link[i].link_id;
+
+			add_link_info->link[i].link_assoc_rsp.ptr = qdf_mem_malloc(org_assoc_rsp.len +
+										   frm_len);
+			if (!add_link_info->link[i].link_assoc_rsp.ptr)
+				return QDF_STATUS_E_NOMEM;
+
+			link_assoc_rsp.ptr = add_link_info->link[i].link_assoc_rsp.ptr;
+			link_assoc_rsp.len = org_assoc_rsp.len + frm_len;
+			status = util_gen_link_recfg_assoc_rsp(
+								&org_assoc_rsp,
+								(uint8_t *)action_frm,
+								frm_len,
+								*ie_offset, link_id,
+								add_link_info->link[i].self_link_addr,
+								link_assoc_rsp.ptr,
+								org_assoc_rsp.len + frm_len,
+								(qdf_size_t *)&link_assoc_rsp.len);
+			add_link_info->link[i].link_assoc_rsp.len = link_assoc_rsp.len;
+			if (QDF_IS_STATUS_SUCCESS(status)) {
+				mlo_debug("MLO: link recfg assoc rsp for link vdev");
+				mgmt_txrx_frame_hex_dump(link_assoc_rsp.ptr,
+							 link_assoc_rsp.len,
+							 false);
+				qdf_mem_free(add_link_info->link[i].link_assoc_rsp.ptr);
+			} else {
+				mlo_err("Link recfg assoc resp generation failed");
+				add_link_info->link[i].link_assoc_rsp.len = 0;
+				if (add_link_info->link[i].link_assoc_rsp.ptr)
+					qdf_mem_free(add_link_info->link[i].link_assoc_rsp.ptr);
+				return status;
+			}
+		}
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
+				struct wlan_mlo_link_recfg_rsp *link_recfg_rsp,
+				struct wlan_action_frame *action_frm,
+				uint32_t frame_len,
+				uint16_t *ie_offset)
+{
+	uint8_t *link_recfg_action_frm = NULL, *frame = NULL;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	QDF_STATUS link_status;
+	uint16_t ie_len_parsed;
+	uint8_t i;
+	struct element_info oci_ie = {0};
+	uint8_t *mlieseq;
+	qdf_size_t mlieseqlen;
+	struct wlan_mlo_link_recfg_req *link_recfg_req;
+
+	if (!ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!action_frm || !frame_len)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	link_recfg_req = &ctx->curr_recfg_req;
+	/*
+	 * Link Reconfig response action frame
+	 *
+	 *   1-byte     1-byte     1-byte   1-byte   3- bytes
+	 *----------------------------------------------------
+	 * |         |           |        |        |         |
+	 * | Category| Protected | Dialog | Count  | Recfg   |
+	 * |         |    EHT    | token  |        | Status  |
+	 * |         |  Action   |        |        | Duple   |
+	 *----------------------------------------------------
+	 */
+
+	ie_len_parsed = sizeof(*action_frm) + sizeof(uint8_t) +
+			sizeof(uint8_t);
+
+	mlo_debug("Link Recfg rsp frame len %d ", frame_len);
+
+	if (frame_len < ie_len_parsed) {
+		mlo_err("Action frame length %d too short", frame_len);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	frame = (uint8_t *)action_frm;
+	link_recfg_action_frm = (uint8_t *)action_frm + sizeof(*action_frm);
+
+	link_recfg_rsp->dialog_token = *link_recfg_action_frm;
+	mlo_debug("Link Recfg rsp dialog_token %d ",
+		  link_recfg_rsp->dialog_token);
+
+	link_recfg_rsp->count = *(link_recfg_action_frm + sizeof(uint8_t));
+	mlo_debug("Link Recfg rsp count %d ",
+		  link_recfg_rsp->count);
+
+	link_recfg_action_frm += sizeof(uint8_t) + sizeof(uint8_t);
+	for (i = 0; i < link_recfg_rsp->count; i++) {
+		link_recfg_rsp->recfg_status_list[i].link_id = *link_recfg_action_frm;
+		link_recfg_rsp->recfg_status_list[i].status_code =
+			qdf_le16_to_cpu(*(uint16_t *)(link_recfg_action_frm + sizeof(uint8_t)));
+		mlo_debug("Link Recfg rsp link id %d status_code %d",
+			  link_recfg_rsp->recfg_status_list[i].link_id,
+			  link_recfg_rsp->recfg_status_list[i].status_code);
+		link_recfg_action_frm += sizeof(uint8_t) + sizeof(uint16_t);
+	}
+
+	mlo_link_recfg_update_result(ctx, link_recfg_rsp);
+	link_status = mlo_link_recfg_if_add_link_accepted(link_recfg_req);
+	if (QDF_IS_STATUS_SUCCESS(link_status) &&
+	    link_recfg_req->add_link_info.num_links) {
+		// Group key data
+		link_recfg_rsp->grp_key_data.len = *link_recfg_action_frm;
+		link_recfg_rsp->grp_key_data.ptr = qdf_mem_malloc(link_recfg_rsp->grp_key_data.len);
+
+		if (!link_recfg_rsp->grp_key_data.ptr) {
+			mlo_err("Malloc failed");
+			status = QDF_STATUS_E_NOMEM;
+		}
+		link_recfg_action_frm += sizeof(uint8_t);
+		qdf_mem_copy(link_recfg_rsp->grp_key_data.ptr,
+			     link_recfg_action_frm,
+			     link_recfg_rsp->grp_key_data.len);
+		link_recfg_action_frm += sizeof(uint8_t) * link_recfg_rsp->grp_key_data.len;
+
+		// OCI IE
+		if (*(link_recfg_action_frm) == WLAN_ELEMID_EXTN_ELEM &&
+		    *(link_recfg_action_frm + sizeof(uint16_t)) == WLAN_EXTN_ELEMID_OCI) {
+			oci_ie.len = *(link_recfg_action_frm + sizeof(uint8_t));
+			mlo_debug("OCI IE len %d", oci_ie.len);
+			oci_ie.ptr = link_recfg_action_frm + sizeof(uint8_t) +
+				     sizeof(uint16_t);
+			link_recfg_rsp->oci_ie.ptr = qdf_mem_malloc(oci_ie.len);
+			if (!link_recfg_rsp->oci_ie.ptr) {
+				mlo_err("Malloc failed");
+				status = QDF_STATUS_E_NOMEM;
+				goto end;
+			}
+			qdf_mem_copy(link_recfg_rsp->oci_ie.ptr, oci_ie.ptr,
+				     oci_ie.len);
+			link_recfg_rsp->oci_ie.len = oci_ie.len;
+			oci_ie.len += MIN_IE_LEN;
+		}
+		link_recfg_action_frm += oci_ie.len;
+
+		// Basic MLIE
+		status = util_find_mlie(link_recfg_action_frm,
+					(frame_len - (uint16_t)(link_recfg_action_frm - frame)),
+					&mlieseq,
+					&mlieseqlen);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("ML IE parsing failed %d", status);
+			return status;
+		}
+
+		if (!mlieseq) {
+			*ie_offset = 0;
+			mlo_err("ML IE not found %zu ie_offset %d", mlieseqlen,
+				*ie_offset);
+		} else {
+			*ie_offset = (uint16_t)(link_recfg_action_frm - frame);
+			mlo_err("ML IE found %zu, ie_offset %d", mlieseqlen,
+				*ie_offset);
+		}
+
+		if (mlieseqlen) {
+			link_recfg_rsp->mlo_ie.len = mlieseqlen;
+			link_recfg_rsp->mlo_ie.ptr = qdf_mem_malloc(link_recfg_rsp->mlo_ie.len);
+			if (!link_recfg_rsp->mlo_ie.ptr) {
+				mlo_err("Malloc failed");
+				status = QDF_STATUS_E_NOMEM;
+				goto end;
+			}
+			qdf_mem_copy(link_recfg_rsp->mlo_ie.ptr, mlieseq,
+				     link_recfg_rsp->mlo_ie.len);
+			mlo_debug("ML IE len %d", link_recfg_rsp->mlo_ie.len);
+		}
+	}
+
+	if (frame_len) {
+		ctx->rsp_frame.ptr = qdf_mem_malloc(frame_len);
+		if (!ctx->rsp_frame.ptr) {
+			mlo_err("rsp frame malloc failed");
+			status = QDF_STATUS_E_NOMEM;
+			goto end;
+		}
+
+		// copy the Link Reconfiguration response frame
+		qdf_mem_copy(ctx->rsp_frame.ptr,
+			     frame,
+			     frame_len);
+		ctx->rsp_frame.len = frame_len;
+		mlo_err("Link Reconfig rsp rx dump:");
+		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO,
+				   QDF_TRACE_LEVEL_DEBUG,
+				   frame,
+				   frame_len);
+	}
+end:
+	return status;
+}
+
+QDF_STATUS
+mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
+		      enum wlan_link_recfg_sm_evt event,
+		      void *event_data,
+		      uint32_t frame_len)
+{
+	struct mlo_link_recfg_context *ctx;
+	struct wlan_action_frame_args *action_frm;
+	struct link_recfg_rx_rsp rx_rsp;
+	QDF_STATUS status;
+	uint16_t ie_offset;
+
+	if (!vdev || !vdev->mlo_dev_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!vdev->mlo_dev_ctx->link_recfg_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!event_data || !frame_len) {
+		mlo_err("event data or frame_len is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	action_frm = (struct wlan_action_frame_args *)event_data;
+	ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
+	status = mlo_link_recfg_parse_action_rsp(ctx,
+						 &ctx->curr_recfg_rsp,
+						 event_data,
+						 frame_len,
+						 &ie_offset);
+
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_err("Link Recfg Response Parsing failed");
+	else
+		mlo_link_recfg_gen_link_assoc_rsp(vdev, ctx,
+						  &ctx->curr_recfg_req,
+						  action_frm,
+						  frame_len,
+						  &ie_offset);
+
+	rx_rsp.status = status;
+	status = mlo_link_recfg_sm_deliver_event(vdev->mlo_dev_ctx, event,
+						 sizeof(struct link_recfg_rx_rsp),
+						 &rx_rsp);
+
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_err("Posting Link Recfg Response event failed");
+
+	return status;
+}
+
+static void
+mlo_link_recfg_zero_and_free_memory(uint8_t *ptr, uint32_t len)
+{
+	if (!ptr)
+		return;
+
+	qdf_mem_zero(ptr, len);
+	qdf_mem_free(ptr);
+}
+
+void
+mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
+{
+	if (!ctx)
+		return;
+
+	mlo_link_recfg_zero_and_free_memory(ctx->req_frame.ptr,
+					    ctx->req_frame.len);
+	ctx->req_frame.len = 0;
+	ctx->req_frame.ptr = NULL;
+
+	mlo_link_recfg_zero_and_free_memory(ctx->rsp_frame.ptr,
+					    ctx->rsp_frame.len);
+	ctx->rsp_frame.len = 0;
+	ctx->rsp_frame.ptr = NULL;
+
+	mlo_link_recfg_zero_and_free_memory(ctx->curr_recfg_rsp.grp_key_data.ptr,
+					    ctx->curr_recfg_rsp.grp_key_data.len);
+	ctx->curr_recfg_rsp.grp_key_data.len = 0;
+	ctx->curr_recfg_rsp.grp_key_data.ptr = NULL;
+
+	mlo_link_recfg_zero_and_free_memory(ctx->curr_recfg_rsp.oci_ie.ptr,
+					    ctx->curr_recfg_rsp.oci_ie.len);
+	ctx->curr_recfg_rsp.oci_ie.len = 0;
+	ctx->curr_recfg_rsp.oci_ie.ptr = NULL;
+
+	mlo_link_recfg_zero_and_free_memory(ctx->curr_recfg_rsp.mlo_ie.ptr,
+					    ctx->curr_recfg_rsp.mlo_ie.len);
+	ctx->curr_recfg_rsp.mlo_ie.len = 0;
+	ctx->curr_recfg_rsp.mlo_ie.ptr = NULL;
 }

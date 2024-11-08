@@ -24,6 +24,10 @@
 #include <wlan_mlo_mgr_public_structs.h>
 #include <wlan_cm_public_struct.h>
 
+#define WLAN_MAX_ML_RECFG_LINK_COUNT 16
+#define WLAN_MIN_DIALOG_TOKEN         1
+#define WLAN_MAX_DIALOG_TOKEN         0xFF
+
 /**
  * enum wlan_link_recfg_sm_state - Link Reconfiguration states
  * @WLAN_LINK_RECFG_S_INIT: Default state, IDLE state
@@ -157,10 +161,14 @@ typedef QDF_STATUS (*state_abort_handler)(struct wlan_objmgr_psoc *psoc);
  * request param
  * @add_link_info: add link info
  * @del_link_info: del link info
+ * @dialog_token: Dialog token
+ * @peer_mac: Peer mac address
  */
 struct mlo_link_recfg_state_req {
 	struct wlan_mlo_link_recfg_info add_link_info;
 	struct wlan_mlo_link_recfg_info del_link_info;
+	uint8_t dialog_token;
+	struct qdf_mac_addr peer_mac;
 };
 
 /**
@@ -180,11 +188,13 @@ struct mlo_link_recfg_state_tran {
 };
 
 /* WLAN_LINK_RECFG_SM_EV_XMIT_TX_DONE */
-struct xmit_tx_result {
+struct link_recfg_tx_result {
+	QDF_STATUS status;
 };
 
 /* WLAN_LINK_RECFG_SM_EV_RX_RSP */
-struct recfg_rsp {
+struct link_recfg_rx_rsp {
+	QDF_STATUS status;
 };
 
 /**
@@ -237,19 +247,59 @@ struct mlo_link_recfg_state_sm {
 };
 
 /**
+ * struct mlo_link_recfg_status_list - Data Structure for link
+ * reconfiguration response status list
+ * @link_id: IEEE Link id
+ * @status_code: wlan protocol status code
+ */
+struct mlo_link_recfg_status_list {
+	uint8_t link_id;
+	enum wlan_status_code status_code;
+};
+
+/**
+ * struct wlan_mlo_link_recfg_rsp - Data Structure for link
+ * reconfiguration response
+ * @is_valid: Set to true if link reconfig resp is valid
+ * @dialog_token: dialog token received in Link Recfg response frame.
+ * @count: number of reconfig status duple in the mlo_link_recfg_status_list
+ * @recfg_status_list: Reconfiguration status duple list
+ * @grp_key_data: Group key data len and ptr
+ * @oci_ie: OCI IE
+ * @mlo_ie: Basic Multi link IE
+ */
+struct wlan_mlo_link_recfg_rsp {
+	bool is_valid;
+	uint8_t dialog_token;
+	uint8_t count;
+	struct mlo_link_recfg_status_list recfg_status_list[WLAN_MAX_ML_RECFG_LINK_COUNT];
+	struct element_info grp_key_data;
+	struct element_info oci_ie;
+	struct element_info mlo_ie;
+};
+
+/**
  * struct mlo_link_recfg_context - Link reconfiguration data structure.
  * @psoc: psoc object
  * @ml_dev: ml dev context
- * @last_recfg_req: Last link recfg request received from FW
+ * @curr_recfg_req: Last link recfg request received from FW or user
+ * @curr_recfg_rsp: Last link recfg response received from AP
  * @sm: link reconfig sm context
  * @set_link_req: set link req for link recfg
+ * @req_frame: Link Reconfiguration request frame
+ * @rsp_frame: Link Reconfiguration response frame
+ * @link_recfg_status: Link Reconfiguration status
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
 	struct wlan_mlo_dev_context *ml_dev;
-	struct wlan_mlo_link_recfg_req last_recfg_req;
+	struct wlan_mlo_link_recfg_req curr_recfg_req;
+	struct wlan_mlo_link_recfg_rsp curr_recfg_rsp;
 	struct mlo_link_recfg_state_sm sm;
 	struct mlo_link_set_active_req *set_link_req;
+	struct element_info req_frame;
+	struct element_info rsp_frame;
+	QDF_STATUS link_recfg_status;
 };
 
 static inline void
@@ -276,7 +326,7 @@ ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
 	qdf_mutex_release(&mldev->link_recfg_ctx->sm.mlrc_sm_lock);
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+#ifdef WLAN_FEATURE_11BE_MLO
 /**
  * mlo_link_recfg_set_link_resp() - Handle link recfg set link
  * response event
@@ -497,12 +547,71 @@ QDF_STATUS
 mlo_link_recfg_sm_deliver_event_sync(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				     enum wlan_link_recfg_sm_evt event,
 				     uint16_t data_len, void *data);
-
 QDF_STATUS
 mlo_link_recfg_create_transition_list(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct wlan_mlo_link_recfg_req *recfg_req);
+/**
+ * mlo_link_recfg_send_request_frame() - Send Link Reconfiguration action
+ * request frame
+ * @recfg_ctx: recfg ctx pointer
+ * @req: Link Reconfig event data pointer
+ *
+ * API to send Link Reconfiguration action request frame
+ *
+ * Return: qdf status
+ */
+QDF_STATUS
+mlo_link_recfg_send_request_frame(
+		struct mlo_link_recfg_context *recfg_ctx,
+		struct mlo_link_recfg_state_req *req);
+
+/**
+ * mlo_link_recfg_rx_rsp() - Handler for Link Reconfiguration
+ * action response frame
+ * @vdev: vdev pointer
+ * @event: Link reconfig SM event
+ * @event_data: Link Reconfig event data pointer
+ * @frame_len: RX frame len
+ *
+ * API to send Link Reconfiguration action response frame
+ *
+ * Return: qdf status
+ */
+QDF_STATUS mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
+				 enum wlan_link_recfg_sm_evt event,
+				 void *event_data,
+				 uint32_t frame_len);
+
+/**
+ * mlo_link_recfg_dialog_token() - Generate dialog token for
+ * for Link Reconfiguration action request frame
+ * @req: mlo link reconfig req pointer
+ *
+ * API to generate dialog token for Link Reconfiguration
+ * action request frame
+ *
+ * Return: uint8_t
+ */
+uint8_t
+mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req);
+
+/**
+ * mlo_link_recfg_ctx_free_ies() -Free link recfg ctx ies
+ * @ctx: link reconfig ctx pointer
+ *
+ * API to free link reconfig context ies
+ *
+ * Return: none
+ */
+void
+mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx);
 #else
+static inline void
+mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
+{
+}
+
 static inline void
 mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
 			     uint32_t result)
@@ -515,6 +624,29 @@ mlo_mgr_link_recfg_indication_event_handler(
 			struct wlan_mlo_link_recfg_ind_param *evt_params)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline uint8_t
+mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req)
+{
+	return 0;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_send_request_frame(
+		struct mlo_link_recfg_context *recfg_ctx,
+		struct mlo_link_recfg_state_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
+		      enum wlan_link_recfg_sm_evt event,
+		      void *event_data,
+		      uint32_t frame_len)
+{
+	return QDF_STATUS_E_NOSUPPORT;
 }
 
 static inline QDF_STATUS
@@ -601,7 +733,7 @@ mlo_link_recfg_request_params(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 
-QDF_STATUS
+static inline QDF_STATUS
 mlo_link_recfg_create_transition_list(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct wlan_mlo_link_recfg_req *recfg_req)

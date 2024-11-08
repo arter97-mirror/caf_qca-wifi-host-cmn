@@ -110,6 +110,7 @@ struct ptqm_migrate_peer_context;
 
 /* MLO link id max value */
 #define MAX_MLO_LINK_ID 15
+#define WLAN_MAX_AID_VALUE        0xFFFF
 
 #ifdef WLAN_MLO_MULTI_CHIP
 
@@ -277,18 +278,22 @@ typedef QDF_STATUS
 /**
  * struct wlan_mlo_link_recfg_bss_info - Data Structure for one link of
  * reconfiguration add/del information.
- * @link_id: IEEE Link id
- * @link_addr: AP Link address to be deleted/added
- * @freq: channel frequency to be deleted/added
  * @vdev_id: assigned vdev id for add link only
+ * @link_id: IEEE Link id
+ * @freq: channel frequency to be deleted/added
+ * @ap_link_addr: AP Link address to be deleted/added
  * @self_link_addr: self link address for add link only
+ * @status_code: status code updated after link reconfig response is received.
+ * @link_assoc_rsp: Link specific association response for add link only
  */
 struct wlan_mlo_link_recfg_bss_info {
-	uint8_t link_id;
-	struct qdf_mac_addr link_addr;
-	uint8_t freq;
 	uint8_t vdev_id;
+	uint8_t link_id;
+	qdf_freq_t freq;
+	struct qdf_mac_addr ap_link_addr;
 	struct qdf_mac_addr self_link_addr;
+	enum wlan_status_code status_code;
+	struct element_info link_assoc_rsp;
 };
 
 /**

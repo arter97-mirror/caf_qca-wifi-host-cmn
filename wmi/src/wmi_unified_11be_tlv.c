@@ -1894,10 +1894,10 @@ extract_mlo_link_recfg_indication_event_tlv(
 		bss_info->link_id = wmi_add_link_info->link_id;
 		bss_info->vdev_id = wmi_add_link_info->vdev_id;
 		WMI_MAC_ADDR_TO_CHAR_ARRAY(&wmi_add_link_info->link_addr,
-					   bss_info->link_addr.bytes);
+					   bss_info->ap_link_addr.bytes);
 		wmi_debug("add link %d ap link addr " QDF_MAC_ADDR_FMT " vdev %d",
 			  bss_info->link_id,
-			  QDF_MAC_ADDR_REF(bss_info->link_addr.bytes),
+			  QDF_MAC_ADDR_REF(bss_info->ap_link_addr.bytes),
 			  bss_info->vdev_id);
 
 		wmi_add_link_info++;
@@ -1912,10 +1912,10 @@ extract_mlo_link_recfg_indication_event_tlv(
 	for (i = 0; i < param_buf->num_link_del_param; i++) {
 		bss_info->link_id = wmi_del_link_info->link_id;
 		WMI_MAC_ADDR_TO_CHAR_ARRAY(&wmi_del_link_info->link_addr,
-					   bss_info->link_addr.bytes);
+					   bss_info->ap_link_addr.bytes);
 		wmi_debug("del link %d ap link addr " QDF_MAC_ADDR_FMT "",
 			  bss_info->link_id,
-			  QDF_MAC_ADDR_REF(bss_info->link_addr.bytes));
+			  QDF_MAC_ADDR_REF(bss_info->ap_link_addr.bytes));
 		wmi_del_link_info++;
 		bss_info++;
 	}
