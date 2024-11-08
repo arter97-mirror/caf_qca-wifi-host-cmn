@@ -43,6 +43,7 @@
 #include "dph_global.h"
 #include "parser_api.h"
 #include "wma_if.h"
+#include "wlan_mlo_link_recfg.h"
 
 #define LINK_TEST_DEFER 1
 
@@ -1632,6 +1633,23 @@ QDF_STATUS
 lim_send_epcs_action_teardown_frame(struct wlan_objmgr_vdev *vdev,
 				    uint8_t *peer_mac,
 				    struct wlan_action_frame_args *args);
+
+/**
+ * lim_send_link_recfg_action_req_frame() - Send Link Reconfiguration
+ * action frame
+ * @vdev_id: vdev id
+ * @peer_mac: Peer mac addr
+ * @args: Pointer to action frame args
+ * @req: Link reconfig request
+ *
+ * Return: 0 for success, non-zero for failure
+ */
+QDF_STATUS
+lim_send_link_recfg_action_req_frame(uint8_t vdev_id,
+				     uint8_t *peer_mac,
+				     struct wlan_action_frame_args *args,
+				     struct mlo_link_recfg_state_req *req);
+
 #else
 static inline QDF_STATUS
 lim_send_t2lm_action_rsp_frame(struct mac_context *mac_ctx,
@@ -1648,6 +1666,15 @@ lim_send_t2lm_action_req_frame(struct wlan_objmgr_vdev *vdev,
 			       struct wlan_action_frame_args *args,
 			       struct wlan_t2lm_onging_negotiation_info *t2lm_neg,
 			       uint8_t token)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+lim_send_link_recfg_action_req_frame(uint8_t vdev_id,
+				     uint8_t *peer_mac,
+				     struct wlan_action_frame_args *args,
+				     struct mlo_link_recfg_state_req *req)
 {
 	return QDF_STATUS_SUCCESS;
 }

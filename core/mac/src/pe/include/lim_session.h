@@ -225,6 +225,7 @@ struct ext_mld_capab_and_op {
  * @mld_id_present: the present flag of MLD ID
  * @ext_mld_capab_and_op_present: Extended MLD Capabilities And
  *                                Operations Present
+ * @mld_mac_address_present: MLD MAC address Present
  * @reserved_1: reserved
  * @common_info_length: common info length
  * @mld_mac_addr: MLD mac address
@@ -251,7 +252,8 @@ struct wlan_mlo_ie {
 	uint16_t mld_capab_and_op_present: 1;
 	uint16_t mld_id_present: 1;
 	uint16_t ext_mld_capab_and_op_present: 1;
-	uint16_t reserved_1:5;
+	uint16_t mld_mac_address_present: 1;
+	uint16_t reserved_1:4;
 	uint8_t common_info_length;
 	uint8_t mld_mac_addr[6];
 	uint8_t link_id;
