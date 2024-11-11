@@ -10546,13 +10546,15 @@ static uint32_t hdd_mac_chwidth_to_bonding_mode(
 }
 
 int hdd_set_mac_chan_width(struct hdd_adapter *adapter,
-			   enum eSirMacHTChannelWidth chwidth)
+			   enum eSirMacHTChannelWidth chwidth,
+			   bool is_restore)
 {
 	uint32_t bonding_mode;
 
 	bonding_mode = hdd_mac_chwidth_to_bonding_mode(chwidth);
 
-	return hdd_update_channel_width(adapter, chwidth, bonding_mode);
+	return hdd_update_channel_width(adapter, chwidth,
+					bonding_mode, is_restore);
 }
 
 /**
@@ -10576,7 +10578,7 @@ static int hdd_set_channel_width(struct hdd_adapter *adapter,
 		return -EINVAL;
 	}
 
-	return hdd_set_mac_chan_width(adapter, chwidth);
+	return hdd_set_mac_chan_width(adapter, chwidth, false);
 }
 
 /**
@@ -13140,7 +13142,8 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 		if (cfg_val)
 			hdd_update_channel_width(
 					adapter, eHT_CHANNEL_WIDTH_20MHZ,
-					WNI_CFG_CHANNEL_BONDING_MODE_DISABLE);
+					WNI_CFG_CHANNEL_BONDING_MODE_DISABLE,
+					false);
 	}
 
 	cmd_id = QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_ER_SU_PPDU_TYPE;
@@ -13150,7 +13153,8 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 		if (cfg_val) {
 			hdd_update_channel_width(
 					adapter, eHT_CHANNEL_WIDTH_20MHZ,
-					WNI_CFG_CHANNEL_BONDING_MODE_DISABLE);
+					WNI_CFG_CHANNEL_BONDING_MODE_DISABLE,
+					false);
 			hdd_set_tx_stbc(adapter, 0);
 			hdd_set_11ax_rate(adapter, 0x400, NULL);
 			status = wma_cli_set_command(adapter->vdev_id,
@@ -13168,7 +13172,8 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 		} else {
 			hdd_update_channel_width(
 					adapter, eHT_CHANNEL_WIDTH_160MHZ,
-					WNI_CFG_CHANNEL_BONDING_MODE_ENABLE);
+					WNI_CFG_CHANNEL_BONDING_MODE_ENABLE,
+					false);
 			hdd_set_tx_stbc(adapter, 1);
 			hdd_set_11ax_rate(adapter, 0xFFFF, NULL);
 			status = wma_cli_set_command(adapter->vdev_id,
