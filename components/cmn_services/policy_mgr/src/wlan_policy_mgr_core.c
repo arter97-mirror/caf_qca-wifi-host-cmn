@@ -43,6 +43,7 @@
 #include "target_if.h"
 #include "wlan_nan_api.h"
 #include "wlan_nan_api_i.h"
+#include "wlan_mlo_mgr_link_switch.h"
 
 #define POLICY_MGR_MAX_CON_STRING_LEN   230
 #define LOWER_END_FREQ_5GHZ 4900
@@ -4484,6 +4485,36 @@ static uint32_t policy_mgr_get_conc_ml_sap_link_freq(
 	return conc_ml_sap_freq;
 }
 
+bool
+policy_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_psoc *psoc,
+					      uint32_t freq)
+{
+	uint32_t sta_count;
+	uint8_t sta_vdev_id_list[MAX_NUMBER_OF_CONC_CONNECTIONS];
+	struct wlan_objmgr_vdev *vdev;
+	bool is_same = false;
+
+	sta_count = policy_mgr_get_mode_specific_conn_info(psoc, NULL,
+							   sta_vdev_id_list,
+							   PM_STA_MODE);
+
+	if (sta_count != 1)
+		return is_same;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, sta_vdev_id_list[0],
+						    WLAN_POLICY_MGR_ID);
+	if (!vdev) {
+		policy_mgr_err("vdev %d not found", sta_vdev_id_list[0]);
+		return is_same;
+	}
+
+	is_same = mlo_mgr_if_freq_n_inactive_links_freq_same(vdev, freq);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_POLICY_MGR_ID);
+
+	return is_same;
+}
+
 /**
  * policy_mgr_get_pref_force_scc_freq() - Get preferred force SCC
  * channel frequency
@@ -4522,6 +4553,7 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 	qdf_freq_t non_scc_ch_freq_on_same_mac = 0;
 	qdf_freq_t non_scc_ch_freq_on_diff_mac = 0;
 	qdf_freq_t non_scc_ch_freq_same_as_sap = 0;
+	qdf_freq_t scc_ml_inactive_freq_same_lower_band = 0;
 	enum QDF_OPMODE op_mode;
 	qdf_freq_t pcl_freq;
 	bool same_mac, sbs_ml_sta_present = false, dbs_ml_sta_present = false;
@@ -4529,7 +4561,7 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 	bool ml_sap_vdev = false;
 	uint32_t conc_sap_freq = 0;
 	uint8_t cc_mode;
-	bool is_dbs;
+	bool is_dbs, ml_sta_present;
 
 	pm_ctx = policy_mgr_get_context(psoc);
 	if (!pm_ctx) {
@@ -4537,9 +4569,12 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	if (policy_mgr_is_mlo_in_mode_dbs(psoc, PM_STA_MODE, NULL, NULL))
+	ml_sta_present = policy_mgr_is_mlo_sta_present(psoc);
+	if (ml_sta_present &&
+	    policy_mgr_is_mlo_in_mode_dbs(psoc, PM_STA_MODE, NULL, NULL))
 		dbs_ml_sta_present = true;
-	else if (policy_mgr_is_mlo_in_mode_sbs(psoc, PM_STA_MODE, NULL, NULL))
+	else if (ml_sta_present &&
+		 policy_mgr_is_mlo_in_mode_sbs(psoc, PM_STA_MODE, NULL, NULL))
 		sbs_ml_sta_present = true;
 
 	op_mode = wlan_get_opmode_from_vdev_id(pm_ctx->pdev, vdev_id);
@@ -4639,6 +4674,24 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 			else if (!non_scc_ch_freq_on_diff_mac && !same_mac)
 				non_scc_ch_freq_on_diff_mac = pcl_freq;
 			continue;
+		} else if (!is_dbs && ml_sta_present &&
+			   cc_mode == QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) {
+			/**
+			 * Check if pcl_freq and ML connections inactive or
+			 * standby link has the same freq to form SCC,
+			 * add same or lower band freq with preference to
+			 * same band.
+			 */
+			if (policy_mgr_if_freq_n_inactive_links_freq_same(
+								psoc,
+								pcl_freq)) {
+				if (!scc_ml_inactive_freq_same_lower_band ||
+				    scc_ml_inactive_freq_same_lower_band < pcl_freq) {
+					scc_ml_inactive_freq_same_lower_band =
+								pcl_freq;
+					continue;
+				}
+			}
 		}
 
 		if (sap_ch_freq == pcl_freq)
@@ -4653,6 +4706,8 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 		*intf_ch_freq = scc_ch_freq_same_as_sap;
 	else if (scc_ch_freq_on_same_mac)
 		*intf_ch_freq = scc_ch_freq_on_same_mac;
+	else if (scc_ml_inactive_freq_same_lower_band)
+		*intf_ch_freq = scc_ml_inactive_freq_same_lower_band;
 	else if (non_scc_ch_freq_same_as_sap)
 		*intf_ch_freq = non_scc_ch_freq_same_as_sap;
 	else if (scc_ch_freq_on_diff_mac)
@@ -4664,10 +4719,11 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 	else
 		*intf_ch_freq = 0;
 
-	policy_mgr_debug("2ghz_only %d allow_6ghz %d, ml sta SBS:%d DBS:%d, SCC: same_as_sap %d same_mac %d on_diff_mac %d, NON-SCC: same_as_sap %d same_mac %d on_diff_mac %d. intf_ch_freq %d ll_lt_sap_freq %d",
+	policy_mgr_debug("2ghz_only %d allow_6ghz %d, ml sta SBS:%d DBS:%d, SCC: same_as_sap %d same_mac %d on_diff_mac %d inact ml %d, NON-SCC: same_as_sap %d same_mac %d on_diff_mac %d. intf_ch_freq %d ll_lt_sap_freq %d",
 			 allow_2ghz_only, allow_6ghz, sbs_ml_sta_present,
 			 dbs_ml_sta_present, scc_ch_freq_same_as_sap,
 			 scc_ch_freq_on_same_mac, scc_ch_freq_on_diff_mac,
+			 scc_ml_inactive_freq_same_lower_band,
 			 non_scc_ch_freq_same_as_sap,
 			 non_scc_ch_freq_on_same_mac,
 			 non_scc_ch_freq_on_diff_mac, *intf_ch_freq,

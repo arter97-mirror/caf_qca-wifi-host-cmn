@@ -1711,6 +1711,19 @@ bool policy_mgr_allow_concurrency(struct wlan_objmgr_psoc *psoc,
 				  uint32_t ext_flags, uint8_t vdev_id);
 
 /**
+ * policy_mgr_if_freq_n_inactive_links_freq_same() - API to check if
+ * the given freq and ML connection inactive/standby link are on same
+ * @psoc: psoc
+ * @freq: given freq to check
+ *
+ * Return: True if freq matches one of the ML connection inactive/standby
+ * link freq
+ */
+bool
+policy_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_psoc *psoc,
+					      uint32_t freq);
+
+/**
  * policy_mgr_check_scc_channel() - Check if SAP/GO freq need to be updated
  * as per existing concurrency
  * @psoc: PSOC object information

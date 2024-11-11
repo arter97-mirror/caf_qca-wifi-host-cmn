@@ -3308,49 +3308,41 @@ policy_mgr_trigger_roam_on_sta_sap_mcc(struct policy_mgr_psoc_priv_obj *pm_ctx,
 }
 
 /**
- * policy_mgr_handle_restart_failure_non_dbs() - Handle SAP restart failure for
- * non-dbs target
+ * policy_mgr_trigger_roam_for_mcc_non_dbs() - Trigger roaming in case of MCC for STA+SAp
  * @pm_ctx: policy mgr ctx
  * @sap_freq: SAP channel freq
  *
  * Return: None
  */
-static void policy_mgr_handle_restart_failure_non_dbs(
+static void policy_mgr_trigger_roam_for_mcc_non_dbs(
 				struct policy_mgr_psoc_priv_obj *pm_ctx,
 				qdf_freq_t sap_freq)
 {
-	uint8_t sta_count, p2p_cli_count;
+	uint8_t sta_count;
 	uint8_t sta_vdev_id_list[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
-	uint8_t p2p_cli_vdev_id_list[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
 	qdf_freq_t sta_op_ch_freq_list[MAX_NUMBER_OF_CONC_CONNECTIONS];
-	qdf_freq_t p2p_cli_op_ch_freq_list[MAX_NUMBER_OF_CONC_CONNECTIONS];
-	uint8_t vdev_id;
-	qdf_freq_t freq_1 = 0;
+
+	if (policy_mgr_is_hw_dbs_capable(pm_ctx->psoc))
+		return;
 
 	sta_count =
 		policy_mgr_get_mode_specific_conn_info(pm_ctx->psoc,
 						       sta_op_ch_freq_list,
 						       sta_vdev_id_list,
 						       PM_STA_MODE);
-	p2p_cli_count =
-		policy_mgr_get_mode_specific_conn_info(pm_ctx->psoc,
-						       p2p_cli_op_ch_freq_list,
-						       p2p_cli_vdev_id_list,
-						       PM_P2P_CLIENT_MODE);
-
-	if (sta_count + p2p_cli_count != 1)
+	if (sta_count != 1)
 		return;
 
-	if (sta_count) {
-		vdev_id = sta_vdev_id_list[0];
-		freq_1 = sta_op_ch_freq_list[0];
-	} else if (p2p_cli_count) {
-		vdev_id = p2p_cli_vdev_id_list[0];
-		freq_1 = p2p_cli_op_ch_freq_list[0];
-	}
-
-	if (freq_1 != sap_freq)
-		policy_mgr_trigger_roam_on_sta_sap_mcc(pm_ctx, vdev_id, freq_1,
+	/*
+	 * Check SAP's freq is same as STA freq or same as one of the inactive
+	 * ML freqs (inactive and standby links)
+	 */
+	if ((sta_op_ch_freq_list[0] != sap_freq) &&
+	    !policy_mgr_if_freq_n_inactive_links_freq_same(pm_ctx->psoc,
+							   sap_freq))
+		policy_mgr_trigger_roam_on_sta_sap_mcc(pm_ctx,
+						       sta_vdev_id_list[0],
+						       sta_op_ch_freq_list[0],
 						       sap_freq);
 }
 
@@ -3504,17 +3496,14 @@ static void __policy_mgr_check_sta_ap_concurrent_ch_intf(
 						 op_ch_freq_list[i], ch_freq);
 				goto end;
 			}
-
-			if (!is_dbs && mcc_to_scc_switch ==
-				QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) {
-				/**
-				 * Trigger roaming if STA/P2P_CLI + SAP is in
-				 * MCC
-				 */
-				policy_mgr_handle_restart_failure_non_dbs(
+			if ((wlan_get_opmode_from_vdev_id(pm_ctx->pdev,
+			     vdev_id[i]) == QDF_SAP_MODE) &&
+			    !policy_mgr_is_vdev_ll_lt_sap(pm_ctx->psoc, vdev_id[i]) &&
+			    mcc_to_scc_switch ==
+					QDF_MCC_TO_SCC_WITH_PREFERRED_BAND)
+				policy_mgr_trigger_roam_for_mcc_non_dbs(
 							pm_ctx,
 							op_ch_freq_list[i]);
-			}
 		}
 
 end:
