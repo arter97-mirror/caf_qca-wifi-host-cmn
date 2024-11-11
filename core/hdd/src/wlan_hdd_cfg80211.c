@@ -4914,11 +4914,12 @@ static void wlan_hdd_set_supported_features_extn(uint8_t *feature_bitmap,
 	wlan_cfg80211_set_feature(feature_bitmap, qdf_ffs64(feature) - 1);
 }
 
+#define MAX_FEATURES_STR_LEN 75
 static int
 __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
-					 struct wireless_dev *wdev,
-					 const void *data,
-					 int data_len)
+					   struct wireless_dev *wdev,
+					   const void *data,
+					   int data_len)
 {
 	struct hdd_context *hdd_ctx = wiphy_priv(wiphy);
 	struct sk_buff *skb = NULL;
@@ -4929,6 +4930,9 @@ __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
 #endif
 	uint32_t fine_time_meas_cap;
 	uint8_t fset_extn[WIFI_FEATURE_MAX_BIT_POS / 8] = {0};
+	char buf[MAX_FEATURES_STR_LEN];
+	size_t pos = 0, buf_len = MAX_FEATURES_STR_LEN;
+	uint8_t i;
 
 	/* ENTER_DEV() intentionally not used in a frequently invoked API */
 
@@ -5056,6 +5060,10 @@ __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
 		fset |= WIFI_FEATURE_CONTROL_ROAMING;
 		wlan_hdd_set_supported_features_extn(fset_extn,
 						     WIFI_FEATURE_CONTROL_ROAMING);
+
+		/* Support for aggressive roaming */
+		wlan_hdd_set_supported_features_extn(fset_extn,
+						     WIFI_FEATURE_ROAMING_MODE_CONTROL);
 	}
 
 	if (hdd_scan_random_mac_addr_supported()) {
@@ -5087,6 +5095,16 @@ __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
 		return -EINVAL;
 	}
 	hdd_debug("Supported Features : 0x%x", fset);
+	for (i = 0; i < WIFI_FEATURE_MAX_BIT_POS / 8; i += 4) {
+		uint32_t value = 0;
+
+		qdf_mem_copy(&value, &fset_extn[i], sizeof(value));
+		if (value)
+			pos += qdf_scnprintf(buf + pos, buf_len - pos,
+					     "[%d]0x%x ", (i / 4), value);
+	}
+
+	hdd_debug("Supported Features Ext : %s", buf);
 	if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_FEATURE_SET, fset) ||
 	    nla_put(skb, QCA_WLAN_VENDOR_ATTR_FEATURE_SET_EXT,
 		    sizeof(fset_extn), fset_extn)) {
