@@ -1180,7 +1180,7 @@ void dfs_create_punc_sm(struct wlan_dfs *dfs)
 		struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
 
 		dfs_punc_obj->dfs = dfs;
-		dfs_punc_sm_create(dfs_punc_obj);
+		dfs_punc_sm_create(dfs_punc_obj, i);
 	}
 }
 
@@ -2332,11 +2332,14 @@ QDF_STATUS dfs_puncturing_sm_deliver_evt(struct wlan_dfs *dfs,
 	return status;
 }
 
-QDF_STATUS dfs_punc_sm_create(struct dfs_punc_obj *dfs_punc)
+QDF_STATUS dfs_punc_sm_create(struct dfs_punc_obj *dfs_punc, uint8_t idx)
 {
 	struct wlan_sm *sm;
+	char name[WLAN_SM_ENGINE_MAX_NAME];
 
-	sm = wlan_sm_create("DFS_PUNCTURING", dfs_punc,
+	qdf_scnprintf(name, sizeof(name), "DFS_PUNCTURING_SM_%d",
+		      idx);
+	sm = wlan_sm_create(name, dfs_punc,
 			    DFS_S_UNPUNCTURED,
 			    dfs_puncturing_sm_info,
 			    QDF_ARRAY_SIZE(dfs_puncturing_sm_info),
