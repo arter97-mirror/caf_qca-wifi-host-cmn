@@ -791,6 +791,24 @@ policy_mgr_handle_conc_multiport(struct wlan_objmgr_psoc *psoc,
 				 enum policy_mgr_conn_update_reason reason,
 				 uint32_t request_id);
 
+/**
+ * policy_mgr_is_sta_sap_mcc_weightage_required() - Check that STA+SAP MCC
+ *                                                  weightage is required or
+ *                                                  not
+ * @psoc: Psoc ptr
+ * @sta_pdev: Pdev
+ * @sta_freq: STA freq
+ *
+ * This API will check that whether STA_SAP_MCC weightage need to consider in
+ * best candidate selection or not. If STA and SAP is in MCC, those AP will get
+ * less score.
+ *
+ * Return: True if STA_SAP_MCC weightage is required
+ */
+bool
+policy_mgr_is_sta_sap_mcc_weightage_required(struct wlan_objmgr_psoc *psoc,
+					     struct wlan_objmgr_pdev *sta_pdev,
+					     uint32_t sta_freq);
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
 /**
  * policy_mgr_check_concurrent_intf_and_restart_sap() - Check

@@ -53,6 +53,7 @@
 #include "wlan_vdev_mgr_api.h"
 #include "wmi_unified.h"
 #include "wlan_cm_public_struct.h"
+#include "wlan_policy_mgr_i.h"
 
 
 #ifdef WLAN_FEATURE_SAE
@@ -1565,6 +1566,7 @@ static void cm_update_score_params(struct wlan_objmgr_psoc *psoc,
 	struct psoc_mlme_obj *mlme_psoc_obj;
 	struct scoring_cfg *score_config;
 	struct dual_sta_policy *dual_sta_policy;
+	uint32_t mcc_to_scc_switch;
 
 	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
 	if (!mlme_psoc_obj)
@@ -1612,6 +1614,22 @@ static void cm_update_score_params(struct wlan_objmgr_psoc *psoc,
 		weight_config->oce_subnet_id_weightage;
 	req_score_params->sae_pk_ap_weightage =
 		weight_config->sae_pk_ap_weightage;
+
+	mcc_to_scc_switch = policy_mgr_get_mcc_to_scc_switch_mode(psoc);
+
+	/**
+	 * Don't consider STA_SAP_MCC weight_config if:
+	 * 1. HW is DBS chip
+	 * 2. vendor_roam_score_algorithm is not set
+	 * 3. mcc_to_cc_switch is not QDF_MCC_TO_SCC_WITH_PREFERRED_BAND
+	 */
+	if (!policy_mgr_is_hw_dbs_capable(psoc) &&
+	    !score_config->vendor_roam_score_algorithm &&
+	    mcc_to_scc_switch == QDF_MCC_TO_SCC_WITH_PREFERRED_BAND)
+		req_score_params->sta_sap_mcc_weightage =
+			weight_config->sta_sap_mcc_weightage;
+	else
+		req_score_params->sta_sap_mcc_weightage = 0;
 
 	cm_update_mlo_score_params(req_score_params, weight_config);
 

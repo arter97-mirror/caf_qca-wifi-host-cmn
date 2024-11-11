@@ -3151,6 +3151,87 @@ bool policy_mgr_is_pcl_weightage_required(struct wlan_objmgr_psoc *psoc)
 	return true;
 }
 
+bool
+policy_mgr_is_sta_sap_mcc_weightage_required(struct wlan_objmgr_psoc *psoc,
+					     struct wlan_objmgr_pdev *sta_pdev,
+					     uint32_t sta_freq)
+{
+	uint32_t mcc_to_scc_switch;
+	struct policy_mgr_psoc_priv_obj *pm_ctx;
+	uint8_t sap_vdev_id_list[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
+	qdf_freq_t sap_op_ch_freq_list[MAX_NUMBER_OF_CONC_CONNECTIONS];
+	uint8_t sap_count;
+	bool allow_2ghz_only = false, allow_6ghz = true;
+	uint32_t acs_band = QCA_ACS_MODE_IEEE80211ANY;
+	QDF_STATUS status;
+	uint32_t sap_freq;
+	uint8_t sap_vdev_id;
+	uint32_t sta_sap_scc_on_dfs_chan;
+	bool indoor_support;
+
+	pm_ctx = policy_mgr_get_context(psoc);
+	if (!pm_ctx) {
+		policy_mgr_err("Invalid Context");
+		return false;
+	}
+
+	/* For DBS chip, Don't consider STA+SAP MCC weightage */
+	if (policy_mgr_is_hw_dbs_capable(psoc))
+		return false;
+
+	mcc_to_scc_switch = policy_mgr_get_mcc_to_scc_switch_mode(psoc);
+	if (mcc_to_scc_switch != QDF_MCC_TO_SCC_WITH_PREFERRED_BAND)
+		return false;
+
+	sap_count = policy_mgr_get_mode_specific_conn_info(psoc,
+							   sap_op_ch_freq_list,
+							   sap_vdev_id_list,
+							   PM_SAP_MODE);
+
+	if (!sap_count)
+		return false;
+
+	sap_freq = sap_op_ch_freq_list[0];
+	sap_vdev_id = sap_vdev_id_list[0];
+
+	if (pm_ctx->hdd_cbacks.wlan_get_sap_acs_band) {
+		status = pm_ctx->hdd_cbacks.wlan_get_sap_acs_band(psoc,
+								  sap_vdev_id,
+								  &acs_band);
+		if (QDF_IS_STATUS_SUCCESS(status))
+			policy_mgr_debug("acs_band: %d", acs_band);
+	}
+
+	if ((acs_band == QCA_ACS_MODE_IEEE80211B ||
+	     acs_band == QCA_ACS_MODE_IEEE80211G) &&
+	     WLAN_REG_IS_24GHZ_CH_FREQ(sap_freq))
+		allow_2ghz_only = true;
+
+	if (sap_freq && !WLAN_REG_IS_6GHZ_CHAN_FREQ(sap_freq) &&
+	    !policy_mgr_get_ap_6ghz_capable(psoc, sap_vdev_id, NULL))
+		allow_6ghz = false;
+
+	sta_sap_scc_on_dfs_chan =
+			policy_mgr_is_sta_sap_scc_allowed_on_dfs_chan(psoc);
+	indoor_support =
+			policy_mgr_get_sta_sap_scc_allowed_on_indoor_chnl(psoc);
+	/**
+	 * Weighatage is required if SAP is on lower or same band
+	 * and if dfs/indoor INIs is disabled and STA is on DFS/indoor channel?
+	 */
+	if (allow_2ghz_only && !WLAN_REG_IS_24GHZ_CH_FREQ(sta_freq)) {
+		return true;
+	} else if ((!allow_6ghz && WLAN_REG_IS_6GHZ_CHAN_FREQ(sta_freq)) ||
+		   (wlan_reg_is_dfs_for_freq(sta_pdev, sta_freq) &&
+		    !sta_sap_scc_on_dfs_chan) ||
+		   (wlan_reg_is_freq_indoor(sta_pdev, sta_freq) &&
+		    !indoor_support)){
+		return true;
+	}
+
+	return false;
+}
+
 bool policy_mgr_is_interband_mcc_supported(struct wlan_objmgr_psoc *psoc)
 {
 	struct policy_mgr_psoc_priv_obj *pm_ctx;

@@ -980,6 +980,7 @@ struct ap_profile {
  *                BITS 16-23 :- It contains scoring percentage of WPA3 security
  *                BITS 24-31 :- reserved
  *                The value of each index must be 0-100
+ * @sta_sap_mcc_weightage: STA + SAP MCC weightage
  */
 struct scoring_param {
 	uint32_t disable_bitmap;
@@ -1013,6 +1014,7 @@ struct scoring_param {
 #endif
 	int32_t security_weightage;
 	uint32_t security_index_score;
+	uint32_t sta_sap_mcc_weightage;
 };
 
 /**
