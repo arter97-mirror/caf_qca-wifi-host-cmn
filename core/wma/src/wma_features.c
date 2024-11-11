@@ -1556,7 +1556,7 @@ static bool handle_csa_standby_link(wmi_csa_event_fixed_param *csa_event,
 
 	qdf_copy_macaddr((struct qdf_mac_addr *)&params.ap_mld_mac[0],
 			 &link_info->ap_link_addr);
-
+	params.op_code = MLO_LINK_BSS_OP_UPDATE;
 	params.chan->ch_freq = link_info->link_chan_info->ch_freq;
 	params.chan->ch_cfreq1 = link_info->link_chan_info->ch_cfreq1;
 	params.chan->ch_cfreq2 = link_info->link_chan_info->ch_cfreq2;
