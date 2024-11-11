@@ -1625,6 +1625,7 @@ int osif_twt_pause_req(struct wlan_objmgr_vdev *vdev,
 		osif_debug("TWT param not present. flow id set to zero");
 	}
 
+	params.vdev_id = vdev_id;
 	osif_debug("twt_pause: vdev_id %d dialog_id %d peer mac_addr "
 		  QDF_MAC_ADDR_FMT, vdev_id, params.dialog_id,
 		  QDF_MAC_ADDR_REF(params.peer_macaddr.bytes));
