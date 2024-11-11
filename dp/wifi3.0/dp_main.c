@@ -4950,17 +4950,17 @@ static inline void dp_vdev_fetch_tx_handler(struct dp_vdev *vdev,
  *
  * Return: DP VDEV handle on success, NULL on failure
  */
-static QDF_STATUS dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl,
-					 uint8_t vdev_id,
-					 ol_osif_vdev_handle osif_vdev,
-					 struct ol_txrx_ops *txrx_ops)
+static struct cdp_vdev *
+dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+		       ol_osif_vdev_handle osif_vdev,
+		       struct ol_txrx_ops *txrx_ops)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev =	dp_vdev_get_ref_by_id(soc, vdev_id,
 						      DP_MOD_ID_CDP);
 
 	if (!vdev)
-		return QDF_STATUS_E_FAILURE;
+		return NULL;
 
 	vdev->osif_vdev = osif_vdev;
 	vdev->osif_rx = txrx_ops->rx.rx;
@@ -4996,7 +4996,8 @@ static QDF_STATUS dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl,
 	dp_init_info("%pK: DP Vdev Register success", soc);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
-	return QDF_STATUS_SUCCESS;
+
+	return (struct cdp_vdev *)vdev;
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -6369,7 +6370,7 @@ void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 {
 	ol_txrx_vdev_delete_cb vdev_delete_cb = NULL;
 	void *vdev_delete_context = NULL;
-	ol_txrx_vdev_delete_cb vdev_del_notify = NULL;
+	ol_txrx_vdev_del_notify_cb vdev_del_notify = NULL;
 	void *vdev_del_noitfy_ctx = NULL;
 	uint8_t vdev_id = vdev->vdev_id;
 	struct dp_pdev *pdev = vdev->pdev;
@@ -6432,14 +6433,15 @@ free_vdev:
 				     vdev);
 	wlan_minidump_remove(vdev, sizeof(*vdev), soc->ctrl_psoc,
 			     WLAN_MD_DP_VDEV, "dp_vdev");
+
+	if (vdev_del_notify)
+		vdev_del_notify(vdev_del_noitfy_ctx, (struct cdp_vdev *)vdev);
+
 	qdf_mem_free(vdev);
 	vdev = NULL;
 
 	if (vdev_delete_cb)
 		vdev_delete_cb(vdev_delete_context);
-
-	if (vdev_del_notify)
-		vdev_del_notify(vdev_del_noitfy_ctx);
 }
 
 qdf_export_symbol(dp_vdev_unref_delete);

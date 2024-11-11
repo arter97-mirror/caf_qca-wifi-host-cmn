@@ -1136,6 +1136,15 @@ typedef QDF_STATUS(*ol_txrx_get_tsf_time)(void *osif_dev, uint64_t input_time,
 					  uint64_t *tsf_time);
 
 /**
+ * typedef ol_txrx_vdev_del_notify_cb ()- callback registered to notify when
+ *					  cdp vdev is detached.
+ * @context: osif vdev handle
+ * @cdp_vdev: CDP vdev handle
+ */
+typedef void (*ol_txrx_vdev_del_notify_cb)(ol_osif_vdev_handle context,
+					   struct cdp_vdev *cdp_vdev);
+
+/**
  * struct ol_txrx_ops - (pointers to) the functions used for tx and rx
  * data xfer
  *
@@ -1228,7 +1237,7 @@ struct ol_txrx_ops {
 
 	ol_txrx_get_key_fp  get_key;
 	ol_txrx_get_tsf_time get_tsf_time;
-	ol_txrx_vdev_delete_cb vdev_del_notify;
+	ol_txrx_vdev_del_notify_cb vdev_del_notify;
 };
 
 /**
