@@ -1607,7 +1607,8 @@ dp_pdev_obj_create_notification(struct wlan_objmgr_pdev *pdev, void *arg)
 	 * 2) FISA will not start before pdev create, so its safe to attach
 	 * STC after FISA, though there is a dependency on FISA.
 	 */
-	wlan_dp_stc_attach(dp_ctx);
+	if (QDF_IS_STATUS_ERROR(wlan_dp_stc_attach(dp_ctx)))
+		wlan_dp_spm_flow_table_detach(dp_ctx);
 
 	return status;
 }
