@@ -465,12 +465,12 @@ struct rnr_bss_info {
 /**
  * struct neighbor_ap_info_field - Neighbor information field
  * @tbtt_header: TBTT information header
- * @operting_class: operating class
+ * @operating_class: operating class
  * @channel_number: channel number
  */
 struct neighbor_ap_info_field {
 	struct tbtt_information_header tbtt_header;
-	uint8_t operting_class;
+	uint8_t operating_class;
 	uint8_t channel_number;
 };
 

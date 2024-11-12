@@ -718,7 +718,6 @@ static void cm_create_bss_peer(struct cnx_mgr *cm_ctx,
 							req->cur_candidate->entry,
 							true)) {
 		cm_set_vdev_link_id(cm_ctx, req);
-		wlan_mlo_init_cu_bpcc(vdev);
 		mld_mac = cm_get_bss_peer_mld_addr(req);
 		mlo_set_sta_ctx_bss_mld_addr(vdev, mld_mac);
 		is_assoc_link = cm_bss_peer_is_assoc_peer(req);

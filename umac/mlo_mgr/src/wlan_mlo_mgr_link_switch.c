@@ -285,6 +285,7 @@ void mlo_mgr_reset_ap_link_info(struct wlan_objmgr_vdev *vdev)
 		qdf_mem_zero(link_info->link_chan_info,
 			     sizeof(*link_info->link_chan_info));
 		link_info->link_id = WLAN_INVALID_LINK_ID;
+		link_info->bpcc = 0;
 		link_info->link_status_flags = 0;
 		link_info++;
 	}

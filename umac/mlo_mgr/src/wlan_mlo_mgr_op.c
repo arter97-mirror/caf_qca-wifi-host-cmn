@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,49 +26,25 @@
 #include "wlan_mlo_mgr_sta.h"
 
 #ifdef WLAN_FEATURE_11BE_MLO
-QDF_STATUS wlan_mlo_set_cu_bpcc(struct wlan_objmgr_vdev *vdev, uint8_t bpcc)
+QDF_STATUS wlan_mlo_set_cu_bpcc(struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id, uint8_t bpcc)
 {
-	uint8_t vdev_id;
-
 	if (!vdev) {
-		mlo_err("vdev is NULL");
+		mlo_debug("vdev is NULL");
 		return QDF_STATUS_E_INVAL;
 	}
 
-	vdev_id = wlan_vdev_get_id(vdev);
-	return mlo_set_cu_bpcc(vdev, vdev_id, bpcc);
+	return mlo_set_cu_bpcc(vdev, link_id, bpcc);
 }
 
-QDF_STATUS wlan_mlo_get_cu_bpcc(struct wlan_objmgr_vdev *vdev, uint8_t *bpcc)
+QDF_STATUS wlan_mlo_get_cu_bpcc(struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id, uint8_t *bpcc)
 {
-	uint8_t vdev_id;
-
 	if (!vdev || !bpcc) {
-		mlo_err("vdev or bpcc is NULL");
+		mlo_debug("vdev or bpcc is NULL");
 		return QDF_STATUS_E_INVAL;
 	}
 
-	vdev_id = wlan_vdev_get_id(vdev);
-	return mlo_get_cu_bpcc(vdev, vdev_id, bpcc);
-}
-
-void wlan_mlo_init_cu_bpcc(struct wlan_objmgr_vdev *vdev)
-{
-	struct wlan_mlo_dev_context *mlo_dev_ctx;
-	uint8_t vdev_id;
-
-	if (!vdev) {
-		mlo_err("vdev is NULL");
-		return;
-	}
-
-	vdev_id = wlan_vdev_get_id(vdev);
-	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx) {
-		mlo_err("ML dev ctx is NULL");
-		return;
-	}
-
-	mlo_init_cu_bpcc(mlo_dev_ctx, vdev_id);
+	return mlo_get_cu_bpcc(vdev, link_id, bpcc);
 }
 #endif
