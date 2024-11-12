@@ -4891,7 +4891,8 @@ lim_cm_handle_join_req(struct cm_vdev_join_req *req)
 	lim_dump_he_info(mac_ctx, pe_session);
 	lim_dump_eht_info(pe_session);
 
-	if (lim_connect_skip_join_for_gc(pe_session)) {
+	if (lim_connect_skip_join_for_gc(pe_session) ||
+	    wlan_vdev_mlme_is_mlo_link_switch_in_progress(pe_session->vdev)) {
 		pe_session->beacon =
 			qdf_mem_malloc(util_scan_entry_frame_len(req->entry));
 		if (!pe_session->beacon)
