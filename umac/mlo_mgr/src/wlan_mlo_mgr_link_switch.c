@@ -339,6 +339,36 @@ void mlo_mgr_free_link_info_wmi_chan(struct wlan_mlo_dev_context *ml_dev)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+bool
+mlo_mgr_update_link_state_delete_flag(
+			struct wlan_mlo_dev_context *mlo_dev_ctx,
+			uint8_t link_id,
+			bool set)
+{
+	struct mlo_link_info *link_info;
+
+	link_info = mlo_mgr_get_ap_link_by_link_id(mlo_dev_ctx,
+						   link_id);
+	if (!link_info) {
+		mlo_debug("no found link info for id %d for %s",
+			  link_id, set ? "delete" : "clear");
+		return false;
+	}
+
+	if (set) {
+		qdf_atomic_set_bit(LS_F_AP_REMOVAL_BIT,
+				   &link_info->link_status_flags);
+	} else {
+		qdf_atomic_clear_bit(LS_F_AP_REMOVAL_BIT,
+				     &link_info->link_status_flags);
+	}
+	mlo_debug("link %d updated link state 0x%x for %s",
+		  link_id, (uint32_t)link_info->link_status_flags,
+		  set ? "delete" : "clear");
+
+	return true;
+}
+
 static void
 mlo_mgr_update_link_vdev_id(struct wlan_objmgr_vdev *vdev, uint8_t accepted_link_id,
 			    uint8_t rejected_link_id)

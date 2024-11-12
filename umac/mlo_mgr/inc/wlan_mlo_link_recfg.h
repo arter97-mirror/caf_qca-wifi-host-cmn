@@ -187,8 +187,13 @@ struct xmit_tx_result {
 struct recfg_rsp {
 };
 
-/*WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP */
+/**
+ * struct set_link_resp - event data of
+ * WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP
+ * @status: 0 for set link success, otherwise set link failed
+ */
 struct set_link_resp {
+	uint32_t status;
 };
 
 /*WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_IND */
@@ -272,6 +277,17 @@ ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+/**
+ * mlo_link_recfg_set_link_resp() - Handle link recfg set link
+ * response event
+ * @vdev: vdev object
+ * @result: set link response result
+ *
+ * Return: void
+ */
+void mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
+				  uint32_t result);
+
 /**
  * mlo_mgr_link_recfg_indication_event_handler() - Handle fw link recfg event
  * @psoc: psoc object
@@ -487,6 +503,12 @@ mlo_link_recfg_create_transition_list(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct wlan_mlo_link_recfg_req *recfg_req);
 #else
+static inline void
+mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
+			     uint32_t result)
+{
+}
+
 static inline QDF_STATUS
 mlo_mgr_link_recfg_indication_event_handler(
 			struct wlan_objmgr_psoc *psoc,

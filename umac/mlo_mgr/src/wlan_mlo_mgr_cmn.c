@@ -819,6 +819,8 @@ mlo_link_set_resp_link_recfg_handler(struct wlan_objmgr_psoc *psoc,
 	req->ctx.set_mlo_link_cb(vdev_in_set_link, req->ctx.cb_arg, event);
 
 	event->evt_handled = true;
+	mlo_link_recfg_set_link_resp(vdev_in_set_link, event->status);
+
 	wlan_objmgr_vdev_release_ref(vdev_in_set_link, WLAN_MLO_MGR_ID);
 	qdf_mem_free(req);
 }

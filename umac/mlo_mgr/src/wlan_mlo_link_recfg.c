@@ -457,14 +457,14 @@ mlo_link_recfg_is_standby_link_del_only(
 				struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
 {
-	return true;
+	return false;
 }
 
 static bool
 mlo_link_recfg_is_standby_link_present_for_link_sw(
 				struct mlo_link_recfg_context *recfg_ctx)
 {
-	return true;
+	return false;
 }
 
 static bool
@@ -522,12 +522,90 @@ mlo_link_recfg_host_trigger_link_switch(
 	return QDF_STATUS_SUCCESS;
 }
 
+void mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
+				  uint32_t result)
+{
+	QDF_STATUS status;
+	struct set_link_resp set_link_rsp = {0};
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo_dev_ctx");
+		return;
+	}
+
+	set_link_rsp.status = result;
+	status = mlo_link_recfg_sm_deliver_event(
+				mlo_dev_ctx,
+				WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP,
+				sizeof(set_link_rsp), &set_link_rsp);
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_err("fail to deliver set link rsp result %d, vdev %d status %d",
+			result, wlan_vdev_get_id(vdev), status);
+}
+
 static QDF_STATUS
 mlo_link_recfg_del_link_by_inact(
 		struct mlo_link_recfg_context *recfg_ctx,
 		struct mlo_link_recfg_state_req *req)
 {
-	return QDF_STATUS_SUCCESS;
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_mlo_link_recfg_req *recfg_req;
+	QDF_STATUS status;
+	struct wlan_objmgr_psoc *psoc;
+	uint16_t del_link_bitmap = 0;
+	uint8_t i;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("invalid psoc");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo dev ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (policy_mgr_is_set_link_in_progress(psoc)) {
+		mlo_err("unexpected set link in progress");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	recfg_req = &recfg_ctx->last_recfg_req;
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, recfg_req->vdev_id,
+						    WLAN_MLO_MGR_ID);
+	if (!vdev) {
+		mlo_err("Invalid link recfg VDEV %d", recfg_req->vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	for (i = 0; i < req->del_link_info.num_links; i++) {
+		del_link_bitmap |= 1 << req->del_link_info.link[i].link_id;
+		mlo_mgr_update_link_state_delete_flag(
+					mlo_dev_ctx,
+					req->del_link_info.link[i].link_id,
+					true);
+	}
+	mlo_debug("vdev %d delete link bitmap 0x%x", recfg_req->vdev_id,
+		  del_link_bitmap);
+
+	status =
+	policy_mgr_mlo_sta_set_nlink(psoc, wlan_vdev_get_id(vdev),
+				     MLO_LINK_FORCE_REASON_LINK_DELETE,
+				     MLO_LINK_FORCE_MODE_INACTIVE,
+				     0,
+				     del_link_bitmap,
+				     0,
+				     link_ctrl_f_dont_reschedule_workqueue |
+				     link_ctrl_f_link_recfg);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
+	return status;
 }
 
 static QDF_STATUS
@@ -843,7 +921,7 @@ mlo_link_recfg_sm_set_state(struct mlo_link_recfg_context *recfg_ctx,
 	if (state < WLAN_LINK_RECFG_S_MAX)
 		recfg_ctx->sm.link_recfg_state = state;
 	else
-		mlme_err("invalid state %d", state);
+		mlo_err("invalid state %d", state);
 }
 
 static void
@@ -854,7 +932,7 @@ mlo_link_recfg_sm_set_substate(struct mlo_link_recfg_context *recfg_ctx,
 	    substate < WLAN_LINK_RECFG_SS_MAX)
 		recfg_ctx->sm.link_recfg_substate = substate;
 	else
-		mlme_err("invalid state %d", substate);
+		mlo_err("invalid state %d", substate);
 }
 
 static void
@@ -872,6 +950,13 @@ mlo_link_recfg_ser_timeout_sm_handler(
 {
 	enum wlan_link_recfg_sm_state state;
 	enum wlan_link_recfg_sm_state substate;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo dev ctx");
+		return;
+	}
 
 	state = mlo_link_recfg_sm_get_state(recfg_ctx);
 	substate = mlo_link_recfg_sm_get_substate(recfg_ctx);
@@ -898,7 +983,7 @@ mlo_link_recfg_ser_timeout_sm_handler(
 	case WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_SET_LINK:
 	case WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_SET_LINK:
 		/* timeout set link req */
-
+		mlo_link_recfg_set_link_resp_timeout(mlo_dev_ctx);
 		break;
 	case WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_LINK_SW:
 	case WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_LINK_SW:

@@ -730,6 +730,20 @@ mlo_mgr_is_link_switch_supported(struct wlan_objmgr_vdev *vdev)
 	return true;
 }
 
+/**
+ * mlo_mgr_update_link_state_delete_flag() - API to set or clear
+ * link delete flag in link info
+ * @mlo_dev_ctx: MLO dev context
+ * @link_id: link id
+ * @set: set link delete flag
+ *
+ * Return: true for success
+ */
+bool
+mlo_mgr_update_link_state_delete_flag(
+			struct wlan_mlo_dev_context *mlo_dev_ctx,
+			uint8_t link_id,
+			bool set);
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -939,6 +953,15 @@ void mlo_mgr_update_link_status_code(struct wlan_objmgr_vdev *vdev,
 				     uint8_t link_id,
 				     enum wlan_status_code status_code)
 {
+}
+
+static inline bool
+mlo_mgr_update_link_state_delete_flag(
+			struct wlan_mlo_dev_context *mlo_dev_ctx,
+			uint8_t link_id,
+			bool set)
+{
+	return true;
 }
 #endif
 #endif

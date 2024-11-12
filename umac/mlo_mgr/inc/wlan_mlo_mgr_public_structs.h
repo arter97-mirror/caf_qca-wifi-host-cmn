@@ -899,6 +899,10 @@ struct mlnawds_config {
 
 /* AP removed link flag bit position for link_status_flags in
  * struct mlo_link_info
+ * If link is deleted from setup links by link recfg, the link
+ * will be handled by similar behaviour as link removed. So use
+ * same flag to indicate link is removed from setup links for
+ * link delete case.
  */
 #define LS_F_AP_REMOVAL_BIT 0
 
