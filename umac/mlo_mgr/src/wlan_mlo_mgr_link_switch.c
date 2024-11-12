@@ -616,6 +616,36 @@ struct mlo_link_info
 	return NULL;
 }
 
+bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
+						uint32_t freq)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_link_info *link_info;
+	uint8_t link_info_iter;
+
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
+		return false;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx)
+		return false;
+
+	link_info = &mlo_dev_ctx->link_ctx->links_info[0];
+	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+	     link_info_iter++) {
+		if (link_info->is_link_active)
+			continue;
+		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+			continue;
+		if (link_info->chan_freq && (link_info->chan_freq == freq))
+			return true;
+
+		link_info++;
+	}
+
+	return false;
+}
+
 bool mlo_mgr_update_csa_link_info(struct wlan_objmgr_pdev *pdev,
 				  struct wlan_mlo_dev_context *mlo_dev_ctx,
 				  struct csa_offload_params *csa_param,

@@ -365,6 +365,17 @@ mlo_mgr_get_ap_link_by_link_id(struct wlan_mlo_dev_context *mlo_dev_ctx,
 			       int link_id);
 
 /**
+ * mlo_mgr_if_freq_n_inactive_links_freq_same() - API to check if the given
+ * freq and ML connection inactive/standby link are on same.
+ * @vdev: vdev
+ * @freq: given freq to check
+ *
+ * Return: bool
+ */
+bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
+						uint32_t freq);
+
+/**
  * mlo_mgr_update_csa_link_info - update mlo sta csa params
  * @pdev: pdev object manager
  * @mlo_dev_ctx: mlo dev ctx
@@ -732,6 +743,13 @@ static inline struct mlo_link_info
 				int link_id)
 {
 	return NULL;
+}
+
+static inline bool
+mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
+					   uint32_t freq)
+{
+	return false;
 }
 
 static inline bool
