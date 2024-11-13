@@ -3831,6 +3831,16 @@ void
 policy_mgr_check_sap_restart(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
 
 /**
+ * policy_mgr_trigger_roam_for_sta_sap_mcc_non_dbs() - Trigger roaming in
+ * case of MCC for STA + SAP
+ * @psoc: Pointer to soc
+ *
+ * Return: None
+ */
+void
+policy_mgr_trigger_roam_for_sta_sap_mcc_non_dbs(struct wlan_objmgr_psoc *psoc);
+
+/**
  * policy_mgr_check_sta_ap_concurrent_ch_intf() - Restart SAP in STA-AP case
  * @data: Pointer to STA adapter
  *

@@ -4666,16 +4666,9 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 			same_mac = policy_mgr_2_freq_always_on_same_mac(psoc,
 								sap_ch_freq,
 								pcl_freq);
-		if (!policy_mgr_is_scc_with_existing_connection(pcl_freq)) {
-			if (sap_ch_freq == pcl_freq)
-				non_scc_ch_freq_same_as_sap = pcl_freq;
-			else if (!non_scc_ch_freq_on_same_mac && same_mac)
-				non_scc_ch_freq_on_same_mac = pcl_freq;
-			else if (!non_scc_ch_freq_on_diff_mac && !same_mac)
-				non_scc_ch_freq_on_diff_mac = pcl_freq;
-			continue;
-		} else if (!is_dbs && ml_sta_present &&
-			   cc_mode == QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) {
+
+		if (!is_dbs && ml_sta_present &&
+		    cc_mode == QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) {
 			/**
 			 * Check if pcl_freq and ML connections inactive or
 			 * standby link has the same freq to form SCC,
@@ -4692,6 +4685,15 @@ policy_mgr_get_pref_force_scc_freq(struct wlan_objmgr_psoc *psoc,
 					continue;
 				}
 			}
+		}
+		if (!policy_mgr_is_scc_with_existing_connection(pcl_freq)) {
+			if (sap_ch_freq == pcl_freq)
+				non_scc_ch_freq_same_as_sap = pcl_freq;
+			else if (!non_scc_ch_freq_on_same_mac && same_mac)
+				non_scc_ch_freq_on_same_mac = pcl_freq;
+			else if (!non_scc_ch_freq_on_diff_mac && !same_mac)
+				non_scc_ch_freq_on_diff_mac = pcl_freq;
+			continue;
 		}
 
 		if (sap_ch_freq == pcl_freq)

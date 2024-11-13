@@ -2200,10 +2200,12 @@ hdd_hostapd_check_channel_post_csa(struct hdd_context *hdd_ctx,
 	}
 
 	sap_cnt = policy_mgr_get_beaconing_mode_count(hdd_ctx->psoc, NULL);
-	if (sap_cnt > 1)
+	if (sap_cnt > 1) {
 		policy_mgr_check_concurrent_intf_and_restart_sap(
 				hdd_ctx->psoc,
 				ap_ctx->sap_config.acs_cfg.acs_mode);
+		policy_mgr_trigger_roam_for_sta_sap_mcc_non_dbs(hdd_ctx->psoc);
+	}
 }
 
 /**
@@ -4500,10 +4502,14 @@ QDF_STATUS wlan_hdd_get_channel_for_sap_restart(struct wlan_objmgr_psoc *psoc,
 
 sap_restart:
 	if (!intf_ch_freq) {
-		hdd_debug("vdev %d Unable to find safe channel, Hence stop the SAP or Set Tx power",
-			  vdev_id);
-		wlan_hdd_set_sap_csa_reason(psoc, vdev_id, csa_reason);
-		hdd_stop_sap_set_tx_power(psoc, link_info);
+		if (csa_reason == CSA_REASON_UNSAFE_CHANNEL) {
+			hdd_debug("vdev %d Unable to find safe channel, Hence stop the SAP or Set Tx power",
+				  vdev_id);
+			wlan_hdd_set_sap_csa_reason(psoc, vdev_id, csa_reason);
+			hdd_stop_sap_set_tx_power(psoc, link_info);
+		} else {
+			hdd_debug("vdev %d no channel found to switch", vdev_id);
+		}
 		wlansap_context_put(sap_context);
 		return QDF_STATUS_E_FAILURE;
 	}

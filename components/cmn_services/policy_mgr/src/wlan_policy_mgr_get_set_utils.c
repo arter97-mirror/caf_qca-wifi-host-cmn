@@ -6091,9 +6091,10 @@ uint32_t policy_mgr_get_mode_specific_conn_info(
 		return count;
 	}
 
+	/* Take lock before count so that index dont change */
+	qdf_mutex_acquire(&pm_ctx->qdf_conc_list_lock);
 	count = policy_mgr_mode_specific_connection_count(
 				psoc, mode, list);
-	qdf_mutex_acquire(&pm_ctx->qdf_conc_list_lock);
 	if (count == 1) {
 		if (ch_freq_list)
 			*ch_freq_list =
