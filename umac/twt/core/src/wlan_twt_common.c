@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -438,3 +438,25 @@ wlan_twt_disable_event_handler(struct wlan_objmgr_psoc *psoc,
 						  twt_context->context);
 }
 
+QDF_STATUS
+wlan_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
+						 bool *val)
+{
+	struct twt_psoc_priv_obj *twt_psoc;
+
+	if (!psoc) {
+		twt_err("psoc is null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	twt_psoc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+							 WLAN_UMAC_COMP_TWT);
+	if (!twt_psoc) {
+		twt_err("twt psoc priv obj is null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*val = twt_psoc->twt_caps.p2p_go_concurrency_support;
+
+	return QDF_STATUS_SUCCESS;
+}

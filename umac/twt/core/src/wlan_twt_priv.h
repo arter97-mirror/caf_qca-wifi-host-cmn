@@ -42,6 +42,7 @@
  * @twt_stats_enabled: twt stats enabled
  * @twt_ack_supported: twt ack supported
  * @restricted_twt_support: Restricted TWT supported
+ * @p2p_go_concurrency_support: P2P GO concurrency support
  */
 struct twt_tgt_caps {
 	bool twt_requestor;
@@ -54,6 +55,7 @@ struct twt_tgt_caps {
 	bool twt_stats_enabled;
 	bool twt_ack_supported;
 	bool restricted_twt_support;
+	bool p2p_go_concurrency_support;
 };
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -104,4 +104,11 @@ QDF_STATUS ucfg_twt_get_restricted_twt_supported(struct wlan_objmgr_psoc *psoc,
 						 bool *val)
 {
 	return wlan_twt_tgt_caps_get_restricted_support(psoc, val);
+}
+
+QDF_STATUS
+ucfg_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
+						 bool *val)
+{
+	return wlan_twt_tgt_caps_get_p2p_go_concurrency_support(psoc, val);
 }

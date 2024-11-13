@@ -24882,6 +24882,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_mlo_sap_concurrency_support] =
 				WMI_SERVICE_MLO_SAP_CONCURRENCY_SUPPORT;
 #endif
+	wmi_service[wmi_service_twt_p2p_go_concurrency_support] =
+				WMI_SERVICE_TWT_P2P_GO_CONCURRENCY_SUPPORT;
 }
 
 /**

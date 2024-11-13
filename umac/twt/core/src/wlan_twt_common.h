@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -210,3 +210,15 @@ wlan_twt_disable_event_handler(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 wlan_twt_tgt_caps_get_restricted_support(struct wlan_objmgr_psoc *psoc,
 					 bool *val);
+/**
+ * wlan_twt_tgt_caps_get_p2p_go_concurrency_support() - Get TGT capability for
+ * P2P GO concurrency support
+ *
+ * @psoc: PSOC handle
+ * @val: pointer to get caps enabled/disabled
+ *
+ * return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
+						 bool *val);

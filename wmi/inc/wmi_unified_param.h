@@ -6790,6 +6790,8 @@ typedef enum {
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_service_mlo_sap_concurrency_support,
 #endif
+	wmi_service_twt_p2p_go_concurrency_support,
+
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
