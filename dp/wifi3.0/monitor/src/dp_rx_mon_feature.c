@@ -96,7 +96,7 @@ dp_rx_populate_cdp_indication_mpdu_info(
 	cdp_mpdu_info->preamble = ppdu_info->rx_status.preamble_type;
 	cdp_mpdu_info->ppdu_type = ppdu_info->rx_status.reception_type;
 	cdp_mpdu_info->rssi_comb = ppdu_info->rx_status.rssi_comb;
-	cdp_mpdu_info->nf = ppdu_info->rx_status.chan_noise_floor;
+	cdp_mpdu_info->nf = ppdu_info->rx_status.hw_noise_floor;
 
 	if (ppdu_info->rx_status.reception_type == HAL_RX_TYPE_MU_OFDMA) {
 		rx_user_status =  &ppdu_info->rx_user_status[user];
