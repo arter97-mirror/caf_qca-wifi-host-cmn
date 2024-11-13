@@ -365,6 +365,16 @@ typedef __qdf_ipa_wdi_perf_profile_t qdf_ipa_wdi_perf_profile_t;
 	__QDF_IPA_WDI_PERF_PROFILE_MAX_SUPPORTED_BW_MBPS(profile)
 
 /**
+ * qdf_ipa_wdi_outstanding_buffs - number of outstanding buffer at IPA.
+ */
+typedef __qdf_ipa_wdi_outstanding_buffs qdf_ipa_wdi_outstanding_buffs;
+
+#define QDF_IPA_WDI_TX_OUTSTANDING_BUFFS(buff)	\
+	__QDF_IPA_WDI_TX_OUTSTANDING_BUFFS(buff)
+#define QDF_IPA_WDI_RX_OUTSTANDING_BUFFS(buff)  \
+	__QDF_IPA_WDI_RX_OUTSTANDING_BUFFS(buff)
+
+/**
  * qdf_ipa_wdi_reg_intf - Client should call this function to
  * init WDI IPA offload data path
  *
@@ -697,5 +707,12 @@ static inline int qdf_ipa_wdi_opt_dpath_notify_ctrl_flt_del_per_inst(
 	return 0;
 }
 #endif
+
+static inline int
+qdf_ipa_wdi_get_outstanding_buffers(qdf_ipa_wdi_hdl_t hdl,
+				    qdf_ipa_wdi_outstanding_buffs *out)
+{
+	return __qdf_ipa_wdi_get_outstanding_buffers(hdl, out);
+}
 #endif /* IPA_OFFLOAD */
 #endif /* QDF_IPA_WDI3_H */
