@@ -4099,11 +4099,30 @@ void lim_update_omn_ie_ch_width(struct wlan_objmgr_vdev *vdev,
 
 	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
 	if (!mlme_priv) {
-		mlme_legacy_err("vdev legacy private object is NULL");
+		pe_err("vdev legacy private object is NULL");
 		return;
 	}
 
-	mlme_priv->connect_info.assoc_chan_info.omn_ie_ch_width = ch_width;
+	mlme_priv->connect_info.assoc_chan_info.cur_ch_width = ch_width;
+}
+
+void lim_update_bcn_op_ch_width(struct wlan_objmgr_vdev *vdev,
+				enum phy_ch_width ch_width)
+{
+	struct mlme_legacy_priv *mlme_priv;
+
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv) {
+		pe_err("vdev legacy private object is NULL");
+		return;
+	}
+
+	if (mlme_priv->connect_info.assoc_chan_info.cur_ch_width != ch_width)
+		mlme_priv->connect_info.assoc_chan_info.cur_ch_width = ch_width;
+	else
+		return;
+
+	pe_debug("update bcn eht/he/vht op chn width %d", ch_width);
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO

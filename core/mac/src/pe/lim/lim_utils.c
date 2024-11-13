@@ -11443,6 +11443,8 @@ bool lim_update_channel_width(struct mac_context *mac_ctx,
 		sta_ptr->htSupportedChannelWidthSet = CH_WIDTH_20MHZ;
 	*new_ch_width = ch_width;
 
+	lim_update_bcn_op_ch_width(session->vdev, ch_width);
+
 	return lim_check_vht_op_mode_change(mac_ctx, session, *new_ch_width,
 					    sta_ptr->staAddr);
 }

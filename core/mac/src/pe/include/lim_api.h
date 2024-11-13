@@ -701,6 +701,17 @@ void lim_update_omn_ie_ch_width(struct wlan_objmgr_vdev *vdev,
 				enum phy_ch_width ch_width);
 
 /**
+ * lim_update_bcn_op_ch_width() - update beacon channel width in struct
+ * assoc_channel_info while processing bcn/probe resp
+ * @vdev: VDEV object manager
+ * @ch_width: ch_width present in beacon eht/he/vht op IE and ht info IE
+ *
+ * Return: none
+ */
+void lim_update_bcn_op_ch_width(struct wlan_objmgr_vdev *vdev,
+				enum phy_ch_width ch_width);
+
+/**
  * lim_is_he_dynamic_smps_enabled() - Check if Dynamic SMPS enabled in HE caps
  * @session: PE session
  *
