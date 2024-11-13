@@ -150,8 +150,9 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 	link_info->link_id = link_id;
 	link_info->is_link_active = false;
 
-	mlo_debug("Update AP Link info for link_id: %d, vdev_id:%d, link_addr:" QDF_MAC_ADDR_FMT,
-		  link_info->link_id, link_info->vdev_id,
+	mlo_debug("Update AP Link info for link_id: %d, freq: %d vdev_id:%d, link_addr:" QDF_MAC_ADDR_FMT,
+		  link_info->link_id, link_info->link_chan_info->ch_freq,
+		  link_info->vdev_id,
 		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
 }
 
@@ -633,11 +634,14 @@ bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
 	link_info = &mlo_dev_ctx->link_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
-		if (link_info->is_link_active)
+		if (link_info->is_link_active ||
+		    qdf_is_macaddr_zero(&link_info->ap_link_addr)) {
+			link_info++;
 			continue;
-		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
-			continue;
-		if (link_info->chan_freq && (link_info->chan_freq == freq))
+		}
+
+		if (link_info->link_chan_info->ch_freq &&
+		    (link_info->link_chan_info->ch_freq == freq))
 			return true;
 
 		link_info++;

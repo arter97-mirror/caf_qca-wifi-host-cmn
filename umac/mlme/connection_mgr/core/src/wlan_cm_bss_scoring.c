@@ -2611,34 +2611,6 @@ static void cm_mlo_score_boost(struct weight_cfg *weight_config,
 }
 #endif
 
-static uint32_t cm_dec_score_for_mcc(struct wlan_objmgr_psoc *psoc,
-				     struct wlan_objmgr_pdev *pdev,
-				     struct scoring_cfg *score_params,
-				     struct scan_cache_entry *entry)
-{
-	uint32_t sta_sap_mcc_score = 0;
-	uint32_t min_score = 0;
-
-	/**
-	 * Don't consider STA+SAP MCC weightage for STA connection,
-	 * if MCC is not formed
-	 */
-	if (!score_params->weight_config.sta_sap_mcc_weightage ||
-	    !policy_mgr_is_sta_sap_mcc_weightage_required(
-						psoc, pdev,
-						entry->channel.chan_freq))
-		return sta_sap_mcc_score;
-
-	sta_sap_mcc_score = score_params->weight_config.sta_sap_mcc_weightage;
-	entry->bss_score = entry->bss_score * sta_sap_mcc_score / 100;
-	min_score = wlan_cm_get_min_score(entry);
-	/* If it less than min score, update it to min score */
-	if (entry->bss_score < min_score)
-		entry->bss_score = min_score;
-
-	return sta_sap_mcc_score;
-}
-
 /**
  * cm_skip_mlo_score() - Skip MLO score for some conditions
  * @psoc:psoc object
@@ -2729,7 +2701,6 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	enum MLO_TYPE bss_mlo_type;
 	int ml_score = 0;
 	bool rsno = false;
-	uint32_t sta_sap_mcc_pct = 0;
 
 	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
 	if (!mlme_psoc_obj)
@@ -2809,13 +2780,8 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	 */
 	if (cm_check_and_update_bssid_hint_entry_bss_score(entry, score_config,
 							   bssid_hint,
-							   ml_flag)) {
-		if (!policy_mgr_is_hw_dbs_capable(psoc) &&
-		    cm_dec_score_for_mcc(psoc, pdev, score_config, entry))
-			return entry->bss_score;
-
+							   ml_flag))
 		return CM_BEST_CANDIDATE_MAX_BSS_SCORE;
-	}
 
 	pcl_score = cm_calculate_pcl_score(psoc, pcl_chan_weight,
 					   weight_config->pcl_weightage);
@@ -2937,15 +2903,6 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 		score = entry->bss_score;
 	}
 
-	if (!policy_mgr_is_hw_dbs_capable(psoc)) {
-		entry->bss_score = score;
-		sta_sap_mcc_pct = cm_dec_score_for_mcc(psoc, pdev,
-							 score_config,
-							 entry);
-		if (sta_sap_mcc_pct)
-			score = entry->bss_score;
-	}
-
 	if (util_scan_entry_wifi6_rsno(entry) ||
 	    util_scan_entry_wifi7_rsno(entry))
 		rsno = true;
@@ -2969,7 +2926,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 				bss_mlo_type, rsno,
 				util_scan_entry_rsnxo(entry) ? 1 : 0);
 
-	mlme_nofl_debug("%s score("QDF_MAC_ADDR_FMT" freq %d): rssi %d pcl %d ht %d vht %d he %d bfee %d bw %d band %d cong %d nss %d oce_wan %d oce_ap_pwr %d oce_subnet %d sae_pk %d eht %d security %d ml %d mcc pct %d TOTAL %d",
+	mlme_nofl_debug("%s score("QDF_MAC_ADDR_FMT" freq %d): rssi %d pcl %d ht %d vht %d he %d bfee %d bw %d band %d cong %d nss %d oce_wan %d oce_ap_pwr %d oce_subnet %d sae_pk %d eht %d security %d ml %d TOTAL %d",
 			IS_LINK_SCORE(ml_flag) ? "Link" : "Candidate",
 			QDF_MAC_ADDR_REF(entry->bssid.bytes),
 			entry->channel.chan_freq,
@@ -2978,7 +2935,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 			band_score, congestion_score, nss_score, oce_wan_score,
 			oce_ap_tx_pwr_score, oce_subnet_id_score,
 			sae_pk_score, eht_score, security_score, ml_score,
-			sta_sap_mcc_pct, score);
+			score);
 
 	return score;
 }
@@ -3586,6 +3543,39 @@ cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
 }
 
 #endif
+
+
+static void cm_dec_score_for_mcc(struct wlan_objmgr_psoc *psoc,
+				 struct wlan_objmgr_pdev *pdev,
+				 struct scoring_cfg *score_params,
+				 struct scan_cache_entry *entry)
+{
+	uint32_t sta_sap_mcc_score = 0;
+	uint32_t min_score = 0;
+
+	/**
+	 * Don't consider STA+SAP MCC weightage for STA connection,
+	 * if MCC is not formed
+	 */
+	if (!score_params->weight_config.sta_sap_mcc_weightage ||
+	    !policy_mgr_is_sta_sap_mcc_weightage_required(
+						psoc, pdev,
+						entry->channel.chan_freq))
+		return;
+
+	sta_sap_mcc_score = score_params->weight_config.sta_sap_mcc_weightage;
+	entry->bss_score = entry->bss_score * sta_sap_mcc_score / 100;
+	min_score = wlan_cm_get_min_score(entry);
+	/* If it less than min score, update it to min score */
+	if (entry->bss_score < min_score)
+		entry->bss_score = min_score;
+
+	mlme_nofl_debug("Candidate("QDF_MAC_ADDR_FMT" freq %d): rssi %d, is causing MCC, update score to %d",
+			 QDF_MAC_ADDR_REF(entry->bssid.bytes),
+			 entry->channel.chan_freq,
+			 entry->rssi_raw, entry->bss_score);
+}
+
 void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 				 struct pcl_freq_weight_list *pcl_lst,
 				 qdf_list_t *scan_list,
@@ -3680,8 +3670,14 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 		    (are_all_candidate_denylisted && denylist_action ==
 		     CM_DLM_REMOVE)) {
 			cm_calculate_bss_score(psoc, pdev, scan_entry->entry,
-					       pcl_chan_weight, bssid_hint,
+					       pcl_chan_weight,
+					       bssid_hint,
 					       scan_list, ASSOC_LINK);
+
+			/* Update MCC score for non DBS HW */
+			if (!policy_mgr_is_hw_dbs_capable(psoc))
+				cm_dec_score_for_mcc(psoc, pdev, score_config,
+						     scan_entry->entry);
 		} else if (denylist_action == CM_DLM_AVOID) {
 			/* add min score so that it is added back in the end */
 			scan_entry->entry->bss_score =
