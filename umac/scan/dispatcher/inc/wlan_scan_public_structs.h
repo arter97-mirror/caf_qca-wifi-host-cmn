@@ -599,6 +599,8 @@ enum number_of_partner_link {
  * @is_hidden_ssid: is AP having hidden ssid.
  * @security_type: security supported
  * @seq_num: sequence number
+ * @is_non_tx_mbssid_gen: is locally generated non tx mbssid scan entry
+ * @reserved: reserved
  * @phy_mode: Phy mode of the AP
  * @avg_rssi: Average RSSI of the AP
  * @rssi_raw: The rssi of the last beacon/probe received
@@ -647,6 +649,8 @@ struct scan_cache_entry {
 	bool is_hidden_ssid;
 	uint8_t security_type;
 	uint16_t seq_num;
+	uint8_t is_non_tx_mbssid_gen:1,
+		reserved:7;
 	enum wlan_phymode phy_mode;
 	int32_t avg_rssi;
 	int8_t rssi_raw;

@@ -900,6 +900,22 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 	return scm_scan_get_entry_by_bssid(pdev, bssid);
 }
 
+bool wlan_scan_is_localy_gen_non_tx_mbssid_entry(struct wlan_objmgr_pdev *pdev,
+						 struct qdf_mac_addr *bssid)
+{
+	struct scan_cache_entry *entry = NULL;
+	bool is_non_txt_mbssid_gen = false;
+
+	/* check if scan entry locally generated */
+	entry = wlan_scan_get_entry_by_bssid(pdev, bssid);
+	if (entry) {
+		is_non_txt_mbssid_gen =
+			entry->is_non_tx_mbssid_gen ? true : false;
+		util_scan_free_cache_entry(entry);
+	}
+	return is_non_txt_mbssid_gen;
+}
+
 QDF_STATUS
 wlan_scan_get_mld_addr_by_link_addr(struct wlan_objmgr_pdev *pdev,
 				    struct qdf_mac_addr *link_addr,

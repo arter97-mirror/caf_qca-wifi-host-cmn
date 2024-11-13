@@ -28,6 +28,7 @@
 #include "wlan_osif_priv.h"
 #include "osif_cm_util.h"
 #include "wlan_mlo_mgr_sta.h"
+#include "wlan_scan_api.h"
 
 #define DRIVER_DISCONNECT_REASON \
 	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_DRIVER_DISCONNECT_REASON
@@ -395,7 +396,6 @@ QDF_STATUS osif_disconnect_handler(struct wlan_objmgr_vdev *vdev,
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	enum qca_disconnect_reason_codes qca_reason;
 	int link_id = -1;
-
 	qca_reason = osif_cm_mac_to_qca_reason(rsp->req.req.reason_code);
 	ieee80211_reason =
 		osif_cm_get_disconnect_reason(osif_priv,
@@ -416,7 +416,11 @@ QDF_STATUS osif_disconnect_handler(struct wlan_objmgr_vdev *vdev,
 
 	/* Unlink bss if disconnect is from peer or south bound */
 	if (rsp->req.req.source == CM_PEER_DISCONNECT ||
-	    rsp->req.req.source == CM_SB_DISCONNECT)
+	    rsp->req.req.source == CM_SB_DISCONNECT ||
+	    (wlan_scan_is_localy_gen_non_tx_mbssid_entry(
+		    wlan_vdev_get_pdev(vdev),
+		    &rsp->req.req.bssid) &&
+	    rsp->req.req.source != CM_MLO_LINK_SWITCH_DISCONNECT))
 		osif_cm_unlink_bss(vdev, &rsp->req.req.bssid);
 
 	status = osif_validate_disconnect_and_reset_src_id(osif_priv, rsp);
