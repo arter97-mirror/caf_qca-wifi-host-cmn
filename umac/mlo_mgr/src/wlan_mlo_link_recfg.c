@@ -607,13 +607,91 @@ mlo_link_recfg_is_standby_link_del_only(
 				struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
 {
-	return false;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	uint8_t i;
+	struct mlo_link_info *link_info;
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return false;
+	}
+
+	for (i = 0; i < req->del_link_info.num_links; i++) {
+		link_info = mlo_mgr_get_ap_link_by_link_id(
+				mlo_dev_ctx,
+				req->del_link_info.link[i].link_id);
+		if (!link_info) {
+			mlo_debug("unexpected link info null for link id %d",
+				  req->del_link_info.link[i].link_id);
+			continue;
+		}
+
+		if (link_info->vdev_id != WLAN_INVALID_VDEV_ID) {
+			mlo_debug("del non standby link %d on vdev %d",
+				  req->del_link_info.link[i].link_id,
+				  link_info->vdev_id);
+			return false;
+		}
+		mlo_debug("del standby link %d flag 0x%x vdev id %d",
+			  req->del_link_info.link[i].link_id,
+			  (uint32_t)link_info->link_status_flags,
+			  link_info->vdev_id);
+	}
+
+	return true;
 }
 
 static bool
-mlo_link_recfg_is_standby_link_present_for_link_sw(
+mlo_link_recfg_is_standby_link_present_for_link_switch(
 				struct mlo_link_recfg_context *recfg_ctx)
 {
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_link_info *link_info;
+	uint8_t i;
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return false;
+	}
+
+	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+
+		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+			continue;
+
+		if (link_info->link_id == WLAN_INVALID_LINK_ID) {
+			mlo_debug("invalid link id %d for ap link addr: " QDF_MAC_ADDR_FMT "",
+				  link_info->link_id,
+				  QDF_MAC_ADDR_REF(
+				  link_info->ap_link_addr.bytes));
+			continue;
+		}
+
+		if (qdf_atomic_test_bit(
+				LS_F_AP_REMOVAL_BIT,
+				&link_info->link_status_flags)) {
+			mlo_debug("deleted link %d flag 0x%x ap link addr: " QDF_MAC_ADDR_FMT "",
+				  link_info->link_id,
+				  (uint32_t)link_info->link_status_flags,
+				  QDF_MAC_ADDR_REF(
+				  link_info->ap_link_addr.bytes));
+
+			continue;
+		}
+
+		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
+			mlo_debug("associated standby link %d present ap link addr: " QDF_MAC_ADDR_FMT "",
+				  link_info->link_id,
+				  QDF_MAC_ADDR_REF(
+				  link_info->ap_link_addr.bytes));
+			return true;
+		}
+	}
+	mlo_debug("no standby link for link sw");
+
 	return false;
 }
 
@@ -642,11 +720,151 @@ mlo_link_recfg_is_link_switch_in_progress(
 }
 
 static void
+mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(
+				struct mlo_link_recfg_context *recfg_ctx,
+				struct mlo_link_recfg_state_req *req)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	uint8_t i;
+	struct mlo_link_info *link_info;
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_objmgr_psoc *psoc;
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return;
+	}
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc is null");
+		return;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				psoc, recfg_ctx->curr_recfg_req.vdev_id,
+				WLAN_LINK_RECFG_ID);
+	if (!vdev) {
+		mlo_err("Invalid link recfg VDEV %d",
+			recfg_ctx->curr_recfg_req.vdev_id);
+		return;
+	}
+
+	for (i = 0; i < req->del_link_info.num_links; i++) {
+		link_info = mlo_mgr_get_ap_link_by_link_id(
+				mlo_dev_ctx,
+				req->del_link_info.link[i].link_id);
+		if (!link_info) {
+			mlo_debug("unexpected link info null for link id %d",
+				  req->del_link_info.link[i].link_id);
+			continue;
+		}
+
+		if (!qdf_atomic_test_bit(
+				LS_F_AP_REMOVAL_BIT,
+				&link_info->link_status_flags))
+			continue;
+
+		if (link_info->vdev_id != WLAN_INVALID_VDEV_ID) {
+			mlo_debug("skip deleted non standby link %d on vdev %d",
+				  req->del_link_info.link[i].link_id,
+				  link_info->vdev_id);
+			continue;
+		}
+
+		mlo_debug("del standby link %d flag 0x%x vdev id %d from mlo mgr",
+			  req->del_link_info.link[i].link_id,
+			  (uint32_t)link_info->link_status_flags,
+			  link_info->vdev_id);
+		mlo_mgr_clear_ap_link_info(vdev, &link_info->ap_link_addr);
+	}
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+}
+
+static QDF_STATUS
 mlo_link_recfg_del_standby_link(struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
 {
-	/* Send bss params wmi to del standby link */
-	/* remove link info from mlo mgr */
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
+	QDF_STATUS status;
+	struct mlo_link_bss_params params;
+	struct wlan_channel chan = {0};
+	struct mlo_link_info *link_info;
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	mlo_tx_ops = target_if_mlo_get_tx_ops(psoc);
+	if (!mlo_tx_ops || !mlo_tx_ops->send_link_set_bss_params_cmd) {
+		mlo_err("tx_ops or send_link_set_bss_params_cmd is null!");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	/* assumption is only one standby link existing */
+	if (req->del_link_info.num_links != 1) {
+		mlo_err("unexpected standby link del num %d",
+			req->del_link_info.num_links);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	link_info = mlo_mgr_get_ap_link_by_link_id(
+			mlo_dev_ctx,
+			req->del_link_info.link[0].link_id);
+	if (!link_info) {
+		mlo_debug("unexpected link info null for link id %d",
+			  req->del_link_info.link[0].link_id);
+		return QDF_STATUS_E_INVAL;
+	}
+	if (!link_info->link_chan_info) {
+		mlo_debug("unexpected link ch info null for link id %d",
+			  req->del_link_info.link[0].link_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* update link with link deleted flag */
+	mlo_mgr_update_link_state_delete_flag(
+				mlo_dev_ctx,
+				req->del_link_info.link[0].link_id,
+				true);
+
+	qdf_mem_zero(&params, sizeof(params));
+	*(struct qdf_mac_addr *)&params.ap_mld_mac[0] =
+		recfg_ctx->curr_recfg_req.fw_ind_param.ap_mld_addr;
+	params.link_id = req->del_link_info.link[0].link_id;
+	params.op_code = MLO_LINK_BSS_OP_DEL;
+	params.chan = &chan;
+	params.chan->ch_freq = link_info->link_chan_info->ch_freq;
+	params.chan->ch_cfreq1 = link_info->link_chan_info->ch_cfreq1;
+	params.chan->ch_cfreq2 = link_info->link_chan_info->ch_cfreq2;
+	params.chan->ch_phymode = link_info->link_chan_info->ch_phymode;
+
+	mlo_debug("link id %d chan freq %d cfreq1 %d cfreq2 %d host phymode %d ap mld mac " QDF_MAC_ADDR_FMT,
+		  link_info->link_id, link_info->link_chan_info->ch_freq,
+		  link_info->link_chan_info->ch_cfreq1,
+		  link_info->link_chan_info->ch_cfreq2,
+		  link_info->link_chan_info->ch_phymode,
+		  QDF_MAC_ADDR_REF(&params.ap_mld_mac[0]));
+
+	status = mlo_tx_ops->send_link_set_bss_params_cmd(psoc, &params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("failed to send link set bss request command to FW");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	return QDF_STATUS_SUCCESS;
 }
 
 static void
@@ -1071,6 +1289,20 @@ mlo_link_recfg_create_transition_list(
 	return status;
 }
 
+static struct mlo_link_recfg_state_tran *
+mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx)
+{
+	if (recfg_ctx->sm.curr_state_idx >= 0 &&
+	    recfg_ctx->sm.curr_state_idx <
+		QDF_ARRAY_SIZE(recfg_ctx->sm.state_list))
+		return &recfg_ctx->sm.state_list[recfg_ctx->sm.curr_state_idx];
+
+	mlo_err("unexpected curr_state_idx %d",
+		recfg_ctx->sm.curr_state_idx);
+
+	return NULL;
+}
+
 static void
 mlo_link_recfg_add_link_completed(struct mlo_link_recfg_context *recfg_ctx)
 {
@@ -1089,10 +1321,6 @@ mlo_link_recfg_del_link_completed(struct mlo_link_recfg_context *recfg_ctx)
 {
 	/* handle link del completed */
 
-	/* if deleted link is standby , remove link info from mlo mgr
-	 * L1 L2 L3, del L2, link switch to L3. remove standby link 2
-	 */
-
 	/* transition to next state */
 	mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
 }
@@ -1102,8 +1330,17 @@ mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
 				 struct link_recfg_rx_rsp *recfg_resp_data,
 				 uint16_t event_data_len)
 {
+	struct mlo_link_recfg_state_tran *tran;
+
+
 	if (!recfg_ctx || !recfg_resp_data || !event_data_len)
 		return;
+
+	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
+	if (!tran) {
+		mlo_err("curr tran ctx null");
+		return;
+	}
 
 	if (QDF_IS_STATUS_ERROR(recfg_resp_data->status)) {
 		mlo_err("RX response failure");
@@ -1114,6 +1351,14 @@ mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
 	 *	osif_notify_link_reconfig();
 	 */
 	mlo_err("RX response success");
+
+	/* Handle link recfg link del.
+	 * If deleted link is standby, remove link info from mlo mgr.
+	 * For example:
+	 * L1 L2 L3, del L2, link switch to L3. remove standby L2.
+	 * or L1 L2 L3, del standby L3, then remove standby L3.
+	 */
+	mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(recfg_ctx, &tran->req);
 
 	/* handle link recfg link add rejected case */
 
@@ -1566,10 +1811,18 @@ mlo_link_recfg_state_del_link_event(void *ctx,
 	case WLAN_LINK_RECFG_SM_EV_DEL_LINK:
 		req = (struct mlo_link_recfg_state_req *)event_data;
 		if (mlo_link_recfg_is_standby_link_del_only(recfg_ctx, req)) {
-			/* ABC -> AB: delete sandby link C */
+			/* If the link delete is only for standby link
+			 * then send bss param update to target to delete
+			 * link, and complete the link delete state.
+			 * for example, ABC -> AB: delete sandby link C
+			 */
 			mlo_link_recfg_del_standby_link(recfg_ctx, req);
 			mlo_link_recfg_del_link_completed(recfg_ctx);
 		} else {
+			/* If any non-standby link is included in delete
+			 * request, then have to use set link inactive
+			 * command to delete links.
+			 */
 			mlo_link_recfg_sm_transition_to(
 				ctx,
 				WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_SET_LINK);
@@ -1620,19 +1873,28 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP:
 		set_link_resp = (struct set_link_resp *)event_data;
+		if (set_link_resp->status) {
+			mlo_debug("set link inactive failed, abort del link");
+			mlo_link_recfg_del_link_aborted(recfg_ctx);
+			break;
+		}
 
-		if (!mlo_link_recfg_is_standby_link_present_for_link_sw(
+		if (mlo_link_recfg_is_standby_link_present_for_link_switch(
 							recfg_ctx)) {
-			/* AB -> A: B is set inactive,
-			 * no link switch event.
-			 */
-			mlo_link_recfg_del_link_completed(recfg_ctx);
-		} else {
-			/* ABC -> AC: B is set inactive, link switch is
-			 * expected. fw should link switch to C.
+			/* ABC -> AC: B is set inactive for delete,
+			 * link switch is expected. fw should link
+			 * switch to C.
 			 */
 			mlo_link_recfg_sm_transition_to(
 				ctx, WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_LINK_SW);
+		} else {
+			/* AB -> A: B is set inactive for delete,
+			 * no link switch event.
+			 * or ABC -> A: C is standby but has been deleted
+			 * by set link inactive
+			 */
+			mlo_link_recfg_del_link_completed(recfg_ctx);
+
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
