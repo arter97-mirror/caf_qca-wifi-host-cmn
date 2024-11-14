@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -6479,6 +6479,38 @@ error_pcie_link_up:
 	return QDF_STATUS_FILT_REQ_ERROR;
 }
 
+/**
+ * wlan_ipa_wdi_opt_dpath_clean_db() - clean filter tuple from host db
+ * @ipa_obj: ipa object
+ *
+ * Return: None
+ */
+static inline
+void wlan_ipa_wdi_opt_dpath_clean_db(struct wlan_ipa_priv *ipa_obj)
+{
+	struct wifi_dp_flt_setup *dp_flt_params = NULL;
+	int j;
+
+	dp_flt_params = &ipa_obj->dp_cce_super_rule_flt_param;
+	for (j = 0; j < IPA_WDI_MAX_FILTER; j++) {
+		if (dp_flt_params->flt_addr_params[j].ipa_flt_evnt_required) {
+			ipa_debug("opt_dp: clean internal db of flt hdl - %d",
+				  j);
+			dp_flt_params->flt_addr_params[j].valid = 0;
+			qdf_mem_zero(dp_flt_params->flt_addr_params[j].
+				     src_ipv4_addr,
+				     IPV4BYTES);
+			qdf_mem_zero(dp_flt_params->flt_addr_params[j].
+				     src_ipv6_addr,
+				     IPV6BYTES);
+			dp_flt_params->flt_addr_params[j].
+				ipa_flt_evnt_required = 0;
+			dp_flt_params->flt_addr_params[j].ipa_flt_in_use =
+				false;
+		}
+	}
+}
+
 int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 			     void *ipa_ctx,
 			     struct ipa_wdi_opt_dpath_flt_add_cb_params *in_out)
@@ -6493,6 +6525,7 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 	struct wlan_objmgr_psoc *psoc;
 	struct wifi_dp_flt_setup *dp_flt_param = NULL;
 	void *htc_handle;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	if (ipa_obj->ipa_pipes_down || ipa_obj->pipes_down_in_progress) {
 		ipa_err("Pipes are going down. Reject flt add request");
@@ -6608,20 +6641,28 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 
 	cdp_ipa_rx_cce_super_rule_setup(ipa_obj->dp_soc, dp_flt_param);
 
-	qdf_wait_single_event(&ipa_obj->ipa_flt_evnt,
-			      DP_MAX_SLEEP_TIME);
+	status = qdf_wait_single_event(&ipa_obj->ipa_flt_evnt,
+				       DP_MAX_SLEEP_TIME);
+
+	response = dp_flt_param->ipa_flt_evnt_response;
+	if (status != QDF_STATUS_SUCCESS || response != QDF_STATUS_SUCCESS) {
+		ipa_err("opt_dp: error on filter add evt, status - %d, response - %d",
+			status, response);
+		if (status != QDF_STATUS_SUCCESS)
+			response = status;
+
+		goto clear_db;
+	}
 
 	for (i = 0; i < IPA_WDI_MAX_FILTER; i++)
 		dp_flt_param->flt_addr_params[i].ipa_flt_evnt_required = 0;
 
-	response = dp_flt_param->ipa_flt_evnt_response;
-	if (response != QDF_STATUS_SUCCESS) {
-		if (response == QDF_STATUS_E_TIMEOUT)
-			qdf_err("TIMEOUT_OCCURS");
-		else
-			qdf_err("Error on event wait for filter add cb");
-	}
 	return response;
+
+clear_db:
+	wlan_ipa_wdi_opt_dpath_clean_db(ipa_ctx);
+	return response;
+
 }
 
 int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
@@ -6636,6 +6677,7 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 	uint8_t num_flts;
 	uint32_t i, j, response = 0;
 	void *htc_handle;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	num_flts = rem_flt->num_tuples;
 	psoc = ipa_obj->psoc;
@@ -6674,8 +6716,8 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 
 	cdp_ipa_rx_cce_super_rule_setup(ipa_obj->dp_soc, dp_flt_params);
 
-	qdf_wait_single_event(&ipa_obj->ipa_flt_evnt,
-			      DP_MAX_SLEEP_TIME);
+	status = qdf_wait_single_event(&ipa_obj->ipa_flt_evnt,
+				       DP_MAX_SLEEP_TIME);
 
 	for (i = 0; i < num_flts; i++) {
 		for (j = 0; j < IPA_WDI_MAX_FILTER; j++) {
@@ -6688,12 +6730,13 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 	}
 
 	response = dp_flt_params->ipa_flt_evnt_response;
-	if (response != QDF_STATUS_SUCCESS) {
-		if (response == QDF_STATUS_E_TIMEOUT)
-			qdf_err("TIMEOUT_OCCURS");
-		else
-			qdf_err("Error on event wait for filter rem cb");
+	if (status != QDF_STATUS_SUCCESS || response != QDF_STATUS_SUCCESS) {
+		ipa_err("opt_dp: error on flt del evt, status - %d, response - %d",
+			status, response);
+		if (status != QDF_STATUS_SUCCESS)
+			response = status;
 	}
+
 	return response;
 }
 
@@ -6705,6 +6748,8 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(void *ipa_ctx)
 	struct wlan_objmgr_pdev *pdev;
 	int i, pdev_id, param_val = 0;
 	int response = 0;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	QDF_STATUS resp = QDF_STATUS_SUCCESS;
 
 	psoc = ipa_obj->psoc;
 	pdev = psoc->soc_objmgr.wlan_pdev_list[IPA_DEF_PDEV_ID];
@@ -6741,7 +6786,17 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(void *ipa_ctx)
 	dp_flt_params->op = HTT_RX_CCE_SUPER_RULE_RELEASE;
 	dp_flt_params->pdev_id = IPA_DEF_PDEV_ID;
 	dp_flt_params->num_filters = IPA_WDI_MAX_FILTER;
-	return cdp_ipa_rx_cce_super_rule_setup(ipa_obj->dp_soc, dp_flt_params);
+	resp = cdp_ipa_rx_cce_super_rule_setup(ipa_obj->dp_soc, dp_flt_params);
+	status = qdf_wait_single_event(&ipa_obj->ipa_flt_evnt,
+				       DP_MAX_SLEEP_TIME);
+	ipa_debug("opt_dp: flt rel response, status - %d, resp - %d",
+		  status, resp);
+	if (status == QDF_STATUS_SUCCESS && resp == QDF_STATUS_SUCCESS)
+		return status;
+	else if (status != QDF_STATUS_SUCCESS)
+		resp = status;
+
+	return resp;
 }
 
 void wlan_ipa_wdi_opt_dpath_notify_flt_rlsd(int flt0_rslt, int flt1_rslt)
@@ -6754,6 +6809,7 @@ void wlan_ipa_wdi_opt_dpath_notify_flt_rlsd(int flt0_rslt, int flt1_rslt)
 	bool result = false;
 	bool val = false;
 
+	qdf_event_set(&ipa_ctx->ipa_flt_evnt);
 	if (ipa_ctx->opt_dp_flt_rel_state ==
 	    WLAN_IPA_OPT_DP_FLT_REL_DONE) {
 		ipa_debug("opt_dp: filter released already");
