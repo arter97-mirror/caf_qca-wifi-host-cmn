@@ -1551,6 +1551,8 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_ACS_ADJ_CHAN_INTERFERENCE_BLOCKING = 555,
 #endif /* UMAC_SUPPORT_ACS */
 	OL_ATH_PARAM_START_AID = 556,
+	OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN = 562,
+	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
@@ -4080,6 +4082,18 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_START_AID, SET_PARAM, 1},
 	{"get_start_aid",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_START_AID, GET_PARAM, 0},
+	{"dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
+	{"dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
 };
 #endif
 
