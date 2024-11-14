@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -162,7 +162,7 @@ typedef QDF_STATUS (*state_abort_handler)(struct wlan_objmgr_psoc *psoc);
  * @add_link_info: add link info
  * @del_link_info: del link info
  * @dialog_token: Dialog token
- * @peer_mac: Peer mac address
+ * @peer_mac: peer mac address to indicate on which link to send recfg frame
  */
 struct mlo_link_recfg_state_req {
 	struct wlan_mlo_link_recfg_info add_link_info;
