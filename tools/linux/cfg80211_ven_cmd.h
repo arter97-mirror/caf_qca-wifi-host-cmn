@@ -1566,6 +1566,8 @@ enum _ol_ath_param_t {
 #if defined(WLAN_SUPPORT_RX_FLOW_TAG)
 	OL_ATH_PARAM_FST_ENTRY = 561,
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
+	OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN = 562,
+	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -4123,6 +4125,18 @@ struct vendor_commands radio_vendor_cmds[] = {
 	{"display_fst_info",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_FST_ENTRY, GET_PARAM, 0},
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
+	{"dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
+	{"dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
 };
 #endif
 
