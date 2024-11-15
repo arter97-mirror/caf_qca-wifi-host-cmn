@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -82,6 +82,8 @@ struct wlan_mlo_link_switch_cnf {
  * @MLO_LINK_SWITCH_REASON_HOST_FORCE: Link switch reason is because of host
  * force active/inactive
  * @MLO_LINK_SWITCH_REASON_T2LM: Link switch reason is because of T2LM
+ * @MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP: follow up link switch after
+ * host force active/inactive
  * @MLO_LINK_SWITCH_REASON_MAX: Link switch reason max
  */
 enum wlan_mlo_link_switch_reason {
@@ -90,6 +92,7 @@ enum wlan_mlo_link_switch_reason {
 	MLO_LINK_SWITCH_REASON_C2_CHANGE   = 3,
 	MLO_LINK_SWITCH_REASON_HOST_FORCE  = 4,
 	MLO_LINK_SWITCH_REASON_T2LM        = 5,
+	MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP = 7,
 	MLO_LINK_SWITCH_REASON_MAX,
 };
 
@@ -744,6 +747,18 @@ mlo_mgr_update_link_state_delete_flag(
 			struct wlan_mlo_dev_context *mlo_dev_ctx,
 			uint8_t link_id,
 			bool set);
+
+/**
+ * mlo_link_recfg_link_switch_timeout() - API to handle link switch
+ * timeout in link recfg process
+ * @psoc: soc object
+ * @mlo_dev_ctx: MLO dev context
+ *
+ * Return: void
+ */
+void mlo_link_recfg_link_switch_timeout(
+		struct wlan_objmgr_psoc *psoc,
+		struct wlan_mlo_dev_context *mlo_dev_ctx);
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -962,6 +977,12 @@ mlo_mgr_update_link_state_delete_flag(
 			bool set)
 {
 	return true;
+}
+
+static inline void mlo_link_recfg_link_switch_timeout(
+		struct wlan_objmgr_psoc *psoc,
+		struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
 }
 #endif
 #endif

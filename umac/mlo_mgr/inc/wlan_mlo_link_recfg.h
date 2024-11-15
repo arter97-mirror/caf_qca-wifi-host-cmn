@@ -206,8 +206,22 @@ struct set_link_resp {
 	uint32_t status;
 };
 
-/*WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_IND */
+/**
+ * struct link_switch_ind - event data of
+ * WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_IND
+ * @status: link witch start status code
+ */
 struct link_switch_ind {
+	QDF_STATUS status;
+};
+
+/**
+ * struct link_switch_rsp - event data of
+ * WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP
+ * @status: link witch rsp status code
+ */
+struct link_switch_rsp {
+	QDF_STATUS status;
 };
 
 /* WLAN_LINK_RECFG_SM_EV_ADD_CONN_RSP */
@@ -547,6 +561,34 @@ QDF_STATUS
 mlo_link_recfg_sm_deliver_event_sync(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				     enum wlan_link_recfg_sm_evt event,
 				     uint16_t data_len, void *data);
+
+/**
+ * mlo_link_recfg_linksw_start_indication() - Delivers link switch start event
+ * @vdev: vdev
+ * @start_status: link switch start status
+ *
+ * API to dispatch Link switch start event to reconfig sm.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_link_recfg_linksw_start_indication(struct wlan_objmgr_vdev *vdev,
+				       QDF_STATUS start_status);
+
+/**
+ * mlo_link_recfg_linksw_completion_indication() - Delivers link switch
+ * completion event
+ * @vdev: vdev
+ * @comp_status: link switch completion status
+ *
+ * API to dispatch Link switch completion event to reconfig sm.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_link_recfg_linksw_completion_indication(struct wlan_objmgr_vdev *vdev,
+					    QDF_STATUS comp_status);
+
 QDF_STATUS
 mlo_link_recfg_create_transition_list(
 			struct mlo_link_recfg_context *recfg_ctx,
@@ -663,6 +705,20 @@ mlo_link_recfg_sm_deliver_event_sync(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				     uint16_t data_len, void *data)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_linksw_start_indication(struct wlan_objmgr_vdev *vdev,
+				       QDF_STATUS start_status)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_linksw_completion_indication(struct wlan_objmgr_vdev *vdev,
+					    QDF_STATUS comp_status)
+{
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline enum wlan_link_recfg_sm_state

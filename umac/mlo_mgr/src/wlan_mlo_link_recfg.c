@@ -53,7 +53,7 @@ bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 	enum wlan_link_recfg_sm_state curr_state;
 
-	if (!vdev || !vdev->mlo_dev_ctx)
+	if (!vdev || !vdev->mlo_dev_ctx || !vdev->mlo_dev_ctx->link_recfg_ctx)
 		return false;
 
 	ml_link_recfg_sm_lock_acquire(vdev->mlo_dev_ctx);
@@ -492,6 +492,56 @@ mlo_mgr_link_recfg_indication_event_handler(
 				sizeof(recfg_req), &recfg_req);
 end:
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+
+	return status;
+}
+
+QDF_STATUS
+mlo_link_recfg_linksw_start_indication(struct wlan_objmgr_vdev *vdev,
+				       QDF_STATUS start_status)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	QDF_STATUS status;
+	struct link_switch_ind link_switch_ind = {0};
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+	if (!mlo_dev_ctx->link_recfg_ctx)
+		return QDF_STATUS_SUCCESS;
+
+	link_switch_ind.status = start_status;
+	status = mlo_link_recfg_sm_deliver_event(
+				mlo_dev_ctx,
+				WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_IND,
+				sizeof(link_switch_ind), &link_switch_ind);
+
+	return status;
+}
+
+QDF_STATUS
+mlo_link_recfg_linksw_completion_indication(struct wlan_objmgr_vdev *vdev,
+					    QDF_STATUS comp_status)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	QDF_STATUS status;
+	struct link_switch_rsp link_switch_rsp = {0};
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+	if (!mlo_dev_ctx->link_recfg_ctx)
+		return QDF_STATUS_E_INVAL;
+
+	link_switch_rsp.status = comp_status;
+	status = mlo_link_recfg_sm_deliver_event(
+				mlo_dev_ctx,
+				WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP,
+				sizeof(link_switch_rsp), &link_switch_rsp);
 
 	return status;
 }
@@ -1497,6 +1547,13 @@ mlo_link_recfg_ser_timeout_sm_handler(
 	enum wlan_link_recfg_sm_state state;
 	enum wlan_link_recfg_sm_state substate;
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct wlan_objmgr_psoc *psoc;
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("invalid psoc");
+		return;
+	}
 
 	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
 	if (!mlo_dev_ctx) {
@@ -1534,7 +1591,12 @@ mlo_link_recfg_ser_timeout_sm_handler(
 	case WLAN_LINK_RECFG_SS_DEL_LINK_WAIT_LINK_SW:
 	case WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_LINK_SW:
 		/* timeout link switch req */
-
+		if (mlo_link_recfg_is_link_switch_in_progress(recfg_ctx)) {
+			mlo_err("Link recfg Link switch timeout");
+			mlo_link_recfg_link_switch_timeout(psoc, mlo_dev_ctx);
+		} else {
+			mlo_err("Link recfg Link switch not active");
+		}
 		break;
 	case WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_ADD_CONN:
 	case WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_ADD_CONN:
@@ -1980,17 +2042,36 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 {
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
+	struct link_switch_ind *link_switch_ind;
+	struct link_switch_rsp *link_switch_rsp;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_SET_LINK_RSP:
-		/* start timer for fw link reconfig indication event?
-		 * or using WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT to abort link sw.
+		/* start timer for fw link reconfig indication event.
+		 * now using WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT to abort link sw.
 		 */
 		break;
 	case WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_IND:
-		// cancel fw link reconfig indication timer.
+		/* cancel fw link reconfig indication timer.
+		 */
+		link_switch_ind = (struct link_switch_ind *)event_data;
+		if (QDF_IS_STATUS_ERROR(link_switch_ind->status)) {
+			/* unexpected link switch maybe rejected by other
+			 * component. anyway link switch rsp will come with
+			 * failure code.
+			 */
+			mlo_debug("link switch rejected status %d",
+				  link_switch_ind->status);
+		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP:
+		link_switch_rsp = (struct link_switch_rsp *)event_data;
+		if (QDF_IS_STATUS_ERROR(link_switch_rsp->status)) {
+			mlo_debug("link switch comp with failure status %d",
+				  link_switch_rsp->status);
+			mlo_link_recfg_del_link_aborted(recfg_ctx);
+			break;
+		}
 		mlo_link_recfg_del_link_completed(recfg_ctx);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
@@ -2041,9 +2122,14 @@ mlo_link_recfg_subst_del_link_abort_wait_link_sw_event(void *ctx,
 {
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
+	struct link_switch_rsp *link_switch_rsp;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_LINK_SWITCH_RSP:
+		link_switch_rsp = (struct link_switch_rsp *)event_data;
+		if (QDF_IS_STATUS_ERROR(link_switch_rsp->status))
+			mlo_debug("link switch comp with failure status %d",
+				  link_switch_rsp->status);
 		mlo_link_recfg_del_link_aborted(recfg_ctx);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT:
