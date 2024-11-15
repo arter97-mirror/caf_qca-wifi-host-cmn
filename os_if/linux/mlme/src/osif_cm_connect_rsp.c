@@ -443,7 +443,7 @@ osif_get_link_id_from_assoc_ml_ie(struct mlo_link_info *rsp_link_info,
 }
 
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
-static struct wiphy *osif_get_wiphy_from_vdev(struct wlan_objmgr_vdev *vdev)
+struct wiphy *osif_get_wiphy_from_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_objmgr_pdev *pdev;
 	struct pdev_osif_priv *pdev_ospriv;
@@ -458,7 +458,7 @@ static struct wiphy *osif_get_wiphy_from_vdev(struct wlan_objmgr_vdev *vdev)
 	return pdev_ospriv->wiphy;
 }
 #else
-static struct wiphy *osif_get_wiphy_from_vdev(struct wlan_objmgr_vdev *vdev)
+struct wiphy *osif_get_wiphy_from_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	struct vdev_osif_priv *osif_priv;
 

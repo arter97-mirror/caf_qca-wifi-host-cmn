@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,6 +28,7 @@
 #include "osif_cm_rsp.h"
 #include "wlan_cfg80211_scan.h"
 #include "wlan_mlo_mgr_sta.h"
+#include "osif_link_reconfig.h"
 
 enum qca_sta_connect_fail_reason_codes
 osif_cm_mac_to_qca_connect_fail_reason(enum wlan_status_code internal_reason)
@@ -696,6 +697,9 @@ static struct mlme_cm_ops cm_ops = {
 #ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
 	.mlme_cm_perfd_reset_cpufreq_ctrl_cb =
 				osif_cm_perfd_reset_cpufreq_ctrl_cb,
+#endif
+#if defined(WLAN_FEATURE_11BE_MLO)
+	.mlme_cm_link_reconfig_status_cb = osif_link_reconfig_status_cb,
 #endif
 };
 
