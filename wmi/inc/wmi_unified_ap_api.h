@@ -594,6 +594,21 @@ QDF_STATUS wmi_unified_send_multiple_vdev_restart_req_cmd(
 QDF_STATUS wmi_unified_send_multiple_vdev_set_param_cmd(
 				struct wmi_unified *wmi_handle,
 				struct multiple_vdev_set_param *param);
+
+/**
+ * wmi_extract_peer_assoc_response_event() - Extract vdev id, peer mac address
+ * and assoc command status from peer assoc response event
+ * @wmi_handle: WMI handle
+ * @evt_buf: Pointer to event buffer
+ * @param: Pointer to hold peer assoc response event parameters
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+QDF_STATUS wmi_extract_peer_assoc_response_event(
+			wmi_unified_t wmi_handle,
+			uint8_t *evt_buf,
+			struct wmi_host_peer_assoc_response_event *param);
+
 /**
  * wmi_extract_peer_create_response_event() -
  * extract vdev id and peer mac address and status from peer create
