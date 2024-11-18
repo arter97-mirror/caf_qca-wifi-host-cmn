@@ -4620,9 +4620,8 @@ sir_beacon_ie_ese_bcn_report(struct mac_context *mac,
 
 	status = lim_strip_and_decode_eht_cap(pPayload + WLAN_BEACON_IES_OFFSET,
 					      nPayload - WLAN_BEACON_IES_OFFSET,
-					      &pBies->eht_cap,
-					      pBies->he_cap,
-					      freq);
+					      &pBies->eht_cap, pBies->he_cap,
+					      freq, false);
 	if (status != QDF_STATUS_SUCCESS) {
 		pe_err("Failed to extract eht cap");
 		qdf_mem_free(pBies);
@@ -4868,10 +4867,9 @@ static inline void update_bss_color_change_from_beacon_ies(
 {}
 #endif
 
-QDF_STATUS
-sir_parse_beacon_ie(struct mac_context *mac,
-		    tpSirProbeRespBeacon pBeaconStruct,
-		    uint8_t *pPayload, uint32_t nPayload)
+QDF_STATUS sir_parse_beacon_ie(struct mac_context *mac,
+			       tpSirProbeRespBeacon pBeaconStruct,
+			       uint8_t *pPayload, uint32_t nPayload)
 {
 	tDot11fBeaconIEs *pBies;
 	uint32_t status;
@@ -4912,11 +4910,9 @@ sir_parse_beacon_ie(struct mac_context *mac,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	status = lim_strip_and_decode_eht_cap(pPayload,
-					      nPayload,
-					      &pBies->eht_cap,
-					      pBies->he_cap,
-					      freq);
+	status = lim_strip_and_decode_eht_cap(pPayload, nPayload,
+					      &pBies->eht_cap, pBies->he_cap,
+					      freq, false);
 	if (status != QDF_STATUS_SUCCESS) {
 		pe_err("Failed to extract eht cap");
 		qdf_mem_free(pBies);
@@ -5372,10 +5368,9 @@ sir_convert_beacon_frame2_mlo_struct(uint8_t *pframe, uint32_t nframe,
 }
 #endif
 
-QDF_STATUS
-sir_convert_beacon_frame2_struct(struct mac_context *mac,
-				 uint8_t *pFrame,
-				 tpSirProbeRespBeacon pBeaconStruct)
+QDF_STATUS sir_convert_beacon_frame2_struct(struct mac_context *mac,
+					    uint8_t *pFrame,
+					    tpSirProbeRespBeacon pBeaconStruct)
 {
 	tDot11fBeacon *pBeacon;
 	uint32_t status, nPayload;
@@ -5424,8 +5419,7 @@ sir_convert_beacon_frame2_struct(struct mac_context *mac,
 	status = lim_strip_and_decode_eht_cap(pPayload + WLAN_BEACON_IES_OFFSET,
 					      nPayload - WLAN_BEACON_IES_OFFSET,
 					      &pBeacon->eht_cap,
-					      pBeacon->he_cap,
-					      freq);
+					      pBeacon->he_cap, freq, false);
 	if (status != QDF_STATUS_SUCCESS) {
 		pe_err("Failed to extract eht cap");
 		qdf_mem_free(pBeacon);
@@ -8694,7 +8688,8 @@ static
 QDF_STATUS lim_ieee80211_unpack_ehtcap(const uint8_t *eht_cap_ie,
 				       tDot11fIEeht_cap *dot11f_eht_cap,
 				       tDot11fIEhe_cap dot11f_he_cap,
-				       bool is_band_2g)
+				       bool is_band_2g,
+				       bool is_eht_cap_from_sta)
 {
 	struct wlan_ie_ehtcaps *ehtcap  = (struct wlan_ie_ehtcaps *)eht_cap_ie;
 	uint32_t idx = 0;
@@ -8942,7 +8937,9 @@ QDF_STATUS lim_ieee80211_unpack_ehtcap(const uint8_t *eht_cap_ie,
 			ehtcap_ie_get(ehtcap->mcs_nss_map_bytes[idx],
 				      EHTCAP_TX_MCS_NSS_MAP_IDX,
 				      EHTCAP_TX_MCS_NSS_MAP_BITS);
-		idx++;
+
+		if (is_eht_cap_from_sta)
+			idx++;
 
 		dot11f_eht_cap->bw_20_rx_max_nss_for_mcs_8_and_9 =
 			ehtcap_ie_get(ehtcap->mcs_nss_map_bytes[idx],
@@ -9111,7 +9108,7 @@ QDF_STATUS lim_ieee80211_unpack_ehtcap(const uint8_t *eht_cap_ie,
 QDF_STATUS lim_strip_and_decode_eht_cap(uint8_t *ie, uint16_t ie_len,
 					tDot11fIEeht_cap *dot11f_eht_cap,
 					tDot11fIEhe_cap dot11f_he_cap,
-					uint16_t freq)
+					uint16_t freq, bool is_eht_cap_from_sta)
 {
 	const uint8_t *eht_cap_ie;
 	bool is_band_2g;
@@ -9127,8 +9124,8 @@ QDF_STATUS lim_strip_and_decode_eht_cap(uint8_t *ie, uint16_t ie_len,
 	is_band_2g = WLAN_REG_IS_24GHZ_CH_FREQ(freq);
 
 	status = lim_ieee80211_unpack_ehtcap(eht_cap_ie, dot11f_eht_cap,
-					     dot11f_he_cap,
-					     is_band_2g);
+					     dot11f_he_cap, is_band_2g,
+					     is_eht_cap_from_sta);
 
 	if (status != QDF_STATUS_SUCCESS) {
 		pe_err("Failed to extract eht cap");
@@ -9644,6 +9641,111 @@ QDF_STATUS lim_strip_and_decode_eht_op(uint8_t *ie, uint16_t ie_len,
 	return QDF_STATUS_SUCCESS;
 }
 
+
+static enum phy_ch_width lim_get_ht_chan_width(tDot11fIEHTInfo *dot11f_ht_info)
+{
+	if (!dot11f_ht_info->present)
+		return CH_WIDTH_INVALID;
+
+	if (dot11f_ht_info->recommendedTxWidthSet)
+		return CH_WIDTH_40MHZ;
+
+	return CH_WIDTH_20MHZ;
+}
+
+static enum phy_ch_width
+lim_get_vht_chan_width(tDot11fIEVHTOperation *dot11f_vht_op,
+		       tDot11fIEHTInfo *dot11f_ht_info)
+{
+	if (!dot11f_vht_op->present)
+		return lim_get_ht_chan_width(dot11f_ht_info);
+
+	if (lim_get_ht_chan_width(dot11f_ht_info) == CH_WIDTH_20MHZ)
+		return CH_WIDTH_20MHZ;
+
+	switch (dot11f_vht_op->chanWidth) {
+	case 0:
+		return CH_WIDTH_40MHZ;
+	case 1:
+		if (!dot11f_vht_op->chan_center_freq_seg1) {
+			return CH_WIDTH_80MHZ;
+		} else if ((dot11f_vht_op->chan_center_freq_seg1 -
+			    dot11f_vht_op->chan_center_freq_seg0) == 8) {
+			return CH_WIDTH_160MHZ;
+		} else if ((dot11f_vht_op->chan_center_freq_seg1 -
+			    dot11f_vht_op->chan_center_freq_seg0) > 16) {
+			return CH_WIDTH_80P80MHZ;
+		} else {
+			return CH_WIDTH_INVALID;
+		}
+	case 2:
+		return CH_WIDTH_160MHZ;
+	case 3:
+		if (dot11f_vht_op->chan_center_freq_seg1 &&
+		    (dot11f_vht_op->chan_center_freq_seg1 -
+		     dot11f_vht_op->chan_center_freq_seg0) > 16) {
+			return CH_WIDTH_80P80MHZ;
+		} else {
+			return CH_WIDTH_INVALID;
+		}
+	default:
+		return CH_WIDTH_INVALID;
+	}
+}
+
+static enum phy_ch_width
+lim_get_he_chan_width(tDot11fIEhe_op *dot11f_he_op,
+		      tDot11fIEVHTOperation *dot11f_vht_op,
+		      tDot11fIEHTInfo *dot11f_ht_info)
+{
+	if (!dot11f_he_op->present)
+		return CH_WIDTH_INVALID;
+
+	if (!dot11f_he_op->oper_info_6g_present)
+		return lim_get_vht_chan_width(dot11f_vht_op, dot11f_ht_info);
+
+	switch (dot11f_he_op->oper_info_6g.info.ch_width) {
+	case 0:
+		return CH_WIDTH_20MHZ;
+	case 1:
+		return CH_WIDTH_40MHZ;
+	case 2:
+		return CH_WIDTH_80MHZ;
+	case 3:
+		if (dot11f_he_op->oper_info_6g.info.center_freq_seg1 &&
+		    (dot11f_he_op->oper_info_6g.info.center_freq_seg1 -
+		     dot11f_he_op->oper_info_6g.info.center_freq_seg0) == 8) {
+			return CH_WIDTH_160MHZ;
+		} else if (dot11f_he_op->oper_info_6g.info.center_freq_seg1 &&
+			   (dot11f_he_op->oper_info_6g.info.center_freq_seg1 -
+			    dot11f_he_op->oper_info_6g.info.center_freq_seg0) > 16) {
+			return CH_WIDTH_80P80MHZ;
+		} else {
+			return CH_WIDTH_INVALID;
+		}
+	default:
+		return CH_WIDTH_INVALID;
+	}
+}
+
+static enum phy_ch_width lim_get_eht_chan_width(tDot11fIEeht_op *dot11f_eht_op)
+{
+	switch (dot11f_eht_op->channel_width) {
+	case 0:
+		return CH_WIDTH_20MHZ;
+	case 1:
+		return CH_WIDTH_40MHZ;
+	case 2:
+		return CH_WIDTH_80MHZ;
+	case 3:
+		return CH_WIDTH_160MHZ;
+	case 4:
+		return CH_WIDTH_320MHZ;
+	default:
+		return CH_WIDTH_INVALID;
+	}
+}
+
 void lim_ieee80211_pack_ehtop(uint8_t *ie, tDot11fIEeht_op dot11f_eht_op,
 			      tDot11fIEVHTOperation dot11f_vht_op,
 			      tDot11fIEhe_op dot11f_he_op,
@@ -9654,7 +9756,6 @@ void lim_ieee80211_pack_ehtop(uint8_t *ie, tDot11fIEeht_op dot11f_eht_op,
 	uint32_t i;
 	uint32_t eht_op_info_len = 0;
 	uint32_t ehtoplen;
-	bool diff_chan_width = false;
 
 	if (!ie) {
 		pe_err("ie is null");
@@ -9667,20 +9768,9 @@ void lim_ieee80211_pack_ehtop(uint8_t *ie, tDot11fIEeht_op dot11f_eht_op,
 
 	qdf_mem_copy(&ehtop->elem_id_extn, EHT_OP_OUI_TYPE, EHT_OP_OUI_SIZE);
 
-	if (dot11f_he_op.present && dot11f_he_op.oper_info_6g_present &&
-	    (dot11f_he_op.oper_info_6g.info.ch_width !=
-	     dot11f_eht_op.channel_width)) {
-		diff_chan_width = true;
-	} else if (dot11f_vht_op.present &&
-		   (dot11f_vht_op.chanWidth != dot11f_eht_op.channel_width)) {
-		diff_chan_width = true;
-	} else if (dot11f_ht_info.present &&
-		   (dot11f_ht_info.recommendedTxWidthSet !=
-		    dot11f_eht_op.channel_width)) {
-		diff_chan_width = true;
-	}
-
-	if (diff_chan_width) {
+	if (lim_get_eht_chan_width(&dot11f_eht_op) !=
+	    lim_get_he_chan_width(&dot11f_he_op,
+				  &dot11f_vht_op, &dot11f_ht_info)) {
 		val = dot11f_eht_op.eht_op_information_present;
 		EHTOP_PARAMS_INFOP_SET_TO_IE(ehtop->ehtop_param, val);
 	}
@@ -11488,7 +11578,7 @@ QDF_STATUS wlan_parse_bss_description_ies(struct mac_context *mac_ctx,
 	status = lim_strip_and_decode_eht_cap((uint8_t *)bss_desc->ieFields,
 					      ie_len, &ie_struct->eht_cap,
 					      ie_struct->he_cap,
-					      bss_desc->chan_freq);
+					      bss_desc->chan_freq, false);
 	if (status != QDF_STATUS_SUCCESS) {
 		pe_err("Failed to extract eht cap");
 		return QDF_STATUS_E_FAILURE;

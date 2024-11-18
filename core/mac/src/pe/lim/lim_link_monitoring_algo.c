@@ -46,6 +46,7 @@
 #include "lim_session.h"
 #include "lim_ser_des_utils.h"
 #include "wlan_dlm_api.h"
+#include "wlan_tdls_api.h"
 
 /**
  * lim_delete_sta_util - utility function for deleting station context
@@ -114,6 +115,8 @@ static void lim_delete_sta_util(struct mac_context *mac_ctx, tpDeleteStaContext 
 #ifdef FEATURE_WLAN_TDLS
 		if (LIM_IS_STA_ROLE(session_entry) &&
 		    STA_ENTRY_TDLS_PEER == stads->staType) {
+			wlan_tdls_update_peer_kickout_count(session_entry->vdev,
+							    stads->staAddr);
 			/*
 			 * TeardownLink with PEER reason code
 			 * HAL_DEL_STA_REASON_CODE_KEEP_ALIVE means
