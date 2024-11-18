@@ -199,11 +199,30 @@ lim_get_eht_rate_info_flag(tpDphHashNode sta_ds)
 	else
 		return TX_RATE_EHT20;
 }
+
+static bool
+lim_is_validate_punc_bitmap(struct csa_offload_params *csa_params)
+{
+	if (!wlan_reg_is_punc_bitmap_valid(csa_params->new_ch_width,
+					   csa_params->new_punct_bitmap)) {
+		pe_err("invalid puncture bitmap %d",
+		       csa_params->new_punct_bitmap);
+		return false;
+	}
+
+	return true;
+}
 #else
 static enum tx_rate_info
 lim_get_eht_rate_info_flag(tpDphHashNode sta_ds)
 {
 	return TX_RATE_LEGACY;
+}
+
+static bool
+lim_is_validate_punc_bitmap(struct csa_offload_params *csa_params)
+{
+	return true;
 }
 #endif
 
@@ -1821,6 +1840,12 @@ static bool lim_is_csa_channel_allowed(struct mac_context *mac_ctx,
 					   REASON_CHANNEL_SWITCH_FAILED,
 					   eLIM_HOST_DISASSOC);
 		return false;
+	}
+
+	if (IS_DOT11_MODE_EHT(session_entry->dot11mode) &&
+	    (csa_params->ies_present_flag & MLME_CSWRAP_IE_EXT_V2_PRESENT)) {
+		if (!lim_is_validate_punc_bitmap(csa_params))
+			return false;
 	}
 
 	mode = wlan_vdev_mlme_get_opmode(session_entry->vdev);
