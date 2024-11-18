@@ -697,6 +697,7 @@ QDF_STATUS dp_rx_flow_add_entry(struct dp_pdev *pdev,
 
 	/* Increment number of valid entries in table */
 	fst->num_entries++;
+	fst->fse_flow_create_cnt++;
 
 	if (rx_flow_info->is_addr_ipv4)
 		fst->ipv4_fse_cnt++;
@@ -777,6 +778,7 @@ QDF_STATUS dp_rx_flow_delete_entry(struct dp_pdev *pdev,
 
 	/* Decrement number of valid entries in table */
 	fst->num_entries--;
+	fst->fse_flow_del_cnt++;
 
 	if (rx_flow_info->is_addr_ipv4)
 		fst->ipv4_fse_cnt--;
@@ -968,6 +970,8 @@ QDF_STATUS dp_rx_fst_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 	}
 	fst->hash_mask = fst->max_entries - 1;
 	fst->num_entries = 0;
+	fst->fse_flow_create_cnt = 0;
+	fst->fse_flow_del_cnt = 0;
 
 	fst->base = (uint8_t *) qdf_mem_malloc(sizeof(struct dp_rx_fse) *
 					       fst->max_entries);
