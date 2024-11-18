@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -955,5 +955,17 @@ void mlme_cm_osif_perfd_reset_cpufreq(void)
 {
 	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_perfd_reset_cpufreq_ctrl_cb)
 		glbl_cm_ops->mlme_cm_perfd_reset_cpufreq_ctrl_cb();
+}
+#endif
+#ifdef WLAN_FEATURE_11BE_MLO
+QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev)
+{
+	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+
+	if (glbl_cm_ops &&
+	    glbl_cm_ops->mlme_cm_link_reconfig_status_cb)
+		ret = glbl_cm_ops->mlme_cm_link_reconfig_status_cb(vdev);
+
+	return ret;
 }
 #endif
