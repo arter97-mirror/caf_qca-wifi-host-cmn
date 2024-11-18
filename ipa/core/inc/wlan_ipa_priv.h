@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -196,6 +196,22 @@ enum wlan_ipa_forward_type {
 enum wlan_ipa_ctrl_flt_del_src {
 	WLAN_IPA_CTRL_FLT_DEL_SRC_IPA = 0,
 	WLAN_IPA_CTRL_FLT_DEL_SRC_SHUTDOWN = 1
+};
+
+/**
+ * enum wlan_ipa_opt_dp_flt_rel_src: OPT_DP filter rel request src
+ * @WLAN_IPA_OPT_DP_FLT_REL_SRC_IPA: filter rel requested by IPA
+ * @WLAN_IPA_OPT_DP_FLT_REL_SRC_DISCONNECT: filter rel requested as part of
+ * disconnect
+ * @WLAN_IPA_OPT_DP_FLT_REL_SRC_SSR: filter rel requested by SSR context
+ * @WLAN_IPA_OPT_DP_FLT_REL_SRC_SHUTDOWN: filter rel requested by shutdown
+ * context
+ */
+enum wlan_ipa_opt_dp_flt_rel_src {
+	WLAN_IPA_OPT_DP_FLT_REL_SRC_IPA = 1,
+	WLAN_IPA_OPT_DP_FLT_REL_SRC_DISCONNECT = 2,
+	WLAN_IPA_OPT_DP_FLT_REL_SRC_SSR = 3,
+	WLAN_IPA_OPT_DP_FLT_REL_SRC_SHUTDOWN = 4
 };
 
 /**
@@ -982,6 +998,8 @@ struct wlan_ipa_priv {
 	qdf_event_t ipa_ctrl_flt_rm_shutdown_evt;
 	bool ipa_opt_dp_ctrl_debug;
 	uint8_t ipa_init_state;
+	uint8_t release_req_cnt;
+	uint8_t flt_rel_src;
 #ifdef IPA_OPT_WIFI_DP
 	struct wifi_dp_flt_setup dp_cce_super_rule_flt_param;
 	struct wifi_dp_tx_flt_setup dp_tx_super_rule_flt_param;
