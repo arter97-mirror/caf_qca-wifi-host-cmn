@@ -86,6 +86,18 @@ rel_lock:
 #if defined(CFG80211_DISCONNECTED_V2) || \
 (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0))
 #ifdef CONN_MGR_ADV_FEATURE
+#ifdef CFG80211_PROP_MULTI_LINK_SUPPORT
+static void
+osif_cm_indicate_disconnect_result(struct net_device *dev,
+				   enum ieee80211_reasoncode reason,
+				   const u8 *ie, size_t ie_len,
+				   bool locally_generated, int link_id,
+				   gfp_t gfp)
+{
+	cfg80211_disconnected(dev, reason, ie,
+			      ie_len, locally_generated, link_id, gfp);
+}
+#else
 static void
 osif_cm_indicate_disconnect_result(struct net_device *dev,
 				   enum ieee80211_reasoncode reason,
@@ -96,6 +108,7 @@ osif_cm_indicate_disconnect_result(struct net_device *dev,
 	cfg80211_disconnected(dev, reason, ie,
 			      ie_len, locally_generated, gfp);
 }
+#endif
 #else
 #ifdef WLAN_SUPPORT_CFG80211_DISCONNECT_LINK_PARAM
 static void
