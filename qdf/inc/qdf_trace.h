@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -539,6 +539,7 @@ struct qdf_dp_trace_record_s {
  * @icmpv6_resp: stats for icmpv6 resps
  * @icmpv6_ns: stats for icmpv6 nss
  * @icmpv6_na: stats for icmpv6 nas
+ * @icmpv6_mlq: stats for icmpv6 mlqs
  * @icmpv6_rs: stats for icmpv6 rss
  * @icmpv6_ra: stats for icmpv6 ras
  * @proto_event_bitmap: defines which protocol to be diag logged.
@@ -587,6 +588,7 @@ struct s_qdf_dp_trace_data {
 	u16 icmpv6_resp;
 	u16 icmpv6_ns;
 	u16 icmpv6_na;
+	u16 icmpv6_mlq;
 	u16 icmpv6_rs;
 	u16 icmpv6_ra;
 	uint32_t proto_event_bitmap;

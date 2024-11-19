@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1122,6 +1122,7 @@ struct qdf_mac_addr {
  * @QDF_PROTO_ICMPV6_RA: icmpv6 ra packet
  * @QDF_PROTO_ICMPV6_NS: icmpv6 ns packet
  * @QDF_PROTO_ICMPV6_NA: icmpv6 na packet
+ * @QDF_PROTO_ICMPV6_MLQ: icmpv6 Multicast Listener Query packet
  * @QDF_PROTO_IPV4_UDP: ipv4 udp
  * @QDF_PROTO_IPV4_TCP: ipv4 tcp
  * @QDF_PROTO_IPV6_UDP: ipv6 udp
@@ -1187,6 +1188,7 @@ enum qdf_proto_subtype {
 	QDF_PROTO_ICMPV6_RA,
 	QDF_PROTO_ICMPV6_NS,
 	QDF_PROTO_ICMPV6_NA,
+	QDF_PROTO_ICMPV6_MLQ,
 	QDF_PROTO_IPV4_UDP,
 	QDF_PROTO_IPV4_TCP,
 	QDF_PROTO_IPV6_UDP,

@@ -96,6 +96,7 @@
 #define QDF_NBUF_TRAC_IP_OFFSET		14
 #define QDF_NBUF_TRAC_VLAN_IP_OFFSET		18
 #define QDF_NBUF_TRAC_DOUBLE_VLAN_IP_OFFSET	22
+#define QDF_NBUF_TRAC_ICMPV6_MLQ_TYPE       0x36
 /* One dword for IPv4 header size unit */
 #define QDF_NBUF_IPV4_HDR_SIZE_UNIT	4
 #define QDF_NBUF_TRAC_IPV4_TOTAL_LEN_OFFSET 16
@@ -828,6 +829,8 @@ struct qdf_radiotap_ext2 {
 #define ICMPV6_RA                     0x86
 #define ICMPV6_NS                     0x87
 #define ICMPV6_NA                     0x88
+#define ICMPV6_MLQ		      0x82
+#define ICMPV6_MLQ_OFFSET	      0x3e
 
 #define QDF_NBUF_IPA_CHECK_MASK		0x80000000
 
@@ -4111,6 +4114,21 @@ static inline uint8_t
 qdf_nbuf_data_get_ipv6_proto(uint8_t *data)
 {
 	return __qdf_nbuf_data_get_ipv6_proto(data);
+}
+
+/**
+ * qdf_nbuf_data_get_ipv6_proto_mlq() - get the proto type
+ *            of IPV6 mlq packet.
+ * @data: Pointer to IPV6 mlq packet data buffer
+ *
+ * This func. returns the proto type of IPV6 mlq packet.
+ *
+ * Return: proto type of IPV6 mlq packet.
+ */
+static inline uint8_t
+qdf_nbuf_data_get_ipv6_proto_mlq(uint8_t *data)
+{
+	return __qdf_nbuf_data_get_ipv6_proto_mlq(data);
 }
 
 /**

@@ -1512,6 +1512,17 @@ uint8_t __qdf_nbuf_data_get_ipv4_proto(uint8_t *data);
 uint8_t __qdf_nbuf_data_get_ipv6_proto(uint8_t *data);
 
 /**
+ * __qdf_nbuf_data_get_ipv6_proto_mlq() - get the proto type
+ *            of IPV6 mlq packet.
+ * @data: Pointer to IPV6 packet data buffer
+ *
+ * This func. returns the proto type of IPV6 mlq packet.
+ *
+ * Return: proto type of IPV6 mlq  packet.
+ */
+uint8_t __qdf_nbuf_data_get_ipv6_proto_mlq(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_get_ipv4_tos() - get the TOS type of IPv4 packet
  * @data: Pointer to skb payload
  *

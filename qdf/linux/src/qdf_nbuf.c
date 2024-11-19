@@ -1881,10 +1881,20 @@ enum qdf_proto_subtype
 __qdf_nbuf_data_get_icmpv6_subtype(uint8_t *data)
 {
 	uint8_t subtype;
+	uint8_t mlqcheck = 0;
 	enum qdf_proto_subtype proto_subtype = QDF_PROTO_INVALID;
 
 	subtype = (uint8_t)(*(uint8_t *)
 			(data + ICMPV6_SUBTYPE_OFFSET));
+
+	if (subtype == QDF_NBUF_TRAC_ICMPV6_TYPE) {
+		mlqcheck = __qdf_nbuf_data_get_ipv6_proto(data);
+
+		if (mlqcheck == 0) {
+			subtype = (uint8_t)(*(uint8_t *)
+				   (data + ICMPV6_MLQ_OFFSET));
+		}
+	}
 
 	switch (subtype) {
 	case ICMPV6_REQUEST:
@@ -1904,6 +1914,9 @@ __qdf_nbuf_data_get_icmpv6_subtype(uint8_t *data)
 		break;
 	case ICMPV6_NA:
 		proto_subtype = QDF_PROTO_ICMPV6_NA;
+		break;
+	case ICMPV6_MLQ:
+		proto_subtype = QDF_PROTO_ICMPV6_MLQ;
 		break;
 	default:
 		break;
@@ -1983,6 +1996,16 @@ __qdf_nbuf_data_get_ipv6_proto(uint8_t *data)
 
 	proto_type = (uint8_t)(*(uint8_t *)(data +
 				QDF_NBUF_TRAC_IPV6_PROTO_TYPE_OFFSET));
+	return proto_type;
+}
+
+uint8_t
+__qdf_nbuf_data_get_ipv6_proto_mlq(uint8_t *data)
+{
+	uint8_t proto_type;
+
+	proto_type = (uint8_t)(*(uint8_t *)(data +
+				QDF_NBUF_TRAC_ICMPV6_MLQ_TYPE));
 	return proto_type;
 }
 
