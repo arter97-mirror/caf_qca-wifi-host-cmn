@@ -398,6 +398,7 @@ QDF_STATUS wlansap_pre_start_bss_acs_scan_callback(mac_handle_t mac_handle,
 {
 	uint32_t oper_channel = SAP_CHANNEL_NOT_SELECTED;
 	struct mac_context *mac_ctx = MAC_CONTEXT(mac_handle);
+	struct wlan_objmgr_vdev *vdev;
 
 	host_log_acs_scan_done(acs_scan_done_status_str(scan_status),
 			  sessionid, scanid);
@@ -405,6 +406,15 @@ QDF_STATUS wlansap_pre_start_bss_acs_scan_callback(mac_handle_t mac_handle,
 	if (sap_ctx->optimize_acs_chan_selected) {
 		sap_debug("SAP channel selected using first clean channel, ignore scan complete event");
 		return QDF_STATUS_SUCCESS;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_pdev(mac_ctx->pdev,
+						    sap_ctx->vdev_id,
+						    WLAN_LEGACY_SAP_ID);
+
+	if (!vdev) {
+		sap_err("Unable to get vdev ref vdev_id:%d", sap_ctx->vdev_id);
+		goto close_session;
 	}
 
 	/* This has to be done before the ACS selects default channel */
@@ -462,6 +472,8 @@ QDF_STATUS wlansap_pre_start_bss_acs_scan_callback(mac_handle_t mac_handle,
 	sap_ctx->sap_state = eSAP_ACS_CHANNEL_SELECTED;
 	sap_ctx->sap_status = eSAP_STATUS_SUCCESS;
 close_session:
+	if (vdev)
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_SAP_ID);
 #ifdef SOFTAP_CHANNEL_RANGE
 	if (sap_ctx->freq_list) {
 		/*
