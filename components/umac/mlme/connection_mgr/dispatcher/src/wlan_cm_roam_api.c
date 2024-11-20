@@ -42,6 +42,7 @@
 #include "wlan_dlm_api.h"
 #ifdef WLAN_FEATURE_11BE_MLO
 #include "wlan_mlo_link_force.h"
+#include "wlan_mlo_link_recfg.h"
 #endif
 #include <../../core/src/wlan_cm_roam_offload.h>
 
@@ -6131,6 +6132,13 @@ QDF_STATUS wlan_cm_link_switch_notif_cb(struct wlan_objmgr_vdev *vdev,
 
 	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
 		return status;
+
+	/* If link switch for link recfg, no need to disable roaming */
+	if (mlo_is_link_recfg_in_progress(vdev)) {
+		mlme_debug("link recfg in progress vdev %d linksw reason %d",
+			   wlan_vdev_get_id(vdev), notify_reason);
+		return status;
+	}
 
 	/* Only send RSO stop for assoc vdev */
 	if (wlan_vdev_mlme_is_mlo_link_vdev(vdev))
