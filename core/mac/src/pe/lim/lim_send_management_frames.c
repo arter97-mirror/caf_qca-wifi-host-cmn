@@ -2634,9 +2634,6 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 		lim_strip_mlo_ie(mac_ctx, add_ie, &add_ie_len);
 	}
 
-	mlo_ie_len =
-		 lim_send_assoc_req_mgmt_frame_mlo(mac_ctx, pe_session, frm);
-
 	if (pe_session->is11Rconnection) {
 		struct bss_description *bssdescr;
 
@@ -2890,6 +2887,9 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 		pe_err("Failed to fill adaptive 11r IE");
 		goto end;
 	}
+
+	mlo_ie_len = lim_send_assoc_req_mgmt_frame_mlo(mac_ctx, pe_session,
+						       frm);
 
 	/*
 	 * Do unpack to populate the add_ie buffer to frm structure

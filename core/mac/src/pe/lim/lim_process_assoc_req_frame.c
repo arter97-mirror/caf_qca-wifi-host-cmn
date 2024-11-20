@@ -270,7 +270,7 @@ static bool lim_chk_assoc_req_parse_error(struct mac_context *mac_ctx,
 					frame_len - WLAN_ASSOC_REQ_IES_OFFSET,
 					&assoc_req->eht_cap,
 					assoc_req->he_cap,
-					session->curr_op_freq);
+					session->curr_op_freq, true);
 		if (status != QDF_STATUS_SUCCESS) {
 			pe_err("Failed to extract eht cap");
 			return false;
@@ -1780,6 +1780,14 @@ static bool lim_update_sta_ds(struct mac_context *mac_ctx, tSirMacAddr sa,
 
 	lim_mlo_save_mlo_info(sta_ds, &assoc_req->mlo_info);
 
+	/*
+	 * Move forward to update sta_ds->ch_width for 6 GHz before call
+	 * lim_populate_matching_rate_set and lim_populate_eht_mcs_set
+	 */
+	lim_update_stads_he_6ghz_op(session, sta_ds);
+	lim_update_sta_ds_op_classes(assoc_req, sta_ds);
+	lim_update_stads_eht_bw_320mhz(session, sta_ds);
+
 	if (lim_populate_matching_rate_set(mac_ctx, sta_ds,
 			&(assoc_req->supportedRates),
 			&(assoc_req->extendedRates),
@@ -1820,9 +1828,6 @@ static bool lim_update_sta_ds(struct mac_context *mac_ctx, tSirMacAddr sa,
 			 ((sta_ds->supportedRates.vhtTxMCSMap & MCSMAPMASK2x2)
 			  == MCSMAPMASK2x2) ? 1 : 2;
 	}
-	lim_update_stads_he_6ghz_op(session, sta_ds);
-	lim_update_sta_ds_op_classes(assoc_req, sta_ds);
-	lim_update_stads_eht_bw_320mhz(session, sta_ds);
 
 	/* Add STA context at MAC HW (BMU, RHP & TFP) */
 	sta_ds->qosMode = false;
@@ -2038,20 +2043,14 @@ static bool lim_update_sta_ctx(struct mac_context *mac_ctx, struct pe_session *s
 
 void lim_process_assoc_cleanup(struct mac_context *mac_ctx,
 			       struct pe_session *session,
-			       tpSirAssocReq assoc_req,
 			       tpDphHashNode sta_ds,
 			       bool assoc_req_copied)
 {
 	tpSirAssocReq tmp_assoc_req;
 
-	if (assoc_req) {
-		lim_free_assoc_req_frm_buf(assoc_req);
-
-		qdf_mem_free(assoc_req);
-		/* to avoid double free */
-		if (assoc_req_copied && session->parsedAssocReq && sta_ds)
-			session->parsedAssocReq[sta_ds->assocId] = NULL;
-	}
+	/* to avoid double free */
+	if (assoc_req_copied && session->parsedAssocReq && sta_ds)
+		session->parsedAssocReq[sta_ds->assocId] = NULL;
 
 	/* If it is not duplicate Assoc request then only make to Null */
 	if ((sta_ds) &&
@@ -2107,9 +2106,10 @@ static void lim_defer_sme_indication(struct mac_context *mac_ctx,
 		pe_debug("Free the cached assoc req as a new one is received");
 		cached_req = &sta_pre_auth_ctx->assoc_req;
 		lim_process_assoc_cleanup(mac_ctx, session,
-					  cached_req->assoc_req,
 					  cached_req->sta_ds,
 					  cached_req->assoc_req_copied);
+		lim_free_assoc_req_frm_buf(cached_req->assoc_req);
+		qdf_mem_free(cached_req->assoc_req);
 	}
 
 	sta_pre_auth_ctx->assoc_req.present = true;
@@ -2594,8 +2594,7 @@ QDF_STATUS lim_proc_assoc_req_frm_cmn(struct mac_context *mac_ctx,
 	return QDF_STATUS_SUCCESS;
 
 error:
-	lim_process_assoc_cleanup(mac_ctx, session, assoc_req, sta_ds,
-				  assoc_req_copied);
+	lim_process_assoc_cleanup(mac_ctx, session, sta_ds, assoc_req_copied);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -2624,6 +2623,7 @@ void lim_process_assoc_req_frame(struct mac_context *mac_ctx,
 	tpDphHashNode sta_ds = NULL;
 	struct wlan_objmgr_vdev *vdev;
 	tpSirAssocReq assoc_req;
+	QDF_STATUS status;
 
 	hdr = WMA_GET_RX_MAC_HEADER(rx_pkt_info);
 	frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
@@ -2748,8 +2748,10 @@ void lim_process_assoc_req_frame(struct mac_context *mac_ctx,
 					 frame_len))
 		goto error;
 
-	lim_proc_assoc_req_frm_cmn(mac_ctx, sub_type, session, hdr->sa,
-				   assoc_req, 0);
+	status = lim_proc_assoc_req_frm_cmn(mac_ctx, sub_type, session, hdr->sa,
+					    assoc_req, 0);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto error;
 
 	return;
 error:
