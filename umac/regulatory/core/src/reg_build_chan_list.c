@@ -1204,7 +1204,6 @@ static void reg_propagate_6g_mas_channel_list(
 		mas_chan_params->reg_6g_superid;
 	pdev_priv_obj->reg_6g_thresh_priority_freq =
 				mas_chan_params->reg_6g_thresh_priority_freq;
-	reg_set_ap_pwr_type(pdev_priv_obj);
 }
 
 #ifdef CONFIG_AFC_SUPPORT
@@ -1623,6 +1622,10 @@ reg_append_mas_chan_list_for_6g_sp(struct wlan_regulatory_pdev_priv_obj
 			       *pdev_priv_obj)
 {
 	struct regulatory_channel *master_chan_list_6g_client_sp;
+	struct wlan_objmgr_pdev *pdev = pdev_priv_obj->pdev_ptr;
+
+	if (!wlan_reg_is_afc_power_event_received(pdev))
+		return;
 
 	master_chan_list_6g_client_sp = pdev_priv_obj->afc_chan_list;
 
@@ -1748,8 +1751,9 @@ static void
 reg_append_mas_chan_list_for_6g(struct wlan_regulatory_pdev_priv_obj
 				*pdev_priv_obj)
 {
-	if (pdev_priv_obj->reg_cur_6g_ap_pwr_type >= REG_CURRENT_MAX_AP_TYPE ||
-	    pdev_priv_obj->reg_cur_6g_client_mobility_type >=
+	struct wlan_objmgr_pdev *pdev = pdev_priv_obj->pdev_ptr;
+
+	if (pdev_priv_obj->reg_cur_6g_client_mobility_type >=
 	    REG_MAX_CLIENT_TYPE) {
 		reg_debug("invalid 6G AP or client power type");
 		return;
@@ -1761,6 +1765,9 @@ reg_append_mas_chan_list_for_6g(struct wlan_regulatory_pdev_priv_obj
 	 * gindoor_channel_support ini value
 	 */
 
+	if (wlan_reg_is_afc_power_event_received(pdev))
+		reg_append_mas_chan_list_for_6g_sp(pdev_priv_obj);
+
 	if (pdev_priv_obj->indoor_chan_enabled) {
 		reg_append_mas_chan_list_for_6g_lpi(pdev_priv_obj);
 		reg_append_mas_chan_list_for_6g_vlp(pdev_priv_obj);
@@ -1769,7 +1776,8 @@ reg_append_mas_chan_list_for_6g(struct wlan_regulatory_pdev_priv_obj
 		reg_append_mas_chan_list_for_6g_lpi(pdev_priv_obj);
 	}
 
-	reg_append_mas_chan_list_for_6g_sp(pdev_priv_obj);
+	if (!wlan_reg_is_afc_power_event_received(pdev))
+		reg_append_mas_chan_list_for_6g_sp(pdev_priv_obj);
 }
 
 /**
@@ -4290,9 +4298,15 @@ QDF_STATUS reg_process_master_chan_list_ext(
 		mas_chan_list_6g_ap[i] =
 			this_mchan_params->mas_chan_list_6g_ap[i];
 
-		for (j = 0; j < REG_MAX_CLIENT_TYPE; j++)
+		qdf_mem_zero(mas_chan_list_6g_ap[i],
+			     NUM_6GHZ_CHANNELS * sizeof(struct regulatory_channel));
+
+		for (j = 0; j < REG_MAX_CLIENT_TYPE; j++) {
 			mas_chan_list_6g_client[i][j] =
 				this_mchan_params->mas_chan_list_6g_client[i][j];
+			qdf_mem_zero(mas_chan_list_6g_client[i][j],
+				     NUM_6GHZ_CHANNELS * sizeof(struct regulatory_channel));
+		}
 	}
 
 	reg_init_channel_map(regulat_info->dfs_region);
