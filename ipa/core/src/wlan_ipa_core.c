@@ -2597,7 +2597,8 @@ static QDF_STATUS wlan_ipa_setup_iface(struct wlan_ipa_priv *ipa_ctx,
 		ipa_err("Max interface reached %d", WLAN_IPA_MAX_IFACE);
 		status = QDF_STATUS_E_NOMEM;
 		iface_context = NULL;
-		QDF_ASSERT(0);
+		ipa_err("Interface setup failed for session id - %d, device mode - %d",
+			session_id, device_mode);
 		goto end;
 	}
 
