@@ -1164,8 +1164,10 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 		 */
 		mlo_mgr_osif_update_connect_info(vdev,
 						 wlan_vdev_get_link_id(vdev));
+	} else if (wlan_cm_is_link_add_connect_resp(rsp)) {
+		mlo_mgr_osif_update_connect_info(vdev,
+						 wlan_vdev_get_link_id(vdev));
 	}
-
 }
 #else /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 

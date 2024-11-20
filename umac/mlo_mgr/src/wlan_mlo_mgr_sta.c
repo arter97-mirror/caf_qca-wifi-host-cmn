@@ -1590,6 +1590,11 @@ void mlo_sta_link_connect_notify(struct wlan_objmgr_vdev *vdev,
 		return;
 	}
 
+	if (wlan_cm_is_link_add_connect_resp(rsp)) {
+		mlo_info("Skip for link_add connect request");
+		return;
+	}
+
 	if (mlo_sta_ignore_link_connect_fail(vdev))
 		return;
 

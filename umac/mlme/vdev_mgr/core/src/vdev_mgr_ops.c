@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -50,6 +50,7 @@
 #include "wlan_policy_mgr_api.h"
 #endif
 #include "wlan_mlme_vdev_mgr_interface.h"
+#include "wlan_cm_api.h"
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
@@ -447,6 +448,12 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
 	    !wlan_vdev_mlme_is_mlo_link_vdev(vdev))
 		param->mlo_flags.mlo_assoc_link = 1;
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
+	    wlan_vdev_mlme_is_mlo_link_vdev(vdev) &&
+	    wlan_cm_is_link_add_connecting(vdev)) {
+		param->mlo_flags.mlo_link_add  = 1;
+		mlme_debug("vdev mlo_link_add flag set 1");
+	}
 
 	if ((wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) &&
 	    wlan_vdev_mlme_cap_get(vdev, WLAN_VDEV_C_EMLSR_CAP)) {

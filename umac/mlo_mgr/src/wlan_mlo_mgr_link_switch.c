@@ -1146,6 +1146,22 @@ QDF_STATUS mlo_mgr_link_switch_disconnect_done(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+void
+mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
+					struct wlan_cm_connect_resp *resp)
+{
+	if (wlan_cm_is_link_switch_connect_resp(resp)) {
+		wlan_cm_reset_active_cm_id(vdev, resp->cm_id);
+		mlo_mgr_link_switch_connect_done(vdev,
+						 resp->connect_status);
+	} else if (wlan_cm_is_link_add_connect_resp(resp)) {
+		wlan_cm_reset_active_cm_id(vdev, resp->cm_id);
+		mlo_link_recfg_add_connect_done_indication(
+				vdev,
+				resp->connect_status);
+	}
+}
+
 QDF_STATUS mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
 						 uint8_t resp_status)
 {

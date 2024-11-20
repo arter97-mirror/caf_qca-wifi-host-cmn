@@ -40,6 +40,7 @@ static uint32_t cm_get_prefix_for_cm_id(enum wlan_cm_source source) {
 	case CM_OSIF_CFG_CONNECT:
 	case CM_MLO_LINK_VDEV_CONNECT:
 	case CM_MLO_LINK_SWITCH_CONNECT:
+	case CM_MLO_LINK_ADD_CONNECT:
 		return CONNECT_REQ_PREFIX;
 	case CM_ROAMING_HOST:
 	case CM_ROAMING_FW:
@@ -68,6 +69,8 @@ wlan_cm_id cm_get_cm_id(struct cnx_mgr *cm_ctx, enum wlan_cm_source source)
 	if (source == CM_MLO_LINK_SWITCH_DISCONNECT ||
 	    source == CM_MLO_LINK_SWITCH_CONNECT)
 		cm_id |= CM_ID_LSWITCH_BIT;
+	else if (source == CM_MLO_LINK_ADD_CONNECT)
+		cm_id |= CM_ID_LINKADD_BIT;
 
 	return cm_id;
 }
@@ -476,6 +479,17 @@ struct cm_req *cm_get_req_by_cm_id_fl(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id,
 		       line, cm_id);
 
 	return NULL;
+}
+
+bool cm_is_link_add_cmd_active(struct wlan_objmgr_vdev *vdev)
+{
+	struct cnx_mgr *cm_ctx;
+
+	cm_ctx = cm_get_cm_ctx(vdev);
+	if (!cm_ctx)
+		return false;
+
+	return cm_is_link_add_cmd(cm_ctx->active_cm_id);
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -1212,7 +1226,15 @@ void cm_remove_cmd(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id_to_remove)
 		return;
 
 	if (cm_is_link_switch_cmd(cm_id)) {
-		mlme_debug("Skip cmd remove for link switch connect/disconnect");
+		mlme_debug(CM_PREFIX_FMT "Skip cmd remove for link switch connect/disconnect",
+			   CM_PREFIX_REF(wlan_vdev_get_id(cm_ctx->vdev),
+					 cm_id));
+		return;
+	}
+	if (cm_is_link_add_cmd(cm_id)) {
+		mlme_debug(CM_PREFIX_FMT "Skip cmd for link add connect",
+			   CM_PREFIX_REF(wlan_vdev_get_id(cm_ctx->vdev),
+					 cm_id));
 		return;
 	}
 

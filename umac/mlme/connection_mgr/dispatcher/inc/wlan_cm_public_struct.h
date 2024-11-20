@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,7 +32,6 @@
 #endif
 
 #define CM_ID_INVALID 0xFFFFFFFF
-#define CM_ID_LSWITCH_BIT 0x10000000
 
 typedef uint32_t wlan_cm_id;
 
@@ -169,6 +168,7 @@ struct wlan_fils_con_info {
  * @CM_OSIF_CFG_DISCONNECT: Disconnect request initiated due to config change
  * @CM_MLO_LINK_VDEV_DISCONNECT: Disconnect req for ML link
  * @CM_MLO_LINK_VDEV_CONNECT: Connect req for ML link
+ * @CM_MLO_LINK_ADD_CONNECT: Connect req for ML link Add
  * @CM_MLO_ROAM_INTERNAL_DISCONNECT: Disconnect req triggered for mlo roaming
  * @CM_MLO_LINK_SWITCH_CONNECT: Connect req triggered for mlo link switch
  * @CM_MLO_LINK_SWITCH_DISCONNECT: Disconnect req triggered for mlo link switch
@@ -193,6 +193,7 @@ enum wlan_cm_source {
 	CM_OSIF_CFG_DISCONNECT,
 	CM_MLO_LINK_VDEV_DISCONNECT,
 	CM_MLO_LINK_VDEV_CONNECT,
+	CM_MLO_LINK_ADD_CONNECT,
 	CM_MLO_ROAM_INTERNAL_DISCONNECT,
 	CM_MLO_LINK_SWITCH_CONNECT,
 	CM_MLO_LINK_SWITCH_DISCONNECT,
