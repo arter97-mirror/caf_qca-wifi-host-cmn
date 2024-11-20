@@ -468,31 +468,31 @@ static QDF_STATUS cm_update_vdev_mlme_macaddr(struct cnx_mgr *cm_ctx,
 {
 	struct qdf_mac_addr *mac;
 	bool eht_capab;
+	struct wlan_objmgr_vdev *vdev = cm_ctx->vdev;
 
-	if (wlan_vdev_mlme_get_opmode(cm_ctx->vdev) != QDF_STA_MODE)
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
 		return QDF_STATUS_SUCCESS;
 
-	wlan_psoc_mlme_get_11be_capab(wlan_vdev_get_psoc(cm_ctx->vdev),
-				      &eht_capab);
+	wlan_psoc_mlme_get_11be_capab(wlan_vdev_get_psoc(vdev), &eht_capab);
 	if (!eht_capab)
 		return QDF_STATUS_SUCCESS;
 
-	mac = (struct qdf_mac_addr *)wlan_vdev_mlme_get_mldaddr(cm_ctx->vdev);
+	mac = (struct qdf_mac_addr *)wlan_vdev_mlme_get_mldaddr(vdev);
 
 	if (req->cur_candidate->entry->ie_list.multi_link_bv &&
 	    !qdf_is_macaddr_zero(mac) &&
 	    wlan_cm_is_eht_allowed_for_current_security(
-					wlan_vdev_get_psoc(cm_ctx->vdev),
-					req->cur_candidate->entry)) {
-		wlan_vdev_obj_lock(cm_ctx->vdev);
+						wlan_vdev_get_psoc(vdev),
+						req->cur_candidate->entry,
+						true)) {
+		wlan_vdev_obj_lock(vdev);
 		/* Use link address for ML connection */
-		wlan_vdev_mlme_set_macaddr(cm_ctx->vdev,
-					   cm_ctx->vdev->vdev_mlme.linkaddr);
-		wlan_vdev_obj_unlock(cm_ctx->vdev);
-		wlan_vdev_mlme_set_mlo_vdev(cm_ctx->vdev);
+		wlan_vdev_mlme_set_macaddr(vdev, vdev->vdev_mlme.linkaddr);
+		wlan_vdev_obj_unlock(vdev);
+		wlan_vdev_mlme_set_mlo_vdev(vdev);
 		mlme_debug("set link address for ML connection");
 	} else {
-		if (wlan_vdev_mlme_is_mlo_link_vdev(cm_ctx->vdev)) {
+		if (wlan_vdev_mlme_is_mlo_link_vdev(vdev)) {
 			mlme_debug("MLIE is not present for partner" QDF_MAC_ADDR_FMT,
 				   QDF_MAC_ADDR_REF(mac->bytes));
 			return QDF_STATUS_E_INVAL;
@@ -500,14 +500,14 @@ static QDF_STATUS cm_update_vdev_mlme_macaddr(struct cnx_mgr *cm_ctx,
 
 		/* Use net_dev address for non-ML connection */
 		if (!qdf_is_macaddr_zero(mac)) {
-			wlan_vdev_obj_lock(cm_ctx->vdev);
-			wlan_vdev_mlme_set_macaddr(cm_ctx->vdev, mac->bytes);
-			wlan_vdev_obj_unlock(cm_ctx->vdev);
+			wlan_vdev_obj_lock(vdev);
+			wlan_vdev_mlme_set_macaddr(vdev, mac->bytes);
+			wlan_vdev_obj_unlock(vdev);
 			mlme_debug(QDF_MAC_ADDR_FMT " for non-ML connection",
 				   QDF_MAC_ADDR_REF(mac->bytes));
 		}
 
-		wlan_vdev_mlme_clear_mlo_vdev(cm_ctx->vdev);
+		wlan_vdev_mlme_clear_mlo_vdev(vdev);
 		mlme_debug("clear MLO cap for non-ML connection");
 	}
 
@@ -604,34 +604,37 @@ static void cm_create_bss_peer(struct cnx_mgr *cm_ctx,
 	struct qdf_mac_addr *mld_mac = NULL;
 	bool is_assoc_link = false;
 	bool eht_capab;
+	struct wlan_objmgr_vdev *vdev;
 
 	if (!cm_ctx) {
 		mlme_err("invalid cm_ctx");
 		return;
 	}
+
+	vdev = cm_ctx->vdev;
 	if (!req || !req->cur_candidate || !req->cur_candidate->entry) {
 		mlme_err("invalid req");
 		return;
 	}
 
-	wlan_psoc_mlme_get_11be_capab(wlan_vdev_get_psoc(cm_ctx->vdev),
-				      &eht_capab);
-	if (eht_capab && wlan_vdev_mlme_is_mlo_vdev(cm_ctx->vdev) &&
+	wlan_psoc_mlme_get_11be_capab(wlan_vdev_get_psoc(vdev), &eht_capab);
+	if (eht_capab && wlan_vdev_mlme_is_mlo_vdev(vdev) &&
 	    wlan_cm_is_eht_allowed_for_current_security(
-					wlan_vdev_get_psoc(cm_ctx->vdev),
-					req->cur_candidate->entry)) {
+						wlan_vdev_get_psoc(vdev),
+						req->cur_candidate->entry,
+						true)) {
 		cm_set_vdev_link_id(cm_ctx, req);
-		wlan_mlo_init_cu_bpcc(cm_ctx->vdev);
+		wlan_mlo_init_cu_bpcc(vdev);
 		mld_mac = cm_get_bss_peer_mld_addr(req);
 		is_assoc_link = cm_bss_peer_is_assoc_peer(req);
 	}
 
 	bssid = &req->cur_candidate->entry->bssid;
-	status = mlme_cm_bss_peer_create_req(cm_ctx->vdev, bssid,
+	status = mlme_cm_bss_peer_create_req(vdev, bssid,
 					     mld_mac, is_assoc_link);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		struct wlan_cm_connect_resp *resp;
-		uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
+		uint8_t vdev_id = wlan_vdev_get_id(vdev);
 
 		/* In case of failure try with next candidate */
 		mlme_err(CM_PREFIX_FMT "peer create request failed %d",
