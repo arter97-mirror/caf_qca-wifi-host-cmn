@@ -1568,6 +1568,7 @@ enum _ol_ath_param_t {
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 	OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN = 562,
 	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
+	OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE = 564,
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -4103,6 +4104,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ALL_CHAN_UTIL, GET_PARAM, 0},
 	{"dynamic_wsi_remap",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DYNAMIC_WSI_REMAP, SET_PARAM, 1},
+	{"wsi_remap_netdev_preserve",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE, SET_PARAM, 1},
+	{"g_wsi_remap_netdev_preserve",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE, GET_PARAM, 0},
 #ifdef QCA_PROCESS_UPLINK_CSA
 	{"process_uplink_csa_en",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_PROCESS_UPLINK_CSA, SET_PARAM, 1},
