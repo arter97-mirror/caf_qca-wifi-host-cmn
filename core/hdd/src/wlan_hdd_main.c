@@ -10382,9 +10382,7 @@ static void hdd_stop_station_adapter(struct hdd_adapter *adapter)
 		}
 
 		hdd_objmgr_put_vdev_by_user(vdev, WLAN_INIT_DEINIT_ID);
-
-		if (mode == QDF_NAN_DISC_MODE)
-			hdd_disable_nan_active_disc(adapter);
+		hdd_disable_nan_active_disc(adapter);
 
 		hdd_vdev_destroy(link_info);
 	}
