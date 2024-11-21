@@ -2067,8 +2067,10 @@ void wlan_dp_link_cdp_vdev_delete_notification(ol_osif_vdev_handle context,
 		if (found)
 			TAILQ_REMOVE(&dp_ctx->inactive_dp_link_list, dp_link,
 				     inactive_list_elem);
-		else
-			qdf_assert_always(0);
+		else {
+			dp_info("dp_link %pK release skipped", dp_link);
+			goto exit;
+		}
 
 		dp_info("Free dp_link %pK id %d (" QDF_MAC_ADDR_FMT ")",
 			dp_link, dp_link->link_id,
@@ -2077,6 +2079,7 @@ void wlan_dp_link_cdp_vdev_delete_notification(ol_osif_vdev_handle context,
 		qdf_mem_free(dp_link);
 	}
 
+exit:
 	qdf_spin_unlock_bh(&dp_ctx->dp_link_del_lock);
 }
 
