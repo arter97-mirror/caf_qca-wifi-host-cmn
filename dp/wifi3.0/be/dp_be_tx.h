@@ -145,6 +145,25 @@ dp_tx_comp_get_params_from_hal_desc_be(struct dp_soc *soc,
 				       void *tx_comp_hal_desc,
 				       struct dp_tx_desc_s **r_tx_desc);
 
+#ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
+/**
+ * dp_srng_tx_comp_ring_desc_mark_invalid(): mark descriptors in tx comp ring
+ *                                           invalid during allocation
+ * @soc: DP soc handle
+ * @srng: DP srng handle of tx completion ring
+ *
+ * Return: None
+ */
+void dp_srng_tx_comp_ring_desc_mark_invalid(struct dp_soc *soc,
+					    struct dp_srng *srng);
+#else
+static inline
+void dp_srng_tx_comp_ring_desc_mark_invalid(struct dp_soc *soc,
+					    struct dp_srng *srng)
+{
+}
+#endif
+
 /**
  * dp_tx_process_htt_completion_be() - Tx HTT Completion Indication Handler
  * @soc: Handle to DP soc structure

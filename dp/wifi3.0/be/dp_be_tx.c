@@ -94,6 +94,21 @@ extern uint8_t sec_type_map[MAX_CDP_SEC_TYPE];
  */
 #define DP_TX_COMP_DESC_BUFF_VA_32BITS_HI_INVALIDATE 0x12121212
 
+void dp_srng_tx_comp_ring_desc_mark_invalid(struct dp_soc *soc,
+					    struct dp_srng *srng)
+{
+	uint8_t *desc = srng->base_vaddr_aligned;
+	uint8_t num_entries = srng->num_entries;
+	uint8_t entry_size = srng->alloc_size / num_entries;
+	int i;
+
+	for (i = 0; i < num_entries; i++) {
+		hal_tx_comp_set_desc_va_63_32(desc,
+				DP_TX_COMP_DESC_BUFF_VA_32BITS_HI_INVALIDATE);
+		desc += entry_size;
+	}
+}
+
 /**
  * dp_tx_comp_desc_check_and_invalidate() - sanity check for ring desc and
  *					    invalidate it after each reaping
@@ -119,15 +134,14 @@ QDF_STATUS dp_tx_comp_desc_check_and_invalidate(void *tx_comp_hal_desc,
 	qdf_dma_addr_t desc_dma_addr;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
+	if (DP_TX_COMP_DESC_BUFF_VA_32BITS_HI_INVALIDATE ==
+	    (tx_desc_va >> 32)) {
+		*r_tx_desc = NULL;
+		status = QDF_STATUS_E_PENDING;
+	}
+
 	if (qdf_likely(hw_cc_done)) {
-		/* Check upper 32 bits */
-		if (DP_TX_COMP_DESC_BUFF_VA_32BITS_HI_INVALIDATE ==
-		    (tx_desc_va >> 32)) {
-			*r_tx_desc = NULL;
-			status = QDF_STATUS_E_PENDING;
-		} else
-			/* Invalidate the ring desc for 32 ~ 63 bits of VA */
-			hal_tx_comp_set_desc_va_63_32(
+		hal_tx_comp_set_desc_va_63_32(
 				tx_comp_hal_desc,
 				DP_TX_COMP_DESC_BUFF_VA_32BITS_HI_INVALIDATE);
 	} else {
@@ -166,11 +180,11 @@ dp_tx_comp_get_params_from_hal_desc_be(struct dp_soc *soc,
 	bool hw_cc_done =
 		hal_tx_comp_get_cookie_convert_done(tx_comp_hal_desc);
 
-	if (qdf_likely(hw_cc_done)) {
-		/* HW cookie conversion done */
-		tx_desc_va = hal_tx_comp_get_desc_va(tx_comp_hal_desc);
-		*r_tx_desc = (struct dp_tx_desc_s *)(uintptr_t)tx_desc_va;
+	/* Check the upper 32bits irrespective of cookie conversion was done */
+	tx_desc_va = hal_tx_comp_get_desc_va(tx_comp_hal_desc);
 
+	if (qdf_likely(hw_cc_done)) {
+		*r_tx_desc = (struct dp_tx_desc_s *)(uintptr_t)tx_desc_va;
 	} else {
 		/* SW do cookie conversion to VA */
 		tx_desc_id = hal_tx_comp_get_desc_id(tx_comp_hal_desc);

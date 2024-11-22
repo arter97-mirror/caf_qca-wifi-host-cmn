@@ -2512,6 +2512,9 @@ QDF_STATUS dp_srng_alloc(struct dp_soc *soc, struct dp_srng *srng,
 	if (!srng->base_vaddr_aligned)
 		return QDF_STATUS_E_NOMEM;
 
+	/* memset the srng ring to zero */
+	qdf_mem_zero(srng->base_vaddr_unaligned, srng->alloc_size);
+
 	return QDF_STATUS_SUCCESS;
 }
 

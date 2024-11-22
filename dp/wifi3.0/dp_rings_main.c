@@ -494,9 +494,6 @@ QDF_STATUS dp_srng_init_idx(struct dp_soc *soc, struct dp_srng *srng,
 		return QDF_STATUS_SUCCESS;
 	}
 
-	/* memset the srng ring to zero */
-	qdf_mem_zero(srng->base_vaddr_unaligned, srng->alloc_size);
-
 	qdf_mem_zero(&ring_params, sizeof(struct hal_srng_params));
 	ring_params.ring_base_paddr = srng->base_paddr_aligned;
 	ring_params.ring_base_vaddr = srng->base_vaddr_aligned;
@@ -2255,6 +2252,10 @@ static QDF_STATUS dp_alloc_tx_ring_pair_by_index(struct dp_soc *soc,
 		dp_err("dp_srng_alloc failed for tx_comp_ring");
 		goto fail1;
 	}
+
+	if (soc->arch_ops.tx_comp_ring_desc_mark_invalid)
+		soc->arch_ops.tx_comp_ring_desc_mark_invalid(soc,
+						&soc->tx_comp_ring[index]);
 
 	return QDF_STATUS_SUCCESS;
 
