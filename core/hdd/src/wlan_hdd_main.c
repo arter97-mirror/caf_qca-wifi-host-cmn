@@ -2066,7 +2066,6 @@ static void hdd_update_tgt_services(struct hdd_context *hdd_ctx,
 	bool arp_offload_enable;
 	bool mawc_enabled;
 #ifdef FEATURE_WLAN_TDLS
-	bool tdls_support;
 	bool tdls_off_channel;
 	bool tdls_buffer_sta;
 	uint32_t tdls_uapsd_mask;
@@ -2111,9 +2110,7 @@ static void hdd_update_tgt_services(struct hdd_context *hdd_ctx,
 		ucfg_scan_set_pno_offload(hdd_ctx->psoc, true);
 #endif
 #ifdef FEATURE_WLAN_TDLS
-	cfg_tdls_get_support_enable(hdd_ctx->psoc, &tdls_support);
-	cfg_tdls_set_support_enable(hdd_ctx->psoc,
-				    tdls_support & cfg->en_tdls);
+	cfg_tdls_set_fw_support(hdd_ctx->psoc, cfg->en_tdls);
 
 	cfg_tdls_get_off_channel_enable(hdd_ctx->psoc, &tdls_off_channel);
 	cfg_tdls_set_off_channel_enable(hdd_ctx->psoc,

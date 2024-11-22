@@ -418,6 +418,18 @@ enum tdls_disable_sources {
 };
 
 /**
+ * enum tdls_enable_support_bit - tdls enable support bit definitation
+ * @TDLS_ENABLE_BIT_FULL: Full enable TDLS
+ * @TDLS_ENABLE_BIT_11AX: Support TDLS upto 11ax.
+ * @TDLS_ENABLE_BIT_11BE: Support TDLS upto 11be.
+ */
+enum tdls_enable_support_bit {
+	TDLS_ENABLE_BIT_FULL,
+	TDLS_ENABLE_BIT_11AX,
+	TDLS_ENABLE_BIT_11BE,
+};
+
+/**
  * struct tdls_osif_indication - tdls indication to os if layer
  * @vdev: vdev object
  * @reason: used with teardown indication
@@ -557,7 +569,7 @@ struct tdls_user_config {
 	bool tdls_implicit_trigger_enable;
 	bool tdls_scan_enable;
 	bool tdls_sleep_sta_enable;
-	bool tdls_support_enable;
+	uint8_t tdls_support_enable;
 	int tdls_link_id;
 };
 

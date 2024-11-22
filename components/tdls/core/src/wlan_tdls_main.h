@@ -97,6 +97,14 @@
 #define SET_BIT(value, mask) ((value) |= (1 << (mask)))
 #define CLEAR_BIT(value, mask) ((value) &= ~(1 << (mask)))
 #define CHECK_BIT(value, mask) ((value) & (1 << (mask)))
+
+#define TDLS_IS_ENABLE_FULL(tdls_support_enable) \
+	CHECK_BIT(tdls_support_enable, TDLS_ENABLE_BIT_FULL)
+#define TDLS_IS_ENABLE_UPTO_11AX(tdls_support_enable) \
+	CHECK_BIT(tdls_support_enable, TDLS_ENABLE_BIT_11AX)
+#define TDLS_IS_ENABLE_UPTO_11BE(tdls_support_enable) \
+	CHECK_BIT(tdls_support_enable, TDLS_ENABLE_BIT_11BE)
+
 /**
  * struct tdls_conn_info - TDLS connection record
  * @session_id: session id
