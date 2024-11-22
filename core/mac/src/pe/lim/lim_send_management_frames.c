@@ -5973,7 +5973,10 @@ lim_fill_oci_params(struct mac_context *mac, struct pe_session *session,
 						    session->ch_width,
 						    ch_offset);
 	oci->prim_ch_num = prim_ch_num;
-	oci->freq_seg_1_ch_num = session->ch_center_freq_seg1;
+	if (session->ch_width == CH_WIDTH_80P80MHZ)
+		oci->freq_seg_1_ch_num = session->ch_center_freq_seg1;
+	else
+		oci->freq_seg_1_ch_num = 0;
 	oci->present = 1;
 	if (tx_chan_width)
 		*tx_chan_width = ch_width_in_mhz(session->ch_width);
