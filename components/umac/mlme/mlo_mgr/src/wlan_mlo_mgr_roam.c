@@ -906,7 +906,8 @@ mlo_check_if_all_vdev_up(struct wlan_objmgr_vdev *vdev)
 
 		if ((qdf_test_bit(i, sta_ctx->wlan_connected_links) ||
 		     qdf_test_bit(i, sta_ctx->wlan_connect_req_links)) &&
-		    !QDF_IS_STATUS_SUCCESS(wlan_vdev_is_up(mlo_dev_ctx->wlan_vdev_list[i]))) {
+		    (!QDF_IS_STATUS_SUCCESS(wlan_vdev_is_up(mlo_dev_ctx->wlan_vdev_list[i])) ||
+		    wlan_cm_is_vdev_disconnecting(mlo_dev_ctx->wlan_vdev_list[i]))) {
 			mlo_debug("Vdev id %d is not in up state",
 				  wlan_vdev_get_id(mlo_dev_ctx->wlan_vdev_list[i]));
 			return false;
@@ -1253,6 +1254,7 @@ mlo_roam_prepare_and_send_link_connect_req(struct wlan_objmgr_vdev *assoc_vdev,
 	req.chan_freq = link_info->chan_freq;
 	req.link_id = link_info->link_id;
 	qdf_copy_macaddr(&req.bssid, &link_info->link_addr);
+	qdf_copy_macaddr(&req.bssid_hint, &link_info->link_addr);
 
 	req.ssid.length = ssid.length;
 	qdf_mem_copy(&req.ssid.ssid, &ssid.ssid, ssid.length);
