@@ -6930,7 +6930,8 @@ policy_mgr_handle_ml_sta_link_state_allowed(struct wlan_objmgr_psoc *psoc,
 
 	if (ml_sta_is_not_connected) {
 		status = QDF_STATUS_E_FAILURE;
-	} else if (reason != MLO_LINK_FORCE_REASON_LINK_REMOVAL) {
+	} else if (reason != MLO_LINK_FORCE_REASON_LINK_REMOVAL &&
+		   reason != MLO_LINK_FORCE_REASON_LINK_DELETE) {
 		if (ml_sta_is_link_removal)
 			status = QDF_STATUS_E_FAILURE;
 	}
