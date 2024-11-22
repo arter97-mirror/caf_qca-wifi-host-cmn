@@ -2702,6 +2702,14 @@ QDF_STATUS wma_post_vdev_start_setup(uint8_t vdev_id);
 QDF_STATUS wma_pre_vdev_start_setup(uint8_t vdev_id,
 				    struct bss_params *add_bss);
 
+/**
+ * wma_get_assoc_bw() - wma get assoc bw
+ * @vdev_id: vdev id
+ *
+ * Return: assoc bw
+ */
+enum phy_ch_width wma_get_assoc_bw(uint8_t vdev_id);
+
 #ifdef FEATURE_ANI_LEVEL_REQUEST
 /**
  * wma_send_ani_level_request() - Send get ani level cmd to WMI

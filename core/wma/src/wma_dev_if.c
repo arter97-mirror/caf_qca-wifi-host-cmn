@@ -4505,6 +4505,23 @@ QDF_STATUS wma_post_vdev_start_setup(uint8_t vdev_id)
 	return status;
 }
 
+enum phy_ch_width wma_get_assoc_bw(uint8_t vdev_id)
+{
+	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
+	struct wma_txrx_node *iface;
+
+	if (!wma)
+		return CH_WIDTH_MAX;
+
+	iface = &wma->interfaces[vdev_id];
+	if (!iface || !iface->addBssStaContext) {
+		wma_err("invalid iface or sta");
+		return CH_WIDTH_MAX;
+	}
+
+	return iface->addBssStaContext->ch_width;
+}
+
 static QDF_STATUS wma_update_iface_params(tp_wma_handle wma,
 					  struct bss_params *add_bss)
 {
