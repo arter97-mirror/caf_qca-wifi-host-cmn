@@ -1499,6 +1499,148 @@ wlan_ipa_send_skb_to_network(qdf_nbuf_t skb, uint8_t peer_id,
 }
 #endif
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * wlan_ipa_find_assoc_sta() - Find associated station
+ * @ipa_ctx: IPA global context
+ * @mac_addr: mac address
+ * @session_id: session id
+ *
+ * Return: true if found, false otherwise
+ */
+static bool wlan_ipa_find_assoc_sta(struct wlan_ipa_priv *ipa_ctx,
+				    const uint8_t *mac_addr,
+				    uint8_t session_id)
+{
+	struct qdf_mac_addr *sta_mac;
+	bool found = false;
+	uint16_t idx;
+
+	for (idx = 0; idx < WLAN_IPA_MAX_STA_COUNT; idx++) {
+		sta_mac = &ipa_ctx->assoc_stas_map[idx].mac_addr;
+
+		if (ipa_ctx->assoc_stas_map[idx].is_reserved &&
+		    !qdf_mem_cmp(sta_mac->bytes, mac_addr,
+				 QDF_MAC_ADDR_SIZE) &&
+		    ipa_ctx->assoc_stas_map[idx].session_id == session_id) {
+			found = true;
+			break;
+		}
+	}
+
+	return found;
+}
+
+/**
+ * wlan_ipa_ml_sap_update_da_eapol() - Update DA for EAPOL frames
+ * @ipa_ctx: IPA global context
+ * @vdev_id: vdev id
+ * @nbuf: network buffer
+ *
+ * Return: None
+ */
+static void
+wlan_ipa_ml_sap_update_da_eapol(struct wlan_ipa_priv *ipa_ctx,
+				uint8_t vdev_id,
+				qdf_nbuf_t nbuf)
+{
+	struct cdp_peer_output_param peer_info = {0};
+	struct wlan_ipa_iface_context *iface;
+	uint8_t iface_id;
+	uint8_t *src_mac;
+
+	iface_id = ipa_ctx->vdev_to_iface[vdev_id];
+	if (qdf_unlikely(iface_id >= WLAN_IPA_MAX_SESSION))
+		return;
+
+	iface = &ipa_ctx->iface_context[iface_id];
+	if (qdf_unlikely(iface->session_id >= WLAN_IPA_MAX_SESSION))
+		return;
+
+	if (!iface->is_ml_sap)
+		return;
+
+	/* Do nothing if source mac is not known to us and let _check_mld()
+	 * do the actual verdict.
+	 */
+	src_mac = qdf_nbuf_data(nbuf) + QDF_NBUF_SRC_MAC_OFFSET;
+	if (!wlan_ipa_find_assoc_sta(ipa_ctx, src_mac, vdev_id))
+		return;
+
+	cdp_peer_get_info_by_peer_addr(ipa_ctx->dp_soc, src_mac, vdev_id,
+				       &peer_info);
+	if (peer_info.mld_peer)
+		return;
+
+	qdf_mem_copy(qdf_nbuf_data(nbuf), iface->mac_addr, QDF_MAC_ADDR_SIZE);
+	ipa_info_rl("id %u updated DA to " QDF_MAC_ADDR_FMT, vdev_id,
+		    QDF_MAC_ADDR_REF(iface->mac_addr));
+}
+
+/**
+ * wlan_ipa_eapol_intrabss_fwd_check_mld() - Check if eapol pkt intrabss fwd is
+ *  allowed or not
+ * @ipa_ctx: IPA global context
+ * @vdev_id: vdev id
+ * @nbuf: network buffer
+ *
+ * In case of MLO connection with MLO STA, DA of EAPOL M2/M4 can be SAP MLD
+ * mac addr. Same MLD mac addr is saved in iface_ctx->mac_addr[].
+ *
+ * If DA is equal to SAP MLD addr, EAPOL M2/M4 frames are allowed. Otherwise,
+ * they're dropped.
+ *
+ * In case of MLO connection with legacy clients, DA shall be SAP link addr.
+ * This is already covered by comparing against SAP link addr obtained by
+ * cdp_get_vdev_mac_addr().
+ *
+ * Return: true if intrabss fwd is allowed for eapol else false
+ */
+static bool
+wlan_ipa_eapol_intrabss_fwd_check_mld(struct wlan_ipa_priv *ipa_ctx,
+				      uint8_t vdev_id,
+				      qdf_nbuf_t nbuf)
+{
+	struct wlan_ipa_iface_context *iface;
+	uint8_t iface_id;
+	uint8_t *src_mac;
+
+	iface_id = ipa_ctx->vdev_to_iface[vdev_id];
+	if (qdf_unlikely(iface_id >= WLAN_IPA_MAX_SESSION))
+		return false;
+
+	iface = &ipa_ctx->iface_context[iface_id];
+	if (qdf_unlikely(iface->session_id >= WLAN_IPA_MAX_SESSION))
+		return false;
+
+	/* Ensure eapol frames are received on the assoc link */
+	src_mac = qdf_nbuf_data(nbuf) + QDF_NBUF_SRC_MAC_OFFSET;
+	if (!wlan_ipa_find_assoc_sta(ipa_ctx, src_mac, vdev_id))
+		return false;
+
+	if (!qdf_mem_cmp(iface->mac_addr, qdf_nbuf_data(nbuf),
+			 QDF_MAC_ADDR_SIZE))
+		return true;
+
+	return false;
+}
+#else /* !WLAN_FEATURE_MULTI_LINK_SAP */
+static inline void
+wlan_ipa_ml_sap_update_da_eapol(struct wlan_ipa_priv *ipa_ctx,
+				uint8_t vdev_id,
+				qdf_nbuf_t nbuf)
+{
+}
+
+static inline bool
+wlan_ipa_eapol_intrabss_fwd_check_mld(struct wlan_ipa_priv *ipa_ctx,
+				      uint8_t vdev_id,
+				      qdf_nbuf_t nbuf)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
 /**
  * wlan_ipa_eapol_intrabss_fwd_check() - Check if eapol pkt intrabss fwd is
  *  allowed or not
@@ -1514,16 +1656,15 @@ wlan_ipa_eapol_intrabss_fwd_check(struct wlan_ipa_priv *ipa_ctx,
 {
 	uint8_t *vdev_mac_addr;
 
+	wlan_ipa_ml_sap_update_da_eapol(ipa_ctx, vdev_id, nbuf);
+
 	vdev_mac_addr = cdp_get_vdev_mac_addr(ipa_ctx->dp_soc, vdev_id);
+	if (vdev_mac_addr &&
+	    !qdf_mem_cmp(qdf_nbuf_data(nbuf) + QDF_NBUF_DEST_MAC_OFFSET,
+			 vdev_mac_addr, QDF_MAC_ADDR_SIZE))
+		return true;
 
-	if (!vdev_mac_addr)
-		return false;
-
-	if (qdf_mem_cmp(qdf_nbuf_data(nbuf) + QDF_NBUF_DEST_MAC_OFFSET,
-			vdev_mac_addr, QDF_MAC_ADDR_SIZE))
-		return false;
-
-	return true;
+	return wlan_ipa_eapol_intrabss_fwd_check_mld(ipa_ctx, vdev_id, nbuf);
 }
 
 #ifdef MDM_PLATFORM
@@ -1804,8 +1945,10 @@ static void __wlan_ipa_w2i_cb(void *priv, qdf_ipa_dp_evt_type_t evt,
 						    iface_context,
 						    &peer_mac_addr.bytes[0]) &&
 		    !is_eapol_wapi) {
-			ipa_err_rl("Non EAPOL/WAPI packet received when peer " QDF_MAC_ADDR_FMT " is unauthorized",
-				   QDF_MAC_ADDR_REF(peer_mac_addr.bytes));
+			ipa_err_rl("Non EAPOL/WAPI packet received when peer "
+				   QDF_MAC_ADDR_FMT " is unauthorized on id %u",
+				   QDF_MAC_ADDR_REF(peer_mac_addr.bytes),
+				   iface_context->session_id);
 			ipa_ctx->ipa_rx_internal_drop_count++;
 			wlan_ipa_skb_free(skb);
 			return;
@@ -2691,8 +2834,8 @@ static QDF_STATUS wlan_ipa_setup_iface(struct wlan_ipa_priv *ipa_ctx,
 	if (device_mode == QDF_SAP_MODE)
 		ipa_ctx->num_sap_connected++;
 
-	ipa_log_debug("exit: num_iface=%d", ipa_ctx->num_iface);
-
+	ipa_log_debug("exit: num_iface=%d num_sap_connected=%d",
+		      ipa_ctx->num_iface, ipa_ctx->num_sap_connected);
 	return status;
 
 end:
