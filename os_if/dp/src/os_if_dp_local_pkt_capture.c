@@ -57,6 +57,8 @@
 #define MGMT_FRAME_TYPE    0
 #define DATA_FRAME_TYPE    1
 #define CTRL_FRAME_TYPE    2
+#define BIT_FRAME_TYPE_ALL \
+	(BIT(MGMT_FRAME_TYPE) | BIT(DATA_FRAME_TYPE) | BIT(CTRL_FRAME_TYPE))
 
 const struct nla_policy
 set_monitor_mode_policy[SET_MONITOR_MODE_CONFIG_MAX + 1] = {
@@ -174,6 +176,7 @@ QDF_STATUS os_if_dp_local_pkt_capture_start(struct wlan_objmgr_vdev *vdev,
 	struct cdp_monitor_filter filter = {0};
 	uint32_t pkt_type = 0, val;
 	void *soc;
+	bool is_coc_mode = false;
 
 	status = os_if_start_capture_allowed(vdev);
 	if (QDF_IS_STATUS_ERROR(status))
@@ -261,17 +264,44 @@ QDF_STATUS os_if_dp_local_pkt_capture_start(struct wlan_objmgr_vdev *vdev,
 		pkt_type |= BIT(CTRL_FRAME_TYPE);
 	}
 
+	/*
+	 * Add is_coc_mode parsing logic once vendor cmd
+	 * attribution change is ready.
+	 */
+
 	if (pkt_type == 0) {
 		osif_err("Invalid config, pkt_type: %d", pkt_type);
 		status = QDF_STATUS_E_INVAL;
 		goto error;
 	}
-	osif_debug("start capture config pkt_type:0x%x", pkt_type);
 
-	filter.mode = MON_FILTER_PASS;
-	filter.fp_mgmt = pkt_type & BIT(MGMT_FRAME_TYPE) ? FILTER_MGMT_ALL : 0;
-	filter.fp_data = pkt_type & BIT(DATA_FRAME_TYPE) ? FILTER_DATA_ALL : 0;
-	filter.fp_ctrl = pkt_type & BIT(CTRL_FRAME_TYPE) ? FILTER_CTRL_ALL : 0;
+	if (is_coc_mode) {
+		if (pkt_type == BIT_FRAME_TYPE_ALL) {
+			filter.fp_mgmt = FILTER_MGMT_ALL;
+			filter.fp_data = FILTER_DATA_ALL;
+			filter.fp_ctrl = FILTER_CTRL_ALL;
+			filter.mo_mgmt = FILTER_MGMT_ALL;
+			filter.mo_data = FILTER_DATA_ALL;
+			filter.mo_ctrl = FILTER_CTRL_ALL;
+		} else {
+			osif_err("Invalid config for coc mode, pkt_type: %d",
+				 pkt_type);
+			status = QDF_STATUS_E_INVAL;
+			goto error;
+		}
+	} else {
+		filter.fp_mgmt = pkt_type & BIT(MGMT_FRAME_TYPE) ?
+					FILTER_MGMT_ALL : 0;
+		filter.fp_data = pkt_type & BIT(DATA_FRAME_TYPE) ?
+					FILTER_DATA_ALL : 0;
+		filter.fp_ctrl = pkt_type & BIT(CTRL_FRAME_TYPE) ?
+					FILTER_CTRL_ALL : 0;
+	}
+
+	osif_debug("start capture mode %s, config pkt_type:0x%x",
+		   (is_coc_mode ? "coc" : "lpc"), pkt_type);
+
+	filter.mode = is_coc_mode ? MON_FILTER_ALL : MON_FILTER_PASS;
 
 	status = cdp_start_local_pkt_capture(soc, OL_TXRX_PDEV_ID, &filter);
 
