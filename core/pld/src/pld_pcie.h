@@ -665,7 +665,8 @@ pld_pcie_qmi_send(struct device *dev, int type, void *cmd,
 }
 
 #if defined(WLAN_CHIPSET_STATS) && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+	((LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)) || \
+	 defined(CNSS_QMI_ASYNC_EVENT_SUPPORT))
 static inline int
 pld_pcie_register_qmi_ind(struct device *dev, void *cb_ctx,
 			  int (*cb)(void *ctx, uint16_t type,
