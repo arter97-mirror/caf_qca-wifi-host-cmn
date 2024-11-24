@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -945,6 +945,52 @@ void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      uint16_t vdev_pause_dur);
 
 /**
+ * mlo_get_cache_link_assoc_rsp() - get link assoc rsp from cache
+ * @vdev: vdev object
+ * @link_id: link id
+ * @link_assoc_rsp: link specific assoc resp
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_get_cache_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
+			     uint8_t link_id,
+			     struct element_info *link_assoc_rsp);
+
+/**
+ * mlo_free_cache_link_assoc_rsp() - free link assoc rsp from cache
+ * @vdev: vdev object
+ * @link_id: link id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_free_cache_link_assoc_rsp(
+				struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id);
+
+/**
+ * mlo_update_cache_link_assoc_rsp() - update link assoc rsp from cache
+ * @vdev: vdev object
+ * @link_id: link id
+ * @assoc_rsp: link assoc response
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_update_cache_link_assoc_rsp(
+				struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id,
+				struct element_info *assoc_rsp);
+
+/**
+ * mlo_reset_cache_link_assoc_rsp() - reset link assoc rsp cache
+ * @mlo_dev_ctx: mld dev context
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_reset_cache_link_assoc_rsp(struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/**
  * mlo_allocate_and_copy_ies() - allocate and copy ies
  * @target: target connect req pointer
  * @source: source connect req pointer
@@ -1168,6 +1214,36 @@ mlo_sta_stop_reconfig_timer_by_vdev(struct wlan_objmgr_vdev *vdev)
 
 static inline void mlo_sta_stop_reconfig_timer(struct wlan_objmgr_vdev *vdev)
 {
+}
+
+static inline QDF_STATUS
+mlo_get_cache_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
+			     uint8_t link_id,
+			     struct element_info *link_assoc_rsp)
+{
+	return QDF_STATUS_E_INVAL;
+}
+
+static inline QDF_STATUS
+mlo_free_cache_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
+			      uint8_t link_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+mlo_update_cache_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id,
+				struct element_info *assoc_rsp)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+mlo_reset_cache_link_assoc_rsp(struct wlan_mlo_dev_context *mlo_dev_ctx)
+
+{
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline

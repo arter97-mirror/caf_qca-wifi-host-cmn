@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1291,7 +1291,7 @@ static QDF_STATUS mlo_dev_ctx_init(struct wlan_objmgr_vdev *vdev)
 	if (qdf_list_size(&g_mlo_ctx->ml_dev_list) < WLAN_UMAC_MLO_MAX_DEV)
 		qdf_list_insert_back(&g_mlo_ctx->ml_dev_list, &ml_dev->node);
 	ml_link_lock_release(g_mlo_ctx);
-
+	mlo_reset_cache_link_assoc_rsp(ml_dev);
 	mlo_t2lm_ctx_init(ml_dev, vdev);
 	mlo_epcs_ctx_init(ml_dev);
 	mlo_ptqm_migration_init(ml_dev);
@@ -1438,7 +1438,7 @@ static QDF_STATUS mlo_dev_ctx_deinit(struct wlan_objmgr_vdev *vdev)
 				qdf_mem_free(ml_dev->sta_ctx->assoc_rsp.ptr);
 
 			ml_free_copied_reassoc_rsp(ml_dev->sta_ctx);
-
+			mlo_reset_cache_link_assoc_rsp(ml_dev);
 			copied_conn_req_lock_destroy(ml_dev->sta_ctx);
 			wlan_minidump_remove(ml_dev->sta_ctx,
 					     sizeof(*ml_dev->sta_ctx), psoc,

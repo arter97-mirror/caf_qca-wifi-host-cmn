@@ -194,6 +194,8 @@ void mlo_mgr_clear_ap_link_info(struct wlan_objmgr_vdev *vdev,
 		  link_info->link_id, link_info->vdev_id,
 		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
 
+	mlo_free_cache_link_assoc_rsp(vdev, link_info->link_id);
+
 	qdf_zero_macaddr(&link_info->ap_link_addr);
 	qdf_mem_zero(link_info->link_chan_info,
 		     sizeof(*link_info->link_chan_info));
@@ -291,6 +293,8 @@ void mlo_mgr_reset_ap_link_info(struct wlan_objmgr_vdev *vdev)
 		link_info->link_status_flags = 0;
 		link_info++;
 	}
+
+	mlo_reset_cache_link_assoc_rsp(vdev->mlo_dev_ctx);
 }
 
 struct mlo_link_info

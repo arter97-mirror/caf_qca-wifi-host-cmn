@@ -1016,6 +1016,18 @@ struct wlan_mlo_sta_assoc_pending_list {
 };
 
 /**
+ * struct link_assoc_rsp_info - generated link specific assoc response data
+ * @ap_mld_addr: ap mld address
+ * @link_id: link id
+ * @assoc_rsp: generated link specific assoc response
+ */
+struct link_assoc_rsp_info {
+	struct qdf_mac_addr ap_mld_addr;
+	uint8_t link_id;
+	struct element_info assoc_rsp;
+};
+
+/**
  * struct wlan_mlo_sta - MLO sta additional info
  * @wlan_connect_req_links: list of vdevs selected for connection with the MLAP
  * @wlan_connected_links: list of vdevs associated with this MLO connection
@@ -1024,6 +1036,7 @@ struct wlan_mlo_sta_assoc_pending_list {
  * @copied_conn_req: original connect req
  * @copied_conn_req_lock: lock for the original connect request
  * @assoc_rsp: Raw assoc response frame
+ * @link_assoc_rsp_cache: generated partner link assoc resp frames
  * @mlo_quiet_status:
  * @mlo_csa_param: CSA request parameters for mlo sta
  * @disconn_req: disconnect req params
@@ -1052,6 +1065,7 @@ struct wlan_mlo_sta {
 	qdf_mutex_t copied_conn_req_lock;
 #endif
 	struct element_info assoc_rsp;
+	struct link_assoc_rsp_info link_assoc_rsp_cache[WLAN_MAX_ML_BSS_LINKS];
 	struct mlo_sta_quiet_status mlo_quiet_status[WLAN_UMAC_MLO_MAX_VDEVS];
 	struct mlo_sta_csa_params mlo_csa_param[WLAN_UMAC_MLO_MAX_VDEVS];
 	struct wlan_cm_disconnect_req *disconn_req;
