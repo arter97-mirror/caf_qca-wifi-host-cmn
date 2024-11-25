@@ -2066,7 +2066,7 @@ static void ll_lt_sap_deliver_non_wlan_audio_transport_switch_resp(
 	 */
 	ll_sap_debug("Bearer switch for non-wlan module's request");
 
-	bs_sm_state_update(bs_ctx, BEARER_NON_WLAN);
+	bs_sm_transition_to(bs_ctx, BEARER_NON_WLAN);
 }
 
 void
