@@ -1201,6 +1201,13 @@ static bool policy_mgr_channel_mcc_with_non_sap(struct wlan_objmgr_psoc *psoc,
 						psoc, &freq_list[sta_cnt],
 						vdev_id_list,
 						PM_STA_MODE);
+
+	/* For non-DBS, keep the inactive and standby SCC freq in the PCL */
+	if (sta_cnt && !policy_mgr_is_hw_dbs_capable(psoc) &&
+	    policy_mgr_is_mlo_sta_present(psoc) &&
+	    policy_mgr_if_freq_n_inactive_links_freq_same(psoc, chan_freq))
+		return false;
+
 	/* In case of ML STA + NAN concurrency consider NAN social,
 	 * As SCC channel. SAP will move to NAN social channel.
 	 * In case of legacy STA, SAP will move to legacy STA channel.
