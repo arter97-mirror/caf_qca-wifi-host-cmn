@@ -968,14 +968,22 @@ dp_mon_set_local_pkt_capture_rx_filter(struct dp_pdev *pdev,
 	dp_mon_filter_set_status_cmn(mon_pdev, &dst_filter);
 
 	dst_filter.tlv_filter.packet_header = 1;
-	dst_filter.tlv_filter.header_per_msdu = 1;
+	dst_filter.tlv_filter.header_per_msdu =
+			src_filter->mode & MON_FILTER_OTHER ? 0 : 1;
 	dst_filter.tlv_filter.rx_hdr_length = RX_HDR_DMA_LENGTH_256B;
-	dst_filter.tlv_filter.fp_mgmt_filter = src_filter->fp_mgmt;
-	dst_filter.tlv_filter.fp_ctrl_filter = src_filter->fp_ctrl;
-	dst_filter.tlv_filter.fp_data_filter = src_filter->fp_data;
-	dst_filter.tlv_filter.enable_fp = src_filter->mode;
+	if (src_filter->mode & MON_FILTER_PASS) {
+		dst_filter.tlv_filter.fp_mgmt_filter = src_filter->fp_mgmt;
+		dst_filter.tlv_filter.fp_ctrl_filter = src_filter->fp_ctrl;
+		dst_filter.tlv_filter.fp_data_filter = src_filter->fp_data;
+		dst_filter.tlv_filter.enable_fp = 1;
+	}
+	if (src_filter->mode & MON_FILTER_OTHER) {
+		dst_filter.tlv_filter.mo_mgmt_filter = src_filter->mo_mgmt;
+		dst_filter.tlv_filter.mo_ctrl_filter = src_filter->mo_ctrl;
+		dst_filter.tlv_filter.mo_data_filter = src_filter->mo_data;
+		dst_filter.tlv_filter.enable_mo = 1;
+	}
 	dst_filter.tlv_filter.enable_md = 0;
-	dst_filter.tlv_filter.enable_mo = 0;
 
 	dp_mon_filter_show_filter(mon_pdev, mode, &dst_filter);
 
