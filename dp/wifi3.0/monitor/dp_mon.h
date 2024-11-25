@@ -704,6 +704,9 @@ struct dp_mon_ops {
 				   struct dp_intr *int_ctx,
 				   uint32_t mac_id,
 				   uint32_t quota);
+	hal_ring_handle_t (*tx_mon_get_hal_ring)(struct dp_soc *soc,
+						 uint32_t mac_id,
+						 enum hal_ring_type ring_type);
 	void (*print_txmon_ring_stat)(struct dp_pdev *pdev);
 #endif
 	void (*mon_peer_tx_init)(struct dp_pdev *pdev, struct dp_peer *peer);
@@ -2809,6 +2812,27 @@ uint32_t dp_tx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 }
 
 static inline
+hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
+					 enum hal_ring_type ring_type)
+{
+	struct dp_mon_soc *mon_soc = soc->monitor_soc;
+	struct dp_mon_ops *monitor_ops;
+
+	if (!mon_soc) {
+		dp_mon_debug("monitor soc is NULL");
+		return NULL;
+	}
+
+	monitor_ops = mon_soc->mon_ops;
+	if (!monitor_ops || !monitor_ops->tx_mon_get_hal_ring) {
+		dp_mon_debug("callback not registered");
+		return NULL;
+	}
+
+	return monitor_ops->tx_mon_get_hal_ring(soc, mac_id, ring_type);
+}
+
+static inline
 uint32_t dp_tx_mon_buf_refill(struct dp_intr *int_ctx)
 {
 	struct dp_soc *soc = int_ctx->soc;
@@ -2884,6 +2908,13 @@ dp_tx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 		  uint32_t mac_id, uint32_t quota)
 {
 	return 0;
+}
+
+static inline
+hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
+					 enum hal_ring_type ring_type)
+{
+	return NULL;
 }
 
 static inline

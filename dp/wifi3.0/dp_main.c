@@ -348,7 +348,8 @@ const int dp_stats_mapping_table[][STATS_TYPE_MAX] = {
 	{HTT_DBG_EXT_STATS_PDEV_RX_RATE_EXT, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_TX_SOUNDING_INFO, TXRX_HOST_STATS_INVALID},
 	{TXRX_FW_STATS_INVALID, TXRX_PEER_STATS},
-	{HTT_DBG_EXT_PHY_COUNTERS_AND_PHY_STATS, TXRX_HOST_STATS_INVALID}
+	{HTT_DBG_EXT_PHY_COUNTERS_AND_PHY_STATS, TXRX_HOST_STATS_INVALID},
+	{TXRX_FW_STATS_INVALID, TXRX_LPC_COC_STATS},
 };
 #else
 const int dp_stats_mapping_table[][STATS_TYPE_MAX] = {
@@ -8636,11 +8637,16 @@ dp_print_host_stats(struct dp_vdev *vdev,
 		break;
 	case TXRX_SRNG_USAGE_WM_STATS:
 		/* Dump usage watermark stats for all SRNGs */
-		dp_dump_srng_high_wm_stats(soc, DP_SRNG_WM_MASK_ALL);
+		dp_dump_srng_high_wm_stats(
+			soc,
+			DP_SRNG_WM_MASK_REO_DST | DP_SRNG_WM_MASK_TX_COMP);
 		break;
 	case TXRX_PEER_STATS:
 		dp_print_per_link_stats((struct cdp_soc_t *)pdev->soc,
 					vdev->vdev_id);
+		break;
+	case TXRX_LPC_COC_STATS:
+		dp_dump_srng_high_wm_stats(soc, DP_SRNG_WM_MASK_LPC_COC);
 		break;
 	default:
 		dp_info("Wrong Input For TxRx Host Stats");

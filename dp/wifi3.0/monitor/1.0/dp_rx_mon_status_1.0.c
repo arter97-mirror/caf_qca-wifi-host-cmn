@@ -687,6 +687,7 @@ dp_rx_mon_status_srng_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 	if (qdf_unlikely(dp_srng_access_start(int_ctx, soc, mon_status_srng)))
 		goto done;
 
+	hal_srng_update_ring_usage_wm_no_lock(soc->hal_soc, mon_status_srng);
 	/* mon_status_ring_desc => WBM_BUFFER_RING STRUCT =>
 	 * BUFFER_ADDR_INFO STRUCT
 	 */

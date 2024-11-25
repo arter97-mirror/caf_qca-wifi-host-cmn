@@ -931,6 +931,7 @@ dp_mon_buffers_replenish(struct dp_soc *dp_soc,
 
 	hal_srng_access_start(dp_soc->hal_soc, mon_srng);
 
+	hal_srng_update_ring_usage_wm_no_lock(dp_soc->hal_soc, mon_srng);
 	num_entries_avail = hal_srng_src_num_avail(dp_soc->hal_soc,
 						   mon_srng, sync_hw_ptr);
 
@@ -1616,6 +1617,7 @@ void dp_mon_ops_register_tx_2_0(struct dp_mon_soc *mon_soc)
 #ifndef DISABLE_MON_CONFIG
 	mon_ops->mon_tx_process = dp_tx_mon_process_2_0;
 	mon_ops->print_txmon_ring_stat = dp_tx_mon_print_ring_stat_2_0;
+	mon_ops->tx_mon_get_hal_ring = dp_tx_mon_get_hal_ring_2_0;
 #endif
 }
 #endif

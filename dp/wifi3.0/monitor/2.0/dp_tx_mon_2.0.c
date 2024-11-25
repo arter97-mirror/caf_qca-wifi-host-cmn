@@ -154,6 +154,7 @@ dp_tx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 		return work_done;
 	}
 
+	hal_srng_update_ring_usage_wm_no_lock(soc->hal_soc, mon_dst_srng);
 	while (qdf_likely((tx_mon_dst_ring_desc =
 		(void *)hal_srng_dst_peek(hal_soc, mon_dst_srng))
 				&& quota--)) {
@@ -335,6 +336,25 @@ dp_tx_mon_print_ring_stat_2_0(struct dp_pdev *pdev)
 				    TX_MONITOR_BUF);
 	dp_print_ring_stat_from_hal(soc, &mon_soc_be->tx_mon_dst_ring[lmac_id],
 				    TX_MONITOR_DST);
+}
+
+hal_ring_handle_t
+dp_tx_mon_get_hal_ring_2_0(struct dp_soc *soc, uint32_t mac_id,
+			   enum hal_ring_type ring_type)
+{
+	void *mon_srng_hdr = NULL;
+	struct dp_mon_soc *mon_soc = soc->monitor_soc;
+	struct dp_mon_soc_be *mon_soc_be =
+			dp_get_be_mon_soc_from_dp_mon_soc(mon_soc);
+
+	if (ring_type == TX_MONITOR_DST)
+		mon_srng_hdr = mon_soc_be->tx_mon_dst_ring[mac_id].hal_srng;
+	else if (ring_type == TX_MONITOR_BUF)
+		mon_srng_hdr = mon_soc_be->tx_mon_buf_ring.hal_srng;
+	else
+		dp_mon_debug("unknown TX MON type %d", ring_type);
+
+	return mon_srng_hdr;
 }
 
 void

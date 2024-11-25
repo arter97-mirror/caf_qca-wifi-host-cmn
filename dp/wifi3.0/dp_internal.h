@@ -1128,6 +1128,13 @@ dp_tx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 	return 0;
 }
 
+static inline
+hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
+					 enum hal_ring_type ring_type)
+{
+	return NULL;
+}
+
 static inline uint32_t
 dp_print_txmon_ring_stat_from_hal(struct dp_pdev *pdev)
 {
@@ -4005,6 +4012,16 @@ void dp_print_tx_ppeds_stats(struct dp_soc *soc);
 #define DP_SRNG_WM_MASK_REO_DST  BIT(REO_DST)
 /* TX completion ring's watermark mask */
 #define DP_SRNG_WM_MASK_TX_COMP  BIT(WBM2SW_RELEASE)
+/* RX monitor status ring's watermark mask */
+#define DP_SRNG_WM_MASK_MON_STATUS BIT(RXDMA_MONITOR_STATUS)
+/* TX monitor dest ring's watermark mask */
+#define DP_SRNG_WM_MASK_TX_MON_DST BIT(TX_MONITOR_DST)
+/* TX monitor buffer ring's watermark mask */
+#define DP_SRNG_WM_MASK_TX_MON_BUF BIT(TX_MONITOR_BUF)
+/* All TX/RX MON ring's watermark mask */
+#define DP_SRNG_WM_MASK_LPC_COC \
+	(BIT(RXDMA_MONITOR_STATUS) | BIT(TX_MONITOR_DST) \
+	 | BIT(TX_MONITOR_BUF))
 /* All srng's watermark mask */
 #define DP_SRNG_WM_MASK_ALL  0xFFFFFFFF
 

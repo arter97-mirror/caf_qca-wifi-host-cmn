@@ -9250,6 +9250,70 @@ void dp_print_global_desc_count(void)
 
 #ifdef WLAN_DP_SRNG_USAGE_WM_TRACKING
 #define DP_SRNG_HIGH_WM_STATS_STRING_LEN 512
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
+static void
+dp_dump_lpc_coc_srng_high_wm_stats(struct dp_soc *soc,
+				   uint64_t srng_mask,
+				   char *buf,
+				   int buf_len)
+{
+	int ring, pos;
+	hal_ring_handle_t hal_ring_hdl;
+
+	if (srng_mask & DP_SRNG_WM_MASK_MON_STATUS) {
+		dp_info("RX MON status ring");
+		for (ring = 0; ring < MAX_NUM_LMAC_HW; ring++) {
+			pos = 0;
+			hal_ring_hdl =
+				soc->rxdma_mon_status_ring[ring].hal_srng;
+			if (!hal_ring_hdl)
+				continue;
+
+			pos += hal_dump_srng_high_wm_stats(soc->hal_soc,
+				soc->rxdma_mon_status_ring[ring].hal_srng,
+				buf, buf_len, pos);
+				dp_info("%s", buf);
+		}
+	}
+
+	if (srng_mask & DP_SRNG_WM_MASK_TX_MON_DST) {
+		dp_info("TX MON Dest ring");
+		for (ring = 0; ring < MAX_NUM_LMAC_HW; ring++) {
+			pos = 0;
+			hal_ring_hdl = dp_tx_mon_get_hal_ring(
+						soc, ring, TX_MONITOR_DST);
+			if (!hal_ring_hdl)
+				continue;
+
+			hal_dump_srng_high_wm_stats(soc->hal_soc,
+						    hal_ring_hdl,
+						    buf, buf_len, pos);
+			dp_info("%s", buf);
+		}
+	}
+
+	if (srng_mask & DP_SRNG_WM_MASK_TX_MON_BUF) {
+		dp_info("TX MON source buffer ring");
+		pos = 0;
+		hal_ring_hdl = dp_tx_mon_get_hal_ring(
+					soc, 0, TX_MONITOR_BUF);
+		if (hal_ring_hdl) {
+			hal_dump_srng_high_wm_stats(soc->hal_soc,
+						    hal_ring_hdl,
+						    buf, buf_len, pos);
+			dp_info("%s", buf);
+		}
+	}
+}
+#else
+static void
+dp_dump_lpc_coc_srng_high_wm_stats(struct dp_soc *soc,
+				   uint64_t srng_mask,
+				   char *buf,
+				   int buf_len)
+{}
+#endif
+
 void dp_dump_srng_high_wm_stats(struct dp_soc *soc, uint64_t srng_mask)
 {
 	char *buf;
@@ -9290,6 +9354,8 @@ void dp_dump_srng_high_wm_stats(struct dp_soc *soc, uint64_t srng_mask)
 			dp_info("%s", srng_high_wm_str);
 		}
 	}
+
+	dp_dump_lpc_coc_srng_high_wm_stats(soc, srng_mask, buf, buf_len);
 }
 #endif
 
