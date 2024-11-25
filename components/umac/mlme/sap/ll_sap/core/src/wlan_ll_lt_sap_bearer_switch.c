@@ -19,6 +19,7 @@
 #include "wlan_sm_engine.h"
 #include "wlan_policy_mgr_api.h"
 #include "wlan_policy_mgr_ll_sap.h"
+#include "wlan_dcs_ucfg_api.h"
 
 #define BEARER_SWITCH_TIMEOUT 5000
 #define BEARER_SWITCH_WLAN_REQ_TIMEOUT 5000
@@ -1908,8 +1909,11 @@ ll_lt_sap_request_for_audio_transport_switch(
 					struct wlan_objmgr_vdev *vdev,
 					enum bearer_switch_req_type req_type)
 {
+	struct wlan_objmgr_pdev *pdev;
+	struct wlan_objmgr_psoc *psoc;
 	struct ll_sap_vdev_priv_obj *ll_sap_obj;
 	struct bearer_switch_info *bearer_switch_ctx;
+	uint8_t pdev_id;
 
 	ll_sap_obj = ll_sap_get_vdev_priv_obj(vdev);
 
@@ -1922,6 +1926,18 @@ ll_lt_sap_request_for_audio_transport_switch(
 	if (!bearer_switch_ctx)
 		return QDF_STATUS_E_INVAL;
 
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		ll_sap_debug("pdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		ll_sap_debug("psoc is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	/*
 	 * Request to switch to non-wlan can always be accepted so,
 	 * always return success
@@ -1931,23 +1947,30 @@ ll_lt_sap_request_for_audio_transport_switch(
 			     wlan_vdev_get_id(vdev));
 		return QDF_STATUS_SUCCESS;
 	} else if (req_type == WLAN_BS_REQ_TO_WLAN) {
+		pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 		/*
 		 * Total_ref_count zero indicates that no module wants to stay
-		 * in non-wlan mode so this request can be accepted
+		 * in non-wlan mode so this request can be accepted.
+		 * Also check if current freq cu is less than threshold
 		 */
 		if (!qdf_atomic_read(&bearer_switch_ctx->total_ref_count) &&
 		    (QDF_TIMER_STATE_RUNNING !=
 			qdf_mc_timer_get_current_state(
-				&bearer_switch_ctx->bs_wlan_request_timer))) {
-			ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN accepted",
-				     wlan_vdev_get_id(vdev));
+				&bearer_switch_ctx->bs_wlan_request_timer)) &&
+				(!ll_sap_obj->cur_freq_unused_cu &&
+				 ll_sap_obj->cur_freq_unused_cu <
+				 wlan_dcs_get_coch_intfr_threshold(psoc,
+								   pdev_id))) {
+			ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN accepted, cur_freq_unused_cu %u",
+				     wlan_vdev_get_id(vdev), ll_sap_obj->cur_freq_unused_cu);
 			return QDF_STATUS_SUCCESS;
 		}
-		ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN rejected, total ref count %d timer state %d",
+		ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN rejected, total ref count %d timer state %d cur_freq_unused_cu %u",
 			     wlan_vdev_get_id(vdev),
 			     qdf_atomic_read(&bearer_switch_ctx->total_ref_count),
 			     qdf_mc_timer_get_current_state(
-				&bearer_switch_ctx->bs_wlan_request_timer));
+				&bearer_switch_ctx->bs_wlan_request_timer),
+			     ll_sap_obj->cur_freq_unused_cu);
 
 		return QDF_STATUS_E_FAILURE;
 	}

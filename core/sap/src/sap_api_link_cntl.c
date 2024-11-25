@@ -437,7 +437,7 @@ QDF_STATUS wlansap_pre_start_bss_acs_scan_callback(mac_handle_t mac_handle,
 			scan_status);
 		oper_channel =
 			sap_select_default_oper_chan(mac_ctx, sap_ctx);
-		wlansap_set_acs_ch_freq(sap_ctx, oper_channel);
+		wlansap_set_acs_ch_freq(mac_ctx, sap_ctx, oper_channel);
 		sap_ctx->acs_cfg->pri_ch_freq = oper_channel;
 		sap_config_acs_result(mac_handle, sap_ctx,
 				      sap_ctx->acs_cfg->ht_sec_ch_freq);
@@ -464,7 +464,7 @@ QDF_STATUS wlansap_pre_start_bss_acs_scan_callback(mac_handle_t mac_handle,
 		oper_channel = sap_select_default_oper_chan(mac_ctx, sap_ctx);
 	}
 
-	wlansap_set_acs_ch_freq(sap_ctx, oper_channel);
+	wlansap_set_acs_ch_freq(mac_ctx, sap_ctx, oper_channel);
 	sap_ctx->acs_cfg->pri_ch_freq = oper_channel;
 	sap_config_acs_result(mac_handle, sap_ctx,
 			      sap_ctx->acs_cfg->ht_sec_ch_freq);
@@ -1820,7 +1820,7 @@ void wlansap_process_chan_info_event(struct sap_context *sap_ctx,
 	wlan_abort_scan(mac->pdev, WLAN_INVALID_PDEV_ID,
 			sap_ctx->sessionId, INVALID_SCAN_ID, false);
 
-	wlansap_set_acs_ch_freq(sap_ctx, roam_info->chan_info_freq);
+	wlansap_set_acs_ch_freq(mac, sap_ctx, roam_info->chan_info_freq);
 	sap_ctx->acs_cfg->pri_ch_freq = roam_info->chan_info_freq;
 	sap_config_acs_result(MAC_HANDLE(mac), sap_ctx,
 			      sap_ctx->acs_cfg->ht_sec_ch_freq);

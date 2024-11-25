@@ -584,11 +584,25 @@ QDF_STATUS hdd_dcs_hostapd_set_chan(struct hdd_context *hdd_ctx,
 
 	/* For LL SAP switch only for LL SAP, not for all vdev on same MAC */
 	if (policy_mgr_is_vdev_ll_lt_sap(hdd_ctx->psoc, vdev_id)) {
+		uint32_t cu, coch_intfr_threshold;
+		uint8_t pdev_id;
+
 		hdd_switch_bearer_to_wlan_on_ll_lt_sap_acs_complete(
 								hdd_ctx->psoc,
 								vdev_id);
 		count = 1;
 		list[0] = vdev_id;
+
+		cu = wlan_ll_sap_get_cu_for_freq(hdd_ctx->pdev, dcs_ch_freq);
+		pdev_id = wlan_objmgr_pdev_get_pdev_id(hdd_ctx->pdev);
+		coch_intfr_threshold =
+			wlan_dcs_get_coch_intfr_threshold(hdd_ctx->psoc,
+							  pdev_id);
+		if (cu && cu >= coch_intfr_threshold) {
+			hdd_info("Congested channel cu %d > coch_intfr_threshold %d, no need to do CSA",
+				cu, coch_intfr_threshold);
+			return QDF_STATUS_E_INVAL;
+		}
 	} else {
 		status = policy_mgr_get_mac_id_by_session_id(hdd_ctx->psoc,
 							     vdev_id,
