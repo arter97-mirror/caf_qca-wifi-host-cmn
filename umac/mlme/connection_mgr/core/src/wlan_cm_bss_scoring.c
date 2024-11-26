@@ -2388,7 +2388,7 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 	uint32_t freq[MLD_MAX_LINKS - 1];
 	uint32_t etp_score[MLD_MAX_LINKS - 1] = {0};
 	uint32_t total_score[MLD_MAX_LINKS - 1] = {0};
-	uint8_t i, j;
+	int8_t i, j;
 	uint32_t best_total_score = 0;
 	uint8_t best_partner_index = 0;
 	uint32_t freq_entry;
@@ -2397,6 +2397,8 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 	struct partner_link_info tmp_link_info;
 	uint32_t tmp_total_score = 0;
 	uint8_t mlo_support_link_num, num_partner_links;
+	bool atleast_one_link_scored = false;
+	bool intf_array[MLD_MAX_LINKS - 1] = {0};
 
 	wlan_psoc_mlme_get_11be_capab(psoc, &eht_capab);
 	if (!eht_capab)
@@ -2440,11 +2442,40 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 						      phy_config, bss_mlo_type,
 						      0);
 
+		atleast_one_link_scored = true;
+
 		total_score[i] = etp_score[i];
 		if (total_score[i] > best_total_score) {
 			best_total_score = total_score[i];
 			best_partner_index = i;
 		}
+	}
+
+	if (num_partner_links && !atleast_one_link_scored) {
+		/*
+		 * When none of the partner links are scored, re-oder
+		 * the list with interfering partners at the end.
+		 * This will ensure to attempt connection in MLMR
+		 * instead of MLSR, if DBS/SBS links are available.
+		 */
+		mlme_debug("None of the partners have been scored, re-order the links");
+		for (i = 0; i < num_partner_links; i++) {
+			intf_array[i] =
+				policy_mgr_2_freq_always_on_same_mac(psoc, freq[i],
+								     freq_entry);
+		}
+
+		j = -1;
+		for (i = 0; i < num_partner_links; i++) {
+			if (!intf_array[i]) {
+				j++;
+				tmp_link_info = entry->ml_info.link_info[i];
+				entry->ml_info.link_info[i] =
+						entry->ml_info.link_info[j];
+				entry->ml_info.link_info[j] = tmp_link_info;
+			}
+		}
+		return;
 	}
 
 	/* reorder the link idx per score */
@@ -2729,7 +2760,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 								   score_config,
 								   bssid_hint,
 								   ml_flag))
-			return CM_BEST_CANDIDATE_MAX_BSS_SCORE;
+			score = CM_BEST_CANDIDATE_MAX_BSS_SCORE;
 
 		mlme_nofl_debug("Candidate score("QDF_MAC_ADDR_FMT" freq %d): rssi %d score %d, mlo type %d",
 				QDF_MAC_ADDR_REF(entry->bssid.bytes),
