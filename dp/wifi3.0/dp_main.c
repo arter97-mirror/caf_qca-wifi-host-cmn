@@ -15692,13 +15692,17 @@ uint16_t dp_get_peer_mac_list(ol_txrx_soc_handle soc, uint8_t vdev_id,
 
 uint16_t dp_get_peer_id(ol_txrx_soc_handle soc, uint8_t vdev_id, uint8_t *mac)
 {
-	struct dp_peer *peer = dp_peer_find_hash_find((struct dp_soc *)soc,
-						       mac, 0, vdev_id,
-						       DP_MOD_ID_CDP);
+	struct dp_soc *dp_soc = (struct dp_soc *)soc;
+	struct cdp_peer_info peer_info = {0};
 	uint16_t peer_id = HTT_INVALID_PEER;
+	struct dp_peer *peer;
 
+	DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, mac, false,
+				 CDP_WILD_PEER_TYPE);
+
+	peer = dp_peer_hash_find_wrapper(dp_soc, &peer_info, DP_MOD_ID_CDP);
 	if (!peer) {
-		dp_cdp_debug("%pK: Peer is NULL!", (struct dp_soc *)soc);
+		dp_cdp_debug("%pK: Peer is NULL!", dp_soc);
 		return peer_id;
 	}
 
