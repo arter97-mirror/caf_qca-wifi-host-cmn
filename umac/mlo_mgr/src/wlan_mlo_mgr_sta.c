@@ -315,6 +315,26 @@ void mlo_free_copied_conn_req(struct wlan_mlo_sta *sta_ctx)
 	}
 }
 
+bool mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
+	uint8_t i = 0;
+
+	if (!mlo_dev_ctx || !wlan_vdev_mlme_is_mlo_vdev(vdev))
+		return true;
+
+	for (i =  0; i < WLAN_UMAC_MLO_MAX_VDEVS; i++) {
+		if (!mlo_dev_ctx->wlan_vdev_list[i])
+			continue;
+
+		if (qdf_test_bit(i, mlo_dev_ctx->sta_ctx->wlan_connected_links)) {
+			if (!wlan_cm_is_vdev_connected(mlo_dev_ctx->wlan_vdev_list[i]))
+				return false;
+		}
+	}
+	return true;
+}
+
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 int mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
 				   struct wlan_channel *chan_info)
@@ -361,34 +381,6 @@ static inline
 void mlo_mld_clear_mlo_cap(struct wlan_objmgr_vdev *vdev)
 { }
 #else
-/**
- * mlo_is_mld_connected - Check whether MLD is connected
- *
- * @vdev: pointer to vdev
- *
- * Return: true if mld is connected, false otherwise
- */
-static inline
-bool mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev)
-{
-	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
-	uint8_t i = 0;
-
-	if (!mlo_dev_ctx || !wlan_vdev_mlme_is_mlo_vdev(vdev))
-		return true;
-
-	for (i =  0; i < WLAN_UMAC_MLO_MAX_VDEVS; i++) {
-		if (!mlo_dev_ctx->wlan_vdev_list[i])
-			continue;
-
-		if (qdf_test_bit(i, mlo_dev_ctx->sta_ctx->wlan_connected_links)) {
-			if (!wlan_cm_is_vdev_connected(mlo_dev_ctx->wlan_vdev_list[i]))
-				return false;
-		}
-	}
-	return true;
-}
-
 bool ucfg_mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev)
 {
 	return mlo_is_mld_connected(vdev);

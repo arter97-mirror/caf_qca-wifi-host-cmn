@@ -147,6 +147,15 @@ bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev);
 bool mlo_is_ml_connection_in_progress(struct wlan_objmgr_psoc *psoc,
 				      uint8_t vdev_id);
 
+/**
+ * mlo_is_mld_connected - Check whether MLD is connected
+ *
+ * @vdev: pointer to vdev
+ *
+ * Return: true if mld is connected, false otherwise
+ */
+bool mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev);
+
 #ifndef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * ucfg_mlo_is_mld_connected - Check whether MLD is connected
