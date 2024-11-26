@@ -84,6 +84,8 @@ struct wlan_mlo_link_switch_cnf {
  * @MLO_LINK_SWITCH_REASON_T2LM: Link switch reason is because of T2LM
  * @MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP: follow up link switch after
  * host force active/inactive
+ * @MLO_LINK_SWITCH_REASON_HOST_ADD_LINK: only be used by host to trigger
+ * link switch logic for link addition.
  * @MLO_LINK_SWITCH_REASON_MAX: Link switch reason max
  */
 enum wlan_mlo_link_switch_reason {
@@ -93,6 +95,7 @@ enum wlan_mlo_link_switch_reason {
 	MLO_LINK_SWITCH_REASON_HOST_FORCE  = 4,
 	MLO_LINK_SWITCH_REASON_T2LM        = 5,
 	MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP = 7,
+	MLO_LINK_SWITCH_REASON_HOST_ADD_LINK = 65534,
 	MLO_LINK_SWITCH_REASON_MAX,
 };
 
@@ -748,6 +751,15 @@ mlo_mgr_is_link_switch_supported(struct wlan_objmgr_vdev *vdev)
 }
 
 /**
+ * mlo_mgr_is_link_add_link_switch() - API to get link switch for
+ * link add or not
+ * @vdev: vdev object
+ *
+ * Return: true for link add link switch
+ */
+bool mlo_mgr_is_link_add_link_switch(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_mgr_update_link_state_delete_flag() - API to set or clear
  * link delete flag in link info
  * @mlo_dev_ctx: MLO dev context
@@ -988,6 +1000,12 @@ void mlo_mgr_update_link_status_code(struct wlan_objmgr_vdev *vdev,
 				     uint8_t link_id,
 				     enum wlan_status_code status_code)
 {
+}
+
+static inline bool
+mlo_mgr_is_link_add_link_switch(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
 }
 
 static inline bool

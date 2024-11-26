@@ -1183,6 +1183,9 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 				rsp, vdev))
 			osif_connect_bss(osif_priv->wdev->netdev,
 					 bss, rsp);
+	} else if (wlan_cm_is_link_add_connect_resp(rsp) ||
+		   mlo_mgr_is_link_add_link_switch(vdev)) {
+		osif_update_link_add_partner_links(vdev, rsp);
 	} else if (osif_get_connect_status_code(rsp) == WLAN_STATUS_SUCCESS &&
 		   QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_OWE)) {
 		/*
@@ -1194,8 +1197,6 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 		 */
 		mlo_mgr_osif_update_connect_info(vdev,
 						 wlan_vdev_get_link_id(vdev));
-	} else if (wlan_cm_is_link_add_connect_resp(rsp)) {
-		osif_update_link_add_partner_links(vdev, rsp);
 	}
 }
 #else /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
