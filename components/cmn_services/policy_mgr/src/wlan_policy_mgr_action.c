@@ -569,8 +569,8 @@ QDF_STATUS policy_mgr_update_connection_info(struct wlan_objmgr_psoc *psoc,
 	policy_mgr_dump_current_concurrency(psoc);
 	qdf_mutex_release(&pm_ctx->qdf_conc_list_lock);
 
-	if (mode == QDF_SAP_MODE || mode == QDF_P2P_GO_MODE ||
-	    mode == QDF_STA_MODE || mode == QDF_P2P_CLIENT_MODE)
+	if (mode == PM_SAP_MODE || mode == PM_P2P_GO_MODE ||
+	    mode == PM_STA_MODE || mode == PM_P2P_CLIENT_MODE)
 		policy_mgr_update_dfs_master_dynamic_enabled(psoc,
 							     false,
 							     NULL);

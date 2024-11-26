@@ -10680,7 +10680,7 @@ bool policy_mgr_allow_concurrency(struct wlan_objmgr_psoc *psoc,
 	if (allowed && policy_mgr_get_connection_count(psoc) == 4 &&
 	    (wlan_nan_is_sta_sap_nan_allowed(psoc) ||
 	     wlan_nan_is_sta_p2p_ndp_supported(psoc))) {
-		if (mode == QDF_NDI_MODE) {
+		if (mode == PM_NDI_MODE) {
 			return true;
 		} else if (mode == PM_SAP_MODE || mode == PM_P2P_GO_MODE) {
 			for (i = 0; i < pcl.pcl_len; i++)
