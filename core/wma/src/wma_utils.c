@@ -688,17 +688,55 @@ int wma_smps_mode_to_force_mode_param(uint8_t smps_mode)
 
 #ifdef WLAN_FEATURE_STATS_EXT
 #ifdef FEATURE_STATS_EXT_V2
+#define EXT_STATS_BUF_SIZE 500
+#define EXT_STATS_SINGLE_LINE_SIZE 100
 static void wma_stats_ext_print(wmi_stats_ext_event_vdev_ext_t *vdev_ext_stats)
 {
-	wma_debug("mpdu_enque 0x%x mpdu_requeue 0x%x rssi %d tx_bytes 0x%x rx_bytes 0x%x tx_mcs 0x%x rx_mcs 0x%x freq %d vdev_id %d",
+	uint8_t i;
+	uint8_t *buf;
+	uint16_t len = 0;
+
+	wma_debug("mpdu_enque 0x%x mpdu_requeue 0x%x rssi %d tx_bytes 0x%x rx_bytes 0x%x freq %d vdev_id %d",
 		  vdev_ext_stats->mpdu_enqueue,
 		  vdev_ext_stats->mpdu_requeued,
 		  vdev_ext_stats->beacon_rssi, vdev_ext_stats->tx_bytes,
 		  vdev_ext_stats->rx_bytes,
-		  vdev_ext_stats->tx_mcs[0],
-		  vdev_ext_stats->rx_mcs[0],
 		  vdev_ext_stats->freq,
 		  vdev_ext_stats->vdev_id);
+
+	wma_debug(
+	"BW counts: 20MHz tx %d rx %d, 40MHz tx %d rx %d, 80MHz tx %d rx %d, 160MHz tx %d rx %d, 320MHz tx %d rx %d",
+	vdev_ext_stats->tx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_20MHz],
+	vdev_ext_stats->rx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_20MHz],
+	vdev_ext_stats->tx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_40MHz],
+	vdev_ext_stats->rx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_40MHz],
+	vdev_ext_stats->tx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_80MHz],
+	vdev_ext_stats->rx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_80MHz],
+	vdev_ext_stats->tx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_160MHz],
+	vdev_ext_stats->rx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_160MHz],
+	vdev_ext_stats->tx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz],
+	vdev_ext_stats->rx_bw[WMI_STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz]);
+
+	buf = qdf_mem_malloc(EXT_STATS_BUF_SIZE);
+	if (!buf)
+		return;
+
+	for (i = 0; i < MAX_MCS; i++) {
+		len += qdf_scnprintf(buf + len, EXT_STATS_BUF_SIZE - len,
+				     "MCS%d: tx %d rx %d, ",
+				      i, vdev_ext_stats->tx_mcs[i],
+				      vdev_ext_stats->rx_mcs[i]);
+
+		if (len > EXT_STATS_SINGLE_LINE_SIZE) {
+			wma_debug("%s", buf);
+			len = 0;
+		}
+	}
+
+	if (len)
+		wma_debug("%s", buf);
+
+	qdf_mem_free(buf);
 }
 
 int wma_stats_ext_event_handler(void *handle, uint8_t *event_buf,
