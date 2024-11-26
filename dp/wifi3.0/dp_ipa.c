@@ -4534,30 +4534,61 @@ static qdf_nbuf_t dp_ipa_intrabss_send(struct dp_pdev *pdev,
 				       struct dp_vdev *vdev,
 				       qdf_nbuf_t nbuf)
 {
+	struct cdp_tid_rx_stats *tid_rx_stats;
+	struct dp_be_intrabss_params params;
+	struct dp_txrx_peer *txrx_peer;
 	struct dp_peer *vdev_peer;
+	uint8_t da_is_bcmc;
+	struct dp_soc *soc;
 	uint16_t len;
 
 	vdev_peer = dp_vdev_bss_peer_ref_n_get(pdev->soc, vdev, DP_MOD_ID_IPA);
 	if (qdf_unlikely(!vdev_peer))
 		return nbuf;
 
-	if (qdf_unlikely(!vdev_peer->txrx_peer)) {
+	txrx_peer = vdev_peer->txrx_peer;
+	if (qdf_unlikely(!txrx_peer)) {
 		dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
 		return nbuf;
 	}
+
+	/* For bcmc case, nbuf comes from qdf_nbuf_copy(), where the skb
+	 * header is copied. So nbuf->cb[] holds correct values.
+	 */
+	da_is_bcmc = (uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DA_IS_BCMC_OFFSET] &
+		DP_IPA_NBUF_CB_BCMC_MASK;
 
 	qdf_mem_zero(nbuf->cb, sizeof(nbuf->cb));
 	len = qdf_nbuf_len(nbuf);
+	soc = pdev->soc;
 
-	if (dp_tx_send((struct cdp_soc_t *)pdev->soc, vdev->vdev_id, nbuf)) {
-		DP_PEER_PER_PKT_STATS_INC_PKT(vdev_peer->txrx_peer,
-					      rx.intra_bss.fail, 1, len, 0);
+	if (!da_is_bcmc)
+		goto tx_send;
+
+	/* No MLO mcbc fwd ops or fail to get mcbc params, do legacy tx */
+	if (!soc->arch_ops.dp_rx_intrabss_get_mcbc_params ||
+	    !soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd ||
+	    !soc->arch_ops.dp_rx_intrabss_get_mcbc_params(soc, vdev, &params))
+		goto tx_send;
+
+	/* MLO mcbc intra-bss fwd */
+	tid_rx_stats =
+		&txrx_peer->vdev->pdev->stats.tid_stats.tid_rx_stats[0][0];
+	soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd(params, nbuf, 0, len,
+						  txrx_peer, tid_rx_stats);
+	goto out;
+
+tx_send:
+	if (dp_tx_send((struct cdp_soc_t *)soc, vdev->vdev_id, nbuf)) {
+		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.intra_bss.fail,
+					      1, len, 0);
 		dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
 		return nbuf;
 	}
 
-	DP_PEER_PER_PKT_STATS_INC_PKT(vdev_peer->txrx_peer,
-				      rx.intra_bss.pkts, 1, len, 0);
+	DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.intra_bss.pkts, 1, len, 0);
+
+out:
 	dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
 	return NULL;
 }
