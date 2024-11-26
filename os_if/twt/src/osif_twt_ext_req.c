@@ -1731,6 +1731,7 @@ int osif_twt_resume_req(struct wlan_objmgr_vdev *vdev,
 	if (ret)
 		return ret;
 
+	params.vdev_id = vdev_id;
 	id = QCA_WLAN_VENDOR_ATTR_TWT_RESUME_FLOW_ID;
 	if (tb[id])
 		params.dialog_id = nla_get_u8(tb[id]);
@@ -1791,6 +1792,7 @@ int osif_twt_nudge_req(struct wlan_objmgr_vdev *vdev,
 	if (ret)
 		return ret;
 
+	params.vdev_id = vdev_id;
 	id = QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_MAC_ADDR;
 	if (tb[id]) {
 		nla_memcpy(params.peer_macaddr.bytes, tb[id],
