@@ -8261,6 +8261,8 @@ void dp_get_peer_per_pkt_stats(struct dp_peer *peer,
 				break;
 			per_pkt_stats = &txrx_peer->stats[i].per_pkt_stats;
 			DP_UPDATE_PER_PKT_STATS(peer_stats, per_pkt_stats);
+			dp_info("MLO get stats from peer %d link_id %d",
+				txrx_peer->peer_id, i);
 		}
 		dp_release_link_peers_ref(&link_peers_info,
 					  DP_MOD_ID_GENERIC_STATS);
@@ -8268,6 +8270,8 @@ void dp_get_peer_per_pkt_stats(struct dp_peer *peer,
 		index = dp_get_peer_link_id(peer);
 		per_pkt_stats = &txrx_peer->stats[index].per_pkt_stats;
 		DP_UPDATE_PER_PKT_STATS(peer_stats, per_pkt_stats);
+		dp_info("get stats from peer %d link_id %d",
+			txrx_peer->peer_id, index);
 		qdf_mem_copy(&peer_stats->mac_addr,
 			     &peer->mac_addr.raw[0],
 			     QDF_MAC_ADDR_SIZE);
