@@ -1032,6 +1032,24 @@ dp_peer_get_ast_info_by_soc_wifi3(struct cdp_soc_t *soc_hdl,
 	return true;
 }
 
+#if defined(IPA_WDS_EASYMESH_FEATURE)
+static inline void dp_peer_send_wds_disconnect(struct dp_soc *soc,
+					       uint8_t *mac_addr,
+					       uint8_t vdev_id
+)
+{
+	if (soc->cdp_soc.ol_ops->peer_send_wds_disconnect)
+		soc->cdp_soc.ol_ops->peer_send_wds_disconnect(soc->ctrl_psoc,
+							      mac_addr,
+							      vdev_id);
+}
+#else
+static inline void dp_peer_send_wds_disconnect(struct dp_soc *soc,
+					       uint8_t *mac_addr,
+					       uint8_t vdev_id)
+{
+}
+#endif
 /**
  * dp_peer_ast_entry_del_by_soc() - delete the wds entry from soc WDS hash table
  *				    with given mac address
@@ -1089,10 +1107,7 @@ static QDF_STATUS dp_peer_ast_entry_del_by_soc(struct cdp_soc_t *soc_handle,
 	vdev_id = peer->vdev->vdev_id;
 
 	/* Send disconnect event to IPA driver */
-	if (soc->cdp_soc.ol_ops->peer_send_wds_disconnect)
-		soc->cdp_soc.ol_ops->peer_send_wds_disconnect(soc->ctrl_psoc,
-							      mac_addr,
-							      vdev_id);
+	dp_peer_send_wds_disconnect(soc, mac_addr, vdev_id);
 
 	/* Notify target to delete the WDS AST entry */
 	if (peer && dp_peer_state_cmp(peer, DP_PEER_STATE_LOGICAL_DELETE))
@@ -3962,7 +3977,7 @@ fail2:
 	wlan_cfg_pdev_detach(pdev->wlan_cfg_ctx);
 fail1:
 	soc->pdev_list[pdev_id] = NULL;
-	qdf_mem_free(pdev);
+	dp_context_free_mem(soc, DP_PDEV_TYPE, pdev);
 fail0:
 	return QDF_STATUS_E_FAILURE;
 }
@@ -5306,17 +5321,17 @@ static inline void dp_vdev_fetch_tx_handler(struct dp_vdev *vdev,
  *
  * Return: DP VDEV handle on success, NULL on failure
  */
-static QDF_STATUS dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl,
-					 uint8_t vdev_id,
-					 ol_osif_vdev_handle osif_vdev,
-					 struct ol_txrx_ops *txrx_ops)
+static struct cdp_vdev *
+dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+		       ol_osif_vdev_handle osif_vdev,
+		       struct ol_txrx_ops *txrx_ops)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev =	dp_vdev_get_ref_by_id(soc, vdev_id,
 						      DP_MOD_ID_CDP);
 
 	if (!vdev)
-		return QDF_STATUS_E_FAILURE;
+		return NULL;
 
 	vdev->osif_vdev = osif_vdev;
 	vdev->osif_rx = txrx_ops->rx.rx;
@@ -5353,7 +5368,8 @@ static QDF_STATUS dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl,
 
 	dp_cfg_event_record_vdev_evt(soc, DP_CFG_EVENT_VDEV_REGISTER, vdev);
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
-	return QDF_STATUS_SUCCESS;
+
+	return (struct cdp_vdev *)vdev;
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -6805,7 +6821,7 @@ void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 {
 	ol_txrx_vdev_delete_cb vdev_delete_cb = NULL;
 	void *vdev_delete_context = NULL;
-	ol_txrx_vdev_delete_cb vdev_del_notify = NULL;
+	ol_txrx_vdev_del_notify_cb vdev_del_notify = NULL;
 	void *vdev_del_noitfy_ctx = NULL;
 	uint8_t vdev_id = vdev->vdev_id;
 	struct dp_pdev *pdev = vdev->pdev;
@@ -6868,14 +6884,13 @@ free_vdev:
 				     vdev);
 	wlan_minidump_remove(vdev, sizeof(*vdev), soc->ctrl_psoc,
 			     WLAN_MD_DP_VDEV, "dp_vdev");
+	if (vdev_del_notify)
+		vdev_del_notify(vdev_del_noitfy_ctx, (struct cdp_vdev *)vdev);
+
 	qdf_mem_common_free(vdev);
 	vdev = NULL;
-
 	if (vdev_delete_cb)
 		vdev_delete_cb(vdev_delete_context);
-
-	if (vdev_del_notify)
-		vdev_del_notify(vdev_del_noitfy_ctx);
 }
 
 qdf_export_symbol(dp_vdev_unref_delete);
@@ -9935,6 +9950,8 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 	case CDP_FW_SUPPORT_ML_MON:
 		soc->features.fw_support_ml_monitor =
 				val.cdp_fw_support_ml_mon;
+		dp_info("FW support ML mon: %d",
+			soc->features.fw_support_ml_monitor);
 		break;
 	case CDP_MONITOR_FLAG:
 		soc->mon_flags = val.cdp_monitor_flag;
@@ -9960,6 +9977,12 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 		soc->features.vdev_tx_nss_support = val.cdp_tx_vdev_nss_support;
 		dp_info("FW supports Tx Vdev NSS report: %d",
 			soc->features.vdev_tx_nss_support);
+		break;
+	case CDP_DYN_RESOURCE_MGR_SUPPORT:
+		soc->features.dyn_resource_mgr_support =
+			val.cdp_dyn_resource_mgr_support;
+		dp_info("Dynamic resource manager support: %u",
+			soc->features.dyn_resource_mgr_support);
 		break;
 	default:
 		break;
@@ -10401,8 +10424,8 @@ QDF_STATUS dp_get_per_link_peer_stats(struct dp_peer *peer,
 			link_peer = link_peers_info.link_peers[i];
 			if (qdf_unlikely(!link_peer))
 				continue;
-			dp_get_peer_per_pkt_stats(link_peer, peer_stats);
-			dp_get_peer_extd_stats(link_peer, peer_stats);
+			dp_get_peer_per_pkt_stats(link_peer, &peer_stats[i]);
+			dp_get_peer_extd_stats(link_peer, &peer_stats[i]);
 		}
 		dp_release_link_peers_ref(&link_peers_info,
 					  DP_MOD_ID_GENERIC_STATS);
@@ -10464,6 +10487,122 @@ dp_txrx_get_per_link_peer_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
 
 	return status;
 }
+
+#ifdef WLAN_FEATURE_SON
+#define INVALID_FREE_BUFF 0xffffffff
+
+/**
+ * dp_ezmesh_peer_stats_notify() - notify when peer_stats change
+ * @peer: DP peer
+ *
+ * Return: status success/failure
+ */
+static QDF_STATUS
+dp_ezmesh_peer_stats_notify(struct dp_peer *peer)
+{
+	struct cdp_interface_peer_stats peer_stats_intf = {0};
+	struct dp_peer_ezmesh_stats *ezmesh_stats = NULL;
+	struct dp_peer *tgt_peer = NULL;
+	struct dp_txrx_peer *txrx_peer = NULL;
+	struct dp_pdev *pdev = NULL;
+	uint8_t link_id;
+
+	tgt_peer = dp_get_tgt_peer_from_peer(peer);
+	if (qdf_unlikely(!tgt_peer))
+		return QDF_STATUS_E_FAULT;
+
+	txrx_peer = tgt_peer->txrx_peer;
+	if (!qdf_unlikely(txrx_peer))
+		return QDF_STATUS_E_FAULT;
+
+	pdev = peer->vdev->pdev;
+	link_id = dp_get_peer_link_id(peer);
+	ezmesh_stats = &txrx_peer->stats[link_id].ezmesh_stats;
+	if (ezmesh_stats->tx.last_ack_rssi !=
+			ezmesh_stats->tx.prev_ack_rssi)
+		peer_stats_intf.rssi_changed = true;
+
+	if ((ezmesh_stats->tx.last_ack_rssi &&
+	     peer_stats_intf.rssi_changed) ||
+	    (ezmesh_stats->tx.tx_rate &&
+	     ezmesh_stats->tx.tx_rate != ezmesh_stats->tx.last_tx_rate)) {
+		qdf_mem_copy(peer_stats_intf.peer_mac, peer->mac_addr.raw,
+			     QDF_MAC_ADDR_SIZE);
+		peer_stats_intf.vdev_id = peer->vdev->vdev_id;
+		peer_stats_intf.last_peer_tx_rate =
+					ezmesh_stats->tx.last_tx_rate;
+		peer_stats_intf.peer_tx_rate = ezmesh_stats->tx.tx_rate;
+		peer_stats_intf.peer_rssi = ezmesh_stats->rx.snr;
+		peer_stats_intf.ack_rssi = ezmesh_stats->tx.last_ack_rssi;
+		peer_stats_intf.avg_ack_rssi =
+				CDP_SNR_OUT(ezmesh_stats->tx.avg_ack_rssi);
+		peer_stats_intf.per = tgt_peer->stats.tx.last_per;
+		peer_stats_intf.free_buff = INVALID_FREE_BUFF;
+		dp_wdi_event_handler(WDI_EVENT_PEER_STATS, pdev->soc,
+				     (void *)&peer_stats_intf, 0,
+				     WDI_NO_VAL, pdev->pdev_id);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_ezmesh_update_peer_stats - will update ezmesh_stats from cdp_peer_stats
+ * @soc: soc handle
+ * @vdev_id: id of vdev handle
+ * @peer_stats: stats for updating ezmesh_stats in txrx_peer
+ * return : status success/failure
+ */
+static QDF_STATUS
+dp_ezmesh_update_peer_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
+			    struct cdp_peer_stats *peer_stats)
+{
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	struct dp_txrx_peer *txrx_peer;
+	uint8_t link_id;
+	struct dp_peer_ezmesh_stats *ezmesh_stats;
+
+	struct dp_peer *peer =
+		dp_peer_find_hash_find((struct dp_soc *)soc,
+				       peer_stats->mac_addr.bytes,
+				       0, vdev_id,
+				       DP_MOD_ID_CDP);
+	if (!peer)
+		return status;
+
+	txrx_peer = dp_get_txrx_peer(peer);
+	if (qdf_unlikely(!txrx_peer)) {
+		dp_err_rl("txrx_peer NULL for peer MAC: " QDF_MAC_ADDR_FMT,
+			  QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+		goto release_peer_ref;
+	}
+
+	link_id = dp_get_peer_link_id(peer);
+	ezmesh_stats = &txrx_peer->stats[link_id].ezmesh_stats;
+
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.tx_rate,
+				 peer_stats->tx.last_tx_rate,
+				 link_id);
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, rx.snr,
+				 peer_stats->rx.last_snr, link_id);
+
+	status = dp_ezmesh_peer_stats_notify(peer);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err_rl("peer stats notify fail, status=%d", status);
+		goto release_peer_ref;
+	}
+
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, rx.last_snr,
+				 peer_stats->rx.last_snr, link_id);
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.prev_ack_rssi,
+				 ezmesh_stats->tx.last_ack_rssi, link_id);
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.last_tx_rate,
+				 peer_stats->tx.last_tx_rate, link_id);
+release_peer_ref:
+	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+	return status;
+}
+#endif
 
 /**
  * dp_txrx_get_peer_stats_param() - will return specified cdp_peer_stats
@@ -13612,6 +13751,9 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 	.txrx_stats_publish = dp_txrx_stats_publish,
 	.txrx_get_vdev_stats  = dp_txrx_get_vdev_stats,
 	.txrx_get_peer_stats = dp_txrx_get_peer_stats,
+#ifdef WLAN_FEATURE_SON
+	.txrx_update_son_peer_stats = dp_ezmesh_update_peer_stats,
+#endif
 	.txrx_get_peer_stats_based_on_peer_type =
 			dp_txrx_get_peer_stats_based_on_peer_type,
 	.txrx_get_soc_stats = dp_txrx_get_soc_stats,
@@ -13712,6 +13854,7 @@ static struct cdp_scs_ops dp_ops_scs = {
 static struct cdp_fse_ops dp_ops_fse = {
 	.fse_rule_add = dp_rx_sfe_add_flow_entry,
 	.fse_rule_delete = dp_rx_sfe_delete_flow_entry,
+	.fse_rule_dump = dp_rx_flow_dump_hal_fse_entries,
 };
 #endif
 

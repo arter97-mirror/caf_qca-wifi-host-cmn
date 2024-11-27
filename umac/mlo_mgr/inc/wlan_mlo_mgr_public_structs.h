@@ -453,11 +453,13 @@ struct wlan_mlo_key_mgmt {
  * @link_id: link id
  * @ap_mld_mac: mld mac address
  * @chan: channel
+ * @op_code: operation for provided link
  */
 struct mlo_link_bss_params {
 	int8_t link_id;
 	int8_t ap_mld_mac[QDF_MAC_ADDR_SIZE];
 	struct wlan_channel *chan;
+	uint8_t op_code;
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -840,6 +842,7 @@ struct mlnawds_config {
  * struct mlo_link_info - ML link info
  * @link_addr: link mac address
  * @link_id: link index
+ * @bpcc: Value of BPCC from the beacon or probe response in RNR or ML IE.
  * @is_bridge : Bridge peer or not
  * @chan_freq: Operating channel frequency
  * @nawds_config: peer's NAWDS configurarion
@@ -854,6 +857,7 @@ struct mlnawds_config {
 struct mlo_link_info {
 	struct qdf_mac_addr link_addr;
 	uint8_t link_id;
+	uint8_t bpcc;
 	bool is_bridge;
 	uint16_t chan_freq;
 #ifdef UMAC_SUPPORT_MLNAWDS
@@ -949,7 +953,6 @@ struct wlan_mlo_sta_assoc_pending_list {
  * @assoc_rsp: Raw assoc response frame
  * @mlo_quiet_status:
  * @mlo_csa_param: CSA request parameters for mlo sta
- * @mlo_cu_param: critical update parameters for mlo sta
  * @disconn_req: disconnect req params
  * @copied_reassoc_rsp: Reassoc response copied from assoc link roam handling
  *                      to re-use while link connect in case of deferred/need
@@ -978,7 +981,6 @@ struct wlan_mlo_sta {
 	struct element_info assoc_rsp;
 	struct mlo_sta_quiet_status mlo_quiet_status[WLAN_UMAC_MLO_MAX_VDEVS];
 	struct mlo_sta_csa_params mlo_csa_param[WLAN_UMAC_MLO_MAX_VDEVS];
-	struct mlo_sta_cu_params mlo_cu_param[WLAN_UMAC_MLO_MAX_VDEVS];
 	struct wlan_cm_disconnect_req *disconn_req;
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	struct wlan_cm_connect_resp *copied_reassoc_rsp;
@@ -1083,6 +1085,7 @@ struct wlan_mlo_link_mac_update {
  * @ptqm_migrate_timer: timer for ptqm migration
  * @mlo_peer_id_bmap: mlo_peer_id bitmap for ptqm migration
  * @link_ctx: link related information
+ * @link_recfg_ctx: link reconfig context
  * @mlo_max_recom_simult_links: Max Recommended Simultaneous Links
  * @mlo_extmld_cap_advertisement: Enable/disable Extended MLD Cap and OP
  *                                advertisement
@@ -1122,6 +1125,7 @@ struct wlan_mlo_dev_context {
 		[WLAN_UMAC_MLO_MAX_VDEVS];
 #endif
 	struct mlo_link_switch_context *link_ctx;
+	struct mlo_link_recfg_context *link_recfg_ctx;
 	uint8_t mlo_max_recom_simult_links;
 	bool mlo_extmld_cap_advertisement;
 };
@@ -1226,6 +1230,7 @@ struct wlan_mlo_msd_cap {
  * @str_freq_sep: Frequency separation suggested by STR non-AP MLD
  *                OR Type of AP-MLD
  * @aar_support: AAR Support
+ * @link_reconfig_operation_support: link reconfig support
  * @reserved: Reserved
  */
 struct wlan_mlo_mld_cap {
@@ -1234,7 +1239,8 @@ struct wlan_mlo_mld_cap {
 		 tid2link_neg_support:2,
 		 str_freq_sep:5,
 		 aar_support:1,
-		 reserved:3;
+		 link_reconfig_operation_support:1,
+		 reserved:2;
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM

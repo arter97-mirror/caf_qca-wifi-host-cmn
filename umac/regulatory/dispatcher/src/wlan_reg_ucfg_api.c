@@ -514,13 +514,6 @@ QDF_STATUS ucfg_reg_enable_disable_opclass_chans(struct wlan_objmgr_pdev *pdev,
 #endif
 
 #if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
-QDF_STATUS
-ucfg_reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
-				 struct regulatory_channel *chan_list)
-{
-	return reg_update_max_bw_6ghz_chan(pdev, chan_list);
-}
-
 bool ucfg_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
 				     qdf_freq_t freq)
 {

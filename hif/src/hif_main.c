@@ -120,6 +120,13 @@ void hif_shutdown_notifier_cb(void *hif_ctx)
 
 	scn->recovery = true;
 }
+
+bool hif_target_recovery_in_progress(struct hif_opaque_softc *hif_ctx)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+
+	return scn->recovery;
+}
 #endif
 
 /**

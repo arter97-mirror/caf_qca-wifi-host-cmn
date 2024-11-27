@@ -366,7 +366,7 @@ struct cdp_cmn_ops {
 	 * Data Interface (B Interface)
 	 ********************************************************************/
 
-	QDF_STATUS
+	struct cdp_vdev *
 	(*txrx_vdev_register)(struct cdp_soc_t *soc, uint8_t vdev_id,
 			      ol_osif_vdev_handle osif_vdev,
 			      struct ol_txrx_ops *txrx_ops);
@@ -1250,6 +1250,7 @@ struct cdp_mon_ops {
  * @txrx_update_pdev_stats:
  * @txrx_get_peer_stats_param:
  * @txrx_get_peer_stats:
+ * @txrx_update_son_peer_stats:
  * @txrx_get_peer_stats_based_on_peer_type:
  * @txrx_get_per_link_stats:
  * @txrx_get_soc_stats:
@@ -1360,6 +1361,10 @@ struct cdp_host_stats_ops {
 		(*txrx_get_peer_stats)(struct cdp_soc_t *soc, uint8_t vdev_id,
 				       uint8_t *peer_mac,
 				       struct cdp_peer_stats *peer_stats);
+	QDF_STATUS
+	(*txrx_update_son_peer_stats)(struct cdp_soc_t *soc,
+				      uint8_t vdev_id,
+				      struct cdp_peer_stats *peer_stats);
 	QDF_STATUS
 		(*txrx_get_peer_stats_based_on_peer_type)(struct cdp_soc_t *soc,
 							  uint8_t vdev_id,
@@ -1747,6 +1752,7 @@ struct ol_if_ops {
 					    uint8_t *target_pdev_id);
 	bool (*is_roam_inprogress)(uint32_t vdev_id);
 	enum QDF_GLOBAL_MODE (*get_con_mode)(void);
+	void (*dp_trigger_recovery)(enum qdf_hang_reason reason);
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 	uint8_t (*peer_get_num_mlo_links)(struct cdp_ctrl_objmgr_psoc *psoc,
 					  uint8_t vdev_id,
@@ -2752,6 +2758,8 @@ struct cdp_fse_ops {
 			   uint32_t *src_ip, uint32_t src_port,
 			   uint32_t *dest_ip, uint32_t dest_port,
 			   uint8_t protocol, uint8_t version, uint8_t pdev_id);
+	QDF_STATUS
+	(*fse_rule_dump)(struct cdp_soc_t *soc_hdl, uint8_t pdev_id);
 };
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 

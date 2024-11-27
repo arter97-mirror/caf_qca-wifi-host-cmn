@@ -320,7 +320,7 @@
  * gEnableDcsPerMode - Enable/Disable DCS per mode
  * @Min: 0x0
  * @Max: 0x0f0f0f0f
- * @Default: 0x0202
+ * @Default: 0x0200
  *
  * This ini is used to enable or disable DCS and DCS type per mode.
  *
@@ -347,7 +347,7 @@
 		"gEnableDcsPerMode", \
 		0x0, \
 		0x0f0f0f0f, \
-		0x0202, \
+		0x0200, \
 		CFG_VALUE_OR_DEFAULT, \
 		"Enable DCS per mode")
 

@@ -2196,6 +2196,9 @@ struct cdp_rx_stats {
  * @dropped.drop_ingress: Packets dropped during Umac reset
  * @dropped.invalid_peer_id_in_exc_path:
  * @dropped.tx_mcast_drop:
+ * @dropped.push_head_fail: dropped during nbuf metadata alignment
+ * @dropped.prep_metadata_fail: dropped during metadata prepare
+ * @dropped.multipass_en: Packets dropped in multipass_enable path
  * @mesh: mesh packet information
  * @mesh.exception_fw: packets sent to fw
  * @mesh.completion_fw: packets completions received from fw
@@ -2263,6 +2266,11 @@ struct cdp_tx_ingress_stats {
 		uint32_t invalid_peer_id_in_exc_path;
 		uint32_t tx_mcast_drop;
 		uint32_t fw2wbm_tx_drop;
+#if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+		uint32_t push_head_fail;
+		uint32_t prep_metadata_fail;
+		uint32_t multipass_en;
+#endif
 	} dropped;
 
 	struct {

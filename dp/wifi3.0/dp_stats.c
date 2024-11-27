@@ -595,6 +595,9 @@ static void dp_print_tx_pdev_stats_cmn_tlv(uint32_t *tag_buf)
 		       dp_stats_buf->mpdu_count_tqm);
 	DP_PRINT_STATS("msdu_count_tqm = %u",
 		       dp_stats_buf->msdu_count_tqm);
+	DP_PRINT_STATS("bytes_sent = %llu",
+		       (uint64_t)dp_stats_buf->bytes_sent.high_32 << 32 |
+		       dp_stats_buf->bytes_sent.low_32);
 	DP_PRINT_STATS("mpdu_removed_tqm = %u",
 		       dp_stats_buf->mpdu_removed_tqm);
 	DP_PRINT_STATS("msdu_removed_tqm = %u",
@@ -4235,6 +4238,9 @@ static void dp_print_rx_pdev_fw_stats_tlv(uint32_t *tag_buf)
 		       dp_stats_buf->mpdu_cnt_fcs_ok);
 	DP_PRINT_STATS("mpdu_cnt_fcs_err = %u",
 		       dp_stats_buf->mpdu_cnt_fcs_err);
+	DP_PRINT_STATS("bytes_received = %llu",
+		       (uint64_t)dp_stats_buf->bytes_received.high_32 << 32 |
+		       dp_stats_buf->bytes_received.low_32);
 	DP_PRINT_STATS("tcp_msdu_cnt = %u",
 		       dp_stats_buf->tcp_msdu_cnt);
 	DP_PRINT_STATS("tcp_ack_msdu_cnt = %u",
@@ -4330,8 +4336,10 @@ static void dp_print_rx_pdev_fw_stats_tlv(uint32_t *tag_buf)
 		       dp_stats_buf->rx_ring_switch_cnt);
 	DP_PRINT_STATS("rx_ring_restore_cnt = %u",
 		       dp_stats_buf->rx_ring_restore_cnt);
-	DP_PRINT_STATS("rx_flush_cnt = %u\n",
+	DP_PRINT_STATS("rx_flush_cnt = %u",
 		       dp_stats_buf->rx_flush_cnt);
+	/* Hard code for now */
+	DP_PRINT_STATS("rx_packets_other_cnt = 0\n");
 }
 
 /**
@@ -8441,6 +8449,40 @@ void dp_print_per_ring_stats(struct dp_soc *soc)
 	}
 }
 
+#if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+static inline void dp_txrx_path_stats_ext_drop(struct dp_pdev *pdev)
+{
+		DP_PRINT_STATS("Push Head fail Tx Drop: %u",
+			       pdev->stats.tx_i.dropped.push_head_fail);
+		DP_PRINT_STATS("Prep MetaData fail Tx Drop: %u",
+			       pdev->stats.tx_i.dropped.prep_metadata_fail);
+		DP_PRINT_STATS("Multipass fail Tx Drop: %u",
+			       pdev->stats.tx_i.dropped.multipass_en);
+}
+
+static inline
+void dp_update_pdev_ingress_stats_ext_drop(struct dp_pdev *tgtobj,
+					   struct dp_vdev *srcobj, int idx)
+{
+		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, dropped.push_head_fail,
+				  idx);
+		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i,
+				  dropped.prep_metadata_fail, idx);
+		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, dropped.multipass_en,
+				  idx);
+}
+#else
+static inline void dp_txrx_path_stats_ext_drop(struct dp_pdev *pdev)
+{
+}
+
+static inline
+void dp_update_pdev_ingress_stats_ext_drop(struct dp_pdev *tgtobj,
+					   struct dp_vdev *srcobj, int idx)
+{
+}
+#endif
+
 void dp_txrx_path_stats(struct dp_soc *soc)
 {
 	uint8_t error_code;
@@ -8525,6 +8567,7 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 		DP_PRINT_STATS("SW tso fail cnt: %u",
 			       pdev->soc->stats.tx.sw_tso_fail);
 
+		dp_txrx_path_stats_ext_drop(pdev);
 		buf = dp_stats_str;
 		buf_len = DP_STATS_STR_LEN;
 		pos = 0;
@@ -10392,6 +10435,7 @@ void dp_update_pdev_ingress_stats(struct dp_pdev *tgtobj,
 		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, mesh.exception_fw, idx);
 		DP_STATS_AGGR_IDX(tgtobj, srcobj, tx_i, mesh.completion_fw,
 				  idx);
+		dp_update_pdev_ingress_stats_ext_drop(tgtobj, srcobj, idx);
 	}
 	DP_STATS_AGGR_PKT(tgtobj, srcobj, rx_i.reo_rcvd_pkt);
 	DP_STATS_AGGR_PKT(tgtobj, srcobj, rx_i.null_q_desc_pkt);

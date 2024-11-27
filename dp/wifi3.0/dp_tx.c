@@ -588,7 +588,6 @@ static uint8_t dp_tx_prepare_htt_metadata(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		hdr = qdf_nbuf_push_head(nbuf, htt_desc_size_aligned);
 		if (!hdr) {
 			dp_tx_err("Error in filling HTT metadata");
-
 			return 0;
 		}
 		qdf_mem_copy(hdr, desc_ext, htt_desc_size);
@@ -605,13 +604,14 @@ static uint8_t dp_tx_prepare_htt_metadata(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
  * @soc: soc handle
  * @tso_seg: TSO segment to process
  * @ext_desc: Pointer to MSDU extension descriptor
+ * @data_len: length of the tso segment
  *
  * Return: void
  */
 #if defined(FEATURE_TSO)
 static void dp_tx_prepare_tso_ext_desc(struct dp_soc *soc,
 				       struct qdf_tso_seg_t *tso_seg,
-				       void *ext_desc)
+				       void *ext_desc, uint16_t *data_len)
 {
 	uint8_t num_frag;
 	uint32_t tso_flags;
@@ -647,6 +647,7 @@ static void dp_tx_prepare_tso_ext_desc(struct dp_soc *soc,
 			tso_seg->tso_frags[num_frag].paddr, &lo, &hi);
 		hal_tx_ext_desc_set_buffer(ext_desc, num_frag, lo, hi,
 			tso_seg->tso_frags[num_frag].length);
+			*data_len += tso_seg->tso_frags[num_frag].length;
 	}
 
 	return;
@@ -654,7 +655,7 @@ static void dp_tx_prepare_tso_ext_desc(struct dp_soc *soc,
 #else
 static void dp_tx_prepare_tso_ext_desc(struct dp_soc *soc,
 				       struct qdf_tso_seg_t *tso_seg,
-				       void *ext_desc)
+				       void *ext_desc, uint16_t *data_len)
 {
 	return;
 }
@@ -897,12 +898,14 @@ QDF_COMPILE_TIME_ASSERT(dp_tx_htt_metadata_len_check,
  * @vdev: DP Vdev handle
  * @msdu_info: MSDU info to be setup in MSDU extension descriptor
  * @desc_pool_id: Descriptor Pool ID
+ * @data_len: length of the segment
  *
  * Return:
  */
 static
 struct dp_tx_ext_desc_elem_s *dp_tx_prepare_ext_desc(struct dp_vdev *vdev,
-		struct dp_tx_msdu_info_s *msdu_info, uint8_t desc_pool_id)
+		struct dp_tx_msdu_info_s *msdu_info, uint8_t desc_pool_id,
+		uint16_t *data_len)
 {
 	uint8_t i;
 	uint8_t cached_ext_desc[HAL_TX_EXT_DESC_WITH_META_DATA];
@@ -940,6 +943,7 @@ struct dp_tx_ext_desc_elem_s *dp_tx_prepare_ext_desc(struct dp_vdev *vdev,
 				seg_info->frags[i].paddr_lo,
 				seg_info->frags[i].paddr_hi,
 				seg_info->frags[i].len);
+			*data_len += seg_info->frags[i].len;
 		}
 
 		break;
@@ -947,7 +951,7 @@ struct dp_tx_ext_desc_elem_s *dp_tx_prepare_ext_desc(struct dp_vdev *vdev,
 	case dp_tx_frm_tso:
 		dp_tx_prepare_tso_ext_desc(soc,
 					   &msdu_info->u.tso_info.curr_seg->seg,
-					   &cached_ext_desc[0]);
+					   &cached_ext_desc[0], data_len);
 		break;
 
 
@@ -1256,6 +1260,41 @@ dp_tx_is_wds_ast_override_en(struct dp_soc *soc,
 }
 #endif
 
+#if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+static inline
+void dp_tx_multipass_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+	DP_STATS_INC(vdev, tx_i[xmit_type].dropped.multipass_en, 1);
+}
+
+static inline
+void dp_tx_pushhead_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+	DP_STATS_INC(vdev, tx_i[xmit_type].dropped.push_head_fail, 1);
+}
+
+static inline
+void dp_tx_metadatafail_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+	DP_STATS_INC(vdev, tx_i[xmit_type].dropped.prep_metadata_fail, 1);
+}
+#else
+static inline
+void dp_tx_multipass_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+}
+
+static inline
+void dp_tx_pushhead_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+}
+
+static inline
+void dp_tx_metadatafail_pkt_drop(struct dp_vdev *vdev, uint8_t xmit_type)
+{
+}
+#endif
+
 /**
  * dp_tx_prepare_desc_single() - Allocate and prepare Tx descriptor
  * @vdev: DP vdev handle
@@ -1319,8 +1358,10 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 			vdev->qdf_opmode);
 
 	if (qdf_unlikely(vdev->multipass_en)) {
-		if (!dp_tx_multipass_process(soc, vdev, nbuf, msdu_info))
+		if (!dp_tx_multipass_process(soc, vdev, nbuf, msdu_info)) {
+			dp_tx_multipass_pkt_drop(vdev, xmit_type);
 			goto failure;
+		}
 	}
 
 	/* Packets marked by upper layer (OS-IF) to be sent to FW */
@@ -1379,13 +1420,16 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 
 		if (qdf_nbuf_push_head(nbuf, align_pad) == NULL) {
 			dp_tx_err("qdf_nbuf_push_head failed");
+			dp_tx_pushhead_pkt_drop(vdev, xmit_type);
 			goto failure;
 		}
 
 		htt_hdr_size = dp_tx_prepare_htt_metadata(vdev, nbuf,
 				msdu_info);
-		if (htt_hdr_size == 0)
+		if (htt_hdr_size == 0) {
+			dp_tx_metadatafail_pkt_drop(vdev, xmit_type);
 			goto failure;
+		}
 
 		tx_desc->length = qdf_nbuf_headlen(nbuf);
 		tx_desc->pkt_offset = align_pad + htt_hdr_size;
@@ -1415,6 +1459,37 @@ failure:
 	return NULL;
 }
 
+#ifdef WLAN_SOFTUMAC_SUPPORT
+/**
+ * dp_tx_desc_update_length() - update the length field in tx descriptor
+ * @tx_desc: tx descriptor reference
+ * @flags: tx descriptor flgs
+ * @len: tso segment length
+ *
+ * In SOFTUMAC architecture, FW can't access the EXT_DESC memory to
+ * calculate the data payload size of the segment. Hence, update the
+ * data segment length in the TCL_DATA_CMD.data_len for SOFTUMAC
+ * architecture which is used by the FW to populate MSDU deatils
+ * structure to TQM.
+ */
+static inline void
+dp_tx_desc_update_length(struct dp_tx_desc_s *tx_desc,
+			 uint16_t flags, uint16_t len)
+{
+	tx_desc->length = len;
+}
+#else
+static inline void
+dp_tx_desc_update_length(struct dp_tx_desc_s *tx_desc,
+			 uint16_t flags, uint16_t len)
+{
+	if (flags & DP_TX_EXT_DESC_FLAG_METADATA_VALID)
+		tx_desc->length = HAL_TX_EXT_DESC_WITH_META_DATA;
+	else
+		tx_desc->length = HAL_TX_EXTENSION_DESC_LEN_BYTES;
+}
+#endif
+
 /**
  * dp_tx_prepare_desc() - Allocate and prepare Tx descriptor for multisegment
  *                        frame
@@ -1438,6 +1513,7 @@ static struct dp_tx_desc_s *dp_tx_prepare_desc(struct dp_vdev *vdev,
 	struct dp_tx_ext_desc_elem_s *msdu_ext_desc;
 	struct dp_pdev *pdev = vdev->pdev;
 	struct dp_soc *soc = pdev->soc;
+	uint16_t data_len = 0;
 
 	if (dp_tx_limit_check(vdev, nbuf))
 		return NULL;
@@ -1471,7 +1547,8 @@ static struct dp_tx_desc_s *dp_tx_prepare_desc(struct dp_vdev *vdev,
 
 	/* Handle scattered frames - TSO/SG/ME */
 	/* Allocate and prepare an extension descriptor for scattered frames */
-	msdu_ext_desc = dp_tx_prepare_ext_desc(vdev, msdu_info, desc_pool_id);
+	msdu_ext_desc = dp_tx_prepare_ext_desc(vdev, msdu_info,
+					       desc_pool_id, &data_len);
 	if (!msdu_ext_desc) {
 		dp_tx_info("Tx Extension Descriptor Alloc Fail");
 		goto failure;
@@ -1496,10 +1573,7 @@ static struct dp_tx_desc_s *dp_tx_prepare_desc(struct dp_vdev *vdev,
 
 	tx_desc->dma_addr = msdu_ext_desc->paddr;
 
-	if (msdu_ext_desc->flags & DP_TX_EXT_DESC_FLAG_METADATA_VALID)
-		tx_desc->length = HAL_TX_EXT_DESC_WITH_META_DATA;
-	else
-		tx_desc->length = HAL_TX_EXTENSION_DESC_LEN_BYTES;
+	dp_tx_desc_update_length(tx_desc, msdu_ext_desc->flags, data_len);
 
 	return tx_desc;
 failure:
@@ -5754,6 +5828,38 @@ dp_tx_update_peer_extd_stats(struct hal_tx_completion_status *ts,
 }
 #endif
 
+#ifdef WLAN_FEATURE_SON
+/**
+ * dp_tx_update_peer_ezmesh_stats()- Update Tx ezmesh_stats for peer
+ *
+ * @ts: Tx compltion status
+ * @txrx_peer: datapath txrx_peer handle
+ * @link_id: Link id
+ *
+ * ezmesh requires avg_ack_rssi, last_ack_rssi, etc.
+ * They can be obtained from Tx compltion status.
+ * Return: void
+ */
+static inline void
+dp_tx_update_peer_ezmesh_stats(struct hal_tx_completion_status *ts,
+			       struct dp_txrx_peer *txrx_peer, uint8_t link_id)
+{
+	struct dp_peer_ezmesh_stats *ezmesh_stats;
+
+	ezmesh_stats = &txrx_peer->stats[link_id].ezmesh_stats;
+
+	DP_PEER_EZMESH_STATS_UPD(txrx_peer, tx.last_ack_rssi,
+				 ts->ack_frame_rssi, link_id);
+	CDP_SNR_UPDATE_AVG(ezmesh_stats->tx.avg_ack_rssi, ts->ack_frame_rssi);
+}
+#else
+static inline void
+dp_tx_update_peer_ezmesh_stats(struct hal_tx_completion_status *ts,
+			       struct dp_txrx_peer *txrx_peer, uint8_t link_id)
+{
+}
+#endif
+
 #if defined(WLAN_FEATURE_11BE_MLO) && \
 	(defined(QCA_ENHANCED_STATS_SUPPORT) || \
 		defined(DP_MLO_LINK_STATS_SUPPORT))
@@ -5957,6 +6063,8 @@ dp_tx_update_peer_stats(struct dp_tx_desc_s *tx_desc,
 							qdf_system_ticks();
 
 		dp_tx_update_peer_extd_stats(ts, txrx_peer, link_id);
+
+		dp_tx_update_peer_ezmesh_stats(ts, txrx_peer, link_id);
 
 		return;
 	}

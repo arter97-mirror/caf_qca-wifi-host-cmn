@@ -286,32 +286,6 @@ void dp_mon_filter_h2t_setup(struct dp_soc *soc, struct dp_pdev *pdev,
 }
 
 /**
- * dp_mon_skip_filter_config() - Check if filter config need to be skipped
- * @soc: DP soc context
- *
- * Return: true if yes, false if not
- */
-#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
-static inline
-bool dp_mon_skip_filter_config(struct dp_soc *soc)
-{
-	if (soc->cdp_soc.ol_ops->get_con_mode &&
-	    soc->cdp_soc.ol_ops->get_con_mode() ==
-	    QDF_GLOBAL_MISSION_MODE &&
-	    !(QDF_MONITOR_FLAG_OTHER_BSS & soc->mon_flags))
-		return true;
-	else
-		return false;
-}
-#else
-static inline
-bool dp_mon_skip_filter_config(struct dp_soc *soc)
-{
-	return false;
-}
-#endif
-
-/**
  * dp_update_num_mac_rings() - Update number of MAC rings based on connection
  *                             mode and DBS check
  * @soc: DP soc context
@@ -344,7 +318,7 @@ dp_mon_ht2_rx_ring_cfg(struct dp_soc *soc,
 	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 
 	if (srng_type == DP_MON_FILTER_SRNG_TYPE_RXDMA_BUF &&
-	    dp_mon_skip_filter_config(soc)) {
+	    dp_mon_mode_local_pkt_capture(soc)) {
 		dp_mon_filter_info("skip rxdma_buf filter cfg for lpc mode");
 		return QDF_STATUS_SUCCESS;
 	}
@@ -1126,20 +1100,20 @@ QDF_STATUS dp_mon_start_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 	mon_pdev->fp_data_filter = filter->fp_data;
 
 	qdf_spin_lock_bh(&mon_mac->mon_lock);
+	dp_mon_filter_setup_tx_mon_mode(pdev);
+	status = dp_tx_mon_filter_update(pdev);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		qdf_spin_unlock_bh(&mon_mac->mon_lock);
+		dp_mon_filter_err("local pkt capture set tx filter failed");
+		return status;
+	}
+
 	dp_mon_set_local_pkt_capture_rx_filter(pdev, filter);
 	status = dp_mon_filter_update(pdev);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		dp_mon_clear_local_pkt_capture_rx_filter(pdev);
 		qdf_spin_unlock_bh(&mon_mac->mon_lock);
 		dp_mon_filter_err("local pkt capture set rx filter failed");
-		return status;
-	}
-
-	dp_mon_filter_setup_tx_mon_mode(pdev);
-	status = dp_tx_mon_filter_update(pdev);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		qdf_spin_unlock_bh(&mon_mac->mon_lock);
-		dp_mon_filter_err("local pkt capture set tx filter failed");
 		return status;
 	}
 	qdf_spin_unlock_bh(&mon_mac->mon_lock);

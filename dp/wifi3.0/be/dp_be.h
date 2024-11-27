@@ -254,7 +254,6 @@ struct dp_ppe_vp_search_idx_tbl_entry {
  * @to_fw: To FW exception enable/disable.
  * @use_ppe_int_pri: Use PPE INT_PRI to TID mapping table
  * @vdev_id: Vdev ID
- * @ref_count: reference count
  */
 struct dp_ppe_vp_profile {
 	bool is_configured;
@@ -265,7 +264,6 @@ struct dp_ppe_vp_profile {
 	uint8_t to_fw;
 	uint8_t use_ppe_int_pri;
 	uint8_t vdev_id;
-	uint8_t ref_count;
 };
 
 /**
@@ -443,7 +441,6 @@ struct dp_pdev_be {
  * @vdev: dp vdev structure
  * @bank_id: bank_id to be used for TX
  * @vdev_id_check_en: flag if HW vdev_id check is enabled for vdev
- * @splitphy_ds_bank_id: shared DS bank id in splitphy case
  * @partner_vdev_list: partner list used for Intra-BSS
  * @bridge_vdev_list: partner bridge vdev list
  * @mlo_stats: structure to hold stats for mlo unmapped peers
@@ -454,7 +451,6 @@ struct dp_vdev_be {
 	struct dp_vdev vdev;
 	int8_t bank_id;
 	uint8_t vdev_id_check_en;
-	uint8_t splitphy_ds_bank_id;
 #ifdef WLAN_MLO_MULTI_CHIP
 	struct cdp_vdev_stats mlo_stats;
 #endif

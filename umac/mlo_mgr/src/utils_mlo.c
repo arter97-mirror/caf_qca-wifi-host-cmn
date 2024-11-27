@@ -4009,6 +4009,9 @@ util_get_bvmlie_ext_mld_cap_op_info(uint8_t *mlie_seq,
 	presence_bitmap = QDF_GET_BITS(mlcontrol, WLAN_ML_CTRL_PBM_IDX,
 				       WLAN_ML_CTRL_PBM_BITS);
 
+	if (QDF_IS_STATUS_ERROR(util_validate_bv_mlie_min_seq_len(mlie_seqlen)))
+		return QDF_STATUS_E_INVAL;
+
 	commoninfo = mlie_seq + sizeof(struct wlan_ie_multilink);
 	commoninfo_len = *(mlie_seq + sizeof(struct wlan_ie_multilink));
 	/* extmldcap_offset stores the offset of Ext MLD Capabilities and

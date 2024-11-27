@@ -510,8 +510,8 @@ reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
 			    struct regulatory_channel *chan_list)
 {
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
-	uint32_t chan_num;
-	uint16_t i, max_bw = 0;
+	enum channel_enum chan_num;
+	uint16_t chan_idx, i, max_bw = 0;
 	struct regulatory_channel *mas_chan_list;
 	uint32_t band_bitmap;
 
@@ -530,10 +530,12 @@ reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
 	}
 
 	for (chan_num = MIN_6GHZ_CHANNEL; chan_num <= MAX_6GHZ_CHANNEL; chan_num++) {
+		chan_idx = reg_convert_enum_to_6g_idx(chan_num);
+		max_bw = 0;
 		for (i = 0; i < REG_MAX_SUPP_AP_TYPE; i++) {
 			mas_chan_list = pdev_priv_obj->mas_chan_list_6g_client[i][REG_DEFAULT_CLIENT];
-			if (mas_chan_list[chan_num].max_bw)
-				max_bw = QDF_MAX(max_bw, mas_chan_list[chan_num].max_bw);
+			if (mas_chan_list[chan_idx].max_bw)
+				max_bw = QDF_MAX(max_bw, mas_chan_list[chan_idx].max_bw);
 		}
 		chan_list[chan_num].max_bw = max_bw;
 	}

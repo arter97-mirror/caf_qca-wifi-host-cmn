@@ -1598,9 +1598,7 @@ static QDF_STATUS dp_vdev_attach_be(struct dp_soc *soc, struct dp_vdev *vdev)
 
 	be_vdev->vdev_id_check_en = DP_TX_VDEV_ID_CHECK_ENABLE;
 
-	be_vdev->splitphy_ds_bank_id = DP_BE_INVALID_BANK_ID;
-	be_vdev->bank_id = dp_tx_get_bank_profile(be_soc, be_vdev,
-						be_vdev->vdev_id_check_en);
+	be_vdev->bank_id = dp_tx_get_bank_profile(be_soc, be_vdev);
 	vdev->bank_id = be_vdev->bank_id;
 
 	if (be_vdev->bank_id == DP_BE_INVALID_BANK_ID) {
@@ -1641,10 +1639,7 @@ static QDF_STATUS dp_vdev_detach_be(struct dp_soc *soc, struct dp_vdev *vdev)
 	if (vdev->opmode == wlan_op_mode_ap)
 		dp_mlo_mcast_deinit(soc, vdev);
 
-	dp_tx_put_bank_profile(be_soc, be_vdev->bank_id);
-	if (be_vdev->splitphy_ds_bank_id != DP_BE_INVALID_BANK_ID)
-		dp_tx_put_bank_profile(be_soc, be_vdev->splitphy_ds_bank_id);
-
+	dp_tx_put_bank_profile(be_soc, be_vdev);
 	dp_vdev_detach_vp_profiles(be_soc, be_vdev);
 
 	return QDF_STATUS_SUCCESS;

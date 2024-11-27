@@ -1890,18 +1890,19 @@ send_link_set_bss_params_cmd_tlv(wmi_unified_t wmi_handle,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_mlo_link_bss_param));
 
 	bss_param->ieee_link_id = params->link_id;
+	bss_param->op_code = params->op_code;
 
 	bss_param->wmi_chan.mhz = params->chan.ch_freq;
 	bss_param->wmi_chan.band_center_freq1 = params->chan.ch_cfreq1;
 	bss_param->wmi_chan.band_center_freq2 = params->chan.ch_cfreq2;
 	fw_phy_mode = wmi_host_to_fw_phymode(params->chan.ch_phymode);
 	WMI_SET_CHANNEL_MODE(&bss_param->wmi_chan, fw_phy_mode);
-	wmi_debug("ap mld mac: " QDF_MAC_ADDR_FMT " link id %d chan freq %d cfreq1 %d cfreq2 %d fw phymode %d",
+	wmi_debug("ap mld mac: " QDF_MAC_ADDR_FMT " link id %d chan freq %d cfreq1 %d cfreq2 %d fw phymode %d op_code %d",
 		  QDF_MAC_ADDR_REF(params->ap_mld_mac), bss_param->ieee_link_id,
 		  bss_param->wmi_chan.mhz,
 		  bss_param->wmi_chan.band_center_freq1,
 		  bss_param->wmi_chan.band_center_freq2,
-		  fw_phy_mode);
+		  fw_phy_mode, bss_param->op_code);
 
 	buf_ptr += sizeof(wmi_mlo_link_bss_param);
 

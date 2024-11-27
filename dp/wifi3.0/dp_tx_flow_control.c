@@ -277,8 +277,6 @@ void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc)
 
 	for (i = 0; i < MAX_TXDESC_POOLS; i++) {
 		pool = &soc->tx_desc[i];
-		if (pool->status > FLOW_POOL_INVALID)
-			continue;
 		bytes_written += qdf_snprintf(&comb_log_str[bytes_written],
 				      (bytes_written >= comb_log_str_size) ? 0 :
 				      comb_log_str_size - bytes_written,

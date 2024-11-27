@@ -33,6 +33,8 @@
 #include <qdf_nbuf.h>
 #include "qal_devcfg.h"
 #include "wlan_osif_features.h"
+#include <qdf_trace.h>
+#include <wlan_cmn.h>
 
 #define osif_alert(params...) \
 	QDF_TRACE_FATAL(QDF_MODULE_ID_OS_IF, params)
@@ -785,4 +787,35 @@ void wlan_cfg80211_ch_switch_started_notify(struct net_device *dev,
 }
 #endif
 #endif
+
+/**
+ * wlan_cfg80211_get_nl80211_chwidth() - API to convert phy_chwidth to
+ * nl80211 chan width.
+ * @phy_chwidth: Driver internal phy chan width.
+ *
+ * Return: enum nl80211_chan_width
+ */
+enum nl80211_chan_width
+wlan_cfg80211_get_nl80211_chwidth(enum phy_ch_width phy_chwidth);
+
+/**
+ * wlan_cfg80211_get_phy_ch_width() - API to convert nl80211 chan width to
+ * phy_chanwidth
+ * @nl_chwidth: NL chan width
+ *
+ * Return: enum phy_ch_width
+ */
+enum phy_ch_width
+wlan_cfg80211_get_phy_ch_width(enum nl80211_chan_width nl_chwidth);
+
+/**
+ * wlan_cfg80211_set_feature() - Set the bitmask for supported features
+ * @feature_flags: pointer to the byte array of features.
+ * @feature: Feature to be turned ON in the byte array.
+ *
+ * Return: None
+ *
+ * This is called to turn ON or SET the feature flag for the requested feature.
+ **/
+void wlan_cfg80211_set_feature(uint8_t *feature_flags, uint8_t feature);
 #endif

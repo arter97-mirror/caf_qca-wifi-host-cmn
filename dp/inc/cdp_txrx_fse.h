@@ -73,5 +73,21 @@ cdp_fse_flow_delete(ol_txrx_soc_handle soc,
 						  protocol, version, pdev_id);
 }
 
+static inline QDF_STATUS
+cdp_fse_dump_flow_entries(ol_txrx_soc_handle soc,
+			  uint8_t pdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->fse_ops || !soc->ops->fse_ops->fse_rule_dump)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->fse_ops->fse_rule_dump(soc, pdev_id);
+}
+
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 #endif /* _CDP_TXRX_FSE_H_ */

@@ -78,6 +78,9 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
 	case ACTION_OUI_RESTRICT_MAX_MLO_LINKS:
 		*id = WMI_VENDOR_OUI_ACTION_RESTRICT_MAX_MLO_LINKS;
 		return true;
+	case ACTION_OUI_AUTH_ASSOC_6MBPS_2GHZ:
+		*id = WMI_VENDOR_OUI_ACTION_AUTH_ASSOC_6MBPS_2GHZ;
+		return true;
 	default:
 		return false;
 	}

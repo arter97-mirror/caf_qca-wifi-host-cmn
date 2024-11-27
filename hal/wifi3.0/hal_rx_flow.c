@@ -20,6 +20,15 @@
 #include "hal_rx_flow.h"
 #include "qdf_ssr_driver_dump.h"
 
+#define IPV6_WORDS 4
+#define FSE_TO_IPV6(ipv6, flow_info, field)\
+	do { \
+		ipv6[0] = qdf_ntohl(flow_info->field ## _31_0); \
+		ipv6[1] = qdf_ntohl(flow_info->field ## _63_32); \
+		ipv6[2] = qdf_ntohl(flow_info->field ## _95_64); \
+		ipv6[3] = qdf_ntohl(flow_info->field ## _127_96); \
+	} while (0)
+
 /**
  * hal_rx_flow_get_cmem_fse() - Get FSE from CMEM
  * @hal_soc_hdl: HAL SOC handle
@@ -42,42 +51,61 @@ hal_rx_flow_get_cmem_fse(hal_soc_handle_t hal_soc_hdl, uint32_t fse_offset,
 }
 
 #if defined(WLAN_SUPPORT_RX_FISA)
-static inline void hal_rx_dump_fse(struct rx_flow_search_entry *fse, int index)
+static inline void hal_rx_dump_fse_ext(struct rx_flow_search_entry *fse)
 {
-		dp_info("index %d:"
-		" src_ip_127_96 0x%x"
-		" src_ip_95_640 0x%x"
-		" src_ip_63_32 0x%x"
-		" src_ip_31_0 0x%x"
-		" dest_ip_127_96 0x%x"
-		" dest_ip_95_64 0x%x"
-		" dest_ip_63_32 0x%x"
-		" dest_ip_31_0 0x%x"
-		" src_port 0x%x"
-		" dest_port 0x%x"
+	dp_info(" aggregation_count 0x%x"
+		" lro_eligible 0x%x"
+		" cumulative_ip_length_pmac1/l4_checksum %x"
+		" cumulative_ip_length 0x%x"
+		" tcp_sequence_number 0x%x",
+		fse->aggregation_count,
+		fse->lro_eligible,
+#if defined(QCA_WIFI_KIWI_V2) || defined(QCA_WIFI_WCN7750) || \
+	defined(QCA_WIFI_QCC2072)
+		fse->cumulative_ip_length_pmac1,
+#else
+		fse->cumulative_l4_checksum,
+#endif
+		fse->cumulative_ip_length,
+		fse->tcp_sequence_number
+		);
+}
+#else
+static inline void hal_rx_dump_fse_ext(struct rx_flow_search_entry *fse)
+{
+}
+#endif
+
+static inline void
+hal_rx_dump_fse(struct rx_flow_search_entry *fse, int index)
+{
+	uint32_t src_ipv6[IPV6_WORDS] = {0};
+	uint32_t dst_ipv6[IPV6_WORDS] = {0};
+
+	FSE_TO_IPV6(src_ipv6, fse, src_ip);
+	FSE_TO_IPV6(dst_ipv6, fse, dest_ip);
+
+	dp_info("index %d:"
+		" src_ip_v6 %pI6c"
+		" src_ip_v4 %pI4"
+		" dest_ip_v6 %pI6c"
+		" dest_ip_v4 %pI4"
+		" src_port %u"
+		" dest_port %u"
 		" l4_protocol 0x%x"
 		" valid 0x%x"
 		" reo_destination_indication 0x%x"
-		" msdu_drop 0x%x"
+		" msdu_drop %u"
 		" reo_destination_handler 0x%x"
 		" metadata 0x%x"
-		" aggregation_count0x%x"
-		" lro_eligible 0x%x"
 		" msdu_count 0x%x"
-		" msdu_byte_count 0x%x"
-		" timestamp 0x%x"
-		" cumulative_l4_checksum 0x%x"
-		" cumulative_ip_length 0x%x"
-		" tcp_sequence_number 0x%x",
+		" msdu_byte_count %u"
+		" timestamp 0x%x",
 		index,
-		fse->src_ip_127_96,
-		fse->src_ip_95_64,
-		fse->src_ip_63_32,
-		fse->src_ip_31_0,
-		fse->dest_ip_127_96,
-		fse->dest_ip_95_64,
-		fse->dest_ip_63_32,
-		fse->dest_ip_31_0,
+		src_ipv6,
+		&src_ipv6[0],
+		dst_ipv6,
+		&dst_ipv6[0],
 		fse->src_port,
 		fse->dest_port,
 		fse->l4_protocol,
@@ -86,34 +114,13 @@ static inline void hal_rx_dump_fse(struct rx_flow_search_entry *fse, int index)
 		fse->msdu_drop,
 		fse->reo_destination_handler,
 		fse->metadata,
-		fse->aggregation_count,
-		fse->lro_eligible,
 		fse->msdu_count,
 		fse->msdu_byte_count,
-		fse->timestamp,
-#if defined(QCA_WIFI_KIWI_V2) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_QCC2072)
-		fse->cumulative_ip_length_pmac1,
-#else
-		fse->cumulative_l4_checksum,
-#endif
-		fse->cumulative_ip_length,
-		fse->tcp_sequence_number);
+		fse->timestamp);
+	hal_rx_dump_fse_ext(fse);
 }
 
-void hal_rx_dump_fse_table(struct hal_rx_fst *fst)
-{
-	int i = 0;
-	struct rx_flow_search_entry *fse =
-		(struct rx_flow_search_entry *)fst->base_vaddr;
-
-	dp_info("Number flow table entries %d", fst->add_flow_count);
-	for (i = 0; i < fst->max_entries; i++) {
-		if (fse[i].valid)
-			hal_rx_dump_fse(&fse[i], i);
-	}
-}
-
+#if defined(WLAN_SUPPORT_RX_FISA)
 void hal_rx_dump_cmem_fse(hal_soc_handle_t hal_soc_hdl, uint32_t fse_offset,
 			  int index)
 {
@@ -128,15 +135,27 @@ void hal_rx_dump_cmem_fse(hal_soc_handle_t hal_soc_hdl, uint32_t fse_offset,
 		hal_rx_dump_fse(&fse, index);
 }
 #else
-void hal_rx_dump_fse_table(struct hal_rx_fst *fst)
-{
-}
-
 void hal_rx_dump_cmem_fse(hal_soc_handle_t hal_soc_hdl, uint32_t fse_offset,
 			  int index)
 {
 }
 #endif
+
+void
+hal_rx_dump_fse_table(struct hal_rx_fst *fst)
+{
+	uint32_t i = 0;
+	struct rx_flow_search_entry *fse =
+		(struct rx_flow_search_entry *)fst->base_vaddr;
+
+	dp_info("Flow table Max Entries %d", fst->max_entries);
+	for (i = 0; i < fst->max_entries; i++) {
+		if (fse[i].valid)
+			hal_rx_dump_fse(&fse[i], i);
+	}
+}
+
+qdf_export_symbol(hal_rx_dump_fse_table);
 
 void *
 hal_rx_flow_setup_fse(hal_soc_handle_t hal_soc_hdl,

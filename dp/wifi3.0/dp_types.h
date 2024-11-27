@@ -85,6 +85,8 @@ struct dp_tx_queue;
 #define MAX_MON_LINK_DESC_BANKS 2
 #define DP_VDEV_ALL CDP_VDEV_ALL
 
+#define DP_INVALID_VDEV_ID 0xFF
+
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 #define WLAN_DP_RESET_MON_BUF_RING_FILTER
 #if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN6450)
@@ -1344,6 +1346,7 @@ struct reo_cmd_event_history {
  * @invalid_peer_unmap: Peer unmap with invalid peer id
  * @ml_peer_map: MLD peer map count
  * @ml_peer_unmap: MLD peer unmap count
+ * @peer_unmap_add: unmap old peer manuallly and replace with new peer
  */
 struct htt_t2h_msg_stats {
 	uint32_t peer_map;
@@ -1351,6 +1354,7 @@ struct htt_t2h_msg_stats {
 	uint32_t invalid_peer_unmap;
 	uint32_t ml_peer_map;
 	uint32_t ml_peer_unmap;
+	uint32_t peer_unmap_add;
 };
 
 #ifdef WLAN_DP_LOAD_BALANCE_SUPPORT
@@ -2902,6 +2906,7 @@ struct dp_arch_ops {
  * @fw_support_ml_monitor: FW support ML monitor mode
  * @dp_ipa_opt_dp_ctrl_refill: opt_dp_ctrl refill support
  * @vdev_tx_nss_support: FW supports vdev Tx NSS report.
+ * @dyn_resource_mgr_support: Dynamic RX buffer allocation support
  */
 struct dp_soc_features {
 	uint8_t pn_in_reo_dest:1,
@@ -2915,6 +2920,7 @@ struct dp_soc_features {
 	bool dp_ipa_opt_dp_ctrl_refill;
 #endif
 	bool vdev_tx_nss_support;
+	bool dyn_resource_mgr_support;
 };
 
 enum sysfs_printing_mode {
@@ -4408,6 +4414,7 @@ struct dp_vdev_stats {
 
 /* VDEV structure for data path state */
 struct dp_vdev {
+	struct cdp_vdev cdp_vdev;
 	/* OS device abstraction */
 	qdf_device_t osdev;
 
@@ -4562,7 +4569,7 @@ struct dp_vdev {
 	ol_txrx_classify_critical_pkt_fp tx_classify_critical_pkt_cb;
 
 	/* delete notifier to DP component */
-	ol_txrx_vdev_delete_cb vdev_del_notify;
+	ol_txrx_vdev_del_notify_cb vdev_del_notify;
 
 	/* deferred vdev deletion state */
 	struct {
@@ -5227,6 +5234,14 @@ struct dp_peer_extd_tx_stats {
 	uint64_t tx_ppdu_duration;
 };
 
+struct dp_peer_ezmesh_tx_stats {
+	uint32_t tx_rate;
+	uint32_t last_tx_rate;
+	uint32_t last_ack_rssi;
+	uint32_t avg_ack_rssi;
+	uint32_t prev_ack_rssi;
+};
+
 /**
  * struct dp_peer_per_pkt_rx_stats - Peer Rx stats updated in per pkt Rx path
  * @rcvd_reo: Packets received on the reo ring
@@ -5416,6 +5431,12 @@ struct dp_peer_extd_rx_stats {
 	struct cdp_pkt_info rx_total;
 };
 
+struct dp_peer_ezmesh_rx_stats {
+	uint32_t avg_snr;
+	uint8_t snr;
+	uint8_t last_snr;
+};
+
 /**
  * struct dp_peer_per_pkt_stats - Per pkt stats for peer
  * @tx: Per pkt Tx stats
@@ -5436,11 +5457,17 @@ struct dp_peer_extd_stats {
 	struct dp_peer_extd_rx_stats rx;
 };
 
+struct dp_peer_ezmesh_stats {
+	struct dp_peer_ezmesh_tx_stats tx;
+	struct dp_peer_ezmesh_rx_stats rx;
+};
+
 /**
  * struct dp_peer_stats - Peer stats
  * @per_pkt_stats: Per packet path stats
  * @extd_stats: Extended path stats
  * @tx_latency: transmit latency stats
+ * @ezmesh_stats: stats for ezmesh
  */
 struct dp_peer_stats {
 	struct dp_peer_per_pkt_stats per_pkt_stats;
@@ -5449,6 +5476,9 @@ struct dp_peer_stats {
 #endif
 #ifdef WLAN_FEATURE_TX_LATENCY_STATS
 	struct dp_tx_latency tx_latency;
+#endif
+#ifdef WLAN_FEATURE_SON
+	struct dp_peer_ezmesh_stats ezmesh_stats;
 #endif
 };
 

@@ -216,6 +216,21 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 				 struct wlan_channel channel);
 
 /**
+ * mlo_mgr_get_ap_link_info() - Get the pointer of link info matching
+ * AP mac addr/bssid.
+ * @vdev: VDEV object manager.
+ * @ap_link_addr: Pointer to AP BSSID MAC address.
+ *
+ * Returns the pointer to link info data structure matching with AP mac address
+ * field.
+ *
+ * Return: Valid pointer on match or else %NULL
+ */
+struct mlo_link_info *
+mlo_mgr_get_ap_link_info(struct wlan_objmgr_vdev *vdev,
+			 struct qdf_mac_addr *ap_link_addr);
+
+/**
  * mlo_mgr_clear_ap_link_info() - Clear AP link information
  * @vdev: Object Manager vdev
  * @ap_link_addr: AP link addresses
@@ -224,7 +239,7 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
  * Return: void
  */
 void mlo_mgr_clear_ap_link_info(struct wlan_objmgr_vdev *vdev,
-				uint8_t *ap_link_addr);
+				struct qdf_mac_addr *ap_link_addr);
 
 /**
  * mlo_mgr_reset_ap_link_info() - Reset AP links information
@@ -348,6 +363,17 @@ QDF_STATUS mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
 struct mlo_link_info*
 mlo_mgr_get_ap_link_by_link_id(struct wlan_mlo_dev_context *mlo_dev_ctx,
 			       int link_id);
+
+/**
+ * mlo_mgr_if_freq_n_inactive_links_freq_same() - API to check if the given
+ * freq and ML connection inactive/standby link are on same.
+ * @vdev: vdev
+ * @freq: given freq to check
+ *
+ * Return: bool
+ */
+bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
+						uint32_t freq);
 
 /**
  * mlo_mgr_update_csa_link_info - update mlo sta csa params
@@ -717,6 +743,13 @@ static inline struct mlo_link_info
 				int link_id)
 {
 	return NULL;
+}
+
+static inline bool
+mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
+					   uint32_t freq)
+{
+	return false;
 }
 
 static inline bool

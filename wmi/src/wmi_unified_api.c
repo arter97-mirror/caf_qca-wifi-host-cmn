@@ -4310,3 +4310,23 @@ wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd(wmi_unified_t wmi_handle,
 									    param);
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+QDF_STATUS wmi_unified_cached_scan_report_cmd_send(wmi_unified_t wmi_handle)
+{
+	if (wmi_handle->ops->send_get_cached_scan_report_cmd)
+		return wmi_handle->ops->send_get_cached_scan_report_cmd(wmi_handle);
+
+	return QDF_STATUS_E_NULL_VALUE;
+}
+
+void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
+					       void *ev_data, uint32_t data_len)
+{
+	if (wmi_handle->ops->extract_cached_scan_report_ev_params)
+		return wmi_handle->ops->extract_cached_scan_report_ev_params(wmi_handle,
+									     ev_data,
+									     data_len);
+	return NULL;
+}
+#endif

@@ -4173,11 +4173,13 @@ void dp_monitor_pdev_set_mon_vdev(struct dp_vdev *vdev)
 	/* Need to initialize both mon_mac to same vdev for ML LPC */
 	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
 		mon_mac = dp_get_mon_mac(vdev->pdev, mac_id);
-		if (!mon_mac->mvdev)
+		if (!mon_mac->mvdev) {
 			mon_mac->mvdev = vdev;
-		else
+			mon_mac->vdev_id = vdev->vdev_id;
+		} else {
 			dp_info("skip to set mvdev - vdev_id: %u, mac_id: %u",
 				vdev->vdev_id, mac_id);
+		}
 	}
 }
 
@@ -5232,6 +5234,9 @@ dp_mon_mode_local_pkt_capture(struct dp_soc *soc)
 	 * as STA+MON mode, LPC otherwise.
 	 */
 	if (wlan_cfg_get_local_pkt_capture(soc->wlan_cfg_ctx) &&
+	    (soc->cdp_soc.ol_ops->get_con_mode &&
+	     soc->cdp_soc.ol_ops->get_con_mode() ==
+	     QDF_GLOBAL_MISSION_MODE) &&
 	    !(soc->mon_flags & QDF_MONITOR_FLAG_OTHER_BSS))
 		return true;
 
@@ -5307,7 +5312,7 @@ dp_mon_pdev_filter_init(struct dp_mon_pdev *mon_pdev)
 		return;
 
 	mon_pdev->mon_filter_mode = MON_FILTER_ALL;
-	mon_pdev->fp_mgmt_filter = FILTER_MGMT_ALL;
+	mon_pdev->fp_mgmt_filter = FP_MGMT_FILTER;
 	mon_pdev->fp_ctrl_filter = FILTER_CTRL_ALL;
 	mon_pdev->fp_data_filter = FILTER_DATA_ALL;
 	mon_pdev->mo_mgmt_filter = FILTER_MGMT_ALL;

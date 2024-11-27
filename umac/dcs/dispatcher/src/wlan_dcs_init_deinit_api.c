@@ -45,8 +45,14 @@ wlan_dcs_psoc_obj_create_notification(struct wlan_objmgr_psoc *psoc,
 	if (!dcs_psoc_obj)
 		return QDF_STATUS_E_NOMEM;
 
-	for (loop = 0; loop < WLAN_DCS_MAX_PDEVS; loop++)
+	for (loop = 0; loop < WLAN_DCS_MAX_PDEVS; loop++) {
 		qdf_spinlock_create(&dcs_psoc_obj->dcs_pdev_priv[loop].lock);
+		qdf_timer_init(NULL,
+			       &dcs_psoc_obj->dcs_pdev_priv[loop].dcs_disable_timer,
+			       wlan_dcs_disable_timer_fn,
+			       &dcs_psoc_obj->dcs_pdev_priv[loop].dcs_timer_args,
+			       QDF_TIMER_TYPE_WAKE_APPS);
+	}
 
 	status = wlan_objmgr_psoc_component_obj_attach(psoc,
 						       WLAN_UMAC_COMP_DCS,
@@ -237,11 +243,6 @@ QDF_STATUS wlan_dcs_psoc_open(struct wlan_objmgr_psoc *psoc)
 				cfg_get(psoc, CFG_DCS_RESTART_DELAY);
 
 		wlan_dcs_psoc_int_vdev(psoc, dcs_pdev_priv);
-
-		qdf_timer_init(NULL, &dcs_pdev_priv->dcs_disable_timer,
-			       wlan_dcs_disable_timer_fn,
-			       &dcs_pdev_priv->dcs_timer_args,
-			       QDF_TIMER_TYPE_WAKE_APPS);
 	}
 
 	return QDF_STATUS_SUCCESS;

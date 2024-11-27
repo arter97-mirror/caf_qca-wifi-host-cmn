@@ -50,6 +50,10 @@
 
 #define INVALID_WBM_RING_NUM 0xF
 
+#define HOST_PDEV_ID_ALL_MACS -1
+#define HOST_PDEV_ID_1ST_MAC 0
+#define HOST_PDEV_ID_2ND_MAC 1
+
 #ifdef FEATURE_DIRECT_LINK
 #define DIRECT_LINK_REFILL_RING_ENTRIES 128
 #ifdef IPA_OFFLOAD
@@ -1468,6 +1472,13 @@ void DP_PRINT_STATS(const char *fmt, ...);
 }
 #endif
 
+#ifdef WLAN_FEATURE_SON
+#define DP_PEER_EZMESH_STATS_UPD(_handle, _field, _delta, _link) \
+{ \
+	DP_PEER_LINK_STATS_UPD(_handle, ezmesh_stats._field, _delta, _link); \
+}
+#endif
+
 #if defined(QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT) && \
 	defined(QCA_ENHANCED_STATS_SUPPORT)
 #define DP_PEER_TO_STACK_INCC_PKT(_handle, _count, _bytes, _cond) \
@@ -2608,6 +2619,31 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 					_srcobj->rx_i.routed_eapol_pkt.bytes; \
 	} while (0)
 
+#if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+#define DP_UPDATE_LINK_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx) \
+	do { \
+		_tgtobj->tx_i.dropped.push_head_fail += \
+			_srcobj->tx_i[idx].dropped.push_head_fail; \
+		_tgtobj->tx_i.dropped.prep_metadata_fail += \
+			_srcobj->tx_i[idx].dropped.prep_metadata_fail; \
+		_tgtobj->tx_i.dropped.multipass_en += \
+			_srcobj->tx_i[idx].dropped.multipass_en; \
+	} while (0)
+
+#define DP_UPDATE_MLD_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx) \
+	do { \
+		_tgtobj->tx_i[idx].dropped.push_head_fail += \
+			_srcobj->tx_i[idx].dropped.push_head_fail; \
+		_tgtobj->tx_i[idx].dropped.prep_metadata_fail += \
+			_srcobj->tx_i[idx].dropped.prep_metadata_fail; \
+		_tgtobj->tx_i[idx].dropped.multipass_en += \
+			_srcobj->tx_i[idx].dropped.multipass_en; \
+	} while (0)
+#else
+#define DP_UPDATE_LINK_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, _xmit_type)
+#define DP_UPDATE_MLD_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, _xmit_type)
+#endif
+
 #define DP_UPDATE_LINK_VDEV_INGRESS_STATS(_tgtobj, _srcobj, _xmit_type) \
 	do { \
 		uint8_t i = 0; \
@@ -2745,6 +2781,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 				_srcobj->tx_i[idx].sniffer_rcvd.num; \
 			_tgtobj->tx_i.sniffer_rcvd.bytes += \
 				_srcobj->tx_i[idx].sniffer_rcvd.bytes; \
+			DP_UPDATE_LINK_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx); \
 		} \
 		_tgtobj->tx_i.dropped.dropped_pkt.num = \
 			_tgtobj->tx_i.dropped.dma_error + \
@@ -2910,6 +2947,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 				_tgtobj->tx_i[idx].dropped.invalid_peer_id_in_exc_path + \
 				_tgtobj->tx_i[idx].dropped.tx_mcast_drop + \
 				_tgtobj->tx_i[idx].dropped.fw2wbm_tx_drop; \
+			DP_UPDATE_MLD_VDEV_INGRESS_STATS2(_tgtobj, _srcobj, idx); \
 		} \
 		DP_UPDATE_RX_INGRESS_STATS(_tgtobj, _srcobj); \
 	} while (0)
@@ -5160,14 +5198,26 @@ static inline
 void *dp_context_alloc_mem(struct dp_soc *soc, enum dp_ctxt_type ctxt_type,
 			   size_t ctxt_size)
 {
-	return qdf_mem_malloc(ctxt_size);
+	/* Always allocate continuous memory for monitor context used for
+	 * DMA. For other contexts, using vmalloc is enough, which can
+	 * avoid failure when system don't have enough continuous memory.
+	 */
+	if (ctxt_type == DP_MON_RX_DESC_POOL_TYPE ||
+	    ctxt_type == DP_MON_TX_DESC_POOL_TYPE)
+		return qdf_mem_malloc(ctxt_size);
+
+	return qdf_mem_common_alloc(ctxt_size);
 }
 
 static inline
 void dp_context_free_mem(struct dp_soc *soc, enum dp_ctxt_type ctxt_type,
 			 void *vaddr)
 {
-	qdf_mem_free(vaddr);
+	if (ctxt_type == DP_MON_RX_DESC_POOL_TYPE ||
+	    ctxt_type == DP_MON_TX_DESC_POOL_TYPE)
+		qdf_mem_free(vaddr);
+	else
+		qdf_mem_common_free(vaddr);
 }
 
 static inline
@@ -6504,6 +6554,17 @@ QDF_STATUS
 dp_rx_flow_invalidate_fse_entry(struct dp_pdev *pdev, struct dp_rx_fse *fse,
 				struct cdp_rx_flow_info *rx_flow_info,
 				bool delete_entry);
+
+/**
+ * dp_rx_flow_dump_hal_fse_entries() - Print flow search entries though HAL
+ * @soc_hdl: CDP SoC Handle
+ * @pdev_id: Respective pdev_id
+ *
+ * Return: None
+ */
+QDF_STATUS
+dp_rx_flow_dump_hal_fse_entries(struct cdp_soc_t *soc_hdl, uint8_t pdev_id);
+
 #endif /* #WLAN_SUPPORT_RX_FLOW_TAG */
 
 /**
@@ -6516,4 +6577,20 @@ dp_rx_flow_invalidate_fse_entry(struct dp_pdev *pdev, struct dp_rx_fse *fse,
  */
 bool dp_get_peer_vdev_roaming_in_progress(struct dp_peer *peer);
 
+/**
+ * dp_trigger_recovery() - Trigger recovery if OPs is registered,
+ *                         otherwise assert.
+ * @soc: DP SOC handle
+ * @reason: DP recovery reason
+ *
+ * Return: None
+ */
+static inline
+void dp_trigger_recovery(struct dp_soc *soc, enum qdf_hang_reason reason)
+{
+	if (soc->cdp_soc.ol_ops->dp_trigger_recovery)
+		soc->cdp_soc.ol_ops->dp_trigger_recovery(reason);
+	else
+		qdf_assert_always(0);
+}
 #endif /* #ifndef _DP_INTERNAL_H_ */

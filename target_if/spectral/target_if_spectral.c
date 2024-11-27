@@ -4447,6 +4447,7 @@ target_if_validate_center_freq(struct target_if_spectral *spectral,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifndef AI_SPECTRAL_SUPPORT
 /**
  * target_if_is_agile_span_overlap_with_operating_span() - Helper routine to
  * check whether agile span overlaps with current operating band.
@@ -4605,6 +4606,24 @@ target_if_is_agile_span_overlap_with_operating_span
 
 	return QDF_STATUS_SUCCESS;
 }
+
+#else
+static QDF_STATUS
+target_if_is_agile_span_overlap_with_operating_span
+			(struct target_if_spectral *spectral,
+			 enum phy_ch_width *ch_width,
+			 struct spectral_config_frequency *center_freq,
+			 bool *is_overlapping)
+{
+	/*
+	 * Agile scan reduces impact on Tx/Rx compared to Normal scan.
+	 * Enable Agile spectral scan in span overlapping with operating
+	 * span, specifically for AI/ML spectral classification application.
+	 */
+	*is_overlapping = false;
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* AI_SPECTRAL_SUPPORT */
 
 /**
  * target_if_spectral_populate_chwidth() - Helper routine to

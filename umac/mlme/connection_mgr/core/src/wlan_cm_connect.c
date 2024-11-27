@@ -718,7 +718,6 @@ static void cm_create_bss_peer(struct cnx_mgr *cm_ctx,
 							req->cur_candidate->entry,
 							true)) {
 		cm_set_vdev_link_id(cm_ctx, req);
-		wlan_mlo_init_cu_bpcc(vdev);
 		mld_mac = cm_get_bss_peer_mld_addr(req);
 		mlo_set_sta_ctx_bss_mld_addr(vdev, mld_mac);
 		is_assoc_link = cm_bss_peer_is_assoc_peer(req);
@@ -749,28 +748,11 @@ peer_create_fail:
 	}
 }
 
-#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
-static QDF_STATUS
-cm_t2lm_validate_candidate(struct cnx_mgr *cm_ctx,
-			   struct scan_cache_entry *scan_entry)
-{
-	return wlan_t2lm_validate_candidate(cm_ctx, scan_entry);
-}
-#else
-static inline QDF_STATUS
-cm_t2lm_validate_candidate(struct cnx_mgr *cm_ctx,
-			   struct scan_cache_entry *scan_entry)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 static
 QDF_STATUS cm_if_mgr_validate_candidate(struct cnx_mgr *cm_ctx,
 					struct scan_cache_entry *scan_entry)
 {
 	struct if_mgr_event_data event_data = {0};
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	event_data.validate_bss_info.scan_entry = scan_entry;
 	event_data.validate_bss_info.chan_freq = scan_entry->channel.chan_freq;
@@ -778,10 +760,6 @@ QDF_STATUS cm_if_mgr_validate_candidate(struct cnx_mgr *cm_ctx,
 	qdf_copy_macaddr(&event_data.validate_bss_info.peer_addr,
 			 &scan_entry->bssid);
 	cm_candidate_mlo_update(&event_data.validate_bss_info);
-
-	status = cm_t2lm_validate_candidate(cm_ctx, scan_entry);
-	if (QDF_IS_STATUS_ERROR(status))
-		return status;
 
 	return if_mgr_deliver_event(cm_ctx->vdev,
 				    WLAN_IF_MGR_EV_VALIDATE_CANDIDATE,
@@ -1158,6 +1136,7 @@ static inline void cm_update_advance_filter(struct wlan_objmgr_pdev *pdev,
 		wlan_cm_dual_sta_roam_update_connect_channels(psoc, filter);
 	filter->dot11mode = cm_req->req.dot11mode_filter;
 	cm_update_fils_scan_filter(filter, cm_req);
+	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(cm_ctx->vdev);
 }
 
 static void cm_update_security_filter(struct scan_filter *filter,
@@ -1576,9 +1555,8 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 	bool security_valid_for_6ghz;
 	const uint8_t *rsnxe;
 
-	rsnxe = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RSNXE,
-					 cm_req->req.assoc_ie.ptr,
-					 cm_req->req.assoc_ie.len);
+	rsnxe = wlan_get_rsnxe_data_from_ie_ptr(cm_req->req.assoc_ie.ptr,
+						cm_req->req.assoc_ie.len);
 	security_valid_for_6ghz =
 		wlan_cm_6ghz_allowed_for_akm(wlan_pdev_get_psoc(pdev),
 					     cm_req->req.crypto.akm_suites,
@@ -2018,8 +1996,12 @@ cm_modify_partner_info_based_on_dbs_or_sbs_mode(struct wlan_objmgr_vdev *vdev,
 
 	for (i = 0; i < partner_info->num_partner_links; i++) {
 		partner_freq = partner_info->partner_link_info[i].chan_freq;
-		if (!policy_mgr_2_freq_always_on_same_mac(psoc, assoc_freq,
-							  partner_freq)) {
+		if (!policy_mgr_is_hw_dbs_capable(psoc) &&
+		    !wlan_reg_is_24ghz_ch_freq(partner_freq)) {
+			/* prefer non 2.4 Ghz link for non DBS */
+			best_partner_idx_5g = i;
+		} else if (!policy_mgr_2_freq_always_on_same_mac(psoc,
+						assoc_freq, partner_freq)) {
 			if (wlan_reg_is_24ghz_ch_freq(partner_freq))
 				best_partner_idx_2g = i;
 			else
@@ -2701,7 +2683,7 @@ void cm_update_per_peer_crypto_params(struct wlan_objmgr_vdev *vdev,
 /*
  * Buffer len size to add the dynamic connect req debug info
  * 8 (hidden info) + 19 (OWE info) + 5 (WPS) + 6 (OSEN) +
- * 14 (RSN OVERRIDE) + 31 (ML info) + 10 extra
+ * 14 (RSN OVERRIDE) + 8 (RSNO) + 31 (ML info) + 10 extra
  */
 #define CM_DUMP_MAX_LEN 93
 
@@ -2728,6 +2710,10 @@ static void cm_dump_connect_req(struct wlan_objmgr_psoc *psoc,
 	if (req->force_rsne_override)
 		len += qdf_scnprintf(log_str + len, str_len - len,
 				     "[RSN OVERRIDE]");
+	if (req->rsno_gen_used > RSN_LEGACY)
+		len += qdf_scnprintf(log_str + len, str_len - len, "[RSNO_%d]",
+				     req->rsno_gen_used - 1);
+
 	if (wlan_vdev_mlme_is_mlo_vdev(vdev))
 		len += util_scan_get_ml_info(req->bss->entry, log_str,
 					     str_len, len);
@@ -2742,8 +2728,7 @@ static void cm_dump_connect_req(struct wlan_objmgr_psoc *psoc,
 		       req->bss->entry->phy_mode,
 		       neg_sec_info->key_mgmt, neg_sec_info->ucastcipherset,
 		       neg_sec_info->mcastcipherset,
-		       country_code[0],
-		       country_code[1], log_str);
+		       country_code[0], country_code[1], log_str);
 }
 
 QDF_STATUS
@@ -2809,6 +2794,8 @@ cm_resume_connect_after_peer_create(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 	if (util_scan_entry_is_hidden_ap(req.bss->entry) &&
 	    QDF_HAS_PARAM(neg_sec_info->key_mgmt, WLAN_CRYPTO_KEY_MGMT_OWE))
 		req.owe_trans_ssid = cm_req->connect_req.req.ssid;
+
+	req.rsno_gen_used = neg_sec_info->rsn_gen_selected;
 
 	cm_dump_connect_req(psoc, cm_ctx->vdev, &req, conn_req, neg_sec_info);
 	cm_cp_stats_cstats_log_connecting_event(cm_ctx->vdev, &req, cm_req);

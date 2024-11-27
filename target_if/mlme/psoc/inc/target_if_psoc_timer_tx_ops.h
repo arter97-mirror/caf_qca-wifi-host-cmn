@@ -1,6 +1,7 @@
 
 /*
  * Copyright (c) 2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,6 +26,8 @@
 
 #ifndef __TARGET_IF_PSOC_TIMER_TX_OPS_H__
 #define __TARGET_IF_PSOC_TIMER_TX_OPS_H__
+
+#include <wlan_vdev_mgr_tgt_if_rx_defs.h>
 
 /**
  * target_if_psoc_vdev_rsp_timer_inuse() - API to check if the response timer
@@ -90,5 +93,34 @@ QDF_STATUS target_if_vdev_mgr_rsp_timer_mod(
 					struct wlan_objmgr_psoc *psoc,
 					uint8_t vdev_id,
 					int mseconds);
+/*
+ * target_if_acquire_vdev_cmd_rt_lock() - API to acquire per vdev RT lock
+ * @vdev_rsp: vdev rsp pointer
+ *
+ * Lock has to be acquired from:
+ * a) VDEV_START until VDEV_STOP or VDEV_UP
+ * b) VDEV_STOP until VDEV_DOWN
+ * c) VDEV_DELETE until VDEV_DELETE_RESPONSE
+ *
+ * Return: None
+ */
+void
+target_if_acquire_vdev_cmd_rt_lock(struct vdev_response_timer *vdev_rsp);
 
+/*
+ * target_if_release_vdev_cmd_rt_lock() - API to release per vdev RT lock
+ * @psoc: pointer to psoc object
+ * @vdev_id: vdev id for which response timer has to be retrieved
+ *
+ * Lock has to be released during:
+ * a) VDEV_STOP/VDEV_UP - The lock that was acquired during VDEV_START
+ * b) VDEV_DOWN - The lock that was acquired during VDEV_STOP
+ * c) VDEV_DELETE_RESP - The lock that was acquired during VDEV_DELETE send
+ * d) Failures in sending VDEV_START/STOP/DELETE WMI cmds.
+ *
+ * Return: None
+ */
+void
+target_if_release_vdev_cmd_rt_lock(struct wlan_objmgr_psoc *psoc,
+				   uint8_t vdev_id);
 #endif

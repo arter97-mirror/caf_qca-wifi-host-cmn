@@ -35,6 +35,7 @@
 #ifdef WLAN_FEATURE_11BE_MLO
 #include "wlan_mlo_mgr_public_structs.h"
 #endif
+#include "wlan_objmgr_global_obj.h"
 
 #define ASCII_SPACE_CHARACTER 32
 
@@ -804,6 +805,9 @@ util_scan_copy_beacon_data(struct scan_cache_entry *new_entry,
 		ie_lst->t2lm[i] = conv_ptr(ie_lst->t2lm[i], old_ptr, new_ptr);
 #endif
 	ie_lst->qcn = conv_ptr(ie_lst->qcn, old_ptr, new_ptr);
+	ie_lst->wifi6_rsno = conv_ptr(ie_lst->wifi6_rsno, old_ptr, new_ptr);
+	ie_lst->rsnxo = conv_ptr(ie_lst->rsnxo, old_ptr, new_ptr);
+	ie_lst->wifi7_rsno = conv_ptr(ie_lst->wifi7_rsno, old_ptr, new_ptr);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -965,14 +969,52 @@ util_scan_entry_xrates(struct scan_cache_entry *scan_entry)
  * util_scan_entry_rsn()- function to read rsn IE
  * @scan_entry: scan entry
  *
- * API, function to read rsn IE
+ * API, function to read rsn IE and return the
+ * pointer to RSN data
  *
- * Return: rsnie or NULL if ie is not present
+ *
+ * Return: rsnie data or NULL if ie is not present
  */
 static inline uint8_t*
 util_scan_entry_rsn(struct scan_cache_entry *scan_entry)
 {
 	return scan_entry->ie_list.rsn;
+}
+
+/**
+ * util_scan_entry_wifi6_rsno()- function to read wifi6 RSNO/RSNO1 element
+ * @scan_entry: scan entry
+ *
+ * Return: wifi6 RSN if present or NULL if ie is not present
+ */
+static inline uint8_t*
+util_scan_entry_wifi6_rsno(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.wifi6_rsno;
+}
+
+/**
+ * util_scan_entry_wifi7_rsno()- function to read wifi7 RSNO/RSNO2 element
+ * @scan_entry: scan entry
+ *
+ * Return: wifi7 RSN if present or NULL if ie is not present
+ */
+static inline uint8_t*
+util_scan_entry_wifi7_rsno(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.wifi7_rsno;
+}
+
+/*
+ * util_scan_entry_rsnxo() - function to read RSNXO element
+ * @scan_entry: scan entry
+ *
+ * Return: RSNXO if present or NULL if ie is not present
+ */
+static inline uint8_t*
+util_scan_entry_rsnxo(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.rsnxo;
 }
 
 /**
@@ -1010,24 +1052,6 @@ util_scan_entry_single_pmk(struct wlan_objmgr_psoc *psoc,
 	return false;
 }
 #endif
-
-/**
- * util_scan_get_rsn_len()- function to read rsn IE length if present
- * @scan_entry: scan entry
- *
- * API, function to read rsn length if present
- *
- * Return: rsnie length
- */
-static inline uint8_t
-util_scan_get_rsn_len(struct scan_cache_entry *scan_entry)
-{
-	if (scan_entry && scan_entry->ie_list.rsn)
-		return scan_entry->ie_list.rsn[1] + 2;
-	else
-		return 0;
-}
-
 
 /**
  * util_scan_entry_wpa() - function to read wpa IE
@@ -1843,14 +1867,32 @@ util_scan_entry_mbo_oce(struct scan_cache_entry *scan_entry)
  * util_scan_entry_rsnxe() - function to read RSNXE ie
  * @scan_entry: scan entry
  *
- * API, function to read RSNXE ie
+ * API, function to read RSNXE data
  *
- * Return: RSNXE ie
+ * Return: RSNXE data
+ * Note: Use util_scan_get_rsnx_len() to get the length of RSNXE data
  */
 static inline uint8_t *
 util_scan_entry_rsnxe(struct scan_cache_entry *scan_entry)
 {
 	return scan_entry->ie_list.rsnxe;
+}
+
+/**
+ * util_scan_get_rsnx_len()- function to read RSNX IE length if present
+ * @scan_entry: scan entry
+ *
+ * API, function to read rsn length. If present return the len of the
+ * RSNX data
+ *
+ * Return: rsnie data length
+ */
+static inline uint8_t
+util_scan_get_rsnx_len(struct scan_cache_entry *scan_entry)
+{
+	if (scan_entry->ie_list.rsnxe)
+		return scan_entry->ie_list.rsnxe[1];
+	return 0;
 }
 
 /**
@@ -2016,7 +2058,6 @@ util_scan_get_6g_oper_channel(uint8_t *he_op_ie)
 enum wlan_phymode
 util_scan_get_phymode(struct wlan_objmgr_pdev *pdev,
 		      struct scan_cache_entry *scan_params);
-#endif
 
 /*
  * util_is_bssid_non_tx() - Is the given BSSID a non-tx neighbor
@@ -2043,3 +2084,49 @@ void
 util_scan_entry_renew_timestamp(struct wlan_objmgr_pdev *pdev,
 				struct scan_cache_entry *scan_entry);
 
+/*
+ * util_scan_entry_rsn_by_gen() = Get the RSN(O) IE based on the generation
+ * specified
+ * @scan_entry: pointer to scan entry
+ * @rsno_gen: Generation of RSN used
+ *
+ * Return: Pointer to RSN(O) IE
+ */
+uint8_t *util_scan_entry_rsn_by_gen(struct scan_cache_entry *scan_entry,
+				    uint8_t rsno_gen);
+
+/*
+ * util_scan_entry_rsnxe_by_gen() = Get the RSNX(O) IE based on the generation
+ * specified
+ * @scan_entry: pointer to scan entry
+ * @rsno_gen: Generation of RSN used
+ *
+ * Return: Pointer to RSNX(O) IE
+ */
+uint8_t *util_scan_entry_rsnxe_by_gen(struct scan_cache_entry *scan_entry,
+				      uint8_t rsno_gen);
+
+/*
+ * util_get_rsnxe_len_by_gen() - Get the RSNX(O) IE length based on the
+ * generation specified
+ * @scan_entry: pointer to scan entry
+ * @rsno_gen: Generation of RSN used
+ *
+ * Return: Length of RSNX(O) IE
+ */
+uint8_t util_get_rsnxe_len_by_gen(struct scan_cache_entry *scan_entry,
+				  uint8_t rsno_gen);
+/*
+ * util_scan_is_valid_rsn_present() - API to validate the RSN(O) IE
+ * @entry: scan entry
+ * @params: security params of the RSN IE
+ *
+ * Parse each of the RSN(O) elements starting from legacy RSN and the frame is
+ * eligible is only if one of the RSN(O) IEs have a valid crypto configuration.
+ *
+ * Return: QDF STATUS
+ */
+QDF_STATUS
+util_scan_is_valid_rsn_present(struct scan_cache_entry *entry,
+			       struct wlan_crypto_params *params);
+#endif

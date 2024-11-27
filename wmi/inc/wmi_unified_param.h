@@ -1379,11 +1379,13 @@ struct wmi_host_link_state_params {
  * @link_id: link id
  * @ap_mld_mac: ap mld mac address
  * @chan: channel
+ * @op_code: operation for provided link
  */
 struct wmi_host_link_bss_params {
 	uint8_t link_id;
 	uint8_t ap_mld_mac[QDF_MAC_ADDR_SIZE];
 	struct wlan_channel chan;
+	uint8_t op_code;
 };
 
 #endif /* WLAN_FEATURE_11BE */
@@ -5602,6 +5604,10 @@ typedef enum {
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	wmi_mgmt_srng_reap_eventid,
 #endif
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	wmi_scan_cache_result_eventid,
+#endif
+
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -6343,6 +6349,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_hwcts2self_ofdma,
 		   VDEV_PARAM_HWCTS2SELF_OFDMA),
 	VDEV_PARAM(vdev_param_twt_unavail_mode, VDEV_PARAM_TWT_UNAVAIL_MODE),
+	VDEV_PARAM(vdev_param_connect_ext_features,
+		   VDEV_PARAM_CONNECT_EXT_FEATURES),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
@@ -6775,7 +6783,13 @@ typedef enum {
 	wmi_service_is_target_ipa,
 	wmi_service_therm_throt_tx_chain_mask,
 	wmi_service_therm_throt_5_levels,
-
+	wmi_service_mrsno_support,
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	wmi_service_scan_cache_report_support,
+#endif
+#ifdef WLAN_FEATURE_11BE_MLO
+	wmi_service_mlo_sap_concurrency_support,
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -7167,6 +7181,7 @@ struct target_feature_set {
  * @is_epm_supported: Is epm functionality supported
  * @con_mode_monitor: Device is in Full monitor mode
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
+ * @enable_optimize_power: Enable power optimization
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7312,6 +7327,7 @@ typedef struct {
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	bool mgmt_rx_srng_support;
 #endif
+	bool enable_optimize_power;
 } target_resource_config;
 
 /**

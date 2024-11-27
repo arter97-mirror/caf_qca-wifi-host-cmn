@@ -264,6 +264,72 @@ bool dp_peer_check_wds_ext_peer(struct dp_peer *peer)
 
 	return false;
 }
+#ifdef IPA_OFFLOAD
+static QDF_STATUS
+dp_peer_wds_ext_set_peer_bit(struct dp_peer *peer)
+{
+	struct dp_vdev *vdev = peer->vdev;
+	struct dp_txrx_peer *txrx_peer;
+
+	if (!vdev->wds_ext_enabled)
+		return QDF_STATUS_E_INVAL;
+
+	txrx_peer = dp_get_txrx_peer(peer);
+	if (!txrx_peer)
+		return QDF_STATUS_E_INVAL;
+
+	if (qdf_atomic_test_bit(WDS_EXT_PEER_INIT_BIT,
+				&txrx_peer->wds_ext.init))
+		return QDF_STATUS_E_ALREADY;
+
+	qdf_atomic_test_and_set_bit(WDS_EXT_PEER_INIT_BIT,
+				    &txrx_peer->wds_ext.init);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+dp_peer_wds_ext_create(struct dp_soc *soc, struct dp_peer *peer)
+{
+	struct dp_vdev *vdev = peer->vdev;
+	struct dp_txrx_peer *ta_txrx_peer;
+	uint8_t wds_ext_src_mac[QDF_MAC_ADDR_SIZE];
+	struct dp_peer *ta_base_peer;
+
+	if (!vdev->wds_ext_enabled)
+		return QDF_STATUS_E_INVAL;
+
+	ta_txrx_peer = dp_get_txrx_peer(peer);
+	if (!ta_txrx_peer)
+		return QDF_STATUS_E_INVAL;
+
+	if (ta_txrx_peer->is_mld_peer) {
+		ta_base_peer = dp_get_primary_link_peer_by_id(
+						soc,
+						ta_txrx_peer->peer_id,
+						DP_MOD_ID_IPA);
+	} else {
+		ta_base_peer = dp_peer_get_ref_by_id(
+						soc,
+						ta_txrx_peer->peer_id,
+						DP_MOD_ID_IPA);
+	}
+	if (!ta_base_peer)
+		return QDF_STATUS_E_INVAL;
+
+	qdf_mem_copy(wds_ext_src_mac, &ta_base_peer->mac_addr.raw[0],
+		     QDF_MAC_ADDR_SIZE);
+	dp_peer_unref_delete(ta_base_peer, DP_MOD_ID_IPA);
+
+	soc->cdp_soc.ol_ops->rx_wds_ext_peer_learn(
+					ta_txrx_peer->vdev->pdev->soc->ctrl_psoc,
+					ta_txrx_peer->peer_id,
+					ta_txrx_peer->vdev->vdev_id,
+					wds_ext_src_mac);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 #else
 bool dp_peer_check_wds_ext_peer(struct dp_peer *peer)
 {
@@ -731,6 +797,87 @@ void dp_txrx_peer_attach_add(struct dp_soc *soc,
 	qdf_spin_unlock_bh(&soc->peer_map_lock);
 }
 
+#ifdef DP_PEER_UNMAP_TRACK
+static void dp_peer_id_unmap_and_add(struct dp_soc *soc,
+				     uint16_t peer_id,
+				     struct dp_peer *peer)
+{
+	dp_peer_unref_delete(peer, DP_MOD_ID_CONFIG);
+	qdf_assert_always(0);
+}
+#else
+/**
+ * dp_peer_id_unmap_and_add() - unmap old peer and replace new peer
+ * @soc: DP SOC handler
+ * @peer_id: peer id
+ * @peer: new peer to be added
+ *
+ * If old peer has done peer deleting before but just missed peer
+ * unmap, force to do peer unmap then map new peer, otherwise still
+ * trigger assert.
+ *
+ * Return: None
+ */
+static void dp_peer_id_unmap_and_add(struct dp_soc *soc,
+				     uint16_t peer_id,
+				     struct dp_peer *peer)
+{
+	struct dp_peer *old_peer = NULL;
+
+	old_peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_CONFIG);
+	if (!old_peer) {
+		dp_err("Fail to get old_peer by id %d", peer_id);
+		goto fail_ret;
+	}
+
+	/* old peer not did peer deleting */
+	if (old_peer->valid) {
+		dp_err("old_peer is still valid");
+		dp_peer_unref_delete(old_peer, DP_MOD_ID_CONFIG);
+		goto fail_ret;
+	}
+
+	dp_info("peer id %d, unmap old peer(" QDF_MAC_ADDR_FMT "), "
+		"add new peer(" QDF_MAC_ADDR_FMT ")",
+		peer_id,
+		QDF_MAC_ADDR_REF(old_peer->mac_addr.raw),
+		QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+
+	/* do force peer unmap for old peer */
+	dp_rx_peer_unmap_handler(soc, peer_id,
+				 old_peer->vdev->vdev_id,
+				 old_peer->mac_addr.raw, 0,
+				 DP_PEER_WDS_COUNT_INVALID);
+
+	dp_peer_unref_delete(old_peer, DP_MOD_ID_CONFIG);
+
+	/* map new peer */
+	qdf_spin_lock_bh(&soc->peer_map_lock);
+	if (soc->peer_id_to_obj_map[peer_id]) {
+		dp_err("old_peer still not been unmapped");
+		qdf_spin_unlock_bh(&soc->peer_map_lock);
+		goto fail_ret;
+	}
+
+	soc->peer_id_to_obj_map[peer_id] = peer;
+	if (peer->txrx_peer)
+		peer->txrx_peer->peer_id = peer_id;
+	qdf_spin_unlock_bh(&soc->peer_map_lock);
+
+	DP_STATS_INC(soc, t2h_msg_stats.peer_unmap_add, 1);
+	return;
+
+fail_ret:
+	/*
+	 * Reset peer_id to invalid in case this peer's peer_id
+	 * is used even if it has not been mapped successfully.
+	 */
+	peer->peer_id = HTT_INVALID_PEER;
+	dp_peer_unref_delete(peer, DP_MOD_ID_CONFIG);
+	dp_trigger_recovery(soc, QDF_DP_PEER_ID_DUPLICATE_USE);
+}
+#endif
+
 void dp_peer_find_id_to_obj_add(struct dp_soc *soc,
 				struct dp_peer *peer,
 				uint16_t peer_id)
@@ -752,6 +899,7 @@ void dp_peer_find_id_to_obj_add(struct dp_soc *soc,
 		soc->peer_id_to_obj_map[peer_id] = peer;
 		if (peer->txrx_peer)
 			peer->txrx_peer->peer_id = peer_id;
+		qdf_spin_unlock_bh(&soc->peer_map_lock);
 	} else {
 		/* Peer map event came for peer_id which
 		 * is already mapped, this is not expected
@@ -767,10 +915,10 @@ void dp_peer_find_id_to_obj_add(struct dp_soc *soc,
 		       soc->stats.t2h_msg_stats.invalid_peer_unmap,
 		       soc->stats.t2h_msg_stats.ml_peer_map,
 		       soc->stats.t2h_msg_stats.ml_peer_unmap);
-		dp_peer_unref_delete(peer, DP_MOD_ID_CONFIG);
-		qdf_assert_always(0);
+
+		qdf_spin_unlock_bh(&soc->peer_map_lock);
+		dp_peer_id_unmap_and_add(soc, peer_id, peer);
 	}
-	qdf_spin_unlock_bh(&soc->peer_map_lock);
 }
 
 void dp_peer_find_id_to_obj_remove(struct dp_soc *soc,
@@ -1357,7 +1505,17 @@ static inline
 void dp_peer_map_ipa_evt(struct dp_soc *soc, struct dp_peer *peer,
 			 struct dp_ast_entry *ast_entry, uint8_t *mac_addr)
 {
+	QDF_STATUS status;
+
 	if (ast_entry && (ast_entry->type == CDP_TXRX_AST_TYPE_WDS)) {
+		status = dp_peer_wds_ext_set_peer_bit(peer);
+		if (status == QDF_STATUS_SUCCESS) {
+			qdf_info("%pK set WDS EXT bit", soc);
+			if (dp_peer_wds_ext_create(soc, peer) == QDF_STATUS_SUCCESS)
+				qdf_info("%pK: WDS_EXT Netdev got created", soc);
+			else
+				qdf_err("%pK Failed to create WDS EXT Netdev", soc);
+		}
 		if (soc->cdp_soc.ol_ops->peer_map_event) {
 			soc->cdp_soc.ol_ops->peer_map_event(
 			soc->ctrl_psoc, ast_entry->peer_id,
@@ -2543,7 +2701,8 @@ dp_peer_clean_wds_entries(struct dp_soc *soc, struct dp_peer *peer,
 	    (free_wds_count != wds_deleted) && !ast_ind_disable) {
 		DP_STATS_INC(soc, ast.ast_mismatch, 1);
 		dp_alert("For peer %pK (mac: "QDF_MAC_ADDR_FMT")number of wds entries deleted by fw = %d during peer delete is not same as the numbers deleted by host = %d",
-			 peer, peer->mac_addr.raw, free_wds_count,
+			 peer, QDF_MAC_ADDR_REF(peer->mac_addr.raw),
+			 free_wds_count,
 			 wds_deleted);
 	}
 }

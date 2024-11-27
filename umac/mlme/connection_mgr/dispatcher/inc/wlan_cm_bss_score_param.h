@@ -52,6 +52,7 @@
  * @reserved: reserved/unused bits
  * @wlm_indication_weightage: WLM indication weightage
  * @security_weightage: Security weightage
+ * @sta_sap_mcc_weightage: STA + SAP MCC weightage
  */
 struct weight_cfg {
 	uint8_t rssi_weightage;
@@ -81,6 +82,7 @@ struct weight_cfg {
 	uint8_t wlm_indication_weightage;
 #endif
 	uint8_t security_weightage;
+	uint8_t sta_sap_mcc_weightage;
 };
 
 /**

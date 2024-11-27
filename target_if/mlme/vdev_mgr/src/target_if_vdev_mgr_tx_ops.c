@@ -517,6 +517,7 @@ static QDF_STATUS target_if_vdev_mgr_start_send(
 
 	vdev_rsp->expire_time = START_RESPONSE_TIMER;
 	target_if_wake_lock_timeout_acquire(psoc, START_WAKELOCK);
+	target_if_acquire_vdev_cmd_rt_lock(vdev_rsp);
 
 	if (param->is_restart)
 		target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp,
@@ -530,6 +531,7 @@ static QDF_STATUS target_if_vdev_mgr_start_send(
 		vdev_rsp->timer_status = QDF_STATUS_E_CANCELED;
 		vdev_rsp->expire_time = 0;
 		target_if_wake_lock_timeout_release(psoc, START_WAKELOCK);
+		target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
 		if (param->is_restart)
 			target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp,
 							  RESTART_RESPONSE_BIT);
@@ -680,6 +682,7 @@ static QDF_STATUS target_if_vdev_mgr_delete_send(
 	target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp,
 					   DELETE_RESPONSE_BIT);
 	target_if_wake_lock_timeout_acquire(psoc, DELETE_WAKELOCK);
+	target_if_acquire_vdev_cmd_rt_lock(vdev_rsp);
 
 	status = wmi_unified_vdev_delete_send(wmi_handle, param->vdev_id);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
@@ -690,6 +693,7 @@ static QDF_STATUS target_if_vdev_mgr_delete_send(
 					 wmi_service_sync_delete_cmds) ||
 		    wlan_psoc_nif_feat_cap_get(psoc,
 					       WLAN_SOC_F_TESTMODE_ENABLE)) {
+			target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
 			target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp,
 							  DELETE_RESPONSE_BIT);
 			target_if_vdev_mgr_delete_rsp_handler(psoc, vdev_id,
@@ -698,6 +702,7 @@ static QDF_STATUS target_if_vdev_mgr_delete_send(
 	} else {
 		vdev_rsp->expire_time = 0;
 		vdev_rsp->timer_status = QDF_STATUS_E_CANCELED;
+		target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
 		target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp,
 						  DELETE_RESPONSE_BIT);
 		target_if_wake_lock_timeout_release(psoc, DELETE_WAKELOCK);
@@ -753,7 +758,9 @@ static QDF_STATUS target_if_vdev_mgr_stop_send(
 	 * In auth/assoc failure scenario UP command is not sent
 	 * so release the START wakelock here.
 	 */
+	target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
 	target_if_wake_lock_timeout_release(psoc, START_WAKELOCK);
+	target_if_acquire_vdev_cmd_rt_lock(vdev_rsp);
 	target_if_wake_lock_timeout_acquire(psoc, STOP_WAKELOCK);
 
 	status = wmi_unified_vdev_stop_send(wmi_handle, param);
@@ -763,6 +770,7 @@ static QDF_STATUS target_if_vdev_mgr_stop_send(
 		target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp,
 						  STOP_RESPONSE_BIT);
 		target_if_wake_lock_timeout_release(psoc, STOP_WAKELOCK);
+		target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
 	} else {
 		target_if_vdev_stop_link_handler(vdev);
 	}
@@ -796,6 +804,7 @@ static QDF_STATUS target_if_vdev_mgr_down_send(
 
 	status = wmi_unified_vdev_down_send(wmi_handle, param->vdev_id);
 	target_if_wake_lock_timeout_release(psoc, STOP_WAKELOCK);
+	target_if_release_vdev_cmd_rt_lock(psoc, param->vdev_id);
 
 	return status;
 }
@@ -829,6 +838,7 @@ static QDF_STATUS target_if_vdev_mgr_up_send(
 
 	status = wmi_unified_vdev_up_send(wmi_handle, bssid, param);
 	target_if_wake_lock_timeout_release(psoc, START_WAKELOCK);
+	target_if_release_vdev_cmd_rt_lock(psoc, param->vdev_id);
 
 	return status;
 }

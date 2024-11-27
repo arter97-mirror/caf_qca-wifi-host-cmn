@@ -916,6 +916,14 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
 	return scm_scan_get_scan_entry_by_mac_freq(pdev, bssid, freq);
 }
 
+struct scan_cache_entry *
+wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
+				      struct qdf_mac_addr *bssid,
+				      uint8_t vdev_id)
+{
+	return scm_scan_get_entry_by_bssid_and_security(pdev, bssid, vdev_id);
+}
+
 #ifdef WLAN_AUX_SUPPORT
 bool wlan_scan_get_aux_support(struct wlan_objmgr_psoc *psoc)
 
@@ -927,5 +935,33 @@ bool wlan_scan_get_aux_support(struct wlan_objmgr_psoc *psoc)
 	scm_debug("aux scan is %s", aux_scan ? "supported" : "not supported");
 
 	return aux_scan;
+}
+#endif
+
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+void wlan_scan_register_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
+{
+	struct pdev_scan_ev_handler *pdev_ev_handler;
+
+	pdev_ev_handler = wlan_pdev_get_pdev_scan_ev_handlers(pdev);
+	if (!pdev_ev_handler) {
+		scm_debug("null pdev_ev_handler");
+		return;
+	}
+
+	pdev_ev_handler->cached_scan_ev_handler =
+				scm_scan_cached_scan_report_ev_handler;
+}
+
+void wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
+{
+	struct pdev_scan_ev_handler *pdev_ev_handler;
+
+	pdev_ev_handler = wlan_pdev_get_pdev_scan_ev_handlers(pdev);
+	if (!pdev_ev_handler)
+		return;
+
+	if (pdev_ev_handler->cached_scan_ev_handler)
+		pdev_ev_handler->cached_scan_ev_handler = NULL;
 }
 #endif

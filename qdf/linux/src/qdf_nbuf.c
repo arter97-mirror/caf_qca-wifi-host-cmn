@@ -24,6 +24,9 @@
 #include <linux/hashtable.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0))
+#include <linux/skbuff_ref.h>
+#endif
 #include <linux/skbuff.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
@@ -5685,6 +5688,7 @@ qdf_nbuf_update_radiotap_he_mu_other_flags(struct mon_rx_status *rx_status,
  * @rx_status: Pointer to rx_status.
  * @rtap_buf: buffer to which radiotap has to be updated
  * @rtap_len: radiotap length
+ * @it_present_val: flag to update EHT and Using flags
  *
  * API update Extra High Throughput (11be) fields in the radiotap header
  *
@@ -5692,28 +5696,34 @@ qdf_nbuf_update_radiotap_he_mu_other_flags(struct mon_rx_status *rx_status,
  */
 static unsigned int
 qdf_nbuf_update_radiotap_usig_flags(struct mon_rx_status *rx_status,
-				    int8_t *rtap_buf, uint32_t rtap_len)
+				    int8_t *rtap_buf, uint32_t rtap_len,
+				    uint32_t *it_present_val)
 {
-	/*
-	 * IEEE80211_RADIOTAP_USIG:
-	 *		u32, u32, u32
-	 */
+	qdf_radiotap_eht_usig_t *usig;
+	qdf_radiotap_tlv_t *tlv;
+	uint32_t len;
+	uint32_t usig_len = sizeof(qdf_radiotap_eht_usig_t);
+
 	rtap_len = qdf_align(rtap_len, 4);
+	*it_present_val |= (1 << IEEE80211_RADIOTAP_TLV);
+	len = sizeof(qdf_radiotap_tlv_t) + qdf_align(usig_len, 4);
 
-	put_unaligned_le32(rx_status->usig_common, &rtap_buf[rtap_len]);
-	rtap_len += 4;
+	tlv = (qdf_radiotap_tlv_t *)(&rtap_buf[rtap_len]);
+	qdf_mem_set(tlv, len, 0);
 
-	put_unaligned_le32(rx_status->usig_value, &rtap_buf[rtap_len]);
-	rtap_len += 4;
+	tlv->type = cpu_to_le16(IEEE80211_RADIOTAP_EHT_USIG);
+	tlv->len = cpu_to_le16(usig_len);
 
-	put_unaligned_le32(rx_status->usig_mask, &rtap_buf[rtap_len]);
-	rtap_len += 4;
+	usig = (qdf_radiotap_eht_usig_t *)tlv->data;
+	usig->common = cpu_to_le32(rx_status->usig_common);
+	usig->value = cpu_to_le32(rx_status->usig_value);
+	usig->mask = cpu_to_le32(rx_status->usig_mask);
 
 	qdf_rl_debug("U-SIG data %x %x %x",
 		     rx_status->usig_common, rx_status->usig_value,
 		     rx_status->usig_mask);
 
-	return rtap_len;
+	return (rtap_len + len);
 }
 
 /**
@@ -5722,6 +5732,7 @@ qdf_nbuf_update_radiotap_usig_flags(struct mon_rx_status *rx_status,
  * @rx_status: Pointer to rx_status.
  * @rtap_buf: buffer to which radiotap has to be updated
  * @rtap_len: radiotap length
+ * @it_present_val: flag to update EHT and Using flags
  *
  * API update Extra High Throughput (11be) fields in the radiotap header
  *
@@ -5729,71 +5740,55 @@ qdf_nbuf_update_radiotap_usig_flags(struct mon_rx_status *rx_status,
  */
 static unsigned int
 qdf_nbuf_update_radiotap_eht_flags(struct mon_rx_status *rx_status,
-				   int8_t *rtap_buf, uint32_t rtap_len)
+				   int8_t *rtap_buf, uint32_t rtap_len,
+				   uint32_t *it_present_val)
 {
-	uint32_t user;
+	qdf_radiotap_tlv_t *tlv;
+	qdf_radiotap_eht_t *eht;
+	uint32_t len = 0, user;
+	uint32_t eht_len = sizeof(qdf_radiotap_eht_t);
 	struct mon_rx_user_status *rx_user_status = rx_status->rx_user_status;
-	/*
-	 * IEEE80211_RADIOTAP_EHT:
-	 *		u32, u32, u32, u32, u32, u32, u32, u16, [u32, u32, u32]
-	 */
+
 	rtap_len = qdf_align(rtap_len, 4);
+	*it_present_val |= (1 << IEEE80211_RADIOTAP_TLV);
+	if (rx_user_status)
+		eht_len += sizeof(uint32_t);
+	else
+		eht_len += (sizeof(uint32_t) * EHT_USER_INFO_LEN);
 
+	len = sizeof(qdf_radiotap_tlv_t) + qdf_align(eht_len, 4);
+	tlv = (qdf_radiotap_tlv_t *)(&rtap_buf[rtap_len]);
+	qdf_mem_set(tlv, len, 0);
+	tlv->type = cpu_to_le16(IEEE80211_RADIOTAP_EHT);
+	tlv->len = cpu_to_le16(eht_len);
+	eht = (qdf_radiotap_eht_t *)tlv->data;
 	if (!rx_user_status) {
-		put_unaligned_le32(rx_status->eht_known, &rtap_buf[rtap_len]);
-		rtap_len += 4;
-
-		put_unaligned_le32(rx_status->eht_data[0], &rtap_buf[rtap_len]);
-		rtap_len += 4;
-
-		put_unaligned_le32(rx_status->eht_data[1], &rtap_buf[rtap_len]);
-		rtap_len += 4;
+		eht->known = cpu_to_le32(rx_status->eht_known);
+		eht->data[0] = cpu_to_le32(rx_status->eht_data[0]);
+		eht->data[1] = cpu_to_le32(rx_status->eht_data[1]);
 	} else {
-		put_unaligned_le32(rx_status->eht_known |
-				   rx_user_status->eht_known,
-				   &rtap_buf[rtap_len]);
-		rtap_len += 4;
-
-		put_unaligned_le32(rx_status->eht_data[0] |
-				   rx_user_status->eht_data[0],
-				   &rtap_buf[rtap_len]);
-		rtap_len += 4;
-
-		put_unaligned_le32(rx_status->eht_data[1] |
-				   rx_user_status->eht_data[1],
-				   &rtap_buf[rtap_len]);
-		rtap_len += 4;
+		eht->known = cpu_to_le32(rx_status->eht_known |
+					 rx_user_status->eht_known);
+		eht->data[0] = cpu_to_le32(rx_status->eht_data[0] |
+					   rx_user_status->eht_data[0]);
+		eht->data[1] = cpu_to_le32(rx_status->eht_data[1] |
+					   rx_user_status->eht_data[1]);
 	}
-
-	put_unaligned_le32(rx_status->eht_data[2], &rtap_buf[rtap_len]);
-	rtap_len += 4;
-
-	put_unaligned_le32(rx_status->eht_data[3], &rtap_buf[rtap_len]);
-	rtap_len += 4;
-
-	put_unaligned_le32(rx_status->eht_data[4], &rtap_buf[rtap_len]);
-	rtap_len += 4;
-
-	put_unaligned_le32(rx_status->eht_data[5], &rtap_buf[rtap_len]);
-	rtap_len += 4;
-
+	eht->data[2] = cpu_to_le32(rx_status->eht_data[2]);
+	eht->data[3] = cpu_to_le32(rx_status->eht_data[3]);
+	eht->data[4] = cpu_to_le32(rx_status->eht_data[4]);
+	eht->data[5] = cpu_to_le32(rx_status->eht_data[5]);
 	if (!rx_user_status) {
-		for (user = 0; user < rx_status->num_eht_user_info_valid;
-		     user++) {
-			put_unaligned_le32(rx_status->eht_user_info[user],
-					   &rtap_buf[rtap_len]);
-			rtap_len += 4;
-		}
-
+		for (user = 0; user < rx_status->num_eht_user_info_valid &&
+		     user < EHT_USER_INFO_LEN; user++)
+			eht->user_info[user] = cpu_to_le32(rx_status->eht_user_info[user]);
 		qdf_rl_debug("EHT data %x %x %x %x %x %x %x",
 			     rx_status->eht_known, rx_status->eht_data[0],
 			     rx_status->eht_data[1], rx_status->eht_data[2],
 			     rx_status->eht_data[3], rx_status->eht_data[4],
 			     rx_status->eht_data[5]);
 	} else {
-		put_unaligned_le32(rx_user_status->eht_user_info, &rtap_buf[rtap_len]);
-		rtap_len += 4;
-
+		eht->user_info[0] = cpu_to_le32(rx_user_status->eht_user_info);
 		qdf_rl_debug("EHT data %x %x %x %x %x %x %x",
 			     rx_status->eht_known | rx_user_status->eht_known,
 			     rx_status->eht_data[0] |
@@ -5803,8 +5798,7 @@ qdf_nbuf_update_radiotap_eht_flags(struct mon_rx_status *rx_status,
 			     rx_status->eht_data[2], rx_status->eht_data[3],
 			     rx_status->eht_data[4], rx_status->eht_data[5]);
 	}
-
-	return rtap_len;
+	return (len + rtap_len);
 }
 
 #define IEEE80211_RADIOTAP_TX_STATUS 0
@@ -6174,11 +6168,10 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 
 	if (rx_status->usig_flags) {
 		length = rtap_len;
-		/* IEEE80211_RADIOTAP_USIG */
-		it_present_val |= (1 << IEEE80211_RADIOTAP_EXT1_USIG);
 		rtap_len = qdf_nbuf_update_radiotap_usig_flags(rx_status,
 							       rtap_buf,
-							       rtap_len);
+							       rtap_len,
+							       &it_present_val);
 
 		if ((rtap_len - length) > RADIOTAP_U_SIG_FLAGS_LEN) {
 			qdf_print("length is greater than RADIOTAP_U_SIG_FLAGS_LEN");
@@ -6188,11 +6181,10 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 
 	if (rx_status->eht_flags) {
 		length = rtap_len;
-		/* IEEE80211_RADIOTAP_EHT */
-		it_present_val |= (1 << IEEE80211_RADIOTAP_EXT1_EHT);
 		rtap_len = qdf_nbuf_update_radiotap_eht_flags(rx_status,
 							      rtap_buf,
-							      rtap_len);
+							      rtap_len,
+							      &it_present_val);
 
 		if ((rtap_len - length) > RADIOTAP_EHT_FLAGS_LEN) {
 			qdf_print("length is greater than RADIOTAP_EHT_FLAGS_LEN");

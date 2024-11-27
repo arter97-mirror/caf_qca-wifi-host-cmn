@@ -28,6 +28,10 @@
 #include <qdf_types.h>
 #include "i_qdf_threads.h"
 
+/* Function declarations and documentation */
+
+typedef int (*qdf_thread_os_func)(void *data);
+
 typedef __qdf_thread_t qdf_thread_t;
 typedef QDF_STATUS (*qdf_thread_func)(void *context);
 
@@ -89,7 +93,7 @@ qdf_thread_t *qdf_create_thread(int (*thread_handler)(void *data), void *data,
  *
  * Return: a new qdf_thread pointer
  */
-qdf_thread_t *qdf_thread_run(qdf_thread_func callback, void *context);
+qdf_thread_t *qdf_thread_run(qdf_thread_os_func callback, void *context);
 
 /**
  * qdf_thread_join() - signal and wait for a thread to stop
