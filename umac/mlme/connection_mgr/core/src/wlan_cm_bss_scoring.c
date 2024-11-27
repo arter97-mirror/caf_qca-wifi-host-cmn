@@ -3193,7 +3193,7 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 	uint8_t i, num_links;
 	struct partner_link_info *link_info;
 	struct scan_cache_node *tmp_scan_node;
-	uint64_t cur_entry_link_map, next_entry_link_map;
+	uint16_t cur_entry_link_map, next_entry_link_map;
 	qdf_list_node_t *cur_node = input_node, *next_node = NULL;
 
 	if (qdf_is_macaddr_zero(&cur_scan_node->entry->ml_info.mld_mac_addr))

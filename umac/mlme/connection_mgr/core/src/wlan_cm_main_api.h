@@ -1743,4 +1743,16 @@ cm_cp_stats_cstats_log_connecting_event(struct wlan_objmgr_vdev *vdev,
 {
 }
 #endif /* WLAN_CHIPSET_STATS */
+
+#ifdef WLAN_FEATURE_11BE_MLO
+static inline bool cm_is_nontx_scan_params_valid(struct cm_connect_req *cm_req)
+{
+	return cm_req->nontx_scan_req.is_scan_params_valid;
+}
+#else /* WLAN_FEATURE_11BE_MLO */
+static inline bool cm_is_nontx_scan_params_valid(struct cm_connect_req *cm_req)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BE_MLO */
 #endif /* __WLAN_CM_MAIN_API_H__ */

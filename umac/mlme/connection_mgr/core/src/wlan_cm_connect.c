@@ -1464,12 +1464,193 @@ static QDF_STATUS cm_update_mlo_filter(struct wlan_objmgr_pdev *pdev,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+static QDF_STATUS
+cm_fill_nontx_scan_params(struct cm_nontx_mbssid_scan_params *req,
+			  struct qdf_mac_addr *bssid, uint32_t short_ssid,
+			  qdf_freq_t freq)
+{
+	uint8_t idx;
+	struct chan_list *chan_list = &req->chan_list;
+	struct qdf_mac_addr *bssid_list = &req->bssid_list[0];
+
+	if (wlan_reg_is_6ghz_chan_freq(freq)) {
+		uint8_t num_bss = req->num_hint_bssid;
+		struct hint_bssid *bssid_hint = &req->hint_bssid[0];
+
+		if (num_bss >= WLAN_SCAN_MAX_HINT_BSSID)
+			return QDF_STATUS_E_RESOURCES;
+
+		for (idx = 0; idx < num_bss; idx++)
+			if (qdf_is_macaddr_equal(bssid,
+						 &bssid_hint[idx].bssid))
+				return QDF_STATUS_E_ALREADY;
+
+		qdf_copy_macaddr(&bssid_hint[num_bss].bssid, bssid);
+		bssid_hint[num_bss].freq_flags = freq << 16;
+		req->num_hint_bssid++;
+
+		req->hint_s_ssid[num_bss].short_ssid = short_ssid;
+		req->hint_s_ssid[num_bss].freq_flags = freq << 16;
+		req->num_hint_s_ssid++;
+
+		goto fill_chan;
+	}
+
+	if (req->num_bssid >= WLAN_SCAN_MAX_NUM_BSSID)
+		return QDF_STATUS_E_RESOURCES;
+
+	for (idx = 0; idx < req->num_bssid; idx++)
+		if (qdf_is_macaddr_equal(bssid, &bssid_list[idx]))
+			return QDF_STATUS_E_ALREADY;
+
+	qdf_copy_macaddr(&bssid_list[req->num_bssid], bssid);
+	req->num_bssid++;
+
+fill_chan:
+	for (idx = 0; idx < chan_list->num_chan; idx++)
+		if (chan_list->chan[idx].freq == freq)
+			return QDF_STATUS_SUCCESS;
+
+	chan_list->chan[chan_list->num_chan++].freq = freq;
+	return QDF_STATUS_SUCCESS;
+}
+
+static void cm_prepare_scan_params_for_nontx(struct wlan_objmgr_pdev *pdev,
+					     qdf_list_t *candidate_list,
+					     struct cm_connect_req *cm_req)
+{
+	QDF_STATUS status;
+	struct qdf_mac_addr *mld_addr;
+	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
+	struct scan_cache_node *scan_node;
+	struct scan_cache_entry *scan_entry;
+	struct rnr_bss_info *rnr;
+	struct partner_link_info *link_info;
+	struct wlan_objmgr_psoc *psoc;
+	struct scoring_cfg *score_config;
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	uint8_t idx, cur_cnt = 0;
+	uint32_t short_ssid = 0x0;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc)
+		return;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return;
+
+	score_config = &mlme_psoc_obj->psoc_cfg.score_config;
+
+	/**
+	 * Skip preparing scan request params on:
+	 *     1) If no candidates are to be checked via user configuration.
+	 *             Missing partner links are expected to in invalid state
+	 *             in this case.
+	 *     2) If scan is already performed.
+	 *             This is re-entry of this API when update previous scan
+	 *             is already done and candidate list is re-fetched.
+	 *     3) If candidate list is already present.
+	 *             This is re-entry of this API when update candidate list
+	 *             API calls to find new candidates, by this time the
+	 *             connection request is already active.
+	 *     4) If the params are already filled.
+	 */
+	if (!score_config->scan_nontx_search_thresh || cm_req->scan_id ||
+	    cm_req->candidate_list ||
+	    cm_is_nontx_scan_params_valid(cm_req))
+		return;
+
+	qdf_list_peek_front(candidate_list, &cur_node);
+	while (cur_node) {
+		qdf_list_peek_next(candidate_list, cur_node, &next_node);
+		scan_node = qdf_container_of(cur_node,
+					     struct scan_cache_node, node);
+		scan_entry = scan_node->entry;
+		mld_addr = util_scan_entry_mldaddr(scan_entry);
+		if (!scan_entry->mbssid_info.profile_num || !mld_addr)
+			goto next;
+
+		/* Determine the short SSID from RNR */
+		if (!short_ssid) {
+			for (idx = 0; idx < scan_entry->rnr.count; idx++) {
+				rnr = &scan_entry->rnr.bss_info[idx];
+				if (!rnr->mld_info_valid ||
+				    (rnr->mld_info.mld_id == UNKNOWN_MLD_ID) ||
+				    (rnr->mld_info.mld_id &&
+				     (rnr->mld_info.mld_id !=
+				      scan_entry->mbssid_info.profile_num)))
+					continue;
+				short_ssid = rnr->short_ssid;
+				break;
+			}
+
+			if (!short_ssid)
+				goto next;
+		}
+
+		/**
+		 * If any link is invalid or if it is valid and has a scan
+		 * entry no need to scan for that link.
+		 *
+		 * If the current candidate is beyond the configured threshold
+		 * to scan in the filtered candidate list then mark it as
+		 * invalid as scan will not be done for those.
+		 */
+
+		for (idx = 0; idx < scan_entry->ml_info.num_links; idx++) {
+			link_info = &scan_entry->ml_info.link_info[idx];
+			if (!link_info->is_valid_link ||
+			    cm_get_entry(candidate_list, &link_info->link_addr,
+					 mld_addr)) {
+				continue;
+			} else if (cur_cnt >=
+				   score_config->scan_nontx_search_thresh) {
+				link_info->is_valid_link = false;
+				continue;
+			}
+
+			status = cm_fill_nontx_scan_params(&cm_req->nontx_scan_req,
+							   &link_info->link_addr,
+							   short_ssid,
+							   link_info->freq);
+			if (QDF_IS_STATUS_ERROR(status) &&
+			    status != QDF_STATUS_E_ALREADY)
+				return;
+
+			if (!cm_req->nontx_scan_req.is_scan_params_valid)
+				cm_req->nontx_scan_req.is_scan_params_valid =
+									true;
+		}
+
+		status = cm_fill_nontx_scan_params(&cm_req->nontx_scan_req,
+						   &scan_entry->bssid,
+						   short_ssid,
+						   scan_entry->channel.chan_freq);
+		if (QDF_IS_STATUS_ERROR(status) &&
+		    status != QDF_STATUS_E_ALREADY)
+			return;
+
+next:
+		cur_node = next_node;
+		next_node = NULL;
+		cur_cnt++;
+	}
+}
 #else
 static QDF_STATUS cm_update_mlo_filter(struct wlan_objmgr_pdev *pdev,
 				       struct cm_connect_req *cm_req,
 				       struct scan_filter *filter)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+cm_prepare_scan_params_for_nontx(struct wlan_objmgr_pdev *pdev,
+				 qdf_list_t *candidate_list,
+				 struct cm_connect_req *cm_req)
+{
 }
 #endif
 
@@ -1528,9 +1709,11 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 
 	op_mode = wlan_vdev_mlme_get_opmode(cm_ctx->vdev);
 	if (num_bss && op_mode == QDF_STA_MODE &&
-	    !cm_req->req.is_non_assoc_link)
+	    !cm_req->req.is_non_assoc_link) {
 		cm_calculate_scores(cm_ctx, pdev, filter, candidate_list,
-				    !!cm_req->scan_id);
+				    !cm_req->scan_id);
+		cm_prepare_scan_params_for_nontx(pdev, candidate_list, cm_req);
+	}
 	qdf_mem_free(filter);
 
 	if (!candidate_list || !qdf_list_size(candidate_list)) {
@@ -1554,19 +1737,27 @@ static QDF_STATUS cm_connect_get_candidates(struct wlan_objmgr_pdev *pdev,
 
 	status = cm_connect_fetch_candidates(pdev, cm_ctx, cm_req,
 					     &candidate_list, &num_bss);
-	if (QDF_IS_STATUS_ERROR(status)) {
+	if (QDF_IS_STATUS_ERROR(status) ||
+	    (!cm_req->scan_id && cm_is_nontx_scan_params_valid(cm_req))) {
 		if (candidate_list)
 			wlan_scan_purge_results(candidate_list);
-		mlme_info(CM_PREFIX_FMT "no valid candidate found, num_bss %d scan_id %d",
-			  CM_PREFIX_REF(vdev_id, cm_req->cm_id), num_bss,
-			  cm_req->scan_id);
+
+		if (!cm_is_nontx_scan_params_valid(cm_req))
+			mlme_info(CM_PREFIX_FMT "no valid candidate found, num_bss %d scan_id %d",
+				  CM_PREFIX_REF(vdev_id, cm_req->cm_id),
+				  num_bss, cm_req->scan_id);
 
 		/*
 		 * If connect scan was already done OR candidate were found
 		 * but none of them were valid OR if ML link connection
 		 * return QDF_STATUS_E_EMPTY.
+		 *
+		 * If candidates are found and any of the candidates need the
+		 * scan for partner links as it is non-tx MBSSID, then trigger
+		 * scan in that case.
 		 */
-		if (cm_req->scan_id || num_bss ||
+		if (cm_req->scan_id ||
+		    (num_bss && !cm_is_nontx_scan_params_valid(cm_req)) ||
 		    QDF_IS_STATUS_ERROR(cm_is_scan_support(cm_req)))
 			return QDF_STATUS_E_EMPTY;
 
