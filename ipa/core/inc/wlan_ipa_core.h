@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -971,13 +971,23 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 void wlan_ipa_wdi_opt_dpath_notify_flt_add_rem_cb(int result0, int result1);
 
 /**
- * wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb() - cb to release cce super rules
+ * wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb() -  release cce super rules
  * @ipa_ctx: IPA context
  *
  * Return: 0 on success, negative on failure
  *
  */
 int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(void *ipa_ctx);
+
+/**
+ * wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper() - cb to release cce
+ * super rules
+ * @ipa_ctx: IPA context
+ *
+ * Return: 0 on success, negative on failure
+ *
+ */
+int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper(void *ipa_ctx);
 
 /**
  * wlan_ipa_wdi_opt_dpath_notify_flt_rlsd() - notify filter release

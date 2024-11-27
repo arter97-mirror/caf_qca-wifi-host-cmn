@@ -4863,8 +4863,8 @@ static inline QDF_STATUS wlan_ipa_reg_flt_cbs(struct wlan_ipa_priv *ipa_ctx)
 
 	ipa_wdi_opt_dpath_flt_rsrv_cb flt_rsrv_cb =
 					    &wlan_ipa_wdi_opt_dpath_flt_rsrv_cb;
-	ipa_wdi_opt_dpath_flt_rsrv_rel_cb
-		flt_rsrv_rel_cb = &wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb;
+	ipa_wdi_opt_dpath_flt_rsrv_rel_cb flt_rsrv_rel_cb =
+				&wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper;
 	ipa_wdi_opt_dpath_flt_rem_cb flt_rem_cb =
 					     &wlan_ipa_wdi_opt_dpath_flt_rem_cb;
 	ipa_wdi_opt_dpath_flt_add_cb flt_add_cb =
@@ -6794,6 +6794,32 @@ void wlan_ipa_opt_dpath_flt_recovery(struct wlan_ipa_priv *ipa_ctx)
 		wlan_ipa_wdi_opt_dpath_notify_flt_rlsd(true, true);
 		cds_trigger_recovery(QDF_REASON_UNSPECIFIED);
 	}
+}
+
+int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper(void *ipa_ctx)
+{
+	struct wlan_ipa_priv *ipa_obj = (struct wlan_ipa_priv *)ipa_ctx;
+	QDF_STATUS resp = QDF_STATUS_SUCCESS;
+	struct qdf_op_sync *op_sync;
+
+	if (qdf_op_protect(&op_sync)) {
+		ipa_info("opt_dp: driver operation inprogress!");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	if (ipa_obj->opt_dp_flt_rel_state != WLAN_IPA_OPT_DP_FLT_REL_INIT &&
+	    ipa_obj->flt_rel_src != WLAN_IPA_OPT_DP_FLT_REL_SRC_IPA) {
+		ipa_info("opt_dp: filter release triggered already from wlan ctx - %d release state - %d",
+			 ipa_obj->flt_rel_src,
+			 ipa_obj->opt_dp_flt_rel_state);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	ipa_obj->flt_rel_src = WLAN_IPA_OPT_DP_FLT_REL_SRC_IPA;
+	resp = wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(ipa_ctx);
+	ipa_debug("opt_dp: flt release status - %d", resp);
+	qdf_op_unprotect(op_sync);
+	return resp;
 }
 
 int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(void *ipa_ctx)
