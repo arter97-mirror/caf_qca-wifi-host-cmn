@@ -3151,9 +3151,10 @@ void cm_print_candidate_list(qdf_list_t *candidate_list)
 
 /**
  * cm_find_and_remove_dup_candidate() - remove duplicate candidate
- * @bss_entry: bss scan entry
- * @next_can: next candidate
- * @candidate_list: candidate list
+ * @cur_scan_node: Pointer to scan node of current entry
+ * @input_node: Start node to match for duplicate node.
+ * @candidate_list: List of other candidates to find duplicate nodes from
+ * @input_node.
  *
  * Ex1:
  * Single AP1 3 link  6 GHz 2 GHz 5 GHz
@@ -3184,74 +3185,61 @@ void cm_print_candidate_list(qdf_list_t *candidate_list)
  *
  * Return: none
  */
-static void cm_find_and_remove_dup_candidate(struct scan_cache_node *bss_entry,
-					     qdf_list_node_t  *next_can,
-					     qdf_list_t *candidate_list)
+static void
+cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
+				 qdf_list_node_t *input_node,
+				 qdf_list_t *candidate_list)
 {
-	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
-	struct scan_cache_node *scan_node;
-	uint8_t i = 0, j = 0;
-	int match = 0;
-	uint8_t bss_num_link = 0, curr_num_link = 0;
-	struct partner_link_info *cur_can = NULL, *bss_can = NULL;
-	uint32_t size = 0;
+	uint8_t i, num_links;
+	struct partner_link_info *link_info;
+	struct scan_cache_node *tmp_scan_node;
+	uint64_t cur_entry_link_map, next_entry_link_map;
+	qdf_list_node_t *cur_node = input_node, *next_node = NULL;
 
-	bss_num_link = bss_entry->entry->ml_info.num_links;
+	if (qdf_is_macaddr_zero(&cur_scan_node->entry->ml_info.mld_mac_addr))
+		return;
 
-	cur_node = next_can;
-	size = qdf_list_size(candidate_list);
+	cur_entry_link_map =
+		BIT(util_scan_entry_self_linkid(cur_scan_node->entry));
+	num_links = cur_scan_node->entry->ml_info.num_links;
+	for (i = 0; i < num_links; i++) {
+		link_info = &cur_scan_node->entry->ml_info.link_info[i];
+		if (!link_info->is_valid_link)
+			continue;
 
-	while (cur_node && size > 0) {
+		cur_entry_link_map |= BIT(link_info->link_id);
+	}
+
+	while (cur_node) {
 		qdf_list_peek_next(candidate_list, cur_node, &next_node);
 
-		scan_node  = qdf_container_of(cur_node, struct scan_cache_node,
-					      node);
-		curr_num_link = scan_node->entry->ml_info.num_links;
-		cur_can = scan_node->entry->ml_info.link_info;
-		bss_can = bss_entry->entry->ml_info.link_info;
+		tmp_scan_node = qdf_container_of(cur_node,
+						 struct scan_cache_node, node);
 
-		if (scan_node->entry->ml_info.num_links !=
-		    bss_entry->entry->ml_info.num_links)
+		if (!qdf_is_macaddr_equal(&tmp_scan_node->entry->ml_info.mld_mac_addr,
+					  &cur_scan_node->entry->ml_info.mld_mac_addr))
 			goto next;
 
-		match = 0;
-		for (i = 0; i < bss_num_link; i++)
-			if ((bss_entry->entry->ie_list.multi_link_bv &&
-			     scan_node->entry->ie_list.multi_link_bv) &&
-			    (qdf_is_macaddr_equal(&bss_entry->entry->bssid,
-						 &scan_node->entry->bssid) ||
-			    qdf_is_macaddr_equal(&bss_entry->entry->bssid,
-						 &cur_can[i].link_addr)))
-				match++;
-		for (i = 0; i < bss_num_link; i++) {
-			for (j = 0; j < curr_num_link; j++) {
-				if (cur_can[j].is_valid_link &&
-				    (qdf_is_macaddr_equal(
-						&cur_can[j].link_addr,
-						&bss_can[i].link_addr) ||
-				    qdf_is_macaddr_equal(
-						&cur_can[j].link_addr,
-						&bss_can[i].link_addr) ||
-				    qdf_is_macaddr_equal(
-						&scan_node->entry->bssid,
-						&bss_can[i].link_addr))) {
-					match++;
-					if (match == bss_num_link + 1) {
-						qdf_list_remove_node(
-							candidate_list,
-							cur_node);
-						util_scan_free_cache_entry(
-							scan_node->entry);
-						qdf_mem_free(scan_node);
-						goto next;
-					}
-				}
-			}
+		next_entry_link_map =
+			BIT(util_scan_entry_self_linkid(tmp_scan_node->entry));
+		num_links = tmp_scan_node->entry->ml_info.num_links;
+		for (i = 0; i < num_links; i++) {
+			link_info = &tmp_scan_node->entry->ml_info.link_info[i];
+			if (!link_info->is_valid_link)
+				continue;
+
+			next_entry_link_map |= BIT(link_info->link_id);
 		}
+
+		if (next_entry_link_map == cur_entry_link_map) {
+			qdf_list_remove_node(candidate_list, cur_node);
+			util_scan_free_cache_entry(tmp_scan_node->entry);
+			qdf_mem_free(cur_node);
+		}
+
 next:
-	cur_node = next_node;
-	next_node = NULL;
-	size--;
+		cur_node = next_node;
+		next_node = NULL;
 	}
 }
 
@@ -3474,40 +3462,18 @@ next:
 static void cm_eliminate_invalid_candidate(struct wlan_objmgr_psoc *psoc,
 					   qdf_list_t *candidate_list)
 {
-	struct scan_cache_node *scan_entry = NULL;
+	struct scan_cache_node *scan_node = NULL;
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
-	uint32_t size = 0;
 	QDF_STATUS status;
 
-	size = qdf_list_size(candidate_list);
-
-	if (qdf_list_peek_front(candidate_list, &cur_node) !=
-		QDF_STATUS_SUCCESS) {
-		mlme_err("failed to get front of candidate_list");
-		return;
-	}
-
-	while (cur_node && size > 0) {
+	qdf_list_peek_front(candidate_list, &cur_node);
+	while (cur_node) {
 		qdf_list_peek_next(candidate_list, cur_node, &next_node);
+		scan_node = qdf_container_of(cur_node,
+					     struct scan_cache_node, node);
 
-		scan_entry = qdf_container_of(cur_node,
-					      struct scan_cache_node, node);
-
-		if (scan_entry->entry->ml_info.num_links >=
-		    wlan_mlme_get_sta_mlo_conn_max_num(psoc)) {
-			mlme_debug(QDF_MAC_ADDR_FMT " freq (%d) skipped as num links %d, max %d",
-			     QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
-			     scan_entry->entry->channel.chan_freq,
-			     scan_entry->entry->ml_info.num_links + 1,
-			     wlan_mlme_get_sta_mlo_conn_max_num(psoc));
-			qdf_list_remove_node(candidate_list, cur_node);
-			util_scan_free_cache_entry(scan_entry->entry);
-			qdf_mem_free(scan_entry);
-			goto next;
-		}
-
-		cm_find_and_remove_dup_candidate(scan_entry,
-						 next_node, candidate_list);
+		cm_find_and_remove_dup_candidate(scan_node, next_node,
+						 candidate_list);
 		/*
 		 * Find next again as next entry might have deleted.
 		 * If reach end of list, next_node won't be updated, may still
@@ -3519,10 +3485,9 @@ static void cm_eliminate_invalid_candidate(struct wlan_objmgr_psoc *psoc,
 					    &next_node);
 		if (QDF_IS_STATUS_ERROR(status))
 			break;
-next:
+
 		cur_node = next_node;
 		next_node = NULL;
-		size--;
 	}
 }
 
