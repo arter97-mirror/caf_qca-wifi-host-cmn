@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -246,11 +246,6 @@ QDF_STATUS reg_send_scheduler_msg_sb(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (!pdev_priv_obj->pdev_opened) {
-		reg_err("hlos not initialized");
-		return QDF_STATUS_E_FAILURE;
-	}
-
 	if (!pdev_priv_obj->chan_list_recvd) {
 		reg_err("Empty channel list");
 		return QDF_STATUS_E_FAILURE;
@@ -304,11 +299,6 @@ QDF_STATUS reg_send_scheduler_msg_nb(struct wlan_objmgr_psoc *psoc,
 	pdev_priv_obj = reg_get_pdev_obj(pdev);
 	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
 		reg_alert("pdev reg component is NULL");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!pdev_priv_obj->pdev_opened) {
-		reg_err("hlos not initialized");
 		return QDF_STATUS_E_FAILURE;
 	}
 
