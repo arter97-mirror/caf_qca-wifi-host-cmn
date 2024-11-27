@@ -6303,6 +6303,13 @@ ml_nlink_conn_change_notify(struct wlan_objmgr_psoc *psoc,
 	switch (evt) {
 	case ml_nlink_link_switch_start_evt:
 		if (data->evt.link_switch.reason ==
+		    MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) {
+			mlo_debug("REASON_HOST_ADD_LINK target link %d",
+				  data->evt.link_switch.new_ieee_link_id);
+			break;
+		}
+
+		if (data->evt.link_switch.reason ==
 		    MLO_LINK_SWITCH_REASON_HOST_FORCE) {
 			is_host_force = true;
 		} else {

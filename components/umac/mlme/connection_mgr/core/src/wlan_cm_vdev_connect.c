@@ -1662,7 +1662,8 @@ cm_install_link_vdev_keys(struct wlan_objmgr_vdev *vdev)
 
 	link_id = wlan_vdev_get_link_id(vdev);
 
-	if (wlan_cm_is_link_add_connecting(vdev)) {
+	if (wlan_cm_is_link_add_connecting(vdev) ||
+	    mlo_mgr_is_link_add_link_switch(vdev)) {
 		mlo_link_recfg_install_unicast_keys(vdev);
 		return;
 	}
