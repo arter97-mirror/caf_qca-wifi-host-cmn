@@ -49,6 +49,7 @@
 #ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
 #endif
+#include "wlan_mlme_vdev_mgr_interface.h"
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
@@ -792,6 +793,8 @@ static QDF_STATUS vdev_mgr_up_param_update(
 	struct wlan_objmgr_vdev *vdev;
 	uint8_t bssid[QDF_MAC_ADDR_SIZE];
 	struct qdf_mac_addr bcast_mac = QDF_MAC_ADDR_BCAST_INIT;
+	struct scan_cache_entry *entry;
+	struct wlan_channel *chan;
 
 	vdev = mlme_obj->vdev;
 	param->vdev_id = wlan_vdev_get_id(vdev);
@@ -799,9 +802,21 @@ static QDF_STATUS vdev_mgr_up_param_update(
 
 	mbss = &mlme_obj->mgmt.mbss_11ax;
 	wlan_vdev_mgr_get_param_bssid(vdev, bssid);
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) {
+		if (!mbss->profile_num) {
+			entry = wlan_scan_get_entry_by_bssid(wlan_vdev_get_pdev(vdev),
+							     (struct qdf_mac_addr *)bssid);
+			if (entry) {
+				chan = wlan_vdev_mlme_get_bss_chan(vdev);
+				mlme_set_mbssid_info(vdev,
+						     &entry->mbssid_info,
+						     chan->ch_freq);
+				util_scan_free_cache_entry(entry);
+			}
+		}
 
-	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_SAP_MODE) {
-		mlme_debug("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT " profile_num %d, profile_idx %d",
+		mlme_debug("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT
+			   " profile_idx %d, profile_num %d",
 			   QDF_MAC_ADDR_REF(mbss->trans_bssid),
 			   QDF_MAC_ADDR_REF(mbss->non_trans_bssid),
 			  mbss->profile_idx, mbss->profile_num);
