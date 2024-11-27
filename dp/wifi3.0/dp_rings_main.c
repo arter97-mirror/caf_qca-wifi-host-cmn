@@ -3749,6 +3749,7 @@ void *dp_soc_init(struct dp_soc *soc, HTC_HANDLE htc_handle,
 	/* Reset/Initialize wbm sg list and flags */
 	dp_rx_wbm_sg_list_reset(soc);
 
+	dp_soc_peer_unmap_track_cookie_init(soc);
 	/* Note: Any SRNG ring initialization should happen only after
 	 * Interrupt mode is set and followed by filling up the
 	 * interrupt mask. IT SHOULD ALWAYS BE IN THIS ORDER.

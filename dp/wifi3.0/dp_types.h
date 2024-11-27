@@ -3389,6 +3389,8 @@ struct dp_soc {
 	qdf_list_t peer_unmap_track_list;
 	/* timer for peer unmap tracking */
 	qdf_timer_t peer_unmap_track_timer;
+	/* global source cookie for peer initialization */
+	qdf_atomic_t peer_unmap_track_cookie;
 #endif
 	/* rx peer metadata field shift and mask configuration */
 	uint8_t htt_peer_id_s;
@@ -5678,6 +5680,9 @@ struct dp_peer {
 
 	uint8_t peer_state;
 	qdf_spinlock_t peer_state_lock;
+#ifdef DP_PEER_UNMAP_TRACK
+	uint32_t unmap_track_cookie;
+#endif
 #ifdef WLAN_SUPPORT_MSCS
 	struct dp_peer_mscs_parameter mscs_ipv4_parameter, mscs_ipv6_parameter;
 	bool mscs_active;
