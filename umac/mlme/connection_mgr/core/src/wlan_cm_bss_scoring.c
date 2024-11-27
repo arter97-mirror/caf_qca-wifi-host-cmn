@@ -1830,18 +1830,24 @@ static uint32_t cm_get_mlo_rssi(int8_t link1_rssi, int8_t link2_rssi,
 }
 
 struct scan_cache_entry *cm_get_entry(qdf_list_t *scan_list,
-				      struct qdf_mac_addr *link_addr)
+				      struct qdf_mac_addr *link_addr,
+				      struct qdf_mac_addr *mld_addr)
 {
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
-	struct scan_cache_node *curr_entry = NULL;
+	struct scan_cache_node *scan_node = NULL;
+	struct scan_cache_entry *scan_entry;
 
 	qdf_list_peek_front(scan_list, &cur_node);
 	while (cur_node) {
-		curr_entry = qdf_container_of(cur_node, struct scan_cache_node,
-					      node);
-		if (!qdf_mem_cmp(&curr_entry->entry->mac_addr,
-				 link_addr, QDF_MAC_ADDR_SIZE))
-			return curr_entry->entry;
+		scan_node = qdf_container_of(cur_node, struct scan_cache_node,
+					     node);
+		scan_entry = scan_node->entry;
+		if (qdf_is_macaddr_equal(&scan_entry->bssid, link_addr)) {
+			if (!mld_addr ||
+			    qdf_is_macaddr_equal(&scan_entry->ml_info.mld_mac_addr,
+						 mld_addr))
+				return scan_entry;
+		}
 
 		qdf_list_peek_next(scan_list, cur_node, &next_node);
 		cur_node = next_node;
@@ -1957,7 +1963,8 @@ enum MLO_TYPE cm_bss_mlo_type(struct wlan_objmgr_psoc *psoc,
 		freq[i] = entry->ml_info.link_info[i].freq;
 		entry_partner[i] =
 			cm_get_entry(scan_list,
-				     &entry->ml_info.link_info[i].link_addr);
+				     &entry->ml_info.link_info[i].link_addr,
+				     &entry->ml_info.mld_mac_addr);
 
 		if (entry_partner[i])
 			freq[i] = entry_partner[i]->channel.chan_freq;
@@ -2154,7 +2161,8 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 	for (i = 0; i < num_partner_links; i++) {
 		if (!link[i].is_valid_link)
 			continue;
-		entry_partner[i] = cm_get_entry(scan_list, &link[i].link_addr);
+		entry_partner[i] = cm_get_entry(scan_list, &link[i].link_addr,
+						&entry->ml_info.mld_mac_addr);
 		if (entry_partner[i])
 			freq[i] = entry_partner[i]->channel.chan_freq;
 		else
@@ -2414,7 +2422,8 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 		if (!link[i].is_valid_link)
 			continue;
 
-		entry_partner[i] = cm_get_entry(scan_list, &link[i].link_addr);
+		entry_partner[i] = cm_get_entry(scan_list, &link[i].link_addr,
+						&entry->ml_info.mld_mac_addr);
 		if (entry_partner[i])
 			freq[i] = entry_partner[i]->channel.chan_freq;
 		else
@@ -3552,7 +3561,8 @@ static void cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
 		 * probe resp generation time.
 		 */
 		partner_entry = cm_get_entry(scan_list,
-					     &partner_info->link_addr);
+					     &partner_info->link_addr,
+					     &entry->ml_info.mld_mac_addr);
 		if (!partner_entry)
 			continue;
 

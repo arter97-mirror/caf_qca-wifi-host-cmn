@@ -1507,7 +1507,8 @@ static QDF_STATUS cm_remove_mbssid_links_without_scan_entry(
 
 			partner_info = &scan_entry->ml_info.link_info[i];
 			partner_entry = cm_get_entry(candidate_list,
-						     &partner_info->link_addr);
+						     &partner_info->link_addr,
+						     mld_addr);
 
 			if (!partner_entry ||
 			    !qdf_is_macaddr_equal(mld_addr,
