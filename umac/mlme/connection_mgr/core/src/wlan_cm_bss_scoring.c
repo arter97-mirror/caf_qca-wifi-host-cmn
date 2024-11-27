@@ -1556,6 +1556,10 @@ bool wlan_cm_is_eht_allowed_for_current_security(struct wlan_objmgr_psoc *psoc,
 	/* Check if the AP is ML capable or not */
 	mlie_present = entry->ie_list.multi_link_bv ? true : false;
 
+	/* Fail if ML IE not present and requests for mlo connection */
+	if (!mlie_present && is_mlo_connect)
+		return false;
+
 	neg_sec_info = &entry->neg_sec_info;
 
 	if (neg_sec_info->rsn_gen_selected == RSNO_GEN_WIFI6) {
@@ -3262,23 +3266,19 @@ next:
  *
  *Return: NA
  */
-static void
-cm_add_11_ax_candidate(struct wlan_objmgr_pdev *pdev,
-		       qdf_list_t *candidate_list,
-		       struct scan_cache_node *scan_entry)
+static void cm_add_11_ax_candidate(struct wlan_objmgr_pdev *pdev,
+				   qdf_list_t *candidate_list,
+				   struct scan_cache_node *scan_entry)
 {
 	struct scan_cache_node *scan_node = NULL;
 	struct scan_cache_entry *tmp_scan_entry = NULL;
 
+	if (!scan_entry->entry->ie_list.multi_link_bv)
+		return;
+
 	tmp_scan_entry = util_scan_copy_cache_entry(scan_entry->entry);
 	if (!tmp_scan_entry) {
 		mlme_err("Copy cache entry failed");
-		return;
-	}
-
-	/* Add 11AX entry for MLO Candidate */
-	if (!tmp_scan_entry->ie_list.multi_link_bv) {
-		util_scan_free_cache_entry(tmp_scan_entry);
 		return;
 	}
 
@@ -3293,6 +3293,7 @@ cm_add_11_ax_candidate(struct wlan_objmgr_pdev *pdev,
 	tmp_scan_entry->ie_list.ehtcap = NULL;
 	tmp_scan_entry->ie_list.ehtop = NULL;
 	qdf_mem_zero(&tmp_scan_entry->ml_info, sizeof(struct ml_info));
+	tmp_scan_entry->ml_info.self_link_id = WLAN_INVALID_LINK_ID;
 	tmp_scan_entry->phy_mode =
 		util_scan_get_phymode(pdev, tmp_scan_entry);
 
