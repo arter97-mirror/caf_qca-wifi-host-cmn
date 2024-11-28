@@ -3180,7 +3180,8 @@ policy_mgr_is_sta_sap_mcc_weightage_required(struct wlan_objmgr_psoc *psoc,
 		return false;
 
 	mcc_to_scc_switch = policy_mgr_get_mcc_to_scc_switch_mode(psoc);
-	if (mcc_to_scc_switch != QDF_MCC_TO_SCC_WITH_PREFERRED_BAND)
+	if (mcc_to_scc_switch !=
+		QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND)
 		return false;
 
 	sap_count = policy_mgr_get_mode_specific_conn_info(psoc,
@@ -12174,7 +12175,7 @@ bool policy_mgr_is_force_scc(struct wlan_objmgr_psoc *psoc)
 		(pm_ctx->cfg.mcc_to_scc_switch ==
 		QDF_MCC_TO_SCC_SWITCH_FORCE_PREFERRED_WITHOUT_DISCONNECTION) ||
 		(pm_ctx->cfg.mcc_to_scc_switch ==
-		QDF_MCC_TO_SCC_WITH_PREFERRED_BAND));
+		QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND));
 }
 
 bool policy_mgr_is_sap_allowed_on_dfs_freq(struct wlan_objmgr_pdev *pdev,

@@ -3374,7 +3374,8 @@ policy_mgr_trigger_roam_for_sta_sap_mcc_non_dbs(struct wlan_objmgr_psoc *psoc)
 
 	policy_mgr_get_mcc_scc_switch(psoc, &mcc_to_scc_switch);
 
-	if (mcc_to_scc_switch != QDF_MCC_TO_SCC_WITH_PREFERRED_BAND)
+	if (mcc_to_scc_switch !=
+		QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND)
 		return;
 
 	qdf_mutex_acquire(&pm_ctx->qdf_conc_list_lock);
@@ -3837,12 +3838,12 @@ policy_mgr_valid_sap_conc_channel_check(struct wlan_objmgr_psoc *psoc,
 		} else {
 			/**
 			 * MCC supported for non-DBS chip only for cc_mode as
-			 * QDF_MCC_TO_SCC_WITH_PREFERRED_BAND
+			 * QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND
 			 */
 			ch_freq = 0;
 			if (con_mode == PM_SAP_MODE) {
 				if (cc_mode !=
-					QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) {
+					QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND) {
 					policymgr_nofl_debug("MCC situation in non-dbs hw STA freq %d SAP freq %d not supported",
 							     *con_ch_freq,
 							     sap_ch_freq);

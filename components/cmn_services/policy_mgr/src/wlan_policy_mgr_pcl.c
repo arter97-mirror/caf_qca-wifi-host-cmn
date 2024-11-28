@@ -1345,11 +1345,11 @@ policy_mgr_modify_sap_pcl_filter_mcc(struct wlan_objmgr_psoc *psoc,
 
 	for (i = 0; i < *pcl_len_org; i++) {
 		/**
-		 * for non-dbs and cc_mode as QDF_MCC_TO_SCC_WITH_PREFERRED_BAND
+		 * for non-dbs and cc_mode as QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND
 		 * do not skip MCC channel
 		 */
 		if (!(!is_dbs && mcc_to_scc_switch ==
-					QDF_MCC_TO_SCC_WITH_PREFERRED_BAND) &&
+					QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND) &&
 		    policy_mgr_channel_mcc_with_non_sap(psoc, pcl_list_org[i]))
 			continue;
 

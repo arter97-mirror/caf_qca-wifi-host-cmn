@@ -1621,11 +1621,12 @@ static void cm_update_score_params(struct wlan_objmgr_psoc *psoc,
 	 * Don't consider STA_SAP_MCC weight_config if:
 	 * 1. HW is DBS chip
 	 * 2. vendor_roam_score_algorithm is not set
-	 * 3. mcc_to_cc_switch is not QDF_MCC_TO_SCC_WITH_PREFERRED_BAND
+	 * 3. mcc_to_cc_switch is not QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND
 	 */
 	if (!policy_mgr_is_hw_dbs_capable(psoc) &&
 	    !score_config->vendor_roam_score_algorithm &&
-	    mcc_to_scc_switch == QDF_MCC_TO_SCC_WITH_PREFERRED_BAND)
+	    mcc_to_scc_switch ==
+		QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND)
 		req_score_params->sta_sap_mcc_weightage =
 			weight_config->sta_sap_mcc_weightage;
 	else
