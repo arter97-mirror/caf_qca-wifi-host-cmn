@@ -2194,7 +2194,8 @@ void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 	 */
 
 	lim_update_tdls_set_state_for_fw(session_entry, false);
-	lim_delete_tdls_peers(mac_ctx, session_entry);
+	lim_delete_tdls_peers(mac_ctx, session_entry,
+			      TDLS_PEER_DEL_REASON_NONE);
 
 	lim_ch_switch->switchMode = csa_params->switch_mode;
 	/* timer already started by firmware, switch immediately */

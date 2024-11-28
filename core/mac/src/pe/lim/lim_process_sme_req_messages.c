@@ -6990,7 +6990,8 @@ static void __lim_process_sme_disassoc_req(struct mac_context *mac,
 				pe_session->limSmeState;
 			pe_session->limSmeState = eLIM_SME_WT_DISASSOC_STATE;
 			/* Delete all TDLS peers connected before leaving BSS */
-			lim_delete_tdls_peers(mac, pe_session);
+			lim_delete_tdls_peers(mac, pe_session,
+					      TDLS_PEER_DEL_REASON_NONE);
 			MTRACE(mac_trace(mac, TRACE_CODE_SME_STATE,
 				pe_session->peSessionId,
 				pe_session->limSmeState));
@@ -7348,7 +7349,8 @@ static void __lim_process_sme_deauth_req(struct mac_context *mac_ctx,
 		case eLIM_SME_ASSOCIATED_STATE:
 		case eLIM_SME_LINK_EST_STATE:
 			/* Delete all TDLS peers connected before leaving BSS */
-			lim_delete_tdls_peers(mac_ctx, session_entry);
+			lim_delete_tdls_peers(mac_ctx, session_entry,
+					      TDLS_PEER_DEL_REASON_NONE);
 			fallthrough;
 		case eLIM_SME_WT_ASSOC_STATE:
 		case eLIM_SME_JOIN_FAILURE_STATE:

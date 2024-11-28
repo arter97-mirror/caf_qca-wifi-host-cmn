@@ -114,6 +114,21 @@
 #endif
 
 /**
+ * enum wlan_tdls_peer_delete_reason - reason for deletion of TDLS peers
+ * @TDLS_PEER_DEL_REASON_NONE: None
+ * @TDLS_PEER_DEL_REASON_ROAMING: Delete TDLS peers due to roaming
+ * @TDLS_PEER_DEL_REASON_VDEV_REPURPOSE: Delete TDLS peers due to vdev repurpose
+ * @TDLS_PEER_DEL_REASON_LINK_STATE_SWITCH: Delete TDLS peers due to link state
+ * switch
+ */
+enum wlan_tdls_peer_delete_reason {
+	TDLS_PEER_DEL_REASON_NONE = 0,
+	TDLS_PEER_DEL_REASON_ROAMING = 1,
+	TDLS_PEER_DEL_REASON_VDEV_REPURPOSE = 2,
+	TDLS_PEER_DEL_REASON_LINK_STATE_SWITCH = 3,
+};
+
+/**
  * enum tdls_add_oper - add peer type
  * @TDLS_OPER_NONE: none
  * @TDLS_OPER_ADD: add new peer
@@ -1486,6 +1501,11 @@ struct tdls_del_sta_req {
 	uint16_t transaction_id;
 	struct qdf_mac_addr bssid;
 	struct qdf_mac_addr peermac;
+};
+
+enum tdls_teardown_reason {
+	TDLS_TEARDOWN_REASON_DEFAULT,
+	TDLS_TEARDOWN_REASON_LINK_SWITCH,
 };
 
 /**

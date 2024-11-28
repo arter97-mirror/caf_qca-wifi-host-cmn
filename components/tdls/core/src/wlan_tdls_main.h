@@ -150,7 +150,8 @@ struct tdls_set_state_info {
  * @delete_all_tdls_peers: Callback to lim to delete TDLS peers
  */
 struct tdls_callbacks {
-	QDF_STATUS (*delete_all_tdls_peers) (struct wlan_objmgr_vdev *vdev);
+	QDF_STATUS (*delete_all_tdls_peers) (struct wlan_objmgr_vdev *vdev,
+					     enum wlan_tdls_peer_delete_reason reason);
 };
 
 /**

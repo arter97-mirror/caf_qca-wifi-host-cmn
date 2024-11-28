@@ -3914,7 +3914,8 @@ void lim_update_sta_run_time_ht_switch_chnl_params(struct mac_context *mac,
 
 		/* Before restarting vdev, delete the tdls peers */
 		lim_update_tdls_set_state_for_fw(pe_session, false);
-		lim_delete_tdls_peers(mac, pe_session);
+		lim_delete_tdls_peers(mac, pe_session,
+				      TDLS_PEER_DEL_REASON_NONE);
 
 		lim_ht_switch_chnl_req(pe_session);
 	}

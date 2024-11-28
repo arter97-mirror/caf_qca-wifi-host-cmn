@@ -3209,7 +3209,8 @@ pe_roam_synch_callback(struct mac_context *mac_ctx,
 	roam_sync_ind_ptr->add_bss_params =
 		(struct bss_params *) ft_session_ptr->ftPEContext.pAddBssReq;
 	add_bss_params = ft_session_ptr->ftPEContext.pAddBssReq;
-	lim_delete_tdls_peers(mac_ctx, session_ptr);
+	lim_delete_tdls_peers(mac_ctx, session_ptr,
+			      TDLS_PEER_DEL_REASON_ROAMING);
 	/*
 	 * After deleting the TDLS peers notify the Firmware about TDLS STA
 	 * disconnection due to roaming
