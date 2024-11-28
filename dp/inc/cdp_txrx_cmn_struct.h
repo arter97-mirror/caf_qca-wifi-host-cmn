@@ -275,6 +275,11 @@ enum htt_cmn_dbg_stats_type {
  * @TXRX_NAPI_STATS: Print NAPI scheduling statistics
  * @TXRX_SOC_INTERRUPT_STATS: Print soc interrupt stats
  * @TXRX_HAL_REG_WRITE_STATS: Hal Reg Write stats
+ * @TXRX_SOC_REO_HW_DESC_DUMP: HW REO queue desc dump
+ * @TXRX_SOC_WBM_IDLE_HPTP_DUMP: WBM idle link desc SRNG HP/TP dump
+ * @TXRX_SRNG_USAGE_WM_STATS: SRNG usage watermark stats
+ * @TXRX_PEER_STATS: Per link peer stats
+ * @TXRX_HOST_STATS_MAX:
  */
 enum cdp_host_txrx_stats {
 	TXRX_HOST_STATS_INVALID  = -1,
@@ -294,6 +299,9 @@ enum cdp_host_txrx_stats {
 	TXRX_SOC_FSE_STATS = 13,
 	TXRX_HAL_REG_WRITE_STATS = 14,
 	TXRX_SOC_REO_HW_DESC_DUMP = 15,
+	TXRX_SOC_WBM_IDLE_HPTP_DUMP = 16,
+	TXRX_SRNG_USAGE_WM_STATS = 17,
+	TXRX_PEER_STATS   = 18,
 	TXRX_HOST_STATS_MAX,
 };
 
@@ -2415,7 +2423,7 @@ struct cdp_txrx_stats_req {
 	uint32_t	param3;
 	uint32_t	cookie_val;
 	uint8_t		mac_id;
-	char *peer_addr;
+	char		*peer_addr;
 };
 
 /**
