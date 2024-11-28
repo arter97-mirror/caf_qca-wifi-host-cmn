@@ -1316,7 +1316,7 @@ uint32_t dp_ppeds_get_batched_tx_desc(ppe_ds_wlan_handle_t *ppeds_handle,
 		tx_desc = dp_ppeds_tx_desc_alloc(be_soc);
 		if (!tx_desc) {
 			dp_err("ran out of txdesc");
-			qdf_dsb();
+			DP_DSB;
 			break;
 		}
 
@@ -1355,7 +1355,7 @@ uint32_t dp_ppeds_get_batched_tx_desc(ppe_ds_wlan_handle_t *ppeds_handle,
 		arr[i].buff_addr = tx_desc->dma_addr;
 	}
 
-	qdf_dsb();
+	DP_DSB;
 
 	return i;
 }
