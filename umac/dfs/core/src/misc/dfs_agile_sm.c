@@ -1180,7 +1180,7 @@ void dfs_create_punc_sm(struct wlan_dfs *dfs)
 		struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
 
 		dfs_punc_obj->dfs = dfs;
-		dfs_punc_sm_create(dfs_punc_obj);
+		dfs_punc_sm_create(dfs_punc_obj, i);
 	}
 }
 
@@ -1360,6 +1360,45 @@ void dfs_punc_sm_stop_all(struct wlan_dfs *dfs)
 		    &dfs->dfs_punc_lst.dfs_punc_arr[i];
 
 		dfs_punc_sm_stop(dfs, i, dfs_punc_obj);
+	}
+}
+
+/**
+ * dfs_puncturing_get_curr_state() - API to get current state of Puncturing SM.
+ * @dfs_punc: Pointer to struct dfs_punc_obj that indicates the active SM.
+ *
+ * Return: current state enum of type, dfs_punc_sm_state.
+ */
+static enum dfs_punc_sm_state
+dfs_puncturing_get_curr_state(struct dfs_punc_obj *dfs_punc)
+{
+	return dfs_punc->dfs_punc_sm_cur_state;
+}
+
+void
+dfs_get_event_for_punctured_chan(struct wlan_dfs *dfs,
+				 qdf_freq_t freq,
+				 enum WLAN_DFS_EVENTS *event)
+{
+	uint8_t i;
+	enum dfs_punc_sm_state state;
+
+	for (i = 0; i < N_MAX_PUNC_SM; i++) {
+		struct dfs_punc_obj *dfs_punc_obj =
+		    &dfs->dfs_punc_lst.dfs_punc_arr[i];
+
+		/* Return the event for the first matching freq */
+		if (dfs_punc_obj->punc_low_freq < freq &&
+		    freq < dfs_punc_obj->punc_high_freq) {
+			state = dfs_puncturing_get_curr_state(dfs_punc_obj);
+			if (state == DFS_S_PUNCTURED) {
+				*event = WLAN_EV_NOL_STARTED;
+			} else if (state == DFS_S_CAC_WAIT) {
+				*event = WLAN_EV_CAC_STARTED;
+			}
+
+			return;
+		}
 	}
 }
 
@@ -1776,18 +1815,6 @@ static void dfs_puncturing_set_curr_state(struct dfs_punc_obj *dfs_punc,
 			"DFS Puncturing state (%d) is invalid", state);
 		QDF_BUG(0);
 	}
-}
-
-/**
- * dfs_puncturing_get_curr_state() - API to get current state of Puncturing SM.
- * @dfs_punc: Pointer to struct dfs_punc_obj that indicates the active SM.
- *
- * Return: current state enum of type, dfs_punc_sm_state.
- */
-static enum dfs_punc_sm_state
-dfs_puncturing_get_curr_state(struct dfs_punc_obj *dfs_punc)
-{
-	return dfs_punc->dfs_punc_sm_cur_state;
 }
 
 /**
@@ -2332,11 +2359,14 @@ QDF_STATUS dfs_puncturing_sm_deliver_evt(struct wlan_dfs *dfs,
 	return status;
 }
 
-QDF_STATUS dfs_punc_sm_create(struct dfs_punc_obj *dfs_punc)
+QDF_STATUS dfs_punc_sm_create(struct dfs_punc_obj *dfs_punc, uint8_t idx)
 {
 	struct wlan_sm *sm;
+	char name[WLAN_SM_ENGINE_MAX_NAME];
 
-	sm = wlan_sm_create("DFS_PUNCTURING", dfs_punc,
+	qdf_scnprintf(name, sizeof(name), "DFS_PUNCTURING_SM_%d",
+		      idx);
+	sm = wlan_sm_create(name, dfs_punc,
 			    DFS_S_UNPUNCTURED,
 			    dfs_puncturing_sm_info,
 			    QDF_ARRAY_SIZE(dfs_puncturing_sm_info),

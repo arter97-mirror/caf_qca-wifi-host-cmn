@@ -457,12 +457,11 @@ static void dfs_deliver_cac_state_events_for_curchan(struct wlan_dfs *dfs)
 					WLAN_EV_CAC_STARTED);
 		/* The "else if" case hits when we want to reset the cac
 		 * state of the curchan during last vap down or during channel
-		 * change. We reset the CAC state if the channel is not
-		 * radar infected and the domain is not ETSI. In ETSI,
-		 * we can cache the CAC done, hence we do not reset the
-		 * CAC state.
+		 * change. We reset the CAC state if the domain is not ETSI.
+		 * In ETSI, we can cache the CAC done, hence we do not reset
+		 * the CAC state.
 		 */
-	} else if (!WLAN_IS_CHAN_RADAR(dfs, chan) && !is_etsi_domain) {
+	} else if (!is_etsi_domain) {
 		dfs_send_dfs_events_for_chan(dfs, chan, WLAN_EV_CAC_RESET);
 		dfs_update_cac_elements(dfs, NULL, 0, chan, WLAN_EV_CAC_RESET);
 	}
@@ -485,12 +484,6 @@ void dfs_deliver_cac_state_events_for_prevchan(struct wlan_dfs *dfs)
 	if (!WLAN_IS_PRIMARY_OR_SECONDARY_CHAN_DFS(dfs->dfs_prevchan) ||
 	    is_etsi_domain)
 		return;
-	/**
-	 * Do not change the state of NOL infected channels to
-	 * "CAC Required" within the NOL duration.
-	 */
-	if (WLAN_IS_CHAN_RADAR(dfs, dfs->dfs_prevchan))
-		return;
 
 	dfs_update_cac_elements(dfs, NULL, 0, dfs->dfs_prevchan, WLAN_EV_CAC_RESET);
 	dfs_send_dfs_events_for_chan(dfs, dfs->dfs_prevchan, WLAN_EV_CAC_RESET);
@@ -498,8 +491,8 @@ void dfs_deliver_cac_state_events_for_prevchan(struct wlan_dfs *dfs)
 
 void dfs_deliver_cac_state_events(struct wlan_dfs *dfs)
 {
-	dfs_deliver_cac_state_events_for_curchan(dfs);
 	dfs_deliver_cac_state_events_for_prevchan(dfs);
+	dfs_deliver_cac_state_events_for_curchan(dfs);
 }
 #endif
 
@@ -648,12 +641,21 @@ dfs_update_cac_elements(struct wlan_dfs *dfs, uint16_t *freq_list,
 		return QDF_STATUS_E_INVAL;
 	}
 	for (i = 0; i < num_cac_subchan; i++) {
+		enum WLAN_DFS_EVENTS temp_dfs_ev = dfs_ev;
+
 		if (!wlan_reg_is_dfs_for_freq(dfs->dfs_pdev_obj,
 					      sub_chan_freq[i])) {
 			dfs_debug(dfs, WLAN_DEBUG_DFS, "sub chan freq: %u is non_dfs",
 				  sub_chan_freq[i]);
 			continue;
 		}
+
+		if (wlan_reg_is_nol_for_freq(dfs->dfs_pdev_obj, sub_chan_freq[i])) {
+			dfs_debug(dfs, WLAN_DEBUG_DFS, "sub chan freq: %u is in NOL",
+				  sub_chan_freq[i]);
+			temp_dfs_ev = WLAN_EV_NOL_STARTED;
+		}
+
 		utils_dfs_convert_freq_to_index(sub_chan_freq[i], &index);
 		if (index == INVALID_INDEX) {
 			dfs_debug(dfs, WLAN_DEBUG_DFS, "Index for freq: %u is invalid",
@@ -661,7 +663,7 @@ dfs_update_cac_elements(struct wlan_dfs *dfs, uint16_t *freq_list,
 			return QDF_STATUS_E_INVAL;
 		}
 		dfs_cac_cur_elem = &dfs->dfs_cacelems[index];
-		dfs_update_cac_elem(dfs, dfs_cac_cur_elem, dfs_ev);
+		dfs_update_cac_elem(dfs, dfs_cac_cur_elem, temp_dfs_ev);
 	}
 	return status;
 }
