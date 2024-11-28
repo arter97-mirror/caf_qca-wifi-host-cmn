@@ -3183,5 +3183,22 @@ mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev)
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif
+
+uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
+{
+	uint8_t i, num_links = 0;
+	struct mlo_link_info *link_info;
+
+	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
+		link_info = &mld_ctx->link_ctx->links_info[i];
+		if (qdf_is_macaddr_zero(&link_info->ap_link_addr) ||
+		    qdf_is_macaddr_zero(&link_info->link_addr))
+			continue;
+
+		num_links++;
+	}
+
+	return num_links;
+}
+#endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif

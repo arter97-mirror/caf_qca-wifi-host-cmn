@@ -1308,6 +1308,15 @@ mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev)
  */
 int mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
 				   struct wlan_channel *chan_info);
+
+/**
+ * mlo_get_sta_num_links() - Get number of associated links for the given
+ * mld context
+ * @mld_ctx: Pointer to mld context
+ *
+ * Return: Number of associated links
+ */
+uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx);
 #else
 static inline int
 mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
@@ -1315,6 +1324,11 @@ mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
 {
 	return -EINVAL;
 }
-#endif
 
+static inline uint8_t
+mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
+{
+	return 0;
+}
+#endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif

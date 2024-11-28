@@ -1526,7 +1526,8 @@ struct mlo_mlme_ext_ops {
 				struct mlo_partner_info *partner_info);
 	QDF_STATUS (*mlo_mlme_ext_set_ieee_link_id)(struct wlan_objmgr_vdev *vdev);
 #endif
-	QDF_STATUS (*mlo_mlme_ext_teardown_tdls)(struct wlan_objmgr_psoc *psoc);
+	QDF_STATUS (*mlo_mlme_ext_teardown_tdls)(struct wlan_objmgr_psoc *psoc,
+						 uint8_t vdev_id);
 };
 
 /*
