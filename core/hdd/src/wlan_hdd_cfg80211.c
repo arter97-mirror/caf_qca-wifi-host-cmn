@@ -28928,7 +28928,18 @@ int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
 		goto fn_end;
 
 	if (qdf_is_macaddr_broadcast((struct qdf_mac_addr *)mac)) {
-		if (policy_mgr_is_vdev_ll_lt_sap(hdd_ctx->psoc,
+		struct wlan_objmgr_vdev *vdev;
+		uint16_t peer_count = 0;
+
+		vdev = hdd_objmgr_get_vdev_by_user(adapter->deflink,
+						   WLAN_OSIF_ID);
+		if (vdev) {
+			peer_count = wlan_vdev_get_peer_count(vdev);
+			hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+		}
+		/* Check if it LL SAP has peer connected, other than BSS peer */
+		if (peer_count > 1 &&
+		    policy_mgr_is_vdev_ll_lt_sap(hdd_ctx->psoc,
 						 adapter->deflink->vdev_id)) {
 			wlan_ll_sap_switch_bearer_on_stop_ap(
 						hdd_ctx->psoc,
