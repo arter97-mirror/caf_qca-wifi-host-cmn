@@ -12712,13 +12712,13 @@ static int hdd_test_config_emlsr_mode(struct hdd_context *hdd_ctx,
 				      bool cfg_val)
 
 {
-	hdd_debug("11be op mode setting %d", cfg_val);
-	if (cfg_val && policy_mgr_is_hw_emlsr_capable(hdd_ctx->psoc)) {
-		hdd_debug("HW supports EMLSR mode, set caps");
+	bool emlsr_hw_support = policy_mgr_is_hw_emlsr_capable(hdd_ctx->psoc);
+
+	hdd_debug("eMLSR - Config : %d,  HW support : %d", cfg_val,
+		  emlsr_hw_support);
+
+	if (emlsr_hw_support)
 		ucfg_mlme_set_emlsr_mode_enabled(hdd_ctx->psoc, cfg_val);
-	} else {
-		hdd_debug("Default mode: MLMR, no action required");
-	}
 
 	return 0;
 }
