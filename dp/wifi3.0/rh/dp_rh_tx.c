@@ -373,7 +373,8 @@ dp_tx_hw_enqueue_rh(struct dp_soc *soc, struct dp_vdev *vdev,
 
 	ce_ring_aquire_lock(tx_ep_info->ce_tx_hdl);
 	ret = ce_enqueue_desc(tx_ep_info->ce_tx_hdl, nbuf,
-			      tx_ep_info->tx_endpoint, download_len);
+			      tx_ep_info->tx_endpoint, download_len,
+			      tx_desc->tx_encap_type);
 	if (ret) {
 		ce_ring_release_lock(tx_ep_info->ce_tx_hdl);
 		dp_verbose_debug("CE tx ring full");

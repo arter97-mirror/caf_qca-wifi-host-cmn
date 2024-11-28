@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -170,10 +170,12 @@ int ce_send_fast(struct CE_handle *copyeng, qdf_nbuf_t msdu,
  * @msdu: data buffer
  * @transfer_id: arbitrary ID; reflected to destination
  * @download_len: length of the packet download to FW.
+ * @encap_type: packet encap type
  *
  */
 int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
-		    unsigned int transfer_id, uint32_t download_len);
+		    unsigned int transfer_id, uint32_t download_len,
+		    uint8_t encap_type);
 
 void ce_update_tx_ring(struct CE_handle *ce_tx_hdl, uint32_t num_htt_cmpls);
 extern qdf_nbuf_t ce_batch_send(struct CE_handle *ce_tx_hdl,
