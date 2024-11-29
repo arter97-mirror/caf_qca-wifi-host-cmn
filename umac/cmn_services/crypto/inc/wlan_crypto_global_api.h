@@ -339,7 +339,7 @@ QDF_STATUS wlan_crypto_wpaie_check(struct wlan_crypto_params *crypto_params,
 /**
  * wlan_crypto_rsnie_check() - called by mlme to check the rsnie
  * @crypto_params: crypto params
- * @frm: ie buffer
+ * @frm: rsn buffer beginning from RSN data
  *
  * This function gets called by mlme to check the contents of rsn is
  * matching with given crypto params
@@ -801,7 +801,7 @@ wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
 /**
  * wlan_get_crypto_params_from_rsn_ie() - Function to get crypto params
  * from rsn ie
- * @crypto_params: return crypto parameters
+ * @crypto_params: vdev crypto parameters
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
  *
@@ -815,7 +815,7 @@ wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
 				   const uint8_t *ie_ptr, uint16_t ie_len);
 
 /**
- * wlan_set_vdev_crypto_prarams_from_ie() - Sets vdev crypto params from IE info
+ * wlan_set_vdev_crypto_params_from_ie() - Sets vdev crypto params from IE info
  * @vdev: vdev pointer
  * @ie_ptr: pointer to IE
  * @ie_len: IE length
@@ -824,9 +824,9 @@ wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
  *
  * Return: QDF_STATUS_SUCCESS or error code
  */
-QDF_STATUS wlan_set_vdev_crypto_prarams_from_ie(struct wlan_objmgr_vdev *vdev,
-						uint8_t *ie_ptr,
-						uint16_t ie_len);
+QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,
+					       uint8_t *ie_ptr,
+					       uint16_t ie_len);
 #ifdef WLAN_CRYPTO_GCM_OS_DERIVATIVE
 static inline int wlan_crypto_aes_gmac(const uint8_t *key, size_t key_len,
 				       uint8_t *iv, size_t iv_len,

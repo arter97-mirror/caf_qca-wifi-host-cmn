@@ -3789,4 +3789,29 @@ hal_srng_set_msi_irq_config(hal_soc_handle_t hal_soc_hdl,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif
+
+/**
+ * hal_srng_dst_get_num_avail_words() - Get num available words in dst ring
+ *
+ * @hal_soc_hdl: hal soc handle
+ * @hal_ring_hdl: srng handle
+ * @num_avail: Num available words
+ *
+ * Return: QDF status
+ */
+static inline QDF_STATUS
+hal_srng_dst_get_num_avail_words(hal_soc_handle_t hal_soc_hdl,
+				 hal_ring_handle_t hal_ring_hdl,
+				 uint16_t *num_avail)
+{
+	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
+
+	if (!hal_soc->ops->hal_srng_dst_get_num_avail_words)
+		return QDF_STATUS_E_NOSUPPORT;
+
+	*num_avail =
+		hal_soc->ops->hal_srng_dst_get_num_avail_words(hal_ring_hdl);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif /* _HAL_APIH_ */

@@ -5494,6 +5494,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 	struct op_msg_type *msg = op_msg;
 	struct ipa_uc_fw_stats *uc_fw_stat;
 	bool add_status;
+	int status;
 
 	if (!ipa_ctx || !op_msg) {
 		ipa_err("INVALID ARG");
@@ -5611,7 +5612,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 				WLAN_IPA_OPT_DP_FLT_REL_INIT;
 		qdf_mutex_release(&ipa_ctx->ipa_lock);
 	} else if (msg->op_code == WLAN_IPA_CTRL_TX_REINJECT) {
-		ipa_info("opt_dp_ctrl: handle opt_dp_ctrl tx pkt");
+		ipa_info_rl("opt_dp_ctrl: handle opt_dp_ctrl tx pkt");
 		qdf_mutex_acquire(&ipa_ctx->ipa_lock);
 		cdp_ipa_tx_opt_dp_ctrl_pkt(ipa_ctx->dp_soc,
 					   msg->vdev_id,
@@ -5625,11 +5626,14 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 			ipa_info("opt_dp_ctrl: IPA notify filter del response: %d, hdl: %d",
 				 msg->rsvd_snd, msg->ctrl_del_hdl);
 			qdf_mutex_acquire(&ipa_ctx->ipa_lock);
-			wlan_ipa_wdi_opt_dpath_notify_ctrl_flt_del_per_inst(
+			status =
+			 wlan_ipa_wdi_opt_dpath_notify_ctrl_flt_del_per_inst(
 							ipa_ctx->hdl,
 							msg->ctrl_del_hdl,
 							msg->rsvd_snd);
 			qdf_mutex_release(&ipa_ctx->ipa_lock);
+			ipa_info("opt_dp_ctrl: return status for handle %d: %d",
+				 msg->ctrl_del_hdl, status);
 		}
 
 	} else if (msg->op_code == WLAN_IPA_SMMU_MAP) {

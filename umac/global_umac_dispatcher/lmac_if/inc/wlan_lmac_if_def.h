@@ -433,6 +433,10 @@ struct wlan_lmac_if_mgmt_txrx_tx_ops {
  * @scan_unreg_ev_handler: function to unregister for scan events
  * @set_chan_list:
  * @is_platform_eht_capable:
+ * @get_cached_scan_report: Function to send command to FW to get cached
+ * scan report.
+ * @get_cached_scan_report_fw_cap: Function to get the FW support to send
+ * cached scan report.
  *
  * scan module uses these functions to avail ol/da lmac services
  */
@@ -454,6 +458,10 @@ struct wlan_lmac_if_scan_tx_ops {
 	QDF_STATUS (*set_chan_list)(struct wlan_objmgr_pdev *pdev, void *arg);
 	bool (*is_platform_eht_capable)(struct wlan_objmgr_psoc *psoc,
 					uint8_t pdev_id);
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	QDF_STATUS (*get_cached_scan_report)(struct wlan_objmgr_pdev *pdev);
+	bool (*get_cached_scan_report_fw_cap)(struct wlan_objmgr_pdev *pdev);
+#endif
 };
 
 /**
@@ -634,6 +642,8 @@ QDF_STATUS (*vdev_send_set_mac_addr)(struct qdf_mac_addr mac_addr,
  * struct wlan_lmac_if_scan_rx_ops  - south bound rx function pointers for scan
  * @scan_ev_handler: scan event handler
  * @scan_set_max_active_scans: set max active scans allowed
+ * @cached_scan_report_ev_handler: handler to process the FW event for
+ * cached scan report data.
  *
  * lmac modules uses this API to post scan events to scan module
  */
@@ -642,6 +652,10 @@ struct wlan_lmac_if_scan_rx_ops {
 		struct scan_event_info *event_info);
 	QDF_STATUS (*scan_set_max_active_scans)(struct wlan_objmgr_psoc *psoc,
 			uint32_t max_active_scans);
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	QDF_STATUS (*cached_scan_report_ev_handler)
+		(struct wlan_objmgr_pdev *pdev, void *cached_scan_report);
+#endif
 };
 
 #ifdef CONVERGED_P2P_ENABLE

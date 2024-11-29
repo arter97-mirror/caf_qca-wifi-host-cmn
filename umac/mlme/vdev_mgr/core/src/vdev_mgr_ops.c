@@ -136,6 +136,27 @@ vdev_mgr_param_mld_mac_addr_copy(struct wlan_objmgr_vdev *vdev,
 }
 #endif /* WLAN_FEATURE_11BE_MLO */
 
+#ifdef FEATURE_WLAN_SUPPORT_USD
+/**
+ * vdev_mgr_update_wfd_mode() - update WFD mode in VDEV parameters
+ * @vdev: pointer to VDEV object
+ * @param: pointer to VDEV create parameter
+ *
+ * Return: none
+ */
+static void vdev_mgr_update_wfd_mode(struct wlan_objmgr_vdev *vdev,
+				     struct vdev_create_params *param)
+{
+	param->wfd_mode = vdev->vdev_mlme.wfd_mode;
+}
+#else
+static inline void
+vdev_mgr_update_wfd_mode(struct wlan_objmgr_vdev *vdev,
+			 struct vdev_create_params *param)
+{
+}
+#endif
+
 static QDF_STATUS vdev_mgr_create_param_update(
 					struct vdev_mlme_obj *mlme_obj,
 					struct vdev_create_params *param)
@@ -171,6 +192,7 @@ static QDF_STATUS vdev_mgr_create_param_update(
 	param->vdev_stats_id_valid =
 	((param->vdev_stats_id != CDP_INVALID_VDEV_STATS_ID) ? true : false);
 	vdev_mgr_param_mld_mac_addr_copy(vdev, param);
+	vdev_mgr_update_wfd_mode(vdev, param);
 
 	return QDF_STATUS_SUCCESS;
 }

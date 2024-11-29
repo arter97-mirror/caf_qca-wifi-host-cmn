@@ -47,8 +47,6 @@
 #include "wlan_dp_api.h"
 #endif
 
-#define DP_INVALID_VDEV_ID 0xFF
-
 #define DP_TX_MAX_NUM_FRAGS 6
 
 /* invalid peer id for reinject*/

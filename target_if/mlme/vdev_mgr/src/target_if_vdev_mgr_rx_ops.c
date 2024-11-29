@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -40,6 +40,7 @@
 #ifdef DP_UMAC_HW_RESET_SUPPORT
 #include <cdp_txrx_ctrl.h>
 #endif
+#include <target_if_psoc_timer_tx_ops.h>
 
 static inline
 void target_if_vdev_mgr_handle_recovery(struct wlan_objmgr_psoc *psoc,
@@ -558,6 +559,7 @@ static int target_if_vdev_mgr_delete_response_handler(ol_scn_t scn,
 		return -EINVAL;
 	}
 
+	target_if_release_vdev_cmd_rt_lock(psoc, vdev_del_resp.vdev_id);
 	status = target_if_vdev_mgr_rsp_timer_stop(
 						psoc, vdev_rsp,
 						DELETE_RESPONSE_BIT);

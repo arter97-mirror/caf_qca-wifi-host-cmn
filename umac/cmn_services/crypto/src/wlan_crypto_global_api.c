@@ -190,6 +190,9 @@ static QDF_STATUS wlan_crypto_set_param(struct wlan_crypto_params *crypto_params
 	case WLAN_CRYPTO_PARAM_KEY_MGMT:
 		status = wlan_crypto_set_key_mgmt(crypto_params, value);
 		break;
+	case WLAN_CRYPTO_PARAM_RANDOM_PMKID:
+		status = wlan_crypto_set_random_pmkid(crypto_params, value);
+		break;
 	default:
 		status = QDF_STATUS_E_INVAL;
 	}
@@ -277,6 +280,9 @@ static int32_t wlan_crypto_get_param_value(wlan_crypto_param_type param,
 		break;
 	case WLAN_CRYPTO_PARAM_KEY_MGMT:
 		value = wlan_crypto_get_key_mgmt(crypto_params);
+		break;
+	case WLAN_CRYPTO_PARAM_RANDOM_PMKID:
+		value = wlan_crypto_get_random_pmkid(crypto_params);
 		break;
 	default:
 		value = -1;
@@ -2817,12 +2823,48 @@ void wlan_crypto_rsnxie_check(struct wlan_crypto_params *crypto_params,
 	((uint8_t *)(&crypto_params->rsnx_caps))[0] &= 0xf0;
 }
 
+/*
+ * wlan_crypto_get_ie_offset() - API to get the RSN(X) data
+ * @frm: pointer to the RSN(X) buffer pointer
+ * @len: length of the IE
+ * @eid: EID type of the input buffer
+ *
+ * This API returns the pointer to the data of the RSN(X) element.
+ * Both RSN and RSNX elements have 802.11 variant as well as
+ * WFA variant. This API parses the buffer and determines the
+ * offset and length of the data based on the EID type.
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+wlan_crypto_get_ie_offset(const uint8_t **frm, uint8_t *len,
+			  enum element_ie eid)
+{
+	const uint8_t *ie = *frm;
+
+	if (ie[0] == eid) {
+		*frm += 2;
+		*len = ie[1];
+	} else if (ie[0] == WLAN_ELEMID_VENDOR) {
+		if (ie[1] <= RSNO_OUI_SIZE)
+			return QDF_STATUS_E_INVAL;
+		*frm += 2 + RSNO_OUI_SIZE;
+		*len = ie[1] - RSNO_OUI_SIZE;
+	} else {
+		crypto_err("Unknown eid %x", ie[0]);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS wlan_crypto_rsnie_check(struct wlan_crypto_params *crypto_params,
 				   const uint8_t *frm)
 {
 	uint8_t len = frm[1];
 	int32_t w;
 	int n, akm_index;
+	QDF_STATUS status;
 
 	/* Check the length once for fixed parts: OUI, type & version */
 	if (len < 2)
@@ -2833,7 +2875,10 @@ QDF_STATUS wlan_crypto_rsnie_check(struct wlan_crypto_params *crypto_params,
 
 	SET_AUTHMODE(crypto_params, WLAN_CRYPTO_AUTH_RSNA);
 
-	frm += 2;
+	status = wlan_crypto_get_ie_offset(&frm, &len, WLAN_ELEMID_RSN);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
 	/* NB: iswapoui already validated the OUI and type */
 	w = LE_READ_2(frm);
 	if (w != RSN_VERSION)
@@ -3048,6 +3093,66 @@ uint8_t *wlan_crypto_build_wpaie(struct wlan_objmgr_vdev *vdev,
 	return frm;
 }
 
+/*
+ * generate_pmkid() - API to generate the PMKID buffer for the RSN IE
+ * @vdev: vdev object
+ * @pmksa: pmksa of the association
+ * @pmkid_cnt: Random PMKID configuration count
+ *
+ * Return: PMKID subelement buffer
+ */
+static inline uint8_t *generate_pmkid(struct wlan_objmgr_vdev *vdev,
+				      struct wlan_crypto_pmksa *pmksa,
+				      uint8_t *pmkid_cnt)
+
+{
+	int32_t random_pmkid;
+	uint8_t *pmkid_buf = NULL, *temp_ptr = NULL;
+
+	random_pmkid = wlan_crypto_get_param(vdev,
+					     WLAN_CRYPTO_PARAM_RANDOM_PMKID);
+	/*
+	 * Maximum RSN IE length is 251 bytes.
+	 * RSN IE template with 1 PMKID is 42 bytes.
+	 * Therefore, a maximum of 12 random PMKIDs can be accommodated into
+	 * the RSN IE.
+	 */
+	if (random_pmkid < 0 || random_pmkid > 12) {
+		crypto_err("Invalid random PMKID count, therefore not appending random PMKID");
+		random_pmkid = 0;
+	}
+
+	*pmkid_cnt = 0;
+	if (!pmksa && !random_pmkid)
+		return NULL;
+
+	if (pmksa)
+		*pmkid_cnt = 1;
+
+	*pmkid_cnt += random_pmkid;
+
+	if (*pmkid_cnt > 1)
+		crypto_debug("Appending %d PMKIDs to the RSN IE", *pmkid_cnt);
+
+	pmkid_buf = qdf_mem_malloc(*pmkid_cnt * PMKID_LEN);
+	if (!pmkid_buf) {
+		crypto_err("PMKID memory allocation failed");
+		return NULL;
+	}
+
+	temp_ptr = pmkid_buf;
+
+	if (pmksa) {
+		qdf_mem_copy(pmkid_buf, pmksa->pmkid, PMKID_LEN);
+		pmkid_buf += PMKID_LEN;
+	}
+
+	if (random_pmkid)
+		qdf_get_random_bytes(pmkid_buf, random_pmkid * PMKID_LEN);
+
+	return temp_ptr;
+}
+
 uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
 					    uint8_t *iebuf,
 					    struct wlan_crypto_pmksa *pmksa)
@@ -3056,6 +3161,7 @@ uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
 	uint8_t *selcnt;
 	struct wlan_crypto_comp_priv *crypto_priv;
 	struct wlan_crypto_params *crypto_params;
+	uint8_t *rsn_pmkid = NULL, pmkid_cnt = 0;
 
 	if (!frm) {
 		return NULL;
@@ -3066,6 +3172,8 @@ uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
 	if (!crypto_params) {
 		return NULL;
 	}
+
+	rsn_pmkid = generate_pmkid(vdev, pmksa, &pmkid_cnt);
 
 	*frm++ = WLAN_ELEMID_RSN;
 	*frm++ = 0;
@@ -3218,10 +3326,10 @@ add_rsn_caps:
 	/* optional capabilities */
 	if (crypto_params->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED) {
 		/* PMK list */
-		if (pmksa) {
-			WLAN_CRYPTO_ADDSHORT(frm, 1);
-			qdf_mem_copy(frm, pmksa->pmkid, PMKID_LEN);
-			frm += PMKID_LEN;
+		if (rsn_pmkid) {
+			WLAN_CRYPTO_ADDSHORT(frm, pmkid_cnt);
+			qdf_mem_copy(frm, rsn_pmkid, pmkid_cnt * PMKID_LEN);
+			frm += pmkid_cnt * PMKID_LEN;
 		} else {
 			WLAN_CRYPTO_ADDSHORT(frm, 0);
 		}
@@ -3251,15 +3359,16 @@ add_rsn_caps:
 		}
 	} else {
 		/* PMK list */
-		if (pmksa) {
-			WLAN_CRYPTO_ADDSHORT(frm, 1);
-			qdf_mem_copy(frm, pmksa->pmkid, PMKID_LEN);
-			frm += PMKID_LEN;
+		if (rsn_pmkid) {
+			WLAN_CRYPTO_ADDSHORT(frm, pmkid_cnt);
+			qdf_mem_copy(frm, rsn_pmkid, pmkid_cnt * PMKID_LEN);
+			frm += pmkid_cnt * PMKID_LEN;
 		}
 	}
 
 	/* calculate element length */
 	iebuf[1] = frm - iebuf - 2;
+	qdf_mem_free(rsn_pmkid);
 
 	return frm;
 }
@@ -4030,7 +4139,7 @@ wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
 	QDF_STATUS status;
 
 	qdf_mem_zero(crypto_params, sizeof(struct wlan_crypto_params));
-	rsn_ie = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RSN, ie_ptr, ie_len);
+	rsn_ie = wlan_get_rsn_data_from_ie_ptr(ie_ptr, ie_len);
 	if (!rsn_ie) {
 		crypto_debug("RSN IE not present");
 		return QDF_STATUS_E_INVAL;
@@ -4193,15 +4302,18 @@ wlan_crypto_reset_prarams(struct wlan_crypto_params *params)
 const uint8_t *
 wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 {
-	uint8_t len;
+	uint8_t len = 0;
 	const uint8_t *ie;
+	QDF_STATUS status;
 
 	if (!rsnxe_ie)
 		return NULL;
 
 	ie = rsnxe_ie;
-	len = ie[1];
-	ie += 2;
+
+	status = wlan_crypto_get_ie_offset(&ie, &len, WLAN_ELEMID_RSNXE);
+	if (QDF_IS_STATUS_ERROR(status))
+		return NULL;
 
 	if (!len)
 		return NULL;
@@ -4211,9 +4323,9 @@ wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 	return ie;
 }
 
-QDF_STATUS wlan_set_vdev_crypto_prarams_from_ie(struct wlan_objmgr_vdev *vdev,
-						uint8_t *ie_ptr,
-						uint16_t ie_len)
+QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,
+					       uint8_t *ie_ptr,
+					       uint16_t ie_len)
 {
 	struct wlan_crypto_params crypto_params;
 	QDF_STATUS status;

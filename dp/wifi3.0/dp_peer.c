@@ -712,6 +712,87 @@ void dp_txrx_peer_attach_add(struct dp_soc *soc,
 	qdf_spin_unlock_bh(&soc->peer_map_lock);
 }
 
+#ifdef DP_PEER_UNMAP_TRACK
+static void dp_peer_id_unmap_and_add(struct dp_soc *soc,
+				     uint16_t peer_id,
+				     struct dp_peer *peer)
+{
+	dp_peer_unref_delete(peer, DP_MOD_ID_CONFIG);
+	qdf_assert_always(0);
+}
+#else
+/**
+ * dp_peer_id_unmap_and_add() - unmap old peer and replace new peer
+ * @soc: DP SOC handler
+ * @peer_id: peer id
+ * @peer: new peer to be added
+ *
+ * If old peer has done peer deleting before but just missed peer
+ * unmap, force to do peer unmap then map new peer, otherwise still
+ * trigger assert.
+ *
+ * Return: None
+ */
+static void dp_peer_id_unmap_and_add(struct dp_soc *soc,
+				     uint16_t peer_id,
+				     struct dp_peer *peer)
+{
+	struct dp_peer *old_peer = NULL;
+
+	old_peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_CONFIG);
+	if (!old_peer) {
+		dp_err("Fail to get old_peer by id %d", peer_id);
+		goto fail_ret;
+	}
+
+	/* old peer not did peer deleting */
+	if (old_peer->valid) {
+		dp_err("old_peer is still valid");
+		dp_peer_unref_delete(old_peer, DP_MOD_ID_CONFIG);
+		goto fail_ret;
+	}
+
+	dp_info("peer id %d, unmap old peer(" QDF_MAC_ADDR_FMT "), "
+		"add new peer(" QDF_MAC_ADDR_FMT ")",
+		peer_id,
+		QDF_MAC_ADDR_REF(old_peer->mac_addr.raw),
+		QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+
+	/* do force peer unmap for old peer */
+	dp_rx_peer_unmap_handler(soc, peer_id,
+				 old_peer->vdev->vdev_id,
+				 old_peer->mac_addr.raw, 0,
+				 DP_PEER_WDS_COUNT_INVALID);
+
+	dp_peer_unref_delete(old_peer, DP_MOD_ID_CONFIG);
+
+	/* map new peer */
+	qdf_spin_lock_bh(&soc->peer_map_lock);
+	if (soc->peer_id_to_obj_map[peer_id]) {
+		dp_err("old_peer still not been unmapped");
+		qdf_spin_unlock_bh(&soc->peer_map_lock);
+		goto fail_ret;
+	}
+
+	soc->peer_id_to_obj_map[peer_id] = peer;
+	if (peer->txrx_peer)
+		peer->txrx_peer->peer_id = peer_id;
+	qdf_spin_unlock_bh(&soc->peer_map_lock);
+
+	DP_STATS_INC(soc, t2h_msg_stats.peer_unmap_add, 1);
+	return;
+
+fail_ret:
+	/*
+	 * Reset peer_id to invalid in case this peer's peer_id
+	 * is used even if it has not been mapped successfully.
+	 */
+	peer->peer_id = HTT_INVALID_PEER;
+	dp_peer_unref_delete(peer, DP_MOD_ID_CONFIG);
+	dp_trigger_recovery(soc, QDF_DP_PEER_ID_DUPLICATE_USE);
+}
+#endif
+
 void dp_peer_find_id_to_obj_add(struct dp_soc *soc,
 				struct dp_peer *peer,
 				uint16_t peer_id)
@@ -733,6 +814,7 @@ void dp_peer_find_id_to_obj_add(struct dp_soc *soc,
 		soc->peer_id_to_obj_map[peer_id] = peer;
 		if (peer->txrx_peer)
 			peer->txrx_peer->peer_id = peer_id;
+		qdf_spin_unlock_bh(&soc->peer_map_lock);
 	} else {
 		/* Peer map event came for peer_id which
 		 * is already mapped, this is not expected
@@ -748,10 +830,10 @@ void dp_peer_find_id_to_obj_add(struct dp_soc *soc,
 		       soc->stats.t2h_msg_stats.invalid_peer_unmap,
 		       soc->stats.t2h_msg_stats.ml_peer_map,
 		       soc->stats.t2h_msg_stats.ml_peer_unmap);
-		dp_peer_unref_delete(peer, DP_MOD_ID_CONFIG);
-		qdf_assert_always(0);
+
+		qdf_spin_unlock_bh(&soc->peer_map_lock);
+		dp_peer_id_unmap_and_add(soc, peer_id, peer);
 	}
-	qdf_spin_unlock_bh(&soc->peer_map_lock);
 }
 
 void dp_peer_find_id_to_obj_remove(struct dp_soc *soc,

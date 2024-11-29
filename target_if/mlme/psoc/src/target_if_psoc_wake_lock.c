@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -51,7 +51,6 @@ void target_if_wake_lock_init(struct wlan_objmgr_psoc *psoc)
 	qdf_wake_lock_create(&psoc_wakelock->stop_wakelock, "vdev_stop");
 	qdf_wake_lock_create(&psoc_wakelock->delete_wakelock, "vdev_delete");
 
-	qdf_runtime_lock_init(&psoc_wakelock->wmi_cmd_rsp_runtime_lock);
 	qdf_runtime_lock_init(&psoc_wakelock->prevent_runtime_lock);
 	qdf_runtime_lock_init(&psoc_wakelock->roam_sync_runtime_lock);
 
@@ -76,7 +75,6 @@ void target_if_wake_lock_deinit(struct wlan_objmgr_psoc *psoc)
 	qdf_wake_lock_destroy(&psoc_wakelock->stop_wakelock);
 	qdf_wake_lock_destroy(&psoc_wakelock->delete_wakelock);
 
-	qdf_runtime_lock_deinit(&psoc_wakelock->wmi_cmd_rsp_runtime_lock);
 	qdf_runtime_lock_deinit(&psoc_wakelock->prevent_runtime_lock);
 	qdf_runtime_lock_deinit(&psoc_wakelock->roam_sync_runtime_lock);
 }
@@ -114,9 +112,6 @@ QDF_STATUS target_if_wake_lock_timeout_acquire(
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_runtime_pm_prevent_suspend(
-				&psoc_wakelock->wmi_cmd_rsp_runtime_lock);
-
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -151,8 +146,6 @@ QDF_STATUS target_if_wake_lock_timeout_release(
 		target_if_err("operation mode is invalid");
 		return QDF_STATUS_E_FAILURE;
 	}
-
-	qdf_runtime_pm_allow_suspend(&psoc_wakelock->wmi_cmd_rsp_runtime_lock);
 
 	return QDF_STATUS_SUCCESS;
 }

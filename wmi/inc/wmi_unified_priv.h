@@ -3315,6 +3315,13 @@ QDF_STATUS
 #endif
 #endif
 
+#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_ROAM_OFFLOAD)
+QDF_STATUS
+(*extract_roam_ml_info)(wmi_unified_t wmi_handle, void *evt_buf,
+			struct roam_mlo_link_info *dst, uint64_t timestamp,
+			uint8_t idx);
+#endif
+
 #ifdef WLAN_FEATURE_SON
 QDF_STATUS
 (*extract_inst_rssi_stats_resp)(wmi_unified_t wmi_handle, void *evt_buf,
@@ -3597,6 +3604,13 @@ QDF_STATUS (*send_opm_stats_cmd)(wmi_unified_t wmi_handle, uint8_t pdev_id);
 QDF_STATUS
 (*send_sta_vdev_report_ap_oper_bw_cmd)(wmi_unified_t wmi_handle,
 				       struct wmi_sta_vdev_report_ap_oper_bw_params *param);
+
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+QDF_STATUS (*send_get_cached_scan_report_cmd)(wmi_unified_t wmi_handle);
+
+void *(*extract_cached_scan_report_ev_params)(wmi_unified_t wmi_handle,
+					      void *ev_data, uint32_t data_len);
+#endif
 };
 
 /* Forward declaration for psoc*/

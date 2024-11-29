@@ -831,7 +831,7 @@ mlo_ser_set_link_cb(struct wlan_serialization_command *cmd,
 	return status;
 }
 
-#define MLO_SER_CMD_TIMEOUT_MS 5000
+#define MLO_SER_CMD_TIMEOUT_MS ((STOP_RESPONSE_TIMER) + 6000)
 QDF_STATUS mlo_ser_set_link_req(struct mlo_link_set_active_req *req)
 {
 	struct wlan_serialization_command cmd = {0, };

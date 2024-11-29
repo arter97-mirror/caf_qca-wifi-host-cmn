@@ -2476,10 +2476,25 @@ void hif_srng_init_phase(struct hif_opaque_softc *hif_ctx,
  * Return:  None
  */
 void hif_shutdown_notifier_cb(void *ctx);
+
+/**
+ * hif_target_recovery_in_progress - Return true if target is in recovery
+ *				     in the event of firmware crash.
+ * @hif_ctx: hif handle
+ *
+ * Return:  True if target recovery is in progress else false
+ */
+bool hif_target_recovery_in_progress(struct hif_opaque_softc *hif_ctx);
 #else
 static inline
 void hif_shutdown_notifier_cb(void *ctx)
 {
+}
+
+static inline bool
+hif_target_recovery_in_progress(struct hif_opaque_softc *hif_ctx)
+{
+	return false;
 }
 #endif /* HIF_IPCI */
 

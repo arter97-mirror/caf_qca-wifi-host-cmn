@@ -450,11 +450,38 @@
 
 /*
  * <ini>
+ * sta_sap_mcc_weightage - Update STA+SAP MCC candidate scoring param based on
+ *                         STA_SAP_MCC weightage
+ * @Min: 0
+ * @Max: 100
+ * @Default: 20
+ *
+ * This ini is used to calculate MCC candidate weightage.
+ * This score factor will be applied to candidate score if that candidate can
+ * form MCC with any SAP interface.
+ *
+ * Related: None
+ *
+ * Supported Feature: STA
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_STA_SAP_MCC_WEIGHTAGE CFG_INI_UINT( \
+		"sta_sap_mcc_weightage", \
+		0, \
+		100, \
+		20, \
+		CFG_VALUE_OR_DEFAULT, \
+		"STA+SAP MCC candidate weightage")
+
+/*
+ * <ini>
  * best_rssi_threshold - Best Rssi for score calculation
  * @Min: 0
  * @Max: 96
- * @Default: 55
- *
+ * @Default: 55 *
  * This ini tells limit for best RSSI. RSSI better than this limit are
  * considered as best RSSI. The best RSSI is given full rssi_weightage.
  *
@@ -1913,6 +1940,7 @@
 	CFG(CFG_OCE_AP_TX_PWR_WEIGHTAGE) \
 	CFG(CFG_OCE_SUBNET_ID_WEIGHTAGE) \
 	CFG(CFG_SAE_PK_AP_WEIGHTAGE) \
+	CFG(CFG_STA_SAP_MCC_WEIGHTAGE) \
 	CFG(CFG_SCORING_BEST_RSSI_THRESHOLD) \
 	CFG(CFG_SCORING_GOOD_RSSI_THRESHOLD) \
 	CFG(CFG_SCORING_BAD_RSSI_THRESHOLD) \

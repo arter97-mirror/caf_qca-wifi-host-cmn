@@ -213,6 +213,16 @@ void dp_flush_monitor_rings(struct dp_soc *soc, struct dp_vdev *vdev)
 	struct dp_mon_mac *mon_mac;
 	uint8_t mac_id = 0;
 
+	/* Do not allow monitor rings flush in the event of firmware
+	 * assert. This is because monitor rings flush will result in
+	 * returning the wbm links to hardware and since HP updates are
+	 * not posted to hardware, this will result in host assert on the
+	 * ring full condition due to the software HP updates on the SRC
+	 * ring.
+	 */
+	if (qdf_unlikely(hif_target_recovery_in_progress(soc->hif_handle)))
+		return;
+
 	if (qdf_unlikely(mon_soc->full_mon_mode))
 		return;
 
@@ -427,8 +437,13 @@ QDF_STATUS dp_vdev_set_monitor_mode_buf_rings(struct dp_pdev *pdev)
 							   mac_id,
 							   pdev->pdev_id);
 
-			dp_rx_pdev_mon_buf_buffers_alloc(pdev, mac_for_pdev,
-							 FALSE);
+			/* Skip buffer allocation if dynamic resource manager
+			 * is enabled, these will be allocated from a different
+			 * context.
+			 */
+			if (!soc->features.dyn_resource_mgr_support)
+				dp_rx_pdev_mon_buf_buffers_alloc(
+					pdev, mac_for_pdev, FALSE);
 			mon_buf_ring =
 				&pdev->soc->rxdma_mon_buf_ring[mac_for_pdev];
 			/*

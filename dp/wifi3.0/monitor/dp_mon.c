@@ -67,6 +67,7 @@ dp_pdev_disable_mcopy_code(struct dp_pdev *pdev)
 
 	mon_pdev->mcopy_mode = M_COPY_DISABLED;
 	mon_mac->mvdev = NULL;
+	mon_mac->vdev_id = DP_INVALID_VDEV_ID;
 }
 
 static inline void
@@ -305,6 +306,7 @@ QDF_STATUS dp_reset_monitor_mode_unlock(struct cdp_soc_t *soc_hdl,
 	for (mac_id = 0; mac_id < num_dst_rings; mac_id++) {
 		mon_mac = dp_get_mon_mac(pdev, mac_id);
 		mon_mac->mvdev = NULL;
+		mon_mac->vdev_id = DP_INVALID_VDEV_ID;
 	}
 
 	mon_pdev->monitor_configured = false;
@@ -546,6 +548,7 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 	mon_pdev = pdev->monitor_pdev;
 	mon_mac = dp_get_mon_mac(pdev, mac_id);
 	mon_mac->mvdev = vdev;
+	mon_mac->vdev_id = vdev->vdev_id;
 
 	QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_WARN,
 		  "pdev=%pK, pdev_id=%d, soc=%pK vdev=%pK\n",
@@ -596,13 +599,18 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 	if (cdp_ops  && cdp_ops->soc_config_full_mon_mode)
 		cdp_ops->soc_config_full_mon_mode((struct cdp_pdev *)pdev,
 						  DP_FULL_MON_ENABLE);
-	dp_mon_filter_setup_mon_mode(pdev);
-	status = dp_mon_filter_update(pdev);
+
+	if (!dp_mon_mode_local_pkt_capture(soc)) {
+		dp_mon_filter_setup_mon_mode(pdev);
+		status = dp_mon_filter_update(pdev);
+	}
+
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_cdp_err("%pK: Failed to reset monitor filters", soc);
 		dp_mon_filter_reset_mon_mode(pdev);
 		mon_pdev->monitor_configured = false;
 		mon_mac->mvdev = NULL;
+		mon_mac->vdev_id = DP_INVALID_VDEV_ID;
 	}
 
 fail:
@@ -6464,8 +6472,10 @@ QDF_STATUS dp_mon_vdev_detach(struct dp_vdev *vdev)
 		/* set mvdev to NULL only if detach is called for
 		 * monitor/special vap
 		 */
-		if (mon_mac->mvdev == vdev)
+		if (mon_mac->mvdev == vdev) {
 			mon_mac->mvdev = NULL;
+			mon_mac->vdev_id = DP_INVALID_VDEV_ID;
+		}
 	}
 
 	if (mon_ops->mon_lite_mon_vdev_delete)

@@ -31,6 +31,7 @@
 #include <qca_vendor.h>
 #include <wlan_scan_public_structs.h>
 #include <qdf_list.h>
+#include <qdf_util.h>
 #include <qdf_types.h>
 #include <wlan_scan_ucfg_api.h>
 #include <wlan_mgmt_txrx_utils_api.h>
@@ -57,6 +58,10 @@ extern const struct nla_policy cfg80211_scan_policy[
 #define SCAN_WAKE_LOCK_CONNECT_DURATION (1 * 1000) /* in msec */
 #define SCAN_WAKE_LOCK_SCAN_DURATION (5 * 1000) /* in msec */
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+#define SCAN_CACHE_REPORT_TIMEOUT_MS (10 * 1000) /* in msec */
+#endif
+
 /**
  * struct osif_scan_pdev - OS scan private structure
  * @scan_req_q: Scan request queue
@@ -64,6 +69,10 @@ extern const struct nla_policy cfg80211_scan_policy[
  * @req_id: Scan request Id
  * @runtime_pm_lock: Runtime suspend lock
  * @scan_wake_lock: Scan wake lock
+ * @cache_scan_report_req_cnt: Current count of requests for cache scan report
+ * @cache_scan_report_event: Event to wait for on cache scan report request
+ * @cache_scan_report: Contains cached scan report extracted from FW via
+ * WMI_SCAN_CACHE_RESULT_EVENTID.
  */
 struct osif_scan_pdev{
 	qdf_list_t scan_req_q;
@@ -71,6 +80,11 @@ struct osif_scan_pdev{
 	wlan_scan_requester req_id;
 	qdf_runtime_lock_t runtime_pm_lock;
 	qdf_wake_lock_t scan_wake_lock;
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	qdf_atomic_t cache_scan_report_req_cnt;
+	qdf_event_t cache_scan_report_event;
+	struct wlan_scan_cache_scan_report *cache_scan_report;
+#endif
 };
 
 /*

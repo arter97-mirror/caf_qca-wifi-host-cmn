@@ -1096,6 +1096,20 @@ wlan_lmac_if_dbam_rx_ops_register(struct wlan_lmac_if_rx_ops *rx_ops)
 }
 #endif /* WLAN_FEATURE_DBAM_CONFIG */
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static inline void
+wlan_lmac_if_cached_scan_report_rx_ops_reg(struct wlan_lmac_if_rx_ops *rx_ops)
+{
+	rx_ops->scan.cached_scan_report_ev_handler =
+			tgt_scan_cached_scan_report_ev_handler;
+}
+#else
+static inline void
+wlan_lmac_if_cached_scan_report_rx_ops_reg(struct wlan_lmac_if_rx_ops *rx_ops)
+{
+}
+#endif
+
 /**
  * wlan_lmac_if_umac_rx_ops_register() - UMAC rx handler register
  * @rx_ops: Pointer to rx_ops structure to be populated
@@ -1122,6 +1136,7 @@ wlan_lmac_if_umac_rx_ops_register(struct wlan_lmac_if_rx_ops *rx_ops)
 	/* scan rx ops */
 	rx_ops->scan.scan_ev_handler = tgt_scan_event_handler;
 	rx_ops->scan.scan_set_max_active_scans = tgt_scan_set_max_active_scans;
+	wlan_lmac_if_cached_scan_report_rx_ops_reg(rx_ops);
 
 	wlan_lmac_if_atf_rx_ops_register(rx_ops);
 

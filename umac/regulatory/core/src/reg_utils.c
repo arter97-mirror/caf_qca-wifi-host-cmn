@@ -506,6 +506,44 @@ QDF_STATUS reg_get_best_6g_power_type_for_rf_test(
 }
 
 QDF_STATUS
+reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
+			    struct regulatory_channel *chan_list)
+{
+	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+	enum channel_enum chan_num;
+	uint16_t chan_idx, i, max_bw = 0;
+	struct regulatory_channel *mas_chan_list;
+	uint32_t band_bitmap;
+
+	pdev_priv_obj = reg_get_pdev_obj(pdev);
+	if (!pdev_priv_obj) {
+		reg_err("pdev priv obj null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (QDF_IS_STATUS_ERROR(reg_get_band(pdev, &band_bitmap)))
+		return QDF_STATUS_E_FAILURE;
+
+	if (!(band_bitmap & BIT(REG_BAND_6G))) {
+		reg_err("6GHz band disabled");
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	for (chan_num = MIN_6GHZ_CHANNEL; chan_num <= MAX_6GHZ_CHANNEL; chan_num++) {
+		chan_idx = reg_convert_enum_to_6g_idx(chan_num);
+		max_bw = 0;
+		for (i = 0; i < REG_MAX_SUPP_AP_TYPE; i++) {
+			mas_chan_list = pdev_priv_obj->mas_chan_list_6g_client[i][REG_DEFAULT_CLIENT];
+			if (mas_chan_list[chan_idx].max_bw)
+				max_bw = QDF_MAX(max_bw, mas_chan_list[chan_idx].max_bw);
+		}
+		chan_list[chan_num].max_bw = max_bw;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
 reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 			   struct wlan_objmgr_pdev *pdev,
 			   enum reg_6g_ap_type *pwr_type_6g,

@@ -636,5 +636,24 @@ reg_get_6ghz_cli_pwr_type_per_ap_pwr_type(
 				struct wlan_objmgr_pdev *pdev,
 				enum reg_6g_ap_type ap_pwr_type,
 				enum supported_6g_pwr_types *cli_pwr_type);
-#endif
+
+/**
+ * reg_update_max_bw_6ghz_chan() - Update maximum bandwidth for each 6 GHz
+ * channel amongst all supported power types.
+ * @pdev: pointer to pdev
+ * @chan_list: current channel list
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
+			    struct regulatory_channel *chan_list);
+#else
+static inline QDF_STATUS
+reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
+			    struct regulatory_channel *chan_list)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ) */
 #endif

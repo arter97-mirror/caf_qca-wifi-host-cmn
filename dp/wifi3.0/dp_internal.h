@@ -50,8 +50,12 @@
 
 #define INVALID_WBM_RING_NUM 0xF
 
+#define HOST_PDEV_ID_ALL_MACS -1
+#define HOST_PDEV_ID_1ST_MAC 0
+#define HOST_PDEV_ID_2ND_MAC 1
+
 #ifdef FEATURE_DIRECT_LINK
-#define DIRECT_LINK_REFILL_RING_ENTRIES 64
+#define DIRECT_LINK_REFILL_RING_ENTRIES 128
 #ifdef IPA_OFFLOAD
 #ifdef IPA_WDI3_VLAN_SUPPORT
 #define DIRECT_LINK_REFILL_RING_IDX     4
@@ -6492,4 +6496,20 @@ dp_rx_flow_invalidate_fse_entry(struct dp_pdev *pdev, struct dp_rx_fse *fse,
  */
 bool dp_get_peer_vdev_roaming_in_progress(struct dp_peer *peer);
 
+/**
+ * dp_trigger_recovery() - Trigger recovery if OPs is registered,
+ *                         otherwise assert.
+ * @soc: DP SOC handle
+ * @reason: DP recovery reason
+ *
+ * Return: None
+ */
+static inline
+void dp_trigger_recovery(struct dp_soc *soc, enum qdf_hang_reason reason)
+{
+	if (soc->cdp_soc.ol_ops->dp_trigger_recovery)
+		soc->cdp_soc.ol_ops->dp_trigger_recovery(reason);
+	else
+		qdf_assert_always(0);
+}
 #endif /* #ifndef _DP_INTERNAL_H_ */

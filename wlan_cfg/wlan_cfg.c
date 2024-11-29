@@ -253,7 +253,7 @@ static const uint8_t rx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
 
 #ifdef CONFIG_BERYLLIUM
 static const  uint8_t rxdma2host_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
-	[13] = WLAN_CFG_RXDMA2HOST_RING_MASK_0};
+	[17] = WLAN_CFG_RXDMA2HOST_RING_MASK_0};
 #else
 static const  uint8_t rxdma2host_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
 	[6] = WLAN_CFG_RXDMA2HOST_RING_MASK_0 |

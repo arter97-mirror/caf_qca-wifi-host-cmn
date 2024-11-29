@@ -812,6 +812,28 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 			uint8_t link_id,
 			struct csa_offload_params *csa_param,
 			struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_mgr_validate_connection_partner_links() - Validate the partner links
+ * info in mlo dev ctx.
+ * @vdev: VDEV object manager.
+ * @partner_info: Pointer to partner info to validate from.
+ *
+ * Validate the partner links in mlo dev ctx with the partner links in
+ * @partner_info. The VDEV pointed by @vdev will be treated as assoc link and
+ * will not be checked.
+ *
+ * If any partner link is not found in mlo dev ctx that is part of @partner_info
+ * it will be cleared in mlo dev ctx and vice versa.
+ *
+ * Finally updates the count of overlapping partner links in @partner_info.
+ *
+ * Return: void.
+ */
+void
+mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
+					  struct mlo_partner_info *partner_info);
+
 #else
 static inline
 QDF_STATUS mlo_sta_handle_csa_standby_link(
@@ -821,6 +843,12 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 			struct wlan_objmgr_vdev *vdev)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+void
+mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
+					  struct mlo_partner_info *partner_info)
+{
 }
 #endif
 /**

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017,2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -152,4 +152,34 @@ QDF_STATUS
 tgt_scan_set_max_active_scans(struct wlan_objmgr_psoc *psoc,
 		uint32_t max_active_scans);
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+/**
+ * tgt_scan_get_cached_scan_report_fw_cap() - Get FW cap for sending cached
+ * scan report.
+ * @pdev: PDEV object manager
+ *
+ * Return: %true if FW supports else %false.
+ */
+bool tgt_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * tgt_scan_request_cached_scan_report() - Send command to FW to request
+ * cached scan report.
+ * @pdev: PDEV object manager.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS tgt_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * tgt_scan_cached_scan_report_ev_handler() - Handler to process FW cached
+ * scan report event.
+ * @pdev: PDEV object manager.
+ * @cached_scan_report: Pointer to cached scan report to be consumed by callee.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS tgt_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
+						  void *cached_scan_report);
+#endif
 #endif

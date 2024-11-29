@@ -23,6 +23,7 @@
 #include <wlan_scan_ucfg_api.h>
 #include <wlan_scan_utils_api.h>
 #include "wlan_scan_main.h"
+#include <wlan_scan_tgt_api.h>
 
 QDF_STATUS wlan_scan_psoc_created_notification(struct wlan_objmgr_psoc *psoc,
 						void *arg_list)
@@ -123,3 +124,22 @@ QDF_STATUS wlan_scan_vdev_destroyed_notification(
 
 	return status;
 }
+
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+bool scm_scan_get_cached_scan_report_fw_cap(struct wlan_objmgr_pdev *pdev)
+{
+	return tgt_scan_get_cached_scan_report_fw_cap(pdev);
+}
+
+QDF_STATUS scm_scan_request_cached_scan_report(struct wlan_objmgr_pdev *pdev)
+{
+	return tgt_scan_request_cached_scan_report(pdev);
+}
+
+QDF_STATUS scm_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
+						  void *cached_scan_report)
+{
+	wlan_scan_cached_scan_report_ev_handler(pdev, cached_scan_report);
+	return QDF_STATUS_SUCCESS;
+}
+#endif

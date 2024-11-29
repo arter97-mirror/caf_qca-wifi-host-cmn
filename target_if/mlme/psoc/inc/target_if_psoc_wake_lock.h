@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -35,7 +35,6 @@
  *  @start_wakelock: wakelock for vdev start
  *  @stop_wakelock: wakelock for vdev stop
  *  @delete_wakelock: wakelock for vdev delete
- *  @wmi_cmd_rsp_runtime_lock: run time lock
  *  @prevent_runtime_lock: run time lock
  *  @roam_sync_runtime_lock: roam sync runtime lock
  *  @is_link_up: flag to check link status
@@ -44,7 +43,6 @@ struct psoc_mlme_wakelock {
 	qdf_wake_lock_t start_wakelock;
 	qdf_wake_lock_t stop_wakelock;
 	qdf_wake_lock_t delete_wakelock;
-	qdf_runtime_lock_t wmi_cmd_rsp_runtime_lock;
 	qdf_runtime_lock_t prevent_runtime_lock;
 	qdf_runtime_lock_t roam_sync_runtime_lock;
 	bool is_link_up;

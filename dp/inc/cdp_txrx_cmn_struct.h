@@ -175,6 +175,13 @@
 #define FILTER_DATA_DATA		0x0001
 #define FILTER_DATA_NULL		0x0008
 
+#if defined(QCA_WIFI_PEACH) || defined(QCA_WIFI_WCN7750)
+#define FP_MGMT_FILTER	FILTER_MGMT_ALL & \
+			~(FILTER_MGMT_PROBE_RES | FILTER_MGMT_BEACON)
+#else
+#define FP_MGMT_FILTER	FILTER_MGMT_ALL
+#endif
+
 /*
  * Monitor version 1 for LT chipset
  * Monitor version 2 for be+ chipsets
@@ -1177,6 +1184,15 @@ typedef QDF_STATUS(*ol_txrx_get_tsf_time)(void *osif_dev, uint64_t input_time,
 					  uint64_t *tsf_time);
 
 /**
+ * typedef ol_txrx_vdev_del_notify_cb ()- callback registered to notify when
+ *					  cdp vdev is detached.
+ * @context: osif vdev handle
+ * @cdp_vdev: CDP vdev handle
+ */
+typedef void (*ol_txrx_vdev_del_notify_cb)(ol_osif_vdev_handle context,
+					   struct cdp_vdev *cdp_vdev);
+
+/**
  * struct ol_txrx_ops - (pointers to) the functions used for tx and rx
  * data xfer
  *
@@ -1269,7 +1285,7 @@ struct ol_txrx_ops {
 
 	ol_txrx_get_key_fp  get_key;
 	ol_txrx_get_tsf_time get_tsf_time;
-	ol_txrx_vdev_delete_cb vdev_del_notify;
+	ol_txrx_vdev_del_notify_cb vdev_del_notify;
 };
 
 /**
@@ -1682,6 +1698,7 @@ typedef union cdp_config_param_t {
 		uint16_t peer_id;
 		struct cdp_pkt_info pkts;
 	} pkt_info;
+	bool cdp_dyn_resource_mgr_support;
 } cdp_config_param_type;
 
 /**
@@ -1871,6 +1888,7 @@ enum cdp_vdev_param_type {
  * @CDP_SCAN_RADIO_SUPPORT: Scan Radio capability
  * @CDP_SAWF_MSDUQ_RECLAIM_SUPPORT: To initiate msduq reclaim related functions
  * @CDP_VDEV_TX_NSS_SUPPORT: FW Support vdev Tx NSS command
+ * @CDP_DYN_RESOURCE_MGR_SUPPORT: Dynamic RX buffer allocation support
  */
 enum cdp_psoc_param_type {
 	CDP_ENABLE_RATE_STATS,
@@ -1909,6 +1927,7 @@ enum cdp_psoc_param_type {
 	CDP_SAWF_MSDUQ_RECLAIM_SUPPORT,
 #endif
 	CDP_VDEV_TX_NSS_SUPPORT,
+	CDP_DYN_RESOURCE_MGR_SUPPORT,
 };
 
 #ifdef CONFIG_AP_PLATFORM

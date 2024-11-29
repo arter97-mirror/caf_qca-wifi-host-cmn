@@ -1133,4 +1133,55 @@ enum wlan_phymode
 wlan_eht_chan_phy_mode(uint32_t freq,
 		       uint16_t bw_val,
 		       enum phy_ch_width chan_width);
+
+/*
+ * wlan_get_rsn_data_from_ie_ptr() - Get the RSN IE data from the
+ * beacon/assoc IEs
+ * @ie_ptr: pointer to ies
+ * @ie_len: length of ies in ie_ptr
+ *
+ * Parse the beacon/assoc IEs and return the pointer to the RSN
+ * data. Prefer the vendor RSN IE over the legacy RSN IE if the
+ * override IE has non-zero data.
+ *
+ * Return: rsn ie data pointer
+ */
+const uint8_t *wlan_get_rsn_data_from_ie_ptr(const uint8_t *ie_ptr,
+					     int ie_len);
+
+/*
+ * wlan_get_rsnxe_data_from_ie_ptr() - Get the RSNXE IE data from the
+ * beacon/assoc IEs
+ * @ie_ptr: pointer to ies
+ * @ie_len: length of ies in ie_ptr
+ *
+ * Parse the beacon/assoc IEs and return the pointer to the RSNXE
+ * data. Prefer the vendor RSNXE IE over the legacy RSNXE IE if the
+ * override IE has non-zero data.
+ *
+ * Return: rsn ie data pointer
+ */
+const uint8_t *wlan_get_rsnxe_data_from_ie_ptr(const uint8_t *ie_ptr,
+					       int ie_len);
+
+/**
+ * wlan_is_rsn_override_present() - Is RSNO present in the IEs
+ * @ie: pointer to IEs
+ * @len: length of IEs
+ *
+ * Parse the IEs and return true if the RSNO element is present in the IEs.
+ *
+ * Return: RSNO generation if present
+ */
+const uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len);
+
+/*
+ * wlan_get_rsn_sel_ie_from_ie_ptr() - Get RSN selector IE from the beacon/
+ * assoc IEs
+ * @ie_ptr: pointer to ies
+ * @ie_len: length of ies in ie_ptr
+ *
+ * Return: RSN selector IE if present
+ */
+const uint8_t *wlan_get_rsn_sel_ie_from_ie_ptr(const uint8_t *ie, int len);
 #endif /* _WLAN_UTILITY_H_ */

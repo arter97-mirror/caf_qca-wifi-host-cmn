@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,7 +26,6 @@
 #include <wlan_objmgr_psoc_obj.h>
 #include <wlan_mlme_dbg.h>
 #include <target_if_psoc_timer_tx_ops.h>
-#include <wlan_vdev_mgr_tgt_if_rx_defs.h>
 #include <target_if_vdev_mgr_tx_ops.h>
 #include <target_if_vdev_mgr_rx_ops.h>
 
@@ -97,6 +97,9 @@ QDF_STATUS target_if_psoc_vdev_rsp_timer_init(struct wlan_objmgr_psoc *psoc,
 	qdf_atomic_init(&vdev_rsp->rsp_timer_inuse);
 	qdf_atomic_inc(&vdev_rsp->rsp_timer_inuse);
 
+	qdf_runtime_lock_init(&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+	vdev_rsp->rt_lock.is_lock_acquired = false;
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -128,6 +131,10 @@ void target_if_psoc_vdev_rsp_timer_deinit(struct wlan_objmgr_psoc *psoc,
 
 	qdf_timer_free(&vdev_rsp->rsp_timer);
 	qdf_atomic_set(&vdev_rsp->rsp_timer_inuse, 0);
+
+	vdev_rsp->rt_lock.is_lock_acquired = false;
+	qdf_runtime_lock_deinit(&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+
 	vdev_rsp->psoc = NULL;
 }
 
@@ -177,3 +184,51 @@ QDF_STATUS target_if_vdev_mgr_rsp_timer_mod(
 	return QDF_STATUS_SUCCESS;
 }
 
+void
+target_if_release_vdev_cmd_rt_lock(struct wlan_objmgr_psoc *psoc,
+				   uint8_t vdev_id)
+{
+	struct vdev_response_timer *vdev_rsp;
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+
+	if (vdev_id >= WLAN_UMAC_PSOC_MAX_VDEVS) {
+		mlme_err("Invalid vdev id passed VDEV_%d", vdev_id);
+		return;
+	}
+
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!(rx_ops && rx_ops->psoc_get_vdev_response_timer_info)) {
+		mlme_err("VDEV_%d PSOC_%d No Rx Ops", vdev_id,
+			 wlan_psoc_get_id(psoc));
+		return;
+	}
+
+	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
+	if (!vdev_rsp) {
+		mlme_err("vdev response is NULL for VDEV_%d PSOC_%d",
+			 vdev_id, wlan_psoc_get_id(psoc));
+		return;
+	}
+
+	if (vdev_rsp->rt_lock.is_lock_acquired) {
+		qdf_runtime_pm_allow_suspend(
+					&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+		vdev_rsp->rt_lock.is_lock_acquired = false;
+	}
+}
+
+void
+target_if_acquire_vdev_cmd_rt_lock(struct vdev_response_timer *vdev_rsp)
+{
+	QDF_STATUS status;
+
+	if (vdev_rsp->rt_lock.is_lock_acquired) {
+		mlme_err("Lock has already been acquired");
+		QDF_ASSERT(0);
+	}
+
+	status = qdf_runtime_pm_prevent_suspend(
+					&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+	if (QDF_IS_STATUS_SUCCESS(status))
+		vdev_rsp->rt_lock.is_lock_acquired = true;
+}

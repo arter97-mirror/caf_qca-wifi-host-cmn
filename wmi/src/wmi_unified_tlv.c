@@ -1016,6 +1016,76 @@ send_over_wmi:
 	return wmi_unified_cmd_send(wmi_handle, buf, buflen, cmd_id);
 }
 
+#ifdef FEATURE_WLAN_SUPPORT_USD
+/**
+ * wmi_vdev_add_p2p_mode_tlv() - add P2P mode TLv in VDEV create command
+ * @buf_ptr: pointer to TLV buffer
+ * @param: pointer to hold Vdev create parameter
+ *
+ * Return: pointer to TLV buffer
+ */
+static uint8_t *
+wmi_vdev_add_p2p_mode_tlv(uint8_t *buf_ptr, struct vdev_create_params *param)
+{
+	uint32_t mode;
+	wmi_vdev_create_wfdr2_mode_params *wfd_param;
+
+	switch (param->wfd_mode) {
+	case P2P_MODE_WFD_R2:
+		mode  = WMI_VDEV_CREATE_WFDR2_MODE;
+		break;
+	case P2P_MODE_WFD_PCC:
+		mode = WMI_VDEV_CREATE_WFDR2_PCC_MODE;
+		break;
+	default:
+		wmi_debug("TLV not required for P2P mode %d", param->wfd_mode);
+		return buf_ptr;
+	}
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       sizeof(wmi_vdev_create_wfdr2_mode_params));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	wfd_param = (wmi_vdev_create_wfdr2_mode_params *)buf_ptr;
+	wfd_param->wfdr2_mode = mode;
+	WMITLV_SET_HDR(&wfd_param->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_create_wfdr2_mode_params,
+		       WMITLV_GET_STRUCT_TLVLEN(
+					wmi_vdev_create_wfdr2_mode_params));
+	buf_ptr += sizeof(wmi_vdev_create_wfdr2_mode_params);
+
+	return buf_ptr;
+}
+
+/**
+ * wmi_vdev_calculate_p2p_mode_tlv_size() - calculate P2P mode TLV size
+ * @param: pointer to hold Vdev create parameter
+ *
+ * Return: TLV size
+ */
+static uint8_t
+wmi_vdev_calculate_p2p_mode_tlv_size(struct vdev_create_params *param)
+{
+	if (param->wfd_mode != P2P_MODE_WFD_R2 &&
+	    param->wfd_mode != P2P_MODE_WFD_PCC)
+		return 0;
+
+	return (WMI_TLV_HDR_SIZE + sizeof(wmi_vdev_create_wfdr2_mode_params));
+}
+#else
+static inline uint8_t *
+wmi_vdev_add_p2p_mode_tlv(uint8_t *buf_ptr, struct vdev_create_params *param)
+{
+	return buf_ptr;
+}
+
+static inline uint8_t
+wmi_vdev_calculate_p2p_mode_tlv_size(struct vdev_create_params *param)
+{
+	return 0;
+}
+#endif
+
 /**
  * send_vdev_create_cmd_tlv() - send VDEV create command to fw
  * @wmi_handle: wmi handle
@@ -1038,6 +1108,7 @@ static QDF_STATUS send_vdev_create_cmd_tlv(wmi_unified_t wmi_handle,
 
 	len += (num_bands * sizeof(*txrx_streams) + WMI_TLV_HDR_SIZE);
 	len += vdev_create_mlo_params_size(param);
+	len += wmi_vdev_calculate_p2p_mode_tlv_size(param);
 
 	buf = wmi_buf_alloc(wmi_handle, len);
 	if (!buf)
@@ -1090,6 +1161,8 @@ static QDF_STATUS send_vdev_create_cmd_tlv(wmi_unified_t wmi_handle,
 
 	buf_ptr += (num_bands * sizeof(wmi_vdev_txrx_streams));
 	buf_ptr = vdev_create_add_mlo_params(buf_ptr, param);
+
+	buf_ptr = wmi_vdev_add_p2p_mode_tlv(buf_ptr, param);
 
 	wmi_mtrace(WMI_VDEV_CREATE_CMDID, cmd->vdev_id, 0);
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len, WMI_VDEV_CREATE_CMDID);
@@ -10474,6 +10547,11 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 		WMI_RSRC_CFG_HOST_SERVICE_FLAG_OPT_DP_CTRL_REPLENISH_REFILL_RX_BUFFER_SUPPORT_SET(
 				resource_cfg->host_service_flags, 1);
 	}
+
+	if (tgt_res_cfg->enable_optimize_power)
+		WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_SET(resource_cfg->flags2, 2);
+	else
+		WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_SET(resource_cfg->flags2, 1);
 
 	wmi_copy_latency_flowq_support(resource_cfg, tgt_res_cfg);
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
@@ -22794,6 +22872,121 @@ extract_mgmt_srng_reap_event_tlv(wmi_unified_t wmi_handle, uint8_t *evt_buf,
 }
 #endif
 
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+static QDF_STATUS send_get_cached_scan_report_cmd_tlv(wmi_unified_t wmi_handle)
+{
+	wmi_buf_t wmi_buf;
+	QDF_STATUS status;
+	wmi_get_scan_cache_result_cmd_fixed_param *cmd;
+
+	/* Allocate the memory */
+	wmi_buf = wmi_buf_alloc(wmi_handle, sizeof(*cmd));
+	if (!wmi_buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_get_scan_cache_result_cmd_fixed_param *)wmi_buf_data(wmi_buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_get_scan_cache_result_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_get_scan_cache_result_cmd_fixed_param));
+
+	wmi_mtrace(WMI_GET_SCAN_CACHE_RESULT_CMDID, NO_SESSION, 0);
+	status = wmi_unified_cmd_send(wmi_handle, wmi_buf, sizeof(*cmd),
+				      WMI_GET_SCAN_CACHE_RESULT_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send get cached scan report %d", status);
+		wmi_buf_free(wmi_buf);
+	}
+
+	return status;
+}
+
+static void *
+extract_cached_scan_report_ev_params_tlv(wmi_unified_t wmi_handle,
+					 void *ev_data, uint32_t data_len)
+{
+	uint32_t malloc_len, idx;
+	wmi_scan_cache_info *ev_bss_data;
+	struct wlan_scan_cache_bss *bss_info;
+	struct wlan_scan_cache_scan_report *scan_report;
+	WMI_SCAN_CACHE_RESULT_EVENTID_param_tlvs *ev_buf;
+
+	ev_buf = (WMI_SCAN_CACHE_RESULT_EVENTID_param_tlvs *)ev_data;
+
+	scan_report = qdf_mem_malloc(sizeof(*scan_report));
+	if (!scan_report)
+		return NULL;
+
+	if (ev_buf->num_scan_freq_list) {
+		malloc_len = ev_buf->num_scan_freq_list * sizeof(uint32_t);
+		scan_report->freq_list = qdf_mem_malloc(malloc_len);
+		if (!scan_report->freq_list)
+			goto mem_free;
+
+		qdf_mem_copy(scan_report->freq_list, ev_buf->scan_freq_list,
+			     ev_buf->num_scan_freq_list * sizeof(uint32_t));
+	} else {
+		scan_report->freq_list = NULL;
+	}
+	scan_report->num_freq = ev_buf->num_scan_freq_list;
+	wmi_debug("Freq list %d, bss list %d",
+		  scan_report->num_freq, ev_buf->num_scan_cache_info);
+
+	if (!ev_buf->num_scan_cache_info) {
+		scan_report->bss_list = NULL;
+		scan_report->num_bss = 0;
+		return scan_report;
+	}
+
+	malloc_len =
+		ev_buf->num_scan_cache_info * sizeof(*scan_report->bss_list);
+	scan_report->bss_list =	qdf_mem_malloc(malloc_len);
+	if (!scan_report->bss_list)
+		goto mem_free;
+
+	ev_bss_data = ev_buf->scan_cache_info;
+	bss_info = scan_report->bss_list;
+	for (idx = 0; idx < ev_buf->num_scan_cache_info; idx++) {
+		bss_info = &scan_report->bss_list[idx];
+		bss_info->age_ms = ev_bss_data[idx].age_ms;
+		bss_info->cap_info = ev_bss_data[idx].capability;
+		bss_info->flags = ev_bss_data[idx].flags;
+		bss_info->rssi = ev_bss_data[idx].rssi;
+		bss_info->primary_freq =
+			ev_bss_data[idx].chanspec.primary_frequency;
+		bss_info->ccfs0_mhz =
+			ev_bss_data[idx].chanspec.center_frequency0;
+		bss_info->ccfs1_mhz =
+			ev_bss_data[idx].chanspec.center_frequency1;
+		bss_info->ch_width =
+			wmi_map_ch_width(ev_bss_data[idx].chanspec.width);
+		WMI_MAC_ADDR_TO_CHAR_ARRAY(&ev_bss_data[idx].bssid,
+					   &bss_info->bssid.bytes[0]);
+		if (ev_bss_data[idx].ssid.ssid_len > WLAN_SSID_MAX_LEN)
+			ev_bss_data[idx].ssid.ssid_len = WLAN_SSID_MAX_LEN;
+		qdf_mem_copy(bss_info->ssid.ssid, ev_bss_data[idx].ssid.ssid,
+			     ev_bss_data[idx].ssid.ssid_len);
+		bss_info->ssid.length = ev_bss_data[idx].ssid.ssid_len;
+		wmi_debug("age %d, cap 0x%x, flags 0x%x, rssi %d, freq %d, ccfs0 %d, ccfs1 %d, bw %d, BSSID: " QDF_MAC_ADDR_FMT ", SSID: " QDF_SSID_FMT,
+			  bss_info->age_ms, bss_info->cap_info,
+			  bss_info->flags, bss_info->rssi,
+			  bss_info->primary_freq, bss_info->ccfs0_mhz,
+			  bss_info->ccfs1_mhz, bss_info->ch_width,
+			  QDF_MAC_ADDR_REF(bss_info->bssid.bytes),
+			  QDF_SSID_REF(bss_info->ssid.length,
+				       bss_info->ssid.ssid));
+	}
+	scan_report->num_bss = ev_buf->num_scan_cache_info;
+
+	return scan_report;
+
+mem_free:
+	qdf_mem_free(scan_report->freq_list);
+	qdf_mem_free(scan_report);
+
+	return NULL;
+}
+#endif
+
 struct wmi_ops tlv_ops =  {
 	.send_vdev_create_cmd = send_vdev_create_cmd_tlv,
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
@@ -23321,6 +23514,11 @@ struct wmi_ops tlv_ops =  {
 	.send_opm_stats_cmd = send_opm_stats_cmd_tlv,
 #endif
 	.send_sta_vdev_report_ap_oper_bw_cmd = send_sta_vdev_report_ap_oper_bw_cmd_tlv,
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	.send_get_cached_scan_report_cmd = send_get_cached_scan_report_cmd_tlv,
+	.extract_cached_scan_report_ev_params =
+				extract_cached_scan_report_ev_params_tlv,
+#endif
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -23888,6 +24086,10 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 				WMI_P2P_CLI_DFS_AP_BMISS_DETECTED_EVENTID;
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	event_ids[wmi_mgmt_srng_reap_eventid] = WMI_MGMT_SRNG_REAP_EVENTID;
+#endif
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	event_ids[wmi_scan_cache_result_eventid] =
+					WMI_SCAN_CACHE_RESULT_EVENTID;
 #endif
 }
 
@@ -24550,6 +24752,11 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif
 	wmi_service[wmi_service_use_sta_vdev_for_p2p_device] =
 				WMI_SERVICE_USE_STA_VDEV_FOR_P2P_DEVICE;
+#ifdef FEATURE_WLAN_ZERO_POWER_SCAN
+	wmi_service[wmi_service_scan_cache_report_support] =
+			WMI_SERVICE_SCAN_CACHE_REPORT_SUPPORT;
+#endif
+	wmi_service[wmi_service_mrsno_support] = WMI_SERVICE_MULTI_RSNO_SUPPORT;
 }
 
 /**

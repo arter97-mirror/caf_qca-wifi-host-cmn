@@ -40,6 +40,42 @@
 #define DCS_FREQ_CONTROL_TIME (5 * 60 * 1000)
 
 /**
+ * enum wlan_dcs_mode - vdev operating mode for DCS
+ * @DCS_SAP: General SAP mode except XPAN/XR
+ * @DCS_XPAN: XPAN SAP mode
+ * @DCS_XR: XR SAP mode
+ * @DCS_GO: P2P GO mode
+ * @MAX_DCS_MODE_NUM: Max place holder
+ *
+ * These are generic IDs that identify the various modes
+ * in Dynamic Channel Selection.
+ */
+enum wlan_dcs_mode {
+	DCS_SAP,
+	DCS_XPAN,
+	DCS_XR,
+	DCS_GO,
+	MAX_DCS_MODE_NUM,
+};
+
+/**
+ * struct wlan_dcs_type_bitmap - types of DCS interference bitmap
+ * @cwim: continuous wave interference
+ * @wlanim: wlan interference stats
+ * @reserved: to be used in future
+ */
+struct wlan_dcs_type_bitmap {
+	uint8_t cwim:1;
+	uint8_t wlanim:1;
+	uint8_t reserved:6;
+};
+
+union wlan_dcs_cfg {
+	uint8_t val;
+	struct wlan_dcs_type_bitmap bitmap;
+};
+
+/**
  * enum wlan_dcs_debug_level - dcs debug trace level
  * @DCS_DEBUG_DISABLE: disable debug trace
  * @DCS_DEBUG_CRITICAL: critical debug trace level
@@ -86,6 +122,9 @@ struct pdev_dcs_im_stats {
  * @tx_err_threshold: transmission failure rate threshold
  * @user_request_count: counter of stats requested from userspace
  * @notify_user: whether to notify userspace
+ * @dcs_enable_cfg_per_mode: dcs enable per mode from ini config
+ * @intfr_detection_threshold_per_mode: interference detection threshold per
+ * mode
  */
 struct pdev_dcs_params {
 	uint8_t dcs_enable_cfg;
@@ -103,6 +142,10 @@ struct pdev_dcs_params {
 	uint32_t tx_err_threshold;
 	uint32_t user_request_count;
 	uint8_t notify_user;
+#ifdef WLAN_FEATURE_VDEV_DCS
+	union wlan_dcs_cfg dcs_enable_cfg_per_mode[MAX_DCS_MODE_NUM];
+	uint8_t intfr_detection_threshold_per_mode[MAX_DCS_MODE_NUM];
+#endif
 };
 
 /**

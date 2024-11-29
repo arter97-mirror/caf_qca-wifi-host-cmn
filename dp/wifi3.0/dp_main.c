@@ -5169,17 +5169,17 @@ static inline void dp_vdev_fetch_tx_handler(struct dp_vdev *vdev,
  *
  * Return: DP VDEV handle on success, NULL on failure
  */
-static QDF_STATUS dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl,
-					 uint8_t vdev_id,
-					 ol_osif_vdev_handle osif_vdev,
-					 struct ol_txrx_ops *txrx_ops)
+static struct cdp_vdev *
+dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+		       ol_osif_vdev_handle osif_vdev,
+		       struct ol_txrx_ops *txrx_ops)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev =	dp_vdev_get_ref_by_id(soc, vdev_id,
 						      DP_MOD_ID_CDP);
 
 	if (!vdev)
-		return QDF_STATUS_E_FAILURE;
+		return NULL;
 
 	vdev->osif_vdev = osif_vdev;
 	vdev->osif_rx = txrx_ops->rx.rx;
@@ -5216,7 +5216,8 @@ static QDF_STATUS dp_vdev_register_wifi3(struct cdp_soc_t *soc_hdl,
 
 	dp_cfg_event_record_vdev_evt(soc, DP_CFG_EVENT_VDEV_REGISTER, vdev);
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
-	return QDF_STATUS_SUCCESS;
+
+	return (struct cdp_vdev *)vdev;
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -6630,7 +6631,7 @@ void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 {
 	ol_txrx_vdev_delete_cb vdev_delete_cb = NULL;
 	void *vdev_delete_context = NULL;
-	ol_txrx_vdev_delete_cb vdev_del_notify = NULL;
+	ol_txrx_vdev_del_notify_cb vdev_del_notify = NULL;
 	void *vdev_del_noitfy_ctx = NULL;
 	uint8_t vdev_id = vdev->vdev_id;
 	struct dp_pdev *pdev = vdev->pdev;
@@ -6693,14 +6694,13 @@ free_vdev:
 				     vdev);
 	wlan_minidump_remove(vdev, sizeof(*vdev), soc->ctrl_psoc,
 			     WLAN_MD_DP_VDEV, "dp_vdev");
+	if (vdev_del_notify)
+		vdev_del_notify(vdev_del_noitfy_ctx, (struct cdp_vdev *)vdev);
+
 	qdf_mem_common_free(vdev);
 	vdev = NULL;
-
 	if (vdev_delete_cb)
 		vdev_delete_cb(vdev_delete_context);
-
-	if (vdev_del_notify)
-		vdev_del_notify(vdev_del_noitfy_ctx);
 }
 
 qdf_export_symbol(dp_vdev_unref_delete);
@@ -9743,6 +9743,8 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 	case CDP_FW_SUPPORT_ML_MON:
 		soc->features.fw_support_ml_monitor =
 				val.cdp_fw_support_ml_mon;
+		dp_info("FW support ML mon: %d",
+			soc->features.fw_support_ml_monitor);
 		break;
 	case CDP_MONITOR_FLAG:
 		soc->mon_flags = val.cdp_monitor_flag;
@@ -9768,6 +9770,12 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 		soc->features.vdev_tx_nss_support = val.cdp_tx_vdev_nss_support;
 		dp_info("FW supports Tx Vdev NSS report: %d",
 			soc->features.vdev_tx_nss_support);
+		break;
+	case CDP_DYN_RESOURCE_MGR_SUPPORT:
+		soc->features.dyn_resource_mgr_support =
+			val.cdp_dyn_resource_mgr_support;
+		dp_info("Dynamic resource manager support: %u",
+			soc->features.dyn_resource_mgr_support);
 		break;
 	default:
 		break;
@@ -10209,8 +10217,8 @@ QDF_STATUS dp_get_per_link_peer_stats(struct dp_peer *peer,
 			link_peer = link_peers_info.link_peers[i];
 			if (qdf_unlikely(!link_peer))
 				continue;
-			dp_get_peer_per_pkt_stats(link_peer, peer_stats);
-			dp_get_peer_extd_stats(link_peer, peer_stats);
+			dp_get_peer_per_pkt_stats(link_peer, &peer_stats[i]);
+			dp_get_peer_extd_stats(link_peer, &peer_stats[i]);
 		}
 		dp_release_link_peers_ref(&link_peers_info,
 					  DP_MOD_ID_GENERIC_STATS);
