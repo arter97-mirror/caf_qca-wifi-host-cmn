@@ -898,7 +898,8 @@ static inline int pld_pcie_get_pci_slot(struct device *dev)
 }
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)) || \
+	defined(CNSS_PLAT_WIFI_KOBJ_SUPPORT))
 static inline struct kobject *pld_pcie_get_wifi_kobj(struct device *dev)
 {
 	return cnss_get_wifi_kobj(dev);

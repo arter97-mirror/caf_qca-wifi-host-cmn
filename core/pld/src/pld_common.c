@@ -1708,7 +1708,8 @@ void *pld_smmu_get_mapping(struct device *dev)
 }
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)) || \
+	defined(CNSS_PLAT_WIFI_KOBJ_SUPPORT))
 struct kobject *pld_get_wifi_kobj(struct device *dev)
 {
 	struct kobject *wifi_kobj = NULL;
