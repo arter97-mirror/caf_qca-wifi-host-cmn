@@ -28,6 +28,7 @@
 #include "wlan_dcs.h"
 #include <wlan_objmgr_psoc_obj_i.h>
 #include "wlan_utility.h"
+#include "wlan_ll_sap_api.h"
 #ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
 #include "wlan_policy_mgr_ll_sap.h"
@@ -146,6 +147,20 @@ QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 	}
 
 	return QDF_STATUS_SUCCESS;
+}
+
+uint32_t
+dcs_get_coch_intfr_threshold(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id)
+{
+	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+
+	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, pdev_id);
+	if (!dcs_pdev_priv) {
+		dcs_err("dcs pdev private object is null");
+		return 0;
+	}
+
+	return dcs_pdev_priv->dcs_host_params.coch_intfr_threshold;
 }
 
 #ifdef WLAN_FEATURE_VDEV_DCS
@@ -777,6 +792,9 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 		dcs_debug("tx_err: %u", tx_err);
 	}
 
+	if (policy_mgr_is_vdev_ll_lt_sap(psoc, vdev_id))
+		wlan_ll_sap_set_cur_freq_unused_cu(psoc, vdev_id,
+						   reg_unused_cu);
 	if (reg_unused_cu >= dcs_host_params.coch_intfr_threshold)
 		/* Quickly reach to decision */
 		p_dcs_im_stats->im_intfr_cnt += 2;

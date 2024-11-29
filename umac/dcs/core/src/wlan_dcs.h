@@ -329,6 +329,16 @@ struct dcs_pdev_priv_obj *
 wlan_dcs_get_pdev_private_obj(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id);
 
 /**
+ * dcs_get_coch_intfr_threshold() - get unused cu threshold
+ * @psoc: psoc pointer
+ * @pdev_id: pdev_id
+ *
+ * Return: cu threshold
+ */
+uint32_t
+dcs_get_coch_intfr_threshold(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id);
+
+/**
  * wlan_dcs_attach() - Attach dcs handler
  * @psoc: psoc pointer
  *
