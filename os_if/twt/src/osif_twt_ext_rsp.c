@@ -468,6 +468,24 @@ osif_twt_setup_pack_resp_nlmsg(struct sk_buff *reply_skb,
 		}
 	}
 
+	if (event->additional_params.implicit) {
+		attr = QCA_WLAN_VENDOR_ATTR_TWT_SETUP_IMPLICIT;
+		if (nla_put_u8(reply_skb, attr,
+			       event->additional_params.implicit)) {
+			osif_err("TWT: fail to put twt setup implicit param");
+			return QDF_STATUS_E_FAILURE;
+		}
+	}
+
+	if (event->additional_params.renegotiate) {
+		attr = QCA_WLAN_VENDOR_ATTR_TWT_SETUP_UPDATABLE;
+		if (nla_put_u8(reply_skb, attr,
+			       event->additional_params.renegotiate)) {
+			osif_err("TWT: fail to put twt setup updatable param");
+			return QDF_STATUS_E_FAILURE;
+		}
+	}
+
 	attr = QCA_WLAN_VENDOR_ATTR_TWT_SETUP_MAC_ADDR;
 	if (nla_put(reply_skb, attr, QDF_MAC_ADDR_SIZE,
 		    event->params.peer_macaddr.bytes)) {
@@ -1515,6 +1533,19 @@ osif_twt_pack_get_stats_resp_nlmsg(struct wlan_objmgr_vdev *vdev,
 		    twt_get_stats_status_to_vendor_twt_status(params[i].status);
 		if (nla_put_u32(reply_skb, attr, vendor_status)) {
 			osif_err("get_params failed to put status");
+			return QDF_STATUS_E_INVAL;
+		}
+
+		attr = QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVG_EOSP_DUR_US;
+		if (nla_put_u32(reply_skb, attr,
+				params[i].avg_eosp_sp_dur_us)) {
+			osif_err("get_params failed to put avg_eosp_sp_dur_us");
+			return QDF_STATUS_E_INVAL;
+		}
+
+		attr = QCA_WLAN_VENDOR_ATTR_TWT_STATS_EOSP_COUNT;
+		if (nla_put_u32(reply_skb, attr, params[i].eosp_sp_count)) {
+			osif_err("get_params failed to put eosp_sp_count");
 			return QDF_STATUS_E_INVAL;
 		}
 
