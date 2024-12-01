@@ -683,6 +683,8 @@ static QDF_STATUS extract_twt_add_dialog_comp_additional_parameters
 	additional_params->b_twt_id0 = TWT_FLAGS_GET_BTWT_ID0(flags);
 	additional_params->info_frame_disabled =
 				TWT_FLAGS_GET_TWT_INFO_FRAME_DISABLED(flags);
+	additional_params->implicit = TWT_FLAGS_GET_IMPLICIT(flags);
+	additional_params->renegotiate = TWT_FLAGS_GET_RENEGOTIATE(flags);
 	additional_params->wake_dur_us = param_buf->twt_params[idx].wake_dur_us;
 	additional_params->wake_intvl_us =
 				param_buf->twt_params[idx].wake_intvl_us;
