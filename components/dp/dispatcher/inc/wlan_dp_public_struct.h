@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -622,6 +622,7 @@ union wlan_tp_data {
  * @dp_get_pause_map: Callback API to get pause map count
  * @dp_nud_failure_work: Callback API to handle NUD failuire work
  * @link_monitoring_cb: Callback API to handle link speed change
+ * @dp_get_ndev_by_vdev_id: Callback API to get net device reference by vdev id
  */
 struct wlan_dp_psoc_callbacks {
 	hdd_cb_handle callback_ctx;
@@ -707,6 +708,8 @@ struct wlan_dp_psoc_callbacks {
 	void (*link_monitoring_cb)(struct wlan_objmgr_psoc *psoc,
 				   uint8_t vdev_id,
 				   bool is_link_speed_good);
+	QDF_STATUS (*dp_get_ndev_by_vdev_id)(uint32_t vdev_id,
+					     qdf_netdev_t *netdev);
 };
 
 /**

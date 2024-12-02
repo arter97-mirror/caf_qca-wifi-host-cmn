@@ -2447,6 +2447,18 @@ bool mlme_get_bss_11be_allowed(struct wlan_objmgr_psoc *psoc,
 			       struct qdf_mac_addr *bssid,
 			       uint8_t *ie_data,
 			       uint32_t ie_length);
+
+/**
+ * wlan_mlme_get_oem_eht_mlo_config() - Get the OEM EHT configuration.
+ * @psoc: PSOC object manager.
+ * @oem_eht_cfg: Pointer to fill OEM cfg
+ *
+ * Returns success of retrieving OEM cfg else failure.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS wlan_mlme_get_oem_eht_mlo_config(struct wlan_objmgr_psoc *psoc,
+					    uint32_t *oem_eht_cfg);
 #else
 static inline
 bool mlme_get_bss_11be_allowed(struct wlan_objmgr_psoc *psoc,
@@ -2455,6 +2467,14 @@ bool mlme_get_bss_11be_allowed(struct wlan_objmgr_psoc *psoc,
 			       uint32_t ie_length)
 {
 	return false;
+}
+
+static inline QDF_STATUS
+wlan_mlme_get_oem_eht_mlo_config(struct wlan_objmgr_psoc *psoc,
+				 uint32_t *oem_eht_cfg)
+{
+	*oem_eht_cfg = 0x0;
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 
