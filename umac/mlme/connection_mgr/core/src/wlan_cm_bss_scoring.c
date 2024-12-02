@@ -3229,7 +3229,7 @@ static void cm_find_and_remove_dup_candidate(struct scan_cache_node *bss_entry,
 							cur_node);
 						util_scan_free_cache_entry(
 							scan_node->entry);
-						qdf_mem_free(cur_node);
+						qdf_mem_free(scan_node);
 						goto next;
 					}
 				}
