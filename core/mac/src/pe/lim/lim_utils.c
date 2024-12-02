@@ -4540,10 +4540,8 @@ void lim_process_add_sta_rsp(struct mac_context *mac_ctx,
 	session->csaOffloadEnable = add_sta_params->csaOffloadEnable;
 	if (LIM_IS_NDI_ROLE(session))
 		lim_ndp_add_sta_rsp(mac_ctx, session, msg->bodyptr);
-#ifdef FEATURE_WLAN_TDLS
 	else if (add_sta_params->staType == STA_ENTRY_TDLS_PEER)
 		lim_process_tdls_add_sta_rsp(mac_ctx, msg->bodyptr, session);
-#endif
 	else
 		lim_process_mlm_add_sta_rsp(mac_ctx, msg, session);
 
