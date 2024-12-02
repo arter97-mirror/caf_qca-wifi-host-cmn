@@ -92,6 +92,9 @@ struct pdev_hw_stats {
  * @cs_rx_looplimit_end: rx loop limit end
  * @cs_ap_stats_tx_cal_enable: ap stats tx cal enable status
  * @cs_tgt_asserts: tgt assert count
+ * @cs_recovery_start_ts: last recovery start timestamp
+ * @cs_recovery_complete_ts: last recovery complete timestamp
+ * @cs_avg_recovery_time: Average recovery time
  * @cs_chan_nf: channel noise floor
  * @cs_chan_nf_sec80: channel noise floor secondary 80
  * @cs_wmi_tx_mgmt: wmi tx mgmt
@@ -142,6 +145,9 @@ struct pdev_80211_stats {
 	uint32_t cs_rx_looplimit_end;
 	uint8_t  cs_ap_stats_tx_cal_enable;
 	uint32_t cs_tgt_asserts;
+	uint64_t cs_recovery_start_ts;
+	uint64_t cs_recovery_complete_ts;
+	uint64_t cs_avg_recovery_time;
 	int16_t  cs_chan_nf;
 	int16_t  cs_chan_nf_sec80;
 	uint64_t cs_wmi_tx_mgmt;
