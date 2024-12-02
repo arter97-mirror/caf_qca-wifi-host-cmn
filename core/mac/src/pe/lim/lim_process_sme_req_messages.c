@@ -3595,12 +3595,16 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 		goto send;
 	}
 
-	lim_extract_ap_capability(mac_ctx,
+	status = lim_extract_ap_capability(mac_ctx,
 		(uint8_t *)bss_desc->ieFields,
 		lim_get_ielen_from_bss_description(bss_desc),
 		&session->limCurrentBssQosCaps,
 		&session->gLimCurrentBssUapsd,
 		&local_power_constraint, session, &is_pwr_constraint);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		pe_err("extract ap caps failed %d", status);
+		goto send;
+	}
 
 	lim_disable_bformee_for_iot_ap(mac_ctx, session, bss_desc);
 
