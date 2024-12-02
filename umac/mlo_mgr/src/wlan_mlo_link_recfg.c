@@ -37,6 +37,9 @@
 #include "host_diag_core_event.h"
 #include "lim_types.h"
 
+static struct mlo_link_recfg_state_tran *
+mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx);
+
 static struct wlan_mlo_dev_context *
 mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
 {
@@ -721,7 +724,7 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 				struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
 {
-	return true;
+	return false;
 }
 
 static bool
@@ -1045,6 +1048,83 @@ end:
 	return status;
 }
 
+QDF_STATUS
+mlo_link_recfg_get_add_partner_links(
+		struct wlan_objmgr_vdev *vdev,
+		struct mlo_partner_info *ml_partner_info)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct mlo_link_recfg_context *recfg_ctx;
+	struct mlo_link_recfg_state_tran *tran;
+	struct wlan_mlo_link_recfg_bss_info *link_add;
+	struct mlo_link_info *link_info;
+	uint8_t i;
+	uint8_t idx = 0;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+	if (!mlo_dev_ctx->link_recfg_ctx)
+		return QDF_STATUS_E_INVAL;
+
+	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
+
+	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
+	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
+	if (!tran) {
+		mlo_err("curr tran null");
+		ml_link_recfg_sm_lock_release(mlo_dev_ctx);
+		return QDF_STATUS_E_INVAL;
+	};
+
+	for (i = 0; i < tran->req.add_link_info.num_links; i++) {
+		link_add = &tran->req.add_link_info.link[i];
+		if (link_add->status_code != STATUS_SUCCESS) {
+			mlo_debug("ignore link for status_code %d",
+				  link_add->status_code);
+			continue;
+		}
+		if (link_add->link_id == wlan_vdev_get_link_id(vdev))
+			continue;
+		link_info = mlo_mgr_get_ap_link_by_link_id(
+				mlo_dev_ctx,
+				link_add->link_id);
+		if (!link_info) {
+			mlo_debug("unexpected link info null for link id %d",
+				  link_add->link_id);
+			status = QDF_STATUS_E_INVAL;
+			break;
+		}
+		if (idx >= WLAN_MAX_ML_BSS_LINKS) {
+			mlo_debug("unexpected no buff to add link id %d",
+				  link_add->link_id);
+			status = QDF_STATUS_E_INVAL;
+			break;
+		}
+		ml_partner_info->partner_link_info[idx].link_addr =
+			link_add->ap_link_addr;
+		ml_partner_info->partner_link_info[idx].link_id =
+			link_add->link_id;
+		ml_partner_info->partner_link_info[idx].vdev_id =
+			link_info->vdev_id;
+		ml_partner_info->partner_link_info[idx].link_status_code =
+			link_add->status_code;
+
+		mlo_debug("add new partner link id %d ap bssid " QDF_MAC_ADDR_FMT " vdev %d ",
+			  link_add->link_id,
+			  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes),
+			  link_info->vdev_id);
+		idx++;
+	}
+	ml_partner_info->num_partner_links = idx;
+	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
+
+	return status;
+}
+
 static QDF_STATUS
 mlo_link_recfg_del_standby_link(struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
@@ -1129,12 +1209,93 @@ mlo_link_recfg_del_standby_link(struct mlo_link_recfg_context *recfg_ctx,
 	return QDF_STATUS_SUCCESS;
 }
 
-static void
+static QDF_STATUS
 mlo_link_recfg_add_standby_link(struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
 {
-	/* Send bss params wmi to add standby link */
-	/* add link info to mlo mgr */
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
+	QDF_STATUS status;
+	struct mlo_link_bss_params params;
+	struct mlo_link_info *link_info;
+	struct wlan_objmgr_vdev *recfg_vdev = NULL;
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	mlo_tx_ops = target_if_mlo_get_tx_ops(psoc);
+	if (!mlo_tx_ops || !mlo_tx_ops->send_link_set_bss_params_cmd) {
+		mlo_err("tx_ops or send_link_set_bss_params_cmd is null!");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	/* assumption is only one standby link existing */
+	if (req->add_link_info.num_links != 1) {
+		mlo_err("unexpected standby link add num %d",
+			req->add_link_info.num_links);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	link_info = mlo_mgr_get_ap_link_by_link_id(
+			mlo_dev_ctx,
+			req->add_link_info.link[0].link_id);
+	if (!link_info) {
+		mlo_debug("unexpected link info null for link id %d",
+			  req->add_link_info.link[0].link_id);
+		return QDF_STATUS_E_INVAL;
+	}
+	if (!link_info->link_chan_info) {
+		mlo_debug("unexpected link ch info null for link id %d",
+			  req->add_link_info.link[0].link_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_mem_zero(&params, sizeof(params));
+	*(struct qdf_mac_addr *)&params.ap_mld_mac[0] =
+		recfg_ctx->curr_recfg_req.fw_ind_param.ap_mld_addr;
+	params.link_id = req->add_link_info.link[0].link_id;
+	params.op_code = MLO_LINK_BSS_OP_ADD;
+	params.chan = link_info->link_chan_info;
+	params.ap_link_addr = req->add_link_info.link[0].ap_link_addr;
+	params.self_link_addr = req->add_link_info.link[0].self_link_addr;
+
+	mlo_debug("link id %d chan freq %d cfreq1 %d cfreq2 %d host phymode %d ap mld mac " QDF_MAC_ADDR_FMT,
+		  link_info->link_id, link_info->link_chan_info->ch_freq,
+		  link_info->link_chan_info->ch_cfreq1,
+		  link_info->link_chan_info->ch_cfreq2,
+		  link_info->link_chan_info->ch_phymode,
+		  QDF_MAC_ADDR_REF(&params.ap_mld_mac[0]));
+
+	status = mlo_tx_ops->send_link_set_bss_params_cmd(psoc, &params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("failed to send link set bss request command to FW");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+	recfg_vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				psoc, recfg_ctx->curr_recfg_req.vdev_id,
+				WLAN_LINK_RECFG_ID);
+	if (!recfg_vdev) {
+		mlo_err("Invalid link recfg VDEV %d",
+			recfg_ctx->curr_recfg_req.vdev_id);
+		wlan_objmgr_vdev_release_ref(recfg_vdev, WLAN_LINK_RECFG_ID);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_mgr_osif_update_connect_info(recfg_vdev,
+					 req->add_link_info.link[0].link_id);
+	wlan_objmgr_vdev_release_ref(recfg_vdev, WLAN_LINK_RECFG_ID);
+
+	return QDF_STATUS_SUCCESS;
 }
 
 static QDF_STATUS

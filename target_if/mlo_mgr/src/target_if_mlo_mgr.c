@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1113,6 +1113,8 @@ target_if_send_link_set_bss_params_cmd(struct wlan_objmgr_psoc *psoc,
 	params.chan.ch_cfreq1 = cmd->chan->ch_cfreq1;
 	params.chan.ch_cfreq2 = cmd->chan->ch_cfreq2;
 	params.chan.ch_phymode  = cmd->chan->ch_phymode;
+	params.ap_link_addr = cmd->ap_link_addr;
+	params.self_link_addr = cmd->self_link_addr;
 
 	status = wmi_send_link_set_bss_params_cmd(wmi_handle, &params);
 

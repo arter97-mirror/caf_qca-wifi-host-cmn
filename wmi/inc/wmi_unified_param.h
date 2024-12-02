@@ -1378,12 +1378,16 @@ struct wmi_host_link_state_params {
  * struct wmi_host_link_bss_params - link bss params
  * @link_id: link id
  * @ap_mld_mac: ap mld mac address
+ * @ap_link_addr: ap link address
+ * @self_link_addr: self link address
  * @chan: channel
  * @op_code: operation for provided link
  */
 struct wmi_host_link_bss_params {
 	uint8_t link_id;
 	uint8_t ap_mld_mac[QDF_MAC_ADDR_SIZE];
+	struct qdf_mac_addr ap_link_addr;
+	struct qdf_mac_addr self_link_addr;
 	struct wlan_channel chan;
 	uint8_t op_code;
 };

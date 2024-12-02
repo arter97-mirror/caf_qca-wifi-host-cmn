@@ -518,12 +518,16 @@ struct wlan_mlo_key_mgmt {
  * struct mlo_link_bss_params - link bss param
  * @link_id: link id
  * @ap_mld_mac: mld mac address
+ * @ap_link_addr: ap link address
+ * @self_link_addr: self link address
  * @chan: channel
  * @op_code: operation for provided link
  */
 struct mlo_link_bss_params {
 	int8_t link_id;
 	int8_t ap_mld_mac[QDF_MAC_ADDR_SIZE];
+	struct qdf_mac_addr ap_link_addr;
+	struct qdf_mac_addr self_link_addr;
 	struct wlan_channel *chan;
 	uint8_t op_code;
 };

@@ -1117,6 +1117,36 @@ static inline int osif_update_connect_results(struct net_device *dev,
 
 #ifdef WLAN_FEATURE_11BE_MLO
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+static void
+osif_update_link_add_partner_links(struct wlan_objmgr_vdev *vdev,
+				   struct wlan_cm_connect_resp *rsp)
+{
+	struct mlo_link_info *rsp_partner_info;
+	uint8_t link_id = 0, num_links;
+	int i;
+	struct mlo_link_info *link_info;
+
+	num_links = rsp->ml_parnter_info.num_partner_links;
+	link_id = wlan_vdev_get_link_id(vdev);
+	osif_debug("link_add id %d vdev %d, num_links %d", link_id,
+		   wlan_vdev_get_id(vdev), num_links);
+	mlo_mgr_osif_update_connect_info(vdev, link_id);
+
+	for (i = 0 ; i < num_links; i++) {
+		rsp_partner_info = &rsp->ml_parnter_info.partner_link_info[i];
+		link_id = rsp_partner_info->link_id;
+
+		link_info = mlo_mgr_get_ap_link_by_link_id(vdev->mlo_dev_ctx,
+							   link_id);
+		if (!link_info) {
+			osif_debug("no found link info for %d", link_id);
+			continue;
+		}
+		osif_debug("partner link_add id %d ", link_id);
+		mlo_mgr_osif_update_connect_info(vdev, link_id);
+	}
+}
+
 static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 					 struct vdev_osif_priv *osif_priv,
 					 struct wlan_cm_connect_resp *rsp)
@@ -1165,8 +1195,7 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 		mlo_mgr_osif_update_connect_info(vdev,
 						 wlan_vdev_get_link_id(vdev));
 	} else if (wlan_cm_is_link_add_connect_resp(rsp)) {
-		mlo_mgr_osif_update_connect_info(vdev,
-						 wlan_vdev_get_link_id(vdev));
+		osif_update_link_add_partner_links(vdev, rsp);
 	}
 }
 #else /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */

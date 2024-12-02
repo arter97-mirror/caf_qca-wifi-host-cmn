@@ -2103,7 +2103,8 @@ send_link_set_bss_params_cmd_tlv(wmi_unified_t wmi_handle,
 		WMITLV_GET_STRUCT_TLVLEN(
 		wmi_mlo_set_link_bss_params_cmd_fixed_param));
 
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->ap_mld_mac, &cmd->ap_mld_macaddr);
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->ap_mld_mac,
+				   &cmd->ap_mld_macaddr);
 
 	buf_ptr += sizeof(wmi_mlo_set_link_bss_params_cmd_fixed_param);
 
@@ -2126,8 +2127,15 @@ send_link_set_bss_params_cmd_tlv(wmi_unified_t wmi_handle,
 	bss_param->wmi_chan.band_center_freq2 = params->chan.ch_cfreq2;
 	fw_phy_mode = wmi_host_to_fw_phymode(params->chan.ch_phymode);
 	WMI_SET_CHANNEL_MODE(&bss_param->wmi_chan, fw_phy_mode);
-	wmi_debug("ap mld mac: " QDF_MAC_ADDR_FMT " link id %d chan freq %d cfreq1 %d cfreq2 %d fw phymode %d op_code %d",
-		  QDF_MAC_ADDR_REF(params->ap_mld_mac), bss_param->ieee_link_id,
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->ap_link_addr.bytes,
+				   &bss_param->bss_id);
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->self_link_addr.bytes,
+				   &bss_param->self_mac);
+	wmi_debug("ap mld mac: " QDF_MAC_ADDR_FMT "self link addr " QDF_MAC_ADDR_FMT " ap link addr " QDF_MAC_ADDR_FMT " link id %d chan freq %d cfreq1 %d cfreq2 %d fw phymode %d op_code %d",
+		  QDF_MAC_ADDR_REF(params->ap_mld_mac),
+		  QDF_MAC_ADDR_REF(params->self_link_addr.bytes),
+		  QDF_MAC_ADDR_REF(params->ap_link_addr.bytes),
+		  bss_param->ieee_link_id,
 		  bss_param->wmi_chan.mhz,
 		  bss_param->wmi_chan.band_center_freq1,
 		  bss_param->wmi_chan.band_center_freq2,

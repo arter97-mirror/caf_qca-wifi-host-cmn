@@ -357,6 +357,19 @@ void mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
 				  uint32_t result);
 
 /**
+ * mlo_link_recfg_get_add_partner_links() - Get current added
+ * partner links
+ * @vdev: vdev object
+ * @ml_partner_info: New added partner links
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_link_recfg_get_add_partner_links(
+		struct wlan_objmgr_vdev *vdev,
+		struct mlo_partner_info *ml_partner_info);
+
+/**
  * mlo_mgr_link_recfg_indication_event_handler() - Handle fw link recfg event
  * @psoc: psoc object
  * @evt_params: fw link recfg event data
@@ -677,6 +690,14 @@ static inline void
 mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
 			     uint32_t result)
 {
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_get_add_partner_links(
+		struct wlan_objmgr_vdev *vdev,
+		struct mlo_partner_info *ml_partner_info)
+{
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline QDF_STATUS
