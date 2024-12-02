@@ -1282,16 +1282,20 @@ wlan_sawf_send_rule_del_req(struct wlan_objmgr_peer *peer, uint32_t rule_id)
 {
 	struct wlan_sawf_rule rule;
 	struct wlan_objmgr_vdev *vdev;
-	struct vdev_osif_priv *osif_vdev;
+	struct wireless_dev *wdev;
 
 	vdev = wlan_peer_get_vdev(peer);
-	osif_vdev  = wlan_vdev_get_ospriv(vdev);
 
 	rule.rule_id = rule_id;
 	rule.req_type = WLAN_CFG80211_SAWF_RULE_DELETE;
 
-	wlan_cfg80211_sawf_send_rule(osif_vdev->wdev->wiphy, osif_vdev->wdev,
-				     &rule);
+	wdev = wlan_sawf_get_wdev_from_vdev(vdev);
+	if (!wdev) {
+		sawf_err("Unable to add rule due to NULL wdev");
+		return;
+	}
+
+	wlan_cfg80211_sawf_send_rule(wdev->wiphy, wdev, &rule);
 }
 
 static struct wlan_sawf_svc_class_params *
