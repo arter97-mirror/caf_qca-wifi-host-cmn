@@ -8657,6 +8657,8 @@ lim_send_vdev_restart(struct mac_context *mac,
 static void lim_handle_update_ssid_hidden(struct mac_context *mac_ctx,
 				struct pe_session *session, uint8_t ssid_hidden)
 {
+	QDF_STATUS status;
+
 	pe_debug("rcvd HIDE_SSID message old HIDE_SSID: %d new HIDE_SSID: %d",
 			session->ssidHidden, ssid_hidden);
 
@@ -8668,9 +8670,13 @@ static void lim_handle_update_ssid_hidden(struct mac_context *mac_ctx,
 	}
 
 	ap_mlme_set_hidden_ssid_restart_in_progress(session->vdev, true);
-	wlan_vdev_mlme_sm_deliver_evt(session->vdev,
-				      WLAN_VDEV_SM_EV_FW_VDEV_RESTART,
-				      sizeof(*session), session);
+	status = wlan_vdev_mlme_sm_deliver_evt(session->vdev,
+					       WLAN_VDEV_SM_EV_FW_VDEV_RESTART,
+					       sizeof(*session), session);
+
+	if (QDF_IS_STATUS_ERROR(status))
+		ap_mlme_set_hidden_ssid_restart_in_progress(session->vdev,
+							    false);
 }
 
 /**

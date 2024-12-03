@@ -3396,8 +3396,13 @@ void lim_process_switch_channel_rsp(struct mac_context *mac,
 	/* in the case of nested request the new request initiated from the response will take care of resetting */
 	/* the deferred flag. */
 	SET_LIM_PROCESS_DEFD_MESGS(mac, true);
-	status = rsp->status;
 
+	if (!rsp) {
+		pe_err("Vdev start response is NULL");
+		return;
+	}
+
+	status = rsp->status;
 	pe_session = pe_find_session_by_vdev_id(mac, rsp->vdev_id);
 	if (!pe_session) {
 		pe_err("session does not exist for given sessionId");
