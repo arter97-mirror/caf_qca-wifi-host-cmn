@@ -5195,6 +5195,7 @@ static QDF_STATUS get_debug_vdev_data_tx(struct wlan_objmgr_vdev *vdev,
 				tx_i->dropped.invalid_peer_id_in_exc_path;
 	data->tx_mcast_drop = tx_i->dropped.tx_mcast_drop;
 	data->fw2wbm_tx_drop = tx_i->dropped.fw2wbm_tx_drop;
+	data->osif_tx_drop = tx_i->dropped.osif_tx_drop;
 
 	if (vdev_stats->tx.ucast.bytes >=
 			(vdev_stats->tx.ucast.num) * ETH_HLEN)
@@ -5755,6 +5756,7 @@ static QDF_STATUS get_debug_pdev_data_tx(struct unified_stats *stats,
 	data->tx_hw_enqueue_dropped = pdev_stats->eap_drop_stats.tx_hw_enqueue;
 	data->tx_sw_enqueue_dropped = pdev_stats->eap_drop_stats.tx_sw_enqueue;
 	data->sg_desc_cnt = pdev_stats->sg_desc_cnt;
+	data->osif_tx_drop = tx_i->dropped.osif_tx_drop;
 
 	stats->feat[INX_FEAT_TX] = data;
 	stats->size[INX_FEAT_TX] = sizeof(struct debug_pdev_data_tx);
