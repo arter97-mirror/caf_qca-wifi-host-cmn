@@ -5302,6 +5302,7 @@ static QDF_STATUS get_debug_vdev_data_me(struct unified_stats *stats,
 	data->dropped_send_fail = tx_i->mcast_en.dropped_send_fail;
 	data->fail_seg_alloc = tx_i->mcast_en.fail_seg_alloc;
 	data->clone_fail = tx_i->mcast_en.clone_fail;
+	data->dropped_no_desc = tx_i->mcast_en.dropped_no_desc;
 
 	stats->feat[INX_FEAT_ME] = data;
 	stats->size[INX_FEAT_ME] = sizeof(struct debug_vdev_data_me);
@@ -5841,6 +5842,7 @@ static QDF_STATUS get_debug_pdev_data_me(struct unified_stats *stats,
 	data->dropped_send_fail = tx_i->mcast_en.dropped_send_fail;
 	data->fail_seg_alloc = tx_i->mcast_en.fail_seg_alloc;
 	data->clone_fail = tx_i->mcast_en.clone_fail;
+	data->dropped_no_desc = tx_i->mcast_en.dropped_no_desc;
 
 	stats->feat[INX_FEAT_ME] = data;
 	stats->size[INX_FEAT_ME] = sizeof(struct debug_pdev_data_me);

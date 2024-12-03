@@ -3297,6 +3297,8 @@ void print_debug_vap_data_me(struct debug_vdev_data_me *me)
 		 me->dropped_self_mac);
 	STATS_32(stdout, "Packets dropped due to send fail",
 		 me->dropped_send_fail);
+	STATS_32(stdout, "Packets dropped due to no mcast_en desc",
+		 me->dropped_no_desc);
 	STATS_32(stdout, "Segment allocation failure", me->fail_seg_alloc);
 	STATS_32(stdout, "NBUF clone failure", me->clone_fail);
 }
@@ -3536,6 +3538,8 @@ void print_debug_radio_data_me(struct debug_pdev_data_me *me)
 		 me->dropped_self_mac);
 	STATS_32(stdout, "Packets dropped due to send fail",
 		 me->dropped_send_fail);
+	STATS_32(stdout, "Packets dropped due to no mcast_en desc",
+		 me->dropped_no_desc);
 	STATS_32(stdout, "Segment allocation failure", me->fail_seg_alloc);
 	STATS_32(stdout, "NBUF clone failure", me->clone_fail);
 }
