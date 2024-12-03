@@ -922,6 +922,24 @@ bool pld_audio_is_direct_link_supported(struct device *dev)
 	return ret;
 }
 
+int pld_get_direct_link_sid(struct device *dev, uint16_t *sid)
+{
+	int ret = -EINVAL;
+
+	switch (pld_get_bus_type(dev)) {
+	case PLD_BUS_TYPE_PCIE:
+		ret = -ENOTSUPP;
+		break;
+	case PLD_BUS_TYPE_IPCI:
+		ret = -ENOTSUPP;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 bool pld_is_audio_shared_iommu_group(struct device *dev)
 {
 	bool ret = false;

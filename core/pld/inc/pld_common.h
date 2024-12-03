@@ -1239,6 +1239,16 @@ bool pld_audio_is_direct_link_supported(struct device *dev);
 bool pld_is_audio_shared_iommu_group(struct device *dev);
 
 /**
+ * pld_get_direct_link_sid() - get direct link use case SID value
+ * @dev: device
+ * @sid: SID value to get
+ *
+ * Return: 0 for success
+ *         Non zero failure code for errors
+ */
+int pld_get_direct_link_sid(struct device *dev, uint16_t *sid);
+
+/**
  * pld_is_ipa_shared_smmu_enable() - Get whether shared ctx bank is supported
  *				     by IPA or not
  * @dev: device
