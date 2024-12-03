@@ -1931,7 +1931,7 @@ ll_lt_sap_request_for_audio_transport_switch(
 		ll_sap_debug("pdev is NULL");
 		return QDF_STATUS_E_INVAL;
 	}
-
+	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
 		ll_sap_debug("psoc is NULL");
@@ -1947,32 +1947,34 @@ ll_lt_sap_request_for_audio_transport_switch(
 			     wlan_vdev_get_id(vdev));
 		return QDF_STATUS_SUCCESS;
 	} else if (req_type == WLAN_BS_REQ_TO_WLAN) {
-		pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
-		/*
-		 * Total_ref_count zero indicates that no module wants to stay
-		 * in non-wlan mode so this request can be accepted.
-		 * Also check if current freq cu is less than threshold
-		 */
-		if (!qdf_atomic_read(&bearer_switch_ctx->total_ref_count) &&
-		    (QDF_TIMER_STATE_RUNNING !=
+		uint32_t coch_int_thrsld =
+			wlan_dcs_get_coch_intfr_threshold(psoc, pdev_id);
+		QDF_TIMER_STATE timer_state =
 			qdf_mc_timer_get_current_state(
-				&bearer_switch_ctx->bs_wlan_request_timer)) &&
-				(!ll_sap_obj->cur_freq_unused_cu &&
-				 ll_sap_obj->cur_freq_unused_cu <
-				 wlan_dcs_get_coch_intfr_threshold(psoc,
-								   pdev_id))) {
-			ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN accepted, cur_freq_unused_cu %u",
-				     wlan_vdev_get_id(vdev), ll_sap_obj->cur_freq_unused_cu);
-			return QDF_STATUS_SUCCESS;
-		}
-		ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN rejected, total ref count %d timer state %d cur_freq_unused_cu %u",
-			     wlan_vdev_get_id(vdev),
-			     qdf_atomic_read(&bearer_switch_ctx->total_ref_count),
-			     qdf_mc_timer_get_current_state(
-				&bearer_switch_ctx->bs_wlan_request_timer),
-			     ll_sap_obj->cur_freq_unused_cu);
+				&bearer_switch_ctx->bs_wlan_request_timer);
+		/*
+		 * Total_ref_count is non zero, indicates that some module wants
+		 * to stay in non-wlan mode, also if bs_wlan_request_timer is
+		 * running mean non-wlan req is pending, so reject req.
+		 * Also check if current freq cu is greater than threshold
+		 */
+		if (qdf_atomic_read(&bearer_switch_ctx->total_ref_count) ||
+		    timer_state == QDF_TIMER_STATE_RUNNING ||
+		    ll_sap_obj->cur_freq_unused_cu > coch_int_thrsld) {
+			ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN rejected, total ref count %d timer state %d cur_freq_unused_cu %u (threshold %u)",
+				     wlan_vdev_get_id(vdev),
+				     qdf_atomic_read(&bearer_switch_ctx->total_ref_count),
+				     timer_state,
+				     ll_sap_obj->cur_freq_unused_cu,
+				     coch_int_thrsld);
 
-		return QDF_STATUS_E_FAILURE;
+			return QDF_STATUS_E_FAILURE;
+		}
+		ll_sap_debug("BS_SM vdev %d WLAN_BS_REQ_TO_WLAN accepted, timer state %d ref %d cur_freq_unused_cu %u (threshold %u)",
+			     wlan_vdev_get_id(vdev), timer_state,
+			     qdf_atomic_read(&bearer_switch_ctx->total_ref_count),
+			     ll_sap_obj->cur_freq_unused_cu, coch_int_thrsld);
+		return QDF_STATUS_SUCCESS;
 	}
 	ll_sap_err("BS_SM vdev %d Invalid audio transport type %d",
 		   wlan_vdev_get_id(vdev), req_type);
