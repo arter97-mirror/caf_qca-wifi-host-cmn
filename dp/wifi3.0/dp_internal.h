@@ -1135,6 +1135,11 @@ hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
 	return NULL;
 }
 
+static inline
+void print_lpc_coc_stats(struct dp_pdev *pdev)
+{
+}
+
 static inline uint32_t
 dp_print_txmon_ring_stat_from_hal(struct dp_pdev *pdev)
 {

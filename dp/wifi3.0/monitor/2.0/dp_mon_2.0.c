@@ -1605,6 +1605,100 @@ void dp_mon_ops_register_cmn_2_0(struct dp_mon_soc *mon_soc)
 #endif
 
 #ifdef WLAN_PKT_CAPTURE_TX_2_0
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
+static void dp_mon_print_lpc_coc_stats_2_0(struct dp_pdev *pdev)
+{
+	struct dp_mon_mac *mon_mac;
+	uint8_t mac_id;
+	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
+	struct dp_mon_pdev_be *mon_pdev_be;
+	struct cdp_pdev_mon_stats *rx_mon_stats;
+	struct dp_pdev_tx_monitor_be *tx_mon_be = NULL;
+	struct dp_tx_monitor_drop_stats *tx_mon_stats;
+
+	/* RX stats */
+	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
+		mon_mac = dp_get_mon_mac(pdev, mac_id);
+		rx_mon_stats = &mon_mac->rx_mon_stats;
+
+		DP_PRINT_STATS("MAC %u Rx Stats:\n", mac_id);
+		DP_PRINT_STATS("status_ppdu_compl_cnt: %d",
+			       rx_mon_stats->status_ppdu_compl);
+		DP_PRINT_STATS("status_ppdu_start_cnt: %d",
+			       rx_mon_stats->status_ppdu_start);
+		DP_PRINT_STATS("status_ppdu_end_cnt: %d",
+			       rx_mon_stats->status_ppdu_end);
+		DP_PRINT_STATS("status_ppdu_start_mis_cnt: %d",
+			       rx_mon_stats->status_ppdu_start_mis);
+		DP_PRINT_STATS("status_ppdu_end_mis_cnt: %d",
+			       rx_mon_stats->status_ppdu_end_mis);
+		DP_PRINT_STATS("status_ppdu_done_cnt: %d",
+			       rx_mon_stats->status_ppdu_done);
+		DP_PRINT_STATS("status_ppdu_rx_header_tlv_cnt: %d",
+			       mon_mac->lpc_coc_stats.rx_header);
+		DP_PRINT_STATS("status_ppdu_rx_mpdu_start_tlv_cnt: %d",
+			       mon_mac->lpc_coc_stats.rx_mpdu_start);
+		DP_PRINT_STATS("pkt_rx_delivered: %d",
+			       mon_mac->lpc_coc_stats.rx_delivered);
+		DP_PRINT_STATS("pkt_rx_dropped: %d",
+			       mon_mac->lpc_coc_stats.rx_dropped);
+	}
+
+	mon_pdev_be = dp_get_be_mon_pdev_from_dp_mon_pdev(mon_pdev);
+	if (qdf_unlikely(!mon_pdev_be))
+		return;
+
+	/* TX stats */
+	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
+		mon_mac = dp_get_mon_mac(pdev, mac_id);
+		tx_mon_be = dp_mon_pdev_get_tx_mon(mon_pdev_be, mac_id);
+
+		tx_mon_stats = &tx_mon_be->stats;
+		DP_PRINT_STATS("MAC %u Tx Stats:\n", mac_id);
+		DP_PRINT_STATS("replenish count: %llu",
+			       tx_mon_stats->totat_tx_mon_replenish_cnt);
+		DP_PRINT_STATS("reap count: %llu",
+			       tx_mon_stats->total_tx_mon_reap_cnt);
+		DP_PRINT_STATS("monitor stuck: %u",
+			       tx_mon_stats->total_tx_mon_stuck);
+		DP_PRINT_STATS("Status buffer");
+		DP_PRINT_STATS("received: %llu",
+			       tx_mon_stats->status_buf_recv);
+		DP_PRINT_STATS("free: %llu", tx_mon_stats->status_buf_free);
+		DP_PRINT_STATS("Packet buffer");
+		DP_PRINT_STATS("received: %llu", tx_mon_stats->pkt_buf_recv);
+		DP_PRINT_STATS("free: %llu", tx_mon_stats->pkt_buf_free);
+		DP_PRINT_STATS("processed: %llu",
+			       tx_mon_stats->pkt_buf_processed);
+		DP_PRINT_STATS("drop: %llu", tx_mon_stats->pkt_buf_drop);
+		DP_PRINT_STATS("radiotap err: %llu",
+			       tx_mon_stats->pkt_buf_radiotap_err);
+		DP_PRINT_STATS("to stack: %llu",
+			       tx_mon_stats->pkt_buf_to_stack);
+		DP_PRINT_STATS("ppdu info");
+		DP_PRINT_STATS("threshold: %llu",
+			       tx_mon_stats->ppdu_info_drop_th);
+		DP_PRINT_STATS("flush: %llu",
+			       tx_mon_stats->ppdu_info_drop_flush);
+		DP_PRINT_STATS("truncated: %llu",
+			       tx_mon_stats->ppdu_info_drop_trunc);
+		DP_PRINT_STATS("Drop stats");
+		DP_PRINT_STATS("ppdu drop: %llu",
+			       tx_mon_stats->ppdu_drop_cnt);
+		DP_PRINT_STATS("mpdu drop: %llu",
+			       tx_mon_stats->mpdu_drop_cnt);
+		DP_PRINT_STATS("tlv drop: %llu",
+			       tx_mon_stats->tlv_drop_cnt);
+		DP_PRINT_STATS("pkt_tx_delivered: %d",
+			       mon_mac->lpc_coc_stats.tx_delivered);
+		DP_PRINT_STATS("pkt_tx_dropped: %d",
+			       mon_mac->lpc_coc_stats.tx_dropped);
+	}
+}
+#else
+static void dp_mon_print_lpc_coc_stats_2_0(struct dp_pdev *pdev)
+{}
+#endif
 void dp_mon_ops_register_tx_2_0(struct dp_mon_soc *mon_soc)
 {
 	struct dp_mon_ops *mon_ops = mon_soc->mon_ops;
@@ -1618,6 +1712,7 @@ void dp_mon_ops_register_tx_2_0(struct dp_mon_soc *mon_soc)
 	mon_ops->mon_tx_process = dp_tx_mon_process_2_0;
 	mon_ops->print_txmon_ring_stat = dp_tx_mon_print_ring_stat_2_0;
 	mon_ops->tx_mon_get_hal_ring = dp_tx_mon_get_hal_ring_2_0;
+	mon_ops->print_lpc_coc_stats = dp_mon_print_lpc_coc_stats_2_0;
 #endif
 }
 #endif

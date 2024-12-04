@@ -1835,6 +1835,8 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 	uint8_t vdev_id;
 	struct dp_vdev *vdev = NULL;
 	struct dp_soc *soc = pdev->soc;
+	struct cdp_mon_lpc_coc_stats *lpc_coc_stats =
+				&mon_mac->lpc_coc_stats;
 
 	if (qdf_unlikely(!soc))
 		goto fail_free;
@@ -1861,9 +1863,13 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 	}
 
 	mon_vdev = vdev->monitor_vdev;
-	if (qdf_likely(mon_vdev && mon_vdev->osif_rx_mon))
+	if (qdf_likely(mon_vdev && mon_vdev->osif_rx_mon)) {
 		mon_vdev->osif_rx_mon(vdev->osif_vdev,
 				      mpdu_buf, NULL);
+		lpc_coc_stats->rx_delivered++;
+	} else {
+		goto fail_free;
+	}
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_MISC);
 	return;
@@ -1873,6 +1879,7 @@ fail_free:
 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_MISC);
 
 	qdf_nbuf_free(mpdu_buf);
+	lpc_coc_stats->rx_dropped++;
 }
 
 int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
@@ -1882,13 +1889,16 @@ int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 {
 	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
+	struct cdp_mon_lpc_coc_stats *lpc_coc_stats = NULL;
 	qdf_nbuf_t buf, last;
 	uint16_t size;
 
+	lpc_coc_stats = &mon_mac->lpc_coc_stats;
 	qdf_spin_lock_bh(&mon_mac->lpc_lock);
 	switch (tlv_status) {
 	case HAL_TLV_STATUS_MPDU_START:
 	{
+		lpc_coc_stats->rx_mpdu_start++;
 		/* Only Add MPDU to queue if multiple MPDUs present in PPDU */
 		if (qdf_unlikely(mon_mac->first_mpdu)) {
 			mon_mac->first_mpdu = false;
@@ -1906,6 +1916,7 @@ int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 
 	case HAL_TLV_STATUS_HEADER:
 	{
+		lpc_coc_stats->rx_header++;
 		buf = qdf_nbuf_clone(nbuf);
 		if (qdf_unlikely(!buf))
 			break;

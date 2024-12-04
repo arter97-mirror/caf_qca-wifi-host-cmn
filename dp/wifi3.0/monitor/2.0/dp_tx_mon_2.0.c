@@ -1313,35 +1313,37 @@ dp_tx_mon_lpc_type_filtering(struct dp_pdev *pdev,
 	return QDF_STATUS_SUCCESS;
 }
 
-static int
-dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf)
+static QDF_STATUS
+dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
+			       uint8_t mac_id)
 {
-	/*
-	 * mac_id value is required in case where per MAC mon_mac handle
-	 * is required in single pdev multiple MAC case.
-	 */
-	uint8_t mac_id = 0;
 	struct dp_mon_vdev *mon_vdev;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
 	struct dp_vdev *mvdev = mon_mac->mvdev;
 
 	if (!mvdev) {
 		dp_mon_err("Monitor vdev is NULL !!");
-		return 1;
+		mon_mac->lpc_coc_stats.tx_dropped++;
+		return QDF_STATUS_E_INVAL;
 	}
 
 	mon_vdev = mvdev->monitor_vdev;
 
-	if (mon_vdev && mon_vdev->osif_rx_mon)
+	if (mon_vdev && mon_vdev->osif_rx_mon) {
 		mon_vdev->osif_rx_mon(mvdev->osif_vdev, nbuf, NULL);
+		mon_mac->lpc_coc_stats.tx_delivered++;
+	} else {
+		mon_mac->lpc_coc_stats.tx_dropped++;
+		return QDF_STATUS_E_INVAL;
+	}
 
-	return 0;
+	return QDF_STATUS_SUCCESS;
 }
 #else
-static int
+static QDF_STATUS
 dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf)
 {
-	return 0;
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline QDF_STATUS
@@ -1736,13 +1738,14 @@ dp_tx_mon_send_to_stack(struct dp_pdev *pdev, qdf_nbuf_t mpdu,
 
 	if (qdf_unlikely(IS_LOCAL_PKT_CAPTURE_RUNNING(mon_pdev,
 			is_local_pkt_capture_running))) {
-		int ret = dp_tx_handle_local_pkt_capture(pdev, mpdu);
+		QDF_STATUS ret =
+			dp_tx_handle_local_pkt_capture(pdev, mpdu, mac_id);
 
 		/*
 		 * On error, free the memory here,
 		 * otherwise it will be freed by the network stack
 		 */
-		if (ret)
+		if (QDF_IS_STATUS_ERROR(ret))
 			qdf_nbuf_free(mpdu);
 		return;
 	} else if (!dp_lite_mon_is_tx_enabled(mon_pdev)) {

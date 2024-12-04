@@ -388,6 +388,26 @@ enum cdp_mon_phyrx_abort_reason_code {
 };
 #endif
 
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
+/**
+ * struct cdp_mon_lpc_coc_stats
+ * @rx_header: RX_HEADER TLV processed
+ * @rx_mpdu_start: RX_MPDU_START TLV processed
+ * @rx_delivered: RX MPDUs delivered to stack
+ * @rx_dropped: RX MPDUs dropped
+ * @tx_delivered: TX MPDUs delivered
+ * @tx_dropped: TX MPDUs dropped
+ */
+struct cdp_mon_lpc_coc_stats {
+	uint32_t rx_header;
+	uint32_t rx_mpdu_start;
+	uint32_t rx_delivered;
+	uint32_t rx_dropped;
+	uint32_t tx_delivered;
+	uint32_t tx_dropped;
+};
+#endif
+
 #define MAX_PPDU_ID_HIST 128
 
 /**

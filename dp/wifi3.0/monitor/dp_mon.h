@@ -707,6 +707,7 @@ struct dp_mon_ops {
 	hal_ring_handle_t (*tx_mon_get_hal_ring)(struct dp_soc *soc,
 						 uint32_t mac_id,
 						 enum hal_ring_type ring_type);
+	void (*print_lpc_coc_stats)(struct dp_pdev *pdev);
 	void (*print_txmon_ring_stat)(struct dp_pdev *pdev);
 #endif
 	void (*mon_peer_tx_init)(struct dp_pdev *pdev, struct dp_peer *peer);
@@ -1142,6 +1143,8 @@ struct dp_mon_mac {
 	bool first_mpdu;
 	/* LPC lock */
 	qdf_spinlock_t lpc_lock;
+	/* LPC/COC mode stats */
+	struct cdp_mon_lpc_coc_stats lpc_coc_stats;
 #endif
 };
 
@@ -2830,6 +2833,27 @@ hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
 	}
 
 	return monitor_ops->tx_mon_get_hal_ring(soc, mac_id, ring_type);
+}
+
+static inline
+void print_lpc_coc_stats(struct dp_pdev *pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct dp_mon_soc *mon_soc = soc->monitor_soc;
+	struct dp_mon_ops *monitor_ops;
+
+	if (!mon_soc) {
+		dp_mon_debug("monitor soc is NULL");
+		return;
+	}
+
+	monitor_ops = mon_soc->mon_ops;
+	if (!monitor_ops || !monitor_ops->print_lpc_coc_stats) {
+		dp_mon_debug("callback not registered");
+		return;
+	}
+
+	return monitor_ops->print_lpc_coc_stats(pdev);
 }
 
 static inline
