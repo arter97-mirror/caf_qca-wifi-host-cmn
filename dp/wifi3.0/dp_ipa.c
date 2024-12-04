@@ -287,6 +287,7 @@ static QDF_STATUS __dp_ipa_tx_buf_smmu_mapping(
 	uint32_t tx_buffer_cnt = soc->ipa_uc_tx_rsc.alloc_tx_buf_cnt;
 	qdf_nbuf_t nbuf;
 	uint32_t buf_len;
+	uint32_t smmu_unmap_fail = 0;
 
 	if (!ipa_is_ready()) {
 		dp_info("IPA is not READY");
@@ -296,12 +297,31 @@ static QDF_STATUS __dp_ipa_tx_buf_smmu_mapping(
 	for (index = 0; index < tx_buffer_cnt; index++) {
 		nbuf = (qdf_nbuf_t)
 			soc->ipa_uc_tx_rsc.tx_buf_pool_vaddr_unaligned[index];
-		if (!nbuf)
+		if (!nbuf) {
+			dp_err_rl("No nbuf exist at index - %d, create - %d",
+				  index, create);
+
+			if (!create)
+				smmu_unmap_fail++;
+
 			continue;
+		}
+
 		buf_len = qdf_nbuf_get_data_len(nbuf);
 		ret = __dp_ipa_handle_buf_smmu_mapping(soc, nbuf, buf_len,
 						       create, func, line);
+
+		if (ret != QDF_STATUS_SUCCESS) {
+			dp_err_rl("smmu map/unmap failed for index - %d, create - %d",
+				  index, create);
+			if (!create)
+				smmu_unmap_fail++;
+		}
 	}
+
+	if (smmu_unmap_fail > 0)
+		dp_err("smmu unmap failed for %d buffers, total tx buffer - %d",
+		       smmu_unmap_fail, index - 1);
 
 	return ret;
 }
