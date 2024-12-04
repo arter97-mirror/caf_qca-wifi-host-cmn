@@ -121,7 +121,7 @@ MONITOR_1_0_INC += -I$(obj)/$(DEPTH)/cmn_dev/dp/wifi3.0/monitor/1.0/
 
 FW_HDRS_QCN9224_INC_PATH += -I$(PERF_PWR_OFFLOAD_DIR_PATH)/../cmn_dev/fw_hdr/hw/qcn9224/v2
 
-PERF_PWR_OFFLOAD_HW_LI_INC += -I$(PERF_PWR_OFFLOAD_DIR_PATH)/include/qca8074/v1/
+PERF_PWR_OFFLOAD_HW_LI_INC += -I$(PERF_PWR_OFFLOAD_DIR_PATH)/include/$(HW_HEADER_FOLDER)/
 
 PERF_PWR_OFFLOAD_HAL_LI_INC += -I$(obj)/$(DEPTH)/cmn_dev/hal/wifi3.0/li
 
@@ -142,7 +142,7 @@ INCS += -I$(obj)/$(DEPTH)/umac/sa_api/dispatcher/inc
 PERF_PWR_OFFLOAD_INC += -I$(PERF_PWR_OFFLOAD_DIR_PATH)/wlan/target_if/sa_api
 endif
 
-PERF_PWR_OFFLOAD_INC += -I$(PERF_PWR_OFFLOAD_DIR_PATH)/include/qca8074/v1/
+PERF_PWR_OFFLOAD_INC += -I$(PERF_PWR_OFFLOAD_DIR_PATH)/include/$(HW_HEADER_FOLDER)/
 
 INCS += $(PERF_PWR_OFFLOAD_INC)
 
