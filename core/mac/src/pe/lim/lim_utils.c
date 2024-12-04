@@ -9475,6 +9475,8 @@ void lim_extract_ml_info(struct pe_session *session,
 		if (!wlan_cm_is_link_add_connecting(session->vdev) &&
 		    !mlo_mgr_is_link_add_link_switch(session->vdev))
 			return;
+		/* Add current added link to peer assoc partner link array.
+		 */
 		ml_link->partner_info[partner_idx].vdev_id =
 					link_info->vdev_id;
 		ml_link->partner_info[partner_idx].link_id =
@@ -9488,11 +9490,13 @@ void lim_extract_ml_info(struct pe_session *session,
 		qdf_mem_copy(&ml_link->partner_info[partner_idx].self_mac_addr,
 			     &link_info->link_addr, QDF_MAC_ADDR_SIZE);
 		partner_idx++;
-		ml_link->num_links = partner_idx;
-		pe_debug("vdev:%d link_add Num of partner: %d ",
+
+		ml_partner_info->num_partner_links = 0;
+		mlo_link_recfg_get_add_partner_links(session->vdev,
+						     ml_partner_info);
+		pe_debug("vdev:%d link_add Num of other partner: %d ",
 			 session->vdev_id,
-			 ml_link->num_links);
-		return;
+			 ml_partner_info->num_partner_links);
 	}
 
 	for (i = 0; i < ml_partner_info->num_partner_links; i++) {
@@ -9500,11 +9504,17 @@ void lim_extract_ml_info(struct pe_session *session,
 		link_info = mlo_mgr_get_ap_link_by_link_id(
 					session->vdev->mlo_dev_ctx,
 					link_id);
-		if (!link_info)
+		if (!link_info) {
+			pe_debug("no find link info for id %d", link_id);
 			continue;
+		}
 
-		if (ml_partner_info->partner_link_info[i].link_status_code)
+		if (ml_partner_info->partner_link_info[i].link_status_code) {
+			pe_debug("link id %d link_status_code %d", link_id,
+				 ml_partner_info->partner_link_info[i].
+				 link_status_code);
 			continue;
+		}
 
 		ml_link->partner_info[partner_idx].vdev_id = link_info->vdev_id;
 		ml_link->partner_info[partner_idx].link_id = link_info->link_id;
