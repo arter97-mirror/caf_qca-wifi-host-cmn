@@ -7323,7 +7323,7 @@ static uint8_t *dp_get_vdev_mac_addr_wifi3(struct cdp_soc_t *soc_hdl,
  * @vdev_id: id of DP VDEV handle
  * @val: value
  *
- * Return: none
+ * Return: 0 on success. error code on failure.
  */
 static int dp_vdev_set_wds(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			   uint32_t val)
@@ -7334,12 +7334,12 @@ static int dp_vdev_set_wds(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 				      DP_MOD_ID_CDP);
 
 	if (!vdev)
-		return QDF_STATUS_E_FAILURE;
+		return -EINVAL;
 
 	vdev->wds_enabled = val;
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
-	return QDF_STATUS_SUCCESS;
+	return 0;
 }
 
 static int dp_get_opmode(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
