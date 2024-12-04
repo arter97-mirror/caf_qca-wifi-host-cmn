@@ -928,7 +928,7 @@ int pld_get_direct_link_sid(struct device *dev, uint16_t *sid)
 
 	switch (pld_get_bus_type(dev)) {
 	case PLD_BUS_TYPE_PCIE:
-		ret = -ENOTSUPP;
+		ret = pld_pcie_get_direct_link_sid(dev, sid);
 		break;
 	case PLD_BUS_TYPE_IPCI:
 		ret = pld_ipci_get_direct_link_sid(dev, sid);

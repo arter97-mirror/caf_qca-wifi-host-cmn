@@ -505,6 +505,12 @@ static inline bool pld_pcie_audio_is_direct_link_supported(struct device *dev)
 	return false;
 }
 
+static inline int pld_pcie_get_direct_link_sid(struct device *dev,
+					       uint16_t *sid)
+{
+	return 0;
+}
+
 static inline bool pld_pcie_is_audio_shared_iommu_group(struct device *dev)
 {
 	return false;
@@ -1069,6 +1075,20 @@ void pld_pcie_audio_smmu_unmap(struct device *dev, dma_addr_t iova, size_t size)
 static inline
 int pld_pcie_get_fw_lpass_shared_mem(struct device *dev, dma_addr_t *iova,
 				     size_t *size)
+{
+	return -EINVAL;
+}
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+static inline int pld_pcie_get_direct_link_sid(struct device *dev,
+						uint16_t *sid)
+{
+	return cnss_get_direct_link_sid(dev, sid);
+}
+#else
+static inline int pld_pcie_get_direct_link_sid(struct device *dev,
+						uint16_t *sid)
 {
 	return -EINVAL;
 }
