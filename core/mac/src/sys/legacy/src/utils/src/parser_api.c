@@ -14191,7 +14191,10 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 			non_inher_ie_lists[non_inher_len++] = DOT11F_EID_EXTCAP;
 		}
 
-		if (!WLAN_REG_IS_6GHZ_CHAN_FREQ(chan_freq))
+		/* Fill VHT for 5 GHz or 2 GHz with b24ghz_band enabled */
+		if ((is_2g &&
+		     mac_ctx->mlme_cfg->vht_caps.vht_cap_info.b24ghz_band) ||
+		    WLAN_REG_IS_5GHZ_CH_FREQ(chan_freq))
 			populate_dot11f_vht_caps(mac_ctx, NULL, &vht_caps);
 		if ((vht_caps.present && frm->VHTCaps.present &&
 		     qdf_mem_cmp(&vht_caps, &frm->VHTCaps, sizeof(vht_caps))) ||
