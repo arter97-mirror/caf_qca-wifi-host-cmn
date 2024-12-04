@@ -931,7 +931,7 @@ int pld_get_direct_link_sid(struct device *dev, uint16_t *sid)
 		ret = -ENOTSUPP;
 		break;
 	case PLD_BUS_TYPE_IPCI:
-		ret = -ENOTSUPP;
+		ret = pld_ipci_get_direct_link_sid(dev, sid);
 		break;
 	default:
 		break;
