@@ -1173,6 +1173,14 @@ static QDF_STATUS extract_twt_cap_service_ready_ext2_tlv(
 
 	var->twt_ack_support_cap = WMI_GET_BITS(twt_caps->twt_capability_bitmap,
 						0, 1);
+	var->max_wake_dur =
+		TWT_CAPS_GET_MAX_WAKE_DUR(twt_caps->min_max_wake_dur_us);
+	var->min_wake_dur =
+		TWT_CAPS_GET_MIN_WAKE_DUR(twt_caps->min_max_wake_dur_us);
+	var->max_wake_intvl =
+		TWT_CAPS_GET_MAX_WAKE_INTVL(twt_caps->min_max_wake_intvl_us);
+	var->min_wake_intvl =
+		TWT_CAPS_GET_MIN_WAKE_INTVL(twt_caps->min_max_wake_intvl_us);
 
 	return QDF_STATUS_SUCCESS;
 }

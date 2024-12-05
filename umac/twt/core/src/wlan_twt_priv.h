@@ -43,6 +43,10 @@
  * @twt_ack_supported: twt ack supported
  * @restricted_twt_support: Restricted TWT supported
  * @p2p_go_concurrency_support: P2P GO concurrency support
+ * @min_wake_dur: minimum twt wake_dur supported by firmware in micro sec
+ * @max_wake_dur: maximum twt wake_dur supported by firmware in micro sec
+ * @min_wake_intvl: minimum twt wake_intvl supported by firmware in micro sec
+ * @max_wake_intvl: maximum twt wake_intvl supported by firmware in micro sec
  */
 struct twt_tgt_caps {
 	bool twt_requestor;
@@ -56,6 +60,10 @@ struct twt_tgt_caps {
 	bool twt_ack_supported;
 	bool restricted_twt_support;
 	bool p2p_go_concurrency_support;
+	uint16_t min_wake_dur;
+	uint16_t max_wake_dur;
+	uint16_t min_wake_intvl;
+	uint16_t max_wake_intvl;
 };
 
 /**

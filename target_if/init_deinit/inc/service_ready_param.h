@@ -518,6 +518,21 @@ struct wlan_psoc_host_service_ext_param {
 };
 
 /**
+ * struct twt_wake_dur_and_wake_intvl - TWT wake duration ad wake interval
+ * supported by firmware
+ * @min_wake_dur: minimum twt wake duration supported by fw in micro sec
+ * @max_wake_dur: maximum twt wake duration supported by fw in micro sec
+ * @min_wake_intvl: minimum twt wake interval supported by fw in micro sec
+ * @max_wake_intvl: maximum twt wake interval supported by fw in micro sec
+ */
+struct twt_wake_dur_and_wake_intvl {
+	uint16_t min_wake_dur;
+	uint16_t max_wake_dur;
+	uint16_t min_wake_intvl;
+	uint16_t max_wake_intvl;
+};
+
+/**
  * struct wlan_psoc_host_service_ext2_param - EXT service base params in event
  * @reg_db_version_major: REG DB version major number
  * @reg_db_version_minor: REG DB version minor number
@@ -566,6 +581,8 @@ struct wlan_psoc_host_service_ext_param {
  * @tx_vdev_nss_support: FW supports Vdev Tx NSS report
  * @supp_wifi_gen: Supported WiFi generations by the target
  * @cert_wifi_gen: Supported WFA certified WiFi generations
+ * @twt_wake_dur_and_intvl: min/max TWT wake duration and wake interval
+ * received from firmware
  */
 struct wlan_psoc_host_service_ext2_param {
 	uint8_t reg_db_version_major;
@@ -614,6 +631,7 @@ struct wlan_psoc_host_service_ext2_param {
 	bool tx_vdev_nss_support;
 	uint8_t supp_wifi_gen;
 	uint8_t cert_wifi_gen;
+	struct twt_wake_dur_and_wake_intvl twt_wake_dur_and_intvl;
 };
 
 #endif /* _SERVICE_READY_PARAM_H_*/

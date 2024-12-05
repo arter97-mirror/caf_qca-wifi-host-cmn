@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -557,6 +557,13 @@ void init_deinit_prepare_send_init_cmd(
 		info->wlan_res_cfg.twt_ack_support_cap = true;
 		target_if_twt_set_twt_ack_support(psoc, true);
 	}
+
+	target_if_twt_set_wake_dur_and_wake_intvl(
+		psoc,
+		info->service_ext2_param.twt_wake_dur_and_intvl.min_wake_dur,
+		info->service_ext2_param.twt_wake_dur_and_intvl.max_wake_dur,
+		info->service_ext2_param.twt_wake_dur_and_intvl.min_wake_intvl,
+		info->service_ext2_param.twt_wake_dur_and_intvl.max_wake_intvl);
 
 	info->wlan_res_cfg.target_cap_flags =
 		target_psoc_get_target_cap_flags(tgt_hdl);
