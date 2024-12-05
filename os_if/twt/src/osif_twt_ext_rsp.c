@@ -747,6 +747,8 @@ osif_twt_send_get_capabilities_response(struct wlan_objmgr_psoc *psoc,
 	int ret;
 	bool is_sta_connected;
 	uint8_t vdev_id;
+	uint32_t min_wake_dur = 0, max_wake_dur = 0;
+	uint32_t min_wake_intvl = 0, max_wake_intvl = 0;
 
 	vdev_id = wlan_vdev_get_id(vdev);
 
@@ -805,17 +807,29 @@ osif_twt_send_get_capabilities_response(struct wlan_objmgr_psoc *psoc,
 		osif_debug("peer_cap: 0x%x", peer_cap);
 	}
 
+	ucfg_twt_tgt_caps_get_wake_dur_and_wake_intvl(psoc, &min_wake_dur,
+						      &max_wake_dur,
+						      &min_wake_intvl,
+						      &max_wake_intvl);
+	osif_debug("min_wake_dur:%u max_wake_dur:%u min_wake_intvl:%u max_wake_intvl:%u",
+		   min_wake_dur, max_wake_dur, min_wake_intvl,
+		   max_wake_intvl);
+
 	osif_priv = wlan_vdev_get_ospriv(vdev);
 
 	/*
-	 * Length of attribute QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_SELF &
-	 * QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_PEER if sta is connected
-	 * otherwise calculate length of attribute
-	 * QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_SELF
+	 * Length of attribute QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_SELF +
+	 * QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_PEER +
+	 * QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_INTVL +
+	 * QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_INTVL +
+	 * QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_DURATION +
+	 * QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_INTVL if sta is
+	 * connected otherwise calculate length of attribute of remaining
+	 * one apart from peer capability.
 	 */
 	skb_len += is_sta_connected ?
-			2 * nla_total_size(sizeof(u16)) + NLA_HDRLEN :
-			nla_total_size(sizeof(u16)) + NLA_HDRLEN;
+			6 * nla_total_size(sizeof(u16)) + NLA_HDRLEN :
+			5 * nla_total_size(sizeof(u16)) + NLA_HDRLEN;
 
 	reply_skb = wlan_cfg80211_vendor_cmd_alloc_reply_skb(
 							osif_priv->wdev->wiphy,
@@ -844,6 +858,38 @@ osif_twt_send_get_capabilities_response(struct wlan_objmgr_psoc *psoc,
 	    nla_put_u16(reply_skb, QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_PEER,
 			peer_cap)) {
 		osif_err("TWT: Failed to fill capabilities");
+		qdf_status = QDF_STATUS_E_FAILURE;
+		goto free_skb;
+	}
+
+	if (nla_put_u32(reply_skb,
+			QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_INTVL,
+			min_wake_intvl)) {
+		osif_err("TWT: Failed to fill min_wake_intvl capabilities");
+		qdf_status = QDF_STATUS_E_FAILURE;
+		goto free_skb;
+	}
+
+	if (nla_put_u32(reply_skb,
+			QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_INTVL,
+			max_wake_intvl)) {
+		osif_err("TWT: Failed to fill max_wake_intvl capabilities");
+		qdf_status = QDF_STATUS_E_FAILURE;
+		goto free_skb;
+	}
+
+	if (nla_put_u32(reply_skb,
+			QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_DURATION,
+			min_wake_dur)) {
+		osif_err("TWT: Failed to fill min_wake_duration capabilities");
+		qdf_status = QDF_STATUS_E_FAILURE;
+		goto free_skb;
+	}
+
+	if (nla_put_u32(reply_skb,
+			QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_DURATION,
+			max_wake_dur)) {
+		osif_err("TWT: Failed to fill max_wake_duration capabilities");
 		qdf_status = QDF_STATUS_E_FAILURE;
 		goto free_skb;
 	}
