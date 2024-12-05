@@ -3228,13 +3228,11 @@ int sme_set_auto_rate_he_ltf(mac_handle_t mac_handle, uint8_t session_id,
  * sme_update_tgt_eht_cap() - sets the EHT caps to pmac
  * @mac_handle: Pointer to MAC handle
  * @cfg: Pointer to WMA target CFG
- * @eht_cap_ini: Pointer to EHT CAP configured by INI
  *
  * Return: None
  */
 void sme_update_tgt_eht_cap(mac_handle_t mac_handle,
-			    struct wma_tgt_cfg *cfg,
-			    tDot11fIEeht_cap *eht_cap_ini);
+			    struct wma_tgt_cfg *cfg);
 
 /**
  * sme_update_eht_cap_nss() - sets the nss based on user request
@@ -3294,8 +3292,7 @@ int sme_update_eht_scs_traffic_desc_support(mac_handle_t mac_handle,
 					    uint8_t cfg_val);
 #else
 static inline void sme_update_tgt_eht_cap(mac_handle_t mac_handle,
-					  struct wma_tgt_cfg *cfg,
-					  tDot11fIEeht_cap *eht_cap_ini)
+					  struct wma_tgt_cfg *cfg)
 {}
 
 static inline void sme_update_eht_cap_nss(mac_handle_t mac_handle,

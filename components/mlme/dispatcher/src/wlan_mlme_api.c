@@ -1388,6 +1388,7 @@ QDF_STATUS mlme_update_tgt_eht_caps_in_cfg(struct wlan_objmgr_psoc *psoc,
 	tDot11fIEeht_cap *eht_cap = &wma_cfg->eht_cap;
 	tDot11fIEeht_cap *mlme_eht_cap;
 	bool eht_capab;
+	struct mac_context *mac_ctx = cds_get_context(QDF_MODULE_ID_PE);
 
 	if (!mlme_obj)
 		return QDF_STATUS_E_FAILURE;
@@ -1427,6 +1428,10 @@ QDF_STATUS mlme_update_tgt_eht_caps_in_cfg(struct wlan_objmgr_psoc *psoc,
 		mlme_eht_cap->mu_bformer_le_80mhz = 0;
 		mlme_eht_cap->mu_bformer_160mhz = 0;
 		mlme_eht_cap->mu_bformer_320mhz = 0;
+		mac_ctx->eht_cap_2g.su_beamformer = 0;
+		mac_ctx->eht_cap_5g.su_beamformer = 0;
+		mac_ctx->eht_cap_2g_orig.su_beamformer = 0;
+		mac_ctx->eht_cap_5g_orig.su_beamformer = 0;
 	}
 
 	if (mlme_obj->cfg.vht_caps.vht_cap_info.su_bformee) {
@@ -1447,6 +1452,10 @@ QDF_STATUS mlme_update_tgt_eht_caps_in_cfg(struct wlan_objmgr_psoc *psoc,
 		mlme_eht_cap->bfee_ss_le_80mhz = 0;
 		mlme_eht_cap->bfee_ss_160mhz = 0;
 		mlme_eht_cap->bfee_ss_320mhz = 0;
+		mac_ctx->eht_cap_2g.su_beamformee = 0;
+		mac_ctx->eht_cap_5g.su_beamformee = 0;
+		mac_ctx->eht_cap_2g_orig.su_beamformee = 0;
+		mac_ctx->eht_cap_5g_orig.su_beamformee = 0;
 	}
 	mlme_obj->cfg.eht_caps.eht_cap_orig =
 		mlme_obj->cfg.eht_caps.dot11_eht_cap;
