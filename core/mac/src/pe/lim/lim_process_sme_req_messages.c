@@ -7927,7 +7927,8 @@ void __lim_process_sme_assoc_cnf_new(struct mac_context *mac_ctx, uint32_t msg_t
 					sta_ds->assocId, sta_ds->staAddr,
 					sta_ds->mlmStaContext.subType, sta_ds,
 					session_entry,
-					assoc_cnf.need_assoc_rsp_tx_cb);
+					assoc_cnf.need_assoc_rsp_tx_cb,
+					(struct qdf_mac_addr *)sta_ds->mld_addr);
 		sta_ds->mlmStaContext.owe_ie = NULL;
 		sta_ds->mlmStaContext.owe_ie_len = 0;
 		sta_ds->mlmStaContext.ft_ie = NULL;
