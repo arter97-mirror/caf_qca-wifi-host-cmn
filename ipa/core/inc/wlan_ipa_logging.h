@@ -16,6 +16,7 @@
 #define WLAN_IPA_LOGGING(arg, ...) \
 	WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__)
 #define WLAN_IPA_LOGGING_FUNC wlan_ipa_log_message
+#define WLAN_IPA_HOST_MSG_MARKER "OPT_DP_HOST"
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 /**
@@ -29,6 +30,7 @@
  * @thread: logger thread
  * @drop_count: log dropped
  * @event_flag: event flag to post events to logger thread
+ * @log_truncation: log truncation indication
  */
 struct wlan_ipa_log_context {
 	qdf_list_t free_list;
@@ -40,6 +42,7 @@ struct wlan_ipa_log_context {
 	qdf_thread_t *thread;
 	uint16_t drop_count;
 	unsigned long event_flag;
+	bool log_truncation;
 };
 
 /**
@@ -58,10 +61,7 @@ struct wlan_ipa_log_msg {
  * @func: logging function
  * @msg: actual log to send
  */
-static inline
-void wlan_ipa_log_message(const char *func, const char *msg, ...)
-{
-}
+void wlan_ipa_log_message(const char *func, const char *msg, ...);
 
 /**
  * wlan_ipa_logging_sock_init() - init ipa logging resources

@@ -13,6 +13,9 @@
 #include <wlan_ipa_main.h>
 #include <wlan_ipa_logging.h>
 #define WLAN_IPA_THREAD_NAME_MAX 20
+#define WLAN_IPA_TEMP_BUF_LEN_MAX 20
+#define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100
+#define WLAN_IPA_POST_HOST_LOG 0x001
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 struct wlan_ipa_log_context g_ipa_logging_ctx;
@@ -77,6 +80,7 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 
 	qdf_wake_up_process(g_ipa_logging_ctx.thread);
 	g_ipa_logging_ctx.drop_count = 0;
+	g_ipa_logging_ctx.log_truncation = false;
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -86,6 +90,93 @@ void wlan_ipa_logging_sock_deinit(void)
 	qdf_event_destroy(&g_ipa_logging_ctx.start_event);
 	qdf_mem_free(g_ipa_log_msg);
 	qdf_spinlock_destroy(&g_ipa_logging_ctx.lock);
+}
+
+static inline
+const char *current_process_name(void)
+{
+	if (in_irq())
+		return "irq";
+
+	if (in_softirq())
+		return "soft_irq";
+
+	return current->comm;
+}
+
+static inline
+int wlan_ipa_add_process_time_stamp(char *tbuf, size_t tbuf_sz,
+				    uint64_t ts, const char *func)
+{
+	char time_buf[WLAN_IPA_TEMP_BUF_LEN_MAX];
+
+	qdf_get_time_of_the_day_in_hr_min_sec_usec(time_buf, sizeof(time_buf));
+
+	return qdf_scnprintf(tbuf, tbuf_sz, "[%.6s][0x%llx]%s[%d]%s%s: ",
+			 current_process_name(), ts,
+			 time_buf, in_interrupt() ? 0 : current->pid,
+			 g_ipa_logging_ctx.log_truncation ? "**" : "",
+			 func);
+}
+
+static inline
+QDF_STATUS wlan_ipa_send_to_filled_list(char *log, int length, const char *func)
+{
+	char tbuf[WLAN_IPA_PREFIX_BUFFER_LEN_MAX];
+	int tlen;
+	uint64_t ts;
+	int total_log_len, header_len;
+	char *ptr;
+	struct wlan_ipa_log_msg *curr_node = NULL;
+	char msg_header[WLAN_IPA_TEMP_BUF_LEN_MAX];
+
+	if (qdf_list_empty(&g_ipa_logging_ctx.free_list)) {
+		ipa_err_rl("no free entries available in list");
+		g_ipa_logging_ctx.log_truncation = true;
+		g_ipa_logging_ctx.drop_count++;
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
+	qdf_list_remove_front(&g_ipa_logging_ctx.free_list,
+			      (qdf_list_node_t **)&curr_node);
+	qdf_spin_unlock_bh(&g_ipa_logging_ctx.lock);
+	ptr = curr_node->logbuf;
+	if (!ptr) {
+		ipa_err_rl("error on fetching log buffer");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	header_len = qdf_scnprintf(msg_header, sizeof(msg_header), "[%s]",
+				   WLAN_IPA_HOST_MSG_MARKER);
+
+	ts = qdf_get_log_timestamp();
+	tlen = wlan_ipa_add_process_time_stamp(tbuf, sizeof(tbuf), ts, func);
+	total_log_len = length + tlen + header_len;
+	qdf_mem_copy(ptr, msg_header, header_len);
+	qdf_mem_copy(&ptr[header_len], tbuf, tlen);
+	qdf_mem_copy(&ptr[header_len + tlen], log, length);
+	ptr[total_log_len] = '\n';
+	ptr[total_log_len + 1] = '\0';
+	qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
+	qdf_list_insert_back(&g_ipa_logging_ctx.filled_list,
+			     (qdf_list_node_t *)curr_node);
+	qdf_spin_unlock_bh(&g_ipa_logging_ctx.lock);
+	qdf_atomic_set_bit(WLAN_IPA_POST_HOST_LOG,
+			   &g_ipa_logging_ctx.event_flag);
+	qdf_wake_up_interruptible(&g_ipa_logging_ctx.wait_q);
+	return QDF_STATUS_SUCCESS;
+}
+
+void wlan_ipa_log_message(const char *func, const char *msg, ...)
+{
+	char buffer[MAX_LOG_LENGTH];
+	qdf_va_list args;
+
+	qdf_va_start(args, msg);
+	qdf_vscnprintf(buffer, MAX_LOG_LENGTH, msg, args);
+	wlan_ipa_send_to_filled_list(buffer, qdf_str_len(buffer), func);
+	qdf_va_end(args);
 }
 
 #endif
