@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -22,7 +22,11 @@
 #undef UMAC
 #define WLAN_HEADERS 1
 
+#ifdef CONFIG_BORON
+#include "boron_top_reg.h"
+#else
 #include "beryllium_top_reg.h"
+#endif
 #include "wcss_version.h"
 
 #define MISSING 0

@@ -2491,7 +2491,9 @@ QDF_STATUS dp_srng_alloc(struct dp_soc *soc, struct dp_srng *srng,
 		return QDF_STATUS_SUCCESS;
 	}
 
-	num_entries = (num_entries > max_entries) ? max_entries : num_entries;
+	if (max_entries)
+		num_entries = (num_entries > max_entries) ? max_entries : num_entries;
+
 	srng->hal_srng = NULL;
 	srng->alloc_size = num_entries * entry_size;
 	srng->num_entries = num_entries;
