@@ -63,10 +63,10 @@ ucfg_dcs_register_user_cb(struct wlan_objmgr_psoc *psoc,
 }
 
 uint32_t
-wlan_dcs_get_coch_intfr_threshold(struct wlan_objmgr_psoc *psoc,
-				  uint8_t pdev_id)
+wlan_dcs_get_trnsprt_switch_rjt_th_cu(struct wlan_objmgr_psoc *psoc,
+				      uint8_t pdev_id)
 {
-	return dcs_get_coch_intfr_threshold(psoc, pdev_id);
+	return dcs_get_trnsprt_switch_rjt_th_cu(psoc, pdev_id);
 }
 
 QDF_STATUS ucfg_dcs_register_awgn_cb(struct wlan_objmgr_psoc *psoc,

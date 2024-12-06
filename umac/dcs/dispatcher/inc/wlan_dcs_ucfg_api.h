@@ -94,15 +94,15 @@ void ucfg_dcs_register_user_cb(struct wlan_objmgr_psoc *psoc,
 				      int status));
 
 /**
- * wlan_dcs_get_coch_intfr_threshold() - get unused cu threshold
+ * wlan_dcs_get_trnsprt_switch_rjt_th_cu() - get unused cu threshold
  * @psoc: psoc pointer
  * @pdev_id: pdev_id
  *
  * Return: cu threshold
  */
 uint32_t
-wlan_dcs_get_coch_intfr_threshold(struct wlan_objmgr_psoc *psoc,
-				  uint8_t pdev_id);
+wlan_dcs_get_trnsprt_switch_rjt_th_cu(struct wlan_objmgr_psoc *psoc,
+				      uint8_t pdev_id);
 
 /**
  * ucfg_dcs_register_awgn_cb() - API to register dcs awgn callback
@@ -309,8 +309,8 @@ ucfg_dcs_register_user_cb(struct wlan_objmgr_psoc *psoc,
 }
 
 static inline uint32_t
-wlan_dcs_get_coch_intfr_threshold(struct wlan_objmgr_psoc *psoc,
-				  uint8_t pdev_id)
+wlan_dcs_get_trnsprt_switch_rjt_th_cu(struct wlan_objmgr_psoc *psoc,
+				      uint8_t pdev_id)
 {
 	return 0;
 }

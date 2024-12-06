@@ -95,6 +95,28 @@
 
 /*
  * <ini>
+ * dcs_trnsprt_rjt_threshold_cu - Configure Transport reject interference threshold
+ * @Min: 0
+ * @Max: 0xFFFFFFFF
+ * @Default: 0xFFFFFFFF
+ *
+ * This ini is used to configure Transport reject interference threshold
+ *
+ *
+ * Related: None
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_DCS_TRANSPORT_SWITCH_RJT_TH_CU CFG_INI_UINT(\
+		"dcs_trnsprt_rjt_threshold_cu",\
+		0, 0xFFFFFFFF, 0xFFFFFFFF,\
+		CFG_VALUE_OR_DEFAULT,\
+		"dcs ll sap Transport reject interference threshold level")
+
+/*
+ * <ini>
  * dcs_tx_err_threshold - Configure transmission failure rate threshold
  * @Min: 0
  * @Max: 0xFFFFFFFF
@@ -394,6 +416,7 @@
 	CFG(CFG_DCS_ENABLE) \
 	CFG(CFG_DCS_DEBUG) \
 	CFG(CFG_DCS_COCH_INTFR_THRESHOLD) \
+	CFG(CFG_DCS_TRANSPORT_SWITCH_RJT_TH_CU) \
 	CFG(CFG_DCS_TX_ERR_THRESHOLD) \
 	CFG(CFG_DCS_PHY_ERR_PENALTY) \
 	CFG(CFG_DCS_PHY_ERR_THRESHOLD) \

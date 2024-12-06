@@ -150,7 +150,8 @@ QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 }
 
 uint32_t
-dcs_get_coch_intfr_threshold(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id)
+dcs_get_trnsprt_switch_rjt_th_cu(struct wlan_objmgr_psoc *psoc,
+				 uint8_t pdev_id)
 {
 	struct dcs_pdev_priv_obj *dcs_pdev_priv;
 
@@ -160,7 +161,7 @@ dcs_get_coch_intfr_threshold(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id)
 		return 0;
 	}
 
-	return dcs_pdev_priv->dcs_host_params.coch_intfr_threshold;
+	return dcs_pdev_priv->dcs_host_params.dcs_trnsprt_rjt_threshold_cu;
 }
 
 #ifdef WLAN_FEATURE_VDEV_DCS
