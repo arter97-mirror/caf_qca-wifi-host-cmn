@@ -2656,7 +2656,6 @@ endif
 
 ifeq ($(CONFIG_WLAN_TELEMETRY), y)
 WLAN_DP_COMP_OBJS += $(DP_COMP_CORE_DIR)/wlan_dp_telemetry.o \
-		$(DP_COMP_UCFG_DIR)/wlan_dp_telemetry_api.o \
 		$(DP_COMP_UCFG_DIR)/wlan_dp_telemetry_ucfg_api.o
 endif
 
