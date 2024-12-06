@@ -368,6 +368,7 @@ mlo_mgr_update_link_vdev_id(struct wlan_objmgr_vdev *vdev, uint8_t accepted_link
 		vdev_id = accepted_link_info->vdev_id;
 		accepted_link_info->vdev_id = rejected_link_info->vdev_id;
 		rejected_link_info->vdev_id = vdev_id;
+		rejected_link_info->link_id = WLAN_INVALID_LINK_ID;
 	}
 
 	mlo_debug("Updated accepted vdev id %d rejected vdev id %d ",
