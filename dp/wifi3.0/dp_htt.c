@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2268,6 +2268,18 @@ void htt_t2h_stats_handler(void *context)
 	dp_process_htt_stat_msg(&htt_stats, soc);
 }
 
+#ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
+static inline qdf_nbuf_t dp_htt_nbuf_copy(qdf_nbuf_t nbuf)
+{
+	return qdf_nbuf_copy(nbuf);
+}
+#else
+static inline qdf_nbuf_t dp_htt_nbuf_copy(qdf_nbuf_t nbuf)
+{
+	return qdf_nbuf_clone(nbuf);
+}
+#endif
+
 /**
  * dp_txrx_fw_stats_handler() - Function to process HTT EXT stats
  * @soc: DP SOC handle
@@ -2298,7 +2310,7 @@ static inline void dp_txrx_fw_stats_handler(struct dp_soc *soc,
 	 * The original T2H message buffers gets freed in the T2H HTT event
 	 * handler
 	 */
-	msg_copy = qdf_nbuf_clone(htt_t2h_msg);
+	msg_copy = dp_htt_nbuf_copy(htt_t2h_msg);
 
 	if (!msg_copy) {
 		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_INFO,
