@@ -1382,7 +1382,7 @@ static inline void copy_channel_info(
 	 */
 	WMI_SET_CHANNEL_MIN_POWER(chan, req->channel.minpower);
 	WMI_SET_CHANNEL_MAX_POWER(chan, req->channel.maxpower);
-	WMI_SET_CHANNEL_REG_POWER(chan, req->channel.maxregpower);
+	WMI_SET_CHANNEL_REG_POWER(chan, req->channel.regpower);
 	WMI_SET_CHANNEL_ANTENNA_MAX(chan, req->channel.antennamax);
 	WMI_SET_CHANNEL_REG_CLASSID(chan, req->channel.reg_class_id);
 	WMI_SET_CHANNEL_MAX_TX_POWER(chan, req->channel.maxregpower);

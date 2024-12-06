@@ -584,6 +584,10 @@ static QDF_STATUS vdev_mgr_start_param_update(
 	param->channel.maxpower = mlme_obj->mgmt.generic.maxpower;
 	param->channel.minpower = mlme_obj->mgmt.generic.minpower;
 	param->channel.maxregpower = mlme_obj->mgmt.generic.maxregpower;
+	param->channel.regpower =
+		wlan_reg_get_channel_reg_power_for_freq(
+						pdev,
+						des_chan->ch_freq);
 	param->channel.antennamax = mlme_obj->mgmt.generic.antennamax;
 	param->channel.reg_class_id = mlme_obj->mgmt.generic.reg_class_id;
 	param->bcn_tx_rate_code = vdev_mgr_fetch_ratecode(mlme_obj);

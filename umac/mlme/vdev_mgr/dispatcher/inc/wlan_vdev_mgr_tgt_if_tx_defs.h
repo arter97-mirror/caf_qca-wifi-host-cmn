@@ -411,6 +411,7 @@ struct fils_discovery_tmpl_params {
  * @cfreq2: centre frequency on secondary
  * @maxpower: max power for channel
  * @minpower: min power for channel
+ * @regpower: real power for channel
  * @maxregpower: Max regulatory power
  * @antennamax: Max antenna
  * @reg_class_id: Regulatory class id.
@@ -435,6 +436,7 @@ struct mlme_channel_param {
 	int8_t   maxpower;
 	int8_t   minpower;
 	int8_t   maxregpower;
+	int8_t   regpower;
 	uint8_t  antennamax;
 	uint8_t  reg_class_id;
 #ifdef WLAN_FEATURE_11BE
