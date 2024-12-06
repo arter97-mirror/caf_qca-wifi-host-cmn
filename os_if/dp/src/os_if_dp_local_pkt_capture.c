@@ -45,6 +45,8 @@
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_CTRL_TX_FRAME_TYPE
 #define SET_MONITOR_MODE_CTRL_RX_FRAME_TYPE \
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_CTRL_RX_FRAME_TYPE
+#define SET_MONITOR_MODE_OPERATING_TYPE \
+	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_OPERATING_TYPE
 
 /* Short name for QCA_NL80211_VENDOR_SUBCMD_GET_MONITOR_MODE command */
 #define GET_MONITOR_MODE_CONFIG_MAX \
@@ -68,6 +70,7 @@ set_monitor_mode_policy[SET_MONITOR_MODE_CONFIG_MAX + 1] = {
 	[SET_MONITOR_MODE_MGMT_RX_FRAME_TYPE] = { .type = NLA_U32 },
 	[SET_MONITOR_MODE_CTRL_TX_FRAME_TYPE] = { .type = NLA_U32 },
 	[SET_MONITOR_MODE_CTRL_RX_FRAME_TYPE] = { .type = NLA_U32 },
+	[SET_MONITOR_MODE_OPERATING_TYPE] = { .type = NLA_U32 },
 };
 
 static
@@ -264,10 +267,18 @@ QDF_STATUS os_if_dp_local_pkt_capture_start(struct wlan_objmgr_vdev *vdev,
 		pkt_type |= BIT(CTRL_FRAME_TYPE);
 	}
 
-	/*
-	 * Add is_coc_mode parsing logic once vendor cmd
-	 * attribution change is ready.
-	 */
+	if (tb[SET_MONITOR_MODE_OPERATING_TYPE]) {
+		val = nla_get_u32(tb[SET_MONITOR_MODE_OPERATING_TYPE]);
+
+		if (val == QCA_WLAN_VENDOR_MONITOR_OPERATING_TYPE_OCC) {
+			is_coc_mode = true;
+		} else if (val !=
+			   QCA_WLAN_VENDOR_MONITOR_OPERATING_TYPE_LPC) {
+			osif_err("Invalid operating type value: %d", val);
+			status = QDF_STATUS_E_INVAL;
+			goto error;
+		}
+	}
 
 	if (pkt_type == 0) {
 		osif_err("Invalid config, pkt_type: %d", pkt_type);
