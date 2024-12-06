@@ -1144,11 +1144,18 @@ static int __wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy,
 	vdev = hdd_objmgr_get_vdev_by_user(adapter->deflink, WLAN_OSIF_TDLS_ID);
 	if (!vdev)
 		return -EINVAL;
+
+	if (!wlan_hdd_is_tdls_allowed(hdd_ctx, vdev)) {
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_TDLS_ID);
+		return -EINVAL;
+	}
+
 	status = wlan_cfg80211_tdls_oper(vdev, peer, oper);
 	hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_TDLS_ID);
 
 exit:
 	hdd_exit();
+
 	return status;
 }
 
