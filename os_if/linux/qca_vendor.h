@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -6475,6 +6475,17 @@ enum qca_wlan_vendor_attr_config {
 	 * minimize risk of issues.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL = 122,
+
+	/* 8-bit unsigned value. Disable DFS owner capability
+	 * 1: disable DFS owner capability in the driver.
+	 * 0: reset DFS owner capability to the default DFS owner capability of
+	 * the driver.
+	 *
+	 * If DFS owner capability is disabled, the driver will not start AP
+	 * mode operations on DFS channels, and all the features depending on
+	 * DFS owner functionality will not be supported.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE = 123,
 
 	/* 16-bit unsigned value. For probing RSSI on other antennas, this
 	 * attribute specifies number of WLAN probe.
