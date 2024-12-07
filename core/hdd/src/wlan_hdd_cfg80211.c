@@ -8955,7 +8955,8 @@ const struct nla_policy wlan_hdd_wifi_config_policy[
 		.type = NLA_U8},
 	[QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL] = {
 		.type = NLA_U16},
-
+	[QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE] = {
+		.type = NLA_U8},
 };
 
 
@@ -12997,6 +12998,63 @@ static int hdd_reset_btm_abridge_flag(struct wlan_hdd_link_info *link_info,
 }
 
 /**
+ * hdd_set_dfs_owner_disable() - Set DFS owner disable
+ * @link_info: Link info pointer in HDD adapter
+ * @attr: pointer to nla attr
+ *
+ * Return: 0 on success, negative on failure
+ */
+static int hdd_set_dfs_owner_disable(struct wlan_hdd_link_info *link_info,
+				     const struct nlattr *attr)
+{
+	uint8_t dfs_owner_disable;
+	struct hdd_context *hdd_ctx = WLAN_HDD_GET_CTX(link_info->adapter);
+
+	if (!hdd_ctx->wiphy || !hdd_ctx->wiphy->registered)
+		return -EINVAL;
+
+	dfs_owner_disable = nla_get_u8(attr);
+
+	hdd_debug("configure DFS owner disable %d", dfs_owner_disable);
+	ucfg_mlme_vendor_set_disable_dfs_master_capability(
+				hdd_ctx->psoc,
+				dfs_owner_disable);
+
+	hdd_send_wiphy_regd_sync_event(hdd_ctx, false);
+
+	return 0;
+}
+
+/**
+ * hdd_get_dfs_owner_disable() - Get DFS owner disable
+ * @link_info: Link info pointer in HDD adapter
+ * @skb: skb buffer
+ * @attr: pointer to nla attr
+ *
+ * Return: 0 on success, negative on failure
+ */
+static int hdd_get_dfs_owner_disable(struct wlan_hdd_link_info *link_info,
+				     struct sk_buff *skb,
+				     const struct nlattr *attr)
+{
+	bool dfs_master_capability = true;
+	struct hdd_context *hdd_ctx = WLAN_HDD_GET_CTX(link_info->adapter);
+
+	ucfg_mlme_get_dfs_master_capability(
+				hdd_ctx->psoc,
+				&dfs_master_capability);
+	hdd_debug("current DFS owner capability %d", dfs_master_capability);
+
+	if (nla_put_u8(skb, QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE,
+		       (uint8_t)!dfs_master_capability)) {
+		hdd_err("nla_put failure");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
  * hdd_set_p2p_go_bcn_int() - Set P2P GO beacon interval
  * @link_info: Link info pointer in HDD adapter
  * @attr: pointer to nla attr
@@ -13550,6 +13608,8 @@ static const struct independent_setters independent_setters[] = {
 	 hdd_reset_btm_abridge_flag},
 	{QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL,
 	 hdd_set_p2p_go_bcn_int},
+	{QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE,
+	 hdd_set_dfs_owner_disable},
 };
 
 #ifdef WLAN_FEATURE_ELNA
@@ -14425,6 +14485,9 @@ static const struct config_getters config_getters[] = {
 	 {QCA_WLAN_VENDOR_ATTR_CONFIG_KEEP_ALIVE_INTERVAL,
 	  sizeof(uint16_t),
 	  hdd_get_sta_keepalive_interval},
+	{QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE,
+	 sizeof(uint8_t),
+	 hdd_get_dfs_owner_disable},
 };
 
 /**

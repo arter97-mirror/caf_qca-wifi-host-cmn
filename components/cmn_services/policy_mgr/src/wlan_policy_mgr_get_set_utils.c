@@ -49,6 +49,7 @@
 #include "wlan_connectivity_logging.h"
 #include "wlan_policy_mgr_ll_sap.h"
 #include "wlan_nan_api_i.h"
+#include "cfg_ucfg_api.h"
 
 /* invalid channel id. */
 #define INVALID_CHANNEL_ID 0
@@ -442,6 +443,31 @@ policy_mgr_get_dfs_master_dynamic_enabled(
 				 !pm_ctx->dynamic_dfs_master_disabled);
 
 	return !pm_ctx->dynamic_dfs_master_disabled;
+}
+
+void
+policy_mgr_dfs_master_cfg_changed(struct wlan_objmgr_psoc *psoc,
+				  bool dfs_master_capable)
+{
+	struct policy_mgr_psoc_priv_obj *pm_ctx;
+	struct policy_mgr_cfg *cfg;
+
+	pm_ctx = policy_mgr_get_context(psoc);
+	if (!pm_ctx) {
+		policy_mgr_err("pm_ctx is NULL");
+		return;
+	}
+	cfg = &pm_ctx->cfg;
+
+	cfg->sta_sap_scc_on_dfs_chnl =
+		cfg_get(psoc, CFG_STA_SAP_SCC_ON_DFS_CHAN);
+	if (cfg->sta_sap_scc_on_dfs_chnl ==
+			PM_STA_SAP_ON_DFS_MASTER_MODE_FLEX &&
+	    !dfs_master_capable)
+		cfg->sta_sap_scc_on_dfs_chnl = 0;
+	policy_mgr_debug("sta_sap_scc_on_dfs_chnl %d, dfs_master_capable %d",
+			 cfg->sta_sap_scc_on_dfs_chnl,
+			 dfs_master_capable);
 }
 
 bool

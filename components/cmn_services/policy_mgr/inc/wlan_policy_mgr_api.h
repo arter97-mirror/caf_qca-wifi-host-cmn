@@ -1540,6 +1540,21 @@ policy_mgr_is_emlsr_sta_concurrency_present(struct wlan_objmgr_psoc *psoc)
 #endif
 
 /**
+ * policy_mgr_dfs_master_cfg_changed() - dfs master changed notify
+ * event
+ * @psoc: PSOC object information
+ * @dfs_master_capable: dfs master enable or disable
+ *
+ * Change the "sta_sap_scc_on_dfs_chnl" flag as well when dfs master
+ * capability is changed by vendor command.
+ *
+ * Return: void
+ */
+void
+policy_mgr_dfs_master_cfg_changed(struct wlan_objmgr_psoc *psoc,
+				  bool dfs_master_capable);
+
+/**
  * policy_mgr_skip_dfs_ch() - skip dfs channel or not
  * @psoc: pointer to soc
  * @skip_dfs_channel: pointer to result

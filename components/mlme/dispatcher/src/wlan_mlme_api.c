@@ -40,6 +40,7 @@
 #include "wlan_mlme_api.h"
 #include "../../core/src/wlan_cp_stats_defs.h"
 #include "wlan_reg_services_api.h"
+#include "wlan_policy_mgr_api.h"
 
 /* quota in milliseconds */
 #define MCC_DUTY_CYCLE 70
@@ -8185,6 +8186,35 @@ wlan_mlme_cp_stats_set_rate_flags(struct wlan_objmgr_vdev *vdev,
 	vdev_mc_stats = vdev_cp_stats_priv->vdev_stats;
 	vdev_mc_stats->tx_rate_flags = flags;
 	wlan_cp_stats_vdev_obj_unlock(vdev_cp_stats_priv);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+wlan_mlme_vendor_set_disable_dfs_master_capability(
+					struct wlan_objmgr_psoc *psoc,
+					bool disable)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj)
+		return QDF_STATUS_E_INVAL;
+
+	mlme_legacy_debug("current dfs_master_capable %d set disable %d",
+			  mlme_obj->cfg.dfs_cfg.dfs_master_capable,
+			  disable);
+	if (disable)
+		mlme_obj->cfg.dfs_cfg.dfs_master_capable = false;
+	else
+		mlme_obj->cfg.dfs_cfg.dfs_master_capable =
+		cfg_get(psoc, CFG_ENABLE_DFS_MASTER_CAPABILITY);
+
+	mlme_legacy_debug("new dfs_master_capable %d",
+			  mlme_obj->cfg.dfs_cfg.dfs_master_capable);
+	policy_mgr_dfs_master_cfg_changed(
+			psoc,
+			mlme_obj->cfg.dfs_cfg.dfs_master_capable);
 
 	return QDF_STATUS_SUCCESS;
 }
