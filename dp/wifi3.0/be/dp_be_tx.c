@@ -98,9 +98,15 @@ void dp_srng_tx_comp_ring_desc_mark_invalid(struct dp_soc *soc,
 					    struct dp_srng *srng)
 {
 	uint8_t *desc = srng->base_vaddr_aligned;
-	uint8_t num_entries = srng->num_entries;
-	uint8_t entry_size = srng->alloc_size / num_entries;
+	uint32_t num_entries = srng->num_entries;
+	uint32_t entry_size;
 	int i;
+
+	if (!num_entries) {
+		dp_err("srng num_entries is 0");
+		return;
+	}
+	entry_size = srng->alloc_size / num_entries;
 
 	for (i = 0; i < num_entries; i++) {
 		hal_tx_comp_set_desc_va_63_32(desc,
