@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -815,6 +815,12 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 			dp_info_rl("Nbuf sanity check failure!");
 			dp_rx_dump_info_and_assert_rh(soc, msg_word, rx_desc);
 			rx_desc->in_err_state = 1;
+			qdf_trace_hex_dump(QDF_MODULE_ID_TXRX,
+					   QDF_TRACE_LEVEL_FATAL, msg_word,
+					   HTT_RX_DATA_MSDU_INFO_SIZE);
+			qdf_assert_always(0);
+			msg_word += HTT_RX_DATA_MSDU_INFO_SIZE >> 2;
+			num_pending--;
 			continue;
 		}
 
@@ -822,6 +828,12 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 			dp_err("Invalid rx_desc cookie=%d", rx_buf_cookie);
 			DP_STATS_INC(soc, rx.err.rx_desc_invalid_magic, 1);
 			dp_rx_dump_info_and_assert_rh(soc, msg_word, rx_desc);
+			qdf_trace_hex_dump(QDF_MODULE_ID_TXRX,
+					   QDF_TRACE_LEVEL_FATAL, msg_word,
+					   HTT_RX_DATA_MSDU_INFO_SIZE);
+			qdf_assert_always(0);
+			msg_word += HTT_RX_DATA_MSDU_INFO_SIZE >> 2;
+			num_pending--;
 			continue;
 		}
 
