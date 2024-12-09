@@ -596,8 +596,8 @@ QDF_STATUS hdd_dcs_hostapd_set_chan(struct hdd_context *hdd_ctx,
 		cu = wlan_ll_sap_get_cu_for_freq(hdd_ctx->pdev, dcs_ch_freq);
 		pdev_id = wlan_objmgr_pdev_get_pdev_id(hdd_ctx->pdev);
 		coch_intfr_threshold =
-			wlan_dcs_get_coch_intfr_threshold(hdd_ctx->psoc,
-							  pdev_id);
+			wlan_dcs_get_trnsprt_switch_rjt_th_cu(hdd_ctx->psoc,
+							      pdev_id);
 		if (cu && cu >= coch_intfr_threshold) {
 			hdd_info("Congested channel cu %d > coch_intfr_threshold %d, no need to do CSA",
 				cu, coch_intfr_threshold);
