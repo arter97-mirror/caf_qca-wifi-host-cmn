@@ -1218,7 +1218,6 @@ struct wlan_dfs {
 	qdf_work_t     dfs_nol_elem_free_work;
 
 	qdf_hrtimer_data_t    dfs_cac_timer;
-	qdf_work_t     dfs_cac_completion_work;
 	qdf_timer_t    dfs_cac_valid_timer;
 	int            dfs_cac_timeout_override;
 	uint8_t        dfs_enable:1,
@@ -3014,7 +3013,7 @@ void dfs_complete_deferred_tasks(struct wlan_dfs *dfs);
  *
  * Return: void.
  */
-void dfs_process_cac_completion(void *context);
+void dfs_process_cac_completion(struct wlan_dfs *dfs);
 
 #ifdef WLAN_DFS_TRUE_160MHZ_SUPPORT
 /**
