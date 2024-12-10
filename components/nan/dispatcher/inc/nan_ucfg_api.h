@@ -627,6 +627,15 @@ QDF_STATUS ucfg_nan_cache_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 ucfg_nan_remove_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
 				  struct qdf_mac_addr *peer_mac_addr);
+
+/**
+ * ucfg_nan_is_allowed() - This API is wrapper for function nan_is_allowed()
+ *
+ * @psoc: pointer to PSOC object
+ *
+ * Return: true if nan  is allowed otherwise false
+ */
+bool ucfg_nan_is_allowed(struct wlan_objmgr_psoc *psoc);
 #else /* WLAN_FEATURE_NAN */
 
 static inline
@@ -807,6 +816,11 @@ static inline struct qdf_mac_addr *
 ucfg_nan_get_fw_addr(struct wlan_objmgr_psoc *psoc)
 {
 	return NULL;
+}
+
+static inline bool ucfg_nan_is_allowed(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
 }
 #endif /* WLAN_FEATURE_NAN */
 #endif /* _NAN_UCFG_API_H_ */

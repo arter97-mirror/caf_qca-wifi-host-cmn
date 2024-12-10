@@ -24201,8 +24201,6 @@ int wlan_hdd_cfg80211_init(struct device *dev,
 				 | BIT(NL80211_IFTYPE_AP)
 				 | BIT(NL80211_IFTYPE_MONITOR);
 
-	wlan_hdd_set_nan_if_mode(wiphy);
-
 	/*
 	 * In case of static linked driver at the time of driver unload,
 	 * module exit doesn't happens. Module cleanup helps in cleaning
@@ -25083,6 +25081,26 @@ wlan_hdd_remove_sta_p2p_conc(struct ieee80211_iface_combination *combination,
 }
 
 /**
+ * wlan_hdd_is_iface_nan() - This API checks whether NAN interface is present
+ * in the interface combination
+ * @idx: index for interface combination array
+ *
+ * Return: true if NAN interface is present otherwise false
+ */
+static bool wlan_hdd_is_iface_nan(uint8_t idx)
+{
+	uint8_t j;
+
+	for (j = 0; j < wlan_hdd_iface_combination[idx].n_limits; j++) {
+		if (wlan_hdd_iface_combination[idx].limits[j].types ==
+		    BIT(NL80211_IFTYPE_NAN))
+			return true;
+	}
+
+	return false;
+}
+
+/**
  * wlan_hdd_update_iface_combination() - This API updates interface combination
  * @hdd_ctx: HDD context
  * @wiphy: WIPHY structure pointer
@@ -25104,6 +25122,7 @@ static void wlan_hdd_update_iface_combination(struct hdd_context *hdd_ctx,
 	bool sap_sta_nan_concurrency, sap_sap_sta_concurrency;
 	uint8_t num;
 	QDF_STATUS status;
+	bool is_nan_allowed;
 
 	if (!hdd_ctx->config->advertise_concurrent_operation)
 		return;
@@ -25124,6 +25143,9 @@ static void wlan_hdd_update_iface_combination(struct hdd_context *hdd_ctx,
 	sta_p2p_ndp_conc = ucfg_nan_is_sta_p2p_ndp_supported(psoc);
 
 	num = ARRAY_SIZE(wlan_hdd_iface_combination);
+	is_nan_allowed = ucfg_nan_is_allowed(psoc);
+	if (is_nan_allowed)
+		wlan_hdd_set_nan_if_mode(wiphy);
 
 	for (i = 0; i < num; i++) {
 		/* Filter for non-DBS targets */
@@ -25152,6 +25174,10 @@ static void wlan_hdd_update_iface_combination(struct hdd_context *hdd_ctx,
 		    wlan_hdd_is_p2p_concurrency_present(sta_sap_p2p_concurrency,
 							sta_p2p_ndp_conc,
 							i))
+			continue;
+
+		/* remove NAN concurrency if NAN is not allowed */
+		if (wlan_hdd_is_iface_nan(i) && !is_nan_allowed)
 			continue;
 
 		/* remove SAP STA NAN concurrency */

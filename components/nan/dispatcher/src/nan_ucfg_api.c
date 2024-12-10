@@ -1316,12 +1316,6 @@ ucfg_nan_is_sta_p2p_ndp_supported(struct wlan_objmgr_psoc *psoc)
 }
 
 static inline bool
-ucfg_is_nan_enabled(struct nan_psoc_priv_obj *psoc_nan_obj)
-{
-	return psoc_nan_obj->cfg_param.enable;
-}
-
-static inline bool
 ucfg_nan_is_vdev_creation_supp_by_fw(struct nan_psoc_priv_obj *psoc_nan_obj)
 {
 	return psoc_nan_obj->nan_caps.nan_vdev_allowed;
@@ -1517,7 +1511,7 @@ bool ucfg_nan_is_vdev_creation_allowed(struct wlan_objmgr_psoc *psoc)
 		return false;
 	}
 
-	if (!ucfg_is_nan_enabled(psoc_nan_obj)) {
+	if (!nan_is_allowed(psoc)) {
 		nan_debug("NAN is not enabled");
 		return false;
 	}
@@ -1820,4 +1814,9 @@ QDF_STATUS ucfg_nan_remove_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
 					     struct qdf_mac_addr *peer_mac_addr)
 {
 	return nan_remove_ndp_peer_mac_addr(psoc, peer_mac_addr);
+}
+
+bool ucfg_nan_is_allowed(struct wlan_objmgr_psoc *psoc)
+{
+	return nan_is_allowed(psoc);
 }

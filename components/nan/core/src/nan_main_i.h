@@ -503,5 +503,14 @@ QDF_STATUS nan_remove_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
  * Return: QDF status
  */
 void nan_clean_up_all_ndp_peers(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
+
+/**
+ * nan_is_allowed() - This API will check for NAN enable INI
+ *
+ * @psoc: pointer to PSOC object
+ *
+ * Return: true if NAN is allowed otherwise false
+ */
+bool nan_is_allowed(struct wlan_objmgr_psoc *psoc);
 #endif /* _WLAN_NAN_MAIN_I_H_ */
 #endif /* WLAN_FEATURE_NAN */
