@@ -3693,6 +3693,7 @@ cm_roam_stop_req(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 	struct wlan_objmgr_vdev *vdev;
 	struct wlan_objmgr_pdev *pdev;
 
+	mlme_clear_rso_pending_disable_req_bitmap(psoc, vdev_id);
 	cm_roam_set_roam_reason_better_ap(psoc, vdev_id, false);
 	stop_req = qdf_mem_malloc(sizeof(*stop_req));
 	if (!stop_req)

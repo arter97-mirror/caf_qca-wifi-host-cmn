@@ -1169,8 +1169,8 @@ cm_fw_roam_sync_propagation(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 	struct wlan_cm_connect_resp *connect_rsp;
 	bool eht_capab = false;
 	struct pe_session *session;
-	struct mac_context *mac_ctx =
-			cds_get_context(QDF_MODULE_ID_PE);
+	struct mac_context *mac_ctx = cds_get_context(QDF_MODULE_ID_PE);
+	uint8_t rso_stop_req_bitmap;
 
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
 						    WLAN_MLME_SB_ID);
@@ -1267,6 +1267,15 @@ cm_fw_roam_sync_propagation(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 			cm_roam_start_init_on_connect(pdev, vdev_id);
 		}
 		wlan_cm_tgt_send_roam_sync_complete_cmd(psoc, vdev_id);
+
+		rso_stop_req_bitmap =
+			mlme_get_rso_pending_disable_req_bitmap(psoc, vdev_id);
+		if (rso_stop_req_bitmap) {
+			mlme_clear_rso_pending_disable_req_bitmap(psoc,
+								  vdev_id);
+			wlan_cm_disable_rso(pdev, vdev_id, rso_stop_req_bitmap,
+					    REASON_DRIVER_DISABLED);
+		}
 		mlo_roam_update_connected_links(vdev, connect_rsp);
 		mlo_set_single_link_ml_roaming(psoc, vdev_id,
 					       false);

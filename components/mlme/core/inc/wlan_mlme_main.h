@@ -251,10 +251,16 @@ enum vdev_assoc_type {
  * @rso_disabled_status_bitmap: Bitmap containing the mlme operations/concurrent
  *  connections that requested for RSO_STOP as these are not supported when
  *  roaming is enabled.
+ * @rso_pending_disable_req_bitmap: Bitmap containing the mlme
+ *  operations/concurrent connections that requested for RSO stop. Currently,
+ *  this is set only when RSO is not disabled immediately due to some
+ *  constraints (e.g. STA roaming is in progress) and needs to be disabled
+ *  once the constraints are resolved.
  */
 struct wlan_mlme_roam_state_info {
 	enum roam_offload_state state;
 	uint8_t rso_disabled_status_bitmap;
+	uint8_t rso_pending_disable_req_bitmap;
 };
 
 /**
@@ -1511,6 +1517,42 @@ mlme_set_rso_disabled_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
  */
 void
 mlme_clear_rso_disabled_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
+
+/**
+ * mlme_get_rso_pending_disable_req_bitmap() - Get the RSO disable req bitmap
+ * @psoc: PSOC pointer
+ * @vdev_id: vdev for which the RSO disable request bitmap is requested
+ *
+ * Return: bitmap value
+ */
+uint8_t
+mlme_get_rso_pending_disable_req_bitmap(struct wlan_objmgr_psoc *psoc,
+					uint8_t vdev_id);
+
+/**
+ * mlme_set_rso_pending_disable_req_bitmap() - Set the RSO disable req bitmap
+ * @psoc: PSOC pointer
+ * @vdev_id: vdev for which the RSO disable request bitmap is requested
+ * @reqs: RSO stop requestor
+ * @clear: clear bit if true else set bit
+ *
+ * Return: None
+ */
+void
+mlme_set_rso_pending_disable_req_bitmap(struct wlan_objmgr_psoc *psoc,
+					uint8_t vdev_id,
+					enum wlan_cm_rso_control_requestor reqs,
+					bool clear);
+/**
+ * mlme_clear_rso_pending_disable_req_bitmap() - Clear RSO disable req bitmap
+ * @psoc: PSOC pointer
+ * @vdev_id: vdev for which the RSO disable req bitmap is requested
+ *
+ * Return: None
+ */
+void
+mlme_clear_rso_pending_disable_req_bitmap(struct wlan_objmgr_psoc *psoc,
+					  uint8_t vdev_id);
 
 /**
  * mlme_get_cfg_wlm_level() - Get the WLM level value
