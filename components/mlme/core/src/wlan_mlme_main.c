@@ -5237,7 +5237,7 @@ void mlme_set_roam_trigger_bitmap(struct wlan_objmgr_psoc *psoc,
 }
 
 uint8_t
-mlme_get_operations_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
+mlme_get_rso_disabled_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 {
 	struct wlan_objmgr_vdev *vdev;
 	struct mlme_legacy_priv *mlme_priv;
@@ -5258,20 +5258,22 @@ mlme_get_operations_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 		return 0xFF;
 	}
 
-	bitmap = mlme_priv->mlme_roam.roam_sm.mlme_operations_bitmap;
+	bitmap = mlme_priv->mlme_roam.roam_sm.rso_disabled_status_bitmap;
 	mlme_legacy_debug("vdev[%d] bitmap[0x%x]", vdev_id,
-			  mlme_priv->mlme_roam.roam_sm.mlme_operations_bitmap);
+		mlme_priv->mlme_roam.roam_sm.rso_disabled_status_bitmap);
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
 
 	return bitmap;
 }
 
 void
-mlme_set_operations_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
-			   enum wlan_cm_rso_control_requestor reqs, bool clear)
+mlme_set_rso_disabled_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
+			     enum wlan_cm_rso_control_requestor reqs,
+			     bool clear)
 {
 	struct wlan_objmgr_vdev *vdev;
 	struct mlme_legacy_priv *mlme_priv;
+	uint8_t *rso_disabled_status_bitmap;
 
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
 						    WLAN_MLME_OBJMGR_ID);
@@ -5287,19 +5289,21 @@ mlme_set_operations_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 		return;
 	}
 
+	rso_disabled_status_bitmap =
+		&mlme_priv->mlme_roam.roam_sm.rso_disabled_status_bitmap;
 	if (clear)
-		mlme_priv->mlme_roam.roam_sm.mlme_operations_bitmap &= ~reqs;
+		*rso_disabled_status_bitmap &= ~reqs;
 	else
-		mlme_priv->mlme_roam.roam_sm.mlme_operations_bitmap |= reqs;
+		*rso_disabled_status_bitmap |= reqs;
 
 	mlme_legacy_debug("vdev[%d] bitmap[0x%x], reqs: %d, clear: %d", vdev_id,
-			  mlme_priv->mlme_roam.roam_sm.mlme_operations_bitmap,
+			  *rso_disabled_status_bitmap,
 			  reqs, clear);
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
 }
 
 void
-mlme_clear_operations_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
+mlme_clear_rso_disabled_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 {
 	struct wlan_objmgr_vdev *vdev;
 	struct mlme_legacy_priv *mlme_priv;
@@ -5318,7 +5322,7 @@ mlme_clear_operations_bitmap(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 		return;
 	}
 
-	mlme_priv->mlme_roam.roam_sm.mlme_operations_bitmap = 0;
+	mlme_priv->mlme_roam.roam_sm.rso_disabled_status_bitmap = 0;
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
 }
 

@@ -270,7 +270,7 @@ QDF_STATUS wlan_cm_disable_rso(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 	uint8_t disable_reason = REASON_DRIVER_DISABLED;
 
 	if (reason == REASON_DRIVER_DISABLED && requestor)
-		mlme_set_operations_bitmap(psoc, vdev_id, requestor, false);
+		mlme_set_rso_disabled_bitmap(psoc, vdev_id, requestor, false);
 
 	if (reason == REASON_VDEV_RESTART_FROM_HOST)
 		disable_reason = REASON_VDEV_RESTART_FROM_HOST;
@@ -293,7 +293,7 @@ QDF_STATUS wlan_cm_enable_rso(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 	uint8_t enable_reason = REASON_DRIVER_ENABLED;
 
 	if (reason == REASON_DRIVER_ENABLED && requestor)
-		mlme_set_operations_bitmap(psoc, vdev_id, requestor, true);
+		mlme_set_rso_disabled_bitmap(psoc, vdev_id, requestor, true);
 
 	if (reason == REASON_VDEV_RESTART_FROM_HOST)
 		enable_reason = REASON_VDEV_RESTART_FROM_HOST;
