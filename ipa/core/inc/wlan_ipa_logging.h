@@ -16,6 +16,7 @@
 #define WLAN_IPA_LOGGING(arg, ...) \
 	WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__)
 #define WLAN_IPA_LOGGING_FUNC wlan_ipa_log_message
+#define WLAN_IPA_LOG_MSG_LENGTH_MAX 2048
 #define WLAN_IPA_HOST_MSG_MARKER "OPT_DP_HOST"
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
@@ -26,6 +27,7 @@
  * @start_event: handle of Event for ipa log thread to signal startup
  * @shutdown_event: event to signal that the wait queue has been stopped
  * @lock: Lock to synchronize access to shared logging resource
+ * @payload: final payload to be send to userspace
  * @wait_q: Wait queue for Logger thread
  * @thread: logger thread
  * @drop_count: log dropped
@@ -38,6 +40,7 @@ struct wlan_ipa_log_context {
 	qdf_event_t start_event;
 	qdf_event_t shutdown_event;
 	qdf_spinlock_t lock;
+	char payload[WLAN_IPA_LOG_MSG_LENGTH_MAX];
 	qdf_wait_queue_head_t wait_q;
 	qdf_thread_t *thread;
 	uint16_t drop_count;

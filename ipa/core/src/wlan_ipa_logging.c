@@ -16,13 +16,105 @@
 #define WLAN_IPA_TEMP_BUF_LEN_MAX 20
 #define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100
 #define WLAN_IPA_POST_HOST_LOG 0x001
+#define WLAN_IPA_SHUTDOWN_LOGGING_THREAD 0x002
+#define WLAN_IPA_MAX_WAIT_TIME 100
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 struct wlan_ipa_log_context g_ipa_logging_ctx;
 static struct wlan_ipa_log_msg *g_ipa_log_msg;
 
+static inline
+QDF_STATUS wlan_ipa_nl_broadcast(int length, char *str, int num_log)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS wlan_ipa_send_to_userspace(void)
+{
+	struct wlan_ipa_log_msg *curr_node = NULL;
+	char *str;
+	int len = 0;
+	int num_log = 0;
+	int ret = 0;
+
+	str = g_ipa_logging_ctx.payload;
+	while (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
+		qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
+		qdf_list_remove_front(&g_ipa_logging_ctx.filled_list,
+				      (qdf_list_node_t **)&curr_node);
+		qdf_spin_unlock_bh(&g_ipa_logging_ctx.lock);
+		if (len + qdf_str_len(curr_node->logbuf) >
+		    WLAN_IPA_LOG_MSG_LENGTH_MAX) {
+			ret = wlan_ipa_nl_broadcast(len, str, num_log);
+			if (QDF_IS_STATUS_ERROR(ret)) {
+				ipa_err_rl("nl broadcast failure");
+				g_ipa_logging_ctx.drop_count += num_log;
+			}
+			num_log = 0;
+			len = 0;
+			qdf_mem_set(str, WLAN_IPA_LOG_MSG_LENGTH_MAX, '\0');
+		}
+
+		len += qdf_scnprintf(str + len,
+				     WLAN_IPA_LOG_MSG_LENGTH_MAX - len, "%s",
+				     curr_node->logbuf);
+		num_log++;
+		qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
+		qdf_list_insert_back(&g_ipa_logging_ctx.free_list,
+				     (qdf_list_node_t *)curr_node);
+		qdf_spin_unlock_bh(&g_ipa_logging_ctx.lock);
+	}
+
+	if (len > 0) {
+		ret = wlan_ipa_nl_broadcast(len, str, num_log);
+		if (QDF_IS_STATUS_ERROR(ret)) {
+			ipa_err_rl("nl broadcast failure");
+			g_ipa_logging_ctx.drop_count += num_log;
+		}
+	}
+
+	return ret;
+}
+
 static inline int wlan_ipa_logging_thread(void *arg)
 {
+	int ret_wait_status = 0;
+	int ret;
+
+	qdf_event_set(&g_ipa_logging_ctx.start_event);
+	while (true) {
+		ret_wait_status =
+			qdf_wait_queue_interruptible(
+				g_ipa_logging_ctx.wait_q,
+				 (qdf_atomic_test_bit(
+					 WLAN_IPA_POST_HOST_LOG,
+					 &g_ipa_logging_ctx.event_flag) ||
+				 qdf_atomic_test_bit(
+					 WLAN_IPA_SHUTDOWN_LOGGING_THREAD,
+					 &g_ipa_logging_ctx.event_flag)));
+
+		if (ret_wait_status == -ERESTARTSYS) {
+			ipa_err_rl("wait_evt_interrupt returned -ERESTARTSYS");
+			break;
+		}
+
+		if (qdf_atomic_test_and_clear_bit(
+					WLAN_IPA_SHUTDOWN_LOGGING_THREAD,
+					&g_ipa_logging_ctx.event_flag))
+			break;
+
+		if (qdf_atomic_test_and_clear_bit(
+					WLAN_IPA_POST_HOST_LOG,
+					&g_ipa_logging_ctx.event_flag)) {
+			ret = wlan_ipa_send_to_userspace();
+			if (ret)
+				ipa_err_rl("failed to send log, ret - %d",
+					   ret);
+		}
+	}
+
+	qdf_event_set(&g_ipa_logging_ctx.shutdown_event);
 	return 0;
 }
 
@@ -48,6 +140,7 @@ static inline QDF_STATUS wlan_ipa_allocate_log_msg(void)
 QDF_STATUS wlan_ipa_logging_sock_init(void)
 {
 	char log_thread_name[WLAN_IPA_THREAD_NAME_MAX] = {0};
+	QDF_STATUS status;
 
 	qdf_scnprintf(log_thread_name, sizeof(log_thread_name),
 		      "ipa_log_thread");
@@ -79,6 +172,13 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 	}
 
 	qdf_wake_up_process(g_ipa_logging_ctx.thread);
+	status = qdf_wait_single_event(&g_ipa_logging_ctx.start_event,
+				       WLAN_IPA_MAX_WAIT_TIME);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		ipa_err("failed to wake up kernel thread");
+		return status;
+	}
+
 	g_ipa_logging_ctx.drop_count = 0;
 	g_ipa_logging_ctx.log_truncation = false;
 	return QDF_STATUS_SUCCESS;
@@ -86,6 +186,13 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 
 void wlan_ipa_logging_sock_deinit(void)
 {
+	qdf_atomic_set_bit(WLAN_IPA_SHUTDOWN_LOGGING_THREAD,
+			   &g_ipa_logging_ctx.event_flag);
+	qdf_atomic_clear_bit(WLAN_IPA_POST_HOST_LOG,
+			     &g_ipa_logging_ctx.event_flag);
+	qdf_wake_up_interruptible(&g_ipa_logging_ctx.wait_q);
+	qdf_wait_single_event(&g_ipa_logging_ctx.shutdown_event,
+			      WLAN_IPA_MAX_WAIT_TIME);
 	qdf_event_destroy(&g_ipa_logging_ctx.shutdown_event);
 	qdf_event_destroy(&g_ipa_logging_ctx.start_event);
 	qdf_mem_free(g_ipa_log_msg);
