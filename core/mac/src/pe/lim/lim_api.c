@@ -4058,7 +4058,7 @@ lim_update_cuflag_bpcc_each_link(struct mlo_mgmt_ml_info *cu_params)
 		struct pe_session *session_entry = &mac->lim.gpSession[i];
 		uint8_t index  = session_entry->vdev_id;
 		int hw_link_id = 0;
-		uint16_t cu_flag = 0;
+		unsigned long cu_flag = 0;
 		int bpcc_index = 0;
 
 		if (session_entry->valid &&
@@ -4073,7 +4073,7 @@ lim_update_cuflag_bpcc_each_link(struct mlo_mgmt_ml_info *cu_params)
 			}
 
 			cu_flag = cu_params->cu_vdev_map[hw_link_id];
-			if (qdf_test_bit(index, (unsigned long *)&cu_flag))
+			if (qdf_test_bit(index, &cu_flag))
 				session_entry->mlo_link_info.bss_param_change = true;
 			else
 				session_entry->mlo_link_info.bss_param_change = false;
