@@ -6292,14 +6292,12 @@ void csr_send_set_ie(uint8_t type, uint8_t sub_type,
 	struct send_extcap_ie *msg;
 	QDF_STATUS status;
 
-	sme_debug("send SET IE msg to PE");
-
 	if (!(type == WLAN_VDEV_MLME_TYPE_STA ||
 	      (type == WLAN_VDEV_MLME_TYPE_AP &&
-	      sub_type == WLAN_VDEV_MLME_SUBTYPE_P2P_DEVICE))) {
-		sme_debug("Failed to send set IE req for vdev_%d", vdev_id);
+	      sub_type == WLAN_VDEV_MLME_SUBTYPE_P2P_DEVICE)))
 		return;
-	}
+
+	sme_debug("vdev %d type %d sub_type %d", vdev_id, type, sub_type);
 
 	msg = qdf_mem_malloc(sizeof(*msg));
 	if (!msg)
