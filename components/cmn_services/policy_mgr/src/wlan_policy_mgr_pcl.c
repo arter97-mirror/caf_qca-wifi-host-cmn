@@ -479,11 +479,9 @@ void policy_mgr_decr_session_set_pcl(struct wlan_objmgr_psoc *psoc,
 	    mode != QDF_STA_MODE)
 		polic_mgr_send_pcl_to_fw(psoc, mode);
 
-	/* do we need to change the HW mode */
-	if (!policy_mgr_is_hw_dbs_capable(psoc))
-		return;
+	if (policy_mgr_is_hw_dbs_capable(psoc))
+		policy_mgr_check_n_start_opportunistic_timer(psoc);
 
-	policy_mgr_check_n_start_opportunistic_timer(psoc);
 	if (mode == QDF_SAP_MODE || mode == QDF_P2P_GO_MODE)
 		ml_nlink_conn_change_notify(
 			psoc, session_id, ml_nlink_ap_stopped_evt, NULL);
