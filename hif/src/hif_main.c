@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -385,6 +385,11 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.id = MANGO_V1,
 		.subid = 0xF,
 		.name = "MANGO_V1",
+	},
+	{
+		.id = FIG_V1,
+		.subid = 0,
+		.name = "FIG_V1",
 	},
 	{
 		.id = PEACH_V1,
@@ -2460,6 +2465,12 @@ int hif_get_device_type(uint32_t device_id,
 		*hif_type = HIF_TYPE_PEACH;
 		*target_type = TARGET_TYPE_PEACH;
 		hif_info(" *********** PEACH *************");
+		break;
+
+	case FIG_DEVICE_ID:
+		*hif_type = HIF_TYPE_FIG;
+		*target_type = TARGET_TYPE_FIG;
+		hif_info(" *********** FIG *************");
 		break;
 
 	case QCA8074V2_DEVICE_ID:

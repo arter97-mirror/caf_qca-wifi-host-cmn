@@ -415,7 +415,8 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			 target_type == TARGET_TYPE_PEACH ||
 			 target_type == TARGET_TYPE_WCN6450 ||
 			 target_type == TARGET_TYPE_WCN7750 ||
-			 target_type == TARGET_TYPE_QCC2072)
+			 target_type == TARGET_TYPE_QCC2072 ||
+			 target_type == TARGET_TYPE_FIG)
 			hdr->cmn.cfr_metadata_version = CFR_META_VERSION_7;
 		else if ((target_type == TARGET_TYPE_QCA6018) ||
 			 ((target_type == TARGET_TYPE_QCA5018) && (!is_rcc)))
@@ -453,6 +454,8 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_ORNE;
 		else if (target_type == TARGET_TYPE_QCC2072)
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_COLOGNE;
+		else if (target_type == TARGET_TYPE_FIG)
+			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_FIG;
 		else
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_CYP;
 	}
@@ -533,7 +536,8 @@ static QDF_STATUS target_if_cfr_init_target(struct wlan_objmgr_psoc *psoc,
 		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_ORNE;
 	else if (target == TARGET_TYPE_QCC2072)
 		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_COLOGNE;
-
+	else if (target == TARGET_TYPE_FIG)
+		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_FIG;
 	return status;
 }
 
@@ -578,7 +582,8 @@ target_if_cfr_init_pdev(struct wlan_objmgr_psoc *psoc,
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN6450 ||
 	    target_type == TARGET_TYPE_WCN7750 ||
-	    target_type == TARGET_TYPE_QCC2072) {
+	    target_type == TARGET_TYPE_QCC2072 ||
+	    target_type == TARGET_TYPE_FIG) {
 		status = target_if_cfr_init_target(psoc,
 						   pdev, target_type);
 	} else if (target_type == TARGET_TYPE_ADRASTEA) {
@@ -607,7 +612,8 @@ target_if_cfr_deinit_pdev(struct wlan_objmgr_psoc *psoc,
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN6450 ||
 	    target_type == TARGET_TYPE_WCN7750 ||
-	    target_type == TARGET_TYPE_QCC2072) {
+	    target_type == TARGET_TYPE_QCC2072 ||
+	    target_type == TARGET_TYPE_FIG) {
 		status = target_if_cfr_deinit_target(psoc, pdev);
 	} else if (target_type == TARGET_TYPE_ADRASTEA) {
 		status = cfr_adrastea_deinit_pdev(psoc, pdev);

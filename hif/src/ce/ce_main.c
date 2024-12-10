@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1653,6 +1653,7 @@ static void hif_select_service_to_pipe_map(struct hif_softc *scn,
 		case TARGET_TYPE_KIWI:
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_PEACH:
+		case TARGET_TYPE_FIG:
 			hif_select_service_to_pipe_map_kiwi(scn,
 							 tgt_svc_map_to_use,
 							 sz_tgt_svc_map_to_use);
@@ -2101,6 +2102,7 @@ bool ce_srng_based(struct hif_softc *scn)
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_QCA5424:
 	case TARGET_TYPE_QCC2072:
+	case TARGET_TYPE_FIG:
 		return true;
 	default:
 		return false;
@@ -4954,6 +4956,7 @@ int hif_wlan_enable(struct hif_softc *scn)
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_QCC2072:
+	case TARGET_TYPE_FIG:
 		hif_prepare_hal_shadow_reg_cfg_v3(scn, &cfg);
 		break;
 	default:
@@ -5318,6 +5321,7 @@ void hif_ce_prepare_config(struct hif_softc *scn)
 	case TARGET_TYPE_KIWI:
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
+	case TARGET_TYPE_FIG:
 		hif_ce_select_config_kiwi(hif_state);
 		scn->ce_count = KIWI_CE_COUNT;
 		break;

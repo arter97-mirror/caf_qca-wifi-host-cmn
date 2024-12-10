@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3542,6 +3542,7 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_QCC2072:
+	case TARGET_TYPE_FIG:
 		soc->ast_override_support = 1;
 		soc->per_tid_basize_max_tid = 8;
 
@@ -4534,6 +4535,7 @@ void dp_soc_cfg_attach(struct dp_soc *soc)
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_QCC2072:
+	case TARGET_TYPE_FIG:
 		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	case TARGET_TYPE_QCA8074:
