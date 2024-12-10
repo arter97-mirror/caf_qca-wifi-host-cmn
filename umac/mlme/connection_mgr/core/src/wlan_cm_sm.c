@@ -286,6 +286,8 @@ bool cm_handle_fw_roam_connected_event(struct cnx_mgr *cm_ctx, uint16_t event,
 		break;
 	case WLAN_CM_SM_EV_ROAM_ABORT:
 	case WLAN_CM_SM_EV_ROAM_INVOKE_FAIL:
+		cm_roam_abort_event(cm_ctx->vdev);
+		fallthrough;
 	case WLAN_CM_SM_EV_ROAM_HO_FAIL:
 		cm_remove_cmd(cm_ctx, data);
 		break;
