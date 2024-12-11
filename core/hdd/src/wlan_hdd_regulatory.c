@@ -813,6 +813,9 @@ uint32_t hdd_reg_legacy_setband_to_reg_wifi_band_bitmap(uint8_t qca_setband)
 	case QCA_SETBAND_2G:
 		band_bitmap |= BIT(REG_BAND_2G);
 		break;
+	case (QCA_SETBAND_2G | QCA_SETBAND_5G):
+		band_bitmap |= (BIT(REG_BAND_2G) | BIT(REG_BAND_5G));
+		break;
 	default:
 		hdd_err("Invalid band value %u", qca_setband);
 		return 0;
