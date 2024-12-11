@@ -727,7 +727,7 @@ wlan_if_t dp_rx_get_vap_osif_dev(osif_dev *osdev)
 		primary_pdev_id = mldev->primary_pdev_id;
 
 		os_linkdev = mldev->link_dev[primary_chip_id][primary_pdev_id];
-		if (!os_linkdev)
+		if (!os_linkdev || osif_is_vap_in_recovery_mode(os_linkdev))
 			return NULL;
 
 		return os_linkdev->os_if;
@@ -736,12 +736,15 @@ wlan_if_t dp_rx_get_vap_osif_dev(osif_dev *osdev)
 	case OSIF_NETDEV_TYPE_WDS_EXT:
 		osifp = (osif_peer_dev *)(osdev);
 		osdev = osif_wds_ext_get_parent_osif(osifp);
-		if (!osdev)
+		if (!osdev || osif_is_vap_in_recovery_mode(osdev))
 			return NULL;
 
 		return osdev->os_if;
 #endif
 	}
+
+	if (osif_is_vap_in_recovery_mode(osdev))
+		return NULL;
 
 	return osdev->os_if;
 }
