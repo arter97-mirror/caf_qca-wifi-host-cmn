@@ -1466,6 +1466,7 @@ struct debug_vdev_data_me {
 	uint32_t dropped_send_fail;
 	uint32_t fail_seg_alloc;
 	uint32_t clone_fail;
+	uint32_t dropped_no_desc;
 };
 
 struct debug_vdev_data_rate {
@@ -1617,6 +1618,7 @@ struct debug_pdev_data_me {
 	uint32_t dropped_send_fail;
 	uint32_t fail_seg_alloc;
 	uint32_t clone_fail;
+	uint32_t dropped_no_desc;
 };
 
 struct debug_pdev_data_raw {

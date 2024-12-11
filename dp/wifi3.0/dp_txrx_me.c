@@ -693,8 +693,10 @@ dp_tx_me_send_convert_ucast(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		}
 
 		mc_uc_buf = dp_tx_me_alloc_buf(pdev);
-		if (!mc_uc_buf)
+		if (!mc_uc_buf) {
+			DP_STATS_INC(vdev, tx_i[xmit_type].mcast_en.dropped_no_desc, 1);
 			goto fail_buf_alloc;
+		}
 
 		/*
 		 * Check if we need to clone the nbuf
