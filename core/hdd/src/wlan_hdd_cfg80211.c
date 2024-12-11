@@ -33734,6 +33734,160 @@ QDF_STATUS hdd_mlo_dev_t2lm_notify_link_update(struct wlan_objmgr_vdev *vdev,
 }
 #endif
 
+#if defined(WLAN_FEATURE_11BE_MLO) && \
+defined(CFG80211_SETUP_LINK_RECONFIG_SUPPORT)
+/**
+ * wlan_hdd_cfg80211_setup_link_reconfig() - API to get add or
+ * delete link data from upper layer.
+ * @wiphy: wiphy struct
+ * @dev: net device
+ * @params: add or delete link reconfig params
+ *
+ * This API fetch add or delete link params based on link id mask
+ * and invokes target if API to send add delete link info.
+ *
+ * Return: status, 0 in case of success else negative value.
+ */
+static int
+wlan_hdd_cfg80211_setup_link_reconfig(struct wiphy *wiphy,
+				      struct net_device *dev,
+				      struct setup_link_reconfig_params *params)
+{
+	struct mlo_link_recfg_user_req_params *req_param = {0};
+	struct wlan_lmac_if_mlo_rx_ops *mlo_rx_ops;
+	struct hdd_adapter *adapter = WLAN_HDD_GET_PRIV_PTR(dev);
+	struct wlan_hdd_link_info *link_info;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_vdev *vdev;
+	uint8_t link_id, i = 0;
+	int ret;
+
+	hdd_enter();
+
+	if (hdd_validate_adapter(adapter))
+		return -EINVAL;
+
+	vdev = hdd_objmgr_get_vdev_by_user(adapter->deflink, WLAN_OSIF_ID);
+	if (!vdev) {
+		hdd_err("Vdev is null return");
+		return -ENOTCONN;
+	}
+
+	if (!wlan_cm_is_vdev_connected(vdev)) {
+		hdd_debug("Not associated!, vdev %d", wlan_vdev_get_id(vdev));
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+		ret = -ENOTCONN;
+	}
+
+	if (!mlo_is_link_recfg_supported(vdev)) {
+		hdd_debug("link reconfig not supported");
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+		return -EOPNOTSUPP;
+	}
+
+	if (mlo_is_link_recfg_in_progress(vdev)) {
+		hdd_debug("link reconfig already in progress");
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+		return -EALREADY;
+	}
+
+	req_param = &vdev->mlo_dev_ctx->link_rcfg_req;
+	qdf_mem_set(req_param, sizeof(req_param), 0);
+	req_param->vdev_id = adapter->deflink->vdev_id;
+
+	for (link_id = 0; link_id < IEEE80211_MLD_MAX_NUM_LINKS; link_id++) {
+		if (!(params->add_valid_links & BIT(link_id)))
+			continue;
+
+		qdf_mem_copy(&req_param->add_link[i].link_addr,
+			     &params->add_link_bssid[link_id],
+			     QDF_MAC_ADDR_SIZE);
+
+		wlan_scan_get_mld_addr_by_link_addr(
+					wlan_vdev_get_pdev(vdev),
+					(struct qdf_mac_addr *)
+					&req_param->add_link[i].link_addr,
+					(struct qdf_mac_addr *)
+					&req_param->mld_addr);
+
+		req_param->add_link[i].link_id = link_id;
+
+		/* ToDo: Add vdev_id for no common link*/
+
+		hdd_debug("add[%d] link with param link_id: %d link_addr: " QDF_MAC_ADDR_FMT "mld addr: " QDF_MAC_ADDR_FMT,
+			  i, link_id,
+			  QDF_MAC_ADDR_REF(&req_param->del_link[i].link_addr),
+			  QDF_MAC_ADDR_REF(&req_param->mld_addr));
+		i++;
+	}
+	req_param->num_link_add_param = i;
+
+	/* Reset value for delete link array */
+	i = 0;
+
+	for (link_id = 0; link_id < IEEE80211_MLD_MAX_NUM_LINKS; link_id++) {
+		if (!(params->delete_valid_links & BIT(link_id)))
+			continue;
+
+		/* To fetch peer mac address from link info stored in host */
+		link_info = hdd_get_link_info_by_ieee_link_id(adapter,
+							      link_id, false);
+		if (!link_info) {
+			hdd_err("Incorrect link info");
+			hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+			return -EINVAL;
+		}
+
+		qdf_mem_copy(&req_param->del_link[i].link_addr,
+			     (void *)&link_info->mlo_peer_info.peer_mac,
+			     QDF_MAC_ADDR_SIZE);
+
+		wlan_scan_get_mld_addr_by_link_addr(
+					wlan_vdev_get_pdev(vdev),
+					(struct qdf_mac_addr *)
+					&req_param->del_link[i].link_addr,
+					(struct qdf_mac_addr *)
+					&req_param->mld_addr);
+
+		req_param->del_link[i].link_id = link_id;
+
+		hdd_debug("del[%d] link with param link_id: %d link_addr " QDF_MAC_ADDR_FMT "mld addr " QDF_MAC_ADDR_FMT,
+			  i, link_id,
+			  QDF_MAC_ADDR_REF(&req_param->add_link[i].link_addr),
+			  QDF_MAC_ADDR_REF(&req_param->mld_addr));
+		i++;
+	}
+
+	req_param->num_link_del_param = i;
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		hdd_err("null psoc");
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	mlo_rx_ops = &psoc->soc_cb.rx_ops->mlo_rx_ops;
+	if (!mlo_rx_ops) {
+		hdd_err("tx_ops is null!");
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!mlo_rx_ops || !mlo_rx_ops->mlo_mgr_link_recfg_req_cmd_handler) {
+		hdd_err("mlo_tx_ops is null");
+		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	mlo_rx_ops->mlo_mgr_link_recfg_req_cmd_handler(wlan_vdev_get_psoc(vdev),
+						       req_param);
+
+	hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 1))
 static void __wlan_hdd_cfg80211_update_mgmt_frame_registrations(
 						struct wiphy *wiphy,
@@ -33895,5 +34049,10 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops = {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 1))
 	.update_mgmt_frame_registrations =
 			wlan_hdd_cfg80211_update_mgmt_frame_registrations,
+#endif
+#if defined(WLAN_FEATURE_11BE_MLO) && \
+defined(CFG80211_SETUP_LINK_RECONFIG_SUPPORT)
+	.setup_link_reconfig =
+		wlan_hdd_cfg80211_setup_link_reconfig,
 #endif
 };
