@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -536,6 +536,18 @@ struct CE_attr {
 	void *reserved;
 };
 
+/**
+ * struct CE_cmn_register_config - CE common register configuration structure
+ * @offset:  offset of common register from base address of CE register.
+ * @mask:    bit mask for values which are going to be set.
+ * @value:   final value of the ce common register
+ */
+struct CE_cmn_register_config {
+	uint32_t offset;
+	uint32_t mask;
+	uint32_t value;
+};
+
 /*
  * When using sendlist_send to transfer multiple buffer fragments, the
  * transfer context of each fragment, except last one, will be filled
@@ -683,6 +695,12 @@ struct ce_ops {
 	QDF_STATUS (*ce_get_direct_link_ring_info)(struct hif_softc *scn,
 					   struct hif_direct_link_ce_info *info,
 					   uint8_t max_ce_info_len);
+#endif
+#ifdef CE_CMN_REG_CFG_QMI
+	int (*ce_prepare_cmn_reg_cfg)(
+			struct hif_softc *scn,
+			struct CE_cmn_register_config **host_ce_cmn_reg_cfg_ret,
+			uint32_t *host_ce_cmn_reg_num_ret);
 #endif
 };
 
