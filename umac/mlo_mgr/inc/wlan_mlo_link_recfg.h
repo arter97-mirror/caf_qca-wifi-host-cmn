@@ -167,6 +167,7 @@ enum link_recfg_type {
  * use vdev with join_pending_vdev_id to trigger peer assoc after
  * receive recfg response.
  * @fw_ind_param: received fw link recfg evt params
+ * @mld_addr: mld address
  */
 struct wlan_mlo_link_recfg_req {
 	uint8_t vdev_id;
@@ -178,6 +179,7 @@ struct wlan_mlo_link_recfg_req {
 	enum link_recfg_type recfg_type;
 	uint8_t join_pending_vdev_id;
 	struct wlan_mlo_link_recfg_ind_param fw_ind_param;
+	uint8_t mld_addr[QDF_MAC_ADDR_SIZE];
 };
 
 /**
@@ -824,6 +826,20 @@ mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
 void
 mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev);
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+/**
+ * mlo_mgr_link_recfg_req_cmd_handler() - Handle link recfg req
+ * from user space
+ * @psoc: psoc object
+ * @req: userspace link recfg command
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_mgr_link_recfg_req_cmd_handler(
+			struct wlan_objmgr_psoc *psoc,
+			struct  mlo_link_recfg_user_req_params *req);
+#endif
 #else
 static inline void
 mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev)

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1035,6 +1035,8 @@ wlan_lmac_if_mlo_rx_link_switch_ops_register(struct wlan_lmac_if_rx_ops *rx_ops)
 					mlo_mgr_link_state_switch_info_handler;
 	rx_ops->mlo_rx_ops.mlo_link_recfg_indication_event_handler =
 			mlo_mgr_link_recfg_indication_event_handler;
+	rx_ops->mlo_rx_ops.mlo_mgr_link_recfg_req_cmd_handler =
+			mlo_mgr_link_recfg_req_cmd_handler;
 }
 #else
 static inline void

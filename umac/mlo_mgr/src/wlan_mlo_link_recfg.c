@@ -3243,7 +3243,7 @@ mlo_link_recfg_create_transition_list(
 		next->req.add_link_info = recfg_req->add_link_info;
 	} else {
 		/* not supported */
-		mlo_err("unexpected request del set 0x%x add set 0x%x curr set 0x%x",
+		mlo_err("not supported, unexpected request del set 0x%x add set 0x%x curr set 0x%x",
 			del_link_set, add_link_set, curr_link_set);
 		return QDF_STATUS_E_INVAL;
 	}
@@ -3822,6 +3822,21 @@ mlo_link_recfg_subst_start_active_entry(void *ctx)
 			ctx, WLAN_LINK_RECFG_SS_START_ACTIVE);
 }
 
+static void
+mlo_link_recfg_send_recfg_req_cmd(struct mlo_link_recfg_context *ctx,
+				  struct wlan_mlo_link_recfg_req *recfg_req)
+{
+	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops = NULL;
+
+	mlo_tx_ops = &ctx->psoc->soc_cb.tx_ops->mlo_ops;
+	if (!mlo_tx_ops || !mlo_tx_ops->send_link_reconfig_req_params_cmd) {
+		mlo_err("mlo_tx_ops is null");
+		return;
+	}
+
+	mlo_tx_ops->send_link_reconfig_req_params_cmd(ctx->psoc, recfg_req);
+}
+
 static bool
 mlo_link_recfg_subst_start_active_event(void *ctx,
 					uint16_t event,
@@ -3838,9 +3853,8 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
 		recfg_req = &recfg_ctx->curr_recfg_req;
 		if (recfg_req->is_user_req) {
-			/* send link reconfig wmi WMI_MLO_LINK_RECONFIG_CMDID
-			 * and wait for WLAN_LINK_RECFG_SM_EV_FW_IND
-			 */
+			/* send link reconfig wmi WMI_MLO_LINK_RECONFIG_CMDID */
+			mlo_link_recfg_send_recfg_req_cmd(ctx, recfg_req);
 		} else {
 			/* unexpected for ap initiated */
 		}
@@ -5590,3 +5604,82 @@ err:
 			       REASON_KEY_FAIL_TO_INSTALL, NULL);
 	}
 }
+
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+static void
+mlo_mgr_update_recfg_req(struct mlo_link_recfg_user_req_params *params,
+			 struct wlan_mlo_link_recfg_req *recfg_req)
+{
+	uint8_t i;
+
+	recfg_req->vdev_id = params->vdev_id;
+	recfg_req->is_user_req = true;
+
+	qdf_mem_copy(&recfg_req->mld_addr,
+		     &params->mld_addr, QDF_MAC_ADDR_SIZE);
+
+	if (params->num_link_add_param) {
+		recfg_req->add_link_info.num_links = params->num_link_add_param;
+		for (i = 0; i < params->num_link_add_param; i++) {
+			recfg_req->add_link_info.link[i].link_id =
+						params->add_link[i].link_id;
+			recfg_req->add_link_info.link[i].vdev_id =
+						params->add_link[i].vdev_id;
+			qdf_mem_copy(&recfg_req->add_link_info.link[i].ap_link_addr,
+				     &params->add_link[i].link_addr,
+				     QDF_MAC_ADDR_SIZE);
+		}
+	}
+	if (params->num_link_del_param) {
+		recfg_req->del_link_info.num_links = params->num_link_del_param;
+		for (i = 0; i < params->num_link_del_param; i++) {
+			recfg_req->del_link_info.link[i].link_id =
+				params->del_link[i].link_id;
+			qdf_mem_copy(&recfg_req->del_link_info.link[i].ap_link_addr,
+				     &params->del_link[i].link_addr,
+				     QDF_MAC_ADDR_SIZE);
+		}
+	}
+}
+
+QDF_STATUS
+mlo_mgr_link_recfg_req_cmd_handler(
+		struct wlan_objmgr_psoc *psoc,
+		struct mlo_link_recfg_user_req_params *params)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_mlo_link_recfg_req recfg_req = {0};
+	QDF_STATUS status;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	if (!params) {
+		mlo_err("Invalid params");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, params->vdev_id,
+						    WLAN_MLO_MGR_ID);
+	if (!vdev) {
+		mlo_err("Invalid link recfg VDEV %d", params->vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_mem_zero(&recfg_req, sizeof(struct wlan_mlo_link_recfg_req));
+	mlo_mgr_update_recfg_req(params, &recfg_req);
+
+	status = mlo_link_recfg_sm_deliver_event(
+				mlo_dev_ctx,
+				WLAN_LINK_RECFG_SM_EV_USER_REQ,
+				sizeof(recfg_req), &recfg_req);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3425,6 +3425,11 @@ QDF_STATUS (*extract_mlo_vdev_bcast_tid_to_link_map_event)(
 			void *buf,
 			struct mlo_bcast_t2lm_info *bcast_info);
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+QDF_STATUS (*send_link_reconfig_req_params_cmd)(
+			wmi_unified_t wmi_handle,
+			struct wmi_link_reconfig_req_params *params);
+#endif
 #endif /* WLAN_FEATURE_11BE */
 
 QDF_STATUS
@@ -3621,6 +3626,12 @@ QDF_STATUS (*send_get_cached_scan_report_cmd)(wmi_unified_t wmi_handle);
 
 void *(*extract_cached_scan_report_ev_params)(wmi_unified_t wmi_handle,
 					      void *ev_data, uint32_t data_len);
+#endif
+
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+QDF_STATUS (*send_link_reconfig_req_command)(
+			wmi_unified_t wmi_handle,
+			struct wmi_link_reconfig_req_params *params);
 #endif
 };
 

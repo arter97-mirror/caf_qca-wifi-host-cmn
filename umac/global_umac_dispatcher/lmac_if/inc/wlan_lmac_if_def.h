@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -65,6 +65,7 @@
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 #include <wlan_mlo_mgr_link_switch.h>
+#include <wlan_mlo_link_recfg.h>
 #endif
 
 /* Number of dev type: Direct attach and Offload */
@@ -1685,6 +1686,7 @@ struct wlan_lmac_if_son_rx_ops {
  * @peer_ptqm_migrate_send: API to send peer ptqm migration request to FW
  * @send_mlo_link_switch_cnf_cmd: Send link switch status to FW
  * @send_mlo_link_recfg_complete_cmd: Send link recfg complete to FW
+ * @send_link_reconfig_req_params_cmd: send link reconfig command to FW
  * @send_wsi_link_info_cmd: send WSI link stats to FW
  */
 struct wlan_lmac_if_mlo_tx_ops {
@@ -1721,10 +1723,15 @@ struct wlan_lmac_if_mlo_tx_ops {
 	(*send_mlo_link_recfg_complete_cmd)(
 			struct wlan_objmgr_psoc *psoc,
 			struct wlan_mlo_link_recfg_complete_params *params);
+
+	QDF_STATUS (*send_link_reconfig_req_params_cmd)(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_link_recfg_req *param);
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 	QDF_STATUS (*send_wsi_link_info_cmd)(
 				struct wlan_objmgr_pdev *pdev,
 				struct mlo_wsi_link_stats *param);
+
 };
 
 typedef void (*trace_link_set_active_cb_type)(
@@ -1746,6 +1753,8 @@ typedef void (*trace_link_set_active_cb_type)(
  * switch event
  * @mlo_link_recfg_indication_event_handler: function to handle link recfg
  * event
+ * @mlo_mgr_link_recfg_req_cmd_handler: function to receive user link reconfig
+ * req
  * @trace_link_set_active_cb: callback to trace the set link command and event
  */
 struct wlan_lmac_if_mlo_rx_ops {
@@ -1780,6 +1789,10 @@ struct wlan_lmac_if_mlo_rx_ops {
 	(*mlo_link_recfg_indication_event_handler)(
 			struct wlan_objmgr_psoc *psoc,
 			struct wlan_mlo_link_recfg_ind_param *evt_params);
+	QDF_STATUS
+	(*mlo_mgr_link_recfg_req_cmd_handler) (
+			struct wlan_objmgr_psoc *psoc,
+			struct mlo_link_recfg_user_req_params *params);
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 	trace_link_set_active_cb_type trace_link_set_active_cb;
 };

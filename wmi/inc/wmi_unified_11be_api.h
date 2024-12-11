@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -229,6 +229,17 @@ QDF_STATUS wmi_extract_mlo_link_state_info_event(
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
+ * wmi_send_link_reconfig_req_cmd - send link reconfig command to FW
+ * @wmi: wmi handler
+ * @params: reconfig req param
+ *
+ * Return: QDF status
+ */
+QDF_STATUS wmi_send_link_reconfig_req_cmd(
+			wmi_unified_t wmi,
+			struct wmi_link_reconfig_req_params *params);
+
+/**
  * wmi_send_mlo_link_switch_req_cnf_cmd() - Send WMI command to FW on
  * status of Link switch request received.
  * @wmi: wmi handle
@@ -309,6 +320,13 @@ wmi_extract_mlo_link_recfg_indication_evt(
 				wmi_unified_t wmi,
 				void *buf, uint8_t len,
 				struct wlan_mlo_link_recfg_ind_param *info)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS wmi_send_link_reconfig_req_cmd(
+			wmi_unified_t wmi,
+			struct wmi_link_reconfig_req_params *params)
 {
 	return QDF_STATUS_SUCCESS;
 }

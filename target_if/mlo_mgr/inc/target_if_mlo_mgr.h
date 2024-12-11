@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -156,6 +156,18 @@ void target_if_mlo_unregister_vdev_tid_to_link_map_event(
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
+ * target_if_send_link_reconfig_req_cmd() - Send user initiated link reconfig
+ * command handler
+ * @psoc: psoc object
+ * @recfg_req: reconfig request
+ *
+ * Return: None
+ */
+QDF_STATUS
+target_if_send_link_reconfig_req_cmd(struct wlan_objmgr_psoc *psoc,
+				     struct wlan_mlo_link_recfg_req *recfg_req);
+
+/**
  * target_if_mlo_register_trace_link_set_active_cb() - register/Unregister trace
  * set link cmd/evt callback
  * @psoc: psoc object
@@ -167,6 +179,14 @@ void
 target_if_mlo_register_trace_link_set_active_cb(
 		struct wlan_objmgr_psoc *psoc,
 		trace_link_set_active_cb_type trace_link_set_active_cb);
+#else
+static inline QDF_STATUS
+target_if_send_link_reconfig_req_cmd(struct wlan_objmgr_psoc *psoc,
+				     struct wlan_mlo_link_recfg_req *recfg_req)
+
+{
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 #else
 static inline QDF_STATUS

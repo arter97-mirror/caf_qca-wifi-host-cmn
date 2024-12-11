@@ -1392,6 +1392,35 @@ struct wmi_host_link_bss_params {
 	uint8_t op_code;
 };
 
+/**
+ * struct wmi_link_reconfig_param - wmi link reconfig param
+ * @link_id: link id
+ * @vdev_id: vdev id
+ * @link_addr: link address
+ */
+struct wmi_link_reconfig_param {
+	uint8_t link_id;
+	uint8_t vdev_id;
+	uint8_t link_addr[QDF_MAC_ADDR_SIZE];
+};
+
+/**
+ * struct wmi_link_reconfig_req_params - wmi link reconfig req
+ * @vdev_id: vdev id
+ * @mld_addr: mld_addr
+ * @link_add_param: link add param
+ * @num_link_add_param: no of link addition req
+ * @link_del_param: link del param
+ * @num_link_del_param: num link del param
+ */
+struct wmi_link_reconfig_req_params {
+	uint8_t vdev_id;
+	uint8_t mld_addr[QDF_MAC_ADDR_SIZE];
+	struct wmi_link_reconfig_param link_add_param[15];
+	uint32_t num_link_add_param;
+	struct wmi_link_reconfig_param link_del_param[15];
+	uint32_t num_link_del_param;
+};
 #endif /* WLAN_FEATURE_11BE */
 
 #ifdef WLAN_FEATURE_11BE_MLO

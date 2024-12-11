@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -207,6 +207,16 @@ QDF_STATUS wmi_extract_mlo_link_disable_request_evt(
 	if (wmi->ops->extract_mlo_link_disable_request_evt_param)
 		return wmi->ops->extract_mlo_link_disable_request_evt_param(
 							wmi, buf, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_send_link_reconfig_req_cmd(
+		struct wmi_unified *wmi,
+		struct wmi_link_reconfig_req_params *params)
+{
+	if (wmi->ops->send_link_reconfig_req_command)
+		return wmi->ops->send_link_reconfig_req_command(wmi, params);
 
 	return QDF_STATUS_E_FAILURE;
 }
