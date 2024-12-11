@@ -28,6 +28,8 @@
 #define WLAN_MIN_DIALOG_TOKEN         1
 #define WLAN_MAX_DIALOG_TOKEN         0xFF
 
+struct mlo_link_recfg_context;
+
 /**
  * enum wlan_link_recfg_sm_state - Link Reconfiguration states
  * @WLAN_LINK_RECFG_S_INIT: Default state, IDLE state
@@ -134,6 +136,24 @@ enum wlan_link_recfg_sm_evt {
 };
 
 /**
+ * enum link_recfg_type - link recfg type enum
+ * @link_recfg_undefined: link recfg type undefined.
+ * @link_recfg_del_only: delete link only
+ * @link_recfg_add_only: add link only
+ * @link_recfg_del_add_common_link: delete and add link with common link
+ * present
+ * @link_recfg_del_add_no_common_link: delete and add link with no
+ * common link present
+ */
+enum link_recfg_type {
+	link_recfg_undefined,
+	link_recfg_del_only,
+	link_recfg_add_only,
+	link_recfg_del_add_common_link,
+	link_recfg_del_add_no_common_link,
+};
+
+/**
  * struct wlan_mlo_link_recfg_req - Data Structure because of link
  *  reconfiguration request
  * @vdev_id: Hold information regarding all the links of ml connection
@@ -142,6 +162,10 @@ enum wlan_link_recfg_sm_evt {
  * @is_user_req: Request received from user/framework
  * @is_curr_req: Is current link reconfig request active
  * @is_fw_ind_received: if fw link recfg evt is received or not
+ * @recfg_type: link recfg type
+ * @join_pending_vdev_id: used on for no-common link recfg,
+ * use vdev with join_pending_vdev_id to trigger peer assoc after
+ * receive recfg response.
  * @fw_ind_param: received fw link recfg evt params
  */
 struct wlan_mlo_link_recfg_req {
@@ -151,10 +175,10 @@ struct wlan_mlo_link_recfg_req {
 	bool is_user_req;
 	bool is_curr_req;
 	bool is_fw_ind_received;
+	enum link_recfg_type recfg_type;
+	uint8_t join_pending_vdev_id;
 	struct wlan_mlo_link_recfg_ind_param fw_ind_param;
 };
-
-typedef QDF_STATUS (*state_abort_handler)(struct wlan_objmgr_psoc *psoc);
 
 /**
  * struct mlo_link_recfg_state_req - Link Reconfig add/del/xmit state
@@ -172,6 +196,28 @@ struct mlo_link_recfg_state_req {
 };
 
 /**
+ * typedef state_abort_handler - link recfg abort callback
+ * @psoc: psoc object
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_abort_handler)(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * typedef state_pre_link_add_handler - pre link add callback
+ * @recfg_ctx: recfg context
+ * @req: link recfg request
+ *
+ * Used in non-common link case, to be invoked when trigger connect to new
+ * Added link.
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_pre_link_add_handler)(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct mlo_link_recfg_state_req *req);
+
+/**
  * struct mlo_link_recfg_state_tran - Link Reconfig state transition
  * info
  * @state: target tansition state
@@ -179,12 +225,14 @@ struct mlo_link_recfg_state_req {
  * @req: state request param, also the event data
  * @abort_handler: error handler if error happends in the state,
  * it will be invoked after link config completed
+ * @pre_link_add_handler: pre link add callback
  */
 struct mlo_link_recfg_state_tran {
 	enum wlan_link_recfg_sm_state state;
 	enum wlan_link_recfg_sm_evt event;
 	struct mlo_link_recfg_state_req req;
 	state_abort_handler abort_handler;
+	state_pre_link_add_handler pre_link_add_handler;
 };
 
 /* WLAN_LINK_RECFG_SM_EV_XMIT_TX_DONE */
@@ -673,6 +721,29 @@ QDF_STATUS mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 				 uint32_t frame_len);
 
 /**
+ * mlo_link_recfg_link_add_join_req() - handle add link join request
+ * @vdev: vdev pointer
+ *
+ * API to handle add link join request for non-common link case
+ *
+ * Return: qdf status
+ */
+QDF_STATUS
+mlo_link_recfg_link_add_join_req(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_link_recfg_is_start_as_active() - check link start as active state
+ * when vdev is started on the link
+ * @vdev: vdev pointer
+ *
+ * For no-common link cases, L1 -> L2, or L1 L2 -> L3, the added link
+ * has to be active state. The flag will be sent in vdev start.
+ *
+ * Return: true if start the link with active state after vdev started
+ */
+bool mlo_link_recfg_is_start_as_active(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_link_recfg_dialog_token() - Generate dialog token for
  * for Link Reconfiguration action request frame
  * @req: mlo link reconfig req pointer
@@ -809,6 +880,18 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 		      uint32_t frame_len)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_link_add_join_req(struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline bool
+mlo_link_recfg_is_start_as_active(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
 }
 
 static inline QDF_STATUS

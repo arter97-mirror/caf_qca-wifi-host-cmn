@@ -1591,6 +1591,7 @@ struct wlan_mlo_bridge_sta {
  * @mlo_mlme_ext_connect_get_partner_info: Callback to get MLO partner info
  * @mlo_mlme_ext_set_ieee_link_id: Callback to update ieee_link_id in vap
  * @mlo_mlme_ext_teardown_tdls: Callback to teardown TDLS
+ * @mlo_mlme_ext_link_add_join_continue: Callback to continue link add connecting
  */
 struct mlo_mlme_ext_ops {
 	QDF_STATUS (*mlo_mlme_ext_validate_conn_req)(
@@ -1639,6 +1640,10 @@ struct mlo_mlme_ext_ops {
 #endif
 	QDF_STATUS (*mlo_mlme_ext_teardown_tdls)(struct wlan_objmgr_psoc *psoc,
 						 uint8_t vdev_id);
+	QDF_STATUS (*mlo_mlme_ext_link_add_join_continue)(
+					struct wlan_objmgr_psoc *psoc,
+					uint8_t vdev_id,
+					QDF_STATUS recfg_rsp_status);
 };
 
 /*

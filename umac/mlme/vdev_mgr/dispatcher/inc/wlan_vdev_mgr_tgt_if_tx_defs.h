@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -646,6 +646,7 @@ struct vdev_scan_nac_rssi_params {
  * @mlo_link_add: Dynamic link addition
  * @is_bridge_vdev: Indicate the vdev is a bridge vdev
  * @mlo_ieee_link_id_valid: Indicate the link id is valid
+ * @start_as_active: indicate link should be started in active status
  * @rsvd: reserved bits
  */
 struct mlo_vdev_start_flags {
@@ -656,7 +657,8 @@ struct mlo_vdev_start_flags {
 		 mlo_link_add:1,
 		 is_bridge_vdev:1,
 		 mlo_ieee_link_id_valid:1,
-		 rsvd:26;
+		 start_as_active:1,
+		 rsvd:24;
 };
 
 /**
