@@ -43,7 +43,7 @@ void wlan_telemetry_agent_application_init_notify
 
 void wlan_telemetry_agent_dynamic_app_init_deinit_notify
 	(enum agent_notification_event, enum rm_services service_id,
-	 uint64_t service_data);
+	 uint64_t service_data, bool is_container_app);
 
 QDF_STATUS wlan_telemetry_agent_init(void);
 QDF_STATUS wlan_telemetry_agent_deinit(void);
