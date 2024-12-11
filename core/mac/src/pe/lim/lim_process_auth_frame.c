@@ -1770,6 +1770,39 @@ bool lim_process_sae_preauth_frame(struct mac_context *mac, uint8_t *rx_pkt)
 	return true;
 }
 
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+static void lim_process_ft_sae_auth_frame(struct mac_context *mac,
+					  struct pe_session *pe_session,
+					  uint8_t *body, uint16_t frame_len)
+{
+}
+#else
+/**
+ * lim_process_ft_sae_auth_frame() - process SAE pre auth frame for LFR2
+ * @mac: pointer to mac_context
+ * @pe_session: pointer to pe session
+ * @body: auth frame body
+ * @frame_len: auth frame length
+ *
+ * Return: void
+ */
+static void lim_process_ft_sae_auth_frame(struct mac_context *mac,
+					  struct pe_session *pe_session,
+					  uint8_t *body, uint16_t frame_len)
+{
+	tpSirMacAuthFrameBody auth = (tpSirMacAuthFrameBody)body;
+
+	if (!pe_session || !pe_session->ftPEContext.pFTPreAuthReq) {
+		pe_debug("cannot find session or FT in FT pre-auth phase");
+		return;
+	}
+
+	if (auth->authTransactionSeqNumber == SIR_MAC_AUTH_FRAME_2)
+		lim_handle_ft_pre_auth_rsp(mac, QDF_STATUS_SUCCESS, body,
+					   frame_len, pe_session);
+}
+#endif
+
 /**
  *
  * Pass the received Auth frame. This is possibly the pre-auth from the
@@ -1803,10 +1836,6 @@ QDF_STATUS lim_process_auth_frame_no_session(struct mac_context *mac,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	sae_auth_frame = lim_process_sae_preauth_frame(mac, pBd);
-	if (sae_auth_frame)
-		return QDF_STATUS_SUCCESS;
-
 	/* Auth frame has come on a new BSS, however, we need to find the session
 	 * from where the auth-req was sent to the new AP
 	 */
@@ -1820,6 +1849,12 @@ QDF_STATUS lim_process_auth_frame_no_session(struct mac_context *mac,
 			mac->lim.gpSession[i].ftPEContext.ftPreAuthSession =
 				false;
 		}
+	}
+
+	sae_auth_frame = lim_process_sae_preauth_frame(mac, pBd);
+	if (sae_auth_frame) {
+		lim_process_ft_sae_auth_frame(mac, pe_session, pBody, frameLen);
+		return QDF_STATUS_SUCCESS;
 	}
 
 	if (!pe_session) {

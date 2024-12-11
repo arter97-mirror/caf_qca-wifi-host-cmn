@@ -1301,4 +1301,14 @@ void wlan_acquire_peer_key_wakelock(struct wlan_objmgr_pdev *pdev,
  */
 void wlan_release_peer_key_wakelock(struct wlan_objmgr_pdev *pdev,
 				    uint8_t *mac_addr);
+
+#ifdef WLAN_FEATURE_SAE
+/**
+ * wlan_vdev_is_sae_auth_type() - is vdev SAE auth type
+ * @vdev: pointer to vdev
+ *
+ * Return: true if vdev is SAE auth type
+ */
+bool wlan_vdev_is_sae_auth_type(struct wlan_objmgr_vdev *vdev);
+#endif /* WLAN_FEATURE_SAE */
 #endif
