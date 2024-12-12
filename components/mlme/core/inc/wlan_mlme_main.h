@@ -511,6 +511,7 @@ struct mlme_ap_config {
  * @country_ie_for_all_band: take all band channel info in country ie
  * @mlme_ap: SAP related vdev private configurations
  * @is_single_link_mlo_roam: Single link mlo roam flag
+ * @best_6g_power_type: best 6g power type
  */
 struct mlme_legacy_priv {
 	bool chan_switch_in_progress;
@@ -572,6 +573,7 @@ struct mlme_legacy_priv {
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_ROAM_OFFLOAD)
 	bool is_single_link_mlo_roam;
 #endif
+	enum reg_6g_ap_type best_6g_power_type;
 };
 
 /**
@@ -791,6 +793,24 @@ void mlme_set_follow_ap_edca_flag(struct wlan_objmgr_vdev *vdev, bool flag);
  * Return: value of follow_ap_edca
  */
 bool mlme_get_follow_ap_edca_flag(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlme_set_best_6g_power_type() - Set best 6g power type
+ * @vdev: vdev pointer
+ * @best_6g_power_type: best 6g power type
+ *
+ * Return: None
+ */
+void mlme_set_best_6g_power_type(struct wlan_objmgr_vdev *vdev,
+				 enum reg_6g_ap_type best_6g_power_type);
+
+/**
+ * mlme_get_best_6g_power_type() - Get best 6g power type
+ * @vdev: vdev pointer
+ *
+ * Return: value of best 6g power type
+ */
+enum reg_6g_ap_type mlme_get_best_6g_power_type(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlme_set_reconn_after_assoc_timeout_flag() - Set reconn after assoc timeout

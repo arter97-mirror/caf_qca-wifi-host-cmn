@@ -72,6 +72,7 @@
 #include <spatial_reuse_api.h>
 #include "wlan_psoc_mlme_api.h"
 #include "wlan_mlo_mgr_sta.h"
+#include "wlan_mlme_main.h"
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_peer.h>
 #endif
@@ -3331,6 +3332,7 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 			goto send;
 		}
 		session->best_6g_power_type = power_type_6g;
+		mlme_set_best_6g_power_type(session->vdev, power_type_6g);
 
 		lim_iterate_triplets(ie_struct->Country);
 
