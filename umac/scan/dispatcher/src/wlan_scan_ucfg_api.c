@@ -1327,8 +1327,7 @@ scan_unregister_pmo_handler(void)
 }
 #endif
 
-QDF_STATUS
-ucfg_scan_psoc_open(struct wlan_objmgr_psoc *psoc)
+QDF_STATUS ucfg_scan_psoc_open(struct wlan_objmgr_psoc *psoc)
 {
 	struct wlan_scan_obj *scan_obj;
 
@@ -1352,8 +1351,7 @@ ucfg_scan_psoc_open(struct wlan_objmgr_psoc *psoc)
 	return QDF_STATUS_SUCCESS;
 }
 
-QDF_STATUS
-ucfg_scan_psoc_close(struct wlan_objmgr_psoc *psoc)
+QDF_STATUS ucfg_scan_psoc_close(struct wlan_objmgr_psoc *psoc)
 {
 	struct wlan_scan_obj *scan_obj;
 

@@ -1785,10 +1785,12 @@ struct meta_rnr_channel {
  * struct channel_list_db - Database for channel information
  * @channel: channel meta information
  * @scan_count: scan count since the db was updated
+ * @rnr_db_lock: mutex lock
  */
 struct channel_list_db {
 	struct meta_rnr_channel channel[NUM_6GHZ_CHANNELS];
 	uint8_t scan_count;
+	qdf_mutex_t rnr_db_lock;
 };
 
 /**

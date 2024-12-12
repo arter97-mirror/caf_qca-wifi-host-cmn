@@ -236,6 +236,9 @@ struct channel_list_db *scm_get_rnr_channel_db(struct wlan_objmgr_psoc *psoc);
  * @psoc: psoc
  * @chan_freq: channel frequency
  *
+ * This API needs to be called while holding the mutex lock "rnr_db_lock"
+ * defined in the struct channel_list_db.
+ *
  * Return: channel meta information
  */
 struct meta_rnr_channel *scm_get_chan_meta(struct wlan_objmgr_psoc *psoc,

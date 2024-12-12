@@ -4285,6 +4285,7 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 	if (!rnr_channel_db)
 		return false;
 
+	qdf_mutex_acquire(&rnr_channel_db->rnr_db_lock);
 	for (i = 0; i < QDF_ARRAY_SIZE(rnr_channel_db->channel); i++) {
 		channel = &rnr_channel_db->channel[i];
 		if (channel->chan_freq != freq)
@@ -4310,6 +4311,7 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 			cur_node = next_node;
 		}
 	}
+	qdf_mutex_release(&rnr_channel_db->rnr_db_lock);
 
 	return ret;
 }
