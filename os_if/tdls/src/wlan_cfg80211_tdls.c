@@ -1188,11 +1188,12 @@ wlan_cfg80211_tdls_mgmt(struct wlan_objmgr_vdev *vdev,
 		&tdls_priv->tdls_mgmt_comp,
 		msecs_to_jiffies(WAIT_TIME_FOR_TDLS_MGMT));
 
-	if ((0 == rc) || (QDF_STATUS_SUCCESS !=
-				tdls_priv->mgmt_tx_completion_status)) {
-		osif_err("%s rc %ld mgmtTxCompletionStatus %u",
-			 !rc ? "Mgmt Tx Completion timed out" :
-			 "Mgmt Tx Completion failed",
+	if (!rc ||
+	    QDF_STATUS_SUCCESS != tdls_priv->mgmt_tx_completion_status) {
+		osif_err("vdev:%d %s rc %ld Tx Completion Status %u",
+			 mgmt_req.vdev_id,
+			 !rc ? "TDLS Tx Completion timed out" :
+			 "TDLS Tx Completion failed",
 			 rc, tdls_priv->mgmt_tx_completion_status);
 
 		tdls_priv->mgmt_tx_completion_status = false;
@@ -1200,7 +1201,8 @@ wlan_cfg80211_tdls_mgmt(struct wlan_objmgr_vdev *vdev,
 		goto error_mgmt_req;
 	}
 
-	osif_debug("Mgmt Tx Completion status %ld TxCompletion %u",
+	osif_debug("vdev:%d rc:%ld TDLS Tx Completion status:%u",
+		   mgmt_req.vdev_id,
 		   rc, tdls_priv->mgmt_tx_completion_status);
 
 	if (TDLS_SETUP_RESPONSE == action_code ||

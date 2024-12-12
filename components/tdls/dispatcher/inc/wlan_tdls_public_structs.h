@@ -92,7 +92,7 @@
 #define WAIT_TIME_TDLS_LINK_ESTABLISH_REQ      1500
 
 /** Maximum time(ms) to wait for tdls mgmt to complete **/
-#define WAIT_TIME_FOR_TDLS_MGMT         3000
+#define WAIT_TIME_FOR_TDLS_MGMT         1000
 
 /** Maximum time(ms) to wait for tdls mgmt to complete **/
 #define WAIT_TIME_FOR_TDLS_USER_CMD     11000
