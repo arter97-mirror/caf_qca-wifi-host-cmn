@@ -4994,6 +4994,11 @@ policy_mgr_get_allowed_tdls_offchannel_freq(struct wlan_objmgr_psoc *psoc,
 		/*
 		 * Allow all the 5GHz/6GHz channels when STA is in SCC
 		 */
+		if (!policy_mgr_is_hw_dbs_capable(psoc)) {
+			policy_mgr_debug("Disable TDLS Off-Channel on non-DBS solution");
+			return false;
+		}
+
 		if (policy_mgr_current_concurrency_is_scc(psoc)) {
 			*ch_freq = 0;
 			return true;
