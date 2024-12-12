@@ -15013,17 +15013,12 @@ dp_bucket_index(uint32_t delay, uint16_t *array, bool delay_in_us)
 	return (CDP_DELAY_BUCKET_MAX - 1);
 }
 
-#ifdef HW_TX_DELAY_STATS_ENABLE
 /*
  * cdp_fw_to_hw_delay_range
  * Fw to hw delay ranges in milliseconds
  */
 static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
-	0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 250, 500};
-#else
-static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
 	0, 2, 4, 6, 8, 10, 20, 30, 40, 50, 100, 250, 500};
-#endif
 
 /*
  * cdp_sw_enq_delay_range
@@ -15038,6 +15033,25 @@ static uint16_t cdp_sw_enq_delay[CDP_DELAY_BUCKET_MAX] = {
  */
 static uint16_t cdp_intfrm_delay[CDP_DELAY_BUCKET_MAX] = {
 	0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60};
+
+#ifdef HW_TX_DELAY_STATS_ENABLE
+static inline
+void dp_check_bucket_list_overflow(struct cdp_delay_stats *delay_stat,
+				   uint8_t delay_index)
+{
+	if (qdf_likely(delay_stat->delay_bucket[delay_index] < UINT_MAX))
+		return;
+
+	dp_debug_rl("delay_stat overflow detected: bin:%u", delay_index);
+	qdf_mem_zero(delay_stat, sizeof(struct cdp_delay_stats));
+}
+#else
+static inline
+void dp_check_bucket_list_overflow(struct cdp_delay_stats *delay_stat,
+				   uint8_t delay_index)
+{
+}
+#endif
 
 #ifdef WLAN_FEATURE_UL_JITTER
 /*
@@ -15064,8 +15078,9 @@ dp_fill_jitter_buckets(struct cdp_tid_tx_stats *tstats, uint32_t jitter)
 		return 0;
 
 	delay_index = dp_bucket_index(jitter, cdp_delay_jitter, false);
-	tstats->jitter_stats.stats.delay_bucket[delay_index]++;
 	stats = &tstats->jitter_stats.stats;
+	dp_check_bucket_list_overflow(stats, delay_index);
+	tstats->jitter_stats.stats.delay_bucket[delay_index]++;
 
 	return stats;
 }
@@ -15143,8 +15158,9 @@ dp_fill_delay_buckets(struct cdp_tid_tx_stats *tstats,
 
 		delay_index = dp_bucket_index(delay, cdp_fw_to_hw_delay,
 					      delay_in_us);
-		tstats->hwtx_delay.delay_bucket[delay_index]++;
 		stats = &tstats->hwtx_delay;
+		dp_check_bucket_list_overflow(stats, delay_index);
+		tstats->hwtx_delay.delay_bucket[delay_index]++;
 		dp_update_curr_delay(tstats, delay, delay_in_us);
 		break;
 
@@ -15208,7 +15224,7 @@ void dp_update_delay_stats(struct cdp_tid_tx_stats *tstats,
 		 * Compute minimum,average and maximum
 		 * delay
 		 */
-		if (delay < dstats->min_delay)
+		if (!dstats->min_delay || (delay < dstats->min_delay))
 			dstats->min_delay = delay;
 
 		if (delay > dstats->max_delay)
@@ -15233,7 +15249,7 @@ void dp_update_jitter_stats(struct cdp_tid_tx_stats *tstats, uint32_t jitter)
 	if (qdf_unlikely(!jstats))
 		return;
 	if (jitter != 0) {
-		if (jitter < jstats->min_delay)
+		if (!jstats->min_delay || jitter < jstats->min_delay)
 			jstats->min_delay = jitter;
 
 		if (jitter > jstats->max_delay)

@@ -1107,12 +1107,14 @@ enum cdp_rx_sw_drop {
  * @min_delay: minimum delay
  * @max_delay: maximum delay
  * @avg_delay: average delay
+ * @count: count
  */
 struct cdp_delay_stats {
 	uint64_t delay_bucket[CDP_DELAY_BUCKET_MAX];
 	uint32_t min_delay;
 	uint32_t max_delay;
 	uint32_t avg_delay;
+	uint64_t count;
 };
 
 #ifdef WLAN_FEATURE_UL_JITTER
