@@ -256,7 +256,10 @@ int dp_flush_tx_ring_rh(struct dp_pdev *pdev, int ring_id)
 	struct dp_tx_ep_info_rh *tx_ep_info = &rh_pdev->tx_ep_info;
 	int ret;
 
-	ce_ring_aquire_lock(tx_ep_info->ce_tx_hdl);
+	ret = ce_ring_try_aquire_lock(tx_ep_info->ce_tx_hdl);
+	if (ret)
+		return ret;
+
 	ret = hif_rtpm_get(HIF_RTPM_GET_ASYNC, HIF_RTPM_ID_DP);
 	if (ret) {
 		ce_ring_release_lock(tx_ep_info->ce_tx_hdl);
