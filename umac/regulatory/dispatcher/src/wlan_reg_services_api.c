@@ -58,6 +58,11 @@ QDF_STATUS wlan_reg_read_default_country(struct wlan_objmgr_psoc *psoc,
 	return reg_read_default_country(psoc, country);
 }
 
+enum phy_ch_width wlan_get_next_lower_bandwidth(enum phy_ch_width ch_width)
+{
+	return get_next_lower_bandwidth(ch_width);
+}
+
 QDF_STATUS wlan_reg_read_current_country(struct wlan_objmgr_psoc *psoc,
 					 uint8_t *country)
 {
@@ -2099,3 +2104,11 @@ wlan_reg_unregister_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 	reg_unregister_is_chan_connected_callback(psoc,
 					(reg_is_chan_connected_callback)cbk);
 }
+
+#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
+bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				     qdf_freq_t freq)
+{
+	return reg_is_vlp_depriority_freq(pdev, freq);
+}
+#endif
