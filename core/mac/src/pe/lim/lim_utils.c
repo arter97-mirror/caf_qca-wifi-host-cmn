@@ -11152,6 +11152,15 @@ QDF_STATUS lim_set_session_channel_params(struct mac_context *mac,
 			wlan_reg_chan_band_to_freq(mac->pdev,
 						   session->ch_center_freq_seg1,
 						   band_mask);
+	/* ch_params.mhz_freq_seg1 would be 0 only if the
+	 * session->ch_center_freq_seg1 is invalid/disabled. Downgrade the bw
+	 * to 160 MHz as 320 MHz can't be a valid bw for such channel.
+	 */
+	if (!ch_params.mhz_freq_seg1 &&
+	    ch_params.ch_width == CH_WIDTH_320MHZ) {
+		pe_debug("Downgrade ch_width to 160MHz");
+		ch_params.ch_width = CH_WIDTH_160MHZ;
+	}
 
 	if (band == (REG_BAND_2G) && (ch_params.ch_width == CH_WIDTH_40MHZ)) {
 		if (ch_params.mhz_freq_seg0 ==  session->curr_op_freq + 10)
