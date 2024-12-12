@@ -35,12 +35,20 @@
  * @rssi: rssi of peer(used only in case of non-assoc peer)
  * @vdev_id: vdev id
  * @peer_list_elem: list element
+ * @avg_rssi: Averaged rssi of peer
+ * @last_avg_rssi: Last updated Averaged rssi of peer
+ * @is_vbss_peer: VBSS peer or not
  */
 struct dp_lite_mon_peer {
 	union dp_align_mac_addr peer_mac;
 	uint8_t rssi;
 	uint8_t vdev_id;
 	TAILQ_ENTRY(dp_lite_mon_peer) peer_list_elem;
+#ifdef WLAN_FEATURE_VBSS
+	u_int8_t avg_rssi;
+	u_int8_t last_avg_rssi;
+	bool is_vbss_peer;
+#endif
 };
 
 /**
