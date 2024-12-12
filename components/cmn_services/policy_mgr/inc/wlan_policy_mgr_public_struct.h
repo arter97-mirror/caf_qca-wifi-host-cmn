@@ -51,6 +51,8 @@
 	(WEIGHT_OF_GROUP2_PCL_CHANNELS - PCL_GROUPS_WEIGHT_DIFFERENCE)
 #define WEIGHT_OF_GROUP4_PCL_CHANNELS \
 	(WEIGHT_OF_GROUP3_PCL_CHANNELS - PCL_GROUPS_WEIGHT_DIFFERENCE)
+#define WEIGHT_OF_GROUP5_PCL_CHANNELS \
+	(WEIGHT_OF_GROUP4_PCL_CHANNELS - PCL_GROUPS_WEIGHT_DIFFERENCE)
 
 #define WEIGHT_OF_NON_PCL_CHANNELS 1
 #define WEIGHT_OF_DISALLOWED_CHANNELS 0
@@ -1396,6 +1398,18 @@ struct go_plus_go_force_scc {
 struct sta_ap_intf_check_work_ctx {
 	struct wlan_objmgr_psoc *psoc;
 	struct go_plus_go_force_scc go_plus_go_force_scc;
+};
+
+/**
+ * struct weighed_pcl: Preferred channel info
+ * @freq: Channel frequency
+ * @weight: Weightage of the channel
+ * @flag: Validity of the channel in p2p negotiation
+ */
+struct weighed_pcl {
+	uint32_t freq;
+	uint32_t weight;
+	uint32_t flag;
 };
 
 #endif /* __WLAN_POLICY_MGR_PUBLIC_STRUCT_H */
