@@ -19967,7 +19967,10 @@ static int wlan_hdd_cfg80211_set_fast_roaming(struct hdd_context *hdd_ctx,
 		hdd_err("ROAM_CONFIG: sme_config_fast_roaming failed with status=%d",
 			qdf_status);
 
-	ret = qdf_status_to_os_return(qdf_status);
+	if (QDF_STATUS_E_ALREADY == qdf_status)
+		ret = qdf_status_to_os_return(QDF_STATUS_SUCCESS);
+	else
+		ret = qdf_status_to_os_return(qdf_status);
 
 	if (hdd_cm_is_vdev_associated(adapter->deflink) &&
 	    roaming_enabled &&
