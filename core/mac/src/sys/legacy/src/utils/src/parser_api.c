@@ -13971,9 +13971,16 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 		     WLAN_ML_BV_CINFO_MLDCAPANDOP_TIDTOLINKMAPNEGSUPPORT_IDX,
 		     WLAN_ML_BV_CINFO_MLDCAPANDOP_TIDTOLINKMAPNEGSUPPORT_BITS,
 		     mlo_ie->mld_capab_and_op_info.tid_link_map_supported);
+		QDF_SET_BITS(*(uint16_t *)p_ml_ie,
+		     WLAN_ML_BV_CINFO_MLDCAPANDOP_LINK_RECONFIG_IDX,
+		     WLAN_ML_BV_CINFO_MLDCAPANDOP_LINK_RECONFIG_BITS,
+		     mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support);
 		p_ml_ie += WLAN_ML_BV_CINFO_MLDCAPANDOP_SIZE;
 		len_remaining -= WLAN_ML_BV_CINFO_MLDCAPANDOP_SIZE;
 	}
+
+	pe_debug("link_reconfig_operation_support %d",
+		 mlo_ie->mld_capab_and_op_info.link_reconfig_operation_support);
 
 	if (mlo_ie->ext_mld_capab_and_op_present) {
 		QDF_SET_BITS(*(uint16_t *)p_ml_ie,
@@ -13983,6 +13990,7 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 		p_ml_ie += WLAN_ML_BV_CINFO_EXT_MLDCAPANDOP_SIZE;
 		len_remaining -= WLAN_ML_BV_CINFO_EXT_MLDCAPANDOP_SIZE;
 	}
+
 	mlo_ie->num_data = p_ml_ie - mlo_ie->data;
 
 	/* find out number of links from bcn or prb rsp */
