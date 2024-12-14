@@ -281,6 +281,7 @@ struct wlan_psoc_host_hw_mode_caps {
  * @emlcap: EML Capabilities info
  * @mldcap: MLD Capabilities info
  * @msdcap: Medium Synchronization Delay capabilities info
+ * @ext_mldcap: Extended MLD Capabilities info
  */
 struct wlan_psoc_host_mac_phy_caps_ext2 {
 	uint32_t hw_mode_id;
@@ -304,6 +305,7 @@ struct wlan_psoc_host_mac_phy_caps_ext2 {
 	struct wlan_mlo_eml_cap emlcap;
 	struct wlan_mlo_mld_cap mldcap;
 	struct wlan_mlo_msd_cap msdcap;
+	struct wlan_mlo_ext_mld_cap ext_mldcap;
 #endif
 };
 

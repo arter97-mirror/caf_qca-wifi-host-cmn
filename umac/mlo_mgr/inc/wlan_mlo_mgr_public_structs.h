@@ -1243,6 +1243,24 @@ struct wlan_mlo_mld_cap {
 		 reserved:2;
 };
 
+/**
+ * struct wlan_mlo_ext_mld_cap - Extended MLD capabilities of MLD
+ * @op_update_para_support: Operation Parameter Update Support
+ * @recommended_max_simultaneous_links: Recommended Max Simultaneous Links
+ * @nstr_status_update_support: NSTR Status Update Support
+ * @emlsr_one_link_support: EMLSR Enablement On One Link Support
+ * @btm_recommended_for_multi_ap: BTM MLD Recommendation For Multiple APs Supp
+ * @reserved: Reserved
+ */
+struct wlan_mlo_ext_mld_cap {
+	uint32_t op_update_para_support:1,
+		 recommended_max_simultaneous_links:4,
+		 nstr_status_update_support:1,
+		 emlsr_one_link_support:1,
+		 btm_recommended_for_multi_ap:1,
+		 reserved:24;
+};
+
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
 /**
  * struct ttlm_state_sm - TTLM state machine

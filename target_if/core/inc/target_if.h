@@ -3227,5 +3227,27 @@ target_if_get_fw_link_reconfig_support(struct wlan_objmgr_psoc *psoc)
 	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
 	return mac_phy_cap->mldcap.link_reconfig_operation_support;
 }
+
+/**
+ * target_if_get_fw_btm_multi_ap_support() - Get if FW supports BTM multi AP
+ * support or not
+ * @psoc: objmgr psoc
+ *
+ * Return: true if BTM multi AP supported else false
+ */
+static inline bool
+target_if_get_fw_btm_multi_ap_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return false;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+
+	return mac_phy_cap->ext_mldcap.btm_recommended_for_multi_ap;
+}
 #endif
 #endif

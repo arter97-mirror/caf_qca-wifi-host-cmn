@@ -2573,6 +2573,9 @@ enum wlan_ml_bv_cinfo_emlcap_transtimeout {
 /* Recommended Max Simultaneous Links */
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RECOM_MAX_SIMULT_LINKS_IDX        1
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RECOM_MAX_SIMULT_LINKS_BITS       4
+/* BTM MLD Recommendation For Multiple APs Support */
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_IDX        7
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_BITS       1
 
 /* Max value in octets of Common Info Length subfield of Common Info field in
  * Basic variant Multi-Link element

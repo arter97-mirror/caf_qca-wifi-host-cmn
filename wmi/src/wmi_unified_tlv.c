@@ -16187,6 +16187,25 @@ static void extract_mac_phy_msdcap(struct wlan_psoc_host_mac_phy_caps_ext2 *para
 	param->msdcap.medium_sync_ofdm_ed_thresh = WMI_MEDIUM_SYNC_OFDM_ED_THRESHOLD_GET(mac_phy_caps->msd_capability);
 	param->msdcap.medium_sync_max_txop_num = WMI_MEDIUM_SYNC_MAX_NO_TXOPS_GET(mac_phy_caps->msd_capability);
 }
+
+/**
+ * extract_mac_phy_ext_mldcap() - API to extract extended MLD Capabilities
+ * @param: host ext2 mac phy capabilities
+ * @mac_phy_caps: ext mac phy capabilities
+ *
+ * Return: void
+ */
+static void
+extract_mac_phy_ext_mldcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+			   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
+{
+	if (!param || !mac_phy_caps)
+		return;
+
+	param->ext_mldcap.btm_recommended_for_multi_ap =
+			WMI_EXT_MLD_BTM_MLD_RECOMMEND_FOR_MULTI_AP_SUPPORT_GET(
+					mac_phy_caps->ext_mld_capability);
+}
 #else
 static void extract_mac_phy_emlcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
 				   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
@@ -16202,6 +16221,11 @@ static void extract_mac_phy_msdcap(struct wlan_psoc_host_mac_phy_caps_ext2 *para
 				   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
 {
 }
+
+static void
+extract_mac_phy_ext_mldcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+			   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
+{}
 #endif
 
 /**
@@ -16338,6 +16362,7 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 	extract_mac_phy_emlcap(param, mac_phy_caps);
 	extract_mac_phy_mldcap(param, mac_phy_caps);
 	extract_mac_phy_msdcap(param, mac_phy_caps);
+	extract_mac_phy_ext_mldcap(param, mac_phy_caps);
 
 	return QDF_STATUS_SUCCESS;
 }
