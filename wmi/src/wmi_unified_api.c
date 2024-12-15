@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4322,6 +4322,20 @@ wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd(wmi_unified_t wmi_handle,
 									    param);
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS
+wmi_extract_power_boost_capability(wmi_unified_t wmi_handle, void *evt_buf,
+				   uint8_t phy_idx, bool *pb_cap)
+{
+	if (wmi_handle->ops->extract_power_boost_cap)
+		return wmi_handle->ops->extract_power_boost_cap(wmi_handle,
+								evt_buf,
+								phy_idx,
+								pb_cap);
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 QDF_STATUS wmi_unified_cached_scan_report_cmd_send(wmi_unified_t wmi_handle)

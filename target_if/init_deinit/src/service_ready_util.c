@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -735,6 +735,51 @@ free_and_return:
 
 	return qdf_status_to_os_return(status);
 }
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+int init_deinit_populate_power_boost_cap_ext2(wmi_unified_t wmi_handle,
+						uint8_t *event,
+						struct tgt_info *info)
+{
+	bool pb_cap = false;
+	struct wlan_objmgr_psoc *psoc;
+	uint32_t num_phy_reg_cap;
+	uint8_t phy_idx = 0;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (!event) {
+		target_if_err("TPB: event buffer is null");
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(wmi_handle->scn_handle);
+	if (!psoc) {
+		target_if_err("TPB: psoc is null");
+		return -EINVAL;
+	}
+
+	num_phy_reg_cap = info->service_ext_param.num_phy;
+	if (num_phy_reg_cap > PSOC_MAX_PHY_REG_CAP) {
+		target_if_err("TPB: Invalid num_phy_reg_cap %d",
+				num_phy_reg_cap);
+		return -EINVAL;
+	}
+
+	/*
+	 * For each phy_idx, ANN must be enabled, hence only check for
+	 * phy_idx = 0
+	 */
+	status = wmi_extract_power_boost_capability(
+			wmi_handle, event, phy_idx, &pb_cap);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("TPB: failed to parse power_boost cap ext2");
+		return qdf_status_to_os_return(status);
+	}
+
+	info->service_ext2_param.tx_powerboost = pb_cap;
+	return 0;
+}
+#endif
 
 QDF_STATUS init_deinit_dbr_ring_cap_free(
 		struct target_psoc_info *tgt_psoc_info)

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -23375,6 +23375,51 @@ mem_free:
 }
 #endif
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+static QDF_STATUS
+extract_power_boost_cap_tlv(wmi_unified_t wmi_handle,
+			    void *evt_buf, uint8_t phy_idx, bool *pb_cap)
+{
+	WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf;
+	WMI_POWER_BOOST_CAPABILITIES *ev_pb_cap;
+
+	if (!evt_buf) {
+		wmi_err("TPB: Event buffer is empty");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	param_buf = (WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *)evt_buf;
+
+	/* If number of PHY is reported as 0, return */
+	if (!param_buf->num_hal_reg_caps)
+		return QDF_STATUS_SUCCESS;
+
+	if (phy_idx >= param_buf->num_hal_reg_caps) {
+		wmi_err("TPB: phy_idx: %d >= num_hal_reg_caps: %d",
+			phy_idx, param_buf->num_hal_reg_caps);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!param_buf->power_boost_capabilities) {
+		wmi_debug("TPB: Power Boost capabilities is NULL");
+		*pb_cap = false;
+		/* Power Boost is optional, return success */
+		return QDF_STATUS_SUCCESS;
+	}
+
+	ev_pb_cap = &param_buf->power_boost_capabilities[phy_idx];
+
+	*pb_cap =
+		WMI_POWER_BOOST_CAPABILITIES_POWER_BOOST_ENABLE_GET(
+				ev_pb_cap->phy_id__power_boost_enable__word32);
+
+	wmi_debug("TPB: phy_id: %u, enabled: %s", phy_idx,
+		  *pb_cap ? "true" : "false");
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 struct wmi_ops tlv_ops =  {
 	.send_vdev_create_cmd = send_vdev_create_cmd_tlv,
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
@@ -23912,6 +23957,9 @@ struct wmi_ops tlv_ops =  {
 	.send_get_cached_scan_report_cmd = send_get_cached_scan_report_cmd_tlv,
 	.extract_cached_scan_report_ev_params =
 				extract_cached_scan_report_ev_params_tlv,
+#endif
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	.extract_power_boost_cap = extract_power_boost_cap_tlv,
 #endif
 };
 

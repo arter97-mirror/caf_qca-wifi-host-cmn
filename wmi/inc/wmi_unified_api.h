@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5443,5 +5443,21 @@ QDF_STATUS wmi_unified_cached_scan_report_cmd_send(wmi_unified_t wmi_handle);
 void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
 					       void *ev_data,
 					       uint32_t data_len);
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * wmi_extract_power_boost_capability - Extract power boost capability from
+ * service ready EXT2 event
+ * @wmi_handle: Handle to WMI
+ * @evt_buf: Event buffer
+ * @phy_idx: Phy index
+ * @pb_cap: pointer to powerboost capability
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_power_boost_capability(wmi_unified_t wmi_handle, void *evt_buf,
+				   uint8_t phy_idx, bool *pb_cap);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

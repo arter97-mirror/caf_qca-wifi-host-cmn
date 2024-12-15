@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -586,6 +586,7 @@ struct twt_wake_dur_and_wake_intvl {
  * @max_ml_sap_num_bss: Max sap bss
  * @max_ml_sta_num_bss: Max sta bss
  * @max_ml_bss_num: Max ML bss
+ * @tx_powerboost: Tx power boost
  */
 struct wlan_psoc_host_service_ext2_param {
 	uint8_t reg_db_version_major;
@@ -638,6 +639,9 @@ struct wlan_psoc_host_service_ext2_param {
 	uint8_t max_ml_sap_num_bss;
 	uint8_t max_ml_sta_num_bss;
 	uint8_t	max_ml_bss_num;
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	bool tx_powerboost;
+#endif
 };
 
 #endif /* _SERVICE_READY_PARAM_H_*/

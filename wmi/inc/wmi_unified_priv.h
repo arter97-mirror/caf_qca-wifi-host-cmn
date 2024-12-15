@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3644,6 +3644,12 @@ void *(*extract_cached_scan_report_ev_params)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_link_reconfig_req_command)(
 			wmi_unified_t wmi_handle,
 			struct wmi_link_reconfig_req_params *params);
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS
+(*extract_power_boost_cap)(wmi_unified_t wmi_handle,
+			   void *evt_buf, uint8_t phy_idx, bool *pb_cap);
 #endif
 };
 
