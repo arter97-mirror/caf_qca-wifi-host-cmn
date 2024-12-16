@@ -670,7 +670,7 @@ static void dp_ppeds_dealloc_ppe_vp_profile_be(struct dp_soc_be *be_soc,
  * @be_soc: SoC
  * @tx_desc: tx desc
  *
- * PPE DS tx desc free witout locks
+ * PPE DS tx desc free without locks
  *
  * Return: void
  */
@@ -678,13 +678,10 @@ static
 void dp_ppeds_tx_desc_free_nolock(struct dp_soc *soc,
 				  struct dp_tx_desc_s *tx_desc)
 {
-	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
-	struct dp_ppeds_tx_desc_pool_s *pool = NULL;
-
+	dp_ppeds_tx_desc_pool_ctx *pool = dp_get_ppeds_tx_desc_pool(soc);
 	tx_desc->nbuf = NULL;
 	tx_desc->flags = 0;
 
-	pool = &be_soc->ppeds_tx_desc;
 	tx_desc->next = pool->freelist;
 	pool->freelist = tx_desc;
 	pool->num_allocated--;
@@ -738,13 +735,12 @@ void
 dp_ppeds_tx_desc_pool_reset(struct dp_soc *soc,
 			    qdf_nbuf_t *nbuf_list)
 {
-	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
-	struct dp_ppeds_tx_desc_pool_s *pool = &be_soc->ppeds_tx_desc;
+	dp_ppeds_tx_desc_pool_ctx *pool = dp_get_ppeds_tx_desc_pool(soc);
 
 	if (pool) {
 		TX_DESC_LOCK_LOCK(&pool->lock);
 
-		qdf_tx_desc_pool_free_bufs(&be_soc->soc, &pool->desc_pages,
+		qdf_tx_desc_pool_free_bufs(soc, &pool->desc_pages,
 					   pool->elem_size, pool->elem_count,
 					   true, &dp_ppeds_tx_desc_reset,
 					   nbuf_list);
@@ -754,7 +750,6 @@ dp_ppeds_tx_desc_pool_reset(struct dp_soc *soc,
 		pool->hot_list_len = 0;
 	}
 }
-
 #else
 static void dp_ppeds_enable_txcomp_irq(struct dp_soc_be *be_soc)
 {
@@ -849,7 +844,7 @@ static void dp_ppeds_add_napi_ctxt(struct dp_soc_be *be_soc)
  * Return: QDF_STATUS
  */
 static inline QDF_STATUS
-dp_ppeds_tx_desc_pool_comp_alloc(struct dp_ppeds_tx_desc_pool_s *tx_desc_pool,
+dp_ppeds_tx_desc_pool_comp_alloc(dp_ppeds_tx_desc_pool_ctx *tx_desc_pool,
 				 uint16_t quota)
 {
 	if (!tx_desc_pool)
@@ -865,7 +860,7 @@ dp_ppeds_tx_desc_pool_comp_alloc(struct dp_ppeds_tx_desc_pool_s *tx_desc_pool,
 }
 
 /**
- * dp_ppeds_tx_desc_pool_free() - PPE DS free tx desc completion status
+ * dp_ppeds_tx_desc_pool_comp_free() - PPE DS free tx desc completion status
  * @tx_desc_pool: tx desc pool handle
  *
  * PPE DS free tx desc completion status
@@ -873,7 +868,7 @@ dp_ppeds_tx_desc_pool_comp_alloc(struct dp_ppeds_tx_desc_pool_s *tx_desc_pool,
  * Return: none
  */
 static inline void
-dp_ppeds_tx_desc_pool_comp_free(struct dp_ppeds_tx_desc_pool_s *tx_desc_pool)
+dp_ppeds_tx_desc_pool_comp_free(dp_ppeds_tx_desc_pool_ctx *tx_desc_pool)
 {
 	if (tx_desc_pool && tx_desc_pool->comp) {
 		qdf_mem_free(tx_desc_pool->comp);
@@ -882,14 +877,14 @@ dp_ppeds_tx_desc_pool_comp_free(struct dp_ppeds_tx_desc_pool_s *tx_desc_pool)
 }
 #else
 static inline QDF_STATUS
-dp_ppeds_tx_desc_pool_comp_alloc(struct dp_ppeds_tx_desc_pool_s *tx_desc_pool,
+dp_ppeds_tx_desc_pool_comp_alloc(dp_ppeds_tx_desc_pool_ctx *tx_desc_pool,
 				 uint16_t quota)
 {
 	return QDF_STATUS_SUCCESS;
 }
 
 static inline void
-dp_ppeds_tx_desc_pool_comp_free(struct dp_ppeds_tx_desc_pool_s *tx_desc_pool)
+dp_ppeds_tx_desc_pool_comp_free(dp_ppeds_tx_desc_pool_ctx *tx_desc_pool)
 {
 }
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
@@ -907,14 +902,13 @@ static QDF_STATUS
 dp_ppeds_tx_desc_pool_alloc(struct dp_soc *soc, uint16_t num_elem)
 {
 	uint32_t desc_size;
-	struct dp_ppeds_tx_desc_pool_s *tx_desc_pool;
-	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
+	dp_ppeds_tx_desc_pool_ctx *tx_desc_pool;
 	int napi_budget =
 		wlan_cfg_get_dp_soc_ppeds_tx_comp_napi_budget(soc->wlan_cfg_ctx);
 	uint16_t quota = 0;
 
 	desc_size =  qdf_get_pwr2(sizeof(struct dp_tx_desc_s));
-	tx_desc_pool = &be_soc->ppeds_tx_desc;
+	tx_desc_pool =  dp_get_ppeds_tx_desc_pool(soc);
 	dp_desc_multi_pages_mem_alloc(soc, QDF_DP_TX_PPEDS_DESC_TYPE,
 				      &tx_desc_pool->desc_pages,
 				      desc_size, num_elem,
@@ -945,11 +939,9 @@ dp_ppeds_tx_desc_pool_alloc(struct dp_soc *soc, uint16_t num_elem)
  */
 static void dp_ppeds_tx_desc_pool_free(struct dp_soc *soc)
 {
-	struct dp_ppeds_tx_desc_pool_s *tx_desc_pool;
-	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
+	dp_ppeds_tx_desc_pool_ctx *tx_desc_pool;
 
-	tx_desc_pool = &be_soc->ppeds_tx_desc;
-
+	tx_desc_pool = dp_get_ppeds_tx_desc_pool(soc);
 	dp_ppeds_tx_desc_pool_comp_free(tx_desc_pool);
 	if (tx_desc_pool->desc_pages.num_pages)
 		dp_desc_multi_pages_mem_free(soc, QDF_DP_TX_PPEDS_DESC_TYPE,
@@ -971,9 +963,8 @@ static QDF_STATUS dp_ppeds_tx_desc_pool_setup(struct dp_soc *soc,
 					      uint16_t num_elem,
 					      uint8_t pool_id)
 {
-	struct dp_ppeds_tx_desc_pool_s *tx_desc_pool;
+	dp_ppeds_tx_desc_pool_ctx *tx_desc_pool;
 	struct dp_hw_cookie_conversion_t *cc_ctx;
-	struct dp_soc_be *be_soc;
 	struct dp_spt_page_desc *page_desc;
 	struct dp_tx_desc_s *tx_desc;
 	uint32_t ppt_idx = 0;
@@ -984,9 +975,8 @@ static QDF_STATUS dp_ppeds_tx_desc_pool_setup(struct dp_soc *soc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	be_soc = dp_get_be_soc_from_dp_soc(soc);
-	tx_desc_pool = &be_soc->ppeds_tx_desc;
-	cc_ctx  = &be_soc->ppeds_tx_cc_ctx;
+	tx_desc_pool = dp_get_ppeds_tx_desc_pool(soc);
+	cc_ctx  = dp_get_ppeds_cookie_conv_ctx(soc);
 
 	tx_desc = tx_desc_pool->freelist;
 	page_desc = &cc_ctx->page_desc_base[0];
@@ -1028,13 +1018,12 @@ static QDF_STATUS dp_ppeds_tx_desc_pool_setup(struct dp_soc *soc,
  */
 static QDF_STATUS dp_ppeds_tx_desc_pool_init(struct dp_soc *soc)
 {
-	struct dp_ppeds_tx_desc_pool_s *tx_desc_pool;
+	dp_ppeds_tx_desc_pool_ctx *tx_desc_pool;
 	uint32_t desc_size, num_elem;
-	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
 
 	desc_size = qdf_get_pwr2(sizeof(struct dp_tx_desc_s));
 	num_elem = wlan_cfg_get_dp_soc_ppeds_num_tx_desc(soc->wlan_cfg_ctx);
-	tx_desc_pool = &be_soc->ppeds_tx_desc;
+	tx_desc_pool = dp_get_ppeds_tx_desc_pool(soc);
 
 	if (qdf_mem_multi_page_link(soc->osdev,
 				    &tx_desc_pool->desc_pages,
@@ -1058,7 +1047,6 @@ static QDF_STATUS dp_ppeds_tx_desc_pool_init(struct dp_soc *soc)
 	tx_desc_pool->num_free = num_elem;
 	tx_desc_pool->num_allocated = 0;
 	tx_desc_pool->hot_list_len = 0;
-
 	TX_DESC_LOCK_CREATE(&tx_desc_pool->lock);
 
 	return QDF_STATUS_SUCCESS;
@@ -1095,12 +1083,12 @@ void dp_ppeds_tx_desc_clean_up(void *ctxt, void *elem, void *elem_list)
  */
 static void
 dp_ppeds_tx_desc_pool_cleanup(struct dp_soc_be *be_soc,
-			      struct dp_ppeds_tx_desc_pool_s *tx_desc_pool)
+			      dp_ppeds_tx_desc_pool_ctx *tx_desc_pool)
 {
 	struct dp_spt_page_desc *page_desc;
 	int i = 0;
 	struct dp_hw_cookie_conversion_t *cc_ctx;
-	struct dp_ppeds_tx_desc_pool_s *pool = &be_soc->ppeds_tx_desc;
+	dp_ppeds_tx_desc_pool_ctx *pool = dp_get_ppeds_tx_desc_pool(&be_soc->soc);
 
 	if (pool) {
 		TX_DESC_LOCK_LOCK(&pool->lock);
@@ -1116,7 +1104,7 @@ dp_ppeds_tx_desc_pool_cleanup(struct dp_soc_be *be_soc,
 		TX_DESC_LOCK_UNLOCK(&pool->lock);
 	}
 
-	cc_ctx  = &be_soc->ppeds_tx_cc_ctx;
+	cc_ctx  = dp_get_ppeds_cookie_conv_ctx(&be_soc->soc);
 
 	for (i = 0; i < cc_ctx->total_page_num; i++) {
 		page_desc = &cc_ctx->page_desc_base[i];
@@ -1135,9 +1123,8 @@ dp_ppeds_tx_desc_pool_cleanup(struct dp_soc_be *be_soc,
 static void dp_ppeds_tx_desc_pool_deinit(struct dp_soc *soc)
 {
 	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
-	struct dp_ppeds_tx_desc_pool_s *tx_desc_pool;
+	dp_ppeds_tx_desc_pool_ctx *tx_desc_pool = dp_get_ppeds_tx_desc_pool(soc);
 
-	tx_desc_pool = &be_soc->ppeds_tx_desc;
 	dp_ppeds_tx_desc_pool_cleanup(be_soc, tx_desc_pool);
 	TX_DESC_POOL_MEMBER_CLEAN(tx_desc_pool);
 	TX_DESC_LOCK_DESTROY(&tx_desc_pool->lock);
@@ -1174,7 +1161,7 @@ static inline
 struct dp_tx_desc_s *dp_ppeds_tx_desc_alloc(struct dp_soc_be *be_soc)
 {
 	struct dp_tx_desc_s *tx_desc = NULL;
-	struct dp_ppeds_tx_desc_pool_s *pool = &be_soc->ppeds_tx_desc;
+	dp_ppeds_tx_desc_pool_ctx *pool = be_soc->global_pool;
 
 	TX_DESC_LOCK_LOCK(&pool->lock);
 
@@ -1197,6 +1184,7 @@ struct dp_tx_desc_s *dp_ppeds_tx_desc_alloc(struct dp_soc_be *be_soc)
 
 		/* Pool is exhausted */
 		if (!tx_desc) {
+#ifndef QCA_SUPPORT_DP_GLOBAL_CTX
 			if (qdf_atomic_read(&be_soc->borrow_count) <
 					be_soc->borrow_limit) {
 				/* Try to borrow from regular tx desc pools */
@@ -1207,9 +1195,12 @@ struct dp_tx_desc_s *dp_ppeds_tx_desc_alloc(struct dp_soc_be *be_soc)
 				}
 				qdf_atomic_inc(&be_soc->borrow_count);
 			} else {
+#endif
 				TX_DESC_LOCK_UNLOCK(&pool->lock);
 				goto failed;
+#ifndef QCA_SUPPORT_DP_GLOBAL_CTX
 			}
+#endif
 		} else {
 			tx_desc->flags = 0;
 			pool->freelist = pool->freelist->next;
@@ -1242,10 +1233,11 @@ failed:
  */
 qdf_nbuf_t dp_ppeds_tx_desc_free(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc)
 {
-	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
-	struct dp_ppeds_tx_desc_pool_s *pool = NULL;
+	dp_ppeds_tx_desc_pool_ctx *pool = NULL;
 	qdf_nbuf_t nbuf = NULL;
+	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
 
+#ifndef QCA_SUPPORT_DP_GLOBAL_CTX
 	if (tx_desc->pool_id != DP_TX_PPEDS_POOL_ID) {
 		nbuf = tx_desc->nbuf;
 		if (tx_desc->flags & DP_TX_DESC_FLAG_SPECIAL)
@@ -1258,9 +1250,8 @@ qdf_nbuf_t dp_ppeds_tx_desc_free(struct dp_soc *soc, struct dp_tx_desc_s *tx_des
 
 		return nbuf;
 	}
-
-	pool = &be_soc->ppeds_tx_desc;
-
+#endif
+	pool = be_soc->global_pool;
 	TX_DESC_LOCK_LOCK(&pool->lock);
 	if (pool->hot_list_len < be_soc->dp_ppeds_txdesc_hotlist_len &&
 			tx_desc->nbuf) {
@@ -1270,7 +1261,6 @@ qdf_nbuf_t dp_ppeds_tx_desc_free(struct dp_soc *soc, struct dp_tx_desc_s *tx_des
 	} else {
 		if (tx_desc->nbuf)
 			__dp_tx_outstanding_dec(soc);
-
 		nbuf = tx_desc->nbuf;
 		tx_desc->nbuf = NULL;
 		tx_desc->flags = 0;
@@ -2297,8 +2287,12 @@ static inline void dp_ppeds_txdesc_pool_deinit_be(struct dp_soc *soc)
 	/**
 	 * Tx desc pool deinit handled in umac post reset.
 	 */
-	if (!dp_check_umac_reset_in_progress(soc))
-		dp_ppeds_tx_desc_pool_deinit(soc);
+	if (!dp_check_umac_reset_in_progress(soc)) {
+		if (dp_ppeds_tx_desc_pool_deinit_be()) {
+			dp_ppeds_tx_desc_pool_deinit(soc);
+			dp_ppeds_clear_tx_desc_in_soc_be(soc);
+		}
+	}
 }
 
 /**
@@ -2334,7 +2328,10 @@ static inline void dp_ppeds_napi_enable_be(struct dp_soc *soc)
 
 static inline void dp_ppeds_txdesc_pool_deinit_be(struct dp_soc *soc)
 {
-	dp_ppeds_tx_desc_pool_deinit(soc);
+	if (dp_ppeds_tx_desc_pool_deinit_be()) {
+		dp_ppeds_tx_desc_pool_deinit(soc);
+		dp_ppeds_clear_tx_desc_in_soc_be(soc);
+	}
 }
 
 static inline void
@@ -2414,10 +2411,14 @@ QDF_STATUS dp_ppeds_start_soc_be(struct dp_soc *soc)
 
 	dp_ppeds_get_umac_reset_progress(soc, &wlan_info_hdl);
 	if (!wlan_info_hdl.umac_reset_inprogress) {
-		if (dp_ppeds_tx_desc_pool_init(soc) != QDF_STATUS_SUCCESS) {
-			dp_err("%p: ppeds tx desc pool init failed", soc);
-			return QDF_STATUS_SUCCESS;
+		if (dp_ppeds_tx_desc_pool_init_be()) {
+			if (dp_ppeds_tx_desc_pool_init(soc) != QDF_STATUS_SUCCESS) {
+				dp_err("%p: ppeds tx desc global pool init failed", soc);
+				return QDF_STATUS_SUCCESS;
+			}
+
 		}
+			dp_ppeds_fill_tx_desc_in_soc_be(soc);
 	}
 
 	dp_ppeds_napi_enable_be(soc);
@@ -2434,7 +2435,12 @@ QDF_STATUS dp_ppeds_start_soc_be(struct dp_soc *soc)
 	if (ppe_ds_wlan_instance_start(be_soc->ppeds_handle,
 				       &wlan_info_hdl) != 0) {
 		dp_err("%p: ppeds start failed", soc);
-		dp_ppeds_tx_desc_pool_deinit(soc);
+
+		if (dp_ppeds_tx_desc_pool_deinit_be()) {
+			dp_ppeds_tx_desc_pool_deinit(soc);
+			dp_ppeds_clear_tx_desc_in_soc_be(soc);
+		}
+
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -2497,8 +2503,17 @@ void dp_ppeds_detach_soc_be(struct dp_soc_be *be_soc)
 		return;
 
 	dp_ppeds_del_napi_ctxt(be_soc);
-	dp_ppeds_tx_desc_pool_free(soc);
-	dp_hw_cookie_conversion_detach(be_soc, &be_soc->ppeds_tx_cc_ctx);
+
+	if (dp_ppeds_tx_cookie_detach_be()) {
+		dp_hw_cookie_conversion_detach(be_soc, dp_get_ppeds_cookie_conv_ctx(soc));
+		dp_ppeds_tx_cookie_free_mem();
+	}
+
+	if (dp_ppeds_tx_desc_pool_free_be()) {
+		dp_ppeds_tx_desc_pool_free(soc);
+		dp_ppeds_tx_desc_pool_free_mem();
+	}
+
 	ppe_ds_wlan_inst_free(be_soc->ppeds_handle);
 	be_soc->ppeds_handle = NULL;
 
@@ -2632,12 +2647,13 @@ QDF_STATUS dp_ppeds_init_soc_be(struct dp_soc *soc)
 
 	be_soc->dp_ppeds_txdesc_hotlist_len =
 	wlan_cfg_get_dp_soc_ppeds_tx_desc_hotlist_len(soc->wlan_cfg_ctx);
+#ifndef QCA_SUPPORT_DP_GLOBAL_CTX
 	be_soc->borrow_limit =
 	wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(soc->wlan_cfg_ctx);
-
 	qdf_atomic_init(&be_soc->borrow_count);
-
-	return dp_hw_cookie_conversion_init(be_soc, &be_soc->ppeds_tx_cc_ctx);
+#endif
+	return dp_hw_cookie_conversion_init(be_soc,
+			dp_get_ppeds_cookie_conv_ctx(soc));
 }
 
 QDF_STATUS dp_ppeds_deinit_soc_be(struct dp_soc *soc)
@@ -2647,7 +2663,8 @@ QDF_STATUS dp_ppeds_deinit_soc_be(struct dp_soc *soc)
 	if (!be_soc->ppeds_handle)
 		return QDF_STATUS_SUCCESS;
 
-	return dp_hw_cookie_conversion_deinit(be_soc, &be_soc->ppeds_tx_cc_ctx);
+	return dp_hw_cookie_conversion_deinit(be_soc,
+				dp_get_ppeds_cookie_conv_ctx(soc));
 }
 
 /**
@@ -2665,17 +2682,21 @@ QDF_STATUS dp_ppeds_attach_soc_be(struct dp_soc_be *be_soc)
 
 	num_elem = wlan_cfg_get_dp_soc_ppeds_num_tx_desc(soc->wlan_cfg_ctx);
 
-	qdf_status =
-		dp_hw_cookie_conversion_attach(be_soc, &be_soc->ppeds_tx_cc_ctx,
-					       num_elem, QDF_DP_TX_PPEDS_DESC_TYPE,
-					       DP_TX_PPEDS_POOL_ID);
-	if (!QDF_IS_STATUS_SUCCESS(qdf_status))
-		goto fail1;
+	if (dp_ppeds_tx_cookie_attach_be()) {
+		qdf_status =
+			dp_hw_cookie_conversion_attach(be_soc, dp_get_ppeds_cookie_conv_ctx(soc),
+					num_elem, QDF_DP_TX_PPEDS_DESC_TYPE,
+					DP_TX_PPEDS_POOL_ID);
 
-	if (dp_ppeds_tx_desc_pool_alloc(soc, num_elem) != QDF_STATUS_SUCCESS) {
-		dp_err("%p: Failed to allocate ppeds tx desc pool", be_soc);
-		goto fail2;
+		if (!QDF_IS_STATUS_SUCCESS(qdf_status))
+			goto fail1;
 	}
+
+	if (dp_ppeds_tx_desc_pool_alloc_be())
+		if (dp_ppeds_tx_desc_pool_alloc(soc, num_elem) != QDF_STATUS_SUCCESS) {
+			dp_err("%p: Failed to allocate global ppeds tx desc pool", be_soc);
+			goto fail2;
+		}
 
 	if (dp_ppeds_init_ppe_vp_tbl_be(be_soc) != QDF_STATUS_SUCCESS) {
 		dp_err("%p: Failed to init ppe vp tbl", be_soc);
@@ -2716,11 +2737,272 @@ fail5:
 fail4:
 	dp_ppeds_deinit_ppe_vp_tbl_be(be_soc);
 fail3:
-	dp_ppeds_tx_desc_pool_free(soc);
+	if (dp_ppeds_tx_desc_pool_free_be()) {
+		dp_ppeds_tx_desc_pool_free(soc);
+		dp_ppeds_tx_desc_pool_free_mem();
+	}
 fail2:
-	dp_hw_cookie_conversion_detach(be_soc, &be_soc->ppeds_tx_cc_ctx);
+	if (dp_ppeds_tx_cookie_detach_be()) {
+		dp_hw_cookie_conversion_detach(be_soc, dp_get_ppeds_cookie_conv_ctx(soc));
+		dp_ppeds_tx_cookie_free_mem();
+	}
 fail1:
 	dp_err("Could not allocate PPEDS handle\n");
 	return QDF_STATUS_E_FAILURE;
 
 }
+
+/**
+ * dp_ppeds_fill_tx_desc_in_soc_be() - Initialize the global_pool in be_soc structure.
+ * @soc: SoC
+ *
+ */
+inline void dp_ppeds_fill_tx_desc_in_soc_be(struct dp_soc *soc)
+{
+	dp_ppeds_tx_desc_pool_ctx *tx_desc_pool;
+	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
+
+	tx_desc_pool = dp_get_ppeds_tx_desc_pool(soc);
+	be_soc->global_pool = tx_desc_pool;
+}
+
+/**
+ * dp_ppeds_clear_tx_desc_in_soc_be() - Clear the global_pool in be_soc structure.
+ * @soc: SoC
+ *
+ */
+inline void dp_ppeds_clear_tx_desc_in_soc_be(struct dp_soc *soc)
+{
+	struct dp_soc_be *be_soc = dp_get_be_soc_from_dp_soc(soc);
+
+	be_soc->global_pool = NULL;
+}
+
+#ifdef QCA_SUPPORT_DP_GLOBAL_CTX
+/**
+ * dp_ppeds_tx_desc_pool_alloc_be() - Checks if the pool is to be allocated
+ * in the respective context.
+ *
+ * Allocates the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_alloc_be(void)
+{
+	struct dp_global_context *dp_global = wlan_objmgr_get_global_ctx();
+
+	if (dp_global->tx_desc_ppeds_pool_alloc_cnt == 0) {
+		dp_global->tx_desc_ppeds_pool_alloc_cnt++;
+		dp_ppeds_tx_desc_pool_alloc_mem();
+		return true;
+	}
+
+	dp_global->tx_desc_ppeds_pool_alloc_cnt++;
+	return false;
+}
+
+/**
+ * dp_ppeds_tx_desc_pool_free_be() - Checks if the pool is to be freed
+ * in the respective context.
+ *
+ * Frees the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_free_be(void)
+{
+	struct dp_global_context *dp_global = wlan_objmgr_get_global_ctx();
+
+	dp_global->tx_desc_ppeds_pool_alloc_cnt--;
+	if (dp_global->tx_desc_ppeds_pool_alloc_cnt == 0)
+		return true;
+
+	return false;
+}
+
+/**
+ * dp_ppeds_tx_desc_pool_init_be() - Checks if the pool is to be initialized
+ * in the respective context
+ *
+ * Initializes the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_init_be(void)
+{
+	struct dp_global_context *dp_global = wlan_objmgr_get_global_ctx();
+
+	if (dp_global->tx_desc_ppeds_pool_init_cnt == 0) {
+		dp_global->tx_desc_ppeds_pool_init_cnt++;
+		return true;
+	}
+	dp_global->tx_desc_ppeds_pool_init_cnt++;
+	return false;
+}
+
+/**
+ * dp_ppeds_tx_desc_pool_deinit_be() - Checks if the pool is to be deinitializes
+ * in the respective context
+ *
+ * Deintializes the pool once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_desc_pool_deinit_be(void)
+{
+	struct dp_global_context *dp_global = wlan_objmgr_get_global_ctx();
+
+	dp_global->tx_desc_ppeds_pool_init_cnt--;
+	if (dp_global->tx_desc_ppeds_pool_init_cnt == 0)
+		return true;
+
+	return false;
+}
+
+/**
+ * dp_ppeds_tx_cookie_detach_be() - Checks if the cookie is to be detached
+ * in the respective context
+ *
+ * Detaches the cookie once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_cookie_detach_be(void)
+{
+	struct dp_global_context *dp_global = wlan_objmgr_get_global_ctx();
+
+	dp_global->tx_cookie_ppeds_ctx_alloc_cnt--;
+	if (dp_global->tx_cookie_ppeds_ctx_alloc_cnt == 0)
+		return true;
+
+	return false;
+}
+
+/**
+ * dp_ppeds_tx_cookie_attach_be() - Checks if the cookie is to be attached
+ * in the respective context
+ *
+ * Attaches the cookies once for all SOCs in the global context,
+ * and every time in the SOC context.
+ *
+ * Return: bool
+ */
+inline bool dp_ppeds_tx_cookie_attach_be(void)
+{
+	struct dp_global_context *dp_global = wlan_objmgr_get_global_ctx();
+
+	if (dp_global->tx_cookie_ppeds_ctx_alloc_cnt == 0) {
+		dp_global->tx_cookie_ppeds_ctx_alloc_cnt++;
+		dp_ppeds_tx_cookie_alloc_mem();
+		return true;
+	}
+	dp_global->tx_cookie_ppeds_ctx_alloc_cnt++;
+	return false;
+}
+
+/**
+ * dp_ppeds_tx_desc_pool_alloc_mem() - PPE DS allocate mem
+ *
+ * PPE DS allocate mem
+ */
+inline void dp_ppeds_tx_desc_pool_alloc_mem(void)
+{
+	struct dp_global_context *dp_global = NULL;
+
+	dp_global = wlan_objmgr_get_global_ctx();
+
+	dp_global->ppeds_tx_desc =
+		qdf_mem_malloc(sizeof(struct dp_tx_desc_pool_s));
+}
+
+/**
+ * dp_ppeds_tx_cookie_alloc_mem() - PPE DS cookie allocate mem
+ *
+ * PPE DS cookie allocate mem
+ */
+inline void dp_ppeds_tx_cookie_alloc_mem(void)
+{
+	struct dp_global_context *dp_global = NULL;
+
+	dp_global = wlan_objmgr_get_global_ctx();
+
+	dp_global->ppeds_tx_cc_ctx =
+		qdf_mem_malloc(sizeof(struct dp_hw_cookie_conversion_t));
+}
+
+/**
+ * dp_ppeds_tx_desc_pool_free_mem() - PPE DS free memory
+ *
+ * PPE DS free pool mem
+ */
+inline void dp_ppeds_tx_desc_pool_free_mem(void)
+{
+	struct dp_global_context *dp_global = NULL;
+
+	dp_global = wlan_objmgr_get_global_ctx();
+	if (!dp_global->ppeds_tx_desc)
+		return;
+
+	qdf_mem_free(dp_global->ppeds_tx_desc);
+	dp_global->ppeds_tx_desc = NULL;
+}
+
+/**
+ * dp_ppeds_tx_cookie_free_mem() - PPE DS free cookie memory
+ *
+ * PPE DS free cookie mem
+ */
+inline void dp_ppeds_tx_cookie_free_mem(void)
+{
+	struct dp_global_context *dp_global = NULL;
+
+	dp_global = wlan_objmgr_get_global_ctx();
+	if (!dp_global->ppeds_tx_cc_ctx)
+		return;
+
+	qdf_mem_free(dp_global->ppeds_tx_cc_ctx);
+	dp_global->ppeds_tx_cc_ctx = NULL;
+}
+#else
+inline bool dp_ppeds_tx_desc_pool_alloc_be(void)
+{
+	return true;
+}
+inline bool dp_ppeds_tx_desc_pool_free_be(void)
+{
+	return true;
+}
+inline bool dp_ppeds_tx_desc_pool_init_be(void)
+{
+	return true;
+}
+inline bool dp_ppeds_tx_desc_pool_deinit_be(void)
+{
+	return true;
+}
+inline bool dp_ppeds_tx_cookie_detach_be(void)
+{
+	return true;
+}
+inline bool dp_ppeds_tx_cookie_attach_be(void)
+{
+	return true;
+}
+inline void dp_ppeds_tx_desc_pool_alloc_mem(void)
+{
+}
+inline void dp_ppeds_tx_cookie_alloc_mem(void)
+{
+}
+inline void dp_ppeds_tx_desc_pool_free_mem(void)
+{
+}
+inline void dp_ppeds_tx_cookie_free_mem(void)
+{
+}
+#endif
