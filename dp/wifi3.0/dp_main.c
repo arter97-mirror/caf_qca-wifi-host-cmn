@@ -8647,7 +8647,7 @@ dp_print_host_stats(struct dp_vdev *vdev,
 		break;
 	case TXRX_LPC_COC_STATS:
 		dp_dump_srng_high_wm_stats(soc, DP_SRNG_WM_MASK_LPC_COC);
-		print_lpc_coc_stats(pdev);
+		dp_print_lpc_coc_stats(pdev);
 		break;
 	default:
 		dp_info("Wrong Input For TxRx Host Stats");

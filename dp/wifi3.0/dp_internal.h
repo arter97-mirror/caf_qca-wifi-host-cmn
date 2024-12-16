@@ -1136,7 +1136,7 @@ hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
 }
 
 static inline
-void print_lpc_coc_stats(struct dp_pdev *pdev)
+void dp_print_lpc_coc_stats(struct dp_pdev *pdev)
 {
 }
 
