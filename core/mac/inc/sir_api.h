@@ -2251,6 +2251,7 @@ typedef enum tUpdateIEsType {
 	eUPDATE_IE_PROBE_RESP,
 	eUPDATE_IE_ASSOC_RESP,
 	eUPDATE_IE_EDCA_PARAMS,
+	eUPDATE_IE_EDCA_ALL_PROFILE,
 
 	/* Add type above this line */
 	/* this is used to reset all buffer */
