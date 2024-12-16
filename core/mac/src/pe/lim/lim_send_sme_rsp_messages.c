@@ -2118,6 +2118,7 @@ void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 	tLimChannelSwitchInfo *lim_ch_switch = NULL;
 	uint8_t link_id;
 	QDF_STATUS status;
+	uint8_t ht_width;
 
 	if (!csa_params) {
 		pe_err("limMsgQ body ptr is NULL");
@@ -2219,13 +2220,15 @@ void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 	channel_bonding_mode = lim_get_cb_mode_for_freq(mac_ctx, session_entry,
 						   csa_params->csa_chan_freq);
 
-	pe_debug("Session %d vdev %d: vht: %d ht: %d he %d cbmode %d",
+	pe_debug("Session %d vdev %d: vht: %d htC: %d ht: %d he %d cbmode %d",
 		 session_entry->peSessionId, session_entry->vdev_id,
 		 session_entry->vhtCapability,
+		 session_entry->htCapability,
 		 session_entry->htSupportedChannelWidthSet,
 		 lim_is_session_he_capable(session_entry),
 		 channel_bonding_mode);
 
+	ht_width = session_entry->htSupportedChannelWidthSet;
 	session_entry->htSupportedChannelWidthSet = false;
 	wlan_reg_read_current_country(mac_ctx->psoc, country_code);
 	if (!csa_params->ies_present_flag ||
@@ -2410,7 +2413,7 @@ void lim_handle_sta_csa_param(struct mac_context *mac_ctx,
 				lim_ch_switch->sec_ch_offset =
 					PHY_SINGLE_CHANNEL_CENTERED;
 			}
-		} else {
+		} else if (ht_width) {
 			lim_ch_switch->ch_width =
 				CH_WIDTH_40MHZ;
 			lim_ch_switch->state =
