@@ -9671,6 +9671,12 @@ static void lim_process_update_add_ies(struct mac_context *mac_ctx,
 		pe_err("msg_buf is NULL");
 		return;
 	}
+
+	if (update_add_ies->updateType == eUPDATE_IE_EDCA_ALL_PROFILE) {
+		sch_edca_profile_update_all(mac_ctx);
+		return;
+	}
+
 	update_ie = &update_add_ies->updateIE;
 	/* incoming message has smeSession, use BSSID to find PE session */
 	session_entry = pe_find_session_by_bssid(mac_ctx,
