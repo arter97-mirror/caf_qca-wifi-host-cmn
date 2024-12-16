@@ -8814,7 +8814,6 @@ static int hdd_configure_chain_mask(struct hdd_adapter *adapter)
 	return 0;
 
 error:
-	hdd_debug("WMI PDEV set param failed");
 	return -EINVAL;
 }
 
