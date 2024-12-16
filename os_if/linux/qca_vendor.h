@@ -6476,6 +6476,40 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL = 122,
 
+	/* 16-bit unsigned value. For probing RSSI on other antennas, this
+	 * attribute specifies number of WLAN probe.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_COUNT_WLAN = 124,
+
+	/* 16-bit unsigned value. For probing RSSI on other antennas, this
+	 * attribute specifies number of BT probe count.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_COUNT_BT = 125,
+
+	/* 16-bit unsigned value. This attribute specifies WLAN RSSI threshold.
+	 * FW will start to probe RSSI on other antenna if WLAN RSSI lower than
+	 * the threshold.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_WLAN_RSSI_THRESHOLD = 126,
+
+	/* 16-bit unsigned value. This attribute specifies BT RSSI threshold.
+	 * FW will start to probe RSSI on other antenna if BT RSSI lower than
+	 * the threshold.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_BT_RSSI_THRESHOLD = 127,
+
+	/* 16-bit unsigned value. This attribute specifies WLAN RSSI difference.
+	 * FW will select better antenna if WLAN RSSI difference larger than the
+	 * value.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SWITCH_WLAN_RSSI_DIFF = 128,
+
+	/* 16-bit unsigned value. This attribute specifies BT RSSI difference.
+	 * FW will select better antenna if WLAN RSSI difference larger than the
+	 * value.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SWITCH_BT_RSSI_DIFF = 129,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
