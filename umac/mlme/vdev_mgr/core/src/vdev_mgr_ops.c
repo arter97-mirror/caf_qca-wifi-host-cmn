@@ -256,6 +256,26 @@ vdev_mgr_set_cur_chan_punc_bitmap(struct wlan_channel *des_chan,
 #endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
+
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * vdev_mgr_start_param_update_linkid() -Update link id
+ * @vdev: pointer to vdev
+ * @param: vdev start parameter
+ *
+ * Return: none
+ */
+static inline void
+vdev_mgr_start_param_update_linkid(struct wlan_objmgr_vdev *vdev,
+				   struct vdev_start_params *param)
+{
+	param->mlo_flags.mlo_ieee_link_id_valid = 1;
+	param->link_id = wlan_vdev_get_link_id(vdev);
+}
+#else
+#define vdev_mgr_start_param_update_linkid(vdev, param)
+#endif
+
 #ifdef WLAN_MCAST_MLO
 static inline void
 vdev_mgr_start_param_update_mlo_mcast(struct wlan_objmgr_vdev *vdev,
@@ -418,6 +438,8 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 		/* Update the bridge vdev bit */
 		param->mlo_flags.is_bridge_vdev =
 			wlan_vdev_mlme_is_mlo_bridge_vdev(vdev);
+
+		vdev_mgr_start_param_update_linkid(vdev, param);
 		vdev_mgr_start_param_update_mlo_mcast(vdev, param);
 		vdev_mgr_start_param_update_mlo_partner(vdev, param);
 	}
