@@ -366,3 +366,10 @@ bool wlan_ipa_is_vlan_enabled(void)
 }
 
 qdf_export_symbol(wlan_ipa_is_vlan_enabled);
+
+bool wlan_ipa_is_shared_smmu_enabled(void)
+{
+	return ipa_get_shared_smmu_enable();
+}
+
+qdf_export_symbol(wlan_ipa_is_shared_smmu_enabled);

@@ -997,7 +997,7 @@ cdp_set_monitor_filter(ol_txrx_soc_handle soc, uint8_t pdev_id,
 /******************************************************************************
  * Data Interface (B Interface)
  *****************************************************************************/
-static inline void
+static inline struct cdp_vdev *
 cdp_vdev_register(ol_txrx_soc_handle soc, uint8_t vdev_id,
 		  ol_osif_vdev_handle osif_vdev,
 		  struct ol_txrx_ops *txrx_ops)
@@ -1005,15 +1005,15 @@ cdp_vdev_register(ol_txrx_soc_handle soc, uint8_t vdev_id,
 	if (!soc || !soc->ops) {
 		dp_cdp_debug("Invalid Instance:");
 		QDF_BUG(0);
-		return;
+		return NULL;
 	}
 
 	if (!soc->ops->cmn_drv_ops ||
 	    !soc->ops->cmn_drv_ops->txrx_vdev_register)
-		return;
+		return NULL;
 
-	soc->ops->cmn_drv_ops->txrx_vdev_register(soc, vdev_id,
-			osif_vdev, txrx_ops);
+	return soc->ops->cmn_drv_ops->txrx_vdev_register(soc, vdev_id,
+							 osif_vdev, txrx_ops);
 }
 
 static inline int

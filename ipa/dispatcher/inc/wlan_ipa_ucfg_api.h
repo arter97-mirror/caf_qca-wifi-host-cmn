@@ -511,6 +511,22 @@ bool ucfg_ipa_set_perf_level_bw_enabled(struct wlan_objmgr_pdev *pdev);
 void ucfg_ipa_set_perf_level_bw(struct wlan_objmgr_pdev *pdev,
 				enum wlan_ipa_bw_level lvl);
 
+/**
+ * ucfg_ipa_set_shared_smmu_enable() - set g_ipa_shared_smmu_enable
+ * @flag: flag to set g_ipa_shared_smmu_enable
+ *
+ * Return: None
+ */
+void ucfg_ipa_set_shared_smmu_enable(bool flag);
+
+/**
+ * ucfg_ipa_get_shared_smmu_enable() - check if IPA shared SMMU is disabled
+ *                                     in pld
+ *
+ * Return: g_ipa_shared_smmu_enable
+ */
+bool ucfg_ipa_get_shared_smmu_enable(void);
+
 #else
 static inline void ucfg_ipa_set_pld_enable(bool flag)
 {
@@ -792,6 +808,15 @@ bool ucfg_ipa_set_perf_level_bw_enabled(struct wlan_objmgr_pdev *pdev)
 static inline void ucfg_ipa_set_perf_level_bw(struct wlan_objmgr_pdev *pdev,
 					      enum wlan_ipa_bw_level lvl)
 {
+}
+
+static inline void ucfg_ipa_set_shared_smmu_enable(bool flag)
+{
+}
+
+static inline bool ucfg_ipa_get_shared_smmu_enable(void)
+{
+	return false;
 }
 
 #endif /* IPA_OFFLOAD */

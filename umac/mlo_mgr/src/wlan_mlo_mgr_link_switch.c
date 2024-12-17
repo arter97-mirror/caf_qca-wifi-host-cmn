@@ -822,6 +822,7 @@ QDF_STATUS mlo_mgr_link_switch_start_connect(struct wlan_objmgr_vdev *vdev)
 	conn_req.chan_freq = req->new_primary_freq;
 	conn_req.link_id = req->new_ieee_link_id;
 	qdf_copy_macaddr(&conn_req.bssid, &mlo_link_info->ap_link_addr);
+	qdf_copy_macaddr(&conn_req.bssid_hint, &mlo_link_info->ap_link_addr);
 	wlan_vdev_mlme_get_ssid(assoc_vdev, conn_req.ssid.ssid,
 				&conn_req.ssid.length);
 	status = wlan_vdev_get_bss_peer_mld_mac(assoc_vdev, &conn_req.mld_addr);

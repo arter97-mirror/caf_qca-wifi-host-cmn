@@ -385,3 +385,17 @@ void ucfg_ipa_set_perf_level_bw(struct wlan_objmgr_pdev *pdev,
 }
 
 qdf_export_symbol(ucfg_ipa_set_perf_level_bw);
+
+void ucfg_ipa_set_shared_smmu_enable(bool flag)
+{
+	ipa_set_shared_smmu_enable(flag);
+}
+
+qdf_export_symbol(ucfg_ipa_set_shared_smmu_enable);
+
+bool ucfg_ipa_get_shared_smmu_enable(void)
+{
+	return ipa_get_shared_smmu_enable();
+}
+
+qdf_export_symbol(ucfg_ipa_get_shared_smmu_enable);

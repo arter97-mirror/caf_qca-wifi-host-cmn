@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -49,17 +49,18 @@ dp_tx_adjust_tso_download_len_rh(qdf_nbuf_t nbuf,
 	uint32_t frag0_len;
 	uint32_t delta;
 	uint32_t eit_hdr_len;
+	uint32_t rem_len;
 
 	frag0_len = qdf_nbuf_get_frag_len(nbuf, 0);
-	download_len -= frag0_len;
+	rem_len = download_len - frag0_len;
 
 	eit_hdr_len = msdu_info->u.tso_info.curr_seg->seg.tso_frags[0].length;
 
 	/* If EIT header length is less than the MSDU download length, then
 	 * adjust the download length to just hold EIT header.
 	 */
-	if (eit_hdr_len < download_len) {
-		delta = download_len - eit_hdr_len;
+	if (eit_hdr_len < rem_len) {
+		delta = rem_len - eit_hdr_len;
 		download_len -= delta;
 	}
 
