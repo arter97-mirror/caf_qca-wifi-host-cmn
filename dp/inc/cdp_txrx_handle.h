@@ -1,7 +1,7 @@
 
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -27,9 +27,14 @@
 #ifndef CDP_TXRX_HANDLE_H
 #define CDP_TXRX_HANDLE_H
 
+#include <qdf_types.h>
+#include "queue.h"
+
 struct cdp_cfg;
 struct cdp_pdev;
-struct cdp_vdev;
+struct cdp_vdev {
+	TAILQ_ENTRY(cdp_vdev) cdp_vdev_list_elem;
+};
 struct cdp_peer;
 struct cdp_raw_ast;
 struct cdp_soc;

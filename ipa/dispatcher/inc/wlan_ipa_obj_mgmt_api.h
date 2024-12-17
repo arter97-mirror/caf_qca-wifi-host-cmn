@@ -86,6 +86,13 @@ qdf_ipa_wdi_hdl_t wlan_ipa_get_hdl(void *soc, uint8_t pdev_id);
  *         false - ipa vlan support is not enabled
  */
 bool wlan_ipa_is_vlan_enabled(void);
+
+/**
+ * wlan_ipa_is_shared_smmu_enabled() - Is IPA WLAN shared smmu enabled?
+ *
+ * Return: true if IPA WLAN shared smmu is enabled in PLD
+ */
+bool wlan_ipa_is_shared_smmu_enabled(void);
 #else
 
 static inline QDF_STATUS ipa_init(void)
@@ -119,6 +126,11 @@ static inline bool wlan_ipa_config_is_enabled(void)
 }
 
 static inline bool wlan_ipa_is_vlan_enabled(void)
+{
+	return false;
+}
+
+static inline bool wlan_ipa_is_shared_smmu_enabled(void)
 {
 	return false;
 }
