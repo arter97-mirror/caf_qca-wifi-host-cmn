@@ -2239,6 +2239,38 @@ struct roam_msg_info {
 	uint32_t msg_param2;
 };
 
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * struct roam_ml_info - Structure to hold the roamed link specific info
+ * @link_addr: Self link address
+ * @link_id:   IEEE Link id used for association
+ * @link_accepted: True if link status is accepted. Else link status is rejected
+ * @link_band: Band information of the link
+ * @freq: Frequency of the link
+ * @timestamp: FW timestamp (in milliseconds)
+ */
+struct roam_ml_info {
+	struct qdf_mac_addr link_addr;
+	uint8_t link_id;
+	bool link_accepted;
+	enum reg_wifi_band link_band;
+	uint32_t freq;
+	uint64_t timestamp;
+};
+
+/**
+ * struct roam_mlo_link_info - Roam message related information
+ * @present:    Flag to check if the roam mlo link info tlv is present
+ * @num_links:  Number of links
+ * @ml_info:    Link information
+ */
+struct roam_mlo_link_info {
+	bool present;
+	uint8_t num_links;
+	struct roam_ml_info ml_info[WLAN_MAX_ML_BSS_LINKS];
+};
+#endif
+
 /**
  * struct roam_event_rt_info - Roam event related information
  * @roam_scan_state: roam scan state notif value
@@ -2285,6 +2317,7 @@ enum roam_rt_stats_type {
  * reassociation response frame
  * @band: Band on which the packet is transmitted or received. Refer
  * enum wlan_diag_wifi_band
+ * @link_info: Link information of associated links
  */
 struct roam_frame_info {
 	bool present;
@@ -2301,6 +2334,9 @@ struct roam_frame_info {
 	uint16_t retry_count;
 	uint16_t assoc_id;
 	uint8_t band;
+#ifdef WLAN_FEATURE_11BE_MLO
+	struct roam_mlo_link_info link_info;
+#endif
 };
 
 /**

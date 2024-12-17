@@ -467,6 +467,7 @@ lim_cm_fill_join_rsp_from_connect_req(struct cm_vdev_join_req *req,
 	connect_rsp->ssid = req->entry->ssid;
 	connect_rsp->is_wps_connection = req->is_wps_connection;
 	connect_rsp->is_osen_connection = req->is_osen_connection;
+	connect_rsp->status_code = req->req_fail_status_code;
 	wlan_cm_connect_resp_fill_mld_addr_from_vdev_id(rsp->psoc, req->vdev_id,
 							req->entry,
 							connect_rsp);

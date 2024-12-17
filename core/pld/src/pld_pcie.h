@@ -500,6 +500,11 @@ static inline bool pld_pcie_is_direct_link_supported(struct device *dev)
 	return false;
 }
 
+static inline bool pld_pcie_is_ipa_shared_smmu_enable(struct device *dev)
+{
+	return false;
+}
+
 static inline
 int pld_pcie_audio_smmu_map(struct device *dev, phys_addr_t paddr,
 			    dma_addr_t iova, size_t size)
@@ -965,6 +970,11 @@ static inline bool pld_pcie_is_direct_link_supported(struct device *dev)
 	return cnss_get_fw_cap(dev, CNSS_FW_CAP_DIRECT_LINK_SUPPORT);
 }
 
+static inline bool pld_pcie_is_ipa_shared_smmu_enable(struct device *dev)
+{
+	return cnss_ipa_wlan_shared_smmu_supported(dev);
+}
+
 static inline
 int pld_pcie_audio_smmu_map(struct device *dev, phys_addr_t paddr,
 			    dma_addr_t iova, size_t size)
@@ -979,6 +989,11 @@ void pld_pcie_audio_smmu_unmap(struct device *dev, dma_addr_t iova, size_t size)
 }
 #else
 static inline bool pld_pcie_is_direct_link_supported(struct device *dev)
+{
+	return false;
+}
+
+static inline bool pld_pcie_is_ipa_shared_smmu_enable(struct device *dev)
 {
 	return false;
 }
