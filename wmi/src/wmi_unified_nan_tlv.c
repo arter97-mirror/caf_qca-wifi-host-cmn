@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -50,7 +50,7 @@ static inline uint16_t wmi_nan_get_tlv_len(uint8_t *ptlv)
 static QDF_STATUS
 extract_nan_event_rsp_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 			  struct nan_event_params *evt_params,
-			  uint8_t **msg_buf)
+			  uint8_t **msg_buf, uint32_t nan_config)
 {
 	WMI_NAN_EVENTID_param_tlvs *event;
 	wmi_nan_event_hdr *nan_rsp_event_hdr;
@@ -60,6 +60,8 @@ extract_nan_event_rsp_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	tNanEventIndMsg *nan_evt_msg;
 	uint16_t tlv_type;
 	uint16_t tlv_len;
+	tpNanCapabilitiesRspMsg capabilities_rsp_msg;
+	tpNanCapabilitiesRspParams capabilities_rsp;
 
 	/*
 	 * This is how received evt looks like
@@ -169,6 +171,16 @@ extract_nan_event_rsp_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 			wmi_debug("not parsed tlv_type %d", tlv_type);
 			evt_params->evt_type = nan_event_id_generic_rsp;
 			break;
+		}
+		break;
+	case NAN_MSG_ID_CAPABILITIES_RSP:
+		evt_params->evt_type = nan_event_id_generic_rsp;
+		capabilities_rsp_msg = (tNanCapabilitiesRspMsg *)event->data;
+		capabilities_rsp = &capabilities_rsp_msg->capabilitiesRspParams;
+		wmi_debug("NAN pairing support: %d", nan_config);
+		if (!(nan_config & NAN_PARING_BIT)) {
+			capabilities_rsp->nanPairingSupported = 0;
+			wmi_err("NAN pairing support disabled");
 		}
 		break;
 	default:
