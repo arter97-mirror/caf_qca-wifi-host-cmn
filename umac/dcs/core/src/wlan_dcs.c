@@ -252,8 +252,10 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_NULL_VALUE;
 	}
 
-	dcs_debug("dcs_enable: %u, vdev_id: %u pdev_id %u", dcs_enable,
-		  vdev_id, mac_id);
+	dcs_debug("vdev %d mode %d enable: %u pdev_id %u mode ini %d",
+		  vdev_id, mode, dcs_enable, mac_id,
+		  dcs_pdev_priv->dcs_host_params.dcs_enable_cfg_per_mode[mode].val);
+
 	status = dcs_tx_ops->dcs_cmd_send_for_vdev(psoc, vdev_id,
 						   dcs_enable);
 
