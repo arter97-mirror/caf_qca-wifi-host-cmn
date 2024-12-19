@@ -828,6 +828,9 @@ void wlan_dp_spm_dump_tx_aft(struct wlan_dp_psoc_context *dp_ctx)
 	uint32_t num_entries = WLAN_DP_SPM_FLOW_REC_TBL_MAX * WLAN_DP_INTF_MAX;
 	uint8_t buf[BUF_LEN_MAX];
 
+	if (!dp_ctx->gl_flow_recs)
+		return;
+
 	for (i = 0; i < num_entries; i++) {
 		flow = &dp_ctx->gl_flow_recs[i];
 		if (qdf_unlikely(!flow->is_populated))
