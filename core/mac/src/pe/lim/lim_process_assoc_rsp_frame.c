@@ -188,6 +188,7 @@ void lim_update_assoc_sta_datas(struct mac_context *mac_ctx,
 					lim_get_vht_ch_width(vht_caps,
 							     vht_oper,
 							     &assoc_rsp->HTInfo,
+							     &assoc_rsp->HTCaps,
 							     &assoc_rsp->oper_mode_ntf);
 				sta_ds->vhtSupportedChannelWidthSet =
 					lim_convert_phy_width_to_vht_width(vht_ch_width);

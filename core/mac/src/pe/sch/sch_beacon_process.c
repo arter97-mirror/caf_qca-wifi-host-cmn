@@ -449,7 +449,6 @@ sch_bcn_update_opmode_change(struct mac_context *mac_ctx, tpDphHashNode sta_ds,
 	tDot11fIEVHTCaps *vht_caps = NULL;
 	tDot11fIEVHTOperation *vht_op = NULL;
 	uint8_t bcn_vht_chwidth = 0;
-	bool is_40 = false;
 
 	/*
 	 * Ignore opmode change during channel change The opmode will be updated
@@ -475,9 +474,6 @@ sch_bcn_update_opmode_change(struct mac_context *mac_ctx, tpDphHashNode sta_ds,
 	    !(vht_op && vht_op->present && vht_caps))
 		return;
 
-	is_40 = bcn->HTInfo.present ?
-			bcn->HTInfo.recommendedTxWidthSet : false;
-
 	if (bcn->OperatingMode.present) {
 		lim_update_nss(mac_ctx, sta_ds, bcn->OperatingMode.rxNSS,
 			       session);
@@ -490,6 +486,7 @@ sch_bcn_update_opmode_change(struct mac_context *mac_ctx, tpDphHashNode sta_ds,
 
 	bcn_vht_chwidth = lim_get_vht_ch_width(vht_caps, vht_op,
 					       &bcn->HTInfo,
+					       &bcn->HTCaps,
 					       &bcn->OperatingMode);
 	lim_update_channel_width(mac_ctx, sta_ds, session,
 				 bcn_vht_chwidth, &ch_bw);

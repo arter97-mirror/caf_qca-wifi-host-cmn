@@ -3641,6 +3641,7 @@ static void lim_update_vht_oper_assoc_resp(struct mac_context *mac_ctx,
 		ch_width =
 			lim_get_vht_ch_width(vht_caps, vht_oper,
 					     &assoc_rsp->HTInfo,
+					     &assoc_rsp->HTCaps,
 					     &assoc_rsp->oper_mode_ntf);
 
 	if (ch_width > pe_session->ch_width)

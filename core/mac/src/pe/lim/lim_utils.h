@@ -3372,6 +3372,7 @@ bool lim_update_channel_width(struct mac_context *mac_ctx,
 enum phy_ch_width lim_get_vht_ch_width(tDot11fIEVHTCaps *vht_cap,
 				       tDot11fIEVHTOperation *vht_op,
 				       tDot11fIEHTInfo *ht_info,
+				       tDot11fIEHTCaps *ht_cap,
 				       tDot11fIEOperatingMode *omn_ie);
 
 /*

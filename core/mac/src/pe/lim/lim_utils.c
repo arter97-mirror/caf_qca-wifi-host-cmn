@@ -11466,6 +11466,7 @@ lim_get_omn_channel_width(tDot11fIEOperatingMode *omn_ie)
 enum phy_ch_width lim_get_vht_ch_width(tDot11fIEVHTCaps *vht_cap,
 				       tDot11fIEVHTOperation *vht_op,
 				       tDot11fIEHTInfo *ht_info,
+				       tDot11fIEHTCaps *ht_cap,
 				       tDot11fIEOperatingMode *omn_ie)
 {
 	uint8_t ccfs0, ccfs1, offset;
@@ -11482,7 +11483,8 @@ enum phy_ch_width lim_get_vht_ch_width(tDot11fIEVHTCaps *vht_cap,
 	switch (vht_op->chanWidth) {
 	case WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ:
 		if (ht_info && ht_info->present &&
-		    ht_info->recommendedTxWidthSet)
+		    ht_info->recommendedTxWidthSet && ht_cap && ht_cap->present
+		    && ht_cap->supportedChannelWidthSet)
 			vht_ch_width = CH_WIDTH_40MHZ;
 		else
 			vht_ch_width = CH_WIDTH_20MHZ;
