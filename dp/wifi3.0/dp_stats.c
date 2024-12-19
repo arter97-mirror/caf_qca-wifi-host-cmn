@@ -174,6 +174,52 @@ const char *intfrm_delay_bucket[CDP_DELAY_BUCKET_MAX + 1] = {
 #define TID_DELAY_STATS 2	/* Delay stats type */
 #define TID_RX_ERROR_STATS 3	/* Rx Error stats type */
 
+#ifdef WLAN_SYSFS_DP_STATS
+void DP_PRINT_STATS(const char *fmt, ...)
+{
+	void *soc_void = NULL;
+	va_list val;
+	uint16_t buf_written = 0;
+	uint16_t curr_len = 0;
+	uint16_t max_len = 0;
+	struct dp_soc *soc = NULL;
+
+	soc_void = cds_get_context(QDF_MODULE_ID_SOC);
+	soc = cdp_soc_t_to_dp_soc(soc_void);
+	va_start(val, fmt);
+	QDF_VTRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_INFO_HIGH, (char *)fmt, val);
+	/* writing to the buffer */
+	if (soc->sysfs_config && soc->sysfs_config->printing_mode == PRINTING_MODE_ENABLED) {
+		if (soc->sysfs_config->process_id == qdf_get_current_pid()) {
+			curr_len = soc->sysfs_config->curr_buffer_length;
+			max_len = soc->sysfs_config->max_buffer_length;
+			if ((max_len - curr_len) <= 1)
+				goto fail;
+
+			qdf_spinlock_acquire(&soc->sysfs_config->sysfs_write_user_buffer);
+			if (soc->sysfs_config->buf) {
+				buf_written = vscnprintf(soc->sysfs_config->buf + curr_len,
+							 max_len - curr_len, fmt, val);
+				curr_len += buf_written;
+				if ((max_len - curr_len) <= 1)
+					goto rel_lock;
+
+				buf_written += scnprintf(soc->sysfs_config->buf + curr_len,
+							 max_len - curr_len, "\n");
+				soc->sysfs_config->curr_buffer_length +=  buf_written;
+			}
+			qdf_spinlock_release(&soc->sysfs_config->sysfs_write_user_buffer);
+		}
+	}
+	va_end(val);
+	return;
+
+rel_lock:
+	qdf_spinlock_release(&soc->sysfs_config->sysfs_write_user_buffer);
+fail:
+	va_end(val);
+}
+#endif /* WLAN_SYSFS_DP_STATS */
 /*
  * dp_print_stats_string_tlv: display htt_stats_string_tlv
  * @tag_buf: buffer containing the tlv htt_stats_string_tlv
@@ -275,6 +321,9 @@ static inline void dp_print_tx_pdev_stats_cmn_tlv(uint32_t *tag_buf)
 		       dp_stats_buf->mpdu_count_tqm);
 	DP_PRINT_STATS("msdu_count_tqm = %u",
 		       dp_stats_buf->msdu_count_tqm);
+	DP_PRINT_STATS("bytes_sent = %llu",
+		       (uint64_t)dp_stats_buf->bytes_sent.high_32 << 32 |
+		       dp_stats_buf->bytes_sent.low_32);
 	DP_PRINT_STATS("mpdu_removed_tqm = %u",
 		       dp_stats_buf->mpdu_removed_tqm);
 	DP_PRINT_STATS("msdu_removed_tqm = %u",
@@ -3571,6 +3620,9 @@ static inline void dp_print_rx_pdev_fw_stats_tlv(uint32_t *tag_buf)
 		       dp_stats_buf->mpdu_cnt_fcs_ok);
 	DP_PRINT_STATS("mpdu_cnt_fcs_err = %u",
 		       dp_stats_buf->mpdu_cnt_fcs_err);
+	DP_PRINT_STATS("bytes_received = %llu",
+		       (uint64_t)dp_stats_buf->bytes_received.high_32 << 32 |
+		       dp_stats_buf->bytes_received.low_32);
 	DP_PRINT_STATS("tcp_msdu_cnt = %u",
 		       dp_stats_buf->tcp_msdu_cnt);
 	DP_PRINT_STATS("tcp_ack_msdu_cnt = %u",
@@ -3664,8 +3716,10 @@ static inline void dp_print_rx_pdev_fw_stats_tlv(uint32_t *tag_buf)
 		       dp_stats_buf->rx_ring_switch_cnt);
 	DP_PRINT_STATS("rx_ring_restore_cnt = %u",
 		       dp_stats_buf->rx_ring_restore_cnt);
-	DP_PRINT_STATS("rx_flush_cnt = %u\n",
+	DP_PRINT_STATS("rx_flush_cnt = %u",
 		       dp_stats_buf->rx_flush_cnt);
+	/* Hard code for now */
+	DP_PRINT_STATS("rx_packets_other_cnt = 0\n");
 }
 
 /*
@@ -3858,6 +3912,38 @@ static inline void dp_print_rx_pdev_fw_stats_phy_err_tlv(uint32_t *tag_buf)
 
 	DP_PRINT_STATS("phy_errs: %s\n",  phy_errs);
 }
+
+#ifdef CONFIG_AP_PLATFORM
+static inline void dp_print_phy_counters_tlv(uint32_t *tag_buf)
+{
+}
+#else
+/*
+ * dp_print_phy_counters_tlv() - Accounts for per_blk_err_cnt
+ *
+ * tag_buf - Buffer
+ * Return - void
+ */
+static inline void dp_print_phy_counters_tlv(uint32_t *tag_buf)
+{
+	htt_phy_counters_tlv *dp_stats_buf =
+		(htt_phy_counters_tlv *)tag_buf;
+
+	uint8_t i;
+	uint16_t index = 0;
+	char per_blk_err_cnt[DP_MAX_STRING_LEN];
+
+	DP_PRINT_STATS("HTT_PHY_COUNTERS_TLV");
+
+	for (i = 0; i < HTT_MAX_PER_BLK_ERR_CNT; i++) {
+		index += snprintf(&per_blk_err_cnt[index],
+				DP_MAX_STRING_LEN - index,
+				" %u:%u,", i, dp_stats_buf->per_blk_err_cnt[i]);
+	}
+
+	DP_PRINT_STATS("per_blk_err_cnt: %s\n", per_blk_err_cnt);
+}
+#endif /* CONFIG_AP_PLATFORM */
 
 /*
  * dp_htt_stats_print_tag: function to select the tag type and
@@ -4156,6 +4242,10 @@ void dp_htt_stats_print_tag(struct dp_pdev *pdev,
 
 	case HTT_STATS_RX_PDEV_FW_STATS_PHY_ERR_TAG:
 		dp_print_rx_pdev_fw_stats_phy_err_tlv(tag_buf);
+		break;
+
+	case HTT_STATS_PHY_COUNTERS_TAG:
+		dp_print_phy_counters_tlv(tag_buf);
 		break;
 
 	default:

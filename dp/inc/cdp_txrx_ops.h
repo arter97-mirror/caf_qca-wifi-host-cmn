@@ -585,7 +585,8 @@ struct cdp_cmn_ops {
 					    char *buf, uint32_t buf_size);
 	QDF_STATUS (*txrx_sysfs_set_stat_type)(ol_txrx_soc_handle soc,
 					       uint32_t stat_type,
-					       uint32_t mac_id);
+					       uint32_t mac_id,
+					       uint8_t vdev_id);
 #endif /* WLAN_SYSFS_DP_STATS */
 };
 

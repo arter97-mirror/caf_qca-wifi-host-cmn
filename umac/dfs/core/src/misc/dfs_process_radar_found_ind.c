@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -313,6 +314,38 @@ static void dfs_radar_chan_for_20(struct freqs_offsets *freq_offset,
 }
 
 #ifdef CONFIG_CHAN_FREQ_API
+#ifdef MOBILE_DFS_SUPPORT
+/**
+ * dfs_radar_detect_center_freq_adjust() - Helper function to adjust center
+ * frequency of Radar detected.
+ *
+ * @curchan: Pointer to current DFS channel structure
+ * @freq_center: Pointer to center frequency to be adjusted
+ *
+ * For mobile device platform only has one Radar detector so segment id always
+ * set 0, when bandwidth greater than 80 MHz, center frequency should adjust
+ * from center frequency of primary segment to center frequency of whole
+ * bandwidth.
+ */
+static inline void
+dfs_radar_detect_center_freq_adjust(struct dfs_channel *curchan,
+				    uint32_t *freq_center)
+{
+	if (WLAN_IS_CHAN_MODE_160(curchan)) {
+		dfs_debug(NULL, WLAN_DEBUG_DFS_ALWAYS,
+			  "center freq %d override to %d",
+			  *freq_center, curchan->dfs_ch_mhz_freq_seg2);
+		*freq_center = curchan->dfs_ch_mhz_freq_seg2;
+	}
+}
+#else
+static inline void
+dfs_radar_detect_center_freq_adjust(struct dfs_channel *curchan,
+				    uint32_t *freq_center)
+{
+}
+#endif
+
 void
 dfs_compute_radar_found_cfreq(struct wlan_dfs *dfs,
 			      struct radar_found_info *radar_found,
@@ -350,6 +383,7 @@ dfs_compute_radar_found_cfreq(struct wlan_dfs *dfs,
 		}
 	} else if (!radar_found->segment_id) {
 		*freq_center = curchan->dfs_ch_mhz_freq_seg1;
+		dfs_radar_detect_center_freq_adjust(curchan, freq_center);
 	} else {
 	    /* Radar found on secondary segment by the HW when
 	     * preCAC was running. It (dfs_precac_enable) is specific to
@@ -382,6 +416,45 @@ dfs_compute_radar_found_cfreq(struct wlan_dfs *dfs,
 		}
 	}
 }
+
+#ifdef MOBILE_DFS_SUPPORT
+static void
+dfs_reset_center_freq_and_offset(struct wlan_dfs *dfs,
+				 uint32_t *freq_center,
+				 struct freqs_offsets *freq_offset)
+{
+	int i;
+	struct dfs_channel *curchan = dfs->dfs_curchan;
+
+	if (!WLAN_IS_CHAN_MODE_160(curchan))
+		return;
+
+	if (freq_offset->offset[0] < 0)
+		*freq_center -= 40;
+	else if (freq_offset->offset[0] > 0)
+		*freq_center += 40;
+	else /* report on center frequency, no reset center freq or offset */
+		return;
+
+	for (i = 0; i < DFS_NUM_FREQ_OFFSET; i++) {
+		if (freq_offset->offset[i] < 0)
+			freq_offset->offset[i] += 40;
+		else if (freq_offset->offset[i] > 0)
+			freq_offset->offset[i] -= 40;
+		dfs_info(dfs, WLAN_DEBUG_DFS,
+			 "center freq %d offset %d",
+			 *freq_center,
+			 freq_offset->offset[i]);
+	}
+}
+#else
+static inline void
+dfs_reset_center_freq_and_offset(struct wlan_dfs *dfs,
+				 uint32_t *freq_center,
+				 struct freqs_offsets *freq_offset)
+{
+}
+#endif
 #endif
 
 /**
@@ -445,6 +518,9 @@ dfs_find_radar_affected_subchans_for_freq(struct wlan_dfs *dfs,
 			freq_offset.offset[LEFT_CH] -= DFS_CHIRP_OFFSET;
 			freq_offset.offset[RIGHT_CH] += DFS_CHIRP_OFFSET;
 		}
+		dfs_reset_center_freq_and_offset(dfs,
+						 &freq_center,
+						 &freq_offset);
 		dfs_radar_chan_for_80(&freq_offset, freq_center);
 	} else {
 		dfs_err(dfs, WLAN_DEBUG_DFS,
@@ -876,6 +952,31 @@ dfs_radar_action_for_hw_mode_switch(struct wlan_dfs *dfs,
 }
 
 #ifdef CONFIG_CHAN_FREQ_API
+#ifdef MOBILE_DFS_SUPPORT
+static uint8_t
+dfs_find_radar_full_bw_channels(struct wlan_dfs *dfs,
+				struct radar_found_info *radar_found,
+				uint16_t *freq_list)
+{
+	uint8_t num_channels = 0;
+
+	if (radar_found->is_full_bw_nol)
+		num_channels =
+			dfs_get_bonding_channel_without_seg_info_for_freq
+			(dfs->dfs_curchan, freq_list);
+
+	return num_channels;
+}
+#else
+static uint8_t
+dfs_find_radar_full_bw_channels(struct wlan_dfs *dfs,
+				struct radar_found_info *radar_found,
+				uint16_t *freq_list)
+{
+	return 0;
+}
+#endif
+
 uint8_t
 dfs_find_radar_affected_channels(struct wlan_dfs *dfs,
 				 struct radar_found_info *radar_found,
@@ -883,6 +984,11 @@ dfs_find_radar_affected_channels(struct wlan_dfs *dfs,
 				 uint32_t freq_center)
 {
 	uint8_t num_channels;
+
+	num_channels = dfs_find_radar_full_bw_channels(dfs, radar_found,
+						       freq_list);
+	if (num_channels)
+		return num_channels;
 
 	if (dfs->dfs_bangradar_type == DFS_BANGRADAR_FOR_ALL_SUBCHANS)
 		num_channels =
