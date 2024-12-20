@@ -286,7 +286,25 @@ wlan_t2lm_init_default_mapping(struct wlan_t2lm_context *t2lm_ctx);
  */
 uint8_t
 t2lm_gen_dialog_token(struct wlan_mlo_peer_t2lm_policy *t2lm_policy);
+
+/**
+ * wlan_t2lm_check_concurrency_curr_force() - Check concurrency curr force links
+ * @vdev: Vdev pointer
+ * @t2lm_neg: t2lm neg pointer
+ *
+ * Return:qdf status
+ */
+QDF_STATUS
+wlan_t2lm_check_concurrency_curr_force(struct wlan_objmgr_vdev *vdev,
+				       struct wlan_t2lm_onging_negotiation_info *t2lm_neg);
 #else
+static inline QDF_STATUS
+wlan_t2lm_check_concurrency_curr_force(struct wlan_objmgr_vdev *vdev,
+				       struct wlan_t2lm_onging_negotiation_info *t2lm_neg)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
 static inline QDF_STATUS
 wlan_t2lm_init_default_mapping(struct wlan_t2lm_context *t2lm_ctx)
 {
