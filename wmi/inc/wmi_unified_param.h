@@ -6792,6 +6792,7 @@ typedef enum {
 	wmi_service_mlo_sap_concurrency_support,
 #endif
 	wmi_service_twt_p2p_go_concurrency_support,
+	wmi_service_sta_twt_stats_ext,
 
 	wmi_services_max,
 } wmi_conv_service_ids;

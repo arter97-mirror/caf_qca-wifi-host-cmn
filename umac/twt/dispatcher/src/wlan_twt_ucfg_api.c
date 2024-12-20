@@ -112,3 +112,4 @@ ucfg_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
 {
 	return wlan_twt_tgt_caps_get_p2p_go_concurrency_support(psoc, val);
 }
+

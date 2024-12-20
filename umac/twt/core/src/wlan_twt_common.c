@@ -460,3 +460,4 @@ wlan_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
+

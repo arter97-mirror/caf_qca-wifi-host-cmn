@@ -24911,6 +24911,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif
 	wmi_service[wmi_service_twt_p2p_go_concurrency_support] =
 				WMI_SERVICE_TWT_P2P_GO_CONCURRENCY_SUPPORT;
+	wmi_service[wmi_service_sta_twt_stats_ext] =
+				WMI_SERVICE_STA_TWT_STATS_EXT;
 }
 
 /**
