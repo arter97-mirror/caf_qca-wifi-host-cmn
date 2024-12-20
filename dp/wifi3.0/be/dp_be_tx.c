@@ -143,7 +143,7 @@ QDF_STATUS dp_tx_comp_desc_check_and_invalidate(void *tx_comp_hal_desc,
 	if (DP_TX_COMP_DESC_BUFF_VA_32BITS_HI_INVALIDATE ==
 	    (tx_desc_va >> 32)) {
 		*r_tx_desc = NULL;
-		status = QDF_STATUS_E_PENDING;
+		return QDF_STATUS_E_PENDING;
 	}
 
 	if (qdf_likely(hw_cc_done)) {
