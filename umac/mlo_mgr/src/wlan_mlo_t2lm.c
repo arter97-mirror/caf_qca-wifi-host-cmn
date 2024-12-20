@@ -997,10 +997,15 @@ ttlm_handle_btm_link_disable_t2lm_frame(struct wlan_mlo_peer_context *ml_peer,
 		goto release_vdev;
 	}
 
+	status = wlan_t2lm_check_concurrency_curr_force(vdev, t2lm_neg);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto release_peer;
+
 	status = t2lm_deliver_event(vdev, peer,
 				    WLAN_T2LM_EV_ACTION_FRAME_TX_REQ,
 				    t2lm_neg, 0, &t2lm_neg->dialog_token);
 
+release_peer:
 	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
 
 release_vdev:
