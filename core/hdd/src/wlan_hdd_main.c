@@ -12341,6 +12341,10 @@ hdd_shutdown_wlan_is_applicable(struct hdd_context *hdd_ctx, unsigned long evt)
 	if (evt == PM_HIBERNATION_PREPARE)
 		return true;
 
+	/* Check if the Suspend notifier triggers Deep Sleep mode */
+	if (pm_suspend_via_firmware())
+		return true;
+
 	mode = ucfg_pmo_get_suspend_mode(hdd_ctx->psoc);
 	hdd_debug("suspend mode is %d", mode);
 
