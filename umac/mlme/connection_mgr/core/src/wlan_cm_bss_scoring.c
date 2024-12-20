@@ -3379,8 +3379,15 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 					      node);
 		num_link = scan_entry->entry->ml_info.num_links;
 
-		is_slo_candidate_allowed =
-			cm_is_slo_candidate_allowed(psoc, scan_entry->entry);
+		/*
+		 * Skip IOT check and Add SLO candidate if num link is >
+		 * max allowed, so that STA try lower number of links.
+		 */
+		if (scan_entry->entry->ml_info.num_links >=
+		    wlan_mlme_get_sta_mlo_conn_max_num(psoc))
+			is_slo_candidate_allowed =
+				cm_is_slo_candidate_allowed(psoc,
+						scan_entry->entry);
 		if (!is_slo_candidate_allowed)
 			goto next;
 
@@ -3478,6 +3485,11 @@ static void cm_eliminate_invalid_candidate(struct wlan_objmgr_psoc *psoc,
 
 		if (scan_entry->entry->ml_info.num_links >=
 		    wlan_mlme_get_sta_mlo_conn_max_num(psoc)) {
+			mlme_debug(QDF_MAC_ADDR_FMT " freq (%d) skipped as num links %d, max %d",
+			     QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
+			     scan_entry->entry->channel.chan_freq,
+			     scan_entry->entry->ml_info.num_links + 1,
+			     wlan_mlme_get_sta_mlo_conn_max_num(psoc));
 			qdf_list_remove_node(candidate_list, cur_node);
 			util_scan_free_cache_entry(scan_entry->entry);
 			qdf_mem_free(scan_entry);
