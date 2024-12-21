@@ -237,6 +237,9 @@ enum cm_security_idx {
  * @standard_6ghz_conn_policy: check for 6 GHz standard connection policy
  * @key_mgmt_mask_6ghz: user configurable mask for 6 GHz AKM
  * @mlsr_link_selection: MLSR link selection config
+ * @scan_nontx_search_thresh: Num of entries from the top of the sorted
+ * candidate list to check for candidates without partner link scan entry with
+ * non-Tx BSSID in MBSSID set as assoc link.
  * @roam_tgt_score_cap: Roam score capability
  * @security_weight_per_index: security weight per index
  * @relaxed_lpi_conn_policy: Relaxed lpi conn policy flag
@@ -258,6 +261,7 @@ struct scoring_cfg {
 	uint32_t key_mgmt_mask_6ghz;
 #ifdef WLAN_FEATURE_11BE_MLO
 	uint8_t mlsr_link_selection;
+	uint8_t scan_nontx_search_thresh;
 #endif
 	uint32_t roam_tgt_score_cap;
 	uint32_t security_weight_per_index;
