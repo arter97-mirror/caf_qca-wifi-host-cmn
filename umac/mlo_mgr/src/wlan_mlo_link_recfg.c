@@ -968,6 +968,45 @@ mlo_link_recfg_is_link_switch_in_progress(
 }
 
 static void
+mlo_link_recfg_update_scan_mlme(struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *ap_link_addr,
+				enum scan_entry_connection_state
+				assoc_state)
+{
+	struct mlo_link_info *link_info;
+	struct mlme_info mlme_info = {0};
+	struct bss_info bss_info = {0};
+	struct wlan_objmgr_vdev *assoc_vdev =
+		wlan_mlo_get_assoc_link_vdev(vdev);
+	QDF_STATUS status;
+
+	if (!assoc_vdev) {
+		mlo_debug("assoc vdev null");
+		return;
+	}
+	link_info = mlo_mgr_get_ap_link_info(vdev, ap_link_addr);
+	if (!link_info) {
+		mlo_debug("link info null ap link addr " QDF_MAC_ADDR_FMT "",
+			  QDF_MAC_ADDR_REF(ap_link_addr->bytes));
+		return;
+	}
+	status = wlan_vdev_mlme_get_ssid(vdev, bss_info.ssid.ssid,
+					 &bss_info.ssid.length);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_debug("vdev %d failed to get ssid",
+			  wlan_vdev_get_id(assoc_vdev));
+		return;
+	}
+
+	mlme_info.assoc_state = assoc_state;
+	qdf_copy_macaddr(&bss_info.bssid, ap_link_addr);
+	bss_info.freq = link_info->link_chan_info->ch_freq;
+	wlan_scan_update_mlme_by_bssinfo(wlan_vdev_get_pdev(vdev),
+					 &bss_info, &mlme_info);
+}
+
+static void
 mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(
 				struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
@@ -1025,6 +1064,10 @@ mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(
 			  req->del_link_info.link[i].link_id,
 			  (uint32_t)link_info->link_status_flags,
 			  link_info->vdev_id);
+		mlo_link_recfg_update_scan_mlme(vdev,
+						&link_info->ap_link_addr,
+						SCAN_ENTRY_CON_STATE_NONE);
+
 		mlo_mgr_clear_ap_link_info(vdev, &link_info->ap_link_addr);
 	}
 
@@ -1151,6 +1194,9 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 		link_info->chan_freq = add_link->freq;
 		link_info->link_status_code = STATUS_SUCCESS;
 		mlo_dev_lock_release(mlo_dev_ctx);
+		mlo_link_recfg_update_scan_mlme(vdev,
+						&link_info->ap_link_addr,
+						SCAN_ENTRY_CON_STATE_ASSOC);
 
 		util_scan_free_cache_entry(scan_entry);
 	}
@@ -4227,9 +4273,9 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 {
 	struct mlo_link_recfg_context *ctx;
 	struct wlan_action_frame_args *action_frm;
-	struct link_recfg_rx_rsp rx_rsp;
+	struct link_recfg_rx_rsp rx_rsp = {0};
 	QDF_STATUS status;
-	uint16_t ie_offset;
+	uint16_t ie_offset = 0;
 
 	if (!vdev || !vdev->mlo_dev_ctx)
 		return QDF_STATUS_E_NULL_VALUE;
@@ -4322,7 +4368,7 @@ mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
 	struct wlan_objmgr_vdev *vdev = NULL;
 	struct wlan_mlo_link_recfg_bss_info *add_link;
 	struct wlan_objmgr_psoc *psoc = NULL;
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	if (!req || !ctx)
 		return QDF_STATUS_E_NULL_VALUE;
