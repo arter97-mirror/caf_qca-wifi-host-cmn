@@ -7801,6 +7801,9 @@ int wlan_hdd_cfg80211_start_bss(struct wlan_hdd_link_info *link_info,
 		goto error;
 	}
 
+	/* Cancel all ongoing/pending no sap scan requests */
+	hdd_abort_non_sap_scan_all_adapters(hdd_ctx);
+
 	status = wlansap_start_bss(sap_ctx, sap_event_callback, config);
 	if (!QDF_IS_STATUS_SUCCESS(status)) {
 		mutex_unlock(&hdd_ctx->sap_lock);

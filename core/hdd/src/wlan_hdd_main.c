@@ -12183,6 +12183,36 @@ QDF_STATUS hdd_abort_mac_scan_all_adapters(struct hdd_context *hdd_ctx)
 	return QDF_STATUS_SUCCESS;
 }
 
+QDF_STATUS hdd_abort_non_sap_scan_all_adapters(struct hdd_context *hdd_ctx)
+{
+	struct hdd_adapter *adapter, *next_adapter = NULL;
+	wlan_net_dev_ref_dbgid dbgid =
+				NET_DEV_HOLD_ABORT_MAC_SCAN_ALL_ADAPTERS;
+	struct wlan_hdd_link_info *link_info;
+
+	hdd_enter();
+
+	hdd_for_each_adapter_dev_held_safe(hdd_ctx, adapter, next_adapter,
+					   dbgid) {
+		if (adapter->device_mode == QDF_STA_MODE ||
+		    adapter->device_mode == QDF_P2P_CLIENT_MODE ||
+		    adapter->device_mode == QDF_P2P_DEVICE_MODE ||
+		    adapter->device_mode == QDF_P2P_GO_MODE) {
+			hdd_adapter_for_each_active_link_info(adapter,
+							      link_info) {
+				wlan_abort_scan(hdd_ctx->pdev, INVAL_PDEV_ID,
+						link_info->vdev_id,
+						INVALID_SCAN_ID, true);
+			}
+		}
+		hdd_adapter_dev_put_debug(adapter, dbgid);
+	}
+
+	hdd_exit();
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * hdd_abort_sched_scan_all_adapters() - stops scheduled (PNO) scans for all
  * adapters
