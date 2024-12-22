@@ -52,6 +52,11 @@
 /* 320MHZ BW 16 20MHZ sub bands */
 #define SUB320BW 16
 
+/* Lengths of various fields in the 802.11 header */
+#define QOS_CTRL_LEN	2
+#define HTC_CTRL_LEN	4
+#define CCMP_PARAM_LEN	8
+
 #define RNG_ERR		"SRNG setup failed for"
 #define dp_mon_info(params...) \
 	__QDF_TRACE_FL(QDF_TRACE_LEVEL_INFO_HIGH, QDF_MODULE_ID_MON, ## params)

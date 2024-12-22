@@ -34,6 +34,9 @@
 #ifdef QCA_SUPPORT_LITE_MONITOR
 #include "dp_lite_mon.h"
 #endif
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+#include <cdp_txrx_mon.h>
+#endif
 
 #define MAX_TX_MONITOR_STUCK 50
 #define ACK_INTERVAL (40)
@@ -1313,6 +1316,67 @@ dp_tx_mon_lpc_type_filtering(struct dp_pdev *pdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+void dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
+{
+	bool is_frag;
+	char *data = NULL;
+	uint8_t *ccmp_info;
+	uint16_t hdr_len;
+	uint16_t pkt_len;
+	qdf_nbuf_t tmp_buf = NULL;
+	tpSirMacFrameCtl fc;
+	void *soc;
+
+	soc = cds_get_context(QDF_MODULE_ID_SOC);
+	if (!cdp_is_local_pkt_capture_running(soc, OL_TXRX_PDEV_ID))
+		return;
+
+	if (qdf_nbuf_get_nr_frags_in_fraglist(rxbuf)) {
+		data = qdf_nbuf_get_frag_addr(rxbuf, 0);
+		pkt_len = qdf_nbuf_get_frag_size(rxbuf, 0);
+		is_frag = true;
+	} else if (qdf_nbuf_has_fraglist(rxbuf)) {
+		tmp_buf = qdf_nbuf_get_ext_list(rxbuf);
+		pkt_len = qdf_nbuf_len(tmp_buf);
+		if (tmp_buf)
+			data = qdf_nbuf_data(tmp_buf);
+	}
+
+	fc = (tpSirMacFrameCtl)data;
+
+	if (fc->wep) {
+		fc->wep = 0;
+		hdr_len = sizeof(tSirMacMgmtHdr);
+
+		/* Add offset of QOS control,
+		 * HTC control field and CCMP params to reach data field
+		 */
+		if (fc->subType == IEEE80211_FC0_TYPE_DATA)
+			hdr_len += QOS_CTRL_LEN;
+		if (fc->order)
+			hdr_len += HTC_CTRL_LEN;
+
+		ccmp_info = data + hdr_len;
+		qdf_mem_copy(data, fc, sizeof(tSirMacFrameCtl));
+
+		hdr_len += CCMP_PARAM_LEN;
+		data += hdr_len;
+		pkt_len -= hdr_len;
+		qdf_mem_copy(ccmp_info, data, pkt_len);
+		if (!is_frag)
+			qdf_nbuf_trim_tail(rxbuf, CCMP_PARAM_LEN);
+		else
+			qdf_nbuf_trim_add_frag_size(rxbuf,
+						    0, -(CCMP_PARAM_LEN), 0);
+	}
+}
+#else
+void dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
+{
+}
+#endif
+
 static QDF_STATUS
 dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
 			       uint8_t mac_id)
@@ -1330,6 +1394,7 @@ dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
 	mon_vdev = mvdev->monitor_vdev;
 
 	if (mon_vdev && mon_vdev->osif_rx_mon) {
+		dp_tx_mon_disable_pf(nbuf);
 		mon_vdev->osif_rx_mon(mvdev->osif_vdev, nbuf, NULL);
 		mon_mac->lpc_coc_stats.tx_delivered++;
 	} else {
