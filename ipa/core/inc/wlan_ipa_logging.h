@@ -9,6 +9,9 @@
   *
   */
 
+#ifndef _WLAN_IP_LOGGING_H_
+#define _WLAN_IP_LOGGING_H_
+
 #include "qdf_threads.h"
 #include "qdf_event.h"
 #include "wlan_cfg80211.h"
@@ -111,6 +114,14 @@ struct nl_msg_header {
 };
 
 /**
+ * ipa_fw_nl_broadcast() - send netlink msg to userspace
+ *			   for fw logs
+ * @buffer: fw logs
+ * @len: length of logs
+ */
+int ipa_fw_nl_broadcast(const uint8_t *buffer, uint32_t len);
+
+/**
  * wlan_ipa_logging_sock_init() - init ipa logging resources
  */
 QDF_STATUS wlan_ipa_logging_sock_init(void);
@@ -136,3 +147,4 @@ void wlan_ipa_logging_sock_deinit(void)
 {
 }
 #endif
+#endif /* _WLAN_IP_LOGGING_H_ */

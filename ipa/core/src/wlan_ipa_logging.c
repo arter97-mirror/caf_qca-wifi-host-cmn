@@ -24,6 +24,38 @@
 struct wlan_ipa_log_context g_ipa_logging_ctx;
 static struct wlan_ipa_log_msg *g_ipa_log_msg;
 
+int ipa_fw_nl_broadcast(const uint8_t *buffer, uint32_t len)
+{
+	struct sk_buff *skb;
+	struct nlmsghdr *nlh;
+	int payload_len;
+	struct nl_msg_header *wnl;
+	int tot_msg_len;
+
+	payload_len = len + sizeof(wnl->type) + sizeof(wnl->length);
+	tot_msg_len = NLMSG_SPACE(payload_len);
+
+	skb = dev_alloc_skb(tot_msg_len);
+	if (!skb)
+		return QDF_STATUS_E_FAILURE;
+
+	nlh = nlmsg_put(skb, 0, 0, WLAN_NL_MSG_OPT_DP_LOG,
+			payload_len, NLM_F_REQUEST);
+	if (!nlh) {
+		dev_kfree_skb(skb);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	wnl = (struct nl_msg_header *)nlh;
+	wnl->type = WLAN_IPA_NL_MSG_FW_TYPE;
+	wnl->length = len;
+	qdf_mem_copy(nlmsg_data(nlh) + sizeof(wnl->type) +
+		     sizeof(wnl->length), buffer, len);
+	nl_srv_bcast(skb, CLD80211_MCGRP_OPT_DP_LOGS,
+		     WLAN_NL_MSG_OPT_DP_LOG);
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline
 QDF_STATUS wlan_ipa_nl_broadcast(int length, char *buf)
 {
