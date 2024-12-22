@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -421,6 +421,17 @@ enum hal_rx_mpdu_desc_flags {
 
 /* TODO: Convert the following structure fields accesseses to offsets */
 
+#ifdef CONFIG_BORON
+#define HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
+	(HAL_RX_BUFFER_ADDR_39_32_GET(&			\
+	(((struct reo_destination_ring *)		\
+		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+
+#define HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)	\
+	(HAL_RX_BUFFER_ADDR_31_0_GET(&			\
+	(((struct reo_destination_ring *)		\
+		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+#else
 #define HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
 	(HAL_RX_BUFFER_ADDR_39_32_GET(&			\
 	(((struct reo_destination_ring *)		\
@@ -430,6 +441,7 @@ enum hal_rx_mpdu_desc_flags {
 	(HAL_RX_BUFFER_ADDR_31_0_GET(&			\
 	(((struct reo_destination_ring *)		\
 		reo_desc)->buf_or_link_desc_addr_info)))
+#endif
 
 #define HAL_RX_REO_BUF_COOKIE_INVALID_RESET(reo_desc)	\
 		(HAL_RX_BUF_COOKIE_INVALID_RESET(&		\

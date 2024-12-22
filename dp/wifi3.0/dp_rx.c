@@ -74,6 +74,30 @@ void dp_rx_dump_info_and_assert(struct dp_soc *soc,
 
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 #ifdef RX_DESC_SANITY_WAR
+#ifdef CONFIG_BORON
+QDF_STATUS dp_rx_desc_sanity(struct dp_soc *soc, hal_soc_handle_t hal_soc,
+			     hal_ring_handle_t hal_ring_hdl,
+			     hal_ring_desc_t ring_desc,
+			     struct dp_rx_desc *rx_desc)
+{
+	if (qdf_unlikely(!rx_desc)) {
+		/*
+		 * This is an unlikely case where the cookie obtained
+		 * from the ring_desc is invalid and hence we are not
+		 * able to find the corresponding rx_desc
+		 */
+		goto fail;
+	}
+	return QDF_STATUS_SUCCESS;
+
+fail:
+	DP_STATS_INC(soc, rx.err.invalid_cookie, 1);
+	dp_err_rl("Sanity failed for ring Desc:");
+	hal_srng_dump_ring_desc(hal_soc, hal_ring_hdl,
+				ring_desc);
+	return QDF_STATUS_E_NULL_VALUE;
+}
+#else
 QDF_STATUS dp_rx_desc_sanity(struct dp_soc *soc, hal_soc_handle_t hal_soc,
 			     hal_ring_handle_t hal_ring_hdl,
 			     hal_ring_desc_t ring_desc,
@@ -108,6 +132,7 @@ fail:
 	return QDF_STATUS_E_NULL_VALUE;
 
 }
+#endif /* CONFIG_BORON */
 #endif
 
 uint32_t dp_rx_srng_get_num_pending(hal_soc_handle_t hal_soc,

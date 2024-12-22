@@ -32,10 +32,12 @@
 #include "rx_flow_search_entry.h"
 #include "hal_rx_flow_info.h"
 #include "hal_be_api.h"
-#include "reo_destination_ring_with_pn.h"
 #include "rx_reo_queue_1k.h"
 
 #include <hal_be_rx.h>
+#ifdef CONFIG_BORON
+#include <hal_bn_rx.h>
+#endif
 
 #define UNIFIED_PHYRX_HT_SIG_0_HT_SIG_INFO_PHYRX_HT_SIG_INFO_DETAILS_OFFSET \
 	PHYRX_HT_SIG_PHYRX_HT_SIG_INFO_DETAILS_MCS_OFFSET
@@ -429,10 +431,6 @@ static inline void hal_rx_dump_mpdu_start_tlv_fig(void *mpdustart,
 
 	__QDF_TRACE_RL(dbg_level, QDF_MODULE_ID_HAL,
 		       "rx_mpdu_start tlv (1/4) - "
-		       "pn_31_0:%x "
-		       "pn_63_32:%x "
-		       "pn_95_64:%x "
-		       "pn_127_96:%x "
 		       "peer_meta_data:%x "
 		       "mpdu_frame_control_valid:%x "
 		       "mpdu_duration_valid:%x "
@@ -444,10 +442,6 @@ static inline void hal_rx_dump_mpdu_start_tlv_fig(void *mpdustart,
 		       "mpdu_qos_control_valid:%x "
 		       "mpdu_ht_control_valid:%x "
 		       "frame_encryption_info_valid :%x",
-		       mpdu_info->pn_31_0,
-		       mpdu_info->pn_63_32,
-		       mpdu_info->pn_95_64,
-		       mpdu_info->pn_127_96,
 		       mpdu_info->peer_meta_data,
 		       mpdu_info->mpdu_frame_control_valid,
 		       mpdu_info->mpdu_duration_valid,
@@ -1728,22 +1722,6 @@ hal_reo_set_err_dst_remap_fig(void *hal_soc)
 			 REO_REG_REG_BASE)));
 }
 
-/**
- * hal_reo_enable_pn_in_dest_fig() - Set the REO register to enable previous PN
- *				for OOR and 2K-jump frames
- * @hal_soc: HAL SoC handle
- *
- * Return: 1, since the register is set.
- */
-static uint8_t hal_reo_enable_pn_in_dest_fig(void *hal_soc)
-{
-#if 0
-/* NO PN in congo */
-	HAL_REG_WRITE(hal_soc, HWIO_REO_R0_PN_IN_DEST_ADDR(REO_REG_REG_BASE),
-		      1);
-#endif
-	return 1;
-}
 
 /**
  * hal_rx_flow_setup_fse_fig() - Setup a flow search entry in HW FST
@@ -2112,24 +2090,6 @@ static uint8_t hal_tx_get_num_tcl_banks_fig(void)
 }
 
 /**
- * hal_rx_reo_prev_pn_get_fig() - Get the previous PN from the REO ring desc.
- * @ring_desc: REO ring descriptor [To be validated by caller ]
- * @prev_pn: Buffer where the previous PN is to be populated.
- *		[To be validated by caller]
- *
- * Return: None
- */
-static void hal_rx_reo_prev_pn_get_fig(void *ring_desc,
-					uint64_t *prev_pn)
-{
-	struct reo_destination_ring_with_pn *reo_desc =
-		(struct reo_destination_ring_with_pn *)ring_desc;
-
-	*prev_pn = reo_desc->prev_pn_23_0;
-	*prev_pn |= ((uint64_t)reo_desc->prev_pn_55_24 << 24);
-}
-
-/**
  * hal_cmem_write_fig() - function for CMEM buffer writing
  * @hal_soc_hdl: HAL SOC handle
  * @offset: CMEM address
@@ -2482,8 +2442,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_get_window_address = hal_get_window_address_fig;
 	hal_soc->ops->hal_reo_set_err_dst_remap =
 						hal_reo_set_err_dst_remap_fig;
-	hal_soc->ops->hal_reo_enable_pn_in_dest =
-						hal_reo_enable_pn_in_dest_fig;
 	/* Overwrite the default BE ops */
 	hal_soc->ops->hal_get_rx_max_ba_window = hal_get_rx_max_ba_window_fig;
 	hal_soc->ops->hal_get_reo_qdesc_size = hal_get_reo_qdesc_size_fig;
@@ -2567,7 +2525,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 		hal_rx_tlv_l3_hdr_padding_get_be;
 	hal_soc->ops->hal_rx_encryption_info_valid =
 					hal_rx_encryption_info_valid_be;
-	hal_soc->ops->hal_rx_print_pn = hal_rx_print_pn_be;
 	hal_soc->ops->hal_rx_msdu_end_first_msdu_get =
 					hal_rx_tlv_first_msdu_get_be;
 	hal_soc->ops->hal_rx_msdu_end_da_is_valid_get =
@@ -2651,7 +2608,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_get_fisa_flow_agg_count =
 					hal_rx_get_flow_agg_count_be;
 	hal_soc->ops->hal_rx_get_fisa_timeout = hal_rx_get_fisa_timeout_be;
-	hal_soc->ops->hal_rx_reo_prev_pn_get = hal_rx_reo_prev_pn_get_fig;
 
 	/* rx - TLV struct offsets */
 	hal_register_rx_pkt_hdr_tlv_api_fig(hal_soc);

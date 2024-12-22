@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -573,6 +573,14 @@ free_nbuf:
  *
  * Return: QDF_STATUS_SUCCESS, if the pn check passes, else QDF_STATUS_E_FAILURE
  */
+#ifdef CONFIG_BORON
+static inline QDF_STATUS
+dp_rx_err_nbuf_pn_check(struct dp_soc *soc, hal_ring_desc_t ring_desc,
+			qdf_nbuf_t nbuf)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#else
 static inline QDF_STATUS
 dp_rx_err_nbuf_pn_check(struct dp_soc *soc, hal_ring_desc_t ring_desc,
 			qdf_nbuf_t nbuf)
@@ -590,6 +598,7 @@ dp_rx_err_nbuf_pn_check(struct dp_soc *soc, hal_ring_desc_t ring_desc,
 
 	return QDF_STATUS_E_FAILURE;
 }
+#endif
 
 #ifdef WLAN_SKIP_BAR_UPDATE
 static

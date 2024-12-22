@@ -169,26 +169,7 @@ dp_rx_msdu_done_fail_event_record(struct dp_soc *soc,
 }
 #endif
 
-#ifndef AST_OFFLOAD_ENABLE
-static void
-dp_rx_wds_learn(struct dp_soc *soc,
-		struct dp_vdev *vdev,
-		uint8_t *rx_tlv_hdr,
-		struct dp_txrx_peer *txrx_peer,
-		qdf_nbuf_t nbuf)
-{
-	struct hal_rx_msdu_metadata msdu_metadata;
-
-	hal_rx_msdu_packet_metadata_get_generic_be(rx_tlv_hdr, &msdu_metadata);
-	/* WDS Source Port Learning */
-	if (qdf_likely(vdev->wds_enabled))
-		dp_rx_wds_srcport_learn(soc,
-				rx_tlv_hdr,
-				txrx_peer,
-				nbuf,
-				msdu_metadata);
-}
-#else
+#ifdef AST_OFFLOAD_ENABLE
 #ifdef QCA_SUPPORT_WDS_EXTENDED
 /**
  * dp_wds_ext_peer_learn_be() - function to send event to control
@@ -257,7 +238,8 @@ static inline void dp_wds_ext_peer_learn_be(struct dp_soc *soc,
 {
 }
 #endif
-static void
+
+void
 dp_rx_wds_learn(struct dp_soc *soc,
 		struct dp_vdev *vdev,
 		uint8_t *rx_tlv_hdr,
@@ -266,7 +248,7 @@ dp_rx_wds_learn(struct dp_soc *soc,
 {
 	dp_wds_ext_peer_learn_be(soc, ta_txrx_peer, rx_tlv_hdr, nbuf);
 }
-#endif
+#endif /* AST_OFFLOAD_ENABLE */
 
 #ifdef DP_RX_PEEK_MSDU_DONE_WAR
 static inline int dp_rx_war_peek_msdu_done(struct dp_soc *soc,
@@ -369,6 +351,7 @@ dp_rx_update_protocol_stats_wrapper(struct dp_soc *soc,
 }
 #endif /* QCA_DP_PROTOCOL_STATS */
 
+#ifndef CONFIG_BORON
 uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
 			  uint32_t quota)
@@ -1168,6 +1151,7 @@ done:
 
 	return rx_bufs_used; /* Assume no scale factor for now */
 }
+#endif
 
 #ifdef RX_DESC_MULTI_PAGE_ALLOC
 /**

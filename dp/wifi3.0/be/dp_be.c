@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2481,7 +2481,7 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 		for (ring = 0; ring < soc->num_reo_dest_rings; ring++) {
 			if (!(rx_mask & (1 << ring)))
 				continue;
-			work_done = dp_rx_process_be(
+			work_done = dp_rx_process_be_bn(
 					int_ctx,
 					soc->reo_dest_ring[ring].hal_srng,
 					ring,
@@ -4026,7 +4026,7 @@ void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 {
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 	arch_ops->tx_hw_enqueue = dp_tx_hw_enqueue_be;
-	arch_ops->dp_rx_process = dp_rx_process_be;
+	arch_ops->dp_rx_process = dp_rx_process_be_bn;
 	arch_ops->dp_tx_send_fast = dp_tx_fast_send_be;
 	arch_ops->tx_comp_get_params_from_hal_desc =
 		dp_tx_comp_get_params_from_hal_desc_be;
