@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -64,6 +64,7 @@
 #ifdef QCA_LL_TX_FLOW_CONTROL_V2
 #include "cdp_txrx_flow_ctrl_v2.h"
 #else
+#include "wlan_ipa_logging.h"
 
 static inline void
 cdp_dump_flow_pool_info(struct cdp_soc_t *soc)
@@ -4153,6 +4154,7 @@ static void dp_pdev_deinit(struct cdp_pdev *txrx_pdev, int force)
 
 	dp_rxdma_ring_cleanup(pdev->soc, pdev);
 	dp_ipa_rx_desc_list_deinit(pdev);
+	wlan_ipa_logging_sock_deinit();
 	curr_nbuf = pdev->invalid_peer_head_msdu;
 	while (curr_nbuf) {
 		next_nbuf = qdf_nbuf_next(curr_nbuf);
@@ -16085,6 +16087,8 @@ static QDF_STATUS dp_pdev_init(struct cdp_soc_t *txrx_soc,
 		dp_init_err("%pK: dp_monitor_pdev_init failed", soc);
 		goto fail4;
 	}
+
+	wlan_ipa_logging_sock_init();
 
 	/* initialize sw rx descriptors */
 	dp_rx_pdev_desc_pool_init(pdev);

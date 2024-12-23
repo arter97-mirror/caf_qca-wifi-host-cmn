@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -51,7 +51,15 @@ extern uint8_t g_instances_added;
 	QDF_TRACE_INFO(QDF_MODULE_ID_IPA, params)
 #define ipa_debug(params...) \
 	QDF_TRACE_DEBUG(QDF_MODULE_ID_IPA, params)
-
+/* logs for IPA logging Infra */
+#define ipa_log(params...) WLAN_IPA_LOGGING(params)
+/* To collect common log in both wlan and IPA logging infra */
+#define ipa_log_debug(params...) \
+	do { ipa_debug(params); ipa_log(params); } while (0)
+#define ipa_log_err(params...) \
+	do { ipa_err(params); ipa_log(params); } while (0)
+#define ipa_log_info(params...) \
+	do { ipa_info(params); ipa_log(params); } while (0)
 #define ipa_nofl_fatal(params...) \
 	QDF_TRACE_FATAL_NO_FL(QDF_MODULE_ID_IPA, params)
 #define ipa_nofl_err(params...) \

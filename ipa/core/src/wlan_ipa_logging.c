@@ -11,7 +11,6 @@
 
 /* Include Files */
 #include <wlan_ipa_main.h>
-#include <wlan_ipa_logging.h>
 #define WLAN_IPA_THREAD_NAME_MAX 20
 #define WLAN_IPA_TEMP_BUF_LEN_MAX 20
 #define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100
