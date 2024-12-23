@@ -611,7 +611,11 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 {
 	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[pool_id];
 	struct dp_rx_pp_params *pp_params;
+	struct dp_rx_pp_params *curr, *next;
 	int i;
+
+	if (!rx_pp->page_pool_init)
+		return;
 
 	rx_pp->active_pp_idx = 0;
 
@@ -628,9 +632,20 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 
 	rx_pp->aux_pool.pool_size = 0;
 	rx_pp->aux_pool.pp_size = 0;
+
+	qdf_list_for_each_del(&rx_pp->inactive_list, curr, next, node) {
+		if (!curr->pp)
+			continue;
+
+		qdf_page_pool_destroy(curr->pp);
+		qdf_list_remove_node(&rx_pp->inactive_list, &curr->node);
+		qdf_mem_free(curr);
+	}
+
 	qdf_spin_unlock(&rx_pp->pp_lock);
 
 	qdf_timer_free(&rx_pp->pool_inactivity_timer);
+	rx_pp->page_pool_init = false;
 }
 
 QDF_STATUS dp_rx_page_pool_init(struct dp_soc *soc, uint32_t pool_id)
@@ -648,6 +663,8 @@ QDF_STATUS dp_rx_page_pool_init(struct dp_soc *soc, uint32_t pool_id)
 		       QDF_TIMER_TYPE_WAKE_APPS);
 	qdf_list_create(&rx_pp->inactive_list, 0);
 
+	rx_pp->page_pool_init = true;
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -655,7 +672,6 @@ void dp_rx_page_pool_free(struct dp_soc *soc, uint32_t pool_id)
 {
 	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[pool_id];
 	struct dp_rx_pp_params *pp_params;
-	struct dp_rx_pp_params *curr, *next;
 	int i;
 
 	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx))
@@ -678,14 +694,6 @@ void dp_rx_page_pool_free(struct dp_soc *soc, uint32_t pool_id)
 		rx_pp->aux_pool.pp = NULL;
 	}
 
-	qdf_list_for_each_del(&rx_pp->inactive_list, curr, next, node) {
-		if (!curr->pp)
-			continue;
-
-		qdf_page_pool_destroy(curr->pp);
-		qdf_list_remove_node(&rx_pp->inactive_list, &curr->node);
-		qdf_mem_free(curr);
-	}
 	qdf_spin_unlock_bh(&rx_pp->pp_lock);
 
 	qdf_spinlock_destroy(&rx_pp->pp_lock);
@@ -790,6 +798,7 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	}
 
 	qdf_spinlock_create(&rx_pp->pp_lock);
+	rx_pp->page_pool_init = false;
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
 
