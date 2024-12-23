@@ -14571,6 +14571,9 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 	tDot11fIEeht_cap eht_caps;
 	tDot11fIESuppRates supp_rates;
 	tDot11fIEExtSuppRates ext_supp_rates;
+	tDot11fIEWMMInfoStation wmm_info;
+	tDot11fIEWMMCaps wmm_caps;
+	uint8_t wme_enabled, wsm_enabled;
 	struct wlan_mlo_eml_cap eml_cap = {0};
 	uint16_t presence_bitmap = 0;
 	bool is_2g;
@@ -14906,9 +14909,17 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 		qdf_mem_zero(&ext_cap, sizeof(tDot11fIEExtCap));
 		qdf_mem_zero(&vht_caps, sizeof(tDot11fIEVHTCaps));
 		qdf_mem_zero(&he_caps, sizeof(tDot11fIEhe_cap));
+		qdf_mem_zero(&wmm_info, sizeof(tDot11fIEWMMInfoStation));
+		qdf_mem_zero(&wmm_caps, sizeof(tDot11fIEWMMCaps));
 		qdf_mem_zero(&he_6ghz_band_cap,
 			     sizeof(tDot11fIEhe_6ghz_band_cap));
 		qdf_mem_zero(&eht_caps, sizeof(tDot11fIEeht_cap));
+
+		wme_enabled = (pe_session->limWmeEnabled) &&
+				  LIM_BSS_CAPS_GET(WME, pe_session->limCurrentBssQosCaps);
+
+		wsm_enabled = (pe_session->limWsmEnabled) && wme_enabled &&
+				  LIM_BSS_CAPS_GET(WSM, pe_session->limCurrentBssQosCaps);
 
 		// TBD: mlo_capab, supported oper classes
 		populate_dot11f_mlo_partner_sta_cap(mac_ctx, &mlo_cap);
@@ -15039,6 +15050,35 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 			p_sta_prof += len_consumed;
 			len_remaining -= len_consumed;
 		}
+
+		if (wme_enabled && WLAN_REG_IS_6GHZ_CHAN_FREQ(chan_freq)) {
+			populate_dot11f_wmm_info_station_per_session(mac_ctx,
+				pe_session, &wmm_info);
+
+			if (wmm_info.present) {
+				pe_debug("wmm info present");
+				len_consumed = 0;
+				dot11f_pack_ie_wmm_info_station(
+				mac_ctx, &wmm_info, p_sta_prof,
+				len_remaining, &len_consumed);
+				p_sta_prof += len_consumed;
+				len_remaining -= len_consumed;
+			}
+
+			if (wsm_enabled)
+				populate_dot11f_wmm_caps(&wmm_caps);
+
+			if (wmm_caps.present) {
+				pe_debug("wmm caps present");
+				len_consumed = 0;
+				dot11f_pack_ie_wmm_caps(
+				mac_ctx, &wmm_caps, p_sta_prof,
+				len_remaining, &len_consumed);
+				p_sta_prof += len_consumed;
+				len_remaining -= len_consumed;
+			}
+		}
+
 		populate_dot11f_eht_caps_by_band(mac_ctx, is_2g, &eht_caps,
 						 NULL);
 		if (!WLAN_REG_IS_6GHZ_CHAN_FREQ(chan_freq))
