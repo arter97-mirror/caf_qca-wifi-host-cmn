@@ -127,13 +127,13 @@ bool mlo_is_mld_sta(struct wlan_objmgr_vdev *vdev);
 bool ucfg_mlo_is_mld_disconnected(struct wlan_objmgr_vdev *vdev);
 
 /**
- * mlo_is_mld_disconnecting_connecting - Check whether MLD is disconnecting or
- * connecting
+ * mlo_is_mld_connecting - Check whether MLD is connecting
+ *
  * @vdev: pointer to vdev
  *
- * Return: true if mld is disconnecting or connecting, false otherwise
+ * Return: true if mld is connecting, false otherwise
  */
-bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev);
+bool mlo_is_mld_connecting(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlo_is_ml_connection_in_progress - Check whether MLD assoc or link vdev is
@@ -1057,7 +1057,7 @@ bool ucfg_mlo_is_mld_disconnected(struct wlan_objmgr_vdev *vdev)
 #endif
 
 static inline
-bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev)
+bool mlo_is_mld_connecting(struct wlan_objmgr_vdev *vdev)
 {
 	return false;
 }

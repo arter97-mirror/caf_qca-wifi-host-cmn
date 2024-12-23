@@ -179,7 +179,7 @@ bool mlo_is_mld_disconnected(struct wlan_objmgr_vdev *vdev)
 	return true;
 }
 
-bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev)
+bool mlo_is_mld_connecting(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
 	uint8_t i = 0;
@@ -190,8 +190,7 @@ bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev)
 	for (i =  0; i < WLAN_UMAC_MLO_MAX_VDEVS; i++) {
 		if (!mlo_dev_ctx->wlan_vdev_list[i])
 			continue;
-		if (wlan_cm_is_vdev_disconnecting(mlo_dev_ctx->wlan_vdev_list[i]) ||
-		    wlan_cm_is_vdev_connecting(mlo_dev_ctx->wlan_vdev_list[i]))
+		if (wlan_cm_is_vdev_connecting(mlo_dev_ctx->wlan_vdev_list[i]))
 			return true;
 	}
 	return false;
