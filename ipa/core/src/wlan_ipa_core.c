@@ -5708,8 +5708,8 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 							ipa_ctx,
 							msg->ctrl_del_hdl);
 		if (add_status && !ipa_ctx->ipa_opt_dp_ctrl_debug) {
-			ipa_info("opt_dp_ctrl: IPA notify filter del response: %d, hdl: %d",
-				 msg->rsvd_snd, msg->ctrl_del_hdl);
+			ipa_log_info("opt_dp_ctrl: IPA notify filter del response: %d, hdl: %d",
+				     msg->rsvd_snd, msg->ctrl_del_hdl);
 			qdf_mutex_acquire(&ipa_ctx->ipa_lock);
 			status =
 			 wlan_ipa_wdi_opt_dpath_notify_ctrl_flt_del_per_inst(
@@ -5717,8 +5717,8 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 							msg->ctrl_del_hdl,
 							msg->rsvd_snd);
 			qdf_mutex_release(&ipa_ctx->ipa_lock);
-			ipa_info("opt_dp_ctrl: return status for handle %d: %d",
-				 msg->ctrl_del_hdl, status);
+			ipa_debug("opt_dp_ctrl: return status for handle %d: %d",
+				  msg->ctrl_del_hdl, status);
 		}
 
 	} else if (msg->op_code == WLAN_IPA_SMMU_MAP) {
@@ -7069,29 +7069,28 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 	num_flts = ipa_flt->num_tuples;
 	htc_handle = lmac_get_htc_hdl(psoc);
 	if (!htc_handle) {
-		ipa_err("HTC Handle is null");
+		ipa_log_err("HTC Handle is null");
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
 	if (ipa_obj->opt_dp_ctrl_ssr ||
 	    ipa_obj->opt_dp_ctrl_wlan_shutdown) {
-		ipa_debug("opt_dp_ctrl, reject flt addition while ssr or shutdown");
+		ipa_log_debug("opt_dp_ctrl, reject flt addition while ssr or shutdown");
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
 	ipa_obj->ctrl_stats.flt_add_req_cnt += num_flts;
-	ipa_debug("opt_dp_ctrl: params received from ipa");
-	ipa_debug("opt_dp_ctrl: num of filters: %u", num_flts);
 	for (flt = 0; flt < num_flts; flt++)
-		ipa_debug("opt_dp_ctrl: version: %u, protocol: %u, sport: %u, dport: %u",
-			  ipa_flt->flt_info[flt].version,
-			  ipa_flt->flt_info[flt].protocol,
-			  ipa_flt->flt_info[flt].sport,
-			  ipa_flt->flt_info[flt].dport);
+		ipa_log_debug("opt_dp_ctrl: version: %u, protocol: %u, sport: %u, dport: %u",
+			      ipa_flt->flt_info[flt].version,
+			      ipa_flt->flt_info[flt].protocol,
+			      ipa_flt->flt_info[flt].sport,
+			      ipa_flt->flt_info[flt].dport);
 
 	dp_flt_param = &ipa_obj->dp_tx_super_rule_flt_param;
 	if (num_flts > IPA_WDI_MAX_TX_FILTER) {
-		ipa_err("Wrong count of TX flt coming from IPA %d", num_flts);
+		ipa_log_err("Wrong count of TX flt coming from IPA %d",
+			    num_flts);
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
@@ -7100,8 +7099,8 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 			if (!dp_flt_param->flt_addr_params[i].ipa_flt_in_use)
 				break;
 		if (i == IPA_WDI_MAX_TX_FILTER) {
-			ipa_err("Wrong TX flt count %d, flt already installed = %d",
-				num_flts, i);
+			ipa_log_err("Wrong TX flt count %d, flt already installed = %d",
+				    num_flts, i);
 			goto clean_db;
 		}
 
@@ -7110,13 +7109,10 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 		} else if (ipa_flt->flt_info[flt].version == 1) {
 			dp_flt_param->flt_addr_params[i].l3_type = IPV6;
 		} else {
-			ipa_err("Wrong IPA version %d",
-				ipa_flt->flt_info[flt].version);
+			ipa_log_err("Wrong IPA version %d",
+				    ipa_flt->flt_info[flt].version);
 			goto clean_db;
 		}
-
-		ipa_debug("opt_dp_ctrl: version received from ipa: %u",
-			  ipa_flt->flt_info[flt].version);
 
 		ipa_flt->flt_info[flt].out_hdl = (WLAN_HDL_TX_FILTER1 + i);
 		dp_flt_param->flt_addr_params[i].valid = 1;
@@ -7133,20 +7129,6 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 		dp_flt_param->flt_addr_params[i].ipa_flt_add_success =
 			WLAN_IPA_CTRL_FLT_ADD_INPROGRESS;
 		indices[i] = true;
-		ipa_debug("opt_dp_ctrl: handle assigned to filter %u",
-			  ipa_flt->flt_info[flt].out_hdl);
-		ipa_debug("opt_dp_ctrl: src port received from %u, dst port received from ipa %u",
-			  ipa_flt->flt_info[flt].sport,
-			  ipa_flt->flt_info[flt].dport);
-		ipa_debug("opt_dp_ctrl: protocol: %u",
-			  dp_flt_param->flt_addr_params[i].l4_type);
-
-		ipa_debug("opt_dp_ctrl: version stored in Host DB 0x%x",
-			  dp_flt_param->flt_addr_params[i].l3_type);
-		ipa_debug("opt_dp_ctrl: src port stored in Host DB %u",
-			  dp_flt_param->flt_addr_params[i].src_port);
-		ipa_debug("opt_dp_ctrl: dst port stored in Host DB %u",
-			  dp_flt_param->flt_addr_params[i].dst_port);
 
 		if (dp_flt_param->flt_addr_params[i].l3_type == IPV4) {
 			src_ip_addr = qdf_ntohl(ipa_flt->flt_info[flt].
@@ -7161,12 +7143,9 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 				dp_flt_param->flt_addr_params[i].dst_ipv4_addr,
 				(&dst_ip_addr),
 				IPV4BYTES);
-			ipa_debug("opt_dp_ctrl: src IPV4 received from ipa 0x%x, dst IPV4 received from ipa 0x%x",
-				  ipa_flt->flt_info[flt].ipv4_addr.ipv4_saddr,
-				  ipa_flt->flt_info[flt].ipv4_addr.ipv4_daddr);
-			ipa_debug("opt_dp_ctrl: src IPV4 stored in DB 0x%x, dst IPV4 stored in DB 0x%x",
-				  src_ip_addr,
-				  dst_ip_addr);
+			ipa_log_debug("opt_dp_ctrl: src IPV4 stored in DB 0x%x, dst IPV4 stored in DB 0x%x",
+				      src_ip_addr,
+				      dst_ip_addr);
 
 		} else if (dp_flt_param->flt_addr_params[i].l3_type == IPV6) {
 			host_ipv6_src =
@@ -7184,15 +7163,12 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 					     IPV6ARRAY);
 				host_ipv6_src++;
 			}
-			for (j = 0; j < IPV6ARRAY; j++) {
-				ipa_debug("opt_dp_ctrl: ipv6 src addr from ipa 0x%x",
-					  ipa_flt->flt_info[flt].ipv6_addr.
-					  ipv6_saddr[j]);
-			}
+
 			for (j = 0; j < IPV6ARRAY; j++)
-				ipa_debug("opt_dp_ctrl: ipv6 src stored in DB 0x%x",
-					  *((uint32_t *)dp_flt_param->flt_addr_params[i].
-					  src_ipv6_addr + j));
+				ipa_log_debug("opt_dp_ctrl: ipv6 src stored in DB 0x%x",
+					      *((uint32_t *)
+					      dp_flt_param->flt_addr_params[i].
+					      src_ipv6_addr + j));
 			for (j = 0; j < IPV6ARRAY; j++) {
 				dst_ip_addr = qdf_ntohl(ipa_flt->flt_info[flt].
 						      ipv6_addr.ipv6_daddr[j]);
@@ -7201,14 +7177,12 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 					     IPV6ARRAY);
 				host_ipv6_dest++;
 			}
+
 			for (j = 0; j < IPV6ARRAY; j++)
-				ipa_debug("opt_dp_ctrl: ipv6 dest addr from ipa 0x%x",
-					  ipa_flt->flt_info[flt].ipv6_addr.
-					  ipv6_daddr[j]);
-			for (j = 0; j < IPV6ARRAY; j++)
-				ipa_debug("opt_dp_ctrl: ipv6 dest stored in DB 0x%x",
-					  *((uint32_t *)dp_flt_param->flt_addr_params[i].
-					  dst_ipv6_addr + j));
+				ipa_log_debug("opt_dp_ctrl: ipv6 dest stored in DB 0x%x",
+					      *((uint32_t *)
+					      dp_flt_param->flt_addr_params[i].
+					      dst_ipv6_addr + j));
 		} else {
 			ipa_err("Wrong IP version %u",
 				dp_flt_param->flt_addr_params[i].l3_type);
@@ -7240,10 +7214,11 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 	response = dp_flt_param->ipa_flt_evnt_response;
 	if (status != QDF_STATUS_SUCCESS || response != QDF_STATUS_SUCCESS) {
 		if (status == QDF_STATUS_E_TIMEOUT)
-			qdf_err("TIMEOUT_OCCURS");
+			ipa_err("TIMEOUT_OCCURS");
 		else
-			qdf_err("Error on event wait for filter add cb");
-		ipa_debug("opt_dp_ctrl: clean Host DB due to filter add failure");
+			ipa_err("Error on event wait for filter add cb");
+		ipa_log_debug("opt_dp_ctrl: clean Host DB due to filter add failure, status - %d, resp - %d",
+			      status, response);
 		goto clean_db;
 	}
 
@@ -7268,7 +7243,7 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb_wrapper(
 	int code;
 
 	if (qdf_op_protect(&op_sync)) {
-		ipa_debug("opt_dp_ctrl: driver operation inprogress!");
+		ipa_log_debug("opt_dp_ctrl: driver operation inprogress!");
 		return WLAN_IPA_WDI_OPT_DPATH_RESP_SUCCESS;
 	}
 
@@ -7314,20 +7289,20 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb(
 
 	htc_handle = lmac_get_htc_hdl(psoc);
 	if (!htc_handle) {
-		ipa_err("HTC Handle is null");
+		ipa_log_err("HTC Handle is null");
 		return WLAN_IPA_WDI_OPT_DPATH_RESP_ERR_INTERNAL;
 	}
 
 	if (num_flts > IPA_WDI_MAX_TX_FILTER) {
-		ipa_err("opt_dp_ctrl, num of flts received from ipa is invalid");
+		ipa_log_err("opt_dp_ctrl, num of flts received from ipa is invalid");
 		return WLAN_IPA_WDI_OPT_DPATH_RESP_ERR_INTERNAL;
 	}
 
 	for (i = 0; i < num_flts; i++) {
 		if (rem_flt && (rem_flt->hdl_info[i] < WLAN_HDL_TX_FILTER1 ||
 				rem_flt->hdl_info[i] > WLAN_HDL_TX_FILTER3)) {
-			ipa_err("opt_dp_ctrl, wrong flt hdl %d",
-				rem_flt->hdl_info[i]);
+			ipa_log_err("opt_dp_ctrl, wrong flt hdl %d",
+				    rem_flt->hdl_info[i]);
 			return WLAN_IPA_WDI_OPT_DPATH_RESP_ERR_INTERNAL;
 		}
 	}
@@ -7346,9 +7321,9 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb(
 			    dp_flt_params->flt_addr_params[j].ipa_flt_in_use &&
 			    !dp_flt_params->flt_addr_params[j].
 			    ipa_flt_evnt_required) {
-				ipa_debug("opt_dp_ctrl: filter hdl found in DB %d:",
-					  dp_flt_params->flt_addr_params[j].
-					  flt_hdl);
+				ipa_log_debug("opt_dp_ctrl: filter hdl found in DB %d:",
+					      dp_flt_params->flt_addr_params[j].
+					      flt_hdl);
 				dp_flt_params->flt_addr_params[j].
 						ipa_flt_evnt_required = 1;
 				qdf_event_reset(
@@ -7368,7 +7343,7 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb(
 			return WLAN_IPA_WDI_OPT_DPATH_RESP_SUCCESS;
 		}
 
-		ipa_err("opt_dp_ctrl, filter received not found in internal DB");
+		ipa_log_err("opt_dp_ctrl, filter received not found in internal DB");
 		qdf_spin_unlock_bh(&dp_flt_params->flt_rem_lock);
 		return WLAN_IPA_WDI_OPT_DPATH_RESP_ERR_INTERNAL;
 	}
@@ -7413,6 +7388,7 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb(
 		code = WLAN_IPA_WDI_OPT_DPATH_RESP_SUCCESS;
 	}
 
+	ipa_log("opt_dp_ctrl: filter del status - %d", code);
 	return code;
 }
 
@@ -7467,18 +7443,18 @@ void wlan_ipa_wdi_opt_dpath_ctrl_notify_flt_install(struct filter_response
 			continue;
 
 		result = flt_resp_params[i].result;
-		ipa_debug("opt_dp_ctrl: i: %d, valid: %d, result: %d",
-			  i, flt_resp_params[i].valid, result);
+		ipa_log_debug("opt_dp_ctrl: i: %d, valid: %d, result: %d",
+			      i, flt_resp_params[i].valid, result);
 		if (result == HTT_TX_LCE_SUPER_RULE_INSTALL_FAIL) {
-			ipa_err("Filter installation failed");
+			ipa_obj->ctrl_stats.add_fail_cnt++;
+			ipa_log_err("Filter installation failed, failure cnt %d",
+				    ipa_obj->ctrl_stats.add_fail_cnt);
 			dp_flt_params->ipa_flt_evnt_response =
 				QDF_STATUS_FILT_REQ_ERROR;
-			ipa_obj->ctrl_stats.add_fail_cnt++;
 			break;
 		}
 		dp_flt_params->ipa_flt_evnt_response =
 						QDF_STATUS_SUCCESS;
-		ipa_debug("filter installed: %d", i);
 		ipa_obj->ctrl_stats.active_filter++;
 	}
 	ipa_debug("opt_dp_ctrl: ipa_flt_event_response set status: %d",
@@ -7499,7 +7475,7 @@ void wlan_ipa_wdi_opt_dpath_ctrl_notify_flt_delete(struct filter_response
 	uint16_t code;
 
 	if (!ipa_obj || ipa_obj->opt_dp_ctrl_flt_cleaned) {
-		ipa_err("opt_dp_ctrl: flt cleaned internally");
+		ipa_log_info("opt_dp_ctrl: flt cleaned internally");
 		return;
 	}
 
@@ -7511,10 +7487,11 @@ void wlan_ipa_wdi_opt_dpath_ctrl_notify_flt_delete(struct filter_response
 		valid = flt_resp_params[i].valid;
 		result = flt_resp_params[i].result;
 		dst_port = flt_resp_params[i].dst_port;
-		ipa_debug("opt_dp_ctrl: i: %d, valid: %d, result: %d, dst_port: %d",
-			  i, valid, result, dst_port);
 		if (!valid)
 			continue;
+
+		ipa_log_debug("opt_dp_ctrl: i: %d, valid: %d, result: %d, dst_port: %d",
+			      i, valid, result, dst_port);
 
 		hdl = WLAN_HDL_TX_FILTER1 + i;
 		if (result != HTT_TX_LCE_SUPER_RULE_RELEASE_SUCCESS_HIGH_TPUT) {
@@ -7542,7 +7519,7 @@ void wlan_ipa_wdi_opt_dpath_ctrl_notify_flt_delete(struct filter_response
 			    dp_flt_params->flt_addr_params[j].dst_port) {
 				if (result ==
 					HTT_TX_LCE_SUPER_RULE_RELEASE_FAIL) {
-					ipa_debug("opt_dp_ctrl: filter with handle found but del failed on fw side");
+					ipa_log_debug("opt_dp_ctrl: filter with handle found but del failed on fw side");
 					code =
 					WLAN_IPA_WDI_OPT_DPATH_RESP_ERR_FAILURE;
 					break;
@@ -7566,7 +7543,7 @@ void wlan_ipa_wdi_opt_dpath_ctrl_notify_flt_delete(struct filter_response
 		}
 
 		if (j == IPA_WDI_MAX_TX_FILTER) {
-			ipa_err("opt_dp_ctrl, handle not found in internal DB");
+			ipa_log_err("opt_dp_ctrl, handle not found in internal DB");
 			continue;
 		}
 
@@ -7584,8 +7561,6 @@ void wlan_ipa_wdi_opt_dpath_ctrl_notify_flt_delete(struct filter_response
 						uc_op_work,
 						WLAN_IPA_CTRL_FILTER_DEL_NOTIFY,
 						hdl, code);
-		if (status == QDF_STATUS_SUCCESS)
-			ipa_debug("filter handle queued to list");
 	}
 
 	qdf_sched_work(0, &uc_op_work->work);
@@ -7638,7 +7613,7 @@ void wlan_ipa_tx_pkt_opt_dp_ctrl(uint8_t vdev_id, qdf_nbuf_t nbuf)
 						WLAN_IPA_CTRL_TX_REINJECT,
 						vdev_id, nbuf);
 	if (status != QDF_STATUS_SUCCESS) {
-		ipa_err("nbuf message enqueue failed");
+		ipa_log_err("nbuf message enqueue failed");
 		ipa_ctx->ctrl_stats.reinject_pkt_enq_fail_cnt++;
 		qdf_nbuf_free(nbuf);
 		return;

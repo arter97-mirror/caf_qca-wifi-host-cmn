@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -3950,11 +3950,10 @@ dp_ipa_rx_buf_alloc_opt_dp_ctrl(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	QDF_STATUS ret, status = QDF_STATUS_SUCCESS;
 	uint8_t *dst_addr;
 
-	dp_info("opt_dp_ctrl: allocate and map nbuf");
 	ret = dp_pdev_nbuf_alloc_and_map(soc, &nbuf_frag_info, pdev,
 					 rx_desc_pool, false, 0);
 	if (QDF_IS_STATUS_ERROR(ret)) {
-		dp_err("opt_dp_ctrl: nbuf allocation failed");
+		dp_ipa_err("opt_dp_ctrl: nbuf allocation failed");
 		return ret;
 	}
 
@@ -3973,7 +3972,7 @@ dp_ipa_rx_buf_alloc_opt_dp_ctrl(struct dp_soc *soc, qdf_nbuf_t nbuf,
 							  true, __func__,
 							  __LINE__);
 		if (status != QDF_STATUS_SUCCESS) {
-			dp_info("opt_dp_ctrl: smmu map failed");
+			dp_ipa_err("opt_dp_ctrl: smmu map failed");
 			qdf_nbuf_unmap_nbytes_single(soc->osdev, rx_desc->nbuf,
 						     QDF_DMA_FROM_DEVICE,
 						     rx_desc_pool->buf_size);
@@ -4000,7 +3999,7 @@ struct dp_rx_desc *dp_ipa_rx_get_free_desc(struct dp_soc *soc)
 
 	free_list = &soc->ipa_rx_desc_freelist;
 	if (!free_list->head) {
-		dp_err("free list is empty");
+		dp_ipa_err("free list is empty");
 		return rx_desc;
 	}
 	qdf_spin_lock_bh(&free_list->lock);
@@ -4038,6 +4037,7 @@ QDF_STATUS dp_ipa_tx_opt_dp_ctrl_pkt(struct cdp_soc_t *soc_hdl,
 	int mac_id;
 	struct rx_desc_pool *rx_desc_pool;
 	uint32_t paddr_lo, paddr_hi;
+	static int ctrl_pkt;
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_IPA);
 	if (!vdev)
@@ -4047,19 +4047,18 @@ QDF_STATUS dp_ipa_tx_opt_dp_ctrl_pkt(struct cdp_soc_t *soc_hdl,
 	mac_id = pdev->lmac_id;
 	rx_desc_pool = &soc->rx_desc_buf[mac_id];
 
-	dp_info("opt_dp_ctrl: vote for clock and wait resp from ipa");
 	status = ipa_opt_dpath_enable_clk_req(soc->ctrl_psoc);
 	if (status != QDF_STATUS_SUCCESS) {
-		ipa_err("clock enable timed out");
+		dp_ipa_err("clock enable timed out");
 		goto vdev_ref_release;
 	}
 
-	dp_info("opt_dp_ctrl: get rx free desc");
 	rx_desc = dp_ipa_rx_get_free_desc(soc);
-	if (!rx_desc)
+	if (!rx_desc) {
+		dp_ipa_err("error on fetching free desc");
 		goto clk_unvote;
+	}
 
-	dp_info("opt_dp_ctrl: alloc, map and attach buffer to rx desc");
 	ret = dp_ipa_rx_buf_alloc_opt_dp_ctrl(soc, nbuf, rx_desc,
 					      pdev, rx_desc_pool);
 	if (ret != QDF_STATUS_SUCCESS)
@@ -4082,8 +4081,9 @@ QDF_STATUS dp_ipa_tx_opt_dp_ctrl_pkt(struct cdp_soc_t *soc_hdl,
 							  manager);
 	HTT_RX_BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_SET(msdu_info.meta_data[8],
 						     cookie);
-	dp_info("opt_dp_ctrl: metadata[7]: 0x%x, metadata[8]: 0x%x",
-		msdu_info.meta_data[7], msdu_info.meta_data[8]);
+	ctrl_pkt += 1;
+	dp_ipa_debug("opt_dp_ctrl: metadata[7]: 0x%x, metadata[8]: 0x%x, ctrl_pkt cnt: %d",
+		     msdu_info.meta_data[7], msdu_info.meta_data[8], ctrl_pkt);
 	dp_tx_get_queue(vdev, nbuf, &msdu_info.tx_queue);
 	msdu_info.xmit_type = qdf_nbuf_get_vdev_xmit_type(nbuf);
 	msdu_info.is_opt_dp_ctrl = true;
@@ -4098,7 +4098,7 @@ QDF_STATUS dp_ipa_tx_opt_dp_ctrl_pkt(struct cdp_soc_t *soc_hdl,
 	return QDF_STATUS_SUCCESS;
 
 smmu_unmap_rx_nbuf:
-	dp_info("opt_dp_ctrl: unmap rx buffer");
+	dp_ipa_debug("opt_dp_ctrl: unmap rx buffer");
 	dp_ipa_handle_rx_buf_smmu_mapping(soc, rx_desc->nbuf,
 					  rx_desc_pool->buf_size,
 					  false, __func__, __LINE__, 0);
@@ -4110,7 +4110,7 @@ smmu_unmap_rx_nbuf:
 	qdf_nbuf_free(rx_desc->nbuf);
 
 release_rx_desc:
-	dp_info("opt_dp_ctrl: release rx descriptor and add to freelist");
+	dp_ipa_debug("opt_dp_ctrl: release rx descriptor and add to freelist");
 	if (dp_rx_add_to_ipa_desc_free_list(soc, rx_desc, 0) !=
 						QDF_STATUS_SUCCESS) {
 		dp_rx_add_to_free_desc_list(&pdev->free_list_head,

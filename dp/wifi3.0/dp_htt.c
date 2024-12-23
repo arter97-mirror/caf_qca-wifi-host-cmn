@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4016,8 +4016,8 @@ static void dp_ipa_tx_super_rule_setup_done_handler(struct htt_soc *soc,
 	pdev_id = HTT_TX_LCE_SUPER_RULE_SETUP_DONE_PDEV_ID_GET(*msg_word);
 	resp_type = HTT_TX_LCE_SUPER_RULE_SETUP_DONE_RESPONSE_TYPE_GET(
 								*msg_word);
-	dp_info("opt_dp_ctrl:: tx_super_rule_rsp, pdev_id: %d resp_type: %d",
-		pdev_id, resp_type);
+	dp_ipa_debug("opt_dp_ctrl:: tx_super_rule_rsp, pdev_id: %d resp_type: %d",
+		     pdev_id, resp_type);
 
 	for (i = 0; i < TX_SUPER_RULE_SETUP_NUM; i++) {
 		msg_word++;
