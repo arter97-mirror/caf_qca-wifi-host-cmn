@@ -608,6 +608,8 @@ bool wlan_ll_lt_sap_is_freq_in_avoid_list(struct wlan_objmgr_psoc *psoc,
 		return false;
 	}
 
+	ll_lt_sap_flush_old_entries(ll_sap_psoc_obj);
+
 	return ll_lt_sap_is_freq_in_avoid_list(ll_sap_psoc_obj, freq);
 }
 
@@ -626,4 +628,3 @@ wlan_ll_sap_get_valid_freq_for_csa(struct wlan_objmgr_psoc *psoc,
 {
 	return ll_lt_sap_get_valid_freq(psoc, vdev_id, curr_freq, csa_src);
 }
-
