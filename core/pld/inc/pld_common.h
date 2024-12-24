@@ -511,10 +511,12 @@ struct pld_soc_info {
  * enum pld_recovery_reason - WLAN host driver recovery reason
  * @PLD_REASON_DEFAULT: default
  * @PLD_REASON_LINK_DOWN: PCIe link down
+ * @PLD_REASON_FW_ASSERTION_FAIL: FW assertion fail
  */
 enum pld_recovery_reason {
 	PLD_REASON_DEFAULT,
-	PLD_REASON_LINK_DOWN
+	PLD_REASON_LINK_DOWN,
+	PLD_REASON_FW_ASSERTION_FAIL
 };
 
 #ifdef FEATURE_WLAN_TIME_SYNC_FTM
