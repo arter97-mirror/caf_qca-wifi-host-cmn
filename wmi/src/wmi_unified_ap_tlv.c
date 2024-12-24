@@ -1647,6 +1647,9 @@ static QDF_STATUS send_multiple_vdev_restart_req_cmd_tlv(
 	if (tchan_info->dfs_set)
 		WMI_SET_CHANNEL_FLAG(chan_info, WMI_CHAN_FLAG_DFS);
 
+	if (tchan_info->is_stadfs_en)
+		WMI_SET_CHANNEL_FLAG(chan_info, WMI_CHAN_FLAG_STA_DFS);
+
 	if (tchan_info->dfs_set_cfreq2)
 		WMI_SET_CHANNEL_FLAG(chan_info, WMI_CHAN_FLAG_DFS_CFREQ2);
 
@@ -1676,13 +1679,13 @@ static QDF_STATUS send_multiple_vdev_restart_req_cmd_tlv(
 		 "tchan_info->phy_mode: %d ,tchan_info->minpower: %d,"
 		 "tchan_info->maxpower: %d ,tchan_info->maxregpower: %d ,"
 		 "tchan_info->reg_class_id: %d ,"
-		 "tchan_info->maxregpower : %d ",
+		 "tchan_info->maxregpower : %d ,tchan_info->is_stadfs_en: %d",
 		 tchan_info->is_chan_passive, tchan_info->dfs_set,
 		 tchan_info->allow_vht, tchan_info->allow_ht,
 		 tchan_info->antennamax, tchan_info->phy_mode,
 		 tchan_info->minpower, tchan_info->maxpower,
 		 tchan_info->maxregpower, tchan_info->reg_class_id,
-		 tchan_info->maxregpower);
+		 tchan_info->maxregpower, tchan_info->is_stadfs_en);
 
 	buf_ptr += sizeof(*chan_info);
 	WMITLV_SET_HDR(buf_ptr,
