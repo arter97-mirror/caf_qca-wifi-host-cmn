@@ -975,4 +975,19 @@ static inline void ce_ring_inc_flush_cnt(struct CE_ring_state *ring)
 {
 	ring->flush_count++;
 }
+
+#ifdef QCA_WIFI_WCN6450
+static inline bool hif_is_datapath_ce(struct CE_state *ce_state)
+{
+	if (!ce_state)
+		return false;
+
+	return (ce_state->htt_tx_data || ce_state->htt_rx_data);
+}
+#else
+static inline bool hif_is_datapath_ce(struct CE_state *ce_state)
+{
+	return false;
+}
+#endif
 #endif /* __COPY_ENGINE_INTERNAL_H__ */
