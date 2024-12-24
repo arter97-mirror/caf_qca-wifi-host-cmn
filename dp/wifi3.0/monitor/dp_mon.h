@@ -70,6 +70,8 @@
 #define IS_LOCAL_PKT_CAPTURE_RUNNING(var, field) 0
 #endif
 
+#define INVALID_MON_CHAN_NUM	0xFFFF
+
 extern const struct dp_rx_defrag_cipher dp_f_ccmp;
 
 extern const struct dp_rx_defrag_cipher dp_f_tkip;
