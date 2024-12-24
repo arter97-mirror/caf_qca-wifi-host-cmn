@@ -1742,12 +1742,15 @@ static QDF_STATUS cm_connect_get_candidates(struct wlan_objmgr_pdev *pdev,
 		if (candidate_list)
 			wlan_scan_purge_results(candidate_list);
 
-		if (!cm_is_nontx_scan_params_valid(cm_req))
+		if (cm_is_nontx_scan_params_valid(cm_req))
+			mlme_debug(CM_PREFIX_FMT " Do scan for ssid for nontx profiles",
+				   CM_PREFIX_REF(vdev_id, cm_req->cm_id));
+		else
 			mlme_info(CM_PREFIX_FMT "no valid candidate found, num_bss %d scan_id %d",
 				  CM_PREFIX_REF(vdev_id, cm_req->cm_id),
 				  num_bss, cm_req->scan_id);
 
-		/*
+		/**
 		 * If connect scan was already done OR candidate were found
 		 * but none of them were valid OR if ML link connection
 		 * return QDF_STATUS_E_EMPTY.
