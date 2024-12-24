@@ -119,7 +119,6 @@ QDF_STATUS wlan_ipa_logging_sock_init(void);
  * wlan_ipa_logging_sock_deinit() - deinit ipa logging resources
  */
 void wlan_ipa_logging_sock_deinit(void);
-
 #else
 static inline
 void wlan_ipa_log_message(const char *func, const char *msg, ...)

@@ -23831,7 +23831,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 
 	event_ids[wmi_diag_container_event_id] =
 						WMI_DIAG_DATA_CONTAINER_EVENTID;
-
+#ifdef IPA_OPT_WIFI_DP_LOGGING
+	event_ids[wmi_opt_dp_diag_event_id] = WMI_OPT_DP_DIAG_EVENTID;
+#endif
 	event_ids[wmi_host_auto_shutdown_event_id] =
 				WMI_HOST_AUTO_SHUTDOWN_EVENTID;
 
