@@ -365,6 +365,8 @@ struct wlan_mlo_link_recfg_bitmap {
  * @curr_recfg_rsp: Last link recfg response received from AP
  * @sm: link reconfig sm context
  * @set_link_req: set link req for link recfg
+ * @macaddr_updating_vdev_id: mac addr updating vdev for link add
+ * @old_macaddr_updating_vdev: old mac addr of updating vdev
  * @req_frame: Link Reconfiguration request frame
  * @rsp_frame: Link Reconfiguration response frame
  * @link_recfg_bm: User configured Link Reconfiguration bitmap
@@ -377,6 +379,8 @@ struct mlo_link_recfg_context {
 	struct wlan_mlo_link_recfg_rsp curr_recfg_rsp;
 	struct mlo_link_recfg_state_sm sm;
 	struct mlo_link_set_active_req *set_link_req;
+	uint8_t macaddr_updating_vdev_id;
+	struct qdf_mac_addr old_macaddr_updating_vdev;
 	struct element_info req_frame;
 	struct element_info rsp_frame;
 	struct wlan_mlo_link_recfg_bitmap link_recfg_bm;
@@ -408,6 +412,17 @@ ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * mlo_link_recfg_set_mac_addr_resp() - handle link recfg set mac
+ * addr response
+ * @vdev: vdev object
+ * @resp_status: set mac resp result
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_link_recfg_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
+					    uint8_t resp_status);
+
 /**
  * mlo_link_recfg_set_link_resp() - Handle link recfg set link
  * response event
@@ -835,6 +850,13 @@ mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
 static inline void
 mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 {
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
+				 uint8_t resp_status)
+{
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline void

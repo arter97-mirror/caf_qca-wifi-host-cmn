@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -36,6 +36,7 @@
 #include <target_if_vdev_mgr_tx_ops.h>
 #include "connection_mgr/core/src/wlan_cm_main.h"
 #include <wlan_mlo_mgr_public_api.h>
+#include <wlan_mlo_link_recfg.h>
 
 static QDF_STATUS mlme_vdev_obj_create_handler(struct wlan_objmgr_vdev *vdev,
 					       void *arg)
@@ -351,6 +352,11 @@ void wlan_vdev_mlme_notify_set_mac_addr_response(struct wlan_objmgr_vdev *vdev,
 
 	if (wlan_vdev_mlme_is_mlo_link_rejection_in_progress(vdev)) {
 		wlan_mlo_mgr_link_rej_set_mac_addr_resp(vdev, resp_status);
+		return;
+	}
+
+	if (wlan_vdev_mlme_is_link_recfg_mac_update_in_progress(vdev)) {
+		mlo_link_recfg_set_mac_addr_resp(vdev, resp_status);
 		return;
 	}
 

@@ -1910,6 +1910,9 @@ extract_mlo_link_recfg_indication_event_tlv(
 			   param_buf->num_link_add_param,
 			   param_buf->num_link_del_param,
 			   WLAN_MAX_ML_BSS_LINKS);
+		if (params->trigger_reason == ROAM_TRIGGER_REASON_FORCED)
+			return QDF_STATUS_SUCCESS;
+
 		return QDF_STATUS_E_INVAL;
 	}
 

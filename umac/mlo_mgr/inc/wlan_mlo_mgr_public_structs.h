@@ -1653,6 +1653,8 @@ struct mlo_mlme_ext_ops {
 				   roam sync for the vdev.
  * @mlo_mgr_osif_link_rej_update_mac_addr: Callback to notify MAC addr update
  *                                for link rejection.
+ * @mlo_link_recfg_osif_update_mac_addr: Callback to notify mac addr update for
+ * link rejction in link recfg
  * @mlo_mgr_osif_link_switch_notification: Notify OSIF on start of link switch
  * @mlo_mgr_osif_update_link_state: update link state in OSIF
  */
@@ -1668,7 +1670,10 @@ struct mlo_osif_ext_ops {
 	QDF_STATUS (*mlo_roam_osif_update_mac_addr)(struct wlan_objmgr_vdev *vdev,
 						    struct qdf_mac_addr *old_self_mac,
 						    struct qdf_mac_addr *new_self_mac);
-
+	QDF_STATUS (*mlo_link_recfg_osif_update_mac_addr)(
+					struct wlan_objmgr_vdev *vdev,
+					struct qdf_mac_addr *old_self_mac,
+					struct qdf_mac_addr *new_self_mac);
 	QDF_STATUS (*mlo_mgr_osif_link_rej_update_mac_addr)(uint8_t ieee_rej_link_id,
 				     uint8_t ieee_acc_link_id, uint8_t vdev_id);
 
