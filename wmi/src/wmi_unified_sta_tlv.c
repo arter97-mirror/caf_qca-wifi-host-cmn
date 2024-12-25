@@ -1265,6 +1265,13 @@ send_reject_ap_list_cmd_tlv(wmi_unified_t wmi_handle,
 	wmi_pdev_bssid_disallow_list_config_param *chan_list;
 	struct reject_ap_config_params *reject_list = reject_params->bssid_list;
 	uint8_t num_of_reject_bssid = reject_params->num_of_reject_bssid;
+	uint32_t max_tlvs_len, num_entries_in_single_evt;
+
+	max_tlvs_len = wmi_get_max_msg_len(wmi_handle) - sizeof(*chan_list_fp) -
+		       WMI_TLV_HDR_SIZE;
+	num_entries_in_single_evt = max_tlvs_len / sizeof(*chan_list);
+	if (num_of_reject_bssid > num_entries_in_single_evt)
+		num_of_reject_bssid = num_entries_in_single_evt;
 
 	list_tlv_len = sizeof(*chan_list) * num_of_reject_bssid;
 
