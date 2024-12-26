@@ -34006,24 +34006,30 @@ wlan_hdd_cfg80211_setup_link_reconfig(struct wiphy *wiphy,
 			continue;
 
 		qdf_mem_copy(&req_param->add_link[i].link_addr,
-			     &params->add_link_bssid[link_id],
+			     params->add_link_bssid[link_id],
 			     QDF_MAC_ADDR_SIZE);
+		/**
+		 * This link will not be present in scan list.
+		 * Instead of getting mld address from scan entry,
+		 * consider current connected MLD address.
+		 */
+		wlan_vdev_get_bss_peer_mld_mac(vdev,
+				(struct qdf_mac_addr *)&req_param->mld_addr);
 
-		wlan_scan_get_mld_addr_by_link_addr(
-					wlan_vdev_get_pdev(vdev),
-					(struct qdf_mac_addr *)
-					&req_param->add_link[i].link_addr,
-					(struct qdf_mac_addr *)
-					&req_param->mld_addr);
+		if (qdf_is_macaddr_zero(
+				(struct qdf_mac_addr *)&req_param->mld_addr)) {
+			hdd_debug("invalid mld add");
+			hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+			return -EINVAL;
+		}
 
 		req_param->add_link[i].link_id = link_id;
 
-		/* ToDo: Add vdev_id for no common link*/
 
 		hdd_debug("add[%d] link with param link_id: %d link_addr: " QDF_MAC_ADDR_FMT "mld addr: " QDF_MAC_ADDR_FMT,
 			  i, link_id,
-			  QDF_MAC_ADDR_REF(&req_param->del_link[i].link_addr),
-			  QDF_MAC_ADDR_REF(&req_param->mld_addr));
+			  QDF_MAC_ADDR_REF(req_param->add_link[i].link_addr),
+			  QDF_MAC_ADDR_REF(req_param->mld_addr));
 		i++;
 	}
 	req_param->num_link_add_param = i;
@@ -34048,19 +34054,22 @@ wlan_hdd_cfg80211_setup_link_reconfig(struct wiphy *wiphy,
 			     (void *)&link_info->mlo_peer_info.peer_mac,
 			     QDF_MAC_ADDR_SIZE);
 
-		wlan_scan_get_mld_addr_by_link_addr(
-					wlan_vdev_get_pdev(vdev),
-					(struct qdf_mac_addr *)
-					&req_param->del_link[i].link_addr,
-					(struct qdf_mac_addr *)
-					&req_param->mld_addr);
+		wlan_vdev_get_bss_peer_mld_mac(vdev,
+				(struct qdf_mac_addr *)&req_param->mld_addr);
+
+		if (qdf_is_macaddr_zero(
+				(struct qdf_mac_addr *)&req_param->mld_addr)) {
+			hdd_debug("invalid mld add");
+			hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
+			return -EINVAL;
+		}
 
 		req_param->del_link[i].link_id = link_id;
 
 		hdd_debug("del[%d] link with param link_id: %d link_addr " QDF_MAC_ADDR_FMT "mld addr " QDF_MAC_ADDR_FMT,
 			  i, link_id,
-			  QDF_MAC_ADDR_REF(&req_param->add_link[i].link_addr),
-			  QDF_MAC_ADDR_REF(&req_param->mld_addr));
+			  QDF_MAC_ADDR_REF(req_param->del_link[i].link_addr),
+			  QDF_MAC_ADDR_REF(req_param->mld_addr));
 		i++;
 	}
 
@@ -34094,6 +34103,7 @@ wlan_hdd_cfg80211_setup_link_reconfig(struct wiphy *wiphy,
 	return QDF_STATUS_SUCCESS;
 }
 #endif
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 1))
 static void __wlan_hdd_cfg80211_update_mgmt_frame_registrations(
 						struct wiphy *wiphy,
