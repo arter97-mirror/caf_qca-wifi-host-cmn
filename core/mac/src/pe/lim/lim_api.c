@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4145,8 +4145,8 @@ lim_match_link_info(uint8_t req_link_id,
 
 QDF_STATUS
 lim_add_bcn_probe(struct wlan_objmgr_pdev *pdev, uint8_t *bcn_probe,
-		  uint32_t len, qdf_freq_t freq, int32_t rssi,
-		  uint8_t snr, uint32_t tsf_delta)
+		  uint32_t len, bool is_gen_entry, qdf_freq_t freq,
+		  int32_t rssi, uint8_t snr, uint32_t tsf_delta)
 {
 	qdf_nbuf_t buf;
 	uint8_t *data, i;
@@ -4190,7 +4190,8 @@ lim_add_bcn_probe(struct wlan_objmgr_pdev *pdev, uint8_t *bcn_probe,
 	pe_debug("MLO: add prb rsp to scan db");
 	/* buf will be freed by scan module in error or success case */
 	status = wlan_scan_process_bcn_probe_rx_sync(wlan_pdev_get_psoc(pdev),
-						     buf, &rx_param, frm_type);
+						     buf, &rx_param, frm_type,
+						     is_gen_entry);
 
 	return status;
 }
@@ -4929,7 +4930,8 @@ QDF_STATUS lim_gen_link_specific_probe_rsp(struct mac_context *mac_ctx,
 			status = lim_add_bcn_probe(mac_ctx->pdev,
 						   link_probe_rsp.ptr,
 						   link_probe_rsp.len,
-						   chan_freq, rssi, 0, 0);
+						   true, chan_freq, rssi, 0,
+						   0);
 			if (QDF_IS_STATUS_ERROR(status)) {
 				pe_err("failed to add bcn probe %d", status);
 				lim_clear_ml_partner_info(session_entry, idx);
@@ -5074,7 +5076,8 @@ QDF_STATUS lim_process_cu_for_probe_rsp(struct mac_context *mac_ctx,
 		}
 
 		lim_add_bcn_probe(mac_ctx->pdev, link_probe_rsp.ptr,
-				  link_probe_rsp.len, chan_freq, rssi, snr, 0);
+				  link_probe_rsp.len,
+				  false, chan_freq, rssi, snr, 0);
 
 		partner_vdev = mlo_get_vdev_by_link_id(vdev, link_id,
 						       WLAN_LEGACY_MAC_ID);

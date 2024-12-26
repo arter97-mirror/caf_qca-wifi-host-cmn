@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -733,6 +733,7 @@ bool lim_is_he_dynamic_smps_enabled(struct pe_session *session)
  * @pdev: PDEV object manager
  * @bcn_probe: Pointer to bcn/probe
  * @len: Length of frame.
+ * @is_gen_entry: is locally generated scan entry
  * @freq: Freq on frame.
  * @rssi: RSSI of the frame.
  * @snr: SNR of frame
@@ -745,8 +746,8 @@ bool lim_is_he_dynamic_smps_enabled(struct pe_session *session)
  */
 QDF_STATUS
 lim_add_bcn_probe(struct wlan_objmgr_pdev *pdev, uint8_t *bcn_probe,
-		  uint32_t len, qdf_freq_t freq, int32_t rssi,
-		  uint8_t snr, uint32_t tsf_delta);
+		  uint32_t len, bool is_gen_entry, qdf_freq_t freq,
+		  int32_t rssi, uint8_t snr, uint32_t tsf_delta);
 
 /**
  * lim_update_mlo_mgr_info() - API to update mlo_mgr link info
@@ -812,8 +813,8 @@ QDF_STATUS lim_process_cu_for_probe_rsp(struct mac_context *mac_ctx,
 #else
 static inline QDF_STATUS
 lim_add_bcn_probe(struct wlan_objmgr_pdev *pdev, uint8_t *bcn_probe,
-		  uint32_t len, qdf_freq_t freq, int32_t rssi,
-		  uint8_t snr, uint32_t tsf_delta)
+		  uint32_t len, bool is_gen_entry, qdf_freq_t freq,
+		  int32_t rssi, uint8_t snr, uint32_t tsf_delta)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }
