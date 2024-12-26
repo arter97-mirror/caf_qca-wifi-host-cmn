@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,6 +55,7 @@ struct scan_dbs {
  * @rx_data: mgmt rx data
  * @psoc: psoc pointer
  * @save_rnr_info: save the RNR entries into RNR db
+ * @is_gen_entry: is generated scan entry
  * @buf: rx frame
  */
 struct scan_bcn_probe_event {
@@ -62,6 +63,7 @@ struct scan_bcn_probe_event {
 	struct mgmt_rx_event_params *rx_data;
 	struct wlan_objmgr_psoc *psoc;
 	bool save_rnr_info;
+	bool is_gen_entry;
 	qdf_nbuf_t buf;
 };
 

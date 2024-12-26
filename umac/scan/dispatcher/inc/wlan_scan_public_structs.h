@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -606,6 +606,7 @@ enum number_of_partner_link {
  * @security_type: security supported
  * @seq_num: sequence number
  * @is_non_tx_mbssid_gen: is locally generated non tx mbssid scan entry
+ * @is_gen_entry: is locally generated scan entry
  * @reserved: reserved
  * @phy_mode: Phy mode of the AP
  * @avg_rssi: Average RSSI of the AP
@@ -656,7 +657,8 @@ struct scan_cache_entry {
 	uint8_t security_type;
 	uint16_t seq_num;
 	uint8_t is_non_tx_mbssid_gen:1,
-		reserved:7;
+		is_gen_entry:1,
+		reserved:6;
 	enum wlan_phymode phy_mode;
 	int32_t avg_rssi;
 	int8_t rssi_raw;

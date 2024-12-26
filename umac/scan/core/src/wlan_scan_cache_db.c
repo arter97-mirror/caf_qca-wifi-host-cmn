@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1078,11 +1078,13 @@ static void scm_dump_scan_entry(struct wlan_objmgr_pdev *pdev,
  * @psoc: psoc ptr
  * @pdev: pdev pointer
  * @scan_params: new received entry
+ * @is_gen_entry: Generated scan entry
  *
  * Return: QDF_STATUS
  */
 static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
-	struct wlan_objmgr_pdev *pdev, struct scan_cache_entry *scan_params)
+	struct wlan_objmgr_pdev *pdev, struct scan_cache_entry *scan_params,
+	bool is_gen_entry)
 {
 	struct scan_cache_node *dup_node = NULL;
 	struct scan_cache_node *scan_node = NULL;
@@ -1110,6 +1112,12 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 
 	is_dup_found = scm_find_duplicate(pdev, scan_obj, scan_db, scan_params,
 					  &dup_node);
+	/**
+	 * If entry is already present then may be this is locally
+	 * generated and it will be remove during disconnection.
+	 */
+	if (!is_dup_found)
+		scan_params->is_gen_entry = is_gen_entry;
 
 	scm_dump_scan_entry(pdev, scan_params);
 
@@ -1417,7 +1425,8 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 			continue;
 		}
 
-		status = scm_add_update_entry(psoc, pdev, scan_entry);
+		status = scm_add_update_entry(psoc, pdev, scan_entry,
+					      bcn->is_gen_entry);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			scm_debug(QDF_MAC_ADDR_FMT ": Failed to add entry for frame(%d) seq %d freq %d",
 				  QDF_MAC_ADDR_REF(scan_entry->bssid.bytes),

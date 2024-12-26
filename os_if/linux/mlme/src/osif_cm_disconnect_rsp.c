@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -417,9 +417,12 @@ QDF_STATUS osif_disconnect_handler(struct wlan_objmgr_vdev *vdev,
 	/* Unlink bss if disconnect is from peer or south bound */
 	if (rsp->req.req.source == CM_PEER_DISCONNECT ||
 	    rsp->req.req.source == CM_SB_DISCONNECT ||
-	    (wlan_scan_is_localy_gen_non_tx_mbssid_entry(
+	    ((wlan_scan_is_localy_gen_non_tx_mbssid_entry(
 		    wlan_vdev_get_pdev(vdev),
-		    &rsp->req.req.bssid) &&
+		    &rsp->req.req.bssid) ||
+	      wlan_scan_is_locally_generated_entry(
+		    wlan_vdev_get_pdev(vdev),
+		    &rsp->req.req.bssid)) &&
 	    rsp->req.req.source != CM_MLO_LINK_SWITCH_DISCONNECT))
 		osif_cm_unlink_bss(vdev, &rsp->req.req.bssid);
 

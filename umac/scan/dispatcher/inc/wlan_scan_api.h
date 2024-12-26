@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -343,6 +343,7 @@ bool wlan_scan_is_snr_monitor_enabled(struct wlan_objmgr_psoc *psoc);
  * @buf: frame buf
  * @rx_param: rx event params
  * @frm_type: frame type
+ * @is_gen_entry: is generated entry
  *
  * handle bcn without posting to scheduler thread, this should be called
  * while caller is already in scheduler thread context
@@ -353,7 +354,8 @@ QDF_STATUS
 wlan_scan_process_bcn_probe_rx_sync(struct wlan_objmgr_psoc *psoc,
 				    qdf_nbuf_t buf,
 				    struct mgmt_rx_event_params *rx_param,
-				    enum mgmt_frame_type frm_type);
+				    enum mgmt_frame_type frm_type,
+				    bool is_gen_entry);
 
 /**
  * wlan_scan_get_aging_time  - Get the scan aging time config
@@ -568,6 +570,17 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
  */
 bool wlan_scan_is_localy_gen_non_tx_mbssid_entry(struct wlan_objmgr_pdev *pdev,
 						 struct qdf_mac_addr *bssid);
+
+/*
+ * wlan_scan_is_locally_generated_entry() - Function to check
+ * locally generated scan entry
+ * @pdev: pdev object
+ * @bssid: bssid to be fetched from scan db
+ *
+ * Return : true if non tx mbssid scan entry found, else false
+ */
+bool wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
+					  struct qdf_mac_addr *bssid);
 
 /**
  * wlan_scan_get_mld_addr_by_link_addr() - Function to get MLD address
