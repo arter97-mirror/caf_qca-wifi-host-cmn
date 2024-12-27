@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -213,7 +213,7 @@ static void ipa_register_ready_cb(void *user_data)
 
 	ipa_obj->handle_initialized = true;
 	g_instances_added++;
-	ipa_info("No. of instances added for IPA is %d", g_instances_added);
+	ipa_log_info("No. of instances added for IPA is %d", g_instances_added);
 out:
 	ipa_init_deinit_unlock();
 }

@@ -3104,9 +3104,11 @@ QDF_STATUS dp_ipa_setup(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 	}
 
 	/* IPA uC Doorbell registers */
-	dp_info("Tx DB PA=0x%x, Rx DB PA=0x%x",
-		(unsigned int)QDF_IPA_WDI_CONN_OUT_PARAMS_TX_UC_DB_PA(&pipe_out),
-		(unsigned int)QDF_IPA_WDI_CONN_OUT_PARAMS_RX_UC_DB_PA(&pipe_out));
+	dp_ipa_debug("Tx DB PA=0x%x, Rx DB PA=0x%x",
+		     (unsigned int)
+		     QDF_IPA_WDI_CONN_OUT_PARAMS_TX_UC_DB_PA(&pipe_out),
+		     (unsigned int)
+		     QDF_IPA_WDI_CONN_OUT_PARAMS_RX_UC_DB_PA(&pipe_out));
 
 	dp_ipa_set_pipe_db(soc, ipa_res, &pipe_out);
 	dp_ipa_set_rx_alt_pipe_db(ipa_res, &pipe_out);
