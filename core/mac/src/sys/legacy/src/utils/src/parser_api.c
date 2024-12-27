@@ -14575,6 +14575,7 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 	uint16_t len_remaining, len;
 	QDF_STATUS status;
 	struct wlan_objmgr_psoc *psoc;
+	struct s_ext_cap *p_ext_cap;
 	tDot11fFfCapabilities mlo_cap;
 	tDot11fIEHTCaps ht_caps;
 	tDot11fIEVHTCaps vht_caps;
@@ -15023,6 +15024,10 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 		}
 
 		populate_dot11f_ext_cap(mac_ctx, true, &ext_cap, NULL);
+		if (wlan_cm_get_assoc_btm_cap(psoc, wlan_vdev_get_id(vdev))) {
+			p_ext_cap = (struct s_ext_cap *)ext_cap.bytes;
+			p_ext_cap->bss_transition  = true;
+		}
 		populate_dot11f_btm_extended_caps(mac_ctx, pe_session,
 						  &ext_cap);
 		if (ext_cap.present) {
