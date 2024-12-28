@@ -2294,7 +2294,72 @@ mlo_link_recfg_assign_self_link_addr(
 		}
 	}
 
-	/* 2. select the link deleted active vdev's self mac as 2nd choice
+	/* 2. if FW indicate preferred vdev id for added link, validate it
+	 * and use it, this happens in non-common link cases:
+	 * for example:
+	 * L1 L2 -> L3
+	 * FW may indicate vdev id (from L1 or L2) for L3. here assign vdev
+	 * to L3.
+	 * The link will be deleted firstly. use the vdev on the deleted
+	 * link to connect to new L3.
+	 */
+	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
+	     idx < recfg_req->add_link_info.num_links; i++) {
+		/* only checking the first one is enough */
+		if (link_add[idx].vdev_id == WLAN_INVALID_VDEV_ID)
+			break;
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		if (allocated_bitmap & (1 << i))
+			continue;
+		if (link_info->vdev_id != link_add[idx].vdev_id)
+			continue;
+
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+					psoc, link_info->vdev_id,
+					WLAN_MLO_MGR_ID);
+		if (!vdev) {
+			mlo_err("Invalid VDEV id %d", link_info->vdev_id);
+			continue;
+		}
+
+		if (!cm_is_vdev_connected(vdev)) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+			continue;
+		}
+
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
+		if (qdf_atomic_test_bit(
+				LS_F_AP_REMOVAL_BIT,
+				&link_info->link_status_flags) ||
+		    del_link_set & (1 << link_info->link_id)) {
+			link_add[idx].self_link_addr = link_info->link_addr;
+			mlo_debug("fw preferred vdev %d for add link %d",
+				  link_add[idx].vdev_id,
+				  link_add[idx].link_id);
+			mlo_debug("assign active self link addr: " QDF_MAC_ADDR_FMT " for add link %d freq %d vdev %d",
+				  QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
+				  link_add[idx].link_id,
+				  link_add[idx].freq,
+				  link_info->vdev_id);
+			mlo_debug("old link id %d flag 0x%x on vdev %d ",
+				  link_info->link_id,
+				  (uint32_t)link_info->link_status_flags,
+				  link_info->vdev_id);
+			if (!*first_del_link_set_no_common) {
+				*first_del_link_set_no_common |=
+					1 << link_info->link_id;
+				mlo_debug("select link %d to delete first if no common link",
+					  link_info->link_id);
+			}
+
+			idx++;
+			allocated_bitmap |= 1 << i;
+			break;
+		}
+	}
+
+	/* 3. select the link deleted active vdev's self mac as 3th choice
 	 * for added link
 	 * for example:
 	 * L1 L2 -> L1 (L2 del, but vdev active) -> L1 L3.
@@ -2361,8 +2426,8 @@ mlo_link_recfg_assign_self_link_addr(
 		}
 	}
 
-	/* 3. select the non-assoc idle or deleted standby link's self mac
-	 * as 3th choice for added link
+	/* 4. select the non-assoc idle or deleted standby link's self mac
+	 * as 4th choice for added link
 	 * for example:
 	 * L1 L2 -> L1 L2 L3, use the idle non-assoc link's self mac
 	 * L1 L2 L3 -> L1 L2 L4, use the deleted standby link's self mac
