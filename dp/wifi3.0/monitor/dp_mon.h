@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1152,6 +1152,11 @@ struct dp_mon_mac {
 	qdf_spinlock_t lpc_lock;
 	/* LPC/COC mode stats */
 	struct cdp_mon_lpc_coc_stats lpc_coc_stats;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	uint16_t peer_id;
+	uint16_t beacon_interval;
+	uint16_t nth_beacon;
+#endif
 #endif
 };
 
@@ -1178,6 +1183,9 @@ struct  dp_mon_pdev {
 	uint16_t mo_ctrl_filter;
 	uint16_t mo_data_filter;
 	uint16_t md_data_filter;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	struct dp_mon_subfilter fp_subfilter;
+#endif
 
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 	struct dp_pdev_tx_capture tx_capture;
