@@ -1374,6 +1374,49 @@ dp_tx_mon_lpc_type_filtering(struct dp_pdev *pdev,
 
 #endif
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+static bool
+dp_tx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
+{
+	qdf_nbuf_t nbuf;
+	struct ieee80211_frame *dot11hdr;
+	uint8_t type;
+
+	if (dp_tx_mon_nbuf_get_num_frag(buf)) {
+		dot11hdr = (struct ieee80211_frame *)
+			   qdf_nbuf_get_frag_addr(buf, 0);
+	} else {
+		nbuf = qdf_nbuf_get_ext_list(buf);
+		if (nbuf)
+			dot11hdr = (struct ieee80211_frame *)
+				   qdf_nbuf_data(nbuf);
+		else
+			return QDF_STATUS_E_FAILURE;
+	}
+
+	type = (dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_TYPE_MASK);
+	switch (type) {
+	case QDF_IEEE80211_FC0_TYPE_MGT:
+		return dp_mon_is_mgmt_filter_en(pdev, dot11hdr, buf,
+						IEEE80211_FC1_DIR_TODS);
+	case QDF_IEEE80211_FC0_TYPE_CTL:
+		return dp_mon_is_ctrl_filter_en(pdev, dot11hdr,
+						IEEE80211_FC1_DIR_TODS);
+	case QDF_IEEE80211_FC0_TYPE_DATA:
+		return dp_mon_is_data_filter_en(pdev, dot11hdr, buf,
+						IEEE80211_FC1_DIR_TODS);
+	default:
+		return false;
+	}
+}
+#else
+static inline bool
+dp_tx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
+{
+	return true;
+}
+#endif
+
 /**
  * dp_tx_mon_set_rate_a - API to set 11a rate
  * @rx_status: pointer to mon_rx_status
@@ -1843,6 +1886,11 @@ dp_tx_mon_send_per_usr_mpdu(struct dp_pdev *pdev,
 		if (dp_tx_lite_mon_filtering(pdev, ppdu_info, buf,
 					     ++mpdu_count) ||
 		    dp_tx_mon_lpc_type_filtering(pdev, ppdu_info, buf)) {
+			qdf_nbuf_free(buf);
+			tx_mon_be->stats.pkt_buf_drop += num_frag;
+			continue;
+		}
+		if (!dp_tx_mon_lpc_subfiltering(pdev, buf)) {
 			qdf_nbuf_free(buf);
 			tx_mon_be->stats.pkt_buf_drop += num_frag;
 			continue;

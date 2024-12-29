@@ -1748,6 +1748,69 @@ dp_rx_handle_smart_mesh_mode(struct dp_soc *soc, struct dp_pdev *pdev,
 	return 0;
 }
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+static bool
+dp_rx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
+{
+	uint8_t type;
+	struct ieee80211_frame *dot11hdr;
+
+	dot11hdr = (struct ieee80211_frame *)qdf_nbuf_data(buf);
+	type = (dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_TYPE_MASK);
+
+	switch (type) {
+	case QDF_IEEE80211_FC0_TYPE_MGT:
+		return dp_mon_is_mgmt_filter_en(pdev, dot11hdr, buf,
+						IEEE80211_FC1_DIR_FROMDS);
+	case QDF_IEEE80211_FC0_TYPE_CTL:
+		return dp_mon_is_ctrl_filter_en(pdev, dot11hdr,
+						IEEE80211_FC1_DIR_FROMDS);
+	case QDF_IEEE80211_FC0_TYPE_DATA:
+		if (qdf_nbuf_has_fraglist(buf)) {
+			qdf_nbuf_t head_buf;
+			bool filter_en;
+
+			/*
+			 * TX and RX use frag list in different ways.
+			 * In TX, head skb (allocated for rtap hdr) followed by
+			 * an extended list containing the .11 frame.
+			 * However, on the RX side,the head skb contains both
+			 * the rtap hdr and the .11 frame.Since the QDF API
+			 * `qdf_nbuf_nonlinear_data` is designed generically,
+			 * it cannot handle these two different types of
+			 * fraglists. To address this, a temporary head buffer
+			 * is created, and the existing extended list is added
+			 * to this new buffer.
+			 */
+			head_buf = qdf_nbuf_alloc(pdev->soc->osdev,
+						  MAX_MONITOR_HEADER,
+						  MAX_MONITOR_HEADER,
+						  4, FALSE);
+
+			qdf_nbuf_append_ext_list(head_buf, buf,
+						 qdf_nbuf_len(buf));
+			filter_en = dp_mon_is_data_filter_en(pdev, dot11hdr,
+							     head_buf,
+							     IEEE80211_FC1_DIR_FROMDS);
+			skb_shinfo(head_buf)->frag_list = NULL;
+			qdf_nbuf_free(head_buf);
+			head_buf = NULL;
+			return filter_en;
+		}
+			return dp_mon_is_data_filter_en(pdev, dot11hdr, buf,
+							IEEE80211_FC1_DIR_FROMDS);
+	default:
+		return false;
+	}
+}
+#else
+static inline bool
+dp_rx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
+{
+	return true;
+}
+#endif
+
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 /**
  * dp_rx_mon_stitch_mpdu() - Stich MPDU from MSDU
@@ -1907,6 +1970,9 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 	mon_mac->ppdu_info.rx_status.device_id = pdev->soc->device_id;
 	mon_mac->ppdu_info.rx_status.chan_noise_floor =
 			pdev->chan_noise_floor;
+
+	if (!dp_rx_mon_lpc_subfiltering(pdev, mpdu_buf))
+		goto fail_free;
 
 	if (!qdf_nbuf_update_radiotap(&mon_mac->ppdu_info.rx_status, mpdu_buf,
 				      qdf_nbuf_headroom(mpdu_buf))) {

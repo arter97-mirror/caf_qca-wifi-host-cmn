@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -22,6 +22,9 @@
 #include <dp_rx_mon.h>
 #include <dp_mon_filter.h>
 #include <dp_mon.h>
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+#include "dp_peer.h"
+#endif
 
 /*
  * dp_mon_filter_mode_type_to_str
@@ -1099,6 +1102,22 @@ QDF_STATUS dp_mon_start_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 	mon_pdev->fp_ctrl_filter = filter->fp_ctrl;
 	mon_pdev->fp_data_filter = filter->fp_data;
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	mon_pdev->fp_subfilter.data_tx_frame_filter =
+		filter->fp_subfilter.data_tx_frame_filter;
+	mon_pdev->fp_subfilter.data_rx_frame_filter =
+		filter->fp_subfilter.data_rx_frame_filter;
+	mon_pdev->fp_subfilter.mgmt_tx_frame_filter =
+		filter->fp_subfilter.mgmt_tx_frame_filter;
+	mon_pdev->fp_subfilter.mgmt_rx_frame_filter =
+		filter->fp_subfilter.mgmt_rx_frame_filter;
+	mon_pdev->fp_subfilter.ctrl_tx_frame_filter =
+		filter->fp_subfilter.ctrl_tx_frame_filter;
+	mon_pdev->fp_subfilter.ctrl_rx_frame_filter =
+		filter->fp_subfilter.ctrl_rx_frame_filter;
+	mon_pdev->fp_subfilter.connected_beacon_interval =
+		filter->fp_subfilter.connected_beacon_interval;
+#endif
 	qdf_spin_lock_bh(&mon_mac->mon_lock);
 	dp_mon_filter_setup_tx_mon_mode(pdev);
 	status = dp_tx_mon_filter_update(pdev);
@@ -1172,4 +1191,183 @@ QDF_STATUS dp_mon_stop_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+static bool
+dp_mon_is_connected_bssid(struct dp_pdev *pdev, uint8_t *bssid)
+{
+	bool result = false;
+	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, 0);
+	struct dp_peer *peer = dp_peer_get_ref_by_id(pdev->soc,
+							mon_mac->peer_id,
+							DP_MOD_ID_TX_CAPTURE);
+	if (!peer)
+		return false;
+
+	if (peer->valid && peer->link_peers->is_valid) {
+		qdf_spinlock_acquire(&peer->peer_info_lock);
+		result = !qdf_mem_cmp(peer->link_peers[0].mac_addr.raw, bssid,
+				     QDF_MAC_ADDR_SIZE);
+		qdf_spinlock_release(&peer->peer_info_lock);
+	} else {
+		qdf_spinlock_acquire(&peer->peer_info_lock);
+		result = !qdf_mem_cmp(peer->mac_addr.raw, bssid,
+				     QDF_MAC_ADDR_SIZE);
+		qdf_spinlock_release(&peer->peer_info_lock);
+	}
+	dp_peer_unref_delete(peer, DP_MOD_ID_TX_CAPTURE);
+	return result;
+}
+
+bool dp_mon_is_mgmt_filter_en(struct dp_pdev *pdev,
+			      struct ieee80211_frame *dot11hdr,
+			      qdf_nbuf_t buf, uint8_t direction)
+{
+	bool connected_bssid = false;
+	uint8_t subtype;
+	static uint32_t bcn_cnt;
+	enum dp_mon_mgmt_frame_type mgmt_filter;
+	enum dp_mon_mgmt_frame_type frame_type = DP_MON_MGMT_MAX_FILTER;
+	struct dp_mon_subfilter *filter = &pdev->monitor_pdev->fp_subfilter;
+	struct dp_mon_mac *mon_mac =  dp_get_mon_mac(pdev, 0);
+
+	if (direction == IEEE80211_FC1_DIR_TODS)
+		mgmt_filter = filter->mgmt_tx_frame_filter;
+	else
+		mgmt_filter = filter->mgmt_rx_frame_filter;
+
+	if (mgmt_filter) {
+		if (mgmt_filter == DP_MON_MGMT_FRAME_TYPE_ALL)
+			return true;
+
+		subtype = dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_MASK;
+		connected_bssid = dp_mon_is_connected_bssid(pdev,
+							    dot11hdr->i_addr3);
+
+		if (subtype != QDF_IEEE80211_FC0_SUBTYPE_BEACON) {
+			frame_type = DP_MON_MGMT_CONNECT_NO_BEACON;
+		} else if (subtype == QDF_IEEE80211_FC0_SUBTYPE_BEACON &&
+			connected_bssid) {
+			if (filter->connected_beacon_interval) {
+				if (bcn_cnt >= mon_mac->nth_beacon) {
+					frame_type = DP_MON_MGMT_CONNECT_BEACON;
+					bcn_cnt = 0;
+				} else {
+					bcn_cnt++;
+				}
+			} else {
+				frame_type = DP_MON_MGMT_CONNECT_BEACON;
+			}
+		} else if (subtype == QDF_IEEE80211_FC0_SUBTYPE_BEACON) {
+			frame_type = DP_MON_MGMT_CONNECT_SCAN_BEACON;
+		}
+
+		if (frame_type & mgmt_filter)
+			return true;
+	}
+	return false;
+}
+
+bool dp_mon_is_ctrl_filter_en(struct dp_pdev *pdev,
+			      struct ieee80211_frame *dot11hdr,
+			      uint8_t direction)
+{
+	uint8_t subtype;
+	enum dp_mon_ctrl_frame_type ctrl_filter;
+	enum dp_mon_ctrl_frame_type ctrl_frame_type = DP_MON_CTRL_MAX_FILTER;
+	struct dp_mon_subfilter *filter = &pdev->monitor_pdev->fp_subfilter;
+
+	if (direction == IEEE80211_FC1_DIR_TODS)
+		ctrl_filter = filter->ctrl_tx_frame_filter;
+	else
+		ctrl_filter = filter->ctrl_rx_frame_filter;
+
+	if (ctrl_filter) {
+		if (ctrl_filter == DP_MON_CTRL_FRAME_TYPE_ALL)
+			return true;
+
+		subtype = dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_MASK;
+
+		if (subtype == QDF_IEEE80211_FC0_SUBTYPE_TRIGGER)
+			ctrl_frame_type = DP_MON_CTRL_TRIGGER_FRAME;
+
+		if (ctrl_frame_type & ctrl_filter)
+			return true;
+	}
+	return false;
+}
+
+bool dp_mon_is_data_filter_en(struct dp_pdev *pdev,
+			      struct ieee80211_frame *dot11hdr,
+			      qdf_nbuf_t nbuf,
+			      uint8_t direction)
+{
+	uint8_t subtype;
+	enum dp_mon_data_frame_type data_filter;
+	enum dp_mon_data_frame_type data_frame_type = DP_MON_DATA_MAX_FILTER;
+	struct dp_mon_subfilter *filter = &pdev->monitor_pdev->fp_subfilter;
+
+	if (direction == IEEE80211_FC1_DIR_TODS)
+		data_filter = filter->data_tx_frame_filter;
+	else
+		data_filter = filter->data_rx_frame_filter;
+
+	if (data_filter) {
+		if (data_filter == DP_MON_DATA_FRAME_TYPE_ALL)
+			return true;
+
+		subtype = dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_MASK;
+		if (subtype == QDF_IEEE80211_FC0_SUBTYPE_QOS_NULL) {
+			data_frame_type = DP_MON_DATA_FRAME_QOS_NULL;
+		} else if (qdf_nbuf_dot11_is_ipv4_arp_pkt(nbuf)) {
+			data_frame_type = DP_MON_DATA_FRAME_TYPE_ARP;
+		} else if (qdf_nbuf_dot11_is_ipv4_eapol_pkt(nbuf)) {
+			data_frame_type = DP_MON_DATA_FRAME_TYPE_EAPOL;
+		} else if (qdf_nbuf_dot11_is_ipv4_tcp_pkt(nbuf) ||
+			qdf_nbuf_dot11_is_ipv6_tcp_pkt(nbuf)) {
+			if (qdf_nbuf_dot11_data_is_tcp_syn(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_TCP_SYN;
+			else if (qdf_nbuf_dot11_data_is_tcp_syn_ack(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_TCP_SYNACK;
+			else if (qdf_nbuf_dot11_data_is_tcp_fin(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_TCP_FIN;
+			else if (qdf_nbuf_dot11_data_is_tcp_fin_ack(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_TCP_FINACK;
+			else if (qdf_nbuf_dot11_data_is_tcp_ack(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_TCP_ACK;
+			else if (qdf_nbuf_dot11_data_is_tcp_rst(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_TCP_RST;
+		} else if (qdf_nbuf_dot11_is_ipv4_pkt(nbuf)) {
+			if (qdf_nbuf_dot11_is_ipv4_dhcp_pkt(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_DHCPV4;
+			else if (qdf_nbuf_dot11_is_icmp_pkt(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_ICMPV4;
+			else if (qdf_nbuf_dot11_data_is_dns_query(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_DNSV4;
+			else if (qdf_nbuf_dot11_data_is_dns_response(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_DNSV4;
+		} else if (qdf_nbuf_dot11_is_ipv6_pkt(nbuf)) {
+			if (qdf_nbuf_dot11_is_ipv6_dhcp_pkt(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_DHCPV6;
+			else if (qdf_nbuf_dot11_is_icmpv6_pkt(nbuf))
+				data_frame_type =
+				DP_MON_DATA_FRAME_TYPE_ICMPV6;
+		}
+
+		if (data_frame_type & data_filter)
+			return true;
+	}
+	return false;
+}
+#endif /* WLAN_LOCAL_PKT_CAPTURE_SUBFILTER */
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */

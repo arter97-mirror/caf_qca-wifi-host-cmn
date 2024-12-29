@@ -3802,6 +3802,34 @@ static void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
 		txrx_peer->mpdu_retry_threshold);
 }
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+static void
+dp_mon_update_conn_info(struct dp_peer *peer)
+{
+	uint32_t mac_id = 0;
+	struct dp_mon_mac *mon_mac;
+	struct dp_pdev *pdev;
+
+	if (!peer) {
+		dp_err("peer is NULL");
+		return;
+	}
+
+	pdev = peer->vdev->pdev;
+	mon_mac = dp_get_mon_mac(pdev, mac_id);
+
+	if (IS_MLO_DP_LINK_PEER(peer) && peer->primary_link)
+		mon_mac->peer_id = peer->mld_peer->peer_id;
+	else if (!IS_MLO_DP_LINK_PEER(peer))
+		mon_mac->peer_id = peer->peer_id;
+}
+#else
+static void
+dp_mon_update_conn_info(struct dp_peer *peer)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE_MLO
 QDF_STATUS dp_register_peer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 			    struct ol_txrx_desc_type *sta_desc)
@@ -3817,6 +3845,10 @@ QDF_STATUS dp_register_peer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 
 	qdf_spin_lock_bh(&peer->peer_info_lock);
 	peer->state = OL_TXRX_PEER_STATE_CONN;
+
+	if (peer->vdev->opmode == wlan_op_mode_sta)
+		dp_mon_update_conn_info(peer);
+
 	qdf_spin_unlock_bh(&peer->peer_info_lock);
 
 	dp_peer_set_bw(soc, peer->txrx_peer, sta_desc->bw);
@@ -3891,6 +3923,10 @@ QDF_STATUS dp_register_peer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 
 	qdf_spin_lock_bh(&peer->peer_info_lock);
 	peer->state = OL_TXRX_PEER_STATE_CONN;
+
+	if (peer->vdev->opmode == wlan_op_mode_sta)
+		dp_mon_update_conn_info(peer);
+
 	qdf_spin_unlock_bh(&peer->peer_info_lock);
 
 	dp_peer_set_bw(soc, peer->txrx_peer, sta_desc->bw);

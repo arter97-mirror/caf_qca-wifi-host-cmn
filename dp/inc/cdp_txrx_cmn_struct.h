@@ -3094,6 +3094,28 @@ struct cdp_txrx_stats_req {
 	char		*peer_addr;
 };
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+/**
+ * struct cdp_subfilter_monitor_filter - monitor subfilter info
+ * @data_tx_frame_filter: Subfilter configuration for TX DATA
+ * @data_rx_frame_filter: Subfilter configuration for RX DATA
+ * @mgmt_tx_frame_filter: Subfilter configuration for TX MGMT
+ * @mgmt_rx_frame_filter: Subfilter configuration for RX MGMT
+ * @ctrl_tx_frame_filter: Subfilter configuration for TX CTRL
+ * @ctrl_rx_frame_filter: Subfilter configuration for RX CTRL
+ * @connected_beacon_interval: Interval for connected beacon
+ */
+
+struct cdp_subfilter_monitor_filter {
+	uint32_t data_tx_frame_filter;
+	uint32_t data_rx_frame_filter;
+	uint32_t mgmt_tx_frame_filter;
+	uint32_t mgmt_rx_frame_filter;
+	uint32_t ctrl_tx_frame_filter;
+	uint32_t ctrl_rx_frame_filter;
+	uint32_t connected_beacon_interval;
+};
+#endif
 /**
  * struct cdp_monitor_filter - monitor filter info
  * @mode: set filter mode
@@ -3106,6 +3128,7 @@ struct cdp_txrx_stats_req {
  * @fpmo_mgmt : set Filter Pass and Monitor Other MGMT Configuration
  * @fpmo_ctrl : set Filter Pass and Monitor Other CTRL Configuration
  * @fpmo_data : set Filter Pass and Monitor Other DATA Configuration
+ * @fp_subfilter: set Filter Pass subfilter configuration
  */
 struct cdp_monitor_filter {
 	uint16_t mode;
@@ -3118,6 +3141,9 @@ struct cdp_monitor_filter {
 	uint16_t fpmo_mgmt;
 	uint16_t fpmo_ctrl;
 	uint16_t fpmo_data;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	struct cdp_subfilter_monitor_filter fp_subfilter;
+#endif
 };
 
 /**

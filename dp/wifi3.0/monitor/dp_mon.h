@@ -1146,6 +1146,11 @@ struct dp_mon_mac {
 	bool first_mpdu;
 	/* LPC lock */
 	qdf_spinlock_t lpc_lock;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	uint16_t peer_id;
+	uint16_t beacon_interval;
+	uint16_t nth_beacon;
+#endif
 #endif
 };
 
@@ -1172,6 +1177,9 @@ struct  dp_mon_pdev {
 	uint16_t mo_ctrl_filter;
 	uint16_t mo_data_filter;
 	uint16_t md_data_filter;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	struct dp_mon_subfilter fp_subfilter;
+#endif
 
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 	struct dp_pdev_tx_capture tx_capture;

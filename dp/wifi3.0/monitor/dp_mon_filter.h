@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -111,6 +111,10 @@
 #define DP_MON_FILTER_FPMO_PACKET_CTRL_OFFSET                  0x0000002c
 #define DP_MON_FILTER_FPMO_PACKET_CTRL_MASK                    0x0000ffff
 #define DP_MON_FILTER_FPMO_PACKET_CTRL_LSB                     0
+
+#define DP_MON_DATA_MAX_FILTER BIT(18)
+#define DP_MON_MGMT_MAX_FILTER BIT(5)
+#define DP_MON_CTRL_MAX_FILTER BIT(3)
 
 #define DP_MON_FILTER_GET(src, field) \
 	((*((uint32_t *)((uint8_t *)(src) + DP_MON_ ## field ## _OFFSET)) & \
@@ -283,6 +287,95 @@ enum dp_mon_fp_phy_err_buf_dest {
 	RXDMA2REO_RING
 };
 #endif
+
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+/**
+ * enum dp_mon_data_frame_type - Represent the various
+ * data types to be filtered in packet capture.
+ * @DP_MON_DATA_FRAME_TYPE_ALL:
+ * @DP_MON_DATA_FRAME_TYPE_ARP:
+ * @DP_MON_DATA_FRAME_TYPE_DHCPV4:
+ * @DP_MON_DATA_FRAME_TYPE_DHCPV6:
+ * @DP_MON_DATA_FRAME_TYPE_EAPOL:
+ * @DP_MON_DATA_FRAME_TYPE_DNSV4:
+ * @DP_MON_DATA_FRAME_TYPE_DNSV6:
+ * @DP_MON_DATA_FRAME_TYPE_TCP_SYN:
+ * @DP_MON_DATA_FRAME_TYPE_TCP_SYNACK:
+ * @DP_MON_DATA_FRAME_TYPE_TCP_FIN:
+ * @DP_MON_DATA_FRAME_TYPE_TCP_FINACK:
+ * @DP_MON_DATA_FRAME_TYPE_TCP_ACK:
+ * @DP_MON_DATA_FRAME_TYPE_TCP_RST:
+ * @DP_MON_DATA_FRAME_TYPE_ICMPV4:
+ * @DP_MON_DATA_FRAME_TYPE_ICMPV6:
+ * @DP_MON_DATA_FRAME_TYPE_RTP:
+ * @DP_MON_DATA_FRAME_TYPE_SIP:
+ * @DP_MON_DATA_FRAME_QOS_NULL:
+ */
+enum dp_mon_data_frame_type {
+	DP_MON_DATA_FRAME_TYPE_ALL = BIT(0),
+	/* valid only if DP_MON_DATA_DATA_FRAME_TYPE_ALL is not set */
+	DP_MON_DATA_FRAME_TYPE_ARP = BIT(1),
+	DP_MON_DATA_FRAME_TYPE_DHCPV4 = BIT(2),
+	DP_MON_DATA_FRAME_TYPE_DHCPV6 = BIT(3),
+	DP_MON_DATA_FRAME_TYPE_EAPOL = BIT(4),
+	DP_MON_DATA_FRAME_TYPE_DNSV4 = BIT(5),
+	DP_MON_DATA_FRAME_TYPE_DNSV6 = BIT(6),
+	DP_MON_DATA_FRAME_TYPE_TCP_SYN = BIT(7),
+	DP_MON_DATA_FRAME_TYPE_TCP_SYNACK = BIT(8),
+	DP_MON_DATA_FRAME_TYPE_TCP_FIN = BIT(9),
+	DP_MON_DATA_FRAME_TYPE_TCP_FINACK = BIT(10),
+	DP_MON_DATA_FRAME_TYPE_TCP_ACK = BIT(11),
+	DP_MON_DATA_FRAME_TYPE_TCP_RST = BIT(12),
+	DP_MON_DATA_FRAME_TYPE_ICMPV4 = BIT(13),
+	DP_MON_DATA_FRAME_TYPE_ICMPV6 = BIT(14),
+	DP_MON_DATA_FRAME_TYPE_RTP = BIT(15),
+	DP_MON_DATA_FRAME_TYPE_SIP = BIT(16),
+	DP_MON_DATA_FRAME_QOS_NULL = BIT(17),
+};
+
+/**
+ * enum dp_mon_mgmt_frame_type - Represent the various
+ * mgmt types to be sent over the monitor interface.
+ * @DP_MON_MGMT_FRAME_TYPE_ALL: All the MGMT Frames.
+ * @DP_MON_MGMT_CONNECT_NO_BEACON: All the MGMT Frames
+ * except the Beacons. Valid only in the Connect state.
+ * @DP_MON_MGMT_CONNECT_BEACON: Only the connected
+ * BSSID Beacons. Valid only in the Connect state.
+ * @DP_MON_MGMT_CONNECT_SCAN_BEACON: Represents
+ * the Beacons obtained during the scan (off channel and connected channel)
+ * when in connected state.
+ */
+
+enum dp_mon_mgmt_frame_type {
+	DP_MON_MGMT_FRAME_TYPE_ALL = BIT(0),
+	/* valid only if DP_MON_MGMT_FRAME_TYPE_ALL is not set */
+	DP_MON_MGMT_CONNECT_NO_BEACON = BIT(1),
+	DP_MON_MGMT_CONNECT_BEACON = BIT(2),
+	DP_MON_MGMT_CONNECT_SCAN_BEACON = BIT(3),
+};
+
+/**
+ * enum dp_mon_ctrl_frame_type - Represent the various
+ * ctrl types to be sent over the monitor interface.
+ * @DP_MON_CTRL_FRAME_TYPE_ALL: All the ctrl Frames.
+ * @DP_MON_CTRL_TRIGGER_FRAME: Trigger Frame.
+ */
+enum dp_mon_ctrl_frame_type {
+	DP_MON_CTRL_FRAME_TYPE_ALL = BIT(0),
+	/* valid only if DP_MON_CTRL_FRAME_TYPE_ALL is not set */
+	DP_MON_CTRL_TRIGGER_FRAME = BIT(1),
+};
+
+struct dp_mon_subfilter {
+	enum dp_mon_data_frame_type data_tx_frame_filter;
+	enum dp_mon_data_frame_type data_rx_frame_filter;
+	enum dp_mon_mgmt_frame_type mgmt_tx_frame_filter;
+	enum dp_mon_mgmt_frame_type mgmt_rx_frame_filter;
+	enum dp_mon_ctrl_frame_type ctrl_tx_frame_filter;
+	enum dp_mon_ctrl_frame_type ctrl_rx_frame_filter;
+	uint32_t connected_beacon_interval;
+};
+#endif /* WLAN_LOCAL_PKT_CAPTURE_SUBFILTER */
 
 /**
  * dp_mon_filters_reset() - reset all filters
@@ -688,6 +781,55 @@ bool dp_mon_get_is_local_pkt_capture_running(struct cdp_soc_t *cdp_soc,
 {
 	return false;
 }
+
+#endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
+
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+
+/**
+ * dp_mon_is_mgmt_filter_en() - Checks whether mgmt filters enabled
+ * for the packet
+ * @pdev:  Pointer to data path physical device object
+ * @dot11hdr: Pointer to the frame 802.11 header
+ * @buf: pointer to  frame buffer
+ * @direction: Direction of the frame
+ *
+ * Return: True if the packet passes the filter,False otherwise
+ */
+
+bool dp_mon_is_mgmt_filter_en(struct dp_pdev *pdev,
+			      struct ieee80211_frame *dot11hdr,
+			      qdf_nbuf_t buf, uint8_t direction);
+
+/**
+ * dp_mon_is_ctrl_filter_en() - Checks whether ctrl packet filters enabled
+ * for the packet
+ * @pdev:  Pointer to data path physical device object
+ * @dot11hdr: Pointer to the frame 802.11 header
+ * @direction: Direction of the frame
+ *
+ * Return: True if the packet passes the filter,False otherwise
+ */
+
+bool dp_mon_is_ctrl_filter_en(struct dp_pdev *pdev,
+			      struct ieee80211_frame *dot11hdr,
+			      uint8_t direction);
+
+/**
+ * dp_mon_is_data_filter_en() - Checks whether data packet filters enabled
+ * for the packet
+ * @pdev:  Pointer to data path physical device object
+ * @dot11hdr: Pointer to the frame 802.11 header
+ * @nbuf: pointer to  frame buffer
+ * @direction: Direction of the frame
+ *
+ * Return: True if the packet passes the filter,False otherwise
+ */
+
+bool dp_mon_is_data_filter_en(struct dp_pdev *pdev,
+			      struct ieee80211_frame *dot11hdr,
+			      qdf_nbuf_t nbuf,
+			      uint8_t direction);
 
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
 #endif /* #ifndef _DP_MON_FILTER_H_ */
