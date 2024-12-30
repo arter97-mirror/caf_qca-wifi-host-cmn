@@ -146,6 +146,14 @@ bool mlo_is_mld_connecting(struct wlan_objmgr_vdev *vdev);
  */
 bool mlo_is_ml_connection_in_progress(struct wlan_objmgr_psoc *psoc,
 				      uint8_t vdev_id);
+/**
+ * mlo_is_mld_vdevs_active() - Check whether the VDEV state of all VDEVs in
+ * MLD are in active state or not.
+ * @vdev: VDEV object manager pointer.
+ *
+ * Return: True if all VDEVs are in active state or otherwise false.
+ */
+bool mlo_is_mld_vdevs_active(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlo_is_mld_connected - Check whether MLD is connected
