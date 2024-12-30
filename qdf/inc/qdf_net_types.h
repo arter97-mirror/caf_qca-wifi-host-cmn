@@ -109,6 +109,8 @@ typedef __in6_addr_t in6_addr_t;
 #define QDF_IEEE80211_FC0_SUBTYPE_CF_END 0xE0
 #define QDF_IEEE80211_FC0_SUBTYPE_CF_END_CF_ACK 0xF0
 
+#define QDF_IEEE80211_HTC_CTRL_MASK	0x80
+
 #define QDF_NET_IS_MAC_MULTICAST(_a)   (*(_a) & 0x01)
 
 /*

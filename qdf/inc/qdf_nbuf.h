@@ -631,6 +631,8 @@ struct mon_rx_status {
  * @enc_type: ecnryption type
  * @retried_msdu_count: retried msdu count
  * @mpdu_q: user mpdu_queue used for monitor
+ * @ht_control: HT control information
+ * @qos_queue_size: QoS control queue size
  */
 struct mon_rx_user_status {
 	uint32_t mcs:4,
@@ -702,6 +704,8 @@ struct mon_rx_user_status {
 	uint8_t enc_type;
 	uint16_t retried_msdu_count;
 	qdf_nbuf_queue_t mpdu_q;
+	uint32_t ht_control;
+	uint8_t qos_queue_size;
 };
 
 /**
