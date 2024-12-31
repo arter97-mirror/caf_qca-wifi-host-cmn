@@ -1107,7 +1107,7 @@
  * gEnableNUDTracking - Will enable or disable NUD tracking within driver
  * @Min: 0
  * @Max: 3
- * @Default: 2
+ * @Default: 0
  *
  * This ini is used to specify the behaviour of the driver for NUD tracking.
  * If the ini value is:-
@@ -1129,7 +1129,7 @@
 		CFG_INI_UINT("gEnableNUDTracking", \
 		 0, \
 		 3, \
-		 2, \
+		 0, \
 		 CFG_VALUE_OR_DEFAULT, "Driver NUD tracking behaviour")
 
 #define CFG_DP_ENABLE_NUD_TRACKING_ALL \
