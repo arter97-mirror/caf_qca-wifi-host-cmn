@@ -1321,6 +1321,61 @@ mlo_link_recfg_get_add_partner_links(
 }
 
 static QDF_STATUS
+mlo_link_recfg_update_partner_info(struct mlo_link_recfg_context *recfg_ctx)
+{
+	struct wlan_mlo_sta *sta_ctx;
+	struct mlo_partner_info *ml_partner_info;
+	struct mlo_link_info *link_info;
+	uint8_t i, idx = 0;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+	sta_ctx = mlo_dev_ctx->sta_ctx;
+	if (!sta_ctx) {
+		mlo_err("sta_ctx null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+	ml_partner_info = &sta_ctx->ml_partner_info;
+	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
+		if (idx >= QDF_ARRAY_SIZE(ml_partner_info->partner_link_info))
+			break;
+		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+
+		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+			continue;
+
+		if (link_info->link_id == WLAN_INVALID_LINK_ID)
+			continue;
+
+		if (link_info->link_status_code)
+			continue;
+
+		ml_partner_info->partner_link_info[idx].link_addr =
+			link_info->ap_link_addr;
+		ml_partner_info->partner_link_info[idx].link_id =
+			link_info->link_id;
+		ml_partner_info->partner_link_info[idx].vdev_id =
+			link_info->vdev_id;
+		ml_partner_info->partner_link_info[idx].link_status_code =
+			link_info->link_status_code;
+		ml_partner_info->partner_link_info[idx].chan_freq =
+			link_info->link_chan_info->ch_freq;
+		mlo_debug("[%d] update partner link id %d vdev %d",
+			  idx,
+			  ml_partner_info->partner_link_info[idx].link_id,
+			  ml_partner_info->partner_link_info[idx].vdev_id);
+		idx++;
+	}
+	ml_partner_info->num_partner_links = idx;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
 mlo_link_recfg_del_standby_link(struct mlo_link_recfg_context *recfg_ctx,
 				struct mlo_link_recfg_state_req *req)
 {
@@ -2949,7 +3004,7 @@ mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 		mlo_err("RX response failure");
 		return status;
 	}
-
+	mlo_link_recfg_update_partner_info(recfg_ctx);
 	mlo_link_recfg_store_key(recfg_ctx, &tran->req);
 	/* handle link recfg link add rejected case */
 
