@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2746,6 +2746,14 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 		qdf_mem_free(scan_entry);
 		scm_err("failed to allocate memory for scan_node");
 		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!IS_WLAN_PHYMODE_EHT(scan_entry->phy_mode) &&
+	    (util_scan_entry_ehtcap(scan_entry) ||
+	     util_scan_entry_bv_ml_ie(scan_entry))) {
+		scm_debug("EHT cap present but phymode %d not EHT, reset eht info",
+			  scan_entry->phy_mode);
+		util_scan_entry_reset_11be_caps(scan_entry);
 	}
 
 	util_scan_update_ml_info(pdev, scan_entry);
