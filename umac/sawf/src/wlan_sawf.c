@@ -179,7 +179,7 @@ bool wlan_delay_bound_configured_nolock(uint8_t svc_id)
 	}
 	if (svc_id <  SAWF_SVC_CLASS_MIN ||
 	    svc_id > SAWF_SVC_CLASS_MAX) {
-		sawf_err("Invalid svc-class id");
+		sawf_debug("Invalid svc-class id %u", svc_id);
 		return false;
 	}
 
@@ -704,7 +704,7 @@ bool wlan_delay_bound_configured(uint8_t svc_id)
 	}
 	if (svc_id <  SAWF_SVC_CLASS_MIN ||
 	    svc_id > SAWF_SVC_CLASS_MAX) {
-		sawf_err("Invalid svc-class id");
+		sawf_debug("Invalid svc-class id %u", svc_id);
 		return false;
 	}
 
