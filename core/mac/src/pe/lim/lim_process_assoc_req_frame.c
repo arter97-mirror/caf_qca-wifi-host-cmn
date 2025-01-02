@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -295,9 +295,15 @@ static bool lim_chk_assoc_req_parse_error(struct mac_context *mac_ctx,
 		mld_mac = (struct qdf_mac_addr *)assoc_req->mld_mac;
 		if (!assoc_req->eht_cap.present &&
 		    !qdf_is_macaddr_zero(mld_mac)) {
-			qdf_zero_macaddr(mld_mac);
-			qdf_mem_zero(&assoc_req->mlo_info,
-				     sizeof(assoc_req->mlo_info));
+			pe_warn("Assoc Req rejected: missing ETH IE "
+				QDF_MAC_ADDR_FMT, QDF_MAC_ADDR_REF(sa));
+
+			lim_send_assoc_rsp_mgmt_frame(mac_ctx,
+						      STATUS_DENIED_EHT_NOT_SUPPORTED,
+						      1, sa, sub_type, 0,
+						      session, false,
+						      mld_mac);
+			return false;
 		}
 		return true;
 	}
