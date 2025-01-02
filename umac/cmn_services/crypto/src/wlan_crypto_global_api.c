@@ -2817,12 +2817,48 @@ void wlan_crypto_rsnxie_check(struct wlan_crypto_params *crypto_params,
 	((uint8_t *)(&crypto_params->rsnx_caps))[0] &= 0xf0;
 }
 
+/*
+ * wlan_crypto_get_ie_offset() - API to get the RSN(X) data
+ * @frm: pointer to the RSN(X) buffer pointer
+ * @len: length of the IE
+ * @eid: EID type of the input buffer
+ *
+ * This API returns the pointer to the data of the RSN(X) element.
+ * Both RSN and RSNX elements have 802.11 variant as well as
+ * WFA variant. This API parses the buffer and determines the
+ * offset and length of the data based on the EID type.
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+wlan_crypto_get_ie_offset(const uint8_t **frm, uint8_t *len,
+			  enum element_ie eid)
+{
+	const uint8_t *ie = *frm;
+
+	if (ie[0] == eid) {
+		*frm += 2;
+		*len = ie[1];
+	} else if (ie[0] == WLAN_ELEMID_VENDOR) {
+		if (ie[1] <= RSNO_OUI_SIZE)
+			return QDF_STATUS_E_INVAL;
+		*frm += 2 + RSNO_OUI_SIZE;
+		*len = ie[1] - RSNO_OUI_SIZE;
+	} else {
+		crypto_err("Unknown eid %x", ie[0]);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS wlan_crypto_rsnie_check(struct wlan_crypto_params *crypto_params,
 				   const uint8_t *frm)
 {
 	uint8_t len = frm[1];
 	int32_t w;
 	int n, akm_index;
+	QDF_STATUS status;
 
 	/* Check the length once for fixed parts: OUI, type & version */
 	if (len < 2)
@@ -2833,7 +2869,10 @@ QDF_STATUS wlan_crypto_rsnie_check(struct wlan_crypto_params *crypto_params,
 
 	SET_AUTHMODE(crypto_params, WLAN_CRYPTO_AUTH_RSNA);
 
-	frm += 2;
+	status = wlan_crypto_get_ie_offset(&frm, &len, WLAN_ELEMID_RSN);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
 	/* NB: iswapoui already validated the OUI and type */
 	w = LE_READ_2(frm);
 	if (w != RSN_VERSION)
@@ -4030,7 +4069,7 @@ wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
 	QDF_STATUS status;
 
 	qdf_mem_zero(crypto_params, sizeof(struct wlan_crypto_params));
-	rsn_ie = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RSN, ie_ptr, ie_len);
+	rsn_ie = wlan_get_rsn_data_from_ie_ptr(ie_ptr, ie_len);
 	if (!rsn_ie) {
 		crypto_debug("RSN IE not present");
 		return QDF_STATUS_E_INVAL;
@@ -4193,15 +4232,18 @@ wlan_crypto_reset_prarams(struct wlan_crypto_params *params)
 const uint8_t *
 wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 {
-	uint8_t len;
+	uint8_t len = 0;
 	const uint8_t *ie;
+	QDF_STATUS status;
 
 	if (!rsnxe_ie)
 		return NULL;
 
 	ie = rsnxe_ie;
-	len = ie[1];
-	ie += 2;
+
+	status = wlan_crypto_get_ie_offset(&ie, &len, WLAN_ELEMID_RSNXE);
+	if (QDF_IS_STATUS_ERROR(status))
+		return NULL;
 
 	if (!len)
 		return NULL;
@@ -4211,9 +4253,9 @@ wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 	return ie;
 }
 
-QDF_STATUS wlan_set_vdev_crypto_prarams_from_ie(struct wlan_objmgr_vdev *vdev,
-						uint8_t *ie_ptr,
-						uint16_t ie_len)
+QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,
+					       uint8_t *ie_ptr,
+					       uint16_t ie_len)
 {
 	struct wlan_crypto_params crypto_params;
 	QDF_STATUS status;
