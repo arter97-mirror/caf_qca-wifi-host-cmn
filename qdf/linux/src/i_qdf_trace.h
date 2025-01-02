@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -287,6 +287,10 @@ static inline void __qdf_trace_hexdump_dummy(QDF_MODULE_ID module,
 
 #define QDF_ENABLE_TRACING
 #define qdf_scnprintf scnprintf
+#define qdf_vscnprintf vscnprintf
+#define qdf_va_list va_list
+#define qdf_va_start va_start
+#define qdf_va_end va_end
 
 #ifdef QDF_ENABLE_TRACING
 
