@@ -21,6 +21,23 @@
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 /**
+ * enum wlan_ipa_logging_thread_state - enum to keep track of
+ * logging thread state
+ * @WLAN_IPA_LOGGING_THREAD_INVALID: initial invalid state
+ * @WLAN_IPA_LOGGING_THREAD_RUNNING: logging thread functional(NOT suspended,
+ *                      processing logs or waiting on a wait_queue)
+ * @WLAN_IPA_LOGGING_THREAD_CANCEL_INPROGESS: logging thread is cancel
+ * inprogress
+ * @WLAN_IPA_LOGGING_THREAD_CANCELLED: logging thread cancelled
+ */
+enum wlan_ipa_logging_thread_state {
+	WLAN_IPA_LOGGING_THREAD_INVALID,
+	WLAN_IPA_LOGGING_THREAD_RUNNING,
+	WLAN_IPA_LOGGING_THREAD_CANCEL_INPROGESS,
+	WLAN_IPA_LOGGING_THREAD_CANCELLED,
+};
+
+/**
  * struct wlan_ipa_log_context - structure holding resources for ipa logging
  * @free_list: free node list which can be used for filling logs
  * @filled_list: filled nodes list having logs to send to upper layer
@@ -33,6 +50,7 @@
  * @drop_count: log dropped
  * @event_flag: event flag to post events to logger thread
  * @log_truncation: log truncation indication
+ * @thread_state: logging thread state
  */
 struct wlan_ipa_log_context {
 	qdf_list_t free_list;
@@ -46,6 +64,7 @@ struct wlan_ipa_log_context {
 	uint16_t drop_count;
 	unsigned long event_flag;
 	bool log_truncation;
+	enum wlan_ipa_logging_thread_state thread_state;
 };
 
 /**

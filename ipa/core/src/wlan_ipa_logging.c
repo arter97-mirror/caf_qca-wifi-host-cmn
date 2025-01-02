@@ -30,6 +30,16 @@ QDF_STATUS wlan_ipa_nl_broadcast(int length, char *str, int num_log)
 }
 
 static inline
+bool wlan_ipa_is_logging_thread_running(void)
+{
+	if (g_ipa_logging_ctx.thread_state ==
+	    WLAN_IPA_LOGGING_THREAD_RUNNING)
+		return true;
+
+	return false;
+}
+
+static inline
 QDF_STATUS wlan_ipa_send_to_userspace(void)
 {
 	struct wlan_ipa_log_msg *curr_node = NULL;
@@ -39,7 +49,8 @@ QDF_STATUS wlan_ipa_send_to_userspace(void)
 	int ret = 0;
 
 	str = g_ipa_logging_ctx.payload;
-	while (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
+	while (!qdf_list_empty(&g_ipa_logging_ctx.filled_list) &&
+	       wlan_ipa_is_logging_thread_running()) {
 		qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
 		qdf_list_remove_front(&g_ipa_logging_ctx.filled_list,
 				      (qdf_list_node_t **)&curr_node);
@@ -83,6 +94,7 @@ static inline int wlan_ipa_logging_thread(void *arg)
 	int ret;
 
 	qdf_event_set(&g_ipa_logging_ctx.start_event);
+	g_ipa_logging_ctx.thread_state = WLAN_IPA_LOGGING_THREAD_RUNNING;
 	while (true) {
 		ret_wait_status =
 			qdf_wait_queue_interruptible(
@@ -142,6 +154,7 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 	char log_thread_name[WLAN_IPA_THREAD_NAME_MAX] = {0};
 	QDF_STATUS status;
 
+	g_ipa_logging_ctx.thread_state = WLAN_IPA_LOGGING_THREAD_INVALID;
 	qdf_scnprintf(log_thread_name, sizeof(log_thread_name),
 		      "ipa_log_thread");
 	qdf_list_create(&g_ipa_logging_ctx.free_list,
@@ -186,17 +199,33 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 
 void wlan_ipa_logging_sock_deinit(void)
 {
+	if (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
+		qdf_atomic_set_bit(WLAN_IPA_POST_HOST_LOG,
+				   &g_ipa_logging_ctx.event_flag);
+		qdf_wake_up_interruptible(&g_ipa_logging_ctx.wait_q);
+		qdf_sleep(WLAN_IPA_MAX_WAIT_TIME);
+	}
+
 	qdf_atomic_set_bit(WLAN_IPA_SHUTDOWN_LOGGING_THREAD,
 			   &g_ipa_logging_ctx.event_flag);
+	g_ipa_logging_ctx.thread_state =
+		WLAN_IPA_LOGGING_THREAD_CANCEL_INPROGESS;
 	qdf_atomic_clear_bit(WLAN_IPA_POST_HOST_LOG,
 			     &g_ipa_logging_ctx.event_flag);
 	qdf_wake_up_interruptible(&g_ipa_logging_ctx.wait_q);
 	qdf_wait_single_event(&g_ipa_logging_ctx.shutdown_event,
 			      WLAN_IPA_MAX_WAIT_TIME);
-	qdf_event_destroy(&g_ipa_logging_ctx.shutdown_event);
-	qdf_event_destroy(&g_ipa_logging_ctx.start_event);
-	qdf_mem_free(g_ipa_log_msg);
+	g_ipa_logging_ctx.thread_state =
+		WLAN_IPA_LOGGING_THREAD_CANCELLED;
+	if (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
+		ipa_err("send log from deinit");
+		wlan_ipa_send_to_userspace();
+	}
+
 	qdf_spinlock_destroy(&g_ipa_logging_ctx.lock);
+	qdf_event_destroy(&g_ipa_logging_ctx.start_event);
+	qdf_event_destroy(&g_ipa_logging_ctx.shutdown_event);
+	qdf_mem_free(g_ipa_log_msg);
 }
 
 static inline
@@ -236,6 +265,11 @@ QDF_STATUS wlan_ipa_send_to_filled_list(char *log, int length, const char *func)
 	char *ptr;
 	struct wlan_ipa_log_msg *curr_node = NULL;
 	char msg_header[WLAN_IPA_TEMP_BUF_LEN_MAX];
+
+	if (!wlan_ipa_is_logging_thread_running()) {
+		ipa_err_rl("ipa_logging framework is not active");
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	if (qdf_list_empty(&g_ipa_logging_ctx.free_list)) {
 		ipa_err_rl("no free entries available in list");
