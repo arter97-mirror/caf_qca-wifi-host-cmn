@@ -590,6 +590,20 @@ typedef struct {
 } wmi_host_peer_sta_kickout_event;
 
 /**
+ * struct wmi_host_peer_assoc_response_event - Peer assoc response event
+ * parameters
+ * @vdev_id: vdev id
+ * @mac_address: Peer Mac Address
+ * @status: Peer assoc command status
+ *
+ */
+struct wmi_host_peer_assoc_response_event {
+	uint32_t vdev_id;
+	struct qdf_mac_addr mac_address;
+	uint32_t status;
+};
+
+/**
  * struct wmi_host_peer_create_response_event - Peer Create response event param
  * @vdev_id: vdev id
  * @mac_address: Peer Mac Address
@@ -1390,5 +1404,90 @@ struct wmi_tx_pkt_cap_custom_classify_info {
 	uint32_t      pkt_type_bitmap;
 };
 #endif /* WLAN_SUPPORT_TX_PKT_CAP_CUSTOM_CLASSIFY */
+
+/**
+ * wmi_host_pdev_power_boost_event_status - WMI Power Boost Event Status
+ * @WMI_HOST_PDEV_POWER_BOOST_EVT_STATUS_START_TRAINING: Start Power Boost
+ * Training
+ * @WMI_HOST_PDEV_POWER_BOOST_EVT_STATUS_ABORT: Abort Power Boost Training
+ * @WMI_HOST_PDEV_POWER_BOOST_EVT_STATUS_COMPLETE: Power Boost Training
+ * Complete
+ */
+enum wmi_host_pdev_power_boost_event_status {
+	WMI_HOST_PDEV_POWER_BOOST_EVT_STATUS_START_TRAINING = 0,
+	WMI_HOST_PDEV_POWER_BOOST_EVT_STATUS_ABORT,
+	WMI_HOST_PDEV_POWER_BOOST_EVT_STATUS_COMPLETE,
+};
+
+/**
+ * wmi_host_pdev_power_boost_ev_params - Power Boost Event Params
+ * @pdev_id: PDEV ID
+ * @status: enum wmi_host_pdev_power_boost_event_status
+ * @training_stage: Power Boost Training Stage
+ * @mcs: MCS of the Power Boost samples collected
+ * @bandwidth: Bandwidth of the Power Boost samples collected
+ * @temperature_degreeC: Temperature
+ * @primary_chan_mhz: Primary channel frequency
+ * @band_center_freq1: Band center frequency 1
+ * @band_center_freq2: Band center frequency 2
+ * @phy_mode: PHY mode
+ * @iq_sample_buf_size: Buffer size of the IQ samples written by FW
+ */
+struct wmi_host_pdev_power_boost_ev_params {
+	uint32_t pdev_id;
+	uint32_t status;
+	uint32_t training_stage;
+	uint32_t mcs;
+	uint32_t bandwidth;
+	int32_t temperature_degreeC;
+	uint32_t primary_chan_mhz;
+	uint32_t band_center_freq1;
+	uint32_t band_center_freq2;
+	uint32_t phy_mode;
+	uint32_t iq_sample_buf_size;
+};
+
+/**
+ * wmi_host_pdev_power_boost_cmd_status - WMI power boost command status
+ * @WMI_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY: App ready status
+ * @WMI_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA: Power boost training
+ * result
+ * @WMI_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT: Abort power boost training
+ */
+enum wmi_host_pdev_power_boost_cmd_status {
+	WMI_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY = 0,
+	WMI_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA,
+	WMI_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT,
+};
+
+/**
+ * wmi_host_pdev_power_boost_cmd_params - Power boost command params
+ * @pdev_id: PDEV ID
+ * @status: enum wmi_host_pdev_power_boost_cmd_status
+ * @training_stage: Power Boost Training Stage
+ * @mcs: MCS of the Power Boost samples collected
+ * @bandwidth: Bandwidth of the Power Boost samples collected
+ * @temperature_degreeC: Temperature
+ * @primary_chan_mhz: Primary channel frequency
+ * @band_center_freq1: Band center frequency 1
+ * @band_center_freq2: Band center frequency 2
+ * @phy_mode: PHY mode
+ * @tx_evm: Tx EVM
+ * @mask_margin: Mask margin
+ */
+struct wmi_host_pdev_power_boost_cmd_params {
+	uint32_t pdev_id;
+	uint32_t status;
+	uint32_t training_stage;
+	uint32_t mcs;
+	uint32_t bandwidth;
+	int32_t temperature_degreeC;
+	uint32_t primary_chan_mhz;
+	uint32_t band_center_freq1;
+	uint32_t band_center_freq2;
+	uint32_t phy_mode;
+	int32_t tx_evm;
+	int32_t mask_margin;
+};
 
 #endif

@@ -3940,7 +3940,7 @@ dp_sawf_peer_stats_reset(struct dp_soc *soc,
 
 	dp_sawf_peer_stats_clear(peer);
 
-	if (sawf_ctx)
+	if (sawf_ctx && sawf_ctx->telemetry_ctx)
 		telemetry_sawf_peer_stats_reset(sawf_ctx->telemetry_ctx);
 }
 

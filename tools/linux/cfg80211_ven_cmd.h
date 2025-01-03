@@ -917,6 +917,9 @@ enum {
 	IEEE80211_PARAM_4ADDR_EAPOL = 834,
 	IEEE80211_PARAM_DISABLE_LPI_ANT_OPTIMIZATION = 835,
 	IEEE80211_PARAM_RECOVERY_STATE = 836,
+#ifdef WLAN_MLO_SETUP_LINK_RECFG
+	IEEE80211_PARAM_MLRECFG_ADD_LINK_REJ = 837,
+#endif /* WLAN_MLO_SETUP_LINK_RECFG */
 
 	/* Add QCA enums above */
 	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
@@ -1566,6 +1569,9 @@ enum _ol_ath_param_t {
 #if defined(WLAN_SUPPORT_RX_FLOW_TAG)
 	OL_ATH_PARAM_FST_ENTRY = 561,
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
+	OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN = 562,
+	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
+	OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE = 564,
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -2734,6 +2740,10 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"g_mlo_link_rej", IEEE80211_PARAM_MLO_LINK_REJ_FLAG, GET_PARAM, 0},
 	{"mlo_lre_test_rej", IEEE80211_PARAM_MLO_LINK_REJ_TEST, SET_PARAM, 2},
 	{"g_mlo_lre_test_rej", IEEE80211_PARAM_MLO_LINK_REJ_TEST, GET_PARAM, 0},
+#ifdef WLAN_MLO_SETUP_LINK_RECFG
+	{"mlrecfg_add_link_rej", IEEE80211_PARAM_MLRECFG_ADD_LINK_REJ, SET_PARAM, 2},
+	{"g_mlrecfg_add_link_rej", IEEE80211_PARAM_MLRECFG_ADD_LINK_REJ, GET_PARAM, 0},
+#endif /* WLAN_MLO_SETUP_LINK_RECFG */
 #endif
 	{"get_noack_map", IEEE80211_PARAM_NOACK_MAP, GET_PARAM, 0},
 #ifdef WLAN_FEATURE_11BE
@@ -4101,6 +4111,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ALL_CHAN_UTIL, GET_PARAM, 0},
 	{"dynamic_wsi_remap",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DYNAMIC_WSI_REMAP, SET_PARAM, 1},
+	{"wsi_remap_netdev_preserve",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE, SET_PARAM, 1},
+	{"g_wsi_remap_netdev_preserve",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE, GET_PARAM, 0},
 #ifdef QCA_PROCESS_UPLINK_CSA
 	{"process_uplink_csa_en",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_PROCESS_UPLINK_CSA, SET_PARAM, 1},
@@ -4123,6 +4137,18 @@ struct vendor_commands radio_vendor_cmds[] = {
 	{"display_fst_info",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_FST_ENTRY, GET_PARAM, 0},
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
+	{"dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
+	{"dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
 };
 #endif
 

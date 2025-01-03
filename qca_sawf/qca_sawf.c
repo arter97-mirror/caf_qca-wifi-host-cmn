@@ -110,7 +110,7 @@ qca_sawf_get_vdev(struct net_device *netdev,
 		else
 			osdev = osif_sta_mlo_find_osdev(mldev);
 		if (!osdev) {
-			qdf_err("Invalid link osdev");
+			sawf_debug("Invalid link osdev");
 			return NULL;
 		}
 	}
