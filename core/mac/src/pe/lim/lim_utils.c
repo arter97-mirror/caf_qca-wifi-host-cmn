@@ -9033,6 +9033,11 @@ lim_revise_eht_caps_per_band(struct mac_context *mac, enum cds_band_type band,
 	if (band == CDS_BAND_2GHZ)
 		return;
 
+	if (!eht_cap->support_320mhz_6ghz) {
+		pe_debug("320MHz is not set");
+		return;
+	}
+
 	country_max_allowed_bw = wlan_reg_get_country_max_allowed_bw(mac->pdev);
 	if (!country_max_allowed_bw) {
 		pe_debug("Failed to get country_max_allowed_bw");
