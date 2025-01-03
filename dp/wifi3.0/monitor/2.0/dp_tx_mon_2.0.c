@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1383,10 +1383,15 @@ dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
 {
 	struct dp_mon_vdev *mon_vdev;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
-	struct dp_vdev *mvdev = mon_mac->mvdev;
+	struct dp_vdev *mvdev;
 
-	if (!mvdev) {
-		dp_mon_err("Monitor vdev is NULL !!");
+	mvdev =	dp_vdev_get_ref_by_id(pdev->soc, mon_mac->vdev_id,
+				      DP_MOD_ID_TX_PPDU_STATS);
+	if (!mvdev || mon_mac->mvdev != mvdev) {
+		dp_mon_err("Monitor vdev is NULL or invalid!!");
+		if (mvdev)
+			dp_vdev_unref_delete(pdev->soc, mvdev,
+					     DP_MOD_ID_TX_PPDU_STATS);
 		mon_mac->lpc_coc_stats.tx_dropped++;
 		return QDF_STATUS_E_INVAL;
 	}
@@ -1402,6 +1407,7 @@ dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
 		return QDF_STATUS_E_INVAL;
 	}
 
+	dp_vdev_unref_delete(pdev->soc, mvdev, DP_MOD_ID_TX_PPDU_STATS);
 	return QDF_STATUS_SUCCESS;
 }
 #else
