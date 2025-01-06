@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -617,6 +617,8 @@ struct mon_rx_status {
  * @enc_type: ecnryption type
  * @retried_msdu_count: retried msdu count
  * @mpdu_q: user mpdu_queue used for monitor
+ * @first_msdu: Indicates start of an a-msdu
+ * @last_msdu: Indicates end of an a-msdu
  */
 struct mon_rx_user_status {
 	uint32_t mcs:4,
@@ -688,6 +690,8 @@ struct mon_rx_user_status {
 	uint8_t enc_type;
 	uint16_t retried_msdu_count;
 	qdf_nbuf_queue_t mpdu_q;
+	uint8_t first_msdu;
+	uint8_t last_msdu;
 };
 
 /**

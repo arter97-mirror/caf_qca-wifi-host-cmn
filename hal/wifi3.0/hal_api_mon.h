@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -22,6 +22,7 @@
 
 #include "qdf_types.h"
 #include "hal_internal.h"
+#include "hal_tx.h"
 #include "hal_rx.h"
 #include "hal_hw_headers.h"
 #include <target_type.h>
@@ -1492,6 +1493,36 @@ hal_clear_rx_status_done(uint8_t *rx_tlv)
 {
 	*(uint32_t *)rx_tlv = 0;
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+uint8_t hal_get_rx_status_mic_len(struct mon_rx_user_status *rx_user_status)
+{
+	enum hal_tx_encrypt_type encrypt_type;
+
+	encrypt_type = rx_user_status->enc_type;
+
+	switch (encrypt_type) {
+	case HAL_TX_ENCRYPT_TYPE_WEP_40:
+	case HAL_TX_ENCRYPT_TYPE_WEP_104:
+	case HAL_TX_ENCRYPT_TYPE_WEP_128:
+	case HAL_TX_ENCRYPT_TYPE_TKIP_NO_MIC:
+		return 0;
+	case HAL_TX_ENCRYPT_TYPE_TKIP_WITH_MIC:
+		return 8;
+	case HAL_TX_ENCRYPT_TYPE_WAPI:
+	case HAL_TX_ENCRYPT_TYPE_WAPI_GCM_SM4:
+		return 16;
+	case HAL_TX_ENCRYPT_TYPE_AES_CCMP_128:
+		return 8;
+	case HAL_TX_ENCRYPT_TYPE_AES_CCMP_256:
+	case HAL_TX_ENCRYPT_TYPE_AES_GCMP_128:
+	case HAL_TX_ENCRYPT_TYPE_AES_GCMP_256:
+		return 16;
+	case HAL_TX_ENCRYPT_TYPE_NO_CIPHER:
+	default:
+		return 0;
+	}
 }
 
 #ifdef WLAN_PKT_CAPTURE_TX_2_0

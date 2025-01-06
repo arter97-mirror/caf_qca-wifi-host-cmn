@@ -1749,6 +1749,29 @@ dp_rx_handle_smart_mesh_mode(struct dp_soc *soc, struct dp_pdev *pdev,
 }
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
+
+/**
+ * dp_rx_mon_remove_mic_data() - API to remove mic placeholder data added by
+ * CRYPTO
+ * @mon_mac: mon_mac handle
+ * @buf: pointer to mpdu buffer
+ *
+ * Return: void
+ */
+
+static void
+dp_rx_mon_remove_mic_data(struct dp_mon_mac *mon_mac, qdf_nbuf_t buf)
+{
+	uint8_t user_id;
+	uint8_t mic_len;
+	struct mon_rx_user_status *rx_user_status;
+
+	user_id = mon_mac->ppdu_info.user_id;
+	rx_user_status = &mon_mac->ppdu_info.rx_user_status[user_id];
+	mic_len = hal_get_rx_status_mic_len(rx_user_status);
+	qdf_nbuf_trim_tail(buf, mic_len);
+}
+
 /**
  * dp_rx_mon_stitch_mpdu() - Stich MPDU from MSDU
  * @mon_mac: mon_mac handle
@@ -1796,8 +1819,10 @@ dp_rx_mon_stitch_mpdu(struct dp_mon_mac *mon_mac, qdf_nbuf_t tail)
 		 * 4 bytes of RX FCS in the tail to avoid parsing issue.
 		 */
 		if (!head_frag_list &&
-		    qdf_nbuf_len(mpdu_buf) < LPC_RX_HDR_DMA_LENGTH)
+		    qdf_nbuf_len(mpdu_buf) < LPC_RX_HDR_DMA_LENGTH) {
 			qdf_nbuf_trim_tail(mpdu_buf, HAL_RX_FCS_LEN);
+			dp_rx_mon_remove_mic_data(mon_mac, mpdu_buf);
+		}
 
 		qdf_nbuf_append_ext_list(mpdu_buf, head_frag_list,
 					 frag_list_sum_len);
