@@ -42,6 +42,7 @@
 #define ACK_INTERVAL (40)
 #define CTS_INTERVAL (40)
 #define DEFAULT_NOISE_FLOOR (-95)
+#define LPC_TX_HDR_DMA_LENGTH 256
 
 #ifdef TXMON_DEBUG
 /*
@@ -1943,6 +1944,43 @@ dp_tx_mon_lpc_update_htc_qos(struct mon_rx_user_status *rx_user_status,
 }
 
 /**
+ * dp_tx_mon_remove_mic_data() - API to remove mic placeholder data added by
+ * CRYPTO
+ * @rx_user_status: pointer to rx_user_status field of dp_tx_ppdu_info
+ * @buf: pointer to skb buffer
+ *
+ * Return: void
+ */
+static void
+dp_tx_mon_remove_mic_data(struct mon_rx_user_status *rx_user_status,
+			  qdf_nbuf_t buf)
+{
+	uint8_t mic_len, last_f, num_frags;
+
+	if (qdf_nbuf_len(buf) >= LPC_TX_HDR_DMA_LENGTH)
+		return;
+
+	mic_len = hal_get_rx_status_mic_len(rx_user_status);
+
+	if (mic_len > 0) {
+		num_frags = dp_tx_mon_nbuf_get_num_frag(buf);
+		last_f = num_frags - 1;
+		if (num_frags >= 2) {
+			uint8_t last_frag_size = qdf_nbuf_get_frag_size(buf, last_f);
+
+			if (last_frag_size < mic_len) {
+				qdf_nbuf_remove_frag(buf, last_f,
+						     DP_MON_DATA_BUFFER_SIZE);
+
+				mic_len -= last_frag_size;
+			}
+		}
+		qdf_nbuf_trim_add_frag_size(buf, dp_tx_mon_nbuf_get_num_frag(buf) - 1,
+					    -mic_len, DP_MON_DATA_BUFFER_SIZE);
+	}
+}
+
+/**
  * dp_tx_mon_send_per_usr_mpdu() - API to send per usr mpdu to stack
  * @pdev: pdev Handle
  * @ppdu_info: pointer to dp_tx_ppdu_info
@@ -2012,6 +2050,9 @@ dp_tx_mon_send_per_usr_mpdu(struct dp_pdev *pdev,
 		}
 
 		dp_tx_mon_lpc_update_htc_qos(
+			ppdu_info->hal_txmon.rx_status.rx_user_status, buf);
+
+		dp_tx_mon_remove_mic_data(
 			ppdu_info->hal_txmon.rx_status.rx_user_status, buf);
 
 		if (!qdf_nbuf_update_radiotap(&ppdu_info->hal_txmon.rx_status,
