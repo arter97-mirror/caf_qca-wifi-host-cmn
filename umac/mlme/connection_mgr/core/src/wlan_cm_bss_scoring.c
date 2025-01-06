@@ -3826,6 +3826,53 @@ static bool wlan_cm_wfa_get_test_feature_flags(struct wlan_objmgr_psoc *psoc)
 	return wlan_wfa_get_test_feature_flags(psoc, WFA_TEST_IGNORE_RSNXE);
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO
+void
+wlan_cm_set_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  uint8_t num_links,
+				  struct qdf_mac_addr *allowed_bss_link_addr)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	uint8_t i;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return;
+
+	for (i = 0; i < num_links; i++) {
+		qdf_copy_macaddr(&mlme_psoc_obj->psoc_cfg.mlo_config.allowed_bss_link_addr[i],
+				 allowed_bss_link_addr);
+		allowed_bss_link_addr++;
+	}
+
+	mlme_debug("number of allowed BSS links: %d", num_links);
+	mlme_psoc_obj->psoc_cfg.mlo_config.num_links = num_links;
+}
+
+uint8_t
+wlan_cm_get_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  struct qdf_mac_addr *allowed_bss_link_addr)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	uint8_t num_links;
+	uint8_t i;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return 0;
+
+	num_links = mlme_psoc_obj->psoc_cfg.mlo_config.num_links;
+	for (i = 0; i < num_links; i++) {
+		qdf_copy_macaddr(allowed_bss_link_addr,
+				 &mlme_psoc_obj->psoc_cfg.mlo_config.allowed_bss_link_addr[i]);
+		allowed_bss_link_addr++;
+	}
+	mlme_debug("number of allowed BSS links: %d", num_links);
+
+	return num_links;
+}
+#endif
+
 bool wlan_cm_6ghz_allowed_for_akm(struct wlan_objmgr_psoc *psoc,
 				  uint32_t key_mgmt, uint16_t rsn_caps,
 				  const uint8_t *rsnxe, uint8_t sae_pwe,

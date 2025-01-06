@@ -27,6 +27,8 @@
 #include "wlan_crypto_global_def.h"
 #include "wlan_crypto_global_api.h"
 #include "wlan_reg_services_api.h"
+#include "wlan_cm_bss_score_param.h"
+#include "wlan_psoc_mlme.h"
 
 /**
  * scm_check_open() - Check if scan entry support open authmode
@@ -733,6 +735,46 @@ static bool scm_check_dot11mode(struct scan_cache_entry *db_entry,
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
+static bool
+scm_check_mlo_cfg_partner_match(struct wlan_objmgr_pdev *pdev,
+				struct partner_link_info *partner_link)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct qdf_mac_addr bssid_list[WLAN_MAX_NUM_ALLOWED_BSSIDS];
+	bool cfg_link_found = false;
+	uint8_t num_links, idx = 0;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	num_links = wlan_cm_get_mlo_allowed_bss_links(psoc, bssid_list);
+	if (num_links >= WLAN_MAX_NUM_ALLOWED_BSSIDS) {
+		cfg_link_found = true;
+		scm_debug("Num links %d exceed max allowed links, ignore list",
+			  num_links);
+		return cfg_link_found;
+	}
+
+	if (num_links == 0) {
+		cfg_link_found = true;
+		scm_debug("No configured partner links");
+		return cfg_link_found;
+	}
+
+	cfg_link_found = false;
+	idx = 0;
+
+	while (num_links) {
+		if (qdf_is_macaddr_equal(&bssid_list[idx],
+					 &partner_link->link_addr)) {
+			cfg_link_found = true;
+			break;
+		}
+		num_links--;
+		idx++;
+	}
+
+	return cfg_link_found;
+}
+
 static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 				 struct scan_filter *filter,
 				 struct scan_cache_entry *db_entry)
@@ -822,6 +864,14 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 		    qdf_is_macaddr_equal((struct qdf_mac_addr *)db_entry->mbssid_info.trans_bssid,
 					 &partner_link->link_addr)) {
 			scm_debug(QDF_MAC_ADDR_FMT " link (%d) dup mac with tx mbssid",
+				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
+				  partner_link->freq);
+			partner_link->is_valid_link = false;
+			continue;
+		}
+
+		if (!scm_check_mlo_cfg_partner_match(pdev, partner_link)) {
+			scm_debug(QDF_MAC_ADDR_FMT " link (%d) not part of configured links",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->freq);
 			partner_link->is_valid_link = false;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -74,12 +74,21 @@ struct psoc_phy_config {
 		 max_chan_switch_ie:1;
 };
 
+/* Maximum number of allowed BSSIDs that is configured through userspace */
+#define WLAN_MAX_NUM_ALLOWED_BSSIDS 8
+
 /**
  * struct psoc_mlo_config - psoc mlo config
  * @reconfig_reassoc_en: If reassoc on ML reconfig AP addition is enabled
+ * @num_links: Number of links
+ * @allowed_bss_link_addr: Allowed BSS link mac addresses
  */
 struct psoc_mlo_config {
 	uint8_t reconfig_reassoc_en;
+#ifdef WLAN_FEATURE_11BE_MLO
+	uint8_t num_links;
+	struct qdf_mac_addr allowed_bss_link_addr[WLAN_MAX_NUM_ALLOWED_BSSIDS];
+#endif
 };
 
 /**
