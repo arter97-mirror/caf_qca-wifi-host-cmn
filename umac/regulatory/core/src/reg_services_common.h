@@ -3412,4 +3412,24 @@ reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
 	return false;
 }
 #endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * reg_txpb_send_dma_addr() - TxPB Send DMA address to Firmware
+ * @pdev: pdev pointer
+ * @dma: Pointer to DMA addresses
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				  struct reg_pdev_pb_dma_buf *dma);
+#else
+static inline
+QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				  struct reg_pdev_pb_dma_buf *dma)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 #endif

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -887,6 +886,25 @@ ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				      enum reg_6g_ap_type ap_pwr_type)
 {
 	return 0;
+}
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * ucfg_reg_txpb_send_dma_addr() - TxPB Send DMA address to Firmware
+ * @pdev: pdev pointer
+ * @dma: Pointer to DMA addresses
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				       struct reg_pdev_pb_dma_buf *dma);
+#else
+static inline
+QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				       struct reg_pdev_pb_dma_buf *dma)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 #endif

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1223,6 +1222,7 @@ struct wlan_lmac_if_ftm_rx_ops {
  *                                     detect event handler
  * @unregister_c2c_detect_event_handler: Pointer to unregister c2c detect
  *                                 event handler
+ * @txpb_send_dma_addr: Callback function to send DMA address
  */
 struct wlan_lmac_if_reg_tx_ops {
 	QDF_STATUS (*register_master_handler)(struct wlan_objmgr_psoc *psoc,
@@ -1304,6 +1304,10 @@ struct wlan_lmac_if_reg_tx_ops {
 	bool (*is_80p80_supported)(struct wlan_objmgr_pdev *pdev);
 	bool (*is_freq_80p80_supported)(struct wlan_objmgr_pdev *pdev,
 					qdf_freq_t freq);
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	QDF_STATUS (*txpb_send_dma_addr)(struct wlan_objmgr_pdev *pdev,
+				   struct reg_pdev_pb_dma_buf *dma);
+#endif
 };
 
 /**

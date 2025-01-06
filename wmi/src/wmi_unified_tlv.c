@@ -23419,6 +23419,49 @@ extract_power_boost_cap_tlv(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+static QDF_STATUS
+send_pdev_power_boost_mem_ind_cmd_tlv(wmi_unified_t wmi_handle,
+				      struct reg_pdev_pb_dma_buf *param,
+				      uint8_t mac_id)
+{
+	QDF_STATUS ret;
+	wmi_buf_t buf;
+	wmi_pdev_power_boost_mem_addr_cmd_fixed_param *cmd;
+	uint16_t len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_pdev_power_boost_mem_addr_cmd_fixed_param *)wmi_buf_data(buf);
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+			 WMITLV_TAG_STRUC_wmi_pdev_power_boost_mem_addr_cmd_fixed_param,
+			 WMITLV_GET_STRUCT_TLVLEN
+			 (wmi_pdev_power_boost_mem_addr_cmd_fixed_param));
+	cmd->pdev_id =
+		       wmi_handle->ops->convert_pdev_id_host_to_target(
+								wmi_handle,
+								mac_id);
+	cmd->paddr_aligned_lo = param->paddr_aligned_lo;
+	cmd->paddr_aligned_hi = param->paddr_aligned_hi;
+	cmd->size = param->size;
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+					WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID);
+
+	wmi_debug("TPB: Sending WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID with pdev_id: %u, paddr_aligned_lo: 0x%x, paddr_aligned_hi: 0x%x, size: %u",
+		  cmd->pdev_id, cmd->paddr_aligned_lo, cmd->paddr_aligned_hi,
+		  cmd->size);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("TPB: Failed to send WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
 #endif
 
 struct wmi_ops tlv_ops =  {
@@ -23961,6 +24004,7 @@ struct wmi_ops tlv_ops =  {
 #endif
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	.extract_power_boost_cap = extract_power_boost_cap_tlv,
+	.send_pdev_pb_mem_ind_cmd = send_pdev_power_boost_mem_ind_cmd_tlv,
 #endif
 };
 

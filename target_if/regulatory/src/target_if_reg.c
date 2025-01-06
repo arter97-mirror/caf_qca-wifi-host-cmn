@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1578,6 +1577,36 @@ QDF_STATUS target_if_register_afc_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+static QDF_STATUS
+tgt_if_regulatory_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				     struct reg_pdev_pb_dma_buf *param)
+{
+	wmi_unified_t wmi_handle;
+	uint8_t pdev_id;
+
+	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
+	wmi_handle = get_wmi_unified_hdl_from_pdev(pdev);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_pdev_pb_mem_ind_send(wmi_handle, param, pdev_id);
+}
+
+static void
+target_if_register_txpb_handler(struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+	reg_ops->txpb_send_dma_addr =
+		tgt_if_regulatory_txpb_send_dma_addr;
+}
+#else
+static inline
+void target_if_register_txpb_handler(struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+}
+#endif
+
 QDF_STATUS target_if_register_regulatory_tx_ops(
 		struct wlan_lmac_if_tx_ops *tx_ops)
 {
@@ -1654,6 +1683,8 @@ QDF_STATUS target_if_register_regulatory_tx_ops(
 	reg_ops->is_80p80_supported = NULL;
 
 	reg_ops->is_freq_80p80_supported = NULL;
+
+	target_if_register_txpb_handler(reg_ops);
 
 	return QDF_STATUS_SUCCESS;
 }

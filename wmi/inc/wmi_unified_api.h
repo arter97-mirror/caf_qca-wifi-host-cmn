@@ -1333,6 +1333,21 @@ wmi_unified_pdev_param_send(wmi_unified_t wmi_handle,
 			    struct pdev_params *param,
 			    uint8_t mac_id);
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * wmi_unified_pdev_pb_mem_ind_send() - Send Powerboost Command
+ * @wmi_handle: wmi handle
+ * @buf: pointer to DMA buffer
+ * @mac_id: radio context
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failures,
+ */
+QDF_STATUS
+wmi_unified_pdev_pb_mem_ind_send(wmi_unified_t wmi_handle,
+				 struct reg_pdev_pb_dma_buf *buf,
+				 uint8_t mac_id);
+#endif
+
 /**
  * wmi_unified_fd_tmpl_send_cmd() - WMI FILS Discovery send function
  * @wmi_handle: handle to WMI.

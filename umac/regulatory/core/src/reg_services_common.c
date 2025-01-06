@@ -10928,3 +10928,32 @@ reg_find_non_punctured_bw(uint16_t bw,  uint16_t in_punc_pattern)
 	return (bw - num_punc_bw * 20);
 }
 #endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				  struct reg_pdev_pb_dma_buf *dma)
+{
+	struct wlan_lmac_if_reg_tx_ops *reg_tx_ops;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_objmgr_psoc *psoc;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("TPB: psoc is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops) {
+		reg_err("TPB: reg_tx_ops is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	reg_err("TPB: in reg_txpb_send_dma_addr");
+	if (reg_tx_ops->txpb_send_dma_addr)
+		status = reg_tx_ops->txpb_send_dma_addr(pdev, dma);
+
+	return status;
+}
+#endif
+

@@ -4335,6 +4335,17 @@ wmi_extract_power_boost_capability(wmi_unified_t wmi_handle, void *evt_buf,
 								pb_cap);
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_unified_pdev_pb_mem_ind_send(wmi_unified_t wmi_handle,
+				 struct reg_pdev_pb_dma_buf *buf,
+				 uint8_t mac_id)
+{
+	if (wmi_handle->ops->send_pdev_pb_mem_ind_cmd)
+		return wmi_handle->ops->send_pdev_pb_mem_ind_cmd(wmi_handle,
+				   buf, mac_id);
+	return QDF_STATUS_E_FAILURE;
+}
 #endif
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN

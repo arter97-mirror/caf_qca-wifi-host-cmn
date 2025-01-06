@@ -3650,6 +3650,11 @@ QDF_STATUS (*send_link_reconfig_req_command)(
 QDF_STATUS
 (*extract_power_boost_cap)(wmi_unified_t wmi_handle,
 			   void *evt_buf, uint8_t phy_idx, bool *pb_cap);
+
+QDF_STATUS
+(*send_pdev_pb_mem_ind_cmd)(wmi_unified_t wmi_handle,
+			    struct reg_pdev_pb_dma_buf *buf,
+			    uint8_t mac_id);
 #endif
 };
 

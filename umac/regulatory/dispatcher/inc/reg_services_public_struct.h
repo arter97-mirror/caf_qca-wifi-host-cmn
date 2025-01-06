@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2440,4 +2440,57 @@ struct r2p_table_update_status_obj {
 	uint32_t pdev_id;
 	uint32_t status;
 };
+
+/**
+ * enum reg_host_pdev_power_boost_event_status - power boost status
+ * @REG_HOST_POWER_BOOST_START_INFERENCE: Start inference
+ * @REG_HOST_POWER_BOOST_ABORT: Abort
+ * @REG_HOST_POWER_BOOST_COMPLETE: Inference complete
+ *
+ * This enum is 1:1 mapping to enum wmi_pdev_power_boost_event_type
+ */
+enum reg_host_pdev_power_boost_event_status {
+	REG_HOST_POWER_BOOST_START_INFERENCE = 0,
+	REG_HOST_POWER_BOOST_ABORT           = 1,
+	REG_HOST_POWER_BOOST_COMPLETE        = 2,
+};
+
+/**
+ * enum reg_host_tx_pb_inference_stage - Inference stage
+ * @REG_HOST_TX_PB_INFERENCE_FIRST_PASS: 1st pass
+ * @REG_HOST_TX_PB_INFERENCE_SECOND_PASS: 2nd pass
+ *
+ * This enum is 1:1 mapping to enum wmi_pdev_power_boost_inferencing_stage
+ */
+enum reg_host_tx_pb_inference_stage {
+	REG_HOST_TX_PB_INFERENCE_FIRST_PASS  = 0,
+	REG_HOST_TX_PB_INFERENCE_SECOND_PASS = 1,
+};
+
+/**
+ * enum reg_host_pdev_power_boost_cmd_status - power boost command status
+ * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY: App ready status
+ * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA: Power boost inference
+ * result
+ * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT: Abort power boost inference
+ */
+enum reg_host_pdev_power_boost_cmd_status {
+	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY = 0,
+	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA,
+	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT,
+};
+
+/**
+ * struct reg_pdev_pb_dma_buf - Power boost DMA buffer struct for WMI
+ *
+ * @paddr_aligned_lo: Physical address lower 32-bits
+ * @paddr_aligned_hi: Physical address high 32-bits
+ * @size: DMA buffer size for power boost
+ */
+struct reg_pdev_pb_dma_buf {
+	uint32_t paddr_aligned_lo;
+	uint32_t paddr_aligned_hi;
+	uint32_t size;
+};
+
 #endif
