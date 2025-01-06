@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -164,6 +164,13 @@ QDF_STATUS wlan_crypto_getkey(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS wlan_crypto_delkey(struct wlan_objmgr_vdev *vdev,
 					uint8_t *macaddr,
 					uint8_t key_idx);
+
+/**
+ * wlan_crypto_rsn_keymgmt_to_suite() - Convert an RSN key
+ * management/authentication algorithm to an internal code.
+ * @keymgmt : crypto value
+ */
+int32_t wlan_crypto_rsn_keymgmt_to_suite(uint32_t keymgmt);
 
 /**
  * wlan_crypto_default_key() - called by ucfg to set default tx key

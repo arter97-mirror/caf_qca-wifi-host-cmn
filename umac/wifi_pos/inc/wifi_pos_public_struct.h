@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,8 +26,11 @@
 #include "qdf_status.h"
 #include "qdf_trace.h"
 #include <wlan_cmn.h>
+#include "wlan_cmn_ieee80211.h"
 
 #define WLAN_MAX_11AZ_PEERS 16
+#define WLAN_11AZ_MAX_PASSPHRASE_LEN 64
+#define WLAN_PASN_MAX_COOKIE_LEN 255
 
 /**
  * enum wifi_pos_pasn_peer_type  - PASN peer type
@@ -84,8 +87,19 @@ enum wlan_responder_mode {
  * @force_self_mac_usage: If this flag is true, the supplicant
  * should use the provided self mac address
  * @is_ltf_keyseed_required: Is set LTF keyseed required
+ * @password_len: Len of password array
+ * @password: The password specified will be used to generate PMKID
+ * @pmkid_len: Len of pmkid array
+ * @pmkid: pmkid used for cached pmksa authentication
+ * @cookie_len: Len of cookie array
+ * @cookie: In case AP refused PASN temporarily, cookie act as token
+ * in PASN rety
+ * @comeback_after: u16 attribute, indicate that PASN can be tried
+ * after that much time in case AP refused PASN temporarily
  * @control_flags: Control flags to indicate if its required to flush
  * the keys
+ * @akm: used - should be either PASN or PASN + SAE
+ * @cipher: Indicates the key cipher suite
  */
 struct wlan_pasn_request {
 	struct qdf_mac_addr peer_mac;
@@ -93,7 +107,15 @@ struct wlan_pasn_request {
 	struct qdf_mac_addr self_mac;
 	bool force_self_mac_usage;
 	bool is_ltf_keyseed_required;
+	uint32_t password_len;
+	uint8_t password[WLAN_11AZ_MAX_PASSPHRASE_LEN];
+	uint32_t pmkid_len;
+	uint8_t pmkid[PMKID_LEN];
+	uint32_t cookie_len;
+	uint8_t cookie[WLAN_PASN_MAX_COOKIE_LEN];
 	uint16_t control_flags;
+	uint32_t akm;
+	uint32_t cipher;
 };
 
 /**

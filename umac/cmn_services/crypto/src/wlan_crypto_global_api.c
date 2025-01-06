@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2488,7 +2488,7 @@ static int32_t wlan_crypto_rsn_cipher_to_suite(uint32_t cipher)
  * Convert an RSN key management/authentication algorithm
  * to an internal code.
  */
-static int32_t
+int32_t
 wlan_crypto_rsn_keymgmt_to_suite(uint32_t keymgmt)
 {
 	int32_t status = -1;
