@@ -3919,8 +3919,10 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
 	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status;
+	uint8_t vdev_id;
 
 	recfg_req = &recfg_ctx->curr_recfg_req;
+	vdev_id = recfg_ctx->curr_recfg_req.vdev_id;
 
 	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
 	if (!psoc) {
@@ -3977,6 +3979,13 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 
 	/* free link recfg ctx ies */
 	mlo_link_recfg_ctx_free_ies(recfg_ctx);
+
+	/* re-evaluate link force state */
+	if (success)
+		ml_nlink_conn_change_notify(
+				psoc, vdev_id,
+				ml_nlink_link_recfg_completed_evt,
+				NULL);
 }
 
 static enum wlan_link_recfg_sm_state
