@@ -1317,7 +1317,8 @@ dp_tx_mon_lpc_type_filtering(struct dp_pdev *pdev,
 }
 
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
-void dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
+static void
+dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
 {
 	bool is_frag;
 	char *data = NULL;
@@ -1372,7 +1373,8 @@ void dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
 	}
 }
 #else
-void dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
+static void
+dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
 {
 }
 #endif

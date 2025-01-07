@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1823,7 +1823,8 @@ fail:
 }
 
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
-void dp_rx_mon_disable_pf(qdf_nbuf_t rxbuf)
+static void
+dp_rx_mon_disable_pf(qdf_nbuf_t rxbuf)
 {
 	char *data = NULL;
 	uint8_t *ccmp_info;
@@ -1867,7 +1868,8 @@ void dp_rx_mon_disable_pf(qdf_nbuf_t rxbuf)
 	}
 }
 #else
-void dp_rx_mon_disable_pf(qdf_nbuf_t rxbuf)
+static void
+dp_rx_mon_disable_pf(qdf_nbuf_t rxbuf)
 {
 }
 #endif
