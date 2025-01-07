@@ -537,21 +537,19 @@ static void __hdd_nud_netevent_cb(struct neighbour *neighbor)
 static int hdd_nud_netevent_cb(struct notifier_block *nb, unsigned long event,
 			       void *data)
 {
-	struct neighbour *neighbor = data;
+	struct neighbour *neighbor;
 	struct osif_vdev_sync *vdev_sync;
 	int errno;
 
+	if (event != NETEVENT_NEIGH_UPDATE)
+		return 0;
+
+	neighbor = data;
 	errno = osif_vdev_sync_op_start(neighbor->dev, &vdev_sync);
 	if (errno)
 		return errno;
 
-	switch (event) {
-	case NETEVENT_NEIGH_UPDATE:
-		__hdd_nud_netevent_cb(neighbor);
-		break;
-	default:
-		break;
-	}
+	__hdd_nud_netevent_cb(neighbor);
 
 	osif_vdev_sync_op_stop(vdev_sync);
 
