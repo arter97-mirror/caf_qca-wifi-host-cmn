@@ -538,4 +538,15 @@ QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 	return reg_txpb_send_dma_addr(pdev, dma);
 }
 
+void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+				     void *cbk, void *arg)
+{
+	reg_txpb_register_callback(psoc, (txpb_callback)cbk, arg);
+}
+
+void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
+{
+	reg_txpb_unregister_callback(psoc);
+}
+
 #endif

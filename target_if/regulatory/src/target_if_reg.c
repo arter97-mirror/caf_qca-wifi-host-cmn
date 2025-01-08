@@ -1594,11 +1594,133 @@ tgt_if_regulatory_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 	return wmi_unified_pdev_pb_mem_ind_send(wmi_handle, param, pdev_id);
 }
 
+/**
+ * tgt_reg_txpb_event_handler() - Tx powerboost event handler
+ * @handle: scn handle
+ * @event_buf: pointer to event buffer
+ * @len: buffer length
+ *
+ * Return: 0 on success
+ */
+static int
+tgt_reg_txpb_event_handler(ol_scn_t handle, uint8_t *event_buf,
+			   uint32_t len)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_reg_rx_ops *reg_rx_ops;
+	struct reg_txpb_evt_params *params;
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+	int ret_val = 0;
+
+	TARGET_IF_ENTER();
+
+	psoc = target_if_get_psoc_from_scn_hdl(handle);
+	if (!psoc) {
+		target_if_err("psoc ptr is NULL");
+		return -EINVAL;
+	}
+
+	reg_rx_ops = target_if_regulatory_get_rx_ops(psoc);
+	if (!reg_rx_ops) {
+		target_if_err("reg_rx_ops is NULL");
+		return -EINVAL;
+	}
+
+	if (!reg_rx_ops->txpb_event_handler) {
+		target_if_err("txpb_event_handler is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("invalid wmi handle");
+		return -EINVAL;
+	}
+
+	params = qdf_mem_malloc(sizeof(*params));
+	if (!params)
+		return -ENOMEM;
+
+	status = wmi_extract_pdev_power_boost_ev_params(wmi_handle,
+							event_buf,
+							params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("TPB: Failed to extract power boost event params");
+		ret_val = -EFAULT;
+		goto clean;
+	}
+
+	status = reg_rx_ops->txpb_event_handler(psoc, params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("TPB: Failed to process txpb event handler");
+		ret_val = -EFAULT;
+	}
+
+clean:
+	qdf_mem_free(params);
+	TARGET_IF_EXIT();
+	return ret_val;
+}
+
+/**
+ * tgt_if_reg_txpb_register_event_handler() - Register Tx powerboost
+ * event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+tgt_if_reg_txpb_register_event_handler(struct wlan_objmgr_psoc *psoc,
+				       void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_register_event_handler(
+			wmi_handle, wmi_pdev_power_boost_eventid,
+			tgt_reg_txpb_event_handler, WMI_RX_WORK_CTX);
+}
+
+/**
+ * tgt_if_reg_txpb_unregister_event_handler() - Unregister Tx powerboost
+ * event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+tgt_if_reg_txpb_unregister_event_handler(struct wlan_objmgr_psoc *psoc,
+					 void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_unregister_event_handler(
+			wmi_handle, wmi_pdev_power_boost_eventid);
+}
+
+/**
+ * target_if_register_txpb_handler() - register Tx powerboost handlers
+ * @reg_ops: Pointer to reg ops
+ *
+ * Return: void
+ */
 static void
 target_if_register_txpb_handler(struct wlan_lmac_if_reg_tx_ops *reg_ops)
 {
 	reg_ops->txpb_send_dma_addr =
 		tgt_if_regulatory_txpb_send_dma_addr;
+	reg_ops->register_txpb_event_handler =
+		tgt_if_reg_txpb_register_event_handler;
+	reg_ops->unregister_txpb_event_handler =
+		tgt_if_reg_txpb_unregister_event_handler;
 }
 #else
 static inline

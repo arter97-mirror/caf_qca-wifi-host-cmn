@@ -23462,6 +23462,51 @@ send_pdev_power_boost_mem_ind_cmd_tlv(wmi_unified_t wmi_handle,
 
 	return ret;
 }
+
+static QDF_STATUS
+extract_pdev_power_boost_event_tlv(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct reg_txpb_evt_params *params)
+{
+	WMI_PDEV_POWER_BOOST_EVENTID_param_tlvs *param_buf = NULL;
+	wmi_pdev_power_boost_event_fixed_param *ev = NULL;
+
+	param_buf = (WMI_PDEV_POWER_BOOST_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("TPB: Invalid Power Boost event");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	ev = param_buf->fixed_param;
+
+	params->cmn_params.status = ev->status;
+	params->cmn_params.inference_stage = ev->inferencing_stage;
+	params->cmn_params.mcs = ev->mcs;
+	params->cmn_params.bandwidth = ev->bandwidth;
+	params->cmn_params.temperature_degreeC = ev->temperature_degreeC;
+	params->cmn_params.primary_chan_mhz = ev->primary_chan_mhz;
+	params->cmn_params.center_freq1 = ev->band_center_freq1;
+	params->cmn_params.center_freq2 = ev->band_center_freq2;
+	params->cmn_params.phy_mode = ev->phy_mode;
+	params->cmn_params.req_id = ev->req_id;
+	params->tx_pwr = ev->tx_pwr;
+	params->tx_chain_idx = ev->tx_chain_idx;
+	params->iq_sample_buf_size = ev->size_kb;
+	params->cmn_params.pdev_id =
+		wmi_handle->ops->convert_pdev_id_target_to_host(wmi_handle, ev->pdev_id);
+
+	wmi_debug("TPB: WMI Host params: req_id: %u pdev_id: %u status: %u inf_stage: %u mcs: %u BW: %u temperature_degreeC: %d primary_chan_mhz: %u center_freq1: %u center_freq2: %u phy_mode: %u tx_pwr: %d tx_chain_idx: %u iq_sample_buf_size: %u",
+		  params->cmn_params.req_id, params->cmn_params.pdev_id,
+		  params->cmn_params.status, params->cmn_params.inference_stage,
+		  params->cmn_params.mcs, params->cmn_params.bandwidth,
+		  params->cmn_params.temperature_degreeC,
+		  params->cmn_params.primary_chan_mhz, params->cmn_params.center_freq1,
+		  params->cmn_params.center_freq2, params->cmn_params.phy_mode,
+		  params->tx_pwr, params->tx_chain_idx,
+		  params->iq_sample_buf_size);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 struct wmi_ops tlv_ops =  {
@@ -24005,6 +24050,7 @@ struct wmi_ops tlv_ops =  {
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	.extract_power_boost_cap = extract_power_boost_cap_tlv,
 	.send_pdev_pb_mem_ind_cmd = send_pdev_power_boost_mem_ind_cmd_tlv,
+	.extract_pdev_power_boost_event = extract_pdev_power_boost_event_tlv,
 #endif
 };
 
@@ -24583,6 +24629,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 	event_ids[wmi_scan_cache_result_eventid] =
 					WMI_SCAN_CACHE_RESULT_EVENTID;
+#endif
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	event_ids[wmi_pdev_power_boost_eventid] = WMI_PDEV_POWER_BOOST_EVENTID;
 #endif
 }
 

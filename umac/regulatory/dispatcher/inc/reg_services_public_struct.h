@@ -29,6 +29,8 @@
 #include <wlan_reg_afc.h>
 #endif
 
+#include "qdf_list.h"
+
 #ifdef CONFIG_BAND_6GHZ
 #define REG_MAX_CHANNELS_PER_OPERATING_CLASS        70
 /*
@@ -2491,6 +2493,62 @@ struct reg_pdev_pb_dma_buf {
 	uint32_t paddr_aligned_lo;
 	uint32_t paddr_aligned_hi;
 	uint32_t size;
+};
+
+/**
+ * struct reg_txpb_cmn_params - Power boost common params
+ * @node: List entry element
+ * @pdev_id: PDEV ID
+ * @status: status
+ * @inference_stage: Power Boost inference Stage
+ * @mcs: MCS of the Power Boost samples collected
+ * @bandwidth: Bandwidth of the Power Boost samples collected
+ * @temperature_degreeC: Temperature in Celsius
+ * @primary_chan_mhz: Primary channel frequency
+ * @center_freq1: Center frequency 1
+ * @center_freq2: Center frequency 2
+ * @phy_mode: PHY mode
+ * @req_id: Request id
+ */
+struct reg_txpb_cmn_params {
+	qdf_list_node_t node;
+	uint32_t pdev_id;
+	uint32_t status;
+	enum reg_host_tx_pb_inference_stage inference_stage;
+	uint32_t mcs;
+	uint32_t bandwidth;
+	int32_t  temperature_degreeC;
+	uint32_t primary_chan_mhz;
+	uint32_t center_freq1;
+	uint32_t center_freq2;
+	uint32_t phy_mode;
+	uint32_t req_id;
+};
+
+/**
+ * struct reg_txpb_evt_params - Power boost event params
+ * @cmn_params: These are the common params applicable to event and command
+ * @tx_pwr: ANN packet tx_power
+ * @tx_chain_idx: Tx chain index on which ANN packet sent
+ * @iq_sample_buf_size: IQ sample size
+ */
+struct reg_txpb_evt_params {
+	struct reg_txpb_cmn_params cmn_params;
+	int32_t  tx_pwr;
+	uint32_t tx_chain_idx;
+	uint32_t iq_sample_buf_size;
+};
+
+/**
+ * struct reg_txpb_cmd_params - Power boost cmd params
+ * @cmn_params: These are the common params applicable to event and command
+ * @tx_evm: Tx Error Vector Magnitude
+ * @mask_margin: Mask margin
+ */
+struct reg_txpb_cmd_params {
+	struct reg_txpb_cmn_params cmn_params;
+	int32_t  tx_evm;
+	int32_t  mask_margin;
 };
 
 #endif

@@ -3423,10 +3423,28 @@ reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
  */
 QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 				  struct reg_pdev_pb_dma_buf *dma);
+
+/**
+ * reg_process_txpb_event() - Tx powerboost event process
+ * @psoc: psoc pointer
+ * @params: event params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
+			struct reg_txpb_evt_params *params);
 #else
 static inline
 QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 				  struct reg_pdev_pb_dma_buf *dma)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
+			  struct reg_txpb_evt_params *params)
 {
 	return QDF_STATUS_SUCCESS;
 }

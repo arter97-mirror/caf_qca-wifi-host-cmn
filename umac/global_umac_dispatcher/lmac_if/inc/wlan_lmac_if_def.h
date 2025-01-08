@@ -1223,6 +1223,10 @@ struct wlan_lmac_if_ftm_rx_ops {
  * @unregister_c2c_detect_event_handler: Pointer to unregister c2c detect
  *                                 event handler
  * @txpb_send_dma_addr: Callback function to send DMA address
+ * @register_txpb_event_handler: Callback function to register
+ * Tx powerboost events
+ * @unregister_txpb_event_handler: Callback function to unregister
+ * Tx powerboost events
  */
 struct wlan_lmac_if_reg_tx_ops {
 	QDF_STATUS (*register_master_handler)(struct wlan_objmgr_psoc *psoc,
@@ -1307,6 +1311,10 @@ struct wlan_lmac_if_reg_tx_ops {
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	QDF_STATUS (*txpb_send_dma_addr)(struct wlan_objmgr_pdev *pdev,
 				   struct reg_pdev_pb_dma_buf *dma);
+	QDF_STATUS (*register_txpb_event_handler)(struct wlan_objmgr_psoc *psoc,
+						 void *arg);
+	QDF_STATUS (*unregister_txpb_event_handler)
+				(struct wlan_objmgr_psoc *psoc, void *arg);
 #endif
 };
 
@@ -2205,6 +2213,7 @@ struct wlan_lmac_if_mgmt_txrx_rx_ops {
  * @reg_is_5dot9_ghz_supported: Function pointer to get the 5.9GHz support
  * information.
  * @c2c_detect_evt_handler: Pointer to C2C detect event handler.
+ * @txpb_event_handler: Tx powerboost event handler
  */
 struct wlan_lmac_if_reg_rx_ops {
 	QDF_STATUS (*master_list_handler)(struct cur_regulatory_info
@@ -2304,6 +2313,10 @@ struct wlan_lmac_if_reg_rx_ops {
 			struct wlan_objmgr_psoc *psoc,
 			uint32_t pdev_id);
 	bool (*reg_is_5dot9_ghz_supported)(struct wlan_objmgr_psoc *psoc);
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	QDF_STATUS (*txpb_event_handler)(struct wlan_objmgr_psoc *psoc,
+		struct reg_txpb_evt_params *param);
+#endif
 };
 
 #ifdef CONVERGED_P2P_ENABLE

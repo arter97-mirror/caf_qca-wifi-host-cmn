@@ -3075,6 +3075,20 @@ wmi_extract_rcpi_response_event(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS
+wmi_extract_pdev_power_boost_ev_params(wmi_unified_t wmi_handle, uint8_t *buf,
+				       struct reg_txpb_evt_params *params)
+{
+	if (wmi_handle->ops->extract_pdev_power_boost_event)
+		return wmi_handle->ops->extract_pdev_power_boost_event(
+								wmi_handle,
+								buf,
+								params);
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 QDF_STATUS
 wmi_unified_dfs_phyerr_offload_en_cmd(wmi_unified_t wmi_handle,
 				      uint32_t pdev_id)

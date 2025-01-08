@@ -10955,5 +10955,25 @@ QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 
 	return status;
 }
+
+QDF_STATUS
+reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
+			struct reg_txpb_evt_params *params)
+{
+	struct wlan_regulatory_psoc_priv_obj *soc_reg;
+
+	soc_reg = reg_get_psoc_obj(psoc);
+	if (!IS_VALID_PSOC_REG_OBJ(soc_reg)) {
+		reg_err("psoc reg component is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (soc_reg->txpb_cbk.cbk)
+		soc_reg->txpb_cbk.cbk(soc_reg->txpb_cbk.arg, params);
+	else
+		reg_err("TPB: soc_reg->txpb_cbk.cbk NULL");
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 

@@ -5474,5 +5474,19 @@ void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_extract_power_boost_capability(wmi_unified_t wmi_handle, void *evt_buf,
 				   uint8_t phy_idx, bool *pb_cap);
+
+/**
+ * wmi_extract_pdev_power_boost_ev_params - WMI to extract power boost event
+ * from FW
+ *
+ * @wmi_handle: Handle to WMI
+ * @buf: Event buffer
+ * @pb_params: Pointer to power boost event params
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_pdev_power_boost_ev_params(wmi_unified_t wmi_handle, uint8_t *buf,
+					struct reg_txpb_evt_params *pb_params);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

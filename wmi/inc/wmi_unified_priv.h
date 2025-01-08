@@ -3655,6 +3655,12 @@ QDF_STATUS
 (*send_pdev_pb_mem_ind_cmd)(wmi_unified_t wmi_handle,
 			    struct reg_pdev_pb_dma_buf *buf,
 			    uint8_t mac_id);
+
+QDF_STATUS
+(*extract_pdev_power_boost_event)(wmi_unified_t wmi_handle,
+				  void *evt_buf,
+				  struct reg_txpb_evt_params *pb_params);
+
 #endif
 };
 

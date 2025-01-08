@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -153,6 +153,23 @@ reg_register_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 static inline void
 reg_unregister_is_chan_connected_callback(struct wlan_objmgr_psoc *psoc,
 				reg_get_connected_chan_for_mode_callback cbk)
+{
+}
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+void reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+				txpb_callback cbk, void *arg);
+void reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc);
+#else
+static inline
+void reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+				txpb_callback cbk, void *arg)
+{
+}
+
+static inline
+void reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
 {
 }
 #endif

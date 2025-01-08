@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -524,6 +524,21 @@ static void wlan_lmac_if_umac_reg_rx_ops_register_po(
 }
 #endif
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+static void wlan_lmac_if_register_txpb_event_handler(
+					struct wlan_lmac_if_rx_ops *rx_ops)
+{
+	rx_ops->reg_rx_ops.txpb_event_handler =
+		tgt_reg_process_txpb_event_handler;
+}
+#else
+static inline
+void wlan_lmac_if_register_txpb_event_handler(
+					struct wlan_lmac_if_rx_ops *rx_ops)
+{
+}
+#endif
+
 static void wlan_lmac_if_umac_reg_rx_ops_register(
 	struct wlan_lmac_if_rx_ops *rx_ops)
 {
@@ -605,6 +620,8 @@ static void wlan_lmac_if_umac_reg_rx_ops_register(
 
 	rx_ops->reg_rx_ops.reg_is_5dot9_ghz_supported =
 		wlan_reg_is_5dot9_ghz_supported;
+
+	wlan_lmac_if_register_txpb_event_handler(rx_ops);
 }
 
 #ifdef CONVERGED_P2P_ENABLE

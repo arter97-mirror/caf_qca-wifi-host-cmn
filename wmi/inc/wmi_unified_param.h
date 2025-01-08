@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5668,6 +5668,10 @@ typedef enum {
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 	wmi_opt_dp_diag_event_id,
 #endif
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	wmi_pdev_power_boost_eventid,
+#endif
+
 	wmi_events_max,
 } wmi_conv_event_id;
 

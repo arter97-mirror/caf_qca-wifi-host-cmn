@@ -508,6 +508,36 @@ regulatory_assign_unregister_afc_event_handler(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+static void
+regulatory_register_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+					struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+	if (tx_ops->register_txpb_event_handler)
+		tx_ops->register_txpb_event_handler(psoc, NULL);
+}
+
+static void
+regulatory_unregister_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+					 struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+	if (tx_ops->unregister_txpb_event_handler)
+		tx_ops->unregister_txpb_event_handler(psoc, NULL);
+}
+#else
+static inline
+void regulatory_register_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+}
+
+static inline
+void regulatory_unregister_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+}
+#endif
+
 #if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
 static void
 regulatory_assign_register_c2c_detect_event_handler(
@@ -560,6 +590,7 @@ QDF_STATUS regulatory_psoc_open(struct wlan_objmgr_psoc *psoc)
 								       NULL);
 	regulatory_assign_register_c2c_detect_event_handler(psoc, tx_ops);
 
+	regulatory_register_txpb_event_handler(psoc, tx_ops);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -581,6 +612,8 @@ QDF_STATUS regulatory_psoc_close(struct wlan_objmgr_psoc *psoc)
 		tx_ops->unregister_rate2power_table_update_event_handler(psoc,
 									 NULL);
 	regulatory_assign_unregister_c2c_detect_event_handler(psoc, tx_ops);
+
+	regulatory_unregister_txpb_event_handler(psoc, tx_ops);
 
 	return QDF_STATUS_SUCCESS;
 }

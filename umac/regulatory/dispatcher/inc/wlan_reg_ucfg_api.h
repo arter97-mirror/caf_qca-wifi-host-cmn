@@ -899,12 +899,42 @@ ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
  */
 QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 				       struct reg_pdev_pb_dma_buf *dma);
+
+/**
+ * ucfg_reg_txpb_register_callback () - add tx powerboost callback
+ * @psoc: psoc ptr
+ * @cbk: callback
+ * @arg: argument
+ *
+ * Return: void
+ */
+void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+					    void *cbk, void *arg);
+
+/**
+ * ucfg_reg_txpb_unregister_callback () - remove tx powerboost callback
+ * @psoc: psoc ptr
+ *
+ * Return: void
+ */
+void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc);
 #else
 static inline
 QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 				       struct reg_pdev_pb_dma_buf *dma)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+					    void *cbk, void *arg)
+{
+}
+
+static inline
+void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
+{
 }
 #endif
 #endif
