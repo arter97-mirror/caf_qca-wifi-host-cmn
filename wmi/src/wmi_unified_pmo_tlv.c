@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1741,7 +1741,6 @@ static QDF_STATUS send_host_wakeup_ind_to_fw_cmd_tlv(wmi_unified_t wmi_handle,
 	wmi_buf_t buf;
 	QDF_STATUS qdf_status = QDF_STATUS_SUCCESS;
 	int32_t len;
-	int ret;
 
 	len = sizeof(wmi_wow_hostwakeup_from_sleep_cmd_fixed_param);
 
@@ -1764,10 +1763,11 @@ static QDF_STATUS send_host_wakeup_ind_to_fw_cmd_tlv(wmi_unified_t wmi_handle,
 			(wmi_wow_hostwakeup_from_sleep_cmd_fixed_param));
 
 	wmi_mtrace(WMI_WOW_HOSTWAKEUP_FROM_SLEEP_CMDID, NO_SESSION, 0);
-	ret = wmi_unified_cmd_send_chk(wmi_handle, buf, len,
+	qdf_status = wmi_unified_cmd_send_chk(wmi_handle, buf, len,
 				       WMI_WOW_HOSTWAKEUP_FROM_SLEEP_CMDID);
-	if (ret) {
-		wmi_err("Failed to send host wakeup indication to fw");
+	if (QDF_IS_STATUS_ERROR(qdf_status)) {
+		wmi_err("Failed to send host wakeup indication to fw %d",
+			qdf_status);
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
