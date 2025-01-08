@@ -1654,9 +1654,6 @@ lim_enc_type_matched(struct mac_context *mac_ctx,
 	if (!bcn || !session)
 		return false;
 
-	pe_debug("Privacy bit bcn %d session Bss Caps privacy %d",
-		 bcn->capabilityInfo.privacy,
-		 SIR_MAC_GET_PRIVACY(session->limCurrentBssCaps));
 	/*
 	 * This is handled by sending probe req due to IOT issues so
 	 * return TRUE
@@ -1735,7 +1732,6 @@ lim_detect_change_in_ap_capabilities(struct mac_context *mac,
 
 	security_caps_matched = lim_enc_type_matched(mac, pBeacon,
 						     pe_session);
-	pe_debug("security_caps_matched %d", security_caps_matched);
 
 	if ((false == pe_session->limSentCapsChangeNtf) &&
 	    (((!lim_is_null_ssid(&pBeacon->ssId)) &&
