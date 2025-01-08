@@ -405,6 +405,20 @@ struct dfs_p2p_group_info {
 	tDot11fchannel_usage_resp chan_usage_resp;
 };
 
+/**
+ * struct punc_chan_info - Channel information
+ * @chan_width: channel width
+ * @center_freq_seg0: Center frequency segment 0
+ * @center_freq_seg1: Center frequency segment 1
+ * @present: boolean flag
+ */
+struct punc_chan_info {
+	uint8_t chan_width;
+	uint8_t center_freq_seg0;
+	uint8_t center_freq_seg1;
+	bool present;
+};
+
 #define WFA_CAPABILITIES_IE_LENGTH		0x0B
 #define WFA_CAPABILITIES_OUI			"\x50\x6F\x9A"
 #define WFA_CAPABILITIES_OUI_LENGTH		0x03
@@ -673,6 +687,7 @@ struct dfs_p2p_group_info {
  * @he_op:
  * @he_sta_obsspd:
  * @he_6ghz_band:
+ * @he_punc_chan_info: HE punctured channel info
  * @he_bss_color_change:
  * @bss_color_info:
  * @bss_color_changing:
@@ -1004,6 +1019,7 @@ struct pe_session {
 	uint8_t bss_color_changing;
 #endif
 #endif
+	struct punc_chan_info he_punc_chan_info;
 	struct deauth_retry_params deauth_retry;
 	bool enable_bcast_probe_rsp;
 	uint8_t ht_client_cnt;
