@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -77,15 +77,14 @@ static void
 osif_roam_populate_mlo_info_for_link(struct wlan_objmgr_vdev *roamed_vdev,
 				     struct cfg80211_roam_info *roam_info,
 				     uint8_t link_id, struct cfg80211_bss *bss,
-				     uint8_t *self_link_addr)
+				     uint8_t *self_link_addr, uint8_t *bssid)
 {
-	if (bss) {
-		osif_debug("Link_id :%d", link_id);
-		roam_info->valid_links |=  BIT(link_id);
-		roam_info->links[link_id].bssid = bss->bssid;
+	osif_debug("Link_id :%d", link_id);
+	roam_info->valid_links |=  BIT(link_id);
+	roam_info->links[link_id].bssid = bssid;
+	roam_info->links[link_id].addr = self_link_addr;
+	if (bss)
 		roam_info->links[link_id].bss = bss;
-		roam_info->links[link_id].addr = self_link_addr;
-	}
 
 	mlo_mgr_osif_update_connect_info(roamed_vdev, link_id);
 }
@@ -137,7 +136,8 @@ osif_populate_partner_links_roam_mlo_params(struct wlan_objmgr_vdev *roamed_vdev
 		osif_roam_populate_mlo_info_for_link(roamed_vdev,
 						     roam_info_params,
 						     link_id, bss,
-						     link_info->link_addr.bytes);
+						     link_info->link_addr.bytes,
+						     link_info->ap_link_addr.bytes);
 	}
 }
 
@@ -181,7 +181,8 @@ static void osif_fill_mlo_roam_params(struct wlan_objmgr_vdev *vdev,
 	assoc_link_id = wlan_vdev_get_link_id(vdev);
 	osif_roam_populate_mlo_info_for_link(vdev, info,
 					     assoc_link_id, bss,
-					     wlan_vdev_mlme_get_macaddr(vdev));
+					     wlan_vdev_mlme_get_macaddr(vdev),
+					     rsp->bssid.bytes);
 
 	osif_populate_partner_links_roam_mlo_params(vdev, rsp, info);
 }
