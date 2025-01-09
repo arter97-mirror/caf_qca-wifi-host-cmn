@@ -112,7 +112,7 @@ uint32_t qca_mlo_get_mark_metadata(struct qca_mlo_metadata_param *mlo_param)
 		osdev = osif_sta_mlo_find_osdev(mldev);
 
 	if (!osdev) {
-		qdf_err("unable to find the peer" QDF_MAC_ADDR_FMT,
+		qdf_debug("unable to find the peer" QDF_MAC_ADDR_FMT,
 			QDF_MAC_ADDR_REF(dest_mac));
 		return mlo_key;
 	}
