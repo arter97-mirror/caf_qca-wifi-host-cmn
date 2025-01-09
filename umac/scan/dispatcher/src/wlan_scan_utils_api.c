@@ -3311,6 +3311,8 @@ util_handle_nontx_prof(uint8_t *mbssid_elem, uint8_t *subelement,
 	}
 
 	if (!mbssid_info->skip_bssid_copy) {
+		scm_debug("trans_bssid " QDF_MAC_ADDR_FMT,
+			  QDF_MAC_ADDR_REF(bssid));
 		qdf_mem_copy(mbssid_info->trans_bssid,
 			     bssid, QDF_MAC_ADDR_SIZE);
 		mbssid_info->profile_num =
@@ -4112,3 +4114,18 @@ util_scan_entry_single_pmk(struct wlan_objmgr_psoc *psoc,
 	return false;
 }
 #endif
+
+void
+util_scan_entry_renew_timestamp(struct wlan_objmgr_pdev *pdev,
+				struct scan_cache_entry *scan_entry)
+{
+	struct wlan_scan_obj *scan_obj;
+
+	scan_entry->scan_entry_time = qdf_mc_timer_get_system_time();
+	/* update timestamp in nanoseconds needed by kernel layers */
+	scan_entry->boottime_ns = qdf_get_bootbased_boottime_ns();
+
+	scan_obj = wlan_psoc_get_scan_obj(wlan_pdev_get_psoc(pdev));
+	if (scan_obj->cb.inform_beacon)
+		scan_obj->cb.inform_beacon(pdev, scan_entry);
+}
