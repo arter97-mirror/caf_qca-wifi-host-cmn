@@ -33,6 +33,7 @@
 #include "target_if_mlo_mgr.h"
 #include "utils_mlo.h"
 #include <../../core/src/wlan_cm_vdev_api.h>
+#include <wlan_mlo_link_force.h>
 #endif
 #include "host_diag_core_event.h"
 #include "lim_types.h"
@@ -43,6 +44,20 @@ mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx);
 static enum wlan_status_code
 mlo_link_recfg_find_link_status(uint8_t link_id,
 				struct wlan_mlo_link_recfg_rsp *link_recfg_rsp);
+
+static QDF_STATUS
+mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
+				 struct link_recfg_rx_rsp *recfg_resp_data,
+				 uint16_t event_data_len);
+
+static QDF_STATUS
+mlo_link_recfg_tranistion_to_next_state(
+			struct mlo_link_recfg_context *recfg_ctx);
+
+static void
+mlo_link_recfg_update_state_req_from_rsp(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct mlo_link_recfg_state_tran *tran);
 
 static struct wlan_mlo_dev_context *
 mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
@@ -1075,12 +1090,33 @@ mlo_link_recfg_is_standby_link_present_for_link_switch(
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
 	struct mlo_link_info *link_info;
 	uint8_t i;
+	struct ml_link_force_state force_state = {0};
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_vdev *vdev;
 
 	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
 	if (!mlo_dev_ctx) {
 		mlo_err("mlo_ctx null");
 		return false;
 	}
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc null");
+		return false;
+	}
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				psoc, recfg_ctx->curr_recfg_req.vdev_id,
+				WLAN_LINK_RECFG_ID);
+
+	if (!vdev) {
+		mlo_debug("invalid vdev for id %d",
+			  recfg_ctx->curr_recfg_req.vdev_id);
+		return false;
+	}
+	ml_nlink_get_curr_force_state(psoc, vdev, &force_state);
+	ml_nlink_dump_force_state(&force_state, "");
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
 		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
@@ -1113,6 +1149,12 @@ mlo_link_recfg_is_standby_link_present_for_link_switch(
 				  link_info->link_id,
 				  QDF_MAC_ADDR_REF(
 				  link_info->ap_link_addr.bytes));
+			if (force_state.force_inactive_bitmap &
+				1 << link_info->link_id) {
+				mlo_debug("standby link id %d is inactive",
+					  link_info->link_id);
+				continue;
+			}
 			return true;
 		}
 	}
@@ -2467,6 +2509,10 @@ mlo_link_recfg_del_link_by_inact(
 	uint16_t del_link_bitmap = 0;
 	uint8_t i;
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct ml_link_force_state force_state = {0};
+	uint32_t force_inactive_bitmap = 0;
+	uint32_t force_active_bitmap = 0;
+	bool use_force_active_inactive = false;
 
 	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
 	if (!psoc) {
@@ -2500,18 +2546,46 @@ mlo_link_recfg_del_link_by_inact(
 					req->del_link_info.link[i].link_id,
 					true);
 	}
-	mlo_debug("vdev %d delete link bitmap 0x%x", recfg_req->vdev_id,
-		  del_link_bitmap);
+	ml_nlink_get_curr_force_state(psoc, vdev, &force_state);
+	ml_nlink_dump_force_state(&force_state, "");
+	force_inactive_bitmap = del_link_bitmap;
+	/* if deleted link is force active previously, we have to remove
+	 * from previous force active bitmap.
+	 */
+	if (del_link_bitmap & force_state.force_active_bitmap) {
+		force_active_bitmap = force_state.force_active_bitmap &
+				~del_link_bitmap;
+		use_force_active_inactive = true;
+	}
+	mlo_debug("vdev %d delete link bitmap 0x%x force act 0x%x inact 0x%x use act-inact %d",
+		  recfg_req->vdev_id, del_link_bitmap,
+		  force_active_bitmap, force_inactive_bitmap,
+		  use_force_active_inactive);
 
-	status =
-	policy_mgr_mlo_sta_set_nlink(psoc, wlan_vdev_get_id(vdev),
-				     MLO_LINK_FORCE_REASON_LINK_DELETE,
-				     MLO_LINK_FORCE_MODE_INACTIVE,
-				     0,
-				     del_link_bitmap,
-				     0,
-				     link_ctrl_f_dont_reschedule_workqueue |
-				     link_ctrl_f_link_recfg);
+	if (use_force_active_inactive)
+		status =
+		policy_mgr_mlo_sta_set_nlink(
+				psoc, wlan_vdev_get_id(vdev),
+				MLO_LINK_FORCE_REASON_LINK_DELETE,
+				MLO_LINK_FORCE_MODE_ACTIVE_INACTIVE,
+				0,
+				force_active_bitmap,
+				force_inactive_bitmap,
+				link_ctrl_f_dont_reschedule_workqueue |
+				link_ctrl_f_link_recfg |
+				link_ctrl_f_overwrite_active_bitmap |
+				link_ctrl_f_overwrite_inactive_bitmap);
+	else
+		status =
+		policy_mgr_mlo_sta_set_nlink(
+				psoc, wlan_vdev_get_id(vdev),
+				MLO_LINK_FORCE_REASON_LINK_DELETE,
+				MLO_LINK_FORCE_MODE_INACTIVE,
+				0,
+				force_inactive_bitmap,
+				0,
+				link_ctrl_f_dont_reschedule_workqueue |
+				link_ctrl_f_link_recfg);
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 
@@ -2982,6 +3056,170 @@ static QDF_STATUS mlo_link_invoke_pre_link_add_handler(
 	return status;
 }
 
+/**
+ * mlo_link_recfg_defer_rsp_handler() - Defer reconfiguration
+ * response processing
+ * @recfg_ctx: Reconfiguration context
+ * @recfg_resp_data: Reconfiguration response data
+ * @event_data_len: Length of the reconfiguration response data
+ *
+ * This callback is invoked after receiving a reconfiguration response
+ * in specific scenarios, such as transitioning from state AB to BC where
+ * A is forcefully active and B is forcefully inactive.
+ * In these cases, the MLO link information must be updated in the MLO
+ * manager after receiving the response.
+ * The DEL_LINK state is required to mark the link as deleted in the
+ * host/firmware before removing the link information data structure.
+ * This callback is added to handle such cases and bypass the call to
+ * mlo_link_recfg_response_received.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS mlo_link_recfg_defer_rsp_handler(
+				struct mlo_link_recfg_context *recfg_ctx,
+				struct link_recfg_rx_rsp *recfg_resp_data,
+				uint16_t event_data_len)
+{
+	struct mlo_link_recfg_state_tran *tran;
+
+	if (!recfg_ctx || !recfg_resp_data || !event_data_len)
+		return QDF_STATUS_E_INVAL;
+
+	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
+	if (!tran) {
+		mlo_err("curr tran ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (QDF_IS_STATUS_ERROR(recfg_resp_data->status)) {
+		mlo_err("RX response failure %d", recfg_resp_data->status);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_err("RX response success, to defer proc it");
+	mlo_link_recfg_update_state_req_from_rsp(recfg_ctx, tran);
+
+	mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
+
+	return QDF_STATUS_E_ALREADY;
+}
+
+static QDF_STATUS mlo_link_invoke_defer_rsp_handler(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct link_recfg_rx_rsp *recfg_resp_data,
+			uint16_t event_data_len)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct mlo_link_recfg_state_tran *tran;
+
+	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
+	if (!tran) {
+		mlo_err("curr tran ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+	if (tran->defer_rsp_handler)
+		status = tran->defer_rsp_handler(recfg_ctx, recfg_resp_data,
+						 event_data_len);
+	return status;
+}
+
+/**
+ * mlo_link_recfg_proc_defer_rsp_handler() - Process deferred recfg response
+ * @recfg_ctx: Reconfiguration context
+ *
+ * This callback is invoked in a dummy XMIT_REQ state to call
+ * mlo_link_recfg_response_received, which was previously skipped by
+ * mlo_link_recfg_defer_rsp_handler. It updates the link info to the MLO
+ * manager after the DEL_LINK state.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS mlo_link_recfg_proc_defer_rsp_handler(
+			struct mlo_link_recfg_context *recfg_ctx)
+{
+	QDF_STATUS status;
+	struct link_recfg_rx_rsp link_recfg_rx_rsp = {0};
+
+	link_recfg_rx_rsp.status = QDF_STATUS_SUCCESS;
+	status = mlo_link_recfg_response_received(
+		recfg_ctx, (struct link_recfg_rx_rsp *)&link_recfg_rx_rsp,
+		sizeof(struct link_recfg_rx_rsp));
+	if (QDF_IS_STATUS_SUCCESS(status))
+		status = QDF_STATUS_E_ALREADY;
+
+	return status;
+}
+
+static QDF_STATUS mlo_link_invoke_proc_defer_rsp_handler(
+			struct mlo_link_recfg_context *recfg_ctx)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct mlo_link_recfg_state_tran *tran;
+
+	tran = mlo_link_recfg_get_curr_tran_req(recfg_ctx);
+	if (!tran) {
+		mlo_err("curr tran ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+	if (tran->proc_defer_rsp_handler)
+		status = tran->proc_defer_rsp_handler(recfg_ctx);
+
+	return status;
+}
+
+static bool mlo_link_recfg_xmit_req_first(
+		struct mlo_link_recfg_context *recfg_ctx,
+		struct wlan_mlo_link_recfg_req *recfg_req,
+		uint32_t curr_link_set,
+		uint32_t del_link_set,
+		uint32_t curr_standby_set)
+{
+	struct ml_link_force_state force_state = {0};
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_vdev *vdev;
+	bool xmit_first = false;
+	uint32_t xmit_link = 0;
+
+	if (!del_link_set)
+		return xmit_first;
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc null");
+		return QDF_STATUS_E_INVAL;
+	}
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+					psoc,
+					recfg_req->vdev_id,
+					WLAN_LINK_RECFG_ID);
+	if (!vdev) {
+		mlo_debug("invalid vdev for id %d",
+			  recfg_req->vdev_id);
+		return xmit_first;
+	}
+	ml_nlink_get_curr_force_state(psoc, vdev, &force_state);
+	ml_nlink_dump_force_state(&force_state, "del_link_set 0x%x",
+				  del_link_set);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+
+	/* for common link cases: del-add recfg or del only:
+	 * if non-deleted link is force inactive because of force link
+	 * command for some reason, we have to send the link recfg req
+	 * frame on deleted link at first. after that we can
+	 * force delete the link. the transition state list will change
+	 * accordingly.
+	 */
+	xmit_link = curr_link_set & ~force_state.force_inactive_bitmap &
+			~curr_standby_set;
+	if (xmit_link & ~del_link_set)
+		return xmit_first;
+
+	mlo_debug("xmit_first xmit_link 0x%x", xmit_link);
+	xmit_first = true;
+
+	return xmit_first;
+}
+
 static QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx)
@@ -3033,6 +3271,7 @@ mlo_link_recfg_create_transition_list(
 	uint32_t del_link_set_no_common = 0;
 	struct mlo_link_recfg_state_tran *next = &recfg_ctx->sm.state_list[0];
 	QDF_STATUS status;
+	bool xmit_first;
 
 	mlo_link_recfg_get_link_bitmap(recfg_ctx,
 				       recfg_req,
@@ -3044,6 +3283,14 @@ mlo_link_recfg_create_transition_list(
 				       &curr_link_num,
 				       &curr_standby_set,
 				       &curr_standby_num);
+
+	/* decide xmit action frame first or not */
+	xmit_first = mlo_link_recfg_xmit_req_first(
+					recfg_ctx,
+					recfg_req,
+					curr_link_set,
+					del_link_set,
+					curr_standby_set);
 
 	/* alloc self mac for link add */
 	status = mlo_link_recfg_assign_self_link_addr(
@@ -3097,6 +3344,57 @@ mlo_link_recfg_create_transition_list(
 		next->req.add_link_info = recfg_req->add_link_info;
 		next->abort_handler = NULL;
 	} else if (!recfg_req->add_link_info.num_links &&
+		   recfg_req->del_link_info.num_links &&
+		   xmit_first) {
+		/* Del link only xmit frm first */
+		mlo_debug("del link only - send frm first");
+		recfg_req->recfg_type = link_recfg_del_only;
+		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
+		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
+		next->req.del_link_info = recfg_req->del_link_info;
+		status =
+		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
+						recfg_req,
+						&next->req,
+						curr_link_set &
+						~del_link_set);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("fail to set tx frame link addr status %d",
+				status);
+			return status;
+		}
+		/* response will be processed in dummy XMIT_REQ state.
+		 * defer_rsp_handler cb will skip the response frame
+		 * handing in sm. Because DEL_LINK state is needed to
+		 * to mark link as deleted in host/fw before remove
+		 * the link info data struct.
+		 */
+		next->defer_rsp_handler =
+			mlo_link_recfg_defer_rsp_handler;
+		next->abort_handler = NULL;
+		next++;
+		recfg_req->recfg_type = link_recfg_del_only;
+		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
+		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+		next++;
+		/* Add dummy XMIT_REQ state to process the deferred response
+		 * frame. proc_defer_rsp_handler cb will update
+		 * internal link info and other data struct.
+		 */
+		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
+		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->proc_defer_rsp_handler =
+			mlo_link_recfg_proc_defer_rsp_handler;
+		next->abort_handler = NULL;
+		next++;
+		next->state = WLAN_LINK_RECFG_S_COMPLETED;
+		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+	} else if (!recfg_req->add_link_info.num_links &&
 		   recfg_req->del_link_info.num_links) {
 		/* Del link only */
 		mlo_debug("del link only");
@@ -3126,10 +3424,66 @@ mlo_link_recfg_create_transition_list(
 		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
 		next->req.del_link_info = recfg_req->del_link_info;
 		next->abort_handler = NULL;
+	} else if ((curr_link_set & ~del_link_set) && add_link_set &&
+		   xmit_first) {
+		/* Add and Del link with common link, xmit frame first */
+		mlo_debug("del and add link - send frm first");
+		recfg_req->recfg_type = link_recfg_del_add_common_link;
+		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
+		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->req.add_link_info = recfg_req->add_link_info;
+		status =
+		mlo_link_recfg_set_tx_link_addr(recfg_ctx,
+						recfg_req,
+						&next->req,
+						curr_link_set &
+						~del_link_set);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("fail to set tx frame link addr status %d",
+				status);
+			return status;
+		}
+		/* response will be processed in dummy XMIT_REQ state.
+		 * defer_rsp_handler cb will skip the response frame
+		 * handing in sm. Because DEL_LINK state is needed to
+		 * to mark link as deleted in host/fw before remove
+		 * the link info data struct.
+		 */
+		next->defer_rsp_handler =
+			mlo_link_recfg_defer_rsp_handler;
+		next->abort_handler = NULL;
+		next++;
+		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
+		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+		next++;
+		/* Add dummy XMIT_REQ state to process the deferred response
+		 * frame. proc_defer_rsp_handler cb will update
+		 * internal link info and other data struct.
+		 */
+		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
+		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->req.add_link_info = recfg_req->add_link_info;
+		next->proc_defer_rsp_handler =
+			mlo_link_recfg_proc_defer_rsp_handler;
+		next->abort_handler = NULL;
+		next++;
+		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
+		next->event = WLAN_LINK_RECFG_SM_EV_ADD_LINK;
+		next->req.add_link_info = recfg_req->add_link_info;
+		next++;
+		next->state = WLAN_LINK_RECFG_S_COMPLETED;
+		next->event = WLAN_LINK_RECFG_SM_EV_COMPLETED;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->req.add_link_info = recfg_req->add_link_info;
+		next->abort_handler = NULL;
 	} else if ((curr_link_set & ~del_link_set) && add_link_set) {
 		/* Add and Del link with common link */
 		mlo_debug("del and add link");
-		recfg_req->recfg_type =	link_recfg_del_add_common_link;
+		recfg_req->recfg_type = link_recfg_del_add_common_link;
 		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
 		next->req.del_link_info = recfg_req->del_link_info;
@@ -3363,6 +3717,7 @@ mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 		mlo_err("RX response failure");
 		return status;
 	}
+
 	mlo_link_recfg_update_partner_info(recfg_ctx);
 	mlo_link_recfg_store_key(recfg_ctx, &tran->req);
 	/* handle link recfg link add rejected case */
@@ -4544,6 +4899,20 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_XMIT_REQ:
 		req = (struct mlo_link_recfg_state_req *)event_data;
+		status = mlo_link_invoke_proc_defer_rsp_handler(recfg_ctx);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			if (status == QDF_STATUS_E_ALREADY)
+				break;
+			mlo_err("error to proc defer resp status %d", status);
+			mlo_link_recfg_sm_transition_to(
+					ctx, WLAN_LINK_RECFG_S_ABORT);
+			mlo_link_recfg_sm_deliver_event_sync(
+					recfg_ctx->ml_dev,
+					WLAN_LINK_RECFG_SM_EV_COMPLETED,
+					0, NULL);
+			break;
+		}
+
 		mlo_link_recfg_send_request_frame(recfg_ctx, req);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
@@ -4555,6 +4924,22 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 					0, NULL);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
+		status = mlo_link_invoke_defer_rsp_handler(
+			recfg_ctx, (struct link_recfg_rx_rsp *)event_data,
+			event_data_len);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			if (status == QDF_STATUS_E_ALREADY)
+				break;
+			mlo_err("error to defer resp status %d", status);
+			mlo_link_recfg_sm_transition_to(
+					ctx, WLAN_LINK_RECFG_S_ABORT);
+			mlo_link_recfg_sm_deliver_event_sync(
+					recfg_ctx->ml_dev,
+					WLAN_LINK_RECFG_SM_EV_COMPLETED,
+					0, NULL);
+			break;
+		}
+
 		status = mlo_link_recfg_response_received(
 			recfg_ctx, (struct link_recfg_rx_rsp *)event_data,
 			event_data_len);

@@ -29,6 +29,7 @@
 #define WLAN_MAX_DIALOG_TOKEN         0xFF
 
 struct mlo_link_recfg_context;
+struct link_recfg_rx_rsp;
 
 /**
  * enum wlan_link_recfg_sm_state - Link Reconfiguration states
@@ -220,6 +221,29 @@ typedef QDF_STATUS (*state_pre_link_add_handler)(
 			struct mlo_link_recfg_state_req *req);
 
 /**
+ * typedef state_defer_rsp_handler - defer the action frame response handler
+ * @recfg_ctx: recfg context
+ * @recfg_resp_data: recfg response data
+ * @event_data_len: recfg response data len
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_defer_rsp_handler)(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct link_recfg_rx_rsp *recfg_resp_data,
+			uint16_t event_data_len);
+
+/**
+ * typedef state_proc_defer_rsp_handler - process deferred the action
+ * frame response handler
+ * @recfg_ctx: recfg context
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_proc_defer_rsp_handler)(
+			struct mlo_link_recfg_context *recfg_ctx);
+
+/**
  * struct mlo_link_recfg_state_tran - Link Reconfig state transition
  * info
  * @state: target tansition state
@@ -228,6 +252,8 @@ typedef QDF_STATUS (*state_pre_link_add_handler)(
  * @abort_handler: error handler if error happends in the state,
  * it will be invoked after link config completed
  * @pre_link_add_handler: pre link add callback
+ * @defer_rsp_handler: defer response processing
+ * @proc_defer_rsp_handler: process deferred response
  */
 struct mlo_link_recfg_state_tran {
 	enum wlan_link_recfg_sm_state state;
@@ -235,6 +261,8 @@ struct mlo_link_recfg_state_tran {
 	struct mlo_link_recfg_state_req req;
 	state_abort_handler abort_handler;
 	state_pre_link_add_handler pre_link_add_handler;
+	state_defer_rsp_handler defer_rsp_handler;
+	state_proc_defer_rsp_handler proc_defer_rsp_handler;
 };
 
 /* WLAN_LINK_RECFG_SM_EV_XMIT_TX_DONE */
@@ -294,7 +322,7 @@ struct roam_ind {
 struct recfg_completed {
 };
 
-#define MAX_RECFG_TRANSITION 5
+#define MAX_RECFG_TRANSITION 6
 
 /**
  * struct mlo_link_recfg_state_sm - Link Reconfig state machine
