@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1009,7 +1009,7 @@ ndi_update_policy_mgr_conn_table(struct nan_datapath_confirm_event *confirm,
 		}
 	}
 
-	policy_mgr_incr_active_session(psoc, QDF_NDI_MODE, vdev_id);
+	policy_mgr_incr_active_session(psoc, QDF_NDI_MODE, vdev_id, true);
 
 	return status;
 }
@@ -1389,7 +1389,7 @@ static QDF_STATUS nan_handle_enable_rsp(struct nan_event_params *nan_event)
 			}
 			nan_debug("NAN vdev_id: %u", vdev_id);
 			policy_mgr_incr_active_session(psoc, QDF_NAN_DISC_MODE,
-						       vdev_id);
+						       vdev_id, true);
 			policy_mgr_process_force_scc_for_nan(psoc);
 
 			if_mgr_deliver_event(vdev,

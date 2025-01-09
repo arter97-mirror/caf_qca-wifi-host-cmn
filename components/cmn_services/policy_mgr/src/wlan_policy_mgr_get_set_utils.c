@@ -4613,7 +4613,7 @@ void policy_mgr_move_vdev_from_disabled_to_connection_tbl(
 	 * Add entry to pm_conc_connection_list if remove from disabled links
 	 * was success
 	 */
-	policy_mgr_incr_active_session(psoc, mode, vdev_id);
+	policy_mgr_incr_active_session(psoc, mode, vdev_id, false);
 }
 
 static QDF_STATUS
@@ -5610,8 +5610,8 @@ bool policy_mgr_is_mlo_sta_disconnected(struct wlan_objmgr_psoc *psoc,
 }
 
 void policy_mgr_incr_active_session(struct wlan_objmgr_psoc *psoc,
-				enum QDF_OPMODE mode,
-				uint8_t session_id)
+				    enum QDF_OPMODE mode, uint8_t session_id,
+				    bool update_flow_pool_map)
 {
 	struct policy_mgr_psoc_priv_obj *pm_ctx;
 	uint32_t conn_6ghz_flag = 0;
@@ -5647,8 +5647,10 @@ void policy_mgr_incr_active_session(struct wlan_objmgr_psoc *psoc,
 				psoc, session_id,
 				pm_ctx->no_of_active_sessions[mode]);
 
-	if (mode != QDF_NAN_DISC_MODE && pm_ctx->dp_cbacks.hdd_v2_flow_pool_map)
+	if (mode != QDF_NAN_DISC_MODE &&
+	    pm_ctx->dp_cbacks.hdd_v2_flow_pool_map && update_flow_pool_map)
 		pm_ctx->dp_cbacks.hdd_v2_flow_pool_map(session_id);
+
 	if (mode == QDF_SAP_MODE || mode == QDF_P2P_GO_MODE)
 		policy_mgr_get_ap_6ghz_capable(psoc, session_id,
 					       &conn_6ghz_flag);

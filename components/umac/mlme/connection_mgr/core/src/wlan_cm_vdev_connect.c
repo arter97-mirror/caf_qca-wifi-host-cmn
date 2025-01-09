@@ -1825,7 +1825,8 @@ cm_connect_complete_ind(struct wlan_objmgr_vdev *vdev,
 								psoc, vdev_id);
 
 		} else {
-			policy_mgr_incr_active_session(psoc, op_mode, vdev_id);
+			policy_mgr_incr_active_session(psoc, op_mode, vdev_id,
+						       true);
 		}
 
 		ml_nlink_conn_change_notify(
