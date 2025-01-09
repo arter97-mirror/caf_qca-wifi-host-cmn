@@ -1909,10 +1909,10 @@ static void reg_append_6g_reg_rules_in_pdev(
 
 	cur_pwr_type = REG_MAX_AP_TYPE;
 
-	if (num_6ghz_reg_rules[REG_VERY_LOW_POWER_AP])
-		cur_pwr_type = REG_VERY_LOW_POWER_AP;
-	else if (num_6ghz_reg_rules[REG_INDOOR_AP])
+	if (num_6ghz_reg_rules[REG_INDOOR_AP])
 		cur_pwr_type = REG_INDOOR_AP;
+	else if (num_6ghz_reg_rules[REG_VERY_LOW_POWER_AP])
+		cur_pwr_type = REG_VERY_LOW_POWER_AP;
 	else if (num_6ghz_reg_rules[REG_STANDARD_POWER_AP])
 		cur_pwr_type = REG_STANDARD_POWER_AP;
 
