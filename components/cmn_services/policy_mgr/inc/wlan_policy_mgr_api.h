@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -6213,4 +6213,15 @@ policy_mgr_is_3vifs_mcc_to_scc_enabled(struct wlan_objmgr_psoc *psoc)
 	return false;
 }
 #endif
+
+/**
+ * policy_mgr_update_flow_pool_map() - Update flow pool map for the given vdev
+ * @psoc: Pointer to PSOC object
+ * @vdev: Pointer to object manager vdev
+ *
+ * Return: None
+ */
+void policy_mgr_update_flow_pool_map(struct wlan_objmgr_psoc *psoc,
+				     struct wlan_objmgr_vdev *vdev);
+
 #endif /* __WLAN_POLICY_MGR_API_H */

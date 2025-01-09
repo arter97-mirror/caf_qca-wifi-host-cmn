@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -14447,3 +14447,35 @@ bool policy_mgr_is_3vifs_mcc_to_scc_enabled(struct wlan_objmgr_psoc *psoc)
 	return policy_mgr_is_force_scc(psoc);
 }
 #endif
+
+void policy_mgr_update_flow_pool_map(struct wlan_objmgr_psoc *psoc,
+				     struct wlan_objmgr_vdev *vdev)
+{
+	struct policy_mgr_psoc_priv_obj *pm_ctx;
+
+	enum QDF_OPMODE op_mode;
+	uint8_t vdev_id;
+
+	if (!vdev)
+		return;
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	if (wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev) ||
+	    policy_mgr_is_set_link_in_progress(wlan_vdev_get_psoc(vdev))) {
+		policy_mgr_debug("vdev:%d Link switch/set_link is ongoing, don't update flow pool map",
+				 vdev_id);
+		return;
+	}
+
+	pm_ctx = policy_mgr_get_context(psoc);
+	if (!pm_ctx) {
+		policy_mgr_err("pm_ctx is NULL");
+		return;
+	}
+
+	op_mode = wlan_vdev_mlme_get_opmode(vdev);
+
+	if (op_mode != QDF_NAN_DISC_MODE &&
+	    pm_ctx->dp_cbacks.hdd_v2_flow_pool_map)
+		pm_ctx->dp_cbacks.hdd_v2_flow_pool_map(vdev_id);
+}
