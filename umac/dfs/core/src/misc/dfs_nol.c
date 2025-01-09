@@ -160,11 +160,11 @@ static void dfs_nol_delete(struct wlan_dfs *dfs,
 static enum qdf_hrtimer_restart_status
 dfs_remove_from_nol(qdf_hrtimer_data_t *arg)
 {
-	struct dfs_nolelem *nol_arg;
 	struct wlan_dfs *dfs;
 	uint16_t delfreq;
 	uint16_t delchwidth;
 	uint8_t chan;
+	struct dfs_nolelem *nol_arg;
 
 	nol_arg = container_of(arg, struct dfs_nolelem, nol_timer);
 	dfs = nol_arg->nol_dfs;
@@ -404,7 +404,7 @@ void dfs_nol_addchan(struct wlan_dfs *dfs,
 
 	qdf_hrtimer_init(&elem->nol_timer, dfs_remove_from_nol,
 			 QDF_CLOCK_MONOTONIC, QDF_HRTIMER_MODE_REL,
-			 QDF_CONTEXT_HARDWARE);
+			 QDF_CONTEXT_TASKLET);
 	qdf_hrtimer_start(&elem->nol_timer,
 			  qdf_time_ms_to_ktime(dfs_nol_timeout * TIME_IN_MS),
 			  QDF_HRTIMER_MODE_REL);
