@@ -16065,9 +16065,10 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 
 	cmd_id = QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BSS_MAX_IDLE_PERIOD;
 	if (tb[cmd_id]) {
-		cfg_val = nla_get_u16(tb[cmd_id]);
-		hdd_debug("bss max idle period %d", cfg_val);
-		sme_set_bss_max_idle_period(hdd_ctx->mac_handle, cfg_val);
+		bss_max_idle_period = nla_get_u16(tb[cmd_id]);
+		hdd_debug("bss max idle period %d", bss_max_idle_period);
+		sme_set_bss_max_idle_period(hdd_ctx->mac_handle,
+					    bss_max_idle_period);
 	}
 
 	cmd_id =
