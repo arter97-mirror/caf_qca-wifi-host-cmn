@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3061,9 +3061,15 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 	},
 	{ /* RXDMA_BUF */
 		.start_ring_id = HAL_SRNG_WMAC1_SW2RXDMA0_BUF0,
-#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)
+#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK) && \
+	defined(FEATURE_MGMT_RX_OVER_SRNG)
+		.max_rings = 5,
+#elif (defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)) || \
+	(defined(FEATURE_DIRECT_LINK) && defined(FEATURE_MGMT_RX_OVER_SRNG)) || \
+	(defined(IPA_OFFLOAD) && defined(FEATURE_MGMT_RX_OVER_SRNG))
 		.max_rings = 4,
-#elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK)
+#elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK) || \
+	defined(FEATURE_MGMT_RX_OVER_SRNG)
 		.max_rings = 3,
 #else
 		.max_rings = 2,
