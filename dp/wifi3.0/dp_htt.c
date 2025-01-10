@@ -3962,8 +3962,8 @@ static void dp_ipa_rx_cce_super_rule_setup_done_handler(struct htt_soc *soc,
 				dp_info(
 				  "opt_dp: Filter reserve failed max attempts");
 			}
-			dp_info("opt_dp:: Filter reserve failed. Rules avail %d",
-				num_rules_avail);
+			dp_ipa_debug("opt_dp:: Filter reserve failed. Rules avail %d",
+				     num_rules_avail);
 		}
 		dp_ipa_wdi_opt_dpath_notify_flt_rsvd(is_success);
 		break;
@@ -4002,6 +4002,9 @@ static void dp_ipa_rx_cce_super_rule_setup_done_handler(struct htt_soc *soc,
 		resp_type, is_rules_enough);
 	dp_info("num_rules_avail: %d, rslt0: %d, rslt1: %d",
 		num_rules_avail, filter0_result, filter1_result);
+	dp_ipa_debug("opt_dp: pdev_id: %d resp_type: %d, rules_enough: %d, rslt0: %d, rslt1: %d",
+		     pdev_id, resp_type, is_rules_enough, filter0_result,
+		     filter1_result);
 }
 
 #ifdef IPA_OPT_WIFI_DP_CTRL
