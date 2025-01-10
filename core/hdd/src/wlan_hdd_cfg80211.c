@@ -15707,6 +15707,10 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 						     cfg_val, cmd_id);
 		if (ret_val)
 			sme_err("Failed to update HE cap");
+		else
+			sme_set_vdev_ies_per_band(hdd_ctx->mac_handle,
+						  link_info->vdev_id,
+						  adapter->device_mode);
 	}
 
 	if (tb[QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_HE_TX_BEAMFORMEE_NSTS]) {

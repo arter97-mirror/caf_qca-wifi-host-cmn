@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -11388,8 +11388,14 @@ int sme_update_he_capabilities(mac_handle_t mac_handle, uint8_t session_id,
 		if (cfg_val) {
 			mac_ctx->mlme_cfg->twt_cfg.disable_btwt_usr_cfg = false;
 			cfg_he_cap->broadcast_twt = he_cap_orig->broadcast_twt;
+			mac_ctx->he_cap_2g.broadcast_twt =
+					mac_ctx->he_cap_2g_orig.broadcast_twt;
+			mac_ctx->he_cap_5g.broadcast_twt =
+					mac_ctx->he_cap_5g_orig.broadcast_twt;
 		} else {
 			cfg_he_cap->broadcast_twt = 0;
+			mac_ctx->he_cap_2g.broadcast_twt = 0;
+			mac_ctx->he_cap_5g.broadcast_twt = 0;
 			mac_ctx->mlme_cfg->twt_cfg.disable_btwt_usr_cfg = true;
 		}
 		break;
@@ -11899,7 +11905,18 @@ int sme_update_he_twt_req_support(mac_handle_t mac_handle, uint8_t session_id,
 		sme_err("No session for id %d", session_id);
 		return -EINVAL;
 	}
-	mac_ctx->mlme_cfg->he_caps.dot11_he_cap.twt_request = cfg_val;
+	if (cfg_val) {
+		mac_ctx->mlme_cfg->he_caps.dot11_he_cap.twt_request =
+			mac_ctx->mlme_cfg->he_caps.he_cap_orig.twt_request;
+		mac_ctx->he_cap_2g.twt_request =
+			mac_ctx->he_cap_2g_orig.twt_request;
+		mac_ctx->he_cap_5g.twt_request =
+			mac_ctx->he_cap_5g_orig.twt_request;
+	} else {
+		mac_ctx->mlme_cfg->he_caps.dot11_he_cap.twt_request = 0;
+		mac_ctx->he_cap_2g.twt_request = 0;
+		mac_ctx->he_cap_5g.twt_request = 0;
+	}
 
 	ucfg_twt_cfg_set_requestor(mac_ctx->psoc, cfg_val);
 	csr_update_session_he_cap(mac_ctx, session);
