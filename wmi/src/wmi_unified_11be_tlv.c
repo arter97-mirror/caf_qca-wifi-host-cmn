@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -951,10 +951,10 @@ send_mlo_link_set_active_cmd_tlv(wmi_unified_t wmi_handle,
 	len = sizeof(*cmd) +
 	      WMI_TLV_HDR_SIZE + sizeof(*link_num_param) * num_link_num_param +
 	      WMI_TLV_HDR_SIZE + sizeof(*vdev_bitmap) * num_vdev_bitmap +
+	      WMI_TLV_HDR_SIZE + WMI_TLV_HDR_SIZE + WMI_TLV_HDR_SIZE +
 	      WMI_TLV_HDR_SIZE + sizeof(*disallowed_mode_bmap) * num_disallow_mode_comb;
 	if (force_mode == WMI_MLO_LINK_FORCE_ACTIVE_INACTIVE)
-		len += WMI_TLV_HDR_SIZE +
-		sizeof(*vdev_bitmap) * num_inactive_vdev_bitmap;
+		len += sizeof(*vdev_bitmap) * num_inactive_vdev_bitmap;
 
 	buf = wmi_buf_alloc(wmi_handle, len);
 	if (!buf)
@@ -1041,10 +1041,17 @@ send_mlo_link_set_active_cmd_tlv(wmi_unified_t wmi_handle,
 				num_inactive_vdev_bitmap;
 		}
 	} else {
-		/* add empty link bitmap2 tlv */
+		/* add empty vdev bitmap2 tlv */
 		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_UINT32, 0);
 		buf_ptr += WMI_TLV_HDR_SIZE;
 	}
+
+	/* add empty link bitmap tlv */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_UINT32, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	/* add empty link bitmap2 tlv */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_UINT32, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
 
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
 		       sizeof(*disallowed_mode_bmap) * param->num_disallow_mode_comb);
