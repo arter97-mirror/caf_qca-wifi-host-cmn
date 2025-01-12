@@ -322,12 +322,15 @@ policy_mgr_get_sap_ch_width_update_action(struct wlan_objmgr_psoc *psoc,
 	policy_mgr_get_mode_specific_conn_info(psoc, &freq_list[0],
 					       &vdev_id_list[0], PM_SAP_MODE);
 	if (cur_bw == CH_WIDTH_320MHZ && ch_freq &&
-	    policy_mgr_is_conn_lead_to_dbs_sbs(psoc, vdev_id, ch_freq))
+	    policy_mgr_is_conn_lead_to_bw_downgrade(psoc, vdev_id, ch_freq,
+						    cur_bw))
 		*next_action = PM_DOWNGRADE_BW;
 	else if (cur_bw == CH_WIDTH_160MHZ &&
 		 !ch_freq &&
-		 !policy_mgr_is_conn_lead_to_dbs_sbs(psoc,
-					vdev_id_list[0], freq_list[0]) &&
+		 !policy_mgr_is_conn_lead_to_bw_downgrade(psoc,
+							  vdev_id_list[0],
+							  freq_list[0],
+							  cur_bw) &&
 		 (reason &&
 		  (*reason == POLICY_MGR_UPDATE_REASON_TIMER_START ||
 		   *reason == POLICY_MGR_UPDATE_REASON_OPPORTUNISTIC)))
@@ -1069,6 +1072,26 @@ policy_mgr_is_conn_lead_to_dbs_sbs(struct wlan_objmgr_psoc *psoc,
 	return false;
 }
 
+bool
+policy_mgr_is_conn_lead_to_bw_downgrade(struct wlan_objmgr_psoc *psoc,
+					uint8_t vdev_id, qdf_freq_t freq,
+					enum phy_ch_width ch_width)
+{
+	struct dbs_bw bw_dbs;
+	enum hw_mode_bandwidth cur_bw;
+
+	cur_bw = policy_mgr_get_bw(ch_width);
+	if (policy_mgr_is_conn_lead_to_dbs_sbs(psoc, vdev_id, freq)) {
+		policy_mgr_get_hw_dbs_max_bw(psoc, &bw_dbs);
+		if (cur_bw <= bw_dbs.mac1_bw || cur_bw <= bw_dbs.mac0_bw)
+			return false;
+		else
+			return true;
+	}
+
+	return false;
+}
+
 static QDF_STATUS
 policy_mgr_get_next_action(struct wlan_objmgr_psoc *psoc,
 			   uint32_t session_id,
@@ -1222,8 +1245,12 @@ policy_mgr_is_ch_width_downgrade_required(struct wlan_objmgr_psoc *psoc,
 					  qdf_list_t *scan_list)
 
 {
-	if (policy_mgr_is_conn_lead_to_dbs_sbs(psoc, vdev_id,
-					       entry->channel.chan_freq) ||
+	enum phy_ch_width ch_width;
+
+	ch_width = wlan_mlme_get_ch_width_from_phymode(entry->phy_mode);
+	if (policy_mgr_is_conn_lead_to_bw_downgrade(psoc, vdev_id,
+						    entry->channel.chan_freq,
+						    ch_width) ||
 	    wlan_cm_bss_mlo_type(psoc, entry, scan_list))
 		return true;
 
