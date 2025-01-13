@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1509,6 +1509,7 @@ int osif_twt_pause_req(struct wlan_objmgr_vdev *vdev,
 		osif_debug("TWT param not present. flow id set to zero");
 	}
 
+	params.vdev_id = vdev_id;
 	osif_debug("twt_pause: vdev_id %d dialog_id %d peer mac_addr "
 		  QDF_MAC_ADDR_FMT, vdev_id, params.dialog_id,
 		  QDF_MAC_ADDR_REF(params.peer_macaddr.bytes));
@@ -1549,6 +1550,7 @@ int osif_twt_resume_req(struct wlan_objmgr_vdev *vdev,
 	if (ret)
 		return ret;
 
+	params.vdev_id = vdev_id;
 	id = QCA_WLAN_VENDOR_ATTR_TWT_RESUME_FLOW_ID;
 	if (tb[id])
 		params.dialog_id = nla_get_u8(tb[id]);
@@ -1609,6 +1611,7 @@ int osif_twt_nudge_req(struct wlan_objmgr_vdev *vdev,
 	if (ret)
 		return ret;
 
+	params.vdev_id = vdev_id;
 	id = QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_MAC_ADDR;
 	if (tb[id]) {
 		nla_memcpy(params.peer_macaddr.bytes, tb[id],

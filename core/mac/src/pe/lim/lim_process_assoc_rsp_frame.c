@@ -205,8 +205,7 @@ void lim_update_assoc_sta_datas(struct mac_context *mac_ctx,
 	lim_update_stads_he_caps(mac_ctx, sta_ds, assoc_rsp,
 				 session_entry, beacon);
 
-	lim_update_stads_eht_caps(mac_ctx, sta_ds, assoc_rsp,
-				  session_entry, beacon);
+	lim_update_stads_eht_caps(mac_ctx, sta_ds, assoc_rsp, session_entry);
 
 	if (lim_is_sta_he_capable(sta_ds))
 		he_cap = &assoc_rsp->he_cap;
@@ -1300,12 +1299,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	}
 
 	if (lim_is_session_eht_capable(session_entry)) {
-		uint8_t ies_offset;
-
-		if (subtype == LIM_ASSOC)
-			ies_offset = WLAN_ASSOC_RSP_IES_OFFSET;
-		else
-			ies_offset = WLAN_REASSOC_REQ_IES_OFFSET;
+		uint8_t ies_offset = WLAN_ASSOC_RSP_IES_OFFSET;
 
 		if (frame_body_len < ies_offset) {
 			pe_err("frame body length is < ies_offset");
@@ -1453,6 +1447,14 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 		lim_send_disassoc_mgmt_frame(mac_ctx,
 			REASON_UNSPEC_FAILURE,
 			hdr->sa, session_entry, false);
+		goto assocReject;
+	} else if (wlan_vdev_mlme_is_mlo_vdev(session_entry->vdev) &&
+		   !assoc_rsp->eht_cap.present) {
+		pe_err("EHT caps is missing for ML association, trigger disconnection");
+		assoc_cnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
+		assoc_cnf.protStatusCode = STATUS_DENIED_EHT_NOT_SUPPORTED;
+		lim_send_disassoc_mgmt_frame(mac_ctx, REASON_UNSPEC_FAILURE,
+					     hdr->sa, session_entry, false);
 		goto assocReject;
 	}
 

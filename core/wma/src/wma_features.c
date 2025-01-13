@@ -1384,7 +1384,8 @@ static bool handle_csa_standby_link(wmi_csa_event_fixed_param *csa_event,
 			(struct qdf_mac_addr *)&mld_addr[0],
 			&mldev);
 	if (!mldev) {
-		wma_err("NULL ml dev ctx");
+		wma_err("NULL ml dev ctx, link id %d peer mld addr " QDF_MAC_ADDR_FMT,
+			csa_event->link_id, QDF_MAC_ADDR_REF(&mld_addr[0]));
 		return is_csa_standby;
 	}
 
@@ -1392,13 +1393,14 @@ static bool handle_csa_standby_link(wmi_csa_event_fixed_param *csa_event,
 	link_info = mlo_mgr_get_ap_link_by_link_id(mldev,
 						   link_id);
 	if (!link_info) {
-		wma_err("NULL link info ");
+		wma_err("NULL link info link id %d peer mld addr " QDF_MAC_ADDR_FMT,
+			csa_event->link_id, QDF_MAC_ADDR_REF(&mld_addr[0]));
 		return is_csa_standby;
 	}
 
 	if (link_info->vdev_id != WLAN_INVALID_VDEV_ID) {
-		wma_debug("vdev id %d link id %d ", link_info->vdev_id,
-			  link_id);
+		wma_err("vdev id %d link id %d ", link_info->vdev_id,
+			link_id);
 		return is_csa_standby;
 	}
 
@@ -1471,11 +1473,15 @@ static int fill_peer_mac_addr(wmi_csa_event_fixed_param *csa_event,
 				   &mld_addr[0]);
 	WMI_MAC_ADDR_TO_CHAR_ARRAY(&csa_event->link_mac_address,
 				   &link_addr[0]);
+
 	wlan_mlo_get_mlpeer_by_peer_mladdr(
 				(struct qdf_mac_addr *)&mld_addr[0],
 				&mldev);
 	if (!mldev) {
-		wma_err("NULL ml dev ctx");
+		wma_err("NULL ml dev ctx, link id %d peer mld addr " QDF_MAC_ADDR_FMT " peer link addr " QDF_MAC_ADDR_FMT,
+			csa_event->link_id,
+			QDF_MAC_ADDR_REF(&mld_addr[0]),
+			QDF_MAC_ADDR_REF(&link_addr[0]));
 		return -EINVAL;
 	}
 
@@ -1483,13 +1489,16 @@ static int fill_peer_mac_addr(wmi_csa_event_fixed_param *csa_event,
 	link_info = mlo_mgr_get_ap_link_by_link_id(mldev,
 						   link_id);
 	if (!link_info) {
-		wma_err("NULL link info ");
+		wma_err("NULL link info, link id %d peer mld addr " QDF_MAC_ADDR_FMT " peer link addr " QDF_MAC_ADDR_FMT,
+			csa_event->link_id,
+			QDF_MAC_ADDR_REF(&mld_addr[0]),
+			QDF_MAC_ADDR_REF(&link_addr[0]));
 		return -EINVAL;
 	}
 
 	qdf_copy_macaddr((struct qdf_mac_addr *)&bssid[0],
 			 &link_info->ap_link_addr);
-	wma_debug("csa event link id %d vdev id %d peer mld addr" QDF_MAC_ADDR_FMT "peer link addr" QDF_MAC_ADDR_FMT "host link info ap_link_addr" QDF_MAC_ADDR_FMT,
+	wma_debug("csa event link id %d vdev id %d peer mld addr " QDF_MAC_ADDR_FMT " peer link addr " QDF_MAC_ADDR_FMT " host link info ap_link_addr " QDF_MAC_ADDR_FMT,
 		  link_id, link_info->vdev_id,
 		  QDF_MAC_ADDR_REF(&mld_addr[0]),
 		  QDF_MAC_ADDR_REF(&link_addr[0]),
@@ -1566,7 +1575,8 @@ int wma_csa_offload_handler(void *handle, uint8_t *event, uint32_t len)
 	peer = wlan_objmgr_get_peer_by_mac(wma->psoc,
 					   bssid, WLAN_LEGACY_WMA_ID);
 	if (!peer) {
-		wma_err("Invalid peer");
+		wma_err("Invalid peer, peer mac addr " QDF_MAC_ADDR_FMT,
+			QDF_MAC_ADDR_REF(&bssid[0]));
 		return -EINVAL;
 	}
 
@@ -1575,8 +1585,12 @@ int wma_csa_offload_handler(void *handle, uint8_t *event, uint32_t len)
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(wma->psoc,
 						    vdev_id,
 						    WLAN_LEGACY_WMA_ID);
-	if (!vdev)
+	if (!vdev) {
+		wma_err("NULL vdev, vdev_id %d peer mac addr " QDF_MAC_ADDR_FMT,
+			vdev_id,
+			QDF_MAC_ADDR_REF(&bssid[0]));
 		return -EINVAL;
+	}
 
 	csa_offload_event = qdf_mem_malloc(sizeof(*csa_offload_event));
 	if (!csa_offload_event) {

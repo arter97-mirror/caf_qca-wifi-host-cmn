@@ -3136,7 +3136,7 @@ void policy_mgr_check_concurrent_intf_and_restart_sap(
 	uint32_t mcc_to_scc_switch;
 	uint32_t op_ch_freq_list[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
 	uint8_t vdev_id[MAX_NUMBER_OF_CONC_CONNECTIONS] = {0};
-	uint32_t cc_count = 0;
+	uint32_t cc_count = 0, sta_count;
 	uint32_t timeout_ms = 0;
 	bool restart_sap = false;
 	uint32_t sap_freq;
@@ -3192,7 +3192,7 @@ void policy_mgr_check_concurrent_intf_and_restart_sap(
 	cc_count = policy_mgr_get_mode_specific_conn_info(
 				psoc, &op_ch_freq_list[cc_count],
 				&vdev_id[cc_count], PM_STA_MODE);
-
+	sta_count = cc_count;
 	sta_check = !cc_count ||
 		    policy_mgr_valid_sta_channel_check(psoc, op_ch_freq_list[0]);
 
@@ -3205,9 +3205,9 @@ void policy_mgr_check_concurrent_intf_and_restart_sap(
 
 	mcc_to_scc_switch =
 		policy_mgr_get_mcc_to_scc_switch_mode(psoc);
-	policy_mgr_debug("MCC to SCC switch: %d chan: %d sta_check: %d, gc_check: %d",
+	policy_mgr_debug("MCC to SCC switch: %d chan: %d sta_count: %d  sta_check: %d, gc_check: %d",
 			 mcc_to_scc_switch, op_ch_freq_list[0],
-			 sta_check, gc_check);
+			 sta_count, sta_check, gc_check);
 
 	cc_count = 0;
 	cc_count = policy_mgr_get_mode_specific_conn_info(
@@ -3236,7 +3236,9 @@ sap_restart:
 	 */
 	if (restart_sap ||
 	    ((mcc_to_scc_switch != QDF_MCC_TO_SCC_SWITCH_DISABLE) &&
-	    (sta_check || gc_check))) {
+	    ((sta_check || gc_check) ||
+	     (sta_count && !sta_check &&
+	      !policy_mgr_is_hw_dbs_capable(psoc))))) {
 		if (!pm_ctx->sta_ap_intf_check_work_info) {
 			policy_mgr_err("invalid sta_ap_intf_check_work_info");
 			return;

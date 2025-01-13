@@ -4914,16 +4914,18 @@ enum phy_ch_width wlan_mlme_get_max_bw(void);
 
 /**
  * wlan_mlme_get_sta_ch_width() - Get current operating
- * channel width for STA / P2P-CLI mode
+ * channel width and phymode for STA / P2P-CLI mode
  *
  * @vdev: STA / P2P-CLI vdev
  * @ch_width: Returned channel width
+ * @phy_mode: Returned phy mode
  *
  * Return: QDF_STATUS_SUCCESS for success otherwise QDF_STATUS_E_INVAL
  *
  */
 QDF_STATUS wlan_mlme_get_sta_ch_width(struct wlan_objmgr_vdev *vdev,
-				      enum phy_ch_width *ch_width);
+				      enum phy_ch_width *ch_width,
+				      enum wlan_phymode *phy_mode);
 
 /**
  * wlan_mlme_set_ul_mu_config() - set ul mu config

@@ -354,7 +354,7 @@ lim_send_probe_req_mgmt_frame(struct mac_context *mac_ctx,
 	if (IS_DOT11_MODE_EHT(dot11mode) && pesession &&
 	    pesession->lim_join_req &&
 	    !qdf_is_macaddr_broadcast((struct qdf_mac_addr *)bssid)) {
-		lim_update_session_eht_capable(mac_ctx, pesession);
+		lim_update_session_eht_capable(pesession, true);
 
 		if (pesession->lim_join_req->bssDescription.is_ml_ap)
 			mlo_ie_len = lim_send_probe_req_frame_mlo(mac_ctx, pesession);

@@ -1061,7 +1061,7 @@ __lim_handle_sme_start_bss_request(struct mac_context *mac_ctx, uint32_t *msg_bu
 		}
 
 		if (IS_DOT11_MODE_EHT(session->dot11mode)) {
-			lim_update_session_eht_capable(mac_ctx, session);
+			lim_update_session_eht_capable(session, true);
 			lim_copy_bss_eht_cap(session);
 		} else {
 			lim_strip_eht_ies_from_add_ies(mac_ctx, session);
@@ -3460,7 +3460,7 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 	}
 
 	if (IS_DOT11_MODE_EHT(session->dot11mode)) {
-		lim_update_session_eht_capable(mac_ctx, session);
+		lim_update_session_eht_capable(session, true);
 		lim_reset_self_ocv_caps(session);
 		lim_copy_join_req_eht_cap(session);
 	}
