@@ -55,6 +55,12 @@ uint8_t g_reg_max_5g_chan_num;
 #define DISCARD_DFS_FOR_P2P_GO 2
 #define DISCARD_DFS_FOR_SAP 1
 
+enum discard_passive_chan_for_mode {
+	DISCARD_PASSIVE_FOR_SAP = 1,
+	DISCARD_PASSIVE_FOR_P2P_GO = 2,
+	DISCARD_PASSIVE_FOR_P2P_GO_AND_SAP = 3,
+};
+
 #ifdef WLAN_FEATURE_11BE
 static bool reg_is_chan_bit_punctured(uint16_t input_punc_bitmap,
 				      uint8_t chan_idx)
@@ -3911,6 +3917,56 @@ reg_remove_freq(struct get_usable_chan_res_params *res_msg,
 }
 
 static void
+reg_update_list_for_passive_channel(struct wlan_objmgr_pdev *pdev,
+				    struct get_usable_chan_res_params *res_msg,
+				    uint32_t chan_enum, uint32_t iface_mode)
+{
+	struct wlan_objmgr_psoc *psoc;
+	QDF_STATUS status;
+	uint8_t passive_discard_for_mode;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("invalid psoc");
+		return;
+	}
+
+	if (!wlan_reg_is_passive_for_freq(pdev, res_msg[chan_enum].freq))
+		return;
+
+	status = ucfg_mlme_get_passive_discard_mode(psoc,
+						    &passive_discard_for_mode);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		reg_err("failed to get passive discard mode");
+		return;
+	}
+	switch (passive_discard_for_mode) {
+	case DISCARD_PASSIVE_FOR_P2P_GO_AND_SAP:
+		res_msg[chan_enum].iface_mode_mask &= ~(iface_mode);
+		if (!res_msg[chan_enum].iface_mode_mask)
+			reg_remove_freq(res_msg, chan_enum);
+		break;
+	case DISCARD_PASSIVE_FOR_P2P_GO:
+		if (iface_mode & (1 << IFTYPE_P2P_GO)) {
+			res_msg[chan_enum].iface_mode_mask &= ~(iface_mode);
+			if (!res_msg[chan_enum].iface_mode_mask)
+				reg_remove_freq(res_msg, chan_enum);
+		}
+		break;
+	case DISCARD_PASSIVE_FOR_SAP:
+		if (iface_mode & (1 << IFTYPE_AP)) {
+			res_msg[chan_enum].iface_mode_mask &= ~(iface_mode);
+			if (!res_msg[chan_enum].iface_mode_mask)
+				reg_remove_freq(res_msg, chan_enum);
+		}
+		break;
+	default:
+		reg_debug("mode not handled %d", passive_discard_for_mode);
+		break;
+	}
+}
+
+static void
 reg_update_list_for_dfs_channel(struct wlan_objmgr_pdev *pdev,
 			        struct get_usable_chan_res_params *res_msg,
 				uint32_t chan_enum, uint32_t iface_mode)
@@ -4067,6 +4123,10 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 								chan_enum);
 				}
 				reg_update_list_for_dfs_channel(pdev, res_msg,
+								chan_enum,
+								iface_mode);
+				reg_update_list_for_passive_channel(
+								pdev, res_msg,
 								chan_enum,
 								iface_mode);
 			}
