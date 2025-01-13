@@ -7400,6 +7400,14 @@ void lim_update_he_caps_mcs(struct mac_context *mac, struct pe_session *session)
 }
 
 static void
+lim_print_he_config(tDot11fIEhe_cap he_config)
+{
+	pe_debug("he_config: 0x");
+	qdf_trace_hex_dump(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_DEBUG,
+			   (void *)&he_config, sizeof(he_config));
+}
+
+static void
 lim_revise_req_he_cap_per_band(struct mlme_legacy_priv *mlme_priv,
 			       struct pe_session *session)
 {
@@ -7463,8 +7471,8 @@ lim_revise_req_he_cap_per_band(struct mlme_legacy_priv *mlme_priv,
 		he_config->codebook_su = mac->he_cap_5g.codebook_su;
 		he_config->codebook_mu = mac->he_cap_5g.codebook_mu;
 	}
+	lim_print_he_config(mlme_priv->he_config);
 
-	pe_debug("he_config: 0x%x", mlme_priv->he_config);
 }
 
 static void
@@ -10381,7 +10389,8 @@ void lim_send_beacon(struct mac_context *mac_ctx, struct pe_session *session)
 					session->vdev,
 					WLAN_VDEV_SM_EV_CHAN_SWITCH_DISABLED,
 					sizeof(*session), session);
-	else
+	else if (wlan_vdev_is_up_active_state(session->vdev) !=
+		 QDF_STATUS_SUCCESS)
 		wlan_vdev_mlme_sm_deliver_evt(session->vdev,
 					      WLAN_VDEV_SM_EV_START_SUCCESS,
 					      sizeof(*session), session);

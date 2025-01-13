@@ -4807,6 +4807,30 @@ QDF_STATUS cm_process_join_req(struct cm_vdev_join_req *join_req)
 	return status;
 }
 
+#if defined(WLAN_FEATURE_MULTI_LINK_SAP) && defined(WLAN_FEATURE_11BE_MLO)
+void cm_get_pre_auth_mld_addr(struct mac_context *mac,
+			      uint8_t *peer_addr,
+			      uint8_t *mld_addr)
+{
+	struct tLimPreAuthNode *auth_node;
+
+	auth_node = lim_search_pre_auth_list(mac, peer_addr);
+	if (!auth_node) {
+		pe_err("Search pre-auth nodes failure " QDF_MAC_ADDR_FMT,
+		       QDF_MAC_ADDR_REF(peer_addr));
+		return;
+	}
+
+	if (!qdf_is_macaddr_zero((struct qdf_mac_addr *)&auth_node->peer_mld)) {
+		pe_debug("Get mld addr from preauth list " QDF_MAC_ADDR_FMT,
+			 QDF_MAC_ADDR_REF(auth_node->peer_mld));
+		qdf_mem_copy(mld_addr,
+			     (uint8_t *)&auth_node->peer_mld,
+			     QDF_MAC_ADDR_SIZE);
+	}
+}
+#endif
+
 static void lim_process_disconnect_sta(struct pe_session *session,
 				       struct scheduler_msg *msg)
 {
@@ -10381,6 +10405,12 @@ static void lim_process_update_add_ies(struct mac_context *mac_ctx,
 		pe_err("msg_buf is NULL");
 		return;
 	}
+
+	if (update_add_ies->updateType == eUPDATE_IE_EDCA_ALL_PROFILE) {
+		sch_edca_profile_update_all(mac_ctx);
+		return;
+	}
+
 	update_ie = &update_add_ies->updateIE;
 	/* incoming message has smeSession, use BSSID to find PE session */
 	session_entry = pe_find_session_by_bssid(mac_ctx,
