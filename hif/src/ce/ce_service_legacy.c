@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1123,8 +1123,11 @@ ce_per_engine_handler_adjust_legacy(struct CE_state *CE_state,
 }
 
 #ifdef QCA_WIFI_WCN6450
+#define CE_SRC_DESC_PKT_TYPE_MASK 0x3
+
 int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
-		    unsigned int transfer_id, uint32_t download_len)
+		    unsigned int transfer_id, uint32_t download_len,
+		    uint8_t encap_type)
 {
 	struct CE_state *ce_state = (struct CE_state *)copyeng;
 	struct hif_softc *scn = ce_state->scn;
@@ -1206,6 +1209,7 @@ int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 					CE_ATTR_BYTE_SWAP_DATA) != 0);
 		/* For the first one, it still does not need to write */
 		shadow_src_desc->gather = 1;
+		shadow_src_desc->type = encap_type & CE_SRC_DESC_PKT_TYPE_MASK;
 		*src_desc = *shadow_src_desc;
 		/* By default we could initialize the transfer context to this
 		 * value

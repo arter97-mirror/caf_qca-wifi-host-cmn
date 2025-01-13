@@ -187,6 +187,16 @@ static void scm_add_rnr_channel_db(struct wlan_objmgr_pdev *pdev,
 			continue;
 		}
 		channel->bss_beacon_probe_count++;
+
+		/* Skip non Tx MBSSID profile */
+		if (QDF_GET_BITS(rnr_bss->bss_params, 2, 2) == 0x1) {
+			scm_debug("skip nontx freq %d: " QDF_MAC_ADDR_FMT " short ssid %x",
+				  chan_freq,
+				  QDF_MAC_ADDR_REF(rnr_bss->bssid.bytes),
+				  rnr_bss->short_ssid);
+			continue;
+		}
+
 		/* Don't add RNR entry if list is full */
 		if (qdf_list_size(&channel->rnr_list) >= WLAN_MAX_RNR_COUNT) {
 			scm_debug("List is full");

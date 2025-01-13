@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -104,6 +104,9 @@ dp_peer_setup_rh(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			dp_peer_find_hash_find(soc, peer_mac, 0, vdev_id,
 					       DP_MOD_ID_CDP);
 	enum wlan_op_mode vdev_opmode;
+	enum cdp_host_reo_dest_ring dest_ring;
+	bool hash_based = 0;
+	uint8_t lmac_peer_id_msb = 0;
 
 	if (!peer)
 		return QDF_STATUS_E_FAILURE;
@@ -141,6 +144,17 @@ dp_peer_setup_rh(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		status = QDF_STATUS_E_FAILURE;
 		goto fail;
 	}
+
+	soc->arch_ops.peer_get_reo_hash(vdev, setup_info, &dest_ring,
+					&hash_based, &lmac_peer_id_msb);
+
+	if (soc->cdp_soc.ol_ops->peer_set_default_routing)
+		soc->cdp_soc.ol_ops->peer_set_default_routing(
+				soc->ctrl_psoc,
+				peer->vdev->pdev->pdev_id,
+				peer->mac_addr.raw,
+				peer->vdev->vdev_id, hash_based, dest_ring,
+				lmac_peer_id_msb);
 
 	if (vdev_opmode != wlan_op_mode_monitor)
 		dp_peer_rx_init(pdev, peer);

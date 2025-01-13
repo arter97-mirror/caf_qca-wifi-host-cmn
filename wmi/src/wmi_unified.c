@@ -3672,16 +3672,18 @@ wmi_unified_connect_htc_service(struct wmi_unified *wmi_handle,
 {
 	uint32_t i;
 	uint8_t wmi_ep_count;
-
+	QDF_STATUS status;
 	wmi_handle->soc->htc_handle = htc_handle;
 
 	wmi_ep_count = htc_get_wmi_endpoint_count(htc_handle);
 	if (wmi_ep_count > WMI_MAX_RADIOS)
 		return QDF_STATUS_E_FAULT;
 
-	for (i = 0; i < wmi_ep_count; i++)
-		wmi_connect_pdev_htc_service(wmi_handle->soc, i);
-
+	for (i = 0; i < wmi_ep_count; i++) {
+		status = wmi_connect_pdev_htc_service(wmi_handle->soc, i);
+		if (QDF_IS_STATUS_ERROR(status))
+			return status;
+	}
 	wmi_handle->htc_handle = htc_handle;
 	wmi_handle->wmi_endpoint_id = wmi_handle->soc->wmi_endpoint_id[0];
 	wmi_handle->max_msg_len = wmi_handle->soc->max_msg_len[0];

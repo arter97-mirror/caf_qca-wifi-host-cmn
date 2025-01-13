@@ -914,6 +914,16 @@ void hif_ce_desc_record_rx_paddr(struct hif_softc *scn,
 }
 #endif /* HIF_RECORD_PADDR */
 
+static inline int ce_ring_try_aquire_lock(struct CE_handle *handle)
+{
+	struct CE_state *ce_state = (struct CE_state *)handle;
+
+	if (!qdf_spin_trylock_bh(&ce_state->ce_index_lock))
+		return -EINVAL;
+
+	return 0;
+}
+
 static inline void ce_ring_aquire_lock(struct CE_handle *handle)
 {
 	struct CE_state *ce_state = (struct CE_state *)handle;
