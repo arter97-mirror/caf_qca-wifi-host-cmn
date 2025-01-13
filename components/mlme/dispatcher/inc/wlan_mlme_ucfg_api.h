@@ -5674,6 +5674,17 @@ QDF_STATUS
 ucfg_mlme_get_dfs_discard_mode(struct wlan_objmgr_psoc *psoc,
 			       uint8_t *val);
 
+/*
+ * ucfg_mlme_get_passive_discard_mode() - Get the passive discard mode
+ * @psoc: pointer to psoc object
+ * @val:  bit mask of mode for which passive channel need to discard
+ *
+ * Return: QDF Status
+ */
+QDF_STATUS
+ucfg_mlme_get_passive_discard_mode(struct wlan_objmgr_psoc *psoc,
+				   uint8_t *val);
+
 /**
  * ucfg_mlme_set_p2p_device_mac_addr - set p2p device interface mac
  * address to stat vdev mlme object
