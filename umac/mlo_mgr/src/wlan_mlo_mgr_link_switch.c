@@ -31,6 +31,7 @@
 #include <wlan_mlo_link_recfg.h>
 #endif
 #include "host_diag_core_event.h"
+#include <wlan_t2lm_api.h>
 
 static QDF_STATUS
 mlo_mgr_update_link_rej_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -656,6 +657,9 @@ bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
 	struct mlo_link_info *link_info;
 	uint8_t link_info_iter;
+	struct wlan_t2lm_info t2lm[WLAN_T2LM_MAX_DIRECTION] = {0};
+	uint16_t tid_mapped_link_id = 0, tid_mapped = 0;
+	QDF_STATUS status;
 
 	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
 		return false;
@@ -664,11 +668,40 @@ bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
 	if (!mlo_dev_ctx)
 		return false;
 
+	status = wlan_get_t2lm_mapping_status(vdev, t2lm);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_info("Unable to get t2lm_mapping");
+		return false;
+	}
+
+	status = t2lm_find_tid_mapped_link_id(t2lm, &tid_mapped);
+	if (QDF_IS_STATUS_ERROR(status))
+		return false;
+
+	tid_mapped_link_id = t2lm_get_tids_mapped_link_id(tid_mapped);
+
 	link_info = &mlo_dev_ctx->link_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (link_info->is_link_active ||
 		    qdf_is_macaddr_zero(&link_info->ap_link_addr)) {
+			link_info++;
+			continue;
+		}
+
+		/* Don't add freq in PCL if link is disable via TID mapping.
+		 * default_link_mapping means all TID maps to all link id
+		 * tid_mapped_link_id means this particular link id is active
+		 * due to tid mapping
+		 */
+		if (!t2lm[0].default_link_mapping &&
+		    link_info->link_id != tid_mapped_link_id) {
+			if (link_info->link_chan_info->ch_freq == freq)
+				mlo_debug("Skip link_id %d chan_freq %d as tid is mapped to %d",
+					  link_info->link_id,
+					  link_info->link_chan_info->ch_freq,
+					  tid_mapped_link_id);
+
 			link_info++;
 			continue;
 		}
