@@ -144,8 +144,8 @@ nan_add_peer_in_migrated_addr_list(struct wlan_objmgr_psoc *psoc,
 		goto ref_rel;
 	}
 
-	idx = nan_vdev_priv->num_peer_migrated++;
-	if (nan_vdev_priv->num_peer_migrated > MAX_NAN_MIGRATED_PEERS) {
+	idx = nan_vdev_priv->num_peer_migrated;
+	if (idx >= MAX_NAN_MIGRATED_PEERS) {
 		nan_err("num migrated peers %d more than max migrated peers",
 			nan_vdev_priv->num_peer_migrated);
 		status = QDF_STATUS_E_FAILURE;
@@ -157,6 +157,7 @@ nan_add_peer_in_migrated_addr_list(struct wlan_objmgr_psoc *psoc,
 
 	nan_debug("add peer to migrated list at index %d", idx);
 
+	nan_vdev_priv->num_peer_migrated++;
 ref_rel:
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_NAN_ID);
 	return status;
@@ -2587,8 +2588,8 @@ QDF_STATUS nan_cache_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_NULL_VALUE;
 	}
 
-	idx = nan_psoc_priv->num_ndp_peers++;
-	if (nan_psoc_priv->num_ndp_peers > MAX_NDP_PEERS) {
+	idx = nan_psoc_priv->num_ndp_peers;
+	if (idx >= MAX_NDP_PEERS) {
 		nan_err("num peers %d more than max NDP peers",
 			nan_psoc_priv->num_ndp_peers);
 		return QDF_STATUS_E_FAILURE;
@@ -2598,6 +2599,8 @@ QDF_STATUS nan_cache_ndp_peer_mac_addr(struct wlan_objmgr_psoc *psoc,
 		     peer_mac_addr->bytes, QDF_MAC_ADDR_SIZE);
 
 	nan_debug("cached peer at index %d", idx);
+
+	nan_psoc_priv->num_ndp_peers++;
 
 	return QDF_STATUS_SUCCESS;
 }
