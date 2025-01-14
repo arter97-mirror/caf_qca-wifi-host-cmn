@@ -4391,6 +4391,54 @@ wlan_mlme_set_eht_mld_id(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+QDF_STATUS
+wlan_mlme_update_mlo_recfg_info(struct wlan_objmgr_psoc *psoc,
+				uint8_t vdev_id,
+				struct wlan_link_recfg_info *recfg_info)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct wlan_mlo_link_recfg_bitmap *link_recfg_bm;
+	uint8_t i;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_MLME_OBJMGR_ID);
+
+	if (!vdev) {
+		mlme_err("get vdev failed");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlme_err("get vdev mlo dev ctx failed");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!mlo_dev_ctx->link_recfg_ctx) {
+		mlme_err("get Link reconfig ctx failed");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	link_recfg_bm = &mlo_dev_ctx->link_recfg_ctx->link_recfg_bm;
+
+	for (i = 0; i < recfg_info->num_frame; i++) {
+		link_recfg_bm->add_link_bitmap[i] =
+				recfg_info->add_link_bm[i];
+		link_recfg_bm->delete_link_bitmap[i] =
+				recfg_info->delete_link_bm[i];
+		mlme_debug("frame: %d, add link bm: %d, delete link bm: %d",
+			   i, recfg_info->add_link_bm[i],
+			   recfg_info->delete_link_bm[i]);
+	}
+	link_recfg_bm->num_frames = recfg_info->num_frame;
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 QDF_STATUS

@@ -4082,6 +4082,26 @@ ucfg_mlme_set_eht_mld_id(struct wlan_objmgr_psoc *psoc,
 {
 	return wlan_mlme_set_eht_mld_id(psoc, value);
 }
+
+/**
+ * ucfg_mlme_update_mlo_recfg_info() - Update ML reconfiguration request
+ * information
+ * @psoc: pointer to psoc object
+ * @vdev_id: vdev ID
+ * @recfg_info: Link reconfiguration request information
+ *
+ * This wrapper API invokes wlan API that updates the ML reconfiguration
+ * request information onto MLO dev context.
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+ucfg_mlme_update_mlo_recfg_info(struct wlan_objmgr_psoc *psoc,
+				uint8_t vdev_id,
+				struct wlan_link_recfg_info *recfg_info)
+{
+	return wlan_mlme_update_mlo_recfg_info(psoc, vdev_id, recfg_info);
+}
 #else
 static inline uint8_t
 ucfg_mlme_get_eht_mld_id(struct wlan_objmgr_psoc *psoc)
@@ -4091,6 +4111,14 @@ ucfg_mlme_get_eht_mld_id(struct wlan_objmgr_psoc *psoc)
 
 static inline QDF_STATUS
 ucfg_mlme_set_eht_mld_id(struct wlan_objmgr_psoc *psoc, uint8_t value)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+ucfg_mlme_update_mlo_recfg_info(struct wlan_objmgr_psoc *psoc,
+				uint8_t vdev_id,
+				struct wlan_link_recfg_info *recfg_info)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

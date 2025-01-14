@@ -3166,6 +3166,23 @@ void
 wlan_mlme_get_mlo_prefer_percentage(
 				struct wlan_objmgr_psoc *psoc,
 				int8_t *mlo_prefer_percentage);
+
+/**
+ * wlan_mlme_update_mlo_recfg_info() - Update ML reconfiguration request
+ * information
+ * @psoc: pointer to psoc object
+ * @vdev_id: vdev ID
+ * @recfg_info: Link reconfiguration request information
+ *
+ * This API updates the ML reconfiguration request information onto MLO
+ * dev context.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_mlme_update_mlo_recfg_info(struct wlan_objmgr_psoc *psoc,
+				uint8_t vdev_id,
+				struct wlan_link_recfg_info *recfg_info);
 #else
 static inline bool
 wlan_mlme_is_link_recfg_support(struct wlan_objmgr_psoc *psoc)

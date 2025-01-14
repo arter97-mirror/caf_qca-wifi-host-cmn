@@ -8989,6 +8989,8 @@ const struct nla_policy wlan_hdd_wifi_config_policy[
 		.type = NLA_U16},
 	[QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE] = {
 		.type = NLA_U8},
+	[QCA_WLAN_VENDOR_ATTR_CONFIG_SETUP_LINK_RECONFIG_SUPPORT] = {
+		.type = NLA_U8},
 };
 
 
@@ -9155,6 +9157,8 @@ wlan_hdd_wifi_test_config_policy[
 			.type = NLA_U8},
 		[QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BTM_REQ_REJECT] = {
 			.type = NLA_U8},
+		[QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BTM_REQ_RESP] = {
+			.type = NLA_NESTED},
 };
 
 /**
@@ -13510,6 +13514,26 @@ static int hdd_set_t2lm_negotiation_support(struct wlan_hdd_link_info *link_info
 
 	return 0;
 }
+
+static int hdd_set_link_reconfig_support(struct wlan_hdd_link_info *link_info,
+					 const struct nlattr *attr)
+{
+	struct hdd_context *hdd_ctx = NULL;
+	uint8_t cfg_val;
+
+	if (!attr)
+		return -EINVAL;
+
+	cfg_val = nla_get_u8(attr);
+
+	hdd_debug("Multi-link reconfiguration support: %d", cfg_val);
+
+	hdd_ctx = WLAN_HDD_GET_CTX(link_info->adapter);
+
+	wlan_mlme_set_link_recfg_support(hdd_ctx->psoc, cfg_val);
+
+	return 0;
+}
 #else
 static inline int
 hdd_set_link_force_active(struct wlan_hdd_link_info *link_info,
@@ -13542,6 +13566,13 @@ hdd_set_epcs_capability(struct wlan_hdd_link_info *link_info,
 static inline int
 hdd_trigger_epcs_function(struct wlan_hdd_link_info *link_info,
 			  const struct nlattr *attr)
+{
+	return 0;
+}
+
+static inline int
+hdd_set_link_reconfig_support(struct wlan_hdd_link_info *link_info,
+			      const struct nlattr *attr)
 {
 	return 0;
 }
@@ -13755,6 +13786,8 @@ static const struct independent_setters independent_setters[] = {
 	 hdd_set_p2p_go_bcn_int},
 	{QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE,
 	 hdd_set_dfs_owner_disable},
+	{QCA_WLAN_VENDOR_ATTR_CONFIG_SETUP_LINK_RECONFIG_SUPPORT,
+	hdd_set_link_reconfig_support},
 };
 
 #ifdef WLAN_FEATURE_ELNA
@@ -15361,6 +15394,22 @@ static inline void wlan_hdd_set_listen_interval(struct hdd_context *hdd_ctx,
 }
 #endif
 
+static const struct nla_policy
+wlan_btm_req_resp_policy [QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_MAX + 1] = {
+	[QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_TYPE] = {
+			.type = NLA_U8},
+	[QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_RECONFIG_FRAME_INFO] = {
+			.type = NLA_NESTED},
+};
+
+static const struct nla_policy
+wlan_reconfig_frame_info_policy[QCA_WLAN_VENDOR_ATTR_RECONFIG_MAX + 1] = {
+	[QCA_WLAN_VENDOR_ATTR_RECONFIG_ADD_LINKS_BITMASK] = {
+			.type = NLA_U16},
+	[QCA_WLAN_VENDOR_ATTR_RECONFIG_DELETE_LINKS_BITMASK] = {
+			.type = NLA_U16},
+};
+
 /**
  * __wlan_hdd_cfg80211_set_wifi_test_config() - Wifi test configuration
  * vendor command
@@ -16620,6 +16669,106 @@ __wlan_hdd_cfg80211_set_wifi_test_config(struct wiphy *wiphy,
 
 		if (ret_val)
 			hdd_err("Failed to set BTM reject config");
+	}
+
+	cmd_id = QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_BTM_REQ_RESP;
+	if (tb[cmd_id]) {
+		int rem;
+		uint8_t i = 0;
+		struct nlattr *tb2[QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_MAX + 1];
+		struct nlattr *tb3[QCA_WLAN_VENDOR_ATTR_RECONFIG_MAX + 1];
+		struct nlattr *curr_attr;
+		struct wlan_link_recfg_info recfg_info;
+
+		qdf_mem_zero(&recfg_info, sizeof(struct wlan_link_recfg_info));
+
+		if (wlan_cfg80211_nla_parse_nested(
+					tb2,
+					QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_MAX,
+					tb[cmd_id], wlan_btm_req_resp_policy)) {
+			hdd_debug("Failed to parse btm request response");
+			goto send_err;
+		}
+
+		if (!tb2[QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_TYPE]) {
+			hdd_debug("Response type not found");
+			goto send_err;
+		}
+
+		cmd_id = QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_TYPE;
+		switch (nla_get_u8(tb2[cmd_id])) {
+		case QCA_WLAN_BTM_REQ_RESP_RECONFIG_FRAME:
+			hdd_debug("link reconfig response requested");
+			/* Reset abridge flag and T2LM support */
+			wlan_mlme_set_btm_abridge_flag(hdd_ctx->psoc, false);
+			wlan_mlme_set_t2lm_negotiation_supported(
+							hdd_ctx->psoc,
+							WLAN_T2LM_DISABLE);
+			break;
+		case QCA_WLAN_BTM_REQ_RESP_DEFAULT:
+			/* Clear wlan_link_recfg_info structure */
+			qdf_mem_zero(&recfg_info,
+				     sizeof(struct wlan_link_recfg_info));
+			ucfg_mlme_update_mlo_recfg_info(hdd_ctx->psoc,
+							link_info->vdev_id,
+							&recfg_info);
+			break;
+		case QCA_WLAN_BTM_REQ_RESP_REASSOC_FRAME:
+		case QCA_WLAN_BTM_REQ_RESP_TTLM_FRAME:
+			break;
+		default:
+			hdd_err("Invalid response type");
+			break;
+		}
+
+		if (nla_get_u8(tb2[cmd_id]) == QCA_WLAN_BTM_REQ_RESP_RECONFIG_FRAME) {
+			cmd_id = QCA_WLAN_VENDOR_ATTR_BTM_REQ_RESP_RECONFIG_FRAME_INFO;
+			nla_for_each_nested(curr_attr, tb2[cmd_id], rem)
+				recfg_info.num_frame++;
+		} else {
+			goto BTM_REQ_RESP_DONE;
+		}
+
+		if (!recfg_info.num_frame) {
+			hdd_err("reconfig info not found");
+			goto send_err;
+		}
+
+		hdd_debug("number of frames to send Link reconfig request: %d",
+			  recfg_info.num_frame);
+		nla_for_each_nested(curr_attr, tb2[cmd_id], rem) {
+			if (wlan_cfg80211_nla_parse_nested(
+					tb3,
+					QCA_WLAN_VENDOR_ATTR_RECONFIG_MAX,
+					curr_attr,
+					wlan_reconfig_frame_info_policy)) {
+				hdd_err("nla_parse failed");
+				goto send_err;
+			}
+			recfg_info.add_link_bm[i] = 0;
+			recfg_info.delete_link_bm[i] = 0;
+
+			if (tb3[QCA_WLAN_VENDOR_ATTR_RECONFIG_ADD_LINKS_BITMASK]) {
+				recfg_info.add_link_bm[i] =
+				nla_get_u16(tb3[QCA_WLAN_VENDOR_ATTR_RECONFIG_ADD_LINKS_BITMASK]);
+				hdd_debug("add_link_bm[%d]: %d",
+					  i, recfg_info.add_link_bm[i]);
+			}
+
+			if (tb3[QCA_WLAN_VENDOR_ATTR_RECONFIG_DELETE_LINKS_BITMASK]) {
+				recfg_info.delete_link_bm[i] =
+				nla_get_u16(tb3[QCA_WLAN_VENDOR_ATTR_RECONFIG_DELETE_LINKS_BITMASK]);
+				hdd_debug("delete_link_bm[%d]: %d",
+					  i, recfg_info.delete_link_bm[i]);
+			}
+			i++;
+		}
+		/* update mlo dev ctx with info */
+		ucfg_mlme_update_mlo_recfg_info(hdd_ctx->psoc,
+						link_info->vdev_id,
+						&recfg_info);
+BTM_REQ_RESP_DONE:
+		hdd_debug("BTM_REQ_RESP_DONE");
 	}
 
 	if (update_sme_cfg)
