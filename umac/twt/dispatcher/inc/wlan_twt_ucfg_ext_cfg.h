@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -117,6 +117,25 @@ ucfg_twt_cfg_get_rtwt_requestor(struct wlan_objmgr_psoc *psoc, bool *val);
 QDF_STATUS
 ucfg_twt_cfg_get_flex_sched(struct wlan_objmgr_psoc *psoc, bool *val);
 
+/**
+ * ucfg_twt_tgt_caps_get_wake_dur_and_wake_intvl() - get min_max_wake_dur
+ * and min_max_wake_intvl supported by firmware
+ * @psoc: psoc pointer
+ * @min_wake_dur: min wake_dur supported by firmware
+ * @max_wake_dur: max wake_dur supported by firmware
+ * @min_wake_intvl: min wake_intvl supported by firmware
+ * @max_wake_intvl: max wake_intvl supported by firmware
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+ucfg_twt_tgt_caps_get_wake_dur_and_wake_intvl(
+				struct wlan_objmgr_psoc *psoc,
+				uint32_t *min_wake_dur,
+				uint32_t *max_wake_dur,
+				uint32_t *min_wake_intvl,
+				uint32_t *max_wake_intvl);
+
 #else
 static inline
 QDF_STATUS ucfg_twt_cfg_get_requestor(struct wlan_objmgr_psoc *psoc, bool *val)
@@ -181,5 +200,22 @@ ucfg_twt_cfg_get_flex_sched(struct wlan_objmgr_psoc *psoc, bool *val)
 	*val = false;
 	return QDF_STATUS_SUCCESS;
 }
+
+static inline QDF_STATUS
+ucfg_twt_tgt_caps_get_wake_dur_and_wake_intvl(
+				struct wlan_objmgr_psoc *psoc,
+				uint32_t *min_wake_dur,
+				uint32_t *max_wake_dur,
+				uint32_t *min_wake_intvl,
+				uint32_t *max_wake_intvl)
+{
+	*min_wake_dur = 0;
+	*max_wake_dur = 0;
+	*min_wake_intvl = 0;
+	*max_wake_intvl = 0;
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #endif /* WLAN_TWT_CONV_SUPPORTED */
 #endif /* _WLAN_TWT_UCFG_EXT_CFG_H_ */

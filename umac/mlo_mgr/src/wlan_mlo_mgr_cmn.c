@@ -29,6 +29,7 @@
 #include <cdp_txrx_cmn.h>
 #include <wlan_cfg.h>
 #include "wlan_utility.h"
+#include "wlan_mlo_link_recfg.h"
 
 void mlo_get_link_information(struct qdf_mac_addr *mld_addr,
 			      struct mlo_link_info *info)
@@ -775,10 +776,95 @@ mlo_link_set_active_resp_vdev_handler(struct wlan_objmgr_psoc *psoc,
 	event->evt_handled = true;
 }
 
+static void
+mlo_link_set_resp_link_recfg_handler(struct wlan_objmgr_psoc *psoc,
+				     void *obj, void *arg)
+{
+	struct wlan_objmgr_vdev *vdev = obj;
+	struct mlo_link_set_active_resp *event = arg;
+	struct mlo_link_set_active_req *req;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_link_recfg_context *recfg_ctx;
+	struct wlan_objmgr_vdev *vdev_in_set_link;
+
+	if (event->evt_handled)
+		return;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx)
+		return;
+
+	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
+	if (!recfg_ctx)
+		return;
+
+	if (!wlan_serialization_get_active_cmd(psoc,
+					       wlan_vdev_get_id(vdev),
+					       WLAN_SER_CMD_LINK_RECFG))
+		return;
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	if (!recfg_ctx->set_link_req) {
+		mlo_debug("no pending set link for link recfg, vdev %d",
+			  wlan_vdev_get_id(vdev));
+		mlo_dev_lock_release(mlo_dev_ctx);
+		return;
+	}
+
+	req = recfg_ctx->set_link_req;
+	recfg_ctx->set_link_req = NULL;
+	vdev_in_set_link = req->ctx.vdev;
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	req->ctx.set_mlo_link_cb(vdev_in_set_link, req->ctx.cb_arg, event);
+
+	event->evt_handled = true;
+	mlo_link_recfg_set_link_resp(vdev_in_set_link, event->status);
+
+	wlan_objmgr_vdev_release_ref(vdev_in_set_link, WLAN_MLO_MGR_ID);
+	qdf_mem_free(req);
+}
+
+void
+mlo_link_recfg_set_link_resp_timeout(struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
+	struct mlo_link_set_active_req *req;
+	struct mlo_link_recfg_context *recfg_ctx;
+	struct wlan_objmgr_vdev *vdev_in_set_link;
+
+	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
+	if (!recfg_ctx) {
+		mlo_err("invalid recfg_ctx");
+		return;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	if (!recfg_ctx->set_link_req) {
+		mlo_debug("no pending set link for link recfg");
+		mlo_dev_lock_release(mlo_dev_ctx);
+		return;
+	}
+	req = recfg_ctx->set_link_req;
+	recfg_ctx->set_link_req = NULL;
+	vdev_in_set_link = req->ctx.vdev;
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	req->ctx.set_mlo_link_cb(vdev_in_set_link, req->ctx.cb_arg, NULL);
+
+	wlan_objmgr_vdev_release_ref(vdev_in_set_link, WLAN_MLO_MGR_ID);
+	qdf_mem_free(req);
+};
+
 QDF_STATUS
 mlo_process_link_set_active_resp(struct wlan_objmgr_psoc *psoc,
 				 struct mlo_link_set_active_resp *event)
 {
+	wlan_objmgr_iterate_obj_list(psoc, WLAN_VDEV_OP,
+				     mlo_link_set_resp_link_recfg_handler,
+				     event, true, WLAN_MLO_MGR_ID);
+	if (event->evt_handled)
+		return QDF_STATUS_SUCCESS;
+
 	wlan_objmgr_iterate_obj_list(psoc, WLAN_VDEV_OP,
 				     mlo_link_set_active_resp_vdev_handler,
 				     event, true, WLAN_MLO_MGR_ID);
@@ -786,6 +872,71 @@ mlo_process_link_set_active_resp(struct wlan_objmgr_psoc *psoc,
 		mlo_debug("link set resp evt not handled");
 
 	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+mlo_set_link_for_recfg(struct mlo_link_set_active_req *req)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	QDF_STATUS status;
+	struct mlo_link_recfg_context *recfg_ctx;
+
+	vdev = req->ctx.vdev;
+	if (!vdev) {
+		mlo_err("invalid vdev");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		mlo_err("invalid psoc");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo_dev_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	recfg_ctx = mlo_dev_ctx->link_recfg_ctx;
+	if (!recfg_ctx) {
+		mlo_err("invalid recfg_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	status = wlan_objmgr_vdev_try_get_ref(vdev, WLAN_MLO_MGR_ID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("vdev %d unable to get reference",
+			wlan_vdev_get_id(vdev));
+		return status;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	if (recfg_ctx->set_link_req) {
+		mlo_err("unexpected, has pending set link for recfg");
+		mlo_dev_lock_release(mlo_dev_ctx);
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+		return QDF_STATUS_E_BUSY;
+	}
+	recfg_ctx->set_link_req = req;
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	status = mlo_link_set_active(psoc, req);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("vdev %d mlo_link_set_active failed",
+			wlan_vdev_get_id(vdev));
+
+		mlo_dev_lock_acquire(mlo_dev_ctx);
+		/* for failure case, caller will free the req memory. */
+		recfg_ctx->set_link_req = NULL;
+		mlo_dev_lock_release(mlo_dev_ctx);
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+	}
+
+	return status;
 }
 
 /**
@@ -859,6 +1010,23 @@ QDF_STATUS mlo_ser_set_link_req(struct mlo_link_set_active_req *req)
 		return QDF_STATUS_E_INVAL;
 
 	vdev = req->ctx.vdev;
+	if (req->param.control_flags.set_link_for_recfg) {
+		if (!wlan_serialization_get_active_cmd(
+				wlan_vdev_get_psoc(vdev),
+				wlan_vdev_get_id(vdev),
+				WLAN_SER_CMD_LINK_RECFG)) {
+			mlo_err("vdev %d no active link recfg",
+				wlan_vdev_get_id(vdev));
+			return QDF_STATUS_E_INVAL;
+		}
+		status = mlo_set_link_for_recfg(req);
+		if (QDF_IS_STATUS_ERROR(status))
+			mlo_err("vdev %d set link for recfg failed %d",
+				wlan_vdev_get_id(vdev), status);
+
+		return status;
+	}
+
 	status = wlan_objmgr_vdev_try_get_ref(vdev, WLAN_MLO_MGR_ID);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlo_err("vdev %d unable to get reference",

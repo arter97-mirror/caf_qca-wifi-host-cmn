@@ -107,6 +107,17 @@ QDF_STATUS wlan_reg_get_pwrmode_chan_list(struct wlan_objmgr_pdev *pdev,
 
 qdf_export_symbol(wlan_reg_get_pwrmode_chan_list);
 
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+QDF_STATUS
+wlan_reg_check_if_6g_pwr_type_supp_for_chan(struct wlan_objmgr_pdev *pdev,
+					    enum reg_6g_ap_type ap_pwr_type,
+					    enum channel_enum chan_idx)
+{
+	return reg_check_if_6g_pwr_type_supp_for_chan(pdev, ap_pwr_type,
+						      chan_idx);
+}
+#endif
+
 #ifdef CONFIG_REG_CLIENT
 QDF_STATUS
 wlan_reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1382,7 +1382,7 @@ static inline void copy_channel_info(
 	 */
 	WMI_SET_CHANNEL_MIN_POWER(chan, req->channel.minpower);
 	WMI_SET_CHANNEL_MAX_POWER(chan, req->channel.maxpower);
-	WMI_SET_CHANNEL_REG_POWER(chan, req->channel.maxregpower);
+	WMI_SET_CHANNEL_REG_POWER(chan, req->channel.regpower);
 	WMI_SET_CHANNEL_ANTENNA_MAX(chan, req->channel.antennamax);
 	WMI_SET_CHANNEL_REG_CLASSID(chan, req->channel.reg_class_id);
 	WMI_SET_CHANNEL_MAX_TX_POWER(chan, req->channel.maxregpower);
@@ -15542,8 +15542,7 @@ extract_hw_bdf_status(wmi_service_ready_ext2_event_fixed_param *ev)
 	hw_bdf_s = ev->hw_bd_status;
 	switch (hw_bdf_s) {
 	case WMI_BDF_VERSION_CHECK_DISABLED:
-		wmi_info("BDF VER is %d, FW and BDF ver check skipped",
-			 hw_bdf_s);
+		wmi_info("FW and BDF ver check skipped");
 		break;
 	case WMI_BDF_VERSION_CHECK_GOOD:
 		wmi_info("BDF VER is %d, FW and BDF ver check good",
@@ -16187,6 +16186,25 @@ static void extract_mac_phy_msdcap(struct wlan_psoc_host_mac_phy_caps_ext2 *para
 	param->msdcap.medium_sync_ofdm_ed_thresh = WMI_MEDIUM_SYNC_OFDM_ED_THRESHOLD_GET(mac_phy_caps->msd_capability);
 	param->msdcap.medium_sync_max_txop_num = WMI_MEDIUM_SYNC_MAX_NO_TXOPS_GET(mac_phy_caps->msd_capability);
 }
+
+/**
+ * extract_mac_phy_ext_mldcap() - API to extract extended MLD Capabilities
+ * @param: host ext2 mac phy capabilities
+ * @mac_phy_caps: ext mac phy capabilities
+ *
+ * Return: void
+ */
+static void
+extract_mac_phy_ext_mldcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+			   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
+{
+	if (!param || !mac_phy_caps)
+		return;
+
+	param->ext_mldcap.btm_recommended_for_multi_ap =
+			WMI_EXT_MLD_BTM_MLD_RECOMMEND_FOR_MULTI_AP_SUPPORT_GET(
+					mac_phy_caps->ext_mld_capability);
+}
 #else
 static void extract_mac_phy_emlcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
 				   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
@@ -16202,6 +16220,11 @@ static void extract_mac_phy_msdcap(struct wlan_psoc_host_mac_phy_caps_ext2 *para
 				   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
 {
 }
+
+static void
+extract_mac_phy_ext_mldcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+			   WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps)
+{}
 #endif
 
 /**
@@ -16338,6 +16361,7 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 	extract_mac_phy_emlcap(param, mac_phy_caps);
 	extract_mac_phy_mldcap(param, mac_phy_caps);
 	extract_mac_phy_msdcap(param, mac_phy_caps);
+	extract_mac_phy_ext_mldcap(param, mac_phy_caps);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -20564,7 +20588,7 @@ convert_wtc_scan_mode(WMI_ROAM_TRIGGER_SCAN_MODE scan_mode)
 	}
 }
 
-static uint32_t wmi_convert_fw_to_cm_trig_reason(uint32_t fw_trig_reason)
+uint32_t wmi_convert_fw_to_cm_trig_reason(uint32_t fw_trig_reason)
 {
 	switch (fw_trig_reason) {
 	case WMI_ROAM_TRIGGER_REASON_NONE:
@@ -23666,6 +23690,8 @@ static void populate_tlv_events_id_mlo(WMI_EVT_ID *event_ids)
 			WMI_MLO_LINK_SWITCH_REQUEST_EVENTID;
 	event_ids[wmi_mlo_link_state_switch_eventid] =
 			WMI_MLO_LINK_STATE_SWITCH_EVENTID;
+	event_ids[wmi_mlo_link_recfg_indication_eventid] =
+			WMI_MLO_LINK_RECONFIG_START_INDICATION_EVENTID;
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 }
 #else /* WLAN_FEATURE_11BE_MLO */
@@ -24882,6 +24908,12 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_mlo_sap_concurrency_support] =
 				WMI_SERVICE_MLO_SAP_CONCURRENCY_SUPPORT;
 #endif
+	wmi_service[wmi_service_twt_p2p_go_concurrency_support] =
+				WMI_SERVICE_TWT_P2P_GO_CONCURRENCY_SUPPORT;
+	wmi_service[wmi_service_sta_twt_stats_ext] =
+				WMI_SERVICE_STA_TWT_STATS_EXT;
+	wmi_service[wmi_service_scc_tpc_power_support] =
+				WMI_SERVICE_SCC_TPC_POWER_SUPPORT;
 }
 
 /**

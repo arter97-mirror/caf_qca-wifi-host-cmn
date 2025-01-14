@@ -164,6 +164,11 @@ void dp_peer_get_reo_hash_rh(struct dp_vdev *vdev,
 			     bool *hash_based,
 			     uint8_t *lmac_peer_id_msb)
 {
+	struct dp_soc *soc = vdev->pdev->soc;
+
+	*hash_based = wlan_cfg_is_rx_hash_enabled(soc->wlan_cfg_ctx);
+	/* CE1 is the default ring in Evros which is mapped to 1 */
+	*reo_dest = 1;
 }
 
 static inline

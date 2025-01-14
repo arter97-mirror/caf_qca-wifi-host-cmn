@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -158,6 +158,29 @@ target_if_twt_set_twt_ack_support(struct wlan_objmgr_psoc *psoc,
 }
 
 QDF_STATUS
+target_if_twt_set_wake_dur_and_wake_intvl(
+				struct wlan_objmgr_psoc *psoc,
+				uint16_t min_wake_dur,
+				uint16_t max_wake_dur,
+				uint16_t min_wake_intvl,
+				uint16_t max_wake_intvl)
+{
+	struct twt_psoc_priv_obj *twt_psoc =
+		wlan_objmgr_psoc_get_comp_private_obj(psoc, WLAN_UMAC_COMP_TWT);
+	if (!twt_psoc) {
+		target_if_err("null twt psoc priv obj");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	twt_psoc->twt_caps.min_wake_dur = min_wake_dur;
+	twt_psoc->twt_caps.max_wake_dur = max_wake_dur;
+	twt_psoc->twt_caps.min_wake_intvl = min_wake_intvl;
+	twt_psoc->twt_caps.max_wake_intvl = max_wake_intvl;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
 target_if_twt_fill_tgt_caps(struct wlan_objmgr_psoc *psoc,
 			    wmi_unified_t wmi_handle)
 {
@@ -223,6 +246,12 @@ target_if_twt_fill_tgt_caps(struct wlan_objmgr_psoc *psoc,
 	else
 		caps->restricted_twt_support = false;
 
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_twt_p2p_go_concurrency_support))
+		caps->p2p_go_concurrency_support = true;
+	else
+		caps->p2p_go_concurrency_support = false;
+
 	target_if_debug("req:%d res:%d legacy_bcast_twt_support:%d",
 		caps->twt_requestor,
 		caps->twt_responder,
@@ -234,8 +263,9 @@ target_if_twt_fill_tgt_caps(struct wlan_objmgr_psoc *psoc,
 		caps->twt_nudge_enabled,
 		caps->all_twt_enabled,
 		caps->twt_stats_enabled);
-	target_if_debug("restricted_twt_support:%d",
-			caps->restricted_twt_support);
+	target_if_debug("restricted_twt_support:%d p2p_go_concurrency_support %d",
+			caps->restricted_twt_support,
+			caps->p2p_go_concurrency_support);
+
 	return QDF_STATUS_SUCCESS;
 }
-

@@ -86,6 +86,7 @@
 #ifdef WLAN_FEATURE_11BE_MLO
 #include "wlan_mlo_mgr_cmn.h"
 #include <wlan_mlo_t2lm.h>
+#include "wlan_mlo_link_recfg.h"
 #endif
 
 #include <wlan_twt_tgt_if_rx_api.h>
@@ -1032,6 +1033,8 @@ wlan_lmac_if_mlo_rx_link_switch_ops_register(struct wlan_lmac_if_rx_ops *rx_ops)
 					mlo_mgr_link_switch_request_params;
 	rx_ops->mlo_rx_ops.mlo_link_state_switch_event_handler =
 					mlo_mgr_link_state_switch_info_handler;
+	rx_ops->mlo_rx_ops.mlo_link_recfg_indication_event_handler =
+			mlo_mgr_link_recfg_indication_event_handler;
 }
 #else
 static inline void

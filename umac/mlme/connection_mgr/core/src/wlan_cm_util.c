@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -77,11 +77,16 @@ struct cnx_mgr *cm_get_cm_ctx_fl(struct wlan_objmgr_vdev *vdev,
 {
 	struct vdev_mlme_obj *vdev_mlme;
 	struct cnx_mgr *cm_ctx = NULL;
+	enum QDF_OPMODE op_mode;
 
 	if (!vdev) {
 		mlme_rl_nofl_err("%s:%u: vdev is NULL", func, line);
 		return NULL;
 	}
+
+	op_mode = wlan_vdev_mlme_get_opmode(vdev);
+	if (op_mode != QDF_STA_MODE && op_mode != QDF_P2P_CLIENT_MODE)
+		return NULL;
 
 	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
 	if (vdev_mlme)
@@ -1346,7 +1351,7 @@ void cm_inform_bcn_probe(struct cnx_mgr *cm_ctx, uint8_t *bcn_probe,
 	qdf_mem_copy(data, bcn_probe, len);
 	/* buf will be freed by scan module in error or success case */
 	wlan_scan_process_bcn_probe_rx_sync(wlan_pdev_get_psoc(pdev), buf,
-					    &rx_param, frm_type);
+					    &rx_param, frm_type, false);
 }
 
 bool cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev)
@@ -1987,9 +1992,9 @@ cm_get_pcl_chan_weigtage_for_sta(struct wlan_objmgr_pdev *pdev,
 	pcl_lst->num_of_pcl_channels = num_entries;
 }
 
-void cm_calculate_scores(struct cnx_mgr *cm_ctx,
-			 struct wlan_objmgr_pdev *pdev,
-			 struct scan_filter *filter, qdf_list_t *list)
+void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
+			 struct scan_filter *filter, qdf_list_t *list,
+			 bool allow_scan)
 {
 	struct pcl_freq_weight_list *pcl_lst = NULL;
 
@@ -2003,18 +2008,19 @@ void cm_calculate_scores(struct cnx_mgr *cm_ctx,
 	}
 	wlan_cm_calculate_bss_score(pdev, pcl_lst, list, &filter->bssid_hint,
 				    (struct qdf_mac_addr *)
-				    wlan_vdev_mlme_get_macaddr(cm_ctx->vdev));
+				    wlan_vdev_mlme_get_macaddr(cm_ctx->vdev),
+				    allow_scan);
 	if (pcl_lst)
 		qdf_mem_free(pcl_lst);
 }
 #else
 inline
-void cm_calculate_scores(struct cnx_mgr *cm_ctx,
-			 struct wlan_objmgr_pdev *pdev,
-			 struct scan_filter *filter, qdf_list_t *list)
+void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
+			 struct scan_filter *filter, qdf_list_t *list,
+			 bool allow_scan)
 {
 	wlan_cm_calculate_bss_score(pdev, NULL, list, &filter->bssid_hint,
-				    NULL);
+				    NULL, allow_scan);
 
 	/*
 	 * Custom sorting if enabled

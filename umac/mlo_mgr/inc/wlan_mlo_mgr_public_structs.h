@@ -110,6 +110,7 @@ struct ptqm_migrate_peer_context;
 
 /* MLO link id max value */
 #define MAX_MLO_LINK_ID 15
+#define WLAN_MAX_AID_VALUE        0xFFFF
 
 #ifdef WLAN_MLO_MULTI_CHIP
 
@@ -273,6 +274,71 @@ typedef QDF_STATUS
 (*mlo_mgr_link_switch_notifier_cb)(struct wlan_objmgr_vdev *vdev,
 				   struct wlan_mlo_link_switch_req *lswitch_req,
 				   enum wlan_mlo_link_switch_notify_reason notify_reason);
+
+/**
+ * struct wlan_mlo_link_recfg_bss_info - Data Structure for one link of
+ * reconfiguration add/del information.
+ * @vdev_id: assigned vdev id for add link only
+ * @link_id: IEEE Link id
+ * @freq: channel frequency to be deleted/added
+ * @ap_link_addr: AP Link address to be deleted/added
+ * @self_link_addr: self link address for add link only
+ * @status_code: status code updated after link reconfig response is received.
+ * @link_assoc_rsp: Link specific association response for add link only
+ */
+struct wlan_mlo_link_recfg_bss_info {
+	uint8_t vdev_id;
+	uint8_t link_id;
+	qdf_freq_t freq;
+	struct qdf_mac_addr ap_link_addr;
+	struct qdf_mac_addr self_link_addr;
+	enum wlan_status_code status_code;
+	struct element_info link_assoc_rsp;
+};
+
+/**
+ * struct wlan_mlo_link_recfg_info - Data Structure for of link
+ * reconfiguration add/del information.
+ * @link: ap link info
+ * @num_links: number of ap bss info in list
+ */
+struct wlan_mlo_link_recfg_info {
+	struct wlan_mlo_link_recfg_bss_info link[WLAN_MAX_ML_BSS_LINKS];
+	uint8_t num_links;
+};
+
+/*
+ * struct wlan_mlo_link_recfg_ind_param - Link recfg indication params
+ * @vdev_id: vdev id
+ * @ap_mld_addr: ap mld address
+ * @trigger_reason: link recfg trigger reason
+ * @trigger_result: link recfg result if trigger reason is
+ * ROAM_TRIGGER_REASON_FORCED
+ * @add_link: add link info
+ * @del_link: del link info
+ */
+struct wlan_mlo_link_recfg_ind_param {
+	uint8_t vdev_id;
+	struct qdf_mac_addr ap_mld_addr;
+	uint32_t trigger_reason;
+	uint32_t trigger_result;
+	struct wlan_mlo_link_recfg_info	add_link;
+	struct wlan_mlo_link_recfg_info del_link;
+};
+
+/*
+ * struct wlan_mlo_link_recfg_complete_params - Link recfg complete params
+ * @vdev_id: vdev id
+ * @ap_mld_addr: ap mld address
+ * @status: link recfg success or not
+ * @reassoc_if_failure: fw trigger reassoc or not if link recfg failed
+ */
+struct wlan_mlo_link_recfg_complete_params {
+	uint8_t vdev_id;
+	struct qdf_mac_addr ap_mld_addr;
+	uint32_t  status;
+	uint32_t  reassoc_if_failure;
+};
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /*
@@ -700,12 +766,15 @@ enum mlo_link_force_mode {
  *  Set force specific links because of AP side link removal
  * @MLO_LINK_FORCE_REASON_TDLS:
  *  Set force specific links because of TDLS operation
+ * @MLO_LINK_FORCE_REASON_LINK_DELETE:
+ *  Set link inactive because of link deleted
  */
 enum mlo_link_force_reason {
 	MLO_LINK_FORCE_REASON_CONNECT    = 1,
 	MLO_LINK_FORCE_REASON_DISCONNECT = 2,
 	MLO_LINK_FORCE_REASON_LINK_REMOVAL = 3,
 	MLO_LINK_FORCE_REASON_TDLS = 4,
+	MLO_LINK_FORCE_REASON_LINK_DELETE = 6,
 };
 
 /**
@@ -835,6 +904,10 @@ struct mlnawds_config {
 
 /* AP removed link flag bit position for link_status_flags in
  * struct mlo_link_info
+ * If link is deleted from setup links by link recfg, the link
+ * will be handled by similar behaviour as link removed. So use
+ * same flag to indicate link is removed from setup links for
+ * link delete case.
  */
 #define LS_F_AP_REMOVAL_BIT 0
 
@@ -1243,6 +1316,24 @@ struct wlan_mlo_mld_cap {
 		 reserved:2;
 };
 
+/**
+ * struct wlan_mlo_ext_mld_cap - Extended MLD capabilities of MLD
+ * @op_update_para_support: Operation Parameter Update Support
+ * @recommended_max_simultaneous_links: Recommended Max Simultaneous Links
+ * @nstr_status_update_support: NSTR Status Update Support
+ * @emlsr_one_link_support: EMLSR Enablement On One Link Support
+ * @btm_recommended_for_multi_ap: BTM MLD Recommendation For Multiple APs Supp
+ * @reserved: Reserved
+ */
+struct wlan_mlo_ext_mld_cap {
+	uint32_t op_update_para_support:1,
+		 recommended_max_simultaneous_links:4,
+		 nstr_status_update_support:1,
+		 emlsr_one_link_support:1,
+		 btm_recommended_for_multi_ap:1,
+		 reserved:24;
+};
+
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
 /**
  * struct ttlm_state_sm - TTLM state machine
@@ -1526,7 +1617,8 @@ struct mlo_mlme_ext_ops {
 				struct mlo_partner_info *partner_info);
 	QDF_STATUS (*mlo_mlme_ext_set_ieee_link_id)(struct wlan_objmgr_vdev *vdev);
 #endif
-	QDF_STATUS (*mlo_mlme_ext_teardown_tdls)(struct wlan_objmgr_psoc *psoc);
+	QDF_STATUS (*mlo_mlme_ext_teardown_tdls)(struct wlan_objmgr_psoc *psoc,
+						 uint8_t vdev_id);
 };
 
 /*
@@ -1539,6 +1631,7 @@ struct mlo_mlme_ext_ops {
  * @mlo_mgr_osif_link_rej_update_mac_addr: Callback to notify MAC addr update
  *                                for link rejection.
  * @mlo_mgr_osif_link_switch_notification: Notify OSIF on start of link switch
+ * @mlo_mgr_osif_update_link_state: update link state in OSIF
  */
 struct mlo_osif_ext_ops {
 	QDF_STATUS
@@ -1560,6 +1653,9 @@ struct mlo_osif_ext_ops {
 	(*mlo_mgr_osif_link_switch_notification)(struct wlan_objmgr_vdev *vdev,
 						 uint8_t non_trans_vdev_id,
 						 bool is_start_notify);
+
+	void (*mlo_mgr_osif_update_link_state)(uint8_t vdev_id,
+					       bool is_link_active);
 };
 
 /* maximum size of vdev bitmap array for MLO link set active command */
@@ -1628,6 +1724,7 @@ struct mlo_link_num_param {
  * from set link event respone handler
  * @dont_reschedule_workqueue: don't reschedule force scc workqueue
  * after set link response
+ * @set_link_for_recfg: set link command for link recfg
  */
 struct mlo_control_flags {
 	bool overwrite_force_active_bitmap;
@@ -1636,6 +1733,7 @@ struct mlo_control_flags {
 	bool post_re_evaluate;
 	uint8_t post_re_evaluate_loops;
 	bool dont_reschedule_workqueue;
+	bool set_link_for_recfg;
 };
 
 /* struct ml_link_force_cmd - force command for links

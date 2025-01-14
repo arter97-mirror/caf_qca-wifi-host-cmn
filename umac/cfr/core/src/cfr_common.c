@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -487,6 +487,7 @@ wlan_cfr_peer_obj_destroy_handler(struct wlan_objmgr_peer *peer, void *arg)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_STREAMFS
 #ifdef CFR_USE_FIXED_FOLDER
 static char *cfr_get_dev_name(struct wlan_objmgr_pdev *pdev)
 {
@@ -578,6 +579,7 @@ QDF_STATUS cfr_streamfs_init(struct wlan_objmgr_pdev *pdev)
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 QDF_STATUS cfr_streamfs_remove(struct wlan_objmgr_pdev *pdev)
 {

@@ -348,7 +348,8 @@ const int dp_stats_mapping_table[][STATS_TYPE_MAX] = {
 	{HTT_DBG_EXT_STATS_PDEV_RX_RATE_EXT, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_TX_SOUNDING_INFO, TXRX_HOST_STATS_INVALID},
 	{TXRX_FW_STATS_INVALID, TXRX_PEER_STATS},
-	{HTT_DBG_EXT_PHY_COUNTERS_AND_PHY_STATS, TXRX_HOST_STATS_INVALID}
+	{HTT_DBG_EXT_PHY_COUNTERS_AND_PHY_STATS, TXRX_HOST_STATS_INVALID},
+	{TXRX_FW_STATS_INVALID, TXRX_LPC_COC_STATS},
 };
 #else
 const int dp_stats_mapping_table[][STATS_TYPE_MAX] = {
@@ -2511,6 +2512,9 @@ QDF_STATUS dp_srng_alloc(struct dp_soc *soc, struct dp_srng *srng,
 
 	if (!srng->base_vaddr_aligned)
 		return QDF_STATUS_E_NOMEM;
+
+	/* memset the srng ring to zero */
+	qdf_mem_zero(srng->base_vaddr_unaligned, srng->alloc_size);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -6137,6 +6141,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		}
 		dp_peer_add_ast(soc, peer, peer_mac_addr, ast_type, 0);
 
+		dp_peer_unmap_track_cookie_init(soc, peer);
 		peer->valid = 1;
 		peer->is_tdls_peer = false;
 		dp_local_peer_id_alloc(pdev, peer);
@@ -6295,6 +6300,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		goto fail;
 	}
 
+	dp_peer_unmap_track_cookie_init(soc, peer);
 	peer->valid = 1;
 	dp_local_peer_id_alloc(pdev, peer);
 	DP_STATS_INIT(peer);
@@ -6992,6 +6998,9 @@ void dp_peer_unmap_track_update(struct dp_soc *soc,
 	if (peer->peer_id == HTT_INVALID_PEER)
 		return;
 
+	if (qdf_is_recovering() || qdf_is_fw_down())
+		return;
+
 	elem = qdf_mem_malloc(sizeof(*elem));
 	if (!elem) {
 		dp_peer_info("failed to allocate memory for unmap tracking");
@@ -7000,6 +7009,7 @@ void dp_peer_unmap_track_update(struct dp_soc *soc,
 
 	elem->peer = peer;
 	elem->peer_id = peer->peer_id;
+	elem->unmap_track_cookie = peer->unmap_track_cookie;
 	elem->track_start_time = qdf_get_log_timestamp();
 
 	qdf_spin_lock_bh(&soc->peer_unmap_track_lock);
@@ -7052,11 +7062,15 @@ static void dp_peer_unmap_track_timer(void *arg)
 	peer = dp_peer_get_ref_by_id(soc, elem->peer_id,
 				     DP_MOD_ID_MISC);
 	/*
-	 * peer NULL, peer id unmapped but not reused,
-	 * peer not NULL and != elem->peer, new dp_peer has
-	 * used same peer ID.
+	 * If peer NULL, peer unmapped and same peer id not reused.
+	 * If peer is not NULL,
+	 * peer != elem->peer, peer unmapped and new different dp_peer
+	 * reuse same peer_id.
+	 * peer == elem->peer, but cookie ID mismatch, peer unmaped and
+	 * same address peer re-created and mapped with same peer ID.
 	 */
-	if (!peer || (peer != elem->peer)) {
+	if (!peer || (peer != elem->peer) ||
+	    (peer->unmap_track_cookie != elem->unmap_track_cookie))  {
 		qdf_mem_free(elem);
 		if (peer)
 			dp_peer_unref_delete(peer, DP_MOD_ID_MISC);
@@ -7066,7 +7080,16 @@ static void dp_peer_unmap_track_timer(void *arg)
 		       "id %d, delete timestamp 0x%llx",
 		       peer, QDF_MAC_ADDR_REF(peer->mac_addr.raw),
 		       peer->peer_id, elem->track_start_time);
-		qdf_assert_always(0);
+
+		/* It's expected if FW is down */
+		if (qdf_is_recovering() || qdf_is_fw_down()) {
+			dp_err("bypass assert as FW is down");
+			qdf_mem_free(elem);
+			if (peer)
+				dp_peer_unref_delete(peer, DP_MOD_ID_MISC);
+		} else {
+			qdf_assert_always(0);
+		}
 	}
 
 	cur_ts = qdf_get_log_timestamp();
@@ -7313,7 +7336,7 @@ static uint8_t *dp_get_vdev_mac_addr_wifi3(struct cdp_soc_t *soc_hdl,
  * @vdev_id: id of DP VDEV handle
  * @val: value
  *
- * Return: none
+ * Return: 0 on success. error code on failure.
  */
 static int dp_vdev_set_wds(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			   uint32_t val)
@@ -7324,12 +7347,12 @@ static int dp_vdev_set_wds(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 				      DP_MOD_ID_CDP);
 
 	if (!vdev)
-		return QDF_STATUS_E_FAILURE;
+		return -EINVAL;
 
 	vdev->wds_enabled = val;
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
-	return QDF_STATUS_SUCCESS;
+	return 0;
 }
 
 static int dp_get_opmode(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
@@ -7615,12 +7638,19 @@ void dp_aggregate_vdev_stats(struct dp_vdev *vdev,
 #endif
 }
 
+#ifdef AUTO_PLATFORM
+#define dp_alloc_vdev_stats(size) qdf_mem_common_alloc(size)
+#define dp_free_vdev_stats(ptr) qdf_mem_common_free(ptr)
+#else
+#define dp_alloc_vdev_stats(size) qdf_mem_malloc_atomic(size)
+#define dp_free_vdev_stats(ptr) qdf_mem_free(ptr)
+#endif
 void dp_aggregate_pdev_stats(struct dp_pdev *pdev)
 {
 	struct dp_vdev *vdev = NULL;
 	struct dp_soc *soc;
 	struct cdp_vdev_stats *vdev_stats =
-			qdf_mem_malloc_atomic(sizeof(struct cdp_vdev_stats));
+			dp_alloc_vdev_stats(sizeof(struct cdp_vdev_stats));
 
 	if (!vdev_stats) {
 		dp_cdp_err("%pK: DP alloc failure - unable to get alloc vdev stats",
@@ -7646,7 +7676,7 @@ void dp_aggregate_pdev_stats(struct dp_pdev *pdev)
 		dp_update_pdev_ingress_stats(pdev, vdev);
 	}
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
-	qdf_mem_free(vdev_stats);
+	dp_free_vdev_stats(vdev_stats);
 
 #if defined(FEATURE_PERPKT_INFO) && WDI_EVENT_ENABLE
 	dp_wdi_event_handler(WDI_EVENT_UPDATE_DP_STATS, pdev->soc, &pdev->stats,
@@ -8251,6 +8281,8 @@ void dp_get_peer_per_pkt_stats(struct dp_peer *peer,
 				break;
 			per_pkt_stats = &txrx_peer->stats[i].per_pkt_stats;
 			DP_UPDATE_PER_PKT_STATS(peer_stats, per_pkt_stats);
+			dp_info("MLO get stats from peer %d link_id %d",
+				txrx_peer->peer_id, i);
 		}
 		dp_release_link_peers_ref(&link_peers_info,
 					  DP_MOD_ID_GENERIC_STATS);
@@ -8258,6 +8290,8 @@ void dp_get_peer_per_pkt_stats(struct dp_peer *peer,
 		index = dp_get_peer_link_id(peer);
 		per_pkt_stats = &txrx_peer->stats[index].per_pkt_stats;
 		DP_UPDATE_PER_PKT_STATS(peer_stats, per_pkt_stats);
+		dp_info("get stats from peer %d link_id %d",
+			txrx_peer->peer_id, index);
 		qdf_mem_copy(&peer_stats->mac_addr,
 			     &peer->mac_addr.raw[0],
 			     QDF_MAC_ADDR_SIZE);
@@ -8615,11 +8649,17 @@ dp_print_host_stats(struct dp_vdev *vdev,
 		break;
 	case TXRX_SRNG_USAGE_WM_STATS:
 		/* Dump usage watermark stats for all SRNGs */
-		dp_dump_srng_high_wm_stats(soc, DP_SRNG_WM_MASK_ALL);
+		dp_dump_srng_high_wm_stats(
+			soc,
+			DP_SRNG_WM_MASK_REO_DST | DP_SRNG_WM_MASK_TX_COMP);
 		break;
 	case TXRX_PEER_STATS:
 		dp_print_per_link_stats((struct cdp_soc_t *)pdev->soc,
 					vdev->vdev_id);
+		break;
+	case TXRX_LPC_COC_STATS:
+		dp_dump_srng_high_wm_stats(soc, DP_SRNG_WM_MASK_LPC_COC);
+		dp_print_lpc_coc_stats(pdev);
 		break;
 	default:
 		dp_info("Wrong Input For TxRx Host Stats");
@@ -14585,6 +14625,9 @@ static struct cdp_ipa_ops dp_ops_ipa = {
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	.ipa_opt_dp_ctrl_debug_enable = dp_ipa_opt_dp_ctrl_debug_enable,
 #endif
+#ifdef IPA_WDI3_PENDING_BUFF_REPORT
+	.ipa_is_completion_pending = dp_ipa_is_completion_pending,
+#endif
 #endif
 #ifdef IPA_WDS_EASYMESH_FEATURE
 	.ipa_ast_create = dp_ipa_ast_create,
@@ -15249,17 +15292,12 @@ dp_bucket_index(uint32_t delay, uint16_t *array, bool delay_in_us)
 	return (CDP_DELAY_BUCKET_MAX - 1);
 }
 
-#ifdef HW_TX_DELAY_STATS_ENABLE
 /*
  * cdp_fw_to_hw_delay_range
  * Fw to hw delay ranges in milliseconds
  */
 static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
-	0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 250, 500};
-#else
-static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
 	0, 2, 4, 6, 8, 10, 20, 30, 40, 50, 100, 250, 500};
-#endif
 
 /*
  * cdp_sw_enq_delay_range
@@ -15274,6 +15312,25 @@ static uint16_t cdp_sw_enq_delay[CDP_DELAY_BUCKET_MAX] = {
  */
 static uint16_t cdp_intfrm_delay[CDP_DELAY_BUCKET_MAX] = {
 	0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60};
+
+#ifdef HW_TX_DELAY_STATS_ENABLE
+static inline
+void dp_check_bucket_list_overflow(struct cdp_delay_stats *delay_stat,
+				   uint8_t delay_index)
+{
+	if (qdf_likely(delay_stat->delay_bucket[delay_index] < UINT_MAX))
+		return;
+
+	dp_debug_rl("delay_stat overflow detected: bin:%u", delay_index);
+	qdf_mem_zero(delay_stat, sizeof(struct cdp_delay_stats));
+}
+#else
+static inline
+void dp_check_bucket_list_overflow(struct cdp_delay_stats *delay_stat,
+				   uint8_t delay_index)
+{
+}
+#endif
 
 #ifdef WLAN_FEATURE_UL_JITTER
 /*
@@ -15300,8 +15357,9 @@ dp_fill_jitter_buckets(struct cdp_tid_tx_stats *tstats, uint32_t jitter)
 		return 0;
 
 	delay_index = dp_bucket_index(jitter, cdp_delay_jitter, false);
-	tstats->jitter_stats.stats.delay_bucket[delay_index]++;
 	stats = &tstats->jitter_stats.stats;
+	dp_check_bucket_list_overflow(stats, delay_index);
+	tstats->jitter_stats.stats.delay_bucket[delay_index]++;
 
 	return stats;
 }
@@ -15379,8 +15437,9 @@ dp_fill_delay_buckets(struct cdp_tid_tx_stats *tstats,
 
 		delay_index = dp_bucket_index(delay, cdp_fw_to_hw_delay,
 					      delay_in_us);
-		tstats->hwtx_delay.delay_bucket[delay_index]++;
 		stats = &tstats->hwtx_delay;
+		dp_check_bucket_list_overflow(stats, delay_index);
+		tstats->hwtx_delay.delay_bucket[delay_index]++;
 		dp_update_curr_delay(tstats, delay, delay_in_us);
 		break;
 
@@ -15444,7 +15503,7 @@ void dp_update_delay_stats(struct cdp_tid_tx_stats *tstats,
 		 * Compute minimum,average and maximum
 		 * delay
 		 */
-		if (delay < dstats->min_delay)
+		if (!dstats->min_delay || (delay < dstats->min_delay))
 			dstats->min_delay = delay;
 
 		if (delay > dstats->max_delay)
@@ -15469,7 +15528,7 @@ void dp_update_jitter_stats(struct cdp_tid_tx_stats *tstats, uint32_t jitter)
 	if (qdf_unlikely(!jstats))
 		return;
 	if (jitter != 0) {
-		if (jitter < jstats->min_delay)
+		if (!jstats->min_delay || jitter < jstats->min_delay)
 			jstats->min_delay = jitter;
 
 		if (jitter > jstats->max_delay)

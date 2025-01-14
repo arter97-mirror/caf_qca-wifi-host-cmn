@@ -159,6 +159,7 @@ twt_add_dialog_set_bcast_twt_params(struct twt_add_dialog_param *params,
 	TWT_FLAGS_SET_BTWT_ID0(cmd->flags, params->flag_b_twt_id0);
 	cmd->b_twt_persistence = params->b_twt_persistence;
 	cmd->b_twt_recommendation = params->b_twt_recommendation;
+	wmi_debug("BTWT_Recommendation - %u", cmd->b_twt_recommendation);
 }
 #else
 static void
@@ -682,6 +683,13 @@ static QDF_STATUS extract_twt_add_dialog_comp_additional_parameters
 	additional_params->b_twt_id0 = TWT_FLAGS_GET_BTWT_ID0(flags);
 	additional_params->info_frame_disabled =
 				TWT_FLAGS_GET_TWT_INFO_FRAME_DISABLED(flags);
+
+	if (wmi_service_enabled(wmi_handle, wmi_service_sta_twt_stats_ext)) {
+		additional_params->implicit = TWT_FLAGS_GET_IMPLICIT(flags);
+		additional_params->renegotiate = TWT_FLAGS_GET_RENEGOTIATE(
+									flags);
+	}
+
 	additional_params->wake_dur_us = param_buf->twt_params[idx].wake_dur_us;
 	additional_params->wake_intvl_us =
 				param_buf->twt_params[idx].wake_intvl_us;
@@ -1170,6 +1178,17 @@ static QDF_STATUS extract_twt_cap_service_ready_ext2_tlv(
 
 	var->twt_ack_support_cap = WMI_GET_BITS(twt_caps->twt_capability_bitmap,
 						0, 1);
+
+	if (wmi_service_enabled(wmi_handle, wmi_service_sta_twt_stats_ext)) {
+		var->max_wake_dur = TWT_CAPS_GET_MAX_WAKE_DUR(
+					twt_caps->min_max_wake_dur_us);
+		var->min_wake_dur = TWT_CAPS_GET_MIN_WAKE_DUR(
+					twt_caps->min_max_wake_dur_us);
+		var->max_wake_intvl = TWT_CAPS_GET_MAX_WAKE_INTVL(
+					twt_caps->min_max_wake_intvl_us);
+		var->min_wake_intvl = TWT_CAPS_GET_MIN_WAKE_INTVL(
+					twt_caps->min_max_wake_intvl_us);
+	}
 
 	return QDF_STATUS_SUCCESS;
 }

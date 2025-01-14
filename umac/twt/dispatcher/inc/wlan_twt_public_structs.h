@@ -577,6 +577,9 @@ enum HOST_TWT_ADD_STATUS {
  *                          0 means responder pm mode field is not valid
  * @pm_responder_bit: 1 means that responder set responder pm mode to 1
  *                    0 means that responder set responder pm mode to 0
+ * @implicit: 1 means implicit twt, 0 means explicit twt
+ * @renegotiate: 1 means renegotiate twt supported,
+ *               0 means renegotiate twt not supported
  * @wake_dur_us: wake duration in us
  * @wake_intvl_us: wake time interval in us
  * @sp_offset_us: Time until initial TWT SP occurs
@@ -592,7 +595,9 @@ struct twt_add_dialog_additional_params {
 		 b_twt_id0:1,
 		 info_frame_disabled:1,
 		 pm_responder_bit_valid:1,
-		 pm_responder_bit:1;
+		 pm_responder_bit:1,
+		 implicit:1,
+		 renegotiate:1;
 	uint32_t wake_dur_us;
 	uint32_t wake_intvl_us;
 	uint32_t sp_offset_us;

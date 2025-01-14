@@ -178,6 +178,45 @@ util_gen_link_probe_rsp_by_mld_addr(uint8_t *frame, qdf_size_t frame_len,
 				    qdf_size_t *link_frame_len);
 
 /**
+ * util_gen_link_recfg_assoc_rsp() - Generate link specific assoc response
+ * from Link Reconfiguration response frame.
+ * @org_assoc_rsp: Pointer to original Association response frame. This
+ * should not contain the 802.11 header, and must start from the fixed fields
+ * in the Link Reconfiguration Response.
+ * This is required due to some caller semantics built into the end to
+ * end design.
+ * @action_frm: Pointer to Link Reconfiguration response frame.
+ * @frame_len: Length of Link Reconfiguration response
+ * @ie_offset: IE offset value for action frame
+ * @link_id: Link ID for secondary links
+ * @link_addr: Secondary link's MAC address
+ * @link_frame: Generated secondary link specific association response. Note
+ * that this will start from the 802.11 header (unlike the original association
+ * response). This should be ignored in the case of failure.
+ * @link_frame_maxsize: Maximum size of generated secondary link specific
+ * association response
+ * @link_frame_len: Pointer to location where populated length of generated
+ * secondary link specific association response should be written. This should
+ * be ignored in the case of failure.
+ *
+ * Generate a link specific logically equivalent association response for the
+ * secondary link from the Link Reconfiguration response containing a Multi-Link
+ * element.
+ *
+ * Return: QDF_STATUS_SUCCESS in the case of success, QDF_STATUS value giving
+ * the reason for error in the case of failure.
+ */
+QDF_STATUS
+util_gen_link_recfg_assoc_rsp(struct element_info *org_assoc_rsp,
+			      uint8_t *action_frm, qdf_size_t frame_len,
+			      uint16_t ie_offset,
+			      uint8_t link_id,
+			      struct qdf_mac_addr link_addr,
+			      uint8_t *link_frame,
+			      qdf_size_t link_frame_maxsize,
+			      qdf_size_t *link_frame_len);
+
+/**
  * util_find_mlie - Find the first Multi-Link element or the start of the first
  * Multi-Link element fragment sequence in a given buffer containing elements,
  * if a Multi-Link element or element fragment sequence exists in the given

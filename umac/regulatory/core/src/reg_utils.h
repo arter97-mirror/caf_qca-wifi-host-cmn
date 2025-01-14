@@ -648,6 +648,21 @@ reg_get_6ghz_cli_pwr_type_per_ap_pwr_type(
 QDF_STATUS
 reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
 			    struct regulatory_channel *chan_list);
+
+/**
+ * reg_check_if_6g_pwr_type_supp_for_chan() - Check if 6 GHz power type is
+ *                                            supported for the channel
+ * @pdev: Pointer to pdev
+ * @pwr_type: 6 GHz power type
+ * @chan_idx: Connection channel index
+ *
+ * Return: Return QDF_STATUS_SUCCESS if 6 GHz power type supported for
+ *         the given channel, else return QDF_STATUS_E_FAILURE.
+ */
+QDF_STATUS
+reg_check_if_6g_pwr_type_supp_for_chan(struct wlan_objmgr_pdev *pdev,
+				       enum reg_6g_ap_type pwr_type,
+				       enum channel_enum chan_idx);
 #else
 static inline QDF_STATUS
 reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,

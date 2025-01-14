@@ -548,6 +548,9 @@ enum twt_actioncode {
  * @EHT_EPCS_REQUEST: EPCS request action frame
  * @EHT_EPCS_RESPONSE: EPCS response action frame
  * @EHT_EPCS_TEARDOWN: EPCS teardown action frame
+ * @EHT_LINK_RECONFIG_NOTIFY: Link Reconfiguration Notify action Frame
+ * @EHT_LINK_RECONFIG_REQUEST: Link Reconfiguration Request action Frame
+ * @EHT_LINK_RECONFIG_RESPONSE: Link Reconfiguration Response action Frame
  */
 enum eht_actioncode {
 	EHT_T2LM_REQUEST = 0,
@@ -556,6 +559,9 @@ enum eht_actioncode {
 	EHT_EPCS_REQUEST = 3,
 	EHT_EPCS_RESPONSE = 4,
 	EHT_EPCS_TEARDOWN = 5,
+	EHT_LINK_RECONFIG_NOTIFY = 10,
+	EHT_LINK_RECONFIG_REQUEST = 11,
+	EHT_LINK_RECONFIG_RESPONSE = 12,
 };
 
 /**
@@ -708,6 +714,9 @@ struct action_frm_hdr {
  * @MGMT_ACTION_FTM_REQUEST: FTM request frame
  * @MGMT_ACTION_FTM_RESPONSE: FTM response frame
  * @MGMT_ACTION_FILS_DISCOVERY: FILS Discovery frame
+ * @MGMT_ACTION_EHT_LINK_RECONFIG_NOTIFY: Link reconfig notify frame
+ * @MGMT_ACTION_EHT_LINK_RECONFIG_REQUEST: Link reconfig request frame
+ * @MGMT_ACTION_EHT_LINK_RECONFIG_RESPONSE: Link reconfig response frame
  * @MGMT_MAX_FRAME_TYPE:         max. mgmt frame types
  */
 enum mgmt_frame_type {
@@ -848,6 +857,9 @@ enum mgmt_frame_type {
 	MGMT_ACTION_FTM_REQUEST,
 	MGMT_ACTION_FTM_RESPONSE,
 	MGMT_ACTION_FILS_DISCOVERY,
+	MGMT_ACTION_EHT_LINK_RECONFIG_NOTIFY,
+	MGMT_ACTION_EHT_LINK_RECONFIG_REQUEST,
+	MGMT_ACTION_EHT_LINK_RECONFIG_RESPONSE,
 	MGMT_MAX_FRAME_TYPE,
 };
 

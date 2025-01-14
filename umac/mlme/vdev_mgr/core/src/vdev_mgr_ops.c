@@ -49,6 +49,7 @@
 #ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
 #endif
+#include "wlan_mlme_vdev_mgr_interface.h"
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
@@ -278,6 +279,26 @@ vdev_mgr_set_cur_chan_punc_bitmap(struct wlan_channel *des_chan,
 #endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
+
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * vdev_mgr_start_param_update_linkid() -Update link id
+ * @vdev: pointer to vdev
+ * @param: vdev start parameter
+ *
+ * Return: none
+ */
+static inline void
+vdev_mgr_start_param_update_linkid(struct wlan_objmgr_vdev *vdev,
+				   struct vdev_start_params *param)
+{
+	param->mlo_flags.mlo_ieee_link_id_valid = 1;
+	param->link_id = wlan_vdev_get_link_id(vdev);
+}
+#else
+#define vdev_mgr_start_param_update_linkid(vdev, param)
+#endif
+
 #ifdef WLAN_MCAST_MLO
 static inline void
 vdev_mgr_start_param_update_mlo_mcast(struct wlan_objmgr_vdev *vdev,
@@ -440,6 +461,8 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 		/* Update the bridge vdev bit */
 		param->mlo_flags.is_bridge_vdev =
 			wlan_vdev_mlme_is_mlo_bridge_vdev(vdev);
+
+		vdev_mgr_start_param_update_linkid(vdev, param);
 		vdev_mgr_start_param_update_mlo_mcast(vdev, param);
 		vdev_mgr_start_param_update_mlo_partner(vdev, param);
 	}
@@ -583,6 +606,10 @@ static QDF_STATUS vdev_mgr_start_param_update(
 	param->channel.maxpower = mlme_obj->mgmt.generic.maxpower;
 	param->channel.minpower = mlme_obj->mgmt.generic.minpower;
 	param->channel.maxregpower = mlme_obj->mgmt.generic.maxregpower;
+	param->channel.regpower =
+		wlan_reg_get_channel_reg_power_for_freq(
+						pdev,
+						des_chan->ch_freq);
 	param->channel.antennamax = mlme_obj->mgmt.generic.antennamax;
 	param->channel.reg_class_id = mlme_obj->mgmt.generic.reg_class_id;
 	param->bcn_tx_rate_code = vdev_mgr_fetch_ratecode(mlme_obj);
@@ -792,6 +819,8 @@ static QDF_STATUS vdev_mgr_up_param_update(
 	struct wlan_objmgr_vdev *vdev;
 	uint8_t bssid[QDF_MAC_ADDR_SIZE];
 	struct qdf_mac_addr bcast_mac = QDF_MAC_ADDR_BCAST_INIT;
+	struct scan_cache_entry *entry;
+	struct wlan_channel *chan;
 
 	vdev = mlme_obj->vdev;
 	param->vdev_id = wlan_vdev_get_id(vdev);
@@ -799,9 +828,21 @@ static QDF_STATUS vdev_mgr_up_param_update(
 
 	mbss = &mlme_obj->mgmt.mbss_11ax;
 	wlan_vdev_mgr_get_param_bssid(vdev, bssid);
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) {
+		if (!mbss->profile_num) {
+			entry = wlan_scan_get_entry_by_bssid(wlan_vdev_get_pdev(vdev),
+							     (struct qdf_mac_addr *)bssid);
+			if (entry) {
+				chan = wlan_vdev_mlme_get_bss_chan(vdev);
+				mlme_set_mbssid_info(vdev,
+						     &entry->mbssid_info,
+						     chan->ch_freq);
+				util_scan_free_cache_entry(entry);
+			}
+		}
 
-	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_SAP_MODE) {
-		mlme_debug("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT " profile_num %d, profile_idx %d",
+		mlme_debug("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT
+			   " profile_idx %d, profile_num %d",
 			   QDF_MAC_ADDR_REF(mbss->trans_bssid),
 			   QDF_MAC_ADDR_REF(mbss->non_trans_bssid),
 			  mbss->profile_idx, mbss->profile_num);

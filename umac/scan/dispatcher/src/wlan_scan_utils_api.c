@@ -259,6 +259,12 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 
 	if (QDF_GET_BITS(eht_ops->ehtop_param,
 			 EHTOP_INFO_PRESENT_IDX, EHTOP_INFO_PRESENT_BITS)) {
+		if (eht_ops->elem_len <
+			(offsetof(struct wlan_ie_ehtops, ccfs1) - 1)) {
+			scm_err("Invalid EHT OP IE length %d with EHT OP info",
+				eht_ops->elem_len);
+			return phymode;
+		}
 		width = QDF_GET_BITS(eht_ops->control,
 				     EHTOP_INFO_CHAN_WIDTH_IDX,
 				     EHTOP_INFO_CHAN_WIDTH_BITS);
@@ -323,6 +329,11 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 	if (QDF_GET_BITS(eht_ops->ehtop_param,
 			 EHTOP_PARAM_DISABLED_SC_BITMAP_PRESENT_IDX,
 			 EHTOP_PARAM_DISABLED_SC_BITMAP_PRESENT_BITS)) {
+		if (eht_ops->elem_len < sizeof(struct wlan_ie_ehtops) - 2) {
+			scm_err("Invalid EHT OP IE len %d with dis_sc_bitmap",
+				eht_ops->elem_len);
+			return phymode;
+		}
 		scan_params->channel.puncture_bitmap =
 			QDF_GET_BITS(eht_ops->disabled_sub_chan_bitmap[0],
 				     0, 8);
@@ -438,6 +449,12 @@ util_scan_is_out_of_band_leak_eht(struct wlan_objmgr_pdev *pdev,
 	if (!QDF_GET_BITS(eht_ops->ehtop_param,
 			  EHTOP_INFO_PRESENT_IDX, EHTOP_INFO_PRESENT_BITS))
 		return false;
+
+	if (eht_ops->elem_len < (offsetof(struct wlan_ie_ehtops, ccfs1) - 1)) {
+		scm_err("Invalid EHT OP IE length %d with EHT OP info present",
+			eht_ops->elem_len);
+		return false;
+	}
 
 	ch_width = QDF_GET_BITS(eht_ops->control,
 				EHTOP_INFO_CHAN_WIDTH_IDX,
@@ -2705,6 +2722,11 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 	qdf_mem_copy(&scan_entry->mbssid_info, mbssid_info,
 		     sizeof(scan_entry->mbssid_info));
 
+	/*Locally generated entry*/
+	if (!qdf_is_macaddr_zero(
+		(struct qdf_mac_addr *)&mbssid_info->non_trans_bssid))
+		scan_entry->is_non_tx_mbssid_gen = 1;
+
 	scan_entry->phy_mode = util_scan_get_phymode(pdev, scan_entry);
 	scan_entry->non_intersected_phymode = scan_entry->phy_mode;
 
@@ -4266,6 +4288,7 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 	if (!rnr_channel_db)
 		return false;
 
+	qdf_mutex_acquire(&rnr_channel_db->rnr_db_lock);
 	for (i = 0; i < QDF_ARRAY_SIZE(rnr_channel_db->channel); i++) {
 		channel = &rnr_channel_db->channel[i];
 		if (channel->chan_freq != freq)
@@ -4291,6 +4314,7 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 			cur_node = next_node;
 		}
 	}
+	qdf_mutex_release(&rnr_channel_db->rnr_db_lock);
 
 	return ret;
 }

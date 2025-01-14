@@ -545,9 +545,13 @@
 #define WLAN_CFG_NUM_REO_RINGS_MAP_MAX 0xF
 #endif
 
-#ifdef WLAN_FEATURE_LATENCY_SENSITIVE_REO
+#if defined(WLAN_FEATURE_LATENCY_SENSITIVE_REO) && !defined(FEATURE_ALLOW_PKT_DROPPING)
 #define WLAN_CFG_RADIO_0_DEFAULT_REO 0xA	//REO_REMAP_SW8
 #else
+/* FEATURE_ALLOW_PKT_DROPPING is only defined on consolidate
+ * build, re-use this marcro and don't set default route to REO2SW8
+ * on consolidate build either.
+ */
 #define WLAN_CFG_RADIO_0_DEFAULT_REO 0x1	//REO_REMAP_SW1
 #endif
 #define WLAN_CFG_RADIO_1_DEFAULT_REO 0x2

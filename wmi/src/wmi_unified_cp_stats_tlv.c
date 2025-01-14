@@ -118,6 +118,8 @@ void wmi_extract_ctrl_path_twt_stats_tlv(void *tag_buf,
 	param->rx_mpdu_per_sp = wmi_stats_buf->rx_mpdu_per_sp;
 	param->tx_bytes_per_sp = wmi_stats_buf->tx_bytes_per_sp;
 	param->rx_bytes_per_sp = wmi_stats_buf->rx_bytes_per_sp;
+	param->avg_eosp_sp_dur_us = wmi_stats_buf->avg_eosp_sp_dur_us;
+	param->eosp_sp_count = wmi_stats_buf->eosp_sp_count;
 
 	wmi_debug("dialog_id = %u status = %u", wmi_stats_buf->dialog_id,
 		  wmi_stats_buf->status);
@@ -126,10 +128,13 @@ void wmi_extract_ctrl_path_twt_stats_tlv(void *tag_buf,
 		  wmi_stats_buf->num_sp_cycles, wmi_stats_buf->avg_sp_dur_us,
 		  wmi_stats_buf->min_sp_dur_us, wmi_stats_buf->max_sp_dur_us);
 	wmi_debug("tx_mpdu_per_sp 0x%x, rx_mpdu_per_sp = 0x%x, \
-		  tx_bytes_per_sp = 0x%x, rx_bytes_per_sp = 0x%x",
+		  tx_bytes_per_sp = 0x%x, rx_bytes_per_sp = 0x%x, \
+		  avg_eosp_sp_dur_us = 0x%x, eosp_sp_count = 0x%x",
 		  wmi_stats_buf->tx_mpdu_per_sp, wmi_stats_buf->rx_mpdu_per_sp,
 		  wmi_stats_buf->tx_bytes_per_sp,
-		  wmi_stats_buf->rx_bytes_per_sp);
+		  wmi_stats_buf->rx_bytes_per_sp,
+		  wmi_stats_buf->avg_eosp_sp_dur_us,
+		  wmi_stats_buf->eosp_sp_count);
 }
 
 static void wmi_twt_extract_stats_struct(void *tag_buf,

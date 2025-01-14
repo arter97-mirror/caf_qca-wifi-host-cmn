@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -6476,6 +6476,51 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL = 122,
 
+	/* 8-bit unsigned value. Disable DFS owner capability
+	 * 1: disable DFS owner capability in the driver.
+	 * 0: reset DFS owner capability to the default DFS owner capability of
+	 * the driver.
+	 *
+	 * If DFS owner capability is disabled, the driver will not start AP
+	 * mode operations on DFS channels, and all the features depending on
+	 * DFS owner functionality will not be supported.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE = 123,
+
+	/* 16-bit unsigned value. For probing RSSI on other antennas, this
+	 * attribute specifies number of WLAN probe.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_COUNT_WLAN = 124,
+
+	/* 16-bit unsigned value. For probing RSSI on other antennas, this
+	 * attribute specifies number of BT probe count.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_COUNT_BT = 125,
+
+	/* 16-bit unsigned value. This attribute specifies WLAN RSSI threshold.
+	 * FW will start to probe RSSI on other antenna if WLAN RSSI lower than
+	 * the threshold.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_WLAN_RSSI_THRESHOLD = 126,
+
+	/* 16-bit unsigned value. This attribute specifies BT RSSI threshold.
+	 * FW will start to probe RSSI on other antenna if BT RSSI lower than
+	 * the threshold.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_BT_RSSI_THRESHOLD = 127,
+
+	/* 16-bit unsigned value. This attribute specifies WLAN RSSI difference.
+	 * FW will select better antenna if WLAN RSSI difference larger than the
+	 * value.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SWITCH_WLAN_RSSI_DIFF = 128,
+
+	/* 16-bit unsigned value. This attribute specifies BT RSSI difference.
+	 * FW will select better antenna if WLAN RSSI difference larger than the
+	 * value.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SWITCH_BT_RSSI_DIFF = 129,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
@@ -11075,6 +11120,30 @@ enum qca_wlan_twt_setup_state {
 };
 
 /**
+ * enum qca_wlan_twt_session_updatable: Define the values used with
+ * %QCA_WLAN_VENDOR_ATTR_TWT_SETUP_UPDATABLE.
+ *
+ * @QCA_WLAN_TWT_SESSION_NOT_UPDATABLE: TWT session cannot be updated.
+ * @QCA_WLAN_TWT_SESSION_UPDATABLE: TWT session can be updated.
+ */
+enum qca_wlan_twt_session_updatable {
+	QCA_WLAN_TWT_SESSION_NOT_UPDATABLE = 0,
+	QCA_WLAN_TWT_SESSION_UPDATABLE = 1,
+};
+
+/**
+ * enum qca_wlan_twt_session_implicit: Define the values used with
+ * %QCA_WLAN_VENDOR_ATTR_TWT_SETUP_IMPLICIT.
+ *
+ * @QCA_WLAN_TWT_SESSION_NOT_IMPLICIT: TWT session cannot be implicit.
+ * @QCA_WLAN_TWT_SESSION_IMPLICIT: TWT session can be implicit.
+ */
+enum qca_wlan_twt_session_implicit {
+	QCA_WLAN_TWT_SESSION_NOT_IMPLICIT = 0,
+	QCA_WLAN_TWT_SESSION_IMPLICIT = 1,
+};
+
+/**
  * enum qca_wlan_vendor_attr_twt_setup: Represents attributes for
  * TWT (Target Wake Time) setup request. These attributes are sent as part of
  * %QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_TWT_SETUP and
@@ -11266,9 +11335,10 @@ enum qca_wlan_twt_setup_state {
  * The Broadcast TWT Recommendation subfield contains a value that indicates
  * recommendations on the types of frames that are transmitted by TWT
  * scheduled STAs and scheduling AP during the broadcast TWT SP.
- * The allowed values are 0 - 3.
+ * The allowed values are 0 - 4.
  * This parameter is used for
  * 1. TWT SET Request
+ * 2. R-TWT SET Request
  *
  * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_BCAST_PERSISTENCE: Optional (u8)
  * This attribute is used to configure Broadcast TWT Persistence.
@@ -11297,6 +11367,31 @@ enum qca_wlan_twt_setup_state {
  * firmware is 0.
  * This parameter is used for
  * 1. TWT SET Request
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_DOWNLINK_TID_BITMAP: Optional (u32)
+ * This attribute is used to configure downlink TIDs for R-TWT scheduling.
+ * This attribute only applicable when requesting R-TWT schedules.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_UPLINK_TID_BITMAP: Optional (u32)
+ * This attribute is used to configure uplink TIDs for R-TWT scheduling.
+ * This attribute only applicable when requesting R-TWT schedules.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_UPDATABLE: Optional (u8)
+ * This attribute indicates whether the parameters of the TWT session being
+ * negotiated (like wake interval, wake duration, etc.) can be updated after
+ * session setup.
+ * Refers the enum qca_wlan_twt_session_updatable.
+ * This parameter is used for
+ * 1. TWT SET Response
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_IMPLICIT: Optional (u8)
+ * This attribute indicates whether the TWT session being negotiated is
+ * an implicit TWT, where the requesting STA calculates the start time of the
+ * next TWT service period, or an explicit TWT, where the responding STA
+ * calculates the start time of the next TWT service period.
+ * Refers the enum qca_wlan_twt_session_implicit.
+ * This parameter is used for
+ * 1. TWT SET Response
  */
 enum qca_wlan_vendor_attr_twt_setup {
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_INVALID = 0,
@@ -11332,6 +11427,11 @@ enum qca_wlan_vendor_attr_twt_setup {
 
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RESPONDER_PM_MODE = 25,
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_ANNOUNCE_TIMEOUT = 26,
+
+	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_DOWNLINK_TID_BITMAP = 29,
+	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RTWT_UPLINK_TID_BITMAP = 30,
+	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_UPDATABLE = 31,
+	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_IMPLICIT = 32,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_AFTER_LAST,
@@ -11601,6 +11701,16 @@ enum qca_wlan_vendor_attr_twt_nudge {
  * Status of the TWT GET STATISTICS request.
  * This contains status values in enum qca_wlan_vendor_twt_status
  * Obtained in the QCA_WLAN_TWT_GET_STATS response from the firmware.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVG_EOSP_DR_US: Optional (u32)
+ * Average of duration of the early terminated TWT service periods
+ * in micro seconds.
+ * Obtained in the QCA_WLAN_TWT_GET_STATS response from the firmware.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_STATS_EOSP_COUNT: Optional (u32)
+ * Number of early terminated TWT service periods observed over
+ * QCA_WLAN_VENDOR_ATTR_TWT_STATS_NUM_SP_ITERATIONS.
+ * Obtained in the QCA_WLAN_TWT_GET_STATS response from the firmware.
  */
 enum qca_wlan_vendor_attr_twt_stats {
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_INVALID = 0,
@@ -11616,6 +11726,8 @@ enum qca_wlan_vendor_attr_twt_stats {
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVERAGE_TX_PACKET_SIZE = 10,
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVERAGE_RX_PACKET_SIZE = 11,
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_STATUS = 12,
+	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVG_EOSP_DUR_US = 13,
+	QCA_WLAN_VENDOR_ATTR_TWT_STATS_EOSP_COUNT = 14,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AFTER_LAST,
@@ -11674,12 +11786,28 @@ enum qca_wlan_twt_capa {
  * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_PEER: (u16).
  * Peer TWT capabilities. Carries a bitmap of TWT capabilities specified in
  * enum qca_wlan_twt_capa.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_INTVL: (u32).
+ * Minimum tolerance limit of wake interval parameter in microseconds.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_INTVL: (u32).
+ * Maximum tolerance limit of wake interval parameter in microseconds.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_DURATION: (u32).
+ * Minimum tolerance limit of wake duration parameter in microseconds.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_DURATION: (u32).
+ * Maximum tolerance limit of wake duration parameter in microseconds.
  */
 enum qca_wlan_vendor_attr_twt_capability {
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAC_ADDR = 1,
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_SELF = 2,
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_PEER = 3,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_INTVL = 4,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_INTVL = 5,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_DURATION = 6,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_DURATION = 7,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_AFTER_LAST,
@@ -15428,6 +15556,22 @@ enum qca_wlan_vendor_monitor_ctrl_frame_type {
 	QCA_WLAN_VENDOR_MONITOR_CTRL_TRIGGER_FRAME = BIT(1),
 };
 
+/*
+ * enum qca_wlan_vendor_monitor_operating_type: Attributes used by vendor
+ * attribute %QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_OPERATING_TYPE
+ *
+ * @QCA_WLAN_VENDOR_MONITOR_OPERATING_TYPE_LPC: Local packet capture.
+ * Capture frames sent and received by the current client interface from the
+ * BSS.
+ *
+ * @QCA_WLAN_VENDOR_MONITOR_OPERATING_TYPE_OCC: Operating channel capture.
+ * Capture all frames on the current operating channel of client interface.
+ */
+enum qca_wlan_vendor_monitor_operating_type {
+	QCA_WLAN_VENDOR_MONITOR_OPERATING_TYPE_LPC = 0,
+	QCA_WLAN_VENDOR_MONITOR_OPERATING_TYPE_OCC = 1,
+};
+
 /**
  * enum qca_wlan_vendor_attr_set_monitor_mode - Used by the
  * vendor command QCA_NL80211_VENDOR_SUBCMD_SET_MONITOR_MODE to set the
@@ -15461,6 +15605,12 @@ enum qca_wlan_vendor_monitor_ctrl_frame_type {
  * u32 attribute, An interval only for the connected beacon interval, which
  * expects that the connected BSSID's beacons shall be sent on the monitor
  * interface only on this specific interval.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_OPERATING_TYPE: u32 attribute.
+ * Represents the monitor operating type (u32). These operating types are
+ * defined in enum qca_wlan_vendor_monitor_operating_type.
+ * If this attribute is not included, default operating type LPC ("local
+ * packet capture") used.
  */
 enum qca_wlan_vendor_attr_set_monitor_mode {
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_INVALID = 0,
@@ -15471,6 +15621,7 @@ enum qca_wlan_vendor_attr_set_monitor_mode {
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_CTRL_TX_FRAME_TYPE = 5,
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_CTRL_RX_FRAME_TYPE = 6,
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_CONNECTED_BEACON_INTERVAL = 7,
+	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_OPERATING_TYPE = 8,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_SET_MONITOR_MODE_AFTER_LAST,

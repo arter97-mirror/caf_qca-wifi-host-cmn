@@ -52,6 +52,11 @@
 /* 320MHZ BW 16 20MHZ sub bands */
 #define SUB320BW 16
 
+/* Lengths of various fields in the 802.11 header */
+#define QOS_CTRL_LEN	2
+#define HTC_CTRL_LEN	4
+#define CCMP_PARAM_LEN	8
+
 #define RNG_ERR		"SRNG setup failed for"
 #define dp_mon_info(params...) \
 	__QDF_TRACE_FL(QDF_TRACE_LEVEL_INFO_HIGH, QDF_MODULE_ID_MON, ## params)
@@ -69,6 +74,8 @@
 #else
 #define IS_LOCAL_PKT_CAPTURE_RUNNING(var, field) 0
 #endif
+
+#define INVALID_MON_CHAN_NUM	0xFFFF
 
 extern const struct dp_rx_defrag_cipher dp_f_ccmp;
 
@@ -704,6 +711,10 @@ struct dp_mon_ops {
 				   struct dp_intr *int_ctx,
 				   uint32_t mac_id,
 				   uint32_t quota);
+	hal_ring_handle_t (*tx_mon_get_hal_ring)(struct dp_soc *soc,
+						 uint32_t mac_id,
+						 enum hal_ring_type ring_type);
+	void (*print_lpc_coc_stats)(struct dp_pdev *pdev);
 	void (*print_txmon_ring_stat)(struct dp_pdev *pdev);
 #endif
 	void (*mon_peer_tx_init)(struct dp_pdev *pdev, struct dp_peer *peer);
@@ -1139,6 +1150,8 @@ struct dp_mon_mac {
 	bool first_mpdu;
 	/* LPC lock */
 	qdf_spinlock_t lpc_lock;
+	/* LPC/COC mode stats */
+	struct cdp_mon_lpc_coc_stats lpc_coc_stats;
 #endif
 };
 
@@ -2809,6 +2822,48 @@ uint32_t dp_tx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 }
 
 static inline
+hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
+					 enum hal_ring_type ring_type)
+{
+	struct dp_mon_soc *mon_soc = soc->monitor_soc;
+	struct dp_mon_ops *monitor_ops;
+
+	if (!mon_soc) {
+		dp_mon_debug("monitor soc is NULL");
+		return NULL;
+	}
+
+	monitor_ops = mon_soc->mon_ops;
+	if (!monitor_ops || !monitor_ops->tx_mon_get_hal_ring) {
+		dp_mon_debug("callback not registered");
+		return NULL;
+	}
+
+	return monitor_ops->tx_mon_get_hal_ring(soc, mac_id, ring_type);
+}
+
+static inline
+void dp_print_lpc_coc_stats(struct dp_pdev *pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct dp_mon_soc *mon_soc = soc->monitor_soc;
+	struct dp_mon_ops *monitor_ops;
+
+	if (!mon_soc) {
+		dp_mon_debug("monitor soc is NULL");
+		return;
+	}
+
+	monitor_ops = mon_soc->mon_ops;
+	if (!monitor_ops || !monitor_ops->print_lpc_coc_stats) {
+		dp_mon_debug("callback not registered");
+		return;
+	}
+
+	return monitor_ops->print_lpc_coc_stats(pdev);
+}
+
+static inline
 uint32_t dp_tx_mon_buf_refill(struct dp_intr *int_ctx)
 {
 	struct dp_soc *soc = int_ctx->soc;
@@ -2884,6 +2939,13 @@ dp_tx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 		  uint32_t mac_id, uint32_t quota)
 {
 	return 0;
+}
+
+static inline
+hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
+					 enum hal_ring_type ring_type)
+{
+	return NULL;
 }
 
 static inline

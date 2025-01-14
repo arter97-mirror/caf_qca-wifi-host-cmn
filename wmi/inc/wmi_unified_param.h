@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -75,7 +75,7 @@
 #ifdef WMI_AP_SUPPORT
 #define WMI_BEACON_TX_BUFFER_SIZE             (2500)
 #else
-#define WMI_BEACON_TX_BUFFER_SIZE             (512)
+#define WMI_BEACON_TX_BUFFER_SIZE             (732)
 #endif
 
 #define WMI_WIFI_SCANNING_MAC_OUI_LENGTH      3
@@ -5519,6 +5519,7 @@ typedef enum {
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 	wmi_mlo_link_switch_request_eventid,
 	wmi_mlo_link_state_switch_eventid,
+	wmi_mlo_link_recfg_indication_eventid,
 #endif
 #endif
 	wmi_pdev_fips_extend_event_id,
@@ -6790,6 +6791,9 @@ typedef enum {
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_service_mlo_sap_concurrency_support,
 #endif
+	wmi_service_twt_p2p_go_concurrency_support,
+	wmi_service_sta_twt_stats_ext,
+	wmi_service_scc_tpc_power_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

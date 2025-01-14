@@ -573,6 +573,11 @@ int init_deinit_populate_twt_cap_ext2(struct wlan_objmgr_psoc *psoc,
 	psoc_info = wlan_psoc_get_tgt_if_handle(psoc);
 
 	target_psoc_set_twt_ack_cap(psoc_info, param.twt_ack_support_cap);
+	target_psoc_set_twt_wake_dur_and_intvl(psoc_info,
+					       param.min_wake_dur,
+					       param.max_wake_dur,
+					       param.min_wake_intvl,
+					       param.max_wake_intvl);
 
 exit:
 	return qdf_status_to_os_return(status);

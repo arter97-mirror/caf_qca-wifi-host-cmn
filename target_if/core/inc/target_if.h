@@ -2961,6 +2961,39 @@ void target_psoc_set_twt_ack_cap(struct target_psoc_info *psoc_info, bool val)
 }
 
 /**
+ * target_psoc_set_twt_wake_dur_and_intvl() - Set twt min-max wake duration
+ * and wake interval supported by firmware
+ *
+ * @psoc_info: Pointer to struct target_psoc_info.
+ * @min_wake_dur: minimum wake duration supported by firmware in microsec
+ * @max_wake_dur: maximum wake duration supported by firmware in microsec
+ * @min_wake_intvl: minimum wake interval supported by firmware in microsec
+ * @max_wake_intvl: maximum wake interval supported by firmware in microsec
+ *
+ * Return: None
+ *
+ */
+static inline
+void target_psoc_set_twt_wake_dur_and_intvl(struct target_psoc_info *psoc_info,
+					    uint16_t min_wake_dur,
+					    uint16_t max_wake_dur,
+					    uint16_t min_wake_intvl,
+					    uint16_t max_wake_intvl)
+{
+	if (!psoc_info)
+		return;
+
+	psoc_info->info.service_ext2_param.twt_wake_dur_and_intvl.min_wake_dur =
+								min_wake_dur;
+	psoc_info->info.service_ext2_param.twt_wake_dur_and_intvl.max_wake_dur =
+								max_wake_dur;
+	psoc_info->info.service_ext2_param.twt_wake_dur_and_intvl.min_wake_intvl =
+								min_wake_intvl;
+	psoc_info->info.service_ext2_param.twt_wake_dur_and_intvl.max_wake_intvl =
+								max_wake_intvl;
+}
+
+/**
  * target_psoc_get_twt_ack_cap() - Get twt ack capability
  *
  * @psoc_info: Pointer to struct target_psoc_info.
@@ -3226,6 +3259,28 @@ target_if_get_fw_link_reconfig_support(struct wlan_objmgr_psoc *psoc)
 
 	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
 	return mac_phy_cap->mldcap.link_reconfig_operation_support;
+}
+
+/**
+ * target_if_get_fw_btm_multi_ap_support() - Get if FW supports BTM multi AP
+ * support or not
+ * @psoc: objmgr psoc
+ *
+ * Return: true if BTM multi AP supported else false
+ */
+static inline bool
+target_if_get_fw_btm_multi_ap_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct target_psoc_info *tgt_hdl;
+	struct wlan_psoc_host_mac_phy_caps_ext2 *mac_phy_cap;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl)
+		return false;
+
+	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+
+	return mac_phy_cap->ext_mldcap.btm_recommended_for_multi_ap;
 }
 #endif
 #endif

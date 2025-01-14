@@ -914,6 +914,16 @@ void hif_ce_desc_record_rx_paddr(struct hif_softc *scn,
 }
 #endif /* HIF_RECORD_PADDR */
 
+static inline int ce_ring_try_aquire_lock(struct CE_handle *handle)
+{
+	struct CE_state *ce_state = (struct CE_state *)handle;
+
+	if (!qdf_spin_trylock_bh(&ce_state->ce_index_lock))
+		return -EINVAL;
+
+	return 0;
+}
+
 static inline void ce_ring_aquire_lock(struct CE_handle *handle)
 {
 	struct CE_state *ce_state = (struct CE_state *)handle;
@@ -965,4 +975,19 @@ static inline void ce_ring_inc_flush_cnt(struct CE_ring_state *ring)
 {
 	ring->flush_count++;
 }
+
+#ifdef QCA_WIFI_WCN6450
+static inline bool hif_is_datapath_ce(struct CE_state *ce_state)
+{
+	if (!ce_state)
+		return false;
+
+	return (ce_state->htt_tx_data || ce_state->htt_rx_data);
+}
+#else
+static inline bool hif_is_datapath_ce(struct CE_state *ce_state)
+{
+	return false;
+}
+#endif
 #endif /* __COPY_ENGINE_INTERNAL_H__ */

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2171,7 +2171,8 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 	    (subtype != WLAN_FC0_STYPE_REASSOC_REQ) &&
 	    (subtype != WLAN_FC0_STYPE_ASSOC_RESP) &&
 	    (subtype != WLAN_FC0_STYPE_REASSOC_RESP) &&
-	    (subtype != WLAN_FC0_STYPE_PROBE_RESP)) {
+	    (subtype != WLAN_FC0_STYPE_PROBE_RESP) &&
+	    (subtype != WLAN_FC0_STYPE_ACTION)) {
 		mlo_err("802.11 frame subtype %u is invalid", subtype);
 		return QDF_STATUS_E_INVAL;
 	}
@@ -2206,6 +2207,8 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 		}
 		qdf_mem_copy(&tsf, frame, WLAN_TIMESTAMP_LEN);
 		tsf = qdf_le64_to_cpu(tsf);
+	} else if (subtype == WLAN_FC0_STYPE_ACTION) {
+		frame_iesection_offset = WLAN_ACTION_IES_OFFSET;
 	} else {
 		/* This is a (re)association response */
 		frame_iesection_offset = WLAN_ASSOC_RSP_IES_OFFSET;
@@ -2415,6 +2418,13 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 
 	if (subtype == WLAN_FC0_STYPE_PROBE_RESP && !is_completeprofile) {
 		mlo_err("Complete profile information is not present in per-STA profile of probe response frame");
+		ret = QDF_STATUS_E_NOSUPPORT;
+		goto mem_free;
+	}
+
+	if (subtype == WLAN_FC0_STYPE_ACTION &&
+	    !is_completeprofile) {
+		mlo_err("Complete profile information is not present in per-STA profile of Link Reconfig Response frame");
 		ret = QDF_STATUS_E_NOSUPPORT;
 		goto mem_free;
 	}
@@ -2762,10 +2772,6 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 		if ((reportingsta_ie[ID_POS] == WLAN_ELEMID_EXTN_ELEM) &&
 		    (reportingsta_ie[IDEXT_POS] ==
 				WLAN_EXTN_ELEMID_MULTI_LINK)) {
-			if (((reportingsta_ie + reportingsta_ie_size) -
-					frame_iesection) == frame_iesection_len)
-				break;
-
 			/* Add BV ML IE for link specific probe response.
 			 *
 			 * For non-transmitting BSSID, there will be two BV ML
@@ -2785,6 +2791,12 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 				if (QDF_IS_STATUS_ERROR(ret))
 					goto mem_free;
 			}
+			if (((reportingsta_ie + reportingsta_ie_size) -
+			     frame_iesection) == frame_iesection_len) {
+				mlo_debug("break while bml ie is the last one");
+				break;
+			}
+
 			reportingsta_ie += reportingsta_ie_size;
 
 			ret = util_validate_reportingsta_ie(reportingsta_ie,
@@ -3144,6 +3156,81 @@ mem_free:
 	return ret;
 }
 
+static QDF_STATUS
+util_link_recfg_replace_ml_ie(struct element_info *org_assoc_rsp,
+			      uint8_t *action_frm,
+			      uint16_t action_frm_len,
+			      uint16_t action_ies_offset,
+			      uint8_t **new_assoc_rsp,
+			      uint16_t *new_assoc_rsp_len)
+{
+	uint8_t *action_ies = action_frm + action_ies_offset;
+	uint8_t *org_assoc_rsp_ies = org_assoc_rsp->ptr + WLAN_ASSOC_RSP_IES_OFFSET;
+	QDF_STATUS status;
+	uint8_t *mlieseq = NULL;
+	qdf_size_t mlieseqlen = 0;
+	uint8_t *action_mlieseq = NULL;
+	qdf_size_t action_mlieseqlen = 0;
+	uint8_t *new_assc_rsp_buf = NULL;
+	uint16_t new_assc_rsp_buf_len = 0;
+	uint16_t len;
+	uint8_t *org_left = NULL;
+	uint16_t org_left_len = 0;
+
+	status = util_find_mlie(org_assoc_rsp_ies,
+				org_assoc_rsp->len - WLAN_ASSOC_RSP_IES_OFFSET,
+				&mlieseq, &mlieseqlen);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("ML IE not found");
+		return QDF_STATUS_E_INVAL;
+	}
+	mlo_debug("ML IE org_assoc_rsp_ies");
+	qdf_trace_hex_dump(QDF_MODULE_ID_MGMT_TXRX, QDF_TRACE_LEVEL_DEBUG,
+			   mlieseq, mlieseqlen);
+
+	status = util_find_mlie(action_ies,
+				action_frm_len - action_ies_offset,
+				&action_mlieseq, &action_mlieseqlen);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("ML IE not found in action_ies");
+		return QDF_STATUS_E_INVAL;
+	}
+	mlo_debug("ML IE action_ies");
+	qdf_trace_hex_dump(QDF_MODULE_ID_MGMT_TXRX, QDF_TRACE_LEVEL_DEBUG,
+			   action_mlieseq, action_mlieseqlen);
+
+	new_assc_rsp_buf_len = org_assoc_rsp->len - mlieseqlen + action_mlieseqlen;
+	mlo_debug("mlieseqlen %d, action_mlieseqlen %d new_assc_rsp_buf_len %d",
+		(uint32_t)mlieseqlen,
+		(uint32_t)action_mlieseqlen,
+		new_assc_rsp_buf_len);
+	new_assc_rsp_buf = qdf_mem_malloc(new_assc_rsp_buf_len);
+	if (!new_assc_rsp_buf)
+		return QDF_STATUS_E_INVAL;
+
+	qdf_mem_copy(new_assc_rsp_buf, org_assoc_rsp->ptr,
+		     (uint32_t)(mlieseq - org_assoc_rsp->ptr));
+	len = (uint32_t)(mlieseq - org_assoc_rsp->ptr);
+	org_left = mlieseq + mlieseqlen;
+	org_left_len = org_assoc_rsp->len - len - mlieseqlen;
+
+	qdf_mem_copy(new_assc_rsp_buf + len, action_mlieseq,
+		     action_mlieseqlen);
+	len += action_mlieseqlen;
+	qdf_mem_copy(new_assc_rsp_buf + len, org_left,
+		     org_left_len);
+	len += org_left_len;
+
+	*new_assoc_rsp = new_assc_rsp_buf;
+	*new_assoc_rsp_len = len;
+	mlo_debug("len %d", len);
+	mlo_debug("ML new_assoc_rsp");
+	qdf_trace_hex_dump(QDF_MODULE_ID_MGMT_TXRX, QDF_TRACE_LEVEL_DEBUG,
+			   new_assc_rsp_buf, len);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS
 util_gen_link_assoc_req(uint8_t *frame, qdf_size_t frame_len, bool isreassoc,
 			uint8_t link_id,
@@ -3201,6 +3288,59 @@ util_gen_link_probe_rsp_by_mld_addr(uint8_t *frame, qdf_size_t frame_len,
 			WLAN_FC0_STYPE_PROBE_RESP, link_id,
 			link_addr, &ml_probe_mld_addr, link_frame,
 			link_frame_maxsize, link_frame_len);
+}
+
+QDF_STATUS
+util_gen_link_recfg_assoc_rsp(struct element_info *org_assoc_rsp,
+			      uint8_t *action_frm, qdf_size_t frame_len,
+			      uint16_t ie_offset,
+			      uint8_t link_id,
+			      struct qdf_mac_addr link_addr,
+			      uint8_t *link_frame,
+			      qdf_size_t link_frame_maxsize,
+			      qdf_size_t *link_frame_len)
+
+{
+	QDF_STATUS status;
+	uint8_t *new_assoc_rsp = NULL;
+	uint16_t new_assoc_rsp_len = 0;
+
+	mlo_debug("dump org_assoc_rsp");
+	qdf_trace_hex_dump(QDF_MODULE_ID_MGMT_TXRX, QDF_TRACE_LEVEL_DEBUG,
+			   org_assoc_rsp->ptr, org_assoc_rsp->len);
+
+	mlo_debug("dump action rsp");
+	mgmt_txrx_frame_hex_dump(action_frm,
+				 frame_len, false);
+	qdf_trace_hex_dump(QDF_MODULE_ID_MGMT_TXRX, QDF_TRACE_LEVEL_DEBUG,
+			   action_frm, frame_len);
+
+	status = util_link_recfg_replace_ml_ie(org_assoc_rsp,
+					       action_frm,
+					       frame_len,
+					       ie_offset,
+					       &new_assoc_rsp,
+					       &new_assoc_rsp_len);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("mlo_link_recfg_replace_ml_ie failed %d",
+			status);
+		return QDF_STATUS_E_INVAL;
+	}
+	status = util_gen_link_assoc_rsp(new_assoc_rsp,
+					 new_assoc_rsp_len,
+					 false,
+					 link_id, link_addr,
+					 link_frame,
+					 link_frame_maxsize,
+					 link_frame_len);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("util_gen_link_reqrsp_cmn failed %d", status);
+		qdf_mem_free(new_assoc_rsp);
+		return QDF_STATUS_E_INVAL;
+	}
+	qdf_mem_free(new_assoc_rsp);
+	mlo_debug("succ gen assoc resp ");
+	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS

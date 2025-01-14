@@ -83,6 +83,7 @@
  * @peer: DP peer which waits HTT peer unmap
  * @peer_id: Peer ID mapped before
  * @track_start_time: Timestamp that peer unmap tracking start
+ * @unmap_track_cookie: peer's cookie under tracking
  */
 struct dp_peer_unmap_track_elem {
 	/* Do not add new entries here */
@@ -90,6 +91,7 @@ struct dp_peer_unmap_track_elem {
 	struct dp_peer *peer;
 	uint16_t peer_id;
 	uint64_t track_start_time;
+	uint32_t unmap_track_cookie;
 };
 
 /**
@@ -136,6 +138,34 @@ void dp_peer_unmap_track_suspend(struct dp_soc *soc);
  * Return: None
  */
 void dp_peer_unmap_track_resume(struct dp_soc *soc);
+
+/**
+ * dp_peer_unmap_track_cookie_init() - Initial cookie inside
+ *                                     peer for unmap tracking
+ * @soc: DP Soc
+ * @peer: DP peer handle
+ *
+ * return: None
+ */
+static inline
+void dp_peer_unmap_track_cookie_init(struct dp_soc *soc,
+				     struct dp_peer *peer)
+{
+	peer->unmap_track_cookie =
+			qdf_atomic_inc_return(&soc->peer_unmap_track_cookie);
+}
+
+/**
+ * dp_soc_peer_unmap_track_cookie_init - Initial global cookie inside DP soc
+ * @soc: DP Soc
+ *
+ * return: None
+ */
+static inline
+void dp_soc_peer_unmap_track_cookie_init(struct dp_soc *soc)
+{
+	qdf_atomic_init(&soc->peer_unmap_track_cookie);
+}
 #else
 static inline
 void dp_peer_unmap_track_update(struct dp_soc *soc, struct dp_peer *peer)
@@ -151,6 +181,13 @@ void dp_peer_unmap_track_suspend(struct dp_soc *soc)
 {}
 static inline
 void dp_peer_unmap_track_resume(struct dp_soc *soc)
+{}
+static inline
+void dp_peer_unmap_track_cookie_init(struct dp_soc *soc,
+				     struct dp_peer *peer)
+{}
+static inline
+void dp_soc_peer_unmap_track_cookie_init(struct dp_soc *soc)
 {}
 #endif
 
@@ -1089,6 +1126,18 @@ dp_tx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 		  uint32_t mac_id, uint32_t quota)
 {
 	return 0;
+}
+
+static inline
+hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
+					 enum hal_ring_type ring_type)
+{
+	return NULL;
+}
+
+static inline
+void dp_print_lpc_coc_stats(struct dp_pdev *pdev)
+{
 }
 
 static inline uint32_t
@@ -3968,6 +4017,16 @@ void dp_print_tx_ppeds_stats(struct dp_soc *soc);
 #define DP_SRNG_WM_MASK_REO_DST  BIT(REO_DST)
 /* TX completion ring's watermark mask */
 #define DP_SRNG_WM_MASK_TX_COMP  BIT(WBM2SW_RELEASE)
+/* RX monitor status ring's watermark mask */
+#define DP_SRNG_WM_MASK_MON_STATUS BIT(RXDMA_MONITOR_STATUS)
+/* TX monitor dest ring's watermark mask */
+#define DP_SRNG_WM_MASK_TX_MON_DST BIT(TX_MONITOR_DST)
+/* TX monitor buffer ring's watermark mask */
+#define DP_SRNG_WM_MASK_TX_MON_BUF BIT(TX_MONITOR_BUF)
+/* All TX/RX MON ring's watermark mask */
+#define DP_SRNG_WM_MASK_LPC_COC \
+	(BIT(RXDMA_MONITOR_STATUS) | BIT(TX_MONITOR_DST) \
+	 | BIT(TX_MONITOR_BUF))
 /* All srng's watermark mask */
 #define DP_SRNG_WM_MASK_ALL  0xFFFFFFFF
 

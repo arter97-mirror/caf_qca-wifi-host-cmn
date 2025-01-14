@@ -659,7 +659,9 @@ static void hif_ipci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 		return;
 	}
 	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
-		if (host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR)
+		/* skip affine to perf if the ce is used for datapath */
+		if ((host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR) ||
+		    hif_is_datapath_ce(scn->ce_id_to_state[ce_id]))
 			continue;
 		qdf_cpumask_copy(&updated_mask, &ce_cpu_mask);
 		ret = hif_affinity_mgr_set_ce_irq_affinity(scn, ipci_sc->ce_msi_irq_num[ce_id],
@@ -918,6 +920,11 @@ int hif_force_wake_request(struct hif_opaque_softc *hif_handle)
 	struct hif_ipci_softc *ipci_scn = HIF_GET_IPCI_SOFTC(scn);
 	uint32_t start_time, curr_time, end_time;
 
+	if (qdf_is_fw_down()) {
+		hif_info("F.W is down failed to send force wake request");
+		return -EINVAL;
+	}
+
 	if (pld_force_wake_request(scn->qdf_dev->dev)) {
 		hif_err_rl("force wake request send failed");
 		return -EINVAL;
@@ -958,6 +965,12 @@ int hif_force_wake_release(struct hif_opaque_softc *hif_handle)
 	int ret;
 	struct hif_softc *scn = (struct hif_softc *)hif_handle;
 	struct hif_ipci_softc *ipci_scn = HIF_GET_IPCI_SOFTC(scn);
+
+	if (qdf_is_fw_down()) {
+		HIF_STATS_INC(ipci_scn, mhi_force_wake_release_failure, 1);
+		hif_info("F.W is recovering/down skip successful force_wake_release");
+		return 0;
+	}
 
 	ret = pld_force_wake_release(scn->qdf_dev->dev);
 	if (ret) {

@@ -35,6 +35,7 @@
 #include "cdp_txrx_cmn.h"
 #include "wlan_mlo_mgr_sta.h"
 #include <wlan_utility.h>
+#include "wlan_mlo_link_recfg.h"
 
 #ifdef WLAN_WSI_STATS_SUPPORT
 /*
@@ -1295,6 +1296,7 @@ static QDF_STATUS mlo_dev_ctx_init(struct wlan_objmgr_vdev *vdev)
 	mlo_epcs_ctx_init(ml_dev);
 	mlo_ptqm_migration_init(ml_dev);
 	mlo_mgr_link_switch_init(psoc, ml_dev);
+	mlo_link_recfg_init(psoc, ml_dev);
 
 	return status;
 }
@@ -1460,6 +1462,7 @@ static QDF_STATUS mlo_dev_ctx_deinit(struct wlan_objmgr_vdev *vdev)
 			qdf_mem_free(ml_dev->ap_ctx);
 		}
 		mlo_ptqm_migration_deinit(ml_dev);
+		mlo_link_recfg_deinit(ml_dev);
 		mlo_mgr_link_switch_deinit(ml_dev);
 		mlo_t2lm_ctx_deinit(vdev, ml_dev);
 		mlo_epcs_ctx_deinit(ml_dev);

@@ -160,6 +160,18 @@ dp_tx_mon_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 void
 dp_tx_mon_print_ring_stat_2_0(struct dp_pdev *pdev);
 
+/**
+ * dp_tx_mon_get_hal_ring_2_0() - Get TX MON hal srng handler
+ * @soc: dp soc handle
+ * @mac_id: mac id
+ * @ring_type: type of TX MON ring
+ *
+ * Return: Hal srng handler
+ */
+hal_ring_handle_t
+dp_tx_mon_get_hal_ring_2_0(struct dp_soc *soc, uint32_t mac_id,
+			   enum hal_ring_type ring_type);
+
 /* The maximum buffer length allocated for radiotap for monitor status buffer */
 #define MAX_MONITOR_HEADER (512)
 #define MAX_DUMMY_FRM_BODY (128)

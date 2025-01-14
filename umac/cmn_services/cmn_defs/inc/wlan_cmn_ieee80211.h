@@ -123,6 +123,9 @@
 /* Length of dtim period field */
 #define WLAN_DTIMPERIOD_LEN        1
 
+/* Length of Action fields */
+#define WLAN_ACTION_LEN            3
+
 /* Assoc resp IE offset Capability(2) + Status Code(2) + AID(2) */
 #define WLAN_ASSOC_RSP_IES_OFFSET \
 	(WLAN_CAPABILITYINFO_LEN  + WLAN_STATUSCODE_LEN + WLAN_AID_LEN)
@@ -142,6 +145,10 @@
 /* Beacon IE offset - timestamp(8) + Beacon Int(2) + Cap info(2) */
 #define WLAN_BEACON_IES_OFFSET \
 	(WLAN_TIMESTAMP_LEN + WLAN_BEACONINTERVAL_LEN + WLAN_CAPABILITYINFO_LEN)
+
+/* Action IE offset - Category(1) + Action Code(1) + Dialog token(1) */
+#define WLAN_ACTION_IES_OFFSET \
+	(WLAN_ACTION_LEN)
 
 /* Length (in bytes) of MAC header in 3 address format */
 #define WLAN_MAC_HDR_LEN_3A 24
@@ -2573,6 +2580,9 @@ enum wlan_ml_bv_cinfo_emlcap_transtimeout {
 /* Recommended Max Simultaneous Links */
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RECOM_MAX_SIMULT_LINKS_IDX        1
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RECOM_MAX_SIMULT_LINKS_BITS       4
+/* BTM MLD Recommendation For Multiple APs Support */
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_IDX        7
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_BITS       1
 
 /* Max value in octets of Common Info Length subfield of Common Info field in
  * Basic variant Multi-Link element
@@ -2806,6 +2816,8 @@ struct wlan_ml_prv_linfo_perstaprof {
  * Reconfiguration variant Multi-Link element.
  */
 #define WLAN_ML_RV_CINFO_LENGTH_SIZE                               1
+#define WLAN_ML_RV_CINFO_MLDCAPANDOP_SIZE                          2
+#define WLAN_ML_RV_CINFO_EMLCAP_SIZE                               2
 
 /* Definitions related to the EML Capabilities subfield of the Common Info field
  * of the Reconfiguration variant Multi-Link element:

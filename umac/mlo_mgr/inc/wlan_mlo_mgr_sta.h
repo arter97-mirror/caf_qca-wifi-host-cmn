@@ -127,13 +127,13 @@ bool mlo_is_mld_sta(struct wlan_objmgr_vdev *vdev);
 bool ucfg_mlo_is_mld_disconnected(struct wlan_objmgr_vdev *vdev);
 
 /**
- * mlo_is_mld_disconnecting_connecting - Check whether MLD is disconnecting or
- * connecting
+ * mlo_is_mld_connecting - Check whether MLD is connecting
+ *
  * @vdev: pointer to vdev
  *
- * Return: true if mld is disconnecting or connecting, false otherwise
+ * Return: true if mld is connecting, false otherwise
  */
-bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev);
+bool mlo_is_mld_connecting(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlo_is_ml_connection_in_progress - Check whether MLD assoc or link vdev is
@@ -146,6 +146,23 @@ bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev);
  */
 bool mlo_is_ml_connection_in_progress(struct wlan_objmgr_psoc *psoc,
 				      uint8_t vdev_id);
+/**
+ * mlo_is_mld_vdevs_active() - Check whether the VDEV state of all VDEVs in
+ * MLD are in active state or not.
+ * @vdev: VDEV object manager pointer.
+ *
+ * Return: True if all VDEVs are in active state or otherwise false.
+ */
+bool mlo_is_mld_vdevs_active(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_is_mld_connected - Check whether MLD is connected
+ *
+ * @vdev: pointer to vdev
+ *
+ * Return: true if mld is connected, false otherwise
+ */
+bool mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev);
 
 #ifndef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
@@ -1048,7 +1065,7 @@ bool ucfg_mlo_is_mld_disconnected(struct wlan_objmgr_vdev *vdev)
 #endif
 
 static inline
-bool mlo_is_mld_disconnecting_connecting(struct wlan_objmgr_vdev *vdev)
+bool mlo_is_mld_connecting(struct wlan_objmgr_vdev *vdev)
 {
 	return false;
 }
@@ -1299,6 +1316,15 @@ mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev)
  */
 int mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
 				   struct wlan_channel *chan_info);
+
+/**
+ * mlo_get_sta_num_links() - Get number of associated links for the given
+ * mld context
+ * @mld_ctx: Pointer to mld context
+ *
+ * Return: Number of associated links
+ */
+uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx);
 #else
 static inline int
 mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
@@ -1306,6 +1332,11 @@ mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
 {
 	return -EINVAL;
 }
-#endif
 
+static inline uint8_t
+mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
+{
+	return 0;
+}
+#endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif

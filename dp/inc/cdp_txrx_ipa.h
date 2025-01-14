@@ -1162,5 +1162,27 @@ cdp_ipa_check_is_ring_ipa_rx(ol_txrx_soc_handle soc, uint8_t ring_id)
 
 	return false;
 }
+
+/**
+ * cdp_ipa_is_completion_pending() - Check for pending packets in tx comp ring
+ *
+ * @soc: DP SOC handle
+ *
+ * Return: True if entries are pending in completion ring, false otherwise
+ *
+ */
+static inline bool
+cdp_ipa_is_completion_pending(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		dp_err("pointer null");
+		return false;
+	}
+
+	if (soc->ops->ipa_ops->ipa_is_completion_pending)
+		return soc->ops->ipa_ops->ipa_is_completion_pending(soc);
+
+	return false;
+}
 #endif /* IPA_OFFLOAD */
 #endif /* _CDP_TXRX_IPA_H_ */
