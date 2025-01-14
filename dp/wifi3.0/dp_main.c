@@ -9616,6 +9616,93 @@ dp_txrx_get_peer_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
 }
 
 #ifdef WIFI_MONITOR_SUPPORT
+#ifdef WDI_EVENT_ENABLE
+#ifdef IPA_OFFLOAD
+static void
+dp_ezmesh_peer_get_tx_rx_stats(struct dp_peer *peer,
+			       struct cdp_interface_peer_stats *peer_stats_intf)
+{
+	struct dp_rx_tid *rx_tid = NULL;
+	uint8_t i = 0;
+
+	for (i = 0; i < DP_MAX_TIDS; i++) {
+		rx_tid = &peer->rx_tid[i];
+		peer_stats_intf->rx_byte_count +=
+			rx_tid->rx_msdu_cnt.bytes;
+		peer_stats_intf->rx_packet_count +=
+			rx_tid->rx_msdu_cnt.num;
+	}
+	peer_stats_intf->tx_packet_count =
+		peer->stats.tx.tx_ucast_success.num;
+	peer_stats_intf->tx_byte_count =
+		peer->stats.tx.tx_ucast_success.bytes;
+}
+#else
+static void
+dp_ezmesh_peer_get_tx_rx_stats(struct dp_peer *peer,
+			       struct cdp_interface_peer_stats *peer_stats_intf)
+{
+	struct cdp_peer_stats *peer_stats = &peer->stats;
+
+	peer_stats_intf->tx_packet_count = peer_stats->tx.ucast.num;
+	peer_stats_intf->rx_packet_count = peer_stats->rx.to_stack.num;
+	peer_stats_intf->tx_byte_count = peer_stats->tx.tx_success.bytes;
+	peer_stats_intf->rx_byte_count = peer_stats->rx.to_stack.bytes;
+}
+#endif
+
+#define INVALID_FREE_BUFF 0xffffffff
+/**
+ * dp_ezmesh_peer_stats_notify() - notify when peer_stats change
+ * @peer: DP peer
+ *
+ * Return: status success/failure
+ */
+static QDF_STATUS
+dp_ezmesh_peer_stats_notify(struct dp_peer *peer)
+{
+	struct cdp_interface_peer_stats peer_stats_intf = {0};
+	struct cdp_peer_stats *peer_stats = &peer->stats;
+	struct dp_pdev *pdev = NULL;
+
+	if (!peer->vdev)
+		return QDF_STATUS_E_FAULT;
+
+	pdev = peer->vdev->pdev;
+	if (!pdev)
+		return QDF_STATUS_E_FAULT;
+
+	if (peer_stats->rx.last_snr != peer_stats->rx.snr)
+		peer_stats_intf.rssi_changed = true;
+
+	if ((peer_stats->rx.snr && peer_stats_intf.rssi_changed) ||
+	    (peer_stats->tx.tx_rate &&
+	     peer_stats->tx.tx_rate != peer_stats->tx.last_tx_rate)) {
+		qdf_mem_copy(peer_stats_intf.peer_mac, peer->mac_addr.raw,
+			     QDF_MAC_ADDR_SIZE);
+		peer_stats_intf.vdev_id = peer->vdev->vdev_id;
+		peer_stats_intf.last_peer_tx_rate = peer_stats->tx.last_tx_rate;
+		peer_stats_intf.peer_tx_rate = peer_stats->tx.tx_rate;
+		peer_stats_intf.peer_rssi = peer_stats->rx.snr;
+		dp_ezmesh_peer_get_tx_rx_stats(peer, &peer_stats_intf);
+		peer_stats_intf.per = peer_stats->tx.last_per;
+		peer_stats_intf.ack_rssi = peer_stats->tx.last_ack_rssi;
+		peer_stats_intf.free_buff = INVALID_FREE_BUFF;
+		dp_wdi_event_handler(WDI_EVENT_PEER_STATS, pdev->soc,
+				     (void *)&peer_stats_intf, 0,
+				     WDI_NO_VAL, pdev->pdev_id);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static inline QDF_STATUS
+dp_ezmesh_peer_stats_notify(struct dp_peer *peer)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WDI_EVENT_ENABLE */
+
 /* dp_son_update_peer_stats - will update peer stats from cdp_peer_stats
  * @soc: soc handle
  * @vdev_id: id of vdev handle
@@ -9626,31 +9713,23 @@ static QDF_STATUS
 dp_son_update_peer_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
 			 struct cdp_peer_stats *peer_stats)
 {
-	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-	int ring;
-	struct dp_pdev *pdev = NULL;
+	QDF_STATUS status;
 
 	struct dp_peer *peer = dp_peer_find_hash_find((struct dp_soc *)soc,
 						       peer_stats->mac_addr.bytes,
 						       0, vdev_id,
 						       DP_MOD_ID_CDP);
 	if (!peer)
-		return status;
+		return QDF_STATUS_E_FAILURE;
 
 	DP_STATS_UPD(peer, rx.snr, peer_stats->rx.last_snr);
 	DP_STATS_UPD(peer, tx.tx_rate, peer_stats->tx.last_tx_rate);
 
-	for (ring = 0 ; ring < MAX_NUM_LMAC_HW; ring++) {
-		pdev = dp_get_pdev_for_lmac_id((struct dp_soc *)soc, ring);
-		if (!pdev)
-			continue;
-		status = dp_monitor_peer_stats_notify(pdev, peer);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			dp_err("peer stats notify fail, status=%d, ring=%d",
-			       status, ring);
-			dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-			return status;
-		}
+	status = dp_ezmesh_peer_stats_notify(peer);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("peer stats notify fail, status=%d", status);
+		dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+		return status;
 	}
 
 	DP_STATS_UPD(peer, rx.last_snr, peer_stats->rx.last_snr);
