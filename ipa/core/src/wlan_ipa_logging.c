@@ -17,6 +17,7 @@
 #define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100
 #define WLAN_IPA_POST_HOST_LOG 0x001
 #define WLAN_IPA_SHUTDOWN_LOGGING_THREAD 0x002
+#define WLAN_IPA_FLUSH_HOST_LOGS 0x003
 #define WLAN_IPA_MAX_WAIT_TIME 100
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
@@ -78,7 +79,9 @@ QDF_STATUS wlan_ipa_send_to_userspace(void)
 
 	str = g_ipa_logging_ctx.payload;
 	while (!qdf_list_empty(&g_ipa_logging_ctx.filled_list) &&
-	       wlan_ipa_is_logging_thread_running()) {
+	       (wlan_ipa_is_logging_thread_running() ||
+		qdf_atomic_test_bit(WLAN_IPA_FLUSH_HOST_LOGS,
+				    &g_ipa_logging_ctx.event_flag))) {
 		qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
 		qdf_list_remove_front(&g_ipa_logging_ctx.filled_list,
 				      (qdf_list_node_t **)&curr_node);
@@ -248,6 +251,8 @@ void wlan_ipa_logging_sock_deinit(void)
 		WLAN_IPA_LOGGING_THREAD_CANCELLED;
 	if (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
 		ipa_err("send log from deinit");
+		qdf_atomic_set_bit(WLAN_IPA_FLUSH_HOST_LOGS,
+				   &g_ipa_logging_ctx.event_flag);
 		wlan_ipa_send_to_userspace();
 	}
 
