@@ -9638,6 +9638,14 @@ policy_mgr_is_link_active_allowed(struct wlan_objmgr_psoc *psoc,
 	struct wlan_channel *chan_info;
 	struct mlo_link_info *link_info;
 	unsigned long act_link_bitmap = active_link_bitmap;
+	bool is_emlsr_supp;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+
+	status = wlan_mlme_get_emlsr_mode_enabled(psoc, &is_emlsr_supp);
+	if (!is_emlsr_supp) {
+		policy_mgr_err("eMLSR is disabled");
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
 	for (iter = 0; iter < WLAN_MAX_ML_BSS_LINKS; iter++) {
@@ -9751,8 +9759,10 @@ policy_mgr_update_mlo_links_based_on_linkid_nlink(
 	if (!policy_mgr_is_hw_dbs_capable(psoc) && num_links_to_active > 1 &&
 	    policy_mgr_is_link_active_allowed(psoc, vdev,
 				active_link_bitmap,
-				num_links_to_active) != QDF_STATUS_SUCCESS)
+				num_links_to_active) != QDF_STATUS_SUCCESS) {
+		status = QDF_STATUS_E_FAILURE;
 		goto release_vdev_ref;
+	}
 
 	policy_mgr_debug("active link bitmap: %d, inactive link bitmap: %d",
 			 active_link_bitmap, inactive_link_bitmap);
