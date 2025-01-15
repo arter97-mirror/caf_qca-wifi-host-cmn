@@ -2,6 +2,7 @@
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2007-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -144,16 +145,19 @@ void dfs_process_cac_completion(struct wlan_dfs *dfs)
  * Sets dfs_cac_timer_running to 0  and dfs_cac_valid_timer.
  */
 #ifdef CONFIG_CHAN_FREQ_API
-static os_timer_func(dfs_cac_timeout)
+static enum qdf_hrtimer_restart_status
+dfs_cac_timeout(qdf_hrtimer_data_t *arg)
 {
-	struct wlan_dfs *dfs = NULL;
+	struct wlan_dfs *dfs;
 
-	OS_GET_TIMER_ARG(dfs, struct wlan_dfs *);
+	dfs = container_of(arg, struct wlan_dfs, dfs_cac_timer);
 
 	if (dfs_is_hw_mode_switch_in_progress(dfs))
 		dfs->dfs_defer_params.is_cac_completed = true;
 	else
 		dfs_process_cac_completion(dfs);
+
+	return QDF_HRTIMER_NORESTART;
 }
 #endif
 
@@ -162,12 +166,11 @@ void dfs_cac_timer_attach(struct wlan_dfs *dfs)
 {
 	dfs->dfs_cac_timeout_override = -1;
 	dfs->wlan_dfs_cac_time = WLAN_DFS_WAIT_MS;
-	qdf_timer_init(NULL,
-			&(dfs->dfs_cac_timer),
-			dfs_cac_timeout,
-			(void *)(dfs),
-			QDF_TIMER_TYPE_WAKE_APPS);
-
+	qdf_hrtimer_init(&dfs->dfs_cac_timer,
+			 dfs_cac_timeout,
+			 QDF_CLOCK_MONOTONIC,
+			 QDF_HRTIMER_MODE_REL,
+			 QDF_CONTEXT_TASKLET);
 	qdf_timer_init(NULL,
 			&(dfs->dfs_cac_valid_timer),
 			dfs_cac_valid_timeout,
@@ -177,7 +180,7 @@ void dfs_cac_timer_attach(struct wlan_dfs *dfs)
 
 void dfs_cac_timer_reset(struct wlan_dfs *dfs)
 {
-	qdf_timer_stop(&dfs->dfs_cac_timer);
+	qdf_hrtimer_cancel(&dfs->dfs_cac_timer);
 	dfs_get_override_cac_timeout(dfs,
 			&(dfs->dfs_cac_timeout_override));
 	dfs_clear_cac_started_chan(dfs);
@@ -185,8 +188,7 @@ void dfs_cac_timer_reset(struct wlan_dfs *dfs)
 
 void dfs_cac_timer_detach(struct wlan_dfs *dfs)
 {
-	qdf_timer_free(&dfs->dfs_cac_timer);
-
+	qdf_hrtimer_kill(&dfs->dfs_cac_timer);
 	qdf_timer_free(&dfs->dfs_cac_valid_timer);
 	dfs->dfs_cac_valid = 0;
 }
@@ -216,14 +218,16 @@ void dfs_start_cac_timer(struct wlan_dfs *dfs)
 		  cac_timeout,
 		  qdf_system_ticks_to_msecs(qdf_system_ticks()) / 1000);
 
-	qdf_timer_mod(&dfs->dfs_cac_timer, cac_timeout * 1000);
+	qdf_hrtimer_start(&dfs->dfs_cac_timer,
+			  qdf_time_ms_to_ktime(cac_timeout * 1000),
+			  QDF_HRTIMER_MODE_REL);
 	dfs->dfs_cac_aborted = 0;
 }
 #endif
 
 void dfs_cancel_cac_timer(struct wlan_dfs *dfs)
 {
-	qdf_timer_stop(&dfs->dfs_cac_timer);
+	qdf_hrtimer_cancel(&dfs->dfs_cac_timer);
 	dfs_clear_cac_started_chan(dfs);
 }
 
@@ -235,7 +239,7 @@ void dfs_cac_stop(struct wlan_dfs *dfs)
 	dfs_debug(dfs, WLAN_DEBUG_DFS,
 		"Stopping CAC Timer %d procphyerr 0x%08x",
 		 dfs->dfs_curchan->dfs_ch_freq, phyerr);
-	qdf_timer_stop(&dfs->dfs_cac_timer);
+	qdf_hrtimer_cancel(&dfs->dfs_cac_timer);
 	if (dfs->dfs_cac_timer_running)
 		dfs->dfs_cac_aborted = 1;
 	dfs_clear_cac_started_chan(dfs);
