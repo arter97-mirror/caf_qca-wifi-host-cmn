@@ -161,7 +161,7 @@ uint16_t qca_sawf_get_msduq(struct net_device *netdev, uint8_t *peer_mac,
 
 	vdev = qca_sawf_get_ref_vdev(netdev, peer_mac, NULL, WLAN_SAWF_ID);
 	if (!vdev) {
-		sawf_err("Invalid vdev");
+		sawf_debug("Invalid vdev");
 		return DP_SAWF_PEER_Q_INVALID;
 	}
 
