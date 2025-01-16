@@ -7188,12 +7188,19 @@ void dp_aggregate_vdev_stats(struct dp_vdev *vdev,
 #endif
 }
 
+#ifdef AUTO_PLATFORM
+#define dp_alloc_vdev_stats(size) qdf_mem_common_alloc(size)
+#define dp_free_vdev_stats(ptr) qdf_mem_common_free(ptr)
+#else
+#define dp_alloc_vdev_stats(size) qdf_mem_malloc_atomic(size)
+#define dp_free_vdev_stats(ptr) qdf_mem_free(ptr)
+#endif
 void dp_aggregate_pdev_stats(struct dp_pdev *pdev)
 {
 	struct dp_vdev *vdev = NULL;
 	struct dp_soc *soc;
 	struct cdp_vdev_stats *vdev_stats =
-			qdf_mem_malloc_atomic(sizeof(struct cdp_vdev_stats));
+			dp_alloc_vdev_stats(sizeof(struct cdp_vdev_stats));
 
 	if (!vdev_stats) {
 		dp_cdp_err("%pK: DP alloc failure - unable to get alloc vdev stats",
@@ -7219,7 +7226,7 @@ void dp_aggregate_pdev_stats(struct dp_pdev *pdev)
 		dp_update_pdev_ingress_stats(pdev, vdev);
 	}
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
-	qdf_mem_free(vdev_stats);
+	dp_free_vdev_stats(vdev_stats);
 
 #if defined(FEATURE_PERPKT_INFO) && WDI_EVENT_ENABLE
 	dp_wdi_event_handler(WDI_EVENT_UPDATE_DP_STATS, pdev->soc, &pdev->stats,

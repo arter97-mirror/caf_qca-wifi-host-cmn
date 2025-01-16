@@ -668,7 +668,7 @@ alloc_page_pool:
 	status = dp_rx_page_pool_check_pages_availability(pp, *pp_size,
 							  *page_size);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		dp_info("page pool resources not available for page_size:%u",
+		dp_info("page pool resources not available for page_size:%zu",
 			*page_size);
 		qdf_page_pool_destroy(pp);
 		pp = NULL;
@@ -757,7 +757,7 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 		pp_params->pool_size = pool_size;
 		pp_params->pp_size = pp_size;
 
-		dp_info("Page pool idx %d pool_size %d pp_size %d", i,
+		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
 			pool_size, pp_size);
 	}
 
@@ -803,7 +803,7 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		pp_count++;
 
 	if (pp_count > DP_PAGE_POOL_MAX) {
-		dp_err("Failed to allocate page pools, invalid pool count %d",
+		dp_err("Failed to allocate page pools, invalid pool count %zu",
 		       pp_count);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -839,7 +839,7 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		pp_params->pp_size = pp_size;
 		upscale_cnt++;
 
-		dp_info("Page pool idx %d pool_size %d pp_size %d", i,
+		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
 			pool_size, pp_size);
 	}
 
