@@ -22328,7 +22328,8 @@ bool is_both_psd_eirp_support_present_for_sp(wmi_unified_t wmi_handle,
 	return (is_service_enabled_tlv(wmi_handle,
 		    WMI_SERVICE_BOTH_PSD_EIRP_FOR_AP_SP_CLIENT_SP_SUPPORT) &&
 		(param->power_type_6g == REG_STANDARD_POWER_AP ||
-			param->is_power_type_client_sp));
+			param->is_power_type_client_sp) &&
+		param->num_psd_pwr_levels && param->num_eirp_pwr_levels);
 }
 
 #if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
