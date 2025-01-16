@@ -4341,6 +4341,22 @@ dp_htt_tx_latency_stats_handler(struct htt_soc *soc,
 }
 #endif
 
+static inline void
+dp_htt_mlo_latency_req(struct htt_soc *soc, uint32_t *msg_word)
+{
+	uint8_t vdev_id;
+	bool enable;
+	uint16_t interval;
+
+	vdev_id = HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ_VDEV_ID_GET(*msg_word);
+	enable = HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ_ENABLE_GET(*msg_word);
+	interval =
+		HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ_PERIODIC_INTVL_GET(*msg_word);
+
+	dp_info("vdev id: %d enable: %d interval: %d",
+		vdev_id, enable, interval);
+}
+
 void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 {
 	struct htt_soc *soc = (struct htt_soc *) context;
@@ -4813,6 +4829,12 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 	case HTT_T2H_MSG_TYPE_SDWF_MSDUQ_CFG_IND:
 	{
 		dp_sawf_msduq_recfg_ind(soc, msg_word);
+		break;
+	}
+
+	case HTT_T2H_MSG_TYPE_MLO_LATENCY_REQ:
+	{
+		dp_htt_mlo_latency_req(soc, msg_word);
 		break;
 	}
 	default:
@@ -6225,3 +6247,82 @@ QDF_STATUS dp_htt_umac_reset_send_start_pre_reset_cmd(
 	return status;
 }
 #endif
+
+QDF_STATUS
+dp_h2t_tx_mlo_latency_stats_msg_send(struct dp_soc *dp_soc,
+				     struct dp_mlo_latency_stats *stats)
+{
+	struct htt_soc *soc = dp_soc->htt_handle;
+	struct dp_htt_htc_pkt *pkt;
+	uint8_t *htt_logger_bufp;
+	qdf_nbuf_t msg;
+	uint32_t *msg_word;
+	QDF_STATUS status;
+	qdf_size_t size;
+
+	size = sizeof(struct htt_h2t_mlo_latency_stats);
+	msg = dp_htt_htc_msg_alloc(
+			soc->osdev, HTT_MSG_BUF_SIZE(size),
+			HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING,
+			4, TRUE);
+	if (!msg)
+		return QDF_STATUS_E_NOMEM;
+
+	/*
+	 * Set the length of the message.
+	 * The contribution from the HTC_HDR_ALIGNMENT_PADDING is added
+	 * separately during the below call to qdf_nbuf_push_head.
+	 * The contribution from the HTC header is added separately inside HTC.
+	 */
+	if (!qdf_nbuf_put_tail(msg, size)) {
+		dp_htt_err("Failed to expand head");
+		qdf_nbuf_free(msg);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	msg_word = (uint32_t *)qdf_nbuf_data(msg);
+	memset(msg_word, 0, size);
+
+	qdf_nbuf_push_head(msg, HTC_HDR_ALIGNMENT_PADDING);
+	htt_logger_bufp = (uint8_t *)msg_word;
+	*msg_word = 0;
+	HTT_H2T_MSG_TYPE_SET(*msg_word, HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_RESP);
+	HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_VDEV_ID_SET(*msg_word, stats->vdev_id);
+	HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_AVG_LATENCY_MS_SET(*msg_word, stats->avg_latency_ms);
+	msg_word++;
+	*msg_word = 0;
+	HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_AVG_JITTER_MS_SET(*msg_word, stats->avg_jitter_ms);
+	HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_NUM_OF_TX_PKT_SET(*msg_word, stats->num_of_tx_pkt);
+
+	pkt = htt_htc_pkt_alloc(soc);
+	if (!pkt) {
+		dp_htt_err("Fail to allocate dp_htt_htc_pkt buffer");
+		qdf_nbuf_free(msg);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	pkt->soc_ctxt = NULL;
+
+	/* macro to set packet parameters for TX */
+	SET_HTC_PACKET_INFO_TX(
+			&pkt->htc_pkt,
+			dp_htt_h2t_send_complete_free_netbuf,
+			qdf_nbuf_data(msg),
+			qdf_nbuf_len(msg),
+			soc->htc_endpoint,
+			HTC_TX_PACKET_TAG_RUNTIME_PUT);
+
+	SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
+
+	status = DP_HTT_SEND_HTC_PKT(
+			soc, pkt,
+			HTT_H2T_MSG_TYPE_MLO_LATENCY_STATS_RESP,
+			htt_logger_bufp);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		qdf_nbuf_free(msg);
+		htt_htc_pkt_free(soc, pkt);
+	}
+
+	return status;
+}
