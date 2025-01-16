@@ -2,7 +2,9 @@
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2007-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
