@@ -588,6 +588,12 @@ struct cdp_cmn_ops {
 					       uint32_t mac_id,
 					       uint8_t vdev_id);
 #endif /* WLAN_SYSFS_DP_STATS */
+#if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
+	int (*txrx_peer_exist_on_pdev)(ol_txrx_soc_handle soc,
+				       uint8_t *peer_mac_addr,
+				       int mac_addr_is_aligned,
+				       uint8_t pdev_id);
+#endif
 };
 
 struct cdp_ctrl_ops {
