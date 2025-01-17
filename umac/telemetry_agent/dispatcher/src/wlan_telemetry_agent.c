@@ -42,10 +42,11 @@ void wlan_telemetry_agent_application_init_notify(
 void wlan_telemetry_agent_dynamic_app_init_deinit_notify(
 		enum agent_notification_event event,
 		enum rm_services service_id,
-		uint64_t service_data)
+		uint64_t service_data,
+		bool is_container_app)
 {
 	if (g_agent_ops)
-		g_agent_ops->agent_dynamic_app_init_deinit_notify(event, service_id, service_data);
+		g_agent_ops->agent_dynamic_app_init_deinit_notify(event, service_id, service_data, is_container_app);
 }
 
 void wlan_telemetry_emesh_application_init_deinit_notify(
