@@ -222,6 +222,12 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 		wlan_reg_chan_band_to_freq(pdev,
 					   eht_ops->chan_freq_seg1,
 					   band_mask);
+
+	if (eht_ops->elem_len < sizeof(struct wlan_ie_ehtops)) {
+		scm_err("Invalid EHT OP IE len with dis_sc_bitmap");
+		return phymode;
+	}
+
 	scan_params->channel.puncture_bitmap = eht_ops->puncture_pattern;
 	return phymode;
 }
