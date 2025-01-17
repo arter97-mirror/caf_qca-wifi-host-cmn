@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3283,4 +3283,20 @@ target_if_get_fw_btm_multi_ap_support(struct wlan_objmgr_psoc *psoc)
 	return mac_phy_cap->ext_mldcap.btm_recommended_for_multi_ap;
 }
 #endif
+
+/**
+ * target_psoc_get_fw_optimize_power_cap() - Get FW Optimize Power Capability
+ *
+ * @tgt_hdl: target_psoc_info pointer
+ *
+ * return: true if FW supports optimized power else false
+ */
+static inline bool
+target_psoc_get_fw_optimize_power_cap(struct target_psoc_info *tgt_hdl)
+{
+	if (!tgt_hdl)
+		return false;
+
+	return tgt_hdl->info.wlan_res_cfg.enable_optimize_power;
+}
 #endif
