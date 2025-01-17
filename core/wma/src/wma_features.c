@@ -6038,7 +6038,7 @@ int wma_chan_info_event_handler(void *handle, uint8_t *event_buf, uint32_t len)
 	wmi_cca_busy_subband_info *cca_info = NULL;
 	uint32_t num_tlvs = 0;
 	bool is_cca_busy_info;
-	uint32_t rx_clear_count, cu;
+	uint32_t rx_clear_count, cu = 0;
 	QDF_STATUS qdf_status;
 
 	if (wma && wma->cds_context)
@@ -6121,7 +6121,8 @@ int wma_chan_info_event_handler(void *handle, uint8_t *event_buf, uint32_t len)
 	else
 		rx_clear_count = event->rx_clear_count;
 
-	cu = rx_clear_count * 100 / event->cycle_count;
+	if (event->cycle_count)
+		cu = rx_clear_count * 100 / event->cycle_count;
 
 	wma_debug("freq %d, nf %d, rcc %u, cc %u, tx_r %d, tx_t %d, tx_frm %u rx_frm %u my_rx_cc %u mac_clk_mhz %u rx_11b_data_dur %d chan_id:%d, flags:%d, cap: %d, cu percent %d num_tlvs:%d",
 		  event->freq, event->noise_floor,
