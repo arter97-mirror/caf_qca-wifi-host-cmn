@@ -8997,3 +8997,20 @@ wlan_mlme_clear_peer_private_object_data(struct wlan_objmgr_peer *peer)
 {
 	return mlme_clear_peer_private_object_data(peer);
 }
+
+QDF_STATUS
+wlan_mlme_get_fw_optimized_power_cap(struct wlan_objmgr_psoc *psoc,
+				     bool *cap)
+{
+	struct target_psoc_info *tgt_hdl;
+
+	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_hdl) {
+		mlme_err("target psoc info is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*cap = target_psoc_get_fw_optimize_power_cap(tgt_hdl);
+
+	return QDF_STATUS_SUCCESS;
+}

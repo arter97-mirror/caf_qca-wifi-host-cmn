@@ -7330,6 +7330,26 @@ void lim_update_usr_he_cap(struct mac_context *mac_ctx, struct pe_session *sessi
 			       he_cap->su_beamformee, he_cap->mu_beamformer);
 }
 
+#define AUX_RTS_THRESHOLD 1
+
+static void
+lim_refill_rts_threshold(struct mac_context *mac, tDot11fIEhe_op *he_ops)
+{
+	QDF_STATUS status;
+	bool cap = false;
+
+	status = wlan_mlme_get_fw_optimized_power_cap(mac->psoc, &cap);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		pe_err_rl("Unable to get optimized power capability info");
+		return;
+	}
+
+	if (cap) {
+		pe_debug_rl("Overriding the rts_threshold value");
+		he_ops->txop_rts_threshold = AUX_RTS_THRESHOLD;
+	}
+}
+
 void lim_decide_he_op(struct mac_context *mac_ctx, uint32_t *mlme_he_ops,
 		      struct pe_session *session)
 {
@@ -7364,6 +7384,7 @@ void lim_decide_he_op(struct mac_context *mac_ctx, uint32_t *mlme_he_ops,
 	he_ops.default_pe = he_ops_from_ie->default_pe;
 	he_ops.twt_required = he_ops_from_ie->twt_required;
 	he_ops.txop_rts_threshold = he_ops_from_ie->txop_rts_threshold;
+	lim_refill_rts_threshold(mac_ctx, &he_ops);
 	he_ops.partial_bss_col = he_ops_from_ie->partial_bss_col;
 
 	val = mac_ctx->mlme_cfg->he_caps.he_ops_basic_mcs_nss;
