@@ -27,6 +27,8 @@
 #include <wlan_defs.h>
 #include <wlan_cmn.h>
 #include <htc_services.h>
+#include "wlan_cmn_ieee80211.h"
+#include "wlan_cm_roam_api.h"
 #ifdef FEATURE_WLAN_APF
 #include "wmi_unified_apf_tlv.h"
 #endif
@@ -20129,6 +20131,38 @@ extract_oem_response_param_tlv(wmi_unified_t wmi_handle, void *resp_buf,
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 #define WLAN_PASN_LTF_KEY_SEED_REQUIRED 0x2
 
+/*
+ * extract_pasn_peer_cookie(): used to extract cookie value for
+ * individual peer from stream of cookie value.
+ *
+ * return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_pasn_peer_cookie(void *evt_buf, struct wlan_pasn_request *peer_info,
+			 uint8_t index, uint8_t cookie_len)
+{
+	WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID_param_tlvs *param_buf;
+	uint8_t *src_data;
+
+	param_buf = (WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf || !param_buf->cookie ||
+	    !param_buf->num_cookie  ||
+	    (index + cookie_len) > param_buf->num_cookie) {
+		wmi_err("Invalid peer_create req buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	src_data = param_buf->cookie + index;
+
+	if (cookie_len > WLAN_PASN_MAX_COOKIE_LEN) {
+		wmi_debug("cookie_len greater than max cookie len");
+		cookie_len = WLAN_PASN_MAX_COOKIE_LEN;
+	}
+	qdf_mem_copy(&peer_info->cookie, src_data, cookie_len);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS
 extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 				       struct wifi_pos_pasn_peer_data *dst)
@@ -20137,6 +20171,8 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_rtt_pasn_peer_create_req_event_fixed_param *fixed_param;
 	wmi_rtt_pasn_peer_create_req_param *buf;
 	uint8_t security_mode, i;
+	uint8_t cookie_index = 0;
+	QDF_STATUS status;
 
 	param_buf = (WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
@@ -20177,6 +20213,33 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 					   dst->peer_info[i].self_mac.bytes);
 		WMI_MAC_ADDR_TO_CHAR_ARRAY(&buf->dest_mac_addr,
 					   dst->peer_info[i].peer_mac.bytes);
+		dst->peer_info[i].akm = cm_wmi_auth_type_to_crypto_key_mgmt(
+								   buf->akm);
+		dst->peer_info[i].cipher = buf->cipher_suite;
+		if (buf->passphrase_len) {
+			qdf_mem_copy(&dst->peer_info[i].password,
+				     &buf->passphrase, buf->passphrase_len);
+			dst->peer_info[i].password_len = buf->passphrase_len;
+		}
+
+		qdf_mem_copy(&dst->peer_info[i].pmkid,
+			     &buf->pmk_id, PMKID_LEN);
+		dst->peer_info[i].pmkid_len = PMKID_LEN;
+
+		if (buf->cookie_len) {
+			status = extract_pasn_peer_cookie(evt_buf,
+							  &dst->peer_info[i],
+							  cookie_index,
+							  buf->cookie_len);
+
+			if (QDF_IS_STATUS_ERROR(status)) {
+				wmi_err_rl("Error in extracting pasn pmkid TLV for vdev_id:%d",
+					   dst->vdev_id);
+				return QDF_STATUS_E_INVAL;
+			}
+			cookie_index += buf->cookie_len;
+			dst->peer_info[i].cookie_len = buf->cookie_len;
+		}
 		security_mode = WMI_RTT_PASN_PEER_CREATE_SECURITY_MODE_GET(
 							buf->control_flag);
 		if (security_mode)
@@ -20191,11 +20254,13 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		dst->peer_info[i].force_self_mac_usage =
 			WMI_RTT_PASN_PEER_CREATE_FORCE_SELF_MAC_USE_GET(
 							buf->control_flag);
-		wmi_debug("Peer[%d]: self_mac:" QDF_MAC_ADDR_FMT " peer_mac:" QDF_MAC_ADDR_FMT "security_mode:0x%x force_self_mac:%d",
+		wmi_debug("Peer[%d]: self_mac :" QDF_MAC_ADDR_FMT " peer_mac :" QDF_MAC_ADDR_FMT "security_mode :0x%x force_self_mac:%d akm :0x%x cipher :0x%x",
 			  i, QDF_MAC_ADDR_REF(dst->peer_info[i].self_mac.bytes),
 			  QDF_MAC_ADDR_REF(dst->peer_info[i].peer_mac.bytes),
 			  security_mode,
-			  dst->peer_info[i].force_self_mac_usage);
+			  dst->peer_info[i].force_self_mac_usage,
+			  dst->peer_info[i].akm,
+			  dst->peer_info[i].cipher);
 
 		dst->num_peers++;
 		buf++;
