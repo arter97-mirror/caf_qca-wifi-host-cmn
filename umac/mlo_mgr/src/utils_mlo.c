@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2761,10 +2761,6 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 		if ((reportingsta_ie[ID_POS] == WLAN_ELEMID_EXTN_ELEM) &&
 		    (reportingsta_ie[IDEXT_POS] ==
 				WLAN_EXTN_ELEMID_MULTI_LINK)) {
-			if (((reportingsta_ie + reportingsta_ie_size) -
-					frame_iesection) == frame_iesection_len)
-				break;
-
 			/* Add BV ML IE for link specific probe response.
 			 *
 			 * For non-transmitting BSSID, there will be two BV ML
@@ -2784,6 +2780,12 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 				if (QDF_IS_STATUS_ERROR(ret))
 					goto mem_free;
 			}
+			if (((reportingsta_ie + reportingsta_ie_size) -
+			     frame_iesection) == frame_iesection_len) {
+				mlo_debug("break while bml ie is the last one");
+				break;
+			}
+
 			reportingsta_ie += reportingsta_ie_size;
 
 			ret = util_validate_reportingsta_ie(reportingsta_ie,
