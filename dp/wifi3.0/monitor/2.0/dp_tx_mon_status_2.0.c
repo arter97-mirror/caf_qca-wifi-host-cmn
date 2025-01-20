@@ -901,7 +901,6 @@ dp_tx_mon_generate_mu_block_ack_frm(struct dp_pdev *pdev,
  * dp_tx_mon_generate_block_ack_frm() - API to generate block ack frame
  * @pdev: pdev Handle
  * @tx_ppdu_info: pointer to tx ppdu info structure
- * @window_flag: frame generated window
  * @mac_id: LMAC ID
  *
  * Return: void
@@ -909,7 +908,6 @@ dp_tx_mon_generate_mu_block_ack_frm(struct dp_pdev *pdev,
 static void
 dp_tx_mon_generate_block_ack_frm(struct dp_pdev *pdev,
 				 struct dp_tx_ppdu_info *tx_ppdu_info,
-				 uint8_t window_flag,
 				 uint8_t mac_id)
 {
 	/* allocate and populate block ack frame */
@@ -996,21 +994,12 @@ dp_tx_mon_generate_block_ack_frm(struct dp_pdev *pdev,
 	/* duration */
 	*(u_int16_t *)(&wh_addr2->i_aidordur) = qdf_cpu_to_le16(0x0020);
 
-	if (window_flag) {
-		qdf_mem_copy(wh_addr2->i_addr2,
-			     TXMON_STATUS_INFO(tx_status_info, addr2),
-			     QDF_MAC_ADDR_SIZE);
-		qdf_mem_copy(wh_addr2->i_addr1,
-			     TXMON_STATUS_INFO(tx_status_info, addr1),
-			     QDF_MAC_ADDR_SIZE);
-	} else {
-		qdf_mem_copy(wh_addr2->i_addr2,
-			     TXMON_STATUS_INFO(tx_status_info, addr1),
-			     QDF_MAC_ADDR_SIZE);
-		qdf_mem_copy(wh_addr2->i_addr1,
-			     TXMON_STATUS_INFO(tx_status_info, addr2),
-			     QDF_MAC_ADDR_SIZE);
-	}
+	qdf_mem_copy(wh_addr2->i_addr2,
+		     TXMON_STATUS_INFO(tx_status_info, addr2),
+		     QDF_MAC_ADDR_SIZE);
+	qdf_mem_copy(wh_addr2->i_addr1,
+		     TXMON_STATUS_INFO(tx_status_info, addr1),
+		     QDF_MAC_ADDR_SIZE);
 
 	frm = (uint8_t *)&wh_addr2[1];
 	/* BA control */
@@ -1252,8 +1241,7 @@ dp_tx_mon_generated_response_frm(struct dp_pdev *pdev,
 	}
 	case TXMON_GEN_RESP_SELFGEN_BA:
 	{
-		dp_tx_mon_generate_block_ack_frm(pdev, tx_ppdu_info,
-						 RESPONSE_WINDOW, mac_id);
+		dp_tx_mon_generate_block_ack_frm(pdev, tx_ppdu_info, mac_id);
 		break;
 	}
 	case TXMON_GEN_RESP_SELFGEN_MBA:
