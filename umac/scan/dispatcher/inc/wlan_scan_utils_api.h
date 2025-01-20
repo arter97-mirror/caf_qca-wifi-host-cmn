@@ -1360,20 +1360,6 @@ util_scan_entry_age(struct scan_cache_entry *scan_entry)
 }
 
 /**
- * util_scan_mlme_info() - function to read mlme info struct
- * @scan_entry: scan entry
- *
- * API, function to read mlme info struct
- *
- * Return: mlme info
- */
-static inline struct mlme_info*
-util_scan_mlme_info(struct scan_cache_entry *scan_entry)
-{
-	return &scan_entry->mlme_info;
-}
-
-/**
  * util_scan_entry_bss_type() - function to read bss type
  * @scan_entry: scan entry
  *
@@ -1567,20 +1553,6 @@ util_scan_entry_get_extcap(struct scan_cache_entry *scan_entry,
 		((ext_cap->ext_caps[ext_caps_byte] >> ext_caps_bit_pos) & 0x1);
 
 	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * util_scan_entry_mlme_info() - function to read MLME info
- * @scan_entry: scan entry
- *
- * API, function to read MLME info
- *
- * Return: MLME info or NULL if it is not present
- */
-static inline struct mlme_info*
-util_scan_entry_mlme_info(struct scan_cache_entry *scan_entry)
-{
-	return &(scan_entry->mlme_info);
 }
 
 /**
@@ -1827,19 +1799,6 @@ util_scan_entry_fils_indication(struct scan_cache_entry *scan_entry)
  */
 qdf_time_t
 util_get_last_scan_time(struct wlan_objmgr_vdev *vdev);
-
-/**
- * util_scan_entry_update_mlme_info() - function to update mlme info
- * @pdev: pdev object
- * @scan_entry: scan entry object
- *
- * API, function to update mlme info in scan DB
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-util_scan_entry_update_mlme_info(struct wlan_objmgr_pdev *pdev,
-	struct scan_cache_entry *scan_entry);
 
 /**
  * util_scan_is_hidden_ssid() - function to check if ssid is hidden

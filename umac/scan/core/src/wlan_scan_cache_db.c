@@ -2124,50 +2124,6 @@ void scm_update_rnr_from_scan_cache(struct wlan_objmgr_pdev *pdev)
 }
 #endif
 
-QDF_STATUS scm_update_scan_mlme_info(struct wlan_objmgr_pdev *pdev,
-	struct scan_cache_entry *entry)
-{
-	uint8_t hash_idx;
-	struct scan_dbs *scan_db;
-	struct scan_cache_node *cur_node;
-	struct scan_cache_node *next_node = NULL;
-	struct wlan_objmgr_psoc *psoc;
-
-	psoc = wlan_pdev_get_psoc(pdev);
-	if (!psoc) {
-		scm_err("psoc is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-	scan_db = wlan_pdev_get_scan_db(psoc, pdev);
-	if (!scan_db) {
-		scm_err("scan_db is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	hash_idx = SCAN_GET_HASH(entry->bssid.bytes);
-
-	cur_node = scm_get_next_node(scan_db,
-			&scan_db->scan_hash_tbl[hash_idx], NULL);
-
-	while (cur_node) {
-		if (util_is_scan_entry_match(entry,
-					cur_node->entry)) {
-			/* Acquire db lock to prevent simultaneous update */
-			qdf_spin_lock_bh(&scan_db->scan_db_lock);
-			scm_update_mlme_info(entry, cur_node->entry);
-			qdf_spin_unlock_bh(&scan_db->scan_db_lock);
-			scm_scan_entry_put_ref(scan_db,
-					cur_node, true);
-			return QDF_STATUS_SUCCESS;
-		}
-		next_node = scm_get_next_node(scan_db,
-				&scan_db->scan_hash_tbl[hash_idx], cur_node);
-		cur_node = next_node;
-	}
-
-	return QDF_STATUS_E_INVAL;
-}
-
 QDF_STATUS scm_scan_update_mlme_by_bssinfo(struct wlan_objmgr_pdev *pdev,
 		struct bss_info *bss_info, struct mlme_info *mlme)
 {
