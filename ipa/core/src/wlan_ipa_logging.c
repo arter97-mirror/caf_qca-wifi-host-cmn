@@ -11,6 +11,7 @@
 
 /* Include Files */
 #include <wlan_ipa_main.h>
+#include "cnss_nl.h"
 #define WLAN_IPA_THREAD_NAME_MAX 20
 #define WLAN_IPA_TEMP_BUF_LEN_MAX 20
 #define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100
@@ -23,8 +24,36 @@ struct wlan_ipa_log_context g_ipa_logging_ctx;
 static struct wlan_ipa_log_msg *g_ipa_log_msg;
 
 static inline
-QDF_STATUS wlan_ipa_nl_broadcast(int length, char *str, int num_log)
+QDF_STATUS wlan_ipa_nl_broadcast(int length, char *buf)
 {
+	int tot_msg_len;
+	int payload_len;
+	struct nl_msg_header *wnl;
+	struct sk_buff *skb = NULL;
+	struct nlmsghdr *nlh;
+	static int nlmsg_seq;
+
+	payload_len = length + sizeof(wnl->type) + sizeof(wnl->length);
+	tot_msg_len = NLMSG_SPACE(payload_len);
+
+	skb = dev_alloc_skb(tot_msg_len);
+	if (!skb)
+		return QDF_STATUS_E_FAILURE;
+
+	nlh = nlmsg_put(skb, 0, nlmsg_seq++, WLAN_NL_MSG_OPT_DP_LOG,
+			payload_len, NLM_F_REQUEST);
+	if (!nlh) {
+		dev_kfree_skb(skb);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	wnl = (struct nl_msg_header *)nlh;
+	wnl->type = WLAN_IPA_NL_MSG_HOST_TYPE;
+	wnl->length = length;
+	qdf_mem_copy(nlmsg_data(nlh) + sizeof(wnl->type) +
+		     sizeof(wnl->length), buf, length);
+	nl_srv_bcast(skb, CLD80211_MCGRP_OPT_DP_LOGS,
+		     WLAN_NL_MSG_OPT_DP_LOG);
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -54,9 +83,10 @@ QDF_STATUS wlan_ipa_send_to_userspace(void)
 		qdf_list_remove_front(&g_ipa_logging_ctx.filled_list,
 				      (qdf_list_node_t **)&curr_node);
 		qdf_spin_unlock_bh(&g_ipa_logging_ctx.lock);
-		if (len + qdf_str_len(curr_node->logbuf) >
+		if (len + qdf_str_len(curr_node->logbuf) +
+		    sizeof(struct nl_msg_header) >
 		    WLAN_IPA_LOG_MSG_LENGTH_MAX) {
-			ret = wlan_ipa_nl_broadcast(len, str, num_log);
+			ret = wlan_ipa_nl_broadcast(len, str);
 			if (QDF_IS_STATUS_ERROR(ret)) {
 				ipa_err_rl("nl broadcast failure");
 				g_ipa_logging_ctx.drop_count += num_log;
@@ -77,7 +107,7 @@ QDF_STATUS wlan_ipa_send_to_userspace(void)
 	}
 
 	if (len > 0) {
-		ret = wlan_ipa_nl_broadcast(len, str, num_log);
+		ret = wlan_ipa_nl_broadcast(len, str);
 		if (QDF_IS_STATUS_ERROR(ret)) {
 			ipa_err_rl("nl broadcast failure");
 			g_ipa_logging_ctx.drop_count += num_log;

@@ -11,6 +11,8 @@
 
 #include "qdf_threads.h"
 #include "qdf_event.h"
+#include "wlan_cfg80211.h"
+#include <wlan_nlink_srv.h>
 #define MAX_LOG_LENGTH 512
 #define WLAN_IPA_MAX_LIST_SIZE 64
 #define WLAN_IPA_LOGGING(arg, ...) \
@@ -84,6 +86,29 @@ struct wlan_ipa_log_msg {
  * @msg: actual log to send
  */
 void wlan_ipa_log_message(const char *func, const char *msg, ...);
+
+/**
+ * enum wlan_ipa_nl_msg_type - netlink msg type
+ * @WLAN_IPA_NL_MSG_HOST_TYPE: msg type for host logs
+ *		related to opt_dp
+ * @WLAN_IPA_NL_MSG_FW_TYPE: msg type for FW logs
+ *		related to opt_dp
+ */
+enum wlan_ipa_nl_msg_type {
+	WLAN_IPA_NL_MSG_HOST_TYPE = 0,
+	WLAN_IPA_NL_MSG_FW_TYPE = 1,
+};
+
+/** struct nl_msg_header - netlink msg header
+ * @nlh: netlink header
+ * @type: message type
+ * @length: actual payload length
+ */
+struct nl_msg_header {
+	struct nlmsghdr nlh;
+	unsigned short type;
+	unsigned short length;
+};
 
 /**
  * wlan_ipa_logging_sock_init() - init ipa logging resources
