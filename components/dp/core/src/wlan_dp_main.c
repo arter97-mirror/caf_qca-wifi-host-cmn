@@ -238,7 +238,7 @@ QDF_STATUS dp_get_hlp_peer_state(struct wlan_dp_intf *dp_intf,
 	if (hlp_node && hlp_node->is_processing)
 		return QDF_STATUS_SUCCESS;
 
-	dp_debug_rl("Failed to get peer state");
+	dp_err_rl("Failed to get peer state");
 	return QDF_STATUS_E_FAILURE;
 }
 
