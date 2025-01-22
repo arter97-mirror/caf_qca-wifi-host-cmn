@@ -318,6 +318,29 @@ static void dp_initialize_arch_ops_be_fisa(struct dp_arch_ops *arch_ops)
 #endif
 
 #ifdef DP_FEATURE_HW_COOKIE_CONVERSION
+#ifdef CONFIG_BORON
+
+#ifdef IPA_OPT_WIFI_DP
+//#error disable_cookie_coversion_on_IPA_ring
+#endif
+static inline
+void dp_cc_wbm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+}
+
+static inline
+void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+	cc_cfg->tqm2sw6_cc_en = 1;
+	cc_cfg->tqm2sw5_cc_en = 1;
+	cc_cfg->tqm2sw4_cc_en = 1;
+	cc_cfg->tqm2sw3_cc_en = 1;
+	cc_cfg->tqm2sw2_cc_en = 1;
+	cc_cfg->tqm2sw1_cc_en = 1;
+	cc_cfg->tqm2sw0_cc_en = 1;
+	cc_cfg->tqm2fw_cc_en = 0;
+}
+#else /* CONFIG_BORON */
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 /**
  * dp_cc_wbm_sw_en_cfg() - configure HW cookie conversion enablement
@@ -371,6 +394,12 @@ void dp_cc_wbm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
 }
 #endif
 
+static inline
+void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+}
+#endif /* !CONFIG_BORON */
+
 /**
  * dp_cc_reg_cfg_init() - initialize and configure HW cookie
  *			  conversion register
@@ -406,6 +435,7 @@ static void dp_cc_reg_cfg_init(struct dp_soc *soc,
 	cc_cfg.error_path_cookie_conv_en = true;
 	cc_cfg.release_path_cookie_conv_en = true;
 	dp_cc_wbm_sw_en_cfg(&cc_cfg);
+	dp_cc_tqm_sw_en_cfg(&cc_cfg);
 
 	hal_cookie_conversion_reg_cfg_be(soc->hal_soc, &cc_cfg);
 }

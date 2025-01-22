@@ -1163,6 +1163,10 @@ static inline uint32_t hal_rx_tlv_l3_type_get_fig(uint8_t *buf)
 	return HAL_RX_TLV_L3_TYPE_GET(rx_pkt_tlvs);
 }
 
+#ifdef DP_HW_COOKIE_CONVERT_EXCEPTION
+#define HAL_TQM_MISC_CONTROL_SPARE_CONTROL_FIELD_BIT15 0x8000
+#endif
+
 #ifdef CONFIG_WORD_BASED_TLV
 /**
  * hal_rx_priv_info_set_in_tlv_fig() - Save the private info to
