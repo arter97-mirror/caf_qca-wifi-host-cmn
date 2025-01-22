@@ -1646,6 +1646,20 @@ ucfg_mlme_get_restart_beaconing_on_ch_avoid(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
+bool
+ucfg_mlme_check_bit_in_rso_disabled_bitmap(struct wlan_objmgr_psoc *psoc,
+				uint8_t vdev_id,
+				enum wlan_cm_rso_control_requestor reqs)
+{
+	uint8_t rso_disabled_bitmap;
+
+	rso_disabled_bitmap = mlme_get_rso_disabled_bitmap(psoc, vdev_id);
+	if (rso_disabled_bitmap & reqs)
+		return true;
+
+	return false;
+}
+
 QDF_STATUS
 ucfg_mlme_get_indoor_channel_support(struct wlan_objmgr_psoc *psoc,
 				     bool *value)

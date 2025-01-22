@@ -5484,10 +5484,12 @@ policy_mgr_handle_link_enable_disable_resp(struct wlan_objmgr_vdev *vdev,
 {
 	struct mlo_link_set_active_req *req = arg;
 	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_pdev *pdev;
 	struct policy_mgr_psoc_priv_obj *pm_ctx;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct ml_nlink_change_event data;
 	bool reschedule_workqueue = true;
+	uint8_t vdev_id = wlan_vdev_get_id(vdev);
 
 	psoc = wlan_vdev_get_psoc(vdev);
 	if (!psoc) {
@@ -5498,6 +5500,25 @@ policy_mgr_handle_link_enable_disable_resp(struct wlan_objmgr_vdev *vdev,
 	if (!pm_ctx) {
 		policy_mgr_err("Invalid Context");
 		return;
+	}
+
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		policy_mgr_debug("Pdev is NULL");
+		return;
+	}
+
+	/*
+	 * Check if any Re-enable roaming command is pending (avoided due to
+	 * the SET LINK being in progress, like during BSS START complete) as
+	 * per rso_disabled_status_bitmap. If present, process it first and
+	 * enable roaming by sending RSO START to FW.
+	 */
+	if (ucfg_mlme_check_bit_in_rso_disabled_bitmap(psoc, vdev_id,
+						       RSO_SET_LINK)) {
+		policy_mgr_debug("enable roaming for RSO_SET_LINK");
+		wlan_cm_enable_rso(pdev, vdev_id, RSO_SET_LINK,
+				   REASON_DRIVER_ENABLED);
 	}
 
 	qdf_mutex_acquire(&pm_ctx->qdf_conc_list_lock);
