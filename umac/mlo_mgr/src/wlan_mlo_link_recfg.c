@@ -1155,9 +1155,8 @@ mlo_link_recfg_is_standby_link_present_for_link_switch(
 				  link_info->ap_link_addr.bytes));
 			if (force_state.force_inactive_bitmap &
 				1 << link_info->link_id) {
-				mlo_debug("standby link id %d is inactive",
+				mlo_debug("standby link id %d is inactive, wait for link switch",
 					  link_info->link_id);
-				continue;
 			}
 			return true;
 		}
@@ -1293,6 +1292,8 @@ mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(
 						SCAN_ENTRY_CON_STATE_NONE);
 
 		mlo_mgr_clear_ap_link_info(vdev, &link_info->ap_link_addr);
+		ml_nlink_update_force_state_on_link_delete(
+				vdev, req->del_link_info.link[i].link_id);
 	}
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
@@ -1439,6 +1440,9 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 			  channel.ch_phymode);
 
 		mlo_dev_lock_acquire(mlo_dev_ctx);
+		if (link_info->link_id != WLAN_INVALID_LINK_ID)
+			ml_nlink_update_force_state_on_link_delete(
+				vdev, link_info->link_id);
 		qdf_mem_copy(&link_info->ap_link_addr, &add_link->ap_link_addr,
 			     QDF_MAC_ADDR_SIZE);
 		qdf_mem_copy(link_info->link_chan_info, &channel,
