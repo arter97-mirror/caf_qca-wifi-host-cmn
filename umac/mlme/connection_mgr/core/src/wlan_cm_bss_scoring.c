@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -3192,7 +3192,7 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 				 qdf_list_t *candidate_list,
 				 uint8_t max_links)
 {
-	uint8_t i, num_links;
+	uint8_t i, num_links, link_cnt;
 	struct partner_link_info *link_info;
 	struct scan_cache_node *tmp_scan_node;
 	uint16_t cur_entry_link_map, next_entry_link_map;
@@ -3206,6 +3206,7 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 	 * If any link is beyond the supported link num count, mark it as
 	 * invalid.
 	 */
+	link_cnt = 1;
 	cur_entry_link_map =
 		BIT(util_scan_entry_self_linkid(cur_scan_node->entry));
 	num_links = cur_scan_node->entry->ml_info.num_links;
@@ -3214,12 +3215,9 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 		if (!link_info->is_valid_link)
 			continue;
 
-		if ((i + 1) >= max_links) {
-			link_info->is_valid_link = false;
-			continue;
-		}
-
-		cur_entry_link_map |= BIT(link_info->link_id);
+		link_cnt++;
+		if (link_cnt <= max_links)
+			cur_entry_link_map |= BIT(link_info->link_id);
 	}
 
 	while (cur_node) {
@@ -3237,6 +3235,7 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 					  &cur_scan_node->entry->ml_info.mld_mac_addr))
 			goto next;
 
+		link_cnt = 1;
 		next_entry_link_map =
 			BIT(util_scan_entry_self_linkid(tmp_scan_node->entry));
 		num_links = tmp_scan_node->entry->ml_info.num_links;
@@ -3245,12 +3244,9 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 			if (!link_info->is_valid_link)
 				continue;
 
-			if ((i + 1) >= max_links) {
-				link_info->is_valid_link = false;
-				continue;
-			}
-
-			next_entry_link_map |= BIT(link_info->link_id);
+			link_cnt++;
+			if (link_cnt <= max_links)
+				next_entry_link_map |= BIT(link_info->link_id);
 		}
 
 		if (next_entry_link_map == cur_entry_link_map) {
@@ -3536,9 +3532,6 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 			if (!link_info->is_valid_link)
 				continue;
 
-			if (!gen_slo_candidate)
-				gen_slo_candidate = true;
-
 			tmp_scan_entry = util_scan_copy_cache_entry(scan_entry);
 			if (!tmp_scan_entry) {
 				mlme_debug("Copy cache entry failed for %d",
@@ -3562,6 +3555,9 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 			qdf_list_insert_after(candidate_list,
 					      &tmp_scan_node->node,
 					      &scan_node->node);
+
+			if (!gen_slo_candidate)
+				gen_slo_candidate = true;
 		}
 
 		if (!gen_slo_candidate)
