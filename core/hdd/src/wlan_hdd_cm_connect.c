@@ -1717,8 +1717,8 @@ hdd_cm_connect_success_pre_user_update(struct wlan_objmgr_vdev *vdev,
 			hdd_cm_save_connect_info(assoc_link_adapter->deflink,
 						 rsp);
 	}
-	if (hdd_add_beacon_filter(adapter) != 0)
-		hdd_err("add beacon filter failed");
+
+	hdd_add_beacon_filter(hdd_ctx, link_info->vdev_id);
 
 	adapter->wapi_info.is_wapi_sta = hdd_cm_is_wapi_sta(
 						sta_ctx->conn_info.auth_type);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2144,10 +2144,26 @@ void sme_stop_beacon_report(mac_handle_t mac_handle,
 
 #endif
 
+/**
+ * sme_add_beacon_filter() - set the beacon filter configuration
+ * @mac_handle: The handle returned by macOpen
+ * @vdev_id: vdev id
+ * @ie_map: bitwise array of IEs
+ *
+ * Return: Return QDF_STATUS, otherwise appropriate failure code
+ */
 QDF_STATUS sme_add_beacon_filter(mac_handle_t mac_handle,
-				 uint32_t session_id, uint32_t *ie_map);
+				 uint8_t vdev_id, uint32_t *ie_map);
+
+/**
+ * sme_remove_beacon_filter() - set the beacon filter configuration
+ * @mac_handle: The handle returned by macOpen
+ * @vdev_id: vdev id
+ *
+ * Return: Return QDF_STATUS, otherwise appropriate failure code
+ */
 QDF_STATUS sme_remove_beacon_filter(mac_handle_t mac_handle,
-				    uint32_t session_id);
+				    uint8_t vdev_id);
 
 #ifdef FEATURE_WLAN_APF
 /**

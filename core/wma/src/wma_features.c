@@ -1112,7 +1112,7 @@ QDF_STATUS wma_add_beacon_filter(WMA_HANDLE handle,
 	for (i = 0; i < BCN_FLT_MAX_ELEMS_IE_LIST; i++)
 		ie_map[i] = filter_params->ie_map[i];
 
-	wma_debug("Beacon filter ie map Hex dump:");
+	wma_debug("vdev_id %d, Beacon filter ie map:", filter_params->vdev_id);
 	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_WMA, QDF_TRACE_LEVEL_DEBUG,
 			   (uint8_t *)ie_map,
 			   BCN_FLT_MAX_ELEMS_IE_LIST * sizeof(u_int32_t));
@@ -1127,7 +1127,7 @@ QDF_STATUS wma_add_beacon_filter(WMA_HANDLE handle,
 	for (i = 0; i < BCN_FLT_MAX_ELEMS_IE_LIST; i++)
 		ie_map[i] = filter_params->ie_map[i + 8];
 
-	wma_debug("Beacon filter ext ie map Hex dump:");
+	wma_debug("ext ie map:");
 	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_WMA, QDF_TRACE_LEVEL_DEBUG,
 			   (uint8_t *)ie_map,
 			   BCN_FLT_MAX_ELEMS_IE_LIST * sizeof(u_int32_t));
@@ -1172,6 +1172,7 @@ QDF_STATUS wma_remove_beacon_filter(WMA_HANDLE handle,
 
 	cmd = (wmi_rmv_bcn_filter_cmd_fixed_param *)wmi_buf_data(buf);
 	cmd->vdev_id = filter_params->vdev_id;
+	wma_debug("vdev %d remove bcn filter", cmd->vdev_id);
 
 	WMITLV_SET_HDR(&cmd->tlv_header,
 			WMITLV_TAG_STRUC_wmi_rmv_bcn_filter_cmd_fixed_param,

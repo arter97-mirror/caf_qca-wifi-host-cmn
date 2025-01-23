@@ -12715,25 +12715,16 @@ bool sme_is_beacon_reporting_do_not_resume(mac_handle_t mac_handle,
 }
 #endif
 
-/**
- * sme_add_beacon_filter() - set the beacon filter configuration
- * @mac_handle: The handle returned by macOpen
- * @session_id: session id
- * @ie_map: bitwise array of IEs
- *
- * Return: Return QDF_STATUS, otherwise appropriate failure code
- */
 QDF_STATUS sme_add_beacon_filter(mac_handle_t mac_handle,
-				 uint32_t session_id,
-				 uint32_t *ie_map)
+				 uint8_t vdev_id, uint32_t *ie_map)
 {
 	struct scheduler_msg message = {0};
 	QDF_STATUS qdf_status;
 	struct mac_context *mac_ctx = MAC_CONTEXT(mac_handle);
 	struct beacon_filter_param *filter_param;
 
-	if (!CSR_IS_SESSION_VALID(mac_ctx, session_id)) {
-		sme_err("CSR session not valid: %d", session_id);
+	if (!CSR_IS_SESSION_VALID(mac_ctx, vdev_id)) {
+		sme_err("vdev %d not valid", vdev_id);
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -12741,7 +12732,7 @@ QDF_STATUS sme_add_beacon_filter(mac_handle_t mac_handle,
 	if (!filter_param)
 		return QDF_STATUS_E_FAILURE;
 
-	filter_param->vdev_id = session_id;
+	filter_param->vdev_id = vdev_id;
 
 	qdf_mem_copy(filter_param->ie_map, ie_map,
 			SIR_BCN_FLT_MAX_ELEMS_IE_LIST * sizeof(uint32_t));
@@ -12752,31 +12743,23 @@ QDF_STATUS sme_add_beacon_filter(mac_handle_t mac_handle,
 					    QDF_MODULE_ID_WMA,
 					    QDF_MODULE_ID_WMA,
 					    &message);
-	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
-		sme_err("Not able to post msg to WDA!");
-
+	if (QDF_IS_STATUS_ERROR(qdf_status)) {
+		sme_err("vdev %d Not able to post msg to WDA!", vdev_id);
 		qdf_mem_free(filter_param);
 	}
 	return qdf_status;
 }
 
-/**
- * sme_remove_beacon_filter() - set the beacon filter configuration
- * @mac_handle: The handle returned by macOpen
- * @session_id: session id
- *
- * Return: Return QDF_STATUS, otherwise appropriate failure code
- */
 QDF_STATUS sme_remove_beacon_filter(mac_handle_t mac_handle,
-				    uint32_t session_id)
+				    uint8_t vdev_id)
 {
 	struct scheduler_msg message = {0};
 	QDF_STATUS qdf_status;
 	struct mac_context *mac_ctx = MAC_CONTEXT(mac_handle);
 	struct beacon_filter_param *filter_param;
 
-	if (!CSR_IS_SESSION_VALID(mac_ctx, session_id)) {
-		sme_err("CSR session not valid: %d", session_id);
+	if (!CSR_IS_SESSION_VALID(mac_ctx, vdev_id)) {
+		sme_err("vdev %d not valid", vdev_id);
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -12784,7 +12767,7 @@ QDF_STATUS sme_remove_beacon_filter(mac_handle_t mac_handle,
 	if (!filter_param)
 		return QDF_STATUS_E_FAILURE;
 
-	filter_param->vdev_id = session_id;
+	filter_param->vdev_id = vdev_id;
 
 	message.type = WMA_REMOVE_BCN_FILTER_CMDID;
 	message.bodyptr = filter_param;
@@ -12792,9 +12775,8 @@ QDF_STATUS sme_remove_beacon_filter(mac_handle_t mac_handle,
 					    QDF_MODULE_ID_WMA,
 					    QDF_MODULE_ID_WMA,
 					    &message);
-	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
-		sme_err("Not able to post msg to WDA!");
-
+	if (QDF_IS_STATUS_ERROR(qdf_status)) {
+		sme_err("vdev %d Not able to post msg to WDA!", vdev_id);
 		qdf_mem_free(filter_param);
 	}
 	return qdf_status;
