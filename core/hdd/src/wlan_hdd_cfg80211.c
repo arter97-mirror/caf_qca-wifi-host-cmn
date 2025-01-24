@@ -855,12 +855,12 @@ static const struct ieee80211_iface_limit
 
 #if defined(WLAN_FEATURE_NAN) && \
 	   (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
-/* STA + STA + SAP + NAN */
+/* STA + SAP + NAN. NAN represents NAN disc+NDI support */
 static const struct ieee80211_iface_limit
 	wlan_hdd_sta_sta_sap_nan_iface_limit[] = {
 	{
 		/* STA */
-		.max = 2,
+		.max = 1,
 		.types = BIT(NL80211_IFTYPE_STATION)
 	},
 	{
@@ -889,12 +889,12 @@ static const struct ieee80211_iface_limit
 	},
 };
 
-/* STA + NAN disc + P2P combination */
+/* STA + NAN + P2P. NAN represents NAN disc+NDI support */
 static const struct ieee80211_iface_limit
 	wlan_hdd_sta_nan_p2p_iface_limit[] = {
 	{
-		/* STA + NDI */
-		.max = 2,
+		/* STA */
+		.max = 1,
 		.types = BIT(NL80211_IFTYPE_STATION)
 	},
 	{
@@ -1020,11 +1020,11 @@ static struct ieee80211_iface_combination
 	},
 #if defined(WLAN_FEATURE_NAN) && \
 	   (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
-	/* STA + STA + SAP + NAN*/
+	/* STA + SAP + NAN. NAN represents NAN disc+NDI support */
 	{
 		.limits = wlan_hdd_sta_sta_sap_nan_iface_limit,
 		.num_different_channels = 3,
-		.max_interfaces = 4,
+		.max_interfaces = 3,
 		.n_limits = ARRAY_SIZE(wlan_hdd_sta_sta_sap_nan_iface_limit),
 		.beacon_int_infra_match = true,
 	},
@@ -1035,10 +1035,10 @@ static struct ieee80211_iface_combination
 		.num_different_channels = 2,
 		.n_limits = ARRAY_SIZE(wlan_hdd_sta_nan_iface_limit),
 	},
-	/* NAN + STA + P2P */
+	/* NAN + STA + P2P. NAN represents NAN disc+NDI support */
 	{
 		.limits = wlan_hdd_sta_nan_p2p_iface_limit,
-		.max_interfaces = 4,
+		.max_interfaces = 3,
 		.num_different_channels = 3,
 		.n_limits = ARRAY_SIZE(wlan_hdd_sta_nan_p2p_iface_limit),
 	},
