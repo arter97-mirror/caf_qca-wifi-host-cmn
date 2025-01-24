@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4237,12 +4237,12 @@ enum policy_mgr_three_connection_mode
 		    WLAN_REG_IS_5GHZ_CH_FREQ(
 			pm_conc_connection_list[list_ndi[0]].freq)) {
 			index = PM_NAN_DISC_STA_SCC_MCC_24_NDI_5_DBS;
-		} else if (WLAN_REG_IS_5GHZ_CH_FREQ(
+		} else if (!WLAN_REG_IS_24GHZ_CH_FREQ(
 			pm_conc_connection_list[list_sta[0]].freq) &&
 			   WLAN_REG_IS_24GHZ_CH_FREQ(
 			pm_conc_connection_list[list_ndi[0]].freq)) {
 			index = PM_NAN_DISC_NDI_24_STA_5_DBS;
-		} else if (WLAN_REG_IS_5GHZ_CH_FREQ(
+		} else if (!WLAN_REG_IS_24GHZ_CH_FREQ(
 			pm_conc_connection_list[list_sta[0]].freq) &&
 			  WLAN_REG_IS_5GHZ_CH_FREQ(
 			pm_conc_connection_list[list_ndi[0]].freq)) {
