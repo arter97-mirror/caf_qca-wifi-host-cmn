@@ -14674,6 +14674,13 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 						eml_cap.emlsr_trans_delay;
 	}
 
+	if (target_if_get_fw_btm_multi_ap_support(psoc)) {
+		mlo_ie->ext_mld_capab_and_op_present = 1;
+		presence_bitmap |= WLAN_ML_RV_CTRL_PBM_EXT_MLDCAPANDOP_P;
+		mlo_ie->common_info_length += WLAN_ML_RV_CINFO_EXT_MLDCAPANDOP_SIZE;
+		mlo_ie->ext_mld_capab_and_op_info.btm_mld_rec_for_multi_ap_supp = 1;
+	}
+
 	p_ml_ie = mlo_ie->data;
 	len_remaining = sizeof(mlo_ie->data);
 
@@ -14747,6 +14754,15 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 		len_remaining -= WLAN_ML_BV_CINFO_MLDCAPANDOP_SIZE;
 	}
 
+	if (mlo_ie->ext_mld_capab_and_op_present) {
+		QDF_SET_BITS(*(uint16_t *)p_ml_ie,
+			WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_IDX,
+			WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_BITS,
+			mlo_ie->ext_mld_capab_and_op_info.btm_mld_rec_for_multi_ap_supp);
+		p_ml_ie += WLAN_ML_RV_CINFO_EXT_MLDCAPANDOP_SIZE;
+		len_remaining -= WLAN_ML_RV_CINFO_EXT_MLDCAPANDOP_SIZE;
+	}
+
 	mlo_ie->num_data = p_ml_ie - mlo_ie->data;
 	pe_debug("EMLSR support: %d, padding delay: %d, transition delay: %d",
 		 mlo_ie->eml_capabilities_info.emlsr_support,
@@ -14756,6 +14772,9 @@ QDF_STATUS populate_rv_mlo_ie(struct wlan_objmgr_vdev *vdev,
 	pe_debug("Num add links %d Num del links %d",
 		 req->add_link_info.num_links,
 		 req->del_link_info.num_links);
+
+	pe_debug("Ext ML Caps, BTM MLD Recom for Multi AP support: %d",
+		 mlo_ie->ext_mld_capab_and_op_info.btm_mld_rec_for_multi_ap_supp);
 
 	/* find out number of add and del links */
 	total_sta_prof = req->add_link_info.num_links +
