@@ -643,6 +643,7 @@ struct vdev_scan_nac_rssi_params {
  * @emlsr_support: indicate non AP MLD STA supports eMLSR mode
  * @mlo_link_add: Dynamic link addition
  * @is_bridge_vdev: Indicate the vdev is a bridge vdev
+ * @mlo_ieee_link_id_valid: Indicate the link id is valid
  * @rsvd: reserved bits
  */
 struct mlo_vdev_start_flags {
@@ -652,6 +653,7 @@ struct mlo_vdev_start_flags {
 		 emlsr_support:1,
 		 mlo_link_add:1,
 		 is_bridge_vdev:1,
+		 mlo_ieee_link_id_valid:1,
 		 rsvd:26;
 };
 
@@ -706,6 +708,7 @@ struct mlo_vdev_start_partner_links {
  * @mbssid_flags: MBSSID flags to FW
  * @vdevid_trans: Tx VDEV ID
  * @mlo_flags: Flags for multi-link operation
+ * @link_id: link id
  * @mlo_partner: Partner links for multi-link operation
  * @mbssid_multi_group_flag: Flag to identify multi group mbssid support
  * @mbssid_multi_group_id: Group id of current vdev
@@ -737,6 +740,9 @@ struct vdev_start_params {
 	uint8_t vdevid_trans;
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct mlo_vdev_start_flags mlo_flags;
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+	uint32_t link_id;
+#endif
 	struct mlo_vdev_start_partner_links mlo_partner;
 #endif
 	uint8_t mbssid_multi_group_flag;
