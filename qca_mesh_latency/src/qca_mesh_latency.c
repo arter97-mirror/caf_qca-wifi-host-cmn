@@ -59,13 +59,13 @@ qca_mesh_get_vdev(struct net_device *netdev, uint8_t *mac_addr)
 
 		mldev = ath_netdev_priv(netdev);
 		if (!mldev) {
-			qdf_err("Invalid mldev");
+			qdf_debug("Invalid mldev");
 			return NULL;
 		}
 
 		osdev = osifp_peer_find_hash_find_osdev(mldev, mac_addr);
 		if (!osdev) {
-			qdf_err("Invalid link osdev");
+			qdf_debug("Invalid link osdev");
 			return NULL;
 		}
 	}
