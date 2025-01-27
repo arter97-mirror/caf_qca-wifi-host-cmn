@@ -3759,6 +3759,7 @@ policy_mgr_valid_sap_conc_channel_check(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_SUCCESS;
 
 	policy_mgr_get_mcc_scc_switch(psoc, &cc_mode);
+	con_mode = policy_mgr_con_mode_by_vdev_id(psoc, sap_vdev_id);
 
 	/*
 	 * If interference is 0, it could be STA/SAP SCC,
@@ -3770,11 +3771,12 @@ policy_mgr_valid_sap_conc_channel_check(struct wlan_objmgr_psoc *psoc,
 								   sap_ch_freq,
 								   sap_vdev_id)) {
 			return QDF_STATUS_SUCCESS;
-		} else if (!policy_mgr_is_hw_dbs_capable(psoc) &&
+		} else if (con_mode == PM_SAP_MODE &&
+			   !policy_mgr_is_hw_dbs_capable(psoc) &&
 			   !policy_mgr_is_sta_sap_scc(psoc, sap_ch_freq) &&
 			   cc_mode != QDF_MCC_TO_SCC_WITH_SAME_LOWER_BAND_MCC_WITH_HIGHER_BAND) {
-			policymgr_nofl_debug("MCC situation in non-dbs hw STA, no SCC freq found for SAP %d",
-					     sap_ch_freq);
+			policymgr_nofl_debug("Mode %d MCC situation in non-dbs hw STA, no SCC freq found %d",
+					     con_mode, sap_ch_freq);
 			return QDF_STATUS_E_FAILURE;
 		}
 
@@ -3783,8 +3785,6 @@ policy_mgr_valid_sap_conc_channel_check(struct wlan_objmgr_psoc *psoc,
 
 	if (!ch_freq)
 		return QDF_STATUS_SUCCESS;
-
-	con_mode = policy_mgr_con_mode_by_vdev_id(psoc, sap_vdev_id);
 
 	is_sta_sap_scc = policy_mgr_is_sta_sap_scc(psoc, ch_freq);
 
