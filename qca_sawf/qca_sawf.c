@@ -161,7 +161,7 @@ uint16_t qca_sawf_get_msduq(struct net_device *netdev, uint8_t *peer_mac,
 
 	vdev = qca_sawf_get_ref_vdev(netdev, peer_mac, NULL, WLAN_SAWF_ID);
 	if (!vdev) {
-		sawf_err("Invalid vdev");
+		sawf_debug("Invalid vdev");
 		return DP_SAWF_PEER_Q_INVALID;
 	}
 
@@ -894,7 +894,7 @@ bool qca_sawf_match_input_output_params(struct net_device *netdev,
 
 #ifdef WLAN_FEATURE_11BE_MLO
 bool qca_sawf_check_mlo_params(struct net_device *netdev,
-			       uint8_t *mld_peer,
+			       struct wlan_objmgr_peer *ml_peer,
 			       struct wlan_objmgr_vdev *vdev,
 				struct qca_sawf_wifi_port_params *wp,
 				struct wifi_params exist_params[])
@@ -902,21 +902,12 @@ bool qca_sawf_check_mlo_params(struct net_device *netdev,
 	uint16_t vdev_count = 0;
 	struct wlan_objmgr_vdev *wlan_vdev_list[WLAN_UMAC_MLO_MAX_VDEVS] = {NULL};
 	int i = 0;
-	struct wlan_objmgr_peer *ml_peer = NULL;
 	struct wlan_objmgr_peer *primary_peer = NULL;
 	struct mlo_partner_info ml_links = {0};
 	bool bssid_match = false;
 	bool ra_match = false;
 	bool ta_match = false;
 	uint8_t *vdev_mac;
-
-	ml_peer = wlan_objmgr_get_peer_by_mac(wlan_vdev_get_psoc(vdev), mld_peer,
-					   WLAN_SAWF_ID);
-
-	if (!ml_peer) {
-		sawf_debug("peer" QDF_MAC_ADDR_FMT" not found ", QDF_MAC_ADDR_REF(mld_peer));
-		return false;
-	}
 
 	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)wp->bssid))
 		bssid_match = true;
@@ -932,7 +923,6 @@ bool qca_sawf_check_mlo_params(struct net_device *netdev,
 	wlan_mlo_peer_get_partner_links_info(ml_peer, &ml_links);
 
 	if (!primary_peer) {
-		wlan_objmgr_peer_release_ref(ml_peer, WLAN_SAWF_ID);
 		return false;
 	}
 
@@ -961,9 +951,6 @@ bool qca_sawf_check_mlo_params(struct net_device *netdev,
 					 (struct qdf_mac_addr *)wp->ra_mac))
 			ra_match = true;
 	}
-
-	if (ml_peer)
-		wlan_objmgr_peer_release_ref(ml_peer, WLAN_SAWF_ID);
 
 	if (!bssid_match || !ta_match || !ra_match)
 		return false;
@@ -1192,7 +1179,7 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 	uint8_t tid;
 	struct wlan_objmgr_peer *peer = NULL;
 #ifdef WLAN_FEATURE_11BE_MLO
-	struct wlan_mlo_peer_context *ml_peer = NULL;
+	struct wlan_mlo_peer_context *mlo_peer_ctx = NULL;
 	struct wlan_mlo_dev_context *mld_dev = NULL;
 #endif
 
@@ -1261,8 +1248,9 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 	}
 
 #ifdef WLAN_FEATURE_11BE_MLO
-	ml_peer = wlan_mlo_get_mlpeer_by_peer_mladdr((struct qdf_mac_addr *)peer_mac, &mld_dev);
-	if (!ml_peer) {
+	mlo_peer_ctx = wlan_mlo_get_mlpeer_by_peer_mladdr
+		((struct qdf_mac_addr *)peer_mac, &mld_dev);
+	if (!mlo_peer_ctx) {
 		peer = wlan_objmgr_get_peer_by_mac(wlan_vdev_get_psoc(vdev), peer_mac,
 					   WLAN_SAWF_ID);
 		if (!peer) {
@@ -1270,10 +1258,29 @@ bool qca_sdwf_match_wifi_port_params_v2(struct net_device *dst_dev,
 				    dir, QDF_MAC_ADDR_REF(peer_mac));
 			goto fail;
 		}
+	} else {
+		QDF_STATUS status;
+
+		peer = wlan_mlo_peer_get_assoc_peer(mlo_peer_ctx);
+		if (!peer) {
+			sawf_debug("Direction:%d link peer not found for mld mac "
+					   QDF_MAC_ADDR_FMT,
+					   dir, QDF_MAC_ADDR_REF(peer_mac));
+			goto fail;
+		}
+
+		status = wlan_objmgr_peer_try_get_ref(peer, WLAN_SAWF_ID);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			peer = NULL;
+			sawf_debug("Direction:%d link peer ref failed for mld mac "
+					   QDF_MAC_ADDR_FMT,
+					   dir, QDF_MAC_ADDR_REF(peer_mac));
+			goto fail;
+		}
 	}
 
-	if ((mld_dev && ml_peer) || (peer && peer->mlo_peer_ctx)) {
-		if (!qca_sawf_check_mlo_params(wifi_netdev, peer_mac, vdev, wp, present_p))
+	if (peer && peer->mlo_peer_ctx) {
+		if (!qca_sawf_check_mlo_params(wifi_netdev, peer, vdev, wp, present_p))
 			goto fail;
 	} else
 #endif
