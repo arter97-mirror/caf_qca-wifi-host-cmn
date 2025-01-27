@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1511,6 +1511,7 @@ enum wmi_host_vbss_action {
  * struct win_host_vbss_sta_context - Host interfacing structure to WMI
  * @vdev_id: Pass Host vdev_id
  * @action: Action as defined in %wmi_host_vbss_action
+ * @num_sn_tids: Number of valid TIDs' SN
  * @sn: Per TID SN values
  * @tx_pn: STA Tx PN
  * @macaddr: STA Mac address
@@ -1518,6 +1519,7 @@ enum wmi_host_vbss_action {
 struct win_host_vbss_sta_context {
 	uint32_t vdev_id;
 	uint32_t action;
+	uint32_t num_sn_tids;
 	uint32_t sn[WLAN_MAX_PER_PEER_SN_TIDS];
 	uint8_t tx_pn[WLAN_MAX_TX_PN_SIZE];
 	uint8_t macaddr[QDF_MAC_ADDR_SIZE];
