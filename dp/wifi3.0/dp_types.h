@@ -4432,10 +4432,16 @@ enum ul_delay_client_id {
  * struct dp_latency_stats - Latency Stats request
  * @enable_report: latency report is enabled
  * @report_interval: Report interval
+ * @last_report_time: Indicate last report time in ms
+ * @latency_avg: Average latency average
+ * @pkts_accum: accumulative number of packets for average
  */
 struct dp_latency_stats {
 	qdf_atomic_t enable_report;
 	uint16_t report_interval;
+	uint64_t last_report_time;
+	uint32_t latency_avg;
+	uint32_t pkts_accum;
 };
 
 /* VDEV structure for data path state */
