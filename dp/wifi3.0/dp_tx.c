@@ -6542,6 +6542,48 @@ void dp_set_delta_tsf(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 #endif
 
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+/*
+ * dp_enable_ul_delay() - Enable UL delay calculation
+ * @vdev: vdev handle
+ * @id: Request ID
+ * @enable/disable
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+dp_enable_ul_delay(struct dp_vdev *vdev, enum ul_delay_client_id id,
+		   bool enable)
+{
+	int client;
+	bool all_disabled;
+
+	if (id >= UL_DELAY_CALC_ID_MAX) {
+		dp_err("Invalid client id: %u", id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_spin_lock(&vdev->ul_delay_lock);
+	vdev->ul_delay_cal_ctrl[id] = enable;
+
+	if (enable) {
+		qdf_atomic_set(&vdev->enable_ul_delay, true);
+	} else {
+		all_disabled  = true;
+		for (client = 0; client < UL_DELAY_CALC_ID_MAX; client++) {
+			if (vdev->ul_delay_cal_ctrl[client]) {
+				all_disabled  = false;
+				break;
+			}
+		}
+		if (all_disabled)
+			qdf_atomic_set(&vdev->enable_ul_delay, false);
+	}
+
+	qdf_spin_unlock(&vdev->ul_delay_lock);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 				      uint8_t vdev_id, bool enable)
 {
@@ -6554,7 +6596,9 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_atomic_set(&vdev->ul_delay_report, enable);
+	dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_TSF, enable);
+
+	qdf_atomic_set(&vdev->tsf_ul_delay_report, enable);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
@@ -6575,7 +6619,7 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (!qdf_atomic_read(&vdev->ul_delay_report)) {
+	if (!qdf_atomic_read(&vdev->tsf_ul_delay_report)) {
 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -6615,7 +6659,7 @@ static void dp_tx_update_uplink_delay(struct dp_soc *soc, struct dp_vdev *vdev,
 		return;
 	}
 
-	if (!qdf_atomic_read(&vdev->ul_delay_report))
+	if (!qdf_atomic_read(&vdev->enable_ul_delay))
 		return;
 
 	if (QDF_IS_STATUS_ERROR(dp_tx_compute_hw_delay_us(ts,
@@ -6656,7 +6700,7 @@ static void dp_tx_update_uplink_jitter(struct dp_soc *soc,
 		return;
 	}
 
-	if (!qdf_atomic_read(&vdev->ul_delay_report))
+	if (!qdf_atomic_read(&vdev->enable_ul_delay))
 		return;
 
 	hist_stats = &vdev->stats.tx.hwtx_jitter_tsf;

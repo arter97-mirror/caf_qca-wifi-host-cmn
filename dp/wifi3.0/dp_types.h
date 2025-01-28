@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4417,6 +4417,15 @@ struct dp_vdev_stats {
 #endif
 };
 
+/* enum ul_delay_client_id - UL Delay calculation control ID
+ * @UL_DELAY_CALC_ID_TSF: TSF request report ID
+ * @UL_DELAY_CALC_ID_MAX: Max ID
+ **/
+enum ul_delay_client_id {
+	UL_DELAY_CALC_ID_TSF,
+	UL_DELAY_CALC_ID_MAX
+};
+
 /* VDEV structure for data path state */
 struct dp_vdev {
 	struct cdp_vdev cdp_vdev;
@@ -4714,12 +4723,19 @@ struct dp_vdev {
 	uint32_t delta_tsf;
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
-	/* Indicate if uplink delay report is enabled or not */
-	qdf_atomic_t ul_delay_report;
+	/* UL delay lock */
+	qdf_spinlock_t ul_delay_lock;
+	/* Enable UL delay calculation */
+	qdf_atomic_t enable_ul_delay;
 	/* accumulative delay for every TX completion */
 	qdf_atomic_t ul_delay_accum;
 	/* accumulative number of packets delay has accumulated */
 	qdf_atomic_t ul_pkts_accum;
+	/* UL delay Enable client ID */
+	bool ul_delay_cal_ctrl[UL_DELAY_CALC_ID_MAX];
+	/* Indicate if uplink delay report is enabled or not */
+	qdf_atomic_t tsf_ul_delay_report;
+
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 #ifdef WLAN_FEATURE_UL_JITTER
 	/* accumulative delay jitter for every TX completion */

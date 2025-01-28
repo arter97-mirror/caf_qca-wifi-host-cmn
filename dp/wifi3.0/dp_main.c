@@ -5079,6 +5079,29 @@ dp_wds_ext_ap_bridge_init(struct dp_vdev *vdev)
 }
 #endif
 
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+static inline void
+dp_ul_delay_lock_create(struct dp_vdev *vdev)
+{
+	qdf_spinlock_create(&vdev->ul_delay_lock);
+}
+
+static inline void
+dp_ul_delay_lock_destroy(struct dp_vdev *vdev)
+{
+	qdf_spinlock_destroy(&vdev->ul_delay_lock);
+}
+#else
+static inline void
+dp_ul_delay_lock_create(struct dp_vdev *vdev)
+{
+}
+
+static inline void
+dp_ul_delay_lock_destroy(struct dp_vdev *vdev)
+{
+}
+#endif
 /**
  * dp_vdev_attach_wifi3() - attach txrx vdev
  * @cdp_soc: CDP SoC context
@@ -5168,6 +5191,7 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 	 * TCL descriptors for packets transmitted from this VDEV
 	 */
 
+	dp_ul_delay_lock_create(vdev);
 	qdf_spinlock_create(&vdev->peer_list_lock);
 	TAILQ_INIT(&vdev->peer_list);
 	dp_peer_multipass_list_init(vdev);
@@ -6875,6 +6899,7 @@ void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 
 free_vdev:
 	qdf_spinlock_destroy(&vdev->peer_list_lock);
+	dp_ul_delay_lock_destroy(vdev);
 
 	qdf_spin_lock_bh(&soc->inactive_vdev_list_lock);
 	TAILQ_FOREACH(tmp_vdev, &soc->inactive_vdev_list,
