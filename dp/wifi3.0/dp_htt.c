@@ -4355,6 +4355,8 @@ dp_htt_mlo_latency_req(struct htt_soc *soc, uint32_t *msg_word)
 
 	dp_info("vdev id: %d enable: %d interval: %d",
 		vdev_id, enable, interval);
+
+	dp_mlo_latency_req(soc->dp_soc, vdev_id, interval, enable);
 }
 
 void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)

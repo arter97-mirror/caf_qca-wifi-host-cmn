@@ -4419,11 +4419,23 @@ struct dp_vdev_stats {
 
 /* enum ul_delay_client_id - UL Delay calculation control ID
  * @UL_DELAY_CALC_ID_TSF: TSF request report ID
+ * @UL_DELAY_CALC_ID_FW: FW request report ID
  * @UL_DELAY_CALC_ID_MAX: Max ID
  **/
 enum ul_delay_client_id {
 	UL_DELAY_CALC_ID_TSF,
+	UL_DELAY_CALC_ID_FW,
 	UL_DELAY_CALC_ID_MAX
+};
+
+/**
+ * struct dp_latency_stats - Latency Stats request
+ * @enable_report: latency report is enabled
+ * @report_interval: Report interval
+ */
+struct dp_latency_stats {
+	qdf_atomic_t enable_report;
+	uint16_t report_interval;
 };
 
 /* VDEV structure for data path state */
@@ -4735,7 +4747,8 @@ struct dp_vdev {
 	bool ul_delay_cal_ctrl[UL_DELAY_CALC_ID_MAX];
 	/* Indicate if uplink delay report is enabled or not */
 	qdf_atomic_t tsf_ul_delay_report;
-
+	/* Latency stats requested by FW */
+	struct dp_latency_stats latency_stats;
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 #ifdef WLAN_FEATURE_UL_JITTER
 	/* accumulative delay jitter for every TX completion */

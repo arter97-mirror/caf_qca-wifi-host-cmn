@@ -6674,4 +6674,24 @@ void dp_trigger_recovery(struct dp_soc *soc, enum qdf_hang_reason reason)
 	else
 		qdf_assert_always(0);
 }
+
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+/**
+ * dp_mlo_latency_req() - MLO Latency request
+ * @soc: DP SOC handle
+ * @vdev_id: Vdev ID
+ * @interval: Reporting interval
+ * @enable: Enable/Disable
+ *
+ * Return: None
+ */
+void dp_mlo_latency_req(struct dp_soc *soc, uint8_t vdev_id,
+			uint16_t interval, bool enable);
+#else
+static inline void
+dp_mlo_latency_req(struct dp_soc *soc, uint8_t vdev_id,
+		   uint16_t interval, bool enable)
+{
+}
+#endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 #endif /* #ifndef _DP_INTERNAL_H_ */

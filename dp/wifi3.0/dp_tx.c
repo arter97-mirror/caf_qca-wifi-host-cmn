@@ -6584,6 +6584,33 @@ dp_enable_ul_delay(struct dp_vdev *vdev, enum ul_delay_client_id id,
 	return QDF_STATUS_SUCCESS;
 }
 
+/*
+ * dp_mlo_latency_req() - Process MLO latency request
+ * @vdev: vdev id
+ * @interval: Reporting interval
+ * @enable: Enable/Disable report
+ *
+ * Return: None
+ */
+void dp_mlo_latency_req(struct dp_soc *soc, uint8_t vdev_id,
+			uint16_t interval, bool enable)
+{
+	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
+						     DP_MOD_ID_HTT);
+
+	if (!vdev) {
+		dp_err("Unable find vdev for id: %d", vdev_id);
+		return;
+	}
+
+	qdf_atomic_set(&vdev->latency_stats.enable_report, enable);
+	vdev->latency_stats.report_interval = interval;
+
+	dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_FW, enable);
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
+}
+
 QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 				      uint8_t vdev_id, bool enable)
 {
