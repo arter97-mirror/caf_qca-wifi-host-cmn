@@ -14242,8 +14242,14 @@ QDF_STATUS populate_dot11f_assoc_req_mlo_ie(struct mac_context *mac_ctx,
 		/* Fill VHT for 5 GHz or 2 GHz with b24ghz_band enabled */
 		if ((is_2g &&
 		     mac_ctx->mlme_cfg->vht_caps.vht_cap_info.b24ghz_band) ||
-		    WLAN_REG_IS_5GHZ_CH_FREQ(chan_freq))
+		    WLAN_REG_IS_5GHZ_CH_FREQ(chan_freq)) {
 			populate_dot11f_vht_caps(mac_ctx, NULL, &vht_caps);
+			if (is_2g) {
+				vht_caps.supportedChannelWidthSet = 0;
+				vht_caps.shortGI80MHz = 0;
+				vht_caps.shortGI160and80plus80MHz = 0;
+			}
+		}
 		if ((vht_caps.present && frm->VHTCaps.present &&
 		     qdf_mem_cmp(&vht_caps, &frm->VHTCaps, sizeof(vht_caps))) ||
 		     (vht_caps.present && !frm->VHTCaps.present)) {
