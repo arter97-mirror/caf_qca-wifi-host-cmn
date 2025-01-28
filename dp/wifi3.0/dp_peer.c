@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4597,6 +4597,38 @@ struct dp_peer *dp_sta_vdev_self_peer_ref_n_get(struct dp_soc *soc,
 	qdf_spin_unlock_bh(&vdev->peer_list_lock);
 	return peer;
 }
+
+#ifdef WLAN_FEATURE_11BE_MLO
+struct dp_peer *dp_sta_vdev_link_peer_ref_n_get(struct dp_soc *soc,
+						struct dp_vdev *vdev,
+						enum dp_mod_id mod_id)
+{
+	struct dp_peer *peer;
+
+	if (vdev->opmode != wlan_op_mode_sta)
+		return NULL;
+
+	qdf_spin_lock_bh(&vdev->peer_list_lock);
+	TAILQ_FOREACH(peer, &vdev->peer_list, peer_list_elem) {
+		if (IS_MLO_DP_LINK_PEER(peer) &&
+		    peer->peer_id != HTT_INVALID_PEER)
+			break;
+	}
+
+	if (!peer) {
+		qdf_spin_unlock_bh(&vdev->peer_list_lock);
+		return NULL;
+	}
+
+	if (dp_peer_get_ref(soc, peer, mod_id) == QDF_STATUS_SUCCESS) {
+		qdf_spin_unlock_bh(&vdev->peer_list_lock);
+		return peer;
+	}
+
+	qdf_spin_unlock_bh(&vdev->peer_list_lock);
+	return peer;
+}
+#endif
 
 void dp_peer_flush_frags(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			 uint8_t *peer_mac)

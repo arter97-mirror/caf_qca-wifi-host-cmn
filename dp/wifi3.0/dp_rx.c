@@ -2981,8 +2981,19 @@ void dp_rx_deliver_to_stack_no_peer(struct dp_soc *soc, qdf_nbuf_t nbuf)
 		 */
 		peer = dp_peer_get_tgt_peer_by_id(soc, peer_id,
 						  DP_MOD_ID_RX);
-		if (!peer)
-			goto deliver_fail;
+		if (!peer) {
+			/* For EAPOL frames that are received before HTT MLO map
+			 * event, peer search with peer_id  will fail and the
+			 * packet get dropped. Get MLD peer directly from VDEV.
+			 */
+			if (!qdf_nbuf_is_ipv4_eapol_pkt(nbuf))
+				goto deliver_fail;
+
+			peer = dp_peer_get_tgt_peer_by_vdev(soc, vdev,
+							    DP_MOD_ID_RX);
+			if (!peer)
+				goto deliver_fail;
+		}
 
 		/* only check for MLO connection */
 		if (IS_MLO_DP_MLD_PEER(peer) && peer->txrx_peer &&
