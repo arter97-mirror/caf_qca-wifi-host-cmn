@@ -4747,6 +4747,8 @@ struct dp_vdev {
 	bool ul_delay_cal_ctrl[UL_DELAY_CALC_ID_MAX];
 	/* Indicate if uplink delay report is enabled or not */
 	qdf_atomic_t tsf_ul_delay_report;
+	/* Average value of UL delay */
+	uint32_t tsf_ul_delay_avg;
 	/* Latency stats requested by FW */
 	struct dp_latency_stats latency_stats;
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */

@@ -6542,6 +6542,81 @@ void dp_set_delta_tsf(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 #endif
 
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+#ifdef WLAN_FEATURE_UL_JITTER
+static inline void
+dp_accumulate_hwtx_ul_jitter_tsf(struct dp_vdev *vdev)
+{
+	dp_accumulate_hist_stats(&vdev->stats.tx.hwtx_ul_jitter,
+				 &vdev->stats.tx.hwtx_ul_jitter_tsf);
+}
+
+static inline void
+dp_reset_hwtx_ul_jitter(struct dp_vdev *vdev)
+{
+	qdf_mem_zero(&vdev->stats.tx.hwtx_ul_jitter,
+		     sizeof(struct cdp_hist_stats));
+}
+#else
+static inline void
+dp_accumulate_hwtx_ul_jitter_tsf(struct dp_vdev *vdev)
+{
+}
+
+static inline void
+dp_reset_hwtx_ul_jitter(struct dp_vdev *vdev)
+{
+}
+#endif
+
+/*
+ * dp_process_ul_delay() - Process UL delay
+ * @soc_hdl: DP SOC handle
+ * @vdev_id: Vdev ID
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_process_ul_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev;
+	uint32_t delay_accum;
+	uint32_t pkts_accum;
+	uint32_t avg_delay;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		dp_err_rl("vdev %d does not exist", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!qdf_atomic_read(&vdev->enable_ul_delay))
+		goto end;
+
+	/* Average uplink delay based on current accumulated values */
+	delay_accum = qdf_atomic_read(&vdev->ul_delay_accum);
+	pkts_accum = qdf_atomic_read(&vdev->ul_pkts_accum);
+	if (!pkts_accum)
+		goto end;
+
+	avg_delay = delay_accum / pkts_accum;
+
+	if (qdf_atomic_read(&vdev->tsf_ul_delay_report)) {
+		vdev->tsf_ul_delay_avg =
+			(avg_delay + vdev->tsf_ul_delay_avg) / 2;
+		dp_accumulate_hwtx_ul_jitter_tsf(vdev);
+	}
+
+	/* Reset accumulated values to 0 */
+	qdf_atomic_set(&vdev->ul_delay_accum, 0);
+	qdf_atomic_set(&vdev->ul_pkts_accum, 0);
+	dp_reset_hwtx_ul_jitter(vdev);
+
+end:
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /*
  * dp_enable_ul_delay() - Enable UL delay calculation
  * @vdev: vdev handle
@@ -6637,8 +6712,6 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev;
-	uint32_t delay_accum;
-	uint32_t pkts_accum;
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev) {
@@ -6651,19 +6724,10 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	/* Average uplink delay based on current accumulated values */
-	delay_accum = qdf_atomic_read(&vdev->ul_delay_accum);
-	pkts_accum = qdf_atomic_read(&vdev->ul_pkts_accum);
-
-	*val = delay_accum / pkts_accum;
-	dp_debug("uplink_delay %u delay_accum %u pkts_accum %u", *val,
-		 delay_accum, pkts_accum);
+	*val = vdev->tsf_ul_delay_avg;
+	vdev->tsf_ul_delay_avg = 0;
 
 	dp_tx_print_ul_delay_hist(vdev);
-
-	/* Reset accumulated values to 0 */
-	qdf_atomic_set(&vdev->ul_delay_accum, 0);
-	qdf_atomic_set(&vdev->ul_pkts_accum, 0);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
@@ -6730,7 +6794,7 @@ static void dp_tx_update_uplink_jitter(struct dp_soc *soc,
 	if (!qdf_atomic_read(&vdev->enable_ul_delay))
 		return;
 
-	hist_stats = &vdev->stats.tx.hwtx_jitter_tsf;
+	hist_stats = &vdev->stats.tx.hwtx_ul_jitter;
 	if (curr_ul_delay > prev_delay)
 		ul_jitter = curr_ul_delay - prev_delay;
 	else

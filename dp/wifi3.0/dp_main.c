@@ -11280,12 +11280,13 @@ QDF_STATUS dp_get_avg_ul_jitter(struct cdp_soc_t *soc_handle,
 		 jitter_accum, pkts_accum);
 
 	/* Print UL delay jitter histogram */
-	dp_print_tsf_tx_delay_hist(&vdev->stats.tx.hwtx_jitter_tsf, UL_JITTER);
+	dp_print_tsf_tx_delay_hist(&vdev->stats.tx.hwtx_ul_jitter_tsf,
+				   UL_JITTER);
 
 	/* Reset accumulated values to 0 */
 	qdf_atomic_set(&vdev->ul_jitter_accum, 0);
 	qdf_atomic_set(&vdev->ul_jitter_pkts_accum, 0);
-	qdf_mem_zero(&vdev->stats.tx.hwtx_jitter_tsf,
+	qdf_mem_zero(&vdev->stats.tx.hwtx_ul_jitter_tsf,
 		     sizeof(struct cdp_hist_stats));
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
