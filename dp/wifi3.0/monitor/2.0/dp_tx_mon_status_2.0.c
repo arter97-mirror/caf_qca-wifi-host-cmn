@@ -1256,6 +1256,12 @@ dp_tx_mon_generated_response_frm(struct dp_pdev *pdev,
 						 RESPONSE_WINDOW, mac_id);
 		break;
 	}
+	case TXMON_GEN_RESP_SELFGEN_MBA:
+	{
+		dp_tx_mon_generate_mu_block_ack_frm(pdev, tx_ppdu_info,
+						    RESPONSE_WINDOW, mac_id);
+		break;
+	}
 	case TXMON_GEN_RESP_SELFGEN_CBF:
 	{
 		break;
@@ -1373,24 +1379,6 @@ dp_tx_mon_update_ppdu_info_status(struct dp_pdev *pdev,
 
 		/* based on medium protection type we need to generate frame */
 		dp_tx_mon_generate_prot_frm(pdev, tx_prot_ppdu_info, mac_id);
-		break;
-	}
-	case HAL_MON_RX_FRAME_BITMAP_BLOCK_ACK_256:
-	case HAL_MON_RX_FRAME_BITMAP_BLOCK_ACK_1K:
-	{
-		/*
-		 * this comes for each user
-		 * BlockAck is not same as ACK, single frame can hold
-		 * multiple BlockAck info
-		 */
-		tx_status_info = &tx_mon_be->data_status_info;
-
-		if (TXMON_STATUS_INFO(tx_status_info, transmission_type) ==
-		    HAL_UL_MU_RECEPTION)
-			dp_tx_mon_generate_mu_block_ack_frm(pdev,
-							    tx_data_ppdu_info,
-							    RESPONSE_WINDOW,
-							    mac_id);
 		break;
 	}
 	case HAL_MON_TX_MPDU_START:
