@@ -13887,6 +13887,9 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 	.tx_latency_stats_config = dp_tx_latency_stats_config,
 	.tx_latency_stats_register_cb = dp_tx_latency_stats_register_cb,
 #endif
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+	.txrx_process_ul_delay = dp_process_ul_delay,
+#endif
 	/* TODO */
 };
 
