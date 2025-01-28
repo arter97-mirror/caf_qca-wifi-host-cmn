@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -435,3 +435,12 @@ void ucfg_ipa_event_wq(struct wlan_objmgr_psoc *psoc,
 
 qdf_export_symbol(ucfg_ipa_event_wq);
 #endif
+
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+void
+ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
+			    wlan_ipa_is_mlo_vdev cb)
+{
+	ipa_reg_is_mlo_vdev_cb(pdev, cb);
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */

@@ -785,6 +785,7 @@ struct wlan_ipa_tx_desc {
 typedef QDF_STATUS (*wlan_ipa_softap_xmit)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef void (*wlan_ipa_send_to_nw)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef bool (*wlan_ipa_driver_unloading)(void);
+typedef bool (*wlan_ipa_is_mlo_vdev)(uint8_t vdev_id);
 
 /**
  * typedef wlan_ipa_rps_enable - Enable/disable RPS for adapter using vdev id
@@ -1014,6 +1015,10 @@ struct wlan_ipa_priv {
 	struct wlan_ipa_evt_wq *ipa_evt_wq;
 #endif
 	bool ipa_tx_pending;
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+	/* callback to get if vdev is mlo vdev by vdev id */
+	wlan_ipa_is_mlo_vdev is_mlo_vdev;
+#endif
 };
 
 #define WLAN_IPA_WLAN_FRAG_HEADER        sizeof(struct frag_header)

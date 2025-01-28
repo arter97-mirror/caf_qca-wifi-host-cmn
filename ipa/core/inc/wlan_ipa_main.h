@@ -726,11 +726,24 @@ wlan_psoc_ipa_evt_wq_attach(struct wlan_objmgr_psoc *psoc);
 void wlan_psoc_ipa_evt_wq_detach(struct wlan_objmgr_psoc *psoc);
 #endif
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * ipa_reg_is_mlo_vdev_cb() - Register callback to get if vdev is mlo vdev
+ * @pdev: pdev objmgr handle
+ * @cb: pointer to callback function
+ *
+ * Return: None
+ */
+void
+ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev, wlan_ipa_is_mlo_vdev cb);
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
 #else /* Not IPA_OFFLOAD */
 typedef QDF_STATUS (*wlan_ipa_softap_xmit)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef void (*wlan_ipa_send_to_nw)(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 typedef void (*wlan_ipa_rps_enable)(uint8_t vdev_id, bool enable);
 typedef bool (*wlan_ipa_driver_unloading)(void);
+typedef bool (*wlan_ipa_is_mlo_vdev)(uint8_t vdev_id);
 
 #endif /* IPA_OFFLOAD */
 #endif /* end  of _WLAN_IPA_MAIN_H_ */
