@@ -10992,6 +10992,9 @@ void sme_update_tgt_eht_cap(mac_handle_t mac_handle,
 			    struct wma_tgt_cfg *cfg)
 {
 	struct mac_context *mac_ctx = MAC_CONTEXT(mac_handle);
+	uint8_t value = MLME_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_FW_DEF;
+
+	ucfg_mlme_cfg_get_vht_tx_bfee_ant_supp(mac_ctx->psoc, &value);
 
 	qdf_mem_copy(&mac_ctx->eht_cap_2g,
 		     &cfg->eht_cap_2g,
@@ -11000,6 +11003,18 @@ void sme_update_tgt_eht_cap(mac_handle_t mac_handle,
 	qdf_mem_copy(&mac_ctx->eht_cap_5g,
 		     &cfg->eht_cap_5g,
 		     sizeof(tDot11fIEeht_cap));
+
+	/* modify HE Caps field according to INI setting */
+	mac_ctx->eht_cap_2g.bfee_ss_le_80mhz =
+			QDF_MIN(cfg->eht_cap_2g.bfee_ss_le_80mhz,
+				value);
+
+	mac_ctx->eht_cap_5g.bfee_ss_le_80mhz =
+			QDF_MIN(cfg->eht_cap_5g.bfee_ss_le_80mhz, value);
+	mac_ctx->eht_cap_5g.bfee_ss_160mhz =
+			QDF_MIN(cfg->eht_cap_5g.bfee_ss_160mhz, value);
+	mac_ctx->eht_cap_5g.bfee_ss_320mhz =
+			QDF_MIN(cfg->eht_cap_5g.bfee_ss_320mhz, value);
 
 	qdf_mem_copy(&mac_ctx->eht_cap_2g_orig,
 		     &mac_ctx->eht_cap_2g,
@@ -11116,10 +11131,14 @@ void sme_update_tgt_he_cap(mac_handle_t mac_handle,
 	mac_ctx->he_cap_2g.bfee_sts_lt_80 =
 			QDF_MIN(cfg->he_cap_2g.bfee_sts_lt_80,
 				he_cap_ini->bfee_sts_lt_80);
+	mac_ctx->he_cap_2g.bfee_sts_gt_80 = 0;
 
 	mac_ctx->he_cap_5g.bfee_sts_lt_80 =
 			QDF_MIN(cfg->he_cap_5g.bfee_sts_lt_80,
 				he_cap_ini->bfee_sts_lt_80);
+	mac_ctx->he_cap_5g.bfee_sts_gt_80 =
+			QDF_MIN(cfg->he_cap_5g.bfee_sts_gt_80,
+				he_cap_ini->bfee_sts_gt_80);
 
 	if (!mac_ctx->mlme_cfg->vht_caps.vht_cap_info.enable2x2) {
 		mac_ctx->he_cap_2g.rx_he_mcs_map_lt_80 = HE_SET_MCS_4_NSS(
