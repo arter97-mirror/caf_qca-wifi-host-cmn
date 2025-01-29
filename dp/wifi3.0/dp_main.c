@@ -6998,6 +6998,35 @@ dp_peer_get_authorize(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	return authorize;
 }
 
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+static inline void
+dp_vdev_free_qos_latency_mem(struct dp_vdev *vdev)
+{
+	struct dp_qos_latency_report *report;
+	uint8_t i, j;
+
+	for (i = 0; i < SOLICITED_MAX; i++) {
+		report = &vdev->qos_latency_report[i];
+		if (!report->stats)
+			continue;
+
+		for (j = 0; j < CDP_MAX_DATA_TIDS; j++) {
+			if (!report->stats[j])
+				break;
+
+			qdf_mem_free(report->stats[j]);
+		}
+
+		qdf_mem_free(report->stats);
+	}
+}
+#else
+static inline void
+dp_vdev_free_qos_latency_mem(struct dp_vdev *vdev)
+{
+}
+#endif
+
 void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 			  enum dp_mod_id mod_id)
 {
@@ -7048,6 +7077,7 @@ void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 free_vdev:
 	qdf_spinlock_destroy(&vdev->peer_list_lock);
 	dp_ul_delay_lock_destroy(vdev);
+	dp_vdev_free_qos_latency_mem(vdev);
 
 	qdf_spin_lock_bh(&soc->inactive_vdev_list_lock);
 	TAILQ_FOREACH(tmp_vdev, &soc->inactive_vdev_list,

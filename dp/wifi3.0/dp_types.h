@@ -4562,11 +4562,13 @@ struct dp_vdev_stats {
 /* enum ul_delay_client_id - UL Delay calculation control ID
  * @UL_DELAY_CALC_ID_TSF: TSF request report ID
  * @UL_DELAY_CALC_ID_FW: FW request report ID
+ * @UL_DELAY_CALC_ID_QOS: QoS latency stats ID
  * @UL_DELAY_CALC_ID_MAX: Max ID
  **/
 enum ul_delay_client_id {
 	UL_DELAY_CALC_ID_TSF,
 	UL_DELAY_CALC_ID_FW,
+	UL_DELAY_CALC_ID_QOS,
 	UL_DELAY_CALC_ID_MAX
 };
 
@@ -4595,6 +4597,23 @@ struct dp_ul_delay_stats {
 	uint32_t prev_pkt_accum_opt_dp;
 	uint32_t prev_delay_accum_bus_bw;
 	uint32_t prev_pkt_accum_bus_bw;
+};
+
+#define PERC_BUCKET_SIZE 26
+
+/**
+ * struct dp_qos_latency_report - QoS latency stats report
+ * @type: Report type
+ * @method: Report method
+ * @enable: Repoert enabled
+ * @stats: Stats pointer
+ *
+ */
+struct dp_qos_latency_report {
+	enum cdp_report_type type;
+	enum cdp_report_method method;
+	qdf_atomic_t enable;
+	uint64_t **stats;
 };
 
 /* VDEV structure for data path state */
@@ -4908,6 +4927,13 @@ struct dp_vdev {
 	qdf_atomic_t tsf_ul_delay_report;
 	/* Latency stats requested by FW */
 	struct dp_latency_stats latency_stats;
+
+	/* Enable Histogram QoS latency stats */
+	qdf_atomic_t ul_delay_histogram;
+	/* Histogram QoS latency stats bucket */
+	uint64_t tx_latency_stats_hist[CDP_MAX_DATA_TIDS][CDP_HIST_BUCKET_SIZE];
+	/* QoS Latency stats report */
+	struct dp_qos_latency_report qos_latency_report[SOLICITED_MAX];
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 #ifdef WLAN_FEATURE_UL_JITTER
 	/* accumulative delay jitter for every TX completion */

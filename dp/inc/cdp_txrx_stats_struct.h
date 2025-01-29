@@ -3859,4 +3859,101 @@ struct cdp_pdev_tx_capture_stats {
 	uint32_t dp_tx_pkt_cap_stats[CDP_TX_PKT_CAP_TYPE_MAX];
 #endif
 };
+
+#define CDP_HIST_BUCKET_SIZE	8
+#define CDP_MAX_DATA_AC		4
+
+/**
+ * enum cdp_report_type - Report Type
+ * @REPORT_TYPE_HISTOGRAM: Histogram
+ * @REPORT_TYPE_MAX: Max
+ */
+enum cdp_report_type {
+	REPORT_TYPE_HISTOGRAM,
+	REPORT_TYPE_MAX
+};
+
+/**
+ * enum cdp_report_method: Report Method
+ * @SOLICITED_PERIODIC: Periodic
+ * @SOLICITED_ON_DEMAND: On demand
+ * @SOLICITED_TRIGGERED: Triggered
+ * @SOLICITED_MAX: Max
+ */
+enum cdp_report_method {
+	SOLICITED_PERIODIC,
+	SOLICITED_ON_DEMAND,
+	SOLICITED_TRIGGERED,
+	SOLICITED_MAX
+};
+
+/**
+ * struct cdp_qos_latency_stats - Latency Stats enable
+ * @type: Report type
+ * @method: Report method
+ * @enable: Enable/Disable report
+ */
+struct cdp_qos_latency_stats {
+	enum cdp_report_type type;
+	enum cdp_report_method method;
+	bool enable;
+};
+
+/**
+ * enum cdp_report_granularity - Report granularity
+ * @CDP_REPORT_GRAN_TID: Per TID
+ * @CDP_REPORT_GRAN_AC: Per AC
+ * @CDP_REPORT_GRAN_AGGR: Aggregated
+ * @CDP_REPORT_GRAN_MAX: Max type
+ */
+enum cdp_report_granularity {
+	CDP_REPORT_GRAN_TID,
+	CDP_REPORT_GRAN_AC,
+	CDP_REPORT_GRAN_AGGR,
+	CDP_REPORT_GRAN_MAX
+};
+
+/**
+ * struct cdp_ac_hist_stats - Per AC histogram stats
+ * @stats: stats buffer
+ */
+struct cdp_ac_hist_stats {
+	uint32_t stats[CDP_MAX_DATA_AC][CDP_HIST_BUCKET_SIZE];
+};
+
+/**
+ * struct cdp_tid_hist_stats - Per TID histogram stats
+ * @stats: stats buffer
+ */
+struct cdp_tid_hist_stats {
+	uint32_t stats[CDP_MAX_DATA_TIDS][CDP_HIST_BUCKET_SIZE];
+};
+
+/**
+ * struct cdp_aggr_hist_stats - Aggregated histogram stats
+ * @stats: stats buffer
+ */
+struct cdp_aggr_hist_stats {
+	uint32_t stats[CDP_HIST_BUCKET_SIZE];
+};
+
+/**
+ * struct cdp_qos_latency_stats_req - Latency stats request
+ * @method: Request Method
+ * @granularity: Request granularity
+ * @type: Report type
+ * @ac_hist: If report is per AC histogram
+ * @tid_hist: If report is per TID histogram
+ * @aggr_hist: If report is aggregated histogram
+ */
+struct cdp_qos_latency_stats_req {
+	enum cdp_report_method method;
+	enum cdp_report_granularity granularity;
+	enum cdp_report_type type;
+	union {
+		struct cdp_ac_hist_stats ac_hist;
+		struct cdp_tid_hist_stats tid_hist;
+		struct cdp_aggr_hist_stats aggr_hist;
+	};
+};
 #endif

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1708,6 +1708,29 @@ dp_tx_compute_hw_delay_us(struct hal_tx_completion_status *ts,
  */
 void dp_set_delta_tsf(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      uint32_t delta_tsf);
+
+/**
+ * dp_qos_latency_stats_request() - latency stats request
+ * @soc_hdl: cdp soc pointer
+ * @vdev_id: vdev id
+ * @req: request pointer
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			     struct cdp_qos_latency_stats *req);
+
+/**
+ * dp_qos_latency_get_stats() - Get QoS latency stats
+ * @soc_hdl: cdp soc pointer
+ * @vdev_id: vdev id
+ * @stats: Latency stats pointer
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_qos_latency_get_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+				    struct cdp_qos_latency_stats_req *stats);
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 /**
