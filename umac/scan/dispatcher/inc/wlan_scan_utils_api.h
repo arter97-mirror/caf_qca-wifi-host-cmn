@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1360,20 +1360,6 @@ util_scan_entry_age(struct scan_cache_entry *scan_entry)
 }
 
 /**
- * util_scan_mlme_info() - function to read mlme info struct
- * @scan_entry: scan entry
- *
- * API, function to read mlme info struct
- *
- * Return: mlme info
- */
-static inline struct mlme_info*
-util_scan_mlme_info(struct scan_cache_entry *scan_entry)
-{
-	return &scan_entry->mlme_info;
-}
-
-/**
  * util_scan_entry_bss_type() - function to read bss type
  * @scan_entry: scan entry
  *
@@ -1570,20 +1556,6 @@ util_scan_entry_get_extcap(struct scan_cache_entry *scan_entry,
 }
 
 /**
- * util_scan_entry_mlme_info() - function to read MLME info
- * @scan_entry: scan entry
- *
- * API, function to read MLME info
- *
- * Return: MLME info or NULL if it is not present
- */
-static inline struct mlme_info*
-util_scan_entry_mlme_info(struct scan_cache_entry *scan_entry)
-{
-	return &(scan_entry->mlme_info);
-}
-
-/**
 * util_scan_entry_mcst() - function to read mcst IE
 * @scan_entry:scan entry
 *
@@ -1639,6 +1611,65 @@ util_scan_entry_heop(struct scan_cache_entry *scan_entry)
 	return scan_entry->ie_list.heop;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO
+static inline uint8_t*
+util_scan_entry_bv_ml_ie(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.multi_link_bv;
+}
+
+static inline uint8_t*
+util_scan_entry_t2lm(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.t2lm[0];
+}
+
+/**
+ * util_scan_entry_t2lm_len() - API to get t2lm IE length
+ * @scan_entry: scan entry
+ *
+ * Return, Length or 0 if ie is not present
+ */
+uint32_t util_scan_entry_t2lm_len(struct scan_cache_entry *scan_entry);
+
+/**
+ * util_scan_entry_reset_bv_ml_ie()
+ * @scan_entry: scan entry
+ *
+ * API function to reset bv_ml_ie
+ *
+ * Return: void
+ */
+static inline void
+util_scan_entry_reset_bv_ml_ie(struct scan_cache_entry *scan_entry)
+{
+	scan_entry->ie_list.multi_link_bv = NULL;
+}
+#else
+static inline uint8_t*
+util_scan_entry_bv_ml_ie(struct scan_cache_entry *scan_entry)
+{
+	return NULL;
+}
+
+static inline uint8_t*
+util_scan_entry_t2lm(struct scan_cache_entry *scan_entry)
+{
+	return NULL;
+}
+
+static inline uint32_t
+util_scan_entry_t2lm_len(struct scan_cache_entry *scan_entry)
+{
+	return 0;
+}
+
+static inline void
+util_scan_entry_reset_bv_ml_ie(struct scan_cache_entry *scan_entry)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE
 /**
  * util_scan_entry_ehtcap() - function to read eht caps vendor ie
@@ -1673,6 +1704,14 @@ util_scan_entry_bw_ind(struct scan_cache_entry *scan_entry)
 {
 	return scan_entry->ie_list.bw_ind;
 }
+
+static inline void
+util_scan_entry_reset_11be_caps(struct scan_cache_entry *scan_entry)
+{
+	scan_entry->ie_list.ehtcap = NULL;
+	scan_entry->ie_list.ehtop = NULL;
+	util_scan_entry_reset_bv_ml_ie(scan_entry);
+}
 #else
 
 static inline uint8_t*
@@ -1686,45 +1725,10 @@ util_scan_entry_bw_ind(struct scan_cache_entry *scan_entry)
 {
 	return NULL;
 }
-#endif
 
-#ifdef WLAN_FEATURE_11BE_MLO
-static inline uint8_t*
-util_scan_entry_bv_ml_ie(struct scan_cache_entry *scan_entry)
+static inline void
+util_scan_entry_reset_11be_caps(struct scan_cache_entry *scan_entry)
 {
-	return scan_entry->ie_list.multi_link_bv;
-}
-
-static inline uint8_t*
-util_scan_entry_t2lm(struct scan_cache_entry *scan_entry)
-{
-	return scan_entry->ie_list.t2lm[0];
-}
-
-/**
- * util_scan_entry_t2lm_len() - API to get t2lm IE length
- * @scan_entry: scan entry
- *
- * Return, Length or 0 if ie is not present
- */
-uint32_t util_scan_entry_t2lm_len(struct scan_cache_entry *scan_entry);
-#else
-static inline uint8_t*
-util_scan_entry_bv_ml_ie(struct scan_cache_entry *scan_entry)
-{
-	return NULL;
-}
-
-static inline uint8_t*
-util_scan_entry_t2lm(struct scan_cache_entry *scan_entry)
-{
-	return NULL;
-}
-
-static inline uint32_t
-util_scan_entry_t2lm_len(struct scan_cache_entry *scan_entry)
-{
-	return 0;
 }
 #endif
 
@@ -1795,19 +1799,6 @@ util_scan_entry_fils_indication(struct scan_cache_entry *scan_entry)
  */
 qdf_time_t
 util_get_last_scan_time(struct wlan_objmgr_vdev *vdev);
-
-/**
- * util_scan_entry_update_mlme_info() - function to update mlme info
- * @pdev: pdev object
- * @scan_entry: scan entry object
- *
- * API, function to update mlme info in scan DB
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-util_scan_entry_update_mlme_info(struct wlan_objmgr_pdev *pdev,
-	struct scan_cache_entry *scan_entry);
 
 /**
  * util_scan_is_hidden_ssid() - function to check if ssid is hidden

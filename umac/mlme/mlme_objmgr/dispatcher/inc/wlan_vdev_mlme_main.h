@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -243,6 +243,15 @@ static inline
 void wlan_vdev_mlme_notify_set_mac_addr_response(struct wlan_objmgr_vdev *vdev,
 						 uint8_t resp_status)
 {
+}
+#endif
+#ifdef WLAN_FEATURE_11BE_MLO
+QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev);
+#else
+static inline
+QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 #endif

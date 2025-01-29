@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -31,6 +31,7 @@
 #include "cdp_txrx_handle.h"
 #include "cdp_txrx_cmn_struct.h"
 #include "wlan_objmgr_global_obj.h"
+#include "wlan_ipa_logging.h"
 
 #ifdef WLAN_SUPPORT_DPDK
 #include <cfgmgr_api_if.h>
@@ -52,6 +53,13 @@ extern bool is_dp_verbose_debug_enabled;
 #define dp_info(params...) \
 	__QDF_TRACE_FL(QDF_TRACE_LEVEL_INFO_HIGH, QDF_MODULE_ID_DP, ## params)
 #define dp_debug(params...) QDF_TRACE_DEBUG(QDF_MODULE_ID_DP, params)
+/* logs for IPA logging Infra */
+#define dp_ipa_log(params...) WLAN_IPA_LOGGING(params)
+/* To collect common log in both wlan and IPA logging infra */
+#define dp_ipa_debug(params...) \
+	do { dp_info(params); dp_ipa_log(params); } while (0)
+#define dp_ipa_err(params...) \
+	do { dp_err(params); dp_ipa_log(params); } while (0)
 
 #ifdef DP_PRINT_NO_CONSOLE
 #define dp_err_log(params...) \

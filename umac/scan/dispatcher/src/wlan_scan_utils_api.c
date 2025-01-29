@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2748,6 +2748,14 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	if (!IS_WLAN_PHYMODE_EHT(scan_entry->phy_mode) &&
+	    (util_scan_entry_ehtcap(scan_entry) ||
+	     util_scan_entry_bv_ml_ie(scan_entry))) {
+		scm_debug("EHT cap present but phymode %d not EHT, reset eht info",
+			  scan_entry->phy_mode);
+		util_scan_entry_reset_11be_caps(scan_entry);
+	}
+
 	util_scan_update_ml_info(pdev, scan_entry);
 
 	scan_node->entry = scan_entry;
@@ -4225,19 +4233,6 @@ util_scan_unpack_beacon_frame(struct wlan_objmgr_pdev *pdev, uint8_t *frame,
 	}
 
 	return scan_list;
-}
-
-QDF_STATUS
-util_scan_entry_update_mlme_info(struct wlan_objmgr_pdev *pdev,
-	struct scan_cache_entry *scan_entry)
-{
-
-	if (!pdev || !scan_entry) {
-		scm_err("pdev 0x%pK, scan_entry: 0x%pK", pdev, scan_entry);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	return scm_update_scan_mlme_info(pdev, scan_entry);
 }
 
 bool util_is_scan_completed(struct scan_event *event, bool *success)

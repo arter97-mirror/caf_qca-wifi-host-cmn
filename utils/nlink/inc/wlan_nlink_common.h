@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -99,6 +99,7 @@ typedef enum eAniNlModuleTypes {
 	WLAN_NL_MSG_CNSS_DIAG = ANI_NL_MSG_BASE + 0x0B, /* Value needs to be 27 */
 	ANI_NL_MSG_LOG,
 	WLAN_NL_MSG_SPECTRAL_SCAN,
+	WLAN_NL_MSG_OPT_DP_LOG,
 	ANI_NL_MSG_MAX
 } tAniNlModTypes, tWlanNlModTypes;
 

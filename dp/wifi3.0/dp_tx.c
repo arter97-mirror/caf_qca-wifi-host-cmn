@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4972,12 +4972,16 @@ dp_ipa_tx_opt_dp_ctrl_reinject(struct dp_soc *soc, struct dp_vdev *vdev,
 			       qdf_nbuf_t nbuf,
 			       uint8_t reinject_reason)
 {
+	static int ctrl_pkt_reinject;
+
 	if (tx_desc->msdu_ext_desc) {
-		dp_err("extension descriptor should not be required for opt_dp_ctrl");
+		dp_ipa_err("extension descriptor should not be required for opt_dp_ctrl");
 		qdf_assert_always(0);
 	}
 	if (reinject_reason == HTT_TX_FW2WBM_REINJECT_REASON_OPT_DP_CTRL) {
-		dp_info("opt_dp_ctrl: tx pkt reinjected from fw");
+		ctrl_pkt_reinject += 1;
+		dp_ipa_debug("opt_dp_ctrl: tx pkt reinjected from fw, cnt: %d",
+			     ctrl_pkt_reinject);
 		dp_tx_nbuf_unmap(soc, tx_desc);
 		if (soc->arch_ops.dp_tx_ipa_opt_dp_ctrl)
 			soc->arch_ops.dp_tx_ipa_opt_dp_ctrl(soc,

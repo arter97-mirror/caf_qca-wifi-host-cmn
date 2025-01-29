@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1601,6 +1601,7 @@ scm_scan_cancel_req(struct scheduler_msg *msg)
 }
 
 #ifdef FEATURE_WLAN_SCAN_PNO
+#define NLO_COMPLETE_MATCH_TIME_DIFF 1000
 static QDF_STATUS
 scm_pno_event_handler(struct wlan_objmgr_vdev *vdev,
 	struct scan_event *event)
@@ -1609,6 +1610,7 @@ scm_pno_event_handler(struct wlan_objmgr_vdev *vdev,
 	struct wlan_scan_obj *scan_psoc_obj;
 	scan_event_handler pno_cb;
 	void *cb_arg;
+	qdf_time_t cur_time = qdf_get_time_of_the_day_ms();
 
 	scan_vdev_obj = wlan_get_vdev_scan_obj(vdev);
 	scan_psoc_obj = wlan_vdev_get_scan_obj(vdev);
@@ -1630,8 +1632,17 @@ scm_pno_event_handler(struct wlan_objmgr_vdev *vdev,
 		qdf_runtime_pm_allow_suspend(
 			&scan_psoc_obj->pno_cfg.pno_runtime_pm_lock);
 		scan_vdev_obj->pno_match_evt_received = false;
+		scan_vdev_obj->nlo_complete_time = cur_time;
 		break;
 	case SCAN_EVENT_TYPE_NLO_MATCH:
+		if (qdf_system_time_before(cur_time,
+					   scan_vdev_obj->nlo_complete_time +
+					   NLO_COMPLETE_MATCH_TIME_DIFF)) {
+			scm_debug("Drop duplicate NLO_MATCH current time = %ld, pno complete time = %ld",
+				  cur_time, scan_vdev_obj->nlo_complete_time);
+			return QDF_STATUS_SUCCESS;
+		}
+
 		scan_vdev_obj->pno_match_evt_received = true;
 		qdf_wake_lock_timeout_acquire(
 			&scan_psoc_obj->pno_cfg.pno_wake_lock,

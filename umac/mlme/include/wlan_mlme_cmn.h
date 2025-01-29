@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -103,6 +103,9 @@
  * @rsp: vendor handoff response pointer
  * @vendor_handoff_context: vendor handoff context
  *
+ * @mlme_cm_link_reconfig_status_cb: send link reconfig status to userspace
+ * @vdev: vdev pointer
+ *
  * @mlme_cm_perfd_reset_cpufreq_ctrl_cb: callback to reset CPU min freq
  */
 struct mlme_cm_ops {
@@ -162,6 +165,10 @@ struct mlme_cm_ops {
 #endif
 #ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
 	void (*mlme_cm_perfd_reset_cpufreq_ctrl_cb)(void);
+#endif
+#ifdef WLAN_FEATURE_11BE_MLO
+	QDF_STATUS (*mlme_cm_link_reconfig_status_cb)(
+					struct wlan_objmgr_vdev *vdev);
 #endif
 };
 

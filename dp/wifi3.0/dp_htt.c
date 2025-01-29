@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3962,8 +3962,8 @@ static void dp_ipa_rx_cce_super_rule_setup_done_handler(struct htt_soc *soc,
 				dp_info(
 				  "opt_dp: Filter reserve failed max attempts");
 			}
-			dp_info("opt_dp:: Filter reserve failed. Rules avail %d",
-				num_rules_avail);
+			dp_ipa_debug("opt_dp:: Filter reserve failed. Rules avail %d",
+				     num_rules_avail);
 		}
 		dp_ipa_wdi_opt_dpath_notify_flt_rsvd(is_success);
 		break;
@@ -4002,6 +4002,9 @@ static void dp_ipa_rx_cce_super_rule_setup_done_handler(struct htt_soc *soc,
 		resp_type, is_rules_enough);
 	dp_info("num_rules_avail: %d, rslt0: %d, rslt1: %d",
 		num_rules_avail, filter0_result, filter1_result);
+	dp_ipa_debug("opt_dp: pdev_id: %d resp_type: %d, rules_enough: %d, rslt0: %d, rslt1: %d",
+		     pdev_id, resp_type, is_rules_enough, filter0_result,
+		     filter1_result);
 }
 
 #ifdef IPA_OPT_WIFI_DP_CTRL
@@ -4016,8 +4019,8 @@ static void dp_ipa_tx_super_rule_setup_done_handler(struct htt_soc *soc,
 	pdev_id = HTT_TX_LCE_SUPER_RULE_SETUP_DONE_PDEV_ID_GET(*msg_word);
 	resp_type = HTT_TX_LCE_SUPER_RULE_SETUP_DONE_RESPONSE_TYPE_GET(
 								*msg_word);
-	dp_info("opt_dp_ctrl:: tx_super_rule_rsp, pdev_id: %d resp_type: %d",
-		pdev_id, resp_type);
+	dp_ipa_debug("opt_dp_ctrl:: tx_super_rule_rsp, pdev_id: %d resp_type: %d",
+		     pdev_id, resp_type);
 
 	for (i = 0; i < TX_SUPER_RULE_SETUP_NUM; i++) {
 		msg_word++;

@@ -1448,6 +1448,7 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	struct wlan_objmgr_psoc *psoc;
 	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
 	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
+	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status;
 
 	recfg_req = &recfg_ctx->curr_recfg_req;
@@ -1469,6 +1470,14 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 		return;
 	}
 
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				psoc, recfg_ctx->curr_recfg_req.vdev_id,
+				WLAN_MLO_MGR_ID);
+	if (!vdev) {
+		mlo_err("link vdev is null");
+		return;
+	}
+
 	if (recfg_req->is_fw_ind_received) {
 		/* send wmi link config complete command to firmware
 		 * only if the fw has indicated event to host.
@@ -1480,12 +1489,13 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 		complete_params.vdev_id = recfg_req->fw_ind_param.vdev_id;
 		status = mlo_tx_ops->send_mlo_link_recfg_complete_cmd(
 						psoc, &complete_params);
-		if (QDF_IS_STATUS_ERROR(status)) {
+		if (QDF_IS_STATUS_ERROR(status))
 			mlo_err("send_mlo_link_recfg_complete_cmd failed %d",
 				status);
-		}
 	}
-
+	/* Send link reconfig status to userspace */
+	mlme_cm_send_link_reconfig_status(vdev);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	/* reset state tran index and move to init state  */
 	recfg_ctx->sm.curr_state_idx = -1;
 

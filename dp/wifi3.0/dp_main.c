@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -64,6 +64,7 @@
 #ifdef QCA_LL_TX_FLOW_CONTROL_V2
 #include "cdp_txrx_flow_ctrl_v2.h"
 #else
+#include "wlan_ipa_logging.h"
 
 static inline void
 cdp_dump_flow_pool_info(struct cdp_soc_t *soc)
@@ -4102,7 +4103,7 @@ void dp_ipa_rx_desc_list_deinit(struct dp_pdev *pdev)
 
 	free_list = &soc->ipa_rx_desc_freelist;
 	qdf_spin_lock_bh(&free_list->lock);
-	dp_info("opt_dp_ctrl: deinit desc list allocated for opt_dp_ctrl");
+	dp_ipa_debug("opt_dp_ctrl: deinit desc list allocated for opt_dp_ctrl");
 	free_list->head = NULL;
 	free_list->tail = NULL;
 	free_list->list_size = 0;
@@ -4153,6 +4154,7 @@ static void dp_pdev_deinit(struct cdp_pdev *txrx_pdev, int force)
 
 	dp_rxdma_ring_cleanup(pdev->soc, pdev);
 	dp_ipa_rx_desc_list_deinit(pdev);
+	wlan_ipa_logging_sock_deinit();
 	curr_nbuf = pdev->invalid_peer_head_msdu;
 	while (curr_nbuf) {
 		next_nbuf = qdf_nbuf_next(curr_nbuf);
@@ -11433,6 +11435,10 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 		dp_pdev_print_tx_delay_stats(soc);
 		break;
 
+	case CDP_DP_LAPB_STATS:
+		wlan_dp_lapb_display_stats(soc);
+		break;
+
 	default:
 		status = QDF_STATUS_E_INVAL;
 		break;
@@ -11705,6 +11711,10 @@ QDF_STATUS dp_txrx_clear_dump_stats(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 
 	case CDP_DP_TX_HW_LATENCY_STATS:
 		dp_pdev_clear_tx_delay_stats(soc);
+		break;
+
+	case CDP_DP_LAPB_STATS:
+		wlan_dp_lapb_clear_stats(soc);
 		break;
 
 	default:
@@ -15932,7 +15942,7 @@ uint16_t dp_ipa_rx_desc_list_init(struct dp_pdev *pdev)
 		free_list->list_size++;
 		desc_list = next;
 	}
-	dp_info("opt_dp_ctrl: num of desc allocated: %u", count);
+	dp_ipa_debug("opt_dp_ctrl: num of desc allocated: %u", count);
 	qdf_spin_unlock_bh(&free_list->lock);
 	return count;
 }
@@ -16077,6 +16087,8 @@ static QDF_STATUS dp_pdev_init(struct cdp_soc_t *txrx_soc,
 		dp_init_err("%pK: dp_monitor_pdev_init failed", soc);
 		goto fail4;
 	}
+
+	wlan_ipa_logging_sock_init();
 
 	/* initialize sw rx descriptors */
 	dp_rx_pdev_desc_pool_init(pdev);
