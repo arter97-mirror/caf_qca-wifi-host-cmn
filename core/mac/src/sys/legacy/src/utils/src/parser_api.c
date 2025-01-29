@@ -8375,14 +8375,16 @@ populate_dot11f_he_6ghz_cap(struct mac_context *mac_ctx,
 	he_6g_cap->present = 1;
 	he_6g_cap->min_mpdu_start_spacing =
 		mac_ctx->mlme_cfg->ht_caps.ampdu_params.mpdu_density;
-	if (session)
+	if (session) {
+		he_6g_cap->sm_pow_save = session->ht_config.mimo_power_save;
 		he_6g_cap->max_ampdu_len_exp =
 			session->vht_config.max_ampdu_lenexp;
-	else
+	} else {
+		he_6g_cap->sm_pow_save = ht_cap_info->mimo_power_save;
 		he_6g_cap->max_ampdu_len_exp =
 			vht_cap_info->ampdu_len_exponent & 0x7;
+	}
 	he_6g_cap->max_mpdu_len = vht_cap_info->ampdu_len;
-	he_6g_cap->sm_pow_save = ht_cap_info->mimo_power_save;
 	he_6g_cap->rd_responder = 0;
 	he_6g_cap->rx_ant_pattern_consistency = 0;
 	he_6g_cap->tx_ant_pattern_consistency = 0;
