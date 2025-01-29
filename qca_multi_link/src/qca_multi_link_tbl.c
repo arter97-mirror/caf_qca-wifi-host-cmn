@@ -268,8 +268,10 @@ QDF_STATUS qca_multi_link_tbl_has_entry(struct net_device *net_dev,
 			qca_ml_entry->qal_fdb_ic = parent_osifp->os_if->iv_ic;
 			qca_ml_entry->qal_fdb_osifp = NULL;
 		} else {
-			qca_ml_entry->qal_fdb_osifp = osifp;
-			qca_ml_entry->qal_fdb_ic = osifp->os_if->iv_ic;
+			if (osifp->dev_type != OSIF_NETDEV_TYPE_MLO) {
+				qca_ml_entry->qal_fdb_osifp = osifp;
+				qca_ml_entry->qal_fdb_ic = osifp->os_if->iv_ic;
+			}
 		}
 	}
 #endif
