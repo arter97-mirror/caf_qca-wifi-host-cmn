@@ -9836,6 +9836,7 @@ struct wmi_roam_result {
  *  @num_rpt: Number of report element
  *  @is_mlo: Flag to check if the current connection is MLO connection
  *  @band: indicates the link involved in MLO conenection.
+ *  @tx_status: TX status of the transmitted frame.
  */
 struct wmi_neighbor_report_data {
 	bool present;
@@ -9852,6 +9853,7 @@ struct wmi_neighbor_report_data {
 	uint8_t num_rpt;
 	bool is_mlo;
 	uint8_t band;
+	uint8_t tx_status;
 };
 
 /**

@@ -21687,6 +21687,9 @@ extract_roam_11kv_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	dst->band =
 		WMI_ROAM_NEIGHBOR_REPORT_INFO_MLO_BAND_INFO_GET(src_data->neighbor_report_detail);
 
+	dst->tx_status =
+		WMI_ROAM_NEIGHBOR_REPORT_INFO_TX_STATUS_INFO_GET(src_data->neighbor_report_detail);
+
 	if (dst->band != WMI_MLO_BAND_NO_MLO)
 		dst->is_mlo = true;
 
