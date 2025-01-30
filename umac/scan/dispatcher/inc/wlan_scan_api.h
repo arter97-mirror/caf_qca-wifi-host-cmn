@@ -42,6 +42,16 @@ void wlan_scan_get_feature_info(struct wlan_objmgr_psoc *psoc,
 #endif
 
 /**
+ * wlan_scan_get_scan_cache_report_max_time_in_sec() - Get scan cache report
+ * max time in second info
+ * @psoc: pointer to psoc object
+ *
+ * Return: scan cache report max time in min value
+ */
+uint64_t
+wlan_scan_get_scan_cache_report_max_time_in_sec(struct wlan_objmgr_psoc *psoc);
+
+/**
  * wlan_scan_get_scan_entry_by_mac_freq() - API to get scan entry
  * info from scan db by mac addr
  * @pdev: pointer to pdev object

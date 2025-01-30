@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -830,6 +830,8 @@ wlan_scan_global_init(struct wlan_objmgr_psoc *psoc,
 	scan_obj->scan_def.last_scan_ageout_time =
 		cfg_get(psoc, CFG_LAST_SCAN_AGEOUT_TIME);
 	scan_obj->aux_mac_support = false;
+	scan_obj->scan_def.scan_cache_report_max_time_in_sec =
+		cfg_get(psoc, CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC);
 
 	/* init scan id seed */
 	qdf_atomic_init(&scan_obj->scan_ids);
@@ -1540,6 +1542,20 @@ bool ucfg_scan_wake_lock_in_user_scan(struct wlan_objmgr_psoc *psoc)
 		return false;
 
 	return scan_obj->scan_def.use_wake_lock_in_user_scan;
+}
+
+uint64_t
+ucfg_scan_get_scan_cache_report_max_time_in_sec(struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_scan_obj *scan_obj;
+
+	scan_obj = wlan_psoc_get_scan_obj(psoc);
+	if (!scan_obj) {
+		scm_err("NULL scan obj");
+		return cfg_default(CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC);
+	}
+
+	return scan_obj->scan_def.scan_cache_report_max_time_in_sec;
 }
 
 bool ucfg_scan_is_connected_scan_enabled(struct wlan_objmgr_psoc *psoc)

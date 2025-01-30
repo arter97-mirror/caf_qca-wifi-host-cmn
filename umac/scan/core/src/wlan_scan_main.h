@@ -420,6 +420,8 @@ struct extscan_def_config {
  * @scan_ev_resumed: notify scan resumed event
  * @scan_events: variable to read and set scan_ev_* flags in one shot
  *               can be used to dump all scan_ev_* flags for debug
+ * @scan_cache_report_max_time_in_sec: Max value for scan cache report
+ *                                     in seconds
  */
 struct scan_default_params {
 	uint32_t active_dwell;
@@ -519,6 +521,7 @@ struct scan_default_params {
 		};
 		uint32_t scan_events;
 	};
+	uint64_t scan_cache_report_max_time_in_sec;
 };
 
 /**

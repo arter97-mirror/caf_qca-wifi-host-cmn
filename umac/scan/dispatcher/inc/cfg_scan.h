@@ -1323,6 +1323,31 @@ enum scan_mode_6ghz {
 
 /*
  * <ini>
+ * scan_cache_report_max_time_in_sec - Set max time for scan cache report
+ * @Min: 0
+ * @Max: 180
+ * @Default: 60
+ *
+ * This ini is used to configure Max time for scan cache report
+ *
+ * Related: None
+ *
+ * Supported Feature: STA
+ *
+ * Usage: Internal/External
+ *
+ * </ini>
+ */
+#define CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC CFG_INI_UINT( \
+			"scan_cache_report_max_time_in_sec", \
+			0, \
+			180, \
+			60, \
+			CFG_VALUE_OR_DEFAULT, \
+			"max_scan_cache_report_time_in_sec")
+
+/*
+ * <ini>
  * gEnableSNRMonitoring - Enables SNR Monitoring
  * @Min: 0
  * @Max: 1
@@ -1525,5 +1550,6 @@ enum scan_mode_6ghz {
 	CFG(CFG_SCAN_ALLOW_BSS_WITH_CORRUPTED_IE) \
 	CFG(CFG_SKIP_6GHZ_AND_INDOOR_FREQ_SCAN) \
 	CFG_SCAN_PNO \
-	CFG(CFG_LAST_SCAN_AGEOUT_TIME)
+	CFG(CFG_LAST_SCAN_AGEOUT_TIME) \
+	CFG(CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC)
 #endif /* __CONFIG_SCAN_H */
