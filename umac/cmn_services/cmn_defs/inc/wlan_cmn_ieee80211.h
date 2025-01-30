@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2818,6 +2818,7 @@ struct wlan_ml_prv_linfo_perstaprof {
 #define WLAN_ML_RV_CINFO_LENGTH_SIZE                               1
 #define WLAN_ML_RV_CINFO_MLDCAPANDOP_SIZE                          2
 #define WLAN_ML_RV_CINFO_EMLCAP_SIZE                               2
+#define WLAN_ML_RV_CINFO_EXT_MLDCAPANDOP_SIZE                      2
 
 /* Definitions related to the EML Capabilities subfield of the Common Info field
  * of the Reconfiguration variant Multi-Link element:
