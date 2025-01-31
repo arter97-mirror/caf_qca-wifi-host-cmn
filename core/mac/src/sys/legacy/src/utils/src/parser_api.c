@@ -766,10 +766,11 @@ populate_dot11f_chan_switch_wrapper(struct mac_context *mac,
 	 */
 	if (pe_session->vhtCapability) {
 		populate_dot11f_tx_power_env(mac, pe_session,
-				&pDot11f->transmit_power_env,
+				&pDot11f->transmit_power_env[0],
 				pe_session->gLimChannelSwitch.ch_width,
 				pe_session->gLimChannelSwitch.sw_target_freq,
 				&num_tpe, true);
+		pDot11f->num_transmit_power_env = num_tpe;
 	}
 }
 
