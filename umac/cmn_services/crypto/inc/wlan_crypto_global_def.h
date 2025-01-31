@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -285,6 +285,7 @@ typedef enum wlan_crypto_key_mgmt {
 	WLAN_CRYPTO_KEY_MGMT_PSK_SHA384            = 26,
 	WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY           = 27,
 	WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY        = 28,
+	WLAN_CRYPTO_KEY_MGMT_PASN                  = 29,
 	/** Keep WLAN_CRYPTO_KEY_MGMT_MAX at the end. */
 	WLAN_CRYPTO_KEY_MGMT_MAX,
 } wlan_crypto_key_mgmt;
