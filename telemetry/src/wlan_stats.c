@@ -381,8 +381,7 @@ static void fill_basic_vdev_ctrl_rx(struct basic_vdev_ctrl_rx *ctrl,
 static void fill_basic_vdev_ctrl_link(struct basic_vdev_ctrl_link *ctrl,
 				      struct wlan_objmgr_vdev *vdev)
 {
-	/* Deduct 1 for BSS peer */
-	ctrl->cs_peer_count = wlan_vdev_get_peer_count(vdev) - 1;
+	ctrl->cs_peer_count = wlan_vdev_get_connected_peer_count(vdev);
 }
 
 static void wlan_pdev_fill_6ghz_stats(struct wlan_objmgr_pdev *pdev,
@@ -493,8 +492,7 @@ static void fill_basic_pdev_ctrl_link(struct basic_pdev_ctrl_link *ctrl,
 	ctrl->cs_chan_tx_pwr = cp_stats->stats.cs_chan_tx_pwr;
 	ctrl->cs_chan_nf = cp_stats->stats.cs_chan_nf;
 	ctrl->cs_chan_nf_sec80 = cp_stats->stats.cs_chan_nf_sec80;
-	ctrl->cs_peer_count = wlan_pdev_get_peer_count(pdev) -
-				wlan_pdev_get_vdev_count(pdev);
+	ctrl->cs_peer_count = wlan_pdev_get_connected_peer_count(pdev);
 	ctrl->cs_cycle_count = cp_stats->stats.cs_cycle_count;
 
 	/* 6 ghz vap stats */
