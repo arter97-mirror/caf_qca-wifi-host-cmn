@@ -2194,6 +2194,8 @@ mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
 		mlo_err("RX response failure");
 		return status;
 	}
+
+	mlo_link_recfg_store_key(recfg_ctx, &tran->req);
 	/* handle link recfg link add rejected case */
 
 	status = mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
@@ -4062,4 +4064,231 @@ mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 					    ctx->curr_recfg_rsp.mlo_ie.len);
 	ctx->curr_recfg_rsp.mlo_ie.len = 0;
 	ctx->curr_recfg_rsp.mlo_ie.ptr = NULL;
+}
+
+QDF_STATUS
+mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
+			 struct mlo_link_recfg_state_req *req)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	uint8_t i;
+	struct mlo_link_info *link_info;
+	struct wlan_objmgr_vdev *vdev = NULL;
+	struct wlan_mlo_link_recfg_bss_info *add_link;
+	struct wlan_objmgr_psoc *psoc = NULL;
+	QDF_STATUS status;
+
+	if (!req || !ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!req->add_link_info.num_links)
+		return QDF_STATUS_SUCCESS;
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc = mlo_link_recfg_get_psoc(ctx);
+	if (!psoc) {
+		mlo_err("psoc is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				psoc, ctx->curr_recfg_req.vdev_id,
+				WLAN_LINK_RECFG_ID);
+	if (!vdev) {
+		mlo_err("Invalid link recfg VDEV %d",
+			ctx->curr_recfg_req.vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	for (i = 0; i < req->add_link_info.num_links; i++) {
+		add_link = &req->add_link_info.link[i];
+
+		link_info = mlo_mgr_get_ap_link_info(vdev,
+						     &add_link->ap_link_addr);
+		if (!link_info) {
+			mlo_debug("unexpected link info null for link id %d ap link mac " QDF_MAC_ADDR_FMT "",
+				  add_link->link_id,
+				  QDF_MAC_ADDR_REF(add_link->ap_link_addr.bytes));
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+			return QDF_STATUS_E_INVAL;
+		}
+
+		status = mlo_link_recfg_save_unicast_key(ctx, vdev,
+							 &link_info->link_addr,
+							 &link_info->ap_link_addr,
+							 link_info->link_id);
+		if (QDF_IS_STATUS_ERROR(status))
+			mlo_err("link unicast key save failed");
+		else
+			mlo_debug("unicast key saved for link id %d ap link mac " QDF_MAC_ADDR_FMT "",
+				  link_info->link_id,
+				  QDF_MAC_ADDR_REF(link_info->link_addr.bytes));
+	}
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+	return status;
+}
+
+QDF_STATUS
+mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
+				struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *link_addr,
+				struct qdf_mac_addr *ap_link_addr,
+				uint8_t link_id)
+{
+	struct wlan_objmgr_vdev *assoc_vdev = NULL;
+	struct wlan_crypto_key *crypto_key;
+	struct wlan_crypto_key *new_crypto_key;
+	struct wlan_crypto_params *crypto_params;
+	enum QDF_OPMODE op_mode;
+	uint16_t i;
+	uint8_t vdev_id, assoc_link_id;
+	bool key_present = false;
+	bool pairwise;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	uint16_t max_key_index = WLAN_CRYPTO_MAXKEYIDX +
+				 WLAN_CRYPTO_MAXIGTKKEYIDX +
+				 WLAN_CRYPTO_MAXBIGTKKEYIDX;
+
+	if (!ctx) {
+		mlo_err("Link recfg ctx is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!vdev) {
+		mlo_err("Vdev is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	assoc_vdev = wlan_mlo_get_assoc_link_vdev(vdev);
+	if (!assoc_vdev) {
+		mlo_err("assoc Vdev is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	op_mode = wlan_vdev_mlme_get_opmode(assoc_vdev);
+	if (op_mode != QDF_STA_MODE)
+		return QDF_STATUS_E_FAILURE;
+
+	crypto_params = wlan_crypto_vdev_get_crypto_params(assoc_vdev);
+	if (!crypto_params) {
+		mlo_err("crypto params is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!crypto_params->ucastcipherset ||
+	    QDF_HAS_PARAM(crypto_params->ucastcipherset, WLAN_CRYPTO_CIPHER_NONE))
+		return QDF_STATUS_E_FAILURE;
+
+	vdev_id = wlan_vdev_get_id(assoc_vdev);
+	assoc_link_id = wlan_vdev_get_link_id(assoc_vdev);
+
+	for (i = 0; i < max_key_index; i++) {
+		wlan_crypto_aquire_lock();
+		crypto_key = wlan_crypto_get_key(assoc_vdev, NULL, i);
+		if (!crypto_key) {
+			wlan_crypto_release_lock();
+			continue;
+		}
+
+		wlan_crypto_release_lock();
+		pairwise = crypto_key->key_type ? WLAN_CRYPTO_KEY_TYPE_UNICAST : WLAN_CRYPTO_KEY_TYPE_GROUP;
+		if (pairwise) {
+			mlo_debug("MLO: found unicast key for vdev_id %d link_id %d , key_idx %d",
+				  vdev_id, assoc_link_id, i);
+
+			wlan_crypto_aquire_lock();
+			new_crypto_key = wlan_crypto_get_ml_sta_link_key(ctx->psoc, i,
+									 link_addr,
+									 link_id);
+			if (!new_crypto_key) {
+				wlan_crypto_release_lock();
+				new_crypto_key = qdf_mem_malloc(sizeof(*new_crypto_key));
+				if (!new_crypto_key) {
+					mlo_err("malloc failed");
+					status = QDF_STATUS_E_NOMEM;
+					goto end;
+				}
+				key_present = true;
+				wlan_crypto_aquire_lock();
+			}
+
+			qdf_mem_copy(new_crypto_key, crypto_key,
+				     sizeof(*new_crypto_key));
+			qdf_mem_copy(&new_crypto_key->macaddr,
+				     ap_link_addr->bytes,
+				     QDF_MAC_ADDR_SIZE);
+
+			status = wlan_crypto_save_ml_sta_key(ctx->psoc, i,
+							     new_crypto_key,
+							     link_addr,
+							     link_id);
+			wlan_crypto_release_lock();
+			if (QDF_IS_STATUS_ERROR(status)) {
+				mlo_err("Failed to save key");
+				qdf_mem_free(new_crypto_key);
+				goto end;
+			}
+		}
+	}
+
+	if (!key_present) {
+		mlo_err("No key found for link_id %d", assoc_link_id);
+		status = QDF_STATUS_E_FAILURE;
+	}
+end:
+	return status;
+}
+
+void
+mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_crypto_key *crypto_key;
+	uint16_t i;
+	bool pairwise;
+	uint8_t vdev_id, link_id;
+	bool key_present = false;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	uint16_t max_key_index = WLAN_CRYPTO_MAXKEYIDX +
+				 WLAN_CRYPTO_MAXIGTKKEYIDX +
+				 WLAN_CRYPTO_MAXBIGTKKEYIDX;
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	link_id = wlan_vdev_get_link_id(vdev);
+
+	wlan_crypto_aquire_lock();
+	for (i = 0; i < max_key_index; i++) {
+		crypto_key = wlan_crypto_get_key(vdev, NULL, i);
+		if (!crypto_key) {
+			mlo_err("crypto key not found");
+			continue;
+		}
+		pairwise = crypto_key->key_type ? WLAN_CRYPTO_KEY_TYPE_UNICAST : WLAN_CRYPTO_KEY_TYPE_GROUP;
+		if (pairwise) {
+			key_present = true;
+			status = mlme_cm_osif_send_keys(vdev, i, pairwise,
+							crypto_key->cipher_type);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				mlo_err("MLO: fail to send key for vdev_id %d link_id %d, key_idx %d, pairwise %d",
+					vdev_id, link_id, i, pairwise);
+				goto err;
+			} else {
+				mlo_debug("MLO: send keys for vdev_id %d link_id %d, key_idx %d, pairwise %d",
+					  vdev_id, link_id, i, pairwise);
+			}
+			break;
+		}
+	}
+err:
+	wlan_crypto_release_lock();
+	if (!key_present) {
+		mlme_err("No unicast key found for link_id %d", link_id);
+		mlo_disconnect(vdev, CM_OSIF_DISCONNECT,
+			       REASON_KEY_FAIL_TO_INSTALL, NULL);
+	}
 }

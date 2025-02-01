@@ -680,7 +680,72 @@ mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req);
  */
 void
 mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx);
+
+/**
+ * mlo_link_recfg_store_key() -Store unicast key
+ * @ctx: link reconfig ctx pointer
+ * @req: Link recfg request pointer
+ *
+ * API to stote unicast keys during link reconfig addition.
+ *
+ * Return: qdf_status success/fail
+ */
+QDF_STATUS
+mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
+			 struct mlo_link_recfg_state_req *req);
+
+/**
+ * mlo_link_recfg_save_unicast_key() -Save unicast keys for added link
+ * @ctx: link reconfig ctx pointer
+ * @vdev: vdev obj pointer
+ * @link_addr: self link address
+ * @ap_link_addr: AP link address
+ * @link_id: link id
+ *
+ * API to save unicast keys for added link
+ *
+ * Return: qdf_status success/fail
+ */
+QDF_STATUS
+mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
+				struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *link_addr,
+				struct qdf_mac_addr *ap_link_addr,
+				uint8_t link_id);
+/**
+ * mlo_link_recfg_install_unicast_keys() -Install unicast keys for added link
+ * @vdev: vdev obj pointer
+ *
+ * API to install unicast keys for added link
+ *
+ * Return: none
+ */
+void
+mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev);
+
 #else
+static inline void
+mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
+				struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *link_addr,
+				struct qdf_mac_addr *ap_link_addr,
+				uint8_t link_id)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
+			 struct mlo_link_recfg_state_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
 static inline void
 mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 {
