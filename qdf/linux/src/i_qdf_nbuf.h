@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -764,6 +764,17 @@ bool __qdf_nbuf_is_ipv4_tdls_pkt(struct sk_buff *skb);
 bool __qdf_nbuf_data_is_ipv4_pkt(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_ipv4_pkt() - check if packet is a ipv4 packet
+ * @data: Pointer to network data
+ *
+ * This api is for Tx packets.
+ *
+ * Return: true if packet is ipv4 packet
+ *	   false otherwise
+ */
+bool __qdf_nbuf_dot11_data_is_ipv4_pkt(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_ipv6_pkt() - check if it is IPV6 packet.
  * @data: Pointer to IPV6 packet data buffer
  *
@@ -773,6 +784,17 @@ bool __qdf_nbuf_data_is_ipv4_pkt(uint8_t *data);
  *         FALSE if not
  */
 bool __qdf_nbuf_data_is_ipv6_pkt(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_ipv6_pkt() - check if it is IPV6 packet.
+ * @data: Pointer to IPV6 packet data buffer
+ *
+ * This func. checks whether it is a IPV6 packet or not.
+ *
+ * Return: TRUE if it is a IPV6 packet
+ *         FALSE if not
+ */
+bool __qdf_nbuf_dot11_data_is_ipv6_pkt(uint8_t *data);
 
 /**
  *  __qdf_nbuf_get_ether_type() - Get the ether type
@@ -785,6 +807,18 @@ bool __qdf_nbuf_data_is_ipv6_pkt(uint8_t *data);
  * Return ether type.
  */
 uint16_t __qdf_nbuf_get_ether_type(uint8_t *data);
+
+/**
+ *  __qdf_nbuf_get_dot11_type() - Get the ether type
+ * @data: Pointer to network data buffer
+ *
+ * Get the ether type in case of 8021Q and 8021AD tag
+ * is present in L2 header, e.g for the returned ether type
+ * value, if IPV4 data ether type 0x0800, return 0x0008.
+ *
+ * Return ether type.
+ */
+uint16_t __qdf_nbuf_get_dot11_type(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_is_ipv4_mcast_pkt() - check if it is IPV4 multicast packet.
@@ -820,6 +854,17 @@ bool __qdf_nbuf_data_is_ipv6_mcast_pkt(uint8_t *data);
 bool __qdf_nbuf_data_is_icmp_pkt(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_icmp_pkt() - check if it is IPV4 ICMP packet.
+ * @data: Pointer to IPV4 ICMP packet data buffer
+ *
+ * This func. checks whether it is a ICMP packet or not.
+ *
+ * Return: TRUE if it is a ICMP packet
+ *         FALSE if not
+ */
+bool __qdf_nbuf_dot11_data_is_icmp_pkt(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_icmpv6_pkt() - check if it is IPV6 ICMPV6 packet.
  * @data: Pointer to IPV6 ICMPV6 packet data buffer
  *
@@ -829,6 +874,17 @@ bool __qdf_nbuf_data_is_icmp_pkt(uint8_t *data);
  *         FALSE if not
  */
 bool __qdf_nbuf_data_is_icmpv6_pkt(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_icmpv6_pkt() - check if it is IPV6 ICMPV6 packet.
+ * @data: Pointer to IPV6 ICMPV6 packet data buffer
+ *
+ * This func. checks whether it is a ICMPV6 packet or not.
+ *
+ * Return: TRUE if it is a ICMPV6 packet
+ *         FALSE if not
+ */
+bool __qdf_nbuf_dot11_data_is_icmpv6_pkt(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_is_ipv4_udp_pkt() - check if it is IPV4 UDP packet.
@@ -853,6 +909,17 @@ bool __qdf_nbuf_data_is_ipv4_udp_pkt(uint8_t *data);
 bool __qdf_nbuf_data_is_ipv4_tcp_pkt(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_ipv4_tcp_pkt() - check if it is IPV4 TCP packet.
+ * @data: Pointer to IPV4 TCP packet data buffer
+ *
+ * This func. checks whether it is a IPV4 TCP packet or not.
+ *
+ * Return: TRUE if it is a IPV4 TCP packet
+ *         FALSE if not
+ */
+bool __qdf_nbuf_dot11_data_is_ipv4_tcp_pkt(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_ipv6_udp_pkt() - check if it is IPV6 UDP packet.
  * @data: Pointer to IPV6 UDP packet data buffer
  *
@@ -875,6 +942,17 @@ bool __qdf_nbuf_data_is_ipv6_udp_pkt(uint8_t *data);
 bool __qdf_nbuf_data_is_ipv6_tcp_pkt(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_ipv6_tcp_pkt() - check if it is IPV6 TCP packet.
+ * @data: Pointer to IPV6 TCP packet data buffer
+ *
+ * This func. checks whether it is a IPV6 TCP packet or not.
+ *
+ * Return: TRUE if it is a IPV6 TCP packet
+ *         FALSE if not
+ */
+bool __qdf_nbuf_dot11_data_is_ipv6_tcp_pkt(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_ipv4_dhcp_pkt() - check if skb data is a dhcp packet
  * @data: Pointer to network data buffer
  *
@@ -884,6 +962,17 @@ bool __qdf_nbuf_data_is_ipv6_tcp_pkt(uint8_t *data);
  *	   false otherwise
  */
 bool __qdf_nbuf_data_is_ipv4_dhcp_pkt(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_ipv4_dhcp_pkt() - check if skb data is a dhcp packet
+ * @data: Pointer to network data buffer
+ *
+ * This api is for ipv4 packet.
+ *
+ * Return: true if packet is DHCP packet
+ *	   false otherwise
+ */
+bool __qdf_nbuf_dot11_data_is_ipv4_dhcp_pkt(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_is_ipv6_dhcp_pkt() - check if skb data is a dhcp packet
@@ -896,6 +985,16 @@ bool __qdf_nbuf_data_is_ipv4_dhcp_pkt(uint8_t *data);
  */
 bool __qdf_nbuf_data_is_ipv6_dhcp_pkt(uint8_t *data);
 
+/**
+ * __qdf_nbuf_dot11_data_is_ipv6_dhcp_pkt() - check if skb data is a dhcp packet
+ * @data: Pointer to network data buffer
+ *
+ * This api is for ipv6 packet.
+ *
+ * Return: true if packet is DHCP packet
+ *	   false otherwise
+ */
+bool __qdf_nbuf_dot11_data_is_ipv6_dhcp_pkt(uint8_t *data);
 /**
  * __qdf_nbuf_data_is_ipv6_mdns_pkt() - check if skb data is a mdns packet
  * @data: Pointer to network data buffer
@@ -917,6 +1016,18 @@ bool __qdf_nbuf_data_is_ipv6_mdns_pkt(uint8_t *data);
  *	   false otherwise.
  */
 bool __qdf_nbuf_data_is_ipv4_eapol_pkt(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_ipv4_eapol_pkt() - check if skb data is a eapol
+ * packet
+ * @data: Pointer to network data buffer
+ *
+ * This api is for ipv4 packet.
+ *
+ * Return: true if packet is EAPOL packet
+ *	   false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_ipv4_eapol_pkt(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_is_ipv4_igmp_pkt() - check if skb data is a igmp packet
@@ -972,6 +1083,17 @@ bool __qdf_nbuf_is_ipv6_igmp_leave_pkt(__qdf_nbuf_t buf);
  *	   false otherwise.
  */
 bool __qdf_nbuf_data_is_ipv4_arp_pkt(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_ipv4_arp_pkt() - check if skb data is a arp packet
+ * @data: Pointer to network data buffer
+ *
+ * This api is for ipv4 packet.
+ *
+ * Return: true if packet is ARP packet
+ *	   false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_ipv4_arp_pkt(uint8_t *data);
 
 /**
  * __qdf_nbuf_is_bcast_pkt() - is destination address broadcast
@@ -1065,6 +1187,17 @@ uint8_t *__qdf_nbuf_get_dns_domain_name(uint8_t *data, uint32_t len);
 bool __qdf_nbuf_data_is_dns_query(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_dns_query() - check if skb data is a dns query
+ * @data: Pointer to network data buffer
+ *
+ * This api is for dns query packet.
+ *
+ * Return: true if packet is dns query packet.
+ *	   false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_dns_query(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_dns_response() - check if skb data is a dns response
  * @data: Pointer to network data buffer
  *
@@ -1074,6 +1207,17 @@ bool __qdf_nbuf_data_is_dns_query(uint8_t *data);
  *	   false otherwise.
  */
 bool __qdf_nbuf_data_is_dns_response(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_dns_response() - check if skb data is a dns response
+ * @data: Pointer to network data buffer
+ *
+ * This api is for dns query response.
+ *
+ * Return: true if packet is dns response packet.
+ *	   false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_dns_response(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_is_tcp_fin() - check if skb data is a tcp fin
@@ -1087,6 +1231,17 @@ bool __qdf_nbuf_data_is_dns_response(uint8_t *data);
 bool __qdf_nbuf_data_is_tcp_fin(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_tcp_fin() - check if skb data is a tcp fin
+ * @data: Pointer to network data buffer
+ *
+ * This api is to check if the packet is tcp fin.
+ *
+ * Return: true if packet is tcp fin packet.
+ *         false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_tcp_fin(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_tcp_fin_ack() - check if skb data is a tcp fin ack
  * @data: Pointer to network data buffer
  *
@@ -1096,6 +1251,17 @@ bool __qdf_nbuf_data_is_tcp_fin(uint8_t *data);
  *         false otherwise.
  */
 bool __qdf_nbuf_data_is_tcp_fin_ack(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_tcp_fin_ack() - check if skb data is a tcp fin ack
+ * @data: Pointer to network data buffer
+ *
+ * This api is to check if the tcp packet is fin ack.
+ *
+ * Return: true if packet is tcp fin ack packet.
+ *         false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_tcp_fin_ack(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_is_tcp_syn() - check if skb data is a tcp syn
@@ -1109,6 +1275,17 @@ bool __qdf_nbuf_data_is_tcp_fin_ack(uint8_t *data);
 bool __qdf_nbuf_data_is_tcp_syn(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_tcp_syn() - check if skb data is a tcp syn
+ * @data: Pointer to network data buffer
+ *
+ * This api is for tcp syn packet.
+ *
+ * Return: true if packet is tcp syn packet.
+ *	   false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_tcp_syn(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_tcp_syn_ack() - check if skb data is a tcp syn ack
  * @data: Pointer to network data buffer
  *
@@ -1118,6 +1295,17 @@ bool __qdf_nbuf_data_is_tcp_syn(uint8_t *data);
  *	   false otherwise.
  */
 bool __qdf_nbuf_data_is_tcp_syn_ack(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_tcp_syn_ack() - check if skb data is a tcp syn ack
+ * @data: Pointer to network data buffer
+ *
+ * This api is for tcp syn ack packet.
+ *
+ * Return: true if packet is tcp syn ack packet.
+ *	   false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_tcp_syn_ack(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_is_tcp_rst() - check if skb data is a tcp rst
@@ -1131,6 +1319,17 @@ bool __qdf_nbuf_data_is_tcp_syn_ack(uint8_t *data);
 bool __qdf_nbuf_data_is_tcp_rst(uint8_t *data);
 
 /**
+ * __qdf_nbuf_dot11_data_is_tcp_rst() - check if skb data is a tcp rst
+ * @data: Pointer to network data buffer
+ *
+ * This api is to check if the tcp packet is rst.
+ *
+ * Return: true if packet is tcp rst packet.
+ *         false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_tcp_rst(uint8_t *data);
+
+/**
  * __qdf_nbuf_data_is_tcp_ack() - check if skb data is a tcp ack
  * @data: Pointer to network data buffer
  *
@@ -1140,6 +1339,17 @@ bool __qdf_nbuf_data_is_tcp_rst(uint8_t *data);
  *	   false otherwise.
  */
 bool __qdf_nbuf_data_is_tcp_ack(uint8_t *data);
+
+/**
+ * __qdf_nbuf_dot11_data_is_tcp_ack() - check if skb data is a tcp ack
+ * @data: Pointer to network data buffer
+ *
+ * This api is for tcp ack packet.
+ *
+ * Return: true if packet is tcp ack packet.
+ *	   false otherwise.
+ */
+bool __qdf_nbuf_dot11_data_is_tcp_ack(uint8_t *data);
 
 /**
  * __qdf_nbuf_data_get_tcp_src_port() - get tcp src port
@@ -2105,6 +2315,15 @@ static inline uint8_t *__qdf_nbuf_data(struct sk_buff *skb)
 {
 	return skb->data;
 }
+
+/**
+ * __qdf_nbuf_nonlinear_data() - return the pointer to data header in the
+ * non linear skb
+ * @skb: Pointer to network buffer
+ *
+ * Return: Pointer to skb data
+ */
+uint8_t *__qdf_nbuf_nonlinear_data(struct sk_buff *skb);
 
 static inline uint8_t *__qdf_nbuf_data_addr(struct sk_buff *skb)
 {
