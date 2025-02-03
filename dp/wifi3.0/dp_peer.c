@@ -4038,7 +4038,7 @@ static void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
 
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 static void
-dp_mon_update_conn_info(struct dp_peer *peer)
+dp_mon_update_conn_info(struct dp_peer *peer, uint32_t beacon_interval)
 {
 	uint32_t mac_id = 0;
 	struct dp_mon_mac *mon_mac;
@@ -4051,15 +4051,18 @@ dp_mon_update_conn_info(struct dp_peer *peer)
 
 	pdev = peer->vdev->pdev;
 	mon_mac = dp_get_mon_mac(pdev, mac_id);
+	mon_mac->beacon_interval = beacon_interval;
 
 	if (IS_MLO_DP_LINK_PEER(peer) && peer->primary_link)
 		mon_mac->peer_id = peer->mld_peer->peer_id;
 	else if (!IS_MLO_DP_LINK_PEER(peer))
 		mon_mac->peer_id = peer->peer_id;
+
+	dp_mon_update_nth_beacon(pdev);
 }
 #else
 static void
-dp_mon_update_conn_info(struct dp_peer *peer)
+dp_mon_update_conn_info(struct dp_peer *peer, uint32_t beacon_interval)
 {
 }
 #endif
@@ -4081,7 +4084,7 @@ QDF_STATUS dp_register_peer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 	peer->state = OL_TXRX_PEER_STATE_CONN;
 
 	if (peer->vdev->opmode == wlan_op_mode_sta)
-		dp_mon_update_conn_info(peer);
+		dp_mon_update_conn_info(peer, sta_desc->beacon_interval);
 
 	qdf_spin_unlock_bh(&peer->peer_info_lock);
 
@@ -4159,7 +4162,7 @@ QDF_STATUS dp_register_peer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 	peer->state = OL_TXRX_PEER_STATE_CONN;
 
 	if (peer->vdev->opmode == wlan_op_mode_sta)
-		dp_mon_update_conn_info(peer);
+		dp_mon_update_conn_info(peer, sta_desc->beacon_interval);
 
 	qdf_spin_unlock_bh(&peer->peer_info_lock);
 

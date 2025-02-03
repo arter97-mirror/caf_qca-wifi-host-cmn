@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -297,12 +297,14 @@ enum cdp_peer_bw {
  * @is_wapi_supported: is station wapi supported
  * @peer_addr: peer mac address
  * @bw: bandwidth of peer connection
+ * @beacon_interval: beacon interval of peer connection
  */
 struct ol_txrx_desc_type {
 	uint8_t is_qos_enabled;
 	uint8_t is_wapi_supported;
 	struct qdf_mac_addr peer_addr;
 	enum cdp_peer_bw bw;
+	uint32_t beacon_interval;
 };
 
 /**
