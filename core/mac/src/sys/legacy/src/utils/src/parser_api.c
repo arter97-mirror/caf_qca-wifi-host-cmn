@@ -8164,6 +8164,8 @@ populate_dot11f_twt_he_cap(struct mac_context *mac,
 	wlan_twt_get_bcast_responder_cfg(mac->psoc, &bcast_responder);
 
 	he_cap->broadcast_twt = 0;
+	he_cap->twt_request = 0;
+	he_cap->twt_responder = 0;
 	switch (session->opmode) {
 	case QDF_STA_MODE:
 	case QDF_P2P_CLIENT_MODE:
