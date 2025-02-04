@@ -828,7 +828,7 @@ enum {
 #endif
 	IEEE80211_PARAM_UPTIME            = 785,  /* Get VAP uptime */
 #ifdef WLAN_FEATURE_11BE
-	IEEE80211_PARAM_EHT_SUP_MCS15     = 786,   /* Set 11be - EHT MCS15 Support */
+	IEEE80211_PARAM_EHT_SUP_MCS15_IN_MRU     = 786,   /* Set 11be - EHT MCS15 In MRU Support */
 	IEEE80211_PARAM_EHT_MCS14_DUP_IN_6GHZ                   = 787, /* Set 11be - EHT MCS14 Duplicate in 6GHz */
 #endif /* WLAN_FEATURE_11BE */
 	IEEE80211_PARAM_DROP_3ADDR_MCAST  = 788,  /* Flag to enable/disable 3address multicast pkt drops */
@@ -2632,8 +2632,8 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"get_eht_ul_ltf",       IEEE80211_PARAM_EHT_UL_LTF, GET_PARAM, 0},
 	{"eht_ltf",              IEEE80211_PARAM_EHT_LTF, SET_PARAM, 1},
 	{"get_eht_ltf",          IEEE80211_PARAM_EHT_LTF, GET_PARAM, 0},
-	{"eht_mcs15_supp",       IEEE80211_PARAM_EHT_SUP_MCS15, SET_PARAM, 1},
-	{"get_eht_mcs15_supp",   IEEE80211_PARAM_EHT_SUP_MCS15, GET_PARAM, 0},
+	{"eht_mcs15_supp_in_mru",       IEEE80211_PARAM_EHT_SUP_MCS15_IN_MRU, SET_PARAM, 1},
+	{"get_eht_mcs15_supp_in_mru",   IEEE80211_PARAM_EHT_SUP_MCS15_IN_MRU, GET_PARAM, 0},
 	{"eht_mcs14_dup_6ghz",   IEEE80211_PARAM_EHT_MCS14_DUP_IN_6GHZ, SET_PARAM, 1},
 	{"get_eht_mcs14_dup_6ghz", IEEE80211_PARAM_EHT_MCS14_DUP_IN_6GHZ, GET_PARAM, 0},
 	{"set_eht_ml_probe_req", IEEE80211_PARAM_EHT_ML_PROBE_REQ, SET_PARAM, 1},
