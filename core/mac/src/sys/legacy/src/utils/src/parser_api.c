@@ -718,7 +718,6 @@ populate_dot11f_chan_switch_wrapper(struct mac_context *mac,
 				    tDot11fIEChannelSwitchWrapper *pDot11f,
 				    struct pe_session *pe_session)
 {
-	uint16_t num_tpe;
 	qdf_freq_t target_freq;
 	uint8_t ccfs0, ccfs1;
 	enum phy_ch_width ch_width;
@@ -761,17 +760,6 @@ populate_dot11f_chan_switch_wrapper(struct mac_context *mac,
 	pDot11f->WiderBWChanSwitchAnn.newCenterChanFreq1 = ccfs1;
 	pDot11f->WiderBWChanSwitchAnn.present = 1;
 
-	/*
-	 * Add the Transmit power Envelope Sublement.
-	 */
-	if (pe_session->vhtCapability) {
-		populate_dot11f_tx_power_env(mac, pe_session,
-				&pDot11f->transmit_power_env[0],
-				pe_session->gLimChannelSwitch.ch_width,
-				pe_session->gLimChannelSwitch.sw_target_freq,
-				&num_tpe, true);
-		pDot11f->num_transmit_power_env = num_tpe;
-	}
 }
 
 #ifdef FEATURE_AP_MCC_CH_AVOIDANCE
