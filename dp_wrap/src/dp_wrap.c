@@ -29,6 +29,7 @@
 #include "osif_nss_wifiol_if.h"
 #include "osif_nss_wifiol_vdev_if.h"
 #endif
+#include <wlan_dfs_ucfg_api.h>
 
 #define QWRAP_TX_SUCCESS 0
 #define QWRAP_TX_FAILURE 1
@@ -796,6 +797,7 @@ int dp_wrap_tx_process(struct net_device **dev, osif_dev **osifp,
 {
 	struct dp_wrap_vdev *wvdev = NULL;
 	struct ether_header *eh;
+	int is_ap_cac_timer_running = false;
 
 	if (qdf_unlikely(wlan_rptr_vdev_is_mpsta(vdev))) {
 		if (dp_wrap_tx_bridge(vdev, &wvdev, skb))
@@ -819,12 +821,33 @@ int dp_wrap_tx_process(struct net_device **dev, osif_dev **osifp,
 
 		vdev = wvdev->vdev;
 
-		if (wlan_vdev_is_up(vdev) != QDF_STATUS_SUCCESS) {
+		if (qdf_unlikely(wlan_vdev_chan_config_valid(vdev) != QDF_STATUS_SUCCESS)) {
 			eh = (struct ether_header *)((*skb)->data);
-			qwrap_err("Drop pkt, vdev is not up:"QDF_MAC_ADDR_FMT
-				  "vdevid:%d", QDF_MAC_ADDR_REF(eh->ether_shost),
-				  vdev->vdev_objmgr.vdev_id);
-			return QWRAP_TX_FAILURE;
+			/* In case non mlo drop the packet */
+			if (!wlan_vdev_mlme_is_mlo_vdev(vdev)) {
+				qwrap_err("Drop pkt, non-mlo vdev is not up:" QDF_MAC_ADDR_FMT
+					  "vdevid:%d", QDF_MAC_ADDR_REF(eh->ether_shost),
+					  vdev->vdev_objmgr.vdev_id);
+				return QWRAP_TX_FAILURE;
+			}
+
+			ucfg_dfs_is_ap_cac_timer_running(wlan_vdev_get_pdev(vdev), &is_ap_cac_timer_running);
+			if (!is_ap_cac_timer_running) {
+				qwrap_err("Drop pkt, CAC is not inprogress:" QDF_MAC_ADDR_FMT
+					  "vdevid:%d", QDF_MAC_ADDR_REF(eh->ether_shost),
+					  vdev->vdev_objmgr.vdev_id);
+				return QWRAP_TX_FAILURE;
+			}
+
+#ifdef WLAN_FEATURE_11BE_MLO
+			/* In SLO case drop the packet */
+			if (vdev->mlo_dev_ctx && (vdev->mlo_dev_ctx->wlan_vdev_count <= 1)) {
+				qwrap_err("Drop pkt, SLO vdev is not up:" QDF_MAC_ADDR_FMT
+					  "vdevid:%d", QDF_MAC_ADDR_REF(eh->ether_shost),
+					  vdev->vdev_objmgr.vdev_id);
+				return QWRAP_TX_FAILURE;
+			}
+#endif
 		}
 
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
