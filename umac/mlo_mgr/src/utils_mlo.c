@@ -4223,6 +4223,8 @@ util_get_bvmlie_ext_mld_cap_op_info(uint8_t *mlie_seq,
 						extmldcap_offset)));
 
 		*ext_mld_cap_found = true;
+	} else {
+		mlo_debug_rl("Ext mld caps not found");
 	}
 
 	return QDF_STATUS_SUCCESS;

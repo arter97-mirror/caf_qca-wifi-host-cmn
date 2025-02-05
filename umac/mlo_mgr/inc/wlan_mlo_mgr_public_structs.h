@@ -773,6 +773,8 @@ enum mlo_link_force_mode {
  *  Set force specific links because of TDLS operation
  * @MLO_LINK_FORCE_REASON_LINK_DELETE:
  *  Set link inactive because of link deleted
+ * @MLO_LINK_FORCE_REASON_SINGLE_LINK_EMLSR_OP:
+ *  Set force specific link as EMLSR link
  */
 enum mlo_link_force_reason {
 	MLO_LINK_FORCE_REASON_CONNECT    = 1,
@@ -780,6 +782,7 @@ enum mlo_link_force_reason {
 	MLO_LINK_FORCE_REASON_LINK_REMOVAL = 3,
 	MLO_LINK_FORCE_REASON_TDLS = 4,
 	MLO_LINK_FORCE_REASON_LINK_DELETE = 6,
+	MLO_LINK_FORCE_REASON_SINGLE_LINK_EMLSR_OP = 7,
 };
 
 /**
@@ -1400,6 +1403,8 @@ struct ttlm_state_sm {
  * @is_mesh_ml_peer: flag to indicate if ml_peer is MESH configured
  * @mesh_config: eack link peer's MESH configuration
  * @mlpeer_mldcap: MLD Capability information for ML peer
+ * @ext_mld_cap_present: Extended MLD capability present bit
+ * @mlpeer_ext_mldcap: Extended MLD capability info for ML peer
  * @mlpeer_nstrinfo: NSTR Capability info
  * @migrate_primary_umac_psoc_id: primary umac psoc id selected for umac
  * migration
@@ -1448,6 +1453,8 @@ struct wlan_mlo_peer_context {
 	struct mlnawds_config mesh_config[MAX_MLO_LINK_PEERS];
 #endif
 	struct wlan_mlo_mld_cap mlpeer_mldcap;
+	bool ext_mld_cap_present;
+	struct wlan_mlo_ext_mld_cap mlpeer_ext_mldcap;
 	struct mlo_nstr_info mlpeer_nstrinfo[WLAN_UMAC_MLO_MAX_VDEVS];
 	uint8_t migrate_primary_umac_psoc_id;
 	bool primary_umac_migration_in_progress;

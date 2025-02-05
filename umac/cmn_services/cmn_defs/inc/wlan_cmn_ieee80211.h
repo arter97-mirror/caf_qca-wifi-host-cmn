@@ -2580,6 +2580,9 @@ enum wlan_ml_bv_cinfo_emlcap_transtimeout {
 /* Recommended Max Simultaneous Links */
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RECOM_MAX_SIMULT_LINKS_IDX        1
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RECOM_MAX_SIMULT_LINKS_BITS       4
+/* EMLSR Enablement On One Link Support */
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_EMLSR_ENABLE_ONE_LINK_IDX         6
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_EMLSR_ENABLE_ONE_LINK_BITS        1
 /* BTM MLD Recommendation For Multiple APs Support */
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_IDX        7
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_BITS       1
@@ -2818,6 +2821,7 @@ struct wlan_ml_prv_linfo_perstaprof {
 #define WLAN_ML_RV_CINFO_LENGTH_SIZE                               1
 #define WLAN_ML_RV_CINFO_MLDCAPANDOP_SIZE                          2
 #define WLAN_ML_RV_CINFO_EMLCAP_SIZE                               2
+#define WLAN_ML_RV_CINFO_EXT_MLDCAPANDOP_SIZE                      2
 #define WLAN_ML_RV_CINFO_EXT_MLDCAPANDOP_SIZE                      2
 
 /* Definitions related to the EML Capabilities subfield of the Common Info field

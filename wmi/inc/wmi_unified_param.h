@@ -1444,6 +1444,8 @@ struct wmi_link_reconfig_req_params {
  *                           for the peer due to link switch
  * @link_add_in_progress: Flag to indicate FW MLO peer assoc
  * for link add purpose
+ * @ext_mld_cap_and_op_support: Indicate if Extended MLD cap supported
+ * @emlsr_one_link_support: Indicate if single link EMLSR supported
  * @unused: spare bits
  * @mld_mac: MLD mac address
  * @logical_link_index: Unique index for links of the mlo. Starts with Zero
@@ -1480,7 +1482,9 @@ struct peer_assoc_mlo_params {
 		 mlo_bridge_peer:1,
 		 link_switch_in_progress:1,
 		 link_add_in_progress:1,
-		 unused:18;
+		 ext_mld_cap_and_op_support:1,
+		 emlsr_one_link_support:1,
+		 unused:16;
 	uint8_t mld_mac[QDF_MAC_ADDR_SIZE];
 	uint32_t logical_link_index;
 	uint32_t ml_peer_id;
