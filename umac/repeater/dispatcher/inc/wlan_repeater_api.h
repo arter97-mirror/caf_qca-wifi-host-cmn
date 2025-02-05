@@ -256,6 +256,20 @@ void wlan_rptr_pdev_clear_feat_cap(struct wlan_objmgr_pdev *pdev,
 bool wlan_rptr_is_psta_vdev(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * wlan_rptr_get_mpsta_bssid() - Get MPSTA associated BSSID
+ * @vdev: vdev object
+ * @mpsta_bssid: BSSID ref to get
+ *
+ * api to Get MPSTA associated BSSID
+ *
+ * return: QDF_STATUS_SUCCESS for valid MPSTA BSSID
+ *         QDF_STATUS_E_FAILURE for other cases
+ */
+QDF_STATUS
+wlan_rptr_get_mpsta_bssid(struct wlan_objmgr_vdev *vdev,
+			  struct qdf_mac_addr *mpsta_bssid);
+
+/**
  * wlan_rptr_pdev_is_feat_cap_set() - get feature caps
  * @vdev: pdev object
  * @cap: capabilities to be checked
