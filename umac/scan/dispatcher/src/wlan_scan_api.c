@@ -1000,3 +1000,8 @@ void wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
 		pdev_ev_handler->cached_scan_ev_handler = NULL;
 }
 #endif
+
+void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev)
+{
+	scm_set_obss_scan_enable(vdev);
+}

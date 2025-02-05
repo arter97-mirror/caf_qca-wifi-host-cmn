@@ -703,4 +703,12 @@ wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
 {
 }
 #endif
+
+/**
+ * wlan_scan_set_obss_scan_enable() - Wrapper API to set OBSS scan enable flag
+ * @vdev: vdev pointer
+ *
+ * Returun: void
+ */
+void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev);
 #endif

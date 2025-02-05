@@ -246,6 +246,7 @@ struct pdev_scan_info {
  * @scan_disabled: if scan is disabled for this vdev
  * @first_scan_done: Whether its the first scan or not for this particular vdev.
  * @nlo_complete_time: PNO complete time
+ * @is_obbs_scan_enabled: flag to check if obss scan is enabled
  */
 struct scan_vdev_obj {
 	bool pno_match_evt_received;
@@ -253,6 +254,7 @@ struct scan_vdev_obj {
 	uint32_t scan_disabled;
 	bool first_scan_done;
 	qdf_time_t nlo_complete_time;
+	bool is_obbs_scan_enabled;
 };
 
 #ifdef FEATURE_WLAN_SCAN_PNO
