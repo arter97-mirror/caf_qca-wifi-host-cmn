@@ -114,6 +114,7 @@ enum wlan_link_recfg_sm_state {
  * @WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT: Link Reconfiguration serialization
  * timeout
  * @WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT: generic timeout in substate
+ * @WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT: Link Reconfig response timed out
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -135,6 +136,7 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_COMPLETED,
 	WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT,
+	WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
@@ -150,6 +152,7 @@ enum wlan_link_recfg_sm_evt {
  * delete link
  * @link_recfg_del_link_link_switch_comp_with_fail: link switch complete
  * with failure
+ * @link_recfg_rsp_timeout: Link Reconfiguration response timeout.
  */
 enum link_recfg_failure_reason {
 	link_recfg_success = 0,
@@ -159,6 +162,7 @@ enum link_recfg_failure_reason {
 	link_recfg_del_link_wait_fw_link_switch_timeout = 4,
 	link_recfg_del_link_fw_link_switch_rejected = 5,
 	link_recfg_del_link_link_switch_comp_with_fail = 6,
+	link_recfg_rsp_timeout = 7,
 };
 
 /**
@@ -436,6 +440,7 @@ struct wlan_mlo_link_recfg_bitmap {
  * @rsp_frame: Link Reconfiguration response frame
  * @link_recfg_bm: User configured Link Reconfiguration bitmap
  * @rsp_rx_frame: Link reconfig response with mac header
+ * @link_recfg_rsp_timer: Link Reconfiguration rsp timed out
  * @link_recfg_status: Link Reconfiguration status
  * @last_dialog_token: Last used dialog token
  * @internal_reason_code: Internal failure reason code
@@ -454,6 +459,7 @@ struct mlo_link_recfg_context {
 	struct element_info rsp_frame;
 	struct wlan_mlo_link_recfg_bitmap link_recfg_bm;
 	struct element_info rsp_rx_frame;
+	qdf_mc_timer_t link_recfg_rsp_timer;
 	QDF_STATUS link_recfg_status;
 	uint8_t last_dialog_token;
 	enum link_recfg_failure_reason internal_reason_code;
@@ -657,6 +663,17 @@ QDF_STATUS mlo_link_recfg_init(struct wlan_objmgr_psoc *psoc,
 			       struct wlan_mlo_dev_context *ml_dev);
 
 /**
+ * mlo_link_recfg_timer_init() - API to initialize link recfg
+ * rsp timer
+ *@recfg_ctx: ML Reconfig context
+ *
+ * Initialize the MLO link reconfiguration rsp timer
+ *
+ * Return: void
+ */
+void mlo_link_recfg_timer_init(struct mlo_link_recfg_context *recfg_ctx);
+
+/**
  * mlo_link_recfg_deinit() - API to de-initialize link recfg
  * @ml_dev: MLO dev context
  *
@@ -667,6 +684,27 @@ QDF_STATUS mlo_link_recfg_init(struct wlan_objmgr_psoc *psoc,
  * Return: QDF_STATUS
  */
 QDF_STATUS mlo_link_recfg_deinit(struct wlan_mlo_dev_context *ml_dev);
+
+/**
+ * mlo_link_recfg_timer_deinit() - API to de-initialize link recfg timer
+ * @recfg_ctx: ML Reconfig context
+ *
+ * De-initialize the MLO link reconfiguration timer
+ *
+ * Return: void
+ */
+void mlo_link_recfg_timer_deinit(struct mlo_link_recfg_context *recfg_ctx);
+
+/**
+ * mlo_link_recfg_rx_rsp_timeout_cb() - API to handle link recfg
+ * response timeout callback.
+ * @user_data: ML Reconfig context
+ *
+ * Callback api to handle link recfg rsp timed out
+ *
+ * Return: void
+ */
+void mlo_link_recfg_rx_rsp_timeout_cb(void *user_data);
 
 static inline bool
 mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev)
