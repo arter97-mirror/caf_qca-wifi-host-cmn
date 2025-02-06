@@ -865,7 +865,7 @@ dp_sawf_peer_flow_count(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 					       DP_MOD_ID_SAWF);
 
 	if (!peer) {
-		dp_sawf_err("Peer is NULL");
+		dp_sawf_debug("Peer is NULL");
 		goto fail;
 	}
 
