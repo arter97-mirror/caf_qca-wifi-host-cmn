@@ -1455,18 +1455,16 @@ void lim_log_vht_cap(struct mac_context *mac, tDot11fIEVHTCaps *pDot11f)
 	pe_debug("vhtLinkAdaptCap (2): %d",
 		pDot11f->vhtLinkAdaptCap);
 	pe_debug("rxAntPattern (1): %d",
-		pDot11f->rxAntPattern;
+		pDot11f->rxAntPattern);
 	pe_debug("txAntPattern (1): %d",
 		pDot11f->txAntPattern);
-	pe_debug("reserved1 (2): %d", pDot11f->reserved1);
 	pe_debug("rxMCSMap (16): %d", pDot11f->rxMCSMap);
 	pe_debug("rxHighSupDataRate (13): %d",
 		pDot11f->rxHighSupDataRate);
-	pe_debug("reserved2(3): %d", pDot11f->reserved2);
 	pe_debug("txMCSMap (16): %d", pDot11f->txMCSMap);
-	pe_debug("txSupDataRate (13): %d"),
-		pDot11f->txSupDataRate;
-	pe_debug("reserved3 (3): %d", pDot11f->reserved3);
+	pe_debug("txSupDataRate (13): %d",
+		pDot11f->txSupDataRate);
+	pe_debug("reserved (2): %d", pDot11f->reserved);
 #endif /* DUMP_MGMT_CNTNTS */
 }
 
@@ -1488,7 +1486,6 @@ static void lim_log_operating_mode(struct mac_context *mac,
 {
 #ifdef DUMP_MGMT_CNTNTS
 	pe_debug("ChanWidth: %d", pDot11f->chanWidth);
-	pe_debug("reserved: %d", pDot11f->reserved);
 	pe_debug("rxNSS: %d", pDot11f->rxNSS);
 	pe_debug("rxNSS Type: %d", pDot11f->rxNSSType);
 #endif /* DUMP_MGMT_CNTNTS */
