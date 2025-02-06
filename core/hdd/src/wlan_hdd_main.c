@@ -2345,7 +2345,7 @@ static void hdd_update_tgt_ht_cap(struct hdd_context *hdd_ctx,
 	if (!QDF_IS_STATUS_SUCCESS(status))
 		hdd_err("unable to get vht_enable2x2");
 
-	b_enable1x1 = b_enable1x1 && (cfg->num_rf_chains == 2);
+	b_enable1x1 = b_enable1x1 && (cfg->num_rf_chains >= 2);
 
 	status = ucfg_mlme_set_vht_enable2x2(hdd_ctx->psoc, b_enable1x1);
 	if (!QDF_IS_STATUS_SUCCESS(status))
@@ -2370,7 +2370,9 @@ static void hdd_update_tgt_ht_cap(struct hdd_context *hdd_ctx,
 			cfg->num_rf_chains = SIZE_OF_SUPPORTED_MCS_SET;
 
 		if (b_enable1x1) {
-			for (value = 0; value < cfg->num_rf_chains; value++)
+			for (value = 0;
+			     value < QDF_MIN(NSS_2x2_MODE, cfg->num_rf_chains);
+			     value++)
 				mcs_set[value] =
 					WLAN_HDD_RX_MCS_ALL_NSTREAM_RATES;
 
