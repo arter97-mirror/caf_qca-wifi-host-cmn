@@ -408,6 +408,7 @@ struct wlan_mlo_link_recfg_bitmap {
  * @req_frame: Link Reconfiguration request frame
  * @rsp_frame: Link Reconfiguration response frame
  * @link_recfg_bm: User configured Link Reconfiguration bitmap
+ * @rsp_rx_frame: Link reconfig response with mac header
  * @link_recfg_status: Link Reconfiguration status
  * @last_dialog_token: Last used dialog token
  * @copied_recfg_req: Copied recfg req
@@ -424,6 +425,7 @@ struct mlo_link_recfg_context {
 	struct element_info req_frame;
 	struct element_info rsp_frame;
 	struct wlan_mlo_link_recfg_bitmap link_recfg_bm;
+	struct element_info rsp_rx_frame;
 	QDF_STATUS link_recfg_status;
 	uint8_t last_dialog_token;
 	struct wlan_mlo_link_recfg_req copied_recfg_req;
@@ -765,8 +767,7 @@ mlo_link_recfg_send_request_frame(
  * action response frame
  * @vdev: vdev pointer
  * @event: Link reconfig SM event
- * @event_data: Link Reconfig event data pointer
- * @frame_len: RX frame len
+ * @rx_pkt_info: RX frame
  *
  * API to send Link Reconfiguration action response frame
  *
@@ -774,8 +775,7 @@ mlo_link_recfg_send_request_frame(
  */
 QDF_STATUS mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 				 enum wlan_link_recfg_sm_evt event,
-				 void *event_data,
-				 uint32_t frame_len);
+				 uint8_t *rx_pkt_info);
 
 /**
  * mlo_link_recfg_link_add_join_req() - handle add link join request
@@ -957,8 +957,7 @@ mlo_link_recfg_send_request_frame(
 static inline QDF_STATUS
 mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 		      enum wlan_link_recfg_sm_evt event,
-		      void *event_data,
-		      uint32_t frame_len)
+		      uint8_t *rx_pkt_info)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

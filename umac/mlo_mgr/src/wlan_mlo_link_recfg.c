@@ -5587,14 +5587,15 @@ static QDF_STATUS
 mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 				  struct mlo_link_recfg_context *ctx,
 				  struct wlan_mlo_link_recfg_req *link_recfg_req,
+				  uint8_t *rx_pkt_info,
 				  struct wlan_action_frame_args *action_frm,
-				  uint16_t frm_len,
 				  uint16_t *ie_offset)
 {
 	uint8_t i;
 	uint8_t link_id;
 	struct wlan_mlo_link_recfg_info *add_link_info;
 	struct element_info org_assoc_rsp;
+	uint32_t frm_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
 	QDF_STATUS status;
 
 	if (!ctx || !link_recfg_req)
@@ -5663,8 +5664,8 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 static QDF_STATUS
 mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 				struct wlan_mlo_link_recfg_rsp *link_recfg_rsp,
+				uint8_t *rx_pkt_info,
 				struct wlan_action_frame *action_frm,
-				uint32_t frame_len,
 				uint16_t *ie_offset)
 {
 	uint8_t *link_recfg_action_frm = NULL, *frame = NULL;
@@ -5674,13 +5675,15 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 	uint8_t i;
 	struct element_info oci_ie = {0};
 	uint8_t *mlieseq;
+	uint32_t total_frame_len = WMA_GET_RX_MPDU_LEN(rx_pkt_info);
+	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
 	qdf_size_t mlieseqlen;
 	struct wlan_mlo_link_recfg_req *link_recfg_req;
 
 	if (!ctx)
 		return QDF_STATUS_E_NULL_VALUE;
 
-	if (!action_frm || !frame_len)
+	if (!action_frm || !frame_len || !total_frame_len)
 		return QDF_STATUS_E_NULL_VALUE;
 
 	link_recfg_req = &ctx->curr_recfg_req;
@@ -5700,6 +5703,8 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 			sizeof(uint8_t);
 
 	mlo_debug("Link Recfg rsp frame len %d ", frame_len);
+	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO,QDF_TRACE_LEVEL_DEBUG,
+			   rx_pkt_info, frame_len);
 
 	if (frame_len < ie_len_parsed) {
 		mlo_err("Action frame length %d too short", frame_len);
@@ -5732,7 +5737,7 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 	link_status = mlo_link_recfg_if_add_link_accepted(link_recfg_req);
 	if (QDF_IS_STATUS_SUCCESS(link_status) &&
 	    link_recfg_req->add_link_info.num_links) {
-		// Group key data
+		/* Group key data */
 		link_recfg_rsp->grp_key_data.len = *link_recfg_action_frm;
 		link_recfg_rsp->grp_key_data.ptr = qdf_mem_malloc(link_recfg_rsp->grp_key_data.len);
 
@@ -5746,7 +5751,7 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 			     link_recfg_rsp->grp_key_data.len);
 		link_recfg_action_frm += sizeof(uint8_t) * link_recfg_rsp->grp_key_data.len;
 
-		// OCI IE
+		/* OCI IE */
 		if (*(link_recfg_action_frm) == WLAN_ELEMID_EXTN_ELEM &&
 		    *(link_recfg_action_frm + sizeof(uint16_t)) == WLAN_EXTN_ELEMID_OCI) {
 			oci_ie.len = *(link_recfg_action_frm + sizeof(uint8_t));
@@ -5766,7 +5771,7 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 		}
 		link_recfg_action_frm += oci_ie.len;
 
-		// Basic MLIE
+		/* Basic ML IE */
 		status = util_find_mlie(link_recfg_action_frm,
 					(frame_len - (uint16_t)(link_recfg_action_frm - frame)),
 					&mlieseq,
@@ -5808,12 +5813,27 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 			goto end;
 		}
 
-		// copy the Link Reconfiguration response frame
+		ctx->rsp_rx_frame.ptr = qdf_mem_malloc(total_frame_len);
+		if (!ctx->rsp_rx_frame.ptr) {
+			qdf_mem_free(ctx->rsp_frame.ptr);
+			mlo_err("rsp frame malloc failed");
+			status = QDF_STATUS_E_NOMEM;
+			goto end;
+		}
+		/* copy the Link Reconfiguration response frame */
 		qdf_mem_copy(ctx->rsp_frame.ptr,
 			     frame,
 			     frame_len);
 		ctx->rsp_frame.len = frame_len;
-		mlo_debug("Link Reconfig rsp rx dump:");
+		/*
+		 * Copy frame with starting address of mac header
+		 * till provided length which is total length of frame.
+		 */
+		qdf_mem_copy(ctx->rsp_rx_frame.ptr,
+			     WMA_GET_RX_MAC_HEADER(rx_pkt_info),
+			     total_frame_len);
+		ctx->rsp_rx_frame.len = total_frame_len;
+		mlo_err("Link Reconfig rsp rx dump:");
 		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO,
 				   QDF_TRACE_LEVEL_DEBUG,
 				   frame,
@@ -5826,12 +5846,13 @@ end:
 QDF_STATUS
 mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 		      enum wlan_link_recfg_sm_evt event,
-		      void *event_data,
-		      uint32_t frame_len)
+		      uint8_t *rx_pkt_info)
 {
 	struct mlo_link_recfg_context *ctx;
 	struct wlan_action_frame_args *action_frm;
 	struct link_recfg_rx_rsp rx_rsp = {0};
+	void *event_data = WMA_GET_RX_MPDU_DATA(rx_pkt_info);
+	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
 	QDF_STATUS status;
 	uint16_t ie_offset = 0;
 
@@ -5850,8 +5871,8 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 	ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
 	status = mlo_link_recfg_parse_action_rsp(ctx,
 						 &ctx->curr_recfg_rsp,
+						 rx_pkt_info,
 						 event_data,
-						 frame_len,
 						 &ie_offset);
 
 	if (QDF_IS_STATUS_ERROR(status))
@@ -5859,8 +5880,8 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 	else
 		mlo_link_recfg_gen_link_assoc_rsp(vdev, ctx,
 						  &ctx->curr_recfg_req,
+						  rx_pkt_info,
 						  action_frm,
-						  frame_len,
 						  &ie_offset);
 
 	rx_rsp.status = status;
@@ -5905,6 +5926,11 @@ mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 					    ctx->rsp_frame.len);
 	ctx->rsp_frame.len = 0;
 	ctx->rsp_frame.ptr = NULL;
+
+	mlo_link_recfg_zero_and_free_memory(ctx->rsp_rx_frame.ptr,
+					    ctx->rsp_rx_frame.len);
+	ctx->rsp_rx_frame.len = 0;
+	ctx->rsp_rx_frame.ptr = NULL;
 
 	mlo_link_recfg_zero_and_free_memory(ctx->curr_recfg_rsp.grp_key_data.ptr,
 					    ctx->curr_recfg_rsp.grp_key_data.len);

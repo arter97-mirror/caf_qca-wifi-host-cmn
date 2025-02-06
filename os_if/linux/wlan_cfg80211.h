@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -579,6 +579,44 @@ static inline int
 wlan_cfg80211_nla_put_u64(struct sk_buff *skb, int attrtype, u64 value)
 {
 	return nla_put_u64_64bit(skb, attrtype, value, NL80211_ATTR_PAD);
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0)
+static inline void
+osif_wiphy_lock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
+{
+	if (wiphy)
+		wiphy_lock(wiphy);
+	else if (dev_ptr)
+		mutex_lock(&dev_ptr->mtx);
+}
+
+static inline void
+osif_wiphy_unlock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
+{
+	if (wiphy)
+		wiphy_unlock(wiphy);
+	else if (dev_ptr)
+		mutex_unlock(&dev_ptr->mtx);
+}
+#else
+static inline void
+osif_wiphy_lock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
+{
+	if (wiphy)
+		wiphy_lock(wiphy);
+	else if (dev_ptr)
+		mutex_lock(&dev_ptr->wiphy->mtx);
+}
+
+static inline void
+osif_wiphy_unlock(struct wiphy *wiphy, struct wireless_dev *dev_ptr)
+{
+	if (wiphy)
+		wiphy_unlock(wiphy);
+	else if (dev_ptr)
+		mutex_unlock(&dev_ptr->wiphy->mtx);
 }
 #endif
 
