@@ -9776,21 +9776,33 @@ extract_spectral_fft_size_caps_tlv(
 }
 #endif /* WLAN_CONV_SPECTRAL_ENABLE */
 
-#ifdef FEATURE_WPSS_THERMAL_MITIGATION
-static inline void
-wmi_fill_client_id_priority(wmi_therm_throt_config_request_fixed_param *tt_conf,
-			    struct thermal_mitigation_params *param)
+/**
+ * wmi_convert_host_client_id_to_fw_client_id() - convert
+ * enum wmi_thermal_monitor_id to enum WMI_THERMAL_MITIGATION_CLIENTS
+ * @tt_conf : Fixed param buffer
+ * @param : pointer to hold thermal mitigation param
+ *
+ * Return: none
+ */
+static inline void wmi_convert_host_client_id_to_fw_client_id(
+		wmi_therm_throt_config_request_fixed_param *tt_conf,
+		struct thermal_mitigation_params *param)
 {
-	tt_conf->client_id = param->client_id;
-	tt_conf->priority = param->priority;
+	switch (param->client_id) {
+	case WMI_HOST_THERMAL_MONITOR_APPS:
+		tt_conf->client_id = WMI_THERMAL_CLIENT_APPS;
+		return;
+	case WMI_HOST_THERMAL_MONITOR_WPSS:
+		tt_conf->client_id = WMI_THERMAL_CLIENT_WPSS;
+		return;
+	case WMI_HOST_THERMAL_MONITOR_DDR_BWM:
+		tt_conf->client_id = WMI_THERMAL_CLIENT_DDR_BWM;
+		return;
+	default:
+		wmi_debug("Invalid client_id");
+		return;
+	}
 }
-#else
-static inline void
-wmi_fill_client_id_priority(wmi_therm_throt_config_request_fixed_param *tt_conf,
-			    struct thermal_mitigation_params *param)
-{
-}
-#endif
 
 /**
  * send_thermal_mitigation_param_cmd_tlv() - configure thermal mitigation params
@@ -9833,9 +9845,15 @@ static QDF_STATUS send_thermal_mitigation_param_cmd_tlv(
 	tt_conf->dc = param->dc;
 	tt_conf->dc_per_event = param->dc_per_event;
 	tt_conf->therm_throt_levels = param->num_thermal_conf;
-	wmi_debug("Total thermal throttle levels: %u Global dc value: %d",
-		  tt_conf->therm_throt_levels, tt_conf->dc = param->dc);
-	wmi_fill_client_id_priority(tt_conf, param);
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_thermal_multi_client_support)) {
+		wmi_convert_host_client_id_to_fw_client_id(tt_conf, param);
+		tt_conf->priority = param->priority;
+	}
+	wmi_debug("therm_throt_levels: %u duty cycle: %d, dc_per_event: %d, priority: %d, client_id: %d",
+		  tt_conf->therm_throt_levels, tt_conf->dc,
+		  tt_conf->dc_per_event, param->priority, tt_conf->client_id);
+
 	buf_ptr = (uint8_t *) ++tt_conf;
 	/* init TLV params */
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
@@ -9855,7 +9873,7 @@ static QDF_STATUS send_thermal_mitigation_param_cmd_tlv(
 				param->levelconf[i].pout_reduction_db;
 		lvl_conf->tx_chain_mask = param->levelconf[i].tx_chain_mask;
 		lvl_conf->duty_cycle = param->levelconf[i].duty_cycle;
-		wmi_debug("Thermal level config:\nLevel %u Low threshold %u High threshold %u\n Duty cycle off %u Priority %u Pout reduction %u Tx chainmask %u Dc value %u",
+		wmi_debug("Thermal level TLV config:Level %u, Low threshold %u, High threshold %u, Duty cycle off %u, Priority %u, Pout reduction %u, Tx chainmask %u, Dc value %u",
 			  i, lvl_conf->temp_lwm, lvl_conf->temp_hwm,
 			  lvl_conf->dc_off_percent, lvl_conf->prio,
 			  lvl_conf->pout_reduction_25db, lvl_conf->tx_chain_mask,
