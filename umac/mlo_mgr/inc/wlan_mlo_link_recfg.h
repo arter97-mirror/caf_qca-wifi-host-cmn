@@ -296,6 +296,19 @@ struct wlan_mlo_link_recfg_rsp {
 	struct element_info mlo_ie;
 };
 
+#define MAX_NUM_FRAMES 4
+/**
+ * struct wlan_mlo_link_recfg_bitmap: User based Link reconfig bitmap
+ * @num_frames: Number of frames used to send link reconfig request
+ * @add_link_bitmap: Bitmap of link IDs of links to be added
+ * @delete_link_bitmap: Bitmap of link IDs of links to be removed
+ */
+struct wlan_mlo_link_recfg_bitmap {
+	uint8_t num_frames;
+	uint16_t add_link_bitmap[MAX_NUM_FRAMES];
+	uint16_t delete_link_bitmap[MAX_NUM_FRAMES];
+};
+
 /**
  * struct mlo_link_recfg_context - Link reconfiguration data structure.
  * @psoc: psoc object
@@ -306,6 +319,7 @@ struct wlan_mlo_link_recfg_rsp {
  * @set_link_req: set link req for link recfg
  * @req_frame: Link Reconfiguration request frame
  * @rsp_frame: Link Reconfiguration response frame
+ * @link_recfg_bm: User configured Link Reconfiguration bitmap
  * @link_recfg_status: Link Reconfiguration status
  */
 struct mlo_link_recfg_context {
@@ -317,6 +331,7 @@ struct mlo_link_recfg_context {
 	struct mlo_link_set_active_req *set_link_req;
 	struct element_info req_frame;
 	struct element_info rsp_frame;
+	struct wlan_mlo_link_recfg_bitmap link_recfg_bm;
 	QDF_STATUS link_recfg_status;
 };
 
