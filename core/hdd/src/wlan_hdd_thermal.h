@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -59,13 +59,37 @@ enum hdd_thermal_states {
  * thermal_monitor_id: enum of thermal client
  * @THERMAL_MONITOR_APPS: Thermal monitor client of APPS
  * @THERMAL_MONITOR_WPSS: Thermal monitor client for WPSS
+ * @THERMAL_MONITOR_DDR_BWM: Thermal monitor client for DDR bandwidth mitigation
  */
 enum thermal_monitor_id {
 	THERMAL_MONITOR_APPS = 1,
 	THERMAL_MONITOR_WPSS,
+	THERMAL_MONITOR_DDR_BWM,
 };
 
 #ifdef FW_THERMAL_THROTTLE_SUPPORT
+/**
+ * hdd_ddr_bw_mitigation_register() - Register the new cooling device
+ * (THERMAL_MONITOR_DDR_BWM) for platform-specific DDR BW mitigation support.
+ * @hdd_ctx: Pointer to Hdd context
+ * @dev: Pointer to the device
+ *
+ * Return: None
+ */
+void hdd_ddr_bw_mitigation_register(struct hdd_context *hdd_ctx,
+				    struct device *dev);
+
+/**
+ * hdd_ddr_bw_mitigation_unregister() - Un-register the new cooling device
+ * (THERMAL_MONITOR_DDR_BWM) for platform-specific DDR BW mitigation support.
+ * @hdd_ctx: Pointer to Hdd context
+ * @dev: Pointer to the device
+ *
+ * Return: None
+ */
+void hdd_ddr_bw_mitigation_unregister(struct hdd_context *hdd_ctx,
+				      struct device *dev);
+
 int
 wlan_hdd_cfg80211_set_thermal_mitigation_policy(struct wiphy *wiphy,
 						struct wireless_dev *wdev,
@@ -231,6 +255,18 @@ void hdd_thermal_mitigation_register(struct hdd_context *hdd_ctx,
 static inline
 void hdd_thermal_mitigation_unregister(struct hdd_context *hdd_ctx,
 				       struct device *dev)
+{
+}
+
+static inline
+void hdd_ddr_bw_mitigation_register(struct hdd_context *hdd_ctx,
+				    struct device *dev)
+{
+}
+
+static inline
+void hdd_ddr_bw_mitigation_unregister(struct hdd_context *hdd_ctx,
+				      struct device *dev)
 {
 }
 

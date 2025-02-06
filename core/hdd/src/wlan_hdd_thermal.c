@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -706,6 +706,7 @@ void hdd_thermal_mitigation_unregister_wpps(struct hdd_context *hdd_ctx,
 {
 }
 #endif
+
 void hdd_thermal_mitigation_register(struct hdd_context *hdd_ctx,
 				     struct device *dev)
 {
@@ -719,6 +720,63 @@ void hdd_thermal_mitigation_unregister(struct hdd_context *hdd_ctx,
 {
 	hdd_thermal_mitigation_unregister_wpps(hdd_ctx, dev);
 	pld_thermal_unregister(dev, THERMAL_MONITOR_APPS);
+}
+
+#ifdef WLAN_DDR_BW_MITIGATION
+/**
+ * hdd_ddr_bw_mitigation_register_bwm() - Register the new cooling device
+ * (THERMAL_MONITOR_DDR_BWM) for platform-specific DDR BW mitigation support.
+ * @hdd_ctx: Pointer to Hdd context
+ * @dev: Pointer to the device
+ *
+ * Return: None
+ */
+static void hdd_ddr_bw_mitigation_register_bwm(struct hdd_context *hdd_ctx,
+					       struct device *dev)
+{
+	if (hdd_ctx->multi_client_thermal_mitigation)
+		pld_thermal_register(dev, HDD_THERMAL_STATE_EMERGENCY,
+				     THERMAL_MONITOR_DDR_BWM);
+}
+
+/**
+ * hdd_ddr_bw_mitigation_unregister_bwm() - Un-register the new cooling device
+ * (THERMAL_MONITOR_DDR_BWM) for platform-specific DDR BW mitigation support.
+ * @hdd_ctx: Pointer to Hdd context
+ * @dev: Pointer to the device
+ *
+ * Return: None
+ */
+static void hdd_ddr_bw_mitigation_unregister_bwm(struct hdd_context *hdd_ctx,
+						 struct device *dev)
+{
+	if (hdd_ctx->multi_client_thermal_mitigation)
+		pld_thermal_unregister(dev, THERMAL_MONITOR_DDR_BWM);
+}
+#else
+static inline void
+hdd_ddr_bw_mitigation_register_bwm(struct hdd_context *hdd_ctx,
+				   struct device *dev)
+{
+}
+
+static inline void
+hdd_ddr_bw_mitigation_unregister_bwm(struct hdd_context *hdd_ctx,
+				     struct device *dev)
+{
+}
+#endif
+
+void hdd_ddr_bw_mitigation_register(struct hdd_context *hdd_ctx,
+				     struct device *dev)
+{
+	hdd_ddr_bw_mitigation_register_bwm(hdd_ctx, dev);
+}
+
+void hdd_ddr_bw_mitigation_unregister(struct hdd_context *hdd_ctx,
+				       struct device *dev)
+{
+	hdd_ddr_bw_mitigation_unregister_bwm(hdd_ctx, dev);
 }
 
 #ifdef FW_THERMAL_THROTTLE_SUPPORT

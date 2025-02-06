@@ -2390,9 +2390,7 @@ struct hdd_context {
 #ifdef FEATURE_CLUB_LL_STATS_AND_GET_STATION
 	bool is_get_station_clubbed_in_ll_stats_req;
 #endif
-#ifdef FEATURE_WPSS_THERMAL_MITIGATION
 	bool multi_client_thermal_mitigation;
-#endif
 	bool is_dual_mac_cfg_updated;
 	bool is_regulatory_update_in_progress;
 	qdf_event_t regulatory_update_event;

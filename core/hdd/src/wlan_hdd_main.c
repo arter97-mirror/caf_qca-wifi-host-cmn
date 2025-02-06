@@ -2848,7 +2848,6 @@ static uint32_t hdd_update_band_cap_from_dot11mode(
 	return band_capability;
 }
 
-#ifdef FEATURE_WPSS_THERMAL_MITIGATION
 static inline
 void hdd_update_multi_client_thermal_support(struct hdd_context *hdd_ctx)
 {
@@ -2862,12 +2861,6 @@ void hdd_update_multi_client_thermal_support(struct hdd_context *hdd_ctx)
 		wmi_service_enabled(wmi_handle,
 				    wmi_service_thermal_multi_client_support);
 }
-#else
-static inline
-void hdd_update_multi_client_thermal_support(struct hdd_context *hdd_ctx)
-{
-}
-#endif
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 static void hdd_lpc_enable_powersave(struct hdd_context *hdd_ctx)

@@ -831,6 +831,7 @@ static int __hdd_soc_probe(struct device *dev,
 	cds_set_load_in_progress(false);
 	hdd_start_complete(0);
 	hdd_thermal_mitigation_register(hdd_ctx, dev);
+	hdd_ddr_bw_mitigation_register(hdd_ctx, dev);
 
 	hdd_set_sar_init_index(hdd_ctx);
 	hdd_soc_load_unlock(dev);
@@ -1036,6 +1037,7 @@ static void __hdd_soc_remove(struct device *dev)
 		qdf_nbuf_deinit_replenish_timer();
 	} else {
 		hdd_thermal_mitigation_unregister(hdd_ctx, dev);
+		hdd_ddr_bw_mitigation_unregister(hdd_ctx, dev);
 		hdd_wlan_exit(hdd_ctx);
 	}
 
