@@ -1945,17 +1945,17 @@ mlo_link_recfg_add_link_connect(struct wlan_objmgr_vdev *recfg_vdev,
 	vdev_mac = wlan_vdev_mlme_get_linkaddr(vdev);
 	if (!qdf_is_macaddr_equal(&mlo_link_info->link_addr,
 				  (struct qdf_mac_addr *)vdev_mac)) {
-		mlo_err("vdev MAC address not equal for the mlo mgr Link ID VDEV: " QDF_MAC_ADDR_FMT ", MLO_LINK: " QDF_MAC_ADDR_FMT"",
-			QDF_MAC_ADDR_REF(vdev_mac),
-			QDF_MAC_ADDR_REF(mlo_link_info->link_addr.bytes));
+		mlo_debug("vdev MAC address not equal for the mlo mgr Link ID VDEV: " QDF_MAC_ADDR_FMT ", MLO_LINK: " QDF_MAC_ADDR_FMT"",
+			  QDF_MAC_ADDR_REF(vdev_mac),
+			  QDF_MAC_ADDR_REF(mlo_link_info->link_addr.bytes));
 		need_self_mac_update = true;
 	}
 
 	if (!qdf_is_macaddr_equal(&link_add->self_link_addr,
 				  (struct qdf_mac_addr *)vdev_mac)) {
-		mlo_err("vdev MAC address not equal for the Add Link ID VDEV: " QDF_MAC_ADDR_FMT ", ADD_LINK: " QDF_MAC_ADDR_FMT"",
-			QDF_MAC_ADDR_REF(vdev_mac),
-			QDF_MAC_ADDR_REF(link_add->ap_link_addr.bytes));
+		mlo_debug("vdev MAC address not equal for the Add Link ID VDEV: " QDF_MAC_ADDR_FMT ", ADD_LINK: " QDF_MAC_ADDR_FMT"",
+			  QDF_MAC_ADDR_REF(vdev_mac),
+			  QDF_MAC_ADDR_REF(link_add->ap_link_addr.bytes));
 		need_self_mac_update = true;
 	}
 	if (need_self_mac_update) {
@@ -2929,6 +2929,9 @@ mlo_link_recfg_set_tx_link_addr(
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct wlan_objmgr_pdev *pdev;
 	struct wlan_objmgr_psoc *psoc;
+	struct qdf_mac_addr standby_link_peer_mac;
+
+	qdf_zero_macaddr(&standby_link_peer_mac);
 
 	/* decide which link will be used to send action frame */
 	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
@@ -2966,8 +2969,12 @@ mlo_link_recfg_set_tx_link_addr(
 			continue;
 		}
 
-		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID)
+		if (link_info->vdev_id == WLAN_INVALID_VDEV_ID) {
+			if ((1 << link_info->link_id) & candidate_link_set)
+				standby_link_peer_mac =
+					link_info->ap_link_addr;
 			continue;
+		}
 
 		if (!cm_is_vdevid_connected(pdev, link_info->vdev_id))
 			continue;
@@ -2981,8 +2988,14 @@ mlo_link_recfg_set_tx_link_addr(
 	}
 
 	if (i == WLAN_MAX_ML_BSS_LINKS) {
-		status = QDF_STATUS_E_INVAL;
-		mlo_debug("no found valid peer mac");
+		if (!qdf_is_macaddr_zero(&standby_link_peer_mac)) {
+			req->peer_mac = standby_link_peer_mac;
+			mlo_debug("selected tx ap link addr: " QDF_MAC_ADDR_FMT " - standby",
+				  QDF_MAC_ADDR_REF(req->peer_mac.bytes));
+		} else {
+			status = QDF_STATUS_E_INVAL;
+			mlo_debug("no found valid peer mac");
+		}
 	}
 
 	if (pdev)
@@ -3104,7 +3117,7 @@ static QDF_STATUS mlo_link_recfg_defer_rsp_handler(
 		return QDF_STATUS_E_INVAL;
 	}
 
-	mlo_err("RX response success, to defer proc it");
+	mlo_debug("RX response success, to defer proc it");
 	mlo_link_recfg_update_state_req_from_rsp(recfg_ctx, tran);
 
 	mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
@@ -3217,8 +3230,7 @@ static bool mlo_link_recfg_xmit_req_first(
 	 * force delete the link. the transition state list will change
 	 * accordingly.
 	 */
-	xmit_link = curr_link_set & ~force_state.force_inactive_bitmap &
-			~curr_standby_set;
+	xmit_link = curr_link_set & ~force_state.force_inactive_bitmap;
 	if (xmit_link & ~del_link_set)
 		return xmit_first;
 
@@ -3823,7 +3835,7 @@ mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	mlo_err("RX response success");
+	mlo_debug("RX response success");
 
 	/* Handle link recfg link del.
 	 * If deleted link is standby, remove link info from mlo mgr.
@@ -5757,8 +5769,8 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 				*ie_offset);
 		} else {
 			*ie_offset = (uint16_t)(link_recfg_action_frm - frame);
-			mlo_err("ML IE found %zu, ie_offset %d", mlieseqlen,
-				*ie_offset);
+			mlo_debug("ML IE found %zu, ie_offset %d", mlieseqlen,
+				  *ie_offset);
 		}
 
 		if (mlieseqlen) {
@@ -5788,7 +5800,7 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 			     frame,
 			     frame_len);
 		ctx->rsp_frame.len = frame_len;
-		mlo_err("Link Reconfig rsp rx dump:");
+		mlo_debug("Link Reconfig rsp rx dump:");
 		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO,
 				   QDF_TRACE_LEVEL_DEBUG,
 				   frame,
