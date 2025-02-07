@@ -399,8 +399,13 @@ reg_get_6ghz_cli_pwr_type_per_ap_pwr_type(
 				enum supported_6g_pwr_types *cli_pwr_type)
 {
 	enum reg_6g_client_type client_type;
+	QDF_STATUS status;
 
-	reg_get_cur_6g_client_type(pdev, &client_type);
+	status = reg_get_cur_6g_client_type(pdev, &client_type);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		reg_err("Failed to get client type: %d", status);
+		return status;
+	}
 
 	if (client_type == REG_DEFAULT_CLIENT) {
 		if (ap_pwr_type == REG_INDOOR_AP)
