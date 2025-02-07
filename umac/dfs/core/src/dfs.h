@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2013, 2016-2021 The Linux Foundation.  All rights reserved.
  * Copyright (c) 2005-2006 Atheros Communications, Inc.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,6 +30,7 @@
 #include <qdf_lock.h>        /* qdf_spinlock */
 #include <qdf_time.h>
 #include <qdf_timer.h>
+#include <qdf_hrtimer.h>
 #include <qdf_str.h>         /* qdf_str_lcopy */
 
 #include <wlan_dfs_ioctl.h>
@@ -761,7 +763,7 @@ struct dfs_nolelem {
 	uint32_t       nol_chwidth;
 	uint64_t       nol_start_us;
 	uint32_t       nol_timeout_ms;
-	qdf_timer_t    nol_timer;
+	qdf_hrtimer_data_t    nol_timer;
 	struct dfs_nolelem *nol_next;
 };
 
@@ -1215,7 +1217,7 @@ struct wlan_dfs {
 	TAILQ_HEAD(, dfs_nolelem) dfs_nol_free_list;
 	qdf_work_t     dfs_nol_elem_free_work;
 
-	qdf_timer_t    dfs_cac_timer;
+	qdf_hrtimer_data_t    dfs_cac_timer;
 	qdf_timer_t    dfs_cac_valid_timer;
 	int            dfs_cac_timeout_override;
 	uint8_t        dfs_enable:1,

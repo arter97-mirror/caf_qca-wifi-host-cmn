@@ -958,4 +958,9 @@ static inline void dp_get_rx_reo_queue_info(
 {
 }
 #endif /* DUMP_REO_QUEUE_INFO_IN_DDR */
+
+bool dp_peer_exist_on_pdev(struct dp_soc *soc,
+			   uint8_t *peer_mac_addr,
+			   int mac_addr_is_aligned,
+			   struct dp_pdev *pdev);
 #endif /* _DP_PEER_H_ */
