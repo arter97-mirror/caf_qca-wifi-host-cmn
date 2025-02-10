@@ -7568,6 +7568,19 @@ policy_mgr_link_switch_notifier_cb(struct wlan_objmgr_vdev *vdev,
 
 	policy_mgr_store_and_del_conn_info_by_vdev_id(
 		psoc, vdev_id, info, &num_del);
+
+	if (!num_del && !policy_mgr_is_hw_dbs_capable(psoc)) {
+		/**
+		 * In non DBS, case if the vdev id is inactive it won't be
+		 * deleted from policy mgr, thus try get the active vdev_id,
+		 * to avoid 3 home channel check to kick in, active link,
+		 * existing concurrency and new freq for the inactive link.
+		 */
+		vdev_id = ucfg_mlo_get_active_vdev_id(vdev);
+		policy_mgr_store_and_del_conn_info_by_vdev_id(psoc, vdev_id,
+							      info, &num_del);
+	}
+
 	conc_ext_flags.value =
 	policy_mgr_get_conc_ext_flags(vdev, true);
 	ml_nlink_get_dynamic_inactive_links(psoc, vdev, &dyn_inact_bmap,
