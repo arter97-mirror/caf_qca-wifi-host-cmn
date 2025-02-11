@@ -1128,6 +1128,9 @@ static void hdd_chan_change_notify_update(struct wlan_hdd_link_info *link_info)
 
 	dev = adapter->dev;
 	vdev_id = wlan_vdev_get_id(vdev);
+
+	wlan_twt_concurrency_update(adapter->hdd_ctx);
+
 	if (hdd_adapter_is_link_adapter(adapter)) {
 		hdd_debug("replace link adapter dev with ml adapter dev");
 		assoc_adapter = hdd_adapter_get_mlo_adapter_from_link(adapter);
