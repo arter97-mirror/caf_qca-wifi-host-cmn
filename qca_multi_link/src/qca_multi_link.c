@@ -1410,6 +1410,10 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 					qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
 					qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
 					qca_ml_entry.qal_fdb_dev = NULL;
+					if (!qca_ml_entry.qal_fdb_ieee80211_ptr) {
+						qdf_err("wdev is NULL");
+						return QCA_MULTI_LINK_PKT_DROP;
+					}
 				}
 			}
 #else
@@ -1634,6 +1638,12 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *
 			qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
 			qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
 			qca_ml_entry.qal_fdb_dev = NULL;
+
+			if (!qca_ml_entry.qal_fdb_ieee80211_ptr) {
+				qdf_err("wdev is NULL");
+				return QCA_MULTI_LINK_PKT_DROP;
+			}
+
 		}
 	}
 #else
