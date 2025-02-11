@@ -10956,6 +10956,31 @@ QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 	return status;
 }
 
+QDF_STATUS reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+			  struct reg_txpb_cmd_params *params)
+{
+	struct wlan_lmac_if_reg_tx_ops *reg_tx_ops;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_objmgr_psoc *psoc;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("TPB: psoc is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops) {
+		reg_err("TPB: reg_tx_ops is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (reg_tx_ops->txpb_send_inference_cmd)
+		status = reg_tx_ops->txpb_send_inference_cmd(pdev, params);
+
+	return status;
+}
+
 QDF_STATUS
 reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
 			struct reg_txpb_evt_params *params)

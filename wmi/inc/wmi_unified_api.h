@@ -1346,6 +1346,17 @@ QDF_STATUS
 wmi_unified_pdev_pb_mem_ind_send(wmi_unified_t wmi_handle,
 				 struct reg_pdev_pb_dma_buf *buf,
 				 uint8_t mac_id);
+
+/**
+ * wmi_unified_pdev_pb_send_inference_cmd() - Send Inference Command
+ * @wmi_handle: wmi handle
+ * @params: powerboost parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failures,
+ */
+QDF_STATUS
+wmi_unified_pdev_pb_send_inference_cmd(wmi_unified_t wmi_handle,
+			struct reg_txpb_cmd_params *params);
 #endif
 
 /**

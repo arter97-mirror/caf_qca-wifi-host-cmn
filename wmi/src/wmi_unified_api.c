@@ -4360,6 +4360,17 @@ wmi_unified_pdev_pb_mem_ind_send(wmi_unified_t wmi_handle,
 				   buf, mac_id);
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_unified_pdev_pb_send_inference_cmd(wmi_unified_t wmi_handle,
+				struct reg_txpb_cmd_params *params)
+{
+	if (wmi_handle->ops->pdev_pb_send_inference_cmd)
+		return wmi_handle->ops->pdev_pb_send_inference_cmd(
+								  wmi_handle,
+								  params);
+	return QDF_STATUS_E_FAILURE;
+}
 #endif
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN

@@ -23464,6 +23464,63 @@ send_pdev_power_boost_mem_ind_cmd_tlv(wmi_unified_t wmi_handle,
 }
 
 static QDF_STATUS
+pdev_pb_send_inference_cmd_tlv(wmi_unified_t wmi_handle,
+				       struct reg_txpb_cmd_params *params)
+{
+	QDF_STATUS ret;
+	wmi_buf_t buf;
+	wmi_pdev_power_boost_cmd_fixed_param *cmd;
+
+	uint32_t len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_pdev_power_boost_cmd_fixed_param *)wmi_buf_data(buf);
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+			WMITLV_TAG_STRUC_wmi_pdev_power_boost_cmd_fixed_param,
+			WMITLV_GET_STRUCT_TLVLEN
+			(wmi_pdev_power_boost_cmd_fixed_param));
+
+	cmd->pdev_id =
+		       wmi_handle->ops->convert_pdev_id_host_to_target(
+								wmi_handle,
+								params->cmn_params.pdev_id);
+
+	cmd->status = params->cmn_params.status;
+	cmd->inferencing_stage = params->cmn_params.inference_stage;
+	cmd->mcs = params->cmn_params.mcs;
+	cmd->bandwidth = params->cmn_params.bandwidth;
+	cmd->temperature_degreeC = params->cmn_params.temperature_degreeC;
+	cmd->primary_chan_mhz = params->cmn_params.primary_chan_mhz;
+	cmd->band_center_freq1 = params->cmn_params.center_freq1;
+	cmd->band_center_freq2 = params->cmn_params.center_freq2;
+	cmd->phy_mode = params->cmn_params.phy_mode;
+	cmd->tx_evm = params->tx_evm;
+	cmd->tx_mask_margin = params->mask_margin;
+	cmd->req_id = params->cmn_params.req_id;
+
+	wmi_debug("TPB: WMI CMD Params req_id: %u pdev_id: %d status: %d inference_stage: %d mcs: %d bw: %d temperature_degreeC: %d primary_chan_mhz: %d center_freq1: %d center_freq2: %d phy_mode: %d tx_evm: %d tx_mask_margin: %d",
+		  cmd->req_id, cmd->pdev_id, cmd->status,
+		  cmd->inferencing_stage, cmd->mcs, cmd->bandwidth,
+		  cmd->temperature_degreeC, cmd->primary_chan_mhz,
+		  cmd->band_center_freq1, cmd->band_center_freq2,
+		  cmd->phy_mode, cmd->tx_evm, cmd->tx_mask_margin);
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PDEV_POWER_BOOST_CMDID);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("TPB: Failed to send PB Inference cmd WMI");
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+static QDF_STATUS
 extract_pdev_power_boost_event_tlv(wmi_unified_t wmi_handle,
 				void *evt_buf,
 				struct reg_txpb_evt_params *params)
@@ -24051,6 +24108,7 @@ struct wmi_ops tlv_ops =  {
 	.extract_power_boost_cap = extract_power_boost_cap_tlv,
 	.send_pdev_pb_mem_ind_cmd = send_pdev_power_boost_mem_ind_cmd_tlv,
 	.extract_pdev_power_boost_event = extract_pdev_power_boost_event_tlv,
+	.pdev_pb_send_inference_cmd = pdev_pb_send_inference_cmd_tlv,
 #endif
 };
 

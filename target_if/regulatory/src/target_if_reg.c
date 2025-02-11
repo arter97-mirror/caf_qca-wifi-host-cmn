@@ -1594,6 +1594,19 @@ tgt_if_regulatory_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 	return wmi_unified_pdev_pb_mem_ind_send(wmi_handle, param, pdev_id);
 }
 
+static QDF_STATUS
+tgt_if_regulatory_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+				     struct reg_txpb_cmd_params *param)
+{
+	wmi_unified_t wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_pdev(pdev);
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_pdev_pb_send_inference_cmd(wmi_handle, param);
+}
+
 /**
  * tgt_reg_txpb_event_handler() - Tx powerboost event handler
  * @handle: scn handle
@@ -1717,6 +1730,8 @@ target_if_register_txpb_handler(struct wlan_lmac_if_reg_tx_ops *reg_ops)
 {
 	reg_ops->txpb_send_dma_addr =
 		tgt_if_regulatory_txpb_send_dma_addr;
+	reg_ops->txpb_send_inference_cmd =
+		tgt_if_regulatory_txpb_send_inference_cmd;
 	reg_ops->register_txpb_event_handler =
 		tgt_if_reg_txpb_register_event_handler;
 	reg_ops->unregister_txpb_event_handler =

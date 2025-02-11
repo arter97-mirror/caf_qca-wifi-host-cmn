@@ -3661,6 +3661,9 @@ QDF_STATUS
 				  void *evt_buf,
 				  struct reg_txpb_evt_params *pb_params);
 
+QDF_STATUS
+(*pdev_pb_send_inference_cmd)(wmi_unified_t wmi_handle,
+				 struct reg_txpb_cmd_params *params);
 #endif
 };
 

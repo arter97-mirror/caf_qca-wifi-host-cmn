@@ -3434,10 +3434,28 @@ QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 QDF_STATUS
 reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
 			struct reg_txpb_evt_params *params);
+
+/**
+ * reg_txpb_send_inference_cmd() - TxPB Send Inference command
+ * to Firmware
+ * @pdev: pdev pointer
+ * @params: Power boost params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+				  struct reg_txpb_cmd_params *params);
 #else
 static inline
 QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 				  struct reg_pdev_pb_dma_buf *dma)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+				  struct reg_txpb_cmd_params *params)
 {
 	return QDF_STATUS_SUCCESS;
 }

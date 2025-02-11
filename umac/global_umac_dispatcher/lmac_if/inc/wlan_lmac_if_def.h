@@ -1227,6 +1227,7 @@ struct wlan_lmac_if_ftm_rx_ops {
  * Tx powerboost events
  * @unregister_txpb_event_handler: Callback function to unregister
  * Tx powerboost events
+ * @txpb_send_inference_cmd: Callback function to send inference command
  */
 struct wlan_lmac_if_reg_tx_ops {
 	QDF_STATUS (*register_master_handler)(struct wlan_objmgr_psoc *psoc,
@@ -1311,6 +1312,8 @@ struct wlan_lmac_if_reg_tx_ops {
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	QDF_STATUS (*txpb_send_dma_addr)(struct wlan_objmgr_pdev *pdev,
 				   struct reg_pdev_pb_dma_buf *dma);
+	QDF_STATUS (*txpb_send_inference_cmd)(struct wlan_objmgr_pdev *pdev,
+				   struct reg_txpb_cmd_params *params);
 	QDF_STATUS (*register_txpb_event_handler)(struct wlan_objmgr_psoc *psoc,
 						 void *arg);
 	QDF_STATUS (*unregister_txpb_event_handler)
