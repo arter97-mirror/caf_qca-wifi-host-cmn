@@ -6364,22 +6364,48 @@ QDF_STATUS dp_peer_legacy_setup(struct dp_soc *soc, struct dp_peer *peer)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+static inline void
+dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+	if (!prev_vdev || !curr_vdev)
+		return;
+
+	if (qdf_atomic_read(&prev_vdev->latency_stats.enable_report)) {
+		curr_vdev->latency_stats.report_interval =
+			prev_vdev->latency_stats.report_interval;
+		dp_enable_ul_delay(curr_vdev, UL_DELAY_CALC_ID_FW, true);
+		qdf_atomic_set(&curr_vdev->latency_stats.enable_report, true);
+
+		qdf_atomic_set(&prev_vdev->latency_stats.enable_report, false);
+		dp_enable_ul_delay(prev_vdev, UL_DELAY_CALC_ID_FW, false);
+		dp_info("change reporting vdev from %d to %d",
+			prev_vdev->vdev_id, curr_vdev->vdev_id);
+	}
+}
+#else
+static inline void
+dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+}
+#endif
+
 static QDF_STATUS dp_mld_peer_change_vdev(struct dp_soc *soc,
 					  struct dp_peer *mld_peer,
 					  uint8_t new_vdev_id)
 {
-	struct dp_vdev *prev_vdev;
+	struct dp_vdev *prev_vdev = mld_peer->vdev;
 
-	prev_vdev = mld_peer->vdev;
-	/* release the ref to original dp_vdev */
-	dp_vdev_unref_delete(soc, mld_peer->vdev,
-			     DP_MOD_ID_CHILD);
 	/*
 	 * get the ref to new dp_vdev,
 	 * increase dp_vdev ref_cnt
 	 */
 	mld_peer->vdev = dp_vdev_get_ref_by_id(soc, new_vdev_id,
 					       DP_MOD_ID_CHILD);
+
+	dp_update_mlo_latency_request_vdev(prev_vdev, mld_peer->vdev);
 	mld_peer->txrx_peer->vdev = mld_peer->vdev;
 
 	dp_info("Change vdev for ML peer " QDF_MAC_ADDR_FMT
@@ -6390,6 +6416,9 @@ static QDF_STATUS dp_mld_peer_change_vdev(struct dp_soc *soc,
 	dp_cfg_event_record_mlo_setup_vdev_update_evt(
 			soc, mld_peer, prev_vdev,
 			mld_peer->vdev);
+
+	/* release the ref to original dp_vdev */
+	dp_vdev_unref_delete(soc, prev_vdev, DP_MOD_ID_CHILD);
 
 	return QDF_STATUS_SUCCESS;
 }

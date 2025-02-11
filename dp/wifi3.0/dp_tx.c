@@ -6690,15 +6690,7 @@ end:
 	return QDF_STATUS_SUCCESS;
 }
 
-/*
- * dp_enable_ul_delay() - Enable UL delay calculation
- * @vdev: vdev handle
- * @id: Request ID
- * @enable/disable
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS
+QDF_STATUS
 dp_enable_ul_delay(struct dp_vdev *vdev, enum ul_delay_client_id id,
 		   bool enable)
 {
@@ -6743,6 +6735,7 @@ dp_enable_ul_delay(struct dp_vdev *vdev, enum ul_delay_client_id id,
 void dp_mlo_latency_req(struct dp_soc *soc, uint8_t vdev_id,
 			uint16_t interval, bool enable)
 {
+	struct dp_peer *peer;
 	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
 						     DP_MOD_ID_HTT);
 
@@ -6751,12 +6744,26 @@ void dp_mlo_latency_req(struct dp_soc *soc, uint8_t vdev_id,
 		return;
 	}
 
+	peer = dp_peer_get_tgt_peer_by_vdev(soc, vdev, DP_MOD_ID_HTT);
+	if (!peer) {
+		dp_err("Unable find peer for vdev: %d", vdev_id);
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
+		return;
+	}
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
+
+	vdev = peer->vdev;
+
 	qdf_atomic_set(&vdev->latency_stats.enable_report, enable);
 	vdev->latency_stats.report_interval = interval;
 
 	dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_FW, enable);
 
-	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
+	dp_info("Vdev: %d interval: %d enable %d",
+		vdev->vdev_id, interval, enable);
+
+	dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
 }
 
 QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
