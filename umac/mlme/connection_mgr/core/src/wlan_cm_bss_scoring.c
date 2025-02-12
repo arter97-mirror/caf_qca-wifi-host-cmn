@@ -2178,12 +2178,6 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 			freq[i] = entry_partner[i]->channel.chan_freq;
 		else
 			freq[i] = link[i].freq;
-		if (!is_freq_dbs_or_sbs(psoc, freq[i], freq_entry)) {
-			mlme_nofl_debug("freq %d and %d can't be MLMR",
-					freq[i], freq_entry);
-			continue;
-		}
-
 		if (entry_partner[i]) {
 			link_score[i] =
 				cm_calculate_bss_score(psoc, pdev, entry_partner[i],
