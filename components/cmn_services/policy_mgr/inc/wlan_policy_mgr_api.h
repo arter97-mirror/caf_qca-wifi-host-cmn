@@ -4778,11 +4778,15 @@ bool policy_mgr_is_sap_restart_required_after_sta_disconnect(
  * @psoc: pointer to psoc
  * @sap_ch_freq: operating channel frequency of SAP interface
  * This function checks whether SAP is doing SCC with STA
+ * @check_for_inactive_links: Check for SCC freq in inactive links for non DBS,
+ * need to be set to true while selecting new channel not while checking for
+ * existing channel.
  *
  * Return: true or false
  */
 bool policy_mgr_is_sta_sap_scc(struct wlan_objmgr_psoc *psoc,
-			       uint32_t sap_ch_freq);
+			       uint32_t sap_ch_freq,
+			       bool check_for_inactive_links);
 
 /**
  * policy_mgr_nan_sap_scc_on_unsafe_ch_chk() - check whether SAP is doing SCC

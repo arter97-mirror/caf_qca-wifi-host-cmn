@@ -10663,7 +10663,7 @@ bool policy_mgr_is_concurrency_allowed(struct wlan_objmgr_psoc *psoc,
 		go_force_scc = policy_mgr_go_scc_enforced(psoc);
 		if ((mode == PM_SAP_MODE || mode == PM_P2P_GO_MODE) &&
 		    (!sta_sap_scc_on_dfs_chan ||
-		     !policy_mgr_is_sta_sap_scc(psoc, ch_freq) ||
+		     !policy_mgr_is_sta_sap_scc(psoc, ch_freq, false) ||
 		     (!go_force_scc && mode == PM_P2P_GO_MODE))) {
 			if (is_dfs_ch)
 				match = policy_mgr_disallow_mcc(psoc,
@@ -12509,7 +12509,7 @@ policy_mgr_is_sap_go_interface_allowed_on_indoor(struct wlan_objmgr_pdev *pdev,
 	if (!wlan_reg_is_freq_indoor(pdev, ch_freq))
 		return true;
 
-	is_scc = policy_mgr_is_sta_sap_scc(psoc, ch_freq);
+	is_scc = policy_mgr_is_sta_sap_scc(psoc, ch_freq, true);
 	mode = wlan_get_opmode_from_vdev_id(pdev, vdev_id);
 	ucfg_mlme_get_indoor_channel_support(psoc, &indoor_support);
 
@@ -12994,7 +12994,7 @@ bool policy_mgr_get_ap_6ghz_capable(struct wlan_objmgr_psoc *psoc,
 #endif
 
 bool policy_mgr_is_sta_sap_scc(struct wlan_objmgr_psoc *psoc,
-			       uint32_t sap_freq)
+			       uint32_t sap_freq, bool check_for_inactive_links)
 {
 	uint32_t conn_index;
 	bool is_scc = false;
@@ -13020,6 +13020,14 @@ bool policy_mgr_is_sta_sap_scc(struct wlan_objmgr_psoc *psoc,
 		}
 	}
 	qdf_mutex_release(&pm_ctx->qdf_conc_list_lock);
+
+	if (!is_scc && check_for_inactive_links &&
+	    !policy_mgr_is_hw_dbs_capable(psoc) &&
+	    policy_mgr_if_freq_n_inactive_links_freq_same(psoc, sap_freq)) {
+		policy_mgr_debug("Standby/inactive link present for freq %d",
+				 sap_freq);
+		is_scc = true;
+	}
 
 	return is_scc;
 }

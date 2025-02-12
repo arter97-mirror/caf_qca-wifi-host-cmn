@@ -669,7 +669,8 @@ void policy_mgr_update_with_safe_channel_list(struct wlan_objmgr_psoc *psoc,
 			}
 		}
 		if (is_unsafe && scc_on_lte_coex &&
-		    policy_mgr_is_sta_sap_scc(psoc, current_channel_list[i])) {
+		    policy_mgr_is_sta_sap_scc(psoc, current_channel_list[i],
+					      false)) {
 			policy_mgr_debug("CH %d unsafe ignored when STA present on it",
 					 current_channel_list[i]);
 			is_unsafe = 0;
