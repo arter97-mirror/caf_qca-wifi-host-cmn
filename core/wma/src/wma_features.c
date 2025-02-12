@@ -606,15 +606,8 @@ QDF_STATUS wma_set_wisa_params(tp_wma_handle wma_handle,
 }
 
 #ifdef FEATURE_WLAN_APF
-/*
- * get_fw_active_apf_mode() - convert HDD APF mode to FW configurable APF
- * mode
- * @mode: APF mode maintained in HDD
- *
- * Return: FW configurable BP mode
- */
-static enum wmi_host_active_apf_mode
-get_fw_active_apf_mode(enum active_apf_mode mode)
+enum wmi_host_active_apf_mode
+wma_get_fw_active_apf_mode(enum active_apf_mode mode)
 {
 	switch (mode) {
 	case ACTIVE_APF_DISABLED:
@@ -663,10 +656,13 @@ QDF_STATUS wma_enable_active_apf_mode(WMA_HANDLE handle, tAniDHCPInd *ta_dhcp_in
 		ret = -EINVAL;
 		goto release_ref_and_return;
 	}
+
 	if (vdev_mlme->mgmt.generic.type == WMI_VDEV_TYPE_STA &&
 	    ucfg_pmo_is_apf_enabled(wma_handle->psoc)) {
-		uc_mode = get_fw_active_apf_mode(wma_handle->active_uc_apf_mode);
-		mcbc_mode = get_fw_active_apf_mode(wma_handle->active_mc_bc_apf_mode);
+		uc_mode = wma_get_fw_active_apf_mode(
+					wma_handle->active_uc_apf_mode);
+		mcbc_mode = wma_get_fw_active_apf_mode(
+					wma_handle->active_mc_bc_apf_mode);
 		wma_debug("Configuring Active APF Mode UC:%d MC/BC:%d for vdev %u",
 			  uc_mode, mcbc_mode, vdev_id);
 
