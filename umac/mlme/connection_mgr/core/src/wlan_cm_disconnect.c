@@ -328,6 +328,9 @@ QDF_STATUS cm_disconnect_start(struct cnx_mgr *cm_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
+	mlo_link_recfg_abort_if_in_progress(cm_ctx->vdev,
+					    is_link_switch_discon);
+
 	if (wlan_vdev_mlme_is_mlo_vdev(cm_ctx->vdev) && !is_link_switch_discon)
 		mlo_internal_disconnect_links(cm_ctx->vdev);
 

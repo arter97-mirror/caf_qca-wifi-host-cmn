@@ -3960,6 +3960,30 @@ static bool mlo_link_recfg_reassoc_if_failure(
 	return reassoc_if_failure;
 }
 
+void
+mlo_link_recfg_abort_if_in_progress(struct wlan_objmgr_vdev *vdev,
+				    bool is_link_switch_discon)
+{
+	struct mlo_link_recfg_context *recfg_ctx;
+
+	if (!vdev || !vdev->mlo_dev_ctx || !vdev->mlo_dev_ctx->link_recfg_ctx)
+		return;
+
+	recfg_ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
+
+	if (mlo_is_link_recfg_in_progress(vdev) &&
+	    is_link_switch_discon)
+		return;
+
+	if (wlan_vdev_mlme_is_mlo_vdev(vdev) &&
+	    mlo_is_link_recfg_in_progress(vdev)) {
+		mlo_link_recfg_sm_deliver_event(
+			recfg_ctx->ml_dev,
+			WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND,
+			0, NULL);
+	}
+}
+
 static void
 mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 			bool success)

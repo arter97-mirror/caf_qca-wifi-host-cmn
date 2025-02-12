@@ -923,6 +923,17 @@ mlo_mgr_link_recfg_req_cmd_handler(
 			struct wlan_objmgr_psoc *psoc,
 			struct  mlo_link_recfg_user_req_params *req);
 #endif
+/**
+ * mlo_link_recfg_abort_if_in_progress() -Abort link recfg in progress
+ * @vdev: Vdev pointer
+ * @is_link_switch_discon: is link switch disconnect
+ *
+ * API to abort link reconfig if in progress.
+ * Return: none
+ */
+void
+mlo_link_recfg_abort_if_in_progress(struct wlan_objmgr_vdev *vdev,
+				    bool is_link_switch_discon);
 #else
 static inline QDF_STATUS
 mlo_link_recfg_validate_roam_invoke(
@@ -952,6 +963,12 @@ mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
 			 struct mlo_link_recfg_state_req *req)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline void
+mlo_link_recfg_abort_if_in_progress(struct wlan_objmgr_vdev *vdev,
+				    bool is_link_switch_discon)
+{
 }
 
 static inline void
