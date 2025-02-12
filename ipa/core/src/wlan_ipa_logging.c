@@ -17,7 +17,6 @@
 #define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100
 #define WLAN_IPA_POST_HOST_LOG 0x001
 #define WLAN_IPA_SHUTDOWN_LOGGING_THREAD 0x002
-#define WLAN_IPA_FLUSH_HOST_LOGS 0x003
 #define WLAN_IPA_MAX_WAIT_TIME 100
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
@@ -101,7 +100,7 @@ bool wlan_ipa_is_logging_thread_running(void)
 }
 
 static inline
-QDF_STATUS wlan_ipa_send_to_userspace(void)
+QDF_STATUS wlan_ipa_send_to_userspace(bool flush_log)
 {
 	struct wlan_ipa_log_msg *curr_node = NULL;
 	char *str;
@@ -111,9 +110,7 @@ QDF_STATUS wlan_ipa_send_to_userspace(void)
 
 	str = g_ipa_logging_ctx.payload;
 	while (!qdf_list_empty(&g_ipa_logging_ctx.filled_list) &&
-	       (wlan_ipa_is_logging_thread_running() ||
-		qdf_atomic_test_bit(WLAN_IPA_FLUSH_HOST_LOGS,
-				    &g_ipa_logging_ctx.event_flag))) {
+	       (wlan_ipa_is_logging_thread_running() || flush_log)) {
 		qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
 		qdf_list_remove_front(&g_ipa_logging_ctx.filled_list,
 				      (qdf_list_node_t **)&curr_node);
@@ -157,8 +154,8 @@ static inline int wlan_ipa_logging_thread(void *arg)
 	int ret_wait_status = 0;
 	int ret;
 
-	qdf_event_set(&g_ipa_logging_ctx.start_event);
 	g_ipa_logging_ctx.thread_state = WLAN_IPA_LOGGING_THREAD_RUNNING;
+	ipa_info("ipa logging thread in running state");
 	while (true) {
 		ret_wait_status =
 			qdf_wait_queue_interruptible(
@@ -183,14 +180,14 @@ static inline int wlan_ipa_logging_thread(void *arg)
 		if (qdf_atomic_test_and_clear_bit(
 					WLAN_IPA_POST_HOST_LOG,
 					&g_ipa_logging_ctx.event_flag)) {
-			ret = wlan_ipa_send_to_userspace();
+			ret = wlan_ipa_send_to_userspace(false);
 			if (ret)
 				ipa_err_rl("failed to send log, ret - %d",
 					   ret);
 		}
 	}
 
-	qdf_event_set(&g_ipa_logging_ctx.shutdown_event);
+	ipa_info("exit ipa logging thread");
 	return 0;
 }
 
@@ -216,8 +213,8 @@ static inline QDF_STATUS wlan_ipa_allocate_log_msg(void)
 QDF_STATUS wlan_ipa_logging_sock_init(void)
 {
 	char log_thread_name[WLAN_IPA_THREAD_NAME_MAX] = {0};
-	QDF_STATUS status;
 
+	ipa_info("Init IPA logging infra");
 	g_ipa_logging_ctx.thread_state = WLAN_IPA_LOGGING_THREAD_INVALID;
 	qdf_scnprintf(log_thread_name, sizeof(log_thread_name),
 		      "ipa_log_thread");
@@ -232,8 +229,6 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_event_create(&g_ipa_logging_ctx.start_event);
-	qdf_event_create(&g_ipa_logging_ctx.shutdown_event);
 	g_ipa_logging_ctx.event_flag = 0;
 	qdf_init_waitqueue_head(&g_ipa_logging_ctx.wait_q);
 	g_ipa_logging_ctx.thread = qdf_create_thread(wlan_ipa_logging_thread,
@@ -241,21 +236,13 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 						     log_thread_name);
 	if (!g_ipa_logging_ctx.thread) {
 		ipa_err("could not create ipa_log_thread");
-		qdf_event_destroy(&g_ipa_logging_ctx.start_event);
-		qdf_event_destroy(&g_ipa_logging_ctx.shutdown_event);
 		qdf_mem_free(g_ipa_log_msg);
 		qdf_spinlock_destroy(&g_ipa_logging_ctx.lock);
 		return QDF_STATUS_E_FAILURE;
 	}
 
 	qdf_wake_up_process(g_ipa_logging_ctx.thread);
-	status = qdf_wait_single_event(&g_ipa_logging_ctx.start_event,
-				       WLAN_IPA_MAX_WAIT_TIME);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		ipa_err("failed to wake up kernel thread");
-		return status;
-	}
-
+	qdf_sleep(WLAN_IPA_MAX_WAIT_TIME);
 	g_ipa_logging_ctx.drop_count = 0;
 	g_ipa_logging_ctx.log_truncation = false;
 	return QDF_STATUS_SUCCESS;
@@ -263,6 +250,7 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 
 void wlan_ipa_logging_sock_deinit(void)
 {
+	ipa_info("Deinit IPA logging infra");
 	if (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
 		qdf_atomic_set_bit(WLAN_IPA_POST_HOST_LOG,
 				   &g_ipa_logging_ctx.event_flag);
@@ -277,20 +265,14 @@ void wlan_ipa_logging_sock_deinit(void)
 	qdf_atomic_clear_bit(WLAN_IPA_POST_HOST_LOG,
 			     &g_ipa_logging_ctx.event_flag);
 	qdf_wake_up_interruptible(&g_ipa_logging_ctx.wait_q);
-	qdf_wait_single_event(&g_ipa_logging_ctx.shutdown_event,
-			      WLAN_IPA_MAX_WAIT_TIME);
 	g_ipa_logging_ctx.thread_state =
 		WLAN_IPA_LOGGING_THREAD_CANCELLED;
 	if (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
 		ipa_err("send log from deinit");
-		qdf_atomic_set_bit(WLAN_IPA_FLUSH_HOST_LOGS,
-				   &g_ipa_logging_ctx.event_flag);
-		wlan_ipa_send_to_userspace();
+		wlan_ipa_send_to_userspace(true);
 	}
 
 	qdf_spinlock_destroy(&g_ipa_logging_ctx.lock);
-	qdf_event_destroy(&g_ipa_logging_ctx.start_event);
-	qdf_event_destroy(&g_ipa_logging_ctx.shutdown_event);
 	qdf_mem_free(g_ipa_log_msg);
 }
 
