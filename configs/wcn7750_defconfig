@@ -37,9 +37,6 @@ CONFIG_DP_TRAFFIC_END_INDICATION := y
 #Enable Constrained Application Protocol feature
 CONFIG_WLAN_FEATURE_COAP := y
 
-#Enable TSF read using scratch register
-CONFIG_QCA_GET_TSF_VIA_REG := y
-
 CONFIG_HANDLE_RX_REROUTE_ERR := y
 
 #Enable DP Bus Vote
