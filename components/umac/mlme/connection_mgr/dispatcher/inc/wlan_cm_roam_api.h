@@ -465,12 +465,12 @@ uint32_t cm_crypto_authmode_to_wmi_authmode(int32_t authmodeset,
 uint32_t cm_wmi_auth_type_to_crypto_key_mgmt(uint32_t akm);
 
 /**
- * cm_get_rsn_wmi_auth_type() - API to get wmi auth type
+ * cm_get_wmi_auth_type() - API to get wmi auth type
  * @akm: akm
  *
  * Return: WMI auth type
  */
-uint32_t cm_get_rsn_wmi_auth_type(int32_t akm);
+uint32_t cm_get_wmi_auth_type(uint32_t akm);
 
 uint8_t *wlan_cm_get_rrm_cap_ie_data(void);
 
