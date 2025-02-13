@@ -20401,7 +20401,7 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 			WMI_CHAR_ARRAY_TO_MAC_ADDR(
 					data->auth_status[i].self_mac.bytes,
 					&auth_status_tlv->source_mac_addr);
-			auth_status_tlv->akm = cm_get_rsn_wmi_auth_type(
+			auth_status_tlv->akm = cm_get_wmi_auth_type(
 						data->auth_status[i].akm);
 			auth_status_tlv->cipher_suite =
 						data->auth_status[i].cipher;
