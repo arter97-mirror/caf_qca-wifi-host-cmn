@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,6 +29,98 @@
  */
 #define SCAN_FOR_SSID_TIMEOUT       (PLATFORM_VALUE(10000, 50000))
 
+static QDF_STATUS
+cm_fill_scan_req_for_no_candidates(struct wlan_objmgr_pdev *pdev,
+				   struct cnx_mgr *cm_ctx,
+				   struct cm_connect_req *cm_req,
+				   struct scan_start_request *req)
+{
+	qdf_freq_t ch_freq;
+	enum channel_state state;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
+	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
+
+	ch_freq = cm_req->req.chan_freq;
+	/* Try using freq hint to scan if chan freq is not set */
+	if (!ch_freq)
+		ch_freq = cm_req->req.chan_freq_hint;
+	if (ch_freq) {
+		state = wlan_reg_get_channel_state_for_pwrmode(
+							pdev,
+							ch_freq,
+							REG_BEST_PWR_MODE);
+
+		if (state == CHANNEL_STATE_DISABLE ||
+		    state == CHANNEL_STATE_INVALID) {
+			mlme_err(CM_PREFIX_FMT "Invalid channel frequency",
+				 CM_PREFIX_REF(vdev_id, cm_req->cm_id));
+			status = QDF_STATUS_E_INVAL;
+			return status;
+		}
+		req->scan_req.chan_list.chan[0].freq = ch_freq;
+		req->scan_req.chan_list.num_chan = 1;
+	}
+
+	req->scan_req.num_bssid = 1;
+	if (qdf_is_macaddr_zero(&cm_req->req.bssid))
+		qdf_set_macaddr_broadcast(&req->scan_req.bssid_list[0]);
+	else
+		qdf_copy_macaddr(&req->scan_req.bssid_list[0],
+				 &cm_req->req.bssid);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+#ifdef WLAN_FEATURE_11BE_MLO
+static QDF_STATUS
+cm_fill_scan_req_for_nontx_partner_links(struct cm_connect_req *cm_req,
+					 struct scan_start_request *req)
+{
+	qdf_mem_copy(&req->scan_req.chan_list,
+		     &cm_req->nontx_scan_req.chan_list,
+		     sizeof(req->scan_req.chan_list));
+
+	qdf_mem_copy(&req->scan_req.hint_s_ssid[0],
+		     &cm_req->nontx_scan_req.hint_s_ssid[0],
+		     sizeof(req->scan_req.hint_s_ssid));
+	req->scan_req.num_hint_s_ssid = cm_req->nontx_scan_req.num_hint_s_ssid;
+
+	qdf_mem_copy(&req->scan_req.hint_bssid[0],
+		     &cm_req->nontx_scan_req.hint_bssid[0],
+		     sizeof(req->scan_req.hint_bssid));
+
+	req->scan_req.num_hint_bssid = cm_req->nontx_scan_req.num_hint_bssid;
+
+	qdf_mem_copy(&req->scan_req.bssid_list[0],
+		     &cm_req->nontx_scan_req.bssid_list[0],
+		     sizeof(req->scan_req.bssid_list));
+	req->scan_req.num_bssid = cm_req->nontx_scan_req.num_bssid;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+cm_fill_scan_bssid_ssid_freq(struct wlan_objmgr_pdev *pdev,
+			     struct cnx_mgr *cm_ctx,
+			     struct cm_connect_req *cm_req,
+			     struct scan_start_request *req)
+{
+	if (cm_is_nontx_scan_params_valid(cm_req))
+		return cm_fill_scan_req_for_nontx_partner_links(cm_req, req);
+
+	return cm_fill_scan_req_for_no_candidates(pdev, cm_ctx, cm_req, req);
+}
+#else
+static inline QDF_STATUS
+cm_fill_scan_bssid_ssid_freq(struct wlan_objmgr_pdev *pdev,
+			     struct cnx_mgr *cm_ctx,
+			     struct cm_connect_req *cm_req,
+			     struct scan_start_request *req)
+{
+	return cm_fill_scan_req_for_no_candidates(pdev, cm_ctx, cm_req, req);
+}
+#endif
+
 static QDF_STATUS cm_fill_scan_req(struct cnx_mgr *cm_ctx,
 				   struct cm_connect_req *cm_req,
 				   struct scan_start_request *req)
@@ -37,8 +129,6 @@ static QDF_STATUS cm_fill_scan_req(struct cnx_mgr *cm_ctx,
 	struct wlan_objmgr_psoc *psoc;
 	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 	QDF_STATUS status = QDF_STATUS_E_INVAL;
-	enum channel_state state;
-	qdf_freq_t ch_freq;
 
 	pdev = wlan_vdev_get_pdev(cm_ctx->vdev);
 	if (!pdev) {
@@ -83,26 +173,9 @@ static QDF_STATUS cm_fill_scan_req(struct cnx_mgr *cm_ctx,
 	if (wlan_vdev_mlme_get_opmode(cm_ctx->vdev) == QDF_P2P_CLIENT_MODE)
 		req->scan_req.scan_priority = SCAN_PRIORITY_HIGH;
 
-	ch_freq = cm_req->req.chan_freq;
-	/* Try using freq hint to scan if chan freq is not set */
-	if (!ch_freq)
-		ch_freq = cm_req->req.chan_freq_hint;
-	if (ch_freq) {
-		state = wlan_reg_get_channel_state_for_pwrmode(
-							pdev,
-							ch_freq,
-							REG_BEST_PWR_MODE);
-
-		if (state == CHANNEL_STATE_DISABLE ||
-		    state == CHANNEL_STATE_INVALID) {
-			mlme_err(CM_PREFIX_FMT "Invalid channel frequency",
-				 CM_PREFIX_REF(vdev_id, cm_req->cm_id));
-			status = QDF_STATUS_E_INVAL;
-			return status;
-		}
-		req->scan_req.chan_list.chan[0].freq = ch_freq;
-		req->scan_req.chan_list.num_chan = 1;
-	}
+	status = cm_fill_scan_bssid_ssid_freq(pdev, cm_ctx, cm_req, req);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
 
 	if (cm_req->req.ssid.length > WLAN_SSID_MAX_LEN) {
 		mlme_debug(CM_PREFIX_FMT "Wrong ssid length %d",
@@ -122,13 +195,6 @@ static QDF_STATUS cm_fill_scan_req(struct cnx_mgr *cm_ctx,
 		   CM_PREFIX_REF(vdev_id, cm_req->cm_id),
 		   QDF_SSID_REF(req->scan_req.ssid[0].length,
 				req->scan_req.ssid[0].ssid));
-
-	req->scan_req.num_bssid = 1;
-	if (qdf_is_macaddr_zero(&cm_req->req.bssid))
-		qdf_set_macaddr_broadcast(&req->scan_req.bssid_list[0]);
-	else
-		qdf_copy_macaddr(&req->scan_req.bssid_list[0],
-				 &cm_req->req.bssid);
 
 	/* max_scan_time set to 10sec, at timeout scan is aborted */
 	req->scan_req.max_scan_time = SCAN_FOR_SSID_TIMEOUT;

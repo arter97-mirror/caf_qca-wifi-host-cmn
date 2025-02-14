@@ -1810,10 +1810,6 @@ void *hal_srng_setup_idx(void *hal_soc, int ring_type, int ring_num, int mac_id,
 			+ (ring_num * ring_config->reg_size[i]);
 	}
 
-	/* Zero out the entire ring memory */
-	qdf_mem_zero(srng->ring_base_vaddr, (srng->entry_size *
-		srng->num_entries) << 2);
-
 	srng->flags = ring_params->flags;
 
 	/* For cached descriptors flush and invalidate the memory*/

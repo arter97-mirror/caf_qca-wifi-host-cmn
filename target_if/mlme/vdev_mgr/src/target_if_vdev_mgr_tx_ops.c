@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -72,14 +72,15 @@ target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
 		 * which timer stop is not required
 		 */
 		if (vdev_rsp->timer_status == QDF_STATUS_E_TIMEOUT) {
-			if (clear_bit == DELETE_RESPONSE_BIT) {
-				qdf_atomic_set(&vdev_rsp->rsp_timer_inuse, 0);
-				vdev_rsp->psoc = NULL;
-			}
+			if (clear_bit == DELETE_RESPONSE_BIT)
+				txops->psoc_vdev_rsp_timer_deinit(
+							psoc,
+							vdev_rsp->vdev_id);
 		} else {
 			if (clear_bit == DELETE_RESPONSE_BIT) {
-				txops->psoc_vdev_rsp_timer_deinit(psoc,
-								  vdev_rsp->vdev_id);
+				txops->psoc_vdev_rsp_timer_deinit(
+							psoc,
+							vdev_rsp->vdev_id);
 			} else {
 				qdf_timer_stop(&vdev_rsp->rsp_timer);
 			}

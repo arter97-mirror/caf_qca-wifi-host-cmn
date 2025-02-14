@@ -444,7 +444,17 @@ void dp_ipa_wdi_opt_dpath_ctrl_notify_flt_install(struct filter_response
 void dp_ipa_wdi_opt_dpath_ctrl_notify_flt_delete(struct filter_response
 						 *flt_resp_params);
 #endif
-
+#ifdef IPA_WDI3_PENDING_BUFF_REPORT
+/**
+ * dp_ipa_is_completion_pending() - Check for pending packets in completion ring
+ *
+ * @soc_hdl: DP SOC handle
+ *
+ * Return: True if entries are pending in completion ring, false otherwise
+ *
+ */
+bool dp_ipa_is_completion_pending(struct cdp_soc_t *soc_hdl);
+#endif /* IPA_WDI3_PENDING_BUFF_REPORT */
 #endif
 
 #ifdef QCA_SUPPORT_WDS_EXTENDED

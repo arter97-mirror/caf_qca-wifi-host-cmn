@@ -226,6 +226,8 @@ QDF_STATUS wlan_dcs_psoc_open(struct wlan_objmgr_psoc *psoc)
 				cfg_get(psoc, CFG_DCS_RADAR_ERR_THRESHOLD);
 		dcs_pdev_priv->dcs_host_params.coch_intfr_threshold =
 				cfg_get(psoc, CFG_DCS_COCH_INTFR_THRESHOLD);
+		dcs_pdev_priv->dcs_host_params.dcs_trnsprt_rjt_threshold_cu =
+			cfg_get(psoc, CFG_DCS_TRANSPORT_SWITCH_RJT_TH_CU);
 		dcs_pdev_priv->dcs_host_params.user_max_cu =
 				cfg_get(psoc, CFG_DCS_USER_MAX_CU);
 		dcs_pdev_priv->dcs_host_params.intfr_detection_threshold =

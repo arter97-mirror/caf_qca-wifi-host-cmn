@@ -11060,6 +11060,30 @@ enum qca_wlan_twt_setup_state {
 };
 
 /**
+ * enum qca_wlan_twt_session_updatable: Define the values used with
+ * %QCA_WLAN_VENDOR_ATTR_TWT_SETUP_UPDATABLE.
+ *
+ * @QCA_WLAN_TWT_SESSION_NOT_UPDATABLE: TWT session cannot be updated.
+ * @QCA_WLAN_TWT_SESSION_UPDATABLE: TWT session can be updated.
+ */
+enum qca_wlan_twt_session_updatable {
+	QCA_WLAN_TWT_SESSION_NOT_UPDATABLE = 0,
+	QCA_WLAN_TWT_SESSION_UPDATABLE = 1,
+};
+
+/**
+ * enum qca_wlan_twt_session_implicit: Define the values used with
+ * %QCA_WLAN_VENDOR_ATTR_TWT_SETUP_IMPLICIT.
+ *
+ * @QCA_WLAN_TWT_SESSION_NOT_IMPLICIT: TWT session cannot be implicit.
+ * @QCA_WLAN_TWT_SESSION_IMPLICIT: TWT session can be implicit.
+ */
+enum qca_wlan_twt_session_implicit {
+	QCA_WLAN_TWT_SESSION_NOT_IMPLICIT = 0,
+	QCA_WLAN_TWT_SESSION_IMPLICIT = 1,
+};
+
+/**
  * enum qca_wlan_vendor_attr_twt_setup: Represents attributes for
  * TWT (Target Wake Time) setup request. These attributes are sent as part of
  * %QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_TWT_SETUP and
@@ -11282,6 +11306,23 @@ enum qca_wlan_twt_setup_state {
  * firmware is 0.
  * This parameter is used for
  * 1. TWT SET Request
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_UPDATABLE: Optional (u8)
+ * This attribute indicates whether the parameters of the TWT session being
+ * negotiated (like wake interval, wake duration, etc.) can be updated after
+ * session setup.
+ * Refers the enum qca_wlan_twt_session_updatable.
+ * This parameter is used for
+ * 1. TWT SET Response
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_SETUP_IMPLICIT: Optional (u8)
+ * This attribute indicates whether the TWT session being negotiated is
+ * an implicit TWT, where the requesting STA calculates the start time of the
+ * next TWT service period, or an explicit TWT, where the responding STA
+ * calculates the start time of the next TWT service period.
+ * Refers the enum qca_wlan_twt_session_implicit.
+ * This parameter is used for
+ * 1. TWT SET Response
  */
 enum qca_wlan_vendor_attr_twt_setup {
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_INVALID = 0,
@@ -11317,6 +11358,8 @@ enum qca_wlan_vendor_attr_twt_setup {
 
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_RESPONDER_PM_MODE = 25,
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_ANNOUNCE_TIMEOUT = 26,
+	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_UPDATABLE = 31,
+	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_IMPLICIT = 32,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_TWT_SETUP_AFTER_LAST,
@@ -11372,6 +11415,9 @@ enum qca_wlan_vendor_attr_twt_setup {
  * required bit in its capabilities.
  * @QCA_WLAN_VENDOR_TWT_STATUS_TWT_NOT_REQUIRED: The peer has cleared
  * the TWT required bit(1->0) in its capabilities.
+ * @QCA_WLAN_VENDOR_TWT_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE: FW terminated
+ * the TWT session due to more than one MLO link becoming active. Used on the
+ * TWT_TERMINATE notification from the driver/firmware.
  */
 enum qca_wlan_vendor_twt_status {
 	QCA_WLAN_VENDOR_TWT_STATUS_OK = 0,
@@ -11399,6 +11445,7 @@ enum qca_wlan_vendor_twt_status {
 	QCA_WLAN_VENDOR_TWT_STATUS_POWER_SAVE_EXIT_TERMINATE = 22,
 	QCA_WLAN_VENDOR_TWT_STATUS_TWT_REQUIRED = 23,
 	QCA_WLAN_VENDOR_TWT_STATUS_TWT_NOT_REQUIRED = 24,
+	QCA_WLAN_VENDOR_TWT_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE = 25,
 };
 
 /**
@@ -11582,6 +11629,16 @@ enum qca_wlan_vendor_attr_twt_nudge {
  * Status of the TWT GET STATISTICS request.
  * This contains status values in enum qca_wlan_vendor_twt_status
  * Obtained in the QCA_WLAN_TWT_GET_STATS response from the firmware.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVG_EOSP_DR_US: Optional (u32)
+ * Average of duration of the early terminated TWT service periods
+ * in micro seconds.
+ * Obtained in the QCA_WLAN_TWT_GET_STATS response from the firmware.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_STATS_EOSP_COUNT: Optional (u32)
+ * Number of early terminated TWT service periods observed over
+ * QCA_WLAN_VENDOR_ATTR_TWT_STATS_NUM_SP_ITERATIONS.
+ * Obtained in the QCA_WLAN_TWT_GET_STATS response from the firmware.
  */
 enum qca_wlan_vendor_attr_twt_stats {
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_INVALID = 0,
@@ -11597,6 +11654,8 @@ enum qca_wlan_vendor_attr_twt_stats {
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVERAGE_TX_PACKET_SIZE = 10,
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVERAGE_RX_PACKET_SIZE = 11,
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_STATUS = 12,
+	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AVG_EOSP_DUR_US = 13,
+	QCA_WLAN_VENDOR_ATTR_TWT_STATS_EOSP_COUNT = 14,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_TWT_STATS_AFTER_LAST,
@@ -11655,12 +11714,28 @@ enum qca_wlan_twt_capa {
  * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_PEER: (u16).
  * Peer TWT capabilities. Carries a bitmap of TWT capabilities specified in
  * enum qca_wlan_twt_capa.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_INTVL: (u32).
+ * Minimum tolerance limit of wake interval parameter in microseconds.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_INTVL: (u32).
+ * Maximum tolerance limit of wake interval parameter in microseconds.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_DURATION: (u32).
+ * Minimum tolerance limit of wake duration parameter in microseconds.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_DURATION: (u32).
+ * Maximum tolerance limit of wake duration parameter in microseconds.
  */
 enum qca_wlan_vendor_attr_twt_capability {
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAC_ADDR = 1,
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_SELF = 2,
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_PEER = 3,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_INTVL = 4,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_INTVL = 5,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MIN_WAKE_DURATION = 6,
+	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_MAX_WAKE_DURATION = 7,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_TWT_CAPABILITIES_AFTER_LAST,

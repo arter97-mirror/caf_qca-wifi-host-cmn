@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -98,6 +98,7 @@
 #define CDP_DP_RX_FISA_STATS	   26
 #define CDP_DP_SWLM_STATS	   27
 #define CDP_DP_TX_HW_LATENCY_STATS 28
+#define CDP_DP_LAPB_STATS	   29
 
 #define WME_AC_TO_TID(_ac) (       \
 		((_ac) == WME_AC_VO) ? 6 : \

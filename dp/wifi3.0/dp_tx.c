@@ -5802,6 +5802,9 @@ dp_tx_update_peer_stats(struct dp_tx_desc_s *tx_desc,
 		if (ts->status == HAL_TX_TQM_RR_FRAME_ACKED) {
 			DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, tx.tx_success,
 						      1, length, link_id);
+			dp_debug_rl("peer %d comp from link %d",
+				    txrx_peer->peer_id, link_id);
+
 			if (qdf_unlikely(txrx_peer->in_twt)) {
 				DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer,
 							      tx.tx_success_twt,

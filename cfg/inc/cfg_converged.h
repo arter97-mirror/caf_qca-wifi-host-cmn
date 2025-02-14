@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021,2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021,2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -59,6 +59,7 @@
 #include <cfg_cp_stats.h>
 #include <cfg_mgmt_txrx.h>
 #include <cfg_ipa.h>
+#include <cfg_mlme_cm.h>
 
 #define CFG_CONVERGED_ALL \
 		CFG_SCAN_ALL \
@@ -70,6 +71,7 @@
 		CFG_DCS_ALL \
 		CFG_CFR_ALL \
 		CFG_MLME_SCORE_ALL \
+		CFG_MLO_MLME_CM_CONFIG \
 		CFG_WLAN_CM_UTF_PARAM \
 		CFG_CMN_MLME_ALL \
 		CFG_MGMT_TXRX_ALL \

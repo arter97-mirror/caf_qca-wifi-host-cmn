@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -27,33 +27,23 @@
 /**
  * wlan_mlo_set_cu_bpcc() - set the bpcc per link id
  * @vdev: vdev object
+ * @link_id: Link ID to set BPCC to set for
  * @bpcc: bss parameters change count
  *
  * Return: QDF_STATUS
  */
-QDF_STATUS wlan_mlo_set_cu_bpcc(struct wlan_objmgr_vdev *vdev, uint8_t bpcc);
+QDF_STATUS wlan_mlo_set_cu_bpcc(struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id, uint8_t bpcc);
 
 /**
  * wlan_mlo_get_cu_bpcc() - get the bpcc per link id
  * @vdev: vdev object
+ * @link_id: Link ID to get BPCC value for
  * @bpcc: the bss parameters change count pointer to save value
  *
  * Return: QDF_STATUS
  */
-QDF_STATUS wlan_mlo_get_cu_bpcc(struct wlan_objmgr_vdev *vdev, uint8_t *bpcc);
-
-/**
- * wlan_mlo_init_cu_bpcc() - initialize the bpcc for vdev
- * @vdev: vdev object
- *
- * Return: void
- */
-void wlan_mlo_init_cu_bpcc(struct wlan_objmgr_vdev *vdev);
-
-#else
-static inline void
-wlan_mlo_init_cu_bpcc(struct wlan_objmgr_vdev *vdev)
-{ }
-
+QDF_STATUS wlan_mlo_get_cu_bpcc(struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id, uint8_t *bpcc);
 #endif
 #endif //_WLAN_MLO_MGR_OP_H_

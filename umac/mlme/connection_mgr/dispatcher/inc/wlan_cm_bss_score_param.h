@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -237,6 +237,9 @@ enum cm_security_idx {
  * @standard_6ghz_conn_policy: check for 6 GHz standard connection policy
  * @key_mgmt_mask_6ghz: user configurable mask for 6 GHz AKM
  * @mlsr_link_selection: MLSR link selection config
+ * @scan_nontx_search_thresh: Num of entries from the top of the sorted
+ * candidate list to check for candidates without partner link scan entry with
+ * non-Tx BSSID in MBSSID set as assoc link.
  * @roam_tgt_score_cap: Roam score capability
  * @security_weight_per_index: security weight per index
  * @relaxed_lpi_conn_policy: Relaxed lpi conn policy flag
@@ -258,6 +261,7 @@ struct scoring_cfg {
 	uint32_t key_mgmt_mask_6ghz;
 #ifdef WLAN_FEATURE_11BE_MLO
 	uint8_t mlsr_link_selection;
+	uint8_t scan_nontx_search_thresh;
 #endif
 	uint32_t roam_tgt_score_cap;
 	uint32_t security_weight_per_index;
@@ -329,6 +333,7 @@ wlan_denylist_action_on_bssid(struct wlan_objmgr_pdev *pdev,
  *             func it will have sorted list
  * @bssid_hint: bssid hint
  * @self_mac: connecting vdev self mac address
+ * @allow_scan: Is scan allowed for this connection
  *
  * Return: void
  */
@@ -336,7 +341,8 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 				 struct pcl_freq_weight_list *pcl_lst,
 				 qdf_list_t *scan_list,
 				 struct qdf_mac_addr *bssid_hint,
-				 struct qdf_mac_addr *self_mac);
+				 struct qdf_mac_addr *self_mac,
+				 bool allow_scan);
 
 #if defined(WLAN_FEATURE_11BE_MLO_ADV_FEATURE) && defined(FEATURE_DENYLIST_MGR)
 /**
@@ -611,9 +617,11 @@ void wlan_cm_get_check_assoc_disallowed(struct wlan_objmgr_psoc *psoc,
  * cm_get_entry() - Get bss scan entry by link mac address
  * @scan_list: Scan entry list of bss candidates after filtering
  * @link_addr: link mac address
+ * @mld_addr: MLD address to match
  *
  * Return: Pointer to bss scan entry
  */
 struct scan_cache_entry *cm_get_entry(qdf_list_t *scan_list,
-				      struct qdf_mac_addr *link_addr);
+				      struct qdf_mac_addr *link_addr,
+				      struct qdf_mac_addr *mld_addr);
 #endif

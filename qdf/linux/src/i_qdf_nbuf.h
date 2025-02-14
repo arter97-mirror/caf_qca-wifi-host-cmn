@@ -994,10 +994,11 @@ bool __qdf_nbuf_is_mcast_replay(__qdf_nbuf_t nbuf);
 /**
  * __qdf_nbuf_is_arp_local() - check if local or non local arp
  * @skb: pointer to sk_buff
+ * @local_ip: local IP address
  *
  * Return: true if local arp or false otherwise.
  */
-bool __qdf_nbuf_is_arp_local(struct sk_buff *skb);
+bool __qdf_nbuf_is_arp_local(struct sk_buff *skb, uint8_t *local_ip);
 
 /**
  * __qdf_nbuf_data_is_arp_req() - check if skb data is a arp request
@@ -3566,6 +3567,17 @@ static inline qdf_size_t __qdf_nbuf_get_only_data_len(__qdf_nbuf_t nbuf)
 static inline void __qdf_nbuf_set_hash(__qdf_nbuf_t buf, uint32_t len)
 {
 	buf->hash = len;
+}
+
+/**
+ * __qdf_nbuf_get_hash() - set the hash of the buf
+ * @buf: Network buf instance
+ *
+ * Return: Hash value
+ */
+static inline uint32_t __qdf_nbuf_get_hash(__qdf_nbuf_t buf)
+{
+	return skb_get_hash(buf);
 }
 
 /**

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -682,6 +682,13 @@ static QDF_STATUS extract_twt_add_dialog_comp_additional_parameters
 	additional_params->b_twt_id0 = TWT_FLAGS_GET_BTWT_ID0(flags);
 	additional_params->info_frame_disabled =
 				TWT_FLAGS_GET_TWT_INFO_FRAME_DISABLED(flags);
+
+	if (wmi_service_enabled(wmi_handle, wmi_service_sta_twt_stats_ext)) {
+		additional_params->implicit = TWT_FLAGS_GET_IMPLICIT(flags);
+		additional_params->renegotiate = TWT_FLAGS_GET_RENEGOTIATE(
+									flags);
+	}
+
 	additional_params->wake_dur_us = param_buf->twt_params[idx].wake_dur_us;
 	additional_params->wake_intvl_us =
 				param_buf->twt_params[idx].wake_intvl_us;
@@ -725,6 +732,8 @@ wmi_get_converted_twt_del_dialog_status(WMI_DEL_TWT_STATUS_T tgt_status)
 		return HOST_TWT_DEL_STATUS_CHAN_SW_IN_PROGRESS;
 	case WMI_DEL_TWT_STATUS_SCAN_IN_PROGRESS:
 		return HOST_TWT_DEL_STATUS_SCAN_IN_PROGRESS;
+	case WMI_DEL_TWT_STATUS_UNSUPPORTED_MLMR_MODE:
+		return HOST_TWT_DEL_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE;
 	default:
 		return HOST_TWT_DEL_STATUS_UNKNOWN_ERROR;
 	}
@@ -1168,6 +1177,17 @@ static QDF_STATUS extract_twt_cap_service_ready_ext2_tlv(
 
 	var->twt_ack_support_cap = WMI_GET_BITS(twt_caps->twt_capability_bitmap,
 						0, 1);
+
+	if (wmi_service_enabled(wmi_handle, wmi_service_sta_twt_stats_ext)) {
+		var->max_wake_dur = TWT_CAPS_GET_MAX_WAKE_DUR(
+					twt_caps->min_max_wake_dur_us);
+		var->min_wake_dur = TWT_CAPS_GET_MIN_WAKE_DUR(
+					twt_caps->min_max_wake_dur_us);
+		var->max_wake_intvl = TWT_CAPS_GET_MAX_WAKE_INTVL(
+					twt_caps->min_max_wake_intvl_us);
+		var->min_wake_intvl = TWT_CAPS_GET_MIN_WAKE_INTVL(
+					twt_caps->min_max_wake_intvl_us);
+	}
 
 	return QDF_STATUS_SUCCESS;
 }

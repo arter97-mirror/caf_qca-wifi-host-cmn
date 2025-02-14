@@ -1139,8 +1139,44 @@ static inline int __qdf_ipa_wdi_set_perf_profile(
 {
 	return ipa_wdi3_set_perf_profile(profile);
 }
-
 #endif /* CONFIG_IPA_WDI_UNIFIED_API */
-
 #endif /* IPA_OFFLOAD */
+
+#ifdef IPA_WDI3_PENDING_BUFF_REPORT
+/**
+ * __qdf_ipa_wdi_outstanding_buffs - number of outstanding buffer at IPA
+ */
+typedef struct ipa_wdi_outstanding_buffs __qdf_ipa_wdi_outstanding_buffs;
+
+#define __QDF_IPA_WDI_TX_OUTSTANDING_BUFFS(buff)	\
+	(((struct ipa_wdi_outstanding_buffs *)(buff))->no_tx_outstanding_buffs)
+#define __QDF_IPA_WDI_RX_OUTSTANDING_BUFFS(buff)	\
+	(((struct ipa_wdi_outstanding_buffs *)(buff))->no_rx_outstanding_buffs)
+
+/**
+ * __qdf_ipa_wdi_get_outstanding_buffers - Get the outstanding buffers at IPA
+ * @hdl: IPA handle
+ * @out: Outstanding buffers count at IPA
+ *
+ * Returns: 0 on success, negative on failure
+ */
+static inline int
+__qdf_ipa_wdi_get_outstanding_buffers(ipa_wdi_hdl_t hdl,
+				      __qdf_ipa_wdi_outstanding_buffs *out)
+{
+	return ipa_wdi_get_outstanding_buffers(hdl, out);
+}
+#else
+typedef unsigned int __qdf_ipa_wdi_outstanding_buffs;
+
+#define __QDF_IPA_WDI_TX_OUTSTANDING_BUFFS(buff)
+#define __QDF_IPA_WDI_RX_OUTSTANDING_BUFFS(buff)
+
+static inline int
+__qdf_ipa_wdi_get_outstanding_buffers(ipa_wdi_hdl_t hdl,
+				      __qdf_ipa_wdi_outstanding_buffs *out)
+{
+	return 0;
+}
+#endif /* IPA_WDI3_PENDING_BUFF_REPORT */
 #endif /* I_QDF_IPA_WDI_H */

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -52,6 +52,11 @@
 /* 320MHZ BW 16 20MHZ sub bands */
 #define SUB320BW 16
 
+/* Lengths of various fields in the 802.11 header */
+#define QOS_CTRL_LEN	2
+#define HTC_CTRL_LEN	4
+#define CCMP_PARAM_LEN	8
+
 #define RNG_ERR		"SRNG setup failed for"
 #define dp_mon_info(params...) \
 	__QDF_TRACE_FL(QDF_TRACE_LEVEL_INFO_HIGH, QDF_MODULE_ID_MON, ## params)
@@ -69,6 +74,8 @@
 #else
 #define IS_LOCAL_PKT_CAPTURE_RUNNING(var, field) 0
 #endif
+
+#define INVALID_MON_CHAN_NUM	0xFFFF
 
 extern const struct dp_rx_defrag_cipher dp_f_ccmp;
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -94,6 +94,7 @@ wlan_cfr_peer_obj_create_handler(struct wlan_objmgr_peer *peer, void *arg);
 QDF_STATUS
 wlan_cfr_peer_obj_destroy_handler(struct wlan_objmgr_peer *peer, void *arg);
 
+#ifdef WLAN_STREAMFS
 /**
  * cfr_streamfs_init() - stream filesystem init
  * @pdev: pointer to pdev object
@@ -102,6 +103,18 @@ wlan_cfr_peer_obj_destroy_handler(struct wlan_objmgr_peer *peer, void *arg);
  */
 QDF_STATUS
 cfr_streamfs_init(struct wlan_objmgr_pdev *pdev);
+#else
+/**
+ * cfr_streamfs_init() - stream filesystem init
+ * @pdev: objmgr pdev
+ *
+ * Return : QDF_STATUS_E_NOSUPPORT
+ */
+static inline QDF_STATUS cfr_streamfs_init(struct wlan_objmgr_pdev *pdev)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
 
 /**
  * cfr_streamfs_remove() - stream filesystem remove

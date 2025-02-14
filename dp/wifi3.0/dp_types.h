@@ -1798,6 +1798,7 @@ struct dp_rx_page_pool {
 	qdf_atomic_t update_in_progress;
 	qdf_timer_t pool_inactivity_timer;
 	qdf_list_t inactive_list;
+	bool page_pool_init;
 };
 #endif
 
@@ -2484,6 +2485,7 @@ enum dp_context_type {
  * @tx_hw_enqueue: enqueue TX data to HW
  * @tx_comp_get_params_from_hal_desc: get software tx descriptor and release
  * 				      source from HAL desc for wbm release ring
+ * @tx_comp_ring_desc_mark_invalid: Mark tx comp ring descriptors as invalid
  * @dp_tx_mlo_mcast_send: Tx send handler for MLO multicast enhance
  * @dp_tx_process_htt_completion:
  * @dp_rx_process:
@@ -2625,7 +2627,8 @@ struct dp_arch_ops {
 	QDF_STATUS (*tx_comp_get_params_from_hal_desc)(
 				struct dp_soc *soc, void *tx_comp_hal_desc,
 				struct dp_tx_desc_s **desc);
-
+	void (*tx_comp_ring_desc_mark_invalid)(struct dp_soc *soc,
+					       struct dp_srng *srng);
 	qdf_nbuf_t (*dp_tx_mlo_mcast_send)(struct dp_soc *soc,
 					   struct dp_vdev *vdev,
 					   qdf_nbuf_t nbuf,
@@ -3344,6 +3347,8 @@ struct dp_soc {
 	qdf_list_t peer_unmap_track_list;
 	/* timer for peer unmap tracking */
 	qdf_timer_t peer_unmap_track_timer;
+	/* global source cookie for peer initialization */
+	qdf_atomic_t peer_unmap_track_cookie;
 #endif
 	/* rx peer metadata field shift and mask configuration */
 	uint8_t htt_peer_id_s;
@@ -5594,6 +5599,9 @@ struct dp_peer {
 
 	uint8_t peer_state;
 	qdf_spinlock_t peer_state_lock;
+#ifdef DP_PEER_UNMAP_TRACK
+	uint32_t unmap_track_cookie;
+#endif
 #ifdef WLAN_SUPPORT_MSCS
 	struct dp_peer_mscs_parameter mscs_ipv4_parameter, mscs_ipv6_parameter;
 	bool mscs_active;

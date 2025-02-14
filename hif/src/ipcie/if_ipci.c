@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -918,6 +918,11 @@ int hif_force_wake_request(struct hif_opaque_softc *hif_handle)
 	struct hif_ipci_softc *ipci_scn = HIF_GET_IPCI_SOFTC(scn);
 	uint32_t start_time, curr_time, end_time;
 
+	if (qdf_is_fw_down()) {
+		hif_info("F.W is down failed to send force wake request");
+		return -EINVAL;
+	}
+
 	if (pld_force_wake_request(scn->qdf_dev->dev)) {
 		hif_err_rl("force wake request send failed");
 		return -EINVAL;
@@ -958,6 +963,12 @@ int hif_force_wake_release(struct hif_opaque_softc *hif_handle)
 	int ret;
 	struct hif_softc *scn = (struct hif_softc *)hif_handle;
 	struct hif_ipci_softc *ipci_scn = HIF_GET_IPCI_SOFTC(scn);
+
+	if (qdf_is_fw_down()) {
+		HIF_STATS_INC(ipci_scn, mhi_force_wake_release_failure, 1);
+		hif_info("F.W is recovering/down skip successful force_wake_release");
+		return 0;
+	}
 
 	ret = pld_force_wake_release(scn->qdf_dev->dev);
 	if (ret) {

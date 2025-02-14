@@ -450,10 +450,18 @@ struct wmi_twt_add_dialog_complete_event_param {
 /**
  * struct wmi_twt_cap_bitmap_params - TWT capabilities bitmap
  * @twt_ack_support_cap: TWT ACK supported
+ * @max_wake_dur: max wake_duration supported by fw in microsec
+ * @min_wake_dur: min wake_duration supported by fw in microsec
+ * @max_wake_intvl: max wake_interval supported by fw in microsec
+ * @min_wake_intvl: min wake_interval supported by fw in microsec
  *
  */
 struct wmi_twt_cap_bitmap_params {
 	uint32_t twt_ack_support_cap:1;
+	uint16_t max_wake_dur;
+	uint16_t min_wake_dur;
+	uint16_t max_wake_intvl;
+	uint16_t min_wake_intvl;
 };
 
 /**

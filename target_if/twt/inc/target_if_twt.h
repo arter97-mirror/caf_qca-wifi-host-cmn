@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -39,6 +39,25 @@
 QDF_STATUS
 target_if_twt_set_twt_ack_support(struct wlan_objmgr_psoc *psoc,
 				  bool val);
+
+/**
+ * target_if_twt_set_wake_dur_and_wake_intvl() - set min_max_wake_dur
+ * and min_max_wake_intvl supported by firmware
+ * @psoc: psoc pointer
+ * @min_wake_dur: minimum twt wake_dur supported by firmware in micro sec
+ * @max_wake_dur: maximum twt wake_dur supported by firmware in micro sec
+ * @min_wake_intvl: minimum twt wake_intvl supported by firmware in micro sec
+ * @max_wake_intvl: maximum twt wake_intvl supported by firmware in micro sec
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+target_if_twt_set_wake_dur_and_wake_intvl(
+				struct wlan_objmgr_psoc *psoc,
+				uint16_t min_wake_dur,
+				uint16_t max_wake_dur,
+				uint16_t min_wake_intvl,
+				uint16_t max_wake_intvl);
 
 /**
  * target_if_twt_fill_tgt_caps() - fill twt target caps
@@ -88,6 +107,17 @@ target_if_twt_deregister_events(struct wlan_objmgr_psoc *psoc);
 static inline
 QDF_STATUS target_if_twt_set_twt_ack_support(struct wlan_objmgr_psoc *psoc,
 					     bool val)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS target_if_twt_set_wake_dur_and_wake_intvl(
+				struct wlan_objmgr_psoc *psoc,
+				uint16_t min_wake_dur,
+				uint16_t max_wake_dur,
+				uint16_t min_wake_intvl,
+				uint16_t max_wake_intvl)
 {
 	return QDF_STATUS_SUCCESS;
 }

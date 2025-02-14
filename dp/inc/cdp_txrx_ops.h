@@ -2345,6 +2345,7 @@ struct cdp_throttle_ops {
  * @ipa_ast_create: Create/Update ast entry
  * @ipa_get_wdi_version: Get WDI version
  * @ipa_is_ring_ipa_rx: Check whether the given ring is ipa rx ring or not
+ * @ipa_is_completion_pending: Check if Tx completion pending for IPA ring
  */
 struct cdp_ipa_ops {
 	QDF_STATUS (*ipa_get_resource)(struct cdp_soc_t *soc_hdl,
@@ -2472,6 +2473,7 @@ struct cdp_ipa_ops {
 	void (*ipa_get_wdi_version)(struct cdp_soc_t *soc_hdl,
 				    uint8_t *wdi_ver);
 	bool (*ipa_is_ring_ipa_rx)(struct cdp_soc_t *soc_hdl, uint8_t ring_id);
+	bool (*ipa_is_completion_pending)(struct cdp_soc_t *soc_hdl);
 };
 #endif
 

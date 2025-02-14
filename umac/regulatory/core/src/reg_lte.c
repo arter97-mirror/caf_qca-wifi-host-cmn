@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -139,8 +139,8 @@ static QDF_STATUS reg_process_ch_avoid_freq(struct wlan_objmgr_psoc *psoc,
  *
  * Return: None
  */
-static void reg_update_unsafe_ch(struct wlan_objmgr_psoc *psoc,
-				 void *object, void *arg)
+void reg_update_unsafe_ch(struct wlan_objmgr_psoc *psoc,
+			  void *object, void *arg)
 {
 	struct wlan_objmgr_pdev *pdev = (struct wlan_objmgr_pdev *)object;
 	struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj;

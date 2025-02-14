@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -939,6 +939,15 @@ bool scm_filter_match(struct wlan_objmgr_psoc *psoc,
 	bool match = false;
 	struct scan_default_params *def_param;
 	struct wlan_objmgr_pdev *pdev;
+
+	/* skip connected scan entry and return true for all other */
+	if (filter->flush_all_except_conn_entry) {
+		if (db_entry->mlme_info.assoc_state ==
+				SCAN_ENTRY_CON_STATE_ASSOC)
+			return false;
+		else
+			return true;
+	}
 
 	def_param = wlan_scan_psoc_get_def_params(psoc);
 	if (!def_param)

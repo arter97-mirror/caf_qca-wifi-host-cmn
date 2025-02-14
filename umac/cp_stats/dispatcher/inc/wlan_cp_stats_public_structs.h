@@ -53,6 +53,8 @@
  * @rx_mpdu_per_sp: Average number of MPDU's received successfully
  * @tx_bytes_per_sp: Average number of bytes transmitted successfully
  * @rx_bytes_per_sp: Average number of bytes received successfully
+ * @avg_eosp_sp_dur_us: Average EOSP SP time
+ * @eosp_sp_count: Number of EOSP TWT SP's
  */
 struct twt_infra_cp_stats_event {
 	uint8_t vdev_id;
@@ -67,6 +69,8 @@ struct twt_infra_cp_stats_event {
 	uint32_t rx_mpdu_per_sp;
 	uint32_t tx_bytes_per_sp;
 	uint32_t rx_bytes_per_sp;
+	uint32_t avg_eosp_sp_dur_us;
+	uint32_t eosp_sp_count;
 };
 #endif /* WLAN_SUPPORT_TWT */
 

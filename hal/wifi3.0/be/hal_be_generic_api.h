@@ -3226,6 +3226,20 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 
 		gi = HAL_TX_DESC_GET_64(tx_tlv, MACTX_PHY_DESC,
 					CP_SETTING);
+		switch (gi) {
+		case 0:
+			gi = HE_GI_RADIOTAP_0_8;
+			break;
+		case 1:
+			gi = HE_GI_RADIOTAP_0_8;
+			break;
+		case 2:
+			gi = HE_GI_RADIOTAP_1_6;
+			break;
+		case 3:
+			gi = HE_GI_RADIOTAP_3_2;
+			break;
+		}
 		ltf_size = HAL_TX_DESC_GET_64(tx_tlv, MACTX_PHY_DESC, LTF_SIZE);
 		he_ppdu_subtype = HAL_TX_DESC_GET_64(tx_tlv, MACTX_PHY_DESC,
 						     HE_PPDU_SUBTYPE);

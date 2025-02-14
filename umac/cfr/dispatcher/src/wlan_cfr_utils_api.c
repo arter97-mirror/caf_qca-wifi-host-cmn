@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -113,8 +114,8 @@ QDF_STATUS wlan_cfr_pdev_open(struct wlan_objmgr_pdev *pdev)
 	/* RealyFS init */
 	status = cfr_streamfs_init(pdev);
 
-	if (status != QDF_STATUS_SUCCESS) {
-		cfr_err("cfr_streamfs_init failed with %d\n", status);
+	if (QDF_IS_STATUS_ERROR(status) && status != QDF_STATUS_E_NOSUPPORT) {
+		cfr_debug("cfr_streamfs_init failed with %d\n", status);
 		return QDF_STATUS_SUCCESS;
 	}
 

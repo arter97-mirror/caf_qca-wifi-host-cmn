@@ -533,7 +533,7 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct dp_mon_pdev *mon_pdev;
 	struct cdp_mon_ops *cdp_ops;
-	uint8_t mac_id = 0;
+	int8_t mac_id = MAX_NUM_LMAC_HW - 1;
 	struct dp_mon_mac *mon_mac;
 
 	if (!vdev)
@@ -546,7 +546,16 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 	}
 
 	mon_pdev = pdev->monitor_pdev;
-	mon_mac = dp_get_mon_mac(pdev, mac_id);
+
+	/* Clear chan_num of all mon_mac and leave mac_id to 0
+	 * to make sure mon_mac is always the first one
+	 */
+	while (mac_id >= 0) {
+		mon_mac = dp_get_mon_mac(pdev, mac_id);
+		mon_mac->mon_chan_num = INVALID_MON_CHAN_NUM;
+		mac_id--;
+	}
+
 	mon_mac->mvdev = vdev;
 	mon_mac->vdev_id = vdev->vdev_id;
 

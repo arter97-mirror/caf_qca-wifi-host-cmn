@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -353,8 +353,10 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 					     rx_desc_pool,
 					     num_entries_avail);
 	if (!((nbuf_frag_info_t->virt_addr).nbuf)) {
-		dp_err("nbuf alloc failed");
 		DP_STATS_INC(dp_pdev, replenish.nbuf_alloc_fail, 1);
+		dp_err_rl("nbuf alloc failed %d",
+			  dp_pdev->stats.replenish.nbuf_alloc_fail);
+
 		return QDF_STATUS_E_NOMEM;
 	}
 
@@ -363,8 +365,10 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 	if (qdf_unlikely(QDF_IS_STATUS_ERROR(ret))) {
 		dp_rx_buffer_pool_nbuf_free(dp_soc,
 			(nbuf_frag_info_t->virt_addr).nbuf, mac_id);
-		dp_err("nbuf map failed");
 		DP_STATS_INC(dp_pdev, replenish.map_err, 1);
+		dp_err_rl("nbuf map failed %d",
+			  dp_pdev->stats.replenish.map_err);
+
 		return QDF_STATUS_E_FAULT;
 	}
 

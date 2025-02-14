@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -259,6 +259,12 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 
 	if (QDF_GET_BITS(eht_ops->ehtop_param,
 			 EHTOP_INFO_PRESENT_IDX, EHTOP_INFO_PRESENT_BITS)) {
+		if (eht_ops->elem_len <
+			(offsetof(struct wlan_ie_ehtops, ccfs1) - 1)) {
+			scm_err("Invalid EHT OP IE length %d with EHT OP info",
+				eht_ops->elem_len);
+			return phymode;
+		}
 		width = QDF_GET_BITS(eht_ops->control,
 				     EHTOP_INFO_CHAN_WIDTH_IDX,
 				     EHTOP_INFO_CHAN_WIDTH_BITS);
@@ -323,6 +329,11 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 	if (QDF_GET_BITS(eht_ops->ehtop_param,
 			 EHTOP_PARAM_DISABLED_SC_BITMAP_PRESENT_IDX,
 			 EHTOP_PARAM_DISABLED_SC_BITMAP_PRESENT_BITS)) {
+		if (eht_ops->elem_len < sizeof(struct wlan_ie_ehtops) - 2) {
+			scm_err("Invalid EHT OP IE len %d with dis_sc_bitmap",
+				eht_ops->elem_len);
+			return phymode;
+		}
 		scan_params->channel.puncture_bitmap =
 			QDF_GET_BITS(eht_ops->disabled_sub_chan_bitmap[0],
 				     0, 8);
@@ -438,6 +449,12 @@ util_scan_is_out_of_band_leak_eht(struct wlan_objmgr_pdev *pdev,
 	if (!QDF_GET_BITS(eht_ops->ehtop_param,
 			  EHTOP_INFO_PRESENT_IDX, EHTOP_INFO_PRESENT_BITS))
 		return false;
+
+	if (eht_ops->elem_len < (offsetof(struct wlan_ie_ehtops, ccfs1) - 1)) {
+		scm_err("Invalid EHT OP IE length %d with EHT OP info present",
+			eht_ops->elem_len);
+		return false;
+	}
 
 	ch_width = QDF_GET_BITS(eht_ops->control,
 				EHTOP_INFO_CHAN_WIDTH_IDX,
@@ -1107,7 +1124,7 @@ util_scan_update_rnr(struct rnr_bss_info *rnr,
 		fallthrough;
 	case TBTT_NEIGHBOR_AP_SHORTSSID:
 		rnr->channel_number = ap_info->channel_number;
-		rnr->operating_class = ap_info->operting_class;
+		rnr->operating_class = ap_info->operating_class;
 		qdf_mem_copy(&rnr->short_ssid, &data[1], SHORT_SSID_LEN);
 		break;
 
@@ -1119,7 +1136,7 @@ util_scan_update_rnr(struct rnr_bss_info *rnr,
 		fallthrough;
 	case TBTT_NEIGHBOR_AP_BSSID:
 		rnr->channel_number = ap_info->channel_number;
-		rnr->operating_class = ap_info->operting_class;
+		rnr->operating_class = ap_info->operating_class;
 		qdf_mem_copy(&rnr->bssid, &data[1], QDF_MAC_ADDR_SIZE);
 		break;
 
@@ -1134,7 +1151,7 @@ util_scan_update_rnr(struct rnr_bss_info *rnr,
 		fallthrough;
 	case TBTT_NEIGHBOR_AP_BSSSID_S_SSID:
 		rnr->channel_number = ap_info->channel_number;
-		rnr->operating_class = ap_info->operting_class;
+		rnr->operating_class = ap_info->operating_class;
 		qdf_mem_copy(&rnr->bssid, &data[1], QDF_MAC_ADDR_SIZE);
 		qdf_mem_copy(&rnr->short_ssid, &data[7], SHORT_SSID_LEN);
 		break;
@@ -1167,7 +1184,7 @@ util_scan_parse_rnr_ie(struct scan_cache_entry *scan_entry,
 		fieldtype = neighbor_ap_info->tbtt_header.tbbt_info_fieldtype;
 		scm_debug("chan %d, opclass %d tbtt_cnt %d, tbtt_len %d, fieldtype %d",
 			  neighbor_ap_info->channel_number,
-			  neighbor_ap_info->operting_class,
+			  neighbor_ap_info->operating_class,
 			  tbtt_count, tbtt_length, fieldtype);
 		data += sizeof(struct neighbor_ap_info_field);
 
@@ -2704,6 +2721,11 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 	qdf_mem_copy(&scan_entry->mbssid_info, mbssid_info,
 		     sizeof(scan_entry->mbssid_info));
 
+	/*Locally generated entry*/
+	if (!qdf_is_macaddr_zero(
+		(struct qdf_mac_addr *)&mbssid_info->non_trans_bssid))
+		scan_entry->is_non_tx_mbssid_gen = 1;
+
 	scan_entry->phy_mode = util_scan_get_phymode(pdev, scan_entry);
 	scan_entry->non_intersected_phymode = scan_entry->phy_mode;
 
@@ -2723,6 +2745,14 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 		qdf_mem_free(scan_entry);
 		scm_err("failed to allocate memory for scan_node");
 		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!IS_WLAN_PHYMODE_EHT(scan_entry->phy_mode) &&
+	    (util_scan_entry_ehtcap(scan_entry) ||
+	     util_scan_entry_bv_ml_ie(scan_entry))) {
+		scm_debug("EHT cap present but phymode %d not EHT, reset eht info",
+			  scan_entry->phy_mode);
+		util_scan_entry_reset_11be_caps(scan_entry);
 	}
 
 	util_scan_update_ml_info(pdev, scan_entry);
@@ -3003,7 +3033,7 @@ static int util_handle_rnr_ie_for_mbssid(const uint8_t *rnr,
 		tbtt_type = neighbor_ap_info->tbtt_header.tbbt_info_fieldtype;
 		scm_debug("channel number %d, op class %d, bssid_index %d",
 			  neighbor_ap_info->channel_number,
-			  neighbor_ap_info->operting_class, bssid_index);
+			  neighbor_ap_info->operating_class, bssid_index);
 		scm_debug("tbtt_count %d, tbtt_length %d, tbtt_type %d",
 			  tbtt_count, tbtt_len, tbtt_type);
 
@@ -4265,6 +4295,7 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 	if (!rnr_channel_db)
 		return false;
 
+	qdf_mutex_acquire(&rnr_channel_db->rnr_db_lock);
 	for (i = 0; i < QDF_ARRAY_SIZE(rnr_channel_db->channel); i++) {
 		channel = &rnr_channel_db->channel[i];
 		if (channel->chan_freq != freq)
@@ -4290,6 +4321,7 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 			cur_node = next_node;
 		}
 	}
+	qdf_mutex_release(&rnr_channel_db->rnr_db_lock);
 
 	return ret;
 }

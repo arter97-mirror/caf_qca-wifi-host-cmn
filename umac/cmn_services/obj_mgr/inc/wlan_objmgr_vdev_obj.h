@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1861,6 +1861,12 @@ static inline bool wlan_vdev_mlme_is_mlo_ap_sync_disabled(
 {
 	return (wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE) &&
 			wlan_vdev_mlme_get_mlo_sap_sync_disable(vdev);
+}
+#elif defined(WLAN_FEATURE_11BE_MLO_ADV_FEATURE)
+static inline bool wlan_vdev_mlme_is_mlo_ap_sync_disabled(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return true;
 }
 #else
 static inline bool wlan_vdev_mlme_is_mlo_ap_sync_disabled(

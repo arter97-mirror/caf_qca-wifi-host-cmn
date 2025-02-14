@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,6 +33,9 @@
 #include "dp_ratetable.h"
 #ifdef QCA_SUPPORT_LITE_MONITOR
 #include "dp_lite_mon.h"
+#endif
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+#include <cdp_txrx_mon.h>
 #endif
 
 #define MAX_TX_MONITOR_STUCK 50
@@ -1259,6 +1262,69 @@ dp_tx_mon_lpc_type_filtering(struct dp_pdev *pdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+static void
+dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
+{
+	bool is_frag;
+	char *data = NULL;
+	uint8_t *ccmp_info;
+	uint16_t hdr_len;
+	uint16_t pkt_len;
+	qdf_nbuf_t tmp_buf = NULL;
+	tpSirMacFrameCtl fc;
+	void *soc;
+
+	soc = cds_get_context(QDF_MODULE_ID_SOC);
+	if (!cdp_is_local_pkt_capture_running(soc, OL_TXRX_PDEV_ID))
+		return;
+
+	if (qdf_nbuf_get_nr_frags_in_fraglist(rxbuf)) {
+		data = qdf_nbuf_get_frag_addr(rxbuf, 0);
+		pkt_len = qdf_nbuf_get_frag_size(rxbuf, 0);
+		is_frag = true;
+	} else if (qdf_nbuf_has_fraglist(rxbuf)) {
+		tmp_buf = qdf_nbuf_get_ext_list(rxbuf);
+		pkt_len = qdf_nbuf_len(tmp_buf);
+		if (tmp_buf)
+			data = qdf_nbuf_data(tmp_buf);
+	}
+
+	fc = (tpSirMacFrameCtl)data;
+
+	if (fc->wep) {
+		fc->wep = 0;
+		hdr_len = sizeof(tSirMacMgmtHdr);
+
+		/* Add offset of QOS control,
+		 * HTC control field and CCMP params to reach data field
+		 */
+		if (fc->subType == IEEE80211_FC0_TYPE_DATA)
+			hdr_len += QOS_CTRL_LEN;
+		if (fc->order)
+			hdr_len += HTC_CTRL_LEN;
+
+		ccmp_info = data + hdr_len;
+		qdf_mem_copy(data, fc, sizeof(tSirMacFrameCtl));
+
+		hdr_len += CCMP_PARAM_LEN;
+		data += hdr_len;
+		pkt_len -= hdr_len;
+		qdf_mem_copy(ccmp_info, data, pkt_len);
+		if (!is_frag)
+			qdf_nbuf_trim_tail(rxbuf, CCMP_PARAM_LEN);
+		else
+			qdf_nbuf_trim_add_frag_size(rxbuf,
+						    0, -(CCMP_PARAM_LEN), 0);
+	}
+}
+#else
+static void
+dp_tx_mon_disable_pf(qdf_nbuf_t rxbuf)
+{
+}
+#endif
+
 static int
 dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf)
 {
@@ -1269,18 +1335,26 @@ dp_tx_handle_local_pkt_capture(struct dp_pdev *pdev, qdf_nbuf_t nbuf)
 	uint8_t mac_id = 0;
 	struct dp_mon_vdev *mon_vdev;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
-	struct dp_vdev *mvdev = mon_mac->mvdev;
+	struct dp_vdev *mvdev;
 
-	if (!mvdev) {
-		dp_mon_err("Monitor vdev is NULL !!");
+	mvdev =	dp_vdev_get_ref_by_id(pdev->soc, mon_mac->vdev_id,
+				      DP_MOD_ID_TX_PPDU_STATS);
+	if (!mvdev || mon_mac->mvdev != mvdev) {
+		dp_mon_err("Monitor vdev is NULL or invalid!!");
+		if (mvdev)
+			dp_vdev_unref_delete(pdev->soc, mvdev,
+					     DP_MOD_ID_TX_PPDU_STATS);
 		return 1;
 	}
 
 	mon_vdev = mvdev->monitor_vdev;
 
-	if (mon_vdev && mon_vdev->osif_rx_mon)
+	if (mon_vdev && mon_vdev->osif_rx_mon) {
+		dp_tx_mon_disable_pf(nbuf);
 		mon_vdev->osif_rx_mon(mvdev->osif_vdev, nbuf, NULL);
+	}
 
+	dp_vdev_unref_delete(pdev->soc, mvdev, DP_MOD_ID_TX_PPDU_STATS);
 	return 0;
 }
 #else

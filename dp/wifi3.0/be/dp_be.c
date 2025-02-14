@@ -4028,6 +4028,8 @@ void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_tx_send_fast = dp_tx_fast_send_be;
 	arch_ops->tx_comp_get_params_from_hal_desc =
 		dp_tx_comp_get_params_from_hal_desc_be;
+	arch_ops->tx_comp_ring_desc_mark_invalid =
+					dp_srng_tx_comp_ring_desc_mark_invalid;
 	arch_ops->dp_tx_process_htt_completion =
 				dp_tx_process_htt_completion_be;
 	arch_ops->dp_tx_desc_pool_alloc = dp_tx_desc_pool_alloc_be;

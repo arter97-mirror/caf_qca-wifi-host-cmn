@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1902,12 +1902,14 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 	QDF_STATUS qdf_status;
 	enum QDF_OPMODE opmode;
 	uint32_t extra_ie_len = 0;
+	struct scan_filter *filter = NULL;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
 		osif_err("Invalid psoc object");
 		return -EINVAL;
 	}
+
 	opmode = wlan_vdev_mlme_get_opmode(vdev);
 
 	osif_debug("%s(vdev%d): mode %d flags 0x%x",
@@ -2147,8 +2149,15 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 			req->scan_req.scan_f_en_ie_allowlist_in_probe = true;
 	}
 
+	filter = qdf_mem_malloc(sizeof(*filter));
+	if (filter)
+		filter->flush_all_except_conn_entry = true;
+
 	if (request->flags & NL80211_SCAN_FLAG_FLUSH)
-		ucfg_scan_flush_results(pdev, NULL);
+		ucfg_scan_flush_results(pdev, filter);
+
+	if (filter)
+		qdf_mem_free(filter);
 
 	if (params->scan_probe_unicast_ra)
 		req->scan_req.scan_ctrl_flags_ext |=

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019 The Linux Foundation. All rights reserved.
- *
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -34,6 +34,17 @@
 QDF_STATUS reg_process_ch_avoid_event(
 		struct wlan_objmgr_psoc *psoc,
 		struct ch_avoid_ind_type *ch_avoid_event);
+
+/**
+ * reg_update_unsafe_ch() - Updates unsafe channels in current channel list
+ * @psoc: Pointer to psoc structure
+ * @object: Pointer to pdev structure
+ * @arg: List of arguments
+ *
+ * Return: None
+ */
+void reg_update_unsafe_ch(struct wlan_objmgr_psoc *psoc,
+			  void *object, void *arg);
 #else
 static inline QDF_STATUS reg_process_ch_avoid_event(
 		struct wlan_objmgr_psoc *psoc,
@@ -41,4 +52,8 @@ static inline QDF_STATUS reg_process_ch_avoid_event(
 {
 	return QDF_STATUS_SUCCESS;
 }
+
+static inline void reg_update_unsafe_ch(struct wlan_objmgr_psoc *psoc,
+					void *object, void *arg)
+{}
 #endif

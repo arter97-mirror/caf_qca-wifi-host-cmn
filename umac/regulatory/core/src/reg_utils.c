@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -392,17 +392,6 @@ reg_get_6ghz_cli_pwr_type_per_ap_pwr_type(
 
 #ifdef CONFIG_REG_CLIENT
 #ifdef CONFIG_BAND_6GHZ
-/**
- * reg_check_if_6g_pwr_type_supp_for_chan() - Check if 6 GHz power type is
- *                                            supported for the channel
- * @pdev: Pointer to pdev
- * @pwr_type: 6 GHz power type
- * @chan_idx: Connection channel index
- *
- * Return: Return QDF_STATUS_SUCCESS if 6 GHz power type supported for
- *         the given channel, else return QDF_STATUS_E_FAILURE.
- */
-static
 QDF_STATUS reg_check_if_6g_pwr_type_supp_for_chan(
 			struct wlan_objmgr_pdev *pdev,
 			enum reg_6g_ap_type pwr_type,

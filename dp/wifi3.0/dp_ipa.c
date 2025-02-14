@@ -287,6 +287,7 @@ static QDF_STATUS __dp_ipa_tx_buf_smmu_mapping(
 	uint32_t tx_buffer_cnt = soc->ipa_uc_tx_rsc.alloc_tx_buf_cnt;
 	qdf_nbuf_t nbuf;
 	uint32_t buf_len;
+	uint32_t smmu_unmap_fail = 0;
 
 	if (!ipa_is_ready()) {
 		dp_info("IPA is not READY");
@@ -296,12 +297,31 @@ static QDF_STATUS __dp_ipa_tx_buf_smmu_mapping(
 	for (index = 0; index < tx_buffer_cnt; index++) {
 		nbuf = (qdf_nbuf_t)
 			soc->ipa_uc_tx_rsc.tx_buf_pool_vaddr_unaligned[index];
-		if (!nbuf)
+		if (!nbuf) {
+			dp_err_rl("No nbuf exist at index - %d, create - %d",
+				  index, create);
+
+			if (!create)
+				smmu_unmap_fail++;
+
 			continue;
+		}
+
 		buf_len = qdf_nbuf_get_data_len(nbuf);
 		ret = __dp_ipa_handle_buf_smmu_mapping(soc, nbuf, buf_len,
 						       create, func, line);
+
+		if (ret != QDF_STATUS_SUCCESS) {
+			dp_err_rl("smmu map/unmap failed for index - %d, create - %d",
+				  index, create);
+			if (!create)
+				smmu_unmap_fail++;
+		}
 	}
+
+	if (smmu_unmap_fail > 0)
+		dp_err("smmu unmap failed for %d buffers, total tx buffer - %d",
+		       smmu_unmap_fail, index - 1);
 
 	return ret;
 }
@@ -4161,6 +4181,53 @@ bool dp_ipa_get_opt_dp_ctrl_refill_cap(struct cdp_soc_t *soc_hdl)
 	return false;
 }
 #endif
+#ifdef IPA_WDI3_PENDING_BUFF_REPORT
+bool dp_ipa_is_completion_pending(struct cdp_soc_t *soc_hdl)
+{
+	QDF_STATUS status;
+	int ret;
+	uint16_t num_avail = 0;
+	uint32_t num_tx_outstanding;
+	qdf_ipa_wdi_outstanding_buffs ipa_outstanding;
+	struct hal_srng *wbm_srng;
+	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
+	struct wlan_ipa_priv *ipa_ctx = wlan_ipa_get_obj_context();
+
+	wbm_srng = (struct hal_srng *)soc->tx_comp_ring[IPA_TX_COMP_RING_IDX].hal_srng;
+	if (!wbm_srng) {
+		dp_err("wbm_srng NULL");
+		return false;
+	}
+
+	status =
+		hal_srng_dst_get_num_avail_words((hal_soc_handle_t)soc->hal_soc,
+						 (hal_ring_handle_t)wbm_srng,
+						 &num_avail);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Unable to get num avail, err: %d", status);
+		return false;
+	}
+
+	ret = qdf_ipa_wdi_get_outstanding_buffers(ipa_ctx->hdl,
+						  &ipa_outstanding);
+	if (ret) {
+		dp_err("Unable to get IPA outstanding buffers, err: %d", ret);
+		return false;
+	}
+
+	num_tx_outstanding = QDF_IPA_WDI_TX_OUTSTANDING_BUFFS(&ipa_outstanding);
+
+	if (num_avail == ((DP_IPA_WAR_WBM2SW_REL_RING_NO_BUF_ENTRIES +
+			   num_tx_outstanding) * wbm_srng->entry_size))
+		return false;
+
+	dp_info("num_avail: %d num_tx_outstanding: %d No buf entries: %d",
+		num_avail / wbm_srng->entry_size, num_tx_outstanding,
+		DP_IPA_WAR_WBM2SW_REL_RING_NO_BUF_ENTRIES);
+
+	return true;
+}
+#endif /* IPA_WDI3_PENDING_BUFF_REPORT */
 #endif /* IPA_OPT_WIFI_DP */
 
 #ifdef IPA_WDS_EASYMESH_FEATURE

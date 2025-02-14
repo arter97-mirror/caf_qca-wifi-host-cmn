@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -698,6 +698,30 @@ bool wlan_reg_get_keep_6ghz_sta_cli_connection(struct wlan_objmgr_pdev *pdev);
  */
 QDF_STATUS wlan_reg_read_current_country(struct wlan_objmgr_psoc *psoc,
 					 uint8_t *country);
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+/**
+ * wlan_reg_check_if_6g_pwr_type_supp_for_chan() - Check if the 6 GHz power
+ * type is supported by STA for that channel
+ * @pdev: Pointer to pdev
+ * @pwr_type: 6 GHz power type
+ * @chan_idx: channel index
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_reg_check_if_6g_pwr_type_supp_for_chan(struct wlan_objmgr_pdev *pdev,
+					    enum reg_6g_ap_type pwr_type,
+					    enum channel_enum chan_idx);
+#else
+static inline QDF_STATUS
+wlan_reg_check_if_6g_pwr_type_supp_for_chan(struct wlan_objmgr_pdev *pdev,
+					    enum reg_6g_ap_type pwr_type,
+					    enum channel_enum chan_idx)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
 
 #ifdef CONFIG_REG_CLIENT
 /**

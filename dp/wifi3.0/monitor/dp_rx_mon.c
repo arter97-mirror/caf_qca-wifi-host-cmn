@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -35,6 +35,9 @@
 #include "htt.h"
 #ifdef FEATURE_PERPKT_INFO
 #include "dp_ratetable.h"
+#endif
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+#include <cdp_txrx_mon.h>
 #endif
 
 #ifndef IEEE80211_FCO_SUBTYPE_ACTION_NO_ACK
@@ -1819,6 +1822,58 @@ fail:
 	return NULL;
 }
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+static void
+dp_rx_mon_disable_pf(qdf_nbuf_t rxbuf)
+{
+	char *data = NULL;
+	uint8_t *ccmp_info;
+	uint16_t hdr_len;
+	uint16_t rtap_len = 0;
+	uint16_t pkt_len;
+	tpSirMacFrameCtl fc;
+	void *soc;
+
+	soc = cds_get_context(QDF_MODULE_ID_SOC);
+	if (!cdp_is_local_pkt_capture_running(soc, OL_TXRX_PDEV_ID))
+		return;
+
+	rtap_len = *(uint16_t *)(qdf_nbuf_data(rxbuf) + 2);
+	data = qdf_nbuf_data(rxbuf) + rtap_len;
+	pkt_len = qdf_nbuf_headlen(rxbuf);
+
+	fc = (tpSirMacFrameCtl)data;
+
+	if (fc->wep) {
+		fc->wep = 0;
+		hdr_len = sizeof(tSirMacMgmtHdr);
+
+		/* Add offset of QOS control,
+		 * HTC control field and CCMP params to reach data field
+		 */
+		if (fc->subType == IEEE80211_FC0_TYPE_DATA)
+			hdr_len += QOS_CTRL_LEN;
+
+		if (fc->order)
+			hdr_len += HTC_CTRL_LEN;
+
+		ccmp_info = data + hdr_len;
+		qdf_mem_copy(data, fc, sizeof(tSirMacFrameCtl));
+
+		hdr_len += CCMP_PARAM_LEN;
+		data += hdr_len;
+		pkt_len -= (hdr_len + rtap_len);
+		qdf_mem_copy(ccmp_info, data, pkt_len);
+		rxbuf->len -= CCMP_PARAM_LEN;
+	}
+}
+#else
+static void
+dp_rx_mon_disable_pf(qdf_nbuf_t rxbuf)
+{
+}
+#endif
+
 /**
  * dp_rx_mon_send_mpdu() - Send MPDU to stack
  * @pdev: DP pdev handle
@@ -1861,9 +1916,11 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 	}
 
 	mon_vdev = vdev->monitor_vdev;
-	if (qdf_likely(mon_vdev && mon_vdev->osif_rx_mon))
+	if (qdf_likely(mon_vdev && mon_vdev->osif_rx_mon)) {
+		dp_rx_mon_disable_pf(mpdu_buf);
 		mon_vdev->osif_rx_mon(vdev->osif_vdev,
 				      mpdu_buf, NULL);
+	}
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_MISC);
 	return;
@@ -2154,7 +2211,8 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 	rs = &mon_mac->rx_mon_recv_status;
 
 	if (!mon_mac && !mon_mac->mvdev && !mon_pdev->mcopy_mode &&
-	    !mon_pdev->rx_pktlog_cbf)
+	    !mon_pdev->rx_pktlog_cbf &&
+	    mon_mac->mon_chan_num == INVALID_MON_CHAN_NUM)
 		goto mon_deliver_fail;
 
 	/* restitch mon MPDU for delivery via monitor interface */

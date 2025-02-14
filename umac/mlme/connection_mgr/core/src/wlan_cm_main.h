@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -105,6 +105,29 @@ struct cm_state_sm {
 };
 
 /**
+ * struct cm_nontx_mbssid_scan_params - Data structure to save non-Tx MBSSID
+ * scan params
+ * @is_scan_params_valid: Set to true if there are any valid scan params
+ * @chan_list: List of channels to scan
+ * @num_bssid: Number of BSSID to scan
+ * @num_hint_s_ssid: Num of 6 GHz SSID hints
+ * @num_hint_bssid: Num of 6 GHz BSSID hints
+ * @bssid_list: List of BSSIDs to scan.
+ * @hint_s_ssid: List of 6 GHz short SSIDs
+ * @hint_bssid: List of 6 GHz BSSIDs
+ */
+struct cm_nontx_mbssid_scan_params {
+	bool is_scan_params_valid;
+	struct chan_list chan_list;
+	uint32_t num_bssid;
+	uint32_t num_hint_s_ssid;
+	uint32_t num_hint_bssid;
+	struct qdf_mac_addr bssid_list[WLAN_SCAN_MAX_NUM_BSSID];
+	struct hint_short_ssid hint_s_ssid[WLAN_SCAN_MAX_HINT_S_SSID];
+	struct hint_bssid hint_bssid[WLAN_SCAN_MAX_HINT_BSSID];
+};
+
+/**
  * struct cm_connect_req - connect req stored in connect manager
  * @cm_id: Connect manager id
  * @scan_id: scan id for scan for ssid
@@ -115,6 +138,7 @@ struct cm_state_sm {
  * @connect_attempts: number of connect attempts tried
  * @connect_active_time: timestamp when connect became active
  * @first_candidate_rsp: connect response for first candidate
+ * @nontx_scan_req: Scan request params for non-Tx MBSSID links.
  */
 struct cm_connect_req {
 	wlan_cm_id cm_id;
@@ -127,6 +151,9 @@ struct cm_connect_req {
 	qdf_time_t connect_active_time;
 #ifdef CONN_MGR_ADV_FEATURE
 	struct wlan_cm_connect_resp *first_candidate_rsp;
+#endif
+#ifdef WLAN_FEATURE_11BE_MLO
+	struct cm_nontx_mbssid_scan_params nontx_scan_req;
 #endif
 };
 

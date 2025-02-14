@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -41,6 +41,7 @@
 #include <../../core/src/reg_callbacks.h>
 #include <../../core/src/reg_offload_11d_scan.h>
 #include <wlan_objmgr_global_obj.h>
+#include <../../core/src/reg_lte.h>
 
 QDF_STATUS wlan_reg_read_default_country(struct wlan_objmgr_psoc *psoc,
 					 uint8_t *country)
@@ -106,6 +107,17 @@ QDF_STATUS wlan_reg_get_pwrmode_chan_list(struct wlan_objmgr_pdev *pdev,
 }
 
 qdf_export_symbol(wlan_reg_get_pwrmode_chan_list);
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+QDF_STATUS
+wlan_reg_check_if_6g_pwr_type_supp_for_chan(struct wlan_objmgr_pdev *pdev,
+					    enum reg_6g_ap_type ap_pwr_type,
+					    enum channel_enum chan_idx)
+{
+	return reg_check_if_6g_pwr_type_supp_for_chan(pdev, ap_pwr_type,
+						      chan_idx);
+}
+#endif
 
 #ifdef CONFIG_REG_CLIENT
 QDF_STATUS
@@ -585,6 +597,7 @@ QDF_STATUS regulatory_pdev_open(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_objmgr_psoc *parent_psoc;
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+	struct wlan_regulatory_psoc_priv_obj *soc_reg_obj;
 
 	pdev_priv_obj = reg_get_pdev_obj(pdev);
 
@@ -596,6 +609,17 @@ QDF_STATUS regulatory_pdev_open(struct wlan_objmgr_pdev *pdev)
 	pdev_priv_obj->pdev_opened = true;
 
 	parent_psoc = wlan_pdev_get_psoc(pdev);
+
+	soc_reg_obj = reg_get_psoc_obj(parent_psoc);
+	if (!IS_VALID_PSOC_REG_OBJ(soc_reg_obj)) {
+		reg_err("reg psoc private obj is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (soc_reg_obj->ch_avoid_ind)
+		wlan_objmgr_iterate_obj_list(
+			parent_psoc, WLAN_PDEV_OP, reg_update_unsafe_ch,
+			NULL, 1, WLAN_REGULATORY_NB_ID);
 
 	if (reg_is_cntry_set_pending(pdev, parent_psoc))
 		return QDF_STATUS_SUCCESS;

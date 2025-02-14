@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1903,7 +1903,7 @@
 	CFG_VALUE_OR_DEFAULT, \
 	"ML NSS weight per index 4 to 7")
 
-#define CFG_MLO_CONFIG \
+#define CFG_MLO_SCORE_CONFIG \
 	CFG(CFG_SCORING_EHT_CAPS_WEIGHTAGE) \
 	CFG(CFG_SCORING_JOINT_ESP_ALPHA) \
 	CFG(CFG_SCORING_JOINT_OCE_ALPHA) \
@@ -1922,7 +1922,7 @@
 	CFG(CFG_SCORING_MLSR_LINK_SELECTION) \
 	CFG(CFG_SCORING_WLM_INDICATION_WEIGHTAGE)
 #else
-#define CFG_MLO_CONFIG
+#define CFG_MLO_SCORE_CONFIG
 #endif
 
 #define CFG_MLME_SCORE_ALL \
@@ -1967,6 +1967,6 @@
 	CFG(CFG_VENDOR_ROAM_SCORE_ALGORITHM) \
 	CFG_6GHZ_CONFIG \
 	CFG_11BE_CONFIG \
-	CFG_MLO_CONFIG
+	CFG_MLO_SCORE_CONFIG
 
 #endif /* __CFG_MLME_SCORE_PARAMS_H */

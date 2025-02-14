@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -286,6 +286,8 @@ bool cm_handle_fw_roam_connected_event(struct cnx_mgr *cm_ctx, uint16_t event,
 		break;
 	case WLAN_CM_SM_EV_ROAM_ABORT:
 	case WLAN_CM_SM_EV_ROAM_INVOKE_FAIL:
+		cm_roam_abort_event(cm_ctx->vdev);
+		fallthrough;
 	case WLAN_CM_SM_EV_ROAM_HO_FAIL:
 		cm_remove_cmd(cm_ctx, data);
 		break;
