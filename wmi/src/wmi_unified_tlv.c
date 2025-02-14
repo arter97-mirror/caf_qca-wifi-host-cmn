@@ -24489,6 +24489,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif
 	wmi_service[wmi_service_ap_assisted_dfs_chan_p2p_session] =
 				WMI_SERVICE_AP_ASSISTED_DFS_CHAN_P2P_SESSION;
+#ifdef WLAN_FEATURE_11BE_MLO
+	wmi_service[wmi_service_mlo_sap_concurrency_support] =
+				WMI_SERVICE_MLO_SAP_CONCURRENCY_SUPPORT;
+#endif
 }
 
 /**
