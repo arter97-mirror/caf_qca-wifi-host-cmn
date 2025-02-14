@@ -8300,8 +8300,7 @@ int sme_set_auto_rate_he_ltf(mac_handle_t mac_handle, uint8_t session_id,
 		bit_mask = (1 << (cfg_val - 1));
 
 	set_val = mac_ctx->he_sgi_ltf_cfg_bit_mask;
-
-	SET_AUTO_RATE_HE_LTF_VAL(set_val, bit_mask);
+	WMI_SET_BITS(set_val, HE_LTF_INDEX, HE_LTF_NUM_BITS, bit_mask);
 
 	mac_ctx->he_sgi_ltf_cfg_bit_mask = set_val;
 	status = wma_cli_set_command(session_id,
@@ -8332,10 +8331,10 @@ int sme_set_auto_rate_he_sgi(mac_handle_t mac_handle, uint8_t session_id,
 		return -EINVAL;
 	}
 
-	sgi_bit_mask = (1 << cfg_val);
+	sgi_bit_mask = (1 << (cfg_val - AUTO_RATE_GI_400NS));
 
 	set_val = mac_ctx->he_sgi_ltf_cfg_bit_mask;
-	SET_AUTO_RATE_SGI_VAL(set_val, sgi_bit_mask);
+	WMI_SET_BITS(set_val, HE_SGI_INDEX, HE_SGI_NUM_BITS, sgi_bit_mask);
 
 	mac_ctx->he_sgi_ltf_cfg_bit_mask = set_val;
 	status = wma_cli_set_command(session_id,
@@ -8360,14 +8359,38 @@ int sme_set_auto_rate_ldpc(mac_handle_t mac_handle, uint8_t session_id,
 	int status;
 
 	set_val = mac_ctx->he_sgi_ltf_cfg_bit_mask;
-
-	set_val |= (ldpc_disable << AUTO_RATE_LDPC_DIS_BIT);
-
+	WMI_SET_BITS(set_val, AUTO_RATE_LDPC_DIS_BIT,
+		     AUTO_RATE_LDPC_DIS_NUM_BITS, ldpc_disable);
+	mac_ctx->he_sgi_ltf_cfg_bit_mask = set_val;
 	status = wma_cli_set_command(session_id,
 				     wmi_vdev_param_autorate_misc_cfg,
 				     set_val, VDEV_CMD);
 	if (status) {
 		sme_err("failed to set auto rate LDPC cfg");
+		return status;
+	}
+
+	sme_debug("auto rate misc cfg set to 0x%08X", set_val);
+
+	return 0;
+}
+
+int sme_set_auto_rate_stbc(mac_handle_t mac_handle, uint8_t session_id,
+			   uint8_t stbc_disable)
+{
+	struct mac_context *mac_ctx = MAC_CONTEXT(mac_handle);
+	uint32_t set_val;
+	int status;
+
+	set_val = mac_ctx->he_sgi_ltf_cfg_bit_mask;
+	WMI_SET_BITS(set_val, AUTO_RATE_STBC_DIS_BIT,
+		     AUTO_RATE_STBC_DIS_NUM_BITS, stbc_disable);
+	mac_ctx->he_sgi_ltf_cfg_bit_mask = set_val;
+	status = wma_cli_set_command(session_id,
+				     wmi_vdev_param_autorate_misc_cfg,
+				     set_val, VDEV_CMD);
+	if (status) {
+		sme_err("failed to set auto rate STBC cfg");
 		return status;
 	}
 
