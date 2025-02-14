@@ -67,7 +67,7 @@ void lim_send_reassoc_req_with_ft_ies_mgmt_frame(struct mac_context *mac_ctx,
 {
 	tDot11fReAssocRequest *frm;
 	uint16_t caps;
-	uint8_t *frame, *rsnxe;
+	uint8_t *frame, *rsnxe = NULL;
 	uint32_t bytes, payload, status;
 	uint8_t qos_enabled, wme_enabled, wsm_enabled;
 	void *packet;

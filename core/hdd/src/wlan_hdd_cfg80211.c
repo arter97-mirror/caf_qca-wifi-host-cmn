@@ -2208,7 +2208,7 @@ static int is_driver_dfs_capable(struct wiphy *wiphy,
 /**
  * wlan_hdd_sap_cfg_dfs_override() - DFS MCC restriction check
  *
- * @adapter: SAP adapter pointer
+ * @link_info: SAP link info
  *
  * DFS in MCC is not supported for Multi bssid SAP mode due to single physical
  * radio. So in case of DFS MCC scenario override current SAP given config
@@ -2216,21 +2216,20 @@ static int is_driver_dfs_capable(struct wiphy *wiphy,
  *
  * Return: 0 - No DFS issue, 1 - Override done and negative error codes
  */
-int wlan_hdd_sap_cfg_dfs_override(struct hdd_adapter *adapter)
+int wlan_hdd_sap_cfg_dfs_override(struct wlan_hdd_link_info *link_info)
 {
 	struct hdd_adapter *con_sap_adapter;
 	struct sap_config *sap_config, *con_sap_config;
-	struct hdd_context *hdd_ctx = WLAN_HDD_GET_CTX(adapter);
+	struct hdd_context *hdd_ctx = WLAN_HDD_GET_CTX(link_info->adapter);
 	uint32_t con_vdev_id, con_ch_freq;
-	struct wlan_hdd_link_info *link_info;
+	struct wlan_hdd_link_info *conc_link_info;
 
 	if (!hdd_ctx) {
 		hdd_err("hdd context is NULL");
 		return 0;
 	}
 
-	sap_config = &adapter->deflink->session.ap.sap_config;
-
+	sap_config = &link_info->session.ap.sap_config;
 	if (!policy_mgr_is_sap_override_dfs_required(hdd_ctx->pdev,
 						     sap_config->chan_freq,
 						     sap_config->ch_width_orig,
@@ -2245,17 +2244,17 @@ int wlan_hdd_sap_cfg_dfs_override(struct hdd_adapter *adapter)
 	if (con_vdev_id >= WLAN_UMAC_VDEV_ID_MAX)
 		return 0;
 
-	link_info = hdd_get_link_info_by_vdev(hdd_ctx, con_vdev_id);
-	if (!link_info) {
+	conc_link_info = hdd_get_link_info_by_vdev(hdd_ctx, con_vdev_id);
+	if (!conc_link_info) {
 		hdd_err("Invalid vdev");
 		return -EINVAL;
 	}
 
-	con_sap_adapter = link_info->adapter;
+	con_sap_adapter = conc_link_info->adapter;
 	if (!con_sap_adapter)
 		return 0;
 
-	con_sap_config = &con_sap_adapter->deflink->session.ap.sap_config;
+	con_sap_config = &conc_link_info->session.ap.sap_config;
 
 	hdd_debug("Only SCC AP-AP DFS Permitted (ch_freq=%d, con_ch_freq=%d)",
 		  sap_config->chan_freq, con_ch_freq);
@@ -2526,7 +2525,7 @@ int wlan_hdd_cfg80211_start_acs(struct wlan_hdd_link_info *link_info)
 	    !(policy_mgr_is_hw_dbs_capable(hdd_ctx->psoc) &&
 	    WLAN_REG_IS_24GHZ_CH_FREQ(sap_config->acs_cfg.end_ch_freq)) &&
 	    !wlansap_dcs_is_wlan_interference_mitigation_enabled(sap_ctx)) {
-		status = wlan_hdd_sap_cfg_dfs_override(adapter);
+		status = wlan_hdd_sap_cfg_dfs_override(link_info);
 		if (status < 0)
 			return status;
 
@@ -30723,14 +30722,28 @@ wlan_hdd_extauth_cache_pmkid(struct hdd_adapter *adapter,
 {
 	struct wlan_crypto_pmksa *pmk_cache;
 	QDF_STATUS result;
+	struct qdf_mac_addr mld_addr;
 
 	if (params->pmkid) {
 		pmk_cache = qdf_mem_malloc(sizeof(*pmk_cache));
 		if (!pmk_cache)
 			return;
 
-		qdf_mem_copy(pmk_cache->bssid.bytes, params->bssid,
-			     QDF_MAC_ADDR_SIZE);
+		qdf_zero_macaddr(&mld_addr);
+		sme_pmkid_get_mld_addr(adapter->hdd_ctx->mac_handle,
+				       (uint8_t *)params->bssid,
+				       (uint8_t *)&mld_addr.bytes);
+
+		if (!qdf_is_macaddr_zero(&mld_addr)) {
+			hdd_debug("bssid " QDF_MAC_ADDR_FMT " new " QDF_MAC_ADDR_FMT,
+				  QDF_MAC_ADDR_REF(params->bssid),
+				  QDF_MAC_ADDR_REF(mld_addr.bytes));
+			qdf_copy_macaddr(&pmk_cache->bssid, &mld_addr);
+		} else {
+			qdf_mem_copy(pmk_cache->bssid.bytes, params->bssid,
+				     QDF_MAC_ADDR_SIZE);
+		}
+
 		qdf_mem_copy(pmk_cache->pmkid, params->pmkid,
 			     PMKID_LEN);
 		result = wlan_hdd_set_pmksa_cache(adapter, pmk_cache);

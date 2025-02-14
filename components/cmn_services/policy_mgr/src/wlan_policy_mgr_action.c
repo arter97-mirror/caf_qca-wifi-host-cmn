@@ -2029,7 +2029,7 @@ bool policy_mgr_is_sap_restart_required_after_sta_disconnect(
 				psoc,  vdev_id[i],
 				WLAN_REG_IS_24GHZ_CH_FREQ(op_ch_freq_list[i]) ?
 				POLICY_MGR_BAND_24 : POLICY_MGR_BAND_5))
-			continue;
+			goto user_freq_check;
 
 		if (sta_sap_scc_on_dfs_chan &&
 		    (sta_sap_scc_on_dfs_chnl_config_value != 2) &&
@@ -2073,6 +2073,7 @@ bool policy_mgr_is_sap_restart_required_after_sta_disconnect(
 			break;
 		}
 
+user_freq_check:
 		/*
 		 * STA got disconnected & SAP has previously moved to 2.4 GHz
 		 * due to concurrency, then move SAP back to user configured
@@ -3273,6 +3274,7 @@ static void __policy_mgr_check_sta_ap_concurrent_ch_intf(
 	uint8_t vdev_id[MAX_NUMBER_OF_CONC_CONNECTIONS];
 	struct sta_ap_intf_check_work_ctx *work_info;
 	bool handled = false;
+	bool is_dbs;
 
 	if (!pm_ctx) {
 		policy_mgr_err("Invalid context");
@@ -3391,26 +3393,29 @@ static void __policy_mgr_check_sta_ap_concurrent_ch_intf(
 		goto end;
 	}
 
-	/* For MLO STA 5 GHz + 6 GHz(no-psc chn) and  SAP 5+6 GHz(psc chn),
-	 * prefer switch 5 GHz SAP first, select it as vdev[0] to restart
-	 * first.
+	if (cc_count > MAX_NUMBER_OF_CONC_CONNECTIONS)
+		goto end;
+
+	/* For MLO STA 5 GHz + 6 GHz(no-psc chn) and SAP 5 GHz +
+	 * 6 GHz(psc chn), prefer switch 5 GHz SAP first, select
+	 * it as vdev[0] to restart first.
 	 */
 	policy_mgr_switch_sap_vdev_table_sequence(pm_ctx,
-						  &vdev_id[0],
-						  cc_count);
+			&vdev_id[0],
+			cc_count);
 
-	if (cc_count <= MAX_NUMBER_OF_CONC_CONNECTIONS)
-		for (i = 0; i < cc_count; i++) {
-			status = pm_ctx->hdd_cbacks.
-				wlan_hdd_get_channel_for_sap_restart
-					(pm_ctx->psoc, vdev_id[i], &ch_freq);
-			if (status == QDF_STATUS_SUCCESS) {
-				policy_mgr_debug("SAP vdev id %d restarts, old ch freq :%d new ch freq: %d",
-						 vdev_id[i],
-						 op_ch_freq_list[i], ch_freq);
-				break;
-			}
+	is_dbs = policy_mgr_is_hw_dbs_capable(pm_ctx->psoc);
+
+	for (i = 0; i < cc_count; i++) {
+		status = pm_ctx->hdd_cbacks.
+			wlan_hdd_get_channel_for_sap_restart
+			(pm_ctx->psoc, vdev_id[i], &ch_freq);
+		if (QDF_IS_STATUS_SUCCESS(status)) {
+			policy_mgr_debug("SAP vdev id %d restarts, old ch freq :%d new ch freq: %d",
+					vdev_id[i],
+					op_ch_freq_list[i], ch_freq);
 		}
+	}
 
 end:
 	pm_ctx->last_disconn_sta_freq = 0;

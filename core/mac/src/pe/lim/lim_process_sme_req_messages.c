@@ -527,6 +527,7 @@ lim_configure_ap_start_bss_session(struct mac_context *mac_ctx,
 }
 
 static void lim_set_privacy(struct mac_context *mac_ctx,
+			    struct pe_session *session,
 			    int32_t ucast_cipher,
 			    int32_t auth_mode, int32_t akm, bool ap_privacy)
 {
@@ -546,10 +547,11 @@ static void lim_set_privacy(struct mac_context *mac_ctx,
 	    QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY) ||
 	    QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY))
 		mac_ctx->mlme_cfg->wep_params.auth_type = eSIR_AUTH_TYPE_SAE;
-	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FILS_SHA256) ||
-		 QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FILS_SHA384))
+	else if ((QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FILS_SHA256) ||
+		  QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FILS_SHA384)) &&
+		 session->opmode == QDF_SAP_MODE)
 		mac_ctx->mlme_cfg->wep_params.auth_type =
-							SIR_FILS_SK_WITHOUT_PFS;
+						SIR_FILS_SK_WITHOUT_PFS;
 
 	if (QDF_HAS_PARAM(ucast_cipher, WLAN_CRYPTO_CIPHER_WEP) ||
 	     QDF_HAS_PARAM(ucast_cipher, WLAN_CRYPTO_CIPHER_WEP_40) ||
@@ -1015,7 +1017,7 @@ __lim_handle_sme_start_bss_request(struct mac_context *mac_ctx, uint32_t *msg_bu
 		akm = wlan_crypto_get_param(session->vdev,
 					    WLAN_CRYPTO_PARAM_KEY_MGMT);
 
-		lim_set_privacy(mac_ctx, ucast_cipher, auth_mode, akm,
+		lim_set_privacy(mac_ctx, session, ucast_cipher, auth_mode, akm,
 				sme_start_bss_req->privacy);
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
 		lim_fill_cc_mode(mac_ctx, session);
@@ -4450,7 +4452,7 @@ static QDF_STATUS lim_fill_crypto_params(struct mac_context *mac_ctx,
 	ap_cap_info = (tSirMacCapabilityInfo *)
 			&session->lim_join_req->bssDescription.capabilityInfo;
 
-	lim_set_privacy(mac_ctx, ucast_cipher, auth_mode, akm,
+	lim_set_privacy(mac_ctx, session, ucast_cipher, auth_mode, akm,
 			ap_cap_info->privacy);
 	session->encryptType = lim_get_encrypt_ed_type(ucast_cipher);
 	session->connected_akm = lim_get_connected_akm(session, ucast_cipher,
@@ -4806,6 +4808,30 @@ QDF_STATUS cm_process_join_req(struct cm_vdev_join_req *join_req)
 
 	return status;
 }
+
+#if defined(WLAN_FEATURE_MULTI_LINK_SAP) && defined(WLAN_FEATURE_11BE_MLO)
+void cm_get_pre_auth_mld_addr(struct mac_context *mac,
+			      uint8_t *peer_addr,
+			      uint8_t *mld_addr)
+{
+	struct tLimPreAuthNode *auth_node;
+
+	auth_node = lim_search_pre_auth_list(mac, peer_addr);
+	if (!auth_node) {
+		pe_err("Search pre-auth nodes failure " QDF_MAC_ADDR_FMT,
+		       QDF_MAC_ADDR_REF(peer_addr));
+		return;
+	}
+
+	if (!qdf_is_macaddr_zero((struct qdf_mac_addr *)&auth_node->peer_mld)) {
+		pe_debug("Get mld addr from preauth list " QDF_MAC_ADDR_FMT,
+			 QDF_MAC_ADDR_REF(auth_node->peer_mld));
+		qdf_mem_copy(mld_addr,
+			     (uint8_t *)&auth_node->peer_mld,
+			     QDF_MAC_ADDR_SIZE);
+	}
+}
+#endif
 
 static void lim_process_disconnect_sta(struct pe_session *session,
 				       struct scheduler_msg *msg)
@@ -5233,7 +5259,7 @@ static void lim_handle_reassoc_req(struct cm_vdev_join_req *req)
 				    WLAN_CRYPTO_PARAM_KEY_MGMT);
 	ap_cap_info = (tSirMacCapabilityInfo *)&req->entry->cap_info.value;
 
-	lim_set_privacy(mac_ctx, ucast_cipher, auth_mode, akm,
+	lim_set_privacy(mac_ctx, session_entry, ucast_cipher, auth_mode, akm,
 			ap_cap_info->privacy);
 
 	if (session_entry->vhtCapability) {
@@ -6133,7 +6159,10 @@ void lim_parse_tpe_ie(struct mac_context *mac, struct pe_session *session,
 			chan_psd_power_info->tx_power = single_tpe.tx_power[i];
 		}
 
-		curr_freq = bonded_freq->start_freq;
+		if (!bonded_freq)
+			curr_freq = curr_op_freq;
+		else
+			curr_freq = bonded_freq->start_freq;
 		ext_power_updated =
 				lim_update_ext_tpe_power(mac, session,
 							 &single_tpe,
@@ -7723,7 +7752,8 @@ void __lim_process_sme_assoc_cnf_new(struct mac_context *mac_ctx, uint32_t msg_t
 					sta_ds->assocId, sta_ds->staAddr,
 					sta_ds->mlmStaContext.subType, sta_ds,
 					session_entry,
-					assoc_cnf.need_assoc_rsp_tx_cb);
+					assoc_cnf.need_assoc_rsp_tx_cb,
+					(struct qdf_mac_addr *)sta_ds->mld_addr);
 		sta_ds->mlmStaContext.owe_ie = NULL;
 		sta_ds->mlmStaContext.owe_ie_len = 0;
 		sta_ds->mlmStaContext.ft_ie = NULL;
@@ -10381,6 +10411,12 @@ static void lim_process_update_add_ies(struct mac_context *mac_ctx,
 		pe_err("msg_buf is NULL");
 		return;
 	}
+
+	if (update_add_ies->updateType == eUPDATE_IE_EDCA_ALL_PROFILE) {
+		sch_edca_profile_update_all(mac_ctx);
+		return;
+	}
+
 	update_ie = &update_add_ies->updateIE;
 	/* incoming message has smeSession, use BSSID to find PE session */
 	session_entry = pe_find_session_by_bssid(mac_ctx,
