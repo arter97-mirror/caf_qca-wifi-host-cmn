@@ -570,17 +570,6 @@ struct pdev_crypto {
 };
 
 /**
- * wlan_crypto_add_key_entry() - Add a filled key entry to the hashing
- * framework
- * @psoc: PSOC pointer
- * @new_entry: New entry
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS wlan_crypto_add_key_entry(struct wlan_objmgr_psoc *psoc,
-				     struct wlan_crypto_key_entry *new_entry);
-
-/**
  * crypto_add_entry - add key entry to hashing framework
  * @psoc: psoc handler
  * @link_id: link id
