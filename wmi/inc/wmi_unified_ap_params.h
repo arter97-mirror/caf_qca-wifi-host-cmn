@@ -1402,10 +1402,12 @@ struct wmi_tx_pkt_cap_custom_classify_info {
  *                                  get STA context using WMI event
  * @WMI_HOST_VBSS_SET_PEER_CONTEXT: This indicates Peer dynamic context needs
  *                                  to be confirured and make VBSS active
+ * @WMI_HOST_VBSS_SUSPEND_PEER_RX: This indicates to suspend peer Rx context
  */
 enum wmi_host_vbss_action {
 	WMI_HOST_VBSS_GET_PEER_CONTEXT  = 0x1,
 	WMI_HOST_VBSS_SET_PEER_CONTEXT = 0x2,
+	WMI_HOST_VBSS_SUSPEND_PEER_RX = 0x3,
 };
 
 /**
