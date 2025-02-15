@@ -10343,6 +10343,10 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 		dp_pdev_print_tx_delay_stats(soc);
 		break;
 
+	case CDP_DP_LAPB_STATS:
+		wlan_dp_lapb_display_stats(soc);
+		break;
+
 	default:
 		status = QDF_STATUS_E_INVAL;
 		break;
@@ -10584,6 +10588,10 @@ QDF_STATUS dp_txrx_clear_dump_stats(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 
 	case CDP_DP_TX_HW_LATENCY_STATS:
 		dp_pdev_clear_tx_delay_stats(soc);
+		break;
+
+	case CDP_DP_LAPB_STATS:
+		wlan_dp_lapb_clear_stats(soc);
 		break;
 
 	default:
@@ -14039,17 +14047,12 @@ dp_bucket_index(uint32_t delay, uint16_t *array, bool delay_in_us)
 	return (CDP_DELAY_BUCKET_MAX - 1);
 }
 
-#ifdef HW_TX_DELAY_STATS_ENABLE
 /*
  * cdp_fw_to_hw_delay_range
  * Fw to hw delay ranges in milliseconds
  */
 static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
-	0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 250, 500};
-#else
-static uint16_t cdp_fw_to_hw_delay[CDP_DELAY_BUCKET_MAX] = {
 	0, 2, 4, 6, 8, 10, 20, 30, 40, 50, 100, 250, 500};
-#endif
 
 /*
  * cdp_sw_enq_delay_range
@@ -14064,6 +14067,25 @@ static uint16_t cdp_sw_enq_delay[CDP_DELAY_BUCKET_MAX] = {
  */
 static uint16_t cdp_intfrm_delay[CDP_DELAY_BUCKET_MAX] = {
 	0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60};
+
+#ifdef HW_TX_DELAY_STATS_ENABLE
+static inline
+void dp_check_bucket_list_overflow(struct cdp_delay_stats *delay_stat,
+				   uint8_t delay_index)
+{
+	if (qdf_likely(delay_stat->delay_bucket[delay_index] < UINT_MAX))
+		return;
+
+	dp_debug_rl("delay_stat overflow detected: bin:%u", delay_index);
+	qdf_mem_zero(delay_stat, sizeof(struct cdp_delay_stats));
+}
+#else
+static inline
+void dp_check_bucket_list_overflow(struct cdp_delay_stats *delay_stat,
+				   uint8_t delay_index)
+{
+}
+#endif
 
 /**
  * dp_fill_delay_buckets() - Fill delay statistics bucket for each
@@ -14109,8 +14131,9 @@ dp_fill_delay_buckets(struct cdp_tid_tx_stats *tstats,
 
 		delay_index = dp_bucket_index(delay, cdp_fw_to_hw_delay,
 					      delay_in_us);
-		tstats->hwtx_delay.delay_bucket[delay_index]++;
 		stats = &tstats->hwtx_delay;
+		dp_check_bucket_list_overflow(stats, delay_index);
+		tstats->hwtx_delay.delay_bucket[delay_index]++;
 		break;
 
 	/* Interframe tx delay ranges */
@@ -14173,7 +14196,7 @@ void dp_update_delay_stats(struct cdp_tid_tx_stats *tstats,
 		 * Compute minimum,average and maximum
 		 * delay
 		 */
-		if (delay < dstats->min_delay)
+		if (!dstats->min_delay || (delay < dstats->min_delay))
 			dstats->min_delay = delay;
 
 		if (delay > dstats->max_delay)
