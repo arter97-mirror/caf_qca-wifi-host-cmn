@@ -1110,6 +1110,13 @@ struct dp_ring_ppdu_id_tracker {
 	int32_t status_hw_tp;
 };
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+struct dp_mon_mac_link_info {
+	union dp_align_mac_addr self_link_addr;
+	uint32_t freq;
+};
+#endif
+
 struct dp_mon_mac {
 	/* mac id */
 	uint8_t mac_id;
@@ -1349,6 +1356,10 @@ struct  dp_mon_pdev {
 	bool mon_fcs_cap;
 	uint8_t mu_sniffer_enabled;
 	uint8_t mon_version;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	struct dp_mon_mac_link_info link_info[DP_MAX_MLO_LINKS];
+	uint32_t num_links;
+#endif
 };
 
 struct  dp_mon_vdev {

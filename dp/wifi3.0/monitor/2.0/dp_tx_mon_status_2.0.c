@@ -1222,9 +1222,22 @@ dp_tx_mon_generated_response_frm(struct dp_pdev *pdev,
 		return QDF_STATUS_E_NOMEM;
 
 	tx_mon_be = dp_mon_pdev_get_tx_mon(mon_pdev_be, mac_id);
-
 	tx_status_info = &tx_mon_be->data_status_info;
 	gen_response = TXMON_STATUS_INFO(tx_status_info, generated_response);
+
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	if (TXMON_PPDU_COM(tx_ppdu_info, chan_freq) == 0) {
+		for (int i = 0; i < mon_pdev->num_links; i++) {
+			if (qdf_mem_cmp(TXMON_STATUS_INFO(tx_status_info, addr2),
+					mon_pdev->link_info[i].self_link_addr.raw,
+					QDF_MAC_ADDR_SIZE) == 0) {
+				TXMON_PPDU_COM(tx_ppdu_info, chan_freq) =
+				mon_pdev->link_info[i].freq;
+				break;
+			}
+		}
+	}
+#endif
 
 	switch (gen_response) {
 	case TXMON_GEN_RESP_SELFGEN_ACK:
