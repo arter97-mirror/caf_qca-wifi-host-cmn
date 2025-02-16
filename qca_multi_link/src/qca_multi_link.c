@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1505,9 +1505,9 @@ set_prim_dev:
 			 * Find the AP vap corresponding to the station vap.
 			 */
 			if (mld_ndev)
-				ap_dev = qca_multi_link_tbl_find_sta_or_ap(mld_ndev, 0);
+				ap_dev = qca_multi_link_tbl_find_ap(mld_ndev);
 			else
-				ap_dev = qca_multi_link_tbl_find_sta_or_ap(sta_dev, 0);
+				ap_dev = qca_multi_link_tbl_find_ap(sta_dev);
 
 			if (!ap_dev) {
 				QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,
