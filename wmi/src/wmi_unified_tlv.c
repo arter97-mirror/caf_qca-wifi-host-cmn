@@ -15620,10 +15620,33 @@ extract_num_max_mlo_link(wmi_service_ready_ext2_event_fixed_param *ev,
 		  param->num_max_mlo_link_per_ml_bss_supp,
 		  param->num_max_mlo_link_per_ml_sap_supp);
 }
+
+static inline void
+extract_num_max_bss(struct wlan_psoc_host_service_ext2_param *param,
+		    uint32_t target_cap_flag)
+{
+	param->max_ml_sap_num_bss =
+		WMI_TARGET_CAP_MAX_ML_SAP_BSS_NUM_GET(target_cap_flag);
+	param->max_ml_sta_num_bss =
+		WMI_TARGET_CAP_MAX_ML_STA_BSS_NUM_GET(target_cap_flag);
+	param->max_ml_bss_num =
+		WMI_TARGET_CAP_MAX_ML_BSS_NUM_GET(target_cap_flag);
+
+	wmi_debug("Firmware num bss: %d (sap) %d (sta) %d (max)",
+		  param->max_ml_sap_num_bss,
+		  param->max_ml_sta_num_bss,
+		  param->max_ml_bss_num);
+}
 #else
 static inline void
 extract_num_max_mlo_link(wmi_service_ready_ext2_event_fixed_param *ev,
 			 struct wlan_psoc_host_service_ext2_param *param)
+{
+}
+
+static inline void
+extract_num_max_bss(struct wlan_psoc_host_service_ext2_param *param,
+		    uint32_t target_cap_flag)
 {
 }
 #endif
@@ -15799,6 +15822,8 @@ extract_service_ready_ext2_tlv(wmi_unified_t wmi_handle, uint8_t *event,
 	extract_hw_bdf_status(ev);
 
 	extract_num_max_mlo_link(ev, param);
+
+	extract_num_max_bss(param, ev->target_cap_flags);
 
 	param->num_aux_dev_caps = param_buf->num_aux_dev_caps;
 

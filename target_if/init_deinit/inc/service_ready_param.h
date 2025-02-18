@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -583,6 +583,9 @@ struct twt_wake_dur_and_wake_intvl {
  * @cert_wifi_gen: Supported WFA certified WiFi generations
  * @twt_wake_dur_and_intvl: min/max TWT wake duration and wake interval
  * received from firmware
+ * @max_ml_sap_num_bss: Max sap bss
+ * @max_ml_sta_num_bss: Max sta bss
+ * @max_ml_bss_num: Max ML bss
  */
 struct wlan_psoc_host_service_ext2_param {
 	uint8_t reg_db_version_major;
@@ -632,6 +635,9 @@ struct wlan_psoc_host_service_ext2_param {
 	uint8_t supp_wifi_gen;
 	uint8_t cert_wifi_gen;
 	struct twt_wake_dur_and_wake_intvl twt_wake_dur_and_intvl;
+	uint8_t max_ml_sap_num_bss;
+	uint8_t max_ml_sta_num_bss;
+	uint8_t	max_ml_bss_num;
 };
 
 #endif /* _SERVICE_READY_PARAM_H_*/
