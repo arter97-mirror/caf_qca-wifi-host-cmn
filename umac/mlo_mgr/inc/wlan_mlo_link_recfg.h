@@ -224,8 +224,12 @@ struct link_switch_rsp {
 	QDF_STATUS status;
 };
 
-/* WLAN_LINK_RECFG_SM_EV_ADD_CONN_RSP */
+/* struct add_link_conn_resp - event data of
+ * WLAN_LINK_RECFG_SM_EV_ADD_CONN_RSP
+ * @status: connect resp status code
+ */
 struct add_link_conn_rsp {
+	QDF_STATUS status;
 };
 
 /* WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND */
@@ -588,6 +592,21 @@ mlo_link_recfg_linksw_start_indication(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS
 mlo_link_recfg_linksw_completion_indication(struct wlan_objmgr_vdev *vdev,
 					    QDF_STATUS comp_status);
+
+/**
+ * mlo_link_recfg_add_connect_done_indication() - Delivers link add connect
+ * completion event
+ * @vdev: vdev
+ * @comp_status: link add connect completion status
+ *
+ * API to dispatch Link add connect completion event to reconfig sm.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_link_recfg_add_connect_done_indication(
+				struct wlan_objmgr_vdev *vdev,
+				QDF_STATUS comp_status);
 
 QDF_STATUS
 mlo_link_recfg_create_transition_list(

@@ -213,6 +213,11 @@ bool wlan_cm_is_vdev_roaming(struct wlan_objmgr_vdev *vdev)
 	return cm_is_vdev_roaming(vdev);
 }
 
+bool wlan_cm_is_link_add_connecting(struct wlan_objmgr_vdev *vdev)
+{
+	return cm_is_link_add_cmd_active(vdev);
+}
+
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 bool wlan_cm_is_vdev_roam_started(struct wlan_objmgr_vdev *vdev)
 {
@@ -276,6 +281,11 @@ bool wlan_cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp)
 	return cm_is_link_switch_connect_resp(resp);
 }
 
+bool wlan_cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp)
+{
+	return cm_is_link_add_connect_resp(resp);
+}
+
 void wlan_cm_trigger_panic_on_cmd_timeout(struct wlan_objmgr_vdev *vdev,
 					  enum qdf_hang_reason reason)
 {
@@ -289,6 +299,12 @@ bool wlan_cm_get_active_reassoc_req(struct wlan_objmgr_vdev *vdev,
 	return cm_get_active_reassoc_req(vdev, req);
 }
 #endif
+
+void wlan_cm_reset_active_cm_id(struct wlan_objmgr_vdev *vdev,
+				wlan_cm_id cm_id)
+{
+	cm_reset_active_cm_id(vdev, cm_id);
+}
 
 bool wlan_cm_get_active_disconnect_req(struct wlan_objmgr_vdev *vdev,
 				       struct wlan_cm_vdev_discon_req *req)

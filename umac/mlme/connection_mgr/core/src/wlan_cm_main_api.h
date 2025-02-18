@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,6 +33,9 @@
 #include <scheduler_api.h>
 #endif
 #include <wlan_cp_stats_chipset_stats.h>
+
+#define CM_ID_LSWITCH_BIT 0x10000000
+#define CM_ID_LINKADD_BIT 0x20000000
 
 #define CONNECT_REQ_PREFIX          0x0C000000
 #define DISCONNECT_REQ_PREFIX       0x0D000000
@@ -710,6 +713,21 @@ static inline bool cm_is_link_switch_connect_req(struct cm_connect_req *req)
 }
 
 /**
+ * cm_is_link_add_connect_req() - API to check if connect request
+ * is for link add
+ * @req: connect request
+ *
+ * Return true if the request for connection is due to link add in link
+ * recfg or else return false.
+ *
+ * Return: bool
+ */
+static inline bool cm_is_link_add_connect_req(struct cm_connect_req *req)
+{
+	return req->req.source == CM_MLO_LINK_ADD_CONNECT;
+}
+
+/**
  * cm_is_link_switch_disconnect_req() - API to check if disconnect request is
  * for link switch.
  * @req: Disconnect request.
@@ -770,6 +788,47 @@ cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp)
 {
 	return cm_is_link_switch_cmd(resp->cm_id);
 }
+
+/**
+ * cm_is_link_add_cmd() - Check if CM ID is for link add connect request
+ * @cm_id: Connect manager request ID
+ *
+ * Return true if the bit corresponding to link add is set for @cm_id or
+ * else return false;
+ *
+ * Return: bool
+ */
+static inline bool cm_is_link_add_cmd(wlan_cm_id cm_id)
+{
+	return cm_id & CM_ID_LINKADD_BIT;
+}
+
+/**
+ * cm_is_link_add_connect_resp() - API to check if the connect response
+ * is for link add connect
+ * @resp: Connect response
+ *
+ * Return true if connect response is for link add or else return false.
+ *
+ * Return: bool
+ */
+static inline bool
+cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp)
+{
+	return cm_is_link_add_cmd(resp->cm_id);
+}
+
+/**
+ * cm_is_link_add_cmd_active() - API to check if current connect mgr
+ * Active request is link add
+ * @vdev: vdev object
+ *
+ * Return true if current connection mgr active request is link add or
+ * else return false.
+ *
+ * Return: bool
+ */
+bool cm_is_link_add_cmd_active(struct wlan_objmgr_vdev *vdev);
 #else
 static inline void cm_store_wep_key(struct cnx_mgr *cm_ctx,
 				    struct wlan_cm_connect_req *req,
@@ -811,6 +870,11 @@ static inline bool cm_is_link_switch_connect_req(struct cm_connect_req *req)
 	return false;
 }
 
+static inline bool cm_is_link_add_connect_req(struct cm_connect_req *req)
+{
+	return false;
+}
+
 static inline bool
 cm_is_link_switch_disconnect_req(struct cm_disconnect_req *req)
 {
@@ -830,6 +894,18 @@ cm_is_link_switch_disconnect_resp(struct wlan_cm_discon_rsp *resp)
 
 static inline bool
 cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp)
+{
+	return false;
+}
+
+static inline bool
+cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp)
+{
+	return false;
+}
+
+static inline bool
+cm_is_link_add_cmd_active(struct wlan_objmgr_vdev *vdev)
 {
 	return false;
 }

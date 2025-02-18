@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -225,6 +225,12 @@ void hif_target_register_tbl_attach(struct hif_softc *scn, u32 target_type)
 		scn->target_ce_def = KIWI_CE_TARGETdef;
 		hif_info("TARGET_TYPE_PEACH");
 		break;
+
+	case TARGET_TYPE_FIG:
+		scn->targetdef = KIWI_TARGETdef;
+		scn->target_ce_def = KIWI_CE_TARGETdef;
+		hif_info("TARGET_TYPE_FIG");
+		break;
 #endif /* KIWI_HEADERS_DEF */
 
 #if defined(QCA6750_HEADERS_DEF)
@@ -417,6 +423,11 @@ void hif_register_tbl_attach(struct hif_softc *scn, u32 hif_type)
 	case HIF_TYPE_PEACH:
 		scn->hostdef = KIWI_HOSTdef;
 		hif_info("HIF_TYPE_PEACH");
+		break;
+
+	case HIF_TYPE_FIG:
+		scn->hostdef = KIWI_HOSTdef;
+		hif_info("HIF_TYPE_FIG");
 		break;
 #endif /* KIWI_HEADERS_DEF */
 

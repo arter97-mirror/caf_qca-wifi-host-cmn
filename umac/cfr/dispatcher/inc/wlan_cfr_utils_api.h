@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -129,6 +129,7 @@ enum cfrradiotype {
 	CFR_CAPTURE_RADIO_EVROS,
 	CFR_CAPTURE_RADIO_ORNE,
 	CFR_CAPTURE_RADIO_COLOGNE,
+	CFR_CAPTURE_RADIO_FIG,
 	CFR_CAPTURE_RADIO_MAX = 0xFF,
 };
 

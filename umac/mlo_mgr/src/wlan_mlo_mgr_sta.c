@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1590,6 +1590,11 @@ void mlo_sta_link_connect_notify(struct wlan_objmgr_vdev *vdev,
 		return;
 	}
 
+	if (wlan_cm_is_link_add_connect_resp(rsp)) {
+		mlo_info("Skip for link_add connect request");
+		return;
+	}
+
 	if (mlo_sta_ignore_link_connect_fail(vdev))
 		return;
 
@@ -2097,6 +2102,214 @@ void mlo_get_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 		*assoc_rsp_frame = sta_ctx->assoc_rsp;
 		return;
 	}
+}
+
+QDF_STATUS mlo_get_cache_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
+					uint8_t link_id,
+					struct element_info *link_assoc_rsp)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
+	struct wlan_mlo_sta *sta_ctx;
+	struct link_assoc_rsp_info *info;
+	uint8_t i;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
+
+	if (link_id == WLAN_INVALID_LINK_ID)
+		return QDF_STATUS_E_INVAL;
+
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo_dev_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	if (!mlo_dev_ctx->sta_ctx) {
+		mlo_dev_lock_release(mlo_dev_ctx);
+		mlo_err("invalid sta_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	sta_ctx = mlo_dev_ctx->sta_ctx;
+	for (i = 0; i < QDF_ARRAY_SIZE(sta_ctx->link_assoc_rsp_cache); i++) {
+		info = &sta_ctx->link_assoc_rsp_cache[i];
+		if (info->link_id != link_id)
+			continue;
+
+		if (!info->assoc_rsp.len || !info->assoc_rsp.ptr) {
+			mlo_debug("vdev %d link %d len %d in slot %d !",
+				  wlan_vdev_get_id(vdev), link_id,
+				  info->assoc_rsp.len, i);
+			break;
+		}
+		link_assoc_rsp->ptr =
+			qdf_mem_malloc(info->assoc_rsp.len);
+		if (!link_assoc_rsp->ptr)
+			break;
+		link_assoc_rsp->len = info->assoc_rsp.len;
+		qdf_mem_copy(link_assoc_rsp->ptr,
+			     info->assoc_rsp.ptr,
+			     info->assoc_rsp.len);
+		mlo_debug("vdev %d link %d get assc rsp len %d from slot %d",
+			  wlan_vdev_get_id(vdev), link_id,
+			  info->assoc_rsp.len, i);
+		status = QDF_STATUS_SUCCESS;
+		break;
+	}
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	return status;
+}
+
+QDF_STATUS mlo_free_cache_link_assoc_rsp(
+				struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
+	struct wlan_mlo_sta *sta_ctx;
+	struct link_assoc_rsp_info *info;
+	uint8_t i;
+
+	if (link_id == WLAN_INVALID_LINK_ID)
+		return QDF_STATUS_E_INVAL;
+
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo_dev_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	if (!mlo_dev_ctx->sta_ctx) {
+		mlo_dev_lock_release(mlo_dev_ctx);
+		mlo_err("invalid sta_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	sta_ctx = mlo_dev_ctx->sta_ctx;
+	for (i = 0; i < QDF_ARRAY_SIZE(sta_ctx->link_assoc_rsp_cache); i++) {
+		info = &sta_ctx->link_assoc_rsp_cache[i];
+		if (info->link_id != link_id)
+			continue;
+		info->link_id = WLAN_INVALID_LINK_ID;
+		if (info->assoc_rsp.ptr) {
+			qdf_mem_free(info->assoc_rsp.ptr);
+			info->assoc_rsp.ptr = NULL;
+		}
+		info->assoc_rsp.len = 0;
+		mlo_debug("vdev %d link %d free from slot %d",
+			  wlan_vdev_get_id(vdev), link_id, i);
+	}
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS mlo_update_cache_link_assoc_rsp(
+				struct wlan_objmgr_vdev *vdev,
+				uint8_t link_id,
+				struct element_info *assoc_rsp)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
+	struct wlan_mlo_sta *sta_ctx;
+	struct link_assoc_rsp_info *info;
+	uint8_t i;
+	int8_t free_slot = -1;
+
+	if (link_id == WLAN_INVALID_LINK_ID)
+		return QDF_STATUS_E_INVAL;
+
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo_dev_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	if (!mlo_dev_ctx->sta_ctx) {
+		mlo_dev_lock_release(mlo_dev_ctx);
+		mlo_err("invalid sta_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	sta_ctx = mlo_dev_ctx->sta_ctx;
+	for (i = 0; i < QDF_ARRAY_SIZE(sta_ctx->link_assoc_rsp_cache); i++) {
+		info = &sta_ctx->link_assoc_rsp_cache[i];
+		if (info->link_id == link_id)
+			break;
+		if (info->link_id == WLAN_INVALID_LINK_ID &&
+		    free_slot == -1) {
+			free_slot = i;
+			mlo_debug("find free slot %d", i);
+		}
+	}
+
+	if (i == QDF_ARRAY_SIZE(sta_ctx->link_assoc_rsp_cache) &&
+	    free_slot == -1) {
+		mlo_dev_lock_release(mlo_dev_ctx);
+		mlo_err("no free slot, link id %d", link_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (i == QDF_ARRAY_SIZE(sta_ctx->link_assoc_rsp_cache)) {
+		i = free_slot;
+		info = &sta_ctx->link_assoc_rsp_cache[i];
+	}
+
+	if (info->assoc_rsp.ptr) {
+		qdf_mem_free(info->assoc_rsp.ptr);
+		info->assoc_rsp.ptr = NULL;
+	}
+	info->assoc_rsp.ptr = qdf_mem_malloc(assoc_rsp->len);
+	if (!info->assoc_rsp.ptr) {
+		mlo_dev_lock_release(mlo_dev_ctx);
+		mlo_err("no free mem, link id %d, len %d",
+			link_id, assoc_rsp->len);
+		return QDF_STATUS_E_INVAL;
+	}
+	wlan_vdev_get_bss_peer_mld_mac(vdev, &info->ap_mld_addr);
+	info->link_id = link_id;
+	info->assoc_rsp.len = assoc_rsp->len;
+	qdf_mem_copy(info->assoc_rsp.ptr, assoc_rsp->ptr,
+		     assoc_rsp->len);
+	mlo_debug("vdev %d link %d rsp len %d updated to slot %d ap mld " QDF_MAC_ADDR_FMT "",
+		  wlan_vdev_get_id(vdev), link_id,
+		  assoc_rsp->len, i,
+		  QDF_MAC_ADDR_REF(info->ap_mld_addr.bytes));
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+mlo_reset_cache_link_assoc_rsp(struct wlan_mlo_dev_context *mlo_dev_ctx)
+{
+	struct wlan_mlo_sta *sta_ctx;
+	struct link_assoc_rsp_info *info;
+	uint8_t i;
+
+	if (!mlo_dev_ctx) {
+		mlo_err("invalid mlo_dev_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	if (!mlo_dev_ctx->sta_ctx) {
+		mlo_dev_lock_release(mlo_dev_ctx);
+		mlo_debug("sta_ctx not present");
+		return QDF_STATUS_E_INVAL;
+	}
+	mlo_debug("reset link assoc rsp cache");
+	sta_ctx = mlo_dev_ctx->sta_ctx;
+	for (i = 0; i < QDF_ARRAY_SIZE(sta_ctx->link_assoc_rsp_cache); i++) {
+		info = &sta_ctx->link_assoc_rsp_cache[i];
+		info->link_id = WLAN_INVALID_LINK_ID;
+		if (info->assoc_rsp.ptr) {
+			qdf_mem_free(info->assoc_rsp.ptr);
+			info->assoc_rsp.ptr = NULL;
+		}
+		info->assoc_rsp.len = 0;
+	}
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS mlo_sta_save_quiet_status(struct wlan_mlo_dev_context *mlo_dev_ctx,

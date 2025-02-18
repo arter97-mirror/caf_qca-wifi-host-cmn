@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -268,6 +268,24 @@ bool wlan_cm_is_link_switch_disconnect_resp(struct wlan_cm_discon_rsp *resp);
 bool wlan_cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp);
 
 /**
+ * wlan_cm_is_link_add_connect_resp() - Check if the connect response if for
+ * link add request.
+ * @resp: Connection manager connect response.
+ *
+ * Return: bool
+ */
+bool wlan_cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp);
+
+/**
+ * wlan_cm_is_link_add_connecting() - Check if link add connecting request
+ * is active on vdev
+ * @vdev: vdev object
+ *
+ * Return: bool
+ */
+bool wlan_cm_is_link_add_connecting(struct wlan_objmgr_vdev *vdev);
+
+/**
  * wlan_cm_trigger_panic_on_cmd_timeout() - Trigger recovery on CM command
  * timeout.
  * @vdev: VDEV object manager
@@ -307,6 +325,16 @@ bool wlan_cm_is_vdev_roam_sync_inprogress(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 #endif
+
+/**
+ * wlan_cm_reset_active_cm_id() - reset active cm id
+ * @vdev: vdev object
+ * @cm_id: Reset active cm id if cm id match
+ *
+ * Return: void
+ */
+void wlan_cm_reset_active_cm_id(struct wlan_objmgr_vdev *vdev,
+				wlan_cm_id cm_id);
 
 #ifdef WLAN_FEATURE_HOST_ROAM
 /**

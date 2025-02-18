@@ -108,8 +108,8 @@
 #define UNIFIED_WBM_RELEASE_RING_6_TX_RATE_STATS_INFO_TX_RATE_STATS_LSB \
 	WBM2SW_COMPLETION_RING_TX_TX_RATE_STATS_PPDU_TRANSMISSION_TSF_LSB
 
-#include "hal_peach_tx.h"
-#include "hal_peach_rx.h"
+#include "hal_fig_tx.h"
+#include "hal_fig_rx.h"
 
 #include "hal_be_rx_tlv.h"
 
@@ -130,25 +130,28 @@
 
 #define FW_QTIME_CYCLES_PER_10_USEC 192
 #endif
-
-struct wbm2sw_completion_ring_tx gwbm2sw_tx_comp_symbol __attribute__((used));
+#if 0 /* TODO: Fix completion ring */
+/* TODO: Fix completion ring */
+struct tqm2sw_completion_ring tqm2sw_tx_comp_symbol __attribute__((used));
+/* TODO check and remove */
 struct wbm2sw_completion_ring_rx gwbm2sw_rx_comp_symbol __attribute__((used));
+#endif
 
-static uint32_t hal_get_link_desc_size_peach(void)
+static uint32_t hal_get_link_desc_size_fig(void)
 {
 	return LINK_DESC_SIZE;
 }
 
 #ifdef CONFIG_WORD_BASED_TLV
 /**
- * hal_rx_dump_msdu_end_tlv_peach() - dump RX msdu_end TLV in structured
+ * hal_rx_dump_msdu_end_tlv_fig() - dump RX msdu_end TLV in structured
  *			     human readable format.
  * @msduend: pointer the msdu_end TLV in pkt.
  * @dbg_level: log level.
  *
  * Return: void
  */
-static void hal_rx_dump_msdu_end_tlv_peach(void *msduend,
+static void hal_rx_dump_msdu_end_tlv_fig(void *msduend,
 					  uint8_t dbg_level)
 {
 	struct rx_msdu_end_compact *msdu_end =
@@ -411,14 +414,14 @@ static void hal_rx_dump_msdu_end_tlv_peach(void *msduend,
 }
 
 /**
- * hal_rx_dump_mpdu_start_tlv_peach(): dump RX mpdu_start TLV in structured
+ * hal_rx_dump_mpdu_start_tlv_fig(): dump RX mpdu_start TLV in structured
  *			       human readable format.
  * @mpdustart: pointer the rx_attention TLV in pkt.
  * @dbg_level: log level.
  *
  * Return: void
  */
-static inline void hal_rx_dump_mpdu_start_tlv_peach(void *mpdustart,
+static inline void hal_rx_dump_mpdu_start_tlv_fig(void *mpdustart,
 						   uint8_t dbg_level)
 {
 	struct rx_mpdu_start_compact *mpdu_info =
@@ -565,7 +568,7 @@ static inline void hal_rx_dump_mpdu_start_tlv_peach(void *mpdustart,
 		       mpdu_info->mpdu_sequence_control_field);
 }
 #else
-static void hal_rx_dump_msdu_end_tlv_peach(void *msduend,
+static void hal_rx_dump_msdu_end_tlv_fig(void *msduend,
 					  uint8_t dbg_level)
 {
 	struct rx_msdu_end *msdu_end = (struct rx_msdu_end *)msduend;
@@ -890,7 +893,7 @@ static void hal_rx_dump_msdu_end_tlv_peach(void *msduend,
 			msdu_end->msdu_done);
 }
 
-static inline void hal_rx_dump_mpdu_start_tlv_peach(void *mpdustart,
+static inline void hal_rx_dump_mpdu_start_tlv_fig(void *mpdustart,
 						   uint8_t dbg_level)
 {
 	struct rx_mpdu_start *mpdu_start = (struct rx_mpdu_start *)mpdustart;
@@ -1111,12 +1114,12 @@ static inline void hal_rx_dump_mpdu_start_tlv_peach(void *mpdustart,
 #endif
 
 /**
- * hal_rx_peer_meta_data_get_peach() - get peer meta data from rx_pkt_tlvs
+ * hal_rx_peer_meta_data_get_fig() - get peer meta data from rx_pkt_tlvs
  * @buf: start of rx_tlv_hdr
  *
  * Return: peer meta data
  */
-static inline uint32_t hal_rx_peer_meta_data_get_peach(uint8_t *buf)
+static inline uint32_t hal_rx_peer_meta_data_get_fig(uint8_t *buf)
 {
 	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 
@@ -1124,14 +1127,14 @@ static inline uint32_t hal_rx_peer_meta_data_get_peach(uint8_t *buf)
 }
 
 /**
- * hal_rx_hw_desc_get_ppduid_get_peach() - retrieve ppdu id
+ * hal_rx_hw_desc_get_ppduid_get_fig() - retrieve ppdu id
  * @rx_tlv_hdr: start address of rx_pkt_tlvs
  * @rxdma_dst_ring_desc: Rx HW descriptor
  *
  * Return: ppdu id
  */
 static inline uint32_t
-hal_rx_hw_desc_get_ppduid_get_peach(void *rx_tlv_hdr,
+hal_rx_hw_desc_get_ppduid_get_fig(void *rx_tlv_hdr,
 				    void *rxdma_dst_ring_desc)
 {
 	struct rx_pkt_tlvs *rx_pkt_tlvs =
@@ -1141,13 +1144,13 @@ hal_rx_hw_desc_get_ppduid_get_peach(void *rx_tlv_hdr,
 }
 
 /**
- * hal_rx_mpdu_info_ampdu_flag_get_peach() - get ampdu flag bit
+ * hal_rx_mpdu_info_ampdu_flag_get_fig() - get ampdu flag bit
  * from rx mpdu info
  * @buf: pointer to rx_pkt_tlvs
  *
  * Return: ampdu flag
  */
-static inline bool hal_rx_mpdu_info_ampdu_flag_get_peach(uint8_t *buf)
+static inline bool hal_rx_mpdu_info_ampdu_flag_get_fig(uint8_t *buf)
 {
 	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 
@@ -1155,13 +1158,13 @@ static inline bool hal_rx_mpdu_info_ampdu_flag_get_peach(uint8_t *buf)
 }
 
 /**
- * hal_rx_tlv_l3_type_get_peach() - API to get the l3 type from
+ * hal_rx_tlv_l3_type_get_fig() - API to get the l3 type from
  *                               rx_msdu_start TLV
  * @buf: pointer to the start of RX PKT TLV headers
  *
  * Return: uint32_t(l3 type)
  */
-static inline uint32_t hal_rx_tlv_l3_type_get_peach(uint8_t *buf)
+static inline uint32_t hal_rx_tlv_l3_type_get_fig(uint8_t *buf)
 {
 	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 
@@ -1170,7 +1173,7 @@ static inline uint32_t hal_rx_tlv_l3_type_get_peach(uint8_t *buf)
 
 #ifdef CONFIG_WORD_BASED_TLV
 /**
- * hal_rx_priv_info_set_in_tlv_peach() - Save the private info to
+ * hal_rx_priv_info_set_in_tlv_fig() - Save the private info to
  *                             the reserved bytes of rx_tlv_hdr
  * @buf: start of rx_tlv_hdr
  * @priv_data: hal_wbm_err_desc_info structure
@@ -1178,7 +1181,7 @@ static inline uint32_t hal_rx_tlv_l3_type_get_peach(uint8_t *buf)
  *
  * Return: void
  */
-static inline void hal_rx_priv_info_set_in_tlv_peach(uint8_t *buf,
+static inline void hal_rx_priv_info_set_in_tlv_fig(uint8_t *buf,
 						     uint8_t *priv_data,
 						     uint32_t len)
 {
@@ -1191,7 +1194,7 @@ static inline void hal_rx_priv_info_set_in_tlv_peach(uint8_t *buf,
 }
 
 /**
- * hal_rx_priv_info_get_from_tlv_peach() - retrieve the private data from
+ * hal_rx_priv_info_get_from_tlv_fig() - retrieve the private data from
  *                             the reserved bytes of rx_tlv_hdr.
  * @buf: start of rx_tlv_hdr
  * @priv_data: Handle to get the private data, output parameter.
@@ -1199,7 +1202,7 @@ static inline void hal_rx_priv_info_set_in_tlv_peach(uint8_t *buf,
  *
  * Return: void
  */
-static inline void hal_rx_priv_info_get_from_tlv_peach(uint8_t *buf,
+static inline void hal_rx_priv_info_get_from_tlv_fig(uint8_t *buf,
 						       uint8_t *priv_data,
 						       uint32_t len)
 {
@@ -1213,14 +1216,14 @@ static inline void hal_rx_priv_info_get_from_tlv_peach(uint8_t *buf,
 }
 
 /**
- * hal_rx_tlv_get_freq_peach() - API to get the frequency of operating
+ * hal_rx_tlv_get_freq_fig() - API to get the frequency of operating
  *                               channel from rx_msdu_start
  * @buf: pointer to the start of RX PKT TLV header
  *
  * Return: uint32_t(frequency)
  */
 
-static inline uint32_t hal_rx_tlv_get_freq_peach(uint8_t *buf)
+static inline uint32_t hal_rx_tlv_get_freq_fig(uint8_t *buf)
 {
 	/* sw_phy_meta_data in rx_msdu_end is not subscribed */
 	hal_warn("sw_phy_meta_data is not subscribed");
@@ -1229,12 +1232,12 @@ static inline uint32_t hal_rx_tlv_get_freq_peach(uint8_t *buf)
 }
 
 /**
- * hal_rx_mpdu_start_sw_peer_id_get_peach() - Retrieve sw peer_id
+ * hal_rx_mpdu_start_sw_peer_id_get_fig() - Retrieve sw peer_id
  * @buf: network buffer
  *
  * Return: sw peer_id
  */
-static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_peach(uint8_t *buf)
+static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_fig(uint8_t *buf)
 {
 	/* sw_peer_id in rx_mpdu_start is not subscribed */
 	hal_warn("sw_peer_id is not subscribed");
@@ -1243,19 +1246,19 @@ static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_peach(uint8_t *buf)
 }
 
 /**
- * hal_rx_mpdu_start_tlv_tag_valid_peach() - API to check if RX_MPDU_START
+ * hal_rx_mpdu_start_tlv_tag_valid_fig() - API to check if RX_MPDU_START
  *                                           tlv tag is valid
  * @rx_tlv_hdr: start address of rx_pkt_tlvs
  *
  * Return: true if RX_MPDU_START is valid, else false.
  */
-static inline uint8_t hal_rx_mpdu_start_tlv_tag_valid_peach(void *rx_tlv_hdr)
+static inline uint8_t hal_rx_mpdu_start_tlv_tag_valid_fig(void *rx_tlv_hdr)
 {
 	/* RX TLV TAG is not subscribed */
 	return true;
 }
 #else
-static inline uint32_t hal_rx_tlv_get_freq_peach(uint8_t *buf)
+static inline uint32_t hal_rx_tlv_get_freq_fig(uint8_t *buf)
 {
 	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 	uint32_t freq;
@@ -1265,7 +1268,7 @@ static inline uint32_t hal_rx_tlv_get_freq_peach(uint8_t *buf)
 	return freq;
 }
 
-static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_peach(uint8_t *buf)
+static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_fig(uint8_t *buf)
 {
 	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 
@@ -1274,13 +1277,13 @@ static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_peach(uint8_t *buf)
 #endif
 
 #ifdef NO_RX_PKT_HDR_TLV
-static inline void hal_rx_dump_pkt_hdr_tlv_peach(struct rx_pkt_tlvs *pkt_tlvs,
+static inline void hal_rx_dump_pkt_hdr_tlv_fig(struct rx_pkt_tlvs *pkt_tlvs,
 						uint8_t dbg_level)
 {
 }
 
 static inline
-void hal_register_rx_pkt_hdr_tlv_api_peach(struct hal_soc *hal_soc)
+void hal_register_rx_pkt_hdr_tlv_api_fig(struct hal_soc *hal_soc)
 {
 }
 
@@ -1302,13 +1305,13 @@ static uint8_t *hal_rx_desc_get_80211_hdr_be(void *hw_desc_addr)
 }
 
 /**
- * hal_rx_dump_pkt_hdr_tlv_peach() - dump RX pkt header TLV in hex format
+ * hal_rx_dump_pkt_hdr_tlv_fig() - dump RX pkt header TLV in hex format
  * @pkt_tlvs: pointer the pkt_hdr_tlv in pkt.
  * @dbg_level: log level.
  *
  * Return: void
  */
-static inline void hal_rx_dump_pkt_hdr_tlv_peach(struct rx_pkt_tlvs *pkt_tlvs,
+static inline void hal_rx_dump_pkt_hdr_tlv_fig(struct rx_pkt_tlvs *pkt_tlvs,
 						uint8_t dbg_level)
 {
 	struct rx_pkt_hdr_tlv *pkt_hdr_tlv = &pkt_tlvs->pkt_hdr_tlv;
@@ -1324,13 +1327,13 @@ static inline void hal_rx_dump_pkt_hdr_tlv_peach(struct rx_pkt_tlvs *pkt_tlvs,
 }
 
 /**
- * hal_register_rx_pkt_hdr_tlv_api_peach: register all rx_pkt_hdr_tlv related api
+ * hal_register_rx_pkt_hdr_tlv_api_fig: register all rx_pkt_hdr_tlv related api
  * @hal_soc: HAL soc handler
  *
  * Return: none
  */
 static inline
-void hal_register_rx_pkt_hdr_tlv_api_peach(struct hal_soc *hal_soc)
+void hal_register_rx_pkt_hdr_tlv_api_fig(struct hal_soc *hal_soc)
 {
 	hal_soc->ops->hal_rx_pkt_tlv_offset_get =
 				hal_rx_pkt_tlv_offset_get_generic;
@@ -1339,14 +1342,14 @@ void hal_register_rx_pkt_hdr_tlv_api_peach(struct hal_soc *hal_soc)
 
 #ifdef CONFIG_WORD_BASED_TLV
 /**
- * hal_rx_dump_pkt_tlvs_peach(): API to print RX Pkt TLVS for peach
+ * hal_rx_dump_pkt_tlvs_fig(): API to print RX Pkt TLVS for peach
  * @hal_soc_hdl: hal_soc handle
  * @buf: pointer the pkt buffer
  * @dbg_level: log level
  *
  * Return: void
  */
-static void hal_rx_dump_pkt_tlvs_peach(hal_soc_handle_t hal_soc_hdl,
+static void hal_rx_dump_pkt_tlvs_fig(hal_soc_handle_t hal_soc_hdl,
 				       uint8_t *buf, uint8_t dbg_level)
 {
 	struct rx_pkt_tlvs *pkt_tlvs = (struct rx_pkt_tlvs *)buf;
@@ -1355,12 +1358,12 @@ static void hal_rx_dump_pkt_tlvs_peach(hal_soc_handle_t hal_soc_hdl,
 	struct rx_mpdu_start_compact *mpdu_start =
 				&pkt_tlvs->mpdu_start_tlv.rx_mpdu_start;
 
-	hal_rx_dump_msdu_end_tlv_peach(msdu_end, dbg_level);
-	hal_rx_dump_mpdu_start_tlv_peach(mpdu_start, dbg_level);
-	hal_rx_dump_pkt_hdr_tlv_peach(pkt_tlvs, dbg_level);
+	hal_rx_dump_msdu_end_tlv_fig(msdu_end, dbg_level);
+	hal_rx_dump_mpdu_start_tlv_fig(mpdu_start, dbg_level);
+	hal_rx_dump_pkt_hdr_tlv_fig(pkt_tlvs, dbg_level);
 }
 #else
-static void hal_rx_dump_pkt_tlvs_peach(hal_soc_handle_t hal_soc_hdl,
+static void hal_rx_dump_pkt_tlvs_fig(hal_soc_handle_t hal_soc_hdl,
 				       uint8_t *buf, uint8_t dbg_level)
 {
 	struct rx_pkt_tlvs *pkt_tlvs = (struct rx_pkt_tlvs *)buf;
@@ -1368,9 +1371,9 @@ static void hal_rx_dump_pkt_tlvs_peach(hal_soc_handle_t hal_soc_hdl,
 	struct rx_mpdu_start *mpdu_start =
 				&pkt_tlvs->mpdu_start_tlv.rx_mpdu_start;
 
-	hal_rx_dump_msdu_end_tlv_peach(msdu_end, dbg_level);
-	hal_rx_dump_mpdu_start_tlv_peach(mpdu_start, dbg_level);
-	hal_rx_dump_pkt_hdr_tlv_peach(pkt_tlvs, dbg_level);
+	hal_rx_dump_msdu_end_tlv_fig(msdu_end, dbg_level);
+	hal_rx_dump_mpdu_start_tlv_fig(mpdu_start, dbg_level);
+	hal_rx_dump_pkt_hdr_tlv_fig(pkt_tlvs, dbg_level);
 }
 #endif
 
@@ -1405,7 +1408,7 @@ hal_rx_get_mpdu_flags_from_tlv(hal_rx_mpdu_start_info_t *mpdu_info)
 }
 
 /**
- * hal_rx_tlv_populate_mpdu_desc_info_peach() - Populate the local mpdu_desc_info
+ * hal_rx_tlv_populate_mpdu_desc_info_fig() - Populate the local mpdu_desc_info
  *			elements from the rx tlvs
  * @buf: start address of rx tlvs [Validated by caller]
  * @mpdu_desc_info_hdl: Buffer to populate the mpdu_dsc_info
@@ -1414,7 +1417,7 @@ hal_rx_get_mpdu_flags_from_tlv(hal_rx_mpdu_start_info_t *mpdu_info)
  * Return: None
  */
 static void
-hal_rx_tlv_populate_mpdu_desc_info_peach(uint8_t *buf,
+hal_rx_tlv_populate_mpdu_desc_info_fig(uint8_t *buf,
 					void *mpdu_desc_info_hdl)
 {
 	struct hal_rx_mpdu_desc_info *mpdu_desc_info =
@@ -1430,7 +1433,7 @@ hal_rx_tlv_populate_mpdu_desc_info_peach(uint8_t *buf,
 }
 
 /**
- * hal_reo_status_get_header_peach() - Process reo desc info
+ * hal_reo_status_get_header_fig() - Process reo desc info
  * @ring_desc: Pointer to reo descriptor
  * @b: tlv type info
  * @h1: Pointer to hal_reo_status_header where info to be stored
@@ -1438,7 +1441,7 @@ hal_rx_tlv_populate_mpdu_desc_info_peach(uint8_t *buf,
  * Return: none.
  *
  */
-static void hal_reo_status_get_header_peach(hal_ring_desc_t ring_desc, int b,
+static void hal_reo_status_get_header_fig(hal_ring_desc_t ring_desc, int b,
 					   void *h1)
 {
 	uint32_t *d = (uint32_t *)ring_desc;
@@ -1533,54 +1536,54 @@ static void hal_reo_status_get_header_peach(hal_ring_desc_t ring_desc, int b,
 }
 
 static
-void *hal_rx_msdu0_buffer_addr_lsb_peach(void *link_desc_va)
+void *hal_rx_msdu0_buffer_addr_lsb_fig(void *link_desc_va)
 {
 	return (void *)HAL_RX_MSDU0_BUFFER_ADDR_LSB(link_desc_va);
 }
 
 static
-void *hal_rx_msdu_desc_info_ptr_get_peach(void *msdu0)
+void *hal_rx_msdu_desc_info_ptr_get_fig(void *msdu0)
 {
 	return (void *)HAL_RX_MSDU_DESC_INFO_PTR_GET(msdu0);
 }
 
 static
-void *hal_ent_mpdu_desc_info_peach(void *ent_ring_desc)
+void *hal_ent_mpdu_desc_info_fig(void *ent_ring_desc)
 {
 	return (void *)HAL_ENT_MPDU_DESC_INFO(ent_ring_desc);
 }
 
 static
-void *hal_dst_mpdu_desc_info_peach(void *dst_ring_desc)
+void *hal_dst_mpdu_desc_info_fig(void *dst_ring_desc)
 {
 	return (void *)HAL_DST_MPDU_DESC_INFO(dst_ring_desc);
 }
 
 /**
- * hal_rx_get_tlv_peach() - API to get the tlv
+ * hal_rx_get_tlv_fig() - API to get the tlv
  * @rx_tlv: TLV data extracted from the rx packet
  *
  * Return: uint8_t
  */
-static uint8_t hal_rx_get_tlv_peach(void *rx_tlv)
+static uint8_t hal_rx_get_tlv_fig(void *rx_tlv)
 {
 	return HAL_RX_GET(rx_tlv, PHYRX_RSSI_LEGACY, RECEIVE_BANDWIDTH);
 }
 
 /**
- * hal_rx_phy_legacy_get_rssi_peach() - API to get RSSI from TLV
+ * hal_rx_phy_legacy_get_rssi_fig() - API to get RSSI from TLV
  *                                     WIFIPHYRX_RSSI_LEGACY_E
  * @buf: pointer to the start of WIFIPHYRX_RSSI_LEGACY_E TLV
  *
  * Return: value of RSSI
  */
-static int8_t hal_rx_phy_legacy_get_rssi_peach(uint8_t *buf)
+static int8_t hal_rx_phy_legacy_get_rssi_fig(uint8_t *buf)
 {
 	return HAL_RX_GET(buf, PHYRX_RSSI_LEGACY, RSSI_COMB_PPDU);
 }
 
 /**
- * hal_rx_proc_phyrx_other_receive_info_tlv_peach()
+ * hal_rx_proc_phyrx_other_receive_info_tlv_fig()
  *				    - process other receive info TLV
  * @rx_tlv_hdr: pointer to TLV header
  * @ppdu_info_handle: pointer to ppdu_info
@@ -1588,7 +1591,7 @@ static int8_t hal_rx_phy_legacy_get_rssi_peach(uint8_t *buf)
  * Return: None
  */
 static
-void hal_rx_proc_phyrx_other_receive_info_tlv_peach(void *rx_tlv_hdr,
+void hal_rx_proc_phyrx_other_receive_info_tlv_fig(void *rx_tlv_hdr,
 						   void *ppdu_info_handle)
 {
 	uint32_t tlv_tag, tlv_len;
@@ -1617,7 +1620,7 @@ void hal_rx_proc_phyrx_other_receive_info_tlv_peach(void *rx_tlv_hdr,
 }
 
 /**
- * hal_reo_config_peach(): Set reo config parameters
+ * hal_reo_config_fig(): Set reo config parameters
  * @soc: hal soc handle
  * @reg_val: value to be set
  * @reo_params: reo parameters
@@ -1625,7 +1628,7 @@ void hal_rx_proc_phyrx_other_receive_info_tlv_peach(void *rx_tlv_hdr,
  * Return: void
  */
 static
-void hal_reo_config_peach(struct hal_soc *soc,
+void hal_reo_config_fig(struct hal_soc *soc,
 			 uint32_t reg_val,
 			 struct hal_reo_params *reo_params)
 {
@@ -1633,51 +1636,51 @@ void hal_reo_config_peach(struct hal_soc *soc,
 }
 
 /**
- * hal_rx_msdu_desc_info_get_ptr_peach() - Get msdu desc info ptr
+ * hal_rx_msdu_desc_info_get_ptr_fig() - Get msdu desc info ptr
  * @msdu_details_ptr: Pointer to msdu_details_ptr
  *
  * Return: Pointer to rx_msdu_desc_info structure.
  *
  */
-static void *hal_rx_msdu_desc_info_get_ptr_peach(void *msdu_details_ptr)
+static void *hal_rx_msdu_desc_info_get_ptr_fig(void *msdu_details_ptr)
 {
 	return HAL_RX_MSDU_DESC_INFO_GET(msdu_details_ptr);
 }
 
 /**
- * hal_rx_link_desc_msdu0_ptr_peach() - Get pointer to rx_msdu details
+ * hal_rx_link_desc_msdu0_ptr_fig() - Get pointer to rx_msdu details
  * @link_desc: Pointer to link desc
  *
  * Return: Pointer to rx_msdu_details structure
  *
  */
-static void *hal_rx_link_desc_msdu0_ptr_peach(void *link_desc)
+static void *hal_rx_link_desc_msdu0_ptr_fig(void *link_desc)
 {
 	return HAL_RX_LINK_DESC_MSDU0_PTR(link_desc);
 }
 
 /**
- * hal_get_window_address_peach(): Function to get hp/tp address
+ * hal_get_window_address_fig(): Function to get hp/tp address
  * @hal_soc: Pointer to hal_soc
  * @addr: address offset of register
  *
  * Return: modified address offset of register
  */
-static inline qdf_iomem_t hal_get_window_address_peach(struct hal_soc *hal_soc,
+static inline qdf_iomem_t hal_get_window_address_fig(struct hal_soc *hal_soc,
 						      qdf_iomem_t addr)
 {
 	return addr;
 }
 
 /**
- * hal_reo_set_err_dst_remap_peach(): Function to set REO error destination
+ * hal_reo_set_err_dst_remap_fig(): Function to set REO error destination
  *				     ring remap register
  * @hal_soc: Pointer to hal_soc
  *
  * Return: none.
  */
 static void
-hal_reo_set_err_dst_remap_peach(void *hal_soc)
+hal_reo_set_err_dst_remap_fig(void *hal_soc)
 {
 	/*
 	 * Set REO error 2k jump (error code 5) / OOR (error code 7)
@@ -1726,21 +1729,24 @@ hal_reo_set_err_dst_remap_peach(void *hal_soc)
 }
 
 /**
- * hal_reo_enable_pn_in_dest_peach() - Set the REO register to enable previous PN
+ * hal_reo_enable_pn_in_dest_fig() - Set the REO register to enable previous PN
  *				for OOR and 2K-jump frames
  * @hal_soc: HAL SoC handle
  *
  * Return: 1, since the register is set.
  */
-static uint8_t hal_reo_enable_pn_in_dest_peach(void *hal_soc)
+static uint8_t hal_reo_enable_pn_in_dest_fig(void *hal_soc)
 {
+#if 0
+/* NO PN in congo */
 	HAL_REG_WRITE(hal_soc, HWIO_REO_R0_PN_IN_DEST_ADDR(REO_REG_REG_BASE),
 		      1);
+#endif
 	return 1;
 }
 
 /**
- * hal_rx_flow_setup_fse_peach() - Setup a flow search entry in HW FST
+ * hal_rx_flow_setup_fse_fig() - Setup a flow search entry in HW FST
  * @rx_fst: Pointer to the Rx Flow Search Table
  * @table_offset: offset into the table where the flow is to be setup
  * @rx_flow: Flow Parameters
@@ -1750,7 +1756,7 @@ static uint8_t hal_reo_enable_pn_in_dest_peach(void *hal_soc)
  * Return: Success/Failure
  */
 static void *
-hal_rx_flow_setup_fse_peach(uint8_t *rx_fst, uint32_t table_offset,
+hal_rx_flow_setup_fse_fig(uint8_t *rx_fst, uint32_t table_offset,
 			   uint8_t *rx_flow)
 {
 	struct hal_rx_fst *fst = (struct hal_rx_fst *)rx_fst;
@@ -1854,7 +1860,7 @@ hal_rx_flow_setup_fse_peach(uint8_t *rx_fst, uint32_t table_offset,
 }
 
 static inline QDF_STATUS
-hal_rx_flow_delete_cmem_fse_peach(struct hal_soc *hal_soc, uint32_t cmem_ba,
+hal_rx_flow_delete_cmem_fse_fig(struct hal_soc *hal_soc, uint32_t cmem_ba,
 				  uint32_t table_offset)
 {
 	uint32_t fse_offset;
@@ -1872,7 +1878,7 @@ hal_rx_flow_delete_cmem_fse_peach(struct hal_soc *hal_soc, uint32_t cmem_ba,
 }
 
 /**
- * hal_rx_flow_setup_cmem_fse_peach() - Setup a flow search entry in HW CMEM FST
+ * hal_rx_flow_setup_cmem_fse_fig() - Setup a flow search entry in HW CMEM FST
  * @hal_soc: hal_soc reference
  * @cmem_ba: CMEM base address
  * @table_offset: offset into the table where the flow is to be setup
@@ -1881,7 +1887,7 @@ hal_rx_flow_delete_cmem_fse_peach(struct hal_soc *hal_soc, uint32_t cmem_ba,
  * Return: Success/Failure
  */
 static uint32_t
-hal_rx_flow_setup_cmem_fse_peach(struct hal_soc *hal_soc, uint32_t cmem_ba,
+hal_rx_flow_setup_cmem_fse_fig(struct hal_soc *hal_soc, uint32_t cmem_ba,
 				uint32_t table_offset, uint8_t *rx_flow)
 {
 	struct hal_rx_flow *flow = (struct hal_rx_flow *)rx_flow;
@@ -1969,13 +1975,13 @@ hal_rx_flow_setup_cmem_fse_peach(struct hal_soc *hal_soc, uint32_t cmem_ba,
 }
 
 /**
- * hal_rx_flow_get_cmem_fse_ts_peach() - Get timestamp field from CMEM FSE
+ * hal_rx_flow_get_cmem_fse_ts_fig() - Get timestamp field from CMEM FSE
  * @hal_soc: hal_soc reference
  * @fse_offset: CMEM FSE offset
  *
  * Return: Timestamp
  */
-static uint32_t hal_rx_flow_get_cmem_fse_ts_peach(struct hal_soc *hal_soc,
+static uint32_t hal_rx_flow_get_cmem_fse_ts_fig(struct hal_soc *hal_soc,
 						 uint32_t fse_offset)
 {
 	return HAL_CMEM_READ(hal_soc, fse_offset +
@@ -1983,7 +1989,7 @@ static uint32_t hal_rx_flow_get_cmem_fse_ts_peach(struct hal_soc *hal_soc,
 }
 
 /**
- * hal_rx_flow_get_cmem_fse_peach() - Get FSE from CMEM
+ * hal_rx_flow_get_cmem_fse_fig() - Get FSE from CMEM
  * @hal_soc: hal_soc reference
  * @fse_offset: CMEM FSE offset
  * @fse: reference where FSE will be copied
@@ -1992,7 +1998,7 @@ static uint32_t hal_rx_flow_get_cmem_fse_ts_peach(struct hal_soc *hal_soc,
  * Return: If read is successful or not
  */
 static void
-hal_rx_flow_get_cmem_fse_peach(struct hal_soc *hal_soc, uint32_t fse_offset,
+hal_rx_flow_get_cmem_fse_fig(struct hal_soc *hal_soc, uint32_t fse_offset,
 			      uint32_t *fse, qdf_size_t len)
 {
 	int i;
@@ -2005,7 +2011,7 @@ hal_rx_flow_get_cmem_fse_peach(struct hal_soc *hal_soc, uint32_t fse_offset,
 }
 
 static
-void hal_compute_reo_remap_ix2_ix3_peach(uint32_t *ring_map,
+void hal_compute_reo_remap_ix2_ix3_fig(uint32_t *ring_map,
 					uint32_t num_rings, uint32_t *remap1,
 					uint32_t *remap2)
 {
@@ -2093,27 +2099,27 @@ void hal_compute_reo_remap_ix2_ix3_peach(uint32_t *ring_map,
 }
 
 /* NUM TCL Bank registers in peach */
-#define HAL_NUM_TCL_BANKS_PEACH 8
+#define HAL_NUM_TCL_BANKS_FIG 8
 
 /**
- * hal_tx_get_num_tcl_banks_peach() - Get number of banks in target
+ * hal_tx_get_num_tcl_banks_fig() - Get number of banks in target
  *
  * Returns: number of bank
  */
-static uint8_t hal_tx_get_num_tcl_banks_peach(void)
+static uint8_t hal_tx_get_num_tcl_banks_fig(void)
 {
-	return HAL_NUM_TCL_BANKS_PEACH;
+	return HAL_NUM_TCL_BANKS_FIG;
 }
 
 /**
- * hal_rx_reo_prev_pn_get_peach() - Get the previous PN from the REO ring desc.
+ * hal_rx_reo_prev_pn_get_fig() - Get the previous PN from the REO ring desc.
  * @ring_desc: REO ring descriptor [To be validated by caller ]
  * @prev_pn: Buffer where the previous PN is to be populated.
  *		[To be validated by caller]
  *
  * Return: None
  */
-static void hal_rx_reo_prev_pn_get_peach(void *ring_desc,
+static void hal_rx_reo_prev_pn_get_fig(void *ring_desc,
 					uint64_t *prev_pn)
 {
 	struct reo_destination_ring_with_pn *reo_desc =
@@ -2124,14 +2130,14 @@ static void hal_rx_reo_prev_pn_get_peach(void *ring_desc,
 }
 
 /**
- * hal_cmem_write_peach() - function for CMEM buffer writing
+ * hal_cmem_write_fig() - function for CMEM buffer writing
  * @hal_soc_hdl: HAL SOC handle
  * @offset: CMEM address
  * @value: value to write
  *
  * Return: None.
  */
-static inline void hal_cmem_write_peach(hal_soc_handle_t hal_soc_hdl,
+static inline void hal_cmem_write_fig(hal_soc_handle_t hal_soc_hdl,
 				       uint32_t offset,
 				       uint32_t value)
 {
@@ -2141,19 +2147,19 @@ static inline void hal_cmem_write_peach(hal_soc_handle_t hal_soc_hdl,
 }
 
 /**
- * hal_get_idle_link_bm_id_peach() - Get idle link BM id from chid_id
+ * hal_get_idle_link_bm_id_fig() - Get idle link BM id from chid_id
  * @chip_id: mlo chip_id
  *
  * Returns: RBM ID
  */
-static uint8_t hal_get_idle_link_bm_id_peach(uint8_t chip_id)
+static uint8_t hal_get_idle_link_bm_id_fig(uint8_t chip_id)
 {
 	return WBM_IDLE_DESC_LIST;
 }
 
 #ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
 /**
- * hal_get_first_wow_wakeup_packet_peach(): Function to get if the buffer
+ * hal_get_first_wow_wakeup_packet_fig(): Function to get if the buffer
  * is the first one that wakes up host from WoW.
  *
  * @buf: network buffer
@@ -2163,7 +2169,7 @@ static uint8_t hal_get_idle_link_bm_id_peach(uint8_t chip_id)
  * Returns: 1 to indicate it is first packet received that wakes up host from
  *	    WoW. Otherwise 0
  */
-static inline uint8_t hal_get_first_wow_wakeup_packet_peach(uint8_t *buf)
+static inline uint8_t hal_get_first_wow_wakeup_packet_fig(uint8_t *buf)
 {
 	struct rx_pkt_tlvs *pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 
@@ -2171,26 +2177,26 @@ static inline uint8_t hal_get_first_wow_wakeup_packet_peach(uint8_t *buf)
 }
 #endif
 
-static uint16_t hal_get_rx_max_ba_window_peach(int tid)
+static uint16_t hal_get_rx_max_ba_window_fig(int tid)
 {
 	return HAL_RX_BA_WINDOW_1024;
 }
 
 /**
- * hal_get_reo_qdesc_size_peach()- Get the reo queue descriptor size
+ * hal_get_reo_qdesc_size_fig()- Get the reo queue descriptor size
  *				  from the give Block-Ack window size
  * @ba_window_size: Block-Ack window size
  * @tid: TID
  *
  * Return: reo queue descriptor size
  */
-static uint32_t hal_get_reo_qdesc_size_peach(uint32_t ba_window_size, int tid)
+static uint32_t hal_get_reo_qdesc_size_fig(uint32_t ba_window_size, int tid)
 {
 	/* Hardcode the ba_window_size to HAL_RX_MAX_BA_WINDOW for
 	 * NON_QOS_TID until HW issues are resolved.
 	 */
 	if (tid != HAL_NON_QOS_TID)
-		ba_window_size = hal_get_rx_max_ba_window_peach(tid);
+		ba_window_size = hal_get_rx_max_ba_window_fig(tid);
 
 	/* Return descriptor size corresponding to window size of 2 since
 	 * we set ba_window_size to 2 while setting up REO descriptors as
@@ -2260,7 +2266,7 @@ uint64_t hal_fw_qtime_to_usecs(uint64_t time)
 }
 
 /**
- * hal_get_tsf_time_peach() - Get tsf time from scratch register
+ * hal_get_tsf_time_fig() - Get tsf time from scratch register
  * @hal_soc_hdl: HAL soc handle
  * @tsf_id: TSF id
  * @mac_id: mac_id
@@ -2270,7 +2276,7 @@ uint64_t hal_fw_qtime_to_usecs(uint64_t time)
  * Return: None.
  */
 static void
-hal_get_tsf_time_peach(hal_soc_handle_t hal_soc_hdl, uint32_t tsf_id,
+hal_get_tsf_time_fig(hal_soc_handle_t hal_soc_hdl, uint32_t tsf_id,
 		      uint32_t mac_id, uint64_t *tsf,
 		      uint64_t *tsf_sync_soc_time)
 {
@@ -2307,14 +2313,14 @@ hal_get_tsf_time_peach(hal_soc_handle_t hal_soc_hdl, uint32_t tsf_id,
 }
 #else
 static inline void
-hal_get_tsf_time_peach(hal_soc_handle_t hal_soc_hdl, uint32_t tsf_id,
+hal_get_tsf_time_fig(hal_soc_handle_t hal_soc_hdl, uint32_t tsf_id,
 		      uint32_t mac_id, uint64_t *tsf,
 		      uint64_t *tsf_sync_soc_time)
 {
 }
 #endif
 
-static QDF_STATUS hal_rx_reo_ent_get_src_link_id_peach(hal_rxdma_desc_t rx_desc,
+static QDF_STATUS hal_rx_reo_ent_get_src_link_id_fig(hal_rxdma_desc_t rx_desc,
 						      uint8_t *src_link_id)
 {
 	struct reo_entrance_ring *reo_ent_desc =
@@ -2326,25 +2332,25 @@ static QDF_STATUS hal_rx_reo_ent_get_src_link_id_peach(hal_rxdma_desc_t rx_desc,
 }
 
 /**
- * hal_rx_en_mcast_fp_data_filter_peach() - Is mcast filter pass enabled
+ * hal_rx_en_mcast_fp_data_filter_fig() - Is mcast filter pass enabled
  *
  * Return: false for BE MCC
  */
 static inline
-bool hal_rx_en_mcast_fp_data_filter_peach(void)
+bool hal_rx_en_mcast_fp_data_filter_fig(void)
 {
 	return false;
 }
 
 /**
- * hal_srng_dst_hw_init_misc_1_peach() - Function to initialize MISC_1 register
+ * hal_srng_dst_hw_init_misc_1_fig() - Function to initialize MISC_1 register
  *                                      of destination ring HW
  * @srng: SRNG ring pointer
  *
  * Return: None
  */
 static inline
-void hal_srng_dst_hw_init_misc_1_peach(struct hal_srng *srng)
+void hal_srng_dst_hw_init_misc_1_fig(struct hal_srng *srng)
 {
 	uint32_t reg_val = 0;
 
@@ -2364,14 +2370,14 @@ void hal_srng_dst_hw_init_misc_1_peach(struct hal_srng *srng)
 }
 
 /**
- * hal_srng_hw_reg_offset_init_misc_1_peach() - Initialize the HW srng register
+ * hal_srng_hw_reg_offset_init_misc_1_fig() - Initialize the HW srng register
  *                                             offset of MISC_1
  * @hal_soc: HAL Soc handle
  *
  * Return: None
  */
 static inline
-void hal_srng_hw_reg_offset_init_misc_1_peach(struct hal_soc *hal_soc)
+void hal_srng_hw_reg_offset_init_misc_1_fig(struct hal_soc *hal_soc)
 {
 	int32_t *hw_reg_offset = hal_soc->hal_hw_reg_offset;
 
@@ -2379,7 +2385,7 @@ void hal_srng_hw_reg_offset_init_misc_1_peach(struct hal_soc *hal_soc)
 }
 
 /**
- * hal_srng_dst_hw_init_peach() - Function to initialize SRNG
+ * hal_srng_dst_hw_init_fig() - Function to initialize SRNG
  *                               destination ring HW
  * @hal_soc: HAL SOC handle
  * @srng: SRNG ring pointer
@@ -2389,12 +2395,12 @@ void hal_srng_hw_reg_offset_init_misc_1_peach(struct hal_soc *hal_soc)
  * Return: None
  */
 static inline
-void hal_srng_dst_hw_init_peach(struct hal_soc *hal_soc,
+void hal_srng_dst_hw_init_fig(struct hal_soc *hal_soc,
 			       struct hal_srng *srng,
 			       bool idle_check,
 			       uint32_t idx)
 {
-	hal_srng_dst_hw_init_misc_1_peach(srng);
+	hal_srng_dst_hw_init_misc_1_fig(srng);
 
 	hal_srng_dst_hw_init_generic(hal_soc, srng, idle_check, idx);
 }
@@ -2431,7 +2437,7 @@ hal_rx_flow_cmem_update_reo_dst_ind(struct hal_soc *hal_soc, uint32_t cmem_ba,
 
 #ifdef WLAN_PKT_CAPTURE_TX_2_0
 /**
- * hal_txmon_get_frame_timestamp_peach() - api to get frame timestamp for tx monitor
+ * hal_txmon_get_frame_timestamp_fig() - api to get frame timestamp for tx monitor
  * @tlv_tag: TLV tag
  * @tx_tlv: pointer to tx tlv information
  * @ppdu_info: pointer to ppdu_info
@@ -2439,7 +2445,7 @@ hal_rx_flow_cmem_update_reo_dst_ind(struct hal_soc *hal_soc, uint32_t cmem_ba,
  * Return: void
  */
 static inline
-void hal_txmon_get_frame_timestamp_peach(uint32_t tlv_tag, void *tx_tlv,
+void hal_txmon_get_frame_timestamp_fig(uint32_t tlv_tag, void *tx_tlv,
 			     void *ppdu_info)
 {
 	struct hal_tx_ppdu_info *tx_ppdu_info =
@@ -2453,13 +2459,13 @@ void hal_txmon_get_frame_timestamp_peach(uint32_t tlv_tag, void *tx_tlv,
 #endif
 
 /**
- * hal_srng_dst_get_num_avail_words_peach - Get num available words
+ * hal_srng_dst_get_num_avail_words_fig - Get num available words
  * @hal_ring_hdl: HAL ring handle
  *
  * Return: num available words
  */
 static inline uint16_t
-hal_srng_dst_get_num_avail_words_peach(hal_ring_handle_t hal_ring_hdl)
+hal_srng_dst_get_num_avail_words_fig(hal_ring_handle_t hal_ring_hdl)
 {
 	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
 	uint32_t ring_status = SRNG_DST_REG_READ(srng, STATUS);
@@ -2467,73 +2473,73 @@ hal_srng_dst_get_num_avail_words_peach(hal_ring_handle_t hal_ring_hdl)
 	return SRNG_MS(SRNG_DST_HW_FLD(STATUS, NUM_AVAIL_WORDS), ring_status);
 }
 
-static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
+static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 {
 	/* init and setup */
-	hal_soc->ops->hal_srng_dst_hw_init = hal_srng_dst_hw_init_peach;
+	hal_soc->ops->hal_srng_dst_hw_init = hal_srng_dst_hw_init_fig;
 	hal_soc->ops->hal_srng_src_hw_init = hal_srng_src_hw_init_generic;
 	hal_soc->ops->hal_get_hw_hptp = hal_get_hw_hptp_generic;
-	hal_soc->ops->hal_get_window_address = hal_get_window_address_peach;
+	hal_soc->ops->hal_get_window_address = hal_get_window_address_fig;
 	hal_soc->ops->hal_reo_set_err_dst_remap =
-						hal_reo_set_err_dst_remap_peach;
+						hal_reo_set_err_dst_remap_fig;
 	hal_soc->ops->hal_reo_enable_pn_in_dest =
-						hal_reo_enable_pn_in_dest_peach;
+						hal_reo_enable_pn_in_dest_fig;
 	/* Overwrite the default BE ops */
-	hal_soc->ops->hal_get_rx_max_ba_window = hal_get_rx_max_ba_window_peach;
-	hal_soc->ops->hal_get_reo_qdesc_size = hal_get_reo_qdesc_size_peach;
+	hal_soc->ops->hal_get_rx_max_ba_window = hal_get_rx_max_ba_window_fig;
+	hal_soc->ops->hal_get_reo_qdesc_size = hal_get_reo_qdesc_size_fig;
 
 	/* tx */
-	hal_soc->ops->hal_tx_set_dscp_tid_map = hal_tx_set_dscp_tid_map_peach;
-	hal_soc->ops->hal_tx_update_dscp_tid = hal_tx_update_dscp_tid_peach;
+	hal_soc->ops->hal_tx_set_dscp_tid_map = hal_tx_set_dscp_tid_map_fig;
+	hal_soc->ops->hal_tx_update_dscp_tid = hal_tx_update_dscp_tid_fig;
 	hal_soc->ops->hal_tx_comp_get_status =
 					hal_tx_comp_get_status_generic_be;
 	hal_soc->ops->hal_tx_init_cmd_credit_ring =
-					hal_tx_init_cmd_credit_ring_peach;
+					hal_tx_init_cmd_credit_ring_fig;
 	hal_soc->ops->hal_tx_config_rbm_mapping_be =
-				hal_tx_config_rbm_mapping_be_peach;
+				hal_tx_config_rbm_mapping_be_fig;
 
 	/* rx */
 	hal_soc->ops->hal_rx_msdu_start_nss_get = hal_rx_tlv_nss_get_be;
 	hal_soc->ops->hal_rx_mon_hw_desc_get_mpdu_status =
 		hal_rx_mon_hw_desc_get_mpdu_status_be;
-	hal_soc->ops->hal_rx_get_tlv = hal_rx_get_tlv_peach;
+	hal_soc->ops->hal_rx_get_tlv = hal_rx_get_tlv_fig;
 	hal_soc->ops->hal_rx_pkt_hdr_get = hal_rx_pkt_hdr_get_be;
 	hal_soc->ops->hal_rx_proc_phyrx_other_receive_info_tlv =
-		hal_rx_proc_phyrx_other_receive_info_tlv_peach;
+		hal_rx_proc_phyrx_other_receive_info_tlv_fig;
 
-	hal_soc->ops->hal_rx_dump_msdu_end_tlv = hal_rx_dump_msdu_end_tlv_peach;
+	hal_soc->ops->hal_rx_dump_msdu_end_tlv = hal_rx_dump_msdu_end_tlv_fig;
 	hal_soc->ops->hal_rx_dump_mpdu_start_tlv =
-					hal_rx_dump_mpdu_start_tlv_peach;
-	hal_soc->ops->hal_rx_dump_pkt_tlvs = hal_rx_dump_pkt_tlvs_peach;
+					hal_rx_dump_mpdu_start_tlv_fig;
+	hal_soc->ops->hal_rx_dump_pkt_tlvs = hal_rx_dump_pkt_tlvs_fig;
 	hal_soc->ops->hal_rx_desc_get_80211_hdr = hal_rx_desc_get_80211_hdr_be;
 
-	hal_soc->ops->hal_get_link_desc_size = hal_get_link_desc_size_peach;
+	hal_soc->ops->hal_get_link_desc_size = hal_get_link_desc_size_fig;
 	hal_soc->ops->hal_rx_mpdu_start_tid_get = hal_rx_tlv_tid_get_be;
 	hal_soc->ops->hal_rx_msdu_start_reception_type_get =
 		hal_rx_tlv_reception_type_get_be;
 	hal_soc->ops->hal_rx_msdu_end_da_idx_get =
 					hal_rx_msdu_end_da_idx_get_be;
 	hal_soc->ops->hal_rx_msdu_desc_info_get_ptr =
-					hal_rx_msdu_desc_info_get_ptr_peach;
+					hal_rx_msdu_desc_info_get_ptr_fig;
 	hal_soc->ops->hal_rx_link_desc_msdu0_ptr =
-					hal_rx_link_desc_msdu0_ptr_peach;
+					hal_rx_link_desc_msdu0_ptr_fig;
 	hal_soc->ops->hal_reo_status_get_header =
-					hal_reo_status_get_header_peach;
+					hal_reo_status_get_header_fig;
 	hal_soc->ops->hal_rx_status_get_tlv_info =
 					hal_rx_status_get_tlv_info_wrapper_be;
 	hal_soc->ops->hal_rx_wbm_err_info_get =
 					hal_rx_wbm_err_info_get_generic_be;
 #ifdef CONFIG_WORD_BASED_TLV
 	hal_soc->ops->hal_rx_priv_info_set_in_tlv =
-					hal_rx_priv_info_set_in_tlv_peach;
+					hal_rx_priv_info_set_in_tlv_fig;
 	hal_soc->ops->hal_rx_priv_info_get_from_tlv =
-					hal_rx_priv_info_get_from_tlv_peach;
+					hal_rx_priv_info_get_from_tlv_fig;
 	hal_soc->ops->hal_rx_mpdu_start_wmask_get =
 					hal_rx_mpdu_start_wmask_get_be;
 	hal_soc->ops->hal_rx_msdu_end_wmask_get =
 					hal_rx_msdu_end_wmask_get_be;
 	hal_soc->ops->hal_rx_mpdu_start_tlv_tag_valid =
-					hal_rx_mpdu_start_tlv_tag_valid_peach;
+					hal_rx_mpdu_start_tlv_tag_valid_fig;
 #else
 	hal_soc->ops->hal_rx_priv_info_set_in_tlv =
 					hal_rx_priv_info_set_in_tlv_be;
@@ -2571,9 +2577,9 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_get_mpdu_mac_ad4_valid =
 					hal_rx_get_mpdu_mac_ad4_valid_be;
 	hal_soc->ops->hal_rx_mpdu_start_sw_peer_id_get =
-		hal_rx_mpdu_start_sw_peer_id_get_peach;
+		hal_rx_mpdu_start_sw_peer_id_get_fig;
 	hal_soc->ops->hal_rx_tlv_peer_meta_data_get =
-		hal_rx_peer_meta_data_get_peach;
+		hal_rx_peer_meta_data_get_fig;
 	hal_soc->ops->hal_rx_mpdu_get_to_ds = hal_rx_mpdu_get_to_ds_be;
 	hal_soc->ops->hal_rx_mpdu_get_fr_ds = hal_rx_mpdu_get_fr_ds_be;
 	hal_soc->ops->hal_rx_get_mpdu_frame_control_valid =
@@ -2593,21 +2599,21 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_is_unicast = hal_rx_is_unicast_be;
 	hal_soc->ops->hal_rx_tid_get = hal_rx_tid_get_be;
 	hal_soc->ops->hal_rx_hw_desc_get_ppduid_get =
-					hal_rx_hw_desc_get_ppduid_get_peach;
+					hal_rx_hw_desc_get_ppduid_get_fig;
 	hal_soc->ops->hal_rx_msdu0_buffer_addr_lsb =
-					hal_rx_msdu0_buffer_addr_lsb_peach;
+					hal_rx_msdu0_buffer_addr_lsb_fig;
 	hal_soc->ops->hal_rx_msdu_desc_info_ptr_get =
-					hal_rx_msdu_desc_info_ptr_get_peach;
-	hal_soc->ops->hal_ent_mpdu_desc_info = hal_ent_mpdu_desc_info_peach;
-	hal_soc->ops->hal_dst_mpdu_desc_info = hal_dst_mpdu_desc_info_peach;
+					hal_rx_msdu_desc_info_ptr_get_fig;
+	hal_soc->ops->hal_ent_mpdu_desc_info = hal_ent_mpdu_desc_info_fig;
+	hal_soc->ops->hal_dst_mpdu_desc_info = hal_dst_mpdu_desc_info_fig;
 	hal_soc->ops->hal_rx_phy_legacy_get_rssi =
-					hal_rx_phy_legacy_get_rssi_peach;
+					hal_rx_phy_legacy_get_rssi_fig;
 	hal_soc->ops->hal_rx_get_fc_valid = hal_rx_get_fc_valid_be;
 	hal_soc->ops->hal_rx_get_to_ds_flag = hal_rx_get_to_ds_flag_be;
 	hal_soc->ops->hal_rx_get_mac_addr2_valid =
 					hal_rx_get_mac_addr2_valid_be;
 	hal_soc->ops->hal_rx_get_ppdu_id = hal_rx_get_ppdu_id_be;
-	hal_soc->ops->hal_reo_config = hal_reo_config_peach;
+	hal_soc->ops->hal_reo_config = hal_reo_config_fig;
 	hal_soc->ops->hal_rx_msdu_flow_idx_get = hal_rx_msdu_flow_idx_get_be;
 	hal_soc->ops->hal_rx_msdu_flow_idx_invalid =
 					hal_rx_msdu_flow_idx_invalid_be;
@@ -2624,10 +2630,10 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_tlv_get_tcp_chksum =
 					hal_rx_tlv_get_tcp_chksum_be;
 	hal_soc->ops->hal_rx_get_rx_sequence = hal_rx_get_rx_sequence_be;
-#if defined(QCA_WIFI_PEACH) && defined(WLAN_CFR_ENABLE) && \
+#if defined(QCA_WIFI_fig) && defined(WLAN_CFR_ENABLE) && \
 	defined(WLAN_ENH_CFR_ENABLE)
-	hal_soc->ops->hal_rx_get_bb_info = hal_rx_get_bb_info_peach;
-	hal_soc->ops->hal_rx_get_rtt_info = hal_rx_get_rtt_info_peach;
+	hal_soc->ops->hal_rx_get_bb_info = hal_rx_get_bb_info_fig;
+	hal_soc->ops->hal_rx_get_rtt_info = hal_rx_get_rtt_info_fig;
 #else
 	hal_soc->ops->hal_rx_get_bb_info = NULL;
 	hal_soc->ops->hal_rx_get_rtt_info = NULL;
@@ -2645,33 +2651,33 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_get_fisa_flow_agg_count =
 					hal_rx_get_flow_agg_count_be;
 	hal_soc->ops->hal_rx_get_fisa_timeout = hal_rx_get_fisa_timeout_be;
-	hal_soc->ops->hal_rx_reo_prev_pn_get = hal_rx_reo_prev_pn_get_peach;
+	hal_soc->ops->hal_rx_reo_prev_pn_get = hal_rx_reo_prev_pn_get_fig;
 
 	/* rx - TLV struct offsets */
-	hal_register_rx_pkt_hdr_tlv_api_peach(hal_soc);
+	hal_register_rx_pkt_hdr_tlv_api_fig(hal_soc);
 	hal_soc->ops->hal_rx_msdu_end_offset_get =
 					hal_rx_msdu_end_offset_get_generic;
 	hal_soc->ops->hal_rx_mpdu_start_offset_get =
 					hal_rx_mpdu_start_offset_get_generic;
-	hal_soc->ops->hal_rx_flow_setup_fse = hal_rx_flow_setup_fse_peach;
+	hal_soc->ops->hal_rx_flow_setup_fse = hal_rx_flow_setup_fse_fig;
 	hal_soc->ops->hal_rx_flow_get_tuple_info =
 					hal_rx_flow_get_tuple_info_be;
 	hal_soc->ops->hal_rx_flow_delete_entry =
 					hal_rx_flow_delete_entry_be;
 	hal_soc->ops->hal_rx_fst_get_fse_size = hal_rx_fst_get_fse_size_be;
 	hal_soc->ops->hal_compute_reo_remap_ix2_ix3 =
-					hal_compute_reo_remap_ix2_ix3_peach;
+					hal_compute_reo_remap_ix2_ix3_fig;
 	hal_soc->ops->hal_rx_flow_setup_cmem_fse =
-						hal_rx_flow_setup_cmem_fse_peach;
+						hal_rx_flow_setup_cmem_fse_fig;
 	hal_soc->ops->hal_rx_flow_delete_cmem_fse =
-					hal_rx_flow_delete_cmem_fse_peach;
+					hal_rx_flow_delete_cmem_fse_fig;
 	hal_soc->ops->hal_rx_flow_get_cmem_fse_ts =
-					hal_rx_flow_get_cmem_fse_ts_peach;
-	hal_soc->ops->hal_rx_flow_get_cmem_fse = hal_rx_flow_get_cmem_fse_peach;
-	hal_soc->ops->hal_cmem_write = hal_cmem_write_peach;
+					hal_rx_flow_get_cmem_fse_ts_fig;
+	hal_soc->ops->hal_rx_flow_get_cmem_fse = hal_rx_flow_get_cmem_fse_fig;
+	hal_soc->ops->hal_cmem_write = hal_cmem_write_fig;
 	hal_soc->ops->hal_rx_msdu_get_reo_destination_indication =
 		hal_rx_msdu_get_reo_destination_indication_be;
-	hal_soc->ops->hal_tx_get_num_tcl_banks = hal_tx_get_num_tcl_banks_peach;
+	hal_soc->ops->hal_tx_get_num_tcl_banks = hal_tx_get_num_tcl_banks_fig;
 	hal_soc->ops->hal_rx_get_tlv_size = hal_rx_get_tlv_size_generic_be;
 	hal_soc->ops->hal_rx_msdu_is_wlan_mcast =
 					hal_rx_msdu_is_wlan_mcast_generic_be;
@@ -2681,7 +2687,7 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 						hal_rx_tlv_get_is_decrypted_be;
 	hal_soc->ops->hal_rx_tlv_mic_err_get = hal_rx_tlv_mic_err_get_be;
 	hal_soc->ops->hal_rx_tlv_get_pkt_type = hal_rx_tlv_get_pkt_type_be;
-	hal_soc->ops->hal_rx_tlv_get_freq = hal_rx_tlv_get_freq_peach;
+	hal_soc->ops->hal_rx_tlv_get_freq = hal_rx_tlv_get_freq_fig;
 	hal_soc->ops->hal_rx_tlv_mpdu_len_err_get =
 					hal_rx_tlv_mpdu_len_err_get_be;
 	hal_soc->ops->hal_rx_tlv_mpdu_fcs_err_get =
@@ -2705,19 +2711,19 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_get_l3_l4_offsets = hal_rx_get_l3_l4_offsets_be;
 	hal_soc->ops->hal_rx_tlv_csum_err_get = hal_rx_tlv_csum_err_get_be;
 	hal_soc->ops->hal_rx_mpdu_info_ampdu_flag_get =
-					hal_rx_mpdu_info_ampdu_flag_get_peach;
+					hal_rx_mpdu_info_ampdu_flag_get_fig;
 	hal_soc->ops->hal_rx_tlv_msdu_len_set =
 					hal_rx_msdu_start_msdu_len_set_be;
 	hal_soc->ops->hal_rx_tlv_populate_mpdu_desc_info =
-				hal_rx_tlv_populate_mpdu_desc_info_peach;
-	hal_soc->ops->hal_get_idle_link_bm_id = hal_get_idle_link_bm_id_peach;
+				hal_rx_tlv_populate_mpdu_desc_info_fig;
+	hal_soc->ops->hal_get_idle_link_bm_id = hal_get_idle_link_bm_id_fig;
 #ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
 	hal_soc->ops->hal_get_first_wow_wakeup_packet =
-		hal_get_first_wow_wakeup_packet_peach;
+		hal_get_first_wow_wakeup_packet_fig;
 #endif
 	hal_soc->ops->hal_compute_reo_remap_ix0 = NULL;
 
-	hal_soc->ops->hal_rx_tlv_l3_type_get = hal_rx_tlv_l3_type_get_peach;
+	hal_soc->ops->hal_rx_tlv_l3_type_get = hal_rx_tlv_l3_type_get_fig;
 	hal_soc->ops->hal_tx_vdev_mismatch_routing_set =
 		hal_tx_vdev_mismatch_routing_set_generic_be;
 	hal_soc->ops->hal_tx_mcast_mlo_reinject_routing_set =
@@ -2734,14 +2740,14 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 		hal_tx_populate_bank_register_be;
 	hal_soc->ops->hal_tx_vdev_mcast_ctrl_set =
 		hal_tx_vdev_mcast_ctrl_set_be;
-	hal_soc->ops->hal_get_tsf_time = hal_get_tsf_time_peach;
+	hal_soc->ops->hal_get_tsf_time = hal_get_tsf_time_fig;
 	hal_soc->ops->hal_rx_reo_ent_get_src_link_id =
-					hal_rx_reo_ent_get_src_link_id_peach;
+					hal_rx_reo_ent_get_src_link_id_fig;
 #ifdef FEATURE_DIRECT_LINK
 	hal_soc->ops->hal_srng_set_msi_config = hal_srng_set_msi_config;
 #endif
 	hal_soc->ops->hal_rx_en_mcast_fp_data_filter =
-					hal_rx_en_mcast_fp_data_filter_peach;
+					hal_rx_en_mcast_fp_data_filter_fig;
 #ifdef WLAN_PKT_CAPTURE_TX_2_0
 	hal_soc->ops->hal_txmon_is_mon_buf_addr_tlv =
 				hal_txmon_is_mon_buf_addr_tlv_generic_be;
@@ -2752,15 +2758,15 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_txmon_status_get_num_users =
 				hal_txmon_status_get_num_users_generic_be;
 	hal_soc->ops->hal_txmon_get_frame_timestamp =
-				hal_txmon_get_frame_timestamp_peach;
+				hal_txmon_get_frame_timestamp_fig;
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
 	hal_soc->ops->hal_rx_flow_cmem_update_reo_dst_ind =
 				hal_rx_flow_cmem_update_reo_dst_ind;
 	hal_soc->ops->hal_srng_dst_get_num_avail_words =
-				hal_srng_dst_get_num_avail_words_peach;
+				hal_srng_dst_get_num_avail_words_fig;
 };
 
-struct hal_hw_srng_config hw_srng_table_peach[] = {
+struct hal_hw_srng_config hw_srng_table_fig[] = {
 	/* TODO: max_rings can populated by querying HW capabilities */
 	{ /* REO_DST */
 		.start_ring_id = HAL_SRNG_REO2SW1,
@@ -2832,6 +2838,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 			sizeof(struct reo_get_queue_stats)) >> 2,
 		.lmac_ring = FALSE,
 		.ring_dir = HAL_SRNG_SRC_RING,
+#if 0
 		.reg_start = {
 			HWIO_REO_R0_REO_CMD_RING_BASE_LSB_ADDR(
 				REO_REG_REG_BASE),
@@ -2845,6 +2852,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.max_size =
 			HWIO_REO_R0_REO_CMD_RING_BASE_MSB_RING_SIZE_BMSK >>
 			HWIO_REO_R0_REO_CMD_RING_BASE_MSB_RING_SIZE_SHFT,
+#endif
 	},
 	{ /* REO_STATUS */
 		.start_ring_id = HAL_SRNG_REO_STATUS,
@@ -2853,6 +2861,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 			sizeof(struct reo_get_queue_stats_status)) >> 2,
 		.lmac_ring = FALSE,
 		.ring_dir = HAL_SRNG_DST_RING,
+#if 0
 		.reg_start = {
 			HWIO_REO_R0_REO_STATUS_RING_BASE_LSB_ADDR(
 				REO_REG_REG_BASE),
@@ -2866,8 +2875,9 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.max_size =
 			HWIO_REO_R0_REO_STATUS_RING_BASE_MSB_RING_SIZE_BMSK >>
 			HWIO_REO_R0_REO_STATUS_RING_BASE_MSB_RING_SIZE_SHFT,
+#endif
 	},
-	{ /* TCL_DATA */
+	{ /* TODO: TCL_DATA */
 		.start_ring_id = HAL_SRNG_SW2TCL1,
 		.max_rings = 5,
 		.entry_size = sizeof(struct tcl_data_cmd) >> 2,
@@ -2899,6 +2909,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.entry_size = sizeof(struct tcl_gse_cmd) >> 2,
 		.lmac_ring =  FALSE,
 		.ring_dir = HAL_SRNG_SRC_RING,
+#if 0
 		.reg_start = {
 			HWIO_TCL_R0_SW2TCL_CREDIT_RING_BASE_LSB_ADDR(
 				MAC_TCL_REG_REG_BASE),
@@ -2912,6 +2923,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.max_size =
 		      HWIO_TCL_R0_SW2TCL_CREDIT_RING_BASE_MSB_RING_SIZE_BMSK >>
 		      HWIO_TCL_R0_SW2TCL_CREDIT_RING_BASE_MSB_RING_SIZE_SHFT,
+#endif
 	},
 	{ /* TCL_STATUS */
 		.start_ring_id = HAL_SRNG_TCL_STATUS,
@@ -2924,6 +2936,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.entry_size = sizeof(struct tcl_status_ring) >> 2,
 		.lmac_ring = FALSE,
 		.ring_dir = HAL_SRNG_DST_RING,
+#if 0
 		.reg_start = {
 			HWIO_TCL_R0_TCL_STATUS1_RING_BASE_LSB_ADDR(
 				MAC_TCL_REG_REG_BASE),
@@ -2937,6 +2950,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.max_size =
 			HWIO_TCL_R0_TCL_STATUS1_RING_BASE_MSB_RING_SIZE_BMSK >>
 			HWIO_TCL_R0_TCL_STATUS1_RING_BASE_MSB_RING_SIZE_SHFT,
+#endif
 	},
 	{ /* CE_SRC */
 		.start_ring_id = HAL_SRNG_CE_0_SRC,
@@ -3045,6 +3059,7 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.lmac_ring = FALSE,
 		.ring_dir = HAL_SRNG_DST_RING,
 		.nf_irq_support = true,
+	#if 0
 		.reg_start = {
 		HWIO_WBM_R0_WBM2SW0_RELEASE_RING_BASE_LSB_ADDR(WBM_REG_REG_BASE),
 		HWIO_WBM_R2_WBM2SW0_RELEASE_RING_HP_ADDR(WBM_REG_REG_BASE),
@@ -3058,18 +3073,13 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 		.max_size =
 		HWIO_WBM_R0_WBM2SW0_RELEASE_RING_BASE_MSB_RING_SIZE_BMSK >>
 		HWIO_WBM_R0_WBM2SW0_RELEASE_RING_BASE_MSB_RING_SIZE_SHFT,
+	#endif
 	},
 	{ /* RXDMA_BUF */
 		.start_ring_id = HAL_SRNG_WMAC1_SW2RXDMA0_BUF0,
-#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK) && \
-	defined(FEATURE_MGMT_RX_OVER_SRNG)
-		.max_rings = 5,
-#elif (defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)) || \
-	(defined(FEATURE_DIRECT_LINK) && defined(FEATURE_MGMT_RX_OVER_SRNG)) || \
-	(defined(IPA_OFFLOAD) && defined(FEATURE_MGMT_RX_OVER_SRNG))
+#if defined(IPA_OFFLOAD) && defined(FEATURE_DIRECT_LINK)
 		.max_rings = 4,
-#elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK) || \
-	defined(FEATURE_MGMT_RX_OVER_SRNG)
+#elif defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK)
 		.max_rings = 3,
 #else
 		.max_rings = 2,
@@ -3220,13 +3230,13 @@ struct hal_hw_srng_config hw_srng_table_peach[] = {
 };
 
 /**
- * hal_srng_hw_reg_offset_init_peach() - Initialize the HW srng reg offset
+ * hal_srng_hw_reg_offset_init_fig() - Initialize the HW srng reg offset
  *				applicable only for peach
  * @hal_soc: HAL Soc handle
  *
  * Return: None
  */
-static inline void hal_srng_hw_reg_offset_init_peach(struct hal_soc *hal_soc)
+static inline void hal_srng_hw_reg_offset_init_fig(struct hal_soc *hal_soc)
 {
 	int32_t *hw_reg_offset = hal_soc->hal_hw_reg_offset;
 
@@ -3236,15 +3246,15 @@ static inline void hal_srng_hw_reg_offset_init_peach(struct hal_soc *hal_soc)
 	hw_reg_offset[DST_PRODUCER_INT2_SETUP] =
 					REG_OFFSET(DST, PRODUCER_INT2_SETUP);
 	hw_reg_offset[DST_STATUS] = REG_OFFSET(DST, STATUS);
-	hal_srng_hw_reg_offset_init_misc_1_peach(hal_soc);
+	hal_srng_hw_reg_offset_init_misc_1_fig(hal_soc);
 }
 
-void hal_peach_attach(struct hal_soc *hal_soc)
+void hal_fig_attach(struct hal_soc *hal_soc)
 {
-	hal_soc->hw_srng_table = hw_srng_table_peach;
+	hal_soc->hw_srng_table = hw_srng_table_fig;
 
 	hal_srng_hw_reg_offset_init_generic(hal_soc);
-	hal_srng_hw_reg_offset_init_peach(hal_soc);
+	hal_srng_hw_reg_offset_init_fig(hal_soc);
 	hal_hw_txrx_default_ops_attach_be(hal_soc);
-	hal_hw_txrx_ops_attach_peach(hal_soc);
+	hal_hw_txrx_ops_attach_fig(hal_soc);
 }

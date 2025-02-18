@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -29,7 +29,7 @@
 #include "wbm2sw_completion_ring_rx.h"
 
 #if defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_QCC2072)
+	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_FIG)
 #include "msmhwioreg.h"
 #endif
 #include "phyrx_common_user_info.h"

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -24,6 +24,7 @@
 #define _WLAN_IPA_TGT_API_H_
 
 #include "wlan_ipa_public_struct.h"
+#include "wlan_ipa_logging.h"
 
 /**
  * tgt_ipa_uc_offload_enable_disable() - send ipa offload control to target if
@@ -45,4 +46,25 @@ QDF_STATUS tgt_ipa_uc_offload_enable_disable(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 tgt_ipa_intrabss_enable_disable(struct wlan_objmgr_psoc *psoc,
 				struct ipa_intrabss_control_params *req);
+
+#ifdef IPA_OPT_WIFI_DP_LOGGING
+/**
+ * wlan_ipa_fw_nl_broadcast() - send netlink msg to userspace
+ * for fw logs
+ * @buffer: fw logs
+ * @len: length of logs
+ */
+static inline
+int wlan_ipa_fw_nl_broadcast(const uint8_t *buffer, uint32_t len)
+{
+	return ipa_fw_nl_broadcast(buffer, len);
+}
+#else
+
+static inline
+int wlan_ipa_fw_nl_broadcast(const uint8_t *buffer, uint32_t len)
+{
+	return 0;
+}
+#endif /* IPA_OPT_WIFI_DP_LOGGING */
 #endif /* _WLAN_IPA_TGT_API_H_ */

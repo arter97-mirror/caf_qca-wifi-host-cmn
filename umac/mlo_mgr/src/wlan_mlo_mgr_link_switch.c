@@ -194,6 +194,8 @@ void mlo_mgr_clear_ap_link_info(struct wlan_objmgr_vdev *vdev,
 		  link_info->link_id, link_info->vdev_id,
 		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
 
+	mlo_free_cache_link_assoc_rsp(vdev, link_info->link_id);
+
 	qdf_zero_macaddr(&link_info->ap_link_addr);
 	qdf_mem_zero(link_info->link_chan_info,
 		     sizeof(*link_info->link_chan_info));
@@ -291,6 +293,8 @@ void mlo_mgr_reset_ap_link_info(struct wlan_objmgr_vdev *vdev)
 		link_info->link_status_flags = 0;
 		link_info++;
 	}
+
+	mlo_reset_cache_link_assoc_rsp(vdev->mlo_dev_ctx);
 }
 
 struct mlo_link_info
@@ -1140,6 +1144,22 @@ QDF_STATUS mlo_mgr_link_switch_disconnect_done(struct wlan_objmgr_vdev *vdev,
 	}
 
 	return status;
+}
+
+void
+mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
+					struct wlan_cm_connect_resp *resp)
+{
+	if (wlan_cm_is_link_switch_connect_resp(resp)) {
+		wlan_cm_reset_active_cm_id(vdev, resp->cm_id);
+		mlo_mgr_link_switch_connect_done(vdev,
+						 resp->connect_status);
+	} else if (wlan_cm_is_link_add_connect_resp(resp)) {
+		wlan_cm_reset_active_cm_id(vdev, resp->cm_id);
+		mlo_link_recfg_add_connect_done_indication(
+				vdev,
+				resp->connect_status);
+	}
 }
 
 QDF_STATUS mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,

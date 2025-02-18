@@ -1409,6 +1409,8 @@ struct wmi_host_link_bss_params {
  * @mlo_bridge_peer: indicate if it is bridge peer
  * @link_switch_in_progress: Flag to indicate FW MLO peer assoc params are sent
  *                           for the peer due to link switch
+ * @link_add_in_progress: Flag to indicate FW MLO peer assoc
+ * for link add purpose
  * @unused: spare bits
  * @mld_mac: MLD mac address
  * @logical_link_index: Unique index for links of the mlo. Starts with Zero
@@ -1444,7 +1446,8 @@ struct peer_assoc_mlo_params {
 		 nstr_bitmap_size:1,
 		 mlo_bridge_peer:1,
 		 link_switch_in_progress:1,
-		 unused:19;
+		 link_add_in_progress:1,
+		 unused:18;
 	uint8_t mld_mac[QDF_MAC_ADDR_SIZE];
 	uint32_t logical_link_index;
 	uint32_t ml_peer_id;
@@ -5608,7 +5611,9 @@ typedef enum {
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 	wmi_scan_cache_result_eventid,
 #endif
-
+#ifdef IPA_OPT_WIFI_DP_LOGGING
+	wmi_opt_dp_diag_event_id,
+#endif
 	wmi_events_max,
 } wmi_conv_event_id;
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -127,6 +127,10 @@ extern "C" {
 /* Cologne */
 #ifndef TARGET_TYPE_QCC2072
 #define TARGET_TYPE_QCC2072 42
+#endif
+
+#ifndef TARGET_TYPE_FIG
+#define TARGET_TYPE_FIG    43
 #endif
 
 #ifdef __cplusplus

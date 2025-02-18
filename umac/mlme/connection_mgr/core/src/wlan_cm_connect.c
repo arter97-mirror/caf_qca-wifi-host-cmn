@@ -250,10 +250,13 @@ static QDF_STATUS cm_ser_connect_req(struct wlan_objmgr_pdev *pdev,
 	QDF_STATUS status;
 	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 
-	if (cm_is_link_switch_connect_req(cm_req)) {
+	if (cm_is_link_switch_connect_req(cm_req) ||
+	    cm_is_link_add_connect_req(cm_req)) {
 		/*
 		 * For link switch, connect serialization is not required as
 		 * link switch is already serialized.
+		 * For link Add connect request, serialization is not
+		 * required as link recfg is already serialized.
 		 */
 		return cm_sm_deliver_event_sync(cm_ctx,
 						WLAN_CM_SM_EV_CONNECT_ACTIVE,
@@ -1928,7 +1931,8 @@ cm_handle_connect_req_in_non_init_state(struct cnx_mgr *cm_ctx,
 	}
 
 	/* Reject any link switch connect request while in non-init state */
-	if (cm_is_link_switch_connect_req(cm_req)) {
+	if (cm_is_link_switch_connect_req(cm_req) ||
+	    cm_is_link_add_connect_req(cm_req)) {
 		mlme_info(CM_PREFIX_FMT "Ignore connect req from source %d state %d",
 			  CM_PREFIX_REF(vdev_id, cm_req->cm_id),
 			  cm_req->req.source, cm_state_substate);
@@ -3357,12 +3361,8 @@ QDF_STATUS cm_connect_complete(struct cnx_mgr *cm_ctx,
 		   CM_PREFIX_REF(wlan_vdev_get_id(cm_ctx->vdev),
 				 resp->cm_id));
 	cm_remove_cmd(cm_ctx, &resp->cm_id);
-
-	if (cm_is_link_switch_connect_resp(resp)) {
-		cm_reset_active_cm_id(cm_ctx->vdev, resp->cm_id);
-		mlo_mgr_link_switch_connect_done(cm_ctx->vdev,
-						 resp->connect_status);
-	}
+	mlo_mgr_link_switch_connect_done_notify(cm_ctx->vdev,
+						resp);
 
 	return QDF_STATUS_SUCCESS;
 }

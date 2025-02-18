@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3764,6 +3764,7 @@ static bool hif_is_pld_based_target(struct hif_pci_softc *sc,
 	case MANGO_DEVICE_ID:
 	case PEACH_DEVICE_ID:
 	case QCC2072_DEVICE_ID:
+	case FIG_DEVICE_ID:
 		return true;
 	}
 	return false;
@@ -3795,6 +3796,7 @@ static void hif_pci_init_reg_windowing_support(struct hif_pci_softc *sc,
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_QCC2072:
+	case TARGET_TYPE_FIG:
 		sc->use_register_windowing = true;
 		qdf_spinlock_create(&sc->register_access_lock);
 		sc->register_window = 0;
@@ -4020,7 +4022,8 @@ int hif_pci_addr_in_boundary(struct hif_softc *scn, uint32_t offset)
 	    tgt_info->target_type == TARGET_TYPE_KIWI ||
 	    tgt_info->target_type == TARGET_TYPE_MANGO ||
 	    tgt_info->target_type == TARGET_TYPE_PEACH ||
-	    tgt_info->target_type == TARGET_TYPE_QCC2072) {
+	    tgt_info->target_type == TARGET_TYPE_QCC2072 ||
+	    tgt_info->target_type == TARGET_TYPE_FIG) {
 		/*
 		 * Need to consider offset's memtype for QCA6290/QCA8074,
 		 * also mem_len and DRAM_BASE_ADDRESS/DRAM_SIZE need to be

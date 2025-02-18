@@ -704,6 +704,20 @@ mlo_mgr_link_switch_defer_disconnect_req(struct wlan_objmgr_vdev *vdev,
 					 enum wlan_reason_code reason);
 
 /**
+ * mlo_mgr_link_switch_connect_done_notify() - Notify connect complete
+ * to link switch
+ * @vdev: vdev object
+ * @resp: connect response data
+ *
+ * Indicate vdev connect complete to mlo mgr.
+ *
+ * Return: void
+ */
+void
+mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
+					struct wlan_cm_connect_resp *resp);
+
+/**
  * mlo_mgr_link_switch_init() - API to initialize link switch
  * @psoc: PSOC object manager
  * @ml_dev: MLO dev context
@@ -917,6 +931,12 @@ static inline QDF_STATUS
 mlo_mgr_link_switch_complete(struct wlan_objmgr_vdev *vdev)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline void
+mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
+					struct wlan_cm_connect_resp *resp)
+{
 }
 
 static inline QDF_STATUS

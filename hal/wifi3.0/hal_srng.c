@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -73,6 +73,9 @@ void hal_kiwi_attach(struct hal_soc *hal);
 #endif
 #ifdef INCLUDE_HAL_PEACH
 void hal_peach_attach(struct hal_soc *hal);
+#endif
+#ifdef INCLUDE_HAL_FIG
+void hal_fig_attach(struct hal_soc *hal);
 #endif
 #ifdef QCA_WIFI_WCN7750
 void hal_wcn7750_attach(struct hal_soc *hal);
@@ -474,10 +477,16 @@ static void hal_target_based_configure(struct hal_soc *hal)
 		hal_kiwi_attach(hal);
 		break;
 #endif
-#ifdef INCLUDE_HAL_PEACH
+#if defined(INCLUDE_HAL_PEACH)
 	case TARGET_TYPE_PEACH:
 		hal->use_register_windowing = true;
 		hal_peach_attach(hal);
+		break;
+#endif
+#if defined(INCLUDE_HAL_FIG)
+	case TARGET_TYPE_FIG:
+		hal->use_register_windowing = true;
+		hal_fig_attach(hal);
 		break;
 #endif
 #if defined(QCA_WIFI_QCA8074) && defined(WIFI_TARGET_TYPE_3_0)
