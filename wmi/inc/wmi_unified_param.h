@@ -7238,6 +7238,9 @@ struct target_feature_set {
  * @con_mode_monitor: Device is in Full monitor mode
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
  * @enable_optimize_power: Enable power optimization
+ * @max_ml_sap_num_bss: Max sap bss
+ * @max_ml_sta_num_bss: Max sta bss
+ * @max_ml_bss_num: Max ml bss
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7384,6 +7387,9 @@ typedef struct {
 	bool mgmt_rx_srng_support;
 #endif
 	bool enable_optimize_power;
+	uint8_t max_ml_sap_num_bss;
+	uint8_t max_ml_sta_num_bss;
+	uint8_t max_ml_bss_num;
 } target_resource_config;
 
 /**
