@@ -2819,9 +2819,8 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 	struct ps_params *ps_param =
 				&ps_global_info->ps_params[session->vdev_id];
 	uint32_t join_timeout;
-	uint8_t programmed_country[REG_ALPHA2_LEN + 1];
 	enum reg_6g_ap_type power_type_6g;
-	bool ctry_code_match;
+	bool ctry_code_match = true;
 
 	/*
 	 * Update the capability here itself as this is used in
@@ -2892,8 +2891,10 @@ lim_fill_pe_session(struct mac_context *mac_ctx, struct pe_session *session,
 	}
 
 	if (wlan_reg_is_6ghz_chan_freq(bss_desc->chan_freq)) {
-		if (!ie_struct->Country.present)
+		if (!ie_struct->Country.present) {
 			pe_debug("Channel is 6G but country IE not present");
+			ctry_code_match = false;
+		}
 		status = wlan_reg_get_best_6g_power_type(
 				mac_ctx->psoc, mac_ctx->pdev,
 				&power_type_6g,
@@ -7641,10 +7642,11 @@ bool lim_process_sme_req_messages(struct mac_context *mac,
 		break;
 
 	case eWNI_SME_ASSOC_CNF:
-		if (pMsg->type == eWNI_SME_ASSOC_CNF)
+		if (pMsg->type == eWNI_SME_ASSOC_CNF) {
 			pe_debug("Received ASSOC_CNF message");
 			__lim_process_sme_assoc_cnf_new(mac, pMsg->type,
 							msg_buf);
+		}
 		break;
 
 	case eWNI_SME_ADDTS_REQ:
