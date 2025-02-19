@@ -1038,6 +1038,14 @@ struct cdp_ctrl_ops {
 	uint32_t (*txrx_buffers_replenish_on_demand)(struct cdp_soc_t *soc,
 						     uint32_t num_buffers,
 						     uint32_t pedv_id);
+	QDF_STATUS
+	(*txrx_qos_latency_stats_request)(struct cdp_soc_t *soc,
+					  uint8_t vdev_id,
+					  struct cdp_qos_latency_stats *req);
+	QDF_STATUS
+	(*txrx_qos_latency_get_stats)(struct cdp_soc_t *soc,
+				      uint8_t vdev_id,
+				      struct cdp_qos_latency_stats_req *stats);
 };
 
 struct cdp_me_ops {
