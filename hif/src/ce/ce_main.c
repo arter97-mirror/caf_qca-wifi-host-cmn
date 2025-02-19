@@ -4567,6 +4567,7 @@ void hif_ce_stop(struct hif_softc *scn)
 	}
 
 	hif_buffer_cleanup(hif_state);
+	hif_flush_delayed_reg_write_work(scn);
 
 	for (pipe_num = 0; pipe_num < scn->ce_count; pipe_num++) {
 		struct HIF_CE_pipe_info *pipe_info;

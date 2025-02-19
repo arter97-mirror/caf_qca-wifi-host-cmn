@@ -3048,8 +3048,14 @@ void hif_affinity_mgr_set_affinity(struct hif_opaque_softc *scn);
  * Return: None
  */
 void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx);
+void hif_flush_delayed_reg_write_work(struct hif_softc *scn);
 #else
 static inline void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx)
+{
+}
+
+static inline void
+hif_flush_delayed_reg_write_work(struct hif_softc *scn)
 {
 }
 #endif
