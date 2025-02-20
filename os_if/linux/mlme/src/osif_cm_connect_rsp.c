@@ -1115,6 +1115,29 @@ static inline int osif_update_connect_results(struct net_device *dev,
 }
 #endif /* CFG80211_CONNECT_DONE */
 
+static struct cfg80211_bss *osif_cm_get_connected_bss(
+			struct vdev_osif_priv *osif_priv,
+			struct wlan_cm_connect_resp *rsp)
+{
+	struct ieee80211_channel *chan;
+	struct cfg80211_bss *bss = NULL;
+
+	if (QDF_IS_STATUS_SUCCESS(rsp->connect_status)) {
+		chan = ieee80211_get_channel(osif_priv->wdev->wiphy,
+					     rsp->freq);
+		bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy, chan,
+					    rsp->bssid.bytes,
+					    rsp->ssid.ssid,
+					    rsp->ssid.length);
+		if (!bss) {
+			bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy,
+						    chan, rsp->bssid.bytes,
+						    NULL, 0);
+		}
+	}
+	return bss;
+}
+
 #ifdef WLAN_FEATURE_11BE_MLO
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static void
@@ -1152,24 +1175,10 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 					 struct wlan_cm_connect_resp *rsp)
 {
 	struct cfg80211_bss *bss = NULL;
-	struct ieee80211_channel *chan;
 	int32_t akm;
 
-	if (QDF_IS_STATUS_SUCCESS(rsp->connect_status)) {
-		chan = ieee80211_get_channel(osif_priv->wdev->wiphy,
-					     rsp->freq);
-		bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy, chan,
-					    rsp->bssid.bytes,
-					    rsp->ssid.ssid,
-					    rsp->ssid.length);
-		if (!bss) {
-			bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy,
-						    chan, rsp->bssid.bytes,
-						    NULL, 0);
-		}
-	}
-
 	if (!wlan_vdev_mlme_is_mlo_vdev(vdev)) {
+		bss = osif_cm_get_connected_bss(osif_priv, rsp);
 		if (osif_update_connect_results(osif_priv->wdev->netdev, bss,
 						rsp, vdev))
 			osif_connect_bss(osif_priv->wdev->netdev, bss, rsp);
@@ -1178,6 +1187,7 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 
 	akm = wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_KEY_MGMT);
 	if (!wlan_vdev_mlme_is_mlo_link_vdev(vdev)) {
+		bss = osif_cm_get_connected_bss(osif_priv, rsp);
 		if (osif_update_connect_results(
 				osif_priv->wdev->netdev, bss,
 				rsp, vdev))
@@ -1482,21 +1492,8 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 					 struct wlan_cm_connect_resp *rsp)
 {
 	struct cfg80211_bss *bss = NULL;
-	struct ieee80211_channel *chan;
 
-	if (QDF_IS_STATUS_SUCCESS(rsp->connect_status)) {
-		chan = ieee80211_get_channel(osif_priv->wdev->wiphy,
-					     rsp->freq);
-		bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy, chan,
-					    rsp->bssid.bytes,
-					    rsp->ssid.ssid,
-					    rsp->ssid.length);
-		if (!bss) {
-			bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy, chan,
-						    rsp->bssid.bytes, NULL, 0);
-		}
-	}
-
+	bss = osif_cm_get_connected_bss(osif_priv, rsp);
 	if (osif_update_connect_results(osif_priv->wdev->netdev, bss,
 					rsp, vdev))
 		osif_connect_bss(osif_priv->wdev->netdev, bss, rsp);
@@ -1507,17 +1504,8 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 					 struct wlan_cm_connect_resp *rsp)
 {
 	struct cfg80211_bss *bss = NULL;
-	struct ieee80211_channel *chan;
 
-	if (QDF_IS_STATUS_SUCCESS(rsp->connect_status)) {
-		chan = ieee80211_get_channel(osif_priv->wdev->wiphy,
-					     rsp->freq);
-		bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy, chan,
-					    rsp->bssid.bytes,
-					    rsp->ssid.ssid,
-					    rsp->ssid.length);
-	}
-
+	bss = osif_cm_get_connected_bss(osif_priv, rsp);
 	if (osif_update_connect_results(osif_priv->wdev->netdev, bss,
 					rsp, vdev))
 		osif_connect_bss(osif_priv->wdev->netdev, bss, rsp);
