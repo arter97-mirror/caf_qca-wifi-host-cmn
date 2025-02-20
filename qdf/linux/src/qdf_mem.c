@@ -730,7 +730,7 @@ static ssize_t qdf_major_alloc_set_threshold(struct file *file,
 					     size_t count,
 					     loff_t *pos)
 {
-	char buf[32];
+	char buf[32] = {0};
 	ssize_t buf_size;
 	uint32_t threshold;
 	struct seq_file *seq = file->private_data;
@@ -903,7 +903,7 @@ static ssize_t qdf_major_nbuf_alloc_set_threshold(struct file *file,
 						  size_t count,
 						  loff_t *pos)
 {
-	char buf[32];
+	char buf[32] = {0};
 	ssize_t buf_size;
 	uint32_t threshold;
 	struct seq_file *seq = file->private_data;
