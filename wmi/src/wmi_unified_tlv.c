@@ -20259,7 +20259,8 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		dst->peer_info[i].akm = cm_wmi_auth_type_to_crypto_key_mgmt(
 								   buf->akm);
 		dst->peer_info[i].cipher = buf->cipher_suite;
-		if (buf->passphrase_len) {
+		if (buf->passphrase_len && (buf->passphrase_len <=
+					    WMI_MAX_PASN_PASSPHRASE_LEN)) {
 			qdf_mem_copy(&dst->peer_info[i].password,
 				     &buf->passphrase, buf->passphrase_len);
 			dst->peer_info[i].password_len = buf->passphrase_len;
@@ -20297,13 +20298,14 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		dst->peer_info[i].force_self_mac_usage =
 			WMI_RTT_PASN_PEER_CREATE_FORCE_SELF_MAC_USE_GET(
 							buf->control_flag);
-		wmi_debug("Peer[%d]: self_mac :" QDF_MAC_ADDR_FMT " peer_mac :" QDF_MAC_ADDR_FMT "security_mode :0x%x force_self_mac:%d akm :0x%x cipher :0x%x",
+		wmi_debug("Peer[%d]: self_mac :" QDF_MAC_ADDR_FMT " peer_mac :" QDF_MAC_ADDR_FMT "security_mode :0x%x force_self_mac:%d akm :0x%x cipher :0x%x passphrase_len:0x%x",
 			  i, QDF_MAC_ADDR_REF(dst->peer_info[i].self_mac.bytes),
 			  QDF_MAC_ADDR_REF(dst->peer_info[i].peer_mac.bytes),
 			  security_mode,
 			  dst->peer_info[i].force_self_mac_usage,
 			  dst->peer_info[i].akm,
-			  dst->peer_info[i].cipher);
+			  dst->peer_info[i].cipher,
+			  buf->passphrase_len);
 
 		dst->num_peers++;
 		buf++;
