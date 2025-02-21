@@ -1377,6 +1377,7 @@ struct cdp_soc_t {
  * @CDP_CONFIG_PEER_DMS: Dms capability of peer
  * @CDP_CONFIG_TX_PKT_INFO: TX packet count
  * @CDP_CONFIG_RX_PKT_INFO: RX packet count
+ * @CDP_CONFIG_PEER_BW: configure peer bandwidth
  */
 enum cdp_peer_param_type {
 	CDP_CONFIG_NAWDS,
@@ -1388,6 +1389,7 @@ enum cdp_peer_param_type {
 	CDP_CONFIG_PEER_DMS,
 	CDP_CONFIG_TX_PKT_INFO,
 	CDP_CONFIG_RX_PKT_INFO,
+	CDP_CONFIG_PEER_BW,
 };
 
 /**
@@ -1487,6 +1489,7 @@ enum cdp_pdev_param_type {
  * @cdp_peer_param_in_twt: in TWT session or not
  * @cdp_peer_param_nac: Enable nac
  * @cdp_peer_param_freq: Peer frequency
+ * @cdp_peer_param_bw: peer bandwidth
  *
  * @cdp_vdev_param_nawds: set nawds enable/disable
  * @cdp_vdev_param_mcast_en: enable/disable multicast enhancement
@@ -1596,6 +1599,7 @@ typedef union cdp_config_param_t {
 	uint8_t cdp_peer_param_nac;
 	bool cdp_peer_param_in_twt;
 	uint32_t cdp_peer_param_freq;
+	enum cdp_peer_bw cdp_peer_param_bw;
 
 	/* vdev params */
 	bool cdp_vdev_param_wds;

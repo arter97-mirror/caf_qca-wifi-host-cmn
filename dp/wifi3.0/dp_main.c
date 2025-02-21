@@ -5981,6 +5981,7 @@ static QDF_STATUS dp_txrx_peer_detach(struct dp_soc *soc, struct dp_peer *peer)
 	/* dp_txrx_peer exists for mld peer and legacy peer */
 	if (peer->txrx_peer) {
 		txrx_peer = peer->txrx_peer;
+		dp_peer_set_bw(soc, txrx_peer, CDP_PEER_BW_MAX);
 		peer->txrx_peer = NULL;
 		pdev = txrx_peer->vdev->pdev;
 
@@ -6045,6 +6046,7 @@ static QDF_STATUS dp_txrx_peer_attach(struct dp_soc *soc, struct dp_peer *peer)
 	txrx_peer->vdev = peer->vdev;
 	pdev = peer->vdev->pdev;
 	txrx_peer->stats_arr_size = stats_arr_size;
+	txrx_peer->bw = CDP_PEER_BW_MAX;
 
 	DP_TXRX_PEER_STATS_INIT(txrx_peer,
 				(txrx_peer->stats_arr_size *
@@ -9083,8 +9085,9 @@ static QDF_STATUS dp_set_peer_param(struct cdp_soc_t *cdp_soc,  uint8_t vdev_id,
 				    cdp_config_param_type val)
 {
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(cdp_soc);
 	struct dp_peer *peer =
-			dp_peer_get_tgt_peer_hash_find((struct dp_soc *)cdp_soc,
+			dp_peer_get_tgt_peer_hash_find(soc,
 						       peer_mac, 0, vdev_id,
 						       DP_MOD_ID_CDP);
 	struct dp_txrx_peer *txrx_peer;
@@ -9117,6 +9120,9 @@ static QDF_STATUS dp_set_peer_param(struct cdp_soc_t *cdp_soc,  uint8_t vdev_id,
 		break;
 	case CDP_CONFIG_PEER_DMS:
 		txrx_peer->is_dms = val.cdp_peer_param_dms;
+		break;
+	case CDP_CONFIG_PEER_BW:
+		dp_peer_set_bw(soc, txrx_peer, val.cdp_peer_param_bw);
 		break;
 	default:
 		break;

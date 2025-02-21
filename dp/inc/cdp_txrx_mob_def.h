@@ -267,28 +267,20 @@ enum peer_debug_id_type {
 
 /**
  * enum cdp_peer_bw - Bandwidth types
- * @CDP_20_MHZ: 20MHz BW
- * @CDP_40_MHZ: 40MHz BW
- * @CDP_80_MHZ: 80MHz BW
- * @CDP_160_MHZ: 160MHz BW
- * @CDP_80P80_MHZ: 80+80MHz BW
- * @CDP_5_MHZ: 5MHz BW
- * @CDP_10_MHZ: 10MHz BW
- * @CDP_320_MHZ: 320MHz BW
- * @CDP_BW_INVALID: Invalid BW
- * @CDP_BW_MAX: Max BW id
+ * @CDP_PEER_BW_20MHZ: peer bandwidth of 20MHz
+ * @CDP_PEER_BW_40MHZ: peer bandwidth of 40MHz
+ * @CDP_PEER_BW_80MHZ: peer bandwidth of 80MHz
+ * @CDP_PEER_BW_160MHZ: peer bandwidth of 160MHz
+ * @CDP_PEER_BW_320MHZ: peer bandwidth of 320MHz
+ * @CDP_PEER_BW_MAX: max peer bandwidth place holder
  */
 enum cdp_peer_bw {
-	CDP_20_MHZ,
-	CDP_40_MHZ,
-	CDP_80_MHZ,
-	CDP_160_MHZ,
-	CDP_80P80_MHZ,
-	CDP_5_MHZ,
-	CDP_10_MHZ,
-	CDP_320_MHZ,
-	CDP_BW_INVALID,
-	CDP_BW_MAX
+	CDP_PEER_BW_20MHZ,
+	CDP_PEER_BW_40MHZ,
+	CDP_PEER_BW_80MHZ,
+	CDP_PEER_BW_160MHZ,
+	CDP_PEER_BW_320MHZ,
+	CDP_PEER_BW_MAX
 };
 
 /**

@@ -4069,16 +4069,8 @@ void dp_peer_jitter_stats_ctx_clr(struct dp_txrx_peer *txrx_peer)
 #endif
 
 #ifdef DP_PEER_EXTENDED_API
-/**
- * dp_peer_set_bw() - Set bandwidth and mpdu retry count threshold for peer
- * @soc: DP soc handle
- * @txrx_peer: Core txrx_peer handle
- * @set_bw: enum of bandwidth to be set for this peer connection
- *
- * Return: None
- */
-static void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
-			   enum cdp_peer_bw set_bw)
+void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
+		    enum cdp_peer_bw set_bw)
 {
 	if (!txrx_peer)
 		return;
@@ -4086,14 +4078,14 @@ static void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
 	txrx_peer->bw = set_bw;
 
 	switch (set_bw) {
-	case CDP_160_MHZ:
-	case CDP_320_MHZ:
+	case CDP_PEER_BW_160MHZ:
+	case CDP_PEER_BW_320MHZ:
 		txrx_peer->mpdu_retry_threshold =
 				soc->wlan_cfg_ctx->mpdu_retry_threshold_2;
 		break;
-	case CDP_20_MHZ:
-	case CDP_40_MHZ:
-	case CDP_80_MHZ:
+	case CDP_PEER_BW_20MHZ:
+	case CDP_PEER_BW_40MHZ:
+	case CDP_PEER_BW_80MHZ:
 	default:
 		txrx_peer->mpdu_retry_threshold =
 				soc->wlan_cfg_ctx->mpdu_retry_threshold_1;

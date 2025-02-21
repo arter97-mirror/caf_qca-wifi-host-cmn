@@ -2775,4 +2775,22 @@ dp_peer_update_wds(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 }
 #endif /* FEATURE_WDS_AST_LEARNING */
 
+#ifdef DP_PEER_EXTENDED_API
+/**
+ * dp_peer_set_bw() - Set bandwidth and mpdu retry count threshold for peer
+ * @soc: DP soc handle
+ * @txrx_peer: Core txrx_peer handle
+ * @set_bw: enum of bandwidth to be set for this peer connection
+ *
+ * Return: None
+ */
+void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
+		    enum cdp_peer_bw set_bw);
+#else
+static inline
+void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
+		    enum cdp_peer_bw set_bw)
+{
+}
+#endif
 #endif /* _DP_PEER_H_ */
