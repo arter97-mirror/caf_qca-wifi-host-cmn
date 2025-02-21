@@ -3666,6 +3666,46 @@ static inline void dp_soc_rx_history_detach(struct dp_soc *soc)
 }
 #endif
 
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+/**
+ * dp_soc_tx_mon_buf_ring_history_attach() - Allocate memory for TX monitor
+ *                                           buffer ring record history
+ * @soc: DP soc handle
+ *
+ * Return: None
+ */
+static void dp_soc_tx_mon_buf_ring_history_attach(struct dp_soc *soc)
+{
+	soc->tx_mon_buf_ring_history =
+			dp_context_alloc_mem(
+				soc, DP_TX_MON_BUF_HIST_TYPE,
+				sizeof(struct dp_tx_mon_buf_ring_history));
+	if (!soc->tx_mon_buf_ring_history)
+		dp_err("Failed to alloc memory for tx mon buf ring history");
+}
+
+/**
+ * dp_soc_tx_mon_buf_ring_history_detach() - Free memory for TX monitor buffer
+ *                                           ring record history
+ * @soc: DP soc handle
+ *
+ * Return: None
+ */
+static void dp_soc_tx_mon_buf_ring_history_detach(struct dp_soc *soc)
+{
+	dp_context_free_mem(soc, DP_TX_MON_BUF_HIST_TYPE,
+			    soc->tx_mon_buf_ring_history);
+}
+#else
+static void dp_soc_tx_mon_buf_ring_history_attach(struct dp_soc *soc)
+{
+}
+
+static void dp_soc_tx_mon_buf_ring_history_detach(struct dp_soc *soc)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_DP_MON_STATUS_RING_HISTORY
 /**
  * dp_soc_mon_status_ring_history_attach() - Attach the monitor status
@@ -4383,6 +4423,7 @@ static void dp_soc_detach(struct cdp_soc_t *txrx_soc)
 	wlan_cfg_soc_detach(soc->wlan_cfg_ctx);
 	dp_soc_tx_hw_desc_history_detach(soc);
 	dp_soc_tx_history_detach(soc);
+	dp_soc_tx_mon_buf_ring_history_detach(soc);
 	dp_soc_mon_status_ring_history_detach(soc);
 	dp_soc_rx_history_detach(soc);
 	dp_soc_cfg_history_detach(soc);
@@ -15077,6 +15118,7 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 	dp_soc_tx_hw_desc_history_attach(soc);
 	dp_soc_rx_history_attach(soc);
 	dp_soc_mon_status_ring_history_attach(soc);
+	dp_soc_tx_mon_buf_ring_history_attach(soc);
 	dp_soc_tx_history_attach(soc);
 	dp_soc_msdu_done_fail_desc_list_attach(soc);
 	dp_soc_msdu_done_fail_history_attach(soc);

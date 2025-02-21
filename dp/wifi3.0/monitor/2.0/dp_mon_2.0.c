@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,6 +31,10 @@
 #include <htt_ppdu_stats.h>
 #ifdef QCA_SUPPORT_LITE_MONITOR
 #include "dp_lite_mon.h"
+#endif
+
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
+struct mon_ingress_ring gtx_mon_buf_ring_entry_symbol __attribute__((used));
 #endif
 
 #if !defined(DISABLE_MON_CONFIG)
@@ -1024,6 +1028,8 @@ dp_mon_buffers_replenish(struct dp_soc *dp_soc,
 			break;
 	}
 
+	dp_tx_mon_buf_ring_record_entry(dp_soc, mon_srng,
+					num_req_buffers, count);
 	hal_srng_access_end(dp_soc->hal_soc, mon_srng);
 	if (replenish_cnt_ref)
 		*replenish_cnt_ref += count;

@@ -645,6 +645,7 @@ struct dp_rx_nbuf_frag_info {
  * @DP_STC_RX_FLOW_TABLE_TYPE: DP STC rx flow table
  * @DP_STC_TX_FLOW_TABLE_TYPE: DP STC tx flow table
  * @DP_STC_CLASSIFIED_FLOW_TABLE_TYPE: DP STC classified flow table
+ * @DP_TX_MON_BUF_HIST_TYPE: DP TX monitor buffer history
  */
 enum dp_ctxt_type {
 	DP_PDEV_TYPE,
@@ -667,6 +668,7 @@ enum dp_ctxt_type {
 	DP_STC_RX_FLOW_TABLE_TYPE,
 	DP_STC_TX_FLOW_TABLE_TYPE,
 	DP_STC_CLASSIFIED_FLOW_TABLE_TYPE,
+	DP_TX_MON_BUF_HIST_TYPE,
 };
 
 /**
@@ -1874,6 +1876,36 @@ struct dp_mon_status_ring_history {
 	qdf_atomic_t index;
 	struct dp_mon_stat_info_record entry[DP_MON_STATUS_HIST_MAX];
 };
+#endif
+
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+#define DP_TX_MON_BUF_HIST_MAX 2048
+/**
+ * struct dp_tx_mon_buf_info_record - TX monitor buffer info
+ * @hp: HP value after refill
+ * @tp: cached tail value during refill
+ * @num_req: number of buffers requested to refill
+ * @num_refill: number of buffers refilled to ring
+ * @timestamp: timestamp when this entry was recorded
+ */
+struct dp_tx_mon_buf_info_record {
+	uint32_t hp;
+	uint32_t tp;
+	uint32_t num_req;
+	uint32_t num_refill;
+	uint64_t timestamp;
+};
+
+/**
+ * struct dp_tx_mon_buf_ring_history - TX monitor buf ring history
+ * @index: Index where the last entry is written
+ * @entry: history entries
+ */
+struct dp_tx_mon_buf_ring_history {
+	qdf_atomic_t index;
+	struct dp_tx_mon_buf_info_record entry[DP_TX_MON_BUF_HIST_MAX];
+};
+
 #endif
 
 #ifdef WLAN_FEATURE_DP_RX_RING_HISTORY
@@ -3434,6 +3466,10 @@ struct dp_soc {
 	struct dp_rx_refill_history *rx_refill_ring_history[MAX_PDEV_CNT];
 	struct dp_rx_err_history *rx_err_ring_history;
 	struct dp_rx_reinject_history *rx_reinject_ring_history;
+#endif
+
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+	struct dp_tx_mon_buf_ring_history *tx_mon_buf_ring_history;
 #endif
 
 #ifdef WLAN_FEATURE_DP_MON_STATUS_RING_HISTORY

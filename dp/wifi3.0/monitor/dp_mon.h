@@ -129,6 +129,30 @@ static const uint8_t encrypt_map[11] = {
 	cdp_sec_type_aes_gcmp_256
 };
 
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+/**
+ * dp_tx_mon_buf_ring_record_entry() - Record an entry into TX monitor buffer
+ *                                     ring history
+ * @soc: Datapath soc structure
+ * @hal_ring_hdl:
+ * @num_req: number of buffers requested for refill
+ * @num_refill: number of buffers refilled
+ *
+ * Return: None
+ */
+void
+dp_tx_mon_buf_ring_record_entry(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+				uint32_t num_req, uint32_t num_refill);
+#else
+static inline void
+dp_tx_mon_buf_ring_record_entry(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+				uint32_t num_req, uint32_t num_refill)
+{
+}
+#endif
+
 #ifndef WLAN_TX_PKT_CAPTURE_ENH
 static inline void
 dp_process_ppdu_stats_update_failed_bitmap(struct dp_pdev *pdev,
