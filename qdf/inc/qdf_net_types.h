@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -70,12 +70,22 @@ typedef __in6_addr_t in6_addr_t;
 #define QDF_IEEE80211_FC1_FROMDS        0x02
 #define QDF_IEEE80211_FC1_PM            0x10
 
+#define QDF_IEEE80211_QOS_AMSDU		0x80
+#define QDF_IEEE80211_QOS_CTRL_LEN	2
+#define QDF_IEEE80211_QOS_AMSDU_LEN	2
+
+#define QDF_IEEE80211_HTC_CTRL		0x80
+#define QDF_IEEE80211_HTC_CTRL_LEN	4
+#define QDF_IEEE80211_CCMP_PARAM	0x40
+#define QDF_IEEE80211_CCMP_PARAM_LEN	8
+
 #define QDF_IEEE80211_FC0_VERSION_0     0x00
 #define QDF_IEEE80211_FC0_VERSION_MASK  0x03
 #define QDF_IEEE80211_FC0_TYPE_MASK     0x0c
 #define QDF_IEEE80211_FC0_SUBTYPE_MASK  0xf0
 
 #define QDF_IEEE80211_FC0_TYPE_MGT      0x00
+#define QDF_IEEE80211_FC0_SUBTYPE_BEACON 0x80
 
 #define QDF_IEEE80211_FC0_TYPE_DATA     0x08
 #define QDF_IEEE80211_FC0_SUBTYPE_DATA  0x00
@@ -85,6 +95,7 @@ typedef __in6_addr_t in6_addr_t;
 #define QDF_IEEE80211_FC0_SUBTYPE_NODATA   0x40
 
 #define QDF_IEEE80211_FC0_TYPE_CTL      0x04
+#define QDF_IEEE80211_FC0_SUBTYPE_TRIGGER	0x20
 #define QDF_IEEE80211_FC0_SUBTYPE_BEAM_REPORT_POLL 0x40
 #define QDF_IEEE80211_FC0_SUBTYPE_VHT_NDP_AN 0x50
 #define QDF_IEEE80211_FC0_SUBTYPE_CTL_FRAME_EXTN 0x60
@@ -591,6 +602,20 @@ static inline char *qdf_netdev_get_devname(qdf_netdev_t dev)
 {
 	return __qdf_netdev_get_devname(dev);
 }
+
+struct qdf_dot11_frame {
+	uint8_t i_fc[2];
+	uint8_t i_dur[2];
+	union {
+		struct {
+			uint8_t i_addr1[QDF_MAC_ADDR_SIZE];
+			uint8_t i_addr2[QDF_MAC_ADDR_SIZE];
+			uint8_t i_addr3[QDF_MAC_ADDR_SIZE];
+		};
+		uint8_t i_addr_all[3 * QDF_MAC_ADDR_SIZE];
+	};
+	uint8_t i_seq[2];
+};
 
 typedef struct {
 	uint8_t i_fc[2];

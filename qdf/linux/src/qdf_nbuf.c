@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -166,6 +166,54 @@ static inline uint8_t __qdf_nbuf_get_ip_offset(uint8_t *data)
 	return QDF_NBUF_TRAC_IP_OFFSET;
 }
 
+uint8_t *__qdf_nbuf_nonlinear_data(struct sk_buff *skb)
+{
+	if (__qdf_nbuf_get_nr_frags(skb))
+		return __qdf_nbuf_get_frag_addr(skb, 0);
+
+	if (__qdf_nbuf_has_fraglist(skb)) {
+		__qdf_nbuf_t buf;
+
+		buf = __qdf_nbuf_get_ext_list(skb);
+		if (buf)
+			return __qdf_nbuf_data(buf);
+	}
+	return __qdf_nbuf_data(skb);
+}
+
+static inline uint8_t
+__qdf_nbuf_calc_80211_hdr_len(uint8_t *data)
+{
+	uint8_t subtype;
+	struct qdf_dot11_frame *dot11hdr;
+	uint8_t hdr_len = 0;
+
+	dot11hdr = (struct qdf_dot11_frame *)data;
+	subtype = dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_MASK;
+	hdr_len += sizeof(struct qdf_dot11_frame);
+
+	if (subtype & QDF_IEEE80211_FC0_SUBTYPE_QOS) {
+		uint8_t qos_ctrl = *(uint8_t *)(data +
+						sizeof(struct qdf_dot11_frame));
+		if (qos_ctrl & QDF_IEEE80211_QOS_AMSDU) {
+			hdr_len += QDF_IEEE80211_QOS_CTRL_LEN +
+				QDF_NET_MAC_ADDR_MAX_LEN +
+				QDF_NET_MAC_ADDR_MAX_LEN +
+				QDF_IEEE80211_QOS_AMSDU_LEN;
+		} else {
+			hdr_len += QDF_IEEE80211_QOS_CTRL_LEN;
+		}
+	}
+
+	if (dot11hdr->i_fc[1] & QDF_IEEE80211_HTC_CTRL)
+		hdr_len += QDF_IEEE80211_HTC_CTRL_LEN;
+
+	if (dot11hdr->i_fc[1] & QDF_IEEE80211_CCMP_PARAM)
+		hdr_len += QDF_IEEE80211_CCMP_PARAM_LEN;
+
+	return hdr_len;
+}
+
 uint16_t __qdf_nbuf_get_ether_type(uint8_t *data)
 {
 	uint16_t ether_type;
@@ -184,6 +232,19 @@ uint16_t __qdf_nbuf_get_ether_type(uint8_t *data)
 }
 
 qdf_export_symbol(__qdf_nbuf_get_ether_type);
+
+uint16_t __qdf_nbuf_get_dot11_type(uint8_t *data)
+{
+	uint16_t dot11_type;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	dot11_type = *(uint16_t *)(data + dot11_hdr_offset +
+				   QDF_NBUF_TRAC_DOT11_TYPE_OFFSET);
+
+	return dot11_type;
+}
+
+qdf_export_symbol(__qdf_nbuf_get_dot11_type);
 
 void qdf_nbuf_tx_desc_count_display(void)
 {
@@ -1936,6 +1997,20 @@ bool __qdf_nbuf_data_is_ipv4_pkt(uint8_t *data)
 }
 qdf_export_symbol(__qdf_nbuf_data_is_ipv4_pkt);
 
+bool __qdf_nbuf_dot11_data_is_ipv4_pkt(uint8_t *data)
+{
+	uint16_t dot11_type;
+
+	dot11_type = __qdf_nbuf_get_dot11_type(data);
+
+	if (dot11_type == QDF_SWAP_U16(QDF_NBUF_TRAC_IPV4_ETH_TYPE))
+		return true;
+
+	return false;
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_ipv4_pkt);
+
 bool __qdf_nbuf_sock_is_valid_fullsock(struct sk_buff *skb)
 {
 	if (skb->sk && sk_fullsock(skb->sk))
@@ -2044,6 +2119,40 @@ bool __qdf_nbuf_data_is_ipv4_dhcp_pkt(uint8_t *data)
 }
 qdf_export_symbol(__qdf_nbuf_data_is_ipv4_dhcp_pkt);
 
+bool __qdf_nbuf_dot11_data_is_ipv4_dhcp_pkt(uint8_t *data)
+{
+	uint16_t sport;
+	uint16_t dport;
+	uint8_t ipv4_offset;
+	uint8_t ipv4_hdr_len;
+	struct iphdr *iphdr;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	if (__qdf_nbuf_get_dot11_type(data) !=
+		QDF_SWAP_U16(QDF_NBUF_TRAC_IPV4_ETH_TYPE))
+		return false;
+
+	ipv4_offset = dot11_hdr_offset + QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+					 QDF_NBUF_TRAC_IP_OFFSET);
+
+	iphdr = (struct iphdr *)(data + ipv4_offset);
+	ipv4_hdr_len = iphdr->ihl * QDF_NBUF_IPV4_HDR_SIZE_UNIT;
+
+	sport = *(uint16_t *)(data + ipv4_offset + ipv4_hdr_len);
+	dport = *(uint16_t *)(data + ipv4_offset + ipv4_hdr_len +
+			      sizeof(uint16_t));
+
+	if (((sport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP_SRV_PORT)) &&
+	     (dport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP_CLI_PORT))) ||
+	    ((sport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP_CLI_PORT)) &&
+	     (dport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP_SRV_PORT))))
+		return true;
+	else
+		return false;
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_ipv4_dhcp_pkt);
+
 /**
  * qdf_is_eapol_type() - check if packet is EAPOL
  * @type: Packet type
@@ -2074,6 +2183,17 @@ bool __qdf_nbuf_data_is_ipv4_eapol_pkt(uint8_t *data)
 	return qdf_is_eapol_type(ether_type);
 }
 qdf_export_symbol(__qdf_nbuf_data_is_ipv4_eapol_pkt);
+
+bool __qdf_nbuf_dot11_data_is_ipv4_eapol_pkt(uint8_t *data)
+{
+	uint16_t dot11_type;
+
+	dot11_type = __qdf_nbuf_get_dot11_type(data);
+
+	return qdf_is_eapol_type(dot11_type);
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_ipv4_eapol_pkt);
 
 bool __qdf_nbuf_is_ipv4_wapi_pkt(struct sk_buff *skb)
 {
@@ -2373,6 +2493,20 @@ bool __qdf_nbuf_data_is_ipv4_arp_pkt(uint8_t *data)
 }
 qdf_export_symbol(__qdf_nbuf_data_is_ipv4_arp_pkt);
 
+bool __qdf_nbuf_dot11_data_is_ipv4_arp_pkt(uint8_t *data)
+{
+	uint16_t dot11_type;
+
+	dot11_type = __qdf_nbuf_get_dot11_type(data);
+
+	if (dot11_type == QDF_SWAP_U16(QDF_NBUF_TRAC_ARP_ETH_TYPE))
+		return true;
+
+	return false;
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_ipv4_arp_pkt);
+
 bool __qdf_nbuf_data_is_arp_req(uint8_t *data)
 {
 	uint16_t op_code;
@@ -2446,6 +2580,31 @@ bool __qdf_nbuf_data_is_dns_query(uint8_t *data)
 
 qdf_export_symbol(__qdf_nbuf_data_is_dns_query);
 
+bool __qdf_nbuf_dot11_data_is_dns_query(uint8_t *data)
+{
+	uint16_t op_code;
+	uint16_t tgt_port;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	tgt_port = (uint16_t)(*(uint16_t *)(data + dot11_hdr_offset +
+					    QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+					    QDF_NBUF_PKT_DNS_DST_PORT_OFFSET)));
+
+	/* Standard DNS query always happen on Dest Port 53. */
+	if (tgt_port == QDF_SWAP_U16(QDF_NBUF_PKT_DNS_STANDARD_PORT)) {
+		op_code = (uint16_t)(*(uint16_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_DNS_OVER_UDP_OPCODE_OFFSET)));
+
+		if ((QDF_SWAP_U16(op_code) & QDF_NBUF_PKT_DNSOP_BITMAP) ==
+				QDF_NBUF_PKT_DNSOP_STANDARD_QUERY)
+			return true;
+	}
+	return false;
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_dns_query);
+
 bool __qdf_nbuf_data_is_dns_response(uint8_t *data)
 {
 	uint16_t op_code;
@@ -2467,12 +2626,52 @@ bool __qdf_nbuf_data_is_dns_response(uint8_t *data)
 
 qdf_export_symbol(__qdf_nbuf_data_is_dns_response);
 
+bool __qdf_nbuf_dot11_data_is_dns_response(uint8_t *data)
+{
+	uint16_t op_code;
+	uint16_t src_port;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	src_port = (uint16_t)(*(uint16_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_DNS_SRC_PORT_OFFSET)));
+
+	/* Standard DNS response always comes on Src Port 53. */
+	if (src_port == QDF_SWAP_U16(QDF_NBUF_PKT_DNS_STANDARD_PORT)) {
+		op_code = (uint16_t)(*(uint16_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_DNS_OVER_UDP_OPCODE_OFFSET)));
+
+		if ((QDF_SWAP_U16(op_code) & QDF_NBUF_PKT_DNSOP_BITMAP) ==
+				QDF_NBUF_PKT_DNSOP_STANDARD_RESPONSE)
+			return true;
+	}
+	return false;
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_dns_response);
+
 bool __qdf_nbuf_data_is_tcp_fin(uint8_t *data)
 {
 	uint8_t op_code;
 
 	op_code = (uint8_t)(*(uint8_t *)(data +
 				QDF_NBUF_PKT_TCP_OPCODE_OFFSET));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_FIN)
+		return true;
+
+	return false;
+}
+
+bool __qdf_nbuf_dot11_data_is_tcp_fin(uint8_t *data)
+{
+	uint8_t op_code;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	op_code = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET)));
 
 	if (op_code == QDF_NBUF_PKT_TCPOP_FIN)
 		return true;
@@ -2493,6 +2692,21 @@ bool __qdf_nbuf_data_is_tcp_fin_ack(uint8_t *data)
 	return false;
 }
 
+bool __qdf_nbuf_dot11_data_is_tcp_fin_ack(uint8_t *data)
+{
+	uint8_t op_code;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	op_code = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET)));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_FIN_ACK)
+		return true;
+
+	return false;
+}
+
 bool __qdf_nbuf_data_is_tcp_syn(uint8_t *data)
 {
 	uint8_t op_code;
@@ -2505,12 +2719,40 @@ bool __qdf_nbuf_data_is_tcp_syn(uint8_t *data)
 	return false;
 }
 
+bool __qdf_nbuf_dot11_data_is_tcp_syn(uint8_t *data)
+{
+	uint8_t op_code;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	op_code = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET)));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_SYN)
+		return true;
+	return false;
+}
+
 bool __qdf_nbuf_data_is_tcp_syn_ack(uint8_t *data)
 {
 	uint8_t op_code;
 
 	op_code = (uint8_t)(*(uint8_t *)(data +
 				QDF_NBUF_PKT_TCP_OPCODE_OFFSET));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_SYN_ACK)
+		return true;
+	return false;
+}
+
+bool __qdf_nbuf_dot11_data_is_tcp_syn_ack(uint8_t *data)
+{
+	uint8_t op_code;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	op_code = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET)));
 
 	if (op_code == QDF_NBUF_PKT_TCPOP_SYN_ACK)
 		return true;
@@ -2530,12 +2772,41 @@ bool __qdf_nbuf_data_is_tcp_rst(uint8_t *data)
 	return false;
 }
 
+bool __qdf_nbuf_dot11_data_is_tcp_rst(uint8_t *data)
+{
+	uint8_t op_code;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	op_code = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET)));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_RST)
+		return true;
+
+	return false;
+}
+
 bool __qdf_nbuf_data_is_tcp_ack(uint8_t *data)
 {
 	uint8_t op_code;
 
 	op_code = (uint8_t)(*(uint8_t *)(data +
 				QDF_NBUF_PKT_TCP_OPCODE_OFFSET));
+
+	if (op_code == QDF_NBUF_PKT_TCPOP_ACK)
+		return true;
+	return false;
+}
+
+bool __qdf_nbuf_dot11_data_is_tcp_ack(uint8_t *data)
+{
+	uint8_t op_code;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	op_code = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_PKT_TCP_OPCODE_OFFSET)));
 
 	if (op_code == QDF_NBUF_PKT_TCPOP_ACK)
 		return true;
@@ -2651,6 +2922,20 @@ bool __qdf_nbuf_data_is_ipv6_pkt(uint8_t *data)
 }
 qdf_export_symbol(__qdf_nbuf_data_is_ipv6_pkt);
 
+bool __qdf_nbuf_dot11_data_is_ipv6_pkt(uint8_t *data)
+{
+	uint16_t dot11_type;
+
+	dot11_type = __qdf_nbuf_get_dot11_type(data);
+
+	if (dot11_type == QDF_SWAP_U16(QDF_NBUF_TRAC_IPV6_ETH_TYPE))
+		return true;
+	else
+		return false;
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_ipv6_pkt);
+
 bool __qdf_nbuf_data_is_ipv6_dhcp_pkt(uint8_t *data)
 {
 	uint16_t sport;
@@ -2676,6 +2961,35 @@ bool __qdf_nbuf_data_is_ipv6_dhcp_pkt(uint8_t *data)
 		return false;
 }
 qdf_export_symbol(__qdf_nbuf_data_is_ipv6_dhcp_pkt);
+
+bool __qdf_nbuf_dot11_data_is_ipv6_dhcp_pkt(uint8_t *data)
+{
+	uint16_t sport;
+	uint16_t dport;
+	uint8_t ipv6_offset;
+	uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+	if (!__qdf_nbuf_dot11_data_is_ipv6_pkt(data))
+		return false;
+
+	ipv6_offset = QDF_ADJUST_OFFSET_DOT3_TO_DOT11(QDF_NBUF_TRAC_IP_OFFSET);
+
+	sport = *(uint16_t *)(data + dot11_hdr_offset + ipv6_offset +
+			      (QDF_NBUF_TRAC_IPV6_HEADER_SIZE));
+	dport = *(uint16_t *)(data + dot11_hdr_offset + ipv6_offset +
+			      (QDF_NBUF_TRAC_IPV6_HEADER_SIZE) +
+			      sizeof(uint16_t));
+
+	if (((sport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP6_SRV_PORT)) &&
+	     (dport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP6_CLI_PORT))) ||
+	    ((sport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP6_CLI_PORT)) &&
+	     (dport == QDF_SWAP_U16(QDF_NBUF_TRAC_DHCP6_SRV_PORT))))
+		return true;
+	else
+		return false;
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_ipv6_dhcp_pkt);
 
 bool __qdf_nbuf_data_is_ipv6_mdns_pkt(uint8_t *data)
 {
@@ -2756,6 +3070,27 @@ bool __qdf_nbuf_data_is_icmp_pkt(uint8_t *data)
 
 qdf_export_symbol(__qdf_nbuf_data_is_icmp_pkt);
 
+bool __qdf_nbuf_dot11_data_is_icmp_pkt(uint8_t *data)
+{
+	if (__qdf_nbuf_dot11_data_is_ipv4_pkt(data)) {
+		uint8_t pkt_type;
+		uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+		pkt_type = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_TRAC_IPV4_PROTO_TYPE_OFFSET)));
+
+		if (pkt_type == QDF_NBUF_TRAC_ICMP_TYPE)
+			return true;
+		else
+			return false;
+	} else {
+		return false;
+	}
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_icmp_pkt);
+
 bool __qdf_nbuf_data_is_icmpv6_pkt(uint8_t *data)
 {
 	if (__qdf_nbuf_data_is_ipv6_pkt(data)) {
@@ -2773,6 +3108,27 @@ bool __qdf_nbuf_data_is_icmpv6_pkt(uint8_t *data)
 }
 
 qdf_export_symbol(__qdf_nbuf_data_is_icmpv6_pkt);
+
+bool __qdf_nbuf_dot11_data_is_icmpv6_pkt(uint8_t *data)
+{
+	if (__qdf_nbuf_dot11_data_is_ipv6_pkt(data)) {
+		uint8_t pkt_type;
+		uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+		pkt_type = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+				QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+				QDF_NBUF_TRAC_IPV6_PROTO_TYPE_OFFSET)));
+
+		if (pkt_type == QDF_NBUF_TRAC_ICMPV6_TYPE)
+			return true;
+		else
+			return false;
+	} else {
+		return false;
+	}
+}
+
+qdf_export_symbol(__qdf_nbuf_dot11_data_is_icmpv6_pkt);
 
 bool __qdf_nbuf_data_is_ipv4_udp_pkt(uint8_t *data)
 {
@@ -2806,6 +3162,25 @@ bool __qdf_nbuf_data_is_ipv4_tcp_pkt(uint8_t *data)
 		return false;
 }
 
+bool __qdf_nbuf_dot11_data_is_ipv4_tcp_pkt(uint8_t *data)
+{
+	if (__qdf_nbuf_dot11_data_is_ipv4_pkt(data)) {
+		uint8_t pkt_type;
+		uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+		pkt_type = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+					QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+					QDF_NBUF_TRAC_IPV4_PROTO_TYPE_OFFSET)));
+
+		if (pkt_type == QDF_NBUF_TRAC_TCP_TYPE)
+			return true;
+		else
+			return false;
+	} else {
+		return false;
+	}
+}
+
 bool __qdf_nbuf_data_is_ipv6_udp_pkt(uint8_t *data)
 {
 	if (__qdf_nbuf_data_is_ipv6_pkt(data)) {
@@ -2836,6 +3211,25 @@ bool __qdf_nbuf_data_is_ipv6_tcp_pkt(uint8_t *data)
 			return false;
 	} else
 		return false;
+}
+
+bool __qdf_nbuf_dot11_data_is_ipv6_tcp_pkt(uint8_t *data)
+{
+	if (__qdf_nbuf_dot11_data_is_ipv6_pkt(data)) {
+		uint8_t pkt_type;
+		uint8_t dot11_hdr_offset = __qdf_nbuf_calc_80211_hdr_len(data);
+
+		pkt_type = (uint8_t)(*(uint8_t *)(data + dot11_hdr_offset +
+					QDF_ADJUST_OFFSET_DOT3_TO_DOT11(
+					QDF_NBUF_TRAC_IPV6_PROTO_TYPE_OFFSET)));
+
+		if (pkt_type == QDF_NBUF_TRAC_TCP_TYPE)
+			return true;
+		else
+			return false;
+	} else {
+		return false;
+	}
 }
 
 bool __qdf_nbuf_is_bcast_pkt(qdf_nbuf_t nbuf)
