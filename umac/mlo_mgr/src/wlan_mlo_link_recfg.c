@@ -945,7 +945,7 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 						&link_add_accept);
 		if (!link_info) {
 			mlo_debug("no find link info for add link self addr " QDF_MAC_ADDR_FMT "",
-				  link_add->self_link_addr.bytes);
+				  QDF_MAC_ADDR_REF(link_add->self_link_addr.bytes));
 			continue;
 		}
 		link_add->vdev_id = link_info->vdev_id;
@@ -1002,7 +1002,7 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 		}
 		if (j == WLAN_MAX_ML_BSS_LINKS) {
 			mlo_debug("no find link info for rej self link add " QDF_MAC_ADDR_FMT "",
-				  link_add_reject->self_link_addr.bytes);
+				  QDF_MAC_ADDR_REF(link_add_reject->self_link_addr.bytes));
 			goto end;
 		}
 		link_add_accept->vdev_id = link_info->vdev_id;
