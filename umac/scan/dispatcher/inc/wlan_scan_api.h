@@ -571,26 +571,16 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 			     struct qdf_mac_addr *bssid);
 
 /*
- * wlan_scan_is_localy_gen_non_tx_mbssid_entry() - function to check
- * non tx mbssid entry
- * @pdev: pdev object
- * @bssid: bssid to be fetched from scan db
- *
- *  Return : true if non tx mbssid scan entry found, else false
- */
-bool wlan_scan_is_localy_gen_non_tx_mbssid_entry(struct wlan_objmgr_pdev *pdev,
-						 struct qdf_mac_addr *bssid);
-
-/*
- * wlan_scan_is_locally_generated_entry() - Function to check
+ * wlan_scan_flush_locally_generated_entry() - Function to flush
  * locally generated scan entry
  * @pdev: pdev object
  * @bssid: bssid to be fetched from scan db
  *
- * Return : true if non tx mbssid scan entry found, else false
+ * Return : true if scan entry is flushed; false otherwise
  */
-bool wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
-					  struct qdf_mac_addr *bssid);
+bool
+wlan_scan_flush_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
+					struct qdf_mac_addr *bssid);
 
 /**
  * wlan_scan_get_mld_addr_by_link_addr() - Function to get MLD address

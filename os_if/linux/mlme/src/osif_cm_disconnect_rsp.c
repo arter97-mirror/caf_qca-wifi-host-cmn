@@ -417,10 +417,7 @@ QDF_STATUS osif_disconnect_handler(struct wlan_objmgr_vdev *vdev,
 	/* Unlink bss if disconnect is from peer or south bound */
 	if (rsp->req.req.source == CM_PEER_DISCONNECT ||
 	    rsp->req.req.source == CM_SB_DISCONNECT ||
-	    ((wlan_scan_is_localy_gen_non_tx_mbssid_entry(
-		    wlan_vdev_get_pdev(vdev),
-		    &rsp->req.req.bssid) ||
-	      wlan_scan_is_locally_generated_entry(
+	    ((wlan_scan_flush_locally_generated_entry(
 		    wlan_vdev_get_pdev(vdev),
 		    &rsp->req.req.bssid)) &&
 	    rsp->req.req.source != CM_MLO_LINK_SWITCH_DISCONNECT))
