@@ -2056,7 +2056,7 @@ struct dp_peer *dp_peer_get_tgt_peer_hash_find(struct dp_soc *soc,
 			ta_peer = peer;
 		}
 	} else {
-		dp_peer_err("fail to find peer:" QDF_MAC_ADDR_FMT " vdev_id: %u",
+		dp_peer_info("fail to find peer:" QDF_MAC_ADDR_FMT " vdev_id: %u",
 			    QDF_MAC_ADDR_REF(peer_mac), vdev_id);
 	}
 
