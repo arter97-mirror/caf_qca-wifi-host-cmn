@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -117,6 +117,7 @@ enum reg_domain {
 	ETSI21_WORLD = 0x7D,
 	ETSI22_WORLD = 0x7F,
 	ETSI22_ETSIC = 0x8A,
+	ETSI24_WORLD = 0xD6,
 
 	APL1_WORLD = 0x52,
 	APL1_ETSIC = 0x55,
@@ -215,6 +216,8 @@ enum reg_domain {
 	WORLD_68 = 0x68,
 	WORLD_6A = 0x6A,
 	WORLD_6C = 0x6C,
+
+	NULL1_WORLDWIDE = 0x9A,
 };
 
 enum reg_domains_5g {
@@ -263,6 +266,7 @@ enum reg_domains_5g {
 	ETSI20,
 	ETSI21,
 	ETSI22,
+	ETSI24,
 
 	APL1,
 	APL2,
@@ -321,6 +325,7 @@ enum reg_domains_2g {
 	WORLD_2G_1,
 	WORLD_2G_2,
 	WORLD_2G_3,
+	WORLDWIDE,
 
 	REG_DOMAINS_2G_MAX,
 };
@@ -530,6 +535,7 @@ enum country_code {
 	CTRY_VIRGIN_ISLANDS = 850,
 	CTRY_VIRGIN_ISLANDS_BRITISH = 92,
 	CTRY_WALLIS_AND_FUTUNA = 876,
+	CTRY_WORLDWIDE = 900,
 	CTRY_XA = 4100,   /* Used by Linux Client for legacy MKK domain */
 	CTRY_YEMEN = 887,
 	CTRY_ZIMBABWE = 716,
