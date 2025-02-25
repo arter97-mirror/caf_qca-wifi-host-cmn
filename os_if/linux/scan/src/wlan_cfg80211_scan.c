@@ -1608,6 +1608,8 @@ wlan_scan_cached_scan_report_ev_handler(struct wlan_objmgr_pdev *pdev,
 
 	if (qdf_atomic_read(&osif_scan->cache_scan_report_req_cnt)) {
 		cached_scan_report->ts = qdf_get_monotonic_boottime();
+		osif_debug("Scan cached report ts: %llu",
+			   cached_scan_report->ts);
 		osif_scan->cache_scan_report = cached_scan_report;
 
 		qdf_event_set_all(&osif_scan->cache_scan_report_event);
@@ -1698,6 +1700,8 @@ fill_bss_info:
 	if (!attr)
 		goto free_skb;
 
+	osif_debug("Scan cached report ts: %llu current ts: %llu",
+		   scan_report->ts, curent_ts);
 	time_delta = curent_ts - scan_report->ts;
 	for (i = 0; i < scan_report->num_bss; i++) {
 		bss_attr = nla_nest_start(skb, i);
