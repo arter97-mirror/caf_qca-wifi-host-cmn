@@ -500,6 +500,32 @@ init_deinit_set_dp_rx_peer_metadata_ver(struct wlan_objmgr_psoc *psoc,
 				val);
 }
 
+#if defined(IPA_OFFLOAD) && defined(WLAN_FEATURE_MULTI_LINK_SAP)
+/**
+ * init_deinit_get_dp_peer_metadata_ver() - get RX peer metadata version
+ * @wmi_handle: wmi handle
+ * @tgt_hdl: PSOC_INFO object
+ *
+ * Return: RX peer metadata version
+ */
+static inline uint8_t
+init_deinit_get_dp_peer_metadata_ver(struct wmi_unified *wmi_handle,
+				     struct target_psoc_info *tgt_hdl)
+{
+	if (wmi_service_enabled(wmi_handle, wmi_service_v1a_v1b_supported))
+		return CDP_RX_PEER_METADATA_V1_A_B;
+	else
+		return target_psoc_get_target_dp_peer_meta_data_ver(tgt_hdl);
+}
+#else
+static inline uint8_t
+init_deinit_get_dp_peer_metadata_ver(struct wmi_unified *wmi_handle,
+				     struct target_psoc_info *tgt_hdl)
+{
+	return target_psoc_get_target_dp_peer_meta_data_ver(tgt_hdl);
+}
+#endif
+
 void init_deinit_prepare_send_init_cmd(
 		 struct wlan_objmgr_psoc *psoc,
 		 struct target_psoc_info *tgt_hdl)
@@ -575,12 +601,8 @@ void init_deinit_prepare_send_init_cmd(
 	if (wmi_service_enabled(wmi_handle, wmi_service_ext2_msg))
 		init_deinit_derive_afc_dev_type_param(psoc, &init_param);
 
-	if (wmi_service_enabled(wmi_handle, wmi_service_v1a_v1b_supported))
-		info->wlan_res_cfg.dp_peer_meta_data_ver =
-					CDP_RX_PEER_METADATA_V1_A_B;
-	else
-		info->wlan_res_cfg.dp_peer_meta_data_ver =
-			target_psoc_get_target_dp_peer_meta_data_ver(tgt_hdl);
+	info->wlan_res_cfg.dp_peer_meta_data_ver =
+		init_deinit_get_dp_peer_metadata_ver(wmi_handle, tgt_hdl);
 
 	/* notify DP rx peer metadata version */
 	init_deinit_set_dp_rx_peer_metadata_ver(
