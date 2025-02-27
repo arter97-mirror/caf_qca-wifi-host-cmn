@@ -1336,6 +1336,15 @@ qdf_nbuf_set_send_complete_flag(qdf_nbuf_t buf, bool flag)
  */
 void qdf_nbuf_map_check_for_leaks(void);
 
+/**
+ * qdf_nbuf_detect_track_list_corruption() - Detect nbuf tracker list corruption
+ * @ptr: memory block pointer
+ * @size: memory block size
+ *
+ * Returns: None
+ */
+void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size);
+
 QDF_STATUS qdf_nbuf_map_debug(qdf_device_t osdev,
 			      qdf_nbuf_t buf,
 			      qdf_dma_dir_t dir,
@@ -1453,6 +1462,8 @@ QDF_STATUS qdf_nbuf_track_map_single_debug(qdf_device_t osdev, qdf_nbuf_t buf,
 #else /* NBUF_MAP_UNMAP_DEBUG */
 
 static inline void qdf_nbuf_map_check_for_leaks(void) {}
+
+static inline void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size) {}
 
 static inline QDF_STATUS
 qdf_nbuf_map(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
