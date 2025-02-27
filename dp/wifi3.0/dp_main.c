@@ -6503,9 +6503,80 @@ dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
 			prev_vdev->vdev_id, curr_vdev->vdev_id);
 	}
 }
+
+static inline bool
+dp_qos_latency_copy_stats(struct dp_vdev *prev_vdev,
+			  struct dp_vdev *curr_vdev, uint8_t index)
+{
+	uint8_t j, k;
+
+	qdf_atomic_set(&prev_vdev->qos_latency_report[index].enable, false);
+	curr_vdev->qos_latency_report[index].type =
+		prev_vdev->qos_latency_report[index].type;
+
+	if (prev_vdev->qos_latency_report[index].type ==
+			REPORT_TYPE_HISTOGRAM) {
+		curr_vdev->qos_latency_report[index].stats =
+			prev_vdev->qos_latency_report[index].stats;
+		for (j = 0; j < CDP_MAX_DATA_TIDS; j++) {
+			for (k = 0; k < CDP_HIST_BUCKET_SIZE; k++)
+				curr_vdev->tx_latency_stats_hist[j][k] =
+					prev_vdev->tx_latency_stats_hist[j][k];
+		}
+		prev_vdev->qos_latency_report[index].stats = NULL;
+	} else if (prev_vdev->qos_latency_report[index].type ==
+			REPORT_TYPE_PERCENTILE) {
+		curr_vdev->qos_latency_report[index].stats =
+			prev_vdev->qos_latency_report[index].stats;
+		for (j = 0; j < CDP_MAX_DATA_TIDS; j++) {
+			for (k = 0; k < PERC_BUCKET_SIZE; k++)
+				curr_vdev->tx_latency_stats_per[j][k] =
+					prev_vdev->tx_latency_stats_per[j][k];
+		}
+			prev_vdev->qos_latency_report[index].stats = NULL;
+	} else {
+		return false;
+	}
+
+	qdf_atomic_set(&curr_vdev->qos_latency_report[index].enable, true);
+	dp_info("Change Vdev %u to %u for Report Method: %u Type: %u",
+		prev_vdev->vdev_id, curr_vdev->vdev_id, index,
+		curr_vdev->qos_latency_report[index].type);
+
+	return true;
+}
+
+static inline void
+dp_update_qos_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+	uint8_t i;
+	bool report_enable = false;
+
+	if (!prev_vdev || !curr_vdev)
+		return;
+
+	dp_enable_ul_delay(prev_vdev, UL_DELAY_CALC_ID_QOS, false);
+
+	for (i = 0; i < SOLICITED_MAX; i++) {
+		if (qdf_atomic_read(&prev_vdev->qos_latency_report[i].enable)) {
+			if (dp_qos_latency_copy_stats(prev_vdev, curr_vdev, i))
+				report_enable = true;
+		}
+	}
+
+	if (report_enable)
+		dp_enable_ul_delay(curr_vdev, UL_DELAY_CALC_ID_QOS, true);
+}
 #else
 static inline void
 dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+}
+
+static inline void
+dp_update_qos_latency_request_vdev(struct dp_vdev *prev_vdev,
 				   struct dp_vdev *curr_vdev)
 {
 }
@@ -6525,6 +6596,7 @@ static QDF_STATUS dp_mld_peer_change_vdev(struct dp_soc *soc,
 					       DP_MOD_ID_CHILD);
 
 	dp_update_mlo_latency_request_vdev(prev_vdev, mld_peer->vdev);
+	dp_update_qos_latency_request_vdev(prev_vdev, mld_peer->vdev);
 	mld_peer->txrx_peer->vdev = mld_peer->vdev;
 
 	dp_info("Change vdev for ML peer " QDF_MAC_ADDR_FMT
