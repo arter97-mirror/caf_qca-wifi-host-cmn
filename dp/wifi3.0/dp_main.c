@@ -11537,6 +11537,10 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 		wlan_dp_lapb_display_stats(soc);
 		break;
 
+	case CDP_TXRX_SOC_STATS:
+		dp_print_txrx_soc_stats(soc);
+		break;
+
 	default:
 		status = QDF_STATUS_E_INVAL;
 		break;
