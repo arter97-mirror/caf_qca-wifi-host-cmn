@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -71,6 +71,30 @@ void wlan_cp_stats_init_cfg(struct wlan_objmgr_psoc *psoc,
 				cfg_get(psoc, CHIPSET_STATS_ENABLE);
 }
 
+void wlan_cp_stats_init_user_delay_value_ms_cfg(struct wlan_objmgr_psoc *psoc,
+						struct cp_stats_context *csc)
+{
+	if (!psoc) {
+		cp_stats_err("psoc is NULL");
+		return;
+	}
+
+	csc->host_params.chipset_stats_push_rbs_delay_val_ms =
+		cfg_get(psoc, CFG_CHIPSET_STATS_PUSH_RBS_DELAY_VAL_MS);
+}
+
+void wlan_cp_stats_init_user_delay_interval_cfg(struct wlan_objmgr_psoc *psoc,
+						struct cp_stats_context *csc)
+{
+	if (!psoc) {
+		cp_stats_err("psoc is NULL");
+		return;
+	}
+
+	csc->host_params.chipset_stats_push_rbs_delay_interval =
+		cfg_get(psoc, CFG_CHIPSET_STATS_PUSH_RBS_DELAY_VAL_MS);
+}
+
 bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 {
 	struct cp_stats_context *csc;
@@ -83,6 +107,34 @@ bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 	}
 
 	return csc->host_params.chipset_stats_enable;
+}
+
+size_t wlan_cp_stats_get_user_delay_value_ms(struct wlan_objmgr_psoc *psoc)
+{
+	struct cp_stats_context *csc;
+
+	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+						    WLAN_UMAC_COMP_CP_STATS);
+	if (!csc) {
+		cp_stats_err("CP Stats Context is NULL");
+		return false;
+	}
+
+	return csc->host_params.chipset_stats_push_rbs_delay_val_ms;
+}
+
+size_t wlan_cp_stats_get_user_delay_interval(struct wlan_objmgr_psoc *psoc)
+{
+	struct cp_stats_context *csc;
+
+	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+						    WLAN_UMAC_COMP_CP_STATS);
+	if (!csc) {
+		cp_stats_err("CP Stats Context is NULL");
+		return false;
+	}
+
+	return csc->host_params.chipset_stats_push_rbs_delay_interval;
 }
 
 static void wlan_cp_stats_enable_init_cstats(struct wlan_objmgr_pdev *pdev)
@@ -202,6 +254,8 @@ wlan_cp_stats_psoc_obj_create_handler(struct wlan_objmgr_psoc *psoc, void *arg)
 						       QDF_STATUS_SUCCESS);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
 		wlan_cp_stats_init_cfg(psoc, csc);
+		wlan_cp_stats_init_user_delay_value_ms_cfg(psoc, csc);
+		wlan_cp_stats_init_user_delay_interval_cfg(psoc, csc);
 		wlan_cp_stats_cstats_init(psoc);
 	}
 

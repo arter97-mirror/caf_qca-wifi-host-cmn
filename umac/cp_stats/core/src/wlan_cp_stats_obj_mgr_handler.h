@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -219,6 +219,26 @@ int wlan_cp_stats_twt_get_peer_session_params(
 bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc);
 
 /**
+ * wlan_cp_stats_get_user_delay_value_ms() - Returns INI
+ * USER_DELAY_VALUE_MS
+ *
+ * @psoc: psoc object
+ *
+ * Return: user_delay_value_ms ini value
+ */
+size_t wlan_cp_stats_get_user_delay_value_ms(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_cp_stats_get_user_delay_interval() - Returns INI
+ * USER_DELAY_INTERVAL
+ *
+ * @psoc: psoc object
+ *
+ * Return: user_delay_interval ini value
+ */
+size_t wlan_cp_stats_get_user_delay_interval(struct wlan_objmgr_psoc *psoc);
+
+/**
  * wlan_cp_stats_cstats_qmi_event_handler() - chipset stats QMI event handler
  *
  * @cb_ctx: callback context
@@ -241,10 +261,58 @@ int wlan_cp_stats_cstats_qmi_event_handler(void *cb_ctx, uint16_t type,
  */
 void wlan_cp_stats_init_cfg(struct wlan_objmgr_psoc *psoc,
 			    struct cp_stats_context *csc);
+
+/**
+ * wlan_cp_stats_init_user_delay_value_ms_cfg() - update cp_stats_context with
+ * ini value
+ *
+ * @psoc: pointer to psoc
+ * @csc: pointer to cp_stats_context
+ *
+ * Return : void
+ */
+void wlan_cp_stats_init_user_delay_value_ms_cfg(struct wlan_objmgr_psoc *psoc,
+						struct cp_stats_context *csc);
+
+/**
+ * wlan_cp_stats_init_user_delay_interval_cfg() - update cp_stats_context with
+ * ini value
+ *
+ * @psoc: pointer to psoc
+ * @csc: pointer to cp_stats_context
+ *
+ * Return : void
+ */
+void wlan_cp_stats_init_user_delay_interval_cfg(struct wlan_objmgr_psoc *psoc,
+						struct cp_stats_context *csc);
 #else
 static inline void wlan_cp_stats_init_cfg(struct wlan_objmgr_psoc *psoc,
 					  struct cp_stats_context *csc)
 {
+}
+
+static inline void
+wlan_cp_stats_init_user_delay_value_ms_cfg(struct wlan_objmgr_psoc *psoc,
+					   struct cp_stats_context *csc)
+{
+}
+
+static inline void
+wlan_cp_stats_init_user_delay_interval_cfg(struct wlan_objmgr_psoc *psoc,
+					   struct cp_stats_context *csc)
+{
+}
+
+static inline size_t
+wlan_cp_stats_get_user_delay_value_ms(struct wlan_objmgr_psoc *psoc)
+{
+	return 0;
+}
+
+static inline size_t
+wlan_cp_stats_get_user_delay_interval(struct wlan_objmgr_psoc *psoc)
+{
+	return 0;
 }
 #endif /* WLAN_CHIPSET_STATS */
 
