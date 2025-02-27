@@ -871,6 +871,7 @@ mlo_mgr_link_switch_trans_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 		mlo_debug("State transition not allowed");
 		break;
 	default:
+		next_state = cur_state;
 		QDF_ASSERT(0);
 		break;
 	}
