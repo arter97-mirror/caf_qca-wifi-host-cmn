@@ -2116,13 +2116,13 @@ dp_sawf_inc_reinject_pkt(struct dp_peer *peer, uint8_t msduq_idx)
 
 	txrx_peer = dp_get_txrx_peer(peer);
 	if (!txrx_peer) {
-		dp_sawf_err("NULL txrx_peer");
+		dp_sawf_debug("NULL txrx_peer");
 		return QDF_STATUS_E_FAILURE;
 	}
 
 	stats_ctx = dp_peer_sawf_stats_ctx_get(txrx_peer);
 	if (!stats_ctx) {
-		dp_sawf_err("Invalid SAWF stats ctx");
+		dp_sawf_debug("Invalid SAWF stats ctx");
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -2203,7 +2203,7 @@ dp_sawf_reinject_handler(struct dp_soc *soc, qdf_nbuf_t nbuf,
 
 	status = dp_sawf_inc_reinject_pkt(peer, msduq_idx);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		dp_sawf_err("Unable to inc reinject stats for peer id %u",
+		dp_sawf_debug("Unable to inc reinject stats for peer id %u",
 			    peer_id);
 		dp_peer_unref_delete(peer, DP_MOD_ID_SAWF);
 		return status;
