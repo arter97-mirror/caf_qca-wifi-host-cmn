@@ -89,6 +89,18 @@ QDF_STATUS wmi_unified_terminate_all_ndps_req_cmd(wmi_unified_t wmi_handle,
 						  uint32_t vdev_id);
 
 /**
+ * wmi_unified_ndp_update_config_cmd_send - API to request Firmware for
+ * updating the NDP configuration associated with the given vdev id.
+ * @wmi_handle: wmi handle
+ * @req: pointer to request buffer
+ *
+ * Return: status of operation
+ */
+QDF_STATUS
+wmi_unified_ndp_update_config_cmd_send(wmi_unified_t wmi_handle,
+				       struct nan_datapath_update_config *req);
+
+/**
  * wmi_extract_ndp_initiator_rsp - api to extract initiator rsp from even buffer
  * @wmi_handle: wmi handle
  * @data: event buffer
