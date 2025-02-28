@@ -4164,7 +4164,7 @@ free_keys:
 		if (!key_alloc_buf[k])
 			continue;
 
-		wmi_err_rl("flush keybuf :%d, key is valid", flush_keybuf,
+		wmi_err_rl("flush keybuf :%d, key is valid %d", flush_keybuf,
 			   key_alloc_buf[k]->valid);
 		if (!flush_keybuf && key_alloc_buf[k]->valid)
 			continue;
