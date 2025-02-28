@@ -2576,6 +2576,9 @@ QDF_STATUS (*send_ndp_end_req_cmd)(wmi_unified_t wmi_handle,
 				struct nan_datapath_end_req *req);
 QDF_STATUS (*send_terminate_all_ndps_req_cmd)(wmi_unified_t wmi_handle,
 					      uint32_t vdev_id);
+QDF_STATUS
+(*send_ndp_update_config_cmd)(wmi_unified_t wmi_handle,
+			      struct nan_datapath_update_config *req);
 
 QDF_STATUS (*extract_ndp_initiator_rsp)(wmi_unified_t wmi_handle,
 		uint8_t *data, struct nan_datapath_initiator_rsp *rsp);
