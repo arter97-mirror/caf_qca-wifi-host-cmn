@@ -1404,9 +1404,9 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
 			if (qca_ml_entry.qal_fdb_ieee80211_ptr && is_mld_netdev(qca_ml_entry.qal_fdb_dev)) {
-				temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+				temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_dhost);
 				if (temp_osifp) {
-					qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+					qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_dhost);
 					qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
 					qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
 					qca_ml_entry.qal_fdb_dev = NULL;
