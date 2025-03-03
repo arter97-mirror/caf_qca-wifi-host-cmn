@@ -3305,15 +3305,12 @@ util_gen_link_recfg_assoc_rsp(struct element_info *org_assoc_rsp,
 	uint8_t *new_assoc_rsp = NULL;
 	uint16_t new_assoc_rsp_len = 0;
 
-	mlo_debug("dump org_assoc_rsp");
-	qdf_trace_hex_dump(QDF_MODULE_ID_MGMT_TXRX, QDF_TRACE_LEVEL_DEBUG,
-			   org_assoc_rsp->ptr, org_assoc_rsp->len);
+	mlo_debug("Link %d: dump org assoc rsp and action frame:", link_id);
+	mgmt_txrx_frame_hex_dump(org_assoc_rsp->ptr,
+				 org_assoc_rsp->len, false);
 
-	mlo_debug("dump action rsp");
 	mgmt_txrx_frame_hex_dump(action_frm,
 				 frame_len, false);
-	qdf_trace_hex_dump(QDF_MODULE_ID_MGMT_TXRX, QDF_TRACE_LEVEL_DEBUG,
-			   action_frm, frame_len);
 
 	status = util_link_recfg_replace_ml_ie(org_assoc_rsp,
 					       action_frm,
@@ -3339,7 +3336,7 @@ util_gen_link_recfg_assoc_rsp(struct element_info *org_assoc_rsp,
 		return QDF_STATUS_E_INVAL;
 	}
 	qdf_mem_free(new_assoc_rsp);
-	mlo_debug("succ gen assoc resp ");
+
 	return QDF_STATUS_SUCCESS;
 }
 

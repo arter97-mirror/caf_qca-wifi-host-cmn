@@ -5634,7 +5634,9 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 								(qdf_size_t *)&link_assoc_rsp.len);
 			add_link_info->link[i].link_assoc_rsp.len = link_assoc_rsp.len;
 			if (QDF_IS_STATUS_SUCCESS(status)) {
-				mlo_debug("MLO: link recfg assoc rsp for link vdev");
+				mlo_debug("MLO vdev %d: link %d recfg assoc rsp",
+					  add_link_info->link[i].vdev_id,
+					  link_id);
 				mlo_update_cache_link_assoc_rsp(vdev, link_id,
 								&link_assoc_rsp);
 				mgmt_txrx_frame_hex_dump(link_assoc_rsp.ptr,
@@ -5644,7 +5646,9 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 				add_link_info->link[i].link_assoc_rsp.ptr = NULL;
 				add_link_info->link[i].link_assoc_rsp.len = 0;
 			} else {
-				mlo_err("Link recfg assoc resp generation failed");
+				mlo_err("MLO vdev %d: link %d recfg assoc resp generation failed",
+					 add_link_info->link[i].vdev_id,
+					  link_id);
 				add_link_info->link[i].link_assoc_rsp.len = 0;
 				qdf_mem_free(add_link_info->link[i].link_assoc_rsp.ptr);
 				add_link_info->link[i].link_assoc_rsp.ptr = NULL;
