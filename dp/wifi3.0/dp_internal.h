@@ -4016,6 +4016,25 @@ dp_hal_srng_access_end(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
 }
 #endif
 
+static inline int dp_hal_srng_try_access_start(hal_soc_handle_t hal_soc_hdl,
+					       hal_ring_handle_t hal_ring_hdl,
+					       uint32_t timeout_ns)
+{
+	qdf_ktime_t timeout = qdf_ktime_add_ns(qdf_ktime_get(), timeout_ns);
+	int ret;
+
+	do {
+		ret = hal_srng_try_access_start(hal_soc_hdl, hal_ring_hdl);
+		if (!ret)
+			break;
+	} while (qdf_ktime_compare(qdf_ktime_get(), timeout) < 0);
+
+	if (ret)
+		return -ETIMEDOUT;
+
+	return ret;
+}
+
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 /**
  * dp_srng_access_start() - Wrapper function to log access start of a hal ring
