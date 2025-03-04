@@ -495,6 +495,9 @@ dp_rx_decrypt_unecrypt_err_handler_rh(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			dp_rx_deliver_to_osif_stack_rh(soc, vdev, txrx_peer, nbuf, NULL,
 						       qdf_nbuf_is_ipv4_eapol_pkt(nbuf));
 		}
+	} else {
+		DP_STATS_INC(soc, rx.err.unencrypt_err_drop, 1);
+		goto free_nbuf;
 	}
 
 	if (txrx_peer)
