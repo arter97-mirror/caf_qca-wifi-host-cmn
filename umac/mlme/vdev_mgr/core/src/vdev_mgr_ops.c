@@ -851,6 +851,11 @@ static QDF_STATUS vdev_mgr_up_param_update(
 				mlme_set_mbssid_info(vdev,
 						     &entry->mbssid_info,
 						     chan->ch_freq);
+				if (entry->is_gen_entry)
+					qdf_mem_copy(mbss->trans_bssid,
+						     bcast_mac.bytes,
+						     QDF_MAC_ADDR_SIZE);
+
 				util_scan_free_cache_entry(entry);
 			}
 		}
