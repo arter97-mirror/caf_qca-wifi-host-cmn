@@ -617,6 +617,8 @@ scm_ignore_ssid_check_for_hidden_bss(struct scan_filter *filter,
 
 	is_hidden = util_scan_entry_is_hidden_ap(db_entry);
 	if (is_hidden &&
+	    (!qdf_is_macaddr_zero(&filter->bssid_hint) ||
+	     QDF_HAS_PARAM(filter->key_mgmt, WLAN_CRYPTO_KEY_MGMT_OWE)) &&
 	    util_is_bssid_match(&filter->bssid_hint, &db_entry->bssid))
 		return true;
 
