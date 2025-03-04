@@ -1423,6 +1423,76 @@ void dfs_init_precac_list(struct wlan_dfs *dfs)
 	PRECAC_LIST_UNLOCK(dfs);
 }
 
+#ifdef WLAN_FEATURE_11BE
+/**
+ * dfs_is_chan_punctured - Check if a DFS channel is punctured.
+ * @chan: Pointer to the dfs_channel structure.
+ *
+ * This function checks whether the given DFS channel is punctured by
+ * examining the dfs_ch_punc_pattern field of the dfs_channel structure.
+ * If the pattern is non-zero, the channel is considered punctured.
+ *
+ * Return: true if the channel is punctured, false otherwise.
+ */
+static inline
+bool dfs_is_chan_punctured(struct dfs_channel *chan)
+{
+	return (chan->dfs_ch_punc_pattern != 0);
+}
+
+/**
+ * dfs_is_precac_done_on_punc_chan - Check if pre-CAC is done on a punctured
+ * channel.
+ * @dfs: Pointer to the WLAN DFS structure
+ * @chan: Pointer to the DFS channel structure
+ *
+ * This function checks if the pre-CAC (Channel Availability Check) is done
+ * on a specified punctured channel. It gets all the sub-channel of the given
+ * channel, checks if the channel is punctured or not, if the sub-channel is not
+ * punctured, then it checks if the precac is done on the channel. If all the
+ * sub-channels that are not punctured have done precac the it returns true.
+ *
+ * Return: true if pre-CAC is done on the punctured channel, false otherwise
+ */
+static bool
+dfs_is_precac_done_on_punc_chan(struct wlan_dfs *dfs, struct dfs_channel *chan)
+{
+	uint16_t subchans[MAX_20MHZ_SUBCHANS] = {0};
+	uint8_t n_subchans;
+	uint8_t i;
+	/* input channel's puncturing pattern */
+	uint16_t pp = chan->dfs_ch_punc_pattern;
+
+	n_subchans = dfs_find_dfs_sub_channels_for_freq(dfs, chan, subchans);
+	for (i = 0; i < n_subchans; i++) {
+		bool is_precac_done;
+
+		if (pp & (1 << i))
+			continue;
+
+		is_precac_done =
+		    dfs_is_precac_done_on_non_80p80_chan_for_freq(dfs,
+								  subchans[i]);
+		if (!is_precac_done)
+			return false;
+	}
+
+	return true;
+}
+#else
+static inline bool
+dfs_is_precac_done_on_punc_chan(struct wlan_dfs *dfs, struct dfs_channel *chan)
+{
+	return false;
+}
+
+static inline
+bool dfs_is_chan_punctured(struct dfs_channel *chan)
+{
+	return false;
+}
+#endif
+
 /*
  * dfs_is_precac_done() - Verify if preCAC is done.
  * @dfs: Pointer to wlan_dfs.
@@ -1450,16 +1520,21 @@ bool dfs_is_precac_done(struct wlan_dfs *dfs, struct dfs_channel *chan)
 	     */
 		cfreq = chan->dfs_ch_mhz_freq_seg1;
 
-	if (WLAN_IS_CHAN_MODE_20(chan) ||
-	    WLAN_IS_CHAN_MODE_40(chan) ||
-	    WLAN_IS_CHAN_MODE_80(chan) ||
-	    WLAN_IS_CHAN_MODE_160(chan) ||
-	    WLAN_IS_CHAN_MODE_165(dfs, chan) ||
-	    WLAN_IS_CHAN_MODE_320(chan)) {
-		ret_val =
-		    dfs_is_precac_done_on_non_80p80_chan_for_freq(dfs, cfreq);
-	} else if (WLAN_IS_CHAN_MODE_80_80(chan)) {
-		ret_val = dfs_is_precac_done_on_80p80_chan(dfs, chan);
+	if (dfs_is_chan_punctured(chan)) {
+		ret_val = dfs_is_precac_done_on_punc_chan(dfs, chan);
+	} else {
+		if (WLAN_IS_CHAN_MODE_20(chan) ||
+		    WLAN_IS_CHAN_MODE_40(chan) ||
+		    WLAN_IS_CHAN_MODE_80(chan) ||
+		    WLAN_IS_CHAN_MODE_160(chan) ||
+		    WLAN_IS_CHAN_MODE_165(dfs, chan) ||
+		    WLAN_IS_CHAN_MODE_320(chan)) {
+			ret_val =
+			    dfs_is_precac_done_on_non_80p80_chan_for_freq(
+								dfs, cfreq);
+		} else if (WLAN_IS_CHAN_MODE_80_80(chan)) {
+			ret_val = dfs_is_precac_done_on_80p80_chan(dfs, chan);
+		}
 	}
 
 	dfs_debug(dfs, WLAN_DEBUG_DFS, "precac_done_status = %d", ret_val);
