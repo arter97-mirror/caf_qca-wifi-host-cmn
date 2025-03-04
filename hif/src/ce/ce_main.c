@@ -4916,10 +4916,12 @@ inline unsigned int hif_get_dst_ring_read_index(struct hif_softc *scn,
 static inline QDF_STATUS hif_alloc_rri_on_ddr(struct hif_softc *scn)
 {
 	qdf_dma_addr_t paddr_rri_on_ddr = 0;
+	qdf_size_t size = 0;
 
+	size = (RRI_ON_DDR_MEM_SIZE > PAGE_SIZE * 2)?RRI_ON_DDR_MEM_SIZE:PAGE_SIZE * 2;
 	scn->vaddr_rri_on_ddr =
 		(void *)qdf_mem_alloc_consistent(scn->qdf_dev,
-		scn->qdf_dev->dev, RRI_ON_DDR_MEM_SIZE,
+		scn->qdf_dev->dev, size,
 		&paddr_rri_on_ddr);
 
 	if (!scn->vaddr_rri_on_ddr) {
@@ -4928,8 +4930,10 @@ static inline QDF_STATUS hif_alloc_rri_on_ddr(struct hif_softc *scn)
 	}
 
 	scn->paddr_rri_on_ddr = paddr_rri_on_ddr;
-
-	qdf_mem_zero(scn->vaddr_rri_on_ddr, RRI_ON_DDR_MEM_SIZE);
+	
+	hif_info("scn->vaddr_rri_on_ddr %p, scn->paddr_rri_on_ddr 0x%x",scn->vaddr_rri_on_ddr, scn->paddr_rri_on_ddr);
+	
+	qdf_mem_zero(scn->vaddr_rri_on_ddr, size);
 
 	return QDF_STATUS_SUCCESS;
 }
