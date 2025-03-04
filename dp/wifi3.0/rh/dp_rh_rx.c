@@ -1357,7 +1357,7 @@ QDF_STATUS dp_rx_defrag_store_fragment_rh(struct dp_soc *soc, qdf_nbuf_t frag)
 	/* Check if the packet is from a valid peer */
 	peer_id = QDF_NBUF_CB_RX_PEER_ID(frag);
 	txrx_peer = dp_txrx_peer_get_ref_by_id(soc, peer_id, &txrx_ref_handle,
-					       DP_MOD_ID_RX);
+					       DP_MOD_ID_RX_ERR);
 
 	if (!txrx_peer) {
 		/* We should not receive anything from unknown peer
