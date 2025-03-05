@@ -486,6 +486,18 @@ ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
+ * mlo_link_recfg_validate_roam_invoke() - Validate roam invoke
+ * allow if link recfg is in-progress
+ * @psoc: psoc object
+ * @vdev: vdev object
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_link_recfg_validate_roam_invoke(
+		struct wlan_objmgr_psoc *psoc,
+		struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_link_recfg_set_mac_addr_resp() - handle link recfg set mac
  * addr response
  * @vdev: vdev object
@@ -912,6 +924,14 @@ mlo_mgr_link_recfg_req_cmd_handler(
 			struct  mlo_link_recfg_user_req_params *req);
 #endif
 #else
+static inline QDF_STATUS
+mlo_link_recfg_validate_roam_invoke(
+		struct wlan_objmgr_psoc *psoc,
+		struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline void
 mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev)
 {

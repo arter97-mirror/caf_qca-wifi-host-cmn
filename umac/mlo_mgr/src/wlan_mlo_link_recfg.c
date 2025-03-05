@@ -71,6 +71,20 @@ mlo_link_recfg_get_psoc(struct mlo_link_recfg_context *recfg_ctx)
 	return recfg_ctx->psoc;
 }
 
+QDF_STATUS mlo_link_recfg_validate_roam_invoke(
+		struct wlan_objmgr_psoc *psoc,
+		struct wlan_objmgr_vdev *vdev)
+{
+	if (!wlan_mlme_is_link_recfg_support(psoc))
+		return QDF_STATUS_SUCCESS;
+	if (mlo_is_link_recfg_in_progress(vdev)) {
+		mlo_debug("reject invoke due to recfg in-progress");
+		return QDF_STATUS_E_BUSY;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 	enum wlan_link_recfg_sm_state curr_state;
