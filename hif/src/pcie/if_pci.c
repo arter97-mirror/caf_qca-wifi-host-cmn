@@ -3236,7 +3236,7 @@ void hif_pci_irq_set_affinity_hint(struct hif_exec_context *hif_ext_group,
 		qdf_cpumask_clear(&new_cpu_mask);
 		 qdf_for_each_online_cpu(cpus) {
 			if (BIT(cpus) & cpumask)
-				qdf_cpumask_set_cpu(i, &new_cpu_mask);
+				qdf_cpumask_set_cpu(cpus, &new_cpu_mask);
 		}
 
 		if (!qdf_cpumask_empty(&new_cpu_mask)) {
