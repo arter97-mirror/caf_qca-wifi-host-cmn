@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1922,7 +1922,7 @@ static struct CE_pipe_config target_ce_config_wlan_wcn6450[] = {
 	{ /* CE4 */ 4, PIPEDIR_OUT, 256, 256,
 		(CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0,},
 	/* host->target HTT data */
-	{ /* CE5 */ 5, PIPEDIR_OUT, 256, 256,
+	{ /* CE5 */ 5, PIPEDIR_OUT, 512, 256,
 		(CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0,},
 	/* target->target HIF_memcpy*/
 	{ /* CE6 */ 6, PIPEDIR_INOUT, 1024, 2048, CE_ATTR_FLAGS, 0,},

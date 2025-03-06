@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -629,12 +629,6 @@ static void dp_rx_mic_err_handler_rh(struct dp_soc *soc, qdf_nbuf_t nbuf)
 							  DP_MOD_ID_RX);
 			return;
 		}
-	}
-
-	if (qdf_unlikely(qdf_nbuf_is_rx_chfrag_cont(nbuf))) {
-		dp_err("Unsupported MSDU format rcvd in MIC error handler");
-		qdf_assert_always(0);
-		goto fail;
 	}
 
 	if (hal_rx_mpdu_get_addr1(soc->hal_soc, qdf_nbuf_data(nbuf),

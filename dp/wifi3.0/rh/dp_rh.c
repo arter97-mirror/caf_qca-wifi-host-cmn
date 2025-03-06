@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -121,6 +121,9 @@ dp_peer_setup_rh(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	vdev_opmode = vdev->opmode;
 	pdev = vdev->pdev;
 
+	dp_cfg_event_record_peer_setup_evt(soc, DP_CFG_EVENT_PEER_SETUP,
+					   peer, vdev, vdev->vdev_id,
+					   setup_info);
 	dp_info("pdev: %d vdev :%d opmode:%u",
 		pdev->pdev_id, vdev->vdev_id, vdev->opmode);
 

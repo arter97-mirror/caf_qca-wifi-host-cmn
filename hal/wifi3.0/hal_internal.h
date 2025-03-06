@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1376,7 +1376,8 @@ struct hal_hw_txrx_ops {
 	uint32_t (*hal_rx_get_reo_error_code)(hal_ring_desc_t rx_desc);
 	void (*hal_rx_tlv_csum_err_get)(uint8_t *rx_tlv_hdr,
 					uint32_t *ip_csum_err,
-					uint32_t *tcp_udp_csum_err);
+					uint32_t *tcp_udp_csum_err,
+					uint32_t *ip_frag);
 	void (*hal_rx_mpdu_desc_info_get)(void *desc_addr,
 					  void *mpdu_desc_info_hdl);
 	uint8_t (*hal_rx_err_status_get)(hal_ring_desc_t rx_desc);

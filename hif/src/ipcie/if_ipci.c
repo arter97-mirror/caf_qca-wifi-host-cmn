@@ -639,7 +639,9 @@ static void hif_ipci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 		return;
 	}
 	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
-		if (host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR)
+		/* skip affine to perf if the ce is used for datapath */
+		if ((host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR) ||
+		    hif_is_datapath_ce(scn->ce_id_to_state[ce_id]))
 			continue;
 		qdf_cpumask_copy(&updated_mask, &ce_cpu_mask);
 		ret = hif_affinity_mgr_set_ce_irq_affinity(scn, ipci_sc->ce_msi_irq_num[ce_id],

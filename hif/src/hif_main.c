@@ -2059,7 +2059,7 @@ QDF_STATUS hif_enable(struct hif_opaque_softc *hif_ctx, struct device *dev,
 	if (hif_bus_configure(scn)) {
 		hif_err("Target probe failed");
 		status = QDF_STATUS_E_FAILURE;
-		goto hal_detach;
+		goto free_delayed_reg_mem;
 	}
 
 	hif_ut_suspend_init(scn);
@@ -2080,6 +2080,8 @@ QDF_STATUS hif_enable(struct hif_opaque_softc *hif_ctx, struct device *dev,
 
 	return QDF_STATUS_SUCCESS;
 
+free_delayed_reg_mem:
+	hif_delayed_reg_write_deinit(scn);
 hal_detach:
 	hif_hal_detach(scn);
 disable_bus:
