@@ -57,8 +57,12 @@
 
 #ifdef CONFIG_4_BYTES_TLV_TAG
 #define HAL_RX_TLV_HDR_SIZE HAL_RX_TLV32_HDR_SIZE
+#define HAL_TX_MON_TLV_GET(desc, block, field) \
+		HAL_TX_DESC_GET(desc, block, field)
 #else
 #define HAL_RX_TLV_HDR_SIZE HAL_RX_TLV64_HDR_SIZE
+#define HAL_TX_MON_TLV_GET(desc, block, field) \
+		HAL_TX_DESC_GET_64(desc, block, field)
 #endif
 
 #define HAL_TLV_STATUS_PPDU_NOT_DONE 0
