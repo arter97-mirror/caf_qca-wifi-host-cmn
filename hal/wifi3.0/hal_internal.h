@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -187,8 +187,9 @@ enum hal_srng_ring_id {
 	HAL_SRNG_REO2SW6 = 6,
 	HAL_SRNG_REO2SW7 = 7,
 	HAL_SRNG_REO2SW8 = 8,
-	HAL_SRNG_REO2TCL = 9,
-	HAL_SRNG_REO2PPE = 10,
+	HAL_SRNG_REO2SW9 = 9,
+	HAL_SRNG_REO2TCL = 10,
+	HAL_SRNG_REO2PPE = 11,
 	/* 11-15 unused */
 	HAL_SRNG_SW2REO = 16,
 	HAL_SRNG_SW2REO1 = 17,
@@ -273,6 +274,13 @@ enum hal_srng_ring_id {
 	HAL_SRNG_WBM2SW5_RELEASE = 133,
 	HAL_SRNG_WBM2SW6_RELEASE = 134,
 	HAL_SRNG_WBM_ERROR_RELEASE = 135,
+	HAL_SRNG_TQM2SW0_RELEASE = 136,
+	HAL_SRNG_TQM2SW1_RELEASE = 137,
+	HAL_SRNG_TQM2SW2_RELEASE = 138,
+	HAL_SRNG_TQM2SW3_RELEASE = 139,
+	HAL_SRNG_TQM2SW4_RELEASE = 140,
+	HAL_SRNG_TQM2SW5_RELEASE = 141,
+	HAL_SRNG_TQM2SW6_RELEASE = 142,
 	/* 136-158 unused */
 	HAL_SRNG_UMAC_ID_END = 159,
 	/* Common DMAC rings shared by all LMACs */
@@ -403,6 +411,7 @@ enum hal_ring_type {
 	TX_MONITOR_DST,
 	SW2RXDMA_NEW,
 	SW2RXDMA_LINK_RELEASE,
+	TQM2SW_RELEASE,
 	MAX_RING_TYPES
 };
 
