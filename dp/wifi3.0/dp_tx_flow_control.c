@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -161,6 +161,191 @@ dp_tx_flow_ctrl_reset_subqueues(struct dp_soc *soc,
 	}
 }
 
+#ifdef NDP_TX_BW_FLOW_CTRL
+static
+void dp_tx_ndp_init_bw_thresholds(struct dp_tx_desc_pool_s *pool)
+{
+	uint8_t i;
+
+	qdf_mem_zero(pool->num_peers_bw, sizeof(pool->num_peers_bw));
+	qdf_mem_zero(pool->prev_desc_dist, sizeof(pool->prev_desc_dist));
+	qdf_mem_zero(pool->curr_desc_dist, sizeof(pool->curr_desc_dist));
+	qdf_mem_zero(pool->avail_desc_per_bw, sizeof(pool->avail_desc_per_bw));
+
+	for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+		pool->stop_th_be_per_bw[i] = NDP_TX_INVALID_BW_SUBQ_THRESH;
+		pool->start_th_be_per_bw[i] = NDP_TX_INVALID_BW_SUBQ_THRESH;
+	}
+
+	pool->bw_queue_pause_bitmap = 0;
+}
+
+static void
+dp_tx_ndp_update_weighted_bw_thresh(struct dp_tx_desc_pool_s *pool)
+{
+	uint16_t cumulative_bw_weight = 0;
+	uint16_t tx_desc_per_unit_weight;
+	uint16_t tx_desc_stop_th_per_unit_weight;
+	uint16_t tx_desc_start_th_per_unit_weight;
+	uint8_t highest_valid_peer_bw;
+	uint8_t i;
+
+	qdf_mem_copy(pool->prev_desc_dist, pool->curr_desc_dist,
+		     sizeof(pool->curr_desc_dist));
+	qdf_mem_zero(pool->curr_desc_dist, sizeof(pool->curr_desc_dist));
+	qdf_mem_zero(pool->stop_th_be_per_bw,
+		     sizeof(pool->stop_th_be_per_bw));
+	qdf_mem_zero(pool->start_th_be_per_bw,
+		     sizeof(pool->start_th_be_per_bw));
+
+	for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+		if (pool->num_peers_bw[i]) {
+			cumulative_bw_weight += BIT(i);
+			highest_valid_peer_bw = i;
+		}
+	}
+
+	if (!cumulative_bw_weight) {
+		/*
+		 * On disconnection of all NDP peers, adjust the available be or
+		 * bk descriptor distribution - the count is not set to zero at
+		 * runtime as there could be outstanding tx completions. This is
+		 * to address potential issues due to frequent NDP peer
+		 * connections and disconnections.
+		 */
+		for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+			pool->avail_desc_per_bw[i] += (pool->curr_desc_dist[i] -
+						       pool->prev_desc_dist[i]);
+			pool->stop_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+			pool->start_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+		}
+		return;
+	}
+
+	tx_desc_per_unit_weight = pool->pool_size / cumulative_bw_weight;
+	tx_desc_stop_th_per_unit_weight = pool->stop_th[DP_TH_BE_BK] /
+					   cumulative_bw_weight;
+	tx_desc_start_th_per_unit_weight = pool->start_th[DP_TH_BE_BK] /
+					   cumulative_bw_weight;
+
+	pool->curr_desc_dist[highest_valid_peer_bw] =
+			(pool->pool_size % cumulative_bw_weight);
+	pool->stop_th_be_per_bw[highest_valid_peer_bw] =
+			(pool->stop_th[DP_TH_BE_BK] % cumulative_bw_weight);
+	pool->start_th_be_per_bw[highest_valid_peer_bw] =
+			(pool->start_th[DP_TH_BE_BK] % cumulative_bw_weight);
+
+	/*
+	 * Adjust the per BW tx descriptors using curr and prev descriptor
+	 * distribution and add the difference to the available count. The
+	 * available count can go negative if there are tx completions pending
+	 * at this point.
+	 */
+	for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+		if (pool->num_peers_bw[i]) {
+			pool->curr_desc_dist[i] +=
+					(tx_desc_per_unit_weight << i);
+			pool->stop_th_be_per_bw[i] +=
+					(tx_desc_stop_th_per_unit_weight << i);
+			pool->start_th_be_per_bw[i] +=
+					(tx_desc_start_th_per_unit_weight << i);
+		} else {
+			pool->stop_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+			pool->start_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+		}
+
+		pool->avail_desc_per_bw[i] +=
+			(pool->curr_desc_dist[i] - pool->prev_desc_dist[i]);
+		dp_info("Adjusted BE/BK tx descriptors for BW-%u: %u stop_thresh:%u start thresh:%u",
+			i, pool->curr_desc_dist[i],
+			pool->stop_th_be_per_bw[i],
+			pool->start_th_be_per_bw[i]);
+	}
+}
+
+void dp_tx_ndp_update_bw_thresholds(struct dp_txrx_peer *peer,
+				    enum cdp_peer_bw old_bw,
+				    enum cdp_peer_bw new_bw)
+{
+	struct dp_vdev *vdev = peer->vdev;
+	struct dp_tx_desc_pool_s *pool;
+	bool update_bw_thresh = false;
+
+	if (!vdev)
+		return;
+
+	dp_info("Update bandwidth based tx desc thresholds for NDP old_bw:%u new_bw:%u",
+		old_bw, new_bw);
+
+	pool = vdev->pool;
+	if (!pool) {
+		dp_info("Pool not attached yet to vdev");
+		return;
+	}
+
+	qdf_spin_lock_bh(&pool->flow_pool_lock);
+	if ((old_bw >= CDP_PEER_BW_MAX && new_bw >= CDP_PEER_BW_MAX) ||
+	    (old_bw == new_bw)) {
+		qdf_spin_unlock_bh(&pool->flow_pool_lock);
+		return;
+	}
+
+	/*
+	 * Three possible scenarios where bw thresholds update is required:
+	 * (BW values expected for each scenario)
+	 * 1) NDP peer join - CDP_PEER_BW_MAX and CDP_PEER_BW_*
+	 * 2) NDP peer teardown - CDP_PEER_BW_* and CDP_PEER_BW_MAX
+	 * 3) NDP peer schedule update - CDP_PEER_BW_* and CDP_PEER_BW_*
+	 */
+	if (old_bw < CDP_PEER_BW_MAX && !(--pool->num_peers_bw[old_bw]))
+		update_bw_thresh = true;
+
+	/* Update bw thresholds only for the first peer for that bw */
+	if (new_bw < CDP_PEER_BW_MAX && !(pool->num_peers_bw[new_bw]++))
+		update_bw_thresh = true;
+
+	if (update_bw_thresh)
+		dp_tx_ndp_update_weighted_bw_thresh(pool);
+
+	qdf_spin_unlock_bh(&pool->flow_pool_lock);
+}
+
+static
+void __dp_tx_ndp_set_peer_bw_thresh(struct dp_soc *soc, struct dp_peer *peer,
+				    void *arg)
+{
+	struct qdf_mac_addr bcast_addr = QDF_MAC_ADDR_BCAST_INIT;
+
+	if (peer->bss_peer ||
+	    !qdf_mem_cmp(peer->mac_addr.raw, bcast_addr.bytes,
+			 QDF_MAC_ADDR_SIZE))
+		return;
+
+	dp_tx_ndp_update_bw_thresholds(peer->txrx_peer, CDP_PEER_BW_MAX,
+				       peer->txrx_peer->bw);
+}
+
+static inline
+void dp_tx_ndp_set_peer_bw_thresh(struct dp_vdev *vdev)
+{
+	dp_vdev_iterate_peer(vdev, __dp_tx_ndp_set_peer_bw_thresh, NULL,
+			     DP_MOD_ID_CDP);
+}
+#else
+static inline
+void dp_tx_ndp_init_bw_thresholds(struct dp_tx_desc_pool_s *pool)
+{
+}
+
+static inline
+void dp_tx_ndp_set_peer_bw_thresh(struct dp_vdev *vdev)
+{
+}
+#endif
 #else
 static inline void
 dp_tx_initialize_threshold(struct dp_tx_desc_pool_s *pool,
@@ -507,6 +692,7 @@ static void dp_tx_flow_pool_vdev_map(struct dp_pdev *pdev,
 {
 	struct dp_vdev *vdev;
 	struct dp_soc *soc = pdev->soc;
+	bool is_ndp_bw_flow_ctrl;
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev) {
@@ -516,11 +702,28 @@ static void dp_tx_flow_pool_vdev_map(struct dp_pdev *pdev,
 		return;
 	}
 
+	is_ndp_bw_flow_ctrl =
+			(vdev->opmode == wlan_op_mode_ndi &&
+			 wlan_cfg_get_ndp_bw_flow_ctrl_cfg(soc->wlan_cfg_ctx));
+
 	vdev->pool = pool;
 	qdf_spin_lock_bh(&pool->flow_pool_lock);
 	pool->pool_owner_ctx = soc;
 	pool->flow_pool_id = vdev_id;
+	if (is_ndp_bw_flow_ctrl) {
+		dp_tx_flow_pool_set_vdev_opmode(pool, vdev->opmode);
+		dp_tx_ndp_init_bw_thresholds(pool);
+	}
 	qdf_spin_unlock_bh(&pool->flow_pool_lock);
+
+	/*
+	 * Tx flow pool is mapped on the first NDP peer connection and any
+	 * set_bw that happened for the peer would not update the descriptor
+	 * distribution so iterate through the peers for NDI vdev and update
+	 * the peer count and thresholds in tx desc pool.
+	 */
+	if (is_ndp_bw_flow_ctrl)
+		dp_tx_ndp_set_peer_bw_thresh(vdev);
 
 	/* need do pool refcnt++ for itself after created */
 	soc->arch_ops.dp_mlo_tx_pool_map(soc, vdev->vdev_id,

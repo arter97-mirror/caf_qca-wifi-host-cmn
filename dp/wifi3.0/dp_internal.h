@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4478,6 +4478,29 @@ void dp_tx_dump_flow_pool_info(struct cdp_soc_t *soc_hdl);
 void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc);
 int dp_tx_delete_flow_pool(struct dp_soc *soc, struct dp_tx_desc_pool_s *pool,
 	bool force);
+
+#ifdef NDP_TX_BW_FLOW_CTRL
+/**
+ * dp_tx_ndp_update_bw_thresholds() - Update bandwidth based tx descriptor
+ *  distribution and flow control thresholds for NDP peers
+ * @peer: txrx peer
+ * @old_bw: peer's previous/old bandwidth
+ * @new_bw: peer's new bandwidth
+ *
+ * Return: none
+ */
+void dp_tx_ndp_update_bw_thresholds(struct dp_txrx_peer *peer,
+				    enum cdp_peer_bw old_bw,
+				    enum cdp_peer_bw new_bw);
+#else
+static inline
+void dp_tx_ndp_update_bw_thresholds(struct dp_txrx_peer *peer,
+				    enum cdp_peer_bw old_bw,
+				    enum cdp_peer_bw new_bw)
+
+{
+}
+#endif
 #else
 static inline void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc)
 {

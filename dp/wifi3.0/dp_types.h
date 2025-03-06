@@ -519,6 +519,8 @@ enum dp_fl_ctrl_threshold {
 #define FL_TH_HI_PERCENTAGE (40)
 #endif
 
+#define NDP_TX_INVALID_BW_SUBQ_THRESH 0xFFFF
+
 /**
  * enum dp_intr_mode
  * @DP_INTR_INTEGRATED: Line interrupts
@@ -791,6 +793,7 @@ struct dp_tx_ext_desc_pool_s {
  * @comp:
  * @tcl_cmd_vaddr: VADDR of the TCL descriptor, valid for soft-umac arch
  * @tcl_cmd_paddr: PADDR of the TCL descriptor, valid for soft-umac arch
+ * @peer_bw: bandwidth associated with the corresponding peer
  */
 struct dp_tx_desc_s {
 	struct dp_tx_desc_s *next;
@@ -821,6 +824,9 @@ struct dp_tx_desc_s {
 #ifdef WLAN_SOFTUMAC_SUPPORT
 	void *tcl_cmd_vaddr;
 	qdf_dma_addr_t tcl_cmd_paddr;
+#endif
+#ifdef NDP_TX_BW_FLOW_CTRL
+	enum cdp_peer_bw peer_bw;
 #endif
 };
 #else /* QCA_DP_OPTIMIZED_TX_DESC */
@@ -855,6 +861,9 @@ struct dp_tx_desc_s {
 #ifdef WLAN_SOFTUMAC_SUPPORT
 	void *tcl_cmd_vaddr;
 	qdf_dma_addr_t tcl_cmd_paddr;
+#endif
+#ifdef NDP_TX_BW_FLOW_CTRL
+	enum cdp_peer_bw peer_bw;
 #endif
 };
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
@@ -960,6 +969,14 @@ struct dp_tx_tso_num_seg_pool_s {
  * @start_th:
  * @max_pause_time:
  * @latest_pause_time:
+ * @num_peers_bw: number of peers per bandwidth
+ * @prev_desc_dist: previous descriptor distribution across peers
+ * @curr_desc_dist: current descriptor distribution across peers
+ * @avail_desc_per_bw: available descriptors per bandwidth
+ * @stop_th_be_per_bw: BE/BK stop thresholds per bandwidth
+ * @start_th_be_per_bw: BE/BK start thresholds per bandwidth
+ * @vdev_op_mode: vdev operating mode
+ * @bw_queue_pause_bitmap: bitmap indicating bw queues that are paused
  * @pkt_drop_no_desc:
  * @flow_pool_lock:
  * @pool_create_cnt:
@@ -987,6 +1004,16 @@ struct dp_tx_desc_pool_s {
 	uint16_t start_th[FL_TH_MAX];
 	qdf_time_t max_pause_time[FL_TH_MAX];
 	qdf_time_t latest_pause_time[FL_TH_MAX];
+#ifdef NDP_TX_BW_FLOW_CTRL
+	uint16_t num_peers_bw[CDP_PEER_BW_MAX];
+	int32_t prev_desc_dist[CDP_PEER_BW_MAX];
+	int32_t curr_desc_dist[CDP_PEER_BW_MAX];
+	int32_t avail_desc_per_bw[CDP_PEER_BW_MAX];
+	uint16_t stop_th_be_per_bw[CDP_PEER_BW_MAX];
+	uint16_t start_th_be_per_bw[CDP_PEER_BW_MAX];
+	enum wlan_op_mode vdev_op_mode;
+	uint8_t bw_queue_pause_bitmap;
+#endif
 #else
 	uint16_t stop_th;
 	uint16_t start_th;

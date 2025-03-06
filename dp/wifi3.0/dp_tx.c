@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1326,10 +1326,10 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 		return NULL;
 
 	/* Allocate software Tx descriptor */
-	if (nbuf->protocol == QDF_NBUF_TRAC_EAPOL_ETH_TYPE)
+	if (qdf_unlikely(nbuf->protocol == QDF_NBUF_TRAC_EAPOL_ETH_TYPE))
 		tx_desc = dp_tx_spcl_desc_alloc(soc, desc_pool_id);
 	else
-		tx_desc = dp_tx_desc_alloc(soc, desc_pool_id);
+		tx_desc = dp_tx_desc_alloc(soc, desc_pool_id, nbuf);
 
 	if (qdf_unlikely(!tx_desc)) {
 		DP_STATS_INC(vdev,
@@ -1519,10 +1519,10 @@ static struct dp_tx_desc_s *dp_tx_prepare_desc(struct dp_vdev *vdev,
 		return NULL;
 
 	/* Allocate software Tx descriptor */
-	if (nbuf->protocol == QDF_NBUF_TRAC_EAPOL_ETH_TYPE)
+	if (qdf_unlikely(nbuf->protocol == QDF_NBUF_TRAC_EAPOL_ETH_TYPE))
 		tx_desc = dp_tx_spcl_desc_alloc(soc, desc_pool_id);
 	else
-		tx_desc = dp_tx_desc_alloc(soc, desc_pool_id);
+		tx_desc = dp_tx_desc_alloc(soc, desc_pool_id, nbuf);
 
 	if (!tx_desc) {
 		DP_STATS_INC(vdev,

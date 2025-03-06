@@ -4118,6 +4118,11 @@ void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
 	if (!txrx_peer)
 		return;
 
+	if (txrx_peer->vdev->opmode == wlan_op_mode_ndi &&
+	    wlan_cfg_get_ndp_bw_flow_ctrl_cfg(soc->wlan_cfg_ctx))
+		dp_tx_ndp_update_bw_thresholds(txrx_peer, txrx_peer->bw,
+					       set_bw);
+
 	txrx_peer->bw = set_bw;
 
 	switch (set_bw) {

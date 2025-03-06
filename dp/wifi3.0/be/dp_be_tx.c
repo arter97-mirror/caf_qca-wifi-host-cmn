@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2082,6 +2082,7 @@ QDF_STATUS dp_tx_desc_pool_init_be(struct dp_soc *soc,
 			dp_cc_desc_id_generate(page_desc->ppt_index,
 					       avail_entry_index);
 		tx_desc->pool_id = pool_id;
+		dp_tx_desc_init_peer_bw(tx_desc);
 		dp_tx_desc_set_magic(tx_desc, DP_TX_MAGIC_PATTERN_FREE);
 		tx_desc = tx_desc->next;
 		avail_entry_index = (avail_entry_index + 1) &
@@ -2273,7 +2274,7 @@ qdf_nbuf_t dp_tx_fast_send_be(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			tid = HTT_TX_EXT_TID_INVALID;
 	}
 
-	tx_desc = dp_tx_desc_alloc(soc, desc_pool_id);
+	tx_desc = dp_tx_desc_alloc(soc, desc_pool_id, nbuf);
 
 	if (qdf_unlikely(!tx_desc)) {
 		DP_STATS_INC(vdev, tx_i[xmit_type].dropped.desc_na.num, 1);

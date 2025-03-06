@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -97,6 +97,16 @@
  * @WLAN_NETIF_BE_BK_QUEUE_ON: stop best-effort & background queue
  * @WLAN_WAKE_NON_PRIORITY_QUEUE: wake non priority netif queues
  * @WLAN_STOP_NON_PRIORITY_QUEUE: stop non priority netif queues
+ * @WLAN_NETIF_BE_20MHZ_QUEUE_OFF: stop 20mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_20MHZ_QUEUE_ON: start 20mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_40MHZ_QUEUE_OFF: stop 40mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_40MHZ_QUEUE_ON: start 40mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_80MHZ_QUEUE_OFF: stop 80mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_80MHZ_QUEUE_ON: start 80mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_160MHZ_QUEUE_OFF: stop 160mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_160MHZ_QUEUE_ON: start 160mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_320MHZ_QUEUE_OFF: stop 320mhz bw based be/bk queues
+ * @WLAN_NETIF_BE_320MHZ_QUEUE_ON: start 320mhz bw based be/bk queues
  * @WLAN_NETIF_ACTION_TYPE_MAX: Maximum action
  */
 enum netif_action_type {
@@ -120,6 +130,18 @@ enum netif_action_type {
 	WLAN_NETIF_BE_BK_QUEUE_ON = 17,
 	WLAN_WAKE_NON_PRIORITY_QUEUE = 18,
 	WLAN_STOP_NON_PRIORITY_QUEUE = 19,
+#ifdef NDP_TX_BW_FLOW_CTRL
+	WLAN_NETIF_BE_20MHZ_QUEUE_OFF = 20,
+	WLAN_NETIF_BE_20MHZ_QUEUE_ON = 21,
+	WLAN_NETIF_BE_40MHZ_QUEUE_OFF = 22,
+	WLAN_NETIF_BE_40MHZ_QUEUE_ON = 23,
+	WLAN_NETIF_BE_80MHZ_QUEUE_OFF = 24,
+	WLAN_NETIF_BE_80MHZ_QUEUE_ON = 25,
+	WLAN_NETIF_BE_160MHZ_QUEUE_OFF = 26,
+	WLAN_NETIF_BE_160MHZ_QUEUE_ON = 27,
+	WLAN_NETIF_BE_320MHZ_QUEUE_OFF = 28,
+	WLAN_NETIF_BE_320MHZ_QUEUE_ON = 29,
+#endif
 	WLAN_NETIF_ACTION_TYPE_MAX,
 };
 
@@ -137,6 +159,11 @@ enum netif_action_type {
  * @WLAN_DATA_FLOW_CTRL_VI:
  * @WLAN_DATA_FLOW_CTRL_VO:
  * @WLAN_DATA_FLOW_CTRL_PRI:
+ * @WLAN_DATA_FLOW_CTRL_BE_20MHZ: bw based flow control for 20MHz peers
+ * @WLAN_DATA_FLOW_CTRL_BE_40MHZ: bw based flow control for 40MHz peers
+ * @WLAN_DATA_FLOW_CTRL_BE_80MHZ: bw based flow control for 80MHz peers
+ * @WLAN_DATA_FLOW_CTRL_BE_160MHZ: bw based flow control for 160MHz peers
+ * @WLAN_DATA_FLOW_CTRL_BE_320MHZ: bw based flow control for 320MHz peers
  * @WLAN_REASON_TYPE_MAX: maximum reason
  */
 enum netif_reason_type {
@@ -152,6 +179,13 @@ enum netif_reason_type {
 	WLAN_DATA_FLOW_CTRL_VI,
 	WLAN_DATA_FLOW_CTRL_VO,
 	WLAN_DATA_FLOW_CTRL_PRI,
+#ifdef NDP_TX_BW_FLOW_CTRL
+	WLAN_DATA_FLOW_CTRL_BE_20MHZ,
+	WLAN_DATA_FLOW_CTRL_BE_40MHZ,
+	WLAN_DATA_FLOW_CTRL_BE_80MHZ,
+	WLAN_DATA_FLOW_CTRL_BE_160MHZ,
+	WLAN_DATA_FLOW_CTRL_BE_320MHZ,
+#endif
 	WLAN_REASON_TYPE_MAX,
 };
 
