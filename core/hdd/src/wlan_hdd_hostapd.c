@@ -378,15 +378,6 @@ static void hdd_hostapd_channel_allow_suspend(struct hdd_adapter *adapter,
 	struct hdd_hostapd_state *hostapd_state =
 		WLAN_HDD_GET_HOSTAP_STATE_PTR(adapter->deflink);
 	struct sap_context *sap_ctx;
-	bool is_dfs;
-
-	hdd_debug("bss_state: %d, chan_freq: %d, dfs_ref_cnt: %d",
-		  hostapd_state->bss_state, chan_freq,
-		  atomic_read(&hdd_ctx->sap_dfs_ref_cnt));
-
-	/* Return if BSS is already stopped */
-	if (hostapd_state->bss_state == BSS_STOP)
-		return;
 
 	sap_ctx = WLAN_HDD_GET_SAP_CTX_PTR(adapter->deflink);
 	if (!sap_ctx) {
@@ -394,10 +385,17 @@ static void hdd_hostapd_channel_allow_suspend(struct hdd_adapter *adapter,
 		return;
 	}
 
-	is_dfs = wlan_mlme_check_chan_param_has_dfs(hdd_ctx->pdev,
-						    ch_params,
-						    chan_freq);
-	if (!is_dfs)
+	hdd_debug("bss_state: %d, chan_freq: %d, dfs_ref_cnt: %d, is_dfs_wakelock_held %d",
+		  hostapd_state->bss_state, chan_freq,
+		  atomic_read(&hdd_ctx->sap_dfs_ref_cnt),
+		  sap_ctx->is_dfs_wakelock_held);
+
+	/* Return if BSS is already stopped */
+	if (hostapd_state->bss_state == BSS_STOP)
+		return;
+
+	hdd_debug("is_dfs_wakelock_held: %d", sap_ctx->is_dfs_wakelock_held);
+	if (!sap_ctx->is_dfs_wakelock_held)
 		return;
 
 	/* Release wakelock when no more DFS channels are used */
@@ -408,6 +406,8 @@ static void hdd_hostapd_channel_allow_suspend(struct hdd_adapter *adapter,
 		qdf_runtime_pm_allow_suspend(&hdd_ctx->runtime_context.dfs);
 
 	}
+
+	sap_ctx->is_dfs_wakelock_held = false;
 }
 
 /**
@@ -430,19 +430,21 @@ static void hdd_hostapd_channel_prevent_suspend(struct hdd_adapter *adapter,
 	struct sap_context *sap_ctx;
 	bool is_dfs;
 
-	hdd_debug("bss_state: %d, chan_freq: %d, dfs_ref_cnt: %d",
-		  hostapd_state->bss_state, chan_freq,
-		  atomic_read(&hdd_ctx->sap_dfs_ref_cnt));
-	/* Return if BSS is already started && wakelock is acquired */
-	if ((hostapd_state->bss_state == BSS_START) &&
-		(atomic_read(&hdd_ctx->sap_dfs_ref_cnt) >= 1))
-		return;
-
 	sap_ctx = WLAN_HDD_GET_SAP_CTX_PTR(adapter->deflink);
 	if (!sap_ctx) {
 		hdd_err("sap ctx null");
 		return;
 	}
+
+	hdd_debug("bss_state: %d, chan_freq: %d, dfs_ref_cnt: %d, is_dfs_wakelock_held: %d",
+		  hostapd_state->bss_state, chan_freq,
+		  atomic_read(&hdd_ctx->sap_dfs_ref_cnt),
+		  sap_ctx->is_dfs_wakelock_held);
+
+	/* Return if BSS is already started && wakelock is acquired */
+	if (hostapd_state->bss_state == BSS_START &&
+	    (atomic_read(&hdd_ctx->sap_dfs_ref_cnt) >= 1))
+		return;
 
 	is_dfs = wlan_mlme_check_chan_param_has_dfs(hdd_ctx->pdev,
 						    &sap_ctx->ch_params,
@@ -457,6 +459,8 @@ static void hdd_hostapd_channel_prevent_suspend(struct hdd_adapter *adapter,
 		qdf_wake_lock_acquire(&hdd_ctx->sap_dfs_wakelock,
 				      WIFI_POWER_EVENT_WAKELOCK_DFS);
 	}
+
+	sap_ctx->is_dfs_wakelock_held = true;
 }
 
 /**
@@ -2367,7 +2371,7 @@ QDF_STATUS hdd_hostapd_sap_event_cb(struct sap_event *sap_event,
 #endif
 		hdd_hostapd_channel_prevent_suspend(adapter,
 			ap_ctx->operating_chan_freq,
-			&sap_config->ch_params);
+			&ap_ctx->sap_context->ch_params);
 
 		hostapd_state->bss_state = BSS_START;
 		vdev = hdd_objmgr_get_vdev_by_user(link_info, WLAN_DP_ID);
@@ -3453,7 +3457,8 @@ static int hdd_softap_unpack_ie(mac_handle_t mac_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
-bool hdd_is_any_sta_connecting(struct hdd_context *hdd_ctx)
+bool hdd_is_any_sta_connecting(struct hdd_context *hdd_ctx,
+			       enum QDF_OPMODE op_mode)
 {
 	struct hdd_adapter *adapter = NULL, *next_adapter = NULL;
 	struct hdd_station_ctx *sta_ctx;
@@ -3478,7 +3483,16 @@ bool hdd_is_any_sta_connecting(struct hdd_context *hdd_ctx)
 
 			is_connecting = hdd_cm_is_connecting(link_info);
 
-			key_exchng_in_prog =
+			/* In case of P2P GO + STA/CLI concurrency, when EAPOL
+			 * is in progress for STA/CLI, the P2P GO will still be
+			 * in NOA and if CSA is allowed then CSA frames won't
+			 * go over the air as P2P GO is in NOA.
+			 * In case of SAP, it doesn't need to check the EAPOL
+			 * in progress as the STA/CLI channel will be already
+			 * decided after getting connect complete indication.
+			 */
+			if (op_mode == QDF_P2P_GO_MODE)
+				key_exchng_in_prog =
 					sme_is_sta_key_exchange_in_progress(
 							hdd_ctx->mac_handle,
 							link_info->vdev_id);
@@ -3554,7 +3568,7 @@ int hdd_softap_set_channel_change(struct net_device *dev, int target_chan_freq,
 	 * cannot do CSA as it won't be able to send CSA frames during NOA
 	 * period
 	 */
-	if (hdd_is_any_sta_connecting(hdd_ctx) ||
+	if (hdd_is_any_sta_connecting(hdd_ctx, adapter->device_mode) ||
 	    (adapter->device_mode == QDF_P2P_GO_MODE &&
 	     ucfg_p2p_is_p2p_go_noa_in_progress(hdd_ctx->pdev,
 						link_info->vdev_id))) {

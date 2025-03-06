@@ -460,10 +460,12 @@ void hdd_stop_sap_due_to_invalid_channel(struct work_struct *work);
 /**
  * hdd_is_any_sta_connecting() - check if any sta is connecting
  * @hdd_ctx: hdd context
+ * @op_mode: adapter mode
  *
  * Return: true if any sta is connecting
  */
-bool hdd_is_any_sta_connecting(struct hdd_context *hdd_ctx);
+bool hdd_is_any_sta_connecting(struct hdd_context *hdd_ctx,
+			       enum QDF_OPMODE op_mode);
 
 /**
  * wlan_hdd_configure_twt_responder() - configure twt responder in sap_config
