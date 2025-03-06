@@ -700,9 +700,12 @@ struct hif_opaque_softc *hif_open(qdf_device_t qdf_ctx,
  */
 void hif_uninit_rri_on_ddr(struct hif_softc *scn)
 {
+	qdf_size_t size = 0;
+
+	size = (RRI_ON_DDR_MEM_SIZE > PAGE_SIZE * 2)?RRI_ON_DDR_MEM_SIZE:PAGE_SIZE * 2;
 	if (scn->vaddr_rri_on_ddr)
 		qdf_mem_free_consistent(scn->qdf_dev, scn->qdf_dev->dev,
-					(CE_COUNT * sizeof(uint32_t)),
+					size,
 					scn->vaddr_rri_on_ddr,
 					scn->paddr_rri_on_ddr, 0);
 	scn->vaddr_rri_on_ddr = NULL;
