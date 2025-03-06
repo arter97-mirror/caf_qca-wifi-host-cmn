@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2417,6 +2417,31 @@
 #define CFG_DP_RX_BUFFER_RECYCLE
 #endif
 
+#ifdef NDP_TX_BW_FLOW_CTRL
+/*
+ * <ini>
+ * dp_ndp_bw_flow_ctrl_enable - Control NDP bandwidth based flow control
+ * @Min: 0
+ * @Max: 1
+ * @Default: 1
+ *
+ * This ini is used to enable/disable bandwidth based flow control logic for NDP
+ *
+ * Supported Feature: NDP
+ *
+ * Usage: Internal
+ *
+ * </ini>
+ */
+#define CFG_DP_NDP_BW_FLOW_CTRL_ENABLE \
+			CFG_INI_BOOL("dp_ndp_bw_flow_ctrl_enable", true, \
+				     "Enable/Disable NDP bw based flow control")
+
+#define CFG_DP_NDP_BW_FLOW_CTRL CFG(CFG_DP_NDP_BW_FLOW_CTRL_ENABLE)
+#else
+#define CFG_DP_NDP_BW_FLOW_CTRL
+#endif
+
 #define CFG_DP \
 		CFG(CFG_DP_HTT_PACKET_TYPE) \
 		CFG(CFG_DP_INT_BATCH_THRESHOLD_OTHER) \
@@ -2591,5 +2616,6 @@
 		CFG_DP_SAWF_RECLAIM_TIMER \
 		CFG_DP_SAWF_MSDUQ_TID_SKID \
 		CFG(CFG_DP_RXMON_MGMT_LINEARIZATION) \
-		CFG_DP_RX_BUFFER_RECYCLE
+		CFG_DP_RX_BUFFER_RECYCLE \
+		CFG_DP_NDP_BW_FLOW_CTRL
 #endif /* _CFG_DP_H_ */

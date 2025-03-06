@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -399,6 +399,7 @@ struct wlan_srng_cfg {
  * @dp_rx_buffer_recycle_enabled: DP RX buffer recycling using page pool API
  *				  enabled/disabled
  * @dp_eapol_stats: flag to enable/disable eapol drop stats
+ * @is_ndp_bw_flow_ctrl_enabled: NDP bw flow control enabled/disabled flag
  */
 struct wlan_cfg_dp_soc_ctxt {
 	int num_int_ctxts;
@@ -660,6 +661,9 @@ struct wlan_cfg_dp_soc_ctxt {
 
 #ifdef DP_TX_SW_DROP_STATS_INC
 	bool dp_eapol_stats;
+#endif
+#ifdef NDP_TX_BW_FLOW_CTRL
+	bool is_ndp_bw_flow_ctrl_enabled;
 #endif
 };
 
@@ -3147,4 +3151,18 @@ bool wlan_cfg_get_dp_proto_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
  * Return: bool
  */
 bool wlan_cfg_get_dp_eapol_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
+
+#ifdef NDP_TX_BW_FLOW_CTRL
+static inline
+bool wlan_cfg_get_ndp_bw_flow_ctrl_cfg(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return cfg->is_ndp_bw_flow_ctrl_enabled;
+}
+#else
+static inline
+bool wlan_cfg_get_ndp_bw_flow_ctrl_cfg(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return false;
+}
+#endif
 #endif /*__WLAN_CFG_H*/

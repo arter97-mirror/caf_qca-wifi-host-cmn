@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4321,6 +4321,23 @@ bool wlan_cfg_get_dp_eapol_stats(struct wlan_cfg_dp_soc_ctxt *cfg)
 }
 #endif
 
+#ifdef NDP_TX_BW_FLOW_CTRL
+static inline
+void wlan_soc_ndp_bw_flow_ctrl_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+					  struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	cfg->is_ndp_bw_flow_ctrl_enabled =
+					cfg_get(psoc,
+						CFG_DP_NDP_BW_FLOW_CTRL_ENABLE);
+}
+#else
+static inline
+void wlan_soc_ndp_bw_flow_ctrl_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+					  struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+}
+#endif
+
 #ifdef WLAN_SOFTUMAC_SUPPORT
 struct wlan_cfg_dp_soc_ctxt *
 wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
@@ -4541,6 +4558,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 	wlan_soc_sawf_msduq_tid_skid_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_direct_link_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_rx_buffer_recycle_cfg_attach(psoc, wlan_cfg_ctx);
+	wlan_soc_ndp_bw_flow_ctrl_cfg_attach(psoc, wlan_cfg_ctx);
 
 	return wlan_cfg_ctx;
 }
@@ -4861,6 +4879,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 		cfg_get(psoc, CFG_DP_RXMON_MGMT_LINEARIZATION);
 	wlan_soc_dp_proto_stats_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_dp_eapol_stats_cfg_attach(psoc, wlan_cfg_ctx);
+	wlan_soc_ndp_bw_flow_ctrl_cfg_attach(psoc, wlan_cfg_ctx);
 
 	return wlan_cfg_ctx;
 }
