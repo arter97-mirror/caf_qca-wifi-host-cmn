@@ -320,7 +320,7 @@ static bool scm_check_rsn(struct scan_filter *filter,
 			continue;
 		}
 
-		status = wlan_crypto_rsnie_check(ap_crypto, rsn);
+		status = wlan_crypto_rsnie_check(ap_crypto, rsn, NULL);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			scm_err(QDF_MAC_ADDR_FMT ": failed to parse RSN IE gen %d, status %d",
 				QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
@@ -386,7 +386,8 @@ static bool scm_check_wpa(struct scan_filter *filter,
 		return false;
 
 	status = wlan_crypto_wpaie_check(ap_crypto,
-					 util_scan_entry_wpa(db_entry));
+					 util_scan_entry_wpa(db_entry),
+					 NULL);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		scm_err(QDF_MAC_ADDR_FMT": failed to parse WPA IE, status %d",
 			QDF_MAC_ADDR_REF(db_entry->bssid.bytes), status);
@@ -481,7 +482,8 @@ static bool scm_match_any_security(struct scan_filter *filter,
 
 	if (util_scan_entry_rsn(db_entry)) {
 		status = wlan_crypto_rsnie_check(ap_crypto,
-						 util_scan_entry_rsn(db_entry));
+						 util_scan_entry_rsn(db_entry),
+						 NULL);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			scm_err(QDF_MAC_ADDR_FMT": failed to parse RSN IE, status %d",
 				QDF_MAC_ADDR_REF(db_entry->bssid.bytes), status);
@@ -498,7 +500,8 @@ static bool scm_match_any_security(struct scan_filter *filter,
 
 	if (util_scan_entry_wpa(db_entry)) {
 		status = wlan_crypto_wpaie_check(ap_crypto,
-						 util_scan_entry_wpa(db_entry));
+						 util_scan_entry_wpa(db_entry),
+						 NULL);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			scm_err(QDF_MAC_ADDR_FMT": failed to parse WPA IE, status %d",
 				QDF_MAC_ADDR_REF(db_entry->bssid.bytes), status);
