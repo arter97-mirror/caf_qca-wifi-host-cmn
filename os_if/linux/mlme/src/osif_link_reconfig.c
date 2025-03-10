@@ -197,6 +197,15 @@ osif_fill_link_reconfig_added_links_params(
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
+
+		cfg_rsp->links[link_id].addr =
+				add_link_info.link[i].self_link_addr.bytes;
+		if (!cfg_rsp->links[link_id].addr) {
+			osif_err("failed to get STA link address");
+			status_code = STATUS_INVALID_PARAMETERS;
+			goto end;
+		}
+
 		cfg_rsp->added_links |=	1 << link_id;
 end:
 		osif_debug("add link_id %d with status %d freq %d",
