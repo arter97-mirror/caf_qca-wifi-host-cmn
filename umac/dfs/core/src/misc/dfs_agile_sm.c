@@ -2079,6 +2079,34 @@ uint16_t dfs_unpuncture_radar_bitmap(struct wlan_dfs *dfs,
 }
 
 /**
+ * dfs_puncturing_cac_wait_state_add_chan_to_nol() - When in the CAC WAIT state
+ * of the DFS puncturing SM, Radar event has occurred. So, add the punctured
+ * channels in the corresponding dfs punctured-object to NOL.
+ *
+ * dfs_punc: Pointer to dfs_punc object.
+ *
+ * Return: void.
+ */
+static void
+dfs_puncturing_cac_wait_state_add_chan_to_nol(struct dfs_punc_obj *dfs_punc)
+{
+	uint8_t n_punc_channels;
+	uint16_t punc_freq_list[N_MAX_PUNC_SM] = {0};
+	uint16_t nol_freq_list[N_MAX_PUNC_SM] = {0};
+	struct wlan_dfs *dfs = dfs_punc->dfs;
+
+	n_punc_channels = dfs_generate_punc_list_from_sm(dfs_punc,
+							 punc_freq_list);
+	dfs_radar_add_channel_list_to_nol_for_freq(dfs, punc_freq_list,
+						   nol_freq_list,
+						   &n_punc_channels);
+	dfs_mark_precac_nol_for_freq(dfs,
+				     dfs->is_radar_found_on_secondary_seg,
+				     DETECTOR_ID_0, nol_freq_list,
+				     n_punc_channels);
+}
+
+/**
  * dfs_puncturing_state_cac_wait_event() -CAC wait State event handler
  * @ctx: DFS Puncture SM object.
  * @event: Event posted to the SM.
@@ -2098,7 +2126,6 @@ static bool dfs_puncturing_state_cac_wait_event(void *ctx,
 	struct wlan_dfs *dfs;
 	bool status;
 	struct dfs_punc_obj *dfs_punc;
-	bool is_weather_chan = false;
 	uint16_t new_punc_pattern = 0x0;
 	uint16_t dfs_useronly_pattern;
 	uint16_t dfs_internal_pattern;
@@ -2111,10 +2138,9 @@ static bool dfs_puncturing_state_cac_wait_event(void *ctx,
 
 	switch (event) {
 	case DFS_PUNC_SM_EV_RADAR:
-		is_weather_chan = dfs_is_weather_channel(dfs_punc);
-		dfs_punc_cac_timer_reset(dfs_punc);
-		dfs_start_punc_cac_timer(dfs_punc, is_weather_chan);
-		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Reset CAC timer when radar seen in channel that is already punctured and in CAC WAIT state");
+		dfs_cancel_punc_cac_timer(dfs_punc);
+		dfs_puncturing_cac_wait_state_add_chan_to_nol(dfs_punc);
+		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_PUNCTURED);
 		status = true;
 		break;
 	case DFS_PUNC_SM_EV_CAC_EXPIRY:
