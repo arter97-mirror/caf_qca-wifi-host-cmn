@@ -3644,7 +3644,8 @@ cm_set_crypto_params_from_ie(struct wlan_cm_connect_req *req)
 
 	status = wlan_get_crypto_params_from_rsn_ie(&crypto_params,
 						    req->assoc_ie.ptr,
-						    req->assoc_ie.len);
+						    req->assoc_ie.len,
+						    NULL);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
 		cm_copy_crypto_prarams(&req->crypto, &crypto_params);
 		return;
@@ -3652,7 +3653,8 @@ cm_set_crypto_params_from_ie(struct wlan_cm_connect_req *req)
 
 	status = wlan_get_crypto_params_from_wpa_ie(&crypto_params,
 						    req->assoc_ie.ptr,
-						    req->assoc_ie.len);
+						    req->assoc_ie.len,
+						    NULL);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
 		cm_copy_crypto_prarams(&req->crypto, &crypto_params);
 		return;
