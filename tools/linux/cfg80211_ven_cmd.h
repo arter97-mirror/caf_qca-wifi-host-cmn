@@ -915,6 +915,9 @@ enum {
 	IEEE80211_PARAM_WDS_EXT_AP_BRIDGE  = 833,  /* Flag to enable/disable wds_ext specific ap bridge */
 #endif
 	IEEE80211_PARAM_4ADDR_EAPOL = 834,
+	IEEE80211_PARAM_RSNO1CAPS = 839,
+	IEEE80211_PARAM_RSNO2CAPS = 840,
+	IEEE80211_PARAM_RSNXOCAPS = 841,
 };
 
 enum {
