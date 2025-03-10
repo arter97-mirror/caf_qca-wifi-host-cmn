@@ -1897,8 +1897,8 @@ dp_rx_mon_stitch_mpdu(struct dp_mon_mac *mon_mac, qdf_nbuf_t tail)
 
 fail:
 	dp_err_rl("nbuf copy failed len: %zu Q1: %d Q2: %d", qdf_nbuf_len(nbuf),
-		  qdf_nbuf_queue_len(&mon_mac->msdu_queue),
-		  qdf_nbuf_queue_len(&mon_mac->mpdu_queue));
+		  qdf_nbuf_queue_len(&mon_pdev->msdu_queue),
+		  qdf_nbuf_queue_len(&mon_pdev->mpdu_queue));
 
 	/* Drop all MSDU of MPDU */
 	while (nbuf) {
