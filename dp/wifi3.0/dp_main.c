@@ -246,7 +246,12 @@ static QDF_STATUS dp_alloc_tx_ring_pair_by_index(struct dp_soc *soc,
 static uint8_t dp_soc_ring_if_nss_offloaded(struct dp_soc *soc,
 					    enum hal_ring_type ring_type,
 					    int ring_num);
-
+#if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
+static inline int dp_peer_exist_on_pdev_wifi3(struct cdp_soc_t *soc_hdl,
+					      uint8_t *peer_mac_addr,
+					      int mac_addr_is_aligned,
+					      uint8_t pdev_id);
+#endif
 #define DP_INTR_POLL_TIMER_MS	5
 
 #define MON_VDEV_TIMER_INIT 0x1
@@ -11533,6 +11538,9 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_sysfs_fill_stats = dp_sysfs_fill_stats,
 	.txrx_sysfs_set_stat_type = dp_sysfs_set_stat_type,
 #endif /* WLAN_SYSFS_DP_STATS */
+#if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
+	.txrx_peer_exist_on_pdev = dp_peer_exist_on_pdev_wifi3,
+#endif
 };
 
 static struct cdp_ctrl_ops dp_ops_ctrl = {
@@ -14210,3 +14218,33 @@ static QDF_STATUS dp_pdev_init_wifi3(struct cdp_soc_t *txrx_soc,
 	return dp_pdev_init(txrx_soc, htc_handle, qdf_osdev, pdev_id);
 }
 
+/*
+ * dp_peer_exist_on_pdev_wifi3 - check if peer with mac address exist on pdev
+ *
+ * @soc: Datapath SOC handle
+ * @peer_mac_addr: peer mac address
+ * @mac_addr_is_aligned: is mac address aligned
+ * @pdev_id: Datapath PDEV id
+ *
+ * Return: vdev_id if peer found else return -1
+ */
+#if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
+static int
+dp_peer_exist_on_pdev_wifi3(struct cdp_soc_t *soc_hdl, uint8_t *peer_mac_addr,
+			    int mac_addr_is_aligned, uint8_t pdev_id)
+{
+	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
+	struct dp_pdev *pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
+	struct dp_ast_entry *ast_entry = NULL;
+	int ret = -1;
+
+	if (dp_peer_exist_on_pdev(soc, peer_mac_addr, mac_addr_is_aligned,
+				  pdev)) {
+		ast_entry = dp_peer_ast_hash_find_by_pdevid(soc, peer_mac_addr,
+							    pdev->pdev_id);
+		if (ast_entry)
+			return ast_entry->vdev_id;
+	}
+	return ret;
+}
+#endif

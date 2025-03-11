@@ -2704,4 +2704,34 @@ cdp_get_free_desc_poolsize(ol_txrx_soc_handle soc)
 
 	return soc->ops->cmn_drv_ops->get_free_desc_poolsize(soc);
 }
+
+/*
+ * cdp_peer_exist_on_pdev - check if peer with mac address exist on pdev
+ *
+ * @soc: Datapath SOC handle
+ * @peer_mac_addr: peer mac address
+ * @mac_addr_is_aligned: is mac address aligned
+ * @pdev_id: Datapath PDEV id
+ *
+ * Return: vdev_id if peer found else return -1
+ */
+#if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
+static inline int
+cdp_peer_exist_on_pdev(ol_txrx_soc_handle soc, uint8_t *peer_mac_addr,
+		       int mac_addr_is_aligned, uint8_t pdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance:");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->cmn_drv_ops ||
+	    !soc->ops->cmn_drv_ops->txrx_peer_exist_on_pdev)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->cmn_drv_ops->txrx_peer_exist_on_pdev(soc,
+			peer_mac_addr, mac_addr_is_aligned, pdev_id);
+}
+#endif
 #endif /* _CDP_TXRX_CMN_H_ */
