@@ -40,6 +40,7 @@ struct link_recfg_rx_rsp;
  * @WLAN_LINK_RECFG_S_DEL_LINK: State for Link Del request
  * @WLAN_LINK_RECFG_S_COMPLETED: State when Link Reconfig is completed
  * @WLAN_LINK_RECFG_S_ABORT: State when Link Reconfig is Aborted
+ * @WLAN_LINK_RECFG_S_TTLM: State when Link Reconfig TTLM handling
  * @WLAN_LINK_RECFG_S_MAX: Max State
  * @WLAN_LINK_RECFG_SS_IDLE: Link Reconfig substate Idle
  * @WLAN_LINK_RECFG_SS_START_PENDING: Link reconfig start pending for
@@ -71,6 +72,7 @@ enum wlan_link_recfg_sm_state {
 	WLAN_LINK_RECFG_S_ADD_LINK,
 	WLAN_LINK_RECFG_S_COMPLETED,
 	WLAN_LINK_RECFG_S_ABORT,
+	WLAN_LINK_RECFG_S_TTLM,
 	WLAN_LINK_RECFG_S_MAX,
 	/* substates */
 	WLAN_LINK_RECFG_SS_IDLE,
@@ -115,6 +117,7 @@ enum wlan_link_recfg_sm_state {
  * timeout
  * @WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT: generic timeout in substate
  * @WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT: Link Reconfig response timed out
+ * @WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM: Update TTLM due to link reconfig
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -137,6 +140,7 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT,
+	WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
@@ -154,6 +158,8 @@ enum wlan_link_recfg_sm_evt {
  * with failure
  * @link_recfg_rsp_timeout: Link Reconfiguration response timeout.
  * @link_recfg_concurrency_failed: Link reconfig failed due to concurrency
+ * @link_recfg_aborted_neg_ttlm_ongoing: Link Reconfiguration aborted
+ * due to ongoing TTLM.
  */
 enum link_recfg_failure_reason {
 	link_recfg_success = 0,
@@ -165,6 +171,7 @@ enum link_recfg_failure_reason {
 	link_recfg_del_link_link_switch_comp_with_fail = 6,
 	link_recfg_rsp_timeout = 7,
 	link_recfg_concurrency_failed = 8,
+	link_recfg_aborted_neg_ttlm_ongoing = 9,
 };
 
 /**
@@ -361,7 +368,7 @@ struct roam_ind {
 struct recfg_completed {
 };
 
-#define MAX_RECFG_TRANSITION 6
+#define MAX_RECFG_TRANSITION 7
 
 /**
  * struct mlo_link_recfg_state_sm - Link Reconfig state machine

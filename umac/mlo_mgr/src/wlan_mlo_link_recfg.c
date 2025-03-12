@@ -34,6 +34,7 @@
 #include "utils_mlo.h"
 #include <../../core/src/wlan_cm_vdev_api.h>
 #include <wlan_mlo_link_force.h>
+#include "wlan_t2lm_api.h"
 #endif
 #include "host_diag_core_event.h"
 #include "lim_types.h"
@@ -3447,6 +3448,12 @@ mlo_link_recfg_create_transition_list(
 		/* Add link only */
 		mlo_debug("add link only");
 		recfg_req->recfg_type = link_recfg_add_only;
+		next->state = WLAN_LINK_RECFG_S_TTLM;
+		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+		next->req.del_link_info = recfg_req->add_link_info;
+		next->abort_handler = NULL;
+		next++;
+		recfg_req->recfg_type = link_recfg_add_only;
 		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
 		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
 		next->req.add_link_info = recfg_req->add_link_info;
@@ -3478,6 +3485,11 @@ mlo_link_recfg_create_transition_list(
 		/* Del link only xmit frm first */
 		mlo_debug("del link only - send frm first");
 		recfg_req->recfg_type = link_recfg_del_only;
+		next->state = WLAN_LINK_RECFG_S_TTLM;
+		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+		next++;
 		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
 		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
 		next->req.del_link_info = recfg_req->del_link_info;
@@ -3528,6 +3540,11 @@ mlo_link_recfg_create_transition_list(
 		/* Del link only */
 		mlo_debug("del link only");
 		recfg_req->recfg_type = link_recfg_del_only;
+		next->state = WLAN_LINK_RECFG_S_TTLM;
+		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+		next++;
 		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
 		next->req.del_link_info = recfg_req->del_link_info;
@@ -3559,6 +3576,11 @@ mlo_link_recfg_create_transition_list(
 		/* (L1L2 -> L2 L3) Del link L1 then add L3 */
 		mlo_debug("send 2 OTA frames - del and add link");
 		recfg_req->recfg_type = link_recfg_two_frm_del_add_common_link;
+		next->state = WLAN_LINK_RECFG_S_TTLM;
+		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+		next++;
 		recfg_ctx->copied_recfg_req = *recfg_req;
 		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
@@ -3601,6 +3623,11 @@ mlo_link_recfg_create_transition_list(
 		/* Add and Del link with common link, xmit frame first */
 		mlo_debug("del and add link - send frm first");
 		recfg_req->recfg_type = link_recfg_del_add_common_link;
+		next->state = WLAN_LINK_RECFG_S_TTLM;
+		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+		next++;
 		next->state = WLAN_LINK_RECFG_S_XMIT_REQ;
 		next->event = WLAN_LINK_RECFG_SM_EV_XMIT_REQ;
 		next->req.del_link_info = recfg_req->del_link_info;
@@ -3656,6 +3683,11 @@ mlo_link_recfg_create_transition_list(
 		/* Add and Del link with common link */
 		mlo_debug("del and add link");
 		recfg_req->recfg_type = link_recfg_del_add_common_link;
+		next->state = WLAN_LINK_RECFG_S_TTLM;
+		next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+		next->req.del_link_info = recfg_req->del_link_info;
+		next->abort_handler = NULL;
+		next++;
 		next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 		next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
 		next->req.del_link_info = recfg_req->del_link_info;
@@ -3692,13 +3724,18 @@ mlo_link_recfg_create_transition_list(
 		mlo_debug("del and add link - no common link");
 		recfg_req->recfg_type = link_recfg_del_add_no_common_link;
 		if (del_link_num > 1) {
-			/* selete the first link to delete from
+			/* select the first link to delete from
 			 * del_link_set_no_common,
 			 * L1 L2 - > L3, select one of del_link_info to
 			 * del first.
 			 */
 			mlo_debug("del_link_set_no_common 0x%x",
 				  del_link_set_no_common);
+			next->state = WLAN_LINK_RECFG_S_TTLM;
+			next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+			next->req.del_link_info = recfg_req->del_link_info;
+			next->abort_handler = NULL;
+			next++;
 			next->state = WLAN_LINK_RECFG_S_DEL_LINK;
 			next->event = WLAN_LINK_RECFG_SM_EV_DEL_LINK;
 			next->abort_handler = NULL;
@@ -3717,6 +3754,10 @@ mlo_link_recfg_create_transition_list(
 			}
 			next++;
 		} else {
+			next->state = WLAN_LINK_RECFG_S_TTLM;
+			next->event = WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM;
+			next->req.del_link_info = recfg_req->del_link_info;
+			next++;
 			/* L1 - > L2 */
 		}
 		next->state = WLAN_LINK_RECFG_S_ADD_LINK;
@@ -3962,6 +4003,17 @@ mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
 }
 
 static void
+mlo_link_recfg_abort_ttlm_ongoing(struct mlo_link_recfg_context *recfg_ctx)
+{
+	recfg_ctx->internal_reason_code = link_recfg_aborted_neg_ttlm_ongoing;
+	/* move to abort state to complete link reconfig */
+	mlo_link_recfg_sm_transition_to(recfg_ctx, WLAN_LINK_RECFG_S_ABORT);
+	mlo_link_recfg_sm_deliver_event_sync(
+			recfg_ctx->ml_dev, WLAN_LINK_RECFG_SM_EV_COMPLETED,
+			0, NULL);
+}
+
+static void
 mlo_link_recfg_del_link_aborted(struct mlo_link_recfg_context *recfg_ctx)
 {
 	/* handle link del aborted */
@@ -4002,6 +4054,7 @@ static bool mlo_link_recfg_reassoc_if_failure(
 	case link_recfg_del_link_link_switch_comp_with_fail:
 	case link_recfg_rsp_timeout:
 	case link_recfg_concurrency_failed:
+	case link_recfg_aborted_neg_ttlm_ongoing:
 		reassoc_if_failure = true;
 		break;
 	default:
@@ -4046,6 +4099,40 @@ mlo_link_recfg_abort_if_in_progress(struct wlan_objmgr_vdev *vdev,
 	}
 }
 
+static QDF_STATUS
+mlo_link_recfg_add_link_update_mapping(struct wlan_objmgr_vdev *vdev,
+				       struct mlo_link_recfg_context *recfg_ctx)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_mlo_link_recfg_req *recfg_req;
+	struct wlan_objmgr_peer *peer;
+	struct wlan_mlo_peer_context *ml_peer;
+
+	if (!vdev) {
+		mlo_err("peer is null");
+		status = QDF_STATUS_E_NULL_VALUE;
+		goto end;
+	}
+
+	peer = wlan_objmgr_vdev_try_get_bsspeer(vdev, WLAN_MLO_MGR_ID);
+	if (!peer) {
+		mlo_err("peer is null");
+		status = QDF_STATUS_E_NULL_VALUE;
+		goto end;
+	}
+
+	ml_peer = peer->mlo_peer_ctx;
+	recfg_req = &recfg_ctx->curr_recfg_req;
+	if (recfg_req->add_link_info.num_links) {
+		status = wlan_t2lm_handle_link_recfg_add_update(peer);
+		if (QDF_IS_STATUS_ERROR(status))
+			mlo_err("T2LM mapping update failed");
+	}
+	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
+end:
+	return status;
+}
+
 static void
 mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 			bool success)
@@ -4084,6 +4171,10 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	if (!vdev) {
 		mlo_err("link vdev is null");
 		return;
+	}
+
+	if (recfg_req->add_link_info.num_links && success) {
+		mlo_link_recfg_add_link_update_mapping(vdev, recfg_ctx);
 	}
 
 	if (recfg_req->is_fw_ind_received) {
@@ -4126,6 +4217,82 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 				psoc, vdev_id,
 				ml_nlink_link_recfg_completed_evt,
 				NULL);
+}
+
+static bool
+mlo_link_recfg_handle_ttlm(struct mlo_link_recfg_context *recfg_ctx,
+			   struct mlo_link_recfg_state_req *req)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct wlan_objmgr_peer *peer;
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_mlo_peer_context *ml_peer;
+	uint8_t i;
+	uint8_t link_id_mask = 0;
+	struct wlan_t2lm_info *t2lm_nego = NULL;
+	uint16_t t2lm_mapped_link_bmap;
+	QDF_STATUS status;
+	bool status_ttlm = true;
+
+	if (!recfg_ctx || !req) {
+		mlo_err("recfg_ctx or req is null");
+		return false;
+	}
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return false;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				recfg_ctx->psoc,
+				recfg_ctx->curr_recfg_req.vdev_id,
+				WLAN_LINK_RECFG_ID);
+	if (!vdev) {
+		mlo_err("vdev is null");
+		return false;
+	}
+
+	peer = wlan_objmgr_vdev_try_get_bsspeer(vdev, WLAN_LINK_RECFG_ID);
+	if (!peer) {
+		mlo_err("peer is null");
+		status_ttlm = false;
+		goto end;
+	}
+	ml_peer = peer->mlo_peer_ctx;
+
+	if (wlan_t2lm_is_peer_neg_in_progress(ml_peer)) {
+		mlo_debug("T2LM Peer negotiation in progress");
+		status_ttlm = false;
+		goto end;
+	}
+
+	t2lm_nego = &ml_peer->t2lm_policy.t2lm_negotiated_info.t2lm_info[WLAN_T2LM_BIDI_DIRECTION];
+	t2lm_mapped_link_bmap = t2lm_nego->ieee_link_map_tid[0];
+
+	if (req->del_link_info.num_links) {
+		for (i = 0; i < req->del_link_info.num_links; i++) {
+			link_id_mask = (1 << req->del_link_info.link[i].link_id);
+			if (link_id_mask & t2lm_mapped_link_bmap) {
+				status = wlan_t2lm_handle_link_recfg_del_update(peer);
+				if (QDF_IS_STATUS_ERROR(status)) {
+					mlo_err("T2LM mapping update failed");
+					status_ttlm = false;
+					goto end;
+				} else {
+					status_ttlm = true;
+					goto end;
+				}
+			}
+		}
+	}
+
+end:
+	if (peer)
+		wlan_objmgr_peer_release_ref(peer, WLAN_LINK_RECFG_ID);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+	return status_ttlm;
 }
 
 static enum wlan_link_recfg_sm_state
@@ -4641,6 +4808,58 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 
 static void
 mlo_link_recfg_subst_start_active_exit(void *ctx)
+{
+}
+
+static void
+mlo_link_recfg_update_ttlm_done(struct mlo_link_recfg_context *recfg_ctx,
+				bool status)
+{
+	/* handle update ttlm status done */
+	if (status) {
+		/* transition to next state */
+		mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
+	} else {
+		mlo_err("Update TTLM failed, abort Link Recfg");
+		mlo_link_recfg_abort_ttlm_ongoing(recfg_ctx);
+	}
+}
+
+/* WLAN_LINK_RECFG_S_TTLM */
+static void
+mlo_link_recfg_state_update_ttlm_entry(void *ctx)
+{
+	mlo_link_recfg_sm_state_update(ctx, WLAN_LINK_RECFG_S_TTLM,
+				       WLAN_LINK_RECFG_SS_IDLE);
+}
+
+static bool
+mlo_link_recfg_state_update_ttlm_event(void *ctx,
+				       uint16_t event,
+				       uint16_t event_data_len,
+				       void *event_data)
+{
+	struct mlo_link_recfg_context *recfg_ctx = ctx;
+	bool event_handled = true;
+	struct mlo_link_recfg_state_req *req;
+	bool status;
+
+	switch (event) {
+	case WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM:
+		req = (struct mlo_link_recfg_state_req *)event_data;
+		status = mlo_link_recfg_handle_ttlm(recfg_ctx, req);
+		mlo_link_recfg_update_ttlm_done(recfg_ctx, status);
+		break;
+	default:
+		event_handled = false;
+		break;
+	}
+
+	return event_handled;
+}
+
+static void
+mlo_link_recfg_state_update_ttlm_exit(void *ctx)
 {
 }
 
@@ -5558,6 +5777,16 @@ static struct wlan_sm_state_info mlo_link_recfg_sm_info[] = {
 		mlo_link_recfg_state_abort_event,
 	},
 	{
+		(uint8_t)WLAN_LINK_RECFG_S_TTLM,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		false,
+		"UPDATE_TTLM",
+		mlo_link_recfg_state_update_ttlm_entry,
+		mlo_link_recfg_state_update_ttlm_exit,
+		mlo_link_recfg_state_update_ttlm_event,
+	},
+	{
 		(uint8_t)WLAN_LINK_RECFG_S_MAX,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
@@ -5709,6 +5938,7 @@ static const char *mlo_link_recfg_sm_event_names[] = {
 	"EV_SER_TIMEOUT",
 	"EV_SM_TIMEOUT",
 	"EV_RX_RSP_TIMEOUT",
+	"EV_UPDATE_TTLM"
 };
 
 static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)

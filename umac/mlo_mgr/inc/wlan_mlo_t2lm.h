@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -215,6 +215,8 @@ struct ttlm_req_params {
  * @WLAN_TTLM_SS_AP_BEACON_INPROGRESS: AP side Beacon is in progress
  * @WLAN_TTLM_SS_AP_BTM_INPROGRESS: AP side BTM is in progress
  * @WLAN_TTLM_SS_TEARDOWN_INPROGRESS: Teardown is in progress
+ * @WLAN_TTLM_SS_LINK_RECFG_UPDATE_MAPPING_INPROGRESS: Update TTLM mapping
+ * due to Link Reconfiguration request
  * @WLAN_TTLM_SS_MAX: Max substate
  */
 enum wlan_ttlm_sm_state {
@@ -227,6 +229,7 @@ enum wlan_ttlm_sm_state {
 	WLAN_TTLM_SS_AP_BEACON_INPROGRESS = 6,
 	WLAN_TTLM_SS_AP_BTM_INPROGRESS = 7,
 	WLAN_TTLM_SS_TEARDOWN_INPROGRESS = 8,
+	WLAN_TTLM_SS_LINK_RECFG_UPDATE_MAPPING_INPROGRESS = 9,
 	WLAN_TTLM_SS_MAX,
 };
 
@@ -245,6 +248,10 @@ enum wlan_ttlm_sm_state {
  * @WLAN_TTLM_SM_EV_RX_TEARDOWN: TTLM Teardown from AP
  * @WLAN_TTLM_SM_EV_TIMEOUT: TTLM Timeout happen
  * @WLAN_TTLM_SM_EV_TTLM_REQ_TIMEOUT: TTLM req timer timeout happen
+ * @WLAN_TTLM_SM_EV_LINK_RECFG_DEL_UPDATE_MAPPING: TTLM update mapping due to
+ * Link reconfig delete link request
+ * @WLAN_TTLM_SM_EV_LINK_RECFG_ADD_UPDATE_MAPPING: TTLM update mapping due to
+ * Link reconfig add link request
  * @WLAN_TTLM_SM_EV_MAX: Max event
  */
 enum wlan_ttlm_sm_evt {
@@ -260,6 +267,8 @@ enum wlan_ttlm_sm_evt {
 	WLAN_TTLM_SM_EV_RX_TEARDOWN = 9,
 	WLAN_TTLM_SM_EV_TIMEOUT = 10,
 	WLAN_TTLM_SM_EV_TTLM_REQ_TIMEOUT = 11,
+	WLAN_TTLM_SM_EV_LINK_RECFG_DEL_UPDATE_MAPPING = 12,
+	WLAN_TTLM_SM_EV_LINK_RECFG_ADD_UPDATE_MAPPING = 13,
 	WLAN_TTLM_SM_EV_MAX,
 };
 
