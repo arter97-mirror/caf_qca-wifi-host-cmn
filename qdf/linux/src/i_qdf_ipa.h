@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -515,6 +515,11 @@ struct ipa_wlan_msg_if_index {
 #define QDF_IPA_WLAN_MSG_NETDEV_IF_ID(ipa_msg)	\
 	(((struct ipa_wlan_msg_if_index *)(ipa_msg))->if_index)
 #endif
+
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+#define QDF_IPA_WLAN_MSG_MLD_ENABLED(ipa_msg)	\
+	(((struct ipa_wlan_msg *)(ipa_msg))->mld_enabled)
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
 
 typedef struct ipa_wlan_msg_ex __qdf_ipa_wlan_msg_ex_t;
 
