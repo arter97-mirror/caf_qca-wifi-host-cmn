@@ -716,6 +716,52 @@ static void dp_ipa_set_evt_rn_db_addr(struct device *dev,
 		QDF_IPA_WDI_SETUP_INFO_IS_EVT_RN_DB_PCIE_ADDR(txrx) = true;
 }
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * dp_ipa_set_rx_peer_metadata_ver() - Indicate rx peer meta data version
+ * to IPA for non-smmu case
+ * @soc: data path soc handle
+ * @rx: WDI RX configuration
+ *
+ * Return: none
+ */
+static inline void
+dp_ipa_set_rx_peer_metadata_ver(struct dp_soc *soc,
+				qdf_ipa_wdi_pipe_setup_info_t *rx)
+{
+	QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(rx,
+		soc->rx_peer_metadata_ver);
+}
+
+/**
+ * dp_ipa_set_rx_smmu_peer_metadata_ver() - Indicate rx peer meta data version
+ * to IPA for smmu case
+ * @soc: data path soc handle
+ * @rx: WDI RX configuration
+ *
+ * Return: none
+ */
+static inline void
+dp_ipa_set_rx_smmu_peer_metadata_ver(struct dp_soc *soc,
+				     qdf_ipa_wdi_pipe_setup_info_smmu_t *rx)
+{
+	QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(rx,
+		soc->rx_peer_metadata_ver);
+}
+#else /* !WLAN_FEATURE_MULTI_LINK_SAP */
+static inline void
+dp_ipa_set_rx_peer_metadata_ver(struct dp_soc *soc,
+				qdf_ipa_wdi_pipe_setup_info_t *rx)
+{
+}
+
+static inline void
+dp_ipa_set_rx_smmu_peer_metadata_ver(struct dp_soc *soc,
+				     qdf_ipa_wdi_pipe_setup_info_smmu_t *rx)
+{
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
 #ifdef IPA_WDI3_TX_TWO_PIPES
 static void dp_ipa_tx_alt_pool_detach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
@@ -2633,6 +2679,8 @@ static void dp_ipa_wdi_rx_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_chip_id(soc, rx);
+
+	dp_ipa_set_rx_peer_metadata_ver(soc, rx);
 }
 
 static void
@@ -2739,6 +2787,8 @@ dp_ipa_wdi_rx_smmu_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_smmu_chip_id(soc, rx_smmu);
+
+	dp_ipa_set_rx_smmu_peer_metadata_ver(soc, rx_smmu);
 }
 
 #ifdef IPA_WDI3_VLAN_SUPPORT
@@ -2805,6 +2855,8 @@ dp_ipa_wdi_rx_alt_pipe_smmu_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_smmu_chip_id(soc, rx_smmu);
+
+	dp_ipa_set_rx_smmu_peer_metadata_ver(soc, rx_smmu);
 }
 
 /**
@@ -2870,6 +2922,8 @@ static void dp_ipa_wdi_rx_alt_pipe_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_chip_id(soc, rx);
+
+	dp_ipa_set_rx_peer_metadata_ver(soc, rx);
 }
 
 /**
