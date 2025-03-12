@@ -19565,10 +19565,15 @@ enum qca_wlan_connect_ext_features {
  * @QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_FEATURES: Feature flags contained in a byte
  * array. The feature flags are identified by their bit index (see &enum
  * qca_wlan_connect_ext_features).
+ * @QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_ALLOWED_BSSIDS: Nested attribute of
+ * BSSIDs to indicate allowed BSSIDs for association. This configuration stays
+ * in effect only for the current connection request and for the next connect
+ * request if there is no connection currently.
  */
 enum qca_wlan_vendor_attr_connect_ext {
 	QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_FEATURES = 1,
+	QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_ALLOWED_BSSIDS = 2,
 
 	QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_MAX =
