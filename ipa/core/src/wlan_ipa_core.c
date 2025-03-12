@@ -3465,18 +3465,19 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		 * roaming scenario.
 		 */
 		if (ipa_ctx->sta_connected) {
-			ipa_info("IPA Roaming event detected from BSSID: "QDF_MAC_ADDR_FMT
+                       ipa_ctx->vdev_to_iface[session_id] =
+                                       wlan_ipa_get_ifaceid(ipa_ctx, session_id);
+
+		       ipa_info("IPA Roaming event detected from BSSID: "QDF_MAC_ADDR_FMT
 				 " -> BSSID: "QDF_MAC_ADDR_FMT,
 				 QDF_MAC_ADDR_REF(ipa_ctx->iface_context[wlan_ipa_get_ifaceid(
 						  ipa_ctx, session_id)].bssid.bytes),
 				 QDF_MAC_ADDR_REF(mac_addr));
-			ipa_ctx->vdev_to_iface[session_id] =
-				 wlan_ipa_get_ifaceid(ipa_ctx, session_id);
-			wlan_ipa_save_bssid_iface_ctx(ipa_ctx,
-						      ipa_ctx->vdev_to_iface[session_id],
-						      mac_addr);
-			qdf_mutex_release(&ipa_ctx->event_lock);
-			return QDF_STATUS_SUCCESS;
+                       wlan_ipa_save_bssid_iface_ctx(ipa_ctx,
+                                                     ipa_ctx->vdev_to_iface[session_id],
+                                                     mac_addr);
+                       qdf_mutex_release(&ipa_ctx->event_lock);
+                       return QDF_STATUS_SUCCESS;
 		}
 
 		status = wlan_ipa_setup_iface(ipa_ctx, net_dev, device_mode,
@@ -5970,7 +5971,7 @@ QDF_STATUS wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
 			qdf_spin_lock_bh(&ipa_ctx->pm_lock);
 			ipa_ctx->roaming = true;
 			qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
-			status = wlan_ipa_send_msg(iface, net_dev,
+			status = wlan_ipa_send_msg(net_dev,
 						   QDF_IPA_SW_ROUTING_ENABLE,
 						   mac_addr);
 			if (status != QDF_STATUS_SUCCESS)
@@ -5979,7 +5980,7 @@ QDF_STATUS wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
 				ipa_debug("Roaming Start: QDF_IPA_SW_ROUTING_ENABLE send successfully");
 
 		} else {
-			status = wlan_ipa_send_msg(iface, net_dev,
+			status = wlan_ipa_send_msg(net_dev,
 						   QDF_IPA_SW_ROUTING_DISABLE,
 						   mac_addr);
 			if (status != QDF_STATUS_SUCCESS)
