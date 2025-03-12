@@ -113,6 +113,7 @@ enum wlan_link_recfg_sm_state {
  * @WLAN_LINK_RECFG_SM_EV_COMPLETED: Link Reconfiguration completed
  * @WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT: Link Reconfiguration serialization
  * timeout
+ * @WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT: generic timeout in substate
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -133,7 +134,31 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_ROAM_START_IND,
 	WLAN_LINK_RECFG_SM_EV_COMPLETED,
 	WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT,
+	WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_MAX,
+};
+
+/**
+ * enum link_recfg_failure_reason - link recfg failure reason code enum
+ * @link_recfg_success: link recfg successfully
+ * @link_recfg_create_tran_failed: can't create transition list
+ * @link_recfg_set_link_cmd_timeout: set link cmd timeout
+ * @link_recfg_set_link_cmd_rejected: set link cmd rejected
+ * @link_recfg_del_link_wait_fw_link_switch_timeout: wait for fw link switch
+ * timeout
+ * @link_recfg_del_link_fw_link_switch_rejected: fw link switch rejected in
+ * delete link
+ * @link_recfg_del_link_link_switch_comp_with_fail: link switch complete
+ * with failure
+ */
+enum link_recfg_failure_reason {
+	link_recfg_success = 0,
+	link_recfg_create_tran_failed = 1,
+	link_recfg_set_link_cmd_timeout = 2,
+	link_recfg_set_link_cmd_rejected = 3,
+	link_recfg_del_link_wait_fw_link_switch_timeout = 4,
+	link_recfg_del_link_fw_link_switch_rejected = 5,
+	link_recfg_del_link_link_switch_comp_with_fail = 6,
 };
 
 /**
@@ -340,6 +365,7 @@ struct recfg_completed {
  * @link_recfg_substate: Current substate
  * @state_list: link reconfig state transition list
  * @curr_state_idx: current transition index
+ * @sm_timer: state machine timer
  */
 struct mlo_link_recfg_state_sm {
 	qdf_mutex_t mlrc_sm_lock;
@@ -348,6 +374,7 @@ struct mlo_link_recfg_state_sm {
 	enum wlan_link_recfg_sm_state link_recfg_substate;
 	struct mlo_link_recfg_state_tran state_list[MAX_RECFG_TRANSITION];
 	int8_t curr_state_idx;
+	qdf_mc_timer_t sm_timer;
 };
 
 /**
@@ -411,6 +438,7 @@ struct wlan_mlo_link_recfg_bitmap {
  * @rsp_rx_frame: Link reconfig response with mac header
  * @link_recfg_status: Link Reconfiguration status
  * @last_dialog_token: Last used dialog token
+ * @internal_reason_code: Internal failure reason code
  * @copied_recfg_req: Copied recfg req
  */
 struct mlo_link_recfg_context {
@@ -428,6 +456,7 @@ struct mlo_link_recfg_context {
 	struct element_info rsp_rx_frame;
 	QDF_STATUS link_recfg_status;
 	uint8_t last_dialog_token;
+	enum link_recfg_failure_reason internal_reason_code;
 	struct wlan_mlo_link_recfg_req copied_recfg_req;
 };
 
