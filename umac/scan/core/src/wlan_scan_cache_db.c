@@ -151,13 +151,10 @@ static void scm_add_rnr_channel_db(struct wlan_objmgr_pdev *pdev,
 	if (!(is_6g_bss || entry->ie_list.rnrie))
 		return;
 
-	scm_debug("BSS freq %d BSSID: "QDF_MAC_ADDR_FMT, chan_freq,
-		  QDF_MAC_ADDR_REF(entry->bssid.bytes));
 	if (is_6g_bss) {
 		qdf_mutex_acquire(&scan_obj->rnr_channel_db.rnr_db_lock);
 		channel = scm_get_chan_meta(psoc, chan_freq);
 		if (!channel) {
-			scm_debug("Failed to get chan Meta freq %d", chan_freq);
 			qdf_mutex_release(
 				&scan_obj->rnr_channel_db.rnr_db_lock);
 			return;
@@ -196,16 +193,26 @@ static void scm_add_rnr_channel_db(struct wlan_objmgr_pdev *pdev,
 				     rnr_bss->operating_class);
 
 		channel = scm_get_chan_meta(psoc, chan_freq);
-		if (!channel) {
-			scm_debug("Failed to get chan Meta freq %d", chan_freq);
+		if (!channel)
 			continue;
-		}
+
 		channel->bss_beacon_probe_count++;
 
 		/* Skip non Tx MBSSID profile */
 		if (QDF_GET_BITS(rnr_bss->bss_params, 2, 2) == 0x1) {
-			scm_debug("skip nontx freq %d: " QDF_MAC_ADDR_FMT " short ssid %x",
-				  chan_freq,
+			scm_debug(QDF_MAC_ADDR_FMT "(freq %d): skip nontx freq %d " QDF_MAC_ADDR_FMT " short ssid %x",
+				  QDF_MAC_ADDR_REF(entry->bssid.bytes),
+				  entry->channel.chan_freq, chan_freq,
+				  QDF_MAC_ADDR_REF(rnr_bss->bssid.bytes),
+				  rnr_bss->short_ssid);
+			continue;
+		}
+
+		if (scm_is_rnr_present(channel, &rnr_bss->bssid,
+				       rnr_bss->short_ssid)) {
+			scm_debug(QDF_MAC_ADDR_FMT "(freq %d): skip dup freq %d " QDF_MAC_ADDR_FMT " short ssid %x",
+				  QDF_MAC_ADDR_REF(entry->bssid.bytes),
+				  entry->channel.chan_freq, chan_freq,
 				  QDF_MAC_ADDR_REF(rnr_bss->bssid.bytes),
 				  rnr_bss->short_ssid);
 			continue;
@@ -213,16 +220,10 @@ static void scm_add_rnr_channel_db(struct wlan_objmgr_pdev *pdev,
 
 		/* Don't add RNR entry if list is full */
 		if (qdf_list_size(&channel->rnr_list) >= WLAN_MAX_RNR_COUNT) {
-			scm_debug("List is full");
+			scm_debug(QDF_MAC_ADDR_FMT "(freq %d): List is full, skip",
+				  QDF_MAC_ADDR_REF(entry->bssid.bytes),
+				  entry->channel.chan_freq);
 			goto rel_lock;
-		}
-		if (scm_is_rnr_present(channel, &rnr_bss->bssid,
-				       rnr_bss->short_ssid)) {
-			scm_debug("skip dup freq %d: "QDF_MAC_ADDR_FMT" short ssid %x",
-				  chan_freq,
-				  QDF_MAC_ADDR_REF(rnr_bss->bssid.bytes),
-				  rnr_bss->short_ssid);
-			continue;
 		}
 		rnr_node = qdf_mem_malloc(sizeof(struct scan_rnr_node));
 		if (!rnr_node)
@@ -237,8 +238,10 @@ static void scm_add_rnr_channel_db(struct wlan_objmgr_pdev *pdev,
 			rnr_node->entry.short_ssid = rnr_bss->short_ssid;
 		if (rnr_bss->bss_params)
 			rnr_node->entry.bss_params = rnr_bss->bss_params;
-		scm_debug("Add freq %d: "QDF_MAC_ADDR_FMT" short ssid %x", chan_freq,
-			  QDF_MAC_ADDR_REF(rnr_bss->bssid.bytes),
+		scm_debug(QDF_MAC_ADDR_FMT "(freq %d): Add freq %d " QDF_MAC_ADDR_FMT " short ssid %x",
+			  QDF_MAC_ADDR_REF(entry->bssid.bytes),
+			  entry->channel.chan_freq,
+			  chan_freq, QDF_MAC_ADDR_REF(rnr_bss->bssid.bytes),
 			  rnr_bss->short_ssid);
 		qdf_list_insert_back(&channel->rnr_list,
 				     &rnr_node->node);

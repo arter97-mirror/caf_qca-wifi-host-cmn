@@ -1040,6 +1040,9 @@ struct chan_list {
 	struct chan_info chan[NUM_CHANNELS];
 };
 
+#define WLAN_SCM_GET_FREQ_FROM_FREQ_FLAG(freq_flags) ((freq_flags >> 16) & 0xffff)
+#define WLAN_SCM_GET_FLAG_FROM_FREQ_FLAG(freq_flags) (freq_flags & 0xffff)
+
 /**
  * struct hint_short_ssid - short SSID hint
  *  and their phymode
