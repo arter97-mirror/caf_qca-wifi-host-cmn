@@ -138,6 +138,12 @@
 #define HIF_GET_SOFTC(scn) ((struct hif_softc *)scn)
 #define GET_HIF_OPAQUE_HDL(scn) ((struct hif_opaque_softc *)scn)
 
+#ifdef WLAN_64BIT_DATA_SUPPORT
+#define RRI_ON_DDR_MEM_SIZE CE_COUNT * sizeof(uint64_t)
+#else
+#define RRI_ON_DDR_MEM_SIZE CE_COUNT * sizeof(uint32_t)
+#endif
+
 struct hif_ce_stats {
 	int hif_pipe_no_resrc_count;
 	int ce_ring_delta_fail_count;
