@@ -3102,6 +3102,7 @@ struct hal_hw_srng_config hw_srng_table_7750[] = {
 	{ /* TX_MONITOR_DST */ 0},
 	{ /* SW2RXDMA_NEW */ 0},
 	{ /* SW2RXDMA_LINK_RELEASE */ 0},
+	{ /* TQM2SW_RELEASE */ 0},
 };
 
 /**

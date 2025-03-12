@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2405,6 +2405,7 @@ struct hal_hw_srng_config hw_srng_table_6490[] = {
 	{ /* TX_MONITOR_DST */ 0},
 	{ /* SW2RXDMA_NEW */ 0},
 	{ /* SW2RXDMA_LINK_RELEASE */ 0},
+	{ /* TQM2SW_RELEASE */ 0},
 };
 
 /**

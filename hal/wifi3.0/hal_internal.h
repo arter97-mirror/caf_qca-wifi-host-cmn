@@ -190,7 +190,7 @@ enum hal_srng_ring_id {
 	HAL_SRNG_REO2SW9 = 9,
 	HAL_SRNG_REO2TCL = 10,
 	HAL_SRNG_REO2PPE = 11,
-	/* 11-15 unused */
+	/* 12-15 unused */
 	HAL_SRNG_SW2REO = 16,
 	HAL_SRNG_SW2REO1 = 17,
 	HAL_SRNG_SW2REO2 = 18,
@@ -412,6 +412,10 @@ enum hal_ring_type {
 	SW2RXDMA_NEW,
 	SW2RXDMA_LINK_RELEASE,
 	TQM2SW_RELEASE,
+	/*
+	 * If you are adding new ring type, then update hal_hw_srng_config
+	 * for all the targets
+	 */
 	MAX_RING_TYPES
 };
 
