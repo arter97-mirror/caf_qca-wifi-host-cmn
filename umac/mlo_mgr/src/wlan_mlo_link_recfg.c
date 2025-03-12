@@ -539,6 +539,12 @@ mlo_mgr_link_recfg_indication_event_handler(
 		goto end;
 	}
 
+	if (!cm_is_vdev_connected(vdev)) {
+		mlo_err("vdev is NOT in connected state");
+		status = QDF_STATUS_E_FAILURE;
+		goto end;
+	}
+
 	qdf_mem_zero(&recfg_req, sizeof(struct wlan_mlo_link_recfg_req));
 	recfg_req.vdev_id = evt_params->vdev_id;
 	recfg_req.is_user_req = evt_params->trigger_reason ==
