@@ -6571,6 +6571,7 @@ typedef enum {
 	wmi_service_twt_requestor,
 	wmi_service_twt_responder,
 	wmi_service_listen_interval_offload_support,
+	wmi_service_apf_data_offload_support_enabled,
 
 #ifdef OL_ATH_SMART_LOGGING
 	wmi_service_smart_logging_support,
