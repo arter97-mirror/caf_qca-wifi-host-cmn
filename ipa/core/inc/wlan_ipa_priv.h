@@ -448,6 +448,9 @@ struct wlan_ipa_priv;
  * @bssid: BSSID. valid only for sta iface ctx
  * @is_authenticated: is peer authenticated
  * @alt_pipe: Indicate whether the interface uses alternate TX pipe
+ * @is_ml_sap: Boolean value to indicate if iface is a multi-link SAP interface
+ * @ml_sap_ifname: If a multi-link SAP interface, stores the ifname requested by
+ * IPA driver.
  */
 struct wlan_ipa_iface_context {
 	struct wlan_ipa_priv *ipa_ctx;
@@ -469,6 +472,13 @@ struct wlan_ipa_iface_context {
 	uint8_t is_authenticated;
 #ifdef IPA_WDI3_TX_TWO_PIPES
 	bool alt_pipe;
+#endif
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+	bool is_ml_sap;
+	/* In case of multi-link SAP interface, ifname is requested to
+	 * be the in the format of "basename_vdevid" by IPA driver.
+	 */
+	char ml_sap_ifname[IPA_RESOURCE_NAME_MAX];
 #endif
 };
 
@@ -521,11 +531,13 @@ struct wlan_ipa_stats {
  * @is_reserved: STA reserved flag
  * @is_authenticated: is peer authenticated
  * @mac_addr: Station mac address
+ * @session_id: vdev id of which STA is connected to
  */
 struct ipa_uc_stas_map {
 	bool is_reserved;
 	struct qdf_mac_addr mac_addr;
 	uint8_t is_authenticated;
+	uint8_t session_id;
 };
 
 /**
