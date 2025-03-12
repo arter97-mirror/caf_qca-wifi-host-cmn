@@ -2409,12 +2409,14 @@ end:
  * @ipa_ctx: Global IPA IPA context
  * @sta_add: Should station be added
  * @mac_addr: mac address of station being queried
+ * @session_id: vdev id of which STA is connected to
  *
  * Return: true if the station was found
  */
 static bool wlan_ipa_uc_find_add_assoc_sta(struct wlan_ipa_priv *ipa_ctx,
 					   bool sta_add,
-					   const uint8_t *mac_addr)
+					   const uint8_t *mac_addr,
+					   uint8_t session_id)
 {
 	bool sta_found = false;
 	uint16_t idx;
@@ -2423,7 +2425,8 @@ static bool wlan_ipa_uc_find_add_assoc_sta(struct wlan_ipa_priv *ipa_ctx,
 		if ((ipa_ctx->assoc_stas_map[idx].is_reserved) &&
 		    (qdf_is_macaddr_equal(
 			&ipa_ctx->assoc_stas_map[idx].mac_addr,
-			(struct qdf_mac_addr *)mac_addr))) {
+			(struct qdf_mac_addr *)mac_addr)) &&
+		    ipa_ctx->assoc_stas_map[idx].session_id == session_id) {
 			sta_found = true;
 			break;
 		}
@@ -2440,6 +2443,8 @@ static bool wlan_ipa_uc_find_add_assoc_sta(struct wlan_ipa_priv *ipa_ctx,
 				qdf_mem_copy(&ipa_ctx->assoc_stas_map[idx].
 					     mac_addr, mac_addr,
 					     QDF_NET_ETH_LEN);
+				ipa_ctx->assoc_stas_map[idx].session_id =
+					session_id;
 				return sta_found;
 			}
 		}
@@ -2454,12 +2459,16 @@ static bool wlan_ipa_uc_find_add_assoc_sta(struct wlan_ipa_priv *ipa_ctx,
 			if ((ipa_ctx->assoc_stas_map[idx].is_reserved) &&
 			    (qdf_is_macaddr_equal(
 				&ipa_ctx->assoc_stas_map[idx].mac_addr,
-				(struct qdf_mac_addr *)mac_addr))) {
+				(struct qdf_mac_addr *)mac_addr)) &&
+			    ipa_ctx->assoc_stas_map[idx].session_id ==
+			    session_id) {
 				ipa_ctx->assoc_stas_map[idx].is_reserved =
 					false;
 				qdf_mem_zero(
 					&ipa_ctx->assoc_stas_map[idx].mac_addr,
 					QDF_NET_ETH_LEN);
+				ipa_ctx->assoc_stas_map[idx].session_id =
+					WLAN_IPA_MAX_SESSION;
 				return sta_found;
 			}
 		}
@@ -2531,6 +2540,268 @@ wlan_ipa_get_iface_alt_pipe(struct wlan_ipa_iface_context *iface_context)
 }
 #endif /* IPA_WDI3_TX_TWO_PIPES */
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * wlan_ipa_setup_iface_ml_sap() - Setup IPA on a given interface for ML SAP
+ * @iface: IPA interface context
+ *
+ * Return: None
+ */
+static void wlan_ipa_setup_iface_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+	if (iface->device_mode != QDF_SAP_MODE)
+		return;
+
+	iface->is_ml_sap = true;
+	qdf_snprintf(iface->ml_sap_ifname, sizeof(iface->ml_sap_ifname),
+		     "%s_%u", iface->dev->name, iface->session_id);
+	ipa_info("iface is_ml_sap %u ml_sap_ifname %s",
+		 iface->is_ml_sap, iface->ml_sap_ifname);
+}
+
+/**
+ * wlan_ipa_cleanup_iface_ml_sap() - Cleanup IPA on a given interface for ML SAP
+ * @iface: IPA interface context
+ *
+ * Return: None
+ */
+static void wlan_ipa_cleanup_iface_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+	if (!iface->is_ml_sap)
+		return;
+
+	iface->is_ml_sap = false;
+	qdf_mem_zero(iface->ml_sap_ifname, sizeof(iface->ml_sap_ifname));
+}
+
+/**
+ * wlan_ipa_get_iface_is_ml_sap() - Check whether a given IPA interface is for
+ * ML SAP or not
+ * @iface: IPA interface context
+ *
+ * Return: true if the interface is for ML SAP, false otherwise
+ */
+static inline bool
+wlan_ipa_get_iface_is_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+	return iface->is_ml_sap;
+}
+
+/**
+ * wlan_ipa_get_iface_ifname() - Get interface name of a given IPA interface
+ * @iface: IPA interface context
+ *
+ * Return: pointer to interface name
+ */
+static char *wlan_ipa_get_iface_ifname(struct wlan_ipa_iface_context *iface)
+{
+	if (iface->device_mode == QDF_SAP_MODE && iface->is_ml_sap)
+		return iface->ml_sap_ifname;
+
+	if (qdf_unlikely(!iface->dev)) {
+		ipa_err("Invalid net dev");
+		return NULL;
+	}
+
+	return iface->dev->name;
+}
+
+/**
+ * wlan_ipa_set_msg_mld_enabled() - Set mld_enabled for a given IPA event
+ * @iface: IPA interface context
+ * @type: type of the IPA event
+ * @evt: event to be updated
+ *
+ * Return: None
+ */
+static void
+wlan_ipa_set_msg_mld_enabled(struct wlan_ipa_iface_context *iface,
+			     qdf_ipa_wlan_event type, void *evt)
+{
+	/* ipa_wlan_msg_ex does NOT have 'mld_enabled' */
+	if (iface->is_ml_sap && type != QDF_IPA_CLIENT_CONNECT_EX)
+		QDF_IPA_WLAN_MSG_MLD_ENABLED(evt) = true;
+}
+
+/**
+ * wlan_ipa_send_ml_sap_disconn_evt() - Send AP_DISCONNECT event to IPA
+ * @net_dev: Interface net device
+ * @mac_addr: MAC address associated with the event
+ * @session_id: vdev id of the SAP
+ * @is_ml_sap: Boolean value to indicate if SAP is a multi-link one
+ *
+ * This function only sends AP_DISCONNECT event with @is_ml_sap being
+ * true. Otherwise, AP_DISCONNECT event is still sent in
+ * __wlan_ipa_wlan_evt().
+ *
+ * Return: QDF_STATUS_SUCCESS when AP_DISCONNECT event is sent successfully.
+ *	   Otherwise return error codes.
+ */
+static QDF_STATUS
+wlan_ipa_send_ml_sap_disconn_evt(qdf_netdev_t net_dev,
+				 const uint8_t *mac_addr,
+				 uint8_t session_id,
+				 bool is_ml_sap)
+{
+	char ifname[IPA_RESOURCE_NAME_MAX];
+	qdf_ipa_msg_meta_t meta;
+	qdf_ipa_wlan_msg_t *msg;
+
+	if (!is_ml_sap)
+		return QDF_STATUS_E_INVAL;
+
+	QDF_IPA_MSG_META_MSG_LEN(&meta) = sizeof(qdf_ipa_wlan_msg_t);
+
+	msg = qdf_mem_malloc(QDF_IPA_MSG_META_MSG_LEN(&meta));
+	if (qdf_unlikely(!msg))
+		return QDF_STATUS_E_NOMEM;
+
+	QDF_IPA_SET_META_MSG_TYPE(&meta, QDF_IPA_AP_DISCONNECT);
+
+	QDF_IPA_WLAN_MSG_MLD_ENABLED(msg) = true;
+
+	qdf_snprintf(ifname, sizeof(ifname), "%s_%u", net_dev->name,
+		     session_id);
+	strscpy(QDF_IPA_WLAN_MSG_NAME(msg), ifname, IPA_RESOURCE_NAME_MAX);
+
+	qdf_mem_copy(QDF_IPA_WLAN_MSG_MAC_ADDR(msg), mac_addr, QDF_NET_ETH_LEN);
+	QDF_IPA_WLAN_MSG_NETDEV_IF_ID(msg) = net_dev->ifindex;
+
+	ipa_debug("%s: session_id %u Evt: %d", QDF_IPA_WLAN_MSG_NAME(msg),
+		  session_id, QDF_IPA_MSG_META_MSG_TYPE(&meta));
+
+	if (qdf_ipa_send_msg(&meta, msg, wlan_ipa_msg_free_fn)) {
+		ipa_err("%s: Evt: %d fail",
+			QDF_IPA_WLAN_MSG_NAME(msg),
+			QDF_IPA_MSG_META_MSG_TYPE(&meta));
+		qdf_mem_free(msg);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#else /* !WLAN_FEATURE_MULTI_LINK_SAP */
+static inline void
+wlan_ipa_setup_iface_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+}
+
+static inline void
+wlan_ipa_cleanup_iface_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+}
+
+static inline bool
+wlan_ipa_get_iface_is_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+	return false;
+}
+
+static inline char
+*wlan_ipa_get_iface_ifname(struct wlan_ipa_iface_context *iface)
+{
+	return iface->dev->name;
+}
+
+static void
+wlan_ipa_set_msg_mld_enabled(struct wlan_ipa_iface_context *iface,
+			     qdf_ipa_wlan_event type, void *evt)
+{
+}
+
+static inline QDF_STATUS
+wlan_ipa_send_ml_sap_disconn_evt(qdf_netdev_t net_dev,
+				 const uint8_t *mac_addr,
+				 uint8_t session_id,
+				 bool is_ml_sap)
+{
+	return QDF_STATUS_E_INVAL;
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
+/**
+ * __wlan_ipa_set_msg_ifname() - Set interface name for a given IPA event
+ * @ifname: interface name
+ * @type: type of the IPA event
+ * @evt: event to be updated
+ *
+ * Return: None
+ */
+static inline void
+__wlan_ipa_set_msg_ifname(char *ifname, qdf_ipa_wlan_event type, void *evt)
+{
+	if (type == QDF_IPA_CLIENT_CONNECT_EX)
+		strscpy(QDF_IPA_WLAN_MSG_EX_NAME(evt), ifname,
+			IPA_RESOURCE_NAME_MAX);
+	else
+		strscpy(QDF_IPA_WLAN_MSG_NAME(evt), ifname,
+			IPA_RESOURCE_NAME_MAX);
+}
+
+/**
+ * wlan_ipa_set_msg_ifname_by_iface() - Set interface name for IPA event
+ * according to the given IPA interface context
+ * @iface: IPA interface context
+ * @net_dev: Interface net device
+ * @type: type of the IPA event
+ * @evt: event to be updated
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+wlan_ipa_set_msg_ifname_by_iface(struct wlan_ipa_iface_context *iface,
+				 qdf_netdev_t net_dev,
+				 qdf_ipa_wlan_event type, void *evt)
+{
+	char *name;
+
+	if ((!iface || !iface->dev) && !net_dev) {
+		ipa_err("No valid net dev for IPA EVT: %d", type);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!iface || !iface->dev) {
+		name = net_dev->name;
+	} else {
+		wlan_ipa_set_msg_mld_enabled(iface, type, evt);
+		name = wlan_ipa_get_iface_ifname(iface);
+	}
+
+	__wlan_ipa_set_msg_ifname(name, type, evt);
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * wlan_ipa_set_msg_ifname_by_priv() - Set interface name for IPA event
+ * according to the given IPA context
+ * @ipa_ctx: IPA context
+ * @net_dev: pointer to net device
+ * @session_id: session id
+ * @type: type of the IPA event
+ * @evt: event to be updated
+ *
+ * Return: None
+ */
+static void
+wlan_ipa_set_msg_ifname_by_priv(struct wlan_ipa_priv *ipa_ctx,
+				qdf_netdev_t net_dev, uint8_t session_id,
+				qdf_ipa_wlan_event type, void *evt)
+{
+	struct wlan_ipa_iface_context *iface;
+	char *name;
+
+	iface = wlan_ipa_get_iface_by_mode_netdev(ipa_ctx, net_dev,
+						  QDF_SAP_MODE, session_id);
+	if (iface) {
+		wlan_ipa_set_msg_mld_enabled(iface, type, evt);
+		name = wlan_ipa_get_iface_ifname(iface);
+	} else {
+		name = net_dev->name;
+	}
+
+	__wlan_ipa_set_msg_ifname(name, type, evt);
+}
+
 /**
  * wlan_ipa_cleanup_iface() - Cleanup IPA on a given interface
  * @iface_context: interface-specific IPA context
@@ -2542,6 +2813,7 @@ static void wlan_ipa_cleanup_iface(struct wlan_ipa_iface_context *iface_context,
 				   const uint8_t *mac_addr)
 {
 	struct wlan_ipa_priv *ipa_ctx = iface_context->ipa_ctx;
+	char *ifname;
 
 	ipa_debug("enter");
 	ipa_log_err("net:%pK mode:%d MAC:" QDF_MAC_ADDR_FMT " id:%d",
@@ -2558,8 +2830,11 @@ static void wlan_ipa_cleanup_iface(struct wlan_ipa_iface_context *iface_context,
 			QDF_MAC_ADDR_REF(iface_context->mac_addr));
 	}
 
+	ifname = wlan_ipa_get_iface_ifname(iface_context);
+	ipa_debug("ifname %s", (ifname ? ifname : "NULL"));
+
 	if (cdp_ipa_cleanup_iface(ipa_ctx->dp_soc,
-				  iface_context->dev->name,
+				  ifname,
 				  wlan_ipa_is_ipv6_enabled(ipa_ctx->config),
 				  ipa_ctx->hdl)) {
 		ipa_err("ipa_cleanup_iface failed");
@@ -2583,6 +2858,7 @@ static void wlan_ipa_cleanup_iface(struct wlan_ipa_iface_context *iface_context,
 	iface_context->session_id = WLAN_IPA_MAX_SESSION;
 	qdf_mem_set(iface_context->mac_addr, QDF_MAC_ADDR_SIZE, 0);
 	wlan_ipa_cleanup_iface_alt_pipe(iface_context);
+	wlan_ipa_cleanup_iface_ml_sap(iface_context);
 	qdf_spin_unlock_bh(&iface_context->interface_lock);
 	iface_context->ifa_address = 0;
 	qdf_zero_macaddr(&iface_context->bssid);
@@ -2714,6 +2990,7 @@ bool wlan_ipa_uc_is_loaded(struct wlan_ipa_priv *ipa_ctx)
  * @session_id: Session ID
  * @mac_addr: MAC address associated with the event
  * @is_2g_iface: true if Net interface is operating on 2G band, otherwise false
+ * @is_mlo_vdev: true if it's mlo vdev, false otherwise
  *
  * Return: QDF STATUS
  */
@@ -2722,12 +2999,13 @@ static QDF_STATUS wlan_ipa_setup_iface(struct wlan_ipa_priv *ipa_ctx,
 				       uint8_t device_mode,
 				       uint8_t session_id,
 				       const uint8_t *mac_addr,
-				       bool is_2g_iface)
+				       bool is_2g_iface, bool is_mlo_vdev)
 {
 	struct wlan_ipa_iface_context *iface_context = NULL;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	uint8_t sessid;
 	bool ipv6_en;
+	char *ifname;
 	int i;
 
 	ipa_log_err("net:%pK mode:%d MAC:" QDF_MAC_ADDR_FMT " id:%d",
@@ -2808,14 +3086,18 @@ static QDF_STATUS wlan_ipa_setup_iface(struct wlan_ipa_priv *ipa_ctx,
 	iface_context->session_id = session_id;
 	qdf_mem_copy(iface_context->mac_addr, mac_addr, QDF_MAC_ADDR_SIZE);
 	wlan_ipa_setup_iface_alt_pipe(iface_context, is_2g_iface);
+	if (is_mlo_vdev)
+		wlan_ipa_setup_iface_ml_sap(iface_context);
 	qdf_spin_unlock_bh(&iface_context->interface_lock);
 
 	if (wlan_ipa_uc_is_loaded(ipa_ctx)) {
 		sessid = wlan_ipa_set_session_id(session_id, is_2g_iface);
 		ipv6_en = wlan_ipa_is_ipv6_enabled(ipa_ctx->config);
+		ifname = wlan_ipa_get_iface_ifname(iface_context);
+		ipa_debug("ifname %s", ifname);
 
 		status = cdp_ipa_setup_iface(ipa_ctx->dp_soc,
-					     net_dev->name,
+					     ifname,
 					     (uint8_t *)net_dev->dev_addr,
 					     iface_context->prod_client,
 					     iface_context->cons_client,
@@ -3236,18 +3518,21 @@ void wlan_ipa_uc_bw_monitor(struct wlan_ipa_priv *ipa_ctx, bool stop)
 
 /**
  * wlan_ipa_send_msg() - Allocate and send message to IPA
+ * @iface: Interface context
  * @net_dev: Interface net device
  * @type: event enum of type ipa_wlan_event
  * @mac_addr: MAC address associated with the event
  *
  * Return: QDF STATUS
  */
-static QDF_STATUS wlan_ipa_send_msg(qdf_netdev_t net_dev,
+static QDF_STATUS wlan_ipa_send_msg(struct wlan_ipa_iface_context *iface,
+				    qdf_netdev_t net_dev,
 				    qdf_ipa_wlan_event type,
 				    const uint8_t *mac_addr)
 {
 	qdf_ipa_msg_meta_t meta;
 	qdf_ipa_wlan_msg_t *msg;
+	QDF_STATUS status;
 
 	QDF_IPA_MSG_META_MSG_LEN(&meta) = sizeof(qdf_ipa_wlan_msg_t);
 
@@ -3256,8 +3541,14 @@ static QDF_STATUS wlan_ipa_send_msg(qdf_netdev_t net_dev,
 		return QDF_STATUS_E_NOMEM;
 
 	QDF_IPA_SET_META_MSG_TYPE(&meta, type);
-	strscpy(QDF_IPA_WLAN_MSG_NAME(msg), net_dev->name,
-		IPA_RESOURCE_NAME_MAX);
+
+	status = wlan_ipa_set_msg_ifname_by_iface(iface, net_dev, type, msg);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		ipa_err("Evt: %d fail", QDF_IPA_MSG_META_MSG_TYPE(&meta));
+		qdf_mem_free(msg);
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	qdf_mem_copy(QDF_IPA_WLAN_MSG_MAC_ADDR(msg), mac_addr, QDF_NET_ETH_LEN);
 	QDF_IPA_WLAN_MSG_NETDEV_IF_ID(msg) = net_dev->ifindex;
 
@@ -3396,6 +3687,7 @@ static QDF_STATUS wlan_ipa_get_ta_peer_id(struct cdp_soc_t *cdp_soc,
  * @net_dev: Interface net device
  * @type: WLAN IPA event
  * @mac_addr: mac_addr of peer
+ * @sessid: session_id of the interface
  *
  * Return: QDF STATUS
  */
@@ -3404,7 +3696,8 @@ wlan_ipa_set_peer_id(struct wlan_ipa_priv *ipa_ctx,
 		     qdf_ipa_msg_meta_t *meta,
 		     qdf_netdev_t net_dev,
 		     qdf_ipa_wlan_event type,
-		     const uint8_t *mac_addr)
+		     const uint8_t *mac_addr,
+		     uint8_t sessid)
 {
 	uint16_t ta_peer_id;
 	struct cdp_soc_t *cdp_soc;
@@ -3420,7 +3713,7 @@ wlan_ipa_set_peer_id(struct wlan_ipa_priv *ipa_ctx,
 	if (!msg_ex)
 		return QDF_STATUS_E_NOMEM;
 
-	strscpy(msg_ex->name, net_dev->name, IPA_RESOURCE_NAME_MAX);
+	wlan_ipa_set_msg_ifname_by_priv(ipa_ctx, net_dev, sessid, type, msg_ex);
 	msg_ex->num_of_attribs = IPA_TA_PEER_ID_ATTRI;
 	ipa_info("Num of attribute set to: %d", IPA_TA_PEER_ID_ATTRI);
 
@@ -3463,7 +3756,8 @@ wlan_ipa_set_peer_id(struct wlan_ipa_priv *ipa_ctx,
 		     qdf_ipa_msg_meta_t *meta,
 		     qdf_netdev_t net_dev,
 		     qdf_ipa_wlan_event type,
-		     const uint8_t *mac_addr)
+		     const uint8_t *mac_addr,
+		     uint8_t sessid)
 {
 	qdf_ipa_wlan_msg_ex_t *msg_ex;
 
@@ -3475,7 +3769,7 @@ wlan_ipa_set_peer_id(struct wlan_ipa_priv *ipa_ctx,
 	if (!msg_ex)
 		return QDF_STATUS_E_NOMEM;
 
-	strscpy(msg_ex->name, net_dev->name, IPA_RESOURCE_NAME_MAX);
+	wlan_ipa_set_msg_ifname_by_priv(ipa_ctx, net_dev, sessid, type, msg_ex);
 	msg_ex->num_of_attribs = 1;
 	msg_ex->attribs[0].attrib_type = WLAN_HDR_ATTRIB_MAC_ADDR;
 
@@ -3531,6 +3825,8 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 	struct wlan_objmgr_psoc *psoc;
 	struct wlan_objmgr_vdev *vdev;
 	bool ipa_wds = false;
+	bool mlsap = false;
+	bool is_mlo_vdev = false;
 
 	ipa_log_debug("%s: EVT: %d, MAC: " QDF_MAC_ADDR_FMT
 		      ", session_id: %u is_2g_iface %u",
@@ -3552,10 +3848,14 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 						    WLAN_IPA_ID);
 	QDF_BUG(session_id < WLAN_IPA_MAX_SESSION);
 
-	if (vdev)
+	if (vdev) {
+		is_mlo_vdev =
+			wlan_vdev_mlme_feat_ext2_cap_get(vdev,
+							 WLAN_VDEV_FEXT2_MLO);
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_IPA_ID);
-	else
+	} else {
 		ipa_err("vdev is NULL, session_id: %u", session_id);
+	}
 
 	if (ipa_ctx->sta_connected) {
 		iface_ctx = wlan_ipa_get_iface(ipa_ctx, QDF_STA_MODE);
@@ -3692,7 +3992,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 				ipa_ctx->sta_connected--;
 				wlan_ipa_cleanup_iface(iface_ctx, NULL);
 			}
-			status = wlan_ipa_send_msg(net_dev,
+			status = wlan_ipa_send_msg(iface_ctx, net_dev,
 						   QDF_IPA_STA_DISCONNECT,
 						   mac_addr);
 			if (status != QDF_STATUS_SUCCESS) {
@@ -3705,7 +4005,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 		status = wlan_ipa_setup_iface(ipa_ctx, net_dev, device_mode,
 					      session_id, mac_addr,
-					      is_2g_iface);
+					      is_2g_iface, is_mlo_vdev);
 		if (status != QDF_STATUS_SUCCESS) {
 			ipa_log_err("wlan_ipa_setup_iface failed %u", status);
 			qdf_mutex_release(&ipa_ctx->event_lock);
@@ -3781,7 +4081,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 		status = wlan_ipa_setup_iface(ipa_ctx, net_dev, device_mode,
 					      session_id, mac_addr,
-					      is_2g_iface);
+					      is_2g_iface, is_mlo_vdev);
 		if (status != QDF_STATUS_SUCCESS) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
 			ipa_err("%s: Evt: %d, Interface setup failed",
@@ -3940,6 +4240,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 			iface_ctx = &ipa_ctx->iface_context[i];
 			if (wlan_ipa_check_iface_netdev_sessid(iface_ctx,
 							net_dev, session_id)) {
+				mlsap = wlan_ipa_get_iface_is_ml_sap(iface_ctx);
 				wlan_ipa_cleanup_iface(iface_ctx, mac_addr);
 				break;
 			}
@@ -3951,6 +4252,17 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 							 session_id);
 
 		qdf_mutex_release(&ipa_ctx->event_lock);
+
+		/* Early return only when AP is multi-link SAP and
+		 * AP_DISCONNECT is successfully sent.
+		 */
+		status = wlan_ipa_send_ml_sap_disconn_evt(net_dev,
+							  mac_addr,
+							  session_id,
+							  mlsap);
+		if (QDF_IS_STATUS_SUCCESS(status))
+			return status;
+
 		break;
 
 	case QDF_IPA_CLIENT_CONNECT_EX:
@@ -3962,7 +4274,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 		qdf_mutex_acquire(&ipa_ctx->event_lock);
 		if (wlan_ipa_uc_find_add_assoc_sta(ipa_ctx, true,
-						   mac_addr)) {
+						   mac_addr, session_id)) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
 			ipa_err("%s: STA found, addr: " QDF_MAC_ADDR_FMT,
 				net_dev->name,
@@ -4024,7 +4336,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		QDF_IPA_SET_META_MSG_TYPE(&meta, type);
 
 		status = wlan_ipa_set_peer_id(ipa_ctx, &meta, net_dev,
-					      type, mac_addr);
+					      type, mac_addr, session_id);
 		if (QDF_IS_STATUS_ERROR(status))
 			return QDF_STATUS_E_FAILURE;
 
@@ -4085,7 +4397,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		qdf_mutex_release(&ipa_ctx->event_lock);
 		break;
 
-	case WLAN_CLIENT_DISCONNECT:
+	case QDF_IPA_CLIENT_DISCONNECT:
 		if (!wlan_ipa_uc_is_enabled(ipa_ctx->config)) {
 			ipa_debug("%s: IPA UC OFFLOAD NOT ENABLED",
 				  msg_ex->name);
@@ -4097,17 +4409,17 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		if (!ipa_ctx->sap_num_connected_sta && !ipa_ctx->sap_num_mlo_connected_sta) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
 			ipa_debug("%s: Evt: %d, Client already disconnected",
-				  msg_ex->name,
+				  net_dev->name,
 				  QDF_IPA_MSG_META_MSG_TYPE(&meta));
 
 			return QDF_STATUS_SUCCESS;
 		}
 		if (!wlan_ipa_uc_find_add_assoc_sta(ipa_ctx, false,
-						    mac_addr)) {
+						    mac_addr, session_id)) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
 			ipa_debug("%s: STA NOT found, not valid: "
-				QDF_MAC_ADDR_FMT,
-				msg_ex->name, QDF_MAC_ADDR_REF(mac_addr));
+				  QDF_MAC_ADDR_FMT,
+				  net_dev->name, QDF_MAC_ADDR_REF(mac_addr));
 
 			return QDF_STATUS_SUCCESS;
 		}
@@ -4249,8 +4561,9 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		return QDF_STATUS_E_NOMEM;
 
 	QDF_IPA_SET_META_MSG_TYPE(&meta, type);
-	strscpy(QDF_IPA_WLAN_MSG_NAME(msg), net_dev->name,
-		IPA_RESOURCE_NAME_MAX);
+
+	wlan_ipa_set_msg_ifname_by_priv(ipa_ctx, net_dev,
+					session_id, type, msg);
 	qdf_mem_copy(QDF_IPA_WLAN_MSG_MAC_ADDR(msg), mac_addr, QDF_NET_ETH_LEN);
 	QDF_IPA_WLAN_MSG_NETDEV_IF_ID(msg) = net_dev->ifindex;
 
@@ -5576,6 +5889,7 @@ static void wlan_ipa_uc_loaded_handler(struct wlan_ipa_priv *ipa_ctx)
 	uint8_t sessid;
 	bool alt_pipe;
 	bool ipv6_en;
+	char *ifname;
 	int i;
 
 	ipa_info("UC READY");
@@ -5641,9 +5955,10 @@ static void wlan_ipa_uc_loaded_handler(struct wlan_ipa_priv *ipa_ctx)
 		alt_pipe = wlan_ipa_get_iface_alt_pipe(iface);
 		sessid = wlan_ipa_set_session_id(iface->session_id, alt_pipe);
 		ipv6_en = wlan_ipa_is_ipv6_enabled(ipa_ctx->config);
+		ifname = wlan_ipa_get_iface_ifname(iface);
 
 		status = cdp_ipa_setup_iface(ipa_ctx->dp_soc,
-					     ndev->name,
+					     ifname,
 					     (uint8_t *)ndev->dev_addr,
 					     iface->prod_client,
 					     iface->cons_client,
@@ -5658,7 +5973,8 @@ static void wlan_ipa_uc_loaded_handler(struct wlan_ipa_priv *ipa_ctx)
 		evt = iface->device_mode == QDF_STA_MODE ? QDF_IPA_STA_CONNECT :
 		      QDF_IPA_AP_CONNECT;
 
-		status = wlan_ipa_send_msg(iface->dev, evt, iface->mac_addr);
+		status = wlan_ipa_send_msg(iface, iface->dev, evt,
+					   iface->mac_addr);
 		if (QDF_IS_STATUS_SUCCESS(status))
 			ipa_ctx->stats.num_send_msg++;
 	}

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -419,6 +419,22 @@ wlan_ipa_dump_iface_context_alt_pipe(struct wlan_ipa_iface_context *iface)
 }
 #endif
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+static void
+wlan_ipa_dump_iface_context_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+	ipa_info("\tis_ml_sap: %d\n", iface->is_ml_sap);
+
+	if (iface->is_ml_sap)
+		ipa_info("\tml_sap_ifname: %s\n", iface->ml_sap_ifname);
+}
+#else /* !WLAN_FEATURE_MULTI_LINK_SAP */
+static inline void
+wlan_ipa_dump_iface_context_ml_sap(struct wlan_ipa_iface_context *iface)
+{
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
 /**
  * wlan_ipa_dump_iface_context() - Dump IPA interface context structure
  * @ipa_ctx: IPA private context structure
@@ -456,6 +472,7 @@ static void wlan_ipa_dump_iface_context(struct wlan_ipa_priv *ipa_ctx)
 			&iface_context->interface_lock,
 			iface_context->ifa_address);
 		wlan_ipa_dump_iface_context_alt_pipe(iface_context);
+		wlan_ipa_dump_iface_context_ml_sap(iface_context);
 	}
 }
 
