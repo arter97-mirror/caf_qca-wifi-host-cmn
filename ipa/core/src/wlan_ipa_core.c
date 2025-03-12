@@ -2642,14 +2642,14 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
                        ipa_ctx->vdev_to_iface[session_id] =
                                        wlan_ipa_get_ifaceid(ipa_ctx, session_id);
 
+		       ipa_info("IPA Roaming event detected from BSSID: "QDF_MAC_ADDR_FMT
+				 " -> BSSID: "QDF_MAC_ADDR_FMT,
+				 QDF_MAC_ADDR_REF(ipa_ctx->iface_context[wlan_ipa_get_ifaceid(
+						  ipa_ctx, session_id)].bssid.bytes),
+				 QDF_MAC_ADDR_REF(mac_addr));
                        wlan_ipa_save_bssid_iface_ctx(ipa_ctx,
                                                      ipa_ctx->vdev_to_iface[session_id],
                                                      mac_addr);
-                       ipa_info("IPA Roaming event detected from BSSID: "QDF_MAC_ADDR_FMT
-                                " -> BSSID: "QDF_MAC_ADDR_FMT,
-                                QDF_MAC_ADDR_REF(ipa_ctx->iface_context[wlan_ipa_get_ifaceid(
-                                                 ipa_ctx, session_id)].bssid.bytes),
-                                QDF_MAC_ADDR_REF(mac_addr));
                        qdf_mutex_release(&ipa_ctx->event_lock);
                        return QDF_STATUS_SUCCESS;
 		}
