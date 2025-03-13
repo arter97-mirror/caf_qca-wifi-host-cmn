@@ -24,9 +24,10 @@
 #ifndef _OSIF_TWT_REQ_H_
 #define _OSIF_TWT_REQ_H_
 
-#if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 #include <wlan_objmgr_psoc_obj.h>
 #include <wlan_twt_public_structs.h>
+
+#if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 
 /**
  * osif_twt_requestor_enable() - TWT requestor enable api
