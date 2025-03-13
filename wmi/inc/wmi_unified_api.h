@@ -2122,6 +2122,18 @@ QDF_STATUS
 wmi_extract_apf_read_memory_resp_event(wmi_unified_t wmi, void *evt_buf,
 				struct wmi_apf_read_memory_resp_event_params
 								*read_mem_evt);
+
+/**
+ * wmi_unified_set_apf_supported_offload_bitmap_cmd() - config APF supported
+ * offload bitmap in FW
+ * @wmi: the WMI handle
+ * @vdev_id: the Id of the vdev to apply the configuration to
+ * @offload_bitmap: the bitmap for APF supported offloads
+ */
+QDF_STATUS
+wmi_unified_set_apf_supported_offload_bitmap_cmd(wmi_unified_t wmi,
+						 uint8_t vdev_id,
+						 uint32_t offload_bitmap);
 #endif /* FEATURE_WLAN_APF */
 
 /**
