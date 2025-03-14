@@ -82,6 +82,30 @@ static void vdev_start_add_mlo_mcast_params(uint32_t *mlo_flags,
 #define vdev_start_add_mlo_mcast_params(mlo_flags, req)
 #endif
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ *  vdev_start_add_link_id_params() - Add link id params in vdev start cmd
+ *  @mlo_params: pointer to mlo parameter structure.
+ *  @req: pointer to vdev start request param
+ *
+ *  Return: None
+ */
+static void
+vdev_start_add_link_id_params(wmi_vdev_start_mlo_params *mlo_params,
+			      struct vdev_start_params *req)
+{
+	mlo_params->ieee_link_id = req->link_id;
+}
+#else
+#define WLAN_LINK_ID_INVALID 0x0f
+static void
+vdev_start_add_link_id_params(wmi_vdev_start_mlo_params *mlo_params,
+			      struct vdev_start_params *req)
+{
+	mlo_params->ieee_link_id = WLAN_LINK_ID_INVALID;
+}
+#endif
+
 uint8_t *vdev_start_add_mlo_params(uint8_t *buf_ptr,
 				   struct vdev_start_params *req)
 {
@@ -106,12 +130,18 @@ uint8_t *vdev_start_add_mlo_params(uint8_t *buf_ptr,
 	WMI_MLO_FLAGS_SET_MLO_BRIDGE_LINK(mlo_params->mlo_flags.mlo_flags,
 					  req->mlo_flags.is_bridge_vdev);
 	mlo_params->mlo_flags.emlsr_support = req->mlo_flags.emlsr_support;
+	WMI_MLO_FLAGS_SET_IEEE_LINK_ID_VALID(mlo_params->mlo_flags.mlo_flags,
+					     req->mlo_flags.mlo_ieee_link_id_valid);
 
 	vdev_start_add_mlo_mcast_params(&mlo_params->mlo_flags.mlo_flags,
 					req);
-	wmi_info("mlo_flags 0x%x emlsr_support %d ",
+
+	vdev_start_add_link_id_params(mlo_params, req);
+
+	wmi_info("mlo_flags 0x%x emlsr_support %d link id 0x%x",
 		 mlo_params->mlo_flags.mlo_flags,
-		 mlo_params->mlo_flags.emlsr_support);
+		 mlo_params->mlo_flags.emlsr_support,
+		 mlo_params->ieee_link_id);
 
 	return buf_ptr + sizeof(wmi_vdev_start_mlo_params);
 }
