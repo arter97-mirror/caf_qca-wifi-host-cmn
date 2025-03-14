@@ -774,6 +774,9 @@ void print_basic_vap_ctrl_rx(struct basic_vdev_ctrl_rx *rx)
 	STATS_64(stdout, "Rx Management", rx->cs_rx_mgmt);
 	STATS_64(stdout, "Rx Error Count", rx->cs_rx_error_counter);
 	STATS_64(stdout, "Rx Management Discard", rx->cs_rx_mgmt_discard);
+	STATS_64(stdout, "Rx Management SW Decrypt", rx->cs_rx_mgmt_sw_decrypt);
+	STATS_64(stdout, "Rx Management SW Decrypt fail",
+		 rx->cs_rx_mgmt_sw_decrypt_fail);
 	STATS_64(stdout, "Rx Control", rx->cs_rx_ctl);
 	STATS_64(stdout, "Rx Discard", rx->cs_rx_discard);
 	STATS_64(stdout, "Rx Security Failure", rx->cs_rx_security_failure);
