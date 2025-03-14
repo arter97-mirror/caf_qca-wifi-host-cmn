@@ -4319,7 +4319,7 @@ void dp_get_info_by_peer_mac(struct cdp_soc_t *soc_hdl,
 	param->vdev_id = tgt_peer->vdev->vdev_id;
 
 	/* mlo connection link peer, get mld peer with reference */
-	if (IS_MLO_DP_MLD_PEER(peer))
+	if (IS_MLO_DP_MLD_PEER(tgt_peer))
 		param->mld_peer = true;
 	else
 		param->mld_peer = false;
