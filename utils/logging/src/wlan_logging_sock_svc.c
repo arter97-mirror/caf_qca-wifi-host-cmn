@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1868,10 +1868,31 @@ void wlan_register_txrx_packetdump(uint8_t pdev_id)
 }
 #endif /* CONNECTIVITY_PKTLOG */
 #ifdef WLAN_CHIPSET_STATS
-void wlan_set_chipset_stats_bit(void)
+void wlan_set_chipset_stats_bit(bool is_drv_dump_in_progress_valid,
+				uint8_t dump_in_progress)
 {
-	qdf_atomic_set_bit(HOST_LOG_CHIPSET_STATS, gwlan_logging.event_flag);
-	qdf_atomic_set_bit(FW_LOG_CHIPSET_STATS, gwlan_logging.event_flag);
+	uint8_t final_dump_inprogress_val = 0;
+	QDF_STATUS status;
+
+	if (is_drv_dump_in_progress_valid) {
+		final_dump_inprogress_val = dump_in_progress;
+	} else {
+		status = qdf_get_dump_inprogress(&final_dump_inprogress_val);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			qdf_err("Failed to get dump_inprogress from cnss");
+			return;
+		}
+	}
+
+	qdf_debug("final_dump_inprogress_val val is %d",
+		  final_dump_inprogress_val);
+
+	if (final_dump_inprogress_val) {
+		qdf_atomic_set_bit(HOST_LOG_CHIPSET_STATS,
+				   gwlan_logging.event_flag);
+		qdf_atomic_set_bit(FW_LOG_CHIPSET_STATS,
+				   gwlan_logging.event_flag);
+	}
 }
 #endif /* WLAN_CHIPSET_STATS */
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */
