@@ -1750,6 +1750,9 @@ static inline int dp_log2_ceil(unsigned int value)
 static inline void dp_set_peer_isolation(struct dp_txrx_peer *txrx_peer,
 					 bool val)
 {
+	if (!txrx_peer->vlan_id)
+		return;
+
 	txrx_peer->isolation = val;
 }
 
