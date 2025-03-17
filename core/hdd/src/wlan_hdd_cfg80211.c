@@ -5064,6 +5064,10 @@ __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
 						     WIFI_FEATURE_DYNAMIC_SET_MAC);
 	}
 
+	if (hdd_mlosap_check_support_multi_link(hdd_ctx))
+		wlan_hdd_set_supported_features_extn(fset_extn,
+						     WIFI_FEATURE_MLO_SAP);
+
 	skb = wlan_cfg80211_vendor_cmd_alloc_reply_skb(wiphy, sizeof(fset) +
 						       NLMSG_HDRLEN);
 	if (!skb) {

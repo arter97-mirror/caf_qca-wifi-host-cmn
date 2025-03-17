@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -326,6 +326,9 @@ typedef enum {
 #define WIFI_FEATURE_SET_LATENCY_MODE   0x40000000 /* Set latency mode */
 
 #define WIFI_FEATURE_MAX_BIT_POS 64
+
+/* Support MLO SoftAp */
+#define WIFI_FEATURE_MLO_SAP            0x4000000000
 
 /* Add more features here */
 #define WIFI_TDLS_SUPPORT			BIT(0)
