@@ -2163,7 +2163,7 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 	for (j = 0; j < num_partner_links; j++) {
 		tmp_total_score = total_score[j];
 		best_partner_index = j;
-		for (i = j + 1; i < entry->ml_info.num_links; i++) {
+		for (i = j + 1; i < num_partner_links; i++) {
 			if (tmp_total_score < total_score[i]) {
 				tmp_total_score = total_score[i];
 				best_partner_index = i;
@@ -2217,7 +2217,7 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 	for (j = 1; j < mlo_vdev_num - 1; j++) {
 		tmp_total_score = total_score[j];
 		best_partner_index = j;
-		for (i = j + 1; i < entry->ml_info.num_links; i++) {
+		for (i = j + 1; i < num_partner_links; i++) {
 			if (tmp_total_score < total_score[i]) {
 				tmp_total_score = total_score[i];
 				best_partner_index = i;
@@ -2263,7 +2263,7 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 	for (j = mlo_vdev_num - 1; j < num_partner_links; j++) {
 		tmp_total_score = total_score[j];
 		best_partner_index = j;
-		for (i = j + 1; i < entry->ml_info.num_links; i++) {
+		for (i = j + 1; i < num_partner_links; i++) {
 			if (tmp_total_score < total_score[i]) {
 				tmp_total_score = total_score[i];
 				best_partner_index = i;
