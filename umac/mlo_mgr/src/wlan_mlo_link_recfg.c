@@ -149,6 +149,34 @@ mlo_link_recfg_get_substate(struct wlan_mlo_dev_context *mlo_dev_ctx)
 	return curr_substate;
 }
 
+bool
+mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_objmgr_psoc *psoc;
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		mlo_debug("null psoc");
+		return false;
+	}
+	if (!vdev->mlo_dev_ctx) {
+		mlo_debug("null mlo_dev_ctx");
+		return false;
+	}
+
+	if (!wlan_mlme_is_link_recfg_support(psoc)) {
+		mlo_debug("link_recfg not enabled");
+		return false;
+	}
+
+	if (!vdev->mlo_dev_ctx->link_recfg_ctx) {
+		mlo_debug("null link_recfg_ctx");
+		return false;
+	}
+
+	return true;
+}
+
 QDF_STATUS
 mlo_link_recfg_sm_deliver_event_sync(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				     enum wlan_link_recfg_sm_evt event,

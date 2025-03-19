@@ -638,6 +638,16 @@ mlo_link_recfg_validate_request(struct wlan_objmgr_vdev *vdev,
 				struct wlan_mlo_link_recfg_req *req);
 
 /**
+ * mlo_is_link_recfg_supported() - API to check link recfg
+ * support with vdev
+ * @vdev: vdev object
+ *
+ * Return: bool
+ */
+bool
+mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_link_recfg_request_params() - Link recfg request params from FW.
  * @psoc: PSOC object manager
  * @evt_params: Link recfg params received from FW.
@@ -707,12 +717,6 @@ void mlo_link_recfg_timer_deinit(struct mlo_link_recfg_context *recfg_ctx);
  * Return: void
  */
 void mlo_link_recfg_rx_rsp_timeout_cb(void *user_data);
-
-static inline bool
-mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev)
-{
-	return true;
-}
 
 /**
  * mlo_link_recfg_get_state() - API to get SM link recfg state
