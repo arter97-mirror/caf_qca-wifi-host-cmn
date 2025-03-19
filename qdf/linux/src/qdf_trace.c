@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1023,6 +1023,8 @@ static const char *qdf_dp_subtype_to_str(enum qdf_proto_subtype subtype)
 		return "NS";
 	case QDF_PROTO_ICMPV6_NA:
 		return "NA";
+	case QDF_PROTO_ICMPV6_MLQ:
+		return "MLQ";
 	case QDF_PROTO_MGMT_ASSOC:
 		return "ASSOC";
 	case QDF_PROTO_MGMT_DISASSOC:
@@ -1549,6 +1551,9 @@ static bool qdf_log_icmpv6_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			break;
 		case QDF_PROTO_ICMPV6_NS:
 			g_qdf_dp_trace_data.icmpv6_ns++;
+			break;
+		case QDF_PROTO_ICMPV6_MLQ:
+			g_qdf_dp_trace_data.icmpv6_mlq++;
 			break;
 		case QDF_PROTO_ICMPV6_NA:
 			g_qdf_dp_trace_data.icmpv6_na++;

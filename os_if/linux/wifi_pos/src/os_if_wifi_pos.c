@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -34,6 +34,8 @@
 #include "wlan_cfg80211.h"
 #include "wlan_objmgr_psoc_obj.h"
 #include "wlan_osif_priv.h"
+#include "wlan_nl_to_crypto_params.h"
+#include "wlan_crypto_global_api.h"
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
 #include "osif_cm_util.h"
 #endif
@@ -1090,11 +1092,12 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	int i;
 	int index = QCA_NL80211_VENDOR_SUBCMD_PASN_AUTH_STATUS_INDEX;
 	uint16_t record_size;
-	uint32_t len;
+	uint32_t len, akm;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct wireless_dev *wdev;
 	struct wiphy *wiphy;
 	uint8_t link_id = 0xff;
+	uint8_t zero_pmkid[PMKID_LEN] = {0};
 
 	osif_priv  = wlan_vdev_get_ospriv(vdev);
 	if (!osif_priv) {
@@ -1157,6 +1160,31 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	/*QCA_WLAN_VENDOR_ATTR_PASN_LINK_ID*/
 	len += nla_total_size(sizeof(u8));
 
+	for (i = 0; i < num_pasn_peers; i++) {
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_AKM
+		 * and QCA_WLAN_VENDOR_ATTR_PASN_PEER_CIPHER
+		 */
+		len += nla_total_size(2 * sizeof(u32));
+
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_PASSWORD
+		 */
+		if (pasn_peer[i].password_len)
+			len += nla_total_size(pasn_peer[i].password_len);
+
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_PMKID
+		 */
+		if (pasn_peer[i].pmkid_len)
+			len += nla_total_size(pasn_peer[i].pmkid_len);
+
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_COOKIE
+		 */
+		if (pasn_peer[i].cookie_len)
+			len += nla_total_size(pasn_peer[i].cookie_len);
+	}
 	skb = wlan_cfg80211_vendor_event_alloc(wiphy,
 					       wdev, len,
 					       index, GFP_ATOMIC);
@@ -1219,6 +1247,49 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 			goto nla_put_failure;
 		}
 
+		akm = osif_crypto_to_nl_suites(pasn_peer[i].akm);
+		if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_AKM,
+				akm)) {
+			osif_err("NLA put failed for PASN_PEER_AKM");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_CIPHER,
+				pasn_peer[i].cipher)) {
+			osif_err("NLA put failed for PASN_PEER_CIPHER");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (pasn_peer[i].password_len &&
+		    nla_put(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_PASSWORD,
+			    pasn_peer[i].password_len,
+			    pasn_peer[i].password)) {
+			osif_err("NLA put failed for PASN_PEER_PASSWORD");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (!qdf_mem_cmp(pasn_peer[i].pmkid, zero_pmkid, PMKID_LEN))
+			pasn_peer[i].pmkid_len = 0;
+
+		if (pasn_peer[i].pmkid_len &&
+		    nla_put(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_PMKID,
+			    pasn_peer[i].pmkid_len, pasn_peer[i].pmkid)) {
+			osif_err("NLA put failed for PASN_PEER_PMKID");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (pasn_peer[i].cookie_len &&
+		    nla_put(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_COOKIE,
+			    pasn_peer[i].cookie_len,
+			    pasn_peer[i].cookie)) {
+			osif_err("NLA put failed for PASN_PEER_COOKIE");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
 		nla_nest_end(skb, nest_attr);
 	}
 	nla_nest_end(skb, attr);
@@ -1249,7 +1320,8 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	int i;
 	int index = QCA_NL80211_VENDOR_SUBCMD_PASN_AUTH_STATUS_INDEX;
 	uint16_t record_size;
-	uint32_t len;
+	uint32_t len, akm;
+	uint8_t zero_pmkid[PMKID_LEN] = {0};
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	osif_priv  = wlan_vdev_get_ospriv(vdev);
@@ -1273,6 +1345,32 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 
 	/* QCA_WLAN_VENDOR_ATTR_PASN_PEERS nest */
 	len += nla_total_size(num_pasn_peers * record_size);
+
+	for (i = 0; i < num_pasn_peers; i++) {
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_AKM
+		 * and QCA_WLAN_VENDOR_ATTR_PASN_PEER_CIPHER
+		 */
+		len += nla_total_size(2 * sizeof(u32));
+
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_PASSWORD
+		 */
+		if (pasn_peer[i].password_len)
+			len += nla_total_size(pasn_peer[i].password_len);
+
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_PMKID
+		 */
+		if (pasn_peer[i].pmkid_len)
+			len += nla_total_size(pasn_peer[i].pmkid_len);
+
+		/*
+		 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_COOKIE
+		 */
+		if (pasn_peer[i].cookie_len)
+			len += nla_total_size(pasn_peer[i].cookie_len);
+	}
 
 	skb = wlan_cfg80211_vendor_event_alloc(osif_priv->wdev->wiphy,
 					       osif_priv->wdev, len,
@@ -1317,6 +1415,50 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 		    nla_put(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_SRC_ADDR,
 			    ETH_ALEN, pasn_peer[i].self_mac.bytes)) {
 			osif_err("NLA put failed");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		akm = osif_crypto_to_nl_suites(pasn_peer[i].akm);
+		if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_AKM,
+				akm)) {
+			osif_err("NLA put failed for PASN_PEER_AKM");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_CIPHER,
+				pasn_peer[i].cipher)) {
+			osif_err("NLA put failed for PASN_PEER_CIPHER");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (pasn_peer[i].password_len &&
+		    nla_put(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_PASSWORD,
+			    pasn_peer[i].password_len,
+			    pasn_peer[i].password)) {
+			osif_err("NLA put failed for PASN_PEER_PASSWORD");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (!qdf_mem_cmp(pasn_peer[i].pmkid, zero_pmkid, PMKID_LEN))
+			pasn_peer[i].pmkid_len = 0;
+
+		if (pasn_peer[i].pmkid_len &&
+		    nla_put(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_PMKID,
+			    pasn_peer[i].pmkid_len, pasn_peer[i].pmkid)) {
+			osif_err("NLA put failed for PASN_PEER_PMKID");
+			status = QDF_STATUS_E_FAILURE;
+			goto nla_put_failure;
+		}
+
+		if (pasn_peer[i].cookie_len &&
+		    nla_put(skb, QCA_WLAN_VENDOR_ATTR_PASN_PEER_COOKIE,
+			    pasn_peer[i].cookie_len,
+			    pasn_peer[i].cookie)) {
+			osif_err("NLA put failed for PASN_PEER_COOKIE");
 			status = QDF_STATUS_E_FAILURE;
 			goto nla_put_failure;
 		}

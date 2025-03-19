@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,6 +33,7 @@
 #include <wlan_mlo_mgr_peer.h>
 #endif
 #include <wlan_mlo_mgr_link_switch.h>
+#include <wlan_mlo_link_recfg.h>
 
 void cm_send_disconnect_resp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id)
 {
@@ -426,7 +427,9 @@ QDF_STATUS cm_disconnect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 	}
 
 	if (wlan_vdev_mlme_get_opmode(cm_ctx->vdev) == QDF_STA_MODE &&
-	    cm_req->discon_req.req.source != CM_MLO_ROAM_INTERNAL_DISCONNECT)
+	    cm_req->discon_req.req.source != CM_MLO_ROAM_INTERNAL_DISCONNECT &&
+	    !(cm_req->discon_req.req.source == CM_MLO_LINK_SWITCH_DISCONNECT &&
+	      mlo_is_link_recfg_in_progress(cm_ctx->vdev)))
 		status = mlme_cm_rso_stop_req(cm_ctx->vdev);
 
 	if (status != QDF_STATUS_E_NOSUPPORT)

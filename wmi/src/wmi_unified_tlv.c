@@ -27,6 +27,8 @@
 #include <wlan_defs.h>
 #include <wlan_cmn.h>
 #include <htc_services.h>
+#include "wlan_cmn_ieee80211.h"
+#include "wlan_cm_roam_api.h"
 #ifdef FEATURE_WLAN_APF
 #include "wmi_unified_apf_tlv.h"
 #endif
@@ -9774,21 +9776,33 @@ extract_spectral_fft_size_caps_tlv(
 }
 #endif /* WLAN_CONV_SPECTRAL_ENABLE */
 
-#ifdef FEATURE_WPSS_THERMAL_MITIGATION
-static inline void
-wmi_fill_client_id_priority(wmi_therm_throt_config_request_fixed_param *tt_conf,
-			    struct thermal_mitigation_params *param)
+/**
+ * wmi_convert_host_client_id_to_fw_client_id() - convert
+ * enum wmi_thermal_monitor_id to enum WMI_THERMAL_MITIGATION_CLIENTS
+ * @tt_conf : Fixed param buffer
+ * @param : pointer to hold thermal mitigation param
+ *
+ * Return: none
+ */
+static inline void wmi_convert_host_client_id_to_fw_client_id(
+		wmi_therm_throt_config_request_fixed_param *tt_conf,
+		struct thermal_mitigation_params *param)
 {
-	tt_conf->client_id = param->client_id;
-	tt_conf->priority = param->priority;
+	switch (param->client_id) {
+	case WMI_HOST_THERMAL_MONITOR_APPS:
+		tt_conf->client_id = WMI_THERMAL_CLIENT_APPS;
+		return;
+	case WMI_HOST_THERMAL_MONITOR_WPSS:
+		tt_conf->client_id = WMI_THERMAL_CLIENT_WPSS;
+		return;
+	case WMI_HOST_THERMAL_MONITOR_DDR_BWM:
+		tt_conf->client_id = WMI_THERMAL_CLIENT_DDR_BWM;
+		return;
+	default:
+		wmi_debug("Invalid client_id");
+		return;
+	}
 }
-#else
-static inline void
-wmi_fill_client_id_priority(wmi_therm_throt_config_request_fixed_param *tt_conf,
-			    struct thermal_mitigation_params *param)
-{
-}
-#endif
 
 /**
  * send_thermal_mitigation_param_cmd_tlv() - configure thermal mitigation params
@@ -9831,9 +9845,15 @@ static QDF_STATUS send_thermal_mitigation_param_cmd_tlv(
 	tt_conf->dc = param->dc;
 	tt_conf->dc_per_event = param->dc_per_event;
 	tt_conf->therm_throt_levels = param->num_thermal_conf;
-	wmi_debug("Total thermal throttle levels: %u Global dc value: %d",
-		  tt_conf->therm_throt_levels, tt_conf->dc = param->dc);
-	wmi_fill_client_id_priority(tt_conf, param);
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_thermal_multi_client_support)) {
+		wmi_convert_host_client_id_to_fw_client_id(tt_conf, param);
+		tt_conf->priority = param->priority;
+	}
+	wmi_debug("therm_throt_levels: %u duty cycle: %d, dc_per_event: %d, priority: %d, client_id: %d",
+		  tt_conf->therm_throt_levels, tt_conf->dc,
+		  tt_conf->dc_per_event, param->priority, tt_conf->client_id);
+
 	buf_ptr = (uint8_t *) ++tt_conf;
 	/* init TLV params */
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
@@ -9853,7 +9873,7 @@ static QDF_STATUS send_thermal_mitigation_param_cmd_tlv(
 				param->levelconf[i].pout_reduction_db;
 		lvl_conf->tx_chain_mask = param->levelconf[i].tx_chain_mask;
 		lvl_conf->duty_cycle = param->levelconf[i].duty_cycle;
-		wmi_debug("Thermal level config:\nLevel %u Low threshold %u High threshold %u\n Duty cycle off %u Priority %u Pout reduction %u Tx chainmask %u Dc value %u",
+		wmi_debug("Thermal level TLV config:Level %u, Low threshold %u, High threshold %u, Duty cycle off %u, Priority %u, Pout reduction %u, Tx chainmask %u, Dc value %u",
 			  i, lvl_conf->temp_lwm, lvl_conf->temp_hwm,
 			  lvl_conf->dc_off_percent, lvl_conf->prio,
 			  lvl_conf->pout_reduction_25db, lvl_conf->tx_chain_mask,
@@ -20129,6 +20149,38 @@ extract_oem_response_param_tlv(wmi_unified_t wmi_handle, void *resp_buf,
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 #define WLAN_PASN_LTF_KEY_SEED_REQUIRED 0x2
 
+/*
+ * extract_pasn_peer_cookie(): used to extract cookie value for
+ * individual peer from stream of cookie value.
+ *
+ * return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_pasn_peer_cookie(void *evt_buf, struct wlan_pasn_request *peer_info,
+			 uint8_t index, uint8_t cookie_len)
+{
+	WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID_param_tlvs *param_buf;
+	uint8_t *src_data;
+
+	param_buf = (WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf || !param_buf->cookie ||
+	    !param_buf->num_cookie  ||
+	    (index + cookie_len) > param_buf->num_cookie) {
+		wmi_err("Invalid peer_create req buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	src_data = param_buf->cookie + index;
+
+	if (cookie_len > WLAN_PASN_MAX_COOKIE_LEN) {
+		wmi_debug("cookie_len greater than max cookie len");
+		cookie_len = WLAN_PASN_MAX_COOKIE_LEN;
+	}
+	qdf_mem_copy(&peer_info->cookie, src_data, cookie_len);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS
 extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 				       struct wifi_pos_pasn_peer_data *dst)
@@ -20137,6 +20189,8 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_rtt_pasn_peer_create_req_event_fixed_param *fixed_param;
 	wmi_rtt_pasn_peer_create_req_param *buf;
 	uint8_t security_mode, i;
+	uint8_t cookie_index = 0;
+	QDF_STATUS status;
 
 	param_buf = (WMI_RTT_PASN_PEER_CREATE_REQ_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
@@ -20177,6 +20231,33 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 					   dst->peer_info[i].self_mac.bytes);
 		WMI_MAC_ADDR_TO_CHAR_ARRAY(&buf->dest_mac_addr,
 					   dst->peer_info[i].peer_mac.bytes);
+		dst->peer_info[i].akm = cm_wmi_auth_type_to_crypto_key_mgmt(
+								   buf->akm);
+		dst->peer_info[i].cipher = buf->cipher_suite;
+		if (buf->passphrase_len) {
+			qdf_mem_copy(&dst->peer_info[i].password,
+				     &buf->passphrase, buf->passphrase_len);
+			dst->peer_info[i].password_len = buf->passphrase_len;
+		}
+
+		qdf_mem_copy(&dst->peer_info[i].pmkid,
+			     &buf->pmk_id, PMKID_LEN);
+		dst->peer_info[i].pmkid_len = PMKID_LEN;
+
+		if (buf->cookie_len) {
+			status = extract_pasn_peer_cookie(evt_buf,
+							  &dst->peer_info[i],
+							  cookie_index,
+							  buf->cookie_len);
+
+			if (QDF_IS_STATUS_ERROR(status)) {
+				wmi_err_rl("Error in extracting pasn pmkid TLV for vdev_id:%d",
+					   dst->vdev_id);
+				return QDF_STATUS_E_INVAL;
+			}
+			cookie_index += buf->cookie_len;
+			dst->peer_info[i].cookie_len = buf->cookie_len;
+		}
 		security_mode = WMI_RTT_PASN_PEER_CREATE_SECURITY_MODE_GET(
 							buf->control_flag);
 		if (security_mode)
@@ -20191,11 +20272,13 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		dst->peer_info[i].force_self_mac_usage =
 			WMI_RTT_PASN_PEER_CREATE_FORCE_SELF_MAC_USE_GET(
 							buf->control_flag);
-		wmi_debug("Peer[%d]: self_mac:" QDF_MAC_ADDR_FMT " peer_mac:" QDF_MAC_ADDR_FMT "security_mode:0x%x force_self_mac:%d",
+		wmi_debug("Peer[%d]: self_mac :" QDF_MAC_ADDR_FMT " peer_mac :" QDF_MAC_ADDR_FMT "security_mode :0x%x force_self_mac:%d akm :0x%x cipher :0x%x",
 			  i, QDF_MAC_ADDR_REF(dst->peer_info[i].self_mac.bytes),
 			  QDF_MAC_ADDR_REF(dst->peer_info[i].peer_mac.bytes),
 			  security_mode,
-			  dst->peer_info[i].force_self_mac_usage);
+			  dst->peer_info[i].force_self_mac_usage,
+			  dst->peer_info[i].akm,
+			  dst->peer_info[i].cipher);
 
 		dst->num_peers++;
 		buf++;
@@ -20267,59 +20350,138 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 	wmi_buf_t buf;
 	wmi_rtt_pasn_auth_status_cmd_fixed_param *fixed_param;
 	uint8_t *buf_ptr;
-	uint8_t i;
-	size_t len = sizeof(*fixed_param) +
-		     data->num_peers * sizeof(wmi_rtt_pasn_auth_status_param) +
-		     WMI_TLV_HDR_SIZE;
+	uint8_t i, total_cookie_len;
+	size_t len = 0;
+	uint32_t pending_cnt = data->num_peers;
+	uint16_t max_entry_per_cmd = 0, max_entry_cnt = 0;
+	uint16_t num_entry = 0;
 
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf) {
-		wmi_err("wmi_buf_alloc failed");
-		return QDF_STATUS_E_FAILURE;
-	}
-	buf_ptr = (uint8_t *)wmi_buf_data(buf);
-	fixed_param =
-		(wmi_rtt_pasn_auth_status_cmd_fixed_param *)wmi_buf_data(buf);
-	WMITLV_SET_HDR(&fixed_param->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_rtt_pasn_auth_status_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN(
-		       wmi_rtt_pasn_auth_status_cmd_fixed_param));
-	buf_ptr += sizeof(*fixed_param);
+	max_entry_per_cmd = (wmi_get_max_msg_len(wmi_handle) -
+			     sizeof(*fixed_param) -
+			     (2 *  WMI_TLV_HDR_SIZE)) /
+			     (sizeof(wmi_rtt_pasn_auth_status_param));
 
-	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
-		       (data->num_peers *
-			sizeof(wmi_rtt_pasn_auth_status_param)));
-	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (data->num_peers > max_entry_per_cmd)
+		max_entry_cnt = max_entry_per_cmd;
+	else
+		max_entry_cnt = data->num_peers;
 
-	for (i = 0; i < data->num_peers; i++) {
-		wmi_rtt_pasn_auth_status_param *auth_status_tlv =
+	wmi_debug("Setting max entry limit as %u", max_entry_cnt);
+
+	while (pending_cnt) {
+		len = sizeof(*fixed_param) + WMI_TLV_HDR_SIZE;
+		if (pending_cnt >= max_entry_cnt)
+			num_entry = max_entry_cnt;
+		else
+			num_entry = pending_cnt;
+
+		len += num_entry * sizeof(wmi_rtt_pasn_auth_status_param);
+		for (i = 0; i < num_entry; i++) {
+			if (data->auth_status[i].status ==
+			    WLAN_PASN_AUTH_STATUS_PEER_COMEBACK) {
+				total_cookie_len = total_cookie_len +
+				data->auth_status[i].cookie_len;
+			}
+		}
+
+		len += WMI_TLV_HDR_SIZE + total_cookie_len;
+		buf = wmi_buf_alloc(wmi_handle, len);
+		if (!buf) {
+			wmi_err("wmi_buf_alloc failed");
+			return QDF_STATUS_E_FAILURE;
+		}
+		buf_ptr = (uint8_t *)wmi_buf_data(buf);
+		fixed_param = (wmi_rtt_pasn_auth_status_cmd_fixed_param *)
+			       wmi_buf_data(buf);
+		WMITLV_SET_HDR(&fixed_param->tlv_header,
+			WMITLV_TAG_STRUC_wmi_rtt_pasn_auth_status_cmd_fixed_param,
+			WMITLV_GET_STRUCT_TLVLEN(
+			wmi_rtt_pasn_auth_status_cmd_fixed_param));
+		buf_ptr += sizeof(*fixed_param);
+
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+			       (num_entry *
+			       sizeof(wmi_rtt_pasn_auth_status_param)));
+		buf_ptr += WMI_TLV_HDR_SIZE;
+
+		for (i = 0; i < num_entry; i++) {
+			wmi_rtt_pasn_auth_status_param *auth_status_tlv =
 				(wmi_rtt_pasn_auth_status_param *)buf_ptr;
 
-		WMITLV_SET_HDR(&auth_status_tlv->tlv_header,
-			       WMITLV_TAG_STRUC_wmi_rtt_pasn_auth_status_param,
-			       WMITLV_GET_STRUCT_TLVLEN(wmi_rtt_pasn_auth_status_param));
+			WMITLV_SET_HDR(&auth_status_tlv->tlv_header,
+				WMITLV_TAG_STRUC_wmi_rtt_pasn_auth_status_param,
+				WMITLV_GET_STRUCT_TLVLEN(
+				wmi_rtt_pasn_auth_status_param));
 
-		WMI_CHAR_ARRAY_TO_MAC_ADDR(data->auth_status[i].peer_mac.bytes,
-					   &auth_status_tlv->peer_mac_addr);
-		WMI_CHAR_ARRAY_TO_MAC_ADDR(data->auth_status[i].self_mac.bytes,
-					   &auth_status_tlv->source_mac_addr);
-		auth_status_tlv->status = data->auth_status[i].status;
-		wmi_debug("peer_mac: " QDF_MAC_ADDR_FMT " self_mac:" QDF_MAC_ADDR_FMT " status:%d",
+			WMI_CHAR_ARRAY_TO_MAC_ADDR(
+					data->auth_status[i].peer_mac.bytes,
+					&auth_status_tlv->peer_mac_addr);
+			WMI_CHAR_ARRAY_TO_MAC_ADDR(
+					data->auth_status[i].self_mac.bytes,
+					&auth_status_tlv->source_mac_addr);
+			auth_status_tlv->akm = cm_get_wmi_auth_type(
+						data->auth_status[i].akm);
+			auth_status_tlv->cipher_suite =
+						data->auth_status[i].cipher;
+			auth_status_tlv->status = data->auth_status[i].status;
+
+			/*
+			 * WLAN_PASN_AUTH_STATUS_PASN_COMEBACK Have two more fields.
+			 * @COOKIE_LEN: len of cookie array.
+			 * @COMEBACK: comeback after timer.
+			 */
+			if (data->auth_status[i].status ==
+			    WLAN_PASN_AUTH_STATUS_PEER_COMEBACK) {
+				auth_status_tlv->cookie_len =
+				data->auth_status[i].cookie_len;
+				auth_status_tlv->timeout_value =
+				data->auth_status[i].comeback_after;
+			}
+
+			wmi_debug("peer_mac: " QDF_MAC_ADDR_FMT " self_mac:" QDF_MAC_ADDR_FMT " status:%d akm:%d cipher:%d comeback_after:%d i:%d",
 			  QDF_MAC_ADDR_REF(data->auth_status[i].peer_mac.bytes),
 			  QDF_MAC_ADDR_REF(data->auth_status[i].self_mac.bytes),
-			  auth_status_tlv->status);
+			  auth_status_tlv->status,
+			  auth_status_tlv->akm,
+			  auth_status_tlv->cipher_suite,
+			  auth_status_tlv->timeout_value,
+			  i);
 
-		buf_ptr += sizeof(wmi_rtt_pasn_auth_status_param);
+			buf_ptr += sizeof(wmi_rtt_pasn_auth_status_param);
+		}
+
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
+			       total_cookie_len);
+		buf_ptr += WMI_TLV_HDR_SIZE;
+
+		/*
+		 * accommodating variable len TLV cookie for
+		 * those peers which has status type
+		 * WLAN_PASN_AUTH_STATUS_PEER_COMEBACK
+		 */
+		for (i = 0; i < num_entry; i++) {
+			if (data->auth_status[i].status ==
+			    WLAN_PASN_AUTH_STATUS_PEER_COMEBACK) {
+				qdf_mem_copy(buf,
+					data->auth_status[i].cookie,
+					data->auth_status[i].cookie_len);
+				buf_ptr += data->auth_status[i].cookie_len;
+			}
+		}
+
+		wmi_mtrace(WMI_RTT_PASN_AUTH_STATUS_CMD, 0, 0);
+		status = wmi_unified_cmd_send(wmi_handle, buf, len,
+					      WMI_RTT_PASN_AUTH_STATUS_CMD);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			wmi_err("num_entries:%d failed!", pending_cnt);
+			wmi_err("Failed to send Auth status command ret = %d", status);
+			wmi_buf_free(buf);
+			return QDF_STATUS_E_FAILURE;
+		}
+
+		pending_cnt -= num_entry;
+		wmi_err("num_entries:%d done! pending_cnt:%d", num_entry, pending_cnt);
 	}
-
-	wmi_mtrace(WMI_RTT_PASN_AUTH_STATUS_CMD, 0, 0);
-	status = wmi_unified_cmd_send(wmi_handle, buf, len,
-				      WMI_RTT_PASN_AUTH_STATUS_CMD);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		wmi_err("Failed to send Auth status command ret = %d", status);
-		wmi_buf_free(buf);
-	}
-
 	return status;
 }
 

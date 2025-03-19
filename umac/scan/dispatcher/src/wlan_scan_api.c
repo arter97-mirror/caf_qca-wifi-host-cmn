@@ -902,37 +902,26 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 	return scm_scan_get_entry_by_bssid(pdev, bssid);
 }
 
-bool wlan_scan_is_localy_gen_non_tx_mbssid_entry(struct wlan_objmgr_pdev *pdev,
-						 struct qdf_mac_addr *bssid)
+bool wlan_scan_flush_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
+					     struct qdf_mac_addr *bssid)
 {
 	struct scan_cache_entry *entry = NULL;
-	bool is_non_txt_mbssid_gen = false;
+	bool status = true;
 
 	/* check if scan entry locally generated */
 	entry = wlan_scan_get_entry_by_bssid(pdev, bssid);
-	if (entry) {
-		is_non_txt_mbssid_gen =
-			entry->is_non_tx_mbssid_gen ? true : false;
-		util_scan_free_cache_entry(entry);
-	}
-	return is_non_txt_mbssid_gen;
-}
+	if (!entry)
+		return false;
 
-bool wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
-					  struct qdf_mac_addr *bssid)
-{
-	struct scan_cache_entry *entry = NULL;
-	bool is_gen_entry = false;
+	if (!entry->is_gen_entry)
+		status = false;
+	else
+		scm_debug(QDF_MAC_ADDR_FMT ": Flushing the candidate scan entry",
+			  QDF_MAC_ADDR_REF(bssid->bytes));
 
-	/* check if scan entry locally generated */
-	entry = wlan_scan_get_entry_by_bssid(pdev, bssid);
-	if (entry) {
-		is_gen_entry =
-			entry->is_gen_entry ? true : false;
-		util_scan_free_cache_entry(entry);
-	}
+	util_scan_free_cache_entry(entry);
 
-	return is_gen_entry;
+	return status;
 }
 
 QDF_STATUS
@@ -1000,3 +989,8 @@ void wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
 		pdev_ev_handler->cached_scan_ev_handler = NULL;
 }
 #endif
+
+void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev)
+{
+	scm_set_obss_scan_enable(vdev);
+}

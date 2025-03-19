@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1802,7 +1802,9 @@ struct cdp_rx_err_proto_stats {
  * @rekey_tx_comp_failures: GroupRekey Tx completion count
  * @proto: DP protocol stats
  * @hwtx_delay_tsf : store vdev level ul delay stats when tsf report enabled
- * @hwtx_jitter_tsf : store vdev level ul delay jitter stats when tsf report enabled
+ * @hwtx_ul_jitter : ul delay jitter stats when ul delay is enabled
+ * @hwtx_ul_jitter_tsf:ul delay jitter stats when TSF report is enabled
+ * @hwtx_ul_jitter_fw: ul delay jitter stats when UL report to FW is enabled
  * @tx_ppdu_duration: Tx PPDU Duration
  */
 struct cdp_tx_stats {
@@ -1941,7 +1943,9 @@ struct cdp_tx_stats {
 #endif
 #ifdef WLAN_FEATURE_UL_JITTER
 	struct cdp_hist_stats hwtx_delay_tsf;
-	struct cdp_hist_stats hwtx_jitter_tsf;
+	struct cdp_hist_stats hwtx_ul_jitter;
+	struct cdp_hist_stats hwtx_ul_jitter_tsf;
+	struct cdp_hist_stats hwtx_ul_jitter_fw;
 #endif
 	uint64_t tx_ppdu_duration;
 };

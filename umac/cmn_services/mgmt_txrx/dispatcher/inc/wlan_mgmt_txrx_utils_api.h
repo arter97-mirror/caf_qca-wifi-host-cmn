@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -60,6 +60,9 @@
 #define mgmttxrx_nofl_debug(params...) \
 	QDF_TRACE_DEBUG_NO_FL(QDF_MODULE_ID_MGMT_TXRX, params)
 
+#define MAX_LINK_RECFG_CMD_ALLOWED 15
+
+#define WLAN_MAX_ML_RECFG_LINK 15
 /**
  * mgmt_txrx_frame_hex_dump() - Print the type and dump the rx tx frame
  * @frame_data: The base address of the mgmt frame data to be logged.
@@ -976,6 +979,37 @@ struct mlo_vdev_pause {
 	uint32_t vdev_pause_duration;
 };
 #endif
+
+/**
+ * struct mlo_link_reconfig_param - MLO reconfig param
+ * @link_id: link id
+ * @link_addr: link addr
+ * @vdev_id: vdev id only in case of add link
+ */
+struct mlo_link_reconfig_param {
+	uint8_t link_id;
+	uint8_t link_addr[QDF_MAC_ADDR_SIZE];
+/** which vdev to repurpose on with del link_id if it's not 0xff **/
+	uint8_t vdev_id;
+};
+
+/**
+ * struct mlo_link_recfg_user_req_params - MLO reconfig user req param
+ * @vdev_id: vdev id on which user command triggered
+ * @mld_addr: mld address
+ * @add_link: add link array of structures
+ * @num_link_add_param: no of add link requested
+ * @del_link: delete link array of structures
+ * @num_link_del_param: no of delete link requested
+ */
+struct mlo_link_recfg_user_req_params {
+	uint8_t vdev_id;
+	uint8_t mld_addr[QDF_MAC_ADDR_SIZE];
+	struct mlo_link_reconfig_param add_link[MAX_LINK_RECFG_CMD_ALLOWED];
+	uint32_t num_link_add_param;
+	struct mlo_link_reconfig_param del_link[MAX_LINK_RECFG_CMD_ALLOWED];
+	uint32_t num_link_del_param;
+};
 
 /**
  * struct mgmt_rx_event_params - host mgmt header params

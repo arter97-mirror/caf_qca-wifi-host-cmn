@@ -1378,16 +1378,49 @@ struct wmi_host_link_state_params {
  * struct wmi_host_link_bss_params - link bss params
  * @link_id: link id
  * @ap_mld_mac: ap mld mac address
+ * @ap_link_addr: ap link address
+ * @self_link_addr: self link address
  * @chan: channel
  * @op_code: operation for provided link
  */
 struct wmi_host_link_bss_params {
 	uint8_t link_id;
 	uint8_t ap_mld_mac[QDF_MAC_ADDR_SIZE];
+	struct qdf_mac_addr ap_link_addr;
+	struct qdf_mac_addr self_link_addr;
 	struct wlan_channel chan;
 	uint8_t op_code;
 };
 
+/**
+ * struct wmi_link_reconfig_param - wmi link reconfig param
+ * @link_id: link id
+ * @vdev_id: vdev id
+ * @link_addr: link address
+ */
+struct wmi_link_reconfig_param {
+	uint8_t link_id;
+	uint8_t vdev_id;
+	uint8_t link_addr[QDF_MAC_ADDR_SIZE];
+};
+
+/**
+ * struct wmi_link_reconfig_req_params - wmi link reconfig req
+ * @vdev_id: vdev id
+ * @mld_addr: mld_addr
+ * @link_add_param: link add param
+ * @num_link_add_param: no of link addition req
+ * @link_del_param: link del param
+ * @num_link_del_param: num link del param
+ */
+struct wmi_link_reconfig_req_params {
+	uint8_t vdev_id;
+	uint8_t mld_addr[QDF_MAC_ADDR_SIZE];
+	struct wmi_link_reconfig_param link_add_param[15];
+	uint32_t num_link_add_param;
+	struct wmi_link_reconfig_param link_del_param[15];
+	uint32_t num_link_del_param;
+};
 #endif /* WLAN_FEATURE_11BE */
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -3411,6 +3444,20 @@ typedef struct {
 	uint32_t duty_cycle;
 } tt_level_config;
 
+/*
+ * wmi_thermal_monitor_id: enum of thermal client
+ * @WMI_HOST_THERMAL_MONITOR_APPS: Thermal monitor client of APPS
+ * @WMI_HOST_THERMAL_MONITOR_WPSS: Thermal monitor client for WPSS
+ * @WMI_HOST_THERMAL_MONITOR_DDR_BWM: Client for DDR BW mitigation
+ * @WMI_HOST_THERMAL_MONITOR_INVALID: Invalid client
+ */
+enum wmi_thermal_monitor_id {
+	WMI_HOST_THERMAL_MONITOR_APPS = 1,
+	WMI_HOST_THERMAL_MONITOR_WPSS,
+	WMI_HOST_THERMAL_MONITOR_DDR_BWM,
+	WMI_HOST_THERMAL_MONITOR_INVALID,
+};
+
 /**
  * struct thermal_mitigation_params - Thermal mitigation params
  * @pdev_id: pdev identifier
@@ -3418,7 +3465,7 @@ typedef struct {
  * @dc: DC
  * @dc_per_event: DC per event
  * @num_thermal_conf: Number of thermal configurations to be sent
- * @client_id: Thermal client id either apps or wpps
+ * @client_id: Thermal client id
  * @priority: Priority of apps/wpps
  * @levelconf: TT level config params
  */
@@ -3428,7 +3475,7 @@ struct thermal_mitigation_params {
 	uint32_t dc;
 	uint32_t dc_per_event;
 	uint8_t num_thermal_conf;
-	uint8_t client_id;
+	enum wmi_thermal_monitor_id client_id;
 	uint8_t priority;
 	tt_level_config levelconf[MAX_THERMAL_LEVELS];
 };

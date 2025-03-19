@@ -56,6 +56,7 @@
 #include "wlan_crypto_def_i.h"
 #include "wlan_crypto_global_api.h"
 #include "wlan_cm_bss_score_param.h"
+#include "wlan_mlme_api.h"
 
 #ifdef FEATURE_6G_SCAN_CHAN_SORT_ALGO
 
@@ -956,6 +957,15 @@ scm_copy_info_from_dup_entry(struct wlan_objmgr_pdev *pdev,
 
 	/* copy mlme info from scan_entry to scan_params*/
 	scm_update_mlme_info(scan_entry, scan_params);
+
+	/*
+	 * Do not inherit if the new entry is generated.
+	 * Inherit for all other cases, the flag would be
+	 * reset in scm_add_update_entry(), if the new
+	 * entry is not generated.
+	 */
+	if (!scan_params->is_gen_entry)
+		scan_params->is_gen_entry = scan_entry->is_gen_entry;
 }
 
 /**
@@ -1062,7 +1072,7 @@ static void scm_dump_scan_entry(struct wlan_objmgr_pdev *pdev,
 	/* Add ML info */
 	len += util_scan_get_ml_info(scan_params, log_str, str_len, len);
 
-	scm_nofl_debug("Rcvd %s(%d): " QDF_MAC_ADDR_FMT " \"" QDF_SSID_FMT "\" freq %d rssi %d tsf %u seq %d snr %d phy %d %s",
+	scm_nofl_debug("Rcvd %s(%d): " QDF_MAC_ADDR_FMT " \"" QDF_SSID_FMT "\" freq %d rssi %d tsf %u seq %d snr %d phy %d gen %d %s",
 		       (scan_params->frm_subtype == MGMT_SUBTYPE_PROBE_RESP) ?
 		       "prb rsp" : "bcn", scan_params->raw_frame.len,
 		       QDF_MAC_ADDR_REF(scan_params->bssid.bytes),
@@ -1070,7 +1080,8 @@ static void scm_dump_scan_entry(struct wlan_objmgr_pdev *pdev,
 				    scan_params->ssid.ssid),
 		       scan_params->channel.chan_freq, scan_params->rssi_raw,
 		       scan_params->tsf_delta, scan_params->seq_num,
-		       scan_params->snr, scan_params->phy_mode, log_str);
+		       scan_params->snr, scan_params->phy_mode,
+		       scan_params->is_gen_entry, log_str);
 }
 
 /**
@@ -1112,11 +1123,18 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 
 	is_dup_found = scm_find_duplicate(pdev, scan_obj, scan_db, scan_params,
 					  &dup_node);
-	/**
-	 * If entry is already present then may be this is locally
-	 * generated and it will be remove during disconnection.
+
+	/*
+	 * Dupe entry is_gen |  New entry is_gen | Final
+	 *	0			0	    0
+	 *	0			1	    0
+	 *	1			0	    0
+	 *	1			1	    1
+	 *
+	 * For second case, mark the final entry as not generated
+	 * since atleast one actual scan entry was present.
 	 */
-	if (!is_dup_found)
+	if (!is_gen_entry || !is_dup_found)
 		scan_params->is_gen_entry = is_gen_entry;
 
 	scm_dump_scan_entry(pdev, scan_params);
@@ -1156,42 +1174,6 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef CONFIG_REG_CLIENT
-/**
- * scm_is_bss_allowed_for_country() - Check if bss is allowed to start for a
- * specific country and power mode (VLP/LPI/SP) for 6 GHz.
- * @psoc: psoc ptr
- * @scan_entry: ptr to scan entry
- *
- * Return: True if allowed, False if not.
- */
-static bool scm_is_bss_allowed_for_country(struct wlan_objmgr_psoc *psoc,
-					   struct scan_cache_entry *scan_entry)
-{
-	struct wlan_country_ie *cc_ie;
-	uint8_t programmed_country[REG_ALPHA2_LEN + 1];
-
-	if (wlan_reg_is_6ghz_chan_freq(scan_entry->channel.chan_freq)) {
-		cc_ie = util_scan_entry_country(scan_entry);
-		if (!cc_ie)
-			return false;
-		wlan_reg_read_current_country(psoc, programmed_country);
-		if (cc_ie && qdf_mem_cmp(cc_ie->cc, programmed_country,
-					 REG_ALPHA2_LEN)) {
-			if (wlan_reg_is_us(programmed_country))
-				return false;
-		}
-	}
-	return true;
-}
-#else
-static bool scm_is_bss_allowed_for_country(struct wlan_objmgr_psoc *psoc,
-					   struct scan_cache_entry *scan_entry)
-{
-	return true;
-}
-#endif
-
 /**
  * scm_is_p2p_wildcard_ssid() - check p2p wildcard ssid or not
  * @scan_entry: scan entry
@@ -1226,6 +1208,8 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 	struct scan_cache_node *scan_node;
 	struct wlan_frame_hdr *hdr = NULL;
 	struct wlan_crypto_params sec_params;
+	enum reg_6g_ap_type power_type_6g;
+	struct scan_mbssid_info *mbssid_info;
 
 	if (!bcn) {
 		scm_err("bcn is NULL");
@@ -1403,26 +1387,33 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 			}
 		}
 
+		mbssid_info = &scan_entry->mbssid_info;
+		if (!qdf_is_macaddr_zero(
+			(struct qdf_mac_addr *)&mbssid_info->non_trans_bssid)) {
+			scan_entry->is_gen_entry = 1;
+			bcn->is_gen_entry = 1;
+		}
+
 		scan_entry->non_intersected_phymode = scan_entry->phy_mode;
 
 		if (scan_obj->cb.update_beacon)
 			scan_obj->cb.update_beacon(pdev, scan_entry);
 
-		/**
-		 * Do not drop the frame if Wi-Fi safe mode or RF test mode is
-		 * enabled. wlan_cm_get_check_6ghz_security API returns true if
-		 * neither Safe mode nor RF test mode are enabled.
-		 */
-		if (!wlan_cm_get_standard_6ghz_conn_policy(psoc) &&
-		    !scm_is_bss_allowed_for_country(psoc, scan_entry) &&
-		    wlan_cm_get_check_6ghz_security(psoc)) {
-			scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) freq %d, as country not present OR VLP mode not supported for US",
-				    QDF_MAC_ADDR_REF(scan_entry->bssid.bytes),
-				    bcn->frm_type,
-				    scan_entry->channel.chan_freq);
-			util_scan_free_cache_entry(scan_entry);
-			qdf_mem_free(scan_node);
-			continue;
+		if (wlan_reg_is_6ghz_chan_freq(scan_entry->channel.chan_freq)) {
+			status = wlan_reg_get_best_6g_power_type(
+					psoc, pdev, &power_type_6g,
+					scan_entry->ap_pwr_type_6g,
+					scan_entry->channel.chan_freq);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) freq %d, as power type %d is not supported",
+					QDF_MAC_ADDR_REF(scan_entry->bssid.bytes),
+					bcn->frm_type,
+					scan_entry->channel.chan_freq,
+					scan_entry->ap_pwr_type_6g);
+				util_scan_free_cache_entry(scan_entry);
+				qdf_mem_free(scan_node);
+				continue;
+			}
 		}
 
 		status = scm_add_update_entry(psoc, pdev, scan_entry,

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -242,6 +242,9 @@
 #define WLAN_VDEV_OP_MLO_LINK_SWITCH_IN_PROGRESS 0x02000000
  /* MLO link rejection handling is in progress on this VDEV */
 #define WLAN_VDEV_OP_MLO_LINK_REJECTION_IN_PROGRESS 0x04000000
+
+/* MLO Link recfg mac update in progress on this VDEV */
+#define WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS 0x08000000
 
  /* flag to indicate disconnect only legacy peers due to moving to DFS channel
   * from non-DFS channel
@@ -2038,6 +2041,53 @@ wlan_vdev_mlme_is_mlo_link_rejection_in_progress(struct wlan_objmgr_vdev *vdev)
 	return wlan_vdev_mlme_op_flags_get(vdev, flag);
 }
 
+/**
+ * wlan_vdev_mlme_set_link_recfg_mac_update_in_progress() - Set link recfg mac
+ * address update in progress flag for VDEV.
+ * @vdev: VDEV object manager.
+ *
+ * Return: void
+ */
+static inline void
+wlan_vdev_mlme_set_link_recfg_mac_update_in_progress(
+					struct wlan_objmgr_vdev *vdev)
+{
+	unsigned long flag = WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS;
+
+	wlan_vdev_mlme_op_flags_set(vdev, flag);
+}
+
+/**
+ * wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress() - Clear link recfg
+ * mac address update in progress flag for VDEV.
+ * @vdev: VDEV object manager
+ *
+ * Return: void
+ */
+static inline void
+wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress(
+					struct wlan_objmgr_vdev *vdev)
+{
+	unsigned long flag = WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS;
+
+	wlan_vdev_mlme_op_flags_clear(vdev, flag);
+}
+
+/**
+ * wlan_vdev_mlme_is_link_recfg_mac_update_in_progress() - Return true if VDEV
+ * is link recfg mac address update in progress flag
+ * @vdev: VDEV object manager.
+ *
+ * Return: bool
+ */
+static inline bool
+wlan_vdev_mlme_is_link_recfg_mac_update_in_progress(
+					struct wlan_objmgr_vdev *vdev)
+{
+	unsigned long flag = WLAN_VDEV_OP_LNK_CFG_UPDATE_MAC_IN_PROGRESS;
+
+	return wlan_vdev_mlme_op_flags_get(vdev, flag);
+}
 #else
 static inline void
 wlan_vdev_mlme_set_mlo_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
@@ -2071,6 +2121,24 @@ wlan_vdev_mlme_is_mlo_link_rejection_in_progress(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
+static inline void
+wlan_vdev_mlme_set_link_recfg_mac_update_in_progress(
+					struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline void
+wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress(
+					struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline bool
+wlan_vdev_mlme_is_link_recfg_mac_update_in_progress(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE  */
 
 #ifdef WLAN_MCAST_MLO
@@ -2238,6 +2306,22 @@ static inline
 bool wlan_vdev_mlme_is_link_sta_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	return false;
+}
+
+static inline void
+wlan_vdev_mlme_set_link_recfg_mac_update_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline void
+wlan_vdev_mlme_clear_link_recfg_mac_update_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline bool
+wlan_vdev_mlme_is_link_recfg_mac_update_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+		return false;
 }
 
 static inline void

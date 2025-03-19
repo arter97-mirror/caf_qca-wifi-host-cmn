@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -741,9 +741,10 @@ wmi_print_cmd_log_buffer(struct wmi_log_buf_t *log_buffer, uint32_t count,
 
 		qdf_log_timestamp_to_secs(cmd_log->time, &secs, &usecs);
 		len += scnprintf(str + len, sizeof(str) - len,
-				 "% 8lld.%06lld    %6u (0x%06x)    ",
+				 "% 8lld.%06lld    %6u (%s)    ",
 				 secs, usecs,
-				 cmd_log->command, cmd_log->command);
+				 cmd_log->command,
+				 wmi_id_to_name(cmd_log->command));
 		for (i = 0; i < data_len; ++i) {
 			len += scnprintf(str + len, sizeof(str) - len,
 					 "0x%08x ", cmd_log->data[i]);
@@ -842,9 +843,10 @@ wmi_print_cmd_cmp_log_buffer(struct wmi_log_buf_t *log_buffer, uint32_t count,
 
 		qdf_log_timestamp_to_secs(cmd_log->time, &secs, &usecs);
 		len += scnprintf(str + len, sizeof(str) - len,
-				 "% 8lld.%06lld    %6u (0x%06x)    ",
+				 "% 8lld.%06lld    %6u (%s)    ",
 				 secs, usecs,
-				 cmd_log->command, cmd_log->command);
+				 cmd_log->command,
+				 wmi_id_to_name(cmd_log->command));
 		for (i = 0; i < data_len; ++i) {
 			len += scnprintf(str + len, sizeof(str) - len,
 					 "0x%08x ", cmd_log->data[i]);

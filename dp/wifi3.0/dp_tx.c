@@ -6542,6 +6542,230 @@ void dp_set_delta_tsf(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 #endif
 
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+#ifdef WLAN_FEATURE_UL_JITTER
+static inline void
+dp_tx_update_jitter_stats(struct dp_vdev *vdev,
+			  struct dp_mlo_latency_stats *stats)
+{
+	stats->avg_jitter_ms = vdev->stats.tx.hwtx_ul_jitter_fw.avg;
+
+	qdf_mem_zero(&vdev->stats.tx.hwtx_ul_jitter_fw,
+		     sizeof(struct cdp_hist_stats));
+}
+
+static inline void
+dp_accumulate_hwtx_ul_jitter_fw(struct dp_vdev *vdev)
+{
+	dp_accumulate_hist_stats(&vdev->stats.tx.hwtx_ul_jitter,
+				 &vdev->stats.tx.hwtx_ul_jitter_fw);
+}
+
+static inline void
+dp_accumulate_hwtx_ul_jitter_tsf(struct dp_vdev *vdev)
+{
+	dp_accumulate_hist_stats(&vdev->stats.tx.hwtx_ul_jitter,
+				 &vdev->stats.tx.hwtx_ul_jitter_tsf);
+}
+
+static inline void
+dp_reset_hwtx_ul_jitter(struct dp_vdev *vdev)
+{
+	qdf_mem_zero(&vdev->stats.tx.hwtx_ul_jitter,
+		     sizeof(struct cdp_hist_stats));
+}
+#else
+static inline void
+dp_tx_update_jitter_stats(struct dp_vdev *vdev,
+			  struct dp_mlo_latency_stats *stats)
+{
+}
+
+static inline void
+dp_accumulate_hwtx_ul_jitter_fw(struct dp_vdev *vdev)
+{
+}
+
+static inline void
+dp_accumulate_hwtx_ul_jitter_tsf(struct dp_vdev *vdev)
+{
+}
+
+static inline void
+dp_reset_hwtx_ul_jitter(struct dp_vdev *vdev)
+{
+}
+#endif
+
+/**
+ * dp_tx_report_tx_delay_to_fw() - Send Tx delay stats to FW
+ * @vdev: Vdev handle
+ * @avg_delay: Average delay
+ * @pkts_accum: Number of packets
+ *
+ * Return: None
+ */
+static inline void
+dp_tx_report_tx_delay_to_fw(struct dp_vdev *vdev, uint32_t avg_delay,
+			    uint32_t pkts_accum)
+{
+	struct dp_mlo_latency_stats stats = { 0 };
+	uint64_t current_time, report_interval;
+	QDF_STATUS status;
+
+	vdev->latency_stats.latency_avg =
+		(avg_delay + vdev->latency_stats.latency_avg) / 2;
+	vdev->latency_stats.pkts_accum += pkts_accum;
+
+	current_time = qdf_get_log_timestamp_usecs();
+	report_interval = current_time - vdev->latency_stats.last_report_time;
+
+	if (report_interval < vdev->latency_stats.report_interval * 1000)
+		return;
+
+	stats.vdev_id = vdev->vdev_id;
+	stats.avg_latency_ms = vdev->latency_stats.latency_avg;
+	stats.num_of_tx_pkt = vdev->latency_stats.pkts_accum;
+	vdev->latency_stats.latency_avg = 0;
+	vdev->latency_stats.pkts_accum = 0;
+	vdev->latency_stats.last_report_time = current_time;
+
+	dp_tx_update_jitter_stats(vdev, &stats);
+
+	status = dp_h2t_tx_mlo_latency_stats_msg_send(vdev->pdev->soc, &stats);
+	if (QDF_IS_STATUS_ERROR(status))
+		dp_err("Failed to send stats, Status: %d", status);
+}
+
+/*
+ * dp_process_ul_delay() - Process UL delay
+ * @soc_hdl: DP SOC handle
+ * @vdev_id: Vdev ID
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_process_ul_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev;
+	uint32_t delay_accum;
+	uint32_t pkts_accum;
+	uint32_t avg_delay;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		dp_err_rl("vdev %d does not exist", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!qdf_atomic_read(&vdev->enable_ul_delay))
+		goto end;
+
+	/* Average uplink delay based on current accumulated values */
+	delay_accum = qdf_atomic_read(&vdev->ul_delay_accum);
+	pkts_accum = qdf_atomic_read(&vdev->ul_pkts_accum);
+	if (!pkts_accum)
+		goto end;
+
+	avg_delay = delay_accum / pkts_accum;
+
+	if (qdf_atomic_read(&vdev->tsf_ul_delay_report)) {
+		vdev->tsf_ul_delay_avg =
+			(avg_delay + vdev->tsf_ul_delay_avg) / 2;
+		dp_accumulate_hwtx_ul_jitter_tsf(vdev);
+	}
+
+	if (qdf_atomic_read(&vdev->latency_stats.enable_report)) {
+		dp_accumulate_hwtx_ul_jitter_fw(vdev);
+		dp_tx_report_tx_delay_to_fw(vdev, avg_delay, pkts_accum);
+	}
+
+	/* Reset accumulated values to 0 */
+	qdf_atomic_set(&vdev->ul_delay_accum, 0);
+	qdf_atomic_set(&vdev->ul_pkts_accum, 0);
+	dp_reset_hwtx_ul_jitter(vdev);
+
+end:
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+dp_enable_ul_delay(struct dp_vdev *vdev, enum ul_delay_client_id id,
+		   bool enable)
+{
+	int client;
+	bool all_disabled;
+
+	if (id >= UL_DELAY_CALC_ID_MAX) {
+		dp_err("Invalid client id: %u", id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_spin_lock(&vdev->ul_delay_lock);
+	vdev->ul_delay_cal_ctrl[id] = enable;
+
+	if (enable) {
+		qdf_atomic_set(&vdev->enable_ul_delay, true);
+	} else {
+		all_disabled  = true;
+		for (client = 0; client < UL_DELAY_CALC_ID_MAX; client++) {
+			if (vdev->ul_delay_cal_ctrl[client]) {
+				all_disabled  = false;
+				break;
+			}
+		}
+		if (all_disabled)
+			qdf_atomic_set(&vdev->enable_ul_delay, false);
+	}
+
+	qdf_spin_unlock(&vdev->ul_delay_lock);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/*
+ * dp_mlo_latency_req() - Process MLO latency request
+ * @vdev: vdev id
+ * @interval: Reporting interval
+ * @enable: Enable/Disable report
+ *
+ * Return: None
+ */
+void dp_mlo_latency_req(struct dp_soc *soc, uint8_t vdev_id,
+			uint16_t interval, bool enable)
+{
+	struct dp_peer *peer;
+	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
+						     DP_MOD_ID_HTT);
+
+	if (!vdev) {
+		dp_err("Unable find vdev for id: %d", vdev_id);
+		return;
+	}
+
+	peer = dp_peer_get_tgt_peer_by_vdev(soc, vdev, DP_MOD_ID_HTT);
+	if (!peer) {
+		dp_err("Unable find peer for vdev: %d", vdev_id);
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
+		return;
+	}
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
+
+	vdev = peer->vdev;
+
+	qdf_atomic_set(&vdev->latency_stats.enable_report, enable);
+	vdev->latency_stats.report_interval = interval;
+
+	dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_FW, enable);
+
+	dp_info("Vdev: %d interval: %d enable %d",
+		vdev->vdev_id, interval, enable);
+
+	dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
+}
+
 QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 				      uint8_t vdev_id, bool enable)
 {
@@ -6554,7 +6778,9 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_atomic_set(&vdev->ul_delay_report, enable);
+	dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_TSF, enable);
+
+	qdf_atomic_set(&vdev->tsf_ul_delay_report, enable);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
@@ -6566,8 +6792,6 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev;
-	uint32_t delay_accum;
-	uint32_t pkts_accum;
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev) {
@@ -6575,24 +6799,15 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (!qdf_atomic_read(&vdev->ul_delay_report)) {
+	if (!qdf_atomic_read(&vdev->tsf_ul_delay_report)) {
 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	/* Average uplink delay based on current accumulated values */
-	delay_accum = qdf_atomic_read(&vdev->ul_delay_accum);
-	pkts_accum = qdf_atomic_read(&vdev->ul_pkts_accum);
-
-	*val = delay_accum / pkts_accum;
-	dp_debug("uplink_delay %u delay_accum %u pkts_accum %u", *val,
-		 delay_accum, pkts_accum);
+	*val = vdev->tsf_ul_delay_avg;
+	vdev->tsf_ul_delay_avg = 0;
 
 	dp_tx_print_ul_delay_hist(vdev);
-
-	/* Reset accumulated values to 0 */
-	qdf_atomic_set(&vdev->ul_delay_accum, 0);
-	qdf_atomic_set(&vdev->ul_pkts_accum, 0);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
@@ -6615,7 +6830,7 @@ static void dp_tx_update_uplink_delay(struct dp_soc *soc, struct dp_vdev *vdev,
 		return;
 	}
 
-	if (!qdf_atomic_read(&vdev->ul_delay_report))
+	if (!qdf_atomic_read(&vdev->enable_ul_delay))
 		return;
 
 	if (QDF_IS_STATUS_ERROR(dp_tx_compute_hw_delay_us(ts,
@@ -6656,10 +6871,10 @@ static void dp_tx_update_uplink_jitter(struct dp_soc *soc,
 		return;
 	}
 
-	if (!qdf_atomic_read(&vdev->ul_delay_report))
+	if (!qdf_atomic_read(&vdev->enable_ul_delay))
 		return;
 
-	hist_stats = &vdev->stats.tx.hwtx_jitter_tsf;
+	hist_stats = &vdev->stats.tx.hwtx_ul_jitter;
 	if (curr_ul_delay > prev_delay)
 		ul_jitter = curr_ul_delay - prev_delay;
 	else

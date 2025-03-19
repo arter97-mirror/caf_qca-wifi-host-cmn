@@ -28,6 +28,9 @@
 #define WLAN_MIN_DIALOG_TOKEN         1
 #define WLAN_MAX_DIALOG_TOKEN         0xFF
 
+struct mlo_link_recfg_context;
+struct link_recfg_rx_rsp;
+
 /**
  * enum wlan_link_recfg_sm_state - Link Reconfiguration states
  * @WLAN_LINK_RECFG_S_INIT: Default state, IDLE state
@@ -134,6 +137,27 @@ enum wlan_link_recfg_sm_evt {
 };
 
 /**
+ * enum link_recfg_type - link recfg type enum
+ * @link_recfg_undefined: link recfg type undefined.
+ * @link_recfg_del_only: delete link only
+ * @link_recfg_add_only: add link only
+ * @link_recfg_del_add_common_link: delete and add link with common link
+ * present
+ * @link_recfg_del_add_no_common_link: delete and add link with no
+ * common link present
+ * @link_recfg_two_frm_del_add_common_link: del and add by 2 action
+ * frame with common link present
+ */
+enum link_recfg_type {
+	link_recfg_undefined,
+	link_recfg_del_only,
+	link_recfg_add_only,
+	link_recfg_del_add_common_link,
+	link_recfg_del_add_no_common_link,
+	link_recfg_two_frm_del_add_common_link,
+};
+
+/**
  * struct wlan_mlo_link_recfg_req - Data Structure because of link
  *  reconfiguration request
  * @vdev_id: Hold information regarding all the links of ml connection
@@ -142,7 +166,13 @@ enum wlan_link_recfg_sm_evt {
  * @is_user_req: Request received from user/framework
  * @is_curr_req: Is current link reconfig request active
  * @is_fw_ind_received: if fw link recfg evt is received or not
+ * @recfg_type: link recfg type
+ * @join_pending_vdev_id: used on for no-common link recfg,
+ * use vdev with join_pending_vdev_id to trigger peer assoc after
+ * receive recfg response.
  * @fw_ind_param: received fw link recfg evt params
+ * @mld_addr: mld address
+ * @send_two_link_recfg_frms: Split 1 Link Recfg request in 2 frames
  */
 struct wlan_mlo_link_recfg_req {
 	uint8_t vdev_id;
@@ -151,10 +181,12 @@ struct wlan_mlo_link_recfg_req {
 	bool is_user_req;
 	bool is_curr_req;
 	bool is_fw_ind_received;
+	enum link_recfg_type recfg_type;
+	uint8_t join_pending_vdev_id;
 	struct wlan_mlo_link_recfg_ind_param fw_ind_param;
+	uint8_t mld_addr[QDF_MAC_ADDR_SIZE];
+	bool send_two_link_recfg_frms;
 };
-
-typedef QDF_STATUS (*state_abort_handler)(struct wlan_objmgr_psoc *psoc);
 
 /**
  * struct mlo_link_recfg_state_req - Link Reconfig add/del/xmit state
@@ -172,6 +204,52 @@ struct mlo_link_recfg_state_req {
 };
 
 /**
+ * typedef state_abort_handler - link recfg abort callback
+ * @psoc: psoc object
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_abort_handler)(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * typedef state_pre_link_add_handler - pre link add callback
+ * @recfg_ctx: recfg context
+ * @req: link recfg request
+ *
+ * Used in non-common link case, to be invoked when trigger connect to new
+ * Added link.
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_pre_link_add_handler)(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct mlo_link_recfg_state_req *req);
+
+/**
+ * typedef state_defer_rsp_handler - defer the action frame response handler
+ * @recfg_ctx: recfg context
+ * @recfg_resp_data: recfg response data
+ * @event_data_len: recfg response data len
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_defer_rsp_handler)(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct link_recfg_rx_rsp *recfg_resp_data,
+			uint16_t event_data_len);
+
+/**
+ * typedef state_proc_defer_rsp_handler - process deferred the action
+ * frame response handler
+ * @recfg_ctx: recfg context
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS (*state_proc_defer_rsp_handler)(
+			struct mlo_link_recfg_context *recfg_ctx);
+typedef QDF_STATUS (*two_frm_handler)(struct mlo_link_recfg_context *recfg_ctx);
+
+/**
  * struct mlo_link_recfg_state_tran - Link Reconfig state transition
  * info
  * @state: target tansition state
@@ -179,12 +257,20 @@ struct mlo_link_recfg_state_req {
  * @req: state request param, also the event data
  * @abort_handler: error handler if error happends in the state,
  * it will be invoked after link config completed
+ * @two_frame_xmit_handler: two frame xmit handler callback
+ * @pre_link_add_handler: pre link add callback
+ * @defer_rsp_handler: defer response processing
+ * @proc_defer_rsp_handler: process deferred response
  */
 struct mlo_link_recfg_state_tran {
 	enum wlan_link_recfg_sm_state state;
 	enum wlan_link_recfg_sm_evt event;
 	struct mlo_link_recfg_state_req req;
 	state_abort_handler abort_handler;
+	two_frm_handler two_frame_xmit_handler;
+	state_pre_link_add_handler pre_link_add_handler;
+	state_defer_rsp_handler defer_rsp_handler;
+	state_proc_defer_rsp_handler proc_defer_rsp_handler;
 };
 
 /* WLAN_LINK_RECFG_SM_EV_XMIT_TX_DONE */
@@ -244,7 +330,7 @@ struct roam_ind {
 struct recfg_completed {
 };
 
-#define MAX_RECFG_TRANSITION 5
+#define MAX_RECFG_TRANSITION 6
 
 /**
  * struct mlo_link_recfg_state_sm - Link Reconfig state machine
@@ -296,6 +382,19 @@ struct wlan_mlo_link_recfg_rsp {
 	struct element_info mlo_ie;
 };
 
+#define MAX_NUM_FRAMES 4
+/**
+ * struct wlan_mlo_link_recfg_bitmap: User based Link reconfig bitmap
+ * @num_frames: Number of frames used to send link reconfig request
+ * @add_link_bitmap: Bitmap of link IDs of links to be added
+ * @delete_link_bitmap: Bitmap of link IDs of links to be removed
+ */
+struct wlan_mlo_link_recfg_bitmap {
+	uint8_t num_frames;
+	uint16_t add_link_bitmap[MAX_NUM_FRAMES];
+	uint16_t delete_link_bitmap[MAX_NUM_FRAMES];
+};
+
 /**
  * struct mlo_link_recfg_context - Link reconfiguration data structure.
  * @psoc: psoc object
@@ -304,9 +403,14 @@ struct wlan_mlo_link_recfg_rsp {
  * @curr_recfg_rsp: Last link recfg response received from AP
  * @sm: link reconfig sm context
  * @set_link_req: set link req for link recfg
+ * @macaddr_updating_vdev_id: mac addr updating vdev for link add
+ * @old_macaddr_updating_vdev: old mac addr of updating vdev
  * @req_frame: Link Reconfiguration request frame
  * @rsp_frame: Link Reconfiguration response frame
+ * @link_recfg_bm: User configured Link Reconfiguration bitmap
  * @link_recfg_status: Link Reconfiguration status
+ * @last_dialog_token: Last used dialog token
+ * @copied_recfg_req: Copied recfg req
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -315,9 +419,14 @@ struct mlo_link_recfg_context {
 	struct wlan_mlo_link_recfg_rsp curr_recfg_rsp;
 	struct mlo_link_recfg_state_sm sm;
 	struct mlo_link_set_active_req *set_link_req;
+	uint8_t macaddr_updating_vdev_id;
+	struct qdf_mac_addr old_macaddr_updating_vdev;
 	struct element_info req_frame;
 	struct element_info rsp_frame;
+	struct wlan_mlo_link_recfg_bitmap link_recfg_bm;
 	QDF_STATUS link_recfg_status;
+	uint8_t last_dialog_token;
+	struct wlan_mlo_link_recfg_req copied_recfg_req;
 };
 
 static inline void
@@ -346,6 +455,17 @@ ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
+ * mlo_link_recfg_set_mac_addr_resp() - handle link recfg set mac
+ * addr response
+ * @vdev: vdev object
+ * @resp_status: set mac resp result
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_link_recfg_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
+					    uint8_t resp_status);
+
+/**
  * mlo_link_recfg_set_link_resp() - Handle link recfg set link
  * response event
  * @vdev: vdev object
@@ -355,6 +475,19 @@ ml_link_recfg_sm_lock_release(struct wlan_mlo_dev_context *mldev)
  */
 void mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
 				  uint32_t result);
+
+/**
+ * mlo_link_recfg_get_add_partner_links() - Get current added
+ * partner links
+ * @vdev: vdev object
+ * @ml_partner_info: New added partner links
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_link_recfg_get_add_partner_links(
+		struct wlan_objmgr_vdev *vdev,
+		struct mlo_partner_info *ml_partner_info);
 
 /**
  * mlo_mgr_link_recfg_indication_event_handler() - Handle fw link recfg event
@@ -645,8 +778,32 @@ QDF_STATUS mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 				 uint32_t frame_len);
 
 /**
+ * mlo_link_recfg_link_add_join_req() - handle add link join request
+ * @vdev: vdev pointer
+ *
+ * API to handle add link join request for non-common link case
+ *
+ * Return: qdf status
+ */
+QDF_STATUS
+mlo_link_recfg_link_add_join_req(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_link_recfg_is_start_as_active() - check link start as active state
+ * when vdev is started on the link
+ * @vdev: vdev pointer
+ *
+ * For no-common link cases, L1 -> L2, or L1 L2 -> L3, the added link
+ * has to be active state. The flag will be sent in vdev start.
+ *
+ * Return: true if start the link with active state after vdev started
+ */
+bool mlo_link_recfg_is_start_as_active(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_link_recfg_dialog_token() - Generate dialog token for
  * for Link Reconfiguration action request frame
+ * @recfg_ctx: Link reconfig context pointer
  * @req: mlo link reconfig req pointer
  *
  * API to generate dialog token for Link Reconfiguration
@@ -655,7 +812,8 @@ QDF_STATUS mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
  * Return: uint8_t
  */
 uint8_t
-mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req);
+mlo_link_recfg_dialog_token(struct mlo_link_recfg_context *recfg_ctx,
+			    struct mlo_link_recfg_state_req *req);
 
 /**
  * mlo_link_recfg_ctx_free_ies() -Free link recfg ctx ies
@@ -667,16 +825,110 @@ mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req);
  */
 void
 mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx);
+
+/**
+ * mlo_link_recfg_store_key() -Store unicast key
+ * @ctx: link reconfig ctx pointer
+ * @req: Link recfg request pointer
+ *
+ * API to stote unicast keys during link reconfig addition.
+ *
+ * Return: qdf_status success/fail
+ */
+QDF_STATUS
+mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
+			 struct mlo_link_recfg_state_req *req);
+
+/**
+ * mlo_link_recfg_save_unicast_key() -Save unicast keys for added link
+ * @ctx: link reconfig ctx pointer
+ * @vdev: vdev obj pointer
+ * @link_addr: self link address
+ * @ap_link_addr: AP link address
+ * @link_id: link id
+ *
+ * API to save unicast keys for added link
+ *
+ * Return: qdf_status success/fail
+ */
+QDF_STATUS
+mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
+				struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *link_addr,
+				struct qdf_mac_addr *ap_link_addr,
+				uint8_t link_id);
+/**
+ * mlo_link_recfg_install_unicast_keys() -Install unicast keys for added link
+ * @vdev: vdev obj pointer
+ *
+ * API to install unicast keys for added link
+ *
+ * Return: none
+ */
+void
+mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev);
+
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+/**
+ * mlo_mgr_link_recfg_req_cmd_handler() - Handle link recfg req
+ * from user space
+ * @psoc: psoc object
+ * @req: userspace link recfg command
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_mgr_link_recfg_req_cmd_handler(
+			struct wlan_objmgr_psoc *psoc,
+			struct  mlo_link_recfg_user_req_params *req);
+#endif
 #else
+static inline void
+mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev)
+{
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
+				struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *link_addr,
+				struct qdf_mac_addr *ap_link_addr,
+				uint8_t link_id)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_store_key(struct mlo_link_recfg_context *ctx,
+			 struct mlo_link_recfg_state_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
 static inline void
 mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 {
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
+				 uint8_t resp_status)
+{
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline void
 mlo_link_recfg_set_link_resp(struct wlan_objmgr_vdev *vdev,
 			     uint32_t result)
 {
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_get_add_partner_links(
+		struct wlan_objmgr_vdev *vdev,
+		struct mlo_partner_info *ml_partner_info)
+{
+	return QDF_STATUS_SUCCESS;
 }
 
 static inline QDF_STATUS
@@ -688,7 +940,8 @@ mlo_mgr_link_recfg_indication_event_handler(
 }
 
 static inline uint8_t
-mlo_link_recfg_dialog_token(struct mlo_link_recfg_state_req *req)
+mlo_link_recfg_dialog_token(struct mlo_link_recfg_context *recfg_ctx,
+			    struct mlo_link_recfg_state_req *req)
 {
 	return 0;
 }
@@ -708,6 +961,18 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 		      uint32_t frame_len)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_link_add_join_req(struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline bool
+mlo_link_recfg_is_start_as_active(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
 }
 
 static inline QDF_STATUS

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,7 @@
 #include "target_if_mlo_mgr.h"
 #include <wlan_objmgr_peer_obj.h>
 #include <wlan_mlo_t2lm.h>
+#include <wlan_mlo_link_recfg.h>
 
 /**
  * target_if_mlo_link_set_active_resp_handler() - function to handle mlo link
@@ -1113,6 +1114,8 @@ target_if_send_link_set_bss_params_cmd(struct wlan_objmgr_psoc *psoc,
 	params.chan.ch_cfreq1 = cmd->chan->ch_cfreq1;
 	params.chan.ch_cfreq2 = cmd->chan->ch_cfreq2;
 	params.chan.ch_phymode  = cmd->chan->ch_phymode;
+	params.ap_link_addr = cmd->ap_link_addr;
+	params.self_link_addr = cmd->self_link_addr;
 
 	status = wmi_send_link_set_bss_params_cmd(wmi_handle, &params);
 
@@ -1157,6 +1160,54 @@ QDF_STATUS target_if_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 
 	return wmi_send_mlo_vdev_pause(wmi_handle, info);
 }
+
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+QDF_STATUS
+target_if_send_link_reconfig_req_cmd(struct wlan_objmgr_psoc *psoc,
+				     struct wlan_mlo_link_recfg_req *recfg_req)
+{
+	struct wmi_unified *wmi_handle;
+	uint8_t i;
+	struct wmi_link_reconfig_req_params params = {0};
+
+	if (!psoc) {
+		target_if_err("null psoc");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+	target_if_debug("enter");
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("null handle");
+		return QDF_STATUS_E_FAILURE;
+	}
+	qdf_mem_set(&params, sizeof(params), 0);
+	params.vdev_id = recfg_req->vdev_id;
+	qdf_mem_copy(&params.mld_addr, &recfg_req->mld_addr, QDF_MAC_ADDR_SIZE);
+	params.link_add_param->vdev_id = 0xFF;
+	params.num_link_add_param = recfg_req->add_link_info.num_links;
+	for (i = 0; i < params.num_link_add_param; i++) {
+		params.link_add_param[i].link_id =
+				recfg_req->add_link_info.link[i].link_id;
+		params.link_add_param[i].vdev_id =
+				recfg_req->add_link_info.link[i].vdev_id;
+		qdf_mem_copy(&params.link_add_param[i].link_addr,
+			     &recfg_req->add_link_info.link[i].ap_link_addr,
+			     QDF_MAC_ADDR_SIZE);
+	}
+
+	params.num_link_del_param = recfg_req->del_link_info.num_links;
+
+	for (i = 0; i < params.num_link_del_param; i++) {
+		params.link_del_param[i].link_id =
+				recfg_req->del_link_info.link[i].link_id;
+		qdf_mem_copy(&params.link_del_param[i].link_addr,
+			     &recfg_req->del_link_info.link[i].ap_link_addr,
+			     QDF_MAC_ADDR_SIZE);
+	}
+
+	return wmi_send_link_reconfig_req_cmd(wmi_handle, &params);
+}
+#endif
 
 #ifdef QCA_SUPPORT_PRIMARY_LINK_MIGRATE
 static QDF_STATUS target_if_mlo_send_peer_ptqm_migrate_cmd(
@@ -1245,6 +1296,8 @@ target_if_mlo_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 
 	mlo_tx_ops->send_wsi_link_info_cmd =
 		target_if_mlo_send_wsi_link_info_cmd;
+	mlo_tx_ops->send_link_reconfig_req_params_cmd =
+		target_if_send_link_reconfig_req_cmd;
 
 	target_if_mlo_register_peer_ptqm_migrate_send(mlo_tx_ops);
 	return QDF_STATUS_SUCCESS;

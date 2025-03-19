@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -832,6 +832,20 @@ struct dp_htt_rx_fisa_cfg {
 };
 
 /**
+ * struct dp_mlo_latency_stats - MLO latency stats
+ * @vdev_id: vdev ID
+ * @avg_latency_ms: Avergate latency in ms
+ * @avg_jitter_ms: avg jitter in ms
+ * @num_of_tx_pkt: num tx packets
+ */
+struct dp_mlo_latency_stats {
+	uint8_t vdev_id;
+	uint16_t avg_latency_ms;
+	uint16_t avg_jitter_ms;
+	uint16_t num_of_tx_pkt;
+};
+
+/**
  * htt_htc_pkt_alloc() - Allocate HTC packet buffer
  * @soc:	HTT SOC handle
  *
@@ -1331,5 +1345,16 @@ dp_htt_rxdma_ring_wmask_cfg(struct dp_soc *soc,
 {
 }
 #endif
+
+/**
+ * dp_h2t_tx_mlo_latency_stats_msg_send(): send Tx Latency Stats HTT message
+ * @dp_soc: DP SOC handle
+ * @stats: Stats message
+ *
+ * return: QDF STATUS
+ */
+QDF_STATUS
+dp_h2t_tx_mlo_latency_stats_msg_send(struct dp_soc *dp_soc,
+				     struct dp_mlo_latency_stats *stats);
 
 #endif /* _DP_HTT_H_ */

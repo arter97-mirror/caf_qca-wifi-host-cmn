@@ -1406,6 +1406,7 @@ enum hif_ep_vote_access {
  * @HIF_RTPM_ID_FORCE_WAKE: Force wake request
  * @HIF_RTPM_ID_PM_QOS_NOTIFY:
  * @HIF_RTPM_ID_WIPHY_SUSPEND:
+ * @HIF_RTPM_ID_DP_STC: Datapath ML STC module
  * @HIF_RTPM_ID_MAX: Max id
  */
 enum  hif_rtpm_client_id {
@@ -1419,6 +1420,7 @@ enum  hif_rtpm_client_id {
 	HIF_RTPM_ID_FORCE_WAKE,
 	HIF_RTPM_ID_PM_QOS_NOTIFY,
 	HIF_RTPM_ID_WIPHY_SUSPEND,
+	HIF_RTPM_ID_DP_STC,
 	HIF_RTPM_ID_MAX
 };
 
@@ -3046,8 +3048,14 @@ void hif_affinity_mgr_set_affinity(struct hif_opaque_softc *scn);
  * Return: None
  */
 void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx);
+void hif_flush_delayed_reg_write_work(struct hif_softc *scn);
 #else
 static inline void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx)
+{
+}
+
+static inline void
+hif_flush_delayed_reg_write_work(struct hif_softc *scn)
 {
 }
 #endif

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1710,6 +1710,16 @@ void dp_set_delta_tsf(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      uint32_t delta_tsf);
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+/**
+ * dp_process_ul_delay() - Process UL delay
+ *
+ * @soc_hdl: cdp soc pointer
+ * @vdev_id: vdev id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_process_ul_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id);
+
 /**
  * dp_set_tsf_ul_delay_report() - Enable or disable reporting uplink delay
  * @soc_hdl: cdp soc pointer

@@ -3666,6 +3666,46 @@ static inline void dp_soc_rx_history_detach(struct dp_soc *soc)
 }
 #endif
 
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+/**
+ * dp_soc_tx_mon_buf_ring_history_attach() - Allocate memory for TX monitor
+ *                                           buffer ring record history
+ * @soc: DP soc handle
+ *
+ * Return: None
+ */
+static void dp_soc_tx_mon_buf_ring_history_attach(struct dp_soc *soc)
+{
+	soc->tx_mon_buf_ring_history =
+			dp_context_alloc_mem(
+				soc, DP_TX_MON_BUF_HIST_TYPE,
+				sizeof(struct dp_tx_mon_buf_ring_history));
+	if (!soc->tx_mon_buf_ring_history)
+		dp_err("Failed to alloc memory for tx mon buf ring history");
+}
+
+/**
+ * dp_soc_tx_mon_buf_ring_history_detach() - Free memory for TX monitor buffer
+ *                                           ring record history
+ * @soc: DP soc handle
+ *
+ * Return: None
+ */
+static void dp_soc_tx_mon_buf_ring_history_detach(struct dp_soc *soc)
+{
+	dp_context_free_mem(soc, DP_TX_MON_BUF_HIST_TYPE,
+			    soc->tx_mon_buf_ring_history);
+}
+#else
+static void dp_soc_tx_mon_buf_ring_history_attach(struct dp_soc *soc)
+{
+}
+
+static void dp_soc_tx_mon_buf_ring_history_detach(struct dp_soc *soc)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_DP_MON_STATUS_RING_HISTORY
 /**
  * dp_soc_mon_status_ring_history_attach() - Attach the monitor status
@@ -4383,6 +4423,7 @@ static void dp_soc_detach(struct cdp_soc_t *txrx_soc)
 	wlan_cfg_soc_detach(soc->wlan_cfg_ctx);
 	dp_soc_tx_hw_desc_history_detach(soc);
 	dp_soc_tx_history_detach(soc);
+	dp_soc_tx_mon_buf_ring_history_detach(soc);
 	dp_soc_mon_status_ring_history_detach(soc);
 	dp_soc_rx_history_detach(soc);
 	dp_soc_cfg_history_detach(soc);
@@ -5079,6 +5120,29 @@ dp_wds_ext_ap_bridge_init(struct dp_vdev *vdev)
 }
 #endif
 
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+static inline void
+dp_ul_delay_lock_create(struct dp_vdev *vdev)
+{
+	qdf_spinlock_create(&vdev->ul_delay_lock);
+}
+
+static inline void
+dp_ul_delay_lock_destroy(struct dp_vdev *vdev)
+{
+	qdf_spinlock_destroy(&vdev->ul_delay_lock);
+}
+#else
+static inline void
+dp_ul_delay_lock_create(struct dp_vdev *vdev)
+{
+}
+
+static inline void
+dp_ul_delay_lock_destroy(struct dp_vdev *vdev)
+{
+}
+#endif
 /**
  * dp_vdev_attach_wifi3() - attach txrx vdev
  * @cdp_soc: CDP SoC context
@@ -5168,6 +5232,7 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 	 * TCL descriptors for packets transmitted from this VDEV
 	 */
 
+	dp_ul_delay_lock_create(vdev);
 	qdf_spinlock_create(&vdev->peer_list_lock);
 	TAILQ_INIT(&vdev->peer_list);
 	dp_peer_multipass_list_init(vdev);
@@ -6340,22 +6405,48 @@ QDF_STATUS dp_peer_legacy_setup(struct dp_soc *soc, struct dp_peer *peer)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+static inline void
+dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+	if (!prev_vdev || !curr_vdev)
+		return;
+
+	if (qdf_atomic_read(&prev_vdev->latency_stats.enable_report)) {
+		curr_vdev->latency_stats.report_interval =
+			prev_vdev->latency_stats.report_interval;
+		dp_enable_ul_delay(curr_vdev, UL_DELAY_CALC_ID_FW, true);
+		qdf_atomic_set(&curr_vdev->latency_stats.enable_report, true);
+
+		qdf_atomic_set(&prev_vdev->latency_stats.enable_report, false);
+		dp_enable_ul_delay(prev_vdev, UL_DELAY_CALC_ID_FW, false);
+		dp_info("change reporting vdev from %d to %d",
+			prev_vdev->vdev_id, curr_vdev->vdev_id);
+	}
+}
+#else
+static inline void
+dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+}
+#endif
+
 static QDF_STATUS dp_mld_peer_change_vdev(struct dp_soc *soc,
 					  struct dp_peer *mld_peer,
 					  uint8_t new_vdev_id)
 {
-	struct dp_vdev *prev_vdev;
+	struct dp_vdev *prev_vdev = mld_peer->vdev;
 
-	prev_vdev = mld_peer->vdev;
-	/* release the ref to original dp_vdev */
-	dp_vdev_unref_delete(soc, mld_peer->vdev,
-			     DP_MOD_ID_CHILD);
 	/*
 	 * get the ref to new dp_vdev,
 	 * increase dp_vdev ref_cnt
 	 */
 	mld_peer->vdev = dp_vdev_get_ref_by_id(soc, new_vdev_id,
 					       DP_MOD_ID_CHILD);
+
+	dp_update_mlo_latency_request_vdev(prev_vdev, mld_peer->vdev);
 	mld_peer->txrx_peer->vdev = mld_peer->vdev;
 
 	dp_info("Change vdev for ML peer " QDF_MAC_ADDR_FMT
@@ -6366,6 +6457,9 @@ static QDF_STATUS dp_mld_peer_change_vdev(struct dp_soc *soc,
 	dp_cfg_event_record_mlo_setup_vdev_update_evt(
 			soc, mld_peer, prev_vdev,
 			mld_peer->vdev);
+
+	/* release the ref to original dp_vdev */
+	dp_vdev_unref_delete(soc, prev_vdev, DP_MOD_ID_CHILD);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -6875,6 +6969,7 @@ void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 
 free_vdev:
 	qdf_spinlock_destroy(&vdev->peer_list_lock);
+	dp_ul_delay_lock_destroy(vdev);
 
 	qdf_spin_lock_bh(&soc->inactive_vdev_list_lock);
 	TAILQ_FOREACH(tmp_vdev, &soc->inactive_vdev_list,
@@ -11255,12 +11350,13 @@ QDF_STATUS dp_get_avg_ul_jitter(struct cdp_soc_t *soc_handle,
 		 jitter_accum, pkts_accum);
 
 	/* Print UL delay jitter histogram */
-	dp_print_tsf_tx_delay_hist(&vdev->stats.tx.hwtx_jitter_tsf, UL_JITTER);
+	dp_print_tsf_tx_delay_hist(&vdev->stats.tx.hwtx_ul_jitter_tsf,
+				   UL_JITTER);
 
 	/* Reset accumulated values to 0 */
 	qdf_atomic_set(&vdev->ul_jitter_accum, 0);
 	qdf_atomic_set(&vdev->ul_jitter_pkts_accum, 0);
-	qdf_mem_zero(&vdev->stats.tx.hwtx_jitter_tsf,
+	qdf_mem_zero(&vdev->stats.tx.hwtx_ul_jitter_tsf,
 		     sizeof(struct cdp_hist_stats));
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
@@ -13861,6 +13957,9 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 	.tx_latency_stats_config = dp_tx_latency_stats_config,
 	.tx_latency_stats_register_cb = dp_tx_latency_stats_register_cb,
 #endif
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+	.txrx_process_ul_delay = dp_process_ul_delay,
+#endif
 	/* TODO */
 };
 
@@ -15019,6 +15118,7 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 	dp_soc_tx_hw_desc_history_attach(soc);
 	dp_soc_rx_history_attach(soc);
 	dp_soc_mon_status_ring_history_attach(soc);
+	dp_soc_tx_mon_buf_ring_history_attach(soc);
 	dp_soc_tx_history_attach(soc);
 	dp_soc_msdu_done_fail_desc_list_attach(soc);
 	dp_soc_msdu_done_fail_history_attach(soc);

@@ -605,7 +605,6 @@ enum number_of_partner_link {
  * @is_hidden_ssid: is AP having hidden ssid.
  * @security_type: security supported
  * @seq_num: sequence number
- * @is_non_tx_mbssid_gen: is locally generated non tx mbssid scan entry
  * @is_gen_entry: is locally generated scan entry
  * @reserved: reserved
  * @phy_mode: Phy mode of the AP
@@ -647,6 +646,7 @@ enum number_of_partner_link {
  * @mlo_max_recom_simult_links: Max recommended simultaneous link
  * @non_intersected_phymode: Non intersected phy mode of the AP
  * @recv_freq: Frequency on which the frame is received
+ * @ap_pwr_type_6g: 6GHz AP power type
  */
 struct scan_cache_entry {
 	uint8_t frm_subtype;
@@ -656,9 +656,8 @@ struct scan_cache_entry {
 	bool is_hidden_ssid;
 	uint8_t security_type;
 	uint16_t seq_num;
-	uint8_t is_non_tx_mbssid_gen:1,
-		is_gen_entry:1,
-		reserved:6;
+	uint8_t is_gen_entry:1,
+		reserved:7;
 	enum wlan_phymode phy_mode;
 	int32_t avg_rssi;
 	int8_t rssi_raw;
@@ -706,6 +705,7 @@ struct scan_cache_entry {
 #endif
 	enum wlan_phymode non_intersected_phymode;
 	uint32_t recv_freq;
+	uint8_t ap_pwr_type_6g;
 };
 
 #define MAX_FAVORED_BSSID 16

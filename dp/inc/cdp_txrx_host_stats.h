@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1577,4 +1577,33 @@ cdp_host_tx_latency_stats_register_cb(ol_txrx_soc_handle soc,
 	return soc->ops->host_stats_ops->tx_latency_stats_register_cb(soc, cb);
 }
 #endif
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+/**
+ * cdp_process_ul_delay() - Process UL delay
+ * @soc: SOC TXRX handle
+ * @vdev_id: vdev id
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid SOC instance");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_process_ul_delay)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_process_ul_delay(soc, vdev_id);
+}
+#else
+static inline QDF_STATUS
+cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 #endif /* _CDP_TXRX_HOST_STATS_H_ */

@@ -129,7 +129,6 @@ uint32_t dp_rx_srng_get_num_pending(hal_soc_handle_t hal_soc,
 	return num_pending;
 }
 
-#ifdef RX_DESC_DEBUG_CHECK
 QDF_STATUS dp_rx_desc_nbuf_sanity_check(struct dp_soc *soc,
 					hal_ring_desc_t ring_desc,
 					struct dp_rx_desc *rx_desc)
@@ -144,6 +143,7 @@ QDF_STATUS dp_rx_desc_nbuf_sanity_check(struct dp_soc *soc,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef RX_DESC_DEBUG_CHECK
 /**
  * dp_rx_desc_nbuf_len_sanity_check - Add sanity check to catch Rx buffer
  *				      out of bound access from H.W

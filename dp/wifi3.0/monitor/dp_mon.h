@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -128,6 +128,30 @@ static const uint8_t encrypt_map[11] = {
 	cdp_sec_type_aes_gcmp,
 	cdp_sec_type_aes_gcmp_256
 };
+
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+/**
+ * dp_tx_mon_buf_ring_record_entry() - Record an entry into TX monitor buffer
+ *                                     ring history
+ * @soc: Datapath soc structure
+ * @hal_ring_hdl:
+ * @num_req: number of buffers requested for refill
+ * @num_refill: number of buffers refilled
+ *
+ * Return: None
+ */
+void
+dp_tx_mon_buf_ring_record_entry(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+				uint32_t num_req, uint32_t num_refill);
+#else
+static inline void
+dp_tx_mon_buf_ring_record_entry(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+				uint32_t num_req, uint32_t num_refill)
+{
+}
+#endif
 
 #ifndef WLAN_TX_PKT_CAPTURE_ENH
 static inline void
@@ -1152,6 +1176,11 @@ struct dp_mon_mac {
 	qdf_spinlock_t lpc_lock;
 	/* LPC/COC mode stats */
 	struct cdp_mon_lpc_coc_stats lpc_coc_stats;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	uint16_t peer_id;
+	uint16_t beacon_interval;
+	uint16_t nth_beacon;
+#endif
 #endif
 };
 
@@ -1178,6 +1207,9 @@ struct  dp_mon_pdev {
 	uint16_t mo_ctrl_filter;
 	uint16_t mo_data_filter;
 	uint16_t md_data_filter;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	struct dp_mon_subfilter fp_subfilter;
+#endif
 
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 	struct dp_pdev_tx_capture tx_capture;
@@ -5417,4 +5449,31 @@ dp_convert_enc_to_cdp_enc(struct mon_rx_user_status *rx_user_status,
 QDF_STATUS
 dp_pdev_set_mu_sniffer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		       uint32_t mode);
+
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+
+/*
+ * dp_mon_update_nth_beacon() Calculates the value of nth beacon
+ * @pdev: Pointer to data path physical device object
+ *
+ * Return: none
+ */
+static inline void
+dp_mon_update_nth_beacon(struct dp_pdev *pdev)
+{
+	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, 0);
+	struct dp_mon_subfilter *filter = &pdev->monitor_pdev->fp_subfilter;
+
+	if (mon_mac->beacon_interval &&
+	    filter->connected_beacon_interval > mon_mac->beacon_interval) {
+		mon_mac->nth_beacon = (filter->connected_beacon_interval /
+				       mon_mac->beacon_interval) - 1;
+	}
+}
+#else
+static inline void
+dp_mon_update_nth_beacon(struct dp_pdev *pdev)
+{
+}
+#endif
 #endif /* _DP_MON_H_ */

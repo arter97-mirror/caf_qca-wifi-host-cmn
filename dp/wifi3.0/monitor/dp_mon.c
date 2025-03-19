@@ -57,6 +57,34 @@
 #define DP_UNDECODED_ERR_LENGTH (MAX_STRING_LEN_PER_FIELD * CDP_PHYRX_ERR_MAX)
 #endif
 
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+void
+dp_tx_mon_buf_ring_record_entry(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+				uint32_t num_req, uint32_t num_refill)
+{
+	struct dp_tx_mon_buf_info_record *record;
+	uint32_t idx;
+	uint32_t tp;
+	uint32_t hp;
+
+	if (qdf_unlikely(!soc->tx_mon_buf_ring_history))
+		return;
+
+	idx = dp_history_get_next_index(&soc->tx_mon_buf_ring_history->index,
+					DP_TX_MON_BUF_HIST_MAX);
+
+	record = &soc->tx_mon_buf_ring_history->entry[idx];
+
+	hal_get_sw_hptp(soc->hal_soc, hal_ring_hdl, &tp, &hp);
+	record->timestamp = qdf_get_log_timestamp();
+	record->num_req = num_req;
+	record->num_refill = num_refill;
+	record->hp = hp;
+	record->tp = tp;
+}
+#endif
+
 #ifdef QCA_MCOPY_SUPPORT
 static inline void
 dp_pdev_disable_mcopy_code(struct dp_pdev *pdev)

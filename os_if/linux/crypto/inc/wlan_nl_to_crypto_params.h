@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -46,6 +46,19 @@ osif_nl_to_crypto_auth_type(enum nl80211_auth_type auth_type);
  * Return: crypto akm type
  */
 wlan_crypto_key_mgmt osif_nl_to_crypto_akm_type(u32 key_mgmt);
+
+/**
+ * osif_crypto_to_nl_suites() - populate akm_suite for crypto
+ * akm type
+ * @crypto_akm_type: WMI crypto type
+ *
+ * set the akm_suite for corresponding crypto_akm_type type
+ * received from NL
+ *
+ * Return: akm_suite type
+ */
+uint32_t
+osif_crypto_to_nl_suites(wlan_crypto_key_mgmt crypto_akm_type);
 
 /**
  * osif_nl_to_crypto_cipher_type() - populate cipher type for crypto

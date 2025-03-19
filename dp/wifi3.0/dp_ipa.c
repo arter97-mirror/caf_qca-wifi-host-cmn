@@ -2962,8 +2962,8 @@ static void dp_ipa_set_rx_alt_pipe_db(struct dp_ipa_resources *res,
 
 	res->rx_alt_ready_doorbell_paddr =
 			QDF_IPA_WDI_CONN_OUT_PARAMS_RX_ALT_UC_DB_PA(out);
-	dp_debug("Setting DB 0x%x for RX alt pipe",
-		 res->rx_alt_ready_doorbell_paddr);
+	dp_debug("Setting DB 0x%llx for RX alt pipe",
+		 (uint64_t)res->rx_alt_ready_doorbell_paddr);
 }
 #else
 static inline

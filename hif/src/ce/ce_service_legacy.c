@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1300,7 +1300,8 @@ static void ce_legacy_msi_param_setup(struct hif_softc *scn, uint32_t ctrl_addr,
 	tmp |= (addr_high & CE_RING_BASE_ADDR_HIGH_MASK);
 	CE_MSI_ADDR_HIGH_SET(scn, ctrl_addr, tmp);
 	CE_MSI_DATA_SET(scn, ctrl_addr, irq_id + msi_data_start);
-	CE_MSI_EN_SET(scn, ctrl_addr);
+	if (!hif_ce_cmn_cfg_supported(scn))
+		CE_MSI_EN_SET(scn, ctrl_addr);
 }
 
 static void ce_legacy_src_intr_thres_setup(struct hif_softc *scn,
@@ -1411,11 +1412,13 @@ static void ce_legacy_src_ring_setup(struct hif_softc *scn, uint32_t ce_id,
 					ctrl_addr, (uint32_t)dma_addr);
 	}
 	CE_SRC_RING_SZ_SET(scn, ctrl_addr, src_ring->nentries);
-	CE_SRC_RING_DMAX_SET(scn, ctrl_addr, attr->src_sz_max);
+	if (!hif_ce_cmn_cfg_supported(scn)) {
+		CE_SRC_RING_DMAX_SET(scn, ctrl_addr, attr->src_sz_max);
 #ifdef BIG_ENDIAN_HOST
-	/* Enable source ring byte swap for big endian host */
-	CE_SRC_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
+		/* Enable source ring byte swap for big endian host */
+		CE_SRC_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
 #endif
+	}
 	CE_SRC_RING_LOWMARK_SET(scn, ctrl_addr, 0);
 	CE_SRC_RING_HIGHMARK_SET(scn, ctrl_addr, src_ring->nentries);
 
@@ -1461,11 +1464,11 @@ static void ce_legacy_dest_ring_setup(struct hif_softc *scn, uint32_t ce_id,
 		CE_DEST_RING_BASE_ADDR_HIGH_SET(scn,
 				ctrl_addr, (uint32_t)dma_addr);
 	}
-
 	CE_DEST_RING_SZ_SET(scn, ctrl_addr, dest_ring->nentries);
 #ifdef BIG_ENDIAN_HOST
 	/* Enable Dest ring byte swap for big endian host */
-	CE_DEST_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
+	if (!hif_ce_cmn_cfg_supported(scn))
+		CE_DEST_RING_BYTE_SWAP_SET(scn, ctrl_addr, 1);
 #endif
 	CE_DEST_RING_LOWMARK_SET(scn, ctrl_addr, 0);
 	CE_DEST_RING_HIGHMARK_SET(scn, ctrl_addr, dest_ring->nentries);
@@ -1600,7 +1603,115 @@ static void ce_prepare_shadow_register_v3_cfg_legacy(struct hif_softc *scn,
 				     num_shadow_registers_configured);
 }
 #endif
+#ifdef CE_CMN_REG_CFG_QMI
+/**
+ * prepare_ce_ctrl1_reg_host_cfg_legacy() - Prepare CE CTRL1 config for host
+ *
+ * @scn: HIF context
+ * @host_ce_cmn_reg_cfg_ret: copy engine common register configuration table.
+ * @host_ce_cmn_reg_num_ret: number of the ce common register configuration,
+ * also acting as current index for the common ce register configuration table.
+ * Return: return by parameter.
+ */
+static void prepare_ce_ctrl1_reg_host_cfg_legacy(
+	struct hif_softc *scn,
+	struct CE_cmn_register_config **host_ce_cmn_reg_cfg_ret,
+	uint32_t *host_ce_cmn_reg_num_ret)
+{
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	uint32_t final_offset;
+	struct CE_attr *attr;
+	uint32_t final_value;
+	uint32_t final_mask;
+	uint32_t ce_id;
+	uint32_t ce_cfg_idx = *host_ce_cmn_reg_num_ret;
+	/* Traverse through the ce configuration and set the values*/
+	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
+		attr = &hif_state->host_ce_config[ce_id];
+		final_offset =
+			CE_CTRL1_ADDRESS +
+			(CE1_BASE_ADDRESS - CE0_BASE_ADDRESS) * ce_id;
+		final_value  = 0;
+		final_mask   = 0;
+		if (attr->src_nentries) {
+			/* Src ce */
+			final_mask =
+				(CE_CTRL1_DMAX_LENGTH_MASK) |
+				(CE_MSI_ENABLE_BIT) |
+				(CE_CTRL1_IDX_UPD_EN);
+			final_value =
+				(attr->src_sz_max << CE_CTRL1_DMAX_LENGTH_LSB) |
+				(CE_CTRL1_IDX_UPD_EN) |
+				(CE_MSI_ENABLE_BIT);
+#ifdef BIG_ENDIAN_HOST
+			final_mask  |= CE_CTRL1_SRC_RING_BYTE_SWAP_EN_MASK;
+			final_value |= 1 << CE_CTRL1_SRC_RING_BYTE_SWAP_EN_LSB;
+#endif
+		} else if (attr->dest_nentries) {
+			/* dest  ce*/
+			final_mask = CE_MSI_ENABLE_BIT | CE_CTRL1_IDX_UPD_EN;
+			final_value = CE_CTRL1_IDX_UPD_EN | CE_MSI_ENABLE_BIT;
+#ifdef BIG_ENDIAN_HOST
+			final_mask  |= CE_CTRL1_DST_RING_BYTE_SWAP_EN_MASK;
+			final_value |= 1 << CE_CTRL1_DST_RING_BYTE_SWAP_EN_LSB;
+#endif
+		} else {
+			/*not a src/dest ce*/
+			continue;
+		}
+		(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].offset = final_offset;
+		(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].mask = final_mask;
+		(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].value = final_value;
+		hif_info(
+				"CE CTRL1 reg cfg CE No. %d offset %#x mask %#x value %#x",
+				ce_id,
+				(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].offset,
+				(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].mask,
+				(*host_ce_cmn_reg_cfg_ret)[ce_cfg_idx].value);
+		ce_cfg_idx++;
+	}
+	*host_ce_cmn_reg_num_ret = ce_cfg_idx;
+}
 
+/**
+ * ce_prepare_cmn_reg_cfg_legacy() - Prepare CE common registers config
+ * @scn: HIF context
+ * @host_ce_cmn_reg_cfg_ret: copy engine common register configuration table.
+ * @host_ce_cmn_reg_num_ret: number of the ce common register configuration.
+ * Also acts as the current index for the common ce register configuration
+ * table.
+ * Return: 0 on success.
+ */
+static int ce_prepare_cmn_reg_cfg_legacy(
+		struct hif_softc *scn,
+		struct CE_cmn_register_config **host_ce_cmn_reg_cfg_ret,
+		uint32_t *host_ce_cmn_reg_num_ret)
+{
+	uint32_t ce_valid_cfg;
+	uint32_t ce_cmn_reg_count;
+	/* Call api to get the ce src and dest number count
+	 *(which host configures)
+	 */
+	ce_valid_cfg = hif_get_num_ce_src_dest_valid(scn);
+	/* Get number of common register bw fw and host*/
+	ce_cmn_reg_count = hif_get_common_reg_per_ce(scn);
+	/* Dynamically allocate memory for number of src and dest copy engines*/
+	*host_ce_cmn_reg_cfg_ret =
+		(struct CE_cmn_register_config *)qdf_mem_malloc(ce_valid_cfg *
+		 ce_cmn_reg_count *
+		 sizeof(struct CE_cmn_register_config));
+	if (!(*host_ce_cmn_reg_cfg_ret)) {
+		hif_err("Memory allocation failed for CE common register config table");
+		return -ENOMEM;
+	}
+	prepare_ce_ctrl1_reg_host_cfg_legacy(
+		scn,
+		host_ce_cmn_reg_cfg_ret,
+		host_ce_cmn_reg_num_ret);
+
+	return 0;
+}
+#endif /* CE_CMN_REG_CFG_QMI */
 struct ce_ops ce_service_legacy = {
 	.ce_get_desc_size = ce_get_desc_size_legacy,
 	.ce_ring_setup = ce_ring_setup_legacy,
@@ -1624,6 +1735,9 @@ struct ce_ops ce_service_legacy = {
 #ifdef CONFIG_SHADOW_V3
 	.ce_prepare_shadow_register_v3_cfg =
 		ce_prepare_shadow_register_v3_cfg_legacy,
+#endif
+#ifdef CE_CMN_REG_CFG_QMI
+	.ce_prepare_cmn_reg_cfg = ce_prepare_cmn_reg_cfg_legacy,
 #endif
 };
 

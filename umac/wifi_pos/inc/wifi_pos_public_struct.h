@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,8 +26,11 @@
 #include "qdf_status.h"
 #include "qdf_trace.h"
 #include <wlan_cmn.h>
+#include "wlan_cmn_ieee80211.h"
 
 #define WLAN_MAX_11AZ_PEERS 16
+#define WLAN_11AZ_MAX_PASSPHRASE_LEN 64
+#define WLAN_PASN_MAX_COOKIE_LEN 255
 
 /**
  * enum wifi_pos_pasn_peer_type  - PASN peer type
@@ -84,8 +87,19 @@ enum wlan_responder_mode {
  * @force_self_mac_usage: If this flag is true, the supplicant
  * should use the provided self mac address
  * @is_ltf_keyseed_required: Is set LTF keyseed required
+ * @password_len: Len of password array
+ * @password: The password specified will be used to generate PMKID
+ * @pmkid_len: Len of pmkid array
+ * @pmkid: pmkid used for cached pmksa authentication
+ * @cookie_len: Len of cookie array
+ * @cookie: In case AP refused PASN temporarily, cookie act as token
+ * in PASN rety
+ * @comeback_after: u16 attribute, indicate that PASN can be tried
+ * after that much time in case AP refused PASN temporarily
  * @control_flags: Control flags to indicate if its required to flush
  * the keys
+ * @akm: used - should be either PASN or PASN + SAE
+ * @cipher: Indicates the key cipher suite
  */
 struct wlan_pasn_request {
 	struct qdf_mac_addr peer_mac;
@@ -93,7 +107,15 @@ struct wlan_pasn_request {
 	struct qdf_mac_addr self_mac;
 	bool force_self_mac_usage;
 	bool is_ltf_keyseed_required;
+	uint32_t password_len;
+	uint8_t password[WLAN_11AZ_MAX_PASSPHRASE_LEN];
+	uint32_t pmkid_len;
+	uint8_t pmkid[PMKID_LEN];
+	uint32_t cookie_len;
+	uint8_t cookie[WLAN_PASN_MAX_COOKIE_LEN];
 	uint16_t control_flags;
+	uint32_t akm;
+	uint32_t cipher;
 };
 
 /**
@@ -138,6 +160,7 @@ struct wifi_pos_vdev_priv_obj {
  * with failure status.
  * @WLAN_PASN_AUTH_STATUS_PEER_ALREADY_EXISTS: Peer already exists
  * @WLAN_PASN_AUTH_STATUS_HOST_INTERNAL_ERROR: WLAN driver internal error
+ * @WLAN_PASN_AUTH_STATUS_PEER_COMEBACK: Ap rejected PASN+SAE temporarily
  */
 enum wlan_pasn_auth_status_code {
 	WLAN_PASN_AUTH_STATUS_SUCCESS = 0,
@@ -145,18 +168,30 @@ enum wlan_pasn_auth_status_code {
 	WLAN_PASN_AUTH_STATUS_PEER_CREATE_FAILED = 2,
 	WLAN_PASN_AUTH_STATUS_PEER_ALREADY_EXISTS = 3,
 	WLAN_PASN_AUTH_STATUS_HOST_INTERNAL_ERROR = 4,
+	WLAN_PASN_AUTH_STATUS_PEER_COMEBACK = 5,
 };
 
+#define WLAN_PASN_MAX_COOKIE_LEN 255
 /**
  * struct wlan_pasn_auth_status_peer_info - PASN authentication status peer
  * info
  * @peer_mac: Peer mac address
  * @self_mac: Self mac address
+ * @cookie_len: length of cookie array
+ * @cookie: Cookie value
+ * @comeback_after: Comeback timer
+ * @akm: akm suite
+ * @cipher: cipher suite
  * @status: PASN auth status code
  */
 struct wlan_pasn_auth_status_peer_info {
 	struct qdf_mac_addr peer_mac;
 	struct qdf_mac_addr self_mac;
+	uint32_t cookie_len;
+	uint8_t cookie[WLAN_PASN_MAX_COOKIE_LEN];
+	uint16_t comeback_after;
+	uint32_t akm;
+	uint32_t cipher;
 	enum wlan_pasn_auth_status_code status;
 };
 

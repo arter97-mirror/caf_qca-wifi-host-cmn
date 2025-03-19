@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -508,6 +508,8 @@ typedef struct {
  *                           packet wakeup count
  * @wow_ipv6_mcast_na_stats: wow ipv6 multicast address space
  *                           packet wakeup count
+ * @wow_ipv6_mcast_mlq_stats: wow ipv6 multicast listener query
+ *			      packet wakeup count
  * @wow_pno_match_wake_up_count: wow preferred network offload match
  *                           packet wakeup count
  * @wow_pno_complete_wake_up_count: wow preferred network offload complete
@@ -533,6 +535,7 @@ struct host_event_wlan_powersave_wow_stats {
 	uint32_t    wow_ipv6_mcast_ra_stats;
 	uint32_t    wow_ipv6_mcast_ns_stats;
 	uint32_t    wow_ipv6_mcast_na_stats;
+	uint32_t    wow_ipv6_mcast_mlq_stats;
 	uint32_t    wow_pno_match_wake_up_count;
 	uint32_t    wow_pno_complete_wake_up_count;
 	uint32_t    wow_gscan_wake_up_count;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1291,6 +1291,7 @@ struct cdp_mon_ops {
  * @tx_latency_stats_fetch: fetch tx latency stats for specified link
  * mac address
  * @tx_latency_stats_register_cb: register tx latency stats callback
+ * @txrx_process_ul_delay: Process UL delay
  */
 struct cdp_host_stats_ops {
 	int (*txrx_host_stats_get)(struct cdp_soc_t *soc, uint8_t vdev_id,
@@ -1534,6 +1535,10 @@ struct cdp_host_stats_ops {
 					     struct cdp_tx_latency *latency);
 	QDF_STATUS (*tx_latency_stats_register_cb)(struct cdp_soc_t *soc,
 						   cdp_tx_latency_cb cb);
+#endif
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+	QDF_STATUS (*txrx_process_ul_delay)(struct cdp_soc_t *soc,
+					    uint8_t vdev_id);
 #endif
 };
 

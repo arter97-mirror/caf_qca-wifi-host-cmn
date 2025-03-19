@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -40,6 +40,7 @@
 #include "wlan_cm_bss_score_param.h"
 #include "qdf_str.h"
 #include "wmi_unified_param.h"
+#include "wlan_mlme_api.h"
 
 #define DEFAULT_WORLD_REGDMN 0x60
 #define FCC3_FCCA 0x3A
@@ -412,8 +413,8 @@ QDF_STATUS reg_check_if_6g_pwr_type_supp_for_chan(
 
 	sup_idx = reg_convert_enum_to_6g_idx(chan_idx);
 	if (sup_idx >= NUM_6GHZ_CHANNELS) {
-		reg_err("sup_idx: %d, chan idx: %d, Invalid channel", sup_idx,
-			chan_idx);
+		reg_err_rl("sup_idx: %d, chan idx: %d, Invalid channel",
+			   sup_idx, chan_idx);
 		return QDF_STATUS_E_NOSUPPORT;
 	}
 
@@ -424,15 +425,16 @@ QDF_STATUS reg_check_if_6g_pwr_type_supp_for_chan(
 	super_chan_list = pdev_priv_obj->super_chan_list;
 	chan_state_arr = super_chan_list[sup_idx].state_arr;
 	chan_flags_arr = super_chan_list[sup_idx].chan_flags_arr;
-	reg_debug("6G channel state: %d, channel flags: %d",
-		  chan_state_arr[cli_pwr_type], chan_flags_arr[cli_pwr_type]);
+	reg_debug_rl("6G channel state: %d, channel flags: %d",
+		     chan_state_arr[cli_pwr_type],
+		     chan_flags_arr[cli_pwr_type]);
 	if (reg_is_state_allowed(chan_state_arr[cli_pwr_type]) &&
 	    !(chan_flags_arr[cli_pwr_type] & REGULATORY_CHAN_DISABLED))
 		return QDF_STATUS_SUCCESS;
 
 no_support:
-	reg_err("6 GHz power type = %d not supported for 6 GHz channel idx = %d",
-		cli_pwr_type, sup_idx);
+	reg_err_rl("6 GHz power type = %d not supported for 6 GHz channel idx = %d",
+		   cli_pwr_type, sup_idx);
 	return QDF_STATUS_E_NOSUPPORT;
 }
 
@@ -443,15 +445,13 @@ no_support:
  * @pwr_type_6g: 6 GHz power type pointer
  * @chan_idx: Channel index
  * @rf_mode_force_pwr_type: Force power type for RF mode enabled
+ * @ap_pwr_type: AP power type
  *
  * Force connection power type for RF test mode enabled case as below.
  * RF test mode force power type value-> Reg power type
  * 0 -> REG_INDOOR_AP
  * 1 -> REG_STANDARD_POWER_AP
  * 2 -> REG_VERY_LOW_POWER_AP
- *
- * Force REG_INDOOR_AP power type if forced power type is not
- * supported for connection frequency
  *
  * Return: Return QDF_STATUS_SUCCESS if connection power type found else
  * return QDF_STATUS_E_NOSUPPORT.
@@ -461,7 +461,8 @@ QDF_STATUS reg_get_best_6g_power_type_for_rf_test(
 			struct wlan_objmgr_pdev *pdev,
 			enum reg_6g_ap_type *pwr_type_6g,
 			enum channel_enum chan_idx,
-			int8_t rf_mode_force_pwr_type)
+			int8_t rf_mode_force_pwr_type,
+			enum reg_6g_ap_type ap_pwr_type)
 {
 	enum reg_6g_ap_type force_reg_pwr_type;
 
@@ -474,23 +475,24 @@ QDF_STATUS reg_get_best_6g_power_type_for_rf_test(
 	else
 		return QDF_STATUS_E_NOSUPPORT;
 
+	if (ap_pwr_type >= REG_INDOOR_AP &&
+	    ap_pwr_type <= REG_VERY_LOW_POWER_AP &&
+	    ap_pwr_type != force_reg_pwr_type)
+		goto error;
+
 	if (QDF_IS_STATUS_SUCCESS(reg_check_if_6g_pwr_type_supp_for_chan(
 				pdev, force_reg_pwr_type, chan_idx))) {
-		reg_debug("RF test mode force power type: %d, selected power type: %d",
-			  rf_mode_force_pwr_type, force_reg_pwr_type);
+		reg_debug_rl("RF test mode force power type: %d, selected power type: %d",
+			     rf_mode_force_pwr_type, force_reg_pwr_type);
 		*pwr_type_6g = force_reg_pwr_type;
-		return QDF_STATUS_SUCCESS;
-	} else if (rf_mode_force_pwr_type && QDF_IS_STATUS_SUCCESS(
-			reg_check_if_6g_pwr_type_supp_for_chan(
-					pdev, REG_INDOOR_AP, chan_idx))) {
-		reg_info("RF test mode force power type: %d, selected power type: %d",
-			 rf_mode_force_pwr_type, REG_INDOOR_AP);
-		*pwr_type_6g = REG_INDOOR_AP;
 		return QDF_STATUS_SUCCESS;
 	}
 
-	reg_err("For RF test mode force power type : %d, no suitable power mode present.",
-		rf_mode_force_pwr_type);
+error:
+	reg_err_rl("AP power type = %d, RF mode power type %s, connection not supported",
+		   ap_pwr_type,
+		   rf_mode_force_pwr_type == 0 ? "LPI" :
+		   rf_mode_force_pwr_type == 1 ? "SP" : "VLP");
 	return QDF_STATUS_E_NOSUPPORT;
 }
 
@@ -537,15 +539,25 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 			   struct wlan_objmgr_pdev *pdev,
 			   enum reg_6g_ap_type *pwr_type_6g,
 			   enum reg_6g_ap_type ap_pwr_type,
-			   uint32_t chan_freq,
-			   int8_t rf_mode_force_pwr_type)
+			   uint32_t chan_freq)
 {
 	enum channel_enum chan_idx = reg_get_chan_enum_for_freq(chan_freq);
+	int8_t rf_mode_force_pwr_type;
+	QDF_STATUS status;
 
-	if (rf_mode_force_pwr_type > -1)
+	status = wlan_mlme_get_rf_mode_force_pwr_type(psoc,
+						      &rf_mode_force_pwr_type);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		reg_err("Get rf test mode power type failed");
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	if (rf_mode_force_pwr_type > RF_MODE_FORCE_PWR_TYPE_MIN &&
+	    rf_mode_force_pwr_type <= RF_MODE_FORCE_PWR_TYPE_MAX)
 		return reg_get_best_6g_power_type_for_rf_test(
 						pdev, pwr_type_6g, chan_idx,
-						rf_mode_force_pwr_type);
+						rf_mode_force_pwr_type,
+						ap_pwr_type);
 
 	*pwr_type_6g = ap_pwr_type;
 
@@ -562,8 +574,8 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 			reg_check_if_6g_pwr_type_supp_for_chan(pdev,
 							REG_VERY_LOW_POWER_AP,
 							chan_idx))) {
-			reg_debug("Invalid AP power type: %d , selected power type: %d",
-				  ap_pwr_type, REG_VERY_LOW_POWER_AP);
+			reg_debug_rl("Invalid AP power type: %d , selected power type: %d",
+				     ap_pwr_type, REG_VERY_LOW_POWER_AP);
 			*pwr_type_6g = REG_VERY_LOW_POWER_AP;
 			return QDF_STATUS_SUCCESS;
 		} else if (wlan_cm_get_relaxed_lpi_conn_policy(psoc) &&
@@ -571,13 +583,13 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 				reg_check_if_6g_pwr_type_supp_for_chan(pdev,
 								REG_INDOOR_AP,
 								chan_idx))) {
-			reg_debug("Invalid AP power type: %d , selected power type: %d",
-				  ap_pwr_type, REG_INDOOR_AP);
+			reg_debug_rl("Invalid AP power type: %d , selected power type: %d",
+				     ap_pwr_type, REG_INDOOR_AP);
 			*pwr_type_6g = REG_INDOOR_AP;
 			return QDF_STATUS_SUCCESS;
 		} else {
-			reg_err("Invalid AP power type: %d, couldn't find suitable power type",
-				ap_pwr_type);
+			reg_err_rl("Invalid AP power type: %d, couldn't find suitable power type",
+				   ap_pwr_type);
 			return QDF_STATUS_E_NOSUPPORT;
 		}
 	} else if (ap_pwr_type == REG_INDOOR_SP_AP) {
@@ -590,16 +602,16 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 		else
 			goto vlp_support_check;
 
-		reg_debug("AP power type: %d , is supported by client of power type %d",
-			  ap_pwr_type, *pwr_type_6g);
+		reg_debug_rl("AP power type: %d , is supported by client of power type %d",
+			     ap_pwr_type, *pwr_type_6g);
 		return QDF_STATUS_SUCCESS;
 	}
 
 	if (QDF_IS_STATUS_SUCCESS(reg_check_if_6g_pwr_type_supp_for_chan(
 							pdev,
 							ap_pwr_type, chan_idx))) {
-		reg_debug("AP power type: %d , is supported by client",
-			  ap_pwr_type);
+		reg_debug_rl("AP power type: %d , is supported by client",
+			     ap_pwr_type);
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -609,12 +621,12 @@ vlp_support_check:
 							REG_VERY_LOW_POWER_AP,
 							chan_idx))) {
 		*pwr_type_6g = REG_VERY_LOW_POWER_AP;
-		reg_debug("AP power type = %d, selected power type = %d",
-			  ap_pwr_type, *pwr_type_6g);
+		reg_debug_rl("AP power type = %d, selected power type = %d",
+			     ap_pwr_type, *pwr_type_6g);
 		return QDF_STATUS_SUCCESS;
 	}
 
-	reg_err("AP power type = %d, not supported", ap_pwr_type);
+	reg_err_rl("AP power type = %d, not supported", ap_pwr_type);
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #else
@@ -623,8 +635,7 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 			   struct wlan_objmgr_pdev *pdev,
 			   enum reg_6g_ap_type *pwr_type_6g,
 			   enum reg_6g_ap_type ap_pwr_type,
-			   uint32_t chan_freq,
-			   int8_t rf_mode_force_pwr_type)
+			   uint32_t chan_freq)
 {
 	return QDF_STATUS_SUCCESS;
 }

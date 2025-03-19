@@ -1134,10 +1134,9 @@ static inline uint32_t
 hal_rx_hw_desc_get_ppduid_get_peach(void *rx_tlv_hdr,
 				    void *rxdma_dst_ring_desc)
 {
-	struct rx_pkt_tlvs *rx_pkt_tlvs =
-					(struct rx_pkt_tlvs *)rx_tlv_hdr;
-
-	return HAL_RX_TLV_PHY_PPDU_ID_GET(rx_pkt_tlvs);
+	struct reo_entrance_ring *reo_ent_desc =
+					(struct reo_entrance_ring *)rxdma_dst_ring_desc;
+	return reo_ent_desc->phy_ppdu_id;
 }
 
 /**

@@ -46,8 +46,6 @@ enum wlan_ipa_logging_thread_state {
  * struct wlan_ipa_log_context - structure holding resources for ipa logging
  * @free_list: free node list which can be used for filling logs
  * @filled_list: filled nodes list having logs to send to upper layer
- * @start_event: handle of Event for ipa log thread to signal startup
- * @shutdown_event: event to signal that the wait queue has been stopped
  * @lock: Lock to synchronize access to shared logging resource
  * @payload: final payload to be send to userspace
  * @wait_q: Wait queue for Logger thread
@@ -60,8 +58,6 @@ enum wlan_ipa_logging_thread_state {
 struct wlan_ipa_log_context {
 	qdf_list_t free_list;
 	qdf_list_t filled_list;
-	qdf_event_t start_event;
-	qdf_event_t shutdown_event;
 	qdf_spinlock_t lock;
 	char payload[WLAN_IPA_LOG_MSG_LENGTH_MAX];
 	qdf_wait_queue_head_t wait_q;

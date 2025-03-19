@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -645,6 +645,7 @@ struct dp_rx_nbuf_frag_info {
  * @DP_STC_RX_FLOW_TABLE_TYPE: DP STC rx flow table
  * @DP_STC_TX_FLOW_TABLE_TYPE: DP STC tx flow table
  * @DP_STC_CLASSIFIED_FLOW_TABLE_TYPE: DP STC classified flow table
+ * @DP_TX_MON_BUF_HIST_TYPE: DP TX monitor buffer history
  */
 enum dp_ctxt_type {
 	DP_PDEV_TYPE,
@@ -667,6 +668,7 @@ enum dp_ctxt_type {
 	DP_STC_RX_FLOW_TABLE_TYPE,
 	DP_STC_TX_FLOW_TABLE_TYPE,
 	DP_STC_CLASSIFIED_FLOW_TABLE_TYPE,
+	DP_TX_MON_BUF_HIST_TYPE,
 };
 
 /**
@@ -1874,6 +1876,36 @@ struct dp_mon_status_ring_history {
 	qdf_atomic_t index;
 	struct dp_mon_stat_info_record entry[DP_MON_STATUS_HIST_MAX];
 };
+#endif
+
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+#define DP_TX_MON_BUF_HIST_MAX 2048
+/**
+ * struct dp_tx_mon_buf_info_record - TX monitor buffer info
+ * @hp: HP value after refill
+ * @tp: cached tail value during refill
+ * @num_req: number of buffers requested to refill
+ * @num_refill: number of buffers refilled to ring
+ * @timestamp: timestamp when this entry was recorded
+ */
+struct dp_tx_mon_buf_info_record {
+	uint32_t hp;
+	uint32_t tp;
+	uint32_t num_req;
+	uint32_t num_refill;
+	uint64_t timestamp;
+};
+
+/**
+ * struct dp_tx_mon_buf_ring_history - TX monitor buf ring history
+ * @index: Index where the last entry is written
+ * @entry: history entries
+ */
+struct dp_tx_mon_buf_ring_history {
+	qdf_atomic_t index;
+	struct dp_tx_mon_buf_info_record entry[DP_TX_MON_BUF_HIST_MAX];
+};
+
 #endif
 
 #ifdef WLAN_FEATURE_DP_RX_RING_HISTORY
@@ -3436,6 +3468,10 @@ struct dp_soc {
 	struct dp_rx_reinject_history *rx_reinject_ring_history;
 #endif
 
+#ifdef DP_TX_MON_BUF_RING_HISTORY
+	struct dp_tx_mon_buf_ring_history *tx_mon_buf_ring_history;
+#endif
+
 #ifdef WLAN_FEATURE_DP_MON_STATUS_RING_HISTORY
 	struct dp_mon_status_ring_history *mon_status_ring_history;
 #endif
@@ -4417,6 +4453,33 @@ struct dp_vdev_stats {
 #endif
 };
 
+/* enum ul_delay_client_id - UL Delay calculation control ID
+ * @UL_DELAY_CALC_ID_TSF: TSF request report ID
+ * @UL_DELAY_CALC_ID_FW: FW request report ID
+ * @UL_DELAY_CALC_ID_MAX: Max ID
+ **/
+enum ul_delay_client_id {
+	UL_DELAY_CALC_ID_TSF,
+	UL_DELAY_CALC_ID_FW,
+	UL_DELAY_CALC_ID_MAX
+};
+
+/**
+ * struct dp_latency_stats - Latency Stats request
+ * @enable_report: latency report is enabled
+ * @report_interval: Report interval
+ * @last_report_time: Indicate last report time in ms
+ * @latency_avg: Average latency average
+ * @pkts_accum: accumulative number of packets for average
+ */
+struct dp_latency_stats {
+	qdf_atomic_t enable_report;
+	uint16_t report_interval;
+	uint64_t last_report_time;
+	uint32_t latency_avg;
+	uint32_t pkts_accum;
+};
+
 /* VDEV structure for data path state */
 struct dp_vdev {
 	struct cdp_vdev cdp_vdev;
@@ -4714,12 +4777,22 @@ struct dp_vdev {
 	uint32_t delta_tsf;
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
-	/* Indicate if uplink delay report is enabled or not */
-	qdf_atomic_t ul_delay_report;
+	/* UL delay lock */
+	qdf_spinlock_t ul_delay_lock;
+	/* Enable UL delay calculation */
+	qdf_atomic_t enable_ul_delay;
 	/* accumulative delay for every TX completion */
 	qdf_atomic_t ul_delay_accum;
 	/* accumulative number of packets delay has accumulated */
 	qdf_atomic_t ul_pkts_accum;
+	/* UL delay Enable client ID */
+	bool ul_delay_cal_ctrl[UL_DELAY_CALC_ID_MAX];
+	/* Indicate if uplink delay report is enabled or not */
+	qdf_atomic_t tsf_ul_delay_report;
+	/* Average value of UL delay */
+	uint32_t tsf_ul_delay_avg;
+	/* Latency stats requested by FW */
+	struct dp_latency_stats latency_stats;
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 #ifdef WLAN_FEATURE_UL_JITTER
 	/* accumulative delay jitter for every TX completion */

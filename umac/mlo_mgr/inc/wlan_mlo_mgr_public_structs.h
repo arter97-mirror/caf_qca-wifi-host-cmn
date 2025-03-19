@@ -36,6 +36,7 @@
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 #include "cfg_mlme_generic.h"
 #endif
+#include <wlan_mgmt_txrx_utils_api.h>
 
 /* MAX MLO dev support */
 #ifndef WLAN_UMAC_MLO_MAX_VDEVS
@@ -518,12 +519,16 @@ struct wlan_mlo_key_mgmt {
  * struct mlo_link_bss_params - link bss param
  * @link_id: link id
  * @ap_mld_mac: mld mac address
+ * @ap_link_addr: ap link address
+ * @self_link_addr: self link address
  * @chan: channel
  * @op_code: operation for provided link
  */
 struct mlo_link_bss_params {
 	int8_t link_id;
 	int8_t ap_mld_mac[QDF_MAC_ADDR_SIZE];
+	struct qdf_mac_addr ap_link_addr;
+	struct qdf_mac_addr self_link_addr;
 	struct wlan_channel *chan;
 	uint8_t op_code;
 };
@@ -1171,13 +1176,13 @@ struct wlan_mlo_link_mac_update {
  * @epcs_ctx: EPCS related information
  * @ptqm_migrate_timer: timer for ptqm migration
  * @mlo_peer_id_bmap: mlo_peer_id bitmap for ptqm migration
+ * @link_rcfg_req: link reconfig request from user space
  * @link_ctx: link related information
  * @link_recfg_ctx: link reconfig context
  * @mlo_max_recom_simult_links: Max Recommended Simultaneous Links
  * @mlo_extmld_cap_advertisement: Enable/disable Extended MLD Cap and OP
  *                                advertisement
  * @link_ptqm_migrate_ctx: PTQM migration link context
- * @link_recfg_op_support: Peer link reconfig operation support
  */
 struct wlan_mlo_dev_context {
 	qdf_list_node_t node;
@@ -1212,11 +1217,11 @@ struct wlan_mlo_dev_context {
 	struct ptqm_migrate_link_req_context *link_ptqm_migrate_ctx
 		[WLAN_UMAC_MLO_MAX_VDEVS];
 #endif
+	struct mlo_link_recfg_user_req_params link_rcfg_req;
 	struct mlo_link_switch_context *link_ctx;
 	struct mlo_link_recfg_context *link_recfg_ctx;
 	uint8_t mlo_max_recom_simult_links;
 	bool mlo_extmld_cap_advertisement;
-	bool link_recfg_op_support;
 };
 
 /**
@@ -1587,6 +1592,7 @@ struct wlan_mlo_bridge_sta {
  * @mlo_mlme_ext_connect_get_partner_info: Callback to get MLO partner info
  * @mlo_mlme_ext_set_ieee_link_id: Callback to update ieee_link_id in vap
  * @mlo_mlme_ext_teardown_tdls: Callback to teardown TDLS
+ * @mlo_mlme_ext_link_add_join_continue: Callback to continue link add connecting
  */
 struct mlo_mlme_ext_ops {
 	QDF_STATUS (*mlo_mlme_ext_validate_conn_req)(
@@ -1635,6 +1641,10 @@ struct mlo_mlme_ext_ops {
 #endif
 	QDF_STATUS (*mlo_mlme_ext_teardown_tdls)(struct wlan_objmgr_psoc *psoc,
 						 uint8_t vdev_id);
+	QDF_STATUS (*mlo_mlme_ext_link_add_join_continue)(
+					struct wlan_objmgr_psoc *psoc,
+					uint8_t vdev_id,
+					QDF_STATUS recfg_rsp_status);
 };
 
 /*
@@ -1646,6 +1656,8 @@ struct mlo_mlme_ext_ops {
 				   roam sync for the vdev.
  * @mlo_mgr_osif_link_rej_update_mac_addr: Callback to notify MAC addr update
  *                                for link rejection.
+ * @mlo_link_recfg_osif_update_mac_addr: Callback to notify mac addr update for
+ * link rejction in link recfg
  * @mlo_mgr_osif_link_switch_notification: Notify OSIF on start of link switch
  * @mlo_mgr_osif_update_link_state: update link state in OSIF
  */
@@ -1661,7 +1673,10 @@ struct mlo_osif_ext_ops {
 	QDF_STATUS (*mlo_roam_osif_update_mac_addr)(struct wlan_objmgr_vdev *vdev,
 						    struct qdf_mac_addr *old_self_mac,
 						    struct qdf_mac_addr *new_self_mac);
-
+	QDF_STATUS (*mlo_link_recfg_osif_update_mac_addr)(
+					struct wlan_objmgr_vdev *vdev,
+					struct qdf_mac_addr *old_self_mac,
+					struct qdf_mac_addr *new_self_mac);
 	QDF_STATUS (*mlo_mgr_osif_link_rej_update_mac_addr)(uint8_t ieee_rej_link_id,
 				     uint8_t ieee_acc_link_id, uint8_t vdev_id);
 

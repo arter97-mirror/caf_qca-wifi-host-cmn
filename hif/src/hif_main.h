@@ -349,6 +349,7 @@ struct hif_reg_write_soc_stats {
  * @work_scheduled_time: work scheduled time (qdf_log_timestamp)
  * @dequeue_time: dequeue time (qdf_log_timestamp)
  * @cpu_id: record cpuid when schedule work
+ * @ce_cmn_reg_cfg_support_qmi: support of ce common reg config over qmi.
  */
 struct hif_reg_write_q_elem {
 	struct CE_state *ce_state;
@@ -528,6 +529,9 @@ struct hif_softc {
 #endif /* FEATURE_HIF_DELAYED_REG_WRITE */
 #ifdef WLAN_DP_LOAD_BALANCE_SUPPORT
 	bool is_load_balance_enabled;
+#endif
+#ifdef CE_CMN_REG_CFG_QMI
+	bool ce_cmn_reg_cfg_support_qmi;
 #endif
 };
 

@@ -40,6 +40,7 @@
 #include <cdp_txrx_ctrl.h>
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_ap.h>
+#include <wlan_mlo_link_recfg.h>
 #endif
 #include <wlan_vdev_mgr_utils_api.h>
 #include <wlan_vdev_mgr_api.h>
@@ -448,11 +449,17 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
 	    !wlan_vdev_mlme_is_mlo_link_vdev(vdev))
 		param->mlo_flags.mlo_assoc_link = 1;
+
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
-	    wlan_vdev_mlme_is_mlo_link_vdev(vdev) &&
-	    wlan_cm_is_link_add_connecting(vdev)) {
-		param->mlo_flags.mlo_link_add  = 1;
-		mlme_debug("vdev mlo_link_add flag set 1");
+	    wlan_vdev_mlme_is_mlo_link_vdev(vdev)) {
+		if (wlan_cm_is_link_add_connecting(vdev) ||
+		    mlo_mgr_is_link_add_link_switch(vdev)) {
+			param->mlo_flags.mlo_link_add = 1;
+			if (mlo_link_recfg_is_start_as_active(vdev))
+				param->mlo_flags.start_as_active = 1;
+			mlme_debug("vdev mlo_link_add flag set 1 start_as_active %d",
+				   param->mlo_flags.start_as_active);
+		}
 	}
 
 	if ((wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) &&

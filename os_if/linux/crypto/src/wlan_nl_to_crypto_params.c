@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -211,6 +211,13 @@ static const struct osif_akm_type_crypto_mapping
 		.akm_suite = WLAN_AKM_SUITE_FT_SAE_EXT_KEY,
 		.akm_type_crypto = WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY,
 	},
+	{
+#ifndef WLAN_AKM_SUITE_PASN
+#define WLAN_AKM_SUITE_PASN 0x000FAC15
+#endif
+		.akm_suite = WLAN_AKM_SUITE_PASN,
+		.akm_type_crypto = WLAN_CRYPTO_KEY_MGMT_PASN,
+	},
 };
 
 /* mapping table for cipher type received from NL and crypto cipher type */
@@ -333,6 +340,29 @@ wlan_crypto_key_mgmt osif_nl_to_crypto_akm_type(u32 key_mgmt)
 				key_mgmt, crypto_akm_type);
 
 	return crypto_akm_type;
+}
+
+uint32_t
+osif_crypto_to_nl_suites(enum wlan_crypto_key_mgmt crypto_akm_type)
+{
+	uint8_t index;
+	uint32_t akm_suite = 0;
+
+	for (index = 0; index < QDF_ARRAY_SIZE(osif_akm_type_crypto_mapping);
+	     index++) {
+		if (osif_akm_type_crypto_mapping[index].akm_type_crypto !=
+		    crypto_akm_type)
+			continue;
+		akm_suite = osif_akm_type_crypto_mapping[index].akm_suite;
+		QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF, "Akm suite, crypto: %d -> NL: 0x%x",
+				crypto_akm_type, akm_suite);
+		return akm_suite;
+	}
+
+	QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF, "Unknown crypto type: %d",
+			crypto_akm_type);
+
+	return akm_suite;
 }
 
 enum wlan_crypto_cipher_type osif_nl_to_crypto_cipher_type(u32 cipher)
