@@ -394,6 +394,11 @@ enum pld_driver_mode {
 	PLD_FTM_COLDBOOT_CALIBRATION = 10
 };
 
+enum pld_bus_state {
+	PLD_BUS_RESUME,
+	PLD_BUS_SUSPEND
+};
+
 /**
  * struct pld_device_version - WLAN device version info
  * @family_number: family number of WLAN SOC HW
@@ -639,6 +644,8 @@ struct pld_driver_ops {
 	int (*set_curr_therm_cdev_state)(struct device *dev,
 					 unsigned long state,
 					 int mon_id);
+	int (*get_bus_pm_state)(struct device *dev,
+				enum pld_bus_type bus_type);
 };
 
 /**

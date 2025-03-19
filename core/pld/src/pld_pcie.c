@@ -156,6 +156,20 @@ static int pld_pcie_set_thermal_state(struct pci_dev *pdev,
 	return -ENOTSUPP;
 }
 
+/**
+ * pld_pcie_get_bus_pm_state() - Set thermal state for thermal mitigation
+ * @pdev: PCIE device
+ * @pci_device_id: device id
+ */
+static int pld_pcie_get_bus_pm_state(struct pci_dev *pdev,
+				     const struct pci_device_id *id)
+{
+	struct pld_context *pld_context;
+
+	pld_context = pld_get_global_context();
+	return pld_context->ops->get_bus_pm_state(&pdev->dev,
+					 PLD_BUS_TYPE_PCIE);
+}
 #ifdef CONFIG_PLD_PCIE_CNSS
 /**
  * pld_pcie_idle_restart_cb() - Perform idle restart
@@ -769,6 +783,7 @@ struct cnss_wlan_driver pld_pcie_ops = {
 	.chip_version = CHIP_VERSION,
 #endif
 	.set_therm_cdev_state = pld_pcie_set_thermal_state,
+	.get_bus_pm_state = pld_pcie_get_bus_pm_state,
 };
 
 int pld_pcie_register_driver(void)
