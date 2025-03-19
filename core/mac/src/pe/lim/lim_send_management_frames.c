@@ -394,6 +394,9 @@ lim_send_probe_req_mgmt_frame(struct mac_context *mac_ctx,
 	if (extracted_ext_cap_flag)
 		lim_merge_extcap_struct(&pr->ExtCap, &extracted_ext_cap, true);
 
+	if (pesession)
+		populate_dot11f_btm_extended_caps(mac_ctx, pesession,
+						  &pr->ExtCap);
 
 	/* That's it-- now we pack it.  First, how much space are we going to */
 	status = dot11f_get_packed_probe_request_size(mac_ctx, pr, &payload);
@@ -2634,9 +2637,6 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 		lim_strip_mlo_ie(mac_ctx, add_ie, &add_ie_len);
 	}
 
-	mlo_ie_len =
-		 lim_send_assoc_req_mgmt_frame_mlo(mac_ctx, pe_session, frm);
-
 	if (pe_session->is11Rconnection) {
 		struct bss_description *bssdescr;
 
@@ -2890,6 +2890,9 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 		pe_err("Failed to fill adaptive 11r IE");
 		goto end;
 	}
+
+	mlo_ie_len = lim_send_assoc_req_mgmt_frame_mlo(mac_ctx, pe_session,
+						       frm);
 
 	/*
 	 * Do unpack to populate the add_ie buffer to frm structure

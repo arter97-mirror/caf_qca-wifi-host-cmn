@@ -619,6 +619,7 @@ void lim_get_basic_rates(tSirMacRateSet *b_rates, uint32_t chan_freq);
  * @mac_ctx: Pointer to mac context
  * @session: pe session
  * @bss_desc: Pointer to bss description
+ * @req_fail_status_code: Connect req fail status code pointer
  *
  * This api will fill lim pe session with info
  * from bss description
@@ -628,7 +629,8 @@ void lim_get_basic_rates(tSirMacRateSet *b_rates, uint32_t chan_freq);
 QDF_STATUS
 lim_fill_pe_session(struct mac_context *mac_ctx,
 		    struct pe_session *session,
-		    struct bss_description *bss_desc);
+		    struct bss_description *bss_desc,
+		    enum wlan_status_code *req_fail_status_code);
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
