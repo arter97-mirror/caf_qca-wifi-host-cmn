@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -151,20 +151,6 @@ wmi_unified_vdev_config_ratemask_cmd_send(struct wmi_unified *wmi_handle,
 	if (wmi_handle->ops->send_vdev_config_ratemask_cmd)
 		return wmi_handle->ops->send_vdev_config_ratemask_cmd(
 							wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_peer_filter_set_tx_cmd_send(struct wmi_unified *wmi_handle,
-					uint8_t macaddr[],
-					struct set_tx_peer_filter *param)
-{
-	struct wmi_ops *ops = wmi_handle->ops;
-
-	if (ops->send_peer_filter_set_tx_cmd)
-		return ops->send_peer_filter_set_tx_cmd(wmi_handle, macaddr,
-							param);
 
 	return QDF_STATUS_E_FAILURE;
 }

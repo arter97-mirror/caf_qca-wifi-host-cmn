@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -381,46 +381,6 @@ QDF_STATUS
 wlan_mlo_parse_epcs_action_frame(struct wlan_epcs_info *epcs,
 				 struct wlan_action_frame *action_frm,
 				 uint32_t frm_len);
-
-/**
- * wlan_mlo_peer_rcv_cmd() - API to process EPCS command
- * @ml_peer: Pointer to ML peer received
- * @epcs: Pointer to EPCS information
- * @updparam: pointer to fill update parameters
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_mlo_peer_rcv_cmd(struct wlan_mlo_peer_context *ml_peer,
-		      struct wlan_epcs_info *epcs,
-		      bool *updparam);
-
-/**
- * wlan_mlo_peer_rcv_action_frame() - API to process EPCS frame receive event
- * @ml_peer: Pointer to ML peer received
- * @epcs: Pointer to EPCS information
- * @respond: pointer to fill response required or not
- * @updparam: pointer to fill update parameters
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_mlo_peer_rcv_action_frame(struct wlan_mlo_peer_context *ml_peer,
-			       struct wlan_epcs_info *epcs,
-			       bool *respond,
-			       bool *updparam);
-
-/**
- * wlan_mlo_update_authorize_epcs_mac_addr() - API to authorize mac addr
- * @vdev: pointer to vdev
- * @peer_mld_mac: mld mac address
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_mlo_update_authorize_epcs_mac_addr(struct wlan_objmgr_vdev *vdev,
-					uint8_t *peer_mld_mac);
-
 /**
  * wlan_mlo_update_deauthorize_epcs_mac_addr() - API to deauthorize mac addr
  * @vdev: pointer to vdev

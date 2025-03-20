@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -26,19 +26,6 @@
 #define _WMI_UNIFIED_VDEV_API_H_
 
 #include <wmi_unified_api.h>
-
-/**
- *  wmi_unified_peer_filter_set_tx_cmd_send() - WMI set tx peer filter function
- *  @wmi_handle: handle to WMI.
- *  @macaddr: MAC address
- *  @param: pointer to hold peer filter parameter
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_peer_filter_set_tx_cmd_send(struct wmi_unified *wmi_handle,
-					uint8_t macaddr[],
-					struct set_tx_peer_filter *param);
 
 /**
  *  wmi_unified_vdev_set_neighbour_rx_cmd_send() - WMI set neighbour rx function
