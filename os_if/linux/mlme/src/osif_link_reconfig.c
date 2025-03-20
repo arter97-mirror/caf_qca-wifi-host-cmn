@@ -130,6 +130,7 @@ osif_fill_link_reconfig_added_links_params(
 {
 	struct wiphy *wiphy;
 	uint8_t ssid[WLAN_SSID_MAX_LEN] = {0};
+	struct mlo_link_recfg_user_req_params req_param;
 	uint8_t ssid_len;
 	struct mlo_link_recfg_context *recfg_context;
 	struct ieee80211_channel *channel;
@@ -147,6 +148,7 @@ osif_fill_link_reconfig_added_links_params(
 	}
 
 	recfg_context = vdev->mlo_dev_ctx->link_recfg_ctx;
+	req_param = vdev->mlo_dev_ctx->link_rcfg_req;
 	num_add_links = recfg_context->curr_recfg_req.add_link_info.num_links;
 	if (!num_add_links) {
 		osif_debug("no link added via link reconfig request");
@@ -172,6 +174,7 @@ osif_fill_link_reconfig_added_links_params(
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
+
 		link_id = add_link_info.link[i].link_id;
 		status_code = add_link_info.link[i].status_code;
 		channel = ieee80211_get_channel(wiphy,
@@ -181,19 +184,10 @@ osif_fill_link_reconfig_added_links_params(
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
+
 		status = wlan_vdev_mlme_get_ssid(vdev, ssid, &ssid_len);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			osif_err("failed to get ssid");
-			status_code = STATUS_INVALID_PARAMETERS;
-			goto end;
-		}
-		cfg_rsp->links[link_id].bss =
-			wlan_cfg80211_get_bss(
-				wiphy, channel,
-				add_link_info.link[i].ap_link_addr.bytes,
-				ssid, ssid_len);
-		if (!cfg_rsp->links[link_id].bss) {
-			osif_err("failed to get BSS");
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
@@ -206,8 +200,27 @@ osif_fill_link_reconfig_added_links_params(
 			goto end;
 		}
 
-		cfg_rsp->added_links |=	1 << link_id;
 end:
+		/* For user initiated case use BSS pointed given by user request */
+		if (recfg_context->curr_recfg_req.is_user_req) {
+			cfg_rsp->links[link_id].bss = req_param.add_link[i].bss;
+		} else if (status == STATUS_SUCCESS) {
+			cfg_rsp->links[link_id].bss =
+				wlan_cfg80211_get_bss(
+					wiphy, channel,
+					add_link_info.link[i].ap_link_addr.bytes,
+					ssid, ssid_len);
+		}
+
+		if (!cfg_rsp->links[link_id].bss) {
+			osif_err("failed to get BSS");
+			status_code = STATUS_INVALID_PARAMETERS;
+		}
+
+		/* Set "added_links" only for successfully added links */
+		if (status == STATUS_SUCCESS)
+			cfg_rsp->added_links |= 1 << link_id;
+
 		osif_debug("add link_id %d with status %d freq %d",
 			   link_id, status_code, add_link_info.link[i].freq);
 	}

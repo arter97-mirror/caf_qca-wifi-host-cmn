@@ -985,12 +985,14 @@ struct mlo_vdev_pause {
  * @link_id: link id
  * @link_addr: link addr
  * @vdev_id: vdev id only in case of add link
+ * @bss: BSS pointer
  */
 struct mlo_link_reconfig_param {
 	uint8_t link_id;
 	uint8_t link_addr[QDF_MAC_ADDR_SIZE];
 /** which vdev to repurpose on with del link_id if it's not 0xff **/
 	uint8_t vdev_id;
+	void *bss;
 };
 
 /**
