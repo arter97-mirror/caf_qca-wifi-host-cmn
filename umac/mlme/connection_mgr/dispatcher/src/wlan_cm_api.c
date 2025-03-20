@@ -424,25 +424,6 @@ void wlan_cm_req_history_print(struct wlan_objmgr_vdev *vdev)
 }
 #endif /* SM_ENG_HIST_ENABLE */
 
-#ifndef CONN_MGR_ADV_FEATURE
-void wlan_cm_set_candidate_advance_filter_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*filter_fun)(struct wlan_objmgr_vdev *vdev,
-				   struct scan_filter *filter))
-{
-	cm_set_candidate_advance_filter_cb(vdev, filter_fun);
-}
-
-void wlan_cm_set_candidate_custom_sort_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*sort_fun)(struct wlan_objmgr_vdev *vdev,
-				 qdf_list_t *list))
-{
-	cm_set_candidate_custom_sort_cb(vdev, sort_fun);
-}
-
-#endif
-
 QDF_STATUS wlan_cm_get_rnr(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id,
 			   struct reduced_neighbor_report *rnr)
 {

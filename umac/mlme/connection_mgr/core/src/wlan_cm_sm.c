@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -934,7 +934,6 @@ static bool cm_subst_join_active_event(void *ctx, uint16_t event,
 	return event_handled;
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_subst_idle_due_to_link_switch_entry() - Entry API for idle due to
  * link switch substate for connection manager.
@@ -1061,22 +1060,6 @@ static bool cm_subst_idle_due_to_link_switch_event(void *ctx, uint16_t event,
 
 	return event_handled;
 }
-#else
-static inline void cm_subst_idle_due_to_link_switch_entry(void *ctx)
-{
-}
-
-static inline void cm_subst_idle_due_to_link_switch_exit(void *ctx)
-{
-}
-
-static inline bool
-cm_subst_idle_due_to_link_switch_event(void *ctx, uint16_t event,
-				       uint16_t data_len, void *data)
-{
-	return false;
-}
-#endif
 
 struct wlan_sm_state_info cm_sm_info[] = {
 	{

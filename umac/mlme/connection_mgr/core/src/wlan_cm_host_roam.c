@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -114,7 +114,6 @@ cm_send_reassoc_start_fail(struct cnx_mgr *cm_ctx,
 	return status;
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 static QDF_STATUS
 cm_update_roam_scan_filter(
 		struct wlan_objmgr_vdev *vdev, struct cm_roam_req *cm_req,
@@ -122,45 +121,6 @@ cm_update_roam_scan_filter(
 {
 	return cm_update_advance_roam_scan_filter(vdev, filter);
 }
-#else
-static QDF_STATUS
-cm_update_roam_scan_filter(
-		struct wlan_objmgr_vdev *vdev, struct cm_roam_req *cm_req,
-		struct scan_filter *filter, bool security_valid_for_6ghz)
-{
-	uint16_t rsn_caps;
-
-	filter->num_of_ssid = 1;
-	wlan_vdev_mlme_get_ssid(vdev, filter->ssid_list[0].ssid,
-				&filter->ssid_list[0].length);
-
-	if (cm_req->req.chan_freq) {
-		filter->num_of_channels = 1;
-		filter->chan_freq_list[0] = cm_req->req.chan_freq;
-	}
-
-	/* Security is not valid for 6Ghz so ignore 6Ghz APs */
-	if (!security_valid_for_6ghz)
-		filter->ignore_6ghz_channel = true;
-
-	if (!QDF_HAS_PARAM(filter->authmodeset, WLAN_CRYPTO_AUTH_WAPI) &&
-	    !QDF_HAS_PARAM(filter->authmodeset, WLAN_CRYPTO_AUTH_RSNA) &&
-	    !QDF_HAS_PARAM(filter->authmodeset, WLAN_CRYPTO_AUTH_WPA)) {
-		filter->ignore_auth_enc_type = 1;
-	}
-
-	rsn_caps =
-		wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_RSN_CAP);
-
-	if (rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED)
-		filter->pmf_cap = WLAN_PMF_REQUIRED;
-	else if (rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED)
-		filter->pmf_cap = WLAN_PMF_CAPABLE;
-	else
-		filter->pmf_cap = WLAN_PMF_DISABLED;
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 static QDF_STATUS cm_connect_prepare_scan_filter_for_roam(
 		struct cnx_mgr *cm_ctx, struct cm_roam_req *cm_req,

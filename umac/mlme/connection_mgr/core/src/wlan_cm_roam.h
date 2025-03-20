@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -213,7 +213,6 @@ cm_send_reassoc_start_fail(struct cnx_mgr *cm_ctx,
 			   enum wlan_cm_connect_fail_reason reason,
 			   bool sync);
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_update_advance_roam_scan_filter() - fill scan filter for roam
  * @vdev: vdev
@@ -223,7 +222,6 @@ cm_send_reassoc_start_fail(struct cnx_mgr *cm_ctx,
  */
 QDF_STATUS cm_update_advance_roam_scan_filter(
 		struct wlan_objmgr_vdev *vdev, struct scan_filter *filter);
-#endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 /**

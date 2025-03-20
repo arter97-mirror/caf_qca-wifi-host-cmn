@@ -126,7 +126,6 @@ struct mlme_cm_ops {
 	QDF_STATUS (*mlme_cm_disconnect_start_cb)(
 					struct wlan_objmgr_vdev *vdev,
 					enum wlan_cm_source source);
-#ifdef CONN_MGR_ADV_FEATURE
 	QDF_STATUS (*mlme_cm_roam_sync_cb)(struct wlan_objmgr_vdev *vdev);
 	QDF_STATUS (*mlme_cm_pmksa_candidate_notify_cb)(
 						struct wlan_objmgr_vdev *vdev,
@@ -137,7 +136,6 @@ struct mlme_cm_ops {
 					   enum wlan_crypto_cipher_type cipher_type);
 	QDF_STATUS (*mlme_cm_link_reconfig_notify_cb)(
 					struct wlan_objmgr_vdev *vdev);
-#endif
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	QDF_STATUS (*mlme_cm_roam_start_cb)(struct wlan_objmgr_vdev *vdev);
 	QDF_STATUS (*mlme_cm_roam_abort_cb)(struct wlan_objmgr_vdev *vdev);
@@ -746,7 +744,6 @@ QDF_STATUS mlme_cm_bss_peer_create_req(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS mlme_cm_connect_req(struct wlan_objmgr_vdev *vdev,
 			       struct wlan_cm_vdev_connect_req *req);
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * mlme_cm_osif_connect_active_notify() - CNX manager ext connect active
  * notification.
@@ -755,11 +752,6 @@ QDF_STATUS mlme_cm_connect_req(struct wlan_objmgr_vdev *vdev,
  * Return: void
  */
 void mlme_cm_osif_connect_active_notify(uint8_t vdev_id);
-#else
-static inline void mlme_cm_osif_connect_active_notify(uint8_t vdev_id)
-{
-}
-#endif
 
 /**
  * mlme_cm_connect_complete_ind() - Connection manager ext connect complete
@@ -940,7 +932,6 @@ QDF_STATUS mlme_cm_osif_get_vendor_handoff_params(struct wlan_objmgr_psoc *psoc,
 						  void *vendor_handoff_context);
 #endif
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * mlme_cm_osif_roam_sync_ind() - osif Roam sync indication
  * @vdev: vdev pointer
@@ -981,27 +972,6 @@ QDF_STATUS mlme_cm_osif_send_keys(struct wlan_objmgr_vdev *vdev,
  * Return: QDF_STATUS
  */
 QDF_STATUS mlme_cm_osif_link_reconfig_notify(struct wlan_objmgr_vdev *vdev);
-#else
-static inline
-QDF_STATUS mlme_cm_osif_roam_sync_ind(struct wlan_objmgr_vdev *vdev)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS mlme_cm_osif_send_keys(struct wlan_objmgr_vdev *vdev,
-				  uint8_t key_index, bool pairwise,
-				  enum wlan_crypto_cipher_type cipher_type)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS mlme_cm_osif_link_reconfig_notify(struct wlan_objmgr_vdev *vdev)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /**

@@ -222,7 +222,7 @@ QDF_STATUS cm_try_next_candidate(struct cnx_mgr *cm_ctx,
 QDF_STATUS
 cm_resume_connect_after_peer_create(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id);
 
-#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
+#ifdef WLAN_FEATURE_11BE_MLO
 /**
  * cm_bss_peer_create_resp_mlo_attach() - Create MLO peer and attach objmgr peer
  * @vdev: VDEV object manager pointer
@@ -590,17 +590,10 @@ cm_handle_rso_stop_rsp(struct wlan_objmgr_vdev *vdev,
  *
  * Return: bool
  */
-#ifdef CONN_MGR_ADV_FEATURE
 static inline bool cm_ser_get_blocking_cmd(void)
 {
 	return true;
 }
-#else
-static inline bool cm_ser_get_blocking_cmd(void)
-{
-	return false;
-}
-#endif
 
 /**
  * cm_get_cm_id() - Get unique cm id for connect/disconnect request
@@ -659,7 +652,6 @@ QDF_STATUS cm_set_key(struct cnx_mgr *cm_ctx, bool unicast,
 		      uint8_t key_idx, struct qdf_mac_addr *bssid);
 #endif
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_store_wep_key() - store wep keys in crypto on connect active
  * @cm_ctx: connection manager context
@@ -829,87 +821,6 @@ cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp)
  * Return: bool
  */
 bool cm_is_link_add_cmd_active(struct wlan_objmgr_vdev *vdev);
-#else
-static inline void cm_store_wep_key(struct cnx_mgr *cm_ctx,
-				    struct wlan_cm_connect_req *req,
-				    wlan_cm_id cm_id)
-{}
-
-static inline QDF_STATUS
-cm_inform_dlm_connect_complete(struct wlan_objmgr_vdev *vdev,
-			       struct wlan_cm_connect_resp *resp)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * cm_peer_create_on_bss_select_ind_resp() - Called to create peer
- * if bss select inidication's resp was success
- * @cm_ctx: connection manager context
- * @cm_id: Connection mgr ID assigned to this connect request.
- *
- * Return: QDF status
- */
-QDF_STATUS
-cm_peer_create_on_bss_select_ind_resp(struct cnx_mgr *cm_ctx,
-				      wlan_cm_id *cm_id);
-
-/**
- * cm_bss_select_ind_rsp() - Connection manager resp for bss
- * select indication
- * @vdev: vdev pointer
- * @status: Status
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS cm_bss_select_ind_rsp(struct wlan_objmgr_vdev *vdev,
-				 QDF_STATUS status);
-
-static inline bool cm_is_link_switch_connect_req(struct cm_connect_req *req)
-{
-	return false;
-}
-
-static inline bool cm_is_link_add_connect_req(struct cm_connect_req *req)
-{
-	return false;
-}
-
-static inline bool
-cm_is_link_switch_disconnect_req(struct cm_disconnect_req *req)
-{
-	return false;
-}
-
-static inline bool cm_is_link_switch_cmd(wlan_cm_id cm_id)
-{
-	return false;
-}
-
-static inline bool
-cm_is_link_switch_disconnect_resp(struct wlan_cm_discon_rsp *resp)
-{
-	return false;
-}
-
-static inline bool
-cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp)
-{
-	return false;
-}
-
-static inline bool
-cm_is_link_add_connect_resp(struct wlan_cm_connect_resp *resp)
-{
-	return false;
-}
-
-static inline bool
-cm_is_link_add_cmd_active(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-#endif
 
 #ifdef WLAN_FEATURE_FILS_SK
 /**
@@ -1196,7 +1107,6 @@ bool cm_is_vdev_disconnecting(struct wlan_objmgr_vdev *vdev);
  */
 bool cm_is_vdev_disconnected(struct wlan_objmgr_vdev *vdev);
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_is_vdev_idle_due_to_link_switch() - Check if VDEV is in
  * IDLE state due to link switch
@@ -1208,13 +1118,6 @@ bool cm_is_vdev_disconnected(struct wlan_objmgr_vdev *vdev);
  * Return: bool
  */
 bool cm_is_vdev_idle_due_to_link_switch(struct wlan_objmgr_vdev *vdev);
-#else
-static inline bool
-cm_is_vdev_idle_due_to_link_switch(struct wlan_objmgr_vdev *vdev)
-{
-	return false;
-}
-#endif
 
 /**
  * cm_is_vdev_roaming() - check if vdev is in roaming state
@@ -1550,34 +1453,6 @@ static inline void cm_req_history_print(struct cnx_mgr *cm_ctx)
 QDF_STATUS cm_activate_cmd_req_flush_cb(struct scheduler_msg *msg);
 #endif
 
-#ifndef CONN_MGR_ADV_FEATURE
-/**
- * cm_set_candidate_advance_filter_cb() - Set CM candidate advance
- * filter cb
- * @vdev: Objmgr vdev
- * @filter_fun: CM candidate advance filter cb
- *
- * Return: void
- */
-void cm_set_candidate_advance_filter_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*filter_fun)(struct wlan_objmgr_vdev *vdev,
-				   struct scan_filter *filter));
-
-/**
- * cm_set_candidate_custom_sort_cb() - Set CM candidate custom sort cb
- * @vdev: Objmgr vdev
- * @sort_fun: CM candidate custom sort cb
- *
- * Return: void
- */
-void cm_set_candidate_custom_sort_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*sort_fun)(struct wlan_objmgr_vdev *vdev,
-				 qdf_list_t *list));
-
-#endif
-
 /**
  * cm_is_connect_req_reassoc() - Is connect req for reassoc
  * @req: connect req
@@ -1682,7 +1557,6 @@ void cm_free_connect_req_param(struct wlan_cm_connect_req *req);
  */
 void cm_free_wep_key_params(struct wlan_cm_connect_req *req);
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_store_first_candidate_rsp() - store the connection failure response
  * @cm_ctx: connection manager context
@@ -1725,18 +1599,6 @@ cm_get_first_candidate_rsp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id,
  * Return: void
  */
 void cm_store_n_send_failed_candidate(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id);
-#else
-static inline
-void cm_store_first_candidate_rsp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id,
-				  struct wlan_cm_connect_resp *resp)
-{
-}
-
-static inline
-void cm_store_n_send_failed_candidate(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id)
-{
-}
-#endif /* CONN_MGR_ADV_FEATURE */
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**

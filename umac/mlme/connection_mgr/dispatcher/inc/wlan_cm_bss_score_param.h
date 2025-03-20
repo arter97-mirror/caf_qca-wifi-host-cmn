@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -591,7 +591,6 @@ bool wlan_cm_get_relaxed_lpi_conn_policy(struct wlan_objmgr_psoc *psoc)
 }
 #endif
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * wlan_cm_set_check_assoc_disallowed() - Set check assoc disallowed param
  * @psoc: pointer to psoc object
@@ -611,7 +610,6 @@ void wlan_cm_set_check_assoc_disallowed(struct wlan_objmgr_psoc *psoc,
  */
 void wlan_cm_get_check_assoc_disallowed(struct wlan_objmgr_psoc *psoc,
 					bool *value);
-#endif
 
 /**
  * cm_get_entry() - Get bss scan entry by link mac address

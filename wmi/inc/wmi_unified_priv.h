@@ -417,9 +417,7 @@ struct wmi_wq_dbg_info {
 };
 
 struct wmi_ops {
-#if defined(CONN_MGR_ADV_FEATURE) && \
-	    (defined(WLAN_FEATURE_HOST_ROAM) || \
-		     defined(WLAN_FEATURE_ROAM_OFFLOAD))
+#if (defined(WLAN_FEATURE_HOST_ROAM) || defined(WLAN_FEATURE_ROAM_OFFLOAD))
 QDF_STATUS
 (*extract_roam_event)(wmi_unified_t wmi_handle, void *evt_buf, uint32_t len,
 		      struct roam_offload_roam_event *roam_event);

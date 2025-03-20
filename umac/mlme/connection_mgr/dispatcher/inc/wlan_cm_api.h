@@ -575,7 +575,6 @@ static inline void wlan_cm_req_history_print(struct wlan_objmgr_vdev *vdev)
 {}
 #endif
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * wlan_cm_set_candidate_advance_filter_cb() - Set CM candidate advance
  * filter cb
@@ -606,17 +605,6 @@ void wlan_cm_set_candidate_custom_sort_cb(
 				 qdf_list_t *list))
 {
 }
-#else
-void wlan_cm_set_candidate_advance_filter_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*filter_fun)(struct wlan_objmgr_vdev *vdev,
-				   struct scan_filter *filter));
-
-void wlan_cm_set_candidate_custom_sort_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*sort_fun)(struct wlan_objmgr_vdev *vdev,
-				 qdf_list_t *list));
-#endif
 
 /**
  * wlan_cm_get_rnr() - get rnr

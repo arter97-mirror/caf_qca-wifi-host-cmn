@@ -29,12 +29,10 @@
 #include "wlan_scan_api.h"
 #include "wlan_crypto_global_api.h"
 #include "wlan_mgmt_txrx_utils_api.h"
-#ifdef CONN_MGR_ADV_FEATURE
 #include "wlan_mlme_api.h"
 #include "wlan_wfa_tgt_if_tx_api.h"
 #include "wlan_action_oui_main.h"
 #include "wlan_t2lm_api.h"
-#endif
 #include "wlan_cm_main_api.h"
 #include "wlan_cm_public_struct.h"
 #include "utils_mlo.h"
@@ -133,7 +131,6 @@
 #define CM_SET_SCORE_PERCENTAGE(value32, score_pcnt, bw_index) \
 	QDF_SET_BITS(value32, (8 * (bw_index)), 8, score_pcnt)
 
-#ifdef CONN_MGR_ADV_FEATURE
 /* 3.2 us + 0.8 us(GI) */
 #define PPDU_PAYLOAD_SYMBOL_DUR_US 4
 /* 12.8 us + (0.8 + 1.6)/2 us(GI) */
@@ -154,7 +151,6 @@
 static int32_t
 SNR_DB_TO_BIT_PER_TONE_LUT[DB_NUM] = {0, 171, 212, 262, 323, 396, 484,
 586, 706, 844, 1000, 1176, 1370, 1583, 1812, 2058, 2317, 2588, 2870, 3161};
-#endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
 static bool
@@ -646,7 +642,6 @@ static uint32_t wlan_cm_get_min_score(struct scan_cache_entry *entry)
 }
 #endif
 
-#ifdef CONN_MGR_ADV_FEATURE
 static bool
 cm_get_pcl_weight_of_channel(uint32_t chan_freq,
 			     struct pcl_freq_weight_list *pcl_lst,
@@ -1419,67 +1414,6 @@ cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 	}
 	return score;
 }
-#else
-static bool
-cm_get_pcl_weight_of_channel(uint32_t chan_freq,
-			     struct pcl_freq_weight_list *pcl_lst,
-			     int *pcl_chan_weight)
-{
-	return false;
-}
-
-static int32_t cm_calculate_pcl_score(struct wlan_objmgr_psoc *psoc,
-				      int pcl_chan_weight,
-				      uint8_t pcl_weightage)
-{
-	return 0;
-}
-
-static int32_t cm_calculate_oce_wan_score(struct scan_cache_entry *entry,
-					  struct scoring_cfg *score_params)
-{
-	return 0;
-}
-
-static uint32_t
-cm_calculate_oce_subnet_id_weightage(struct scan_cache_entry *entry,
-				     struct scoring_cfg *score_params,
-				     bool *oce_subnet_id_present)
-{
-	return 0;
-}
-
-static uint32_t
-cm_calculate_sae_pk_ap_weightage(struct scan_cache_entry *entry,
-				 struct scoring_cfg *score_params,
-				 bool *sae_pk_cap_present)
-{
-	return 0;
-}
-
-static uint32_t
-cm_calculate_oce_ap_tx_pwr_weightage(struct scan_cache_entry *entry,
-				     struct scoring_cfg *score_params,
-				     int8_t *ap_tx_pwr_dbm)
-{
-	return 0;
-}
-
-static inline bool cm_is_assoc_allowed(struct psoc_mlme_obj *mlme_psoc_obj,
-				       struct scan_cache_entry *entry)
-{
-	return true;
-}
-
-static uint32_t
-cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
-		       struct scan_cache_entry *entry,
-		       struct psoc_phy_config *phy_config,
-		       enum MLO_TYPE bss_mlo_type, uint8_t ml_flag)
-{
-	return 0;
-}
-#endif
 
 /**
  * cm_get_band_score() - Get band preference weightage
@@ -1868,7 +1802,6 @@ struct scan_cache_entry *cm_get_entry(qdf_list_t *scan_list,
 	return NULL;
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 static uint8_t cm_get_sta_mlo_conn_max_num(struct wlan_objmgr_psoc *psoc)
 {
 	return wlan_mlme_get_sta_mlo_conn_max_num(psoc);
@@ -1900,30 +1833,6 @@ static bool is_cm_hw_emlsr_capable(struct wlan_objmgr_psoc *psoc)
 {
 	return policy_mgr_is_hw_emlsr_capable(psoc);
 }
-#else
-static inline
-uint8_t cm_get_sta_mlo_conn_max_num(struct wlan_objmgr_psoc *psoc)
-{
-	return WLAN_UMAC_MLO_MAX_DEV;
-}
-
-static inline bool is_freq_dbs_or_sbs(struct wlan_objmgr_psoc *psoc,
-				      qdf_freq_t freq_1,
-				      qdf_freq_t freq_2)
-{
-	return false;
-}
-
-static bool is_cm_emlsr_mode_enabled(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-
-static inline bool is_cm_hw_emlsr_capable(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-#endif
 
 /**
  * cm_bss_mlo_type() - Get mlo type of bss scan entry
@@ -2389,7 +2298,7 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(CONN_MGR_ADV_FEATURE)
+#ifdef WLAN_FEATURE_11BE_MLO
 static void
 cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 				  struct scan_cache_entry *entry,
@@ -2514,17 +2423,7 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 		total_score[j] = 0;
 	}
 }
-#else
-static void
-cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
-				  struct scan_cache_entry *entry,
-				  struct psoc_phy_config *phy_config,
-				  qdf_list_t *scan_list,
-				  enum MLO_TYPE bss_mlo_type)
-{}
-#endif
 
-#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
 static QDF_STATUS cm_validate_t2lm_scan_entry(struct scan_cache_entry *entry)
 {
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
@@ -2537,6 +2436,14 @@ static QDF_STATUS cm_validate_t2lm_scan_entry(struct scan_cache_entry *entry)
 	return status;
 }
 #else
+static void
+cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
+				  struct scan_cache_entry *entry,
+				  struct psoc_phy_config *phy_config,
+				  qdf_list_t *scan_list,
+				  enum MLO_TYPE bss_mlo_type)
+{}
+
 static inline QDF_STATUS
 cm_validate_t2lm_scan_entry(struct scan_cache_entry *entry)
 {
@@ -3012,7 +2919,6 @@ static void cm_list_insert_sorted(qdf_list_t *scan_list,
 		qdf_list_insert_back(scan_list, &scan_entry->node);
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_is_bad_rssi_entry() - check the entry have rssi value, if rssi is lower
  * than threshold limit, then it is considered ad bad rssi value.
@@ -3080,22 +2986,6 @@ cm_update_bss_score_for_mac_addr_matching(struct scan_cache_node *scan_entry,
 			CM_BEST_CANDIDATE_MAX_BSS_SCORE;
 	}
 }
-#else
-static inline
-bool cm_is_bad_rssi_entry(struct scan_cache_entry *scan_entry,
-			  struct scoring_cfg *score_config,
-			  struct qdf_mac_addr *bssid_hint)
-
-{
-	return false;
-}
-
-static void
-cm_update_bss_score_for_mac_addr_matching(struct scan_cache_node *scan_entry,
-					  struct qdf_mac_addr *self_mac)
-{
-}
-#endif
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 void cm_print_candidate_list(qdf_list_t *candidate_list)
@@ -3974,17 +3864,10 @@ void cm_update_dlm_mlo_score(struct wlan_objmgr_pdev *pdev,
 #endif
 
 #ifdef CONFIG_BAND_6GHZ
-#ifdef CONN_MGR_ADV_FEATURE
 static bool wlan_cm_wfa_get_test_feature_flags(struct wlan_objmgr_psoc *psoc)
 {
 	return wlan_wfa_get_test_feature_flags(psoc, WFA_TEST_IGNORE_RSNXE);
 }
-#else
-static bool wlan_cm_wfa_get_test_feature_flags(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-#endif
 
 bool wlan_cm_6ghz_allowed_for_akm(struct wlan_objmgr_psoc *psoc,
 				  uint32_t key_mgmt, uint16_t rsn_caps,
