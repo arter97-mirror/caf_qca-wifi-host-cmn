@@ -617,4 +617,13 @@ QDF_STATUS osif_cm_perfd_set_cpufreq(bool action)
 }
 #endif
 
+/**
+ * osif_get_bss_mac_addr() - Get bss mac from vdev
+ * @vdev: vdev pointer
+ *
+ * This function fetches bss mac addr when vdev is connected
+ *
+ * Return: pointer for mac_addr
+ */
+uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev);
 #endif /* __OSIF_CM_UTIL_H */
