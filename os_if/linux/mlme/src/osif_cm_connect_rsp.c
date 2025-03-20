@@ -37,7 +37,6 @@
 #include <wlan_mlo_mgr_link_switch.h>
 #include "wlan_crypto_global_api.h"
 
-#ifdef CONN_MGR_ADV_FEATURE
 void osif_cm_get_assoc_req_ie_data(struct element_info *assoc_req,
 				   size_t *ie_data_len,
 				   const uint8_t **ie_data_ptr)
@@ -50,19 +49,6 @@ void osif_cm_get_assoc_req_ie_data(struct element_info *assoc_req,
 	*ie_data_len = assoc_req->len - WLAN_ASSOC_REQ_IES_OFFSET;
 	*ie_data_ptr = assoc_req->ptr + WLAN_ASSOC_REQ_IES_OFFSET;
 }
-#else
-void osif_cm_get_assoc_req_ie_data(struct element_info *assoc_req,
-				   size_t *ie_data_len,
-				   const uint8_t **ie_data_ptr)
-{
-	/* Validate IE and length */
-	if (!assoc_req->len || !assoc_req->ptr)
-		return;
-
-	*ie_data_len = assoc_req->len;
-	*ie_data_ptr = assoc_req->ptr;
-}
-#endif
 
 void osif_cm_get_assoc_rsp_ie_data(struct element_info *assoc_rsp,
 				   size_t *ie_data_len,
@@ -1544,7 +1530,6 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 #endif /* ENABLE_CFG80211_BACKPORTS_MLO */
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #else /* WLAN_FEATURE_11BE_MLO */
-#ifdef CONN_MGR_ADV_FEATURE
 static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 					 struct vdev_osif_priv *osif_priv,
 					 struct wlan_cm_connect_resp *rsp)
@@ -1556,19 +1541,6 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 					rsp, vdev))
 		osif_connect_bss(osif_priv->wdev->netdev, bss, rsp);
 }
-#else /* CONN_MGR_ADV_FEATURE */
-static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
-					 struct vdev_osif_priv *osif_priv,
-					 struct wlan_cm_connect_resp *rsp)
-{
-	struct cfg80211_bss *bss = NULL;
-
-	bss = osif_cm_get_connected_bss(osif_priv, rsp);
-	if (osif_update_connect_results(osif_priv->wdev->netdev, bss,
-					rsp, vdev))
-		osif_connect_bss(osif_priv->wdev->netdev, bss, rsp);
-}
-#endif /* CONN_MGR_ADV_FEATURE */
 #endif /* WLAN_FEATURE_11BE_MLO */
 #else  /* CFG80211_CONNECT_BSS */
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -1670,7 +1642,6 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 #endif /* WLAN_FEATURE_11BE_MLO */
 #endif /* CFG80211_CONNECT_BSS */
 
-#ifdef CONN_MGR_ADV_FEATURE
 static inline
 bool osif_cm_is_unlink_bss_required(struct wlan_cm_connect_resp *rsp)
 {
@@ -1692,11 +1663,6 @@ static inline void osif_check_and_unlink_bss(struct wlan_objmgr_vdev *vdev,
 	if (osif_cm_is_unlink_bss_required(rsp))
 		osif_cm_unlink_bss(vdev, &rsp->bssid);
 }
-#else
-static inline void osif_check_and_unlink_bss(struct wlan_objmgr_vdev *vdev,
-					     struct wlan_cm_connect_resp *rsp)
-{}
-#endif
 
 #define OSIF_CM_FAIL_INFO_STRING_SIZE 50
 

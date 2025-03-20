@@ -31,13 +31,10 @@
 #include <wlan_cfg80211_scan.h>
 #include "wlan_mlo_mgr_sta.h"
 #include "wlan_mlo_mgr_link_switch.h"
-#ifdef CONN_MGR_ADV_FEATURE
 #include "wlan_mlme_ucfg_api.h"
-#endif
 #include "wlan_crypto_global_api.h"
 #include <osif_cm_req.h>
 
-#ifdef CONN_MGR_ADV_FEATURE
 #ifdef WLAN_FEATURE_FILS_SK
 static inline void osif_update_fils_hlp_data(struct net_device *dev,
 					     struct wlan_objmgr_vdev *vdev,
@@ -852,4 +849,3 @@ osif_pmksa_candidate_notify(struct wlan_objmgr_vdev *vdev,
 					preauth, qdf_mem_malloc_flags());
 	return QDF_STATUS_SUCCESS;
 }
-#endif /* CONN_MGR_ADV_FEATURE */

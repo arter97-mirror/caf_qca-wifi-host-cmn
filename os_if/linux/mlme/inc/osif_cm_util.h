@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,9 +31,7 @@
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 #include "wlan_cm_roam_public_struct.h"
 #endif
-#ifdef CONN_MGR_ADV_FEATURE
 #include <cdp_txrx_mob_def.h>
-#endif
 
 /**
  * osif_cm_mac_to_qca_connect_fail_reason() - Convert to qca internal connect
@@ -140,9 +138,7 @@ enum osif_cb_type {
 	OSIF_NOT_HANDLED,
 };
 
-#ifdef CONN_MGR_ADV_FEATURE
 typedef void (*osif_cm_connect_active_notify_cb)(uint8_t vdev_id);
-#endif
 
 /**
  * typedef osif_cm_connect_comp_cb  - Connect complete callback
@@ -220,7 +216,6 @@ typedef QDF_STATUS
 				      struct wlan_cm_discon_rsp *rsp,
 				      enum osif_cb_type type);
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * typedef osif_cm_get_scan_ie_params_cb  - get scan ie params cb
  * @vdev: vdev pointer
@@ -293,11 +288,6 @@ typedef QDF_STATUS
  */
 void osif_cm_unlink_bss(struct wlan_objmgr_vdev *vdev,
 			struct qdf_mac_addr *bssid);
-#else
-static inline
-void osif_cm_unlink_bss(struct wlan_objmgr_vdev *vdev,
-			struct qdf_mac_addr *bssid) {}
-#endif
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /**
@@ -407,18 +397,14 @@ typedef struct net_device *
  * @osif_get_mld_netdev_cb: callback to get ML netdev from vdev
  */
 struct osif_cm_ops {
-#ifdef CONN_MGR_ADV_FEATURE
 	osif_cm_connect_active_notify_cb connect_active_notify_cb;
-#endif
 	osif_cm_connect_comp_cb connect_complete_cb;
 	osif_cm_disconnect_comp_cb disconnect_complete_cb;
-#ifdef CONN_MGR_ADV_FEATURE
 	osif_cm_netif_queue_ctrl_cb netif_queue_control_cb;
 	os_if_cm_napi_serialize_ctrl_cb napi_serialize_control_cb;
 	osif_cm_save_gtk_cb save_gtk_cb;
 	osif_cm_send_vdev_keys_cb send_vdev_keys_cb;
 	osif_cm_get_scan_ie_params_cb get_scan_ie_params_cb;
-#endif
 #ifdef WLAN_FEATURE_FILS_SK
 	osif_cm_set_hlp_data_cb set_hlp_data_cb;
 #endif
@@ -442,7 +428,6 @@ struct osif_cm_ops {
 #endif
 };
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * osif_cm_connect_active_notify() - Function to notify connect active
  * @vdev_id: VDEV ID on which connect req is active
@@ -450,7 +435,6 @@ struct osif_cm_ops {
  * This API notifies connect active to legacy module
  */
 void osif_cm_connect_active_notify(uint8_t vdev_id);
-#endif
 
 /**
  * osif_cm_connect_comp_ind() - Function to indicate connect
@@ -509,7 +493,6 @@ QDF_STATUS osif_cm_disconnect_comp_ind(struct wlan_objmgr_vdev *vdev,
 				       struct wlan_cm_discon_rsp *rsp,
 				       enum osif_cb_type type);
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * osif_cm_netif_queue_ind() - Function to indicate netif queue update
  * complete to legacy module
@@ -568,13 +551,6 @@ osif_cm_send_vdev_keys(struct wlan_objmgr_vdev *vdev,
 		       uint8_t key_index,
 		       bool pairwise,
 		       enum wlan_crypto_cipher_type cipher_type);
-#else
-static inline QDF_STATUS osif_cm_save_gtk(struct wlan_objmgr_vdev *vdev,
-					  struct wlan_cm_connect_resp *rsp)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 #ifdef WLAN_FEATURE_FILS_SK
 /**
