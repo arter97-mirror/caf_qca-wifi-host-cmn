@@ -25,6 +25,7 @@
 
 struct rnr_global_info g_rnr_info;
 uint8_t g_soc_id_map[MAX_6GHZ_SOCS] = {GLOBAL_SOC_SIZE, GLOBAL_SOC_SIZE, GLOBAL_SOC_SIZE};
+extern unsigned int parallel_probe_enabled;
 
 void wlan_rnr_init_cnt(void)
 {
@@ -92,8 +93,10 @@ bool wlan_rnr_register_soc(struct ol_ath_soc_softc *soc)
 {
 	uint8_t i;
 
-	if (soc->soc_idx > ol_num_global_soc)
-		return false;
+	if (!parallel_probe_enabled) {
+		if (soc->soc_idx > ol_num_global_soc)
+			return false;
+	}
 
 	for (i = 0; i < MAX_6GHZ_LINKS; i++) {
 		if (g_soc_id_map[i] == soc->soc_idx ||
