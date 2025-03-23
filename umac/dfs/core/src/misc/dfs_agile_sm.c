@@ -56,6 +56,15 @@
 #define MAX_20MHZ_SUBCHANS NUM_CHANNELS_160MHZ
 #endif
 
+#define INVAL_SLOT_IDX  -1
+#define EMPTY_SLOT_IDX   0
+#define INVAL_CHAN_IDX  -1
+
+static bool dfs_is_idx_valid(int8_t idx)
+{
+	return idx == INVAL_SLOT_IDX;
+}
+
 #ifdef QCA_SUPPORT_AGILE_DFS
 
 /**
@@ -1214,15 +1223,38 @@ void dfs_destroy_punc_sm(struct wlan_dfs *dfs)
 	}
 }
 
+/**
+ * dfs_set_user_puncture - Update SM Punc Object on whether it
+ *                         was user/radar punctured.
+ * @dfs_punc: Pointer to struct dfs_punc_obj that indicates the active SM.
+ * @val:      Boolean value on to be assigned to 'dfs_is_user_punctured'
+ *            of SM Punc Object indicating whether it was user/radar
+ *            punctured.
+ *
+ * Return: Puncture radar bitmap.
+ */
+void dfs_set_user_puncture(struct dfs_punc_obj *dfs_punc_obj, bool val)
+{
+	dfs_punc_obj->dfs_is_user_punctured = val;
+	return;
+}
+
 void dfs_punc_sm_stop(struct wlan_dfs *dfs,
 		      uint8_t indx,
 		      struct dfs_punc_obj *dfs_punc_arr)
 {
+	dfs_debug(dfs, WLAN_DEBUG_DFS_ALWAYS,
+		  "Stop SM PUNC OBJ[%d] for channel: %d \n",
+		  indx,
+		  (dfs_punc_arr->punc_low_freq + dfs_punc_arr->punc_high_freq) / 2);
 	dfs_punc_arr->punc_low_freq = 0;
 	dfs_punc_arr->punc_high_freq = 0;
 	dfs_cancel_punc_cac_timer(dfs_punc_arr);
 	dfs_punc_arr->dfs_is_unpunctured = true;
-	utils_dfs_puncturing_sm_deliver_evt(dfs->dfs_pdev_obj, indx, DFS_PUNC_SM_EV_STOP);
+	dfs_punc_arr->dfs_is_user_punctured = false;
+	utils_dfs_puncturing_sm_deliver_evt(dfs->dfs_pdev_obj, indx,
+					    DFS_PUNC_SM_EV_STOP);
+	dfs_set_user_puncture(dfs_punc_arr, false);
 }
 
 static inline
@@ -1236,16 +1268,26 @@ bool is_punc_slot_empty(uint8_t indx, struct dfs_punc_unpunc *active_dfs_sm)
 	return (!punc_low_freq && !punc_high_freq);
 }
 
-static void
-dfs_process_punc_bitmap(struct wlan_dfs *dfs, uint16_t *punc_list, uint8_t n_punc_chans)
+/**
+ * dfs_init_punc_obj - Initialise SM Puncture Object.
+ * @dfs:          Pointer to struct wlan_dfs.
+ * @cen20_freq:   Center frequency of sub20 channel that got punctured.
+ * @is_user_punc: Boolean status indicating whether the puncture action
+ *                 was performed by the user or the radar..
+ *
+ * Return: Index of the SM Puncture Object if initialized successfully.
+ *         INVAL_SLOT_IDX otherwise.
+ */
+static int8_t dfs_init_punc_obj(struct wlan_dfs *dfs, uint16_t cen20_freq,
+				bool is_user_punc)
 {
 	uint8_t i;
-	uint8_t indx;
-	struct dfs_punc_unpunc *active_dfs_sm = &dfs->dfs_punc_lst;
-	qdf_freq_t punc_low_freq = 0;
-	qdf_freq_t punc_high_freq = 0;
+	int8_t indx;
+	struct dfs_punc_unpunc *active_dfs_sm;
+	struct dfs_punc_obj *dfs_punc_obj;
 
-	indx = 0;
+	active_dfs_sm = &dfs->dfs_punc_lst;
+	indx = INVAL_SLOT_IDX;
 	for (i = 0; i < N_MAX_PUNC_SM; i++) {
 		if (is_punc_slot_empty(i, active_dfs_sm)) {
 			indx = i;
@@ -1253,20 +1295,24 @@ dfs_process_punc_bitmap(struct wlan_dfs *dfs, uint16_t *punc_list, uint8_t n_pun
 		}
 	}
 
-	if (n_punc_chans == 1) {
-		punc_low_freq = punc_list[0] - 10;
-		punc_high_freq = punc_list[0] + 10;
-	} else if (n_punc_chans == 2) {
-		punc_low_freq = punc_list[0] - 10;
-		punc_high_freq = punc_list[1] + 10;
+	if (indx == INVAL_SLOT_IDX) {
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING,
+			  "No empty slot available for puncturing SM\n");
+		return indx;
 	}
-	active_dfs_sm->dfs_punc_arr[indx].punc_low_freq = punc_low_freq;
-	active_dfs_sm->dfs_punc_arr[indx].punc_high_freq = punc_high_freq;
-	active_dfs_sm->dfs_punc_arr[indx].dfs_is_unpunctured = false;
+
+
+	dfs_punc_obj = &active_dfs_sm->dfs_punc_arr[indx];
+	dfs_punc_obj->punc_low_freq = cen20_freq - 10;
+	dfs_punc_obj->punc_high_freq = cen20_freq + 10;
+	dfs_punc_obj->dfs_is_unpunctured = false;
+	dfs_set_user_puncture(dfs_punc_obj, is_user_punc);
+	dfs_punc_obj->dfs_last_rf_time = 0;
 	dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING,
 		  "Lower frequency of SM %d = %d\n Higher frequency of SM %d = %d\n",
 		  indx, active_dfs_sm->dfs_punc_arr[indx].punc_low_freq, indx,
 		  active_dfs_sm->dfs_punc_arr[indx].punc_high_freq);
+	return indx;
 }
 
 /**
@@ -1357,17 +1403,17 @@ dfs_generate_punc_chan_list_on_radar_event(struct wlan_dfs *dfs,
 					   uint16_t dfs_curr_radar_bitmap,
 					   uint16_t *punc_list)
 {
-	uint8_t punc_indx;
+	uint8_t punc_idx;
 
 	dfs_curr_radar_bitmap =
 		dfs_remove_static_punc_bitmap_for_320bw(dfs_curr_radar_bitmap,
 							ch_width);
 
-	punc_indx = dfs_generate_punc_chan_list(dfs,
+	punc_idx = dfs_generate_punc_chan_list(dfs,
 						ch_width,
 						dfs_curr_radar_bitmap,
 						punc_list);
-	return punc_indx;
+	return punc_idx;
 }
 
 void dfs_punc_sm_stop_all(struct wlan_dfs *dfs)
@@ -1426,6 +1472,118 @@ dfs_get_event_for_punctured_chan(struct wlan_dfs *dfs,
 	}
 }
 
+void dfs_stop_this_punc_sm(struct wlan_dfs *dfs,
+			    uint8_t punc_sm_id)
+{
+	struct dfs_punc_obj *dfs_punc_obj;
+
+	if (!(punc_sm_id == 0 || punc_sm_id == 1)) {
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING,
+				"Invalid Punc SM ID %d\n", punc_sm_id);
+		return;
+	}
+
+	dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[punc_sm_id];
+	dfs_punc_sm_stop(dfs, punc_sm_id, dfs_punc_obj);
+}
+
+static void dfs_update_radarfound_timestamp(struct wlan_dfs *dfs,
+				     struct dfs_punc_obj *dfs_punc_obj,
+				     uint64_t time_stamp)
+{
+	dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING,
+		  "Timestamp updated for Freq %d \n",
+		  ((dfs_punc_obj->punc_low_freq + dfs_punc_obj->punc_high_freq) / 2));
+	dfs_punc_obj->dfs_last_rf_time = time_stamp;
+	return;
+}
+
+static uint8_t dfs_generate_punc_list_from_sm(struct dfs_punc_obj *dfs_punc,
+					      uint16_t *punc_lst_freq_list)
+{
+	qdf_freq_t punc_low_freq = dfs_punc->punc_low_freq;
+	qdf_freq_t punc_high_freq = dfs_punc->punc_high_freq;
+	qdf_freq_t punc_nol_freq = (punc_low_freq + punc_high_freq) / 2;
+	uint8_t n_punc_channels = 0;
+
+	if (punc_high_freq - punc_low_freq == 20) {
+		punc_lst_freq_list[0] = punc_nol_freq;
+		n_punc_channels = 1;
+	}
+
+	return n_punc_channels;
+}
+
+static inline
+bool is_punc_obj_empty(struct dfs_punc_obj *dfs_punc_arr)
+{
+	if (!dfs_punc_arr)
+		return true;
+	return false;
+}
+
+/**
+ * dfs_find_punc_sm_idx - Given the punctured channel list, function finds
+ *                        an index of an existing  punctured SM (state machine)
+ * @dfs:           Pointer to struct wlan_dfs.
+ * @punc_chan_lst: Center frequency of the sub20 channel for which the SM Puncture
+ *                 object needs to be found.
+ *
+ * Return: Index of the SM Puncture Object if appropriate SM is found.
+ *         INVAL_SLOT_IDX=(-1) otherwise.
+ */
+
+static int8_t dfs_find_punc_sm_idx(struct wlan_dfs *dfs,
+				   uint16_t *punc_chan_lst)
+{
+	uint8_t i;
+	int8_t idx = INVAL_SLOT_IDX;
+	uint16_t left_freq;
+	uint16_t right_freq;
+
+
+	/* Valid puncture patterns are always adjacent to each other.
+	 * So, to find the left and right frequencies, consider the
+	 * 1st and last frequency entries in the punc_chan_lst.
+	 */
+	left_freq = punc_chan_lst[0] - 10;
+	right_freq = punc_chan_lst[0] + 10;
+
+	for (i = 0; i < N_MAX_PUNC_SM; i++) {
+		struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
+
+		if (is_punc_obj_empty(dfs_punc_obj))
+			continue;
+
+		/* dfs_is_unpunctured should be checked before slot empty check.
+		 * In two radar puncture case, after unpuncturing the first
+		 * puncture channel, the first puncture SM becomes empty.
+		 * So if we check the slot empty first, it skips the first
+		 * punc SM and checks if the second SM is unpunctured or not.
+		 * since the second SM is punctured, the dfs_is_unpunctured
+		 * check fails, we unnecessarily send a radar event to second
+		 * puncture SM.
+		 */
+		if (dfs_punc_obj->dfs_is_unpunctured)
+			continue;
+
+		if (is_punc_slot_empty(i, &dfs->dfs_punc_lst))
+			continue;
+
+		if (dfs_punc_obj->punc_low_freq == left_freq &&
+		    dfs_punc_obj->punc_high_freq == right_freq) {
+			idx = i;
+			break;
+		}
+	}
+
+	return idx;
+}
+
+/**
+ * 1. Send RADAR event to the SM if already initialize.
+ * 2. Else initialize the puncturing SM.
+ */
 void dfs_handle_radar_puncturing(struct wlan_dfs *dfs,
 				 uint16_t *dfs_radar_bitmap,
 				 uint16_t *freq_list,
@@ -1468,10 +1626,11 @@ void dfs_handle_radar_puncturing(struct wlan_dfs *dfs,
 	*dfs_radar_bitmap =
 	    wlan_reg_find_nearest_puncture_pattern(ch_width,
 						   dfs_total_radar_bitmap);
-
 	if (*dfs_radar_bitmap) {
 		uint8_t n_punc_chans;
-		uint16_t punc_list[N_MAX_PUNC_SM] = {0};
+		uint16_t cur_radar_ev_punc_list[N_MAX_PUNC_SM] = {0};
+		uint64_t time_stamp;
+		int i = 0;
 		/* We get the nearest pattern because, in case of 240 MHz, even
 		 * for a single 20 MHz  NOL we want to add a 40 MHz punct object
 		 */
@@ -1482,14 +1641,34 @@ void dfs_handle_radar_puncturing(struct wlan_dfs *dfs,
 		    dfs_generate_punc_chan_list(dfs,
 						ch_width,
 						dfs_curr_radar_bitmap,
-						punc_list);
+						cur_radar_ev_punc_list);
 
 		if (!n_punc_chans)
 			return;
 
-		/* Init the puncture objects according to dfs_cur_radar_bitmap */
-		dfs_process_punc_bitmap(dfs, punc_list, n_punc_chans);
+		time_stamp = qdf_get_monotonic_boottime();
+		for(i = 0; i < n_punc_chans; i++) {
+			int8_t idx;
+			int8_t punc_idx;
+			struct dfs_punc_obj *dfs_punc_obj;
+
+			punc_idx = dfs_find_punc_sm_idx(dfs, &cur_radar_ev_punc_list[i]);
+			if (punc_idx == INVAL_SLOT_IDX) {
+				idx = dfs_init_punc_obj(dfs, cur_radar_ev_punc_list[i], false);
+				if (idx == INVAL_SLOT_IDX) {
+					dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING,
+						  "No empty slot available for puncturing SM\n");
+				} else {
+					dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[idx];
+					dfs_update_radarfound_timestamp(dfs, dfs_punc_obj, time_stamp);
+					utils_dfs_puncturing_sm_deliver_evt(dfs->dfs_pdev_obj,
+							idx,
+							DFS_PUNC_SM_EV_RADAR);
+				}
+			}
+		}
 	}
+	return;
 }
 
 void dfs_handle_nol_puncture(struct wlan_dfs *dfs, qdf_freq_t nolfreq)
@@ -1498,8 +1677,9 @@ void dfs_handle_nol_puncture(struct wlan_dfs *dfs, qdf_freq_t nolfreq)
 	int8_t indx = -1;
 
 	for (i = 0; i < N_MAX_PUNC_SM; i++) {
-		if (is_punc_slot_empty(i, &dfs->dfs_punc_lst))
+		if (is_punc_slot_empty(i, &dfs->dfs_punc_lst)) {
 			continue;
+		}
 
 		if ((dfs->dfs_punc_lst.dfs_punc_arr[i].punc_low_freq < nolfreq) &&
 		    (nolfreq  < dfs->dfs_punc_lst.dfs_punc_arr[i].punc_high_freq)) {
@@ -1513,14 +1693,38 @@ void dfs_handle_nol_puncture(struct wlan_dfs *dfs, qdf_freq_t nolfreq)
 						    indx,
 						    DFS_PUNC_SM_EV_NOL_EXPIRY);
 	}
+
+	return;
 }
 
-static inline
-bool is_punc_obj_empty(struct dfs_punc_obj *dfs_punc_arr)
+/**
+ * dfs_move_to_punc_state() - Move user punctured SM objects to Punctured state
+ * @dfs: Pointer to structure wlan_dfs.
+ * @idx: Index of dfs_punc_obj SM object that needs to be moved to Punctured
+ *       state.
+ * @is_user_punc: Boolean status on whether the channel is user or radar punctured.
+ *
+ * Return: None
+ */
+static void dfs_move_to_punc_state(struct wlan_dfs *dfs,
+				   int8_t idx,
+				   bool is_user_punc)
 {
-	if (!dfs_punc_arr)
-		return true;
-	return false;
+	struct dfs_punc_obj *dfs_punc_obj;
+
+	dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[idx];
+	if (is_user_punc) {
+		/*
+		 * For user punctured sub20 channel, we always move it to
+		 * punctured state with 'DFS_PUNC_SM_EV_USER_PUNC' event.
+		 */
+		utils_dfs_puncturing_sm_deliver_evt(dfs->dfs_pdev_obj,
+				idx,
+				DFS_PUNC_SM_EV_USER_PUNC);
+		dfs_set_user_puncture(dfs_punc_obj, true);
+	}
+
+	return;
 }
 
 static inline
@@ -1562,14 +1766,218 @@ bool is_found_in_cur_chan_punc_list(struct wlan_dfs *dfs,
 	return is_found;
 }
 
-void dfs_handle_dfs_puncture_unpuncture(struct wlan_dfs *dfs)
+QDF_STATUS dfs_check_punc_chan_in_cac(struct wlan_dfs *dfs,
+				      uint16_t punc_pattern)
+{
+	uint8_t n_punc_chans = 0;
+	uint16_t punc_list[MAX_20MHZ_SUBCHANS] = {0};
+	uint16_t bw;
+	int i = 0;
+	enum phy_ch_width ch_width;
+
+	if (!dfs->dfs_use_puncture) {
+		return QDF_STATUS_SUCCESS;
+	}
+
+	bw = dfs_chan_to_ch_width(dfs->dfs_curchan);
+	ch_width = wlan_reg_find_chwidth_from_bw(bw);
+
+	n_punc_chans =
+		dfs_generate_punc_chan_list(dfs,
+				ch_width,
+				punc_pattern,
+				punc_list);
+
+	/* Check for channels to be unpunctured which are still in SM Punc Objects
+	 * and the state of the SM Punc Objects has not reached CAC_DONE
+	 */
+	for (i = 0; i < N_MAX_PUNC_SM; i++) {
+		bool is_found = false;
+		struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
+
+		if (is_punc_obj_empty(dfs_punc_obj))
+			continue;
+		if (is_punc_slot_empty(i, &dfs->dfs_punc_lst))
+			continue;
+		if (dfs_punc_obj->dfs_is_unpunctured)
+			continue;
+
+		is_found =
+			is_found_in_cur_chan_punc_list(dfs,
+					dfs_punc_obj,
+					n_punc_chans,
+					punc_list);
+		/* If the SM punc object is not part of the user punctured pattern,
+		 * it means that they are trying to unpuncture the channel of this
+		 * SM punc object.
+		 * In case the SM punc object of a channel has not reached CAC_DONE
+		 * state and user is trying to unpuncture this channel, we must
+		 * stop processing the user puncture request and throw an error.
+		 */
+		if (!is_found && dfs_punc_obj->dfs_punc_sm_cur_state != DFS_S_CAC_DONE) {
+			dfs_info(dfs, WLAN_DEBUG_DFS_ALWAYS,
+				 "Channel %d of SM Punc obj idx: %d has not completed CAC. "
+				 "Throw error and reject user punc patter config",
+				 (dfs_punc_obj->punc_low_freq + dfs_punc_obj->punc_high_freq) / 2, i);
+			return QDF_STATUS_E_INVAL;
+		}
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dfs_continue_old_or_start_new_sms() - Implementation to start new SM punc objects
+ *                                       for newly punctured channels and move existing
+ *                                       SM objects to appropriate states.
+ * There are 3 parts in the algorithm:
+ * Part 1:
+ *         Finding the SM puncture object with same channel as the channel
+ *         If a channel for which SM puncture object is already present, we
+ *         change the states alone and update "dfs_is_user_punctured" based on
+ *         whether it is user or radar punctured.
+ *
+ *         Example: When user punctures a channel 100 for which a punctured SM
+ *                  object is already present, we only move the state of that
+ *                  punctured SM object.
+ * Part 2:
+ *         Free punc SMs that are not part of the punctured channel list
+ *
+ *         Example: When channel 100 is already punctured and has on punctured SM
+ *                  running, if user punctures only 104 channel (with 0x2 pattern),
+ *                  we unpuncture and free the punctured SM object for 100.
+ * Part 3:
+ *         Create a new SM for the 20MHz channels which are not present
+ *         in the punctured SM objects.
+ *
+ *         Example: If user punctures 104 channel (with 0x2 pattern),
+ *                  and it was not previously punctured, we create a new SM
+ *                  for 104 and move it to punctured state.
+ *
+ * @dfs_curchan_punc_list: Pointer to the list of punctured channels.
+ * @n_punc_chans: Number of punctured channels.
+ * @is_user_punc: Boolean status on whether its user or radar punctured.
+ *
+ * Return: None
+ */
+static void dfs_continue_old_or_start_new_sms(struct wlan_dfs *dfs,
+					      uint16_t *dfs_curchan_punc_list,
+					      uint8_t n_punc_chans,
+					      bool is_user_punc)
+{
+	int8_t chan_idx;
+	int8_t punc_idx;
+	/*  chan indices {0, 1} :  punc object indices {0, 1} */
+	int8_t ch_to_punc_idx[N_MAX_PUNC_SM];
+	int8_t punc_to_ch_idx[N_MAX_PUNC_SM];
+
+	dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "is_user_punc: %s", is_user_punc ? "True" : "False");
+	if (n_punc_chans > 2) {
+		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS, "Invalid number of punctured channels num chans %d",n_punc_chans);
+		return;
+	}
+
+
+	/*
+	 * Continue with the matched puncture objects
+	 */
+	memset(ch_to_punc_idx, EMPTY_SLOT_IDX, sizeof(ch_to_punc_idx));
+	memset(punc_to_ch_idx, INVAL_CHAN_IDX, sizeof(punc_to_ch_idx));
+	for (chan_idx = 0; chan_idx < n_punc_chans; chan_idx++) {
+		punc_idx = dfs_find_punc_sm_idx(dfs, &dfs_curchan_punc_list[chan_idx]);
+		if (punc_idx == INVAL_SLOT_IDX) {
+			ch_to_punc_idx[chan_idx] = INVAL_SLOT_IDX;
+			dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "dfs_curchan_punc_list[%d]: %d didnt match with sm_punc_idx: %d", chan_idx, dfs_curchan_punc_list[chan_idx], punc_idx);
+			continue;
+		}
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "dfs_curchan_punc_list[%d]: %d matches with sm_punc_idx: %d", chan_idx, dfs_curchan_punc_list[chan_idx], punc_idx);
+		ch_to_punc_idx[chan_idx] = punc_idx;
+		punc_to_ch_idx[punc_idx] = chan_idx;
+		dfs_move_to_punc_state(dfs, punc_idx, is_user_punc);
+	}
+
+	/*
+	 * Free the unnecessary puncture objects
+	 */
+	for (punc_idx = 0; punc_idx < N_MAX_PUNC_SM; punc_idx++) {
+		if (punc_to_ch_idx[punc_idx] != INVAL_CHAN_IDX)
+			continue;
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "punc_idx: %d is to be deleted as its not present in the current punc chan list", punc_idx);
+		dfs_stop_this_punc_sm(dfs, punc_idx);
+	}
+
+	/*
+	 * Create the new puncture objects
+	 */
+	for (chan_idx = 0; chan_idx < n_punc_chans; chan_idx++) {
+		if (ch_to_punc_idx[chan_idx] != INVAL_SLOT_IDX)
+			continue;
+
+		punc_idx = dfs_init_punc_obj(dfs, dfs_curchan_punc_list[chan_idx], is_user_punc);
+		if (punc_idx == INVAL_SLOT_IDX) {
+			dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,"Could not start 20MHz puncture SM idx = %d",
+				chan_idx);
+			continue;
+		}
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "dfs_curchan_punc_list[%d]: %d gets created with new sm_punc_idx: %d",
+			  chan_idx, dfs_curchan_punc_list[chan_idx], punc_idx);
+		dfs_move_to_punc_state(dfs, punc_idx, is_user_punc);
+	}
+
+	return;
+}
+
+/**
+ * dfs_is_punc_sm_sanity_passed() - Validation of punctured bitmap to be used on
+ *                                  DFS puncture SM.
+ * If there is no puncture bitmap or number of punctured channel is
+ * zero, then stop the puncture SM. This case happens when the current
+ * channel receives an invalid puncture pattern, (eg three radar case)
+ * AP moves to another channel. But the SMs already started running,
+ * so in VDEV start, we check if there is no puncture bitmap or
+ * punctured channels for the current channel, then send STOP event
+ * for all the puncture SM.
+ *
+ * @dfs: Pointer to struct wlan_dfs.
+ * @dfs_punc_radar_bitmap: Puncture bitmap to be validated.
+ * @n_punc_chans: Number of punctured channels in the punctured bitmap.
+ *
+ * Return: True if the validation is successful
+ *         False if otherwise.
+ */
+static bool dfs_is_punc_sm_sanity_passed(struct wlan_dfs *dfs,
+					 uint16_t dfs_punc_radar_bitmap,
+					 uint8_t n_punc_chans)
+{
+	uint8_t i = 0;
+
+	if (!dfs_punc_radar_bitmap || !n_punc_chans) {
+		for (i = 0 ; i < N_MAX_PUNC_SM; i++) {
+			struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
+			dfs_punc_sm_stop(dfs, i, dfs_punc_obj);
+		}
+		dfs_debug(dfs, WLAN_DEBUG_DFS_ALWAYS, "No radar puncturing found");
+		return false;
+	}
+
+	if (n_punc_chans > N_MAX_PUNC_SM) {
+		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,  "Invalid punc pattern");
+		return false;
+	}
+
+	return true;
+}
+
+void dfs_handle_dfs_puncture_unpuncture(struct wlan_dfs *dfs, bool is_user_punc)
 {
 	uint16_t dfs_punc_radar_bitmap = dfs->dfs_curchan->dfs_ch_punc_pattern;
 	uint8_t n_punc_chans;
 	uint16_t dfs_curchan_punc_list[MAX_20MHZ_SUBCHANS] = {0};
 	enum phy_ch_width ch_width;
 	uint16_t bw;
-	uint8_t i = 0;
+
+	dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING,
+		  "Handle %s puncture and unpuncture scenarios. ", is_user_punc ? "User":"Radar");
 
 	bw = dfs_chan_to_ch_width(dfs->dfs_curchan);
 	ch_width = wlan_reg_find_chwidth_from_bw(bw);
@@ -1584,85 +1992,25 @@ void dfs_handle_dfs_puncture_unpuncture(struct wlan_dfs *dfs)
 								  ch_width,
 								  dfs_punc_radar_bitmap,
 								  dfs_curchan_punc_list);
-	/* if there is no puncture bitmap or number of punctured channel is
-	 * zero, then stop the puncture SM. This case happens when the current
-	 * channel receives an invalid puncture pattern, (eg three radar case)
-	 * AP moves to another channel. But the SMs already started running,
-	 * so in VDEV start, we check if there is no puncture bitmap or
-	 * punctured channels for the current channel, then send STOP event
-	 * for all the puncture SM.
+
+	dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "dfs_ch_punc_pattern: %d, "
+                  "n_punc_chans: %d, dfs_curchan_punc_list[0]: %d, dfs_curchan_punc_list[1]: %d",
+		  dfs_punc_radar_bitmap, n_punc_chans, dfs_curchan_punc_list[0],
+		  dfs_curchan_punc_list[1]);
+	if (!dfs_is_punc_sm_sanity_passed(dfs, dfs_punc_radar_bitmap,
+					  n_punc_chans))
+		return;
+
+
+	/* For every puncture bit if there is an SM already initialized
+	 * send the puncture EVENT to the SM else
+	 * initialize a new SM and send the event.
+	 * For user puncture, mark the SM as user punctured.
 	 */
-	if (!dfs_punc_radar_bitmap || !n_punc_chans) {
-		struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
+	dfs_continue_old_or_start_new_sms(dfs, dfs_curchan_punc_list,
+					  n_punc_chans,
+					  is_user_punc);
 
-		for (i = 0 ; i < N_MAX_PUNC_SM; i++) {
-		    dfs_punc_sm_stop(dfs, i, dfs_punc_obj);
-		}
-		dfs_debug(dfs, WLAN_DEBUG_DFS_ALWAYS, "No radar puncturing found");
-		return;
-	}
-
-	if (n_punc_chans > N_MAX_PUNC_SM) {
-		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,  "Invalid punc pattern");
-		return;
-	}
-
-	for (i = 0 ; i < N_MAX_PUNC_SM; i++) {
-		bool is_found = false;
-		struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
-
-		if (is_punc_obj_empty(dfs_punc_obj))
-			continue;
-
-		/* dfs_is_unpunctured should be checked before slot empty check.
-		 * In two radar puncture case, after unpuncturing the first
-		 * puncture channel, the first puncture SM becomes empty.
-		 * So if we check the slot empty first, it skips the first
-		 * punc SM and checks if the second SM is unpunctured or not.
-		 * since the second SM is punctured, the dfs_is_unpunctured
-		 * check fails, we unnecessarily send a radar event to second
-		 * puncture SM.
-		 */
-		if (dfs_punc_obj->dfs_is_unpunctured)
-			return;
-
-		if (is_punc_slot_empty(i, &dfs->dfs_punc_lst)) {
-			continue;
-		}
-
-		is_found = is_found_in_cur_chan_punc_list(dfs,
-							  dfs_punc_obj,
-							  n_punc_chans,
-							  dfs_curchan_punc_list);
-
-		if (is_found) {
-			utils_dfs_puncturing_sm_deliver_evt(dfs->dfs_pdev_obj,
-							    i,
-							    DFS_PUNC_SM_EV_RADAR);
-		} else {
-		    dfs_punc_sm_stop(dfs, i, dfs_punc_obj);
-		}
-	}
-}
-
-static uint8_t dfs_generate_punc_list_from_sm(struct dfs_punc_obj *dfs_punc,
-					      uint16_t *punc_lst_freq_list)
-{
-	qdf_freq_t punc_low_freq = dfs_punc->punc_low_freq;
-	qdf_freq_t punc_high_freq = dfs_punc->punc_high_freq;
-	qdf_freq_t punc_nol_freq = (punc_low_freq + punc_high_freq) / 2;
-	uint8_t n_punc_channels = 0;
-
-	if (punc_high_freq - punc_low_freq == 20) {
-		punc_lst_freq_list[0] = punc_nol_freq;
-		n_punc_channels = 1;
-	} else if (punc_high_freq - punc_low_freq == 40) {
-		punc_lst_freq_list[0] = punc_nol_freq - 10;
-		punc_lst_freq_list[1] = punc_nol_freq + 10;
-		n_punc_channels = 2;
-	}
-
-	return n_punc_channels;
 }
 
 static uint16_t dfs_generate_internal_radar_pattern(struct wlan_dfs *dfs)
@@ -1714,6 +2062,7 @@ bool dfs_is_ignore_radar_for_punctured_chans(struct wlan_dfs *dfs,
 
 		if (intersect_radar_pattern) {
 			uint8_t i;
+			uint64_t time_stamp = qdf_get_monotonic_boottime();
 
 			n_punc_chans =
 			    dfs_generate_punc_chan_list(dfs,
@@ -1725,7 +2074,7 @@ bool dfs_is_ignore_radar_for_punctured_chans(struct wlan_dfs *dfs,
 				return false;
 
 			for (i = 0; i < N_MAX_PUNC_SM; i++) {
-				bool is_found = false;
+				bool is_found;
 				struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
 
 				if (is_punc_obj_empty(dfs_punc_obj))
@@ -1740,6 +2089,9 @@ bool dfs_is_ignore_radar_for_punctured_chans(struct wlan_dfs *dfs,
 								   punc_list);
 
 				if (is_found) {
+					dfs_debug(dfs, WLAN_DEBUG_DFS, "Radar event received on a punctured channel");
+					dfs_update_radarfound_timestamp(dfs, dfs_punc_obj,
+									time_stamp);
 					utils_dfs_puncturing_sm_deliver_evt(dfs->dfs_pdev_obj,
 									    i,
 									    DFS_PUNC_SM_EV_RADAR);
@@ -1880,20 +2232,140 @@ dfs_deliver_punc_cac_completion_events(struct wlan_dfs *dfs,
  */
 static void
 dfs_deliver_punc_cac_start_events(struct wlan_dfs *dfs,
-				  struct dfs_punc_obj *dfs_punc)
+                                  struct dfs_punc_obj *dfs_punc)
 {
-	uint16_t punc_freq_list[N_MAX_PUNC_SM];
-	uint8_t n_punc_channels;
-	uint8_t i;
+        uint16_t punc_freq_list[N_MAX_PUNC_SM];
+        uint8_t n_punc_channels;
+        uint8_t i;
 
-	n_punc_channels = dfs_generate_punc_list_from_sm(dfs_punc, punc_freq_list);
-	for (i = 0; i < n_punc_channels; i++) {
-		if (!dfs_is_freq_in_nol(dfs, punc_freq_list[i])) {
-			utils_dfs_deliver_event(dfs->dfs_pdev_obj,
-						punc_freq_list[i],
-						WLAN_EV_CAC_STARTED);
+        n_punc_channels = dfs_generate_punc_list_from_sm(dfs_punc, punc_freq_list);
+        for (i = 0; i < n_punc_channels; i++) {
+                if (!dfs_is_freq_in_nol(dfs, punc_freq_list[i])) {
+                        utils_dfs_deliver_event(dfs->dfs_pdev_obj,
+                                                punc_freq_list[i],
+                                                WLAN_EV_CAC_STARTED);
+                }
+        }
+}
+
+static bool dfs_is_weather_channel(struct dfs_punc_obj *dfs_punc_arr)
+{
+	qdf_freq_t punc_low_freq = dfs_punc_arr->punc_low_freq;
+	qdf_freq_t punc_high_freq = dfs_punc_arr->punc_high_freq;
+	qdf_freq_t punc_nol_freq = (punc_low_freq + punc_high_freq) / 2;
+
+	return DFS_IS_PUNC_CHAN_WEATHER_RADAR(punc_nol_freq);
+}
+
+/**
+ * PUNC_OBJ_TIME() - Marco to access 'dfs_last_rf_time' of the dfs punc object.
+ * @idx: Positoin of the dfs punc object in dfs structure.
+ *
+ */
+#define PUNC_OBJ_TIME(idx) \
+	(dfs->dfs_punc_lst.dfs_punc_arr[(idx)].dfs_last_rf_time)
+
+/**
+ * dfs_is_both_20mhz_same_time() - Check whether both SM punc objs got
+ *                                 punctured at the same time.
+ * @dfs: Pointer to struct wlan_dfs
+ *
+ * Return: True if both SM punc objects got punctured at the same timestamp.
+ *         False if both SM punc objects didnt get punctured at the same timestamp.
+ */
+static bool dfs_is_both_20mhz_same_time(struct wlan_dfs *dfs)
+{
+	uint8_t i;
+	bool is_both_objs_present = true;
+
+	for (i = 0; i < N_MAX_PUNC_SM; i++) {
+		struct dfs_punc_obj *punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[i];
+
+		if (is_punc_obj_empty(punc_obj))
+			is_both_objs_present = false;
+		if (is_punc_slot_empty(i, &dfs->dfs_punc_lst))
+			is_both_objs_present = false;
+		if (punc_obj->dfs_is_user_punctured)
+			is_both_objs_present = false;
+	}
+	if (!is_both_objs_present)
+		return false;
+
+	if (PUNC_OBJ_TIME(0) ==  PUNC_OBJ_TIME(1))
+		return true;
+	return false;
+}
+
+/**
+ * dfs_unpuncture_radar_bitmap() - Generate bitmap for unpuncturing the
+ *                                 punctured channels racked by SM pubc objs.
+ * @dfs: Pointer to struct wlan_dfs
+ * @dfs_punc: Pointer to struct dfs_punc_obj that indicates the active SM.
+ * @unpunc_obj_indices: Pointer to store the indices of SM objects to be unpunctured.
+ * @n_unpunc_objs: Pointer to store the number of SM objects to be unpunctured.
+ *
+ * Return: Bitmap of the sub20 channels to be unpunctured.
+ */
+static
+uint16_t dfs_unpuncture_radar_bitmap(struct wlan_dfs *dfs,
+				     struct dfs_punc_obj *dfs_punc,
+				     int8_t *unpunc_obj_indices,
+				     uint8_t *n_unpunc_objs)
+{
+	uint8_t n_cur_channels;
+	uint16_t unpuncture_bitmap;
+	uint8_t i;
+	uint16_t cur_freq_list[MAX_20MHZ_SUBCHANS] = {0};
+	uint16_t punc_lst_freq_list[N_MAX_PUNC_SM] = {0};
+	uint8_t n_punc_channels;
+	bool is_both_20mhz_same_time;
+
+	unpuncture_bitmap = dfs_generate_internal_radar_pattern(dfs);
+	*n_unpunc_objs = 0;
+	unpunc_obj_indices[0] = INVAL_SLOT_IDX;
+	unpunc_obj_indices[1] = INVAL_SLOT_IDX;
+	is_both_20mhz_same_time = dfs_is_both_20mhz_same_time(dfs);
+	if (is_both_20mhz_same_time) {
+		unpunc_obj_indices[0] = 0;
+		unpunc_obj_indices[1] = 1;
+		*n_unpunc_objs = 2;
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, " Both SM objects gets CAC expired"
+			  " at same time and so unpuncture both at same time");
+		return unpuncture_bitmap;
+	}
+
+	n_punc_channels = dfs_generate_punc_list_from_sm(dfs_punc, punc_lst_freq_list);
+	n_cur_channels =
+		dfs_get_bonding_channel_without_seg_info_for_freq(dfs->dfs_curchan,
+								  cur_freq_list);
+
+	/**
+	 * Identify the SM puncture object indices that needs to be unpunctured
+	 * and also the unpuncture bitmap pattern.
+	 */
+	unpuncture_bitmap = 0;
+	for (i = 0; i < N_MAX_PUNC_SM; i++) {
+		uint16_t bits = 0x1;
+		uint8_t j;
+
+		if (&dfs->dfs_punc_lst.dfs_punc_arr[i] == dfs_punc) {
+			unpunc_obj_indices[(*n_unpunc_objs)++] = i;
+		}
+
+		if (punc_lst_freq_list[i] == 0)
+			continue;
+		for (j = 0; j < n_cur_channels; j++) {
+			if (punc_lst_freq_list[i] == cur_freq_list[j]) {
+				unpuncture_bitmap |= bits;
+				break;
+			}
+			bits <<= 1;
 		}
 	}
+
+	dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, " Derived dfs_radar_bitmap:%d ",
+		  unpuncture_bitmap);
+	return unpuncture_bitmap;
 }
 
 /**
@@ -1993,6 +2465,14 @@ static bool dfs_puncturing_state_unpunctured_event(void *ctx,
 	dfs = dfs_punc->dfs;
 
 	switch (event) {
+	case DFS_PUNC_SM_EV_USER_PUNC:
+		bool is_weather_chan = dfs_is_weather_channel(dfs_punc);
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, " User punc event received. "
+			  "Moving state to CAC wait");
+		dfs_start_punc_cac_timer(dfs_punc, is_weather_chan);
+		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_CAC_WAIT);
+		status = true;
+		break;
 	case DFS_PUNC_SM_EV_RADAR:
 		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Radar event received. Moving state to punctured");
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_PUNCTURED);
@@ -2038,22 +2518,6 @@ static void dfs_puncturing_state_punctured_exit(void *ctx)
 	/* NO OPS */
 }
 
-static bool dfs_is_weather_channel(struct dfs_punc_obj *dfs_punc_arr)
-{
-	qdf_freq_t punc_low_freq = dfs_punc_arr->punc_low_freq;
-	qdf_freq_t punc_high_freq = dfs_punc_arr->punc_high_freq;
-	qdf_freq_t punc_nol_freq = (punc_low_freq + punc_high_freq) / 2;
-
-	if (punc_high_freq - punc_low_freq == DFS_CHWIDTH_20_VAL) {
-		if (DFS_IS_PUNC_CHAN_WEATHER_RADAR(punc_nol_freq))
-			return true;
-	} else if (punc_high_freq - punc_low_freq == DFS_CHWIDTH_40_VAL) {
-		if (DFS_IS_PUNC_CHAN_OVERLAP_WEATHER_RADAR(punc_nol_freq))
-			return true;
-	}
-	return false;
-}
-
 /**
  * dfs_agile_state_running_event() - RUNNING State event handler
  * @ctx: DFS SoC private object
@@ -2074,7 +2538,6 @@ static bool dfs_puncturing_state_punctured_event(void *ctx,
 	struct wlan_dfs *dfs;
 	bool status;
 	struct dfs_punc_obj *dfs_punc;
-	bool is_weather_chan = false;
 
 	if (!event_data)
 		return false;
@@ -2088,8 +2551,39 @@ static bool dfs_puncturing_state_punctured_event(void *ctx,
 		status = true;
 		break;
 	case DFS_PUNC_SM_EV_NOL_EXPIRY:
+		struct dfs_channel *chan;
+		enum wlan_phymode des_mode;
+		bool is_weather_chan = dfs_is_weather_channel(dfs_punc);
+		qdf_freq_t punc_freq = (dfs_punc->punc_low_freq + dfs_punc->punc_high_freq) / 2;
+
 		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Nol expired, move the punc channel to CAC wait and start timer");
-		is_weather_chan = dfs_is_weather_channel(dfs_punc);
+		chan = qdf_mem_malloc(sizeof(struct dfs_channel));
+
+		if (!chan) {
+			dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS, "malloc failed");
+			status = false;
+			break;
+		}
+
+		des_mode = dfs->dfs_autoswitch_des_mode;
+
+		/* Find a dfs channel pointer with the desired rcac freq and mode. */
+		if (QDF_STATUS_SUCCESS !=
+				dfs_mlme_find_dot11_chan_for_freq(dfs->dfs_pdev_obj,
+					punc_freq, 0,
+					des_mode,
+					&chan->dfs_ch_freq,
+					&chan->dfs_ch_flags,
+					&chan->dfs_ch_flagext,
+					&chan->dfs_ch_ieee,
+					&chan->dfs_ch_vhtop_ch_freq_seg1,
+					&chan->dfs_ch_vhtop_ch_freq_seg2,
+					&chan->dfs_ch_mhz_freq_seg1,
+					&chan->dfs_ch_mhz_freq_seg2)) {
+			status = false;
+			break;
+		}
+
 		dfs_start_punc_cac_timer(dfs_punc, is_weather_chan);
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_CAC_WAIT);
 		status = true;
@@ -2136,51 +2630,28 @@ static void dfs_puncturing_state_cac_wait_exit(void *ctx)
 	/* NO OPs. */
 }
 
-static
-uint16_t dfs_unpuncture_radar_bitmap(struct wlan_dfs *dfs,
-				     struct dfs_punc_obj *dfs_punc)
+static void dfs_puncturing_state_cac_done_entry(void *ctx)
 {
-	uint8_t n_cur_channels;
-	uint16_t dfs_radar_bitmap = dfs_generate_internal_radar_pattern(dfs);
-	uint16_t bits = 0x1;
-	uint8_t i, j;
-	uint16_t cur_freq_list[MAX_20MHZ_SUBCHANS] = {0};
-	uint16_t punc_lst_freq_list[N_MAX_PUNC_SM] = {0};
-	uint8_t n_punc_channels;
+	struct dfs_punc_obj *dfs_punc = (struct dfs_punc_obj *)ctx;
 
-	n_punc_channels = dfs_generate_punc_list_from_sm(dfs_punc, punc_lst_freq_list);
+	dfs_puncturing_set_curr_state(dfs_punc, DFS_S_CAC_DONE);
+}
 
-	n_cur_channels =
-		dfs_get_bonding_channel_without_seg_info_for_freq(dfs->dfs_curchan,
-								  cur_freq_list);
-
-	for (i = 0; i < N_MAX_PUNC_SM; i++) {
-		bits = 0x1;
-		if (punc_lst_freq_list[i] == 0)
-			continue;
-		for (j = 0; j < n_cur_channels; j++) {
-			if (punc_lst_freq_list[i] == cur_freq_list[j]) {
-				dfs_radar_bitmap ^= bits;
-				break;
-			}
-		bits <<= 1;
-		}
-	}
-
-	return dfs_radar_bitmap;
+static void dfs_puncturing_state_cac_done_exit(void *ctx)
+{
+	/* NO OPs. */
 }
 
 /**
- * dfs_puncturing_cac_wait_state_add_chan_to_nol() - When in the CAC WAIT state
- * of the DFS puncturing SM, Radar event has occurred. So, add the punctured
- * channels in the corresponding dfs punctured-object to NOL.
+ * dfs_puncturing_add_chan_to_nol() - Add the punctured channels in the corresponding
+ *                                    dfs punctured-object to NOL.
  *
  * dfs_punc: Pointer to dfs_punc object.
  *
  * Return: void.
  */
 static void
-dfs_puncturing_cac_wait_state_add_chan_to_nol(struct dfs_punc_obj *dfs_punc)
+dfs_puncturing_add_chan_to_nol(struct dfs_punc_obj *dfs_punc)
 {
 	uint8_t n_punc_channels;
 	uint16_t punc_freq_list[N_MAX_PUNC_SM] = {0};
@@ -2196,6 +2667,71 @@ dfs_puncturing_cac_wait_state_add_chan_to_nol(struct dfs_punc_obj *dfs_punc)
 				     dfs->is_radar_found_on_secondary_seg,
 				     DETECTOR_ID_0, nol_freq_list,
 				     n_punc_channels);
+}
+
+/**
+ * dfs_is_auto_unpuncture_not_needed() - Chech if the SM punc object needs to be
+ *                                       unpunctured or not
+ * @dfs:      Pointer to struct wlan_dfs
+ * @dfs_punc: Pointer to struct dfs_punc_obj SM puncture object
+ *
+ * Return: TRUE: if the SM puncture object is not needed to be unpunctured.
+ *         FALSE: otherwise
+ */
+static bool dfs_is_auto_unpuncture_not_needed(struct wlan_dfs *dfs,
+					      struct dfs_punc_obj *dfs_punc)
+{
+    return dfs->dfs_disable_auto_unpunc || dfs_punc->dfs_is_user_punctured;
+}
+
+/**
+ * dfs_do_auto_unpuncture() - Unpuncture SM puncure object.
+ * @dfs:      Pointer to struct wlan_dfs
+ * @dfs_punc: Pointer to struct dfs_punc_obj SM puncture object
+ *
+ * Return: TRUE: if the SM puncture object needs to be unpunctured..
+ *         FALSE: otherwise
+ */
+static void dfs_do_auto_unpuncture(struct wlan_dfs *dfs,
+				   struct dfs_punc_obj *dfs_punc)
+{
+	uint16_t dfs_pat_to_unpuncture;
+	uint8_t unpunc_obj_indices[N_MAX_PUNC_SM];
+	uint8_t n_unpunc_objs;
+	int i;
+
+	WLAN_DFS_DATA_STRUCT_LOCK(dfs);
+	dfs_pat_to_unpuncture = dfs_unpuncture_radar_bitmap(dfs, dfs_punc,
+							    unpunc_obj_indices,
+							    &n_unpunc_objs);
+	if (dfs_pat_to_unpuncture) {
+		uint16_t new_punc_pattern;
+
+		new_punc_pattern = dfs->dfs_curchan->dfs_ch_punc_pattern
+				   ^ dfs_pat_to_unpuncture;
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING,
+			  "Chan switch for unpuncture bitmap pattern:%d",
+			  new_punc_pattern);
+		if (global_dfs_to_mlme.mlme_unpunc_chan_switch)
+			global_dfs_to_mlme.mlme_unpunc_chan_switch(dfs->dfs_pdev_obj,
+								   new_punc_pattern);
+	}
+
+	for (i = 0; i < n_unpunc_objs; i++) {
+		uint8_t idx = unpunc_obj_indices[i];
+		struct dfs_punc_obj *dfs_punc_obj = &dfs->dfs_punc_lst.dfs_punc_arr[idx];
+
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Reset sm punc obj :%d",
+				idx);
+		dfs_deliver_punc_cac_completion_events(dfs, dfs_punc_obj);
+		dfs_punc_obj->punc_low_freq = 0;
+		dfs_punc_obj->punc_high_freq = 0;
+		dfs_punc_obj->dfs_is_unpunctured = true;
+		dfs_punc_obj->dfs_is_user_punctured = false;
+	}
+	WLAN_DFS_DATA_STRUCT_UNLOCK(dfs);
+
+	return;
 }
 
 /**
@@ -2218,9 +2754,6 @@ static bool dfs_puncturing_state_cac_wait_event(void *ctx,
 	struct wlan_dfs *dfs;
 	bool status;
 	struct dfs_punc_obj *dfs_punc;
-	uint16_t new_punc_pattern = 0x0;
-	uint16_t dfs_useronly_pattern;
-	uint16_t dfs_internal_pattern;
 
 	if (!event_data)
 		return false;
@@ -2231,25 +2764,57 @@ static bool dfs_puncturing_state_cac_wait_event(void *ctx,
 	switch (event) {
 	case DFS_PUNC_SM_EV_RADAR:
 		dfs_cancel_punc_cac_timer(dfs_punc);
-		dfs_puncturing_cac_wait_state_add_chan_to_nol(dfs_punc);
+		dfs_puncturing_add_chan_to_nol(dfs_punc);
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_PUNCTURED);
 		status = true;
 		break;
 	case DFS_PUNC_SM_EV_CAC_EXPIRY:
-		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "CAC expiry received. Unpuncture the channe;");
-		dfs_internal_pattern = dfs_generate_internal_radar_pattern(dfs);
-		dfs_useronly_pattern =
-		    dfs->dfs_curchan->dfs_ch_punc_pattern ^ dfs_internal_pattern;
-		dfs_internal_pattern = dfs_unpuncture_radar_bitmap(dfs, dfs_punc);
-		new_punc_pattern = dfs_useronly_pattern | dfs_internal_pattern;
-		dfs_deliver_punc_cac_completion_events(dfs, dfs_punc);
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "CAC expiry received.");
+		if (dfs_is_auto_unpuncture_not_needed(dfs,dfs_punc)) {
+			dfs_deliver_punc_cac_completion_events(dfs, dfs_punc);
+			dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_CAC_DONE);
+			dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "%s Punctured, "
+				  "Go to CAC DONE state",
+				  dfs_punc->dfs_is_user_punctured? "User": "Radar");
+		} else {
+			dfs_do_auto_unpuncture(dfs, dfs_punc);
+			dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_UNPUNCTURED);
+		}
+		status = true;
+		break;
+	case DFS_PUNC_SM_EV_STOP:
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Punc sm stop triggered");
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_UNPUNCTURED);
-		if (global_dfs_to_mlme.mlme_unpunc_chan_switch)
-			global_dfs_to_mlme.mlme_unpunc_chan_switch(dfs->dfs_pdev_obj,
-								   new_punc_pattern);
-		dfs_punc->punc_low_freq = 0;
-		dfs_punc->punc_high_freq = 0;
-		dfs_punc->dfs_is_unpunctured = true;
+		status = true;
+		break;
+	default:
+		status = false;
+		break;
+	}
+
+	return status;
+}
+
+static bool dfs_puncturing_state_cac_done_event(void *ctx,
+						uint16_t event,
+						uint16_t event_data_len,
+						void *event_data)
+{
+	struct wlan_dfs *dfs;
+	bool status;
+	struct dfs_punc_obj *dfs_punc;
+
+	if (!event_data)
+		return false;
+
+	dfs_punc = (struct dfs_punc_obj *)event_data;
+	dfs = dfs_punc->dfs;
+
+	switch (event) {
+	case DFS_PUNC_SM_EV_RADAR:
+		dfs_cancel_punc_cac_timer(dfs_punc);
+		dfs_puncturing_add_chan_to_nol(dfs_punc);
+		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_PUNCTURED);
 		status = true;
 		break;
 	case DFS_PUNC_SM_EV_STOP:
@@ -2296,6 +2861,16 @@ static struct wlan_sm_state_info dfs_puncturing_sm_info[] = {
 		dfs_puncturing_state_cac_wait_exit,
 		dfs_puncturing_state_cac_wait_event
 	},
+	{
+		(uint8_t)DFS_S_CAC_DONE,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		false,
+		"CAC_DONE",
+		dfs_puncturing_state_cac_done_entry,
+		dfs_puncturing_state_cac_done_exit,
+		dfs_puncturing_state_cac_done_event
+	},
 };
 
 static const char *dfs_punc_sm_evt_names[] = {
@@ -2303,6 +2878,7 @@ static const char *dfs_punc_sm_evt_names[] = {
 	"EV_PUNC_NOL_EXPIRY",
 	"EV_PUNC_CAC_EXPIRY",
 	"EV_PUNC_SM_STOP",
+	"EV_PUNC_EV_USER_PUNC",
 };
 
 /**
@@ -2346,8 +2922,9 @@ static void dfs_puncturing_sm_print_state_event(struct dfs_punc_obj *dfs_punc,
 		return;
 	}
 
-	dfs_debug(NULL, WLAN_DEBUG_DFS_PUNCTURING, "[%s]%s, %s",
+	dfs_debug(NULL, WLAN_DEBUG_DFS_PUNCTURING, "[%s] Channel center: %u ,%s, %s",
 		  dfs_punc->dfs_punc_sm_hdl->name,
+		  (dfs_punc->punc_low_freq + dfs_punc->punc_high_freq) / 2,
 		  dfs_puncturing_sm_info[state].name,
 		  dfs_punc_sm_evt_names[event]);
 }

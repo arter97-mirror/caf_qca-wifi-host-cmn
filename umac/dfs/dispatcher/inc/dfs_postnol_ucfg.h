@@ -211,7 +211,7 @@ ucfg_dfs_set_dfs_puncture(struct wlan_objmgr_pdev *pdev,
  * @is_dfs_punc_en: Store the value of DFS puncturing feature
  *
  * Wrapper function for dfs_get_dfs_puncture() which displays value
- * of the  DFS puncturing feature whether it is enabled or disabled.
+ * of the DFS Disable Auto Unpuncturing feature whether it is enabled or disabled.
  * This function is called from outside of dfs component.
  *
  * Return: QDF_STATUS
@@ -219,7 +219,65 @@ ucfg_dfs_set_dfs_puncture(struct wlan_objmgr_pdev *pdev,
 QDF_STATUS
 ucfg_dfs_get_dfs_puncture(struct wlan_objmgr_pdev *pdev,
 			  bool *is_dfs_punc_en);
+
+/**
+ * ucfg_dfs_check_punc_chan_in_cac() - Check if the channels to be puncture was
+ *				       punctured before and if so check whether CAC
+ *				       is completed or not for this channel.
+ * @pdev: Pointer to DFS pdev object.
+ * @punc_pattern: Puncture pattern containing the channels to be punctured.
+ *
+ * Wrapper function for dfs_check_punc_chan_in_cac() which displays value
+ * of the  DFS puncturing feature whether it is enabled or disabled.
+ * This function is called from outside of dfs component.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+ucfg_dfs_check_punc_chan_in_cac(struct wlan_objmgr_pdev *pdev,
+				uint16_t punc_pattern);
+
+
+/**
+ * ucfg_dfs_get_dfs_disable_auto_unpuncture() - Get the value of DFS Disable Auto
+ *						 Unpuncturing feature.
+ * @pdev: Pointer to DFS pdev object.
+ * @is_dfs_disable_auto_unpunc_en: Store the value of DFS Disable Auto Unpuncturing
+ *				   feature.
+ *
+ * Wrapper function for dfs_get_dfs_disable_auto_un_puncture() which displays value
+ * of the  DFS puncturing feature whether it is enabled or disabled.
+ * This function is called from outside of dfs component.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+ucfg_dfs_get_dfs_disable_auto_unpuncture(struct wlan_objmgr_pdev *pdev,
+					  bool *is_dfs_disable_auto_unpunc_en);
+
+/**
+ * ucfg_dfs_set_dfs_disable_auto_unpuncture() - Set the value of DFS Disable Auto
+ *						 Unpuncturing feature.
+ * @pdev: Pointer to DFS pdev object.
+ * @is_dfs_disable_auto_unpunc_en: Set DFS Disable Auto Unpuncturing feature based on
+ *				   this value.
+ *
+ * Wrapper function for dfs_set_dfs_disable_auto_un_puncture() which enables/disables
+ * the DFS Disable Auto Unpuncturing feature.
+ * This function is called from outside of dfs component.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+ucfg_dfs_set_dfs_disable_auto_unpuncture(struct wlan_objmgr_pdev *pdev,
+					  bool is_dfs_disable_auto_unpunc_en);
 #else
+static inline QDF_STATUS
+ucfg_dfs_check_punc_chan_in_cac(struct wlan_objmgr_pdev *pdev,
+				uint16_t punc_pattern)
+{
+	return QDF_STATUS_SUCCESS;
+}
 static inline QDF_STATUS
 ucfg_dfs_set_dfs_puncture(struct wlan_objmgr_pdev *pdev,
 			  bool is_dfs_punc_en)
@@ -233,6 +291,22 @@ ucfg_dfs_get_dfs_puncture(struct wlan_objmgr_pdev *pdev,
 {
 	*is_dfs_punc_en = false;
 
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+ucfg_dfs_get_dfs_disable_auto_unpuncture(struct wlan_objmgr_pdev *pdev,
+					  bool *is_dfs_disable_auto_unpunc_en)
+{
+	*is_dfs_disable_auto_unpunc_en = false;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+ucfg_dfs_set_dfs_disable_auto_unpuncture(struct wlan_objmgr_pdev *pdev,
+					  bool is_dfs_disable_auto_unpunc_en)
+{
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* QCA_DFS_BW_PUNCTURE */

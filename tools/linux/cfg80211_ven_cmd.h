@@ -1582,6 +1582,8 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE = 564,
 	OL_ATH_PARAM_OVERRIDE_MLSR_PTQM = 566,
 	OL_ATH_PARAM_DISPLAY_BLACKLIST_CHANNEL_LIST = 567,
+	/* Disable(=True)/Enable(=False) auto-Unpuncturing by DFS module */
+	OL_ATH_PARAM_DFS_DISABLE_AUTO_UNPUNCTURE = 568,
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -3536,6 +3538,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DFS_PUNCTURE, SET_PARAM, 1},
 	{"g_dfs_puncture_en",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DFS_PUNCTURE, GET_PARAM, 0},
+	{"dfs_disable_auto_unpunc",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DFS_DISABLE_AUTO_UNPUNCTURE, SET_PARAM, 1},
+	{"g_dfs_disable_auto_unpunc",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DFS_DISABLE_AUTO_UNPUNCTURE, GET_PARAM, 0},
 	{"get_bandinfo",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_BAND_INFO, GET_PARAM, 0},
 	{"bw_reduceEn",

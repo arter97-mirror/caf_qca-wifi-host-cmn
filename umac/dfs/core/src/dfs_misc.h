@@ -161,6 +161,43 @@ void dfs_set_dfs_puncture(struct wlan_dfs *dfs,
  */
 void dfs_get_dfs_puncture(struct wlan_dfs *dfs,
 			  bool *is_dfs_punc_en);
+
+/**
+ * dfs_check_punc_chan_in_cac() - Find out if the user is trying to unpuncture
+ *                                a subchannel without completing the CAC.
+ * @dfs: Pointer to wlan_dfs structure.
+ * @punc_pattern: The puncture pattern bitmap feature.
+ *
+ * Return: QDF_STATUS_SUCCESS if all unpunctures are proper and CAC has been done
+ *         on all the subchannels being unpunctured.
+ *         Else QDF_STATUS_E_FAILURE
+ */
+QDF_STATUS dfs_check_punc_chan_in_cac(struct wlan_dfs *dfs,
+                                      uint16_t punc_pattern);
+
+/**
+ * dfs_set_dfs_disable_auto_unpuncture() - Set or unset DFS Disable Auto
+ *                                         Unpuncturing configuration.
+ * @dfs: Pointer to wlan_dfs structure.
+ * @is_dfs_disable_auto_unpunc_en: Configure DFS Disable Auto Unpuncturing
+ *                                 status.
+ *
+ * Return: Nothing.
+ */
+void dfs_set_dfs_disable_auto_unpuncture(struct wlan_dfs *dfs,
+                                         bool is_dfs_disable_auto_unpunc_en);
+
+/**
+ * dfs_get_dfs_disable_auto_unpuncture() - Get the value of DFS Disable Auto
+ *                                         Unpuncturing configuration.
+ * @dfs: Pointer to wlan_dfs structure.
+ * @is_dfs_disable_auto_unpunc_en: Store and return the configured value of
+ *                                 DFS Disable Auto Unpuncturing status.
+ *
+ * Return: Nothing.
+ */
+void dfs_get_dfs_disable_auto_unpuncture(struct wlan_dfs *dfs,
+                                         bool *is_dfs_disable_auto_unpunc_en);
 #endif /* QCA_DFS_BW_PUNCTURE */
 
 #ifdef WLAN_DISP_CHAN_INFO

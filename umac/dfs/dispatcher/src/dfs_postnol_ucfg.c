@@ -478,6 +478,56 @@ QDF_STATUS ucfg_dfs_get_dfs_puncture(struct wlan_objmgr_pdev *pdev,
 
 qdf_export_symbol(ucfg_dfs_get_dfs_puncture);
 
+QDF_STATUS
+ucfg_dfs_set_dfs_disable_auto_unpuncture(struct wlan_objmgr_pdev *pdev,
+					 bool is_dfs_disable_auto_unpunc_en)
+{
+	struct wlan_dfs *dfs;
+
+	dfs = wlan_pdev_get_dfs_obj(pdev);
+	if (!dfs)
+		return  QDF_STATUS_E_FAILURE;
+
+	dfs_set_dfs_disable_auto_unpuncture(dfs, is_dfs_disable_auto_unpunc_en);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+qdf_export_symbol(ucfg_dfs_set_dfs_disable_auto_unpuncture);
+
+QDF_STATUS
+ucfg_dfs_get_dfs_disable_auto_unpuncture(struct wlan_objmgr_pdev *pdev,
+					 bool *is_dfs_disable_auto_unpunc_en)
+{
+	struct wlan_dfs *dfs;
+
+	dfs = wlan_pdev_get_dfs_obj(pdev);
+	if (!dfs)
+		return  QDF_STATUS_E_FAILURE;
+
+	dfs_get_dfs_disable_auto_unpuncture(dfs, is_dfs_disable_auto_unpunc_en);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+qdf_export_symbol(ucfg_dfs_get_dfs_disable_auto_unpuncture);
+
+QDF_STATUS
+ucfg_dfs_check_punc_chan_in_cac(struct wlan_objmgr_pdev *pdev,
+				uint16_t punc_pattern)
+{
+	struct wlan_dfs *dfs;
+
+	dfs = wlan_pdev_get_dfs_obj(pdev);
+	if (!dfs)
+		return  QDF_STATUS_E_FAILURE;
+
+	return dfs_check_punc_chan_in_cac(dfs, punc_pattern);
+}
+
+qdf_export_symbol(ucfg_dfs_check_punc_chan_in_cac);
+
+
 void utils_dfs_puncturing_sm_deliver_evt(struct wlan_objmgr_pdev *pdev,
 					 uint8_t sm_indx,
 					 enum dfs_punc_sm_evt event)

@@ -539,6 +539,21 @@ void dfs_get_dfs_puncture(struct wlan_dfs *dfs,
 {
 	*is_dfs_punc_en = dfs->dfs_use_puncture;
 }
+
+void dfs_set_dfs_disable_auto_unpuncture(struct wlan_dfs *dfs,
+					 bool is_dfs_disable_auto_unpunc_en)
+{
+	dfs->dfs_disable_auto_unpunc = is_dfs_disable_auto_unpunc_en;
+	dfs_info(dfs, WLAN_DEBUG_DFS_ALWAYS, "DFS Disable Auto UnPuncturing Feature is %s ",
+		 (is_dfs_disable_auto_unpunc_en) ? "enabled" : "disabled");
+}
+
+void dfs_get_dfs_disable_auto_unpuncture(struct wlan_dfs *dfs,
+					 bool *is_dfs_disable_auto_unpunc_en)
+{
+	*is_dfs_disable_auto_unpunc_en = dfs->dfs_disable_auto_unpunc;
+}
+
 #endif /* QCA_DFS_BW_PUNCTURE */
 
 #if defined(WLAN_DISP_CHAN_INFO)
