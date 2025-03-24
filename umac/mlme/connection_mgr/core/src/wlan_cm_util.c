@@ -184,7 +184,6 @@ inline void cm_req_lock_release(struct cnx_mgr *cm_ctx)
 }
 #endif /* WLAN_CM_USE_SPINLOCK */
 
-#ifdef CRYPTO_SET_KEY_CONVERGED
 QDF_STATUS cm_set_key(struct cnx_mgr *cm_ctx, bool unicast,
 		      uint8_t key_idx, struct qdf_mac_addr *bssid)
 {
@@ -217,7 +216,6 @@ QDF_STATUS cm_set_key(struct cnx_mgr *cm_ctx, bool unicast,
 				       WLAN_CRYPTO_KEY_TYPE_UNICAST :
 				       WLAN_CRYPTO_KEY_TYPE_GROUP));
 }
-#endif
 
 static void cm_dump_sm_history(struct wlan_objmgr_vdev *vdev)
 {

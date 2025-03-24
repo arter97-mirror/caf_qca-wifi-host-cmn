@@ -923,7 +923,7 @@ wlan_crypto_get_cipher(struct wlan_objmgr_vdev *vdev, const uint8_t *peer_mac,
  * Return: enum wlan_crypto_key_mgmt
  */
 wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm);
-#ifdef CRYPTO_SET_KEY_CONVERGED
+
 /**
  * wlan_crypto_update_set_key_peer() - Update the peer for set key
  * @vdev: vdev object
@@ -1044,46 +1044,6 @@ void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev);
  * Return: None
  */
 void wlan_crypto_reset_vdev_params(struct wlan_objmgr_vdev *vdev);
-#else
-static inline void wlan_crypto_update_set_key_peer(
-						struct wlan_objmgr_vdev *vdev,
-						bool pairwise,
-						uint8_t key_index,
-						struct qdf_mac_addr *peer_mac)
-{
-}
-
-static inline QDF_STATUS
-wlan_crypto_save_key(struct wlan_objmgr_vdev *vdev,
-		     const uint8_t *peer_mac, uint8_t key_index,
-		     struct wlan_crypto_key *crypto_key)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline struct wlan_crypto_key *
-wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
-		    const uint8_t *peer_mac, uint8_t key_index)
-{
-	return NULL;
-}
-
-static inline
-QDF_STATUS wlan_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
-				   struct wlan_crypto_key *req,
-				   enum wlan_crypto_key_type key_type)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev)
-{
-}
-
-static inline void wlan_crypto_reset_vdev_params(struct wlan_objmgr_vdev *vdev)
-{
-}
-#endif /* CRYPTO_SET_KEY_CONVERGED */
 
 /**
  * wlan_crypto_vdev_set_param() - Send vdev set param to firmware.

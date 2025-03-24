@@ -638,7 +638,6 @@ cm_ext_t *cm_get_ext_hdl_fl(struct wlan_objmgr_vdev *vdev,
  */
 void cm_reset_active_cm_id(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id);
 
-#ifdef CRYPTO_SET_KEY_CONVERGED
 /**
  * cm_set_key() - set wep or fils key on connection completion
  * @cm_ctx: connection manager context
@@ -650,7 +649,6 @@ void cm_reset_active_cm_id(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id);
  */
 QDF_STATUS cm_set_key(struct cnx_mgr *cm_ctx, bool unicast,
 		      uint8_t key_idx, struct qdf_mac_addr *bssid);
-#endif
 
 /**
  * cm_store_wep_key() - store wep keys in crypto on connect active

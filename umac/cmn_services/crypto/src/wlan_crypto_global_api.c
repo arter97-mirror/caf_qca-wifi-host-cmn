@@ -1472,38 +1472,6 @@ ret_rel_ref:
 	return ret;
 }
 
-#ifdef CRYPTO_SET_KEY_CONVERGED
-static QDF_STATUS wlan_crypto_set_default_key(struct wlan_objmgr_vdev *vdev,
-					      uint8_t key_idx, uint8_t *macaddr)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#else
-static QDF_STATUS wlan_crypto_set_default_key(struct wlan_objmgr_vdev *vdev,
-					      uint8_t key_idx, uint8_t *macaddr)
-{
-	struct wlan_objmgr_psoc *psoc;
-	struct wlan_lmac_if_tx_ops *tx_ops;
-
-	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc) {
-		crypto_err("psoc is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
-	if (!tx_ops) {
-		crypto_err("tx_ops is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (WLAN_CRYPTO_TX_OPS_DEFAULTKEY(tx_ops))
-		WLAN_CRYPTO_TX_OPS_DEFAULTKEY(tx_ops)(vdev, key_idx, macaddr);
-
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 QDF_STATUS wlan_crypto_default_key(struct wlan_objmgr_vdev *vdev,
 					uint8_t *macaddr,
 					uint8_t key_idx,
@@ -1574,9 +1542,6 @@ QDF_STATUS wlan_crypto_default_key(struct wlan_objmgr_vdev *vdev,
 	if (!key->valid)
 		return QDF_STATUS_E_INVAL;
 
-	if (wlan_crypto_set_default_key(vdev, key_idx, macaddr) !=
-			QDF_STATUS_SUCCESS)
-		return QDF_STATUS_E_INVAL;
 	crypto_priv->crypto_key.def_tx_keyid = key_idx;
 
 	return QDF_STATUS_SUCCESS;
@@ -4632,7 +4597,6 @@ wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm)
 		return WLAN_CRYPTO_KEY_MGMT_MAX;
 }
 
-#ifdef CRYPTO_SET_KEY_CONVERGED
 QDF_STATUS wlan_crypto_validate_key_params(enum wlan_crypto_cipher_type cipher,
 					   uint8_t key_index, uint8_t key_len,
 					   uint8_t seq_len)
@@ -5195,7 +5159,6 @@ QDF_STATUS wlan_crypto_psoc_disable(struct wlan_objmgr_psoc *psoc)
 
 	return QDF_STATUS_E_FAILURE;
 }
-#endif
 
 #ifdef WLAN_FEATURE_FILS_SK
 QDF_STATUS wlan_crypto_create_fils_rik(uint8_t *rrk, uint8_t rrk_len,
