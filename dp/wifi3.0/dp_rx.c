@@ -3713,7 +3713,7 @@ bool dp_rx_multipass_process(struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
 	 * If hardware acceleration is enabled on the peer, then no need to add
 	 * a VLAN tag - if it is not enabled, then add a tag.
 	 */
-	if (qdf_likely(txrx_peer->hw_accel_en)) {
+	if (txrx_peer->hw_accel_en) {
 		/*
 		 * h_vlan_proto & h_vlan_TCI should be 0x8100 &
 		 * zero respectively as it is expected to be
