@@ -23,10 +23,8 @@
 #include "wlan_scan_api.h"
 #include "wlan_cm_roam.h"
 #include "wlan_cm_sm.h"
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
 #include "wlan_policy_mgr_ucfg.h"
-#endif
 #include <wlan_serialization_api.h>
 #include "wlan_dlm_api.h"
 #include "wlan_cm_roam_api.h"
@@ -349,7 +347,6 @@ cm_send_connect_start_fail(struct cnx_mgr *cm_ctx,
 	return status;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 static void
 cm_cont_connect_for_event(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 			  wlan_cm_id cm_id, enum wlan_cm_sm_evt event)
@@ -449,15 +446,6 @@ static QDF_STATUS cm_check_for_hw_mode_change(struct wlan_objmgr_psoc *psoc,
 	return policy_mgr_change_hw_mode_sta_connect(psoc, scan_list, vdev_id,
 						     connect_id);
 }
-#else
-static inline
-QDF_STATUS cm_check_for_hw_mode_change(struct wlan_objmgr_psoc *psoc,
-				       qdf_list_t *scan_list, uint8_t vdev_id,
-				       uint8_t connect_id)
-{
-	return QDF_STATUS_E_ALREADY;
-}
-#endif /* WLAN_POLICY_MGR_ENABLE */
 
 #ifdef WLAN_FEATURE_LL_LT_SAP
 void cm_bearer_switch_resp(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,

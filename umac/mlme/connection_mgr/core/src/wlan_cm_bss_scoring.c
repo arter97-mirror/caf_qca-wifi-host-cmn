@@ -19,9 +19,7 @@
  * DOC: contains bss scoring logic
  */
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
-#endif
 #include <include/wlan_psoc_mlme.h>
 #include "wlan_psoc_mlme_api.h"
 #include "cfg_ucfg_api.h"
@@ -594,7 +592,6 @@ static int32_t cm_calculate_security_score(struct scoring_cfg *score_config,
 			CM_MAX_PCT_SCORE;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 static uint32_t cm_get_sta_nss(struct wlan_objmgr_psoc *psoc,
 			       qdf_freq_t bss_channel_freq,
 			       uint8_t vdev_nss_2g, uint8_t vdev_nss_5g)
@@ -615,16 +612,6 @@ static uint32_t cm_get_sta_nss(struct wlan_objmgr_psoc *psoc,
 		vdev_nss_2g :
 		vdev_nss_5g);
 }
-#else
-static uint32_t cm_get_sta_nss(struct wlan_objmgr_psoc *psoc,
-			       qdf_freq_t bss_channel_freq,
-			       uint8_t vdev_nss_2g, uint8_t vdev_nss_5g)
-{
-	return (WLAN_REG_IS_24GHZ_CH_FREQ(bss_channel_freq) ?
-		vdev_nss_2g :
-		vdev_nss_5g);
-}
-#endif
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static uint32_t wlan_cm_get_min_score(struct scan_cache_entry *entry)

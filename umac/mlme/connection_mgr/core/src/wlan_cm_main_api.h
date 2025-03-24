@@ -374,7 +374,6 @@ bool cm_find_bss_from_candidate_list(qdf_list_t *candidate_list,
 				     struct qdf_mac_addr *bssid,
 				     struct scan_cache_node **entry_found);
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * cm_hw_mode_change_resp() - HW mode change response
  * @pdev: pdev pointer
@@ -399,15 +398,6 @@ void cm_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 QDF_STATUS cm_ser_connect_after_mode_change_resp(struct cnx_mgr *cm_ctx,
 						wlan_cm_id *cm_id,
 						enum wlan_cm_sm_evt event);
-#else
-static inline
-QDF_STATUS cm_ser_connect_after_mode_change_resp(struct cnx_mgr *cm_ctx,
-						wlan_cm_id *cm_id,
-						enum wlan_cm_sm_evt event)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 /*************** DISCONNECT APIs ****************/
 

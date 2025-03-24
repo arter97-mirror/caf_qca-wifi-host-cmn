@@ -385,7 +385,6 @@ const char *wlan_cm_reason_code_to_str(enum wlan_reason_code reason)
 	}
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 void wlan_cm_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 				 wlan_cm_id cm_id, QDF_STATUS status)
 {
@@ -397,7 +396,6 @@ void wlan_cm_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 	else
 		cm_hw_mode_change_resp(pdev, vdev_id, cm_id, status);
 }
-#endif /* ifdef POLICY_MGR_ENABLE */
 
 #ifdef WLAN_FEATURE_LL_LT_SAP
 void wlan_cm_bearer_switch_resp(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,

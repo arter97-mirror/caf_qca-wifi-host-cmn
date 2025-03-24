@@ -24,9 +24,7 @@
 #include "wlan_cm_public_struct.h"
 #include "wlan_serialization_api.h"
 #include "wlan_cm_bss_score_param.h"
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include <wlan_policy_mgr_api.h>
-#endif
 #include "wlan_cm_roam.h"
 #include <qdf_platform.h>
 #include <wlan_mlo_mgr_link_switch.h>
@@ -1967,7 +1965,6 @@ cm_get_curr_candidate_entry(struct wlan_objmgr_vdev *vdev,
 	return entry;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 static void
 cm_get_pcl_chan_weigtage_for_sta(struct wlan_objmgr_pdev *pdev,
 				 struct pcl_freq_weight_list *pcl_lst,
@@ -2014,22 +2011,6 @@ void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 	if (pcl_lst)
 		qdf_mem_free(pcl_lst);
 }
-#else
-inline
-void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
-			 struct scan_filter *filter, qdf_list_t *list,
-			 bool allow_scan)
-{
-	wlan_cm_calculate_bss_score(pdev, NULL, list, &filter->bssid_hint,
-				    NULL, allow_scan);
-
-	/*
-	 * Custom sorting if enabled
-	 */
-	if (cm_ctx && cm_ctx->cm_candidate_list_custom_sort)
-		cm_ctx->cm_candidate_list_custom_sort(cm_ctx->vdev, list);
-}
-#endif
 
 #ifdef SM_ENG_HIST_ENABLE
 static const char *cm_id_to_string(wlan_cm_id cm_id)

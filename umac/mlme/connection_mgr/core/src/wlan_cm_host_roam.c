@@ -24,9 +24,7 @@
 #include <wlan_serialization_api.h>
 #include <wlan_utility.h>
 #include <wlan_cm_api.h>
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
-#endif
 
 static void
 cm_fill_roam_fail_resp_from_cm_id(struct cnx_mgr *cm_ctx,
@@ -675,7 +673,6 @@ static QDF_STATUS cm_ser_reassoc_req(struct cnx_mgr *cm_ctx,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 QDF_STATUS
 cm_handle_reassoc_hw_mode_change(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id,
 				 enum wlan_cm_sm_evt event)
@@ -781,14 +778,6 @@ cm_check_for_reassoc_hw_mode_change(struct cnx_mgr *cm_ctx,
 
 	return status;
 }
-#else
-static inline QDF_STATUS
-cm_check_for_reassoc_hw_mode_change(struct cnx_mgr *cm_ctx,
-				    struct cm_roam_req *cm_req)
-{
-	return QDF_STATUS_E_ALREADY;
-}
-#endif
 
 QDF_STATUS cm_reassoc_start(struct cnx_mgr *cm_ctx,
 			    struct cm_roam_req *cm_req)
