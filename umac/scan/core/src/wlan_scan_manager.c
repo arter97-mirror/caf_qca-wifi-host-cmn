@@ -31,9 +31,7 @@
 #ifdef FEATURE_WLAN_SCAN_PNO
 #include <host_diag_core_event.h>
 #endif
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include <wlan_policy_mgr_api.h>
-#endif
 #include <wlan_dfs_utils_api.h>
 #include <cfg_scan.h>
 
@@ -406,7 +404,6 @@ bool scm_is_scan_allowed(struct wlan_objmgr_vdev *vdev)
 	return true;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * scm_update_dbs_scan_ctrl_ext_flag() - update dbs scan ctrl flags
  * @req: pointer to scan request
@@ -978,24 +975,6 @@ static inline void scm_scan_chlist_concurrency_modify(
 		scm_filter_6g_and_indoor_freq(pdev, req);
 
 }
-#else
-static inline
-void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
-				       struct scan_start_request *req,
-				       struct wlan_scan_obj *scan_obj)
-{
-}
-
-static inline void
-scm_update_dbs_scan_ctrl_ext_flag(struct scan_start_request *req)
-{
-}
-
-static inline void scm_scan_chlist_concurrency_modify(
-	struct wlan_objmgr_vdev *vdev, struct scan_start_request *req)
-{
-}
-#endif
 
 /**
  * scm_update_channel_list() - update scan req params depending on dfs inis
