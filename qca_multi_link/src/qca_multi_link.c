@@ -1410,6 +1410,10 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 					qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
 					qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
 					qca_ml_entry.qal_fdb_dev = NULL;
+					if (!qca_ml_entry.qal_fdb_ieee80211_ptr) {
+						qdf_err("wdev is NULL");
+						return QCA_MULTI_LINK_PKT_DROP;
+					}
 				}
 			}
 #else
@@ -1634,6 +1638,12 @@ static qca_multi_link_status_t qca_multi_link_primary_sta_rx(struct net_device *
 			qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
 			qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
 			qca_ml_entry.qal_fdb_dev = NULL;
+
+			if (!qca_ml_entry.qal_fdb_ieee80211_ptr) {
+				qdf_err("wdev is NULL");
+				return QCA_MULTI_LINK_PKT_DROP;
+			}
+
 		}
 	}
 #else
@@ -2132,13 +2142,16 @@ bool qca_multi_link_sta_tx(struct net_device *net_dev, osif_dev *osifp, qdf_nbuf
 #else
 	struct wiphy *sta_wiphy = NULL;
 #endif
-	qdf_ether_header_t *eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
-	uint8_t is_mcast = IEEE80211_IS_MULTICAST(eh->ether_dhost);
+	qdf_ether_header_t *eh;
+	uint8_t is_mcast;
 	qca_multi_link_status_t status = QCA_MULTI_LINK_PKT_NONE;
 
 	if (!qca_multi_link_need_procesing()) {
 		goto end;
 	}
+
+	eh = (qdf_ether_header_t *) qdf_nbuf_data(nbuf);
+	is_mcast = IEEE80211_IS_MULTICAST(eh->ether_dhost);
 
 	if (!qca_multi_link_cfg.loop_detected) {
 		if (!qca_multi_link_cfg.force_client_mcast_traffic) {

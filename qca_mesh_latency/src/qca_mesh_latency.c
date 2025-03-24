@@ -59,13 +59,13 @@ qca_mesh_get_vdev(struct net_device *netdev, uint8_t *mac_addr)
 
 		mldev = ath_netdev_priv(netdev);
 		if (!mldev) {
-			qdf_err("Invalid mldev");
+			qdf_debug("Invalid mldev");
 			return NULL;
 		}
 
 		osdev = osifp_peer_find_hash_find_osdev(mldev, mac_addr);
 		if (!osdev) {
-			qdf_err("Invalid link osdev");
+			qdf_debug("Invalid link osdev");
 			return NULL;
 		}
 	}
@@ -127,6 +127,9 @@ int qca_mesh_latency_update_peer_parameter_v2(
 	struct wlan_objmgr_psoc *psoc = NULL;
 	ol_txrx_soc_handle soc_txrx_handle;
 	osif_dev *osdev = NULL;
+
+	if (!params->dst_dev)
+		return QDF_STATUS_E_FAILURE;
 
 	if (!params->dst_dev->ieee80211_ptr)
 		return QDF_STATUS_E_FAILURE;

@@ -1490,4 +1490,38 @@ struct wmi_host_pdev_power_boost_cmd_params {
 	int32_t mask_margin;
 };
 
+#ifdef WLAN_FEATURE_VBSS
+/* STA SN transfered for 8 data TIDS and one mgmt TID */
+#define WLAN_MAX_PER_PEER_SN_TIDS 9
+#define WLAN_MAX_TX_PN_SIZE 16
+
+/**
+ * enum wmi_host_vbss_action - VBSS actions with for Firmware
+ * @WMI_HOST_VBSS_GET_PEER_CONTEXT: This indicates Peer Move Triggered and
+ *                                  get STA context using WMI event
+ * @WMI_HOST_VBSS_SET_PEER_CONTEXT: This indicates Peer dynamic context needs
+ *                                  to be confirured and make VBSS active
+ */
+enum wmi_host_vbss_action {
+	WMI_HOST_VBSS_GET_PEER_CONTEXT  = 0x1,
+	WMI_HOST_VBSS_SET_PEER_CONTEXT = 0x2,
+};
+
+/**
+ * struct win_host_vbss_sta_context - Host interfacing structure to WMI
+ * @vdev_id: Pass Host vdev_id
+ * @action: Action as defined in %wmi_host_vbss_action
+ * @sn: Per TID SN values
+ * @tx_pn: STA Tx PN
+ * @macaddr: STA Mac address
+ */
+struct win_host_vbss_sta_context {
+	uint32_t vdev_id;
+	uint32_t action;
+	uint32_t sn[WLAN_MAX_PER_PEER_SN_TIDS];
+	uint8_t tx_pn[WLAN_MAX_TX_PN_SIZE];
+	uint8_t macaddr[QDF_MAC_ADDR_SIZE];
+};
+#endif /* WLAN_FEATURE_VBSS */
+
 #endif

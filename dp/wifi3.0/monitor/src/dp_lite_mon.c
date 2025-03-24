@@ -55,6 +55,65 @@ dp_lite_mon_check_if_coexist_with_tx_full(struct dp_mon_pdev_be *be_mon_pdev)
 #endif
 
 /**
+ * dp_rx_lite_mon_update_avg_rssi - Update Average RSSI for vbss peers
+ * @pdev: dp pdev context
+ * @peer: dp_lite_mon_peer
+ *
+ * Return: void
+ */
+
+#if defined(WDI_EVENT_ENABLE) && defined(QCA_ENHANCED_STATS_SUPPORT) && \
+	defined(WLAN_FEATURE_VBSS)
+static inline void
+dp_rx_lite_mon_update_avg_rssi(struct dp_pdev *dp_pdev, struct dp_lite_mon_peer *peer)
+{
+	struct cdp_interface_nac_stats nac_stats_intf = {0};
+
+	if (qdf_unlikely(peer->is_vbss_peer)) {
+		// Calculating the moving average of RSSI samples
+		if (peer->avg_rssi != 0) {
+			peer->avg_rssi = (peer->avg_rssi -
+				(((A_UINT8)(peer->avg_rssi)) >> 2)) +
+				(((A_UINT8)(peer->rssi)) >> 2);
+		} else {
+			peer->avg_rssi = peer->rssi;
+		}
+		if (peer->last_avg_rssi != peer->avg_rssi) {
+			nac_stats_intf.rssi = peer->rssi;
+			nac_stats_intf.avg_rssi = peer->avg_rssi;
+			qdf_mem_copy(nac_stats_intf.mac_addr, peer->peer_mac.raw,
+				     QDF_MAC_ADDR_SIZE);
+			dp_wdi_event_handler(WDI_EVENT_NAC_STATS, dp_pdev->soc,
+					     (void *)&nac_stats_intf, 0,
+					     WDI_NO_VAL, dp_pdev->pdev_id);
+			peer->last_avg_rssi = peer->avg_rssi;
+		}
+	}
+}
+#else
+static inline void
+dp_rx_lite_mon_update_avg_rssi(struct dp_pdev *pdev, struct dp_lite_mon_peer *peer)
+{
+
+}
+#endif
+
+#ifdef WLAN_FEATURE_VBSS
+static inline void
+dp_lite_mon_update_vbss_info(struct dp_lite_mon_peer *new_peer,
+			     struct cdp_lite_mon_peer_config *peer_config)
+{
+		new_peer->is_vbss_peer = peer_config->is_vbss_peer;
+}
+#else
+static inline void
+dp_lite_mon_update_vbss_info(struct dp_lite_mon_peer *new_peer,
+			     struct cdp_lite_mon_peer_config *peer_config)
+{
+}
+#endif
+
+/**
  * dp_lite_mon_free_peers - free peers
  * @pdev: dp pdev context
  * @config: lite mon tx/rx config
@@ -720,6 +779,7 @@ dp_lite_mon_update_peers(struct dp_lite_mon_config *config,
 		qdf_mem_copy(&new_peer->peer_mac.raw[0],
 			     peer_config->mac, QDF_MAC_ADDR_SIZE);
 		new_peer->vdev_id = peer_config->vdev_id;
+		dp_lite_mon_update_vbss_info(new_peer, peer_config);
 
 		/* add peer to lite mon peer list */
 		TAILQ_INSERT_TAIL(&config->peer_list,
@@ -1376,13 +1436,14 @@ dp_lite_mon_get_legacy_feature_enabled(struct cdp_soc_t *soc_hdl,
  * @vdev_id: vdev id
  * @cmd: peer cmd
  * @macaddr: peer mac
+ * @is_vbss_peer: VBSS peer or not
  *
  * Return: 1 if success, 0 if failure
  */
 int
 dp_lite_mon_config_nac_peer(struct cdp_soc_t *soc_hdl,
 			    uint8_t vdev_id,
-			    uint32_t cmd, uint8_t *macaddr)
+			    uint32_t cmd, uint8_t *macaddr, bool is_vbss_peer)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev =
@@ -1411,6 +1472,7 @@ dp_lite_mon_config_nac_peer(struct cdp_soc_t *soc_hdl,
 		     sizeof(struct cdp_lite_mon_peer_config));
 	peer_config.direction = CDP_LITE_MON_DIRECTION_RX;
 	peer_config.vdev_id = vdev_id;
+	peer_config.is_vbss_peer = is_vbss_peer;
 	qdf_mem_copy(peer_config.mac, macaddr, QDF_MAC_ADDR_SIZE);
 	if (cmd == DP_NAC_PARAM_ADD)
 		peer_config.action = CDP_LITE_MON_PEER_ADD;
@@ -1555,7 +1617,7 @@ dp_lite_mon_config_nac_rssi_peer(struct cdp_soc_t *soc_hdl,
 	int ret;
 
 	ret = dp_lite_mon_config_nac_peer(soc_hdl, vdev_id,
-					  cmd, macaddr);
+					  cmd, macaddr, false);
 	if (!ret) {
 		dp_mon_err("failed to add nac rssi peers");
 		return QDF_STATUS_E_FAILURE;
@@ -1977,6 +2039,7 @@ dp_lite_mon_rx_mpdu_process(struct dp_pdev *pdev,
 					 &ppdu_info->nac_info.mac_addr2,
 					 QDF_MAC_ADDR_SIZE)) {
 				peer->rssi = ppdu_info->rx_status.rssi_comb;
+				dp_rx_lite_mon_update_avg_rssi(pdev, peer);
 				break;
 			}
 		}

@@ -23,6 +23,10 @@ include $(obj)/$(DEPTH)/os/linux/Makefile-linux.common
 
 ifeq ($(QCA_GCC13_0_SUPPORT), 1)
 EXTRA_CFLAGS += -Wno-enum-conversion
+ifeq ($(CONFIG_SDX_WAIKIKI), 1)
+EXTRA_CFLAGS += -Wno-format-security
+EXTRA_CFLAGS += -Wno-unused-but-set-variable
+endif
 endif
 
 INCS += -I$(obj)/$(DEPTH)/include \

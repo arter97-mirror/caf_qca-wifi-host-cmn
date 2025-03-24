@@ -798,6 +798,14 @@ int wlan_sawf_get_msduq_tx_stats(void *soc, void *arg,
 				 void *msduq_tx_stats,
 				 uint8_t msduq);
 
+/*
+ * wlan_sawf_send_create_svc_to_target() - To send SAWF create to target
+ * @svc: Service class params
+ *
+ * Return: void
+ */
+void wlan_sawf_send_create_svc_to_target(struct wlan_sawf_svc_class_params *svc);
+
 #else
 static inline
 int wlan_sawf_get_tput_stats(void *soc, void *arg, uint64_t *in_bytes,

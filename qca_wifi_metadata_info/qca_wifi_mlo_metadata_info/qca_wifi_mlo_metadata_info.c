@@ -108,11 +108,21 @@ uint32_t qca_mlo_get_mark_metadata(struct qca_mlo_metadata_param *mlo_param)
 
 	if (mldev->wdev.iftype == NL80211_IFTYPE_AP)
 		osdev = osifp_peer_find_hash_find_osdev(mldev, dest_mac);
-	else
+	else {
+		/*
+		 * Primary UMAC remains constant for all flows on STA VAP
+		 *
+		 * MLO assist is not required from SFE, wifi driver will
+		 * get the primary TQM in xmit API
+		 */
 		osdev = osif_sta_mlo_find_osdev(mldev);
+		mlo_param->out_ppe_ds_node_id =
+				qca_mlo_get_ds_node_id(osdev);
+		return mlo_key;
+	}
 
 	if (!osdev) {
-		qdf_err("unable to find the peer" QDF_MAC_ADDR_FMT,
+		qdf_debug("unable to find the peer" QDF_MAC_ADDR_FMT,
 			QDF_MAC_ADDR_REF(dest_mac));
 		return mlo_key;
 	}

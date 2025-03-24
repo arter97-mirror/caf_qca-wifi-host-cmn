@@ -920,6 +920,9 @@ enum {
 #ifdef WLAN_MLO_SETUP_LINK_RECFG
 	IEEE80211_PARAM_MLRECFG_ADD_LINK_REJ = 837,
 #endif /* WLAN_MLO_SETUP_LINK_RECFG */
+#ifdef WLAN_FEATURE_VBSS
+	IEEE80211_PARAM_VBSS_ENABLE = 838,
+#endif /* WLAN_FEATURE_VBSS */
 
 	/* Add QCA enums above */
 	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
@@ -2760,6 +2763,9 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"get_4addr_eapol", IEEE80211_PARAM_4ADDR_EAPOL, GET_PARAM, 0},
 	{"set_recovery_state", IEEE80211_PARAM_RECOVERY_STATE, SET_PARAM, 1},
 	{"get_recovery_state", IEEE80211_PARAM_RECOVERY_STATE, GET_PARAM, 0},
+#ifdef WLAN_FEATURE_VBSS
+	{"get_vbss", IEEE80211_PARAM_VBSS_ENABLE, GET_PARAM, 0},
+#endif /* WLAN_FEATURE_VBSS */
 };
 
 struct vendor_commands radio_vendor_cmds[] = {

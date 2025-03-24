@@ -179,7 +179,7 @@ bool wlan_delay_bound_configured_nolock(uint8_t svc_id)
 	}
 	if (svc_id <  SAWF_SVC_CLASS_MIN ||
 	    svc_id > SAWF_SVC_CLASS_MAX) {
-		sawf_err("Invalid svc-class id");
+		sawf_debug("Invalid svc-class id %u", svc_id);
 		return false;
 	}
 
@@ -704,7 +704,7 @@ bool wlan_delay_bound_configured(uint8_t svc_id)
 	}
 	if (svc_id <  SAWF_SVC_CLASS_MIN ||
 	    svc_id > SAWF_SVC_CLASS_MAX) {
-		sawf_err("Invalid svc-class id");
+		sawf_debug("Invalid svc-class id %u", svc_id);
 		return false;
 	}
 
@@ -1194,14 +1194,14 @@ wlan_sawf_svc_disable_psoc_send(struct wlan_objmgr_psoc *psoc, void *arg,
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_SAWF_ID);
 }
 
-static inline void
-wlan_sawf_send_create_svc_to_target(struct wlan_sawf_svc_class_params *svc)
+void wlan_sawf_send_create_svc_to_target(struct wlan_sawf_svc_class_params *svc)
 {
 	sawf_debug("DL SAWF: send create svc %u to FW", svc->svc_id);
 
 	wlan_objmgr_iterate_psoc_list(wlan_sawf_svc_create_psoc_send, svc,
 				      WLAN_SAWF_ID);
 }
+qdf_export_symbol(wlan_sawf_send_create_svc_to_target);
 
 static inline void
 wlan_sawf_send_disable_svc_to_target(struct wlan_sawf_svc_class_params *svc)
