@@ -37,9 +37,7 @@
 #include <qdf_mem.h>
 #include <wlan_utility.h>
 #include "cfg_ucfg_api.h"
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include <wlan_policy_mgr_api.h>
-#endif
 #include <wlan_reg_services_api.h>
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 #include "host_diag_core_event.h"
@@ -286,45 +284,6 @@ static void wlan_cfg80211_pno_callback(struct wlan_objmgr_vdev *vdev,
 	wlan_cfg80211_sched_scan_results(pdev_ospriv->wiphy, 0);
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
-static bool wlan_cfg80211_is_ap_go_present(struct wlan_objmgr_psoc *psoc)
-{
-	return policy_mgr_get_beaconing_mode_count(psoc, NULL);
-}
-
-static QDF_STATUS wlan_cfg80211_is_chan_ok_for_dnbs(
-			struct wlan_objmgr_psoc *psoc,
-			u16 chan_freq, bool *ok)
-{
-	QDF_STATUS status = policy_mgr_is_chan_ok_for_dnbs(
-				psoc, chan_freq, ok);
-
-	if (QDF_IS_STATUS_ERROR(status)) {
-		osif_err("DNBS check failed");
-		return status;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-#else
-static bool wlan_cfg80211_is_ap_go_present(struct wlan_objmgr_psoc *psoc)
-{
-	return false;
-}
-
-static QDF_STATUS wlan_cfg80211_is_chan_ok_for_dnbs(
-			struct wlan_objmgr_psoc *psoc,
-			u16 chan_freq,
-			bool *ok)
-{
-	if (!ok)
-		return QDF_STATUS_E_INVAL;
-
-	*ok = true;
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 #if defined(CFG80211_SCAN_RANDOM_MAC_ADDR) || \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
 /**
@@ -481,7 +440,10 @@ int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_vdev *vdev,
 		uint32_t buff_len;
 		char *chl;
 		int len = 0;
-		bool ap_or_go_present = wlan_cfg80211_is_ap_go_present(psoc);
+		bool ap_or_go_present;
+
+		ap_or_go_present =
+			policy_mgr_get_beaconing_mode_count(psoc, NULL);
 
 		buff_len = (request->n_channels * 5) + 1;
 		chl = qdf_mem_malloc(buff_len);
@@ -504,9 +466,8 @@ int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_vdev *vdev,
 				bool ok;
 
 				status =
-				wlan_cfg80211_is_chan_ok_for_dnbs(psoc,
-								  chan_freq,
-								  &ok);
+				policy_mgr_is_chan_ok_for_dnbs(psoc, chan_freq,
+							       &ok);
 				if (QDF_IS_STATUS_ERROR(status)) {
 					osif_err("DNBS check failed");
 					qdf_mem_free(chl);
@@ -1533,20 +1494,6 @@ static inline void wlan_cfg80211_update_scan_policy_type_flags(
 }
 #endif
 
-#ifdef WLAN_POLICY_MGR_ENABLE
-static bool
-wlan_cfg80211_allow_simultaneous_scan(struct wlan_objmgr_psoc *psoc)
-{
-	return policy_mgr_is_scan_simultaneous_capable(psoc);
-}
-#else
-static bool
-wlan_cfg80211_allow_simultaneous_scan(struct wlan_objmgr_psoc *psoc)
-{
-	return true;
-}
-#endif
-
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 #define CLEAR_CACHED_SCAN_REPORT(report) \
 	while ((report)) { \
@@ -1946,7 +1893,7 @@ bool wlan_is_scan_allowed(struct wlan_objmgr_vdev *vdev)
 	 * scan.
 	 */
 	qdf_mutex_acquire(&osif_priv->osif_scan->scan_req_q_lock);
-	if (!wlan_cfg80211_allow_simultaneous_scan(psoc) &&
+	if (!policy_mgr_is_scan_simultaneous_capable(psoc) &&
 	    !qdf_list_empty(&osif_priv->osif_scan->scan_req_q) &&
 	    opmode != QDF_SAP_MODE) {
 		qdf_mutex_release(&osif_priv->osif_scan->scan_req_q_lock);
@@ -2145,14 +2092,16 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 	}
 
 	if (request->n_channels) {
-#ifdef WLAN_POLICY_MGR_ENABLE
-		bool ap_or_go_present = wlan_cfg80211_is_ap_go_present(psoc);
-#endif
+		bool ap_or_go_present;
+
+		ap_or_go_present =
+			policy_mgr_get_beaconing_mode_count(psoc, NULL);
+
 		for (i = 0; i < request->n_channels; i++) {
 			c_freq = request->channels[i]->center_freq;
 			if (wlan_reg_is_dsrc_freq(c_freq))
 				continue;
-#ifdef WLAN_POLICY_MGR_ENABLE
+
 			if (ap_or_go_present) {
 				bool ok;
 
@@ -2167,7 +2116,6 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 				if (!ok)
 					continue;
 			}
-#endif
 
 			if ((req->scan_req.scan_f_2ghz &&
 			     WLAN_REG_IS_24GHZ_CH_FREQ(c_freq)) ||
