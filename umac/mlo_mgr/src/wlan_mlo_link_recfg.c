@@ -3967,6 +3967,7 @@ static bool mlo_link_recfg_reassoc_if_failure(
 	case link_recfg_del_link_fw_link_switch_rejected:
 	case link_recfg_del_link_link_switch_comp_with_fail:
 	case link_recfg_rsp_timeout:
+	case link_recfg_concurrency_failed:
 		reassoc_if_failure = true;
 		break;
 	default:
@@ -4419,10 +4420,17 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 					 uint16_t event_data_len,
 					 void *event_data)
 {
+	struct wlan_objmgr_psoc *psoc;
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
 	struct wlan_mlo_link_recfg_req *recfg_req;
 	QDF_STATUS status;
+
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc is null");
+		return false;
+	}
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_START:
@@ -4435,6 +4443,13 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
+		if (policy_mgr_link_reconfig_is_concurrency_present(psoc)) {
+			recfg_ctx->internal_reason_code =
+						link_recfg_concurrency_failed;
+			mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
+			break;
+		}
+
 		recfg_req = &recfg_ctx->curr_recfg_req;
 		if (recfg_req->is_user_req) {
 			/* for user initiated request, we need to send
@@ -4511,14 +4526,28 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 					uint16_t event_data_len,
 					void *event_data)
 {
+	struct wlan_objmgr_psoc *psoc;
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
 	struct wlan_mlo_link_recfg_req *recfg_req;
 	struct wlan_mlo_link_recfg_req *fw_ind_recfg_req;
 	QDF_STATUS status;
 
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (!psoc) {
+		mlo_err("psoc is null");
+		return false;
+	}
+
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
+		if (policy_mgr_link_reconfig_is_concurrency_present(psoc)) {
+			recfg_ctx->internal_reason_code =
+					link_recfg_concurrency_failed;
+			mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
+			break;
+		}
+
 		recfg_req = &recfg_ctx->curr_recfg_req;
 		if (recfg_req->is_user_req) {
 			/* send link reconfig wmi WMI_MLO_LINK_RECONFIG_CMDID */

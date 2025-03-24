@@ -153,6 +153,7 @@ enum wlan_link_recfg_sm_evt {
  * @link_recfg_del_link_link_switch_comp_with_fail: link switch complete
  * with failure
  * @link_recfg_rsp_timeout: Link Reconfiguration response timeout.
+ * @link_recfg_concurrency_failed: Link reconfig failed due to concurrency
  */
 enum link_recfg_failure_reason {
 	link_recfg_success = 0,
@@ -163,6 +164,7 @@ enum link_recfg_failure_reason {
 	link_recfg_del_link_fw_link_switch_rejected = 5,
 	link_recfg_del_link_link_switch_comp_with_fail = 6,
 	link_recfg_rsp_timeout = 7,
+	link_recfg_concurrency_failed = 8,
 };
 
 /**
