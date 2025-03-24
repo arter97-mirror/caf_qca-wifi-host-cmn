@@ -5584,7 +5584,6 @@ struct dp_local_link_id_peer_map {
  * @in_twt: in TWT session
  * @hw_txrx_stats_en: Indicate HW offload vdev stats
  * @is_mld_peer:1: MLD peer
- * @hw_accel_en: HW acceleration enabled
  * @tx_failed: Total Tx failure
  * @comp_pkt: Pkt Info for which completions were received
  * @to_stack: Total packets sent up the stack
@@ -5619,8 +5618,7 @@ struct dp_txrx_peer {
 	uint8_t authorize:1,
 		in_twt:1,
 		hw_txrx_stats_en:1,
-		is_mld_peer:1,
-		hw_accel_en:1;
+		is_mld_peer:1;
 	uint32_t tx_failed;
 	struct cdp_pkt_info comp_pkt;
 	struct cdp_pkt_info to_stack;
