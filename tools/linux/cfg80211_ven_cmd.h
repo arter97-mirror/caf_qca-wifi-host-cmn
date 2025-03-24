@@ -3606,7 +3606,7 @@ struct vendor_commands radio_vendor_cmds[] = {
 	{"get_rchwidth",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RCHWIDTH, GET_PARAM, 0},
 	{"hw_mode",
-		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_HW_MODE, SET_PARAM, 1},
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_HW_MODE, SET_PARAM, 2},
 	{"get_hw_mode",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_HW_MODE, GET_PARAM, 0},
 	{"rf_path_mode",
