@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,6 +19,11 @@
 #define _DP_IPA_H_
 
 #include "wlan_ipa_public_struct.h"
+#ifdef CONFIG_BORON
+/* Assign last ring to IPA */
+#define IPA_TCL_DATA_RING_IDX	6
+#define IPA_TX_COMP_RING_IDX (IPA_TCL_DATA_RING_IDX - 1)
+#else
 #if defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
     defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
 /* Index into soc->tcl_data_ring[] */
@@ -28,6 +33,7 @@
 #endif
 /* Index into soc->tx_comp_ring[] */
 #define IPA_TX_COMP_RING_IDX IPA_TCL_DATA_RING_IDX
+#endif /* CONFIG_BORON */
 
 #ifdef IPA_OFFLOAD
 

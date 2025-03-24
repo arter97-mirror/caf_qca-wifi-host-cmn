@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,6 +55,16 @@ static const char *ring_usage_dump[RING_USAGE_MAX] = {
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 #define DP_TX_VDEV_ID_CHECK_ENABLE 0
 
+#ifdef CONFIG_BORON
+/* This is indeed TCL to TQM mapping */
+static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
+	{.tcl_ring_num = 0, .wbm_ring_num = 0, .wbm_rbm_id = HAL_BE_WBM_SW0_BM_ID, .for_ipa = 0},
+	{1, 1, HAL_BE_WBM_SW1_BM_ID, 0},
+	{2, 2, HAL_BE_WBM_SW2_BM_ID, 0},
+	{3, 3, HAL_BE_WBM_SW3_BM_ID, 0},
+	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0}
+};
+#else /* CONFIG_BORON */
 static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
 	{.tcl_ring_num = 0, .wbm_ring_num = 0, .wbm_rbm_id = HAL_BE_WBM_SW0_BM_ID, .for_ipa = 0},
 	{1, 4, HAL_BE_WBM_SW4_BM_ID, 0},
@@ -68,7 +78,8 @@ static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RIN
 	{4, 7, HAL_BE_WBM_SW6_BM_ID, 0}
 #endif
 };
-#else
+#endif /* CONFIG_BORON */
+#else /* WLAN_MAX_PDEVS == 1 */
 #if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 #define DP_TX_VDEV_ID_CHECK_ENABLE 0
 #else
@@ -82,7 +93,7 @@ static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RIN
 	{3, 3, HAL_BE_WBM_SW3_BM_ID, 0},
 	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0}
 };
-#endif
+#endif /* WLAN_MAX_PDEVS != 1 */
 
 #ifdef WLAN_SUPPORT_PPEDS
 static struct cdp_ppeds_txrx_ops dp_ops_ppeds_be = {

@@ -2726,7 +2726,7 @@ struct hal_hw_srng_config hw_srng_table_fig[] = {
 	/* TODO: max_rings can populated by querying HW capabilities */
 	{ /* REO_DST */
 		.start_ring_id = HAL_SRNG_REO2SW1,
-		.max_rings = 8,
+		.max_rings = 9,
 		.entry_size = sizeof(struct reo_destination_ring) >> 2,
 		.lmac_ring = FALSE,
 		.ring_dir = HAL_SRNG_DST_RING,
@@ -2774,9 +2774,9 @@ struct hal_hw_srng_config hw_srng_table_fig[] = {
 	},
 	{ /* REO_STATUS */
 	},
-	{ /* TODO: TCL_DATA */
+	{ /* TCL_DATA */
 		.start_ring_id = HAL_SRNG_SW2TCL1,
-		.max_rings = 5,
+		.max_rings = 7,
 		.entry_size = sizeof(struct tcl_assist_cmd) >> 2,
 		.lmac_ring = FALSE,
 		.ring_dir = HAL_SRNG_SRC_RING,

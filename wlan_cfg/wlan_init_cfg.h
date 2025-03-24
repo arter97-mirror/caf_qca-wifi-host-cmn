@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -78,8 +78,13 @@
 /* Tx configuration */
 #define MAX_LINK_DESC_BANKS 8
 
+#ifdef CONFIG_BORON
+#define MAX_REO_DEST_RINGS 9
+#define MAX_TCL_DATA_RINGS 7
+#else
 #define MAX_REO_DEST_RINGS 8
 #define MAX_TCL_DATA_RINGS 5
+#endif
 
 #define MAX_RX_MAC_RINGS 2
 
