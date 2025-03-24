@@ -1236,10 +1236,8 @@ QDF_STATUS (*send_roam_set_param_cmd)(wmi_unified_t wmi_handle,
 				      struct vdev_set_params *roam_param);
 #endif
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 QDF_STATUS (*send_pdev_set_dual_mac_config_cmd)(wmi_unified_t wmi_handle,
 		struct policy_mgr_dual_mac_config *msg);
-#endif
 
 QDF_STATUS (*send_set_led_flashing_cmd)(wmi_unified_t wmi_handle,
 				struct flashing_req_params *flashing);
@@ -4050,14 +4048,7 @@ static inline void wmi_tdls_attach_tlv(struct wmi_unified *wmi_handle)
 }
 #endif
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 void wmi_policy_mgr_attach_tlv(struct wmi_unified *wmi_handle);
-#else
-static inline
-void wmi_policy_mgr_attach_tlv(struct wmi_unified *wmi_handle)
-{
-}
-#endif
 
 #if defined(WLAN_FEATURE_ROAM_OFFLOAD) && defined(FEATURE_DENYLIST_MGR)
 void wmi_denylist_mgr_attach_tlv(struct wmi_unified *wmi_handle);

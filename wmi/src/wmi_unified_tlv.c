@@ -46,9 +46,7 @@
 #include "wmi_unified_twt_api.h"
 #include "wmi_unified_wds_api.h"
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_public_struct.h"
-#endif
 
 #ifdef WMI_SMART_ANT_SUPPORT
 #include "wmi_unified_smart_ant_api.h"

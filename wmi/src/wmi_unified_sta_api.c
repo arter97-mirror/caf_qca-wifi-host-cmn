@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -357,7 +357,6 @@ QDF_STATUS wmi_unified_pdev_set_pcl_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 QDF_STATUS wmi_unified_pdev_set_dual_mac_config_cmd(
 		wmi_unified_t wmi_handle,
 		struct policy_mgr_dual_mac_config *msg)
@@ -369,7 +368,6 @@ QDF_STATUS wmi_unified_pdev_set_dual_mac_config_cmd(
 
 	return QDF_STATUS_E_FAILURE;
 }
-#endif /* WLAN_POLICY_MGR_ENABLE */
 
 QDF_STATUS wmi_unified_send_adapt_dwelltime_params_cmd(
 			wmi_unified_t wmi_handle,
