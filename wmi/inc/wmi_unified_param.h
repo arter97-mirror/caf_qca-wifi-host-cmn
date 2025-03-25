@@ -6794,7 +6794,11 @@ typedef enum {
 	wmi_service_mrsno_support,
 	wmi_service_twt_p2p_go_concurrency_support,
 	wmi_service_sta_twt_stats_ext,
-
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+#ifdef WLAN_FEATURE_11BE_MLO
+	wmi_service_mlo_roam_partner_bringup_from_host,
+#endif
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

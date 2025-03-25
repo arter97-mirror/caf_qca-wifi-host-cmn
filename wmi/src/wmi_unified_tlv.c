@@ -24778,6 +24778,12 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_TWT_P2P_GO_CONCURRENCY_SUPPORT;
 	wmi_service[wmi_service_sta_twt_stats_ext] =
 				WMI_SERVICE_STA_TWT_STATS_EXT;
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+#ifdef WLAN_FEATURE_11BE_MLO
+	wmi_service[wmi_service_mlo_roam_partner_bringup_from_host] =
+				WMI_SERVICE_MLO_ROAM_PARTNER_BRINGUP_FROM_HOST;
+#endif
+#endif
 }
 
 /**
