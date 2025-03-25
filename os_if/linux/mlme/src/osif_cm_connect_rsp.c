@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1198,13 +1198,16 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 			osif_connect_bss(osif_priv->wdev->netdev,
 					 bss, rsp);
 	} else if (osif_get_connect_status_code(rsp) == WLAN_STATUS_SUCCESS &&
-		   QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_OWE)) {
+		   (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_OWE) ||
+		    mlo_is_offload_roam_in_progress(vdev))) {
 		/*
-		 * For OWE roaming, link vdev is disconnected on receiving
+		 * Update the link info for:
+		 * a) For OWE roaming, link vdev is disconnected on receiving
 		 * roam synch indication. As part of the disconnect osif link
 		 * info will be cleared and connect request is prepared from
 		 * mlo roam module.
-		 * So update OSIF Link info for that case here.
+		 * b) MLO offload roaming in progress and the partner link is
+		 * brought up after the receiving keys from FW.
 		 */
 		mlo_mgr_osif_update_connect_info(vdev,
 						 wlan_vdev_get_link_id(vdev));

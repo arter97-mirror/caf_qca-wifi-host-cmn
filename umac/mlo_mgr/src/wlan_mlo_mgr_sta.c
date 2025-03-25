@@ -1606,7 +1606,12 @@ void mlo_sta_link_connect_notify(struct wlan_objmgr_vdev *vdev,
 		return;
 	}
 
-	if (mlo_sta_ignore_link_connect_fail(vdev))
+	/*
+	 * In the case of partner bringup failure for MLO roam with partner
+	 * bringup offloaded to host, always perform a MLD disconnect
+	 */
+	if (mlo_sta_ignore_link_connect_fail(vdev) &&
+	    !mlo_is_offload_roam_in_progress(vdev))
 		return;
 
 	if (wlan_cm_is_vdev_disconnected(vdev))

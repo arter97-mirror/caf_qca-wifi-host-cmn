@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -3203,6 +3203,9 @@ QDF_STATUS cm_notify_connect_complete(struct cnx_mgr *cm_ctx,
 	if (QDF_IS_STATUS_ERROR(resp->connect_status) &&
 	    sm_state == WLAN_CM_S_INIT && !cm_is_link_switch_connect_resp(resp))
 		cm_clear_vdev_mlo_cap(cm_ctx->vdev);
+
+	if (wlan_vdev_mlme_is_mlo_link_vdev(cm_ctx->vdev))
+		mlo_set_offload_roam_in_progress(cm_ctx->vdev, false);
 
 	return QDF_STATUS_SUCCESS;
 }
