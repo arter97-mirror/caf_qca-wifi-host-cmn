@@ -4055,8 +4055,11 @@ static bool mlo_link_recfg_reassoc_if_failure(
 	case link_recfg_rsp_timeout:
 	case link_recfg_concurrency_failed:
 	case link_recfg_aborted_neg_ttlm_ongoing:
+	case link_recfg_tx_failed:
+	case link_recfg_rsp_status_failure:
 		reassoc_if_failure = true;
 		break;
+	case link_recfg_nb_sb_disconnect:
 	default:
 		reassoc_if_failure = false;
 		break;
@@ -4064,7 +4067,8 @@ static bool mlo_link_recfg_reassoc_if_failure(
 
 	if (recfg_ctx->curr_recfg_req.recfg_type ==
 			link_recfg_del_add_no_common_link &&
-	    recfg_ctx->internal_reason_code != link_recfg_create_tran_failed)
+	    recfg_ctx->internal_reason_code != link_recfg_create_tran_failed &&
+	    recfg_ctx->internal_reason_code != link_recfg_nb_sb_disconnect)
 		reassoc_if_failure = true;
 
 	mlo_debug("recfg type %d internal_reason_code %d reassoc_if_failure %d",
@@ -4444,21 +4448,37 @@ mlo_link_recfg_no_common_link_event(void *ctx,
 		req = (struct mlo_link_recfg_state_req *)event_data;
 		status =
 		mlo_link_recfg_send_request_frame(recfg_ctx, req);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("error to send frame %d", status);
+			recfg_ctx->internal_reason_code =
+				link_recfg_tx_failed;
+		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
 		/* Handle tx failure */
 		tx_status = (struct link_recfg_tx_result *)event_data;
 		status = tx_status->status;
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("error to send frame status %d", status);
+			recfg_ctx->internal_reason_code =
+				link_recfg_tx_failed;
+		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
 		status = mlo_link_recfg_response_handler(
 			recfg_ctx, (struct link_recfg_rx_rsp *)event_data,
 			event_data_len);
-		if (QDF_IS_STATUS_ERROR(status))
+		if (QDF_IS_STATUS_ERROR(status)) {
 			mlo_err("error to handle resp status %d", status);
+			recfg_ctx->internal_reason_code =
+				link_recfg_rsp_status_failure;
+		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT:
 		status = QDF_STATUS_E_TIMEOUT;
+		recfg_ctx->internal_reason_code =
+			link_recfg_rsp_timeout;
+		mlo_link_recfg_abort_link_add_no_comm(recfg_ctx);
 		break;
 	default:
 		break;
@@ -4679,6 +4699,8 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		recfg_ctx->internal_reason_code =
+			link_recfg_nb_sb_disconnect;
 		/* todo: handle disc or roam if link recfg ser not active */
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
@@ -4791,6 +4813,8 @@ mlo_link_recfg_subst_start_active_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		recfg_ctx->internal_reason_code =
+			link_recfg_nb_sb_disconnect;
 		/* handle disc or roam if link recfg ser is active */
 		mlo_link_recfg_ser_timeout_sm_handler(recfg_ctx);
 		break;
@@ -4989,6 +5013,8 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		recfg_ctx->internal_reason_code =
+			link_recfg_nb_sb_disconnect;
 		/* transition to abort state */
 		mlo_link_recfg_sm_transition_to(
 			ctx, WLAN_LINK_RECFG_SS_DEL_LINK_ABORT_WAIT_SET_LINK);
@@ -5123,6 +5149,8 @@ mlo_link_recfg_subst_del_link_wait_link_sw_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		recfg_ctx->internal_reason_code =
+			link_recfg_nb_sb_disconnect;
 		if (mlo_link_recfg_is_link_switch_in_progress(recfg_ctx)) {
 			/* transition to abort state */
 			mlo_link_recfg_sm_transition_to(
@@ -5331,6 +5359,8 @@ mlo_link_recfg_subst_add_link_wait_add_conn_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		recfg_ctx->internal_reason_code =
+			link_recfg_nb_sb_disconnect;
 		/* transition to abort state */
 		mlo_link_recfg_sm_transition_to(
 			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_ADD_CONN);
@@ -5453,6 +5483,8 @@ mlo_link_recfg_subst_add_link_wait_link_sw_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		recfg_ctx->internal_reason_code =
+			link_recfg_nb_sb_disconnect;
 		if (mlo_link_recfg_is_link_switch_in_progress(recfg_ctx)) {
 			/* transition to abort state */
 			mlo_link_recfg_sm_transition_to(
@@ -5612,6 +5644,8 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
 	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		recfg_ctx->internal_reason_code =
+			link_recfg_nb_sb_disconnect;
 		mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
 		mlo_link_recfg_sm_deliver_event_sync(
 					recfg_ctx->ml_dev,

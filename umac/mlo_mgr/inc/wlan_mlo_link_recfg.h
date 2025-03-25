@@ -160,6 +160,9 @@ enum wlan_link_recfg_sm_evt {
  * @link_recfg_concurrency_failed: Link reconfig failed due to concurrency
  * @link_recfg_aborted_neg_ttlm_ongoing: Link Reconfiguration aborted
  * due to ongoing TTLM.
+ * @link_recfg_nb_sb_disconnect: nb/sb disconnect causing abort
+ * @link_recfg_tx_failed: tx status is failed
+ * @link_recfg_rsp_status_failure: response status is error.
  */
 enum link_recfg_failure_reason {
 	link_recfg_success = 0,
@@ -172,6 +175,9 @@ enum link_recfg_failure_reason {
 	link_recfg_rsp_timeout = 7,
 	link_recfg_concurrency_failed = 8,
 	link_recfg_aborted_neg_ttlm_ongoing = 9,
+	link_recfg_nb_sb_disconnect = 10,
+	link_recfg_tx_failed = 11,
+	link_recfg_rsp_status_failure = 12,
 };
 
 /**
