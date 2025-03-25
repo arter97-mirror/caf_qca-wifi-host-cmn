@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -3242,6 +3242,39 @@ uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
 	}
 
 	return num_links;
+}
+
+QDF_STATUS
+mlo_set_offload_roam_in_progress(struct wlan_objmgr_vdev *vdev, bool val)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	if (!vdev)
+		return QDF_STATUS_E_INVAL;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->sta_ctx)
+		return QDF_STATUS_E_INVAL;
+
+	mlo_dev_ctx->sta_ctx->is_mlo_offload_roam = val;
+	mlo_err("%s mlo offloaded roam for vdev %d",
+		val ? "Setting" : "Clearing", wlan_vdev_get_id(vdev));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+bool mlo_is_offload_roam_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	if (!vdev)
+		return false;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->sta_ctx)
+		return false;
+
+	return mlo_dev_ctx->sta_ctx->is_mlo_offload_roam;
 }
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1277,6 +1277,32 @@ bool mlo_is_chan_switch_in_progress(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS
 mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev);
+
+/*
+ * mlo_set_offload_roam_in_progress: Set/clear the flag upon MLO partner
+ * offload roam at MLD level
+ * @vdev: vdev obj
+ * @val: Carries true if offloaded roaming is in progress. This carries
+ *       false once partner bring up is completed/aborted.
+ *
+ * This API is to set/clear the flag is_mlo_offloaded_roam upon MLO roaming
+ * start/completion.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_set_offload_roam_in_progress(struct wlan_objmgr_vdev *vdev,
+					    bool val);
+
+/**
+ * mlo_is_offload_roam_in_progress: Check if MLD level offloaded MLO roaming
+ * is in progress
+ * @vdev: vdev obj
+ *
+ * This API is to check the flag is_mlo_offload_roam is set on the assoc vdev.
+ *
+ * Return: is_mlo_offload_roam
+ */
+bool mlo_is_offload_roam_in_progress(struct wlan_objmgr_vdev *vdev);
 #else
 static inline
 void mlo_defer_set_keys(struct wlan_objmgr_vdev *vdev,
@@ -1313,6 +1339,18 @@ static inline QDF_STATUS
 mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_set_offload_roam_in_progress(struct wlan_objmgr_vdev *vdev, bool val)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline bool
+mlo_is_offload_roam_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
 }
 #endif
 
