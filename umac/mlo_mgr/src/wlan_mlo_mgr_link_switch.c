@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1372,6 +1372,7 @@ mlo_mgr_start_link_switch(struct wlan_objmgr_vdev *vdev,
 	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
 	struct wlan_mlo_link_switch_req *req = &mlo_dev_ctx->link_ctx->last_req;
 	struct qdf_mac_addr bssid;
+	enum wlan_reason_code reason = REASON_FW_TRIGGERED_LINK_SWITCH;
 
 	vdev_id = wlan_vdev_get_id(vdev);
 	old_link_id = req->curr_ieee_link_id;
@@ -1402,8 +1403,11 @@ mlo_mgr_start_link_switch(struct wlan_objmgr_vdev *vdev,
 	if (QDF_IS_STATUS_ERROR(status))
 		return status;
 
+	if (req->reason == MLO_LINK_SWITCH_REASON_ROAM_ABORT)
+		reason = REASON_FW_TRIGGERED_ROAM_FAILURE;
+
 	status = wlan_cm_disconnect(vdev, CM_MLO_LINK_SWITCH_DISCONNECT,
-				    REASON_FW_TRIGGERED_LINK_SWITCH, &bssid);
+				    reason, &bssid);
 
 	if (QDF_IS_STATUS_ERROR(status))
 		mlo_err("VDEV %d disconnect request not handled", req->vdev_id);
@@ -1609,12 +1613,6 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
 		return status;
 	}
 
-	if (new_link_info->vdev_id != WLAN_INVALID_VDEV_ID) {
-		mlo_err("requested link already active on other vdev:%d",
-			new_link_info->vdev_id);
-		return status;
-	}
-
 	if (!mlo_is_mld_sta(vdev)) {
 		mlo_err("Link switch req not valid for VDEV %d", vdev_id);
 		return status;
@@ -1627,6 +1625,15 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
 
 	if (mlo_mgr_is_link_switch_in_progress(vdev)) {
 		mlo_err("Link switch already in progress");
+		return status;
+	}
+
+	if (req->reason == MLO_LINK_SWITCH_REASON_ROAM_ABORT)
+		goto validation_done;
+
+	if (new_link_info->vdev_id != WLAN_INVALID_VDEV_ID) {
+		mlo_err("requested link already active on other vdev:%d",
+			new_link_info->vdev_id);
 		return status;
 	}
 
@@ -1643,6 +1650,7 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
 		return status;
 	}
 
+validation_done:
 	/* Notify callers on the new link switch request before serializing */
 	status = mlo_mgr_link_switch_notify(vdev, req);
 	if (QDF_IS_STATUS_ERROR(status)) {
@@ -1834,6 +1842,9 @@ QDF_STATUS mlo_mgr_link_switch_complete(struct wlan_objmgr_vdev *vdev)
 	link_ctx = vdev->mlo_dev_ctx->link_ctx;
 	req = &link_ctx->last_req;
 
+	if (req->reason == MLO_LINK_SWITCH_REASON_ROAM_ABORT)
+		goto skip_link_switch_cnf;
+
 	state = mlo_mgr_link_switch_get_curr_state(vdev->mlo_dev_ctx);
 	if (state != MLO_LINK_SWITCH_STATE_COMPLETE_SUCCESS)
 		params.status = MLO_LINK_SWITCH_CNF_STATUS_REJECT;
@@ -1845,6 +1856,7 @@ QDF_STATUS mlo_mgr_link_switch_complete(struct wlan_objmgr_vdev *vdev)
 
 	mlo_mgr_link_switch_send_cnf_cmd(psoc, &params);
 
+skip_link_switch_cnf:
 	mlo_mgr_link_switch_init_state(vdev->mlo_dev_ctx);
 	wlan_vdev_mlme_clear_mlo_link_switch_in_progress(vdev);
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
@@ -1917,5 +1929,28 @@ mlo_mgr_link_switch_defer_disconnect_req(struct wlan_objmgr_vdev *vdev,
 
 	mlo_debug("Deferred disconnect source: %d, reason: %d", source, reason);
 	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+mlo_mgr_link_switch_for_roam_abort(struct wlan_objmgr_vdev *vdev,
+				   uint32_t link_id, qdf_freq_t freq)
+{
+	struct wlan_mlo_link_switch_req req = {0};
+	QDF_STATUS status;
+
+	mlo_debug("Posting self link switch for vdev_id %d link id %d freq %d",
+		  wlan_vdev_get_id(vdev), link_id, freq);
+	req.vdev_id = wlan_vdev_get_id(vdev);
+	req.curr_ieee_link_id = link_id;
+	req.new_ieee_link_id = link_id;
+	req.new_primary_freq = freq;
+	req.reason = MLO_LINK_SWITCH_REASON_ROAM_ABORT;
+
+	status = mlo_mgr_link_switch_request_params(wlan_vdev_get_psoc(vdev),
+						    &req);
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_debug("MLO roam abort handling failed");
+
+	return status;
 }
 #endif

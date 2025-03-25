@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -82,6 +82,8 @@ struct wlan_mlo_link_switch_cnf {
  * @MLO_LINK_SWITCH_REASON_HOST_FORCE: Link switch reason is because of host
  * force active/inactive
  * @MLO_LINK_SWITCH_REASON_T2LM: Link switch reason is because of T2LM
+ * @MLO_LINK_SWITCH_REASON_ROAM_ABORT: Link switch to bring back the partner
+ * link during MLO roam abort
  * @MLO_LINK_SWITCH_REASON_MAX: Link switch reason max
  */
 enum wlan_mlo_link_switch_reason {
@@ -90,6 +92,7 @@ enum wlan_mlo_link_switch_reason {
 	MLO_LINK_SWITCH_REASON_C2_CHANGE   = 3,
 	MLO_LINK_SWITCH_REASON_HOST_FORCE  = 4,
 	MLO_LINK_SWITCH_REASON_T2LM        = 5,
+	MLO_LINK_SWITCH_REASON_ROAM_ABORT,
 	MLO_LINK_SWITCH_REASON_MAX,
 };
 
@@ -730,6 +733,16 @@ mlo_mgr_is_link_switch_supported(struct wlan_objmgr_vdev *vdev)
 	return true;
 }
 
+/*
+ * mlo_mgr_link_switch_for_roam_abort() - API to initiate the self link switch
+ * for roam abort
+ * @vdev: pointer to vdev object
+ * @link_id: Link id of partner link
+ * @freq: Frequency of the partner link
+ */
+QDF_STATUS
+mlo_mgr_link_switch_for_roam_abort(struct wlan_objmgr_vdev *vdev,
+				   uint32_t link_id, qdf_freq_t freq);
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -939,6 +952,13 @@ void mlo_mgr_update_link_status_code(struct wlan_objmgr_vdev *vdev,
 				     uint8_t link_id,
 				     enum wlan_status_code status_code)
 {
+}
+
+static inline QDF_STATUS
+mlo_mgr_link_switch_for_roam_abort(struct wlan_objmgr_vdev *vdev,
+				   uint32_t link_id, qdf_freq_t freq)
+{
+	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif
 #endif
