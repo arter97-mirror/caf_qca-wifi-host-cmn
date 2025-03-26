@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -6408,8 +6408,12 @@ dp_print_rx_err_stats(struct dp_soc *soc, struct dp_pdev *pdev)
 		       soc->stats.rx.err.intrabss_eapol_drop);
 	DP_PRINT_STATS("mic errors %u",
 		       pdev->stats.rx.err.mic_err);
+	DP_PRINT_STATS("2k jump msdu to stack: %u",
+		       pdev->soc->stats.rx.err.rx_2k_jump_to_stack);
 	DP_PRINT_STATS("2k jump msdu drop: %u",
 		       pdev->soc->stats.rx.err.rx_2k_jump_drop);
+	DP_PRINT_STATS("REO err oor msdu to stack %u",
+		       pdev->soc->stats.rx.err.reo_err_oor_to_stack);
 	DP_PRINT_STATS("REO err oor msdu drop: %u",
 		       pdev->soc->stats.rx.err.reo_err_oor_drop);
 	DP_PRINT_STATS("Invalid peer on rx path: %llu",

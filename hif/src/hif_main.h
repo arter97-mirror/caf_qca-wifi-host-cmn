@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -343,6 +343,7 @@ struct hif_reg_write_soc_stats {
  * @work_scheduled_time: work scheduled time (qdf_log_timestamp)
  * @dequeue_time: dequeue time (qdf_log_timestamp)
  * @cpu_id: record cpuid when schedule work
+ * @ce_cmn_reg_cfg_support_qmi: support of ce common reg config over qmi.
  */
 struct hif_reg_write_q_elem {
 	struct CE_state *ce_state;
@@ -520,6 +521,9 @@ struct hif_softc {
 	struct hif_reg_write_soc_stats wstats;
 	qdf_atomic_t active_work_cnt;
 #endif /* FEATURE_HIF_DELAYED_REG_WRITE */
+#ifdef CE_CMN_REG_CFG_QMI
+	bool ce_cmn_reg_cfg_support_qmi;
+#endif
 };
 
 #if defined(NUM_SOC_PERF_CLUSTER) && (NUM_SOC_PERF_CLUSTER > 1)

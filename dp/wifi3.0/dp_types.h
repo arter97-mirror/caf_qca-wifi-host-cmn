@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1406,6 +1406,8 @@ struct dp_soc_stats {
 			uint32_t defrag_ad1_invalid;
 			/* decrypt error drop */
 			uint32_t decrypt_err_drop;
+			/* unencrypt error drop */
+			uint32_t unencrypt_err_drop;
 #ifdef GLOBAL_ASSERT_AVOIDANCE
 			/* rx_desc NULL war count*/
 			uint32_t rx_desc_null;
