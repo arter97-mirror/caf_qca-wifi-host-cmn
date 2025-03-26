@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -543,6 +543,14 @@
 #define WLAN_CFG_NUM_REO_RINGS_MAP_MAX 0xFF
 #else
 #define WLAN_CFG_NUM_REO_RINGS_MAP_MAX 0xF
+#endif
+
+#define WLAN_CFG_NUM_RX_CONTEXT_MIN 0
+#define WLAN_CFG_NUM_RX_CONTEXT_MAX MAX_REO_DEST_RINGS
+#ifdef CONFIG_BORON
+#define WLAN_CFG_NUM_RX_CONTEXT_DEFAULT 4
+#else
+#define WLAN_CFG_NUM_RX_CONTEXT_DEFAULT 0
 #endif
 
 #if defined(WLAN_FEATURE_LATENCY_SENSITIVE_REO) && !defined(FEATURE_ALLOW_PKT_DROPPING)
@@ -1772,6 +1780,32 @@
 		WLAN_CFG_NUM_REO_RINGS_MAP, \
 		CFG_VALUE_OR_DEFAULT, "REO Destination Rings Mapping")
 
+/*
+ * <ini>
+ * dp_num_rx_context - Configure the number of RX contexts
+ * @Min: 0
+ * @Max: 9 (same as MAX_REO_DEST_RINGS)
+ * @Default: 4 for fig, 0 for other chip
+ *
+ * This ini is used to control number of RX contexts (RX thread)
+ * initialized and used.
+ * If value is 0, it means this INI configuration is bypassed,
+ * number of RX contexts used still same as before which depends on
+ * number of RX rings used relevants with INI "dp_reo_rings_map".
+ * If value is non-0, this INI value will be used as number of RX contexts
+ * directly.
+ *
+ * Usage: Internal
+ *
+ * </ini>
+ */
+#define CFG_DP_NUM_RX_CONTEXT \
+		CFG_INI_UINT("dp_num_rx_context", \
+		WLAN_CFG_NUM_RX_CONTEXT_MIN, \
+		WLAN_CFG_NUM_RX_CONTEXT_MAX, \
+		WLAN_CFG_NUM_RX_CONTEXT_DEFAULT, \
+		CFG_VALUE_OR_DEFAULT, "Number of DP RX contexts")
+
 #define CFG_DP_RX_RADIO_0_DEFAULT_REO \
 		CFG_INI_UINT("dp_rx_radio0_default_reo", \
 		WLAN_CFG_RADIO_DEFAULT_REO_MIN, \
@@ -2493,6 +2527,7 @@
 		CFG(CFG_DP_PKTLOG_BUFFER_SIZE) \
 		CFG(CFG_DP_FULL_MON_MODE) \
 		CFG(CFG_DP_REO_RINGS_MAP) \
+		CFG(CFG_DP_NUM_RX_CONTEXT) \
 		CFG(CFG_DP_PEER_EXT_STATS) \
 		CFG_DP_STATS_MAX_WINDOW \
 		CFG_DP_STATS_MAX_PKT_PER_WINDOW \

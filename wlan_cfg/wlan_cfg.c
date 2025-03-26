@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4759,6 +4759,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 	wlan_cfg_ctx->mon_drop_thresh =
 		cfg_get(psoc, CFG_DP_RXDMA_MONITOR_RX_DROP_THRESHOLD);
 	wlan_cfg_ctx->reo_rings_mapping = cfg_get(psoc, CFG_DP_REO_RINGS_MAP);
+	wlan_cfg_ctx->num_rx_context = cfg_get(psoc, CFG_DP_NUM_RX_CONTEXT);
 	wlan_cfg_ctx->pext_stats_enabled = cfg_get(psoc, CFG_DP_PEER_EXT_STATS);
 	wlan_soc_dp_stats_max_window_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_dp_stats_max_pkt_per_window_attach(psoc, wlan_cfg_ctx);
@@ -5895,6 +5896,12 @@ uint32_t
 wlan_cfg_get_reo_rings_mapping(struct wlan_cfg_dp_soc_ctxt *cfg)
 {
 	return cfg->reo_rings_mapping;
+}
+
+uint32_t
+wlan_cfg_get_num_rx_context(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return cfg->num_rx_context;
 }
 
 uint32_t

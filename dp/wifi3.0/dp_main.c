@@ -414,6 +414,14 @@ static int dp_get_num_rx_contexts(struct cdp_soc_t *soc_hdl)
 	uint32_t reo_ring_map;
 	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
 
+	/*
+	 * Check if num_rx_contexts is non-0, then use it directly,
+	 * if 0, then continue to check reo_ring_map.
+	 */
+	num_rx_contexts = wlan_cfg_get_num_rx_context(soc->wlan_cfg_ctx);
+	if (num_rx_contexts)
+		return num_rx_contexts;
+
 	reo_ring_map = wlan_cfg_get_reo_rings_mapping(soc->wlan_cfg_ctx);
 
 	switch (soc->arch_id) {
@@ -458,6 +466,10 @@ static int dp_get_num_rx_contexts(struct cdp_soc_t *soc_hdl)
 	int num_rx_contexts;
 	uint32_t reo_config;
 	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
+
+	num_rx_contexts = wlan_cfg_get_num_rx_context(soc->wlan_cfg_ctx);
+	if (num_rx_contexts)
+		return num_rx_contexts;
 
 	reo_config = wlan_cfg_get_reo_rings_mapping(soc->wlan_cfg_ctx);
 	/*

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -308,6 +308,7 @@ struct wlan_srng_cfg {
  * @is_tso_desc_attach_defer:
  * @delayed_replenish_entries:
  * @reo_rings_mapping:
+ * @num_rx_context: number of RX contexts
  * @rx_rings_mapping: DP RX rings mapping mask
  * @pext_stats_enabled: Flag to enable and disabled peer extended stats
  * @dp_stats_max_window_size: Size of Max window size for non-SAWF stats
@@ -541,6 +542,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	bool is_tso_desc_attach_defer;
 	uint32_t delayed_replenish_entries;
 	uint32_t reo_rings_mapping;
+	uint32_t num_rx_context;
 	uint32_t rx_rings_mapping;
 	bool pext_stats_enabled;
 #if (defined(QCA_PEER_EXT_STATS) && defined(WLAN_CONFIG_TX_DELAY))
@@ -2269,6 +2271,15 @@ bool wlan_cfg_is_tso_desc_attach_defer(struct wlan_cfg_dp_soc_ctxt *cfg);
  * Return: reo ring bitmap.
  */
 uint32_t wlan_cfg_get_reo_rings_mapping(struct wlan_cfg_dp_soc_ctxt *cfg);
+
+/**
+ * wlan_cfg_get_num_rx_context() - Get number of RX contexts (RX thread)
+ *
+ * @cfg: soc configuration context
+ *
+ * Return: Number of RX contexts
+ */
+uint32_t wlan_cfg_get_num_rx_context(struct wlan_cfg_dp_soc_ctxt *cfg);
 
 /**
  * wlan_cfg_get_rx_rings_mapping() - Get RX ring bitmap
