@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -7493,6 +7493,7 @@ wlan_hdd_update_mlo_peer_stats(struct wlan_hdd_link_info *link_info,
 
 	sinfo->tx_bytes = peer_stats->tx.tx_success.bytes;
 	sinfo->rx_bytes = peer_stats->rx.rcvd.bytes;
+	sinfo->tx_packets = peer_stats->tx.tx_success.num;
 	sinfo->rx_packets = peer_stats->rx.rcvd.num;
 
 	hdd_nofl_debug("Updated sinfo with per peer stats");
@@ -7653,6 +7654,7 @@ static int wlan_hdd_update_rate_info(struct wlan_hdd_link_info *link_info,
 	ucfg_dp_get_net_dev_stats(vdev, &stats);
 	sinfo->tx_bytes = stats.tx_bytes;
 	sinfo->rx_bytes = stats.rx_bytes;
+	sinfo->tx_packets = stats.tx_packets;
 	sinfo->rx_packets = stats.rx_packets;
 	wlan_hdd_update_mlo_peer_stats(link_info, sinfo);
 
@@ -9876,6 +9878,8 @@ hdd_convert_roam_failures_reason(enum wlan_roam_failure_reason_code fail)
 	case ROAM_FAIL_REASON_SCAN_CANCEL:
 	case ROAM_FAIL_REASON_SCREEN_ACTIVITY:
 	case ROAM_FAIL_REASON_OTHER_PRIORITY_ROAM_SCAN:
+	case ROAM_FAIL_REASON_REASSOC_TO_SAME_AP:
+	case ROAM_FAIL_REASON_MLD_EXTRA_SCAN_REQUIRED:
 	case ROAM_FAIL_REASON_UNKNOWN:
 		hdd_err("Invalid roam failures reason");
 		break;

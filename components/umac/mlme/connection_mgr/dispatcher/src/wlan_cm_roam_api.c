@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -38,6 +38,7 @@
 #include "target_if.h"
 #include "wlan_mlo_mgr_roam.h"
 #include <wlan_cp_stats_chipset_stats.h>
+#include "wlan_psoc_mlme_api.h"
 
 /* Support for "Fast roaming" (i.e., ESE, LFR, or 802.11r.) */
 #define BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN 15
@@ -4818,6 +4819,8 @@ cm_roam_stats_event_handler(struct wlan_objmgr_psoc *psoc,
 							 &rem_tlv);
 				if (!stats_info->trigger[i].common_roam)
 					continue;
+				wlan_cm_update_roam_stats_info(psoc, stats_info, i);
+				continue;
 			}
 
 			cm_roam_stats_print_trigger_info(
@@ -5882,3 +5885,16 @@ QDF_STATUS wlan_cm_link_switch_notif_cb(struct wlan_objmgr_vdev *vdev,
 }
 #endif
 
+uint32_t cm_roam_get_roam_score_algo(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	struct scoring_cfg *score_config;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return 0;
+
+	score_config = &mlme_psoc_obj->psoc_cfg.score_config;
+
+	return score_config->vendor_roam_score_algorithm;
+}

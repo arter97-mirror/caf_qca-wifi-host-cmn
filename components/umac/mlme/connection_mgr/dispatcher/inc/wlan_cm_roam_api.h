@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2307,6 +2307,14 @@ QDF_STATUS wlan_cm_link_switch_notif_cb(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif /* WLAN_FEATURE_11BE_MLO && WLAN_FEATURE_ROAM_OFFLOAD */
+
+/**
+ * cm_roam_get_roam_score_algo() - Get vendor roam score algorithm value
+ * @psoc: Pointer to PSOC object
+ *
+ * Return: Vendor Roam score algorithm value
+ */
+uint32_t cm_roam_get_roam_score_algo(struct wlan_objmgr_psoc *psoc);
 
 /**
  * wlan_update_peer_phy_mode() - update phymode in peer object
