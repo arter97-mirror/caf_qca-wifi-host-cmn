@@ -3272,12 +3272,17 @@ enum qca_wlan_vendor_attr_ll_stats_type {
  *
  * @QCA_WLAN_VENDOR_ATTR_FEATURE_SET_INVALID: Invalid initial value
  * @QCA_WLAN_VENDOR_ATTR_FEATURE_SET: Unsigned 32bit value
+ * @QCA_WLAN_VENDOR_ATTR_FEATURE_SET_EXT: Byte array value. The flags are
+ * identified by their bit index (refer WIFI_FEATURE_* defines) with the first
+ * byte being the least significant one and the last one being the most
+ * significant one.
  * @QCA_WLAN_VENDOR_ATTR_FEATURE_SET_AFTER_LAST: After last
  * @QCA_WLAN_VENDOR_ATTR_FEATURE_SET_MAX: Max value
  */
 enum qca_wlan_vendor_attr_get_supported_features {
 	QCA_WLAN_VENDOR_ATTR_FEATURE_SET_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_FEATURE_SET = 1,
+	QCA_WLAN_VENDOR_ATTR_FEATURE_SET_EXT = 2,
 	QCA_WLAN_VENDOR_ATTR_FEATURE_SET_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_FEATURE_SET_MAX =
 		QCA_WLAN_VENDOR_ATTR_FEATURE_SET_AFTER_LAST - 1,
