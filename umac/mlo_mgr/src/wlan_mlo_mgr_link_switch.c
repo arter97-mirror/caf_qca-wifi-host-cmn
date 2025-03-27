@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -148,6 +148,7 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 	qdf_mem_copy(&link_info->ap_link_addr, ap_link_addr, QDF_MAC_ADDR_SIZE);
 
 	qdf_mem_copy(link_info->link_chan_info, &channel, sizeof(channel));
+	link_info->chan_freq = channel.ch_freq;
 	link_info->link_status_flags = 0;
 	link_info->link_id = link_id;
 
@@ -198,6 +199,7 @@ void mlo_mgr_clear_ap_link_info(struct wlan_objmgr_vdev *vdev,
 	qdf_zero_macaddr(&link_info->ap_link_addr);
 	qdf_mem_zero(link_info->link_chan_info,
 		     sizeof(*link_info->link_chan_info));
+	link_info->chan_freq = 0;
 	link_info->link_id = WLAN_INVALID_LINK_ID;
 	link_info->link_status_flags = 0;
 }
