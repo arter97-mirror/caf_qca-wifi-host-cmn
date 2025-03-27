@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2642,6 +2642,10 @@
 
 #ifdef CONFIG_HIF_CPU_PERF_AFFINE_MASK
 #define HIF_CPU_PERF_AFFINE_MASK (1)
+#endif
+
+#ifdef CONFIG_CE_CMN_REG_CFG_QMI
+#define CE_CMN_REG_CFG_QMI (1)
 #endif
 
 #ifdef CONFIG_HIF_CPU_CLEAR_AFFINITY

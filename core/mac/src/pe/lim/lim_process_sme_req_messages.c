@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -9597,7 +9597,7 @@ static void lim_abort_channel_change(struct mac_context *mac_ctx,
 
 	chan_change_rsp->new_op_freq = session_entry->curr_op_freq;
 	chan_change_rsp->channelChangeStatus = QDF_STATUS_SUCCESS;
-	chan_change_rsp->sessionId = session_id;
+	chan_change_rsp->sessionId = vdev_id;
 	sch_msg.type = eWNI_SME_CHANNEL_CHANGE_RSP;
 	sch_msg.bodyptr = (void *)chan_change_rsp;
 	sch_msg.bodyval = 0;
@@ -9689,7 +9689,8 @@ static void lim_process_sme_channel_change_request(struct mac_context *mac_ctx,
 	 */
 
 	if (LIM_IS_AP_ROLE(session_entry) &&
-	    !policy_mgr_is_sap_allowed_on_dfs_freq(mac_ctx->pdev, session_id,
+	    !policy_mgr_is_sap_allowed_on_dfs_freq(mac_ctx->pdev,
+						   ch_change_req->vdev_id,
 						   target_freq)) {
 		lim_abort_channel_change(mac_ctx, ch_change_req->vdev_id);
 		return;

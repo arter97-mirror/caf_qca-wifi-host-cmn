@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -8558,7 +8558,7 @@ static QDF_STATUS sme_process_channel_change_resp(struct mac_context *mac,
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct csr_roam_info *roam_info;
 	eCsrRoamResult roamResult;
-	uint8_t session_id;
+	uint8_t vdev_id;
 
 	roam_info = qdf_mem_malloc(sizeof(*roam_info));
 	if (!roam_info)
@@ -8567,18 +8567,18 @@ static QDF_STATUS sme_process_channel_change_resp(struct mac_context *mac,
 	roam_info->channelChangeRespEvent =
 		(struct sSirChanChangeResponse *)msg_buf;
 
-	session_id = roam_info->channelChangeRespEvent->sessionId;
+	vdev_id = roam_info->channelChangeRespEvent->sessionId;
 
 	if (roam_info->channelChangeRespEvent->channelChangeStatus ==
 	    QDF_STATUS_SUCCESS) {
-		sme_debug("sapdfs: Received success for vdev %d", session_id);
+		sme_debug("sapdfs: Received success for vdev %d", vdev_id);
 		roamResult = eCSR_ROAM_RESULT_CHANNEL_CHANGE_SUCCESS;
 	} else {
-		sme_debug("sapdfs: Received failure for vdev %d", session_id);
+		sme_debug("sapdfs: Received failure for vdev %d", vdev_id);
 		roamResult = eCSR_ROAM_RESULT_CHANNEL_CHANGE_FAILURE;
 	}
 
-	csr_roam_call_callback(mac, session_id, roam_info,
+	csr_roam_call_callback(mac, vdev_id, roam_info,
 			       eCSR_ROAM_SET_CHANNEL_RSP, roamResult);
 
 	qdf_mem_free(roam_info);
