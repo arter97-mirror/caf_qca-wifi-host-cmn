@@ -48,6 +48,10 @@
 #ifdef WLAN_FEATURE_LATENCY_SENSITIVE_REO
 #define LSR_DEST_RING_IDX	7	//reo_dest_ring[7] -> REO_REMAP_SW8
 #define LSR_DEST_RING		REO_REMAP_SW8
+#define DP_REO_DST_REMAP_REMOVE_LSR(_reo_config) \
+	((_reo_config) &= ~(1 << (LSR_DEST_RING_IDX)))
+#else
+#define DP_REO_DST_REMAP_REMOVE_LSR(_reo_config) /* no operation */
 #endif
 
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)

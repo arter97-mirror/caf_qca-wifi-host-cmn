@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -37,8 +37,18 @@
 
 #define IPA_RX_REFILL_BUF_RING_IDX	2
 
-#define IPA_ALT_REO_DEST_RING_IDX	2
 #define IPA_RX_ALT_REFILL_BUF_RING_IDX	3
+
+#ifdef IPA_WDI3_VLAN_SUPPORT
+#define IPA_ALT_REO_DEST_RING_IDX       2
+/* Remove the IPA REO2SW rings for REO destination remapping */
+#define DP_REO_DST_REMAP_REMOVE_IPA(_reo_config) \
+	((_reo_config) &= ~((1 << (IPA_REO_DEST_RING_IDX)) | \
+			    (1 << (IPA_ALT_REO_DEST_RING_IDX))))
+#else
+#define DP_REO_DST_REMAP_REMOVE_IPA(_reo_config) \
+	((_reo_config) &= ~(1 << (IPA_REO_DEST_RING_IDX)))
+#endif
 
 /* Adding delay before disabling ipa pipes if any Tx Completions are pending */
 #define TX_COMP_DRAIN_WAIT_MS	50
@@ -745,7 +755,9 @@ bool dp_ipa_is_ring_ipa_tx(struct dp_soc *soc, uint8_t ring_id);
  * Return: true if ring is used by IPA, else return false
  */
 bool dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id);
-#else
+#else /* IPA_OFFLOAD */
+#define DP_REO_DST_REMAP_REMOVE_IPA(_reo_config) /* no operation */
+
 static inline int dp_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
 	return QDF_STATUS_SUCCESS;

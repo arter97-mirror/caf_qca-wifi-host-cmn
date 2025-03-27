@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,7 +25,11 @@
 #include "hal_reo.h"
 
 #define HAL_REO_QUEUE_EXT_DESC 10
+#ifdef CONFIG_BORON
+#define HAL_MAX_REO2SW_RINGS 9
+#else
 #define HAL_MAX_REO2SW_RINGS 8
+#endif
 #define HAL_NUM_RX_RING_PER_IX_MAP 8
 
 #ifdef CONFIG_4_BYTES_TLV_TAG

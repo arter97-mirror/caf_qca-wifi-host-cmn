@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1319,6 +1319,8 @@ void *hal_srng_setup_idx(void *hal_soc, int ring_type, int ring_num,
 #define REO_REMAP_SW6 8
 #define REO_REMAP_SW7 9
 #define REO_REMAP_SW8 10
+/* In Boron, 11 is introduced for SW9 */
+#define REO_REMAP_SW9 11
 
 /*
  * Macro to access HWIO_REO_R0_ERROR_DESTINATION_RING_CTRL_IX_0

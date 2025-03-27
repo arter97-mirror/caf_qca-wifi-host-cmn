@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -130,6 +130,23 @@ void hal_cookie_conversion_reg_cfg_be(hal_soc_handle_t hal_soc_hdl,
 uint32_t
 hal_reo_ix_remap_value_get_be(hal_soc_handle_t hal_soc_hdl,
 			      uint8_t rx_ring_mask);
+
+/**
+ * hal_reo_remap_ix2_ix3_value_get_be() - Calculate reo remap register value
+ *                                        by rx_ring_mask for IX2 and IX3.
+ * @hal_soc_hdl: Handle to HAL SoC structure
+ * @rx_ring_mask: mask value indicating the rx rings 0th bit set indicate
+ *		  REO2SW1 is included in hash distribution
+ * @remap_ix2: REO destination ring control value for IX2
+ * @remap_ix3: REO destination ring control value for IX3
+ *
+ * Return: None
+ */
+void
+hal_reo_remap_ix2_ix3_value_get_be(hal_soc_handle_t hal_soc_hdl,
+				   uint32_t rx_ring_mask,
+				   uint32_t *remap_ix2,
+				   uint32_t *remap_ix3);
 
 /**
  * hal_reo_ring_remap_value_get_be() - return REO remap value

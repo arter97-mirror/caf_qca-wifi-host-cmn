@@ -3949,6 +3949,44 @@ static void dp_peer_get_reo_hash_be(struct dp_vdev *vdev,
 	dp_vdev_get_default_reo_hash(vdev, reo_dest, hash_based);
 }
 
+#ifdef CONFIG_BORON
+static bool dp_reo_remap_config_be(struct dp_soc *soc,
+				   uint32_t *remap0,
+				   uint32_t *remap1,
+				   uint32_t *remap2)
+{
+	uint32_t reo_config =
+		wlan_cfg_get_reo_rings_mapping(soc->wlan_cfg_ctx);
+
+	dp_info("original reo_cfg 0x%x", reo_config);
+	/* MSB index in reo_config should <= num of rings initialized */
+	if (qdf_fls(reo_config) > soc->num_reo_dest_rings) {
+		dp_err("incorrect re_config 0x%x beyond rings initialed %d",
+		       reo_config, soc->num_reo_dest_rings);
+		goto err_def;
+	}
+
+	/* Exclude the rings dedicated for IPA or LSR */
+	DP_REO_DST_REMAP_REMOVE_IPA(reo_config);
+	DP_REO_DST_REMAP_REMOVE_LSR(reo_config);
+
+	if (!reo_config) {
+		dp_err("no valid reo remap left");
+		goto err_def;
+	}
+
+	hal_reo_remap_ix2_ix3_value_get_be(soc->hal_soc, reo_config,
+					   remap1, remap2);
+
+	dp_info("reo_config 0x%x, remap1 0x%x, remap2 0x%x",
+		reo_config, *remap1, *remap2);
+
+	return true;
+
+err_def:
+	return false;
+}
+#else
 static bool dp_reo_remap_config_be(struct dp_soc *soc,
 				   uint32_t *remap0,
 				   uint32_t *remap1,
@@ -3956,6 +3994,7 @@ static bool dp_reo_remap_config_be(struct dp_soc *soc,
 {
 	return dp_reo_remap_config(soc, remap0, remap1, remap2);
 }
+#endif /* CONFIG_BORON */
 #endif
 
 #if defined(CONFIG_MLO_SINGLE_DEV) || defined(WLAN_MCAST_MLO_SAP)
