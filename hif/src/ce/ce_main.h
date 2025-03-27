@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -384,5 +384,15 @@ void hif_get_shadow_reg_config_v3(struct hif_softc *scn,
 				  struct pld_shadow_reg_v3_cfg **shadow_config,
 				  int *num_shadow_registers_configured);
 void hif_preare_shadow_register_cfg_v3(struct hif_softc *scn);
+#endif
+#ifdef CE_CMN_REG_CFG_QMI
+uint32_t hif_get_num_ce_src_dest_valid(struct hif_softc *scn);
+uint32_t hif_get_common_reg_per_ce(struct hif_softc *scn);
+bool hif_ce_cmn_cfg_supported(struct hif_softc *scn);
+#else
+static inline bool hif_ce_cmn_cfg_supported(struct hif_softc *scn)
+{
+	return false;
+}
 #endif
 #endif /* __CE_H__ */

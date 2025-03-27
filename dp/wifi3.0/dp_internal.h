@@ -3412,6 +3412,14 @@ char *dp_srng_get_str_from_hal_ring_type(enum hal_ring_type ring_type);
 void dp_txrx_path_stats(struct dp_soc *soc);
 
 /**
+ * dp_print_txrx_soc_stats() - Function to display soc tx rx stats
+ * @soc: soc handle
+ *
+ * Return: none
+ */
+void dp_print_txrx_soc_stats(struct dp_soc *soc);
+
+/**
  * dp_print_per_ring_stats(): Packet count per ring
  * @soc: soc handle
  *

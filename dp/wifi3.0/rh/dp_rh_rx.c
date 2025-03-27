@@ -495,6 +495,9 @@ dp_rx_decrypt_unecrypt_err_handler_rh(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			dp_rx_deliver_to_osif_stack_rh(soc, vdev, txrx_peer, nbuf, NULL,
 						       qdf_nbuf_is_ipv4_eapol_pkt(nbuf));
 		}
+	} else {
+		DP_STATS_INC(soc, rx.err.unencrypt_err_drop, 1);
+		goto free_nbuf;
 	}
 
 	if (txrx_peer)
@@ -1354,7 +1357,7 @@ QDF_STATUS dp_rx_defrag_store_fragment_rh(struct dp_soc *soc, qdf_nbuf_t frag)
 	/* Check if the packet is from a valid peer */
 	peer_id = QDF_NBUF_CB_RX_PEER_ID(frag);
 	txrx_peer = dp_txrx_peer_get_ref_by_id(soc, peer_id, &txrx_ref_handle,
-					       DP_MOD_ID_RX);
+					       DP_MOD_ID_RX_ERR);
 
 	if (!txrx_peer) {
 		/* We should not receive anything from unknown peer

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1789,6 +1789,24 @@ static void hif_reg_write_work(void *arg)
 	qdf_atomic_sub(num_processed, &scn->active_work_cnt);
 }
 
+static inline void
+__hif_flush_delayed_reg_write_work(struct hif_softc *scn)
+{
+	qdf_flush_work(&scn->reg_write_work);
+	qdf_disable_work(&scn->reg_write_work);
+}
+
+/**
+ * hif_flush_delayed_reg_write_work() - flush pending reg write work
+ * @scn: hif_softc pointer
+ *
+ * Return: None
+ */
+void hif_flush_delayed_reg_write_work(struct hif_softc *scn)
+{
+	__hif_flush_delayed_reg_write_work(scn);
+}
+
 /**
  * hif_delayed_reg_write_deinit() - De-Initialize delayed reg write processing
  * @scn: hif_softc pointer
@@ -1800,8 +1818,7 @@ static void hif_reg_write_work(void *arg)
  */
 static void hif_delayed_reg_write_deinit(struct hif_softc *scn)
 {
-	qdf_flush_work(&scn->reg_write_work);
-	qdf_disable_work(&scn->reg_write_work);
+	__hif_flush_delayed_reg_write_work(scn);
 	qdf_flush_workqueue(0, scn->reg_write_wq);
 	qdf_destroy_workqueue(0, scn->reg_write_wq);
 	qdf_mem_free(scn->reg_write_queue);
