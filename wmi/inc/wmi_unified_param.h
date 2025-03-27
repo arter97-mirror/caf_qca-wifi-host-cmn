@@ -7250,6 +7250,7 @@ struct target_feature_set {
  * @max_ml_sap_num_bss: Max sap bss
  * @max_ml_sta_num_bss: Max sta bss
  * @max_ml_bss_num: Max ml bss
+ * @apfv6_offload_disabled: APFv6 offload disabled bitmap
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7399,6 +7400,7 @@ typedef struct {
 	uint8_t max_ml_sap_num_bss;
 	uint8_t max_ml_sta_num_bss;
 	uint8_t max_ml_bss_num;
+	uint32_t apfv6_offload_disabled;
 } target_resource_config;
 
 /**
