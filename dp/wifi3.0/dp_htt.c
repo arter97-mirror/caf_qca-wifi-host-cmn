@@ -3645,6 +3645,8 @@ static void dp_htt_mlo_peer_map_handler(struct htt_soc *soc,
 	MLO_PEER_MAP_TLV_TAG_ID tlv_type = 0xff;
 	uint16_t tlv_len = 0;
 	int i = 0;
+	uint8_t is_classify_idx_valid;
+	uint8_t peer_classify_info_idx;
 
 	mlo_peer_id = HTT_RX_MLO_PEER_MAP_MLO_PEER_ID_GET(*msg_word);
 	num_links =
@@ -3652,6 +3654,14 @@ static void dp_htt_mlo_peer_map_handler(struct htt_soc *soc,
 	mlo_peer_mac_addr =
 	htt_t2h_mac_addr_deswizzle((u_int8_t *)(msg_word + 1),
 				   &mac_addr_deswizzle_buf[0]);
+
+	is_classify_idx_valid =
+	  HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_GET(*(msg_word + 2));
+
+	if (is_classify_idx_valid) {
+		peer_classify_info_idx =
+		     HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_GET(*(msg_word + 2));
+	}
 
 	mlo_flow_info[0].ast_idx =
 		HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_GET(*(msg_word + 3));
@@ -3716,6 +3726,18 @@ static void dp_htt_mlo_peer_map_handler(struct htt_soc *soc,
 	dp_rx_mlo_peer_map_handler(soc->dp_soc, mlo_peer_id,
 				   mlo_peer_mac_addr,
 				   mlo_flow_info, mlo_link_info);
+
+	if (is_classify_idx_valid) {
+		uint16_t ml_peer_id = dp_gen_ml_peer_id(soc->dp_soc,
+							mlo_peer_id);
+
+		dp_htt_info("HTT_T2H_MSG_TYPE_MLO_RX_PEER_MAP for peer id %d classify_idx valid %d classify_info_idx %d",
+			    ml_peer_id, is_classify_idx_valid,
+			    peer_classify_info_idx);
+		dp_peer_set_tx_classify_idx(soc->dp_soc, ml_peer_id,
+					    DP_VDEV_ALL,
+					    peer_classify_info_idx);
+	}
 }
 
 #ifdef QCA_SUPPORT_PRIMARY_LINK_MIGRATE
