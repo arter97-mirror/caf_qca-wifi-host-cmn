@@ -130,7 +130,7 @@ osif_fill_link_reconfig_added_links_params(
 {
 	struct wiphy *wiphy;
 	uint8_t ssid[WLAN_SSID_MAX_LEN] = {0};
-	struct mlo_link_recfg_user_req_params req_param;
+	struct mlo_link_recfg_user_req_params *req_param;
 	uint8_t ssid_len;
 	struct mlo_link_recfg_context *recfg_context;
 	struct ieee80211_channel *channel;
@@ -148,35 +148,54 @@ osif_fill_link_reconfig_added_links_params(
 	}
 
 	recfg_context = vdev->mlo_dev_ctx->link_recfg_ctx;
-	req_param = vdev->mlo_dev_ctx->link_rcfg_req;
+	req_param = &vdev->mlo_dev_ctx->link_rcfg_req;
 	num_add_links = recfg_context->curr_recfg_req.add_link_info.num_links;
-	if (!num_add_links) {
-		osif_debug("no link added via link reconfig request");
+
+	if (!recfg_context->curr_recfg_req.is_user_req && !num_add_links) {
+		osif_debug("is_user_req %d num_add_links %d - no link added",
+			   recfg_context->curr_recfg_req.is_user_req,
+			   num_add_links);
 		return;
 	}
 
-	if (recfg_context->link_recfg_status) {
-		osif_debug("add link failure with status %d",
-			   recfg_context->link_recfg_status);
-		return;
-	}
-
+	cfg_rsp->driver_initiated = !recfg_context->curr_recfg_req.is_user_req;
 	add_link_info = recfg_context->curr_recfg_req.add_link_info;
 	osif_get_link_reconfig_rsp_frame(
 					&recfg_context->rsp_rx_frame,
 					&cfg_rsp->len,
 					&cfg_rsp->buf);
 
-	cfg_rsp->driver_initiated = !recfg_context->curr_recfg_req.is_user_req;
+	/*
+	 * Don't get BSS again for user requested link reconfig
+	 * because get BSS incerements bss pointer reference
+	 * and cfg80211 already does get BSS.
+	 */
+	for (i = 0; i < req_param->num_link_add_param &&
+	     i < IEEE80211_MLD_MAX_NUM_LINKS &&
+	     !cfg_rsp->driver_initiated; i++) {
+		link_id = req_param->add_link[i].link_id;
+		cfg_rsp->links[link_id].bss = req_param->add_link[i].bss;
+	}
+
 	for (i = 0; i < num_add_links && i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
 		if (add_link_info.link[i].link_id == WLAN_INVALID_LINK_ID) {
 			osif_err("link id is invalid %d", WLAN_INVALID_LINK_ID);
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
-
 		link_id = add_link_info.link[i].link_id;
+		cfg_rsp->links[link_id].addr =
+				add_link_info.link[i].self_link_addr.bytes;
+		if (!cfg_rsp->links[link_id].addr) {
+			osif_err("failed to get STA link address");
+			status_code = STATUS_INVALID_PARAMETERS;
+			goto end;
+		}
 		status_code = add_link_info.link[i].status_code;
+		if (!cfg_rsp->driver_initiated)
+			goto end;
+
+		/* fill bss for driver initiated add link */
 		channel = ieee80211_get_channel(wiphy,
 						add_link_info.link[i].freq);
 		if (!channel) {
@@ -192,37 +211,22 @@ osif_fill_link_reconfig_added_links_params(
 			goto end;
 		}
 
-		cfg_rsp->links[link_id].addr =
-				add_link_info.link[i].self_link_addr.bytes;
-		if (!cfg_rsp->links[link_id].addr) {
-			osif_err("failed to get STA link address");
-			status_code = STATUS_INVALID_PARAMETERS;
-			goto end;
-		}
-
+		cfg_rsp->links[link_id].bss =
+			wlan_cfg80211_get_bss(
+				wiphy, channel,
+				add_link_info.link[i].ap_link_addr.bytes,
+				ssid, ssid_len);
 end:
-		/* For user initiated case use BSS pointed given by user request */
-		if (recfg_context->curr_recfg_req.is_user_req) {
-			cfg_rsp->links[link_id].bss = req_param.add_link[i].bss;
-		} else if (status == STATUS_SUCCESS) {
-			cfg_rsp->links[link_id].bss =
-				wlan_cfg80211_get_bss(
-					wiphy, channel,
-					add_link_info.link[i].ap_link_addr.bytes,
-					ssid, ssid_len);
-		}
-
 		if (!cfg_rsp->links[link_id].bss) {
 			osif_err("failed to get BSS");
 			status_code = STATUS_INVALID_PARAMETERS;
 		}
 
 		/* Set "added_links" only for successfully added links */
-		if (status == STATUS_SUCCESS)
+		if (status_code == STATUS_SUCCESS)
 			cfg_rsp->added_links |= 1 << link_id;
-
 		osif_debug("add link_id %d with status %d freq %d",
-			   link_id, status_code, add_link_info.link[i].freq);
+			  link_id, status_code, add_link_info.link[i].freq);
 	}
 }
 
