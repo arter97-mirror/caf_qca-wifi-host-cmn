@@ -36,18 +36,24 @@
 #endif /* CONFIG_BORON */
 
 #ifdef IPA_OFFLOAD
-
 #define DP_IPA_MAX_IFACE	3
+
+#ifdef MDM_PLATFORM
+#define IPA_ALT_REO_DEST_RING_IDX	2
 #define IPA_REO_DEST_RING_IDX	3
-#define IPA_REO_DEST_RING_IDX_2	7
+#elif defined(CONFIG_BORON)
+/* REO2SW9 */
+#define IPA_REO_DEST_RING_IDX	8
+#else
+#define IPA_REO_DEST_RING_IDX	3
+#endif /* MDM_PLATFORM */
 
 #define IPA_RX_REFILL_BUF_RING_IDX	2
 
 #define IPA_RX_ALT_REFILL_BUF_RING_IDX	3
 
-#ifdef IPA_WDI3_VLAN_SUPPORT
-#define IPA_ALT_REO_DEST_RING_IDX       2
-/* Remove the IPA REO2SW rings for REO destination remapping */
+#if defined(MDM_PLATFORM) && defined(IPA_WDI3_VLAN_SUPPORT)
+/* Remove the IPA REO2SW rings from REO destination remap */
 #define DP_REO_DST_REMAP_REMOVE_IPA(_reo_config) \
 	((_reo_config) &= ~((1 << (IPA_REO_DEST_RING_IDX)) | \
 			    (1 << (IPA_ALT_REO_DEST_RING_IDX))))

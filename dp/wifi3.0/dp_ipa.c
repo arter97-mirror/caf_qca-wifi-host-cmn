@@ -5250,7 +5250,7 @@ bool dp_ipa_is_ring_ipa_tx(struct dp_soc *soc, uint8_t ring_id)
 }
 #endif /* IPA_WDI3_TX_TWO_PIPES */
 
-#ifndef WLAN_FEATURE_LATENCY_SENSITIVE_REO
+#if defined(MDM_PLATFORM) && defined(IPA_WDI3_VLAN_SUPPORT)
 /**
  * dp_ipa_is_ring_ipa_rx() - check if the Rx ring is used by IPA
  *
@@ -5267,7 +5267,7 @@ bool dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id)
 		return false;
 
 	return (ring_id == IPA_REO_DEST_RING_IDX ||
-		ring_id == IPA_REO_DEST_RING_IDX_2);
+		ring_id == IPA_ALT_REO_DEST_RING_IDX);
 }
 #else
 bool dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id)
@@ -5280,4 +5280,5 @@ bool dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id)
 	return (ring_id == IPA_REO_DEST_RING_IDX);
 }
 #endif
+
 #endif
