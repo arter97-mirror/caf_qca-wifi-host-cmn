@@ -3213,13 +3213,12 @@ static bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
 	return true;
 }
 
-static uint8_t cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
-					 struct scoring_cfg *score_config,
-					 struct scan_cache_entry *entry,
-					 qdf_list_t *scan_list,
-					 bool allow_scan)
+static void cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
+				      struct scoring_cfg *score_config,
+				      struct scan_cache_entry *entry,
+				      qdf_list_t *scan_list, bool allow_scan)
 {
-	uint8_t idx, partner_cnt = 0;
+	uint8_t idx;
 	struct scan_cache_entry *partner_entry;
 	struct partner_link_info *link_info;
 	struct wlan_objmgr_peer *peer;
@@ -3259,24 +3258,18 @@ static uint8_t cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
 			    !(allow_scan &&
 			      score_config->scan_nontx_search_thresh))
 				link_info->is_valid_link = false;
-			else
-				partner_cnt++;
 			continue;
 		}
 
 		if (partner_entry->ie_list.multi_link_bv &&
-		    wlan_scan_entries_contain_cmn_akm(entry, partner_entry)) {
-			partner_cnt++;
+		    wlan_scan_entries_contain_cmn_akm(entry, partner_entry))
 			continue;
-		}
 
 		link_info->is_valid_link = false;
 		mlme_debug(QDF_MAC_ADDR_FMT "link (%d) akm not matching",
 			   QDF_MAC_ADDR_REF(partner_entry->bssid.bytes),
 			   link_info->freq);
 	}
-
-	return partner_cnt;
 }
 
 /**
@@ -3319,8 +3312,9 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
 	struct scan_cache_node *tmp_scan_node, *scan_node;
 	struct scan_cache_entry *tmp_scan_entry, *scan_entry;
-	uint8_t max_link_cnt, num_link, i, valid_partners;
-	bool remove_curr_candidate, allow_slo_candidate, gen_slo_candidate;
+	uint8_t max_link_cnt, num_link, cur_valid_partners, cur_valid_bitmap;
+	bool allow_slo_candidate;
+	uint8_t gen_bmap, i, gen_link_cnt;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
@@ -3338,7 +3332,6 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 
 	qdf_list_peek_front(candidate_list, &cur_node);
 	while (cur_node) {
-		remove_curr_candidate = false;
 		qdf_list_peek_next(candidate_list, cur_node, &next_node);
 
 		scan_node = qdf_container_of(cur_node,
@@ -3355,7 +3348,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 		 * The connection will effectively become non-MLO EHT only if
 		 * driver allows or else 11ax.
 		 */
-		if ((QDF_MIN(max_link_cnt, num_link + 1) == 1) ||
+		if (max_link_cnt == 1 ||
 		    !wlan_cm_is_eht_allowed_for_current_security(psoc,
 								 scan_entry,
 								 true)) {
@@ -3370,51 +3363,51 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 			goto add_11ax;
 		}
 
-		/**
-		 * Validate the partner links and return the count of the
-		 * valid partner links post validation.
-		 */
-		valid_partners = cm_validate_partner_links(psoc, score_config,
-							   scan_entry,
-							   candidate_list,
-							   allow_scan);
-		/**
-		 * If no candidate generation is allowed then goto next
-		 * candidate.
-		 *
-		 * If not valid partner links, then current candidate is same
-		 * as SLO candidate so, only add 11ax candidate.
-		 *
-		 * If valid partner links is one, then no need to generate
-		 * any other combination of partner links as it results in
-		 * similar combination so, just generate SLO and 11ax candidate.
-		 *
-		 * If all parnter links are valid (means two partner links) but
-		 * driver only supports connection of two links at max, then
-		 * generating combination of partner links will result in having
-		 * similar link combination as current candidate post applying
-		 * the rule of restricting connection to max supported
-		 * connection link, so remove the current candidate.
-		 */
+		/* Validate the partner links */
+		cm_validate_partner_links(psoc, score_config, scan_entry,
+					  candidate_list, allow_scan);
+
 		if (!allow_slo_candidate)
 			goto next;
-		else if (!valid_partners)
-			goto add_11ax;
-		else if (valid_partners == 1)
-			goto add_slo;
-		else if (valid_partners == max_link_cnt)
-			remove_curr_candidate = true;
 
-		gen_slo_candidate = false;
+		cur_valid_bitmap = 0;
+		cur_valid_partners = 0;
 		for (i = 0; i < num_link; i++) {
-			link_info = &scan_entry->ml_info.link_info[i];
-			if (!link_info->is_valid_link)
+			/* Create valid partner links bitmap of cur candidate */
+			if (scan_entry->ml_info.link_info[i].is_valid_link) {
+				cur_valid_bitmap |= BIT(i);
+				cur_valid_partners++;
+			}
+		}
+
+		/**
+		 * If not valid partner links, then current candidate is same
+		 * as SLO candidate so, only add 11ax candidate.
+		 */
+		if (!cur_valid_partners)
+			goto add_11ax;
+
+		for (gen_bmap = 0; gen_bmap < BIT(num_link); gen_bmap++) {
+			/**
+			 * Skip generation when following conditions are met:
+			 *   1). if need to generate same partner link
+			 *       combination as existing one.
+			 *   2). if any of the partner link is invalid in
+			 *       current bitmap which needs to be generated.
+			 *   3). if the number of partner links generated will
+			 *       be more than the actual valid partner links
+			 *       or the max supported partner links.
+			 */
+			if (gen_bmap == cur_valid_bitmap ||
+			    (gen_bmap & cur_valid_bitmap) != gen_bmap ||
+			    (qdf_get_hweight8(gen_bmap) >
+			     QDF_MIN(max_link_cnt - 1, cur_valid_partners)))
 				continue;
 
 			tmp_scan_entry = util_scan_copy_cache_entry(scan_entry);
 			if (!tmp_scan_entry) {
-				mlme_debug("Copy cache entry failed for %d",
-					   link_info->link_id);
+				mlme_debug("Copy cache entry failed for 0x%x",
+					   gen_bmap);
 				continue;
 			}
 
@@ -3425,55 +3418,33 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 				continue;
 			}
 
-			qdf_mem_copy(&tmp_scan_entry->ml_info.link_info[0],
-				     link_info,
-				     sizeof(struct partner_link_info));
-			tmp_scan_entry->ml_info.num_links = 1;
-			tmp_scan_node->entry = tmp_scan_entry;
+			qdf_mem_zero(tmp_scan_entry->ml_info.link_info,
+				     sizeof(tmp_scan_entry->ml_info.link_info));
+			tmp_scan_entry->ml_info.num_links = 0;
 
+			gen_link_cnt = 0;
+			for (i = 0; i < num_link; i++) {
+				if (!(gen_bmap & BIT(i)))
+					continue;
+
+				link_info = &scan_entry->ml_info.link_info[i];
+				qdf_mem_copy(&tmp_scan_entry->ml_info.link_info[gen_link_cnt++],
+					     link_info,
+					     sizeof(struct partner_link_info));
+			}
+
+			tmp_scan_entry->ml_info.num_links = gen_link_cnt;
+			tmp_scan_node->entry = tmp_scan_entry;
 			qdf_list_insert_after(candidate_list,
 					      &tmp_scan_node->node,
 					      &scan_node->node);
-
-			if (!gen_slo_candidate)
-				gen_slo_candidate = true;
 		}
-
-		if (!gen_slo_candidate)
-			goto add_11ax;
-
-add_slo:
-		tmp_scan_entry = util_scan_copy_cache_entry(scan_entry);
-		if (!tmp_scan_entry) {
-			mlme_debug("Copy cache entry failed for slo candidate");
-			goto add_11ax;
-		}
-
-		tmp_scan_node = qdf_mem_malloc_atomic(sizeof(*tmp_scan_node));
-		if (!tmp_scan_node) {
-			util_scan_free_cache_entry(tmp_scan_entry);
-			goto add_11ax;
-		}
-
-		qdf_mem_zero(tmp_scan_entry->ml_info.link_info,
-			     sizeof(tmp_scan_entry->ml_info.link_info));
-		tmp_scan_entry->ml_info.num_links = 0;
-		tmp_scan_node->entry = tmp_scan_entry;
-
-		qdf_list_insert_after(candidate_list, &tmp_scan_node->node,
-				      &scan_node->node);
 
 add_11ax:
 		if (allow_slo_candidate)
 			cm_add_11_ax_candidate(pdev, candidate_list, scan_node);
 
 next:
-		if (remove_curr_candidate) {
-			qdf_list_remove_node(candidate_list, cur_node);
-			util_scan_free_cache_entry(scan_entry);
-			qdf_mem_free(cur_node);
-		}
-
 		cur_node = next_node;
 		next_node = NULL;
 
@@ -3535,13 +3506,12 @@ static void cm_eliminate_invalid_candidate(struct wlan_objmgr_psoc *psoc,
 {
 }
 
-static inline uint8_t cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
-						struct scoring_cfg *score_config,
-						struct scan_cache_entry *entry,
-						qdf_list_t *scan_list,
-						bool allow_scan)
+static inline void cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
+					     struct scoring_cfg *score_config,
+					     struct scan_cache_entry *entry,
+					     qdf_list_t *scan_list,
+					     bool allow_scan)
 {
-	return 0;
 }
 
 #endif
