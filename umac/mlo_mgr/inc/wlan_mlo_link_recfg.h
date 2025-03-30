@@ -428,6 +428,14 @@ struct wlan_mlo_link_recfg_rsp {
 	struct element_info mlo_ie;
 };
 
+/**
+ * struct recfg_done_data_hdr - recfg done ctx header
+ * @node: list node
+ */
+struct recfg_done_data_hdr {
+	qdf_list_node_t node;
+};
+
 #define MAX_NUM_FRAMES 4
 /**
  * struct wlan_mlo_link_recfg_bitmap: User based Link reconfig bitmap
@@ -460,6 +468,8 @@ struct wlan_mlo_link_recfg_bitmap {
  * @last_dialog_token: Last used dialog token
  * @internal_reason_code: Internal failure reason code
  * @copied_recfg_req: Copied recfg req
+ * @recfg_indication_work: recfg done work queue
+ * @recfg_done_list: recfg done data struct list
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -479,6 +489,8 @@ struct mlo_link_recfg_context {
 	uint8_t last_dialog_token;
 	enum link_recfg_failure_reason internal_reason_code;
 	struct wlan_mlo_link_recfg_req copied_recfg_req;
+	qdf_work_t recfg_indication_work;
+	qdf_list_t recfg_done_list;
 };
 
 static inline void

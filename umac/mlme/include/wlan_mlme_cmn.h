@@ -103,10 +103,18 @@
  * @rsp: vendor handoff response pointer
  * @vendor_handoff_context: vendor handoff context
  *
- * @mlme_cm_link_reconfig_status_cb: send link reconfig status to userspace
- * @vdev: vdev pointer
- *
  * @mlme_cm_perfd_reset_cpufreq_ctrl_cb: callback to reset CPU min freq
+ *
+ * @mlme_cm_link_reconfig_status_cb: send link reconfig status to userspace
+ * @ctx: link recfg done data
+ *
+ * @mlme_cm_populate_link_recfg_done_data: callback to populate link recfg
+ * done data from os if
+ * @vdev: vdev obj
+ *
+ * @mlme_cm_free_link_reconfig_done_data: callback to free link recfg
+ * done data
+ * @ctx: link recfg done data
  */
 struct mlme_cm_ops {
 	void (*mlme_cm_connect_active_notify_cb)(uint8_t vdev_id);
@@ -165,8 +173,10 @@ struct mlme_cm_ops {
 	void (*mlme_cm_perfd_reset_cpufreq_ctrl_cb)(void);
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
-	QDF_STATUS (*mlme_cm_link_reconfig_status_cb)(
+	QDF_STATUS (*mlme_cm_link_reconfig_status_cb)(void *ctx);
+	void * (*mlme_cm_populate_link_recfg_done_data)(
 					struct wlan_objmgr_vdev *vdev);
+	void (*mlme_cm_free_link_reconfig_done_data)(void *ctx);
 #endif
 };
 

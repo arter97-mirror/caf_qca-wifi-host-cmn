@@ -246,12 +246,46 @@ void wlan_vdev_mlme_notify_set_mac_addr_response(struct wlan_objmgr_vdev *vdev,
 }
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
-QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev);
+/**
+ * mlme_cm_send_link_reconfig_status() - Send link recfg done to os if
+ * @ctx: link recfg done ctx
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlme_cm_send_link_reconfig_status(void *ctx);
+
+/**
+ * mlme_cm_populate_link_recfg_done_data() - populate link recfg done ctx from
+ * os if
+ * @vdev: vdev object
+ *
+ * Return: link recfg done data
+ */
+void *
+mlme_cm_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlme_cm_free_link_reconfig_done_data() - free link recfg done ctx
+ * @ctx: link recfg done data
+ *
+ * Return: void
+ */
+void mlme_cm_free_link_reconfig_done_data(void *ctx);
 #else
 static inline
-QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev)
+QDF_STATUS mlme_cm_send_link_reconfig_status(void *ctx)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline void *
+mlme_cm_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev)
+{
+	return NULL;
+}
+
+static inline void mlme_cm_free_link_reconfig_done_data(void *ctx)
+{
 }
 #endif
 #endif

@@ -88,6 +88,76 @@ QDF_STATUS mlo_link_recfg_validate_roam_invoke(
 	return QDF_STATUS_SUCCESS;
 }
 
+static void mlo_link_refg_done_work_handler(void *ctx)
+{
+	struct mlo_link_recfg_context *recfg_ctx = ctx;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	qdf_list_node_t *node = NULL;
+
+	if (!recfg_ctx) {
+		mlo_err("Invalid recfg_ctx");
+		return;
+	}
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return;
+	}
+	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
+	while (qdf_list_remove_front(&recfg_ctx->recfg_done_list,
+				     &node) ==
+	       QDF_STATUS_SUCCESS) {
+		ml_link_recfg_sm_lock_release(mlo_dev_ctx);
+		mlme_cm_send_link_reconfig_status((void *)node);
+		ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
+	}
+	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
+}
+
+static void mlo_link_refg_flush_recfg_done_data(
+		struct mlo_link_recfg_context *recfg_ctx)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	qdf_list_node_t *node = NULL;
+
+	if (!recfg_ctx) {
+		mlo_err("Invalid recfg_ctx");
+		return;
+	}
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return;
+	}
+	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
+	while (qdf_list_remove_front(&recfg_ctx->recfg_done_list,
+				     &node) ==
+	       QDF_STATUS_SUCCESS) {
+		mlo_debug("flush pending recfg done data");
+		mlme_cm_free_link_reconfig_done_data((void *)node);
+	}
+	ml_link_recfg_sm_lock_release(mlo_dev_ctx);
+}
+
+static void mlo_link_refg_done_indication(struct wlan_objmgr_vdev *vdev)
+{
+	struct recfg_done_data_hdr *recfg_done_data;
+	struct mlo_link_recfg_context *recfg_ctx =
+		vdev->mlo_dev_ctx->link_recfg_ctx;
+	bool sched;
+
+	recfg_done_data = (struct recfg_done_data_hdr *)
+			mlme_cm_populate_link_recfg_done_data(vdev);
+	if (!recfg_done_data) {
+		mlo_err("fail to populate recfg done data");
+		return;
+	}
+	qdf_list_insert_back(&recfg_ctx->recfg_done_list,
+			     &recfg_done_data->node);
+	sched = qdf_sched_work(0, &recfg_ctx->recfg_indication_work);
+	mlo_debug("sched recfg work %d", sched);
+}
+
 bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 	enum wlan_link_recfg_sm_state curr_state;
@@ -3937,7 +4007,7 @@ mlo_link_recfg_send_status(struct mlo_link_recfg_context *recfg_ctx)
 	}
 
 	/* Send link reconfig status to userspace */
-	mlme_cm_send_link_reconfig_status(vdev);
+	mlo_link_refg_done_indication(vdev);
 	recfg_req->send_two_link_recfg_frms = false;
 	qdf_mem_zero(&recfg_req->del_link_info.link[0],
 		     sizeof(struct wlan_mlo_link_recfg_bss_info));
@@ -4226,7 +4296,7 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 				status);
 	}
 	/* Send link reconfig status to userspace */
-	mlme_cm_send_link_reconfig_status(vdev);
+	mlo_link_refg_done_indication(vdev);
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	/* reset state tran index and move to init state  */
 	recfg_ctx->sm.curr_state_idx = -1;
@@ -6091,10 +6161,17 @@ QDF_STATUS mlo_link_recfg_init(struct wlan_objmgr_psoc *psoc,
 	if (!recfg_ctx)
 		return QDF_STATUS_E_NOMEM;
 
+	qdf_create_work(
+		0, &recfg_ctx->recfg_indication_work,
+		mlo_link_refg_done_work_handler,
+		recfg_ctx);
+	qdf_list_create(&recfg_ctx->recfg_done_list, 0);
 	recfg_ctx->psoc = psoc;
 	recfg_ctx->ml_dev = ml_dev;
 	status = mlo_link_recfg_sm_create(recfg_ctx);
 	if (QDF_IS_STATUS_ERROR(status)) {
+		qdf_list_destroy(&recfg_ctx->recfg_done_list);
+		qdf_destroy_work(0, &recfg_ctx->recfg_indication_work);
 		qdf_mem_free(recfg_ctx);
 		return status;
 	}
@@ -6113,9 +6190,13 @@ QDF_STATUS mlo_link_recfg_deinit(struct wlan_mlo_dev_context *ml_dev)
 	if (!ml_dev->link_recfg_ctx)
 		return QDF_STATUS_SUCCESS;
 
+	qdf_flush_work(&ml_dev->link_recfg_ctx->recfg_indication_work);
+	mlo_link_refg_flush_recfg_done_data(ml_dev->link_recfg_ctx);
+	qdf_list_destroy(&ml_dev->link_recfg_ctx->recfg_done_list);
 	mlo_link_recfg_timer_deinit(ml_dev->link_recfg_ctx);
 	ml_link_recfg_sm_lock_destroy(ml_dev);
 	mlo_link_recfg_sm_destroy(ml_dev->link_recfg_ctx);
+	qdf_destroy_work(0, &ml_dev->link_recfg_ctx->recfg_indication_work);
 	qdf_mem_free(ml_dev->link_recfg_ctx);
 	ml_dev->link_recfg_ctx = NULL;
 
