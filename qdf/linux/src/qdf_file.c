@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -44,7 +44,8 @@ int qdf_firmware_request_nowarn(const struct firmware **fw,
 #endif
 
 
-QDF_STATUS qdf_file_read(const char *path, char **out_buf)
+QDF_STATUS qdf_file_read(const char *path, char **out_buf,
+			 unsigned int *size)
 {
 	int errno;
 	const struct firmware *fw;
@@ -66,6 +67,8 @@ QDF_STATUS qdf_file_read(const char *path, char **out_buf)
 	}
 
 	qdf_mem_copy(buf, fw->data, fw->size);
+	if (size)
+		*size = (unsigned int)fw->size + 1;
 	release_firmware(fw);
 	*out_buf = buf;
 

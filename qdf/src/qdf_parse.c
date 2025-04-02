@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -133,7 +133,9 @@ static QDF_STATUS qdf_ini_read_values(char **main_cursor,
 }
 
 QDF_STATUS qdf_ini_parse(const char *ini_path, void *context,
-			 qdf_ini_item_cb item_cb, qdf_ini_section_cb section_cb)
+			 qdf_ini_item_cb item_cb,
+			 qdf_ini_section_cb section_cb,
+			 qdf_ini_buf_cb ini_buf_cb)
 {
 	QDF_STATUS status;
 	char *read_key;
@@ -142,11 +144,15 @@ QDF_STATUS qdf_ini_parse(const char *ini_path, void *context,
 	int ini_read_count = 0;
 	char *fbuf;
 	char *cursor;
+	unsigned int size = 0;
 
-	if (qdf_str_eq(QDF_WIFI_MODULE_PARAMS_FILE, ini_path))
+	if (qdf_str_eq(QDF_WIFI_MODULE_PARAMS_FILE, ini_path)) {
 		status = qdf_module_param_file_read(ini_path, &fbuf);
-	else
-		status = qdf_file_read(ini_path, &fbuf);
+	} else {
+		status = qdf_file_read(ini_path, &fbuf, &size);
+		if (ini_buf_cb && QDF_IS_STATUS_SUCCESS(status))
+			ini_buf_cb(context, fbuf, size);
+	}
 	if (QDF_IS_STATUS_ERROR(status)) {
 		qdf_err("Failed to read *.ini file @ %s", ini_path);
 		return status;
@@ -213,7 +219,7 @@ QDF_STATUS qdf_ini_section_parse(const char *ini_path, void *context,
 	if (qdf_str_eq(QDF_WIFI_MODULE_PARAMS_FILE, ini_path))
 		status = qdf_module_param_file_read(ini_path, &fbuf);
 	else
-		status = qdf_file_read(ini_path, &fbuf);
+		status = qdf_file_read(ini_path, &fbuf, NULL);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		qdf_err("Failed to read *.ini file @ %s", ini_path);
 		return status;
@@ -400,7 +406,7 @@ bool qdf_valid_ini_check(const char  *ini_path)
 	if (qdf_str_eq(QDF_WIFI_MODULE_PARAMS_FILE, ini_path))
 		status = qdf_module_param_file_read(ini_path, &fbuf);
 	else
-		status = qdf_file_read(ini_path, &fbuf);
+		status = qdf_file_read(ini_path, &fbuf, NULL);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		qdf_err("Failed to read *.ini file @ %s", ini_path);
 		return false;

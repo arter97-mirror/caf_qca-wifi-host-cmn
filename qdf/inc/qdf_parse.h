@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -30,6 +30,9 @@ typedef QDF_STATUS (*qdf_ini_section_cb)(void *context, const char *name);
 typedef QDF_STATUS (*qdf_ini_item_cb)(void *context,
 				      const char *key,
 				      const char *value);
+typedef void (*qdf_ini_buf_cb)(void *context,
+			       const char *ini_buf,
+			       unsigned int size);
 
 /**
  * qdf_ini_parse() - parse an ini file
@@ -39,6 +42,7 @@ typedef QDF_STATUS (*qdf_ini_item_cb)(void *context,
  *	Return QDF_STATUS_SUCCESS to continue parsing, else to abort
  * @section_cb: Ini section header handler callback function
  *	Return QDF_STATUS_SUCCESS to continue parsing, else to abort
+ * @ini_buf_cb: Ini file content buffer callback
  *
  * The *.ini file format is a simple format consisting of a list of key/value
  * pairs (items), separated by an '=' character. Comments are initiated with
@@ -58,7 +62,8 @@ typedef QDF_STATUS (*qdf_ini_item_cb)(void *context,
  */
 QDF_STATUS
 qdf_ini_parse(const char *ini_path, void *context,
-	      qdf_ini_item_cb item_cb, qdf_ini_section_cb section_cb);
+	      qdf_ini_item_cb item_cb, qdf_ini_section_cb section_cb,
+	      qdf_ini_buf_cb ini_buf_cb);
 
 /**
  * qdf_ini_section_parse() - parse a section from ini file

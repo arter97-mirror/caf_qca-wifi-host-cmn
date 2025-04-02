@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -30,6 +30,7 @@
  * qdf_file_read() - read the entire contents of a file
  * @path: the full path of the file to read
  * @out_buf: double pointer for referring to the file contents buffer
+ * @size: size of file content buffer
  *
  * This API allocates a new, null-terminated buffer containing the contents of
  * the file at @path. On success, @out_buf points to this new buffer, otherwise
@@ -39,7 +40,7 @@
  *
  * Return: QDF_STATUS
  */
-QDF_STATUS qdf_file_read(const char *path, char **out_buf);
+QDF_STATUS qdf_file_read(const char *path, char **out_buf, unsigned int *size);
 
 /**
  * qdf_file_read_bytes() - read the entire contents of a file and return the
