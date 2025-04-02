@@ -278,6 +278,19 @@ wmi_send_mlo_link_recfg_complete_cmd(
 			struct wlan_mlo_link_recfg_complete_params *params);
 
 /**
+ * wmi_send_mlo_ttlm_complete_cmd() - Send TTLM complete wmi
+ * command
+ * @wmi: wmi handle
+ * @params: TTLM complete params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_send_mlo_ttlm_complete_cmd(
+			wmi_unified_t wmi,
+			struct wlan_mlo_ttlm_complete_params *params);
+
+/**
  * wmi_extract_mlo_link_recfg_indication_evt() - Extract params TLV
  * from the MLO link recfg indication WMI event.
  * @wmi: wmi handle
@@ -311,6 +324,14 @@ QDF_STATUS
 wmi_send_mlo_link_recfg_complete_cmd(
 			wmi_unified_t wmi,
 			struct wlan_mlo_link_recfg_complete_params *params)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+wmi_send_mlo_ttlm_complete_cmd(
+			wmi_unified_t wmi,
+			struct wlan_mlo_ttlm_complete_params *params)
 {
 	return QDF_STATUS_SUCCESS;
 }

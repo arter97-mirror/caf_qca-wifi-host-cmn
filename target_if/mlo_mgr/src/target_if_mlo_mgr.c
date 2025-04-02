@@ -480,6 +480,32 @@ exit:
 	return status;
 }
 
+static QDF_STATUS
+target_if_send_ttlm_complete_cmd(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_ttlm_complete_params *params)
+{
+	struct wmi_unified *wmi_handle = NULL;
+
+	if (!psoc) {
+		target_if_err("null pdev");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!params) {
+		target_if_err("params is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("null wmi handle");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	return wmi_send_mlo_ttlm_complete_cmd(wmi_handle, params);
+}
+
 static inline void
 target_if_mlo_register_link_switch_cnf_handler(struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops)
 {
@@ -488,6 +514,9 @@ target_if_mlo_register_link_switch_cnf_handler(struct wlan_lmac_if_mlo_tx_ops *m
 
 	mlo_tx_ops->send_mlo_link_recfg_complete_cmd =
 			target_if_send_mlo_link_recfg_complete_cmd;
+
+	mlo_tx_ops->send_mlo_ttlm_complete_cmd =
+			target_if_send_ttlm_complete_cmd;
 
 }
 

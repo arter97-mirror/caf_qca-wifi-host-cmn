@@ -512,6 +512,28 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 	return status;
 }
 
+static QDF_STATUS
+mlo_link_recfg_send_complete_cmd(struct wlan_objmgr_psoc *psoc,
+				 struct wlan_mlo_link_recfg_complete_params *complete_params)
+{
+	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
+	QDF_STATUS status;
+
+	mlo_tx_ops = target_if_mlo_get_tx_ops(psoc);
+	if (!mlo_tx_ops) {
+		mlo_err("tx_ops is null!");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	status = mlo_tx_ops->send_mlo_link_recfg_complete_cmd(psoc,
+							      complete_params);
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_err("send_mlo_link_recfg_complete_cmd failed %d",
+			status);
+
+	return status;
+}
+
 QDF_STATUS
 mlo_mgr_link_recfg_indication_event_handler(
 			struct wlan_objmgr_psoc *psoc,
@@ -521,6 +543,7 @@ mlo_mgr_link_recfg_indication_event_handler(
 	struct wlan_mlo_link_recfg_req recfg_req = {0};
 	QDF_STATUS status;
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
 
 	if (!evt_params) {
 		mlo_err("Invalid params");
@@ -541,7 +564,12 @@ mlo_mgr_link_recfg_indication_event_handler(
 	}
 
 	if (!cm_is_vdev_connected(vdev)) {
-		mlo_err("vdev is NOT in connected state");
+		mlo_err("vdev is NOT in connected state, send complete cmd to with failure status");
+		complete_params.ap_mld_addr = evt_params->ap_mld_addr;
+		complete_params.vdev_id = evt_params->vdev_id;
+		complete_params.reassoc_if_failure = 0;
+		complete_params.status = 1;
+		mlo_link_recfg_send_complete_cmd(psoc, &complete_params);
 		status = QDF_STATUS_E_FAILURE;
 		goto end;
 	}
@@ -4192,8 +4220,7 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 					recfg_ctx, success);
 		complete_params.status = success ? 0 : 1;
 		complete_params.vdev_id = recfg_req->fw_ind_param.vdev_id;
-		status = mlo_tx_ops->send_mlo_link_recfg_complete_cmd(
-						psoc, &complete_params);
+		status = mlo_link_recfg_send_complete_cmd(psoc, &complete_params);
 		if (QDF_IS_STATUS_ERROR(status))
 			mlo_err("send_mlo_link_recfg_complete_cmd failed %d",
 				status);

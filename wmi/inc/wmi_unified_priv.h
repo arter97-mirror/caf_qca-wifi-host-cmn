@@ -3322,6 +3322,11 @@ QDF_STATUS
 (*send_mlo_link_recfg_complete_cmd)(
 			wmi_unified_t wmi_handle,
 			struct wlan_mlo_link_recfg_complete_params *params);
+
+QDF_STATUS
+(*send_mlo_ttlm_complete_cmd)(
+			wmi_unified_t wmi_handle,
+			struct wlan_mlo_ttlm_complete_params *params);
 #endif
 #endif
 

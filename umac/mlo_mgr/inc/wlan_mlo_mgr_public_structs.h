@@ -341,6 +341,20 @@ struct wlan_mlo_link_recfg_complete_params {
 	uint32_t  reassoc_if_failure;
 };
 
+/*
+ * struct wlan_mlo_ttlm_complete_params - TTLM complete params
+ * @vdev_id: vdev id
+ * @ap_mld_addr: ap mld address
+ * @status: TTLM success or not
+ * @reassoc_if_failure: fw trigger reassoc or not if TTLM failed
+ */
+struct wlan_mlo_ttlm_complete_params {
+	uint8_t vdev_id;
+	struct qdf_mac_addr ap_mld_addr;
+	uint32_t status;
+	uint32_t reassoc_if_failure;
+};
+
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /*
  * struct wlan_mlo_link_switch_notifier - Link switch notifier callbacks

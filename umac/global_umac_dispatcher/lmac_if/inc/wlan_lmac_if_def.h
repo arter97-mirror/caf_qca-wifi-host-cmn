@@ -1687,6 +1687,7 @@ struct wlan_lmac_if_son_rx_ops {
  * @send_mlo_link_switch_cnf_cmd: Send link switch status to FW
  * @send_mlo_link_recfg_complete_cmd: Send link recfg complete to FW
  * @send_link_reconfig_req_params_cmd: send link reconfig command to FW
+ * @send_mlo_ttlm_complete_cmd: Send TTLM complete cmd to FW
  * @send_wsi_link_info_cmd: send WSI link stats to FW
  */
 struct wlan_lmac_if_mlo_tx_ops {
@@ -1727,6 +1728,12 @@ struct wlan_lmac_if_mlo_tx_ops {
 	QDF_STATUS (*send_link_reconfig_req_params_cmd)(
 			struct wlan_objmgr_psoc *psoc,
 			struct wlan_mlo_link_recfg_req *param);
+
+	QDF_STATUS
+	(*send_mlo_ttlm_complete_cmd)(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_ttlm_complete_params *params);
+
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 	QDF_STATUS (*send_wsi_link_info_cmd)(
 				struct wlan_objmgr_pdev *pdev,
