@@ -53,6 +53,7 @@ int ipa_fw_nl_broadcast(const uint8_t *buffer, uint32_t len)
 		     sizeof(wnl->length), buffer, len);
 	nl_srv_bcast(skb, CLD80211_MCGRP_OPT_DP_LOGS,
 		     WLAN_NL_MSG_OPT_DP_LOG);
+	g_ipa_logging_ctx.fw_log_msg_to_nl_stat += 1;
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -253,6 +254,8 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 	qdf_sleep(WLAN_IPA_MAX_WAIT_TIME);
 	g_ipa_logging_ctx.drop_count = 0;
 	g_ipa_logging_ctx.log_truncation = false;
+	g_ipa_logging_ctx.wmi_fw_log_msg_stat = 0;
+	g_ipa_logging_ctx.fw_log_msg_to_nl_stat = 0;
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -387,4 +390,16 @@ void wlan_ipa_log_message(const char *func, const char *msg, ...)
 	qdf_va_end(args);
 }
 
+void ipa_fw_log_received_stats(void)
+{
+	g_ipa_logging_ctx.wmi_fw_log_msg_stat += 1;
+}
+
+void ipa_dump_logging_stats(void)
+{
+	ipa_debug("No. WMI msg received for FW logging - %d",
+		  g_ipa_logging_ctx.wmi_fw_log_msg_stat);
+	ipa_debug("No. of FW msg sent to NL - %d",
+		  g_ipa_logging_ctx.fw_log_msg_to_nl_stat);
+}
 #endif

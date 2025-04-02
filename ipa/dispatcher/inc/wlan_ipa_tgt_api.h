@@ -59,12 +59,23 @@ int wlan_ipa_fw_nl_broadcast(const uint8_t *buffer, uint32_t len)
 {
 	return ipa_fw_nl_broadcast(buffer, len);
 }
+
+static inline
+void wlan_ipa_fw_log_received_stats(void)
+{
+	ipa_fw_log_received_stats();
+}
 #else
 
 static inline
 int wlan_ipa_fw_nl_broadcast(const uint8_t *buffer, uint32_t len)
 {
 	return 0;
+}
+
+static inline
+void wlan_ipa_fw_log_received_stats(void)
+{
 }
 #endif /* IPA_OPT_WIFI_DP_LOGGING */
 #endif /* _WLAN_IPA_TGT_API_H_ */

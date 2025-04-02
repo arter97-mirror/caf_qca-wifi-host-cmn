@@ -624,6 +624,7 @@ QDF_STATUS htt_h2t_rx_cce_super_rule_setup(struct htt_soc *soc, void *param)
 				     htt_logger_bufp);
 
 	if (status != QDF_STATUS_SUCCESS) {
+		dp_ipa_debug("failed sending htt msg to FW");
 		qdf_nbuf_free(msg);
 		htt_htc_pkt_free(soc, pkt);
 	}
@@ -757,6 +758,7 @@ QDF_STATUS htt_h2t_tx_super_rule_setup(struct htt_soc *soc, void *param)
 				     htt_logger_bufp);
 
 	if (status != QDF_STATUS_SUCCESS) {
+		dp_ipa_debug("failed to send htt msg to FW");
 		qdf_nbuf_free(msg);
 		htt_htc_pkt_free(soc, pkt);
 	}
@@ -3959,7 +3961,7 @@ static void dp_ipa_rx_cce_super_rule_setup_done_handler(struct htt_soc *soc,
 				 */
 				soc->stats.abort_count++;
 				soc->stats.reserve_fail_cnt = 0;
-				dp_info(
+				dp_ipa_debug(
 				  "opt_dp: Filter reserve failed max attempts");
 			}
 			dp_ipa_debug("opt_dp:: Filter reserve failed. Rules avail %d",

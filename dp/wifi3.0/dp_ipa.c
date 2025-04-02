@@ -3716,8 +3716,8 @@ QDF_STATUS dp_ipa_cleanup(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 
 	ret = qdf_ipa_wdi_disconn_pipes(hdl);
 	if (ret) {
-		dp_err("ipa_wdi_disconn_pipes: IPA pipe cleanup failed: ret=%d",
-		       ret);
+		dp_ipa_err("ipa_wdi_disconn_pipes: IPA pipe cleanup failed: ret=%d",
+			   ret);
 		status = QDF_STATUS_E_FAILURE;
 	}
 

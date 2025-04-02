@@ -54,6 +54,8 @@ enum wlan_ipa_logging_thread_state {
  * @event_flag: event flag to post events to logger thread
  * @log_truncation: log truncation indication
  * @thread_state: logging thread state
+ * @wmi_fw_log_msg_stat: number of wmi msg received from FW
+ * @fw_log_msg_to_nl_stat: number of fw log msg sent to nl
  */
 struct wlan_ipa_log_context {
 	qdf_list_t free_list;
@@ -66,6 +68,8 @@ struct wlan_ipa_log_context {
 	unsigned long event_flag;
 	bool log_truncation;
 	enum wlan_ipa_logging_thread_state thread_state;
+	uint32_t wmi_fw_log_msg_stat;
+	uint32_t fw_log_msg_to_nl_stat;
 };
 
 /**
@@ -126,6 +130,17 @@ QDF_STATUS wlan_ipa_logging_sock_init(void);
  * wlan_ipa_logging_sock_deinit() - deinit ipa logging resources
  */
 void wlan_ipa_logging_sock_deinit(void);
+
+/**
+ * ipa_fw_log_received_stats() - no. of wmi msg received for fw log
+ */
+void ipa_fw_log_received_stats(void);
+
+/**
+ * ipa_dump_logging_stats() - print stats related to ipa logging
+ */
+void ipa_dump_logging_stats(void);
+
 #else
 static inline
 void wlan_ipa_log_message(const char *func, const char *msg, ...)
@@ -140,6 +155,16 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 
 static inline
 void wlan_ipa_logging_sock_deinit(void)
+{
+}
+
+static inline
+void ipa_fw_log_received_stats(void)
+{
+}
+
+static inline
+void ipa_dump_logging_stats(void)
 {
 }
 #endif

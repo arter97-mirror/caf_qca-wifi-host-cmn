@@ -122,6 +122,13 @@ void ucfg_ipa_set_opt_dp_ctrl_flt_rm(
 
 qdf_export_symbol(ucfg_ipa_set_opt_dp_ctrl_flt_rm);
 
+void ucfg_ipa_dump_logging_stats(void)
+{
+	return ipa_dump_logging_stats();
+}
+
+qdf_export_symbol(ucfg_ipa_dump_logging_stats);
+
 void ucfg_ipa_uc_rt_debug_host_dump(struct wlan_objmgr_pdev *pdev)
 {
 	return ipa_uc_rt_debug_host_dump(pdev);

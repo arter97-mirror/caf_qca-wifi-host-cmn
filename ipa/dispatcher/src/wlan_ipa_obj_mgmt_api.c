@@ -169,7 +169,7 @@ static void ipa_register_ready_cb(void *user_data)
 	}
 
 	g_ipa_is_ready = true;
-	ipa_info("IPA ready callback invoked: ipa_register_ready_cb");
+	ipa_log_info("IPA ready callback invoked: %s", __func__);
 
 	/* Make call to get num_instances supported by IPA */
 	qdf_ipa_wdi_get_capabilities(&out_param);
@@ -225,7 +225,7 @@ QDF_STATUS ipa_register_is_ipa_ready(struct wlan_objmgr_pdev *pdev)
 	struct wlan_objmgr_psoc *psoc;
 
 	if (!ipa_config_is_enabled()) {
-		ipa_info("IPA config is disabled");
+		ipa_log_info("IPA config is disabled");
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -234,6 +234,8 @@ QDF_STATUS ipa_register_is_ipa_ready(struct wlan_objmgr_pdev *pdev)
 		ipa_err("PSOC object is NULL");
 		return QDF_STATUS_E_FAILURE;
 	}
+
+	ipa_log("IPA ini configuration: 0x%x", get_ipa_config(psoc));
 	ipa_obj = ipa_psoc_get_priv_obj(psoc);
 	if (!ipa_obj) {
 		ipa_err("IPA object is NULL");

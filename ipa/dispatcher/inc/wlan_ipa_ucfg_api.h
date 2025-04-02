@@ -153,6 +153,13 @@ void ucfg_ipa_set_opt_dp_ctrl_flt(
 void ucfg_ipa_set_opt_dp_ctrl_flt_rm(
 			struct wlan_objmgr_pdev *pdev,
 			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt);
+
+/*
+ * ucfg_ipa_dump_logging_stats() - print ipa logging stats
+ *
+ */
+void ucfg_ipa_dump_logging_stats(void);
+
 /**
  * ucfg_ipa_uc_rt_debug_host_dump() - IPA rt debug host dump
  * @pdev: pdev obj
@@ -889,5 +896,11 @@ ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
 			    wlan_ipa_is_mlo_vdev cb)
 {
 }
+
+static inline void
+ucfg_ipa_dump_logging_stats(void)
+{
+}
+
 #endif /* IPA_OFFLOAD */
 #endif /* _WLAN_IPA_UCFG_API_H_ */

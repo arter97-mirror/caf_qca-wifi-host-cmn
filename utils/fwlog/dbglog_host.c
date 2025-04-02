@@ -1997,6 +1997,7 @@ fw_opt_dp_diag_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	uint8_t *datap;
 	uint32_t num_data;
 
+	wlan_ipa_fw_log_received_stats();
 	param_buf = (WMI_DEBUG_MESG_EVENTID_param_tlvs *)data;
 	if (!param_buf) {
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
