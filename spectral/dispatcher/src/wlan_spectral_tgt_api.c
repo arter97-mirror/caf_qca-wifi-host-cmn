@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011,2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -475,27 +475,6 @@ tgt_spectral_process_report(struct wlan_objmgr_pdev *pdev,
 	psptrl_tx_ops = &tx_ops->sptrl_tx_ops;
 
 	return psptrl_tx_ops->sptrlto_process_spectral_report(pdev, payload);
-}
-
-uint32_t
-tgt_spectral_get_target_type(struct wlan_objmgr_psoc *psoc)
-{
-	uint32_t target_type = 0;
-	struct wlan_lmac_if_target_tx_ops *target_type_tx_ops;
-	struct wlan_lmac_if_tx_ops *tx_ops;
-
-	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
-	if (!tx_ops) {
-		spectral_err("tx_ops is NULL");
-		return target_type;
-	}
-
-	target_type_tx_ops = &tx_ops->target_tx_ops;
-
-	if (target_type_tx_ops->tgt_get_tgt_type)
-		target_type = target_type_tx_ops->tgt_get_tgt_type(psoc);
-
-	return target_type;
 }
 
 #ifdef DIRECT_BUF_RX_ENABLE

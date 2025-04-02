@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -308,15 +308,6 @@ tgt_spectral_register_to_dbr(struct wlan_objmgr_pdev *pdev);
  */
 QDF_STATUS
 tgt_spectral_unregister_to_dbr(struct wlan_objmgr_pdev *pdev);
-
-/**
- * tgt_spectral_get_target_type() - Get target type
- * @psoc: Pointer to psoc object
- *
- * Return: target type
- */
-uint32_t
-tgt_spectral_get_target_type(struct wlan_objmgr_psoc *psoc);
 
 /**
  * tgt_set_spectral_dma_debug() - Set DMA debug for Spectral

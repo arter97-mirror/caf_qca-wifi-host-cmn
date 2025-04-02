@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -142,40 +142,6 @@ int target_if_cfr_get_target_type(struct wlan_objmgr_psoc *psoc);
  */
 void target_if_cfr_set_cfr_support(struct wlan_objmgr_psoc *psoc,
 				   uint8_t value);
-
-/**
- * target_if_cfr_set_capture_count_support() - Function to set capture count
- *					       support.
- * @psoc: pointer to psoc object
- * @value: value to be set
- *
- * Return: success/failure
- */
-QDF_STATUS
-target_if_cfr_set_capture_count_support(struct wlan_objmgr_psoc *psoc,
-					uint8_t value);
-
-/**
- * target_if_cfr_set_mo_marking_support() - Function to set MO marking support
- * @psoc: pointer to psoc object
- * @value: value to be set
- *
- * Return: success/failure
- */
-QDF_STATUS
-target_if_cfr_set_mo_marking_support(struct wlan_objmgr_psoc *psoc,
-				     uint8_t value);
-
-/**
- * target_if_cfr_set_aoa_for_rcc_support() - Function to set AoA for RCC
- * @psoc: pointer to psoc object
- * @value: value to be set
- *
- * Return: success/failure
- */
-QDF_STATUS
-target_if_cfr_set_aoa_for_rcc_support(struct wlan_objmgr_psoc *psoc,
-				      uint8_t value);
 
 /**
  * target_if_cfr_info_send() - Function to send cfr info to upper layers
