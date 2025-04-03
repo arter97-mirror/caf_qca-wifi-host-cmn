@@ -2448,6 +2448,15 @@
 #define CFG_DP_NDP_BW_FLOW_CTRL
 #endif
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+#define CFG_DP_TX_PAGE_POOL_ENABLE \
+	CFG_INI_BOOL("dp_tx_page_pool", false, \
+		     "Enable/Disable page pool usage for TX buffers")
+#define CFG_DP_TX_PAGE_POOL CFG(CFG_DP_TX_PAGE_POOL_ENABLE)
+#else
+#define CFG_DP_TX_PAGE_POOL
+#endif
+
 #define CFG_DP \
 		CFG(CFG_DP_HTT_PACKET_TYPE) \
 		CFG(CFG_DP_INT_BATCH_THRESHOLD_OTHER) \
@@ -2623,5 +2632,6 @@
 		CFG_DP_SAWF_MSDUQ_TID_SKID \
 		CFG(CFG_DP_RXMON_MGMT_LINEARIZATION) \
 		CFG_DP_RX_BUFFER_RECYCLE \
-		CFG_DP_NDP_BW_FLOW_CTRL
+		CFG_DP_NDP_BW_FLOW_CTRL \
+		CFG_DP_TX_PAGE_POOL
 #endif /* _CFG_DP_H_ */
