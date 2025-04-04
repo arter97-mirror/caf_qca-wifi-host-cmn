@@ -47,9 +47,7 @@
 #ifdef WLAN_FEATURE_LL_LT_SAP
 #include "wlan_ll_sap_api.h"
 #endif
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
-#endif
 #include "wlan_mlme_vdev_mgr_interface.h"
 #include "wlan_cm_api.h"
 
@@ -680,7 +678,6 @@ void vdev_mgr_get_target_tsf(struct vdev_start_params *param,
 }
 #endif
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 static void vdev_update_dfs_master_state(struct wlan_objmgr_vdev *vdev)
 {
 	enum QDF_OPMODE op_mode;
@@ -692,12 +689,6 @@ static void vdev_update_dfs_master_state(struct wlan_objmgr_vdev *vdev)
 				true,
 				vdev->vdev_mlme.des_chan);
 }
-#else
-static inline void
-vdev_update_dfs_master_state(struct wlan_objmgr_vdev *vdev)
-{
-}
-#endif
 
 QDF_STATUS vdev_mgr_start_send(
 			struct vdev_mlme_obj *mlme_obj,
@@ -851,6 +842,11 @@ static QDF_STATUS vdev_mgr_up_param_update(
 				mlme_set_mbssid_info(vdev,
 						     &entry->mbssid_info,
 						     chan->ch_freq);
+				if (entry->is_gen_entry)
+					qdf_mem_copy(mbss->trans_bssid,
+						     bcast_mac.bytes,
+						     QDF_MAC_ADDR_SIZE);
+
 				util_scan_free_cache_entry(entry);
 			}
 		}

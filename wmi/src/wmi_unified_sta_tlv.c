@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2182,7 +2182,6 @@ static QDF_STATUS send_pdev_set_pcl_cmd_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * send_pdev_set_dual_mac_config_cmd_tlv() - Set dual mac config to FW
  * @wmi_handle: wmi handle
@@ -2238,7 +2237,6 @@ void wmi_policy_mgr_attach_tlv(struct wmi_unified *wmi_handle)
 	ops->send_pdev_set_dual_mac_config_cmd =
 		send_pdev_set_dual_mac_config_cmd_tlv;
 }
-#endif /* WLAN_POLICY_MGR_ENABLE */
 
 /**
  * send_adapt_dwelltime_params_cmd_tlv() - send wmi cmd of adaptive dwelltime

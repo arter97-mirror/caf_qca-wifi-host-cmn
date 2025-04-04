@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3334,7 +3334,6 @@ wmi_unified_send_roam_scan_stats_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-#ifdef CRYPTO_SET_KEY_CONVERGED
 uint8_t wlan_crypto_cipher_to_wmi_cipher(
 		enum wlan_crypto_cipher_type crypto_cipher)
 {
@@ -3393,7 +3392,6 @@ enum cdp_sec_type wlan_crypto_cipher_to_cdp_sec_type(
 		return cdp_sec_type_none;
 	}
 }
-#endif /* CRYPTO_SET_KEY_CONVERGED */
 
 QDF_STATUS
 wmi_extract_roam_scan_stats_res_evt(wmi_unified_t wmi, void *evt_buf,

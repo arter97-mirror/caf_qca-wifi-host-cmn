@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -133,24 +133,54 @@ static struct vdev_osif_priv *wlan_objmgr_vdev_get_osif_priv(
 }
 
 #ifdef FEATURE_WLAN_SUPPORT_USD
-/**
- * wlan_vdev_mlme_set_wfd_mode() - set WFD mode in VDEV MLME object
- * @vdev: VDEV object
- * @params: VDEV create params
- *
- * Return: void
- */
-static inline void
-wlan_vdev_mlme_set_wfd_mode(struct wlan_objmgr_vdev *vdev,
-			    struct wlan_vdev_create_params *params)
+void wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode)
 {
-	vdev->vdev_mlme.wfd_mode = params->wfd_mode;
+	vdev->vdev_mlme.wfd_mode = wfd_mode;
+}
+
+/**
+ * wlan_vdev_get_wfd_mode() - Get WFD mode from the VDEV create parameter
+ * @params: pointer to VDEV create parameter structure
+ *
+ * Return: WFD mode
+ */
+static inline uint8_t
+wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
+{
+	return params->wfd_mode;
+}
+
+bool wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc,
+				  uint8_t vdev_id)
+{
+	uint8_t wfd_mode;
+	struct wlan_objmgr_vdev *vdev;
+
+	if (!psoc) {
+		obj_mgr_err("psoc is NULL");
+		return false;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_MLME_OBJMGR_ID);
+	if (!vdev) {
+		obj_mgr_err("vdev is NULL for id%d", vdev_id);
+		return false;
+	}
+
+	wfd_mode = wlan_vdev_mlme_get_wfd_mode(vdev);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
+	if (wfd_mode == P2P_MODE_WFD_R2 || wfd_mode == P2P_MODE_WFD_PCC)
+		return true;
+
+	return false;
 }
 #else
-static inline void
-wlan_vdev_mlme_set_wfd_mode(struct wlan_objmgr_vdev *vdev,
-			    struct wlan_vdev_create_params *params)
+static inline uint8_t
+wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
 {
+	return 0xFF;
 }
 #endif
 
@@ -165,6 +195,7 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 	wlan_objmgr_vdev_status_handler stat_handler;
 	void *arg;
 	QDF_STATUS obj_status;
+	uint8_t wfd_mode;
 
 	if (!pdev) {
 		obj_mgr_err("pdev is NULL");
@@ -249,7 +280,8 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 	/* store os-specific pointer */
 	vdev->vdev_nif.osdev = wlan_objmgr_vdev_get_osif_priv(vdev);
 	/* set WFD mode */
-	wlan_vdev_mlme_set_wfd_mode(vdev, params);
+	wfd_mode = wlan_vdev_get_wfd_mode(params);
+	wlan_vdev_set_wfd_mode(vdev, wfd_mode);
 
 	/* peer count to 0 */
 	vdev->vdev_objmgr.wlan_peer_count = 0;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -75,10 +75,17 @@
 
 /* TODO: Convert the following structure fields accesseses to offsets */
 
+#ifdef CONFIG_BORON
+#define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
+	(HAL_RX_BUF_COOKIE_GET(&		\
+	(((struct reo_destination_ring *)	\
+		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+#else
 #define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
 	(HAL_RX_BUF_COOKIE_GET(&		\
 	(((struct reo_destination_ring *)	\
 		reo_desc)->buf_or_link_desc_addr_info)))
+#endif
 
 #define HAL_RX_MSDU_DESC_IP_CHKSUM_FAIL_GET(msdu_desc_info_ptr)	\
 	(_HAL_MS((*_OFFSET_TO_WORD_PTR((msdu_desc_info_ptr),	\
@@ -484,6 +491,23 @@ hal_rx_msdu_desc_info_get_be(void *desc_addr,
 	msdu_desc_info->msdu_len = HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info);
 }
 
+#ifdef CONFIG_BORON
+/**
+ * hal_rx_get_reo_desc_va() - Get Desc virtual address within REO Desc
+ * @reo_desc: REO2SW ring descriptor pointer
+ *
+ * Return: RX descriptor virtual address
+ */
+static inline uintptr_t hal_rx_get_reo_desc_va(void *reo_desc)
+{
+	uint64_t va_from_desc;
+
+	/* first 64 bits block for VA */
+	va_from_desc = qdf_le64_to_cpu(*(uint64_t *)reo_desc);
+
+	return (uintptr_t)va_from_desc;
+}
+#else
 /**
  * hal_rx_get_reo_desc_va() - Get Desc virtual address within REO Desc
  * @reo_desc: REO2SW ring descriptor pointer
@@ -502,6 +526,7 @@ static inline uintptr_t hal_rx_get_reo_desc_va(void *reo_desc)
 				       BUFFER_VIRT_ADDR_63_32)) << 32));
 	return (uintptr_t)va_from_desc;
 }
+#endif
 
 /**
  * hal_rx_sw_exception_get_be() - Get sw_exception bit value from REO Desc

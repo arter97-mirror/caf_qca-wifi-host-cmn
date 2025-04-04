@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -143,8 +143,8 @@ scm_sort_6ghz_channel_list(struct wlan_objmgr_vdev *vdev,
 static void scm_update_rnr_info(struct wlan_objmgr_psoc *psoc,
 				struct scan_start_request *req)
 {
-	uint8_t i, num_bssid = 0, num_ssid = 0;
-	uint8_t total_count = MAX_HINTS_PER_SCAN_REQ;
+	uint8_t i, idx, num_bssid = 0, num_ssid = 0;
+	uint8_t total_count = MAX_HINTS_PER_SCAN_REQ, freq_start;
 	uint32_t freq;
 	struct meta_rnr_channel *chan;
 	qdf_list_node_t *cur_node, *next_node = NULL;
@@ -166,35 +166,38 @@ static void scm_update_rnr_info(struct wlan_objmgr_psoc *psoc,
 		if (!chan || qdf_list_empty(&chan->rnr_list))
 			continue;
 
+		freq_start = num_ssid;
 		qdf_list_peek_front(&chan->rnr_list, &cur_node);
 		while (cur_node && total_count) {
 			rnr_node = qdf_container_of(cur_node,
 						    struct scan_rnr_node,
 						    node);
 			if (!qdf_is_macaddr_zero(&rnr_node->entry.bssid) &&
-			    req->scan_req.num_hint_bssid <
-			    WLAN_SCAN_MAX_HINT_BSSID) {
+			    num_bssid < WLAN_SCAN_MAX_HINT_BSSID) {
 				qdf_mem_copy(&req->scan_req.hint_bssid[
 							num_bssid].bssid,
 					     &rnr_node->entry.bssid,
 					     QDF_MAC_ADDR_SIZE);
 				req->scan_req.hint_bssid[
 					num_bssid++].freq_flags = freq << 16;
-				req->scan_req.num_hint_bssid++;
 				hint = true;
 			}
 			if (rnr_node->entry.short_ssid &&
-			    req->scan_req.num_hint_s_ssid <
-				   WLAN_SCAN_MAX_HINT_S_SSID) {
+			    num_ssid < WLAN_SCAN_MAX_HINT_S_SSID) {
+				for (idx = freq_start; idx < num_ssid; idx++)
+					if (rnr_node->entry.short_ssid ==
+					    req->scan_req.hint_s_ssid[idx].short_ssid)
+						goto peek_next;
+
 				req->scan_req.hint_s_ssid[
 					num_ssid].short_ssid =
 						rnr_node->entry.short_ssid;
 				req->scan_req.hint_s_ssid[
 					num_ssid++].freq_flags = freq << 16;
-				req->scan_req.num_hint_s_ssid++;
 				hint = true;
 			}
 
+peek_next:
 			if (hint) {
 				total_count--;
 				hint = false;
@@ -207,6 +210,9 @@ static void scm_update_rnr_info(struct wlan_objmgr_psoc *psoc,
 			next_node = NULL;
 		}
 	}
+
+	req->scan_req.num_hint_bssid = num_bssid;
+	req->scan_req.num_hint_s_ssid = num_ssid;
 }
 
 /**

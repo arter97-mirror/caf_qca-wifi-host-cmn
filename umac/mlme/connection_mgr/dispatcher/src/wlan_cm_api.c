@@ -385,7 +385,6 @@ const char *wlan_cm_reason_code_to_str(enum wlan_reason_code reason)
 	}
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 void wlan_cm_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 				 wlan_cm_id cm_id, QDF_STATUS status)
 {
@@ -397,7 +396,6 @@ void wlan_cm_hw_mode_change_resp(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 	else
 		cm_hw_mode_change_resp(pdev, vdev_id, cm_id, status);
 }
-#endif /* ifdef POLICY_MGR_ENABLE */
 
 #ifdef WLAN_FEATURE_LL_LT_SAP
 void wlan_cm_bearer_switch_resp(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
@@ -423,25 +421,6 @@ void wlan_cm_req_history_print(struct wlan_objmgr_vdev *vdev)
 	cm_req_history_print(cm_ctx);
 }
 #endif /* SM_ENG_HIST_ENABLE */
-
-#ifndef CONN_MGR_ADV_FEATURE
-void wlan_cm_set_candidate_advance_filter_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*filter_fun)(struct wlan_objmgr_vdev *vdev,
-				   struct scan_filter *filter))
-{
-	cm_set_candidate_advance_filter_cb(vdev, filter_fun);
-}
-
-void wlan_cm_set_candidate_custom_sort_cb(
-		struct wlan_objmgr_vdev *vdev,
-		void (*sort_fun)(struct wlan_objmgr_vdev *vdev,
-				 qdf_list_t *list))
-{
-	cm_set_candidate_custom_sort_cb(vdev, sort_fun);
-}
-
-#endif
 
 QDF_STATUS wlan_cm_get_rnr(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id,
 			   struct reduced_neighbor_report *rnr)

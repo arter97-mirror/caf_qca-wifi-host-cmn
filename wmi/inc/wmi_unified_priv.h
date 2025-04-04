@@ -417,9 +417,7 @@ struct wmi_wq_dbg_info {
 };
 
 struct wmi_ops {
-#if defined(CONN_MGR_ADV_FEATURE) && \
-	    (defined(WLAN_FEATURE_HOST_ROAM) || \
-		     defined(WLAN_FEATURE_ROAM_OFFLOAD))
+#if (defined(WLAN_FEATURE_HOST_ROAM) || defined(WLAN_FEATURE_ROAM_OFFLOAD))
 QDF_STATUS
 (*extract_roam_event)(wmi_unified_t wmi_handle, void *evt_buf, uint32_t len,
 		      struct roam_offload_roam_event *roam_event);
@@ -1238,10 +1236,8 @@ QDF_STATUS (*send_roam_set_param_cmd)(wmi_unified_t wmi_handle,
 				      struct vdev_set_params *roam_param);
 #endif
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 QDF_STATUS (*send_pdev_set_dual_mac_config_cmd)(wmi_unified_t wmi_handle,
 		struct policy_mgr_dual_mac_config *msg);
-#endif
 
 QDF_STATUS (*send_set_led_flashing_cmd)(wmi_unified_t wmi_handle,
 				struct flashing_req_params *flashing);
@@ -2576,6 +2572,9 @@ QDF_STATUS (*send_ndp_end_req_cmd)(wmi_unified_t wmi_handle,
 				struct nan_datapath_end_req *req);
 QDF_STATUS (*send_terminate_all_ndps_req_cmd)(wmi_unified_t wmi_handle,
 					      uint32_t vdev_id);
+QDF_STATUS
+(*send_ndp_update_config_cmd)(wmi_unified_t wmi_handle,
+			      struct nan_datapath_update_config *req);
 
 QDF_STATUS (*extract_ndp_initiator_rsp)(wmi_unified_t wmi_handle,
 		uint8_t *data, struct nan_datapath_initiator_rsp *rsp);
@@ -4049,14 +4048,7 @@ static inline void wmi_tdls_attach_tlv(struct wmi_unified *wmi_handle)
 }
 #endif
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 void wmi_policy_mgr_attach_tlv(struct wmi_unified *wmi_handle);
-#else
-static inline
-void wmi_policy_mgr_attach_tlv(struct wmi_unified *wmi_handle)
-{
-}
-#endif
 
 #if defined(WLAN_FEATURE_ROAM_OFFLOAD) && defined(FEATURE_DENYLIST_MGR)
 void wmi_denylist_mgr_attach_tlv(struct wmi_unified *wmi_handle);

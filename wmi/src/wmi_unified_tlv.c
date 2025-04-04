@@ -46,9 +46,7 @@
 #include "wmi_unified_twt_api.h"
 #include "wmi_unified_wds_api.h"
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_public_struct.h"
-#endif
 
 #ifdef WMI_SMART_ANT_SUPPORT
 #include "wmi_unified_smart_ant_api.h"
@@ -15620,10 +15618,33 @@ extract_num_max_mlo_link(wmi_service_ready_ext2_event_fixed_param *ev,
 		  param->num_max_mlo_link_per_ml_bss_supp,
 		  param->num_max_mlo_link_per_ml_sap_supp);
 }
+
+static inline void
+extract_num_max_bss(struct wlan_psoc_host_service_ext2_param *param,
+		    uint32_t target_cap_flag)
+{
+	param->max_ml_sap_num_bss =
+		WMI_TARGET_CAP_MAX_ML_SAP_BSS_NUM_GET(target_cap_flag);
+	param->max_ml_sta_num_bss =
+		WMI_TARGET_CAP_MAX_ML_STA_BSS_NUM_GET(target_cap_flag);
+	param->max_ml_bss_num =
+		WMI_TARGET_CAP_MAX_ML_BSS_NUM_GET(target_cap_flag);
+
+	wmi_debug("Firmware num bss: %d (sap) %d (sta) %d (max)",
+		  param->max_ml_sap_num_bss,
+		  param->max_ml_sta_num_bss,
+		  param->max_ml_bss_num);
+}
 #else
 static inline void
 extract_num_max_mlo_link(wmi_service_ready_ext2_event_fixed_param *ev,
 			 struct wlan_psoc_host_service_ext2_param *param)
+{
+}
+
+static inline void
+extract_num_max_bss(struct wlan_psoc_host_service_ext2_param *param,
+		    uint32_t target_cap_flag)
 {
 }
 #endif
@@ -15799,6 +15820,8 @@ extract_service_ready_ext2_tlv(wmi_unified_t wmi_handle, uint8_t *event,
 	extract_hw_bdf_status(ev);
 
 	extract_num_max_mlo_link(ev, param);
+
+	extract_num_max_bss(param, ev->target_cap_flags);
 
 	param->num_aux_dev_caps = param_buf->num_aux_dev_caps;
 
@@ -20234,7 +20257,8 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		dst->peer_info[i].akm = cm_wmi_auth_type_to_crypto_key_mgmt(
 								   buf->akm);
 		dst->peer_info[i].cipher = buf->cipher_suite;
-		if (buf->passphrase_len) {
+		if (buf->passphrase_len && (buf->passphrase_len <=
+					    WMI_MAX_PASN_PASSPHRASE_LEN)) {
 			qdf_mem_copy(&dst->peer_info[i].password,
 				     &buf->passphrase, buf->passphrase_len);
 			dst->peer_info[i].password_len = buf->passphrase_len;
@@ -20272,13 +20296,14 @@ extract_pasn_peer_create_req_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		dst->peer_info[i].force_self_mac_usage =
 			WMI_RTT_PASN_PEER_CREATE_FORCE_SELF_MAC_USE_GET(
 							buf->control_flag);
-		wmi_debug("Peer[%d]: self_mac :" QDF_MAC_ADDR_FMT " peer_mac :" QDF_MAC_ADDR_FMT "security_mode :0x%x force_self_mac:%d akm :0x%x cipher :0x%x",
+		wmi_debug("Peer[%d]: self_mac :" QDF_MAC_ADDR_FMT " peer_mac :" QDF_MAC_ADDR_FMT "security_mode :0x%x force_self_mac:%d akm :0x%x cipher :0x%x passphrase_len:0x%x",
 			  i, QDF_MAC_ADDR_REF(dst->peer_info[i].self_mac.bytes),
 			  QDF_MAC_ADDR_REF(dst->peer_info[i].peer_mac.bytes),
 			  security_mode,
 			  dst->peer_info[i].force_self_mac_usage,
 			  dst->peer_info[i].akm,
-			  dst->peer_info[i].cipher);
+			  dst->peer_info[i].cipher,
+			  buf->passphrase_len);
 
 		dst->num_peers++;
 		buf++;
@@ -21659,6 +21684,9 @@ extract_roam_11kv_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	dst->band =
 		WMI_ROAM_NEIGHBOR_REPORT_INFO_MLO_BAND_INFO_GET(src_data->neighbor_report_detail);
+
+	dst->tx_status =
+		WMI_ROAM_NEIGHBOR_REPORT_INFO_TX_STATUS_INFO_GET(src_data->neighbor_report_detail);
 
 	if (dst->band != WMI_MLO_BAND_NO_MLO)
 		dst->is_mlo = true;

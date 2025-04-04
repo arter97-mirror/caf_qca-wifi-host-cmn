@@ -1609,6 +1609,8 @@ struct dp_soc_stats {
 			uint32_t defrag_ad1_invalid;
 			/* decrypt error drop */
 			uint32_t decrypt_err_drop;
+			/* unencrypt error drop */
+			uint32_t unencrypt_err_drop;
 #ifdef GLOBAL_ASSERT_AVOIDANCE
 			/* rx_desc NULL war count*/
 			uint32_t rx_desc_null;
@@ -4469,15 +4471,26 @@ enum ul_delay_client_id {
  * @enable_report: latency report is enabled
  * @report_interval: Report interval
  * @last_report_time: Indicate last report time in ms
- * @latency_avg: Average latency average
- * @pkts_accum: accumulative number of packets for average
  */
 struct dp_latency_stats {
 	qdf_atomic_t enable_report;
 	uint16_t report_interval;
 	uint64_t last_report_time;
-	uint32_t latency_avg;
-	uint32_t pkts_accum;
+};
+
+/**
+ * struct dp_ul_delay_stats - Delay stats for bus bw
+ * and opt_dp
+ * @prev_delay_accum_opt_dp: Total delay during last poll in opt_dp
+ * @prev_pkt_accum_opt_dp: pkt accumulated during last poll in opt_dp
+ * @prev_delay_accum_bus_bw: Total delay during last scheduled bus bw
+ * @prev_pkt_accum_bus_bw: pkt accumulated during last scheduled bus bw
+ */
+struct dp_ul_delay_stats {
+	uint32_t prev_delay_accum_opt_dp;
+	uint32_t prev_pkt_accum_opt_dp;
+	uint32_t prev_delay_accum_bus_bw;
+	uint32_t prev_pkt_accum_bus_bw;
 };
 
 /* VDEV structure for data path state */
@@ -4789,8 +4802,6 @@ struct dp_vdev {
 	bool ul_delay_cal_ctrl[UL_DELAY_CALC_ID_MAX];
 	/* Indicate if uplink delay report is enabled or not */
 	qdf_atomic_t tsf_ul_delay_report;
-	/* Average value of UL delay */
-	uint32_t tsf_ul_delay_avg;
 	/* Latency stats requested by FW */
 	struct dp_latency_stats latency_stats;
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
@@ -4840,6 +4851,7 @@ struct dp_vdev {
 	bool dp_eapol_stats;
 	/* Tx NSS stats received from FW */
 	struct cdp_htt_stats_tx_vdev_nss_tlv tx_vdev_nss;
+	struct dp_ul_delay_stats prev_delay_stats;
 };
 
 enum {
@@ -5582,7 +5594,6 @@ struct dp_local_link_id_peer_map {
  * @in_twt: in TWT session
  * @hw_txrx_stats_en: Indicate HW offload vdev stats
  * @is_mld_peer:1: MLD peer
- * @hw_accel_en: HW acceleration enabled
  * @tx_failed: Total Tx failure
  * @comp_pkt: Pkt Info for which completions were received
  * @to_stack: Total packets sent up the stack
@@ -5617,8 +5628,7 @@ struct dp_txrx_peer {
 	uint8_t authorize:1,
 		in_twt:1,
 		hw_txrx_stats_en:1,
-		is_mld_peer:1,
-		hw_accel_en:1;
+		is_mld_peer:1;
 	uint32_t tx_failed;
 	struct cdp_pkt_info comp_pkt;
 	struct cdp_pkt_info to_stack;

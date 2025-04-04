@@ -1065,7 +1065,6 @@ ucfg_scan_get_max_sched_scan_plan_iterations(struct wlan_objmgr_psoc *psoc);
 bool
 ucfg_scan_get_user_config_sched_scan_plan(struct wlan_objmgr_psoc *psoc);
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * ucfg_scan_update_pno_dwell_time() - update active and passive dwell time
  * depending on active concurrency modes
@@ -1082,15 +1081,6 @@ void ucfg_scan_update_pno_dwell_time(struct wlan_objmgr_vdev *vdev,
 {
 	wlan_scan_update_pno_dwell_time(vdev, req, scan_def);
 }
-
-#else
-static inline
-void ucfg_scan_update_pno_dwell_time(struct wlan_objmgr_vdev *vdev,
-				     struct pno_scan_req_params *req,
-				     struct scan_default_params *scan_def)
-{}
-
-#endif
 
 #else
 static inline

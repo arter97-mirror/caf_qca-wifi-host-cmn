@@ -1137,5 +1137,21 @@ QDF_STATUS wlan_ipa_get_alt_pipe(struct wlan_ipa_priv *ipa_ctx,
 }
 #endif /* IPA_WDI3_TX_TWO_PIPES */
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * wlan_ipa_reg_is_mlo_vdev_cb() - Register callback to get if vdev is mlo vdev
+ * @ipa_ctx: IPA context
+ * @cb: pointer to callback function
+ *
+ * Return: None
+ */
+static inline void
+wlan_ipa_reg_is_mlo_vdev_cb(struct wlan_ipa_priv *ipa_ctx,
+			    wlan_ipa_is_mlo_vdev cb)
+{
+	ipa_ctx->is_mlo_vdev = cb;
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
 #endif /* IPA_OFFLOAD */
 #endif /* _WLAN_IPA_CORE_H_ */

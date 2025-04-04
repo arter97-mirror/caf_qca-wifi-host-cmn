@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -570,7 +570,26 @@ void ucfg_ipa_set_shared_smmu_enable(bool flag);
  */
 bool ucfg_ipa_get_shared_smmu_enable(void);
 
-#else
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * ucfg_ipa_reg_is_mlo_vdev_cb() - Register callback to get if vdev is mlo vdev
+ * @pdev: pdev objmgr handle
+ * @cb: pointer to callback function
+ *
+ * Return: None
+ */
+void
+ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
+			    wlan_ipa_is_mlo_vdev cb);
+#else /* !WLAN_FEATURE_MULTI_LINK_SAP */
+static inline void
+ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
+			    wlan_ipa_is_mlo_vdev cb)
+{
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
+#else /* !IPA_OFFLOAD */
 static inline void ucfg_ipa_set_pld_enable(bool flag)
 {
 }
@@ -865,5 +884,10 @@ static inline bool ucfg_ipa_get_shared_smmu_enable(void)
 	return false;
 }
 
+static inline void
+ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
+			    wlan_ipa_is_mlo_vdev cb)
+{
+}
 #endif /* IPA_OFFLOAD */
 #endif /* _WLAN_IPA_UCFG_API_H_ */

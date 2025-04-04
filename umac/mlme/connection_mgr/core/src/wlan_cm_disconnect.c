@@ -25,9 +25,7 @@
 #include "wlan_utility.h"
 #include "wlan_scan_api.h"
 #include "wlan_crypto_global_api.h"
-#ifdef CONN_MGR_ADV_FEATURE
 #include "wlan_dlm_api.h"
-#endif
 #include <wlan_mlo_mgr_sta.h>
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_peer.h>
@@ -330,6 +328,9 @@ QDF_STATUS cm_disconnect_start(struct cnx_mgr *cm_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
+	mlo_link_recfg_abort_if_in_progress(cm_ctx->vdev,
+					    is_link_switch_discon);
+
 	if (wlan_vdev_mlme_is_mlo_vdev(cm_ctx->vdev) && !is_link_switch_discon)
 		mlo_internal_disconnect_links(cm_ctx->vdev);
 
@@ -521,7 +522,6 @@ cm_handle_rso_stop_rsp(struct wlan_objmgr_vdev *vdev,
 				   sizeof(*req), req);
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 static void
 cm_inform_dlm_disconnect_complete(struct wlan_objmgr_vdev *vdev,
 				  struct wlan_cm_discon_rsp *resp)
@@ -539,13 +539,6 @@ cm_inform_dlm_disconnect_complete(struct wlan_objmgr_vdev *vdev,
 	wlan_dlm_update_bssid_connect_params(pdev, resp->req.req.bssid,
 					     DLM_AP_DISCONNECTED);
 }
-
-#else
-static inline void
-cm_inform_dlm_disconnect_complete(struct wlan_objmgr_vdev *vdev,
-				  struct wlan_cm_discon_rsp *resp)
-{}
-#endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE

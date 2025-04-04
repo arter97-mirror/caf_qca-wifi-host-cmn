@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2251,9 +2251,7 @@ QDF_STATUS mlme_vdev_sm_create(struct vdev_mlme_obj *vdev_mlme)
 	uint8_t name[WLAN_SM_ENGINE_MAX_NAME];
 	struct wlan_objmgr_vdev *vdev = vdev_mlme->vdev;
 
-	qdf_scnprintf(name, sizeof(name), "VM-PS_%d-VD_%d",
-		      wlan_psoc_get_id(wlan_vdev_get_psoc(vdev)),
-		      wlan_vdev_get_id(vdev));
+	qdf_scnprintf(name, sizeof(name), "VM-%d", wlan_vdev_get_id(vdev));
 	sm = wlan_sm_create(name, vdev_mlme,
 			    WLAN_VDEV_S_INIT,
 			    sm_info,

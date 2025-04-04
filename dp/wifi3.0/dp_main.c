@@ -11537,6 +11537,10 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 		wlan_dp_lapb_display_stats(soc);
 		break;
 
+	case CDP_TXRX_SOC_STATS:
+		dp_print_txrx_soc_stats(soc);
+		break;
+
 	default:
 		status = QDF_STATUS_E_INVAL;
 		break;
@@ -13847,7 +13851,6 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 #ifdef QCA_MULTIPASS_SUPPORT
 	.txrx_peer_set_vlan_id = dp_peer_set_vlan_id,
-	.txrx_peer_set_hw_accel_flag = dp_peer_set_hw_accel_flag,
 #endif /*QCA_MULTIPASS_SUPPORT*/
 #if defined(WLAN_FEATURE_TSF_AUTO_REPORT) || defined(WLAN_CONFIG_TX_DELAY)
 	.txrx_set_delta_tsf = dp_set_delta_tsf,
@@ -15688,13 +15691,17 @@ uint16_t dp_get_peer_mac_list(ol_txrx_soc_handle soc, uint8_t vdev_id,
 
 uint16_t dp_get_peer_id(ol_txrx_soc_handle soc, uint8_t vdev_id, uint8_t *mac)
 {
-	struct dp_peer *peer = dp_peer_find_hash_find((struct dp_soc *)soc,
-						       mac, 0, vdev_id,
-						       DP_MOD_ID_CDP);
+	struct dp_soc *dp_soc = (struct dp_soc *)soc;
+	struct cdp_peer_info peer_info = {0};
 	uint16_t peer_id = HTT_INVALID_PEER;
+	struct dp_peer *peer;
 
+	DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, mac, false,
+				 CDP_WILD_PEER_TYPE);
+
+	peer = dp_peer_hash_find_wrapper(dp_soc, &peer_info, DP_MOD_ID_CDP);
 	if (!peer) {
-		dp_cdp_debug("%pK: Peer is NULL!", (struct dp_soc *)soc);
+		dp_cdp_debug("%pK: Peer is NULL!", dp_soc);
 		return peer_id;
 	}
 

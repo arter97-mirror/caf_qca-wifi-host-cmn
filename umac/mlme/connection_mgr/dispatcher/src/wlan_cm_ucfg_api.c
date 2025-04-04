@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -24,9 +24,7 @@
 #include <wlan_cm_ucfg_api.h>
 #include "connection_mgr/core/src/wlan_cm_main_api.h"
 #include <wlan_reg_services_api.h>
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_ucfg.h"
-#endif
 
 QDF_STATUS ucfg_cm_start_connect(struct wlan_objmgr_vdev *vdev,
 				 struct wlan_cm_connect_req *req)
@@ -141,7 +139,7 @@ bool ucfg_cm_is_link_switch_connect_resp(struct wlan_cm_connect_resp *resp)
 	return cm_is_link_switch_connect_resp(resp);
 }
 
-#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_POLICY_MGR_ENABLE)
+#ifdef WLAN_FEATURE_11BE_MLO
 QDF_STATUS ucfg_cm_handle_legacy_conn_fail(struct wlan_objmgr_psoc *psoc,
 					   uint8_t vdev_id)
 {

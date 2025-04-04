@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,10 +29,8 @@
 #include <wlan_objmgr_psoc_obj_i.h>
 #include "wlan_utility.h"
 #include "wlan_ll_sap_api.h"
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
 #include "wlan_policy_mgr_ll_sap.h"
-#endif
 #include <wlan_reg_services_api.h>
 #ifdef WLAN_FEATURE_VDEV_DCS
 #include "wlan_mlme_api.h"
@@ -883,19 +881,6 @@ void wlan_dcs_disable_timer_fn(void *dcs_timer_args)
 	wlan_dcs_set_algorithm_process(psoc, pdev_id, true);
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
-static bool wlan_dcs_is_vdev_ll_lt_sap(struct wlan_objmgr_psoc *psoc,
-				       uint32_t vdev_id)
-{
-	return policy_mgr_is_vdev_ll_lt_sap(psoc, vdev_id);
-}
-#else
-static bool wlan_dcs_is_vdev_ll_lt_sap(struct wlan_objmgr_psoc *psoc,
-				       uint32_t vdev_id)
-{
-	return false;
-}
-#endif
 /**
  * wlan_dcs_frequency_control() - dcs frequency control handling
  * @psoc: psoc pointer
@@ -931,7 +916,7 @@ static void wlan_dcs_frequency_control(struct wlan_objmgr_psoc *psoc,
 	current_time = qdf_get_system_timestamp();
 	if ((dcs_freq_ctrl_params->dcs_happened_count >=
 		dcs_freq_ctrl_params->disable_threshold_per_5mins) &&
-	     !wlan_dcs_is_vdev_ll_lt_sap(psoc, event->dcs_param.vdev_id)) {
+	     !policy_mgr_is_vdev_ll_lt_sap(psoc, event->dcs_param.vdev_id)) {
 		delta_pos =
 			dcs_freq_ctrl_params->dcs_happened_count -
 			dcs_freq_ctrl_params->disable_threshold_per_5mins;
@@ -1032,7 +1017,6 @@ wlan_dcs_switch_chan(struct wlan_objmgr_vdev *vdev, qdf_freq_t tgt_freq,
 	return switch_chan_cb(vdev, tgt_freq, tgt_width);
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * wlan_dcs_get_pcl_for_sap() - get preferred channel list for SAP
  * @vdev: vdev ptr
@@ -1094,48 +1078,6 @@ static uint32_t wlan_dcs_get_pcl_for_sap(struct wlan_objmgr_vdev *vdev,
 	qdf_mem_free(pcl);
 	return j;
 }
-#else
-static uint32_t wlan_dcs_get_pcl_for_sap(struct wlan_objmgr_vdev *vdev,
-					 qdf_freq_t *freq_list,
-					 uint32_t freq_list_sz)
-{
-	struct wlan_objmgr_pdev *pdev;
-	struct regulatory_channel *cur_chan_list;
-	qdf_freq_t freq;
-	enum channel_state state;
-	int i, j;
-
-	pdev = wlan_vdev_get_pdev(vdev);
-	if (!pdev)
-		return 0;
-
-	cur_chan_list = qdf_mem_malloc(NUM_CHANNELS *
-			sizeof(struct regulatory_channel));
-	if (!cur_chan_list)
-		return 0;
-
-	if (wlan_reg_get_current_chan_list(pdev, cur_chan_list) !=
-					   QDF_STATUS_SUCCESS) {
-		qdf_mem_free(cur_chan_list);
-		return 0;
-	}
-
-	for (i = 0, j = 0; i < NUM_CHANNELS && i < freq_list_sz; i++) {
-		freq = cur_chan_list[i].center_freq;
-		state = wlan_reg_get_channel_state_for_pwrmode(
-						       pdev,
-						       freq,
-						       REG_CURRENT_PWR_MODE);
-		if (state != CHANNEL_STATE_ENABLE)
-			continue;
-
-		freq_list[j++] = freq;
-	}
-
-	qdf_mem_free(cur_chan_list);
-	return j;
-}
-#endif
 
 /**
  * wlan_dcs_awgn_get_intf_for_seg() - get interference for specified segment
@@ -1962,28 +1904,6 @@ wlan_dcs_afc_sap_dcs_with_sta(struct wlan_objmgr_pdev *pdev,
 	}
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
-/**
- * wlan_dcs_afc_6ghz_capable() - API to check SAP configure is able to operate
- *                               on 6 GHz
- * @psoc: pointer to SOC
- * @vdev_id: vdev id
- *
- * Return: Return true if SAP is able to operate on 6 GHz
- */
-static inline bool
-wlan_dcs_afc_6ghz_capable(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
-{
-	return policy_mgr_get_ap_6ghz_capable(psoc, vdev_id, NULL);
-}
-#else
-static inline bool
-wlan_dcs_afc_6ghz_capable(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
-{
-	return false;
-}
-#endif
-
 /**
  * wlan_dcs_afc_5ghz6ghz_sap_dcs() - SAP on 5 GHz or 6 GHz channel to do
  * channel switch.
@@ -2053,9 +1973,9 @@ wlan_dcs_afc_5ghz6ghz_sap_dcs(struct wlan_objmgr_pdev *pdev,
 	if (WLAN_REG_IS_6GHZ_CHAN_FREQ(target_freq) &&
 	    conn_info->sap_5ghz_cnt) {
 		for (i = 0; i < conn_info->sap_5ghz_cnt; i++) {
-			if (!wlan_dcs_afc_6ghz_capable(
+			if (!policy_mgr_get_ap_6ghz_capable(
 			    wlan_pdev_get_psoc(pdev),
-			    conn_info->sap_5ghz[i].vdev_id)) {
+			    conn_info->sap_5ghz[i].vdev_id, NULL)) {
 				dcs_debug("vdev %d has no 6 GHz capability",
 					  conn_info->sap_5ghz[i].vdev_id);
 				return;

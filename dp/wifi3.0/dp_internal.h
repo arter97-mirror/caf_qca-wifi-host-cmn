@@ -1750,6 +1750,9 @@ static inline int dp_log2_ceil(unsigned int value)
 static inline void dp_set_peer_isolation(struct dp_txrx_peer *txrx_peer,
 					 bool val)
 {
+	if (!txrx_peer->vlan_id)
+		return;
+
 	txrx_peer->isolation = val;
 }
 
@@ -3870,6 +3873,14 @@ char *dp_srng_get_str_from_hal_ring_type(enum hal_ring_type ring_type);
 void dp_txrx_path_stats(struct dp_soc *soc);
 
 /**
+ * dp_print_txrx_soc_stats() - Function to display soc tx rx stats
+ * @soc: soc handle
+ *
+ * Return: none
+ */
+void dp_print_txrx_soc_stats(struct dp_soc *soc);
+
+/**
  * dp_print_per_ring_stats(): Packet count per ring
  * @soc: soc handle
  *
@@ -4501,6 +4512,25 @@ dp_hal_srng_access_end(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
 	hal_srng_access_end(soc, hal_ring_hdl);
 }
 #endif
+
+static inline int dp_hal_srng_try_access_start(hal_soc_handle_t hal_soc_hdl,
+					       hal_ring_handle_t hal_ring_hdl,
+					       uint32_t timeout_ns)
+{
+	qdf_ktime_t timeout = qdf_ktime_add_ns(qdf_ktime_get(), timeout_ns);
+	int ret;
+
+	do {
+		ret = hal_srng_try_access_start(hal_soc_hdl, hal_ring_hdl);
+		if (!ret)
+			break;
+	} while (qdf_ktime_compare(qdf_ktime_get(), timeout) < 0);
+
+	if (ret)
+		return -ETIMEDOUT;
+
+	return ret;
+}
 
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 /**

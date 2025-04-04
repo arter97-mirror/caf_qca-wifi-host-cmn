@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1261,3 +1261,28 @@ void wlan_psoc_ipa_evt_wq_detach(struct wlan_objmgr_psoc *psoc)
 
 qdf_export_symbol(wlan_psoc_ipa_evt_wq_detach);
 #endif
+
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+void
+ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev, wlan_ipa_is_mlo_vdev cb)
+{
+	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
+	struct wlan_ipa_priv *ipa_obj;
+
+	if (!ipa_config_is_enabled()) {
+		ipa_debug("ipa is disabled");
+		return;
+	}
+
+	if (!ipa_cb_is_ready())
+		return;
+
+	ipa_obj = ipa_psoc_get_priv_obj(psoc);
+	if (!ipa_obj) {
+		ipa_err("IPA object is NULL");
+		return;
+	}
+
+	wlan_ipa_reg_is_mlo_vdev_cb(ipa_obj, cb);
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */

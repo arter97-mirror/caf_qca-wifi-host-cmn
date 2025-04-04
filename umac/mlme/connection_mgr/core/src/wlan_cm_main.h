@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -149,9 +149,7 @@ struct cm_connect_req {
 	uint8_t cur_candidate_retries;
 	uint8_t connect_attempts;
 	qdf_time_t connect_active_time;
-#ifdef CONN_MGR_ADV_FEATURE
 	struct wlan_cm_connect_resp *first_candidate_rsp;
-#endif
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct cm_nontx_mbssid_scan_params nontx_scan_req;
 #endif
@@ -304,12 +302,6 @@ struct cnx_mgr {
 	cm_ext_t *ext_cm_ptr;
 #ifdef SM_ENG_HIST_ENABLE
 	struct cm_req_history req_history;
-#endif
-#ifndef CONN_MGR_ADV_FEATURE
-	void (*cm_candidate_advance_filter)(struct wlan_objmgr_vdev *vdev,
-					    struct scan_filter *filter);
-	void (*cm_candidate_list_custom_sort)(struct wlan_objmgr_vdev *vdev,
-					      qdf_list_t *list);
 #endif
 };
 

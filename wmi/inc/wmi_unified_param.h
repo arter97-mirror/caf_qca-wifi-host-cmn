@@ -1444,6 +1444,8 @@ struct wmi_link_reconfig_req_params {
  *                           for the peer due to link switch
  * @link_add_in_progress: Flag to indicate FW MLO peer assoc
  * for link add purpose
+ * @ext_mld_cap_and_op_support: Indicate if Extended MLD cap supported
+ * @emlsr_one_link_support: Indicate if single link EMLSR supported
  * @unused: spare bits
  * @mld_mac: MLD mac address
  * @logical_link_index: Unique index for links of the mlo. Starts with Zero
@@ -1480,7 +1482,9 @@ struct peer_assoc_mlo_params {
 		 mlo_bridge_peer:1,
 		 link_switch_in_progress:1,
 		 link_add_in_progress:1,
-		 unused:18;
+		 ext_mld_cap_and_op_support:1,
+		 emlsr_one_link_support:1,
+		 unused:16;
 	uint8_t mld_mac[QDF_MAC_ADDR_SIZE];
 	uint32_t logical_link_index;
 	uint32_t ml_peer_id;
@@ -7238,6 +7242,9 @@ struct target_feature_set {
  * @con_mode_monitor: Device is in Full monitor mode
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
  * @enable_optimize_power: Enable power optimization
+ * @max_ml_sap_num_bss: Max sap bss
+ * @max_ml_sta_num_bss: Max sta bss
+ * @max_ml_bss_num: Max ml bss
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7384,6 +7391,9 @@ typedef struct {
 	bool mgmt_rx_srng_support;
 #endif
 	bool enable_optimize_power;
+	uint8_t max_ml_sap_num_bss;
+	uint8_t max_ml_sta_num_bss;
+	uint8_t max_ml_bss_num;
 } target_resource_config;
 
 /**
@@ -9830,6 +9840,7 @@ struct wmi_roam_result {
  *  @num_rpt: Number of report element
  *  @is_mlo: Flag to check if the current connection is MLO connection
  *  @band: indicates the link involved in MLO conenection.
+ *  @tx_status: TX status of the transmitted frame.
  */
 struct wmi_neighbor_report_data {
 	bool present;
@@ -9846,6 +9857,7 @@ struct wmi_neighbor_report_data {
 	uint8_t num_rpt;
 	bool is_mlo;
 	uint8_t band;
+	uint8_t tx_status;
 };
 
 /**

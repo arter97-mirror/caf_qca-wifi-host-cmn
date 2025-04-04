@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -26,6 +26,34 @@
 #include <dp_rx.h>
 #include "hal_be_rx.h"
 #include "hal_be_rx_tlv.h"
+
+#ifdef AST_OFFLOAD_ENABLE
+void
+dp_rx_wds_learn(struct dp_soc *soc,
+		struct dp_vdev *vdev,
+		uint8_t *rx_tlv_hdr,
+		struct dp_txrx_peer *txrx_peer,
+		qdf_nbuf_t nbuf);
+#else
+static inline void
+dp_rx_wds_learn(struct dp_soc *soc,
+		struct dp_vdev *vdev,
+		uint8_t *rx_tlv_hdr,
+		struct dp_txrx_peer *txrx_peer,
+		qdf_nbuf_t nbuf)
+{
+	struct hal_rx_msdu_metadata msdu_metadata;
+
+	hal_rx_msdu_packet_metadata_get_generic_be(rx_tlv_hdr, &msdu_metadata);
+	/* WDS Source Port Learning */
+	if (qdf_likely(vdev->wds_enabled))
+		dp_rx_wds_srcport_learn(soc,
+					rx_tlv_hdr,
+					txrx_peer,
+					nbuf,
+					msdu_metadata);
+}
+#endif
 
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 
@@ -68,12 +96,27 @@ void dp_rx_word_mask_subscribe_be(struct dp_soc *soc,
 				  uint32_t *msg_word,
 				  void *rx_filter);
 
+#ifdef CONFIG_BORON
 /**
- * dp_rx_process_be() - Brain of the Rx processing functionality
- *		     Called from the bottom half (tasklet/NET_RX_SOFTIRQ)
+ * dp_rx_process_bn() - Rx processing functionality for BN
  * @int_ctx: per interrupt context
  * @hal_ring_hdl: opaque pointer to the HAL Rx Ring, which will be serviced
- * @reo_ring_num: ring number (0, 1, 2 or 3) of the reo ring.
+ * @reo_ring_num: ring number of the reo ring.
+ * @quota: No. of units (packets) that can be serviced in one shot.
+ *
+ * Return: uint32_t: No. of elements processed
+ */
+uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
+			  hal_ring_handle_t hal_ring_hdl,
+			  uint8_t reo_ring_num,
+			  uint32_t quota);
+
+/**
+ * dp_rx_process_be_bn() - Brain of the Rx processing functionality
+ *                   Called from the bottom half (tasklet/NET_RX_SOFTIRQ)
+ * @int_ctx: per interrupt context
+ * @hal_ring_hdl: opaque pointer to the HAL Rx Ring, which will be serviced
+ * @reo_ring_num: ring number of the reo ring.
  * @quota: No. of units (packets) that can be serviced in one shot.
  *
  * This function implements the core of Rx functionality. This is
@@ -81,9 +124,40 @@ void dp_rx_word_mask_subscribe_be(struct dp_soc *soc,
  *
  * Return: uint32_t: No. of elements processed
  */
+static inline
+uint32_t dp_rx_process_be_bn(struct dp_intr *int_ctx,
+			     hal_ring_handle_t hal_ring_hdl,
+			     uint8_t reo_ring_num,
+			     uint32_t quota)
+{
+	return dp_rx_process_bn(int_ctx, hal_ring_hdl,
+				reo_ring_num, quota);
+}
+#else
+/**
+ * dp_rx_process_be() - Rx processing functionality for BE
+ * @int_ctx: per interrupt context
+ * @hal_ring_hdl: opaque pointer to the HAL Rx Ring, which will be serviced
+ * @reo_ring_num: ring number of the reo ring.
+ * @quota: No. of units (packets) that can be serviced in one shot.
+ *
+ * Return: uint32_t: No. of elements processed
+ */
+
 uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
 			  uint32_t quota);
+
+static inline
+uint32_t dp_rx_process_be_bn(struct dp_intr *int_ctx,
+			     hal_ring_handle_t hal_ring_hdl,
+			     uint8_t reo_ring_num,
+			     uint32_t quota)
+{
+	return dp_rx_process_be(int_ctx, hal_ring_hdl,
+				reo_ring_num, quota);
+}
+#endif
 
 /**
  * dp_rx_desc_pool_init_be() - Initialize Rx Descriptor pool(s)

@@ -35,10 +35,8 @@
 #ifdef WLAN_POWER_MANAGEMENT_OFFLOAD
 #include <wlan_pmo_obj_mgmt_api.h>
 #endif
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include <wlan_dfs_utils_api.h>
 #include <wlan_policy_mgr_api.h>
-#endif
 #include "cfg_ucfg_api.h"
 #include "wlan_extscan_api.h"
 

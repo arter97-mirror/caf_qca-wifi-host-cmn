@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,6 +25,7 @@
 #include "hal_be_rx.h"	//HAL_RX_BUF_RBM_GET
 #include "rx_reo_queue_1k.h"
 #include "hal_be_rx_tlv.h"
+#include "hal_hw_headers.h"
 
 /*
  * The 4 bits REO destination ring value is defined as: 0: TCL

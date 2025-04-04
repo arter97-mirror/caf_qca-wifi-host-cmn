@@ -2864,11 +2864,42 @@ wlan_vdev_mlme_get_wfd_mode(struct wlan_objmgr_vdev *vdev)
 {
 	return vdev->vdev_mlme.wfd_mode;
 }
+
+/**
+ * wlan_vdev_set_wfd_mode() - set WFD mode in VDEV MLME object
+ * @vdev: VDEV object
+ * @wfd_mode: WFD mode
+ *
+ * Return: void
+ */
+void wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode);
+
+/**
+ * wlan_vdev_p2p_is_wfd_r2_mode() - This API checks whether P2P has WFD R2
+ * mode or not.
+ * @psoc: Pointer to PSOC object
+ * @vdev_id: VDEV ID
+ *
+ * Return: true if P2P is in WFD R2 mode, otherwise false
+ */
+bool wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc,
+				  uint8_t vdev_id);
 #else
 static inline uint8_t
 wlan_vdev_mlme_get_wfd_mode(struct wlan_objmgr_vdev *vdev)
 {
 	return 0xFF;
+}
+
+static inline void
+wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode)
+{
+}
+
+static inline bool
+wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
+{
+	return false;
 }
 #endif /* FEATURE_WLAN_SUPPORT_USD */
 #endif /* _WLAN_OBJMGR_VDEV_OBJ_H_*/

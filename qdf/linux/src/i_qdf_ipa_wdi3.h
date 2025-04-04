@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -335,6 +335,16 @@ typedef struct ipa_wdi_pipe_setup_info_smmu __qdf_ipa_wdi_pipe_setup_info_smmu_t
 #define __QDF_IPA_WDI_SETUP_INFO_CHIP_ID(txrx, chip_id)
 #define __QDF_IPA_WDI_SETUP_INFO_SMMU_CHIP_ID(txrx, chip_id)
 #endif
+
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+#define __QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(txrx, ver)	\
+	((((struct ipa_wdi_pipe_setup_info *)(txrx))->	\
+	  rx_peer_metadata_ver) = (ver))
+
+#define __QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(txrx, ver)	\
+	((((struct ipa_wdi_pipe_setup_info_smmu *)(txrx))->	\
+	  rx_peer_metadata_ver) = (ver))
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
 
 /**
  * __qdf_ipa_wdi_conn_in_params_t - information provided by

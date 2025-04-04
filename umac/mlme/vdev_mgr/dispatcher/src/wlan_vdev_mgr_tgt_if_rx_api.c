@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -34,9 +34,7 @@
 #include <include/wlan_psoc_mlme.h>
 #include <include/wlan_mlme_cmn.h>
 #include <wlan_vdev_mgr_utils_api.h>
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
-#endif
 
 void
 tgt_vdev_mgr_reset_response_timer_info(struct wlan_objmgr_psoc *psoc)
@@ -335,7 +333,6 @@ static void tgt_vdev_mgr_set_max_channel_switch_time(
 	}
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 static QDF_STATUS
 tgt_vdev_mgr_csa_received_handler(struct wlan_objmgr_psoc *psoc,
 				  uint8_t vdev_id,
@@ -358,15 +355,6 @@ tgt_vdev_mgr_csa_received_handler(struct wlan_objmgr_psoc *psoc,
 
 	return policy_mgr_sta_sap_dfs_scc_conc_check(psoc, vdev_id, csa_event);
 }
-#else
-static QDF_STATUS
-tgt_vdev_mgr_csa_received_handler(struct wlan_objmgr_psoc *psoc,
-				  uint8_t vdev_id,
-				  struct csa_offload_params *csa_event)
-{
-	return QDF_STATUS_E_NOSUPPORT;
-}
-#endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
 static QDF_STATUS

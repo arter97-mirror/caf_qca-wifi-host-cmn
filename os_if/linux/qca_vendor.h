@@ -3982,6 +3982,11 @@ enum qca_vendor_attr_scan_freq_list_scheme {
  * @QCA_ROAM_TRIGGER_REASON_EXTERNAL_SCAN: Set if the roam has to be triggered
  *	based on the scan results obtained from an external scan (not
  *	triggered to aim roaming)
+ * @QCA_ROAM_TRIGGER_REASON_WTC: Set if the roam has to be triggered
+ *	due to Wireless to Cellular BSS Transition Management (BTM) request.
+ * @QCA_ROAM_TRIGGER_REASON_BT_ACTIVITY: Set if the roam has to be triggered
+ *	due to Bluetooth connection is established when the station is connected
+ *	in the 2.4 GHz band.
  *
  * Set the corresponding roam trigger reason bit to consider it for roam
  * trigger.
@@ -4002,6 +4007,8 @@ enum qca_vendor_roam_triggers {
 	QCA_ROAM_TRIGGER_REASON_IDLE		= 1 << 10,
 	QCA_ROAM_TRIGGER_REASON_TX_FAILURES	= 1 << 11,
 	QCA_ROAM_TRIGGER_REASON_EXTERNAL_SCAN	= 1 << 12,
+	QCA_ROAM_TRIGGER_REASON_WTC	        = 1 << 13,
+	QCA_ROAM_TRIGGER_REASON_BT_ACTIVITY	= 1 << 14,
 };
 
 /*
@@ -4416,6 +4423,54 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	better Wi-Fi bands. E.g., STA would initially connect to a 2.4 GHz BSSID
  *	and would migrate to 5/6 GHz when it comes closer to the AP (high RSSI
  *	for 2.4 GHz BSS).
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_WEIGHTAGE_2P4GHZ: Unsigned 8-bit
+ *	value.
+ *	Represents the weightage in percentage (%) of the total score that is
+ *	given for the roam scan candidates present on the 2.4 GHz band. The
+ *	configuration is valid until next disconnection. If this attribute is
+ *	not present, the existing configuration shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_WEIGHTAGE_5GHZ: Unsigned 8-bit
+ *	value.
+ *	Represents the weightage in percentage (%) of the total score that is
+ *	given for the roam scan candidates present on the 5 GHz band.
+ *	The configuration is valid until next disconnection. If this attribute
+ *	is not present, the existing configuration shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_WEIGHTAGE_6GHZ: Unsigned 8-bit
+ *	value.
+ *	Represents the weightage in percentage (%) of the total score that is
+ *	given for the roam scan candidates present on the 6 GHz band.
+ *	The configuration is valid until next disconnection. If this attribute
+ *	is not present, the existing configuration shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_THRESHOLD_PERCENTAGE: Unsigned 8-bit
+ *	value.
+ *	This attribute indicates the minimum roam score difference in
+ *	percentage (%). The roam candidate AP will be ignored if the score
+ *	difference percentage between the roam candidate AP and the current
+ *	connected AP is less than current connected AP score roam score delta.
+ *	The configuration is valid until next disconnection.
+ *	If this attribute is not present, the existing configuration shall be
+ *	used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CONNECTED_LOW_RSSI_THRESHOLD_DECREMENT: Unsigned 8-bit
+ *	value in dB.
+ *	This attribute indicates the RSSI decrement value from the current low
+ *	RSSI threshold for the next low RSSI roam trigger when no candidate is
+ *	found during the current low RSSI roam trigger. This value is applicable
+ *	only for low RSSI roam triggers. This configuration is valid until next
+ *	disconnection. If this attribute is not present, the existing
+ *	configuration shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_PERIODIC_ROAM_SCAN_INTERVAL: Unsigned 32-bit
+ *	value in seconds.
+ *	This attribute defines the interval after which the next roam scan will
+ *	start if the current scan finds no candidates. The scan repeates at this
+ *	interval until a candidate is found.
+ *	This configuration is valid until next the next disconnection. If this
+ *	attribute is not present, the existing configuration shall be used.
  */
 enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_ENABLE = 1,
@@ -4440,6 +4495,12 @@ enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_FULL_SCAN_NO_REUSE_PARTIAL_SCAN_FREQ = 26,
 	QCA_ATTR_ROAM_CONTROL_FULL_SCAN_6GHZ_ONLY_ON_PRIOR_DISCOVERY = 27,
 	QCA_ATTR_ROAM_CONTROL_CONNECTED_HIGH_RSSI_OFFSET = 31,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_WEIGHTAGE_2P4GHZ = 32,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_WEIGHTAGE_5GHZ = 33,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_WEIGHTAGE_6GHZ = 34,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_THRESHOLD_PERCENTAGE = 35,
+	QCA_ATTR_ROAM_CONTROL_CONNECTED_LOW_RSSI_THRESHOLD_DECREMENT = 36,
+	QCA_ATTR_ROAM_CONTROL_PERIODIC_ROAM_SCAN_INTERVAL = 37,
 
 	/* keep last */
 	QCA_ATTR_ROAM_CONTROL_AFTER_LAST,
@@ -6818,6 +6879,22 @@ enum qca_wlan_vendor_attr_ndp_params {
 	QCA_WLAN_VENDOR_ATTR_NDP_SERVICE_ID = 31,
 	QCA_WLAN_VENDOR_ATTR_NDP_CSIA_CAPABILITIES = 32,
 	QCA_WLAN_VENDOR_ATTR_NDP_GTK_REQUIRED = 33,
+	/* Unsigned 32-bit attribute. Indicates the maximum latency of the NAN
+	 * data packets to be transmitted/received in milliseconds.
+	 * This attribute is optional, and it is configured for active NDP
+	 * session of a given NDP instance ID
+	 * %QCA_WLAN_VENDOR_ATTR_NDP_INSTANCE_ID using the command
+	 * %QCA_WLAN_VENDOR_NDP_SUB_CMD_UPDATE_CONFIG.
+	 */
+	QCA_WLAN_VENDOR_ATTR_NDP_MAX_LATENCY_MS = 34,
+	/* 32-bit unsigned value to indicate throughput in Mbps for the NDP
+	 * data of a given NDP session.
+	 * This attribute is optional, and it is configured for active NDP
+	 * session of a given NDP instance ID
+	 * %QCA_WLAN_VENDOR_ATTR_NDP_INSTANCE_ID using the command
+	 * %QCA_WLAN_VENDOR_NDP_SUB_CMD_UPDATE_CONFIG.
+	 */
+	QCA_WLAN_VENDOR_ATTR_NDP_TPUT = 35,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_NDP_PARAMS_AFTER_LAST,
@@ -6871,7 +6948,14 @@ enum qca_wlan_ndp_sub_cmd {
 	QCA_WLAN_VENDOR_ATTR_NDP_REQUEST_IND = 9,
 	QCA_WLAN_VENDOR_ATTR_NDP_CONFIRM_IND = 10,
 	QCA_WLAN_VENDOR_ATTR_NDP_END_IND = 11,
-	QCA_WLAN_VENDOR_ATTR_NDP_SCHEDULE_UPDATE_IND = 12
+	QCA_WLAN_VENDOR_ATTR_NDP_SCHEDULE_UPDATE_IND = 12,
+	/* Command to update dynamic configurations of active NDP sessions.
+	 * %QCA_WLAN_VENDOR_ATTR_NDP_INSTANCE_ID is a mandatory attribute and
+	 * at least one of the attributes
+	 * %QCA_WLAN_VENDOR_ATTR_NDP_MAX_LATENCY_MS and
+	 * %QCA_WLAN_VENDOR_ATTR_NDP_TPUT must be configured in this command.
+	 */
+	QCA_WLAN_VENDOR_NDP_SUB_CMD_UPDATE_CONFIG = 13,
 };
 
 /**

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4678,7 +4678,6 @@ QDF_STATUS wmi_unified_extract_obss_color_collision_info(
 		wmi_unified_t wmi_handle,
 		uint8_t *data, struct wmi_obss_color_collision_info *info);
 
-#ifdef CRYPTO_SET_KEY_CONVERGED
 /**
  * wlan_crypto_cipher_to_wmi_cipher() - Convert crypto cipher to WMI cipher
  * @crypto_cipher: cipher type in crypto format
@@ -4696,8 +4695,6 @@ uint8_t wlan_crypto_cipher_to_wmi_cipher(
  */
 enum cdp_sec_type wlan_crypto_cipher_to_cdp_sec_type(
 		enum wlan_crypto_cipher_type crypto_cipher);
-
-#endif
 
 /**
  * wmi_unified_send_mws_coex_req_cmd() - WMI function to send coex req cmd

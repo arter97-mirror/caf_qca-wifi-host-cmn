@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -138,29 +138,6 @@ void cdp_ppeds_entry_free(struct cdp_soc_t *soc, int32_t vp_num)
 	}
 	if (soc->ops->ppeds_ops->ppeds_entry_free)
 		soc->ops->ppeds_ops->ppeds_entry_free(soc, vp_num);
-}
-
-/**
- * cdp_ppesds_process_mpsk_exception() - MPSK exception in DS.
- * @soc: data path soc handle
- * @skb: socket buffer
- *
- * return: status of the API.
- */
-static inline
-bool cdp_ppesds_process_mpsk_exception(struct cdp_soc_t *soc,
-				       struct sk_buff *skb)
-{
-	if (!soc || !soc->ops || !soc->ops->ppeds_ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		return false;
-	}
-
-	if (soc->ops->ppeds_ops->ppeds_process_mpsk_exception)
-		return soc->ops->ppeds_ops->ppeds_process_mpsk_exception(soc, skb);
-
-	return false;
 }
 
 /**

@@ -31,9 +31,7 @@
 #ifdef FEATURE_WLAN_SCAN_PNO
 #include <host_diag_core_event.h>
 #endif
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include <wlan_policy_mgr_api.h>
-#endif
 #include <wlan_dfs_utils_api.h>
 #include <cfg_scan.h>
 
@@ -406,7 +404,6 @@ bool scm_is_scan_allowed(struct wlan_objmgr_vdev *vdev)
 	return true;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 /**
  * scm_update_dbs_scan_ctrl_ext_flag() - update dbs scan ctrl flags
  * @req: pointer to scan request
@@ -848,11 +845,15 @@ static inline void scm_update_5ghz_6ghz_chlist(struct scan_start_request *req,
 			 * else, skip only freq on same mac as intf_freq
 			 */
 			if (!intf_freq ||
-			    policy_mgr_2_freq_always_on_same_mac(
-					psoc, intf_freq,
-					req->scan_req.chan_list.chan[i].freq))
+			    (policy_mgr_2_freq_always_on_same_mac(psoc,
+								  intf_freq,
+								  req->scan_req.chan_list.chan[i].freq) &&
+			     (req->scan_req.chan_list.chan[i].freq != intf_freq)))
 				continue;
 		}
+		if (wlan_reg_is_dfs_for_freq(pdev, intf_freq) &&
+		    !policy_mgr_is_sta_sap_scc_allowed_on_dfs_chan(psoc))
+			continue;
 
 		req->scan_req.chan_list.chan[num_scan_channels++] =
 			req->scan_req.chan_list.chan[i];
@@ -974,24 +975,6 @@ static inline void scm_scan_chlist_concurrency_modify(
 		scm_filter_6g_and_indoor_freq(pdev, req);
 
 }
-#else
-static inline
-void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
-				       struct scan_start_request *req,
-				       struct wlan_scan_obj *scan_obj)
-{
-}
-
-static inline void
-scm_update_dbs_scan_ctrl_ext_flag(struct scan_start_request *req)
-{
-}
-
-static inline void scm_scan_chlist_concurrency_modify(
-	struct wlan_objmgr_vdev *vdev, struct scan_start_request *req)
-{
-}
-#endif
 
 /**
  * scm_update_channel_list() - update scan req params depending on dfs inis
@@ -1310,6 +1293,75 @@ scm_scan_req_update_params(struct wlan_objmgr_vdev *vdev,
 	wlan_scan_update_low_latency_profile_chnlist(vdev, req);
 }
 
+static inline void scm_dump_ssid_bssid_info(struct scan_req_params *req)
+{
+	uint32_t buff_len;
+	char *buff;
+	uint32_t len;
+	uint8_t idx;
+#define MAX_STRING_TO_PRINT 150
+
+	buff_len = MAX_STRING_TO_PRINT + 1;
+
+	buff = qdf_mem_malloc(buff_len);
+	if (!buff)
+		return;
+
+	len = 0;
+	for (idx = 0; idx < req->num_ssids; idx++) {
+		len += qdf_scnprintf(buff + len, buff_len - len,
+				     " " QDF_SSID_FMT,
+				     QDF_SSID_REF(req->ssid[idx].length,
+						  req->ssid[idx].ssid));
+		/* Print if we cannot add next SSID */
+		if (len + WLAN_SSID_MAX_LEN + 10 >= MAX_STRING_TO_PRINT) {
+			scm_nofl_debug("SSID :%s", buff);
+			len = 0;
+		}
+	}
+	if (len)
+		scm_nofl_debug("SSID :%s", buff);
+
+	len = 0;
+	for (idx = 0; idx < req->num_hint_s_ssid; idx++) {
+		len += qdf_scnprintf(buff + len, buff_len - len,
+				     " 0x%x[%d,0x%x]",
+				     req->hint_s_ssid[idx].short_ssid,
+				     WLAN_SCM_GET_FREQ_FROM_FREQ_FLAG(
+					     req->hint_s_ssid[idx].freq_flags),
+				     WLAN_SCM_GET_FLAG_FROM_FREQ_FLAG(
+					     req->hint_s_ssid[idx].freq_flags));
+		/* Print if we cannot add next S_SSID */
+		if (len + 30 >= MAX_STRING_TO_PRINT) {
+			scm_nofl_debug("S_SSID (s_ssid[freq,flag]):%s", buff);
+			len = 0;
+		}
+	}
+	if (len)
+		scm_nofl_debug("S_SSID (s_ssid[freq, flag]):%s", buff);
+
+	len = 0;
+	for (idx = 0; idx < req->num_hint_bssid; idx++) {
+		len += qdf_scnprintf(buff + len, buff_len - len,
+				     " " QDF_MAC_ADDR_FMT "[%d,0x%x]",
+				     QDF_MAC_ADDR_REF(
+					     req->hint_bssid[idx].bssid.bytes),
+				     WLAN_SCM_GET_FREQ_FROM_FREQ_FLAG(
+					     req->hint_bssid[idx].freq_flags),
+				     WLAN_SCM_GET_FLAG_FROM_FREQ_FLAG(
+					     req->hint_bssid[idx].freq_flags));
+		/* Print if we cannot add next H_BSSID */
+		if (len + 40 >= MAX_STRING_TO_PRINT) {
+			scm_nofl_debug("H_BSSID (bssid[freq,flag]):%s", buff);
+			len = 0;
+		}
+	}
+	if (len)
+		scm_nofl_debug("H_BSSID (bssid[freq,flag]):%s", buff);
+
+	qdf_mem_free(buff);
+}
+
 static inline void scm_print_scan_req_info(struct scan_req_params *req)
 {
 	uint32_t buff_len;
@@ -1319,6 +1371,7 @@ static inline void scm_print_scan_req_info(struct scan_req_params *req)
 	struct chan_list *chan_lst;
 #define MAX_SCAN_FREQ_TO_PRINT 25
 
+
 	scm_nofl_debug("Scan start: scan id %d vdev %d Dwell time: act %d pass %d act_2G %d act_6G %d pass_6G %d, probe time %d n_probes %d flags %x ext_flag %x events %x policy %d is_wb: %d pri %d",
 		       req->scan_id, req->vdev_id, req->dwell_time_active,
 		       req->dwell_time_passive, req->dwell_time_active_2g,
@@ -1327,16 +1380,15 @@ static inline void scm_print_scan_req_info(struct scan_req_params *req)
 		       req->scan_ctrl_flags_ext, req->scan_events,
 		       req->scan_policy_type, req->scan_f_wide_band,
 		       req->scan_priority);
-	scm_nofl_debug("Scan Type %d rest time: min %d max %d probe spacing %d idle %d probe delay %d scan offset %d burst duration %d adaptive dwell mode %d",
+	scm_nofl_debug("Scan Type %d rest time: min %d max %d probe spacing %d idle %d probe delay %d scan offset %d burst duration %d adaptive dwell mode %d SSID %d S_SSID %d H_BSSID %d",
 		       req->scan_type, req->min_rest_time, req->max_rest_time,
 		       req->probe_spacing_time, req->idle_time,
 		       req->probe_delay, req->scan_offset_time,
-		       req->burst_duration, req->adaptive_dwell_time_mode);
+		       req->burst_duration, req->adaptive_dwell_time_mode,
+		       req->num_ssids, req->num_hint_s_ssid,
+		       req->num_hint_bssid);
 
-	for (idx = 0; idx < req->num_ssids; idx++)
-		scm_nofl_debug("SSID[%d]: " QDF_SSID_FMT, idx,
-			       QDF_SSID_REF(req->ssid[idx].length,
-					    req->ssid[idx].ssid));
+	scm_dump_ssid_bssid_info(req);
 
 	chan_lst  = &req->chan_list;
 

@@ -18,6 +18,7 @@
 #define WLAN_IPA_POST_HOST_LOG 0x001
 #define WLAN_IPA_SHUTDOWN_LOGGING_THREAD 0x002
 #define WLAN_IPA_MAX_WAIT_TIME 100
+#define WLAN_IPA_SLEEP_TIME 10
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 struct wlan_ipa_log_context g_ipa_logging_ctx;
@@ -109,12 +110,18 @@ QDF_STATUS wlan_ipa_send_to_userspace(bool flush_log)
 	int ret = 0;
 
 	str = g_ipa_logging_ctx.payload;
-	while (!qdf_list_empty(&g_ipa_logging_ctx.filled_list) &&
+	while (g_ipa_log_msg &&
+	       !qdf_list_empty(&g_ipa_logging_ctx.filled_list) &&
 	       (wlan_ipa_is_logging_thread_running() || flush_log)) {
 		qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
 		qdf_list_remove_front(&g_ipa_logging_ctx.filled_list,
 				      (qdf_list_node_t **)&curr_node);
 		qdf_spin_unlock_bh(&g_ipa_logging_ctx.lock);
+		if (!curr_node) {
+			ipa_err_rl("log msg freed already");
+			continue;
+		}
+
 		if (len + qdf_str_len(curr_node->logbuf) +
 		    sizeof(struct nl_msg_header) >
 		    WLAN_IPA_LOG_MSG_LENGTH_MAX) {
@@ -187,6 +194,7 @@ static inline int wlan_ipa_logging_thread(void *arg)
 		}
 	}
 
+	g_ipa_logging_ctx.thread_state = WLAN_IPA_LOGGING_THREAD_CANCELLED;
 	ipa_info("exit ipa logging thread");
 	return 0;
 }
@@ -250,6 +258,8 @@ QDF_STATUS wlan_ipa_logging_sock_init(void)
 
 void wlan_ipa_logging_sock_deinit(void)
 {
+	int wait_count = 0;
+
 	ipa_info("Deinit IPA logging infra");
 	if (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
 		qdf_atomic_set_bit(WLAN_IPA_POST_HOST_LOG,
@@ -265,8 +275,16 @@ void wlan_ipa_logging_sock_deinit(void)
 	qdf_atomic_clear_bit(WLAN_IPA_POST_HOST_LOG,
 			     &g_ipa_logging_ctx.event_flag);
 	qdf_wake_up_interruptible(&g_ipa_logging_ctx.wait_q);
-	g_ipa_logging_ctx.thread_state =
-		WLAN_IPA_LOGGING_THREAD_CANCELLED;
+	while (g_ipa_logging_ctx.thread_state !=
+	       WLAN_IPA_LOGGING_THREAD_CANCELLED) {
+		qdf_sleep(WLAN_IPA_SLEEP_TIME);
+		wait_count++;
+		if (wait_count > WLAN_IPA_MAX_WAIT_TIME) {
+			ipa_err("IPA thread failed to cancel");
+			break;
+		}
+	}
+
 	if (!qdf_list_empty(&g_ipa_logging_ctx.filled_list)) {
 		ipa_err("send log from deinit");
 		wlan_ipa_send_to_userspace(true);
@@ -274,6 +292,7 @@ void wlan_ipa_logging_sock_deinit(void)
 
 	qdf_spinlock_destroy(&g_ipa_logging_ctx.lock);
 	qdf_mem_free(g_ipa_log_msg);
+	g_ipa_log_msg = NULL;
 }
 
 static inline

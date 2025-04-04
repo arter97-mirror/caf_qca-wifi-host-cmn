@@ -365,12 +365,17 @@ uint8_t *peer_assoc_add_mlo_params(uint8_t *buf_ptr,
 	mlo_params->recommended_max_num_simultaneous_links =
 		req->mlo_params.rec_max_simultaneous_links;
 
+	if (req->mlo_params.ext_mld_cap_and_op_support)
+		WMI_MLO_FLAGS_SET_SINGLE_LINK_EMLSR_EN(
+				mlo_params->mlo_flags.mlo_flags,
+				req->mlo_params.emlsr_one_link_support);
+
 	wmi_debug("emlsr_support %d mlo_flags 0x%x logical_link_index %d mld_peer_id %d ieee_link_id %d "
 		  "emlsr_trans_timeout_us %d emlsr_trans_delay_us %d "
 		  "emlsr_padding_delay_us %d msd_dur_subfield %d msd_ofdm_ed_thr %d msd_max_num_txops %d "
 		  "max_num_simultaneous_links %d nstr_bitmap_present %d nstr_bitmap_size %d "
 		  "mlo_link_switch %d mlo_link_add %d "
-		  "nstr_indication_bitmap 0x%x MLD addr " QDF_MAC_ADDR_FMT,
+		  "nstr_indication_bitmap 0x%x single link emlsr %d MLD addr " QDF_MAC_ADDR_FMT,
 		  mlo_params->mlo_flags.emlsr_support,
 		  mlo_params->mlo_flags.mlo_flags,
 		  mlo_params->logical_link_index,
@@ -385,6 +390,7 @@ uint8_t *peer_assoc_add_mlo_params(uint8_t *buf_ptr,
 		  mlo_params->mlo_flags.mlo_link_switch,
 		  mlo_params->mlo_flags.mlo_link_add,
 		  mlo_params->nstr_indication_bitmap,
+		  mlo_params->mlo_flags.single_link_emlsr_en,
 		  QDF_MAC_ADDR_REF(req->mlo_params.mld_mac));
 
 	return buf_ptr + sizeof(wmi_peer_assoc_mlo_params);
@@ -629,6 +635,9 @@ force_reason_host_to_fw(enum mlo_link_force_reason host_reason,
 		break;
 	case MLO_LINK_FORCE_REASON_LINK_DELETE:
 		*fw_reason = WMI_MLO_LINK_FORCE_REASON_LINK_DELETE;
+		break;
+	case MLO_LINK_FORCE_REASON_SINGLE_LINK_EMLSR_OP:
+		*fw_reason = WMI_MLO_LINK_FORCE_REASON_SINGLE_LINK_EMLSR_OP;
 		break;
 	default:
 		wmi_err("Invalid force reason: %d", host_reason);

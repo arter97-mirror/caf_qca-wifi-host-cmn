@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -85,9 +85,7 @@
 #include "qdf_module.h"
 
 #include <target_if_cp_stats.h>
-#ifdef CRYPTO_SET_KEY_CONVERGED
 #include <target_if_crypto.h>
-#endif
 #include <target_if_vdev_mgr_tx_ops.h>
 
 #ifdef FEATURE_COEX
@@ -402,18 +400,12 @@ static QDF_STATUS target_if_green_ap_tx_ops_register(
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* WLAN_SUPPORT_GREEN_AP */
-#if defined(CRYPTO_SET_KEY_CONVERGED)
+
 static void target_if_crypto_tx_ops_register(
 				struct wlan_lmac_if_tx_ops *tx_ops)
 {
 	target_if_crypto_register_tx_ops(tx_ops);
 }
-#else
-static inline void target_if_crypto_tx_ops_register(
-				struct wlan_lmac_if_tx_ops *tx_ops)
-{
-}
-#endif
 
 #ifdef FEATURE_COEX
 static QDF_STATUS

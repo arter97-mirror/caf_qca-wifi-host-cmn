@@ -23,18 +23,14 @@
 #include "wlan_scan_api.h"
 #include "wlan_cm_roam.h"
 #include "wlan_cm_sm.h"
-#ifdef WLAN_POLICY_MGR_ENABLE
 #include "wlan_policy_mgr_api.h"
 #include "wlan_policy_mgr_ucfg.h"
-#endif
 #include <wlan_serialization_api.h>
-#ifdef CONN_MGR_ADV_FEATURE
 #include "wlan_dlm_api.h"
 #include "wlan_cm_roam_api.h"
 #include "wlan_tdls_api.h"
 #include "wlan_mlo_t2lm.h"
 #include "wlan_t2lm_api.h"
-#endif
 #include <wlan_utility.h>
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_peer.h>
@@ -351,7 +347,6 @@ cm_send_connect_start_fail(struct cnx_mgr *cm_ctx,
 	return status;
 }
 
-#ifdef WLAN_POLICY_MGR_ENABLE
 static void
 cm_cont_connect_for_event(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 			  wlan_cm_id cm_id, enum wlan_cm_sm_evt event)
@@ -451,15 +446,6 @@ static QDF_STATUS cm_check_for_hw_mode_change(struct wlan_objmgr_psoc *psoc,
 	return policy_mgr_change_hw_mode_sta_connect(psoc, scan_list, vdev_id,
 						     connect_id);
 }
-#else
-static inline
-QDF_STATUS cm_check_for_hw_mode_change(struct wlan_objmgr_psoc *psoc,
-				       qdf_list_t *scan_list, uint8_t vdev_id,
-				       uint8_t connect_id)
-{
-	return QDF_STATUS_E_ALREADY;
-}
-#endif /* WLAN_POLICY_MGR_ENABLE */
 
 #ifdef WLAN_FEATURE_LL_LT_SAP
 void cm_bearer_switch_resp(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
@@ -771,7 +757,6 @@ QDF_STATUS cm_if_mgr_validate_candidate(struct cnx_mgr *cm_ctx,
 				    &event_data);
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 #ifdef WLAN_FEATURE_FILS_SK
 /*
  * cm_create_fils_realm_hash: API to create hash using realm
@@ -1241,149 +1226,6 @@ cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
 
 	return QDF_STATUS_SUCCESS;
 }
-#else
-static inline bool
-cm_is_any_other_vdev_connecting_disconnecting(struct cnx_mgr *cm_ctx,
-					      struct cm_req *cm_req)
-{
-	return false;
-}
-
-static inline
-bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
-				     struct cm_connect_req *req,
-				     struct wlan_cm_connect_resp *resp)
-{
-	return false;
-}
-
-static inline
-bool cm_is_time_allowed_for_connect_attempt(struct cnx_mgr *cm_ctx,
-					    struct cm_connect_req *req)
-{
-	return true;
-}
-
-static inline void cm_update_advance_filter(struct wlan_objmgr_pdev *pdev,
-					    struct cnx_mgr *cm_ctx,
-					    struct scan_filter *filter,
-					    struct cm_connect_req *cm_req)
-{
-	struct wlan_objmgr_vdev *vdev = cm_ctx->vdev;
-
-	if (cm_ctx->cm_candidate_advance_filter)
-		cm_ctx->cm_candidate_advance_filter(vdev, filter);
-}
-
-static void cm_update_security_filter(struct scan_filter *filter,
-				      struct wlan_cm_connect_req *req)
-{
-	if (!QDF_HAS_PARAM(req->crypto.auth_type, WLAN_CRYPTO_AUTH_WAPI) &&
-	    !QDF_HAS_PARAM(req->crypto.auth_type, WLAN_CRYPTO_AUTH_RSNA) &&
-	    !QDF_HAS_PARAM(req->crypto.auth_type, WLAN_CRYPTO_AUTH_WPA)) {
-		filter->ignore_auth_enc_type = 1;
-		return;
-	}
-
-	filter->authmodeset = req->crypto.auth_type;
-	filter->ucastcipherset = req->crypto.ciphers_pairwise;
-	filter->key_mgmt = req->crypto.akm_suites;
-	filter->mcastcipherset = req->crypto.group_cipher;
-	filter->mgmtcipherset = req->crypto.mgmt_ciphers;
-	cm_set_pmf_caps(req, filter);
-}
-
-static inline void cm_set_fils_wep_key(struct cnx_mgr *cm_ctx,
-				       struct wlan_cm_connect_resp *resp)
-{}
-
-QDF_STATUS
-cm_peer_create_on_bss_select_ind_resp(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
-{
-	struct cm_req *cm_req;
-
-	cm_req = cm_get_req_by_cm_id(cm_ctx, *cm_id);
-	if (!cm_req)
-		return QDF_STATUS_E_FAILURE;
-
-	/* Update vdev mlme mac address based on connection type */
-	cm_update_vdev_mlme_macaddr(cm_ctx, &cm_req->connect_req);
-
-	cm_create_bss_peer(cm_ctx, &cm_req->connect_req);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-QDF_STATUS cm_bss_select_ind_rsp(struct wlan_objmgr_vdev *vdev,
-				 QDF_STATUS status)
-{
-	struct cnx_mgr *cm_ctx;
-	QDF_STATUS qdf_status;
-	wlan_cm_id cm_id;
-	uint32_t prefix;
-	struct wlan_cm_connect_resp *resp;
-
-	cm_ctx = cm_get_cm_ctx(vdev);
-	if (!cm_ctx)
-		return QDF_STATUS_E_INVAL;
-
-	cm_id = cm_ctx->active_cm_id;
-	prefix = CM_ID_GET_PREFIX(cm_id);
-
-	if (prefix != CONNECT_REQ_PREFIX) {
-		mlme_err(CM_PREFIX_FMT "active req is not connect req",
-			 CM_PREFIX_REF(wlan_vdev_get_id(cm_ctx->vdev), cm_id));
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (QDF_IS_STATUS_SUCCESS(status)) {
-		qdf_status =
-			cm_sm_deliver_event(vdev,
-				WLAN_CM_SM_EV_BSS_SELECT_IND_SUCCESS,
-				sizeof(wlan_cm_id), &cm_id);
-		if (QDF_IS_STATUS_SUCCESS(qdf_status))
-			return qdf_status;
-
-		goto post_err;
-	}
-
-	/* In case of failure try with next candidate */
-	resp = qdf_mem_malloc(sizeof(*resp));
-	if (!resp) {
-		qdf_status = QDF_STATUS_E_NOMEM;
-		goto post_err;
-	}
-
-	cm_fill_failure_resp_from_cm_id(cm_ctx, resp, cm_id,
-					CM_BSS_SELECT_IND_FAILED);
-	qdf_status =
-		cm_sm_deliver_event(vdev,
-				    WLAN_CM_SM_EV_CONNECT_GET_NEXT_CANDIDATE,
-				    sizeof(*resp), resp);
-	qdf_mem_free(resp);
-	if (QDF_IS_STATUS_SUCCESS(qdf_status))
-		return qdf_status;
-
-post_err:
-	/*
-	 * If there is a event posting error it means the SM state is not in
-	 * JOIN ACTIVE (some new cmd has changed the state of SM), so just
-	 * complete the connect command.
-	 */
-	cm_connect_handle_event_post_fail(cm_ctx, cm_id);
-	return qdf_status;
-}
-
-static inline void cm_teardown_tdls(struct wlan_objmgr_vdev *vdev) {}
-
-static inline QDF_STATUS
-cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
-			    struct wlan_cm_connect_req *req)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-#endif /* CONN_MGR_ADV_FEATURE */
 
 static void cm_connect_prepare_scan_filter(struct wlan_objmgr_pdev *pdev,
 					   struct cnx_mgr *cm_ctx,
@@ -1792,7 +1634,6 @@ static QDF_STATUS cm_connect_get_candidates(struct wlan_objmgr_pdev *pdev,
 	return status;
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 				     struct cm_connect_req *cm_req,
 				     struct scan_cache_node *prev_candidate,
@@ -1875,15 +1716,6 @@ free_list:
 	if (candidate_list)
 		wlan_scan_purge_results(candidate_list);
 }
-#else
-static inline void
-cm_update_candidate_list(struct cnx_mgr *cm_ctx,
-			 struct cm_connect_req *cm_req,
-			 struct scan_cache_node *prev_candidate,
-			 bool *new_entry_added)
-{
-}
-#endif
 
 QDF_STATUS cm_if_mgr_inform_connect_complete(struct wlan_objmgr_vdev *vdev,
 					     QDF_STATUS connect_status)
@@ -2111,7 +1943,7 @@ connect_err:
 	return cm_send_connect_start_fail(cm_ctx, cm_req, reason);
 }
 
-#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
+#ifdef WLAN_FEATURE_11BE_MLO
 static void
 cm_modify_partner_info_based_on_dbs_or_sbs_mode(struct wlan_objmgr_vdev *vdev,
 						wlan_cm_id cm_id,
@@ -3142,7 +2974,6 @@ static bool cm_is_connect_id_reassoc_in_non_init(struct cnx_mgr *cm_ctx,
 	return is_reassoc;
 }
 
-#ifdef CONN_MGR_ADV_FEATURE
 /**
  * cm_osif_connect_complete() - This API will send the response to osif layer
  * @cm_ctx: connection manager context
@@ -3183,13 +3014,6 @@ static void cm_osif_connect_complete(struct cnx_mgr *cm_ctx,
 	if (QDF_IS_STATUS_SUCCESS(status))
 		cm_free_connect_rsp_ies(connect_rsp);
 }
-#else
-static void cm_osif_connect_complete(struct cnx_mgr *cm_ctx,
-				     struct wlan_cm_connect_resp *resp)
-{
-	mlme_cm_osif_connect_complete(cm_ctx->vdev, resp);
-}
-#endif
 
 QDF_STATUS cm_notify_connect_complete(struct cnx_mgr *cm_ctx,
 				      struct wlan_cm_connect_resp *resp,
@@ -3470,7 +3294,7 @@ post_err:
 	return qdf_status;
 }
 
-#if defined(CONN_MGR_ADV_FEATURE) && defined(WLAN_FEATURE_11BE_MLO)
+#ifdef WLAN_FEATURE_11BE_MLO
 QDF_STATUS cm_bss_peer_create_resp_mlo_attach(struct wlan_objmgr_vdev *vdev,
 					      struct qdf_mac_addr *peer_mac)
 {
@@ -3508,7 +3332,6 @@ QDF_STATUS cm_bss_peer_create_resp_mlo_attach(struct wlan_objmgr_vdev *vdev,
 }
 #endif
 
-#ifdef CONN_MGR_ADV_FEATURE
 static inline
 QDF_STATUS cm_bss_peer_delete_for_new_req(struct wlan_objmgr_vdev *vdev,
 					  struct cnx_mgr *cm_ctx,
@@ -3516,18 +3339,6 @@ QDF_STATUS cm_bss_peer_delete_for_new_req(struct wlan_objmgr_vdev *vdev,
 {
 	return mlme_cm_force_bss_peer_delete_req(vdev);
 }
-#else
-static inline
-QDF_STATUS cm_bss_peer_delete_for_new_req(struct wlan_objmgr_vdev *vdev,
-					  struct cnx_mgr *cm_ctx,
-					  wlan_cm_id cm_id)
-{
-	mlme_cm_bss_peer_delete_req(vdev);
-	cm_connect_handle_event_post_fail(cm_ctx, cm_id);
-
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 QDF_STATUS cm_bss_peer_create_rsp(struct wlan_objmgr_vdev *vdev,
 				  QDF_STATUS status,
@@ -3644,7 +3455,8 @@ cm_set_crypto_params_from_ie(struct wlan_cm_connect_req *req)
 
 	status = wlan_get_crypto_params_from_rsn_ie(&crypto_params,
 						    req->assoc_ie.ptr,
-						    req->assoc_ie.len);
+						    req->assoc_ie.len,
+						    NULL);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
 		cm_copy_crypto_prarams(&req->crypto, &crypto_params);
 		return;
@@ -3652,7 +3464,8 @@ cm_set_crypto_params_from_ie(struct wlan_cm_connect_req *req)
 
 	status = wlan_get_crypto_params_from_wpa_ie(&crypto_params,
 						    req->assoc_ie.ptr,
-						    req->assoc_ie.len);
+						    req->assoc_ie.len,
+						    NULL);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
 		cm_copy_crypto_prarams(&req->crypto, &crypto_params);
 		return;

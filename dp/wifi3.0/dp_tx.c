@@ -6597,24 +6597,73 @@ dp_reset_hwtx_ul_jitter(struct dp_vdev *vdev)
 #endif
 
 /**
+ * dp_tx_average_ul_delay() - calculate average ul delay
+ * @vdev: vdev handle
+ * @opt_dp: ul delay for opt_dp
+ * @val: pointer to store average delay
+ */
+static inline int
+dp_tx_average_ul_delay(struct dp_vdev *vdev, bool opt_dp, uint32_t *val)
+{
+	uint32_t curr_delay_accum;
+	uint32_t curr_pkts_accum;
+	uint32_t total_delay_accum;
+	uint32_t total_pkts_accum;
+	uint32_t *prev_delay_accum;
+	uint32_t *prev_pkts_accum;
+
+	if (opt_dp) {
+		prev_delay_accum =
+			&vdev->prev_delay_stats.prev_delay_accum_opt_dp;
+		prev_pkts_accum =
+			&vdev->prev_delay_stats.prev_pkt_accum_opt_dp;
+	} else {
+		prev_delay_accum =
+			&vdev->prev_delay_stats.prev_delay_accum_bus_bw;
+		prev_pkts_accum =
+			&vdev->prev_delay_stats.prev_pkt_accum_bus_bw;
+	}
+
+	/* Average uplink delay based on accumulated values on current window*/
+	curr_delay_accum = qdf_atomic_read(&vdev->ul_delay_accum);
+	curr_pkts_accum = qdf_atomic_read(&vdev->ul_pkts_accum);
+	if (curr_delay_accum < *prev_delay_accum)
+		total_delay_accum = (U32_MAX - *prev_delay_accum) +
+				    curr_delay_accum;
+	else
+		total_delay_accum = curr_delay_accum - *prev_delay_accum;
+
+	if (curr_pkts_accum < *prev_pkts_accum)
+		total_pkts_accum = (U32_MAX - *prev_pkts_accum) +
+				   curr_pkts_accum;
+	else
+		total_pkts_accum = curr_pkts_accum - *prev_pkts_accum;
+
+	if (total_pkts_accum)
+		*val = total_delay_accum / total_pkts_accum;
+	else
+		*val = 0;
+
+	*prev_delay_accum = curr_delay_accum;
+	*prev_pkts_accum = curr_pkts_accum;
+
+	return total_pkts_accum;
+}
+
+/**
  * dp_tx_report_tx_delay_to_fw() - Send Tx delay stats to FW
  * @vdev: Vdev handle
- * @avg_delay: Average delay
- * @pkts_accum: Number of packets
  *
  * Return: None
  */
 static inline void
-dp_tx_report_tx_delay_to_fw(struct dp_vdev *vdev, uint32_t avg_delay,
-			    uint32_t pkts_accum)
+dp_tx_report_tx_delay_to_fw(struct dp_vdev *vdev)
 {
 	struct dp_mlo_latency_stats stats = { 0 };
 	uint64_t current_time, report_interval;
 	QDF_STATUS status;
-
-	vdev->latency_stats.latency_avg =
-		(avg_delay + vdev->latency_stats.latency_avg) / 2;
-	vdev->latency_stats.pkts_accum += pkts_accum;
+	uint32_t pkts_accum = 0;
+	uint32_t avg_delay;
 
 	current_time = qdf_get_log_timestamp_usecs();
 	report_interval = current_time - vdev->latency_stats.last_report_time;
@@ -6622,11 +6671,13 @@ dp_tx_report_tx_delay_to_fw(struct dp_vdev *vdev, uint32_t avg_delay,
 	if (report_interval < vdev->latency_stats.report_interval * 1000)
 		return;
 
+	pkts_accum = dp_tx_average_ul_delay(vdev, false, &avg_delay);
+	if (!pkts_accum)
+		return;
+
 	stats.vdev_id = vdev->vdev_id;
-	stats.avg_latency_ms = vdev->latency_stats.latency_avg;
-	stats.num_of_tx_pkt = vdev->latency_stats.pkts_accum;
-	vdev->latency_stats.latency_avg = 0;
-	vdev->latency_stats.pkts_accum = 0;
+	stats.avg_latency_ms = avg_delay;
+	stats.num_of_tx_pkt = pkts_accum;
 	vdev->latency_stats.last_report_time = current_time;
 
 	dp_tx_update_jitter_stats(vdev, &stats);
@@ -6647,9 +6698,6 @@ QDF_STATUS dp_process_ul_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev;
-	uint32_t delay_accum;
-	uint32_t pkts_accum;
-	uint32_t avg_delay;
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev) {
@@ -6660,28 +6708,14 @@ QDF_STATUS dp_process_ul_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 	if (!qdf_atomic_read(&vdev->enable_ul_delay))
 		goto end;
 
-	/* Average uplink delay based on current accumulated values */
-	delay_accum = qdf_atomic_read(&vdev->ul_delay_accum);
-	pkts_accum = qdf_atomic_read(&vdev->ul_pkts_accum);
-	if (!pkts_accum)
-		goto end;
-
-	avg_delay = delay_accum / pkts_accum;
-
-	if (qdf_atomic_read(&vdev->tsf_ul_delay_report)) {
-		vdev->tsf_ul_delay_avg =
-			(avg_delay + vdev->tsf_ul_delay_avg) / 2;
+	if (qdf_atomic_read(&vdev->tsf_ul_delay_report))
 		dp_accumulate_hwtx_ul_jitter_tsf(vdev);
-	}
 
 	if (qdf_atomic_read(&vdev->latency_stats.enable_report)) {
 		dp_accumulate_hwtx_ul_jitter_fw(vdev);
-		dp_tx_report_tx_delay_to_fw(vdev, avg_delay, pkts_accum);
+		dp_tx_report_tx_delay_to_fw(vdev);
 	}
 
-	/* Reset accumulated values to 0 */
-	qdf_atomic_set(&vdev->ul_delay_accum, 0);
-	qdf_atomic_set(&vdev->ul_pkts_accum, 0);
 	dp_reset_hwtx_ul_jitter(vdev);
 
 end:
@@ -6804,9 +6838,7 @@ QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	*val = vdev->tsf_ul_delay_avg;
-	vdev->tsf_ul_delay_avg = 0;
-
+	dp_tx_average_ul_delay(vdev, true, val);
 	dp_tx_print_ul_delay_hist(vdev);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);

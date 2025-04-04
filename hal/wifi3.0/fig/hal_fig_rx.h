@@ -65,14 +65,6 @@
 
 #define HAL_REO_R0_CONFIG(soc, reg_val, reo_params)		\
 	do { \
-		reg_val &= \
-			~(HWIO_REO_R0_GENERAL_ENABLE_AGING_LIST_ENABLE_BMSK |\
-			HWIO_REO_R0_GENERAL_ENABLE_AGING_FLUSH_ENABLE_BMSK); \
-		reg_val |= \
-			HAL_SM(HWIO_REO_R0_GENERAL_ENABLE, \
-			       AGING_LIST_ENABLE, 1) |\
-			HAL_SM(HWIO_REO_R0_GENERAL_ENABLE, \
-			       AGING_FLUSH_ENABLE, 1);\
 		HAL_REG_WRITE((soc), \
 			      HWIO_REO_R0_GENERAL_ENABLE_ADDR(	\
 			      REO_REG_REG_BASE), \

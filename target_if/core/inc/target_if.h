@@ -2630,6 +2630,34 @@ uint16_t target_if_res_cfg_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl
 
 	return tgt_hdl->info.wlan_res_cfg.num_max_mlo_link_per_ml_bss;
 }
+
+static inline
+uint32_t target_psoc_get_max_ml_sap_num_bss(struct target_psoc_info *tgt_hdl)
+{
+	if (!tgt_hdl)
+		return 0;
+
+	return tgt_hdl->info.service_ext2_param.max_ml_sap_num_bss;
+}
+
+static inline
+uint32_t target_psoc_get_max_ml_sta_num_bss(struct target_psoc_info *tgt_hdl)
+{
+	if (!tgt_hdl)
+		return 0;
+
+	return tgt_hdl->info.service_ext2_param.max_ml_sta_num_bss;
+}
+
+static inline
+uint32_t target_psoc_get_max_ml_bss_num(struct target_psoc_info *tgt_hdl)
+{
+	if (!tgt_hdl)
+		return 0;
+
+	return tgt_hdl->info.service_ext2_param.max_ml_bss_num;
+}
+
 #else
 static inline
 uint32_t target_psoc_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl)
@@ -2638,10 +2666,30 @@ uint32_t target_psoc_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl)
 }
 
 static inline
-uint16_t target_if_res_cfg_get_num_max_mlo_link(struct target_psoc_info *tgt_hdl)
+uint16_t target_if_res_cfg_get_num_max_mlo_link(
+				struct target_psoc_info *tgt_hdl)
 {
 	return 0;
 }
+
+static inline
+uint32_t target_psoc_get_max_ml_sap_num_bss(struct target_psoc_info *tgt_hdl)
+{
+	return 0;
+}
+
+static inline
+uint32_t target_psoc_get_max_ml_sta_num_bss(struct target_psoc_info *tgt_hdl)
+{
+	return 0;
+}
+
+static inline
+uint32_t target_psoc_get_max_ml_bss_num(struct target_psoc_info *tgt_hdl)
+{
+	return 0;
+}
+
 #endif
 
 #ifdef WLAN_FEATURE_MULTI_LINK_SAP

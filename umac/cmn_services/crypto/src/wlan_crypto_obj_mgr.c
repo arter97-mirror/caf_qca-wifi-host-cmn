@@ -253,7 +253,6 @@ QDF_STATUS wlan_crypto_key_event_handler(struct wlan_objmgr_psoc *psoc,
 				   keys[i].link_id);
 			wlan_crypto_free_key(&keys[i].keys);
 			qdf_mem_zero(&keys[i], sizeof(*keys));
-			qdf_mem_free(&keys[i]);
 		}
 	}
 
@@ -722,7 +721,6 @@ void wlan_crypto_free_key(struct wlan_crypto_keys *crypto_key)
 	crypto_key->def_bigtk_tx_keyid = 0;
 }
 
-#ifdef CRYPTO_SET_KEY_CONVERGED
 void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_crypto_comp_priv *crypto_priv;
@@ -735,7 +733,6 @@ void wlan_crypto_free_vdev_key(struct wlan_objmgr_vdev *vdev)
 
 	wlan_crypto_free_key(&crypto_priv->crypto_key);
 }
-#endif
 
 void wlan_crypto_aquire_lock(void)
 {

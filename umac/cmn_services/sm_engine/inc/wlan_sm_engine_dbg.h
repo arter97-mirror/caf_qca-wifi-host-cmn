@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -51,11 +51,7 @@
 #define sm_engine_nofl_debug(params...) \
 	QDF_TRACE_DEBUG_NO_FL(QDF_MODULE_ID_SM_ENGINE, params)
 
-#ifdef CONN_MGR_ADV_FEATURE
 #define WLAN_SM_ENGINE_HISTORY_SIZE 15
-#else
-#define WLAN_SM_ENGINE_HISTORY_SIZE 50
-#endif /* CONN_MGR_ADV_FEATURE */
 
 struct wlan_sm;
 /**

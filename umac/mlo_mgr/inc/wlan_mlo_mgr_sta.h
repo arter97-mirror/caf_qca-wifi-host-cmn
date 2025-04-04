@@ -823,7 +823,6 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 			uint8_t link_id,
 			struct csa_offload_params *csa_param,
 			struct wlan_objmgr_vdev *vdev);
-
 /**
  * mlo_mgr_validate_connection_partner_links() - Validate the partner links
  * info in mlo dev ctx.
@@ -844,6 +843,15 @@ QDF_STATUS mlo_sta_handle_csa_standby_link(
 void
 mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
 					  struct mlo_partner_info *partner_info);
+/**
+ * mlo_mgr_standby_link_csa_notify - wrapper api to invoke hdd callback for
+ *                                   chan switch notification.
+ * @link_mac_address: standby link mac address
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_mgr_standby_link_csa_notify(
+			struct qdf_mac_addr *link_mac_address);
 
 #else
 static inline
@@ -861,7 +869,15 @@ mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
 					  struct mlo_partner_info *partner_info)
 {
 }
+
+static inline
+QDF_STATUS mlo_mgr_standby_link_csa_notify(
+			struct qdf_mac_addr *link_mac_address)
+{
+	return QDF_STATUS_SUCCESS;
+}
 #endif
+
 /**
  * mlo_sta_up_active_notify - mlo sta up active notify
  * @vdev: vdev obj mgr
