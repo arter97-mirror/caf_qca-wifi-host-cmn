@@ -589,4 +589,7 @@ struct wlan_lmac_if_crypto_rx_ops {
 	 QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FT_PSK_SHA384) || \
 	 QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_PSK_SHA384))
 
+#define WLAN_CRYPTO_IS_AKM_SAE(akm) \
+       (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_SAE) || \
+        QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FT_SAE))
 #endif /* end of _WLAN_CRYPTO_GLOBAL_DEF_H_ */
