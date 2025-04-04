@@ -298,7 +298,6 @@ enum cdp_peer_bw {
  * @peer_addr: peer mac address
  * @bw: bandwidth of peer connection
  * @beacon_interval: beacon interval of peer connection
- * @self_link_addr: VDEV link mac address
  */
 struct ol_txrx_desc_type {
 	uint8_t is_qos_enabled;
@@ -307,7 +306,6 @@ struct ol_txrx_desc_type {
 	enum cdp_peer_bw bw;
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 	uint32_t beacon_interval;
-	struct qdf_mac_addr self_link_addr;
 #endif
 };
 

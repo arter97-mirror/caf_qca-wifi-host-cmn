@@ -22,10 +22,12 @@
 #include <dp_rx_mon.h>
 #include <dp_mon_filter.h>
 #include <dp_mon.h>
-#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 #include "dp_peer.h"
 #endif
 
+#define DP_CTL_ACK_MASK (QDF_IEEE80211_FC0_TYPE_CTL | \
+			 QDF_IEEE80211_FC0_SUBTYPE_ACK)
 /*
  * dp_mon_filter_mode_type_to_str
  * Monitor Filter mode to string
@@ -1191,6 +1193,184 @@ QDF_STATUS dp_mon_stop_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 	dp_mon_free_local_pkt_capture_queue(pdev);
 
 	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS dp_mon_set_local_pkt_concurrency(struct cdp_soc_t *cdp_soc,
+					    uint8_t pdev_id,
+					    bool is_lpc_conc_en)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(cdp_soc);
+	struct dp_pdev *pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
+	struct dp_mon_pdev *mon_pdev;
+
+	if (!pdev) {
+		dp_mon_filter_err("pdev Context is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mon_pdev = pdev->monitor_pdev;
+	if (!mon_pdev) {
+		dp_mon_filter_err("Invalid monitor pdev");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	mon_pdev->lpc_conc_en = is_lpc_conc_en;
+	dp_mon_filter_debug("lpc_conc_en %d", mon_pdev->lpc_conc_en);
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS dp_mon_update_link_info(struct cdp_soc_t *cdp_soc,
+				   uint8_t pdev_id,
+				   struct cdp_link_info *link_info)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(cdp_soc);
+	struct dp_pdev *pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
+	struct dp_mon_pdev *mon_pdev;
+
+	if (!pdev) {
+		dp_mon_filter_err("pdev Context is null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	mon_pdev = pdev->monitor_pdev;
+	if (!mon_pdev) {
+		dp_mon_filter_err("Invalid monitor pdev");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	qdf_mem_copy(&mon_pdev->link_info, link_info,
+		     sizeof(struct cdp_link_info));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static
+bool dp_mon_validate_mcast_addr(struct dp_pdev *pdev,
+				struct ieee80211_frame *dot11hdr)
+{
+	bool is_valid = false;
+	uint8_t link_idx;
+	struct dp_peer *peer;
+	struct dp_mon_mac *mon_mac;
+
+	if (DP_FRAME_IS_MULTICAST(dot11hdr->i_addr1)) {
+		mon_mac = dp_get_mon_mac(pdev, 0);
+		peer = dp_peer_get_ref_by_id(pdev->soc,
+					     mon_mac->peer_id,
+					     DP_MOD_ID_TX_CAPTURE);
+
+		if (!peer)
+			return false;
+
+		if (!peer->valid) {
+			dp_peer_unref_delete(peer, DP_MOD_ID_TX_CAPTURE);
+			return false;
+		}
+
+		qdf_spinlock_acquire(&peer->peer_info_lock);
+		if (IS_MLO_DP_MLD_PEER(peer)) {
+			for (link_idx = 0; link_idx < peer->num_links;
+			     link_idx++) {
+				if (peer->link_peers[link_idx].is_valid &&
+				    qdf_mem_cmp(peer->link_peers[link_idx].mac_addr.raw,
+						dot11hdr->i_addr2,
+						QDF_MAC_ADDR_SIZE) == 0) {
+					is_valid = true;
+				}
+			}
+		} else {
+			if (!qdf_mem_cmp(peer->mac_addr.raw,
+					 dot11hdr->i_addr2,
+					 QDF_MAC_ADDR_SIZE)) {
+				is_valid = true;
+			}
+		}
+		qdf_spinlock_release(&peer->peer_info_lock);
+		dp_peer_unref_delete(peer, DP_MOD_ID_TX_CAPTURE);
+	}
+	return is_valid;
+}
+
+bool dp_mon_filter_frame(struct dp_pdev *pdev, qdf_nbuf_t buf,
+			 uint8_t direction)
+{
+	bool mlo_enabled;
+	uint8_t link_idx;
+	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
+	qdf_nbuf_t nbuf;
+	struct ieee80211_frame *dot11hdr;
+
+	if (!mon_pdev) {
+		dp_err("mon pdev NULL");
+		return false;
+	}
+
+	mlo_enabled = mon_pdev->link_info.mlo_enabled;
+
+	if (direction == IEEE80211_FC1_DIR_TODS) {
+		if (qdf_nbuf_get_nr_frags_in_fraglist(buf)) {
+			dot11hdr = (struct ieee80211_frame *)
+				qdf_nbuf_get_frag_addr(buf, 0);
+		} else {
+			nbuf = qdf_nbuf_get_ext_list(buf);
+			if (nbuf)
+				dot11hdr = (struct ieee80211_frame *)
+					qdf_nbuf_data(nbuf);
+			else
+				return false;
+		}
+
+		/**
+		 * Allow all Tx ACK packets since it won't have an valid
+		 * Tx address to compare and Rx address doesn't have always
+		 * be connected peer address
+		 */
+		if ((dot11hdr->i_fc[0] & DP_CTL_ACK_MASK) == DP_CTL_ACK_MASK)
+			return true;
+
+		if (DP_FRAME_IS_MAC_ZERO((dot11hdr)->i_addr2))
+			return true;
+
+		if (qdf_mem_cmp(dot11hdr->i_addr2,
+				mon_pdev->link_info.mac_addr.bytes,
+				QDF_MAC_ADDR_SIZE) == 0)
+			return true;
+
+		if (mlo_enabled) {
+			for (link_idx = 0; link_idx < WLAN_MAX_ML_BSS_LINKS;
+			     link_idx++) {
+				if (qdf_mem_cmp(dot11hdr->i_addr2,
+						mon_pdev->link_info.link_addr[link_idx].bytes,
+						QDF_MAC_ADDR_SIZE) == 0) {
+					return true;
+				}
+			}
+		}
+	} else {
+		dot11hdr = (struct ieee80211_frame *)qdf_nbuf_data(buf);
+
+		if (DP_FRAME_IS_BROADCAST((dot11hdr)->i_addr1) ||
+		    dp_mon_validate_mcast_addr(pdev, dot11hdr))
+			return true;
+
+		if (qdf_mem_cmp(dot11hdr->i_addr1,
+				mon_pdev->link_info.mac_addr.bytes,
+				QDF_MAC_ADDR_SIZE) == 0) {
+			return true;
+		}
+
+		if (mlo_enabled) {
+			for (link_idx = 0; link_idx < WLAN_MAX_ML_BSS_LINKS;
+			     link_idx++) {
+				if (qdf_mem_cmp(dot11hdr->i_addr1,
+						mon_pdev->link_info.link_addr[link_idx].bytes,
+						QDF_MAC_ADDR_SIZE) == 0) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER

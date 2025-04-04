@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1979,8 +1979,9 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 	uint8_t vdev_id;
 	struct dp_vdev *vdev = NULL;
 	struct dp_soc *soc = pdev->soc;
+	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
 
-	if (qdf_unlikely(!soc))
+	if (qdf_unlikely(!soc) || qdf_unlikely(!mon_pdev))
 		goto fail_free;
 
 	vdev_id = mon_mac->vdev_id;
@@ -1996,6 +1997,11 @@ dp_rx_mon_send_mpdu(struct dp_pdev *pdev, struct dp_mon_mac *mon_mac,
 	mon_mac->ppdu_info.rx_status.device_id = pdev->soc->device_id;
 	mon_mac->ppdu_info.rx_status.chan_noise_floor =
 			pdev->chan_noise_floor;
+
+	if (IS_LOCAL_PKT_CAPTURE_CONCURRENCY(mon_pdev, lpc_conc_en) &&
+	    !dp_mon_filter_frame(pdev, mpdu_buf, IEEE80211_FC1_DIR_FROMDS)) {
+		goto fail_free;
+	}
 
 	if (!dp_rx_mon_lpc_subfiltering(pdev, mpdu_buf))
 		goto fail_free;

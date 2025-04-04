@@ -3802,15 +3802,15 @@ static void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
 		txrx_peer->mpdu_retry_threshold);
 }
 
-#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 static void
 dp_mon_update_conn_info(struct dp_peer *peer,
 			struct ol_txrx_desc_type *sta_desc)
 {
 	uint32_t mac_id = 0;
-	struct dp_mon_mac *mon_mac;
 	struct dp_pdev *pdev;
-	struct  dp_mon_pdev *mon_pdev;
+	struct dp_mon_pdev *mon_pdev;
+	struct dp_mon_mac *mon_mac;
 
 	if (!peer) {
 		dp_err("peer is NULL");
@@ -3826,26 +3826,22 @@ dp_mon_update_conn_info(struct dp_peer *peer,
 		return;
 	}
 
-	mon_mac->beacon_interval = sta_desc->beacon_interval;
-	qdf_mem_copy(mon_pdev->link_info[peer->link_id].self_link_addr.raw,
-		     sta_desc->self_link_addr.bytes,
-		     QDF_MAC_ADDR_SIZE);
-	mon_pdev->link_info[peer->link_id].freq = peer->freq;
-
 	if (IS_MLO_DP_LINK_PEER(peer)) {
 		mon_mac->peer_id = peer->mld_peer->peer_id;
-		mon_pdev->num_links = peer->mld_peer->num_links;
 	} else if (!IS_MLO_DP_LINK_PEER(peer)) {
 		mon_mac->peer_id = peer->peer_id;
-		mon_pdev->num_links = 1;
 	}
 
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+	mon_mac->beacon_interval = sta_desc->beacon_interval;
+	mon_pdev->link_info.freq[peer->link_id] = peer->freq;
 	dp_mon_update_nth_beacon(pdev);
+#endif
 }
 #else
-static void
-dp_mon_update_conn_info(struct dp_peer *peer,
-			struct ol_txrx_desc_type *sta_desc)
+static inline
+void dp_mon_update_conn_info(struct dp_peer *peer,
+			     struct ol_txrx_desc_type *sta_desc)
 {
 }
 #endif

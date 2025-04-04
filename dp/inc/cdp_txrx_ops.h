@@ -1097,6 +1097,8 @@ struct cdp_me_ops {
  * @start_local_pkt_capture: start local packet capture
  * @stop_local_pkt_capture: stop local packet capture
  * @is_local_pkt_capture_running: is local packet capture running
+ * @set_local_pkt_concurrency: set local packet capture concurrency
+ * @update_link_info: Update sta link info in monitor pdev
  * @txrx_set_mu_sniffer: sets mu_sniffer flag in mon_pdev
  */
 struct cdp_mon_ops {
@@ -1215,6 +1217,11 @@ struct cdp_mon_ops {
 					     uint8_t pdev_id);
 	bool (*is_local_pkt_capture_running)(struct cdp_soc_t *soc,
 					     uint8_t pdev_id);
+	QDF_STATUS (*set_local_pkt_concurrency)
+			(struct cdp_soc_t *soc, uint8_t pdev_id, bool val);
+	QDF_STATUS (*update_link_info)
+			(struct cdp_soc_t *soc, uint8_t pdev_id,
+			 struct cdp_link_info *link_info);
 #endif
 	QDF_STATUS
 	(*txrx_set_mu_sniffer)(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,

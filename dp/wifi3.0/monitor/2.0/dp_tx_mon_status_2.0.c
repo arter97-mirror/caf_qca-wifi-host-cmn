@@ -1227,12 +1227,12 @@ dp_tx_mon_generated_response_frm(struct dp_pdev *pdev,
 
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 	if (TXMON_PPDU_COM(tx_ppdu_info, chan_freq) == 0) {
-		for (int i = 0; i < mon_pdev->num_links; i++) {
+		for (int i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
 			if (qdf_mem_cmp(TXMON_STATUS_INFO(tx_status_info, addr2),
-					mon_pdev->link_info[i].self_link_addr.raw,
+					mon_pdev->link_info.link_addr[i].bytes,
 					QDF_MAC_ADDR_SIZE) == 0) {
 				TXMON_PPDU_COM(tx_ppdu_info, chan_freq) =
-				mon_pdev->link_info[i].freq;
+				mon_pdev->link_info.freq[i];
 				break;
 			}
 		}
