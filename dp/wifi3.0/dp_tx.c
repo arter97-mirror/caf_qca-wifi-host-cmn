@@ -67,6 +67,9 @@
 /* disable TQM_BYPASS */
 #define TQM_BYPASS_WAR 0
 
+/* Added for HAPS usecase*/
+#define TRY_LOCK_TIMEOUT_NS    20000
+
 #define DP_RETRY_COUNT 7
 #ifdef WLAN_PEER_JITTER
 #define DP_AVG_JITTER_WEIGHT_DENOM 4
@@ -1586,6 +1589,20 @@ void dp_vdev_peer_stats_update_protocol_cnt_tx(struct dp_vdev *vdev_hdl,
 }
 #endif
 
+#ifdef WLAN_HAPS_ENABLE
+int dp_tx_attempt_coalescing_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,
+				     struct dp_tx_desc_s *tx_desc, uint8_t tid,
+				     struct dp_tx_msdu_info_s *msdu_info,
+				     uint8_t ring_id)
+{
+	if (dp_is_haps_paused(soc, vdev->osif_vdev))
+		return 1;
+	else
+		return dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid,
+						msdu_info, ring_id);
+}
+#endif
+
 #ifdef WLAN_SUPPORT_LAPB
 #ifdef WLAN_DP_FEATURE_SW_LATENCY_MGR
 #error LAPB and SWLM features are not validated together
@@ -1770,6 +1787,59 @@ dp_tx_ring_access_end_wrapper(struct dp_soc *soc,
 	}
 }
 #endif
+#endif
+
+#ifdef WLAN_HAPS_ENABLE
+/**
+ * dp_try_hp_update() - Try HP update for all TCL rings
+ * @haps_ctx: Haps ctx pointer
+ * @is_direct_reg_write: To decide whether delayed reg write or direct reg
+ *			 is required
+ *
+ * Returns: QDF_STATUS
+ */
+QDF_STATUS dp_try_hp_update(struct dp_haps *haps_ctx, bool is_direct_reg_write)
+{
+	hal_ring_handle_t hal_ring_hdl;
+	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+	uint32_t hp, cached_tp;
+	uint8_t ring_id;
+	struct dp_soc *soc = haps_ctx->soc;
+
+	for (ring_id = 0; ring_id < soc->num_tcl_data_rings; ring_id++) {
+		hal_ring_hdl = soc->tcl_data_ring[ring_id].hal_srng;
+
+		if (qdf_unlikely(dp_hal_srng_try_access_start(soc->hal_soc,
+		    hal_ring_hdl, TRY_LOCK_TIMEOUT_NS))) {
+			ret |= QDF_STATUS_E_TIMEOUT;
+			continue;
+		}
+
+		cached_tp = hal_srng_src_get_cached_tp(hal_ring_hdl);
+		hp = hal_srng_src_get_hp(hal_ring_hdl);
+
+		if (hp == cached_tp) {
+			hal_srng_access_end_reap(soc->hal_soc, hal_ring_hdl);
+			continue;
+		}
+
+		if (hif_rtpm_get(HIF_RTPM_GET_ASYNC, HIF_RTPM_ID_DP)) {
+			hal_srng_access_end_reap(soc->hal_soc, hal_ring_hdl);
+			hal_srng_set_event(hal_ring_hdl, HAL_SRNG_FLUSH_EVENT);
+			hal_srng_inc_flush_cnt(hal_ring_hdl);
+			continue;
+		}
+
+		if (is_direct_reg_write)
+			hal_srng_update_hp_direct(soc->hal_soc, hal_ring_hdl);
+		else
+			dp_tx_ring_access_end(soc, hal_ring_hdl, 0);
+
+		hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_DP);
+	}
+
+	return ret;
+}
 #endif
 
 /**
