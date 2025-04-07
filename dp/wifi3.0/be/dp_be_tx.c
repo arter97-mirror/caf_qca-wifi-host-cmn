@@ -1144,8 +1144,8 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 	/* Sync cached descriptor with HW */
 	hal_tx_desc_sync(hal_tx_desc_cached, hal_tx_desc, num_desc_bytes);
 
-	coalesce = dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid,
-					    msdu_info, ring_id);
+	coalesce = dp_tx_attempt_coalescing_wrapper(soc, vdev, tx_desc, tid,
+						    msdu_info, ring_id);
 
 	DP_STATS_INC_PKT(vdev, tx_i.processed, 1, dp_tx_get_pkt_len(tx_desc));
 

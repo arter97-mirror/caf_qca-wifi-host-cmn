@@ -15498,6 +15498,11 @@ static struct cdp_ipa_ops dp_ops_ipa = {
 };
 #endif
 
+#ifdef WLAN_HAPS_ENABLE
+static struct cdp_haps_ops dp_ops_haps = {
+	.haps_handle_ind = dp_haps_handle_ind,
+#endif
+
 #ifdef DP_POWER_SAVE
 static QDF_STATUS dp_bus_suspend(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 {
@@ -15699,6 +15704,9 @@ static void dp_soc_txrx_ops_attach(struct dp_soc *soc)
 #endif
 #ifdef WLAN_SUPPORT_SCS
 	soc->cdp_soc.ops->scs_ops = &dp_ops_scs;
+#endif
+#ifdef WLAN_HAPS_ENABLE
+	soc->cdp_soc.ops->haps_ops = &dp_ops_haps;
 #endif
 };
 

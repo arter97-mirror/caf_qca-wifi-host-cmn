@@ -46,6 +46,9 @@
 #ifdef WLAN_SUPPORT_FLOW_PRIORTIZATION
 #include "wlan_dp_api.h"
 #endif
+#ifdef WLAN_HAPS_ENABLE
+#include "wlan_dp_haps.h"
+#endif
 
 #define DP_INVALID_VDEV_ID 0xFF
 
@@ -906,6 +909,42 @@ dp_tx_attempt_coalescing(struct dp_soc *soc, struct dp_vdev *vdev,
 }
 
 #endif /* WLAN_DP_FEATURE_SW_LATENCY_MGR */
+
+#ifdef WLAN_HAPS_ENABLE
+/**
+ * dp_try_hp_update() - Try HP update for all TCL rings
+ * @haps_ctx: Haps ctx pointer
+ * @is_direct_reg_write: To decide whether delayed reg write or direct reg
+ *			 is required
+ *
+ * Returns: QDF_STATUS
+ */
+QDF_STATUS dp_try_hp_update(struct dp_haps *haps_ctx, bool is_direct_reg_write);
+
+/**
+ * dp_tx_attempt_coalescing_wrapper() - Check and attempt TCL register write
+ *					coalescing
+ * @soc: Datapath soc handle
+ * @vdev: DP vdev handle
+ * @tx_desc: tx packet descriptor
+ * @tid: TID for pkt transmission
+ * @msdu_info: MSDU info of tx packet
+ * @ring_id: TCL ring id
+ *
+ * Return: 1, if coalescing is to be done
+ *	    0, if coalescing is not to be done
+ */
+int
+dp_tx_attempt_coalescing_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,
+				 struct dp_tx_desc_s *tx_desc,
+				 uint8_t tid,
+				 struct dp_tx_msdu_info_s *msdu_info,
+				 uint8_t ring_id);
+#else
+#define \
+dp_tx_attempt_coalescing_wrapper(soc, vdev, tx_desc, tid, msdu_info, ring_id) \
+	dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid, msdu_info, ring_id)
+#endif
 
 #ifdef FEATURE_RUNTIME_PM
 /**
