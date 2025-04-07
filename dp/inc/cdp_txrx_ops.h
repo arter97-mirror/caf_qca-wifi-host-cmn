@@ -2781,6 +2781,15 @@ struct cdp_fse_ops {
 };
 #endif /* WLAN_SUPPORT_RX_FLOW_TAG */
 
+#ifdef WLAN_HAPS_ENABLE
+struct cdp_haps_ops {
+	void
+	(*haps_handle_ind)(ol_osif_vdev_handle osif_vdev, uint32_t new_state,
+			   qdf_ktime_t time_rcvd, bool is_one_shot,
+			   bool is_direct_reg_write);
+};
+#endif
+
 struct cdp_ops {
 	struct cdp_cmn_ops          *cmn_drv_ops;
 	struct cdp_ctrl_ops         *ctrl_ops;
@@ -2839,6 +2848,9 @@ struct cdp_ops {
 #endif
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
 	struct cdp_fse_ops *fse_ops;
+#endif
+#ifdef WLAN_HAPS_ENABLE
+	struct cdp_haps_ops *haps_ops;
 #endif
 };
 #endif

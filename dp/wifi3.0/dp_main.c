@@ -14323,6 +14323,12 @@ static struct cdp_fse_ops dp_ops_fse = {
 };
 #endif
 
+#ifdef WLAN_HAPS_ENABLE
+static struct cdp_haps_ops dp_ops_haps = {
+	.haps_handle_ind = dp_haps_handle_ind,
+};
+#endif
+
 #ifdef CONFIG_SAWF_DEF_QUEUES
 static struct cdp_sawf_ops dp_ops_sawf = {
 	.sawf_def_queues_map_req = dp_sawf_def_queues_map_req,
@@ -15259,6 +15265,9 @@ static void dp_soc_txrx_ops_attach(struct dp_soc *soc)
 #endif
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
 	soc->cdp_soc.ops->fse_ops = &dp_ops_fse;
+#endif
+#ifdef WLAN_HAPS_ENABLE
+	soc->cdp_soc.ops->haps_ops = &dp_ops_haps;
 #endif
 };
 
