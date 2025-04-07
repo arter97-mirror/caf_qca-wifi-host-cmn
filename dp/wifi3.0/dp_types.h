@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1456,6 +1456,10 @@ struct dp_soc_stats {
 		uint32_t sw_tso_pkts;
 		/* Number of TSO packets failed to transmit in sw tso path */
 		uint32_t sw_tso_fail;
+#ifdef CONFIG_BORON
+		/* Drop count due to missing valid TXPT_CLASSIFY_INFO */
+		uint32_t inv_txpt_ci;
+#endif
 	} tx;
 
 	/* SOC level RX stats */
