@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -975,9 +975,10 @@ __pktlog_read(struct file *file, char *buf, size_t nbytes, loff_t *ppos)
 	size_t count = 0, ret_val = 0;
 	int rem_len;
 	int start_offset, end_offset;
-	int fold_offset, ppos_data, cur_rd_offset;
+	int fold_offset, cur_rd_offset;
 	struct ath_pktlog_info *pl_info;
 	struct ath_pktlog_buf *log_buf;
+	size_t ppos_data;
 
 	pl_info = pde_data(file->f_path.dentry->d_inode);
 	if (!pl_info)
@@ -987,6 +988,12 @@ __pktlog_read(struct file *file, char *buf, size_t nbytes, loff_t *ppos)
 	log_buf = pl_info->buf;
 
 	if (!log_buf) {
+		qdf_spin_unlock_bh(&pl_info->log_lock);
+		return 0;
+	}
+
+	if (*ppos < 0 ||
+	    *ppos >= (sizeof(log_buf->bufhdr) + pl_info->buf_size)) {
 		qdf_spin_unlock_bh(&pl_info->log_lock);
 		return 0;
 	}
