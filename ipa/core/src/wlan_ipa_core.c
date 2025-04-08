@@ -7195,25 +7195,17 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
-	dp_flt_params = &(ipa_obj->dp_cce_super_rule_flt_param);
+	dp_flt_params = &ipa_obj->dp_cce_super_rule_flt_param;
 	for (i = 0; i < num_flts; i++) {
 		for (j = 0; j < IPA_WDI_MAX_FILTER; j++) {
 			if (rem_flt->hdl_info[i] ==
-				 dp_flt_params->flt_addr_params[j].flt_hdl) {
-				dp_flt_params->flt_addr_params[j].valid = 0;
-				qdf_mem_zero(dp_flt_params->flt_addr_params[j].
-					     src_ipv4_addr,
-					     IPV4BYTES);
-				qdf_mem_zero(dp_flt_params->flt_addr_params[j].
-					     src_ipv6_addr,
-					     IPV6BYTES);
+				dp_flt_params->flt_addr_params[j].flt_hdl) {
 				dp_flt_params->flt_addr_params[j].
-						      ipa_flt_evnt_required = 1;
-				dp_flt_params->flt_addr_params[j].ipa_flt_in_use
-									= false;
+					ipa_flt_evnt_required = 1;
 			}
 		}
 	}
+
 	dp_flt_params->op = HTT_RX_CCE_SUPER_RULE_INSTALL;
 	dp_flt_params->pdev_id = IPA_DEF_PDEV_ID;
 	dp_flt_params->num_filters = num_flts;
@@ -7227,22 +7219,24 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 	status = qdf_wait_single_event(&ipa_obj->ipa_flt_evnt,
 				       DP_MAX_SLEEP_TIME);
 
-	for (i = 0; i < num_flts; i++) {
-		for (j = 0; j < IPA_WDI_MAX_FILTER; j++) {
-			if (rem_flt->hdl_info[i] ==
-				 dp_flt_params->flt_addr_params[j].flt_hdl) {
-				dp_flt_params->flt_addr_params[j].
-						      ipa_flt_evnt_required = 0;
-			}
-		}
-	}
-
 	response = dp_flt_params->ipa_flt_evnt_response;
 	if (status != QDF_STATUS_SUCCESS || response != QDF_STATUS_SUCCESS) {
 		ipa_log_err("opt_dp: error on flt del evt, status - %d, response - %d",
 			    status, response);
 		if (status != QDF_STATUS_SUCCESS)
 			response = status;
+		goto clear_flt_evt;
+	}
+
+	wlan_ipa_wdi_opt_dpath_clean_db(ipa_ctx);
+
+	return response;
+
+clear_flt_evt:
+	for (j = 0; j < IPA_WDI_MAX_FILTER; j++) {
+		if (dp_flt_params->flt_addr_params[j].ipa_flt_evnt_required)
+			dp_flt_params->flt_addr_params[j].
+				ipa_flt_evnt_required = 0;
 	}
 
 	return response;
