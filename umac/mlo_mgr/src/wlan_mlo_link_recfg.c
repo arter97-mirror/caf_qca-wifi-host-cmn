@@ -6291,7 +6291,8 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 
 	mlo_debug("Link Recfg rsp frame len %d ", frame_len);
 	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO,QDF_TRACE_LEVEL_DEBUG,
-			   rx_pkt_info, frame_len);
+			   WMA_GET_RX_MAC_HEADER(rx_pkt_info),
+			   total_frame_len);
 
 	if (frame_len < ie_len_parsed) {
 		mlo_err("Action frame length %d too short", frame_len);
