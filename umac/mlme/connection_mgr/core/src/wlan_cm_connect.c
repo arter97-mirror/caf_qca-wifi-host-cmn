@@ -3035,7 +3035,7 @@ QDF_STATUS cm_notify_connect_complete(struct cnx_mgr *cm_ctx,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+#ifdef WLAN_FEATURE_11BE_MLO
 static enum phy_ch_width
 cm_get_ch_width_from_phymode(enum wlan_phymode phy_mode)
 {
@@ -3055,7 +3055,6 @@ cm_get_ch_width_from_phymode(enum wlan_phymode phy_mode)
 	return ch_width;
 }
 
-static
 void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 				 struct qdf_mac_addr *mac_addr,
 				 qdf_freq_t freq)
@@ -3092,12 +3091,6 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	util_scan_free_cache_entry(cache_entry);
 	mlo_mgr_update_ap_channel_info(vdev, link_id, (uint8_t *)mac_addr,
 				       channel);
-}
-#else
-static void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
-					struct qdf_mac_addr *mac_addr,
-					qdf_freq_t freq)
-{
 }
 #endif
 
