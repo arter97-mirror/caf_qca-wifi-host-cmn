@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -75,7 +75,11 @@
 #ifdef WMI_AP_SUPPORT
 #define WMI_BEACON_TX_BUFFER_SIZE             (2500)
 #else
+#ifdef WLAN_LARGE_MGMT_FRAMES_SUPPORT
+#define WMI_BEACON_TX_BUFFER_SIZE             (1300)
+#else
 #define WMI_BEACON_TX_BUFFER_SIZE             (512)
+#endif
 #endif
 
 #define WMI_WIFI_SCANNING_MAC_OUI_LENGTH      3
