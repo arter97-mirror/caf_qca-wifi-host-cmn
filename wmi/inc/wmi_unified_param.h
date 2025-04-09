@@ -75,7 +75,11 @@
 #ifdef WMI_AP_SUPPORT
 #define WMI_BEACON_TX_BUFFER_SIZE             (2500)
 #else
+#ifdef WLAN_LARGE_MGMT_FRAMES_SUPPORT
+#define WMI_BEACON_TX_BUFFER_SIZE             (1300)
+#else
 #define WMI_BEACON_TX_BUFFER_SIZE             (512)
+#endif
 #endif
 
 #define WMI_WIFI_SCANNING_MAC_OUI_LENGTH      3
