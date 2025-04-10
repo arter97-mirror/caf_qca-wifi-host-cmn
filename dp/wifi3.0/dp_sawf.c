@@ -2079,8 +2079,8 @@ dp_swaf_peer_sla_configuration(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr,
 
 	for (q_idx = 0; q_idx < DP_SAWF_Q_MAX; q_idx++) {
 		msduq = &sawf_ctx->msduq[q_idx];
-		if (((msduq->q_state == SAWF_MSDUQ_IN_USE) &&
-		     (msduq->q_state == SAWF_MSDUQ_REACTIVATE_PENDING)) ||
+		if (((msduq->q_state == SAWF_MSDUQ_IN_USE) ||
+		     (msduq->q_state == SAWF_MSDUQ_REACTIVATE_PENDING)) &&
 		    qdf_atomic_read(&msduq->ref_count)) {
 			sla_mask |= wlan_service_id_get_enabled_param_mask
 				(msduq->svc_id);
