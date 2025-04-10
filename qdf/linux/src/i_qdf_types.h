@@ -63,7 +63,11 @@
 #include <linux/wireless.h>
 #include <linux/if.h>
 #ifdef IPA_OFFLOAD
+#ifndef IPA_SIM
 #include <linux/ipa.h>
+#else
+#include <ipa/ipa.h>
+#endif
 #endif
 #ifdef WLAN_SUPPORT_DPDK
 #include <linux/uio_driver.h>

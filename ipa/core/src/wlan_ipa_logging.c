@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -11,7 +11,12 @@
 
 /* Include Files */
 #include <wlan_ipa_main.h>
+#ifndef IPA_SIM
 #include "cnss_nl.h"
+#else
+#include "net/cnss_nl.h"
+#define CLD80211_MCGRP_OPT_DP_LOGS CLD80211_MCGRP_HOST_LOGS
+#endif
 #define WLAN_IPA_THREAD_NAME_MAX 20
 #define WLAN_IPA_TEMP_BUF_LEN_MAX 20
 #define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100

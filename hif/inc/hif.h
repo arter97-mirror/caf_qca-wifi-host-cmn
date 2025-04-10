@@ -38,7 +38,11 @@ extern "C" {
 #include <linux/usb.h>
 #endif /* HIF_USB */
 #ifdef IPA_OFFLOAD
+#ifndef IPA_SIM
 #include <linux/ipa.h>
+#else
+#include <ipa/ipa.h>
+#endif
 #endif
 #include "cfg_ucfg_api.h"
 #include "qdf_dev.h"

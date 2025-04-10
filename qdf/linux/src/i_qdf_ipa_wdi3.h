@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,7 +26,11 @@
 #ifdef IPA_OFFLOAD
 
 #include <qdf_status.h>         /* QDF_STATUS */
+#ifndef IPA_SIM
 #include <linux/ipa_wdi3.h>
+#else
+#include <ipa/ipa_wdi3.h>
+#endif
 #include <linux/version.h>
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)) || \
