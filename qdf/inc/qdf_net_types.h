@@ -59,6 +59,7 @@ typedef __in6_addr_t in6_addr_t;
 /* Extended Traffic ID  passed to target if the TID is unknown */
 #define QDF_NBUF_TX_EXT_TID_INVALID    0x1f
 
+#define QDF_ETH_HDR_LEN                14
 #define QDF_ETH_TYPE_IPV4              0x0800  /* IPV4 */
 #define QDF_ETH_TYPE_IPV6              0x86dd  /* IPV6 */
 #define QDF_ETH_TYPE_8021Q             0x8100  /* 802.1Q vlan protocol */

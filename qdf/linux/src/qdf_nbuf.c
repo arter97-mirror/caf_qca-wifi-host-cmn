@@ -3360,7 +3360,7 @@ bool __qdf_nbuf_is_ipv4_v6_pure_tcp_ack(struct sk_buff *skb)
 				QDF_NBUF_PKT_IPV4_TCP_OPCODE_OFFSET));
 
 		if (ip_payload_len == tcp_hdr_len &&
-		    op_code == QDF_NBUF_PKT_TCPOP_ACK)
+		    op_code & QDF_NBUF_PKT_TCPOP_ACK)
 			is_tcp_ack = true;
 
 	} else if (qdf_nbuf_is_ipv6_tcp_pkt(skb)) {
@@ -3375,7 +3375,7 @@ bool __qdf_nbuf_is_ipv4_v6_pure_tcp_ack(struct sk_buff *skb)
 				QDF_NBUF_PKT_IPV6_TCP_OPCODE_OFFSET));
 
 		if (ip_payload_len == tcp_hdr_len &&
-		    op_code == QDF_NBUF_PKT_TCPOP_ACK)
+		    op_code & QDF_NBUF_PKT_TCPOP_ACK)
 			is_tcp_ack = true;
 	}
 
