@@ -18,6 +18,10 @@
 #ifndef _CDP_TXRX_EXTD_STRUCT_H_
 #define _CDP_TXRX_EXTD_STRUCT_H_
 
+#ifdef __KERNEL__
+#include <qdf_nbuf.h>
+#endif
+
 /* Maximum number of receive chains */
 #define CDP_MAX_RX_CHAINS 8
 
