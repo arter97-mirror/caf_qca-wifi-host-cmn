@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -110,11 +110,13 @@ void __qdf_page_pool_put_page(__qdf_page_pool_t pp, struct page *page,
  * @osdev: Device handle
  * @pool_size: Pool Size
  * @pp_page_size: Page pool page size
+ * @dir: DMA direction
  *
  * Return: Page Pool Reference
  */
-__qdf_page_pool_t __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
-					 size_t pp_page_size);
+__qdf_page_pool_t
+__qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
+		       size_t pp_page_size, qdf_dma_dir_t dir);
 
 /**
  * __qdf_page_pool_destroy() - Destroy page_pool
@@ -224,12 +226,13 @@ __qdf_page_pool_put_page(__qdf_page_pool_t pp, struct page *page,
  * @osdev: Device handle
  * @pool_size: Pool Size
  * @pp_page_size: Page pool page size
+ * @dir: DMA direction
  *
  * Return: Page Pool Reference
  */
 static inline __qdf_page_pool_t
 __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
-		       size_t pp_page_size)
+		       size_t pp_page_size, qdf_dma_dir_t dir)
 {
 	return NULL;
 }

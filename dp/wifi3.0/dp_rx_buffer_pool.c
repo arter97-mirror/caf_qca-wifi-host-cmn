@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -720,7 +720,7 @@ alloc_page_pool:
 		*pp_size = (*pp_size + 1);
 
 	pp = qdf_page_pool_create(soc->osdev, *pp_size,
-				  *page_size);
+				  *page_size, QDF_DMA_FROM_DEVICE);
 	if (!pp) {
 		dp_err("Failed to create page pool");
 		return NULL;
