@@ -778,6 +778,8 @@ static const uint32_t vdev_param_tlv[] = {
 		  VDEV_PARAM_HWCTS2SELF_OFDMA),
 	PARAM_MAP(vdev_param_disable_lpi_ant_optimization,
 		  VDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
+	PARAM_MAP(vdev_param_disable_scan_start_twt,
+		  VDEV_PARAM_DISABLE_SCAN_START_TWT),
 };
 #endif
 

@@ -6408,6 +6408,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_twt_unavail_mode, VDEV_PARAM_TWT_UNAVAIL_MODE),
 	VDEV_PARAM(vdev_param_connect_ext_features,
 		   VDEV_PARAM_CONNECT_EXT_FEATURES),
+	VDEV_PARAM(vdev_param_disable_scan_start_twt,
+		   VDEV_PARAM_DISABLE_SCAN_START_TWT),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
