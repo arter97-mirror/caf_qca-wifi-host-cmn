@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -671,6 +671,11 @@ struct twt_del_dialog_param {
  * @HOST_TWT_DEL_STATUS_PS_DISABLE_TEARDOWN: PS disable TWT teardown
  * @HOST_TWT_DEL_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE: TWT Teardown as
  * multiple links are active
+ * @HOST_DEL_TWT_STATUS_MLO_LINK_INACTIVE: TWT Teardown as link switched to
+ * unsupported link
+ * @HOST_DEL_TWT_STATUS_2G_TWT_NOT_ENABLED: TWT Teardown when current
+ * channel is on 2.4 GHz band
+ * @HOST_DEL_TWT_STATUS_SCAN_STARTED: TWT teardown when the scan has started
  */
 enum HOST_TWT_DEL_STATUS {
 	HOST_TWT_DEL_STATUS_OK,
@@ -687,6 +692,9 @@ enum HOST_TWT_DEL_STATUS {
 	HOST_TWT_DEL_STATUS_SCAN_IN_PROGRESS,
 	HOST_TWT_DEL_STATUS_PS_DISABLE_TEARDOWN,
 	HOST_TWT_DEL_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE,
+	HOST_DEL_TWT_STATUS_MLO_LINK_INACTIVE,
+	HOST_DEL_TWT_STATUS_2G_TWT_NOT_ENABLED,
+	HOST_DEL_TWT_STATUS_SCAN_STARTED,
 };
 
 /**
