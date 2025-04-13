@@ -469,6 +469,7 @@ static void hal_target_based_configure(struct hal_soc *hal)
 	case TARGET_TYPE_QCC2072:
 		hal->use_register_windowing = true;
 		hal_qcc2072_attach(hal);
+		break;
 #endif
 #ifdef INCLUDE_HAL_KIWI
 	case TARGET_TYPE_KIWI:
