@@ -776,7 +776,7 @@ bool mlo_mgr_update_csa_link_info(struct wlan_objmgr_pdev *pdev,
 	link_info->link_chan_info->ch_phymode = wlan_eht_chan_phy_mode(
 					csa_param->csa_chan_freq,
 					bw_val, csa_param->new_ch_width);
-	link_info->link_chan_info->ch_width = bw_val;
+	link_info->link_chan_info->ch_width = csa_param->new_ch_width;
 
 	mlo_debug("CSA: freq: %d, cfreq1: %d, cfreq2: %d, bw: %d, phymode:%d",
 		  link_info->link_chan_info->ch_freq, ch_cfreq1, ch_cfreq2,
