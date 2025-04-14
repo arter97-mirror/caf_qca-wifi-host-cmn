@@ -42,6 +42,16 @@ void wlan_scan_get_feature_info(struct wlan_objmgr_psoc *psoc,
 #endif
 
 /**
+ * wlan_scan_get_scan_cache_report_max_time_in_sec() - Get scan cache report
+ * max time in second info
+ * @psoc: pointer to psoc object
+ *
+ * Return: scan cache report max time in min value
+ */
+uint64_t
+wlan_scan_get_scan_cache_report_max_time_in_sec(struct wlan_objmgr_psoc *psoc);
+
+/**
  * wlan_scan_get_scan_entry_by_mac_freq() - API to get scan entry
  * info from scan db by mac addr
  * @pdev: pointer to pdev object
@@ -561,26 +571,16 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 			     struct qdf_mac_addr *bssid);
 
 /*
- * wlan_scan_is_localy_gen_non_tx_mbssid_entry() - function to check
- * non tx mbssid entry
- * @pdev: pdev object
- * @bssid: bssid to be fetched from scan db
- *
- *  Return : true if non tx mbssid scan entry found, else false
- */
-bool wlan_scan_is_localy_gen_non_tx_mbssid_entry(struct wlan_objmgr_pdev *pdev,
-						 struct qdf_mac_addr *bssid);
-
-/*
- * wlan_scan_is_locally_generated_entry() - Function to check
+ * wlan_scan_flush_locally_generated_entry() - Function to flush
  * locally generated scan entry
  * @pdev: pdev object
  * @bssid: bssid to be fetched from scan db
  *
- * Return : true if non tx mbssid scan entry found, else false
+ * Return : true if scan entry is flushed; false otherwise
  */
-bool wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
-					  struct qdf_mac_addr *bssid);
+bool
+wlan_scan_flush_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
+					struct qdf_mac_addr *bssid);
 
 /**
  * wlan_scan_get_mld_addr_by_link_addr() - Function to get MLD address
@@ -703,4 +703,12 @@ wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
 {
 }
 #endif
+
+/**
+ * wlan_scan_set_obss_scan_enable() - Wrapper API to set OBSS scan enable flag
+ * @vdev: vdev pointer
+ *
+ * Returun: void
+ */
+void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev);
 #endif

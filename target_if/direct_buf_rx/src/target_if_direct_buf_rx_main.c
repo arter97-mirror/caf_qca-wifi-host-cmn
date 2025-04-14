@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1553,7 +1553,18 @@ static QDF_STATUS target_if_dbr_init_ring(struct wlan_objmgr_pdev *pdev,
 		hal_srng_get_hp_addr(dbr_psoc_obj->hal_soc, srng);
 	dbr_ring_cfg->buf_size = dbr_ring_cap->min_buf_size;
 
-	return target_if_dbr_fill_ring(pdev, mod_param);
+	status  = target_if_dbr_fill_ring(pdev, mod_param);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		direct_buf_rx_err("target if dbr fill ring failed");
+		qdf_mem_free(mod_param->dbr_buf_pool);
+		qdf_mem_free_consistent(dbr_psoc_obj->osdev,
+					dbr_psoc_obj->osdev->dev,
+					ring_alloc_size,
+					dbr_ring_cfg->base_vaddr_unaligned,
+			(qdf_dma_addr_t)dbr_ring_cfg->base_paddr_unaligned, 0);
+	}
+
+	return status;
 }
 
 static QDF_STATUS target_if_dbr_init_srng(struct wlan_objmgr_pdev *pdev,

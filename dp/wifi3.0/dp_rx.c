@@ -129,7 +129,6 @@ uint32_t dp_rx_srng_get_num_pending(hal_soc_handle_t hal_soc,
 	return num_pending;
 }
 
-#ifdef RX_DESC_DEBUG_CHECK
 QDF_STATUS dp_rx_desc_nbuf_sanity_check(struct dp_soc *soc,
 					hal_ring_desc_t ring_desc,
 					struct dp_rx_desc *rx_desc)
@@ -144,6 +143,7 @@ QDF_STATUS dp_rx_desc_nbuf_sanity_check(struct dp_soc *soc,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef RX_DESC_DEBUG_CHECK
 /**
  * dp_rx_desc_nbuf_len_sanity_check - Add sanity check to catch Rx buffer
  *				      out of bound access from H.W
@@ -2962,8 +2962,19 @@ void dp_rx_deliver_to_stack_no_peer(struct dp_soc *soc, qdf_nbuf_t nbuf)
 		 */
 		peer = dp_peer_get_tgt_peer_by_id(soc, peer_id,
 						  DP_MOD_ID_RX);
-		if (!peer)
-			goto deliver_fail;
+		if (!peer) {
+			/* For EAPOL frames that are received before HTT MLO map
+			 * event, peer search with peer_id  will fail and the
+			 * packet get dropped. Get MLD peer directly from VDEV.
+			 */
+			if (!qdf_nbuf_is_ipv4_eapol_pkt(nbuf))
+				goto deliver_fail;
+
+			peer = dp_peer_get_tgt_peer_by_vdev(soc, vdev,
+							    DP_MOD_ID_RX);
+			if (!peer)
+				goto deliver_fail;
+		}
 
 		/* only check for MLO connection */
 		if (IS_MLO_DP_MLD_PEER(peer) && peer->txrx_peer &&
@@ -3826,7 +3837,7 @@ dp_rx_set_req_buff_descs(struct cdp_soc_t *cdp_soc,
 
 	dp_rx_page_pool_resize(soc, pdev_id, req_rx_buff_descs);
 
-	dp_info("Req RX buffer descriptors set to %u", req_rx_buff_descs);
+	dp_info("Req RX buffer descriptors set to %llu", req_rx_buff_descs);
 	return QDF_STATUS_SUCCESS;
 }
 

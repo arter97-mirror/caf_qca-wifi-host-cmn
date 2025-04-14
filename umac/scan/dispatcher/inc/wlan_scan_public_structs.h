@@ -599,7 +599,6 @@ enum number_of_partner_link {
  * @is_hidden_ssid: is AP having hidden ssid.
  * @security_type: security supported
  * @seq_num: sequence number
- * @is_non_tx_mbssid_gen: is locally generated non tx mbssid scan entry
  * @is_gen_entry: is locally generated scan entry
  * @reserved: reserved
  * @phy_mode: Phy mode of the AP
@@ -649,9 +648,8 @@ struct scan_cache_entry {
 	bool is_hidden_ssid;
 	uint8_t security_type;
 	uint16_t seq_num;
-	uint8_t is_non_tx_mbssid_gen:1,
-		is_gen_entry:1,
-		reserved:6;
+	uint8_t is_gen_entry:1,
+		reserved:7;
 	enum wlan_phymode phy_mode;
 	int32_t avg_rssi;
 	int8_t rssi_raw;

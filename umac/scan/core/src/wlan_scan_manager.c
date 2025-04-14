@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1952,9 +1952,17 @@ void scm_disable_obss_pdev_scan(struct wlan_objmgr_psoc *psoc,
 				goto next;
 			}
 
+			if (!scan_vdev_obj->is_obbs_scan_enabled) {
+				scm_nofl_debug("OBSS scan is not enabled for vdev id: %d",
+					       vdev->vdev_objmgr.vdev_id);
+				goto next;
+			}
+
 			status = tgt_scan_obss_disable(vdev);
 			if (QDF_IS_STATUS_ERROR(status))
 				scm_err("disable obss scan failed");
+
+			scan_vdev_obj->is_obbs_scan_enabled = false;
 next:
 			index++;
 			/* get next vdev */
@@ -1963,4 +1971,17 @@ next:
 		}
 		wlan_pdev_obj_unlock(pdev);
 	}
+}
+
+void scm_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev)
+{
+	struct scan_vdev_obj *scan_vdev_obj;
+
+	scan_vdev_obj = wlan_get_vdev_scan_obj(vdev);
+	if (!scan_vdev_obj) {
+		scm_err("null scan_vdev_obj");
+		return;
+	}
+
+	scan_vdev_obj->is_obbs_scan_enabled = true;
 }

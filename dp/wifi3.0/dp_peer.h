@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1345,6 +1345,28 @@ struct dp_peer *dp_sta_vdev_self_peer_ref_n_get(struct dp_soc *soc,
 						struct dp_vdev *vdev,
 						enum dp_mod_id mod_id);
 
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * dp_sta_vdev_link_peer_ref_n_get: Get link peer of sta vdev
+ * @soc: DP soc
+ * @vdev: vdev
+ * @mod_id: id of module requesting reference
+ *
+ * Return: VDEV peer
+ */
+struct dp_peer *dp_sta_vdev_link_peer_ref_n_get(struct dp_soc *soc,
+						struct dp_vdev *vdev,
+						enum dp_mod_id mod_id);
+#else
+static inline
+struct dp_peer *dp_sta_vdev_link_peer_ref_n_get(struct dp_soc *soc,
+						struct dp_vdev *vdev,
+						enum dp_mod_id mod_id)
+{
+	return NULL;
+}
+#endif /* WLAN_FEATURE_11BE_MLO */
+
 void dp_peer_ast_table_detach(struct dp_soc *soc);
 
 /**
@@ -2015,7 +2037,7 @@ struct dp_peer *dp_peer_get_tgt_peer_hash_find(struct dp_soc *soc,
 			ta_peer = peer;
 		}
 	} else {
-		dp_peer_err("fail to find peer:" QDF_MAC_ADDR_FMT " vdev_id: %u",
+		dp_peer_info("fail to find peer:" QDF_MAC_ADDR_FMT " vdev_id: %u",
 			    QDF_MAC_ADDR_REF(peer_mac), vdev_id);
 	}
 
@@ -2059,6 +2081,40 @@ struct dp_peer *dp_peer_get_tgt_peer_by_id(struct dp_soc *soc,
 			ta_peer = peer;
 		}
 	}
+
+	return ta_peer;
+}
+
+/**
+ * dp_peer_get_tgt_peer_by_vdev() - Returns target peer object given the
+ *				    STA DP vdev
+ * @soc: core DP soc context
+ * @vdev: DP VDEV handle
+ * @mod_id: ID of module requesting reference
+ *
+ * For MLO connection, get corresponding MLD peer,
+ *
+ * Return: peer in success
+ *         NULL in failure
+ */
+static inline
+struct dp_peer *dp_peer_get_tgt_peer_by_vdev(struct dp_soc *soc,
+					     struct dp_vdev *vdev,
+					     enum dp_mod_id mod_id)
+{
+	struct dp_peer *ta_peer = NULL;
+	struct dp_peer *peer;
+
+	peer = dp_sta_vdev_link_peer_ref_n_get(soc, vdev, mod_id);
+	if (!peer)
+		return NULL;
+
+	if (peer->mld_peer && dp_peer_get_ref(soc, peer->mld_peer, mod_id) ==
+	    QDF_STATUS_SUCCESS)
+		ta_peer = peer->mld_peer;
+
+	/* release peer reference that added by vdev peer find */
+	dp_peer_unref_delete(peer, mod_id);
 
 	return ta_peer;
 }
@@ -2326,6 +2382,14 @@ struct dp_peer *dp_peer_get_tgt_peer_by_id(struct dp_soc *soc,
 					   enum dp_mod_id mod_id)
 {
 	return dp_peer_get_ref_by_id(soc, peer_id, mod_id);
+}
+
+static inline
+struct dp_peer *dp_peer_get_tgt_peer_by_vdev(struct dp_soc *soc,
+					     struct dp_vdev *vdev,
+					     enum dp_mod_id mod_id)
+{
+	return NULL;
 }
 
 static inline

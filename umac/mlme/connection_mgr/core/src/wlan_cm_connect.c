@@ -1208,12 +1208,18 @@ cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
 			    struct wlan_cm_connect_req *req)
 {
 	struct wlan_objmgr_psoc *psoc;
+	bool is_reassociate = false;
 
 	psoc = wlan_vdev_get_psoc(vdev);
 	if (!psoc)
 		return QDF_STATUS_E_INVAL;
 
+	if (mlo_is_mld_sta(vdev))
+		is_reassociate = !ucfg_mlo_is_mld_disconnected(vdev);
+	else
+		is_reassociate = !wlan_cm_is_vdev_disconnected(vdev);
 	if (req->source == CM_OSIF_CONNECT &&
+	    !is_reassociate &&
 	    !req->is_non_assoc_link &&
 	    wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
 	    policy_mgr_get_connection_count(psoc) > 1 &&
@@ -2611,6 +2617,7 @@ QDF_STATUS cm_connect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 	 */
 	if (!wlan_vdev_mlme_is_mlo_link_vdev(cm_ctx->vdev)) {
 		mlme_cm_osif_connect_active_notify(wlan_vdev_get_id(cm_ctx->vdev));
+		mlo_sta_set_all_vdevs_connect_req_bmap(cm_ctx->vdev);
 		if (!wlan_cm_check_mlo_roam_auth_status(cm_ctx->vdev))
 			wlan_crypto_free_vdev_key(cm_ctx->vdev);
 	}

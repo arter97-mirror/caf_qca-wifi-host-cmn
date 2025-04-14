@@ -1832,7 +1832,8 @@ dp_rx_mon_remove_mic_data(struct dp_mon_mac *mon_mac, qdf_nbuf_t buf)
 	user_id = mon_mac->ppdu_info.user_id;
 	rx_user_status = &mon_mac->ppdu_info.rx_user_status[user_id];
 	mic_len = hal_get_rx_status_mic_len(rx_user_status);
-	qdf_nbuf_trim_tail(buf, mic_len);
+	if (mic_len > 0)
+		qdf_nbuf_trim_tail(buf, mic_len);
 }
 
 /**
@@ -1895,7 +1896,7 @@ dp_rx_mon_stitch_mpdu(struct dp_mon_mac *mon_mac, qdf_nbuf_t tail)
 	return mpdu_buf;
 
 fail:
-	dp_err_rl("nbuf copy failed len: %d Q1: %d Q2: %d", qdf_nbuf_len(nbuf),
+	dp_err_rl("nbuf copy failed len: %zu Q1: %d Q2: %d", qdf_nbuf_len(nbuf),
 		  qdf_nbuf_queue_len(&mon_mac->msdu_queue),
 		  qdf_nbuf_queue_len(&mon_mac->mpdu_queue));
 

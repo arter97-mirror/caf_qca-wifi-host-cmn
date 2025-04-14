@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -245,12 +245,14 @@ struct pdev_scan_info {
  * @pno_in_progress: pno in progress
  * @scan_disabled: if scan is disabled for this vdev
  * @first_scan_done: Whether its the first scan or not for this particular vdev.
+ * @is_obbs_scan_enabled: flag to check if obss scan is enabled
  */
 struct scan_vdev_obj {
 	bool pno_match_evt_received;
 	bool pno_in_progress;
 	uint32_t scan_disabled;
-	bool first_scan_done;
+	bool first_scan_done;;
+	bool is_obbs_scan_enabled;
 };
 
 #ifdef FEATURE_WLAN_SCAN_PNO
@@ -416,6 +418,8 @@ struct extscan_def_config {
  * @scan_ev_resumed: notify scan resumed event
  * @scan_events: variable to read and set scan_ev_* flags in one shot
  *               can be used to dump all scan_ev_* flags for debug
+ * @scan_cache_report_max_time_in_sec: Max value for scan cache report
+ *                                     in seconds
  */
 struct scan_default_params {
 	uint32_t active_dwell;
@@ -515,6 +519,7 @@ struct scan_default_params {
 		};
 		uint32_t scan_events;
 	};
+	uint64_t scan_cache_report_max_time_in_sec;
 };
 
 /**

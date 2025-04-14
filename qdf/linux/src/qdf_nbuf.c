@@ -24,6 +24,9 @@
 #include <linux/hashtable.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0))
+#include <linux/skbuff_ref.h>
+#endif
 #include <linux/skbuff.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
@@ -1189,6 +1192,11 @@ qdf_nbuf_untrack_map(qdf_nbuf_t nbuf, const char *func, uint32_t line)
 void qdf_nbuf_map_check_for_leaks(void)
 {
 	qdf_tracker_check_for_leaks(&qdf_nbuf_map_tracker);
+}
+
+void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size)
+{
+	qdf_tracker_check_list_corruption(&qdf_nbuf_map_tracker, ptr, size);
 }
 
 QDF_STATUS qdf_nbuf_map_debug(qdf_device_t osdev,

@@ -5374,4 +5374,31 @@ dp_convert_enc_to_cdp_enc(struct mon_rx_user_status *rx_user_status,
 QDF_STATUS
 dp_pdev_set_mu_sniffer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		       uint32_t mode);
+
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
+
+/*
+ * dp_mon_update_nth_beacon() Calculates the value of nth beacon
+ * @pdev: Pointer to data path physical device object
+ *
+ * Return: none
+ */
+static inline void
+dp_mon_update_nth_beacon(struct dp_pdev *pdev)
+{
+	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, 0);
+	struct dp_mon_subfilter *filter = &pdev->monitor_pdev->fp_subfilter;
+
+	if (mon_mac->beacon_interval &&
+	    filter->connected_beacon_interval > mon_mac->beacon_interval) {
+		mon_mac->nth_beacon = (filter->connected_beacon_interval /
+				       mon_mac->beacon_interval) - 1;
+	}
+}
+#else
+static inline void
+dp_mon_update_nth_beacon(struct dp_pdev *pdev)
+{
+}
+#endif
 #endif /* _DP_MON_H_ */

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -410,7 +410,6 @@ more_msdu_link_desc:
  * @ring_desc: opaque pointer to the REO error ring descriptor
  * @mpdu_desc_info: MPDU descriptor information from ring descriptor
  * @mac_id: mac ID
- * @quota: No. of units (packets) that can be serviced in one shot.
  *
  * This function implements PN error handling
  * If the peer is configured to ignore the PN check errors
@@ -423,8 +422,7 @@ more_msdu_link_desc:
 static uint32_t
 dp_rx_pn_error_handle(struct dp_soc *soc, hal_ring_desc_t ring_desc,
 		      struct hal_rx_mpdu_desc_info *mpdu_desc_info,
-		      uint8_t *mac_id,
-		      uint32_t quota)
+		      uint8_t *mac_id)
 {
 	uint16_t peer_id;
 	uint32_t rx_bufs_used = 0;
@@ -2387,8 +2385,8 @@ process_reo_error_code:
 				DP_STATS_INC(dp_pdev, err.reo_error, 1);
 			count = dp_rx_pn_error_handle(soc,
 						      ring_desc,
-						      &mpdu_desc_info, &mac_id,
-						      quota);
+						      &mpdu_desc_info,
+						      &mac_id);
 
 			rx_bufs_reaped[mac_id] += count;
 			break;

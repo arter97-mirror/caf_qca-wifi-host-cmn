@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -588,6 +588,9 @@ static void dp_rx_page_pool_inactive_timer(void *arg)
 	struct dp_rx_page_pool *rx_pp = (struct dp_rx_page_pool *)arg;
 	struct dp_rx_pp_params *curr, *next;
 
+	if (!rx_pp->page_pool_init)
+		return;
+
 	qdf_spin_lock_bh(&rx_pp->pp_lock);
 	qdf_list_for_each_del(&rx_pp->inactive_list, curr, next, node) {
 		if (!curr->pp)
@@ -602,7 +605,7 @@ static void dp_rx_page_pool_inactive_timer(void *arg)
 	}
 	qdf_spin_unlock_bh(&rx_pp->pp_lock);
 
-	if (!qdf_list_empty(&rx_pp->inactive_list))
+	if (rx_pp->page_pool_init && !qdf_list_empty(&rx_pp->inactive_list))
 		qdf_timer_mod(&rx_pp->pool_inactivity_timer,
 			      DP_RX_PP_INACTIVE_TIMER_MS);
 }
@@ -618,6 +621,9 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 		return;
 
 	rx_pp->active_pp_idx = 0;
+	rx_pp->page_pool_init = false;
+
+	qdf_timer_free(&rx_pp->pool_inactivity_timer);
 
 	qdf_spin_lock(&rx_pp->pp_lock);
 	for (i = 0; i < DP_PAGE_POOL_MAX; i++) {
@@ -643,9 +649,6 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 	}
 
 	qdf_spin_unlock(&rx_pp->pp_lock);
-
-	qdf_timer_free(&rx_pp->pool_inactivity_timer);
-	rx_pp->page_pool_init = false;
 }
 
 QDF_STATUS dp_rx_page_pool_init(struct dp_soc *soc, uint32_t pool_id)
@@ -725,7 +728,7 @@ alloc_page_pool:
 	status = dp_rx_page_pool_check_pages_availability(pp, *pp_size,
 							  *page_size);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		dp_info("page pool resources not available for page_size:%u",
+		dp_info("page pool resources not available for page_size:%zu",
 			*page_size);
 		qdf_page_pool_destroy(pp);
 		pp = NULL;
@@ -824,7 +827,7 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 		pp_params->pool_size = pool_size;
 		pp_params->pp_size = pp_size;
 
-		dp_info("Page pool idx %d pool_size %d pp_size %d", i,
+		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
 			pool_size, pp_size);
 	}
 
@@ -896,7 +899,7 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		pp_count++;
 
 	if (pp_count > DP_PAGE_POOL_MAX) {
-		dp_err("Failed to allocate page pools, invalid pool count %d",
+		dp_err("Failed to allocate page pools, invalid pool count %zu",
 		       pp_count);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -940,7 +943,7 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		pp_params->pp_size = pp_size;
 		upscale_cnt++;
 
-		dp_info("Page pool idx %d pool_size %d pp_size %d", i,
+		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
 			pool_size, pp_size);
 	}
 

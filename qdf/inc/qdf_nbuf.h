@@ -631,8 +631,8 @@ struct mon_rx_status {
  * @enc_type: ecnryption type
  * @retried_msdu_count: retried msdu count
  * @mpdu_q: user mpdu_queue used for monitor
- * @first_msdu: Indicates start of an a-msdu
- * @last_msdu: Indicates end of an a-msdu
+ * @ht_control: HT control information
+ * @qos_queue_size: QoS control queue size
  */
 struct mon_rx_user_status {
 	uint32_t mcs:4,
@@ -704,8 +704,8 @@ struct mon_rx_user_status {
 	uint8_t enc_type;
 	uint16_t retried_msdu_count;
 	qdf_nbuf_queue_t mpdu_q;
-	uint8_t first_msdu;
-	uint8_t last_msdu;
+	uint32_t ht_control;
+	uint8_t qos_queue_size;
 };
 
 /**
@@ -1333,6 +1333,15 @@ qdf_nbuf_set_send_complete_flag(qdf_nbuf_t buf, bool flag)
  */
 void qdf_nbuf_map_check_for_leaks(void);
 
+/**
+ * qdf_nbuf_detect_track_list_corruption() - Detect nbuf tracker list corruption
+ * @ptr: memory block pointer
+ * @size: memory block size
+ *
+ * Returns: None
+ */
+void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size);
+
 QDF_STATUS qdf_nbuf_map_debug(qdf_device_t osdev,
 			      qdf_nbuf_t buf,
 			      qdf_dma_dir_t dir,
@@ -1450,6 +1459,8 @@ QDF_STATUS qdf_nbuf_track_map_single_debug(qdf_device_t osdev, qdf_nbuf_t buf,
 #else /* NBUF_MAP_UNMAP_DEBUG */
 
 static inline void qdf_nbuf_map_check_for_leaks(void) {}
+
+static inline void qdf_nbuf_detect_track_list_corruption(void *ptr, uint32_t size) {}
 
 static inline QDF_STATUS
 qdf_nbuf_map(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)

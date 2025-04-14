@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1279,4 +1279,27 @@ void ucfg_crypto_flush_entries(struct wlan_objmgr_psoc *psoc);
 void ucfg_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
 				     uint8_t link_id);
+
+#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_ROAM_OFFLOAD)
+/**
+ * wlan_crypto_key_event_handler() - Handle key event and store the keys in
+ * crypto PSOC object.
+ * @psoc:  Pointer to PSOC object
+ * @keys:  Pointer to the keys
+ * @num_keys: Number of links for which keys entries are available
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wlan_crypto_key_event_handler(struct wlan_objmgr_psoc *psoc,
+					 struct wlan_crypto_key_entry *keys,
+					 uint8_t num_keys);
+#else
+static inline
+QDF_STATUS wlan_crypto_key_event_handler(struct wlan_objmgr_psoc *psoc,
+					 struct wlan_crypto_key_entry *keys,
+					 uint8_t num_keys)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
 #endif /* end of _WLAN_CRYPTO_GLOBAL_API_H_ */

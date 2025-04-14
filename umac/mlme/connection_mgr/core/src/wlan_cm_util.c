@@ -1351,7 +1351,7 @@ void cm_inform_bcn_probe(struct cnx_mgr *cm_ctx, uint8_t *bcn_probe,
 	qdf_mem_copy(data, bcn_probe, len);
 	/* buf will be freed by scan module in error or success case */
 	wlan_scan_process_bcn_probe_rx_sync(wlan_pdev_get_psoc(pdev), buf,
-					    &rx_param, frm_type, false);
+					    &rx_param, frm_type, true);
 }
 
 bool cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev)

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5124,11 +5124,11 @@ void dp_print_tsf_tx_delay_hist(struct cdp_hist_stats *hist_stats, uint8_t type)
 	if (type == UL_DELAY) {
 		dp_info(" Delay hist polled by STA_INFO cmd");
 		dp_info("         Pkts_per_delay_bucket%60s | Min | Max | Avg |",
-			"", "");
+			"");
 	} else {
 		dp_info(" Delay jitter hist polled by STA_INFO cmd");
 		dp_info("         Pkts_per_jitter_bucket%60s | Min | Max | Avg |",
-			"", "");
+			"");
 	}
 
 	pos = 0;
@@ -7197,8 +7197,8 @@ void dp_print_tx_rates(struct dp_vdev *vdev)
 	DP_PRINT_STATS("LDPC = %d", pdev->stats.tx.ldpc);
 	DP_PRINT_STATS("Retries = %d", pdev->stats.tx.retries);
 	DP_PRINT_STATS("Last ack rssi = %d\n", pdev->stats.tx.last_ack_rssi);
-	DP_PRINT_STATS("Average ack rssi = %d\n",
-			CDP_SNR_OUT(pdev->stats.tx.avg_ack_rssi));
+	DP_PRINT_STATS("Average ack rssi = %lu\n",
+		       CDP_SNR_OUT(pdev->stats.tx.avg_ack_rssi));
 	DP_PRINT_STATS("Number of PPDU's with Punctured Preamble = %d",
 			   pdev->stats.tx.pream_punct_cnt);
 
@@ -8018,7 +8018,7 @@ void dp_print_peer_stats(struct dp_peer *peer,
 		       peer_stats->tx.ampdu_cnt);
 	DP_PRINT_STATS("Last Packet RSSI = %d",
 		       peer_stats->tx.last_ack_rssi);
-	DP_PRINT_STATS("Average Packet RSSI = %d",
+	DP_PRINT_STATS("Average Packet RSSI = %lu",
 		       CDP_SNR_OUT(peer_stats->tx.avg_ack_rssi));
 	DP_PRINT_STATS("Dropped At FW: Removed Pkts = %llu",
 		       peer_stats->tx.dropped.fw_rem.num);
@@ -8028,7 +8028,7 @@ void dp_print_peer_stats(struct dp_peer *peer,
 		DP_PRINT_STATS("Dropped At FW: Removed bytes = %llu",
 			peer_stats->tx.dropped.fw_rem.bytes);
 	}
-	DP_PRINT_STATS("Dropped At FW: Removed transmitted = %d",
+	DP_PRINT_STATS("Dropped At FW: Removed transmitted = %llu",
 		       peer_stats->tx.dropped.fw_rem_tx.num);
 	DP_PRINT_STATS("Dropped At FW: Removed Untransmitted = %d",
 		       peer_stats->tx.dropped.fw_rem_notx);
@@ -8513,7 +8513,7 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 		DP_PRINT_STATS("firmware removed packets: %llu (%llu bytes)",
 			       pdev->stats.tx.dropped.fw_rem.num,
 			       pdev->stats.tx.dropped.fw_rem.bytes);
-		DP_PRINT_STATS("firmware removed tx: %u",
+		DP_PRINT_STATS("firmware removed tx: %llu",
 			       pdev->stats.tx.dropped.fw_rem_tx.num);
 		DP_PRINT_STATS("firmware removed notx %u",
 			       pdev->stats.tx.dropped.fw_rem_notx);
@@ -8866,7 +8866,7 @@ dp_print_pdev_tx_stats(struct dp_pdev *pdev)
 		       pdev->stats.tx.dropped.fw_rem.num);
 	DP_PRINT_STATS("	FW removed bytes= %llu",
 		       pdev->stats.tx.dropped.fw_rem.bytes);
-	DP_PRINT_STATS("	FW removed transmitted = %u",
+	DP_PRINT_STATS("	FW removed transmitted = %llu",
 		       pdev->stats.tx.dropped.fw_rem_tx.num);
 	DP_PRINT_STATS("	FW removed untransmitted = %u",
 		       pdev->stats.tx.dropped.fw_rem_notx);

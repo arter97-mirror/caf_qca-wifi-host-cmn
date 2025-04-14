@@ -149,7 +149,6 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 	qdf_mem_copy(link_info->link_chan_info, &channel, sizeof(channel));
 	link_info->link_status_flags = 0;
 	link_info->link_id = link_id;
-	link_info->is_link_active = false;
 
 	mlo_debug("Update AP Link info for link_id: %d, freq: %d, vdev_id:%d, link_addr:" QDF_MAC_ADDR_FMT,
 		  link_info->link_id, link_info->link_chan_info->ch_freq,
@@ -288,6 +287,7 @@ void mlo_mgr_reset_ap_link_info(struct wlan_objmgr_vdev *vdev)
 		link_info->link_id = WLAN_INVALID_LINK_ID;
 		link_info->bpcc = 0;
 		link_info->link_status_flags = 0;
+		link_info->is_link_active = false;
 		link_info++;
 	}
 }
@@ -1045,8 +1045,8 @@ mlo_mgr_osif_update_connect_info(struct wlan_objmgr_vdev *vdev, int32_t link_id)
 	if (!link_info)
 		return;
 
-	mlo_debug("VDEV ID %d, Link ID %d, STA MAC " QDF_MAC_ADDR_FMT ", BSSID " QDF_MAC_ADDR_FMT,
-		  link_info->vdev_id, link_id,
+	mlo_debug("Vdev %d: link id %d freq %d self MAC " QDF_MAC_ADDR_FMT " BSSID " QDF_MAC_ADDR_FMT,
+		  link_info->vdev_id, link_id, link_info->chan_freq,
 		  QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
 		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
 	osif_bss_update_cb = g_mlo_ctx->osif_ops->mlo_mgr_osif_update_bss_info;
@@ -1765,6 +1765,8 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 			link_info->is_link_active = false;
 
 		vdev_id = link_info->vdev_id;
+		mlo_debug("vdev:%d is_link_active:%d num_links:%d", vdev_id,
+			  link_info->is_link_active, num_links);
 		/*
 		 * Teardown TDLS for non-DBS target when number of
 		 * connected links is > 1, so that it can be formed again on

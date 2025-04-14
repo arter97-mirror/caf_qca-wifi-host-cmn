@@ -582,6 +582,15 @@ void mlo_iterate_ml_standalone_vdev_list(struct wlan_objmgr_vdev *vdev,
 }
 
 /**
+ * mlo_sta_set_all_vdevs_connect_req_bmap() - Set connect request bitmap
+ * for all VDEVs in the MLO dev context
+ * @vdev: VDEV object manager.
+ *
+ * Return: void
+ */
+void mlo_sta_set_all_vdevs_connect_req_bmap(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_update_connect_req_links: update connect req links index
  * @vdev: vdev object
  * @value: set/clear the bit
@@ -1085,6 +1094,11 @@ struct wlan_objmgr_vdev *
 ucfg_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	return vdev;
+}
+
+static inline void
+mlo_sta_set_all_vdevs_connect_req_bmap(struct wlan_objmgr_vdev *vdev)
+{
 }
 
 static inline void

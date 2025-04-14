@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2518,7 +2518,7 @@ const uint8_t *wlan_get_rsnxe_data_from_ie_ptr(const uint8_t *ie_ptr,
 	return NULL;
 }
 
-const uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len)
+uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len)
 {
 	const uint8_t *rsno = NULL;
 

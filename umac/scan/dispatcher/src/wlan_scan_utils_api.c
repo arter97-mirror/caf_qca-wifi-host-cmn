@@ -2721,11 +2721,6 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 	qdf_mem_copy(&scan_entry->mbssid_info, mbssid_info,
 		     sizeof(scan_entry->mbssid_info));
 
-	/*Locally generated entry*/
-	if (!qdf_is_macaddr_zero(
-		(struct qdf_mac_addr *)&mbssid_info->non_trans_bssid))
-		scan_entry->is_non_tx_mbssid_gen = 1;
-
 	scan_entry->phy_mode = util_scan_get_phymode(pdev, scan_entry);
 	scan_entry->non_intersected_phymode = scan_entry->phy_mode;
 

@@ -1117,7 +1117,9 @@ QDF_STATUS dp_mon_start_local_pkt_capture(struct cdp_soc_t *cdp_soc,
 		filter->fp_subfilter.ctrl_rx_frame_filter;
 	mon_pdev->fp_subfilter.connected_beacon_interval =
 		filter->fp_subfilter.connected_beacon_interval;
+	dp_mon_update_nth_beacon(pdev);
 #endif
+
 	qdf_spin_lock_bh(&mon_mac->mon_lock);
 	dp_mon_filter_setup_tx_mon_mode(pdev);
 	status = dp_tx_mon_filter_update(pdev);

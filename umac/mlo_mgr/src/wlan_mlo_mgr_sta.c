@@ -336,6 +336,22 @@ bool mlo_is_mld_vdevs_active(struct wlan_objmgr_vdev *vdev)
 	return true;
 }
 
+void mlo_sta_set_all_vdevs_connect_req_bmap(struct wlan_objmgr_vdev *vdev)
+{
+	uint8_t idx;
+	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
+
+	if (!mlo_dev_ctx || !mlo_dev_ctx->sta_ctx)
+		return;
+
+	for (idx =  0; idx < WLAN_UMAC_MLO_MAX_VDEVS; idx++) {
+		if (!mlo_dev_ctx->wlan_vdev_list[idx])
+			continue;
+
+		qdf_set_bit(idx, mlo_dev_ctx->sta_ctx->wlan_connect_req_links);
+	}
+}
+
 bool mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
@@ -1636,6 +1652,8 @@ void mlo_sta_link_connect_notify(struct wlan_objmgr_vdev *vdev,
 		mlo_mgr_update_parnter_info(vdev, rsp);
 		mlo_send_link_connect(vdev, rsp);
 	}
+
+	mlo_clear_connect_req_links_bmap(vdev);
 }
 
 /**

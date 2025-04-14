@@ -1999,6 +1999,8 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 		/* user tlv */
 		uint16_t duration;
 		uint8_t transmitted_tid;
+		uint32_t ht_control;
+		uint8_t queue_size;
 
 		duration = HAL_TX_DESC_GET_64(tx_tlv,
 					      TX_FES_STATUS_USER_PPDU,
@@ -2006,10 +2008,19 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 		transmitted_tid = HAL_TX_DESC_GET_64(tx_tlv,
 						     TX_FES_STATUS_USER_PPDU,
 						     TRANSMITTED_TID);
+		ht_control = HAL_TX_DESC_GET_64(tx_tlv,
+						TX_FES_STATUS_USER_PPDU,
+						HT_CONTROL);
+
+		queue_size =  HAL_TX_DESC_GET_64(tx_tlv,
+						 TX_FES_STATUS_USER_PPDU,
+						 QOS_BUF_STATE);
 
 		TXMON_HAL(ppdu_info, cur_usr_idx) = user_id;
 		TXMON_HAL_USER(ppdu_info, user_id, tid) = transmitted_tid;
 		TXMON_HAL_USER(ppdu_info, user_id, duration) = duration;
+		TXMON_HAL_USER(ppdu_info, user_id, ht_control) = ht_control;
+		TXMON_HAL_USER(ppdu_info, user_id, qos_queue_size) = queue_size;
 
 		status = HAL_MON_TX_FES_STATUS_USER_PPDU;
 		SHOW_DEFINED(WIFITX_FES_STATUS_USER_PPDU_E);

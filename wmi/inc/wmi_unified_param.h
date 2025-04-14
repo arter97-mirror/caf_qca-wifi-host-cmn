@@ -3402,6 +3402,20 @@ typedef struct {
 	uint32_t pout_reduction_db;
 } tt_level_config;
 
+/*
+ * wmi_thermal_monitor_id: enum of thermal client
+ * @WMI_HOST_THERMAL_MONITOR_APPS: Thermal monitor client of APPS
+ * @WMI_HOST_THERMAL_MONITOR_WPSS: Thermal monitor client for WPSS
+ * @WMI_HOST_THERMAL_MONITOR_DDR_BWM: Client for DDR BW mitigation
+ * @WMI_HOST_THERMAL_MONITOR_INVALID: Invalid client
+ */
+enum wmi_thermal_monitor_id {
+	WMI_HOST_THERMAL_MONITOR_APPS = 1,
+	WMI_HOST_THERMAL_MONITOR_WPSS,
+	WMI_HOST_THERMAL_MONITOR_DDR_BWM,
+	WMI_HOST_THERMAL_MONITOR_INVALID,
+};
+
 /**
  * struct thermal_mitigation_params - Thermal mitigation params
  * @pdev_id: pdev identifier
@@ -3409,7 +3423,7 @@ typedef struct {
  * @dc: DC
  * @dc_per_event: DC per event
  * @num_thermal_conf: Number of thermal configurations to be sent
- * @client_id: Thermal client id either apps or wpps
+ * @client_id: Thermal client id
  * @priority: Priority of apps/wpps
  * @levelconf: TT level config params
  */
@@ -3419,7 +3433,7 @@ struct thermal_mitigation_params {
 	uint32_t dc;
 	uint32_t dc_per_event;
 	uint8_t num_thermal_conf;
-	uint8_t client_id;
+	enum wmi_thermal_monitor_id client_id;
 	uint8_t priority;
 	tt_level_config levelconf[MAX_THERMAL_LEVELS];
 };

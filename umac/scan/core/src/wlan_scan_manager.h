@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2017-2018, 2020-2021 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -137,4 +137,11 @@ QDF_STATUS scm_scan_cancel_flush_callback(struct scheduler_msg *msg);
 void scm_disable_obss_pdev_scan(struct wlan_objmgr_psoc *psoc,
 				struct wlan_objmgr_pdev *pdev);
 
+/**
+ * scm_set_obss_scan_enable() - Public API to set obss scan enable
+ * @vdev: vdev pointer
+ *
+ * Return: void
+ */
+void scm_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev);
 #endif
