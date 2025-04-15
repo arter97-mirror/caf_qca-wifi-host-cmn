@@ -547,12 +547,6 @@ static inline void
 hal_txmon_parse_msdu_start(void *tx_tlv, uint8_t user_id,
 			   struct hal_tx_ppdu_info *tx_ppdu_info)
 {
-	hal_tx_msdu_start_t *msdu_start = (hal_tx_msdu_start_t *)tx_tlv;
-
-	TXMON_HAL_USER(tx_ppdu_info, user_id,
-		       first_msdu) = msdu_start->first_msdu;
-	TXMON_HAL_USER(tx_ppdu_info, user_id,
-		       last_msdu) = msdu_start->last_msdu;
 }
 
 /**
@@ -1755,6 +1749,7 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 					     (void *)status_frag);
 		TXMON_STATUS_INFO(tx_status_info,
 				  length) = tlv_len;
+
 		/*
 		 * reference of the status buffer will be held in
 		 * dp_tx_update_ppdu_info_status()
