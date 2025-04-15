@@ -4942,6 +4942,7 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 	uint16_t copied_len;
 	uint8_t more_frags;
 	uint8_t pack_more_data;
+	qdf_dma_addr_t paddr;
 
 	*head_skb = NULL;
 
@@ -4977,8 +4978,16 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 
 		if (qdf_unlikely(!new_skb)) {
 			qdf_err("sw tso: failed to allocate buffer");
+			qdf_nbuf_list_free(*head_skb);
 			return QDF_STATUS_E_NOMEM;
 		}
+
+		/* Set magic value to identify the packet is a SW TSO packet */
+		qdf_nbuf_set_dev_scratch(new_skb,
+					 QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL);
+		paddr = QDF_NBUF_CB_PADDR(new_skb);
+		memcpy(new_skb->cb, skb->cb, sizeof(skb->cb));
+		QDF_NBUF_CB_PADDR(new_skb) = paddr;
 
 		if (!(*head_skb)) {
 			*head_skb = new_skb;

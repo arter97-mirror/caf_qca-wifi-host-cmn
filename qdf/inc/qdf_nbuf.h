@@ -234,6 +234,8 @@ enum wsc_op_code {
 #define TSO_DEBUG(fmt, args ...)
 #endif
 
+#define QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL	0xCADB
+
 #define IEEE80211_AMPDU_FLAG    0x01
 
 #define IEEE80211_AMSDU_FLAG    0x02
