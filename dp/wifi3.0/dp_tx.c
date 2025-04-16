@@ -6812,6 +6812,7 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	dp_info("vdev: %u enable: %u", vdev_id, enable);
 	dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_TSF, enable);
 
 	qdf_atomic_set(&vdev->tsf_ul_delay_report, enable);
