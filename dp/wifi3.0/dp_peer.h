@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -739,6 +739,18 @@ QDF_STATUS dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 void dp_rx_peer_unmap_handler(struct dp_soc *soc, uint16_t peer_id,
 			      uint8_t vdev_id, uint8_t *peer_mac_addr,
 			      uint8_t is_wds, uint32_t free_wds_count);
+/**
+ * dp_peer_set_tx_classify_idx() - DP set peer Tx flow queue index
+ * @soc: generic soc handle
+ * @peer_id: peer_id from firmware
+ * @vdev_id: vdev ID
+ * @peer_classify_info_idx: peer flow queue index
+ *
+ * Return: none
+ */
+QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
+				       uint8_t vdev_id,
+				       uint8_t peer_classify_info_idx);
 
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(DP_MLO_LINK_STATS_SUPPORT)
 /**

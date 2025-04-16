@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4744,6 +4744,8 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 		u_int8_t vdev_id;
 		uint8_t is_wds;
 		u_int16_t ast_hash = 0;
+		uint8_t is_classify_idx_valid;
+		uint8_t peer_classify_info_idx;
 
 		peer_id = HTT_RX_PEER_MAP_V3_SW_PEER_ID_GET(*msg_word);
 		vdev_id = HTT_RX_PEER_MAP_V3_VDEV_ID_GET(*msg_word);
@@ -4753,6 +4755,9 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 		hw_peer_id = HTT_RX_PEER_MAP_V3_HW_PEER_ID_GET(*(msg_word + 3));
 		ast_hash = HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_GET(*(msg_word + 3));
 		is_wds = HTT_RX_PEER_MAP_V3_NEXT_HOP_GET(*(msg_word + 4));
+		is_classify_idx_valid =
+		HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_GET(*(msg_word +
+								      4));
 
 		dp_htt_info("HTT_T2H_MSG_TYPE_PEER_MAP_V3 msg for peer id %d vdev id %d n",
 			    peer_id, vdev_id);
@@ -4761,6 +4766,18 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 				       hw_peer_id, vdev_id,
 				       peer_mac_addr, ast_hash,
 				       is_wds);
+		if (is_classify_idx_valid) {
+			peer_classify_info_idx =
+			HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_GET(*(msg_word +
+								   5));
+			dp_htt_info("HTT_T2H_MSG_TYPE_PEER_MAP_V3 msg for peer id %d vdev id %d classify_idx_valid %d classify_info_idx %d",
+				    peer_id, vdev_id, is_classify_idx_valid,
+				    peer_classify_info_idx);
+			dp_peer_set_tx_classify_idx(soc->dp_soc, peer_id,
+						    vdev_id,
+						    peer_classify_info_idx);
+		}
+
 
 		break;
 	}

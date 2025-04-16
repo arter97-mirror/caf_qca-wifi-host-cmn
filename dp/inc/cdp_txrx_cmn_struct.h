@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -547,12 +547,18 @@ enum ol_txrx_peer_state {
  * @peer_id: Peer ID
  * @state: peer state
  * @mld_peer: whether is mld peer
+ * @txpt_classify_idx_valid: Is txpt_classify_idx valid
+ * @txpt_classify_idx: peer msdu queue flow_index
  */
 struct cdp_peer_output_param {
 	uint8_t vdev_id;
 	uint16_t peer_id;
 	enum ol_txrx_peer_state state;
 	bool mld_peer;
+#ifdef CONFIG_BORON
+	bool txpt_classify_idx_valid;
+	uint8_t txpt_classify_idx;
+#endif
 };
 
 /**

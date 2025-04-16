@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3305,6 +3305,49 @@ void dp_rx_reset_roaming_peer(struct dp_soc *soc, uint8_t vdev_id,
 }
 #endif
 
+#ifdef CONFIG_BORON
+QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
+				       uint8_t vdev_id,
+				       uint8_t peer_classify_info_idx)
+{
+	struct dp_peer *peer = NULL;
+
+	peer = __dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_HTT);
+
+	if (peer) {
+		peer->txpt_classify_idx = peer_classify_info_idx;
+		peer->txpt_classify_idx_valid = true;
+		dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	return QDF_STATUS_E_NOENT;
+}
+
+static inline
+void dp_peer_get_tx_classify_idx(struct cdp_peer_output_param *param,
+				 struct dp_peer *tgt_peer)
+{
+	if (qdf_likely(tgt_peer->txpt_classify_idx_valid)) {
+		param->txpt_classify_idx_valid = true;
+		param->txpt_classify_idx = tgt_peer->txpt_classify_idx;
+	}
+}
+#else
+QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
+				       uint8_t vdev_id,
+				       uint8_t peer_classify_info_idx)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void dp_peer_get_tx_classify_idx(struct cdp_peer_output_param *param,
+				 struct dp_peer *tgt_peer)
+{
+}
+#endif
+
 QDF_STATUS
 dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 		       uint16_t hw_peer_id, uint8_t vdev_id,
@@ -4399,6 +4442,7 @@ QDF_STATUS dp_get_peer_details(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	tgt_peer = dp_get_tgt_peer_from_peer(peer);
 	peer_details->state = tgt_peer->state;
 	peer_details->peer_id = tgt_peer->peer_id;
+	dp_peer_get_tx_classify_idx(peer_details, tgt_peer);
 
 	if (slowpath)
 		dp_peer_info("peer %pK tgt_peer: %pK peer MAC "
@@ -4588,6 +4632,7 @@ void dp_get_info_by_peer_mac(struct cdp_soc_t *soc_hdl,
 	tgt_peer = dp_get_tgt_peer_from_peer(peer);
 	param->state = tgt_peer->state;
 	param->vdev_id = tgt_peer->vdev->vdev_id;
+	dp_peer_get_tx_classify_idx(param, tgt_peer);
 
 	/* mlo connection link peer, get mld peer with reference */
 	if (IS_MLO_DP_MLD_PEER(tgt_peer))
