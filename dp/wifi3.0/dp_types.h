@@ -447,11 +447,13 @@ struct dp_be_intrabss_params {
  * @da_peer_id: Destination peer id
  * @dest_chip_id: Destination chip id
  * @dest_chip_pmac_id: Destination chips pmac id
+ * @da: Destination address
  */
 struct dp_be_intrabss_in_params {
 	uint16_t da_peer_id;
 	uint8_t dest_chip_id;
 	uint8_t dest_chip_pmac_id;
+	uint8_t *da;
 };
 
 #define DP_PDEV_ITERATE_VDEV_LIST(_pdev, _vdev) \

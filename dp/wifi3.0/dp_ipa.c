@@ -4430,6 +4430,32 @@ static bool dp_ipa_peer_check(struct dp_soc *soc,
 
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 /**
+ * dp_ipa_rx_intrabss_construct_params() - Construct params for intrabss fwd
+ * @nbuf: source skb
+ * @params: pointer to params for intrabss fwd
+ *
+ * Return: None
+ */
+static inline void
+dp_ipa_rx_intrabss_construct_params(qdf_nbuf_t nbuf,
+				    struct dp_be_intrabss_in_params *params)
+{
+	params->da_peer_id = DP_INVALID_PEER_ID;
+	params->dest_chip_id =
+		(uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DEST_CHIP_ID_OFFSET];
+	params->dest_chip_pmac_id =
+		(uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DEST_CHIP_PMAC_ID_OFFSET];
+}
+#else
+static inline void
+dp_ipa_rx_intrabss_construct_params(qdf_nbuf_t nbuf,
+				    struct dp_be_intrabss_in_params *params)
+{
+	params->da = ((struct ethhdr *)qdf_nbuf_data(nbuf))->h_dest;
+}
+#endif
+
+/**
  * dp_ipa_intrabss_send() - send IPA RX intra-bss frames
  * @pdev: pdev
  * @vdev: vdev
@@ -4568,17 +4594,13 @@ static bool dp_ipa_rx_intrabss_ucast_fwd(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	struct dp_pdev *pdev = NULL;
 	struct dp_be_intrabss_in_params params_in;
 	struct dp_be_intrabss_params params_out;
-	struct ethhdr *eh;
+	struct ethhdr *eh = NULL;
 	bool status = false;
 
 	if (qdf_unlikely(!src_vdev))
 		return status;
 
-	params_in.da_peer_id = DP_INVALID_PEER_ID;
-	params_in.dest_chip_id =
-		(uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DEST_CHIP_ID_OFFSET];
-	params_in.dest_chip_pmac_id =
-		(uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DEST_CHIP_PMAC_ID_OFFSET];
+	dp_ipa_rx_intrabss_construct_params(nbuf, &params_in);
 	if (!soc->arch_ops.dp_rx_intrabss_get_params(soc, src_vdev,
 						     NULL,
 						     params_in,
@@ -4650,155 +4672,6 @@ bool dp_ipa_rx_intrabss_fwd(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		return dp_ipa_rx_intrabss_ucast_fwd(soc, nbuf, vdev_id,
 						    fwd_success);
 }
-
-#else /* !(WLAN_FEATURE_11BE_MLO && QCA_IPA_LL_TX_FLOW_CONTROL) */
-/**
- * dp_ipa_intrabss_send() - send IPA RX intra-bss frames
- * @pdev: pdev
- * @vdev: vdev
- * @nbuf: skb
- *
- * Return: nbuf if TX fails and NULL if TX succeeds
- */
-static qdf_nbuf_t dp_ipa_intrabss_send(struct dp_pdev *pdev,
-				       struct dp_vdev *vdev,
-				       qdf_nbuf_t nbuf)
-{
-	struct cdp_tid_rx_stats *tid_rx_stats;
-	struct dp_be_intrabss_params params;
-	struct dp_txrx_peer *txrx_peer;
-	struct dp_peer *vdev_peer;
-	uint8_t da_is_bcmc;
-	struct dp_soc *soc;
-	uint16_t len;
-
-	vdev_peer = dp_vdev_bss_peer_ref_n_get(pdev->soc, vdev, DP_MOD_ID_IPA);
-	if (qdf_unlikely(!vdev_peer))
-		return nbuf;
-
-	txrx_peer = vdev_peer->txrx_peer;
-	if (qdf_unlikely(!txrx_peer)) {
-		dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
-		return nbuf;
-	}
-
-	/* For bcmc case, nbuf comes from qdf_nbuf_copy(), where the skb
-	 * header is copied. So nbuf->cb[] holds correct values.
-	 */
-	da_is_bcmc = (uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DA_IS_BCMC_OFFSET] &
-		DP_IPA_NBUF_CB_BCMC_MASK;
-
-	qdf_mem_zero(nbuf->cb, sizeof(nbuf->cb));
-	len = qdf_nbuf_len(nbuf);
-	soc = pdev->soc;
-
-	if (!da_is_bcmc)
-		goto tx_send;
-
-	/* No MLO mcbc fwd ops or fail to get mcbc params, do legacy tx */
-	if (!soc->arch_ops.dp_rx_intrabss_get_mcbc_params ||
-	    !soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd ||
-	    !soc->arch_ops.dp_rx_intrabss_get_mcbc_params(soc, vdev, &params))
-		goto tx_send;
-
-	/* MLO mcbc intra-bss fwd */
-	tid_rx_stats =
-		&txrx_peer->vdev->pdev->stats.tid_stats.tid_rx_stats[0][0];
-	soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd(params, nbuf, 0, len,
-						  txrx_peer, tid_rx_stats);
-	goto out;
-
-tx_send:
-	if (dp_tx_send((struct cdp_soc_t *)soc, vdev->vdev_id, nbuf)) {
-		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.intra_bss.fail,
-					      1, len, 0);
-		dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
-		return nbuf;
-	}
-
-	DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.intra_bss.pkts, 1, len, 0);
-
-out:
-	dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
-	return NULL;
-}
-
-bool dp_ipa_rx_intrabss_fwd(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			    qdf_nbuf_t nbuf, bool *fwd_success)
-{
-	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
-	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
-						     DP_MOD_ID_IPA);
-	struct dp_pdev *pdev;
-	qdf_nbuf_t nbuf_copy;
-	uint8_t da_is_bcmc;
-	struct ethhdr *eh;
-	bool status = false;
-
-	*fwd_success = false; /* set default as failure */
-
-	/*
-	 * WDI 3.0 skb->cb[] info from IPA driver
-	 * skb->cb[0] = vdev_id
-	 * skb->cb[1].bit#1 = da_is_bcmc
-	 */
-	da_is_bcmc = ((uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DA_IS_BCMC_OFFSET]) &
-					DP_IPA_NBUF_CB_BCMC_MASK;
-
-	if (qdf_unlikely(!vdev))
-		return false;
-
-	pdev = vdev->pdev;
-	if (qdf_unlikely(!pdev))
-		goto out;
-
-	/* no fwd for station mode and just pass up to stack */
-	if (vdev->opmode == wlan_op_mode_sta)
-		goto out;
-
-	if (da_is_bcmc) {
-		nbuf_copy = qdf_nbuf_copy(nbuf);
-		if (!nbuf_copy)
-			goto out;
-
-		if (dp_ipa_intrabss_send(pdev, vdev, nbuf_copy))
-			qdf_nbuf_free(nbuf_copy);
-		else
-			*fwd_success = true;
-
-		/* return false to pass original pkt up to stack */
-		goto out;
-	}
-
-	eh = (struct ethhdr *)qdf_nbuf_data(nbuf);
-
-	if (!qdf_mem_cmp(eh->h_dest, vdev->mac_addr.raw, QDF_MAC_ADDR_SIZE))
-		goto out;
-
-	if (!dp_ipa_peer_check(soc, eh->h_dest, vdev->vdev_id))
-		goto out;
-
-	if (!dp_ipa_peer_check(soc, eh->h_source, vdev->vdev_id))
-		goto out;
-
-	/*
-	 * In intra-bss forwarding scenario, skb is allocated by IPA driver.
-	 * Need to add skb to internal tracking table to avoid nbuf memory
-	 * leak check for unallocated skb.
-	 */
-	qdf_net_buf_debug_acquire_skb(nbuf, __FILE__, __LINE__);
-
-	if (dp_ipa_intrabss_send(pdev, vdev, nbuf))
-		qdf_nbuf_free(nbuf);
-	else
-		*fwd_success = true;
-
-	status = true;
-out:
-	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_IPA);
-	return status;
-}
-#endif /* WLAN_FEATURE_11BE_MLO && QCA_IPA_LL_TX_FLOW_CONTROL */
 
 #ifdef MDM_PLATFORM
 bool dp_ipa_is_mdm_platform(void)

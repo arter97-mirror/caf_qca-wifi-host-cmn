@@ -1556,31 +1556,72 @@ uint32_t dp_rx_nf_process(struct dp_intr *int_ctx,
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
- * dp_rx_intrabss_fwd_mlo_allow() - check if MLO forwarding is allowed
- * @ta_peer: transmitter peer handle
- * @da_peer: destination peer handle
+ * dp_rx_intrabss_fwd_allow() - check if intrabss forwarding is allowed
+ * @ta_vdev: transmitter vdev handle
+ * @da_vdev: destination vdev handle
  *
- * Return: true - MLO forwarding case, false: not
+ * Return: true if it's allowed, false otherwise
  */
 static inline bool
-dp_rx_intrabss_fwd_mlo_allow(struct dp_txrx_peer *ta_peer,
-			     struct dp_txrx_peer *da_peer)
+dp_rx_intrabss_fwd_allow(struct dp_vdev *ta_vdev, struct dp_vdev *da_vdev)
 {
-	/* TA peer and DA peer's vdev should be partner MLO vdevs */
-	if (dp_peer_find_mac_addr_cmp(&ta_peer->vdev->mld_mac_addr,
-				      &da_peer->vdev->mld_mac_addr))
-		return false;
-
-	return true;
+	return (ta_vdev == da_vdev ||
+		!dp_peer_find_mac_addr_cmp(&ta_vdev->mld_mac_addr,
+					   &da_vdev->mld_mac_addr));
 }
 #else
 static inline bool
-dp_rx_intrabss_fwd_mlo_allow(struct dp_txrx_peer *ta_peer,
-			     struct dp_txrx_peer *da_peer)
+dp_rx_intrabss_fwd_allow(struct dp_vdev *ta_vdev, struct dp_vdev *da_vdev)
 {
-	return false;
+	return (ta_vdev == da_vdev);
 }
 #endif
+
+/**
+ * dp_rx_intrabss_get_tgt_vdev_by_da() - Get target vdev object for intrabss
+ * forwarding from destination MAC address
+ * @soc: pointer to soc structure
+ * @vdev: DP vdev handle
+ * @da: destination MAC address of the packet to be processed
+ *
+ * This function first retrieves target peer based on the specified
+ * destination MAC address within soc scope. Then, it checks whether
+ * the intrabss forwarding is allowed.
+ * If it's allowed, the function returns the vdev of the target peer;
+ * otherwise, it returns NULL.
+ *
+ * Return: Target vdev for intrabss fwd in success, NULL in failure
+ */
+static struct dp_vdev *
+dp_rx_intrabss_get_tgt_vdev_by_da(struct dp_soc *soc,
+				  struct dp_vdev *vdev, uint8_t *da)
+{
+	struct dp_peer *peer, *tgt_peer;
+	struct dp_vdev *tgt_vdev = NULL;
+
+	peer = dp_find_peer_by_macaddr(soc, da, DP_VDEV_ALL, DP_MOD_ID_RX);
+	if (!peer)
+		return NULL;
+
+	tgt_peer = dp_get_tgt_peer_from_peer(peer);
+	if (!tgt_peer)
+		goto out;
+
+	if (tgt_peer->bss_peer)
+		goto out;
+
+	if (dp_rx_intrabss_fwd_allow(vdev, tgt_peer->vdev)) {
+		tgt_vdev = tgt_peer->vdev;
+		goto out;
+	}
+
+out:
+	if (tgt_vdev)
+		dp_vdev_get_ref(soc, tgt_vdev, DP_MOD_ID_RX);
+
+	dp_peer_unref_delete(peer, DP_MOD_ID_RX);
+	return tgt_vdev;
+}
 
 #ifdef INTRA_BSS_FWD_OFFLOAD
 /**
@@ -1841,14 +1882,7 @@ dp_rx_intrabss_ucast_check_be(qdf_nbuf_t nbuf,
 	if (da_peer->bss_peer || da_peer == ta_peer)
 		goto rel_da_peer;
 
-	/* Same vdev, support Inra-BSS */
-	if (da_peer->vdev == ta_peer->vdev) {
-		ret = true;
-		goto rel_da_peer;
-	}
-
-	/* MLO specific Intra-BSS check */
-	if (dp_rx_intrabss_fwd_mlo_allow(ta_peer, da_peer)) {
+	if (dp_rx_intrabss_fwd_allow(ta_peer->vdev, da_peer->vdev)) {
 		ret = true;
 		goto rel_da_peer;
 	}
@@ -1858,12 +1892,22 @@ rel_da_peer:
 	return ret;
 }
 #endif /* WLAN_MLO_MULTI_CHIP */
+
 bool dp_rx_intrabss_get_params_be(struct dp_soc *soc, struct dp_vdev *vdev,
 				  struct dp_txrx_peer *ta_peer,
 				  struct dp_be_intrabss_in_params params_in,
 				  struct dp_be_intrabss_params *params_out)
 {
-	return false;
+	struct dp_vdev *tgt_vdev;
+
+	tgt_vdev = dp_rx_intrabss_get_tgt_vdev_by_da(soc, vdev, params_in.da);
+	if (!tgt_vdev)
+		return false;
+
+	params_out->dest_soc = soc;
+	params_out->tx_vdev_id = tgt_vdev->vdev_id;
+	dp_vdev_unref_delete(soc, tgt_vdev, DP_MOD_ID_RX);
+	return true;
 }
 #endif /* INTRA_BSS_FWD_OFFLOAD */
 
