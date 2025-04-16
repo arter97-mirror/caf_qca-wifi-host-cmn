@@ -2288,19 +2288,19 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 						   RX_FRAME_1K_BITMAP_ACK,
 						   STA_FULL_AID);
 		/* get mac address */
-		*(uint32_t *)&tx_status_info->addr1[0] =
-				HAL_TX_DESC_GET_64(tx_tlv,
-						   RX_FRAME_1K_BITMAP_ACK,
-						   ADDR1_31_0);
-		*(uint16_t *)&tx_status_info->addr1[4] =
-				HAL_TX_DESC_GET_64(tx_tlv,
-						   RX_FRAME_1K_BITMAP_ACK,
-						   ADDR1_47_32);
 		*(uint32_t *)&tx_status_info->addr2[0] =
 				HAL_TX_DESC_GET_64(tx_tlv,
 						   RX_FRAME_1K_BITMAP_ACK,
+						   ADDR1_31_0);
+		*(uint16_t *)&tx_status_info->addr2[4] =
+				HAL_TX_DESC_GET_64(tx_tlv,
+						   RX_FRAME_1K_BITMAP_ACK,
+						   ADDR1_47_32);
+		*(uint32_t *)&tx_status_info->addr1[0] =
+				HAL_TX_DESC_GET_64(tx_tlv,
+						   RX_FRAME_1K_BITMAP_ACK,
 						   ADDR2_15_0);
-		*(uint32_t *)&tx_status_info->addr2[2] =
+		*(uint32_t *)&tx_status_info->addr1[2] =
 				HAL_TX_DESC_GET_64(tx_tlv,
 						   RX_FRAME_1K_BITMAP_ACK,
 						   ADDR2_47_16);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -237,6 +237,7 @@ struct wlan_objmgr_peer *wlan_objmgr_peer_obj_create(
 		"Peer("QDF_MAC_ADDR_FMT") PSOC attach failure",
 				QDF_MAC_ADDR_REF(macaddr));
 		qdf_spinlock_destroy(&peer->peer_lock);
+		wlan_objmgr_peer_trace_del_ref_list(peer);
 		wlan_objmgr_peer_trace_deinit_lock(peer);
 		qdf_mem_free(peer);
 		return NULL;
@@ -250,6 +251,7 @@ struct wlan_objmgr_peer *wlan_objmgr_peer_obj_create(
 		/* if attach fails, detach from psoc table before free */
 		wlan_objmgr_psoc_peer_detach(psoc, peer);
 		qdf_spinlock_destroy(&peer->peer_lock);
+		wlan_objmgr_peer_trace_del_ref_list(peer);
 		wlan_objmgr_peer_trace_deinit_lock(peer);
 		qdf_mem_free(peer);
 		return NULL;

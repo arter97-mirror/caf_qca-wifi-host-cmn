@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -641,4 +641,13 @@ QDF_STATUS osif_cm_perfd_set_cpufreq(bool action)
 }
 #endif
 
+/**
+ * osif_get_bss_mac_addr() - Get bss mac from vdev
+ * @vdev: vdev pointer
+ *
+ * This function fetches bss mac addr when vdev is connected
+ *
+ * Return: pointer for mac_addr
+ */
+uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev);
 #endif /* __OSIF_CM_UTIL_H */

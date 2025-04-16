@@ -435,7 +435,7 @@ static QDF_STATUS target_if_vdev_mgr_create_send(
 					struct wlan_objmgr_vdev *vdev,
 					struct vdev_create_params *param)
 {
-	QDF_STATUS status;
+	QDF_STATUS status, timer_status;
 	struct wmi_unified *wmi_handle;
 	uint8_t vap_addr[QDF_MAC_ADDR_SIZE] = {0};
 	struct wlan_lmac_if_mlme_tx_ops *txops;
@@ -472,8 +472,10 @@ static QDF_STATUS target_if_vdev_mgr_create_send(
 					      param);
 
 	vdev_id = wlan_vdev_get_id(vdev);
-	if (QDF_IS_STATUS_SUCCESS(status))
-		status = txops->psoc_vdev_rsp_timer_init(psoc, vdev_id);
+	timer_status = txops->psoc_vdev_rsp_timer_init(psoc, vdev_id);
+
+	if (QDF_IS_STATUS_ERROR(timer_status) && QDF_IS_STATUS_SUCCESS(status))
+		status = timer_status;
 
 	return status;
 }
