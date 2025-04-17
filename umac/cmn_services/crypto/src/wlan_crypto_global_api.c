@@ -188,8 +188,8 @@ static QDF_STATUS wlan_crypto_set_param(struct wlan_crypto_params *crypto_params
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_crypto_set_vdev_param(struct wlan_objmgr_vdev *vdev,
-					wlan_crypto_param_type param,
-					uint32_t value){
+				      wlan_crypto_param_type param,
+				      uint32_t value) {
 	QDF_STATUS status = QDF_STATUS_E_INVAL;
 	struct wlan_crypto_comp_priv *crypto_priv;
 	struct wlan_crypto_params *crypto_params;
@@ -203,6 +203,12 @@ QDF_STATUS wlan_crypto_set_vdev_param(struct wlan_objmgr_vdev *vdev,
 	}
 
 	crypto_params = &(crypto_priv->crypto_params);
+
+	if (param == WLAN_CRYPTO_PARAM_KEY_MGMT &&
+	    !(crypto_params->allowed_key_mgmt & value)) {
+		crypto_params->num_allowed_key_mgmt++;
+		crypto_params->allowed_key_mgmt |= value;
+	}
 
 	status = wlan_crypto_set_param(crypto_params, param, value);
 
@@ -284,6 +290,27 @@ static int32_t wlan_crypto_get_param_value(wlan_crypto_param_type param,
 
 	return value;
 }
+
+void
+wlan_crypto_get_allowed_key_mgmt_info(struct wlan_objmgr_vdev *vdev,
+				      uint16_t *num_allowed_key_mgmt,
+				      uint32_t *allowed_key_mgmt)
+{
+	struct wlan_crypto_comp_priv *crypto_priv;
+	struct wlan_crypto_params *crypto_params;
+	crypto_priv = (struct wlan_crypto_comp_priv *)
+				wlan_get_vdev_crypto_obj(vdev);
+
+	if (!crypto_priv) {
+		crypto_err("crypto_priv NULL");
+		return;
+	}
+	crypto_params = &(crypto_priv->crypto_params);
+	*num_allowed_key_mgmt = crypto_params->num_allowed_key_mgmt;
+	*allowed_key_mgmt = crypto_params->allowed_key_mgmt;
+
+}
+
 
 /**
  * wlan_crypto_get_param - called to get value for param from vdev
