@@ -4582,9 +4582,9 @@ static inline void dp_vdev_tx_mark_to_fw(qdf_nbuf_t nbuf, struct dp_vdev *vdev)
 #endif
 
 #ifdef WLAN_DP_ENABLE_SW_TSO
-static inline bool dp_tx_is_sw_tso_enable(void)
+static inline bool dp_tx_is_sw_tso_enable(struct dp_soc *soc)
 {
-	return true;
+	return wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx);
 }
 
 /**
@@ -4608,13 +4608,24 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		     struct dp_tx_msdu_info_s *msdu_info)
 {
 	struct dp_soc *soc = vdev->pdev->soc;
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
 	qdf_nbuf_t nbuf_head = NULL;
 	qdf_nbuf_t tmp_skb, temp;
 	QDF_STATUS status;
 	int count = 0;
 
-	status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
-						   nbuf, &nbuf_head);
+	if (tx_pp && tx_pp->page_pool_init) {
+		qdf_spin_lock(&tx_pp->pp_lock);
+		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
+							   nbuf, &nbuf_head,
+							   tx_pp->tx_pool.pp);
+		qdf_spin_unlock(&tx_pp->pp_lock);
+	} else {
+		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
+							   nbuf, &nbuf_head,
+							   NULL);
+	}
+
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err("sw tso: failed to prepare sw tso nbuf list status %d",
 		       status);
@@ -4639,7 +4650,7 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	return QDF_STATUS_SUCCESS;
 }
 #else
-static inline bool dp_tx_is_sw_tso_enable(void)
+static inline bool dp_tx_is_sw_tso_enable(struct dp_soc *soc)
 {
 	return false;
 }
@@ -4749,7 +4760,7 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		DP_STATS_INC_PKT(vdev->pdev, tso_stats.num_tso_pkts, 1,
 				 qdf_nbuf_len(nbuf));
 
-		if (dp_tx_is_sw_tso_enable()) {
+		if (dp_tx_is_sw_tso_enable(soc)) {
 			status = dp_tx_sw_tso_handler(vdev, nbuf, &msdu_info);
 			if (status == QDF_STATUS_SUCCESS) {
 				qdf_nbuf_free(nbuf);

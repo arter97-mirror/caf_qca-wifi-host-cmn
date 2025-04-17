@@ -745,6 +745,12 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
 
+	if (__qdf_is_pp_nbuf(buf)) {
+		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
+					   nbytes, __qdf_dma_dir_to_os(dir));
+		return QDF_STATUS_SUCCESS;
+	}
+
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =
 		dma_map_single(osdev->dev, buf->data,

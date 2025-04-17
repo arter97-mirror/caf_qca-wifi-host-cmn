@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3927,6 +3927,69 @@ dp_rx_fst_detach_wrapper(struct dp_soc *soc, struct dp_pdev *pdev)
 }
 #endif
 
+#if defined(DP_FEATURE_TX_PAGE_POOL) || defined(DP_FEATURE_RX_BUFFER_RECYCLE)
+#ifdef DP_FEATURE_TX_PAGE_POOL
+static inline void dp_soc_tx_page_pool_attach(struct dp_soc *soc)
+{
+	qdf_spinlock_create(&soc->tx_pp_lock);
+}
+
+static inline void dp_soc_tx_page_pool_detach(struct dp_soc *soc)
+{
+	qdf_spinlock_destroy(&soc->tx_pp_lock);
+}
+#else
+static inline void dp_soc_tx_page_pool_attach(struct dp_soc *soc)
+{
+}
+
+static inline void dp_soc_tx_page_pool_detach(struct dp_soc *soc)
+{
+}
+#endif /* DP_FEATURE_TX_PAGE_POOL */
+
+static void dp_soc_page_pool_mem_attach(struct dp_soc *soc)
+{
+	/* If page pool allocation has failed during dp prealloc
+	 * init, we will try to allocate them by calling the
+	 * dp_page_pool_init() again during dp_soc_attach().
+	 */
+	if (!soc->cdp_soc.ol_ops->dp_page_pool_init)
+		return;
+
+	return soc->cdp_soc.ol_ops->dp_page_pool_init(soc->ctrl_psoc);
+}
+
+static inline void dp_soc_page_pool_mem_detach(struct dp_soc *soc)
+{
+	/* This is just a place holder API. Page pool
+	 * memory allocated during dp_soc_attach() is saved
+	 * in dp prealloc region and is freed only during
+	 * driver unload.
+	 */
+}
+
+static void dp_soc_page_pool_attach(struct dp_soc *soc)
+{
+	dp_soc_page_pool_mem_attach(soc);
+	dp_soc_tx_page_pool_attach(soc);
+}
+
+static void dp_soc_page_pool_detach(struct dp_soc *soc)
+{
+	dp_soc_tx_page_pool_detach(soc);
+	dp_soc_page_pool_mem_detach(soc);
+}
+#else
+static inline void dp_soc_page_pool_attach(struct dp_soc *soc)
+{
+}
+
+static inline void dp_soc_page_pool_detach(struct dp_soc *soc)
+{
+}
+#endif
+
 /**
  * dp_pdev_attach_wifi3() - attach txrx pdev
  * @txrx_soc: Datapath SOC handle
@@ -4432,6 +4495,7 @@ static void dp_soc_detach(struct cdp_soc_t *txrx_soc)
 	dp_soc_srng_free(soc);
 	dp_hw_link_desc_ring_free(soc);
 	dp_hw_link_desc_pool_banks_free(soc, WLAN_INVALID_PDEV_ID);
+	dp_soc_page_pool_detach(soc);
 	wlan_cfg_soc_detach(soc->wlan_cfg_ctx);
 	dp_soc_tx_hw_desc_history_detach(soc);
 	dp_soc_tx_history_detach(soc);
@@ -15149,6 +15213,8 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 		dp_err("wlan_cfg_ctx failed");
 		goto fail2;
 	}
+
+	dp_soc_page_pool_attach(soc);
 
 	qdf_ssr_driver_dump_register_region("wlan_cfg_ctx", soc->wlan_cfg_ctx,
 					    sizeof(*soc->wlan_cfg_ctx));

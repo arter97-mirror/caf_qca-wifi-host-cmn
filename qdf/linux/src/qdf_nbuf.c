@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -852,7 +852,7 @@ skb_alloc:
 
 qdf_export_symbol(__qdf_nbuf_page_frag_alloc);
 
-#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+#if defined(DP_FEATURE_RX_BUFFER_RECYCLE) || defined(DP_FEATURE_TX_PAGE_POOL)
 struct sk_buff *
 __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 			   int align, __qdf_page_pool_t pp, uint32_t *offset,
@@ -1386,7 +1386,13 @@ void qdf_nbuf_unmap_nbytes_single_paddr_debug(qdf_device_t osdev,
 {
 	qdf_nbuf_untrack_map(buf, func, line);
 	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
-	__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
+
+	if (qdf_is_pp_nbuf(buf))
+		dma_sync_single_for_cpu(osdev->dev, phy_addr,
+					nbytes, __qdf_dma_dir_to_os(dir));
+	else
+		__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
+
 	qdf_net_buf_debug_update_unmap_node(buf, func, line);
 }
 
@@ -1487,6 +1493,13 @@ __qdf_nbuf_map_single(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
 
+	if (__qdf_is_pp_nbuf(buf)) {
+		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
+					   skb_end_pointer(buf) - buf->data,
+					   __qdf_dma_dir_to_os(dir));
+		return QDF_STATUS_SUCCESS;
+	}
+
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =
 		dma_map_single(osdev->dev, buf->data,
@@ -1513,6 +1526,12 @@ void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 					qdf_dma_dir_t dir)
 {
+	if (__qdf_is_pp_nbuf(buf))
+		return dma_sync_single_for_cpu(osdev->dev,
+					       QDF_NBUF_CB_PADDR(buf),
+					       skb_end_pointer(buf) - buf->data,
+					       __qdf_dma_dir_to_os(dir));
+
 	if (QDF_NBUF_CB_PADDR(buf)) {
 		__qdf_record_nbuf_nbytes(
 			__qdf_nbuf_get_end_offset(buf), dir, false);
@@ -4851,6 +4870,38 @@ static inline void __qdf_nbuf_fill_tso_cmn_seg_info(
 	qdf_tso_seg_dbg_record(curr_seg, TSOSEG_LOC_FILLCMNSEG);
 }
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+static struct sk_buff*
+qdf_tx_page_pool_nbuf_alloc_map(qdf_device_t osdev, qdf_page_pool_t tx_pp,
+				qdf_size_t size)
+{
+	struct sk_buff *skb;
+	qdf_page_t page;
+	uint32_t offset;
+
+	if (!(tx_pp && !qdf_page_pool_empty(tx_pp)))
+		return NULL;
+
+	skb = qdf_nbuf_page_pool_alloc(osdev, size,
+				       0, 0, tx_pp, &offset);
+	if (!skb)
+		return skb;
+
+	page = qdf_virt_to_head_page(skb->data);
+	QDF_NBUF_CB_PADDR(skb) = qdf_page_pool_get_dma_addr(page) + offset +
+				 qdf_nbuf_headroom(skb);
+
+	return skb;
+}
+#else
+static inline struct sk_buff*
+qdf_tx_page_pool_nbuf_alloc_map(qdf_device_t osdev, qdf_page_pool_t tx_pp,
+				uint32_t size)
+{
+	return NULL;
+}
+#endif
+
 #ifdef WLAN_DP_ENABLE_SW_TSO
 /**
  * __qdf_nbuf_sw_tso_prepare_nbuf_list () - prepare nbuf list from the given TCP
@@ -4864,12 +4915,14 @@ static inline void __qdf_nbuf_fill_tso_cmn_seg_info(
  * @osdev: qdf device handle
  * @skb: TCP jumbo packet
  * @head_skb: formed skb list
+ * @tx_pp: TX page pool reference
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 					       struct sk_buff *skb,
-					       struct sk_buff **head_skb)
+					       struct sk_buff **head_skb,
+					       qdf_page_pool_t tx_pp)
 {
 	qdf_nbuf_t tail_skb = NULL;
 	qdf_nbuf_t new_skb;
@@ -4915,9 +4968,13 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 	while (num_seg) {
 		more_frags = 1;
 		copied_len = 0;
-		new_skb = qdf_nbuf_alloc_simple(osdev,
-						ori_gso_size + eit_hdr_len,
-						0, 0, FALSE);
+		new_skb = qdf_tx_page_pool_nbuf_alloc_map(osdev, tx_pp,
+							  ori_gso_size + eit_hdr_len);
+		if (!new_skb)
+			new_skb = qdf_nbuf_alloc_simple(osdev,
+							ori_gso_size + eit_hdr_len,
+							0, 0, FALSE);
+
 		if (qdf_unlikely(!new_skb)) {
 			qdf_err("sw tso: failed to allocate buffer");
 			return QDF_STATUS_E_NOMEM;

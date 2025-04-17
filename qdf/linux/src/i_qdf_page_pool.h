@@ -24,7 +24,7 @@
 #include "qdf_types.h"
 #include "i_qdf_trace.h"
 
-#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+#if defined(DP_FEATURE_RX_BUFFER_RECYCLE) || defined(DP_FEATURE_TX_PAGE_POOL)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 #include <net/page_pool/helpers.h>
@@ -246,5 +246,5 @@ __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
 static inline void __qdf_page_pool_destroy(__qdf_page_pool_t pp)
 {
 }
-#endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
+#endif /* DP_FEATURE_RX_BUFFER_RECYCLE  || DP_FEATURE_TX_PAGE_POOL */
 #endif /* _I_QDF_PAGE_POOL_H */

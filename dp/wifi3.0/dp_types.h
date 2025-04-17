@@ -1819,6 +1819,26 @@ struct rx_refill_buff_pool {
 	qdf_nbuf_t *buf_elem;
 };
 
+#if defined(DP_FEATURE_TX_PAGE_POOL) || defined(DP_FEATURE_RX_BUFFER_RECYCLE)
+/**
+ * struct dp_page_pool_t - TX/RX Page pool prealloc info
+ * @type: TX/RX page pool type
+ * @pp: Reference to the page pool
+ * @pool_size: Actual pool size the page pool is requested for during allocation
+ * @pp_size: Size of the page pool
+ * @page_size: Size of the page used in page pool
+ * @in_use: Where page pool is in use or not
+ */
+struct dp_page_pool_t {
+	enum qdf_dp_tx_pp_type type;
+	qdf_page_pool_t pp;
+	uint32_t pool_size;
+	size_t pp_size;
+	size_t page_size;
+	bool in_use;
+};
+#endif
+
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 #define DP_PAGE_POOL_MAX 4
 
@@ -1840,6 +1860,34 @@ struct dp_rx_page_pool {
 	qdf_timer_t pool_inactivity_timer;
 	qdf_list_t inactive_list;
 	bool page_pool_init;
+};
+#endif
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+/**
+ * struct dp_tx_pp_params - TX Page pool parameters
+ * @pp: Reference to the page pool
+ * @pool_size: Actual pool size the page pool is requested for during allocation
+ * @pp_size: Size of the page pool
+ */
+struct dp_tx_pp_params {
+	qdf_page_pool_t pp;
+	size_t pool_size;
+	size_t pp_size;
+};
+
+/**
+ * struct dp_tx_page_pool - TX Page pool info
+ * @tx_pool: TX page pool parameters
+ * @pp_lock: Lock protecting page pool parameters
+ * @page_pool_init: Page pool initialize or not
+ * @ref_cnt: Reference count for the page pool, delete pool if ref_cnt is zero
+ */
+struct dp_tx_page_pool {
+	struct dp_tx_pp_params tx_pool;
+	qdf_spinlock_t pp_lock;
+	bool page_pool_init;
+	qdf_atomic_t ref_cnt;
 };
 #endif
 
@@ -3831,6 +3879,11 @@ struct dp_soc {
 
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 	struct dp_rx_page_pool rx_pp[MAX_RXDESC_POOLS];
+#endif
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+	struct dp_tx_page_pool *tx_pp[MAX_VDEV_CNT];
+	qdf_spinlock_t tx_pp_lock;
 #endif
 };
 
