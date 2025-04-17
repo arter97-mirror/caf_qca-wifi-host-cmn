@@ -2453,7 +2453,7 @@ uint32_t hif_ce_count_max = CE_COUNT_MAX;
  */
 #if defined(CONFIG_SLUB_DEBUG_ON)
 #define CE_DESC_HISTORY_BUFF_CNT  CE_COUNT_MAX
-#define IS_CE_DEBUG_ONLY_FOR_CRIT_CE  0
+#define IS_CE_DEBUG_ONLY_FOR_CRIT_CE  0UL
 #else
 
 #ifdef QCA_WIFI_SUPPORT_SRNG
