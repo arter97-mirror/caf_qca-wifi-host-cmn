@@ -328,10 +328,9 @@ struct peer_cp_stats *wlan_cp_stats_get_peer_stats_obj(struct wlan_objmgr_peer
 {
 	struct peer_cp_stats *peer_cs = NULL;
 
-	if (peer) {
+	if (peer)
 		peer_cs = wlan_objmgr_peer_get_comp_private_obj
 				(peer, WLAN_UMAC_COMP_CP_STATS);
-	}
 
 	return peer_cs;
 }

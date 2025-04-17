@@ -163,8 +163,13 @@ static bool scm_chk_if_cipher_n_akm_match(struct scan_filter *filter,
 		return false;
 
 	/* Check AP's AKM match with filter's AKM.*/
-	if (!(filter->key_mgmt & ap_crypto->key_mgmt))
-		return false;
+	if (filter->num_allowed_key_mgmt > 1) {
+		if (!(filter->allowed_key_mgmt & ap_crypto->key_mgmt))
+			return false;
+	} else {
+		if (!(filter->key_mgmt & ap_crypto->key_mgmt))
+			return false;
+	}
 
 	/* Check AP's mgmt cipher match if present.*/
 	if ((filter->mgmtcipherset && ap_crypto->mgmtcipherset) &&
@@ -206,7 +211,7 @@ static bool scm_chk_crypto_params(struct scan_filter *filter,
 		ap_crypto->mcastcipherset & filter->mcastcipherset;
 	security->ucastcipherset =
 		ap_crypto->ucastcipherset & filter->ucastcipherset;
-	security->key_mgmt = ap_crypto->key_mgmt & filter->key_mgmt;
+	security->key_mgmt = ap_crypto->key_mgmt & filter->allowed_key_mgmt;
 	security->rsn_caps = ap_crypto->rsn_caps;
 
 	return true;
