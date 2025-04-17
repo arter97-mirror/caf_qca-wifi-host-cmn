@@ -3220,8 +3220,9 @@ dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 						   peer->rx_tid[DP_NON_QOS_TID].hw_qdesc_paddr);
 		}
 
-		__dp_peer_event_notify(soc, CDP_PEER_EVENT_MAP, peer->peer_id,
-				       peer->vdev->vdev_id, peer->mac_addr.raw);
+		__dp_peer_event_notify(soc, CDP_PEER_EVENT_MLO_MAP,
+				       peer->peer_id, peer->vdev->vdev_id,
+				       peer->mac_addr.raw);
 	}
 
 	if (!primary_soc)

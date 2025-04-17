@@ -677,10 +677,12 @@ struct cdp_mscs_params {
 /**
  * enum cdp_peer_event - Peer events
  * @CDP_PEER_EVENT_MAP: Peer map event
+ * @CDP_PEER_EVENT_MLO_MAP: MLO Peer map event
  * @CDP_PEER_EVENT_UNMAP: Peer unmap event
  */
 enum cdp_peer_event {
 	CDP_PEER_EVENT_MAP,
+	CDP_PEER_EVENT_MLO_MAP,
 	CDP_PEER_EVENT_UNMAP,
 };
 
