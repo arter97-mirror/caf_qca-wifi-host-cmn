@@ -537,6 +537,8 @@ struct scan_filter {
 	uint8_t num_of_bssid;
 	uint8_t num_of_ssid;
 	uint16_t num_of_channels;
+	uint16_t num_allowed_key_mgmt;
+	uint32_t allowed_key_mgmt;
 	enum wlan_pmf_cap pmf_cap;
 	enum dot11_mode_filter dot11mode;
 	enum wlan_band band;

@@ -53,6 +53,11 @@ QDF_STATUS wlan_crypto_set_peer_param(struct wlan_objmgr_peer *peer,
 						wlan_crypto_param_type param,
 						uint32_t value);
 
+void
+wlan_crypto_get_allowed_key_mgmt_info(struct wlan_objmgr_vdev *vdev,
+				      uint16_t *num_allowed_key_mgmt,
+				      uint32_t *allowed_key_mgmt);
+
 /**
  * wlan_crypto_get_param - called by ucfg to get crypto param
  * @vdev: vdev

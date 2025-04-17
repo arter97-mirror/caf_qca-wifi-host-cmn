@@ -289,6 +289,8 @@ struct wlan_crypto_params {
 	uint32_t key_mgmt;
 	struct   wlan_crypto_pmksa *pmksa[WLAN_CRYPTO_MAX_PMKID];
 	uint16_t rsn_caps;
+	uint16_t num_allowed_key_mgmt;
+	uint32_t allowed_key_mgmt;
 };
 
 typedef enum wlan_crypto_param_type {

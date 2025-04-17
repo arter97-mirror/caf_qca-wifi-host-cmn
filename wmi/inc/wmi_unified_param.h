@@ -34,6 +34,9 @@
 #include <wlan_vdev_mgr_tgt_if_tx_defs.h>
 #include <wlan_vdev_mgr_tgt_if_rx_defs.h>
 
+#include <wlan_crypto_global_def.h>
+#define WLAN_NUM_OF_SUPPORT_AUTH_TYPE WLAN_CRYPTO_AUTH_MAX
+
 #define MAC_MAX_KEY_LENGTH 32
 #define MAC_PN_LENGTH 8
 #define MAX_MAC_HEADER_LEN 32
