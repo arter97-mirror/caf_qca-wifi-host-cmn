@@ -1578,6 +1578,7 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN = 562,
 	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
 	OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE = 564,
+	OL_ATH_PARAM_OVERRIDE_MLSR_PTQM = 566,
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -3917,6 +3918,12 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_STRICT_PUNCTURING, GET_PARAM, 0},
 #endif /* WLAN_FEATURE_11BE */
 #ifdef WLAN_FEATURE_11BE_MLO
+	{"g_mlo_override_mlsr_ptqm",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_OVERRIDE_MLSR_PTQM,
+		GET_PARAM, 0},
+	{"mlo_override_mlsr_ptqm",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_OVERRIDE_MLSR_PTQM,
+		SET_PARAM, 1},
 	{"g_mlo_forced_umac_mode",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_FORCE_PRIMARY_UMAC,
 		GET_PARAM, 0},
