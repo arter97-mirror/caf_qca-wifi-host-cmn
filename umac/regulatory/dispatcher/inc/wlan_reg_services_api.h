@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2921,6 +2921,7 @@ wlan_reg_display_super_chan_list(struct wlan_objmgr_pdev *pdev)
 }
 #endif
 
+#ifdef CONFIG_BAND_6GHZ
 /**
  * wlan_reg_get_num_rules_of_ap_pwr_type() - Get the number of reg rules
  * present for a given ap power type
@@ -2932,6 +2933,14 @@ wlan_reg_display_super_chan_list(struct wlan_objmgr_pdev *pdev)
 uint8_t
 wlan_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				      enum reg_6g_ap_type ap_pwr_type);
+#else
+static inline uint8_t
+wlan_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
+				      enum reg_6g_ap_type ap_pwr_type)
+{
+	return 0;
+}
+#endif
 
 /**
  * wlan_reg_register_is_chan_connected_callback() - Register callback to check
@@ -2979,4 +2988,25 @@ wlan_reg_get_endchan_cen_from_bandstart(qdf_freq_t band_start,
 QDF_STATUS
 wlan_reg_get_opclass_from_map(const struct reg_dmn_op_class_map_t **map,
 			      bool is_global_op_table_needed);
+
+#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
+/**
+ * wlan_reg_is_vlp_depriority_freq() - Check if the frequency is VLP deprority
+ * frequency.
+ *
+ * @pdev: Pointer to pdev
+ * @freq: Frequency in MHz
+ *
+ * Return: True if frequency is deprority frequency, else false.
+ */
+bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				     qdf_freq_t freq);
+#else
+static inline
+bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				     qdf_freq_t freq)
+{
+	return false;
+}
+#endif
 #endif
