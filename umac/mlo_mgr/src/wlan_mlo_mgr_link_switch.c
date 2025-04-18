@@ -2156,6 +2156,8 @@ mlo_mgr_link_switch_defer_disconnect_req(struct wlan_objmgr_vdev *vdev,
 	/* Move current link switch to abort state */
 	mlo_mgr_link_switch_trans_abort_state(mlo_dev_ctx);
 
+	mlo_link_recfg_abort_if_in_progress(vdev, false);
+
 	if (sta_ctx->disconn_req) {
 		mlo_debug("Pending disconnect from source %d, reason %d",
 			  sta_ctx->disconn_req->source,

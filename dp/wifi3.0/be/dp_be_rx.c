@@ -1824,8 +1824,9 @@ dp_rx_intrabss_ucast_check_be(qdf_nbuf_t nbuf,
 						params->dest_soc,
 						msdu_metadata->da_idx);
 
-	da_peer = dp_txrx_peer_get_ref_by_id(params->dest_soc, da_peer_id,
-					     &txrx_ref_handle, DP_MOD_ID_RX);
+	da_peer = dp_tgt_txrx_peer_get_ref_by_id(params->dest_soc, da_peer_id,
+						 &txrx_ref_handle,
+						 DP_MOD_ID_RX);
 	if (!da_peer)
 		return false;
 

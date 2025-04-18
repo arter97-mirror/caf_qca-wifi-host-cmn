@@ -40,6 +40,7 @@ struct link_recfg_rx_rsp;
  * @WLAN_LINK_RECFG_S_DEL_LINK: State for Link Del request
  * @WLAN_LINK_RECFG_S_COMPLETED: State when Link Reconfig is completed
  * @WLAN_LINK_RECFG_S_ABORT: State when Link Reconfig is Aborted
+ * @WLAN_LINK_RECFG_S_TTLM: State when Link Reconfig TTLM handling
  * @WLAN_LINK_RECFG_S_MAX: Max State
  * @WLAN_LINK_RECFG_SS_IDLE: Link Reconfig substate Idle
  * @WLAN_LINK_RECFG_SS_START_PENDING: Link reconfig start pending for
@@ -71,6 +72,7 @@ enum wlan_link_recfg_sm_state {
 	WLAN_LINK_RECFG_S_ADD_LINK,
 	WLAN_LINK_RECFG_S_COMPLETED,
 	WLAN_LINK_RECFG_S_ABORT,
+	WLAN_LINK_RECFG_S_TTLM,
 	WLAN_LINK_RECFG_S_MAX,
 	/* substates */
 	WLAN_LINK_RECFG_SS_IDLE,
@@ -115,6 +117,7 @@ enum wlan_link_recfg_sm_state {
  * timeout
  * @WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT: generic timeout in substate
  * @WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT: Link Reconfig response timed out
+ * @WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM: Update TTLM due to link reconfig
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -137,6 +140,7 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_SER_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT,
+	WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
@@ -153,6 +157,12 @@ enum wlan_link_recfg_sm_evt {
  * @link_recfg_del_link_link_switch_comp_with_fail: link switch complete
  * with failure
  * @link_recfg_rsp_timeout: Link Reconfiguration response timeout.
+ * @link_recfg_concurrency_failed: Link reconfig failed due to concurrency
+ * @link_recfg_aborted_neg_ttlm_ongoing: Link Reconfiguration aborted
+ * due to ongoing TTLM.
+ * @link_recfg_nb_sb_disconnect: nb/sb disconnect causing abort
+ * @link_recfg_tx_failed: tx status is failed
+ * @link_recfg_rsp_status_failure: response status is error.
  */
 enum link_recfg_failure_reason {
 	link_recfg_success = 0,
@@ -163,6 +173,11 @@ enum link_recfg_failure_reason {
 	link_recfg_del_link_fw_link_switch_rejected = 5,
 	link_recfg_del_link_link_switch_comp_with_fail = 6,
 	link_recfg_rsp_timeout = 7,
+	link_recfg_concurrency_failed = 8,
+	link_recfg_aborted_neg_ttlm_ongoing = 9,
+	link_recfg_nb_sb_disconnect = 10,
+	link_recfg_tx_failed = 11,
+	link_recfg_rsp_status_failure = 12,
 };
 
 /**
@@ -359,7 +374,7 @@ struct roam_ind {
 struct recfg_completed {
 };
 
-#define MAX_RECFG_TRANSITION 6
+#define MAX_RECFG_TRANSITION 7
 
 /**
  * struct mlo_link_recfg_state_sm - Link Reconfig state machine
@@ -636,6 +651,16 @@ mlo_link_recfg_validate_request(struct wlan_objmgr_vdev *vdev,
 				struct wlan_mlo_link_recfg_req *req);
 
 /**
+ * mlo_is_link_recfg_supported() - API to check link recfg
+ * support with vdev
+ * @vdev: vdev object
+ *
+ * Return: bool
+ */
+bool
+mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_link_recfg_request_params() - Link recfg request params from FW.
  * @psoc: PSOC object manager
  * @evt_params: Link recfg params received from FW.
@@ -705,12 +730,6 @@ void mlo_link_recfg_timer_deinit(struct mlo_link_recfg_context *recfg_ctx);
  * Return: void
  */
 void mlo_link_recfg_rx_rsp_timeout_cb(void *user_data);
-
-static inline bool
-mlo_is_link_recfg_supported(struct wlan_objmgr_vdev *vdev)
-{
-	return true;
-}
 
 /**
  * mlo_link_recfg_get_state() - API to get SM link recfg state

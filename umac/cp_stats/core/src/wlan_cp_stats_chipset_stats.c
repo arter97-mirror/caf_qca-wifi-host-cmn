@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: ISC
  */
 
@@ -36,6 +36,11 @@ QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 	}
 
 	cstats.is_cstats_ini_enabled = true;
+
+	cstats.chipset_stats_push_rbs_delay_val_ms =
+				wlan_cp_stats_get_user_delay_value_ms(psoc);
+	cstats.chipset_stats_push_rbs_delay_interval =
+				wlan_cp_stats_get_user_delay_interval(psoc);
 
 	for (i = 0; i < CSTATS_MAX_TYPE; i++) {
 		qdf_spinlock_create(&cstats.cstats_lock[i]);
@@ -230,6 +235,7 @@ static int wlan_cp_stats_cstats_send_version_to_usr(void)
 int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 {
 	int ret = -1;
+	size_t counter = 1;
 	struct cstats_node *clog_msg;
 	struct cstats_node *next;
 	int payload_len;
@@ -284,6 +290,11 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 		payload_len = clog_msg->filled_length + sizeof(tAniHdr) +
 			      mark_total;
 
+		if (cstats.chipset_stats_push_rbs_delay_interval &&
+		    !(counter % cstats.chipset_stats_push_rbs_delay_interval)) {
+			qdf_mdelay(cstats.chipset_stats_push_rbs_delay_val_ms);
+		}
+
 		if (cstats.ops.cstats_send_data_to_usr) {
 			ret = cstats.ops.cstats_send_data_to_usr
 			       (clog_msg->logbuf, payload_len, type);
@@ -300,6 +311,8 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 					     &clog_msg->node);
 			qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
 		}
+
+		counter++;
 	}
 
 	return ret;
