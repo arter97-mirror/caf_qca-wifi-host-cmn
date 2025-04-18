@@ -563,6 +563,8 @@ dp_tx_desc_release(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc,
 	struct dp_pdev *pdev = tx_desc->pdev;
 	uint8_t comp_status = 0;
 
+	dp_tx_pp_orig_nbuf_free(tx_desc);
+
 	if (dp_tx_release_ds_tx_desc(soc, tx_desc, desc_pool_id))
 		return;
 
@@ -3523,7 +3525,6 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		goto release_desc;
 	}
 
-	dp_tx_pp_orig_nbuf_free(tx_desc);
 	dp_tx_update_ts_on_enqueued(vdev, msdu_info, tx_desc);
 
 	tx_sw_drop_stats_inc(pdev, nbuf, drop_code, enable_eapol_drop_stats);
