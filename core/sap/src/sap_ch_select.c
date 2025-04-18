@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -664,13 +664,14 @@ static uint32_t sap_weight_channel_noise_floor(struct sap_context *sap_ctx,
 	if (!channel_stat || channel_stat->channel_freq == 0)
 		return softap_nf_weight_local;
 
-	noise_floor_weight = (channel_stat->noise_floor == 0) ? 0 :
-			    (ACS_WEIGHT_COMPUTE(
-			     sap_ctx->auto_channel_select_weight,
-			     softap_nf_weight_cfg,
-			     channel_stat->noise_floor -
-			     SOFTAP_MIN_NF,
-			     SOFTAP_MAX_NF - SOFTAP_MIN_NF));
+	noise_floor_weight = is_noise_floor_invalid(channel_stat->noise_floor)
+			      ? 0 :
+			      (ACS_WEIGHT_COMPUTE(
+			      sap_ctx->auto_channel_select_weight,
+			      softap_nf_weight_cfg,
+			      channel_stat->noise_floor -
+			      SOFTAP_MIN_NF,
+			      SOFTAP_MAX_NF - SOFTAP_MIN_NF));
 
 	if (noise_floor_weight > softap_nf_weight_local)
 		noise_floor_weight = softap_nf_weight_local;
@@ -1432,6 +1433,53 @@ sap_normalize_channel_weight_with_factors(struct mac_context *mac,
 }
 
 /**
+ * sap_update_vlp_deprority_chan() - updates Deprority channels of VLP.
+ *
+ * @mac_ctx:		MAC context
+ * @ch_info_params:     Channel Information
+ *
+ * sap_update_vlp_deprority_chan updates VLP deproritize channels with
+ * max_weightage * penalty boosting up with 10 % of max_weight in
+ * SAP channel list.
+ *
+ * Return: None
+ */
+static
+void sap_update_vlp_deprority_chan(struct mac_context *mac_ctx,
+				   struct sap_sel_ch_info *ch_info_params)
+{
+	uint32_t j;
+	uint32_t temp;
+	struct sap_ch_info *ch_info = ch_info_params->ch_info;
+	uint8_t country[REG_ALPHA2_LEN + 1];
+	qdf_freq_t vlp_cutoff_freq;
+
+	wlan_reg_read_current_country(mac_ctx->psoc, country);
+
+	if (!wlan_reg_get_num_rules_of_ap_pwr_type(mac_ctx->pdev,
+						   REG_VERY_LOW_POWER_AP)) {
+		sap_debug("Current country %.2s don't support VLP", country);
+		return;
+	}
+
+	vlp_cutoff_freq = wlan_reg_get_thresh_priority_freq(mac_ctx->pdev);
+
+	sap_debug("country %.2s vlp_cut_off freq %u", country, vlp_cutoff_freq);
+
+	for (j = 0; j < ch_info_params->num_ch; j++) {
+		if (wlan_reg_is_vlp_depriority_freq(mac_ctx->pdev,
+						    ch_info[j].chan_freq)) {
+			temp = ch_info[j].weight;
+			ch_info[j].weight = (temp * 10 / 100) + temp;
+			ch_info[j].weight_calc_done = true;
+			sap_debug("freq %d org_weight %u updated weightage %u",
+				  ch_info[j].chan_freq, temp,
+				  ch_info[j].weight);
+		}
+	}
+}
+
+/**
  * sap_update_6ghz_max_weight() - Update 6 GHz channel max weight
  * @ch_info_params: Pointer to the sap_sel_ch_info structure
  * @max_valid_weight: max valid weight on 6 GHz channels
@@ -1719,32 +1767,23 @@ void sap_chan_sel_exit(struct sap_sel_ch_info *ch_info_params)
 	qdf_mem_free(ch_info_params->ch_info);
 }
 
-/*==========================================================================
-   FUNCTION    sap_sort_chl_weight
-
-   DESCRIPTION
-    Function to sort the channels with the least weight first for 20MHz channels
-
-   DEPENDENCIES
-    NA.
-
-   PARAMETERS
-
-    IN
-    ch_info_params       : Pointer to the tSapChSelSpectInfo structure
-
-   RETURN VALUE
-    void     : NULL
-
-   SIDE EFFECTS
-   ============================================================================*/
-static void sap_sort_chl_weight(struct sap_sel_ch_info *ch_info_params)
+/**
+ * sap_sort_chl_weight() - Function to sort the channels with the least weight
+ * first for 20MHz channels
+ * @mac_ctx: Pointer to the mac context
+ * @ch_info_params: Pointer to the sap_sel_ch_info structure
+ *
+ * Return: None
+ */
+static void sap_sort_chl_weight(struct mac_context *mac_ctx,
+				struct sap_sel_ch_info *ch_info_params)
 {
 	struct sap_ch_info temp;
 
 	struct sap_ch_info *ch_info = NULL;
 	uint32_t i = 0, j = 0, min_weight_index = 0;
 
+	sap_update_vlp_deprority_chan(mac_ctx, ch_info_params);
 	ch_info = ch_info_params->ch_info;
 	for (i = 0; i < ch_info_params->num_ch; i++) {
 		min_weight_index = i;
@@ -1935,7 +1974,7 @@ sap_sort_chl_weight_80_mhz(struct mac_context *mac_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	sap_sort_chl_weight(ch_info_params);
+	sap_sort_chl_weight(mac_ctx, ch_info_params);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -2112,7 +2151,7 @@ sap_sort_chl_weight_160_mhz(struct mac_context *mac_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	sap_sort_chl_weight(ch_info_params);
+	sap_sort_chl_weight(mac_ctx, ch_info_params);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -2353,7 +2392,7 @@ sap_sort_chl_weight_320_mhz(struct mac_context *mac_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	sap_sort_chl_weight(ch_info_params);
+	sap_sort_chl_weight(mac_ctx, ch_info_params);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -2555,7 +2594,7 @@ static void sap_sort_chl_weight_ht40_24_g(
 		chan_info++;
 	}
 
-	sap_sort_chl_weight(ch_info_params);
+	sap_sort_chl_weight(mac_ctx, ch_info_params);
 }
 
 /**
@@ -2677,7 +2716,7 @@ sap_sort_chl_weight_40_mhz(struct mac_context *mac_ctx,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	sap_sort_chl_weight(ch_info_params);
+	sap_sort_chl_weight(mac_ctx, ch_info_params);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -2732,6 +2771,7 @@ next_bw:
 		 */
 		if (eCSR_DOT11_MODE_11g == operating_band) {
 			sap_allocate_max_weight_40_mhz(ch_info_params);
+			sap_update_vlp_deprority_chan(mac_ctx, ch_info_params);
 			sap_sort_chl_weight_ht40_24_g(
 					mac_ctx,
 					ch_info_params,
@@ -2764,7 +2804,7 @@ next_bw:
 	case CH_WIDTH_20MHZ:
 	default:
 		/* Sorting the channels as per weights as 20MHz channels */
-		sap_sort_chl_weight(ch_info_params);
+		sap_sort_chl_weight(mac_ctx, ch_info_params);
 		status = QDF_STATUS_SUCCESS;
 	}
 

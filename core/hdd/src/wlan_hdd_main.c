@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -11301,33 +11301,42 @@ out:
 }
 
 #ifdef SHUTDOWN_WLAN_IN_SYSTEM_SUSPEND
+static bool
+hdd_shutdown_wlan_is_applicable(struct hdd_context *hdd_ctx, unsigned long evt)
+{
+	enum pmo_suspend_mode mode;
+
+	if (evt == PM_HIBERNATION_PREPARE)
+		return true;
+
+	mode = ucfg_pmo_get_suspend_mode(hdd_ctx->psoc);
+	hdd_debug("suspend mode is %d", mode);
+
+	if (mode == PMO_SUSPEND_SHUTDOWN)
+		return true;
+
+	if (mode == PMO_SUSPEND_WOW && !hdd_is_any_interface_open(hdd_ctx))
+		return true;
+
+	return false;
+}
+
 static QDF_STATUS
-hdd_shutdown_wlan_in_suspend_prepare(struct hdd_context *hdd_ctx)
+hdd_shutdown_wlan_in_suspend_prepare(struct hdd_context *hdd_ctx,
+				     unsigned long event)
 {
 #define SHUTDOWN_IN_SUSPEND_RETRY 30
 
 	int count = 0;
-	enum pmo_suspend_mode mode;
 
 	if (hdd_ctx->driver_status != DRIVER_MODULES_ENABLED) {
 		hdd_debug("Driver Modules not Enabled ");
 		return 0;
 	}
 
-	mode = ucfg_pmo_get_suspend_mode(hdd_ctx->psoc);
-	hdd_debug("suspend mode is %d", mode);
-
-	if (mode == PMO_SUSPEND_NONE || mode == PMO_SUSPEND_LEGENCY) {
+	if (!hdd_shutdown_wlan_is_applicable(hdd_ctx, event)) {
 		hdd_debug("needn't shutdown in suspend");
 		return 0;
-	}
-
-	if (!hdd_is_any_interface_open(hdd_ctx)) {
-		return pld_idle_shutdown(hdd_ctx->parent_dev,
-					 hdd_psoc_idle_shutdown);
-	} else {
-		if (mode == PMO_SUSPEND_WOW)
-			return 0;
 	}
 
 	/*try to wait interface down for PMO_SUSPEND_SHUTDOWN mode*/
@@ -11358,7 +11367,7 @@ static int hdd_pm_notify(struct notifier_block *b,
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
 	case PM_HIBERNATION_PREPARE:
-		if (0 != hdd_shutdown_wlan_in_suspend_prepare(hdd_ctx))
+		if (0 != hdd_shutdown_wlan_in_suspend_prepare(hdd_ctx, event))
 			return NOTIFY_STOP;
 		break;
 	case PM_POST_SUSPEND:
@@ -16360,7 +16369,6 @@ static int hdd_features_init(struct hdd_context *hdd_ctx)
 	bool rf_test_mode;
 	bool std_6ghz_conn_policy;
 	uint32_t fw_data_stall_evt;
-	bool disable_vlp_sta_conn_sp_ap;
 
 	hdd_enter();
 
@@ -16466,17 +16474,6 @@ static int hdd_features_init(struct hdd_context *hdd_ctx)
 	}
 	if (std_6ghz_conn_policy)
 		wlan_cm_set_standard_6ghz_conn_policy(hdd_ctx->psoc, true);
-
-	status = ucfg_mlme_is_disable_vlp_sta_conn_to_sp_ap_enabled(
-						hdd_ctx->psoc,
-						&disable_vlp_sta_conn_sp_ap);
-	if (!QDF_IS_STATUS_SUCCESS(status)) {
-		hdd_err("Get disable vlp sta conn to sp flag failed");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (disable_vlp_sta_conn_sp_ap)
-		wlan_cm_set_disable_vlp_sta_conn_to_sp_ap(hdd_ctx->psoc, true);
 
 	hdd_thermal_stats_cmd_init(hdd_ctx);
 	sme_set_cal_failure_event_cb(hdd_ctx->mac_handle,

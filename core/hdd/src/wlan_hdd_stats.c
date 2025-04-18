@@ -6444,7 +6444,7 @@ static void hdd_fill_rate_info(struct wlan_objmgr_psoc *psoc,
 	enum tx_rate_info rate_flags;
 	uint8_t mcsidx = 0xff;
 	uint32_t tx_rate, rx_rate, maxrate, tmprate;
-	int rssidx;
+	int rssidx = 0;
 	int nss = 1;
 	int link_speed_rssi_high = 0;
 	int link_speed_rssi_mid = 0;
@@ -7750,6 +7750,7 @@ wlan_hdd_update_mlo_peer_stats(struct wlan_hdd_link_info *link_info,
 
 	sinfo->tx_bytes = peer_stats->tx.tx_success.bytes;
 	sinfo->rx_bytes = peer_stats->rx.rcvd.bytes;
+	sinfo->tx_packets = peer_stats->tx.tx_success.num;
 	sinfo->rx_packets = peer_stats->rx.rcvd.num;
 
 	hdd_nofl_debug("Updated sinfo with per peer stats");
@@ -7910,6 +7911,7 @@ static int wlan_hdd_update_rate_info(struct wlan_hdd_link_info *link_info,
 	ucfg_dp_get_net_dev_stats(vdev, &stats);
 	sinfo->tx_bytes = stats.tx_bytes;
 	sinfo->rx_bytes = stats.rx_bytes;
+	sinfo->tx_packets = stats.tx_packets;
 	sinfo->rx_packets = stats.rx_packets;
 	wlan_hdd_update_mlo_peer_stats(link_info, sinfo);
 
@@ -8563,7 +8565,7 @@ static bool wlan_fill_survey_result(struct survey_info *survey, int opfreq,
 	survey->noise = chan_info->noise_floor;
 	survey->filled = 0;
 
-	if (chan_info->noise_floor)
+	if (!is_noise_floor_invalid(chan_info->noise_floor))
 		survey->filled |= SURVEY_INFO_NOISE_DBM;
 
 	if (opfreq == chan_info->freq)
@@ -8590,7 +8592,7 @@ static bool wlan_fill_survey_result(struct survey_info *survey, int opfreq,
 	survey->noise = chan_info->noise_floor;
 	survey->filled = 0;
 
-	if (chan_info->noise_floor)
+	if (!is_noise_floor_invalid(chan_info->noise_floor))
 		survey->filled |= SURVEY_INFO_NOISE_DBM;
 
 	if (opfreq == chan_info->freq)

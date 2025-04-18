@@ -2586,7 +2586,7 @@ QDF_STATUS sme_set_chip_pwr_save_fail_cb(mac_handle_t mac_handle,
  *
  * Return: 0 on success, errno on failure
  */
-int sme_cli_set_command(int vdev_id, int param_id, int sval, int vpdev);
+int sme_cli_set_command(int vdev_id, int param_id, uint32_t sval, int vpdev);
 
 /**
  * sme_set_bt_activity_info_cb - set the callback handler for bt events
@@ -3788,13 +3788,14 @@ void sme_set_mlo_assoc_link_band(mac_handle_t mac_handle, uint8_t vdev_id,
  * @mac_handle: Opaque handle to the global MAC context
  * @session_id: session id
  * @num_links: number of links to be forced active
- * @active_link_addr: link mac address of (up to 2) links to be forced active
+ * @active_link_addr: link mac address of (up to WLAN_MLO_MAX_VDEVS) links to be
+ * forced active
  *
  * Return: void
  */
 void sme_activate_mlo_links(mac_handle_t mac_handle, uint8_t session_id,
 			    uint8_t num_links,
-			    struct qdf_mac_addr active_link_addr[2]);
+			    struct qdf_mac_addr active_link_addr[WLAN_MLO_MAX_VDEVS]);
 
 /**
  * sme_update_eht_caps() - Update the session EHT caps

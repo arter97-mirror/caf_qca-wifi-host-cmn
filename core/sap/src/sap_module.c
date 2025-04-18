@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -57,6 +57,7 @@
 #include "pld_common.h"
 #include "wlan_pre_cac_api.h"
 #include "target_if.h"
+#include "wlan_hdd_regulatory.h"
 
 #define SAP_DEBUG
 static struct sap_context *gp_sap_ctx[SAP_MAX_NUM_SESSION];
@@ -3527,6 +3528,9 @@ wlansap_get_safe_channel(struct sap_context *sap_ctx,
 			return INVALID_CHANNEL_ID;
 		}
 
+		hdd_remove_vlp_depriority_channels(mac->pdev,
+						   (uint16_t *)pcl_freqs,
+						   &pcl_len);
 		status =
 		wlansap_select_chan_with_best_bandwidth(sap_ctx,
 							pcl_freqs,
@@ -3669,6 +3673,9 @@ wlansap_get_safe_channel_from_pcl_and_acs_range(struct sap_context *sap_ctx,
 	}
 
 	if (pcl_len) {
+		hdd_remove_vlp_depriority_channels(mac->pdev,
+						   (uint16_t *)pcl_freqs,
+						   &pcl_len);
 		status = wlansap_filter_ch_based_acs(sap_ctx, pcl_freqs,
 						     &pcl_len);
 		if (QDF_IS_STATUS_ERROR(status)) {
