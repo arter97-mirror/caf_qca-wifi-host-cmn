@@ -5022,11 +5022,16 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 		new_skb->ip_summed = skb->ip_summed;
 		tcp_hdr(new_skb)->psh = 0;
 
-		if (ethproto == htons(ETH_P_IP))
+		if (ethproto == htons(ETH_P_IP)) {
 			ip_hdr(new_skb)->id = htons(ip_id);
-
-		ip_hdr(new_skb)->tot_len = htons(copied_len -
+			ip_hdr(new_skb)->tot_len = htons(copied_len -
 						 skb_mac_header_len(new_skb));
+		} else if (ethproto == htons(ETH_P_IPV6)) {
+			ipv6_hdr(new_skb)->payload_len =
+				htons(copied_len -
+				      (skb_mac_header_len(new_skb) +
+				       skb_network_header_len(new_skb)));
+		}
 
 		if (num_seg == 1)
 			tcp_hdr(new_skb)->psh = 1;
@@ -5075,8 +5080,15 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 				skb_proc -= frag_len;
 				pack_more_data = 0;
 				tcp_seq_num += frag_len;
-				ip_hdr(new_skb)->tot_len = htons(copied_len -
-								 skb_mac_header_len(new_skb));
+				if (ethproto == htons(ETH_P_IP))
+					ip_hdr(new_skb)->tot_len =
+					htons(copied_len -
+					      skb_mac_header_len(new_skb));
+				else if (ethproto == htons(ETH_P_IPV6))
+					ipv6_hdr(new_skb)->payload_len =
+					htons(copied_len -
+					      (skb_mac_header_len(new_skb) +
+					       skb_network_header_len(new_skb)));
 			}
 		}
 
