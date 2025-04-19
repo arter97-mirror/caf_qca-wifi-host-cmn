@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -515,7 +515,8 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 				  ap_pwr_type, REG_VERY_LOW_POWER_AP);
 			*pwr_type_6g = REG_VERY_LOW_POWER_AP;
 			return QDF_STATUS_SUCCESS;
-		} else if (QDF_IS_STATUS_SUCCESS(
+		} else if (wlan_cm_get_relaxed_lpi_conn_policy(psoc) &&
+			   QDF_IS_STATUS_SUCCESS(
 				reg_check_if_6g_pwr_type_supp_for_chan(pdev,
 								REG_INDOOR_AP,
 								chan_idx))) {
@@ -539,29 +540,13 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_SUCCESS;
 	}
 
-	if (ap_pwr_type == REG_INDOOR_AP) {
+	if (ap_pwr_type == REG_INDOOR_AP ||
+	    ap_pwr_type == REG_STANDARD_POWER_AP) {
 		if (pdev_priv_obj->reg_rules.num_of_6g_client_reg_rules[REG_VERY_LOW_POWER_AP] &&
 		    QDF_IS_STATUS_SUCCESS(
 			reg_check_if_6g_pwr_type_supp_for_chan(pdev,
 							REG_VERY_LOW_POWER_AP,
 							chan_idx))) {
-			*pwr_type_6g = REG_VERY_LOW_POWER_AP;
-			reg_debug("AP power type = %d, selected power type = %d",
-				  ap_pwr_type, *pwr_type_6g);
-			return QDF_STATUS_SUCCESS;
-		} else {
-			goto no_support;
-		}
-	} else if (ap_pwr_type == REG_STANDARD_POWER_AP) {
-		if (pdev_priv_obj->reg_rules.num_of_6g_client_reg_rules[REG_VERY_LOW_POWER_AP] &&
-		    QDF_IS_STATUS_SUCCESS(
-			reg_check_if_6g_pwr_type_supp_for_chan(pdev,
-							REG_VERY_LOW_POWER_AP,
-							chan_idx))) {
-			if (wlan_cm_get_disable_vlp_sta_conn_to_sp_ap(psoc)) {
-				reg_debug("AP SP and STA VLP connection disabled");
-				return QDF_STATUS_E_NOSUPPORT;
-			}
 			*pwr_type_6g = REG_VERY_LOW_POWER_AP;
 			reg_debug("AP power type = %d, selected power type = %d",
 				  ap_pwr_type, *pwr_type_6g);
@@ -1345,3 +1330,18 @@ bool reg_ignore_default_country(struct wlan_regulatory_psoc_priv_obj *soc_reg,
 
 	return true;
 }
+
+#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
+bool reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				qdf_freq_t freq)
+{
+	qdf_freq_t vlp_cutoff_freq;
+
+	vlp_cutoff_freq = wlan_reg_get_thresh_priority_freq(pdev);
+
+	if (wlan_reg_is_6ghz_chan_freq(freq) && freq <= vlp_cutoff_freq)
+		return true;
+
+	return false;
+}
+#endif

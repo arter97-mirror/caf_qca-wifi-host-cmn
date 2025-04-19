@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -3061,6 +3061,7 @@ reg_get_num_afc_freq_obj(struct wlan_objmgr_pdev *pdev, uint8_t *num_freq_obj);
  */
 uint16_t reg_get_max_bw_5G_for_fo(struct wlan_objmgr_pdev *pdev);
 
+#ifdef CONFIG_BAND_6GHZ
 /**
  * reg_get_num_rules_of_ap_pwr_type() - Get the number of reg rules present
  * for a given ap power type
@@ -3072,6 +3073,14 @@ uint16_t reg_get_max_bw_5G_for_fo(struct wlan_objmgr_pdev *pdev);
 uint8_t
 reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				 enum reg_6g_ap_type ap_pwr_type);
+#else
+static inline uint8_t
+reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
+				 enum reg_6g_ap_type ap_pwr_type)
+{
+	return 0;
+}
+#endif
 
 /**
  * reg_process_r2p_table_update_response() - Process the response received from
@@ -3130,4 +3139,24 @@ reg_get_pdev_from_phy_id(struct wlan_objmgr_psoc *psoc, uint8_t phy_id,
 			 struct wlan_lmac_if_reg_tx_ops *reg_tx_ops,
 			 bool is_reg_offload,
 			 wlan_objmgr_ref_dbgid *dbg_id);
+
+#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
+/**
+ * reg_is_vlp_depriority_freq() - Check if the frequency is VLP deprority freq.
+ *
+ * @pdev: Pdev object.
+ * @freq: Frequency in MHz.
+ *
+ * Return: True if freq is VLP deprority frequency, else false.
+ */
+bool reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+				qdf_freq_t freq);
+#else
+static inline bool
+reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
+			   qdf_freq_t freq)
+{
+	return false;
+}
+#endif
 #endif

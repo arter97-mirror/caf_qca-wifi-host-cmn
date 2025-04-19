@@ -1717,7 +1717,7 @@ dp_rx_mon_stitch_mpdu(struct dp_mon_pdev *mon_pdev, qdf_nbuf_t tail)
 	return mpdu_buf;
 
 fail:
-	dp_err_rl("nbuf copy failed len: %d Q1: %d Q2: %d", qdf_nbuf_len(nbuf),
+	dp_err_rl("nbuf copy failed len: %zu Q1: %d Q2: %d", qdf_nbuf_len(nbuf),
 		  qdf_nbuf_queue_len(&mon_pdev->msdu_queue),
 		  qdf_nbuf_queue_len(&mon_pdev->mpdu_queue));
 

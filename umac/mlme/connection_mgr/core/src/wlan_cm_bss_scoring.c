@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2337,6 +2337,7 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
  * @bss_mlo_type: Bss MLO type
  * @pcl_chan_weight:  PCL channel weight
  * @rssi_prorated_pct: RSSI prorated pencentage
+ * @rssi_score: Calculated RSSI
  *
  * For MLO AP, consider partner link to calculate combined score,
  * For legacy/SLO AP or link, get total score of RSSI, bandwidth,
@@ -2351,10 +2352,10 @@ static int cm_calculate_ml_scores(struct wlan_objmgr_psoc *psoc,
 				  qdf_list_t *scan_list, uint8_t ml_flag,
 				  enum MLO_TYPE bss_mlo_type,
 				  int pcl_chan_weight,
-				  uint8_t *rssi_prorated_pct)
+				  uint8_t *rssi_prorated_pct,
+				  int32_t *rssi_score)
 {
 	int32_t score = 0;
-	int32_t rssi_score = 0;
 	int32_t congestion_pct = 0;
 	int32_t bandwidth_score = 0;
 	int32_t congestion_score = 0;
@@ -2366,7 +2367,7 @@ static int cm_calculate_ml_scores(struct wlan_objmgr_psoc *psoc,
 	if (IS_LINK_SCORE(ml_flag) || bss_mlo_type == SLO ||
 	    bss_mlo_type == MLSR ||
 	    !wlan_cm_is_eht_allowed_for_current_security(psoc, entry, false)) {
-		rssi_score =
+		*rssi_score =
 			cm_calculate_rssi_score(&score_config->rssi_score,
 						entry->rssi_raw,
 						weight_config->rssi_weightage);
@@ -2374,7 +2375,7 @@ static int cm_calculate_ml_scores(struct wlan_objmgr_psoc *psoc,
 			cm_get_rssi_prorate_pct(&score_config->rssi_score,
 						entry->rssi_raw,
 						weight_config->rssi_weightage);
-		score += rssi_score;
+		score += *rssi_score;
 		bandwidth_score =
 			cm_get_bw_score(weight_config->chan_width_weightage,
 					cm_get_ch_width(entry, phy_config),
@@ -2573,7 +2574,8 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 					   phy_config, scan_list,
 					   ml_flag, bss_mlo_type,
 					   pcl_chan_weight,
-					   &prorated_pcnt);
+					   &prorated_pcnt,
+					   &rssi_score);
 	score += ml_score;
 
 	/*
@@ -2881,14 +2883,14 @@ void cm_print_candidate_list(qdf_list_t *candidate_list)
 					     QDF_MAC_ADDR_REF(link[i].link_addr.bytes),
 					     link[i].freq, link[i].link_id,
 					     link[i].is_valid_link);
-			mlme_nofl_debug("Candidate(" QDF_MAC_ADDR_FMT " %s freq %d self_link_id %d): %s bss_score %d ",
-			   QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
-			   scan_entry->entry->ie_list.multi_link_bv ? "MLO" :
-			   "NON MLO",
-			   scan_entry->entry->channel.chan_freq,
-			   scan_entry->entry->ml_info.self_link_id,
-			   log_str,
-			   scan_entry->entry->bss_score);
+		mlme_nofl_debug("Candidate(" QDF_MAC_ADDR_FMT " %s freq %d self_link_id %d): %s bss_score %d ",
+			       QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
+			       scan_entry->entry->ie_list.multi_link_bv ? "MLO" :
+			       "NON MLO",
+			       scan_entry->entry->channel.chan_freq,
+			       scan_entry->entry->ml_info.self_link_id,
+			       log_str,
+			       scan_entry->entry->bss_score);
 		cur_node = next_node;
 		next_node = NULL;
 		memset(log_str, 0, sizeof(*log_str));
@@ -3639,6 +3641,7 @@ bool wlan_cm_get_check_6ghz_security(struct wlan_objmgr_psoc *psoc)
 	return mlme_psoc_obj->psoc_cfg.score_config.check_6ghz_security;
 }
 #endif
+
 void wlan_cm_set_standard_6ghz_conn_policy(struct wlan_objmgr_psoc *psoc,
 					   bool value)
 {
@@ -3663,8 +3666,8 @@ bool wlan_cm_get_standard_6ghz_conn_policy(struct wlan_objmgr_psoc *psoc)
 	return mlme_psoc_obj->psoc_cfg.score_config.standard_6ghz_conn_policy;
 }
 
-void wlan_cm_set_disable_vlp_sta_conn_to_sp_ap(struct wlan_objmgr_psoc *psoc,
-					       bool value)
+void wlan_cm_set_relaxed_lpi_conn_policy(struct wlan_objmgr_psoc *psoc,
+					 bool value)
 {
 	struct psoc_mlme_obj *mlme_psoc_obj;
 
@@ -3672,11 +3675,11 @@ void wlan_cm_set_disable_vlp_sta_conn_to_sp_ap(struct wlan_objmgr_psoc *psoc,
 	if (!mlme_psoc_obj)
 		return;
 
-	mlme_debug("disable_vlp_sta_conn_to_sp_ap val %x", value);
-	mlme_psoc_obj->psoc_cfg.score_config.disable_vlp_sta_conn_to_sp_ap = value;
+	mlme_debug("relaxed lpi connection policy val %x", value);
+	mlme_psoc_obj->psoc_cfg.score_config.relaxed_lpi_conn_policy = value;
 }
 
-bool wlan_cm_get_disable_vlp_sta_conn_to_sp_ap(struct wlan_objmgr_psoc *psoc)
+bool wlan_cm_get_relaxed_lpi_conn_policy(struct wlan_objmgr_psoc *psoc)
 {
 	struct psoc_mlme_obj *mlme_psoc_obj;
 
@@ -3684,7 +3687,7 @@ bool wlan_cm_get_disable_vlp_sta_conn_to_sp_ap(struct wlan_objmgr_psoc *psoc)
 	if (!mlme_psoc_obj)
 		return false;
 
-	return mlme_psoc_obj->psoc_cfg.score_config.disable_vlp_sta_conn_to_sp_ap;
+	return mlme_psoc_obj->psoc_cfg.score_config.relaxed_lpi_conn_policy;
 }
 
 void wlan_cm_set_6ghz_key_mgmt_mask(struct wlan_objmgr_psoc *psoc,
