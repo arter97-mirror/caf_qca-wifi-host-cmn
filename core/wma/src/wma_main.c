@@ -938,8 +938,8 @@ int wma_cli_get_command(int vdev_id, int param_id, int vpdev)
  *
  * Return: 0 on success, errno on failure
  */
-int wma_cli_set2_command(int vdev_id, int param_id, int sval1,
-			 int sval2, int vpdev)
+int wma_cli_set2_command(int vdev_id, int param_id, uint32_t sval1,
+			 uint32_t sval2, int vpdev)
 {
 	struct scheduler_msg msg = { 0 };
 	wma_cli_set_cmd_t *iwcmd;
@@ -979,7 +979,7 @@ int wma_cli_set2_command(int vdev_id, int param_id, int sval1,
  *
  * Return: 0 on success, errno on failure
  */
-int wma_cli_set_command(int vdev_id, int param_id, int sval, int vpdev)
+int wma_cli_set_command(int vdev_id, int param_id, uint32_t sval, int vpdev)
 {
 	return wma_cli_set2_command(vdev_id, param_id, sval, 0, vpdev);
 
@@ -6294,7 +6294,7 @@ static void wma_update_mlme_aux_dev_caps(struct wlan_objmgr_psoc *psoc,
 	struct wlan_mlme_aux_dev_caps
 		wlan_mlme_aux0_dev_caps[WLAN_MLME_HW_MODE_MAX] = {0};
 
-	if (WMI_HOST_HW_MODE_MAX != WLAN_MLME_HW_MODE_MAX)
+	if ((int32_t)WMI_HOST_HW_MODE_MAX != (int32_t)WLAN_MLME_HW_MODE_MAX)
 		wma_err("struct define mismatch, pls fix it.");
 
 	num_aux_dev_caps =

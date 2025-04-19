@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -343,29 +343,6 @@ enum wlan_epcs_frame {
 		"rf_test_mode_enabled", \
 		0, \
 		"rf test mode Enable Flag")
-
-#ifdef CONFIG_BAND_6GHZ
-/*
- * disable_vlp_sta_conn_to_sp_ap - Disable VLP STA connection to SP AP
- * @Min: 0
- * @Max: 1
- * @Default: 0
- *
- * This cfg is used to disable connection when AP is operating in 6 GHz
- * SP mode but STA doesn't support SP mode and supports VLP mode.
- *
- * Related: None
- *
- * Supported Feature: STA
- */
-#define CFG_DISABLE_VLP_STA_CONN_TO_SP_AP CFG_BOOL( \
-		"disable_vlp_sta_conn_to_sp_ap", \
-		0, \
-		"disable vlp sta conn to sp ap")
-#define CFG_DIS_VLP_STA_CONN_TO_SP_AP	CFG(CFG_DISABLE_VLP_STA_CONN_TO_SP_AP)
-#else
-#define CFG_DIS_VLP_STA_CONN_TO_SP_AP
-#endif
 
 #ifdef CONFIG_BAND_6GHZ
 /*
@@ -1299,6 +1276,5 @@ enum wlan_epcs_frame {
 	CFG_6GHZ_STD_CONN_POLICY \
 	CFG_EMLSR_MODE_ENABLED \
 	CFG_SR_ENABLE_MODES_ALL \
-	CFG_T2LM_NEGOTIATION_SUPPORTED\
-	CFG_DIS_VLP_STA_CONN_TO_SP_AP
+	CFG_T2LM_NEGOTIATION_SUPPORTED
 #endif /* __CFG_MLME_GENERIC_H */

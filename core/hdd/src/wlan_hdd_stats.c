@@ -5974,7 +5974,9 @@ static void hdd_get_max_rate_he(struct hdd_station_info *stainfo,
 			(enum data_rate_11ax_max_mcs)
 			(stainfo->tx_mcs_map & DATA_RATE_11AX_MCS_MASK);
 
-		if (he_max_mcs == DATA_RATE_11AX_MAX_MCS_9) {
+		if (stainfo->he_mcs_12_13_map) {
+			mcsidx = 13;
+		} else if (he_max_mcs == DATA_RATE_11AX_MAX_MCS_9) {
 			mcsidx = 9;
 		} else if (he_max_mcs == DATA_RATE_11AX_MAX_MCS_10) {
 			mcsidx = 10;
@@ -6067,7 +6069,9 @@ static void hdd_get_max_rate_vht(struct hdd_station_info *stainfo,
 		if (rate_flags & TX_RATE_SGI)
 			flag |= 1;
 
-		if (vht_max_mcs == DATA_RATE_11AC_MAX_MCS_7) {
+		if (stainfo->vht_mcs_10_11_supp) {
+			mcsidx = 11;
+		} else if (vht_max_mcs == DATA_RATE_11AC_MAX_MCS_7) {
 			mcsidx = 7;
 		} else if (vht_max_mcs == DATA_RATE_11AC_MAX_MCS_8) {
 			mcsidx = 8;
@@ -6440,7 +6444,7 @@ static void hdd_fill_rate_info(struct wlan_objmgr_psoc *psoc,
 	enum tx_rate_info rate_flags;
 	uint8_t mcsidx = 0xff;
 	uint32_t tx_rate, rx_rate, maxrate, tmprate;
-	int rssidx;
+	int rssidx = 0;
 	int nss = 1;
 	int link_speed_rssi_high = 0;
 	int link_speed_rssi_mid = 0;
@@ -7746,6 +7750,7 @@ wlan_hdd_update_mlo_peer_stats(struct wlan_hdd_link_info *link_info,
 
 	sinfo->tx_bytes = peer_stats->tx.tx_success.bytes;
 	sinfo->rx_bytes = peer_stats->rx.rcvd.bytes;
+	sinfo->tx_packets = peer_stats->tx.tx_success.num;
 	sinfo->rx_packets = peer_stats->rx.rcvd.num;
 
 	hdd_nofl_debug("Updated sinfo with per peer stats");
@@ -7906,6 +7911,7 @@ static int wlan_hdd_update_rate_info(struct wlan_hdd_link_info *link_info,
 	ucfg_dp_get_net_dev_stats(vdev, &stats);
 	sinfo->tx_bytes = stats.tx_bytes;
 	sinfo->rx_bytes = stats.rx_bytes;
+	sinfo->tx_packets = stats.tx_packets;
 	sinfo->rx_packets = stats.rx_packets;
 	wlan_hdd_update_mlo_peer_stats(link_info, sinfo);
 
@@ -8559,7 +8565,7 @@ static bool wlan_fill_survey_result(struct survey_info *survey, int opfreq,
 	survey->noise = chan_info->noise_floor;
 	survey->filled = 0;
 
-	if (chan_info->noise_floor)
+	if (!is_noise_floor_invalid(chan_info->noise_floor))
 		survey->filled |= SURVEY_INFO_NOISE_DBM;
 
 	if (opfreq == chan_info->freq)
@@ -8586,7 +8592,7 @@ static bool wlan_fill_survey_result(struct survey_info *survey, int opfreq,
 	survey->noise = chan_info->noise_floor;
 	survey->filled = 0;
 
-	if (chan_info->noise_floor)
+	if (!is_noise_floor_invalid(chan_info->noise_floor))
 		survey->filled |= SURVEY_INFO_NOISE_DBM;
 
 	if (opfreq == chan_info->freq)

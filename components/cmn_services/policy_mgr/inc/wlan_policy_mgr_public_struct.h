@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -52,6 +52,8 @@
 	(WEIGHT_OF_GROUP2_PCL_CHANNELS - PCL_GROUPS_WEIGHT_DIFFERENCE)
 #define WEIGHT_OF_GROUP4_PCL_CHANNELS \
 	(WEIGHT_OF_GROUP3_PCL_CHANNELS - PCL_GROUPS_WEIGHT_DIFFERENCE)
+#define WEIGHT_OF_GROUP5_PCL_CHANNELS \
+	(WEIGHT_OF_GROUP4_PCL_CHANNELS - PCL_GROUPS_WEIGHT_DIFFERENCE)
 
 #define WEIGHT_OF_NON_PCL_CHANNELS 1
 #define WEIGHT_OF_DISALLOWED_CHANNELS 0
@@ -1925,4 +1927,15 @@ enum indoor_conc_update_type {
 	SWITCH_WITH_CONCURRENCY,
 };
 
+/**
+ * struct weighed_pcl: Preferred channel info
+ * @freq: Channel frequency
+ * @weight: Weightage of the channel
+ * @flag: Validity of the channel in p2p negotiation
+ */
+struct weighed_pcl {
+	uint32_t freq;
+	uint32_t weight;
+	uint32_t flag;
+};
 #endif /* __WLAN_POLICY_MGR_PUBLIC_STRUCT_H */

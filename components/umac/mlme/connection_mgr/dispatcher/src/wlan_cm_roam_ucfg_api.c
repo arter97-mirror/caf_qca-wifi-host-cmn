@@ -77,8 +77,9 @@ ucfg_user_space_enable_disable_rso(struct wlan_objmgr_pdev *pdev,
 						     !is_fast_roam_enabled);
 
 	/*
-	 * Supplicant_disabled_roaming flag is only effective for current
-	 * connection, it will be cleared during new connection.
+	 * Supplicant_disabled_roaming flag is the global flag to control
+	 * roam offload from supplicant. Driver cannot enable roaming if
+	 * supplicant disabled roaming is set.
 	 * is_fast_roam_enabled: true - enable RSO if not disabled by driver
 	 *                       false - Disable RSO. Send RSO stop if false
 	 *                       is set.
@@ -110,14 +111,6 @@ ucfg_user_space_enable_disable_rso(struct wlan_objmgr_pdev *pdev,
 				      NULL, false);
 
 	return status;
-}
-
-void
-ucfg_clear_user_disabled_roaming(struct wlan_objmgr_psoc *psoc,
-				 uint8_t vdev_id)
-{
-	wlan_mlme_set_usr_disabled_roaming(psoc, false);
-	mlme_set_supplicant_disabled_roaming(psoc, vdev_id, false);
 }
 
 QDF_STATUS ucfg_cm_abort_roam_scan(struct wlan_objmgr_pdev *pdev,
