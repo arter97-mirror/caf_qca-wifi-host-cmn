@@ -788,6 +788,28 @@ unsigned int qdf_get_hweight32(unsigned int w)
 }
 
 /**
+ * qdf_get_hamming_weight() - count num of 1's in a given number
+ * @w: input bitmap
+ *
+ * Count num of bits set to 1 in number, supports upto 64-bit
+ *
+ * Return: num of 1's
+ */
+static inline
+unsigned int qdf_get_hamming_weight(uint64_t w)
+{
+	uint8_t count = 0;
+	uint64_t temp = w;
+
+	while (temp) {
+		count++;
+		temp &= temp - 1;
+	}
+
+	return count;
+}
+
+/**
  * qdf_device_init_wakeup() - allow a device to wake up the aps system
  * @qdf_dev: the qdf device context
  * @enable: enable/disable the device as a wakeup source
