@@ -25379,6 +25379,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_STA_TWT_STATS_EXT;
 	wmi_service[wmi_service_scc_tpc_power_support] =
 				WMI_SERVICE_SCC_TPC_POWER_SUPPORT;
+	wmi_service[wmi_service_per_vdev_twt_resp_disable_support] =
+				WMI_SERVICE_PER_VDEV_TWT_RESP_DISABLE_SUPPORT;
 }
 
 /**

@@ -462,3 +462,26 @@ wlan_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
+QDF_STATUS
+wlan_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
+					    bool *val)
+{
+	struct twt_psoc_priv_obj *twt_psoc;
+
+	if (!psoc) {
+		twt_err("psoc is null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	twt_psoc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+							 WLAN_UMAC_COMP_TWT);
+	if (!twt_psoc) {
+		twt_err("twt psoc priv obj is null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*val = twt_psoc->twt_caps.twt_resp_disable_per_vdev;
+
+	return QDF_STATUS_SUCCESS;
+}
+
