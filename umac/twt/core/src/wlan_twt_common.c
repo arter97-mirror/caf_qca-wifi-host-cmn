@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -259,7 +259,8 @@ wlan_twt_responder_enable(struct wlan_objmgr_psoc *psoc,
 			  void *context)
 {
 	struct twt_psoc_priv_obj *twt_psoc;
-	bool responder_en = false, twt_bcast_responder = false;
+	uint8_t responder_en;
+	bool twt_bcast_responder = false;
 
 	twt_psoc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
 							 WLAN_UMAC_COMP_TWT);

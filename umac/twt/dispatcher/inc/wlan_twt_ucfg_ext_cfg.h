@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -43,7 +43,8 @@ QDF_STATUS ucfg_twt_cfg_get_requestor(struct wlan_objmgr_psoc *psoc, bool *val);
  *
  * Return: QDF_STATUS_SUCCESS
  */
-QDF_STATUS ucfg_twt_cfg_get_responder(struct wlan_objmgr_psoc *psoc, bool *val);
+QDF_STATUS
+ucfg_twt_cfg_get_responder(struct wlan_objmgr_psoc *psoc, uint8_t *val);
 
 /**
  * ucfg_twt_cfg_get_congestion_timeout() - Get TWT congestion timeout
