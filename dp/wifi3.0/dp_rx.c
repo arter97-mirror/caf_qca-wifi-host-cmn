@@ -2625,10 +2625,16 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	uint32_t ratekbps;
 	enum cdp_punctured_modes punc_mode = NO_PUNCTURE;
 
-	if (soc->high_throughput ||
-	    dp_rx_data_is_specific(soc->hal_soc, rx_tlv_hdr, nbuf)) {
+	if (qdf_unlikely(dp_rx_data_is_specific(
+				soc->hal_soc, rx_tlv_hdr, nbuf)))
 		return;
-	}
+
+	/* For KPI case, bw mcs info should be updated when tput is high */
+	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.mcs_info, mcs, link_id);
+	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.bw_info, bw, link_id);
+
+	if (soc->high_throughput)
+		return;
 
 	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.rx_rate, mcs, link_id);
 
@@ -2652,8 +2658,6 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			ratekbps);
 	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.avg_rx_rate, avg_rx_rate, link_id);
 	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.nss_info, nss, link_id);
-	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.mcs_info, mcs, link_id);
-	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.bw_info, bw, link_id);
 	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.gi_info, sgi, link_id);
 	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.preamble_info, pkt_type, link_id);
 }
