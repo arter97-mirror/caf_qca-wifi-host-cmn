@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -10338,6 +10338,10 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 
 	case CDP_DP_TX_HW_LATENCY_STATS:
 		dp_pdev_print_tx_delay_stats(soc);
+		break;
+
+	case CDP_TXRX_SOC_STATS:
+		dp_print_txrx_soc_stats(soc);
 		break;
 
 	default:
