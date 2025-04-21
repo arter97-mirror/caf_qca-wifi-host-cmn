@@ -3782,6 +3782,8 @@ void print_debug_radio_data_txcap_2_0(struct debug_pdev_data_txcap *txcap)
 		 txcap->stats_2_0.dp_tx_pkt_cap_stats[STATS_IF_TX_PKT_TYPE_DNS]);
 	STATS_32(stdout, "ICMP",
 		 txcap->stats_2_0.dp_tx_pkt_cap_stats[STATS_IF_TX_PKT_TYPE_ICMP]);
+	STATS_32(stdout, "MGMT",
+		 txcap->stats_2_0.dp_tx_pkt_cap_stats[STATS_IF_TX_PKT_TYPE_MGMT]);
 	STATS_32(stdout, "Invalid Pkt id",
 		 txcap->stats_2_0.dp_tx_pkt_cap_stats[0]);
 	STATS_64(stdout, "Pkt drop sw filter",
