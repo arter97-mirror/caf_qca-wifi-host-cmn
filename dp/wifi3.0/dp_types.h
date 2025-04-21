@@ -1854,11 +1854,13 @@ struct dp_rx_pp_params {
 	qdf_page_pool_t pp;
 	size_t pool_size;
 	size_t pp_size;
+	uint8_t prealloc;
 };
 
 struct dp_rx_page_pool {
 	struct dp_rx_pp_params main_pool[DP_PAGE_POOL_MAX];
 	struct dp_rx_pp_params aux_pool;
+	struct dp_soc *soc;
 	uint8_t active_pp_idx;
 	qdf_spinlock_t pp_lock;
 	size_t curr_pool_size;
