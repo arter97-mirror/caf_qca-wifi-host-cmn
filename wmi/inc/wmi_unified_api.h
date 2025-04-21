@@ -2410,17 +2410,6 @@ wmi_unified_set_chan_cmd_send(wmi_unified_t wmi_handle,
 			      struct channel_param *param);
 
 /**
- *  wmi_unified_set_ratepwr_table_cmd_send() - WMI ratepwr table cmd function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold ratepwr table param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_set_ratepwr_table_cmd_send(wmi_unified_t wmi_handle,
-				       struct ratepwr_table_params *param);
-
-/**
  *  wmi_unified_get_ratepwr_table_cmd_send() - WMI ratepwr table cmd function
  *  @wmi_handle: handle to WMI.
  *
@@ -2872,17 +2861,6 @@ wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
 				 struct lteu_config_params *param);
-
-/**
- *  wmi_unified_set_psmode_cmd_send() - WMI set mu scan function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold mu scan param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_set_psmode_cmd_send(wmi_unified_t wmi_handle,
-				struct set_ps_mode_params *param);
 
 /**
  * wmi_unified_init_cmd_send() - send initialization cmd to fw

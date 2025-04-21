@@ -1364,17 +1364,6 @@ wmi_unified_set_chan_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
-wmi_unified_set_ratepwr_table_cmd_send(wmi_unified_t wmi_handle,
-				       struct ratepwr_table_params *param)
-{
-	if (wmi_handle->ops->send_set_ratepwr_table_cmd)
-		return wmi_handle->ops->send_set_ratepwr_table_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_unified_get_ratepwr_table_cmd_send(wmi_unified_t wmi_handle)
 {
 	if (wmi_handle->ops->send_get_ratepwr_table_cmd)
@@ -1735,16 +1724,6 @@ wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
 {
 	if (wmi_handle->ops->send_lteu_config_cmd)
 		return wmi_handle->ops->send_lteu_config_cmd(wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_set_psmode_cmd_send(wmi_unified_t wmi_handle,
-				struct set_ps_mode_params *param)
-{
-	if (wmi_handle->ops->send_set_ps_mode_cmd)
-		return wmi_handle->ops->send_set_ps_mode_cmd(wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
 }
