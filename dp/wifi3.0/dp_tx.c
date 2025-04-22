@@ -2122,6 +2122,27 @@ dp_tx_ring_access_end_wrapper(struct dp_soc *soc,
 #endif
 #endif
 
+#ifdef CONFIG_BORON
+static inline
+void dp_tx_msdu_info_set_dport(struct dp_tx_msdu_info_s *msdu_info,
+			       uint8_t *L3datap, uint8_t offset)
+{
+	uint8_t *hdr;
+
+	if (msdu_info->l4_proto == QDF_NBUF_TRAC_UDP_TYPE ||
+	    msdu_info->l4_proto == QDF_NBUF_TRAC_TCP_TYPE) {
+		hdr = L3datap + offset;
+		msdu_info->l4_dport = (hdr[2] << 8) | hdr[3];
+	}
+}
+#else
+static inline
+void dp_tx_msdu_info_set_dport(struct dp_tx_msdu_info_s *msdu_info,
+			       uint8_t *L3datap, uint8_t offset)
+{
+}
+#endif
+
 /**
  * dp_tx_get_tid() - Obtain TID to be used for this frame
  * @vdev: DP vdev handle
@@ -2215,6 +2236,8 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 		}
 		DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, ip->ip_proto);
+		dp_tx_msdu_info_set_dport(msdu_info, L3datap,
+					  QDF_NBUF_TRAC_IPV4_HEADER_SIZE);
 	} else if (qdf_nbuf_is_ipv6_pkt(nbuf)) {
 		/* TODO
 		 * use flowlabel
@@ -2222,12 +2245,17 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		 */
 		unsigned long ver_pri_flowlabel;
 		unsigned long pri;
+		uint8_t ip_proto;
+
 		ver_pri_flowlabel = *(unsigned long *) L3datap;
 		pri = (ntohl(ver_pri_flowlabel) & IPV6_FLOWINFO_PRIORITY) >>
 			DP_IPV6_PRIORITY_SHIFT;
 		tos = pri;
 		dscp_tid_override = 1;
-		/* TODO: L4_proto update */
+		ip_proto = ((qdf_net_ipv6hdr_t *)L3datap)->ipv6_nexthdr;
+		DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, ip_proto);
+		dp_tx_msdu_info_set_dport(msdu_info, L3datap,
+					  QDF_NBUF_TRAC_IPV6_HEADER_SIZE);
 	} else if (qdf_nbuf_is_ipv4_eapol_pkt(nbuf))
 		msdu_info->tid = DP_VO_TID;
 	else if (qdf_nbuf_is_ipv4_arp_pkt(nbuf)) {

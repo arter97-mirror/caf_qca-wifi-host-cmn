@@ -245,6 +245,7 @@ struct dp_tx_queue {
  *				 not equal to 0x0 and not equal to 0xF8
  * @is_s_vlan: Outer VLAN tag is present in the packet header
  * @is_c_vlan: Inner VLAN tag is present in the packet header
+ * @l4_dport: destination port
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -294,6 +295,7 @@ struct dp_tx_msdu_info_s {
 	uint8_t snap_oui_not_zero_or_not_f8;
 	uint8_t is_s_vlan;
 	uint8_t is_c_vlan;
+	uint16_t l4_dport;
 #endif
 };
 
