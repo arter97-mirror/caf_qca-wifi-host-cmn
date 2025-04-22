@@ -100,7 +100,7 @@ extern bool is_hal_verbose_debug_enabled;
 
 struct hal_hw_cc_config {
 	uint32_t lut_base_addr_31_0;
-	uint32_t cc_global_en:1,
+	uint64_t cc_global_en:1,
 		 page_4k_align:1,
 		 cookie_offset_msb:5,
 		 cookie_page_msb:5,
@@ -114,6 +114,17 @@ struct hal_hw_cc_config {
 		 tqm2sw1_cc_en:1,
 		 tqm2sw0_cc_en:1,
 		 tqm2fw_cc_en:1,
+		 reo2sw9_cc_en:1,
+		 reo2sw8_cc_en:1,
+		 reo2sw7_cc_en:1,
+		 reo2sw6_cc_en:1,
+		 reo2sw5_cc_en:1,
+		 reo2sw4_cc_en:1,
+		 reo2sw3_cc_en:1,
+		 reo2sw2_cc_en:1,
+		 reo2sw1_cc_en:1,
+		 reo2sw0_cc_en:1,
+		 reo2fw_cc_en:1,
 #else
 		 wbm2sw6_cc_en:1,
 		 wbm2sw5_cc_en:1,

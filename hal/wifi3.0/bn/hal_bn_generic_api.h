@@ -112,6 +112,46 @@ void hal_cookie_conversion_reg_cfg_generic_bn(hal_soc_handle_t hal_soc_hdl,
 			  cc_cfg->lut_base_addr_39_32);
 	HAL_REG_WRITE(soc, reg_addr, reg_val);
 
+	/*
+	 * WCSS_UMAC_REO_R0_COOKIE_CONV_EN_RING default value is 0x3FF
+	 */
+	reg_addr = HWIO_REO_R0_COOKIE_CONV_EN_RING_ADDR(REO_REG_REG_BASE);
+	reg_val = 0;
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2FW,
+			  cc_cfg->reo2fw_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW9,
+			  cc_cfg->reo2sw9_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW8,
+			  cc_cfg->reo2sw8_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW7,
+			  cc_cfg->reo2sw7_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW6,
+			  cc_cfg->reo2sw6_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW5,
+			  cc_cfg->reo2sw5_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW4,
+			  cc_cfg->reo2sw4_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW3,
+			  cc_cfg->reo2sw3_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW2,
+			  cc_cfg->reo2sw2_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW1,
+			  cc_cfg->reo2sw1_cc_en);
+	reg_val |= HAL_SM(HWIO_REO_R0_COOKIE_CONV_EN_RING,
+			  REO2SW0,
+			  cc_cfg->reo2sw0_cc_en);
+	HAL_REG_WRITE(soc, reg_addr, reg_val);
+
 	/* TQM CFG */
 	reg_addr = HWIO_TQM_R0_SW_COOKIE_CFG0_ADDR(TQM_REG_REG_BASE);
 	reg_val = cc_cfg->lut_base_addr_31_0;
