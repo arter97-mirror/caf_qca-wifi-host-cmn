@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,6 +32,8 @@
 		QDF_TRACE_INFO(QDF_MODULE_ID_DCS, ## args)
 #define dcs_err(args ...) \
 		QDF_TRACE_ERROR(QDF_MODULE_ID_DCS, ## args)
+#define dcs_debug_rl(args ...) \
+		QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_DCS, ## args)
 
 #define WLAN_DCS_MAX_PDEVS 3
 
