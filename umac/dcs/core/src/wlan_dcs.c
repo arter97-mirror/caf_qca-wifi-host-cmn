@@ -383,7 +383,6 @@ static void wlan_dcs_update_chan_util(struct pdev_dcs_im_stats *p_dcs_im_stats,
 	}
 }
 
-#ifdef WLAN_FEATURE_VDEV_DCS
 #define STATS_DELTA(cur , prev) \
 	((cur >= prev) ? (cur - prev) : ((cur + 0xffffffff) - prev))
 
@@ -413,6 +412,30 @@ wlan_dcs_wlan_interference_get_stats_delta(
 			uint32_t *cycle_count_delta, uint32_t *my_bss_rx_delta,
 			uint32_t *reg_tsf_delta)
 {
+	/*
+	 * Counters would have wrapped. Ideally we should be able to figure this
+	 * out, but we never know how many times counters wrapped, just ignore.
+	 */
+	if ((curr_stats->mib_stats.listen_time <= 0) ||
+	    (curr_stats->reg_tsf32 <= prev_stats->reg_tsf32)) {
+		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_VERBOSE))
+			dcs_debug("ignoring due to negative TSF value");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*reg_tsf_delta = curr_stats->reg_tsf32 - prev_stats->reg_tsf32;
+
+	/*
+	 * Do nothing if current stats are not seeming good, probably
+	 * a reset happened on chip, force cleared
+	 */
+	if (prev_stats->mib_stats.reg_rxclr_cnt >
+			curr_stats->mib_stats.reg_rxclr_cnt) {
+		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_VERBOSE))
+			dcs_debug("ignoring due to negative rxclr count");
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	*rxclr_delta = STATS_DELTA(curr_stats->mib_stats.reg_rxclr_cnt,
 				   prev_stats->mib_stats.reg_rxclr_cnt);
 	*rxclr_ext_delta = STATS_DELTA(curr_stats->mib_stats.reg_rxclr_ext_cnt,
@@ -429,68 +452,8 @@ wlan_dcs_wlan_interference_get_stats_delta(
 	*my_bss_rx_delta = STATS_DELTA(curr_stats->my_bss_rx_cycle_count,
 				       prev_stats->my_bss_rx_cycle_count);
 
-	*reg_tsf_delta = STATS_DELTA(curr_stats->reg_tsf32,
-				     prev_stats->reg_tsf32);
 	return QDF_STATUS_SUCCESS;
 }
-#else
-static inline QDF_STATUS
-wlan_dcs_wlan_interference_get_stats_delta(
-			struct wlan_host_dcs_im_tgt_stats *curr_stats,
-			struct wlan_host_dcs_im_tgt_stats *prev_stats,
-			struct pdev_dcs_params *dcs_host_params,
-			uint32_t *rxclr_delta, uint32_t *rxclr_ext_delta,
-			uint32_t *tx_frame_delta, uint32_t *rx_frame_delta,
-			uint32_t *cycle_count_delta, uint32_t *my_bss_rx_delta,
-			uint32_t *reg_tsf_delta)
-{
-	/*
-	 * Counters would have wrapped. Ideally we should be able to figure this
-	 * out, but we never know how many times counters wrapped, just ignore.
-	 */
-	if ((curr_stats->mib_stats.listen_time <= 0) ||
-	    (curr_stats->reg_tsf32 <= prev_stats->reg_tsf32)) {
-		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_VERBOSE))
-			dcs_debug("ignoring due to negative TSF value");
-			goto copy_stats;
-	}
-
-	*reg_tsf_delta = curr_stats->reg_tsf32 - prev_stats->reg_tsf32;
-
-	/*
-	 * Do nothing if current stats are not seeming good, probably
-	 * a reset happened on chip, force cleared
-	 */
-	if (prev_stats->mib_stats.reg_rxclr_cnt >
-			curr_stats->mib_stats.reg_rxclr_cnt) {
-		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_VERBOSE))
-			dcs_debug("ignoring due to negative rxclr count");
-			goto copy_stats;
-	}
-
-	*rxclr_delta = curr_stats->mib_stats.reg_rxclr_cnt -
-			prev_stats->mib_stats.reg_rxclr_cnt;
-	*rxclr_ext_delta = curr_stats->mib_stats.reg_rxclr_ext_cnt -
-				prev_stats->mib_stats.reg_rxclr_ext_cnt;
-	*tx_frame_delta = curr_stats->mib_stats.reg_tx_frame_cnt -
-				prev_stats->mib_stats.reg_tx_frame_cnt;
-
-	*rx_frame_delta = curr_stats->mib_stats.reg_rx_frame_cnt -
-				prev_stats->mib_stats.reg_rx_frame_cnt;
-
-	*cycle_count_delta = curr_stats->mib_stats.reg_cycle_cnt -
-				prev_stats->mib_stats.reg_cycle_cnt;
-
-	*my_bss_rx_delta = curr_stats->my_bss_rx_cycle_count -
-				prev_stats->my_bss_rx_cycle_count;
-
-	return QDF_STATUS_SUCCESS;
-
-copy_stats:
-	wlan_dcs_im_copy_stats(prev_stats, curr_stats);
-	return QDF_STATUS_E_FAILURE;
-}
-#endif
 
 #ifdef WLAN_FEATURE_VDEV_DCS
 static uint32_t
@@ -594,7 +557,7 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 					&my_bss_rx_delta, &reg_tsf_delta);
 
 	if (QDF_IS_STATUS_ERROR(status))
-		goto end;
+		goto copy_stats;
 
 	if (cycle_count_delta < rxclr_delta) {
 		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL))
