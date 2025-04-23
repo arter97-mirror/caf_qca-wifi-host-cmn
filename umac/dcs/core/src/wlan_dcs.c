@@ -596,6 +596,14 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 	if (QDF_IS_STATUS_ERROR(status))
 		goto end;
 
+	if (cycle_count_delta < rxclr_delta) {
+		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL))
+			dcs_debug("cycle count %d is less than rxclr_delta %d, need to investigate!!",
+				  cycle_count_delta, rxclr_delta);
+
+		goto copy_stats;
+	}
+
 
 	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE))
 		dcs_debug("rxclr_delta: %u, rxclr_ext_delta: %u, tx_frame_delta: %u, rx_frame_delta: %u, cycle_count_delta: %u, my_bss_rx_delta: %u",
