@@ -195,10 +195,6 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	    !tx_pp || !tx_pp->page_pool_init)
 		return nbuf;
 
-	/* Skip SW TSO packets */
-	if (qdf_nbuf_get_dev_scratch(nbuf) == QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL)
-		return nbuf;
-
 	/* Non linear SKBs are not expected in this path */
 	if (qdf_nbuf_is_nonlinear(nbuf))
 		return nbuf;
@@ -207,19 +203,29 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	pp_params = &tx_pp->tx_pool;
 	pp = pp_params->pp;
 
-	if (!pp || qdf_page_pool_empty(pp)) {
+	/* Skip SW TSO packets */
+	if (qdf_nbuf_get_dev_scratch(nbuf) == QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL) {
+		if (qdf_is_pp_nbuf(nbuf))
+			pp_params->alloc_success++;
+		else
+			pp_params->alloc_fail++;
+
 		qdf_spin_unlock(&tx_pp->pp_lock);
 		return nbuf;
 	}
+
+	if (!pp || qdf_page_pool_empty(pp))
+		goto alloc_fail;
 
 	size = qdf_nbuf_get_end_offset(nbuf);
 
 	pp_nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, size, 0, 0, pp,
 					   &offset);
-	qdf_spin_unlock(&tx_pp->pp_lock);
-
 	if (!pp_nbuf)
-		return nbuf;
+		goto alloc_fail;
+
+	pp_params->alloc_success++;
+	qdf_spin_unlock(&tx_pp->pp_lock);
 
 	/* Copy data in to the pp nbuf */
 	qdf_mem_copy(pp_nbuf->data, nbuf->data, nbuf->len);
@@ -234,6 +240,11 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	tx_desc->orig_nbuf = nbuf;
 
 	return pp_nbuf;
+
+alloc_fail:
+	pp_params->alloc_fail++;
+	qdf_spin_unlock(&tx_pp->pp_lock);
+	return nbuf;
 }
 
 /**

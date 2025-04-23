@@ -11545,6 +11545,84 @@ static QDF_STATUS dp_soc_notify_asserted_soc(struct cdp_soc_t *psoc)
 	return QDF_STATUS_E_INVAL;
 }
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+static void dp_print_tx_page_pool_stats(struct dp_soc *soc)
+{
+	struct dp_tx_page_pool *tx_pp;
+	bool print_once = false;
+	int vdev_id;
+
+	if (!wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx))
+		return;
+
+	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	for (vdev_id = 0; vdev_id < MAX_VDEV_CNT; vdev_id++) {
+		if (!soc->tx_pp[vdev_id])
+			continue;
+
+		tx_pp = soc->tx_pp[vdev_id];
+		if (!tx_pp || !tx_pp->page_pool_init)
+			continue;
+
+		if (!print_once) {
+			print_once = true;
+			dp_info("Tx page pool stats:");
+		}
+
+		dp_info("vdev id %d: success %llu failure %llu", vdev_id,
+			tx_pp->tx_pool.alloc_success,
+			tx_pp->tx_pool.alloc_fail);
+	}
+	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+}
+#else
+static inline void dp_print_tx_page_pool_stats(struct dp_soc *soc)
+{
+}
+#endif
+
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+static void dp_print_rx_page_pool_stats(struct dp_soc *soc)
+{
+	struct dp_rx_page_pool *rx_pp;
+	bool print_once = false;
+	int i;
+
+	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx))
+		return;
+
+	for (i = 0; i < MAX_RXDESC_POOLS; i++) {
+		rx_pp =  &soc->rx_pp[i];
+		if (!rx_pp->page_pool_init)
+			continue;
+
+		if (!print_once) {
+			print_once = true;
+			dp_info("Rx page pool stats:");
+		}
+
+		dp_info("Pool id %d: success: %llu failure %llu", i,
+			rx_pp->alloc_success, rx_pp->alloc_fail);
+	}
+}
+#else
+static inline void dp_print_rx_page_pool_stats(struct dp_soc *soc)
+{
+}
+#endif
+
+#if defined(DP_FEATURE_TX_PAGE_POOL) || defined(DP_FEATURE_RX_BUFFER_RECYCLE)
+static void dp_print_page_pool_stats(struct dp_soc *soc)
+{
+	dp_print_tx_page_pool_stats(soc);
+	dp_print_rx_page_pool_stats(soc);
+}
+#else
+static inline void dp_print_page_pool_stats(struct dp_soc *soc)
+{
+}
+#endif
+
 /**
  * dp_txrx_dump_stats() -  Dump statistics
  * @psoc: CDP soc handle
@@ -11576,6 +11654,7 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 		if (soc->cdp_soc.ol_ops->dp_print_fisa_stats)
 			soc->cdp_soc.ol_ops->dp_print_fisa_stats(
 						CDP_FISA_STATS_ID_ERR_STATS);
+		dp_print_page_pool_stats(soc);
 		break;
 
 	case CDP_RX_RING_STATS:

@@ -510,13 +510,17 @@ dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 	int i;
 
 	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx) ||
-	    !rx_pp->page_pool_init)
+	    !rx_pp->page_pool_init) {
+		rx_pp->alloc_fail++;
 		return QDF_STATUS_E_FAILURE;
+	}
 
 	if (qdf_atomic_read(&rx_pp->update_in_progress)) {
 		pp_params = dp_rx_get_base_pp(rx_pp);
-		if (!pp_params)
+		if (!pp_params) {
+			rx_pp->alloc_fail++;
 			return QDF_STATUS_E_FAILURE;
+		}
 
 		qdf_spin_lock_bh(&rx_pp->pp_lock);
 		goto nbuf_alloc;
@@ -574,12 +578,14 @@ nbuf_alloc:
 					  DP_RX_IPA_SMMU_MAP_REPLENISH);
 
 	dp_audio_smmu_map(soc, nbuf, rx_desc_pool->buf_size);
-
 	qdf_spin_unlock_bh(&rx_pp->pp_lock);
+
+	rx_pp->alloc_success++;
 
 	return QDF_STATUS_SUCCESS;
 
 out_fail:
+	rx_pp->alloc_fail++;
 	qdf_spin_unlock_bh(&rx_pp->pp_lock);
 	return ret;
 }

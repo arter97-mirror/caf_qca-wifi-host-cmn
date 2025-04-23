@@ -1867,6 +1867,8 @@ struct dp_rx_page_pool {
 	qdf_timer_t pool_inactivity_timer;
 	qdf_list_t inactive_list;
 	bool page_pool_init;
+	uint64_t alloc_success;
+	uint64_t alloc_fail;
 };
 #endif
 
@@ -1876,11 +1878,15 @@ struct dp_rx_page_pool {
  * @pp: Reference to the page pool
  * @pool_size: Actual pool size the page pool is requested for during allocation
  * @pp_size: Size of the page pool
+ * @alloc_success: Page pool buffer allocation success stat
+ * @alloc_fail: Page pool buffer allocation failure stat
  */
 struct dp_tx_pp_params {
 	qdf_page_pool_t pp;
 	size_t pool_size;
 	size_t pp_size;
+	uint64_t alloc_success;
+	uint64_t alloc_fail;
 };
 
 /**
