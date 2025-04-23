@@ -3313,7 +3313,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 	struct scan_cache_node *tmp_scan_node, *scan_node;
 	struct scan_cache_entry *tmp_scan_entry, *scan_entry;
 	uint8_t max_link_cnt, num_link, cur_valid_partners, cur_valid_bitmap;
-	bool allow_slo_candidate;
+	bool allow_slo_candidate, remove_curr_candidate;
 	uint8_t gen_bmap, i, gen_link_cnt;
 
 	psoc = wlan_pdev_get_psoc(pdev);
@@ -3337,7 +3337,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 		scan_node = qdf_container_of(cur_node,
 					     struct scan_cache_node, node);
 		scan_entry = scan_node->entry;
-
+		remove_curr_candidate = false;
 		num_link = scan_entry->ml_info.num_links;
 		allow_slo_candidate = cm_is_slo_candidate_allowed(psoc,
 								  scan_entry);
@@ -3386,6 +3386,8 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 		 */
 		if (!cur_valid_partners)
 			goto add_11ax;
+		else if (cur_valid_partners > max_link_cnt - 1)
+			remove_curr_candidate = true;
 
 		for (gen_bmap = 0; gen_bmap < BIT(num_link); gen_bmap++) {
 			/**
@@ -3420,8 +3422,6 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 
 			qdf_mem_zero(tmp_scan_entry->ml_info.link_info,
 				     sizeof(tmp_scan_entry->ml_info.link_info));
-			tmp_scan_entry->ml_info.num_links = 0;
-
 			gen_link_cnt = 0;
 			for (i = 0; i < num_link; i++) {
 				if (!(gen_bmap & BIT(i)))
@@ -3445,9 +3445,13 @@ add_11ax:
 			cm_add_11_ax_candidate(pdev, candidate_list, scan_node);
 
 next:
+		if (remove_curr_candidate) {
+			qdf_list_remove_node(candidate_list, cur_node);
+			util_scan_free_cache_entry(scan_entry);
+			qdf_mem_free(cur_node);
+		}
 		cur_node = next_node;
 		next_node = NULL;
-
 	}
 }
 
