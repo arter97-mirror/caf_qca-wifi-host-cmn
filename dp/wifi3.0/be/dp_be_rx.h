@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -133,6 +133,42 @@ uint32_t dp_rx_process_be_bn(struct dp_intr *int_ctx,
 	return dp_rx_process_bn(int_ctx, hal_ring_hdl,
 				reo_ring_num, quota);
 }
+
+/**
+ * dp_rx_err_process_bn() - Processes error frames routed to REO error ring
+ *                          for BN
+ * @int_ctx: pointer to DP interrupt context
+ * @soc: core txrx main context
+ * @hal_ring_hdl: opaque pointer to the HAL RX error ring which is serviced
+ * @quota: No. of units (packets) that can be serviced in one shot.
+ *
+ * This function implements error processing and top level demultiplexer
+ * for all the frames routed to REO error ring.
+ *
+ * Return: uint32_t: No. of elements processed
+ */
+uint32_t
+dp_rx_err_process_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
+		     hal_ring_handle_t hal_ring_hdl, uint32_t quota);
+
+/**
+ * dp_rx_err_process_be_bn() - Processes error frames routed to REO error ring
+ * @int_ctx: pointer to DP interrupt context
+ * @soc: core txrx main context
+ * @hal_ring_hdl: opaque pointer to the HAL RX error ring which is serviced
+ * @quota: No. of units (packets) that can be serviced in one shot.
+ *
+ * This function implements error processing and top level demultiplexer
+ * for all the frames routed to REO error ring.
+ *
+ * Return: uint32_t: No. of elements processed
+ */
+static inline uint32_t
+dp_rx_err_process_be_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
+			hal_ring_handle_t hal_ring_hdl, uint32_t quota)
+{
+	return dp_rx_err_process_bn(int_ctx, soc, hal_ring_hdl, quota);
+}
 #else
 /**
  * dp_rx_process_be() - Rx processing functionality for BE
@@ -156,6 +192,13 @@ uint32_t dp_rx_process_be_bn(struct dp_intr *int_ctx,
 {
 	return dp_rx_process_be(int_ctx, hal_ring_hdl,
 				reo_ring_num, quota);
+}
+
+static inline uint32_t
+dp_rx_err_process_be_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
+			hal_ring_handle_t hal_ring_hdl, uint32_t quota)
+{
+	return dp_rx_err_process(int_ctx, soc, hal_ring_hdl, quota);
 }
 #endif
 

@@ -1597,6 +1597,8 @@ struct dp_soc_stats {
 			uint32_t reo_cmd_send_drain;
 			/* RX msdu drop count due to scatter */
 			uint32_t scatter_msdu;
+			/* RX MPDU Desc with msdu_count 0 */
+			uint32_t msdu_count_zero;
 			/* RX msdu drop count due to invalid cookie */
 			uint32_t invalid_cookie;
 			/* Count of stale cookie read in RX path */

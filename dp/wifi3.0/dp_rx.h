@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3946,6 +3946,139 @@ dp_rx_get_stats_arr_idx_from_link_id(qdf_nbuf_t nbuf,
 	return link_id;
 }
 #endif /* CONFIG_NBUF_AP_PLATFORM */
+
+int dp_rx_err_exception(struct dp_soc *soc, hal_ring_desc_t ring_desc);
+
+#ifdef WLAN_FEATURE_DP_RX_RING_HISTORY
+/**
+ * dp_rx_err_ring_record_entry() - Record rx err ring history
+ * @soc: Datapath soc structure
+ * @paddr: paddr of the buffer in RX err ring
+ * @sw_cookie: SW cookie of the buffer in RX err ring
+ * @rbm: Return buffer manager of the buffer in RX err ring
+ *
+ * Return: None
+ */
+static inline void
+dp_rx_err_ring_record_entry(struct dp_soc *soc, uint64_t paddr,
+			    uint32_t sw_cookie, uint8_t rbm)
+{
+	struct dp_buf_info_record *record;
+	uint32_t idx;
+
+	if (qdf_unlikely(!soc->rx_err_ring_history))
+		return;
+
+	idx = dp_history_get_next_index(&soc->rx_err_ring_history->index,
+					DP_RX_ERR_HIST_MAX);
+
+	/* No NULL check needed for record since its an array */
+	record = &soc->rx_err_ring_history->entry[idx];
+
+	record->timestamp = qdf_get_log_timestamp();
+	record->hbi.paddr = paddr;
+	record->hbi.sw_cookie = sw_cookie;
+	record->hbi.rbm = rbm;
+}
+#else
+static inline void
+dp_rx_err_ring_record_entry(struct dp_soc *soc, uint64_t paddr,
+			    uint32_t sw_cookie, uint8_t rbm)
+{
+}
+#endif
+
+/**
+ * dp_rx_bar_frame_handle() - Function to handle err BAR frames
+ * @soc: core DP main context
+ * @ring_desc: Hal ring desc
+ * @rx_desc: dp rx desc
+ * @mpdu_desc_info: mpdu desc info
+ * @err_status: error status
+ * @err_code: error code
+ *
+ * Handle the error BAR frames received. Ensure the SOC level
+ * stats are updated based on the REO error code. The BAR frames
+ * are further processed by updating the Rx tids with the start
+ * sequence number (SSN) and BA window size. Desc is returned
+ * to the free desc list
+ *
+ * Return: none
+ */
+void
+dp_rx_bar_frame_handle(struct dp_soc *soc,
+		       hal_ring_desc_t ring_desc,
+		       struct dp_rx_desc *rx_desc,
+		       struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+		       uint8_t err_status,
+		       uint32_t err_code);
+
+/**
+ * dp_rx_msdus_drop() - Drops all MSDU's per MPDU
+ *
+ * @soc: core txrx main context
+ * @ring_desc: opaque pointer to the REO error ring descriptor
+ * @mpdu_desc_info: MPDU descriptor information from ring descriptor
+ * @mac_id: mac ID
+ * @pn_err: PN Check failed
+ *
+ * This function is used to drop all MSDU in an MPDU
+ *
+ * Return: uint32_t: No. of elements processed
+ */
+uint32_t
+dp_rx_msdus_drop(struct dp_soc *soc, hal_ring_desc_t ring_desc,
+		 struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+		 uint8_t *mac_id, bool pn_err);
+
+/**
+ * dp_rx_reo_err_entry_process() - Handles for REO error entry processing
+ *
+ * @soc: core txrx main context
+ * @ring_desc: opaque pointer to the REO error ring descriptor
+ * @mpdu_desc_info: pointer to mpdu level description info
+ * @link_desc_va: pointer to msdu_link_desc virtual address
+ * @err_code: reo error code fetched from ring entry
+ *
+ * Function to handle msdus fetched from msdu link desc, currently
+ * support REO error NULL queue, 2K jump, OOR.
+ *
+ * Return: msdu count processed
+ */
+uint32_t
+dp_rx_reo_err_entry_process(struct dp_soc *soc,
+			    void *ring_desc,
+			    struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+			    void *link_desc_va,
+			    enum hal_reo_error_code err_code);
+
+/**
+ * dp_rx_err_dup_frame() - record duplicate frame stats if
+ *                         txrx_peer is valid
+ * @soc: core txrx main context
+ * @mpdu_desc_info: pointer to mpdu level description info
+ *
+ * Return: None
+ */
+static inline void
+dp_rx_err_dup_frame(struct dp_soc *soc,
+		    struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+{
+	struct dp_txrx_peer *txrx_peer = NULL;
+	dp_txrx_ref_handle txrx_ref_handle = NULL;
+	uint16_t peer_id;
+
+	peer_id =
+		dp_rx_peer_metadata_peer_id_get(soc,
+						mpdu_desc_info->peer_meta_data);
+	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(soc, peer_id,
+						   &txrx_ref_handle,
+						   DP_MOD_ID_RX_ERR);
+	if (txrx_peer) {
+		DP_STATS_INC(txrx_peer->vdev, rx.duplicate_count, 1);
+		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
+	}
+}
 
 #ifdef WLAN_DP_LOAD_BALANCE_SUPPORT
 void dp_rx_calculate_per_ring_pkt_avg(struct cdp_soc_t *cdp_soc);
