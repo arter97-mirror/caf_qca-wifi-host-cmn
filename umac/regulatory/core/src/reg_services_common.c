@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -8522,7 +8522,8 @@ reg_get_6g_chan_psd_eirp_power(qdf_freq_t freq,
 QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 				    qdf_freq_t chan_freq, bool *is_psd,
 				    int16_t *tx_power,
-				    int16_t *eirp_psd_power)
+				    int16_t *eirp_psd_power,
+				    bool get_ap_vlp_power)
 {
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
 	struct regulatory_channel *master_chan_list;
@@ -8535,9 +8536,13 @@ QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
-	if (!QDF_IS_STATUS_SUCCESS(status))
-		return status;
+	if (get_ap_vlp_power) {
+		ap_pwr_type = REG_VERY_LOW_POWER_AP;
+	} else {
+		status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
+		if (!QDF_IS_STATUS_SUCCESS(status))
+			return status;
+	}
 
 	master_chan_list = pdev_priv_obj->mas_chan_list_6g_ap[ap_pwr_type];
 

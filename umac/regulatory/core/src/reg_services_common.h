@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -2147,13 +2147,15 @@ bool reg_is_6g_psd_power(struct wlan_objmgr_pdev *pdev);
  * @is_psd: is channel PSD or not
  * @tx_power: transmit power to fill for chan_freq
  * @eirp_psd_power: EIRP PSD power, will only be filled if is_psd is true
+ * @get_ap_vlp_power: Get VLP power for AP
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 				    qdf_freq_t chan_freq, bool *is_psd,
 				    int16_t *tx_power,
-				    int16_t *eirp_psd_power);
+				    int16_t *eirp_psd_power,
+				    bool get_ap_vlp_power);
 
 /**
  * reg_get_client_power_for_connecting_ap() - Find the channel information when

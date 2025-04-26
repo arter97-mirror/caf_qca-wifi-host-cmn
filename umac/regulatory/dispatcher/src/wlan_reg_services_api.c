@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -1801,10 +1801,12 @@ bool wlan_reg_is_6g_psd_power(struct wlan_objmgr_pdev *pdev)
 QDF_STATUS wlan_reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 					 qdf_freq_t chan_freq, bool *is_psd,
 					 int16_t *tx_power,
-					 int16_t *eirp_psd_power)
+					 int16_t *eirp_psd_power,
+					 bool get_ap_vlp_power)
 {
 	return reg_get_6g_chan_ap_power(pdev, chan_freq, is_psd,
-					tx_power, eirp_psd_power);
+					tx_power, eirp_psd_power,
+					get_ap_vlp_power);
 }
 
 qdf_export_symbol(wlan_reg_get_6g_chan_ap_power);
