@@ -716,6 +716,52 @@ static void dp_ipa_set_evt_rn_db_addr(struct device *dev,
 		QDF_IPA_WDI_SETUP_INFO_IS_EVT_RN_DB_PCIE_ADDR(txrx) = true;
 }
 
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+/**
+ * dp_ipa_set_rx_peer_metadata_ver() - Indicate rx peer meta data version
+ * to IPA for non-smmu case
+ * @soc: data path soc handle
+ * @rx: WDI RX configuration
+ *
+ * Return: none
+ */
+static inline void
+dp_ipa_set_rx_peer_metadata_ver(struct dp_soc *soc,
+				qdf_ipa_wdi_pipe_setup_info_t *rx)
+{
+	QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(rx,
+		soc->rx_peer_metadata_ver);
+}
+
+/**
+ * dp_ipa_set_rx_smmu_peer_metadata_ver() - Indicate rx peer meta data version
+ * to IPA for smmu case
+ * @soc: data path soc handle
+ * @rx: WDI RX configuration
+ *
+ * Return: none
+ */
+static inline void
+dp_ipa_set_rx_smmu_peer_metadata_ver(struct dp_soc *soc,
+				     qdf_ipa_wdi_pipe_setup_info_smmu_t *rx)
+{
+	QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(rx,
+		soc->rx_peer_metadata_ver);
+}
+#else /* !WLAN_FEATURE_MULTI_LINK_SAP */
+static inline void
+dp_ipa_set_rx_peer_metadata_ver(struct dp_soc *soc,
+				qdf_ipa_wdi_pipe_setup_info_t *rx)
+{
+}
+
+static inline void
+dp_ipa_set_rx_smmu_peer_metadata_ver(struct dp_soc *soc,
+				     qdf_ipa_wdi_pipe_setup_info_smmu_t *rx)
+{
+}
+#endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
 #ifdef IPA_WDI3_TX_TWO_PIPES
 static void dp_ipa_tx_alt_pool_detach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
@@ -2633,6 +2679,8 @@ static void dp_ipa_wdi_rx_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_chip_id(soc, rx);
+
+	dp_ipa_set_rx_peer_metadata_ver(soc, rx);
 }
 
 static void
@@ -2739,6 +2787,8 @@ dp_ipa_wdi_rx_smmu_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_smmu_chip_id(soc, rx_smmu);
+
+	dp_ipa_set_rx_smmu_peer_metadata_ver(soc, rx_smmu);
 }
 
 #ifdef IPA_WDI3_VLAN_SUPPORT
@@ -2805,6 +2855,8 @@ dp_ipa_wdi_rx_alt_pipe_smmu_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_smmu_chip_id(soc, rx_smmu);
+
+	dp_ipa_set_rx_smmu_peer_metadata_ver(soc, rx_smmu);
 }
 
 /**
@@ -2870,6 +2922,8 @@ static void dp_ipa_wdi_rx_alt_pipe_params(struct dp_soc *soc,
 
 	/* Set Chip ID, extract chip id from be_soc and pass to IPA */
 	dp_ipa_set_rx_chip_id(soc, rx);
+
+	dp_ipa_set_rx_peer_metadata_ver(soc, rx);
 }
 
 /**
@@ -4534,30 +4588,61 @@ static qdf_nbuf_t dp_ipa_intrabss_send(struct dp_pdev *pdev,
 				       struct dp_vdev *vdev,
 				       qdf_nbuf_t nbuf)
 {
+	struct cdp_tid_rx_stats *tid_rx_stats;
+	struct dp_be_intrabss_params params;
+	struct dp_txrx_peer *txrx_peer;
 	struct dp_peer *vdev_peer;
+	uint8_t da_is_bcmc;
+	struct dp_soc *soc;
 	uint16_t len;
 
 	vdev_peer = dp_vdev_bss_peer_ref_n_get(pdev->soc, vdev, DP_MOD_ID_IPA);
 	if (qdf_unlikely(!vdev_peer))
 		return nbuf;
 
-	if (qdf_unlikely(!vdev_peer->txrx_peer)) {
+	txrx_peer = vdev_peer->txrx_peer;
+	if (qdf_unlikely(!txrx_peer)) {
 		dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
 		return nbuf;
 	}
+
+	/* For bcmc case, nbuf comes from qdf_nbuf_copy(), where the skb
+	 * header is copied. So nbuf->cb[] holds correct values.
+	 */
+	da_is_bcmc = (uint8_t)nbuf->cb[DP_IPA_NBUF_CB_DA_IS_BCMC_OFFSET] &
+		DP_IPA_NBUF_CB_BCMC_MASK;
 
 	qdf_mem_zero(nbuf->cb, sizeof(nbuf->cb));
 	len = qdf_nbuf_len(nbuf);
+	soc = pdev->soc;
 
-	if (dp_tx_send((struct cdp_soc_t *)pdev->soc, vdev->vdev_id, nbuf)) {
-		DP_PEER_PER_PKT_STATS_INC_PKT(vdev_peer->txrx_peer,
-					      rx.intra_bss.fail, 1, len, 0);
+	if (!da_is_bcmc)
+		goto tx_send;
+
+	/* No MLO mcbc fwd ops or fail to get mcbc params, do legacy tx */
+	if (!soc->arch_ops.dp_rx_intrabss_get_mcbc_params ||
+	    !soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd ||
+	    !soc->arch_ops.dp_rx_intrabss_get_mcbc_params(soc, vdev, &params))
+		goto tx_send;
+
+	/* MLO mcbc intra-bss fwd */
+	tid_rx_stats =
+		&txrx_peer->vdev->pdev->stats.tid_stats.tid_rx_stats[0][0];
+	soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd(params, nbuf, 0, len,
+						  txrx_peer, tid_rx_stats);
+	goto out;
+
+tx_send:
+	if (dp_tx_send((struct cdp_soc_t *)soc, vdev->vdev_id, nbuf)) {
+		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.intra_bss.fail,
+					      1, len, 0);
 		dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
 		return nbuf;
 	}
 
-	DP_PEER_PER_PKT_STATS_INC_PKT(vdev_peer->txrx_peer,
-				      rx.intra_bss.pkts, 1, len, 0);
+	DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.intra_bss.pkts, 1, len, 0);
+
+out:
 	dp_peer_unref_delete(vdev_peer, DP_MOD_ID_IPA);
 	return NULL;
 }

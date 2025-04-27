@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1838,8 +1838,9 @@ dp_rx_intrabss_ucast_check_be(qdf_nbuf_t nbuf,
 						params->dest_soc,
 						msdu_metadata->da_idx);
 
-	da_peer = dp_txrx_peer_get_ref_by_id(params->dest_soc, da_peer_id,
-					     &txrx_ref_handle, DP_MOD_ID_RX);
+	da_peer = dp_tgt_txrx_peer_get_ref_by_id(params->dest_soc, da_peer_id,
+						 &txrx_ref_handle,
+						 DP_MOD_ID_RX);
 	if (!da_peer)
 		return false;
 
@@ -2048,11 +2049,14 @@ bool dp_rx_intrabss_mlo_mcbc_fwd_be(struct dp_be_intrabss_params params,
 
 	vdev = dp_vdev_get_ref_by_id(params.dest_soc, params.tx_vdev_id,
 				     DP_MOD_ID_RX);
-	if (!vdev)
+	if (!vdev) {
+		qdf_nbuf_free(nbuf_copy);
 		return false;
+	}
 
 	be_vdev = dp_get_be_vdev_from_dp_vdev(vdev);
 	if (!be_vdev->mcast_primary) {
+		qdf_nbuf_free(nbuf_copy);
 		dp_vdev_unref_delete(params.dest_soc, vdev, DP_MOD_ID_RX);
 		return false;
 	}

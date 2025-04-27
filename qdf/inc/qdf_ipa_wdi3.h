@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -134,6 +134,10 @@ typedef __qdf_ipa_wdi_pipe_setup_info_smmu_t qdf_ipa_wdi_pipe_setup_info_smmu_t;
 	__QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PMAC_ID(txrx, pmac_id)
 #define QDF_IPA_WDI_SETUP_INFO_SMMU_CHIP_ID(txrx, chip_id)	\
 	__QDF_IPA_WDI_SETUP_INFO_SMMU_CHIP_ID(txrx, chip_id)
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+#define QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(txrx, ver) \
+	__QDF_IPA_WDI_SETUP_INFO_SMMU_RX_PEER_METADATA_VER(txrx, ver)
+#endif
 
 typedef __qdf_ipa_ep_cfg_t qdf_ipa_ep_cfg_t;
 
@@ -284,6 +288,10 @@ typedef __qdf_ipa_wdi_pipe_setup_info_t qdf_ipa_wdi_pipe_setup_info_t;
 	__QDF_IPA_WDI_SETUP_INFO_RX_PMAC_ID(txrx, pmac_id)
 #define QDF_IPA_WDI_SETUP_INFO_CHIP_ID(txrx, chip_id)	\
 	__QDF_IPA_WDI_SETUP_INFO_CHIP_ID(txrx, chip_id)
+#ifdef WLAN_FEATURE_MULTI_LINK_SAP
+#define QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(txrx, ver) \
+	__QDF_IPA_WDI_SETUP_INFO_RX_PEER_METADATA_VER(txrx, ver)
+#endif
 
 /**
  * qdf_ipa_wdi_conn_in_params_t - information provided by
