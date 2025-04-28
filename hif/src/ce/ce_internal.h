@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -720,7 +720,8 @@ int hif_get_wake_ce_id(struct hif_softc *scn, uint8_t *ce_id);
  */
 int hif_get_fw_diag_ce_id(struct hif_softc *scn, uint8_t *ce_id);
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
+	defined(RECORD_DP_CE_EVTS)
 
 #ifndef HIF_CE_HISTORY_MAX
 #if defined(CONFIG_SLUB_DEBUG_ON)
@@ -778,7 +779,9 @@ struct hif_ce_desc_event {
 };
 #else
 struct hif_ce_desc_event;
-#endif /*#if defined(HIF_CONFIG_SLUB_DEBUG_ON)||defined(HIF_CE_DEBUG_DATA_BUF)*/
+#endif /* defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||
+	* defined(RECORD_DP_CE_EVTS)
+	*/
 
 /**
  * get_next_record_index() - get the next record index
@@ -794,7 +797,8 @@ struct hif_ce_desc_event;
  */
 int get_next_record_index(qdf_atomic_t *table_index, int array_size);
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
+	defined(RECORD_DP_CE_EVTS)
 /**
  * hif_record_ce_srng_desc_event() - Record data pointed by the CE descriptor
  * @scn: structure detailing a ce event
@@ -837,7 +841,7 @@ static inline
 void hif_clear_ce_desc_debug_data(struct hif_ce_desc_event *event)
 {
 }
-#endif /* HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF */
+#endif /* HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF||RECORD_DP_CE_EVTS*/
 
 #ifdef HIF_CE_DEBUG_DATA_BUF
 /**
