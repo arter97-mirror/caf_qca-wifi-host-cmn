@@ -377,7 +377,7 @@ dp_tx_mon_generate_cts2self_frm(struct dp_pdev *pdev,
 	wh_min->i_dur[0] = (duration_le & 0xFF);
 
 	qdf_mem_copy(wh_min->i_addr1,
-		     TXMON_STATUS_INFO(tx_status_info, addr2),
+		     TXMON_STATUS_INFO(tx_status_info, addr1),
 		     QDF_MAC_ADDR_SIZE);
 
 	qdf_nbuf_set_pktlen(mpdu_nbuf, sizeof(*wh_min));
