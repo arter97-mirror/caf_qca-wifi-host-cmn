@@ -964,6 +964,8 @@ struct wlan_mlo_sta_assoc_pending_list {
  * @ml_link_control_mode: link control mode configured via user space
  * @ml_chan_switch_in_progress: Flag to track CSA at MLD level
  * @ttlm_send_info: TTLM send command into
+ * @is_mlo_offload_roam: MLO partner link bringup offloaded to host roam is
+ * in progress
  */
 struct wlan_mlo_sta {
 	qdf_bitmap(wlan_connect_req_links, WLAN_UMAC_MLO_MAX_VDEVS);
@@ -998,6 +1000,7 @@ struct wlan_mlo_sta {
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
 	struct ttlm_send_cmd_info ttlm_send_info;
 #endif
+	bool is_mlo_offload_roam;
 };
 
 /**
