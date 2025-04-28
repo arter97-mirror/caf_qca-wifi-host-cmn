@@ -156,6 +156,17 @@ qdf_export_symbol(sec_type_map);
 uint16_t cdp_latency_hist_bucket[] = {0, 5, 10, 20, 30, 50, 100, 200};
 qdf_export_symbol(cdp_latency_hist_bucket);
 
+/*
+ * cdp_latency_perc_bucket - Tx latency percetile value
+ * @index_0 = 50 percentile value in ms
+ * @index_1 = 75 percentile value in ms
+ * @index_2 = 90 percentile value in ms
+ * @index_3 = 95 percentile value in ms
+ * @index_4 = 99 percentile value in ms
+ */
+uint16_t cdp_latency_perc_bucket[] = {50, 75, 90, 95, 99};
+qdf_export_symbol(cdp_latency_perc_bucket);
+
 #ifdef DP_FEATURE_TX_PAGE_POOL
 /**
  * dp_tx_is_page_pool_enabled() - Check if TX page pool is enabled
@@ -7026,6 +7037,10 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 		(((_tid) == 4) || ((_tid) == 5)) ? DP_HOST_AC_VI : \
 		DP_HOST_AC_VO)
 
+static uint16_t latency_perc_bucket[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15,
+					 20, 25, 30, 35, 40, 45, 50, 60, 70, 80,
+					 90, 100, 250, 500};
+
 /**
  * dp_tx_update_qos_latency_stats() - Update QoS latency stats bucket
  * @vdev: vdev handle
@@ -7052,6 +7067,201 @@ dp_tx_update_qos_latency_stats(struct dp_vdev *vdev,
 		}
 		vdev->tx_latency_stats_hist[tid][index]++;
 	}
+
+	if (qdf_atomic_read(&vdev->ul_delay_percentile)) {
+		for (index = 0; index < PERC_BUCKET_SIZE - 1; index++) {
+			if (ul_delay < latency_perc_bucket[index + 1])
+				break;
+		}
+		vdev->tx_latency_stats_per[tid][index]++;
+	}
+}
+
+/**
+ * dp_calculate_percentile() -  Calculate percentile value
+ * @data: data to calculate percentile
+ * @bucket_values: Percentile bucket
+ * @bucket_size: Percentile  bucket size
+ * @percentile: percentile value to calculate
+ *
+ * Return: Calculated percentile value
+ */
+static uint16_t
+dp_calculate_percentile(uint64_t *data, uint16_t *bucket_values,
+			uint8_t bucket_size, uint8_t percentile)
+{
+	uint64_t total_packets = 0;
+	uint64_t cumulative_packets = 0;
+	uint16_t i;
+
+	for (i = 0; i < bucket_size; i++)
+		total_packets += data[i];
+
+	if (!total_packets)
+		return 0;
+
+	for (i = 0; i < bucket_size; i++) {
+		cumulative_packets += data[i];
+		if (cumulative_packets >= (total_packets * percentile) / 100)
+			return bucket_values[i];
+	}
+
+	return 0;
+}
+
+/**
+ * dp_qos_update_latency_percentile() - Update latency percentile
+ * @granularity: Report granularity
+ * @curr_report: Current measurement bucket
+ * @prev_report: Previous measurement bucket
+ * @dest: destination for percentile report
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dp_qos_update_latency_percentile(enum cdp_report_granularity granularity,
+				 uint64_t curr_report[][PERC_BUCKET_SIZE],
+				 uint64_t **prev_report,
+				 uint32_t dest[][CDP_PERC_BUCKET_SIZE])
+{
+	uint8_t tid, index;
+	uint64_t buck[CDP_MAX_DATA_TIDS][PERC_BUCKET_SIZE] = {0};
+	uint64_t **curr_buc, **prev_buc;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	switch (granularity) {
+	case CDP_REPORT_GRAN_TID:
+	for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+		for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+			buck[tid][index] = curr_report[tid][index] -
+						prev_report[tid][index];
+			prev_report[tid][index] = curr_report[tid][index];
+		}
+		for (index = 0; index < MAX_PERC_LATENCY_IDX; index++)
+			dest[tid][index] =
+				dp_calculate_percentile(buck[tid],
+							latency_perc_bucket,
+							PERC_BUCKET_SIZE,
+							cdp_latency_perc_bucket[index]);
+	}
+		break;
+	case CDP_REPORT_GRAN_AC:
+		curr_buc = qdf_mem_malloc(sizeof(uint64_t) * CDP_MAX_DATA_AC);
+		if (!curr_buc) {
+			dp_err("Unable to allocate curr_buc for AC");
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		prev_buc = qdf_mem_malloc(sizeof(uint64_t) * CDP_MAX_DATA_AC);
+		if (!prev_buc) {
+			dp_err("Unable to allocate prev_buc for AC");
+			qdf_mem_free(curr_buc);
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			curr_buc[tid] =
+				qdf_mem_malloc(sizeof(uint64_t) *
+					       PERC_BUCKET_SIZE);
+			if (!curr_buc[tid]) {
+				dp_err("alloc failed curr_buc[%d] for AC", tid);
+				status =  QDF_STATUS_E_NOMEM;
+				goto ac_mem_free;
+			}
+			prev_buc[tid] =
+				qdf_mem_malloc(sizeof(uint64_t) *
+					       PERC_BUCKET_SIZE);
+			if (!prev_buc[tid]) {
+				dp_err("alloc failed prev_buc[%d] for AC", tid);
+				status =  QDF_STATUS_E_NOMEM;
+				goto ac_mem_free;
+			}
+
+			qdf_mem_zero(prev_buc[tid], sizeof(curr_buc[tid]));
+			qdf_mem_zero(prev_buc[tid], sizeof(prev_buc[tid]));
+		}
+
+		for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+			for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+				curr_buc[DP_TID_TO_AC(tid)][index] +=
+					curr_report[tid][index];
+				prev_buc[DP_TID_TO_AC(tid)][index] +=
+					prev_report[tid][index];
+				prev_report[tid][index] =
+					curr_report[tid][index];
+			}
+		}
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+				buck[tid][index] =
+					curr_buc[tid][index] -
+					prev_buc[tid][index];
+			}
+		for (index = 0; index < MAX_PERC_LATENCY_IDX; index++)
+			dest[tid][index] =
+				dp_calculate_percentile(buck[tid],
+							latency_perc_bucket,
+							PERC_BUCKET_SIZE,
+							cdp_latency_perc_bucket[index]);
+		}
+ac_mem_free:
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			if (curr_buc[tid])
+				qdf_mem_free(curr_buc[tid]);
+			if (prev_buc[tid])
+				qdf_mem_free(prev_buc[tid]);
+		}
+		qdf_mem_free(curr_buc);
+		qdf_mem_free(prev_buc);
+		break;
+	case CDP_REPORT_GRAN_AGGR:
+		curr_buc =
+			(uint64_t **)qdf_mem_malloc(sizeof(uint64_t *) +
+						    sizeof(uint64_t) *
+						    PERC_BUCKET_SIZE);
+		if (!curr_buc) {
+			dp_err("Unable to allocate curr_buc for Aggr");
+			return QDF_STATUS_E_NOMEM;
+		}
+		prev_buc =
+			(uint64_t **)qdf_mem_malloc(sizeof(uint64_t *) +
+						    sizeof(uint64_t) *
+						    PERC_BUCKET_SIZE);
+		if (!prev_buc) {
+			dp_err("Unable to allocate prev_buc for Aggr");
+			qdf_mem_free(curr_buc);
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		qdf_mem_zero(prev_buc, sizeof(curr_buc));
+		qdf_mem_zero(prev_buc, sizeof(prev_buc));
+		*curr_buc = (uint64_t *)(curr_buc + 1);
+		*prev_buc = (uint64_t *)(prev_buc + 1);
+		for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+			for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+				(*curr_buc)[index] += curr_report[tid][index];
+				(*prev_buc)[index] += prev_report[tid][index];
+				prev_report[tid][index] =
+					curr_report[tid][index];
+			}
+		}
+		for (index = 0; index < PERC_BUCKET_SIZE; index++)
+			(*buck)[index] =
+				(*curr_buc)[index] - (*prev_buc)[index];
+		for (index = 0; index < MAX_PERC_LATENCY_IDX; index++)
+			(*dest)[index] =
+				dp_calculate_percentile((*buck),
+							latency_perc_bucket,
+							PERC_BUCKET_SIZE,
+							cdp_latency_perc_bucket[index]);
+		qdf_mem_free(curr_buc);
+		qdf_mem_free(prev_buc);
+		break;
+	default:
+		break;
+	}
+
+	return status;
 }
 
 /**
@@ -7222,6 +7432,14 @@ QDF_STATUS dp_qos_latency_get_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 							stats->tid_hist.stats);
 		break;
 
+	case REPORT_TYPE_PERCENTILE:
+		status =
+			dp_qos_update_latency_percentile(stats->granularity,
+							 vdev->tx_latency_stats_per,
+							 report->stats,
+							 stats->tid_perc.stats);
+		break;
+
 	default:
 		status = QDF_STATUS_E_NOSUPPORT;
 		break;
@@ -7286,6 +7504,29 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 				qdf_mem_zero(vdev->tx_latency_stats_hist,
 					     sizeof(vdev->tx_latency_stats_hist));
 				qdf_atomic_set(&vdev->ul_delay_histogram, true);
+			}
+			break;
+		case REPORT_TYPE_PERCENTILE:
+			report->stats =
+				qdf_mem_malloc(sizeof(uint64_t) *
+					       CDP_MAX_DATA_TIDS);
+			for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
+				report->stats[i] =
+					qdf_mem_malloc(sizeof(uint64_t) *
+						       PERC_BUCKET_SIZE);
+				qdf_mem_zero(report->stats[i],
+					     sizeof(report->stats[i]));
+			}
+			if (qdf_atomic_read(&vdev->ul_delay_percentile)) {
+				for (i = 0; i < CDP_MAX_DATA_TIDS; i++)
+					for (j = 0; j < PERC_BUCKET_SIZE; j++)
+						report->stats[i][j] =
+							vdev->tx_latency_stats_per[i][j];
+			} else {
+				qdf_mem_zero(vdev->tx_latency_stats_per,
+					     sizeof(vdev->tx_latency_stats_per));
+				qdf_atomic_set(&vdev->ul_delay_percentile,
+					       true);
 			}
 			break;
 		default:

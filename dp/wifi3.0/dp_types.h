@@ -4932,6 +4932,10 @@ struct dp_vdev {
 	qdf_atomic_t ul_delay_histogram;
 	/* Histogram QoS latency stats bucket */
 	uint64_t tx_latency_stats_hist[CDP_MAX_DATA_TIDS][CDP_HIST_BUCKET_SIZE];
+	/* Enable percentile QoS latency stats */
+	qdf_atomic_t ul_delay_percentile;
+	/* Percentile QoS latency stats bucket */
+	uint64_t tx_latency_stats_per[CDP_MAX_DATA_TIDS][PERC_BUCKET_SIZE];
 	/* QoS Latency stats report */
 	struct dp_qos_latency_report qos_latency_report[SOLICITED_MAX];
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */

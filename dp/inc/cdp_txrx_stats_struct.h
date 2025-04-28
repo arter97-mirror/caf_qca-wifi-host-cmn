@@ -3860,16 +3860,38 @@ struct cdp_pdev_tx_capture_stats {
 #endif
 };
 
+#define CDP_PERC_BUCKET_SIZE	5
 #define CDP_HIST_BUCKET_SIZE	8
 #define CDP_MAX_DATA_AC		4
 
 /**
+ * enum cdp_latency_percentile - Percentile stats index
+ * @P50_LATENCY_IDX: 50 percentile index
+ * @P75_LATENCY_IDX: 75 percentile index
+ * @P90_LATENCY_IDX: 90 percentile index
+ * @P95_LATENCY_IDX: 95 percentile index
+ * @P99_LATENCY_IDX: 99 percentile index
+ * @MAX_PERC_LATENCY_IDX: Max index
+ *
+ */
+enum cdp_latency_percentile {
+	P50_LATENCY_IDX,
+	P75_LATENCY_IDX,
+	P90_LATENCY_IDX,
+	P95_LATENCY_IDX,
+	P99_LATENCY_IDX,
+	MAX_PERC_LATENCY_IDX
+};
+
+/**
  * enum cdp_report_type - Report Type
  * @REPORT_TYPE_HISTOGRAM: Histogram
+ * @REPORT_TYPE_PERCENTILE: Percentile
  * @REPORT_TYPE_MAX: Max
  */
 enum cdp_report_type {
 	REPORT_TYPE_HISTOGRAM,
+	REPORT_TYPE_PERCENTILE,
 	REPORT_TYPE_MAX
 };
 
@@ -3922,11 +3944,27 @@ struct cdp_ac_hist_stats {
 };
 
 /**
+ * struct cdp_ac_perc_stats - Per AC percentile stats
+ * @stats: stats buffer
+ */
+struct cdp_ac_perc_stats {
+	uint32_t stats[CDP_MAX_DATA_AC][CDP_PERC_BUCKET_SIZE];
+};
+
+/**
  * struct cdp_tid_hist_stats - Per TID histogram stats
  * @stats: stats buffer
  */
 struct cdp_tid_hist_stats {
 	uint32_t stats[CDP_MAX_DATA_TIDS][CDP_HIST_BUCKET_SIZE];
+};
+
+/**
+ * struct cdp_tid_perc_stats -  Per TID percentile stats
+ * @stats: stats buffer
+ */
+struct cdp_tid_perc_stats {
+	uint32_t stats[CDP_MAX_DATA_TIDS][CDP_PERC_BUCKET_SIZE];
 };
 
 /**
@@ -3938,13 +3976,24 @@ struct cdp_aggr_hist_stats {
 };
 
 /**
+ * struct cdp_aggr_perc_stats -  Aggregated percentile stats
+ * @stats: stats buffer
+ */
+struct cdp_aggr_perc_stats {
+	uint32_t stats[CDP_PERC_BUCKET_SIZE];
+};
+
+/**
  * struct cdp_qos_latency_stats_req - Latency stats request
  * @method: Request Method
  * @granularity: Request granularity
  * @type: Report type
  * @ac_hist: If report is per AC histogram
+ * @ac_perc: If report is per AC percentile
  * @tid_hist: If report is per TID histogram
+ * @tid_perc: If report is per TID percentile
  * @aggr_hist: If report is aggregated histogram
+ * @aggr_perc: If report is aggregated percentile
  */
 struct cdp_qos_latency_stats_req {
 	enum cdp_report_method method;
@@ -3952,8 +4001,11 @@ struct cdp_qos_latency_stats_req {
 	enum cdp_report_type type;
 	union {
 		struct cdp_ac_hist_stats ac_hist;
+		struct cdp_ac_perc_stats ac_perc;
 		struct cdp_tid_hist_stats tid_hist;
+		struct cdp_tid_perc_stats tid_perc;
 		struct cdp_aggr_hist_stats aggr_hist;
+		struct cdp_aggr_perc_stats aggr_perc;
 	};
 };
 #endif
