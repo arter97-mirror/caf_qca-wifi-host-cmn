@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -69,7 +69,6 @@ osif_cm_update_wep_seq_info(struct wlan_cm_connect_req *connect_req,
 }
 #endif
 
-#if !defined(CFG80211_CRYPTO_WEP_KEYS_REMOVED)
 static QDF_STATUS
 osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
 			   const struct cfg80211_connect_params *req)
@@ -90,14 +89,6 @@ osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
 
 	return osif_cm_update_wep_seq_info(connect_req, req);
 }
-#else
-static QDF_STATUS
-osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
-			   const struct cfg80211_connect_params *req)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 static void osif_cm_set_auth_type(struct wlan_cm_connect_req *connect_req,
 				  const struct cfg80211_connect_params *req)
