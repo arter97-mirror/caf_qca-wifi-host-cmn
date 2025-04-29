@@ -83,16 +83,19 @@ dp_tx_set_min_rates_for_critical_frames(struct dp_soc *soc,
 }
 #endif
 
+#ifdef QCA_WIFI_EMULATION
 /**
  * dp_tx_dump_tcl_desc()- Dump TCL descriptor before enqueue
- * @tcl_desc: TCL descriptor
+ * @cached_desc: TCL descriptor
  *
  * Debug dump of TCL descriptor.
  *
  * Return: None
  */
-static inline void dp_tx_dump_tcl_desc(struct tcl_assist_cmd *tcl_desc)
+static inline void dp_tx_dump_tcl_desc(uint8_t *cached_desc)
 {
+	struct tcl_assist_cmd *tcl_desc = (struct tcl_assist_cmd *)cached_desc;
+
 	dp_verbose_debug("buffer_addr_info 0-31 0x%x 32-39 0x%x rbm 0x%x "
 			 " sw_cookie 0x%x",
 			 tcl_desc->buf_addr_info.buffer_addr_31_0,
@@ -103,11 +106,11 @@ static inline void dp_tx_dump_tcl_desc(struct tcl_assist_cmd *tcl_desc)
 			 "bank_id 0x%x "
 			 "vdev_id 0x%x "
 			 "data_length 0x%x "
-			 "to_fw 0x%x "
+			 "to_fw_tqm 0x%x "
 			 "reserved_2a 0x%x "
 			 "reserved_3a 0x%x "
 			 "metadata_length 0x%x "
-			 "classify_info_index 0x%x "
+			 "txpt_classify_info_index 0x%x "
 			 "txpt_classify_info_sel 0x%x "
 			 "txpt_classify_info_override 0x%x "
 			 "flow_override_enable 0x%x "
@@ -130,11 +133,11 @@ static inline void dp_tx_dump_tcl_desc(struct tcl_assist_cmd *tcl_desc)
 			 tcl_desc->bank_id,
 			 tcl_desc->vdev_id,
 			 tcl_desc->data_length,
-			 tcl_desc->to_fw,
+			 tcl_desc->to_fw_tqm,
 			 tcl_desc->reserved_2a,
 			 tcl_desc->reserved_3a,
 			 tcl_desc->metadata_length,
-			 tcl_desc->classify_info_index,
+			 tcl_desc->txpt_classify_info_index,
 			 tcl_desc->txpt_classify_info_sel,
 			 tcl_desc->txpt_classify_info_override,
 			 tcl_desc->flow_override_enable,
@@ -174,7 +177,6 @@ static inline void dp_tx_dump_tcl_desc(struct tcl_assist_cmd *tcl_desc)
 			 "s_vlan_tag_present 0x%x "
 			 "c_vlan_tag_present 0x%x "
 			 "wmac_hdr_len 0x%x "
-			 "hdr_copy_enable 0x%x "
 			 "metadatareserved_12a 0x%x ",
 			 tcl_desc->ip_address_95_64,
 			 tcl_desc->ip_address_127_96,
@@ -196,7 +198,6 @@ static inline void dp_tx_dump_tcl_desc(struct tcl_assist_cmd *tcl_desc)
 			 tcl_desc->s_vlan_tag_present,
 			 tcl_desc->c_vlan_tag_present,
 			 tcl_desc->wmac_hdr_len,
-			 tcl_desc->hdr_copy_enable,
 			 tcl_desc->reserved_12a);
 
 	dp_verbose_debug("tcl_cmd_number 0x%x "
@@ -210,6 +211,12 @@ static inline void dp_tx_dump_tcl_desc(struct tcl_assist_cmd *tcl_desc)
 			 tcl_desc->ring_id,
 			 tcl_desc->looping_count);
 }
+
+#else /* QCA_WIFI_EMULATION */
+static inline void dp_tx_dump_tcl_desc(uint8_t *cached_desc)
+{
+}
+#endif /* QCA_WIFI_EMULATION */
 
 QDF_STATUS
 dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
@@ -346,6 +353,7 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 	dp_tx_update_stats(soc, tx_desc, ring_id);
 	status = QDF_STATUS_SUCCESS;
 
+	dp_tx_dump_tcl_desc(cached_desc);
 	dp_tx_hw_desc_update_evt((uint8_t *)hal_tx_desc_cached,
 				 hal_ring_hdl, soc, ring_id);
 
