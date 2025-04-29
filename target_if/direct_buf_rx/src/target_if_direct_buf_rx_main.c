@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -60,6 +60,11 @@ static uint8_t get_num_dbr_modules_per_pdev(struct wlan_objmgr_pdev *pdev)
 	}
 	num_dbr_ring_caps = target_psoc_get_num_dbr_ring_caps(tgt_psoc_info);
 	dbr_ring_cap = target_psoc_get_dbr_ring_caps(tgt_psoc_info);
+	if (!dbr_ring_cap) {
+		direct_buf_rx_err("NULL dbr_ring_cap");
+		return;
+	}
+
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	num_modules = 0;
 
