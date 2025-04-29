@@ -191,8 +191,9 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	uint32_t offset;
 	size_t size;
 
-	if (!dp_tx_is_page_pool_enabled(soc) ||
-	    !tx_pp || !tx_pp->page_pool_init)
+	if (!dp_tx_is_page_pool_enabled(soc) || !tx_pp ||
+	    !tx_pp->page_pool_init ||
+	    (tx_desc->flags & DP_TX_DESC_FLAG_TDLS_FRAME))
 		return nbuf;
 
 	/* Non linear SKBs are not expected in this path */
@@ -3475,9 +3476,9 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		goto fail_return;
 	}
 
-	nbuf = dp_tx_page_pool_handle_nbuf_single(vdev, nbuf, tx_desc);
-
 	dp_tx_update_tdls_flags(soc, vdev, tx_desc);
+
+	nbuf = dp_tx_page_pool_handle_nbuf_single(vdev, nbuf, tx_desc);
 
 	if (qdf_unlikely(peer_id == DP_INVALID_PEER)) {
 		htt_tcl_metadata = vdev->htt_tcl_metadata;
