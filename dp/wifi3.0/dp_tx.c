@@ -1459,7 +1459,7 @@ failure:
 	return NULL;
 }
 
-#ifdef WLAN_SOFTUMAC_SUPPORT
+#if defined(WLAN_SOFTUMAC_SUPPORT) || defined(CONFIG_BORON)
 /**
  * dp_tx_desc_update_length() - update the length field in tx descriptor
  * @tx_desc: tx descriptor reference
@@ -1471,6 +1471,9 @@ failure:
  * data segment length in the TCL_DATA_CMD.data_len for SOFTUMAC
  * architecture which is used by the FW to populate MSDU deatils
  * structure to TQM.
+ *
+ * In Boron TCL-Lite will not perform MSDU extn read. Update the msdu length
+ * in direct TCL descriptor as well in link extension descriptor.
  */
 static inline void
 dp_tx_desc_update_length(struct dp_tx_desc_s *tx_desc,
