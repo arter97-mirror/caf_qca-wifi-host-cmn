@@ -690,7 +690,7 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 	if (!tx_pp->page_pool_init)
 		return;
 
-	qdf_spin_lock(&tx_pp->pp_lock);
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
 	if (pp_params->pp && soc->cdp_soc.ol_ops->dp_put_page_pool) {
 		soc->cdp_soc.ol_ops->dp_put_page_pool(pp_params->pp,
 						      QDF_DP_PAGE_POOL_TX);
@@ -698,7 +698,7 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 		pp_params->pool_size = 0;
 		pp_params->pp_size = 0;
 	}
-	qdf_spin_unlock(&tx_pp->pp_lock);
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
 	tx_pp->page_pool_init = false;
 	qdf_spinlock_destroy(&tx_pp->pp_lock);

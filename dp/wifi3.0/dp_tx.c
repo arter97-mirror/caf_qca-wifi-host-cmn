@@ -200,7 +200,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	if (qdf_nbuf_is_nonlinear(nbuf))
 		return nbuf;
 
-	qdf_spin_lock(&tx_pp->pp_lock);
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
 	pp_params = &tx_pp->tx_pool;
 	pp = pp_params->pp;
 
@@ -211,7 +211,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		else
 			pp_params->alloc_fail++;
 
-		qdf_spin_unlock(&tx_pp->pp_lock);
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 		return nbuf;
 	}
 
@@ -226,7 +226,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		goto alloc_fail;
 
 	pp_params->alloc_success++;
-	qdf_spin_unlock(&tx_pp->pp_lock);
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
 	/* Copy data in to the pp nbuf */
 	qdf_mem_copy(pp_nbuf->data, nbuf->data, nbuf->len);
@@ -244,7 +244,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 alloc_fail:
 	pp_params->alloc_fail++;
-	qdf_spin_unlock(&tx_pp->pp_lock);
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	return nbuf;
 }
 
@@ -4776,11 +4776,11 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	int count = 0;
 
 	if (tx_pp && tx_pp->page_pool_init) {
-		qdf_spin_lock(&tx_pp->pp_lock);
+		qdf_spin_lock_bh(&tx_pp->pp_lock);
 		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
 							   nbuf, &nbuf_head,
 							   tx_pp->tx_pool.pp);
-		qdf_spin_unlock(&tx_pp->pp_lock);
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	} else {
 		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
 							   nbuf, &nbuf_head,
