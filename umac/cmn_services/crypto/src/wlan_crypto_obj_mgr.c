@@ -253,7 +253,6 @@ QDF_STATUS wlan_crypto_key_event_handler(struct wlan_objmgr_psoc *psoc,
 				   keys[i].link_id);
 			wlan_crypto_free_key(&keys[i].keys);
 			qdf_mem_zero(&keys[i], sizeof(*keys));
-			qdf_mem_free(&keys[i]);
 		}
 	}
 

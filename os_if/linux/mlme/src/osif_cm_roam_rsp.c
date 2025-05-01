@@ -372,7 +372,7 @@ static enum qca_roam_reason osif_get_roam_reason(uint16_t roam_scan_trigger)
 
 #ifdef WLAN_FEATURE_11BE_MLO
 
-static uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev)
+uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_objmgr_peer *peer;
 
@@ -498,7 +498,7 @@ osif_send_roam_auth_mlo_links_event(struct sk_buff *skb,
 	return 0;
 }
 #else
-static uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev)
+uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_objmgr_peer *peer;
 

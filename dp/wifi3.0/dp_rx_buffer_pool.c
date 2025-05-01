@@ -509,7 +509,8 @@ dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 	QDF_STATUS ret;
 	int i;
 
-	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx))
+	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx) ||
+	    !rx_pp->page_pool_init)
 		return QDF_STATUS_E_FAILURE;
 
 	if (qdf_atomic_read(&rx_pp->update_in_progress)) {
@@ -539,7 +540,7 @@ dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 	}
 
 	pp_params = &rx_pp->aux_pool;
-	if (pp_params->pp && qdf_page_pool_empty(pp_params->pp)) {
+	if (!pp_params->pp || qdf_page_pool_empty(pp_params->pp)) {
 		ret = QDF_STATUS_E_FAILURE;
 		goto out_fail;
 	}

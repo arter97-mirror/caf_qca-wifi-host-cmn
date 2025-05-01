@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1725,7 +1725,7 @@ static struct CE_pipe_config target_ce_config_wlan_qca6750[] = {
 #define KIWI_CE_COUNT 9
 #ifdef FEATURE_DIRECT_LINK
 static struct CE_attr host_ce_config_wlan_kiwi_direct_link[] = {
-	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 8, 2048, 0,
+	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
 	/* target->host HTT + HTC control */
 	{ /* CE1 */ CE_ATTR_FLAGS, 0, 0,  2048, 512, NULL,},
@@ -2015,7 +2015,7 @@ static struct CE_pipe_config target_ce_config_wlan_wcn6450[] = {
 #define WCN_7750_CE_COUNT 9
 #ifdef FEATURE_DIRECT_LINK
 static struct CE_attr host_ce_config_wlan_wcn7750_direct_link[] = {
-	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 8, 2048, 0,
+	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
 	/* target->host HTT + HTC control */
 	{ /* CE1 */ CE_ATTR_FLAGS, 0, 0,  2048, 512, NULL,},

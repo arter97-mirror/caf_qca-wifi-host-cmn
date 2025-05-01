@@ -113,7 +113,7 @@
 #define DP_MON_FILTER_FPMO_PACKET_CTRL_LSB                     0
 
 #define DP_MON_DATA_MAX_FILTER BIT(18)
-#define DP_MON_MGMT_MAX_FILTER BIT(5)
+#define DP_MON_MGMT_MAX_FILTER BIT(4)
 #define DP_MON_CTRL_MAX_FILTER BIT(3)
 
 #define DP_MON_FILTER_GET(src, field) \
