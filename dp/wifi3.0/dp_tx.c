@@ -4770,20 +4770,20 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 {
 	struct dp_soc *soc = vdev->pdev->soc;
 	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
-	qdf_nbuf_t nbuf_head = NULL;
-	qdf_nbuf_t tmp_skb, temp;
+	qdf_nbuf_t buff = NULL;
+	qdf_nbuf_t next;
 	QDF_STATUS status;
 	int count = 0;
 
 	if (tx_pp && tx_pp->page_pool_init) {
 		qdf_spin_lock_bh(&tx_pp->pp_lock);
 		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
-							   nbuf, &nbuf_head,
+							   nbuf, &buff,
 							   tx_pp->tx_pool.pp);
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	} else {
 		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
-							   nbuf, &nbuf_head,
+							   nbuf, &buff,
 							   NULL);
 	}
 
@@ -4793,17 +4793,21 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		return status;
 	}
 
-	tmp_skb = nbuf_head;
-	while (tmp_skb) {
-		temp = dp_tx_send_msdu_single(vdev, tmp_skb, msdu_info,
+	while (buff) {
+		next = qdf_nbuf_next(buff);
+		qdf_nbuf_set_next(buff, NULL);
+
+		buff = dp_tx_send_msdu_single(vdev, buff, msdu_info,
 					      HTT_INVALID_PEER, NULL);
-		if (temp) {
+		if (qdf_unlikely(buff)) {
 			dp_err("sw tso: failed to send msdu");
-			qdf_nbuf_list_free(tmp_skb);
+			qdf_nbuf_free(buff);
+			qdf_nbuf_list_free(next);
+
 			return QDF_STATUS_E_FAILURE;
 		}
 
-		tmp_skb = tmp_skb->next;
+		buff = next;
 		count++;
 	}
 
