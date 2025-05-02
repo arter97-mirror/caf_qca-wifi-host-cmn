@@ -4061,6 +4061,19 @@ static inline qdf_ktime_t __qdf_nbuf_net_timedelta(qdf_ktime_t t)
 	return net_timedelta(t);
 }
 
+/**
+ * __qdf_nbuf_copy_header() - copy SKB header portion into another SKB
+ * @to_skb: dest skb reference
+ * @from_skb: source skb reference
+ *
+ * Return: void
+ */
+static inline void
+__qdf_nbuf_copy_header(struct sk_buff *to_skb, struct sk_buff *from_skb)
+{
+	return skb_copy_header(to_skb, from_skb);
+}
+
 #ifdef CONFIG_NBUF_AP_PLATFORM
 #include <i_qdf_nbuf_w.h>
 #else

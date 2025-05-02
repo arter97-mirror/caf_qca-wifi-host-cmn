@@ -794,6 +794,7 @@ struct dp_tx_ext_desc_pool_s {
  * @tcl_cmd_vaddr: VADDR of the TCL descriptor, valid for soft-umac arch
  * @tcl_cmd_paddr: PADDR of the TCL descriptor, valid for soft-umac arch
  * @peer_bw: bandwidth associated with the corresponding peer
+ * @orig_nbuf: Reference of the network layer nbuf
  */
 struct dp_tx_desc_s {
 	struct dp_tx_desc_s *next;
@@ -827,6 +828,9 @@ struct dp_tx_desc_s {
 #endif
 #ifdef NDP_TX_BW_FLOW_CTRL
 	enum cdp_peer_bw peer_bw;
+#endif
+#ifdef DP_FEATURE_TX_PAGE_POOL
+	qdf_nbuf_t orig_nbuf;
 #endif
 };
 #else /* QCA_DP_OPTIMIZED_TX_DESC */
@@ -864,6 +868,9 @@ struct dp_tx_desc_s {
 #endif
 #ifdef NDP_TX_BW_FLOW_CTRL
 	enum cdp_peer_bw peer_bw;
+#endif
+#ifdef DP_FEATURE_TX_PAGE_POOL
+	qdf_nbuf_t orig_nbuf;
 #endif
 };
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */

@@ -1340,6 +1340,19 @@ static inline bool qdf_is_pp_nbuf(qdf_nbuf_t nbuf)
 	return __qdf_is_pp_nbuf(nbuf);
 }
 
+/**
+ * qdf_nbuf_copy_header() - copy SKB header portion into another SKB
+ * @to_skb: dest skb reference
+ * @from_skb: source skb reference
+ *
+ * Return: void
+ */
+static inline void
+qdf_nbuf_copy_header(struct sk_buff *to_skb, struct sk_buff *from_skb)
+{
+	return __qdf_nbuf_copy_header(to_skb, from_skb);
+}
+
 #ifdef NBUF_MAP_UNMAP_DEBUG
 /**
  * qdf_nbuf_map_check_for_leaks() - check for nbuf map leaks

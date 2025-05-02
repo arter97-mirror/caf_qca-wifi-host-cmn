@@ -56,6 +56,9 @@
 #ifdef WLAN_SUPPORT_LAPB
 #include "wlan_dp_lapb_flow.h"
 #endif
+#ifdef DP_FEATURE_TX_PAGE_POOL
+#include "qdf_page_pool.h"
+#endif
 
 /* Flag to skip CCE classify when mesh or tid override enabled */
 #define DP_TX_SKIP_CCE_CLASSIFY \
@@ -138,6 +141,147 @@ uint8_t sec_type_map[MAX_CDP_SEC_TYPE] = {HAL_TX_ENCRYPT_TYPE_NO_CIPHER,
 					  HAL_TX_ENCRYPT_TYPE_AES_GCMP_256,
 					  HAL_TX_ENCRYPT_TYPE_WAPI_GCM_SM4};
 qdf_export_symbol(sec_type_map);
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+/**
+ * dp_tx_is_page_pool_enabled() - Check if TX page pool is enabled
+ * @soc: DP SoC
+ *
+ * This function checks if TX page pool feature is enabled from INI.
+ */
+static bool dp_tx_is_page_pool_enabled(struct dp_soc *soc)
+{
+	return wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx);
+}
+
+/**
+ * dp_tx_pp_orig_nbuf_free() - Free original network nbuf in the TX descriptor.
+ * @tx_desc: SW DP TX descriptor
+ *
+ * This function frees the original network layer nbuf.
+ */
+static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
+{
+	if (!tx_desc->orig_nbuf)
+		return;
+
+	qdf_nbuf_free(tx_desc->orig_nbuf);
+	tx_desc->orig_nbuf = NULL;
+}
+
+/**
+ * dp_tx_page_pool_handle_nbuf_single() - Copy nbuf into page pool buffer
+ * @vdev: DP vdev handle
+ * @nbuf: skb
+ * @tx_desc: SW TX descriptor
+ *
+ * This function allocates an nbuf from page pool memory, copies the
+ * network layer generated TX packet into the page pool nbuf.
+ */
+static qdf_nbuf_t
+dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				   struct dp_tx_desc_s *tx_desc)
+{
+	struct dp_soc *soc = vdev->pdev->soc;
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
+	struct dp_tx_pp_params *pp_params;
+	qdf_page_pool_t pp;
+	qdf_nbuf_t pp_nbuf;
+	qdf_page_t page;
+	uint32_t offset;
+	size_t size;
+
+	if (!dp_tx_is_page_pool_enabled(soc) ||
+	    !tx_pp || !tx_pp->page_pool_init)
+		return nbuf;
+
+	/* Skip SW TSO packets */
+	if (qdf_nbuf_get_dev_scratch(nbuf) == QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL)
+		return nbuf;
+
+	/* Non linear SKBs are not expected in this path */
+	if (qdf_nbuf_is_nonlinear(nbuf))
+		return nbuf;
+
+	qdf_spin_lock(&tx_pp->pp_lock);
+	pp_params = &tx_pp->tx_pool;
+	pp = pp_params->pp;
+
+	if (!pp || qdf_page_pool_empty(pp)) {
+		qdf_spin_unlock(&tx_pp->pp_lock);
+		return nbuf;
+	}
+
+	size = qdf_nbuf_get_end_offset(nbuf);
+
+	pp_nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, size, 0, 0, pp,
+					   &offset);
+	qdf_spin_unlock(&tx_pp->pp_lock);
+
+	if (!pp_nbuf)
+		return nbuf;
+
+	/* Copy data in to the pp nbuf */
+	qdf_mem_copy(pp_nbuf->data, nbuf->data, nbuf->len);
+	qdf_nbuf_set_pktlen(pp_nbuf, nbuf->len);
+	qdf_nbuf_copy_header(pp_nbuf, nbuf);
+
+	page = qdf_virt_to_head_page(pp_nbuf->data);
+	QDF_NBUF_CB_PADDR(pp_nbuf) = qdf_page_pool_get_dma_addr(page) + offset +
+				 qdf_nbuf_headroom(pp_nbuf);
+
+	tx_desc->nbuf = pp_nbuf;
+	tx_desc->orig_nbuf = nbuf;
+
+	return pp_nbuf;
+}
+
+/**
+ * dp_tx_release_pp_nbuf() - Free page pool nbuf in the TX descriptor.
+ * @tx_desc: SW DP TX descriptor
+ * @nbuf: Network buffer
+ *
+ * This function frees the page pool nbuf attached to the TX descriptor.
+ */
+static qdf_nbuf_t
+dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
+{
+	qdf_nbuf_t orig_nbuf;
+
+	if (!qdf_is_pp_nbuf(nbuf) || !tx_desc->orig_nbuf)
+		return nbuf;
+
+	qdf_nbuf_free(nbuf);
+
+	orig_nbuf = tx_desc->orig_nbuf;
+	tx_desc->nbuf = orig_nbuf;
+	tx_desc->orig_nbuf = NULL;
+
+	return orig_nbuf;
+}
+#else
+static inline bool dp_tx_is_page_pool_enabled(struct dp_soc *soc)
+{
+	return false;
+}
+
+static inline void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
+{
+}
+
+static inline qdf_nbuf_t
+dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				   struct dp_tx_desc_s *tx_desc)
+{
+	return nbuf;
+}
+
+static inline qdf_nbuf_t
+dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
+{
+	return nbuf;
+}
+#endif /* DP_FEATURE_TX_PAGE_POOL */
 
 #ifdef WLAN_FEATURE_DP_TX_DESC_HISTORY
 static inline enum dp_tx_event_type dp_tx_get_event_type(uint32_t flags)
@@ -3318,6 +3462,8 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		goto fail_return;
 	}
 
+	nbuf = dp_tx_page_pool_handle_nbuf_single(vdev, nbuf, tx_desc);
+
 	dp_tx_update_tdls_flags(soc, vdev, tx_desc);
 
 	if (qdf_unlikely(peer_id == DP_INVALID_PEER)) {
@@ -3377,12 +3523,14 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		goto release_desc;
 	}
 
+	dp_tx_pp_orig_nbuf_free(tx_desc);
 	dp_tx_update_ts_on_enqueued(vdev, msdu_info, tx_desc);
 
 	tx_sw_drop_stats_inc(pdev, nbuf, drop_code, enable_eapol_drop_stats);
 	return NULL;
 
 release_desc:
+	nbuf = dp_tx_release_pp_nbuf(tx_desc, nbuf);
 	dp_tx_desc_release(soc, tx_desc, tx_q->desc_pool_id);
 
 fail_return:
@@ -4789,7 +4937,8 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 
 	/* SG */
 	if (qdf_unlikely(qdf_nbuf_is_nonlinear(nbuf))) {
-		if (qdf_nbuf_get_nr_frags(nbuf) > DP_TX_MAX_NUM_FRAGS - 1) {
+		if (qdf_nbuf_get_nr_frags(nbuf) > DP_TX_MAX_NUM_FRAGS - 1 ||
+		    dp_tx_is_page_pool_enabled(soc)) {
 			if (qdf_unlikely(qdf_nbuf_linearize(nbuf)))
 				return nbuf;
 		} else {
