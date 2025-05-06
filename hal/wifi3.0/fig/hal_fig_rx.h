@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -23,8 +23,6 @@
 #include "qdf_lock.h"
 #include "qdf_mem.h"
 #include "qdf_nbuf.h"
-#include "tcl_data_cmd.h"
-//#include "mac_tcl_reg_seq_hwioreg.h"
 #include "phyrx_rssi_legacy.h"
 #include "rx_msdu_start.h"
 #include "tlv_tag_def.h"

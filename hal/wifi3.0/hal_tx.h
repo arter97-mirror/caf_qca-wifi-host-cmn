@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -101,8 +101,13 @@ do {                                            \
 
 #define NUM_OF_DWORDS_TX_MSDU_EXTENSION 18
 
+#ifdef CONFIG_BORON
+#define HAL_TX_DESC_LEN_DWORDS (NUM_OF_DWORDS_TCL_ASSIST_CMD)
+#define HAL_TX_DESC_LEN_BYTES  (NUM_OF_DWORDS_TCL_ASSIST_CMD * 4)
+#else
 #define HAL_TX_DESC_LEN_DWORDS (NUM_OF_DWORDS_TCL_DATA_CMD)
 #define HAL_TX_DESC_LEN_BYTES  (NUM_OF_DWORDS_TCL_DATA_CMD * 4)
+#endif
 #define HAL_TX_EXTENSION_DESC_LEN_DWORDS (NUM_OF_DWORDS_TX_MSDU_EXTENSION)
 #define HAL_TX_EXTENSION_DESC_LEN_BYTES (NUM_OF_DWORDS_TX_MSDU_EXTENSION * 4)
 

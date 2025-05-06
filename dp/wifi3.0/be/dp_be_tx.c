@@ -620,7 +620,7 @@ dp_tx_set_min_rates_for_critical_frames(struct dp_soc *soc,
 }
 #endif
 
-#ifdef DP_TX_PACKET_INSPECT_FOR_ILP
+#if defined(DP_TX_PACKET_INSPECT_FOR_ILP) && !defined(CONFIG_BORON)
 /**
  * dp_tx_set_particular_tx_queue() - set particular TX TQM flow queue 3 for
  *				     TX packets, currently TCP ACK only
@@ -1640,6 +1640,7 @@ dp_get_peer_from_tx_exc_meta(struct dp_soc *soc, uint32_t *hal_tx_desc_cached,
 }
 #endif
 
+#ifndef CONFIG_BORON
 QDF_STATUS
 dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 		    struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
@@ -1799,6 +1800,7 @@ ring_access_fail:
 			     qdf_get_log_timestamp(), tx_desc->nbuf);
 	return status;
 }
+#endif /* !CONFIG_BORON */
 
 #ifdef IPA_OFFLOAD
 static void

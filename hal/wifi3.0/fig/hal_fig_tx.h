@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -15,9 +15,8 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/* TODO: TCL_ASSIST_CMD */
-//#include "tcl_data_cmd.h"
-//#include "mac_tcl_reg_seq_hwioreg.h"
+#include "tcl_assist_cmd.h"
+#include "tqm2sw_completion_ring.h"
 #include "phyrx_rssi_legacy.h"
 #include "hal_be_hw_headers.h"
 #include "hal_internal.h"

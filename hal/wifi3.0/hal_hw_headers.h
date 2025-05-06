@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -33,7 +33,12 @@
 #include "reo_entrance_ring.h"
 #include "reo_get_queue_stats.h"
 #include "reo_get_queue_stats_status.h"
+#ifdef CONFIG_BORON
+#include "tcl_assist_cmd.h"
+#include "tqm2sw_completion_ring.h"
+#else /* CONFIG_BORON */
 #include "tcl_data_cmd.h"
+#endif /* !CONFIG_BORON */
 #include "tcl_gse_cmd.h"
 #include "tcl_status_ring.h"
 #include "ce_src_desc.h"

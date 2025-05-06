@@ -125,7 +125,7 @@ static inline void hal_tx_desc_set_buf_length(void *desc, uint16_t data_length)
 	if (qdf_unlikely(data_length & ~(TCL_ASSIST_CMD_DATA_LENGTH_MASK >>
 					TCL_ASSIST_CMD_DATA_LENGTH_LSB))) {
 		hal_err("data_length %d", data_length);
-		//qdf_assert_always(0);
+		qdf_assert_always(0);
 	}
 	HAL_SET_FLD(desc, TCL_ASSIST_CMD, DATA_LENGTH) |=
 		HAL_TX_SM(TCL_ASSIST_CMD, DATA_LENGTH, data_length);

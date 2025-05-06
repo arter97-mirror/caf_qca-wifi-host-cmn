@@ -17,6 +17,9 @@
 #include "dp_internal.h"
 #include "wlan_ipa_obj_mgmt_api.h"
 
+__used struct tqm2sw_completion_ring tqm2sw_tx_comp_symbol;
+__used struct tcl_assist_cmd tcl_assist_cmd_symbol;
+
 /**
  * dp_tx_get_rbm_id_bn() - Get the RBM ID for data transmission completion.
  * @soc: DP soc structure pointer
@@ -29,8 +32,8 @@ static inline uint8_t dp_tx_get_rbm_id_bn(struct dp_soc *soc,
 {
 	uint8_t rbm;
 
-	rbm = wlan_cfg_get_rbm_id_for_index(soc->wlan_cfg_ctx, tcl_index);
-	dp_verbose_debug("tcl_id %u rbm %u", tcl_index, rbm);
+	rbm = wlan_cfg_get_rbm_id_for_index(soc->wlan_cfg_ctx, ring_id);
+	dp_verbose_debug("tcl_id %u rbm %u", ring_id, rbm);
 	return rbm;
 }
 

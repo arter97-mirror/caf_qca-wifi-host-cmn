@@ -134,9 +134,6 @@
 #define FW_QTIME_CYCLES_PER_10_USEC 192
 #endif
 
-__used struct tqm2sw_completion_ring tqm2sw_tx_comp_symbol;
-__used struct tcl_assist_cmd tcl_assist_cmd_symbol;
-
 static uint32_t hal_get_link_desc_size_fig(void)
 {
 	return LINK_DESC_SIZE;

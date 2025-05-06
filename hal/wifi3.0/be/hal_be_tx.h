@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -78,6 +78,7 @@ enum hal_tx_notify_frame_type {
  * Structures
  * ---------------------------------------------------------------------------
  */
+#ifndef CONFIG_BORON
 /**
  * union hal_tx_bank_config - SW config bank params
  * @epd: EPD indication flag
@@ -115,6 +116,7 @@ union hal_tx_bank_config {
 	};
 	uint32_t val;
 };
+#endif /* !CONFIG_BORON */
 
 /**
  * union hal_tx_cmn_config_ppe - SW config exception related parameters
@@ -241,7 +243,7 @@ union hal_tx_ppe_pri2tid_map1_config {
  *  TCL Descriptor accessor APIs
  *---------------------------------------------------------------------------
  */
-
+#ifndef CONFIG_BORON
 /**
  * hal_tx_desc_set_tx_notify_frame() - Set TX notify_frame field in Tx desc
  * @desc: Handle to Tx Descriptor
@@ -630,6 +632,7 @@ static inline uint64_t hal_tx_comp_get_desc_va(void *hal_desc)
 
 	return va_from_desc;
 }
+#endif /* !CONFIG_BORON */
 
 /*---------------------------------------------------------------------------
  * TX BANK register accessor APIs
@@ -714,6 +717,7 @@ hal_tx_config_rbm_mapping_be(hal_soc_handle_t hal_soc_hdl,
 }
 #endif
 
+#ifndef CONFIG_BORON
 /**
  * hal_tx_desc_set_buf_addr_be() - Fill Buffer Address information in Tx Desc
  * @hal_soc_hdl: HAL SoC context
@@ -789,6 +793,7 @@ hal_tx_desc_set_buf_addr_be(hal_soc_handle_t hal_soc_hdl, void *desc,
 		HAL_TX_SM(TCL_DATA_CMD, BUF_OR_EXT_DESC_TYPE, type);
 }
 #endif
+#endif /* !CONFIG_BORON */
 
 /**
  * hal_tx_vdev_mismatch_routing_set() - set vdev mismatch exception routing

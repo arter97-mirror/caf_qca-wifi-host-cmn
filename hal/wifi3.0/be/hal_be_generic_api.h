@@ -4072,6 +4072,7 @@ void hal_set_ba_aging_timeout_be_generic(hal_soc_handle_t hal_soc_hdl,
 	}
 }
 
+#ifndef CONFIG_BORON
 /**
  * hal_tx_populate_bank_register_be() - populate the bank register with
  *		the software configs.
@@ -4158,7 +4159,7 @@ hal_tx_populate_bank_register_be(hal_soc_handle_t hal_soc_hdl,
 	HAL_REG_WRITE(hal_soc, reg_addr, reg_val);
 }
 #endif
-
+#endif /* !CONFIG_BORON */
 
 #ifdef HWIO_TCL_R0_VDEV_MCAST_PACKET_CTRL_MAP_n_VAL_SHFT
 
