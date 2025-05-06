@@ -1569,7 +1569,6 @@ struct peer_assoc_ml_partner_links {
  * @peer_max_mpdu: 0 : 8k , 1 : 16k, 2 : 32k, 3 : 64k
  * @peer_mpdu_density: 3 : 0~7 : 2^(11nAMPDUdensity -4)
  * @peer_rate_caps: peer rate capabalities
- * @peer_nss: peer nss
  * @peer_vht_caps: peer VHT capabilities
  * @peer_phymode: peer phymode
  * @peer_ht_info: peer HT info
@@ -1579,6 +1578,8 @@ struct peer_assoc_ml_partner_links {
  * @rx_mcs_set: rx mcs
  * @tx_max_rate: max tx rates
  * @tx_mcs_set: tx mcs
+ * @peer_max_tx_nss: Tx NSS of peer without intersecting with self cap
+ * @peer_nss: peer nss
  * @vht_capable: VHT capabalities
  * @min_data_rate: Peer minimum rate
  * @tx_max_mcs_nss: max tx MCS and NSS
@@ -1648,7 +1649,6 @@ struct peer_assoc_params {
 	uint32_t peer_max_mpdu;
 	uint32_t peer_mpdu_density;
 	uint32_t peer_rate_caps;
-	uint32_t peer_nss;
 	uint32_t peer_vht_caps;
 	uint32_t peer_phymode;
 	uint32_t peer_ht_info[2];
@@ -1658,6 +1658,8 @@ struct peer_assoc_params {
 	uint32_t rx_mcs_set;
 	uint32_t tx_max_rate;
 	uint32_t tx_mcs_set;
+	uint8_t peer_max_tx_nss;
+	uint8_t peer_nss;
 	uint8_t vht_capable;
 	uint8_t min_data_rate;
 	uint32_t peer_bw_rxnss_override;

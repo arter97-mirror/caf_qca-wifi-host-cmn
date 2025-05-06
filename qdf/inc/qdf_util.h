@@ -149,6 +149,8 @@ typedef __qdf_page_t qdf_page_t;
 	 (mac1)->bytes[4] == (mac2)->bytes[4] && \
 	 (mac1)->bytes[5] == (mac2)->bytes[5])
 
+#define BITS_IN_A_BYTE 8
+
 /* Get number of bits from the index bit */
 #define QDF_GET_BITS(_val, _index, _num_bits) \
 		(((_val) >> (_index)) & ((1 << (_num_bits)) - 1))
