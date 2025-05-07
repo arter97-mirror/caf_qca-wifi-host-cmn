@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1086,6 +1086,29 @@ hif_napi_fill_poll_time_histogram(struct qca_napi_info *napi_info)
 }
 #endif
 
+#ifdef WLAN_TRACEPOINTS
+/**
+ * hif_set_ce_napi_sched_time() - Set napi schedule time for
+ * CE with matching ce_id
+ * @scn: hif context
+ * @ce_id: CE id
+ *
+ * Return: None
+ */
+static inline
+void hif_set_ce_napi_sched_time(struct hif_softc *scn, uint8_t ce_id)
+{
+		struct CE_state *ce_state = scn->ce_id_to_state[ce_id];
+
+		ce_state->ce_tasklet_sched_time = qdf_sched_clock();
+}
+#else
+static inline
+void hif_set_ce_napi_sched_time(struct hif_softc *scn, uint8_t ce_id)
+{
+}
+#endif
+
 /**
  * hif_napi_schedule() - schedules napi, updates stats
  * @hif_ctx:  hif context
@@ -1112,6 +1135,7 @@ bool hif_napi_schedule(struct hif_opaque_softc *hif_ctx, int ce_id)
 		return false;
 	}
 
+	hif_set_ce_napi_sched_time(scn, ce_id);
 	hif_record_ce_desc_event(scn,  ce_id, NAPI_SCHEDULE,
 				 NULL, NULL, 0, 0);
 	napii->stats[cpu].napi_schedules++;
