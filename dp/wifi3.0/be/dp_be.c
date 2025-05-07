@@ -3488,7 +3488,7 @@ void dp_mlo_dev_ctxt_list_detach(dp_mlo_dev_obj_t mlo_dev_obj)
 			if (mld_ctxt) {
 				dp_alert("MLD MAC " QDF_MAC_ADDR_FMT " ",
 					 QDF_MAC_ADDR_REF(
-						&mld_ctxt->mld_mac_addr.raw));
+						mld_ctxt->mld_mac_addr.raw));
 				qdf_mem_free(mld_ctxt);
 			}
 		}
