@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1316,6 +1316,12 @@ QDF_STATUS mlo_mgr_link_switch_complete(struct wlan_objmgr_vdev *vdev)
 
 	/* Not checking NULL value as reference is already taken for vdev */
 	psoc = wlan_vdev_get_psoc(vdev);
+
+	if (!vdev->mlo_dev_ctx) {
+		mlo_err("mlo_dev_ctx for vdev is null vedv_id %d",
+			wlan_vdev_get_id(vdev));
+		return QDF_STATUS_E_INVAL;
+	}
 
 	link_ctx = vdev->mlo_dev_ctx->link_ctx;
 	req = &link_ctx->last_req;

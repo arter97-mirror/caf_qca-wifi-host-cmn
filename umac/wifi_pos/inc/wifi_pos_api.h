@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -696,5 +696,11 @@ void wifi_pos_set_rsta_11az_ranging_cap(uint32_t val);
  * Return: value if 11az TB/NTB ranging is enabled
  */
 uint32_t wifi_pos_get_rsta_11az_ranging_cap(void);
+#else
+static inline
+uint32_t wifi_pos_get_rsta_11az_ranging_cap(void)
+{
+	return 0;
+}
 #endif
 #endif /* _WIFI_POS_API_H_ */
