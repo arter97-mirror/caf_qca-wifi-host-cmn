@@ -21710,6 +21710,7 @@ extract_roam_11kv_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_roam_neighbor_report_info *src_data = NULL;
 	wmi_roam_neighbor_report_channel_info *src_freq = NULL;
 	uint8_t i;
+	uint8_t tx_status;
 
 	param_buf = (WMI_ROAM_STATS_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf || !param_buf->roam_neighbor_report_info ||
@@ -21738,8 +21739,10 @@ extract_roam_11kv_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	dst->band =
 		WMI_ROAM_NEIGHBOR_REPORT_INFO_MLO_BAND_INFO_GET(src_data->neighbor_report_detail);
 
-	dst->tx_status =
+	tx_status =
 		WMI_ROAM_NEIGHBOR_REPORT_INFO_TX_STATUS_INFO_GET(src_data->neighbor_report_detail);
+
+	dst->tx_status = wmi_get_host_roam_frame_tx_status(tx_status);
 
 	if (dst->band != WMI_MLO_BAND_NO_MLO)
 		dst->is_mlo = true;
