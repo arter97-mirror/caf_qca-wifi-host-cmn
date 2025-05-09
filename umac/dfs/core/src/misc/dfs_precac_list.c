@@ -1463,6 +1463,9 @@ dfs_is_precac_done_on_punc_chan(struct wlan_dfs *dfs, struct dfs_channel *chan)
 	/* input channel's puncturing pattern */
 	uint16_t pp = chan->dfs_ch_punc_pattern;
 
+	if (!WLAN_IS_CHAN_PUNCTURABLE(chan))
+		return false;
+
 	n_subchans = dfs_find_dfs_sub_channels_for_freq(dfs, chan, subchans);
 	for (i = 0; i < n_subchans; i++) {
 		bool is_precac_done;
@@ -1520,7 +1523,7 @@ bool dfs_is_precac_done(struct wlan_dfs *dfs, struct dfs_channel *chan)
 	     */
 		cfreq = chan->dfs_ch_mhz_freq_seg1;
 
-	if (dfs_is_chan_punctured(chan)) {
+	if (WLAN_IS_CHAN_PUNCTURABLE(chan) && dfs_is_chan_punctured(chan)) {
 		ret_val = dfs_is_precac_done_on_punc_chan(dfs, chan);
 	} else {
 		if (WLAN_IS_CHAN_MODE_20(chan) ||
