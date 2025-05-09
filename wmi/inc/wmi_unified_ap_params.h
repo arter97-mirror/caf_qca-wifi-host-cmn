@@ -1414,18 +1414,24 @@ enum wmi_host_vbss_action {
  * struct win_host_vbss_sta_context - Host interfacing structure to WMI
  * @vdev_id: Pass Host vdev_id
  * @action: Action as defined in %wmi_host_vbss_action
+ * @omn_info: OMN inormation
+ * @extd_info: Extended information
  * @num_sn_tids: Number of valid TIDs' SN
  * @sn: Per TID SN values
  * @tx_pn: STA Tx PN
  * @macaddr: STA Mac address
+ * @is_valid_dyn_info: Indicate if dynamic info present
  */
 struct win_host_vbss_sta_context {
 	uint32_t vdev_id;
 	uint32_t action;
+	uint32_t omn_info;
+	uint32_t extd_info;
 	uint32_t num_sn_tids;
 	uint32_t sn[WLAN_MAX_PER_PEER_SN_TIDS];
 	uint8_t tx_pn[WLAN_MAX_TX_PN_SIZE];
 	uint8_t macaddr[QDF_MAC_ADDR_SIZE];
+	bool is_valid_dyn_info;
 };
 #endif /* WLAN_FEATURE_VBSS */
 
