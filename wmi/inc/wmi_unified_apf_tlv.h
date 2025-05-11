@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016-2018 The Linux Foundation. All rights reserved.
  * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -110,6 +111,19 @@ wmi_send_set_apf_supported_offload_bitmap_cmd_tlv(wmi_unified_t wmi_handle,
 						  uint8_t vdev_id,
 						  uint32_t offload_bitmap);
 
+/**
+ * wmi_send_set_apf_mode_bitmap_cmd_tlv() - configure APF mode
+ * bitmap in FW
+ * @wmi_handle: the WMI handle
+ * @vdev_id: the Id of the vdev to apply the configuration to
+ * @apf_mode: the bitmap for APF mode
+ *
+ * Return: QDF status
+ */
+QDF_STATUS
+wmi_send_set_apf_mode_bitmap_cmd_tlv(wmi_unified_t wmi_handle,
+				     uint8_t vdev_id,
+				     uint32_t apf_mode);
 #endif /* FEATURE_WLAN_APF */
 
 #endif /* _WMI_UNIFIED_APF_TLV_H_ */
