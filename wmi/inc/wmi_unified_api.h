@@ -2160,6 +2160,16 @@ QDF_STATUS
 wmi_unified_set_apf_supported_offload_bitmap_cmd(wmi_unified_t wmi,
 						 uint8_t vdev_id,
 						 uint32_t offload_bitmap);
+/**
+ * wmi_unified_set_apf_mode_bitmap_cmd() - config APF mode
+ * in FW
+ * @wmi: the WMI handle
+ * @vdev_id: the Id of the vdev to apply the configuration to
+ * @apf_mode: the APF mode
+ */
+QDF_STATUS
+wmi_unified_set_apf_mode_bitmap_cmd(wmi_unified_t wmi, uint8_t vdev_id,
+				    uint32_t apf_mode);
 #endif /* FEATURE_WLAN_APF */
 
 /**

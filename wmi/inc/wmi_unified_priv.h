@@ -1382,6 +1382,11 @@ QDF_STATUS
 (*send_set_apf_supported_offload_bitmap_cmd)(wmi_unified_t wmi_handle,
 					     uint8_t vdev_id,
 					     uint32_t offload_bitmap);
+
+QDF_STATUS
+(*send_set_apf_mode_bitmap_cmd)(wmi_unified_t wmi_handle,
+				uint8_t vdev_id,
+				uint32_t apf_mode);
 #endif /* FEATURE_WLAN_APF */
 
 QDF_STATUS (*send_pdev_get_tpc_config_cmd)(wmi_unified_t wmi_handle,
