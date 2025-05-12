@@ -1493,7 +1493,7 @@ __qdf_nbuf_map_single(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
 
-	if (__qdf_is_pp_nbuf(buf)) {
+	if (osdev->no_dma_map && __qdf_is_pp_nbuf(buf)) {
 		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
 					   skb_end_pointer(buf) - buf->data,
 					   __qdf_dma_dir_to_os(dir));
