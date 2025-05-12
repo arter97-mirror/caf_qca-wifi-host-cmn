@@ -278,6 +278,35 @@ enum qcn_attribute_id {
 #define ATH_HE_CAP_SUBTYPE          0x01
 #define ATH_HE_OP_SUBTYPE           0x02
 
+/*
+ * Multi RSNO OUI definitions:
+ * The below OUI definitions are defined under section 14.4 "Information
+ * elements for RSN overriding" of WPA3-Personal compatibility mode
+ * (Multi-RSNO) WFA specification.
+ */
+#define RSN_OVERRIDE_OUI       0x9a6f50
+#define RSNO_SUBTYPE_WIFI6_RSN 0x29
+#define RSNO_SUBTYPE_WIFI7_RSN 0x2a
+#define RSNO_SUBTYPE_RSNXE     0x2b
+#define RSNO_SUBTYPE_SELECTION 0x2c
+#define RSNO_OUI_WIFI6_RSN     "\x50\x6f\x9a\x29"
+#define RSNO_OUI_WIFI7_RSN     "\x50\x6f\x9a\x2a"
+#define RSNO_OUI_RSNXE         "\x50\x6f\x9a\x2b"
+#define RSNO_OUI_SELECTION     "\x50\x6f\x9a\x2c"
+#define RSNO_OUI_SIZE          4
+#define RSN_SEL_ID_OFFSET      6
+/*
+ * enum rsn_element_identifier : Identifier for the type of RSN IE being used
+ * @RSN_LEGACY     : Denotes the IEEE 80211 spec defined RSN IE EID
+ * @RSNO_GEN_WIFI6 : Denotes the WFA spec defined MRSNO OUI RSNO_OUI_WIFI6_RSN
+ * @RSNO_GEN_WIFI7 : Denotes the WFA spec defined MRSNO OUI RSNO_OUI_WIFI7_RSN
+ */
+enum rsn_element_identifier {
+	RSN_LEGACY = 1,
+	RSNO_GEN_WIFI6 = 2,
+	RSNO_GEN_WIFI7 = 3
+};
+
 /* EPR information element flags */
 #define ERP_NON_ERP_PRESENT   0x01
 #define ERP_USE_PROTECTION    0x02
@@ -4003,6 +4032,27 @@ is_qcn_oui(uint8_t *frm)
 {
 	return ((frm[1] > 4) && (LE_READ_4(frm + 2) ==
 		((QCN_OUI_TYPE_CMN << 24) | QCA_OUI)));
+}
+
+static inline bool
+is_vendor_wifi6_rsno_oui(uint8_t *frm)
+{
+	return (frm[1] > 4) && (LE_READ_4(frm + 2) ==
+		((RSNO_SUBTYPE_WIFI6_RSN << OUI_TYPE_BITS) | RSN_OVERRIDE_OUI));
+}
+
+static inline bool
+is_vendor_rsnxo_oui(uint8_t *frm)
+{
+	return (frm[1] > 4) && (LE_READ_4(frm + 2) ==
+		((RSNO_SUBTYPE_RSNXE << OUI_TYPE_BITS) | RSN_OVERRIDE_OUI));
+}
+
+static inline bool
+is_vendor_wifi7_rsno_oui(uint8_t *frm)
+{
+	return (frm[1] > 4) && (LE_READ_4(frm + 2) ==
+		((RSNO_SUBTYPE_WIFI7_RSN << OUI_TYPE_BITS) | RSN_OVERRIDE_OUI));
 }
 
 #define WLAN_VENDOR_WME_IE_LEN 24
