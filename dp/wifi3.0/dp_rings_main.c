@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -586,7 +586,6 @@ uint32_t dp_service_near_full_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 #endif
 
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
-
 uint32_t dp_service_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 {
 	struct dp_intr *int_ctx = (struct dp_intr *)dp_ctx;
@@ -3542,7 +3541,6 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_QCC2072:
-	case TARGET_TYPE_FIG:
 		soc->ast_override_support = 1;
 		soc->per_tid_basize_max_tid = 8;
 
@@ -3561,6 +3559,26 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 
 		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		dp_set_num_rxdma_dst_ring(soc);
+		break;
+	case TARGET_TYPE_FIG:
+		soc->ast_override_support = 1;
+		soc->per_tid_basize_max_tid = 8;
+
+		if (soc->cdp_soc.ol_ops->get_con_mode &&
+		    soc->cdp_soc.ol_ops->get_con_mode() ==
+		    QDF_GLOBAL_MONITOR_MODE) {
+			int int_ctx;
+
+			for (int_ctx = 0; int_ctx < WLAN_CFG_INT_NUM_CONTEXTS;
+			     int_ctx++) {
+				soc->wlan_cfg_ctx->int_rx_ring_mask[int_ctx] = 0;
+			}
+		}
+
+		soc->wlan_cfg_ctx->rxdma1_enable = 0;
+		dp_set_num_rxdma_dst_ring(soc);
+		soc->rxdma2sw_rings_not_supported = 1;
+		soc->sw2reo_rings_not_supported = 1;
 		break;
 	case TARGET_TYPE_QCA8074:
 		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, true);
@@ -4145,13 +4163,15 @@ void dp_soc_srng_deinit(struct dp_soc *soc)
 		dp_srng_deinit(soc, &soc->reo_dest_ring[i], REO_DST, i);
 	}
 
-	dp_ssr_dump_srng_unregister("reo_reinject_ring", -1);
 	/* REO reinjection ring */
-	wlan_minidump_remove(soc->reo_reinject_ring.base_vaddr_unaligned,
-			     soc->reo_reinject_ring.alloc_size,
-			     soc->ctrl_psoc, WLAN_MD_DP_SRNG_REO_REINJECT,
-			     "reo_reinject_ring");
-	dp_srng_deinit(soc, &soc->reo_reinject_ring, REO_REINJECT, 0);
+	if (!soc->sw2reo_rings_not_supported) {
+		dp_ssr_dump_srng_unregister("reo_reinject_ring", -1);
+		wlan_minidump_remove(soc->reo_reinject_ring.base_vaddr_unaligned,
+				     soc->reo_reinject_ring.alloc_size,
+				     soc->ctrl_psoc, WLAN_MD_DP_SRNG_REO_REINJECT,
+				     "reo_reinject_ring");
+		dp_srng_deinit(soc, &soc->reo_reinject_ring, REO_REINJECT, 0);
+	}
 
 	dp_ssr_dump_srng_unregister("rx_rel_ring", -1);
 	/* Rx release ring */
@@ -4186,6 +4206,56 @@ void dp_soc_srng_deinit(struct dp_soc *soc)
 			     "reo_status_ring");
 	dp_srng_deinit(soc, &soc->reo_status_ring, REO_STATUS, 0);
 }
+
+#ifdef CONFIG_BORON
+/**
+ * dp_srng_init_reo_cmd_status_ring() - Wrapper for REO CMD and
+ *                                      status ring initialization
+ * @soc: Datapath soc handle
+ *
+ * Return: None
+ */
+static inline
+QDF_STATUS dp_srng_init_reo_cmd_status_ring(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static
+QDF_STATUS dp_srng_init_reo_cmd_status_ring(struct dp_soc *soc)
+{
+	/* REO command and status rings */
+	if (dp_srng_init(soc, &soc->reo_cmd_ring, REO_CMD, 0, 0)) {
+		dp_init_err("%pK: dp_srng_init failed for reo_cmd_ring", soc);
+		return QDF_STATUS_E_FAILURE;
+	}
+	dp_ssr_dump_srng_register("reo_cmd_ring", &soc->reo_cmd_ring, -1);
+
+	wlan_minidump_log(soc->reo_cmd_ring.base_vaddr_unaligned,
+			  soc->reo_cmd_ring.alloc_size,
+			  soc->ctrl_psoc,
+			  WLAN_MD_DP_SRNG_REO_CMD,
+			  "reo_cmd_ring");
+
+	hal_reo_init_cmd_ring(soc->hal_soc, soc->reo_cmd_ring.hal_srng);
+	TAILQ_INIT(&soc->rx.reo_cmd_list);
+	qdf_spinlock_create(&soc->rx.reo_cmd_lock);
+
+	if (dp_srng_init(soc, &soc->reo_status_ring, REO_STATUS, 0, 0)) {
+		dp_init_err("%pK: dp_srng_init failed for reo_status_ring", soc);
+		return QDF_STATUS_E_FAILURE;
+	}
+	dp_ssr_dump_srng_register("reo_status_ring", &soc->reo_status_ring, -1);
+
+	wlan_minidump_log(soc->reo_status_ring.base_vaddr_unaligned,
+			  soc->reo_status_ring.alloc_size,
+			  soc->ctrl_psoc,
+			  WLAN_MD_DP_SRNG_REO_STATUS,
+			  "reo_status_ring");
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 /**
  * dp_soc_srng_init() - Initialize soc level srng rings
@@ -4230,18 +4300,21 @@ QDF_STATUS dp_soc_srng_init(struct dp_soc *soc)
 	}
 
 	/* REO reinjection ring */
-	if (dp_srng_init(soc, &soc->reo_reinject_ring, REO_REINJECT, 0, 0)) {
-		dp_init_err("%pK: dp_srng_init failed for reo_reinject_ring", soc);
-		goto fail1;
-	}
-	dp_ssr_dump_srng_register("reo_reinject_ring",
-				  &soc->reo_reinject_ring, -1);
+	if (!soc->sw2reo_rings_not_supported) {
+		if (dp_srng_init(soc, &soc->reo_reinject_ring, REO_REINJECT, 0, 0)) {
+			dp_init_err("%pK: dp_srng_init failed for reo_reinject_ring", soc);
+			goto fail1;
+		}
 
-	wlan_minidump_log(soc->reo_reinject_ring.base_vaddr_unaligned,
-			  soc->reo_reinject_ring.alloc_size,
-			  soc->ctrl_psoc,
-			  WLAN_MD_DP_SRNG_REO_REINJECT,
-			  "reo_reinject_ring");
+		dp_ssr_dump_srng_register("reo_reinject_ring",
+					  &soc->reo_reinject_ring, -1);
+
+		wlan_minidump_log(soc->reo_reinject_ring.base_vaddr_unaligned,
+				  soc->reo_reinject_ring.alloc_size,
+				  soc->ctrl_psoc,
+				  WLAN_MD_DP_SRNG_REO_REINJECT,
+				  "reo_reinject_ring");
+	}
 
 	wbm2_sw_rx_rel_ring_id = wlan_cfg_get_rx_rel_ring_id(soc_cfg_ctx);
 	/* Rx release ring */
@@ -4274,33 +4347,8 @@ QDF_STATUS dp_soc_srng_init(struct dp_soc *soc)
 			  "reo_exception_ring");
 
 	/* REO command and status rings */
-	if (dp_srng_init(soc, &soc->reo_cmd_ring, REO_CMD, 0, 0)) {
-		dp_init_err("%pK: dp_srng_init failed for reo_cmd_ring", soc);
+	if (dp_srng_init_reo_cmd_status_ring(soc))
 		goto fail1;
-	}
-	dp_ssr_dump_srng_register("reo_cmd_ring", &soc->reo_cmd_ring, -1);
-
-	wlan_minidump_log(soc->reo_cmd_ring.base_vaddr_unaligned,
-			  soc->reo_cmd_ring.alloc_size,
-			  soc->ctrl_psoc,
-			  WLAN_MD_DP_SRNG_REO_CMD,
-			  "reo_cmd_ring");
-
-	hal_reo_init_cmd_ring(soc->hal_soc, soc->reo_cmd_ring.hal_srng);
-	TAILQ_INIT(&soc->rx.reo_cmd_list);
-	qdf_spinlock_create(&soc->rx.reo_cmd_lock);
-
-	if (dp_srng_init(soc, &soc->reo_status_ring, REO_STATUS, 0, 0)) {
-		dp_init_err("%pK: dp_srng_init failed for reo_status_ring", soc);
-		goto fail1;
-	}
-	dp_ssr_dump_srng_register("reo_status_ring", &soc->reo_status_ring, -1);
-
-	wlan_minidump_log(soc->reo_status_ring.base_vaddr_unaligned,
-			  soc->reo_status_ring.alloc_size,
-			  soc->ctrl_psoc,
-			  WLAN_MD_DP_SRNG_REO_STATUS,
-			  "reo_status_ring");
 
 	for (i = 0; i < soc->num_tcl_data_rings; i++) {
 		if (dp_init_tx_ring_pair_by_index(soc, i))
@@ -4351,6 +4399,27 @@ fail1:
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef CONFIG_BORON
+/**
+ * dp_srng_free_reo_cmd_status_rings() - Wrapper for REO CMD and
+ *                                       status ring free
+ * @soc: Datapath soc handle
+ *
+ * Return: None
+ */
+static inline
+void dp_srng_free_reo_cmd_status_rings(struct dp_soc *soc)
+{
+}
+#else
+static inline
+void dp_srng_free_reo_cmd_status_rings(struct dp_soc *soc)
+{
+	dp_srng_free(soc, &soc->reo_cmd_ring);
+	dp_srng_free(soc, &soc->reo_status_ring);
+}
+#endif
+
 /**
  * dp_soc_srng_free() - free soc level srng rings
  * @soc: Datapath soc handle
@@ -4380,14 +4449,54 @@ void dp_soc_srng_free(struct dp_soc *soc)
 	for (i = 0; i < soc->num_reo_dest_rings; i++)
 		dp_srng_free(soc, &soc->reo_dest_ring[i]);
 
-	dp_srng_free(soc, &soc->reo_reinject_ring);
+	if (!soc->sw2reo_rings_not_supported)
+		dp_srng_free(soc, &soc->reo_reinject_ring);
+
 	dp_srng_free(soc, &soc->rx_rel_ring);
 
 	dp_srng_free(soc, &soc->reo_exception_ring);
 
-	dp_srng_free(soc, &soc->reo_cmd_ring);
-	dp_srng_free(soc, &soc->reo_status_ring);
+	dp_srng_free_reo_cmd_status_rings(soc);
 }
+
+#ifdef CONFIG_BORON
+/**
+ * wlan_srng_alloc_reo_cmd_status_ring() - Wrapper for DP SRNG allocation
+ *                                         of REO CMD and status ring
+ * @soc: Datapath soc handle
+ *
+ * Return: None
+ */
+static inline
+QDF_STATUS wlan_srng_alloc_reo_cmd_status_ring(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static
+QDF_STATUS wlan_srng_alloc_reo_cmd_status_ring(struct dp_soc *soc)
+{
+	uint32_t entries;
+	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx;
+
+	soc_cfg_ctx = soc->wlan_cfg_ctx;
+	/* REO command and status rings */
+	entries = wlan_cfg_get_dp_soc_reo_cmd_ring_size(soc_cfg_ctx);
+	if (dp_srng_alloc(soc, &soc->reo_cmd_ring, REO_CMD, entries, 0)) {
+		dp_init_err("%pK: dp_srng_alloc failed for reo_cmd_ring", soc);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	entries = wlan_cfg_get_dp_soc_reo_status_ring_size(soc_cfg_ctx);
+	if (dp_srng_alloc(soc, &soc->reo_status_ring, REO_STATUS,
+			  entries, 0)) {
+		dp_init_err("%pK: dp_srng_alloc failed for reo_status_ring", soc);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 /**
  * dp_soc_srng_alloc() - Allocate memory for soc level srng rings
@@ -4426,11 +4535,13 @@ QDF_STATUS dp_soc_srng_alloc(struct dp_soc *soc)
 	}
 
 	/* REO reinjection ring */
-	entries = wlan_cfg_get_dp_soc_reo_reinject_ring_size(soc_cfg_ctx);
-	if (dp_srng_alloc(soc, &soc->reo_reinject_ring, REO_REINJECT,
-			  entries, 0)) {
-		dp_init_err("%pK: dp_srng_alloc failed for reo_reinject_ring", soc);
-		goto fail1;
+	if (!soc->sw2reo_rings_not_supported) {
+		entries = wlan_cfg_get_dp_soc_reo_reinject_ring_size(soc_cfg_ctx);
+		if (dp_srng_alloc(soc, &soc->reo_reinject_ring, REO_REINJECT,
+				  entries, 0)) {
+			dp_init_err("%pK: dp_srng_alloc failed for reo_reinject_ring", soc);
+			goto fail1;
+		}
 	}
 
 	/* Rx release ring */
@@ -4450,18 +4561,8 @@ QDF_STATUS dp_soc_srng_alloc(struct dp_soc *soc)
 	}
 
 	/* REO command and status rings */
-	entries = wlan_cfg_get_dp_soc_reo_cmd_ring_size(soc_cfg_ctx);
-	if (dp_srng_alloc(soc, &soc->reo_cmd_ring, REO_CMD, entries, 0)) {
-		dp_init_err("%pK: dp_srng_alloc failed for reo_cmd_ring", soc);
+	if (wlan_srng_alloc_reo_cmd_status_ring(soc))
 		goto fail1;
-	}
-
-	entries = wlan_cfg_get_dp_soc_reo_status_ring_size(soc_cfg_ctx);
-	if (dp_srng_alloc(soc, &soc->reo_status_ring, REO_STATUS,
-			  entries, 0)) {
-		dp_init_err("%pK: dp_srng_alloc failed for reo_status_ring", soc);
-		goto fail1;
-	}
 
 	/* Disable cached desc if NSS offload is enabled */
 	if (wlan_cfg_get_dp_soc_nss_cfg(soc_cfg_ctx))

@@ -1283,7 +1283,6 @@ int htt_h2t_rx_ring_cfg(struct htt_soc *htt_soc, int pdev_id,
 		htt_ring_id = HTT_RXDMA_NON_MONITOR_DEST_RING;
 		htt_ring_type = HTT_HW_TO_SW_RING;
 		break;
-
 	default:
 		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
 			"%s: Ring currently not supported", __func__);
@@ -3266,16 +3265,18 @@ static void dp_queue_ring_stats(struct dp_pdev *pdev)
 			return;
 	}
 
-	status = dp_get_srng_ring_state_from_hal
-				(pdev->soc, pdev,
-				 &pdev->soc->reo_reinject_ring,
-				 REO_REINJECT,
-				 &soc_srngs_state->ring_state[j]);
+	if (!soc->sw2reo_rings_not_supported) {
+		status = dp_get_srng_ring_state_from_hal
+					(pdev->soc, pdev,
+					 &pdev->soc->reo_reinject_ring,
+					 REO_REINJECT,
+					 &soc_srngs_state->ring_state[j]);
 
-	if (status == QDF_STATUS_SUCCESS) {
-		j++;
-		if (dp_validate_ring_num(j))
-			return;
+		if (status == QDF_STATUS_SUCCESS) {
+			j++;
+			if (dp_validate_ring_num(j))
+				return;
+		}
 	}
 
 	status = dp_get_srng_ring_state_from_hal
@@ -3447,21 +3448,23 @@ static void dp_queue_ring_stats(struct dp_pdev *pdev)
 		}
 	}
 
-	for (i = 0; i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
-		lmac_id = dp_get_lmac_id_for_pdev_id(pdev->soc,
-						     i, pdev->pdev_id);
+	if (!soc->rxdma2sw_rings_not_supported) {
+		for (i = 0; i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
+			lmac_id = dp_get_lmac_id_for_pdev_id(pdev->soc,
+							     i, pdev->pdev_id);
 
-		status = dp_get_srng_ring_state_from_hal
-				(pdev->soc, pdev,
-				 &pdev->soc->rxdma_err_dst_ring
-				 [lmac_id],
-				 RXDMA_DST,
-				 &soc_srngs_state->ring_state[j]);
+			status = dp_get_srng_ring_state_from_hal
+					(pdev->soc, pdev,
+					 &pdev->soc->rxdma_err_dst_ring
+					 [lmac_id],
+					 RXDMA_DST,
+					 &soc_srngs_state->ring_state[j]);
 
-		if (status == QDF_STATUS_SUCCESS) {
-			j++;
-			if (dp_validate_ring_num(j))
-				break;
+			if (status == QDF_STATUS_SUCCESS) {
+				j++;
+				if (dp_validate_ring_num(j))
+					break;
+			}
 		}
 	}
 	soc_srngs_state->max_ring_id = j;

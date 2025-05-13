@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -7005,14 +7005,16 @@ dp_print_ring_stats(struct dp_pdev *pdev)
 		dp_print_mon_ring_stat_from_hal(pdev, lmac_id);
 	}
 
-	for (i = 0; i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
-		lmac_id = dp_get_lmac_id_for_pdev_id(pdev->soc,
-						     i, pdev->pdev_id);
+	if (!soc->rxdma2sw_rings_not_supported) {
+		for (i = 0; i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
+			lmac_id = dp_get_lmac_id_for_pdev_id(pdev->soc,
+							     i, pdev->pdev_id);
 
-		dp_print_ring_stat_from_hal(pdev->soc,
-					    &pdev->soc->rxdma_err_dst_ring
-					    [lmac_id],
-					    RXDMA_DST);
+			dp_print_ring_stat_from_hal(pdev->soc,
+						    &pdev->soc->rxdma_err_dst_ring
+						    [lmac_id],
+						    RXDMA_DST);
+		}
 	}
 
 	dp_print_txmon_ring_stat_from_hal(pdev);

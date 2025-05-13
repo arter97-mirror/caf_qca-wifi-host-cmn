@@ -3586,9 +3586,24 @@ dp_get_umac_reset_in_progress_state(struct cdp_soc_t *psoc)
 #endif
 
 #ifndef WLAN_SOFTUMAC_SUPPORT
+#ifdef CONFIG_BORON
+/**
+ * dp_reo_send_cmd() - DP function to send REO cmd
+ * @soc: DP SoC handle
+ * @type: REP CMD type
+ * @params: REO CMD parameters
+ * @callback_fn: callback when REO responds for CMD
+ * @data: private context needed in callback_fn
+ *
+ * Return: None
+ */
+static inline
 QDF_STATUS dp_reo_send_cmd(struct dp_soc *soc, enum hal_reo_cmd_type type,
 			   struct hal_reo_cmd_params *params,
-			   void (*callback_fn), void *data);
+			   void (*callback_fn), void *data)
+{
+	return QDF_STATUS_SUCCESS;
+}
 
 /**
  * dp_reo_cmdlist_destroy() - Free REO commands in the queue
@@ -3596,7 +3611,10 @@ QDF_STATUS dp_reo_send_cmd(struct dp_soc *soc, enum hal_reo_cmd_type type,
  *
  * Return: none
  */
-void dp_reo_cmdlist_destroy(struct dp_soc *soc);
+static inline
+void dp_reo_cmdlist_destroy(struct dp_soc *soc)
+{
+}
 
 /**
  * dp_reo_status_ring_handler() - Handler for REO Status ring
@@ -3605,8 +3623,22 @@ void dp_reo_cmdlist_destroy(struct dp_soc *soc);
  *
  * Return: Number of descriptors reaped
  */
+static inline
+uint32_t dp_reo_status_ring_handler(struct dp_intr *int_ctx,
+				    struct dp_soc *soc)
+{
+	return 0;
+}
+#else
+QDF_STATUS dp_reo_send_cmd(struct dp_soc *soc, enum hal_reo_cmd_type type,
+			   struct hal_reo_cmd_params *params,
+			   void (*callback_fn), void *data);
+
+void dp_reo_cmdlist_destroy(struct dp_soc *soc);
+
 uint32_t dp_reo_status_ring_handler(struct dp_intr *int_ctx,
 				    struct dp_soc *soc);
+#endif
 #endif
 
 /**
