@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -55,6 +55,7 @@
  * @WLAN_IF_MGR_EV_NAN_PRE_ENABLE: nan pre enable
  * @WLAN_IF_MGR_EV_NAN_POST_ENABLE: nan post enable
  * @WLAN_IF_MGR_EV_NAN_POST_DISABLE: nan post disable
+ * @WLAN_IF_MGR_EV_AP_CHANNEL_SELECTED: AP channel has been selected
  * @WLAN_IF_MGR_EV_MAX: Max event
  */
 enum wlan_if_mgr_evt {
@@ -82,6 +83,7 @@ enum wlan_if_mgr_evt {
 	WLAN_IF_MGR_EV_NAN_PRE_ENABLE = 21,
 	WLAN_IF_MGR_EV_NAN_POST_ENABLE = 22,
 	WLAN_IF_MGR_EV_NAN_POST_DISABLE = 23,
+	WLAN_IF_MGR_EV_AP_CHANNEL_SELECTED = 24,
 	WLAN_IF_MGR_EV_MAX,
 };
 
@@ -104,15 +106,25 @@ struct validate_bss_data {
 };
 
 /**
+ * struct if_mgr_ap_info- AP related interface manager data
+ * @ap_freq: SAP frequency
+ */
+struct if_mgr_ap_info {
+	qdf_freq_t ap_freq;
+};
+
+/**
  * struct if_mgr_event_data - interface manager event data
  * @status: qdf status used to indicate if connect,disconnect,
  *	    start bss,stop bss event is success/failure.
  * @validate_bss_info: struct to hold the validate candidate information
+ * @ap_info: struct to hold AP related if_mgr information
  * @data: event data
  */
 struct if_mgr_event_data {
 	QDF_STATUS status;
 	struct validate_bss_data validate_bss_info;
+	struct if_mgr_ap_info ap_info;
 	void *data;
 };
 
