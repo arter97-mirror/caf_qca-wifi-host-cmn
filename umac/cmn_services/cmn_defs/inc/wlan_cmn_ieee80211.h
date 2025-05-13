@@ -300,11 +300,14 @@ enum qcn_attribute_id {
  * @RSN_LEGACY     : Denotes the IEEE 80211 spec defined RSN IE EID
  * @RSNO_GEN_WIFI6 : Denotes the WFA spec defined MRSNO OUI RSNO_OUI_WIFI6_RSN
  * @RSNO_GEN_WIFI7 : Denotes the WFA spec defined MRSNO OUI RSNO_OUI_WIFI7_RSN
+ * @RSNO_GEN_MAX   : Max supported RSNO GEN
  */
 enum rsn_element_identifier {
 	RSN_LEGACY = 1,
 	RSNO_GEN_WIFI6 = 2,
-	RSNO_GEN_WIFI7 = 3
+	RSNO_GEN_WIFI7 = 3,
+	/* Set max to the last element */
+	RSNO_GEN_MAX = RSNO_GEN_WIFI7
 };
 
 /* EPR information element flags */

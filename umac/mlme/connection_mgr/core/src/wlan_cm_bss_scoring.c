@@ -801,8 +801,8 @@ cm_calculate_sae_pk_ap_weightage(struct scan_cache_entry *entry,
 	const uint8_t *rsnxe_cap;
 	uint8_t cap_len;
 
-	rsnxe_ie = util_scan_entry_rsnxe(entry);
-
+	rsnxe_ie = util_scan_entry_rsnxe_by_gen(entry,
+					entry->neg_sec_info.rsn_gen_selected);
 	rsnxe_cap = wlan_crypto_parse_rsnxe_ie(rsnxe_ie, &cap_len);
 
 	if (!rsnxe_cap)
@@ -1555,6 +1555,13 @@ bool wlan_cm_is_eht_allowed_for_current_security(struct wlan_objmgr_psoc *psoc,
 	mlie_present = entry->ie_list.multi_link_bv ? true : false;
 
 	neg_sec_info = &entry->neg_sec_info;
+
+	if (neg_sec_info->rsn_gen_selected == RSNO_GEN_WIFI6) {
+		mlme_debug(QDF_MAC_ADDR_FMT ":MLO is not allowed for RSNO1 connection",
+			   QDF_MAC_ADDR_REF(entry->bssid.bytes));
+		return false;
+	}
+
 	if (neg_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED) {
 		/* For entreprise APs, only check if PMF is enabled or not */
 		if (WLAN_CRYPTO_IS_AKM_ENTERPRISE(neg_sec_info->key_mgmt))
@@ -2701,6 +2708,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	uint32_t eht_score;
 	enum MLO_TYPE bss_mlo_type;
 	int ml_score = 0;
+	bool rsno = false;
 
 	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
 	if (!mlme_psoc_obj)
@@ -2874,8 +2882,12 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 		entry->bss_score = score;
 	}
 
+	if (util_scan_entry_wifi6_rsno(entry) ||
+	    util_scan_entry_wifi7_rsno(entry))
+		rsno = true;
+
 	if (bss_mlo_type == SLO || IS_LINK_SCORE(ml_flag))
-		mlme_nofl_debug("%s("QDF_MAC_ADDR_FMT" freq %d): rssi %d HT %d VHT %d HE %d EHT %d su_bfer %d phy %d atf %d qbss %d cong_pct %d NSS %d ap_tx_pwr %d oce_subnet %d sae_pk_cap %d prorated_pcnt %d keymgmt 0x%x mlo type %d",
+		mlme_nofl_debug("%s("QDF_MAC_ADDR_FMT" freq %d): rssi %d HT %d VHT %d HE %d EHT %d su_bfer %d phy %d atf %d qbss %d cong_pct %d NSS %d ap_tx_pwr %d oce_subnet %d sae_pk_cap %d prorated_pcnt %d keymgmt 0x%x mlo type %d rsno %d rsnxo %d",
 				IS_ASSOC_LINK(ml_flag) ? "Candidate" : "Partner",
 				QDF_MAC_ADDR_REF(entry->bssid.bytes),
 				entry->channel.chan_freq,
@@ -2890,7 +2902,8 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 				entry->nss, ap_tx_pwr_dbm,
 				oce_subnet_id_present, sae_pk_cap_present,
 				prorated_pcnt, entry->neg_sec_info.key_mgmt,
-				bss_mlo_type);
+				bss_mlo_type, rsno,
+				util_scan_entry_rsnxo(entry) ? 1 : 0);
 
 	mlme_nofl_debug("%s score("QDF_MAC_ADDR_FMT" freq %d): rssi %d pcl %d ht %d vht %d he %d bfee %d bw %d band %d cong %d nss %d oce_wan %d oce_ap_pwr %d oce_subnet %d sae_pk %d eht %d security %d ml %d TOTAL %d",
 			IS_LINK_SCORE(ml_flag) ? "Link" : "Candidate",

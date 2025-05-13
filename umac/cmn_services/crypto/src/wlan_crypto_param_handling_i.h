@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2018, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -196,4 +196,30 @@ QDF_STATUS wlan_crypto_set_key_mgmt(struct wlan_crypto_params *crypto_params,
  * Return: bitmap value of all supported unicast ciphers
  */
 int32_t wlan_crypto_get_key_mgmt(struct wlan_crypto_params *crypto_params);
+
+/**
+ * wlan_crypto_set_random_pmkid() - called by ucfg to set random pmkid count
+ * to be included in the assoc request
+ * @crypto_params: crypto parameters
+ * @value: PMKID count
+ *
+ * This function sets called from ucfg to get the random no. of pmkids to be
+ * included in the assoc request
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wlan_crypto_set_random_pmkid(
+				struct wlan_crypto_params *crypto_params,
+				uint32_t value);
+/**
+ * wlan_crypto_get_random_pmkid() - called by ucfg to get random pmkid count
+ * to be included in the assoc request
+ * @crypto_params: crypto parameters
+ *
+ * This function gets called from ucfg to get the random no. of pmkids to be
+ * included in the assoc request
+ *
+ * Return: count of random pmkid
+ */
+int32_t wlan_crypto_get_random_pmkid(struct wlan_crypto_params *crypto_params);
 #endif /* __WLAN_CRYPTO_PARAM_HANDLING_I_H_ */
