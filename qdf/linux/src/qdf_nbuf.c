@@ -5019,13 +5019,15 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 		tcp_hdr(new_skb)->seq = htonl(tcp_seq_num);
 		tcp_seq_num += frag_len;
 		new_skb->protocol = skb->protocol;
-		new_skb->ip_summed = skb->ip_summed;
+		new_skb->ip_summed = CHECKSUM_PARTIAL;
 		tcp_hdr(new_skb)->psh = 0;
+		tcp_hdr(new_skb)->fin = 0;
 
 		if (ethproto == htons(ETH_P_IP)) {
 			ip_hdr(new_skb)->id = htons(ip_id);
 			ip_hdr(new_skb)->tot_len = htons(copied_len -
 						 skb_mac_header_len(new_skb));
+			ip_id++;
 		} else if (ethproto == htons(ETH_P_IPV6)) {
 			ipv6_hdr(new_skb)->payload_len =
 				htons(copied_len -
@@ -5033,8 +5035,13 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 				       skb_network_header_len(new_skb)));
 		}
 
-		if (num_seg == 1)
-			tcp_hdr(new_skb)->psh = 1;
+		/* if PSH and FIN flags are set in jumbo packet, set them for
+		 * the last segment.
+		 */
+		if (num_seg == 1) {
+			tcp_hdr(new_skb)->psh = tcp_hdr(skb)->psh;
+			tcp_hdr(new_skb)->fin = tcp_hdr(skb)->fin;
+		}
 
 		while (more_frags) {
 			if (unlikely(skb_proc == 0))
