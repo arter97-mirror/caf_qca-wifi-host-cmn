@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -65,7 +65,7 @@ static QDF_STATUS qdf_ini_read_values(char **main_cursor,
 				 * Subsequent '=' are valid value characters.
 				 */
 				if (!value && !comment) {
-					value = cursor + 1;
+					value = qdf_str_trim(cursor + 1);
 					*cursor = '\0';
 				}
 
