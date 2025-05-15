@@ -661,6 +661,8 @@ static const uint32_t vdev_param_tlv[] = {
 		  VDEV_PARAM_ENABLE_DISABLE_NAN_CONFIG_FEATURES),
 	PARAM_MAP(vdev_param_enable_disable_rtt_responder_role,
 		  VDEV_PARAM_ENABLE_DISABLE_RTT_RESPONDER_ROLE),
+	PARAM_MAP(vdev_param_enable_disable_rtt_bw_downgrade,
+		  VDEV_PARAM_ENABLE_DISABLE_RTT_BW_DOWNGRADE),
 	PARAM_MAP(vdev_param_enable_disable_rtt_initiator_role,
 		  VDEV_PARAM_ENABLE_DISABLE_RTT_INITIATOR_ROLE),
 	PARAM_MAP(vdev_param_mcast_steer, VDEV_PARAM_MCAST_STEERING),

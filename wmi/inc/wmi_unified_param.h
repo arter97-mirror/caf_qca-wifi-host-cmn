@@ -6257,6 +6257,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_dyndtim_cnt, VDEV_PARAM_DYNDTIM_CNT),
 	VDEV_PARAM(vdev_param_enable_disable_rtt_responder_role,
 		   VDEV_PARAM_ENABLE_DISABLE_RTT_RESPONDER_ROLE),
+	VDEV_PARAM(vdev_param_enable_disable_rtt_bw_downgrade,
+		   VDEV_PARAM_ENABLE_DISABLE_RTT_BW_DOWNGRADE),
 	VDEV_PARAM(vdev_param_set_ba_mode, VDEV_PARAM_BA_MODE),
 	VDEV_PARAM(vdev_param_forced_moddtim_enable,
 		   VDEV_PARAM_FORCED_MODDTIM_ENABLE),
