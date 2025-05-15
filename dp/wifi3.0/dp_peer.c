@@ -287,6 +287,7 @@ QDF_STATUS dp_peer_ast_table_attach(struct dp_soc *soc)
 	return QDF_STATUS_SUCCESS; /* success */
 }
 
+#ifdef FEATURE_WDS_AST_LEARNING
 /**
  * dp_find_peer_by_macaddr() - Finding the peer from mac address provided.
  * @soc: soc handle
@@ -296,6 +297,31 @@ QDF_STATUS dp_peer_ast_table_attach(struct dp_soc *soc)
  *
  * Return: struct dp_peer
  */
+struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
+					uint8_t vdev_id, enum dp_mod_id mod_id)
+
+{
+	struct dp_peer *peer;
+	struct dp_wds_entry *wds_entry;
+	struct cdp_peer_info peer_info = {0};
+
+	DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, mac_addr, false,
+				 CDP_WILD_PEER_TYPE);
+	peer = dp_peer_hash_find_wrapper(soc, &peer_info, mod_id);
+	if (peer)
+		return peer;
+
+	/* Next check againest wds peers */
+	wds_entry = dp_wds_hash_find_wds_entry(soc, mac_addr);
+	if (!wds_entry || !wds_entry->is_mapped)
+		return NULL;
+
+	return dp_peer_get_ref_by_id(soc, wds_entry->peer_id, mod_id);
+}
+
+#else /* FEATURE_WDS_AST_LEARNING */
+
+#ifdef FEATURE_AST
 struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
 					uint8_t vdev_id, enum dp_mod_id mod_id)
 {
@@ -334,6 +360,20 @@ struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
 				 CDP_WILD_PEER_TYPE);
 	return dp_peer_hash_find_wrapper(soc, &peer_info, mod_id);
 }
+#else /* FEATURE_AST */
+struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
+					uint8_t vdev_id, enum dp_mod_id mod_id)
+
+{
+	struct cdp_peer_info peer_info = {0};
+
+	DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, mac_addr, false,
+				 CDP_WILD_PEER_TYPE);
+	return dp_peer_hash_find_wrapper(soc, &peer_info, mod_id);
+}
+#endif /* FEATURE_AST */
+
+#endif /* FEATURE_WDS_AST_LEARNING */
 
 /**
  * dp_peer_find_map_attach() - allocate memory for peer_id_to_obj_map
