@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -208,6 +209,13 @@ bool wifi_pos_is_delete_all_peer_in_progress(struct wlan_objmgr_vdev *vdev);
  */
 void wifi_pos_set_delete_all_peer_in_progress(struct wlan_objmgr_vdev *vdev,
 					      bool flag);
+
+static inline uint8_t
+wifi_pos_get_pasn_peer_max_num_per_vdev(void)
+{
+	return WLAN_MAX_11AZ_PEERS;
+}
+
 #else
 static inline
 QDF_STATUS wifi_pos_handle_ranging_peer_create(struct wlan_objmgr_psoc *psoc,
@@ -288,5 +296,11 @@ static inline
 void wifi_pos_set_delete_all_peer_in_progress(struct wlan_objmgr_vdev *vdev,
 					      bool flag)
 {}
+
+static inline uint8_t
+wifi_pos_get_pasn_peer_max_num_per_vdev(void)
+{
+	return 0;
+}
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WIFI_POS_PASN_API_H_ */
