@@ -4941,7 +4941,7 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 	uint16_t ip_id = 0;
 	uint16_t copied_len;
 	uint8_t more_frags;
-	uint8_t pack_more_data;
+	uint8_t pack_more_data = 0;
 	qdf_dma_addr_t paddr;
 
 	*head_skb = NULL;
