@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4432,6 +4432,25 @@ dp_hal_srng_access_end(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
 	hal_srng_access_end(soc, hal_ring_hdl);
 }
 #endif
+
+static inline int dp_hal_srng_try_access_start(hal_soc_handle_t hal_soc_hdl,
+					       hal_ring_handle_t hal_ring_hdl,
+					       uint32_t timeout_ns)
+{
+	qdf_ktime_t timeout = qdf_ktime_add_ns(qdf_ktime_get(), timeout_ns);
+	int ret;
+
+	do {
+		ret = hal_srng_try_access_start(hal_soc_hdl, hal_ring_hdl);
+		if (!ret)
+			break;
+	} while (qdf_ktime_compare(qdf_ktime_get(), timeout) < 0);
+
+	if (ret)
+		return -ETIMEDOUT;
+
+	return ret;
+}
 
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 /**

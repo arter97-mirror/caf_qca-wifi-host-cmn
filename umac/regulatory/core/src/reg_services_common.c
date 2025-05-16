@@ -43,6 +43,7 @@
 #ifdef WLAN_FEATURE_GET_USABLE_CHAN_LIST
 #include "wlan_mlme_ucfg_api.h"
 #include "wlan_nan_api.h"
+#include "wlan_p2p_ucfg_api.h"
 #endif
 #ifndef CONFIG_REG_CLIENT
 #include <wlan_reg_channel_api.h>
@@ -3947,6 +3948,38 @@ reg_update_list_for_dfs_channel(struct wlan_objmgr_pdev *pdev,
 	}
 }
 
+/*
+ * reg_check_p2p_go_indoor_allowed() - P2P GO allowed on indoor channel or not
+ * @psoc: psoc
+ * @res_msg: Response msg
+ * @chan_state: Channel state
+ * @chan_enum: Channel enum
+ * @iface_mode: interface mode
+ */
+static bool
+reg_check_p2p_go_indoor_allowed(struct wlan_objmgr_psoc *psoc,
+				struct get_usable_chan_res_params *res_msg,
+				enum channel_state chan_state,
+				uint32_t chan_enum, uint32_t iface_mode)
+{
+	/*
+	 * Don't remove indoor frequency for P2P GO
+	 * if indoor support "p2p_go_on_5ghz_indoor_chan"
+	 * ini is enabled.
+	 */
+	if (!ucfg_p2p_get_indoor_ch_support(psoc) ||
+	    !reg_is_state_allowed(chan_state)) {
+		res_msg[chan_enum].iface_mode_mask &=
+			 ~(iface_mode);
+		if (!res_msg[chan_enum].iface_mode_mask)
+			reg_remove_freq(res_msg, chan_enum);
+
+		return false;
+	}
+
+	return true;
+}
+
 /**
  * reg_skip_invalid_chan_freq() - Remove invalid freq for SAP, P2P GO
  *				  and NAN
@@ -3971,6 +4004,7 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 	enum reg_6g_ap_type ap_pwr_type;
 	enum supported_6g_pwr_types ap_pwr_mode;
 	enum channel_state chan_state;
+	bool is_allowed;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
@@ -4035,17 +4069,37 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 				chan_state = reg_get_channel_state_for_pwrmode(
 						pdev, res_msg[chan_enum].freq,
 						ap_pwr_mode);
-				if (!reg_is_state_allowed(chan_state) ||
-				    (wlan_reg_is_freq_indoor(
-					pdev, res_msg[chan_enum].freq) &&
-					!include_indoor_channel)) {
-					res_msg[chan_enum].iface_mode_mask &=
-							~(iface_mode);
-					if (!res_msg[chan_enum].iface_mode_mask)
-						reg_remove_freq(res_msg,
-								chan_enum);
-				}
+				if (wlan_reg_is_freq_indoor(
+				     pdev, res_msg[chan_enum].freq)) {
+					if (iface_mode_mask &
+						(1 << IFTYPE_P2P_GO)) {
+						is_allowed =
+							reg_check_p2p_go_indoor_allowed(
+								psoc,
+								res_msg,
+								chan_state,
+								chan_enum,
+								iface_mode);
 
+						/*
+						 * Don't remove indoor frequency for
+						 * P2P, if indoor support for P2P is
+						 * enabled.
+						 */
+						if (is_allowed)
+							goto srd_check;
+					} else if (!reg_is_state_allowed(
+								chan_state) ||
+						   !include_indoor_channel) {
+						res_msg[chan_enum].iface_mode_mask &=
+							~(iface_mode);
+						if (!res_msg[chan_enum].iface_mode_mask)
+							reg_remove_freq(
+								res_msg,
+								chan_enum);
+					}
+				}
+srd_check:
 				if (!(enable_srd_chan & srd_mask) &&
 				    reg_is_etsi_srd_chan_for_freq(
 					pdev, res_msg[chan_enum].freq)) {
@@ -4491,7 +4545,7 @@ static uint32_t reg_get_channel_flags_for_freq(struct wlan_objmgr_pdev *pdev,
 	chan_enum = reg_get_chan_enum_for_freq(freq);
 
 	if (reg_is_chan_enum_invalid(chan_enum)) {
-		reg_debug("chan freq is not valid");
+		reg_debug("chan freq is not valid %d", freq);
 		return REGULATORY_CHAN_INVALID;
 	}
 

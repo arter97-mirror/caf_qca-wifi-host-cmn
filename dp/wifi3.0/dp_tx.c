@@ -7191,14 +7191,15 @@ more_data:
 						      tx_desc_pool, tx_desc,
 						      buffer_src,
 						      comp_index, 1);
+
+			if (qdf_unlikely(!tx_desc->pdev))
+				dp_tx_dump_tx_desc(tx_desc);
+
 			soc->arch_ops.dp_tx_process_htt_completion(
 							soc,
 							tx_desc,
 							htt_tx_status,
 							ring_id);
-			if (qdf_unlikely(!tx_desc->pdev)) {
-				dp_tx_dump_tx_desc(tx_desc);
-			}
 		} else {
 			tx_desc->tx_status =
 				hal_tx_comp_get_tx_status(tx_comp_hal_desc);

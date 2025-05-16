@@ -59,14 +59,19 @@ static inline void osif_update_fils_hlp_data(struct net_device *dev,
 #ifdef CFG80211_SINGLE_NETDEV_MULTI_LINK_SUPPORT
 static
 void osif_copy_roamed_info(struct cfg80211_roam_info *info,
-			   struct cfg80211_bss *bss)
+			   struct cfg80211_bss *bss,
+			   struct wlan_objmgr_vdev *vdev)
 {
+	if (wlan_vdev_mlme_is_mlo_vdev(vdev))
+		return;
+
 	info->links[0].bss = bss;
 }
 #else
 static
 void osif_copy_roamed_info(struct cfg80211_roam_info *info,
-			   struct cfg80211_bss *bss)
+			   struct cfg80211_bss *bss,
+			   struct wlan_objmgr_vdev *vdev)
 {
 	info->bss = bss;
 }
@@ -175,7 +180,8 @@ osif_debug_mlo_roam_duplicate_bss(struct wlan_cm_connect_resp *rsp,
 		if (!conn_rsp->links[link_id].bss)
 			continue;
 
-		if (conn_rsp->links[link_id].bss == bss)
+		if (link_id != assoc_link_id &&
+		    conn_rsp->links[link_id].bss == bss)
 			osif_info("link bss, link_id %d freq %d bssid " QDF_MAC_ADDR_FMT " same as assoc bss, link %d freq %d bssid " QDF_MAC_ADDR_FMT,
 				  link_id, partner_info->chan_freq,
 				  QDF_MAC_ADDR_REF(partner_info->link_addr.bytes),
@@ -263,7 +269,7 @@ static void osif_roamed_ind(struct net_device *dev,
 {
 	struct cfg80211_roam_info info = {0};
 
-	osif_copy_roamed_info(&info, bss);
+	osif_copy_roamed_info(&info, bss, vdev);
 	info.req_ie = req_ie;
 	info.req_ie_len = req_ie_len;
 	info.resp_ie = resp_ie;

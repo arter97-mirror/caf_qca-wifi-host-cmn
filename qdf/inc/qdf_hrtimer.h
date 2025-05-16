@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2018, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -77,6 +77,14 @@ void qdf_hrtimer_init(qdf_hrtimer_data_t *timer,
 		      enum qdf_clock_id clock,
 		      enum qdf_hrtimer_mode mode,
 		      enum qdf_context_mode ctx);
+
+/**
+ * qdf_time_ns_to_ktime() - Converts nanoseconds to a qdf_ktime_t object
+ * @ns: time in nanoseconds
+ *
+ * Return: nanoseconds as ktime object
+ */
+qdf_ktime_t qdf_time_ns_to_ktime(uint64_t ns);
 
 /**
  * qdf_time_ms_to_ktime() - Converts milliseconds to a qdf_ktime_t object
@@ -216,6 +224,17 @@ static inline void qdf_hrtimer_init(qdf_hrtimer_data_t *timer,
 				    enum qdf_context_mode ctx)
 {
 	__qdf_hrtimer_init(timer, callback, clock, mode, ctx);
+}
+
+/**
+ * qdf_time_ns_to_ktime() - Converts nanoseconds to a qdf_ktime_t object
+ * @ns: time in nanoseconds
+ *
+ * Return: nanoseconds as qdf_ktime_t object
+ */
+static inline qdf_ktime_t qdf_time_ns_to_ktime(uint64_t ns)
+{
+	return __qdf_time_ns_to_ktime(ns);
 }
 
 /**
