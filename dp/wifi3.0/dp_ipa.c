@@ -994,15 +994,15 @@ static void dp_ipa_map_ring_doorbell_paddr(struct dp_soc *soc)
 				   ipa_res->tx_comp_doorbell_paddr,
 				   &tx_comp_doorbell_dmaaddr,
 				   sizeof(uint32_t));
-		ipa_res->tx_comp_doorbell_paddr = tx_comp_doorbell_dmaaddr;
 		qdf_assert_always(!ret);
+		ipa_res->tx_comp_doorbell_paddr = tx_comp_doorbell_dmaaddr;
 
 		ret = pld_smmu_map(soc->osdev->dev,
 				   ipa_res->rx_ready_doorbell_paddr,
 				   &rx_ready_doorbell_dmaaddr,
 				   sizeof(uint32_t));
-		ipa_res->rx_ready_doorbell_paddr = rx_ready_doorbell_dmaaddr;
 		qdf_assert_always(!ret);
+		ipa_res->rx_ready_doorbell_paddr = rx_ready_doorbell_dmaaddr;
 	}
 
 	/* Setup for alternative TX pipe */

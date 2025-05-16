@@ -641,13 +641,11 @@ os_if_spectral_netlink_init(struct wlan_objmgr_pdev *pdev)
 	spectral_buf_cb.send_unicast = os_if_spectral_nl_unicast_msg;
 	spectral_buf_cb.free_sbuff = os_if_spectral_free_skb;
 	spectral_buf_cb.convert_to_phy_ch_width =
-		wlan_spectral_get_phy_ch_width;
+				wlan_cfg80211_get_phy_ch_width;
 	spectral_buf_cb.convert_to_nl_ch_width =
-		wlan_spectral_get_nl80211_chwidth;
-	spectral_buf_cb.reset_transport_channel =
-		os_if_spectral_nl_reset_tbuff;
-	spectral_buf_cb.get_buff_size =
-		os_if_spectral_netlink_get_buff_size;
+				wlan_cfg80211_get_nl80211_chwidth;
+	spectral_buf_cb.reset_transport_channel = os_if_spectral_nl_reset_tbuff;
+	spectral_buf_cb.get_buff_size =	os_if_spectral_netlink_get_buff_size;
 
 	if (sptrl_ctx->sptrlc_register_buffer_cb)
 		sptrl_ctx->sptrlc_register_buffer_cb(pdev, &spectral_buf_cb);

@@ -966,6 +966,18 @@ int qdf_ffs(uint32_t x)
 }
 
 /**
+ * qdf_ffs64() - find first set bit in a given 64 bit input
+ * @x: 64 bit mask
+ *
+ * Return: zero if the input is zero, otherwise returns the bit
+ * position of the first set bit, where the LSB is 1 and MSB is 64.
+ */
+static inline int qdf_ffs64(uint64_t x)
+{
+	return __qdf_ffs64(x);
+}
+
+/**
  * qdf_get_smp_processor_id() - Get the current CPU id
  *
  * Return: current CPU id
