@@ -412,7 +412,7 @@ struct wlan_crypto_comp_priv {
 	uint8_t fils_aead_set;
 	void *add_key_ctx;
 	crypto_add_key_callback add_key_cb;
-	struct wlan_crypto_params rsno_crypto[2];
+	struct wlan_crypto_params rsno_crypto[RSNO_GEN_WIFI7 - 1];
 };
 
 /**
