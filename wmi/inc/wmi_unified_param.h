@@ -6866,6 +6866,7 @@ typedef enum {
 	wmi_service_sta_twt_stats_ext,
 	wmi_service_scc_tpc_power_support,
 	wmi_service_per_vdev_twt_resp_disable_support,
+	wmi_service_vendor_oui_action_v2,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -7268,6 +7269,7 @@ struct target_feature_set {
  * @max_ml_sta_num_bss: Max sta bss
  * @max_ml_bss_num: Max ml bss
  * @apfv6_offload_disabled: APFv6 offload disabled bitmap
+ * @is_action_oui_v2_enabled: Is action oui v2 enabled
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7418,6 +7420,7 @@ typedef struct {
 	uint8_t max_ml_sta_num_bss;
 	uint8_t max_ml_bss_num;
 	uint32_t apfv6_offload_disabled;
+	bool is_action_oui_v2_enabled;
 } target_resource_config;
 
 /**

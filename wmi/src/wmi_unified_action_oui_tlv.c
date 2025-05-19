@@ -116,7 +116,8 @@ uint32_t wmi_get_action_oui_info_mask(uint32_t info_mask)
 
 void wmi_fill_oui_extensions(struct action_oui_extension *extension,
 			     uint32_t no_oui_extns,
-			     wmi_vendor_oui_ext *cmd_ext)
+			     wmi_vendor_oui_ext *cmd_ext,
+			     bool is_action_oui_v2_enabled)
 {
 	uint32_t i;
 	uint32_t buffer_length;
@@ -141,7 +142,10 @@ void wmi_fill_oui_extensions(struct action_oui_extension *extension,
 				extension->mac_mask_length +
 				extension->capability_length;
 
-		cmd_ext->buf_data_length = buffer_length + 1;
+		if (is_action_oui_v2_enabled && !extension->and_oui_index)
+			cmd_ext->buf_data_length = buffer_length + 2;
+		else
+			cmd_ext->buf_data_length = buffer_length + 1;
 
 		cmd_ext++;
 		extension++;
@@ -153,9 +157,12 @@ QDF_STATUS
 wmi_fill_oui_extensions_buffer(struct action_oui_extension *extension,
 			       wmi_vendor_oui_ext *cmd_ext,
 			       uint32_t no_oui_extns, uint32_t rem_var_buf_len,
-			       uint8_t *var_buf)
+			       uint8_t *var_buf,
+			       bool is_action_oui_v2_enabled)
 {
-	uint8_t i;
+	uint8_t i, and_oui_num = 0;
+	uint8_t *and_oui_num_ptr = NULL;
+	uint8_t *buf;
 
 	for (i = 0; i < (uint8_t)no_oui_extns; i++) {
 		if ((rem_var_buf_len - cmd_ext->buf_data_length) < 0) {
@@ -163,8 +170,26 @@ wmi_fill_oui_extensions_buffer(struct action_oui_extension *extension,
 			return QDF_STATUS_E_INVAL;
 		}
 
-		var_buf[0] = i;
-		var_buf++;
+		buf = var_buf;
+		if (is_action_oui_v2_enabled) {
+			if (!extension->and_oui_index) {
+				/* Fill and oui num for last and expression */
+				if (and_oui_num_ptr)
+					*and_oui_num_ptr = and_oui_num;
+				/* Remember location of and oui num for current and expression */
+				and_oui_num_ptr = &var_buf[0];
+				and_oui_num = 1;
+				var_buf[1] = i;
+				var_buf += 2;
+			} else {
+				and_oui_num++;
+				var_buf[0] = i;
+				var_buf++;
+			}
+		} else {
+			var_buf[0] = i;
+			var_buf++;
+		}
 
 		if (extension->oui_length) {
 			qdf_mem_copy(var_buf, extension->oui,
@@ -203,13 +228,33 @@ wmi_fill_oui_extensions_buffer(struct action_oui_extension *extension,
 		}
 
 		rem_var_buf_len -= cmd_ext->buf_data_length;
+		qdf_trace_hex_dump(QDF_MODULE_ID_WMI, QDF_TRACE_LEVEL_TRACE,
+				   buf, cmd_ext->buf_data_length);
 		cmd_ext++;
 		extension++;
 	}
 
+	/* Fill and oui num for last and expression */
+	if (and_oui_num_ptr)
+		*and_oui_num_ptr = and_oui_num;
+
 	return QDF_STATUS_SUCCESS;
 }
 
+/* If both host and F/W enabled action oui v2, oui is sent to F/W by action oui
+ * v2 format, otherwise, oui is sent to F/W by legacy format.
+ *
+ * Action oui v2 wmi format for "OUI0 && OUI1 ||OUI2 ||OUI3 && OUI4"
+ * [2][0]OUI0[1]OUI1[1][2]OUI2[2][3]OUI3[4]OUI
+ * 2 means 2 and OUI, such as OUI0 && OUI1.
+ * 1 means 1 and OUI: OUI2.
+ *
+ * Action oui v2 wmi format for "OUI0 OUI1 OUI2"
+ * [1][0]OUI0[1][1]OUI1[1][2]OUI2
+ *
+ * Legacy wmi format for "OUI0 OUI1 OUI2"
+ * [0]OUI0[1]OUI1[2]OUI2
+ */
 QDF_STATUS
 send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 			struct action_oui_request *req)
@@ -266,6 +311,8 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 		       extension->mac_addr_length +
 		       extension->mac_mask_length +
 		       extension->capability_length;
+		if (req->is_action_oui_v2_enabled && !extension->and_oui_index)
+			var_buf_len += 1; /* to store and OUI num */
 		extension++;
 	}
 
@@ -297,14 +344,16 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 		       no_oui_extns * sizeof(*cmd_ext));
 	buf_ptr += WMI_TLV_HDR_SIZE;
 	cmd_ext = (wmi_vendor_oui_ext *)buf_ptr;
-	wmi_fill_oui_extensions(req->extension, no_oui_extns, cmd_ext);
+	wmi_fill_oui_extensions(req->extension, no_oui_extns, cmd_ext,
+				req->is_action_oui_v2_enabled);
 
 	buf_ptr += no_oui_extns * sizeof(*cmd_ext);
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, var_buf_len);
 	buf_ptr += WMI_TLV_HDR_SIZE;
 	status = wmi_fill_oui_extensions_buffer(req->extension,
 						cmd_ext, no_oui_extns,
-						rem_var_buf_len, buf_ptr);
+						rem_var_buf_len, buf_ptr,
+						req->is_action_oui_v2_enabled);
 	if (!QDF_IS_STATUS_SUCCESS(status)) {
 		wmi_buf_free(wmi_buf);
 		wmi_buf = NULL;
@@ -314,6 +363,8 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 
 	buf_ptr += var_buf_len;
 
+	wmi_debug("wmi len %d data:", len);
+	qdf_trace_hex_dump(QDF_MODULE_ID_WMI, QDF_TRACE_LEVEL_TRACE, wmi_buf_data(wmi_buf), len);
 	if (wmi_unified_cmd_send(wmi_handle, wmi_buf, len,
 				 WMI_PDEV_CONFIG_VENDOR_OUI_ACTION_CMDID)) {
 		wmi_err("WMI_PDEV_CONFIG_VENDOR_OUI_ACTION send fail");

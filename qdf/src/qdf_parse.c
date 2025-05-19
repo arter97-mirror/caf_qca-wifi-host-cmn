@@ -311,7 +311,8 @@ static QDF_STATUS qdf_validate_value(char *value)
 		    (value[i] >= 'A' && value[i] <= 'Z') ||
 		    (value[i] >= 'a' && value[i] <= 'z') ||
 		    value[i] == ',' || value[i] == ':' ||
-		    value[i] == '-' || value[i] == '+')
+		    value[i] == '-' || value[i] == '+' ||
+		    value[i] == '&' || value[i] == '|')
 			continue;
 		else
 			return QDF_STATUS_E_INVAL;

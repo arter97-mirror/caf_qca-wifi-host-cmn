@@ -10594,6 +10594,8 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 				resource_cfg->apf_data_ofload_enable__word, 1);
 	}
 
+	WMI_RSRC_CFG_HOST_SERVICE_FLAG_ACTION_OUI_V2_SET(resource_cfg->host_service_flags,
+							 tgt_res_cfg->is_action_oui_v2_enabled);
 }
 
 #ifdef FEATURE_SET
@@ -25384,6 +25386,9 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_SCC_TPC_POWER_SUPPORT;
 	wmi_service[wmi_service_per_vdev_twt_resp_disable_support] =
 				WMI_SERVICE_PER_VDEV_TWT_RESP_DISABLE_SUPPORT;
+	wmi_service[wmi_service_vendor_oui_action_v2] =
+				WMI_SERVICE_VENDOR_OUI_ACTION_V2;
+
 }
 
 /**
