@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -159,9 +159,7 @@ osif_fill_link_reconfig_added_links_params(
 	num_add_links = recfg_context->curr_recfg_req.add_link_info.num_links;
 
 	if (!recfg_context->curr_recfg_req.is_user_req && !num_add_links) {
-		osif_debug("is_user_req %d num_add_links %d - no link added",
-			   recfg_context->curr_recfg_req.is_user_req,
-			   num_add_links);
+		osif_debug("no link added");
 		return false;
 	}
 
@@ -177,24 +175,26 @@ osif_fill_link_reconfig_added_links_params(
 	 * because get BSS incerements bss pointer reference
 	 * and cfg80211 already does get BSS.
 	 */
-	for (i = 0; i < req_param->num_link_add_param &&
-	     i < IEEE80211_MLD_MAX_NUM_LINKS &&
+	for (i = 0; i < QDF_MIN(req_param->num_link_add_param,
+				IEEE80211_MLD_MAX_NUM_LINKS) &&
 	     !cfg_rsp->driver_initiated; i++) {
 		link_id = req_param->add_link[i].link_id;
 		cfg_rsp->links[link_id].bss = req_param->add_link[i].bss;
 	}
 
-	for (i = 0; i < num_add_links && i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+	for (i = 0; i < QDF_MIN(num_add_links, IEEE80211_MLD_MAX_NUM_LINKS);
+	     i++) {
 		if (add_link_info.link[i].link_id == WLAN_INVALID_LINK_ID) {
-			osif_err("link id is invalid %d", WLAN_INVALID_LINK_ID);
+			osif_err_rl("link id is invalid %d",
+				    WLAN_INVALID_LINK_ID);
 			status_code = STATUS_INVALID_PARAMETERS;
-			goto end;
+			continue;
 		}
 		link_id = add_link_info.link[i].link_id;
 		cfg_rsp->links[link_id].addr =
 			qdf_mem_malloc(sizeof(struct qdf_mac_addr));
 		if (!cfg_rsp->links[link_id].addr) {
-			osif_err("failed to get STA link address");
+			osif_err_rl("failed to get STA link address");
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
@@ -209,14 +209,14 @@ osif_fill_link_reconfig_added_links_params(
 		channel = ieee80211_get_channel(wiphy,
 						add_link_info.link[i].freq);
 		if (!channel) {
-			osif_err("failed to get ieee chan");
+			osif_debug("failed to get ieee chan");
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
 
 		status = wlan_vdev_mlme_get_ssid(vdev, ssid, &ssid_len);
 		if (QDF_IS_STATUS_ERROR(status)) {
-			osif_err("failed to get ssid");
+			osif_debug_rl("failed to get ssid");
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
@@ -228,15 +228,17 @@ osif_fill_link_reconfig_added_links_params(
 				ssid, ssid_len);
 end:
 		if (!cfg_rsp->links[link_id].bss) {
-			osif_err("failed to get BSS");
+			osif_err_rl("failed to get BSS");
 			status_code = STATUS_INVALID_PARAMETERS;
 		}
 
 		/* Set "added_links" only for successfully added links */
 		if (status_code == STATUS_SUCCESS)
 			cfg_rsp->added_links |= 1 << link_id;
-		osif_debug("add link_id %d with status %d freq %d",
-			  link_id, status_code, add_link_info.link[i].freq);
+		osif_debug("add link_id: %d with status: %d freq: %d ssid:" QDF_SSID_FMT " and MAC: " QDF_MAC_ADDR_FMT,
+			   link_id, status_code, add_link_info.link[i].freq,
+			   QDF_SSID_REF(ssid_len, ssid),
+			   QDF_MAC_ADDR_REF(add_link_info.link[i].ap_link_addr.bytes));
 	}
 	osif_debug("added_link 0x%x driver_initiated %d num_link_add_param %d",
 		   cfg_rsp->added_links, cfg_rsp->driver_initiated,
