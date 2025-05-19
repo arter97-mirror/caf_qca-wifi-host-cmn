@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -56,6 +56,11 @@ QDF_STATUS wmi_extract_reg_chan_list_ext_update_event(wmi_unified_t wmi_handle,
 					struct cur_regulatory_info *reg_info,
 					uint32_t len);
 
+#ifdef CONFIG_REG_CLIENT
+QDF_STATUS wmi_extract_reg_c2c_detect_event(wmi_unified_t wmi_handle,
+					    uint8_t *evt_buf,
+					    bool *indoor_ap_found);
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 /**
  * wmi_extract_afc_event() - function to read the contents of the AFC event

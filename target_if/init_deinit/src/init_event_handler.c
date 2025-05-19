@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -591,6 +591,13 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 							 info);
 	if (err_code) {
 		target_if_err("failed to populate hal reg cap ext2");
+		goto exit;
+	}
+
+	err_code = init_deinit_populate_power_boost_cap_ext2(wmi_handle, event,
+							     info);
+	if (err_code) {
+		target_if_err("failed to populate power boost cap ext2");
 		goto exit;
 	}
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -108,6 +108,16 @@ struct rx_msdu_end_compact {
                       ldpc                                                    :  1,
                       ip4_protocol_ip6_next_header                            :  8;
 	/* qword-11 */
+#ifdef CONFIG_BORON
+             uint32_t user_rssi                                               :  8,
+                      pkt_type                                                :  4,
+                      sgi                                                     :  2,
+                      rate_mcs                                                :  5,
+                      receive_bandwidth                                       :  3,
+                      reception_type                                          :  3,
+                      mimo_ss_bitmap                                          :  6,
+                      msdu_done_copy                                          :  1;
+#else
              uint32_t user_rssi                                               :  8,
                       pkt_type                                                :  4,
                       sgi                                                     :  2,
@@ -116,6 +126,7 @@ struct rx_msdu_end_compact {
                       reception_type                                          :  3,
                       mimo_ss_bitmap                                          :  7,
                       msdu_done_copy                                          :  1;
+#endif
              uint32_t flow_id_toeplitz                                        : 32;
 	/* qword-15 */
              uint32_t first_mpdu                                              :  1,
@@ -311,6 +322,16 @@ struct rx_msdu_end_compact {
                       decap_format                                            :  2,
                       msdu_number                                             :  8;
 	/* qword-11 */
+#ifdef CONFIG_BORON
+             uint32_t msdu_done_copy                                          :  1,
+                      mimo_ss_bitmap                                          :  6,
+                      reception_type                                          :  3,
+                      receive_bandwidth                                       :  3,
+                      rate_mcs                                                :  5,
+                      sgi                                                     :  2,
+                      pkt_type                                                :  4,
+                      user_rssi                                               :  8;
+#else
              uint32_t msdu_done_copy                                          :  1,
                       mimo_ss_bitmap                                          :  7,
                       reception_type                                          :  3,
@@ -319,6 +340,7 @@ struct rx_msdu_end_compact {
                       sgi                                                     :  2,
                       pkt_type                                                :  4,
                       user_rssi                                               :  8;
+#endif
              uint32_t flow_id_toeplitz                                        : 32;
 	/* qword-15 */
              uint32_t fcs_err                                                 :  1,

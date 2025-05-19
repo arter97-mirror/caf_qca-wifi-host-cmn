@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -508,6 +508,70 @@ regulatory_assign_unregister_afc_event_handler(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+static void
+regulatory_register_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+					struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+	if (tx_ops->register_txpb_event_handler)
+		tx_ops->register_txpb_event_handler(psoc, NULL);
+}
+
+static void
+regulatory_unregister_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+					 struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+	if (tx_ops->unregister_txpb_event_handler)
+		tx_ops->unregister_txpb_event_handler(psoc, NULL);
+}
+#else
+static inline
+void regulatory_register_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+}
+
+static inline
+void regulatory_unregister_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+}
+#endif
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+static void
+regulatory_assign_register_c2c_detect_event_handler(
+				struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+	if (tx_ops->register_c2c_detect_event_handler)
+		tx_ops->register_c2c_detect_event_handler(psoc, NULL);
+}
+
+static void
+regulatory_assign_unregister_c2c_detect_event_handler(
+				struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+	if (tx_ops->unregister_c2c_detect_event_handler)
+		tx_ops->unregister_c2c_detect_event_handler(psoc, NULL);
+}
+#else
+static inline void
+regulatory_assign_register_c2c_detect_event_handler(
+				struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+}
+
+static inline void
+regulatory_assign_unregister_c2c_detect_event_handler(
+				struct wlan_objmgr_psoc *psoc,
+				struct wlan_lmac_if_reg_tx_ops *tx_ops)
+{
+}
+#endif
+
 QDF_STATUS regulatory_psoc_open(struct wlan_objmgr_psoc *psoc)
 {
 	struct wlan_lmac_if_reg_tx_ops *tx_ops;
@@ -524,6 +588,9 @@ QDF_STATUS regulatory_psoc_open(struct wlan_objmgr_psoc *psoc)
 	if (tx_ops->register_rate2power_table_update_event_handler)
 		tx_ops->register_rate2power_table_update_event_handler(psoc,
 								       NULL);
+	regulatory_assign_register_c2c_detect_event_handler(psoc, tx_ops);
+
+	regulatory_register_txpb_event_handler(psoc, tx_ops);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -544,6 +611,9 @@ QDF_STATUS regulatory_psoc_close(struct wlan_objmgr_psoc *psoc)
 	if (tx_ops->unregister_rate2power_table_update_event_handler)
 		tx_ops->unregister_rate2power_table_update_event_handler(psoc,
 									 NULL);
+	regulatory_assign_unregister_c2c_detect_event_handler(psoc, tx_ops);
+
+	regulatory_unregister_txpb_event_handler(psoc, tx_ops);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -709,6 +779,19 @@ void wlan_reg_unregister_chan_change_callback(struct wlan_objmgr_psoc *psoc,
 {
 	reg_unregister_chan_change_callback(psoc,
 					    (reg_chan_change_callback)cbk);
+}
+
+void wlan_reg_unregister_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+					     void *cbk)
+{
+	reg_unregister_c2c_detect_callback(psoc,
+					   (reg_c2c_detect_callback)cbk);
+}
+
+void wlan_reg_register_c2c_detect_callback(struct wlan_objmgr_psoc *psoc,
+					   void *cbk)
+{
+	reg_register_c2c_detect_callback(psoc, (reg_c2c_detect_callback)cbk);
 }
 
 void wlan_reg_register_ctry_change_callback(struct wlan_objmgr_psoc *psoc,
@@ -1751,10 +1834,12 @@ bool wlan_reg_is_6g_psd_power(struct wlan_objmgr_pdev *pdev)
 QDF_STATUS wlan_reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 					 qdf_freq_t chan_freq, bool *is_psd,
 					 int16_t *tx_power,
-					 int16_t *eirp_psd_power)
+					 int16_t *eirp_psd_power,
+					 bool get_ap_vlp_power)
 {
 	return reg_get_6g_chan_ap_power(pdev, chan_freq, is_psd,
-					tx_power, eirp_psd_power);
+					tx_power, eirp_psd_power,
+					get_ap_vlp_power);
 }
 
 qdf_export_symbol(wlan_reg_get_6g_chan_ap_power);
@@ -1776,11 +1861,13 @@ wlan_reg_get_client_power_for_6ghz_ap(struct wlan_objmgr_pdev *pdev,
 				      enum reg_6g_client_type client_type,
 				      qdf_freq_t chan_freq,
 				      bool *is_psd, int16_t *tx_power,
-				      int16_t *eirp_psd_power)
+				      int16_t *eirp_psd_power,
+				      bool get_vlp_pwr)
 {
 	return reg_get_client_power_for_6ghz_ap(pdev, client_type, chan_freq,
 						is_psd, tx_power,
-						eirp_psd_power);
+						eirp_psd_power,
+						get_vlp_pwr);
 }
 
 QDF_STATUS
@@ -2112,5 +2199,15 @@ bool wlan_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
 				     qdf_freq_t freq)
 {
 	return reg_is_vlp_depriority_freq(pdev, freq);
+}
+
+bool wlan_reg_does_country_supp_c2c(struct wlan_objmgr_pdev *pdev)
+{
+	return reg_does_country_supp_c2c(pdev);
+}
+
+bool wlan_reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
+{
+	return reg_is_indoor_ap_detected(pdev);
 }
 #endif

@@ -421,6 +421,47 @@ static inline void cm_print_candidate_list(qdf_list_t *candidate_list)
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * wlan_cm_set_mlo_allowed_bss_links() - Set the allowed BSS links for MLO STA
+ * using BSS link mac addresses
+ * @psoc: psoc object
+ * @num_links: Number of allowed BSS links
+ * @allowed_bss_link_addr: list of allowed BSS link addresses
+ *
+ * Return: None
+ */
+void
+wlan_cm_set_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  uint8_t num_links,
+				  struct qdf_mac_addr *allowed_bss_link_addr);
+
+/**
+ * wlan_cm_get_mlo_allowed_bss_links() - Get the allowed BSS links for MLO STA
+ * using BSS link mac addresses
+ * @psoc: psoc object
+ * @allowed_bss_link_addr: list of allowed BSS link addresses
+ *
+ * Return: Number of configured allowed BSS links
+ */
+uint8_t
+wlan_cm_get_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  struct qdf_mac_addr *allowed_bss_link_addr);
+#else
+static inline void
+wlan_cm_set_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  uint8_t num_links,
+				  struct qdf_mac_addr *allowed_bss_link_addr)
+{}
+
+static inline uint8_t
+wlan_cm_get_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  struct qdf_mac_addr *allowed_bss_link_addr)
+{
+	return 0;
+}
+#endif
+
 /**
  * wlan_cm_init_score_config() - Init score INI and config
  * @psoc: pointer to psoc object

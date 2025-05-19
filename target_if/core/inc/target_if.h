@@ -3328,6 +3328,9 @@ target_if_get_fw_btm_multi_ap_support(struct wlan_objmgr_psoc *psoc)
 
 	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
 
+	if (!mac_phy_cap)
+		return false;
+
 	return mac_phy_cap->ext_mldcap.btm_recommended_for_multi_ap;
 }
 #endif

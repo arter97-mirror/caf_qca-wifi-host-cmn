@@ -954,14 +954,32 @@ void mlme_cm_osif_perfd_reset_cpufreq(void)
 }
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
-QDF_STATUS mlme_cm_send_link_reconfig_status(struct wlan_objmgr_vdev *vdev)
+QDF_STATUS mlme_cm_send_link_reconfig_status(void *ctx)
 {
-	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	if (glbl_cm_ops &&
 	    glbl_cm_ops->mlme_cm_link_reconfig_status_cb)
-		ret = glbl_cm_ops->mlme_cm_link_reconfig_status_cb(vdev);
+		status = glbl_cm_ops->mlme_cm_link_reconfig_status_cb(ctx);
 
-	return ret;
+	return status;
+}
+
+void *
+mlme_cm_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev)
+{
+	if (glbl_cm_ops &&
+	    glbl_cm_ops->mlme_cm_populate_link_recfg_done_data)
+		return glbl_cm_ops->mlme_cm_populate_link_recfg_done_data(
+								vdev);
+
+	return NULL;
+}
+
+void mlme_cm_free_link_reconfig_done_data(void *ctx)
+{
+	if (glbl_cm_ops &&
+	    glbl_cm_ops->mlme_cm_free_link_reconfig_done_data)
+		glbl_cm_ops->mlme_cm_free_link_reconfig_done_data(ctx);
 }
 #endif

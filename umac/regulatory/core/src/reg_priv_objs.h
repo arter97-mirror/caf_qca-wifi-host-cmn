@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -59,6 +59,20 @@
 #define reg_nofl_debug(params...) \
 	QDF_TRACE_DEBUG_NO_FL(QDF_MODULE_ID_REGULATORY, params)
 
+typedef void (*txpb_callback)(
+		void *arg,
+		struct reg_txpb_evt_params *params);
+
+/**
+ * struct reg_txpb_cbk_entry - Tx powerboost callback entry
+ * @cbk: Callback
+ * @arg: Arguments
+ */
+struct reg_txpb_cbk_entry {
+	txpb_callback cbk;
+	void *arg;
+};
+
 /**
  * typedef reg_chan_change_callback() - Regulatory channel change callback
  * @psoc: Pointer to psoc
@@ -98,6 +112,21 @@ typedef void (*reg_ctry_change_callback)(
  */
 struct ctry_change_cbk_entry {
 	reg_ctry_change_callback cbk;
+};
+
+/**
+ * typedef reg_c2c_detect_callback() - Regulatory C2C detect callback
+ * @psoc: PSOC pointer
+ */
+typedef void (*reg_c2c_detect_callback)(
+		struct wlan_objmgr_psoc *psoc);
+
+/**
+ * struct c2c_detect_cbk_entry - C2C detect callback entry
+ * @cbk: Callback
+ */
+struct c2c_detect_cbk_entry {
+	reg_c2c_detect_callback cbk;
 };
 
 /*
@@ -228,6 +257,9 @@ struct indoor_concurrency_list {
  * from firmware
  * @set_fcc_channel: Flag to set fcc channels
  * @country_max_allowed_bw: max allowed bw for all reg rules of client
+ * @c2c_cbk: C2C callback entry
+ * @is_indoor_ap_found: Flag to check if indoor AP is detected
+ * @txpb_cbk: Tx powerboost callback entry
  */
 struct wlan_regulatory_psoc_priv_obj {
 	struct mas_chan_params mas_chan_params[PSOC_MAX_PHY_REG_CAP];
@@ -269,6 +301,9 @@ struct wlan_regulatory_psoc_priv_obj {
 	struct get_connected_chan_for_mode_cbk_entry conn_chan_cb;
 	uint8_t num_chan_change_cbks;
 	struct ctry_change_cbk_entry cc_cbk;
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+	struct c2c_detect_cbk_entry c2c_cbk;
+#endif
 	uint8_t ch_avoid_ind;
 	struct unsafe_ch_list unsafe_chan_list;
 	struct ch_avoid_ind_type avoid_freq_list;
@@ -309,9 +344,13 @@ struct wlan_regulatory_psoc_priv_obj {
 	bool p2p_indoor_ch_support;
 #ifdef CONFIG_REG_CLIENT
 	struct cur_fcc_rule fcc_rules_ptr[MAX_NUM_FCC_RULES];
+	bool is_indoor_ap_found;
 #endif
 	bool set_fcc_channel;
 	uint32_t country_max_allowed_bw;
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	struct reg_txpb_cbk_entry txpb_cbk;
+#endif
 };
 
 /**
@@ -399,6 +438,7 @@ struct wlan_regulatory_psoc_priv_obj {
  * @indoor_list: List of current indoor station interfaces
  * @keep_6ghz_sta_cli_connection: Keep current STA/P2P client connection
  * @is_c2c_supp: Flag to check C2C support.
+ * @is_indoor_ap_found: Flag to check if indoor AP is detected
  */
 struct wlan_regulatory_pdev_priv_obj {
 	struct regulatory_channel cur_chan_list[NUM_CHANNELS];
@@ -483,6 +523,7 @@ struct wlan_regulatory_pdev_priv_obj {
 	struct indoor_concurrency_list indoor_list[MAX_INDOOR_LIST_SIZE];
 	bool keep_6ghz_sta_cli_connection;
 	bool is_c2c_supp;
+	bool is_indoor_ap_found;
 #endif
 };
 

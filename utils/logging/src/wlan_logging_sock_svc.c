@@ -939,11 +939,9 @@ static int wlan_logging_thread(void *Arg)
 				msleep(200);
 		}
 
-		if (qdf_atomic_test_bit(HOST_LOG_CHIPSET_STATS,
-					gwlan_logging.event_flag) &&
+		if (qdf_atomic_test_and_clear_bit(HOST_LOG_CHIPSET_STATS,
+						  gwlan_logging.event_flag) &&
 		    gwlan_logging.is_flush_complete) {
-			qdf_atomic_test_and_clear_bit(HOST_LOG_CHIPSET_STATS,
-						      gwlan_logging.event_flag);
 			ret = wlan_logging_cstats_send_host_buf_to_usr();
 			if (-ENOMEM == ret) {
 				QDF_TRACE_ERROR(QDF_MODULE_ID_QDF,
@@ -952,11 +950,9 @@ static int wlan_logging_thread(void *Arg)
 			}
 		}
 
-		if (qdf_atomic_test_bit(FW_LOG_CHIPSET_STATS,
-					gwlan_logging.event_flag) &&
+		if (qdf_atomic_test_and_clear_bit(FW_LOG_CHIPSET_STATS,
+						  gwlan_logging.event_flag) &&
 		    gwlan_logging.is_flush_complete) {
-			qdf_atomic_test_and_clear_bit(FW_LOG_CHIPSET_STATS,
-						      gwlan_logging.event_flag);
 			ret = wlan_logging_cstats_send_fw_buf_to_usr();
 			if (-ENOMEM == ret) {
 				QDF_TRACE_ERROR(QDF_MODULE_ID_QDF,

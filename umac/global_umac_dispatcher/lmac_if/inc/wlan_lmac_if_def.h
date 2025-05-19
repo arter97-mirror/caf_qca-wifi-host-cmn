@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1219,6 +1218,16 @@ struct wlan_lmac_if_ftm_rx_ops {
  * 6GHz 80p80 channel.
  * @is_freq_80p80_supported: Callback function to check if the given primary
  * frequency supports 80P80 mode of operation.
+ * @register_c2c_detect_event_handler: Pointer to register c2c
+ *                                     detect event handler
+ * @unregister_c2c_detect_event_handler: Pointer to unregister c2c detect
+ *                                 event handler
+ * @txpb_send_dma_addr: Callback function to send DMA address
+ * @register_txpb_event_handler: Callback function to register
+ * Tx powerboost events
+ * @unregister_txpb_event_handler: Callback function to unregister
+ * Tx powerboost events
+ * @txpb_send_inference_cmd: Callback function to send inference command
  */
 struct wlan_lmac_if_reg_tx_ops {
 	QDF_STATUS (*register_master_handler)(struct wlan_objmgr_psoc *psoc,
@@ -1263,6 +1272,12 @@ struct wlan_lmac_if_reg_tx_ops {
 	QDF_STATUS (*init_dfs_nol)(struct wlan_objmgr_pdev *pdev);
 	QDF_STATUS (*get_opclass_tbl_idx)(struct wlan_objmgr_pdev *pdev,
 					  uint8_t *opclass_tbl_idx);
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+	QDF_STATUS (*register_c2c_detect_event_handler)(
+			struct wlan_objmgr_psoc *psoc, void *arg);
+	QDF_STATUS (*unregister_c2c_detect_event_handler)(
+			struct wlan_objmgr_psoc *psoc, void *arg);
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 	QDF_STATUS (*send_afc_ind)(struct wlan_objmgr_psoc *psoc,
 				   uint8_t pdev_id,
@@ -1294,6 +1309,16 @@ struct wlan_lmac_if_reg_tx_ops {
 	bool (*is_80p80_supported)(struct wlan_objmgr_pdev *pdev);
 	bool (*is_freq_80p80_supported)(struct wlan_objmgr_pdev *pdev,
 					qdf_freq_t freq);
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	QDF_STATUS (*txpb_send_dma_addr)(struct wlan_objmgr_pdev *pdev,
+				   struct reg_pdev_pb_dma_buf *dma);
+	QDF_STATUS (*txpb_send_inference_cmd)(struct wlan_objmgr_pdev *pdev,
+				   struct reg_txpb_cmd_params *params);
+	QDF_STATUS (*register_txpb_event_handler)(struct wlan_objmgr_psoc *psoc,
+						 void *arg);
+	QDF_STATUS (*unregister_txpb_event_handler)
+				(struct wlan_objmgr_psoc *psoc, void *arg);
+#endif
 };
 
 /**
@@ -1687,6 +1712,7 @@ struct wlan_lmac_if_son_rx_ops {
  * @send_mlo_link_switch_cnf_cmd: Send link switch status to FW
  * @send_mlo_link_recfg_complete_cmd: Send link recfg complete to FW
  * @send_link_reconfig_req_params_cmd: send link reconfig command to FW
+ * @send_mlo_ttlm_complete_cmd: Send TTLM complete cmd to FW
  * @send_wsi_link_info_cmd: send WSI link stats to FW
  */
 struct wlan_lmac_if_mlo_tx_ops {
@@ -1727,6 +1753,12 @@ struct wlan_lmac_if_mlo_tx_ops {
 	QDF_STATUS (*send_link_reconfig_req_params_cmd)(
 			struct wlan_objmgr_psoc *psoc,
 			struct wlan_mlo_link_recfg_req *param);
+
+	QDF_STATUS
+	(*send_mlo_ttlm_complete_cmd)(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_mlo_ttlm_complete_params *params);
+
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 	QDF_STATUS (*send_wsi_link_info_cmd)(
 				struct wlan_objmgr_pdev *pdev,
@@ -2183,6 +2215,8 @@ struct wlan_lmac_if_mgmt_txrx_rx_ops {
  *		rate2power update response from fw.
  * @reg_is_5dot9_ghz_supported: Function pointer to get the 5.9GHz support
  * information.
+ * @c2c_detect_evt_handler: Pointer to C2C detect event handler.
+ * @txpb_event_handler: Tx powerboost event handler
  */
 struct wlan_lmac_if_reg_rx_ops {
 	QDF_STATUS (*master_list_handler)(struct cur_regulatory_info
@@ -2190,6 +2224,10 @@ struct wlan_lmac_if_reg_rx_ops {
 #ifdef CONFIG_BAND_6GHZ
 	QDF_STATUS (*master_list_ext_handler)(struct cur_regulatory_info
 					      *reg_info);
+#ifdef CONFIG_REG_CLIENT
+	QDF_STATUS (*c2c_detect_evt_handler)(struct wlan_objmgr_psoc *psoc,
+					     bool indoor_ap_found);
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 	QDF_STATUS (*afc_event_handler)(struct afc_regulatory_info *afc_info);
 #endif
@@ -2278,6 +2316,10 @@ struct wlan_lmac_if_reg_rx_ops {
 			struct wlan_objmgr_psoc *psoc,
 			uint32_t pdev_id);
 	bool (*reg_is_5dot9_ghz_supported)(struct wlan_objmgr_psoc *psoc);
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	QDF_STATUS (*txpb_event_handler)(struct wlan_objmgr_psoc *psoc,
+		struct reg_txpb_evt_params *param);
+#endif
 };
 
 #ifdef CONVERGED_P2P_ENABLE

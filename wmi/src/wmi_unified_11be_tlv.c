@@ -2040,6 +2040,63 @@ static QDF_STATUS send_mlo_link_recfg_complete_cmd_tlv(
 
 	return ret;
 }
+
+/**
+ * send_mlo_ttlm_complete_cmd_tlv() - send TTLM complete
+ * wmi command
+ * @wmi_handle: wmi handle
+ * @params: MLO TTLM complete params
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS send_mlo_ttlm_complete_cmd_tlv(
+			wmi_unified_t wmi_handle,
+			struct wlan_mlo_ttlm_complete_params *params)
+{
+	wmi_mlo_link_ttlm_complete_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+	uint32_t buf_len = 0;
+
+	buf_len = sizeof(wmi_mlo_link_ttlm_complete_fixed_param);
+	buf = wmi_buf_alloc(wmi_handle, buf_len);
+	if (!buf) {
+		wmi_err("wmi buf alloc failed for vdev id %d for TTLM complete cmd ",
+			params->vdev_id);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_mlo_link_ttlm_complete_fixed_param *)buf_ptr;
+
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_mlo_link_ttlm_complete_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+		wmi_mlo_link_ttlm_complete_fixed_param));
+	cmd->vdev_id = params->vdev_id;
+	cmd->status = params->status;
+	cmd->reassoc_if_failure = params->reassoc_if_failure;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->ap_mld_addr.bytes,
+				   &cmd->mld_addr);
+	wmi_debug("vdev %d status %d reassoc_if_failure %d ap mld " QDF_MAC_ADDR_FMT "",
+		  params->vdev_id, params->status, params->reassoc_if_failure,
+		  QDF_MAC_ADDR_REF(params->ap_mld_addr.bytes));
+
+	buf_ptr += sizeof(wmi_mlo_link_ttlm_complete_fixed_param);
+
+	wmi_mtrace(WMI_MLO_LINK_TTLM_COMPLETE_CMDID, cmd->vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, buf_len,
+				   WMI_MLO_LINK_TTLM_COMPLETE_CMDID);
+	if (ret) {
+		wmi_err("Failed to send WMI_MLO_LINK_TTLM_COMPLETE_CMDID to FW: %d vdev id %d",
+			ret, cmd->vdev_id);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 
 static QDF_STATUS
@@ -3294,6 +3351,8 @@ void wmi_11be_attach_tlv(wmi_unified_t wmi_handle)
 		send_mlo_link_recfg_complete_cmd_tlv;
 	ops->send_link_reconfig_req_command =
 		send_link_reconfig_req_cmd_tlv;
+	ops->send_mlo_ttlm_complete_cmd =
+		send_mlo_ttlm_complete_cmd_tlv;
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 
 }

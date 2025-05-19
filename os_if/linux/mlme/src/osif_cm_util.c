@@ -688,6 +688,10 @@ static struct mlme_cm_ops cm_ops = {
 #endif
 #if defined(WLAN_FEATURE_11BE_MLO)
 	.mlme_cm_link_reconfig_status_cb = osif_link_reconfig_status_cb,
+	.mlme_cm_populate_link_recfg_done_data =
+			osif_populate_link_recfg_done_data,
+	.mlme_cm_free_link_reconfig_done_data =
+			osif_free_link_reconfig_done_data,
 #endif
 };
 

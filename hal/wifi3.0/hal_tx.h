@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -101,8 +101,13 @@ do {                                            \
 
 #define NUM_OF_DWORDS_TX_MSDU_EXTENSION 18
 
+#ifdef CONFIG_BORON
+#define HAL_TX_DESC_LEN_DWORDS (NUM_OF_DWORDS_TCL_ASSIST_CMD)
+#define HAL_TX_DESC_LEN_BYTES  (NUM_OF_DWORDS_TCL_ASSIST_CMD * 4)
+#else
 #define HAL_TX_DESC_LEN_DWORDS (NUM_OF_DWORDS_TCL_DATA_CMD)
 #define HAL_TX_DESC_LEN_BYTES  (NUM_OF_DWORDS_TCL_DATA_CMD * 4)
+#endif
 #define HAL_TX_EXTENSION_DESC_LEN_DWORDS (NUM_OF_DWORDS_TX_MSDU_EXTENSION)
 #define HAL_TX_EXTENSION_DESC_LEN_BYTES (NUM_OF_DWORDS_TX_MSDU_EXTENSION * 4)
 
@@ -239,7 +244,9 @@ enum hal_tx_comp_rel_src {
  *       <enum 2     1_6_us_sgi > HE related GI
  *       <enum 3     3_2_us_sgi > HE
  * @mcs: Transmit MCS Rate
+ * @unequal_modulation: unequal modulation information for transmission
  * @ofdma: Set when the transmission was an OFDMA transmission
+ * @reserved_bn: reserved
  * @tones_in_ru: The number of tones in the RU used.
  * @reserved5: reserved
  * @tsf: Lower 32 bits of the TSF
@@ -269,14 +276,22 @@ struct hal_tx_completion_status {
 		 stbc:1,
 		 ldpc:1,
 		 sgi:2,
+#ifdef CONFIG_BORON
+		 mcs:5,
+		 unequal_modulation:3,
+		 ofdma:1,
+		 reserved_bn:4,
+		 tones_in_ru:4,
+#else
 		 mcs:4,
 		 ofdma:1,
 		 tones_in_ru:12,
-	#ifdef TX_NSS_STATS_SUPPORT
+#endif
+#ifdef TX_NSS_STATS_SUPPORT
 		 tx_nss:3;
-	#else
+#else
 		 reserved5:3;
-	#endif
+#endif
 	uint32_t tsf;
 	uint32_t peer_id:16,
 		 tid:8,

@@ -4067,7 +4067,8 @@ void qdf_initialize_module_param_from_ini(void)
 	QDF_STATUS status;
 	char *path = QDF_WIFI_MODULE_PARAMS_FILE;
 
-	status = qdf_ini_parse(path, NULL, qdf_module_param_handler, NULL);
+	status = qdf_ini_parse(path, NULL, qdf_module_param_handler, NULL,
+			       NULL);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		QDF_TRACE_ERROR(QDF_MODULE_ID_QDF,
 				"Failed to parse *.ini file @ %s; status:%d",

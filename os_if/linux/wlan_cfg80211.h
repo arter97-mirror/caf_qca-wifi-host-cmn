@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -202,9 +202,12 @@
  * @QCA_NL80211_VENDOR_SUBCMD_FLOW_STATS_INDEX: Event index for flow stats
  * @QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_REPORT_INDEX: Event index for
  * the flow report sent for classified flow
+ * @QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_STATUS_INDEX: Event index for
+ * the flow status sent for classified flow
  * @QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX: Event index for async
  * get station sent for ucast cmd
  * @QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX: Idle shutdown event index
+ * @QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX: Power boost event index
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -349,9 +352,13 @@ enum qca_nl80211_vendor_subcmds_index {
 #ifdef WLAN_DP_FEATURE_STC
 	QCA_NL80211_VENDOR_SUBCMD_FLOW_STATS_INDEX,
 	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_REPORT_INDEX,
+	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_STATUS_INDEX,
 #endif
 	QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX,
 	QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX,
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX,
+#endif
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \

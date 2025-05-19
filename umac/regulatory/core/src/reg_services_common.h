@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -2147,13 +2147,15 @@ bool reg_is_6g_psd_power(struct wlan_objmgr_pdev *pdev);
  * @is_psd: is channel PSD or not
  * @tx_power: transmit power to fill for chan_freq
  * @eirp_psd_power: EIRP PSD power, will only be filled if is_psd is true
+ * @get_ap_vlp_power: Get VLP power for AP
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 				    qdf_freq_t chan_freq, bool *is_psd,
 				    int16_t *tx_power,
-				    int16_t *eirp_psd_power);
+				    int16_t *eirp_psd_power,
+				    bool get_ap_vlp_power);
 
 /**
  * reg_get_client_power_for_connecting_ap() - Find the channel information when
@@ -2190,6 +2192,7 @@ QDF_STATUS reg_get_client_power_for_connecting_ap(struct wlan_objmgr_pdev *pdev,
  * @is_psd: is channel PSD or not
  * @tx_power: transmit power to fill for chan_freq
  * @eirp_psd_power: EIRP power, will only be filled if is_psd is true
+ * @get_vlp_pwr: get vlp power
  *
  * This function is meant to be called to find the channel frequency power
  * information for a client when the device is operating as an AP. It will fill
@@ -2202,7 +2205,8 @@ QDF_STATUS reg_get_client_power_for_6ghz_ap(struct wlan_objmgr_pdev *pdev,
 					    enum reg_6g_client_type client_type,
 					    qdf_freq_t chan_freq,
 					    bool *is_psd, int16_t *tx_power,
-					    int16_t *eirp_psd_power);
+					    int16_t *eirp_psd_power,
+					    bool get_vlp_pwr);
 
 /**
  * reg_set_ap_pwr_and_update_chan_list() - Set the AP power mode and recompute
@@ -2359,7 +2363,8 @@ QDF_STATUS reg_get_client_power_for_6ghz_ap(struct wlan_objmgr_pdev *pdev,
 					    enum reg_6g_client_type client_type,
 					    qdf_freq_t chan_freq,
 					    bool *is_psd, int16_t *tx_power,
-					    int16_t *eirp_psd_power)
+					    int16_t *eirp_psd_power,
+					    bool get_vlp_pwr)
 {
 	*is_psd = false;
 	*tx_power = 0;
@@ -3346,6 +3351,36 @@ bool reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
  * Return: True if power type is C2C else false.
  */
 bool reg_is_ap_power_type_c2c(enum reg_6g_ap_type ap_pwr_type);
+
+/**
+ * reg_does_country_supp_c2c() - Check if country supports C2C
+ * @pdev: Pdev object.
+ *
+ * Return: True is country supports C2C else false.
+ */
+bool reg_does_country_supp_c2c(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * reg_process_c2c_detect_evt() - Process C2C detect event
+ * @psoc: PSOC object.
+ * @indoor_ap_found: Indoor AP detected flag.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS reg_process_c2c_detect_evt(struct wlan_objmgr_psoc *psoc,
+				      bool indoor_ap_found);
+
+/**
+ * reg_is_indoor_ap_detected() - Check if indoor AP is been detected
+ * @pdev: Pdev object.
+ *
+ * Use C2C power only if firmware has detected indoor AP in the
+ * vicinity.
+ *
+ * Return: True is C2C power is usable else false.
+ */
+bool
+reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev);
 #else
 static inline bool
 reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
@@ -3358,5 +3393,79 @@ static inline bool reg_is_ap_power_type_c2c(enum reg_6g_ap_type ap_pwr_type)
 {
 	return false;
 }
+
+static inline QDF_STATUS
+reg_process_c2c_detect_evt(struct wlan_objmgr_psoc *psoc,
+			   bool is_indoor_ap_found)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline bool reg_does_country_supp_c2c(struct wlan_objmgr_pdev *pdev)
+{
+	return false;
+}
+
+static inline bool
+reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
+{
+	return false;
+}
 #endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * reg_txpb_send_dma_addr() - TxPB Send DMA address to Firmware
+ * @pdev: pdev pointer
+ * @dma: Pointer to DMA addresses
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				  struct reg_pdev_pb_dma_buf *dma);
+
+/**
+ * reg_process_txpb_event() - Tx powerboost event process
+ * @psoc: psoc pointer
+ * @params: event params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
+			struct reg_txpb_evt_params *params);
+
+/**
+ * reg_txpb_send_inference_cmd() - TxPB Send Inference command
+ * to Firmware
+ * @pdev: pdev pointer
+ * @params: Power boost params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+				  struct reg_txpb_cmd_params *params);
+#else
+static inline
+QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				  struct reg_pdev_pb_dma_buf *dma)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+				  struct reg_txpb_cmd_params *params)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
+			  struct reg_txpb_evt_params *params)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 #endif

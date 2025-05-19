@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -735,6 +735,12 @@ wmi_get_converted_twt_del_dialog_status(WMI_DEL_TWT_STATUS_T tgt_status)
 		return HOST_TWT_DEL_STATUS_SCAN_IN_PROGRESS;
 	case WMI_DEL_TWT_STATUS_UNSUPPORTED_MLMR_MODE:
 		return HOST_TWT_DEL_STATUS_MULTIPLE_LINKS_ACTIVE_TERMINATE;
+	case WMI_DEL_TWT_STATUS_MLO_LINK_INACTIVE:
+		return HOST_DEL_TWT_STATUS_MLO_LINK_INACTIVE;
+	case WMI_DEL_TWT_STATUS_2G_TWT_NOT_ENABLED:
+		return HOST_DEL_TWT_STATUS_2G_TWT_NOT_ENABLED;
+	case WMI_DEL_TWT_STATUS_SCAN_STARTED:
+		return HOST_DEL_TWT_STATUS_SCAN_STARTED;
 	default:
 		return HOST_TWT_DEL_STATUS_UNKNOWN_ERROR;
 	}

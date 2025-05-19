@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -153,6 +153,13 @@ void ucfg_ipa_set_opt_dp_ctrl_flt(
 void ucfg_ipa_set_opt_dp_ctrl_flt_rm(
 			struct wlan_objmgr_pdev *pdev,
 			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt);
+
+/*
+ * ucfg_ipa_dump_logging_stats() - print ipa logging stats
+ *
+ */
+void ucfg_ipa_dump_logging_stats(void);
+
 /**
  * ucfg_ipa_uc_rt_debug_host_dump() - IPA rt debug host dump
  * @pdev: pdev obj
@@ -366,11 +373,11 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr);
 
 /**
  * ucfg_ipa_is_fw_wdi_activated - Is FW WDI activated?
- * @pdev: pdev obj
+ * @psoc: psoc obj
  *
  * Return: true if FW WDI activated, false otherwise
  */
-bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev);
+bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc);
 
 /**
  * ucfg_ipa_uc_cleanup_sta() - disconnect and cleanup sta iface
@@ -778,7 +785,7 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 }
 
 static inline
-bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
+bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }
@@ -889,5 +896,11 @@ ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
 			    wlan_ipa_is_mlo_vdev cb)
 {
 }
+
+static inline void
+ucfg_ipa_dump_logging_stats(void)
+{
+}
+
 #endif /* IPA_OFFLOAD */
 #endif /* _WLAN_IPA_UCFG_API_H_ */

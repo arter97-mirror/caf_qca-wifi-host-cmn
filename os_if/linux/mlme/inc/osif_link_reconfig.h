@@ -43,18 +43,45 @@ int osif_get_net_dev_from_vdev(struct wlan_objmgr_vdev *vdev,
 			       struct net_device **out_net_dev);
 
 /**
+ * osif_free_link_reconfig_done_data() - free link recfg done ctx struct
+ * @ctx: link recfg done ctx
+ *
+ * Return : void
+ */
+void osif_free_link_reconfig_done_data(void *ctx);
+
+/**
+ * osif_populate_link_recfg_done_data() - create recfg done ctx struct
+ * @vdev: vdev object
+ *
+ * Return : link recfg done ctx data
+ */
+void *
+osif_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev);
+
+/**
  * osif_link_reconfig_status_cb() - Callback to set add link or delete link info
- * @vdev: objmgr vdev
+ * @ctx: link recfg done ctx struct
  *
  * This API sends response of link reconfig request to kernel
  *
  * Return: qdf_status
  */
 QDF_STATUS
-osif_link_reconfig_status_cb(struct wlan_objmgr_vdev *vdev);
+osif_link_reconfig_status_cb(void *ctx);
 #else
+static inline void osif_free_link_reconfig_done_data(void *ctx)
+{
+}
+
+static inline void *
+osif_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev)
+{
+	return NULL;
+}
+
 static inline QDF_STATUS
-osif_link_reconfig_status_cb(struct wlan_objmgr_vdev *vdev)
+osif_link_reconfig_status_cb(void *ctx)
 {
 	return QDF_STATUS_SUCCESS;
 }

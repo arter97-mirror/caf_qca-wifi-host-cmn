@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -121,6 +121,13 @@ void ucfg_ipa_set_opt_dp_ctrl_flt_rm(
 }
 
 qdf_export_symbol(ucfg_ipa_set_opt_dp_ctrl_flt_rm);
+
+void ucfg_ipa_dump_logging_stats(void)
+{
+	return ipa_dump_logging_stats();
+}
+
+qdf_export_symbol(ucfg_ipa_dump_logging_stats);
 
 void ucfg_ipa_uc_rt_debug_host_dump(struct wlan_objmgr_pdev *pdev)
 {
@@ -283,9 +290,9 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 
 qdf_export_symbol(ucfg_ipa_uc_smmu_map);
 
-bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
+bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc)
 {
-	return ipa_is_fw_wdi_activated(pdev);
+	return ipa_is_fw_wdi_activated(psoc);
 }
 
 qdf_export_symbol(ucfg_ipa_is_fw_wdi_activated);

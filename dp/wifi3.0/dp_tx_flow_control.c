@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -161,6 +161,191 @@ dp_tx_flow_ctrl_reset_subqueues(struct dp_soc *soc,
 	}
 }
 
+#ifdef NDP_TX_BW_FLOW_CTRL
+static
+void dp_tx_ndp_init_bw_thresholds(struct dp_tx_desc_pool_s *pool)
+{
+	uint8_t i;
+
+	qdf_mem_zero(pool->num_peers_bw, sizeof(pool->num_peers_bw));
+	qdf_mem_zero(pool->prev_desc_dist, sizeof(pool->prev_desc_dist));
+	qdf_mem_zero(pool->curr_desc_dist, sizeof(pool->curr_desc_dist));
+	qdf_mem_zero(pool->avail_desc_per_bw, sizeof(pool->avail_desc_per_bw));
+
+	for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+		pool->stop_th_be_per_bw[i] = NDP_TX_INVALID_BW_SUBQ_THRESH;
+		pool->start_th_be_per_bw[i] = NDP_TX_INVALID_BW_SUBQ_THRESH;
+	}
+
+	pool->bw_queue_pause_bitmap = 0;
+}
+
+static void
+dp_tx_ndp_update_weighted_bw_thresh(struct dp_tx_desc_pool_s *pool)
+{
+	uint16_t cumulative_bw_weight = 0;
+	uint16_t tx_desc_per_unit_weight;
+	uint16_t tx_desc_stop_th_per_unit_weight;
+	uint16_t tx_desc_start_th_per_unit_weight;
+	uint8_t highest_valid_peer_bw;
+	uint8_t i;
+
+	qdf_mem_copy(pool->prev_desc_dist, pool->curr_desc_dist,
+		     sizeof(pool->curr_desc_dist));
+	qdf_mem_zero(pool->curr_desc_dist, sizeof(pool->curr_desc_dist));
+	qdf_mem_zero(pool->stop_th_be_per_bw,
+		     sizeof(pool->stop_th_be_per_bw));
+	qdf_mem_zero(pool->start_th_be_per_bw,
+		     sizeof(pool->start_th_be_per_bw));
+
+	for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+		if (pool->num_peers_bw[i]) {
+			cumulative_bw_weight += BIT(i);
+			highest_valid_peer_bw = i;
+		}
+	}
+
+	if (!cumulative_bw_weight) {
+		/*
+		 * On disconnection of all NDP peers, adjust the available be or
+		 * bk descriptor distribution - the count is not set to zero at
+		 * runtime as there could be outstanding tx completions. This is
+		 * to address potential issues due to frequent NDP peer
+		 * connections and disconnections.
+		 */
+		for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+			pool->avail_desc_per_bw[i] += (pool->curr_desc_dist[i] -
+						       pool->prev_desc_dist[i]);
+			pool->stop_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+			pool->start_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+		}
+		return;
+	}
+
+	tx_desc_per_unit_weight = pool->pool_size / cumulative_bw_weight;
+	tx_desc_stop_th_per_unit_weight = pool->stop_th[DP_TH_BE_BK] /
+					   cumulative_bw_weight;
+	tx_desc_start_th_per_unit_weight = pool->start_th[DP_TH_BE_BK] /
+					   cumulative_bw_weight;
+
+	pool->curr_desc_dist[highest_valid_peer_bw] =
+			(pool->pool_size % cumulative_bw_weight);
+	pool->stop_th_be_per_bw[highest_valid_peer_bw] =
+			(pool->stop_th[DP_TH_BE_BK] % cumulative_bw_weight);
+	pool->start_th_be_per_bw[highest_valid_peer_bw] =
+			(pool->start_th[DP_TH_BE_BK] % cumulative_bw_weight);
+
+	/*
+	 * Adjust the per BW tx descriptors using curr and prev descriptor
+	 * distribution and add the difference to the available count. The
+	 * available count can go negative if there are tx completions pending
+	 * at this point.
+	 */
+	for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+		if (pool->num_peers_bw[i]) {
+			pool->curr_desc_dist[i] +=
+					(tx_desc_per_unit_weight << i);
+			pool->stop_th_be_per_bw[i] +=
+					(tx_desc_stop_th_per_unit_weight << i);
+			pool->start_th_be_per_bw[i] +=
+					(tx_desc_start_th_per_unit_weight << i);
+		} else {
+			pool->stop_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+			pool->start_th_be_per_bw[i] =
+					NDP_TX_INVALID_BW_SUBQ_THRESH;
+		}
+
+		pool->avail_desc_per_bw[i] +=
+			(pool->curr_desc_dist[i] - pool->prev_desc_dist[i]);
+		dp_info("Adjusted BE/BK tx descriptors for BW-%u: %u stop_thresh:%u start thresh:%u",
+			i, pool->curr_desc_dist[i],
+			pool->stop_th_be_per_bw[i],
+			pool->start_th_be_per_bw[i]);
+	}
+}
+
+void dp_tx_ndp_update_bw_thresholds(struct dp_txrx_peer *peer,
+				    enum cdp_peer_bw old_bw,
+				    enum cdp_peer_bw new_bw)
+{
+	struct dp_vdev *vdev = peer->vdev;
+	struct dp_tx_desc_pool_s *pool;
+	bool update_bw_thresh = false;
+
+	if (!vdev)
+		return;
+
+	dp_info("Update bandwidth based tx desc thresholds for NDP old_bw:%u new_bw:%u",
+		old_bw, new_bw);
+
+	pool = vdev->pool;
+	if (!pool) {
+		dp_info("Pool not attached yet to vdev");
+		return;
+	}
+
+	qdf_spin_lock_bh(&pool->flow_pool_lock);
+	if ((old_bw >= CDP_PEER_BW_MAX && new_bw >= CDP_PEER_BW_MAX) ||
+	    (old_bw == new_bw)) {
+		qdf_spin_unlock_bh(&pool->flow_pool_lock);
+		return;
+	}
+
+	/*
+	 * Three possible scenarios where bw thresholds update is required:
+	 * (BW values expected for each scenario)
+	 * 1) NDP peer join - CDP_PEER_BW_MAX and CDP_PEER_BW_*
+	 * 2) NDP peer teardown - CDP_PEER_BW_* and CDP_PEER_BW_MAX
+	 * 3) NDP peer schedule update - CDP_PEER_BW_* and CDP_PEER_BW_*
+	 */
+	if (old_bw < CDP_PEER_BW_MAX && !(--pool->num_peers_bw[old_bw]))
+		update_bw_thresh = true;
+
+	/* Update bw thresholds only for the first peer for that bw */
+	if (new_bw < CDP_PEER_BW_MAX && !(pool->num_peers_bw[new_bw]++))
+		update_bw_thresh = true;
+
+	if (update_bw_thresh)
+		dp_tx_ndp_update_weighted_bw_thresh(pool);
+
+	qdf_spin_unlock_bh(&pool->flow_pool_lock);
+}
+
+static
+void __dp_tx_ndp_set_peer_bw_thresh(struct dp_soc *soc, struct dp_peer *peer,
+				    void *arg)
+{
+	struct qdf_mac_addr bcast_addr = QDF_MAC_ADDR_BCAST_INIT;
+
+	if (peer->bss_peer ||
+	    !qdf_mem_cmp(peer->mac_addr.raw, bcast_addr.bytes,
+			 QDF_MAC_ADDR_SIZE))
+		return;
+
+	dp_tx_ndp_update_bw_thresholds(peer->txrx_peer, CDP_PEER_BW_MAX,
+				       peer->txrx_peer->bw);
+}
+
+static inline
+void dp_tx_ndp_set_peer_bw_thresh(struct dp_vdev *vdev)
+{
+	dp_vdev_iterate_peer(vdev, __dp_tx_ndp_set_peer_bw_thresh, NULL,
+			     DP_MOD_ID_CDP);
+}
+#else
+static inline
+void dp_tx_ndp_init_bw_thresholds(struct dp_tx_desc_pool_s *pool)
+{
+}
+
+static inline
+void dp_tx_ndp_set_peer_bw_thresh(struct dp_vdev *vdev)
+{
+}
+#endif
 #else
 static inline void
 dp_tx_initialize_threshold(struct dp_tx_desc_pool_s *pool,
@@ -494,6 +679,225 @@ int dp_tx_delete_flow_pool(struct dp_soc *soc, struct dp_tx_desc_pool_s *pool,
 	return 0;
 }
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+#define DP_TX_PAGE_POOL_SIZE (10 * 1024)
+
+static void
+dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
+{
+	struct dp_tx_pp_params *pp_params = &tx_pp->tx_pool;
+
+	if (!tx_pp->page_pool_init)
+		return;
+
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	if (pp_params->pp && soc->cdp_soc.ol_ops->dp_put_page_pool) {
+		soc->cdp_soc.ol_ops->dp_put_page_pool(pp_params->pp,
+						      QDF_DP_PAGE_POOL_TX);
+		pp_params->pp = NULL;
+		pp_params->pool_size = 0;
+		pp_params->pp_size = 0;
+	}
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+	tx_pp->page_pool_init = false;
+	qdf_spinlock_destroy(&tx_pp->pp_lock);
+}
+
+static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
+				       struct dp_tx_page_pool *tx_pp,
+				       uint32_t pool_size)
+{
+	struct dp_tx_pp_params *pp_params = &tx_pp->tx_pool;
+	struct dp_page_pool_t *pool_t = NULL;
+
+	memset(tx_pp, 0, sizeof(*tx_pp));
+
+	if (soc->cdp_soc.ol_ops->dp_get_page_pool)
+		pool_t =
+		soc->cdp_soc.ol_ops->dp_get_page_pool(QDF_DP_PAGE_POOL_TX,
+						      pool_size);
+
+	if (pool_t && pool_t->pp) {
+		pp_params->pp = pool_t->pp;
+		pp_params->pool_size = pool_t->pool_size;
+		pp_params->pp_size = pool_t->pp_size;
+	} else {
+		dp_err("failed to get tx page pool");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	dp_info("Tx pp init success pool_size %d pp_size %lu",
+		pool_t->pool_size,  pool_t->pp_size);
+
+	qdf_spinlock_create(&tx_pp->pp_lock);
+	qdf_atomic_init(&tx_pp->ref_cnt);
+	tx_pp->page_pool_init = true;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * dp_tx_page_pool_mlo_vdev_attach() - Attach TX page pool for MLO STA
+ * @soc: DP SoC reference
+ * @vdev: vdev: DP vdev reference
+ *
+ * This function attaches TX page pool for the MLO station, all VDEVs
+ * belonging to the MLO station will share single TX page pool.
+ */
+static bool
+dp_tx_page_pool_mlo_vdev_attach(struct dp_soc *soc, struct dp_vdev *vdev)
+{
+	struct dp_tx_page_pool *tx_pp;
+	struct dp_vdev *iter_vdev;
+	int i;
+
+	if (vdev->opmode != wlan_op_mode_sta)
+		return false;
+
+	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)vdev->mld_mac_addr.raw))
+		return false;
+
+	qdf_spin_lock_bh(&soc->vdev_map_lock);
+	for (i = 0; i < MAX_VDEV_CNT; i++) {
+		if (!soc->vdev_id_map[i])
+			continue;
+
+		iter_vdev = soc->vdev_id_map[i];
+		if (dp_vdev_get_ref(soc, iter_vdev, DP_MOD_ID_CDP) !=
+				    QDF_STATUS_SUCCESS) {
+			dp_info("Unable to get vdev ref");
+			continue;
+		}
+
+		if (qdf_is_macaddr_equal((struct qdf_mac_addr *)iter_vdev->mld_mac_addr.raw,
+					 (struct qdf_mac_addr *)vdev->mld_mac_addr.raw)) {
+			tx_pp = soc->tx_pp[i];
+			dp_vdev_unref_delete(soc, iter_vdev, DP_MOD_ID_CDP);
+			break;
+		}
+		dp_vdev_unref_delete(soc, iter_vdev, DP_MOD_ID_CDP);
+	}
+	qdf_spin_unlock_bh(&soc->vdev_map_lock);
+
+	if (i == MAX_VDEV_CNT || !(tx_pp && tx_pp->page_pool_init))
+		return false;
+
+	soc->tx_pp[vdev->vdev_id] = tx_pp;
+	qdf_atomic_inc(&tx_pp->ref_cnt);
+
+	return true;
+}
+#else
+static inline bool
+dp_tx_page_pool_mlo_vdev_attach(struct dp_soc *soc, struct dp_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BE_MLO */
+
+/**
+ * dp_tx_page_pool_vdev_attach() - Attach TX page pool to the VDEV
+ * @pdev: Handle to struct dp_pdev
+ * @vdev_id: flow_id /vdev_id
+ * @pool_size: size of the pool
+ *
+ * This function attaches TX page pool to the DP VDEV.
+ */
+static void dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
+					uint32_t pool_size)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct dp_tx_page_pool *tx_pp;
+	struct dp_vdev *vdev;
+
+	if (!wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx)) {
+		dp_info("Tx page pool disabled from INI");
+		return;
+	}
+
+	pool_size = DP_TX_PAGE_POOL_SIZE;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
+			  "%s: invalid vdev_id %d", __func__, vdev_id);
+		return;
+	}
+
+	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	if (soc->tx_pp[vdev_id]) {
+		dp_err("Not expected to have tx_pp attached for a new vdev");
+		qdf_assert_always(0);
+		goto unref_vdev;
+	}
+
+	if (dp_tx_page_pool_mlo_vdev_attach(soc, vdev))
+		goto unref_vdev;
+
+	tx_pp = qdf_mem_malloc(sizeof(*tx_pp));
+	if (!tx_pp) {
+		dp_err("Failed to allocated memory for tx page pool");
+		goto unref_vdev;
+	}
+
+	dp_tx_page_pool_init(soc, tx_pp, pool_size);
+	if (!tx_pp->page_pool_init) {
+		dp_err("Unable to init tx page pool for vdev %d", vdev_id);
+		qdf_mem_free(tx_pp);
+		goto unref_vdev;
+	}
+
+	soc->tx_pp[vdev_id] = tx_pp;
+	qdf_atomic_inc(&tx_pp->ref_cnt);
+
+unref_vdev:
+	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+}
+
+/**
+ * dp_tx_page_pool_vdev_detach() - Detach TX page pool to the VDEV
+ * @pdev: Handle to struct dp_pdev
+ * @vdev_id: flow_id /vdev_id
+ *
+ * This function detaches TX page pool to the DP VDEV.
+ */
+static void dp_tx_page_pool_vdev_detach(struct dp_pdev *pdev, uint8_t vdev_id)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev_id];
+
+	if (!wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx))
+		return;
+
+	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	if (!tx_pp || !tx_pp->page_pool_init)
+		goto out_unlock;
+
+	if (!qdf_atomic_dec_and_test(&tx_pp->ref_cnt))
+		goto out_unlock;
+
+	dp_tx_page_pool_deinit(soc, tx_pp);
+	qdf_mem_free(tx_pp);
+out_unlock:
+	soc->tx_pp[vdev_id] = NULL;
+	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+}
+#else /* !DP_FEATURE_TX_PAGE_POOL */
+static inline void
+dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
+			    uint32_t pool_size)
+{
+}
+
+static inline void
+dp_tx_page_pool_vdev_detach(struct dp_pdev *pdev, uint8_t vdev_id)
+{
+}
+#endif /* DP_FEATURE_TX_PAGE_POOL */
+
 /**
  * dp_tx_flow_pool_vdev_map() - Map flow_pool with vdev
  * @pdev: Handle to struct dp_pdev
@@ -507,6 +911,7 @@ static void dp_tx_flow_pool_vdev_map(struct dp_pdev *pdev,
 {
 	struct dp_vdev *vdev;
 	struct dp_soc *soc = pdev->soc;
+	bool is_ndp_bw_flow_ctrl;
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev) {
@@ -516,11 +921,28 @@ static void dp_tx_flow_pool_vdev_map(struct dp_pdev *pdev,
 		return;
 	}
 
+	is_ndp_bw_flow_ctrl =
+			(vdev->opmode == wlan_op_mode_ndi &&
+			 wlan_cfg_get_ndp_bw_flow_ctrl_cfg(soc->wlan_cfg_ctx));
+
 	vdev->pool = pool;
 	qdf_spin_lock_bh(&pool->flow_pool_lock);
 	pool->pool_owner_ctx = soc;
 	pool->flow_pool_id = vdev_id;
+	if (is_ndp_bw_flow_ctrl) {
+		dp_tx_flow_pool_set_vdev_opmode(pool, vdev->opmode);
+		dp_tx_ndp_init_bw_thresholds(pool);
+	}
 	qdf_spin_unlock_bh(&pool->flow_pool_lock);
+
+	/*
+	 * Tx flow pool is mapped on the first NDP peer connection and any
+	 * set_bw that happened for the peer would not update the descriptor
+	 * distribution so iterate through the peers for NDI vdev and update
+	 * the peer count and thresholds in tx desc pool.
+	 */
+	if (is_ndp_bw_flow_ctrl)
+		dp_tx_ndp_set_peer_bw_thresh(vdev);
 
 	/* need do pool refcnt++ for itself after created */
 	soc->arch_ops.dp_mlo_tx_pool_map(soc, vdev->vdev_id,
@@ -604,6 +1026,7 @@ QDF_STATUS dp_tx_flow_pool_map_handler(struct dp_pdev *pdev, uint8_t flow_id,
 
 	case FLOW_TYPE_VDEV:
 		dp_tx_flow_pool_vdev_map(pdev, pool, flow_id);
+		dp_tx_page_pool_vdev_attach(pdev, flow_id, flow_pool_size);
 		break;
 	default:
 		dp_err("flow type %d not supported", type);
@@ -668,6 +1091,7 @@ void dp_tx_flow_pool_unmap_handler(struct dp_pdev *pdev, uint8_t flow_id,
 	switch (type) {
 
 	case FLOW_TYPE_VDEV:
+		dp_tx_page_pool_vdev_detach(pdev, flow_id);
 		dp_tx_flow_pool_vdev_unmap(pdev, pool, flow_id);
 		break;
 	default:

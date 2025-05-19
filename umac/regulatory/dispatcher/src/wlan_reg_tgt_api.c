@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -76,6 +75,14 @@ QDF_STATUS tgt_reg_process_master_chan_list_ext(struct cur_regulatory_info
 
 	return reg_process_master_chan_list_ext(reg_info);
 }
+
+#ifdef CONFIG_REG_CLIENT
+QDF_STATUS tgt_reg_process_c2c_detect_evt(struct wlan_objmgr_psoc *psoc,
+					  bool indoor_ap_found)
+{
+	return reg_process_c2c_detect_evt(psoc, indoor_ap_found);
+}
+#endif
 
 QDF_STATUS
 tgt_reg_set_both_psd_eirp_preferred_support(struct wlan_objmgr_psoc *psoc,
@@ -202,3 +209,20 @@ QDF_STATUS tgt_reg_process_r2p_table_update_response(
 {
 	return reg_process_r2p_table_update_response(psoc, pdev_id);
 }
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS
+tgt_reg_process_txpb_event_handler(struct wlan_objmgr_psoc *psoc,
+				   struct reg_txpb_evt_params *params)
+{
+	struct wlan_regulatory_psoc_priv_obj *soc_reg;
+
+	soc_reg = reg_get_psoc_obj(psoc);
+	if (!IS_VALID_PSOC_REG_OBJ(soc_reg)) {
+		reg_err("psoc reg component is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return reg_process_txpb_event(psoc, params);
+}
+#endif

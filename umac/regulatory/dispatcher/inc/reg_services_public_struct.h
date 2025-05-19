@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -28,6 +28,8 @@
 #ifdef CONFIG_AFC_SUPPORT
 #include <wlan_reg_afc.h>
 #endif
+
+#include "qdf_list.h"
 
 #ifdef CONFIG_BAND_6GHZ
 #define REG_MAX_CHANNELS_PER_OPERATING_CLASS        70
@@ -2440,4 +2442,113 @@ struct r2p_table_update_status_obj {
 	uint32_t pdev_id;
 	uint32_t status;
 };
+
+/**
+ * enum reg_host_pdev_power_boost_event_status - power boost status
+ * @REG_HOST_POWER_BOOST_START_INFERENCE: Start inference
+ * @REG_HOST_POWER_BOOST_ABORT: Abort
+ * @REG_HOST_POWER_BOOST_COMPLETE: Inference complete
+ *
+ * This enum is 1:1 mapping to enum wmi_pdev_power_boost_event_type
+ */
+enum reg_host_pdev_power_boost_event_status {
+	REG_HOST_POWER_BOOST_START_INFERENCE = 0,
+	REG_HOST_POWER_BOOST_ABORT           = 1,
+	REG_HOST_POWER_BOOST_COMPLETE        = 2,
+};
+
+/**
+ * enum reg_host_tx_pb_inference_stage - Inference stage
+ * @REG_HOST_TX_PB_INFERENCE_FIRST_PASS: 1st pass
+ * @REG_HOST_TX_PB_INFERENCE_SECOND_PASS: 2nd pass
+ *
+ * This enum is 1:1 mapping to enum wmi_pdev_power_boost_inferencing_stage
+ */
+enum reg_host_tx_pb_inference_stage {
+	REG_HOST_TX_PB_INFERENCE_FIRST_PASS  = 0,
+	REG_HOST_TX_PB_INFERENCE_SECOND_PASS = 1,
+};
+
+/**
+ * enum reg_host_pdev_power_boost_cmd_status - power boost command status
+ * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY: App ready status
+ * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA: Power boost inference
+ * result
+ * @REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT: Abort power boost inference
+ */
+enum reg_host_pdev_power_boost_cmd_status {
+	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_READY = 0,
+	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ESTIMATED_DATA,
+	REG_HOST_PDEV_POWER_BOOST_CMD_STATUS_ABORT,
+};
+
+/**
+ * struct reg_pdev_pb_dma_buf - Power boost DMA buffer struct for WMI
+ *
+ * @paddr_aligned_lo: Physical address lower 32-bits
+ * @paddr_aligned_hi: Physical address high 32-bits
+ * @size: DMA buffer size for power boost
+ */
+struct reg_pdev_pb_dma_buf {
+	uint32_t paddr_aligned_lo;
+	uint32_t paddr_aligned_hi;
+	uint32_t size;
+};
+
+/**
+ * struct reg_txpb_cmn_params - Power boost common params
+ * @node: List entry element
+ * @pdev_id: PDEV ID
+ * @status: status
+ * @inference_stage: Power Boost inference Stage
+ * @mcs: MCS of the Power Boost samples collected
+ * @bandwidth: Bandwidth of the Power Boost samples collected
+ * @temperature_degreeC: Temperature in Celsius
+ * @primary_chan_mhz: Primary channel frequency
+ * @center_freq1: Center frequency 1
+ * @center_freq2: Center frequency 2
+ * @phy_mode: PHY mode
+ * @req_id: Request id
+ */
+struct reg_txpb_cmn_params {
+	qdf_list_node_t node;
+	uint32_t pdev_id;
+	uint32_t status;
+	enum reg_host_tx_pb_inference_stage inference_stage;
+	uint32_t mcs;
+	uint32_t bandwidth;
+	int32_t  temperature_degreeC;
+	uint32_t primary_chan_mhz;
+	uint32_t center_freq1;
+	uint32_t center_freq2;
+	uint32_t phy_mode;
+	uint32_t req_id;
+};
+
+/**
+ * struct reg_txpb_evt_params - Power boost event params
+ * @cmn_params: These are the common params applicable to event and command
+ * @tx_pwr: ANN packet tx_power
+ * @tx_chain_idx: Tx chain index on which ANN packet sent
+ * @iq_sample_buf_size: IQ sample size
+ */
+struct reg_txpb_evt_params {
+	struct reg_txpb_cmn_params cmn_params;
+	int32_t  tx_pwr;
+	uint32_t tx_chain_idx;
+	uint32_t iq_sample_buf_size;
+};
+
+/**
+ * struct reg_txpb_cmd_params - Power boost cmd params
+ * @cmn_params: These are the common params applicable to event and command
+ * @tx_evm: Tx Error Vector Magnitude
+ * @mask_margin: Mask margin
+ */
+struct reg_txpb_cmd_params {
+	struct reg_txpb_cmn_params cmn_params;
+	int32_t  tx_evm;
+	int32_t  mask_margin;
+};
+
 #endif

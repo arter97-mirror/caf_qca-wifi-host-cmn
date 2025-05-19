@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1333,6 +1333,32 @@ wmi_unified_pdev_param_send(wmi_unified_t wmi_handle,
 			    struct pdev_params *param,
 			    uint8_t mac_id);
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * wmi_unified_pdev_pb_mem_ind_send() - Send Powerboost Command
+ * @wmi_handle: wmi handle
+ * @buf: pointer to DMA buffer
+ * @mac_id: radio context
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failures,
+ */
+QDF_STATUS
+wmi_unified_pdev_pb_mem_ind_send(wmi_unified_t wmi_handle,
+				 struct reg_pdev_pb_dma_buf *buf,
+				 uint8_t mac_id);
+
+/**
+ * wmi_unified_pdev_pb_send_inference_cmd() - Send Inference Command
+ * @wmi_handle: wmi handle
+ * @params: powerboost parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failures,
+ */
+QDF_STATUS
+wmi_unified_pdev_pb_send_inference_cmd(wmi_unified_t wmi_handle,
+			struct reg_txpb_cmd_params *params);
+#endif
+
 /**
  * wmi_unified_fd_tmpl_send_cmd() - WMI FILS Discovery send function
  * @wmi_handle: handle to WMI.
@@ -2122,6 +2148,18 @@ QDF_STATUS
 wmi_extract_apf_read_memory_resp_event(wmi_unified_t wmi, void *evt_buf,
 				struct wmi_apf_read_memory_resp_event_params
 								*read_mem_evt);
+
+/**
+ * wmi_unified_set_apf_supported_offload_bitmap_cmd() - config APF supported
+ * offload bitmap in FW
+ * @wmi: the WMI handle
+ * @vdev_id: the Id of the vdev to apply the configuration to
+ * @offload_bitmap: the bitmap for APF supported offloads
+ */
+QDF_STATUS
+wmi_unified_set_apf_supported_offload_bitmap_cmd(wmi_unified_t wmi,
+						 uint8_t vdev_id,
+						 uint32_t offload_bitmap);
 #endif /* FEATURE_WLAN_APF */
 
 /**
@@ -5431,5 +5469,35 @@ QDF_STATUS wmi_unified_cached_scan_report_cmd_send(wmi_unified_t wmi_handle);
 void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
 					       void *ev_data,
 					       uint32_t data_len);
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * wmi_extract_power_boost_capability - Extract power boost capability from
+ * service ready EXT2 event
+ * @wmi_handle: Handle to WMI
+ * @evt_buf: Event buffer
+ * @phy_idx: Phy index
+ * @pb_cap: pointer to powerboost capability
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_power_boost_capability(wmi_unified_t wmi_handle, void *evt_buf,
+				   uint8_t phy_idx, bool *pb_cap);
+
+/**
+ * wmi_extract_pdev_power_boost_ev_params - WMI to extract power boost event
+ * from FW
+ *
+ * @wmi_handle: Handle to WMI
+ * @buf: Event buffer
+ * @pb_params: Pointer to power boost event params
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_pdev_power_boost_ev_params(wmi_unified_t wmi_handle, uint8_t *buf,
+					struct reg_txpb_evt_params *pb_params);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

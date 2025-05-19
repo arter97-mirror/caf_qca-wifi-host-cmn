@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -84,6 +84,53 @@ dp_tx_comp_get_params_from_hal_desc_rh(struct dp_soc *soc,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
+
+/**
+ * dp_tx_comp_desc_sanity_check_rh() - Check sanity for tx desc
+ *
+ * @msg_word: Msdu info msg word
+ * @tx_desc: TX desc
+ *
+ * Compare paddr for completion desc and tx desc found through sw cookie.
+ *
+ * Return: QDF_STATUS_SUCCESS if paddr is same for tx desc and completion desc
+ *		   QDF_STATUS_E_FAILURE incase paddr in descriptors don't match.
+ *
+ */
+static inline
+QDF_STATUS dp_tx_comp_desc_sanity_check_rh(uint32_t *msg_word,
+					   struct dp_tx_desc_s *tx_desc)
+{
+	qdf_dma_addr_t desc_dma_addr;
+	uint32_t paddr_lo;
+	uint32_t paddr_hi;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	paddr_lo = HTT_TX_BUFFER_ADDR_INFO_ADDR_31_0_GET(*msg_word);
+	paddr_hi = HTT_TX_BUFFER_ADDR_INFO_ADDR_39_32_GET(*(msg_word + 1));
+	desc_dma_addr = (qdf_dma_addr_t)(paddr_lo |
+					(((uint64_t)paddr_hi) << 32));
+
+	if (desc_dma_addr != tx_desc->dma_addr) {
+		dp_err("Mismatched paddr. tx desc %pK sw cookie %lu",
+		       tx_desc,
+		       HTT_TX_BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_GET(*(msg_word + 1)));
+		dp_err("dma addr in tx desc 0x%llx,dma addr in msdu info 0x%llx",
+		       (uint64_t)tx_desc->dma_addr,
+		       (uint64_t)desc_dma_addr);
+		status = QDF_STATUS_E_FAILURE;
+	}
+	return status;
+}
+#else
+static inline
+QDF_STATUS dp_tx_comp_desc_sanity_check_rh(uint32_t *msg_word,
+					   struct dp_tx_desc_s *tx_desc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 /**
  * dp_tx_comp_find_tx_desc_rh() - Find software TX descriptor using sw_cookie
  *
@@ -710,6 +757,7 @@ void dp_tx_compl_handler_rh(struct dp_soc *soc, qdf_nbuf_t htt_msg)
 	uint32_t *msg_word;
 	uint8_t ring_id;
 	uint8_t tx_status;
+	QDF_STATUS status;
 	int i;
 
 	DP_HIST_INIT();
@@ -727,6 +775,15 @@ void dp_tx_compl_handler_rh(struct dp_soc *soc, qdf_nbuf_t htt_msg)
 			qdf_assert_always(0);
 		}
 
+		status = dp_tx_comp_desc_sanity_check_rh(msg_word, tx_desc);
+		if (qdf_unlikely(QDF_IS_STATUS_ERROR(status))) {
+			dp_err("Sanity check for tx desc failed. TX completion desc:");
+			QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_TXRX,
+					   QDF_TRACE_LEVEL_FATAL,
+					   msg_word, HTT_TX_MSDU_INFO_SIZE);
+			qdf_assert_always(0);
+			goto next_msdu;
+		}
 		/*
 		 * If the descriptor is already freed in vdev_detach,
 		 * continue to next descriptor

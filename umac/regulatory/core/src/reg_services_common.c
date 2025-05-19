@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -43,6 +43,7 @@
 #ifdef WLAN_FEATURE_GET_USABLE_CHAN_LIST
 #include "wlan_mlme_ucfg_api.h"
 #include "wlan_nan_api.h"
+#include "wlan_p2p_ucfg_api.h"
 #endif
 #ifndef CONFIG_REG_CLIENT
 #include <wlan_reg_channel_api.h>
@@ -4014,6 +4015,38 @@ reg_update_list_for_dfs_channel(struct wlan_objmgr_pdev *pdev,
 	}
 }
 
+/*
+ * reg_check_p2p_go_indoor_allowed() - P2P GO allowed on indoor channel or not
+ * @psoc: psoc
+ * @res_msg: Response msg
+ * @chan_state: Channel state
+ * @chan_enum: Channel enum
+ * @iface_mode: interface mode
+ */
+static bool
+reg_check_p2p_go_indoor_allowed(struct wlan_objmgr_psoc *psoc,
+				struct get_usable_chan_res_params *res_msg,
+				enum channel_state chan_state,
+				uint32_t chan_enum, uint32_t iface_mode)
+{
+	/*
+	 * Don't remove indoor frequency for P2P GO
+	 * if indoor support "p2p_go_on_5ghz_indoor_chan"
+	 * ini is enabled.
+	 */
+	if (!ucfg_p2p_get_indoor_ch_support(psoc) ||
+	    !reg_is_state_allowed(chan_state)) {
+		res_msg[chan_enum].iface_mode_mask &=
+			 ~(iface_mode);
+		if (!res_msg[chan_enum].iface_mode_mask)
+			reg_remove_freq(res_msg, chan_enum);
+
+		return false;
+	}
+
+	return true;
+}
+
 /**
  * reg_skip_invalid_chan_freq() - Remove invalid freq for SAP, P2P GO
  *				  and NAN
@@ -4038,6 +4071,7 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 	enum reg_6g_ap_type ap_pwr_type;
 	enum supported_6g_pwr_types ap_pwr_mode;
 	enum channel_state chan_state;
+	bool is_allowed;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
@@ -4073,6 +4107,8 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 		ap_pwr_mode = REG_AP_SP;
 	else if (ap_pwr_type == REG_VERY_LOW_POWER_AP)
 		ap_pwr_mode = REG_AP_VLP;
+	else if (ap_pwr_type == REG_INDOOR_ENABLED_AP)
+		ap_pwr_mode = REG_AP_C2C;
 	else
 		ap_pwr_mode = REG_INVALID_PWR_MODE;
 
@@ -4102,17 +4138,37 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 				chan_state = reg_get_channel_state_for_pwrmode(
 						pdev, res_msg[chan_enum].freq,
 						ap_pwr_mode);
-				if (!reg_is_state_allowed(chan_state) ||
-				    (wlan_reg_is_freq_indoor(
-					pdev, res_msg[chan_enum].freq) &&
-					!include_indoor_channel)) {
-					res_msg[chan_enum].iface_mode_mask &=
-							~(iface_mode);
-					if (!res_msg[chan_enum].iface_mode_mask)
-						reg_remove_freq(res_msg,
-								chan_enum);
-				}
+				if (wlan_reg_is_freq_indoor(
+				     pdev, res_msg[chan_enum].freq)) {
+					if (iface_mode_mask &
+						(1 << IFTYPE_P2P_GO)) {
+						is_allowed =
+							reg_check_p2p_go_indoor_allowed(
+								psoc,
+								res_msg,
+								chan_state,
+								chan_enum,
+								iface_mode);
 
+						/*
+						 * Don't remove indoor frequency for
+						 * P2P, if indoor support for P2P is
+						 * enabled.
+						 */
+						if (is_allowed)
+							goto srd_check;
+					} else if (!reg_is_state_allowed(
+								chan_state) ||
+						   !include_indoor_channel) {
+						res_msg[chan_enum].iface_mode_mask &=
+							~(iface_mode);
+						if (!res_msg[chan_enum].iface_mode_mask)
+							reg_remove_freq(
+								res_msg,
+								chan_enum);
+					}
+				}
+srd_check:
 				if (!(enable_srd_chan & srd_mask) &&
 				    reg_is_etsi_srd_chan_for_freq(
 					pdev, res_msg[chan_enum].freq)) {
@@ -4562,7 +4618,7 @@ static uint32_t reg_get_channel_flags_for_freq(struct wlan_objmgr_pdev *pdev,
 	chan_enum = reg_get_chan_enum_for_freq(freq);
 
 	if (reg_is_chan_enum_invalid(chan_enum)) {
-		reg_debug("chan freq is not valid");
+		reg_debug("chan freq is not valid %d", freq);
 		return REGULATORY_CHAN_INVALID;
 	}
 
@@ -4779,10 +4835,8 @@ decide_power_type:
 		*power_type = REG_INDOOR_AP;
 	else if (min_chan_flags & REGULATORY_CHAN_AFC)
 		*power_type = REG_STANDARD_POWER_AP;
-	else if (min_chan_flags & REGULATORY_CHAN_INDOOR_ONLY)
-		*power_type = REG_INDOOR_AP;
 	else
-		*power_type = REG_VERY_LOW_POWER_AP;
+		reg_get_cur_6g_ap_pwr_type(pdev, power_type);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -8468,7 +8522,8 @@ reg_get_6g_chan_psd_eirp_power(qdf_freq_t freq,
 QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 				    qdf_freq_t chan_freq, bool *is_psd,
 				    int16_t *tx_power,
-				    int16_t *eirp_psd_power)
+				    int16_t *eirp_psd_power,
+				    bool get_ap_vlp_power)
 {
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
 	struct regulatory_channel *master_chan_list;
@@ -8481,9 +8536,13 @@ QDF_STATUS reg_get_6g_chan_ap_power(struct wlan_objmgr_pdev *pdev,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
-	if (!QDF_IS_STATUS_SUCCESS(status))
-		return status;
+	if (get_ap_vlp_power) {
+		ap_pwr_type = REG_VERY_LOW_POWER_AP;
+	} else {
+		status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
+		if (!QDF_IS_STATUS_SUCCESS(status))
+			return status;
+	}
 
 	master_chan_list = pdev_priv_obj->mas_chan_list_6g_ap[ap_pwr_type];
 
@@ -8537,16 +8596,21 @@ QDF_STATUS reg_get_client_power_for_6ghz_ap(struct wlan_objmgr_pdev *pdev,
 					    enum reg_6g_client_type client_type,
 					    qdf_freq_t chan_freq,
 					    bool *is_psd, int16_t *tx_power,
-					    int16_t *eirp_psd_power)
+					    int16_t *eirp_psd_power,
+					    bool get_vlp_pwr)
 {
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
 	enum reg_6g_ap_type ap_pwr_type;
 	struct regulatory_channel *master_chan_list;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
-	status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
-	if (!QDF_IS_STATUS_SUCCESS(status))
-		return status;
+	if (get_vlp_pwr) {
+		ap_pwr_type = REG_VERY_LOW_POWER_AP;
+	} else {
+		status = reg_get_cur_6g_ap_pwr_type(pdev, &ap_pwr_type);
+		if (!QDF_IS_STATUS_SUCCESS(status))
+			return status;
+	}
 
 	pdev_priv_obj = reg_get_pdev_obj(pdev);
 	if (!pdev_priv_obj) {
@@ -10864,3 +10928,77 @@ reg_find_non_punctured_bw(uint16_t bw,  uint16_t in_punc_pattern)
 	return (bw - num_punc_bw * 20);
 }
 #endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				  struct reg_pdev_pb_dma_buf *dma)
+{
+	struct wlan_lmac_if_reg_tx_ops *reg_tx_ops;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_objmgr_psoc *psoc;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("TPB: psoc is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops) {
+		reg_err("TPB: reg_tx_ops is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	reg_err("TPB: in reg_txpb_send_dma_addr");
+	if (reg_tx_ops->txpb_send_dma_addr)
+		status = reg_tx_ops->txpb_send_dma_addr(pdev, dma);
+
+	return status;
+}
+
+QDF_STATUS reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+			  struct reg_txpb_cmd_params *params)
+{
+	struct wlan_lmac_if_reg_tx_ops *reg_tx_ops;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_objmgr_psoc *psoc;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("TPB: psoc is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops) {
+		reg_err("TPB: reg_tx_ops is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (reg_tx_ops->txpb_send_inference_cmd)
+		status = reg_tx_ops->txpb_send_inference_cmd(pdev, params);
+
+	return status;
+}
+
+QDF_STATUS
+reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
+			struct reg_txpb_evt_params *params)
+{
+	struct wlan_regulatory_psoc_priv_obj *soc_reg;
+
+	soc_reg = reg_get_psoc_obj(psoc);
+	if (!IS_VALID_PSOC_REG_OBJ(soc_reg)) {
+		reg_err("psoc reg component is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (soc_reg->txpb_cbk.cbk)
+		soc_reg->txpb_cbk.cbk(soc_reg->txpb_cbk.arg, params);
+	else
+		reg_err("TPB: soc_reg->txpb_cbk.cbk NULL");
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+

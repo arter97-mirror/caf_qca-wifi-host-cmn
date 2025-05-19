@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2618,12 +2618,14 @@ void __qdf_dmaaddr_to_32s(qdf_dma_addr_t dmaaddr,
  * @osdev: qdf device handle
  * @skb: Jumbo TSO network buffer
  * @head_skb: skb list
+ * @tx_pp: TX page pool reference
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 					       struct sk_buff *skb,
-					       struct sk_buff **head_skb);
+					       struct sk_buff **head_skb,
+					       qdf_page_pool_t tx_pp);
 #endif
 
 /**
@@ -4057,6 +4059,19 @@ void __qdf_nbuf_set_protocol_eth_type_trans(struct sk_buff *skb)
 static inline qdf_ktime_t __qdf_nbuf_net_timedelta(qdf_ktime_t t)
 {
 	return net_timedelta(t);
+}
+
+/**
+ * __qdf_nbuf_copy_header() - copy SKB header portion into another SKB
+ * @to_skb: dest skb reference
+ * @from_skb: source skb reference
+ *
+ * Return: void
+ */
+static inline void
+__qdf_nbuf_copy_header(struct sk_buff *to_skb, struct sk_buff *from_skb)
+{
+	return skb_copy_header(to_skb, from_skb);
 }
 
 #ifdef CONFIG_NBUF_AP_PLATFORM

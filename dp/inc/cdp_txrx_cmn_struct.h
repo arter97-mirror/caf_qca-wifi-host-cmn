@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -547,12 +547,18 @@ enum ol_txrx_peer_state {
  * @peer_id: Peer ID
  * @state: peer state
  * @mld_peer: whether is mld peer
+ * @txpt_classify_idx_valid: Is txpt_classify_idx valid
+ * @txpt_classify_idx: peer msdu queue flow_index
  */
 struct cdp_peer_output_param {
 	uint8_t vdev_id;
 	uint16_t peer_id;
 	enum ol_txrx_peer_state state;
 	bool mld_peer;
+#ifdef CONFIG_BORON
+	bool txpt_classify_idx_valid;
+	uint8_t txpt_classify_idx;
+#endif
 };
 
 /**
@@ -677,10 +683,12 @@ struct cdp_mscs_params {
 /**
  * enum cdp_peer_event - Peer events
  * @CDP_PEER_EVENT_MAP: Peer map event
+ * @CDP_PEER_EVENT_MLO_MAP: MLO Peer map event
  * @CDP_PEER_EVENT_UNMAP: Peer unmap event
  */
 enum cdp_peer_event {
 	CDP_PEER_EVENT_MAP,
+	CDP_PEER_EVENT_MLO_MAP,
 	CDP_PEER_EVENT_UNMAP,
 };
 
@@ -1375,6 +1383,7 @@ struct cdp_soc_t {
  * @CDP_CONFIG_PEER_DMS: Dms capability of peer
  * @CDP_CONFIG_TX_PKT_INFO: TX packet count
  * @CDP_CONFIG_RX_PKT_INFO: RX packet count
+ * @CDP_CONFIG_PEER_BW: configure peer bandwidth
  */
 enum cdp_peer_param_type {
 	CDP_CONFIG_NAWDS,
@@ -1386,6 +1395,7 @@ enum cdp_peer_param_type {
 	CDP_CONFIG_PEER_DMS,
 	CDP_CONFIG_TX_PKT_INFO,
 	CDP_CONFIG_RX_PKT_INFO,
+	CDP_CONFIG_PEER_BW,
 };
 
 /**
@@ -1485,6 +1495,7 @@ enum cdp_pdev_param_type {
  * @cdp_peer_param_in_twt: in TWT session or not
  * @cdp_peer_param_nac: Enable nac
  * @cdp_peer_param_freq: Peer frequency
+ * @cdp_peer_param_bw: peer bandwidth
  *
  * @cdp_vdev_param_nawds: set nawds enable/disable
  * @cdp_vdev_param_mcast_en: enable/disable multicast enhancement
@@ -1594,6 +1605,7 @@ typedef union cdp_config_param_t {
 	uint8_t cdp_peer_param_nac;
 	bool cdp_peer_param_in_twt;
 	uint32_t cdp_peer_param_freq;
+	enum cdp_peer_bw cdp_peer_param_bw;
 
 	/* vdev params */
 	bool cdp_vdev_param_wds;

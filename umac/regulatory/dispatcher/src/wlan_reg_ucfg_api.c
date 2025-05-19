@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -530,4 +529,30 @@ ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 }
 
 qdf_export_symbol(ucfg_reg_get_num_rules_of_ap_pwr_type);
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				       struct reg_pdev_pb_dma_buf *dma)
+{
+	return reg_txpb_send_dma_addr(pdev, dma);
+}
+
+QDF_STATUS ucfg_reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+			 struct reg_txpb_cmd_params *params)
+{
+	return reg_txpb_send_inference_cmd(pdev, params);
+}
+
+void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+				     void *cbk, void *arg)
+{
+	reg_txpb_register_callback(psoc, (txpb_callback)cbk, arg);
+}
+
+void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
+{
+	reg_txpb_unregister_callback(psoc);
+}
+
 #endif

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -257,8 +258,7 @@ dp_tx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 		tx_mon_be->stats.status_buf_recv++;
 
-		if ((hal_mon_tx_desc.end_reason == HAL_MON_FLUSH_DETECTED) ||
-		    (hal_mon_tx_desc.end_reason == HAL_MON_PPDU_TRUNCATED)) {
+		if (hal_mon_tx_desc.end_reason == HAL_MON_PPDU_TRUNCATED) {
 			tx_mon_be->be_ppdu_id = hal_mon_tx_desc.ppdu_id;
 
 			dp_tx_mon_update_end_reason(mon_pdev,
@@ -1956,28 +1956,33 @@ dp_tx_mon_remove_mic_data(struct mon_rx_user_status *rx_user_status,
 			  qdf_nbuf_t buf)
 {
 	uint8_t mic_len, last_f, num_frags;
+	uint32_t last_frag_size;
 
 	if (qdf_nbuf_len(buf) >= LPC_TX_HDR_DMA_LENGTH)
 		return;
 
 	mic_len = hal_get_rx_status_mic_len(rx_user_status);
+	if (!mic_len)
+		return;
 
-	if (mic_len > 0) {
-		num_frags = dp_tx_mon_nbuf_get_num_frag(buf);
+	num_frags = dp_tx_mon_nbuf_get_num_frag(buf);
+	if (!num_frags)
+		return;
+
+	if (num_frags >= 2) {
 		last_f = num_frags - 1;
-		if (num_frags >= 2) {
-			uint8_t last_frag_size = qdf_nbuf_get_frag_size(buf, last_f);
+		last_frag_size = qdf_nbuf_get_frag_size(buf, last_f);
 
-			if (last_frag_size < mic_len) {
-				qdf_nbuf_remove_frag(buf, last_f,
-						     DP_MON_DATA_BUFFER_SIZE);
+		if (last_frag_size < mic_len) {
+			qdf_nbuf_remove_frag(buf, last_f,
+					     DP_MON_DATA_BUFFER_SIZE);
 
-				mic_len -= last_frag_size;
-			}
+			mic_len -= last_frag_size;
 		}
-		qdf_nbuf_trim_add_frag_size(buf, dp_tx_mon_nbuf_get_num_frag(buf) - 1,
-					    -mic_len, DP_MON_DATA_BUFFER_SIZE);
 	}
+
+	qdf_nbuf_trim_add_frag_size(buf, dp_tx_mon_nbuf_get_num_frag(buf) - 1,
+				    -mic_len, DP_MON_DATA_BUFFER_SIZE);
 }
 
 /**

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1252,6 +1252,20 @@ wmi_extract_apf_read_memory_resp_event(wmi_unified_t wmi, void *evt_buf,
 								evt_buf,
 								read_mem_evt);
 
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_set_apf_supported_offload_bitmap_cmd(wmi_unified_t wmi,
+						 uint8_t vdev_id,
+						 uint32_t offload_bitmap)
+{
+	if (wmi->ops->send_set_apf_supported_offload_bitmap_cmd)
+		return wmi->ops->
+			send_set_apf_supported_offload_bitmap_cmd(wmi,
+								  vdev_id,
+								  offload_bitmap
+								  );
 	return QDF_STATUS_E_FAILURE;
 }
 #endif /* FEATURE_WLAN_APF */
@@ -3061,6 +3075,20 @@ wmi_extract_rcpi_response_event(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS
+wmi_extract_pdev_power_boost_ev_params(wmi_unified_t wmi_handle, uint8_t *buf,
+				       struct reg_txpb_evt_params *params)
+{
+	if (wmi_handle->ops->extract_pdev_power_boost_event)
+		return wmi_handle->ops->extract_pdev_power_boost_event(
+								wmi_handle,
+								buf,
+								params);
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 QDF_STATUS
 wmi_unified_dfs_phyerr_offload_en_cmd(wmi_unified_t wmi_handle,
 				      uint32_t pdev_id)
@@ -4308,6 +4336,42 @@ wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd(wmi_unified_t wmi_handle,
 									    param);
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS
+wmi_extract_power_boost_capability(wmi_unified_t wmi_handle, void *evt_buf,
+				   uint8_t phy_idx, bool *pb_cap)
+{
+	if (wmi_handle->ops->extract_power_boost_cap)
+		return wmi_handle->ops->extract_power_boost_cap(wmi_handle,
+								evt_buf,
+								phy_idx,
+								pb_cap);
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_pdev_pb_mem_ind_send(wmi_unified_t wmi_handle,
+				 struct reg_pdev_pb_dma_buf *buf,
+				 uint8_t mac_id)
+{
+	if (wmi_handle->ops->send_pdev_pb_mem_ind_cmd)
+		return wmi_handle->ops->send_pdev_pb_mem_ind_cmd(wmi_handle,
+				   buf, mac_id);
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_pdev_pb_send_inference_cmd(wmi_unified_t wmi_handle,
+				struct reg_txpb_cmd_params *params)
+{
+	if (wmi_handle->ops->pdev_pb_send_inference_cmd)
+		return wmi_handle->ops->pdev_pb_send_inference_cmd(
+								  wmi_handle,
+								  params);
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 QDF_STATUS wmi_unified_cached_scan_report_cmd_send(wmi_unified_t wmi_handle)

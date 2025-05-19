@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,6 +55,16 @@ static const char *ring_usage_dump[RING_USAGE_MAX] = {
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 #define DP_TX_VDEV_ID_CHECK_ENABLE 0
 
+#ifdef CONFIG_BORON
+/* This is indeed TCL to TQM mapping */
+static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
+	{.tcl_ring_num = 0, .wbm_ring_num = 0, .wbm_rbm_id = HAL_BE_WBM_SW0_BM_ID, .for_ipa = 0},
+	{1, 1, HAL_BE_WBM_SW1_BM_ID, 0},
+	{2, 2, HAL_BE_WBM_SW2_BM_ID, 0},
+	{3, 3, HAL_BE_WBM_SW3_BM_ID, 0},
+	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0}
+};
+#else /* CONFIG_BORON */
 static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
 	{.tcl_ring_num = 0, .wbm_ring_num = 0, .wbm_rbm_id = HAL_BE_WBM_SW0_BM_ID, .for_ipa = 0},
 	{1, 4, HAL_BE_WBM_SW4_BM_ID, 0},
@@ -68,7 +78,8 @@ static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RIN
 	{4, 7, HAL_BE_WBM_SW6_BM_ID, 0}
 #endif
 };
-#else
+#endif /* CONFIG_BORON */
+#else /* WLAN_MAX_PDEVS == 1 */
 #if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 #define DP_TX_VDEV_ID_CHECK_ENABLE 0
 #else
@@ -82,7 +93,7 @@ static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RIN
 	{3, 3, HAL_BE_WBM_SW3_BM_ID, 0},
 	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0}
 };
-#endif
+#endif /* WLAN_MAX_PDEVS != 1 */
 
 #ifdef WLAN_SUPPORT_PPEDS
 static struct cdp_ppeds_txrx_ops dp_ops_ppeds_be = {
@@ -307,6 +318,29 @@ static void dp_initialize_arch_ops_be_fisa(struct dp_arch_ops *arch_ops)
 #endif
 
 #ifdef DP_FEATURE_HW_COOKIE_CONVERSION
+#ifdef CONFIG_BORON
+
+#ifdef IPA_OPT_WIFI_DP
+//#error disable_cookie_coversion_on_IPA_ring
+#endif
+static inline
+void dp_cc_wbm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+}
+
+static inline
+void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+	cc_cfg->tqm2sw6_cc_en = 1;
+	cc_cfg->tqm2sw5_cc_en = 1;
+	cc_cfg->tqm2sw4_cc_en = 1;
+	cc_cfg->tqm2sw3_cc_en = 1;
+	cc_cfg->tqm2sw2_cc_en = 1;
+	cc_cfg->tqm2sw1_cc_en = 1;
+	cc_cfg->tqm2sw0_cc_en = 1;
+	cc_cfg->tqm2fw_cc_en = 0;
+}
+#else /* CONFIG_BORON */
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
 /**
  * dp_cc_wbm_sw_en_cfg() - configure HW cookie conversion enablement
@@ -360,6 +394,12 @@ void dp_cc_wbm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
 }
 #endif
 
+static inline
+void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+}
+#endif /* !CONFIG_BORON */
+
 /**
  * dp_cc_reg_cfg_init() - initialize and configure HW cookie
  *			  conversion register
@@ -395,6 +435,7 @@ static void dp_cc_reg_cfg_init(struct dp_soc *soc,
 	cc_cfg.error_path_cookie_conv_en = true;
 	cc_cfg.release_path_cookie_conv_en = true;
 	dp_cc_wbm_sw_en_cfg(&cc_cfg);
+	dp_cc_tqm_sw_en_cfg(&cc_cfg);
 
 	hal_cookie_conversion_reg_cfg_be(soc->hal_soc, &cc_cfg);
 }
@@ -3447,7 +3488,7 @@ void dp_mlo_dev_ctxt_list_detach(dp_mlo_dev_obj_t mlo_dev_obj)
 			if (mld_ctxt) {
 				dp_alert("MLD MAC " QDF_MAC_ADDR_FMT " ",
 					 QDF_MAC_ADDR_REF(
-						&mld_ctxt->mld_mac_addr.raw));
+						mld_ctxt->mld_mac_addr.raw));
 				qdf_mem_free(mld_ctxt);
 			}
 		}
@@ -3949,6 +3990,44 @@ static void dp_peer_get_reo_hash_be(struct dp_vdev *vdev,
 	dp_vdev_get_default_reo_hash(vdev, reo_dest, hash_based);
 }
 
+#ifdef CONFIG_BORON
+static bool dp_reo_remap_config_be(struct dp_soc *soc,
+				   uint32_t *remap0,
+				   uint32_t *remap1,
+				   uint32_t *remap2)
+{
+	uint32_t reo_config =
+		wlan_cfg_get_reo_rings_mapping(soc->wlan_cfg_ctx);
+
+	dp_info("original reo_cfg 0x%x", reo_config);
+	/* MSB index in reo_config should <= num of rings initialized */
+	if (qdf_fls(reo_config) > soc->num_reo_dest_rings) {
+		dp_err("incorrect re_config 0x%x beyond rings initialed %d",
+		       reo_config, soc->num_reo_dest_rings);
+		goto err_def;
+	}
+
+	/* Exclude the rings dedicated for IPA or LSR */
+	DP_REO_DST_REMAP_REMOVE_IPA(reo_config);
+	DP_REO_DST_REMAP_REMOVE_LSR(reo_config);
+
+	if (!reo_config) {
+		dp_err("no valid reo remap left");
+		goto err_def;
+	}
+
+	hal_reo_remap_ix2_ix3_value_get_be(soc->hal_soc, reo_config,
+					   remap1, remap2);
+
+	dp_info("reo_config 0x%x, remap1 0x%x, remap2 0x%x",
+		reo_config, *remap1, *remap2);
+
+	return true;
+
+err_def:
+	return false;
+}
+#else
 static bool dp_reo_remap_config_be(struct dp_soc *soc,
 				   uint32_t *remap0,
 				   uint32_t *remap1,
@@ -3956,6 +4035,7 @@ static bool dp_reo_remap_config_be(struct dp_soc *soc,
 {
 	return dp_reo_remap_config(soc, remap0, remap1, remap2);
 }
+#endif /* CONFIG_BORON */
 #endif
 
 #if defined(CONFIG_MLO_SINGLE_DEV) || defined(WLAN_MCAST_MLO_SAP)

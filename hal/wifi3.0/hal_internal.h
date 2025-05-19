@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -105,6 +105,16 @@ struct hal_hw_cc_config {
 		 cookie_offset_msb:5,
 		 cookie_page_msb:5,
 		 lut_base_addr_39_32:8,
+#ifdef CONFIG_BORON
+		 tqm2sw6_cc_en:1,
+		 tqm2sw5_cc_en:1,
+		 tqm2sw4_cc_en:1,
+		 tqm2sw3_cc_en:1,
+		 tqm2sw2_cc_en:1,
+		 tqm2sw1_cc_en:1,
+		 tqm2sw0_cc_en:1,
+		 tqm2fw_cc_en:1,
+#else
 		 wbm2sw6_cc_en:1,
 		 wbm2sw5_cc_en:1,
 		 wbm2sw4_cc_en:1,
@@ -113,6 +123,7 @@ struct hal_hw_cc_config {
 		 wbm2sw1_cc_en:1,
 		 wbm2sw0_cc_en:1,
 		 wbm2fw_cc_en:1,
+#endif
 		 error_path_cookie_conv_en:1,
 		 release_path_cookie_conv_en:1,
 		 reserved:2;

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -887,6 +886,73 @@ ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				      enum reg_6g_ap_type ap_pwr_type)
 {
 	return 0;
+}
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/**
+ * ucfg_reg_txpb_send_dma_addr() - TxPB Send DMA address to Firmware
+ * @pdev: pdev pointer
+ * @dma: Pointer to DMA addresses
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				       struct reg_pdev_pb_dma_buf *dma);
+
+/**
+ * ucfg_reg_txpb_send_inference_cmd() - TxPB Send Inference command
+ * to Firmware
+ * @pdev: pdev pointer
+ * @params: Power boost params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS ucfg_reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+			 struct reg_txpb_cmd_params *params);
+
+/**
+ * ucfg_reg_txpb_register_callback () - add tx powerboost callback
+ * @psoc: psoc ptr
+ * @cbk: callback
+ * @arg: argument
+ *
+ * Return: void
+ */
+void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+					    void *cbk, void *arg);
+
+/**
+ * ucfg_reg_txpb_unregister_callback () - remove tx powerboost callback
+ * @psoc: psoc ptr
+ *
+ * Return: void
+ */
+void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc);
+#else
+static inline
+QDF_STATUS ucfg_reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				       struct reg_pdev_pb_dma_buf *dma)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS ucfg_reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+			 struct reg_txpb_cmd_params *params)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void ucfg_reg_txpb_register_callback(struct wlan_objmgr_psoc *psoc,
+					    void *cbk, void *arg)
+{
+}
+
+static inline
+void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
+{
 }
 #endif
 #endif

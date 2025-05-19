@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -624,6 +624,7 @@ QDF_STATUS htt_h2t_rx_cce_super_rule_setup(struct htt_soc *soc, void *param)
 				     htt_logger_bufp);
 
 	if (status != QDF_STATUS_SUCCESS) {
+		dp_ipa_debug("failed sending htt msg to FW");
 		qdf_nbuf_free(msg);
 		htt_htc_pkt_free(soc, pkt);
 	}
@@ -757,6 +758,7 @@ QDF_STATUS htt_h2t_tx_super_rule_setup(struct htt_soc *soc, void *param)
 				     htt_logger_bufp);
 
 	if (status != QDF_STATUS_SUCCESS) {
+		dp_ipa_debug("failed to send htt msg to FW");
 		qdf_nbuf_free(msg);
 		htt_htc_pkt_free(soc, pkt);
 	}
@@ -3643,6 +3645,8 @@ static void dp_htt_mlo_peer_map_handler(struct htt_soc *soc,
 	MLO_PEER_MAP_TLV_TAG_ID tlv_type = 0xff;
 	uint16_t tlv_len = 0;
 	int i = 0;
+	uint8_t is_classify_idx_valid;
+	uint8_t peer_classify_info_idx;
 
 	mlo_peer_id = HTT_RX_MLO_PEER_MAP_MLO_PEER_ID_GET(*msg_word);
 	num_links =
@@ -3650,6 +3654,14 @@ static void dp_htt_mlo_peer_map_handler(struct htt_soc *soc,
 	mlo_peer_mac_addr =
 	htt_t2h_mac_addr_deswizzle((u_int8_t *)(msg_word + 1),
 				   &mac_addr_deswizzle_buf[0]);
+
+	is_classify_idx_valid =
+	  HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_VALID_FLAG_GET(*(msg_word + 2));
+
+	if (is_classify_idx_valid) {
+		peer_classify_info_idx =
+		     HTT_RX_MLO_PEER_MAP_CLASSIFY_INFO_IDX_GET(*(msg_word + 2));
+	}
 
 	mlo_flow_info[0].ast_idx =
 		HTT_RX_MLO_PEER_MAP_PRIMARY_AST_INDEX_GET(*(msg_word + 3));
@@ -3714,6 +3726,18 @@ static void dp_htt_mlo_peer_map_handler(struct htt_soc *soc,
 	dp_rx_mlo_peer_map_handler(soc->dp_soc, mlo_peer_id,
 				   mlo_peer_mac_addr,
 				   mlo_flow_info, mlo_link_info);
+
+	if (is_classify_idx_valid) {
+		uint16_t ml_peer_id = dp_gen_ml_peer_id(soc->dp_soc,
+							mlo_peer_id);
+
+		dp_htt_info("HTT_T2H_MSG_TYPE_MLO_RX_PEER_MAP for peer id %d classify_idx valid %d classify_info_idx %d",
+			    ml_peer_id, is_classify_idx_valid,
+			    peer_classify_info_idx);
+		dp_peer_set_tx_classify_idx(soc->dp_soc, ml_peer_id,
+					    DP_VDEV_ALL,
+					    peer_classify_info_idx);
+	}
 }
 
 #ifdef QCA_SUPPORT_PRIMARY_LINK_MIGRATE
@@ -3959,7 +3983,7 @@ static void dp_ipa_rx_cce_super_rule_setup_done_handler(struct htt_soc *soc,
 				 */
 				soc->stats.abort_count++;
 				soc->stats.reserve_fail_cnt = 0;
-				dp_info(
+				dp_ipa_debug(
 				  "opt_dp: Filter reserve failed max attempts");
 			}
 			dp_ipa_debug("opt_dp:: Filter reserve failed. Rules avail %d",
@@ -4742,6 +4766,8 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 		u_int8_t vdev_id;
 		uint8_t is_wds;
 		u_int16_t ast_hash = 0;
+		uint8_t is_classify_idx_valid;
+		uint8_t peer_classify_info_idx;
 
 		peer_id = HTT_RX_PEER_MAP_V3_SW_PEER_ID_GET(*msg_word);
 		vdev_id = HTT_RX_PEER_MAP_V3_VDEV_ID_GET(*msg_word);
@@ -4751,6 +4777,9 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 		hw_peer_id = HTT_RX_PEER_MAP_V3_HW_PEER_ID_GET(*(msg_word + 3));
 		ast_hash = HTT_RX_PEER_MAP_V3_CACHE_SET_NUM_GET(*(msg_word + 3));
 		is_wds = HTT_RX_PEER_MAP_V3_NEXT_HOP_GET(*(msg_word + 4));
+		is_classify_idx_valid =
+		HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_GET(*(msg_word +
+								      4));
 
 		dp_htt_info("HTT_T2H_MSG_TYPE_PEER_MAP_V3 msg for peer id %d vdev id %d n",
 			    peer_id, vdev_id);
@@ -4759,6 +4788,18 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 				       hw_peer_id, vdev_id,
 				       peer_mac_addr, ast_hash,
 				       is_wds);
+		if (is_classify_idx_valid) {
+			peer_classify_info_idx =
+			HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_GET(*(msg_word +
+								   5));
+			dp_htt_info("HTT_T2H_MSG_TYPE_PEER_MAP_V3 msg for peer id %d vdev id %d classify_idx_valid %d classify_info_idx %d",
+				    peer_id, vdev_id, is_classify_idx_valid,
+				    peer_classify_info_idx);
+			dp_peer_set_tx_classify_idx(soc->dp_soc, peer_id,
+						    vdev_id,
+						    peer_classify_info_idx);
+		}
+
 
 		break;
 	}

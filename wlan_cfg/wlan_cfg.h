@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -308,6 +308,7 @@ struct wlan_srng_cfg {
  * @is_tso_desc_attach_defer:
  * @delayed_replenish_entries:
  * @reo_rings_mapping:
+ * @num_rx_context: number of RX contexts
  * @rx_rings_mapping: DP RX rings mapping mask
  * @pext_stats_enabled: Flag to enable and disabled peer extended stats
  * @dp_stats_max_window_size: Size of Max window size for non-SAWF stats
@@ -398,6 +399,8 @@ struct wlan_srng_cfg {
  * @dp_rx_buffer_recycle_enabled: DP RX buffer recycling using page pool API
  *				  enabled/disabled
  * @dp_eapol_stats: flag to enable/disable eapol drop stats
+ * @is_ndp_bw_flow_ctrl_enabled: NDP bw flow control enabled/disabled flag
+ * @dp_tx_page_pool: DP TX page pool enable/disable
  */
 struct wlan_cfg_dp_soc_ctxt {
 	int num_int_ctxts;
@@ -541,6 +544,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	bool is_tso_desc_attach_defer;
 	uint32_t delayed_replenish_entries;
 	uint32_t reo_rings_mapping;
+	uint32_t num_rx_context;
 	uint32_t rx_rings_mapping;
 	bool pext_stats_enabled;
 #if (defined(QCA_PEER_EXT_STATS) && defined(WLAN_CONFIG_TX_DELAY))
@@ -658,6 +662,13 @@ struct wlan_cfg_dp_soc_ctxt {
 
 #ifdef DP_TX_SW_DROP_STATS_INC
 	bool dp_eapol_stats;
+#endif
+#ifdef NDP_TX_BW_FLOW_CTRL
+	bool is_ndp_bw_flow_ctrl_enabled;
+#endif
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+	bool dp_tx_page_pool;
 #endif
 };
 
@@ -2271,6 +2282,15 @@ bool wlan_cfg_is_tso_desc_attach_defer(struct wlan_cfg_dp_soc_ctxt *cfg);
 uint32_t wlan_cfg_get_reo_rings_mapping(struct wlan_cfg_dp_soc_ctxt *cfg);
 
 /**
+ * wlan_cfg_get_num_rx_context() - Get number of RX contexts (RX thread)
+ *
+ * @cfg: soc configuration context
+ *
+ * Return: Number of RX contexts
+ */
+uint32_t wlan_cfg_get_num_rx_context(struct wlan_cfg_dp_soc_ctxt *cfg);
+
+/**
  * wlan_cfg_get_rx_rings_mapping() - Get RX ring bitmap
  *
  * @cfg: soc configuration context
@@ -2622,6 +2642,28 @@ static inline int
 wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(struct wlan_cfg_dp_soc_ctxt *cfg)
 {
 	return 0;
+}
+#endif
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+			    bool *tx_pp_enabled);
+#else
+static inline void
+wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+		       bool *tx_pp_enabled)
+{
+}
+#endif
+
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+			    bool *rx_pp_enabled, uint32_t *rx_buf_size);
+#else
+static inline void
+wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+		       bool *rx_pp_enabled, uint32_t *rx_buf_size)
+{
 }
 #endif
 
@@ -3136,4 +3178,26 @@ bool wlan_cfg_get_dp_proto_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
  * Return: bool
  */
 bool wlan_cfg_get_dp_eapol_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
+
+#ifdef NDP_TX_BW_FLOW_CTRL
+static inline
+bool wlan_cfg_get_ndp_bw_flow_ctrl_cfg(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return cfg->is_ndp_bw_flow_ctrl_enabled;
+}
+#else
+static inline
+bool wlan_cfg_get_ndp_bw_flow_ctrl_cfg(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return false;
+}
+#endif
+
+/**
+ * wlan_cfg_get_dp_tx_page_pool_enabled() - Get TX page pool config
+ * @cfg: soc configuration context
+ *
+ * Return: bool
+ */
+bool wlan_cfg_get_dp_tx_page_pool_enabled(struct wlan_cfg_dp_soc_ctxt *cfg);
 #endif /*__WLAN_CFG_H*/

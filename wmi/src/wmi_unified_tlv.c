@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -778,6 +778,8 @@ static const uint32_t vdev_param_tlv[] = {
 		  VDEV_PARAM_HWCTS2SELF_OFDMA),
 	PARAM_MAP(vdev_param_disable_lpi_ant_optimization,
 		  VDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
+	PARAM_MAP(vdev_param_disable_scan_start_twt,
+		  VDEV_PARAM_DISABLE_SCAN_START_TWT),
 };
 #endif
 
@@ -4996,13 +4998,17 @@ static QDF_STATUS send_scan_chan_list_cmd_tlv(wmi_unified_t wmi_handle,
 			       WMITLV_GET_STRUCT_TLVLEN
 			       (wmi_scan_chan_list_cmd_fixed_param));
 
-		wmi_debug("no of channels = %d, len = %d", num_send_chans, len);
+		wmi_debug("no of channels = %d, len = %d, is_c2c_supp = %d",
+			  num_send_chans, len, chan_list->is_c2c_supp);
 
 		if (num_sends)
 			cmd->flags |= APPEND_TO_EXISTING_CHAN_LIST;
 
 		if (chan_list->max_bw_support_present)
 			cmd->flags |= CHANNEL_MAX_BANDWIDTH_VALID;
+
+		if (chan_list->is_c2c_supp)
+			cmd->flags |= WMI_SCAN_TO_DETECT_6GHZ_C2C_AP;
 
 		cmd->pdev_id = wmi_handle->ops->convert_pdev_id_host_to_target(
 						wmi_handle,
@@ -10580,6 +10586,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	wmi_copy_latency_flowq_support(resource_cfg, tgt_res_cfg);
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
 	wmi_copy_mgmt_rx_srng_support(resource_cfg, tgt_res_cfg);
+	if (tgt_res_cfg->apfv6_offload_disabled != 0) {
+		WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_SET(
+				resource_cfg->apf_data_ofload_enable__word, 1);
+	}
 
 }
 
@@ -18184,6 +18194,34 @@ static QDF_STATUS extract_reg_chan_list_ext_update_event_tlv(
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef CONFIG_REG_CLIENT
+/**
+ * extract_reg_c2c_detect_event_tlv() - Extract C2C detect event tlv
+ * @evt_buf: Event buffer pointer
+ * @indoor_ap_found: Indoor AP found flag
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_reg_c2c_detect_event_tlv(uint8_t *evt_buf, bool *indoor_ap_found)
+{
+	WMI_C2C_DETECT_EVENTID_param_tlvs *param_buf;
+	wmi_c2c_detect_event_fixed_param *fixed_param;
+
+	param_buf = (WMI_C2C_DETECT_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("invalid channel list event buf");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	*indoor_ap_found = fixed_param->lpi_ap_detect;
+	wmi_debug("Is indoor AP detected = %u", *indoor_ap_found);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 #ifdef CONFIG_AFC_SUPPORT
 /**
  * copy_afc_chan_eirp_info() - Copy the channel EIRP object from
@@ -20982,6 +21020,10 @@ wlan_roam_fail_reason_code(uint16_t wmi_roam_fail_reason)
 		return ROAM_FAIL_REASON_SCAN_CANCEL;
 	case WMI_ROAM_FAIL_REASON_MLD_EXTRA_SCAN_REQUIRED:
 		return ROAM_FAIL_REASON_MLD_EXTRA_SCAN_REQUIRED;
+	case WMI_ROAM_FAIL_REASON_TTLM_REQUIRED:
+		return ROAM_FAIL_REASON_TTLM_REQUIRED;
+	case WMI_ROAM_FAIL_REASON_LINKRECONFIG_REQUIRED:
+		return ROAM_FAIL_REASON_LINKRECONFIG_REQUIRED;
 	default:
 		return ROAM_FAIL_REASON_UNKNOWN;
 	}
@@ -22286,8 +22328,24 @@ bool is_both_psd_eirp_support_present_for_sp(wmi_unified_t wmi_handle,
 	return (is_service_enabled_tlv(wmi_handle,
 		    WMI_SERVICE_BOTH_PSD_EIRP_FOR_AP_SP_CLIENT_SP_SUPPORT) &&
 		(param->power_type_6g == REG_STANDARD_POWER_AP ||
-			param->is_power_type_client_sp));
+			param->is_power_type_client_sp) &&
+		param->num_psd_pwr_levels && param->num_eirp_pwr_levels);
 }
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+static uint32_t get_wmi_6ghz_power_mode(uint32_t power_type_6ghz)
+{
+	if (power_type_6ghz == REG_INDOOR_ENABLED_AP)
+		return 4;
+
+	return power_type_6ghz;
+}
+#else
+static inline uint32_t get_wmi_6ghz_power_mode(uint32_t power_type_6ghz)
+{
+	return power_type_6ghz;
+}
+#endif
 
 /**
  * send_set_tpc_power_cmd_tlv() - Sends the set TPC power level to FW
@@ -22332,11 +22390,12 @@ static QDF_STATUS send_set_tpc_power_cmd_tlv(wmi_unified_t wmi_handle,
 	tpc_power_info_param->vdev_id = vdev_id;
 	tpc_power_info_param->psd_power = param->is_psd_power;
 	tpc_power_info_param->eirp_power = param->eirp_power;
-	tpc_power_info_param->power_type_6ghz = param->power_type_6g;
+	tpc_power_info_param->power_type_6ghz =
+				get_wmi_6ghz_power_mode(param->power_type_6g);
 	wmi_debug("eirp_power = %d is_psd_power = %d",
 		  tpc_power_info_param->eirp_power,
 		  tpc_power_info_param->psd_power);
-	reg_print_ap_power_type_6ghz(tpc_power_info_param->power_type_6ghz);
+	reg_print_ap_power_type_6ghz(param->power_type_6g);
 
 	buf_ptr += sizeof(wmi_vdev_set_tpc_power_fixed_param);
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
@@ -23317,6 +23376,196 @@ mem_free:
 }
 #endif
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+static QDF_STATUS
+extract_power_boost_cap_tlv(wmi_unified_t wmi_handle,
+			    void *evt_buf, uint8_t phy_idx, bool *pb_cap)
+{
+	WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf;
+	WMI_POWER_BOOST_CAPABILITIES *ev_pb_cap;
+
+	if (!evt_buf) {
+		wmi_err("TPB: Event buffer is empty");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	param_buf = (WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *)evt_buf;
+
+	/* If number of PHY is reported as 0, return */
+	if (!param_buf->num_hal_reg_caps)
+		return QDF_STATUS_SUCCESS;
+
+	if (phy_idx >= param_buf->num_hal_reg_caps) {
+		wmi_err("TPB: phy_idx: %d >= num_hal_reg_caps: %d",
+			phy_idx, param_buf->num_hal_reg_caps);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!param_buf->power_boost_capabilities) {
+		wmi_debug("TPB: Power Boost capabilities is NULL");
+		*pb_cap = false;
+		/* Power Boost is optional, return success */
+		return QDF_STATUS_SUCCESS;
+	}
+
+	ev_pb_cap = &param_buf->power_boost_capabilities[phy_idx];
+
+	*pb_cap =
+		WMI_POWER_BOOST_CAPABILITIES_POWER_BOOST_ENABLE_GET(
+				ev_pb_cap->phy_id__power_boost_enable__word32);
+
+	wmi_debug("TPB: phy_id: %u, enabled: %s", phy_idx,
+		  *pb_cap ? "true" : "false");
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+send_pdev_power_boost_mem_ind_cmd_tlv(wmi_unified_t wmi_handle,
+				      struct reg_pdev_pb_dma_buf *param,
+				      uint8_t mac_id)
+{
+	QDF_STATUS ret;
+	wmi_buf_t buf;
+	wmi_pdev_power_boost_mem_addr_cmd_fixed_param *cmd;
+	uint16_t len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_pdev_power_boost_mem_addr_cmd_fixed_param *)wmi_buf_data(buf);
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+			 WMITLV_TAG_STRUC_wmi_pdev_power_boost_mem_addr_cmd_fixed_param,
+			 WMITLV_GET_STRUCT_TLVLEN
+			 (wmi_pdev_power_boost_mem_addr_cmd_fixed_param));
+	cmd->pdev_id =
+		       wmi_handle->ops->convert_pdev_id_host_to_target(
+								wmi_handle,
+								mac_id);
+	cmd->paddr_aligned_lo = param->paddr_aligned_lo;
+	cmd->paddr_aligned_hi = param->paddr_aligned_hi;
+	cmd->size = param->size;
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+					WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID);
+
+	wmi_debug("TPB: Sending WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID with pdev_id: %u, paddr_aligned_lo: 0x%x, paddr_aligned_hi: 0x%x, size: %u",
+		  cmd->pdev_id, cmd->paddr_aligned_lo, cmd->paddr_aligned_hi,
+		  cmd->size);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("TPB: Failed to send WMI_PDEV_POWER_BOOST_MEM_ADDR_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+static QDF_STATUS
+pdev_pb_send_inference_cmd_tlv(wmi_unified_t wmi_handle,
+				       struct reg_txpb_cmd_params *params)
+{
+	QDF_STATUS ret;
+	wmi_buf_t buf;
+	wmi_pdev_power_boost_cmd_fixed_param *cmd;
+
+	uint32_t len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_pdev_power_boost_cmd_fixed_param *)wmi_buf_data(buf);
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+			WMITLV_TAG_STRUC_wmi_pdev_power_boost_cmd_fixed_param,
+			WMITLV_GET_STRUCT_TLVLEN
+			(wmi_pdev_power_boost_cmd_fixed_param));
+
+	cmd->pdev_id =
+		       wmi_handle->ops->convert_pdev_id_host_to_target(
+								wmi_handle,
+								params->cmn_params.pdev_id);
+
+	cmd->status = params->cmn_params.status;
+	cmd->inferencing_stage = params->cmn_params.inference_stage;
+	cmd->mcs = params->cmn_params.mcs;
+	cmd->bandwidth = params->cmn_params.bandwidth;
+	cmd->temperature_degreeC = params->cmn_params.temperature_degreeC;
+	cmd->primary_chan_mhz = params->cmn_params.primary_chan_mhz;
+	cmd->band_center_freq1 = params->cmn_params.center_freq1;
+	cmd->band_center_freq2 = params->cmn_params.center_freq2;
+	cmd->phy_mode = params->cmn_params.phy_mode;
+	cmd->tx_evm = params->tx_evm;
+	cmd->tx_mask_margin = params->mask_margin;
+	cmd->req_id = params->cmn_params.req_id;
+
+	wmi_debug("TPB: WMI CMD Params req_id: %u pdev_id: %d status: %d inference_stage: %d mcs: %d bw: %d temperature_degreeC: %d primary_chan_mhz: %d center_freq1: %d center_freq2: %d phy_mode: %d tx_evm: %d tx_mask_margin: %d",
+		  cmd->req_id, cmd->pdev_id, cmd->status,
+		  cmd->inferencing_stage, cmd->mcs, cmd->bandwidth,
+		  cmd->temperature_degreeC, cmd->primary_chan_mhz,
+		  cmd->band_center_freq1, cmd->band_center_freq2,
+		  cmd->phy_mode, cmd->tx_evm, cmd->tx_mask_margin);
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PDEV_POWER_BOOST_CMDID);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("TPB: Failed to send PB Inference cmd WMI");
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+static QDF_STATUS
+extract_pdev_power_boost_event_tlv(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct reg_txpb_evt_params *params)
+{
+	WMI_PDEV_POWER_BOOST_EVENTID_param_tlvs *param_buf = NULL;
+	wmi_pdev_power_boost_event_fixed_param *ev = NULL;
+
+	param_buf = (WMI_PDEV_POWER_BOOST_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("TPB: Invalid Power Boost event");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	ev = param_buf->fixed_param;
+
+	params->cmn_params.status = ev->status;
+	params->cmn_params.inference_stage = ev->inferencing_stage;
+	params->cmn_params.mcs = ev->mcs;
+	params->cmn_params.bandwidth = ev->bandwidth;
+	params->cmn_params.temperature_degreeC = ev->temperature_degreeC;
+	params->cmn_params.primary_chan_mhz = ev->primary_chan_mhz;
+	params->cmn_params.center_freq1 = ev->band_center_freq1;
+	params->cmn_params.center_freq2 = ev->band_center_freq2;
+	params->cmn_params.phy_mode = ev->phy_mode;
+	params->cmn_params.req_id = ev->req_id;
+	params->tx_pwr = ev->tx_pwr;
+	params->tx_chain_idx = ev->tx_chain_idx;
+	params->iq_sample_buf_size = ev->size_kb;
+	params->cmn_params.pdev_id =
+		wmi_handle->ops->convert_pdev_id_target_to_host(wmi_handle, ev->pdev_id);
+
+	wmi_debug("TPB: WMI Host params: req_id: %u pdev_id: %u status: %u inf_stage: %u mcs: %u BW: %u temperature_degreeC: %d primary_chan_mhz: %u center_freq1: %u center_freq2: %u phy_mode: %u tx_pwr: %d tx_chain_idx: %u iq_sample_buf_size: %u",
+		  params->cmn_params.req_id, params->cmn_params.pdev_id,
+		  params->cmn_params.status, params->cmn_params.inference_stage,
+		  params->cmn_params.mcs, params->cmn_params.bandwidth,
+		  params->cmn_params.temperature_degreeC,
+		  params->cmn_params.primary_chan_mhz, params->cmn_params.center_freq1,
+		  params->cmn_params.center_freq2, params->cmn_params.phy_mode,
+		  params->tx_pwr, params->tx_chain_idx,
+		  params->iq_sample_buf_size);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 struct wmi_ops tlv_ops =  {
 	.send_vdev_create_cmd = send_vdev_create_cmd_tlv,
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
@@ -23451,6 +23700,8 @@ struct wmi_ops tlv_ops =  {
 				wmi_send_apf_read_work_memory_cmd_tlv,
 	.extract_apf_read_memory_resp_event =
 				wmi_extract_apf_read_memory_resp_event_tlv,
+	.send_set_apf_supported_offload_bitmap_cmd =
+			wmi_send_set_apf_supported_offload_bitmap_cmd_tlv,
 #endif /* FEATURE_WLAN_APF */
 	.init_cmd_send = init_cmd_send_tlv,
 	.send_vdev_set_custom_aggr_size_cmd =
@@ -23605,6 +23856,10 @@ struct wmi_ops tlv_ops =  {
 #ifdef CONFIG_BAND_6GHZ
 	.extract_reg_chan_list_ext_update_event =
 		extract_reg_chan_list_ext_update_event_tlv,
+#ifdef CONFIG_REG_CLIENT
+	.extract_reg_c2c_detect_event =
+		extract_reg_c2c_detect_event_tlv,
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 	.extract_afc_event = extract_afc_event_tlv,
 #endif
@@ -23848,6 +24103,12 @@ struct wmi_ops tlv_ops =  {
 	.send_get_cached_scan_report_cmd = send_get_cached_scan_report_cmd_tlv,
 	.extract_cached_scan_report_ev_params =
 				extract_cached_scan_report_ev_params_tlv,
+#endif
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	.extract_power_boost_cap = extract_power_boost_cap_tlv,
+	.send_pdev_pb_mem_ind_cmd = send_pdev_power_boost_mem_ind_cmd_tlv,
+	.extract_pdev_power_boost_event = extract_pdev_power_boost_event_tlv,
+	.pdev_pb_send_inference_cmd = pdev_pb_send_inference_cmd_tlv,
 #endif
 };
 
@@ -24128,6 +24389,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_reg_chan_list_cc_event_id] = WMI_REG_CHAN_LIST_CC_EVENTID;
 	event_ids[wmi_reg_chan_list_cc_ext_event_id] =
 					WMI_REG_CHAN_LIST_CC_EXT_EVENTID;
+	event_ids[wmi_c2c_detect_event_id] =
+					WMI_C2C_DETECT_EVENTID;
 #ifdef CONFIG_AFC_SUPPORT
 	event_ids[wmi_afc_event_id] = WMI_AFC_EVENTID,
 #endif
@@ -24424,6 +24687,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 	event_ids[wmi_scan_cache_result_eventid] =
 					WMI_SCAN_CACHE_RESULT_EVENTID;
+#endif
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	event_ids[wmi_pdev_power_boost_eventid] = WMI_PDEV_POWER_BOOST_EVENTID;
 #endif
 }
 
@@ -24795,6 +25061,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL;
 	wmi_service[wmi_service_csa_beacon_template] =
 			WMI_SERVICE_CSA_BEACON_TEMPLATE;
+	wmi_service[wmi_service_apf_data_offload_support_enabled] =
+			WMI_SERVICE_APF_DATA_OFFLOAD_SUPPORT_ENABLED;
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 	wmi_service[wmi_service_rtt_11az_ntb_support] =
 			WMI_SERVICE_RTT_11AZ_NTB_SUPPORT;

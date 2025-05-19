@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -40,12 +40,16 @@
  * @node: internal list node for keeping track of all the allocated stores
  * @users: number of references on the store
  * @values: a values struct containing the parsed values from the ini file
+ * @ini_buf: buffer the ini file content
  */
 struct cfg_value_store {
 	char *path;
 	qdf_list_node_t node;
 	qdf_atomic_t users;
 	struct cfg_values values;
+#if WLAN_DEBUG
+	char *ini_buf;
+#endif
 };
 
 /**
@@ -422,6 +426,38 @@ static QDF_STATUS cfg_ini_section_handler(void *context, const char *name)
 	return QDF_STATUS_SUCCESS;
 }
 
+#if WLAN_DEBUG
+static void cfg_ini_buf_free(struct cfg_value_store *store)
+{
+	qdf_mem_free(store->ini_buf);
+	store->ini_buf = NULL;
+}
+
+static void cfg_ini_buf_cb(void *context,
+			   const char *ini_buf,
+			   unsigned int size)
+{
+	struct cfg_value_store *store = context;
+
+	if (!store || !size || !ini_buf || store->ini_buf)
+		return;
+	store->ini_buf = qdf_mem_malloc(size);
+	if (!store->ini_buf)
+		return;
+	qdf_mem_copy(store->ini_buf, (char *)ini_buf, size);
+}
+#else
+static inline void cfg_ini_buf_free(struct cfg_value_store *store)
+{
+}
+
+static inline void cfg_ini_buf_cb(void *context,
+				  const char *ini_buf,
+				  unsigned int size)
+{
+}
+#endif
+
 #define cfg_assert_success(expr) \
 do { \
 	QDF_STATUS __assert_status = (expr); \
@@ -489,7 +525,7 @@ static void cfg_store_free(struct cfg_value_store *store)
 	if (QDF_IS_STATUS_ERROR(status))
 		QDF_DEBUG_PANIC("Failed config store list removal; status:%d",
 				status);
-
+	cfg_ini_buf_free(store);
 	qdf_mem_free(store->path);
 	qdf_mem_common_free(store);
 }
@@ -549,7 +585,8 @@ cfg_ini_parse_to_store(const char *path, struct cfg_value_store *store)
 	QDF_STATUS status;
 
 	status = qdf_ini_parse(path, store, cfg_ini_item_handler,
-			       cfg_ini_section_handler);
+			       cfg_ini_section_handler,
+			       cfg_ini_buf_cb);
 	if (QDF_IS_STATUS_ERROR(status))
 		cfg_err("Failed to parse *.ini file @ %s; status:%d",
 			path, status);

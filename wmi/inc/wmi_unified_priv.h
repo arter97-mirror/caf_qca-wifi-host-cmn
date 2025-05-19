@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1378,6 +1378,10 @@ QDF_STATUS (*send_apf_read_work_memory_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*extract_apf_read_memory_resp_event)(wmi_unified_t wmi_handle,
 			void *evt_buf,
 			struct wmi_apf_read_memory_resp_event_params *resp);
+QDF_STATUS
+(*send_set_apf_supported_offload_bitmap_cmd)(wmi_unified_t wmi_handle,
+					     uint8_t vdev_id,
+					     uint32_t offload_bitmap);
 #endif /* FEATURE_WLAN_APF */
 
 QDF_STATUS (*send_pdev_get_tpc_config_cmd)(wmi_unified_t wmi_handle,
@@ -2461,6 +2465,10 @@ QDF_STATUS (*extract_reg_chan_list_ext_update_event)(wmi_unified_t wmi_handle,
 						     struct cur_regulatory_info
 						     *reg_info,
 						     uint32_t len);
+#ifdef CONFIG_REG_CLIENT
+QDF_STATUS (*extract_reg_c2c_detect_event)(uint8_t *evt_buf,
+					   bool *indoor_ap_found);
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 QDF_STATUS
 (*extract_afc_event)(wmi_unified_t wmi_handle,
@@ -3322,6 +3330,11 @@ QDF_STATUS
 (*send_mlo_link_recfg_complete_cmd)(
 			wmi_unified_t wmi_handle,
 			struct wlan_mlo_link_recfg_complete_params *params);
+
+QDF_STATUS
+(*send_mlo_ttlm_complete_cmd)(
+			wmi_unified_t wmi_handle,
+			struct wlan_mlo_ttlm_complete_params *params);
 #endif
 #endif
 
@@ -3631,6 +3644,26 @@ void *(*extract_cached_scan_report_ev_params)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_link_reconfig_req_command)(
 			wmi_unified_t wmi_handle,
 			struct wmi_link_reconfig_req_params *params);
+#endif
+
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+QDF_STATUS
+(*extract_power_boost_cap)(wmi_unified_t wmi_handle,
+			   void *evt_buf, uint8_t phy_idx, bool *pb_cap);
+
+QDF_STATUS
+(*send_pdev_pb_mem_ind_cmd)(wmi_unified_t wmi_handle,
+			    struct reg_pdev_pb_dma_buf *buf,
+			    uint8_t mac_id);
+
+QDF_STATUS
+(*extract_pdev_power_boost_event)(wmi_unified_t wmi_handle,
+				  void *evt_buf,
+				  struct reg_txpb_evt_params *pb_params);
+
+QDF_STATUS
+(*pdev_pb_send_inference_cmd)(wmi_unified_t wmi_handle,
+				 struct reg_txpb_cmd_params *params);
 #endif
 };
 

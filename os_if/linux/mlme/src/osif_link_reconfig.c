@@ -79,9 +79,13 @@ static void osif_get_link_reconfig_rsp_frame(
 	/* Validate IE and length */
 	if (!link_reconfig_res->len || !link_reconfig_res->ptr)
 		return;
+	*frame_ptr = qdf_mem_malloc(link_reconfig_res->len);
+	if (!*frame_ptr)
+		return;
 
 	*frame_len = link_reconfig_res->len;
-	*frame_ptr = link_reconfig_res->ptr;
+	qdf_mem_copy((void *)*frame_ptr, link_reconfig_res->ptr,
+		     link_reconfig_res->len);
 }
 
 /**
@@ -89,9 +93,9 @@ static void osif_get_link_reconfig_rsp_frame(
  * @recfg_ctx: reconfig context
  * @delete_valid_links: delete links bitmap
  *
- * Return : NA
+ * Return : bool
  */
-static void
+static bool
 osif_fill_link_reconfig_deleted_links_params(
 				 struct mlo_link_recfg_context *recfg_ctx,
 				 uint16_t *delete_valid_links)
@@ -102,9 +106,11 @@ osif_fill_link_reconfig_deleted_links_params(
 
 	if (!recfg_ctx) {
 		osif_err("Recfg ctx is NULL");
-		return;
+		return false;
 	}
 	num_del_links = recfg_ctx->curr_recfg_req.del_link_info.num_links;
+	if (!num_del_links)
+		return false;
 
 	del_link_info = recfg_ctx->curr_recfg_req.del_link_info;
 	for (i = 0; i < num_del_links && i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
@@ -112,8 +118,9 @@ osif_fill_link_reconfig_deleted_links_params(
 			*delete_valid_links |=
 				1 << del_link_info.link[i].link_id;
 	}
-
 	osif_debug("links deleted bit map %d", *delete_valid_links);
+
+	return *delete_valid_links ? true : false;
 }
 
 /**
@@ -121,15 +128,16 @@ osif_fill_link_reconfig_deleted_links_params(
  * @vdev: vdev
  * @cfg_rsp: link reconfig response
  *
- * Return : NA
+ * Return : bool
  */
-static void
+static bool
 osif_fill_link_reconfig_added_links_params(
 				 struct wlan_objmgr_vdev *vdev,
 				 struct cfg80211_mlo_reconf_done_data *cfg_rsp)
 {
 	struct wiphy *wiphy;
 	uint8_t ssid[WLAN_SSID_MAX_LEN] = {0};
+	struct mlo_link_recfg_user_req_params *req_param;
 	uint8_t ssid_len;
 	struct mlo_link_recfg_context *recfg_context;
 	struct ieee80211_channel *channel;
@@ -143,29 +151,39 @@ osif_fill_link_reconfig_added_links_params(
 	wiphy = osif_get_wiphy_from_vdev(vdev);
 	if (!wiphy) {
 		osif_err("Invalid wiphy");
-		return;
+		return false;
 	}
 
 	recfg_context = vdev->mlo_dev_ctx->link_recfg_ctx;
+	req_param = &vdev->mlo_dev_ctx->link_rcfg_req;
 	num_add_links = recfg_context->curr_recfg_req.add_link_info.num_links;
-	if (!num_add_links) {
-		osif_debug("no link added via link reconfig request");
-		return;
+
+	if (!recfg_context->curr_recfg_req.is_user_req && !num_add_links) {
+		osif_debug("is_user_req %d num_add_links %d - no link added",
+			   recfg_context->curr_recfg_req.is_user_req,
+			   num_add_links);
+		return false;
 	}
 
-	if (recfg_context->link_recfg_status) {
-		osif_debug("add link failure with status %d",
-			   recfg_context->link_recfg_status);
-		return;
-	}
-
+	cfg_rsp->driver_initiated = !recfg_context->curr_recfg_req.is_user_req;
 	add_link_info = recfg_context->curr_recfg_req.add_link_info;
 	osif_get_link_reconfig_rsp_frame(
 					&recfg_context->rsp_rx_frame,
 					&cfg_rsp->len,
 					&cfg_rsp->buf);
 
-	cfg_rsp->driver_initiated = !recfg_context->curr_recfg_req.is_user_req;
+	/*
+	 * Don't get BSS again for user requested link reconfig
+	 * because get BSS incerements bss pointer reference
+	 * and cfg80211 already does get BSS.
+	 */
+	for (i = 0; i < req_param->num_link_add_param &&
+	     i < IEEE80211_MLD_MAX_NUM_LINKS &&
+	     !cfg_rsp->driver_initiated; i++) {
+		link_id = req_param->add_link[i].link_id;
+		cfg_rsp->links[link_id].bss = req_param->add_link[i].bss;
+	}
+
 	for (i = 0; i < num_add_links && i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
 		if (add_link_info.link[i].link_id == WLAN_INVALID_LINK_ID) {
 			osif_err("link id is invalid %d", WLAN_INVALID_LINK_ID);
@@ -173,7 +191,21 @@ osif_fill_link_reconfig_added_links_params(
 			goto end;
 		}
 		link_id = add_link_info.link[i].link_id;
+		cfg_rsp->links[link_id].addr =
+			qdf_mem_malloc(sizeof(struct qdf_mac_addr));
+		if (!cfg_rsp->links[link_id].addr) {
+			osif_err("failed to get STA link address");
+			status_code = STATUS_INVALID_PARAMETERS;
+			goto end;
+		}
+		qdf_mem_copy(cfg_rsp->links[link_id].addr,
+			     add_link_info.link[i].self_link_addr.bytes,
+			     sizeof(struct qdf_mac_addr));
 		status_code = add_link_info.link[i].status_code;
+		if (!cfg_rsp->driver_initiated)
+			goto end;
+
+		/* fill bss for driver initiated add link */
 		channel = ieee80211_get_channel(wiphy,
 						add_link_info.link[i].freq);
 		if (!channel) {
@@ -181,90 +213,184 @@ osif_fill_link_reconfig_added_links_params(
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
+
 		status = wlan_vdev_mlme_get_ssid(vdev, ssid, &ssid_len);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			osif_err("failed to get ssid");
 			status_code = STATUS_INVALID_PARAMETERS;
 			goto end;
 		}
+
 		cfg_rsp->links[link_id].bss =
 			wlan_cfg80211_get_bss(
 				wiphy, channel,
 				add_link_info.link[i].ap_link_addr.bytes,
 				ssid, ssid_len);
+end:
 		if (!cfg_rsp->links[link_id].bss) {
 			osif_err("failed to get BSS");
 			status_code = STATUS_INVALID_PARAMETERS;
-			goto end;
 		}
 
-		cfg_rsp->links[link_id].addr =
-				add_link_info.link[i].self_link_addr.bytes;
-		if (!cfg_rsp->links[link_id].addr) {
-			osif_err("failed to get STA link address");
-			status_code = STATUS_INVALID_PARAMETERS;
-			goto end;
-		}
-
-		cfg_rsp->added_links |=	1 << link_id;
-end:
+		/* Set "added_links" only for successfully added links */
+		if (status_code == STATUS_SUCCESS)
+			cfg_rsp->added_links |= 1 << link_id;
 		osif_debug("add link_id %d with status %d freq %d",
-			   link_id, status_code, add_link_info.link[i].freq);
+			  link_id, status_code, add_link_info.link[i].freq);
 	}
+	osif_debug("added_link 0x%x driver_initiated %d num_link_add_param %d",
+		   cfg_rsp->added_links, cfg_rsp->driver_initiated,
+		   req_param->num_link_add_param);
+
+	return (cfg_rsp->added_links ||
+		(!cfg_rsp->driver_initiated &&
+		 req_param->num_link_add_param));
 }
 
-QDF_STATUS
-osif_link_reconfig_status_cb(struct wlan_objmgr_vdev *vdev)
+/**
+ * struct recfg_done_data - link recfg done data
+ * @hdr: recfg done data header
+ * @psoc: psoc object
+ * @vdev_id: vdev id
+ * @add_valid: add_link_rsp is valid
+ * @del_valid: del_link_map is valid
+ * @del_link_map: delete link bitmap
+ * @add_link_rsp: add link information
+ */
+struct recfg_done_data {
+	struct recfg_done_data_hdr hdr;
+	struct wlan_objmgr_psoc *psoc;
+	uint8_t vdev_id;
+	bool add_valid;
+	bool del_valid;
+	uint16_t del_link_map;
+	struct cfg80211_mlo_reconf_done_data add_link_rsp;
+};
+
+void osif_free_link_reconfig_done_data(void *ctx)
 {
-	struct wiphy *wiphy;
-	struct cfg80211_mlo_reconf_done_data add_link_rsp = {0};
-	uint16_t del_link_map = 0;
+	struct recfg_done_data *recfg_indication_ptr = ctx;
+	uint8_t i;
+
+	for (i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++)
+		qdf_mem_free(recfg_indication_ptr->add_link_rsp.links[i].addr);
+
+	qdf_mem_free((void *)recfg_indication_ptr->add_link_rsp.buf);
+	qdf_mem_free(recfg_indication_ptr);
+}
+
+void *
+osif_populate_link_recfg_done_data(struct wlan_objmgr_vdev *vdev)
+{
 	struct mlo_link_recfg_context *recfg_ctx;
+	struct recfg_done_data *recfg_indication_ptr;
+
+	recfg_ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
+	if (!recfg_ctx) {
+		osif_err("link reconfig context not valid");
+		return NULL;
+	}
+
+	osif_debug("add num links %d, del num links %d",
+		   recfg_ctx->curr_recfg_req.add_link_info.num_links,
+		   recfg_ctx->curr_recfg_req.del_link_info.num_links);
+
+	recfg_indication_ptr = qdf_mem_malloc(sizeof(struct recfg_done_data));
+	if (!recfg_indication_ptr)
+		return NULL;
+	recfg_indication_ptr->add_valid =
+		osif_fill_link_reconfig_added_links_params(
+					vdev,
+					&recfg_indication_ptr->add_link_rsp);
+
+	recfg_indication_ptr->del_valid =
+		osif_fill_link_reconfig_deleted_links_params(
+					recfg_ctx,
+					&recfg_indication_ptr->del_link_map);
+	if (!recfg_indication_ptr->add_valid &&
+	    !recfg_indication_ptr->del_valid) {
+		osif_free_link_reconfig_done_data(recfg_indication_ptr);
+		return NULL;
+	}
+
+	recfg_indication_ptr->psoc = wlan_vdev_get_psoc(vdev);
+	recfg_indication_ptr->vdev_id = wlan_vdev_get_id(vdev);
+
+	return recfg_indication_ptr;
+}
+
+QDF_STATUS osif_link_reconfig_status_cb(void *ctx)
+{
+	struct recfg_done_data *recfg_indication_ptr = ctx;
+	struct wiphy *wiphy;
 	struct net_device *dev = NULL;
 	int errno;
+	struct wlan_objmgr_vdev *vdev = NULL;
+	struct wlan_objmgr_psoc *psoc;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
+
+	if (!recfg_indication_ptr) {
+		osif_err("recfg_indication_ptr not valid");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc = recfg_indication_ptr->psoc;
+	if (!psoc) {
+		mlo_err("psoc null");
+		goto end;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				psoc, recfg_indication_ptr->vdev_id,
+				WLAN_LINK_RECFG_ID);
+	if (!vdev) {
+		mlo_err("Invalid link recfg VDEV %d",
+			recfg_indication_ptr->vdev_id);
+		goto end;
+	}
 
 	wiphy = osif_get_wiphy_from_vdev(vdev);
 	if (!wiphy) {
 		osif_err("Failed to get wiphy");
-		return QDF_STATUS_E_FAILURE;
+		goto end;
 	}
 
 	errno = osif_get_net_dev_from_vdev(vdev, &dev);
 	if (errno) {
 		osif_err("failed to get netdev");
-		return QDF_STATUS_E_FAILURE;
+		goto end;
 	}
-	osif_enter_dev(dev);
-	if (!vdev->mlo_dev_ctx) {
-		osif_err("mlo context not valid");
-		return QDF_STATUS_E_FAILURE;
-	}
-	recfg_ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
-	if (!recfg_ctx) {
-		osif_err("link reconfig context not valid");
-		return QDF_STATUS_E_FAILURE;
-	}
-	qdf_mem_zero(&add_link_rsp, sizeof(add_link_rsp));
 
-	osif_info("add num links %d, del num links %d",
-		 recfg_ctx->curr_recfg_req.add_link_info.num_links,
-		 recfg_ctx->curr_recfg_req.del_link_info.num_links);
+	osif_enter_dev(dev);
 
 	osif_wiphy_lock(wiphy, NULL);
-	if (recfg_ctx->curr_recfg_req.add_link_info.num_links) {
-		osif_fill_link_reconfig_added_links_params(vdev,
-							   &add_link_rsp);
-		cfg80211_mlo_reconf_add_done(dev, &add_link_rsp);
+	osif_debug("add_valid %d del_valid %d",
+		   recfg_indication_ptr->add_valid,
+		   recfg_indication_ptr->del_valid);
+	if (recfg_indication_ptr->add_valid) {
+		osif_debug("added_links 0x%x driver_initiated %d buf len %zu",
+			   recfg_indication_ptr->add_link_rsp.added_links,
+			   recfg_indication_ptr->add_link_rsp.driver_initiated,
+			   recfg_indication_ptr->add_link_rsp.len);
+		cfg80211_mlo_reconf_add_done(
+				dev, &recfg_indication_ptr->add_link_rsp);
 	}
 
-	if (recfg_ctx->curr_recfg_req.del_link_info.num_links) {
-		osif_fill_link_reconfig_deleted_links_params(recfg_ctx,
-							     &del_link_map);
-		cfg80211_links_removed(dev, del_link_map);
+	if (recfg_indication_ptr->del_valid) {
+		osif_debug("del link bitmap 0x%x",
+			   recfg_indication_ptr->del_link_map);
+		cfg80211_links_removed(
+				dev, recfg_indication_ptr->del_link_map);
 	}
 	osif_wiphy_unlock(wiphy, NULL);
+	status = QDF_STATUS_SUCCESS;
+end:
+	osif_free_link_reconfig_done_data(recfg_indication_ptr);
 
-	return QDF_STATUS_SUCCESS;
+	if (vdev)
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
+
+	return status;
 }
 #endif
 

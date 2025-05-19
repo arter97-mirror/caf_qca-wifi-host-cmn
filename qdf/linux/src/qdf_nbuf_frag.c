@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -825,6 +825,19 @@ void __qdf_mem_unmap_page(qdf_device_t osdev, qdf_dma_addr_t paddr,
 qdf_export_symbol(__qdf_mem_unmap_page);
 
 #if defined(QDF_FRAG_CACHE_SUPPORT)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+void __qdf_frag_cache_drain(qdf_frag_cache_t *pf_cache)
+{
+	struct page *page;
+
+	if (!pf_cache->encoded_page)
+		return;
+
+	page  = virt_to_page((void *)pf_cache->encoded_page);
+	__page_frag_cache_drain(page, pf_cache->pagecnt_bias);
+	memset(pf_cache, 0, sizeof(*pf_cache));
+}
+#else
 void __qdf_frag_cache_drain(qdf_frag_cache_t *pf_cache)
 {
 	struct page *page;
@@ -836,6 +849,7 @@ void __qdf_frag_cache_drain(qdf_frag_cache_t *pf_cache)
 	__page_frag_cache_drain(page, pf_cache->pagecnt_bias);
 	memset(pf_cache, 0, sizeof(*pf_cache));
 }
+#endif
 #else
 void __qdf_frag_cache_drain(qdf_frag_cache_t *pf_cache)
 {

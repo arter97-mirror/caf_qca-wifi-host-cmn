@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -353,6 +353,7 @@ QDF_STATUS dp_peer_ast_table_attach(struct dp_soc *soc)
 	return QDF_STATUS_SUCCESS; /* success */
 }
 
+#ifdef FEATURE_WDS_AST_LEARNING
 /**
  * dp_find_peer_by_macaddr() - Finding the peer from mac address provided.
  * @soc: soc handle
@@ -362,6 +363,31 @@ QDF_STATUS dp_peer_ast_table_attach(struct dp_soc *soc)
  *
  * Return: struct dp_peer
  */
+struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
+					uint8_t vdev_id, enum dp_mod_id mod_id)
+
+{
+	struct dp_peer *peer;
+	struct dp_wds_entry *wds_entry;
+	struct cdp_peer_info peer_info = {0};
+
+	DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, mac_addr, false,
+				 CDP_WILD_PEER_TYPE);
+	peer = dp_peer_hash_find_wrapper(soc, &peer_info, mod_id);
+	if (peer)
+		return peer;
+
+	/* Next check againest wds peers */
+	wds_entry = dp_wds_hash_find_wds_entry(soc, mac_addr);
+	if (!wds_entry || !wds_entry->is_mapped)
+		return NULL;
+
+	return dp_peer_get_ref_by_id(soc, wds_entry->peer_id, mod_id);
+}
+
+#else /* FEATURE_WDS_AST_LEARNING */
+
+#ifdef FEATURE_AST
 struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
 					uint8_t vdev_id, enum dp_mod_id mod_id)
 {
@@ -400,6 +426,20 @@ struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
 				 CDP_WILD_PEER_TYPE);
 	return dp_peer_hash_find_wrapper(soc, &peer_info, mod_id);
 }
+#else /* FEATURE_AST */
+struct dp_peer *dp_find_peer_by_macaddr(struct dp_soc *soc, uint8_t *mac_addr,
+					uint8_t vdev_id, enum dp_mod_id mod_id)
+
+{
+	struct cdp_peer_info peer_info = {0};
+
+	DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, mac_addr, false,
+				 CDP_WILD_PEER_TYPE);
+	return dp_peer_hash_find_wrapper(soc, &peer_info, mod_id);
+}
+#endif /* FEATURE_AST */
+
+#endif /* FEATURE_WDS_AST_LEARNING */
 
 /**
  * dp_peer_find_map_attach() - allocate memory for peer_id_to_obj_map
@@ -3100,6 +3140,42 @@ static void dp_rx_mlo_update_ast_idx(struct dp_vdev *vdev, uint16_t hw_peer_id,
 }
 #endif
 
+#ifdef WLAN_MLO_MULTI_CHIP
+/**
+ * dp_rx_mlo_get_vdev_id_by_chipid() - Find vdev id based on mlo peer map event
+ * @soc: soc handle
+ * @mlo_link_info: mlo peer link info from peer map event
+ *
+ * return: vdev id if found, otherwise return default value.
+ */
+static uint8_t
+dp_rx_mlo_get_vdev_id_by_chipid(struct dp_soc *soc,
+				struct dp_mlo_link_info *mlo_link_info)
+{
+	uint8_t vdev_id = 0;
+	int i;
+
+	/* Get corresponding vdev ID for the peer based
+	 * on chip ID obtained from mlo peer_map event
+	 */
+	for (i = 0; i < DP_MAX_MLO_LINKS; i++) {
+		if (mlo_link_info[i].peer_chip_id == dp_get_chip_id(soc)) {
+			vdev_id = mlo_link_info[i].vdev_id;
+			break;
+		}
+	}
+	return vdev_id;
+}
+
+#else
+static uint8_t
+dp_rx_mlo_get_vdev_id_by_chipid(struct dp_soc *soc,
+				struct dp_mlo_link_info *mlo_link_info)
+{
+	return DP_VDEV_ALL;
+}
+#endif
+
 QDF_STATUS
 dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 			   uint8_t *peer_mac_addr,
@@ -3111,7 +3187,6 @@ dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 	uint16_t ast_hash = mlo_flow_info[0].cache_set_num;
 	uint8_t vdev_id = 0;
 	uint8_t is_wds = 0;
-	int i;
 	uint16_t ml_peer_id = dp_gen_ml_peer_id(soc, peer_id);
 	enum cdp_txrx_ast_entry_type type = CDP_TXRX_AST_TYPE_STATIC;
 	QDF_STATUS err = QDF_STATUS_SUCCESS;
@@ -3127,15 +3202,8 @@ dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 		QDF_MAC_ADDR_REF(peer_mac_addr));
 
 	DP_STATS_INC(soc, t2h_msg_stats.ml_peer_map, 1);
-	/* Get corresponding vdev ID for the peer based
-	 * on chip ID obtained from mlo peer_map event
-	 */
-	for (i = 0; i < DP_MAX_MLO_LINKS; i++) {
-		if (mlo_link_info[i].peer_chip_id == dp_get_chip_id(soc)) {
-			vdev_id = mlo_link_info[i].vdev_id;
-			break;
-		}
-	}
+
+	vdev_id = dp_rx_mlo_get_vdev_id_by_chipid(soc, mlo_link_info);
 
 	peer = dp_peer_find_add_id(soc, peer_mac_addr, ml_peer_id,
 				   hw_peer_id, vdev_id, CDP_MLD_PEER_TYPE);
@@ -3192,8 +3260,9 @@ dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 						   peer->rx_tid[DP_NON_QOS_TID].hw_qdesc_paddr);
 		}
 
-		__dp_peer_event_notify(soc, CDP_PEER_EVENT_MAP, peer->peer_id,
-				       peer->vdev->vdev_id, peer->mac_addr.raw);
+		__dp_peer_event_notify(soc, CDP_PEER_EVENT_MLO_MAP,
+				       peer->peer_id, peer->vdev->vdev_id,
+				       peer->mac_addr.raw);
 	}
 
 	if (!primary_soc)
@@ -3233,6 +3302,49 @@ void dp_rx_reset_roaming_peer(struct dp_soc *soc, uint8_t vdev_id,
 		}
 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
 	}
+}
+#endif
+
+#ifdef CONFIG_BORON
+QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
+				       uint8_t vdev_id,
+				       uint8_t peer_classify_info_idx)
+{
+	struct dp_peer *peer = NULL;
+
+	peer = __dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_HTT);
+
+	if (peer) {
+		peer->txpt_classify_idx = peer_classify_info_idx;
+		peer->txpt_classify_idx_valid = true;
+		dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	return QDF_STATUS_E_NOENT;
+}
+
+static inline
+void dp_peer_get_tx_classify_idx(struct cdp_peer_output_param *param,
+				 struct dp_peer *tgt_peer)
+{
+	if (qdf_likely(tgt_peer->txpt_classify_idx_valid)) {
+		param->txpt_classify_idx_valid = true;
+		param->txpt_classify_idx = tgt_peer->txpt_classify_idx;
+	}
+}
+#else
+QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
+				       uint8_t vdev_id,
+				       uint8_t peer_classify_info_idx)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void dp_peer_get_tx_classify_idx(struct cdp_peer_output_param *param,
+				 struct dp_peer *tgt_peer)
+{
 }
 #endif
 
@@ -4000,31 +4112,28 @@ void dp_peer_jitter_stats_ctx_clr(struct dp_txrx_peer *txrx_peer)
 #endif
 
 #ifdef DP_PEER_EXTENDED_API
-/**
- * dp_peer_set_bw() - Set bandwidth and mpdu retry count threshold for peer
- * @soc: DP soc handle
- * @txrx_peer: Core txrx_peer handle
- * @set_bw: enum of bandwidth to be set for this peer connection
- *
- * Return: None
- */
-static void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
-			   enum cdp_peer_bw set_bw)
+void dp_peer_set_bw(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
+		    enum cdp_peer_bw set_bw)
 {
 	if (!txrx_peer)
 		return;
 
+	if (txrx_peer->vdev->opmode == wlan_op_mode_ndi &&
+	    wlan_cfg_get_ndp_bw_flow_ctrl_cfg(soc->wlan_cfg_ctx))
+		dp_tx_ndp_update_bw_thresholds(txrx_peer, txrx_peer->bw,
+					       set_bw);
+
 	txrx_peer->bw = set_bw;
 
 	switch (set_bw) {
-	case CDP_160_MHZ:
-	case CDP_320_MHZ:
+	case CDP_PEER_BW_160MHZ:
+	case CDP_PEER_BW_320MHZ:
 		txrx_peer->mpdu_retry_threshold =
 				soc->wlan_cfg_ctx->mpdu_retry_threshold_2;
 		break;
-	case CDP_20_MHZ:
-	case CDP_40_MHZ:
-	case CDP_80_MHZ:
+	case CDP_PEER_BW_20MHZ:
+	case CDP_PEER_BW_40MHZ:
+	case CDP_PEER_BW_80MHZ:
 	default:
 		txrx_peer->mpdu_retry_threshold =
 				soc->wlan_cfg_ctx->mpdu_retry_threshold_1;
@@ -4338,6 +4447,7 @@ QDF_STATUS dp_get_peer_details(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	tgt_peer = dp_get_tgt_peer_from_peer(peer);
 	peer_details->state = tgt_peer->state;
 	peer_details->peer_id = tgt_peer->peer_id;
+	dp_peer_get_tx_classify_idx(peer_details, tgt_peer);
 
 	if (slowpath)
 		dp_peer_info("peer %pK tgt_peer: %pK peer MAC "
@@ -4527,6 +4637,7 @@ void dp_get_info_by_peer_mac(struct cdp_soc_t *soc_hdl,
 	tgt_peer = dp_get_tgt_peer_from_peer(peer);
 	param->state = tgt_peer->state;
 	param->vdev_id = tgt_peer->vdev->vdev_id;
+	dp_peer_get_tx_classify_idx(param, tgt_peer);
 
 	/* mlo connection link peer, get mld peer with reference */
 	if (IS_MLO_DP_MLD_PEER(tgt_peer))

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016,2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,12 +26,14 @@
  * wlan_objmgr_for_each_vdev_peer() - iterate over each peer for @vdev
  * @vdev: the vdev whose peers should be iterated
  * @peer: peer object cursor
+ * @next: peer's next object cursor
  *
  * Note: The caller is responsible for grabbing @vdev's object lock before
  * using this iterator
  */
-#define wlan_objmgr_for_each_vdev_peer(vdev, peer) \
-	qdf_list_for_each(&(vdev)->vdev_objmgr.wlan_peer_list, peer, vdev_peer)
+#define wlan_objmgr_for_each_vdev_peer(vdev, peer, next) \
+	qdf_list_for_each_del(&(vdev)->vdev_objmgr.wlan_peer_list,\
+			      peer, next, vdev_peer)
 
 /**
  * wlan_objmgr_vdev_peer_attach() - attach peer to vdev peer list

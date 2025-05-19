@@ -32,6 +32,7 @@
 #include "wlan_mlo_t2lm.h"
 #include "wlan_t2lm_api.h"
 #include <wlan_utility.h>
+#include<wlan_action_oui_main.h>
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_peer.h>
 #endif
@@ -1195,29 +1196,6 @@ static QDF_STATUS
 cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
 			    struct wlan_cm_connect_req *req)
 {
-	struct wlan_objmgr_psoc *psoc;
-	bool is_reassociate = false;
-
-	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
-		return QDF_STATUS_E_INVAL;
-
-	if (mlo_is_mld_sta(vdev))
-		is_reassociate = !ucfg_mlo_is_mld_disconnected(vdev);
-	else
-		is_reassociate = !wlan_cm_is_vdev_disconnected(vdev);
-	if (req->source == CM_OSIF_CONNECT &&
-	    !is_reassociate &&
-	    !req->is_non_assoc_link &&
-	    wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
-	    policy_mgr_get_connection_count(psoc) > 1 &&
-	    !policy_mgr_allow_concurrency(psoc, PM_STA_MODE,
-					  0, HW_MODE_BW_NONE,
-					  0, wlan_vdev_get_id(vdev))) {
-		mlme_debug("sta 3 port conc check fail, can't allow sta");
-		return QDF_STATUS_E_FAILURE;
-	}
-
 	if (!wlan_vdev_mlme_is_mlo_link_vdev(vdev))
 		cm_teardown_tdls(vdev);
 
@@ -1945,20 +1923,16 @@ connect_err:
 
 #ifdef WLAN_FEATURE_11BE_MLO
 static void
-cm_modify_partner_info_based_on_dbs_or_sbs_mode(struct wlan_objmgr_vdev *vdev,
+cm_modify_partner_info_based_on_dbs_or_sbs_mode(struct wlan_objmgr_psoc *psoc,
 						wlan_cm_id cm_id,
 						struct scan_cache_entry *scan_entry,
 						struct mlo_partner_info *partner_info)
 {
-	struct wlan_objmgr_psoc *psoc = NULL;
 	uint16_t i;
 	qdf_freq_t assoc_freq, partner_freq;
 	struct mlo_link_info tmp_link_info;
 	uint8_t best_partner_idx, best_partner_idx_2g, best_partner_idx_5g;
-
-	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
-		return;
+	uint16_t vdev_id = CM_ID_GET_VDEV_ID(cm_id);
 
 	assoc_freq = scan_entry->channel.chan_freq;
 	best_partner_idx_2g = partner_info->num_partner_links;
@@ -2002,15 +1976,43 @@ cm_modify_partner_info_based_on_dbs_or_sbs_mode(struct wlan_objmgr_vdev *vdev,
 	partner_info->partner_link_info[best_partner_idx] = tmp_link_info;
 
 	mlme_debug(CM_PREFIX_FMT "Updated no. of partner links: %d",
-		   CM_PREFIX_REF(wlan_vdev_get_id(vdev), cm_id),
+		   CM_PREFIX_REF(vdev_id, cm_id),
 		   partner_info->num_partner_links);
 
 	for (i = 0; i < partner_info->num_partner_links; i++)
 		mlme_debug(CM_PREFIX_FMT "Partner link id: %d mac:" QDF_MAC_ADDR_FMT " freq: %d",
-			   CM_PREFIX_REF(wlan_vdev_get_id(vdev), cm_id),
+			   CM_PREFIX_REF(vdev_id, cm_id),
 			   partner_info->partner_link_info[i].link_id,
 			   QDF_MAC_ADDR_REF(partner_info->partner_link_info[i].link_addr.bytes),
 			   partner_info->partner_link_info[i].chan_freq);
+}
+
+static void
+cm_adjust_partner_links_based_on_oui(struct wlan_objmgr_psoc *psoc,
+				     struct scan_cache_entry *scan_entry,
+				     struct mlo_partner_info *partner_info,
+				     struct cm_req *cm_req)
+{
+	struct action_oui_search_attr attr = {0};
+	uint8_t max_def_link = WLAN_MAX_ML_DEFAULT_LINK - 1;
+
+	attr.ie_data = util_scan_entry_ie_data(scan_entry);
+	attr.ie_length = util_scan_entry_ie_len(scan_entry);
+
+	if (!wlan_action_oui_search(psoc, &attr,
+				    ACTION_OUI_RESTRICT_MAX_MLO_LINKS))
+		return;
+
+	mlme_debug(CM_PREFIX_FMT "Downgrade " QDF_MAC_ADDR_FMT " partner links from %d to %d",
+		   CM_PREFIX_REF(cm_req->connect_req.req.vdev_id, cm_req->cm_id),
+		   QDF_MAC_ADDR_REF(scan_entry->ml_info.mld_mac_addr.bytes),
+		   partner_info->num_partner_links, max_def_link);
+
+	qdf_mem_zero(&partner_info->partner_link_info[max_def_link],
+		     sizeof(struct mlo_link_info) *
+		     (partner_info->num_partner_links - max_def_link));
+
+	partner_info->num_partner_links = max_def_link;
 }
 
 static void
@@ -2020,26 +2022,34 @@ cm_connect_req_update_ml_partner_info(struct cnx_mgr *cm_ctx,
 {
 	bool eht_capable = false;
 	struct cm_connect_req *conn_req = &cm_req->connect_req;
-	struct wlan_objmgr_pdev *pdev;
-	uint8_t cur_vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
+	struct wlan_objmgr_psoc *psoc;
+	uint8_t mlo_support_link_num;
+	struct scan_cache_entry *scan_entry = conn_req->cur_candidate->entry;
+	struct mlo_partner_info *partner_info = &conn_req->req.ml_parnter_info;
 
-	pdev = wlan_vdev_get_pdev(cm_ctx->vdev);
-	if (!pdev) {
-		mlme_err(CM_PREFIX_FMT "Failed to find pdev",
-			 CM_PREFIX_REF(cur_vdev_id, cm_req->cm_id));
+	psoc = wlan_vdev_get_psoc(cm_ctx->vdev);
+	if (!psoc) {
+		mlme_err("psoc is NULL");
 		return;
 	}
 
-	wlan_psoc_mlme_get_11be_capab(wlan_vdev_get_psoc(cm_ctx->vdev),
-				      &eht_capable);
-	if (!same_candidate_used && eht_capable &&
-	    cm_bss_peer_is_assoc_peer(conn_req)) {
-		cm_get_ml_partner_info(pdev, conn_req);
-		cm_modify_partner_info_based_on_dbs_or_sbs_mode(
-						cm_ctx->vdev, cm_req->cm_id,
-						conn_req->cur_candidate->entry,
-						&conn_req->req.ml_parnter_info);
-	}
+	wlan_psoc_mlme_get_11be_capab(psoc, &eht_capable);
+	if (same_candidate_used || !eht_capable ||
+	    !cm_bss_peer_is_assoc_peer(conn_req))
+		return;
+
+	mlo_support_link_num = wlan_mlme_get_sta_mlo_conn_max_num(psoc);
+	cm_get_ml_partner_info(conn_req, mlo_support_link_num);
+	cm_modify_partner_info_based_on_dbs_or_sbs_mode(psoc, cm_req->cm_id,
+							scan_entry,
+							partner_info);
+	if (mlo_support_link_num <= WLAN_MAX_ML_DEFAULT_LINK ||
+	    conn_req->req.ml_parnter_info.num_partner_links <
+	    WLAN_MAX_ML_DEFAULT_LINK)
+		return;
+
+	cm_adjust_partner_links_based_on_oui(psoc, scan_entry, partner_info,
+					     cm_req);
 }
 #else
 static void
@@ -2425,7 +2435,7 @@ QDF_STATUS cm_connect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 	QDF_STATUS status;
 	struct wlan_cm_connect_req *req;
 
-	cm_if_mgr_inform_connect_active(cm_ctx->vdev);
+	status = cm_if_mgr_inform_connect_active(cm_ctx->vdev);
 
 	cm_ctx->active_cm_id = *cm_id;
 	cm_req = cm_get_req_by_cm_id(cm_ctx, *cm_id);
@@ -2442,6 +2452,8 @@ QDF_STATUS cm_connect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 		cm_remove_cmd_from_serialization(cm_ctx, *cm_id);
 		return QDF_STATUS_E_INVAL;
 	}
+	if (QDF_IS_STATUS_ERROR(status))
+		goto connect_err;
 
 	cm_req->connect_req.connect_active_time =
 				qdf_mc_timer_get_system_time();
@@ -3056,7 +3068,7 @@ QDF_STATUS cm_notify_connect_complete(struct cnx_mgr *cm_ctx,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+#ifdef WLAN_FEATURE_11BE_MLO
 static enum phy_ch_width
 cm_get_ch_width_from_phymode(enum wlan_phymode phy_mode)
 {
@@ -3076,7 +3088,6 @@ cm_get_ch_width_from_phymode(enum wlan_phymode phy_mode)
 	return ch_width;
 }
 
-static
 void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 				 struct qdf_mac_addr *mac_addr,
 				 qdf_freq_t freq)
@@ -3113,12 +3124,6 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	util_scan_free_cache_entry(cache_entry);
 	mlo_mgr_update_ap_channel_info(vdev, link_id, (uint8_t *)mac_addr,
 				       channel);
-}
-#else
-static void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
-					struct qdf_mac_addr *mac_addr,
-					qdf_freq_t freq)
-{
 }
 #endif
 

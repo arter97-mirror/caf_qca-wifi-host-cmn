@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1119,5 +1119,41 @@ int hif_ipci_disable_grp_irqs(struct hif_softc *scn)
 		ipci_scn->grp_irqs_disabled = true;
 
 	return status;
+}
+#endif
+#ifdef IPA_OPT_WIFI_DP
+int hif_prevent_l1(struct hif_opaque_softc *hif)
+{
+	struct hif_softc *hif_softc = (struct hif_softc *)hif;
+	int status;
+
+	status = hif_force_wake_request(hif);
+	if (status) {
+		hif_err("Force wake request error");
+		return status;
+	}
+
+	qdf_atomic_inc(&hif_softc->opt_wifi_dp_rtpm_cnt);
+	hif_info("opt_dp: ipci link up count %d",
+		 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
+	return status;
+}
+
+void hif_allow_l1(struct hif_opaque_softc *hif)
+{
+	struct hif_softc *hif_softc = (struct hif_softc *)hif;
+	int status;
+
+	if (qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt) > 0) {
+		status = hif_force_wake_release(hif);
+		if (status) {
+			hif_err("Force wake release error");
+			return;
+		}
+
+		qdf_atomic_dec(&hif_softc->opt_wifi_dp_rtpm_cnt);
+		hif_info("opt_dp: ipci link down count %d",
+			 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
+	}
 }
 #endif

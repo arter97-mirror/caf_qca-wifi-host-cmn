@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -152,10 +152,11 @@
  *                                                   dma map
  * @u.tx.dev.priv_cb_m.dma_option.dma_option.reserved: reserved bits for future
  *                                                     use
- * @u.tx.dev.priv_cb_m.flag_notify_comp: reserved
- * @u.tx.dev.priv_cb_m.flag_ts_valid: flag to indicate field
- * u.tx.pa_ts.ts_value is available, it must be cleared before fragment mapping
- * @u.tx.dev.priv_cb_m.rsvd: reserved
+ * @flag_notify_comp: flag for tx completion notification
+ * @band: band in which the tx packet is sent
+ * @flag_ts_valid: flag to indicate field
+ * @u.tx.pa_ts.ts_value is available, it must be cleared before fragment mapping
+ * @peer_bw: peer bandwidth
  * @u.tx.dev.priv_cb_m.reserved: reserved
  *
  * @u.tx.ftype: mcast2ucast, TSO, SG, MESH
@@ -315,7 +316,7 @@ struct qdf_nbuf_cb {
 					uint8_t flag_notify_comp:1,
 						band:3,
 						flag_ts_valid:1,
-						rsvd:3;
+						peer_bw:3;
 					uint8_t reserved[2];
 				} priv_cb_m;
 			} dev;
@@ -615,6 +616,10 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	band)
 
+#define QDF_NBUF_CB_TX_PEER_BW(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
+	 peer_bw)
+
 #define QDF_NBUF_CB_RX_PEER_ID(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m.dp. \
 	wifi3.peer_id)
@@ -739,6 +744,12 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 {
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
+
+	if (__qdf_is_pp_nbuf(buf)) {
+		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
+					   nbytes, __qdf_dma_dir_to_os(dir));
+		return QDF_STATUS_SUCCESS;
+	}
 
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =

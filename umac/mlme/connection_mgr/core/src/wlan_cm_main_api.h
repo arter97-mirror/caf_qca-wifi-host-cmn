@@ -282,6 +282,25 @@ QDF_STATUS cm_notify_connect_complete(struct cnx_mgr *cm_ctx,
 				      struct wlan_cm_connect_resp *resp,
 				      bool acquire_lock);
 
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * cm_update_link_channel_info - Update channel link info
+ * @vdev: Pointer to vdev object
+ * @mac_addr: Bssid for which channel info needs update
+ * @freq: Frequency of the given bssid
+ *
+ * Return: None
+ */
+void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
+				 struct qdf_mac_addr *mac_addr,
+				 qdf_freq_t freq);
+#else
+static inline void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
+					       struct qdf_mac_addr *mac_addr,
+					       qdf_freq_t freq)
+{}
+#endif
+
 /**
  * cm_update_scan_mlme_info() - This API would be called after connect complete
  * request or roam synch completion.

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3890,6 +3890,7 @@ hal_setup_link_idle_list_generic_be(struct hal_soc *soc,
 		      val);
 }
 
+#ifndef CONFIG_BORON
 #ifdef DP_HW_COOKIE_CONVERT_EXCEPTION
 #define HAL_WBM_MISC_CONTROL_SPARE_CONTROL_FIELD_BIT15 0x8000
 #endif
@@ -4026,7 +4027,7 @@ void hal_cookie_conversion_reg_cfg_generic_be(hal_soc_handle_t hal_soc_hdl,
 	HAL_REG_WRITE(soc, reg_addr, reg_val);
 #endif
 }
-
+#endif
 /**
  * hal_set_ba_aging_timeout_be_generic() - Set BA Aging timeout
  * @hal_soc_hdl: Opaque HAL SOC handle
@@ -4071,6 +4072,7 @@ void hal_set_ba_aging_timeout_be_generic(hal_soc_handle_t hal_soc_hdl,
 	}
 }
 
+#ifndef CONFIG_BORON
 /**
  * hal_tx_populate_bank_register_be() - populate the bank register with
  *		the software configs.
@@ -4157,7 +4159,7 @@ hal_tx_populate_bank_register_be(hal_soc_handle_t hal_soc_hdl,
 	HAL_REG_WRITE(hal_soc, reg_addr, reg_val);
 }
 #endif
-
+#endif /* !CONFIG_BORON */
 
 #ifdef HWIO_TCL_R0_VDEV_MCAST_PACKET_CTRL_MAP_n_VAL_SHFT
 

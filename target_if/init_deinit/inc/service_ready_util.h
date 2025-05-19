@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -428,6 +428,31 @@ int init_deinit_populate_dbs_or_sbs_cap_ext2(struct wlan_objmgr_psoc *psoc,
 int init_deinit_populate_aux_dev_cap_ext2(struct wlan_objmgr_psoc *psoc,
 					  wmi_unified_t handle, uint8_t *event,
 					  struct tgt_info *info);
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+/*
+ * init_deinit_populate_power_boost_cap_ext2 - Populate Power Boost cap
+ * from service ready ext2 event.
+ * @handle: WMI handle pointer
+ * @event: event buffer received from FW
+ * @info: tgt_info object
+ *
+ * API to populate Power Boost capabilities from service ready ext2 event.
+ *
+ * Return: zero on successful parsing of physical reg capability or failure flag
+ */
+
+int init_deinit_populate_power_boost_cap_ext2(wmi_unified_t handle,
+					      uint8_t *event,
+					      struct tgt_info *info);
+#else
+static inline
+int init_deinit_populate_power_boost_cap_ext2(wmi_unified_t handle,
+					      uint8_t *event,
+					      struct tgt_info *info)
+{
+	return 0;
+}
+#endif
 
 /**
  * init_deinit_populate_sap_coex_capability() - SAP coex capability

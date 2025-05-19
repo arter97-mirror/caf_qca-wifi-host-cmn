@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -965,6 +965,7 @@ enum wifi_connectivity_events {
  * @WIFI_POWER_EVENT_WAKELOCK_RTPM_TPUT_POLICY: Wakelock for RTPM Tput policy
  * @WIFI_POWER_EVENT_WAKELOCK_DYN_MAC_ADDR_UPDATE: Dynamic mac addr update
  * @WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP: OPT_WIFI_DP feature enabled
+ * @WIFI_POWER_EVENT_WAKELOCK_TX_POWER_BOOST: TX Powerboost feature enabled
  *
  * Indicates the reason for which the wakelock was taken/released
  */
@@ -1001,6 +1002,7 @@ enum wake_lock_reason {
 	WIFI_POWER_EVENT_WAKELOCK_RTPM_TPUT_POLICY,
 	WIFI_POWER_EVENT_WAKELOCK_DYN_MAC_ADDR_UPDATE,
 	WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP,
+	WIFI_POWER_EVENT_WAKELOCK_TX_POWER_BOOST,
 };
 
 /* The length of interface name should >= IFNAMSIZ */

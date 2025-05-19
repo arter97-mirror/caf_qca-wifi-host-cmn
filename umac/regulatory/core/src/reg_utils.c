@@ -1421,4 +1421,31 @@ bool reg_is_ap_power_type_c2c(enum reg_6g_ap_type ap_pwr_type)
 		return true;
 	return false;
 }
+
+bool reg_does_country_supp_c2c(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+
+	pdev_priv_obj = reg_get_pdev_obj(pdev);
+	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
+		reg_err("pdev reg component is NULL");
+		return false;
+	}
+
+	return pdev_priv_obj->is_c2c_supp;
+}
+
+bool
+reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+
+	pdev_priv_obj = reg_get_pdev_obj(pdev);
+	if (!pdev_priv_obj) {
+		reg_err("pdev priv obj null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return pdev_priv_obj->is_indoor_ap_found;
+}
 #endif

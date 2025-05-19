@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1758,12 +1758,14 @@ struct ap_ps_params {
  * @append: append to existing chan list
  * @max_bw_support_present: max BW support present
  * @ch_param: pointer to channel_paramw
+ * @is_c2c_supp: is C2C supported for country
  */
 struct scan_chan_list_params {
 	uint32_t pdev_id;
 	uint16_t nallchans;
 	bool append;
 	bool max_bw_support_present;
+	bool is_c2c_supp;
 	QDF_FLEX_ARRAY(struct channel_param, ch_param);
 };
 
@@ -5439,6 +5441,7 @@ typedef enum {
 	wmi_pdev_csa_switch_count_status_event_id,
 	wmi_reg_chan_list_cc_event_id,
 	wmi_reg_chan_list_cc_ext_event_id,
+	wmi_c2c_detect_event_id,
 #ifdef CONFIG_AFC_SUPPORT
 	wmi_afc_event_id,
 #endif
@@ -5665,6 +5668,10 @@ typedef enum {
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 	wmi_opt_dp_diag_event_id,
 #endif
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+	wmi_pdev_power_boost_eventid,
+#endif
+
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -6408,6 +6415,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_twt_unavail_mode, VDEV_PARAM_TWT_UNAVAIL_MODE),
 	VDEV_PARAM(vdev_param_connect_ext_features,
 		   VDEV_PARAM_CONNECT_EXT_FEATURES),
+	VDEV_PARAM(vdev_param_disable_scan_start_twt,
+		   VDEV_PARAM_DISABLE_SCAN_START_TWT),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
@@ -6571,6 +6580,7 @@ typedef enum {
 	wmi_service_twt_requestor,
 	wmi_service_twt_responder,
 	wmi_service_listen_interval_offload_support,
+	wmi_service_apf_data_offload_support_enabled,
 
 #ifdef OL_ATH_SMART_LOGGING
 	wmi_service_smart_logging_support,
@@ -7247,6 +7257,7 @@ struct target_feature_set {
  * @max_ml_sap_num_bss: Max sap bss
  * @max_ml_sta_num_bss: Max sta bss
  * @max_ml_bss_num: Max ml bss
+ * @apfv6_offload_disabled: APFv6 offload disabled bitmap
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7396,6 +7407,7 @@ typedef struct {
 	uint8_t max_ml_sap_num_bss;
 	uint8_t max_ml_sta_num_bss;
 	uint8_t max_ml_bss_num;
+	uint32_t apfv6_offload_disabled;
 } target_resource_config;
 
 /**

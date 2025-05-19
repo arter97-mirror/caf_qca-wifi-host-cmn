@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -531,6 +530,107 @@ static QDF_STATUS tgt_if_regulatory_unregister_master_list_ext_handler(
 			wmi_handle, wmi_reg_chan_list_cc_ext_event_id);
 }
 
+#ifdef CONFIG_REG_CLIENT
+/**
+ * tgt_reg_c2c_detect_event_handler() - C2C detect event handler
+ * @handle: scn handle
+ * @event_buf: pointer to event buffer
+ * @len: buffer length
+ *
+ * Return: 0 on success
+ */
+static int tgt_reg_c2c_detect_event_handler(ol_scn_t handle,
+					    uint8_t *event_buf,
+					    uint32_t len)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_reg_rx_ops *reg_rx_ops;
+	bool indoor_ap_found;
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+
+	TARGET_IF_ENTER();
+	psoc = target_if_get_psoc_from_scn_hdl(handle);
+	if (!psoc) {
+		target_if_err("psoc ptr is NULL");
+		return -EINVAL;
+	}
+
+	reg_rx_ops = target_if_regulatory_get_rx_ops(psoc);
+	if (!reg_rx_ops) {
+		target_if_err("reg_rx_ops is NULL");
+		return -EINVAL;
+	}
+
+	if (!reg_rx_ops->c2c_detect_evt_handler) {
+		target_if_err("c2c_detect_event_handler is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("invalid wmi handle");
+		return -EINVAL;
+	}
+
+	status = wmi_extract_reg_c2c_detect_event(wmi_handle, event_buf,
+						  &indoor_ap_found);
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
+		target_if_err("Extraction of c2c detect event failed");
+		return -EFAULT;
+	}
+
+	status = reg_rx_ops->c2c_detect_evt_handler(psoc, indoor_ap_found);
+	if (!QDF_IS_STATUS_SUCCESS(status)) {
+		target_if_err("Failed to process c2c_detect_event_handler");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+/**
+ * tgt_if_regulatory_register_c2c_detect_event_handler() - Register C2C detect
+ * event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS tgt_if_regulatory_register_c2c_detect_event_handler(
+	struct wlan_objmgr_psoc *psoc, void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_register_event_handler(
+			wmi_handle, wmi_c2c_detect_event_id,
+			tgt_reg_c2c_detect_event_handler,
+			WMI_RX_SERIALIZER_CTX);
+}
+
+/**
+ * tgt_if_regulatory_unregister_c2c_detect_event_handler() - Unregister C2C
+ * detect event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS tgt_if_regulatory_unregister_c2c_detect_event_handler(
+	struct wlan_objmgr_psoc *psoc, void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_unregister_event_handler(
+			wmi_handle, wmi_c2c_detect_event_id);
+}
+#endif
 #ifdef CONFIG_AFC_SUPPORT
 /**
  * tgt_afc_event_handler() - Handler for AFC Event
@@ -849,6 +949,30 @@ static QDF_STATUS tgt_if_regulatory_get_pdev_id_from_phy_id(
 
 	return QDF_STATUS_SUCCESS;
 }
+
+#if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
+/**
+ * target_if_register_c2c_detect_event_handler() - Register C2C detect
+ * event handler
+ * @reg_ops: Regulatory TX ops pointer
+ *
+ * Return: None
+ */
+static void target_if_register_c2c_detect_event_handler(
+				struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+	reg_ops->register_c2c_detect_event_handler =
+		tgt_if_regulatory_register_c2c_detect_event_handler;
+
+	reg_ops->unregister_c2c_detect_event_handler =
+		tgt_if_regulatory_unregister_c2c_detect_event_handler;
+}
+#else
+static inline void target_if_register_c2c_detect_event_handler(
+				struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+}
+#endif
 
 #ifdef CONFIG_BAND_6GHZ
 static void target_if_register_master_ext_handler(
@@ -1453,6 +1577,173 @@ QDF_STATUS target_if_register_afc_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef FEATURE_WLAN_TX_POWERBOOST
+static QDF_STATUS
+tgt_if_regulatory_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
+				     struct reg_pdev_pb_dma_buf *param)
+{
+	wmi_unified_t wmi_handle;
+	uint8_t pdev_id;
+
+	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
+	wmi_handle = get_wmi_unified_hdl_from_pdev(pdev);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_pdev_pb_mem_ind_send(wmi_handle, param, pdev_id);
+}
+
+static QDF_STATUS
+tgt_if_regulatory_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
+				     struct reg_txpb_cmd_params *param)
+{
+	wmi_unified_t wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_pdev(pdev);
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_pdev_pb_send_inference_cmd(wmi_handle, param);
+}
+
+/**
+ * tgt_reg_txpb_event_handler() - Tx powerboost event handler
+ * @handle: scn handle
+ * @event_buf: pointer to event buffer
+ * @len: buffer length
+ *
+ * Return: 0 on success
+ */
+static int
+tgt_reg_txpb_event_handler(ol_scn_t handle, uint8_t *event_buf,
+			   uint32_t len)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_reg_rx_ops *reg_rx_ops;
+	struct reg_txpb_evt_params *params;
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+	int ret_val = 0;
+
+	TARGET_IF_ENTER();
+
+	psoc = target_if_get_psoc_from_scn_hdl(handle);
+	if (!psoc) {
+		target_if_err("psoc ptr is NULL");
+		return -EINVAL;
+	}
+
+	reg_rx_ops = target_if_regulatory_get_rx_ops(psoc);
+	if (!reg_rx_ops) {
+		target_if_err("reg_rx_ops is NULL");
+		return -EINVAL;
+	}
+
+	if (!reg_rx_ops->txpb_event_handler) {
+		target_if_err("txpb_event_handler is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("invalid wmi handle");
+		return -EINVAL;
+	}
+
+	params = qdf_mem_malloc(sizeof(*params));
+	if (!params)
+		return -ENOMEM;
+
+	status = wmi_extract_pdev_power_boost_ev_params(wmi_handle,
+							event_buf,
+							params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("TPB: Failed to extract power boost event params");
+		ret_val = -EFAULT;
+		goto clean;
+	}
+
+	status = reg_rx_ops->txpb_event_handler(psoc, params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("TPB: Failed to process txpb event handler");
+		ret_val = -EFAULT;
+	}
+
+clean:
+	qdf_mem_free(params);
+	TARGET_IF_EXIT();
+	return ret_val;
+}
+
+/**
+ * tgt_if_reg_txpb_register_event_handler() - Register Tx powerboost
+ * event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+tgt_if_reg_txpb_register_event_handler(struct wlan_objmgr_psoc *psoc,
+				       void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_register_event_handler(
+			wmi_handle, wmi_pdev_power_boost_eventid,
+			tgt_reg_txpb_event_handler, WMI_RX_WORK_CTX);
+}
+
+/**
+ * tgt_if_reg_txpb_unregister_event_handler() - Unregister Tx powerboost
+ * event handler
+ * @psoc: Pointer to psoc
+ * @arg: Pointer to argument list
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+tgt_if_reg_txpb_unregister_event_handler(struct wlan_objmgr_psoc *psoc,
+					 void *arg)
+{
+	wmi_unified_t wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi_handle)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_unified_unregister_event_handler(
+			wmi_handle, wmi_pdev_power_boost_eventid);
+}
+
+/**
+ * target_if_register_txpb_handler() - register Tx powerboost handlers
+ * @reg_ops: Pointer to reg ops
+ *
+ * Return: void
+ */
+static void
+target_if_register_txpb_handler(struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+	reg_ops->txpb_send_dma_addr =
+		tgt_if_regulatory_txpb_send_dma_addr;
+	reg_ops->txpb_send_inference_cmd =
+		tgt_if_regulatory_txpb_send_inference_cmd;
+	reg_ops->register_txpb_event_handler =
+		tgt_if_reg_txpb_register_event_handler;
+	reg_ops->unregister_txpb_event_handler =
+		tgt_if_reg_txpb_unregister_event_handler;
+}
+#else
+static inline
+void target_if_register_txpb_handler(struct wlan_lmac_if_reg_tx_ops *reg_ops)
+{
+}
+#endif
+
 QDF_STATUS target_if_register_regulatory_tx_ops(
 		struct wlan_lmac_if_tx_ops *tx_ops)
 {
@@ -1467,6 +1758,8 @@ QDF_STATUS target_if_register_regulatory_tx_ops(
 	target_if_register_master_ext_handler(reg_ops);
 
 	target_if_register_afc_event_handler(reg_ops);
+
+	target_if_register_c2c_detect_event_handler(reg_ops);
 
 	reg_ops->set_country_code = tgt_if_regulatory_set_country_code;
 
@@ -1527,6 +1820,8 @@ QDF_STATUS target_if_register_regulatory_tx_ops(
 	reg_ops->is_80p80_supported = NULL;
 
 	reg_ops->is_freq_80p80_supported = NULL;
+
+	target_if_register_txpb_handler(reg_ops);
 
 	return QDF_STATUS_SUCCESS;
 }

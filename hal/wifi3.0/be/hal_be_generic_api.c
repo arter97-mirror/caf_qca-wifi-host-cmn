@@ -30,13 +30,14 @@
 /*
  * The 4 bits REO destination ring value is defined as: 0: TCL
  * 1:SW1  2:SW2  3:SW3  4:SW4  5:Release  6:FW(WIFI)  7:SW5
- * 8:SW6 9:SW7  10:SW8  11: NOT_USED.
+ * 8:SW6 9:SW7  10:SW8  11: SW9.
  *
  */
 uint32_t reo_dest_ring_remap[] = {REO_REMAP_SW1, REO_REMAP_SW2,
 				  REO_REMAP_SW3, REO_REMAP_SW4,
 				  REO_REMAP_SW5, REO_REMAP_SW6,
-				  REO_REMAP_SW7, REO_REMAP_SW8};
+				  REO_REMAP_SW7, REO_REMAP_SW8,
+				  REO_REMAP_SW9};
 /*
  * WBM idle link descriptor for Return Buffer Manager in case of
  * multi-chip configuration.
@@ -703,6 +704,68 @@ uint32_t hal_rx_msdu_reo_dst_ind_get_be(hal_soc_handle_t hal_soc_hdl,
 							   hal_soc);
 	dst_ind = HAL_RX_MSDU_REO_DST_IND_GET(msdu_desc_info);
 	return dst_ind;
+}
+
+void
+hal_reo_remap_ix2_ix3_value_get_be(hal_soc_handle_t hal_soc_hdl,
+				   uint32_t rx_ring_mask,
+				   uint32_t *remap_ix2,
+				   uint32_t *remap_ix3)
+
+{
+	uint32_t num_rings = 0;
+	uint32_t i = 0;
+	uint32_t ring_remap_arr[HAL_MAX_REO2SW_RINGS] = {0};
+	uint32_t ring_idx = 0;
+	uint8_t ix2_map[HAL_NUM_RX_RING_PER_IX_MAP] = {0};
+	uint8_t ix3_map[HAL_NUM_RX_RING_PER_IX_MAP] = {0};
+
+	/* create reo ring remap array */
+	while (i < HAL_MAX_REO2SW_RINGS) {
+		if (rx_ring_mask & (1 << i)) {
+			ring_remap_arr[num_rings] = reo_dest_ring_remap[i];
+			num_rings++;
+		}
+		i++;
+	}
+
+	for (i = 0; i < HAL_NUM_RX_RING_PER_IX_MAP; i++) {
+		if (rx_ring_mask) {
+			ix2_map[i] = ring_remap_arr[ring_idx];
+			ring_idx = ((ring_idx + 1) % num_rings);
+		} else {
+			/* if ring mask is zero configure to release to WBM */
+			ix2_map[i] = REO_REMAP_RELEASE;
+		}
+	}
+
+	for (i = 0; i < HAL_NUM_RX_RING_PER_IX_MAP; i++) {
+		if (rx_ring_mask) {
+			ix3_map[i] = ring_remap_arr[ring_idx];
+			ring_idx = ((ring_idx + 1) % num_rings);
+		} else {
+			/* if ring mask is zero configure to release to WBM */
+			ix3_map[i] = REO_REMAP_RELEASE;
+		}
+	}
+
+	*remap_ix2 = HAL_REO_REMAP_IX2(ix2_map[0], 16) |
+		     HAL_REO_REMAP_IX2(ix2_map[1], 17) |
+		     HAL_REO_REMAP_IX2(ix2_map[2], 18) |
+		     HAL_REO_REMAP_IX2(ix2_map[3], 19) |
+		     HAL_REO_REMAP_IX2(ix2_map[4], 20) |
+		     HAL_REO_REMAP_IX2(ix2_map[5], 21) |
+		     HAL_REO_REMAP_IX2(ix2_map[6], 22) |
+		     HAL_REO_REMAP_IX2(ix2_map[7], 23);
+
+	*remap_ix3 = HAL_REO_REMAP_IX3(ix3_map[0], 24) |
+		     HAL_REO_REMAP_IX3(ix3_map[1], 25) |
+		     HAL_REO_REMAP_IX3(ix3_map[2], 26) |
+		     HAL_REO_REMAP_IX3(ix3_map[3], 27) |
+		     HAL_REO_REMAP_IX3(ix3_map[4], 28) |
+		     HAL_REO_REMAP_IX3(ix3_map[5], 29) |
+		     HAL_REO_REMAP_IX3(ix3_map[6], 30) |
+		     HAL_REO_REMAP_IX3(ix3_map[7], 31);
 }
 
 uint32_t

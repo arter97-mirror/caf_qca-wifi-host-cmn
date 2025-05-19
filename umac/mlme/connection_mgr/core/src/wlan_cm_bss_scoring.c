@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2294,7 +2294,7 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 				  enum MLO_TYPE bss_mlo_type)
 {
 	struct scan_cache_entry *entry_partner[MLD_MAX_LINKS - 1];
-	uint32_t freq[MLD_MAX_LINKS - 1];
+	uint32_t freq[MLD_MAX_LINKS - 1] = {0};
 	uint32_t etp_score[MLD_MAX_LINKS - 1] = {0};
 	uint32_t total_score[MLD_MAX_LINKS - 1] = {0};
 	int8_t i, j;
@@ -3313,7 +3313,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 	struct scan_cache_node *tmp_scan_node, *scan_node;
 	struct scan_cache_entry *tmp_scan_entry, *scan_entry;
 	uint8_t max_link_cnt, num_link, cur_valid_partners, cur_valid_bitmap;
-	bool allow_slo_candidate;
+	bool allow_slo_candidate, remove_curr_candidate;
 	uint8_t gen_bmap, i, gen_link_cnt;
 
 	psoc = wlan_pdev_get_psoc(pdev);
@@ -3337,7 +3337,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 		scan_node = qdf_container_of(cur_node,
 					     struct scan_cache_node, node);
 		scan_entry = scan_node->entry;
-
+		remove_curr_candidate = false;
 		num_link = scan_entry->ml_info.num_links;
 		allow_slo_candidate = cm_is_slo_candidate_allowed(psoc,
 								  scan_entry);
@@ -3386,6 +3386,8 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 		 */
 		if (!cur_valid_partners)
 			goto add_11ax;
+		else if (cur_valid_partners > max_link_cnt - 1)
+			remove_curr_candidate = true;
 
 		for (gen_bmap = 0; gen_bmap < BIT(num_link); gen_bmap++) {
 			/**
@@ -3420,8 +3422,6 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 
 			qdf_mem_zero(tmp_scan_entry->ml_info.link_info,
 				     sizeof(tmp_scan_entry->ml_info.link_info));
-			tmp_scan_entry->ml_info.num_links = 0;
-
 			gen_link_cnt = 0;
 			for (i = 0; i < num_link; i++) {
 				if (!(gen_bmap & BIT(i)))
@@ -3445,9 +3445,13 @@ add_11ax:
 			cm_add_11_ax_candidate(pdev, candidate_list, scan_node);
 
 next:
+		if (remove_curr_candidate) {
+			qdf_list_remove_node(candidate_list, cur_node);
+			util_scan_free_cache_entry(scan_entry);
+			qdf_mem_free(cur_node);
+		}
 		cur_node = next_node;
 		next_node = NULL;
-
 	}
 }
 
@@ -3708,7 +3712,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlme_err("failed to remove node for BSS "QDF_MAC_ADDR_FMT" from scan list",
 				 QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes));
-			if (force_connect_candidate->entry) {
+			if (force_connect_candidate) {
 				util_scan_free_cache_entry(force_connect_candidate->entry);
 				qdf_mem_free(force_connect_candidate);
 			}
@@ -3825,6 +3829,53 @@ static bool wlan_cm_wfa_get_test_feature_flags(struct wlan_objmgr_psoc *psoc)
 {
 	return wlan_wfa_get_test_feature_flags(psoc, WFA_TEST_IGNORE_RSNXE);
 }
+
+#ifdef WLAN_FEATURE_11BE_MLO
+void
+wlan_cm_set_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  uint8_t num_links,
+				  struct qdf_mac_addr *allowed_bss_link_addr)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	uint8_t i;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return;
+
+	for (i = 0; i < num_links; i++) {
+		qdf_copy_macaddr(&mlme_psoc_obj->psoc_cfg.mlo_config.allowed_bss_link_addr[i],
+				 allowed_bss_link_addr);
+		allowed_bss_link_addr++;
+	}
+
+	mlme_debug("number of allowed BSS links: %d", num_links);
+	mlme_psoc_obj->psoc_cfg.mlo_config.num_links = num_links;
+}
+
+uint8_t
+wlan_cm_get_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
+				  struct qdf_mac_addr *allowed_bss_link_addr)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	uint8_t num_links;
+	uint8_t i;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return 0;
+
+	num_links = mlme_psoc_obj->psoc_cfg.mlo_config.num_links;
+	for (i = 0; i < num_links; i++) {
+		qdf_copy_macaddr(allowed_bss_link_addr,
+				 &mlme_psoc_obj->psoc_cfg.mlo_config.allowed_bss_link_addr[i]);
+		allowed_bss_link_addr++;
+	}
+	mlme_debug("number of allowed BSS links: %d", num_links);
+
+	return num_links;
+}
+#endif
 
 bool wlan_cm_6ghz_allowed_for_akm(struct wlan_objmgr_psoc *psoc,
 				  uint32_t key_mgmt, uint16_t rsn_caps,
