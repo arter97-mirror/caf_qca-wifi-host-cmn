@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -836,6 +836,35 @@ QDF_STATUS
 wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
 				   const uint8_t *ie_ptr, uint16_t ie_len,
 				   enum wlan_status_code *status_code);
+
+/**
+ * wlan_get_crypto_params_from_mrsno_ie() - Function to set crypto params
+ * from MRSNO IE
+ * @crypto_params: vdev crypto parameters
+ * @ie_ptr: pointer to IEs
+ * @ie_len: IE length
+ * @rsno_gen: RSNO generation
+ *
+ * This function is used to get the crypto parameters from MRSNO IE
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_get_crypto_params_from_mrsno_ie(struct wlan_crypto_params *crypto_params,
+				     const uint8_t *ie_ptr, uint16_t ie_len,
+				     uint8_t rsno_gen);
+
+/*
+ * wlan_set_crypto_params_from_mrsno - Sets vdev crypto params from RSNO IE
+ * @vdev: vdev pointer
+ * @ie_ptr: pointer to IE
+ * @ie_len: IE length
+ *
+ * This function gets called from ucfg to set crypto params from IE data.
+ *
+ * Return: QDF_STATUS_SUCCESS or error code
+ */
+QDF_STATUS wlan_set_crypto_params_from_mrsno(struct wlan_objmgr_vdev *vdev,
+					     uint8_t *ie_ptr, uint16_t ie_len);
 
 /**
  * wlan_set_vdev_crypto_params_from_ie() - Sets vdev crypto params from IE info
