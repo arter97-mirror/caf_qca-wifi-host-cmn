@@ -1141,7 +1141,9 @@ irqreturn_t hif_ext_group_interrupt_handler(int irq, void *context)
 	struct hif_softc *scn = HIF_GET_SOFTC(hif_ext_group->hif);
 
 	if (hif_ext_group->irq_requested) {
+#ifdef FEATURE_NAPI
 		hif_update_irq_handler_start_time(hif_ext_group);
+#endif
 		hif_latency_profile_start(hif_ext_group);
 
 		hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
@@ -1171,7 +1173,9 @@ irqreturn_t hif_ext_group_interrupt_handler(int irq, void *context)
 		qdf_atomic_inc(&scn->active_grp_tasklet_cnt);
 
 		hif_ext_group->sched_ops->schedule(hif_ext_group);
+#ifdef FEATURE_NAPI
 		hif_update_irq_handle_time(hif_ext_group);
+#endif
 	}
 
 	return IRQ_HANDLED;

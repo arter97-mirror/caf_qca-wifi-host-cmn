@@ -1667,8 +1667,11 @@ static enum HTC_SEND_QUEUE_RESULT htc_try_send(HTC_TARGET *target,
 		if (pEndpoint->async_update &&
 			(!IS_TX_CREDIT_FLOW_ENABLED(pEndpoint)) &&
 			(!tx_resources)) {
+#if (defined(HIF_PCI) || defined(HIF_SNOC) || defined(HIF_AHB) || \
+						 defined(HIF_IPCI))
 			hif_schedule_ce_tasklet(target->hif_dev,
 						pEndpoint->UL_PipeID);
+#endif
 			break;
 		}
 
