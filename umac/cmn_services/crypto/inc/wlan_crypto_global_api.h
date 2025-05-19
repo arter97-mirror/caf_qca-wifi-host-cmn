@@ -259,22 +259,26 @@ QDF_STATUS wlan_crypto_demic(struct wlan_objmgr_vdev *vdev,
 /**
  * wlan_crypto_vdev_is_pmf_enabled() - called to check is pmf enabled in vdev
  * @vdev: vdev
+ * @rsno_gen: RSN(O) generation
  *
  * This function gets called to check is pmf enabled or not in vdev.
  *
  * Return: true or false
  */
-bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev);
+bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev,
+				     uint8_t rsno_gen);
 
 /**
  * wlan_crypto_vdev_is_pmf_required() - called to check is pmf required in vdev
  * @vdev: vdev
+ * @rsno_gen: RSN(O) generation
  *
  * This function gets called to check is pmf required or not in vdev.
  *
  * Return: true or false
  */
-bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev);
+bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev,
+				      uint8_t rsno_gen);
 
 /**
  * wlan_crypto_is_pmf_enabled() - called by mgmt txrx to check is pmf enabled
