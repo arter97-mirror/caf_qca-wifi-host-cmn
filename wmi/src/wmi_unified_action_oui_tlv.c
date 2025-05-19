@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2018, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -80,6 +80,9 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
 		return true;
 	case ACTION_OUI_AUTH_ASSOC_6MBPS_2GHZ:
 		*id = WMI_VENDOR_OUI_ACTION_AUTH_ASSOC_6MBPS_2GHZ;
+		return true;
+	case ACTION_OUI_DISABLE_DYNAMIC_SMPS:
+		*id = WMI_VENDOR_OUI_ACTION_DISABLE_DYNAMIC_SMPS;
 		return true;
 	default:
 		return false;
