@@ -1932,7 +1932,8 @@ QDF_STATUS wlan_crypto_demic(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
-bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev)
+bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev,
+				     uint8_t rsno_gen)
 {
 
 	struct wlan_crypto_comp_priv *crypto_priv;
@@ -1940,10 +1941,16 @@ bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev)
 
 	if (!vdev)
 		return false;
-	vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
-							&crypto_priv);
-	if (!crypto_priv) {
-		crypto_err("crypto_priv NULL");
+
+	if (rsno_gen)
+		vdev_crypto_params = wlan_crypto_vdev_get_rsno_crypto(vdev,
+								      rsno_gen);
+	else
+		vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
+								&crypto_priv);
+
+	if (!vdev_crypto_params) {
+		crypto_err("ULL crypto params");
 		return false;
 	}
 
@@ -1957,7 +1964,8 @@ bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
-bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev)
+bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev,
+				      uint8_t rsno_gen)
 {
 	struct wlan_crypto_comp_priv *crypto_priv;
 	struct wlan_crypto_params *vdev_crypto_params;
@@ -1965,10 +1973,14 @@ bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev)
 	if (!vdev)
 		return false;
 
-	vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
-							      &crypto_priv);
-	if (!crypto_priv) {
-		crypto_err("crypto_priv NULL");
+	if (rsno_gen)
+		vdev_crypto_params = wlan_crypto_vdev_get_rsno_crypto(vdev,
+								      rsno_gen);
+	else
+		vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
+								&crypto_priv);
+	if (!vdev_crypto_params) {
+		crypto_err("NULL crypto params");
 		return false;
 	}
 
@@ -2072,7 +2084,7 @@ wlan_crypto_is_store_in_psoc(struct wlan_objmgr_vdev *vdev)
 		wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE) &&
 		((wlan_vdev_mlme_is_mlo_vdev(vdev) &&
 		  is_mlo_adv_enable()) ||
-		 wlan_crypto_vdev_is_pmf_enabled(vdev));
+		 wlan_crypto_vdev_is_pmf_enabled(vdev, 0));
 }
 
 /**
@@ -3432,12 +3444,14 @@ uint8_t *wlan_crypto_build_rsnie(struct wlan_objmgr_vdev *vdev,
  * peer is match
  * @vdev: vdev object
  * @crypto_params: peer crypto parameters
+ * @rsno_gen: RSNO generation
  *
  * Return: true if rsn bip mismatch, otherwise false
  */
 static bool
 wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
-			     struct wlan_crypto_params *crypto_params)
+			     struct wlan_crypto_params *crypto_params,
+			     uint8_t rsno_gen)
 {
 	struct wlan_crypto_params *my_crypto_params;
 
@@ -3451,7 +3465,7 @@ wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
 	if (!AUTH_IS_RSNA(crypto_params) || !AUTH_IS_RSNA(my_crypto_params))
 		return false;
 
-	if (!wlan_crypto_vdev_is_pmf_required(vdev))
+	if (!wlan_crypto_vdev_is_pmf_required(vdev, rsno_gen))
 		return false;
 
 	if (MGMT_CIPHER_MATCH(my_crypto_params, crypto_params))
@@ -3466,7 +3480,8 @@ wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
 #else
 static inline bool
 wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
-			     struct wlan_crypto_params *crypto_params)
+			     struct wlan_crypto_params *crypto_params,
+			     uint8_t rsno_gen)
 {
 	return false;
 }
@@ -3519,14 +3534,14 @@ bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
 		crypto_debug("Key mgmt match failed");
 		return false;
 	}
-	if (wlan_crypto_vdev_is_pmf_required(vdev) &&
+	if (wlan_crypto_vdev_is_pmf_required(vdev, rsno_gen) &&
 	    !(crypto_params->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED)) {
 		if (status_code)
 			*status_code = STATUS_INVALID_RSN_IE_CAPAB;
 		crypto_debug("Peer is not PMF capable");
 		return false;
 	}
-	if (!wlan_crypto_vdev_is_pmf_enabled(vdev) &&
+	if (!wlan_crypto_vdev_is_pmf_enabled(vdev, rsno_gen) &&
 	    (crypto_params->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED)) {
 		if (status_code)
 			*status_code = STATUS_INVALID_RSN_IE_CAPAB;
@@ -3534,7 +3549,7 @@ bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
 		return false;
 	}
 
-	if (wlan_crypto_rsn_bip_mismatch(vdev, crypto_params)) {
+	if (wlan_crypto_rsn_bip_mismatch(vdev, crypto_params, rsno_gen)) {
 		if (status_code)
 			*status_code = STATUS_CIPHER_REJECTED_PER_POLICY;
 		return false;
