@@ -474,8 +474,7 @@ int nl_srv_bcast(struct sk_buff *skb, int mcgroup_id, int app_id)
 
 	status = send_msg_to_cld80211(mcgroup_id, 0, app_id, msg, msg_len);
 	if (status) {
-		QDF_TRACE_ERROR_RL(
-			QDF_MODULE_ID_HDD,
+		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
 			"send msg to cld80211 fails for app id %d", app_id);
 		dev_kfree_skb(skb);
 		return status;
