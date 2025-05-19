@@ -4264,6 +4264,39 @@ wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
 }
 
 QDF_STATUS
+wlan_get_crypto_params_from_mrsno_ie(struct wlan_crypto_params *crypto_params,
+				     const uint8_t *ie_ptr, uint16_t ie_len,
+				     uint8_t rsno_gen)
+{
+	const uint8_t *rsn_ie = NULL;
+	QDF_STATUS status;
+
+	qdf_mem_zero(crypto_params, sizeof(struct wlan_crypto_params));
+
+	if (rsno_gen == RSNO_GEN_WIFI7)
+		rsn_ie = wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_WIFI7_RSN,
+							 RSNO_OUI_SIZE,
+							 ie_ptr, ie_len);
+	else if (rsno_gen == RSNO_GEN_WIFI6)
+		rsn_ie = wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_WIFI6_RSN,
+							 RSNO_OUI_SIZE,
+							 ie_ptr, ie_len);
+	else
+		return QDF_STATUS_E_FAILURE;
+
+	if (!rsn_ie)
+		return QDF_STATUS_E_INVAL;
+
+	status = wlan_crypto_rsnie_check(crypto_params, rsn_ie, NULL);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		crypto_err("MRSNO crypto generation failed");
+		return status;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
 wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
 				   const uint8_t *ie_ptr, uint16_t ie_len,
 				   enum wlan_status_code *status_code)
@@ -4450,6 +4483,52 @@ wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 	*cap_len = ie[0] & 0xf;
 
 	return ie;
+}
+
+QDF_STATUS wlan_set_crypto_params_from_mrsno(struct wlan_objmgr_vdev *vdev,
+					     uint8_t *ie_ptr, uint16_t ie_len)
+{
+	struct wlan_crypto_params crypto_params;
+	QDF_STATUS status;
+	struct wlan_crypto_params *vdev_crypto_params;
+	struct wlan_crypto_comp_priv *crypto_priv;
+
+	if (!vdev) {
+		crypto_err("VDEV is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!ie_ptr) {
+		crypto_err("IE ptr is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	crypto_priv = (struct wlan_crypto_comp_priv *)
+				wlan_get_vdev_crypto_obj(vdev);
+	if (!crypto_priv) {
+		crypto_err("crypto_priv NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	vdev_crypto_params = &crypto_priv->rsno_crypto[0];
+	status = wlan_get_crypto_params_from_mrsno_ie(&crypto_params,
+						      ie_ptr, ie_len,
+						      RSNO_GEN_WIFI6);
+	if (QDF_IS_STATUS_SUCCESS(status))
+		wlan_crypto_merge_prarams(vdev_crypto_params, &crypto_params);
+	else
+		crypto_err("Parsing of RSNO1 failed");
+
+	vdev_crypto_params = &crypto_priv->rsno_crypto[1];
+	status = wlan_get_crypto_params_from_mrsno_ie(&crypto_params,
+						      ie_ptr, ie_len,
+						      RSNO_GEN_WIFI7);
+	if (QDF_IS_STATUS_SUCCESS(status))
+		wlan_crypto_merge_prarams(vdev_crypto_params, &crypto_params);
+	else
+		crypto_err("Parsing of RSNO2 failed");
+
+	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,

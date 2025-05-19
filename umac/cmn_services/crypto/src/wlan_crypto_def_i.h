@@ -405,6 +405,7 @@ typedef void (*crypto_add_key_callback)(void *context,
  * @add_key_ctx: Opaque context to be used by the caller to associate the
  *  add key request with the response
  * @add_key_cb: Callback function to be called with the add key result
+ * @rsno_crypto: crypto params of the RSNO IEs
  *
  */
 struct wlan_crypto_comp_priv {
@@ -413,6 +414,7 @@ struct wlan_crypto_comp_priv {
 	uint8_t fils_aead_set;
 	void *add_key_ctx;
 	crypto_add_key_callback add_key_cb;
+	struct wlan_crypto_params rsno_crypto[2];
 };
 
 /**
