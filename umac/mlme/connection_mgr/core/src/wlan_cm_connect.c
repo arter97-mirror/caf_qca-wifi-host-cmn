@@ -1107,6 +1107,7 @@ static inline void cm_update_advance_filter(struct wlan_objmgr_pdev *pdev,
 	filter->bss_type = WLAN_TYPE_BSS;
 	filter->enable_adaptive_11r =
 		wlan_mlme_adaptive_11r_enabled(psoc);
+	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(cm_ctx->vdev);
 	if (wlan_vdev_mlme_get_opmode(cm_ctx->vdev) != QDF_STA_MODE)
 		return;
 	/* For link vdev, we don't filter any channels.
@@ -1117,7 +1118,6 @@ static inline void cm_update_advance_filter(struct wlan_objmgr_pdev *pdev,
 		wlan_cm_dual_sta_roam_update_connect_channels(psoc, filter);
 	filter->dot11mode = cm_req->req.dot11mode_filter;
 	cm_update_fils_scan_filter(filter, cm_req);
-	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(cm_ctx->vdev);
 }
 
 static void cm_update_security_filter(struct scan_filter *filter,
