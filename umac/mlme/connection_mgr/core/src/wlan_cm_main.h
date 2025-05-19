@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -133,6 +133,7 @@ struct cm_nontx_mbssid_scan_params {
  * @scan_id: scan id for scan for ssid
  * @req: connect req from osif
  * @candidate_list: candidate list
+ * @num_bss: bss number in original candidate list
  * @cur_candidate: current candidate
  * @cur_candidate_retries: attempts for current candidate
  * @connect_attempts: number of connect attempts tried
@@ -145,6 +146,7 @@ struct cm_connect_req {
 	wlan_scan_id scan_id;
 	struct wlan_cm_connect_req req;
 	qdf_list_t *candidate_list;
+	uint32_t num_bss;
 	struct scan_cache_node *cur_candidate;
 	uint8_t cur_candidate_retries;
 	uint8_t connect_attempts;
