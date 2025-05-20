@@ -381,6 +381,8 @@ struct wlan_srng_cfg {
  * @pointer_timer_threshold_rx: RX REO2SW ring pointer update timer threshold
  * @pointer_num_threshold_rx: RX REO2SW ring pointer update entries threshold
  * @local_pkt_capture: flag indicating enable/disable of local packet capture
+ * @local_pkt_capture_full_pkt: local packet capture full management
+ * packet feature enable flag.
  * @special_frame_msk: Special frame mask
  * @rx_rr: rx round robin enable / disable
  * @umac_reset_buffer_window: Buffer time to check if umac reset was in progress
@@ -630,6 +632,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	uint8_t pointer_num_threshold_rx;
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 	bool local_pkt_capture;
+	bool local_pkt_capture_full_pkt;
 #endif
 	uint32_t special_frame_msk;
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
@@ -3018,9 +3021,21 @@ bool wlan_cfg_get_local_pkt_capture(struct wlan_cfg_dp_soc_ctxt *cfg)
 {
 	return cfg->local_pkt_capture;
 }
+
+static inline
+bool wlan_dp_get_lpc_full_mgmt_pkt(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return cfg->local_pkt_capture_full_pkt;
+}
 #else
 static inline
 bool wlan_cfg_get_local_pkt_capture(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return false;
+}
+
+static inline
+bool wlan_dp_get_lpc_full_mgmt_pkt(struct wlan_cfg_dp_soc_ctxt *cfg)
 {
 	return false;
 }

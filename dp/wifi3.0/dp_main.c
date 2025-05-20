@@ -12491,6 +12491,9 @@ static uint32_t dp_get_cfg(struct cdp_soc_t *soc, enum cdp_dp_cfg cfg)
 	case cfg_dp_local_pkt_capture:
 		value = wlan_cfg_get_local_pkt_capture(dpsoc->wlan_cfg_ctx);
 		break;
+	case cfg_dp_local_pkt_capture_full_pkt:
+		value = wlan_dp_get_lpc_full_mgmt_pkt(dpsoc->wlan_cfg_ctx);
+		break;
 	default:
 		value =  0;
 	}

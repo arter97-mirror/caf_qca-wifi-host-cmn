@@ -1070,8 +1070,32 @@
 		"Local packet capture")
 
 #define CFG_DP_LOCAL_PKT_CAPTURE_CONFIG CFG(CFG_DP_LOCAL_PKT_CAPTURE)
+
+/*
+ * <ini>
+ * local_pkt_capture_full_pkt - Enable/Disable the need for full mgmt
+ * packet in Local packet capture
+ * @Default: false
+ *
+ * This ini is used to enable/disable local packet capture.
+ *
+ * Related: None
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_DP_LOCAL_PKT_CAPTURE_FULL_PKT \
+		CFG_INI_BOOL( \
+		"local_pkt_capture_full_pkt", \
+		false, \
+		"Local packet capture full management packet")
+
+#define CFG_DP_LOCAL_PKT_CAPTURE_FULL_PKT_CONFIG \
+	CFG(CFG_DP_LOCAL_PKT_CAPTURE_FULL_PKT)
 #else
 #define CFG_DP_LOCAL_PKT_CAPTURE_CONFIG
+#define CFG_DP_LOCAL_PKT_CAPTURE_FULL_PKT_CONFIG
 #endif
 
 /*
@@ -2544,6 +2568,7 @@
 		CFG(CFG_DP_POINTER_TIMER_THRESHOLD_RX) \
 		CFG(CFG_DP_POINTER_NUM_THRESHOLD_RX) \
 		CFG_DP_LOCAL_PKT_CAPTURE_CONFIG \
+		CFG_DP_LOCAL_PKT_CAPTURE_FULL_PKT_CONFIG \
 		CFG(CFG_SPECIAL_FRAME_MSK) \
 		CFG_WLAN_SUPPORT_LAPB_CFG \
 		CFG(CFG_DP_SW2RXDMA_LINK_RING) \
