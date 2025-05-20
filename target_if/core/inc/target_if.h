@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3306,6 +3306,9 @@ target_if_get_fw_link_reconfig_support(struct wlan_objmgr_psoc *psoc)
 		return false;
 
 	mac_phy_cap = target_psoc_get_mac_phy_cap_ext2(tgt_hdl);
+	if (!mac_phy_cap)
+		return false;
+
 	return mac_phy_cap->mldcap.link_reconfig_operation_support;
 }
 
