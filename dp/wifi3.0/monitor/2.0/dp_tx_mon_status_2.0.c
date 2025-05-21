@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1294,6 +1294,8 @@ void dp_tx_mon_free_last_mpdu_q(struct dp_pdev_tx_monitor_be *tx_mon_be,
 		return;
 
 	mpdu_nbuf = qdf_nbuf_queue_remove_last(usr_mpdu_q);
+	if (!mpdu_nbuf)
+		return;
 
 	num_frag = qdf_nbuf_get_nr_frags_in_fraglist(mpdu_nbuf);
 	tx_mon_be->stats.pkt_buf_drop += num_frag;
