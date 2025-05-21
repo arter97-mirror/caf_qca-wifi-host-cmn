@@ -1387,7 +1387,7 @@ void qdf_nbuf_unmap_nbytes_single_paddr_debug(qdf_device_t osdev,
 	qdf_nbuf_untrack_map(buf, func, line);
 	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
 
-	if (qdf_is_pp_nbuf(buf))
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
 		dma_sync_single_for_cpu(osdev->dev, phy_addr,
 					nbytes, __qdf_dma_dir_to_os(dir));
 	else
@@ -1493,7 +1493,7 @@ __qdf_nbuf_map_single(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
 
-	if (osdev->no_dma_map && __qdf_is_pp_nbuf(buf)) {
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir)) {
 		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
 					   skb_end_pointer(buf) - buf->data,
 					   __qdf_dma_dir_to_os(dir));
@@ -1526,7 +1526,7 @@ void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 					qdf_dma_dir_t dir)
 {
-	if (__qdf_is_pp_nbuf(buf))
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
 		return dma_sync_single_for_cpu(osdev->dev,
 					       QDF_NBUF_CB_PADDR(buf),
 					       skb_end_pointer(buf) - buf->data,
