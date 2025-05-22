@@ -8249,6 +8249,7 @@ uint32_t dp_tx_comp_handler(struct dp_intr *int_ctx, struct dp_soc *soc,
 	QDF_STATUS status;
 	uint16_t comp_index = 0;
 	struct dp_tx_desc_pool_s *tx_desc_pool = NULL;
+	uint8_t tx_status;
 
 	DP_HIST_INIT();
 
@@ -8363,12 +8364,14 @@ more_data:
 
 		dp_tx_comp_reset_stale_entry_detection(soc, ring_id);
 		tx_desc->buffer_src = buffer_src;
-
+		tx_status =
+			hal_tx_comp_get_tx_status(tx_comp_hal_desc);
 		/*
 		 * If the release source is FW, process the HTT status
 		 */
 		if (qdf_unlikely(buffer_src ==
-					HAL_TX_COMP_RELEASE_SOURCE_FW)) {
+					HAL_TX_COMP_RELEASE_SOURCE_FW) ||
+			dp_tx_fw_release_reason(tx_status)) {
 			uint8_t htt_tx_status[HAL_TX_COMP_HTT_STATUS_LEN];
 
 			hal_tx_comp_get_htt_desc(tx_comp_hal_desc,
@@ -8388,11 +8391,9 @@ more_data:
 							htt_tx_status,
 							ring_id);
 		} else {
-			tx_desc->tx_status =
-				hal_tx_comp_get_tx_status(tx_comp_hal_desc);
+			tx_desc->tx_status = tx_status;
 			dp_update_tqm_rsn_cnt(soc, ring_id, tx_desc->tx_status,
 					      buffer_src);
-
 			if (tx_desc->flags & DP_TX_DESC_FLAG_FASTPATH_SIMPLE ||
 			    tx_desc->flags & DP_TX_DESC_FLAG_PPEDS)
 				goto add_to_pool2;

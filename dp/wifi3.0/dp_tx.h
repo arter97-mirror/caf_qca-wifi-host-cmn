@@ -48,6 +48,9 @@
 #endif
 
 #define DP_TX_MAX_NUM_FRAGS 6
+#ifdef DP_COMP_FW_REINJECT_WAR
+#define DP_TX_COMP_FW_REINJECTION_WAR 15
+#endif
 
 /* invalid peer id for reinject*/
 #define DP_INVALID_PEER 0XFFFE
@@ -2576,6 +2579,31 @@ void hal_tx_comp_get_status_wrapper(struct dp_soc *soc,
 				    struct dp_tx_desc_pool_s *tx_desc_pool,
 				    struct dp_tx_desc_s *tx_desc,
 				    void *ts, uint16_t comp_index);
+#ifdef DP_COMP_FW_REINJECT_WAR
+/*
+ * dp_tx_fw_release_reason(): This is WAR for congo v1 to identify SW completion
+ * as TQM is not copying release source module in V1
+ *
+ * @tx_status: Release reason
+ *
+ * Return: true if reinjected from FW
+ */
+static inline
+bool dp_tx_fw_release_reason(uint8_t tx_status)
+{
+	if (tx_status == DP_TX_COMP_FW_REINJECTION_WAR)
+		return true;
+
+	return false;
+}
+#else
+static inline
+bool dp_tx_fw_release_reason(uint8_t tx_status)
+{
+	return false;
+}
+#endif
+
 #ifndef WLAN_SOFTUMAC_SUPPORT
 /**
  * dp_tx_dump_tx_desc() - Dump tx desc for debugging
