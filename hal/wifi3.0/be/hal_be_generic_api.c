@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -384,6 +384,38 @@ static void hal_rx_reo_buf_paddr_get_be(hal_ring_desc_t rx_desc,
 	buf_info->sw_cookie = HAL_RX_REO_BUF_COOKIE_GET(reo_ring);
 }
 
+#ifdef CONFIG_BORON
+static void hal_rx_msdu_link_desc_set_be(hal_soc_handle_t hal_soc_hdl,
+					 void *src_srng_desc,
+					 hal_buff_addrinfo_t buf_addr_info,
+					 uint8_t bm_action)
+{
+	/* Use struct wbm_release_ring_rx for Boron*/
+	struct wbm_release_ring_rx *wbm_rel_srng =
+			(struct wbm_release_ring_rx *)src_srng_desc;
+	uint32_t addr_31_0;
+	uint8_t addr_39_32;
+
+	wbm_rel_srng->released_buff_or_desc_addr_info =
+				*((struct buffer_addr_info *)buf_addr_info);
+
+	addr_31_0 =
+	wbm_rel_srng->released_buff_or_desc_addr_info.buffer_addr_31_0;
+	addr_39_32 =
+	wbm_rel_srng->released_buff_or_desc_addr_info.buffer_addr_39_32;
+
+	HAL_DESC_SET_FIELD(src_srng_desc, HAL_SW2WBM_RELEASE_RING,
+			   RELEASE_SOURCE_MODULE, HAL_RX_WBM_ERR_SRC_SW);
+	HAL_DESC_SET_FIELD(src_srng_desc, HAL_SW2WBM_RELEASE_RING,
+			   BUFFER_OR_DESC_TYPE,
+			   HAL_RX_WBM_BUF_TYPE_MSDU_LINK_DESC);
+
+	if (qdf_unlikely(!addr_31_0 && !addr_39_32)) {
+		hal_dump_wbm_rel_desc(src_srng_desc);
+		qdf_assert_always(0);
+	}
+}
+#else
 static void hal_rx_msdu_link_desc_set_be(hal_soc_handle_t hal_soc_hdl,
 					 void *src_srng_desc,
 					 hal_buff_addrinfo_t buf_addr_info,
@@ -428,6 +460,7 @@ static void hal_rx_msdu_link_desc_set_be(hal_soc_handle_t hal_soc_hdl,
 		qdf_assert_always(0);
 	}
 }
+#endif
 
 /**
  * hal_rx_buf_cookie_rbm_get_be() - Get the cookie and return buffer
