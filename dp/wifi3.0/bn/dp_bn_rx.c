@@ -1075,7 +1075,7 @@ dp_rx_err_process_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
 	dp_txrx_ref_handle txrx_ref_handle = NULL;
 	uint32_t num_pending, num_entries;
 	bool near_full;
-	uint8_t mac_id;
+	uint8_t mac_id = 0;
 
 	/* Debug -- Remove later */
 	qdf_assert(soc && hal_ring_hdl);
@@ -1188,6 +1188,7 @@ more_data:
 						soc,
 						msdu_list.sw_cookie[0]);
 		qdf_assert_always(rx_desc);
+		mac_id = rx_desc->pool_id;
 
 		if (mpdu_desc_info.bar_frame) {
 			qdf_assert_always(mpdu_desc_info.msdu_count == 1);
