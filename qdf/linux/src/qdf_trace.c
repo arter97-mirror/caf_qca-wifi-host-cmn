@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1817,7 +1817,7 @@ void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
 
 	wlan_diag_event.tx_fail_reason = wlan_get_qdf_to_diag_txrx_status(
 					 qdf_tx_status);
-	wlan_diag_event.version = DIAG_MGMT_VERSION_V3;
+	wlan_diag_event.version = DIAG_MGMT_VERSION_V5;
 
 	if (type == QDF_PROTO_TYPE_DHCP) {
 		wlan_diag_event.subtype =
