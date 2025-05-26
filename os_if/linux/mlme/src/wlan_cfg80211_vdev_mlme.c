@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -50,19 +51,6 @@ wlan_cfg80211_vdev_mlme_get_trans_bssid(struct wlan_objmgr_vdev *vdev,
 
 	ucfg_wlan_vdev_mlme_get_trans_bssid(vdev, addr);
 	return qdf_status_to_os_return(QDF_STATUS_SUCCESS);
-}
-
-void
-wlan_cfg80211_vdev_mlme_set_param(struct wlan_objmgr_vdev *vdev,
-				  enum wlan_mlme_cfg_id param_id,
-				  struct wlan_vdev_mgr_cfg mlme_cfg)
-{
-	if (!vdev) {
-		osif_err("VDEV is NULL!!!!");
-		return;
-	}
-
-	ucfg_wlan_vdev_mgr_set_param(vdev, param_id, mlme_cfg);
 }
 
 void

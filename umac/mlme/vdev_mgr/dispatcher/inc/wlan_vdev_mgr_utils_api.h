@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -63,19 +63,6 @@ wlan_util_vdev_get_cdp_txrx_subtype(struct wlan_objmgr_vdev *vdev);
 QDF_STATUS
 wlan_util_vdev_mlme_set_ratemask_config(struct vdev_mlme_obj *vdev_mlme,
 					uint8_t index);
-
-/**
- * wlan_util_vdev_mlme_set_param() - common MLME API to fill common
- * parameters of vdev_mlme object
- * @vdev_mlme: pointer to vdev_mlme object
- * @param_id: param id for which the value should be set
- * @mlme_cfg: value that should be set to the parameter
- *
- * Return: QDF_STATUS - Success or Failure
- */
-QDF_STATUS wlan_util_vdev_mlme_set_param(struct vdev_mlme_obj *vdev_mlme,
-					 enum wlan_mlme_cfg_id param_id,
-					 struct wlan_vdev_mgr_cfg mlme_cfg);
 
 /**
  * wlan_util_vdev_mlme_get_param() - common MLME API to get common
