@@ -170,29 +170,8 @@ void wlan_util_vdev_mlme_get_param(struct vdev_mlme_obj *vdev_mlme,
 	inactivity_params = &mlme_mgmt->inactivity_params;
 
 	switch (param_id) {
-	case WLAN_MLME_CFG_DTIM_PERIOD:
-		*value = mlme_proto->generic.dtim_period;
-		break;
-	case WLAN_MLME_CFG_SLOT_TIME:
-		*value = mlme_proto->generic.slot_time;
-		break;
-	case WLAN_MLME_CFG_PROTECTION_MODE:
-		*value = mlme_proto->generic.protection_mode;
-		break;
 	case WLAN_MLME_CFG_BEACON_INTERVAL:
 		*value = mlme_proto->generic.beacon_interval;
-		break;
-	case WLAN_MLME_CFG_LDPC:
-		*value = mlme_proto->generic.ldpc;
-		break;
-	case WLAN_MLME_CFG_NSS:
-		*value = mlme_proto->generic.nss;
-		break;
-	case WLAN_MLME_CFG_ASSOC_ID:
-		*value = mlme_proto->sta.assoc_id;
-		break;
-	case WLAN_MLME_CFG_VHT_CAPS:
-		*value = mlme_proto->vht_info.caps;
 		break;
 	case WLAN_MLME_CFG_SUBFER:
 		*value = mlme_proto->vht_info.subfer;
@@ -215,53 +194,6 @@ void wlan_util_vdev_mlme_get_param(struct vdev_mlme_obj *vdev_mlme,
 	case WLAN_MLME_CFG_BFEE_STS_CAP:
 		*value = mlme_proto->vht_info.bfee_sts_cap;
 		break;
-	case WLAN_MLME_CFG_HT_CAPS:
-		*value = mlme_proto->ht_info.ht_caps;
-		break;
-	case WLAN_MLME_CFG_HE_OPS:
-		*value = mlme_proto->he_ops_info.he_ops;
-		break;
-#ifdef WLAN_FEATURE_11BE
-	case WLAN_MLME_CFG_EHT_OPS:
-		*value = mlme_proto->eht_ops_info.eht_ops;
-		break;
-#endif
-	case WLAN_MLME_CFG_RTS_THRESHOLD:
-		*value = mlme_mgmt->generic.rts_threshold;
-		break;
-	case WLAN_MLME_CFG_FRAG_THRESHOLD:
-		*value = mlme_mgmt->generic.frag_threshold;
-		break;
-	case WLAN_MLME_CFG_PROBE_DELAY:
-		*value = mlme_mgmt->generic.probe_delay;
-		break;
-	case WLAN_MLME_CFG_REPEAT_PROBE_TIME:
-		*value = mlme_mgmt->generic.repeat_probe_time;
-		break;
-	case WLAN_MLME_CFG_DROP_UNENCRY:
-		*value = mlme_mgmt->generic.drop_unencry;
-		break;
-	case WLAN_MLME_CFG_TX_PWR_LIMIT:
-		*value = mlme_mgmt->generic.tx_pwrlimit;
-		break;
-	case WLAN_MLME_CFG_TX_POWER:
-		*value = mlme_mgmt->generic.tx_power;
-		break;
-	case WLAN_MLME_CFG_AMPDU:
-		*value = mlme_mgmt->generic.ampdu;
-		break;
-	case WLAN_MLME_CFG_AMSDU:
-		*value = mlme_mgmt->generic.amsdu;
-		break;
-	case WLAN_MLME_CFG_SSID_LEN:
-		*value = mlme_mgmt->generic.ssid_len;
-		break;
-	case WLAN_MLME_CFG_BMISS_FIRST_BCNT:
-		*value = inactivity_params->bmiss_first_bcnt;
-		break;
-	case WLAN_MLME_CFG_BMISS_FINAL_BCNT:
-		*value = inactivity_params->bmiss_final_bcnt;
-		break;
 	case WLAN_MLME_CFG_MIN_IDLE_INACTIVE_TIME:
 		*value =
 		      inactivity_params->keepalive_min_idle_inactive_time_secs;
@@ -276,60 +208,6 @@ void wlan_util_vdev_mlme_get_param(struct vdev_mlme_obj *vdev_mlme,
 		break;
 	case WLAN_MLME_CFG_RATE_FLAGS:
 		*value = mlme_mgmt->rate_info.rate_flags;
-		break;
-	case WLAN_MLME_CFG_PER_BAND_TX_MGMT_RATE:
-		*value = mlme_mgmt->rate_info.per_band_tx_mgmt_rate;
-		break;
-	case WLAN_MLME_CFG_MAX_RATE:
-		*value = mlme_mgmt->rate_info.max_rate;
-		break;
-	case WLAN_MLME_CFG_TX_MGMT_RATE:
-		*value = mlme_mgmt->rate_info.tx_mgmt_rate;
-		break;
-	case WLAN_MLME_CFG_TX_RTSCTS_RATE:
-		*value = mlme_mgmt->rate_info.rtscts_tx_rate;
-		break;
-	case WLAN_MLME_CFG_TX_CHAINMASK:
-		*value = mlme_mgmt->chainmask_info.tx_chainmask;
-		break;
-	case WLAN_MLME_CFG_RX_CHAINMASK:
-		*value = mlme_mgmt->chainmask_info.rx_chainmask;
-		break;
-	case WLAN_MLME_CFG_PKT_POWERSAVE:
-		*value = mlme_mgmt->powersave_info.packet_powersave;
-		break;
-	case WLAN_MLME_CFG_MAX_LI_OF_MODDTIM:
-		*value = mlme_mgmt->powersave_info.max_li_of_moddtim;
-		break;
-	case WLAN_MLME_CFG_DYNDTIM_CNT:
-		*value = mlme_mgmt->powersave_info.dyndtim_cnt;
-		break;
-	case WLAN_MLME_CFG_LISTEN_INTERVAL:
-		*value = mlme_mgmt->powersave_info.listen_interval;
-		break;
-	case WLAN_MLME_CFG_MODDTIM_CNT:
-		*value = mlme_mgmt->powersave_info.moddtim_cnt;
-		break;
-	case WLAN_MLME_CFG_PROFILE_IDX:
-		*value = mlme_mgmt->mbss_11ax.profile_idx;
-		break;
-	case WLAN_MLME_CFG_PROFILE_NUM:
-		*value = mlme_mgmt->mbss_11ax.profile_num;
-		break;
-	case WLAN_MLME_CFG_MBSSID_FLAGS:
-		*value = mlme_mgmt->mbss_11ax.mbssid_flags;
-		break;
-	case WLAN_MLME_CFG_VDEVID_TRANS:
-		*value = mlme_mgmt->mbss_11ax.vdevid_trans;
-		break;
-	case WLAN_MLME_CFG_BCN_TX_RATE:
-		*value = mlme_mgmt->rate_info.bcn_tx_rate;
-		break;
-	case WLAN_MLME_CFG_TX_STREAMS:
-		*value = mlme_mgmt->chainmask_info.num_tx_chain;
-		break;
-	case WLAN_MLME_CFG_RX_STREAMS:
-		*value = mlme_mgmt->chainmask_info.num_rx_chain;
 		break;
 	default:
 		break;

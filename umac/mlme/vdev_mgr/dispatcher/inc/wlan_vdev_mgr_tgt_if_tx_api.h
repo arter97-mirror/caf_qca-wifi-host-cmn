@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -260,18 +260,6 @@ static inline QDF_STATUS tgt_vdev_mgr_fils_enable_send(
 QDF_STATUS tgt_vdev_mgr_multiple_vdev_restart_send(
 				struct wlan_objmgr_pdev *pdev,
 				struct multiple_vdev_restart_params *param);
-
-/**
- * tgt_vdev_mgr_multiple_vdev_set_param() - API to send multiple vdev
- * param
- * @pdev: pointer to pdev
- * @param: pointer to multiple_vdev_set_param
- *
- * Return: QDF_STATUS - Success or Failure
- */
-QDF_STATUS tgt_vdev_mgr_multiple_vdev_set_param(
-				struct wlan_objmgr_pdev *pdev,
-				struct multiple_vdev_set_param *param);
 
 /**
  * tgt_vdev_mgr_set_tx_rx_decap_type() - API to send tx rx decap type
