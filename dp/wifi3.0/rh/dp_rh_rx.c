@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -750,6 +750,8 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 	uint32_t error_code;
 	QDF_STATUS status;
 	uint16_t buf_size;
+	qdf_nbuf_t err_list_head = NULL;
+	qdf_nbuf_t err_list_tail = NULL;
 
 	DP_HIST_INIT();
 
@@ -935,8 +937,33 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 			dp_rx_err("MSDU RX error encountered error:%u", error);
 			error_code =
 			HTT_RX_DATA_MSDU_INFO_ERROR_INFO_GET(*(msg_word + 3));
-			dp_rx_err_handler_rh(soc, rx_desc, error_code);
+			qdf_nbuf_set_next(rx_desc->nbuf, NULL);
+			if (qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf)) {
+				if (!err_list_head) {
+					err_list_head = rx_desc->nbuf;
+					err_list_tail = rx_desc->nbuf;
+				} else {
+					qdf_nbuf_set_next(err_list_tail,
+							  rx_desc->nbuf);
+					err_list_tail = rx_desc->nbuf;
+				}
+			} else {
+				if (err_list_tail) {
+					qdf_nbuf_set_next(err_list_tail,
+							  rx_desc->nbuf);
+					err_list_tail = rx_desc->nbuf;
+				}
 
+				if (err_list_tail != err_list_head) {
+					dp_rx_err("Dropping scattered MSDU");
+					qdf_nbuf_list_free(err_list_head);
+					err_list_head = NULL;
+					err_list_tail = NULL;
+				} else {
+					dp_rx_err_handler_rh(soc, rx_desc,
+							     error_code);
+				}
+			}
 		} else {
 			DP_RX_PROCESS_NBUF(soc, nbuf_head, nbuf_tail, ebuf_head,
 					   ebuf_tail, rx_desc);
@@ -949,6 +976,12 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 		num_rx_bufs_reaped++;
 
 		msg_word += HTT_RX_DATA_MSDU_INFO_SIZE >> 2;
+	}
+
+	/* last msdu is not received for the scattered buffer */
+	if (err_list_head) {
+		qdf_assert_always(0);
+		qdf_nbuf_list_free(err_list_head);
 	}
 
 	dp_rx_per_core_stats_update(soc, rx_ctx_id, num_rx_bufs_reaped);
