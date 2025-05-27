@@ -3903,6 +3903,8 @@ struct dp_soc {
 	struct dp_tx_page_pool *tx_pp[MAX_VDEV_CNT];
 	qdf_spinlock_t tx_pp_lock;
 #endif
+	/* flag to check if wds is not supported */
+	bool wds_not_supported;
 };
 
 /*
