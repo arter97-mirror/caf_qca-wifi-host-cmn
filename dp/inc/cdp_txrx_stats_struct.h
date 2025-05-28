@@ -3864,6 +3864,29 @@ struct cdp_pdev_tx_capture_stats {
 #define CDP_HIST_BUCKET_SIZE	8
 #define CDP_MAX_DATA_AC		4
 
+/*
+ * cdp_latency_hist_bucket - Tx latency count histogram
+ * @index_0 = 0_5 ms count
+ * @index_1 = 5_10 ms count
+ * @index_2 = 10_20 ms count
+ * @index_3 = 20_30 ms count
+ * @index_4 = 30_50 ms count
+ * @index_5 = 50_100 ms count
+ * @index_6 = 100_200 ms count
+ * @index_7 = 200+ ms count
+ */
+extern uint16_t cdp_latency_hist_bucket[];
+
+/*
+ * cdp_latency_perc_bucket - Tx latency percetile value
+ * @index_0 = 50 percentile value in ms
+ * @index_1 = 75 percentile value in ms
+ * @index_2 = 90 percentile value in ms
+ * @index_3 = 95 percentile value in ms
+ * @index_4 = 99 percentile value in ms
+ */
+extern uint16_t cdp_latency_perc_bucket[];
+
 /**
  * enum cdp_latency_percentile - Percentile stats index
  * @P50_LATENCY_IDX: 50 percentile index

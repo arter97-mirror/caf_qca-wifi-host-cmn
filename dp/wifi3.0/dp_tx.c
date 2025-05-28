@@ -142,30 +142,8 @@ uint8_t sec_type_map[MAX_CDP_SEC_TYPE] = {HAL_TX_ENCRYPT_TYPE_NO_CIPHER,
 					  HAL_TX_ENCRYPT_TYPE_WAPI_GCM_SM4};
 qdf_export_symbol(sec_type_map);
 
-/*
- * cdp_latency_hist_bucket - Tx latency count histogram
- * @index_0 = 0_5 ms count
- * @index_1 = 5_10 ms count
- * @index_2 = 10_20 ms count
- * @index_3 = 20_30 ms count
- * @index_4 = 30_50 ms count
- * @index_5 = 50_100 ms count
- * @index_6 = 100_200 ms count
- * @index_7 = 200+ ms count
- */
 uint16_t cdp_latency_hist_bucket[] = {0, 5, 10, 20, 30, 50, 100, 200};
-qdf_export_symbol(cdp_latency_hist_bucket);
-
-/*
- * cdp_latency_perc_bucket - Tx latency percetile value
- * @index_0 = 50 percentile value in ms
- * @index_1 = 75 percentile value in ms
- * @index_2 = 90 percentile value in ms
- * @index_3 = 95 percentile value in ms
- * @index_4 = 99 percentile value in ms
- */
 uint16_t cdp_latency_perc_bucket[] = {50, 75, 90, 95, 99};
-qdf_export_symbol(cdp_latency_perc_bucket);
 
 #ifdef DP_FEATURE_TX_PAGE_POOL
 /**
