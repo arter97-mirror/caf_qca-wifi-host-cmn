@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -50,6 +50,7 @@
 #include "wlan_policy_mgr_api.h"
 #include "wlan_mlme_vdev_mgr_interface.h"
 #include "wlan_cm_api.h"
+#include "wlan_mlo_mgr_link_switch.h"
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
@@ -488,12 +489,23 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 #endif
 
 #ifdef MOBILE_DFS_SUPPORT
+
+#define CAC_DURATION_ON_LINK_SWITCH 100
+
 static void
 vdev_mgr_start_param_update_cac_ms(struct wlan_objmgr_vdev *vdev,
 				   struct vdev_start_params *param)
 {
+	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
+
 	param->cac_duration_ms =
 			wlan_util_vdev_mgr_get_cac_timeout_for_vdev(vdev);
+	if (mlo_mgr_is_link_switch_in_progress_by_psoc(psoc) &&
+	    param->cac_duration_ms > CAC_DURATION_ON_LINK_SWITCH) {
+		param->cac_duration_ms = CAC_DURATION_ON_LINK_SWITCH;
+		mlme_debug("link switch ongoing, cac dur %d",
+			   param->cac_duration_ms);
+	}
 }
 
 static inline

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -823,6 +823,38 @@ bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
 
 	state = mlo_mgr_link_switch_get_curr_state(vdev->mlo_dev_ctx);
 	return (state > MLO_LINK_SWITCH_STATE_INIT);
+}
+
+static void
+mlo_mgr_vdev_iterate_handler(struct wlan_objmgr_psoc *psoc,
+			     void *obj, void *args)
+{
+	struct wlan_objmgr_vdev *vdev = (struct wlan_objmgr_vdev *)obj;
+	uint32_t *context = (uint32_t *)args;
+
+	if (*context)
+		return;
+
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
+		return;
+
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
+		return;
+
+	if (mlo_mgr_is_link_switch_in_progress(vdev))
+		*context = true;
+}
+
+bool
+mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc)
+{
+	uint32_t context = 0;
+
+	wlan_objmgr_iterate_obj_list(psoc, WLAN_VDEV_OP,
+				     mlo_mgr_vdev_iterate_handler,
+				     &context, true, WLAN_MLO_MGR_ID);
+
+	return !!context;
 }
 
 bool mlo_mgr_is_link_switch_on_assoc_vdev(struct wlan_objmgr_vdev *vdev)
