@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -141,6 +141,31 @@ QDF_STATUS
 wlan_twt_psoc_set_pmo_disable(struct wlan_objmgr_psoc *psoc,
 			      enum twt_disable_reason reason);
 
+/**
+ * wlan_twt_cfg_get_mac_responder_flag() - get TWT responder flag from PSOC
+ * private object for given MAC ID
+ * @psoc: Pointer to global PSOC
+ * @mac_id: MAC ID
+ * @val: value to be set
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_twt_cfg_get_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
+				    uint8_t mac_id, bool *val);
+
+/**
+ * wlan_twt_cfg_set_mac_responder_flag() - set TWT responder flag in PSOC
+ * private object per MAC
+ * @psoc: Pointer to global PSOC
+ * @mac_id: MAC ID
+ * @val: value to be set
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_twt_cfg_set_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
+				    uint8_t mac_id, bool val);
 #else
 static inline
 QDF_STATUS twt_psoc_enable(struct wlan_objmgr_psoc *psoc)
@@ -181,5 +206,20 @@ wlan_twt_psoc_set_pmo_enable(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 wlan_twt_psoc_set_pmo_disable(struct wlan_objmgr_psoc *psoc,
 			      enum twt_disable_reason reason);
+
+static inline QDF_STATUS
+wlan_twt_cfg_get_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
+				    uint8_t mac_id, bool *val)
+{
+	*val = false;
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wlan_twt_cfg_set_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
+				    uint8_t mac_id, bool val)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
 #endif
 #endif /* _WLAN_TWT_API_H_ */

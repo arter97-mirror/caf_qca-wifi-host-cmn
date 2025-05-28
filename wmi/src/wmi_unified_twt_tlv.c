@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -498,9 +498,11 @@ static QDF_STATUS extract_twt_enable_comp_event_tlv(wmi_unified_t wmi_handle,
 
 	ev = param_buf->fixed_param;
 
-	params->pdev_id =
-		wmi_handle->ops->convert_pdev_id_target_to_host(wmi_handle,
-								ev->pdev_id);
+	/*
+	 * No conversion required
+	 * as target already converted the PDEV ID to host
+	 */
+	params->mac_id = ev->pdev_id;
 	params->status = wmi_twt_enable_status_to_host_twt_status(ev->status);
 
 	return QDF_STATUS_SUCCESS;
@@ -538,9 +540,11 @@ static QDF_STATUS extract_twt_disable_comp_event_tlv(wmi_unified_t wmi_handle,
 
 	ev = param_buf->fixed_param;
 
-	params->pdev_id =
-		wmi_handle->ops->convert_pdev_id_target_to_host(wmi_handle,
-								ev->pdev_id);
+	/*
+	 * No conversion required
+	 * as target already converted the PDEV ID to host
+	 */
+	params->mac_id = ev->pdev_id;
 	params->status = wmi_twt_disable_status_to_host_twt_status(ev->status);
 
 	return QDF_STATUS_SUCCESS;
