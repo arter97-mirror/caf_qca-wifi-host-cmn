@@ -751,17 +751,10 @@ static uint8_t dp_tx_prepare_htt_metadata(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	    msdu_info->exception_fw) {
 		if (qdf_unlikely(qdf_nbuf_headroom(nbuf) <
 				 htt_desc_size_aligned)) {
-			nbuf = qdf_nbuf_realloc_headroom(nbuf,
-							 htt_desc_size_aligned);
+			nbuf = qdf_nbuf_realloc_headroom_no_free(
+							nbuf,
+							htt_desc_size_aligned);
 			if (!nbuf) {
-				/*
-				 * qdf_nbuf_realloc_headroom won't do skb_clone
-				 * as skb_realloc_headroom does. so, no free is
-				 * needed here.
-				 */
-				DP_STATS_INC(vdev,
-					     tx_i[msdu_info->xmit_type].dropped.headroom_insufficient,
-					     1);
 				qdf_print(" %s[%d] skb_realloc_headroom failed",
 					  __func__, __LINE__);
 				return 0;

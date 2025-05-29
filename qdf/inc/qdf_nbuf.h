@@ -5818,6 +5818,12 @@ void qdf_nbuf_tx_desc_count_display(void);
 void qdf_nbuf_tx_desc_count_clear(void);
 
 static inline qdf_nbuf_t
+qdf_nbuf_realloc_headroom_no_free(qdf_nbuf_t buf, uint32_t headroom)
+{
+	return __qdf_nbuf_realloc_headroom_no_free(buf, headroom);
+}
+
+static inline qdf_nbuf_t
 qdf_nbuf_realloc_headroom(qdf_nbuf_t buf, uint32_t headroom)
 {
 	return __qdf_nbuf_realloc_headroom(buf, headroom);

@@ -3007,6 +3007,27 @@ __qdf_nbuf_set_send_complete_flag(struct sk_buff *skb, bool flag)
 }
 
 /**
+ * __qdf_nbuf_realloc_headroom_no_free() - This keeps the skb shell intact
+ * expands the headroom in the data region. In case of failure it doesn't
+ * release the skb. Since original skb will be intact it will be released
+ * from the caller.
+ *
+ * @skb: sk buff
+ * @headroom: size of headroom
+ *
+ * Return: skb or NULL
+ */
+
+static inline struct sk_buff *
+__qdf_nbuf_realloc_headroom_no_free(struct sk_buff *skb, uint32_t headroom)
+{
+	if (pskb_expand_head(skb, headroom, 0, GFP_ATOMIC))
+		return NULL;
+
+	return skb;
+}
+
+/**
  * __qdf_nbuf_realloc_headroom() - This keeps the skb shell intact
  *        expands the headroom
  *        in the data region. In case of failure the skb is released.
