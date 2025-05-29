@@ -31,6 +31,7 @@
 #ifdef FEATURE_DAL_DP_SUPPORT
 #include "dp_dal.h"
 #endif
+#include <qdf_pkt_add_timestamp.h>
 
 #ifdef RXDMA_OPTIMIZATION
 #ifndef RX_DATA_BUFFER_ALIGNMENT
@@ -2547,8 +2548,11 @@ void dp_rx_cksum_offload(struct dp_pdev *pdev,
 	hal_rx_tlv_csum_err_get(pdev->soc->hal_soc, rx_tlv_hdr, &ip_csum_err,
 				&tcp_udp_csum_er, &ip_frag);
 
-	if (qdf_unlikely(ip_frag))
+	if (qdf_unlikely(ip_frag)) {
+		if (qdf_unlikely(qdf_is_dp_pkt_timestamp_enabled()))
+			cksum.l4_result = QDF_NBUF_RX_CKSUM_TCP_UDP_UNNECESSARY;
 		goto bypass_tcp_udp;
+	}
 
 	if (qdf_unlikely(ip_csum_err)) {
 		DP_STATS_INC(pdev, err.ip_csum_err, 1);

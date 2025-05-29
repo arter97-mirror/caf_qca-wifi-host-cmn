@@ -370,7 +370,7 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 ring_access_fail:
 	dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, coalesce);
 	dp_pkt_add_timestamp(vdev, QDF_PKT_TX_DRIVER_EXIT,
-			     qdf_get_log_timestamp(), tx_desc->nbuf);
+			     qdf_get_log_timestamp_usecs(), tx_desc->nbuf);
 	return status;
 }
 

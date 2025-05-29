@@ -331,7 +331,7 @@ uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 	int max_reap_limit, ring_near_full;
 	struct dp_soc *replenish_soc;
 	uint8_t chip_id;
-	uint64_t current_time = 0;
+	uint64_t qtime = 0;
 	uint32_t old_tid;
 	uint32_t peer_ext_stats;
 	uint32_t dsf;
@@ -382,7 +382,7 @@ more_data:
 	rx_pdev = NULL;
 	tid_stats = NULL;
 
-	dp_pkt_get_timestamp(&current_time);
+	dp_pkt_get_timestamp(&qtime);
 
 	ring_near_full = _dp_srng_test_and_update_nf_params(soc, rx_ring,
 							    &max_reap_limit);
@@ -1007,7 +1007,7 @@ done:
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
-				     current_time, nbuf);
+				     qtime, nbuf);
 
 		DP_RX_LIST_APPEND(deliver_list_head,
 				  deliver_list_tail,

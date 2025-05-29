@@ -1196,10 +1196,10 @@ typedef void (*ol_txrx_pktdump_cb)(ol_txrx_soc_handle soc,
 /**
  * typedef ol_txrx_get_tsf_time() - callback to get tsf time
  * @osif_dev:
- * @input_time:
+ * @qtime:
  * @tsf_time:
  */
-typedef QDF_STATUS(*ol_txrx_get_tsf_time)(void *osif_dev, uint64_t input_time,
+typedef QDF_STATUS(*ol_txrx_get_tsf_time)(void *osif_dev, uint64_t qtime,
 					  uint64_t *tsf_time);
 
 /**

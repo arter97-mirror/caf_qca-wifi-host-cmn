@@ -189,7 +189,7 @@ uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
 	uint8_t pkt_capture_offload = 0;
 	struct dp_srng *rx_ring = &soc->reo_dest_ring[reo_ring_num];
 	int max_reap_limit, ring_near_full;
-	uint64_t current_time = 0;
+	uint64_t qtime = 0;
 	uint32_t old_tid;
 	uint32_t peer_ext_stats;
 	uint32_t dsf;
@@ -241,7 +241,7 @@ more_data:
 	rx_pdev = NULL;
 	tid_stats = NULL;
 
-	dp_pkt_get_timestamp(&current_time);
+	dp_pkt_get_timestamp(&qtime);
 
 	ring_near_full = _dp_srng_test_and_update_nf_params(soc, rx_ring,
 							    &max_reap_limit);
@@ -691,7 +691,7 @@ refill_opt_dp_ctrl:
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
-				     current_time, nbuf);
+				     qtime, nbuf);
 
 		DP_RX_LIST_APPEND(deliver_list_head,
 				  deliver_list_tail,

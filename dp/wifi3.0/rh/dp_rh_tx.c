@@ -454,7 +454,7 @@ dp_tx_hw_enqueue_rh(struct dp_soc *soc, struct dp_vdev *vdev,
 
 enqueue_fail:
 	dp_pkt_add_timestamp(vdev, QDF_PKT_TX_DRIVER_EXIT,
-			     qdf_get_log_timestamp(), tx_desc->nbuf);
+			     qdf_get_log_timestamp_usecs(), tx_desc->nbuf);
 
 	return status;
 }

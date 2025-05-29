@@ -2134,13 +2134,13 @@ bool dp_tx_desc_set_ktimestamp(struct dp_vdev *vdev,
  *
  * @vdev: dp vdev
  * @index: index to decide offset in payload
- * @time: timestamp to add in data payload
+ * @qtime: timestamp to add in data payload
  * @nbuf: network buffer
  *
  * Return: none
  */
 void dp_pkt_add_timestamp(struct dp_vdev *vdev,
-			  enum qdf_pkt_timestamp_index index, uint64_t time,
+			  enum qdf_pkt_timestamp_index index, uint64_t qtime,
 			  qdf_nbuf_t nbuf);
 /**
  * dp_pkt_get_timestamp() - get current system time
@@ -2151,7 +2151,7 @@ void dp_pkt_add_timestamp(struct dp_vdev *vdev,
  */
 void dp_pkt_get_timestamp(uint64_t *time);
 #else
-#define dp_pkt_add_timestamp(vdev, index, time, nbuf)
+#define dp_pkt_add_timestamp(vdev, index, qtime, nbuf)
 
 static inline
 void dp_pkt_get_timestamp(uint64_t *time)
