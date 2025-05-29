@@ -425,44 +425,6 @@ QDF_STATUS wmi_unified_wow_wakeup_send(wmi_unified_t wmi_handle)
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
-wmi_unified_wow_add_wakeup_event_send(wmi_unified_t wmi_handle,
-				      struct wow_add_wakeup_params *param)
-{
-	if (wmi_handle->ops->send_wow_add_wakeup_event_cmd)
-		return wmi_handle->ops->send_wow_add_wakeup_event_cmd(
-				wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_wow_add_wakeup_pattern_send(
-		wmi_unified_t wmi_handle,
-		struct wow_add_wakeup_pattern_params *param)
-{
-	if (wmi_handle->ops->send_wow_add_wakeup_pattern_cmd)
-		return wmi_handle->ops->send_wow_add_wakeup_pattern_cmd(
-				wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_wow_remove_wakeup_pattern_send(
-			wmi_unified_t wmi_handle,
-			struct wow_remove_wakeup_pattern_params *param)
-{
-	if (wmi_handle->ops->send_wow_remove_wakeup_pattern_cmd)
-		return wmi_handle->ops->send_wow_remove_wakeup_pattern_cmd(
-				wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_unified_ap_ps_cmd_send(wmi_unified_t wmi_handle,
 				      uint8_t *peer_addr,
 				      struct ap_ps_params *param)
@@ -508,17 +470,6 @@ wmi_unified_dbglog_cmd_send(wmi_unified_t wmi_handle,
 qdf_export_symbol(wmi_unified_dbglog_cmd_send);
 
 QDF_STATUS
-wmi_unified_twt_vdev_config_send(wmi_unified_t wmi_handle,
-				 struct twt_vdev_config_params *param)
-{
-	if (wmi_handle->ops->send_twt_vdev_config_cmd)
-		return wmi_handle->ops->send_twt_vdev_config_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
 wmi_unified_vdev_set_param_send(wmi_unified_t wmi_handle,
 				struct vdev_set_params *param)
 {
@@ -541,16 +492,6 @@ wmi_unified_roam_set_param_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
-QDF_STATUS
-wmi_unified_vdev_set_mu_snif_send(wmi_unified_t wmi_handle,
-				  struct vdev_set_mu_snif_param *param)
-{
-	if (wmi_handle->ops->send_vdev_set_mu_snif_cmd)
-		return wmi_handle->ops->send_vdev_set_mu_snif_cmd(wmi_handle,
-				  param);
-
-	return QDF_STATUS_E_FAILURE;
-}
 
 QDF_STATUS wmi_unified_sifs_trigger_send(wmi_unified_t wmi_handle,
 					 struct sifs_trigger_param *param)
@@ -1343,39 +1284,6 @@ wmi_unified_wlan_profile_enable_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
-wmi_unified_wlan_profile_trigger_cmd_send(wmi_unified_t wmi_handle,
-					  struct wlan_profile_params *param)
-{
-	if (wmi_handle->ops->send_wlan_profile_trigger_cmd)
-		return wmi_handle->ops->send_wlan_profile_trigger_cmd(
-					wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_wlan_profile_hist_intvl_cmd_send(wmi_unified_t wmi_handle,
-					     struct wlan_profile_params *param)
-{
-	if (wmi_handle->ops->send_wlan_profile_hist_intvl_cmd)
-		return wmi_handle->ops->send_wlan_profile_hist_intvl_cmd(
-					wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_set_chan_cmd_send(wmi_unified_t wmi_handle,
-			      struct channel_param *param)
-{
-	if (wmi_handle->ops->send_pdev_set_chan_cmd)
-		return wmi_handle->ops->send_pdev_set_chan_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_unified_get_ratepwr_table_cmd_send(wmi_unified_t wmi_handle)
 {
 	if (wmi_handle->ops->send_get_ratepwr_table_cmd)
@@ -1416,17 +1324,6 @@ QDF_STATUS wmi_unified_pdev_scan_end_cmd_send(wmi_unified_t wmi_handle)
 {
 	if (wmi_handle->ops->send_pdev_scan_end_cmd)
 		return wmi_handle->ops->send_pdev_scan_end_cmd(wmi_handle);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_set_acparams_cmd_send(wmi_unified_t wmi_handle,
-				  struct acparams_params *param)
-{
-	if (wmi_handle->ops->send_set_acparams_cmd)
-		return wmi_handle->ops->send_set_acparams_cmd(wmi_handle,
-				param);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -1568,35 +1465,12 @@ QDF_STATUS wmi_extract_health_mon_event(
 #endif /* HEALTH_MON_SUPPORT */
 
 QDF_STATUS
-wmi_unified_vdev_set_fwtest_param_cmd_send(wmi_unified_t wmi_handle,
-					   struct set_fwtest_params *param)
-{
-	if (wmi_handle->ops->send_vdev_set_fwtest_param_cmd)
-		return wmi_handle->ops->send_vdev_set_fwtest_param_cmd(
-						wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
 wmi_unified_vdev_set_custom_aggr_size_cmd_send(
 		wmi_unified_t wmi_handle,
 		struct set_custom_aggr_size_params *param)
 {
 	if (wmi_handle->ops->send_vdev_set_custom_aggr_size_cmd)
 		return wmi_handle->ops->send_vdev_set_custom_aggr_size_cmd(
-						wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_vdev_set_qdepth_thresh_cmd_send(
-		wmi_unified_t wmi_handle,
-		struct set_qdepth_thresh_params *param)
-{
-	if (wmi_handle->ops->send_vdev_set_qdepth_thresh_cmd)
-		return wmi_handle->ops->send_vdev_set_qdepth_thresh_cmd(
 						wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
@@ -1703,18 +1577,6 @@ wmi_unified_addba_setresponse_cmd_send(wmi_unified_t wmi_handle,
 {
 	if (wmi_handle->ops->send_addba_setresponse_cmd)
 		return wmi_handle->ops->send_addba_setresponse_cmd(wmi_handle,
-				  macaddr, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_singleamsdu_cmd_send(wmi_unified_t wmi_handle,
-				 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-				 struct singleamsdu_params *param)
-{
-	if (wmi_handle->ops->send_singleamsdu_cmd)
-		return wmi_handle->ops->send_singleamsdu_cmd(wmi_handle,
 				  macaddr, param);
 
 	return QDF_STATUS_E_FAILURE;
@@ -2643,18 +2505,6 @@ wmi_unified_send_btcoex_duty_cycle_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
-wmi_unified_send_egid_info_cmd(wmi_unified_t wmi_handle,
-			       struct esl_egid_params *param)
-{
-	if (wmi_handle->ops->send_egid_info_cmd) {
-		return wmi_handle->ops->send_egid_info_cmd(
-						wmi_handle, param);
-	}
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_extract_service_ready_ext(
 		wmi_unified_t wmi_handle, uint8_t *evt_buf,
 		struct wlan_psoc_host_service_ext_param *param)
@@ -2986,17 +2836,6 @@ QDF_STATUS wmi_extract_pdev_qvit_event(wmi_unified_t wmi_handle,
 }
 
 QDF_STATUS
-wmi_unified_send_coex_ver_cfg_cmd(wmi_unified_t wmi_handle,
-				  coex_ver_cfg_t *param)
-{
-	if (wmi_handle->ops->send_coex_ver_cfg_cmd)
-		return wmi_handle->ops->send_coex_ver_cfg_cmd(wmi_handle,
-			param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
 wmi_unified_send_coex_config_cmd(wmi_unified_t wmi_handle,
 				 struct coex_config_params *param)
 {
@@ -3296,17 +3135,6 @@ QDF_STATUS wmi_unified_send_smart_logging_enable_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
-wmi_unified_send_smart_logging_fatal_cmd(wmi_unified_t wmi_handle,
-					 struct wmi_debug_fatal_events *param)
-{
-	if (wmi_handle->ops->send_smart_logging_fatal_cmd)
-		return wmi_handle->ops->send_smart_logging_fatal_cmd(wmi_handle,
-			param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_extract_smartlog_ev(wmi_unified_t wmi_handle,
 				   void *evt_buf,
 				   struct wmi_debug_fatal_events *ev)
@@ -3424,18 +3252,6 @@ QDF_STATUS wmi_unified_send_obss_spatial_reuse_set_cmd(
 	if (wmi_handle->ops->send_obss_spatial_reuse_set)
 		return wmi_handle->ops->send_obss_spatial_reuse_set(wmi_handle,
 				obss_spatial_reuse_param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_send_obss_spatial_reuse_set_def_thresh_cmd(
-		wmi_unified_t wmi_handle,
-		struct wmi_host_obss_spatial_reuse_set_def_thresh *thresh)
-{
-	if (wmi_handle->ops->send_obss_spatial_reuse_set_def_thresh)
-		return wmi_handle->ops->send_obss_spatial_reuse_set_def_thresh(
-						wmi_handle, thresh);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -3834,19 +3650,6 @@ QDF_STATUS wmi_unified_extract_time_sync_ftm_offset(
 	return QDF_STATUS_E_FAILURE;
 }
 #endif /* FEATURE_WLAN_TIME_SYNC_FTM */
-
-QDF_STATUS
-wmi_unified_send_injector_frame_config_cmd(wmi_unified_t wmi_handle,
-				 struct wmi_host_injector_frame_params *param)
-{
-	if (wmi_handle->ops->send_injector_config_cmd) {
-		return wmi_handle->ops->send_injector_config_cmd(wmi_handle,
-			param);
-	}
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_unified_send_cp_stats_cmd(wmi_unified_t wmi_handle,
 					 void *buf_ptr, uint32_t buf_len)
 {
@@ -4005,16 +3808,6 @@ wmi_extract_halphy_cal_ev_param(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->extract_halphy_cal_ev_param)
 		return wmi_handle->ops->extract_halphy_cal_ev_param(
 			wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_send_set_halphy_cal(wmi_unified_t wmi_handle,
-				struct wmi_host_send_set_halphy_cal_info *param)
-{
-	if (wmi_handle->ops->send_set_halphy_cal)
-		return wmi_handle->ops->send_set_halphy_cal(wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -4197,42 +3990,6 @@ wmi_unified_sap_suspend_cmd_send(wmi_unified_t wmi_handle,
 }
 
 #ifdef WLAN_VENDOR_EXTN
-QDF_STATUS
-wmi_unified_send_vendor_peer_cmd(wmi_unified_t wmi_handle,
-				 enum wmi_peer_vendor_cmd_subtypes subtype,
-				 void *param)
-{
-	if (wmi_handle->ops->send_vendor_peer_cmd)
-		return wmi_handle->ops->send_vendor_peer_cmd(wmi_handle,
-							     subtype, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_send_vendor_vdev_cmd(wmi_unified_t wmi_handle,
-				 enum wmi_vdev_vendor_cmd_subtypes subtype,
-				 void *param)
-{
-	if (wmi_handle->ops->send_vendor_vdev_cmd)
-		return wmi_handle->ops->send_vendor_vdev_cmd(wmi_handle,
-							     subtype, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_send_vendor_pdev_cmd(wmi_unified_t wmi_handle,
-				 enum wmi_pdev_vendor_cmd_subtypes subtype,
-				 void *param)
-{
-	if (wmi_handle->ops->send_vendor_pdev_cmd)
-		return wmi_handle->ops->send_vendor_pdev_cmd(wmi_handle,
-							     subtype, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS
 wmi_extract_vendor_peer_event(wmi_unified_t wmi_handle,
 			      void *evt_buf,

@@ -1012,17 +1012,6 @@ wmi_unified_vdev_set_nac_rssi_send(wmi_unified_t wmi_handle,
 				   struct vdev_scan_nac_rssi_params *req);
 
 /**
- * wmi_unified_twt_vdev_config_send() - WMI twt vdev config parameter function
- * @wmi_handle: handle to WMI.
- * @param: pointer to hold twt config parameter
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_twt_vdev_config_send(wmi_unified_t wmi_handle,
-				 struct twt_vdev_config_params *param);
-
-/**
  * wmi_unified_vdev_set_param_send() - WMI vdev set parameter function
  * @wmi_handle: handle to WMI.
  * @param: pointer to hold vdev set parameter
@@ -1084,17 +1073,6 @@ wmi_unified_roam_set_param_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 #endif
-
-/**
- * wmi_unified_vdev_set_mu_snif_send() - Set vdev MU sniffer parameters
- * @wmi_handle: handle to WMI.
- * @param: vdev MU sniffer parameters
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_vdev_set_mu_snif_send(wmi_unified_t wmi_handle,
-				  struct vdev_set_mu_snif_param *param);
 
 /**
  * wmi_unified_sifs_trigger_send() - WMI vdev sifs trigger parameter function
@@ -1222,41 +1200,6 @@ QDF_STATUS wmi_unified_wow_enable_send(wmi_unified_t wmi_handle,
  * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
  */
 QDF_STATUS wmi_unified_wow_wakeup_send(wmi_unified_t wmi_handle);
-
-/**
- * wmi_unified_wow_add_wakeup_event_send() - WMI wow wakeup function
- * @wmi_handle: handle to WMI.
- * @param: pointer to wow wakeup event parameter structure
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_wow_add_wakeup_event_send(wmi_unified_t wmi_handle,
-				      struct wow_add_wakeup_params *param);
-
-/**
- * wmi_unified_wow_add_wakeup_pattern_send() - WMI wow wakeup pattern function
- * @wmi_handle: handle to WMI.
- * @param: pointer to wow wakeup pattern parameter structure
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_wow_add_wakeup_pattern_send(
-		wmi_unified_t wmi_handle,
-		struct wow_add_wakeup_pattern_params *param);
-
-/**
- * wmi_unified_wow_remove_wakeup_pattern_send() - wow wakeup pattern function
- * @wmi_handle: handle to WMI.
- * @param: pointer to wow wakeup pattern parameter structure
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_wow_remove_wakeup_pattern_send(
-		wmi_unified_t wmi_handle,
-		struct wow_remove_wakeup_pattern_params *param);
 
 /**
  * wmi_unified_packet_log_enable_send() - WMI request stats function
@@ -2232,32 +2175,6 @@ QDF_STATUS
 wmi_unified_send_btcoex_duty_cycle_cmd(wmi_unified_t wmi_handle,
 				       struct btcoex_cfg_params *param);
 /**
- *  wmi_unified_send_egid_info_cmd() - send ESL egid_info commands
- * @wmi_handle: wmi handle
- * @param: esl_egid params
- *
- * Send WMI_ESL_EGID_CMDID parameters to fw.
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS
-wmi_unified_send_egid_info_cmd(wmi_unified_t wmi_handle,
-			       struct esl_egid_params *param);
-
-/**
- * wmi_unified_send_coex_ver_cfg_cmd() - send coex ver cfg command
- * @wmi_handle: wmi handle
- * @param: wmi coex ver cfg params
- *
- * Send WMI_COEX_VERSION_CFG_CMID parameters to fw.
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS
-wmi_unified_send_coex_ver_cfg_cmd(wmi_unified_t wmi_handle,
-				  coex_ver_cfg_t *param);
-
-/**
  * wmi_unified_send_coex_config_cmd() - send coex ver cfg command
  * @wmi_handle: wmi handle
  * @param: wmi coex cfg cmd params
@@ -2373,53 +2290,6 @@ wmi_unified_encrypt_decrypt_send_cmd(void *wmi_hdl,
 #endif /* WLAN_FEATURE_DISA */
 
 /**
- *  wmi_unified_wlan_profile_enable_cmd_send() - WMI wlan profile enable
- *						 cmd function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold wlan profile param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_wlan_profile_enable_cmd_send(wmi_unified_t wmi_handle,
-					 struct wlan_profile_params *param);
-
-/**
- *  wmi_unified_wlan_profile_trigger_cmd_send() - WMI wlan profile trigger
- *						  cmd function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold wlan profile param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_wlan_profile_trigger_cmd_send(wmi_unified_t wmi_handle,
-					  struct wlan_profile_params *param);
-
-/**
- *  wmi_unified_wlan_profile_hist_intvl_cmd_send() - WMI wlan profile history
- *						  cmd function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold wlan profile param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_wlan_profile_hist_intvl_cmd_send(wmi_unified_t wmi_handle,
-					     struct wlan_profile_params *param);
-
-/**
- *  wmi_unified_set_chan_cmd_send() - WMI set channel cmd function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold channel param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_set_chan_cmd_send(wmi_unified_t wmi_handle,
-			      struct channel_param *param);
-
-/**
  *  wmi_unified_get_ratepwr_table_cmd_send() - WMI ratepwr table cmd function
  *  @wmi_handle: handle to WMI.
  *
@@ -2465,17 +2335,6 @@ QDF_STATUS wmi_unified_pdev_scan_start_cmd_send(wmi_unified_t wmi_handle);
  *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
  */
 QDF_STATUS wmi_unified_pdev_scan_end_cmd_send(wmi_unified_t wmi_handle);
-
-/**
- *  wmi_unified_set_acparams_cmd_send() - WMI set acparams cmd function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold acparams param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_set_acparams_cmd_send(wmi_unified_t wmi_handle,
-				  struct acparams_params *param);
 
 /**
  *  wmi_unified_set_vap_dscp_tid_map_cmd_send() - WMI set vap dscp
@@ -2715,18 +2574,6 @@ QDF_STATUS wmi_unified_bss_chan_info_request_cmd_send(
 QDF_STATUS wmi_unified_thermal_mitigation_param_cmd_send(
 			wmi_unified_t wmi_handle,
 			struct thermal_mitigation_params *param);
-
-/**
- *  wmi_unified_vdev_set_fwtest_param_cmd_send() - WMI set fwtest function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold fwtest param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_vdev_set_fwtest_param_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct set_fwtest_params *param);
-
 /**
  *  wmi_unified_vdev_set_custom_aggr_size_cmd_send() - WMI set custom aggr
  *						       size command
@@ -2738,17 +2585,6 @@ QDF_STATUS wmi_unified_vdev_set_fwtest_param_cmd_send(
 QDF_STATUS wmi_unified_vdev_set_custom_aggr_size_cmd_send(
 		wmi_unified_t wmi_handle,
 		struct set_custom_aggr_size_params *param);
-
-/**
- *  wmi_unified_vdev_set_qdepth_thresh_cmd_send() - WMI set qdepth threshold
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold set qdepth thresh param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_vdev_set_qdepth_thresh_cmd_send(
-		wmi_unified_t wmi_handle,
-		struct set_qdepth_thresh_params *param);
 
 #ifdef WLAN_REG_PARTIAL_OFFLOAD
 /**
@@ -2762,17 +2598,6 @@ QDF_STATUS wmi_unified_pdev_set_regdomain_cmd_send(
 			wmi_unified_t wmi_handle,
 			struct pdev_set_regdomain_params *param);
 #endif
-
-/**
- *  wmi_unified_set_beacon_filter_cmd_send() - WMI set beacon filter function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold beacon filter param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_set_beacon_filter_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct set_beacon_filter_params *param);
 
 /**
  *  wmi_unified_remove_beacon_filter_cmd_send() - WMI set beacon filter function
@@ -2836,20 +2661,6 @@ QDF_STATUS
 wmi_unified_addba_setresponse_cmd_send(wmi_unified_t wmi_handle,
 				       uint8_t macaddr[QDF_MAC_ADDR_SIZE],
 				       struct addba_setresponse_params *param);
-
-/**
- *  wmi_unified_singleamsdu_cmd_send() - WMI singleamsdu function
- *  @wmi_handle: handle to WMI.
- *  @macaddr: MAC address
- *  @param: pointer to hold singleamsdu parameter
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_singleamsdu_cmd_send(wmi_unified_t wmi_handle,
-				 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-				 struct singleamsdu_params *param);
-
 /**
  *  wmi_unified_mu_scan_cmd_send() - WMI set mu scan function
  *  @wmi_handle: handle to WMI.
@@ -4423,20 +4234,6 @@ QDF_STATUS wmi_extract_dfs_status_from_fw(wmi_unified_t wmi_handle,
  */
 QDF_STATUS wmi_unified_send_smart_logging_enable_cmd(wmi_unified_t wmi_handle,
 						     uint32_t param);
-
-/**
- * wmi_unified_send_smart_logging_fatal_cmd() - send smart logging fatal cmd
- * @wmi_handle: wmi handle
- * @param:  Fatal event
- *
- * This function sends the smart log fatal events to the FW
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_send_smart_logging_fatal_cmd(wmi_unified_t wmi_handle,
-					 struct wmi_debug_fatal_events *param);
-
 /**
  * wmi_extract_smartlog_ev() - extract smartlog event info from event
  * @wmi_handle: wmi handle
@@ -4490,17 +4287,6 @@ QDF_STATUS wmi_extract_ctl_failsafe_check_ev_param(
 QDF_STATUS wmi_unified_send_obss_spatial_reuse_set_cmd(
 	wmi_unified_t wmi_handle,
 	struct wmi_host_obss_spatial_reuse_set_param *obss_spatial_reuse_param);
-
-/**
- * wmi_unified_send_obss_spatial_reuse_set_def_thresh_cmd() - send def thresh
- * @wmi_handle: wmi handle
- * @thresh: Pointer to def thresh
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_send_obss_spatial_reuse_set_def_thresh_cmd(
-	wmi_unified_t wmi_handle,
-	struct wmi_host_obss_spatial_reuse_set_def_thresh *thresh);
 
 /**
  * wmi_unified_send_self_srg_bss_color_bitmap_set_cmd() - Send 64-bit BSS color
@@ -4913,20 +4699,6 @@ wmi_unified_extract_time_sync_ftm_offset(wmi_unified_t wmi_handle,
 					 void *evt_buf,
 					 struct ftm_time_sync_offset *param);
 #endif /* FEATURE_WLAN_TIME_SYNC_FTM */
-
-/**
- * wmi_unified_send_injector_frame_config_cmd() - configure injector frame
- * @wmi_handle: wmi handle
- * @param: params received in the injector frame configure command
- *
- * This function configures the AP to send out injector frames
- *
- * Return QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_send_injector_frame_config_cmd(wmi_unified_t wmi_handle,
-				struct wmi_host_injector_frame_params *param);
-
 /**
  * wmi_unified_send_cp_stats_cmd() - Send cp stats command
  * @wmi_handle: wmi handle
@@ -5098,17 +4870,6 @@ QDF_STATUS
 wmi_extract_halphy_cal_status_ev_param(wmi_unified_t wmi_handle,
 				       void *evt_buf,
 				       struct wmi_host_pdev_get_halphy_cal_status_event *param);
-
-/**
- * wmi_unified_send_set_halphy_cal() - send set halphy cal bmap
- * @wmi_handle: wmi handle
- * @param: set halphy cal input info
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-QDF_STATUS wmi_unified_send_set_halphy_cal(wmi_unified_t wmi_handle,
-					   struct wmi_host_send_set_halphy_cal_info *param);
-
 /**
  * wmi_extract_halphy_cal_ev_param() - extract halphy cal status from FW event
  * @wmi_handle: wmi handle
@@ -5341,18 +5102,6 @@ wmi_unified_led_blink_rate_table_cmd_send(wmi_unified_t wmi_handle,
 
 #ifdef WLAN_VENDOR_EXTN
 QDF_STATUS
-wmi_unified_send_vendor_peer_cmd(wmi_unified_t wmi_handle,
-				 enum wmi_peer_vendor_cmd_subtypes subtype,
-				 void *param);
-QDF_STATUS
-wmi_unified_send_vendor_vdev_cmd(wmi_unified_t wmi_handle,
-				 enum wmi_vdev_vendor_cmd_subtypes subtype,
-				 void *param);
-QDF_STATUS
-wmi_unified_send_vendor_pdev_cmd(wmi_unified_t wmi_handle,
-				 enum wmi_pdev_vendor_cmd_subtypes subtype,
-				 void *param);
-QDF_STATUS
 wmi_extract_vendor_peer_event(wmi_unified_t wmi_hdl,
 			      void *evt_buf,
 			      void *param, void *subtype);
@@ -5384,20 +5133,6 @@ wmi_unified_extract_mgmt_srng_reap_event(
 			wmi_unified_t wmi_handle, uint8_t *evt_buf,
 			struct mgmt_srng_reap_event_params *params);
 #endif
-
-/**
- * wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd() - WMI to send STA VDEV associated AP's
- * reported operating BW to FW
- *
- * @wmi_handle: handle to WMI
- * @param: pointer to ap oper bw params
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd(
-					wmi_unified_t wmi_handle,
-					struct wmi_sta_vdev_report_ap_oper_bw_params *param);
 /**
  * is_both_psd_eirp_support_present_for_sp() - FW can handle
  * PSD and EIRP together or not
