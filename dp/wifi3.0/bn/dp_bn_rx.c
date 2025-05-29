@@ -709,7 +709,7 @@ done:
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
-				     current_time, nbuf);
+				     qtime, nbuf);
 
 		DP_RX_LIST_APPEND(deliver_list_head,
 				  deliver_list_tail,
