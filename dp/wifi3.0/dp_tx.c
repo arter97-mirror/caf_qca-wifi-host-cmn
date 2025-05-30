@@ -192,8 +192,13 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	size_t size;
 
 	if (!dp_tx_is_page_pool_enabled(soc) || !tx_pp ||
-	    !tx_pp->page_pool_init ||
-	    (tx_desc->flags & DP_TX_DESC_FLAG_TDLS_FRAME))
+	    !tx_pp->page_pool_init)
+		return nbuf;
+
+	if (qdf_nbuf_get_dev_scratch(nbuf) != QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL)
+		QDF_NBUF_CB_PADDR(nbuf) = 0;
+
+	if (tx_desc->flags & DP_TX_DESC_FLAG_TDLS_FRAME)
 		return nbuf;
 
 	/* Non linear SKBs are not expected in this path */

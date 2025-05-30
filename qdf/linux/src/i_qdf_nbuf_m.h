@@ -742,7 +742,7 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 
 	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
 	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
-	    __qdf_is_pp_nbuf(buf)) {
+	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
 		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
 					   nbytes, __qdf_dma_dir_to_os(dir));
 		return QDF_STATUS_SUCCESS;
@@ -788,7 +788,7 @@ __qdf_nbuf_unmap_nbytes_single(qdf_device_t osdev, struct sk_buff *buf,
 	 */
 	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
 	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
-	    __qdf_is_pp_nbuf(buf))
+	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf))
 		return dma_sync_single_for_cpu(osdev->dev, paddr, nbytes,
 					       __qdf_dma_dir_to_os(dir));
 

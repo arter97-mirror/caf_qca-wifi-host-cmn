@@ -1351,7 +1351,7 @@ qdf_skip_dma_map_unmap(qdf_device_t osdev, qdf_nbuf_t nbuf, qdf_dma_dir_t dir)
 {
 	return ((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
 		dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
-	       __qdf_is_pp_nbuf(nbuf);
+	       __qdf_is_pp_nbuf(nbuf) && QDF_NBUF_CB_PADDR(nbuf);
 }
 
 /**
