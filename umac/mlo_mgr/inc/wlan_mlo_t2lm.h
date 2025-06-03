@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -650,6 +650,7 @@ struct wlan_t2lm_onging_negotiation_info {
  * @ongoing_tid_to_link_mapping: This has the ongoing TID-to-link mapping info
  *                               transmitted by this peer to the connected peer.
  * @is_fw_btm_ind: FW has sent BTM indication for load balance.
+ * @is_standby_link_enabled: If standby link enabled and vdev repurpose will start.
  */
 struct wlan_mlo_peer_t2lm_policy {
 	uint8_t self_gen_dialog_token;
@@ -657,6 +658,7 @@ struct wlan_mlo_peer_t2lm_policy {
 	struct wlan_prev_t2lm_negotiated_info t2lm_negotiated_info;
 	struct wlan_t2lm_onging_negotiation_info ongoing_tid_to_link_mapping;
 	bool is_fw_btm_ind;
+	bool is_standby_link_enabled;
 };
 
 /**
