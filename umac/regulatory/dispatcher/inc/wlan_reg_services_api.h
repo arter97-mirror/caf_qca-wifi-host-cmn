@@ -332,28 +332,6 @@ bool wlan_reg_is_6g_freq_indoor(struct wlan_objmgr_pdev *pdev, qdf_freq_t freq);
 					wlan_reg_is_6g_freq_indoor(pdev, freq)
 
 /**
- * wlan_reg_get_max_txpower_for_6g_tpe() - Get max txpower for 6G TPE IE.
- * @pdev: Pointer to pdev.
- * @freq: Channel frequency.
- * @bw: Channel bandwidth.
- * @reg_ap: Regulatory 6G AP type.
- * @reg_client: Regulatory client type.
- * @is_psd: True if txpower is needed in PSD format, and false if needed in EIRP
- * format.
- * @tx_power: Pointer to tx-power.
- *
- * Return: Return QDF_STATUS_SUCCESS, if tx_power is filled for 6G TPE IE
- * else return QDF_STATUS_E_FAILURE.
- */
-QDF_STATUS
-wlan_reg_get_max_txpower_for_6g_tpe(struct wlan_objmgr_pdev *pdev,
-				    qdf_freq_t freq, uint8_t bw,
-				    enum reg_6g_ap_type reg_ap,
-				    enum reg_6g_client_type reg_client,
-				    bool is_psd,
-				    uint8_t *tx_power);
-
-/**
  * wlan_reg_get_superchan_entry() - Get the address of the super channel list
  * entry for a given input channel index.
  *
@@ -427,17 +405,6 @@ static inline bool wlan_reg_is_range_overlap_6g(qdf_freq_t low_freq,
 						qdf_freq_t high_freq)
 {
 	return false;
-}
-
-static inline QDF_STATUS
-wlan_reg_get_max_txpower_for_6g_tpe(struct wlan_objmgr_pdev *pdev,
-				    qdf_freq_t freq, uint8_t bw,
-				    enum reg_6g_ap_type reg_ap,
-				    enum reg_6g_client_type reg_client,
-				    bool is_psd,
-				    uint8_t *tx_power)
-{
-	return QDF_STATUS_E_FAILURE;
 }
 
 static inline QDF_STATUS
@@ -1298,14 +1265,6 @@ qdf_freq_t wlan_reg_legacy_chan_to_freq(struct wlan_objmgr_pdev *pdev,
 bool wlan_reg_is_us(uint8_t *country);
 
 /**
- * wlan_reg_is_etsi() - reg is a country in EU
- * @country: The country information
- *
- * Return: true or false
- */
-bool wlan_reg_is_etsi(uint8_t *country);
-
-/**
  * wlan_reg_set_country() - Set the current regulatory country
  * @pdev: The physical dev to set current country for
  * @country: The country information to configure
@@ -1465,25 +1424,6 @@ QDF_STATUS wlan_reg_get_curr_regdomain(struct wlan_objmgr_pdev *pdev,
 bool wlan_reg_is_regdmn_en302502_applicable(struct wlan_objmgr_pdev *pdev);
 #endif
 
-/**
- * wlan_reg_modify_pdev_chan_range() - Compute current channel list for the
- * modified channel range in the regcap.
- * @pdev: pointer to wlan_objmgr_pdev.
- *
- * Return : QDF_STATUS
- */
-QDF_STATUS wlan_reg_modify_pdev_chan_range(struct wlan_objmgr_pdev *pdev);
-
-/**
- * wlan_reg_get_phybitmap() - Get phybitmap from regulatory pdev_priv_obj
- * @pdev: pdev pointer
- * @phybitmap: pointer to phybitmap
- *
- * Return: QDF STATUS
- */
-QDF_STATUS wlan_reg_get_phybitmap(struct wlan_objmgr_pdev *pdev,
-				  uint16_t *phybitmap);
-
 #ifdef WLAN_FEATURE_11BE
 /**
  * wlan_reg_phybitmap_support_11be() - API to check if current reg domain
@@ -1503,16 +1443,6 @@ wlan_reg_phybitmap_support_11be(struct wlan_objmgr_pdev *pdev)
 }
 #endif
 
-/**
- * wlan_reg_update_pdev_wireless_modes() - Update the wireless_modes in the
- * pdev_priv_obj with the input wireless_modes
- * @pdev: pointer to wlan_objmgr_pdev.
- * @wireless_modes: Wireless modes.
- *
- * Return : QDF_STATUS
- */
-QDF_STATUS wlan_reg_update_pdev_wireless_modes(struct wlan_objmgr_pdev *pdev,
-					       uint64_t wireless_modes);
 /**
  * wlan_reg_disable_chan_coex() - Disable Coexisting channels based on the input
  * bitmask
@@ -1707,23 +1637,6 @@ wlan_reg_get_channel_state_for_pwrmode(
 enum channel_state wlan_reg_get_channel_state_from_secondary_list_for_freq(
 						struct wlan_objmgr_pdev *pdev,
 						qdf_freq_t freq);
-
-/**
- * wlan_reg_get_channel_list_with_power() - Provide channel list with tx power
- * @pdev: Pointer to pdev
- * @ch_list: pointer to the channel list.
- * @num_chan: Number of channels which has been filed in ch_list
- * @in_6g_pwr_type: 6G power type corresponding to which 6G channels needs to
- * be provided
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS
-wlan_reg_get_channel_list_with_power(
-				struct wlan_objmgr_pdev *pdev,
-				struct channel_power *ch_list,
-				uint8_t *num_chan,
-				enum supported_6g_pwr_types in_6g_pwr_type);
 #endif
 
 #ifdef WLAN_FEATURE_11BE
@@ -2488,18 +2401,6 @@ wlan_reg_get_cur_6g_client_type(struct wlan_objmgr_pdev *pdev,
 				*reg_cur_6g_client_mobility_type);
 
 /**
- * wlan_reg_set_cur_6ghz_client_type() - Set the cur 6 GHz regulatory client
- * type to the given value.
- * @pdev: Pointer to PDEV object.
- * @in_6ghz_client_type: Input Client type to be set ie. default/subordinate.
- *
- * Return: QDF_STATUS.
- */
-QDF_STATUS
-wlan_reg_set_cur_6ghz_client_type(struct wlan_objmgr_pdev *pdev,
-				  enum reg_6g_client_type in_6ghz_client_type);
-
-/**
  * wlan_reg_set_6ghz_client_type_from_target() - Set the current 6 GHz
  * regulatory client type to the value received from target.
  * @pdev: Pointer to PDEV object.
@@ -2673,13 +2574,6 @@ wlan_reg_get_cur_6g_client_type(struct wlan_objmgr_pdev *pdev,
 				*reg_cur_6g_client_mobility_type)
 {
 	*reg_cur_6g_client_mobility_type = REG_SUBORDINATE_CLIENT;
-	return QDF_STATUS_E_NOSUPPORT;
-}
-
-static inline QDF_STATUS
-wlan_reg_set_cur_6ghz_client_type(struct wlan_objmgr_pdev *pdev,
-				  enum reg_6g_client_type in_6ghz_client_type)
-{
 	return QDF_STATUS_E_NOSUPPORT;
 }
 

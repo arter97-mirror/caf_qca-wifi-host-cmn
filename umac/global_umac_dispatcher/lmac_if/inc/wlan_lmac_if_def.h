@@ -2192,7 +2192,6 @@ struct wlan_lmac_if_mgmt_txrx_rx_ops {
  * @reg_get_current_regdomain:
  * @reg_enable_dfs_channels:
  * @reg_modify_pdev_chan_range:
- * @reg_update_pdev_wireless_modes:
  * @reg_is_range_only6g:
  * @reg_is_range_overlap_6g:
  * @reg_disable_chan_coex:
@@ -2259,11 +2258,6 @@ struct wlan_lmac_if_reg_rx_ops {
 #endif
 	QDF_STATUS (*reg_enable_dfs_channels)(struct wlan_objmgr_pdev *pdev,
 					      bool dfs_enable);
-	QDF_STATUS (*reg_modify_pdev_chan_range)(struct
-						 wlan_objmgr_pdev *pdev);
-	QDF_STATUS
-	(*reg_update_pdev_wireless_modes)(struct wlan_objmgr_pdev *pdev,
-					  uint64_t wireless_modes);
 	bool
 	(*reg_is_range_only6g)(qdf_freq_t low_freq, qdf_freq_t high_freq);
 	bool

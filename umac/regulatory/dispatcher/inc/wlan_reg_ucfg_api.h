@@ -190,14 +190,6 @@ QDF_STATUS ucfg_reg_set_country(struct wlan_objmgr_pdev *pdev,
 				uint8_t *country);
 
 /**
- * ucfg_reg_reset_country() - Reset the regulatory country to default
- * @psoc: The physical SoC to reset country for
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS ucfg_reg_reset_country(struct wlan_objmgr_psoc *psoc);
-
-/**
  * ucfg_reg_enable_dfs_channels() - Enable the use of DFS channels
  * @pdev: The physical dev to enable DFS channels for
  * @dfs_enable: true to enable DFS channels, false to disable them

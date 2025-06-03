@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -271,14 +270,6 @@ bool reg_is_world_alpha2(uint8_t *alpha2);
 bool reg_is_us_alpha2(uint8_t *alpha2);
 
 /**
- * reg_is_etsi_alpha2 - is country code in EU
- * @alpha2: country code pointer
- *
- * Return: true or false
- */
-bool reg_is_etsi_alpha2(uint8_t *alpha2);
-
-/**
  * reg_set_country() - Set the current regulatory country
  * @pdev: pdev device for country information
  * @country: country value
@@ -418,11 +409,6 @@ static inline bool reg_is_world_alpha2(uint8_t *alpha2)
 }
 
 static inline bool reg_is_us_alpha2(uint8_t *alpha2)
-{
-	return false;
-}
-
-static inline bool reg_is_etsi_alpha2(uint8_t *alpha2)
 {
 	return false;
 }

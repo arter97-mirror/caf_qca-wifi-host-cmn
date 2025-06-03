@@ -144,14 +144,6 @@ bool reg_is_us_alpha2(uint8_t *alpha2)
 	return false;
 }
 
-bool reg_is_etsi_alpha2(uint8_t *alpha2)
-{
-	if ((alpha2[0] == 'G') && (alpha2[1] == 'B'))
-		return true;
-
-	return false;
-}
-
 static QDF_STATUS reg_set_non_offload_country(struct wlan_objmgr_pdev *pdev,
 					      struct set_country *cc)
 {

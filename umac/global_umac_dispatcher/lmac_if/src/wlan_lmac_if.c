@@ -583,12 +583,6 @@ static void wlan_lmac_if_umac_reg_rx_ops_register(
 	rx_ops->reg_rx_ops.reg_enable_dfs_channels =
 		ucfg_reg_enable_dfs_channels;
 
-	rx_ops->reg_rx_ops.reg_modify_pdev_chan_range =
-		wlan_reg_modify_pdev_chan_range;
-
-	rx_ops->reg_rx_ops.reg_update_pdev_wireless_modes =
-		wlan_reg_update_pdev_wireless_modes;
-
 	rx_ops->reg_rx_ops.reg_is_range_only6g =
 		wlan_reg_is_range_only6g;
 

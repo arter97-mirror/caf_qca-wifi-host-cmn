@@ -194,11 +194,6 @@ QDF_STATUS ucfg_reg_set_country(struct wlan_objmgr_pdev *pdev,
 	return reg_set_country(pdev, country);
 }
 
-QDF_STATUS ucfg_reg_reset_country(struct wlan_objmgr_psoc *psoc)
-{
-	return reg_reset_country(psoc);
-}
-
 QDF_STATUS ucfg_reg_enable_dfs_channels(struct wlan_objmgr_pdev *pdev,
 					bool dfs_enable)
 {

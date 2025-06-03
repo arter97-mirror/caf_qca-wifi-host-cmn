@@ -777,11 +777,6 @@ bool wlan_reg_is_us(uint8_t *country)
 	return reg_is_us_alpha2(country);
 }
 
-bool wlan_reg_is_etsi(uint8_t *country)
-{
-	return reg_is_etsi_alpha2(country);
-}
-
 void wlan_reg_register_chan_change_callback(struct wlan_objmgr_psoc *psoc,
 					    void *cbk, void *arg)
 {
@@ -879,12 +874,6 @@ QDF_STATUS wlan_reg_get_chip_mode(struct wlan_objmgr_pdev *pdev,
 	*chip_mode = pdev_priv_obj->wireless_modes;
 
 	return QDF_STATUS_SUCCESS;
-}
-
-QDF_STATUS wlan_reg_get_phybitmap(struct wlan_objmgr_pdev *pdev,
-				  uint16_t *phybitmap)
-{
-	return reg_get_phybitmap(pdev, phybitmap);
 }
 
 #ifdef WLAN_FEATURE_11BE
@@ -1080,20 +1069,6 @@ bool wlan_reg_is_6g_freq_indoor(struct wlan_objmgr_pdev *pdev, qdf_freq_t freq)
 	return reg_is_6g_freq_indoor(pdev, freq);
 }
 
-QDF_STATUS
-wlan_reg_get_max_txpower_for_6g_tpe(struct wlan_objmgr_pdev *pdev,
-				    qdf_freq_t freq, uint8_t bw,
-				    enum reg_6g_ap_type reg_ap,
-				    enum reg_6g_client_type reg_client,
-				    bool is_psd,
-				    uint8_t *tx_power)
-{
-	return reg_get_max_txpower_for_6g_tpe(pdev, freq, bw,
-					      reg_ap,
-					      reg_client, is_psd,
-					      tx_power);
-}
-
 bool wlan_reg_is_6ghz_unii5_chan_freq(qdf_freq_t freq)
 {
 	return reg_is_6ghz_unii5_chan_freq(freq);
@@ -1184,16 +1159,6 @@ bool wlan_reg_is_regdmn_en302502_applicable(struct wlan_objmgr_pdev *pdev)
 }
 #endif
 
-QDF_STATUS wlan_reg_modify_pdev_chan_range(struct wlan_objmgr_pdev *pdev)
-{
-	return reg_modify_pdev_chan_range(pdev);
-}
-
-QDF_STATUS wlan_reg_update_pdev_wireless_modes(struct wlan_objmgr_pdev *pdev,
-					       uint64_t wireless_modes)
-{
-	return reg_update_pdev_wireless_modes(pdev, wireless_modes);
-}
 #ifdef DISABLE_UNII_SHARED_BANDS
 QDF_STATUS wlan_reg_disable_chan_coex(struct wlan_objmgr_pdev *pdev,
 				      uint8_t unii_5g_bitmap)
@@ -1534,16 +1499,6 @@ enum channel_state wlan_reg_get_channel_state_from_secondary_list_for_freq(
 {
 	return reg_get_channel_state_from_secondary_list_for_freq(pdev, freq);
 }
-
-QDF_STATUS
-wlan_reg_get_channel_list_with_power(struct wlan_objmgr_pdev *pdev,
-				     struct channel_power *ch_list,
-				     uint8_t *num_chan,
-				     enum supported_6g_pwr_types in_6g_pwr_type)
-{
-	return reg_get_channel_list_with_power(pdev, ch_list, num_chan,
-					       in_6g_pwr_type);
-}
 #endif
 
 uint8_t wlan_reg_get_channel_reg_power_for_freq(struct wlan_objmgr_pdev *pdev,
@@ -1828,13 +1783,6 @@ wlan_reg_get_cur_6g_client_type(struct wlan_objmgr_pdev *pdev,
 }
 
 qdf_export_symbol(wlan_reg_get_cur_6g_client_type);
-
-QDF_STATUS
-wlan_reg_set_cur_6ghz_client_type(struct wlan_objmgr_pdev *pdev,
-				  enum reg_6g_client_type in_6ghz_client_type)
-{
-	return reg_set_cur_6ghz_client_type(pdev, in_6ghz_client_type);
-}
 
 QDF_STATUS
 wlan_reg_set_6ghz_client_type_from_target(struct wlan_objmgr_pdev *pdev)
