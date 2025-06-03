@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -4241,11 +4241,13 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 {
 	struct wlan_mlo_link_recfg_req *recfg_req;
 	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_pdev *pdev;
 	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
 	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
 	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status;
 	uint8_t vdev_id;
+	uint8_t rso_stop_req_bitmap;
 
 	recfg_req = &recfg_ctx->curr_recfg_req;
 	vdev_id = recfg_ctx->curr_recfg_req.vdev_id;
@@ -4275,6 +4277,13 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 		return;
 	}
 
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		mlo_err("Failed to find pdev");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+		return;
+	}
+
 	if (recfg_req->add_link_info.num_links && success) {
 		mlo_link_recfg_add_link_update_mapping(vdev, recfg_ctx);
 	}
@@ -4297,7 +4306,7 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	}
 	/* Send link reconfig status to userspace */
 	mlo_link_refg_done_indication(vdev);
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
 	/* reset state tran index and move to init state  */
 	recfg_ctx->sm.curr_state_idx = -1;
 	recfg_req->recfg_type = link_recfg_undefined;
@@ -4305,6 +4314,17 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	recfg_ctx->internal_reason_code = link_recfg_success;
 
 	mlo_link_recfg_sm_transition_to(recfg_ctx, WLAN_LINK_RECFG_S_INIT);
+
+	rso_stop_req_bitmap =
+		mlme_get_rso_pending_disable_req_bitmap(psoc, vdev_id);
+	if (rso_stop_req_bitmap) {
+		mlme_clear_rso_pending_disable_req_bitmap(psoc,
+							  vdev_id);
+		wlan_cm_disable_rso(pdev, vdev_id, rso_stop_req_bitmap,
+				    REASON_DRIVER_DISABLED);
+	}
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 
 	/* remove reconfig ser command */
 	mlo_remove_link_recfg_cmd(recfg_ctx);
