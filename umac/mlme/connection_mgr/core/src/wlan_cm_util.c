@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2347,3 +2347,17 @@ cm_cp_stats_cstats_log_connecting_event(struct wlan_objmgr_vdev *vdev,
 	wlan_cstats_host_stats(sizeof(struct cstats_sta_connect_req), &stat);
 }
 #endif /* WLAN_CHIPSET_STATS */
+
+bool cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev)
+{
+	struct cnx_mgr *cm_ctx;
+	wlan_cm_id cm_id;
+
+	cm_ctx = cm_get_cm_ctx(vdev);
+	if (!cm_ctx)
+		return CM_NONE;
+
+	cm_id = cm_ctx->active_cm_id;
+
+	return cm_id & CM_ID_LSWITCH_BIT;
+}

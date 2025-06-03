@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1700,4 +1700,14 @@ static inline bool cm_is_nontx_scan_params_valid(struct cm_connect_req *cm_req)
 	return false;
 }
 #endif /* WLAN_FEATURE_11BE_MLO */
+
+/**
+ * cm_is_link_switch_connection() - Check whether the connection is
+ * because of link switch or not
+ * @vdev: pointer to vdev
+ *
+ * Return: True/False
+ */
+bool cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev);
+
 #endif /* __WLAN_CM_MAIN_API_H__ */
