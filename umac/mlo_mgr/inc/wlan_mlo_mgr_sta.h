@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1372,6 +1372,10 @@ bool mlo_is_chan_switch_in_progress(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS
 mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev);
+
+uint8_t mlo_get_ml_links_info(struct wlan_objmgr_psoc *psoc,
+			      uint8_t vdev_id,
+			      struct ml_link_info *link_info);
 #else
 static inline
 void mlo_defer_set_keys(struct wlan_objmgr_vdev *vdev,

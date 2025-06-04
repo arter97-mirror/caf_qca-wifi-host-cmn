@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -198,11 +198,16 @@ static QDF_STATUS __dp_ipa_handle_buf_smmu_mapping(struct dp_soc *soc,
 	return ret;
 }
 
-QDF_STATUS dp_ipa_handle_rx_buf_smmu_mapping(struct dp_soc *soc,
-					     qdf_nbuf_t nbuf,
-					     uint32_t size,
-					     bool create, const char *func,
-					     uint32_t line, uint8_t caller)
+#ifdef IPA_OPT_WIFI_DP
+static inline
+bool dp_ipa_skip_smmu_mon_configured(struct dp_soc *soc)
+{
+	return false;
+}
+
+#else
+static inline
+bool dp_ipa_skip_smmu_mon_configured(struct dp_soc *soc)
 {
 	struct dp_pdev *pdev;
 	int i;
@@ -210,8 +215,21 @@ QDF_STATUS dp_ipa_handle_rx_buf_smmu_mapping(struct dp_soc *soc,
 	for (i = 0; i < soc->pdev_count; i++) {
 		pdev = soc->pdev_list[i];
 		if (pdev && dp_monitor_is_configured(pdev))
-			return QDF_STATUS_SUCCESS;
+			return true;
 	}
+
+	return false;
+}
+#endif
+
+QDF_STATUS dp_ipa_handle_rx_buf_smmu_mapping(struct dp_soc *soc,
+					     qdf_nbuf_t nbuf,
+					     uint32_t size,
+					     bool create, const char *func,
+					     uint32_t line, uint8_t caller)
+{
+	if (dp_ipa_skip_smmu_mon_configured(soc))
+		return QDF_STATUS_SUCCESS;
 
 	if (!wlan_cfg_is_ipa_enabled(soc->wlan_cfg_ctx) ||
 	    !qdf_mem_smmu_s1_enabled(soc->osdev))

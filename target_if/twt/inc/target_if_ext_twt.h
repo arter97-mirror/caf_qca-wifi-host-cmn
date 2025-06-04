@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -123,6 +123,18 @@ target_if_twt_nudge_req(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 target_if_twt_ac_param_send(struct wlan_objmgr_psoc *psoc,
 			    enum twt_traffic_ac twt_ac, uint8_t mac_id);
+
+/**
+ * target_if_twt_send_responder_disable_per_vdev() - send TWT responder
+ * disable command in VDEV parameters.
+ * @psoc: Pointer to PSOC object
+ * @vdev_id: VDEV ID
+ *
+ * Return: QDF status
+ */
+QDF_STATUS
+target_if_twt_send_responder_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
+					      uint8_t vdev_id);
 #else
 static inline QDF_STATUS
 target_if_twt_register_ext_tx_ops(struct wlan_lmac_if_twt_tx_ops *twt_tx_ops)
@@ -183,6 +195,12 @@ target_if_twt_ac_param_send(struct wlan_objmgr_psoc *psoc,
 {
 	return QDF_STATUS_SUCCESS;
 }
+
+static inline QDF_STATUS
+target_if_twt_send_responder_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
+					      uint8_t vdev_id)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
 #endif
 #endif /*_TARGET_IF_EXT_TWT_H_ */
-

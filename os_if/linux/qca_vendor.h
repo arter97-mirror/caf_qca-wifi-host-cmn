@@ -4487,6 +4487,36 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	interval until a candidate is found.
  *	This configuration is valid until next the next disconnection. If this
  *	attribute is not present, the existing configuration shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_MIN_DELTA_THRESHOLD: Unsigned 32-bit
+ *	value.
+ *	This attribute indicates the minimum roam score difference for an AP to
+ *	be considered as a candidate. A roam candidate AP will be ignored if
+ *	the score difference between the roam candidate AP and the current
+ *	connected AP is less than the sum of the current connected AP score and
+ *	the roam score delta.
+ *
+ *	The configuration is valid until next disconnection. If this attribute
+ *	is not present, the existing configuration shall be used.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_CONNECTED_BSS_RECONNECT_DISALLOW_PERIOD: Unsigned
+ *	32-bit value.
+ *	This attribute specifies the duration (in seconds) of the current BSS
+ *	connection from the last successful association, after which the
+ *	connected BSS can be considered as a roaming candidate upon receiving
+ *	a Deauthentication or Disassociation frame from the BSS, provided no
+ *	alternative candidate is available. The connection timer to monitor the
+ *	disallow period should start after each successful connection.
+ *
+ *	This configuration is valid until next disconnection. If this attribute
+ *	is not present, the existing configuration shall be used.
+ *	0 - Always disallow roaming to the current connected BSS when a
+ *	Deauthentication or Disassociation frame is received from the connected
+ *	BSS.
+ *	Other values - Disallow roaming to the current connected BSS for the
+ *	specified duration from the last successful connection time when a
+ *	Deauthentication or Disassociation frame is received from the connected
+ *	BSS.
  */
 enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_ENABLE = 1,
@@ -4517,6 +4547,8 @@ enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_THRESHOLD_PERCENTAGE = 35,
 	QCA_ATTR_ROAM_CONTROL_CONNECTED_LOW_RSSI_THRESHOLD_DECREMENT = 36,
 	QCA_ATTR_ROAM_CONTROL_PERIODIC_ROAM_SCAN_INTERVAL = 37,
+	QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_MIN_DELTA_THRESHOLD = 38,
+	QCA_ATTR_ROAM_CONTROL_CONNECTED_BSS_RECONNECT_DISALLOW_PERIOD = 39,
 
 	/* keep last */
 	QCA_ATTR_ROAM_CONTROL_AFTER_LAST,
@@ -6624,6 +6656,14 @@ enum qca_wlan_vendor_attr_config {
 	 * switch to the full configured channel bandwidth.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_NO_WAIT_SUPPORT = 131,
+
+	/* Nested attribute to configure the EHT EMLSR operation and EHT MLO
+	 * links for the EMLSR operation to the driver in STA mode. This is
+	 * runtime configuration on STA after association and the configuration
+	 * is valid only for the current association.
+	 * Uses enum qca_wlan_vendor_attr_emlsr_info for values.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_EHT_EMLSR_LINKS = 132,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
@@ -14053,6 +14093,30 @@ enum qca_sta_connect_fail_reason_codes {
 	QCA_STA_CONNECT_FAIL_REASON_ASSOC_REQ_TX_FAIL = 5,
 	QCA_STA_CONNECT_FAIL_REASON_ASSOC_NO_ACK_RECEIVED = 6,
 	QCA_STA_CONNECT_FAIL_REASON_ASSOC_NO_RESP_RECEIVED = 7,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_emlsr_info: Represent attributes to configure
+ * the EHT MLO links for EHT EMLSR operation and the EMLSR operation in STA
+ * mode. These attributes are used inside nested attribute
+ * %QCA_WLAN_VENDOR_ATTR_CONFIG_EMLSR_LINKS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_EMLSR_OPERATION: Required attribute, u8.
+ * 0 - Enter, 1 - Exit
+ *
+ * @QCA_WLAN_VENDOR_ATTR_EMLSR_LINKS_BITMAP: Required, u16 attribute. This
+ * indicates the bitmap of the link IDs to specify the links corresponding
+ * to the bit set to be used for the EHT EMLSR operation.
+ */
+enum qca_wlan_vendor_attr_emlsr_info {
+	QCA_WLAN_VENDOR_ATTR_EMLSR_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_EMLSR_OPERATION = 1,
+	QCA_WLAN_VENDOR_ATTR_EMLSR_LINKS_BITMAP = 2,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_EMLSR_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_EMLSR_MAX =
+	QCA_WLAN_VENDOR_ATTR_EMLSR_AFTER_LAST - 1,
 };
 
 /**

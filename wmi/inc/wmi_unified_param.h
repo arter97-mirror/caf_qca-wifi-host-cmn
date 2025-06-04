@@ -6417,6 +6417,7 @@ typedef enum {
 		   VDEV_PARAM_CONNECT_EXT_FEATURES),
 	VDEV_PARAM(vdev_param_disable_scan_start_twt,
 		   VDEV_PARAM_DISABLE_SCAN_START_TWT),
+	VDEV_PARAM(vdev_param_twt_resp_disable, VDEV_PARAM_TWT_RESP_DISABLE),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
@@ -6860,6 +6861,7 @@ typedef enum {
 	wmi_service_twt_p2p_go_concurrency_support,
 	wmi_service_sta_twt_stats_ext,
 	wmi_service_scc_tpc_power_support,
+	wmi_service_per_vdev_twt_resp_disable_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -6948,6 +6950,7 @@ typedef enum {
  * @WMI_HOST_VENDOR1_REQ1_VERSION_4_10: Major version 4, minor version 10
  * @WMI_HOST_VENDOR1_REQ1_VERSION_4_20: Major version 4, minor version 20
  * @WMI_HOST_VENDOR1_REQ1_VERSION_4_40: Major version 4, minor version 40
+ * @WMI_HOST_VENDOR1_REQ1_VERSION_4_50: Major version 4, minor version 50
  */
 typedef enum {
 	WMI_HOST_VENDOR1_REQ1_VERSION_3_00 = 0,
@@ -6959,6 +6962,7 @@ typedef enum {
 	WMI_HOST_VENDOR1_REQ1_VERSION_4_10 = 6,
 	WMI_HOST_VENDOR1_REQ1_VERSION_4_20 = 7,
 	WMI_HOST_VENDOR1_REQ1_VERSION_4_40 = 8,
+	WMI_HOST_VENDOR1_REQ1_VERSION_4_50 = 9,
 } WMI_HOST_VENDOR1_REQ1_VERSION;
 
 /**
@@ -6967,12 +6971,14 @@ typedef enum {
  * @WMI_HOST_VENDOR1_REQ2_VERSION_3_01: Major version 3, minor version 01
  * @WMI_HOST_VENDOR1_REQ2_VERSION_3_20: Major version 3, minor version 20
  * @WMI_HOST_VENDOR1_REQ2_VERSION_3_50: Major version 3, minor version 50
+ * @WMI_HOST_VENDOR1_REQ2_VERSION_3_61: Major version 3, minor version 61
  */
 typedef enum {
 	WMI_HOST_VENDOR1_REQ2_VERSION_3_00 = 0,
 	WMI_HOST_VENDOR1_REQ2_VERSION_3_01 = 1,
 	WMI_HOST_VENDOR1_REQ2_VERSION_3_20 = 2,
 	WMI_HOST_VENDOR1_REQ2_VERSION_3_50 = 3,
+	WMI_HOST_VENDOR1_REQ2_VERSION_3_61 = 4,
 } WMI_HOST_VENDOR1_REQ2_VERSION;
 
 /**

@@ -1597,6 +1597,8 @@ struct dp_soc_stats {
 			uint32_t reo_cmd_send_drain;
 			/* RX msdu drop count due to scatter */
 			uint32_t scatter_msdu;
+			/* RX MPDU Desc with msdu_count 0 */
+			uint32_t msdu_count_zero;
 			/* RX msdu drop count due to invalid cookie */
 			uint32_t invalid_cookie;
 			/* Count of stale cookie read in RX path */
@@ -3808,7 +3810,8 @@ struct dp_soc {
 		wbm_sg_last_msdu_war:1,
 		mec_fw_offload:1,
 		multi_peer_grp_cmd_supported:1,
-		umac_reset_supported:1;
+		umac_reset_supported:1,
+		sw2reo_rings_not_supported:1;
 
 	/* Number of Rx refill rings */
 	uint8_t num_rx_refill_buf_rings;

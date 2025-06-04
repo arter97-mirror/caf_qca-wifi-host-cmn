@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -259,7 +259,8 @@ wlan_twt_responder_enable(struct wlan_objmgr_psoc *psoc,
 			  void *context)
 {
 	struct twt_psoc_priv_obj *twt_psoc;
-	bool responder_en = false, twt_bcast_responder = false;
+	uint8_t responder_en;
+	bool twt_bcast_responder = false;
 
 	twt_psoc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
 							 WLAN_UMAC_COMP_TWT);
@@ -457,6 +458,29 @@ wlan_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
 	}
 
 	*val = twt_psoc->twt_caps.p2p_go_concurrency_support;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+wlan_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
+					    bool *val)
+{
+	struct twt_psoc_priv_obj *twt_psoc;
+
+	if (!psoc) {
+		twt_err("psoc is null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	twt_psoc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+							 WLAN_UMAC_COMP_TWT);
+	if (!twt_psoc) {
+		twt_err("twt psoc priv obj is null");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*val = twt_psoc->twt_caps.twt_resp_disable_per_vdev;
 
 	return QDF_STATUS_SUCCESS;
 }

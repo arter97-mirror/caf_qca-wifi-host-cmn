@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -47,6 +47,7 @@
  * @max_wake_dur: maximum twt wake_dur supported by firmware in micro sec
  * @min_wake_intvl: minimum twt wake_intvl supported by firmware in micro sec
  * @max_wake_intvl: maximum twt wake_intvl supported by firmware in micro sec
+ * @twt_resp_disable_per_vdev: TWT responder disable per VDEV SVC
  */
 struct twt_tgt_caps {
 	bool twt_requestor;
@@ -64,6 +65,7 @@ struct twt_tgt_caps {
 	uint16_t max_wake_dur;
 	uint16_t min_wake_intvl;
 	uint16_t max_wake_intvl;
+	bool twt_resp_disable_per_vdev;
 };
 
 /**

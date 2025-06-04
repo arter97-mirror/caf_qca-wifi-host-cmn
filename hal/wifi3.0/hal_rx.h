@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -221,6 +221,20 @@ struct hal_proto_params {
 enum hal_reo_error_status {
 	HAL_REO_ERROR_DETECTED = 0,
 	HAL_REO_ROUTING_INSTRUCTION = 1,
+};
+
+/**
+ * enum hal_rxdma_error_status - Enum which encapsulates "rxdma_push_reason"
+ *
+ * @HAL_RXDMA_ERROR_DETECTED : RXDMA pushed with an error detected
+ * @HAL_RXDMA_ROUTING_INSTRUCTION: RXDMA pushed without error, just per
+ *                                 routing instruction.
+ * @HAL_RXDMA_RX_FLUSH: RXDMA pushed with flush request
+ */
+enum hal_rxdma_error_status {
+	HAL_RXDMA_ERROR_DETECTED = 0,
+	HAL_RXDMA_ROUTING_INSTRUCTION = 1,
+	HAL_RXDMA_RX_FLUSH = 2,
 };
 
 /**
@@ -548,7 +562,11 @@ hal_rx_mpdu_desc_info_get(hal_soc_handle_t hal_soc_hdl, void *desc_addr,
 						       mpdu_desc_info);
 }
 
+#ifdef CONFIG_BORON
+#define HAL_RX_NUM_MSDU_DESC 15
+#else
 #define HAL_RX_NUM_MSDU_DESC 6
+#endif
 #define HAL_RX_MAX_SAVED_RING_DESC 16
 
 /* TODO: rework the structure */

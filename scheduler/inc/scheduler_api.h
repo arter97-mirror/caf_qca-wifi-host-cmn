@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -340,14 +340,6 @@ QDF_STATUS scheduler_os_if_mq_handler(struct scheduler_msg *msg);
  */
 QDF_STATUS scheduler_timer_q_mq_handler(struct scheduler_msg *msg);
 
-/**
- * scheduler_mlme_mq_handler() - top level message queue handler for
- *                               mlme queue
- * @msg: pointer to actual message being handled
- *
- * Return: QDF status
- */
-QDF_STATUS scheduler_mlme_mq_handler(struct scheduler_msg *msg);
 
 /**
  * scheduler_scan_mq_handler() - top level message queue handler for

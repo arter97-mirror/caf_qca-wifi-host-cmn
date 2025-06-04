@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -29,6 +29,7 @@
 	__QDF_TRACE_FL(QDF_TRACE_LEVEL_INFO_HIGH, QDF_MODULE_ID_DP_REO, ## params)
 #define dp_reo_debug(params...) QDF_TRACE_DEBUG(QDF_MODULE_ID_DP_REO, params)
 
+#ifndef CONFIG_BORON
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 /**
  * dp_reo_cmd_srng_event_record() - Record reo cmds posted
@@ -202,3 +203,4 @@ void dp_cleanup_reo_cmd_module(struct dp_soc *soc)
 	dp_reo_desc_freelist_destroy(soc);
 }
 #endif
+#endif /* CONFIG_BORON */

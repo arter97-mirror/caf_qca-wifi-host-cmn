@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -3487,4 +3487,46 @@ uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
 	return num_links;
 }
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
+
+uint8_t mlo_get_ml_links_info(struct wlan_objmgr_psoc *psoc,
+			      uint8_t vdev_id,
+			      struct ml_link_info *link_info)
+{
+	uint8_t i, num_links = 0;
+	struct mlo_link_info *link_i;
+	struct wlan_mlo_dev_context *mld_ctx;
+	struct wlan_objmgr_vdev *vdev;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_MLO_MGR_ID);
+	if (!vdev) {
+		mlo_err("invalid vdev for id %d", vdev_id);
+		return num_links;
+	}
+
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
+		goto rel_ref;
+
+	mld_ctx = vdev->mlo_dev_ctx;
+	if (!mld_ctx)
+		goto rel_ref;
+
+	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
+		link_i = &mld_ctx->link_ctx->links_info[i];
+		if (qdf_is_macaddr_zero(&link_i->ap_link_addr) ||
+		    qdf_is_macaddr_zero(&link_i->link_addr))
+			continue;
+		link_info->vdev_id = link_i->vdev_id;
+		link_info->chan_freq = link_i->link_chan_info->ch_freq;
+		link_info->link_id = link_i->link_id;
+		link_info++;
+
+		num_links++;
+	}
+
+rel_ref:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
+	return num_links;
+}
 #endif

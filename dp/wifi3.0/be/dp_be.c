@@ -2482,9 +2482,10 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 
 	/* Process REO Exception ring interrupt */
 	if (rx_err_mask) {
-		work_done = dp_rx_err_process(int_ctx, soc,
-					      soc->reo_exception_ring.hal_srng,
-					      remaining_quota);
+		work_done = dp_rx_err_process_be_bn(
+					int_ctx, soc,
+					soc->reo_exception_ring.hal_srng,
+					remaining_quota);
 
 		if (work_done) {
 			intr_stats->num_rx_err_ring_masks++;
