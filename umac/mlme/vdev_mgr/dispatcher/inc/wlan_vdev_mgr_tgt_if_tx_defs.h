@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -894,7 +894,7 @@ struct vdev_create_params {
 #ifdef WLAN_FEATURE_11BE_MLO
 	uint8_t mlo_mac[QDF_MAC_ADDR_SIZE];
 #endif
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	uint32_t wfd_mode;
 #endif
 
