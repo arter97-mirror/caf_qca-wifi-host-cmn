@@ -66,6 +66,24 @@
 	qdf_spinlock_create(&(_soc)->rx_hw_stats_lock)
 #define DEINIT_RX_HW_STATS_LOCK(_soc) \
 	qdf_spinlock_destroy(&(_soc)->rx_hw_stats_lock)
+#ifdef CONFIG_BORON
+static inline void
+dp_rx_hw_stats_cb_ctx_free(struct dp_soc *soc)
+{
+	qdf_spin_lock_bh(&soc->rx_hw_stats_lock);
+	/* No HTT response received to free this memory */
+	if (soc->rx_hw_stats) {
+		qdf_mem_free(soc->rx_hw_stats);
+		soc->rx_hw_stats = NULL;
+	}
+	qdf_spin_unlock_bh(&soc->rx_hw_stats_lock);
+}
+#else
+static inline void
+dp_rx_hw_stats_cb_ctx_free(struct dp_soc *soc)
+{
+}
+#endif
 #else
 #define INIT_RX_HW_STATS_LOCK(_soc)  /* no op */
 #define DEINIT_RX_HW_STATS_LOCK(_soc) /* no op */
@@ -2479,6 +2497,7 @@ void dp_soc_deinit(void *txrx_soc)
 	dp_reo_desc_freelist_destroy(soc);
 	dp_reo_desc_deferred_freelist_destroy(soc);
 
+	dp_rx_hw_stats_cb_ctx_free(soc);
 	DEINIT_RX_HW_STATS_LOCK(soc);
 
 	qdf_spinlock_destroy(&soc->ast_lock);
@@ -3335,10 +3354,8 @@ static void dp_rx_hw_stats_cb(struct dp_soc *soc, void *cb_ctxt,
 	is_query_timeout = soc->rx_hw_stats->is_query_timeout;
 	/* free the cb_ctxt if all pending tid stats query is received */
 	if (qdf_atomic_dec_and_test(&soc->rx_hw_stats->pending_tid_stats_cnt)) {
-		if (!is_query_timeout) {
+		if (!is_query_timeout)
 			qdf_event_set(&soc->rx_hw_stats_event);
-			soc->is_last_stats_ctx_init = false;
-		}
 
 		qdf_mem_free(soc->rx_hw_stats);
 		soc->rx_hw_stats = NULL;
@@ -3416,8 +3433,19 @@ dp_request_rx_hw_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 	soc->ext_stats.rx_mpdu_missed = 0;
 
 	dp_debug("HW stats query start");
+	/*
+	 * If MLO connection:
+	 * In beryllium, use REO queue Desc address to query stats
+	 * which is shared between link and MLD peer.
+	 * In Boron, need MLD peer's mac address to query the stats from FW.
+	 */
 	rx_stats_sent_cnt =
-		dp_peer_rxtid_stats(peer, dp_rx_hw_stats_cb, soc->rx_hw_stats);
+		dp_peer_rxtid_stats_wrapper(
+				dp_get_tgt_peer_from_peer(peer),
+				dp_rx_hw_stats_cb,
+				soc->rx_hw_stats,
+				DBG_STATS_HTT_COOKIE_RX_TID_EXT_STATS);
+
 	if (!rx_stats_sent_cnt) {
 		dp_err("no tid stats sent successfully");
 		qdf_mem_free(soc->rx_hw_stats);
@@ -3429,7 +3457,6 @@ dp_request_rx_hw_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 	qdf_atomic_set(&soc->rx_hw_stats->pending_tid_stats_cnt,
 		       rx_stats_sent_cnt);
 	soc->rx_hw_stats->is_query_timeout = false;
-	soc->is_last_stats_ctx_init = true;
 	qdf_spin_unlock_bh(&soc->rx_hw_stats_lock);
 
 	status = qdf_wait_single_event(&soc->rx_hw_stats_event,
@@ -3442,8 +3469,7 @@ dp_request_rx_hw_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 			dp_info("partial rx hw stats event collected with %d",
 				qdf_atomic_read(
 				  &soc->rx_hw_stats->pending_tid_stats_cnt));
-			if (soc->is_last_stats_ctx_init)
-				soc->rx_hw_stats->is_query_timeout = true;
+			soc->rx_hw_stats->is_query_timeout = true;
 		}
 
 		/*

@@ -219,6 +219,15 @@ dp_set_pn_check_wifi3(struct cdp_soc_t *soc, uint8_t vdev_id,
 int dp_peer_rxtid_stats(struct dp_peer *peer,
 			dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
 			void *cb_ctxt);
+
+static inline
+int dp_peer_rxtid_stats_wrapper(struct dp_peer *peer,
+				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
+				void *cb_ctxt, uint32_t stats_cookie_type)
+{
+	return dp_peer_rxtid_stats(peer, dp_stats_cmd_cb, cb_ctxt);
+}
+
 QDF_STATUS dp_peer_rx_tids_create(struct dp_peer *peer);
 void dp_peer_rx_tids_destroy(struct dp_peer *peer);
 
@@ -271,6 +280,34 @@ static inline void dp_get_rx_reo_queue_info(struct cdp_soc_t *soc_hdl,
 }
 #endif /* DUMP_REO_QUEUE_INFO_IN_DDR */
 #else
+#ifdef CONFIG_BORON
+/**
+ * dp_peer_rxtid_stats_bn() - Rx TID (REO queue) stats query
+ *                            for Boron architecture
+ * @peer: DP peer handle
+ * @stats_cookie_type: cookie type to identify the query from
+ *
+ * Return: count of tid stats cmd send succeeded
+ */
+int dp_peer_rxtid_stats_bn(struct dp_peer *peer,
+			   uint32_t stats_cookie_type);
+static inline
+int dp_peer_rxtid_stats_wrapper(struct dp_peer *peer,
+				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
+				void *cb_ctxt, uint32_t stats_cookie_type)
+{
+	return dp_peer_rxtid_stats_bn(peer, stats_cookie_type);
+}
+#else
+static inline
+int dp_peer_rxtid_stats_wrapper(struct dp_peer *peer,
+				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
+				void *cb_ctxt, uint32_t stats_cookie_type)
+{
+	return 0;
+}
+#endif
+
 static inline void dp_rx_tid_stats_cb(struct dp_soc *soc, void *cb_ctxt,
 				      union hal_reo_status *reo_status) {}
 

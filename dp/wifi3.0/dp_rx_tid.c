@@ -2317,6 +2317,47 @@ void dp_peer_rx_cleanup(struct dp_vdev *vdev, struct dp_peer *peer)
 		qdf_spin_unlock_bh(&defrag_rx_tid->defrag_tid_lock);
 	}
 }
+
+int dp_peer_rxtid_stats_bn(struct dp_peer *peer,
+			   uint32_t stats_cookie_type)
+{
+	struct dp_pdev *pdev = peer->vdev->pdev;
+	uint32_t config_param0 = 0;
+	uint32_t config_param1 = 0;
+	uint32_t config_param2 = 0;
+	uint32_t config_param3 = 0;
+	int stats_cmd_sent_cnt = 0;
+	uint8_t *mac_addr = NULL;
+	QDF_STATUS status;
+
+	if (!pdev)
+		return stats_cmd_sent_cnt;
+
+	mac_addr = peer->mac_addr.raw;
+	HTT_DBG_EXT_STATS_PEER_INFO_IS_MAC_ADDR_SET(config_param0, 1);
+	/* bit-10 for htt_stats_rx_peer_tid_reo_queue_ba_tlv */
+	config_param1 |= BIT(HTT_PEER_RX_REO_STATS_TLV);
+	config_param2 |= (mac_addr[0] & 0x000000ff);
+	config_param2 |= ((mac_addr[1] << 8) & 0x0000ff00);
+	config_param2 |= ((mac_addr[2] << 16) & 0x00ff0000);
+	config_param2 |= ((mac_addr[3] << 24) & 0xff000000);
+
+	config_param3 |= (mac_addr[4] & 0x000000ff);
+	config_param3 |= ((mac_addr[5] << 8) & 0x0000ff00);
+
+	dp_info("Sending HTT Req for peer " QDF_MAC_ADDR_FMT " RX REO stats",
+		QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+	status = dp_h2t_ext_stats_msg_send(
+					pdev, HTT_DBG_EXT_STATS_PEER_INFO,
+					config_param0, config_param1,
+					config_param2, config_param3,
+					0, stats_cookie_type, 0);
+
+	stats_cmd_sent_cnt = QDF_IS_STATUS_SUCCESS(status) ?
+					(CDP_DATA_TID_MAX + 1) : 0;
+
+	return stats_cmd_sent_cnt;
+}
 #endif /* CONFIG_BORON */
 
 #ifdef WLAN_FEATURE_11BE_MLO

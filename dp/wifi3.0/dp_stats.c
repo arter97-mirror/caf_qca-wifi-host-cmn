@@ -1028,6 +1028,72 @@ static void dp_print_rx_tid_stats_tlv(uint32_t *tag_buf)
 }
 
 /**
+ * dp_print_rx_tid_reo_ba_stats_tlv() - display htt_stats_rx_peer_tid_reo_queue_ba_tlv
+ * @tag_buf: buffer containing the tlv htt_stats_rx_peer_tid_reo_queue_ba_tlv
+ *
+ * Return: void
+ */
+static void dp_print_rx_tid_reo_ba_stats_tlv(uint32_t *tag_buf)
+{
+	htt_stats_rx_peer_tid_reo_queue_ba_tlv *rx_tid_tlv =
+			(htt_stats_rx_peer_tid_reo_queue_ba_tlv *)tag_buf;
+
+	DP_PRINT_STATS("htt_stats_rx_peer_tid_reo_queue_ba_tlv:");
+	DP_PRINT_STATS("sw_peer_id__tid_num = 0x%x",
+		       rx_tid_tlv->sw_peer_id__tid_num);
+
+	DP_PRINT_STATS("ssn = %u", rx_tid_tlv->ssn);
+	DP_PRINT_STATS("current_index = %u", rx_tid_tlv->current_index);
+	DP_PRINT_STATS("pn_31_0 = %u", rx_tid_tlv->pn_31_0);
+	DP_PRINT_STATS("pn_63_32 = %u", rx_tid_tlv->pn_63_32);
+	DP_PRINT_STATS("pn_95_64 = %u", rx_tid_tlv->pn_95_64);
+	DP_PRINT_STATS("pn_127_96 = %u", rx_tid_tlv->pn_127_96);
+	DP_PRINT_STATS("last_rx_enqueue_timestamp_us = %u",
+		       rx_tid_tlv->last_rx_enqueue_timestamp_us);
+	DP_PRINT_STATS("last_rx_dequeue_timestamp_us = %u",
+		       rx_tid_tlv->last_rx_dequeue_timestamp_us);
+	DP_PRINT_STATS("current_mpdu_cnt = %u", rx_tid_tlv->current_mpdu_cnt);
+	DP_PRINT_STATS("current_msdu_cnt = %u", rx_tid_tlv->current_msdu_cnt);
+	DP_PRINT_STATS("window_jump_2k_cnt = %u",
+		       rx_tid_tlv->window_jump_2k_cnt);
+	DP_PRINT_STATS("timeout_cnt = %u", rx_tid_tlv->timeout_cnt);
+	DP_PRINT_STATS("forward_due_to_bar_cnt = %u",
+		       rx_tid_tlv->forward_due_to_bar_cnt);
+	DP_PRINT_STATS("duplicate_cnt = %u",
+		       rx_tid_tlv->duplicate_cnt);
+	DP_PRINT_STATS("frames_in_order_cnt = %u",
+		       rx_tid_tlv->frames_in_order_cnt);
+	DP_PRINT_STATS("bar_received_cnt = %u",
+		       rx_tid_tlv->bar_received_cnt);
+	DP_PRINT_STATS("mpdu_frames_processed_cnt = %u",
+		       rx_tid_tlv->mpdu_frames_processed_cnt);
+	DP_PRINT_STATS("msdu_frames_processed_cnt = %u",
+		       rx_tid_tlv->msdu_frames_processed_cnt);
+	DP_PRINT_STATS("total_processed_byte_cnt = %u",
+		       rx_tid_tlv->total_processed_byte_cnt);
+	DP_PRINT_STATS("late_receive_mpdu_cnt = %u",
+		       rx_tid_tlv->late_receive_mpdu_cnt);
+	DP_PRINT_STATS("hole_cnt = %u", rx_tid_tlv->hole_cnt);
+	DP_PRINT_STATS("aging_drop_mpdu_cnt = %u",
+		       rx_tid_tlv->aging_drop_mpdu_cnt);
+	DP_PRINT_STATS("aging_drop_interval_cnt = %u",
+		       rx_tid_tlv->aging_drop_interval_cnt);
+	DP_PRINT_STATS("addba_req_cnt = %u", rx_tid_tlv->addba_req_cnt);
+	DP_PRINT_STATS("addba_resp_cnt = %u", rx_tid_tlv->addba_resp_cnt);
+	DP_PRINT_STATS("addba_rsp_success_cnt = %u",
+		       rx_tid_tlv->addba_rsp_success_cnt);
+	DP_PRINT_STATS("addba_rsp_fail_cnt = %u",
+		       rx_tid_tlv->addba_rsp_fail_cnt);
+	DP_PRINT_STATS("delba_req_cnt = %u", rx_tid_tlv->delba_req_cnt);
+	DP_PRINT_STATS("delba_tx_success_cnt = %u",
+		       rx_tid_tlv->delba_tx_success_cnt);
+	DP_PRINT_STATS("delba_tx_fail_cnt = %u",
+		       rx_tid_tlv->delba_tx_fail_cnt);
+	DP_PRINT_STATS("ba_win_size = %u", rx_tid_tlv->ba_win_size);
+	DP_PRINT_STATS("pn_size = %u", rx_tid_tlv->pn_size);
+}
+
+/**
  * dp_print_counter_tlv() - display htt_counter_tlv
  * @tag_buf: buffer containing the tlv htt_counter_tlv
  *
@@ -4830,6 +4896,10 @@ void dp_htt_stats_print_tag(struct dp_pdev *pdev,
 
 	case HTT_STATS_RX_TID_DETAILS_TAG:
 		dp_print_rx_tid_stats_tlv(tag_buf);
+		break;
+
+	case HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TAG:
+		dp_print_rx_tid_reo_ba_stats_tlv(tag_buf);
 		break;
 
 	case HTT_STATS_PEER_STATS_CMN_TAG:
@@ -8836,7 +8906,8 @@ dp_peer_ctrl_frames_stats_get(struct dp_soc *soc,
 	struct dp_pdev *pdev = tgt_peer->vdev->pdev;
 
 	waitcnt = 0;
-	dp_peer_rxtid_stats(tgt_peer, dp_rx_bar_stats_cb, pdev);
+	dp_peer_rxtid_stats_wrapper(tgt_peer, dp_rx_bar_stats_cb, pdev,
+				    DBG_STATS_HTT_COOKIE_RX_TID_PDEV_RX);
 	while (!(qdf_atomic_read(&pdev->stats_cmd_complete)) &&
 	       waitcnt < 10) {
 		schedule_timeout_interruptible(

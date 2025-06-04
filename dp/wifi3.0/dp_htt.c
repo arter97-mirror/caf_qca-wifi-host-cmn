@@ -2223,6 +2223,128 @@ dp_htt_set_vdev_nss_stats(struct dp_pdev *pdev, uint32_t tag_type,
 	dp_vdev_unref_delete(pdev->soc, vdev, DP_MOD_ID_HTT);
 }
 
+#ifdef CONFIG_BORON
+/**
+ * dp_htt_set_rx_tid_pdev_rx_stats() - Set Pdev RX stats per TID RX TLV
+ * @pdev: dp pdev handle
+ * @tag_type: HTT TLV tag type
+ * @tag_buf: TLV buffer pointer
+ *
+ * Return: None
+ */
+static void
+dp_htt_set_rx_tid_pdev_rx_stats(struct dp_pdev *pdev, uint32_t tag_type,
+				uint32_t *tag_buf)
+{
+	struct dp_soc *soc = pdev->soc;
+	htt_stats_rx_peer_tid_reo_queue_ba_tlv *rx_tid_tlv;
+
+	if (tag_type != HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TAG) {
+		dp_err("Tag mismatch, received tag %d", tag_type);
+		return;
+	}
+
+	if (!soc)
+		return;
+
+	if (!qdf_atomic_read(&soc->cmn_init_done))
+		return;
+
+	rx_tid_tlv = (htt_stats_rx_peer_tid_reo_queue_ba_tlv *)tag_buf;
+	pdev->stats.rx.bar_recv_cnt += rx_tid_tlv->bar_received_cnt;
+}
+
+/**
+ * dp_htt_stats_rx_tid_pdev_rx_set_complete() - Set Pdev RX stats completion
+ * @pdev: dp pdev handle
+ * @msg_word: Pointer to htt msg word.
+ *
+ * Return: None
+ */
+static inline void
+dp_htt_stats_rx_tid_pdev_rx_set_complete(struct dp_pdev *pdev,
+					 uint32_t *msg_word)
+{
+	int done = 0;
+
+	done = HTT_T2H_EXT_STATS_CONF_TLV_DONE_GET(*(msg_word + 3));
+	if (done)
+		qdf_atomic_set(&pdev->stats_cmd_complete, 1);
+}
+#else
+static inline void
+dp_htt_set_rx_tid_pdev_rx_stats(struct dp_pdev *pdev, uint32_t tag_type,
+				uint32_t *tag_buf)
+{
+}
+
+static inline void
+dp_htt_stats_rx_tid_pdev_rx_set_complete(struct dp_pdev *pdev,
+					 uint32_t *msg_word)
+{
+}
+#endif
+
+#if defined(WLAN_FEATURE_STATS_EXT) && defined(CONFIG_BORON)
+/**
+ * dp_htt_set_rx_tid_ext_stats() - Set EXT stats per TID RX TLV
+ * @pdev: dp pdev handle
+ * @tag_type: HTT TLV tag type
+ * @tag_buf: TLV buffer pointer
+ *
+ * Return: None
+ */
+static void
+dp_htt_set_rx_tid_ext_stats(struct dp_pdev *pdev, uint32_t tag_type,
+			    uint32_t *tag_buf)
+{
+	struct dp_soc *soc = pdev->soc;
+	bool is_query_timeout;
+	htt_stats_rx_peer_tid_reo_queue_ba_tlv *rx_tid_tlv;
+
+	if (tag_type != HTT_STATS_RX_PEER_TID_REO_QUEUE_BA_TAG) {
+		dp_err("Tag mismatch, received tag %d", tag_type);
+		return;
+	}
+
+	if (!soc)
+		return;
+
+	rx_tid_tlv = (htt_stats_rx_peer_tid_reo_queue_ba_tlv *)tag_buf;
+	dp_info("peer_id_tid_num 0x%x, mpdu_frames_processed_cnt %d",
+		rx_tid_tlv->sw_peer_id__tid_num,
+		rx_tid_tlv->mpdu_frames_processed_cnt);
+
+	qdf_spin_lock_bh(&soc->rx_hw_stats_lock);
+	if (!soc->rx_hw_stats) {
+		qdf_spin_unlock_bh(&soc->rx_hw_stats_lock);
+		return;
+	}
+
+	is_query_timeout = soc->rx_hw_stats->is_query_timeout;
+	/* free the cb_ctxt if all pending tid stats query is received */
+	if (qdf_atomic_dec_and_test(&soc->rx_hw_stats->pending_tid_stats_cnt)) {
+		if (!is_query_timeout)
+			qdf_event_set(&soc->rx_hw_stats_event);
+
+		qdf_mem_free(soc->rx_hw_stats);
+		soc->rx_hw_stats = NULL;
+	}
+
+	if (!is_query_timeout)
+		soc->ext_stats.rx_mpdu_received +=
+				rx_tid_tlv->mpdu_frames_processed_cnt;
+
+	qdf_spin_unlock_bh(&soc->rx_hw_stats_lock);
+}
+#else
+static inline void
+dp_htt_set_rx_tid_ext_stats(struct dp_pdev *pdev, uint32_t tag_type,
+			    uint32_t *tag_buf)
+{
+}
+#endif
+
 /**
  * dp_process_htt_stat_msg(): Process the list of buffers of HTT EXT stats
  * @htt_stats: htt stats info
@@ -2260,6 +2382,7 @@ static inline void dp_process_htt_stat_msg(struct htt_stats_context *htt_stats,
 	int pdev_id;
 	bool copy_stats = false;
 	struct dp_pdev *pdev;
+	bool is_print;
 
 	/* Process node in the HTT message queue */
 	while ((htt_msg = qdf_nbuf_queue_remove(&htt_stats->msg))
@@ -2293,6 +2416,12 @@ static inline void dp_process_htt_stat_msg(struct htt_stats_context *htt_stats,
 
 		if (cookie_msb & DBG_STATS_COOKIE_DP_STATS)
 			copy_stats = true;
+
+		if (cookie_msb & DBG_STATS_HTT_COOKIE_RX_TID_PDEV_RX ||
+		    cookie_msb & DBG_STATS_HTT_COOKIE_RX_TID_EXT_STATS)
+			is_print = false;
+		else
+			is_print = true;
 
 		/* read 5th word */
 		msg_word = msg_word + 4;
@@ -2342,7 +2471,7 @@ static inline void dp_process_htt_stat_msg(struct htt_stats_context *htt_stats,
 					dp_htt_stats_copy_tag(pdev,
 							      tlv_type,
 							      tlv_start);
-				else
+				else if (is_print)
 					dp_htt_stats_print_tag(pdev,
 							       tlv_type,
 							       tlv_start);
@@ -2362,6 +2491,16 @@ static inline void dp_process_htt_stat_msg(struct htt_stats_context *htt_stats,
 					dp_htt_set_vdev_nss_stats(pdev,
 								  tlv_type,
 								  tlv_start);
+
+				if (cookie_msb &
+				    DBG_STATS_HTT_COOKIE_RX_TID_PDEV_RX)
+					dp_htt_set_rx_tid_pdev_rx_stats(
+						pdev, tlv_type, tlv_start);
+
+				if (cookie_msb &
+				    DBG_STATS_HTT_COOKIE_RX_TID_EXT_STATS)
+					dp_htt_set_rx_tid_ext_stats(
+						pdev, tlv_type, tlv_start);
 
 				msg_remain_len -= tlv_remain_len;
 
@@ -2407,6 +2546,11 @@ static inline void dp_process_htt_stat_msg(struct htt_stats_context *htt_stats,
 		/* indicate event completion in case the event is done */
 		if (!cookie_val && (cookie_msb & DBG_SYSFS_STATS_COOKIE))
 			dp_htt_stats_sysfs_set_event(soc, msg_word);
+
+		if (!cookie_val && (cookie_msb &
+				    DBG_STATS_HTT_COOKIE_RX_TID_PDEV_RX))
+			dp_htt_stats_rx_tid_pdev_rx_set_complete(pdev,
+								 msg_word);
 
 		qdf_nbuf_free(htt_msg);
 	}
