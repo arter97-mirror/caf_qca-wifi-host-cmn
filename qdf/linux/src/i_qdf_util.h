@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -549,19 +549,6 @@ static inline int __qdf_ffs64(uint64_t x)
 static inline int __qdf_get_smp_processor_id(void)
 {
 	return smp_processor_id();
-}
-
-/**
- * __qdf_get_raw_smp_processor_id() - Get the current CPU id
- *
- * This API should be called with pre-emption disabled,
- * otherwise the value will be stale at use.
- *
- * Return: current CPU id
- */
-static inline int __qdf_get_raw_smp_processor_id(void)
-{
-	return raw_smp_processor_id();
 }
 
 /**
