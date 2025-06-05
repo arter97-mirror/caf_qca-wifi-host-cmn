@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5400,6 +5400,17 @@ QDF_STATUS
 wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd(
 					wmi_unified_t wmi_handle,
 					struct wmi_sta_vdev_report_ap_oper_bw_params *param);
+/**
+ * is_both_psd_eirp_support_present_for_sp() - FW can handle
+ * PSD and EIRP together or not
+ *
+ * @wmi_handle: wmi handle
+ * @param: reg tpc power
+ *
+ * Return: true if FW can handle PSD and EIRP together or not
+ */
+bool is_both_psd_eirp_support_present_for_sp(wmi_unified_t wmi_handle,
+                                             struct reg_tpc_power_info *param);
 
 #ifdef FEATURE_WLAN_ZERO_POWER_SCAN
 /**

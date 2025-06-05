@@ -21966,7 +21966,6 @@ send_both_eirp_psd_for_set_tpc_tlv(wmi_unified_t wmi_handle,
 	return ret;
 }
 
-static inline
 bool is_both_psd_eirp_support_present_for_sp(wmi_unified_t wmi_handle,
 					     struct reg_tpc_power_info *param)
 {
