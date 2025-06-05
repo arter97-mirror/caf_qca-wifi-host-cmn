@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,6 +29,10 @@ defined(WLAN_PKT_CAPTURE_RX_2_0)
 #include <hal_generic_api.h>
 #include <hal_generic_api.h>
 #include <hal_api_mon.h>
+
+#ifdef CONFIG_BORON
+#define WIFIPHYRX_GENERIC_EHT_SIG_E WIFIPHYRX_GENERIC_EHT_OR_UHR_SIG_E
+#endif
 
 #define HAL_RX_PPDU_START_PHY_PPDU_ID_OFFSET                        0x00000000
 #define HAL_RX_PPDU_START_PHY_PPDU_ID_LSB                           0

@@ -591,7 +591,8 @@ static inline uint8_t dp_tx_get_rbm_id_be(struct dp_soc *soc,
 }
 #endif
 
-#ifdef QCA_SUPPORT_TX_MIN_RATES_FOR_SPECIAL_FRAMES
+#if defined(QCA_SUPPORT_TX_MIN_RATES_FOR_SPECIAL_FRAMES) && \
+							!defined(CONFIG_BORON)
 
 /**
  * dp_tx_set_min_rates_for_critical_frames()- sets min-rates for critical pkts
@@ -1819,6 +1820,37 @@ ring_access_fail:
 #endif /* !CONFIG_BORON */
 
 #ifdef IPA_OFFLOAD
+#ifdef CONFIG_BORON
+static void
+dp_tx_get_ipa_bank_config(struct dp_soc_be *be_soc,
+			  union hal_tx_bank_config *bank_config)
+{
+	bank_config->epd = 0;
+	bank_config->encap_type = wlan_cfg_pkt_type(be_soc->soc.wlan_cfg_ctx);
+	bank_config->encrypt_type = 0;
+
+	bank_config->src_buffer_swap = 0;
+	bank_config->link_meta_swap = 0;
+
+	bank_config->mesh_enable = 0;
+	bank_config->dscp_tid_map_id = 0;
+	bank_config->vdev_id_check_en = 0;
+}
+
+static inline void dp_tx_print_bank_profile_config(struct dp_soc_be *be_soc,
+						   int bank_id)
+{
+	dp_info("epd:%x encap:%x encryp:%x src_buf_swap:%x link_meta_swap:%x mesh_en:%x vdev_id_check:%x",
+		be_soc->bank_profiles[bank_id].bank_config.epd,
+		be_soc->bank_profiles[bank_id].bank_config.encap_type,
+		be_soc->bank_profiles[bank_id].bank_config.encrypt_type,
+		be_soc->bank_profiles[bank_id].bank_config.src_buffer_swap,
+		be_soc->bank_profiles[bank_id].bank_config.link_meta_swap,
+		be_soc->bank_profiles[bank_id].bank_config.mesh_enable,
+		be_soc->bank_profiles[bank_id].bank_config.vdev_id_check_en);
+}
+
+#else /* CONFIG_BORON */
 static void
 dp_tx_get_ipa_bank_config(struct dp_soc_be *be_soc,
 			  union hal_tx_bank_config *bank_config)
@@ -1840,6 +1872,24 @@ dp_tx_get_ipa_bank_config(struct dp_soc_be *be_soc,
 	bank_config->vdev_id_check_en = 0;
 	bank_config->pmac_id = 0;
 }
+
+static inline void dp_tx_print_bank_profile_config(struct dp_soc_be *be_soc,
+						   int bank_id)
+{
+	dp_info("epd:%x encap:%x encryp:%x src_buf_swap:%x link_meta_swap:%x addrx_en:%x addry_en:%x mesh_en:%x vdev_id_check:%x pmac_id:%x mcast_pkt_ctrl:%x",
+		be_soc->bank_profiles[bank_id].bank_config.epd,
+		be_soc->bank_profiles[bank_id].bank_config.encap_type,
+		be_soc->bank_profiles[bank_id].bank_config.encrypt_type,
+		be_soc->bank_profiles[bank_id].bank_config.src_buffer_swap,
+		be_soc->bank_profiles[bank_id].bank_config.link_meta_swap,
+		be_soc->bank_profiles[bank_id].bank_config.addrx_en,
+		be_soc->bank_profiles[bank_id].bank_config.addry_en,
+		be_soc->bank_profiles[bank_id].bank_config.mesh_enable,
+		be_soc->bank_profiles[bank_id].bank_config.vdev_id_check_en,
+		be_soc->bank_profiles[bank_id].bank_config.pmac_id,
+		be_soc->bank_profiles[bank_id].bank_config.mcast_pkt_ctrl);
+}
+#endif /* !CONFIG_BORON */
 
 static void dp_tx_init_ipa_bank_profile(struct dp_soc_be *be_soc)
 {
@@ -1869,6 +1919,11 @@ static void dp_tx_init_ipa_bank_profile(struct dp_soc_be *be_soc)
 	be_soc->ipa_bank_id = bid;
 }
 #else /* !IPA_OFFLOAD */
+static inline void dp_tx_print_bank_profile_config(struct dp_soc_be *be_soc,
+						   int bank_id)
+{
+}
+
 static inline void dp_tx_init_ipa_bank_profile(struct dp_soc_be *be_soc)
 {
 }
@@ -2023,18 +2078,7 @@ inc_ref_and_return:
 		be_soc->bank_profiles[bank_id].bank_config.val,
 		qdf_atomic_read(&be_soc->bank_profiles[bank_id].ref_count));
 
-	dp_info("epd:%x encap:%x encryp:%x src_buf_swap:%x link_meta_swap:%x addrx_en:%x addry_en:%x mesh_en:%x vdev_id_check:%x pmac_id:%x mcast_pkt_ctrl:%x",
-		be_soc->bank_profiles[bank_id].bank_config.epd,
-		be_soc->bank_profiles[bank_id].bank_config.encap_type,
-		be_soc->bank_profiles[bank_id].bank_config.encrypt_type,
-		be_soc->bank_profiles[bank_id].bank_config.src_buffer_swap,
-		be_soc->bank_profiles[bank_id].bank_config.link_meta_swap,
-		be_soc->bank_profiles[bank_id].bank_config.addrx_en,
-		be_soc->bank_profiles[bank_id].bank_config.addry_en,
-		be_soc->bank_profiles[bank_id].bank_config.mesh_enable,
-		be_soc->bank_profiles[bank_id].bank_config.vdev_id_check_en,
-		be_soc->bank_profiles[bank_id].bank_config.pmac_id,
-		be_soc->bank_profiles[bank_id].bank_config.mcast_pkt_ctrl);
+	dp_tx_print_bank_profile_config(be_soc, bank_id);
 
 	return bank_id;
 }

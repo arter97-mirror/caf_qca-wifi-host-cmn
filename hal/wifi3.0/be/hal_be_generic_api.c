@@ -276,6 +276,13 @@ uint32_t hal_tx_comp_get_buffer_source_generic_be(void *hal_desc)
 					     HAL_BE_WBM_RELEASE_DIR_TX);
 }
 
+#ifdef CONFIG_BORON
+static uint8_t hal_tx_comp_get_release_reason_generic_be(void *hal_desc)
+{
+	/* Overwritten by hal_hw_txrx_ops_attach_ */
+	return 0xFF;
+}
+#else
 /**
  * hal_tx_comp_get_release_reason_generic_be() - TQM Release reason
  * @hal_desc: completion ring descriptor pointer
@@ -293,6 +300,7 @@ static uint8_t hal_tx_comp_get_release_reason_generic_be(void *hal_desc)
 		WBM2SW_COMPLETION_RING_TX_TQM_RELEASE_REASON_MASK) >>
 		WBM2SW_COMPLETION_RING_TX_TQM_RELEASE_REASON_LSB;
 }
+#endif
 
 /**
  * hal_get_wbm_internal_error_generic_be() - is WBM internal error

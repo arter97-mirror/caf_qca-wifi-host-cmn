@@ -2143,6 +2143,26 @@ dp_rxdma_ring_sel_cfg_be(struct dp_soc *soc)
 				hal_rx_mpdu_start_offset_get(soc->hal_soc);
 	htt_tlv_filter.rx_msdu_end_offset =
 				hal_rx_msdu_end_offset_get(soc->hal_soc);
+	dp_info("TLV subscription\n"
+		"msdu_start %d, mpdu_end %d, attention %d "
+		"mpdu_start %d, msdu_end %d, pkt_hdr %d, pkt %d\n"
+		"TLV offsets\n"
+		"msdu_start %d, mpdu_end %d, attention %d "
+		"mpdu_start %d, msdu_end %d, pkt_hdr %d, pkt %d\n",
+		htt_tlv_filter.msdu_start,
+		htt_tlv_filter.mpdu_end,
+		htt_tlv_filter.attention,
+		htt_tlv_filter.mpdu_start,
+		htt_tlv_filter.msdu_end,
+		htt_tlv_filter.packet_header,
+		htt_tlv_filter.packet,
+		htt_tlv_filter.rx_msdu_start_offset,
+		htt_tlv_filter.rx_mpdu_end_offset,
+		htt_tlv_filter.rx_attn_offset,
+		htt_tlv_filter.rx_mpdu_start_offset,
+		htt_tlv_filter.rx_msdu_end_offset,
+		htt_tlv_filter.rx_header_offset,
+		htt_tlv_filter.rx_packet_offset);
 
 	dp_htt_rxdma_ring_wmask_cfg(soc, &htt_tlv_filter);
 
@@ -4150,7 +4170,7 @@ void dp_initialize_arch_ops_be_ipa_opt_dp_ctrl(struct dp_arch_ops *arch_ops)
 void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 {
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
-	arch_ops->tx_hw_enqueue = dp_tx_hw_enqueue_be;
+	arch_ops->tx_hw_enqueue = dp_tx_hw_enqueue_be_bn;
 	arch_ops->dp_rx_process = dp_rx_process_be_bn;
 	arch_ops->dp_tx_send_fast = dp_tx_fast_send_be;
 	arch_ops->tx_comp_get_params_from_hal_desc =

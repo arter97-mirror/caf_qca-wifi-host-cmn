@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -26,7 +26,11 @@
 #include <qdf_tracepoint.h>
 #include "qdf_ssr_driver_dump.h"
 
+#ifdef CONFIG_BORON
+struct tcl_assist_cmd gtcl_assist_symbol __used;
+#else
 struct tcl_data_cmd gtcl_data_symbol __attribute__((used));
+#endif
 
 #ifdef QCA_WIFI_QCA8074
 void hal_qca6290_attach(struct hal_soc *hal);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -87,6 +87,54 @@ static inline uint16_t dp_tx_comp_get_peer_id_be(struct dp_soc *soc,
 }
 #endif
 
+#ifdef CONFIG_BORON
+/**
+ * dp_tx_hw_enqueue_bn() - Enqueue to TCL HW for transmit for BN target
+ * @soc: DP Soc Handle
+ * @vdev: DP vdev handle
+ * @tx_desc: Tx Descriptor Handle
+ * @fw_metadata: Metadata to send to Target Firmware along with frame
+ * @metadata: Handle that holds exception path meta data
+ * @msdu_info: msdu_info containing information about TX buffer
+ *
+ *  Gets the next free TCL HW DMA descriptor and sets up required parameters
+ *  from software Tx descriptor
+ *
+ * Return: QDF_STATUS_SUCCESS: success
+ *         QDF_STATUS_E_RESOURCES: Error return
+ */
+QDF_STATUS dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
+			       struct dp_tx_desc_s *tx_desc,
+			       uint16_t fw_metadata,
+			       struct cdp_tx_exception_metadata *metadata,
+			       struct dp_tx_msdu_info_s *msdu_info);
+
+/**
+ * dp_tx_hw_enqueue_be_bn() - Enqueue to TCL HW for transmit for BN target
+ * @soc: DP Soc Handle
+ * @vdev: DP vdev handle
+ * @tx_desc: Tx Descriptor Handle
+ * @fw_metadata: Metadata to send to Target Firmware along with frame
+ * @metadata: Handle that holds exception path meta data
+ * @msdu_info: msdu_info containing information about TX buffer
+ *
+ *  Gets the next free TCL HW DMA descriptor and sets up required parameters
+ *  from software Tx descriptor
+ *
+ * Return: QDF_STATUS_SUCCESS: success
+ *         QDF_STATUS_E_RESOURCES: Error return
+ */
+static inline
+QDF_STATUS dp_tx_hw_enqueue_be_bn(struct dp_soc *soc, struct dp_vdev *vdev,
+				  struct dp_tx_desc_s *tx_desc,
+				  uint16_t fw_metadata,
+				  struct cdp_tx_exception_metadata *metadata,
+				  struct dp_tx_msdu_info_s *msdu_info)
+{
+	return dp_tx_hw_enqueue_bn(soc, vdev, tx_desc, fw_metadata, metadata,
+				   msdu_info);
+}
+#else /* CONFIG_BORON */
 /**
  * dp_tx_hw_enqueue_be() - Enqueue to TCL HW for transmit for BE target
  * @soc: DP Soc Handle
@@ -107,6 +155,33 @@ QDF_STATUS dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 				uint16_t fw_metadata,
 				struct cdp_tx_exception_metadata *metadata,
 				struct dp_tx_msdu_info_s *msdu_info);
+
+/**
+ * dp_tx_hw_enqueue_be_bn() - Enqueue to TCL HW for transmit for BE target
+ * @soc: DP Soc Handle
+ * @vdev: DP vdev handle
+ * @tx_desc: Tx Descriptor Handle
+ * @fw_metadata: Metadata to send to Target Firmware along with frame
+ * @metadata: Handle that holds exception path meta data
+ * @msdu_info: msdu_info containing information about TX buffer
+ *
+ *  Gets the next free TCL HW DMA descriptor and sets up required parameters
+ *  from software Tx descriptor
+ *
+ * Return: QDF_STATUS_SUCCESS: success
+ *         QDF_STATUS_E_RESOURCES: Error return
+ */
+static inline
+QDF_STATUS dp_tx_hw_enqueue_be_bn(struct dp_soc *soc, struct dp_vdev *vdev,
+				  struct dp_tx_desc_s *tx_desc,
+				  uint16_t fw_metadata,
+				  struct cdp_tx_exception_metadata *metadata,
+				  struct dp_tx_msdu_info_s *msdu_info)
+{
+	return dp_tx_hw_enqueue_be(soc, vdev, tx_desc, fw_metadata, metadata,
+				   msdu_info);
+}
+#endif /* !CONFIG_BORON */
 
 #ifdef QCA_DP_TX_NBUF_LIST_FREE
 /**

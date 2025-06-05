@@ -80,6 +80,22 @@ hal_tx_comp_get_status_generic_be(void *desc, void *ts1,
 	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts);
 }
 
+#ifdef CONFIG_BORON
+static void hal_tx_set_pcp_tid_map_generic_be(struct hal_soc *soc, uint8_t *map)
+{
+}
+
+static void
+hal_tx_update_pcp_tid_generic_be(struct hal_soc *soc,
+				 uint8_t pcp, uint8_t tid)
+{
+}
+
+static
+void hal_tx_update_tidmap_prty_generic_be(struct hal_soc *soc, uint8_t value)
+{
+}
+#else
 /**
  * hal_tx_set_pcp_tid_map_generic_be() - Configure default PCP to TID map table
  * @soc: HAL SoC context
@@ -159,6 +175,7 @@ void hal_tx_update_tidmap_prty_generic_be(struct hal_soc *soc, uint8_t value)
 	HAL_REG_WRITE(soc, addr,
 		      (value & HWIO_TCL_R0_TID_MAP_PRTY_RMSK));
 }
+#endif /* CONFIG_BORON */
 
 /**
  * hal_rx_get_tlv_size_generic_be() - Get rx packet tlv size

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -21,7 +21,11 @@
 
 #include <dp_types.h>
 #include <dp_tx.h>
+#ifdef CONFIG_BORON
+#include <hal_bn_tx.h>
+#else
 #include <hal_be_tx.h>
+#endif
 #ifdef WLAN_MLO_MULTI_CHIP
 #include "mlo/dp_mlo.h"
 #else
