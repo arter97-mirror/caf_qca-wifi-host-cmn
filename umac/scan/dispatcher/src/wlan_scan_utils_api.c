@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3191,12 +3191,16 @@ static uint8_t *util_copy_reporting_ap_vendor_ies(struct wlan_objmgr_psoc *psoc,
 						  uint8_t *buf_ie)
 {
 	struct action_oui_search_attr attr = {0};
-	enum action_oui_id oui_id = ACTION_OUI_RESTRICT_MAX_MLO_LINKS;
+	enum action_oui_id oui_id1 = ACTION_OUI_RESTRICT_MAX_MLO_LINKS;
+	enum action_oui_id oui_id2 = ACTION_OUI_DISABLE_DYNAMIC_SMPS;
+	enum action_oui_id oui_id3 = ACTION_OUI_EXT_MLD_CAP_OP;
 
 	attr.ie_data = (uint8_t *)ie;
 	attr.ie_length = ie_len;
 
-	if (wlan_action_oui_search(psoc, &attr, oui_id)) {
+	if (wlan_action_oui_search(psoc, &attr, oui_id1) ||
+	    wlan_action_oui_search(psoc, &attr, oui_id2) ||
+	    wlan_action_oui_search(psoc, &attr, oui_id3)) {
 		qdf_mem_copy(buf_ie, ie, ie_len);
 		buf_ie += ie_len;
 	}
