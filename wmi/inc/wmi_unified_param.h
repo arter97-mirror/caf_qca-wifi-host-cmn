@@ -6867,6 +6867,7 @@ typedef enum {
 	wmi_service_scc_tpc_power_support,
 	wmi_service_per_vdev_twt_resp_disable_support,
 	wmi_service_vendor_oui_action_v2,
+	wmi_service_ndp_dfs_channel_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
