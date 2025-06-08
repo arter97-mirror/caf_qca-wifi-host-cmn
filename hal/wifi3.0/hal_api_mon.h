@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -57,8 +57,12 @@
 
 #ifdef CONFIG_4_BYTES_TLV_TAG
 #define HAL_RX_TLV_HDR_SIZE HAL_RX_TLV32_HDR_SIZE
+#define HAL_TX_MON_TLV_GET(desc, block, field) \
+		HAL_TX_DESC_GET(desc, block, field)
 #else
 #define HAL_RX_TLV_HDR_SIZE HAL_RX_TLV64_HDR_SIZE
+#define HAL_TX_MON_TLV_GET(desc, block, field) \
+		HAL_TX_DESC_GET_64(desc, block, field)
 #endif
 
 #define HAL_TLV_STATUS_PPDU_NOT_DONE 0

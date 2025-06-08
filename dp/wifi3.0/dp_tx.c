@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,6 +55,9 @@
 #endif
 #ifdef WLAN_SUPPORT_LAPB
 #include "wlan_dp_lapb_flow.h"
+#endif
+#ifdef DP_FEATURE_TX_PAGE_POOL
+#include "qdf_page_pool.h"
 #endif
 
 /* Flag to skip CCE classify when mesh or tid override enabled */
@@ -138,6 +141,159 @@ uint8_t sec_type_map[MAX_CDP_SEC_TYPE] = {HAL_TX_ENCRYPT_TYPE_NO_CIPHER,
 					  HAL_TX_ENCRYPT_TYPE_AES_GCMP_256,
 					  HAL_TX_ENCRYPT_TYPE_WAPI_GCM_SM4};
 qdf_export_symbol(sec_type_map);
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+/**
+ * dp_tx_is_page_pool_enabled() - Check if TX page pool is enabled
+ * @soc: DP SoC
+ *
+ * This function checks if TX page pool feature is enabled from INI.
+ */
+static bool dp_tx_is_page_pool_enabled(struct dp_soc *soc)
+{
+	return wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx);
+}
+
+/**
+ * dp_tx_pp_orig_nbuf_free() - Free original network nbuf in the TX descriptor.
+ * @tx_desc: SW DP TX descriptor
+ *
+ * This function frees the original network layer nbuf.
+ */
+static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
+{
+	if (!tx_desc->orig_nbuf)
+		return;
+
+	qdf_nbuf_free(tx_desc->orig_nbuf);
+	tx_desc->orig_nbuf = NULL;
+}
+
+/**
+ * dp_tx_page_pool_handle_nbuf_single() - Copy nbuf into page pool buffer
+ * @vdev: DP vdev handle
+ * @nbuf: skb
+ * @tx_desc: SW TX descriptor
+ *
+ * This function allocates an nbuf from page pool memory, copies the
+ * network layer generated TX packet into the page pool nbuf.
+ */
+static qdf_nbuf_t
+dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				   struct dp_tx_desc_s *tx_desc)
+{
+	struct dp_soc *soc = vdev->pdev->soc;
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
+	struct dp_tx_pp_params *pp_params;
+	qdf_page_pool_t pp;
+	qdf_nbuf_t pp_nbuf;
+	qdf_page_t page;
+	uint32_t offset;
+	size_t size;
+
+	if (!dp_tx_is_page_pool_enabled(soc) || !tx_pp ||
+	    !tx_pp->page_pool_init ||
+	    (tx_desc->flags & DP_TX_DESC_FLAG_TDLS_FRAME))
+		return nbuf;
+
+	/* Non linear SKBs are not expected in this path */
+	if (qdf_nbuf_is_nonlinear(nbuf))
+		return nbuf;
+
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	pp_params = &tx_pp->tx_pool;
+	pp = pp_params->pp;
+
+	/* Skip SW TSO packets */
+	if (qdf_nbuf_get_dev_scratch(nbuf) == QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL) {
+		if (qdf_is_pp_nbuf(nbuf))
+			pp_params->alloc_success++;
+		else
+			pp_params->alloc_fail++;
+
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+		return nbuf;
+	}
+
+	if (!pp || qdf_page_pool_empty(pp))
+		goto alloc_fail;
+
+	size = qdf_nbuf_get_end_offset(nbuf);
+
+	pp_nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, size, 0, 0, pp,
+					   &offset);
+	if (!pp_nbuf)
+		goto alloc_fail;
+
+	pp_params->alloc_success++;
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+	/* Copy data in to the pp nbuf */
+	qdf_mem_copy(pp_nbuf->data, nbuf->data, nbuf->len);
+	qdf_nbuf_set_pktlen(pp_nbuf, nbuf->len);
+	qdf_nbuf_copy_header(pp_nbuf, nbuf);
+
+	page = qdf_virt_to_head_page(pp_nbuf->data);
+	QDF_NBUF_CB_PADDR(pp_nbuf) = qdf_page_pool_get_dma_addr(page) + offset +
+				 qdf_nbuf_headroom(pp_nbuf);
+
+	tx_desc->nbuf = pp_nbuf;
+	tx_desc->orig_nbuf = nbuf;
+
+	return pp_nbuf;
+
+alloc_fail:
+	pp_params->alloc_fail++;
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+	return nbuf;
+}
+
+/**
+ * dp_tx_release_pp_nbuf() - Free page pool nbuf in the TX descriptor.
+ * @tx_desc: SW DP TX descriptor
+ * @nbuf: Network buffer
+ *
+ * This function frees the page pool nbuf attached to the TX descriptor.
+ */
+static qdf_nbuf_t
+dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
+{
+	qdf_nbuf_t orig_nbuf;
+
+	if (!qdf_is_pp_nbuf(nbuf) || !tx_desc->orig_nbuf)
+		return nbuf;
+
+	qdf_nbuf_free(nbuf);
+
+	orig_nbuf = tx_desc->orig_nbuf;
+	tx_desc->nbuf = orig_nbuf;
+	tx_desc->orig_nbuf = NULL;
+
+	return orig_nbuf;
+}
+#else
+static inline bool dp_tx_is_page_pool_enabled(struct dp_soc *soc)
+{
+	return false;
+}
+
+static inline void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
+{
+}
+
+static inline qdf_nbuf_t
+dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				   struct dp_tx_desc_s *tx_desc)
+{
+	return nbuf;
+}
+
+static inline qdf_nbuf_t
+dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
+{
+	return nbuf;
+}
+#endif /* DP_FEATURE_TX_PAGE_POOL */
 
 #ifdef WLAN_FEATURE_DP_TX_DESC_HISTORY
 static inline enum dp_tx_event_type dp_tx_get_event_type(uint32_t flags)
@@ -418,6 +574,8 @@ dp_tx_desc_release(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc,
 {
 	struct dp_pdev *pdev = tx_desc->pdev;
 	uint8_t comp_status = 0;
+
+	dp_tx_pp_orig_nbuf_free(tx_desc);
 
 	if (dp_tx_release_ds_tx_desc(soc, tx_desc, desc_pool_id))
 		return;
@@ -3244,6 +3402,8 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	dp_tx_update_tdls_flags(soc, vdev, tx_desc);
 
+	nbuf = dp_tx_page_pool_handle_nbuf_single(vdev, nbuf, tx_desc);
+
 	if (qdf_unlikely(peer_id == DP_INVALID_PEER)) {
 		htt_tcl_metadata = vdev->htt_tcl_metadata;
 		DP_TX_TCL_METADATA_HOST_INSPECTED_SET(htt_tcl_metadata, 1);
@@ -3307,6 +3467,7 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	return NULL;
 
 release_desc:
+	nbuf = dp_tx_release_pp_nbuf(tx_desc, nbuf);
 	dp_tx_desc_release(soc, tx_desc, tx_q->desc_pool_id);
 
 fail_return:
@@ -4505,6 +4666,93 @@ static inline void dp_vdev_tx_mark_to_fw(qdf_nbuf_t nbuf, struct dp_vdev *vdev)
 }
 #endif
 
+#ifdef WLAN_DP_ENABLE_SW_TSO
+static inline bool dp_tx_is_sw_tso_enable(struct dp_soc *soc)
+{
+	return wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx);
+}
+
+/**
+ * dp_tx_sw_tso_handler() - software tso handler
+ *
+ * This function form the skb list from the given TCP jumbo packet by
+ * splitting the jumbo packet into multiple segments of gso size and
+ * attach EIT header for each segment. Also transmit the skbs as a normal
+ * packet instead of tso packet, which reduces the number of PCIe
+ * transactions as HW need to read EIT header and data segment separately
+ * in case of tso packet.
+ *
+ * @vdev: DP VDEV reference
+ * @nbuf: TCP jumbo buffer
+ * @msdu_info: meta data associated with the msdu
+ *
+ * Return: QDF STATUS
+ */
+static QDF_STATUS
+dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+		     struct dp_tx_msdu_info_s *msdu_info)
+{
+	struct dp_soc *soc = vdev->pdev->soc;
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
+	qdf_nbuf_t buff = NULL;
+	qdf_nbuf_t next;
+	QDF_STATUS status;
+	int count = 0;
+
+	if (tx_pp && tx_pp->page_pool_init) {
+		qdf_spin_lock_bh(&tx_pp->pp_lock);
+		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
+							   nbuf, &buff,
+							   tx_pp->tx_pool.pp);
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+	} else {
+		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
+							   nbuf, &buff,
+							   NULL);
+	}
+
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("sw tso: failed to prepare sw tso nbuf list status %d",
+		       status);
+		return status;
+	}
+
+	while (buff) {
+		next = qdf_nbuf_next(buff);
+		qdf_nbuf_set_next(buff, NULL);
+
+		buff = dp_tx_send_msdu_single(vdev, buff, msdu_info,
+					      HTT_INVALID_PEER, NULL);
+		if (qdf_unlikely(buff)) {
+			dp_err("sw tso: failed to send msdu");
+			qdf_nbuf_free(buff);
+			qdf_nbuf_list_free(next);
+
+			return QDF_STATUS_E_FAILURE;
+		}
+
+		buff = next;
+		count++;
+	}
+
+	DP_STATS_INC(soc, tx.sw_tso_pkts, count);
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static inline bool dp_tx_is_sw_tso_enable(struct dp_soc *soc)
+{
+	return false;
+}
+
+static inline QDF_STATUS
+dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+		     struct dp_tx_msdu_info_s *msdu_info)
+{
+	/* return failure so that it will go to default TSO path */
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      qdf_nbuf_t nbuf)
 {
@@ -4518,6 +4766,7 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	struct dp_vdev *vdev = NULL;
 	qdf_nbuf_t end_nbuf = NULL;
 	uint8_t xmit_type;
+	QDF_STATUS status;
 
 	if (qdf_unlikely(vdev_id >= MAX_VDEV_CNT))
 		return nbuf;
@@ -4600,6 +4849,21 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		DP_STATS_INC_PKT(vdev->pdev, tso_stats.num_tso_pkts, 1,
 				 qdf_nbuf_len(nbuf));
 
+		if (dp_tx_is_sw_tso_enable(soc)) {
+			status = dp_tx_sw_tso_handler(vdev, nbuf, &msdu_info);
+			if (status == QDF_STATUS_SUCCESS) {
+				qdf_nbuf_free(nbuf);
+				return NULL;
+			} else if (status != QDF_STATUS_E_NOMEM) {
+				DP_STATS_INC(soc, tx.sw_tso_fail, 1);
+				return nbuf;
+			}
+			/* Go further and transmit the jumbo packet in the
+			 * usual TSO path as memory allocation failed in the
+			 * sw tso path.
+			 */
+		}
+
 		if (dp_tx_prepare_tso(vdev, nbuf, &msdu_info)) {
 			DP_STATS_INC_PKT(vdev->pdev, tso_stats.dropped_host, 1,
 					 qdf_nbuf_len(nbuf));
@@ -4614,7 +4878,8 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 
 	/* SG */
 	if (qdf_unlikely(qdf_nbuf_is_nonlinear(nbuf))) {
-		if (qdf_nbuf_get_nr_frags(nbuf) > DP_TX_MAX_NUM_FRAGS - 1) {
+		if (qdf_nbuf_get_nr_frags(nbuf) > DP_TX_MAX_NUM_FRAGS - 1 ||
+		    dp_tx_is_page_pool_enabled(soc)) {
 			if (qdf_unlikely(qdf_nbuf_linearize(nbuf)))
 				return nbuf;
 		} else {

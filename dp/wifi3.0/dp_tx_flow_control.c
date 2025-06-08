@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -496,6 +496,225 @@ int dp_tx_delete_flow_pool(struct dp_soc *soc, struct dp_tx_desc_pool_s *pool,
 	return 0;
 }
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+#define DP_TX_PAGE_POOL_SIZE (10 * 1024)
+
+static void
+dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
+{
+	struct dp_tx_pp_params *pp_params = &tx_pp->tx_pool;
+
+	if (!tx_pp->page_pool_init)
+		return;
+
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	if (pp_params->pp && soc->cdp_soc.ol_ops->dp_put_page_pool) {
+		soc->cdp_soc.ol_ops->dp_put_page_pool(pp_params->pp,
+						      QDF_DP_PAGE_POOL_TX);
+		pp_params->pp = NULL;
+		pp_params->pool_size = 0;
+		pp_params->pp_size = 0;
+	}
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+	tx_pp->page_pool_init = false;
+	qdf_spinlock_destroy(&tx_pp->pp_lock);
+}
+
+static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
+				       struct dp_tx_page_pool *tx_pp,
+				       uint32_t pool_size)
+{
+	struct dp_tx_pp_params *pp_params = &tx_pp->tx_pool;
+	struct dp_page_pool_t *pool_t = NULL;
+
+	memset(tx_pp, 0, sizeof(*tx_pp));
+
+	if (soc->cdp_soc.ol_ops->dp_get_page_pool)
+		pool_t =
+		soc->cdp_soc.ol_ops->dp_get_page_pool(QDF_DP_PAGE_POOL_TX,
+						      pool_size);
+
+	if (pool_t && pool_t->pp) {
+		pp_params->pp = pool_t->pp;
+		pp_params->pool_size = pool_t->pool_size;
+		pp_params->pp_size = pool_t->pp_size;
+	} else {
+		dp_err("failed to get tx page pool");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	dp_info("Tx pp init success pool_size %d pp_size %lu",
+		pool_t->pool_size,  pool_t->pp_size);
+
+	qdf_spinlock_create(&tx_pp->pp_lock);
+	qdf_atomic_init(&tx_pp->ref_cnt);
+	tx_pp->page_pool_init = true;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * dp_tx_page_pool_mlo_vdev_attach() - Attach TX page pool for MLO STA
+ * @soc: DP SoC reference
+ * @vdev: vdev: DP vdev reference
+ *
+ * This function attaches TX page pool for the MLO station, all VDEVs
+ * belonging to the MLO station will share single TX page pool.
+ */
+static bool
+dp_tx_page_pool_mlo_vdev_attach(struct dp_soc *soc, struct dp_vdev *vdev)
+{
+	struct dp_tx_page_pool *tx_pp;
+	struct dp_vdev *iter_vdev;
+	int i;
+
+	if (vdev->opmode != wlan_op_mode_sta)
+		return false;
+
+	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)vdev->mld_mac_addr.raw))
+		return false;
+
+	qdf_spin_lock_bh(&soc->vdev_map_lock);
+	for (i = 0; i < MAX_VDEV_CNT; i++) {
+		if (!soc->vdev_id_map[i])
+			continue;
+
+		iter_vdev = soc->vdev_id_map[i];
+		if (dp_vdev_get_ref(soc, iter_vdev, DP_MOD_ID_CDP) !=
+				    QDF_STATUS_SUCCESS) {
+			dp_info("Unable to get vdev ref");
+			continue;
+		}
+
+		if (qdf_is_macaddr_equal((struct qdf_mac_addr *)iter_vdev->mld_mac_addr.raw,
+					 (struct qdf_mac_addr *)vdev->mld_mac_addr.raw)) {
+			tx_pp = soc->tx_pp[i];
+			dp_vdev_unref_delete(soc, iter_vdev, DP_MOD_ID_CDP);
+			break;
+		}
+		dp_vdev_unref_delete(soc, iter_vdev, DP_MOD_ID_CDP);
+	}
+	qdf_spin_unlock_bh(&soc->vdev_map_lock);
+
+	if (i == MAX_VDEV_CNT || !(tx_pp && tx_pp->page_pool_init))
+		return false;
+
+	soc->tx_pp[vdev->vdev_id] = tx_pp;
+	qdf_atomic_inc(&tx_pp->ref_cnt);
+
+	return true;
+}
+#else
+static inline bool
+dp_tx_page_pool_mlo_vdev_attach(struct dp_soc *soc, struct dp_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BE_MLO */
+
+/**
+ * dp_tx_page_pool_vdev_attach() - Attach TX page pool to the VDEV
+ * @pdev: Handle to struct dp_pdev
+ * @vdev_id: flow_id /vdev_id
+ * @pool_size: size of the pool
+ *
+ * This function attaches TX page pool to the DP VDEV.
+ */
+static void dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
+					uint32_t pool_size)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct dp_tx_page_pool *tx_pp;
+	struct dp_vdev *vdev;
+
+	if (!wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx)) {
+		dp_info("Tx page pool disabled from INI");
+		return;
+	}
+
+	pool_size = DP_TX_PAGE_POOL_SIZE;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
+			  "%s: invalid vdev_id %d", __func__, vdev_id);
+		return;
+	}
+
+	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	if (soc->tx_pp[vdev_id]) {
+		dp_err("Not expected to have tx_pp attached for a new vdev");
+		qdf_assert_always(0);
+		goto unref_vdev;
+	}
+
+	if (dp_tx_page_pool_mlo_vdev_attach(soc, vdev))
+		goto unref_vdev;
+
+	tx_pp = qdf_mem_malloc(sizeof(*tx_pp));
+	if (!tx_pp) {
+		dp_err("Failed to allocated memory for tx page pool");
+		goto unref_vdev;
+	}
+
+	dp_tx_page_pool_init(soc, tx_pp, pool_size);
+	if (!tx_pp->page_pool_init) {
+		dp_err("Unable to init tx page pool for vdev %d", vdev_id);
+		qdf_mem_free(tx_pp);
+		goto unref_vdev;
+	}
+
+	soc->tx_pp[vdev_id] = tx_pp;
+	qdf_atomic_inc(&tx_pp->ref_cnt);
+
+unref_vdev:
+	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+}
+
+/**
+ * dp_tx_page_pool_vdev_detach() - Detach TX page pool to the VDEV
+ * @pdev: Handle to struct dp_pdev
+ * @vdev_id: flow_id /vdev_id
+ *
+ * This function detaches TX page pool to the DP VDEV.
+ */
+static void dp_tx_page_pool_vdev_detach(struct dp_pdev *pdev, uint8_t vdev_id)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev_id];
+
+	if (!wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx))
+		return;
+
+	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	if (!tx_pp || !tx_pp->page_pool_init)
+		goto out_unlock;
+
+	if (!qdf_atomic_dec_and_test(&tx_pp->ref_cnt))
+		goto out_unlock;
+
+	dp_tx_page_pool_deinit(soc, tx_pp);
+	qdf_mem_free(tx_pp);
+out_unlock:
+	soc->tx_pp[vdev_id] = NULL;
+	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+}
+#else /* !DP_FEATURE_TX_PAGE_POOL */
+static inline void
+dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
+			    uint32_t pool_size)
+{
+}
+
+static inline void
+dp_tx_page_pool_vdev_detach(struct dp_pdev *pdev, uint8_t vdev_id)
+{
+}
+#endif /* DP_FEATURE_TX_PAGE_POOL */
+
 /**
  * dp_tx_flow_pool_vdev_map() - Map flow_pool with vdev
  * @pdev: Handle to struct dp_pdev
@@ -606,6 +825,7 @@ QDF_STATUS dp_tx_flow_pool_map_handler(struct dp_pdev *pdev, uint8_t flow_id,
 
 	case FLOW_TYPE_VDEV:
 		dp_tx_flow_pool_vdev_map(pdev, pool, flow_id);
+		dp_tx_page_pool_vdev_attach(pdev, flow_id, flow_pool_size);
 		break;
 	default:
 		dp_err("flow type %d not supported", type);
@@ -670,6 +890,7 @@ void dp_tx_flow_pool_unmap_handler(struct dp_pdev *pdev, uint8_t flow_id,
 	switch (type) {
 
 	case FLOW_TYPE_VDEV:
+		dp_tx_page_pool_vdev_detach(pdev, flow_id);
 		dp_tx_flow_pool_vdev_unmap(pdev, pool, flow_id);
 		break;
 	default:

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -474,7 +474,8 @@ int nl_srv_bcast(struct sk_buff *skb, int mcgroup_id, int app_id)
 
 	status = send_msg_to_cld80211(mcgroup_id, 0, app_id, msg, msg_len);
 	if (status) {
-		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
+		QDF_TRACE_ERROR_RL(
+			QDF_MODULE_ID_HDD,
 			"send msg to cld80211 fails for app id %d", app_id);
 		dev_kfree_skb(skb);
 		return status;

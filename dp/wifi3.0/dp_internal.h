@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,7 +55,7 @@
 #define HOST_PDEV_ID_2ND_MAC 1
 
 #ifdef FEATURE_DIRECT_LINK
-#define DIRECT_LINK_REFILL_RING_ENTRIES 128
+#define DIRECT_LINK_REFILL_RING_ENTRIES 640
 #ifdef IPA_OFFLOAD
 #ifdef IPA_WDI3_VLAN_SUPPORT
 #define DIRECT_LINK_REFILL_RING_IDX     4

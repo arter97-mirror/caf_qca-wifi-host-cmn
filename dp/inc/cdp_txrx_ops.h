@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1771,6 +1771,13 @@ struct ol_if_ops {
 				   bool cacheable);
 	void (*dp_put_multi_pages)(uint32_t desc_type,
 				   struct qdf_mem_multi_page_t *pages);
+#if defined(DP_FEATURE_TX_PAGE_POOL) || defined(DP_FEATURE_RX_BUFFER_RECYCLE)
+	struct dp_page_pool_t* (*dp_get_page_pool)(enum qdf_dp_tx_pp_type type,
+						   uint32_t pool_size);
+	void (*dp_put_page_pool)(qdf_page_pool_t pp,
+				 enum qdf_dp_tx_pp_type type);
+	void (*dp_page_pool_init)(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
+#endif
 #endif
 	int (*get_soc_nss_cfg)(struct cdp_ctrl_objmgr_psoc *ol_soc_handle);
 

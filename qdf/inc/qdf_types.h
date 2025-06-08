@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1947,5 +1947,18 @@ enum qdf_dp_desc_type {
 	QDF_DP_RX_DIRECT_LINK_CE_BUF_TYPE,
 #endif
 	QDF_DP_DESC_TYPE_MAX
+};
+
+/**
+ * enum qdf_dp_tx_pp_type - page pool type
+ * @QDF_DP_PAGE_POOL_RX: rx page pool
+ * @QDF_DP_PAGE_POOL_TX: tx page pool
+ * @QDF_DP_PAGE_POOL_MAX: max page pool type
+ */
+enum qdf_dp_tx_pp_type {
+	QDF_DP_PAGE_POOL_RX,
+	QDF_DP_PAGE_POOL_TX,
+
+	QDF_DP_PAGE_POOL_MAX
 };
 #endif /* __QDF_TYPES_H */

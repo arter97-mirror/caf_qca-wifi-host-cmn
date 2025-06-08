@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -232,6 +232,8 @@ enum wsc_op_code {
 #else
 #define TSO_DEBUG(fmt, args ...)
 #endif
+
+#define QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL	0xCADB
 
 #define IEEE80211_AMPDU_FLAG    0x01
 
@@ -1323,6 +1325,31 @@ qdf_nbuf_set_send_complete_flag(qdf_nbuf_t buf, bool flag)
 #define QDF_NBUF_QUEUE_WALK_SAFE(queue, var, tvar)	\
 		__qdf_nbuf_queue_walk_safe(queue, var, tvar)
 
+/**
+ * qdf_is_pp_nbuf: Check if SKB memory is from page pool
+ *
+ * @nbuf: nbuf reference
+ *
+ * Return: True/False
+ */
+static inline bool qdf_is_pp_nbuf(qdf_nbuf_t nbuf)
+{
+	return __qdf_is_pp_nbuf(nbuf);
+}
+
+/**
+ * qdf_nbuf_copy_header() - copy SKB header portion into another SKB
+ * @to_skb: dest skb reference
+ * @from_skb: source skb reference
+ *
+ * Return: void
+ */
+static inline void
+qdf_nbuf_copy_header(struct sk_buff *to_skb, struct sk_buff *from_skb)
+{
+	return __qdf_nbuf_copy_header(to_skb, from_skb);
+}
+
 #ifdef NBUF_MAP_UNMAP_DEBUG
 /**
  * qdf_nbuf_map_check_for_leaks() - check for nbuf map leaks
@@ -1520,7 +1547,12 @@ qdf_nbuf_unmap_nbytes_single_paddr(qdf_device_t osdev, qdf_nbuf_t buf,
 				   int nbytes)
 {
 	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
-	__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
+
+	if (qdf_is_pp_nbuf(buf))
+		dma_sync_single_for_cpu(osdev->dev, phy_addr,
+					nbytes, __qdf_dma_dir_to_os(dir));
+	else
+		__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
 }
 
 static inline QDF_STATUS
@@ -5505,6 +5537,27 @@ static inline void qdf_dmaaddr_to_32s(qdf_dma_addr_t dmaaddr,
 	return __qdf_dmaaddr_to_32s(dmaaddr, lo, hi);
 }
 
+#ifdef WLAN_DP_ENABLE_SW_TSO
+/**
+ * qdf_nbuf_sw_tso_prepare_nbuf_list() - function to divide a jumbo TSO
+ * network buffer into small network buffers.
+ *
+ * @osdev: qdf device handle
+ * @nbuf: Jumbo TSO network buffer
+ * @head_nbuf: nbuf list
+ * @tx_pp: TX page pool reference
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev, qdf_nbuf_t nbuf,
+				  qdf_nbuf_t *head_nbuf, qdf_page_pool_t tx_pp)
+{
+	return __qdf_nbuf_sw_tso_prepare_nbuf_list(osdev, nbuf,
+						   head_nbuf, tx_pp);
+}
+#endif
+
 /**
  * qdf_nbuf_get_tso_info() - function to divide a jumbo TSO
  *                           network buffer into segments
@@ -6220,18 +6273,6 @@ static inline qdf_size_t qdf_nbuf_get_truesize(qdf_nbuf_t nbuf)
 static inline qdf_size_t qdf_nbuf_get_allocsize(qdf_nbuf_t nbuf)
 {
 	return __qdf_nbuf_get_allocsize(nbuf);
-}
-
-/**
- * qdf_is_pp_nbuf: Check if SKB memory is from page pool
- *
- * @nbuf: nbuf reference
- *
- * Return: True/False
- */
-static inline bool qdf_is_pp_nbuf(qdf_nbuf_t nbuf)
-{
-	return __qdf_is_pp_nbuf(nbuf);
 }
 
 #ifdef NBUF_FRAG_MEMORY_DEBUG
