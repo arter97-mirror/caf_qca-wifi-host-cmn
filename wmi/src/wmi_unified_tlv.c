@@ -23711,6 +23711,7 @@ struct wmi_ops tlv_ops =  {
 				wmi_extract_apf_read_memory_resp_event_tlv,
 	.send_set_apf_supported_offload_bitmap_cmd =
 			wmi_send_set_apf_supported_offload_bitmap_cmd_tlv,
+	.send_set_apf_mode_bitmap_cmd = wmi_send_set_apf_mode_bitmap_cmd_tlv,
 #endif /* FEATURE_WLAN_APF */
 	.init_cmd_send = init_cmd_send_tlv,
 	.send_vdev_set_custom_aggr_size_cmd =
