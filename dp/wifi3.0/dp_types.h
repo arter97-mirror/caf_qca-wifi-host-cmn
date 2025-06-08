@@ -46,6 +46,9 @@
 #include <hal_api_mon.h>
 #include "hal_rx.h"
 #include <qdf_hrtimer.h>
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+#include "qdf_delayed_work.h"
+#endif
 
 struct dp_tx_queue;
 
@@ -1868,7 +1871,7 @@ struct dp_rx_page_pool {
 	size_t curr_pool_size;
 	size_t base_pool_size;
 	qdf_atomic_t update_in_progress;
-	qdf_timer_t pool_inactivity_timer;
+	struct qdf_delayed_work pool_inactivity_work;
 	qdf_list_t inactive_list;
 	bool page_pool_init;
 	uint64_t alloc_success;
