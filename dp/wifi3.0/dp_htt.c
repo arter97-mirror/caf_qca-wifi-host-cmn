@@ -4810,7 +4810,7 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 		HTT_RX_PEER_MAP_V3_CLASSIFY_INFO_IDX_VALID_FLAG_GET(*(msg_word +
 								      4));
 
-		dp_htt_info("HTT_T2H_MSG_TYPE_PEER_MAP_V3 msg for peer id %d vdev id %d n",
+		dp_htt_info("HTT_T2H_MSG_TYPE_PEER_MAP_V3 msg for peer id %d vdev id %d",
 			    peer_id, vdev_id);
 
 		dp_rx_peer_map_handler(soc->dp_soc, peer_id,

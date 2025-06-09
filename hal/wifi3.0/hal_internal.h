@@ -400,6 +400,12 @@ enum hal_srng_ring_id {
 
 #define HAL_SRNG_ID_MAX (HAL_SRNG_DMAC_CMN_ID_END + HAL_MAX_LMAC_RINGS)
 
+#ifdef CONFIG_BORON
+#define COMP_RING_TYPE TQM2SW_RELEASE
+#else
+#define COMP_RING_TYPE WBM2SW_RELEASE
+#endif
+
 /* SRNG type to be passed in APIs hal_srng_get_entrysize and hal_srng_setup */
 enum hal_ring_type {
 	REO_DST = 0,

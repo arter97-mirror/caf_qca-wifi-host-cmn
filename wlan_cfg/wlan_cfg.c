@@ -3374,6 +3374,14 @@ struct wlan_srng_cfg wlan_srng_wbm_release_cfg = {
 	.batch_count_threshold = 0,
 	.low_threshold = 0,
 };
+
+/* TQM2SW_RELEASE ring configuration */
+struct wlan_srng_cfg wlan_srng_tqm_release_cfg = {
+	.timer_threshold = WLAN_CFG_INT_TIMER_THRESHOLD_WBM_RELEASE_RING,
+	.batch_count_threshold = 0,
+	.low_threshold = 0,
+};
+
 #endif
 
 /* RXDMA_BUF ring configuration */
@@ -3464,7 +3472,8 @@ void wlan_set_srng_cfg(struct wlan_srng_cfg **wlan_cfg)
 {
 	g_wlan_srng_cfg[REO_DST] = wlan_srng_reo_cfg;
 	g_wlan_srng_cfg[WBM2SW_RELEASE] = wlan_srng_wbm_release_cfg;
-	g_wlan_srng_cfg[REO_EXCEPTION] = wlan_srng_rx_err_cfg;
+	g_wlan_srng_cfg[TQM2SW_RELEASE] = wlan_srng_tqm_release_cfg;
+	g_wlan_srng_cfg[REO_EXCEPTION] = wlan_srng_default_cfg;
 	g_wlan_srng_cfg[REO_REINJECT] = wlan_src_srng_default_cfg;
 	g_wlan_srng_cfg[REO_CMD] = wlan_src_srng_default_cfg;
 	g_wlan_srng_cfg[REO_STATUS] = wlan_srng_default_cfg;

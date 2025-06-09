@@ -1614,7 +1614,7 @@ void hal_srng_dst_update_hp_addr(struct hal_soc_handle *hal_soc,
 
 	if (srng->u.dst_ring.hp_addr) {
 		hal_get_hw_hptp(hal_soc, hal_ring_hdl, &hw_hp, &hw_tp,
-				WBM2SW_RELEASE);
+				COMP_RING_TYPE);
 		*srng->u.dst_ring.hp_addr = hw_hp;
 		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_DEBUG,
 			  "hw_hp=%d", hw_hp);

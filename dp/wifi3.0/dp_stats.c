@@ -6438,6 +6438,23 @@ dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
 }
 #endif
 #else
+#ifdef CONFIG_BORON
+static inline void
+dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
+{
+}
+
+static inline void
+dp_print_tqm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
+{
+	uint8_t i = 0;
+
+	for (i = 0; i < pdev->soc->num_tcl_data_rings; i++)
+		dp_print_ring_stat_from_hal(pdev->soc,
+					    &pdev->soc->tx_comp_ring[i],
+					    TQM2SW_RELEASE);
+}
+#else /* !CONFIG_BORON */
 static inline void
 dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
 {
@@ -6448,6 +6465,12 @@ dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
 					    &pdev->soc->tx_comp_ring[i],
 					    WBM2SW_RELEASE);
 }
+
+static inline void
+dp_print_tqm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
+{
+}
+#endif /* !CONFIG_BORON */
 #endif
 
 /*
@@ -6548,6 +6571,7 @@ static inline void dp_print_umac_ring_stats(struct dp_pdev *pdev)
 					    &pdev->soc->tcl_data_ring[i],
 					    TCL_DATA);
 	dp_print_wbm2sw_ring_stats_from_hal(pdev);
+	dp_print_tqm2sw_ring_stats_from_hal(pdev);
 }
 
 static inline void dp_print_ce_ring_stats(struct dp_pdev *pdev) {}

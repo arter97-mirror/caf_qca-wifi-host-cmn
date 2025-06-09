@@ -264,6 +264,7 @@ uint8_t *dp_srng_get_near_full_irq_mask(struct dp_soc *soc,
 
 	switch (ring_type) {
 	case WBM2SW_RELEASE:
+	case TQM2SW_RELEASE:
 		wbm2_sw_rx_rel_ring_id =
 			wlan_cfg_get_rx_rel_ring_id(cfg_ctx);
 		if (ring_num != wbm2_sw_rx_rel_ring_id) {
@@ -1644,7 +1645,7 @@ void dp_soc_reset_intr_mask(struct dp_soc *soc)
 		group_number = dp_srng_find_ring_in_mask(j, grp_mask);
 		if (group_number < 0) {
 			dp_init_debug("%pK: ring not part of any group; ring_type: %d,ring_num %d",
-				      soc, WBM2SW_RELEASE, j);
+				      soc, COMP_RING_TYPE, j);
 			continue;
 		}
 
@@ -2121,7 +2122,7 @@ static void dp_deinit_tx_pair_by_index(struct dp_soc *soc, int index)
 			     soc->ctrl_psoc,
 			     WLAN_MD_DP_SRNG_TX_COMP,
 			     "tcl_comp_ring");
-	dp_srng_deinit(soc, &soc->tx_comp_ring[index], WBM2SW_RELEASE,
+	dp_srng_deinit(soc, &soc->tx_comp_ring[index], COMP_RING_TYPE,
 		       wbm_ring_num);
 }
 
@@ -2170,7 +2171,7 @@ static QDF_STATUS dp_init_tx_ring_pair_by_index(struct dp_soc *soc,
 	if (wbm_ring_num == INVALID_WBM_RING_NUM)
 		goto set_rbm;
 
-	if (dp_srng_init(soc, &soc->tx_comp_ring[index], WBM2SW_RELEASE,
+	if (dp_srng_init(soc, &soc->tx_comp_ring[index], COMP_RING_TYPE,
 			 wbm_ring_num, 0)) {
 		dp_err("dp_srng_init failed for tx_comp_ring");
 		goto fail1;
@@ -2246,7 +2247,7 @@ static QDF_STATUS dp_alloc_tx_ring_pair_by_index(struct dp_soc *soc,
 	    INVALID_WBM_RING_NUM)
 		return QDF_STATUS_SUCCESS;
 
-	if (dp_srng_alloc(soc, &soc->tx_comp_ring[index], WBM2SW_RELEASE,
+	if (dp_srng_alloc(soc, &soc->tx_comp_ring[index], COMP_RING_TYPE,
 			  tx_comp_ring_size, cached)) {
 		dp_err("dp_srng_alloc failed for tx_comp_ring");
 		goto fail1;
@@ -3056,6 +3057,30 @@ void dp_update_soft_irq_limits(struct dp_soc *soc, uint32_t tx_limit,
 }
 #endif /* WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT */
 
+#ifdef CONFIG_BORON
+/**
+ * dp_display_li_be_only_srng_info() - Dump the srng HP TP info
+ * @soc_hdl: CDP Soc handle
+ *
+ * This function dumps the SW hp/tp values for the important li/be only rings.
+ *
+ * Return: rings are empty
+ */
+void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
+{
+}
+#else
+void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	uint32_t hp, tp;
+
+	hal_get_sw_hptp(hal_soc, soc->rx_rel_ring.hal_srng, &tp, &hp);
+	dp_info("WBM RX release ring: hp=0x%x, tp=0x%x", hp, tp);
+}
+#endif
+
 /**
  * dp_display_srng_info() - Dump the srng HP TP info
  * @soc_hdl: CDP Soc handle
@@ -3101,8 +3126,7 @@ bool dp_display_srng_info(struct cdp_soc_t *soc_hdl)
 	hal_get_sw_hptp(hal_soc, soc->reo_exception_ring.hal_srng, &tp, &hp);
 	dp_info("REO exception ring: hp=0x%x, tp=0x%x", hp, tp);
 
-	hal_get_sw_hptp(hal_soc, soc->rx_rel_ring.hal_srng, &tp, &hp);
-	dp_info("WBM RX release ring: hp=0x%x, tp=0x%x", hp, tp);
+	dp_display_li_be_only_srng_info(soc_hdl);
 
 	hal_get_sw_hptp(hal_soc, soc->wbm_desc_rel_ring.hal_srng, &tp, &hp);
 	dp_info("WBM desc release ring: hp=0x%x, tp=0x%x", hp, tp);
