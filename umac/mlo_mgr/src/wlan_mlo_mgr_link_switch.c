@@ -816,6 +816,14 @@ mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 	return assoc_vdev;
 }
 
+uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev)
+{
+	if (vdev && wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev))
+		return vdev->mlo_dev_ctx->link_ctx->last_req.curr_ieee_link_id;
+
+	return WLAN_INVALID_LINK_ID;
+}
+
 bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 	enum mlo_link_switch_req_state state;

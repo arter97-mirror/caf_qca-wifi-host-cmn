@@ -584,6 +584,15 @@ struct wlan_objmgr_vdev *
 mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * mlo_mgr_get_link_switch_last_link_id() - Get last link id of link
+ * switching VDEV
+ * @vdev: VDEV object manager.
+ *
+ * Return: uint8_t last link id of link switching vdev
+ */
+uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlo_mgr_ser_link_switch_cmd() - The API will serialize link switch
  * command in serialization queue.
  * @vdev: VDEV objmgr pointer
@@ -919,6 +928,12 @@ static inline struct wlan_objmgr_vdev *
 mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	return NULL;
+}
+
+static inline
+uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev)
+{
+	return WLAN_INVALID_LINK_ID;
 }
 
 static inline QDF_STATUS
