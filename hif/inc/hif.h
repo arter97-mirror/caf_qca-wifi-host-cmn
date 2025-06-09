@@ -1268,6 +1268,7 @@ int hif_check_soc_status(struct hif_opaque_softc *hif_ctx);
 #endif
 void hif_get_hw_info(struct hif_opaque_softc *hif_ctx, u32 *version,
 			u32 *revision, const char **target_name);
+const char *hif_get_hw_name(struct hif_target_info *info);
 
 #ifdef RECEIVE_OFFLOAD
 /**
@@ -2061,6 +2062,7 @@ int ol_copy_ramdump(struct hif_opaque_softc *scn);
 void hif_crash_shutdown(struct hif_opaque_softc *hif_ctx);
 void hif_get_hw_info(struct hif_opaque_softc *hif_ctx, u32 *version,
 		     u32 *revision, const char **target_name);
+const char *hif_get_hw_name(struct hif_target_info *info);
 enum qdf_bus_type hif_get_bus_type(struct hif_opaque_softc *hif_hdl);
 struct hif_target_info *hif_get_target_info_handle(struct hif_opaque_softc *
 						   scn);
