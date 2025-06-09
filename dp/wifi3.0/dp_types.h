@@ -5951,6 +5951,12 @@ struct dp_peer {
 
 	/* peer setup info */
 	struct dp_peer_setup_info setup_info;
+
+#ifdef CONFIG_BORON
+	/* Tx msdu flow pointer index */
+	bool txpt_classify_idx_valid;
+	uint8_t txpt_classify_idx;
+#endif
 };
 
 /**
