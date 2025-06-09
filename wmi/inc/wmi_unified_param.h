@@ -6948,6 +6948,7 @@ typedef enum {
 	wmi_service_vdev_unified_connect_disconnect_support,
 	wmi_service_qos_null_frame_tx_support,
 	wmi_service_p2p_cancel_one_shot_noa_support,
+	wmi_service_pdev_div_states_report,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
