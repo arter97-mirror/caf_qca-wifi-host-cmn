@@ -2140,8 +2140,8 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	uint8_t is_mcast = 0;
 	qdf_ether_header_t *eh = NULL;
 	qdf_ethervlan_header_t *evh = NULL;
-	uint16_t   ether_type;
-	qdf_llc_t *llcHdr;
+	uint16_t ether_type;
+	struct llc_snap_hdr_t *llc_hdr;
 	struct dp_pdev *pdev = (struct dp_pdev *)vdev->pdev;
 
 	DP_TX_TID_OVERRIDE(msdu_info, nbuf);
@@ -2158,33 +2158,41 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	}
 
 	is_mcast = DP_FRAME_IS_MULTICAST(hdr_ptr);
-	ether_type = eh->ether_type;
+	DP_TX_MSDU_INFO_SET_MC(msdu_info, is_mcast);
+	dp_tx_msdu_info_set_bc(msdu_info, hdr_ptr);
+	ether_type = qdf_ntohs(eh->ether_type);
 
-	llcHdr = (qdf_llc_t *)(nbuf->data + sizeof(qdf_ether_header_t));
+	llc_hdr = (struct llc_snap_hdr_t *)(nbuf->data +
+					    sizeof(qdf_ether_header_t));
 	/*
 	 * Check if packet is dot3 or eth2 type.
 	 */
-	if (DP_FRAME_IS_LLC(ether_type) && DP_FRAME_IS_SNAP(llcHdr)) {
+	if (DP_FRAME_IS_LLC(ether_type) && DP_FRAME_IS_SNAP(llc_hdr)) {
 		ether_type = (uint16_t)*(nbuf->data + 2*QDF_MAC_ADDR_SIZE +
-				sizeof(*llcHdr));
+				sizeof(*llc_hdr));
+
+		dp_tx_msdu_info_set_llc_snap_oui(msdu_info, llc_hdr);
 
 		if (ether_type == htons(ETHERTYPE_VLAN)) {
 			L3datap = hdr_ptr + sizeof(qdf_ethervlan_header_t) +
-				sizeof(*llcHdr);
+				sizeof(*llc_hdr);
 			ether_type = (uint16_t)*(nbuf->data + 2*QDF_MAC_ADDR_SIZE
-					+ sizeof(*llcHdr) +
+					+ sizeof(*llc_hdr) +
 					sizeof(qdf_net_vlanhdr_t));
+			ether_type = qdf_ntohs(ether_type);
 		} else {
 			L3datap = hdr_ptr + sizeof(qdf_ether_header_t) +
-				sizeof(*llcHdr);
+				sizeof(*llc_hdr);
 		}
 	} else {
-		if (ether_type == htons(ETHERTYPE_VLAN)) {
+		if (ether_type == ETHERTYPE_VLAN) {
 			evh = (qdf_ethervlan_header_t *) eh;
-			ether_type = evh->ether_type;
+			ether_type = qdf_ntohs(evh->ether_type);
 			L3datap = hdr_ptr + sizeof(qdf_ethervlan_header_t);
 		}
 	}
+
+	dp_tx_msdu_info_set_eth_type_fields(msdu_info, ether_type);
 
 	/*
 	 * Find priority from IP TOS DSCP field
@@ -2206,6 +2214,7 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 			dscp_tid_override = 1;
 
 		}
+		DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, ip->ip_proto);
 	} else if (qdf_nbuf_is_ipv6_pkt(nbuf)) {
 		/* TODO
 		 * use flowlabel
@@ -2218,6 +2227,7 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 			DP_IPV6_PRIORITY_SHIFT;
 		tos = pri;
 		dscp_tid_override = 1;
+		/* TODO: L4_proto update */
 	} else if (qdf_nbuf_is_ipv4_eapol_pkt(nbuf))
 		msdu_info->tid = DP_VO_TID;
 	else if (qdf_nbuf_is_ipv4_arp_pkt(nbuf)) {
@@ -2246,9 +2256,31 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	if (msdu_info->tid >= CDP_MAX_DATA_TIDS)
 		msdu_info->tid = CDP_MAX_DATA_TIDS - 1;
 
+	DP_TX_MSDU_INFO_SET_DSCP(msdu_info, tos);
+
 	return;
 }
 
+#ifdef CONFIG_BORON
+/**
+ * dp_tx_classify_tid() - Obtain TID to be used for this frame
+ * @vdev: DP vdev handle
+ * @nbuf: skb
+ * @msdu_info: msdu descriptor
+ *
+ * Software based TID classification is required boron chips.
+ *
+ * Return: void
+ */
+static inline void dp_tx_classify_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				      struct dp_tx_msdu_info_s *msdu_info)
+{
+	DP_TX_TID_OVERRIDE(msdu_info, nbuf);
+	DP_FLOW_TX_TID_OVERRIDE(msdu_info, nbuf);
+
+	dp_tx_get_tid(vdev, nbuf, msdu_info);
+}
+#else /* CONFIG_BORON */
 /**
  * dp_tx_classify_tid() - Obtain TID to be used for this frame
  * @vdev: DP vdev handle
@@ -2290,6 +2322,7 @@ static inline void dp_tx_classify_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	dp_tx_get_tid(vdev, nbuf, msdu_info);
 }
+#endif /* !CONFIG_BORON */
 
 #ifdef FEATURE_WLAN_TDLS
 /**

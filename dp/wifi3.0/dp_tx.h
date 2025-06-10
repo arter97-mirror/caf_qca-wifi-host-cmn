@@ -22,6 +22,7 @@
 #include <qdf_types.h>
 #include <qdf_nbuf.h>
 #include "dp_types.h"
+#include "enet.h"
 #ifdef FEATURE_PERPKT_INFO
 #if defined(QCA_SUPPORT_LATENCY_CAPTURE) || \
 	defined(QCA_TX_CAPTURE_SUPPORT) || \
@@ -232,6 +233,18 @@ struct dp_tx_queue {
  * @payload_addr:
  * @driver_ingress_ts: driver ingress timestamp
  * @is_opt_dp_ctrl: opt_dp_ctrl pkt
+ * @ip_dscp: dscp value from packet
+ * @is_mcast: Is packet multicast
+ * @is_bcast: Is packet broadcast
+ * @l3_type: Packet l3_type
+ * @l4_proto: Packet Layer protocol
+ * @type_or_length: Is packet ether or VLAN type
+ * @snap_oui_zero_or_f8: LLC SNAP is present in MAC header and OUI value equals
+ *			 to 0x0 or 0xF8
+ * @snap_oui_not_zero_or_not_f8: LLC SNAP is present in MAC header and OUI value
+ *				 not equal to 0x0 and not equal to 0xF8
+ * @is_s_vlan: Outer VLAN tag is present in the packet header
+ * @is_c_vlan: Inner VLAN tag is present in the packet header
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -268,6 +281,19 @@ struct dp_tx_msdu_info_s {
 #endif
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	bool is_opt_dp_ctrl;
+#endif
+#ifdef CONFIG_BORON
+	uint8_t ip_dscp;
+	/*TODO: struct qdf_flow_info flow_info;*/
+	uint8_t is_mcast;
+	uint8_t is_bcast;
+	uint16_t l3_type;
+	uint8_t l4_proto;
+	uint8_t type_or_length;
+	uint8_t snap_oui_zero_or_f8;
+	uint8_t snap_oui_not_zero_or_not_f8;
+	uint8_t is_s_vlan;
+	uint8_t is_c_vlan;
 #endif
 };
 
@@ -2655,4 +2681,79 @@ struct dp_tx_desc_pool_s *dp_get_tx_desc_pool_wrapper(struct dp_soc *soc)
 	return NULL;
 }
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
+
+#ifdef CONFIG_BORON
+
+#define COMP_RING_TYPE TQM2SW_RELEASE
+
+#define DP_TX_MSDU_INFO_SET_DSCP(msdu_info, dscp) \
+		(msdu_info)->ip_dscp = (dscp) << DP_IP_DSCP_SHIFT
+
+#define DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, proto) \
+		(msdu_info)->l4_proto = (proto)
+
+#define DP_TX_MSDU_INFO_SET_MC(msdu_info, mcast) \
+		(msdu_info)->is_mcast = (mcast)
+
+static inline
+void dp_tx_msdu_info_set_bc(struct dp_tx_msdu_info_s *msdu_info,
+			    uint8_t *hdr_ptr)
+{
+		(msdu_info)->is_bcast = DP_FRAME_IS_BROADCAST(hdr_ptr) ? 1 : 0;
+}
+
+static inline
+void dp_tx_msdu_info_set_llc_snap_oui(struct dp_tx_msdu_info_s *msdu_info,
+				      struct llc_snap_hdr_t *llc_hdr)
+{
+	/*TODO: Do endian check */
+	if (IS_BTEP(llc_hdr) || IS_RFC1042(llc_hdr))
+		msdu_info->snap_oui_zero_or_f8 = 1;
+	else
+		msdu_info->snap_oui_not_zero_or_not_f8 = 1;
+}
+
+static inline
+void dp_tx_msdu_info_set_eth_type_fields(struct dp_tx_msdu_info_s *msdu_info,
+					 uint16_t eth_type)
+{
+	dp_err("%s-%d eth_type 0x%x", __func__, __LINE__, eth_type);
+	msdu_info->l3_type = eth_type;
+	msdu_info->type_or_length = eth_type > 0x600 ? 1 : 0;
+
+	if (eth_type == ETH_P_8021AD) {
+		msdu_info->is_s_vlan = 1;
+		msdu_info->is_c_vlan = 1;
+	} else if (eth_type == ETH_P_8021Q) {
+		msdu_info->is_c_vlan = 1;
+	}
+}
+
+#else /* CONFIG_BORON */
+#define COMP_RING_TYPE WBM2SW_RELEASE
+
+#define DP_TX_MSDU_INFO_SET_DSCP(msdu_info, dscp)
+
+#define DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, proto)
+
+#define DP_TX_MSDU_INFO_SET_MC(msdu_info, is_mcast)
+
+static inline
+void dp_tx_msdu_info_set_bc(struct dp_tx_msdu_info_s *msdu_info,
+			    uint8_t *hdr_ptr)
+{
+}
+
+static inline
+void dp_tx_msdu_info_set_llc_snap_oui(struct dp_tx_msdu_info_s *msdu_info,
+				      struct llc_snap_hdr_t *llc_hdr)
+{
+}
+
+static inline
+void dp_tx_msdu_info_set_eth_type_fields(struct dp_tx_msdu_info_s *msdu_info,
+					 uint16_t eth_type)
+{
+}
+#endif /* !CONFIG_BORON */
 #endif
