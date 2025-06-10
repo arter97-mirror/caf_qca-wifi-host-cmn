@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2393,8 +2393,8 @@ int hif_pci_bus_suspend(struct hif_softc *scn)
 	if (ret)
 		hif_err("draining fw_diag_ce not got cleaned");
 
-	ret = hif_try_complete_tasks(scn);
-	if (QDF_IS_STATUS_ERROR(ret)) {
+	if (QDF_IS_STATUS_ERROR(hif_try_complete_tasks(scn)) ||
+	    (ret == -EAGAIN)) {
 		hif_apps_irqs_enable(GET_HIF_OPAQUE_HDL(scn));
 		return -EBUSY;
 	}

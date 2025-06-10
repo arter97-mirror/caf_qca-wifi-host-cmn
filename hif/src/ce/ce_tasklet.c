@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -760,7 +760,7 @@ static inline bool hif_tasklet_schedule(struct hif_opaque_softc *hif_ctx,
 }
 
 #ifdef WLAN_FEATURE_WMI_DIAG_OVER_CE7
-#define CE_LOOP_MAX_COUNT	20
+#define CE_LOOP_MAX_COUNT	(32 + 1)
 /**
  * ce_poll_reap_by_id() - reap the available frames from CE by polling per ce_id
  * @scn: hif context
@@ -799,8 +799,10 @@ static int ce_poll_reap_by_id(struct hif_softc *scn, enum ce_id_type ce_id)
 	 * could be an infinite loop, so return -EBUSY.
 	 */
 	if (ce_check_rx_pending(CE_state) &&
-	    i == CE_LOOP_MAX_COUNT)
-		return -EBUSY;
+	    i == CE_LOOP_MAX_COUNT) {
+		hif_info("Max drain count reached, abort suspend");
+		return -EAGAIN;
+	}
 
 	hif_record_ce_desc_event(scn, ce_id, HIF_CE_REAP_EXIT,
 				 NULL, NULL, -1, 0);
