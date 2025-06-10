@@ -833,6 +833,85 @@ static QDF_STATUS vdev_mgr_sta_ps_param_update(
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO
+static QDF_STATUS vdev_mgr_up_update_colocated_info(
+				struct wlan_objmgr_vdev *vdev,
+				struct vdev_up_params *param)
+{
+	struct scan_cache_entry *entry;
+	struct qdf_mac_addr bssid;
+	uint8_t i, idx = 0;
+	qdf_freq_t ch_freq;
+	bool colocated_freq_found = false;
+	struct rnr_bss_info *rnr_bss = NULL;
+
+	if (!vdev)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	wlan_vdev_mgr_get_param_bssid(vdev, &bssid.bytes[0]);
+	entry = wlan_scan_get_entry_by_bssid(wlan_vdev_get_pdev(vdev),
+					     &bssid);
+
+	if (!entry)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	mlme_debug("entry->ml_info.num_links %d", entry->ml_info.num_links);
+
+	/* Find co-located info from ML info */
+	for (i = 0; i < entry->ml_info.num_links &&
+	     idx < MAX_NUM_COLOCATED_LINKS; i++) {
+		ch_freq = entry->ml_info.link_info[i].freq;
+		if (wlan_reg_is_6ghz_chan_freq(ch_freq) ||
+		    wlan_reg_is_5ghz_ch_freq(ch_freq)) {
+			param->colocated_links.ch_freq[idx] = ch_freq;
+			idx++;
+			param->colocated_links.num_of_links += 1;
+			mlme_debug("co-located chan freq %d", ch_freq);
+			colocated_freq_found = true;
+		}
+	}
+
+	/* Find co-located info from RNR ie */
+	if (!colocated_freq_found) {
+		for (i = 0; i < entry->rnr.count &&
+		     idx < MAX_NUM_COLOCATED_LINKS; i++) {
+			rnr_bss = &entry->rnr.bss_info[i];
+			/* Read co-located/same SSID bit from rnr bss params */
+			if ((QDF_GET_BITS(rnr_bss->bss_params, 6, 1) == 0x1) ||
+			    (QDF_GET_BITS(rnr_bss->bss_params, 1, 1) == 0x1)) {
+				ch_freq =
+				wlan_reg_chan_opclass_to_freq_prefer_global(
+						wlan_vdev_get_pdev(vdev), NULL,
+						rnr_bss->channel_number,
+						rnr_bss->operating_class);
+				if (!ch_freq) {
+					mlme_err("Invalid channel freq");
+					util_scan_free_cache_entry(entry);
+					return QDF_STATUS_E_FAILURE;
+				}
+				param->colocated_links.ch_freq[idx] = ch_freq;
+				idx++;
+				param->colocated_links.num_of_links += 1;
+				mlme_debug("co-located rnr chan freq %d", ch_freq);
+				colocated_freq_found = true;
+			}
+		}
+	}
+	util_scan_free_cache_entry(entry);
+	mlme_debug("Num of co-located links %d",
+		   param->colocated_links.num_of_links);
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static inline QDF_STATUS
+vdev_mgr_up_update_colocated_info(struct wlan_objmgr_vdev *vdev,
+				  struct vdev_up_params *param)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 static QDF_STATUS vdev_mgr_up_param_update(
 				struct vdev_mlme_obj *mlme_obj,
 				struct vdev_up_params *param)
@@ -957,6 +1036,7 @@ QDF_STATUS vdev_mgr_up_send(struct vdev_mlme_obj *mlme_obj)
 	}
 
 	vdev_mgr_up_param_update(mlme_obj, &param);
+	vdev_mgr_up_update_colocated_info(mlme_obj->vdev, &param);
 	vdev_mgr_bcn_tmpl_param_update(mlme_obj, &bcn_tmpl_param);
 
 	opmode = wlan_vdev_mlme_get_opmode(vdev);
