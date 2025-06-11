@@ -167,6 +167,7 @@ static QDF_STATUS cm_connect_prepare_scan_filter_for_roam(
 		struct scan_filter *filter, bool security_valid_for_6ghz)
 {
 	struct wlan_objmgr_vdev *vdev = cm_ctx->vdev;
+	uint32_t akm_suites = 0;
 
 	if (!qdf_is_macaddr_zero(&cm_req->req.bssid)) {
 		filter->num_of_bssid = 1;
@@ -185,8 +186,14 @@ static QDF_STATUS cm_connect_prepare_scan_filter_for_roam(
 	filter->key_mgmt =
 		wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_KEY_MGMT);
 
+	akm_suites = wlan_crypto_get_vdev_akm_roam(vdev);
+	if (akm_suites)
+		filter->key_mgmt = akm_suites;
+
 	filter->mgmtcipherset =
 		wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_MGMT_CIPHER);
+
+	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(vdev);
 
 	return cm_update_roam_scan_filter(vdev, cm_req, filter,
 					  security_valid_for_6ghz);
@@ -283,10 +290,6 @@ cm_update_per_peer_crypto_params_for_roam(struct wlan_objmgr_vdev *vdev,
 {
 	struct security_info *neg_sec_info;
 	uint16_t rsn_caps;
-
-	/* Do only for WPA/WPA2/WPA3 */
-	if (!roam_req->req.crypto.wpa_versions)
-		return;
 
 	/*
 	 * Some non PMF AP misbehave if in assoc req RSN IE contain PMF capable

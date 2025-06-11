@@ -204,20 +204,22 @@ void wlan_wifi_pos_cfg80211_set_features(struct wlan_objmgr_psoc *psoc,
 
 	if (wlan_psoc_nif_fw_ext2_cap_get(psoc,
 					  WLAN_RTT_11AZ_MAC_PHY_SEC_SUPPORT)) {
-		wlan_wifi_pos_set_feature_flags(feature_flags,
-						QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_STA);
-		if (rsta_secure_ltf_support)
+		if (rsta_secure_ltf_support) {
+			wlan_wifi_pos_set_feature_flags(feature_flags,
+							QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_STA);
 			wlan_wifi_pos_set_feature_flags(feature_flags,
 							QCA_WLAN_VENDOR_FEATURE_SECURE_LTF_AP);
+		}
 	}
 
 	if (wlan_psoc_nif_fw_ext2_cap_get(psoc,
 					  WLAN_RTT_11AZ_MAC_SEC_SUPPORT)) {
-		wlan_wifi_pos_set_feature_flags(feature_flags,
-			QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_STA);
-		if (rsta_secure_ltf_support)
+		if (rsta_secure_ltf_support) {
+			wlan_wifi_pos_set_feature_flags(feature_flags,
+							QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_STA);
 			wlan_wifi_pos_set_feature_flags(feature_flags,
 							QCA_WLAN_VENDOR_FEATURE_PROT_RANGE_NEGO_AND_MEASURE_AP);
+		}
 	}
 }
 #endif
