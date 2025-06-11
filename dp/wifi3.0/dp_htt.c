@@ -3229,6 +3229,72 @@ dp_get_tcl_status_ring_state_from_hal(struct dp_pdev *pdev,
 }
 #endif
 
+#ifdef CONFIG_BORON
+static inline QDF_STATUS
+dp_get_rx_rel_ring_state_from_hal(struct dp_pdev *pdev,
+				  struct dp_srng_ring_state *ring_state)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+dp_get_reo_cmd_ring_state_from_hal(struct dp_pdev *pdev,
+				   struct dp_srng_ring_state *ring_state)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+dp_get_reo_status_ring_state_from_hal(struct dp_pdev *pdev,
+				      struct dp_srng_ring_state *ring_state)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+dp_get_reo_reinject_ring_state_from_hal(struct dp_pdev *pdev,
+					struct dp_srng_ring_state *ring_state)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#else
+static inline QDF_STATUS
+dp_get_rx_rel_ring_state_from_hal(struct dp_pdev *pdev,
+				  struct dp_srng_ring_state *ring_state)
+{
+	return dp_get_srng_ring_state_from_hal(pdev->soc, pdev,
+					       &pdev->soc->rx_rel_ring,
+					       WBM2SW_RELEASE, ring_state);
+}
+
+static inline QDF_STATUS
+dp_get_reo_cmd_ring_state_from_hal(struct dp_pdev *pdev,
+				   struct dp_srng_ring_state *ring_state)
+{
+	return dp_get_srng_ring_state_from_hal(pdev->soc, pdev,
+					       &pdev->soc->reo_cmd_ring,
+					       REO_CMD, ring_state);
+}
+
+static inline QDF_STATUS
+dp_get_reo_status_ring_state_from_hal(struct dp_pdev *pdev,
+				      struct dp_srng_ring_state *ring_state)
+{
+	return dp_get_srng_ring_state_from_hal(pdev->soc, pdev,
+					       &pdev->soc->reo_status_ring,
+					       REO_STATUS, ring_state);
+}
+
+static inline QDF_STATUS
+dp_get_reo_reinject_ring_state_from_hal(struct dp_pdev *pdev,
+					struct dp_srng_ring_state *ring_state)
+{
+	return dp_get_srng_ring_state_from_hal(pdev->soc, pdev,
+					       &pdev->soc->reo_reinject_ring,
+					       REO_REINJECT, ring_state);
+}
+#endif
+
 /**
  * dp_queue_ring_stats() - Print pdev hal level ring stats
  * dp_queue_ring_stats(): Print pdev hal level ring stats
@@ -3265,25 +3331,8 @@ static void dp_queue_ring_stats(struct dp_pdev *pdev)
 			return;
 	}
 
-	if (!soc->sw2reo_rings_not_supported) {
-		status = dp_get_srng_ring_state_from_hal
-					(pdev->soc, pdev,
-					 &pdev->soc->reo_reinject_ring,
-					 REO_REINJECT,
-					 &soc_srngs_state->ring_state[j]);
-
-		if (status == QDF_STATUS_SUCCESS) {
-			j++;
-			if (dp_validate_ring_num(j))
-				return;
-		}
-	}
-
-	status = dp_get_srng_ring_state_from_hal
-				(pdev->soc, pdev,
-				 &pdev->soc->reo_cmd_ring,
-				 REO_CMD,
-				 &soc_srngs_state->ring_state[j]);
+	status = dp_get_reo_reinject_ring_state_from_hal
+				(pdev, &soc_srngs_state->ring_state[j]);
 
 	if (status == QDF_STATUS_SUCCESS) {
 		j++;
@@ -3291,11 +3340,8 @@ static void dp_queue_ring_stats(struct dp_pdev *pdev)
 			return;
 	}
 
-	status = dp_get_srng_ring_state_from_hal
-				(pdev->soc, pdev,
-				 &pdev->soc->reo_status_ring,
-				 REO_STATUS,
-				 &soc_srngs_state->ring_state[j]);
+	status = dp_get_reo_cmd_ring_state_from_hal
+				(pdev, &soc_srngs_state->ring_state[j]);
 
 	if (status == QDF_STATUS_SUCCESS) {
 		j++;
@@ -3303,11 +3349,17 @@ static void dp_queue_ring_stats(struct dp_pdev *pdev)
 			return;
 	}
 
-	status = dp_get_srng_ring_state_from_hal
-				(pdev->soc, pdev,
-				 &pdev->soc->rx_rel_ring,
-				 WBM2SW_RELEASE,
-				 &soc_srngs_state->ring_state[j]);
+	status = dp_get_reo_status_ring_state_from_hal
+				(pdev, &soc_srngs_state->ring_state[j]);
+
+	if (status == QDF_STATUS_SUCCESS) {
+		j++;
+		if (dp_validate_ring_num(j))
+			return;
+	}
+
+	status = dp_get_rx_rel_ring_state_from_hal
+				(pdev, &soc_srngs_state->ring_state[j]);
 
 	if (status == QDF_STATUS_SUCCESS) {
 		j++;
