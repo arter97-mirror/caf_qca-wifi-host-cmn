@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -811,8 +811,10 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 
 	if (!db_entry->ie_list.multi_link_bv)
 		return true;
+
+	/* Allow all bands for an invalid band bitmap */
 	if (!filter->band_bitmap)
-		return true;
+		filter->band_bitmap = 0x77;
 
 	/* Apply assoc band filter only for assoc link */
 	band_bitmap = filter->band_bitmap & 0xf;
@@ -825,14 +827,17 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			  db_entry->channel.chan_freq, filter->band_bitmap);
 		return false;
 	}
+
 	for (i = 0; i < db_entry->ml_info.num_links; i++) {
 		partner_link = &db_entry->ml_info.link_info[i];
-		band = wlan_reg_freq_to_band(partner_link->freq);
 
-		is_disabled = wlan_reg_is_disable_for_pwrmode(
-				    pdev,
-				    partner_link->freq,
-				    REG_BEST_PWR_MODE);
+		/* Set the link as invalid by default */
+		partner_link->is_valid_link = false;
+
+		is_disabled =
+			wlan_reg_is_disable_for_pwrmode(pdev,
+							partner_link->freq,
+							REG_BEST_PWR_MODE);
 		if (is_disabled) {
 			scm_debug(QDF_MAC_ADDR_FMT ": Partner " QDF_MAC_ADDR_FMT " link id %d freq %d disabled",
 				  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
@@ -847,7 +852,6 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			scm_debug(QDF_MAC_ADDR_FMT " dup link id %d",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->link_id);
-			partner_link->is_valid_link = false;
 			continue;
 		}
 
@@ -856,7 +860,6 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			scm_debug(QDF_MAC_ADDR_FMT " link id %d dup mac",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->link_id);
-			partner_link->is_valid_link = false;
 			continue;
 		}
 
@@ -866,7 +869,6 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			scm_debug(QDF_MAC_ADDR_FMT " link (%d) dup mac with tx mbssid",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->freq);
-			partner_link->is_valid_link = false;
 			continue;
 		}
 
@@ -874,10 +876,10 @@ static bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 			scm_debug(QDF_MAC_ADDR_FMT " link (%d) not part of configured links",
 				  QDF_MAC_ADDR_REF(partner_link->link_addr.bytes),
 				  partner_link->freq);
-			partner_link->is_valid_link = false;
 			continue;
 		}
 
+		band = wlan_reg_freq_to_band(partner_link->freq);
 		if (band_bitmap & BIT(band))
 			partner_link->is_valid_link = true;
 	}
