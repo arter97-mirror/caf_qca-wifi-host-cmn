@@ -1162,6 +1162,11 @@
  *	The attributes used in this event are defined in the
  *	enum qca_wlan_vendor_attr_link_state_change.
  *
+ * @QCA_NL80211_VENDOR_SUBCMD_P2P_SET_NOA: Vendor subcommand used to
+ *	enable/disable Notice of Absence (NoA) as a GO in a P2P connection.
+ *	The attributes used with this command are defined in
+ *	enum qca_wlan_vendor_attr_p2p_set_noa.
+ *
  * @QCA_NL80211_VENDOR_SUBCMD_FEATURE_CONFIG: Vendor subcommand used to control
  *     a specific feature enablement based on the OUI data and capabilities of
  *     the AP. The attributes used with this command are defined in
@@ -1452,6 +1457,7 @@ enum qca_nl80211_vendor_subcmds {
 	/* 255..257 - reserved for QCA */
 	QCA_NL80211_VENDOR_SUBCMD_CLASSIFIED_FLOW_STATUS = 258,
 	QCA_NL80211_VENDOR_SUBCMD_IQ_DATA_INFERENCE = 260,
+	QCA_NL80211_VENDOR_SUBCMD_P2P_SET_NOA = 261,
 	QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE = 264,
 	QCA_NL80211_VENDOR_SUBCMD_FEATURE_CONFIG = 266,
 };
@@ -20527,4 +20533,40 @@ enum qca_wlan_vendor_attr_link_state_change {
 	QCA_WLAN_VENDOR_ATTR_LINK_STATE_CHANGE_AFTER_LAST - 1,
 };
 
+/*
+ * enum qca_wlan_vendor_attr_p2p_set_noa - Represents the attributes sent as a
+ * part of set NoA message. This enum is used by
+ * %QCA_NL80211_VENDOR_SUBCMD_P2P_SET_NOA.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_COUNT: u8 mandatory attribute.
+ * 0 - Disable NoA
+ * 1 to 254 - Number of absence periods to be scheduled during the NoA.
+ * 255 - Absence periods shall repeat until the NoA is disabled.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_DURATION: u32 optional attribute. This is
+ * mandatory attribute when %QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_COUNT is set to
+ * non-zero value. This specifies the duration (in TUs) of each absence period.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_INTERVAL: u32 optional attribute. This is
+ * mandatory attribute when %QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_COUNT is set to
+ * non-zero value. This specifies time (in TUs) between consecutive absence
+ * periods.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_START: u32 optional attribute. This
+ * specifies the start offset time (in milliseconds) of the first absence period
+ * after the beacon advertising the NoA. If this attribute not present, the
+ * driver will use the default start offset value.
+ */
+enum qca_wlan_vendor_attr_p2p_set_noa {
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_COUNT = 1,
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_DURATION = 2,
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_INTERVAL = 3,
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_START = 4,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_MAX =
+	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_AFTER_LAST - 1,
+};
 #endif
