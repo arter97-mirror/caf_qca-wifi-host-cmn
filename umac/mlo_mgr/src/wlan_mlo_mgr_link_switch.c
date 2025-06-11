@@ -2020,6 +2020,7 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 {
 	uint8_t i, vdev_id, num_links = 0;
 	struct mlo_link_info *link_info;
+	struct wlan_objmgr_vdev *vdev;
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
 	bool is_cb_register = false;
 
@@ -2055,14 +2056,27 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 			mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls(psoc,
 								      vdev_id);
 
-		mlo_mgr_update_policy_mgr_disabled_links_info(
-				psoc, vdev_id, link_info->link_id,
-				link_info->is_link_active);
-
 		if (is_cb_register)
 			mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state(
 						link_info->vdev_id,
 						link_info->is_link_active);
+
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+							    WLAN_MLO_MGR_ID);
+		if (!vdev)
+			continue;
+
+		/*
+		 * If VDEV is not in connected state don't update the policy
+		 * manager table, this can happen if disconnect is ongoing when
+		 * host receives event from FW.
+		 */
+		if (wlan_cm_is_vdev_connected(vdev))
+			mlo_mgr_update_policy_mgr_disabled_links_info(psoc,
+								      vdev_id,
+								      link_info->link_id,
+								      link_info->is_link_active);
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	}
 }
 
