@@ -10592,6 +10592,7 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 		WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_SET(resource_cfg->flags2, 2);
 	else
 		WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_SET(resource_cfg->flags2, 1);
+	resource_cfg->dp_haps_config = tgt_res_cfg->haps_feature_flags;
 
 	wmi_copy_latency_flowq_support(resource_cfg, tgt_res_cfg);
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
