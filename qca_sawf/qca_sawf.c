@@ -592,11 +592,10 @@ void qca_sawf_config_ul(struct net_device *dst_dev, struct net_device *src_dev,
 							      &burst_size,
 							      &min_tput,
 							      &max_latency))) {
-		if (svc_interval && burst_size)
-			qca_sawf_peer_config_ul(src_dev, src_mac, tid,
-						svc_interval, burst_size,
-						min_tput, max_latency,
-						add_or_sub);
+		qca_sawf_peer_config_ul(src_dev, src_mac, tid,
+					svc_interval, burst_size,
+					min_tput, max_latency,
+					add_or_sub);
 	}
 
 	svc_interval = 0;
@@ -608,11 +607,10 @@ void qca_sawf_config_ul(struct net_device *dst_dev, struct net_device *src_dev,
 							      &burst_size,
 							      &min_tput,
 							      &max_latency))) {
-		if (svc_interval && burst_size)
-			qca_sawf_peer_config_ul(dst_dev, dst_mac, tid,
-						svc_interval, burst_size,
-						min_tput, max_latency,
-						add_or_sub);
+		qca_sawf_peer_config_ul(dst_dev, dst_mac, tid,
+					svc_interval, burst_size,
+					min_tput, max_latency,
+					add_or_sub);
 	}
 
 	if (wlan_service_id_valid(fw_service_id))
