@@ -6333,6 +6333,8 @@ typedef enum {
 		   VDEV_PARAM_DCS),
 	VDEV_PARAM(vdev_param_hwcts2self_ofdma,
 		   VDEV_PARAM_HWCTS2SELF_OFDMA),
+	VDEV_PARAM(vdev_param_connect_ext_features,
+		   VDEV_PARAM_CONNECT_EXT_FEATURES),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
@@ -6755,9 +6757,11 @@ typedef enum {
 	wmi_service_mlo_sap_emlsr_support,
 #endif
 	wmi_service_ap_assisted_dfs_chan_p2p_session,
+	wmi_service_mrsno_support,
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_service_mlo_sap_concurrency_support,
 #endif
+
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

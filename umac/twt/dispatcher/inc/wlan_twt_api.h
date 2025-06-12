@@ -21,11 +21,12 @@
 #ifndef _WLAN_TWT_API_H_
 #define _WLAN_TWT_API_H_
 
-#if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 #include <wlan_objmgr_psoc_obj.h>
 #include <wlan_objmgr_global_obj.h>
 #include <wlan_lmac_if_def.h>
 #include <wlan_twt_public_structs.h>
+
+#if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 
 #define twt_alert(params...) \
 	QDF_TRACE_FATAL(QDF_MODULE_ID_TWT, params)
