@@ -7185,6 +7185,7 @@ struct target_feature_set {
  * @con_mode_monitor: Device is in Full monitor mode
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
  * @enable_optimize_power: Enable power optimization
+ * @haps_feature_flags: HAPS flags setting for power save config
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7331,6 +7332,7 @@ typedef struct {
 	bool mgmt_rx_srng_support;
 #endif
 	bool enable_optimize_power;
+	uint32_t haps_feature_flags;
 } target_resource_config;
 
 /**
