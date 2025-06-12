@@ -53,7 +53,16 @@ static QDF_STATUS target_if_vdev_mgr_unregister_event_handler(
 	return target_if_vdev_mgr_wmi_event_unregister(psoc);
 }
 
-QDF_STATUS
+/**
+ * _target_if_vdev_mgr_rsp_timer_stop() - API to stop response timer for
+ * vdev manager operations
+ * @psoc: pointer to psoc object
+ * @vdev_rsp: vdev response timer
+ * @clear_bit: enum of wlan_vdev_mgr_tgt_if_rsp_bit
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
 _target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
 				   struct vdev_response_timer *vdev_rsp,
 				   enum wlan_vdev_mgr_tgt_if_rsp_bit clear_bit)
@@ -103,7 +112,16 @@ _target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
+/**
+ * _target_if_vdev_mgr_rsp_timer_start() - API to start response timer for
+ * vdev manager operations
+ * @psoc: pointer to psoc object
+ * @vdev_rsp: vdev response timer
+ * @set_bit: enum of wlan_vdev_mgr_tgt_if_rsp_bit
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
 _target_if_vdev_mgr_rsp_timer_start(struct wlan_objmgr_psoc *psoc,
 				    struct vdev_response_timer *vdev_rsp,
 				    enum wlan_vdev_mgr_tgt_if_rsp_bit set_bit)
