@@ -6630,6 +6630,7 @@ struct target_feature_set {
  * support
  * @notify_frame_support: capability to mark notify frames from host
  * @tx_ilp_enable: capability to support TX ILP from host
+ * @haps_feature_flags: HAPS flags setting for power save config
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -6760,6 +6761,7 @@ typedef struct {
 #ifdef DP_TX_PACKET_INSPECT_FOR_ILP
 	uint8_t tx_ilp_enable;
 #endif
+	uint32_t haps_feature_flags;
 } target_resource_config;
 
 /**
