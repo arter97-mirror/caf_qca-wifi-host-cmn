@@ -827,6 +827,38 @@ bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
 	return (state > MLO_LINK_SWITCH_STATE_INIT);
 }
 
+static void
+mlo_mgr_vdev_iterate_handler(struct wlan_objmgr_psoc *psoc,
+			     void *obj, void *args)
+{
+	struct wlan_objmgr_vdev *vdev = (struct wlan_objmgr_vdev *)obj;
+	uint32_t *context = (uint32_t *)args;
+
+	if (*context)
+		return;
+
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
+		return;
+
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
+		return;
+
+	if (mlo_mgr_is_link_switch_in_progress(vdev))
+		*context = true;
+}
+
+bool
+mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc)
+{
+	uint32_t context = 0;
+
+	wlan_objmgr_iterate_obj_list(psoc, WLAN_VDEV_OP,
+				     mlo_mgr_vdev_iterate_handler,
+				     &context, true, WLAN_MLO_MGR_ID);
+
+	return !!context;
+}
+
 bool mlo_mgr_is_link_switch_on_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	if (!mlo_mgr_is_link_switch_in_progress(vdev))

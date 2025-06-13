@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -538,6 +538,15 @@ mlo_mgr_link_switch_get_curr_state(struct wlan_mlo_dev_context *mlo_dev_ctx);
 bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * mlo_mgr_is_link_switch_in_progress_by_psoc() - Check link switch
+ * is in progress in any vdev of psoc
+ * @psoc: psoc object
+ *
+ * Return: true if any vdev in psoc is doing link switch
+ */
+bool mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc);
+
+/**
  * mlo_mgr_link_switch_notification() - Notify MLO manager on start
  * of link switch
  * @vdev: VDEV object manager
@@ -882,6 +891,12 @@ mlo_mgr_link_switch_get_curr_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 
 static inline bool
 mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+
+static inline bool
+mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }
