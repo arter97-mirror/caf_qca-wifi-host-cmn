@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -42,6 +42,7 @@
 #include "wlan_mlo_mgr_op.h"
 #include <wlan_objmgr_vdev_obj.h>
 #include "wlan_psoc_mlme_api.h"
+#include "wlan_scan_utils_api.h"
 
 void
 cm_fill_failure_resp_from_cm_id(struct cnx_mgr *cm_ctx,
@@ -2414,16 +2415,16 @@ static void cm_inform_bcn_probe_handler(struct cnx_mgr *cm_ctx,
 					struct scan_cache_entry *bss,
 					wlan_cm_id cm_id)
 {
-	struct element_info *bcn_probe_rsp;
-	int32_t rssi;
-	qdf_freq_t freq;
+	struct wlan_objmgr_pdev *pdev;
 
-	bcn_probe_rsp = &bss->raw_frame;
-	rssi = bss->rssi_raw;
-	freq = util_scan_entry_channel_frequency(bss);
+	pdev = wlan_vdev_get_pdev(cm_ctx->vdev);
+	if (!pdev) {
+		mlme_err(CM_PREFIX_FMT "Failed to find pdev",
+			 CM_PREFIX_REF(wlan_vdev_get_id(cm_ctx->vdev), cm_id));
+		return;
+	}
 
-	cm_inform_bcn_probe(cm_ctx, bcn_probe_rsp->ptr, bcn_probe_rsp->len,
-			    freq, rssi, cm_id);
+	util_scan_entry_renew_timestamp(pdev, bss);
 }
 
 static void cm_update_partner_link_scan_db(struct cnx_mgr *cm_ctx,

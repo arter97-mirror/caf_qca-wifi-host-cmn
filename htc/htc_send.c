@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1363,7 +1363,11 @@ static void get_htc_send_packets(HTC_TARGET *target,
 			ret = hif_rtpm_get(HIF_RTPM_GET_ASYNC, rtpm_code);
 			if (ret) {
 				/* bus suspended, runtime resume issued */
-				QDF_ASSERT(HTC_PACKET_QUEUE_DEPTH(pQueue) == 0);
+			if (HTC_PACKET_QUEUE_DEPTH(pQueue) > 0)
+				AR_DEBUG_PRINTF(ATH_DEBUG_WARN,
+						(" pQueue depth: %d\n",
+						 HTC_PACKET_QUEUE_DEPTH(pQueue)));
+
 				pPacket = htc_get_pkt_at_head(tx_queue);
 				if (!pPacket)
 					break;
