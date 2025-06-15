@@ -961,13 +961,15 @@ void mlo_process_ml_reconfig_ie(struct wlan_objmgr_vdev *vdev,
  * @vdev: vdev pointer
  * @session_id: session ID
  * @vdev_pause_dur: vdev pause duration
+ * @type: pause type
  *
  * Return: None
  */
 void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      struct wlan_objmgr_vdev *vdev,
 			      uint16_t session_id,
-			      uint16_t vdev_pause_dur);
+			      uint16_t vdev_pause_dur,
+			      enum mlo_vdev_pause_type type);
 
 /**
  * mlo_get_cache_link_assoc_rsp() - get link assoc rsp from cache
@@ -1296,7 +1298,8 @@ static inline
 void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      struct wlan_objmgr_vdev *vdev,
 			      uint16_t session_id,
-			      uint16_t vdev_pause_dur)
+			      uint16_t vdev_pause_dur,
+			      enum mlo_vdev_pause_type type)
 {}
 #endif
 

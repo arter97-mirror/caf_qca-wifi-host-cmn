@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -928,6 +928,20 @@ struct mgmt_rx_event_ext_params {
 	} u;
 };
 
+/**
+ * enum mlo_vdev_pause_type - pause type
+ * @MLO_VDEV_PAUSE_TYPE_UNKNOWN: invalid type
+ * @MLO_VDEV_PAUSE_TYPE_MLO_LINK: pause by qos null pm = 1 to ap
+ * @MLO_VDEV_PAUSE_TYPE_TX: pause tx without qos null
+ * @MLO_VDEV_PAUSE_TYPE_TX_DATA: pause data frame without qos null
+ */
+enum mlo_vdev_pause_type {
+	MLO_VDEV_PAUSE_TYPE_UNKNOWN = 0,
+	MLO_VDEV_PAUSE_TYPE_MLO_LINK = 1,
+	MLO_VDEV_PAUSE_TYPE_TX = 2,
+	MLO_VDEV_PAUSE_TYPE_TX_DATA = 3,
+};
+
 #ifdef WLAN_FEATURE_11BE_MLO
 #define CU_VDEV_MAP_MASK 0xFFFF
 /*
@@ -973,10 +987,12 @@ struct mlo_bcast_t2lm_info {
  * struct mlo_vdev_pause - ML vdev pause info
  * @vdev_id: vdev id of vdev to be paused
  * @vdev_pause_duration: vdev pause duration
+ * @type: pause type
  */
 struct mlo_vdev_pause {
 	uint16_t vdev_id;
 	uint32_t vdev_pause_duration;
+	enum mlo_vdev_pause_type type;
 };
 #endif
 

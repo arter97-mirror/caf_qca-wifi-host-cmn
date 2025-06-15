@@ -3407,7 +3407,8 @@ void
 wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			 struct wlan_objmgr_vdev *vdev,
 			 uint16_t session_id,
-			 uint16_t vdev_pause_dur)
+			 uint16_t vdev_pause_dur,
+			 enum mlo_vdev_pause_type type)
 {
 	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
 	struct mlo_vdev_pause vdev_pause_info;
@@ -3426,6 +3427,7 @@ wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 
 	vdev_pause_info.vdev_id = session_id;
 	vdev_pause_info.vdev_pause_duration = vdev_pause_dur;
+	vdev_pause_info.type = type;
 	status = mlo_tx_ops->send_vdev_pause(psoc, &vdev_pause_info);
 	if (QDF_IS_STATUS_ERROR(status))
 		mlo_err("Failed to send vdev pause to FW");

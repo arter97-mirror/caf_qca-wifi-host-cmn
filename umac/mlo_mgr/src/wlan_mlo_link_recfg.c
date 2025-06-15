@@ -175,6 +175,27 @@ bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
+static bool
+mlo_link_recfg_is_no_comm(
+	struct mlo_link_recfg_context *recfg_ctx)
+{
+	uint8_t join_pending_vdev_id;
+
+	join_pending_vdev_id =
+		recfg_ctx->curr_recfg_req.join_pending_vdev_id;
+
+	if (join_pending_vdev_id == WLAN_INVALID_VDEV_ID ||
+	    recfg_ctx->curr_recfg_req.recfg_type !=
+				link_recfg_del_add_no_common_link)
+		return false;
+
+	mlo_debug("no comm link recfg_type %d join_pending_vdev_id %d",
+		  recfg_ctx->curr_recfg_req.recfg_type,
+		  join_pending_vdev_id);
+
+	return true;
+}
+
 void mlo_link_recfg_init_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 {
 	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
@@ -2749,6 +2770,8 @@ mlo_link_recfg_del_link_by_inact(
 	return status;
 }
 
+#define VDEV_TX_DATA_PAUSE_NO_COMM (30 * 1000)
+
 QDF_STATUS
 mlo_link_recfg_send_request_frame(
 		struct mlo_link_recfg_context *recfg_ctx,
@@ -2807,6 +2830,11 @@ mlo_link_recfg_send_request_frame(
 		if (QDF_IS_STATUS_ERROR(qdf_status))
 			mlo_err("Failed to start the timer");
 	}
+	if (mlo_link_recfg_is_no_comm(recfg_ctx))
+		wlan_mlo_send_vdev_pause(recfg_ctx->psoc, vdev, vdev_id,
+					 VDEV_TX_DATA_PAUSE_NO_COMM,
+					 MLO_VDEV_PAUSE_TYPE_TX_DATA);
+
 	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
 	return status;
 }
