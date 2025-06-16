@@ -11265,10 +11265,12 @@ dp_print_per_link_peer_txrx_stats(struct cdp_peer_stats *peer_stats,
 		       peer_stats->tx.bcast.bytes);
 	DP_PRINT_STATS("Packets Successfully Sent after one or more retry = %u",
 		       peer_stats->tx.retry_count);
-	 DP_PRINT_STATS("Total msdu Packets retries = %d",
+	DP_PRINT_STATS("Total msdu Packets retries = %d",
 			peer_stats->tx.total_msdu_retries);
 	DP_PRINT_STATS("Packets  Sent Success after more than one retry = %u",
 		       peer_stats->tx.multiple_retry_count);
+	DP_PRINT_STATS("Packets Sent Failed = %u",
+		       peer_stats->tx.tx_failed);
 	DP_PRINT_STATS("Packets Failed due to retry threshold breach = %u",
 		       peer_stats->tx.failed_retry_count);
 	DP_PRINT_STATS("mpdu Packets Retries = %u",
