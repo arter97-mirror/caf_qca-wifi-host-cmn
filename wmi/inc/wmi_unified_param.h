@@ -1088,6 +1088,7 @@ typedef enum {
 	WMI_HOST_REQUEST_VDEV_PRB_FILS_STAT = 0x10000,
 	WMI_HOST_REQUEST_PDEV_EXTD_STAT = 0x20000,
 	WMI_HOST_REQUEST_PDEV_TELEMETRY_STAT = 0x40000,
+	WMI_HOST_REQUEST_VDEV_RECV_BCN_STAT = 0x80000,
 } wmi_host_stats_id;
 
 typedef struct {
@@ -4587,6 +4588,7 @@ struct rx_reorder_queue_remove_params {
  * @num_mib_extd_stats: number of extended mib stats
  * @num_peer_stats_info_ext: number of peer extended stats info
  * @num_vdev_extd_stats: number of vdev extended stats info
+ * @num_recv_bcn_stats: number of receive bcn stats
  * @last_event: specify if the current event is the last event
  */
 typedef struct {
@@ -4606,6 +4608,7 @@ typedef struct {
 	uint32_t num_mib_extd_stats;
 	uint32_t num_peer_stats_info_ext;
 	uint32_t num_vdev_extd_stats;
+	uint32_t num_recv_bcn_stats;
 	uint32_t last_event;
 } wmi_host_stats_event;
 
@@ -5239,6 +5242,26 @@ struct wmi_host_tsf_event {
 struct wmi_host_pdev_telemetry_stats {
 	uint32_t avg_chan_lat_per_ac[WIFI_AC_MAX];
 	uint32_t estimated_air_time_per_ac;
+};
+
+/**
+ * struct wmi_bcn_his_info - bcn history info
+ * @bcn_rssi: beacon rssi
+ * @bcn_tsf: beacon tsf
+ */
+struct wmi_bcn_his_info {
+	int32_t bcn_rssi;
+	uint32_t bcn_tsf;
+};
+
+/**
+ * struct wmi_host_recv_bcn_stats - receive beacon stats
+ * @vdev_id: vdev id
+ * @bcn_history: structure to wmi_bcn_his_info
+ */
+struct wmi_host_recv_bcn_stats {
+	uint32_t vdev_id;
+	struct wmi_bcn_his_info bcn_history[WMI_MAX_BCN_HISTORY];
 };
 
 #define WMI_EVENT_ID_INVALID 0
