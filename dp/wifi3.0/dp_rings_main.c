@@ -3066,11 +3066,11 @@ void dp_update_soft_irq_limits(struct dp_soc *soc, uint32_t tx_limit,
  *
  * Return: rings are empty
  */
-void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
+static inline void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
 {
 }
 #else
-void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
+static void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	hal_soc_handle_t hal_soc = soc->hal_soc;
