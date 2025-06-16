@@ -795,6 +795,8 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 	rx_ctx_id =
 		dp_rx_get_ctx_id_frm_napiid(QDF_NBUF_CB_RX_CTX_ID(data_ind));
 
+	dp_rx_per_core_stats_update(soc, rx_ctx_id, msdu_count);
+
 	while (qdf_likely(num_pending)) {
 		dp_rx_ring_record_entry_rh(soc, rx_ctx_id, msg_word);
 		rx_buf_cookie =
@@ -803,7 +805,10 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 		if (qdf_unlikely(!rx_desc && !rx_desc->nbuf &&
 				 !rx_desc->in_use)) {
 			dp_err("Invalid RX descriptor");
+			DP_STATS_INC(soc, rx.err.invalid_cookie, 1);
 			qdf_assert_always(0);
+			msg_word += HTT_RX_DATA_MSDU_INFO_SIZE >> 2;
+			continue;
 			/* TODO handle this if its valid case */
 		}
 
@@ -983,8 +988,6 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 		qdf_assert_always(0);
 		qdf_nbuf_list_free(err_list_head);
 	}
-
-	dp_rx_per_core_stats_update(soc, rx_ctx_id, num_rx_bufs_reaped);
 
 	for (mac_id = 0; mac_id < MAX_PDEV_CNT; mac_id++) {
 		/*
@@ -1583,14 +1586,27 @@ dp_rx_frag_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 	uint32_t rx_buf_cookie;
 	struct dp_rx_desc *rx_desc;
 	uint8_t mac_id = 0;
+	uint8_t msdu_cnt;
 
 	qdf_assert(soc);
 
 	data_ind_msg = qdf_nbuf_data(data_ind);
 	msg_word =
 		(uint32_t *)(data_ind_msg + HTT_RX_DATA_IND_HDR_SIZE);
+	msdu_cnt =
+		 HTT_RX_DATA_IND_MSDU_CNT_GET(*((uint32_t *)data_ind_msg + 1));
 	rx_ctx_id =
 		dp_rx_get_ctx_id_frm_napiid(QDF_NBUF_CB_RX_CTX_ID(data_ind));
+
+	dp_rx_per_core_stats_update(soc, rx_ctx_id, msdu_cnt);
+
+	/* expecting one frag msdu info per RX DATA INDI */
+	if (msdu_cnt > 1) {
+		dp_err("received msdu_cnt %d from frag ind", msdu_cnt);
+		DP_STATS_INC(soc, rx.rx_frag_drop_cnt, msdu_cnt);
+		qdf_assert_always(0);
+		return;
+	}
 
 	rx_buf_cookie =
 		HTT_RX_DATA_MSDU_INFO_SW_BUFFER_COOKIE_GET(*(msg_word + 1));
@@ -1598,14 +1614,38 @@ dp_rx_frag_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 	if (qdf_unlikely(!rx_desc && !rx_desc->nbuf &&
 			 !rx_desc->in_use)) {
 		dp_rx_err("Invalid RX descriptor");
+		DP_STATS_INC(soc, rx.err.invalid_cookie, 1);
+		qdf_trace_hex_dump(QDF_MODULE_ID_TXRX,
+				   QDF_TRACE_LEVEL_FATAL, msg_word,
+				   HTT_RX_DATA_MSDU_INFO_SIZE);
 		qdf_assert_always(0);
+		return;
 		/* TODO handle this if its valid case */
+	}
+
+	status = dp_rx_desc_nbuf_sanity_check_rh(soc, msg_word,
+						 rx_desc);
+	if (qdf_unlikely(QDF_IS_STATUS_ERROR(status))) {
+		DP_STATS_INC(soc, rx.err.nbuf_sanity_fail, 1);
+		dp_info_rl("Nbuf sanity check failure!");
+		dp_rx_dump_info_and_assert_rh(soc, msg_word, rx_desc);
+		rx_desc->in_err_state = 1;
+		qdf_trace_hex_dump(QDF_MODULE_ID_TXRX,
+				   QDF_TRACE_LEVEL_FATAL, msg_word,
+				   HTT_RX_DATA_MSDU_INFO_SIZE);
+		qdf_assert_always(0);
+		return;
 	}
 
 	if (qdf_unlikely(!dp_rx_desc_check_magic(rx_desc))) {
 		dp_err("Invalid rx_desc cookie=%d", rx_buf_cookie);
 		DP_STATS_INC(soc, rx.err.rx_desc_invalid_magic, 1);
+		dp_rx_dump_info_and_assert_rh(soc, msg_word, rx_desc);
+		qdf_trace_hex_dump(QDF_MODULE_ID_TXRX,
+				   QDF_TRACE_LEVEL_FATAL, msg_word,
+				   HTT_RX_DATA_MSDU_INFO_SIZE);
 		qdf_assert(0);
+		return;
 	}
 
 	nbuf = rx_desc->nbuf;

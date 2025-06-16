@@ -3565,6 +3565,7 @@ struct cdp_pdev_stats {
 		uint32_t x86_fail;
 		uint32_t low_thresh_intrs;
 		int32_t free_list;
+		uint32_t nbuf_alloc_succ;
 	} replenish;
 
 	uint32_t rx_raw_pkts;
