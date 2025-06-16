@@ -5212,9 +5212,9 @@ enum qca_wlan_vendor_attr_config {
 	 * Modes are defined by enum qca_wlan_vendor_opm_mode.
 	 *
 	 * This attribute shall be configured along with
-	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_ITO and
-	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_SPEC_WAKE_INTERVAL attributes
-	 * when its value is set to %QCA_WLAN_VENDOR_OPM_MODE_USER_DEFINED.
+	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LEVEL and
+	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LATENCY_TOLERANCE attributes
+	 * when its value is set to %QCA_WLAN_VENDOR_OPM_MODE_LATENCY_BASED.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_OPTIMIZED_POWER_MANAGEMENT = 71,
 
@@ -5510,6 +5510,209 @@ enum qca_wlan_vendor_attr_config {
 	 * Uses enum qca_coex_traffic_shaping_mode values.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_COEX_TRAFFIC_SHAPING_MODE = 105,
+
+	/* 8-bit unsigned value to configure BTM support.
+	 *
+	 * The attribute is applicable only for STA interface. Uses enum
+	 * qca_wlan_btm_support values. This configuration is not allowed in
+	 * connected state.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_BTM_SUPPORT = 107,
+
+	/* 16-bit unsigned value to configure client's keep-alive interval in
+	 * seconds. The driver will reduce the keep-alive interval to this
+	 * configured value if the AP advertises BSS maximum idle period and if
+	 * that BSS max idle period is larger than this configured value. If the
+	 * AP does not advertise a maximum value, the configured value will be
+	 * used as a keep-alive period for unprotected frames.
+	 *
+	 * This configuration is applicable only during the STA's current
+	 * association.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_KEEP_ALIVE_INTERVAL = 108,
+
+	/* 8-bit unsigned value to configure reduced power scan mode.
+	 *
+	 * This attribute is used to configure the driver to optimize power
+	 * during scan. For e.g., the driver can switch to 1x1 from 2x2 mode
+	 * for additional power save.
+	 *
+	 * 1 - Enable reduced power scan mode.
+	 * 0 - Disable reduced power scan mode.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_REDUCED_POWER_SCAN_MODE = 109,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_TX_NSS_2GHZ = 110,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_NSS_2GHZ = 111,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_TX_NSS_5GHZ = 112,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_NSS_5GHZ = 113,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_NUM_TX_CHAINS_2GHZ = 114,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_NUM_RX_CHAINS_2GHZ = 115,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_NUM_TX_CHAINS_5GHZ = 116,
+
+	/* 8-bit unsigned value. Refer to Tx/Rx NSS and Chain interactions */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_NUM_RX_CHAINS_5GHZ = 117,
+
+	/* 16-bit unsigned value. This attribute is used to dynamically
+	 * configure the time duration of data stall detection. Unit is
+	 * milliseconds. Valid value range is 0 or 10 ms to 10000 ms. If the
+	 * value is 0, the previously configured value is cleared. The driver
+	 * rejects this configuration if the value is out of range. This
+	 * configuration is effective for all connections on the chip. If the
+	 * duration is greater than this configuration and consecutive TX no ack
+	 * count is greater than
+	 * QCA_WLAN_VENDOR_ATTR_CONFIG_CONSECUTIVE_TX_NO_ACK_THRESHOLD,
+	 * data stall event is sent to userspace.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_CONSECUTIVE_TX_NO_ACK_DURATION = 118,
+
+	/* 16-bit unsigned value. This attribute is used to dynamically
+	 * configure the threshold of data stall detection. Valid value is 0 or
+	 * greater than 10. if the value is 0, the previously configured value
+	 * is cleared. The driver rejects this configuration if the value is out
+	 * of range. This configuration is effective for all connections on the
+	 * chip. If consecutive TX no ack count is greater than this
+	 * configuration and duration is greater than
+	 * QCA_WLAN_VENDOR_ATTR_CONFIG_CONSECUTIVE_TX_NO_ACK_DURATION,
+	 * data stall event is sent to userspace.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_CONSECUTIVE_TX_NO_ACK_THRESHOLD = 119,
+
+	/* 8-bit unsigned integer to configure the driver to follow AP's
+	 * preference values to select a roam candidate from BTM request.
+	 *
+	 * This attribute is used to configure the driver to select the roam
+	 * candidate based on AP advertised preference values. If not set,
+	 * the driver uses its internal scoring algorithm to do the same.
+	 *
+	 * 1 - STA follows AP's preference values to select a roam candidate
+	 * 0 - STA uses internal scoring algorithm to select a roam candidate
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_FOLLOW_AP_PREFERENCE_FOR_CNDS_SELECT = 121,
+
+	/* 16-bit unsigned value to configure P2P GO beacon interval in TUs.
+	 * This attribute is used to update the P2P GO beacon interval
+	 * dynamically.
+	 *
+	 * Updating the beacon interval while the GO continues operating the BSS
+	 * will likely interoperability issues and is not recommended to be
+	 * used. All the values should be multiples of the minimum used value to
+	 * minimize risk of issues.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL = 122,
+
+	/* 8-bit unsigned value. Disable DFS owner capability
+	 * 1: disable DFS owner capability in the driver.
+	 * 0: reset DFS owner capability to the default DFS owner capability of
+	 * the driver.
+	 *
+	 * If DFS owner capability is disabled, the driver will not start AP
+	 * mode operations on DFS channels, and all the features depending on
+	 * DFS owner functionality will not be supported.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_OWNER_DISABLE = 123,
+
+	/* 16-bit unsigned value. For probing RSSI on other antennas, this
+	 * attribute specifies number of WLAN probe.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_COUNT_WLAN = 124,
+
+	/* 16-bit unsigned value. For probing RSSI on other antennas, this
+	 * attribute specifies number of BT probe count.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_COUNT_BT = 125,
+
+	/* 16-bit unsigned value. This attribute specifies WLAN RSSI threshold.
+	 * FW will start to probe RSSI on other antenna if WLAN RSSI lower than
+	 * the threshold.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_WLAN_RSSI_THRESHOLD = 126,
+
+	/* 16-bit unsigned value. This attribute specifies BT RSSI threshold.
+	 * FW will start to probe RSSI on other antenna if BT RSSI lower than
+	 * the threshold.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_BT_RSSI_THRESHOLD = 127,
+
+	/* 16-bit unsigned value. This attribute specifies WLAN RSSI difference.
+	 * FW will select better antenna if WLAN RSSI difference larger than the
+	 * value.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SWITCH_WLAN_RSSI_DIFF = 128,
+
+	/* 16-bit unsigned value. This attribute specifies BT RSSI difference.
+	 * FW will select better antenna if WLAN RSSI difference larger than the
+	 * value.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SWITCH_BT_RSSI_DIFF = 129,
+
+	/* 8-bit unsigned value to enable/disable setup link Reconfiguration
+	 * feature support in STA mode.
+	 * 1 - Enable
+	 * 0 - Disable.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_SETUP_LINK_RECONFIG_SUPPORT = 130,
+
+	/* 8-bit unsigned value to enable/disable DFS No Wait feature support
+	 * in AP mode.
+	 * 1 - Enable
+	 * 0 - Disable.
+	 *
+	 * DFS No Wait allows AP to be started within the subset of channel
+	 * bandwidth that does not require DFS while waiting for CAC to
+	 * complete on the subset that requires DFS. If no radar was detected,
+	 * switch to the full configured channel bandwidth.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_NO_WAIT_SUPPORT = 131,
+
+	/* Nested attribute to configure the EHT EMLSR operation and EHT MLO
+	 * links for the EMLSR operation to the driver in STA mode. This is
+	 * runtime configuration on STA after association and the configuration
+	 * is valid only for the current association.
+	 * Uses enum qca_wlan_vendor_attr_emlsr_info for values.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_EHT_EMLSR_LINKS = 132,
+
+	/* 8-bit unsigned value
+	 *
+	 * This setting determines the intensity of the power-saving mode.
+	 * The level ranges from 1 to 5, where:
+	 *         1 represents the most aggressive (maximum power saving), and
+	 *         5 represents the least aggressive (minimal power saving).
+	 *
+	 * This attribute shall be configured along with
+	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LATENCY_TOLERANCE and
+	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPTIMIZED_POWER_MANAGEMENT
+	 * to %QCA_WLAN_VENDOR_OPM_MODE_LATENCY_BASED mode.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LEVEL = 133,
+
+	/* 16-bit unsigned value to configure latency tolerance value in
+	 * milliseconds.
+	 *
+	 * This attribute configures latency tolerance value for
+	 * STA and P2P Client mode. This is used by the firmware to achieve
+	 * optimal power consumption within latency constraints.
+	 *
+	 * This attribute shall be configured along with
+	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LEVEL and
+	 * %QCA_WLAN_VENDOR_ATTR_CONFIG_OPTIMIZED_POWER_MANAGEMENT
+	 * to %QCA_WLAN_VENDOR_OPM_MODE_LATENCY_BASED mode.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LATENCY_TOLERANCE = 134,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
@@ -16165,12 +16368,17 @@ enum qca_wlan_vendor_attr_link_reconfig {
  * 	to configure power save inactivity timeout and speculative wake up
  * 	interval through %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_ITO and
  * 	%QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_SPEC_WAKE_INTERVAL attributes.
+ * @QCA_WLAN_VENDOR_OPM_MODE_LATENCY_BASED: Enable optimized power-save mode
+ *      based on interface level latency tolerance value which is configured
+ *      through %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LATENCY_TOLERANCE and
+ *      %QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LEVEL.
  */
 
 enum qca_wlan_vendor_opm_mode {
 	QCA_WLAN_VENDOR_OPM_MODE_DISABLE = 0,
 	QCA_WLAN_VENDOR_OPM_MODE_ENABLE = 1,
 	QCA_WLAN_VENDOR_OPM_MODE_USER_DEFINED = 2,
+	QCA_WLAN_VENDOR_OPM_MODE_LATENCY_BASED = 3,
 };
 
 enum qca_wlan_vendor_attr_flow_policy {
