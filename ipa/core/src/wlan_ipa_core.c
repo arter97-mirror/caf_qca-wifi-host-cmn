@@ -7263,27 +7263,26 @@ void wlan_ipa_opt_dpath_flt_recovery(struct wlan_ipa_priv *ipa_ctx)
 int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper(void *ipa_ctx)
 {
 	struct wlan_ipa_priv *ipa_obj = (struct wlan_ipa_priv *)ipa_ctx;
-	int resp = 0;
+	QDF_STATUS resp = QDF_STATUS_SUCCESS;
 	struct qdf_op_sync *op_sync;
 
 	if (qdf_op_protect(&op_sync)) {
 		ipa_log_info("opt_dp: driver operation inprogress!");
-		return resp;
+		return QDF_STATUS_SUCCESS;
 	}
 
 	if (ipa_obj->opt_dp_flt_rel_state != WLAN_IPA_OPT_DP_FLT_REL_INIT &&
 	    ipa_obj->flt_rel_src != WLAN_IPA_OPT_DP_FLT_REL_SRC_IPA) {
-		qdf_op_unprotect(op_sync);
 		ipa_info("opt_dp: filter release triggered already from wlan ctx - %d release state - %d",
 			 ipa_obj->flt_rel_src,
 			 ipa_obj->opt_dp_flt_rel_state);
-		return resp;
+		return QDF_STATUS_SUCCESS;
 	}
 
 	ipa_obj->flt_rel_src = WLAN_IPA_OPT_DP_FLT_REL_SRC_IPA;
 	resp = wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(ipa_ctx);
-	qdf_op_unprotect(op_sync);
 	ipa_debug("opt_dp: flt release status - %d", resp);
+	qdf_op_unprotect(op_sync);
 	return resp;
 }
 
