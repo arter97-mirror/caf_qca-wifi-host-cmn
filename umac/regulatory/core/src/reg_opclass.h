@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -600,4 +600,14 @@ QDF_STATUS reg_enable_disable_opclass_chans(struct wlan_objmgr_pdev *pdev,
 					    uint8_t chan_list_size,
 					    bool global_tbl_lookup);
 #endif
+/**
+ * reg_convert_chan_spacing_to_width() - Convert channel spacing to
+ * channel width.
+ * @chan_spacing: Channel spacing
+ * @opclass_chwidth: Opclass channel width
+ *
+ * Return: None
+ */
+void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
+				       uint16_t *opclass_chwidth);
 #endif

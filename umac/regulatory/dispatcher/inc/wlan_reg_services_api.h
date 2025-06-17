@@ -2930,6 +2930,17 @@ wlan_reg_get_eirp_pwr(struct wlan_objmgr_pdev *pdev,
 enum phy_ch_width wlan_reg_find_chwidth_from_bw(uint16_t bw);
 
 /**
+ * wlan_reg_convert_chan_spacing_to_width() - Convert channel spacing to
+ * channel width.
+ * @chan_spacing: Channel spacing
+ * @opclass_chwidth: Opclass channel width
+ *
+ * Return: None
+ */
+void wlan_reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
+					    uint16_t *opclass_chwidth);
+
+/**
  * wlan_reg_get_chan_state_for_320() - Get the channel state of a 320 MHz
  * bonded channel.
  * @pdev: Pointer to wlan_objmgr_pdev
