@@ -850,6 +850,18 @@ bool ucfg_reg_is_fcc_constraint_set(struct wlan_objmgr_pdev *pdev);
 
 #if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
 /**
+ * ucfg_reg_update_max_bw_6ghz_chan() - Update maximum bandwidth for each 6 GHz
+ * channel amongst all the supported power types.
+ * @pdev: pointer to pdev
+ * @chan_list: current channel list
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+ucfg_reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
+				 struct regulatory_channel *chan_list);
+
+/**
  * ucfg_reg_is_vlp_depriority_freq() - Check if the frequency is VLP deprority
  * frequency.
  *
@@ -875,6 +887,13 @@ uint8_t
 ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				      enum reg_6g_ap_type ap_pwr_type);
 #else
+static inline QDF_STATUS
+ucfg_reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
+				 struct regulatory_channel *chan_list)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
 static inline
 bool ucfg_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
 				     qdf_freq_t freq)
