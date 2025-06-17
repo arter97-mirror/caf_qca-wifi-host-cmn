@@ -270,7 +270,7 @@ bool dfs_process_nol_ie_bitmap(struct wlan_dfs *dfs, uint8_t nol_ie_bandwidth,
 						      dfs->dfs_curchan,
 						      SEG_ID_PRIMARY,
 						      DETECTOR_ID_0,
-						      radar_subchans);
+						      radar_subchans, false);
 		should_nol_ie_be_sent = false;
 	} else {
 		/* Add the NOL IE information in DFS structure so that RCSA
@@ -334,7 +334,13 @@ void dfs_send_nol_ie_and_rcsa(struct wlan_dfs *dfs,
 	 radar_found->detector_id == dfs_get_agile_detector_id(dfs)) ?
 		(dfs->dfs_is_rcsa_ie_sent = false) :
 		(dfs->dfs_is_rcsa_ie_sent = true);
-	if (dfs->dfs_use_nol_subchannel_marking) {
+
+	/* Do not send NOL IE if full BW radar is detected
+	 * Send RCSA IE alone so that the root adds all the subchannels in
+	 * operating BW to NOL.
+	 */
+	if (!radar_found->is_full_bw_nol &&
+	    dfs->dfs_use_nol_subchannel_marking) {
 		dfs_reset_nol_ie_bitmap(dfs);
 		dfs_prepare_nol_ie_bitmap_for_freq(dfs, radar_found,
 						   nol_freq_list,

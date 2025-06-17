@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -90,30 +90,55 @@ int qca_multi_link_tbl_get_eth_entries(struct net_device *net_dev,
 
 qdf_export_symbol(qca_multi_link_tbl_get_eth_entries);
 
-struct net_device *qca_multi_link_tbl_find_sta_or_ap(struct net_device *net_dev,
-					uint8_t dev_type)
+bool qca_multi_link_find_ap(osif_dev *ap_osifp, struct ieee80211com *sta_ic)
+{
+	struct osif_mldev *osifp_mldev = (struct osif_mldev *)ap_osifp;
+	wlan_if_t vap = NULL;
+	osif_dev *link_osifp = NULL;
+	int j;
+
+	for (j = 0; j < IEEE80211_MLD_MAX_NUM_LINKS; j++) {
+		link_osifp =  osifp_mldev->link_vifs[j];
+
+		if (!link_osifp)
+			continue;
+
+		vap = link_osifp->os_if;
+
+		if (!vap) {
+			qdf_err("vap is null for link %d", j);
+			return false;
+		}
+
+		if (vap->iv_ic == sta_ic) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+qdf_export_symbol(qca_multi_link_find_ap);
+
+struct net_device *qca_multi_link_tbl_find_ap(struct net_device *net_dev)
 {
 	struct net_bridge_fdb_entry *search_fdb = NULL;
 	struct net_device *search_dev = NULL;
 	struct wireless_dev	*ieee80211_ptr = NULL;
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
-	osif_dev *osifp = NULL;
-	osif_dev *search_osifp = NULL;
-	osif_peer_dev *search_peer_osifp = NULL;
-	osif_dev *search_parent_osifp = NULL;
-	struct ieee80211com *search_ic = NULL;
+	osif_dev *sta_osifp = NULL;
+	osif_dev *ap_osifp = NULL;
+	osif_peer_dev *ap_peer_osifp = NULL;
+	osif_dev *ap_parent_osifp = NULL;
+	struct ieee80211com *sta_ic = NULL;
+	struct ieee80211com *ap_ic = NULL;
 #endif
 	int i;
-	enum nl80211_iftype search_if_type;
+	enum nl80211_iftype search_if_type = NL80211_IFTYPE_AP;
 	struct net_bridge_port *p = br_port_get_rcu(net_dev);
 
 	if (!p || (p && p->state == BR_STATE_DISABLED))
 		return NULL;
-
-	if (!dev_type)
-		search_if_type = NL80211_IFTYPE_AP;
-	else
-		search_if_type = NL80211_IFTYPE_STATION;
 
 	qal_vbus_rcu_read_lock();
 	for (i = 0; i < BR_HASH_SIZE; i++) {
@@ -138,30 +163,108 @@ struct net_device *qca_multi_link_tbl_find_sta_or_ap(struct net_device *net_dev,
 			search_dev = search_fdb->dst->dev;
 			ieee80211_ptr = search_dev->ieee80211_ptr;
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
-			search_osifp = ath_netdev_priv(search_dev);
-			osifp = (osif_dev *)ath_netdev_priv(net_dev);
-
-			if (ieee80211_ptr) {
-				if (search_osifp->dev_type == OSIF_NETDEV_TYPE_WDS_EXT) {
-					search_peer_osifp = (osif_peer_dev *)search_osifp;
-					search_parent_osifp = search_peer_osifp->parent_osif;
-					search_ic = search_parent_osifp->os_if->iv_ic;
-				} else {
-					search_ic = search_osifp->os_if->iv_ic;
-				}
+			ap_osifp = (osif_dev *)ath_netdev_priv(search_dev);
+			sta_osifp = (osif_dev *)ath_netdev_priv(net_dev);
+			if (!ap_osifp) {
+				qdf_err("ap_osifp is NULL \n");
+				qal_vbus_rcu_read_unlock();
+				return NULL;
 			}
 
-			if (ieee80211_ptr
-		&& (ieee80211_ptr->iftype == search_if_type)
-		&& (search_ic == osifp->os_if->iv_ic)) {
+			if (!sta_osifp) {
+				qdf_err("sta osifp is NULL \n");
+				qal_vbus_rcu_read_unlock();
+				return NULL;
+			}
+
+			if (ieee80211_ptr && (ieee80211_ptr->iftype == search_if_type)) {
+				if (sta_osifp->dev_type == OSIF_NETDEV_TYPE_VAP) {
+					sta_ic = sta_osifp->os_if->iv_ic;
+
+					if (ap_osifp->dev_type == OSIF_NETDEV_TYPE_WDS_EXT) {
+						/* If sta_osifp is legacy vap and ap_osifp is of type
+						 * WDS_EXT interface, find ic of ext interface
+						 * then return the search_dev if both are part of
+						 * the same radio (ic).
+						 */
+						ap_peer_osifp = (osif_peer_dev *)ap_osifp;
+						ap_parent_osifp = ap_peer_osifp->parent_osif;
+						ap_ic = ap_parent_osifp->os_if->iv_ic;
+
+						if (ap_ic == sta_ic) {
+							qal_vbus_rcu_read_unlock();
+							return search_dev;
+						}
+					} else if (ap_osifp->dev_type == OSIF_NETDEV_TYPE_VAP) {
+						/* If both sta_osifp and ap_osifp are of same interface type and
+						 * are legacy vaps then return the search_dev if both are part of
+						 * the same radio (ic).
+						 */
+						ap_ic = ap_osifp->os_if->iv_ic;
+
+						if (ap_ic == sta_ic) {
+							qal_vbus_rcu_read_unlock();
+							return search_dev;
+						}
+					} else if (ap_osifp->dev_type == OSIF_NETDEV_TYPE_MLO) {
+						/* If sta_osifp is of type legacy vap and ap_osifp
+						 * is MLO type then iterate over the AP link vaps one-by-one
+						 * to find if there is any corresponding AP vap
+						 * in the same radio as itself and return that search_dev.
+						 */
+						if (qca_multi_link_find_ap(ap_osifp, sta_ic)) {
+							qal_vbus_rcu_read_unlock();
+							return search_dev;
+						}
+					}
+				} else if (sta_osifp->dev_type == OSIF_NETDEV_TYPE_MLO) {
+					struct osif_mldev *sta_osifp_mldev = (struct osif_mldev *)sta_osifp;
+					wlan_if_t vap = NULL;
+					osif_dev *link_osifp = NULL;
+					int j;
+
+					for (j = 0; j < IEEE80211_MLD_MAX_NUM_LINKS; j++) {
+						link_osifp =  sta_osifp_mldev->link_vifs[j];
+
+						if (!link_osifp)
+							continue;
+
+						vap = link_osifp->os_if;
+
+						if (!vap) {
+							qdf_err("vap is null for link %d", j);
+							qal_vbus_rcu_read_unlock();
+							return NULL;
+						}
+
+						sta_ic = vap->iv_ic;
+
+						/* If both sta_osifp and ap_osifp are MLO, then iterate
+						 * over the STA MLDs one-by-one to find if there is any
+						 * corresponding AP vap in the same radio as itself.
+						 * If it finds one, return the search_dev (ap_dev here).
+						 *
+						 * The scenario where sta_osif being MLO and ap_osifp
+						 * being non-MLO is not possible.
+						 * Hence, no handling done for this case.
+						*/
+						if (ap_osifp->dev_type == OSIF_NETDEV_TYPE_MLO) {
+							if (qca_multi_link_find_ap(ap_osifp, sta_ic)) {
+								qal_vbus_rcu_read_unlock();
+								return search_dev;
+							}
+						}
+					}
+				}
+			}
 #else
 			if (ieee80211_ptr
 		&& (ieee80211_ptr->iftype == search_if_type)
 		&& (ieee80211_ptr->wiphy == net_dev->ieee80211_ptr->wiphy)) {
-#endif
 				qal_vbus_rcu_read_unlock();
 				return search_dev;
 			}
+#endif
 		}
 	}
 
@@ -169,7 +272,7 @@ struct net_device *qca_multi_link_tbl_find_sta_or_ap(struct net_device *net_dev,
 	return NULL;
 }
 
-qdf_export_symbol(qca_multi_link_tbl_find_sta_or_ap);
+qdf_export_symbol(qca_multi_link_tbl_find_ap);
 
 QDF_STATUS qca_multi_link_tbl_add_or_refresh_entry(struct net_device *net_dev, uint8_t *addr,
 							qca_multi_link_entry_type_t entry_type)

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -70,14 +70,23 @@ int qca_multi_link_tbl_get_eth_entries(struct net_device *net_dev,
 
 /**
  *
- * qca_multi_link_tbl_find_sta_or_ap() - Get the AP or Station
+ * qca_multi_link_find_ap() - Get the AP through ic comparison
+ *					of link_osifp
+ *
+ * Return: bool
+ */
+bool qca_multi_link_find_ap(osif_dev *ap_osifp, struct ieee80211com *sta_ic);
+
+/**
+ *
+ * qca_multi_link_tbl_find_ap() - Get the AP
  *					from bridge on the same radio
  *
  * To be called from the code with a valid netdevice
  *
  * Return: struct net_device
  */
-struct net_device *qca_multi_link_tbl_find_sta_or_ap(struct net_device *net_dev, uint8_t dev_type);
+struct net_device *qca_multi_link_tbl_find_ap(struct net_device *net_dev);
 
 /**
  *
