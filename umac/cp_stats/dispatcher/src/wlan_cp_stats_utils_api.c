@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -379,3 +379,19 @@ tgt_cp_stats_twt_get_session_evt_handler(
 	return wlan_cp_stats_twt_get_session_evt_handler(psoc, twt_params);
 }
 #endif
+
+bool wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(
+				struct wlan_objmgr_psoc *psoc)
+{
+	struct cp_stats_context *cp_stats;
+
+	cp_stats = wlan_objmgr_psoc_get_comp_private_obj(
+						psoc,
+						WLAN_UMAC_COMP_CP_STATS);
+	if (!cp_stats) {
+		cp_stats_err("CP Stats Context is NULL");
+		return false;
+	}
+
+	return cp_stats->host_params.bcn_rssi_history_report_enable;
+}
