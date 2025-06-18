@@ -368,6 +368,8 @@ struct basic_vdev_ctrl_rx {
 	u_int64_t cs_rx_mgmt;
 	u_int64_t cs_rx_error_counter;
 	u_int64_t cs_rx_mgmt_discard;
+	u_int64_t cs_rx_mgmt_sw_decrypt;
+	u_int64_t cs_rx_mgmt_sw_decrypt_fail;
 	u_int64_t cs_rx_ctl;
 	u_int64_t cs_rx_discard;
 	u_int64_t cs_rx_security_failure;

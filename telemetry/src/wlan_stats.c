@@ -365,6 +365,8 @@ static void fill_basic_vdev_ctrl_rx(struct basic_vdev_ctrl_rx *ctrl,
 				    cp_stats->stats.cs_rx_tooshort +
 				    cp_stats->stats.cs_rx_ssid_mismatch;
 	ctrl->cs_rx_mgmt_discard = cp_stats->stats.cs_rx_mgmt_discard;
+	ctrl->cs_rx_mgmt_sw_decrypt = cp_stats->stats.cs_rx_mgmt_sw_decrypt;
+	ctrl->cs_rx_mgmt_sw_decrypt_fail = cp_stats->stats.cs_rx_mgmt_sw_decrypt_fail;
 	ctrl->cs_rx_ctl = cp_stats->stats.cs_rx_ctl;
 	ctrl->cs_rx_discard = cp_stats->ucast_stats.cs_rx_discard +
 			      cp_stats->mcast_stats.cs_rx_discard;
@@ -1224,6 +1226,9 @@ static void aggregate_mld_vdev_stats(struct vdev_ic_cp_stats *tgt,
 	tgt->stats.cs_rx_not_assoc += src->stats.cs_rx_not_assoc;
 	tgt->stats.cs_rx_noprivacy += src->stats.cs_rx_noprivacy;
 	tgt->stats.cs_rx_mgmt_discard += src->stats.cs_rx_mgmt_discard;
+	tgt->stats.cs_rx_mgmt_sw_decrypt += src->stats.cs_rx_mgmt_sw_decrypt;
+	tgt->stats.cs_rx_mgmt_sw_decrypt_fail +=
+		src->stats.cs_rx_mgmt_sw_decrypt_fail;
 	tgt->stats.cs_rx_ctl += src->stats.cs_rx_ctl;
 	tgt->stats.cs_rx_rs_too_big += src->stats.cs_rx_rs_too_big;
 	tgt->stats.cs_rx_elem_missing += src->stats.cs_rx_elem_missing;
@@ -1444,7 +1449,7 @@ static QDF_STATUS get_vdev_cp_stats(struct wlan_objmgr_vdev *vdev,
 		qdf_mem_zero(&wait_event, sizeof(wait_event));
 		qdf_event_create(&wait_event);
 		qdf_event_reset(&wait_event);
-		vap->get_vdev_bcn_stats(vap);
+		vap->get_vdev_bcn_stats(vap, -1UL);
 		/* give enough delay in ms (50ms) to get beacon stats */
 		qdf_wait_single_event(&wait_event, 50);
 		if (qdf_atomic_read(&vap->vap_bcn_event) != 1)

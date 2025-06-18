@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1404,9 +1404,9 @@ static qca_multi_link_status_t qca_multi_link_secondary_sta_rx(struct net_device
 
 #ifdef ENABLE_CFG80211_BACKPORTS_MLO
 			if (qca_ml_entry.qal_fdb_ieee80211_ptr && is_mld_netdev(qca_ml_entry.qal_fdb_dev)) {
-				temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+				temp_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_dhost);
 				if (temp_osifp) {
-					qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_shost);
+					qca_ml_entry.qal_fdb_osifp = qca_multi_link_cfg.qca_ml_ops->get_ml_link_entry_for_mld_dev(qca_ml_entry.qal_fdb_dev, eh->ether_dhost);
 					qca_ml_entry.qal_fdb_ic = qca_ml_entry.qal_fdb_osifp->os_if->iv_ic;
 					qca_ml_entry.qal_fdb_ieee80211_ptr = get_cfg80211_notification_wdev(qca_ml_entry.qal_fdb_osifp);
 					qca_ml_entry.qal_fdb_dev = NULL;
@@ -1505,9 +1505,9 @@ set_prim_dev:
 			 * Find the AP vap corresponding to the station vap.
 			 */
 			if (mld_ndev)
-				ap_dev = qca_multi_link_tbl_find_sta_or_ap(mld_ndev, 0);
+				ap_dev = qca_multi_link_tbl_find_ap(mld_ndev);
 			else
-				ap_dev = qca_multi_link_tbl_find_sta_or_ap(sta_dev, 0);
+				ap_dev = qca_multi_link_tbl_find_ap(sta_dev);
 
 			if (!ap_dev) {
 				QDF_TRACE(QDF_MODULE_ID_RPTR, QDF_TRACE_LEVEL_DEBUG,

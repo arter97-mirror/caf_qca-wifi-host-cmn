@@ -268,6 +268,8 @@ struct pdev_ic_cp_stats {
  * @cs_rx_not_assoc: rx discard cuz sta !assoc
  * @cs_rx_no_privacy: rx wep but privacy off
  * @cs_rx_mgt_discard: rx mgmt frames discard
+ * @cs_rx_mgmt_sw_decrypt: rx mgmt software decrypt
+ * @cs_rx_mgmt_sw_decrypt_fail: rx mgmt software decrypt failures
  * @cs_rx_ctl: rx control frames discard
  * @cs_rx_rs_too_big: rx rate set truncated
  * @cs_rx_elem_missing: rx required element missing
@@ -349,6 +351,8 @@ struct vdev_80211_stats {
 	uint64_t cs_rx_not_assoc;
 	uint64_t cs_rx_noprivacy;
 	uint64_t cs_rx_mgmt_discard;
+	uint64_t cs_rx_mgmt_sw_decrypt;
+	uint64_t cs_rx_mgmt_sw_decrypt_fail;
 	uint64_t cs_rx_ctl;
 	uint64_t cs_rx_rs_too_big;
 	uint64_t cs_rx_elem_missing;
