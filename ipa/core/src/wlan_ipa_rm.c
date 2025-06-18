@@ -147,7 +147,8 @@ bool wlan_ipa_set_perf_level_bw_enabled(struct wlan_ipa_priv *ipa_ctx)
 	 * b. IPA clk scaling is _not_ enabled.
 	 * c. IPA force voting is enabled.
 	 */
-	return wlan_ipa_is_enabled(ipa_ctx->config) &&
+	return (ipa_ctx->config) &&
+	       wlan_ipa_is_enabled(ipa_ctx->config) &&
 	       !wlan_ipa_is_clk_scaling_enabled(ipa_ctx->config) &&
 	       ipa_ctx->config->ipa_force_voting;
 }
