@@ -845,7 +845,7 @@ mlo_update_connect_req_chan_info(struct wlan_cm_connect_req *req)
 
 static void
 mlo_prepare_and_send_connect(struct wlan_objmgr_vdev *vdev,
-			     struct mlo_partner_info ml_parnter_info,
+			     struct mlo_partner_info *ml_parnter_info,
 			     struct mlo_link_info link_info,
 			     struct wlan_ssid ssid,
 			     struct qdf_mac_addr *mld_addr)
@@ -878,7 +878,7 @@ mlo_prepare_and_send_connect(struct wlan_objmgr_vdev *vdev,
 	qdf_copy_macaddr(&req.bssid, &link_info.link_addr);
 	qdf_copy_macaddr(&req.bssid_hint, &link_info.link_addr);
 
-	qdf_mem_copy(&req.ml_parnter_info, &ml_parnter_info,
+	qdf_mem_copy(&req.ml_parnter_info, ml_parnter_info,
 		     sizeof(struct mlo_partner_info));
 
 	req.vdev_id = wlan_vdev_get_id(vdev);
@@ -1105,7 +1105,7 @@ static void mlo_send_link_connect(struct wlan_objmgr_vdev *vdev,
 		wlan_crypto_free_vdev_key(wlan_vdev_list[i]);
 		mlo_prepare_and_send_connect(
 				wlan_vdev_list[i],
-				*ml_parnter_info,
+				ml_parnter_info,
 				ml_parnter_info->partner_link_info[partner_idx],
 				ssid, &resp->mld_addr);
 		mlo_update_connected_links(wlan_vdev_list[i], 1);
@@ -1152,7 +1152,7 @@ static void mlo_send_link_connect(struct wlan_objmgr_vdev *vdev,
 							&ssid.length);
 						mlo_prepare_and_send_connect(
 							mlo_dev_ctx->wlan_vdev_list[i],
-							*ml_parnter_info,
+							ml_parnter_info,
 							ml_parnter_info->partner_link_info[j],
 							ssid, NULL);
 						mlo_dev_lock_release(mlo_dev_ctx);
@@ -1168,7 +1168,7 @@ static void mlo_send_link_connect(struct wlan_objmgr_vdev *vdev,
 
 void
 mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				struct mlo_partner_info ml_parnter_info)
+				struct mlo_partner_info *ml_parnter_info)
 {
 	uint8_t i = 0;
 	uint8_t j = 0;
@@ -1182,9 +1182,9 @@ mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
 		if (!mlo_dev_ctx->wlan_vdev_list[i])
 			continue;
 
-		for (j = 0; j < ml_parnter_info.num_partner_links; j++) {
+		for (j = 0; j < ml_parnter_info->num_partner_links; j++) {
 			if (wlan_vdev_get_link_id(mlo_dev_ctx->wlan_vdev_list[i]) ==
-			    ml_parnter_info.partner_link_info[j].link_id)
+			    ml_parnter_info->partner_link_info[j].link_id)
 				mlo_update_connected_links(
 					mlo_dev_ctx->wlan_vdev_list[i], 1);
 		}
@@ -1669,7 +1669,7 @@ void mlo_sta_link_connect_notify(struct wlan_objmgr_vdev *vdev,
 			 */
 			mlo_update_connected_links(vdev, 1);
 			mlo_update_connected_links_bmap(mlo_dev_ctx,
-							rsp->ml_parnter_info);
+							&rsp->ml_parnter_info);
 		}
 		mlo_mgr_update_parnter_info(vdev, rsp);
 		mlo_send_link_connect(vdev, rsp);

@@ -417,7 +417,7 @@ wlan_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev);
  */
 void
 mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				struct mlo_partner_info ml_partner_info);
+				struct mlo_partner_info *ml_partner_info);
 
 /**
  * mlo_clear_connected_links_bmap() - clear connected links bitmap
@@ -1172,7 +1172,7 @@ mlo_update_connect_req_links(struct wlan_objmgr_vdev *vdev, uint8_t value)
 
 static inline void
 mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				struct mlo_partner_info ml_parnter_info)
+				struct mlo_partner_info *ml_parnter_info)
 { }
 
 static inline bool
