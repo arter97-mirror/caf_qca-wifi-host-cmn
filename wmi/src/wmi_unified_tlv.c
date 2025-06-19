@@ -72,6 +72,7 @@
 #include "wlan_mlme_public_struct.h"
 #endif
 #include "cdp_txrx_cmn.h"
+#include <wlan_cp_stats_utils_api.h>
 
 /*
  * If FW supports WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL,
@@ -7721,18 +7722,24 @@ static QDF_STATUS send_unified_ll_stats_get_sta_cmd_tlv(
 					 WMI_REQUEST_VDEV_EXTD_STAT |
 					 WMI_REQUEST_PEER_EXTD2_STAT |
 					 WMI_REQUEST_RSSI_PER_CHAIN_STAT);
+
+	if (wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(
+					wmi_handle->soc->wmi_psoc))
+		unified_cmd->get_sta_stats_id |= WMI_REQUEST_VDEV_RECV_BCN_STAT;
+
 	unified_cmd->pdev_id = wmi_handle->ops->convert_pdev_id_host_to_target(
 							wmi_handle,
 							WMI_HOST_PDEV_ID_SOC);
-
 	unified_cmd->vdev_id = get_req->vdev_id;
 	unified_cmd->request_id = get_req->req_id;
 	WMI_CHAR_ARRAY_TO_MAC_ADDR(get_req->peer_macaddr.bytes,
 				   &unified_cmd->peer_macaddr);
 
-	wmi_debug("UNIFIED_LINK_STATS_GET_STA - Get Request Params Request ID: %u Stats Type: %0x Vdev ID: %d Peer MAC Addr: "
+	wmi_debug("UNIFIED_LINK_STATS_GET_STA - Get Request Params Request ID: %u Stats Type: %0x Stats Id: %u Vdev ID: %d Peer MAC Addr: "
 		  QDF_MAC_ADDR_FMT,
-		  get_req->req_id, get_req->param_id_mask, get_req->vdev_id,
+		  get_req->req_id, get_req->param_id_mask,
+		  unified_cmd->get_sta_stats_id,
+		  get_req->vdev_id,
 		  QDF_MAC_ADDR_REF(get_req->peer_macaddr.bytes));
 
 	wmi_update_tlv_headers_for_mlo_stats(get_req, buf_ptr);
@@ -10576,6 +10583,9 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
 	wmi_copy_mgmt_rx_srng_support(resource_cfg, tgt_res_cfg);
 
+	if (tgt_res_cfg->enable_bcn_rssi_history_report)
+		WMI_RSRC_CFG_FLAGS2_RECV_BCN_STATS_ENABLED_SET(
+						resource_cfg->flags2, 1);
 }
 
 #ifdef FEATURE_SET
