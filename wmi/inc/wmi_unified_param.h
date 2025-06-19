@@ -7300,6 +7300,7 @@ struct target_feature_set {
  * @max_ml_bss_num: Max ml bss
  * @apfv6_offload_disabled: APFv6 offload disabled bitmap
  * @is_action_oui_v2_enabled: Is action oui v2 enabled
+ * @enable_bcn_rssi_history_report: Enable beacon rssi history report
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7451,6 +7452,7 @@ typedef struct {
 	uint8_t max_ml_bss_num;
 	uint32_t apfv6_offload_disabled;
 	bool is_action_oui_v2_enabled;
+	bool enable_bcn_rssi_history_report;
 } target_resource_config;
 
 /**
