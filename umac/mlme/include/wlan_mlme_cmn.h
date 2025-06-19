@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -90,6 +90,9 @@
  * @roam_stats_event: roam_stats_event pointer
  * @idx: TLV idx for roam_stats_event
  *
+ * @mlme_cm_roam_connect_complete_cb: Roam complete cb
+ * @vdev: vdev object
+ *
  * @mlme_cm_ft_preauth_cmpl_cb: Roam ft preauth complete cb
  * @vdev: vdev pointer
  * @rsp: preauth response pointer
@@ -144,6 +147,8 @@ struct mlme_cm_ops {
 				enum dot11_mode_filter *dot11mode_filter);
 	void (*mlme_cm_roam_rt_stats_cb)(struct roam_stats_event *roam_stats,
 					 uint8_t idx);
+	QDF_STATUS (*mlme_cm_roam_connect_complete_cb)
+					(struct wlan_objmgr_vdev *vdev);
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	QDF_STATUS (*mlme_cm_ft_preauth_cmpl_cb)(
@@ -875,6 +880,14 @@ QDF_STATUS mlme_ext_hdl_get_acs_in_progress(struct wlan_objmgr_vdev *vdev,
  */
 QDF_STATUS mlme_cm_osif_connect_complete(struct wlan_objmgr_vdev *vdev,
 					 struct wlan_cm_connect_resp *rsp);
+
+/*
+ * mlme_cm_osif_roam_connect_complete() - Roaming complete resp to osif
+ * @vdev: pointer to vdev object
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlme_cm_osif_failed_candidate_ind() - Failed Candidate indication to osif

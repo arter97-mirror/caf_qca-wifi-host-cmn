@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -144,6 +144,7 @@ enum osif_cb_type {
 typedef void (*osif_cm_connect_active_notify_cb)(uint8_t vdev_id);
 #endif
 
+typedef void (*osif_cm_roam_connect_complete_cb)(struct wlan_objmgr_vdev *vdev);
 /**
  * typedef osif_cm_connect_comp_cb  - Connect complete callback
  * @vdev: vdev pointer
@@ -397,6 +398,7 @@ typedef struct net_device *
  * @get_scan_ie_params_cb: callback to get scan ie params
  * @set_hlp_data_cb: callback to legacy module to save hlp data
  * @roam_rt_stats_event_cb: callback to send roam stats to userspace
+ * @roam_complete_notify_cb: callback to cleanup roaming context
  * @ft_preauth_complete_cb: callback to legacy module to send fast
  * transition event
  * @cckm_preauth_complete_cb: callback to legacy module to send cckm
@@ -424,6 +426,7 @@ struct osif_cm_ops {
 #endif
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	osif_cm_roam_rt_stats_cb roam_rt_stats_event_cb;
+	osif_cm_roam_connect_complete_cb roam_complete_notify_cb;
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	osif_cm_ft_preauth_complete_cb ft_preauth_complete_cb;
@@ -650,4 +653,12 @@ QDF_STATUS osif_cm_perfd_set_cpufreq(bool action)
  * Return: pointer for mac_addr
  */
 uint8_t *osif_get_bss_mac_addr(struct wlan_objmgr_vdev *vdev);
+
+/*
+ * osif_cm_roam_complete_cb() - Callback to complete the roaming
+ * @vdev: pointer to vdev object
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS osif_cm_roam_complete_cb(struct wlan_objmgr_vdev *vdev);
 #endif /* __OSIF_CM_UTIL_H */
