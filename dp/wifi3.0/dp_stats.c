@@ -8554,6 +8554,7 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 	uint8_t *buf;
 	size_t pos, buf_len;
 	uint8_t dp_stats_str[DP_STATS_STR_LEN] = {'\0'};
+	struct dp_vdev *vdev;
 
 	if (!soc) {
 		dp_err("Invalid access");
@@ -8735,6 +8736,20 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 #endif
 		dp_print_rx_rates(pdev);
 		dp_print_tx_rates(pdev);
+		DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
+			if (dp_vdev_get_ref(soc, vdev, DP_MOD_ID_GENERIC_STATS))
+				continue;
+			if (!vdev->stats.tx.traffic_end_ind_pkt_count) {
+				dp_vdev_unref_delete(soc, vdev,
+						     DP_MOD_ID_GENERIC_STATS);
+				continue;
+			}
+			DP_PRINT_STATS("Vdev: %d Traffic end ind pkts: %llu",
+				       vdev->vdev_id,
+				      vdev->stats.tx.traffic_end_ind_pkt_count);
+			dp_vdev_unref_delete(soc, vdev,
+					     DP_MOD_ID_GENERIC_STATS);
+		}
 	}
 }
 

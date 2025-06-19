@@ -1313,6 +1313,7 @@ dp_tx_send_traffic_end_indication_pkt(struct dp_vdev *vdev,
 		dp_err("Traffic end indication packet tx failed");
 		qdf_nbuf_free(nbuf);
 	}
+	vdev->stats.tx.traffic_end_ind_pkt_count++;
 }
 
 /**

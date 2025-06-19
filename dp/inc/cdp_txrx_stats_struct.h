@@ -1812,6 +1812,7 @@ struct cdp_rx_err_proto_stats {
  * @hwtx_ul_jitter_tsf:ul delay jitter stats when TSF report is enabled
  * @hwtx_ul_jitter_fw: ul delay jitter stats when UL report to FW is enabled
  * @tx_ppdu_duration: Tx PPDU Duration
+ * @traffic_end_ind_pkt_count: Traffic end indication packet counter
  */
 struct cdp_tx_stats {
 	struct cdp_pkt_info comp_pkt;
@@ -1954,6 +1955,7 @@ struct cdp_tx_stats {
 	struct cdp_hist_stats hwtx_ul_jitter_fw;
 #endif
 	uint64_t tx_ppdu_duration;
+	uint64_t traffic_end_ind_pkt_count;
 };
 
 /**
