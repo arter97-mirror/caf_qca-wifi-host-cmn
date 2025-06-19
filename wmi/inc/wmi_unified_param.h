@@ -7216,6 +7216,7 @@ struct target_feature_set {
  * @con_mode_monitor: Device is in Full monitor mode
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
  * @enable_optimize_power: Enable power optimization
+ * @enable_bcn_rssi_history_report: Enable beacon rssi history report
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7362,6 +7363,7 @@ typedef struct {
 	bool mgmt_rx_srng_support;
 #endif
 	bool enable_optimize_power;
+	bool enable_bcn_rssi_history_report;
 } target_resource_config;
 
 /**
