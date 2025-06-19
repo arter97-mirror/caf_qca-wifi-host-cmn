@@ -550,6 +550,7 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	qdf_spinlock_create(&tx_pp->pp_lock);
 	qdf_atomic_init(&tx_pp->ref_cnt);
 	tx_pp->page_pool_init = true;
+	soc->osdev->no_dma_map = true;
 
 	return QDF_STATUS_SUCCESS;
 }

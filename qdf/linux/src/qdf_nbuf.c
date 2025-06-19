@@ -1387,7 +1387,7 @@ void qdf_nbuf_unmap_nbytes_single_paddr_debug(qdf_device_t osdev,
 	qdf_nbuf_untrack_map(buf, func, line);
 	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
 
-	if (qdf_is_pp_nbuf(buf))
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
 		dma_sync_single_for_cpu(osdev->dev, phy_addr,
 					nbytes, __qdf_dma_dir_to_os(dir));
 	else
@@ -1493,7 +1493,7 @@ __qdf_nbuf_map_single(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
 
-	if (__qdf_is_pp_nbuf(buf)) {
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir)) {
 		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
 					   skb_end_pointer(buf) - buf->data,
 					   __qdf_dma_dir_to_os(dir));
@@ -1526,7 +1526,7 @@ void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 					qdf_dma_dir_t dir)
 {
-	if (__qdf_is_pp_nbuf(buf))
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
 		return dma_sync_single_for_cpu(osdev->dev,
 					       QDF_NBUF_CB_PADDR(buf),
 					       skb_end_pointer(buf) - buf->data,
@@ -4918,7 +4918,7 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 	uint16_t ip_id = 0;
 	uint16_t copied_len;
 	uint8_t more_frags;
-	uint8_t pack_more_data;
+	uint8_t pack_more_data = 0;
 	qdf_dma_addr_t paddr;
 
 	*head_skb = NULL;
@@ -4996,13 +4996,15 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 		tcp_hdr(new_skb)->seq = htonl(tcp_seq_num);
 		tcp_seq_num += frag_len;
 		new_skb->protocol = skb->protocol;
-		new_skb->ip_summed = skb->ip_summed;
+		new_skb->ip_summed = CHECKSUM_PARTIAL;
 		tcp_hdr(new_skb)->psh = 0;
+		tcp_hdr(new_skb)->fin = 0;
 
 		if (ethproto == htons(ETH_P_IP)) {
 			ip_hdr(new_skb)->id = htons(ip_id);
 			ip_hdr(new_skb)->tot_len = htons(copied_len -
 						 skb_mac_header_len(new_skb));
+			ip_id++;
 		} else if (ethproto == htons(ETH_P_IPV6)) {
 			ipv6_hdr(new_skb)->payload_len =
 				htons(copied_len -
@@ -5010,8 +5012,14 @@ QDF_STATUS __qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 				       skb_network_header_len(new_skb)));
 		}
 
-		if (num_seg == 1)
-			tcp_hdr(new_skb)->psh = 1;
+
+		/* if PSH and FIN flags are set in jumbo packet, set them for
+		 * the last segment.
+		 */
+		if (num_seg == 1) {
+			tcp_hdr(new_skb)->psh = tcp_hdr(skb)->psh;
+			tcp_hdr(new_skb)->fin = tcp_hdr(skb)->fin;
+		}
 
 		while (more_frags) {
 			if (unlikely(skb_proc == 0))

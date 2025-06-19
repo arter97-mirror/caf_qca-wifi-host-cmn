@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -286,6 +286,7 @@ enum qdf_bus_type {
  * @smmu_s1_enabled: SMMU S1 enabled or not
  * @domain: domain type
  * @iommu_mapping: DMA iommu mapping pointer
+ * @no_dma_map: Flag to check whether DMA mapping for TX buffers is needed
  */
 struct __qdf_device {
 	void *drv;
@@ -307,6 +308,7 @@ struct __qdf_device {
 	struct dma_iommu_mapping *iommu_mapping;
 #endif
 #endif
+	bool no_dma_map;
 };
 typedef struct __qdf_device *__qdf_device_t;
 

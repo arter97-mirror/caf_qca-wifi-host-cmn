@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -744,9 +744,10 @@ try_desc_alloc:
 
 	if (dp_reo_desc_addr_chk(rx_tid->hw_qdesc_paddr) !=
 			QDF_STATUS_SUCCESS || ret) {
+		qdf_mem_free(rx_tid->hw_qdesc_vaddr_unaligned);
+		rx_tid->hw_qdesc_vaddr_unaligned = NULL;
+
 		if (alloc_tries++ < 10) {
-			qdf_mem_free(rx_tid->hw_qdesc_vaddr_unaligned);
-			rx_tid->hw_qdesc_vaddr_unaligned = NULL;
 			goto try_desc_alloc;
 		} else {
 			dp_peer_err("%pK: Rx tid %d desc alloc fail (lowmem)",
