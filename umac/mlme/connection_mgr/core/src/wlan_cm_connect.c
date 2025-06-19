@@ -3162,6 +3162,7 @@ static void cm_osif_connect_complete(struct cnx_mgr *cm_ctx,
 	}
 
 	mlme_cm_osif_connect_complete(cm_ctx->vdev, connect_rsp);
+	mlme_cm_osif_roam_connect_complete(cm_ctx->vdev);
 
 	if (QDF_IS_STATUS_SUCCESS(status))
 		cm_free_connect_rsp_ies(connect_rsp);

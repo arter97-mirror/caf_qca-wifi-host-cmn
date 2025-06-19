@@ -1198,8 +1198,8 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 			osif_connect_bss(osif_priv->wdev->netdev,
 					 bss, rsp);
 	} else if (osif_get_connect_status_code(rsp) == WLAN_STATUS_SUCCESS &&
-		   (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_OWE) ||
-		    mlo_is_offload_roam_in_progress(vdev))) {
+		   (mlo_is_offload_roam_in_progress(vdev) ||
+		   wlan_cm_check_mlo_roam_auth_status(vdev))) {
 		/*
 		 * Update the link info for:
 		 * a) For OWE roaming, link vdev is disconnected on receiving
