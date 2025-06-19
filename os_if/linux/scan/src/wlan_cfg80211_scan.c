@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -712,7 +712,7 @@ wlan_schedule_scan_start_request(struct wlan_objmgr_pdev *pdev,
 
 	qdf_mutex_release(&osif_scan->scan_req_q_lock);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		osif_rl_debug("Failed to enqueue Scan Req as max scan %d already queued",
+		osif_debug_rl("Failed to enqueue Scan Req as max scan %d already queued",
 			      qdf_list_size(&osif_scan->scan_req_q));
 		qdf_mem_free(scan_req);
 	}

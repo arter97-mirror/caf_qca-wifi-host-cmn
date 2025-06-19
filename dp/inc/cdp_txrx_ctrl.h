@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1639,5 +1639,39 @@ cdp_buffers_replenish_on_demand(struct cdp_soc_t *soc,
 
 	return soc->ops->ctrl_ops->txrx_buffers_replenish_on_demand(soc,
 						num_buffers, pdev_id);
+}
+
+static inline QDF_STATUS
+cdp_qos_latency_stats_request(struct cdp_soc_t *soc, uint8_t vdev_id,
+			      struct cdp_qos_latency_stats *request)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid Instance:");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->ctrl_ops ||
+	    !soc->ops->ctrl_ops->txrx_qos_latency_stats_request)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->ctrl_ops->txrx_qos_latency_stats_request(soc, vdev_id,
+								  request);
+}
+
+static inline QDF_STATUS
+cdp_qos_latency_get_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
+			  struct cdp_qos_latency_stats_req *stats)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid Instance:");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->ctrl_ops ||
+	    !soc->ops->ctrl_ops->txrx_qos_latency_get_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->ctrl_ops->txrx_qos_latency_get_stats(soc, vdev_id,
+							      stats);
 }
 #endif /* _CDP_TXRX_CTRL_H_ */

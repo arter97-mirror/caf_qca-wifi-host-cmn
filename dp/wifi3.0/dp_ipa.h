@@ -21,8 +21,8 @@
 #include "wlan_ipa_public_struct.h"
 #ifdef CONFIG_BORON
 /* Assign last ring to IPA */
-#define IPA_TCL_DATA_RING_IDX	6
-#define IPA_TX_COMP_RING_IDX (IPA_TCL_DATA_RING_IDX - 1)
+#define IPA_TCL_DATA_RING_IDX	5
+#define IPA_TX_COMP_RING_IDX IPA_TCL_DATA_RING_IDX
 #else
 #if defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
     defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
@@ -653,6 +653,20 @@ dp_ipa_ast_notify_cb(qdf_ipa_wdi_conn_in_params_t *pipe_in,
 #endif
 
 #ifdef IPA_OPT_WIFI_DP
+#ifdef CONFIG_BORON
+static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
+{
+	ix0_map[0] = REO_REMAP_SW1;
+	ix0_map[1] = REO_REMAP_SW1;
+	ix0_map[2] = REO_REMAP_SW2;
+	ix0_map[3] = REO_REMAP_SW3;
+	ix0_map[4] = REO_REMAP_SW9;
+	ix0_map[5] = REO_REMAP_RELEASE;
+	ix0_map[6] = REO_REMAP_FW;
+	ix0_map[7] = REO_REMAP_FW;
+}
+
+#else
 static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
 {
 	ix0_map[0] = REO_REMAP_SW1;
@@ -664,6 +678,7 @@ static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
 	ix0_map[6] = REO_REMAP_FW;
 	ix0_map[7] = REO_REMAP_FW;
 }
+#endif
 #else
 static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
 {

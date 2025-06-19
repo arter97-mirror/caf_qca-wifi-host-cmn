@@ -2160,6 +2160,16 @@ QDF_STATUS
 wmi_unified_set_apf_supported_offload_bitmap_cmd(wmi_unified_t wmi,
 						 uint8_t vdev_id,
 						 uint32_t offload_bitmap);
+/**
+ * wmi_unified_set_apf_mode_bitmap_cmd() - config APF mode
+ * in FW
+ * @wmi: the WMI handle
+ * @vdev_id: the Id of the vdev to apply the configuration to
+ * @apf_mode: the APF mode
+ */
+QDF_STATUS
+wmi_unified_set_apf_mode_bitmap_cmd(wmi_unified_t wmi, uint8_t vdev_id,
+				    uint32_t apf_mode);
 #endif /* FEATURE_WLAN_APF */
 
 /**
@@ -2408,17 +2418,6 @@ wmi_unified_wlan_profile_hist_intvl_cmd_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_set_chan_cmd_send(wmi_unified_t wmi_handle,
 			      struct channel_param *param);
-
-/**
- *  wmi_unified_set_ratepwr_table_cmd_send() - WMI ratepwr table cmd function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold ratepwr table param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_set_ratepwr_table_cmd_send(wmi_unified_t wmi_handle,
-				       struct ratepwr_table_params *param);
 
 /**
  *  wmi_unified_get_ratepwr_table_cmd_send() - WMI ratepwr table cmd function
@@ -2872,17 +2871,6 @@ wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
 				 struct lteu_config_params *param);
-
-/**
- *  wmi_unified_set_psmode_cmd_send() - WMI set mu scan function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold mu scan param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_set_psmode_cmd_send(wmi_unified_t wmi_handle,
-				struct set_ps_mode_params *param);
 
 /**
  * wmi_unified_init_cmd_send() - send initialization cmd to fw

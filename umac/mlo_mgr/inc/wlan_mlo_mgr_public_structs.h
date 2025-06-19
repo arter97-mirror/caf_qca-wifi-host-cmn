@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1200,6 +1200,7 @@ struct wlan_mlo_link_mac_update {
  * @mlo_extmld_cap_advertisement: Enable/disable Extended MLD Cap and OP
  *                                advertisement
  * @link_ptqm_migrate_ctx: PTQM migration link context
+ * @link_recfg_op_support: Peer link reconfig operation support
  */
 struct wlan_mlo_dev_context {
 	qdf_list_node_t node;
@@ -1239,6 +1240,7 @@ struct wlan_mlo_dev_context {
 	struct mlo_link_recfg_context *link_recfg_ctx;
 	uint8_t mlo_max_recom_simult_links;
 	bool mlo_extmld_cap_advertisement;
+	bool link_recfg_op_support;
 };
 
 /**

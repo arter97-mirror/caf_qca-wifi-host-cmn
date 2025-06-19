@@ -48,7 +48,7 @@
 	QDF_TRACE_INFO(QDF_MODULE_ID_OS_IF, params)
 #define osif_debug(params...) \
 	QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF, params)
-#define osif_rl_debug(params...) \
+#define osif_debug_rl(params...) \
 	QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_OS_IF, params)
 #define osif_err_rl(params...) \
 	QDF_TRACE_ERROR_RL(QDF_MODULE_ID_OS_IF, params)

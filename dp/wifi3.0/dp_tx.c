@@ -142,6 +142,9 @@ uint8_t sec_type_map[MAX_CDP_SEC_TYPE] = {HAL_TX_ENCRYPT_TYPE_NO_CIPHER,
 					  HAL_TX_ENCRYPT_TYPE_WAPI_GCM_SM4};
 qdf_export_symbol(sec_type_map);
 
+uint16_t cdp_latency_hist_bucket[] = {0, 5, 10, 20, 30, 50, 100, 200};
+uint16_t cdp_latency_perc_bucket[] = {50, 75, 90, 95, 99};
+
 #ifdef DP_FEATURE_TX_PAGE_POOL
 /**
  * dp_tx_is_page_pool_enabled() - Check if TX page pool is enabled
@@ -192,8 +195,13 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	size_t size;
 
 	if (!dp_tx_is_page_pool_enabled(soc) || !tx_pp ||
-	    !tx_pp->page_pool_init ||
-	    (tx_desc->flags & DP_TX_DESC_FLAG_TDLS_FRAME))
+	    !tx_pp->page_pool_init)
+		return nbuf;
+
+	if (qdf_nbuf_get_dev_scratch(nbuf) != QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL)
+		QDF_NBUF_CB_PADDR(nbuf) = 0;
+
+	if (tx_desc->flags & DP_TX_DESC_FLAG_TDLS_FRAME)
 		return nbuf;
 
 	/* Non linear SKBs are not expected in this path */
@@ -726,17 +734,10 @@ static uint8_t dp_tx_prepare_htt_metadata(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	    msdu_info->exception_fw) {
 		if (qdf_unlikely(qdf_nbuf_headroom(nbuf) <
 				 htt_desc_size_aligned)) {
-			nbuf = qdf_nbuf_realloc_headroom(nbuf,
-							 htt_desc_size_aligned);
+			nbuf = qdf_nbuf_realloc_headroom_no_free(
+							nbuf,
+							htt_desc_size_aligned);
 			if (!nbuf) {
-				/*
-				 * qdf_nbuf_realloc_headroom won't do skb_clone
-				 * as skb_realloc_headroom does. so, no free is
-				 * needed here.
-				 */
-				DP_STATS_INC(vdev,
-					     tx_i[msdu_info->xmit_type].dropped.headroom_insufficient,
-					     1);
 				qdf_print(" %s[%d] skb_realloc_headroom failed",
 					  __func__, __LINE__);
 				return 0;
@@ -7002,6 +7003,547 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 	return QDF_STATUS_SUCCESS;
 }
 
+#define DP_HOST_AC_BE	0    /* best effort */
+#define DP_HOST_AC_BK	1    /* background */
+#define DP_HOST_AC_VI	2    /* video */
+#define DP_HOST_AC_VO	3    /* voice */
+#define DP_TID_TO_AC(_tid) (\
+		(((_tid) == 0) || ((_tid) == 3)) ? DP_HOST_AC_BE : \
+		(((_tid) == 1) || ((_tid) == 2)) ? DP_HOST_AC_BK : \
+		(((_tid) == 4) || ((_tid) == 5)) ? DP_HOST_AC_VI : \
+		DP_HOST_AC_VO)
+
+static uint16_t latency_perc_bucket[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15,
+					 20, 25, 30, 35, 40, 45, 50, 60, 70, 80,
+					 90, 100, 250, 500};
+
+/**
+ * dp_tx_update_qos_latency_stats() - Update QoS latency stats bucket
+ * @vdev: vdev handle
+ * @ts: Tx completion status
+ * @ul_delay: Ul delay in ms
+ *
+ * Return None
+ */
+static void
+dp_tx_update_qos_latency_stats(struct dp_vdev *vdev,
+			       struct hal_tx_completion_status *ts,
+			       uint32_t ul_delay)
+{
+	uint8_t index;
+	uint8_t tid = ts->tid;
+
+	if (qdf_unlikely(tid >= CDP_MAX_DATA_TIDS))
+		tid = CDP_MAX_DATA_TIDS - 1;
+
+	if (qdf_atomic_read(&vdev->ul_delay_histogram)) {
+		for (index = 0; index < CDP_HIST_BUCKET_SIZE - 1; index++) {
+			if (ul_delay < cdp_latency_hist_bucket[index + 1])
+				break;
+		}
+		vdev->tx_latency_stats_hist[tid][index]++;
+	}
+
+	if (qdf_atomic_read(&vdev->ul_delay_percentile)) {
+		for (index = 0; index < PERC_BUCKET_SIZE - 1; index++) {
+			if (ul_delay < latency_perc_bucket[index + 1])
+				break;
+		}
+		vdev->tx_latency_stats_per[tid][index]++;
+	}
+}
+
+/**
+ * dp_calculate_percentile() -  Calculate percentile value
+ * @data: data to calculate percentile
+ * @bucket_values: Percentile bucket
+ * @bucket_size: Percentile  bucket size
+ * @percentile: percentile value to calculate
+ *
+ * Return: Calculated percentile value
+ */
+static uint16_t
+dp_calculate_percentile(uint64_t *data, uint16_t *bucket_values,
+			uint8_t bucket_size, uint8_t percentile)
+{
+	uint64_t total_packets = 0;
+	uint64_t cumulative_packets = 0;
+	uint16_t i;
+
+	for (i = 0; i < bucket_size; i++)
+		total_packets += data[i];
+
+	if (!total_packets)
+		return 0;
+
+	for (i = 0; i < bucket_size; i++) {
+		cumulative_packets += data[i];
+		if (cumulative_packets >= (total_packets * percentile) / 100)
+			return bucket_values[i];
+	}
+
+	return 0;
+}
+
+/**
+ * dp_qos_update_latency_percentile() - Update latency percentile
+ * @granularity: Report granularity
+ * @curr_report: Current measurement bucket
+ * @prev_report: Previous measurement bucket
+ * @dest: destination for percentile report
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dp_qos_update_latency_percentile(enum cdp_report_granularity granularity,
+				 uint64_t curr_report[][PERC_BUCKET_SIZE],
+				 uint64_t **prev_report,
+				 uint32_t dest[][CDP_PERC_BUCKET_SIZE])
+{
+	uint8_t tid, index;
+	uint64_t buck[CDP_MAX_DATA_TIDS][PERC_BUCKET_SIZE] = {0};
+	uint64_t **curr_buc, **prev_buc;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	switch (granularity) {
+	case CDP_REPORT_GRAN_TID:
+	for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+		for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+			buck[tid][index] = curr_report[tid][index] -
+						prev_report[tid][index];
+			prev_report[tid][index] = curr_report[tid][index];
+		}
+		for (index = 0; index < MAX_PERC_LATENCY_IDX; index++)
+			dest[tid][index] =
+				dp_calculate_percentile(buck[tid],
+							latency_perc_bucket,
+							PERC_BUCKET_SIZE,
+							cdp_latency_perc_bucket[index]);
+	}
+		break;
+	case CDP_REPORT_GRAN_AC:
+		curr_buc = qdf_mem_malloc(sizeof(uint64_t) * CDP_MAX_DATA_AC);
+		if (!curr_buc) {
+			dp_err("Unable to allocate curr_buc for AC");
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		prev_buc = qdf_mem_malloc(sizeof(uint64_t) * CDP_MAX_DATA_AC);
+		if (!prev_buc) {
+			dp_err("Unable to allocate prev_buc for AC");
+			qdf_mem_free(curr_buc);
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			curr_buc[tid] =
+				qdf_mem_malloc(sizeof(uint64_t) *
+					       PERC_BUCKET_SIZE);
+			if (!curr_buc[tid]) {
+				dp_err("alloc failed curr_buc[%d] for AC", tid);
+				status =  QDF_STATUS_E_NOMEM;
+				goto ac_mem_free;
+			}
+			prev_buc[tid] =
+				qdf_mem_malloc(sizeof(uint64_t) *
+					       PERC_BUCKET_SIZE);
+			if (!prev_buc[tid]) {
+				dp_err("alloc failed prev_buc[%d] for AC", tid);
+				status =  QDF_STATUS_E_NOMEM;
+				goto ac_mem_free;
+			}
+
+			qdf_mem_zero(prev_buc[tid], sizeof(curr_buc[tid]));
+			qdf_mem_zero(prev_buc[tid], sizeof(prev_buc[tid]));
+		}
+
+		for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+			for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+				curr_buc[DP_TID_TO_AC(tid)][index] +=
+					curr_report[tid][index];
+				prev_buc[DP_TID_TO_AC(tid)][index] +=
+					prev_report[tid][index];
+				prev_report[tid][index] =
+					curr_report[tid][index];
+			}
+		}
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+				buck[tid][index] =
+					curr_buc[tid][index] -
+					prev_buc[tid][index];
+			}
+		for (index = 0; index < MAX_PERC_LATENCY_IDX; index++)
+			dest[tid][index] =
+				dp_calculate_percentile(buck[tid],
+							latency_perc_bucket,
+							PERC_BUCKET_SIZE,
+							cdp_latency_perc_bucket[index]);
+		}
+ac_mem_free:
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			if (curr_buc[tid])
+				qdf_mem_free(curr_buc[tid]);
+			if (prev_buc[tid])
+				qdf_mem_free(prev_buc[tid]);
+		}
+		qdf_mem_free(curr_buc);
+		qdf_mem_free(prev_buc);
+		break;
+	case CDP_REPORT_GRAN_AGGR:
+		curr_buc =
+			(uint64_t **)qdf_mem_malloc(sizeof(uint64_t *) +
+						    sizeof(uint64_t) *
+						    PERC_BUCKET_SIZE);
+		if (!curr_buc) {
+			dp_err("Unable to allocate curr_buc for Aggr");
+			return QDF_STATUS_E_NOMEM;
+		}
+		prev_buc =
+			(uint64_t **)qdf_mem_malloc(sizeof(uint64_t *) +
+						    sizeof(uint64_t) *
+						    PERC_BUCKET_SIZE);
+		if (!prev_buc) {
+			dp_err("Unable to allocate prev_buc for Aggr");
+			qdf_mem_free(curr_buc);
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		qdf_mem_zero(prev_buc, sizeof(curr_buc));
+		qdf_mem_zero(prev_buc, sizeof(prev_buc));
+		*curr_buc = (uint64_t *)(curr_buc + 1);
+		*prev_buc = (uint64_t *)(prev_buc + 1);
+		for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+			for (index = 0; index < PERC_BUCKET_SIZE; index++) {
+				(*curr_buc)[index] += curr_report[tid][index];
+				(*prev_buc)[index] += prev_report[tid][index];
+				prev_report[tid][index] =
+					curr_report[tid][index];
+			}
+		}
+		for (index = 0; index < PERC_BUCKET_SIZE; index++)
+			(*buck)[index] =
+				(*curr_buc)[index] - (*prev_buc)[index];
+		for (index = 0; index < MAX_PERC_LATENCY_IDX; index++)
+			(*dest)[index] =
+				dp_calculate_percentile((*buck),
+							latency_perc_bucket,
+							PERC_BUCKET_SIZE,
+							cdp_latency_perc_bucket[index]);
+		qdf_mem_free(curr_buc);
+		qdf_mem_free(prev_buc);
+		break;
+	default:
+		break;
+	}
+
+	return status;
+}
+
+/**
+ * dp_qos_update_latency_histogram() - Update Latency histogram
+ * @granularity: Report granularity
+ * @curr_report: Current measurement bucket
+ * @prev_report: Previous measurement becket
+ * @dest: Destination for histogram report
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dp_qos_update_latency_histogram(enum cdp_report_granularity granularity,
+				uint64_t curr_report[][CDP_HIST_BUCKET_SIZE],
+				uint64_t **prev_report,
+				uint32_t dest[][CDP_HIST_BUCKET_SIZE])
+{
+	uint8_t tid, index;
+	uint64_t **curr_buc, **prev_buc;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	switch (granularity) {
+	case CDP_REPORT_GRAN_TID:
+	for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+		for (index = 0; index < CDP_HIST_BUCKET_SIZE; index++) {
+			dest[tid][index] = curr_report[tid][index] -
+						prev_report[tid][index];
+			prev_report[tid][index] = curr_report[tid][index];
+		}
+	}
+		break;
+	case CDP_REPORT_GRAN_AC:
+		curr_buc = qdf_mem_malloc(sizeof(uint64_t) * CDP_MAX_DATA_AC);
+		if (!curr_buc) {
+			dp_err("Unable to allocate curr_buc for AC");
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		prev_buc = qdf_mem_malloc(sizeof(uint64_t) * CDP_MAX_DATA_AC);
+		if (!prev_buc) {
+			dp_err("Unable to allocate prev_buc for AC");
+			qdf_mem_free(curr_buc);
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			curr_buc[tid] = qdf_mem_malloc(sizeof(uint64_t) *
+						       CDP_HIST_BUCKET_SIZE);
+			if (!curr_buc[tid]) {
+				dp_err("alloc failed curr_buc[%d] for AC", tid);
+				status =  QDF_STATUS_E_NOMEM;
+				goto ac_mem_free;
+			}
+			prev_buc[tid] = qdf_mem_malloc(sizeof(uint64_t) *
+						       CDP_HIST_BUCKET_SIZE);
+			if (!prev_buc[tid]) {
+				dp_err("alloc failed prev_buc[%d] for AC", tid);
+				status =  QDF_STATUS_E_NOMEM;
+				goto ac_mem_free;
+			}
+			qdf_mem_zero(curr_buc[tid], sizeof(curr_buc[tid]));
+			qdf_mem_zero(prev_buc[tid], sizeof(prev_buc[tid]));
+		}
+
+		for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+			for (index = 0; index < CDP_HIST_BUCKET_SIZE; index++) {
+				curr_buc[DP_TID_TO_AC(tid)][index] +=
+					curr_report[tid][index];
+				prev_buc[DP_TID_TO_AC(tid)][index] +=
+					prev_report[tid][index];
+				prev_report[tid][index] =
+					curr_report[tid][index];
+			}
+		}
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			for (index = 0; index < CDP_HIST_BUCKET_SIZE; index++) {
+				dest[tid][index] = curr_buc[tid][index] -
+							prev_buc[tid][index];
+			}
+		}
+
+ac_mem_free:
+		for (tid = 0; tid < CDP_MAX_DATA_AC; tid++) {
+			if (curr_buc[tid])
+				qdf_mem_free(curr_buc[tid]);
+			if (prev_buc[tid])
+				qdf_mem_free(prev_buc[tid]);
+		}
+
+		qdf_mem_free(curr_buc);
+		qdf_mem_free(prev_buc);
+		break;
+	case CDP_REPORT_GRAN_AGGR:
+		curr_buc =
+			(uint64_t **)qdf_mem_malloc(sizeof(uint64_t *) +
+						    sizeof(uint64_t) *
+						    CDP_HIST_BUCKET_SIZE);
+		if (!curr_buc) {
+			dp_err("Unable to allocate curr_buc for Aggr");
+			return QDF_STATUS_E_NOMEM;
+		}
+		prev_buc =
+			(uint64_t **)qdf_mem_malloc(sizeof(uint64_t *) +
+						    sizeof(uint64_t) *
+						    CDP_HIST_BUCKET_SIZE);
+		if (!prev_buc) {
+			dp_err("Unable to allocate prev_buc for Aggr");
+			qdf_mem_free(curr_buc);
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		qdf_mem_zero(curr_buc, sizeof(curr_buc));
+		qdf_mem_zero(prev_buc, sizeof(prev_buc));
+		*curr_buc = (uint64_t *)(curr_buc + 1);
+		*prev_buc = (uint64_t *)(prev_buc + 1);
+		for (tid = 0; tid < CDP_MAX_DATA_TIDS; tid++) {
+			for (index = 0; index < CDP_HIST_BUCKET_SIZE; index++) {
+				(*curr_buc)[index] += curr_report[tid][index];
+				(*prev_buc)[index] += prev_report[tid][index];
+				prev_report[tid][index] =
+					curr_report[tid][index];
+			}
+		}
+		for (index = 0; index < CDP_HIST_BUCKET_SIZE; index++)
+			(*dest)[index] =
+				(*curr_buc)[index] - (*prev_buc)[index];
+
+		qdf_mem_free(curr_buc);
+		qdf_mem_free(prev_buc);
+		break;
+	default:
+		break;
+	}
+
+	return status;
+}
+
+QDF_STATUS dp_qos_latency_get_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+				    struct cdp_qos_latency_stats_req *stats)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev;
+	struct dp_qos_latency_report *report;
+	QDF_STATUS status;
+
+	if (!stats)
+		return QDF_STATUS_E_INVAL;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		dp_err_rl("vdev %d does not exist", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	report = &vdev->qos_latency_report[stats->method];
+
+	if (!qdf_atomic_read(&report->enable)) {
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+		return QDF_STATUS_E_EMPTY;
+	}
+
+	switch (report->type) {
+	case REPORT_TYPE_HISTOGRAM:
+		status =
+			dp_qos_update_latency_histogram(stats->granularity,
+							vdev->tx_latency_stats_hist,
+							report->stats,
+							stats->tid_hist.stats);
+		break;
+
+	case REPORT_TYPE_PERCENTILE:
+		status =
+			dp_qos_update_latency_percentile(stats->granularity,
+							 vdev->tx_latency_stats_per,
+							 report->stats,
+							 stats->tid_perc.stats);
+		break;
+
+	default:
+		status = QDF_STATUS_E_NOSUPPORT;
+		break;
+	}
+
+	stats->type = report->type;
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return status;
+}
+
+QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
+					uint8_t vdev_id,
+					struct cdp_qos_latency_stats *req)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev;
+	struct dp_qos_latency_report *report;
+	uint8_t i, j;
+
+	if (!req)
+		return QDF_STATUS_E_INVAL;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		dp_err_rl("vdev %d does not exist", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (req->method >= SOLICITED_MAX || req->type >= REPORT_TYPE_MAX) {
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	report = &vdev->qos_latency_report[req->method];
+
+	if (req->enable) {
+		if (qdf_atomic_read(&report->enable)) {
+			dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+			return QDF_STATUS_E_ALREADY;
+		}
+
+		switch (req->type) {
+		case REPORT_TYPE_HISTOGRAM:
+			report->stats =
+				qdf_mem_malloc(sizeof(uint64_t) *
+					       CDP_MAX_DATA_TIDS);
+			for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
+				report->stats[i] =
+					qdf_mem_malloc(sizeof(uint64_t) *
+						       CDP_HIST_BUCKET_SIZE);
+				qdf_mem_zero(report->stats[i],
+					     sizeof(report->stats[i]));
+			}
+			if (qdf_atomic_read(&vdev->ul_delay_histogram)) {
+				for (i = 0; i < CDP_MAX_DATA_TIDS; i++)
+					for (j = 0; j < CDP_HIST_BUCKET_SIZE;
+							j++)
+						report->stats[i][j] =
+					vdev->tx_latency_stats_hist[i][j];
+			} else {
+				qdf_mem_zero(vdev->tx_latency_stats_hist,
+					     sizeof(vdev->tx_latency_stats_hist));
+				qdf_atomic_set(&vdev->ul_delay_histogram, true);
+			}
+			break;
+		case REPORT_TYPE_PERCENTILE:
+			report->stats =
+				qdf_mem_malloc(sizeof(uint64_t) *
+					       CDP_MAX_DATA_TIDS);
+			for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
+				report->stats[i] =
+					qdf_mem_malloc(sizeof(uint64_t) *
+						       PERC_BUCKET_SIZE);
+				qdf_mem_zero(report->stats[i],
+					     sizeof(report->stats[i]));
+			}
+			if (qdf_atomic_read(&vdev->ul_delay_percentile)) {
+				for (i = 0; i < CDP_MAX_DATA_TIDS; i++)
+					for (j = 0; j < PERC_BUCKET_SIZE; j++)
+						report->stats[i][j] =
+							vdev->tx_latency_stats_per[i][j];
+			} else {
+				qdf_mem_zero(vdev->tx_latency_stats_per,
+					     sizeof(vdev->tx_latency_stats_per));
+				qdf_atomic_set(&vdev->ul_delay_percentile,
+					       true);
+			}
+			break;
+		default:
+			dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+			return QDF_STATUS_E_INVAL;
+		}
+		report->type = req->type;
+		qdf_atomic_set(&report->enable, req->enable);
+		dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_QOS, true);
+	} else {
+		bool disable = true;
+
+		qdf_atomic_set(&report->enable, req->enable);
+		if (!report->stats)
+			goto end;
+
+		for (i = 0; i < SOLICITED_MAX; i++) {
+			if (qdf_atomic_read(&vdev->qos_latency_report[i].enable)) {
+				disable = false;
+				break;
+			}
+		}
+		if (disable)
+			dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_QOS, false);
+
+		for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
+			if (!report->stats[i])
+				break;
+
+			qdf_mem_free(report->stats[i]);
+		}
+
+		qdf_mem_free(report->stats);
+		report->stats = NULL;
+	}
+end:
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			       uint32_t *val)
 {
@@ -7057,6 +7599,7 @@ static void dp_tx_update_uplink_delay(struct dp_soc *soc, struct dp_vdev *vdev,
 	qdf_atomic_inc(&vdev->ul_pkts_accum);
 	*curr_ul_delay = ul_delay;
 
+	dp_tx_update_qos_latency_stats(vdev, ts, ul_delay);
 	/* Update delay to histogram */
 	dp_tx_update_delay_hist(vdev, ul_delay);
 }
@@ -7689,6 +8232,7 @@ uint32_t dp_tx_comp_handler(struct dp_intr *int_ctx, struct dp_soc *soc,
 	QDF_STATUS status;
 	uint16_t comp_index = 0;
 	struct dp_tx_desc_pool_s *tx_desc_pool = NULL;
+	uint8_t tx_status;
 
 	DP_HIST_INIT();
 
@@ -7803,12 +8347,14 @@ more_data:
 
 		dp_tx_comp_reset_stale_entry_detection(soc, ring_id);
 		tx_desc->buffer_src = buffer_src;
-
+		tx_status =
+			hal_tx_comp_get_tx_status(tx_comp_hal_desc);
 		/*
 		 * If the release source is FW, process the HTT status
 		 */
 		if (qdf_unlikely(buffer_src ==
-					HAL_TX_COMP_RELEASE_SOURCE_FW)) {
+					HAL_TX_COMP_RELEASE_SOURCE_FW) ||
+			dp_tx_fw_release_reason(tx_status)) {
 			uint8_t htt_tx_status[HAL_TX_COMP_HTT_STATUS_LEN];
 
 			hal_tx_comp_get_htt_desc(tx_comp_hal_desc,
@@ -7828,11 +8374,9 @@ more_data:
 							htt_tx_status,
 							ring_id);
 		} else {
-			tx_desc->tx_status =
-				hal_tx_comp_get_tx_status(tx_comp_hal_desc);
+			tx_desc->tx_status = tx_status;
 			dp_update_tqm_rsn_cnt(soc, ring_id, tx_desc->tx_status,
 					      buffer_src);
-
 			if (tx_desc->flags & DP_TX_DESC_FLAG_FASTPATH_SIMPLE ||
 			    tx_desc->flags & DP_TX_DESC_FLAG_PPEDS)
 				goto add_to_pool2;

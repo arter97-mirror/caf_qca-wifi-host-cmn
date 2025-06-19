@@ -317,6 +317,20 @@ void dp_tx_process_mec_notify_be(struct dp_soc *soc, uint8_t *status)
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT_COMP);
 }
 
+#ifdef DP_COMP_FW_REINJECT_WAR
+static inline
+void dp_tx_comp_fw_reinject_war(uint8_t *tx_status)
+{
+	if (dp_tx_fw_release_reason(*tx_status))
+		*tx_status = HTT_TX_FW2WBM_TX_STATUS_REINJECT;
+}
+#else
+static inline
+void dp_tx_comp_fw_reinject_war(uint8_t *tx_status)
+{
+}
+#endif
+
 void dp_tx_process_htt_completion_be(struct dp_soc *soc,
 				     struct dp_tx_desc_s *tx_desc,
 				     uint8_t *status,
@@ -421,6 +435,8 @@ void dp_tx_process_htt_completion_be(struct dp_soc *soc,
 		dp_txrx_peer_unref_delete(txrx_ref_handle,
 					  DP_MOD_ID_HTT_COMP);
 	}
+	dp_tx_comp_fw_reinject_war(&tx_status);
+
 	switch (tx_status) {
 	case HTT_TX_FW2WBM_TX_STATUS_DROP:
 		if (tx_desc->flags & DP_TX_DESC_FLAG_OPT_DP_CTRL) {

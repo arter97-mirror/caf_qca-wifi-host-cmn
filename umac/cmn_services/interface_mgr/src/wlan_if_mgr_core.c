@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -58,6 +58,7 @@ const char *if_mgr_get_event_str(enum wlan_if_mgr_evt event)
 	CASE_RETURN_STRING(WLAN_IF_MGR_EV_NAN_PRE_ENABLE);
 	CASE_RETURN_STRING(WLAN_IF_MGR_EV_NAN_POST_ENABLE);
 	CASE_RETURN_STRING(WLAN_IF_MGR_EV_NAN_POST_DISABLE);
+	CASE_RETURN_STRING(WLAN_IF_MGR_EV_AP_CHANNEL_SELECTED);
 	default:
 		return "Unknown";
 	}
@@ -182,6 +183,9 @@ QDF_STATUS if_mgr_deliver_event(struct wlan_objmgr_vdev *vdev,
 		break;
 	case WLAN_IF_MGR_EV_NAN_POST_DISABLE:
 		status = if_mgr_nan_post_disable(vdev, event_data);
+		break;
+	case WLAN_IF_MGR_EV_AP_CHANNEL_SELECTED:
+		status = if_mgr_ap_channel_selected(vdev, event_data);
 		break;
 	default:
 		status = if_mgr_deliver_mbss_event(vdev, event, event_data);

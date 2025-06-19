@@ -6503,9 +6503,80 @@ dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
 			prev_vdev->vdev_id, curr_vdev->vdev_id);
 	}
 }
+
+static inline bool
+dp_qos_latency_copy_stats(struct dp_vdev *prev_vdev,
+			  struct dp_vdev *curr_vdev, uint8_t index)
+{
+	uint8_t j, k;
+
+	qdf_atomic_set(&prev_vdev->qos_latency_report[index].enable, false);
+	curr_vdev->qos_latency_report[index].type =
+		prev_vdev->qos_latency_report[index].type;
+
+	if (prev_vdev->qos_latency_report[index].type ==
+			REPORT_TYPE_HISTOGRAM) {
+		curr_vdev->qos_latency_report[index].stats =
+			prev_vdev->qos_latency_report[index].stats;
+		for (j = 0; j < CDP_MAX_DATA_TIDS; j++) {
+			for (k = 0; k < CDP_HIST_BUCKET_SIZE; k++)
+				curr_vdev->tx_latency_stats_hist[j][k] =
+					prev_vdev->tx_latency_stats_hist[j][k];
+		}
+		prev_vdev->qos_latency_report[index].stats = NULL;
+	} else if (prev_vdev->qos_latency_report[index].type ==
+			REPORT_TYPE_PERCENTILE) {
+		curr_vdev->qos_latency_report[index].stats =
+			prev_vdev->qos_latency_report[index].stats;
+		for (j = 0; j < CDP_MAX_DATA_TIDS; j++) {
+			for (k = 0; k < PERC_BUCKET_SIZE; k++)
+				curr_vdev->tx_latency_stats_per[j][k] =
+					prev_vdev->tx_latency_stats_per[j][k];
+		}
+			prev_vdev->qos_latency_report[index].stats = NULL;
+	} else {
+		return false;
+	}
+
+	qdf_atomic_set(&curr_vdev->qos_latency_report[index].enable, true);
+	dp_info("Change Vdev %u to %u for Report Method: %u Type: %u",
+		prev_vdev->vdev_id, curr_vdev->vdev_id, index,
+		curr_vdev->qos_latency_report[index].type);
+
+	return true;
+}
+
+static inline void
+dp_update_qos_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+	uint8_t i;
+	bool report_enable = false;
+
+	if (!prev_vdev || !curr_vdev)
+		return;
+
+	dp_enable_ul_delay(prev_vdev, UL_DELAY_CALC_ID_QOS, false);
+
+	for (i = 0; i < SOLICITED_MAX; i++) {
+		if (qdf_atomic_read(&prev_vdev->qos_latency_report[i].enable)) {
+			if (dp_qos_latency_copy_stats(prev_vdev, curr_vdev, i))
+				report_enable = true;
+		}
+	}
+
+	if (report_enable)
+		dp_enable_ul_delay(curr_vdev, UL_DELAY_CALC_ID_QOS, true);
+}
 #else
 static inline void
 dp_update_mlo_latency_request_vdev(struct dp_vdev *prev_vdev,
+				   struct dp_vdev *curr_vdev)
+{
+}
+
+static inline void
+dp_update_qos_latency_request_vdev(struct dp_vdev *prev_vdev,
 				   struct dp_vdev *curr_vdev)
 {
 }
@@ -6525,6 +6596,7 @@ static QDF_STATUS dp_mld_peer_change_vdev(struct dp_soc *soc,
 					       DP_MOD_ID_CHILD);
 
 	dp_update_mlo_latency_request_vdev(prev_vdev, mld_peer->vdev);
+	dp_update_qos_latency_request_vdev(prev_vdev, mld_peer->vdev);
 	mld_peer->txrx_peer->vdev = mld_peer->vdev;
 
 	dp_info("Change vdev for ML peer " QDF_MAC_ADDR_FMT
@@ -6998,6 +7070,35 @@ dp_peer_get_authorize(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	return authorize;
 }
 
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+static inline void
+dp_vdev_free_qos_latency_mem(struct dp_vdev *vdev)
+{
+	struct dp_qos_latency_report *report;
+	uint8_t i, j;
+
+	for (i = 0; i < SOLICITED_MAX; i++) {
+		report = &vdev->qos_latency_report[i];
+		if (!report->stats)
+			continue;
+
+		for (j = 0; j < CDP_MAX_DATA_TIDS; j++) {
+			if (!report->stats[j])
+				break;
+
+			qdf_mem_free(report->stats[j]);
+		}
+
+		qdf_mem_free(report->stats);
+	}
+}
+#else
+static inline void
+dp_vdev_free_qos_latency_mem(struct dp_vdev *vdev)
+{
+}
+#endif
+
 void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 			  enum dp_mod_id mod_id)
 {
@@ -7048,6 +7149,7 @@ void dp_vdev_unref_delete(struct dp_soc *soc, struct dp_vdev *vdev,
 free_vdev:
 	qdf_spinlock_destroy(&vdev->peer_list_lock);
 	dp_ul_delay_lock_destroy(vdev);
+	dp_vdev_free_qos_latency_mem(vdev);
 
 	qdf_spin_lock_bh(&soc->inactive_vdev_list_lock);
 	TAILQ_FOREACH(tmp_vdev, &soc->inactive_vdev_list,
@@ -14019,6 +14121,8 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	.txrx_set_tsf_ul_delay_report = dp_set_tsf_ul_delay_report,
 	.txrx_get_uplink_delay = dp_get_uplink_delay,
+	.txrx_qos_latency_stats_request = dp_qos_latency_stats_request,
+	.txrx_qos_latency_get_stats = dp_qos_latency_get_stats,
 #endif
 #ifdef WLAN_FEATURE_UL_JITTER
 	.txrx_nss_request = dp_txrx_nss_request,

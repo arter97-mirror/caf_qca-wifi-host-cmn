@@ -1435,6 +1435,17 @@ int mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
  * Return: Number of associated links
  */
 uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx);
+
+/**
+ * mlo_mgr_set_per_link_chan_info: Set wlan channel info per link id
+ * @vdev: vdev obj
+ * @link_id: link id
+ * @ch_width: chan width to set
+ *
+ * Return: zero for success, non-zero for failure
+ */
+int mlo_mgr_set_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
+				   enum phy_ch_width ch_width);
 #else
 static inline int
 mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
@@ -1447,6 +1458,13 @@ static inline uint8_t
 mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
 {
 	return 0;
+}
+
+static inline int
+mlo_mgr_set_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
+			       enum phy_ch_width ch_width)
+{
+	return -EINVAL;
 }
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif

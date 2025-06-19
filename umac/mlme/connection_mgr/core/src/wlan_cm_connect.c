@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -971,6 +971,54 @@ cm_inform_dlm_connect_complete(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+#define JOIN_TIMEOUT_INCREASE_RETRY 2
+
+static uint8_t cm_increase_retry_by_scan_age(
+			struct wlan_objmgr_psoc *psoc,
+			struct wlan_objmgr_pdev *pdev,
+			struct cm_connect_req *req,
+			struct wlan_cm_connect_resp *resp)
+{
+	struct wlan_mlme_psoc_ext_obj *mlme_obj;
+	struct qdf_mac_addr *bssid = &req->cur_candidate->entry->bssid;
+	struct scan_filter *scan_filter;
+	qdf_list_t *list;
+	uint8_t inc_retry = 0;
+
+	mlme_obj = mlme_get_psoc_ext_obj(psoc);
+	if (!mlme_obj) {
+		mlme_err(CM_PREFIX_FMT " psoc mlme obj is NULL ",
+			 CM_PREFIX_REF(resp->vdev_id, resp->cm_id));
+		return 0;
+	}
+
+	scan_filter = qdf_mem_malloc(sizeof(*scan_filter));
+	if (!scan_filter)
+		return 0;
+
+	scan_filter->num_of_bssid = 1;
+	qdf_mem_copy(scan_filter->bssid_list[0].bytes,
+		     bssid, sizeof(struct qdf_mac_addr));
+	scan_filter->age_threshold =
+			mlme_obj->cfg.timeouts.join_failure_timeout;
+	list = scm_get_scan_result(pdev, scan_filter);
+	qdf_mem_free(scan_filter);
+
+	if (list && qdf_list_size(list)) {
+		inc_retry = JOIN_TIMEOUT_INCREASE_RETRY;
+		mlme_debug(CM_PREFIX_FMT " increase try num %d," QDF_MAC_ADDR_FMT " age < %d ms",
+			   CM_PREFIX_REF(resp->vdev_id, resp->cm_id),
+			   JOIN_TIMEOUT_INCREASE_RETRY,
+			   QDF_MAC_ADDR_REF(bssid->bytes),
+			   mlme_obj->cfg.timeouts.join_failure_timeout);
+	}
+
+	if (list)
+		scm_purge_scan_results(list);
+
+	return inc_retry;
+}
+
 /**
  * cm_is_retry_with_same_candidate() - This API check if reconnect attempt is
  * required with the same candidate again
@@ -1021,7 +1069,8 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 
 	/* Try again for the JOIN timeout if only one candidate */
 	if (resp->reason == CM_JOIN_TIMEOUT &&
-	    qdf_list_size(req->candidate_list) == 1) {
+	    (qdf_list_size(req->candidate_list) == 1 ||
+	     req->num_bss == 1)) {
 		/*
 		 * If there is a interface connected which can lead to MCC,
 		 * do not retry as it can lead to beacon miss on that interface.
@@ -1030,6 +1079,18 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 		 */
 		if (policy_mgr_will_freq_lead_to_mcc(psoc, freq))
 			return false;
+
+		/* For some MLO AP, we receive beacon during join time, but
+		 * AP didn't send probe response, and AP sends probe response
+		 * after multiple retry. For such AP, add additional retry
+		 * for join timeout if scan entry age is less than Join timeout
+		 * value.
+		 */
+		max_retry_count +=
+		 cm_increase_retry_by_scan_age(
+				psoc,
+				wlan_vdev_get_pdev(cm_ctx->vdev),
+				req, resp);
 
 		goto use_same_candidate;
 	}
@@ -1608,6 +1669,7 @@ static QDF_STATUS cm_connect_get_candidates(struct wlan_objmgr_pdev *pdev,
 		return status;
 	}
 	cm_req->candidate_list = candidate_list;
+	cm_req->num_bss = num_bss;
 
 	return status;
 }

@@ -2886,7 +2886,7 @@ struct hal_hw_srng_config hw_srng_table_fig[] = {
 	{ /* SW2WBM_RELEASE */
 		.start_ring_id = HAL_SRNG_WBM_SW_RELEASE,
 		.max_rings = 1,
-		.entry_size = sizeof(struct wbm_release_ring) >> 2,
+		.entry_size = sizeof(struct wbm_release_ring_rx) >> 2,
 		.lmac_ring = FALSE,
 		.ring_dir = HAL_SRNG_SRC_RING,
 		.reg_start = {

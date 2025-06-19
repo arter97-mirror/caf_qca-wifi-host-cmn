@@ -2018,7 +2018,7 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 		 */
 		if (num_links > WLAN_MLO_SINGLE_LINK &&
 		    !link_info->is_link_active &&
-		    mlo_ctx->mlme_ops &&
+		    mlo_ctx && mlo_ctx->mlme_ops &&
 		    mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls)
 			mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls(psoc,
 								      vdev_id);

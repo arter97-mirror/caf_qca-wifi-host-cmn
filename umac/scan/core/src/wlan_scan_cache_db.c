@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2318,6 +2318,17 @@ scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 		return NULL;
 	}
 
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE ||
+	    wlan_vdev_mlme_get_opmode(vdev) == QDF_P2P_CLIENT_MODE) {
+		wlan_vdev_mlme_get_ssid(vdev, filter->ssid_list[0].ssid,
+					&filter->ssid_list[0].length);
+		if (filter->ssid_list[0].length)
+			filter->num_of_ssid = 1;
+		else
+			scm_debug("no ssid configured on vdev %d",
+				  vdev_id);
+	}
+
 	filter->authmodeset =
 		wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_AUTH_MODE);
 	filter->ucastcipherset =
@@ -2332,9 +2343,11 @@ scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(vdev);
 
 	list = scm_get_scan_result(pdev, filter);
-	qdf_mem_free(filter);
+
 	if (!list || (list && !qdf_list_size(list))) {
-		scm_debug("Scan entry for bssid:" QDF_MAC_ADDR_FMT "not found",
+		scm_debug("Scan entry for ssid:" QDF_SSID_FMT " bssid:" QDF_MAC_ADDR_FMT "not found",
+			  QDF_SSID_REF(filter->ssid_list[0].length,
+				       filter->ssid_list[0].ssid),
 			  QDF_MAC_ADDR_REF(bssid->bytes));
 		goto done;
 	}
@@ -2347,6 +2360,7 @@ scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 done:
 	if (list)
 		scm_purge_scan_results(list);
+	qdf_mem_free(filter);
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_SCAN_ID);
 

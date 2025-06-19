@@ -62,7 +62,8 @@ static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RIN
 	{1, 1, HAL_BE_WBM_SW1_BM_ID, 0},
 	{2, 2, HAL_BE_WBM_SW2_BM_ID, 0},
 	{3, 3, HAL_BE_WBM_SW3_BM_ID, 0},
-	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0}
+	{4, 4, HAL_BE_WBM_SW4_BM_ID, 0},
+	{6, 6, HAL_BE_WBM_SW6_BM_ID, 0}
 };
 #else /* CONFIG_BORON */
 static struct wlan_cfg_tcl_wbm_ring_num_map g_tcl_wbm_map_array[MAX_TCL_DATA_RINGS] = {
@@ -321,7 +322,27 @@ static void dp_initialize_arch_ops_be_fisa(struct dp_arch_ops *arch_ops)
 #ifdef CONFIG_BORON
 
 #ifdef IPA_OPT_WIFI_DP
-//#error disable_cookie_coversion_on_IPA_ring
+static inline
+void dp_ipa_disable_cc_tqm(struct hal_hw_cc_config *cc_cfg)
+{
+	cc_cfg->tqm2sw6_cc_en = 0;
+}
+
+static inline
+void dp_ipa_disable_cc_reo(struct hal_hw_cc_config *cc_cfg)
+{
+	cc_cfg->reo2sw9_cc_en = 0;
+}
+#else
+static inline
+void dp_ipa_disable_cc_tqm(struct hal_hw_cc_config *cc_cfg)
+{
+}
+
+static inline
+void dp_ipa_disable_cc_reo(struct hal_hw_cc_config *cc_cfg)
+{
+}
 #endif
 static inline
 void dp_cc_wbm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
@@ -339,6 +360,24 @@ void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
 	cc_cfg->tqm2sw1_cc_en = 1;
 	cc_cfg->tqm2sw0_cc_en = 1;
 	cc_cfg->tqm2fw_cc_en = 0;
+	dp_ipa_disable_cc_tqm(cc_cfg);
+}
+
+static inline
+void dp_cc_reo_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+	cc_cfg->reo2sw9_cc_en = 1;
+	cc_cfg->reo2sw8_cc_en = 1;
+	cc_cfg->reo2sw7_cc_en = 1;
+	cc_cfg->reo2sw6_cc_en = 1;
+	cc_cfg->reo2sw5_cc_en = 1;
+	cc_cfg->reo2sw4_cc_en = 1;
+	cc_cfg->reo2sw3_cc_en = 1;
+	cc_cfg->reo2sw2_cc_en = 1;
+	cc_cfg->reo2sw1_cc_en = 1;
+	cc_cfg->reo2sw0_cc_en = 1;
+	cc_cfg->reo2fw_cc_en = 0;
+	dp_ipa_disable_cc_reo(cc_cfg);
 }
 #else /* CONFIG_BORON */
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
@@ -398,6 +437,11 @@ static inline
 void dp_cc_tqm_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
 {
 }
+
+static inline
+void dp_cc_reo_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
+{
+}
 #endif /* !CONFIG_BORON */
 
 /**
@@ -436,6 +480,7 @@ static void dp_cc_reg_cfg_init(struct dp_soc *soc,
 	cc_cfg.release_path_cookie_conv_en = true;
 	dp_cc_wbm_sw_en_cfg(&cc_cfg);
 	dp_cc_tqm_sw_en_cfg(&cc_cfg);
+	dp_cc_reo_sw_en_cfg(&cc_cfg);
 
 	hal_cookie_conversion_reg_cfg_be(soc->hal_soc, &cc_cfg);
 }

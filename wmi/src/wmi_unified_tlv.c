@@ -661,6 +661,8 @@ static const uint32_t vdev_param_tlv[] = {
 		  VDEV_PARAM_ENABLE_DISABLE_NAN_CONFIG_FEATURES),
 	PARAM_MAP(vdev_param_enable_disable_rtt_responder_role,
 		  VDEV_PARAM_ENABLE_DISABLE_RTT_RESPONDER_ROLE),
+	PARAM_MAP(vdev_param_enable_disable_rtt_bw_downgrade,
+		  VDEV_PARAM_ENABLE_DISABLE_RTT_BW_DOWNGRADE),
 	PARAM_MAP(vdev_param_enable_disable_rtt_initiator_role,
 		  VDEV_PARAM_ENABLE_DISABLE_RTT_INITIATOR_ROLE),
 	PARAM_MAP(vdev_param_mcast_steer, VDEV_PARAM_MCAST_STEERING),
@@ -4303,6 +4305,7 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 
 	cmd->auth_mode = param->akm;
 	cmd->peer_nss = param->peer_nss;
+	cmd->peer_max_tx_nss = param->peer_max_tx_nss;
 
 	/* Update bandwidth-NSS mapping */
 	cmd->peer_bw_rxnss_override = 0;
@@ -4354,7 +4357,7 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 
 	wmi_debug("vdev_id %d associd %d peer_flags %x rate_caps %x "
 		 "peer_caps %x listen_intval %d ht_caps %x max_mpdu %d "
-		 "nss %d phymode %d peer_mpdu_density %d "
+		 "nss %d max_tx_nss %d phymode %d peer_mpdu_density %d "
 		 "cmd->peer_vht_caps %x "
 		 "HE cap_info %x ops %x "
 		 "HE cap_info_ext %x "
@@ -4363,8 +4366,8 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 		 cmd->vdev_id, cmd->peer_associd, cmd->peer_flags,
 		 cmd->peer_rate_caps, cmd->peer_caps,
 		 cmd->peer_listen_intval, cmd->peer_ht_caps,
-		 cmd->peer_max_mpdu, cmd->peer_nss, cmd->peer_phymode,
-		 cmd->peer_mpdu_density,
+		 cmd->peer_max_mpdu, cmd->peer_nss, cmd->peer_max_tx_nss,
+		 cmd->peer_phymode, cmd->peer_mpdu_density,
 		 cmd->peer_vht_caps, cmd->peer_he_cap_info,
 		 cmd->peer_he_ops, cmd->peer_he_cap_info_ext,
 		 cmd->peer_he_cap_phy[0], cmd->peer_he_cap_phy[1],
@@ -10591,6 +10594,8 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 				resource_cfg->apf_data_ofload_enable__word, 1);
 	}
 
+	WMI_RSRC_CFG_HOST_SERVICE_FLAG_ACTION_OUI_V2_SET(resource_cfg->host_service_flags,
+							 tgt_res_cfg->is_action_oui_v2_enabled);
 }
 
 #ifdef FEATURE_SET
@@ -23706,6 +23711,7 @@ struct wmi_ops tlv_ops =  {
 				wmi_extract_apf_read_memory_resp_event_tlv,
 	.send_set_apf_supported_offload_bitmap_cmd =
 			wmi_send_set_apf_supported_offload_bitmap_cmd_tlv,
+	.send_set_apf_mode_bitmap_cmd = wmi_send_set_apf_mode_bitmap_cmd_tlv,
 #endif /* FEATURE_WLAN_APF */
 	.init_cmd_send = init_cmd_send_tlv,
 	.send_vdev_set_custom_aggr_size_cmd =
@@ -25381,6 +25387,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_SCC_TPC_POWER_SUPPORT;
 	wmi_service[wmi_service_per_vdev_twt_resp_disable_support] =
 				WMI_SERVICE_PER_VDEV_TWT_RESP_DISABLE_SUPPORT;
+	wmi_service[wmi_service_vendor_oui_action_v2] =
+				WMI_SERVICE_VENDOR_OUI_ACTION_V2;
+	wmi_service[wmi_service_ndp_dfs_channel_support] =
+				WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT;
 }
 
 /**

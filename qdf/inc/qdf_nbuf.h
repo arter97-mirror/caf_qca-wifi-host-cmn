@@ -1341,6 +1341,23 @@ static inline bool qdf_is_pp_nbuf(qdf_nbuf_t nbuf)
 }
 
 /**
+ * qdf_skip_dma_map_unmap: Check if DMA map/unmap needs to be skipped for nbuf
+ *
+ * @osdev: QDF device reference
+ * @nbuf: nbuf reference
+ * @dir: DMA direction
+ *
+ * Return: True/False
+ */
+static inline bool
+qdf_skip_dma_map_unmap(qdf_device_t osdev, qdf_nbuf_t nbuf, qdf_dma_dir_t dir)
+{
+	return ((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
+		dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
+	       __qdf_is_pp_nbuf(nbuf) && QDF_NBUF_CB_PADDR(nbuf);
+}
+
+/**
  * qdf_nbuf_copy_header() - copy SKB header portion into another SKB
  * @to_skb: dest skb reference
  * @from_skb: source skb reference
@@ -1551,7 +1568,7 @@ qdf_nbuf_unmap_nbytes_single_paddr(qdf_device_t osdev, qdf_nbuf_t buf,
 {
 	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
 
-	if (qdf_is_pp_nbuf(buf))
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
 		dma_sync_single_for_cpu(osdev->dev, phy_addr,
 					nbytes, __qdf_dma_dir_to_os(dir));
 	else
@@ -5799,6 +5816,12 @@ void qdf_nbuf_tx_desc_count_display(void);
  * Return: none
  */
 void qdf_nbuf_tx_desc_count_clear(void);
+
+static inline qdf_nbuf_t
+qdf_nbuf_realloc_headroom_no_free(qdf_nbuf_t buf, uint32_t headroom)
+{
+	return __qdf_nbuf_realloc_headroom_no_free(buf, headroom);
+}
 
 static inline qdf_nbuf_t
 qdf_nbuf_realloc_headroom(qdf_nbuf_t buf, uint32_t headroom)

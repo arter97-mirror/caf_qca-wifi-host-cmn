@@ -905,7 +905,8 @@ enum QDF_GLOBAL_MODE {
 
 /**
  * typedef tQDF_MCC_TO_SCC_SWITCH_MODE - MCC to SCC switch mode.
- * @QDF_MCC_TO_SCC_SWITCH_DISABLE: Disable switch
+ * @QDF_MCC_TO_SCC_SWITCH_DISABLE: Disable SCC switch. Should be used only if
+ * the target supports STA + SAP MCC. Currently, there is no support for MCC.
  * @QDF_MCC_TO_SCC_SWITCH_FORCE_WITHOUT_DISCONNECTION: Force switch without
  * restart of SAP
  * @QDF_MCC_TO_SCC_SWITCH_WITH_FAVORITE_CHANNEL: Switch using fav channel(s)

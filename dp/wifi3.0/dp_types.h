@@ -46,6 +46,9 @@
 #include <hal_api_mon.h>
 #include "hal_rx.h"
 #include <qdf_hrtimer.h>
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+#include "qdf_delayed_work.h"
+#endif
 
 struct dp_tx_queue;
 
@@ -1868,7 +1871,7 @@ struct dp_rx_page_pool {
 	size_t curr_pool_size;
 	size_t base_pool_size;
 	qdf_atomic_t update_in_progress;
-	qdf_timer_t pool_inactivity_timer;
+	struct qdf_delayed_work pool_inactivity_work;
 	qdf_list_t inactive_list;
 	bool page_pool_init;
 	uint64_t alloc_success;
@@ -3903,6 +3906,8 @@ struct dp_soc {
 	struct dp_tx_page_pool *tx_pp[MAX_VDEV_CNT];
 	qdf_spinlock_t tx_pp_lock;
 #endif
+	/* flag to check if wds is not supported */
+	bool wds_not_supported;
 };
 
 /*
@@ -3939,14 +3944,17 @@ QDF_COMPILE_TIME_ASSERT(num_cpu_check,
 #define LINK_DESC_PAGE_ID_MASK  0x007FE0
 #define LINK_DESC_ID_SHIFT      5
 #define LINK_DESC_ID_START_21_BITS_COOKIE 0x8000
+#define LINK_DESC_ID_START_20_BITS_COOKIE 0x4000
 #elif PAGE_SIZE == 16384
 #define LINK_DESC_PAGE_ID_MASK 0x007F80
 #define LINK_DESC_ID_SHIFT      7
-#define LINK_DESC_ID_START_21_BITS_COOKIE 0x8000
+#define LINK_DESC_ID_START_21_BITS_COOKIE 0x2000
+#define LINK_DESC_ID_START_20_BITS_COOKIE 0x1000
 #elif PAGE_SIZE == 65536
 #define LINK_DESC_PAGE_ID_MASK  0x007E00
 #define LINK_DESC_ID_SHIFT      9
 #define LINK_DESC_ID_START_21_BITS_COOKIE 0x800
+#define LINK_DESC_ID_START_20_BITS_COOKIE 0x400
 #else
 #error "Unsupported kernel PAGE_SIZE"
 #endif
@@ -3962,8 +3970,8 @@ QDF_COMPILE_TIME_ASSERT(num_cpu_check,
 #define LINK_DESC_COOKIE_PAGE_ID(_cookie) \
 	((_cookie) & LINK_DESC_PAGE_ID_MASK)
 #define LINK_DESC_ID_START_21_BITS_COOKIE 0x8000
-#endif
 #define LINK_DESC_ID_START_20_BITS_COOKIE 0x4000
+#endif
 
 /* same as ieee80211_nac_param */
 enum dp_nac_param_cmd {
@@ -4562,11 +4570,13 @@ struct dp_vdev_stats {
 /* enum ul_delay_client_id - UL Delay calculation control ID
  * @UL_DELAY_CALC_ID_TSF: TSF request report ID
  * @UL_DELAY_CALC_ID_FW: FW request report ID
+ * @UL_DELAY_CALC_ID_QOS: QoS latency stats ID
  * @UL_DELAY_CALC_ID_MAX: Max ID
  **/
 enum ul_delay_client_id {
 	UL_DELAY_CALC_ID_TSF,
 	UL_DELAY_CALC_ID_FW,
+	UL_DELAY_CALC_ID_QOS,
 	UL_DELAY_CALC_ID_MAX
 };
 
@@ -4595,6 +4605,23 @@ struct dp_ul_delay_stats {
 	uint32_t prev_pkt_accum_opt_dp;
 	uint32_t prev_delay_accum_bus_bw;
 	uint32_t prev_pkt_accum_bus_bw;
+};
+
+#define PERC_BUCKET_SIZE 26
+
+/**
+ * struct dp_qos_latency_report - QoS latency stats report
+ * @type: Report type
+ * @method: Report method
+ * @enable: Repoert enabled
+ * @stats: Stats pointer
+ *
+ */
+struct dp_qos_latency_report {
+	enum cdp_report_type type;
+	enum cdp_report_method method;
+	qdf_atomic_t enable;
+	uint64_t **stats;
 };
 
 /* VDEV structure for data path state */
@@ -4908,6 +4935,17 @@ struct dp_vdev {
 	qdf_atomic_t tsf_ul_delay_report;
 	/* Latency stats requested by FW */
 	struct dp_latency_stats latency_stats;
+
+	/* Enable Histogram QoS latency stats */
+	qdf_atomic_t ul_delay_histogram;
+	/* Histogram QoS latency stats bucket */
+	uint64_t tx_latency_stats_hist[CDP_MAX_DATA_TIDS][CDP_HIST_BUCKET_SIZE];
+	/* Enable percentile QoS latency stats */
+	qdf_atomic_t ul_delay_percentile;
+	/* Percentile QoS latency stats bucket */
+	uint64_t tx_latency_stats_per[CDP_MAX_DATA_TIDS][PERC_BUCKET_SIZE];
+	/* QoS Latency stats report */
+	struct dp_qos_latency_report qos_latency_report[SOLICITED_MAX];
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 #ifdef WLAN_FEATURE_UL_JITTER
 	/* accumulative delay jitter for every TX completion */

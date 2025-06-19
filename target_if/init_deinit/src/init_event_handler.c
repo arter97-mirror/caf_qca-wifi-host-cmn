@@ -48,6 +48,7 @@
 #include <target_if_scan.h>
 #include "cdp_txrx_ctrl.h"
 #include "wlan_ipa_obj_mgmt_api.h"
+#include "wlan_action_oui_main.h"
 
 static void init_deinit_set_send_init_cmd(struct wlan_objmgr_psoc *psoc,
 					  struct target_psoc_info *tgt_hdl)
@@ -678,6 +679,11 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 	if (wmi_service_enabled(wmi_handle, wmi_service_radar_flags_support)) {
 		target_if_debug("Full bw nol supported");
 		info->wlan_res_cfg.is_full_bw_nol_supported = true;
+	}
+
+	if (wlan_action_oui_v2_enabled(psoc)) {
+		target_if_debug("action oui v2 is enabled");
+		info->wlan_res_cfg.is_action_oui_v2_enabled = true;
 	}
 
 	target_if_wifi_radar_support_enable(psoc, tgt_hdl, event);

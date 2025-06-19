@@ -1569,7 +1569,6 @@ struct peer_assoc_ml_partner_links {
  * @peer_max_mpdu: 0 : 8k , 1 : 16k, 2 : 32k, 3 : 64k
  * @peer_mpdu_density: 3 : 0~7 : 2^(11nAMPDUdensity -4)
  * @peer_rate_caps: peer rate capabalities
- * @peer_nss: peer nss
  * @peer_vht_caps: peer VHT capabilities
  * @peer_phymode: peer phymode
  * @peer_ht_info: peer HT info
@@ -1579,6 +1578,8 @@ struct peer_assoc_ml_partner_links {
  * @rx_mcs_set: rx mcs
  * @tx_max_rate: max tx rates
  * @tx_mcs_set: tx mcs
+ * @peer_max_tx_nss: Tx NSS of peer without intersecting with self cap
+ * @peer_nss: peer nss
  * @vht_capable: VHT capabalities
  * @min_data_rate: Peer minimum rate
  * @tx_max_mcs_nss: max tx MCS and NSS
@@ -1648,7 +1649,6 @@ struct peer_assoc_params {
 	uint32_t peer_max_mpdu;
 	uint32_t peer_mpdu_density;
 	uint32_t peer_rate_caps;
-	uint32_t peer_nss;
 	uint32_t peer_vht_caps;
 	uint32_t peer_phymode;
 	uint32_t peer_ht_info[2];
@@ -1658,6 +1658,8 @@ struct peer_assoc_params {
 	uint32_t rx_mcs_set;
 	uint32_t tx_max_rate;
 	uint32_t tx_mcs_set;
+	uint8_t peer_max_tx_nss;
+	uint8_t peer_nss;
 	uint8_t vht_capable;
 	uint8_t min_data_rate;
 	uint32_t peer_bw_rxnss_override;
@@ -6255,6 +6257,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_dyndtim_cnt, VDEV_PARAM_DYNDTIM_CNT),
 	VDEV_PARAM(vdev_param_enable_disable_rtt_responder_role,
 		   VDEV_PARAM_ENABLE_DISABLE_RTT_RESPONDER_ROLE),
+	VDEV_PARAM(vdev_param_enable_disable_rtt_bw_downgrade,
+		   VDEV_PARAM_ENABLE_DISABLE_RTT_BW_DOWNGRADE),
 	VDEV_PARAM(vdev_param_set_ba_mode, VDEV_PARAM_BA_MODE),
 	VDEV_PARAM(vdev_param_forced_moddtim_enable,
 		   VDEV_PARAM_FORCED_MODDTIM_ENABLE),
@@ -6862,6 +6866,8 @@ typedef enum {
 	wmi_service_sta_twt_stats_ext,
 	wmi_service_scc_tpc_power_support,
 	wmi_service_per_vdev_twt_resp_disable_support,
+	wmi_service_vendor_oui_action_v2,
+	wmi_service_ndp_dfs_channel_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -7264,6 +7270,7 @@ struct target_feature_set {
  * @max_ml_sta_num_bss: Max sta bss
  * @max_ml_bss_num: Max ml bss
  * @apfv6_offload_disabled: APFv6 offload disabled bitmap
+ * @is_action_oui_v2_enabled: Is action oui v2 enabled
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7414,6 +7421,7 @@ typedef struct {
 	uint8_t max_ml_sta_num_bss;
 	uint8_t max_ml_bss_num;
 	uint32_t apfv6_offload_disabled;
+	bool is_action_oui_v2_enabled;
 } target_resource_config;
 
 /**

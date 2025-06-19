@@ -159,7 +159,7 @@ enum hal_tx_comp_rel_src {
  * on wbm_release_ring DWORDs 2,3 ,4 and 5for software based completions
  * (Exception frames and TQM bypass frames)
  */
-#if defined(CONFIG_BERYLLIUM) || defined(CONFIG_LITHIUM)
+#if defined(CONFIG_BERYLLIUM) || defined(CONFIG_LITHIUM) || defined(CONFIG_BORON)
 #define HAL_TX_COMP_HTT_STATUS_OFFSET 8
 #else
 #define HAL_TX_COMP_HTT_STATUS_OFFSET 0 /* Rhine */

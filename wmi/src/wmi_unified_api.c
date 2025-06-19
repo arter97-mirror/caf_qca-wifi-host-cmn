@@ -1268,6 +1268,18 @@ wmi_unified_set_apf_supported_offload_bitmap_cmd(wmi_unified_t wmi,
 								  );
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_unified_set_apf_mode_bitmap_cmd(wmi_unified_t wmi,
+				    uint8_t vdev_id,
+				    uint32_t apf_mode)
+{
+	if (wmi->ops->send_set_apf_mode_bitmap_cmd)
+		return wmi->ops->
+			send_set_apf_mode_bitmap_cmd(wmi, vdev_id, apf_mode);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif /* FEATURE_WLAN_APF */
 
 QDF_STATUS
@@ -1359,17 +1371,6 @@ wmi_unified_set_chan_cmd_send(wmi_unified_t wmi_handle,
 {
 	if (wmi_handle->ops->send_pdev_set_chan_cmd)
 		return wmi_handle->ops->send_pdev_set_chan_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_set_ratepwr_table_cmd_send(wmi_unified_t wmi_handle,
-				       struct ratepwr_table_params *param)
-{
-	if (wmi_handle->ops->send_set_ratepwr_table_cmd)
-		return wmi_handle->ops->send_set_ratepwr_table_cmd(wmi_handle,
 				param);
 
 	return QDF_STATUS_E_FAILURE;
@@ -1735,16 +1736,6 @@ wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
 {
 	if (wmi_handle->ops->send_lteu_config_cmd)
 		return wmi_handle->ops->send_lteu_config_cmd(wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_set_psmode_cmd_send(wmi_unified_t wmi_handle,
-				struct set_ps_mode_params *param)
-{
-	if (wmi_handle->ops->send_set_ps_mode_cmd)
-		return wmi_handle->ops->send_set_ps_mode_cmd(wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
 }
