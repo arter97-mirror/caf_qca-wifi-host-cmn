@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1241,7 +1241,7 @@ static void osif_indcate_connect_results(struct wlan_objmgr_vdev *vdev,
 		   mlo_mgr_is_link_add_link_switch(vdev)) {
 		osif_update_link_add_partner_links(vdev, rsp);
 	} else if (osif_get_connect_status_code(rsp) == WLAN_STATUS_SUCCESS &&
-		   QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_OWE)) {
+		   wlan_cm_check_mlo_roam_auth_status(vdev)) {
 		/*
 		 * For OWE roaming, link vdev is disconnected on receiving
 		 * roam synch indication. As part of the disconnect osif link
