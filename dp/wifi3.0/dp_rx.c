@@ -3094,7 +3094,8 @@ void dp_rx_deliver_to_pkt_capture(struct dp_soc *soc,  struct dp_pdev *pdev,
 				  uint16_t peer_id, uint32_t is_offload,
 				  qdf_nbuf_t netbuf)
 {
-	if (wlan_cfg_get_pkt_capture_mode(soc->wlan_cfg_ctx))
+	if (wlan_cfg_get_pkt_capture_mode(soc->wlan_cfg_ctx) ||
+	    wlan_dp_get_lpc_full_mgmt_pkt(soc->wlan_cfg_ctx))
 		dp_wdi_event_handler(WDI_EVENT_PKT_CAPTURE_RX_DATA, soc, netbuf,
 				     peer_id, is_offload, pdev->pdev_id);
 }
@@ -3102,7 +3103,8 @@ void dp_rx_deliver_to_pkt_capture(struct dp_soc *soc,  struct dp_pdev *pdev,
 void dp_rx_deliver_to_pkt_capture_no_peer(struct dp_soc *soc, qdf_nbuf_t nbuf,
 					  uint32_t is_offload)
 {
-	if (wlan_cfg_get_pkt_capture_mode(soc->wlan_cfg_ctx))
+	if (wlan_cfg_get_pkt_capture_mode(soc->wlan_cfg_ctx) ||
+	    wlan_dp_get_lpc_full_mgmt_pkt(soc->wlan_cfg_ctx))
 		dp_wdi_event_handler(WDI_EVENT_PKT_CAPTURE_RX_DATA_NO_PEER,
 				     soc, nbuf, HTT_INVALID_VDEV,
 				     is_offload, 0);
