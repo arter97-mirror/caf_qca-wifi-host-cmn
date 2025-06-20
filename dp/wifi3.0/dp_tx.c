@@ -7496,6 +7496,7 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 	struct dp_vdev *vdev;
 	struct dp_qos_latency_report *report;
 	uint8_t i, j;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	if (!req)
 		return QDF_STATUS_E_INVAL;
@@ -7524,10 +7525,21 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 			report->stats =
 				qdf_mem_malloc(sizeof(uint64_t) *
 					       CDP_MAX_DATA_TIDS);
+			if (!report->stats) {
+				dp_err("Hist stats allocation failed");
+				dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+				return QDF_STATUS_E_NOMEM;
+			}
+
 			for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
 				report->stats[i] =
 					qdf_mem_malloc(sizeof(uint64_t) *
 						       CDP_HIST_BUCKET_SIZE);
+				if (!report->stats[i]) {
+					dp_err("Hist stats[%u] alloc fail", i);
+					status = QDF_STATUS_E_NOMEM;
+					goto end;
+				}
 				qdf_mem_zero(report->stats[i],
 					     sizeof(report->stats[i]));
 			}
@@ -7547,10 +7559,21 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 			report->stats =
 				qdf_mem_malloc(sizeof(uint64_t) *
 					       CDP_MAX_DATA_TIDS);
+			if (!report->stats) {
+				dp_err("Perc stats allocation failed");
+				dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+				return QDF_STATUS_E_NOMEM;
+			}
+
 			for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
 				report->stats[i] =
 					qdf_mem_malloc(sizeof(uint64_t) *
 						       PERC_BUCKET_SIZE);
+				if (!report->stats[i]) {
+					dp_err("Perc stats[%u] alloc fail", i);
+					status = QDF_STATUS_E_NOMEM;
+					goto end;
+				}
 				qdf_mem_zero(report->stats[i],
 					     sizeof(report->stats[i]));
 			}
@@ -7600,9 +7623,19 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 		report->stats = NULL;
 	}
 end:
+	if (QDF_STATUS_E_NOMEM == status) {
+		if (report->stats) {
+			for (j = 0; j < i; j++) {
+				if (report->stats[j])
+					qdf_mem_free(report->stats[j]);
+			}
+			qdf_mem_free(report->stats);
+		}
+	}
+
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
-	return QDF_STATUS_SUCCESS;
+	return status;
 }
 
 QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
