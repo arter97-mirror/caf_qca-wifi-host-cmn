@@ -743,7 +743,7 @@ bool mlo_mgr_update_csa_link_info(struct wlan_objmgr_pdev *pdev,
 {
 	struct mlo_link_info *link_info;
 	uint16_t bw_val;
-	uint32_t ch_cfreq1, ch_cfreq2;
+	struct ch_params ch_params = {0};
 
 	if (!mlo_dev_ctx) {
 		mlo_err("invalid mlo dev ctx");
@@ -760,20 +760,14 @@ bool mlo_mgr_update_csa_link_info(struct wlan_objmgr_pdev *pdev,
 
 	link_info->link_chan_info->ch_freq = csa_param->csa_chan_freq;
 
-	if (wlan_reg_is_6ghz_chan_freq(csa_param->csa_chan_freq)) {
-		ch_cfreq1 = wlan_reg_compute_6g_center_freq_from_cfi(
-					csa_param->new_ch_freq_seg1);
-		ch_cfreq2 = wlan_reg_compute_6g_center_freq_from_cfi(
-					csa_param->new_ch_freq_seg2);
-	} else {
-		ch_cfreq1 = wlan_reg_legacy_chan_to_freq(pdev,
-					csa_param->new_ch_freq_seg1);
-		ch_cfreq2 = wlan_reg_legacy_chan_to_freq(pdev,
-					csa_param->new_ch_freq_seg2);
-	}
+	ch_params.ch_width = csa_param->new_ch_width;
+	wlan_reg_set_channel_params_for_pwrmode(pdev,
+						csa_param->csa_chan_freq,
+						0, &ch_params,
+						REG_CURRENT_PWR_MODE);
 
-	link_info->link_chan_info->ch_cfreq1 = ch_cfreq1;
-	link_info->link_chan_info->ch_cfreq2 = ch_cfreq2;
+	link_info->link_chan_info->ch_cfreq1 = ch_params.mhz_freq_seg0;
+	link_info->link_chan_info->ch_cfreq2 = ch_params.mhz_freq_seg1;
 
 	link_info->link_chan_info->ch_phymode = wlan_eht_chan_phy_mode(
 					csa_param->csa_chan_freq,
@@ -781,7 +775,9 @@ bool mlo_mgr_update_csa_link_info(struct wlan_objmgr_pdev *pdev,
 	link_info->link_chan_info->ch_width = csa_param->new_ch_width;
 
 	mlo_debug("CSA: freq: %d, cfreq1: %d, cfreq2: %d, bw: %d, phymode:%d",
-		  link_info->link_chan_info->ch_freq, ch_cfreq1, ch_cfreq2,
+		  link_info->link_chan_info->ch_freq,
+		  link_info->link_chan_info->ch_cfreq1,
+		  link_info->link_chan_info->ch_cfreq2,
 		  link_info->link_chan_info->ch_width,
 		  link_info->link_chan_info->ch_phymode);
 
