@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -87,6 +87,7 @@ struct chipset_stats {
 	bool cstats_no_flush[CSTATS_MAX_TYPE];
 	struct cstats_tx_rx_ops ops;
 	bool is_cstats_ini_enabled;
+	bool is_cp_stats_debug_logging_enable;
 };
 
 #define wlan_cstats_fw_stats(len, buf) \

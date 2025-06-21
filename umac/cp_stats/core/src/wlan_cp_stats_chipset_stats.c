@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -41,6 +41,9 @@ QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 				wlan_cp_stats_get_user_delay_value_ms(psoc);
 	cstats.chipset_stats_push_rbs_delay_interval =
 				wlan_cp_stats_get_user_delay_interval(psoc);
+
+	cstats.is_cp_stats_debug_logging_enable  =
+			wlan_cp_stats_is_debug_logging_enabled(psoc);
 
 	for (i = 0; i < CSTATS_MAX_TYPE; i++) {
 		qdf_spinlock_create(&cstats.cstats_lock[i]);
