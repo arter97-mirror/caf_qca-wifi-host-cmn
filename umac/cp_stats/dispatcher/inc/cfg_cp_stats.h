@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -34,12 +34,33 @@
 		"chipset_stats_enable", false,\
 		"Enable Chipset stats logging feature")
 
+/*
+ * <ini>
+ * chipset_stats_debug_logging_enable - Enable/Disable chipset stats logging
+ * debug prints
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * Related: Chipset Stats logging
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CHIPSET_STATS_DEBUG_LOGGING_ENABLE CFG_INI_BOOL(\
+		"chipset_stats_debug_logging_enable", false,\
+		"enable debug logging for chipset statistics")
+
 #define CFG_CP_STATS_CSTATS CFG(CHIPSET_STATS_ENABLE)
+#define CFG_CP_STATS_DEBUG_LOGGING CFG(CHIPSET_STATS_DEBUG_LOGGING_ENABLE)
 #else
 #define CFG_CP_STATS_CSTATS
+#define CFG_CP_STATS_DEBUG_LOGGING
 #endif /* WLAN_CHIPSET_STATS */
 
 #define CFG_CP_STATS_ALL \
-	CFG_CP_STATS_CSTATS
+	CFG_CP_STATS_CSTATS \
+	CFG_CP_STATS_DEBUG_LOGGING \
 
 #endif /* __CONFIG_CP_STATS_H */
