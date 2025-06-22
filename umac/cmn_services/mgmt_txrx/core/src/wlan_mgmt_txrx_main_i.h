@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -190,16 +190,36 @@ struct mgmt_txrx_stats_t {
 	uint64_t dma_comp;
 };
 
+#define MAX_PEER_NUM 64
+
+/**
+ * struct mgmt_frame_dup_det_info - MGMT frame duplicate detection parameters
+ * @peer_addr: peer address
+ * @time: time at which frame received
+ * @retry_bit: flag for retry bit
+ * @subtype: subtype
+ * @seq_num: sequence number
+ */
+struct mgmt_frame_dup_det_info {
+	struct qdf_mac_addr peer_addr;
+	qdf_time_t time;
+	uint8_t retry_bit;
+	enum mgmt_frame_type subtype;
+	uint16_t seq_num;
+};
+
 /**
  * struct mgmt_txrx_priv_psoc_context - mgmt txrx private psoc context
  * @psoc:                psoc context
  * @mgmt_rx_comp_cb:     array of pointers of mgmt rx cbs
  * @mgmt_txrx_psoc_ctx_lock:  mgmt txrx psoc ctx lock
+ * @mgmt_frame_param: MGMT frame duplicate detection parameters
  */
 struct mgmt_txrx_priv_psoc_context {
 	struct wlan_objmgr_psoc *psoc;
 	struct mgmt_rx_handler *mgmt_rx_comp_cb[MGMT_MAX_FRAME_TYPE];
 	qdf_spinlock_t mgmt_txrx_psoc_ctx_lock;
+	struct mgmt_frame_dup_det_info mgmt_frame_param[MAX_PEER_NUM];
 };
 
 /**
@@ -284,3 +304,27 @@ QDF_STATUS iot_sim_mgmt_tx_update(struct wlan_objmgr_psoc *psoc,
 				  struct wlan_objmgr_vdev *vdev,
 				  qdf_nbuf_t buf);
 #endif
+
+/**
+ * mgmt_txrx_frame_is_duplicate - checks MGMT frame is duplicate or not.
+ * @psoc: pointer to PSOC object
+ * @wlan_hdr: Frame header
+ * @frm_type: Frame subtype categories
+ *
+ * This function compares the parameters of the current frame with those of the
+ * previously cached frame for the peer. If the provided frame is new, it
+ * updates the cache accordingly.
+ *
+ * Return: true if frame is duplicate otherwise false
+ */
+bool mgmt_txrx_frame_is_duplicate(struct wlan_objmgr_psoc *psoc,
+				  struct ieee80211_frame *wlan_hdr,
+				  enum mgmt_frame_type frm_type);
+
+/**
+ * mgmt_txrx_get_frm_type_string - get MGMT frame type in string format
+ * @frm_type: Frame subtype categories
+ *
+ * Return: MGMT frame type string
+ */
+uint8_t *mgmt_txrx_get_frm_type_string(enum mgmt_frame_type frm_type);
