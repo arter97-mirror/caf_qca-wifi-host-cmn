@@ -2041,6 +2041,8 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 	uint8_t slp_percentage[MLD_MAX_LINKS - 1] = {0};
 	uint8_t mlo_vdev_num = WLAN_UMAC_MLO_MAX_VDEVS;
 	uint8_t num_partner_links = 0;
+	uint8_t mlo_support_link_num =
+		wlan_mlme_get_sta_mlo_conn_max_num(psoc);
 
 	wlan_psoc_mlme_get_11be_capab(psoc, &eht_capab);
 	if (!eht_capab)
@@ -2074,6 +2076,14 @@ static int cm_calculate_mlo_bss_score(struct wlan_objmgr_psoc *psoc,
 			freq[i] = entry_partner[i]->channel.chan_freq;
 		else
 			freq[i] = link[i].freq;
+
+		if (num_partner_links > 1 &&
+		    mlo_support_link_num < 3 &&
+		    !is_freq_dbs_or_sbs(psoc, freq[i], freq_entry)) {
+			mlme_nofl_debug("freq %d %d can't be MLMR",
+					freq[i], freq_entry);
+			continue;
+		}
 		if (entry_partner[i]) {
 			link_score[i] =
 				cm_calculate_bss_score(psoc, pdev, entry_partner[i],
