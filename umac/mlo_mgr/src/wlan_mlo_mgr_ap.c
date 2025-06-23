@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -752,6 +752,11 @@ mlo_ap_update_max_ml_peer_ids(uint32_t pdev_id, uint32_t max_ml_peer_ids)
 	struct mlo_mgr_context *mlo_mgr_ctx = wlan_objmgr_get_mlo_ctx();
 	uint16_t max_mlo_peer_id_stale;
 
+	if (!mlo_mgr_ctx) {
+		mlo_err("MLO context is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	max_mlo_peer_id_stale = mlo_mgr_ctx->max_mlo_peer_id;
 
 	ml_peerid_lock_acquire(mlo_mgr_ctx);
@@ -778,6 +783,11 @@ uint16_t mlo_ap_ml_peerid_alloc(void)
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
 	uint16_t i;
 	uint16_t mlo_peer_id;
+
+	if (!mlo_ctx) {
+		mlo_err("MLO context is NULL");
+		return MLO_INVALID_PEER_ID;
+	}
 
 	ml_peerid_lock_acquire(mlo_ctx);
 	mlo_peer_id = mlo_ctx->last_mlo_peer_id;
@@ -817,6 +827,11 @@ void mlo_ap_ml_ptqm_peerid_free(struct wlan_mlo_dev_context *ml_dev,
 void mlo_ap_ml_peerid_free(uint16_t mlo_peer_id)
 {
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
+
+	if (!mlo_ctx) {
+		mlo_err("MLO context is NULL");
+		return;
+	}
 
 	if ((mlo_peer_id == 0) || (mlo_peer_id == MLO_INVALID_PEER_ID)) {
 		mlo_err(" ML peer id %d is invalid", mlo_peer_id);
