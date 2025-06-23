@@ -205,6 +205,9 @@ defined(QCA_SINGLE_WIFI_3_0)
 
 #define MAX_USR_INFO_STR_CNT	4
 
+#define HAL_MON_TX_STATUS_FAIL		0
+#define HAL_MON_TX_STATUS_NOACK		1
+
 #ifdef CONFIG_MON_WORD_BASED_TLV
 #ifndef BIG_ENDIAN_HOST
 struct rx_mpdu_start_mon_data {
