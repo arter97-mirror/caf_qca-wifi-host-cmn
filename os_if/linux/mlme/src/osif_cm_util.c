@@ -264,6 +264,10 @@ void osif_cm_unlink_bss(struct wlan_objmgr_vdev *vdev,
 {
 	struct scan_filter *filter;
 
+	if (qdf_is_macaddr_zero(bssid) ||
+	    qdf_is_macaddr_broadcast(bssid))
+		return;
+
 	filter = qdf_mem_malloc(sizeof(*filter));
 	if (!filter)
 		return;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -561,16 +561,16 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 			     struct qdf_mac_addr *bssid);
 
 /*
- * wlan_scan_flush_locally_generated_entry() - Function to flush
- * locally generated scan entry
+ * wlan_scan_is_locally_generated_entry() - Function to check
+ * if bss entry is a locally generated scan entry
  * @pdev: pdev object
- * @bssid: bssid to be fetched from scan db
+ * @bssid: bssid/link mac of the interface
  *
- * Return : true if scan entry is flushed; false otherwise
+ * Return : true if scan entry is locally generated; false otherwise
  */
 bool
-wlan_scan_flush_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
-					struct qdf_mac_addr *bssid);
+wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
+				     struct qdf_mac_addr *bssid);
 
 /**
  * wlan_scan_get_mld_addr_by_link_addr() - Function to get MLD address
