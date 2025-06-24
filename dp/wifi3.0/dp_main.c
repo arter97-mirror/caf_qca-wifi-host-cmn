@@ -7480,6 +7480,20 @@ void dp_peer_unmap_track_resume(struct dp_soc *soc)
 }
 #endif
 
+#ifdef WLAN_DP_FEATURE_STC
+static inline void dp_rx_fst_inv_peer_id(struct dp_soc *soc,
+					 struct dp_peer *peer)
+{
+	if (soc->cdp_soc.ol_ops->rx_fst_inv_peer_id)
+		soc->cdp_soc.ol_ops->rx_fst_inv_peer_id(peer->peer_id);
+}
+#else
+static inline void dp_rx_fst_inv_peer_id(struct dp_soc *soc,
+					 struct dp_peer *peer)
+{
+}
+#endif
+
 /**
  * dp_peer_delete_wifi3() - Delete txrx peer
  * @soc_hdl: soc handle
@@ -7526,6 +7540,7 @@ static QDF_STATUS dp_peer_delete_wifi3(struct cdp_soc_t *soc_hdl,
 
 	peer->valid = 0;
 
+	dp_rx_fst_inv_peer_id(soc, peer);
 	dp_cfg_event_record_peer_evt(soc, DP_CFG_EVENT_PEER_DELETE, peer,
 				     vdev, 0);
 	dp_init_info("%pK: peer %pK (" QDF_MAC_ADDR_FMT ") pending-refs %d",

@@ -1907,6 +1907,7 @@ void (*peer_send_wds_disconnect)(struct cdp_ctrl_objmgr_psoc *psoc,
 					   enum cdp_peer_event event,
 					   uint16_t peer_id, uint8_t vdev_id,
 					   uint8_t *peer_mac_addr);
+	void (*rx_fst_inv_peer_id)(uint16_t peer_id);
 #endif
 };
 
