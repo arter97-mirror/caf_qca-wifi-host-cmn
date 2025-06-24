@@ -57,6 +57,7 @@
 #include "wlan_crypto_global_api.h"
 #include "wlan_cm_bss_score_param.h"
 #include "wlan_mlme_api.h"
+#include <wlan_action_oui_main.h>
 
 #ifdef FEATURE_6G_SCAN_CHAN_SORT_ALGO
 
@@ -1178,6 +1179,46 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 }
 
 /**
+ * scm_skip_bcn_ch_mismatch_check_by_oui() - check chan mismatch beacon
+ * frame drop or not based on OUI config
+ * @psoc: psoc ptr
+ * @scan_entry: scan entry
+ * @bcn: beacon frame info
+ *
+ * For some IOT APs, they are always switching channel for STA to scan and
+ * find it, but not connecting to it. But such behaviour APs, don't drop
+ * the beacon if channel mismatching.
+ *
+ * Return: QDF_STATUS
+ */
+static bool scm_skip_bcn_ch_mismatch_check_by_oui(
+			struct wlan_objmgr_psoc *psoc,
+			struct scan_cache_entry *scan_entry,
+			struct scan_bcn_probe_event *bcn)
+{
+	struct action_oui_search_attr attr;
+
+	qdf_mem_zero(&attr, sizeof(attr));
+	attr.ie_data = util_scan_entry_ie_data(scan_entry);
+	attr.ie_length = util_scan_entry_ie_len(scan_entry);
+
+	if (!wlan_action_oui_search(psoc, &attr,
+				    ACTION_OUI_SKIP_BCN_CH_MISMATCH_CHK))
+		return false;
+
+	scm_nofl_debug(QDF_MAC_ADDR_FMT ": frame(%d) chan mismatch no-drop by oui, seq %d frame freq %d rx data freq %d RSSI %d",
+		       QDF_MAC_ADDR_REF(
+		       scan_entry->bssid.bytes),
+		       bcn->frm_type,
+		       scan_entry->seq_num,
+		       scan_entry->channel.chan_freq,
+		       bcn->rx_data->chan_freq,
+		       scan_entry->rssi_raw);
+
+	return true;
+}
+
+/**
  * scm_is_p2p_wildcard_ssid() - check p2p wildcard ssid or not
  * @scan_entry: scan entry
  *
@@ -1285,7 +1326,9 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 		scan_entry = scan_node->entry;
 
 		if (scan_obj->drop_bcn_on_chan_mismatch &&
-		    scan_entry->channel_mismatch) {
+		    scan_entry->channel_mismatch &&
+		    !scm_skip_bcn_ch_mismatch_check_by_oui(psoc, scan_entry,
+							   bcn)) {
 			scm_nofl_debug(QDF_MAC_ADDR_FMT ": Drop frame(%d) for chan mismatch, seq %d frame freq %d rx data freq %d RSSI %d",
 				       QDF_MAC_ADDR_REF(
 				       scan_entry->bssid.bytes),
