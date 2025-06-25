@@ -2916,7 +2916,7 @@ bool dp_mlo_tx_pool_unmap_be(struct dp_soc *soc,
 	int refcnt = 0;
 
 	if (!vdev)
-		return false;
+		return true;
 
 	if (vdev->opmode != wlan_op_mode_ap) {
 		dp_vdev_unref_delete(soc, vdev, mod_id);
