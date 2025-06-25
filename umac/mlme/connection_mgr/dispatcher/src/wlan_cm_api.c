@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -592,7 +592,7 @@ QDF_STATUS wlan_cm_sta_update_bw_puncture(struct wlan_objmgr_vdev *vdev,
 
 	if (des_chan->puncture_bitmap == ch_param.reg_punc_bitmap &&
 	    des_chan->ch_width == ch_param.ch_width)
-		return status;
+		return QDF_STATUS_E_INVAL;
 
 	des_chan->ch_freq_seg1 = ch_param.center_freq_seg0;
 	des_chan->ch_freq_seg2 = ch_param.center_freq_seg1;

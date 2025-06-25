@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -54,7 +54,7 @@
  * dcs_debug - Configure dcs debug trace level for debug purpose
  * @Min: 0
  * @Max: 2
- * @Default: 0
+ * @Default: 1
  *
  * This ini is used to configure dcs debug trace level for debug purpose
  *
@@ -67,7 +67,7 @@
  */
 #define CFG_DCS_DEBUG CFG_INI_UINT(\
 		"dcs_debug",\
-		0, 2, 0,\
+		0, 2, 1,\
 		CFG_VALUE_OR_DEFAULT,\
 		"dcs debug trace level")
 

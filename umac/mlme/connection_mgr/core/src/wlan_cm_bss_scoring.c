@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2404,7 +2404,7 @@ cm_sort_vendor_algo_mlo_bss_entry(struct wlan_objmgr_psoc *psoc,
 				  enum MLO_TYPE bss_mlo_type)
 {
 	struct scan_cache_entry *entry_partner[MLD_MAX_LINKS - 1];
-	uint32_t freq[MLD_MAX_LINKS - 1];
+	uint32_t freq[MLD_MAX_LINKS - 1] = {0};
 	uint32_t etp_score[MLD_MAX_LINKS - 1] = {0};
 	uint32_t total_score[MLD_MAX_LINKS - 1] = {0};
 	int8_t i, j;
@@ -3864,7 +3864,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlme_err("failed to remove node for BSS "QDF_MAC_ADDR_FMT" from scan list",
 				 QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes));
-			if (force_connect_candidate->entry) {
+			if (force_connect_candidate) {
 				util_scan_free_cache_entry(force_connect_candidate->entry);
 				qdf_mem_free(force_connect_candidate);
 			}

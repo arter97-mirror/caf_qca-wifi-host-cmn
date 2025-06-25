@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -18,6 +18,7 @@
 
 #include <qdf_page_pool.h>
 #include <linux/ptr_ring.h>
+#include <qdf_mem.h>
 
 bool __qdf_is_pp_nbuf(struct sk_buff *skb)
 {
@@ -79,7 +80,7 @@ static void set_page_param_frag_flag(struct page_pool_params *pp_params)
 #endif
 
 __qdf_page_pool_t __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
-					 size_t pp_page_size)
+					 size_t pp_page_size, qdf_dma_dir_t dir)
 {
 	struct page_pool_params pp_params = {0};
 	struct page_pool *pp;
@@ -89,7 +90,7 @@ __qdf_page_pool_t __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
 	pp_params.flags = PP_FLAG_DMA_MAP | PP_FLAG_DMA_SYNC_DEV,
 	pp_params.nid = NUMA_NO_NODE,
 	pp_params.dev = osdev->dev,
-	pp_params.dma_dir = DMA_FROM_DEVICE,
+	pp_params.dma_dir = __qdf_dma_dir_to_os(dir),
 	pp_params.offset = 0,
 	pp_params.max_len = pp_page_size;
 	pp_params.pool_size = pool_size;

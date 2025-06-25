@@ -1207,29 +1207,6 @@ static QDF_STATUS
 cm_handle_connect_start_req(struct wlan_objmgr_vdev *vdev,
 			    struct wlan_cm_connect_req *req)
 {
-	struct wlan_objmgr_psoc *psoc;
-	bool is_reassociate = false;
-
-	psoc = wlan_vdev_get_psoc(vdev);
-	if (!psoc)
-		return QDF_STATUS_E_INVAL;
-
-	if (mlo_is_mld_sta(vdev))
-		is_reassociate = !ucfg_mlo_is_mld_disconnected(vdev);
-	else
-		is_reassociate = !wlan_cm_is_vdev_disconnected(vdev);
-	if (req->source == CM_OSIF_CONNECT &&
-	    !is_reassociate &&
-	    !req->is_non_assoc_link &&
-	    wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
-	    policy_mgr_get_connection_count(psoc) > 1 &&
-	    !policy_mgr_allow_concurrency(psoc, PM_STA_MODE,
-					  0, HW_MODE_BW_NONE,
-					  0, wlan_vdev_get_id(vdev))) {
-		mlme_debug("sta 3 port conc check fail, can't allow sta");
-		return QDF_STATUS_E_FAILURE;
-	}
-
 	if (!wlan_vdev_mlme_is_mlo_link_vdev(vdev))
 		cm_teardown_tdls(vdev);
 
@@ -2589,7 +2566,7 @@ QDF_STATUS cm_connect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 	QDF_STATUS status;
 	struct wlan_cm_connect_req *req;
 
-	cm_if_mgr_inform_connect_active(cm_ctx->vdev);
+	status = cm_if_mgr_inform_connect_active(cm_ctx->vdev);
 
 	cm_ctx->active_cm_id = *cm_id;
 	cm_req = cm_get_req_by_cm_id(cm_ctx, *cm_id);
@@ -2606,6 +2583,8 @@ QDF_STATUS cm_connect_active(struct cnx_mgr *cm_ctx, wlan_cm_id *cm_id)
 		cm_remove_cmd_from_serialization(cm_ctx, *cm_id);
 		return QDF_STATUS_E_INVAL;
 	}
+	if (QDF_IS_STATUS_ERROR(status))
+		goto connect_err;
 
 	cm_req->connect_req.connect_active_time =
 				qdf_mc_timer_get_system_time();

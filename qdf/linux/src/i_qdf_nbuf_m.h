@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -740,6 +740,14 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 	qdf_dma_addr_t paddr;
 	QDF_STATUS ret;
 
+	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
+	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
+	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
+		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
+					   nbytes, __qdf_dma_dir_to_os(dir));
+		return QDF_STATUS_SUCCESS;
+	}
+
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =
 		dma_map_single(osdev->dev, buf->data,
@@ -778,7 +786,9 @@ __qdf_nbuf_unmap_nbytes_single(qdf_device_t osdev, struct sk_buff *buf,
 	/* Sync the DMA buffer for CPU instead of unmap
 	 * for page pool buffers since these are recyclable.
 	 */
-	if (__qdf_is_pp_nbuf(buf))
+	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
+	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
+	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf))
 		return dma_sync_single_for_cpu(osdev->dev, paddr, nbytes,
 					       __qdf_dma_dir_to_os(dir));
 

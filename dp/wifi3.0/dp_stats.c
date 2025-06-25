@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -8523,6 +8523,10 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 			       pdev->soc->stats.tx.tx_comp_exception);
 		DP_PRINT_STATS("Tx desc force freed: %u",
 			       pdev->soc->stats.tx.tx_comp_force_freed);
+		DP_PRINT_STATS("SW tso pkt cnt: %u",
+			       pdev->soc->stats.tx.sw_tso_pkts);
+		DP_PRINT_STATS("SW tso fail cnt: %u",
+			       pdev->soc->stats.tx.sw_tso_fail);
 
 		buf = dp_stats_str;
 		buf_len = DP_STATS_STR_LEN;

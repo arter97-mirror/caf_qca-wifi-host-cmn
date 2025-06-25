@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -21966,7 +21966,6 @@ send_both_eirp_psd_for_set_tpc_tlv(wmi_unified_t wmi_handle,
 	return ret;
 }
 
-static inline
 bool is_both_psd_eirp_support_present_for_sp(wmi_unified_t wmi_handle,
 					     struct reg_tpc_power_info *param)
 {

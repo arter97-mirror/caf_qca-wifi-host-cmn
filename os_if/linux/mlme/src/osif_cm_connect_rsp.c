@@ -694,7 +694,8 @@ osif_debug_mlo_duplicate_bss(struct wlan_cm_connect_resp *rsp,
 		if (!conn_rsp->links[link_id].bss)
 			continue;
 
-		if (conn_rsp->links[link_id].bss == bss)
+		if (link_id != assoc_link_id &&
+		    conn_rsp->links[link_id].bss == bss)
 			osif_info("link bss, link_id %d freq %d bssid " QDF_MAC_ADDR_FMT " same as assoc bss, link %d freq %d bssid " QDF_MAC_ADDR_FMT,
 				  link_id, partner_info->chan_freq,
 				  QDF_MAC_ADDR_REF(partner_info->link_addr.bytes),
@@ -886,11 +887,10 @@ void osif_populate_connect_response_for_link(
 	conn_rsp_params->valid_links |=  BIT(link_id);
 	osif_populate_link_status_code(conn_rsp_params, link_id, link_status_code);
 	conn_rsp_params->links[link_id].addr = link_addr;
+	conn_rsp_params->links[link_id].bssid = bssid;
 
-	if (bss) {
-		conn_rsp_params->links[link_id].bssid = bss->bssid;
+	if (bss)
 		conn_rsp_params->links[link_id].bss = bss;
-	}
 }
 
 static QDF_STATUS
