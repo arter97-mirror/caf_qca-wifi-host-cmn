@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -333,6 +333,8 @@ QDF_STATUS wlan_regulatory_pdev_obj_created_notification(
 	parent_psoc = wlan_pdev_get_psoc(pdev);
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	tx_ops = reg_get_psoc_tx_ops(parent_psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	if (tx_ops->get_phy_id_from_pdev_id)
 		tx_ops->get_phy_id_from_pdev_id(parent_psoc, pdev_id, &phy_id);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -171,6 +171,9 @@ static QDF_STATUS reg_set_non_offload_country(struct wlan_objmgr_pdev *pdev,
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	psoc = wlan_pdev_get_psoc(pdev);
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (tx_ops->get_phy_id_from_pdev_id)
 		tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -260,6 +263,9 @@ QDF_STATUS reg_set_country(struct wlan_objmgr_pdev *pdev,
 	psoc = wlan_pdev_get_psoc(pdev);
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (tx_ops->get_phy_id_from_pdev_id)
 		tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -299,6 +305,9 @@ QDF_STATUS reg_set_country(struct wlan_objmgr_pdev *pdev,
 
 	if (psoc_reg->offload_enabled) {
 		tx_ops = reg_get_psoc_tx_ops(psoc);
+		if (!tx_ops)
+			return QDF_STATUS_E_FAILURE;
+
 		if (tx_ops->set_country_code) {
 			tx_ops->set_country_code(psoc, &cc);
 		} else {

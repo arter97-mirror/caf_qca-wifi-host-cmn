@@ -1565,6 +1565,8 @@ QDF_STATUS reg_get_max_5g_bw_from_country_code(struct wlan_objmgr_pdev *pdev,
 					       uint16_t *max_bw_5g)
 {
 	*max_bw_5g = reg_get_max_bw_5G_for_fo(pdev);
+	if (!(*max_bw_5g))
+		return QDF_STATUS_E_FAILURE
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -1574,6 +1576,8 @@ QDF_STATUS reg_get_max_5g_bw_from_regdomain(struct wlan_objmgr_pdev *pdev,
 					    uint16_t *max_bw_5g)
 {
 	*max_bw_5g = reg_get_max_bw_5G_for_fo(pdev);
+	if (!(*max_bw_5g))
+		return QDF_STATUS_E_FAILURE;
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -1595,6 +1599,9 @@ uint16_t reg_get_max_bw_5G_for_fo(struct wlan_objmgr_pdev *pdev)
 
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return 0;
+
 	if (reg_tx_ops->get_phy_id_from_pdev_id)
 		reg_tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -2086,6 +2093,8 @@ QDF_STATUS reg_program_chan_list(struct wlan_objmgr_pdev *pdev,
 
 		pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 		tx_ops = reg_get_psoc_tx_ops(psoc);
+		if (!tx_ops)
+			return QDF_STATUS_E_FAILURE;
 
 		if (tx_ops->get_phy_id_from_pdev_id)
 			tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
@@ -2164,6 +2173,9 @@ QDF_STATUS reg_get_curr_regdomain(struct wlan_objmgr_pdev *pdev,
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (tx_ops->get_phy_id_from_pdev_id)
 		tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -2233,6 +2245,9 @@ QDF_STATUS reg_modify_chan_144(struct wlan_objmgr_pdev *pdev,
 	reg_compute_pdev_current_chan_list(pdev_priv_obj);
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (reg_tx_ops->fill_umac_legacy_chanlist)
 		reg_tx_ops->fill_umac_legacy_chanlist(pdev,
 				pdev_priv_obj->cur_chan_list);
@@ -3231,6 +3246,8 @@ QDF_STATUS reg_enable_dfs_channels(struct wlan_objmgr_pdev *pdev,
 	reg_compute_pdev_current_chan_list(pdev_priv_obj);
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	/* Fill the ic channel list with the updated current channel
 	 * chan list.
@@ -3304,6 +3321,9 @@ QDF_STATUS reg_update_channel_ranges(struct wlan_objmgr_pdev *pdev)
 	}
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (reg_tx_ops->get_phy_id_from_pdev_id)
 		reg_tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -3375,6 +3395,8 @@ QDF_STATUS reg_modify_pdev_chan_range(struct wlan_objmgr_pdev *pdev)
 	reg_compute_pdev_current_chan_list(pdev_priv_obj);
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	/* Fill the ic channel list with the updated current channel
 	 * chan list.
@@ -3470,6 +3492,8 @@ QDF_STATUS reg_disable_chan_coex(struct wlan_objmgr_pdev *pdev,
 	reg_compute_pdev_current_chan_list(pdev_priv_obj);
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	if (reg_tx_ops->fill_umac_legacy_chanlist) {
 		reg_tx_ops->fill_umac_legacy_chanlist(pdev,
@@ -6426,6 +6450,9 @@ static struct regulatory_channel *reg_get_psoc_mas_chan_list(
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return NULL;
+
 	if (reg_tx_ops->get_phy_id_from_pdev_id)
 		reg_tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -9165,6 +9192,9 @@ QDF_STATUS reg_send_afc_cmd(struct wlan_objmgr_pdev *pdev,
 	}
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (tx_ops->send_afc_ind)
 		return tx_ops->send_afc_ind(psoc, pdev_id, afc_ind_obj);
 
@@ -10164,6 +10194,8 @@ reg_get_sp_eirp_for_punc_chans(struct wlan_objmgr_pdev *pdev,
 		return 0;
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	if (!reg_tx_ops->reg_get_min_psd)
 		return 0;
@@ -10879,6 +10911,9 @@ QDF_STATUS reg_process_r2p_table_update_response(struct wlan_objmgr_psoc *psoc,
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (reg_tx_ops->end_r2p_table_update_wait)
 		status = reg_tx_ops->end_r2p_table_update_wait(psoc, pdev_id);
 
@@ -10898,10 +10933,8 @@ bool reg_is_dev_supports_80p80(struct wlan_objmgr_pdev *pdev)
 	}
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!reg_tx_ops) {
-		reg_err("reg_tx_ops is NULL");
+	if (!reg_tx_ops)
 		return false;
-	}
 
 	if (reg_tx_ops->is_80p80_supported)
 		return reg_tx_ops->is_80p80_supported(pdev);
@@ -10944,10 +10977,8 @@ QDF_STATUS reg_txpb_send_dma_addr(struct wlan_objmgr_pdev *pdev,
 	}
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!reg_tx_ops) {
-		reg_err("TPB: reg_tx_ops is NULL");
+	if (!reg_tx_ops)
 		return QDF_STATUS_E_FAILURE;
-	}
 
 	reg_err("TPB: in reg_txpb_send_dma_addr");
 	if (reg_tx_ops->txpb_send_dma_addr)
@@ -10970,10 +11001,8 @@ QDF_STATUS reg_txpb_send_inference_cmd(struct wlan_objmgr_pdev *pdev,
 	}
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!reg_tx_ops) {
-		reg_err("TPB: reg_tx_ops is NULL");
+	if (!reg_tx_ops)
 		return QDF_STATUS_E_FAILURE;
-	}
 
 	if (reg_tx_ops->txpb_send_inference_cmd)
 		status = reg_tx_ops->txpb_send_inference_cmd(pdev, params);

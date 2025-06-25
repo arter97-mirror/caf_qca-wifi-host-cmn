@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -74,6 +74,9 @@ QDF_STATUS reg_set_11d_country(struct wlan_objmgr_pdev *pdev,
 	country_code.pdev_id = pdev_id;
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (tx_ops->get_phy_id_from_pdev_id)
 		tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -83,6 +86,9 @@ QDF_STATUS reg_set_11d_country(struct wlan_objmgr_pdev *pdev,
 
 	if (psoc_priv_obj->offload_enabled) {
 		tx_ops = reg_get_psoc_tx_ops(psoc);
+		if (!tx_ops)
+			return QDF_STATUS_E_FAILURE;
+
 		if (tx_ops->set_country_code) {
 			tx_ops->set_country_code(psoc, &country_code);
 		} else {
@@ -134,6 +140,8 @@ static QDF_STATUS reg_send_11d_msg_cbk(struct scheduler_msg *msg)
 	struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj;
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	psoc_priv_obj = reg_get_psoc_obj(psoc);
 	if (!psoc_priv_obj) {
@@ -382,6 +390,9 @@ QDF_STATUS reg_save_new_11d_country(struct wlan_objmgr_psoc *psoc,
 
 	if (psoc_priv_obj->offload_enabled) {
 		tx_ops = reg_get_psoc_tx_ops(psoc);
+		if (!tx_ops)
+			return QDF_STATUS_E_FAILURE;
+
 		if (tx_ops->set_country_code) {
 			tx_ops->set_country_code(psoc, &country_code);
 		} else {

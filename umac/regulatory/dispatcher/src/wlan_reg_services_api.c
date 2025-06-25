@@ -90,7 +90,13 @@ QDF_STATUS wlan_reg_get_max_5g_bw_from_regdomain(
 
 QDF_STATUS wlan_reg_get_max_bw_5G_for_fo(struct wlan_objmgr_pdev *pdev)
 {
-	return reg_get_max_bw_5G_for_fo(pdev);
+	uint16_t status;
+
+	status = reg_get_max_bw_5G_for_fo(pdev);
+	if (!status)
+		return QDF_STATUS_E_FAILURE;
+
+	return QDF_STATUS_SUCCESS;
 }
 
 bool wlan_reg_is_regdb_offloaded(struct wlan_objmgr_psoc *psoc)
@@ -577,6 +583,10 @@ QDF_STATUS regulatory_psoc_open(struct wlan_objmgr_psoc *psoc)
 	struct wlan_lmac_if_reg_tx_ops *tx_ops;
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops) {
+		reg_err("tx_ops is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
 	if (tx_ops->register_master_handler)
 		tx_ops->register_master_handler(psoc, NULL);
 	regulatory_assign_register_master_ext_handler(psoc, tx_ops);
@@ -600,6 +610,10 @@ QDF_STATUS regulatory_psoc_close(struct wlan_objmgr_psoc *psoc)
 	struct wlan_lmac_if_reg_tx_ops *tx_ops;
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops) {
+		reg_err("tx_ops is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
 	if (tx_ops->unregister_11d_new_cc_handler)
 		tx_ops->unregister_11d_new_cc_handler(psoc, NULL);
 	if (tx_ops->unregister_master_handler)
@@ -639,6 +653,8 @@ static bool reg_is_cntry_set_pending(struct wlan_objmgr_pdev *pdev,
 	}
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	if (tx_ops->get_phy_id_from_pdev_id)
 		tx_ops->get_phy_id_from_pdev_id(

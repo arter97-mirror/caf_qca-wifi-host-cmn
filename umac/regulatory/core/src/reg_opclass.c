@@ -1223,10 +1223,8 @@ reg_is_country_opclass_global(struct wlan_objmgr_pdev *pdev)
 	}
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!reg_tx_ops) {
-		reg_err("reg_tx_ops is NULL");
+	if (!reg_tx_ops)
 		return false;
-	}
 
 	if (reg_tx_ops->get_opclass_tbl_idx) {
 		reg_tx_ops->get_opclass_tbl_idx(pdev, &opclass_tbl_idx);
