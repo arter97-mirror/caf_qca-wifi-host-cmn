@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -60,7 +60,8 @@ enum cstats_types {
 
 struct cstats_tx_rx_ops {
 	int (*cstats_send_data_to_usr)(char *buff, unsigned int len,
-				       enum cstats_types type);
+				       enum cstats_types type,
+				       bool is_logging_enable);
 };
 
 struct cstats_node {

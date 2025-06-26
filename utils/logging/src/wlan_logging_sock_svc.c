@@ -919,7 +919,6 @@ static int wlan_logging_thread(void *Arg)
 		if (gwlan_logging.exit)
 			break;
 
-
 		if (qdf_atomic_test_and_clear_bit(HOST_LOG_DRIVER_MSG,
 						  gwlan_logging.event_flag)) {
 			ret = send_filled_buffers_to_user();
@@ -975,6 +974,8 @@ static int wlan_logging_thread(void *Arg)
 			 * to flush any residual data in them
 			 */
 			if (gwlan_logging.is_flush_complete == true) {
+				qdf_debug("reset is_flush_complete");
+
 				gwlan_logging.is_flush_complete = false;
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 				send_flush_completion_to_user(
@@ -982,8 +983,10 @@ static int wlan_logging_thread(void *Arg)
 #endif
 				wlan_logging_set_flush_log_completion();
 			} else {
+				qdf_debug("set is_flush_complete");
+
 				gwlan_logging.is_flush_complete = true;
-				/* Flush all current host logs*/
+				/* flush all current host logs */
 				spin_lock_irqsave(&gwlan_logging.spin_lock,
 					flags);
 				wlan_queue_logmsg_for_app();
