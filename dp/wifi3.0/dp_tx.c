@@ -1197,7 +1197,44 @@ static inline int dp_tx_is_nbuf_marked_exception(struct dp_soc *soc,
 }
 #endif
 
-#ifdef DP_TRAFFIC_END_INDICATION
+#if defined(DP_TRAFFIC_END_INDICATION) && defined(WLAN_SUPPORT_LAPB)
+/**
+ * dp_tx_twt_setup_is_enabled() - get the feature enable/disable status.
+ * @vdev: dp vdev handle
+ *
+ * Return: True if feature is enable else false
+ */
+static inline bool
+dp_tx_twt_setup_is_enabled(struct dp_vdev *vdev)
+{
+	return vdev->traffic_end_ind_en;
+}
+
+/**
+ * dp_is_eot_indication_req() - get the feature enable/disable status for
+ *				traffic end indication. Here TWT setup, flush
+ *				indication and traffic end indication in svc is
+ *				checked.
+ * @vdev: dp vdev handle
+ * @nbuf: original buffer from network stack
+ *
+ * Return: True if feature is enable else false
+ */
+static inline bool
+dp_is_eot_indication_req(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
+{
+	bool ret, svc_twt_traffic_end_enable = 0;
+
+	dp_svc_get_twt_end_indication_by_id(GET_SERVICE_CLASS_ID(nbuf->mark),
+					    &svc_twt_traffic_end_enable);
+
+	ret = svc_twt_traffic_end_enable &&
+	      dp_tx_twt_setup_is_enabled(vdev) &&
+	      wlan_dp_is_lapb_flush_ind_set(vdev->pdev->soc, nbuf);
+
+	return ret;
+}
+
 /**
  * dp_tx_get_traffic_end_indication_pkt() - Allocate and prepare packet to send
  *                                          as indication to fw to inform that
@@ -1218,31 +1255,28 @@ dp_tx_get_traffic_end_indication_pkt(struct dp_vdev *vdev,
 	uint8_t htt_desc_size;
 	qdf_nbuf_t end_nbuf;
 
-	if (qdf_unlikely(QDF_NBUF_CB_GET_PACKET_TYPE(nbuf) ==
-			 QDF_NBUF_CB_PACKET_TYPE_END_INDICATION)) {
-		htt_desc_size = sizeof(struct htt_tx_msdu_desc_ext2_t);
-		htt_desc_size_aligned = (htt_desc_size + 7) & ~0x7;
+	htt_desc_size = sizeof(struct htt_tx_msdu_desc_ext2_t);
+	htt_desc_size_aligned = (htt_desc_size + 7) & ~0x7;
 
-		end_nbuf = qdf_nbuf_queue_remove(&vdev->end_ind_pkt_q);
+	end_nbuf = qdf_nbuf_queue_remove(&vdev->end_ind_pkt_q);
+	if (!end_nbuf) {
+		end_nbuf = qdf_nbuf_alloc(NULL,
+					  (htt_desc_size_aligned +
+					  end_nbuf_len),
+					  htt_desc_size_aligned,
+					  8, false);
 		if (!end_nbuf) {
-			end_nbuf = qdf_nbuf_alloc(NULL,
-						  (htt_desc_size_aligned +
-						  end_nbuf_len),
-						  htt_desc_size_aligned,
-						  8, false);
-			if (!end_nbuf) {
-				dp_err("Packet allocation failed");
-				goto out;
-			}
-		} else {
-			qdf_nbuf_reset(end_nbuf, htt_desc_size_aligned, 8);
+			dp_err("Packet allocation failed");
+			goto out;
 		}
-		qdf_mem_copy(qdf_nbuf_data(end_nbuf), qdf_nbuf_data(nbuf),
-			     end_nbuf_len);
-		qdf_nbuf_set_pktlen(end_nbuf, end_nbuf_len);
-
-		return end_nbuf;
+	} else {
+		qdf_nbuf_reset(end_nbuf, htt_desc_size_aligned, 8);
 	}
+	qdf_mem_copy(qdf_nbuf_data(end_nbuf), qdf_nbuf_data(nbuf),
+		     end_nbuf_len);
+	qdf_nbuf_set_pktlen(end_nbuf, end_nbuf_len);
+
+	return end_nbuf;
 out:
 	return NULL;
 }
@@ -1332,25 +1366,12 @@ dp_tx_traffic_end_indication_enq_ind_pkt(struct dp_soc *soc,
 	return false;
 }
 
-/**
- * dp_tx_traffic_end_indication_is_enabled() - get the feature
- *                                             enable/disable status
- * @vdev: dp vdev handle
- *
- * Return: True if feature is enable else false
- */
-static inline bool
-dp_tx_traffic_end_indication_is_enabled(struct dp_vdev *vdev)
-{
-	return qdf_unlikely(vdev->traffic_end_ind_en);
-}
-
 static inline qdf_nbuf_t
 dp_tx_send_msdu_single_wrapper(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 			       struct dp_tx_msdu_info_s *msdu_info,
 			       uint16_t peer_id, qdf_nbuf_t end_nbuf)
 {
-	if (dp_tx_traffic_end_indication_is_enabled(vdev))
+	if (qdf_unlikely(dp_is_eot_indication_req(vdev, nbuf)))
 		end_nbuf = dp_tx_get_traffic_end_indication_pkt(vdev, nbuf);
 
 	nbuf = dp_tx_send_msdu_single(vdev, nbuf, msdu_info, peer_id, NULL);
@@ -1388,8 +1409,13 @@ dp_tx_traffic_end_indication_enq_ind_pkt(struct dp_soc *soc,
 	return false;
 }
 
+static inline bool dp_tx_twt_setup_is_enabled(struct dp_vdev *vdev)
+{
+	return false;
+}
+
 static inline bool
-dp_tx_traffic_end_indication_is_enabled(struct dp_vdev *vdev)
+dp_is_eot_indication_req(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
 {
 	return false;
 }
@@ -1929,9 +1955,9 @@ dp_tx_attempt_coalescing_lapb(struct dp_soc *soc, struct dp_vdev *vdev,
 			      uint8_t ring_id)
 {
 	int coalesce = 0;
-
-	soc->lapb.ops->wlan_dp_lapb_handle_frame(soc, tx_desc->nbuf,
-						 &coalesce, msdu_info);
+	if (!dp_tx_twt_setup_is_enabled(vdev))
+		soc->lapb.ops->wlan_dp_lapb_handle_frame(soc, tx_desc->nbuf,
+							 &coalesce, msdu_info);
 	return coalesce;
 }
 #endif
