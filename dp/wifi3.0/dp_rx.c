@@ -368,7 +368,7 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
 
 	ret = dp_rx_page_pool_nbuf_alloc_and_map(dp_soc, nbuf_frag_info_t,
-						 mac_id);
+						 mac_id, true);
 	if (QDF_IS_STATUS_SUCCESS(ret))
 		return ret;
 
@@ -3237,7 +3237,7 @@ dp_pdev_nbuf_alloc_and_map(struct dp_soc *dp_soc,
 	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
 
 	ret = dp_rx_page_pool_nbuf_alloc_and_map(dp_soc, nbuf_frag_info_t,
-						 mac_id);
+						 mac_id, false);
 	if (QDF_IS_STATUS_SUCCESS(ret))
 		return ret;
 

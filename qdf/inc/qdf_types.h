@@ -1928,6 +1928,7 @@ enum qdf_iommu_attr {
  *  pages
  * @QDF_DP_TX_DIRECT_LINK_BUF_TYPE: DP tx direct link buffer pages
  * @QDF_DP_RX_DIRECT_LINK_CE_BUF_TYPE: DP RX direct link CE dest ring buf pages
+ * @QDF_DP_RX_IPA_MAP_REFCNT_TYPE: DP RX IPA IOMMU refcnt for page pool buffers
  * @QDF_DP_DESC_TYPE_MAX: DP max desc type
  */
 enum qdf_dp_desc_type {
@@ -1949,6 +1950,7 @@ enum qdf_dp_desc_type {
 	QDF_DP_TX_DIRECT_LINK_BUF_TYPE,
 	QDF_DP_RX_DIRECT_LINK_CE_BUF_TYPE,
 #endif
+	QDF_DP_RX_IPA_MAP_REFCNT_TYPE,
 	QDF_DP_DESC_TYPE_MAX
 };
 
