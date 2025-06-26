@@ -151,6 +151,8 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 	char *ptr;
 	unsigned int *pfilled_length;
 	unsigned int tlen;
+	uint64_t *event_l;
+	uint64_t second_64_hex;
 
 	if (!cstats.is_cstats_ini_enabled)
 		return;
@@ -166,6 +168,14 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 	if (!cstats.ccur_node[type]) {
 		qdf_err("Current Node is NULL");
 		return;
+	}
+
+	if (cstats.is_cp_stats_debug_logging_enable) {
+		event_l = (uint64_t *)to_be_sent;
+		/* second 64 bits of the event represent the timestamp */
+		qdf_mem_copy(&second_64_hex, event_l + 1, 8);
+		cp_stats_debug("CSTATS FW EVENT received at timestamp: %llu, event_len: %d",
+			       second_64_hex, plen);
 	}
 
 	qdf_spin_lock_bh(&cstats.cstats_lock[type]);
@@ -226,7 +236,8 @@ static int wlan_cp_stats_cstats_send_version_to_usr(void)
 	if (cstats.ops.cstats_send_data_to_usr) {
 		ret = cstats.ops.cstats_send_data_to_usr(buff,
 							 metadata_len + n,
-							 CSTATS_HOST_TYPE);
+							 CSTATS_HOST_TYPE,
+							 false);
 	}
 
 	if (ret)
@@ -244,6 +255,8 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 	int payload_len;
 	int mark_total;
 	char *ptr = NULL;
+	size_t fw_list_len = 0;
+	size_t host_list_len = 0;
 
 	if (!cstats.is_cstats_ini_enabled)
 		return QDF_STATUS_SUCCESS;
@@ -283,6 +296,11 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 				     CSTATS_MARKER_SZ);
 		}
 
+		if (type == CSTATS_FW_TYPE)
+			fw_list_len++;
+		else if (type == CSTATS_HOST_TYPE)
+			host_list_len++;
+
 		if (!cstats.cstats_no_flush[type]) {
 			qdf_list_remove_node(&cstats.cstat_free_list[type],
 					     &clog_msg->node);
@@ -300,7 +318,8 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 
 		if (cstats.ops.cstats_send_data_to_usr) {
 			ret = cstats.ops.cstats_send_data_to_usr
-			       (clog_msg->logbuf, payload_len, type);
+			       (clog_msg->logbuf, payload_len, type,
+			       cstats.is_cp_stats_debug_logging_enable);
 		}
 
 		if (ret) {
@@ -316,6 +335,13 @@ int wlan_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 		}
 
 		counter++;
+	}
+
+	if (cstats.is_cp_stats_debug_logging_enable) {
+		if (type == CSTATS_FW_TYPE)
+			qdf_debug("FW List len : %zu", fw_list_len);
+		else if (type == CSTATS_HOST_TYPE)
+			qdf_debug("HOST List len : %zu", host_list_len);
 	}
 
 	return ret;
