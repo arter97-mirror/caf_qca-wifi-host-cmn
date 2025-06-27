@@ -6348,6 +6348,7 @@ mlo_link_recfg_gen_link_assoc_rsp(struct wlan_objmgr_vdev *vdev,
 	if (!add_link_info->num_links)
 		return QDF_STATUS_SUCCESS;
 
+	qdf_mem_zero(&org_assoc_rsp, sizeof(org_assoc_rsp));
 	mlo_get_assoc_rsp(vdev, &org_assoc_rsp);
 	if (!org_assoc_rsp.len) {
 		mlo_err("Org Assoc response frame len is 0");
