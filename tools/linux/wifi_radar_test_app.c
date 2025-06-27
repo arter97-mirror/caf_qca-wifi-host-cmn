@@ -122,7 +122,11 @@ int initialize_wr_dump_file(char *iface)
 	if (tm_val) {
 		strftime(time, 50, "%Y_%m_%d_%T", tm_val);
 		snprintf(filename, sizeof(filename), WR_DUMP_FILE, iface, time);
+#ifdef QCA_SUPPORT_RDKB
+		fd = open(filename, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+#else
 		fd = open(filename, O_WRONLY | O_CREAT);
+#endif
 	} else {
 		perror("Unable to get time value to generate filename\n");
 	}
