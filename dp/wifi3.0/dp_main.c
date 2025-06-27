@@ -318,7 +318,7 @@ const int dp_stats_mapping_table[][STATS_TYPE_MAX] = {
 	{HTT_DBG_EXT_STATS_TX_DE_INFO, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_PDEV_TX_RATE, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_PDEV_RX_RATE, TXRX_HOST_STATS_INVALID},
-	{TXRX_FW_STATS_INVALID, TXRX_HOST_STATS_INVALID},
+	{HTT_DBG_EXT_STATS_PEER_INFO, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_TX_SELFGEN_INFO, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_TX_MU_HWQ, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_RING_IF_INFO, TXRX_HOST_STATS_INVALID},
@@ -11385,6 +11385,7 @@ static QDF_STATUS
 dp_fw_stats_process(struct dp_vdev *vdev,
 		    struct cdp_txrx_stats_req *req)
 {
+	uint8_t i;
 	struct dp_pdev *pdev = NULL;
 	struct dp_soc *soc = NULL;
 	uint32_t stats = req->stats;
@@ -11429,6 +11430,18 @@ dp_fw_stats_process(struct dp_vdev *vdev,
 		req->param3 = 0xFFFFFFFF;
 	} else if (stats == (uint8_t)HTT_DBG_EXT_STATS_PDEV_TX_MU) {
 		req->param0 = HTT_DBG_EXT_STATS_SET_VDEV_MASK(vdev->vdev_id);
+	} else if (stats == (uint8_t)HTT_DBG_EXT_STATS_PEER_INFO) {
+		HTT_DBG_EXT_STATS_PEER_INFO_IS_MAC_ADDR_SET(req->param0, 1);
+
+		for (i = 0; i < HTT_PEER_STATS_MAX_TLV; i++)
+			req->param1 |= (1 << i);
+
+		req->param2 |= (req->peer_addr[0] & 0x000000ff);
+		req->param2 |= ((req->peer_addr[1] << 8) & 0x0000ff00);
+		req->param2 |= ((req->peer_addr[2] << 16) & 0x00ff0000);
+		req->param2 |= ((req->peer_addr[3] << 24) & 0xff000000);
+		req->param3 |= (req->peer_addr[4] & 0x000000ff);
+		req->param3 |= ((req->peer_addr[5] << 8) & 0x0000ff00);
 	}
 
 	dp_h2t_ext_stats_msg_send(pdev, stats, req->param0,
