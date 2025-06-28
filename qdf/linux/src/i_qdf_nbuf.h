@@ -2028,6 +2028,7 @@ static inline void __qdf_flow_get_ipv6_dst_addr(struct flow_keys *flow,
 	memcpy(buf, &flow->addrs.v6addrs.dst, sizeof(flow->addrs.v6addrs.dst));
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0))
 /**
  * __qdf_nbuf_flow_get_ports() - extract the upper layer ports
  * @skb: Pointer to network buffer
@@ -2039,8 +2040,16 @@ static inline void __qdf_nbuf_flow_get_ports(const struct sk_buff *skb,
 					     struct flow_keys *flow)
 {
 	flow->ports.ports = skb_flow_get_ports(skb, flow->control.thoff,
-				  flow->basic.ip_proto);
+					       flow->basic.ip_proto, NULL, 0);
 }
+#else
+static inline void __qdf_nbuf_flow_get_ports(const struct sk_buff *skb,
+					     struct flow_keys *flow)
+{
+	flow->ports.ports = skb_flow_get_ports(skb, flow->control.thoff,
+					       flow->basic.ip_proto);
+}
+#endif /* KERNEL_VERSION(6, 15, 0)*/
 
 /**
  * __qdf_flow_parse_src_port() - parse src port from flow keys
