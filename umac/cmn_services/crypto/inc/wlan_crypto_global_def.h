@@ -440,6 +440,7 @@ struct key_mgmt_list {
  * @rsn_caps:           rsn_capability
  * @rsnx_caps:          rsnx capability
  * @akm_list:           order of AKM present in RSN IE of Beacon/Probe response
+ * @random_pmkid_cnt:   count of random PMKIDs to be added in assoc request
  *
  * This structure holds crypto params for peer or vdev
  */
@@ -456,6 +457,7 @@ struct wlan_crypto_params {
 #ifdef WLAN_ADAPTIVE_11R
 	struct key_mgmt_list akm_list[WLAN_CRYPTO_KEY_MGMT_MAX];
 #endif
+	uint8_t random_pmkid_cnt;
 };
 
 /**
@@ -486,6 +488,7 @@ typedef enum wlan_crypto_param_type {
 	WLAN_CRYPTO_PARAM_RSNX_CAP,
 	WLAN_CRYPTO_PARAM_KEY_MGMT,
 	WLAN_CRYPTO_PARAM_PMKSA,
+	WLAN_CRYPTO_PARAM_RANDOM_PMKID,
 } wlan_crypto_param_type;
 
 /**
