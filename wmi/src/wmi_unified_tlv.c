@@ -25365,7 +25365,7 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_mgmt_rx_srng_support] =
 				WMI_SERVICE_MGMT_SRNG_SUPPORT;
 #endif
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#if defined(FEATURE_WLAN_SUPPORT_USD) || defined(FEATURE_WLAN_SUPPORT_P2P_R2)
 	wmi_service[wmi_service_usd_support] = WMI_SERVICE_USD_SUPPORT;
 #endif
 	wmi_service[wmi_service_use_sta_vdev_for_p2p_device] =

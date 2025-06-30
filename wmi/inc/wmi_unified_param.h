@@ -6848,7 +6848,7 @@ typedef enum {
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	wmi_service_mgmt_rx_srng_support,
 #endif
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#if defined(FEATURE_WLAN_SUPPORT_USD)  || defined(FEATURE_WLAN_SUPPORT_P2P_R2)
 	wmi_service_usd_support,
 #endif
 	wmi_service_use_sta_vdev_for_p2p_device,
