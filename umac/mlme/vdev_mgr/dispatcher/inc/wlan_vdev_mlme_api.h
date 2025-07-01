@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -283,6 +283,17 @@ QDF_STATUS wlan_vdev_mlme_is_init_state(struct wlan_objmgr_vdev *vdev);
  *         FAILURE: otherwise failure
  */
 QDF_STATUS wlan_vdev_is_up_active_state(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wlan_vdev_is_link_removal_state() - Check whether vdev is in up removal state
+ * @vdev: Object manager VDEV object
+ *
+ * API to checks the VDEV MLME SM state is in UP REMOVAL state
+ *
+ * Return: SUCCESS: if vdev is in UP REMOVAL state
+ *         FAILURE: otherwise failure
+ */
+QDF_STATUS wlan_vdev_is_link_removal_state(struct wlan_objmgr_vdev *vdev);
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
