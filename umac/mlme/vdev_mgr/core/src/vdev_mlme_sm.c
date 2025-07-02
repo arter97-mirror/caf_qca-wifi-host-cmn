@@ -2052,7 +2052,8 @@ static bool mlme_vdev_subst_up_removal_event(void *ctx, uint16_t event,
 		break;
 
 	case WLAN_VDEV_SM_EV_REMOVAL:
-		/* link removal cmd already send to FW, just wait FW event*/
+		mlme_vdev_link_reconfig_remove(vdev_mlme, event_data_len,
+					       event_data);
 		status = true;
 		break;
 	default:
