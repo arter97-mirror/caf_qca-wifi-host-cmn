@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -894,8 +894,8 @@ extract_all_stats_counts_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		(((uint64_t)ev->num_mib_extd_stats) *
 		 sizeof(wmi_mib_extd_stats));
 	if (param_buf->num_data != min_data_len) {
-		wmi_err("data len: %u isn't same as calculated: %llu",
-			 param_buf->num_data, min_data_len);
+		wmi_err_rl("data len: %u isn't same as calculated: %llu",
+			   param_buf->num_data, min_data_len);
 		return QDF_STATUS_E_FAULT;
 	}
 
