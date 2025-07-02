@@ -4059,7 +4059,11 @@ void dp_print_tx_ppeds_stats(struct dp_soc *soc);
 /* REO destination ring's watermark mask */
 #define DP_SRNG_WM_MASK_REO_DST  BIT(REO_DST)
 /* TX completion ring's watermark mask */
+#ifdef CONFIG_BORON
+#define DP_SRNG_WM_MASK_TX_COMP  BIT(TQM2SW_RELEASE)
+#else
 #define DP_SRNG_WM_MASK_TX_COMP  BIT(WBM2SW_RELEASE)
+#endif
 /* RX monitor status ring's watermark mask */
 #define DP_SRNG_WM_MASK_MON_STATUS BIT(RXDMA_MONITOR_STATUS)
 /* TX monitor dest ring's watermark mask */

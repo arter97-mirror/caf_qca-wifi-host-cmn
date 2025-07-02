@@ -9869,6 +9869,7 @@ struct wmi_roam_result {
  *  @is_mlo: Flag to check if the current connection is MLO connection
  *  @band: indicates the link involved in MLO conenection.
  *  @tx_status: TX status of the transmitted frame.
+ *  Refer enum wlan_roam_frame_tx_status
  */
 struct wmi_neighbor_report_data {
 	bool present;

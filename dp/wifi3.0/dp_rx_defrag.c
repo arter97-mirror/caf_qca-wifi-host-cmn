@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2192,6 +2192,9 @@ uint32_t dp_rx_frag_handle(struct dp_soc *soc, hal_ring_desc_t ring_desc,
 	rx_desc->rx_buf_start = qdf_nbuf_data(msdu);
 
 	tid = hal_rx_mpdu_start_tid_get(soc->hal_soc, rx_desc->rx_buf_start);
+
+	mpdu_desc_info->mpdu_seq =
+		hal_rx_get_rx_sequence(soc->hal_soc, rx_desc->rx_buf_start);
 
 	/* Process fragment-by-fragment */
 	status = dp_rx_defrag_store_fragment(soc, ring_desc,

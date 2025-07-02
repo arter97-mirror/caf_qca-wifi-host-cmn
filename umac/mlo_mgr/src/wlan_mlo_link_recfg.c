@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -173,6 +173,27 @@ bool mlo_is_link_recfg_in_progress(struct wlan_objmgr_vdev *vdev)
 		return true;
 
 	return false;
+}
+
+static bool
+mlo_link_recfg_is_no_comm(
+	struct mlo_link_recfg_context *recfg_ctx)
+{
+	uint8_t join_pending_vdev_id;
+
+	join_pending_vdev_id =
+		recfg_ctx->curr_recfg_req.join_pending_vdev_id;
+
+	if (join_pending_vdev_id == WLAN_INVALID_VDEV_ID ||
+	    recfg_ctx->curr_recfg_req.recfg_type !=
+				link_recfg_del_add_no_common_link)
+		return false;
+
+	mlo_debug("no comm link recfg_type %d join_pending_vdev_id %d",
+		  recfg_ctx->curr_recfg_req.recfg_type,
+		  join_pending_vdev_id);
+
+	return true;
 }
 
 void mlo_link_recfg_init_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
@@ -2749,6 +2770,8 @@ mlo_link_recfg_del_link_by_inact(
 	return status;
 }
 
+#define VDEV_TX_DATA_PAUSE_NO_COMM (30 * 1000)
+
 QDF_STATUS
 mlo_link_recfg_send_request_frame(
 		struct mlo_link_recfg_context *recfg_ctx,
@@ -2807,6 +2830,11 @@ mlo_link_recfg_send_request_frame(
 		if (QDF_IS_STATUS_ERROR(qdf_status))
 			mlo_err("Failed to start the timer");
 	}
+	if (mlo_link_recfg_is_no_comm(recfg_ctx))
+		wlan_mlo_send_vdev_pause(recfg_ctx->psoc, vdev, vdev_id,
+					 VDEV_TX_DATA_PAUSE_NO_COMM,
+					 MLO_VDEV_PAUSE_TYPE_TX_DATA);
+
 	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
 	return status;
 }
@@ -4241,11 +4269,13 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 {
 	struct wlan_mlo_link_recfg_req *recfg_req;
 	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_pdev *pdev;
 	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
 	struct wlan_mlo_link_recfg_complete_params complete_params = {0};
 	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status;
 	uint8_t vdev_id;
+	uint8_t rso_stop_req_bitmap;
 
 	recfg_req = &recfg_ctx->curr_recfg_req;
 	vdev_id = recfg_ctx->curr_recfg_req.vdev_id;
@@ -4275,6 +4305,13 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 		return;
 	}
 
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		mlo_err("Failed to find pdev");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+		return;
+	}
+
 	if (recfg_req->add_link_info.num_links && success) {
 		mlo_link_recfg_add_link_update_mapping(vdev, recfg_ctx);
 	}
@@ -4297,7 +4334,7 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	}
 	/* Send link reconfig status to userspace */
 	mlo_link_refg_done_indication(vdev);
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
 	/* reset state tran index and move to init state  */
 	recfg_ctx->sm.curr_state_idx = -1;
 	recfg_req->recfg_type = link_recfg_undefined;
@@ -4305,6 +4342,17 @@ mlo_link_recfg_complete(struct mlo_link_recfg_context *recfg_ctx,
 	recfg_ctx->internal_reason_code = link_recfg_success;
 
 	mlo_link_recfg_sm_transition_to(recfg_ctx, WLAN_LINK_RECFG_S_INIT);
+
+	rso_stop_req_bitmap =
+		mlme_get_rso_pending_disable_req_bitmap(psoc, vdev_id);
+	if (rso_stop_req_bitmap) {
+		mlme_clear_rso_pending_disable_req_bitmap(psoc,
+							  vdev_id);
+		wlan_cm_disable_rso(pdev, vdev_id, rso_stop_req_bitmap,
+				    REASON_DRIVER_DISABLED);
+	}
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 
 	/* remove reconfig ser command */
 	mlo_remove_link_recfg_cmd(recfg_ctx);

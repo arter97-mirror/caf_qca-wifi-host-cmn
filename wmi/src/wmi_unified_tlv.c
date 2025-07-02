@@ -1023,7 +1023,7 @@ send_over_wmi:
 	return wmi_unified_cmd_send(wmi_handle, buf, buflen, cmd_id);
 }
 
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 /**
  * wmi_vdev_add_p2p_mode_tlv() - add P2P mode TLv in VDEV create command
  * @buf_ptr: pointer to TLV buffer
@@ -20420,11 +20420,11 @@ static QDF_STATUS
 send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 				  struct wlan_pasn_auth_status *data)
 {
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
 	wmi_buf_t buf;
 	wmi_rtt_pasn_auth_status_cmd_fixed_param *fixed_param;
 	uint8_t *buf_ptr;
-	uint8_t i, total_cookie_len;
+	uint8_t i, total_cookie_len = 0;
 	size_t len = 0;
 	uint32_t pending_cnt = data->num_peers;
 	uint16_t max_entry_per_cmd = 0, max_entry_cnt = 0;
@@ -20435,12 +20435,13 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 			     (2 *  WMI_TLV_HDR_SIZE)) /
 			     (sizeof(wmi_rtt_pasn_auth_status_param));
 
+	wmi_debug("max_entry_per_cmd:%u, data->num_peers:%u",
+		   max_entry_per_cmd, data->num_peers);
+
 	if (data->num_peers > max_entry_per_cmd)
 		max_entry_cnt = max_entry_per_cmd;
 	else
 		max_entry_cnt = data->num_peers;
-
-	wmi_debug("Setting max entry limit as %u", max_entry_cnt);
 
 	while (pending_cnt) {
 		len = sizeof(*fixed_param) + WMI_TLV_HDR_SIZE;
@@ -20452,17 +20453,16 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 		len += num_entry * sizeof(wmi_rtt_pasn_auth_status_param);
 		for (i = 0; i < num_entry; i++) {
 			if (data->auth_status[i].status ==
-			    WLAN_PASN_AUTH_STATUS_PEER_COMEBACK) {
-				total_cookie_len = total_cookie_len +
+			    WLAN_PASN_AUTH_STATUS_PEER_COMEBACK)
+				total_cookie_len +=
 				data->auth_status[i].cookie_len;
-			}
 		}
 
 		len += WMI_TLV_HDR_SIZE + total_cookie_len;
 		buf = wmi_buf_alloc(wmi_handle, len);
 		if (!buf) {
 			wmi_err("wmi_buf_alloc failed");
-			return QDF_STATUS_E_FAILURE;
+			return QDF_STATUS_E_NOMEM;
 		}
 		buf_ptr = (uint8_t *)wmi_buf_data(buf);
 		fixed_param = (wmi_rtt_pasn_auth_status_cmd_fixed_param *)
@@ -20512,14 +20512,15 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 				data->auth_status[i].comeback_after;
 			}
 
-			wmi_debug("peer_mac: " QDF_MAC_ADDR_FMT " self_mac:" QDF_MAC_ADDR_FMT " status:%d akm:%d cipher:%d comeback_after:%d i:%d",
+			wmi_debug("peer_mac: " QDF_MAC_ADDR_FMT " self_mac:" QDF_MAC_ADDR_FMT " status:%d akm:%d cipher:%d comeback_after:%d cookie_length:%d i:%d vdev_id:%u",
 			  QDF_MAC_ADDR_REF(data->auth_status[i].peer_mac.bytes),
 			  QDF_MAC_ADDR_REF(data->auth_status[i].self_mac.bytes),
 			  auth_status_tlv->status,
 			  auth_status_tlv->akm,
 			  auth_status_tlv->cipher_suite,
 			  auth_status_tlv->timeout_value,
-			  i);
+			  auth_status_tlv->cookie_len,
+			  i, data->vdev_id);
 
 			buf_ptr += sizeof(wmi_rtt_pasn_auth_status_param);
 		}
@@ -20547,15 +20548,17 @@ send_rtt_pasn_auth_status_cmd_tlv(wmi_unified_t wmi_handle,
 		status = wmi_unified_cmd_send(wmi_handle, buf, len,
 					      WMI_RTT_PASN_AUTH_STATUS_CMD);
 		if (QDF_IS_STATUS_ERROR(status)) {
-			wmi_err("num_entries:%d failed!", pending_cnt);
-			wmi_err("Failed to send Auth status command ret = %d", status);
+			wmi_err("num_entries:%d failed!, Failed to send Auth status command ret = %d",
+				pending_cnt, status);
 			wmi_buf_free(buf);
-			return QDF_STATUS_E_FAILURE;
+			return status;
 		}
 
 		pending_cnt -= num_entry;
-		wmi_err("num_entries:%d done! pending_cnt:%d", num_entry, pending_cnt);
+		wmi_err("num_entries:%d done! pending_cnt:%d",
+			num_entry, pending_cnt);
 	}
+
 	return status;
 }
 
@@ -21710,6 +21713,7 @@ extract_roam_11kv_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_roam_neighbor_report_info *src_data = NULL;
 	wmi_roam_neighbor_report_channel_info *src_freq = NULL;
 	uint8_t i;
+	uint8_t tx_status;
 
 	param_buf = (WMI_ROAM_STATS_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf || !param_buf->roam_neighbor_report_info ||
@@ -21738,8 +21742,10 @@ extract_roam_11kv_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	dst->band =
 		WMI_ROAM_NEIGHBOR_REPORT_INFO_MLO_BAND_INFO_GET(src_data->neighbor_report_detail);
 
-	dst->tx_status =
+	tx_status =
 		WMI_ROAM_NEIGHBOR_REPORT_INFO_TX_STATUS_INFO_GET(src_data->neighbor_report_detail);
+
+	dst->tx_status = wmi_get_host_roam_frame_tx_status(tx_status);
 
 	if (dst->band != WMI_MLO_BAND_NO_MLO)
 		dst->is_mlo = true;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -309,7 +309,7 @@ struct wlan_vdev_create_params {
 	uint8_t mataddr[QDF_MAC_ADDR_SIZE];
 	uint8_t mldaddr[QDF_MAC_ADDR_SIZE];
 	bool mlo_sap_sync_disable;
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	uint32_t wfd_mode;
 #endif
 };
@@ -407,7 +407,7 @@ struct wlan_objmgr_vdev_mlme {
 #endif
 #endif
 	uint8_t rsno_gen_supported;
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	uint32_t wfd_mode;
 #endif
 };
@@ -2852,7 +2852,7 @@ wlan_vdev_read_skip_pumac_cnt(struct wlan_objmgr_vdev *vdev)
  */
 uint8_t wlan_vdev_get_peer_sta_count(struct wlan_objmgr_vdev *vdev);
 
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 /**
  * wlan_vdev_mlme_get_wfd_mode() - get WFD mode from VDEV MLME object
  * @vdev: VDEV object
@@ -2901,5 +2901,5 @@ wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 {
 	return false;
 }
-#endif /* FEATURE_WLAN_SUPPORT_USD */
+#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 */
 #endif /* _WLAN_OBJMGR_VDEV_OBJ_H_*/

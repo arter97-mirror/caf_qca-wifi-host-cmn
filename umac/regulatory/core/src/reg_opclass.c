@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2144,17 +2144,9 @@ bool reg_is_2ghz_op_class(const uint8_t *country, uint8_t op_class)
 	return reg_is_opclass_band_found(country, op_class, BIT(REG_BAND_2G));
 }
 
-/**
- * reg_convert_chan_spacing_to_width() - Convert channel spacing to
- * channel width.
- * @chan_spacing: Channel spacing
- * @opclass_chwidth: Opclass channel width
- *
- * Return: None
- */
 #ifdef WLAN_FEATURE_11BE
-static void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
-					      uint16_t *opclass_chwidth)
+void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
+				       uint16_t *opclass_chwidth)
 {
 	switch (chan_spacing) {
 	case BW_20_MHZ:
@@ -2178,8 +2170,8 @@ static void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
 	}
 }
 #else
-static void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
-					      uint16_t *opclass_chwidth)
+void reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
+				       uint16_t *opclass_chwidth)
 {
 	switch (chan_spacing) {
 	case BW_20_MHZ:

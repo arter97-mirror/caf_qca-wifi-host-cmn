@@ -49,7 +49,6 @@
 #define WLAN_CFG_TX_RING_MASK_4 BIT(4)
 #define WLAN_CFG_TX_RING_MASK_5 BIT(5)
 #define WLAN_CFG_TX_RING_MASK_6 BIT(6)
-#define WLAN_CFG_TX_RING_MASK_7 BIT(7)
 
 
 #define WLAN_CFG_RX_MON_RING_MASK_0 0x1
@@ -145,8 +144,41 @@ struct dp_int_mask_assignment {
  * (REO status + RXDMA[0] + RXDMA[1])(1) + NEAR_Full_RX(2) +  NEAR_Full_TX(1)
  * For IPA_OFFLOAD enabled case, 2 TX/RX rings would be assigned to IPA.
  */
+#ifdef CONFIG_BORON
+#ifdef IPA_OFFLOAD
+/*
+ * NEAR-FULL IRQ mask should be updated, if any change is made to
+ * the below TX mask.
+ */
+#ifdef IPA_WDI3_TX_TWO_PIPES
+static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[0] = WLAN_CFG_TX_RING_MASK_0, [1] = WLAN_CFG_TX_RING_MASK_1,
+	[2] = WLAN_CFG_TX_RING_MASK_2, [3] = WLAN_CFG_TX_RING_MASK_3,
+	[4] = WLAN_CFG_TX_RING_MASK_4};
+#else /* !IPA_WDI3_TX_TWO_PIPES */
+static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[0] = WLAN_CFG_TX_RING_MASK_0, [1] = WLAN_CFG_TX_RING_MASK_1,
+	[2] = WLAN_CFG_TX_RING_MASK_2, [3] = WLAN_CFG_TX_RING_MASK_3,
+	[4] = WLAN_CFG_TX_RING_MASK_4 | WLAN_CFG_TX_RING_MASK_5};
+#endif /* IPA_WDI3_TX_TWO_PIPES*/
+#else /* !IPA_OFFLOAD */
+static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[0] = WLAN_CFG_TX_RING_MASK_0, [1] = WLAN_CFG_TX_RING_MASK_1,
+	[2] = WLAN_CFG_TX_RING_MASK_2, [3] = WLAN_CFG_TX_RING_MASK_3,
+	[4] = WLAN_CFG_TX_RING_MASK_4 | WLAN_CFG_TX_RING_MASK_5};
+/*	Do not multiplex additional IRQs rings with rx IRQs
+ *	[5] = WLAN_CFG_TX_RING_MASK_5,
+ *	[6] = WLAN_CFG_TX_RING_MASK_6};
+ */
+#endif /* IPA_OFFLOAD */
 
-#ifdef CONFIG_BERYLLIUM
+static inline const
+uint8_t *wlan_cfg_get_tx_ring_int_mask(struct wlan_cfg_dp_soc_ctxt *cfg_ctx)
+{
+	return &tx_ring_mask_msi[0];
+}
+#elif defined(CONFIG_BERYLLIUM)
+
 #ifdef IPA_OFFLOAD
 /*
  * NEAR-FULL IRQ mask should be updated, if any change is made to
@@ -3374,6 +3406,14 @@ struct wlan_srng_cfg wlan_srng_wbm_release_cfg = {
 	.batch_count_threshold = 0,
 	.low_threshold = 0,
 };
+
+/* TQM2SW_RELEASE ring configuration */
+struct wlan_srng_cfg wlan_srng_tqm_release_cfg = {
+	.timer_threshold = WLAN_CFG_INT_TIMER_THRESHOLD_WBM_RELEASE_RING,
+	.batch_count_threshold = 0,
+	.low_threshold = 0,
+};
+
 #endif
 
 /* RXDMA_BUF ring configuration */
@@ -3464,7 +3504,8 @@ void wlan_set_srng_cfg(struct wlan_srng_cfg **wlan_cfg)
 {
 	g_wlan_srng_cfg[REO_DST] = wlan_srng_reo_cfg;
 	g_wlan_srng_cfg[WBM2SW_RELEASE] = wlan_srng_wbm_release_cfg;
-	g_wlan_srng_cfg[REO_EXCEPTION] = wlan_srng_rx_err_cfg;
+	g_wlan_srng_cfg[TQM2SW_RELEASE] = wlan_srng_tqm_release_cfg;
+	g_wlan_srng_cfg[REO_EXCEPTION] = wlan_srng_default_cfg;
 	g_wlan_srng_cfg[REO_REINJECT] = wlan_src_srng_default_cfg;
 	g_wlan_srng_cfg[REO_CMD] = wlan_src_srng_default_cfg;
 	g_wlan_srng_cfg[REO_STATUS] = wlan_srng_default_cfg;

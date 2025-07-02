@@ -124,7 +124,7 @@ static inline void hal_tx_desc_set_buf_length(void *desc, uint16_t data_length)
 	/* TODO: add generic macro which can be used for other fields */
 	if (qdf_unlikely(data_length & ~(TCL_ASSIST_CMD_DATA_LENGTH_MASK >>
 					TCL_ASSIST_CMD_DATA_LENGTH_LSB))) {
-		hal_err("data_length %d", data_length);
+		hal_err("data_length overflow %d", data_length);
 		qdf_assert_always(0);
 	}
 	HAL_SET_FLD(desc, TCL_ASSIST_CMD, DATA_LENGTH) |=
@@ -201,6 +201,22 @@ static inline void hal_tx_desc_set_to_fw(void *desc, uint8_t to_fw)
 {
 	HAL_SET_FLD(desc, TCL_ASSIST_CMD, TO_FW_TQM) |=
 		HAL_TX_SM(TCL_ASSIST_CMD, TO_FW_TQM, to_fw);
+}
+
+/**
+ * hal_tx_desc_set_dport() - Set dport in Tx Descriptor.
+ * @desc: Handle to Tx Descriptor
+ * @l4_port: port
+ *
+ * Return: void
+ */
+static inline void  hal_tx_desc_set_dport(void *desc, uint16_t l4_port)
+{
+	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PORT) |=
+		HAL_TX_SM(TCL_ASSIST_CMD, L4_PORT, l4_port);
+
+	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PORT_TYPE) |=
+		HAL_TX_SM(TCL_ASSIST_CMD, L4_PORT_TYPE, 1);
 }
 
 /**

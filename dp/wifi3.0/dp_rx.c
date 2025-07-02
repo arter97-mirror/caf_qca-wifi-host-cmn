@@ -385,6 +385,8 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 		return QDF_STATUS_E_NOMEM;
 	}
 
+	DP_STATS_INC(dp_pdev, replenish.nbuf_alloc_succ, 1);
+
 	ret = dp_rx_buffer_pool_nbuf_map(dp_soc, rx_desc_pool,
 					 nbuf_frag_info_t);
 	if (qdf_unlikely(QDF_IS_STATUS_ERROR(ret))) {

@@ -2122,6 +2122,27 @@ dp_tx_ring_access_end_wrapper(struct dp_soc *soc,
 #endif
 #endif
 
+#ifdef CONFIG_BORON
+static inline
+void dp_tx_msdu_info_set_dport(struct dp_tx_msdu_info_s *msdu_info,
+			       uint8_t *L3datap, uint8_t offset)
+{
+	uint8_t *hdr;
+
+	if (msdu_info->l4_proto == QDF_NBUF_TRAC_UDP_TYPE ||
+	    msdu_info->l4_proto == QDF_NBUF_TRAC_TCP_TYPE) {
+		hdr = L3datap + offset;
+		msdu_info->l4_dport = (hdr[2] << 8) | hdr[3];
+	}
+}
+#else
+static inline
+void dp_tx_msdu_info_set_dport(struct dp_tx_msdu_info_s *msdu_info,
+			       uint8_t *L3datap, uint8_t offset)
+{
+}
+#endif
+
 /**
  * dp_tx_get_tid() - Obtain TID to be used for this frame
  * @vdev: DP vdev handle
@@ -2140,8 +2161,8 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	uint8_t is_mcast = 0;
 	qdf_ether_header_t *eh = NULL;
 	qdf_ethervlan_header_t *evh = NULL;
-	uint16_t   ether_type;
-	qdf_llc_t *llcHdr;
+	uint16_t ether_type;
+	struct llc_snap_hdr_t *llc_hdr;
 	struct dp_pdev *pdev = (struct dp_pdev *)vdev->pdev;
 
 	DP_TX_TID_OVERRIDE(msdu_info, nbuf);
@@ -2158,33 +2179,41 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	}
 
 	is_mcast = DP_FRAME_IS_MULTICAST(hdr_ptr);
-	ether_type = eh->ether_type;
+	DP_TX_MSDU_INFO_SET_MC(msdu_info, is_mcast);
+	dp_tx_msdu_info_set_bc(msdu_info, hdr_ptr);
+	ether_type = qdf_ntohs(eh->ether_type);
 
-	llcHdr = (qdf_llc_t *)(nbuf->data + sizeof(qdf_ether_header_t));
+	llc_hdr = (struct llc_snap_hdr_t *)(nbuf->data +
+					    sizeof(qdf_ether_header_t));
 	/*
 	 * Check if packet is dot3 or eth2 type.
 	 */
-	if (DP_FRAME_IS_LLC(ether_type) && DP_FRAME_IS_SNAP(llcHdr)) {
+	if (DP_FRAME_IS_LLC(ether_type) && DP_FRAME_IS_SNAP(llc_hdr)) {
 		ether_type = (uint16_t)*(nbuf->data + 2*QDF_MAC_ADDR_SIZE +
-				sizeof(*llcHdr));
+				sizeof(*llc_hdr));
+
+		dp_tx_msdu_info_set_llc_snap_oui(msdu_info, llc_hdr);
 
 		if (ether_type == htons(ETHERTYPE_VLAN)) {
 			L3datap = hdr_ptr + sizeof(qdf_ethervlan_header_t) +
-				sizeof(*llcHdr);
+				sizeof(*llc_hdr);
 			ether_type = (uint16_t)*(nbuf->data + 2*QDF_MAC_ADDR_SIZE
-					+ sizeof(*llcHdr) +
+					+ sizeof(*llc_hdr) +
 					sizeof(qdf_net_vlanhdr_t));
+			ether_type = qdf_ntohs(ether_type);
 		} else {
 			L3datap = hdr_ptr + sizeof(qdf_ether_header_t) +
-				sizeof(*llcHdr);
+				sizeof(*llc_hdr);
 		}
 	} else {
-		if (ether_type == htons(ETHERTYPE_VLAN)) {
+		if (ether_type == ETHERTYPE_VLAN) {
 			evh = (qdf_ethervlan_header_t *) eh;
-			ether_type = evh->ether_type;
+			ether_type = qdf_ntohs(evh->ether_type);
 			L3datap = hdr_ptr + sizeof(qdf_ethervlan_header_t);
 		}
 	}
+
+	dp_tx_msdu_info_set_eth_type_fields(msdu_info, ether_type);
 
 	/*
 	 * Find priority from IP TOS DSCP field
@@ -2206,6 +2235,9 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 			dscp_tid_override = 1;
 
 		}
+		DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, ip->ip_proto);
+		dp_tx_msdu_info_set_dport(msdu_info, L3datap,
+					  QDF_NBUF_TRAC_IPV4_HEADER_SIZE);
 	} else if (qdf_nbuf_is_ipv6_pkt(nbuf)) {
 		/* TODO
 		 * use flowlabel
@@ -2213,11 +2245,17 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		 */
 		unsigned long ver_pri_flowlabel;
 		unsigned long pri;
+		uint8_t ip_proto;
+
 		ver_pri_flowlabel = *(unsigned long *) L3datap;
 		pri = (ntohl(ver_pri_flowlabel) & IPV6_FLOWINFO_PRIORITY) >>
 			DP_IPV6_PRIORITY_SHIFT;
 		tos = pri;
 		dscp_tid_override = 1;
+		ip_proto = ((qdf_net_ipv6hdr_t *)L3datap)->ipv6_nexthdr;
+		DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, ip_proto);
+		dp_tx_msdu_info_set_dport(msdu_info, L3datap,
+					  QDF_NBUF_TRAC_IPV6_HEADER_SIZE);
 	} else if (qdf_nbuf_is_ipv4_eapol_pkt(nbuf))
 		msdu_info->tid = DP_VO_TID;
 	else if (qdf_nbuf_is_ipv4_arp_pkt(nbuf)) {
@@ -2246,9 +2284,31 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	if (msdu_info->tid >= CDP_MAX_DATA_TIDS)
 		msdu_info->tid = CDP_MAX_DATA_TIDS - 1;
 
+	DP_TX_MSDU_INFO_SET_DSCP(msdu_info, tos);
+
 	return;
 }
 
+#ifdef CONFIG_BORON
+/**
+ * dp_tx_classify_tid() - Obtain TID to be used for this frame
+ * @vdev: DP vdev handle
+ * @nbuf: skb
+ * @msdu_info: msdu descriptor
+ *
+ * Software based TID classification is required boron chips.
+ *
+ * Return: void
+ */
+static inline void dp_tx_classify_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				      struct dp_tx_msdu_info_s *msdu_info)
+{
+	DP_TX_TID_OVERRIDE(msdu_info, nbuf);
+	DP_FLOW_TX_TID_OVERRIDE(msdu_info, nbuf);
+
+	dp_tx_get_tid(vdev, nbuf, msdu_info);
+}
+#else /* CONFIG_BORON */
 /**
  * dp_tx_classify_tid() - Obtain TID to be used for this frame
  * @vdev: DP vdev handle
@@ -2290,6 +2350,7 @@ static inline void dp_tx_classify_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	dp_tx_get_tid(vdev, nbuf, msdu_info);
 }
+#endif /* !CONFIG_BORON */
 
 #ifdef FEATURE_WLAN_TDLS
 /**
@@ -7435,6 +7496,7 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 	struct dp_vdev *vdev;
 	struct dp_qos_latency_report *report;
 	uint8_t i, j;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	if (!req)
 		return QDF_STATUS_E_INVAL;
@@ -7463,10 +7525,21 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 			report->stats =
 				qdf_mem_malloc(sizeof(uint64_t) *
 					       CDP_MAX_DATA_TIDS);
+			if (!report->stats) {
+				dp_err("Hist stats allocation failed");
+				dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+				return QDF_STATUS_E_NOMEM;
+			}
+
 			for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
 				report->stats[i] =
 					qdf_mem_malloc(sizeof(uint64_t) *
 						       CDP_HIST_BUCKET_SIZE);
+				if (!report->stats[i]) {
+					dp_err("Hist stats[%u] alloc fail", i);
+					status = QDF_STATUS_E_NOMEM;
+					goto end;
+				}
 				qdf_mem_zero(report->stats[i],
 					     sizeof(report->stats[i]));
 			}
@@ -7486,10 +7559,21 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 			report->stats =
 				qdf_mem_malloc(sizeof(uint64_t) *
 					       CDP_MAX_DATA_TIDS);
+			if (!report->stats) {
+				dp_err("Perc stats allocation failed");
+				dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+				return QDF_STATUS_E_NOMEM;
+			}
+
 			for (i = 0; i < CDP_MAX_DATA_TIDS; i++) {
 				report->stats[i] =
 					qdf_mem_malloc(sizeof(uint64_t) *
 						       PERC_BUCKET_SIZE);
+				if (!report->stats[i]) {
+					dp_err("Perc stats[%u] alloc fail", i);
+					status = QDF_STATUS_E_NOMEM;
+					goto end;
+				}
 				qdf_mem_zero(report->stats[i],
 					     sizeof(report->stats[i]));
 			}
@@ -7539,9 +7623,19 @@ QDF_STATUS dp_qos_latency_stats_request(struct cdp_soc_t *soc_hdl,
 		report->stats = NULL;
 	}
 end:
+	if (QDF_STATUS_E_NOMEM == status) {
+		if (report->stats) {
+			for (j = 0; j < i; j++) {
+				if (report->stats[j])
+					qdf_mem_free(report->stats[j]);
+			}
+			qdf_mem_free(report->stats);
+		}
+	}
+
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
-	return QDF_STATUS_SUCCESS;
+	return status;
 }
 
 QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,

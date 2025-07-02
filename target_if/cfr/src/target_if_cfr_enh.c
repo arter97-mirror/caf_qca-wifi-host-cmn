@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -728,6 +728,11 @@ static int correlate_and_relay_enh(struct wlan_objmgr_pdev *pdev,
 
 	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev,
 						     WLAN_UMAC_COMP_CFR);
+	if (!pcfr) {
+		cfr_err("pdev object for CFR is null");
+		status = STATUS_ERROR;
+		goto done;
+	}
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (qdf_unlikely(!psoc)) {

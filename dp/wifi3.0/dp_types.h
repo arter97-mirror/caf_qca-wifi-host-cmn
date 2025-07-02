@@ -484,9 +484,9 @@ struct dp_be_intrabss_in_params {
      (_a)[3] == 0xff &&                         \
      (_a)[4] == 0xff &&                         \
      (_a)[5] == 0xff)
-#define DP_FRAME_IS_SNAP(_llc) ((_llc)->llc_dsap == 0xaa && \
-		(_llc)->llc_ssap == 0xaa && \
-		(_llc)->llc_un.type_snap.control == 0x3)
+#define DP_FRAME_IS_SNAP(_llc) ((_llc)->dsap == 0xaa && \
+		(_llc)->ssap == 0xaa && \
+		(_llc)->cntl == 0x3)
 #define DP_FRAME_IS_LLC(typeorlen) ((typeorlen) >= 0x600)
 #define DP_FRAME_FC0_TYPE_MASK 0x0c
 #define DP_FRAME_FC0_TYPE_DATA 0x08
@@ -1539,6 +1539,8 @@ struct dp_soc_stats {
 		uint32_t rx_hw_stats_requested;
 		/* Number of hw stats request timeout */
 		uint32_t rx_hw_stats_timeout;
+		/* Dropped fragment count */
+		uint32_t rx_frag_drop_cnt;
 
 		struct {
 			/* Invalid RBM error count */
@@ -3813,8 +3815,7 @@ struct dp_soc {
 		wbm_sg_last_msdu_war:1,
 		mec_fw_offload:1,
 		multi_peer_grp_cmd_supported:1,
-		umac_reset_supported:1,
-		sw2reo_rings_not_supported:1;
+		umac_reset_supported:1;
 
 	/* Number of Rx refill rings */
 	uint8_t num_rx_refill_buf_rings;
@@ -5951,6 +5952,12 @@ struct dp_peer {
 
 	/* peer setup info */
 	struct dp_peer_setup_info setup_info;
+
+#ifdef CONFIG_BORON
+	/* Tx msdu flow pointer index */
+	bool txpt_classify_idx_valid;
+	uint8_t txpt_classify_idx;
+#endif
 };
 
 /**

@@ -816,6 +816,14 @@ mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 	return assoc_vdev;
 }
 
+uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev)
+{
+	if (vdev && wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev))
+		return vdev->mlo_dev_ctx->link_ctx->last_req.curr_ieee_link_id;
+
+	return WLAN_INVALID_LINK_ID;
+}
+
 bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 	enum mlo_link_switch_req_state state;
@@ -825,6 +833,38 @@ bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
 
 	state = mlo_mgr_link_switch_get_curr_state(vdev->mlo_dev_ctx);
 	return (state > MLO_LINK_SWITCH_STATE_INIT);
+}
+
+static void
+mlo_mgr_vdev_iterate_handler(struct wlan_objmgr_psoc *psoc,
+			     void *obj, void *args)
+{
+	struct wlan_objmgr_vdev *vdev = (struct wlan_objmgr_vdev *)obj;
+	uint32_t *context = (uint32_t *)args;
+
+	if (*context)
+		return;
+
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
+		return;
+
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
+		return;
+
+	if (mlo_mgr_is_link_switch_in_progress(vdev))
+		*context = true;
+}
+
+bool
+mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc)
+{
+	uint32_t context = 0;
+
+	wlan_objmgr_iterate_obj_list(psoc, WLAN_VDEV_OP,
+				     mlo_mgr_vdev_iterate_handler,
+				     &context, true, WLAN_MLO_MGR_ID);
+
+	return !!context;
 }
 
 bool mlo_mgr_is_link_switch_on_assoc_vdev(struct wlan_objmgr_vdev *vdev)
@@ -1988,6 +2028,7 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 {
 	uint8_t i, vdev_id, num_links = 0;
 	struct mlo_link_info *link_info;
+	struct wlan_objmgr_vdev *vdev;
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
 	bool is_cb_register = false;
 
@@ -2023,14 +2064,27 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 			mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls(psoc,
 								      vdev_id);
 
-		mlo_mgr_update_policy_mgr_disabled_links_info(
-				psoc, vdev_id, link_info->link_id,
-				link_info->is_link_active);
-
 		if (is_cb_register)
 			mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state(
 						link_info->vdev_id,
 						link_info->is_link_active);
+
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+							    WLAN_MLO_MGR_ID);
+		if (!vdev)
+			continue;
+
+		/*
+		 * If VDEV is not in connected state don't update the policy
+		 * manager table, this can happen if disconnect is ongoing when
+		 * host receives event from FW.
+		 */
+		if (wlan_cm_is_vdev_connected(vdev))
+			mlo_mgr_update_policy_mgr_disabled_links_info(psoc,
+								      vdev_id,
+								      link_info->link_id,
+								      link_info->is_link_active);
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	}
 }
 

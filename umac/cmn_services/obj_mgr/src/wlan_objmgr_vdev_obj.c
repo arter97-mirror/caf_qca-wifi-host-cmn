@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -132,7 +132,7 @@ static struct vdev_osif_priv *wlan_objmgr_vdev_get_osif_priv(
 	return osif_priv;
 }
 
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 void wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode)
 {
 	vdev->vdev_mlme.wfd_mode = wfd_mode;
@@ -182,7 +182,7 @@ wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
 {
 	return 0xFF;
 }
-#endif
+#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 */
 
 struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 			struct wlan_objmgr_pdev *pdev,

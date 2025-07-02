@@ -297,6 +297,8 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 	hal_tx_desc_set_l4_protocol(hal_tx_desc_cached, msdu_info->l4_proto);
 	hal_tx_desc_set_type_or_length(hal_tx_desc_cached,
 				       msdu_info->type_or_length);
+	hal_tx_desc_set_dport(hal_tx_desc_cached,
+			      msdu_info->l4_dport);
 	hal_tx_desc_set_snap_oui_zero_or_f8(hal_tx_desc_cached,
 					    msdu_info->snap_oui_zero_or_f8);
 	hal_tx_desc_set_snap_oui_not_zero_or_not_f8(hal_tx_desc_cached,

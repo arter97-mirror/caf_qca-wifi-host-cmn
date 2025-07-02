@@ -6438,6 +6438,23 @@ dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
 }
 #endif
 #else
+#ifdef CONFIG_BORON
+static inline void
+dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
+{
+}
+
+static inline void
+dp_print_tqm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
+{
+	uint8_t i = 0;
+
+	for (i = 0; i < pdev->soc->num_tcl_data_rings; i++)
+		dp_print_ring_stat_from_hal(pdev->soc,
+					    &pdev->soc->tx_comp_ring[i],
+					    TQM2SW_RELEASE);
+}
+#else /* !CONFIG_BORON */
 static inline void
 dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
 {
@@ -6448,6 +6465,12 @@ dp_print_wbm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
 					    &pdev->soc->tx_comp_ring[i],
 					    WBM2SW_RELEASE);
 }
+
+static inline void
+dp_print_tqm2sw_ring_stats_from_hal(struct dp_pdev *pdev)
+{
+}
+#endif /* !CONFIG_BORON */
 #endif
 
 /*
@@ -6548,6 +6571,7 @@ static inline void dp_print_umac_ring_stats(struct dp_pdev *pdev)
 					    &pdev->soc->tcl_data_ring[i],
 					    TCL_DATA);
 	dp_print_wbm2sw_ring_stats_from_hal(pdev);
+	dp_print_tqm2sw_ring_stats_from_hal(pdev);
 }
 
 static inline void dp_print_ce_ring_stats(struct dp_pdev *pdev) {}
@@ -11241,10 +11265,12 @@ dp_print_per_link_peer_txrx_stats(struct cdp_peer_stats *peer_stats,
 		       peer_stats->tx.bcast.bytes);
 	DP_PRINT_STATS("Packets Successfully Sent after one or more retry = %u",
 		       peer_stats->tx.retry_count);
-	 DP_PRINT_STATS("Total msdu Packets retries = %d",
+	DP_PRINT_STATS("Total msdu Packets retries = %d",
 			peer_stats->tx.total_msdu_retries);
 	DP_PRINT_STATS("Packets  Sent Success after more than one retry = %u",
 		       peer_stats->tx.multiple_retry_count);
+	DP_PRINT_STATS("Packets Sent Failed = %u",
+		       peer_stats->tx.tx_failed);
 	DP_PRINT_STATS("Packets Failed due to retry threshold breach = %u",
 		       peer_stats->tx.failed_retry_count);
 	DP_PRINT_STATS("mpdu Packets Retries = %u",

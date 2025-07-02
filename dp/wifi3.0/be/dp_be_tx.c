@@ -591,7 +591,8 @@ static inline uint8_t dp_tx_get_rbm_id_be(struct dp_soc *soc,
 }
 #endif
 
-#ifdef QCA_SUPPORT_TX_MIN_RATES_FOR_SPECIAL_FRAMES
+#if defined(QCA_SUPPORT_TX_MIN_RATES_FOR_SPECIAL_FRAMES) && \
+							!defined(CONFIG_BORON)
 
 /**
  * dp_tx_set_min_rates_for_critical_frames()- sets min-rates for critical pkts
@@ -1656,7 +1657,107 @@ dp_get_peer_from_tx_exc_meta(struct dp_soc *soc, uint32_t *hal_tx_desc_cached,
 }
 #endif
 
-#ifndef CONFIG_BORON
+#ifdef CONFIG_BORON
+static inline void dp_tx_print_bank_profile_config(struct dp_soc_be *be_soc,
+						   int bank_id)
+{
+	dp_info("epd:%x encap:%x encryp:%x src_buf_swap:%x link_meta_swap:%x mesh_en:%x vdev_id_check:%x",
+		be_soc->bank_profiles[bank_id].bank_config.epd,
+		be_soc->bank_profiles[bank_id].bank_config.encap_type,
+		be_soc->bank_profiles[bank_id].bank_config.encrypt_type,
+		be_soc->bank_profiles[bank_id].bank_config.src_buffer_swap,
+		be_soc->bank_profiles[bank_id].bank_config.link_meta_swap,
+		be_soc->bank_profiles[bank_id].bank_config.mesh_enable,
+		be_soc->bank_profiles[bank_id].bank_config.vdev_id_check_en);
+}
+
+static
+void dp_tx_get_vdev_bank_config(struct dp_vdev_be *be_vdev,
+				union hal_tx_bank_config *bank_config)
+{
+	struct dp_vdev *vdev = &be_vdev->vdev;
+
+	bank_config->epd = 0;
+
+	bank_config->encap_type = vdev->tx_encap_type;
+
+	/* Only valid for raw frames. Needs work for RAW mode */
+	if (vdev->tx_encap_type == htt_cmn_pkt_type_raw)
+		bank_config->encrypt_type = sec_type_map[vdev->sec_type];
+	else
+		bank_config->encrypt_type = 0;
+
+	bank_config->src_buffer_swap = 0;
+	bank_config->link_meta_swap = 0;
+
+	bank_config->mesh_enable = vdev->mesh_vdev ? 1 : 0;
+
+	bank_config->dscp_tid_map_id = vdev->dscp_tid_map_id;
+}
+#else /* CONFIG_BORON */
+static
+void dp_tx_get_vdev_bank_config(struct dp_vdev_be *be_vdev,
+				union hal_tx_bank_config *bank_config)
+{
+	struct dp_vdev *vdev = &be_vdev->vdev;
+
+	bank_config->epd = 0;
+
+	bank_config->encap_type = vdev->tx_encap_type;
+
+	/* Only valid for raw frames. Needs work for RAW mode */
+	if (vdev->tx_encap_type == htt_cmn_pkt_type_raw)
+		bank_config->encrypt_type = sec_type_map[vdev->sec_type];
+	else
+		bank_config->encrypt_type = 0;
+
+	bank_config->src_buffer_swap = 0;
+	bank_config->link_meta_swap = 0;
+
+	if (vdev->search_type == HAL_TX_ADDR_INDEX_SEARCH &&
+	    vdev->opmode == wlan_op_mode_sta) {
+		bank_config->index_lookup_enable = 1;
+		bank_config->mcast_pkt_ctrl = HAL_TX_MCAST_CTRL_MEC_NOTIFY;
+		bank_config->addrx_en = 0;
+		bank_config->addry_en = 0;
+	} else {
+		bank_config->index_lookup_enable = 0;
+		bank_config->mcast_pkt_ctrl = HAL_TX_MCAST_CTRL_FW_EXCEPTION;
+		bank_config->addrx_en =
+			(vdev->hal_desc_addr_search_flags &
+			 HAL_TX_DESC_ADDRX_EN) ? 1 : 0;
+		bank_config->addry_en =
+			(vdev->hal_desc_addr_search_flags &
+			 HAL_TX_DESC_ADDRY_EN) ? 1 : 0;
+	}
+
+	bank_config->mesh_enable = vdev->mesh_vdev ? 1 : 0;
+
+	bank_config->dscp_tid_map_id = vdev->dscp_tid_map_id;
+
+	/* Disabling vdev id check for now. Needs revist. */
+	bank_config->vdev_id_check_en = be_vdev->vdev_id_check_en;
+
+	bank_config->pmac_id = vdev->lmac_id;
+}
+
+static inline void dp_tx_print_bank_profile_config(struct dp_soc_be *be_soc,
+						   int bank_id)
+{
+	dp_info("epd:%x encap:%x encryp:%x src_buf_swap:%x link_meta_swap:%x addrx_en:%x addry_en:%x mesh_en:%x vdev_id_check:%x pmac_id:%x mcast_pkt_ctrl:%x",
+		be_soc->bank_profiles[bank_id].bank_config.epd,
+		be_soc->bank_profiles[bank_id].bank_config.encap_type,
+		be_soc->bank_profiles[bank_id].bank_config.encrypt_type,
+		be_soc->bank_profiles[bank_id].bank_config.src_buffer_swap,
+		be_soc->bank_profiles[bank_id].bank_config.link_meta_swap,
+		be_soc->bank_profiles[bank_id].bank_config.addrx_en,
+		be_soc->bank_profiles[bank_id].bank_config.addry_en,
+		be_soc->bank_profiles[bank_id].bank_config.mesh_enable,
+		be_soc->bank_profiles[bank_id].bank_config.vdev_id_check_en,
+		be_soc->bank_profiles[bank_id].bank_config.pmac_id,
+		be_soc->bank_profiles[bank_id].bank_config.mcast_pkt_ctrl);
+}
+
 QDF_STATUS
 dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 		    struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
@@ -1819,6 +1920,24 @@ ring_access_fail:
 #endif /* !CONFIG_BORON */
 
 #ifdef IPA_OFFLOAD
+#ifdef CONFIG_BORON
+static void
+dp_tx_get_ipa_bank_config(struct dp_soc_be *be_soc,
+			  union hal_tx_bank_config *bank_config)
+{
+	bank_config->epd = 0;
+	bank_config->encap_type = wlan_cfg_pkt_type(be_soc->soc.wlan_cfg_ctx);
+	bank_config->encrypt_type = 0;
+
+	bank_config->src_buffer_swap = 0;
+	bank_config->link_meta_swap = 0;
+
+	bank_config->mesh_enable = 0;
+	bank_config->dscp_tid_map_id = 0;
+	bank_config->vdev_id_check_en = 0;
+}
+
+#else /* CONFIG_BORON */
 static void
 dp_tx_get_ipa_bank_config(struct dp_soc_be *be_soc,
 			  union hal_tx_bank_config *bank_config)
@@ -1840,6 +1959,7 @@ dp_tx_get_ipa_bank_config(struct dp_soc_be *be_soc,
 	bank_config->vdev_id_check_en = 0;
 	bank_config->pmac_id = 0;
 }
+#endif /* !CONFIG_BORON */
 
 static void dp_tx_init_ipa_bank_profile(struct dp_soc_be *be_soc)
 {
@@ -1909,53 +2029,6 @@ void dp_tx_deinit_bank_profiles(struct dp_soc_be *be_soc)
 	DP_TX_BANK_LOCK_DESTROY(&be_soc->tx_bank_lock);
 }
 
-static
-void dp_tx_get_vdev_bank_config(struct dp_vdev_be *be_vdev,
-				union hal_tx_bank_config *bank_config)
-{
-	struct dp_vdev *vdev = &be_vdev->vdev;
-
-	bank_config->epd = 0;
-
-	bank_config->encap_type = vdev->tx_encap_type;
-
-	/* Only valid for raw frames. Needs work for RAW mode */
-	if (vdev->tx_encap_type == htt_cmn_pkt_type_raw) {
-		bank_config->encrypt_type = sec_type_map[vdev->sec_type];
-	} else {
-		bank_config->encrypt_type = 0;
-	}
-
-	bank_config->src_buffer_swap = 0;
-	bank_config->link_meta_swap = 0;
-
-	if ((vdev->search_type == HAL_TX_ADDR_INDEX_SEARCH) &&
-	    vdev->opmode == wlan_op_mode_sta) {
-		bank_config->index_lookup_enable = 1;
-		bank_config->mcast_pkt_ctrl = HAL_TX_MCAST_CTRL_MEC_NOTIFY;
-		bank_config->addrx_en = 0;
-		bank_config->addry_en = 0;
-	} else {
-		bank_config->index_lookup_enable = 0;
-		bank_config->mcast_pkt_ctrl = HAL_TX_MCAST_CTRL_FW_EXCEPTION;
-		bank_config->addrx_en =
-			(vdev->hal_desc_addr_search_flags &
-			 HAL_TX_DESC_ADDRX_EN) ? 1 : 0;
-		bank_config->addry_en =
-			(vdev->hal_desc_addr_search_flags &
-			 HAL_TX_DESC_ADDRY_EN) ? 1 : 0;
-	}
-
-	bank_config->mesh_enable = vdev->mesh_vdev ? 1 : 0;
-
-	bank_config->dscp_tid_map_id = vdev->dscp_tid_map_id;
-
-	/* Disabling vdev id check for now. Needs revist. */
-	bank_config->vdev_id_check_en = be_vdev->vdev_id_check_en;
-
-	bank_config->pmac_id = vdev->lmac_id;
-}
-
 int dp_tx_get_bank_profile(struct dp_soc_be *be_soc,
 			   struct dp_vdev_be *be_vdev)
 {
@@ -2023,18 +2096,7 @@ inc_ref_and_return:
 		be_soc->bank_profiles[bank_id].bank_config.val,
 		qdf_atomic_read(&be_soc->bank_profiles[bank_id].ref_count));
 
-	dp_info("epd:%x encap:%x encryp:%x src_buf_swap:%x link_meta_swap:%x addrx_en:%x addry_en:%x mesh_en:%x vdev_id_check:%x pmac_id:%x mcast_pkt_ctrl:%x",
-		be_soc->bank_profiles[bank_id].bank_config.epd,
-		be_soc->bank_profiles[bank_id].bank_config.encap_type,
-		be_soc->bank_profiles[bank_id].bank_config.encrypt_type,
-		be_soc->bank_profiles[bank_id].bank_config.src_buffer_swap,
-		be_soc->bank_profiles[bank_id].bank_config.link_meta_swap,
-		be_soc->bank_profiles[bank_id].bank_config.addrx_en,
-		be_soc->bank_profiles[bank_id].bank_config.addry_en,
-		be_soc->bank_profiles[bank_id].bank_config.mesh_enable,
-		be_soc->bank_profiles[bank_id].bank_config.vdev_id_check_en,
-		be_soc->bank_profiles[bank_id].bank_config.pmac_id,
-		be_soc->bank_profiles[bank_id].bank_config.mcast_pkt_ctrl);
+	dp_tx_print_bank_profile_config(be_soc, bank_id);
 
 	return bank_id;
 }

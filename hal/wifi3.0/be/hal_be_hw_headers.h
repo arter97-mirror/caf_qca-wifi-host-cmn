@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,7 +25,11 @@
 #include "receive_rssi_info.h"
 #include "buffer_addr_info.h"
 
+#ifdef CONFIG_BORON
+#include "tqm2sw_completion_ring.h"
+#else
 #include "wbm2sw_completion_ring_tx.h"
+#endif
 #include "wbm2sw_completion_ring_rx.h"
 
 #if defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_WCN7750) || \

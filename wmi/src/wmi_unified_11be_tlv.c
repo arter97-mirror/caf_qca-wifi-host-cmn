@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1283,7 +1283,21 @@ static QDF_STATUS send_mlo_vdev_pause_cmd_tlv(wmi_unified_t wmi_handle,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_pause_cmd_fixed_param));
 	fixed_params->vdev_id = info->vdev_id;
 	fixed_params->pause_dur_ms = info->vdev_pause_duration;
-	fixed_params->pause_type = WMI_VDEV_PAUSE_TYPE_MLO_LINK;
+	switch (info->type) {
+	case MLO_VDEV_PAUSE_TYPE_MLO_LINK:
+		fixed_params->pause_type = WMI_VDEV_PAUSE_TYPE_MLO_LINK;
+		break;
+	case MLO_VDEV_PAUSE_TYPE_TX:
+		fixed_params->pause_type = WMI_VDEV_PAUSE_TYPE_TX;
+		break;
+	case MLO_VDEV_PAUSE_TYPE_TX_DATA:
+		fixed_params->pause_type = WMI_VDEV_PAUSE_TYPE_TX_DATA;
+		break;
+	default:
+		wmi_buf_free(buf);
+		wmi_err("invalid type %d", info->type);
+		return QDF_STATUS_E_INVAL;
+	}
 	wmi_debug("vdev id: %d pause duration: %d pause type %d",
 		  fixed_params->vdev_id, fixed_params->pause_dur_ms,
 		  fixed_params->pause_type);

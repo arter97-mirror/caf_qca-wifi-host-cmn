@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2018, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -516,7 +516,7 @@ void wmi_p2p_listen_offload_attach_tlv(wmi_unified_t wmi_handle)
 }
 #endif /* FEATURE_P2P_LISTEN_OFFLOAD */
 
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#if defined(FEATURE_WLAN_SUPPORT_USD) || defined(FEATURE_WLAN_SUPPORT_P2P_R2)
 /**
  * wmi_p2p_op_type_convert_p2p_enum_to_wmi_enum() - this API converts
  * P2P_USD_OP_TYPE_XX to WMI_USD_MODE_XX
@@ -740,7 +740,7 @@ static void wmi_p2p_attach_usd_tlv(struct wmi_ops *ops)
 static inline void wmi_p2p_attach_usd_tlv(struct wmi_ops *ops)
 {
 }
-#endif /* FEATURE_WLAN_SUPPORT_USD */
+#endif /* FEATURE_WLAN_SUPPORT_USD || FEATURE_WLAN_SUPPORT_P2P_R2 */
 
 void wmi_p2p_attach_tlv(wmi_unified_t wmi_handle)
 {

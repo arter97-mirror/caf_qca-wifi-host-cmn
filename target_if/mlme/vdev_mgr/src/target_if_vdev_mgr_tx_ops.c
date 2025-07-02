@@ -53,7 +53,16 @@ static QDF_STATUS target_if_vdev_mgr_unregister_event_handler(
 	return target_if_vdev_mgr_wmi_event_unregister(psoc);
 }
 
-QDF_STATUS
+/**
+ * _target_if_vdev_mgr_rsp_timer_stop() - API to stop response timer for
+ * vdev manager operations
+ * @psoc: pointer to psoc object
+ * @vdev_rsp: vdev response timer
+ * @clear_bit: enum of wlan_vdev_mgr_tgt_if_rsp_bit
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
 _target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
 				   struct vdev_response_timer *vdev_rsp,
 				   enum wlan_vdev_mgr_tgt_if_rsp_bit clear_bit)
@@ -103,7 +112,16 @@ _target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
+/**
+ * _target_if_vdev_mgr_rsp_timer_start() - API to start response timer for
+ * vdev manager operations
+ * @psoc: pointer to psoc object
+ * @vdev_rsp: vdev response timer
+ * @set_bit: enum of wlan_vdev_mgr_tgt_if_rsp_bit
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
 _target_if_vdev_mgr_rsp_timer_start(struct wlan_objmgr_psoc *psoc,
 				    struct vdev_response_timer *vdev_rsp,
 				    enum wlan_vdev_mgr_tgt_if_rsp_bit set_bit)
@@ -275,23 +293,8 @@ target_if_vdev_mlme_id_2_wmi(uint32_t cfg_id)
 	int wmi_id;
 
 	switch (cfg_id) {
-	case WLAN_MLME_CFG_DTIM_PERIOD:
-		wmi_id = wmi_vdev_param_dtim_period;
-		break;
-	case WLAN_MLME_CFG_SLOT_TIME:
-		wmi_id = wmi_vdev_param_slot_time;
-		break;
-	case WLAN_MLME_CFG_PROTECTION_MODE:
-		wmi_id = wmi_vdev_param_protection_mode;
-		break;
 	case WLAN_MLME_CFG_BEACON_INTERVAL:
 		wmi_id = wmi_vdev_param_beacon_interval;
-		break;
-	case WLAN_MLME_CFG_LDPC:
-		wmi_id = wmi_vdev_param_ldpc;
-		break;
-	case WLAN_MLME_CFG_NSS:
-		wmi_id = wmi_vdev_param_nss;
 		break;
 	case WLAN_MLME_CFG_SUBFER:
 	case WLAN_MLME_CFG_MUBFER:
@@ -299,34 +302,7 @@ target_if_vdev_mlme_id_2_wmi(uint32_t cfg_id)
 	case WLAN_MLME_CFG_MUBFEE:
 	case WLAN_MLME_CFG_IMLICIT_BF:
 	case WLAN_MLME_CFG_SOUNDING_DIM:
-	case WLAN_MLME_CFG_TXBF_CAPS:
 		wmi_id = wmi_vdev_param_txbf;
-		break;
-	case WLAN_MLME_CFG_HE_OPS:
-		wmi_id = wmi_vdev_param_set_heop;
-		break;
-#ifdef WLAN_FEATURE_11BE
-	case WLAN_MLME_CFG_EHT_OPS:
-		wmi_id = wmi_vdev_param_set_ehtop;
-		break;
-#endif
-	case WLAN_MLME_CFG_RTS_THRESHOLD:
-		wmi_id = wmi_vdev_param_rts_threshold;
-		break;
-	case WLAN_MLME_CFG_FRAG_THRESHOLD:
-		wmi_id = wmi_vdev_param_fragmentation_threshold;
-		break;
-	case WLAN_MLME_CFG_DROP_UNENCRY:
-		wmi_id = wmi_vdev_param_drop_unencry;
-		break;
-	case WLAN_MLME_CFG_TX_POWER:
-		wmi_id = wmi_vdev_param_tx_power;
-		break;
-	case WLAN_MLME_CFG_AMPDU:
-		wmi_id = wmi_vdev_param_ampdu_subframe_size_per_ac;
-		break;
-	case WLAN_MLME_CFG_AMSDU:
-		wmi_id = wmi_vdev_param_amsdu_subframe_size_per_ac;
 		break;
 	case WLAN_MLME_CFG_MIN_IDLE_INACTIVE_TIME:
 		wmi_id =
@@ -343,33 +319,12 @@ target_if_vdev_mlme_id_2_wmi(uint32_t cfg_id)
 	case WLAN_MLME_CFG_UAPSD:
 		wmi_id = WMI_HOST_STA_PS_PARAM_UAPSD;
 		break;
-	case WLAN_MLME_CFG_BCN_TX_RATE_CODE:
-		wmi_id = wmi_vdev_param_beacon_rate;
-		break;
-	case WLAN_MLME_CFG_TX_MGMT_RATE_CODE:
-		wmi_id = wmi_vdev_param_mgmt_rate;
-		break;
-	case WLAN_MLME_CFG_LISTEN_INTERVAL:
-		wmi_id = wmi_vdev_param_listen_interval;
-		break;
-	case WLAN_MLME_CFG_ENABLE_MULTI_GROUP_KEY:
-		wmi_id = wmi_vdev_param_enable_multi_group_key;
-		break;
-	case WLAN_MLME_CFG_MAX_GROUP_KEYS:
-		wmi_id = wmi_vdev_param_max_group_keys;
-		break;
 	case WLAN_MLME_CFG_TX_ENCAP_TYPE:
 		wmi_id = wmi_vdev_param_tx_encap_type;
 		break;
 	case WLAN_MLME_CFG_RX_DECAP_TYPE:
 		wmi_id = wmi_vdev_param_rx_decap_type;
-		break;
-	case WLAN_MLME_CFG_ENABLE_DISABLE_RTT_RESPONDER_ROLE:
-		wmi_id = wmi_vdev_param_enable_disable_rtt_responder_role;
-		break;
-	case WLAN_MLME_CFG_ENABLE_DISABLE_RTT_INITIATOR_ROLE:
-		wmi_id = wmi_vdev_param_enable_disable_rtt_initiator_role;
-		break;
+               break;
 	default:
 		wmi_id = cfg_id;
 		break;

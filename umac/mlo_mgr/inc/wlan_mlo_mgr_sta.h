@@ -417,7 +417,7 @@ wlan_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev);
  */
 void
 mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				struct mlo_partner_info ml_partner_info);
+				struct mlo_partner_info *ml_partner_info);
 
 /**
  * mlo_clear_connected_links_bmap() - clear connected links bitmap
@@ -961,13 +961,15 @@ void mlo_process_ml_reconfig_ie(struct wlan_objmgr_vdev *vdev,
  * @vdev: vdev pointer
  * @session_id: session ID
  * @vdev_pause_dur: vdev pause duration
+ * @type: pause type
  *
  * Return: None
  */
 void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      struct wlan_objmgr_vdev *vdev,
 			      uint16_t session_id,
-			      uint16_t vdev_pause_dur);
+			      uint16_t vdev_pause_dur,
+			      enum mlo_vdev_pause_type type);
 
 /**
  * mlo_get_cache_link_assoc_rsp() - get link assoc rsp from cache
@@ -1172,7 +1174,7 @@ mlo_update_connect_req_links(struct wlan_objmgr_vdev *vdev, uint8_t value)
 
 static inline void
 mlo_update_connected_links_bmap(struct wlan_mlo_dev_context *mlo_dev_ctx,
-				struct mlo_partner_info ml_parnter_info)
+				struct mlo_partner_info *ml_parnter_info)
 { }
 
 static inline bool
@@ -1296,7 +1298,8 @@ static inline
 void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      struct wlan_objmgr_vdev *vdev,
 			      uint16_t session_id,
-			      uint16_t vdev_pause_dur)
+			      uint16_t vdev_pause_dur,
+			      enum mlo_vdev_pause_type type)
 {}
 #endif
 

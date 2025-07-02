@@ -2039,6 +2039,13 @@ enum phy_ch_width wlan_reg_find_chwidth_from_bw(uint16_t bw)
 	return reg_find_chwidth_from_bw(bw);
 }
 
+void wlan_reg_convert_chan_spacing_to_width(uint16_t chan_spacing,
+					    uint16_t *opclass_chwidth)
+{
+	return reg_convert_chan_spacing_to_width(chan_spacing,
+						 opclass_chwidth);
+}
+
 #ifdef WLAN_FEATURE_11BE
 enum channel_state
 wlan_reg_get_chan_state_for_320(struct wlan_objmgr_pdev *pdev,

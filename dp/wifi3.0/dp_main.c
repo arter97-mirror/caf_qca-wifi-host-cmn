@@ -1720,6 +1720,14 @@ static int dp_srng_calculate_msi_group(struct dp_soc *soc,
 		}
 	break;
 
+	case TQM2SW_RELEASE:
+		grp_mask = &soc->wlan_cfg_ctx->int_tx_ring_mask[0];
+		nf_irq_mask = dp_srng_get_near_full_irq_mask(soc, ring_type,
+							     ring_num);
+		if (nf_irq_mask)
+			nf_irq_enabled = true;
+	break;
+
 	case REO_EXCEPTION:
 		/* dp_rx_err_process - &soc->reo_exception_ring */
 		grp_mask = &soc->wlan_cfg_ctx->int_rx_err_ring_mask[0];
@@ -8177,6 +8185,8 @@ char *dp_srng_get_str_from_hal_ring_type(enum hal_ring_type ring_type)
 		return "tcl_status";
 	case SW2WBM_RELEASE:
 		return "sw2wbm_release";
+	case TQM2SW_RELEASE:
+		return "tqm2sw_release";
 	case RXDMA_BUF:
 		return "Rxdma_buf";
 	case RXDMA_DST:

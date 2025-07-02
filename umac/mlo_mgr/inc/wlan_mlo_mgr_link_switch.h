@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -538,6 +538,15 @@ mlo_mgr_link_switch_get_curr_state(struct wlan_mlo_dev_context *mlo_dev_ctx);
 bool mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * mlo_mgr_is_link_switch_in_progress_by_psoc() - Check link switch
+ * is in progress in any vdev of psoc
+ * @psoc: psoc object
+ *
+ * Return: true if any vdev in psoc is doing link switch
+ */
+bool mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc);
+
+/**
  * mlo_mgr_link_switch_notification() - Notify MLO manager on start
  * of link switch
  * @vdev: VDEV object manager
@@ -573,6 +582,15 @@ bool mlo_mgr_is_link_switch_on_assoc_vdev(struct wlan_objmgr_vdev *vdev);
  */
 struct wlan_objmgr_vdev *
 mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_mgr_get_link_switch_last_link_id() - Get last link id of link
+ * switching VDEV
+ * @vdev: VDEV object manager.
+ *
+ * Return: uint8_t last link id of link switching vdev
+ */
+uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlo_mgr_ser_link_switch_cmd() - The API will serialize link switch
@@ -886,6 +904,12 @@ mlo_mgr_is_link_switch_in_progress(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
+static inline bool
+mlo_mgr_is_link_switch_in_progress_by_psoc(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
 static inline QDF_STATUS
 mlo_mgr_link_switch_notification(struct wlan_objmgr_vdev *vdev,
 				 struct wlan_mlo_link_switch_req *lswitch_req,
@@ -904,6 +928,12 @@ static inline struct wlan_objmgr_vdev *
 mlo_mgr_link_switch_get_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 {
 	return NULL;
+}
+
+static inline
+uint8_t mlo_mgr_get_link_switch_last_link_id(struct wlan_objmgr_vdev *vdev)
+{
+	return WLAN_INVALID_LINK_ID;
 }
 
 static inline QDF_STATUS
