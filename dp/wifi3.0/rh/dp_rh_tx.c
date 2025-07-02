@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -434,13 +434,13 @@ dp_tx_hw_enqueue_rh(struct dp_soc *soc, struct dp_vdev *vdev,
 		goto enqueue_fail;
 	}
 
+	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
 	coalesce = dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid,
 					    msdu_info, 0);
 
 	dp_tx_update_write_index(soc, tx_ep_info, coalesce);
 	ce_ring_release_lock(tx_ep_info->ce_tx_hdl);
 
-	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
 	dp_vdev_peer_stats_update_protocol_cnt_tx(vdev, nbuf);
 	DP_STATS_INC_PKT(vdev, tx_i[DP_XMIT_LINK].processed, 1,
 			 tx_desc->length);
