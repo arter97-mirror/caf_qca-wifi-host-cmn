@@ -126,18 +126,20 @@ wlan_peer_update_avg_tx_rate_stats_user(
 static void
 wlan_peer_update_avg_tx_rate_stats(
 				struct wlan_soc_rate_stats_ctx *soc_stats_ctx,
-				struct cdp_tx_completion_ppdu *ppdu)
+				struct cdp_tx_completion_ppdu *ppdu,
+			       qdf_nbuf_t nbuf)
 {
 	struct wlan_peer_rate_stats_ctx *stats_ctx;
 	struct wlan_avg_rate_stats *avg;
 	struct cdp_tx_completion_ppdu_user *user;
 	int i;
+	uint8_t max_users = nbuf->cb[0];
 
 	if (soc_stats_ctx->stats_ver != PEER_EXT_RATE_STATS &&
 	    soc_stats_ctx->stats_ver != PEER_EXT_ALL_STATS)
 		return;
 
-	for (i = 0; i < ppdu->num_users; i++) {
+	for (i = 0; i < ppdu->num_users && i < max_users; i++) {
 		user = &ppdu->user[i];
 		STATS_CTX_LOCK_ACQUIRE(&soc_stats_ctx->tx_ctx_lock);
 		if (user->peer_id == CDP_INVALID_PEER) {
@@ -765,18 +767,21 @@ __wlan_peer_update_rx_rate_stats(struct wlan_rx_rate_stats *__rx_stats,
 
 static void
 wlan_peer_update_tx_link_stats(struct wlan_soc_rate_stats_ctx *soc_stats_ctx,
-			       struct cdp_tx_completion_ppdu *cdp_tx_ppdu)
+			       struct cdp_tx_completion_ppdu *cdp_tx_ppdu,
+			       qdf_nbuf_t nbuf)
 {
 	struct cdp_tx_completion_ppdu_user *ppdu_user;
 	struct wlan_peer_rate_stats_ctx *stats_ctx;
 	struct wlan_tx_link_stats *tx_stats;
 	uint8_t user_idx;
+	uint8_t max_users = nbuf->cb[0];
 
 	if (soc_stats_ctx->stats_ver != PEER_EXT_LINK_STATS &&
 	    soc_stats_ctx->stats_ver != PEER_EXT_ALL_STATS)
 		return;
 
-	for (user_idx = 0; user_idx < cdp_tx_ppdu->num_users; user_idx++) {
+	for (user_idx = 0;
+	     user_idx < cdp_tx_ppdu->num_users && user_idx < max_users; user_idx++) {
 		ppdu_user = &cdp_tx_ppdu->user[user_idx];
 
 		STATS_CTX_LOCK_ACQUIRE(&soc_stats_ctx->tx_ctx_lock);
@@ -1031,7 +1036,8 @@ __wlan_peer_update_tx_rate_stats(struct wlan_tx_rate_stats *__tx_stats,
 
 static void
 wlan_peer_update_tx_rate_stats(struct wlan_soc_rate_stats_ctx *soc_stats_ctx,
-			       struct cdp_tx_completion_ppdu *cdp_tx_ppdu)
+			       struct cdp_tx_completion_ppdu *cdp_tx_ppdu,
+			       qdf_nbuf_t nbuf)
 {
 	struct cdp_tx_completion_ppdu_user *ppdu_user;
 	struct wlan_peer_rate_stats_ctx *stats_ctx;
@@ -1040,12 +1046,14 @@ wlan_peer_update_tx_rate_stats(struct wlan_soc_rate_stats_ctx *soc_stats_ctx,
 	uint8_t cache_idx;
 	uint8_t user_idx;
 	bool idx_match = false;
+	uint8_t max_users = nbuf->cb[0];
 
 	if (soc_stats_ctx->stats_ver != PEER_EXT_RATE_STATS &&
 	    soc_stats_ctx->stats_ver != PEER_EXT_ALL_STATS)
 		return;
 
-	for (user_idx = 0; user_idx < cdp_tx_ppdu->num_users; user_idx++) {
+	for (user_idx = 0;
+	     user_idx < cdp_tx_ppdu->num_users && user_idx < max_users; user_idx++) {
 		ppdu_user = &cdp_tx_ppdu->user[user_idx];
 
 		STATS_CTX_LOCK_ACQUIRE(&soc_stats_ctx->tx_ctx_lock);
@@ -1177,9 +1185,9 @@ void wlan_peer_update_rate_stats(void *ctx,
 	case WDI_EVENT_TX_PPDU_DESC:
 		cdp_tx_ppdu = (struct cdp_tx_completion_ppdu *)
 					qdf_nbuf_data(nbuf);
-		wlan_peer_update_tx_rate_stats(soc_stats_ctx, cdp_tx_ppdu);
-		wlan_peer_update_tx_link_stats(soc_stats_ctx, cdp_tx_ppdu);
-		wlan_peer_update_avg_tx_rate_stats(soc_stats_ctx, cdp_tx_ppdu);
+		wlan_peer_update_tx_rate_stats(soc_stats_ctx, cdp_tx_ppdu, nbuf);
+		wlan_peer_update_tx_link_stats(soc_stats_ctx, cdp_tx_ppdu, nbuf);
+		wlan_peer_update_avg_tx_rate_stats(soc_stats_ctx, cdp_tx_ppdu, nbuf);
 		qdf_nbuf_free(nbuf);
 		break;
 	case WDI_EVENT_RX_PPDU_DESC:
