@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1771,7 +1771,7 @@ wlan_cfg80211_send_scan_request_cached_report(
 				struct wlan_objmgr_pdev *pdev,
 				struct osif_scan_pdev *osif_scan,
 				bool is_cached_scan_reported_allowed,
-				uint32_t current_ts)
+				uint64_t current_ts)
 {
 	QDF_STATUS status;
 
