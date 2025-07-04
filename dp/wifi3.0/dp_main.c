@@ -9797,7 +9797,7 @@ static QDF_STATUS dp_get_vdev_param(struct cdp_soc_t *cdp_soc, uint8_t vdev_id,
 
 #ifdef DP_TRAFFIC_END_INDICATION
 	case CDP_ENABLE_TRAFFIC_END_INDICATION:
-		val->cdp_vdev_param_traffic_end_ind = vdev->traffic_end_ind_en;
+		val->cdp_vdev_param_twt_setup_enable = vdev->twt_setup_enable;
 		break;
 #endif
 	case CDP_MONITOR_CHANNEL:
@@ -9980,7 +9980,7 @@ dp_set_vdev_param(struct cdp_soc_t *cdp_soc, uint8_t vdev_id,
 		break;
 #ifdef DP_TRAFFIC_END_INDICATION
 	case CDP_ENABLE_TRAFFIC_END_INDICATION:
-		vdev->traffic_end_ind_en = val.cdp_vdev_param_traffic_end_ind;
+		vdev->twt_setup_enable = val.cdp_vdev_param_twt_setup_enable;
 		break;
 #endif
 #ifdef FEATURE_DIRECT_LINK

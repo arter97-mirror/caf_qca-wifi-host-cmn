@@ -5017,7 +5017,7 @@ struct dp_vdev {
 #endif
 #ifdef DP_TRAFFIC_END_INDICATION
 	/* per vdev feature enable/disable status */
-	bool traffic_end_ind_en;
+	bool twt_setup_enable;
 	/* per vdev nbuf queue for traffic end indication packets */
 	qdf_nbuf_queue_t end_ind_pkt_q;
 #endif

@@ -1204,10 +1204,9 @@ static inline int dp_tx_is_nbuf_marked_exception(struct dp_soc *soc,
  *
  * Return: True if feature is enable else false
  */
-static inline bool
-dp_tx_twt_setup_is_enabled(struct dp_vdev *vdev)
+static inline bool dp_tx_twt_setup_is_enabled(struct dp_vdev *vdev)
 {
-	return vdev->traffic_end_ind_en;
+	return vdev->twt_setup_enable;
 }
 
 /**
