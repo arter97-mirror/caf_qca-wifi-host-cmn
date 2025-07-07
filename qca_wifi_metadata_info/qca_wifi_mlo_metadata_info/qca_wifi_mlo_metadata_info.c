@@ -141,3 +141,5 @@ uint32_t qca_mlo_get_mark_metadata(struct qca_mlo_metadata_param *mlo_param)
 	return 0;
 }
 #endif
+
+qdf_export_symbol(qca_mlo_get_mark_metadata);
