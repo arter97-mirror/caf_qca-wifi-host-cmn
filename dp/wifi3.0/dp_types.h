@@ -5895,6 +5895,7 @@ struct dp_peer {
 #endif
 
 	qdf_spinlock_t peer_info_lock;
+	qdf_spinlock_t txrx_peer_lock;
 
 	/* Peer calibrated stats */
 	struct cdp_calibr_stats stats;

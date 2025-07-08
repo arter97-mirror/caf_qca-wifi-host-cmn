@@ -2251,6 +2251,36 @@ struct dp_txrx_peer *dp_get_txrx_peer(struct dp_peer *peer)
 }
 
 /**
+ * dp_txrx_peer_lock() - Get Txrx Peer Lock
+ * @peer: Peer handle
+ *
+ * Return: None
+ */
+static inline void
+dp_txrx_peer_lock(struct dp_peer *peer)
+{
+	if (IS_MLO_DP_LINK_PEER(peer))
+		qdf_spin_lock(&peer->mld_peer->txrx_peer_lock);
+	else
+		qdf_spin_lock(&peer->txrx_peer_lock);
+}
+
+/**
+ * dp_txrx_peer_unlock() - Release Txrx Peer Lock
+ * @peer: Peer handle
+ *
+ * Return: None
+ */
+static inline void
+dp_txrx_peer_unlock(struct dp_peer *peer)
+{
+	if (IS_MLO_DP_LINK_PEER(peer))
+		qdf_spin_unlock(&peer->mld_peer->txrx_peer_lock);
+	else
+		qdf_spin_unlock(&peer->txrx_peer_lock);
+}
+
+/**
  * dp_peer_is_primary_link_peer() - Check if peer is primary link peer
  * @peer: Datapath peer
  *
@@ -2480,6 +2510,30 @@ static inline
 struct dp_txrx_peer *dp_get_txrx_peer(struct dp_peer *peer)
 {
 	return peer->txrx_peer;
+}
+
+/**
+ * dp_txrx_peer_lock() - Get Txrx Peer Lock
+ * @peer: Peer handle
+ *
+ * Return: None
+ */
+static inline void
+dp_txrx_peer_lock(struct dp_peer *peer)
+{
+	qdf_spin_lock(&peer->txrx_peer_lock);
+}
+
+/**
+ * dp_txrx_peer_unlock() - Release Txrx Peer Lock
+ * @peer: Peer handle
+ *
+ * Return: None
+ */
+static inline void
+dp_txrx_peer_unlock(struct dp_peer *peer)
+{
+	qdf_spin_unlock(&peer->txrx_peer_lock);
 }
 
 static inline

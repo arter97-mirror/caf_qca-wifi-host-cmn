@@ -6050,6 +6050,7 @@ static QDF_STATUS dp_txrx_peer_detach(struct dp_soc *soc, struct dp_peer *peer)
 	struct dp_pdev *pdev;
 	struct cdp_txrx_peer_params_update params = {0};
 
+	qdf_spin_lock(&peer->txrx_peer_lock);
 	/* dp_txrx_peer exists for mld peer and legacy peer */
 	if (peer->txrx_peer) {
 		txrx_peer = peer->txrx_peer;
@@ -6082,6 +6083,7 @@ static QDF_STATUS dp_txrx_peer_detach(struct dp_soc *soc, struct dp_peer *peer)
 
 		qdf_mem_free(txrx_peer);
 	}
+	qdf_spin_unlock(&peer->txrx_peer_lock);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -6402,6 +6404,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	qdf_spinlock_create(&peer->peer_state_lock);
 	dp_peer_add_ast(soc, peer, peer_mac_addr, ast_type, 0);
 	qdf_spinlock_create(&peer->peer_info_lock);
+	qdf_spinlock_create(&peer->txrx_peer_lock);
 	dp_peer_3_link_tx_flow_info_init(peer);
 
 	/* reset the ast index to flowid table */
@@ -7251,6 +7254,7 @@ void dp_peer_unref_delete(struct dp_peer *peer, enum dp_mod_id mod_id)
 		qdf_spinlock_destroy(&peer->peer_state_lock);
 
 		dp_txrx_peer_detach(soc, peer);
+		qdf_spinlock_destroy(&peer->txrx_peer_lock);
 		dp_cfg_event_record_peer_evt(soc, DP_CFG_EVENT_PEER_UNREF_DEL,
 					     peer, vdev, 0);
 		qdf_mem_free(peer);
