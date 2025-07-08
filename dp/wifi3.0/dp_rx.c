@@ -1310,6 +1310,10 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 			      uint8_t link_id)
 {
 	uint16_t len;
+	uint8_t ring_id = QDF_NBUF_CB_RX_CTX_ID(nbuf);
+	uint16_t peer_id = QDF_NBUF_CB_RX_PEER_ID(nbuf);
+	uint8_t vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
+
 
 	len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
 
@@ -1347,6 +1351,12 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 		DP_PEER_PER_PKT_STATS_INC_PKT(ta_peer, rx.intra_bss.fail, 1,
 					      len, link_id);
 		tid_stats->fail_cnt[INTRABSS_DROP]++;
+		/* restore part of CB info.*/
+		QDF_NBUF_CB_RX_CTX_ID(nbuf) = ring_id;
+		QDF_NBUF_CB_RX_PKT_LEN(nbuf) = len;
+		QDF_NBUF_CB_RX_PEER_ID(nbuf) = peer_id;
+		QDF_NBUF_CB_RX_VDEV_ID(nbuf) = vdev_id;
+
 		return false;
 	}
 
