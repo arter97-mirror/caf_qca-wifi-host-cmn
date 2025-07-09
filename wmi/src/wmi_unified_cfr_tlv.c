@@ -514,6 +514,7 @@ static inline void wmi_enh_cfr_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_cfr_rcc_cmd = send_cfr_rcc_cmd_tlv;
 	ops->extract_cfr_capture_filter_resp =
 		extract_cfr_capture_filter_event_tlv;
+	ops->extract_cfr_phase_param = extract_cfr_phase_param_tlv;
 }
 #else
 static inline void wmi_enh_cfr_attach_tlv(wmi_unified_t wmi_handle)
@@ -541,7 +542,6 @@ void wmi_cfr_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_peer_cfr_capture_cmd = send_peer_cfr_capture_cmd_tlv;
 	ops->extract_cfr_peer_tx_event_param =
 		extract_cfr_peer_tx_event_param_tlv;
-	ops->extract_cfr_phase_param = extract_cfr_phase_param_tlv;
 	wmi_cfr_attach_enh_aoa_tlv(ops);
 	wmi_enh_cfr_attach_tlv(wmi_handle);
 }
