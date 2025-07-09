@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -561,10 +561,12 @@ int nl_srv_init(void *wiphy, int proto)
  */
 void nl_srv_exit(void)
 {
+	mutex_lock(&nl_srv_sem);
 	if (nl_srv_is_initialized() == 0)
 		netlink_kernel_release(nl_srv_sock);
 
 	nl_srv_sock = NULL;
+	mutex_unlock(&nl_srv_sem);
 }
 
 /*
