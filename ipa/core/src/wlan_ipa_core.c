@@ -68,6 +68,7 @@
 #define WLAN_IPA_WAIT_TIME 10
 #define WLAN_IPA_MAX_WAIT_CNT 100
 #define WLAN_IPA_FLT_REL_TIMEOUT 500
+#define WLAN_IPA_FLT_REL_NOTIFY_WAIT_TIME 150
 
 static struct wlan_ipa_priv *gp_ipa;
 static void wlan_ipa_set_pending_tx_timer(struct wlan_ipa_priv *ipa_ctx);
@@ -6147,10 +6148,16 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 							       msg->rsvd);
 		qdf_mutex_release(&ipa_ctx->ipa_lock);
 	} else if (msg->op_code == WLAN_IPA_FILTER_REL_NOTIFY) {
+		if (msg->rsvd) {
+			wlan_ipa_opt_dp_wait_for_completion(ipa_ctx);
+			/* Add delay before filter release success notification
+			 * to ensure HW is not holding any rx pkt.
+			 */
+			qdf_sleep(WLAN_IPA_FLT_REL_NOTIFY_WAIT_TIME);
+		}
+
 		ipa_log_info("opt_dp: IPA notify filter rel_response: %d",
 			     msg->rsvd);
-		if (msg->rsvd)
-			wlan_ipa_opt_dp_wait_for_completion(ipa_ctx);
 		qdf_mutex_acquire(&ipa_ctx->ipa_lock);
 		qdf_ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(ipa_ctx->hdl,
 							       msg->rsvd);
