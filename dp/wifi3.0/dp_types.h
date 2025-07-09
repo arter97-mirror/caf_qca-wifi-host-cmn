@@ -1896,6 +1896,8 @@ struct dp_rx_page_pool {
 	uint16_t idx_shift;
 	bool ipa_cntrs_init;
 #endif
+	size_t buf_size;
+	int buf_align;
 };
 #endif
 

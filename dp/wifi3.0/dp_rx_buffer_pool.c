@@ -561,9 +561,9 @@ dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 	}
 
 nbuf_alloc:
-	nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, rx_desc_pool->buf_size,
+	nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, rx_pp->buf_size,
 					RX_BUFFER_RESERVATION,
-					rx_desc_pool->buf_alignment,
+					rx_pp->buf_align,
 					pp_params->pp, &offset);
 	if (!nbuf) {
 		ret = QDF_STATUS_E_FAILURE;
@@ -914,6 +914,15 @@ alloc_page_pool:
 	return pp;
 }
 
+static inline size_t
+dp_rx_page_pool_buffer_size(size_t buf_size, int align)
+{
+	uint16_t delta;
+
+	delta = align ? QDF_SHINFO_SIZE + align - 1 : QDF_SHINFO_SIZE;
+	return buf_size - delta;
+}
+
 QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 				 uint32_t pool_size)
 {
@@ -928,6 +937,7 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	size_t pp_size;
 	uint8_t prealloc = 0;
 	int pp_count;
+	int align;
 	int i;
 
 	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx)) {
@@ -970,11 +980,7 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	rx_pp->soc = soc;
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
-
-	if (RX_DATA_BUFFER_OPT_ALIGNMENT)
-		buf_size += RX_DATA_BUFFER_OPT_ALIGNMENT - 1;
-	buf_size += QDF_SHINFO_SIZE;
-	buf_size = QDF_NBUF_ALIGN(buf_size);
+	dp_rx_page_pool_get_buf_params(&buf_size, &align);
 
 	for (i = 0; i < pp_count; i++) {
 		pp_params = &rx_pp->main_pool[i];
@@ -1010,6 +1016,8 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	rx_pp->aux_pool.pp_size = pp_size;
 	rx_pp->aux_pool.prealloc = prealloc;
 	rx_pp->curr_pool_size = pool_size;
+	rx_pp->buf_size = dp_rx_page_pool_buffer_size(buf_size, align);
+	rx_pp->buf_align = align;
 
 	if (QDF_IS_STATUS_ERROR(dp_rx_page_pool_init(soc, pool_id)))
 		goto out_pp_fail;
