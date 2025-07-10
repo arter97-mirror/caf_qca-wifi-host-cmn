@@ -7226,7 +7226,7 @@ struct wlan_objmgr_vdev *wlan_stats_get_vdev_from_sta_mac(uint8_t *mac)
 #ifdef WLAN_FEATURE_11BE_MLO
 	ml_peer = wlan_mlo_get_mlpeer_by_peer_mladdr(&mac_addr, &mld_dev);
 	if (mld_dev && ml_peer)
-		peer = wlan_mlo_peer_get_assoc_peer(ml_peer);
+		peer = wlan_mlo_peer_get_primary_peer(ml_peer);
 #endif
 
 	if (peer) {
