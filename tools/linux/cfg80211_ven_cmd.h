@@ -1456,6 +1456,7 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_FORCE_NON_ASSOC_PRIMARY_UMAC = 527,
 	OL_ATH_PARAM_DOWNGRADE_320MHZ_OPCLASS = 528,
 #endif
+	OL_ATH_PARAM_DISABLE_EMLSR_ADV = 569,
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
@@ -3824,6 +3825,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_EXCLUDE_EML_IN_SLO, SET_PARAM, 1},
 	{"get_disable_eml_in_slo",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_EXCLUDE_EML_IN_SLO, GET_PARAM, 0},
+	{"disable_emlsr_advertisement",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DISABLE_EMLSR_ADV, SET_PARAM, 1},
+	{"g_disable_emlsr_advertisement",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DISABLE_EMLSR_ADV, GET_PARAM, 0},
 	{"g_mbss_group_size",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_MBSS_GET_GROUP_SIZE, GET_PARAM, 0},
 	{"scan_blanking_mode",
