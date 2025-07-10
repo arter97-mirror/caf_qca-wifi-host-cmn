@@ -35,7 +35,8 @@
 #include <dfs.h>
 #include <dfs_process_radar_found_ind.h>
 #include "wlan_dfs_init_deinit_api.h"
-#include "wlan_reg_services_api.h"
+#include <wlan_reg_services_api.h>
+#include <wlan_reg_channel_api.h>
 #ifdef QCA_SUPPORT_AGILE_DFS
 #include <wlan_sm_engine.h> /* for struct wlan_sm */
 #endif
@@ -82,8 +83,16 @@ dfs_deliver_agile_user_events(struct wlan_dfs *dfs,
 					 adfs_param.precac_chwidth,
 					 sub_chans);
 	for (i = 0; i < n_sub_chans; i++) {
+		enum WLAN_DFS_EVENTS curr_event = event;
+
+		if (wlan_reg_is_nol_for_freq(dfs->dfs_pdev_obj,
+					     sub_chans[i])) {
+			dfs_debug(dfs, WLAN_DEBUG_DFS_NOL,
+				  "Agile Channel %d is in NOL", sub_chans[i]);
+			curr_event = WLAN_EV_NOL_STARTED;
+		}
 		utils_dfs_deliver_event(dfs->dfs_pdev_obj,
-					sub_chans[i], event);
+					sub_chans[i], curr_event);
 	}
 }
 
