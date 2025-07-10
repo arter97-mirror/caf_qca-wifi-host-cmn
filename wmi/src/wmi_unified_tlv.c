@@ -25426,6 +25426,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_tdls_nss_confirm_support] =
 				WMI_SERVICE_TDLS_NSS_CONFIRM_SUPPORT;
 #endif
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+	wmi_service[wmi_service_mlo_sap_link_removal_support] =
+				WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT;
+#endif
 }
 
 /**
