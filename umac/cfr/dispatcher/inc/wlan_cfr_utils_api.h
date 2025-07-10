@@ -122,6 +122,7 @@ enum cfrradiotype {
 	CFR_CAPTURE_RADIO_MANGO,
 	CFR_CAPTURE_RADIO_MIAMI,
 	CFR_CAPTURE_RADIO_YORK,
+	CFR_CAPTURE_RADIO_HST,
 	CFR_CAPTURE_RADIO_MAX = 0xFF,
 };
 
@@ -608,6 +609,12 @@ struct pdev_cfr {
 	uint8_t is_cap_interval_mode_sel_support;
 	uint8_t is_mo_marking_support;
 	uint8_t is_aoa_for_rcc_support;
+#elif defined(WLAN_CFR_DBR)
+	uint64_t last_success_tstamp;
+	uint64_t cfr_dma_aborts;
+	uint64_t invalid_dma_length_cnt;
+	uint64_t flush_dbr_cnt;
+	uint64_t clear_txrx_event;
 #endif
 	struct unassoc_pool_entry unassoc_pool[MAX_CFR_ENABLED_CLIENTS];
 	struct nl_event_cb nl_cb;

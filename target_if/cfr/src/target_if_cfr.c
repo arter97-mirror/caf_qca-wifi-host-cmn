@@ -32,9 +32,8 @@
 #include "target_if_cfr_6490.h"
 #include "target_if_cfr_adrastea.h"
 #include "wlan_reg_services_api.h"
-#else
-#include <target_if_cfr_dbr.h>
 #endif
+#include "target_if_cfr_dbr.h"
 
 int target_if_cfr_stop_capture(struct wlan_objmgr_pdev *pdev,
 			       struct wlan_objmgr_peer *peer)
@@ -81,7 +80,7 @@ int target_if_cfr_stop_capture(struct wlan_objmgr_pdev *pdev,
 		pdev_cfrobj->dbr_evt_cnt, pdev_cfrobj->tx_evt_cnt,
 		pdev_cfrobj->release_cnt);
 	cfr_err("tx_peer_status_cfr_fail = %llu",
-		pdev_cfrobj->tx_peer_status_cfr_fail = 0);
+		pdev_cfrobj->tx_peer_status_cfr_fail);
 	cfr_err("tx_evt_status_cfr_fail = %llu",
 		pdev_cfrobj->tx_evt_status_cfr_fail);
 	cfr_err("tx_dbr_cookie_lookup_fail = %llu",
@@ -244,6 +243,9 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 	} else if (target_type == TARGET_TYPE_QCA9574) {
 		hdr->cmn.cfr_metadata_version = CFR_META_VERSION_8;
 		hdr->cmn.chip_type = CFR_CAPTURE_RADIO_ALDER;
+	} else if (target_type == TARGET_TYPE_QCA6390) {
+		hdr->cmn.cfr_metadata_version = CFR_META_VERSION_2;
+		hdr->cmn.chip_type = CFR_CAPTURE_RADIO_HST;
 	} else {
 		if (target_type == TARGET_TYPE_QCN9000)
 			hdr->cmn.cfr_metadata_version = CFR_META_VERSION_9;
@@ -393,6 +395,8 @@ target_if_cfr_init_pdev(struct wlan_objmgr_psoc *psoc,
 						   pdev, target_type);
 	} else if (target_type == TARGET_TYPE_ADRASTEA) {
 		status = cfr_adrastea_init_pdev(psoc, pdev);
+	} else if (target_type == TARGET_TYPE_QCA6390) {
+		status = cfr_dbr_init_pdev(psoc, pdev);
 	} else {
 		cfr_info("unsupported chip");
 		status = QDF_STATUS_SUCCESS;
@@ -417,6 +421,8 @@ target_if_cfr_deinit_pdev(struct wlan_objmgr_psoc *psoc,
 		status = target_if_cfr_deinit_target(psoc, pdev);
 	} else if (target_type == TARGET_TYPE_ADRASTEA) {
 		status = cfr_adrastea_deinit_pdev(psoc, pdev);
+	} else if (target_type == TARGET_TYPE_QCA6390) {
+		status = cfr_dbr_deinit_pdev(psoc, pdev);
 	} else {
 		cfr_info("unsupported chip");
 		status = QDF_STATUS_SUCCESS;
