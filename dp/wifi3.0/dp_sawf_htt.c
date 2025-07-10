@@ -261,7 +261,7 @@ dp_htt_sawf_msduq_recfg_req(struct htt_soc *soc, struct dp_peer *peer,
 		uint8_t cnt = 0;
 		bool htt_sent_for_soc[GLOBAL_SOC_SIZE] = {false};
 		struct dp_peer *link_peer, *mld_peer;
-		struct dp_mld_link_peers link_peers_info = {NULL};
+		struct dp_mld_link_peers link_peers_info = {0};
 
 		if (IS_MLO_DP_LINK_PEER(peer))
 			mld_peer = DP_GET_MLD_PEER_FROM_PEER(peer);
