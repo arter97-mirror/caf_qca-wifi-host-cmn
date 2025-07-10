@@ -25400,6 +25400,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service[wmi_service_wfd_r2] = WMI_SERVICE_WFD_R2;
 #endif
+#if defined(FEATURE_WLAN_TDLS) && defined(WLAN_FEATURE_TDLS_NSS_4_4)
+	wmi_service[wmi_service_tdls_nss_confirm_support] =
+				WMI_SERVICE_TDLS_NSS_CONFIRM_SUPPORT;
+#endif
 }
 
 /**
