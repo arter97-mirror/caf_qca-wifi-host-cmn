@@ -1585,6 +1585,7 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN = 562,
 	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
 	OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE = 564,
+	OL_ATH_PARAM_DISABLE_EMLSR_ADV = 569,
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -4073,6 +4074,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_EXCLUDE_EML_IN_SLO, SET_PARAM, 1},
 	{"get_disable_eml_in_slo",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_EXCLUDE_EML_IN_SLO, GET_PARAM, 0},
+	{"disable_emlsr_advertisement",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DISABLE_EMLSR_ADV, SET_PARAM, 1},
+	{"g_disable_emlsr_advertisement",
+				OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DISABLE_EMLSR_ADV, GET_PARAM, 0},
 	{"g_mbss_group_size",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_MBSS_GET_GROUP_SIZE, GET_PARAM, 0},
 	{"scan_blanking_mode",
