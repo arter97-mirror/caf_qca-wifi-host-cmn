@@ -4505,11 +4505,9 @@ static qdf_nbuf_t dp_ipa_intrabss_send(struct dp_pdev *pdev,
 		nbuf = dp_tx_send((struct cdp_soc_t *)pdev->soc, vdev->vdev_id,
 				  nbuf);
 	} else {
-		if (pdev->soc->arch_ops.dp_rx_intrabss_get_mcbc_params &&
-		    pdev->soc->arch_ops.dp_rx_intrabss_get_mcbc_params
+		if (pdev->soc->arch_ops.dp_rx_intrabss_get_mcbc_params
 						(pdev->soc, vdev, &params)) {
-			if (pdev->soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd &&
-			    pdev->soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd
+			if (pdev->soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd
 			    (params, nbuf, link_id, len, vdev_peer->txrx_peer,
 			     tid_stats))
 				*fwd_success = true;
@@ -4603,16 +4601,11 @@ static bool dp_ipa_rx_intrabss_ucast_fwd(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		return status;
 
 	dp_ipa_rx_intrabss_construct_params(nbuf, &params_in);
-	if (soc->arch_ops.dp_rx_intrabss_get_params) {
-		if (!soc->arch_ops.dp_rx_intrabss_get_params(soc, src_vdev,
-							     NULL,
-							     params_in,
-							     &params_out))
-			goto out;
-	} else {
-		params_out.dest_soc = soc;
-		params_out.tx_vdev_id = vdev_id;
-	}
+	if (!soc->arch_ops.dp_rx_intrabss_get_params(soc, src_vdev,
+						     NULL,
+						     params_in,
+						     &params_out))
+		goto out;
 
 	dest_vdev = dp_vdev_get_ref_by_id(params_out.dest_soc,
 					  params_out.tx_vdev_id,

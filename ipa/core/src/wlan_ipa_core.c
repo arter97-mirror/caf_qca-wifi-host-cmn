@@ -86,7 +86,7 @@ static struct wlan_ipa_iface_2_client {
 	qdf_ipa_client_type_t prod_client;
 } wlan_ipa_iface_2_client[WLAN_IPA_CLIENT_MAX_IFACE] = {
 	{
-		QDF_IPA_CLIENT_MCC1_CONS, QDF_IPA_CLIENT_WLAN1_PROD
+		QDF_IPA_CLIENT_WLAN2_CONS, QDF_IPA_CLIENT_WLAN1_PROD
 	},
 	{
 		QDF_IPA_CLIENT_MCC2_CONS,  QDF_IPA_CLIENT_WLAN1_PROD

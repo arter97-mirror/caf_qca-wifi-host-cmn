@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -296,14 +296,7 @@ typedef __qdf_ipa_ast_info_type_t qdf_ipa_ast_info_type_t;
 #else
 #define QDF_IPA_CLIENT_WLAN_LEGACY_CONS   QDF_IPA_CLIENT_WLAN1_CONS
 #define QDF_IPA_CLIENT_WLAN_LEGACY_PROD   QDF_IPA_CLIENT_WLAN1_PROD
-
-#define QDF_IPA_CLIENT_MCC2_CONS          QDF_IPA_CLIENT_WLAN4_CONS
-#endif
-
-#if defined(CONFIG_ARCH_SA510M) && defined(CONFIG_AR6320_SUPPORT)
-#define QDF_IPA_CLIENT_MCC1_CONS          QDF_IPA_CLIENT_WLAN3_CONS
-#else
-#define QDF_IPA_CLIENT_MCC1_CONS          QDF_IPA_CLIENT_WLAN2_CONS
+#define QDF_IPA_CLIENT_MCC2_CONS          QDF_IPA_CLIENT_WLAN3_CONS
 #endif
 
 #ifdef QCN7605_SUPPORT
