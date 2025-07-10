@@ -1381,6 +1381,25 @@ dp_tx_send_msdu_single_wrapper(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 						      msdu_info, peer_id);
 	return nbuf;
 }
+
+static inline qdf_nbuf_t
+dp_tx_send_msdu_multiple_wrapper(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				 struct dp_tx_msdu_info_s *msdu_info,
+				 uint16_t peer_id)
+{
+	qdf_nbuf_t end_nbuf = NULL;
+
+	if (qdf_unlikely(dp_is_eot_indication_req(vdev, nbuf)))
+		end_nbuf = dp_tx_get_traffic_end_indication_pkt(vdev, nbuf);
+
+	nbuf = dp_tx_send_msdu_multiple(vdev, nbuf, msdu_info);
+
+	if (qdf_unlikely(end_nbuf))
+		dp_tx_send_traffic_end_indication_pkt(vdev, end_nbuf,
+						      msdu_info, peer_id);
+	return nbuf;
+}
+
 #else
 static inline qdf_nbuf_t
 dp_tx_get_traffic_end_indication_pkt(struct dp_vdev *vdev,
@@ -1427,6 +1446,15 @@ dp_tx_send_msdu_single_wrapper(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 {
 	return dp_tx_send_msdu_single(vdev, nbuf, msdu_info, peer_id, NULL);
 }
+
+static inline qdf_nbuf_t
+dp_tx_send_msdu_multiple_wrapper(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				 struct dp_tx_msdu_info_s *msdu_info,
+				 uint16_t peer_id)
+{
+	return dp_tx_send_msdu_multiple(vdev, nbuf, msdu_info);
+}
+
 #endif
 
 #if defined(QCA_SUPPORT_WDS_EXTENDED)
@@ -5208,7 +5236,8 @@ send_single:
 	return nbuf;
 
 send_multiple:
-	nbuf = dp_tx_send_msdu_multiple(vdev, nbuf, &msdu_info);
+	nbuf = dp_tx_send_msdu_multiple_wrapper(vdev, nbuf, &msdu_info,
+						peer_id);
 
 	if (qdf_unlikely(nbuf && msdu_info.frm_type == dp_tx_frm_raw))
 		dp_tx_raw_prepare_unset(vdev->pdev->soc, nbuf);
