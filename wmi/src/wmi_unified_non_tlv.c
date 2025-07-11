@@ -771,7 +771,7 @@ static QDF_STATUS send_setup_install_key_cmd_non_tlv(wmi_unified_t wmi_handle,
 		 * value.Here, Indicating TSC, RSC to target as part of set
 		 * key message
 		*/
-		/* since wk_recviv and wk_txiv initialized in reverse order,
+		/* since wk_rxiv and wk_txiv initialized in reverse order,
 		 * Before indicating the Target FW, Reversing TSC and RSC
 		 */
 		for (i = (WPI_IV_LEN-1), j = 0; i >= 0; i--, j++) {
