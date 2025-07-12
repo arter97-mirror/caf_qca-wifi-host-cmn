@@ -8545,6 +8545,21 @@ void dp_update_pdev_ingress_stats_ext_drop(struct dp_pdev *tgtobj,
 }
 #endif
 
+#ifdef IPA_OPT_WIFI_DP
+static inline void dp_print_opt_dp_stats(struct dp_soc *soc)
+{
+	int i;
+
+	for (i = 0; i < DP_RX_PATH_MAX; i++)
+		DP_PRINT_STATS("opt_dp_pkts[%d]: %llu", i,
+			       soc->stats.rx.opt_dp_pkts[i]);
+}
+#else
+static inline void dp_print_opt_dp_stats(struct dp_soc *soc)
+{
+}
+#endif
+
 void dp_txrx_path_stats(struct dp_soc *soc)
 {
 	uint8_t error_code;
@@ -8693,6 +8708,8 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 				       pdev->soc->stats.rx.err
 				       .rxdma_error[error_code]);
 		}
+
+		dp_print_opt_dp_stats(soc);
 
 		pos = 0;
 		pos += qdf_scnprintf(buf + pos, buf_len - pos, "%s", "Rx/IRQ [Range:Pkts] [");

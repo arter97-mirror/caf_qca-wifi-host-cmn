@@ -2293,6 +2293,7 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb(
 }
 #endif
 
+#ifdef IPA_OPT_WIFI_DP
 /**
  * wlan_ipa_release_cce_flt_ssr_shutdown() - release opt_dp filter and smmu
  * unmap as part of ssr and shutdown
@@ -2334,6 +2335,12 @@ void wlan_ipa_release_cce_flt_ssr_shutdown(struct wlan_ipa_priv *ipa_ctx)
 	qdf_wake_lock_release(&ipa_ctx->opt_dp_wake_lock,
 			      WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP);
 }
+#else
+static inline
+void wlan_ipa_release_cce_flt_ssr_shutdown(struct wlan_ipa_priv *ipa_ctx)
+{
+}
+#endif
 
 QDF_STATUS
 wlan_ipa_uc_disable_pipes(struct wlan_ipa_priv *ipa_ctx, bool force_disable)
@@ -7208,6 +7215,7 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 		goto clear_db;
 	}
 
+	cdp_ipa_print_opt_dp_log(ipa_obj->dp_soc, true, dp_flt_param);
 	for (i = 0; i < IPA_WDI_MAX_FILTER; i++)
 		dp_flt_param->flt_addr_params[i].ipa_flt_evnt_required = 0;
 
@@ -7278,7 +7286,7 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 
 	wlan_ipa_wdi_opt_dpath_clean_db(ipa_ctx);
 	cdp_ipa_dump_ring_hp_tp(ipa_obj->dp_soc);
-
+	cdp_ipa_print_opt_dp_log(ipa_obj->dp_soc, false, dp_flt_params);
 	return response;
 
 clear_flt_evt:
@@ -7394,6 +7402,7 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(void *ipa_ctx)
 	ipa_log_debug("opt_dp: flt rel response, status - %d, resp - %d",
 		      status, resp);
 	if (status == QDF_STATUS_SUCCESS && resp == QDF_STATUS_SUCCESS) {
+		cdp_ipa_print_opt_dp_log(ipa_obj->dp_soc, false, dp_flt_params);
 		return status;
 	} else if (status != QDF_STATUS_SUCCESS) {
 		ipa_obj->opt_dp_flt_rel_state =

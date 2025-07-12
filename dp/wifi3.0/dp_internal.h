@@ -5126,6 +5126,35 @@ static inline uint32_t dp_history_get_next_index(qdf_atomic_t *curr_idx,
  */
 void dp_rx_skip_tlvs(struct dp_soc *soc, qdf_nbuf_t nbuf, uint32_t l3_padding);
 
+#ifdef IPA_OPT_WIFI_DP
+/**
+ * __dp_ipa_rx_print_opt_dp_pkt() - Print the packet if it matches a filter
+ * @soc: DP soc
+ * @nbuf: packet
+ * @rx_path_tag: TAG indicating which RX path the packet arrived.
+ *
+ * Return: None
+ */
+void __dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
+				  enum dp_rx_path_tag rx_path_tag);
+
+static inline
+void dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
+				enum dp_rx_path_tag rx_path_tag)
+{
+	if (qdf_likely(!soc->is_opt_dp_filter_active))
+		return;
+
+	__dp_ipa_rx_print_opt_dp_pkt(soc, nbuf, rx_path_tag);
+}
+#else
+static inline
+void dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
+				enum dp_rx_path_tag rx_path_tag)
+{
+}
+#endif
+
 #ifndef FEATURE_WDS
 static inline void
 dp_hmwds_ast_add_notify(struct dp_peer *peer,

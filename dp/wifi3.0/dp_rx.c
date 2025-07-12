@@ -3604,6 +3604,88 @@ void dp_rx_pdev_desc_pool_deinit(struct dp_pdev *pdev)
 	dp_rx_desc_pool_deinit(soc, rx_desc_pool, mac_for_pdev);
 }
 
+#ifdef IPA_OPT_WIFI_DP
+#define DP_DUMP_GROUP_SIZE 6
+#define DP_OPT_DP_IPV4_DUMP_SIZE 40
+#define DP_OPT_DP_IPV6_DUMP_SIZE 60
+#define DP_OPT_DP_DUMP_BUF_SIZE 512
+static inline void dp_dump_opt_dp_pkt(uint8_t *pkt_data, size_t len,
+				      bool cce_match, uint16_t cce_metadata,
+				      enum dp_rx_path_tag rx_path_tag)
+{
+	size_t offset = 0;
+	char fullbuf[DP_OPT_DP_DUMP_BUF_SIZE];
+	int total = 0;
+
+	while (offset < len) {
+		total += qdf_scnprintf(fullbuf + total, sizeof(fullbuf) - total,
+				       "%02x", pkt_data[offset]);
+		offset++;
+		if (offset % DP_DUMP_GROUP_SIZE == 0)
+			total += qdf_scnprintf(fullbuf + total,
+					       DP_OPT_DP_DUMP_BUF_SIZE - total,
+					       " ");
+	}
+
+	dp_info_rl("%d:%d:%d: RX: %s", rx_path_tag, cce_match,
+		   cce_metadata, fullbuf);
+}
+
+void __dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
+				  enum dp_rx_path_tag rx_path_tag)
+{
+	uint8_t *ip_v6, *l3hdr, *pkt_data, *rx_tlv_hdr;
+	uint16_t ether_type, cce_metadata;
+	struct dp_opt_dp_flt *ipa_flt;
+	bool cce_match = 0;
+	uint32_t ip_v4;
+	uint8_t l3_pad;
+	int i, j, skip;
+	uint16_t ipv4_l3_type = qdf_ntohs(QDF_NBUF_TRAC_IPV4_ETH_TYPE);
+	uint16_t ipv6_l3_type = qdf_ntohs(QDF_NBUF_TRAC_IPV6_ETH_TYPE);
+
+	ipa_flt = &soc->ipa_flt[0];
+	rx_tlv_hdr = qdf_nbuf_data(nbuf);
+	l3_pad = hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc, rx_tlv_hdr);
+	pkt_data = nbuf->data + soc->rx_pkt_tlv_size + l3_pad;
+	l3hdr = pkt_data + sizeof(qdf_ether_header_t);
+	ether_type = hal_rx_tlv_l3_type_get(soc->hal_soc, rx_tlv_hdr);
+	cce_metadata = hal_rx_msdu_cce_metadata_get(soc->hal_soc, rx_tlv_hdr);
+	cce_match = hal_rx_msdu_cce_match_get(soc->hal_soc, rx_tlv_hdr);
+	if (ether_type == QDF_NBUF_TRAC_IPV4_ETH_TYPE)
+		ip_v4 = ((qdf_net_iphdr_t *)l3hdr)->ip_saddr;
+	else if (ether_type == QDF_NBUF_TRAC_IPV6_ETH_TYPE)
+		ip_v6 = ((qdf_net_ipv6hdr_t *)l3hdr)->ipv6_saddr.in6_u.u6_addr8;
+
+	for (i = 0; i < DP_OPT_DP_NUM_FILTER; i++) {
+		skip = 0;
+		if (ether_type == QDF_NBUF_TRAC_IPV4_ETH_TYPE &&
+		    ipa_flt[i].l3_type == ipv4_l3_type &&
+		    ip_v4 == ipa_flt[i].opt_dp_src_ipv4) {
+			dp_dump_opt_dp_pkt(pkt_data, DP_OPT_DP_IPV4_DUMP_SIZE,
+					   cce_match, cce_metadata,
+					   rx_path_tag);
+			DP_STATS_INC(soc, rx.opt_dp_pkts[rx_path_tag], 1);
+		} else if (ether_type == QDF_NBUF_TRAC_IPV6_ETH_TYPE &&
+			   ipa_flt[i].l3_type == ipv6_l3_type) {
+			for (j = 0; j < DP_IPV6_SRC_IP_LEN; j++) {
+				if (ipa_flt[i].opt_dp_src_ipv6[j] != ip_v6[j]) {
+					skip = 1;
+					break;
+				}
+			}
+
+			if (skip)
+				continue;
+			dp_dump_opt_dp_pkt(pkt_data, DP_OPT_DP_IPV6_DUMP_SIZE,
+					   cce_match, cce_metadata,
+					   rx_path_tag);
+			DP_STATS_INC(soc, rx.opt_dp_pkts[rx_path_tag], 1);
+		}
+	}
+}
+#endif
+
 QDF_STATUS
 dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 {

@@ -900,6 +900,7 @@ done:
 		}
 
 		DP_HIST_PACKET_COUNT_INC(vdev->pdev->pdev_id);
+		dp_ipa_rx_print_opt_dp_pkt(soc, nbuf, DP_RX_PATH_REO);
 		/*
 		 * First IF condition:
 		 * 802.11 Fragmented pkts are reinjected to REO

@@ -43,6 +43,10 @@
 #endif
 #include <pld_common.h>
 #include "wlan_dp_ucfg_api.h"
+#define IPV4 0x0008
+#define IPV6 0xdd86
+#define IPV4BYTES 4
+#define IPV6BYTES 16
 
 #define IPA_CLK_ENABLE_WAIT_TIME_MS 500
 
@@ -4008,6 +4012,45 @@ QDF_STATUS dp_ipa_rx_super_rule_setup(struct cdp_soc_t *soc_hdl,
 void dp_ipa_wdi_opt_dpath_notify_flt_add_rem_cb(int flt0_rslt, int flt1_rslt)
 {
 	wlan_ipa_wdi_opt_dpath_notify_flt_add_rem_cb(flt0_rslt, flt1_rslt);
+}
+
+void dp_ipa_print_opt_dp_log(struct cdp_soc_t *soc_hdl,
+			     bool is_opt_dp_filter_active,
+			     void *flt_params)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct wifi_dp_flt_setup *dp_flt_param =
+					(struct wifi_dp_flt_setup *)flt_params;
+	struct addr_params *flt_addr_params = &dp_flt_param->flt_addr_params[0];
+	int i = 0, j;
+
+	soc->is_opt_dp_filter_active = is_opt_dp_filter_active;
+	if (!soc->is_opt_dp_filter_active)
+		return;
+
+	/* Clear the previous OPT_DP session stats */
+	qdf_mem_zero(&soc->stats.rx.opt_dp_pkts,
+		     DP_RX_PATH_MAX * sizeof(soc->stats.rx.opt_dp_pkts[0]));
+	for (i = 0; i < DP_OPT_DP_NUM_FILTER; i++) {
+		if (!flt_addr_params[i].valid)
+			continue;
+
+		soc->ipa_flt[i].l3_type = flt_addr_params[i].l3_type;
+		if (flt_addr_params[i].l3_type == IPV4) {
+			qdf_mem_copy(&soc->ipa_flt[i].opt_dp_src_ipv4,
+				     flt_addr_params[i].src_ipv4_addr,
+				     IPV4BYTES);
+			dp_info("opt_dp_pkt: src ipv4 - 0x%x",
+				soc->ipa_flt[i].opt_dp_src_ipv4);
+		} else if (flt_addr_params[i].l3_type == IPV6) {
+			qdf_mem_copy(soc->ipa_flt[i].opt_dp_src_ipv6,
+				     flt_addr_params[i].src_ipv6_addr,
+				     IPV6BYTES);
+			for (j = 0; j < 4; j++)
+				dp_info("opt_dp_pkt: src ipv6 - 0x%x",
+					*((uint32_t *)soc->ipa_flt[i].opt_dp_src_ipv6 + j));
+		}
+	}
 }
 
 int dp_ipa_pcie_link_up(struct cdp_soc_t *soc_hdl)

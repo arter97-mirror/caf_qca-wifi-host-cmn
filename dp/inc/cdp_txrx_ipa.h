@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -995,6 +995,25 @@ struct wifi_dp_tx_flt_setup {
 	struct addr_params flt_addr_params[TX_SUPER_RULE_SETUP_NUM];
 	qdf_spinlock_t flt_rem_lock;
 };
+
+#ifdef IPA_OPT_WIFI_DP
+static inline void
+cdp_ipa_print_opt_dp_log(ol_txrx_soc_handle soc,
+			 bool is_opt_dp_filter_active,
+			 struct wifi_dp_flt_setup *dp_flt_param)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return;
+	}
+
+	if (soc->ops->ipa_ops->ipa_print_opt_dp_log)
+		return soc->ops->ipa_ops->ipa_print_opt_dp_log(soc,
+						is_opt_dp_filter_active,
+						dp_flt_param);
+}
+#endif
 
 static inline QDF_STATUS
 cdp_ipa_rx_cce_super_rule_setup(ol_txrx_soc_handle soc,
