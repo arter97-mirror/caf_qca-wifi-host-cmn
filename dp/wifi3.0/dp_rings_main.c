@@ -3876,6 +3876,7 @@ void *dp_soc_init(struct dp_soc *soc, HTC_HANDLE htc_handle,
 			   cfg_get(soc->ctrl_psoc, CFG_DP_RX_RR));
 #endif
 	soc->cce_disable = false;
+	soc->is_opt_dp_filter_active = false;
 	soc->max_ast_ageout_count = MAX_AST_AGEOUT_COUNT;
 
 	soc->sta_mode_search_policy = DP_TX_ADDR_SEARCH_ADDR_POLICY;

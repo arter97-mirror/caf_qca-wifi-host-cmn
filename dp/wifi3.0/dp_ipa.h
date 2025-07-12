@@ -415,6 +415,9 @@ QDF_STATUS dp_ipa_set_perf_level(int client, uint32_t max_supported_bw_mbps,
 QDF_STATUS dp_ipa_rx_super_rule_setup(struct cdp_soc_t *soc_hdl,
 				      void *flt_params);
 
+void dp_ipa_print_opt_dp_log(struct cdp_soc_t *soc_hdl,
+			     bool is_opt_dp_flt_active,
+			     void *flt_params);
 /**
  * dp_ipa_tx_super_rule_setup() - TX super rule setup
  * @soc_hdl: handle to the soc

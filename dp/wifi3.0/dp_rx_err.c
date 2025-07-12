@@ -2033,6 +2033,47 @@ static bool dp_idle_link_bm_id_check(struct dp_soc *soc, uint8_t rbm,
 }
 #endif
 
+#ifdef IPA_OPT_WIFI_DP
+static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
+					    void *ring_desc,
+					    void *link_desc_va)
+{
+	uint16_t num_msdus;
+	struct hal_rx_msdu_list msdu_list;
+	qdf_nbuf_t nbuf;
+	struct dp_rx_desc *rx_desc;
+	int i;
+	bool ret;
+
+	hal_rx_msdu_list_get(soc->hal_soc, link_desc_va, &msdu_list,
+			     &num_msdus);
+	for (i = 0; i < num_msdus; i++) {
+		rx_desc = soc->arch_ops.dp_rx_desc_cookie_2_va(soc,
+					msdu_list.sw_cookie[i]);
+		nbuf = rx_desc->nbuf;
+		if (qdf_unlikely(!rx_desc->in_use) || qdf_unlikely(!nbuf)) {
+			dp_info_rl("opt_dp_pkt: Reaping rx_desc not in use!");
+			continue;
+		}
+
+		ret = dp_rx_desc_paddr_sanity_check(rx_desc,
+						    msdu_list.paddr[i]);
+		if (!ret) {
+			dp_info_rl("opt_dp_pkt: paddr sanity failed");
+			continue;
+		}
+
+		dp_ipa_rx_print_opt_dp_pkt(soc, nbuf, DP_RX_PATH_REO_ERR);
+	}
+}
+#else
+static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
+					    void *ring_desc,
+					    void *link_desc_va)
+{
+}
+#endif
+
 uint32_t
 dp_rx_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		  hal_ring_handle_t hal_ring_hdl, uint32_t quota)
@@ -2280,6 +2321,10 @@ process_reo_error_code:
 		qdf_assert_always(err_status == HAL_REO_ERROR_DETECTED);
 
 		dp_info_rl("Got pkt with REO ERROR: %d", error_code);
+
+		dp_ipa_rx_err_opt_dp_pkt(soc,
+					 ring_desc,
+					 link_desc_va);
 
 		switch (error_code) {
 		case HAL_REO_ERR_PN_CHECK_FAILED:
@@ -2653,6 +2698,7 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		dp_set_rx_queue(nbuf, 0);
 
 		next = nbuf->next;
+		dp_ipa_rx_print_opt_dp_pkt(soc, nbuf, DP_RX_PATH_WBM_ERR);
 		/*
 		 * Form the SG for msdu continued buffers
 		 * QCN9000 has this support

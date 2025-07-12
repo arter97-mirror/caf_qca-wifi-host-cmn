@@ -1414,6 +1414,20 @@ struct dp_rx_pkt_cnt_stats {
 };
 #endif
 
+/**
+ * enum dp_rx_path_tag - Tag indicating the RX path for a packet reception
+ * @DP_RX_PATH_REO: Regular RX path
+ * @DP_RX_PATH_REO_ERR: REO error RX path
+ * @DP_RX_PATH_WBM_ERR: WBM error RX path
+ * @DP_RX_PATH_MAX: MAX value (upper bound)
+ */
+enum dp_rx_path_tag {
+	DP_RX_PATH_REO,
+	DP_RX_PATH_REO_ERR,
+	DP_RX_PATH_WBM_ERR,
+	DP_RX_PATH_MAX,
+};
+
 /* SoC level data path statistics */
 struct dp_soc_stats {
 	struct {
@@ -1684,6 +1698,9 @@ struct dp_soc_stats {
 			/* Rx exception ring near full */
 			uint32_t near_full;
 		} err;
+
+		/* Packets matching OPT_DP filters received to HOST */
+		uint64_t opt_dp_pkts[DP_RX_PATH_MAX];
 
 		/* packet count per core - per ring */
 		uint64_t ring_packets[NR_CPUS][MAX_REO_DEST_RINGS];
@@ -3297,6 +3314,23 @@ struct dp_wds_entry {
 };
 #endif
 
+#ifdef IPA_OPT_WIFI_DP
+#define DP_IPV6_SRC_IP_LEN 16
+#define DP_OPT_DP_NUM_FILTER 2
+
+/**
+ * struct dp_opt_dp_flt - OPT_DP filters which are installed
+ * @opt_dp_src_ipv4: IPv4 source IP
+ * @opt_dp_src_ipv6: IPv6 source IP
+ * @l3_type: L3 type (IPv4/IPv6)
+ */
+struct dp_opt_dp_flt {
+	uint32_t opt_dp_src_ipv4;
+	uint8_t opt_dp_src_ipv6[DP_IPV6_SRC_IP_LEN];
+	uint16_t l3_type;
+};
+#endif
+
 /* SOC level structure for data path */
 struct dp_soc {
 	/**
@@ -3685,6 +3719,11 @@ struct dp_soc {
 	ipa_uc_op_cb_type ipa_uc_op_cb;
 	void *usr_ctxt;
 #endif /* IPA_OFFLOAD */
+	bool is_opt_dp_filter_active;
+
+#ifdef IPA_OPT_WIFI_DP
+	struct dp_opt_dp_flt ipa_flt[DP_OPT_DP_NUM_FILTER];
+#endif
 
 #if defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK)
 	qdf_spinlock_t rx_buf_map_lock;
