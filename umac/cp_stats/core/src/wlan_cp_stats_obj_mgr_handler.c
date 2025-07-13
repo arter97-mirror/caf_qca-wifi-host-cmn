@@ -444,6 +444,7 @@ wlan_cp_stats_vdev_obj_create_handler(struct wlan_objmgr_vdev *vdev, void *arg)
 	struct cp_stats_context *csc = NULL;
 	struct vdev_cp_stats *vdev_cs = NULL;
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	uint8_t i;
 
 	if (!vdev) {
 		cp_stats_err("vdev is NULL");
@@ -485,6 +486,10 @@ wlan_cp_stats_vdev_obj_create_handler_return:
 
 		if (vdev_cs)
 			qdf_mem_free(vdev_cs);
+	} else {
+		for (i = 0; i < WLAN_UMAC_MLO_MAX_VDEVS; i++)
+			vdev_cs->vdev_stats->bcn_stats[i].vdev_id =
+						WLAN_INVALID_VDEV_ID;
 	}
 
 	cp_stats_debug("vdev cp stats object attach");
