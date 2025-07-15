@@ -140,6 +140,7 @@ enum wlan_peer_state {
  * @rssi:            Last received RSSI value
  * @is_authenticated: true if peer is authenticated
  * @assoc_peer:      assoc req/response is handled in this peer
+ * @is_key_installed: key install flag
  */
 struct wlan_objmgr_peer_mlme {
 	uint32_t peer_capinfo;
@@ -155,6 +156,7 @@ struct wlan_objmgr_peer_mlme {
 #ifdef WLAN_FEATURE_11BE_MLO
 	bool assoc_peer;
 #endif
+	bool is_key_installed;
 };
 
 /**
@@ -1419,4 +1421,51 @@ wlan_objmgr_peer_trace_del_ref_list(struct wlan_objmgr_peer *peer)
 }
 #endif
 
+/**
+ * wlan_peer_mlme_set_key_install_flag() - API to set key install flag
+ * @peer: peer object
+ * @is_key_installed: key install flag
+ *
+ * Return: void
+ */
+static inline void wlan_peer_mlme_set_key_install_flag(
+						struct wlan_objmgr_peer *peer,
+						bool is_key_installed)
+{
+	peer->peer_mlme.is_key_installed = is_key_installed;
+}
+
+/**
+ * wlan_peer_mlme_get_key_install_flag() - API to get key install flag
+ * @peer: peer object
+ *
+ * Return: key install flag
+ */
+static inline bool wlan_peer_mlme_get_key_install_flag(
+						struct wlan_objmgr_peer *peer)
+{
+	return peer->peer_mlme.is_key_installed;
+}
+
+/**
+ * wlan_peer_set_key_install_flag() - API to set key install flag
+ * @psoc: PSOC object
+ * @peer_mac_addr: Peer MAC address
+ * @is_key_installed: key install flag
+ *
+ * Return: none
+ */
+void wlan_peer_set_key_install_flag(struct wlan_objmgr_psoc *psoc,
+				    uint8_t *peer_mac_addr,
+				    bool is_key_installed);
+
+/**
+ * wlan_peer_is_key_installed() - API to get key install flag
+ * @psoc: PSOC object
+ * @peer_mac_addr: Peer MAC address
+ *
+ * Return: true if key is installed otherwise false
+ */
+bool wlan_peer_is_key_installed(struct wlan_objmgr_psoc *psoc,
+				uint8_t *peer_mac_addr);
 #endif /* _WLAN_OBJMGR_PEER_OBJ_H_*/

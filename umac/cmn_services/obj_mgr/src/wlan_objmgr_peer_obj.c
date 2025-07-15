@@ -1537,3 +1537,41 @@ QDF_STATUS wlan_peer_update_macaddr(struct wlan_objmgr_peer *peer,
 	return QDF_STATUS_SUCCESS;
 }
 #endif
+
+bool wlan_peer_is_key_installed(struct wlan_objmgr_psoc *psoc,
+				uint8_t *peer_mac_addr)
+{
+	struct wlan_objmgr_peer *peer;
+	bool is_key_installed;
+
+	peer = wlan_objmgr_get_peer_by_mac(psoc, peer_mac_addr,
+					   WLAN_OBJMGR_ID);
+	if (!peer)
+		return false;
+
+	is_key_installed =  wlan_peer_mlme_get_key_install_flag(peer);
+
+	obj_mgr_debug(QDF_MAC_ADDR_FMT " key installed %d",
+		      QDF_MAC_ADDR_REF(peer_mac_addr), is_key_installed);
+
+	wlan_objmgr_peer_release_ref(peer, WLAN_OBJMGR_ID);
+	return is_key_installed;
+}
+
+void wlan_peer_set_key_install_flag(struct wlan_objmgr_psoc *psoc,
+				    uint8_t *peer_mac_addr,
+				    bool is_key_installed)
+{
+	struct wlan_objmgr_peer *peer;
+
+	peer = wlan_objmgr_get_peer_by_mac(psoc, peer_mac_addr,
+					   WLAN_OBJMGR_ID);
+	if (!peer)
+		return;
+
+	obj_mgr_debug(QDF_MAC_ADDR_FMT " key installed %d",
+		      QDF_MAC_ADDR_REF(peer_mac_addr), is_key_installed);
+
+	wlan_peer_mlme_set_key_install_flag(peer, is_key_installed);
+	wlan_objmgr_peer_release_ref(peer, WLAN_OBJMGR_ID);
+}
