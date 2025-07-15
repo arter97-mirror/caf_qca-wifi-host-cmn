@@ -927,6 +927,7 @@ enum {
 	IEEE80211_PARAM_RSNO2CAPS = 840,
 	IEEE80211_PARAM_RSNXOCAPS = 841,
 	IEEE80211_PARAM_EHT_SUP_MCS15 = 842,
+	IEEE80211_PARAM_VAP_TX_POWER = 843,
 
 	/* Add QCA enums above */
 	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
@@ -2774,6 +2775,7 @@ struct vendor_commands vap_vendor_cmds[] = {
 #endif /* WLAN_FEATURE_VBSS */
 	{"eht_mcs15_supp",       IEEE80211_PARAM_EHT_SUP_MCS15, SET_PARAM, 1},
 	{"get_eht_mcs15_supp",   IEEE80211_PARAM_EHT_SUP_MCS15, GET_PARAM, 0},
+	{"get_txpower_resolution", IEEE80211_PARAM_VAP_TX_POWER, GET_PARAM, 0},
 };
 
 struct vendor_commands radio_vendor_cmds[] = {
