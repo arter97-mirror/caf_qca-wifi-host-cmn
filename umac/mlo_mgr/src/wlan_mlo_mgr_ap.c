@@ -1004,5 +1004,62 @@ bool mlo_get_tsf_sync_support(void)
 
 	return mlo_ctx->tsf_sync_enabled;
 }
+#endif
 
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+QDF_STATUS
+wlan_mlo_link_removal_cmd(struct wlan_objmgr_vdev *vdev,
+			  struct wlan_objmgr_psoc *psoc,
+			  uint8_t *ml_reconfig_ie,
+			  size_t elem_len)
+{
+	QDF_STATUS status;
+	struct mlo_link_removal_cmd_params params = {0};
+	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
+
+	if (!vdev) {
+		mlo_err("vdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!psoc) {
+		mlo_err("psoc is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!ml_reconfig_ie || !elem_len) {
+		mlo_err("Invalid ML reconfiguration IE");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_tx_ops = &psoc->soc_cb.tx_ops->mlo_ops;
+	if (!mlo_tx_ops) {
+		mlo_err("Invalid parameters: tx_ops is NULL");
+		return QDF_STATUS_NOT_INITIALIZED;
+	}
+
+	if (!mlo_tx_ops->send_link_removal_cmd) {
+		mlo_err("send_link_removal_cmd is not registered");
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	params.vdev_id = wlan_vdev_get_id(vdev);
+	params.reconfig_ml_ie = ml_reconfig_ie;
+	params.reconfig_ml_ie_size = elem_len;
+
+	/* Set the vdev level link removal in progress flag */
+	wlan_vdev_mlme_op_flags_set(vdev,
+			WLAN_VDEV_OP_MLO_LINK_REMOVAL_IN_PROGRESS);
+
+	status = mlo_tx_ops->send_link_removal_cmd(psoc, &params);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("Send WMI_MLO_LINK_REMOVAL_CMDID to fw fail:%d",
+			status);
+		wlan_vdev_mlme_op_flags_clear(vdev,
+				WLAN_VDEV_OP_MLO_LINK_REMOVAL_IN_PROGRESS);
+	}
+
+	return status;
+}
 #endif
