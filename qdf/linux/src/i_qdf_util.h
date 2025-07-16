@@ -47,9 +47,6 @@
 #endif
 #endif
 
-#include <qdf_types.h>
-#include <linux/io.h>
-#include <asm/byteorder.h>
 
 #ifdef QCA_PARTNER_PLATFORM
 #include "ath_carr_pltfrm.h"

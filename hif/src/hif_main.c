@@ -20,7 +20,6 @@
 #include "targcfg.h"
 #include "qdf_lock.h"
 #include "qdf_status.h"
-#include "qdf_status.h"
 #include <qdf_atomic.h>         /* qdf_atomic_read */
 #include <targaddrs.h>
 #include "hif_io32.h"
@@ -37,7 +36,6 @@
 #include "ce_api.h"
 #endif
 #include "qdf_trace.h"
-#include "qdf_status.h"
 #include "hif_debug.h"
 #include "mp_dev.h"
 #if defined(QCA_WIFI_QCA8074) || defined(QCA_WIFI_QCA6018) || \

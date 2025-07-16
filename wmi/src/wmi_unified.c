@@ -21,7 +21,6 @@
  * Host WMI unified implementation
  */
 #include "htc_api.h"
-#include "htc_api.h"
 #include "wmi_unified_priv.h"
 #include "wmi_unified_api.h"
 #include "qdf_module.h"

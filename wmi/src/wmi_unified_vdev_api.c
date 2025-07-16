@@ -21,15 +21,11 @@
  * Interface (WMI).
  */
 #include <htc_api.h>
-#include <htc_api.h>
 #include <wmi_unified_priv.h>
 #include <wmi_unified_api.h>
 #include <qdf_module.h>
 #include <qdf_list.h>
 #include <qdf_platform.h>
-#ifdef WMI_EXT_DBG
-#include <qdf_list.h>
-#endif
 
 #include <linux/debugfs.h>
 #include <wmi_unified_param.h>

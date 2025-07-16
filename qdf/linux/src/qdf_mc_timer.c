@@ -25,7 +25,6 @@
 #include <qdf_debug_domain.h>
 #include <qdf_mc_timer.h>
 #include <qdf_lock.h>
-#include "qdf_lock.h"
 #include "qdf_list.h"
 #include "qdf_mem.h"
 #include <qdf_module.h>

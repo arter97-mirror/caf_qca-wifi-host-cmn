@@ -30,7 +30,6 @@
 #define ATH_MODULE_NAME hif
 #include <a_debug.h>
 #include "qdf_module.h"
-#include "hif_usb_internal.h"
 #include "if_usb.h"
 #include "usb_api.h"
 #include "target_type.h"

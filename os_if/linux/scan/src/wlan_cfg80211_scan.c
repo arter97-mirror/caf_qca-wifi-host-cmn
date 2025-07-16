@@ -33,7 +33,6 @@
 #include <wlan_osif_priv.h>
 #include <wlan_scan_public_structs.h>
 #include <wlan_scan_ucfg_api.h>
-#include <wlan_cfg80211_scan.h>
 #include <qdf_mem.h>
 #include <wlan_utility.h>
 #include "cfg_ucfg_api.h"

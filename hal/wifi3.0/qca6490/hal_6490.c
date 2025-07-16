@@ -19,7 +19,6 @@
 
 #include "qdf_types.h"
 #include "qdf_util.h"
-#include "qdf_types.h"
 #include "qdf_lock.h"
 #include "qdf_mem.h"
 #include "qdf_nbuf.h"

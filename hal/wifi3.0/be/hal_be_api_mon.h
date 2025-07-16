@@ -23,13 +23,8 @@
 #include <mon_ingress_ring.h>
 #include <mon_destination_ring.h>
 #include "hal_be_hw_headers.h"
-#include <mon_ingress_ring.h>
-#include <mon_destination_ring.h>
-#include <hal_be_hw_headers.h>
 #include "hal_api_mon.h"
 #include <hal_generic_api.h>
-#include <hal_generic_api.h>
-#include <hal_api_mon.h>
 
 #define HAL_MON_BUFFER_ADDR_INFO_0_BUFFER_ADDR_31_0_OFFSET 0x00000000
 #define HAL_MON_BUFFER_ADDR_INFO_0_BUFFER_ADDR_31_0_LSB 0
