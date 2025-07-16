@@ -328,3 +328,91 @@ bool mgmt_txrx_frame_is_duplicate(struct wlan_objmgr_psoc *psoc,
  * Return: MGMT frame type string
  */
 uint8_t *mgmt_txrx_get_frm_type_string(enum mgmt_frame_type frm_type);
+
+/**
+ * wlan_mgmt_txrx_rx_frame_handler() - handles rx mgmt. frames
+ * @psoc: psoc context
+ * @buf: buffer
+ * @mgmt_rx_params: rx event params
+ *
+ * This function handles mgmt. rx frames and is registered to southbound
+ * interface through rx ops.
+ *
+ * Return: QDF_STATUS_SUCCESS - in case of success
+ */
+QDF_STATUS wlan_mgmt_txrx_rx_frame_handler(
+			struct wlan_objmgr_psoc *psoc,
+			qdf_nbuf_t buf,
+			struct mgmt_rx_event_params *mgmt_rx_params);
+
+/**
+ * wlan_mgmt_txrx_tx_completion_handler() - handles mgmt. tx completions
+ * @pdev: pdev context
+ * @desc_id: mgmt desc. id
+ * @status: status of download of tx packet
+ * @tx_compl_params: tx completion params
+ *
+ * This function handles tx completions of mgmt. frames and is registered to
+ * LMAC_if layer through lmac_if cbs.The cb needs to free the nbuf. In case no
+ * callback is registered, this function will free the nbuf.
+ *
+ * Return: QDF_STATUS_SUCCESS - in case of success
+ */
+QDF_STATUS wlan_mgmt_txrx_tx_completion_handler(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id, uint32_t status,
+			void *tx_compl_params);
+
+/**
+ * mgmt_txrx_get_nbuf_from_desc_id() - extracts nbuf from mgmt desc
+ * @pdev: pdev context
+ * @desc_id: desc_id
+ *
+ * This function extracts nbuf from mgmt desc extracted from desc id.
+ *
+ * Return: nbuf - in case of success
+ *         NULL - in case of failure
+ */
+qdf_nbuf_t mgmt_txrx_get_nbuf_from_desc_id(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id);
+
+/**
+ * mgmt_txrx_get_peer_from_desc_id() - extracts peer from mgmt desc
+ * @pdev: pdev context
+ * @desc_id: desc_id
+ *
+ * This function extracts peer from mgmt desc extracted from desc id.
+ *
+ * Return: peer - in case of success
+ *         NULL - in case of failure
+ */
+struct wlan_objmgr_peer *
+mgmt_txrx_get_peer_from_desc_id(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id);
+
+/**
+ * mgmt_txrx_get_vdev_id_from_desc_id() - extracts vdev id from mgmt desc
+ * @pdev: pdev context
+ * @desc_id: desc_id
+ *
+ * This function extracts vdev id from mgmt desc extracted from desc id.
+ *
+ * Return: vdev_id - in case of success
+ *         WLAN_UMAC_VDEV_ID_MAX - in case of failure
+ */
+uint8_t mgmt_txrx_get_vdev_id_from_desc_id(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id);
+
+/**
+ * wlan_mgmt_txrx_frame_hex_dump() - Print the type and dump the rx tx frame
+ * @frame_data: The base address of the mgmt frame data to be logged.
+ * @frame_len: The size of the frame to be logged.
+ * @is_tx: is tx frame
+ *
+ * Return:  None
+ */
+void wlan_mgmt_txrx_frame_hex_dump(void *frame_data, int frame_len, bool is_tx);
+
