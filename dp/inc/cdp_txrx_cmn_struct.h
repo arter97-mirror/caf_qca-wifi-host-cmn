@@ -1925,6 +1925,16 @@ enum cdp_stat_update_type {
 };
 
 /**
+ * enum cdp_haps_state - Different HAPS states
+ * @STATE_UNPAUSE: unpause state
+ * @STATE_PAUSE: pause state
+ */
+enum cdp_haps_state {
+	STATE_UNPAUSE = 0,
+	STATE_PAUSE
+};
+
+/**
  * struct cdp_tx_sojourn_stats - Tx sojourn stats
  * @ppdu_seq_id: ppdu_seq_id from tx completion
  * @avg_sojourn_msdu: average sojourn msdu time
