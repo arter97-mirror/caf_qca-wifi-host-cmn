@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -32,17 +32,9 @@
 typedef void (*dp_rxtid_stats_cmd_cb)(struct dp_soc *soc, void *cb_ctxt,
 				      union hal_reo_status *reo_status);
 
-#ifndef WLAN_SOFTUMAC_SUPPORT
+#if !defined(WLAN_SOFTUMAC_SUPPORT) && !defined(CONFIG_BORON)
 void dp_rx_tid_stats_cb(struct dp_soc *soc, void *cb_ctxt,
 			union hal_reo_status *reo_status);
-
-/**
- * dp_peer_rx_cleanup() - Cleanup receive TID state
- * @vdev: Datapath vdev
- * @peer: Datapath peer
- *
- */
-void dp_peer_rx_cleanup(struct dp_vdev *vdev, struct dp_peer *peer);
 
 /**
  * dp_rx_tid_setup_wifi3() - Set up receive TID state
@@ -215,9 +207,6 @@ QDF_STATUS
 dp_set_pn_check_wifi3(struct cdp_soc_t *soc, uint8_t vdev_id,
 		      uint8_t *peer_mac, enum cdp_sec_type sec_type,
 		      uint32_t *rx_pn);
-QDF_STATUS
-dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
-			uint8_t tid, uint16_t win_sz);
 
 /**
  * dp_peer_rxtid_stats() - Retried Rx TID (REO queue) stats from HW
@@ -281,12 +270,10 @@ static inline void dp_get_rx_reo_queue_info(struct cdp_soc_t *soc_hdl,
 {
 }
 #endif /* DUMP_REO_QUEUE_INFO_IN_DDR */
-void dp_peer_rx_tid_setup(struct dp_peer *peer);
 #else
 static inline void dp_rx_tid_stats_cb(struct dp_soc *soc, void *cb_ctxt,
 				      union hal_reo_status *reo_status) {}
-static inline void dp_peer_rx_cleanup(struct dp_vdev *vdev,
-				      struct dp_peer *peer) {}
+
 static inline int dp_addba_resp_tx_completion_wifi3(struct cdp_soc_t *cdp_soc,
 						    uint8_t *peer_mac,
 						    uint16_t vdev_id,
@@ -351,13 +338,6 @@ dp_set_pn_check_wifi3(struct cdp_soc_t *soc, uint8_t vdev_id,
 	return QDF_STATUS_SUCCESS;
 }
 
-static inline QDF_STATUS
-dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
-			uint8_t tid, uint16_t win_sz)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
 static inline int
 dp_peer_rxtid_stats(struct dp_peer *peer,
 		    dp_rxtid_stats_cmd_cb dp_stats_cmd_cb,
@@ -375,7 +355,6 @@ static inline void dp_peer_rx_tids_destroy(struct dp_peer *peer) {}
 
 static inline void dp_get_rx_reo_queue_info(struct cdp_soc_t *soc_hdl,
 					    uint8_t vdev_id) {}
-static inline void dp_peer_rx_tid_setup(struct dp_peer *peer) {}
 
 static inline QDF_STATUS
 dp_rx_tid_setup_wifi3(struct dp_peer *peer, int tid,
@@ -383,5 +362,44 @@ dp_rx_tid_setup_wifi3(struct dp_peer *peer, int tid,
 {
 	return QDF_STATUS_SUCCESS;
 }
+#endif
+
+#ifndef WLAN_SOFTUMAC_SUPPORT
+/**
+ * dp_rx_delba_ind_handler() - DELBA indication handler
+ * @soc_handle: handle to datapath soc
+ * @peer_id: peer id
+ * @tid: tid
+ * @win_sz: window size
+ *
+ * Return: QDF status
+ */
+QDF_STATUS
+dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
+			uint8_t tid, uint16_t win_sz);
+
+void dp_peer_rx_tid_setup(struct dp_peer *peer);
+
+/**
+ * dp_peer_rx_cleanup() - Cleanup receive TID state
+ * @vdev: Datapath vdev
+ * @peer: Datapath peer
+ *
+ * Return: None
+ */
+void dp_peer_rx_cleanup(struct dp_vdev *vdev, struct dp_peer *peer);
+#else
+static inline QDF_STATUS
+dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
+			uint8_t tid, uint16_t win_sz)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void dp_peer_rx_tid_setup(struct dp_peer *peer) {}
+
+static inline void dp_peer_rx_cleanup(struct dp_vdev *vdev,
+				      struct dp_peer *peer) {}
+
 #endif
 #endif /* _DP_RX_TID_H_ */
