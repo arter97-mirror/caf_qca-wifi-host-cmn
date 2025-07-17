@@ -2587,7 +2587,8 @@ struct cdp_fse_ops {
 #ifdef WLAN_HAPS_ENABLE
 struct cdp_haps_ops {
 	void
-	(*haps_handle_ind)(ol_osif_vdev_handle osif_vdev, uint32_t new_state,
+	(*haps_handle_ind)(ol_osif_vdev_handle osif_vdev,
+			   enum cdp_haps_state new_state,
 			   qdf_ktime_t time_rcvd, bool is_one_shot,
 			   bool is_direct_reg_write);
 };
