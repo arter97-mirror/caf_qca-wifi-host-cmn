@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1788,17 +1789,6 @@ util_scan_entry_fils_indication(struct scan_cache_entry *scan_entry)
 {
 	return scan_entry->ie_list.fils_indication;
 }
-
-/**
- * util_get_last_scan_time() - function to get last scan time on this pdev
- * @vdev: vdev object
- *
- * API, function to read last scan time on this pdev
- *
- * Return: qdf_time_t
- */
-qdf_time_t
-util_get_last_scan_time(struct wlan_objmgr_vdev *vdev);
 
 /**
  * util_scan_is_hidden_ssid() - function to check if ssid is hidden
