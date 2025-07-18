@@ -2758,7 +2758,6 @@ static inline
 void dp_tx_msdu_info_set_eth_type_fields(struct dp_tx_msdu_info_s *msdu_info,
 					 uint16_t eth_type)
 {
-	dp_err("%s-%d eth_type 0x%x", __func__, __LINE__, eth_type);
 	msdu_info->l3_type = eth_type;
 	msdu_info->type_or_length = eth_type > 0x600 ? 1 : 0;
 

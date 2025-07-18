@@ -656,7 +656,7 @@ dp_ipa_ast_notify_cb(qdf_ipa_wdi_conn_in_params_t *pipe_in,
 #ifdef CONFIG_BORON
 static inline void dp_ipa_opt_dp_ixo_remap(uint8_t *ix0_map)
 {
-	ix0_map[0] = REO_REMAP_SW1;
+	ix0_map[0] = REO_REMAP_SW0;
 	ix0_map[1] = REO_REMAP_SW1;
 	ix0_map[2] = REO_REMAP_SW2;
 	ix0_map[3] = REO_REMAP_SW3;
