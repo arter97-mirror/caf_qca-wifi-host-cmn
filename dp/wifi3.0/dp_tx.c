@@ -1253,17 +1253,16 @@ dp_tx_get_traffic_end_indication_pkt(struct dp_vdev *vdev,
 	uint8_t htt_desc_size_aligned;
 	uint8_t htt_desc_size;
 	qdf_nbuf_t end_nbuf;
+	uint16_t alloc_len = 0;
 
 	htt_desc_size = sizeof(struct htt_tx_msdu_desc_ext2_t);
 	htt_desc_size_aligned = (htt_desc_size + 7) & ~0x7;
+	alloc_len += htt_desc_size_aligned + end_nbuf_len + NET_SKB_PAD;
 
 	end_nbuf = qdf_nbuf_queue_remove(&vdev->end_ind_pkt_q);
 	if (!end_nbuf) {
-		end_nbuf = qdf_nbuf_alloc(NULL,
-					  (htt_desc_size_aligned +
-					  end_nbuf_len),
-					  htt_desc_size_aligned,
-					  8, false);
+		end_nbuf = qdf_nbuf_alloc(NULL, alloc_len,
+					  htt_desc_size_aligned, 8, false);
 		if (!end_nbuf) {
 			dp_err("Packet allocation failed");
 			goto out;
