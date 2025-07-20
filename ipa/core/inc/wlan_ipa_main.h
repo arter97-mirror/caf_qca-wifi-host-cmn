@@ -83,6 +83,24 @@ extern uint8_t g_instances_added;
 	QDF_TRACE_EXIT(QDF_MODULE_ID_IPA, "exit")
 
 /**
+ * enum opt_dp_flt_op - opt_dp operations
+ * @IPA_OPT_DP_RESV: opt_dp filter reservation
+ * @IPA_OPT_DP_ADD: opt_dp filter addition
+ * @IPA_OPT_DP_CTRL_ADD: opt_dp_ctrl filter addition
+ * @IPA_OPT_DP_RELEASE: opt_dp filter release
+ * @IPA_OPT_DP_REM:  opt_dp filter removal
+ * @IPA_OPT_DP_CTRL_REM: opt_dp_ctrl filter removal
+ */
+enum opt_dp_flt_op {
+	IPA_OPT_DP_RESV = 1,
+	IPA_OPT_DP_ADD,
+	IPA_OPT_DP_CTRL_ADD,
+	IPA_OPT_DP_RELEASE,
+	IPA_OPT_DP_REM,
+	IPA_OPT_DP_CTRL_REM
+};
+
+/**
  * ipa_set_cap_offload() - set IPA capability offload support
  * @flag: flag to set
  *
@@ -295,22 +313,26 @@ void ipa_uc_stat(struct wlan_objmgr_pdev *pdev);
  * ipa_set_opt_dp_ctrl_flt() - flt add for opt_dp_ctrl
  * @pdev: pdev obj
  * @flt: flt params
+ * @opr: operation type
  *
  * Return: None
  */
 void ipa_set_opt_dp_ctrl_flt(struct wlan_objmgr_pdev *pdev,
-			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt);
+			     struct ipa_wdi_opt_dpath_flt_add_cb_params *flt,
+			     uint8_t opr);
 
 /*
  * ipa_set_opt_dp_ctrl_flt_rm() - flt del for opt_dp_ctrl
  * @pdev: pdev obj
  * @flt: flt params
+ * @opr: operation type
  *
  * Return: None
  */
 void ipa_set_opt_dp_ctrl_flt_rm(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt);
+			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt,
+			uint8_t opr);
 
 /**
  * ipa_uc_rt_debug_host_dump() - IPA rt debug host dump

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -604,6 +603,11 @@ static inline int32_t qdf_csum_ipv6(const in6_addr_t *saddr,
 static inline char *qdf_netdev_get_devname(qdf_netdev_t dev)
 {
 	return __qdf_netdev_get_devname(dev);
+}
+
+static inline int qdf_in6_pton(char *str_ptr, uint8_t *addr)
+{
+	return __qdf_in6_pton(str_ptr, addr);
 }
 
 struct qdf_dot11_frame {

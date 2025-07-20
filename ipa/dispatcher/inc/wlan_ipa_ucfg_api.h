@@ -136,23 +136,27 @@ void ucfg_ipa_uc_stat(struct wlan_objmgr_pdev *pdev);
  * ucfg_ipa_set_opt_dp_ctrl_flt() - flt add for opt_dp_ctrl
  * @pdev: pdev obj
  * @flt: flt params
+ * @opr: operation type
  *
  * Return: None
  */
 void ucfg_ipa_set_opt_dp_ctrl_flt(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_add_cb_params *flt);
+			struct ipa_wdi_opt_dpath_flt_add_cb_params *flt,
+			uint8_t opr);
 
 /*
  * ucfg_ipa_set_opt_dp_ctrl_flt_rm() - flt del for opt_dp_ctrl
  * @pdev: pdev obj
  * @flt: flt params
+ * @opr: operation type
  *
  * Return: None
  */
 void ucfg_ipa_set_opt_dp_ctrl_flt_rm(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt);
+			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt,
+			uint8_t opr);
 
 /*
  * ucfg_ipa_dump_logging_stats() - print ipa logging stats
