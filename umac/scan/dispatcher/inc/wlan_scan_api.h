@@ -701,4 +701,18 @@ wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
  * Returun: void
  */
 void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wlan_scan_flush_results() - Flush scan results from the scan cache
+ * @pdev: pointer to pdev object
+ * @filter: filter to apply for flushing results
+ *
+ * This function flushes scan results from the scan cache based on the
+ * provided filter. If filter is NULL, all scan results for the pdev
+ * will be flushed.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise.
+ */
+QDF_STATUS wlan_scan_flush_results(struct wlan_objmgr_pdev *pdev,
+				   struct scan_filter *filter);
 #endif
