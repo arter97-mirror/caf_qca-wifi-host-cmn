@@ -3167,8 +3167,21 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	uint8_t link_id;
 	struct scan_cache_entry *cache_entry;
 	struct wlan_channel channel = {0};
+	struct mlme_legacy_priv *mlme_priv;
+	struct assoc_channel_info *assoc_chan_info;
+
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv) {
+		mlme_err("mlme_priv is NULL");
+		return;
+	}
 
 	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		mlme_err("pdev is NULL");
+		return;
+	}
+
 	cache_entry = wlan_scan_get_scan_entry_by_mac_freq(pdev, mac_addr,
 							   freq);
 	if (!cache_entry) {
@@ -3177,7 +3190,6 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	}
 
 	link_id = cache_entry->ml_info.self_link_id;
-
 	channel.ch_freq = cache_entry->channel.chan_freq;
 	channel.ch_ieee = wlan_reg_freq_to_chan(pdev, channel.ch_freq);
 	channel.ch_phymode = cache_entry->phy_mode;
@@ -3191,6 +3203,12 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	 */
 	if (channel.ch_width == CH_WIDTH_20MHZ)
 		channel.ch_cfreq1 = channel.ch_freq;
+
+	if (wlan_reg_is_24ghz_ch_freq(channel.ch_freq) &&
+	    channel.ch_width == CH_WIDTH_40MHZ) {
+		assoc_chan_info = &mlme_priv->connect_info.assoc_chan_info;
+		assoc_chan_info->sec_2g_freq = channel.ch_cfreq1;
+	}
 
 	util_scan_free_cache_entry(cache_entry);
 	mlo_mgr_update_ap_channel_info(vdev, link_id, (uint8_t *)mac_addr,
