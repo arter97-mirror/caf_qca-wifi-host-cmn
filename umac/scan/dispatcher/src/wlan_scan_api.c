@@ -990,3 +990,9 @@ void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev)
 {
 	scm_set_obss_scan_enable(vdev);
 }
+
+QDF_STATUS wlan_scan_flush_results(struct wlan_objmgr_pdev *pdev,
+				   struct scan_filter *filter)
+{
+	return scm_flush_results(pdev, filter);
+}
