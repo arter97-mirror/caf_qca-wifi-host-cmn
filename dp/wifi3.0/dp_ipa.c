@@ -3997,6 +3997,14 @@ int dp_ipa_pcie_link_up(struct cdp_soc_t *soc_hdl)
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct hal_soc *hal_soc = (struct hal_soc *)soc->hal_soc;
 	int response = 0;
+	QDF_STATUS status;
+
+	status = hif_disable_rtpm(hal_soc->hif_handle,
+				  HIF_RTPM_ID_OPT_DP);
+	if (status) {
+		dp_ipa_err("disable runtime failed: %d", status);
+		return status;
+	}
 
 	response = hif_prevent_l1((hal_soc->hif_handle));
 	return response;
@@ -4008,6 +4016,7 @@ void dp_ipa_pcie_link_down(struct cdp_soc_t *soc_hdl)
 	struct hal_soc *hal_soc = (struct hal_soc *)soc->hal_soc;
 
 	hif_allow_l1(hal_soc->hif_handle);
+	hif_enable_rtpm(hal_soc->hif_handle, HIF_RTPM_ID_OPT_DP);
 }
 
 /**
