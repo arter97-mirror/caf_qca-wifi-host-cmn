@@ -2641,12 +2641,13 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		if (!txrx_peer)
 			dp_info_rl("peer is null peer_id %u err_src %u, "
 				   "REO: push_rsn %u err_code %u, "
-				   "RXDMA: push_rsn %u err_code %u",
+				   "RXDMA: push_rsn %u err_code %u hit %llu",
 				   peer_id, wbm_err.info_bit.wbm_err_src,
 				   wbm_err.info_bit.reo_psh_rsn,
 				   wbm_err.info_bit.reo_err_code,
 				   wbm_err.info_bit.rxdma_psh_rsn,
-				   wbm_err.info_bit.rxdma_err_code);
+				   wbm_err.info_bit.rxdma_err_code,
+				   soc->stats.rx.err.rx_invalid_peer.num);
 
 		/* Set queue_mapping in nbuf to 0 */
 		dp_set_rx_queue(nbuf, 0);

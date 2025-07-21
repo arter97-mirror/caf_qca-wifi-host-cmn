@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -509,7 +509,7 @@ static const struct qwlan_hw qwlan_hw_list[] = {
  *
  * Return: human readable name for the underlying wifi hardware.
  */
-static const char *hif_get_hw_name(struct hif_target_info *info)
+const char *hif_get_hw_name(struct hif_target_info *info)
 {
 	int i;
 

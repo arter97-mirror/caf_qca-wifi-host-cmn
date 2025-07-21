@@ -10064,6 +10064,7 @@ void dp_update_vdev_stats(struct dp_soc *soc, struct dp_peer *srcobj,
 	uint8_t link_id = 0;
 	struct dp_pdev *pdev = srcobj->vdev->pdev;
 
+	dp_txrx_peer_lock(srcobj);
 	txrx_peer = dp_get_txrx_peer(srcobj);
 	if (qdf_unlikely(!txrx_peer))
 		goto link_stats;
@@ -10084,6 +10085,7 @@ void dp_update_vdev_stats(struct dp_soc *soc, struct dp_peer *srcobj,
 	}
 
 link_stats:
+	dp_txrx_peer_unlock(srcobj);
 	dp_monitor_peer_get_stats(soc, srcobj, vdev_stats, UPDATE_VDEV_STATS_MLD);
 }
 
@@ -10127,15 +10129,16 @@ void dp_update_vdev_stats(struct dp_soc *soc, struct dp_peer *srcobj,
 	uint8_t inx = 0;
 	uint8_t stats_arr_size = 0;
 
+	dp_txrx_peer_lock(srcobj);
 	txrx_peer = dp_get_txrx_peer(srcobj);
 	if (qdf_unlikely(!txrx_peer))
-		return;
+		goto exit;
 
 	if (qdf_unlikely(dp_is_wds_extended(txrx_peer)))
-		return;
+		goto exit;
 
 	if (!dp_peer_is_primary_link_peer(srcobj))
-		return;
+		goto exit;
 
 	stats_arr_size = txrx_peer->stats_arr_size;
 	dp_update_vdev_basic_stats(txrx_peer, vdev_stats);
@@ -10146,6 +10149,9 @@ void dp_update_vdev_stats(struct dp_soc *soc, struct dp_peer *srcobj,
 		DP_UPDATE_EXTD_STATS(vdev_stats, extd_stats);
 		DP_UPDATE_PER_PKT_STATS(vdev_stats, per_pkt_stats);
 	}
+exit:
+	dp_txrx_peer_unlock(srcobj);
+
 }
 
 void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,

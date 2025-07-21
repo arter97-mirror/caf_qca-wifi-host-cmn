@@ -24,6 +24,9 @@
 #include "qdf_page_pool.h"
 #include "qdf_list.h"
 #include "qdf_delayed_work.h"
+#ifdef IPA_OFFLOAD
+#include "pld_common.h"
+#endif
 #endif
 
 #ifndef DP_RX_BUFFER_POOL_SIZE
@@ -506,7 +509,7 @@ out_put_page:
 QDF_STATUS
 dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 				   struct dp_rx_nbuf_frag_info *nbuf_frag_info,
-				   uint32_t mac_id)
+				   uint32_t mac_id, bool is_replenish)
 {
 	struct rx_desc_pool *rx_desc_pool = &soc->rx_desc_buf[mac_id];
 	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[mac_id];
@@ -558,9 +561,9 @@ dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 	}
 
 nbuf_alloc:
-	nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, rx_desc_pool->buf_size,
+	nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, rx_pp->buf_size,
 					RX_BUFFER_RESERVATION,
-					rx_desc_pool->buf_alignment,
+					rx_pp->buf_align,
 					pp_params->pp, &offset);
 	if (!nbuf) {
 		ret = QDF_STATUS_E_FAILURE;
@@ -580,10 +583,11 @@ nbuf_alloc:
 		goto out_fail;
 	}
 
-	dp_ipa_handle_rx_buf_smmu_mapping(soc, nbuf,
-					  rx_desc_pool->buf_size,
-					  true, __func__, __LINE__,
-					  DP_RX_IPA_SMMU_MAP_REPLENISH);
+	if (is_replenish)
+		dp_ipa_handle_rx_buf_smmu_mapping(soc, nbuf,
+						  rx_desc_pool->buf_size,
+						  true, __func__, __LINE__,
+						  DP_RX_IPA_SMMU_MAP_REPLENISH);
 
 	dp_audio_smmu_map(soc, nbuf, rx_desc_pool->buf_size);
 	qdf_spin_unlock_bh(&rx_pp->pp_lock);
@@ -666,6 +670,93 @@ static void dp_rx_page_pool_inactive_work(void *arg)
 	}
 }
 
+#ifdef IPA_OFFLOAD
+static QDF_STATUS dp_rx_pp_ipa_ref_cntrs_init(struct dp_soc *soc,
+					      struct dp_rx_page_pool *rx_pp)
+{
+	struct qdf_mem_multi_page_t *cntr_pages;
+	struct dp_rx_pp_ipa_map_cntr *cntr;
+	uint64_t iova_base;
+	uint64_t iova_size;
+	uint32_t num_ref_cntrs;
+	int page_idx;
+	int offset;
+
+	if (pld_get_iova_info(soc->osdev->dev, &iova_base, &iova_size))
+		return QDF_STATUS_E_INVAL;
+
+	cntr_pages = &rx_pp->iova_cntr_pages;
+	num_ref_cntrs = iova_size / PAGE_SIZE;
+
+	dp_desc_multi_pages_mem_alloc(soc, QDF_DP_RX_IPA_MAP_REFCNT_TYPE,
+				      cntr_pages, sizeof(*cntr), num_ref_cntrs,
+				      0, true);
+	if (!cntr_pages->num_pages) {
+		dp_err("Failed to allocate memory for ipa map counters");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	for (page_idx = 0; page_idx < cntr_pages->num_pages; page_idx++) {
+		for (offset = 0; offset < PAGE_SIZE; offset += sizeof(*cntr)) {
+			cntr = cntr_pages->cacheable_pages[page_idx] + offset;
+			qdf_atomic_init(&cntr->ref_cnt);
+		}
+	}
+
+	rx_pp->iova_base_addr = iova_base;
+	rx_pp->iova_size = iova_size;
+	rx_pp->idx_shift =
+		dp_log2_ceil(cntr_pages->num_element_per_page);
+	rx_pp->offset_mask =  (1 << rx_pp->idx_shift) - 1;
+	rx_pp->ipa_cntrs_init = true;
+
+	dp_info("num_ref_cntrs %u idx_shift %d offset mask 0x%x", num_ref_cntrs,
+		rx_pp->idx_shift, rx_pp->offset_mask);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static void dp_rx_pp_ipa_ref_cntrs_deinit(struct dp_soc *soc,
+					  struct dp_rx_page_pool *rx_pp)
+{
+	struct qdf_mem_multi_page_t *cntr_pages;
+	struct dp_rx_pp_ipa_map_cntr *cntr;
+	int page_idx = 0;
+	int offset;
+
+	cntr_pages = &rx_pp->iova_cntr_pages;
+	if (!cntr_pages->cacheable_pages)
+		return;
+
+	for (page_idx = 0; page_idx < cntr_pages->num_pages; page_idx++) {
+		for (offset = 0; offset < PAGE_SIZE; offset += sizeof(*cntr)) {
+			cntr = cntr_pages->cacheable_pages[page_idx] + offset;
+
+			if (!qdf_atomic_read(&cntr->ref_cnt))
+				continue;
+
+			dp_err_rl("Unexpected refcount, page_idx %d ref_cnt %d",
+				  page_idx, qdf_atomic_read(&cntr->ref_cnt));
+			qdf_assert_always(0);
+		}
+	}
+
+	dp_desc_multi_pages_mem_free(soc, QDF_DP_RX_IPA_MAP_REFCNT_TYPE,
+				     cntr_pages, 0, true);
+}
+#else
+static inline QDF_STATUS
+dp_rx_pp_ipa_ref_cntrs_init(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+dp_rx_pp_ipa_ref_cntrs_deinit(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp)
+{
+}
+#endif
+
 void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 {
 	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[pool_id];
@@ -679,6 +770,7 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 	rx_pp->active_pp_idx = 0;
 	rx_pp->page_pool_init = false;
 
+	dp_rx_pp_ipa_ref_cntrs_deinit(soc, rx_pp);
 	qdf_delayed_work_destroy(&rx_pp->pool_inactivity_work);
 
 	qdf_spin_lock(&rx_pp->pp_lock);
@@ -725,6 +817,13 @@ QDF_STATUS dp_rx_page_pool_init(struct dp_soc *soc, uint32_t pool_id)
 	}
 
 	qdf_list_create(&rx_pp->inactive_list, 0);
+
+	status = dp_rx_pp_ipa_ref_cntrs_init(soc, rx_pp);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Failed to initialize ipa ref counters");
+		qdf_delayed_work_destroy(&rx_pp->pool_inactivity_work);
+		return QDF_STATUS_E_RESOURCES;
+	}
 
 	rx_pp->page_pool_init = true;
 
@@ -815,6 +914,15 @@ alloc_page_pool:
 	return pp;
 }
 
+static inline size_t
+dp_rx_page_pool_buffer_size(size_t buf_size, int align)
+{
+	uint16_t delta;
+
+	delta = align ? QDF_SHINFO_SIZE + align - 1 : QDF_SHINFO_SIZE;
+	return buf_size - delta;
+}
+
 QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 				 uint32_t pool_size)
 {
@@ -829,6 +937,7 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	size_t pp_size;
 	uint8_t prealloc = 0;
 	int pp_count;
+	int align;
 	int i;
 
 	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx)) {
@@ -871,11 +980,7 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	rx_pp->soc = soc;
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
-
-	if (RX_DATA_BUFFER_OPT_ALIGNMENT)
-		buf_size += RX_DATA_BUFFER_OPT_ALIGNMENT - 1;
-	buf_size += QDF_SHINFO_SIZE;
-	buf_size = QDF_NBUF_ALIGN(buf_size);
+	dp_rx_page_pool_get_buf_params(&buf_size, &align);
 
 	for (i = 0; i < pp_count; i++) {
 		pp_params = &rx_pp->main_pool[i];
@@ -911,6 +1016,8 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	rx_pp->aux_pool.pp_size = pp_size;
 	rx_pp->aux_pool.prealloc = prealloc;
 	rx_pp->curr_pool_size = pool_size;
+	rx_pp->buf_size = dp_rx_page_pool_buffer_size(buf_size, align);
+	rx_pp->buf_align = align;
 
 	if (QDF_IS_STATUS_ERROR(dp_rx_page_pool_init(soc, pool_id)))
 		goto out_pp_fail;

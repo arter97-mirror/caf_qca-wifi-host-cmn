@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -27,11 +27,9 @@
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 /**
  * struct twt_en_dis_priv - twt enable/disable private context
- * @pdev_id: pdev id
  * @status: TWT status
  */
 struct twt_en_dis_priv {
-	uint32_t pdev_id;
 	uint32_t status;
 };
 

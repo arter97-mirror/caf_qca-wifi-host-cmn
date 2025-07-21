@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -147,7 +148,8 @@ bool wlan_ipa_set_perf_level_bw_enabled(struct wlan_ipa_priv *ipa_ctx)
 	 * b. IPA clk scaling is _not_ enabled.
 	 * c. IPA force voting is enabled.
 	 */
-	return wlan_ipa_is_enabled(ipa_ctx->config) &&
+	return (ipa_ctx->config) &&
+	       wlan_ipa_is_enabled(ipa_ctx->config) &&
 	       !wlan_ipa_is_clk_scaling_enabled(ipa_ctx->config) &&
 	       ipa_ctx->config->ipa_force_voting;
 }

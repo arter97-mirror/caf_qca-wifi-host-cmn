@@ -498,6 +498,11 @@ vdev_mgr_start_param_update_cac_ms(struct wlan_objmgr_vdev *vdev,
 {
 	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
 
+	if (!psoc) {
+		mlme_err("psoc null");
+		return;
+	}
+
 	param->cac_duration_ms =
 			wlan_util_vdev_mgr_get_cac_timeout_for_vdev(vdev);
 	if (mlo_mgr_is_link_switch_in_progress_by_psoc(psoc) &&

@@ -4147,4 +4147,26 @@ dp_rx_buffers_replenish_on_demand(struct cdp_soc_t *cdp_soc,
 	return 0;
 }
 #endif
+
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+#if defined(IPA_OFFLOAD) && !defined(DP_RX_BUFFER_OPTIMIZATION)
+static inline void
+dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
+{
+	*buf_size = PAGE_SIZE;
+	*align = 0;
+}
+#else
+static inline void
+dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
+{
+	if (RX_DATA_BUFFER_OPT_ALIGNMENT)
+		*buf_size += RX_DATA_BUFFER_OPT_ALIGNMENT - 1;
+	*buf_size += QDF_SHINFO_SIZE;
+	*buf_size = QDF_NBUF_ALIGN(*buf_size);
+
+	*align = RX_DATA_BUFFER_OPT_ALIGNMENT;
+}
+#endif
+#endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
 #endif /* _DP_RX_H */

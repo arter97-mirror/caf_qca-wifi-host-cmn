@@ -1722,7 +1722,7 @@ wlan_cfg80211_send_scan_request_cached_report(
 				struct wlan_objmgr_pdev *pdev,
 				struct osif_scan_pdev *osif_scan,
 				bool is_cached_scan_reported_allowed,
-				uint32_t current_ts)
+				uint64_t current_ts)
 {
 	QDF_STATUS status;
 
@@ -1732,6 +1732,7 @@ wlan_cfg80211_send_scan_request_cached_report(
 				      WIFI_POWER_EVENT_WAKELOCK_SCAN);
 		qdf_runtime_pm_prevent_suspend(&osif_scan->runtime_pm_lock);
 
+		status = qdf_event_reset(&osif_scan->cache_scan_report_event);
 		if (qdf_atomic_inc_return(
 				&osif_scan->cache_scan_report_req_cnt) == 1) {
 			CLEAR_CACHED_SCAN_REPORT(osif_scan->cache_scan_report);
@@ -1741,7 +1742,6 @@ wlan_cfg80211_send_scan_request_cached_report(
 				goto cleanup;
 		}
 
-		status = qdf_event_reset(&osif_scan->cache_scan_report_event);
 		status = qdf_wait_for_event_completion(
 					&osif_scan->cache_scan_report_event,
 					SCAN_CACHE_REPORT_TIMEOUT_MS);

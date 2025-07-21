@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ *  Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5079,6 +5079,7 @@ int hif_wlan_enable(struct hif_softc *scn)
 	struct pld_wlan_enable_cfg cfg = { 0 };
 	enum pld_driver_mode mode;
 	int ret_val;
+	int status = 0;
 	uint32_t con_mode = hif_get_conparam(scn);
 	hif_get_target_ce_config(scn,
 			(struct CE_pipe_config **)&cfg.ce_tgt_cfg,
@@ -5131,9 +5132,13 @@ int hif_wlan_enable(struct hif_softc *scn)
 
 	if (BYPASS_QMI)
 		ret_val =  0;
-	else
+	else{
+		status = pld_set_host_param(scn->qdf_dev->dev,
+					    hif_get_hw_name(tgt_info));
 		ret_val = pld_wlan_enable(scn->qdf_dev->dev, &cfg, mode);
-
+		if (status != 0 || ret_val != 0)
+			ret_val = -EINVAL;
+	}
 	free_ce_cmn_reg_cfg(&cfg);
 out:
 	return ret_val;

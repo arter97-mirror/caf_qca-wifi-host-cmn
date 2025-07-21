@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -281,11 +281,11 @@ enum HOST_ADD_TWT_STATUS {
 
 /**
  * struct twt_enable_complete_event_param:
- * @pdev_id: pdev_id for identifying the MAC.
+ * @mac_id: mac_id for identifying the MAC.
  * @status: From enum TWT_ENABLE_STATUS
  */
 struct twt_enable_complete_event_param {
-	uint32_t pdev_id;
+	uint32_t mac_id;
 	uint32_t status;
 };
 
@@ -307,11 +307,11 @@ enum HOST_TWT_DISABLE_STATUS {
 
 /**
  * struct twt_disable_complete_event_param:
- * @pdev_id: pdev_id for identifying the MAC.
+ * @mac_id: mac_id for identifying the MAC.
  * @status: From enum HOST_TWT_DISABLE_STATUS
  */
 struct twt_disable_complete_event_param {
-	uint32_t pdev_id;
+	uint32_t mac_id;
 	uint32_t status;
 };
 

@@ -4308,6 +4308,12 @@ static inline bool dp_is_subtype_data(uint16_t frame_ctrl)
 	return false;
 }
 
+#ifdef WLAN_HAPS_ENBALE
+void dp_haps_handle_ind(ol_osif_vdev_handle osif_vdev, haps_state new_state,
+			qdf_ktime_t time_rcvd, bool is_one_shot,
+			bool is_direct_reg_write);
+#endif
+
 #ifdef WDI_EVENT_ENABLE
 /**
  * dp_h2t_cfg_stats_msg_send(): function to construct HTT message to pass to FW

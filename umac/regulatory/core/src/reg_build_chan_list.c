@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2194,10 +2194,8 @@ reg_populate_secondary_cur_chan_list(struct wlan_regulatory_pdev_priv_obj
 	}
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
-	if (!reg_tx_ops) {
-		reg_err("reg_tx_ops null");
+	if (!reg_tx_ops)
 		return;
-	}
 
 	if (!reg_tx_ops->register_master_ext_handler ||
 	    !wlan_psoc_nif_fw_ext_cap_get(psoc, WLAN_SOC_EXT_EVENT_SUPPORTED)) {
@@ -3607,6 +3605,9 @@ reg_process_c2c_detect_evt(struct wlan_objmgr_psoc *psoc,
 	}
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (soc_reg->offload_enabled)
 		dbg_id = WLAN_REGULATORY_NB_ID;
 	else
@@ -3922,6 +3923,9 @@ void reg_propagate_mas_chan_list_to_pdev(struct wlan_objmgr_psoc *psoc,
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return;
+
 	if (reg_tx_ops->get_phy_id_from_pdev_id)
 		reg_tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
 	else
@@ -4283,6 +4287,9 @@ reg_propagate_mas_chan_list_and_fill_legacy_list(struct wlan_objmgr_psoc *psoc,
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
 
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	pdev_priv_obj = reg_get_pdev_obj(pdev);
 	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
 		reg_err("reg pdev priv obj is NULL");
@@ -4919,6 +4926,9 @@ __reg_process_master_chan_list_ext(struct cur_regulatory_info *regulat_info)
 	}
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	phy_id = regulat_info->phy_id;
 
 	if (tx_ops->get_pdev_id_from_phy_id)
@@ -5036,6 +5046,9 @@ QDF_STATUS reg_process_master_chan_list_ext(
 	status =  __reg_process_master_chan_list_ext(regulat_info);
 	psoc = regulat_info->psoc;
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (!reg_tx_ops->set_wait_for_init_cc_response_event)
 		return status;
 
@@ -5254,6 +5267,8 @@ reg_process_afc_expiry_event(struct afc_regulatory_info *afc_info)
 
 	phy_id = afc_info->phy_id;
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
 
 	if (soc_reg->offload_enabled)
 		dbg_id = WLAN_REGULATORY_NB_ID;
@@ -5338,6 +5353,9 @@ reg_find_afc_max_bw_from_chip_cap(struct wlan_objmgr_pdev *pdev)
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	reg_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	if (reg_ops->get_phy_id_from_pdev_id)
 		reg_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
@@ -5964,6 +5982,9 @@ reg_process_afc_power_event(struct afc_regulatory_info *afc_info)
 	}
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	phy_id = afc_info->phy_id;
 
 	if (tx_ops->get_pdev_id_from_phy_id)
@@ -6122,6 +6143,9 @@ __reg_process_master_chan_list(struct cur_regulatory_info *regulat_info)
 	}
 
 	tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	phy_id = regulat_info->phy_id;
 
 	if (tx_ops->get_pdev_id_from_phy_id)
@@ -6323,6 +6347,9 @@ QDF_STATUS reg_process_master_chan_list(
 	status = __reg_process_master_chan_list(regulat_info);
 	psoc = regulat_info->psoc;
 	reg_tx_ops = reg_get_psoc_tx_ops(psoc);
+	if (!reg_tx_ops)
+		return QDF_STATUS_E_FAILURE;
+
 	if (!reg_tx_ops->set_wait_for_init_cc_response_event)
 		return status;
 

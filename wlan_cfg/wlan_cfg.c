@@ -6445,7 +6445,7 @@ void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-			    bool *rx_pp_enabled, uint32_t *rx_buf_size)
+			    bool *rx_pp_enabled, size_t *rx_buf_size)
 {
 	*rx_pp_enabled = cfg_get(ctrl_psoc,
 				 CFG_DP_RX_BUFFER_RECYCLE_ENABLE);

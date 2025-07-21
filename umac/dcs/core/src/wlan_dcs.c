@@ -1777,6 +1777,8 @@ wlan_sap_update_tpc_on_channel(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 		return;
 
 	tx_ops = wlan_reg_get_tx_ops(psoc);
+	if (!tx_ops)
+		goto release_vdev;
 
 	mlme_obj = wlan_vdev_mlme_get_cmpt_obj(vdev);
 	if (!mlme_obj) {

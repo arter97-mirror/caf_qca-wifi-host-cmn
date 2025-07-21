@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -623,4 +623,9 @@ wlan_cm_bss_mlo_type(struct wlan_objmgr_psoc *psoc,
 		     qdf_list_t *scan_list)
 {
 	return cm_bss_mlo_type(psoc, entry, scan_list);
+}
+
+bool wlan_cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev)
+{
+	return cm_is_link_switch_connection(vdev);
 }

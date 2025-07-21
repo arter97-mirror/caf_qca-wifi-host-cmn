@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -213,6 +213,8 @@ struct wlan_logging {
 	bool is_active;
 	/* Flush completion check */
 	bool is_flush_complete;
+	/* This flag tracks the active state of a dump_in_progress request */
+	bool is_dump_in_progress;
 	/* parameters  for pkt stats */
 	struct list_head pkt_stat_free_list;
 	struct list_head pkt_stat_filled_list;
@@ -917,7 +919,6 @@ static int wlan_logging_thread(void *Arg)
 		if (gwlan_logging.exit)
 			break;
 
-
 		if (qdf_atomic_test_and_clear_bit(HOST_LOG_DRIVER_MSG,
 						  gwlan_logging.event_flag)) {
 			ret = send_filled_buffers_to_user();
@@ -969,6 +970,8 @@ static int wlan_logging_thread(void *Arg)
 			 * to flush any residual data in them
 			 */
 			if (gwlan_logging.is_flush_complete == true) {
+				qdf_debug("reset is_flush_complete");
+
 				gwlan_logging.is_flush_complete = false;
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 				send_flush_completion_to_user(
@@ -976,19 +979,35 @@ static int wlan_logging_thread(void *Arg)
 #endif
 				wlan_logging_set_flush_log_completion();
 			} else {
+				qdf_debug("set is_flush_complete");
+
 				gwlan_logging.is_flush_complete = true;
-				/* Flush all current host logs*/
+				/* flush all current host logs */
 				spin_lock_irqsave(&gwlan_logging.spin_lock,
 					flags);
 				wlan_queue_logmsg_for_app();
 				spin_unlock_irqrestore(&gwlan_logging.spin_lock,
 					flags);
+
 				qdf_atomic_set_bit(HOST_LOG_DRIVER_MSG,
 						   gwlan_logging.event_flag);
 				qdf_atomic_set_bit(HOST_LOG_PER_PKT_STATS,
 						   gwlan_logging.event_flag);
 				qdf_atomic_set_bit(HOST_LOG_FW_FLUSH_COMPLETE,
 						   gwlan_logging.event_flag);
+
+				if (gwlan_logging.is_dump_in_progress) {
+					qdf_debug("setting chipset stats event flags");
+					gwlan_logging.is_dump_in_progress =
+									false;
+					qdf_atomic_set_bit(
+						HOST_LOG_CHIPSET_STATS,
+						gwlan_logging.event_flag);
+					qdf_atomic_set_bit(
+						FW_LOG_CHIPSET_STATS,
+						gwlan_logging.event_flag);
+				}
+
 				wake_up_interruptible(
 						&gwlan_logging.wait_queue);
 			}
@@ -1291,6 +1310,7 @@ int wlan_logging_sock_init_svc(void)
 
 	gwlan_logging.is_active = true;
 	gwlan_logging.is_flush_complete = false;
+	gwlan_logging.is_dump_in_progress = false;
 
 	status = qdf_event_create(&gwlan_logging.flush_log_completion);
 	if (!QDF_IS_STATUS_SUCCESS(status)) {
@@ -1343,6 +1363,7 @@ int wlan_logging_sock_deinit_svc(void)
 	cds_set_multicast_logging(0);
 #endif
 	gwlan_logging.is_flush_complete = false;
+	gwlan_logging.is_dump_in_progress = false;
 	qdf_atomic_clear_bit(HOST_LOG_DRIVER_MSG, gwlan_logging.event_flag);
 	qdf_atomic_clear_bit(HOST_LOG_PER_PKT_STATS, gwlan_logging.event_flag);
 	qdf_atomic_clear_bit(HOST_LOG_FW_FLUSH_COMPLETE,
@@ -1880,10 +1901,9 @@ void wlan_set_chipset_stats_bit(bool is_drv_dump_in_progress_valid,
 		}
 	}
 
-	qdf_debug("final_dump_inprogress_val val is %d",
-		  final_dump_inprogress_val);
-
 	if (final_dump_inprogress_val) {
+		qdf_debug("setting chipset stats event flags");
+		gwlan_logging.is_dump_in_progress = true;
 		qdf_atomic_set_bit(HOST_LOG_CHIPSET_STATS,
 				   gwlan_logging.event_flag);
 		qdf_atomic_set_bit(FW_LOG_CHIPSET_STATS,

@@ -318,7 +318,7 @@ const int dp_stats_mapping_table[][STATS_TYPE_MAX] = {
 	{HTT_DBG_EXT_STATS_TX_DE_INFO, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_PDEV_TX_RATE, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_PDEV_RX_RATE, TXRX_HOST_STATS_INVALID},
-	{TXRX_FW_STATS_INVALID, TXRX_HOST_STATS_INVALID},
+	{HTT_DBG_EXT_STATS_PEER_INFO, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_TX_SELFGEN_INFO, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_TX_MU_HWQ, TXRX_HOST_STATS_INVALID},
 	{HTT_DBG_EXT_STATS_RING_IF_INFO, TXRX_HOST_STATS_INVALID},
@@ -6050,6 +6050,7 @@ static QDF_STATUS dp_txrx_peer_detach(struct dp_soc *soc, struct dp_peer *peer)
 	struct dp_pdev *pdev;
 	struct cdp_txrx_peer_params_update params = {0};
 
+	qdf_spin_lock(&peer->txrx_peer_lock);
 	/* dp_txrx_peer exists for mld peer and legacy peer */
 	if (peer->txrx_peer) {
 		txrx_peer = peer->txrx_peer;
@@ -6082,6 +6083,7 @@ static QDF_STATUS dp_txrx_peer_detach(struct dp_soc *soc, struct dp_peer *peer)
 
 		qdf_mem_free(txrx_peer);
 	}
+	qdf_spin_unlock(&peer->txrx_peer_lock);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -6402,6 +6404,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	qdf_spinlock_create(&peer->peer_state_lock);
 	dp_peer_add_ast(soc, peer, peer_mac_addr, ast_type, 0);
 	qdf_spinlock_create(&peer->peer_info_lock);
+	qdf_spinlock_create(&peer->txrx_peer_lock);
 	dp_peer_3_link_tx_flow_info_init(peer);
 
 	/* reset the ast index to flowid table */
@@ -7251,6 +7254,7 @@ void dp_peer_unref_delete(struct dp_peer *peer, enum dp_mod_id mod_id)
 		qdf_spinlock_destroy(&peer->peer_state_lock);
 
 		dp_txrx_peer_detach(soc, peer);
+		qdf_spinlock_destroy(&peer->txrx_peer_lock);
 		dp_cfg_event_record_peer_evt(soc, DP_CFG_EVENT_PEER_UNREF_DEL,
 					     peer, vdev, 0);
 		qdf_mem_free(peer);
@@ -7480,6 +7484,20 @@ void dp_peer_unmap_track_resume(struct dp_soc *soc)
 }
 #endif
 
+#ifdef WLAN_DP_FEATURE_STC
+static inline void dp_rx_fst_inv_peer_id(struct dp_soc *soc,
+					 struct dp_peer *peer)
+{
+	if (soc->cdp_soc.ol_ops->rx_fst_inv_peer_id)
+		soc->cdp_soc.ol_ops->rx_fst_inv_peer_id(peer->peer_id);
+}
+#else
+static inline void dp_rx_fst_inv_peer_id(struct dp_soc *soc,
+					 struct dp_peer *peer)
+{
+}
+#endif
+
 /**
  * dp_peer_delete_wifi3() - Delete txrx peer
  * @soc_hdl: soc handle
@@ -7526,6 +7544,7 @@ static QDF_STATUS dp_peer_delete_wifi3(struct cdp_soc_t *soc_hdl,
 
 	peer->valid = 0;
 
+	dp_rx_fst_inv_peer_id(soc, peer);
 	dp_cfg_event_record_peer_evt(soc, DP_CFG_EVENT_PEER_DELETE, peer,
 				     vdev, 0);
 	dp_init_info("%pK: peer %pK (" QDF_MAC_ADDR_FMT ") pending-refs %d",
@@ -11370,6 +11389,7 @@ static QDF_STATUS
 dp_fw_stats_process(struct dp_vdev *vdev,
 		    struct cdp_txrx_stats_req *req)
 {
+	uint8_t i;
 	struct dp_pdev *pdev = NULL;
 	struct dp_soc *soc = NULL;
 	uint32_t stats = req->stats;
@@ -11414,6 +11434,22 @@ dp_fw_stats_process(struct dp_vdev *vdev,
 		req->param3 = 0xFFFFFFFF;
 	} else if (stats == (uint8_t)HTT_DBG_EXT_STATS_PDEV_TX_MU) {
 		req->param0 = HTT_DBG_EXT_STATS_SET_VDEV_MASK(vdev->vdev_id);
+	} else if (stats == (uint8_t)HTT_DBG_EXT_STATS_PEER_INFO) {
+		if (!req->peer_addr) {
+			dp_err("peer_addr is not set");
+			return QDF_STATUS_E_FAILURE;
+		}
+
+		HTT_DBG_EXT_STATS_PEER_INFO_IS_MAC_ADDR_SET(req->param0, 1);
+
+		for (i = 0; i < HTT_PEER_STATS_MAX_TLV; i++)
+			req->param1 |= (1 << i);
+		req->param2 |= (req->peer_addr[0] & 0x000000ff);
+		req->param2 |= ((req->peer_addr[1] << 8) & 0x0000ff00);
+		req->param2 |= ((req->peer_addr[2] << 16) & 0x00ff0000);
+		req->param2 |= ((req->peer_addr[3] << 24) & 0xff000000);
+		req->param3 |= (req->peer_addr[4] & 0x000000ff);
+		req->param3 |= ((req->peer_addr[5] << 8) & 0x0000ff00);
 	}
 
 	dp_h2t_ext_stats_msg_send(pdev, stats, req->param0,
@@ -14287,6 +14323,12 @@ static struct cdp_fse_ops dp_ops_fse = {
 };
 #endif
 
+#ifdef WLAN_HAPS_ENABLE
+static struct cdp_haps_ops dp_ops_haps = {
+	.haps_handle_ind = dp_haps_handle_ind,
+};
+#endif
+
 #ifdef CONFIG_SAWF_DEF_QUEUES
 static struct cdp_sawf_ops dp_ops_sawf = {
 	.sawf_def_queues_map_req = dp_sawf_def_queues_map_req,
@@ -15223,6 +15265,9 @@ static void dp_soc_txrx_ops_attach(struct dp_soc *soc)
 #endif
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
 	soc->cdp_soc.ops->fse_ops = &dp_ops_fse;
+#endif
+#ifdef WLAN_HAPS_ENABLE
+	soc->cdp_soc.ops->haps_ops = &dp_ops_haps;
 #endif
 };
 

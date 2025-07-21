@@ -133,6 +133,52 @@ static void dp_ipa_reo_remap_history_add(uint32_t ix0_val, uint32_t ix2_val,
 	record->ix3_reg = ix3_val;
 }
 
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+static bool dp_ipa_skip_pp_nbuf_smmu_map(struct dp_soc *soc, qdf_nbuf_t nbuf,
+					 bool create)
+{
+	/* TODO Use proper pool id */
+	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[0];
+	struct dp_rx_pp_ipa_map_cntr *cntr;
+	uint64_t iova;
+	uint32_t page_idx;
+	uint32_t offset;
+
+	if (!qdf_is_pp_nbuf(nbuf))
+		return false;
+
+	if (!rx_pp->ipa_cntrs_init) {
+		dp_err_rl("Unexpected!!, ipa ref counters not initialized");
+		return false;
+	}
+
+	iova = (QDF_NBUF_CB_PADDR(nbuf) - rx_pp->iova_base_addr) >> PAGE_SHIFT;
+	page_idx = iova >> rx_pp->idx_shift;
+	offset = iova & rx_pp->offset_mask;
+
+	if (page_idx > rx_pp->iova_cntr_pages.num_pages) {
+		dp_err("Invalid page idx %u", page_idx);
+		return false;
+	}
+
+	cntr = rx_pp->iova_cntr_pages.cacheable_pages[page_idx] +
+		offset * sizeof(*cntr);
+
+	if (create && qdf_atomic_inc_return(&cntr->ref_cnt) == 1)
+		return false;
+	else if (!create && qdf_atomic_dec_and_test(&cntr->ref_cnt))
+		return false;
+
+	return true;
+}
+#else
+static inline bool
+dp_ipa_skip_pp_nbuf_smmu_map(struct dp_soc *soc, qdf_nbuf_t nbuf, bool create)
+{
+	return false;
+}
+#endif
+
 static QDF_STATUS __dp_ipa_handle_buf_smmu_mapping(struct dp_soc *soc,
 						   qdf_nbuf_t nbuf,
 						   uint32_t size,
@@ -153,6 +199,15 @@ static QDF_STATUS __dp_ipa_handle_buf_smmu_mapping(struct dp_soc *soc,
 		dp_err("IPA handle is invalid");
 		return QDF_STATUS_E_INVAL;
 	}
+
+	/* Page pool buffers are DMA mapped at page/compound
+	 * page level sharing the same IOVA page for multiple
+	 * buffers, map/unmap to IPA IOVA only once for such
+	 * buffers.
+	 */
+	if (dp_ipa_skip_pp_nbuf_smmu_map(soc, nbuf, create))
+		return QDF_STATUS_SUCCESS;
+
 	qdf_update_mem_map_table(soc->osdev, &mem_map_table,
 				 qdf_nbuf_get_frag_paddr(nbuf, 0),
 				 size);
@@ -4523,9 +4578,11 @@ static qdf_nbuf_t dp_ipa_intrabss_send(struct dp_pdev *pdev,
 		nbuf = dp_tx_send((struct cdp_soc_t *)pdev->soc, vdev->vdev_id,
 				  nbuf);
 	} else {
-		if (pdev->soc->arch_ops.dp_rx_intrabss_get_mcbc_params
+		if (pdev->soc->arch_ops.dp_rx_intrabss_get_mcbc_params &&
+		    pdev->soc->arch_ops.dp_rx_intrabss_get_mcbc_params
 						(pdev->soc, vdev, &params)) {
-			if (pdev->soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd
+			if (pdev->soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd &&
+			    pdev->soc->arch_ops.dp_rx_intrabss_mlo_mcbc_fwd
 			    (params, nbuf, link_id, len, vdev_peer->txrx_peer,
 			     tid_stats))
 				*fwd_success = true;
@@ -4619,11 +4676,16 @@ static bool dp_ipa_rx_intrabss_ucast_fwd(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		return status;
 
 	dp_ipa_rx_intrabss_construct_params(nbuf, &params_in);
-	if (!soc->arch_ops.dp_rx_intrabss_get_params(soc, src_vdev,
-						     NULL,
-						     params_in,
-						     &params_out))
-		goto out;
+	if (soc->arch_ops.dp_rx_intrabss_get_params) {
+		if (!soc->arch_ops.dp_rx_intrabss_get_params(soc, src_vdev,
+							     NULL,
+							     params_in,
+							     &params_out))
+			goto out;
+	} else {
+		params_out.dest_soc = soc;
+		params_out.tx_vdev_id = vdev_id;
+	}
 
 	dest_vdev = dp_vdev_get_ref_by_id(params_out.dest_soc,
 					  params_out.tx_vdev_id,

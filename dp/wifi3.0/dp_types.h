@@ -1856,6 +1856,16 @@ struct dp_page_pool_t {
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 #define DP_PAGE_POOL_MAX 4
 
+#ifdef IPA_OFFLOAD
+/**
+ * struct dp_rx_pp_ipa_map_cntr - IPA IOMMU map/unmap ref_cntrs for pp buffers
+ * @ref_cnt: Reference counter, inc/dec for every map/unmap
+ */
+struct dp_rx_pp_ipa_map_cntr {
+	qdf_atomic_t ref_cnt;
+};
+#endif
+
 struct dp_rx_pp_params {
 	qdf_list_node_t node;
 	qdf_page_pool_t pp;
@@ -1878,6 +1888,16 @@ struct dp_rx_page_pool {
 	bool page_pool_init;
 	uint64_t alloc_success;
 	uint64_t alloc_fail;
+#ifdef IPA_OFFLOAD
+	struct qdf_mem_multi_page_t iova_cntr_pages;
+	uint64_t iova_base_addr;
+	uint64_t iova_size;
+	uint32_t offset_mask;
+	uint16_t idx_shift;
+	bool ipa_cntrs_init;
+#endif
+	size_t buf_size;
+	int buf_align;
 };
 #endif
 
@@ -5877,6 +5897,7 @@ struct dp_peer {
 #endif
 
 	qdf_spinlock_t peer_info_lock;
+	qdf_spinlock_t txrx_peer_lock;
 
 	/* Peer calibrated stats */
 	struct cdp_calibr_stats stats;

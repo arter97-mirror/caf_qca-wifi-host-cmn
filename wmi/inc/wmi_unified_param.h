@@ -1088,6 +1088,7 @@ typedef enum {
 	WMI_HOST_REQUEST_VDEV_PRB_FILS_STAT = 0x10000,
 	WMI_HOST_REQUEST_PDEV_EXTD_STAT = 0x20000,
 	WMI_HOST_REQUEST_PDEV_TELEMETRY_STAT = 0x40000,
+	WMI_HOST_REQUEST_VDEV_RECV_BCN_STAT = 0x80000,
 } wmi_host_stats_id;
 
 typedef struct {
@@ -4637,6 +4638,7 @@ struct rx_reorder_queue_remove_params {
  * @num_mib_extd_stats: number of extended mib stats
  * @num_peer_stats_info_ext: number of peer extended stats info
  * @num_vdev_extd_stats: number of vdev extended stats info
+ * @num_recv_bcn_stats: number of receive bcn stats
  * @last_event: specify if the current event is the last event
  */
 typedef struct {
@@ -4656,6 +4658,7 @@ typedef struct {
 	uint32_t num_mib_extd_stats;
 	uint32_t num_peer_stats_info_ext;
 	uint32_t num_vdev_extd_stats;
+	uint32_t num_recv_bcn_stats;
 	uint32_t last_event;
 } wmi_host_stats_event;
 
@@ -5289,6 +5292,26 @@ struct wmi_host_tsf_event {
 struct wmi_host_pdev_telemetry_stats {
 	uint32_t avg_chan_lat_per_ac[WIFI_AC_MAX];
 	uint32_t estimated_air_time_per_ac;
+};
+
+/**
+ * struct wmi_bcn_his_info - bcn history info
+ * @bcn_rssi: beacon rssi
+ * @bcn_tsf: beacon tsf
+ */
+struct wmi_bcn_his_info {
+	int32_t bcn_rssi;
+	uint32_t bcn_tsf;
+};
+
+/**
+ * struct wmi_host_recv_bcn_stats - receive beacon stats
+ * @vdev_id: vdev id
+ * @bcn_history: structure to wmi_bcn_his_info
+ */
+struct wmi_host_recv_bcn_stats {
+	uint32_t vdev_id;
+	struct wmi_bcn_his_info bcn_history[WMI_MAX_BCN_HISTORY];
 };
 
 #define WMI_EVENT_ID_INVALID 0
@@ -6848,7 +6871,7 @@ typedef enum {
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	wmi_service_mgmt_rx_srng_support,
 #endif
-#ifdef FEATURE_WLAN_SUPPORT_USD
+#if defined(FEATURE_WLAN_SUPPORT_USD)  || defined(FEATURE_WLAN_SUPPORT_P2P_R2)
 	wmi_service_usd_support,
 #endif
 	wmi_service_use_sta_vdev_for_p2p_device,
@@ -6868,6 +6891,12 @@ typedef enum {
 	wmi_service_per_vdev_twt_resp_disable_support,
 	wmi_service_vendor_oui_action_v2,
 	wmi_service_ndp_dfs_channel_support,
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
+	wmi_service_wfd_r2,
+#endif
+#if defined(FEATURE_WLAN_TDLS) && defined(WLAN_FEATURE_TDLS_NSS_4_4)
+	wmi_service_tdls_nss_confirm_support,
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -7271,6 +7300,7 @@ struct target_feature_set {
  * @max_ml_bss_num: Max ml bss
  * @apfv6_offload_disabled: APFv6 offload disabled bitmap
  * @is_action_oui_v2_enabled: Is action oui v2 enabled
+ * @enable_bcn_rssi_history_report: Enable beacon rssi history report
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7422,6 +7452,7 @@ typedef struct {
 	uint8_t max_ml_bss_num;
 	uint32_t apfv6_offload_disabled;
 	bool is_action_oui_v2_enabled;
+	bool enable_bcn_rssi_history_report;
 } target_resource_config;
 
 /**

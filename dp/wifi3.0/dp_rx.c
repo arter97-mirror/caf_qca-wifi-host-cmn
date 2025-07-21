@@ -368,7 +368,7 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
 
 	ret = dp_rx_page_pool_nbuf_alloc_and_map(dp_soc, nbuf_frag_info_t,
-						 mac_id);
+						 mac_id, true);
 	if (QDF_IS_STATUS_SUCCESS(ret))
 		return ret;
 
@@ -1342,6 +1342,10 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 {
 	qdf_dma_addr_t paddr = QDF_NBUF_CB_PADDR(nbuf);
 	uint16_t len;
+	uint8_t ring_id = QDF_NBUF_CB_RX_CTX_ID(nbuf);
+	uint16_t peer_id = QDF_NBUF_CB_RX_PEER_ID(nbuf);
+	uint8_t vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
+
 
 	len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
 
@@ -1383,6 +1387,12 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 		DP_PEER_PER_PKT_STATS_INC_PKT(ta_peer, rx.intra_bss.fail, 1,
 					      len, link_id);
 		tid_stats->fail_cnt[INTRABSS_DROP]++;
+		/* restore part of CB info.*/
+		QDF_NBUF_CB_RX_CTX_ID(nbuf) = ring_id;
+		QDF_NBUF_CB_RX_PKT_LEN(nbuf) = len;
+		QDF_NBUF_CB_RX_PEER_ID(nbuf) = peer_id;
+		QDF_NBUF_CB_RX_VDEV_ID(nbuf) = vdev_id;
+
 		return false;
 	}
 
@@ -3237,7 +3247,7 @@ dp_pdev_nbuf_alloc_and_map(struct dp_soc *dp_soc,
 	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
 
 	ret = dp_rx_page_pool_nbuf_alloc_and_map(dp_soc, nbuf_frag_info_t,
-						 mac_id);
+						 mac_id, false);
 	if (QDF_IS_STATUS_SUCCESS(ret))
 		return ret;
 

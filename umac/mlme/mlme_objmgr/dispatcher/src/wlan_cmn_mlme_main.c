@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -496,6 +496,16 @@ QDF_STATUS mlme_cm_osif_connect_complete(struct wlan_objmgr_vdev *vdev,
 
 	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_connect_complete_cb)
 		ret = glbl_cm_ops->mlme_cm_connect_complete_cb(vdev, rsp);
+
+	return ret;
+}
+
+QDF_STATUS mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev)
+{
+	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+
+	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_roam_connect_complete_cb)
+		ret = glbl_cm_ops->mlme_cm_roam_connect_complete_cb(vdev);
 
 	return ret;
 }

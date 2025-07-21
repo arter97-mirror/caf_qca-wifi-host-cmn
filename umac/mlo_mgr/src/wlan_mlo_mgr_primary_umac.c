@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -376,6 +376,11 @@ void mlo_peer_assign_primary_umac(
 	uint8_t link_peer_psoc_id;
 	struct wlan_mlo_dev_context *ml_dev = NULL;
 #endif
+
+	if (!mlo_ctx) {
+		mlo_err("MLO context is Null");
+		return;
+	}
 
 	/* If MLD is within single SOC, then assoc link becomes
 	 * primary umac
@@ -872,6 +877,11 @@ QDF_STATUS mlo_peer_allocate_primary_umac(
 	assoc_peer = peer_entry->link_peer;
 	if (!assoc_peer)
 		return QDF_STATUS_E_FAILURE;
+
+	if (!mlo_ctx) {
+		mlo_err("MLO context is Null");
+		return QDF_STATUS_E_INVAL;
+	}
 
 	/* Select assoc peer's PSOC as primary UMAC in Multi-chip solution,
 	 * 1) for single link MLO connection

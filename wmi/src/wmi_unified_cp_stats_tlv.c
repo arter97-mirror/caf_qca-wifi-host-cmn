@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -816,7 +816,7 @@ extract_all_stats_counts_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_E_FAULT;
 	}
 
-	for (i = 1; i <= WMI_REQUEST_PDEV_TELEMETRY_STAT; i = i << 1) {
+	for (i = 1; i <= WMI_REQUEST_VDEV_RECV_BCN_STAT; i = i << 1) {
 		switch (ev->stats_id & i) {
 		case WMI_REQUEST_PEER_STAT:
 			stats_param->stats_id |= WMI_HOST_REQUEST_PEER_STAT;
@@ -874,6 +874,10 @@ extract_all_stats_counts_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 			stats_param->stats_id |=
 				WMI_HOST_REQUEST_PDEV_TELEMETRY_STAT;
 			break;
+		case WMI_REQUEST_VDEV_RECV_BCN_STAT:
+			stats_param->stats_id |=
+				WMI_HOST_REQUEST_VDEV_RECV_BCN_STAT;
+			break;
 		}
 	}
 
@@ -894,8 +898,8 @@ extract_all_stats_counts_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		(((uint64_t)ev->num_mib_extd_stats) *
 		 sizeof(wmi_mib_extd_stats));
 	if (param_buf->num_data != min_data_len) {
-		wmi_err("data len: %u isn't same as calculated: %llu",
-			 param_buf->num_data, min_data_len);
+		wmi_err_rl("data len: %u isn't same as calculated: %llu",
+			   param_buf->num_data, min_data_len);
 		return QDF_STATUS_E_FAULT;
 	}
 
@@ -910,6 +914,7 @@ extract_all_stats_counts_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	stats_param->num_mib_stats = ev->num_mib_stats;
 	stats_param->num_mib_extd_stats = ev->num_mib_extd_stats;
 	stats_param->num_bcn_stats = ev->num_bcn_stats;
+	stats_param->num_recv_bcn_stats = param_buf->num_recv_bcn_stats;
 	stats_param->pdev_id = wmi_handle->ops->convert_pdev_id_target_to_host(
 							wmi_handle,
 							ev->pdev_id);
