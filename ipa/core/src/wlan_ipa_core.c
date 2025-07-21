@@ -5369,6 +5369,7 @@ QDF_STATUS wlan_ipa_opt_dp_init(struct wlan_ipa_priv *ipa_ctx)
 			ipa_ctx->release_req_cnt = 0;
 			ipa_ctx->flt_rel_src = 0;
 			qdf_runtime_lock_init(&ipa_ctx->opt_dp_runtime_lock);
+			qdf_rtpm_register(QDF_RTPM_ID_OPT_DP, NULL);
 		} else {
 			ipa_log_debug("opt_dp: Disabled from WLAN INI");
 		}
@@ -5501,6 +5502,7 @@ void wlan_ipa_opt_dp_deinit(struct wlan_ipa_priv *ipa_ctx)
 		wlan_ipa_destroy_opt_wifi_flt_cb_event(ipa_ctx);
 
 	if (ipa_ctx->opt_wifi_datapath && wlan_ipa_config_is_opt_wifi_dp_enabled()) {
+		qdf_rtpm_deregister(QDF_RTPM_ID_OPT_DP);
 		qdf_wake_lock_destroy(&ipa_ctx->opt_dp_wake_lock);
 		qdf_runtime_lock_deinit(&ipa_ctx->opt_dp_runtime_lock);
 	}
