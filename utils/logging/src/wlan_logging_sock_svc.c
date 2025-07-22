@@ -631,9 +631,9 @@ static int pktlog_send_per_pkt_stats_to_user(void)
 		}
 err:
 		/*
-		* Free old skb in case or error before assigning new skb
-		* to the free list.
-		*/
+		 * Free old skb in case or error before assigning new skb
+		 * to the free list.
+		 */
 		if (free_old_skb)
 			dev_kfree_skb(pstats_msg->skb);
 
