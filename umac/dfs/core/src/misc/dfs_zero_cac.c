@@ -1122,44 +1122,6 @@ enum wlan_phymode dfs_expand_find_max_possible_target_mode(struct wlan_dfs *dfs,
 }
 
 /**
- * dfs_find_subtract_subchan_list_index() - Find the subchannel index of the
- * RCAC channel in which CAC check is done.
- * Example: Target subchans = [100, 104, 108, 112] , current subchannel = [100]
- * The subtracted n_suchans = [104, 108, 112] and index is returned as 1.
- * @chan: Pointer to dfs_channel object of target channel.
- * @subset_chan: Pointer to dfs_channel object of subset channel.
- * @target_freq_list: Pointer to target_freq_list array.
- * @cur_freq_list: Pointer to cur_freq_list array.
- * @n_subchans: Ending value of subchannel list index.
- */
-static
-uint8_t dfs_find_subtract_subchan_list_index(struct dfs_channel *chan,
-					     struct dfs_channel *subset_chan,
-					     qdf_freq_t *target_freq_list,
-					     qdf_freq_t *cur_freq_list,
-					     uint8_t *n_subchans)
-{
-	uint8_t n_target_channels, n_cur_channels;
-	uint8_t i = 0;
-
-	n_target_channels =
-		dfs_get_bonding_channel_without_seg_info_for_freq(chan,
-								  target_freq_list);
-	n_cur_channels =
-		dfs_get_bonding_channel_without_seg_info_for_freq(subset_chan,
-								  cur_freq_list);
-	while (i < n_cur_channels) {
-		if (target_freq_list[i] == cur_freq_list[i])
-			i++;
-		else
-			break;
-	}
-
-	*n_subchans = n_target_channels - i;
-	return i;
-}
-
-/**
  * dfs_is_rcac_done_on_subchan_list() - Check if RCAC is completed on
  * subchannel list.
  * @dfs: pointer to wlan_dfs.
@@ -1185,33 +1147,91 @@ bool dfs_is_rcac_done_on_subchan_list(struct wlan_dfs *dfs,
 }
 
 /**
- * dfs_is_rcac_cac_done API checks CAC is completed only on the RCAC channel
- * and excludes current operating channel.
+ * dfs_is_freq_present_in_chan_list - Check if a frequency is present in the
+ * channel list.
+ * @search_freq: Frequency to search for in the list.
+ * @freq_list: Pointer to the array of frequencies.
+ * @nchan: Number of channels in the frequency list.
  *
- * Example: Let's consider User configured chan is 100 HT160 and current
- * operating channel is 100 HT80 and RCAC completed chan is 120 HT80.
- * There is a possibilty for bandwidth expansion from 80Mhz to 160Mhz.
- * Check CAC is completed only on RCAC channel because current operating
- * chan already completed CAC.
+ * This function iterates through the provided frequency list to determine
+ * if the specified search frequency is present. It returns true if the
+ * frequency is found, otherwise it returns false.
+ *
+ * Return: true if the frequency is found in the list, false otherwise
  */
-bool dfs_is_rcac_cac_done(struct wlan_dfs *dfs,
-			  struct dfs_channel *chan,
-			  struct dfs_channel *subset_chan)
+static bool
+dfs_is_freq_present_in_chan_list(qdf_freq_t search_freq, qdf_freq_t *freq_list,
+				 uint8_t nchan)
 {
-	qdf_freq_t target_freq_list[MAX_20MHZ_SUBCHANS];
-	qdf_freq_t cur_freq_list[MAX_20MHZ_SUBCHANS];
-	uint8_t n_subchans, subtract_chan_idx;
+	uint8_t i;
 
-	subtract_chan_idx = dfs_find_subtract_subchan_list_index(chan,
-								 subset_chan,
-								 target_freq_list,
-								 cur_freq_list,
-								 &n_subchans);
-	if (subtract_chan_idx >= MAX_20MHZ_SUBCHANS)
-		return false;
+	for (i = 0; i < nchan; i++) {
+	    if (search_freq == freq_list[i])
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * dfs_get_subtract_set - Get the set of frequencies present in the current
+ * channel but not in the previous channel.
+ * @curchan: Pointer to the current dfs_channel structure.
+ * @prevchan: Pointer to the previous dfs_channel structure.
+ * @subtract_freq_list: Pointer to the array where the set of frequencies
+ * {current channel - previous channel} will be stored.
+ *
+ * This function compares the bonding channels of the current and previous
+ * channels.
+ * It identifies the frequencies that are present in the current channel but not
+ * in the previous channel,
+ * and stores them in the subtract_freq_list array. The function returns the
+ * number of such frequencies.
+ *
+ * Return: Number of frequencies present in the current channel but not in the
+ * previous channel.
+ */
+static uint8_t
+dfs_get_subtract_set(struct dfs_channel *curchan, struct dfs_channel *prevchan,
+		     qdf_freq_t *subtract_freq_list)
+{
+	qdf_freq_t cur_freq_list[MAX_20MHZ_SUBCHANS];
+	qdf_freq_t prev_freq_list[MAX_20MHZ_SUBCHANS];
+	uint8_t n_cur_subchans, n_prev_subchans, i;
+	uint8_t n_subchans = 0;
+
+	n_cur_subchans =
+		dfs_get_bonding_channel_without_seg_info_for_freq(curchan,
+								cur_freq_list);
+	n_prev_subchans =
+		dfs_get_bonding_channel_without_seg_info_for_freq(prevchan,
+								prev_freq_list);
+
+	for (i = 0; i < n_cur_subchans; i++) {
+		bool is_found =
+			dfs_is_freq_present_in_chan_list(cur_freq_list[i],
+							 prev_freq_list,
+							 n_prev_subchans);
+
+		if (!is_found)
+			subtract_freq_list[n_subchans++] = cur_freq_list[i];
+	}
+
+	return n_subchans;
+}
+
+bool dfs_is_rcac_cac_done(struct wlan_dfs *dfs,
+			  struct dfs_channel *curchan,
+			  struct dfs_channel *prevchan)
+{
+	qdf_freq_t subtract_freq_list[MAX_20MHZ_SUBCHANS];
+	uint8_t n_subchans;
+
+	n_subchans = dfs_get_subtract_set(curchan, prevchan,
+					  subtract_freq_list);
 
 	return dfs_is_rcac_done_on_subchan_list(dfs,
-						&target_freq_list[subtract_chan_idx],
+						subtract_freq_list,
 						n_subchans);
 }
 
