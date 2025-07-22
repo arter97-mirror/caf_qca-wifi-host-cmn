@@ -827,11 +827,15 @@ static inline void scm_update_5ghz_6ghz_chlist(struct scan_start_request *req,
 			 * else, skip only freq on same mac as intf_freq
 			 */
 			if (!intf_freq ||
-			    policy_mgr_2_freq_always_on_same_mac(
-					psoc, intf_freq,
-					req->scan_req.chan_list.chan[i].freq))
+			    (policy_mgr_2_freq_always_on_same_mac(psoc,
+								  intf_freq,
+								  req->scan_req.chan_list.chan[i].freq) &&
+			     (req->scan_req.chan_list.chan[i].freq != intf_freq)))
 				continue;
 		}
+		if (wlan_reg_is_dfs_for_freq(pdev, intf_freq) &&
+		    !policy_mgr_is_sta_sap_scc_allowed_on_dfs_chan(psoc))
+			continue;
 
 		req->scan_req.chan_list.chan[num_scan_channels++] =
 			req->scan_req.chan_list.chan[i];
