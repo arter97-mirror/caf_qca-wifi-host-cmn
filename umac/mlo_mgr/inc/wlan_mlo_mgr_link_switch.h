@@ -210,16 +210,13 @@ void mlo_mgr_update_link_info_reset(struct wlan_objmgr_psoc *psoc,
 /**
  * mlo_mgr_update_ap_link_info() - Update AP links information
  * @vdev: Object Manager vdev
- * @link_id: Link id of the AP MLD link
- * @ap_link_addr: AP link addresses
- * @channel: wlan channel information of the link
+ * @data: Container of data to save
  *
  * Update AP link information for each link of AP MLD
  * Return: void
  */
-void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
-				 uint8_t *ap_link_addr,
-				 struct wlan_channel channel);
+void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
+				 struct mlo_link_info *data);
 
 /**
  * mlo_mgr_get_ap_link_info() - Get the pointer of link info matching

@@ -107,15 +107,14 @@ void mlo_mgr_update_link_info_mac_addr(struct wlan_objmgr_vdev *vdev,
 	}
 }
 
-void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
-				 uint8_t *ap_link_addr,
-				 struct wlan_channel channel)
+void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
+				 struct mlo_link_info *data)
 {
 	struct mlo_link_info *link_info;
 	uint8_t link_info_iter;
 	bool link_exist = false;
 
-	if (!vdev || !vdev->mlo_dev_ctx || !ap_link_addr)
+	if (!vdev || !vdev->mlo_dev_ctx)
 		return;
 
 	/* Check if link already exists */
@@ -123,7 +122,7 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (qdf_is_macaddr_equal(&link_info->ap_link_addr,
-					 (struct qdf_mac_addr *)ap_link_addr)) {
+					 &data->ap_link_addr)) {
 			link_exist = true;
 			break;
 		}
@@ -145,12 +144,13 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 	if (link_info_iter == WLAN_MAX_ML_BSS_LINKS)
 		return;
 
-	qdf_mem_copy(&link_info->ap_link_addr, ap_link_addr, QDF_MAC_ADDR_SIZE);
+	qdf_copy_macaddr(&link_info->ap_link_addr, &data->ap_link_addr);
 
-	qdf_mem_copy(link_info->link_chan_info, &channel, sizeof(channel));
-	link_info->chan_freq = channel.ch_freq;
+	qdf_mem_copy(link_info->link_chan_info, data->link_chan_info,
+		     sizeof(struct wlan_channel));
+	link_info->chan_freq = link_info->link_chan_info->ch_freq;
 	link_info->link_status_flags = 0;
-	link_info->link_id = link_id;
+	link_info->link_id = data->link_id;
 
 	mlo_debug("Update AP Link info for link_id: %d, freq: %d vdev_id:%d, link_addr:" QDF_MAC_ADDR_FMT,
 		  link_info->link_id, link_info->link_chan_info->ch_freq,
