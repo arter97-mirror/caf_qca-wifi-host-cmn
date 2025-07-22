@@ -2494,14 +2494,31 @@ static inline int32_t target_if_get_ht_cap_info
 }
 
 /**
+ * target_if_get_vht_supp_mcs() - get vht MCS capabilities
+ * @target_psoc_info:  pointer to structure target_psoc_info
+ *
+ * API to get vht MCS capabilities from the target caps
+ *
+ * Return: uint32_t
+ */
+static inline
+uint32_t target_if_get_vht_supp_mcs(struct target_psoc_info *target_psoc_info)
+{
+	if (!target_psoc_info)
+		return 0;
+
+	return target_psoc_info->info.target_caps.vht_supp_mcs;
+}
+
+/**
  * target_if_get_vht_cap_info() - get vht capabilities info
  * @target_psoc_info:  pointer to structure target_psoc_info
  *
  * API to get vht capabilities info from the target caps
  *
- * Return: int32_t
+ * Return: uint32_t
  */
-static inline int32_t target_if_get_vht_cap_info
+static inline uint32_t target_if_get_vht_cap_info
 		(struct target_psoc_info *target_psoc_info)
 {
 	if (!target_psoc_info)

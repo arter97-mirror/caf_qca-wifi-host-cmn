@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -137,7 +137,7 @@ QDF_STATUS target_if_wifi_pos_get_vht_ch_width(struct wlan_objmgr_psoc *psoc,
 					       enum phy_ch_width *ch_width)
 {
 	struct target_psoc_info *tgt_hdl;
-	int vht_cap_info;
+	uint32_t vht_cap_info;
 
 	*ch_width = CH_WIDTH_INVALID;
 
