@@ -1834,6 +1834,19 @@ struct rx_refill_buff_pool {
 };
 
 #if defined(DP_FEATURE_TX_PAGE_POOL) || defined(DP_FEATURE_RX_BUFFER_RECYCLE)
+
+#if PAGE_SIZE == 4096
+#define DP_PP_PAGE_SIZE_HIGHER_ORDER	(2 * DP_PP_PAGE_SIZE_MIDDLE_ORDER)
+#define DP_PP_PAGE_SIZE_MIDDLE_ORDER	(4 * DP_PP_PAGE_SIZE_LOWER_ORDER)
+#define DP_PP_PAGE_SIZE_LOWER_ORDER	PAGE_SIZE
+#elif PAGE_SIZE == 16384
+#define DP_PP_PAGE_SIZE_HIGHER_ORDER	(2 * DP_PP_PAGE_SIZE_MIDDLE_ORDER)
+#define DP_PP_PAGE_SIZE_MIDDLE_ORDER	DP_PP_PAGE_SIZE_LOWER_ORDER
+#define DP_PP_PAGE_SIZE_LOWER_ORDER	PAGE_SIZE
+#else
+#error "Unsupported kernel PAGE_SIZE"
+#endif
+
 /**
  * struct dp_page_pool_t - TX/RX Page pool prealloc info
  * @type: TX/RX page pool type
@@ -1855,6 +1868,10 @@ struct dp_page_pool_t {
 
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 #define DP_PAGE_POOL_MAX 4
+
+#define DP_RX_PP_POOL_SIZE_THRES	 4096
+#define DP_RX_PP_AUX_POOL_SIZE           2048
+#define DP_RX_PP_INACTIVE_WORK_DELAY_MS	10000
 
 #ifdef IPA_OFFLOAD
 /**
