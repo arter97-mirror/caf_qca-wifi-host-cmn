@@ -33,6 +33,10 @@
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <cdp_txrx_ctrl.h>
 #endif
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+#include "osif_link_reconfig.h"
+#endif
+
 #ifdef WLAN_MLO_MULTI_CHIP
 bool mlo_ap_vdev_attach(struct wlan_objmgr_vdev *vdev,
 			uint8_t link_id,
@@ -1044,6 +1048,54 @@ wlan_mlo_link_removal_cmd(struct wlan_objmgr_vdev *vdev,
 		wlan_vdev_mlme_op_flags_clear(vdev,
 				WLAN_VDEV_OP_MLO_LINK_REMOVAL_IN_PROGRESS);
 	}
+
+	return status;
+}
+
+QDF_STATUS
+wlan_mlo_link_remove_event_handler(struct wlan_objmgr_psoc *psoc,
+				   struct mlo_link_removal_evt_params *evt_params)
+{
+	struct wlan_objmgr_vdev *vdev;
+	QDF_STATUS status;
+	uint32_t tbtt_count;
+	uint64_t tsf;
+	uint16_t link_id;
+
+	if (!evt_params) {
+		mlo_err("evt_params is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, evt_params->vdev_id,
+						    WLAN_MLO_MGR_ID);
+	if (!vdev) {
+		mlo_err("vdev is NULL for vdev ID: %d", evt_params->vdev_id);
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!wlan_vdev_mlme_is_mlo_link_removal_in_progress(vdev)) {
+		mlo_err("Received link removal event when link removal is not in progress");
+		status = QDF_STATUS_E_INVAL;
+		goto release_ref;
+	}
+
+	tbtt_count = evt_params->tbtt_info.tbtt_count;
+	tsf = evt_params->tbtt_info.tsf;
+	link_id = wlan_vdev_get_link_id(vdev);
+
+	mlo_debug("Received link removal event TBTT:%u tsf: %llu link_id:%u",
+		  tbtt_count, tsf, link_id);
+
+	status = osif_mlo_sap_link_removal_evt_handler(vdev, tbtt_count,
+						       tsf, link_id);
+
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_err("Couldn't inform link removal event for vdev %d, status:%d",
+			vdev->vdev_objmgr.vdev_id, status);
+
+release_ref:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 
 	return status;
 }
