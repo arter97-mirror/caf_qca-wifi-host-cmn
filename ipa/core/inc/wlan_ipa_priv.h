@@ -285,7 +285,8 @@ struct wlan_ipa_tx_hdr {
     defined(QCA_WIFI_QCA6490) || defined(QCA_WIFI_QCA6750) || \
     defined(QCA_WIFI_WCN7850) || defined(QCA_WIFI_QCN9000) || \
     defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
-    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072) || \
+    defined(QCA_WIFI_QCN9224)
 /**
  * struct frag_header - fragment header type registered to IPA hardware
  * @length:    fragment length
@@ -325,7 +326,8 @@ struct frag_header {
     defined(QCA_WIFI_QCA6490) || defined(QCA_WIFI_QCA6750) || \
     defined(QCA_WIFI_WCN7850) || defined(QCA_WIFI_QCN9000) || \
     defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
-    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072) || \
+    defined(QCA_WIFI_QCN9224)
 /**
  * struct ipa_header - ipa header type registered to IPA hardware
  * @reserved: Reserved not used
