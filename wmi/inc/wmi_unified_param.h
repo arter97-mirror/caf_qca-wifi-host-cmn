@@ -6898,6 +6898,9 @@ typedef enum {
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service_wfd_r2,
 #endif
+#ifdef FEATURE_WLAN_SUPPORT_PCC
+	wmi_service_pcc_mode,
+#endif
 #if defined(FEATURE_WLAN_TDLS) && defined(WLAN_FEATURE_TDLS_NSS_4_4)
 	wmi_service_tdls_nss_confirm_support,
 #endif
