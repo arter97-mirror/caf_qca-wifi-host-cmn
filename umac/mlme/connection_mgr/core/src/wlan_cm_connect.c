@@ -1683,10 +1683,10 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 	uint32_t num_bss = 0;
 	qdf_list_t *candidate_list = NULL;
 	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct scan_cache_node *scan_entry;
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
-	struct qdf_mac_addr *bssid;
+	struct qdf_mac_addr *bssid, self_mac;
 	bool found;
 
 	pdev = wlan_vdev_get_pdev(cm_ctx->vdev);
@@ -1711,6 +1711,8 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 		goto free_list;
 	}
 
+	qdf_mem_copy(&self_mac, wlan_vdev_mlme_get_macaddr(cm_ctx->vdev),
+		     sizeof(struct qdf_mac_addr));
 	while (cur_node) {
 		qdf_list_peek_next(candidate_list, cur_node, &next_node);
 
@@ -1732,9 +1734,15 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 			goto free_list;
 		}
 
-		status = qdf_list_insert_after(cm_req->candidate_list,
-					       &scan_entry->node,
-					       &prev_candidate->node);
+		if (QDF_IS_LAST_3_BYTES_OF_MAC_SAME(&self_mac, bssid) ||
+		    cm_is_better_bss(scan_entry->entry, prev_candidate->entry))
+			status = qdf_list_insert_after(cm_req->candidate_list,
+						       &scan_entry->node,
+						       &prev_candidate->node);
+		else
+			cm_list_insert_sorted(cm_req->candidate_list,
+					      scan_entry);
+
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlme_err(CM_PREFIX_FMT "failed to insert node for " QDF_MAC_ADDR_FMT " to candidate list",
 				 CM_PREFIX_REF(vdev_id, cm_req->cm_id),

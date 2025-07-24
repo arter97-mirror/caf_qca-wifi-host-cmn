@@ -168,8 +168,8 @@ cm_is_mlo_entry(struct scan_cache_entry *bss1, struct scan_cache_entry *bss2)
 }
 #endif
 
-static bool cm_is_better_bss(struct scan_cache_entry *bss1,
-			     struct scan_cache_entry *bss2)
+bool cm_is_better_bss(struct scan_cache_entry *bss1,
+		      struct scan_cache_entry *bss2)
 {
 	if (bss1->bss_score > bss2->bss_score)
 		return true;
@@ -2892,8 +2892,8 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	return score;
 }
 
-static void cm_list_insert_sorted(qdf_list_t *scan_list,
-				  struct scan_cache_node *scan_entry)
+void cm_list_insert_sorted(qdf_list_t *scan_list,
+			   struct scan_cache_node *scan_entry)
 {
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
 	struct scan_cache_node *curr_entry;
