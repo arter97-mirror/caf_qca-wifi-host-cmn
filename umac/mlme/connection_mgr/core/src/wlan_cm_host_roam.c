@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -488,77 +488,6 @@ static QDF_STATUS cm_reassoc_cmd_timeout(struct cnx_mgr *cm_ctx,
 	return status;
 }
 
-#ifdef WLAN_CM_USE_SPINLOCK
-static QDF_STATUS cm_activate_reassoc_req_sched_cb(struct scheduler_msg *msg)
-{
-	struct wlan_serialization_command *cmd = msg->bodyptr;
-	struct wlan_objmgr_vdev *vdev;
-	struct cnx_mgr *cm_ctx;
-	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
-
-	if (!cmd || !cmd->vdev) {
-		mlme_err("Invalid Input");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	vdev = cmd->vdev;
-	cm_ctx = cm_get_cm_ctx(vdev);
-	if (!cm_ctx)
-		return QDF_STATUS_E_INVAL;
-
-	ret = cm_sm_deliver_event(vdev,
-				  WLAN_CM_SM_EV_REASSOC_ACTIVE,
-				  sizeof(wlan_cm_id),
-				  &cmd->cmd_id);
-	/*
-	 * Called from scheduler context hence posting failure
-	 */
-	if (QDF_IS_STATUS_ERROR(ret))
-		cm_reassoc_handle_event_post_fail(cm_ctx, cmd->cmd_id);
-
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_CM_ID);
-	return ret;
-}
-
-static QDF_STATUS
-cm_activate_reassoc_req(struct wlan_serialization_command *cmd)
-{
-	struct wlan_objmgr_vdev *vdev = cmd->vdev;
-	struct scheduler_msg msg = {0};
-	QDF_STATUS ret;
-
-	msg.bodyptr = cmd;
-	msg.callback = cm_activate_reassoc_req_sched_cb;
-	msg.flush_callback = cm_activate_cmd_req_flush_cb;
-
-	ret = wlan_objmgr_vdev_try_get_ref(vdev, WLAN_MLME_CM_ID);
-	if (QDF_IS_STATUS_ERROR(ret))
-		return ret;
-
-	ret = scheduler_post_message(QDF_MODULE_ID_MLME,
-				     QDF_MODULE_ID_MLME,
-				     QDF_MODULE_ID_MLME, &msg);
-
-	if (QDF_IS_STATUS_ERROR(ret)) {
-		mlme_err(CM_PREFIX_FMT "Failed to post scheduler_msg",
-			 CM_PREFIX_REF(wlan_vdev_get_id(vdev), cmd->cmd_id));
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_CM_ID);
-		return ret;
-	}
-
-	return ret;
-}
-#else
-static QDF_STATUS
-cm_activate_reassoc_req(struct wlan_serialization_command *cmd)
-{
-	return cm_sm_deliver_event(cmd->vdev,
-				   WLAN_CM_SM_EV_REASSOC_ACTIVE,
-				   sizeof(wlan_cm_id),
-				   &cmd->cmd_id);
-}
-#endif
-
 static QDF_STATUS
 cm_ser_reassoc_cb(struct wlan_serialization_command *cmd,
 		  enum wlan_serialization_cb_reason reason)
@@ -588,7 +517,10 @@ cm_ser_reassoc_cb(struct wlan_serialization_command *cmd,
 		 * as lock is already acquired by the requester.
 		 */
 		if (cmd->activation_reason == SER_PENDING_TO_ACTIVE)
-			status = cm_activate_reassoc_req(cmd);
+			status = cm_sm_deliver_event(cmd->vdev,
+						WLAN_CM_SM_EV_REASSOC_ACTIVE,
+						sizeof(wlan_cm_id),
+						&cmd->cmd_id);
 		else
 			status = cm_sm_deliver_event_sync(
 					cm_ctx, WLAN_CM_SM_EV_REASSOC_ACTIVE,

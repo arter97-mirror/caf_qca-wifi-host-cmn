@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,35 +25,6 @@
 #include "wlan_scan_api.h"
 #include "wlan_mlo_mgr_link_switch.h"
 
-#ifdef WLAN_CM_USE_SPINLOCK
-/**
- * cm_req_lock_create - Create CM req SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * Creates CM SM mutex/spinlock
- *
- * Return: void
- */
-static inline void
-cm_req_lock_create(struct cnx_mgr *cm_ctx)
-{
-	qdf_spinlock_create(&cm_ctx->cm_req_lock);
-}
-
-/**
- * cm_req_lock_destroy - Destroy CM SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * Destroy CM SM mutex/spinlock
- *
- * Return: void
- */
-static inline void
-cm_req_lock_destroy(struct cnx_mgr *cm_ctx)
-{
-	qdf_spinlock_destroy(&cm_ctx->cm_req_lock);
-}
-#else
 static inline void
 cm_req_lock_create(struct cnx_mgr *cm_ctx)
 {
@@ -65,7 +36,6 @@ cm_req_lock_destroy(struct cnx_mgr *cm_ctx)
 {
 	qdf_mutex_destroy(&cm_ctx->cm_req_lock);
 }
-#endif /* WLAN_CM_USE_SPINLOCK */
 
 QDF_STATUS wlan_cm_init(struct vdev_mlme_obj *vdev_mlme)
 {

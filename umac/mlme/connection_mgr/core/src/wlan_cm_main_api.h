@@ -29,9 +29,6 @@
 #include <include/wlan_mlme_cmn.h>
 #include <wlan_crypto_global_api.h>
 #include <wlan_if_mgr_api.h>
-#ifdef WLAN_CM_USE_SPINLOCK
-#include <scheduler_api.h>
-#endif
 #include <wlan_cp_stats_chipset_stats.h>
 
 #define CM_ID_LSWITCH_BIT 0x10000000
@@ -1448,16 +1445,6 @@ static inline void cm_req_history_deinit(struct cnx_mgr *cm_ctx)
 
 static inline void cm_req_history_print(struct cnx_mgr *cm_ctx)
 {}
-#endif
-
-#ifdef WLAN_CM_USE_SPINLOCK
-/**
- * cm_activate_cmd_req_flush_cb() - Callback when the scheduler msg is flushed
- * @msg: scheduler message
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS cm_activate_cmd_req_flush_cb(struct scheduler_msg *msg);
 #endif
 
 /**

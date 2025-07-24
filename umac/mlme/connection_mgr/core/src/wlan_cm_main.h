@@ -94,11 +94,7 @@ enum wlan_cm_sm_state {
  * @cm_substate: current substate
  */
 struct cm_state_sm {
-#ifdef WLAN_CM_USE_SPINLOCK
-	qdf_spinlock_t cm_sm_lock;
-#else
 	qdf_mutex_t cm_sm_lock;
-#endif
 	struct wlan_sm *sm_hdl;
 	enum wlan_cm_sm_state cm_state;
 	enum wlan_cm_sm_state cm_substate;
@@ -288,11 +284,7 @@ struct cnx_mgr {
 	wlan_cm_id active_cm_id;
 	bool preauth_in_progress;
 	qdf_list_t req_list;
-#ifdef WLAN_CM_USE_SPINLOCK
-	qdf_spinlock_t cm_req_lock;
-#else
 	qdf_mutex_t cm_req_lock;
-#endif
 	uint8_t disconnect_count;
 	uint8_t connect_count;
 	bool force_rsne_override;

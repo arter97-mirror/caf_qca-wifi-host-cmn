@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -155,61 +155,6 @@ void cm_sm_history_print(struct wlan_objmgr_vdev *vdev)
 { }
 #endif
 
-#ifdef WLAN_CM_USE_SPINLOCK
-/**
- * cm_lock_create() - Create CM SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * Creates CM SM mutex/spinlock
- *
- * Return: void
- */
-static inline void
-cm_lock_create(struct cnx_mgr *cm_ctx)
-{
-	qdf_spinlock_create(&cm_ctx->sm.cm_sm_lock);
-}
-
-/**
- * cm_lock_destroy() - Destroy CM SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * Destroy CM SM mutex/spinlock
- *
- * Return: void
- */
-static inline void
-cm_lock_destroy(struct cnx_mgr *cm_ctx)
-{
-	qdf_spinlock_destroy(&cm_ctx->sm.cm_sm_lock);
-}
-
-/**
- * cm_lock_acquire() - acquire CM SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * acquire CM SM mutex/spinlock
- *
- * return: void
- */
-static inline void cm_lock_acquire(struct cnx_mgr *cm_ctx)
-{
-	qdf_spin_lock_bh(&cm_ctx->sm.cm_sm_lock);
-}
-
-/**
- * cm_lock_release() - release CM SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * release CM SM mutex/spinlock
- *
- * return: void
- */
-static inline void cm_lock_release(struct cnx_mgr *cm_ctx)
-{
-	qdf_spin_unlock_bh(&cm_ctx->sm.cm_sm_lock);
-}
-#else
 static inline void
 cm_lock_create(struct cnx_mgr *cm_ctx)
 {
@@ -231,7 +176,6 @@ static inline void cm_lock_release(struct cnx_mgr *cm_ctx)
 {
 	qdf_mutex_release(&cm_ctx->sm.cm_sm_lock);
 }
-#endif /* WLAN_CM_USE_SPINLOCK */
 
 /**
  * cm_sm_transition_to() - invokes state transition

@@ -129,48 +129,6 @@ void cm_reset_active_cm_id(struct wlan_objmgr_vdev *vdev, wlan_cm_id cm_id)
 		cm_ctx->active_cm_id = CM_ID_INVALID;
 }
 
-
-#ifdef WLAN_CM_USE_SPINLOCK
-/**
- * cm_req_lock_acquire - acquire CM SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * acquire CM SM mutex/spinlock
- *
- * return: void
- */
-inline void cm_req_lock_acquire(struct cnx_mgr *cm_ctx)
-{
-	qdf_spinlock_acquire(&cm_ctx->cm_req_lock);
-}
-
-/**
- * cm_req_lock_release - release CM SM mutex/spinlock
- * @cm_ctx:  connection manager ctx
- *
- * release CM SM mutex/spinlock
- *
- * return: void
- */
-inline void cm_req_lock_release(struct cnx_mgr *cm_ctx)
-{
-	qdf_spinlock_release(&cm_ctx->cm_req_lock);
-}
-
-QDF_STATUS cm_activate_cmd_req_flush_cb(struct scheduler_msg *msg)
-{
-	struct wlan_serialization_command *cmd = msg->bodyptr;
-
-	if (!cmd || !cmd->vdev) {
-		mlme_err("Null input cmd:%pK", cmd);
-		return QDF_STATUS_E_INVAL;
-	}
-
-	wlan_objmgr_vdev_release_ref(cmd->vdev, WLAN_MLME_CM_ID);
-	return QDF_STATUS_SUCCESS;
-}
-
-#else
 inline void cm_req_lock_acquire(struct cnx_mgr *cm_ctx)
 {
 	qdf_mutex_acquire(&cm_ctx->cm_req_lock);
@@ -180,7 +138,6 @@ inline void cm_req_lock_release(struct cnx_mgr *cm_ctx)
 {
 	qdf_mutex_release(&cm_ctx->cm_req_lock);
 }
-#endif /* WLAN_CM_USE_SPINLOCK */
 
 QDF_STATUS cm_set_key(struct cnx_mgr *cm_ctx, bool unicast,
 		      uint8_t key_idx, struct qdf_mac_addr *bssid)
