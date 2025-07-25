@@ -712,8 +712,10 @@ struct mlo_vdev_start_partner_links {
  * @pmf_enabled: pmf enabled
  * @ssid: ssid MAC
  * @num_noa_descriptors: number of noa descriptors
- * @preferred_tx_streams: preferred tx streams
- * @preferred_rx_streams: preferred rx streams
+ * @pref_tx_ss: preferred tx streams
+ * @pref_rx_ss: preferred rx streams
+ * @oper_tx_ss: current operating tx streams
+ * @oper_rx_ss: current operating rx streams
  * @cac_duration_ms: cac duration in milliseconds
  * @regdomain: Regulatory domain
  * @he_ops: HE ops
@@ -741,8 +743,10 @@ struct vdev_start_params {
 	bool pmf_enabled;
 	struct wlan_ssid ssid;
 	uint32_t num_noa_descriptors;
-	uint32_t preferred_rx_streams;
-	uint32_t preferred_tx_streams;
+	uint32_t pref_tx_ss;
+	uint32_t pref_rx_ss;
+	uint32_t oper_tx_ss;
+	uint32_t oper_rx_ss;
 	uint32_t cac_duration_ms;
 	uint32_t regdomain;
 	uint32_t he_ops;

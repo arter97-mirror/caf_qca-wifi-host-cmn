@@ -535,9 +535,8 @@ bool vdev_mgr_is_sta_max_phy_enabled(enum QDF_OPMODE op_mode,
 }
 #endif
 
-static QDF_STATUS vdev_mgr_start_param_update(
-					struct vdev_mlme_obj *mlme_obj,
-					struct vdev_start_params *param)
+static QDF_STATUS vdev_mgr_start_param_update(struct vdev_mlme_obj *mlme_obj,
+					      struct vdev_start_params *param)
 {
 	struct wlan_channel *des_chan;
 	uint32_t dfs_reg;
@@ -603,10 +602,34 @@ static QDF_STATUS vdev_mgr_start_param_update(
 	param->beacon_interval = mlme_obj->proto.generic.beacon_interval;
 	param->dtim_period = mlme_obj->proto.generic.dtim_period;
 	param->disable_hw_ack = mlme_obj->mgmt.generic.disable_hw_ack;
-	param->preferred_rx_streams =
-		mlme_obj->mgmt.chainmask_info.num_rx_chain;
-	param->preferred_tx_streams =
-		mlme_obj->mgmt.chainmask_info.num_tx_chain;
+	mlme_get_vdev_nss_by_freq_from_dyn(mlme_obj->vdev,
+					   des_chan->ch_freq,
+					   (uint8_t *)&param->pref_tx_ss,
+					   (uint8_t *)&param->pref_rx_ss);
+
+	if (vdev_mgr_is_opmode_sap_or_p2p_go(op_mode)) {
+		param->channel.dfs_set =
+			wlan_reg_is_dfs_for_freq(pdev, des_chan->ch_freq);
+
+		policy_mgr_update_dfs_master_dynamic_enabled(wlan_pdev_get_psoc(pdev),
+							     true, op_mode, des_chan);
+
+		if (!wlan_mlme_get_sap_supports_nss_change(mlme_obj->vdev)) {
+			wlan_vdev_mlme_get_bss_nss_params(mlme_obj->vdev,
+							  (uint8_t *)&param->pref_tx_ss,
+							  (uint8_t *)&param->pref_rx_ss,
+							  (uint8_t *)&param->oper_tx_ss,
+							  (uint8_t *)&param->oper_rx_ss);
+		} else {
+			param->oper_tx_ss = param->pref_tx_ss;
+			param->oper_rx_ss = param->pref_rx_ss;
+		}
+	} else {
+		param->oper_tx_ss = QDF_MIN(param->pref_tx_ss,
+					    mlme_obj->proto.generic.op_tx_nss);
+		param->oper_rx_ss = QDF_MIN(param->pref_rx_ss,
+					    mlme_obj->proto.generic.op_rx_nss);
+	}
 
 	wlan_reg_get_dfs_region(pdev, &dfs_reg);
 	param->regdomain = dfs_reg;
@@ -620,11 +643,6 @@ static QDF_STATUS vdev_mgr_start_param_update(
 	param->channel.mhz = des_chan->ch_freq;
 	param->channel.half_rate = mlme_obj->mgmt.rate_info.half_rate;
 	param->channel.quarter_rate = mlme_obj->mgmt.rate_info.quarter_rate;
-
-	if (vdev_mgr_is_opmode_sap_or_p2p_go(op_mode))
-		param->channel.dfs_set = wlan_reg_is_dfs_for_freq(
-							pdev,
-							des_chan->ch_freq);
 
 	param->channel.is_chan_passive =
 		utils_is_dfs_chan_for_freq(pdev, param->channel.mhz);
@@ -696,21 +714,7 @@ void vdev_mgr_get_target_tsf(struct vdev_start_params *param,
 }
 #endif
 
-static void vdev_update_dfs_master_state(struct wlan_objmgr_vdev *vdev)
-{
-	enum QDF_OPMODE op_mode;
-
-	op_mode = wlan_vdev_mlme_get_opmode(vdev);
-	if (op_mode == QDF_SAP_MODE || op_mode == QDF_P2P_GO_MODE)
-		policy_mgr_update_dfs_master_dynamic_enabled(
-				wlan_vdev_get_psoc(vdev),
-				true, op_mode,
-				vdev->vdev_mlme.des_chan);
-}
-
-QDF_STATUS vdev_mgr_start_send(
-			struct vdev_mlme_obj *mlme_obj,
-			bool restart)
+QDF_STATUS vdev_mgr_start_send(struct vdev_mlme_obj *mlme_obj, bool restart)
 {
 	QDF_STATUS status;
 	struct vdev_start_params param = {0};
@@ -720,17 +724,16 @@ QDF_STATUS vdev_mgr_start_send(
 		return QDF_STATUS_E_INVAL;
 	}
 
+	if (restart) {
+		param.is_restart = true;
+		vdev_mgr_get_target_tsf(&param, mlme_obj->vdev);
+	}
+
 	status = vdev_mgr_start_param_update(mlme_obj, &param);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlme_err("Param Update Error: %d", status);
 		return status;
 	}
-
-	param.is_restart = restart;
-	if (param.is_restart)
-		vdev_mgr_get_target_tsf(&param, mlme_obj->vdev);
-
-	vdev_update_dfs_master_state(mlme_obj->vdev);
 
 	status = tgt_vdev_mgr_start_send(mlme_obj, &param);
 

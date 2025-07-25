@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -405,7 +405,7 @@ static QDF_STATUS fake_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
 		(int)req->channel.dfs_set, req->beacon_intval, req->dtim_period,
 		req->channel.cfreq1, req->channel.cfreq2,
 		req->channel.maxregpower,
-		req->preferred_tx_streams, req->preferred_rx_streams,
+		req->pref_tx_ss, req->pref_rx_ss,
 		(int)req->ldpc_rx_enabled, req->cac_duration_ms,
 		req->regdomain, req->he_ops);
 	ucfg_ocb_config_channel(wma->pdev);

@@ -1492,8 +1492,11 @@ static QDF_STATUS send_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
 
 	cmd->flags |= WMI_UNIFIED_VDEV_START_LDPC_RX_ENABLED;
 	cmd->num_noa_descriptors = req->num_noa_descriptors;
-	cmd->preferred_rx_streams = req->preferred_rx_streams;
-	cmd->preferred_tx_streams = req->preferred_tx_streams;
+	cmd->preferred_rx_streams = req->pref_rx_ss;
+	cmd->preferred_tx_streams = req->pref_tx_ss;
+	cmd->vdev_op_ul_nss = req->oper_tx_ss;
+	cmd->vdev_op_dl_nss = req->oper_rx_ss;
+
 	cmd->cac_duration_ms = req->cac_duration_ms;
 	cmd->regdomain = req->regdomain;
 	cmd->he_ops = req->he_ops;
@@ -1518,17 +1521,17 @@ static QDF_STATUS send_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
 	wmi_info("vdev_id %d freq %d chanmode %d ch_info: 0x%x is_dfs %d "
 		 "beacon interval %d dtim %d center_chan %d center_freq2 %d "
 		 "reg_info_1: 0x%x reg_info_2: 0x%x, req->max_txpow: 0x%x "
-		 "Tx SS %d, Rx SS %d, ldpc_rx: %d, cac %d, regd %d, HE ops: %d"
-		 "req->dis_hw_ack: %d target_tsf_us_lo %ul target_tsf_us_hi %ul",
+		 "pref Tx/RX %dx%d, oper Tx/Rx %dx%d, ldpc_rx: %d, cac %d, "
+		 "regd %d, HE ops: %d, req->dis_hw_ack: %d "
+		 "target_tsf_us_lo %ul target_tsf_us_hi %ul",
 		 req->vdev_id, chan->mhz, req->channel.phy_mode, chan->info,
 		 req->channel.dfs_set, req->beacon_interval, cmd->dtim_period,
 		 chan->band_center_freq1, chan->band_center_freq2,
 		 chan->reg_info_1, chan->reg_info_2, req->channel.maxregpower,
-		 req->preferred_tx_streams, req->preferred_rx_streams,
-		 req->ldpc_rx_enabled, req->cac_duration_ms,
-		 req->regdomain, req->he_ops,
-		 req->disable_hw_ack, req->target_tsf_us_lo,
-		 req->target_tsf_us_hi);
+		 req->pref_tx_ss, req->pref_rx_ss, req->oper_tx_ss,
+		 req->oper_rx_ss, req->ldpc_rx_enabled, req->cac_duration_ms,
+		 req->regdomain, req->he_ops, req->disable_hw_ack,
+		 req->target_tsf_us_lo, req->target_tsf_us_hi);
 
 	vdev_start_cmd_fill_11be(cmd, req);
 
