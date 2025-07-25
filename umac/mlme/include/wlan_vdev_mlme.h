@@ -557,14 +557,10 @@ struct vdev_mlme_rate_info {
  * struct vdev_mlme_chainmask_info - vdev mlme chainmask information
  * @tx_chainmask: Tx chainmask
  * @rx_chainmask: Rx Chainmask
- * @num_rx_chain: Num of bits set in Rx chain
- * @num_tx_chain: Num of bits set in Tx chain
  */
 struct vdev_mlme_chainmask_info {
 	uint8_t tx_chainmask;
 	uint8_t rx_chainmask;
-	uint8_t num_rx_chain;
-	uint8_t num_tx_chain;
 };
 
 /**

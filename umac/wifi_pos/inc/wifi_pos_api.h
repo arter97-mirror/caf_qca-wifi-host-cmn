@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -112,7 +112,6 @@ struct wifi_pos_ch_info {
 	uint32_t info;
 	uint32_t reg_info_1;
 	uint32_t reg_info_2;
-	uint8_t nss;
 	uint32_t rate_flags;
 	uint8_t sec_ch_offset;
 	uint32_t ch_width;
