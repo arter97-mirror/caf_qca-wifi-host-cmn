@@ -99,6 +99,7 @@ void dp_tx_update_eapol_comp_status_stats(struct dp_soc *soc,
 #define DP_TX_DESC_FLAG_SPECIAL         0x80000
 #define DP_TX_DESC_FLAG_BCAST           0x100000
 #define DP_TX_DESC_FLAG_OPT_DP_CTRL           0x200000
+#define DP_TX_DESC_FLAG_REAPED		0x400000
 
 #define DP_TX_EXT_DESC_FLAG_METADATA_VALID 0x1
 
@@ -2758,6 +2759,7 @@ static inline
 void dp_tx_msdu_info_set_eth_type_fields(struct dp_tx_msdu_info_s *msdu_info,
 					 uint16_t eth_type)
 {
+	dp_err("%s-%d eth_type 0x%x", __func__, __LINE__, eth_type);
 	msdu_info->l3_type = eth_type;
 	msdu_info->type_or_length = eth_type > 0x600 ? 1 : 0;
 
