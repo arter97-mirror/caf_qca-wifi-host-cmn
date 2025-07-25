@@ -2015,18 +2015,48 @@ mlo_mgr_update_policy_mgr_disabled_links_info(struct wlan_objmgr_psoc *psoc,
 {}
 #endif
 
+static uint32_t mlo_mgr_get_link_state_change_reason(uint32_t reason_code)
+{
+	switch (reason_code) {
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_VDEV_READY:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_VDEV_UP;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_ULL_MODE:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_ULL_MODE;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_T2LM_ENABLED:
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_T2LM_DISABLED:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_T2LM;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_FORCE_ENABLED:
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_FORCE_DISABLED:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_FORCED;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_LINK_QUALITY:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_LOW_QUALITY;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_LINK_CAPACITY:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_CAPACITY;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_RSSI:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_LOW_RSSI;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_BMISS:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_BMISS;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_BT_STATUS:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_BT_STATUS;
+	case WMI_MLO_PS_LINK_STATE_SWITCH_REASON_MAX:
+	default:
+		return QCA_WLAN_VENDOR_STATE_CHANGE_REASON_UNKNOWN;
+	}
+}
+
 #define IS_LINK_SET(link_bitmap, link_id) ((link_bitmap) & (BIT(link_id)))
 
 #define WLAN_MLO_SINGLE_LINK 1
 static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 				      struct wlan_mlo_dev_context *mld_ctx,
-				      uint32_t active_link_bitmap)
+				      struct mlo_link_switch_params *params)
 {
 	uint8_t i, vdev_id, num_links = 0;
 	struct mlo_link_info *link_info;
 	struct wlan_objmgr_vdev *vdev;
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
 	bool is_cb_register = false;
+	uint32_t inactive_link_bitmap = 0, reason_code;
 
 	if (mlo_ctx && mlo_ctx->osif_ops &&
 	    mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state)
@@ -2040,10 +2070,12 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 		    qdf_is_macaddr_zero(&link_info->link_addr))
 			continue;
 
-		if (IS_LINK_SET(active_link_bitmap, link_info->link_id))
+		if (IS_LINK_SET(params->active_link_bitmap, link_info->link_id)) {
 			link_info->is_link_active = true;
-		else
+		} else {
 			link_info->is_link_active = false;
+			inactive_link_bitmap |= BIT(link_info->link_id);
+		}
 
 		vdev_id = link_info->vdev_id;
 		mlo_debug("vdev:%d is_link_active:%d num_links:%d", vdev_id,
@@ -2082,6 +2114,17 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 								      link_info->is_link_active);
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	}
+
+	reason_code = mlo_mgr_get_link_state_change_reason(params->reason_code);
+
+	if (!mlo_ctx || !mlo_ctx->osif_ops ||
+	    !mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state_change)
+		return;
+
+	mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state_change(
+						reason_code,
+						params->active_link_bitmap,
+						inactive_link_bitmap);
 }
 
 QDF_STATUS
@@ -2105,9 +2148,8 @@ mlo_mgr_link_state_switch_info_handler(struct wlan_objmgr_psoc *psoc,
 		wlan_connectivity_mld_link_status_event(
 				psoc,
 				&info->link_switch_param[i]);
-		mlo_mgr_update_link_state(
-				psoc, mld_ctx,
-				info->link_switch_param[i].active_link_bitmap);
+		mlo_mgr_update_link_state(psoc, mld_ctx,
+					  &info->link_switch_param[i]);
 	}
 
 	return status;

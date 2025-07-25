@@ -208,6 +208,8 @@
  * get station sent for ucast cmd
  * @QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX: Idle shutdown event index
  * @QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX: Power boost event index
+ * @QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX: Event index for MLO
+ * link state switch event
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -358,6 +360,9 @@ enum qca_nl80211_vendor_subcmds_index {
 	QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX,
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX,
+#endif
+#ifdef WLAN_FEATURE_11BE_MLO
+	QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX,
 #endif
 };
 

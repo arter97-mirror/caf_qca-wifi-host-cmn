@@ -1685,6 +1685,8 @@ struct mlo_mlme_ext_ops {
  * @mlo_mgr_osif_update_link_state: update link state in OSIF
  * @mlo_mgr_osif_chan_switch_notification: Callback to update standby link chan
  *                                         info to HDD on channel switch.
+ * @mlo_mgr_osif_update_link_state_change: Callback to notify link state change
+ * to the userspace.
  */
 struct mlo_osif_ext_ops {
 	QDF_STATUS
@@ -1716,6 +1718,10 @@ struct mlo_osif_ext_ops {
 	QDF_STATUS
 	(*mlo_mgr_osif_chan_switch_notification)(
 					struct qdf_mac_addr *link_mac_address);
+	void
+	(*mlo_mgr_osif_update_link_state_change)(uint32_t reason,
+						 uint32_t curr_active_bmap,
+						 uint32_t inactive_bmap);
 };
 
 /* maximum size of vdev bitmap array for MLO link set active command */
