@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -205,6 +205,8 @@
  * @QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX: Event index for async
  * get station sent for ucast cmd
  * @QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX: Idle shutdown event index
+ * @QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX: Event index for MLO
+ * link state switch event
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -352,6 +354,9 @@ enum qca_nl80211_vendor_subcmds_index {
 #endif
 	QCA_NL80211_VENDOR_SUBCMD_ASYNC_GET_STATION_INDEX,
 	QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX,
+#ifdef WLAN_FEATURE_11BE_MLO
+	QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX,
+#endif
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \
