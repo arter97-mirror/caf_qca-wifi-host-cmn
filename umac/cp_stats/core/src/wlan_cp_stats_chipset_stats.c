@@ -158,6 +158,66 @@ static void wlan_cp_stats_get_cstats_free_node(enum cstats_types type)
 	cstats.ccur_node[type]->filled_length = 0;
 }
 
+void wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
+					     void *to_be_sent, uint32_t plen)
+{
+	char *buf, *ptr;
+	unsigned int total_len;
+	uint64_t *event_l, second_64_hex;
+
+	if (!cstats.is_cstats_ini_enabled || !to_be_sent)
+		return;
+
+	/* ensure buffer node exists before writing */
+	if (!cstats.ccur_node[type]) {
+		qdf_err("Current Node is NULL");
+		return;
+	}
+
+	/*
+	 * If debug logging is enabled, extract timestamp from payload and
+	 * log it.
+	 */
+	if (cstats.is_cp_stats_debug_logging_enable) {
+		event_l = (uint64_t *)to_be_sent;
+		/* timestamp is stored in the second 64 bits */
+		qdf_mem_copy(&second_64_hex, event_l + 1, 8);
+		cp_stats_debug("CSTATS FW EVENT received at timestamp: %llu, event_len: %d",
+			       second_64_hex, plen);
+	}
+
+	qdf_spin_lock_bh(&cstats.cstats_lock[type]);
+
+	/* point to beginning of log buffer */
+	buf = cstats.ccur_node[type]->logbuf;
+
+	/* point to buffer position after header to insert content */
+	ptr = &buf[sizeof(tAniNlHdr)];
+	/* insert firmware start marker */
+	memcpy(ptr, CSTATS_FW_START_MARKER, CSTATS_MARKER_SZ);
+	/* copy actual firmware payload */
+	memcpy(ptr + CSTATS_MARKER_SZ, to_be_sent, plen);
+	/* append firmware end marker */
+	memcpy(ptr + CSTATS_MARKER_SZ + plen, CSTATS_FW_END_MARKER,
+	       CSTATS_MARKER_SZ);
+
+	/* calculate total message length including header and markers */
+	total_len = sizeof(tAniNlHdr) + plen + 2 * CSTATS_MARKER_SZ;
+
+	/*
+	 * no need to check for space in the current buffer, firmware handles
+	 * it so sends logs directly to userspace.
+	 */
+	if (cstats.ops.cstats_send_data_to_usr)
+		cstats.ops.cstats_send_data_to_usr(buf, total_len, type,
+				cstats.is_cp_stats_debug_logging_enable);
+
+	/* reset the current node values */
+	cstats.ccur_node[type]->filled_length = 0;
+
+	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
+}
+
 void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 					void *to_be_sent,
 					uint32_t plen)
@@ -220,6 +280,15 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 	}
 
 	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
+}
+
+void wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,
+					   int event_len)
+{
+	if (cstats.is_direct_log_dispatch_enabled)
+		wlan_cp_stats_fw_log_event_direct_flush(type, event, event_len);
+	else
+		wlan_cp_stats_cstats_write_to_buff(type, event, event_len);
 }
 
 static int wlan_cp_stats_cstats_send_version_to_usr(void)

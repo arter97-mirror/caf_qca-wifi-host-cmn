@@ -109,7 +109,8 @@ struct chipset_stats {
 };
 
 #define wlan_cstats_fw_stats(len, buf) \
-	wlan_cp_stats_cstats_write_to_buff(CSTATS_FW_TYPE, buf, len)
+	wlan_cp_stats_fw_log_event_dispatcher(CSTATS_FW_TYPE, buf, len);
+
 #define wlan_cstats_host_stats(len, buf) \
 	wlan_cp_stats_cstats_write_to_buff(CSTATS_HOST_TYPE, buf, len)
 
@@ -154,18 +155,53 @@ void wlan_cp_stats_cstats_deinit(void);
  */
 void wlan_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops);
 
-/*
- * wlan_cp_stats_cstats_write_to_buff() - Write stats to the chipset stats
- * buffer
- * @type: Type of chipset stats to be written
- * @to_be_sent: Pointer to stats payload which is to be write to cstats buffer
- * @length: Length of the payload
+/**
+ * wlan_cp_stats_cstats_write_to_buff() - Write cstats event to buffer
+ * @type: CSTATS type identifier (e.g., HOST or FW)
+ * @to_be_sent: Pointer to the event payload
+ * @length: Length of the event payload
  *
- * Return : void
+ * Writes chipset statistics (cstats) event data to the appropriate buffer
+ * based on the event type. For firmware events, start and end markers are
+ * added around the payload. For host events, only the payload is copied,
+ * and markers are added during flush to userspace.
+ *
+ * If the current buffer node lacks sufficient space, a new buffer node is
+ * allocated. Optionally logs the event timestamp if debug logging is enabled.
+ *
+ * Return: void
  */
 void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
-					void *to_be_sent,
-					uint32_t length);
+					void *to_be_sent, uint32_t length);
+
+/**
+ * wlan_cp_stats_fw_log_event_dispatcher() - Dispatch FW log event based on flag
+ * @type:       CSTATS type identifier
+ * @event:      Pointer to FW log event data
+ * @event_len:  Length of the FW log event data
+ *
+ * Dispatches firmware log events either directly to userspace or via
+ * buffered write, depending on the is_direct_log_dispatch_enabled flag.
+ *
+ * Return: void
+ */
+void wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,
+					   int event_len);
+
+/**
+ * wlan_cp_stats_fw_log_event_direct_flush() - Send FW log directly to userspace
+ * @type: CSTATS type identifier
+ * @to_be_sent: Pointer to FW log event data
+ * @plen: Length of the FW log event data
+ *
+ * Logs CSTATS_FW_TYPE entries by packaging them with markers
+ * and sending to userspace via callback without buffering logic.
+ *
+ * Return: void
+ */
+void
+wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
+					void *to_be_sent, uint32_t plen);
 
 /**
  * wlan_cp_stats_cstats_send_buffer_to_user() - Flush chipset stats to the
@@ -220,6 +256,18 @@ wlan_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops)
 static inline void
 wlan_cp_stats_cstats_write_to_buff(enum cstats_types type, void *to_be_sent,
 				   uint32_t length)
+{
+}
+
+static inline void
+wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
+					void *to_be_sent, uint32_t plen)
+{
+}
+
+static inline void
+wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,
+				      int event_len)
 {
 }
 
