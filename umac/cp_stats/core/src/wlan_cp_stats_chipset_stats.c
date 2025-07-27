@@ -218,6 +218,79 @@ void wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
 	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
 }
 
+void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
+					 void *to_be_sent, uint32_t plen)
+{
+	struct cstats_node *node;
+	char *buf, *ptr;
+	unsigned int *pfilled_length;
+	uint32_t header_len = sizeof(tAniNlHdr);
+	uint32_t marker_len = CSTATS_MARKER_SZ;
+	uint32_t total_len;
+
+	if (!cstats.is_cstats_ini_enabled || type != CSTATS_HOST_TYPE ||
+	    !to_be_sent)
+		return;
+
+	node = cstats.ccur_node[type];
+	if (!node) {
+		qdf_err("Current Node is NULL");
+		return;
+	}
+
+	qdf_spin_lock_bh(&cstats.cstats_lock[type]);
+
+	buf = node->logbuf;
+	pfilled_length = &node->filled_length;
+
+	/* Total required space: start + payload + end */
+	total_len = 2 * marker_len + plen;
+
+	/* If buffer can't fit new data, flush it */
+	if ((header_len + *pfilled_length + total_len) >
+	    MAX_CSTATS_NODE_LENGTH) {
+		/*
+		 * In hdd_cstats_send_data_to_userspace(), the host appends the
+		 * Netlink header to the buffer.
+		 */
+		if (cstats.ops.cstats_send_data_to_usr)
+			cstats.ops.cstats_send_data_to_usr(buf,
+				header_len + *pfilled_length, type,
+				cstats.is_cp_stats_debug_logging_enable);
+		/* Reset buffer after flush */
+		*pfilled_length = 0;
+		qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
+		return;
+	}
+
+	/*
+	 * Format of accommodated buffer is like:
+	 * [START_MARKER][PAYLOAD_1][END_MARKER]
+	 * [START_MARKER][PAYLOAD_2][END_MARKER]
+	 * .........
+	 * [START_MARKER][PAYLOAD_n][END_MARKER]
+	 */
+
+	/* Compute where to start writing in buffer
+	 * (after header + existing content)
+	 */
+	ptr = &buf[header_len + *pfilled_length];
+	/* Copy start marker */
+	memcpy(ptr, CSTATS_HOST_START_MARKER, marker_len);
+	/* Copy payload immediately after marker */
+	memcpy(ptr + marker_len, to_be_sent, plen);
+	/* Copy end marker after payload*/
+	memcpy(ptr + marker_len + plen, CSTATS_HOST_END_MARKER, marker_len);
+
+	/* Update filled length to reflect newly added data */
+	*pfilled_length += total_len;
+
+	if (cstats.is_cp_stats_debug_logging_enable)
+		qdf_debug("Updated pfilled_length: %u", *pfilled_length);
+
+	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
+}
+
 void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 					void *to_be_sent,
 					uint32_t plen)
@@ -280,6 +353,15 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 	}
 
 	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
+}
+
+void wlan_cp_stats_host_log_event_dispatcher(enum cstats_types type,
+					     void *event, uint32_t event_len)
+{
+	if (cstats.is_direct_log_dispatch_enabled)
+		wlan_cp_stats_host_append_and_flush(type, event, event_len);
+	else
+		wlan_cp_stats_cstats_write_to_buff(type, event, event_len);
 }
 
 void wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,

@@ -112,7 +112,7 @@ struct chipset_stats {
 	wlan_cp_stats_fw_log_event_dispatcher(CSTATS_FW_TYPE, buf, len);
 
 #define wlan_cstats_host_stats(len, buf) \
-	wlan_cp_stats_cstats_write_to_buff(CSTATS_HOST_TYPE, buf, len)
+	wlan_cp_stats_host_log_event_dispatcher(CSTATS_HOST_TYPE, buf, len)
 
 #ifdef WLAN_CHIPSET_STATS
 /**
@@ -175,6 +175,20 @@ void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 					void *to_be_sent, uint32_t length);
 
 /**
+ * wlan_cp_stats_host_log_event_dispatcher() - Handle conditional dispatch
+ * logic for host cp stats
+ * @type:      Type of cstats event
+ * @event:     Pointer to the event data
+ * @event_len: Length of the event data
+ *
+ * Based on the use_direct_fw_dispatch flag:
+ * direct dispatch (wlan_cp_stats_host_append_and_flush)
+ * buffered dispatch (wlan_cp_stats_cstats_write_to_buff)
+ */
+void wlan_cp_stats_host_log_event_dispatcher(enum cstats_types type,
+					     void *event, uint32_t event_len);
+
+/**
  * wlan_cp_stats_fw_log_event_dispatcher() - Dispatch FW log event based on flag
  * @type:       CSTATS type identifier
  * @event:      Pointer to FW log event data
@@ -202,6 +216,20 @@ void wlan_cp_stats_fw_log_event_dispatcher(enum cstats_types type, void *event,
 void
 wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
 					void *to_be_sent, uint32_t plen);
+
+
+/**
+ * wlan_cp_stats_host_append_and_flush() - Flush host cstats data
+ * @type:       Type of cstats event
+ * @to_be_sent: Pointer to the payload to be sent
+ * @plen:       Length of the payload
+ *
+ * Immediately writes the cstats payload to the buffer with start and end
+ * markers. If the buffer exceeds its limit, it is flushed to userspace
+ * via Netlink.
+ */
+void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
+					 void *to_be_sent, uint32_t plen);
 
 /**
  * wlan_cp_stats_cstats_send_buffer_to_user() - Flush chipset stats to the
@@ -256,6 +284,18 @@ wlan_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops)
 static inline void
 wlan_cp_stats_cstats_write_to_buff(enum cstats_types type, void *to_be_sent,
 				   uint32_t length)
+{
+}
+
+static inline
+void wlan_cp_stats_host_log_event_dispatcher(enum cstats_types type,
+					     void *event, uint32_t event_len)
+{
+}
+
+static inline
+void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
+					 void *to_be_sent, uint32_t plen)
 {
 }
 
