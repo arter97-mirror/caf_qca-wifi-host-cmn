@@ -107,6 +107,31 @@ void mlo_mgr_update_link_info_mac_addr(struct wlan_objmgr_vdev *vdev,
 	}
 }
 
+QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
+					  struct qdf_mac_addr *bssid,
+					  uint8_t *tx_nss, uint8_t *rx_nss)
+{
+	uint8_t link_info_iter;
+	struct mlo_link_info *link_info;
+
+	if (!vdev || !vdev->mlo_dev_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+	     link_info_iter++) {
+		if (qdf_is_macaddr_equal(&link_info->ap_link_addr, bssid)) {
+			*tx_nss = link_info->cnx_tx_nss;
+			*rx_nss = link_info->cnx_rx_nss;
+
+			return QDF_STATUS_SUCCESS;
+		}
+		link_info++;
+	}
+
+	return QDF_STATUS_E_NOENT;
+}
+
 void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 				 struct mlo_link_info *data)
 {
@@ -139,10 +164,10 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 
 			link_info++;
 		}
-	}
 
-	if (link_info_iter == WLAN_MAX_ML_BSS_LINKS)
-		return;
+		if (link_info_iter == WLAN_MAX_ML_BSS_LINKS)
+			return;
+	}
 
 	qdf_copy_macaddr(&link_info->ap_link_addr, &data->ap_link_addr);
 
@@ -151,11 +176,14 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 	link_info->chan_freq = link_info->link_chan_info->ch_freq;
 	link_info->link_status_flags = 0;
 	link_info->link_id = data->link_id;
+	link_info->cnx_tx_nss = data->cnx_tx_nss;
+	link_info->cnx_rx_nss = data->cnx_rx_nss;
 
-	mlo_debug("Update AP Link info for link_id: %d, freq: %d vdev_id:%d, link_addr:" QDF_MAC_ADDR_FMT,
-		  link_info->link_id, link_info->link_chan_info->ch_freq,
-		  link_info->vdev_id,
-		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
+	mlo_debug("VDEV %d link id %d cnx info - BSSID: " QDF_MAC_ADDR_FMT ", freq: %d, Tx/Rx nss %dx%d",
+		  link_info->vdev_id, link_info->link_id,
+		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes),
+		  link_info->link_chan_info->ch_freq,
+		  link_info->cnx_tx_nss, link_info->cnx_rx_nss);
 }
 
 struct mlo_link_info *

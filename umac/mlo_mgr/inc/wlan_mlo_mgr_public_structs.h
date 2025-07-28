@@ -935,39 +935,43 @@ struct mlnawds_config {
 
 /**
  * struct mlo_link_info - ML link info
- * @link_addr: link mac address
+ * @is_bridge : Bridge peer or not
+ * @is_link_active: link state
+ * @vdev_id: VDEV ID
  * @link_id: link index
  * @bpcc: Value of BPCC from the beacon or probe response in RNR or ML IE.
- * @is_bridge : Bridge peer or not
+ * @cnx_tx_nss: Intersected Tx NSS value with peer Rx NSS
+ * @cnx_rx_nss: Intersected Rx NSS value with peer Tx NSS
  * @chan_freq: Operating channel frequency
  * @nawds_config: peer's NAWDS configurarion
- * @vdev_id: VDEV ID
  * @mesh_config: peer's MESH configurarion
  * @link_status_flags: Current status of link
+ * @link_addr: link mac address
  * @ap_link_addr: Associated link BSSID
  * @link_chan_info: Associated link channel info
- * @is_link_active: link state
  * @link_status_code: wlan status code for link
  */
 struct mlo_link_info {
-	struct qdf_mac_addr link_addr;
+	bool is_bridge;
+	bool is_link_active;
+	uint8_t vdev_id;
 	uint8_t link_id;
 	uint8_t bpcc;
-	bool is_bridge;
+	uint8_t cnx_tx_nss;
+	uint8_t cnx_rx_nss;
 	uint16_t chan_freq;
 #ifdef UMAC_SUPPORT_MLNAWDS
 	struct mlnawds_config nawds_config;
 #endif
-	uint8_t vdev_id;
 #ifdef MESH_MODE_SUPPORT
 	struct mlnawds_config mesh_config;
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 	unsigned long link_status_flags;
+	struct qdf_mac_addr link_addr;
 	struct qdf_mac_addr ap_link_addr;
 	struct wlan_channel *link_chan_info;
 #endif
-	bool is_link_active;
 	enum wlan_status_code link_status_code;
 };
 
