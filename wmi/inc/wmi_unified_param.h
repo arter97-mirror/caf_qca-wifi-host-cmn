@@ -6891,6 +6891,7 @@ typedef enum {
 	wmi_service_per_vdev_twt_resp_disable_support,
 	wmi_service_vendor_oui_action_v2,
 	wmi_service_ndp_dfs_channel_support,
+	wmi_service_tx_power_limit,
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service_wfd_r2,
 #endif
