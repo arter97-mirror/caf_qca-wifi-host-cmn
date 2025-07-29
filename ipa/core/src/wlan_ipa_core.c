@@ -7211,6 +7211,8 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 				dp_flt_params->flt_addr_params[j].flt_hdl) {
 				dp_flt_params->flt_addr_params[j].
 					ipa_flt_evnt_required = 1;
+				dp_flt_params->flt_addr_params[j].
+					valid = 0;
 			}
 		}
 	}
@@ -7243,9 +7245,11 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 
 clear_flt_evt:
 	for (j = 0; j < IPA_WDI_MAX_FILTER; j++) {
-		if (dp_flt_params->flt_addr_params[j].ipa_flt_evnt_required)
+		if (dp_flt_params->flt_addr_params[j].ipa_flt_evnt_required) {
 			dp_flt_params->flt_addr_params[j].
 				ipa_flt_evnt_required = 0;
+			dp_flt_params->flt_addr_params[j].valid = 1;
+		}
 	}
 
 	return response;
