@@ -1411,7 +1411,12 @@ dfs_get_event_for_punctured_chan(struct wlan_dfs *dfs,
 		    freq < dfs_punc_obj->punc_high_freq) {
 			state = dfs_puncturing_get_curr_state(dfs_punc_obj);
 			if (state == DFS_S_PUNCTURED) {
-				*event = WLAN_EV_NOL_STARTED;
+				bool is_nol = wlan_reg_is_nol_for_freq(dfs->dfs_pdev_obj,
+								       freq);
+				if (is_nol)
+					*event = WLAN_EV_NOL_STARTED;
+				else
+					*event = WLAN_EV_CAC_RESET;
 			} else if (state == DFS_S_CAC_WAIT) {
 				*event = WLAN_EV_CAC_STARTED;
 			}
