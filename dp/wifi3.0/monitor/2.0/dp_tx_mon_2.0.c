@@ -27,7 +27,6 @@
 #include <dp_mon_2.0.h>
 #include <dp_tx_mon_2.0.h>
 #include <dp_be.h>
-#include <hal_be_api_mon.h>
 
 static inline uint32_t
 dp_tx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,

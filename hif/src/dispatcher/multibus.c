@@ -32,7 +32,6 @@
 #endif
 #include "htc_services.h"
 #include "a_types.h"
-#include "dummy.h"
 #include "qdf_module.h"
 #include "hif_exec.h"
 

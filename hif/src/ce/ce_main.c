@@ -20,7 +20,6 @@
 #include "targcfg.h"
 #include "qdf_lock.h"
 #include "qdf_status.h"
-#include "qdf_status.h"
 #include <qdf_atomic.h>         /* qdf_atomic_read */
 #include <targaddrs.h>
 #include "hif_io32.h"

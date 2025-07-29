@@ -28,7 +28,6 @@
 #include <cdp_txrx_cmn_struct.h>
 #include <wlan_mlme_dbg.h>
 #include <qdf_module.h>
-#include <wlan_vdev_mgr_tgt_if_tx_api.h>
 #include <wlan_dfs_mlme_api.h>
 #ifndef MOBILE_DFS_SUPPORT
 #include <wlan_dfs_utils_api.h>

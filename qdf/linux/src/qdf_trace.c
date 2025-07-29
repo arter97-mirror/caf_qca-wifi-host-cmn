@@ -36,7 +36,6 @@
 #define QDF_TRACE_LEVEL_TO_MODULE_BITMASK(_level) ((1 << (_level)))
 
 #include <wlan_logging_sock_svc.h>
-#include <qdf_module.h>
 static int qdf_pidx = -1;
 static bool qdf_log_dump_at_kernel_enable = true;
 qdf_declare_param(qdf_log_dump_at_kernel_enable, bool);

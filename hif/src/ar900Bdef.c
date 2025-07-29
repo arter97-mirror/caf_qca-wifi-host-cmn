@@ -46,7 +46,6 @@
 #include <AR900B/hw/interface/rx_pkt_end.h>
 #include <AR900B/hw/interface/rx_phy_ppdu_end.h>
 #include <AR900B/hw/interface/rx_timing_offset.h>
-#include <AR900B/hw/interface/rx_location_info.h>
 #include <AR900B/hw/tlv/rx_ppdu_start.h>
 #include <AR900B/hw/tlv/rx_ppdu_end.h>
 #include <AR900B/hw/tlv/rx_mpdu_start.h>

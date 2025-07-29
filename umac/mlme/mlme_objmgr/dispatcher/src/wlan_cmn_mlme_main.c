@@ -23,7 +23,6 @@
 #include <include/wlan_mlme_cmn.h>
 #include <include/wlan_pdev_mlme.h>
 #include <include/wlan_vdev_mlme.h>
-#include <include/wlan_mlme_cmn.h>
 #include <wlan_psoc_mlme_main.h>
 #include <wlan_pdev_mlme_main.h>
 #include <wlan_vdev_mlme_main.h>

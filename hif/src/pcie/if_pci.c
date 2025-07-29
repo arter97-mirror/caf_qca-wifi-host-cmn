@@ -163,7 +163,6 @@ char *legacy_ic_irqname[] = {
 #include "ahb_api.h"
 #include "wlan_cfg.h"
 #include "qdf_hang_event_notifier.h"
-#include "qdf_platform.h"
 #include "qal_devnode.h"
 #include "qdf_irq.h"
 

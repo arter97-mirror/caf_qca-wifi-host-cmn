@@ -32,7 +32,6 @@
 #include "dp_internal.h"
 #include "dp_rx_defrag.h"
 #include <enet.h>	/* LLC_SNAP_HDR_LEN */
-#include "dp_rx_defrag.h"
 #include "dp_ipa.h"
 #include "dp_rx_buffer_pool.h"
 

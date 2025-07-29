@@ -70,7 +70,6 @@
 #include "phyrx_pkt_end.h"
 #include "phyrx_rssi_legacy.h"
 #include "wcss_version.h"
-#include "rx_msdu_link.h"
 #include "hal_internal.h"
 
 #define HAL_SRNG_REO_EXCEPTION HAL_SRNG_REO2SW1
