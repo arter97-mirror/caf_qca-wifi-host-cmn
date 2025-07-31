@@ -899,6 +899,25 @@ cdp_ipa_pcie_link_down(ol_txrx_soc_handle soc)
 
 	return QDF_STATUS_SUCCESS;
 }
+
+/**
+ * cdp_ipa_dump_ring_hp_tp() - dump hp-tp values of IPA and error ring
+ * @soc: data path soc handle
+ *
+ * Return:
+ */
+static inline void
+cdp_ipa_dump_ring_hp_tp(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return;
+	}
+
+	if (soc->ops->ipa_ops->ipa_dump_ring_hp_tp)
+		soc->ops->ipa_ops->ipa_dump_ring_hp_tp(soc);
+}
 #endif
 
 /**

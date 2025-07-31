@@ -2415,6 +2415,7 @@ struct cdp_ipa_ops {
 #ifdef IPA_OPT_WIFI_DP
 	int (*ipa_pcie_link_up)(struct cdp_soc_t *soc_hdl);
 	void (*ipa_pcie_link_down)(struct cdp_soc_t *soc_hdl);
+	void (*ipa_dump_ring_hp_tp)(struct cdp_soc_t *soc_hdl);
 #endif
 	QDF_STATUS (*ipa_enable_autonomy)(struct cdp_soc_t *soc_hdl,
 					  uint8_t pdev_id);

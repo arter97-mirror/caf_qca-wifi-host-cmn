@@ -7059,7 +7059,7 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 	dp_flt_param = &(ipa_obj->dp_cce_super_rule_flt_param);
 
 	if (!ipa_obj->opt_dp_active) {
-		ipa_err("IPA flt not reserved before adding");
+		ipa_log_err("IPA flt not reserved before adding");
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
@@ -7074,7 +7074,8 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 				break;
 
 		if (i >= IPA_WDI_MAX_FILTER) {
-			ipa_err("Wrong IPA flt count %d, i=%d", num_flts, i);
+			ipa_log_err("Wrong IPA flt count %d, i=%d",
+				    num_flts, i);
 			return QDF_STATUS_FILT_REQ_ERROR;
 		}
 
@@ -7090,8 +7091,8 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 		} else if (ipa_flt->flt_info[flt].version == 1) {
 			dp_flt_param->flt_addr_params[i].l3_type = IPV6;
 		} else {
-			ipa_err("Wrong IPA version %d",
-				ipa_flt->flt_info[flt].version);
+			ipa_log_err("Wrong IPA version %d",
+				    ipa_flt->flt_info[flt].version);
 			return QDF_STATUS_FILT_REQ_ERROR;
 		}
 
@@ -7106,6 +7107,11 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 					qdf_ntohs(ipa_flt->flt_info[flt].sport);
 				dp_flt_param->flt_addr_params[i].dst_port =
 					qdf_ntohs(ipa_flt->flt_info[flt].dport);
+				ipa_log_debug(
+				    "src port - 0x%x, dst port - 0x%x, protocol - 0x%x",
+				    dp_flt_param->flt_addr_params[i].src_port,
+				    dp_flt_param->flt_addr_params[i].dst_port,
+				    dp_flt_param->flt_addr_params[i].l4_type);
 			}
 
 		if (dp_flt_param->flt_addr_params[i].l3_type == IPV4) {
@@ -7121,7 +7127,8 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 				dp_flt_param->flt_addr_params[i].dst_ipv4_addr,
 				(&dst_ip_addr),
 				IPV4BYTES);
-			ipa_log_debug("ipv4 sent to FW 0x%x", src_ip_addr);
+			ipa_log_debug("src ipv4 sent to FW 0x%x", src_ip_addr);
+			ipa_log_debug("dst ipv4 sent to FW 0x%x", dst_ip_addr);
 		} else if (dp_flt_param->flt_addr_params[i].l3_type == IPV6) {
 			host_ipv6 = (uint32_t *)dp_flt_param->flt_addr_params[i].
 				    src_ipv6_addr;
@@ -7140,7 +7147,7 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 					      ipv6_saddr[j]);
 			}
 			for (j = 0; j < IPV6ARRAY; j++)
-				ipa_log_debug("ipv6 sent to FW 0x%x",
+				ipa_log_debug("src ipv6 sent to FW 0x%x",
 					      *((uint32_t *)
 					      dp_flt_param->flt_addr_params[i].
 					      src_ipv6_addr + j));
@@ -7156,6 +7163,7 @@ int wlan_ipa_wdi_opt_dpath_flt_add_cb(
 	ipa_log_debug("opt_dp: op %d, pdev_id %d. num_flts %d",
 		      dp_flt_param->op, dp_flt_param->pdev_id, num_flts);
 
+	cdp_ipa_dump_ring_hp_tp(ipa_obj->dp_soc);
 	cdp_ipa_rx_cce_super_rule_setup(ipa_obj->dp_soc, dp_flt_param);
 
 	status = qdf_wait_single_event(&ipa_obj->ipa_flt_evnt,
@@ -7240,6 +7248,7 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 	}
 
 	wlan_ipa_wdi_opt_dpath_clean_db(ipa_ctx);
+	cdp_ipa_dump_ring_hp_tp(ipa_obj->dp_soc);
 
 	return response;
 
@@ -7323,6 +7332,7 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb(void *ipa_ctx)
 	}
 
 	ipa_obj->opt_dp_flt_rel_state = WLAN_IPA_OPT_DP_FLT_REL_INPROGRESS;
+	cdp_ipa_dump_ring_hp_tp(ipa_obj->dp_soc);
 	if (wlan_ipa_is_low_power_mode_config_disabled(ipa_obj->config)) {
 		/* Enable Low power features before filter release */
 		ipa_debug("opt_dp: Enable low power features to release filter");
