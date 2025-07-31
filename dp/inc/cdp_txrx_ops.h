@@ -2352,6 +2352,7 @@ struct cdp_throttle_ops {
  * @ipa_uc_set_quota:
  * @ipa_pcie_link_up: Hold PCIe link in L0
  * @ipa_pcie_link_down: Release PCIe link L0 hold
+ * @ipa_dump_ring_hp_tp: Dump HP-TP of rings facing IPA
  * @ipa_enable_autonomy:
  * @ipa_disable_autonomy:
  * @ipa_setup:
@@ -2415,6 +2416,7 @@ struct cdp_ipa_ops {
 #ifdef IPA_OPT_WIFI_DP
 	int (*ipa_pcie_link_up)(struct cdp_soc_t *soc_hdl);
 	void (*ipa_pcie_link_down)(struct cdp_soc_t *soc_hdl);
+	void (*ipa_dump_ring_hp_tp)(struct cdp_soc_t *soc_hdl);
 #endif
 	QDF_STATUS (*ipa_enable_autonomy)(struct cdp_soc_t *soc_hdl,
 					  uint8_t pdev_id);
