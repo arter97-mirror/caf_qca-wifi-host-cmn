@@ -345,6 +345,23 @@ struct auth_resp_event {
 	uint16_t status_code;
 } __attribute__((__packed__));
 
+struct ap_info_event {
+	uint8_t bssid[6];
+	uint16_t channel;
+	int8_t rssi;
+} __attribute__((__packed__));
+
+struct join_req_event {
+	uint8_t bssid[6];
+	uint16_t channel;
+	int8_t rssi;
+} __attribute__((__packed__));
+
+struct join_resp_event {
+	uint16_t status_code;
+	uint16_t reason;
+} __attribute__((__packed__));
+
 /**
  * struct mon_rx_status - This will have monitor mode per user rx_status
  * extracted from hardware TLV.

@@ -41,6 +41,9 @@
 #include "pktlog_ac_i.h"
 #include "wma_api.h"
 #include "wlan_logging_sock_svc.h"
+#include "cds_api.h"
+#include "wlan_hdd_main.h"
+#include "wlan_hdd_tsf.h"
 
 #define TX_DESC_ID_LOW_MASK     0xffff
 #define TX_DESC_ID_LOW_SHIFT    0
@@ -1170,6 +1173,17 @@ A_STATUS process_sw_event(void *pdev, void *data)
 	uint16_t node_pkt_len;
 	uint16_t event_aggregate;
 	uint16_t i;
+	uint64_t qtime;
+	QDF_STATUS status;
+	struct hdd_adapter *adapter = NULL;
+	struct mon_report_status *pl_header;
+
+	void *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
+	status = hdd_get_front_adapter(hdd_ctx, &adapter);
+	if(QDF_STATUS_SUCCESS != status) {
+		qdf_print("Invalid adapter in %s", __func__);
+		return A_ERROR;
+	}
 #endif
 
 	if (!pdev) {
@@ -1275,6 +1289,10 @@ A_STATUS process_sw_event(void *pdev, void *data)
 #if defined(HELIUMPLUS)
 		pl_hdr.flags |= PKTLOG_HDR_SIZE_16;
 #endif
+		status = hdd_get_soctime_from_tsf64time(adapter, pl_hdr.timestamp, &qtime);
+		pl_header = (struct mon_report_status *)(sw_event.sw_event);
+		/* qtime to us */
+		pl_header->qtime  = qtime / 1000;
 	}
 		cds_custom_to_logger_thread(&pl_hdr, NULL, sw_event.sw_event);
 #else
