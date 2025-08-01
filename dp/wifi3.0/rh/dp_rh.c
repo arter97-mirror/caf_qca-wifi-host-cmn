@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -300,6 +300,7 @@ static QDF_STATUS dp_soc_attach_rh(struct dp_soc *soc,
 				   struct cdp_soc_attach_params *params)
 {
 	soc->wbm_sw0_bm_id = hal_tx_get_wbm_sw0_bm_id();
+	soc->wds_not_supported = TRUE;
 	return QDF_STATUS_SUCCESS;
 }
 

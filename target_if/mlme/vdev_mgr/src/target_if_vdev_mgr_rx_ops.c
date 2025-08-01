@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -962,9 +962,8 @@ static int target_if_pdev_csa_status_event_handler(
 
 	if (wlan_psoc_nif_fw_ext_cap_get(psoc, WLAN_SOC_CEXT_CSA_TX_OFFLOAD)) {
 		for (i = 0; i < csa_status.num_vdevs; i++) {
-			if (!csa_status.current_switch_count)
-				target_if_vdev_csa_complete(psoc,
-							csa_status.vdev_ids[i]);
+			target_if_vdev_csa_complete(psoc,
+						    csa_status.vdev_ids[i]);
 		}
 	}
 
