@@ -2212,38 +2212,6 @@ static QDF_STATUS send_peer_param_cmd_tlv(wmi_unified_t wmi,
 	return 0;
 }
 
-static
-uint8_t *vdev_up_add_colocated_params(uint8_t *buf_ptr,
-				      struct vdev_up_params *params)
-{
-	wmi_co_located_chan_info *co_located_info;
-	uint8_t idx = 0;
-
-	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
-		       (sizeof(wmi_co_located_chan_info) *
-		       params->colocated_links.num_of_links));
-	buf_ptr += WMI_TLV_HDR_SIZE;
-
-	co_located_info = (wmi_co_located_chan_info *)buf_ptr;
-	wmi_debug("Number of co-located links %d",
-		  params->colocated_links.num_of_links);
-
-	for (idx = 0; idx < params->colocated_links.num_of_links; idx++) {
-		wmi_debug("Add co-located freq: %d",
-			  params->colocated_links.ch_freq[idx]);
-		WMITLV_SET_HDR(
-			&co_located_info->tlv_header,
-			WMITLV_TAG_STRUC_wmi_co_located_chan_info,
-			WMITLV_GET_STRUCT_TLVLEN(wmi_co_located_chan_info));
-		co_located_info->link_freq =
-			params->colocated_links.ch_freq[idx];
-		buf_ptr += sizeof(wmi_co_located_chan_info);
-	}
-
-	return buf_ptr + (sizeof(wmi_co_located_chan_info) *
-		       params->colocated_links.num_of_links);
-}
-
 /**
  * send_vdev_up_cmd_tlv() - send vdev up command in fw
  * @wmi: wmi handle
@@ -2258,12 +2226,7 @@ static QDF_STATUS send_vdev_up_cmd_tlv(wmi_unified_t wmi,
 {
 	wmi_vdev_up_cmd_fixed_param *cmd;
 	wmi_buf_t buf;
-	uint8_t *buf_ptr;
 	int32_t len = sizeof(*cmd);
-
-	len += WMI_TLV_HDR_SIZE +
-		(params->colocated_links.num_of_links *
-		 (sizeof(wmi_co_located_chan_info)));
 
 	wmi_debug("VDEV_UP");
 	wmi_debug("vdev_id %d aid %d profile idx %d count %d bssid "
@@ -2275,8 +2238,7 @@ static QDF_STATUS send_vdev_up_cmd_tlv(wmi_unified_t wmi,
 	if (!buf)
 		return QDF_STATUS_E_NOMEM;
 
-	buf_ptr = (uint8_t *)wmi_buf_data(buf);
-	cmd = (wmi_vdev_up_cmd_fixed_param *)buf_ptr;
+	cmd = (wmi_vdev_up_cmd_fixed_param *) wmi_buf_data(buf);
 	WMITLV_SET_HDR(&cmd->tlv_header,
 		       WMITLV_TAG_STRUC_wmi_vdev_up_cmd_fixed_param,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_up_cmd_fixed_param));
@@ -2287,9 +2249,6 @@ static QDF_STATUS send_vdev_up_cmd_tlv(wmi_unified_t wmi,
 	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->trans_bssid, &cmd->trans_bssid);
 	WMI_CHAR_ARRAY_TO_MAC_ADDR(bssid, &cmd->vdev_bssid);
 	wmi_mtrace(WMI_VDEV_UP_CMDID, cmd->vdev_id, 0);
-
-	buf_ptr = (uint8_t *)(((uintptr_t)cmd) + sizeof(*cmd));
-	buf_ptr = vdev_up_add_colocated_params(buf_ptr, params);
 	if (wmi_unified_cmd_send(wmi, buf, len, WMI_VDEV_UP_CMDID)) {
 		wmi_err("Failed to send vdev up command");
 		wmi_buf_free(buf);

@@ -918,17 +918,6 @@ struct vdev_stop_params {
 	bool is_mlo_link_switch;
 };
 
-#define MAX_NUM_COLOCATED_LINKS 3
-/**
- * struct co_located_links - Co-located links
- * @num_of_links: number of links
- * @ch_freq: Co-located channel freq
- */
-struct co_located_links {
-	uint8_t num_of_links;
-	qdf_freq_t ch_freq[MAX_NUM_COLOCATED_LINKS];
-};
-
 /**
  * struct vdev_up_params - vdev up cmd parameter
  * @vdev_id: vdev id
@@ -938,7 +927,6 @@ struct co_located_links {
  * @profile_num: the total profile numbers of non-trans aps (mbssid case).
  *		0 means non-MBSS AP.
  * @trans_bssid: bssid of transmitted AP (MBSS IE case)
- * @colocated_links: Co-located link info
  */
 struct vdev_up_params {
 	uint8_t vdev_id;
@@ -946,7 +934,6 @@ struct vdev_up_params {
 	uint32_t profile_idx;
 	uint32_t profile_num;
 	uint8_t trans_bssid[QDF_MAC_ADDR_SIZE];
-	struct co_located_links colocated_links;
 };
 
 /**
