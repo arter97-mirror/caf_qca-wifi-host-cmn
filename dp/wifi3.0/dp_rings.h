@@ -278,7 +278,7 @@ static inline bool dp_skip_msi_cfg(struct dp_soc *soc, int ring_type)
 		if (ring_type == REO_DST || ring_type == RXDMA_DST)
 			return true;
 	} else if (ring_type == RXDMA_MONITOR_STATUS &&
-		  !dp_mon_mode_local_pkt_capture(soc)) {
+		  !dp_is_local_pkt_capture_allowed(soc)) {
 		return true;
 	}
 
