@@ -3186,27 +3186,6 @@ wmi_unified_send_action_oui_cmd(wmi_unified_t wmi_handle,
 }
 #endif
 
-QDF_STATUS wmi_unified_send_dump_wds_table_cmd(wmi_unified_t wmi_handle)
-{
-	if (wmi_handle->ops->send_wds_entry_list_cmd)
-		return wmi_handle->ops->send_wds_entry_list_cmd(wmi_handle);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_wds_entry(wmi_unified_t wmi_handle, uint8_t *evt_buf,
-		      struct wdsentry *wds_entry,
-		      u_int32_t idx)
-{
-	if (wmi_handle->ops->extract_wds_entry)
-		return wmi_handle->ops->extract_wds_entry(wmi_handle,
-						evt_buf, wds_entry, idx);
-
-	return QDF_STATUS_E_FAILURE;
-}
-qdf_export_symbol(wmi_extract_wds_entry);
-
 QDF_STATUS wmi_unified_send_obss_detection_cfg_cmd(
 		wmi_unified_t wmi_handle,
 		struct wmi_obss_detection_cfg_param *obss_cfg_param)
