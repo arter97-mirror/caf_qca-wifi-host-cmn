@@ -43,6 +43,12 @@
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
 #include "hal_rx_flow.h"
 
+/*
+ * If the MAX_VDEV_CNT is changed, then update the variable type for
+ * rx_pkt_vdev_map in dp_rx_process
+ */
+QDF_COMPILE_TIME_ASSERT(rx_pkt_vdev_map, MAX_VDEV_CNT <= 8);
+
 static inline void
 dp_rx_update_flow_info(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
 		       uint8_t *rx_tlv_hdr, int32_t tid)
@@ -351,6 +357,32 @@ dp_rx_update_protocol_stats_wrapper(struct dp_soc *soc,
 }
 #endif /* QCA_DP_PROTOCOL_STATS */
 
+static inline void dp_rx_vdev_flush(struct dp_soc *soc, uint8_t rx_pkt_vdev_map,
+				    uint8_t reo_ring_num,
+				    uint32_t rx_ol_pkt_cnt)
+{
+	struct dp_vdev *vdev;
+	uint8_t vdev_id;
+
+	for (vdev_id = 0; rx_pkt_vdev_map && vdev_id < MAX_VDEV_CNT;
+	     rx_pkt_vdev_map >>= 1, vdev_id++) {
+		if (!(rx_pkt_vdev_map & BIT(vdev_id)))
+			continue;
+
+		vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_RX);
+		if (qdf_unlikely(!vdev))
+			continue;
+
+		if (vdev->osif_fisa_flush)
+			vdev->osif_fisa_flush(soc, reo_ring_num);
+
+		if (vdev->osif_gro_flush && rx_ol_pkt_cnt)
+			vdev->osif_gro_flush(vdev->osif_vdev, reo_ring_num);
+
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_RX);
+	}
+}
+
 #ifndef CONFIG_BORON
 uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
@@ -412,6 +444,7 @@ uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 	uint8_t link_id = 0;
 	uint16_t buf_size;
 	uint8_t is_ctrl_refill = 0;
+	uint8_t rx_pkt_vdev_map = 0;
 
 	DP_HIST_INIT();
 
@@ -802,6 +835,12 @@ done:
 			enh_flag = rx_pdev->enhanced_stats_en;
 		}
 
+		/*
+		 * Save the vdev_ids for which we received packets.
+		 * This will be used to issue a flush at the end of context.
+		 */
+		rx_pkt_vdev_map |= BIT(vdev->vdev_id);
+
 		if (txrx_peer) {
 			QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) = false;
 			qdf_dp_trace_set_track(nbuf, QDF_RX);
@@ -1134,13 +1173,8 @@ done:
 			}
 		}
 
-		if (vdev && vdev->osif_fisa_flush)
-			vdev->osif_fisa_flush(soc, reo_ring_num);
-
-		if (vdev && vdev->osif_gro_flush && rx_ol_pkt_cnt) {
-			vdev->osif_gro_flush(vdev->osif_vdev,
-					     reo_ring_num);
-		}
+		dp_rx_vdev_flush(soc, rx_pkt_vdev_map, reo_ring_num,
+				 rx_ol_pkt_cnt);
 	}
 
 	if (qdf_likely(txrx_peer))
