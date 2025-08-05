@@ -35,6 +35,7 @@
 #include "pld_common.h"
 #include "hif_debug.h"
 #include "hif_napi.h"
+#include "hif_main.h"
 
 /**
  * struct tasklet_work
@@ -832,6 +833,9 @@ int hif_drain_fw_diag_ce(struct hif_softc *scn)
 		return 0;
 
 	tasklet_entry = &hif_ce_state->tasklets[ce_id];
+
+	hif_info("before drain CE");
+	hif_print_ce(scn, DIAG_PRINT);
 
 	/* If CE7 tasklet is triggered, no need to poll CE explicitly,
 	 * CE7 SIRQ could reschedule until there is no pending entries
