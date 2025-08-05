@@ -1811,10 +1811,26 @@ static void dp_ipa_opt_wifi_dp_cleanup(struct dp_soc *soc, struct dp_pdev *pdev)
 		dp_info("opt_dp: cleanup call pcie link down");
 		dp_ipa_pcie_link_down((struct cdp_soc_t *)soc);
 	}
+
+	qdf_rtpm_deregister(QDF_RTPM_ID_OPT_DP);
+}
+
+static void dp_ipa_opt_wifi_dp_setup(struct dp_soc *soc, struct dp_pdev *pdev)
+{
+	struct hal_soc *hal_soc = (struct hal_soc *)soc->hal_soc;
+	struct hif_softc *hif = (struct hif_softc *)(hal_soc->hif_handle);
+
+	qdf_atomic_init(&hif->opt_wifi_dp_rtpm_cnt);
+	qdf_rtpm_register(QDF_RTPM_ID_OPT_DP, NULL);
 }
 #else
 static inline
 void dp_ipa_opt_wifi_dp_cleanup(struct dp_soc *soc, struct dp_pdev *pdev)
+{
+}
+
+static inline
+void dp_ipa_opt_wifi_dp_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 {
 }
 #endif
@@ -1990,6 +2006,8 @@ int dp_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 
 	if (!wlan_cfg_is_ipa_enabled(soc->wlan_cfg_ctx))
 		return QDF_STATUS_SUCCESS;
+
+	dp_ipa_opt_wifi_dp_setup(soc, pdev);
 
 	/* TX resource attach */
 	error = dp_tx_ipa_uc_attach(soc, pdev);
