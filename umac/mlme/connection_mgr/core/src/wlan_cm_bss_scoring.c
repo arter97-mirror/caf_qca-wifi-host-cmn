@@ -3204,8 +3204,8 @@ cm_add_11_ax_candidate(struct wlan_objmgr_pdev *pdev,
 {};
 #endif
 
-static bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
-					struct scan_cache_entry *scan_entry)
+bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
+				 struct scan_cache_entry *scan_entry)
 {
 	struct action_oui_search_attr attr = {0};
 

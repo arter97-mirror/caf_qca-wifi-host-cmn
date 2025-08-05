@@ -653,6 +653,16 @@ void wlan_cm_get_check_assoc_disallowed(struct wlan_objmgr_psoc *psoc,
 					bool *value);
 
 /**
+ * cm_is_slo_candidate_allowed() - check slo allowed OUI for scan entry
+ * @psoc: pointer to psoc object
+ * @scan_entry: scan entry
+ *
+ * Return: bool
+ */
+bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
+				 struct scan_cache_entry *scan_entry);
+
+/**
  * cm_get_entry() - Get bss scan entry by link mac address
  * @scan_list: Scan entry list of bss candidates after filtering
  * @link_addr: link mac address
