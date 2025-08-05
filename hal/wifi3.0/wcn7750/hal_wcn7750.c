@@ -1,5 +1,5 @@
 /* Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -2389,6 +2389,26 @@ void hal_srng_dst_hw_init_7750(struct hal_soc *hal_soc,
 	hal_srng_dst_hw_init_generic(hal_soc, srng, idle_check, idx);
 }
 
+static void
+hal_rx_flow_cmem_update_reo_dst_ind_wcn7750(struct hal_soc *hal_soc,
+					    uint32_t cmem_ba,
+					    uint32_t flow_idx,
+					    uint8_t reo_dest_ind)
+{
+	uint32_t fse_offset;
+	uint32_t value;
+
+	fse_offset = cmem_ba + (flow_idx * HAL_RX_FST_ENTRY_SIZE);
+	value = HAL_CMEM_READ(hal_soc,
+			      fse_offset + HAL_OFFSET(RX_FLOW_SEARCH_ENTRY,
+						      L4_PROTOCOL));
+	value &= ~RX_FLOW_SEARCH_ENTRY_REO_DESTINATION_INDICATION_MASK;
+	value |= HAL_SET_FLD_SM(RX_FLOW_SEARCH_ENTRY,
+				REO_DESTINATION_INDICATION, reo_dest_ind);
+	HAL_CMEM_WRITE(hal_soc, fse_offset + HAL_OFFSET(RX_FLOW_SEARCH_ENTRY,
+							L4_PROTOCOL), value);
+}
+
 static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2672,6 +2692,8 @@ static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_txmon_status_get_num_users =
 				hal_txmon_status_get_num_users_generic_be;
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
+	hal_soc->ops->hal_rx_flow_cmem_update_reo_dst_ind =
+				hal_rx_flow_cmem_update_reo_dst_ind_wcn7750;
 };
 
 struct hal_hw_srng_config hw_srng_table_7750[] = {
