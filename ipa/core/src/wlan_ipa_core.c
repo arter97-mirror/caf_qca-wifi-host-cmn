@@ -748,6 +748,22 @@ static inline QDF_STATUS wlan_ipa_wdi_init_set_opt_wifi_dp(
 }
 
 /**
+ * wlan_ipa_is_low_power_mode_config_disabled() - is low power mode disabled?
+ * @ipa_cfg: IPA config
+ *
+ * Return: true if low power mode need to disable, otherwise false
+ */
+static inline bool
+wlan_ipa_is_low_power_mode_config_disabled(struct wlan_ipa_config *ipa_cfg)
+{
+	bool val;
+
+	val = WLAN_IPA_IS_CONFIG_ENABLED(ipa_cfg,
+					 WLAN_IPA_LOW_POWER_MODE_ENABLE_MASK);
+	return !val;
+}
+
+/**
  * wlan_ipa_opt_wifi_dp_enabled - set if optional wifi dp enabled in WLAN
  *
  * Return: bool
@@ -2267,10 +2283,23 @@ static inline
 void wlan_ipa_release_cce_flt_ssr_shutdown(struct wlan_ipa_priv *ipa_ctx)
 {
 	bool val = false;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_pdev *pdev;
 
+	psoc = ipa_ctx->psoc;
+	pdev = psoc->soc_objmgr.wlan_pdev_list[IPA_DEF_PDEV_ID];
 	ipa_ctx->opt_dp_active = false;
 	ipa_ctx->opt_dp_flt_rel_state = WLAN_IPA_OPT_DP_FLT_REL_DONE;
 	ipa_log_info("opt_dp: IPA notify filter rel_response as success in ssr/shutdown");
+	if (wlan_ipa_is_low_power_mode_config_disabled(ipa_ctx->config)) {
+		cdp_ipa_opt_dp_enable_disable_low_power_mode(pdev,
+							     IPA_DEF_PDEV_ID,
+							     1);
+		cdp_ipa_pcie_link_down(ipa_ctx->dp_soc);
+	} else {
+		qdf_runtime_pm_allow_suspend(&ipa_ctx->opt_dp_runtime_lock);
+	}
+
 	qdf_ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(ipa_ctx->hdl,
 						       true);
 	val = cdp_ipa_get_smmu_mapped(ipa_ctx->dp_soc);
@@ -2281,7 +2310,10 @@ void wlan_ipa_release_cce_flt_ssr_shutdown(struct wlan_ipa_priv *ipa_ctx)
 						 IPA_DEF_PDEV_ID,
 						 false, false,
 						 __func__, __LINE__);
-		}
+	}
+
+	qdf_wake_lock_release(&ipa_ctx->opt_dp_wake_lock,
+			      WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP);
 }
 
 QDF_STATUS
@@ -5369,7 +5401,6 @@ QDF_STATUS wlan_ipa_opt_dp_init(struct wlan_ipa_priv *ipa_ctx)
 			ipa_ctx->release_req_cnt = 0;
 			ipa_ctx->flt_rel_src = 0;
 			qdf_runtime_lock_init(&ipa_ctx->opt_dp_runtime_lock);
-			qdf_rtpm_register(QDF_RTPM_ID_OPT_DP, NULL);
 		} else {
 			ipa_log_debug("opt_dp: Disabled from WLAN INI");
 		}
@@ -5502,7 +5533,6 @@ void wlan_ipa_opt_dp_deinit(struct wlan_ipa_priv *ipa_ctx)
 		wlan_ipa_destroy_opt_wifi_flt_cb_event(ipa_ctx);
 
 	if (ipa_ctx->opt_wifi_datapath && wlan_ipa_config_is_opt_wifi_dp_enabled()) {
-		qdf_rtpm_deregister(QDF_RTPM_ID_OPT_DP);
 		qdf_wake_lock_destroy(&ipa_ctx->opt_dp_wake_lock);
 		qdf_runtime_lock_deinit(&ipa_ctx->opt_dp_runtime_lock);
 	}
@@ -6839,21 +6869,6 @@ wlan_is_ipa_rx_cce_port_config_enabled(struct wlan_ipa_config *ipa_cfg)
 					  WLAN_IPA_SET_PORT_IN_CCE_CONFIG_MASK);
 }
 
-/**
- * wlan_ipa_is_low_power_mode_config_disabled() - is low power mode disabled?
- * @ipa_cfg: IPA config
- *
- * Return: true if low power mode need to disable, otherwise false
- */
-static inline bool
-wlan_ipa_is_low_power_mode_config_disabled(struct wlan_ipa_config *ipa_cfg)
-{
-	bool val;
-
-	val = WLAN_IPA_IS_CONFIG_ENABLED(ipa_cfg,
-					 WLAN_IPA_LOW_POWER_MODE_ENABLE_MASK);
-	return !val;
-}
 
 void wlan_ipa_wdi_opt_dpath_notify_flt_rsvd(bool response)
 {
