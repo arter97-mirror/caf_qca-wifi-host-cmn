@@ -1019,6 +1019,40 @@ static uint8_t cm_increase_retry_by_scan_age(
 	return inc_retry;
 }
 
+#if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_11BE_MLO_ADV_FEATURE)
+static bool cm_is_iot_ap_retry_without_pmkid_cache(
+				struct wlan_objmgr_psoc *psoc,
+				struct cnx_mgr *cm_ctx,
+				struct cm_connect_req *req,
+				struct wlan_cm_connect_resp *resp)
+{
+	uint32_t key_mgmt;
+	bool sae_connection;
+
+	key_mgmt = req->cur_candidate->entry->neg_sec_info.key_mgmt;
+	sae_connection = key_mgmt & (1 << WLAN_CRYPTO_KEY_MGMT_SAE);
+
+	if (sae_connection && !qdf_is_macaddr_zero(&resp->mld_addr) &&
+	    !cm_is_slo_candidate_allowed(psoc, req->cur_candidate->entry)) {
+		mlme_debug(CM_PREFIX_FMT " iot ap retry full auth",
+			   CM_PREFIX_REF(wlan_vdev_get_id(cm_ctx->vdev),
+					 req->cm_id));
+		return true;
+	}
+
+	return false;
+}
+#else
+static bool cm_is_iot_ap_retry_without_pmkid_cache(
+				struct wlan_objmgr_psoc *psoc,
+				struct cnx_mgr *cm_ctx,
+				struct cm_connect_req *req,
+				struct wlan_cm_connect_resp *resp)
+{
+	return false;
+}
+#endif
+
 /**
  * cm_is_retry_with_same_candidate() - This API check if reconnect attempt is
  * required with the same candidate again
@@ -1042,6 +1076,7 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	QDF_STATUS status;
 	uint8_t mlo_link_num;
 	qdf_freq_t freq;
+	bool retry_without_pmkid_cache = false;
 
 	psoc = wlan_pdev_get_psoc(wlan_vdev_get_pdev(cm_ctx->vdev));
 
@@ -1055,12 +1090,19 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	/* For SAE use max retry count from INI */
 	if (sae_connection)
 		wlan_mlme_get_sae_assoc_retry_count(psoc, &max_retry_count);
+
+	if (resp->status_code == STATUS_AP_UNABLE_TO_HANDLE_NEW_STA)
+		retry_without_pmkid_cache =
+		cm_is_iot_ap_retry_without_pmkid_cache(psoc, cm_ctx,
+						       req, resp);
+
 	/*
 	 * Try once again for the invalid PMKID case
 	 * without PMKID or Association request rejected temporarily;
 	 * try again later
 	 */
-	if (resp->status_code == STATUS_INVALID_PMKID &&
+	if ((resp->status_code == STATUS_INVALID_PMKID ||
+	     retry_without_pmkid_cache) &&
 	    !req->inval_pmkid_retry_cnt) {
 		/*
 		 * allow one extra retry for INVALID_PMKID by incrementing
@@ -3362,7 +3404,8 @@ QDF_STATUS cm_connect_rsp(struct wlan_objmgr_vdev *vdev,
 	 * This will avoid the driver trying to connect to same AP with
 	 * the same stale PMKID. when connection is tried again with this AP.
 	 */
-	if (resp->status_code == STATUS_INVALID_PMKID)
+	if (resp->status_code == STATUS_INVALID_PMKID ||
+	    resp->status_code == STATUS_AP_UNABLE_TO_HANDLE_NEW_STA)
 		cm_delete_pmksa_for_bssid(cm_ctx, &pmksa_mac);
 
 	/* In case of failure try with next candidate */
