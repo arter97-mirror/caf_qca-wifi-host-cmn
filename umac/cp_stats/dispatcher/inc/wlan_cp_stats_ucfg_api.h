@@ -108,6 +108,30 @@ bool ucfg_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 #endif
 #endif /* QCA_SUPPORT_CP_STATS */
 
+#ifdef WLAN_CHIPSET_STATS
+/**
+ * ucfg_cp_stats_enable_direct_log_dispatch - UCFG API to control enhanced
+ * chipset logging
+ * @psoc: Pointer to the psoc object
+ * @direct_log_dispatch: Boolean flag to enable or disable enhanced chipset
+ * logging
+ *
+ * This function acts as a UCFG wrapper to invoke the underlying
+ * wlan_cp_stats_enable_direct_log_dispatch() API, which performs
+ * the actual enable/disable operation for enhanced chipset logging.
+ *
+ * Return: None
+ */
+void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
+					      bool direct_log_dispatch);
+#else
+static inline
+void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
+					      bool direct_log_dispatch)
+{
+}
+#endif
+
 /**
  * ucfg_cp_stats_cstats_register_tx_rx_ops() - Register chipset stats ops
  *

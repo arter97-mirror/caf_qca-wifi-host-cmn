@@ -24,6 +24,12 @@
 static struct chipset_stats cstats;
 static struct cstats_node *gcstats_buffer[CSTATS_MAX_TYPE];
 
+void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
+					      bool direct_log_dispatch)
+{
+	cstats.is_direct_log_dispatch_enabled = direct_log_dispatch;
+}
+
 QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 {
 	qdf_list_node_t *tmp_node = NULL;

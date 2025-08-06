@@ -74,23 +74,38 @@ struct cstats_node {
 	char logbuf[MAX_CSTATS_NODE_LENGTH];
 };
 
+/**
+ * struct chipset_stats - Structure to manage chipset statistics logging
+ * @cstat_free_list: Array of free list queues for each chipset stats type
+ * @cstat_filled_list: Array of filled list queues for each chipset stats type
+ * @cstats_lock: Spinlocks to synchronize access to each stats type's resources
+ * @ccur_node: Current active node for each chipset stats type
+ * @cstat_drop_cnt: Counter for dropped stats entries per type
+ * @chipset_stats_push_rbs_delay_val_ms: Delay value (in ms) for pushing stats
+ * to RBS
+ * @chipset_stats_push_rbs_delay_interval: Interval for pushing stats to RBS
+ * @cstats_no_flush: Flag to prevent moving filled nodes to free list after
+ * flush
+ * @ops: Operations structure for TX/RX callbacks related to chipset stats
+ * @is_cstats_ini_enabled: Flag indicating if chipset stats logging is enabled
+ * via INI
+ * @is_cp_stats_debug_logging_enable: Flag to enable debug logging for CP stats
+ * @is_direct_log_dispatch_enabled: Flag to enable direct dispatch of logs to
+ * user space
+ */
 struct chipset_stats {
 	qdf_list_t cstat_free_list[CSTATS_MAX_TYPE];
 	qdf_list_t cstat_filled_list[CSTATS_MAX_TYPE];
-
-	/* Lock to synchronize access to shared cstats resource */
 	qdf_spinlock_t cstats_lock[CSTATS_MAX_TYPE];
 	struct cstats_node *ccur_node[CSTATS_MAX_TYPE];
 	unsigned int cstat_drop_cnt[CSTATS_MAX_TYPE];
-
 	size_t chipset_stats_push_rbs_delay_val_ms;
 	size_t chipset_stats_push_rbs_delay_interval;
-
-	/* Dont move filled list nodes to free list after flush to user space */
 	bool cstats_no_flush[CSTATS_MAX_TYPE];
 	struct cstats_tx_rx_ops ops;
 	bool is_cstats_ini_enabled;
 	bool is_cp_stats_debug_logging_enable;
+	bool is_direct_log_dispatch_enabled;
 };
 
 #define wlan_cstats_fw_stats(len, buf) \
@@ -107,6 +122,21 @@ struct chipset_stats {
  * Return: QDF_STATUS
  */
 QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_cp_stats_enable_direct_log_dispatch - API to set chipset logging
+ * dispatch flag
+ * @psoc: Pointer to the psoc object
+ * @direct_log_dispatch: Boolean flag to enable or disable direct log dispatch
+ *
+ * This function sets the internal flag that controls whether enhanced
+ * chipset logging is enabled. It is the final handler that updates the
+ * CP stats configuration.
+ *
+ * Return: None
+ */
+void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
+					      bool direct_log_dispatch);
 
 /**
  * wlan_cp_stats_cstats_deinit() - Deinitialize chipset stats infra
@@ -166,6 +196,12 @@ void wlan_cp_stats_cstats_pkt_log(uint8_t *sa, uint8_t *da,
 				  enum qdf_dp_tx_rx_status status,
 				  uint8_t vdev_id, enum QDF_OPMODE op_mode);
 #else
+static inline
+void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
+					      bool direct_log_dispatch)
+{
+}
+
 static inline QDF_STATUS
 wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 {

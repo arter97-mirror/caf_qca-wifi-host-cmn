@@ -77,6 +77,14 @@ bool ucfg_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 #endif
 #endif
 
+#ifdef WLAN_CHIPSET_STATS
+void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
+					      bool direct_log_dispatch)
+{
+	wlan_cp_stats_enable_direct_log_dispatch(psoc, direct_log_dispatch);
+}
+#endif
+
 void ucfg_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops)
 {
 	wlan_cp_stats_cstats_register_tx_rx_ops(ops);
