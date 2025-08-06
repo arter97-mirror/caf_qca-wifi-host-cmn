@@ -326,6 +326,25 @@ struct mon_rx_status {
 	bool add_rtap_ext;
 };
 
+/* allign to FW */
+struct mon_report_status {
+        uint32_t qtime;
+        uint16_t reserved;
+        uint8_t type;
+        uint8_t payload_len;
+        uint8_t payload[0];
+}__attribute__((__packed__));
+
+struct auth_req_event {
+    uint16_t mhz;
+    uint8_t  bssid[6];
+    uint8_t  isFT;
+}__attribute__((__packed__));
+
+struct auth_resp_event {
+	uint16_t status_code;
+} __attribute__((__packed__));
+
 /**
  * struct mon_rx_status - This will have monitor mode per user rx_status
  * extracted from hardware TLV.

@@ -155,6 +155,9 @@ pktlog_enable_tgt(struct hif_opaque_softc *_scn, uint32_t log_state,
 	if (log_state & ATH_PKTLOG_SW_EVENT)
 		types |= WMI_PKTLOG_EVENT_SW;
 
+	if (log_state & ATH_PKTLOG_CUSTOM)
+		types |= WMI_PKTLOG_EVENT_CUSTOM;
+
 	QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_DEBUG,
 		  "%s: Pktlog events: %d", __func__, types);
 
@@ -348,6 +351,7 @@ void pktlog_callback(void *pdev, enum WDI_EVENT event, void *log_data,
 		break;
 	}
 	case WDI_EVENT_SW_EVENT:
+	case WDI_EVENT_CUSTOM_EVENT:
 	{
 		/*
 		 * process SW EVENT message
@@ -1013,7 +1017,8 @@ void pktlog_process_fw_msg(uint32_t *buff, uint32_t len)
 	else if (log_type == PKTLOG_TYPE_RX_STAT)
 		wdi_event_handler(WDI_EVENT_RX_DESC,
 				  pdev, &pl_fw_data);
-	else if (log_type == PKTLOG_TYPE_SW_EVENT)
+	else if (log_type == PKTLOG_TYPE_SW_EVENT ||
+		log_type == PKTLOG_TYPE_CUSTOM_PKT)
 		wdi_event_handler(WDI_EVENT_SW_EVENT,
 				  pdev, &pl_fw_data);
 }

@@ -1161,6 +1161,16 @@ A_STATUS process_sw_event(void *pdev, void *data)
 	 */
 	struct ath_pktlog_sw_event sw_event;
 	uint32_t *pl_tgt_hdr;
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	struct ath_pktlog_hdr *node_header;
+	int32_t pkt_stats_len;
+	uint8_t *process_fw_data;
+	uint8_t node_pkt_type;
+	uint16_t node_pkt_num;
+	uint16_t node_pkt_len;
+	uint16_t event_aggregate;
+	uint16_t i;
+#endif
 
 	if (!pdev) {
 		qdf_print("Invalid pdev in %s", __func__);
@@ -1229,8 +1239,47 @@ A_STATUS process_sw_event(void *pdev, void *data)
 		     ((char *)fw_data->data + sizeof(struct ath_pktlog_hdr)),
 		     pl_hdr.size);
 
-	cds_pkt_stats_to_logger_thread(&pl_hdr, NULL, sw_event.sw_event);
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	event_aggregate = pl_hdr.type_specific_data & ATH_SW_EVENT_TYPE_MASK;
+	node_pkt_num = (pl_hdr.type_specific_data >> ATH_PKTLOG_HDR_SIZE_SHIFT)
+			& ATH_SW_EVENT_TYPE_MASK;
+
+	if(event_aggregate == ATH_PKTLOG_SW_EVENT_AGGREGATE) {
+		pkt_stats_len = log_size;
+		process_fw_data = (uint8_t *)sw_event.sw_event;
+
+		for(i = 0; i < node_pkt_num; i++)
+		{
+			if (pkt_stats_len < sizeof(struct ath_pktlog_hdr)) {
+				qdf_print("%s: pkt_stats_len %d NOT valid",
+					   __func__, pkt_stats_len);
+				break;
+			}
+			node_header =
+				(struct ath_pktlog_hdr *)process_fw_data;
+			if (node_header) {
+				node_pkt_type = node_header->log_type;
+				node_pkt_len = node_header->size;
+				if(node_pkt_type == PKTLOG_TYPE_CUSTOM_PKT) {
+					qdf_print("JNL: %s: node(pkt_type/pkt_len)(%d, %d), pkt_stats_len %d",
+						__func__, node_pkt_type, node_pkt_len, pkt_stats_len);
+					/*update timestamp here.*/
+				}
+			}
+			pkt_stats_len = (pkt_stats_len - (sizeof(struct ath_pktlog_hdr) + node_pkt_len));
+			process_fw_data = (uint8_t*) (process_fw_data + sizeof(struct ath_pktlog_hdr) + node_pkt_len);
+		}
+	}else{
+		pl_hdr.log_type == PKTLOG_TYPE_CUSTOM_PKT;
+#if defined(HELIUMPLUS)
+		pl_hdr.flags |= PKTLOG_HDR_SIZE_16;
+#endif
+	}
+		cds_custom_to_logger_thread(&pl_hdr, NULL, sw_event.sw_event);
+#else
+		cds_pkt_stats_to_logger_thread(&pl_hdr, NULL, sw_event.sw_event);
+#endif
 	return A_OK;
 }
 
