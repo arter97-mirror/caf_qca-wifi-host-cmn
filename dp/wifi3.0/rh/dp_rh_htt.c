@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -233,12 +233,13 @@ dp_htt_rx_delba_ind_handler_rh(void *soc_handle, uint16_t peer_id,
  * @context: HTT context
  * @cmpl_msdus: netbuf completions
  * @num_cmpls: number of completions to be handled
+ * @ce_id: copy engine id
  *
  * Return: None
  */
 static void
 dp_htt_t2h_msg_handler_fast(void *context, qdf_nbuf_t *cmpl_msdus,
-			    uint32_t num_cmpls)
+			    uint32_t num_cmpls, unsigned int ce_id)
 {
 	struct htt_soc *soc = (struct htt_soc *)context;
 	qdf_nbuf_t htt_t2h_msg;
@@ -264,6 +265,7 @@ dp_htt_t2h_msg_handler_fast(void *context, qdf_nbuf_t *cmpl_msdus,
 		switch (msg_type) {
 		case HTT_T2H_MSG_TYPE_RX_DATA_IND:
 		{
+			soc->stats.htt_msg_stats[ce_id].rx_data_ind++;
 			uint16_t vdev_id, msdu_cnt;
 			uint16_t peer_id, frag_ind;
 
@@ -288,7 +290,7 @@ dp_htt_t2h_msg_handler_fast(void *context, qdf_nbuf_t *cmpl_msdus,
 		case HTT_T2H_MSG_TYPE_SOFT_UMAC_TX_COMPL_IND:
 		{
 			uint32_t num_msdus;
-
+			soc->stats.htt_msg_stats[ce_id].tx_completion_ind++;
 			num_msdus = HTT_SOFT_UMAC_TX_COMP_IND_MSDU_COUNT_GET(*msg_word);
 
 			if ((num_msdus * HTT_TX_MSDU_INFO_SIZE +

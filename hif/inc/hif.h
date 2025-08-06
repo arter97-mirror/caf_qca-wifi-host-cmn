@@ -1039,7 +1039,8 @@ QDF_STATUS hif_diag_write_access(struct hif_opaque_softc *hif_ctx,
 QDF_STATUS hif_diag_write_mem(struct hif_opaque_softc *hif_ctx,
 			uint32_t address, uint8_t *data, int nbytes);
 
-typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t);
+typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t,
+				     unsigned int);
 
 void hif_enable_polled_mode(struct hif_opaque_softc *hif_ctx);
 bool hif_is_polled_mode_enabled(struct hif_opaque_softc *hif_ctx);
