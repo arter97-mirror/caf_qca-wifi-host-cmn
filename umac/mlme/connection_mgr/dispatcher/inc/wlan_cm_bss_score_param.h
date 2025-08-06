@@ -52,6 +52,7 @@
  * @reserved: reserved/unused bits
  * @wlm_indication_weightage: WLM indication weightage
  * @security_weightage: Security weightage
+ * @edp_11bi_cap_weightage: 11bi (EDP) capability weightage
  * @sta_sap_mcc_weightage: STA + SAP MCC weightage
  * @uhr_caps_weightage: UHR caps weightage
  * @smd_weightage: SMD support weightage
@@ -84,6 +85,7 @@ struct weight_cfg {
 	uint8_t wlm_indication_weightage;
 #endif
 	uint8_t security_weightage;
+	uint8_t edp_11bi_cap_weightage;
 	uint8_t sta_sap_mcc_weightage;
 #ifdef WLAN_FEATURE_11BN
 	uint8_t uhr_caps_weightage;
@@ -225,7 +227,7 @@ enum cm_security_idx {
 	CM_SECURITY_WPA_INDEX,
 	CM_SECURITY_WPA2_INDEX,
 	CM_SECURITY_WPA3_INDEX,
-	CM_SECURITY_WPA_OPEN_WEP_INDEX,
+	CM_SECURITY_11BI_INDEX,
 	CM_MAX_SECURITY_INDEX
 };
 
