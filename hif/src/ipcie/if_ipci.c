@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1124,56 +1124,36 @@ int hif_ipci_disable_grp_irqs(struct hif_softc *scn)
 #ifdef IPA_OPT_WIFI_DP
 int hif_prevent_l1(struct hif_opaque_softc *hif)
 {
+	struct hif_softc *hif_softc = (struct hif_softc *)hif;
 	int status;
 
 	status = hif_force_wake_request(hif);
-	if (status)
+	if (status) {
 		hif_err("Force wake request error");
+		return status;
+	}
 
+	qdf_atomic_inc(&hif_softc->opt_wifi_dp_rtpm_cnt);
+	hif_info("opt_dp: ipci link up count %d",
+		 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
 	return status;
 }
 
 void hif_allow_l1(struct hif_opaque_softc *hif)
 {
+	struct hif_softc *hif_softc = (struct hif_softc *)hif;
 	int status;
 
-	status = hif_force_wake_release(hif);
-	if (status)
-		hif_err("Force wake release error");
-}
-
-QDF_STATUS hif_disable_rtpm(struct hif_opaque_softc *hif,
-			    uint32_t id)
-{
-	struct hif_softc *hif_softc = (struct hif_softc *)hif;
-	QDF_STATUS ret;
-
-	ret = hif_rtpm_get(HIF_RTPM_GET_SYNC,
-			   id);
-	if (ret == QDF_STATUS_SUCCESS)
-		qdf_atomic_inc(&hif_softc->opt_wifi_dp_rtpm_cnt);
-
-	hif_info("opt_dp: pcie link up count %d",
-		 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
-	return ret;
-}
-
-QDF_STATUS hif_enable_rtpm(struct hif_opaque_softc *hif,
-			   uint32_t id)
-{
-	struct hif_softc *hif_softc = (struct hif_softc *)hif;
-	QDF_STATUS ret = QDF_STATUS_SUCCESS;
-
 	if (qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt) > 0) {
-		ret = hif_rtpm_put(HIF_RTPM_PUT_ASYNC,
-				   id);
-		if (ret == QDF_STATUS_SUCCESS)
-			qdf_atomic_dec(&hif_softc->opt_wifi_dp_rtpm_cnt);
+		status = hif_force_wake_release(hif);
+		if (status) {
+			hif_err("Force wake release error");
+			return;
+		}
+
+		qdf_atomic_dec(&hif_softc->opt_wifi_dp_rtpm_cnt);
+		hif_info("opt_dp: ipci link down count %d",
+			 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
 	}
-
-	hif_info("opt_dp: pcie link down count %d",
-		 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
-
-	return ret;
 }
 #endif

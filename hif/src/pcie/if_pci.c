@@ -4357,16 +4357,6 @@ void hif_allow_l1(struct hif_opaque_softc *hif)
 			 qdf_atomic_read(&hif_softc->opt_wifi_dp_rtpm_cnt));
 	}
 }
-
-QDF_STATUS hif_disable_rtpm(struct hif_opaque_softc *hif, uint32_t id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-QDF_STATUS hif_enable_rtpm(struct hif_opaque_softc *hif, uint32_t id)
-{
-	return QDF_STATUS_SUCCESS;
-}
 #endif
 
 /**

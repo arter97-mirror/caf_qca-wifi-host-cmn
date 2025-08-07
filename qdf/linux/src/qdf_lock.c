@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -447,8 +447,6 @@ static uint32_t qdf_to_hif_convert_rtpm_id(uint32_t id)
 		return HIF_RTPM_ID_PM_QOS_NOTIFY;
 	case QDF_RTPM_ID_WIPHY_SUSPEND:
 		return HIF_RTPM_ID_WIPHY_SUSPEND;
-	case QDF_RTPM_ID_OPT_DP:
-		return HIF_RTPM_ID_OPT_DP;
 	default:
 		return HIF_RTPM_ID_MAX;
 	}

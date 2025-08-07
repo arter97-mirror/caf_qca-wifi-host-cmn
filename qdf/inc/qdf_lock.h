@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -798,14 +798,12 @@ enum qdf_rtpm_call_type {
  * @QDF_RTPM_ID_RESERVED: Reserved ID
  * @QDF_RTPM_ID_PM_QOS_NOTIFY: PM QOS context
  * @QDF_RTPM_ID_WIPHY_SUSPEND: APSS Bus suspend context
- * @QDF_RTPM_ID_OPT_DP: Optional datapath
  * @QDF_RTPM_ID_MAX: Max id
  */
 enum qdf_rtpm_client_id {
 	QDF_RTPM_ID_RESERVED,
 	QDF_RTPM_ID_PM_QOS_NOTIFY,
 	QDF_RTPM_ID_WIPHY_SUSPEND,
-	QDF_RTPM_ID_OPT_DP,
 	QDF_RTPM_ID_MAX
 };
 

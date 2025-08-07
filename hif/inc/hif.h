@@ -1416,7 +1416,6 @@ enum hif_ep_vote_access {
  * @HIF_RTPM_ID_PM_QOS_NOTIFY:
  * @HIF_RTPM_ID_WIPHY_SUSPEND:
  * @HIF_RTPM_ID_DP_STC: Datapath ML STC module
- * @HIF_RTPM_ID_OPT_DP: optional datapath
  * @HIF_RTPM_ID_MAX: Max id
  */
 enum  hif_rtpm_client_id {
@@ -1431,7 +1430,6 @@ enum  hif_rtpm_client_id {
 	HIF_RTPM_ID_PM_QOS_NOTIFY,
 	HIF_RTPM_ID_WIPHY_SUSPEND,
 	HIF_RTPM_ID_DP_STC,
-	HIF_RTPM_ID_OPT_DP,
 	HIF_RTPM_ID_MAX
 };
 
@@ -2277,25 +2275,6 @@ int hif_prevent_l1(struct hif_opaque_softc *hif);
  */
 void hif_allow_l1(struct hif_opaque_softc *hif);
 
-/**
- * hif_disable_rtpm() - Disable runtime PM
- * @hif: HIF opaque context
- * @id: rtpm client id
- *
- * Return: 0 on success. Error code on failure.
- */
-QDF_STATUS hif_disable_rtpm(struct hif_opaque_softc *hif,
-			    uint32_t id);
-
-/**
- * hif_enable_rtpm() - Enable runtime PM
- * @hif: HIF opaque context
- * @id: rtpm client id
- * Return: 0 on success. Error code on failure.
- */
-QDF_STATUS hif_enable_rtpm(struct hif_opaque_softc *hif,
-			   uint32_t id);
-
 #else
 
 static inline
@@ -2307,20 +2286,6 @@ int hif_prevent_l1(struct hif_opaque_softc *hif)
 static inline
 void hif_allow_l1(struct hif_opaque_softc *hif)
 {
-}
-
-static inline
-QDF_STATUS hif_disable_rtpm(struct hif_opaque_softc *hif,
-			    uint32_t id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline
-QDF_STATUS hif_enable_rtpm(struct hif_opaque_softc *hifi,
-			   uint32_t id)
-{
-	return QDF_STATUS_SUCCESS;
 }
 #endif
 
