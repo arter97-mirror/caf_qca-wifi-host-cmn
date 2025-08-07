@@ -496,7 +496,7 @@ scm_update_passive_dwell_time(struct wlan_objmgr_vdev *vdev,
 
 static const struct probe_time_dwell_time
 	scan_probe_time_dwell_time_map[SCAN_DWELL_TIME_PROBE_TIME_MAP_SIZE] = {
-	{28, 11},               /* 0 SSID */
+	{28, 7},               /* 0 SSID */
 	{28, 20},               /* 1 SSID */
 	{28, 20},               /* 2 SSID */
 	{28, 20},               /* 3 SSID */
