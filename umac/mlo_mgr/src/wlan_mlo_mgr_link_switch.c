@@ -2129,6 +2129,7 @@ QDF_STATUS mlo_mgr_link_switch_complete(struct wlan_objmgr_vdev *vdev)
 	if (!vdev->mlo_dev_ctx) {
 		mlo_err("mlo_dev_ctx for vdev is null vedv_id %d",
 			wlan_vdev_get_id(vdev));
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 		return QDF_STATUS_E_INVAL;
 	}
 

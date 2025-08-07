@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -334,6 +334,20 @@ QDF_STATUS wlan_vdev_is_up_active_state(struct wlan_objmgr_vdev *vdev)
 	state = wlan_vdev_mlme_get_state(vdev);
 	substate = wlan_vdev_mlme_get_substate(vdev);
 	if (state == WLAN_VDEV_S_UP && substate == WLAN_VDEV_SS_UP_ACTIVE)
+		return QDF_STATUS_SUCCESS;
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wlan_vdev_is_link_removal_state(struct wlan_objmgr_vdev *vdev)
+{
+	enum wlan_vdev_state state;
+	enum wlan_vdev_state substate;
+
+	state = wlan_vdev_mlme_get_state(vdev);
+	substate = wlan_vdev_mlme_get_substate(vdev);
+
+	if (state == WLAN_VDEV_S_UP && substate == WLAN_VDEV_SS_UP_REMOVAL)
 		return QDF_STATUS_SUCCESS;
 
 	return QDF_STATUS_E_FAILURE;

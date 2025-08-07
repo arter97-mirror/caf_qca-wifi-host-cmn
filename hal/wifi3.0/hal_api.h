@@ -1302,6 +1302,7 @@ void *hal_srng_setup_idx(void *hal_soc, int ring_type, int ring_num,
 
 /* Remapping ids of REO rings */
 #define REO_REMAP_TCL 0
+#define REO_REMAP_SW0 0
 #define REO_REMAP_SW1 1
 #define REO_REMAP_SW2 2
 #define REO_REMAP_SW3 3
