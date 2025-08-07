@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -62,7 +62,6 @@ static inline int crypto_log2_ceil(unsigned int value)
 	return log2;
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static QDF_STATUS wlan_crypto_hash_init(struct crypto_psoc_priv_obj *psoc)
 {
 	int log2, hash_elems, i;
@@ -89,7 +88,6 @@ static QDF_STATUS wlan_crypto_hash_init(struct crypto_psoc_priv_obj *psoc)
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif
 
 static inline uint32_t crypto_hash_index(struct crypto_psoc_priv_obj *psoc,
 					 union crypto_align_mac_addr *mac_addr,
@@ -281,7 +279,6 @@ QDF_STATUS crypto_add_entry(struct crypto_psoc_priv_obj *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static void crypto_remove_entry(struct crypto_psoc_priv_obj *psoc,
 				struct wlan_crypto_key_entry *crypto_entry,
 				void *ptr)
@@ -467,11 +464,6 @@ static QDF_STATUS wlan_crypto_psoc_obj_destroy_handler(
 	qdf_mem_free(crypto_psoc_obj);
 	return status;
 }
-#else
-void crypto_flush_entries(struct wlan_objmgr_psoc *psoc)
-{
-}
-#endif
 
 static QDF_STATUS wlan_crypto_register_all_ciphers(
 					struct wlan_crypto_params *crypto_param)
@@ -761,7 +753,6 @@ static QDF_STATUS wlan_crypto_peer_obj_destroy_handler(
 	return QDF_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static int register_psoc_create_handler(void)
 {
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
@@ -805,29 +796,6 @@ static int unregister_psoc_destroy_handler(void)
 			NULL);
 	return status;
 }
-
-#else
-static int register_psoc_create_handler(void)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static int register_psoc_destroy_handler(void)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static int unregister_psoc_create_handler(void)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static int unregister_psoc_destroy_handler(void)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-#endif
 
 QDF_STATUS __wlan_crypto_init(void)
 {

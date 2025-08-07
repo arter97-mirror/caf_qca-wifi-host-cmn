@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2099,8 +2099,9 @@ wlan_crypto_is_store_in_psoc(struct wlan_objmgr_vdev *vdev)
 {
 	return (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE ||
 		wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE) &&
-		wlan_vdev_mlme_is_mlo_vdev(vdev) &&
-		is_mlo_adv_enable();
+		((wlan_vdev_mlme_is_mlo_vdev(vdev) &&
+		  is_mlo_adv_enable()) ||
+		 wlan_crypto_vdev_is_pmf_enabled(vdev));
 }
 
 /**

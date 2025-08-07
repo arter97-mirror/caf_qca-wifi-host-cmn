@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -227,7 +227,7 @@ dp_rx_wds_add_or_update_ast(struct dp_soc *soc,
 	struct dp_pdev *pdev = ta_peer->vdev->pdev;
 	uint8_t wds_src_mac[QDF_MAC_ADDR_SIZE];
 	struct dp_peer *ta_base_peer;
-
+	struct cdp_peer_info sa_peer_info;
 
 	if (!(is_chfrag_start && is_ad4_valid))
 		return;
@@ -242,6 +242,24 @@ dp_rx_wds_add_or_update_ast(struct dp_soc *soc,
 		if (ta_base_peer) {
 			if (ta_peer->vdev->opmode == wlan_op_mode_ap)
 				dp_wds_ext_peer_learn(soc, ta_base_peer);
+
+			DP_PEER_INFO_PARAMS_INIT(&sa_peer_info,
+						 DP_VDEV_ALL,
+						 wds_src_mac,
+						 false,
+						 CDP_WILD_PEER_TYPE);
+
+			sa_peer = dp_peer_hash_find_wrapper(soc, &sa_peer_info,
+							    DP_MOD_ID_RX);
+			if (qdf_unlikely(sa_peer)) {
+				dp_info_rl("src: " QDF_MAC_ADDR_FMT " exists",
+					   QDF_MAC_ADDR_REF(wds_src_mac));
+				dp_peer_unref_delete(sa_peer,
+						     DP_MOD_ID_RX);
+				dp_peer_unref_delete(ta_base_peer,
+						     DP_MOD_ID_RX);
+				return;
+			}
 
 			dp_peer_add_ast(soc, ta_base_peer, wds_src_mac,
 					CDP_TXRX_AST_TYPE_WDS, flags);
