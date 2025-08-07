@@ -1550,7 +1550,8 @@ void *qdf_mem_malloc_debug(size_t size, const char *func, uint32_t line,
 			 duration, size, func, line);
 
 	if (!header) {
-		qdf_warn("Failed to malloc %zuB @ %s:%d", size, func, line);
+		qdf_warn("Failed to malloc %zuB flag:%#x(%pGg) @ %s:%d",
+			 size, flag, &flag, func, line);
 		return NULL;
 	}
 
@@ -2212,6 +2213,7 @@ qdf_export_symbol(__qdf_mem_free);
 void *__qdf_mem_malloc(size_t size, const char *func, uint32_t line)
 {
 	void *ptr;
+	int flags;
 
 	if (!size || size > QDF_MEM_MAX_MALLOC) {
 		qdf_nofl_err("Cannot malloc %zu bytes @ %s:%d", size, func,
@@ -2223,9 +2225,13 @@ void *__qdf_mem_malloc(size_t size, const char *func, uint32_t line)
 	if (ptr)
 		return ptr;
 
-	ptr = kzalloc(size, qdf_mem_malloc_flags());
-	if (!ptr)
+	flags = qdf_mem_malloc_flags();
+	ptr = kzalloc(size, flags);
+	if (!ptr) {
+		qdf_rl_nofl_err("Cannot malloc %zuB flags:%#x(%pGg) @ %s:%d",
+				size, flags, &flags, func, line);
 		return NULL;
+	}
 
 	qdf_mem_kmalloc_inc(ksize(ptr));
 

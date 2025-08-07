@@ -656,8 +656,8 @@ struct sk_buff *__qdf_nbuf_alloc(qdf_device_t osdev, size_t size, int reserve,
 	skb = pld_nbuf_pre_alloc(size);
 
 	if (!skb) {
-		qdf_rl_nofl_err("NBUF alloc failed %zuB @ %s:%d",
-				size, func, line);
+		qdf_rl_nofl_err("NBUF alloc failed %zuB flags:%#x(%pGg) @ %s:%d",
+				size, flags, &flags, func, line);
 		__qdf_nbuf_start_replenish_timer();
 		return NULL;
 	}
