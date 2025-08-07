@@ -3863,7 +3863,6 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 	struct wlan_ipa_iface_context *iface_ctx = NULL;
 	qdf_ipa_msg_meta_t meta;
 	qdf_ipa_wlan_msg_t *msg;
-	qdf_ipa_wlan_msg_ex_t *msg_ex = NULL;
 	int i;
 	QDF_STATUS status;
 	uint8_t sta_session_id = WLAN_IPA_MAX_SESSION;
@@ -4130,8 +4129,8 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 					      is_2g_iface, is_mlo_vdev);
 		if (status != QDF_STATUS_SUCCESS) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_err("%s: Evt: %d, Interface setup failed",
-				msg_ex->name, QDF_IPA_MSG_META_MSG_TYPE(&meta));
+			ipa_err("Evt: %d, Interface setup failed",
+				QDF_IPA_MSG_META_MSG_TYPE(&meta));
 			goto end;
 		}
 
@@ -4165,8 +4164,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 			struct wlan_ipa_iface_context *iface;
 
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_log_info("%s: Evt: %d, STA already disconnected",
-				     msg_ex->name,
+			ipa_log_info("Evt: %d, STA already disconnected",
 				     QDF_IPA_MSG_META_MSG_TYPE(&meta));
 
 			iface = wlan_ipa_get_iface_by_mode_netdev(ipa_ctx,
@@ -4182,8 +4180,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		ipa_ctx->sta_connected--;
 
 		if (!wlan_ipa_uc_is_enabled(ipa_ctx->config)) {
-			ipa_debug("%s: IPA UC OFFLOAD NOT ENABLED",
-				  msg_ex->name);
+			ipa_debug("IPA UC OFFLOAD NOT ENABLED");
 		} else {
 			/*
 			 * Disable IPA pipes when
@@ -4445,8 +4442,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 	case QDF_IPA_CLIENT_DISCONNECT:
 		if (!wlan_ipa_uc_is_enabled(ipa_ctx->config)) {
-			ipa_debug("%s: IPA UC OFFLOAD NOT ENABLED",
-				  msg_ex->name);
+			ipa_debug("IPA UC OFFLOAD NOT ENABLED");
 			return QDF_STATUS_SUCCESS;
 		}
 
@@ -4530,8 +4526,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		qdf_mutex_acquire(&ipa_ctx->event_lock);
 		if (!ipa_ctx->sap_num_connected_sta && !ipa_ctx->sap_num_mlo_connected_sta) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_debug("%s: Evt: %d, Client already disconnected",
-				  msg_ex->name,
+			ipa_debug("Evt: %d, Client already disconnected",
 				  QDF_IPA_MSG_META_MSG_TYPE(&meta));
 
 			return QDF_STATUS_SUCCESS;
