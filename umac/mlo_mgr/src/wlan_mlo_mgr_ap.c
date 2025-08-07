@@ -35,6 +35,7 @@
 #endif
 #ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
 #include "osif_link_reconfig.h"
+#include "target_if_mlo_mgr.h"
 #endif
 
 #ifdef WLAN_MLO_MULTI_CHIP
@@ -1113,5 +1114,10 @@ release_ref:
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 
 	return status;
+}
+
+bool wlan_mlo_ap_get_link_removal_cap(struct wlan_objmgr_psoc *psoc)
+{
+	return target_if_mlo_sap_link_removal_offload_support(psoc);
 }
 #endif

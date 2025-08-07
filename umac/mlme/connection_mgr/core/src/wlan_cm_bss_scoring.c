@@ -3223,15 +3223,93 @@ static bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
 	return true;
 }
 
-static void cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
+/**
+ * cm_check_for_partner_link_in_scan_list() - Check if partner link exists in
+ * scan list
+ * @pdev: Pointer to pdev object
+ * @entry: Pointer to scan cache entry
+ * @link_info: Pointer to partner link information
+ *
+ * This function checks if a partner link exists in the scan cache by creating
+ * a filter with the link's MAC address and MLD address, then querying the scan
+ * cache. It also checks for common AKM with other links within same MLD.
+ *
+ * Return: true if partner link is found in scan cache, false otherwise
+ */
+static bool
+cm_check_for_partner_link_in_scan_list(struct wlan_objmgr_pdev *pdev,
+				       struct scan_cache_entry *entry,
+				       struct partner_link_info *link_info)
+{
+	struct scan_filter *scan_filter;
+	qdf_list_t *list = NULL;
+	struct scan_cache_node *first_node = NULL;
+	qdf_list_node_t *cur_node = NULL;
+	bool is_present = false;
+
+	scan_filter = qdf_mem_malloc(sizeof(*scan_filter));
+	if (!scan_filter) {
+		mlme_err("Failed to allocate memory for scan filter");
+		return is_present;
+	}
+
+	scan_filter->num_of_bssid = 1;
+	scan_filter->match_mld_addr = true;
+	qdf_copy_macaddr(&scan_filter->mld_addr,
+			 &entry->ml_info.mld_mac_addr);
+	scan_filter->match_link_id = true;
+	scan_filter->link_id = link_info->link_id;
+	qdf_mem_copy(scan_filter->bssid_list[0].bytes,
+		     link_info->link_addr.bytes,
+		     sizeof(struct qdf_mac_addr));
+
+	list = scm_get_scan_result(pdev, scan_filter);
+	qdf_mem_free(scan_filter);
+	if (!list || (list && !qdf_list_size(list))) {
+		mlme_err("Scan entry for bssid: "QDF_MAC_ADDR_FMT" not found",
+			 QDF_MAC_ADDR_REF(link_info->link_addr.bytes));
+		goto done;
+	}
+
+	if (qdf_list_peek_front(list, &cur_node) != QDF_STATUS_SUCCESS) {
+		mlme_err("Failed to peek front of the list");
+		goto done;
+	}
+
+	first_node = qdf_container_of(cur_node, struct scan_cache_node,
+				      node);
+
+	if (first_node && first_node->entry) {
+		if (wlan_scan_entries_contain_cmn_akm(entry,
+						      first_node->entry)) {
+			is_present = true;
+			mlme_debug("Partner link present in scan list");
+		}
+	}
+
+done:
+	if (list)
+		scm_purge_scan_results(list);
+
+	return is_present;
+}
+
+static void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
 				      struct scoring_cfg *score_config,
 				      struct scan_cache_entry *entry,
 				      qdf_list_t *scan_list, bool allow_scan)
 {
+	struct wlan_objmgr_psoc *psoc;
 	uint8_t idx;
 	struct scan_cache_entry *partner_entry;
 	struct partner_link_info *link_info;
 	struct wlan_objmgr_peer *peer;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		mlme_err("psoc NULL");
+		return;
+	}
 
 	for (idx = 0; idx < entry->ml_info.num_links; idx++) {
 		link_info = &entry->ml_info.link_info[idx];
@@ -3259,6 +3337,14 @@ static void cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
 		partner_entry = cm_get_entry(scan_list, &link_info->link_addr,
 					     &entry->ml_info.mld_mac_addr);
 		if (!partner_entry) {
+			/**
+			 * If the partner link is present in scan cache, keep
+			 * this link valid.
+			 */
+			if (cm_check_for_partner_link_in_scan_list(pdev, entry,
+								   link_info))
+				continue;
+
 			/**
 			 * If scan is already done and if the candidate is
 			 * part of MBSSID set's non-Tx BSSID, then clear the
@@ -3374,7 +3460,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 		}
 
 		/* Validate the partner links */
-		cm_validate_partner_links(psoc, score_config, scan_entry,
+		cm_validate_partner_links(pdev, score_config, scan_entry,
 					  candidate_list, allow_scan);
 
 		if (!allow_slo_candidate)
@@ -3520,7 +3606,7 @@ static void cm_eliminate_invalid_candidate(struct wlan_objmgr_psoc *psoc,
 {
 }
 
-static inline void cm_validate_partner_links(struct wlan_objmgr_psoc *psoc,
+static inline void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
 					     struct scoring_cfg *score_config,
 					     struct scan_cache_entry *entry,
 					     qdf_list_t *scan_list,

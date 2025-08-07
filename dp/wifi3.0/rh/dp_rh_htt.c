@@ -265,13 +265,14 @@ dp_htt_t2h_msg_handler_fast(void *context, qdf_nbuf_t *cmpl_msdus,
 		switch (msg_type) {
 		case HTT_T2H_MSG_TYPE_RX_DATA_IND:
 		{
-			soc->stats.htt_msg_stats[ce_id].rx_data_ind++;
 			uint16_t vdev_id, msdu_cnt;
 			uint16_t peer_id, frag_ind;
 
 			peer_id = HTT_RX_DATA_IND_PEER_ID_GET(*msg_word);
 			frag_ind = HTT_RX_DATA_IND_FRAG_GET(*(msg_word + 1));
 			vdev_id = HTT_RX_DATA_IND_VDEV_ID_GET(*msg_word);
+
+			soc->stats.htt_msg_stats[ce_id].rx_data_ind++;
 
 			if (qdf_unlikely(frag_ind)) {
 				dp_rx_frag_indication_handler(soc->dp_soc,
@@ -290,8 +291,9 @@ dp_htt_t2h_msg_handler_fast(void *context, qdf_nbuf_t *cmpl_msdus,
 		case HTT_T2H_MSG_TYPE_SOFT_UMAC_TX_COMPL_IND:
 		{
 			uint32_t num_msdus;
-			soc->stats.htt_msg_stats[ce_id].tx_completion_ind++;
 			num_msdus = HTT_SOFT_UMAC_TX_COMP_IND_MSDU_COUNT_GET(*msg_word);
+
+			soc->stats.htt_msg_stats[ce_id].tx_completion_ind++;
 
 			if ((num_msdus * HTT_TX_MSDU_INFO_SIZE +
 			     HTT_SOFT_UMAC_TX_COMPL_IND_SIZE) > msg_len) {

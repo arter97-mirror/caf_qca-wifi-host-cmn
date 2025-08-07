@@ -106,18 +106,20 @@ qdf_export_symbol(ucfg_ipa_uc_stat);
 
 void ucfg_ipa_set_opt_dp_ctrl_flt(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_add_cb_params *flt)
+			struct ipa_wdi_opt_dpath_flt_add_cb_params *flt,
+			uint8_t opr)
 {
-	return ipa_set_opt_dp_ctrl_flt(pdev, flt);
+	return ipa_set_opt_dp_ctrl_flt(pdev, flt, opr);
 }
 
 qdf_export_symbol(ucfg_ipa_set_opt_dp_ctrl_flt);
 
 void ucfg_ipa_set_opt_dp_ctrl_flt_rm(
 			struct wlan_objmgr_pdev *pdev,
-			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt)
+			struct ipa_wdi_opt_dpath_flt_rem_cb_params *flt,
+			uint8_t opr)
 {
-	return ipa_set_opt_dp_ctrl_flt_rm(pdev, flt);
+	return ipa_set_opt_dp_ctrl_flt_rm(pdev, flt, opr);
 }
 
 qdf_export_symbol(ucfg_ipa_set_opt_dp_ctrl_flt_rm);

@@ -1379,6 +1379,20 @@ mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev);
 uint8_t mlo_get_ml_links_info(struct wlan_objmgr_psoc *psoc,
 			      uint8_t vdev_id,
 			      struct ml_link_info *link_info);
+/**
+ * mlo_mgr_flush_connected_profile_scan_entry: Flush connect profile scan entry
+ * @vdev: Pointer to the vdev object manager
+ *
+ * This function is used to flush (remove or invalidate) the scan entry
+ * corresponding to the currently connected profile for the given vdev.
+ * This is necessary to ensure that stale or incorrect scan information is
+ * removed, especially in scenarios like MLO reconfig or disconnections,
+ * where the network topology or link capabilities might change.
+ *
+ * Return: void
+ */
+void
+mlo_mgr_flush_connected_profile_scan_entry(struct wlan_objmgr_vdev *vdev);
 #else
 static inline
 void mlo_defer_set_keys(struct wlan_objmgr_vdev *vdev,
@@ -1415,6 +1429,11 @@ static inline QDF_STATUS
 mlo_sta_reset_requested_emlsr_mode(struct wlan_mlo_dev_context *ml_dev)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline void
+mlo_mgr_flush_connected_profile_scan_entry(struct wlan_objmgr_vdev *vdev)
+{
 }
 #endif
 

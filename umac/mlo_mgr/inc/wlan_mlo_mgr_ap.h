@@ -742,5 +742,13 @@ wlan_mlo_link_removal_cmd(struct wlan_objmgr_vdev *vdev,
 			  struct wlan_objmgr_psoc *psoc,
 			  uint8_t *ml_reconfig_ie,
 			  size_t elem_len);
+
+/**
+ * wlan_mlo_ap_get_link_removal_cap() - Get mlo sap link removal capability
+ * @psoc: psoc pointer
+ *
+ * Return: true if target support link removal, false for unsupported
+ */
+bool wlan_mlo_ap_get_link_removal_cap(struct wlan_objmgr_psoc *psoc);
 #endif
 #endif
