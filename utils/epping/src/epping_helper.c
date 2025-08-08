@@ -38,7 +38,6 @@
 #include <net/cfg80211.h>
 #include <linux/rtnetlink.h>
 #include <linux/semaphore.h>
-#include <linux/delay.h>
 #include <linux/ctype.h>
 #include "epping_main.h"
 #include "epping_internal.h"

@@ -37,7 +37,6 @@
 #include <qdf_util.h>
 #include <qdf_mem.h>
 #include <linux/tcp.h>
-#include <qdf_util.h>
 #include <qdf_nbuf_frag.h>
 #include "qdf_time.h"
 

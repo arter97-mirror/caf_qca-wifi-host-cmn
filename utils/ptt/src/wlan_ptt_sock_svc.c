@@ -27,8 +27,6 @@
 #include <qdf_trace.h>
 #include <wlan_nlink_common.h>
 #include <wlan_ptt_sock_svc.h>
-#include <qdf_types.h>
-#include <qdf_trace.h>
 
 #ifdef CNSS_GENL
 #ifdef CONFIG_CNSS_OUT_OF_TREE

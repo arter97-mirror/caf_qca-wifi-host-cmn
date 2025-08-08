@@ -42,7 +42,6 @@
 #include <QCA9888/v2/hw/interface/rx_pkt_end.h>
 #include <QCA9888/v2/hw/interface/rx_phy_ppdu_end.h>
 #include <QCA9888/v2/hw/interface/rx_timing_offset.h>
-#include <QCA9888/v2/hw/interface/rx_location_info.h>
 #include <QCA9888/v2/hw/tlv/rx_ppdu_start.h>
 #include <QCA9888/v2/hw/tlv/rx_ppdu_end.h>
 #include <QCA9888/v2/hw/tlv/rx_mpdu_start.h>

@@ -19,8 +19,6 @@
 #include <hal_be_api.h>
 #include "dp_mlo.h"
 #include <dp_be.h>
-#include <dp_htt.h>
-#include <dp_internal.h>
 #include <wlan_cfg.h>
 #include <wlan_mlo_mgr_cmn.h>
 /*

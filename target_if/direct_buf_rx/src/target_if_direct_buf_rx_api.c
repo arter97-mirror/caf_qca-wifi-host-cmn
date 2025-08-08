@@ -21,7 +21,6 @@
 #include <wlan_objmgr_cmn.h>
 #include <wlan_objmgr_global_obj.h>
 #include <wlan_objmgr_psoc_obj.h>
-#include <wlan_objmgr_cmn.h>
 #include "target_if_direct_buf_rx_main.h"
 #include <qdf_module.h>
 #include <wlan_lmac_if_def.h>

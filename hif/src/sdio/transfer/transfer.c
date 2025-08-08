@@ -33,7 +33,6 @@
 #include <athdefs.h>
 #include <qdf_net_types.h>
 #include <a_types.h>
-#include <athdefs.h>
 #include <a_osapi.h>
 #include <hif.h>
 #include <htc_services.h>

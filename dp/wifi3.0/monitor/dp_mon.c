@@ -19,7 +19,6 @@
 #include "dp_peer.h"
 #include <dp_htt.h>
 #include <dp_mon_filter.h>
-#include <dp_htt.h>
 #include <dp_mon.h>
 #include <dp_rx_mon.h>
 #include <dp_internal.h>

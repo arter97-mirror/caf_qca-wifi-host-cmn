@@ -44,7 +44,6 @@
 #include "hal_rx.h"
 #include <hal_api.h>
 #include <hal_api_mon.h>
-#include "hal_rx.h"
 //#include "hal_rx_flow.h"
 
 #define MAX_BW 8

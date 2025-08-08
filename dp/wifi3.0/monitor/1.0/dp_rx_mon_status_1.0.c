@@ -134,9 +134,7 @@ dp_rx_mon_enh_capture_process(struct dp_pdev *pdev, uint32_t tlv_status,
 }
 #endif
 
-#ifdef WLAN_TX_PKT_CAPTURE_ENH
-#include "dp_rx_mon_feature.h"
-#else
+#ifndef WLAN_TX_PKT_CAPTURE_ENH
 static QDF_STATUS
 dp_send_ack_frame_to_stack(struct dp_soc *soc,
 			   struct dp_pdev *pdev,
