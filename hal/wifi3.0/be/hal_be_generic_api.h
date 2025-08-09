@@ -1573,7 +1573,6 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 
 	user_id = (tlv_user_id >= ppdu_info->num_users ? 0 : tlv_user_id);
 	hal_tx_record_tlv_info(ppdu_info, tlv_tag);
-	TXMON_HAL_STATUS(ppdu_info, add_rtap_ext) = true;
 
 	switch (tlv_tag) {
 	/* start of initiator FES window */
@@ -1968,8 +1967,8 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 				  response_type) = response_type;
 		TXMON_HAL_STATUS(ppdu_info, tsft) = tsft_64;
 
+		TXMON_HAL_STATUS(ppdu_info, tx_status_flag) = 1;
 		if (!response_type) {
-			TXMON_HAL_STATUS(ppdu_info, add_rtap_ext) = true;
 			TXMON_HAL_STATUS(ppdu_info, tx_status) |=
 					BIT(HAL_MON_TX_STATUS_NOACK);
 		}
@@ -2014,8 +2013,8 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 		TXMON_STATUS_INFO(tx_status_info, ndp_frame) = ndp_frame;
 		TXMON_HAL_STATUS(ppdu_info, tsft) = tsft_64;
 
+		TXMON_HAL_STATUS(ppdu_info, tx_status_flag) = 1;
 		if (!response_type) {
-			TXMON_HAL_STATUS(ppdu_info, add_rtap_ext) = true;
 			TXMON_HAL_STATUS(ppdu_info, tx_status) |=
 					BIT(HAL_MON_TX_STATUS_NOACK);
 		}
