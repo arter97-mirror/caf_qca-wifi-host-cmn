@@ -369,6 +369,7 @@ dp_tx_mon_generate_cts2self_frm(struct dp_pdev *pdev,
 		   QDF_IEEE80211_FC0_SUBTYPE_CTS);
 	TXMON_PPDU_COM(tx_ppdu_info, frame_control) = frm_ctl;
 	TXMON_PPDU_COM(tx_ppdu_info, frame_control_info_valid) = 1;
+	TXMON_PPDU_COM(tx_ppdu_info, tx_status_flag) = 1;
 	TXMON_PPDU_COM(tx_ppdu_info, tx_status) |= BIT(HAL_MON_TX_STATUS_NOACK);
 
 	wh_min->i_fc[1] = 0;
@@ -527,6 +528,7 @@ dp_tx_mon_generate_ack_frm(struct dp_pdev *pdev,
 		   QDF_IEEE80211_FC0_SUBTYPE_ACK);
 	TXMON_PPDU_COM(tx_ppdu_info, frame_control) = frm_ctl;
 	TXMON_PPDU_COM(tx_ppdu_info, frame_control_info_valid) = 1;
+	TXMON_PPDU_COM(tx_ppdu_info, tx_status_flag) = 1;
 	TXMON_PPDU_COM(tx_ppdu_info, tx_status) |= BIT(HAL_MON_TX_STATUS_NOACK);
 
 	wh_addr1->i_fc[1] = 0;
@@ -899,6 +901,7 @@ dp_tx_mon_generate_mu_block_ack_frm(struct dp_pdev *pdev,
 	TXMON_PPDU_HAL(tx_ppdu_info, is_used) = 1;
 	/* HE MU fields not required for Multi Sta Block ack frame */
 	TXMON_PPDU_COM(tx_ppdu_info, he_mu_flags) = 0;
+	TXMON_PPDU_COM(tx_ppdu_info, tx_status_flag) = 1;
 	TXMON_PPDU_COM(tx_ppdu_info, tx_status) |= BIT(HAL_MON_TX_STATUS_NOACK);
 }
 
@@ -993,6 +996,7 @@ dp_tx_mon_generate_block_ack_frm(struct dp_pdev *pdev,
 		   QDF_IEEE80211_FC0_SUBTYPE_BA);
 	TXMON_PPDU_COM(tx_ppdu_info, frame_control) = frm_ctl;
 	TXMON_PPDU_COM(tx_ppdu_info, frame_control_info_valid) = 1;
+	TXMON_PPDU_COM(tx_ppdu_info, tx_status_flag) = 1;
 	TXMON_PPDU_COM(tx_ppdu_info, tx_status) |= BIT(HAL_MON_TX_STATUS_NOACK);
 	wh_addr2->i_fc[1] = 0;
 	wh_addr2->i_fc[0] = frm_ctl;
