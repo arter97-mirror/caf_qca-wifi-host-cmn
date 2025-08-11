@@ -105,6 +105,7 @@ static QDF_STATUS wlan_objmgr_psoc_obj_free(struct wlan_objmgr_psoc *psoc)
 	wlan_objmgr_psoc_peer_list_deinit(&psoc->soc_objmgr.peer_list);
 
 	qdf_spinlock_destroy(&psoc->psoc_lock);
+	qdf_spinlock_destroy(&psoc->roam_set_lock);
 	qdf_mem_free(psoc);
 
 	return QDF_STATUS_SUCCESS;
@@ -187,6 +188,8 @@ struct wlan_objmgr_psoc *wlan_objmgr_psoc_obj_create(uint32_t phy_version,
 	}
 	wlan_minidump_log(psoc, sizeof(*psoc), psoc,
 			  WLAN_MD_OBJMGR_PSOC, "wlan_objmgr_psoc");
+	qdf_spinlock_create(&psoc->roam_set_lock);
+	psoc->roam_enabled = true;
 	obj_mgr_info("Created psoc %d", psoc->soc_objmgr.psoc_id);
 
 	return psoc;

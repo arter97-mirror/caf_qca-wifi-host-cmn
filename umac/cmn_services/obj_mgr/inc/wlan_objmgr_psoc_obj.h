@@ -375,6 +375,7 @@ struct wlan_soc_timer {
  * @tgt_if_handle:         target interface handle
  * @dp_handle:             DP module handle
  * @psoc_lock:             psoc lock
+ * @roam_enabled:          roam enable/disable flag
  */
 struct wlan_objmgr_psoc {
 	struct wlan_objmgr_psoc_regulatory soc_reg;
@@ -389,6 +390,8 @@ struct wlan_objmgr_psoc {
 	struct target_psoc_info *tgt_if_handle;
 	void *dp_handle;
 	qdf_spinlock_t psoc_lock;
+	qdf_spinlock_t roam_set_lock;
+	bool roam_enabled;
 };
 
 /**
