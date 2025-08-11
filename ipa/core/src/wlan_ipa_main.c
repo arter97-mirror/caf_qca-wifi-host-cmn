@@ -26,6 +26,7 @@
 #include "wlan_ipa_tgt_api.h"
 #include "cfg_ucfg_api.h"
 #include "wlan_ipa_obj_mgmt_api.h"
+#include "qdf_str.h"
 
 static struct wlan_ipa_config *g_ipa_config;
 static bool g_ipa_hw_support;
@@ -1316,3 +1317,30 @@ ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev, wlan_ipa_is_mlo_vdev cb)
 	wlan_ipa_reg_is_mlo_vdev_cb(ipa_obj, cb);
 }
 #endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
+#ifdef IPA_SIM
+int ipa_get_psoc_idx(void)
+{
+	unsigned char module_name_str[QDF_MAX_NAME_SIZE];
+
+	qdf_str_lcopy(module_name_str, THIS_MODULE->name,
+		      sizeof(module_name_str));
+
+	if (!qdf_str_cmp(module_name_str, "wlan"))
+		return 0;
+	else if (!qdf_str_cmp(module_name_str, "wlan1"))
+		return 1;
+	else if (!qdf_str_cmp(module_name_str, "wlan2"))
+		return 2;
+
+	ipa_debug("Unrecognized module name: %s, defaulting to index 0",
+		  module_name_str);
+
+	return 0;
+}
+#else
+int ipa_get_psoc_idx(void)
+{
+	return 0;
+}
+#endif

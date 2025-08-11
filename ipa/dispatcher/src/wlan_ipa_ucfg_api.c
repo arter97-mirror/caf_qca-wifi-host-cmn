@@ -453,3 +453,10 @@ ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
 	ipa_reg_is_mlo_vdev_cb(pdev, cb);
 }
 #endif /* WLAN_FEATURE_MULTI_LINK_SAP */
+
+int ucfg_ipa_get_psoc_idx(void)
+{
+	return ipa_get_psoc_idx();
+}
+
+qdf_export_symbol(ucfg_ipa_get_psoc_idx);

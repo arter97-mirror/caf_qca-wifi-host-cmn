@@ -549,6 +549,14 @@ void ucfg_ipa_set_perf_level_bw(struct wlan_objmgr_pdev *pdev,
  */
 bool ucfg_ipa_is_two_tx_pipes_enabled(void);
 
+/**
+ * ucfg_ipa_get_psoc_idx() - get PSOC index based on mod name
+ * for IPA SIM
+ *
+ * Return: PSOC index
+ */
+int ucfg_ipa_get_psoc_idx(void);
+
 #if defined(IPA_OFFLOAD) && defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 /**
  * ucfg_ipa_event_wq() - Queue WLAN IPA event for later processing
@@ -904,6 +912,12 @@ ucfg_ipa_reg_is_mlo_vdev_cb(struct wlan_objmgr_pdev *pdev,
 static inline void
 ucfg_ipa_dump_logging_stats(void)
 {
+}
+
+static inline int
+ucfg_ipa_get_psoc_idx(void)
+{
+	return 0;
 }
 
 #endif /* IPA_OFFLOAD */

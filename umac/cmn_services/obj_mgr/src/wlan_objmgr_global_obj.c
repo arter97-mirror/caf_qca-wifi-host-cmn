@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -27,6 +27,7 @@
 #include "wlan_objmgr_psoc_obj.h"
 #include "qdf_mem.h"
 #include <qdf_module.h>
+#include "wlan_ipa_ucfg_api.h"
 
 /* Global object, it is declared globally */
 struct wlan_objmgr_global *g_umac_glb_obj;
@@ -834,6 +835,7 @@ QDF_STATUS wlan_objmgr_psoc_object_attach(struct wlan_objmgr_psoc *psoc)
 
 	qdf_spin_lock_bh(&g_umac_glb_obj->global_lock);
 	/* Find free slot in PSOC table, store the PSOC */
+	index = ucfg_ipa_get_psoc_idx();
 	while (index < WLAN_OBJMGR_MAX_DEVICES) {
 		if (!g_umac_glb_obj->psoc[index]) {
 			/* Found free slot, store psoc */

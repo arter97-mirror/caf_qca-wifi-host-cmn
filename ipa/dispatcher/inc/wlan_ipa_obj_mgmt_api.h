@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -58,6 +58,14 @@ QDF_STATUS ipa_register_is_ipa_ready(struct wlan_objmgr_pdev *pdev);
  * unloaded to indicate that ipa ready cb is not registered
  */
 void ipa_disable_register_cb(void);
+
+/**
+ * ipa_get_psoc_idx() - get PSOC index based on mod name
+ * for IPA SIM
+ *
+ * Return: PSOC index
+ */
+int ipa_get_psoc_idx(void);
 
 /**
  * wlan_ipa_config_is_enabled() - api to get IPA enable status
@@ -164,6 +172,11 @@ static inline QDF_STATUS ipa_register_is_ipa_ready(
 
 static inline void ipa_disable_register_cb(void)
 {
+}
+
+static inline int ipa_get_psoc_idx(void)
+{
+	return 0;
 }
 
 static inline bool wlan_ipa_config_is_opt_wifi_dp_enabled(void)
