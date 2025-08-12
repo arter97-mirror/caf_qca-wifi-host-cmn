@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1187,6 +1187,9 @@ static QDF_STATUS extract_twt_cap_service_ready_ext2_tlv(
 					twt_caps->min_max_wake_intvl_us);
 		var->min_wake_intvl = TWT_CAPS_GET_MIN_WAKE_INTVL(
 					twt_caps->min_max_wake_intvl_us);
+		wmi_debug("max_wake_dur:%u min_wake_dur:%u max_wake_intvl:%u min_wake_intvl:%u",
+			  var->max_wake_dur, var->min_wake_dur,
+			  var->max_wake_intvl, var->min_wake_intvl);
 	}
 
 	return QDF_STATUS_SUCCESS;

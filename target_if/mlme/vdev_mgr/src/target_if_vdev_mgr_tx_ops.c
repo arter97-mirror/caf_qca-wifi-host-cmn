@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -39,6 +39,7 @@
 #include <cdp_txrx_ctrl.h>
 #include <target_if_psoc_timer_tx_ops.h>
 #include <target_if_psoc_wake_lock.h>
+#include <wlan_psoc_mlme_api.h>
 
 static QDF_STATUS target_if_vdev_mgr_register_event_handler(
 					struct wlan_objmgr_psoc *psoc)
@@ -52,10 +53,19 @@ static QDF_STATUS target_if_vdev_mgr_unregister_event_handler(
 	return target_if_vdev_mgr_wmi_event_unregister(psoc);
 }
 
-QDF_STATUS
-target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
-				  struct vdev_response_timer *vdev_rsp,
-				  enum wlan_vdev_mgr_tgt_if_rsp_bit clear_bit)
+/**
+ * _target_if_vdev_mgr_rsp_timer_stop() - API to stop response timer for
+ * vdev manager operations
+ * @psoc: pointer to psoc object
+ * @vdev_rsp: vdev response timer
+ * @clear_bit: enum of wlan_vdev_mgr_tgt_if_rsp_bit
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
+_target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
+				   struct vdev_response_timer *vdev_rsp,
+				   enum wlan_vdev_mgr_tgt_if_rsp_bit clear_bit)
 {
 	struct wlan_lmac_if_mlme_tx_ops *txops;
 
@@ -102,10 +112,19 @@ target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
-target_if_vdev_mgr_rsp_timer_start(struct wlan_objmgr_psoc *psoc,
-				   struct vdev_response_timer *vdev_rsp,
-				   enum wlan_vdev_mgr_tgt_if_rsp_bit set_bit)
+/**
+ * _target_if_vdev_mgr_rsp_timer_start() - API to start response timer for
+ * vdev manager operations
+ * @psoc: pointer to psoc object
+ * @vdev_rsp: vdev response timer
+ * @set_bit: enum of wlan_vdev_mgr_tgt_if_rsp_bit
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
+_target_if_vdev_mgr_rsp_timer_start(struct wlan_objmgr_psoc *psoc,
+				    struct vdev_response_timer *vdev_rsp,
+				    enum wlan_vdev_mgr_tgt_if_rsp_bit set_bit)
 {
 	uint8_t rsp_pos;
 	uint8_t vdev_id;
@@ -149,6 +168,59 @@ target_if_vdev_mgr_rsp_timer_start(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS
+target_if_vdev_mgr_rsp_tmr_mutex_acquire(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+
+	if (!mlme_psoc_obj)
+		return QDF_STATUS_E_INVAL;
+
+	return qdf_mutex_acquire(&mlme_psoc_obj->vdev_rsp_timer_mutex);
+}
+
+static QDF_STATUS
+target_if_vdev_mgr_rsp_tmr_mutex_release(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+
+	if (!mlme_psoc_obj)
+		return QDF_STATUS_E_INVAL;
+
+	return qdf_mutex_release(&mlme_psoc_obj->vdev_rsp_timer_mutex);
+}
+
+QDF_STATUS
+target_if_vdev_mgr_rsp_timer_stop(struct wlan_objmgr_psoc *psoc,
+				  struct vdev_response_timer *vdev_rsp,
+				  enum wlan_vdev_mgr_tgt_if_rsp_bit clear_bit)
+{
+	QDF_STATUS status;
+
+	target_if_vdev_mgr_rsp_tmr_mutex_acquire(psoc);
+	status = _target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp, clear_bit);
+	target_if_vdev_mgr_rsp_tmr_mutex_release(psoc);
+
+	return status;
+}
+
+QDF_STATUS
+target_if_vdev_mgr_rsp_timer_start(struct wlan_objmgr_psoc *psoc,
+				   struct vdev_response_timer *vdev_rsp,
+				   enum wlan_vdev_mgr_tgt_if_rsp_bit set_bit)
+{
+	QDF_STATUS status;
+
+	target_if_vdev_mgr_rsp_tmr_mutex_acquire(psoc);
+	status = _target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp, set_bit);
+	target_if_vdev_mgr_rsp_tmr_mutex_release(psoc);
+
+	return status;
+}
 
 struct wmi_unified
 *target_if_vdev_mgr_wmi_handle_get(struct wlan_objmgr_vdev *vdev)

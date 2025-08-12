@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1749,6 +1749,7 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 {
 	uint8_t i, vdev_id, num_links = 0;
 	struct mlo_link_info *link_info;
+	struct wlan_objmgr_vdev *vdev;
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
 
 	num_links = mlo_get_sta_num_links(mld_ctx);
@@ -1779,9 +1780,22 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 			mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls(psoc,
 								      vdev_id);
 
-		mlo_mgr_update_policy_mgr_disabled_links_info(
-				psoc, vdev_id, link_info->link_id,
-				link_info->is_link_active);
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+							    WLAN_MLO_MGR_ID);
+		if (!vdev)
+			continue;
+
+		/*
+		 * If VDEV is not in connected state don't update the policy
+		 * manager table, this can happen if disconnect is ongoing when
+		 * host receives event from FW.
+		 */
+		if (wlan_cm_is_vdev_connected(vdev))
+			mlo_mgr_update_policy_mgr_disabled_links_info(psoc,
+								      vdev_id,
+								      link_info->link_id,
+								      link_info->is_link_active);
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	}
 }
 
