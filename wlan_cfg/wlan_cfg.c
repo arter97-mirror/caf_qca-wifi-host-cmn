@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4249,6 +4249,22 @@ wlan_soc_rx_buffer_recycle_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+static inline void
+wlan_soc_tx_page_pool_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+				 struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx)
+{
+	wlan_cfg_ctx->dp_tx_page_pool =
+			cfg_get(psoc, CFG_DP_TX_PAGE_POOL_ENABLE);
+}
+#else
+static inline void
+wlan_soc_tx_page_pool_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+				 struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx)
+{
+}
+#endif
+
 #ifdef FEATURE_DIRECT_LINK
 static inline void
 wlan_soc_direct_link_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
@@ -4541,6 +4557,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 	wlan_soc_sawf_msduq_tid_skid_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_direct_link_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_rx_buffer_recycle_cfg_attach(psoc, wlan_cfg_ctx);
+	wlan_soc_tx_page_pool_cfg_attach(psoc, wlan_cfg_ctx);
 
 	return wlan_cfg_ctx;
 }
@@ -4860,6 +4877,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 		cfg_get(psoc, CFG_DP_RXMON_MGMT_LINEARIZATION);
 	wlan_soc_dp_proto_stats_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_dp_eapol_stats_cfg_attach(psoc, wlan_cfg_ctx);
+	wlan_soc_tx_page_pool_cfg_attach(psoc, wlan_cfg_ctx);
 
 	return wlan_cfg_ctx;
 }
@@ -6317,6 +6335,25 @@ wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(struct wlan_cfg_dp_soc_ctxt *cfg)
 }
 #endif
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+			    bool *tx_pp_enabled)
+{
+	*tx_pp_enabled = cfg_get(ctrl_psoc,
+				 CFG_DP_TX_PAGE_POOL_ENABLE);
+}
+#endif
+
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+			    bool *rx_pp_enabled, uint32_t *rx_buf_size)
+{
+	*rx_pp_enabled = cfg_get(ctrl_psoc,
+				 CFG_DP_RX_BUFFER_RECYCLE_ENABLE);
+	*rx_buf_size = cfg_get(ctrl_psoc, CFG_DP_RX_BUFFER_SIZE);
+}
+#endif
+
 void
 wlan_cfg_get_prealloc_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			  struct wlan_dp_prealloc_cfg *cfg)
@@ -6649,3 +6686,15 @@ bool wlan_cfg_get_rxmon_mgmt_linearization(struct wlan_cfg_dp_soc_ctxt *cfg)
 }
 
 qdf_export_symbol(wlan_cfg_get_rxmon_mgmt_linearization);
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+bool wlan_cfg_get_dp_tx_page_pool_enabled(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return cfg->dp_tx_page_pool;
+}
+#else
+bool wlan_cfg_get_dp_tx_page_pool_enabled(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return false;
+}
+#endif

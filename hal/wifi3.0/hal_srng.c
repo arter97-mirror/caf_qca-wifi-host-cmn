@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -466,6 +466,7 @@ static void hal_target_based_configure(struct hal_soc *hal)
 	case TARGET_TYPE_QCC2072:
 		hal->use_register_windowing = true;
 		hal_qcc2072_attach(hal);
+		break;
 #endif
 #ifdef INCLUDE_HAL_KIWI
 	case TARGET_TYPE_KIWI:

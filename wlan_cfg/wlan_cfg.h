@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -398,6 +398,7 @@ struct wlan_srng_cfg {
  * @dp_rx_buffer_recycle_enabled: DP RX buffer recycling using page pool API
  *				  enabled/disabled
  * @dp_eapol_stats: flag to enable/disable eapol drop stats
+ * @dp_tx_page_pool: DP TX page pool enable/disable
  */
 struct wlan_cfg_dp_soc_ctxt {
 	int num_int_ctxts;
@@ -658,6 +659,10 @@ struct wlan_cfg_dp_soc_ctxt {
 
 #ifdef DP_TX_SW_DROP_STATS_INC
 	bool dp_eapol_stats;
+#endif
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+	bool dp_tx_page_pool;
 #endif
 };
 
@@ -2625,6 +2630,28 @@ wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(struct wlan_cfg_dp_soc_ctxt *cfg)
 }
 #endif
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+			    bool *tx_pp_enabled);
+#else
+static inline void
+wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+		       bool *tx_pp_enabled)
+{
+}
+#endif
+
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+			    bool *rx_pp_enabled, uint32_t *rx_buf_size);
+#else
+static inline void
+wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
+		       bool *rx_pp_enabled, uint32_t *rx_buf_size)
+{
+}
+#endif
+
 /**
  * wlan_cfg_get_prealloc_cfg() - Get dp prealloc related cfg param
  * @ctrl_psoc: PSOC object
@@ -3136,4 +3163,12 @@ bool wlan_cfg_get_dp_proto_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
  * Return: bool
  */
 bool wlan_cfg_get_dp_eapol_stats(struct wlan_cfg_dp_soc_ctxt *cfg);
+
+/**
+ * wlan_cfg_get_dp_tx_page_pool_enabled() - Get TX page pool config
+ * @cfg: soc configuration context
+ *
+ * Return: bool
+ */
+bool wlan_cfg_get_dp_tx_page_pool_enabled(struct wlan_cfg_dp_soc_ctxt *cfg);
 #endif /*__WLAN_CFG_H*/

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -304,60 +304,44 @@ wlan_dcs_im_copy_stats(struct wlan_host_dcs_im_tgt_stats *prev_stats,
  * wlan_dcs_im_print_stats() - print current/previous dcs target im statistics
  * @prev_stats: previous statistics pointer
  * @curr_stats: current statistics pointer
+ * @vdev_id: vdev of measured
  *
  * Return: None
  */
 static void
 wlan_dcs_im_print_stats(struct wlan_host_dcs_im_tgt_stats *prev_stats,
-			struct wlan_host_dcs_im_tgt_stats *curr_stats)
+			struct wlan_host_dcs_im_tgt_stats *curr_stats,
+			uint8_t vdev_id)
 {
 	if (!prev_stats || !curr_stats) {
 		dcs_err("previous or current stats is null");
 		return;
 	}
 
-	/* Debug, dump all received stats first */
-	dcs_debug("tgt_curr/tsf: %u", curr_stats->reg_tsf32);
-	dcs_debug("tgt_curr/last_ack_rssi: %u", curr_stats->last_ack_rssi);
-	dcs_debug("tgt_curr/tx_waste_time: %u", curr_stats->tx_waste_time);
-	dcs_debug("tgt_curr/dcs_rx_time: %u", curr_stats->rx_time);
-	dcs_debug("tgt_curr/listen_time: %u",
-		  curr_stats->mib_stats.listen_time);
-	dcs_debug("tgt_curr/tx_frame_cnt: %u",
-		  curr_stats->mib_stats.reg_tx_frame_cnt);
-	dcs_debug("tgt_curr/rx_frame_cnt: %u",
-		  curr_stats->mib_stats.reg_rx_frame_cnt);
-	dcs_debug("tgt_curr/rxclr_cnt: %u",
-		  curr_stats->mib_stats.reg_rxclr_cnt);
-	dcs_debug("tgt_curr/reg_cycle_cnt: %u",
-		  curr_stats->mib_stats.reg_cycle_cnt);
-	dcs_debug("tgt_curr/rxclr_ext_cnt: %u",
-		  curr_stats->mib_stats.reg_rxclr_ext_cnt);
-	dcs_debug("tgt_curr/ofdm_phyerr_cnt: %u",
-		  curr_stats->mib_stats.reg_ofdm_phyerr_cnt);
-	dcs_debug("tgt_curr/cck_phyerr_cnt: %u",
-		  curr_stats->mib_stats.reg_cck_phyerr_cnt);
-
-	dcs_debug("tgt_prev/tsf: %u", prev_stats->reg_tsf32);
-	dcs_debug("tgt_prev/last_ack_rssi: %u", prev_stats->last_ack_rssi);
-	dcs_debug("tgt_prev/tx_waste_time: %u", prev_stats->tx_waste_time);
-	dcs_debug("tgt_prev/rx_time: %u", prev_stats->rx_time);
-	dcs_debug("tgt_prev/listen_time: %u",
-		  prev_stats->mib_stats.listen_time);
-	dcs_debug("tgt_prev/tx_frame_cnt: %u",
-		  prev_stats->mib_stats.reg_tx_frame_cnt);
-	dcs_debug("tgt_prev/rx_frame_cnt: %u",
-		  prev_stats->mib_stats.reg_rx_frame_cnt);
-	dcs_debug("tgt_prev/rxclr_cnt: %u",
-		  prev_stats->mib_stats.reg_rxclr_cnt);
-	dcs_debug("tgt_prev/reg_cycle_cnt: %u",
-		  prev_stats->mib_stats.reg_cycle_cnt);
-	dcs_debug("tgt_prev/rxclr_ext_cnt: %u",
-		  prev_stats->mib_stats.reg_rxclr_ext_cnt);
-	dcs_debug("tgt_prev/ofdm_phyerr_cnt: %u",
-		  prev_stats->mib_stats.reg_ofdm_phyerr_cnt);
-	dcs_debug("tgt_prev/cck_phyerr_cnt: %u",
+	dcs_debug("vdev %d: PREV:tsf %u Cnts:tx %u rx %u my_rx %u clr %u cyc %u clr_e %d ofdm %u cck %u",
+		  vdev_id, prev_stats->reg_tsf32,
+		  prev_stats->mib_stats.reg_tx_frame_cnt,
+		  prev_stats->mib_stats.reg_rx_frame_cnt,
+		  prev_stats->my_bss_rx_cycle_count,
+		  prev_stats->mib_stats.reg_rxclr_cnt,
+		  prev_stats->mib_stats.reg_cycle_cnt,
+		  prev_stats->mib_stats.reg_rxclr_ext_cnt,
+		  prev_stats->mib_stats.reg_ofdm_phyerr_cnt,
 		  prev_stats->mib_stats.reg_cck_phyerr_cnt);
+
+	/* Debug, dump all received stats */
+	dcs_debug("CUR:tsf %u Cnts:tx %u rx %u my_rx %u clr %u cyc %u clr_e %d ofdm %u cck %u phy_e %u, lst ack %u Time: waste %u rx %u lst %u",
+		  curr_stats->reg_tsf32, curr_stats->mib_stats.reg_tx_frame_cnt,
+		  curr_stats->mib_stats.reg_rx_frame_cnt,
+		  curr_stats->my_bss_rx_cycle_count,
+		  curr_stats->mib_stats.reg_rxclr_cnt,
+		  curr_stats->mib_stats.reg_cycle_cnt,
+		  curr_stats->mib_stats.reg_rxclr_ext_cnt,
+		  curr_stats->mib_stats.reg_ofdm_phyerr_cnt,
+		  curr_stats->mib_stats.reg_cck_phyerr_cnt,
+		  curr_stats->phyerr_cnt,
+		  curr_stats->last_ack_rssi, curr_stats->tx_waste_time,
+		  curr_stats->rx_time, curr_stats->mib_stats.listen_time);
 }
 
 /**
@@ -385,7 +369,6 @@ static void wlan_dcs_update_chan_util(struct pdev_dcs_im_stats *p_dcs_im_stats,
 	}
 }
 
-#ifdef WLAN_FEATURE_VDEV_DCS
 #define STATS_DELTA(cur , prev) \
 	((cur >= prev) ? (cur - prev) : ((cur + 0xffffffff) - prev))
 
@@ -415,6 +398,30 @@ wlan_dcs_wlan_interference_get_stats_delta(
 			uint32_t *cycle_count_delta, uint32_t *my_bss_rx_delta,
 			uint32_t *reg_tsf_delta)
 {
+	/*
+	 * Counters would have wrapped. Ideally we should be able to figure this
+	 * out, but we never know how many times counters wrapped, just ignore.
+	 */
+	if ((curr_stats->mib_stats.listen_time <= 0) ||
+	    (curr_stats->reg_tsf32 <= prev_stats->reg_tsf32)) {
+		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_CRITICAL))
+			dcs_debug("ignoring due to negative TSF value");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*reg_tsf_delta = curr_stats->reg_tsf32 - prev_stats->reg_tsf32;
+
+	/*
+	 * Do nothing if current stats are not seeming good, probably
+	 * a reset happened on chip, force cleared
+	 */
+	if (prev_stats->mib_stats.reg_rxclr_cnt >
+			curr_stats->mib_stats.reg_rxclr_cnt) {
+		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_CRITICAL))
+			dcs_debug("ignoring due to negative rxclr count");
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	*rxclr_delta = STATS_DELTA(curr_stats->mib_stats.reg_rxclr_cnt,
 				   prev_stats->mib_stats.reg_rxclr_cnt);
 	*rxclr_ext_delta = STATS_DELTA(curr_stats->mib_stats.reg_rxclr_ext_cnt,
@@ -431,68 +438,8 @@ wlan_dcs_wlan_interference_get_stats_delta(
 	*my_bss_rx_delta = STATS_DELTA(curr_stats->my_bss_rx_cycle_count,
 				       prev_stats->my_bss_rx_cycle_count);
 
-	*reg_tsf_delta = STATS_DELTA(curr_stats->reg_tsf32,
-				     prev_stats->reg_tsf32);
 	return QDF_STATUS_SUCCESS;
 }
-#else
-static inline QDF_STATUS
-wlan_dcs_wlan_interference_get_stats_delta(
-			struct wlan_host_dcs_im_tgt_stats *curr_stats,
-			struct wlan_host_dcs_im_tgt_stats *prev_stats,
-			struct pdev_dcs_params *dcs_host_params,
-			uint32_t *rxclr_delta, uint32_t *rxclr_ext_delta,
-			uint32_t *tx_frame_delta, uint32_t *rx_frame_delta,
-			uint32_t *cycle_count_delta, uint32_t *my_bss_rx_delta,
-			uint32_t *reg_tsf_delta)
-{
-	/*
-	 * Counters would have wrapped. Ideally we should be able to figure this
-	 * out, but we never know how many times counters wrapped, just ignore.
-	 */
-	if ((curr_stats->mib_stats.listen_time <= 0) ||
-	    (curr_stats->reg_tsf32 <= prev_stats->reg_tsf32)) {
-		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_VERBOSE))
-			dcs_debug("ignoring due to negative TSF value");
-			goto copy_stats;
-	}
-
-	*reg_tsf_delta = curr_stats->reg_tsf32 - prev_stats->reg_tsf32;
-
-	/*
-	 * Do nothing if current stats are not seeming good, probably
-	 * a reset happened on chip, force cleared
-	 */
-	if (prev_stats->mib_stats.reg_rxclr_cnt >
-			curr_stats->mib_stats.reg_rxclr_cnt) {
-		if (unlikely(dcs_host_params->dcs_debug >= DCS_DEBUG_VERBOSE))
-			dcs_debug("ignoring due to negative rxclr count");
-			goto copy_stats;
-	}
-
-	*rxclr_delta = curr_stats->mib_stats.reg_rxclr_cnt -
-			prev_stats->mib_stats.reg_rxclr_cnt;
-	*rxclr_ext_delta = curr_stats->mib_stats.reg_rxclr_ext_cnt -
-				prev_stats->mib_stats.reg_rxclr_ext_cnt;
-	*tx_frame_delta = curr_stats->mib_stats.reg_tx_frame_cnt -
-				prev_stats->mib_stats.reg_tx_frame_cnt;
-
-	*rx_frame_delta = curr_stats->mib_stats.reg_rx_frame_cnt -
-				prev_stats->mib_stats.reg_rx_frame_cnt;
-
-	*cycle_count_delta = curr_stats->mib_stats.reg_cycle_cnt -
-				prev_stats->mib_stats.reg_cycle_cnt;
-
-	*my_bss_rx_delta = curr_stats->my_bss_rx_cycle_count -
-				prev_stats->my_bss_rx_cycle_count;
-
-	return QDF_STATUS_SUCCESS;
-
-copy_stats:
-	wlan_dcs_im_copy_stats(prev_stats, curr_stats);
-	return QDF_STATUS_E_FAILURE;
-}
-#endif
 
 #ifdef WLAN_FEATURE_VDEV_DCS
 static uint32_t
@@ -570,6 +517,7 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 	uint32_t tx_err = 0;
 	uint32_t too_many_phy_errors = 0;
 	QDF_STATUS status;
+	bool print_stats = true;
 
 	if (!curr_stats) {
 		dcs_err("curr_stats is NULL");
@@ -586,7 +534,7 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 	prev_stats =  &dcs_pdev_priv->dcs_im_stats.prev_dcs_im_stats;
 
 	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE))
-		wlan_dcs_im_print_stats(prev_stats, curr_stats);
+		wlan_dcs_im_print_stats(prev_stats, curr_stats, vdev_id);
 
 	status = wlan_dcs_wlan_interference_get_stats_delta(
 					curr_stats, prev_stats,
@@ -596,13 +544,21 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 					&my_bss_rx_delta, &reg_tsf_delta);
 
 	if (QDF_IS_STATUS_ERROR(status))
-		goto end;
+		goto copy_stats;
+
+	if (cycle_count_delta < rxclr_delta) {
+		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL))
+			dcs_debug("cycle count %d is less than rxclr_delta %d, need to investigate!!",
+				  cycle_count_delta, rxclr_delta);
+		goto copy_stats;
+	}
 
 
 	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE))
-		dcs_debug("rxclr_delta: %u, rxclr_ext_delta: %u, tx_frame_delta: %u, rx_frame_delta: %u, cycle_count_delta: %u, my_bss_rx_delta: %u",
+		dcs_debug("Deltas: rxclr %u rxclr_ext %u tx_frame %u rx_frame %u cycle_cnt %u my_bss_rx %u reg_tsf %u",
 			  rxclr_delta, rxclr_ext_delta, tx_frame_delta,
-			  rx_frame_delta, cycle_count_delta, my_bss_rx_delta);
+			  rx_frame_delta, cycle_count_delta, my_bss_rx_delta,
+			  reg_tsf_delta);
 
 	/* Update user stats */
 	wlan_dcs_pdev_obj_lock(dcs_pdev_priv);
@@ -648,8 +604,10 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 	scaled_cycle_count_delta = cycle_count_delta >> 8;
 	scaled_reg_tsf_delta = reg_tsf_delta >> 8;
 	if (!scaled_cycle_count_delta || !scaled_reg_tsf_delta) {
-		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE))
-			dcs_debug("cycle count or TSF NULL --Investigate--");
+		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL))
+			dcs_debug("cycle count %d or TSF %d is NULL --Investigate--",
+				  scaled_cycle_count_delta,
+				  scaled_reg_tsf_delta);
 		goto copy_stats;
 	}
 	reg_total_cu = ((rxclr_delta >> 8) * 100) / scaled_cycle_count_delta;
@@ -671,10 +629,9 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 		rx_time_cu = reg_rx_cu;
 
 	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE))
-		dcs_debug("reg_total_cu: %u, reg_tx_cu: %u, reg_rx_cu: %u, rx_time_cu: %u, obss_rx_cu: %u dcs_algorithm: %d",
-			  reg_total_cu, reg_tx_cu, reg_rx_cu,
-			  rx_time_cu, obss_rx_cu,
-			  dcs_host_params.dcs_algorithm_process);
+		dcs_debug("total_cu: %u, tx_cu: %u, rx_cu: %u, rx_time_cu: %u, obss_rx_cu: %u dcs_algorithm: %d",
+			  reg_total_cu, reg_tx_cu, reg_rx_cu, rx_time_cu,
+			  obss_rx_cu, dcs_host_params.dcs_algorithm_process);
 
 	/*
 	 * For below scenario, will ignore dcs event data and won't do
@@ -683,8 +640,11 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 	 * 2: In the process of ACS
 	 * 3: In the process of dcs disabling dcs_restart_delay time duration
 	 */
-	if (!dcs_host_params.dcs_algorithm_process)
+	if (!dcs_host_params.dcs_algorithm_process) {
+		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL))
+			dcs_debug_rl("skip as dcs_algorithm_process disabled");
 		goto copy_stats;
+	}
 
 	/*
 	 * Unusable channel utilization is amount of time that we
@@ -757,43 +717,27 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 	cck_phy_err_rate = (curr_stats->mib_stats.reg_cck_phyerr_cnt * 1000) /
 				curr_stats->mib_stats.listen_time;
 
-	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE)) {
-		dcs_debug("reg_unused_cu: %u, reg_ofdm_phyerr_delta: %u, reg_cck_phyerr_delta: %u, reg_ofdm_phyerr_cu: %u",
-			  reg_unused_cu, reg_ofdm_phyerr_delta,
-			  reg_cck_phyerr_delta, reg_ofdm_phyerr_cu);
-		dcs_debug("total_wasted_cu: %u, ofdm_phy_err_rate: %u, cck_phy_err_rate: %u",
-			  total_wasted_cu, ofdm_phy_err_rate, cck_phy_err_rate);
-		dcs_debug("new_unused_cu: %u, reg_ofdm_phy_error_cu: %u",
-			  reg_unused_cu,
-			 (curr_stats->mib_stats.reg_ofdm_phyerr_cnt * 100) /
-					curr_stats->mib_stats.listen_time);
-	}
-
 	/* Check if the error rates are higher than the thresholds */
 	max_phy_err_rate = QDF_MAX(ofdm_phy_err_rate, cck_phy_err_rate);
 
 	max_phy_err_count = QDF_MAX(curr_stats->mib_stats.reg_ofdm_phyerr_cnt,
 				    curr_stats->mib_stats.reg_cck_phyerr_cnt);
 
-	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE))
-		dcs_debug("max_phy_err_rate: %u, max_phy_err_count: %u",
+	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE)) {
+		dcs_debug("unused_cu %u, ofdm_phyerr_delta %u, cck_phyerr_delta %u, ofdm_phyerr_cu %u",
+			  reg_unused_cu, reg_ofdm_phyerr_delta,
+			  reg_cck_phyerr_delta, reg_ofdm_phyerr_cu);
+		dcs_debug("wasted_cu %u, ofdm_err %u, cck_err %u, ofdm_error_cu %u, max err: rate %u cnt %d",
+			  total_wasted_cu, ofdm_phy_err_rate, cck_phy_err_rate,
+			  (curr_stats->mib_stats.reg_ofdm_phyerr_cnt * 100) /
+					curr_stats->mib_stats.listen_time,
 			  max_phy_err_rate, max_phy_err_count);
+	}
 
 	if (((max_phy_err_rate >= dcs_host_params.phy_err_threshold) &&
 	     (max_phy_err_count > dcs_host_params.phy_err_threshold)) ||
 		(curr_stats->phyerr_cnt > dcs_host_params.radar_err_threshold))
 		too_many_phy_errors = 1;
-
-	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL)) {
-		dcs_debug("total_cu: %u, tx_cu: %u, rx_cu: %u, rx_time_cu: %u, unused cu: %u",
-			  reg_total_cu, reg_tx_cu,
-			  reg_rx_cu, rx_time_cu, reg_unused_cu);
-		dcs_debug("phyerr: %u, total_wasted_cu: %u, phyerror_cu: %u, wasted_cu: %u, reg_tx_cu: %u, reg_rx_cu: %u",
-			  too_many_phy_errors, total_wasted_cu,
-			  reg_ofdm_phyerr_cu, wasted_tx_cu,
-			  reg_tx_cu, reg_rx_cu);
-		dcs_debug("tx_err: %u", tx_err);
-	}
 
 	if (policy_mgr_is_vdev_ll_lt_sap(psoc, vdev_id))
 		wlan_ll_sap_set_cur_freq_unused_cu(psoc, vdev_id,
@@ -808,20 +752,46 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 		((reg_tx_cu > DCS_TX_MAX_CU) &&
 			(tx_err >= dcs_host_params.tx_err_threshold))))
 		p_dcs_im_stats->im_intfr_cnt++;
+	else
+		print_stats = false;
 
 	intfr_detection_threshold =
 		wlan_dcs_get_intfr_detection_threshold(psoc,
 						       vdev_id,
 						       dcs_host_params);
 
-	if (p_dcs_im_stats->im_intfr_cnt >= intfr_detection_threshold) {
-		if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL)) {
-			dcs_debug("interference threshold exceeded");
-			dcs_debug("unused_cu: %u, too_any_phy_errors: %u, total_wasted_cu: %u, reg_tx_cu: %u, reg_rx_cu: %u",
-				  reg_unused_cu, too_many_phy_errors,
-				  total_wasted_cu, reg_tx_cu, reg_rx_cu);
-		}
+	if (print_stats &&
+	    unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_CRITICAL)) {
+		dcs_debug_rl("intfr_th %u phy_err_th %u radar_err_th %u usr_max_cu %u tx_err_th %u intfr_detection_th %u detection_win %u",
+			     dcs_host_params.coch_intfr_threshold,
+			     dcs_host_params.phy_err_threshold,
+			     dcs_host_params.radar_err_threshold,
+			     dcs_host_params.user_max_cu,
+			     dcs_host_params.tx_err_threshold,
+			     intfr_detection_threshold,
+			     dcs_host_params.intfr_detection_window);
+		dcs_debug("vdev %d, unused cu: %u: Scaled: rx_clr %u tx_cu %u rx_t_cu %u cc %u, orig: cu %u tx_cu %u rx_t_cu %u cc %u",
+			  vdev_id, reg_unused_cu, reg_total_cu, reg_tx_cu,
+			  rx_time_cu, scaled_cycle_count_delta, rxclr_delta,
+			  tx_frame_delta, curr_stats->rx_time,
+			  cycle_count_delta);
+		dcs_debug("phyerr %u: ofdm %u cck %u listen time %u, phyerr cnt %u, rx_cu %u wasted_cu %u tx_err %u intfr_cnt %d samp_cnt %d",
+			  too_many_phy_errors,
+			  curr_stats->mib_stats.reg_ofdm_phyerr_cnt,
+			  curr_stats->mib_stats.reg_cck_phyerr_cnt,
+			  curr_stats->mib_stats.listen_time,
+			  curr_stats->phyerr_cnt, reg_rx_cu, total_wasted_cu,
+			  tx_err, p_dcs_im_stats->im_intfr_cnt,
+			  p_dcs_im_stats->im_samp_cnt);
+	} else if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE)) {
+		dcs_debug("intfr_detection_th %u detection_win %u, intfr cnt %d sample cnt %d",
+			  intfr_detection_threshold,
+			  dcs_host_params.intfr_detection_window,
+			  p_dcs_im_stats->im_intfr_cnt,
+			  p_dcs_im_stats->im_samp_cnt);
+	}
 
+	if (p_dcs_im_stats->im_intfr_cnt >= intfr_detection_threshold) {
 		p_dcs_im_stats->im_intfr_cnt = 0;
 		p_dcs_im_stats->im_samp_cnt = 0;
 		/*
@@ -831,9 +801,9 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 		 * because of the DA code, which is using the same function.
 		 */
 		start_dcs_cbk_handler = true;
-	} else if (0 == p_dcs_im_stats->im_intfr_cnt ||
-			p_dcs_im_stats->im_samp_cnt >=
-				dcs_host_params.intfr_detection_window) {
+	} else if (!p_dcs_im_stats->im_intfr_cnt ||
+		   p_dcs_im_stats->im_samp_cnt >=
+		   dcs_host_params.intfr_detection_window) {
 		p_dcs_im_stats->im_intfr_cnt = 0;
 		p_dcs_im_stats->im_samp_cnt = 0;
 	}
@@ -841,10 +811,6 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 	/* Count the current run too */
 	p_dcs_im_stats->im_samp_cnt++;
 
-	if (unlikely(dcs_host_params.dcs_debug >= DCS_DEBUG_VERBOSE))
-		dcs_debug("intfr_count: %u, sample_count: %u",
-			  p_dcs_im_stats->im_intfr_cnt,
-			  p_dcs_im_stats->im_samp_cnt);
 copy_stats:
 	 /* Copy the stats for next cycle */
 	wlan_dcs_im_copy_stats(prev_stats, curr_stats);
@@ -879,7 +845,8 @@ void wlan_dcs_disable_timer_fn(void *dcs_timer_args)
 	dcs_pdev_priv = &dcs_psoc_priv->dcs_pdev_priv[pdev_id];
 	dcs_pdev_priv->dcs_freq_ctrl_params.disable_delay_process = false;
 
-	dcs_info("dcs disable timeout, enable dcs detection again");
+	dcs_info("pdev %d dcs disable timeout, enable dcs detection again",
+		 pdev_id);
 	wlan_dcs_set_algorithm_process(psoc, pdev_id, true);
 }
 
@@ -965,7 +932,8 @@ static void wlan_dcs_frequency_control(struct wlan_objmgr_psoc *psoc,
 		qdf_timer_start(&dcs_pdev_priv->dcs_disable_timer,
 				dcs_pdev_priv->dcs_freq_ctrl_params.
 				restart_delay * 60 * 1000);
-		dcs_info("start dcs disable timer");
+		dcs_info("vdev %d start dcs disable timer",
+			 event->dcs_param.vdev_id);
 	} else {
 		dcs_psoc_priv = wlan_objmgr_psoc_get_comp_private_obj(
 							psoc,
@@ -978,7 +946,7 @@ static void wlan_dcs_frequency_control(struct wlan_objmgr_psoc *psoc,
 		param.mac_id = event->dcs_param.pdev_id;
 		param.vdev_id = event->dcs_param.vdev_id;
 		param.interference_type = event->dcs_param.interference_type;
-		dcs_info("start dcs callback handler");
+		dcs_info("vdev %d: start dcs callback handler", param.vdev_id);
 		dcs_psoc_priv->dcs_cbk.cbk(psoc, &param,
 					   dcs_psoc_priv->dcs_cbk.arg);
 	}

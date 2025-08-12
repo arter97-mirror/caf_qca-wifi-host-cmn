@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -419,6 +419,16 @@ static inline uint64_t __qdf_get_bootbased_boottime_ns(void)
 }
 #endif
 
+/**
+ * __qdf_time_ns_to_ktime() - Converts nanoseconds to a ktime object
+ * @ns: time in nanoseconds
+ *
+ * Return: nanoseconds as ktime object
+ */
+static inline ktime_t __qdf_time_ns_to_ktime(uint64_t ns)
+{
+	return ns_to_ktime(ns);
+}
 /**
  * __qdf_time_ms_to_ktime() - Converts milliseconds to a ktime object
  * @ms: time in milliseconds

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -783,10 +783,9 @@ int ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 	return wlan_ipa_uc_smmu_map(map, num_buf, buf_arr);
 }
 
-bool ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
+bool ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc)
 {
 	struct wlan_ipa_priv *ipa_obj;
-	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
 
 	if (!ipa_config_is_enabled()) {
 		ipa_debug_rl("ipa is disabled");

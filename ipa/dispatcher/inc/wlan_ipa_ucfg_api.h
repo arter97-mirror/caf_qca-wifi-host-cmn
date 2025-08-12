@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -366,11 +366,11 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr);
 
 /**
  * ucfg_ipa_is_fw_wdi_activated - Is FW WDI activated?
- * @pdev: pdev obj
+ * @psoc: psoc obj
  *
  * Return: true if FW WDI activated, false otherwise
  */
-bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev);
+bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc);
 
 /**
  * ucfg_ipa_uc_cleanup_sta() - disconnect and cleanup sta iface
@@ -759,7 +759,7 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 }
 
 static inline
-bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
+bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }
