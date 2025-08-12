@@ -939,9 +939,11 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
 struct scan_cache_entry *
 wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 				      struct qdf_mac_addr *bssid,
-				      uint8_t vdev_id)
+				      uint8_t vdev_id,
+				      qdf_freq_t ch_freq)
 {
-	return scm_scan_get_entry_by_bssid_and_security(pdev, bssid, vdev_id);
+	return scm_scan_get_entry_by_bssid_and_security(pdev, bssid, vdev_id,
+							ch_freq);
 }
 
 #ifdef WLAN_AUX_SUPPORT
