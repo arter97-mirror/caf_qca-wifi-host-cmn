@@ -71,6 +71,7 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
  * @pdev: pointer to pdev object
  * @bssid: pointer to mac addr
  * @vdev_id: vdev id
+ * @ch_freq: channel frequency
  *
  * Return: scan entry if found, else NULL
  *
@@ -79,7 +80,8 @@ wlan_scan_get_scan_entry_by_mac_freq(struct wlan_objmgr_pdev *pdev,
 struct scan_cache_entry *
 wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 				      struct qdf_mac_addr *bssid,
-				      uint8_t vdev_id);
+				      uint8_t vdev_id,
+				      qdf_freq_t ch_freq);
 
 /**
  * wlan_scan_cfg_set_active_2g_dwelltime() - API to set scan active 2g dwelltime
