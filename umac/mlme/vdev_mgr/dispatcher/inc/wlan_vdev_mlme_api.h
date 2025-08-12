@@ -232,26 +232,6 @@ QDF_STATUS wlan_vdev_is_restart_progress(struct wlan_objmgr_vdev *vdev);
 QDF_STATUS wlan_vdev_is_dfs_cac_wait(struct wlan_objmgr_vdev *vdev);
 
 /**
- * wlan_vdev_mlme_cmd_lock - Acquire lock for command queuing atomicity
- * @vdev: Object manager VDEV object
- *
- * API to take VDEV MLME command lock
- *
- * Return: void
- */
-void wlan_vdev_mlme_cmd_lock(struct wlan_objmgr_vdev *vdev);
-
-/**
- * wlan_vdev_mlme_cmd_unlock - Release lock for command queuing atomicity
- * @vdev: Object manager VDEV object
- *
- * API to release VDEV MLME command lock
- *
- * Return: void
- */
-void wlan_vdev_mlme_cmd_unlock(struct wlan_objmgr_vdev *vdev);
-
-/**
  * wlan_vdev_mlme_is_scan_allowed() - Checks whether scan is allowed
  * @vdev: Object manager VDEV object
  *

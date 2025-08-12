@@ -850,8 +850,6 @@ struct p2p_device_mode_data {
  * struct vdev_mlme_obj - VDEV MLME component object
  * @proto: VDEV MLME proto substructure
  * @mgmt: VDEV MLME mgmt substructure
- * @sm_lock:              VDEV SM lock
- * @vdev_cmd_lock:        VDEV MLME command atomicity
  * @sm_hdl:               VDEV SM handle
  * @cnx_mgr_ctx: connection manager context, valid for STA and P2P-CLI mode only
  * @vdev: Pointer to vdev objmgr
@@ -865,10 +863,6 @@ struct p2p_device_mode_data {
 struct vdev_mlme_obj {
 	struct vdev_mlme_proto proto;
 	struct vdev_mlme_mgmt  mgmt;
-#ifdef VDEV_SM_LOCK_SUPPORT
-	qdf_spinlock_t sm_lock;
-	qdf_mutex_t vdev_cmd_lock;
-#endif
 	struct wlan_sm *sm_hdl;
 	union {
 		struct cnx_mgr *cnx_mgr_ctx;
