@@ -495,6 +495,22 @@ scm_update_passive_dwell_time(struct wlan_objmgr_vdev *vdev,
 				PASSIVE_DWELL_TIME_BT_A2DP_ENABLED;
 }
 
+#ifdef AUTO_PLATFORM
+static const struct probe_time_dwell_time
+	scan_probe_time_dwell_time_map[SCAN_DWELL_TIME_PROBE_TIME_MAP_SIZE] = {
+	{28, 7},               /* 0 SSID */
+	{28, 20},               /* 1 SSID */
+	{28, 20},               /* 2 SSID */
+	{28, 20},               /* 3 SSID */
+	{28, 20},               /* 4 SSID */
+	{28, 20},               /* 5 SSID */
+	{28, 20},               /* 6 SSID */
+	{28, 11},               /* 7 SSID */
+	{28, 11},               /* 8 SSID */
+	{28, 11},               /* 9 SSID */
+	{28, 8}                 /* 10 SSID */
+	};
+#else
 static const struct probe_time_dwell_time
 	scan_probe_time_dwell_time_map[SCAN_DWELL_TIME_PROBE_TIME_MAP_SIZE] = {
 	{28, 11},               /* 0 SSID */
@@ -509,6 +525,7 @@ static const struct probe_time_dwell_time
 	{28, 11},               /* 9 SSID */
 	{28, 8}                 /* 10 SSID */
 };
+#endif
 
 /**
  * scm_scan_get_burst_duration() - get burst duration depending on max chan
