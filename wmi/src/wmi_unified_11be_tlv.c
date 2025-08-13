@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1715,6 +1715,37 @@ populate_fill_t2lm_timer_tlv(wmi_peer_tid_to_link_map_fixed_param *cmd,
 #endif
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+
+/**
+ * wmi_convert_fw_link_switch_reason_to_cm_reason() - convert firmware
+ * link switch reason to host reason.
+ * @reason: Firmware Reason code
+ *
+ * Return: QDF_STATUS
+ */
+static enum wlan_mlo_link_switch_reason
+wmi_convert_fw_link_switch_reason_to_cm_reason(uint32_t reason)
+{
+	switch (reason) {
+	case WMI_MLO_LINK_SWITCH_REASON_RSSI_CHANGE:
+		return MLO_LINK_SWITCH_REASON_RSSI_CHANGE;
+	case WMI_MLO_LINK_SWITCH_REASON_LOW_QUALITY:
+		return MLO_LINK_SWITCH_REASON_LOW_QUALITY;
+	case WMI_MLO_LINK_SWITCH_REASON_C2_CHANGE:
+		return MLO_LINK_SWITCH_REASON_C2_CHANGE;
+	case WMI_MLO_LINK_SWITCH_REASON_HOST_FORCE:
+		return MLO_LINK_SWITCH_REASON_HOST_FORCE;
+	case WMI_MLO_LINK_SWITCH_REASON_T2LM:
+		return MLO_LINK_SWITCH_REASON_T2LM;
+	case WMI_MLO_LINK_SWITCH_REASON_WLM:
+		return MLO_LINK_SWITCH_REASON_WLM;
+	case WMI_MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP:
+		return MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP;
+	default:
+		return MLO_LINK_SWITCH_REASON_MAX;
+	}
+}
+
 /**
  * extract_mlo_link_switch_request_event_tlv() - Extract fixed
  * params TLV from MLO link switch request WMI event.
@@ -1748,7 +1779,8 @@ extract_mlo_link_switch_request_event_tlv(struct wmi_unified *wmi_handle,
 	req->new_ieee_link_id = ev->new_ieee_link_id;
 	req->new_primary_freq = ev->new_primary_freq;
 	req->new_phymode = ev->new_phymode;
-	req->reason = ev->reason;
+	req->reason = wmi_convert_fw_link_switch_reason_to_cm_reason(
+				ev->reason);
 
 	return QDF_STATUS_SUCCESS;
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -624,4 +624,23 @@ void wlan_cm_get_check_assoc_disallowed(struct wlan_objmgr_psoc *psoc,
 struct scan_cache_entry *cm_get_entry(qdf_list_t *scan_list,
 				      struct qdf_mac_addr *link_addr,
 				      struct qdf_mac_addr *mld_addr);
+/*
+ * cm_is_better_bss() - API to check the better BSS
+ * @bss1: Scan entry of candidate 1
+ * @bss2: Scan entry of candidate 2
+ *
+ * Return: BSS1 has better scaore than BSS2.
+ */
+bool cm_is_better_bss(struct scan_cache_entry *bss1,
+		      struct scan_cache_entry *bss2);
+/*
+ * cm_list_insert_sorted() -API to insert the scan entry to scan list
+ * based on the score
+ * @scan_list: Candidate list
+ * @scan_entry: Scan entry to be added to the list
+ *
+ * Return: None
+ */
+void cm_list_insert_sorted(qdf_list_t *scan_list,
+			   struct scan_cache_node *scan_entry);
 #endif
