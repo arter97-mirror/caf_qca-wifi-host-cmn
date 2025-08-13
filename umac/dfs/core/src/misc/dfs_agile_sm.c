@@ -2467,10 +2467,16 @@ static bool dfs_puncturing_state_unpunctured_event(void *ctx,
 	switch (event) {
 	case DFS_PUNC_SM_EV_USER_PUNC:
 		bool is_weather_chan = dfs_is_weather_channel(dfs_punc);
-		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, " User punc event received. "
-			  "Moving state to CAC wait");
-		dfs_start_punc_cac_timer(dfs_punc, is_weather_chan);
-		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_CAC_WAIT);
+		qdf_freq_t freq = (dfs_punc->punc_low_freq + dfs_punc->punc_high_freq) / 2;
+		bool is_nol = wlan_reg_is_nol_for_freq(dfs->dfs_pdev_obj, freq);
+
+		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "User punc event received");
+		if (!is_nol) {
+			dfs_start_punc_cac_timer(dfs_punc, is_weather_chan);
+			dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_CAC_WAIT);
+		} else {
+			dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_PUNCTURED);
+		}
 		status = true;
 		break;
 	case DFS_PUNC_SM_EV_RADAR:
