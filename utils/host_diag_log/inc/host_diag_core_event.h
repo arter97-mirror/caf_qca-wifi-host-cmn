@@ -105,6 +105,8 @@ enum mgmt_frm_subtype {
  * @AUTH_WPA2_PSK: WPA2 PSK based auth
  * @AUTH_WAPI_CERT: WAPI CERT based auth
  * @AUTH_WAPI_PSK: WAPI PSK based auth
+ * @AUTH_EPPKE: EPP Key Exchange based auth (802.11bi)
+ * @AUTH_1X_OVER_AUTH: IEEE 802.1X authentication carried over Auth frames
  * @AUTH_MAX: max enumeration
  */
 enum mgmt_auth_type {
@@ -116,6 +118,8 @@ enum mgmt_auth_type {
 	AUTH_WPA2_PSK = 0x05,
 	AUTH_WAPI_CERT = 0x06,
 	AUTH_WAPI_PSK = 0x07,
+	AUTH_EPPKE = 0x08,
+	AUTH_1X_OVER_AUTH = 0x09,
 	AUTH_MAX = 0xff,
 };
 

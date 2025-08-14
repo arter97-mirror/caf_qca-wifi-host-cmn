@@ -157,6 +157,90 @@ bool util_scan_entry_sae_h2e_capable(struct scan_cache_entry *scan_entry)
 	return util_is_rsnxe_h2e_capable(rsnxe);
 }
 
+bool util_is_rsnxe_assoc_encrypt_capable(const uint8_t *rsnxe)
+{
+	const uint8_t *rsnxe_caps;
+	uint8_t cap_len;
+	uint8_t cap;
+
+	if (!rsnxe)
+		return false;
+
+	rsnxe_caps = wlan_crypto_parse_rsnxe_ie(rsnxe, &cap_len);
+	if (!rsnxe_caps || cap_len < WLAN_CRYPTO_RSNX_CAP_MIN_LEN_BYTE3)
+		return false;
+
+	/* BIT(27) is in byte 3; shift down to get byte-level mask */
+	cap = rsnxe_caps[3] & (WLAN_CRYPTO_RSNX_CAP_ASSOC_FRM_ENCRYPTION >> 24);
+
+	return cap;
+}
+
+bool util_scan_entry_assoc_encrypt_capable(struct scan_cache_entry *scan_entry)
+{
+	const uint8_t *rsnxe;
+
+	/*
+	 * neg_sec_info.rsn_gen_selected is not set during beacon ingestion;
+	 * it is only filled later in scm_get_results. Probe both RSNXE
+	 * sources directly: legacy RSNXE and RSN Override RSNXE (rsnxo),
+	 * the latter being relevant for MLD APs advertising EPPKE via RSNXO.
+	 */
+	rsnxe = util_scan_entry_rsnxe(scan_entry);
+	if (util_is_rsnxe_assoc_encrypt_capable(rsnxe))
+		return true;
+
+	rsnxe = util_scan_entry_rsnxo(scan_entry);
+
+	return util_is_rsnxe_assoc_encrypt_capable(rsnxe);
+}
+
+QDF_STATUS util_scan_get_rsn_cap(const uint8_t *rsn_ie, uint8_t rsn_ie_len,
+				 uint16_t *rsn_cap)
+{
+	uint16_t pairwise_cnt, akm_cnt;
+	uint32_t offset;
+
+	if (!rsn_ie || !rsn_cap)
+		return QDF_STATUS_E_INVAL;
+
+	/*
+	 * Minimum RSN IE to reach capabilities:
+	 * wlan_rsn_ie_hdr [4] + group_cipher [4] +
+	 * pairwise_cnt [2] + akm_cnt [2] + rsn_cap [2] = 14 bytes
+	 */
+	if (rsn_ie_len < (sizeof(struct wlan_rsn_ie_hdr) +
+			  WLAN_RSN_SELECTOR_LEN +
+			  WLAN_RSN_SUITE_COUNT_LEN +
+			  WLAN_RSN_SUITE_COUNT_LEN +
+			  WLAN_RSN_CAP_LEN))
+		return QDF_STATUS_E_INVAL;
+
+	/* Start after the IE header (EID + len + version) and group cipher */
+	offset = sizeof(struct wlan_rsn_ie_hdr) + WLAN_RSN_SELECTOR_LEN;
+
+	pairwise_cnt = rsn_ie[offset] | (rsn_ie[offset + 1] << 8);
+	if (pairwise_cnt > (rsn_ie_len - offset) / WLAN_RSN_SELECTOR_LEN)
+		return QDF_STATUS_E_INVAL;
+	offset += WLAN_RSN_SUITE_COUNT_LEN +
+		  pairwise_cnt * WLAN_RSN_SELECTOR_LEN;
+
+	if (offset + WLAN_RSN_SUITE_COUNT_LEN + WLAN_RSN_CAP_LEN > rsn_ie_len)
+		return QDF_STATUS_E_INVAL;
+
+	akm_cnt = rsn_ie[offset] | (rsn_ie[offset + 1] << 8);
+	if (akm_cnt > (rsn_ie_len - offset) / WLAN_RSN_SELECTOR_LEN)
+		return QDF_STATUS_E_INVAL;
+	offset += WLAN_RSN_SUITE_COUNT_LEN + akm_cnt * WLAN_RSN_SELECTOR_LEN;
+
+	if (offset + WLAN_RSN_CAP_LEN > rsn_ie_len)
+		return QDF_STATUS_E_INVAL;
+
+	*rsn_cap = rsn_ie[offset] | (rsn_ie[offset + 1] << 8);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 enum wlan_band util_scan_scm_freq_to_band(uint16_t freq)
 {
 	if (WLAN_REG_IS_24GHZ_CH_FREQ(freq))

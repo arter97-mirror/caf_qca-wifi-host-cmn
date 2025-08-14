@@ -1908,6 +1908,18 @@ util_scan_get_rsnx_len(struct scan_cache_entry *scan_entry)
 bool util_is_rsnxe_h2e_capable(const uint8_t *rsnxe);
 
 /**
+ * util_is_rsnxe_assoc_encrypt_capable() - API to check whether the
+ * RSNXE has Association Encryption capable or not.
+ * @rsnxe: Pointer to RSNXE IE.
+ *
+ * Returns true if RSNXE caps has Assoc_Encrypt capable bit set or
+ * else false.
+ *
+ * Return: bool
+ */
+bool util_is_rsnxe_assoc_encrypt_capable(const uint8_t *rsnxe);
+
+/**
  * util_scan_entry_sae_h2e_capable() - API to check whether the
  * current scan entry is SAE-H2E capable
  * @scan_entry: Scan cache entry
@@ -1918,6 +1930,33 @@ bool util_is_rsnxe_h2e_capable(const uint8_t *rsnxe);
  * Return: bool
  */
 bool util_scan_entry_sae_h2e_capable(struct scan_cache_entry *scan_entry);
+
+/**
+ * util_scan_entry_assoc_encrypt_capable() - API to check whether the
+ * current scan entry is Association-Encryption capable
+ * @scan_entry: Scan cache entry
+ *
+ * Returns true if the current scan entry has RSNXE IE with Assoc_Encrypt bit
+ * set.
+ *
+ * Return: bool
+ */
+bool util_scan_entry_assoc_encrypt_capable(struct scan_cache_entry *scan_entry);
+
+/**
+ * util_scan_get_rsn_cap() - Extract RSN capabilities from a raw RSN IE
+ * @rsn_ie: Pointer to the RSN IE including element ID and length fields
+ * @rsn_ie_len: Total length of the RSN IE buffer
+ * @rsn_cap: Output pointer for the extracted 2-byte RSN capabilities
+ *
+ * Parses the RSN IE byte stream to locate and extract the RSN capabilities
+ * field, safely accounting for variable-length pairwise and AKM suite lists.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_INVAL if the IE is
+ * too short or malformed.
+ */
+QDF_STATUS util_scan_get_rsn_cap(const uint8_t *rsn_ie, uint8_t rsn_ie_len,
+				 uint16_t *rsn_cap);
 
 /**
  * util_scan_scm_freq_to_band() - API to get band from frequency

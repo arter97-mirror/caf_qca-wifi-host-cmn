@@ -4668,7 +4668,17 @@ wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 	if (!len)
 		return NULL;
 
+	/*
+	 * cap_len is the (n - 1) length subfield self-declared in byte 0 of
+	 * the RSNXE capability field, sourced from untrusted over-the-air
+	 * data. Clamp it to the actual received element length so callers
+	 * indexing into the capability bytes (e.g. rsnxe_caps[3]) cannot read
+	 * past the end of the element. Accessible indices are 0..len-1, so the
+	 * (n - 1) value must not exceed len - 1.
+	 */
 	*cap_len = ie[0] & 0xf;
+	if (*cap_len > (len - 1))
+		*cap_len = len - 1;
 
 	return ie;
 }

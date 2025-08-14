@@ -1248,6 +1248,8 @@ enum wlan_status_code {
 #define WLAN_MAX_CIPHER 6
 #define WLAN_RSN_SELECTOR_LEN 4
 #define WLAN_WPA_SELECTOR_LEN 4
+#define WLAN_RSN_SUITE_COUNT_LEN 2
+#define WLAN_RSN_CAP_LEN 2
 #define PMKID_LEN 16
 #define MAX_PMK_LEN 64
 #define MAX_PMKID 4

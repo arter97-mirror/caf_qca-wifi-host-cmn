@@ -332,6 +332,13 @@ enum wlan_crypto_rsnx_cap {
 	WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_NTB_TX = BIT_ULL(32),
 };
 
+/*
+ * WLAN_CRYPTO_RSNX_CAP_MIN_LEN_BYTE3 - minimum cap_len (n-1 encoded) needed
+ * to access byte 3 of the RSNXE capability field (bits 24-31, incl. BIT(27)).
+ * Value 3 corresponds to 4 capability bytes per the (n-1) length encoding.
+ */
+#define WLAN_CRYPTO_RSNX_CAP_MIN_LEN_BYTE3  3
+
 /**
  * enum wlan_crypto_vdev_11az_security_capab  - 11az related vdev
  * security capabilities

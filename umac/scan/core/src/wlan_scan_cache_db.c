@@ -1837,6 +1837,7 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 				continue;
 			}
 		}
+
 		/*
 		 * 6GHz Security Validation Logic:
 		 *
@@ -3071,13 +3072,18 @@ bool scm_scan_entries_contain_cmn_akm(struct scan_cache_entry *entry1,
 	}
 
 	/* If not SAE AKM no need to check H2E capability match */
-	if (!WLAN_CRYPTO_IS_AKM_SAE(key_mgmt))
-		return true;
-
-	/* If SAE_H2E capability is not equal then treat as mismatch */
-	if (util_scan_entry_sae_h2e_capable(entry1) ^
-	    util_scan_entry_sae_h2e_capable(entry2)) {
+	if (WLAN_CRYPTO_IS_AKM_SAE(key_mgmt) &&
+	    (util_scan_entry_sae_h2e_capable(entry1) ^
+	     util_scan_entry_sae_h2e_capable(entry2))) {
 		scm_debug("SAE-H2E capability mismatch");
+		return false;
+	}
+
+	/* If not EPPKE AKM don't check for Assoc Encrypt capability match */
+	if (QDF_HAS_PARAM(key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
+	    (util_scan_entry_assoc_encrypt_capable(entry1) ^
+	     util_scan_entry_assoc_encrypt_capable(entry2))) {
+		scm_debug("Association-Encryption capability mismatch");
 		return false;
 	}
 
