@@ -3249,7 +3249,7 @@ dp_rx_mlo_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 		 */
 		primary_soc = peer->vdev->pdev->soc;
 		if (hal_reo_shared_qaddr_is_enable(primary_soc->hal_soc) &&
-		    peer->rx_tid[0].hw_qdesc_vaddr_unaligned) {
+		    peer->rx_tid && peer->rx_tid[0].hw_qdesc_vaddr_unaligned) {
 			hal_reo_shared_qaddr_write(primary_soc->hal_soc,
 						   ml_peer_id,
 						   0,
@@ -3452,6 +3452,7 @@ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 			 * write to LUT for Tid 0 and 16.
 			 */
 			if (hal_reo_shared_qaddr_is_enable(soc->hal_soc) &&
+			    peer->rx_tid &&
 			    peer->rx_tid[0].hw_qdesc_vaddr_unaligned &&
 			    !IS_MLO_DP_LINK_PEER(peer)) {
 				add_entry_write_list(soc, peer, 0);
@@ -3745,6 +3746,7 @@ void dp_peer_rx_init(struct dp_pdev *pdev, struct dp_peer *peer)
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
+#ifndef CONFIG_BORON
 #define DP_MAX_STRING_LEN 1000
 static void dp_peer_rx_init_reorder_queue(struct dp_pdev *pdev,
 					  struct dp_peer *peer)
@@ -3794,6 +3796,12 @@ end:
 	if (tid_ba_str)
 		qdf_mem_free(tid_ba_str);
 }
+#else
+static inline
+void dp_peer_rx_init_reorder_queue(struct dp_pdev *pdev, struct dp_peer *peer)
+{
+}
+#endif /* CONFIG_BORON */
 
 void dp_peer_rx_init_wrapper(struct dp_pdev *pdev, struct dp_peer *peer,
 			     struct cdp_peer_setup_info *setup_info)

@@ -381,6 +381,7 @@ dp_soc_get_num_soc_be(struct dp_soc *soc)
 }
 #endif
 
+#ifndef CONFIG_BORON
 static inline QDF_STATUS
 dp_peer_rx_reorder_q_setup_per_tid(struct dp_peer *peer, uint32_t tid_bitmap,
 				   uint32_t ba_window_size, bool per_tid_ba)
@@ -502,6 +503,7 @@ dp_peer_rx_reorder_multi_q_setup(struct dp_peer *peer, uint32_t tid_bitmap,
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif /* CONFIG_BORON */
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
@@ -520,6 +522,7 @@ bool dp_rx_mlo_igmp_handler(struct dp_soc *soc,
 			    qdf_nbuf_t nbuf,
 			    uint8_t link_id);
 
+#ifndef CONFIG_BORON
 /**
  * dp_peer_rx_reorder_queue_setup_be() - Send reo queue
  *        setup wmi cmd to FW per peer type
@@ -642,6 +645,18 @@ QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
 					     uint32_t ba_window_size,
 					     bool per_tid_ba)
 {
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* CONFIG_BORON */
+#else
+#ifndef CONFIG_BORON
+static inline
+QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
+					     struct dp_peer *peer,
+					     uint32_t tid_bitmap,
+					     uint32_t ba_window_size,
+					     bool per_tid_ba)
+{
 	struct dp_rx_tid *rx_tid;
 	int tid;
 
@@ -689,6 +704,17 @@ QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
 							  ba_window_size,
 							  per_tid_ba);
 }
+#else
+static inline
+QDF_STATUS dp_peer_rx_reorder_queue_setup_be(struct dp_soc *soc,
+					     struct dp_peer *peer,
+					     uint32_t tid_bitmap,
+					     uint32_t ba_window_size,
+					     bool per_tid_ba)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* CONFIG_BORON */
 #endif /* WLAN_FEATURE_11BE_MLO */
 
 #ifdef QCA_DP_RX_NBUF_AND_NBUF_DATA_PREFETCH

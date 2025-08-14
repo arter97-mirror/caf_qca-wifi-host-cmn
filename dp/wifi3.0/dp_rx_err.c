@@ -770,6 +770,9 @@ void dp_2k_jump_handle(struct dp_soc *soc, qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr,
 		goto nbuf_deliver;
 	}
 
+	if (!peer->rx_tid)
+		goto nbuf_deliver;
+
 	rx_tid = &peer->rx_tid[tid];
 	qdf_spin_lock_bh(&rx_tid->tid_lock);
 

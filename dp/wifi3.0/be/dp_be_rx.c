@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2788,7 +2788,7 @@ dp_rx_null_q_desc_handle_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 
 		peer = dp_peer_get_ref_by_id(soc, txrx_peer->peer_id,
 					     DP_MOD_ID_RX_ERR);
-		if (peer) {
+		if (peer && peer->rx_tid) {
 			rx_tid = &peer->rx_tid[tid];
 			qdf_spin_lock_bh(&rx_tid->tid_lock);
 			if (!peer->rx_tid[tid].hw_qdesc_vaddr_unaligned) {
@@ -2810,8 +2810,10 @@ dp_rx_null_q_desc_handle_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			}
 			qdf_spin_unlock_bh(&rx_tid->tid_lock);
 			/* IEEE80211_SEQ_MAX indicates invalid start_seq */
-			dp_peer_unref_delete(peer, DP_MOD_ID_RX_ERR);
 		}
+
+		if (peer)
+			dp_peer_unref_delete(peer, DP_MOD_ID_RX_ERR);
 	}
 
 	eh = (qdf_ether_header_t *)qdf_nbuf_data(nbuf);
