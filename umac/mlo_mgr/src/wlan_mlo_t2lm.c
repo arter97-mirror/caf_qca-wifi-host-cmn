@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -769,31 +769,46 @@ ttlm_handle_rx_action_rsp_in_sta_in_progress_state(
  * ttlm_handle_timer_timeout() - Handle TTLM req timer timeout
  * @ml_peer: MLO peer context
  *
- * Return: void
+ * Return: QDF_STATUS
  */
-static void ttlm_handle_timer_timeout(struct wlan_mlo_peer_context *ml_peer)
+static QDF_STATUS
+ttlm_handle_timer_timeout(struct wlan_mlo_peer_context *ml_peer)
 {
 	struct wlan_objmgr_vdev *vdev;
 	struct wlan_objmgr_peer *peer;
+	QDF_STATUS status;
+	QDF_STATUS qdf_status = QDF_STATUS_SUCCESS;
 
 	vdev = mlo_get_first_vdev_by_ml_peer(ml_peer);
 	if (!vdev) {
 		t2lm_err("VDEV is null");
-		return;
+		return QDF_STATUS_E_NULL_VALUE;
 	}
 
 	peer = wlan_objmgr_vdev_try_get_bsspeer(vdev, WLAN_MLO_MGR_ID);
 	if (!peer) {
 		t2lm_err("Peer is NULL");
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
-		return;
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (QDF_TIMER_STATE_RUNNING ==
+		qdf_mc_timer_get_current_state(&ml_peer->ttlm_request_timer)) {
+		status = qdf_mc_timer_stop(&ml_peer->ttlm_request_timer);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			t2lm_err("Failed to stop the TTLM request timer");
+			qdf_status = QDF_STATUS_E_FAILURE;
+		}
 	}
 
 	wlan_t2lm_clear_ongoing_negotiation(peer);
+	wlan_mlo_send_ttlm_complete(vdev, ml_peer, false);
 	ttlm_sm_transition_to(ml_peer, WLAN_TTLM_S_NEGOTIATED);
 
 	wlan_objmgr_peer_release_ref(peer, WLAN_MLO_MGR_ID);
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
+	return qdf_status;
 }
 
 /**
@@ -852,7 +867,9 @@ static bool ttlm_subst_sta_inprogress_event(void *ctx, uint16_t event,
 		ttlm_sm_transition_to(ml_peer, WLAN_TTLM_S_NEGOTIATED);
 		break;
 	case WLAN_TTLM_SM_EV_TTLM_REQ_TIMEOUT:
-		ttlm_handle_timer_timeout(ml_peer);
+		status = ttlm_handle_timer_timeout(ml_peer);
+		if (QDF_IS_STATUS_ERROR(status))
+			event_handled = false;
 		break;
 	default:
 		event_handled = false;
@@ -1101,6 +1118,11 @@ static bool ttlm_subst_ap_btm_inprogress_event(void *ctx, uint16_t event,
 		if (QDF_IS_STATUS_ERROR(status))
 			event_handled = false;
 		ttlm_sm_transition_to(ml_peer, WLAN_TTLM_S_NEGOTIATED);
+		break;
+	case WLAN_TTLM_SM_EV_TTLM_REQ_TIMEOUT:
+		status = ttlm_handle_timer_timeout(ml_peer);
+		if (QDF_IS_STATUS_ERROR(status))
+			event_handled = false;
 		break;
 	default:
 		event_handled = false;
