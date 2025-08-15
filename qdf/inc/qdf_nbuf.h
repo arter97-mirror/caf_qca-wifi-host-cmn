@@ -362,6 +362,13 @@ struct join_resp_event {
 	uint16_t reason;
 } __attribute__((__packed__));
 
+struct stats_cfm_event {
+	uint32_t tx_pkts;             /* txframe */
+	uint32_t tx_retrans_pkts;     /* txretrans */
+	uint32_t rx_pkts;             /* rxframe */
+	uint32_t rx_ucast_pkts;
+} __attribute__((__packed__));
+
 /**
  * struct mon_rx_status - This will have monitor mode per user rx_status
  * extracted from hardware TLV.
