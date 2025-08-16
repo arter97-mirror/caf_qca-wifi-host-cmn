@@ -1910,17 +1910,24 @@ static void dfs_continue_old_or_start_new_sms(struct wlan_dfs *dfs,
 	 * Create the new puncture objects
 	 */
 	for (chan_idx = 0; chan_idx < n_punc_chans; chan_idx++) {
+		uint16_t freq = dfs_curchan_punc_list[chan_idx];
+
 		if (ch_to_punc_idx[chan_idx] != INVAL_SLOT_IDX)
 			continue;
 
-		punc_idx = dfs_init_punc_obj(dfs, dfs_curchan_punc_list[chan_idx], is_user_punc);
+		if (!wlan_reg_is_dfs_for_freq(dfs->dfs_pdev_obj, freq)) {
+                        dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "dfs_curchan_punc_list[%d]: %d is a NON-DFS channel. Skip puncturing.", chan_idx, freq);
+			continue;
+		}
+
+		punc_idx = dfs_init_punc_obj(dfs, freq, is_user_punc);
 		if (punc_idx == INVAL_SLOT_IDX) {
 			dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,"Could not start 20MHz puncture SM idx = %d",
 				chan_idx);
 			continue;
 		}
 		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "dfs_curchan_punc_list[%d]: %d gets created with new sm_punc_idx: %d",
-			  chan_idx, dfs_curchan_punc_list[chan_idx], punc_idx);
+			  chan_idx, freq, punc_idx);
 		dfs_move_to_punc_state(dfs, punc_idx, is_user_punc);
 	}
 
