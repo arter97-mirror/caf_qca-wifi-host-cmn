@@ -345,6 +345,9 @@ struct auth_resp_event {
 	uint16_t status_code;
 } __attribute__((__packed__));
 
+/*host event definition*/
+#define EVENT_MAX_AP 3
+
 struct ap_info_event {
 	uint8_t bssid[6];
 	uint16_t channel;
@@ -367,6 +370,15 @@ struct stats_cfm_event {
 	uint32_t tx_retrans_pkts;     /* txretrans */
 	uint32_t rx_pkts;             /* rxframe */
 	uint32_t rx_ucast_pkts;
+} __attribute__((__packed__));
+
+struct scan_ap_info {
+	uint8_t bssid[6];
+	int8_t rssi;
+}__attribute__((__packed__));
+
+struct scan_complete_event {
+	struct scan_ap_info scan_ap[EVENT_MAX_AP];
 } __attribute__((__packed__));
 
 /**
