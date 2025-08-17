@@ -34,6 +34,8 @@
 #include <wlan_policy_mgr_api.h>
 #endif
 #include <wlan_dfs_utils_api.h>
+#include "wlan_hdd_scan.h"
+#include "wlan_osif_priv.h"
 
 QDF_STATUS
 scm_scan_free_scan_request_mem(struct scan_start_request *req)
@@ -1380,6 +1382,157 @@ scm_scan_update_scan_event(struct wlan_scan_obj *scan,
 	return QDF_STATUS_SUCCESS;
 }
 
+static void update_top_aps(struct scan_ap_info *top_aps,
+			   int *num_top, uint8_t *bssid, int8_t rssi)
+{
+	int i = 0;
+	int min_idx = -1;
+	int8_t min_rssi = 127;
+
+	if (*num_top < EVENT_MAX_AP) {
+		memcpy(top_aps[*num_top].bssid, bssid, 6);
+		top_aps[*num_top].rssi = rssi;
+		(*num_top)++;
+		return;
+	}
+
+	for (i = 0; i < EVENT_MAX_AP; i++) {
+		if (top_aps[i].rssi < min_rssi) {
+			min_rssi = top_aps[i].rssi;
+			min_idx = i;
+		}
+	}
+	if (rssi > min_rssi) {
+		memcpy(top_aps[min_idx].bssid, bssid, 6);
+		top_aps[min_idx].rssi = rssi;
+	}
+}
+
+static void scm_send_custom_scan_complete_event(struct wlan_objmgr_vdev* vdev)
+{
+	struct wlan_objmgr_pdev *pdev;
+	qdf_list_t *list = NULL;
+	struct scan_result_list *ret_list = NULL;
+	QDF_STATUS status;
+	struct mac_context *mac_ctx;
+	tListElem *entry;
+	struct tag_csrscan_result *bss_desc = NULL;
+	uint8_t *buf = NULL;
+	struct mon_report_status *mon_report= NULL;
+	struct scan_complete_event *event = NULL;
+	int num_top = 0;
+	struct vdev_osif_priv *osif_priv = NULL;
+	struct hdd_adapter *adapter = NULL;
+	struct hdd_station_ctx *sta_ctx = NULL;
+
+	mac_ctx = cds_get_context(QDF_MODULE_ID_SME);
+	if (!mac_ctx) {
+		scm_err("mac is NULL");
+		return;
+	}
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		scm_err("pdev is NULL");
+		return;
+	}
+	osif_priv = wlan_vdev_get_ospriv(vdev);
+	if(!osif_priv)
+		return;
+	adapter = (struct hdd_adapter *)vdev->vdev_nif.osdev->legacy_osif_priv;
+	if(!adapter)
+		return;
+	sta_ctx = WLAN_HDD_GET_STATION_CTX_PTR(adapter);
+	if(!sta_ctx)
+		return;
+	buf = qdf_mem_malloc(sizeof(struct mon_report_status) +
+			 sizeof(struct scan_complete_event));
+	if (!buf) {
+		pe_err("Allocate Memory failed for buf");
+		return;
+	}
+
+	mon_report = (struct mon_report_status *)buf;
+	event = (struct scan_complete_event *)(mon_report->payload);
+	mon_report->type = (sta_ctx->conn_info.conn_state ==
+			    eConnectionState_Associated) ?
+			    FGSCAN_COMPLETE_EVENT : BGSCAN_COMPLETE_EVENT;
+	mon_report->payload_len = sizeof(struct scan_complete_event);
+	mon_report->qtime = qdf_get_log_timestamp_usecs() /
+			    USEC_PER_MSEC;
+
+	list = scm_get_scan_result(pdev, NULL);
+	if (!list)
+		goto exit;
+	if (!qdf_list_size(list)) {
+		send_custom_packet_select(buf);
+		goto exit;
+	}
+	ret_list = qdf_mem_malloc(sizeof(struct scan_result_list));
+	if (!ret_list)
+		goto exit;
+
+	csr_ll_open(&ret_list->List);
+	ret_list->pCurEntry = NULL;
+	status = csr_parse_scan_list(mac_ctx, ret_list, list);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto exit;
+	if (!csr_ll_count(&ret_list->List))
+		goto exit;
+
+	entry = csr_ll_peek_head(&ret_list->List, LL_ACCESS_NOLOCK);
+	while (entry) {
+		bss_desc = GET_BASE_ADDR(entry,
+				struct tag_csrscan_result, Link);
+		update_top_aps(event->scan_ap, &num_top,
+			       bss_desc->Result.BssDescriptor.bssId,
+			       bss_desc->Result.BssDescriptor.rssi);
+		entry = csr_ll_next(&ret_list->List, entry,
+				LL_ACCESS_NOLOCK);
+	}
+	send_custom_packet_select(buf);
+exit:
+	if(list)
+		scm_purge_scan_results(list);
+	if(ret_list)
+		csr_scan_result_purge(mac_ctx, ret_list);
+	if(buf)
+		qdf_mem_free(buf);
+}
+
+static void scm_send_custom_scan_start_event(struct wlan_objmgr_vdev* vdev)
+{
+	uint8_t *buf = NULL;
+	struct mon_report_status *mon_report= NULL;
+	struct vdev_osif_priv *osif_priv = NULL;
+	struct hdd_adapter *adapter = NULL;
+	struct hdd_station_ctx *sta_ctx = NULL;
+
+	osif_priv = wlan_vdev_get_ospriv(vdev);
+	if(!osif_priv)
+		return;
+	adapter = (struct hdd_adapter *)vdev->vdev_nif.osdev->legacy_osif_priv;
+	if(!adapter)
+		return;
+	sta_ctx = WLAN_HDD_GET_STATION_CTX_PTR(adapter);
+	if(!sta_ctx)
+		return;
+	buf = qdf_mem_malloc(sizeof(struct mon_report_status));
+	if (!buf) {
+		pe_err("Allocate Memory failed for buf");
+		return;
+	}
+
+	mon_report = (struct mon_report_status *)buf;
+	mon_report->type = (sta_ctx->conn_info.conn_state ==
+			    eConnectionState_Associated) ?
+			    INSTANT_FGREQ_EVENT : INSTANT_BGREQ_EVENT;
+	mon_report->payload_len = 0;
+	mon_report->qtime = qdf_get_log_timestamp_usecs() /
+			    USEC_PER_MSEC;
+	send_custom_packet_select(buf);
+	qdf_mem_free(buf);
+}
+
 QDF_STATUS
 scm_scan_event_handler(struct scheduler_msg *msg)
 {
@@ -1464,7 +1617,11 @@ scm_scan_event_handler(struct scheduler_msg *msg)
 		scm_scan_update_scan_event(scan, event, scan_start_req);
 
 	switch (event->type) {
+	case SCAN_EVENT_TYPE_STARTED:
+		scm_send_custom_scan_start_event(vdev);
+		break;
 	case SCAN_EVENT_TYPE_COMPLETED:
+		scm_send_custom_scan_complete_event(vdev);
 		if (event->reason == SCAN_REASON_COMPLETED)
 			scm_11d_decide_country_code(vdev);
 		/* fall through to release the command */
