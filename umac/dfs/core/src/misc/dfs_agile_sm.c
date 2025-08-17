@@ -2796,6 +2796,7 @@ static bool dfs_puncturing_state_cac_wait_event(void *ctx,
 		status = true;
 		break;
 	case DFS_PUNC_SM_EV_STOP:
+		dfs_cancel_punc_cac_timer(dfs_punc);
 		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Punc sm stop triggered");
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_UNPUNCTURED);
 		status = true;
@@ -2825,7 +2826,6 @@ static bool dfs_puncturing_state_cac_done_event(void *ctx,
 
 	switch (event) {
 	case DFS_PUNC_SM_EV_RADAR:
-		dfs_cancel_punc_cac_timer(dfs_punc);
 		dfs_puncturing_add_chan_to_nol(dfs_punc);
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_PUNCTURED);
 		status = true;
