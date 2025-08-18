@@ -1471,15 +1471,17 @@ static inline int hif_get_num_pending_work(struct hif_softc *scn)
  * @scn: HIF context
  * @print_type: print type
  *
- * Returns: None
+ * Returns: QDF_STATUS_SUCCESS if all the rings are empty
+ *	QDF error code, if any ring is not empty
  */
-void hif_print_ce(struct hif_softc *scn, uint8_t print_type)
+QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type)
 {
 	struct HIF_CE_state *hif_ce_state = (struct HIF_CE_state *)scn;
 	struct ce_tasklet_entry *tasklet_entry;
 	struct CE_state *CE_state;
 	uint32_t hp = 0, tp = 0;
 	uint8_t ce_id = 0;
+	uint8_t non_empty = 0;
 
 	if (print_type == DIAG_PRINT) {
 		if (!hif_get_fw_diag_ce_id(scn, &ce_id)) {
@@ -1492,7 +1494,7 @@ void hif_print_ce(struct hif_softc *scn, uint8_t print_type)
 					 ce_id, hp, tp);
 			}
 		}
-		return;
+		return QDF_STATUS_SUCCESS;
 	}
 
 	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
@@ -1510,6 +1512,8 @@ void hif_print_ce(struct hif_softc *scn, uint8_t print_type)
 				hif_info("ce=%d sts%sHP=%d, TP=%d",
 					 ce_id, print_type ? " " : " pending ",
 					 hp, tp);
+				if (hp != tp)
+					non_empty++;
 			} else if (CE_state->src_ring) {
 				hal_get_sw_hptp(scn->hal_soc,
 						CE_state->src_ring->srng_ctx,
@@ -1517,13 +1521,23 @@ void hif_print_ce(struct hif_softc *scn, uint8_t print_type)
 				hif_info("ce=%d src%sHP=%d, TP=%d",
 					 ce_id, print_type ? " " : " pending ",
 					 hp, tp);
+				if (hp != tp)
+					non_empty++;
 			}
 		}
 	}
+
+	if (print_type && non_empty) {
+		hif_info("full print shows %d rings are not empty", non_empty);
+		return QDF_STATUS_E_FAULT;
+	}
+
+	return QDF_STATUS_SUCCESS;
 }
 #else
-void hif_print_ce(struct hif_softc *scn, uint8_t print_type)
+QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type)
 {
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 
@@ -1567,9 +1581,8 @@ QDF_STATUS hif_try_complete_tasks(struct hif_softc *scn)
 	}
 
 	hif_info("CE HP-TP data:");
-	hif_print_ce(scn, FULL_PRINT);
 
-	return QDF_STATUS_SUCCESS;
+	return hif_print_ce(scn, FULL_PRINT);
 }
 
 QDF_STATUS hif_try_complete_dp_tasks(struct hif_opaque_softc *hif_ctx)

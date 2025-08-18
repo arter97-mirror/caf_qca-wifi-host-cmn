@@ -904,5 +904,5 @@ static inline bool hif_is_ep_vote_access_disabled(struct hif_softc *scn)
 #define BUSY_PRINT	0
 #define FULL_PRINT	1
 #define DIAG_PRINT	2
-void hif_print_ce(struct hif_softc *scn, uint8_t print_type);
+QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type);
 #endif /* __HIF_MAIN_H__ */
