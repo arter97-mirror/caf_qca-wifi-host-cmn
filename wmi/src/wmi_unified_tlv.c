@@ -2252,6 +2252,7 @@ static QDF_STATUS send_vdev_up_cmd_tlv(wmi_unified_t wmi,
 	if (wmi_unified_cmd_send(wmi, buf, len, WMI_VDEV_UP_CMDID)) {
 		wmi_err("Failed to send vdev up command");
 		wmi_buf_free(buf);
+		QDF_BUG(0);
 		return QDF_STATUS_E_FAILURE;
 	}
 
