@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1282,6 +1283,7 @@ static inline void mlo_epcs_ctx_deinit(struct wlan_mlo_dev_context *mlo_dev_ctx)
 static void ml_free_copied_reassoc_rsp(struct wlan_mlo_sta *sta_ctx)
 {
 	wlan_cm_free_connect_resp(sta_ctx->copied_reassoc_rsp);
+	sta_ctx->copied_reassoc_rsp = NULL;
 }
 #else
 static void ml_free_copied_reassoc_rsp(struct wlan_mlo_sta *sta_ctx)
