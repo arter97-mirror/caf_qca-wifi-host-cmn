@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -129,9 +129,14 @@ struct peer_cp_stats {
 /**
  * struct cp_stats_cfg_params - define CP stats INI configuration parameters
  * @chipset_stats_enable: CP stats enable chipset stats logging from ini config
+ * @chipset_stats_push_rbs_delay_val_ms : User delay in ms
+ * @chipset_stats_push_rbs_delay_interval : Represent after how many RB node
+ *					    User delay is applicable
  */
 struct cp_stats_cfg_params {
 	bool chipset_stats_enable;
+	size_t chipset_stats_push_rbs_delay_val_ms;
+	size_t chipset_stats_push_rbs_delay_interval;
 };
 
 /**

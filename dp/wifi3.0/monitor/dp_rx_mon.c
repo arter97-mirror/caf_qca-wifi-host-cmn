@@ -2300,13 +2300,13 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 
 	mon_mac = dp_get_mon_mac(pdev, mac_id);
 	mon_pdev = pdev->monitor_pdev;
-	rs = &mon_mac->rx_mon_recv_status;
 
 	if (!mon_mac && !mon_mac->mvdev && !mon_pdev->mcopy_mode &&
 	    !mon_pdev->rx_pktlog_cbf &&
 	    mon_mac->mon_chan_num == INVALID_MON_CHAN_NUM)
 		goto mon_deliver_fail;
 
+	rs = &mon_mac->rx_mon_recv_status;
 	/* restitch mon MPDU for delivery via monitor interface */
 	mon_mpdu = dp_rx_mon_restitch_mpdu(soc, mac_id, head_msdu,
 					   tail_msdu, rs);

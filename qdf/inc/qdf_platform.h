@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -111,6 +111,14 @@ typedef QDF_STATUS (*qdf_send_ind_over_qmi_callback)(void *cb_ctx,
 						     qdf_qmi_ind_cb qmi_ind_cb);
 
 /**
+ * typedef qdf_get_dump_inprogress_callback() - Get dump inprogress cb
+ * @val: Pointer to store dump_inprogress value
+ *
+ * Return: QDF_STATUS_SUCCESS if success otherwise QDF error code
+ */
+typedef QDF_STATUS (*qdf_get_dump_inprogress_callback)(uint8_t *val);
+
+/**
  * qdf_register_wmi_send_recv_qmi_callback() - Register WMI over QMI callback
  * @wmi_send_recv_qmi_cb: callback to send recv WMI data over QMI
  *
@@ -126,6 +134,14 @@ void qdf_register_wmi_send_recv_qmi_callback(qdf_wmi_send_over_qmi_callback
  * Return: none
  */
 void qdf_register_qmi_indication_callback(qdf_send_ind_over_qmi_callback qmi_ind_cb);
+
+/**
+ * qdf_register_get_dump_inprogress_cb() - Register get dump_inprogress cb
+ * @cb: callback to get dump_inprogress
+ *
+ * Return: none
+ */
+void qdf_register_get_dump_inprogress_cb(qdf_get_dump_inprogress_callback cb);
 
 /**
  * qdf_wmi_send_recv_qmi() - API to send receive WMI data over QMI
@@ -147,6 +163,14 @@ QDF_STATUS qdf_wmi_send_recv_qmi(void *buf, uint32_t len, void *cb_ctx,
  * Return: QDF STATUS of operation
  */
 QDF_STATUS qdf_reg_qmi_indication(void *cb_ctx, qdf_qmi_ind_cb qmi_ind_cb);
+
+/**
+ * qdf_get_dump_inprogress() - API to get dump_inprogress sysfs node value
+ * @val: addr to store sysfs value
+ *
+ * Return: QDF STATUS of operation
+ */
+QDF_STATUS qdf_get_dump_inprogress(uint8_t *val);
 
 /**
  * typedef qdf_is_driver_unloading_callback() - callback to get driver

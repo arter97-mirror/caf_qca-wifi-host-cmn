@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: ISC
  */
 
@@ -79,6 +79,9 @@ struct chipset_stats {
 	qdf_spinlock_t cstats_lock[CSTATS_MAX_TYPE];
 	struct cstats_node *ccur_node[CSTATS_MAX_TYPE];
 	unsigned int cstat_drop_cnt[CSTATS_MAX_TYPE];
+
+	size_t chipset_stats_push_rbs_delay_val_ms;
+	size_t chipset_stats_push_rbs_delay_interval;
 
 	/* Dont move filled list nodes to free list after flush to user space */
 	bool cstats_no_flush[CSTATS_MAX_TYPE];

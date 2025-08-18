@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1313,6 +1313,7 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 			      struct cdp_tid_rx_stats *tid_stats,
 			      uint8_t link_id)
 {
+	qdf_dma_addr_t paddr = QDF_NBUF_CB_PADDR(nbuf);
 	uint16_t len;
 
 	len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
@@ -1340,6 +1341,10 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 	}
 
 	qdf_mem_set(nbuf->cb, sizeof(nbuf->cb), 0x0);
+
+	if (qdf_is_pp_nbuf(nbuf))
+		QDF_NBUF_CB_PADDR(nbuf) = paddr;
+
 	dp_classify_critical_pkts(soc, ta_peer->vdev, nbuf);
 
 	/* Don't send packets if tx is paused */

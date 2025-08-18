@@ -2215,33 +2215,31 @@ dp_tx_mon_process_status_tlv(struct dp_soc *soc,
 
 	tx_mon_be = dp_mon_pdev_get_tx_mon(mon_pdev_be, mac_id);
 
-	if (qdf_unlikely(tx_mon_be->last_frag_q_idx >
+	/* Flush all status buffer when receive end_reason 1 */
+	if (qdf_unlikely(mon_ring_desc->end_reason ==
+			 HAL_MON_FLUSH_DETECTED)) {
+		tx_mon_be->stats.ppdu_info_drop_flush++;
+		tx_mon_be->be_end_reason_bitmap = 0;
+		tx_mon_be->be_ppdu_id = mon_ring_desc->ppdu_id;
+		goto drop_queue_free_buf;
+	}
+
+	if (qdf_unlikely(tx_mon_be->last_frag_q_idx >=
 			 MAX_STATUS_BUFFER_IN_PPDU)) {
 		dp_mon_err("status frag queue for a ppdu[%d] exceed %d\n",
 			   tx_mon_be->be_ppdu_id,
 			   MAX_STATUS_BUFFER_IN_PPDU);
-		dp_tx_mon_status_queue_free(pdev, tx_mon_be, mon_desc_list_ref,
-					    mac_id);
-		goto free_status_buffer;
+		goto drop_queue_free_buf;
 	}
 
 	if (tx_mon_be->mode == TX_MON_BE_DISABLE &&
-	    !dp_lite_mon_is_tx_enabled(mon_pdev)) {
-		dp_tx_mon_status_queue_free(pdev, tx_mon_be,
-					    mon_desc_list_ref, mac_id);
-		goto free_status_buffer;
-	}
+	    !dp_lite_mon_is_tx_enabled(mon_pdev))
+		goto drop_queue_free_buf;
 
 	if (tx_mon_be->be_ppdu_id != mon_ring_desc->ppdu_id &&
 	    tx_mon_be->last_frag_q_idx) {
 		if (tx_mon_be->be_end_reason_bitmap &
-		    (1 << HAL_MON_FLUSH_DETECTED)) {
-			tx_mon_be->stats.ppdu_info_drop_flush++;
-			dp_tx_mon_status_queue_free(pdev, tx_mon_be,
-						    mon_desc_list_ref,
-						    mac_id);
-		} else if (tx_mon_be->be_end_reason_bitmap &
-			   (1 << HAL_MON_PPDU_TRUNCATED)) {
+		    (1 << HAL_MON_PPDU_TRUNCATED)) {
 			tx_mon_be->stats.ppdu_info_drop_trunc++;
 			dp_tx_mon_status_queue_free(pdev, tx_mon_be,
 						    mon_desc_list_ref,
@@ -2295,6 +2293,9 @@ dp_tx_mon_process_status_tlv(struct dp_soc *soc,
 
 	return QDF_STATUS_SUCCESS;
 
+drop_queue_free_buf:
+	dp_tx_mon_status_queue_free(pdev, tx_mon_be, mon_desc_list_ref,
+				    mac_id);
 free_status_buffer:
 	dp_tx_mon_status_free_packet_buf(pdev, status_frag, end_offset,
 					 mon_desc_list_ref, mac_id);
