@@ -1273,17 +1273,6 @@ wmi_unified_encrypt_decrypt_send_cmd(void *wmi_hdl,
 }
 #endif /* WLAN_FEATURE_DISA */
 
-QDF_STATUS
-wmi_unified_wlan_profile_enable_cmd_send(wmi_unified_t wmi_handle,
-					 struct wlan_profile_params *param)
-{
-	if (wmi_handle->ops->send_wlan_profile_enable_cmd)
-		return wmi_handle->ops->send_wlan_profile_enable_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_unified_get_ratepwr_table_cmd_send(wmi_unified_t wmi_handle)
 {
 	if (wmi_handle->ops->send_get_ratepwr_table_cmd)
@@ -1488,18 +1477,6 @@ QDF_STATUS wmi_unified_pdev_set_regdomain_cmd_send(
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
-
-QDF_STATUS
-wmi_unified_set_beacon_filter_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct set_beacon_filter_params *param)
-{
-	if (wmi_handle->ops->send_set_beacon_filter_cmd)
-		return wmi_handle->ops->send_set_beacon_filter_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
 
 QDF_STATUS wmi_unified_remove_beacon_filter_cmd_send(
 			wmi_unified_t wmi_handle,
@@ -4053,16 +4030,6 @@ QDF_STATUS wmi_unified_send_opm_stats_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
-
-QDF_STATUS
-wmi_unified_send_sta_vdev_report_ap_oper_bw_cmd(wmi_unified_t wmi_handle,
-						struct wmi_sta_vdev_report_ap_oper_bw_params *param)
-{
-	if (wmi_handle->ops->send_sta_vdev_report_ap_oper_bw_cmd)
-		return wmi_handle->ops->send_sta_vdev_report_ap_oper_bw_cmd(wmi_handle,
-									    param);
-	return QDF_STATUS_E_FAILURE;
-}
 
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 QDF_STATUS
