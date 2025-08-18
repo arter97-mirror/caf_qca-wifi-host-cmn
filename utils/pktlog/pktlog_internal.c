@@ -1166,6 +1166,7 @@ A_STATUS process_sw_event(void *pdev, void *data)
 	uint32_t *pl_tgt_hdr;
 #ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
 	struct ath_pktlog_hdr *node_header;
+	struct mon_report_status *node_custom_hdr;
 	int32_t pkt_stats_len;
 	uint8_t *process_fw_data;
 	uint8_t node_pkt_type;
@@ -1276,9 +1277,11 @@ A_STATUS process_sw_event(void *pdev, void *data)
 				node_pkt_type = node_header->log_type;
 				node_pkt_len = node_header->size;
 				if(node_pkt_type == PKTLOG_TYPE_CUSTOM_PKT) {
-					qdf_print("JNL: %s: node(pkt_type/pkt_len)(%d, %d), pkt_stats_len %d",
-						__func__, node_pkt_type, node_pkt_len, pkt_stats_len);
-					/*update timestamp here.*/
+					node_custom_hdr = (struct mon_report_status *)
+							  ((uint8_t *)node_header + sizeof(struct ath_pktlog_hdr));
+					status = hdd_get_soctime_from_tsf64time(adapter, node_custom_hdr->qtime, &qtime);
+					/* qtime to ms */
+					node_custom_hdr->qtime  = qtime / QDF_NSEC_PER_MSEC;
 				}
 			}
 			pkt_stats_len = (pkt_stats_len - (sizeof(struct ath_pktlog_hdr) + node_pkt_len));
@@ -1291,8 +1294,8 @@ A_STATUS process_sw_event(void *pdev, void *data)
 #endif
 		status = hdd_get_soctime_from_tsf64time(adapter, pl_hdr.timestamp, &qtime);
 		pl_header = (struct mon_report_status *)(sw_event.sw_event);
-		/* qtime to us */
-		pl_header->qtime  = qtime / 1000;
+		/* qtime to ms */
+		pl_header->qtime  = qtime / QDF_NSEC_PER_MSEC;
 	}
 		cds_custom_to_logger_thread(&pl_hdr, NULL, sw_event.sw_event);
 #else
