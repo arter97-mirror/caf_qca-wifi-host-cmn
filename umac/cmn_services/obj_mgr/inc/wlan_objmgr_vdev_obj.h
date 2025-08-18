@@ -2339,7 +2339,28 @@ wlan_vdev_mlme_is_mlo_link_rejection_in_progress(struct wlan_objmgr_vdev *vdev)
 {
 	return false;
 }
+#endif
 
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+/**
+ * wlan_vdev_mlme_is_mlo_link_removal_in_progress() - whether it is mlo sap in
+ * link removal progress
+ * @vdev: VDEV object
+ *
+ * Return: True if it is mlo sap link removal, otherwise false.
+ */
+static inline
+bool wlan_vdev_mlme_is_mlo_link_removal_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return wlan_vdev_mlme_op_flags_get(vdev,
+				WLAN_VDEV_OP_MLO_LINK_REMOVAL_IN_PROGRESS);
+}
+#else
+static inline
+bool wlan_vdev_mlme_is_mlo_link_removal_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
 #endif
 
 /**

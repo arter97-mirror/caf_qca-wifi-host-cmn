@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -168,9 +168,7 @@ struct wlan_objmgr_peer_mlme {
 struct wlan_objmgr_peer_objmgr {
 	struct wlan_objmgr_vdev *vdev;
 	qdf_atomic_t ref_cnt;
-#ifdef WLAN_OBJMGR_REF_ID_DEBUG
 	qdf_atomic_t ref_id_dbg[WLAN_REF_ID_MAX];
-#endif
 	uint8_t print_cnt;
 #ifdef WLAN_OBJMGR_REF_ID_TRACE
 	struct wlan_objmgr_trace trace;

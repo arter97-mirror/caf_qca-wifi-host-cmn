@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -306,7 +306,8 @@ static void ce_fastpath_rx_handle(struct CE_state *ce_state,
 	uint32_t write_index;
 
 	qdf_spin_unlock(&ce_state->ce_index_lock);
-	ce_state->fastpath_handler(ce_state->context,	cmpl_msdus, num_cmpls);
+	ce_state->fastpath_handler(ce_state->context, cmpl_msdus,
+				   num_cmpls, ce_state->id);
 	qdf_spin_lock(&ce_state->ce_index_lock);
 
 	/* Update Destination Ring Write Index */

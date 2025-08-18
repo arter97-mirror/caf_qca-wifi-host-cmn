@@ -99,6 +99,7 @@ void dp_tx_update_eapol_comp_status_stats(struct dp_soc *soc,
 #define DP_TX_DESC_FLAG_SPECIAL         0x80000
 #define DP_TX_DESC_FLAG_BCAST           0x100000
 #define DP_TX_DESC_FLAG_OPT_DP_CTRL           0x200000
+#define DP_TX_DESC_FLAG_REAPED		0x400000
 
 #define DP_TX_EXT_DESC_FLAG_METADATA_VALID 0x1
 

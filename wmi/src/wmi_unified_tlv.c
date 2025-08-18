@@ -21223,11 +21223,16 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (!param_buf->roam_result || idx >= param_buf->num_roam_result)
+	if (!param_buf->roam_result || idx >= param_buf->num_roam_result) {
 		wmi_err("roam_result or idx error.%u", idx);
+		return QDF_STATUS_E_FAILURE;
+	}
 
-	if (!param_buf->roam_scan_info || idx >= param_buf->num_roam_scan_info)
+	if (!param_buf->roam_scan_info ||
+	    idx >= param_buf->num_roam_scan_info) {
 		wmi_err("roam_scan_info or idx error.%u", idx);
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	trig->present = true;
 
@@ -21556,9 +21561,14 @@ extract_roam_scan_ap_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (ap_idx >= param_buf->num_roam_ap_info) {
-		wmi_err("Invalid roam scan AP tlv ap_idx:%d total_ap:%d",
-			ap_idx, param_buf->num_roam_ap_info);
+	/*
+	 * Check to validate that the requested number of APs do not exceed the
+	 * remaining APs in param_buf after ap_idx to prevent out of bounds
+	 * access.
+	 */
+	if ((ap_idx + num_cand) > param_buf->num_roam_ap_info) {
+		wmi_err("Invalid roam scan AP tlv ap_idx:%d, num_cand:%d, total_ap:%d",
+			ap_idx, num_cand, param_buf->num_roam_ap_info);
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -25415,6 +25425,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #if defined(FEATURE_WLAN_TDLS) && defined(WLAN_FEATURE_TDLS_NSS_4_4)
 	wmi_service[wmi_service_tdls_nss_confirm_support] =
 				WMI_SERVICE_TDLS_NSS_CONFIRM_SUPPORT;
+#endif
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+	wmi_service[wmi_service_mlo_sap_link_removal_support] =
+				WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT;
 #endif
 }
 

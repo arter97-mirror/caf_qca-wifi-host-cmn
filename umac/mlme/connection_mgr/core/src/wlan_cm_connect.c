@@ -1683,10 +1683,10 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 	uint32_t num_bss = 0;
 	qdf_list_t *candidate_list = NULL;
 	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct scan_cache_node *scan_entry;
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
-	struct qdf_mac_addr *bssid;
+	struct qdf_mac_addr *bssid, self_mac;
 	bool found;
 
 	pdev = wlan_vdev_get_pdev(cm_ctx->vdev);
@@ -1711,6 +1711,8 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 		goto free_list;
 	}
 
+	qdf_mem_copy(&self_mac, wlan_vdev_mlme_get_macaddr(cm_ctx->vdev),
+		     sizeof(struct qdf_mac_addr));
 	while (cur_node) {
 		qdf_list_peek_next(candidate_list, cur_node, &next_node);
 
@@ -1732,9 +1734,15 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 			goto free_list;
 		}
 
-		status = qdf_list_insert_after(cm_req->candidate_list,
-					       &scan_entry->node,
-					       &prev_candidate->node);
+		if (QDF_IS_LAST_3_BYTES_OF_MAC_SAME(&self_mac, bssid) ||
+		    cm_is_better_bss(scan_entry->entry, prev_candidate->entry))
+			status = qdf_list_insert_after(cm_req->candidate_list,
+						       &scan_entry->node,
+						       &prev_candidate->node);
+		else
+			cm_list_insert_sorted(cm_req->candidate_list,
+					      scan_entry);
+
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlme_err(CM_PREFIX_FMT "failed to insert node for " QDF_MAC_ADDR_FMT " to candidate list",
 				 CM_PREFIX_REF(vdev_id, cm_req->cm_id),
@@ -3159,8 +3167,21 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	uint8_t link_id;
 	struct scan_cache_entry *cache_entry;
 	struct wlan_channel channel = {0};
+	struct mlme_legacy_priv *mlme_priv;
+	struct assoc_channel_info *assoc_chan_info;
+
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv) {
+		mlme_err("mlme_priv is NULL");
+		return;
+	}
 
 	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		mlme_err("pdev is NULL");
+		return;
+	}
+
 	cache_entry = wlan_scan_get_scan_entry_by_mac_freq(pdev, mac_addr,
 							   freq);
 	if (!cache_entry) {
@@ -3169,7 +3190,6 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	}
 
 	link_id = cache_entry->ml_info.self_link_id;
-
 	channel.ch_freq = cache_entry->channel.chan_freq;
 	channel.ch_ieee = wlan_reg_freq_to_chan(pdev, channel.ch_freq);
 	channel.ch_phymode = cache_entry->phy_mode;
@@ -3183,6 +3203,12 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	 */
 	if (channel.ch_width == CH_WIDTH_20MHZ)
 		channel.ch_cfreq1 = channel.ch_freq;
+
+	if (wlan_reg_is_24ghz_ch_freq(channel.ch_freq) &&
+	    channel.ch_width == CH_WIDTH_40MHZ) {
+		assoc_chan_info = &mlme_priv->connect_info.assoc_chan_info;
+		assoc_chan_info->sec_2g_freq = channel.ch_cfreq1;
+	}
 
 	util_scan_free_cache_entry(cache_entry);
 	mlo_mgr_update_ap_channel_info(vdev, link_id, (uint8_t *)mac_addr,

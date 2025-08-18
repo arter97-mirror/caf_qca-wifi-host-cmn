@@ -4230,7 +4230,7 @@ static inline void dp_check_is_wds_valid(struct dp_soc *soc, uint16_t peer_id,
 static void dp_haps_indication(struct dp_soc *soc, uint32_t *msg_word)
 {
 	uint8_t vdev_id;
-	uint64_t time_rcvd;
+	qdf_ktime_t time_rcvd;
 	uint32_t timer_high, timer_low;
 	struct dp_vdev *vdev;
 	struct cdp_haps_ops *haps_ops;
@@ -4274,18 +4274,18 @@ static void dp_haps_indication(struct dp_soc *soc, uint32_t *msg_word)
 
 	switch (action_code) {
 	case HTT_T2H_HAPS_ACTION_PAUSE:
-		haps_ops->haps_handle_ind(vdev->osif_vdev, 1, time_rcvd,
-					  false, false);
+		haps_ops->haps_handle_ind(vdev->osif_vdev, STATE_PAUSE,
+					  time_rcvd, false, false);
 		break;
 
 	case HTT_T2H_HAPS_ACTION_PAUSE_WITH_ONESHOT_UNPAUSE:
-		haps_ops->haps_handle_ind(vdev->osif_vdev, 1, time_rcvd,
-					  true, false);
+		haps_ops->haps_handle_ind(vdev->osif_vdev, STATE_PAUSE,
+					  time_rcvd, true, false);
 		break;
 
 	case HTT_T2H_HAPS_ACTION_UNPAUSE:
-		haps_ops->haps_handle_ind(vdev->osif_vdev, 0, time_rcvd,
-					  false, false);
+		haps_ops->haps_handle_ind(vdev->osif_vdev, STATE_UNPAUSE,
+					  time_rcvd, false, false);
 		break;
 
 	default:

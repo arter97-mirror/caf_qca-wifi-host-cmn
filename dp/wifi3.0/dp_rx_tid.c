@@ -44,6 +44,7 @@
 #include <target_if_dp.h>
 #endif
 
+#ifndef CONFIG_BORON
 #ifdef REO_QDESC_HISTORY
 #define REO_QDESC_HISTORY_SIZE 512
 uint64_t reo_qdesc_history_idx;
@@ -273,50 +274,6 @@ static void dp_rx_tid_update_cb(struct dp_soc *soc, void *cb_ctxt,
 			    soc, reo_status->rx_queue_status.header.status,
 			    rx_tid->tid);
 	}
-}
-
-#ifdef WLAN_FEATURE_11BE_MLO
-static inline QDF_STATUS
-dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
-	       uint8_t *vdev_id)
-{
-	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
-			     peer->peer_type, vdev_id);
-}
-#else
-static inline QDF_STATUS
-dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
-	       uint8_t *vdev_id)
-{
-	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
-			     CDP_WILD_PEER_TYPE, vdev_id);
-}
-#endif
-
-bool dp_get_peer_vdev_roaming_in_progress(struct dp_peer *peer)
-{
-	struct ol_if_ops *ol_ops = NULL;
-	bool is_roaming = false;
-	uint8_t vdev_id = -1;
-	struct cdp_soc_t *soc;
-
-	if (!peer) {
-		dp_peer_info("Peer is NULL. No roaming possible");
-		return false;
-	}
-
-	soc = dp_soc_to_cdp_soc_t(peer->vdev->pdev->soc);
-	ol_ops = peer->vdev->pdev->soc->cdp_soc.ol_ops;
-
-	if (ol_ops && ol_ops->is_roam_inprogress) {
-		dp_get_vdev_id(soc, peer, &vdev_id);
-		is_roaming = ol_ops->is_roam_inprogress(vdev_id);
-	}
-
-	dp_peer_info("peer: " QDF_MAC_ADDR_FMT ", vdev_id: %d, is_roaming: %d",
-		     QDF_MAC_ADDR_REF(peer->mac_addr.raw), vdev_id, is_roaming);
-
-	return is_roaming;
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -2250,4 +2207,158 @@ failed:
 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_GENERIC_STATS);
 }
 #endif /* DUMP_REO_QUEUE_INFO_IN_DDR */
+#else
+QDF_STATUS
+dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
+			uint8_t tid, uint16_t win_sz)
+{
+	struct dp_soc *soc = (struct dp_soc *)soc_handle;
+	struct dp_peer *peer;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
+	peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_HTT);
+
+	if (!peer) {
+		dp_peer_err("%pK: Couldn't find peer from ID %d",
+			    soc, peer_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	qdf_assert_always(tid < DP_MAX_TIDS);
+
+	dp_peer_info("%pK: PEER_ID: %d TID: %d, BA win: %d ",
+		     soc, peer_id, tid, win_sz);
+
+	if (soc->cdp_soc.ol_ops->send_delba)
+		soc->cdp_soc.ol_ops->send_delba(
+				peer->vdev->pdev->soc->ctrl_psoc,
+				peer->vdev->vdev_id,
+				peer->mac_addr.raw,
+				tid,
+				IEEE80211_REASON_QOS_SETUP_REQUIRED,
+				CDP_DELBA_REASON_NONE);
+
+	dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
+
+	return status;
+}
+
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * dp_peer_rx_tids_init() - initialize each tids in peer
+ * @peer: peer pointer
+ *
+ * Return: None
+ */
+static void dp_peer_rx_tids_init(struct dp_peer *peer)
+{
+	int tid;
+	struct dp_rx_tid_defrag *rx_tid_defrag;
+
+	if (!IS_MLO_DP_LINK_PEER(peer)) {
+		for (tid = 0; tid < DP_MAX_TIDS; tid++) {
+			rx_tid_defrag = &peer->txrx_peer->rx_tid[tid];
+
+			rx_tid_defrag->array = &rx_tid_defrag->base;
+			rx_tid_defrag->defrag_timeout_ms = 0;
+			rx_tid_defrag->defrag_waitlist_elem.tqe_next = NULL;
+			rx_tid_defrag->defrag_waitlist_elem.tqe_prev = NULL;
+			rx_tid_defrag->base.head = NULL;
+			rx_tid_defrag->base.tail = NULL;
+			rx_tid_defrag->tid = tid;
+			rx_tid_defrag->defrag_peer = peer->txrx_peer;
+		}
+	}
+}
+#else
+static void dp_peer_rx_tids_init(struct dp_peer *peer)
+{
+	int tid;
+	struct dp_rx_tid_defrag *rx_tid_defrag;
+
+	for (tid = 0; tid < DP_MAX_TIDS; tid++) {
+		rx_tid_defrag = &peer->txrx_peer->rx_tid[tid];
+		rx_tid_defrag->base.head = NULL;
+		rx_tid_defrag->base.tail = NULL;
+		rx_tid_defrag->tid = tid;
+		rx_tid_defrag->array = &rx_tid_defrag->base;
+		rx_tid_defrag->defrag_timeout_ms = 0;
+		rx_tid_defrag->defrag_waitlist_elem.tqe_next = NULL;
+		rx_tid_defrag->defrag_waitlist_elem.tqe_prev = NULL;
+		rx_tid_defrag->defrag_peer = peer->txrx_peer;
+	}
+}
+#endif
+
+void dp_peer_rx_tid_setup(struct dp_peer *peer)
+{
+	dp_peer_rx_tids_init(peer);
+}
+
+void dp_peer_rx_cleanup(struct dp_vdev *vdev, struct dp_peer *peer)
+{
+	int tid;
+
+	if (!peer->txrx_peer)
+		return;
+
+	dp_info("Remove tids for peer: %pK", peer);
+
+	for (tid = 0; tid < DP_MAX_TIDS; tid++) {
+		struct dp_rx_tid_defrag *defrag_rx_tid =
+				&peer->txrx_peer->rx_tid[tid];
+
+		qdf_spin_lock_bh(&defrag_rx_tid->defrag_tid_lock);
+		if (!peer->bss_peer || peer->vdev->opmode == wlan_op_mode_sta) {
+			/* Cleanup defrag related resource */
+			dp_rx_defrag_waitlist_remove(peer->txrx_peer, tid);
+			dp_rx_reorder_flush_frag(peer->txrx_peer, tid);
+		}
+		qdf_spin_unlock_bh(&defrag_rx_tid->defrag_tid_lock);
+	}
+}
+#endif /* CONFIG_BORON */
+
+#ifdef WLAN_FEATURE_11BE_MLO
+static inline QDF_STATUS
+dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
+	       uint8_t *vdev_id)
+{
+	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
+			     peer->peer_type, vdev_id);
+}
+#else
+static inline QDF_STATUS
+dp_get_vdev_id(struct cdp_soc_t *soc_hdl, struct dp_peer *peer,
+	       uint8_t *vdev_id)
+{
+	return dp_get_vdevid(soc_hdl, peer->mac_addr.raw,
+			     CDP_WILD_PEER_TYPE, vdev_id);
+}
+#endif
+
+bool dp_get_peer_vdev_roaming_in_progress(struct dp_peer *peer)
+{
+	struct ol_if_ops *ol_ops = NULL;
+	bool is_roaming = false;
+	uint8_t vdev_id = -1;
+	struct cdp_soc_t *soc;
+
+	if (!peer) {
+		dp_peer_info("Peer is NULL. No roaming possible");
+		return false;
+	}
+
+	soc = dp_soc_to_cdp_soc_t(peer->vdev->pdev->soc);
+	ol_ops = peer->vdev->pdev->soc->cdp_soc.ol_ops;
+
+	if (ol_ops && ol_ops->is_roam_inprogress) {
+		dp_get_vdev_id(soc, peer, &vdev_id);
+		is_roaming = ol_ops->is_roam_inprogress(vdev_id);
+	}
+
+	dp_peer_info("peer: " QDF_MAC_ADDR_FMT ", vdev_id: %d, is_roaming: %d",
+		     QDF_MAC_ADDR_REF(peer->mac_addr.raw), vdev_id, is_roaming);
+
+	return is_roaming;
+}

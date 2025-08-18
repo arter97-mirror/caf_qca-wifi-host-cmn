@@ -1097,6 +1097,8 @@ wlan_lmac_if_mlo_mgr_rx_ops_register(struct wlan_lmac_if_rx_ops *rx_ops)
 		wlan_handle_ml_link_state_info_event;
 	rx_ops->mlo_rx_ops.mlo_link_disable_request_handler =
 		wlan_mlo_link_disable_request_handler;
+	rx_ops->mlo_rx_ops.mlo_link_removal_handler =
+			wlan_mlo_link_remove_event_handler;
 
 	wlan_lmac_if_mlo_rx_link_switch_ops_register(rx_ops);
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -314,10 +314,11 @@ enum UCODE_UPLOAD_HEADER_VERSION {
  *
  *			1 - HKV2/Hastings
  *			2 - Cypress
- *			3 - Hasting Prime
- *			4 - Pine
- *			8 - Hamilton
- *			9 - Waikiki
+ *			2 - Hasting Prime
+ *			2 - Pine
+ *			2 - Evros
+ *			2 - Hamilton
+ *			3 - Waikiki
  *
  * @target_id:
  *
@@ -325,6 +326,9 @@ enum UCODE_UPLOAD_HEADER_VERSION {
  *			2 - Cypress
  *			3 - Hastings Prime
  *			4 - Pine
+ *			7 - Evros
+ *			8 - Hamilton
+ *			9 - Waikiki
  *
  * @cfr_fmt:
  *
@@ -337,7 +341,7 @@ enum UCODE_UPLOAD_HEADER_VERSION {
  * MACRX_FREEZE_CAPTURE_CHANNEL TLV
  *
  * @freeze_tlv_version: Indicates the version of freeze_tlv
- *			1 - HSP, Cypress
+ *			1 - HSP, Cypress, Evros
  *			2 - Maple/Spruce/Moselle
  *			3 - Pine
  *

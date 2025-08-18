@@ -106,26 +106,6 @@ util_scan_get_ev_reason_name(enum scan_completion_reason reason)
 	return reason_name[reason];
 }
 
-qdf_time_t
-util_get_last_scan_time(struct wlan_objmgr_vdev *vdev)
-{
-	uint8_t pdev_id;
-	struct wlan_scan_obj *scan_obj;
-
-	if (!vdev) {
-		scm_warn("null vdev");
-		QDF_ASSERT(0);
-		return 0;
-	}
-	pdev_id = wlan_scan_vdev_get_pdev_id(vdev);
-	scan_obj = wlan_vdev_get_scan_obj(vdev);
-
-	if (scan_obj)
-		return scan_obj->pdev_info[pdev_id].last_scan_time;
-	else
-		return 0;
-}
-
 #ifdef WLAN_FEATURE_11BE_MLO
 uint32_t util_scan_entry_t2lm_len(struct scan_cache_entry *scan_entry)
 {

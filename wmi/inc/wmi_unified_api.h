@@ -4267,31 +4267,6 @@ void wmi_print_mgmt_event_log(wmi_unified_t wmi, uint32_t count,
 #endif /* WMI_INTERFACE_EVENT_LOGGING */
 
 /**
- * wmi_unified_send_dump_wds_table_cmd() - WMI function to get list of
- *  wds entries from FW
- * @wmi_handle: wmi handle
- *
- * Send WMI_PDEV_WDS_ENTRY_LIST_CMDID parameters to fw.
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS wmi_unified_send_dump_wds_table_cmd(wmi_unified_t wmi_handle);
-
-/**
- * wmi_extract_wds_entry - api to extract wds entry
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @wds_entry: wds entry
- * @idx: index to point wds entry in event buffer
- *
- * Return: QDF_STATUS_SUCCESS for successful event parse
- *         else QDF_STATUS_E_INVAL or QDF_STATUS_E_FAILURE
- */
-QDF_STATUS
-wmi_extract_wds_entry(wmi_unified_t wmi_handle, uint8_t *evt_buf,
-		      struct wdsentry *wds_entry, u_int32_t idx);
-
-/**
  * wmi_unified_send_obss_detection_cfg_cmd() - WMI function to send obss
  *  detection configuration to FW.
  * @wmi_handle: wmi handle

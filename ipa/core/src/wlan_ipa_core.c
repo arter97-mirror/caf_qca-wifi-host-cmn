@@ -87,7 +87,7 @@ static struct wlan_ipa_iface_2_client {
 	qdf_ipa_client_type_t prod_client;
 } wlan_ipa_iface_2_client[WLAN_IPA_CLIENT_MAX_IFACE] = {
 	{
-		QDF_IPA_CLIENT_WLAN2_CONS, QDF_IPA_CLIENT_WLAN1_PROD
+		QDF_IPA_CLIENT_MCC1_CONS, QDF_IPA_CLIENT_WLAN1_PROD
 	},
 	{
 		QDF_IPA_CLIENT_MCC2_CONS,  QDF_IPA_CLIENT_WLAN1_PROD
@@ -7211,6 +7211,8 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 				dp_flt_params->flt_addr_params[j].flt_hdl) {
 				dp_flt_params->flt_addr_params[j].
 					ipa_flt_evnt_required = 1;
+				dp_flt_params->flt_addr_params[j].
+					valid = 0;
 			}
 		}
 	}
@@ -7243,9 +7245,11 @@ int wlan_ipa_wdi_opt_dpath_flt_rem_cb(
 
 clear_flt_evt:
 	for (j = 0; j < IPA_WDI_MAX_FILTER; j++) {
-		if (dp_flt_params->flt_addr_params[j].ipa_flt_evnt_required)
+		if (dp_flt_params->flt_addr_params[j].ipa_flt_evnt_required) {
 			dp_flt_params->flt_addr_params[j].
 				ipa_flt_evnt_required = 0;
+			dp_flt_params->flt_addr_params[j].valid = 1;
+		}
 	}
 
 	return response;
