@@ -2349,8 +2349,12 @@ bool wlan_crypto_is_mmie_valid(struct wlan_objmgr_vdev *vdev,
 	/* Mask FC Retry, PwrMgt, MoreData flags to zero */
 	aad[1] = (hdr->i_fc[1] & ~(WLAN_FC1_RETRY | WLAN_FC1_PWRMGT
 						| WLAN_FC1_MOREDATA));
-	/* A1 || A2 || A3 */
-	qdf_mem_copy(aad + 2, hdr->i_addr1, 3 * QDF_MAC_ADDR_SIZE);
+	/* A1 */
+	qdf_mem_copy(aad + 2, hdr->i_addr1, QDF_MAC_ADDR_SIZE);
+	/* A2 */
+	qdf_mem_copy(aad + 8, hdr->i_addr2, QDF_MAC_ADDR_SIZE);
+	/* A3 */
+	qdf_mem_copy(aad + 14, hdr->i_addr3, QDF_MAC_ADDR_SIZE);
 
 	/*
 	 * MIC = AES-128-CMAC(IGTK, AAD || Management Frame Body || MMIE, 64)
