@@ -1261,43 +1261,51 @@ wlan_ipa_rx_intrabss_fwd(struct wlan_ipa_priv *ipa_ctx,
 
 /**
  * wlan_ipa_send_sta_eapol_to_nw() - Send Rx EAPOL pkt for STA to Kernel
- * @skb: network buffer
  * @ipa_ctx: IPA_CTX object
+ * @session_id: vdev id
+ * @skb: network buffer
  *
  * Called when a EAPOL packet is received via IPA Exception path
  * before wlan_ipa_setup_iface is done for STA.
  *
  * Return: 0 on success, err_code for failure.
  */
-static int wlan_ipa_send_sta_eapol_to_nw(qdf_nbuf_t skb,
-					 struct wlan_ipa_priv *ipa_ctx)
+static int wlan_ipa_send_sta_eapol_to_nw(struct wlan_ipa_priv *ipa_ctx,
+					 uint8_t session_id,
+					 qdf_nbuf_t skb)
 {
 	struct ethhdr *eh;
 	struct wlan_objmgr_vdev *vdev = NULL;
 	struct wlan_objmgr_psoc *psoc = NULL;
-	uint8_t pdev_id;
 
 	if (!ipa_ctx)
 		return -EINVAL;
 
 	psoc = ipa_ctx->psoc;
 
-	eh = (struct ethhdr *)qdf_nbuf_data(skb);
-
-	for (pdev_id = 0; pdev_id < psoc->soc_objmgr.wlan_pdev_count; ++pdev_id) {
-		vdev = wlan_objmgr_get_vdev_by_macaddr_from_psoc(
-					psoc, pdev_id, eh->h_dest, WLAN_IPA_ID);
-		if (vdev)
-			break;
-	}
-
-	if (!vdev) {
-		ipa_err_rl("Invalid vdev");
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, session_id,
+						    WLAN_IPA_ID);
+	if (qdf_unlikely(!vdev)) {
+		ipa_err_rl("vdev %u does not exist", session_id);
 		return -EINVAL;
 	}
 
 	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE) {
 		ipa_err_rl("device_mode is not STA");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_IPA_ID);
+		return -EINVAL;
+	}
+
+	eh = (struct ethhdr *)qdf_nbuf_data(skb);
+
+	/* For STA mode, dest_mac of EAPOL packets received should match with
+	 * either self MAC address or self MLD MAC address.
+	 */
+	if (WLAN_ADDR_EQ(wlan_vdev_mlme_get_macaddr(vdev), eh->h_dest) &&
+	    WLAN_ADDR_EQ(wlan_vdev_mlme_get_mldaddr(vdev), eh->h_dest)) {
+		ipa_err_rl("vdev %u dest_mac " QDF_MAC_ADDR_FMT " mismatch",
+			   wlan_vdev_get_id(vdev),
+			   QDF_MAC_ADDR_REF(eh->h_dest));
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_IPA_ID);
 		return -EINVAL;
 	}
@@ -1867,6 +1875,16 @@ static void __wlan_ipa_w2i_cb(void *priv, qdf_ipa_dp_evt_type_t evt,
 		skb = (qdf_nbuf_t) data;
 		if (wlan_ipa_uc_is_enabled(ipa_ctx->config)) {
 			session_id = (uint8_t)skb->cb[0];
+
+			/* Drop early if vdev id from IPA driver is invalid */
+			if (session_id >= WLAN_IPA_MAX_SESSION) {
+				ipa_err_rl("session_id %u is invalid from skb",
+					   session_id);
+				ipa_ctx->ipa_rx_internal_drop_count++;
+				wlan_ipa_skb_free(skb);
+				return;
+			}
+
 			iface_id = ipa_ctx->vdev_to_iface[session_id];
 			ipa_ctx->stats.num_rx_excep++;
 			qdf_nbuf_pull_head(skb, WLAN_IPA_UC_WLAN_CLD_HDR_LEN);
@@ -1882,8 +1900,9 @@ static void __wlan_ipa_w2i_cb(void *priv, qdf_ipa_dp_evt_type_t evt,
 
 			if (qdf_nbuf_is_ipv4_eapol_pkt(skb)) {
 				ipa_err_rl("EAPOL pkt. Sending to NW!");
-				if (!wlan_ipa_send_sta_eapol_to_nw(
-						skb, ipa_ctx))
+				if (!wlan_ipa_send_sta_eapol_to_nw(ipa_ctx,
+								   session_id,
+								   skb))
 					break;
 			}
 			ipa_err_rl("Pkt Dropped!");
