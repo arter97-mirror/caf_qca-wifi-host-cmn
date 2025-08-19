@@ -1419,8 +1419,10 @@ enum wmi_host_vbss_action {
  * @num_sn_tids: Number of valid TIDs' SN
  * @sn: Per TID SN values
  * @tx_pn: STA Tx PN
+ * @tx_gpn: STA Tx GPN Context
  * @macaddr: STA Mac address
  * @is_valid_dyn_info: Indicate if dynamic info present
+ * @is_valid_tx_gpn: Valid Tx GPN Context
  */
 struct win_host_vbss_sta_context {
 	uint32_t vdev_id;
@@ -1430,8 +1432,10 @@ struct win_host_vbss_sta_context {
 	uint32_t num_sn_tids;
 	uint32_t sn[WLAN_MAX_PER_PEER_SN_TIDS];
 	uint8_t tx_pn[WLAN_MAX_TX_PN_SIZE];
+	uint8_t tx_gpn[WLAN_MAX_TX_PN_SIZE];
 	uint8_t macaddr[QDF_MAC_ADDR_SIZE];
 	bool is_valid_dyn_info;
+	bool is_valid_tx_gpn;
 };
 #endif /* WLAN_FEATURE_VBSS */
 
