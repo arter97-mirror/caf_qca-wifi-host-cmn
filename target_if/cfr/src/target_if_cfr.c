@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -814,7 +814,7 @@ QDF_STATUS target_if_cfr_config_rcc(struct wlan_objmgr_pdev *pdev,
 
 	rcc_info->pdev_id = target_if_cfr_get_pdev_id(pdev);
 	rcc_info->num_grp_tlvs =
-		count_set_bits(rcc_info->modified_in_curr_session);
+		count_set_bits(&rcc_info->modified_in_curr_session[0]);
 
 	status = wmi_unified_send_cfr_rcc_cmd(pdev_wmi_handle, rcc_info);
 	return status;
