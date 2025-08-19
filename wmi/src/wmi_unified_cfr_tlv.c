@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -217,8 +217,9 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 		param = (wmi_cfr_filter_group_config *)buf_ptr;
 
 		for (grp_id = 0; grp_id < MAX_TA_RA_ENTRIES; grp_id++) {
-			if (qdf_test_bit(grp_id,
-					 &rcc->modified_in_curr_session)) {
+			if (qdf_atomic_test_bit(
+					grp_id,
+					rcc->modified_in_curr_session)) {
 				populate_wmi_cfr_param(grp_id, rcc, param);
 				param++;
 			}
