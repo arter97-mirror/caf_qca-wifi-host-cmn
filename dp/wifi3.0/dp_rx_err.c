@@ -2172,7 +2172,7 @@ more_data:
 			int lmac_id;
 
 			lmac_id = dp_rx_err_exception(soc, ring_desc);
-			if (lmac_id >= 0)
+			if (lmac_id >= 0 && lmac_id < MAX_PDEV_CNT)
 				rx_bufs_reaped[lmac_id] += 1;
 			goto next_entry;
 		}
