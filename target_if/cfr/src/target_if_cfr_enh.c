@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2373,8 +2373,9 @@ void target_if_cfr_update_global_cfg(struct wlan_objmgr_pdev *pdev)
 	}
 
 	for (grp_id = 0; grp_id < MAX_TA_RA_ENTRIES; grp_id++) {
-		if (qdf_test_bit(grp_id,
-				 &pcfr->rcc_param.modified_in_curr_session)) {
+		if (qdf_atomic_test_bit(
+				grp_id,
+				pcfr->rcc_param.modified_in_curr_session)) {
 			/* Populating global config based on user's input */
 			glbl_cfg = &pcfr->global[grp_id];
 			curr_cfg = &pcfr->rcc_param.curr[grp_id];
@@ -2490,7 +2491,7 @@ QDF_STATUS cfr_enh_init_pdev(struct wlan_objmgr_psoc *psoc,
 
 	pcfr->is_cfr_rcc_capable = 1;
 	pcfr->rcc_param.pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
-	pcfr->rcc_param.modified_in_curr_session = MAX_RESET_CFG_ENTRY;
+	pcfr->rcc_param.modified_in_curr_session[0] = MAX_RESET_CFG_ENTRY;
 	pcfr->rcc_param.num_grp_tlvs = MAX_TA_RA_ENTRIES;
 	pcfr->rcc_param.vdev_id = CFR_INVALID_VDEV_ID;
 	pcfr->rcc_param.srng_id = DEFAULT_SRNGID_CFR;
@@ -2521,7 +2522,7 @@ QDF_STATUS cfr_enh_init_pdev(struct wlan_objmgr_psoc *psoc,
 		return status;
 	}
 
-	pcfr->rcc_param.modified_in_curr_session = 0;
+	pcfr->rcc_param.modified_in_curr_session[0] = 0;
 
 	pcfr->cfr_max_sta_count = MAX_CFR_ENABLED_CLIENTS;
 
