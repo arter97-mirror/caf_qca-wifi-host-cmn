@@ -1249,6 +1249,12 @@ dp_mon_rx_config_packet_type_subtype(struct dp_soc *soc,
 static inline void
 dp_set_monitor_version(struct dp_pdev *pdev, uint8_t version) {
 }
+
+static inline bool
+dp_is_local_pkt_capture_allowed(struct dp_soc *soc)
+{
+	return false;
+}
 #endif /* !WIFI_MONITOR_SUPPORT */
 
 /**
