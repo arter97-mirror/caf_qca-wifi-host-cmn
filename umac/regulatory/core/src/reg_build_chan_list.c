@@ -5353,8 +5353,8 @@ reg_find_afc_max_bw_from_chip_cap(struct wlan_objmgr_pdev *pdev)
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	reg_ops = reg_get_psoc_tx_ops(psoc);
-	if (!reg_tx_ops)
-		return QDF_STATUS_E_FAILURE;
+	if (!reg_ops)
+		return AFC_BW_160;
 
 	pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	if (reg_ops->get_phy_id_from_pdev_id)
