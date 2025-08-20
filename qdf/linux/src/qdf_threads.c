@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -191,9 +191,9 @@ QDF_STATUS qdf_thread_join(qdf_thread_t *thread)
 	QDF_BUG(thread);
 
 	status = (QDF_STATUS)kthread_stop(thread);
-	put_task_struct(thread);
 
 	return status;
+
 }
 qdf_export_symbol(qdf_thread_join);
 
