@@ -1860,7 +1860,9 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 						tx_desc->nbuf);
 	dp_tx_set_particular_tx_queue(soc, hal_tx_desc_cached,
 				      tx_desc->nbuf);
-	dp_tx_desc_set_ktimestamp(vdev, tx_desc);
+
+	if (!dp_tx_desc_set_ktimestamp(vdev, tx_desc))
+		dp_tx_desc_set_timestamp(tx_desc);
 
 	hal_ring_hdl = dp_tx_get_hal_ring_hdl(soc, ring_id);
 
