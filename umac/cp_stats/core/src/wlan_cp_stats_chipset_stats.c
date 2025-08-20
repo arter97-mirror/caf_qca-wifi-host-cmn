@@ -291,6 +291,43 @@ void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
 	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
 }
 
+void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
+{
+	struct cstats_node *node;
+	char *buf;
+	unsigned int *pfilled_length;
+	uint32_t header_len = sizeof(tAniNlHdr);
+
+	node = cstats.ccur_node[CSTATS_HOST_TYPE];
+	if (!node) {
+		qdf_err("Current Node is NULL");
+		return;
+	}
+
+	qdf_spin_lock_bh(&cstats.cstats_lock[CSTATS_HOST_TYPE]);
+
+	buf = node->logbuf;
+	pfilled_length = &node->filled_length;
+
+	if (*pfilled_length == 0) {
+		qdf_debug("Host buffer is empty. No data to flush.");
+		goto unlock_and_return;
+	}
+
+	if (cstats.ops.cstats_send_data_to_usr) {
+		cstats.ops.cstats_send_data_to_usr(buf,
+			header_len + *pfilled_length, CSTATS_HOST_TYPE,
+			cstats.is_cp_stats_debug_logging_enable);
+	}
+
+	qdf_debug("Pending host buffer flush complete.");
+	/* Reset buffer after flush */
+	*pfilled_length = 0;
+
+unlock_and_return:
+	qdf_spin_unlock_bh(&cstats.cstats_lock[CSTATS_HOST_TYPE]);
+}
+
 void wlan_cp_stats_cstats_write_to_buff(enum cstats_types type,
 					void *to_be_sent,
 					uint32_t plen)

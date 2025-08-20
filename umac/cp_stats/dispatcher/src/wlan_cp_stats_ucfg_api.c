@@ -83,6 +83,11 @@ void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 {
 	wlan_cp_stats_enable_direct_log_dispatch(psoc, direct_log_dispatch);
 }
+
+void ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
+{
+	wlan_cp_stats_flush_host_buffer_if_pending(psoc);
+}
 #endif
 
 void ucfg_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops)

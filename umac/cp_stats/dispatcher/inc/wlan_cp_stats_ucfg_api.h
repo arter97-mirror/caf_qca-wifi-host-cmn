@@ -124,10 +124,25 @@ bool ucfg_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
  */
 void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 					      bool direct_log_dispatch);
+
+/**
+ * ucfg_cp_stats_flush_host_buffer_if_pending() - UCFG wrapper to flush host
+ * buffer
+ * @psoc: Pointer to the psoc object
+ *
+ * Return: None
+ */
+void ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc);
 #else
 static inline
 void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 					      bool direct_log_dispatch)
+{
+}
+
+static inline void
+ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc,
+					   bool dump_in_progress)
 {
 }
 #endif

@@ -140,6 +140,20 @@ void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 					      bool direct_log_dispatch);
 
 /**
+ * wlan_cp_stats_flush_host_buffer_if_pending() - Flush host buffer if data is
+ * pending
+ * @psoc: Pointer to the psoc (physical SOC) object
+ *
+ * This function checks if there is any data pending in the host buffer
+ * associated with control plane statistics. If data is present, it flushes
+ * the buffer to user space using the registered callback. It also resets
+ * the buffer state after flushing.
+ *
+ * Return: None
+ */
+void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc);
+
+/**
  * wlan_cp_stats_cstats_deinit() - Deinitialize chipset stats infra
  *
  * Return: void
@@ -263,6 +277,12 @@ void wlan_cp_stats_cstats_pkt_log(uint8_t *sa, uint8_t *da,
 static inline
 void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 					      bool direct_log_dispatch)
+{
+}
+
+static inline
+void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc,
+						bool dump_in_progress)
 {
 }
 
