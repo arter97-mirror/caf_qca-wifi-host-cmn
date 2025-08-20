@@ -25,6 +25,9 @@
 #include "dp_internal.h"
 #include <qdf_tracepoint.h>
 #include "dp_ipa.h"
+#ifdef FEATURE_WDS
+#include "dp_txrx_wds.h"
+#endif
 
 #ifdef RXDMA_OPTIMIZATION
 #ifndef RX_DATA_BUFFER_ALIGNMENT
