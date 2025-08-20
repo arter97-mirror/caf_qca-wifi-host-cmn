@@ -1943,6 +1943,9 @@ struct dp_rx_page_pool {
  * @pp_size: Size of the page pool
  * @alloc_success: Page pool buffer allocation success stat
  * @alloc_fail: Page pool buffer allocation failure stat
+ * @direct_alloc_fail: Buffer allocation failure stat for the buffers allocated
+ *			by invoking qdf_nbuf_alloc() directly
+ * @pp_err_nonlinear: Stat for non-linear packets entering TX page pool logic
  */
 struct dp_tx_pp_params {
 	qdf_page_pool_t pp;
@@ -1950,6 +1953,8 @@ struct dp_tx_pp_params {
 	size_t pp_size;
 	uint64_t alloc_success;
 	uint64_t alloc_fail;
+	uint64_t direct_alloc_fail;
+	uint64_t pp_err_nonlinear;
 };
 
 /**
