@@ -1938,99 +1938,6 @@ wmi_extract_mu_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
 }
 
 QDF_STATUS
-wmi_extract_mu_db_entry(wmi_unified_t wmi_handle, void *evt_buf,
-			uint8_t idx, wmi_host_mu_db_entry *param)
-{
-	if (wmi_handle->ops->extract_mu_db_entry)
-		return wmi_handle->ops->extract_mu_db_entry(wmi_handle, evt_buf,
-			idx, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_mumimo_tx_count_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
-				     wmi_host_peer_txmu_cnt_event *param)
-{
-	if (wmi_handle->ops->extract_mumimo_tx_count_ev_param)
-		return wmi_handle->ops->extract_mumimo_tx_count_ev_param(
-						wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_peer_gid_userpos_list_ev_param(
-		wmi_unified_t wmi_handle,
-		void *evt_buf,
-		wmi_host_peer_gid_userpos_list_event *param)
-{
-	if (wmi_handle->ops->extract_peer_gid_userpos_list_ev_param)
-		return wmi_handle->ops->extract_peer_gid_userpos_list_ev_param(
-						wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_esp_estimate_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
-				  struct esp_estimation_event *param)
-{
-	if (wmi_handle->ops->extract_esp_estimation_ev_param)
-		return wmi_handle->ops->extract_esp_estimation_ev_param(
-				wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_gpio_input_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
-				uint32_t *gpio_num)
-{
-	if (wmi_handle->ops->extract_gpio_input_ev_param)
-		return wmi_handle->ops->extract_gpio_input_ev_param(wmi_handle,
-			evt_buf, gpio_num);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_pdev_reserve_ast_ev_param(
-		wmi_unified_t wmi_handle, void *evt_buf,
-		struct wmi_host_proxy_ast_reserve_param *param)
-{
-	if (wmi_handle->ops->extract_pdev_reserve_ast_ev_param)
-		return wmi_handle->ops->extract_pdev_reserve_ast_ev_param(
-						wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_pdev_generic_buffer_ev_param(
-		wmi_unified_t wmi_handle, void *evt_buf,
-		wmi_host_pdev_generic_buffer_event *param)
-{
-	if (wmi_handle->ops->extract_pdev_generic_buffer_ev_param)
-		return wmi_handle->ops->extract_pdev_generic_buffer_ev_param(
-						wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-
-}
-
-QDF_STATUS wmi_extract_peer_ratecode_list_ev(
-		wmi_unified_t wmi_handle, void *evt_buf,
-		uint8_t *peer_mac, uint32_t *pdev_id, wmi_sa_rate_cap *rate_cap)
-{
-	if (wmi_handle->ops->extract_peer_ratecode_list_ev)
-		return wmi_handle->ops->extract_peer_ratecode_list_ev(
-						wmi_handle, evt_buf,
-						peer_mac, pdev_id, rate_cap);
-
-	return QDF_STATUS_E_FAILURE;
-
-}
-
-QDF_STATUS
 wmi_extract_comb_phyerr(wmi_unified_t wmi_handle, void *evt_buf,
 			uint16_t datalen, uint16_t *buf_offset,
 			wmi_host_phyerr_t *phyerr)
@@ -2080,17 +1987,6 @@ wmi_extract_pmf_bcn_protect_stats(wmi_unified_t wmi_handle, void *evt_buf,
 }
 
 QDF_STATUS
-wmi_extract_unit_test(wmi_unified_t wmi_handle, void *evt_buf,
-		      wmi_unit_test_event *unit_test, uint32_t maxspace)
-{
-	if (wmi_handle->ops->extract_unit_test)
-		return wmi_handle->ops->extract_unit_test(wmi_handle,
-			evt_buf, unit_test, maxspace);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
 wmi_extract_pdev_ext_stats(wmi_unified_t wmi_handle, void *evt_buf,
 			   uint32_t index,
 			   wmi_host_pdev_ext_stats *pdev_ext_stats)
@@ -2098,27 +1994,6 @@ wmi_extract_pdev_ext_stats(wmi_unified_t wmi_handle, void *evt_buf,
 	if (wmi_handle->ops->extract_pdev_ext_stats)
 		return wmi_handle->ops->extract_pdev_ext_stats(wmi_handle,
 			evt_buf, index, pdev_ext_stats);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_rtt_hdr(wmi_unified_t wmi_handle, void *evt_buf,
-			       wmi_host_rtt_event_hdr *ev)
-{
-	if (wmi_handle->ops->extract_rtt_hdr)
-		return wmi_handle->ops->extract_rtt_hdr(wmi_handle,
-			evt_buf, ev);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_extract_bcnflt_stats(
-		wmi_unified_t wmi_handle, void *evt_buf,
-		uint32_t index, wmi_host_bcnflt_stats *bcnflt_stats)
-{
-	if (wmi_handle->ops->extract_bcnflt_stats)
-		return wmi_handle->ops->extract_bcnflt_stats(wmi_handle,
-			evt_buf, index, bcnflt_stats);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -4062,7 +3937,15 @@ QDF_STATUS wmi_unified_bss_chan_info_request_cmd_send(
 	if (wmi_handle->ops->send_bss_chan_info_request_cmd)
 		return wmi_handle->ops->send_bss_chan_info_request_cmd(
 						wmi_handle, param);
+}
 
+QDF_STATUS
+wmi_extract_mu_db_entry(wmi_unified_t wmi_handle, void *evt_buf,
+			uint8_t idx, wmi_host_mu_db_entry *param)
+{
+	if (wmi_handle->ops->extract_mu_db_entry)
+		return wmi_handle->ops->extract_mu_db_entry(wmi_handle, evt_buf,
+			idx, param);
 	return QDF_STATUS_E_FAILURE;
 }
 
@@ -4083,6 +3966,119 @@ QDF_STATUS wmi_unified_phyerr_disable_cmd_send(wmi_unified_t wmi_handle)
 {
 	if (wmi_handle->ops->send_phyerr_disable_cmd)
 		return wmi_handle->ops->send_phyerr_disable_cmd(wmi_handle);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_mumimo_tx_count_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
+				     wmi_host_peer_txmu_cnt_event *param)
+{
+	if (wmi_handle->ops->extract_mumimo_tx_count_ev_param)
+		return wmi_handle->ops->extract_mumimo_tx_count_ev_param(
+						wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_peer_gid_userpos_list_ev_param(
+		wmi_unified_t wmi_handle,
+		void *evt_buf,
+		wmi_host_peer_gid_userpos_list_event *param)
+{
+	if (wmi_handle->ops->extract_peer_gid_userpos_list_ev_param)
+		return wmi_handle->ops->extract_peer_gid_userpos_list_ev_param(
+						wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_esp_estimate_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
+				  struct esp_estimation_event *param)
+{
+	if (wmi_handle->ops->extract_esp_estimation_ev_param)
+		return wmi_handle->ops->extract_esp_estimation_ev_param(wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_gpio_input_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
+				uint32_t *gpio_num)
+{
+	if (wmi_handle->ops->extract_gpio_input_ev_param)
+		return wmi_handle->ops->extract_gpio_input_ev_param(wmi_handle,
+			evt_buf, gpio_num);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_pdev_reserve_ast_ev_param(
+		wmi_unified_t wmi_handle, void *evt_buf,
+		struct wmi_host_proxy_ast_reserve_param *param)
+{
+	if (wmi_handle->ops->extract_pdev_reserve_ast_ev_param)
+		return wmi_handle->ops->extract_pdev_reserve_ast_ev_param(
+						wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_pdev_generic_buffer_ev_param(
+		wmi_unified_t wmi_handle, void *evt_buf,
+		wmi_host_pdev_generic_buffer_event *param)
+{
+	if (wmi_handle->ops->extract_pdev_generic_buffer_ev_param)
+		return wmi_handle->ops->extract_pdev_generic_buffer_ev_param(
+						wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+
+}
+
+QDF_STATUS wmi_extract_peer_ratecode_list_ev(
+		wmi_unified_t wmi_handle, void *evt_buf,
+		uint8_t *peer_mac, uint32_t *pdev_id, wmi_sa_rate_cap *rate_cap)
+{
+	if (wmi_handle->ops->extract_peer_ratecode_list_ev)
+		return wmi_handle->ops->extract_peer_ratecode_list_ev(
+						wmi_handle, evt_buf,
+						peer_mac, pdev_id, rate_cap);
+
+	return QDF_STATUS_E_FAILURE;
+
+}
+
+QDF_STATUS
+wmi_extract_unit_test(wmi_unified_t wmi_handle, void *evt_buf,
+		      wmi_unit_test_event *unit_test, uint32_t maxspace)
+{
+	if (wmi_handle->ops->extract_unit_test)
+		return wmi_handle->ops->extract_unit_test(wmi_handle,
+			evt_buf, unit_test, maxspace);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_rtt_hdr(wmi_unified_t wmi_handle, void *evt_buf,
+			       wmi_host_rtt_event_hdr *ev)
+{
+	if (wmi_handle->ops->extract_rtt_hdr)
+		return wmi_handle->ops->extract_rtt_hdr(wmi_handle,
+			evt_buf, ev);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_bcnflt_stats(
+		wmi_unified_t wmi_handle, void *evt_buf,
+		uint32_t index, wmi_host_bcnflt_stats *bcnflt_stats)
+{
+	if (wmi_handle->ops->extract_bcnflt_stats)
+		return wmi_handle->ops->extract_bcnflt_stats(wmi_handle,
+			evt_buf, index, bcnflt_stats);
 
 	return QDF_STATUS_E_FAILURE;
 }
