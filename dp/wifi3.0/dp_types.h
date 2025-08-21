@@ -1510,6 +1510,8 @@ struct dp_soc_stats {
 		uint32_t rx_hw_stats_requested;
 		/* Number of hw stats request timeout */
 		uint32_t rx_hw_stats_timeout;
+		/* Dropped fragment count */
+		uint32_t rx_frag_drop_cnt;
 
 		struct {
 			/* Invalid RBM error count */
@@ -1623,6 +1625,8 @@ struct dp_soc_stats {
 			uint32_t defrag_ad1_invalid;
 			/* decrypt error drop */
 			uint32_t decrypt_err_drop;
+			/* unencrypt error drop */
+			uint32_t unencrypt_err_drop;
 #ifdef GLOBAL_ASSERT_AVOIDANCE
 			/* rx_desc NULL war count*/
 			uint32_t rx_desc_null;
@@ -3786,6 +3790,8 @@ struct dp_soc {
 	struct dp_tx_page_pool *tx_pp[MAX_VDEV_CNT];
 	qdf_spinlock_t tx_pp_lock;
 #endif
+	/* flag to check if wds is not supported */
+	bool wds_not_supported;
 };
 
 /*
