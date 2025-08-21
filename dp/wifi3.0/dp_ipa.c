@@ -4452,13 +4452,13 @@ bool dp_ipa_is_completion_pending(struct cdp_soc_t *soc_hdl)
 
 	num_tx_outstanding = QDF_IPA_WDI_TX_OUTSTANDING_BUFFS(&ipa_outstanding);
 
-	if (num_avail == ((DP_IPA_WAR_WBM2SW_REL_RING_NO_BUF_ENTRIES +
-			   num_tx_outstanding) * wbm_srng->entry_size))
-		return false;
-
 	dp_info("num_avail: %d num_tx_outstanding: %d No buf entries: %d",
 		num_avail / wbm_srng->entry_size, num_tx_outstanding,
 		DP_IPA_WAR_WBM2SW_REL_RING_NO_BUF_ENTRIES);
+
+	if (num_avail == ((DP_IPA_WAR_WBM2SW_REL_RING_NO_BUF_ENTRIES +
+			   num_tx_outstanding) * wbm_srng->entry_size))
+		return false;
 
 	return true;
 }
