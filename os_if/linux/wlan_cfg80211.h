@@ -723,9 +723,8 @@ void wlan_cfg80211_ch_switch_started_notify(struct net_device *dev,
 }
 #else
 #ifdef CFG80211_SINGLE_NETDEV_MULTI_LINK_SUPPORT
-#if ((defined(CFG80211_RU_PUNCT_NOTIFY) || \
-	defined(CFG80211_PUNCTURING_SINGLE_NETDEV_API)) && \
-	(LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)))
+#if defined(CFG80211_RU_PUNCT_NOTIFY) || \
+	defined(CFG80211_PUNCTURING_SINGLE_NETDEV_API)
 static inline
 void wlan_cfg80211_ch_switch_notify(struct net_device *dev,
 				    struct cfg80211_chan_def *chandef,
