@@ -685,12 +685,14 @@ QDF_STATUS __qdf_wake_lock_create(qdf_wake_lock_t *lock, const char *name,
  * qdf_wake_lock_acquire() - acquires a wake lock
  * @lock: The wake lock to acquire
  * @reason: Reason for wakelock
+ * @wake_lifetime: Expected wakelock lifetime
  *
  * Return:
  * QDF status success if wake lock is acquired
  * QDF status failure if wake lock was not acquired
  */
-QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason);
+QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason,
+				 uint8_t wake_lifetime);
 
 /**
  * qdf_wake_lock_name() - This function returns the name of the wakelock

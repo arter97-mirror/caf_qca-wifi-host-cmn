@@ -1729,7 +1729,8 @@ wlan_cfg80211_send_scan_request_cached_report(
 	if (!is_cached_scan_reported_allowed) {
 		osif_debug("Get scan cache from FW");
 		qdf_wake_lock_acquire(&osif_scan->scan_wake_lock,
-				      WIFI_POWER_EVENT_WAKELOCK_SCAN);
+				      WIFI_POWER_EVENT_WAKELOCK_SCAN,
+				      QDF_WAKE_TIME_DEFINED);
 		qdf_runtime_pm_prevent_suspend(&osif_scan->runtime_pm_lock);
 
 		status = qdf_event_reset(&osif_scan->cache_scan_report_event);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -674,7 +674,8 @@ QDF_STATUS cfr_prevent_suspend(struct pdev_cfr *pcfr)
 		return QDF_STATUS_E_AGAIN;
 	}
 	qdf_wake_lock_acquire(&pcfr->wake_lock,
-			      WIFI_POWER_EVENT_WAKELOCK_CFR);
+			      WIFI_POWER_EVENT_WAKELOCK_CFR,
+			      QDF_WAKE_TIME_UNDEFINED);
 	qdf_runtime_pm_prevent_suspend(&pcfr->runtime_lock);
 	pcfr->is_prevent_suspend = true;
 

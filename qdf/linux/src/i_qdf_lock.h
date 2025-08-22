@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2018, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -92,13 +92,25 @@ typedef struct __qdf_spinlock {
 typedef struct semaphore __qdf_semaphore_t;
 
 /**
+ * enum wake_lifetime - wakelock lifetime type
+ * @QDF_WAKE_TIME_UNDEFINED: wake locks with undefined lifetime
+ * @QDF_WAKE_TIME_DEFINED: wake locks with defined lifetime
+ */
+enum wake_lifetime {
+	QDF_WAKE_TIME_UNDEFINED,
+	QDF_WAKE_TIME_DEFINED
+};
+
+/**
  * typedef qdf_wake_lock_t - wakelock abstraction
  * @lock: this lock needs to be used in kernel version < 5.4
  * @priv: this lock pointer needs to be used in kernel version >= 5.4
+ * @wake_lifetime: wakelock expected lifetime
  */
 typedef struct qdf_wake_lock {
 	struct wakeup_source lock;
 	struct wakeup_source *priv;
+	enum wake_lifetime wake_lifetime;
 } qdf_wake_lock_t;
 
 struct hif_pm_runtime_lock;

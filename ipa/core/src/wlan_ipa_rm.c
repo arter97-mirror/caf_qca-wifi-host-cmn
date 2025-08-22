@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -266,7 +265,8 @@ QDF_STATUS wlan_ipa_wdi_rm_request(struct wlan_ipa_priv *ipa_ctx)
 
 	if (ipa_ctx->wake_lock_released) {
 		qdf_wake_lock_acquire(&ipa_ctx->wake_lock,
-				      WIFI_POWER_EVENT_WAKELOCK_IPA);
+				      WIFI_POWER_EVENT_WAKELOCK_IPA,
+				      QDF_WAKE_TIME_DEFINED);
 		ipa_ctx->wake_lock_released = false;
 	}
 	qdf_spin_unlock_bh(&ipa_ctx->rm_lock);

@@ -24,12 +24,14 @@
 
 #include <qdf_types.h>
 #include <i_host_diag_core_event.h>
+#include "host_diag_core_event.h"
 #ifdef FEATURE_RUNTIME_PM
 #include <cds_api.h>
 #include <hif.h>
 #endif
 #include <i_qdf_lock.h>
 #include <linux/suspend.h>
+#include "qdf_wakelock_debug.h"
 
 #undef qdf_mutex_create
 QDF_STATUS qdf_mutex_create(qdf_mutex_t *lock, const char *func, int line)
@@ -319,13 +321,26 @@ QDF_STATUS __qdf_wake_lock_create(qdf_wake_lock_t *lock, const char *name,
 qdf_export_symbol(__qdf_wake_lock_create);
 
 #if defined(QDF_NO_WAKE_LOCK_SUPPORT)
-QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason)
+QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason,
+				 uint8_t wake_lifetime)
 {
 	return QDF_STATUS_SUCCESS;
 }
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
-QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason)
+QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason,
+				 uint8_t wake_lifetime)
 {
+	lock->wake_lifetime = wake_lifetime;
+	/*
+	 * Skip tracking wake_locks for the below reason codes
+	 * since these are acquired and released on different
+	 * memory domains
+	 */
+	if (reason != WIFI_POWER_EVENT_WAKELOCK_DRIVER_IDLE_SHUTDOWN &&
+	    reason != WIFI_POWER_EVENT_WAKELOCK_DRIVER_IDLE_RESTART &&
+	    reason != WIFI_POWER_EVENT_WAKELOCK_DRIVER_REINIT)
+		qdf_track_wakelock(lock);
+
 	host_diag_log_wlock(reason, qdf_wake_lock_name(lock),
 			    WIFI_POWER_EVENT_DEFAULT_WAKELOCK_TIMEOUT,
 			    WIFI_POWER_EVENT_WAKELOCK_TAKEN);
@@ -334,7 +349,8 @@ QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason)
 	return QDF_STATUS_SUCCESS;
 }
 #else
-QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason)
+QDF_STATUS qdf_wake_lock_acquire(qdf_wake_lock_t *lock, uint32_t reason,
+				 uint8_t wake_lifetime)
 {
 	return QDF_STATUS_SUCCESS;
 }
@@ -349,6 +365,7 @@ QDF_STATUS qdf_wake_lock_timeout_acquire(qdf_wake_lock_t *lock, uint32_t msec)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 QDF_STATUS qdf_wake_lock_timeout_acquire(qdf_wake_lock_t *lock, uint32_t msec)
 {
+	lock->wake_lifetime = QDF_WAKE_TIME_DEFINED;
 	pm_wakeup_ws_event(lock->priv, msec, true);
 	return QDF_STATUS_SUCCESS;
 }
@@ -377,6 +394,7 @@ QDF_STATUS qdf_wake_lock_release(qdf_wake_lock_t *lock, uint32_t reason)
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
 QDF_STATUS qdf_wake_lock_release(qdf_wake_lock_t *lock, uint32_t reason)
 {
+	qdf_untrack_wakelock(lock);
 	host_diag_log_wlock(reason, qdf_wake_lock_name(lock),
 			    WIFI_POWER_EVENT_DEFAULT_WAKELOCK_TIMEOUT,
 			    WIFI_POWER_EVENT_WAKELOCK_RELEASED);

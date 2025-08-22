@@ -1218,7 +1218,8 @@ static void wlan_ipa_pm_flush(void *data)
 	uint32_t dequeued = 0;
 
 	qdf_wake_lock_acquire(&ipa_ctx->wake_lock,
-			      WIFI_POWER_EVENT_WAKELOCK_IPA);
+			      WIFI_POWER_EVENT_WAKELOCK_IPA,
+			      QDF_WAKE_TIME_DEFINED);
 	qdf_spin_lock_bh(&ipa_ctx->pm_lock);
 	while (((skb = qdf_nbuf_queue_remove(&ipa_ctx->pm_queue_head)) !=
 	       NULL)) {
@@ -7002,7 +7003,8 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(
 	ipa_obj->opt_dp_flt_rel_state = WLAN_IPA_OPT_DP_FLT_REL_INIT;
 	/* Hold wakelock */
 	qdf_wake_lock_acquire(&ipa_obj->opt_dp_wake_lock,
-			      WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP);
+			      WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP,
+			      QDF_WAKE_TIME_DEFINED);
 	ipa_debug("opt_dp: Wakelock acquired");
 
 	qdf_pm_system_wakeup();
