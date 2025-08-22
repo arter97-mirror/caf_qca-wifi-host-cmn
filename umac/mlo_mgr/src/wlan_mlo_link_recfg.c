@@ -288,6 +288,9 @@ mlo_link_recfg_sm_deliver_event(struct wlan_mlo_dev_context *mlo_dev_ctx,
 	if (!mlo_dev_ctx)
 		return QDF_STATUS_E_NULL_VALUE;
 
+	if (!mlo_dev_ctx->link_recfg_ctx)
+		return QDF_STATUS_SUCCESS;
+
 	ml_link_recfg_sm_lock_acquire(mlo_dev_ctx);
 	status = mlo_link_recfg_sm_deliver_event_sync(mlo_dev_ctx,
 						      event,
