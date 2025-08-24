@@ -27,7 +27,21 @@ static struct cstats_node *gcstats_buffer[CSTATS_MAX_TYPE];
 void wlan_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 					      bool direct_log_dispatch)
 {
+	struct cstats_node *node;
+	int type;
+
 	cstats.is_direct_log_dispatch_enabled = direct_log_dispatch;
+
+	for (type = CSTATS_HOST_TYPE; type < CSTATS_MAX_TYPE; type++) {
+		node = cstats.ccur_node[type];
+		if (!node) {
+			qdf_err("Current Node is NULL");
+			return;
+		}
+
+		memset(node->logbuf, 0, sizeof(node->logbuf));
+		node->filled_length = 0;
+	}
 }
 
 QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
@@ -165,7 +179,8 @@ void wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
 	unsigned int total_len;
 	uint64_t *event_l, second_64_hex;
 
-	if (!cstats.is_cstats_ini_enabled || !to_be_sent)
+	if (!cstats.is_cstats_ini_enabled ||
+	    !cstats.is_direct_log_dispatch_enabled || !to_be_sent)
 		return;
 
 	/* ensure buffer node exists before writing */
@@ -228,8 +243,8 @@ void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
 	uint32_t marker_len = CSTATS_MARKER_SZ;
 	uint32_t total_len;
 
-	if (!cstats.is_cstats_ini_enabled || type != CSTATS_HOST_TYPE ||
-	    !to_be_sent)
+	if (!cstats.is_cstats_ini_enabled ||
+	    !cstats.is_direct_log_dispatch_enabled || !to_be_sent)
 		return;
 
 	node = cstats.ccur_node[type];
@@ -242,6 +257,10 @@ void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
 
 	buf = node->logbuf;
 	pfilled_length = &node->filled_length;
+
+	if (cstats.is_cp_stats_debug_logging_enable)
+		qdf_debug("Current pfilled_length: %u, new payload length: %u",
+			  *pfilled_length, plen);
 
 	/* Total required space: start + payload + end */
 	total_len = 2 * marker_len + plen;
@@ -285,9 +304,6 @@ void wlan_cp_stats_host_append_and_flush(enum cstats_types type,
 	/* Update filled length to reflect newly added data */
 	*pfilled_length += total_len;
 
-	if (cstats.is_cp_stats_debug_logging_enable)
-		qdf_debug("Updated pfilled_length: %u", *pfilled_length);
-
 	qdf_spin_unlock_bh(&cstats.cstats_lock[type]);
 }
 
@@ -297,6 +313,8 @@ void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
 	char *buf;
 	unsigned int *pfilled_length;
 	uint32_t header_len = sizeof(tAniNlHdr);
+
+	cstats.is_direct_log_dispatch_enabled = false;
 
 	node = cstats.ccur_node[CSTATS_HOST_TYPE];
 	if (!node) {
@@ -308,6 +326,8 @@ void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
 
 	buf = node->logbuf;
 	pfilled_length = &node->filled_length;
+	if (cstats.is_cp_stats_debug_logging_enable)
+		qdf_debug("Filled length value: %u", *pfilled_length);
 
 	if (*pfilled_length == 0) {
 		qdf_debug("Host buffer is empty. No data to flush.");
@@ -320,7 +340,7 @@ void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
 			cstats.is_cp_stats_debug_logging_enable);
 	}
 
-	qdf_debug("Pending host buffer flush complete.");
+	qdf_debug("Pending host buffer flush complete");
 	/* Reset buffer after flush */
 	*pfilled_length = 0;
 
