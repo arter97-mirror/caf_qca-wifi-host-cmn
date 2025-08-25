@@ -5063,6 +5063,8 @@ struct dp_vdev {
 	bool twt_setup_enable;
 	/* per vdev nbuf queue for traffic end indication packets */
 	qdf_nbuf_queue_t end_ind_pkt_q;
+	/* TWT end indication packet lock */
+	qdf_spinlock_t end_ind_pkt_lock;
 #endif
 #ifdef FEATURE_DIRECT_LINK
 	/* Flag to indicate if to_fw should be set for tx pkts on this vdev */

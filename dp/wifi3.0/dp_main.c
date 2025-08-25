@@ -5141,6 +5141,7 @@ static inline void
 dp_tx_vdev_traffic_end_indication_attach(struct dp_vdev *vdev)
 {
 	qdf_nbuf_queue_init(&vdev->end_ind_pkt_q);
+	qdf_spinlock_create(&vdev->end_ind_pkt_lock);
 }
 
 /**
@@ -5155,8 +5156,11 @@ dp_tx_vdev_traffic_end_indication_detach(struct dp_vdev *vdev)
 {
 	qdf_nbuf_t nbuf;
 
+	qdf_spin_lock(&vdev->end_ind_pkt_lock);
 	while ((nbuf = qdf_nbuf_queue_remove(&vdev->end_ind_pkt_q)) != NULL)
 		qdf_nbuf_free(nbuf);
+	qdf_spin_unlock(&vdev->end_ind_pkt_lock);
+	qdf_spinlock_destroy(&vdev->end_ind_pkt_lock);
 }
 #else
 static inline void
@@ -5836,7 +5840,8 @@ static QDF_STATUS dp_vdev_detach_wifi3(struct cdp_soc_t *cdp_soc,
 	dp_txrx_reset_vdev_stats_id(cdp_soc, vdev->vdev_stats_id);
 
 	dp_tx_vdev_multipass_deinit(vdev);
-	dp_tx_vdev_traffic_end_indication_detach(vdev);
+	if (vdev->opmode != wlan_op_mode_monitor)
+		dp_tx_vdev_traffic_end_indication_detach(vdev);
 
 	if (vdev->vdev_dp_ext_handle) {
 		qdf_mem_free(vdev->vdev_dp_ext_handle);

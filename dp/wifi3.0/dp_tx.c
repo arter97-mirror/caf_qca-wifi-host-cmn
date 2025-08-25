@@ -1296,7 +1296,9 @@ dp_tx_get_traffic_end_indication_pkt(struct dp_vdev *vdev,
 	htt_desc_size_aligned = (htt_desc_size + 7) & ~0x7;
 	alloc_len += htt_desc_size_aligned + end_nbuf_len + NET_SKB_PAD;
 
+	qdf_spin_lock(&vdev->end_ind_pkt_lock);
 	end_nbuf = qdf_nbuf_queue_remove(&vdev->end_ind_pkt_q);
+	qdf_spin_unlock(&vdev->end_ind_pkt_lock);
 	if (!end_nbuf) {
 		end_nbuf = qdf_nbuf_alloc(NULL, alloc_len,
 					  htt_desc_size_aligned, 8, false);
@@ -1394,7 +1396,9 @@ dp_tx_traffic_end_indication_enq_ind_pkt(struct dp_soc *soc,
 		vdev = dp_vdev_get_ref_by_id(soc, desc->vdev_id,
 					     DP_MOD_ID_TX_COMP);
 		if (vdev) {
+			qdf_spin_lock(&vdev->end_ind_pkt_lock);
 			qdf_nbuf_queue_add(&vdev->end_ind_pkt_q, nbuf);
+			qdf_spin_unlock(&vdev->end_ind_pkt_lock);
 			dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_TX_COMP);
 			return true;
 		}
