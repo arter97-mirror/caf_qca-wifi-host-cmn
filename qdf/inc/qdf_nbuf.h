@@ -375,10 +375,17 @@ struct stats_cfm_event {
 struct scan_ap_info {
 	uint8_t bssid[6];
 	int8_t rssi;
+	uint8_t is_ssid_match;
+}__attribute__((__packed__));
+
+struct conn_ap_info {
+	uint8_t bssid[6];
+	int8_t rssi;
 }__attribute__((__packed__));
 
 struct scan_complete_event {
 	struct scan_ap_info scan_ap[EVENT_MAX_AP];
+	uint8_t conn_ap[0];
 } __attribute__((__packed__));
 
 /**

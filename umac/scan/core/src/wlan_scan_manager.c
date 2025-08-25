@@ -1382,10 +1382,27 @@ scm_scan_update_scan_event(struct wlan_scan_obj *scan,
 	return QDF_STATUS_SUCCESS;
 }
 
-static void update_top_aps(struct scan_ap_info *top_aps,
-			   int *num_top, uint8_t *bssid, int8_t rssi)
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+static inline bool
+util_is_ssid_match(struct wlan_ssid *ssid1,
+		   struct wlan_ssid *ssid2)
 {
-	int i = 0;
+	if (ssid1->length != ssid2->length)
+		return false;
+
+	if (!qdf_mem_cmp(ssid1->ssid,
+			 ssid2->ssid, ssid1->length))
+                return true;
+
+	return false;
+}
+
+static void update_top_aps(struct scan_ap_info *top_aps,
+			   int *num_top, uint8_t *bssid, int8_t rssi,
+			   struct wlan_ssid *ssid, uint32_t num_ssids,
+			   struct wlan_ssid *ssid_arr)
+{
+	int i,j = 0;
 	int min_idx = -1;
 	int8_t min_rssi = 127;
 
@@ -1405,10 +1422,16 @@ static void update_top_aps(struct scan_ap_info *top_aps,
 	if (rssi > min_rssi) {
 		memcpy(top_aps[min_idx].bssid, bssid, 6);
 		top_aps[min_idx].rssi = rssi;
+		for(j = 0; j < num_ssids; j++) {
+			if(util_is_ssid_match(ssid, &ssid_arr[j])){
+				top_aps[min_idx].is_ssid_match = true;
+				break;
+			}
+		}
 	}
 }
 
-static void scm_send_custom_scan_complete_event(struct wlan_objmgr_vdev* vdev)
+static void scm_send_custom_scan_complete_event(struct scan_event_info *scan_info)
 {
 	struct wlan_objmgr_pdev *pdev;
 	qdf_list_t *list = NULL;
@@ -1420,10 +1443,17 @@ static void scm_send_custom_scan_complete_event(struct wlan_objmgr_vdev* vdev)
 	uint8_t *buf = NULL;
 	struct mon_report_status *mon_report= NULL;
 	struct scan_complete_event *event = NULL;
+	struct conn_ap_info *conn_ap = NULL;
 	int num_top = 0;
 	struct vdev_osif_priv *osif_priv = NULL;
 	struct hdd_adapter *adapter = NULL;
 	struct hdd_station_ctx *sta_ctx = NULL;
+	bool is_connected;
+	struct scan_event *scan_event = NULL;
+	struct wlan_objmgr_vdev *vdev = NULL;
+
+	vdev = scan_info->vdev;
+	scan_event = &(scan_info->event);
 
 	mac_ctx = cds_get_context(QDF_MODULE_ID_SME);
 	if (!mac_ctx) {
@@ -1436,16 +1466,24 @@ static void scm_send_custom_scan_complete_event(struct wlan_objmgr_vdev* vdev)
 		return;
 	}
 	osif_priv = wlan_vdev_get_ospriv(vdev);
-	if(!osif_priv)
+	if (!osif_priv)
 		return;
 	adapter = (struct hdd_adapter *)vdev->vdev_nif.osdev->legacy_osif_priv;
-	if(!adapter)
+	if (!adapter)
 		return;
 	sta_ctx = WLAN_HDD_GET_STATION_CTX_PTR(adapter);
-	if(!sta_ctx)
+	if (!sta_ctx)
 		return;
-	buf = qdf_mem_malloc(sizeof(struct mon_report_status) +
-			 sizeof(struct scan_complete_event));
+
+	is_connected = !!(sta_ctx->conn_info.conn_state == eConnectionState_Associated);
+	if (is_connected) {
+		buf = qdf_mem_malloc(sizeof(struct mon_report_status) +
+				     sizeof(struct scan_complete_event) +
+				     sizeof(struct conn_ap_info));
+	} else {
+		buf = qdf_mem_malloc(sizeof(struct mon_report_status) +
+				     sizeof(struct scan_complete_event));
+	}
 	if (!buf) {
 		pe_err("Allocate Memory failed for buf");
 		return;
@@ -1453,10 +1491,16 @@ static void scm_send_custom_scan_complete_event(struct wlan_objmgr_vdev* vdev)
 
 	mon_report = (struct mon_report_status *)buf;
 	event = (struct scan_complete_event *)(mon_report->payload);
-	mon_report->type = (sta_ctx->conn_info.conn_state ==
-			    eConnectionState_Associated) ?
-			    BGSCAN_COMPLETE_EVENT : FGSCAN_COMPLETE_EVENT;
-	mon_report->payload_len = sizeof(struct scan_complete_event);
+	if (is_connected) {
+		conn_ap = (struct conn_ap_info *)(event->conn_ap);
+		conn_ap->rssi = sta_ctx->conn_info.signal;
+		qdf_mem_copy(conn_ap->bssid, &sta_ctx->conn_info.bssid, 6);
+	}
+
+	mon_report->type = is_connected ? BGSCAN_COMPLETE_EVENT : FGSCAN_COMPLETE_EVENT;
+	mon_report->payload_len = is_connected ?
+				  (sizeof(struct scan_complete_event) + sizeof(struct conn_ap_info)) :
+				  sizeof(struct scan_complete_event);
 	mon_report->qtime = qdf_do_div(qdf_get_log_timestamp_usecs(),
 				       USEC_PER_MSEC);
 
@@ -1485,7 +1529,11 @@ static void scm_send_custom_scan_complete_event(struct wlan_objmgr_vdev* vdev)
 				struct tag_csrscan_result, Link);
 		update_top_aps(event->scan_ap, &num_top,
 			       bss_desc->Result.BssDescriptor.bssId,
-			       bss_desc->Result.BssDescriptor.rssi);
+			       bss_desc->Result.BssDescriptor.rssi,
+			       (struct wlan_ssid *)&bss_desc->Result.ssId,
+			       scan_event->scan_start_req->scan_req.num_ssids,
+			       scan_event->scan_start_req->scan_req.ssid);
+
 		entry = csr_ll_next(&ret_list->List, entry,
 				LL_ACCESS_NOLOCK);
 	}
@@ -1532,6 +1580,15 @@ static void scm_send_custom_scan_start_event(struct wlan_objmgr_vdev* vdev)
 	send_custom_packet_select(buf);
 	qdf_mem_free(buf);
 }
+#else
+static void scm_send_custom_scan_complete_event(struct scan_event_info *scan_info)
+{
+}
+
+static void scm_send_custom_scan_start_event(struct wlan_objmgr_vdev* vdev)
+{
+}
+#endif
 
 QDF_STATUS
 scm_scan_event_handler(struct scheduler_msg *msg)
@@ -1621,7 +1678,7 @@ scm_scan_event_handler(struct scheduler_msg *msg)
 		scm_send_custom_scan_start_event(vdev);
 		break;
 	case SCAN_EVENT_TYPE_COMPLETED:
-		scm_send_custom_scan_complete_event(vdev);
+		scm_send_custom_scan_complete_event(event_info);
 		if (event->reason == SCAN_REASON_COMPLETED)
 			scm_11d_decide_country_code(vdev);
 		/* fall through to release the command */
