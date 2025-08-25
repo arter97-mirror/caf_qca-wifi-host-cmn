@@ -22479,145 +22479,6 @@ static QDF_STATUS send_set_tpc_power_cmd_tlv(wmi_unified_t wmi_handle,
 }
 
 /**
- * extract_dpd_status_ev_param_tlv() - extract dpd status from FW event
- * @wmi_handle: wmi handle
- * @evt_buf: event buffer
- * @param: dpd status info
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS
-extract_dpd_status_ev_param_tlv(wmi_unified_t wmi_handle,
-				void *evt_buf,
-				struct wmi_host_pdev_get_dpd_status_event *param)
-{
-	WMI_PDEV_GET_DPD_STATUS_EVENTID_param_tlvs *param_buf;
-	wmi_pdev_get_dpd_status_evt_fixed_param *dpd_status;
-
-	param_buf = (WMI_PDEV_GET_DPD_STATUS_EVENTID_param_tlvs *)evt_buf;
-	if (!param_buf) {
-		wmi_err("Invalid get dpd_status event");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	dpd_status = param_buf->fixed_param;
-	param->pdev_id = wmi_handle->ops->convert_pdev_id_target_to_host
-		(wmi_handle, dpd_status->pdev_id);
-	param->dpd_status = dpd_status->dpd_status;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static int
-convert_halphy_status(wmi_pdev_get_halphy_cal_status_evt_fixed_param *status,
-		      WMI_HALPHY_CAL_VALID_BITMAP_STATUS valid_bit)
-{
-	if (status->halphy_cal_valid_bmap && valid_bit)
-		return (status->halphy_cal_status && valid_bit);
-
-	return 0;
-}
-
-static QDF_STATUS
-extract_halphy_cal_status_ev_param_tlv(wmi_unified_t wmi_handle,
-				       void *evt_buf,
-				       struct wmi_host_pdev_get_halphy_cal_status_event *param)
-{
-	WMI_PDEV_GET_HALPHY_CAL_STATUS_EVENTID_param_tlvs *param_buf;
-	wmi_pdev_get_halphy_cal_status_evt_fixed_param *halphy_cal_status;
-
-	param_buf = (WMI_PDEV_GET_HALPHY_CAL_STATUS_EVENTID_param_tlvs *)evt_buf;
-	if (!param_buf) {
-		wmi_err("Invalid get halphy cal status event");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	halphy_cal_status = param_buf->fixed_param;
-	param->pdev_id = wmi_handle->ops->convert_pdev_id_target_to_host
-		(wmi_handle, halphy_cal_status->pdev_id);
-	param->halphy_cal_adc_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_ADC_BMAP);
-	param->halphy_cal_bwfilter_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_BWFILTER_BMAP);
-	param->halphy_cal_pdet_and_pal_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_PDET_AND_PAL_BMAP);
-	param->halphy_cal_rxdco_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_RXDCO_BMAP);
-	param->halphy_cal_comb_txiq_rxiq_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_COMB_TXLO_TXIQ_RXIQ_BMAP);
-	param->halphy_cal_ibf_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_IBF_BMAP);
-	param->halphy_cal_pa_droop_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_PA_DROOP_BMAP);
-	param->halphy_cal_dac_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_DAC_BMAP);
-	param->halphy_cal_ani_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_ANI_BMAP);
-	param->halphy_cal_noise_floor_status =
-		convert_halphy_status(halphy_cal_status,
-				      WMI_HALPHY_CAL_NOISE_FLOOR_BMAP);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * set_halphy_cal_fw_status_to_host_status() - Convert set halphy cal status to host enum
- * @fw_status: set halphy cal status from WMI_PDEV_SET_HALPHY_CAL_BMAP_EVENTID event
- *
- * Return: host_set_halphy_cal_status
- */
-static enum wmi_host_set_halphy_cal_status
-set_halphy_cal_fw_status_to_host_status(uint32_t fw_status)
-{
-	if (fw_status == 0)
-		return WMI_HOST_SET_HALPHY_CAL_STATUS_SUCCESS;
-	else if (fw_status == 1)
-		return WMI_HOST_SET_HALPHY_CAL_STATUS_FAIL;
-
-	wmi_debug("Unknown set halphy status code(%u) from WMI", fw_status);
-	return WMI_HOST_SET_HALPHY_CAL_STATUS_FAIL;
-}
-
-/**
- * extract_halphy_cal_ev_param_tlv() - extract dpd status from FW event
- * @wmi_handle: wmi handle
- * @evt_buf: event buffer
- * @param: set halphy cal status info
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS
-extract_halphy_cal_ev_param_tlv(wmi_unified_t wmi_handle,
-				void *evt_buf,
-				struct wmi_host_pdev_set_halphy_cal_event *param)
-{
-	WMI_PDEV_SET_HALPHY_CAL_BMAP_EVENTID_param_tlvs *param_buf;
-	wmi_pdev_set_halphy_cal_bmap_evt_fixed_param *set_halphy_status;
-
-	param_buf = (WMI_PDEV_SET_HALPHY_CAL_BMAP_EVENTID_param_tlvs *)evt_buf;
-	if (!param_buf) {
-		wmi_err("Invalid set halphy_status event");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	set_halphy_status = param_buf->fixed_param;
-	param->pdev_id = wmi_handle->ops->convert_pdev_id_target_to_host
-		(wmi_handle, set_halphy_status->pdev_id);
-	param->status = set_halphy_cal_fw_status_to_host_status(set_halphy_status->status);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
  * extract_install_key_comp_event_tlv() - extract install key complete event tlv
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer
@@ -22659,42 +22520,6 @@ extract_install_key_comp_event_tlv(wmi_unified_t wmi_handle,
 				   param->peer_macaddr);
 
 	return QDF_STATUS_SUCCESS;
-}
-
-static QDF_STATUS
-send_set_halphy_cal_tlv(wmi_unified_t wmi_handle,
-			struct wmi_host_send_set_halphy_cal_info *param)
-{
-	wmi_buf_t buf;
-	wmi_pdev_set_halphy_cal_bmap_cmd_fixed_param *cmd;
-	QDF_STATUS ret;
-	uint32_t len;
-
-	len = sizeof(*cmd);
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return QDF_STATUS_E_FAILURE;
-
-	cmd = (void *)wmi_buf_data(buf);
-
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_pdev_set_halphy_cal_bmap_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN(wmi_pdev_set_halphy_cal_bmap_cmd_fixed_param));
-
-	cmd->pdev_id = wmi_handle->ops->convert_pdev_id_host_to_target(wmi_handle,
-								       param->pdev_id);
-	cmd->online_halphy_cals_bmap = param->value;
-	cmd->home_scan_channel = param->chan_sel;
-
-	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
-				   WMI_PDEV_SET_HALPHY_CAL_BMAP_CMDID);
-	if (QDF_IS_STATUS_ERROR(ret)) {
-		wmi_err("WMI_PDEV_SET_HALPHY_CAL_BMAP_CMDID send returned Error %d",ret);
-		wmi_buf_free(buf);
-	}
-
-	return ret;
 }
 
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
@@ -24062,13 +23887,9 @@ struct wmi_ops tlv_ops =  {
 #ifdef CONFIG_AFC_SUPPORT
 	.send_afc_cmd = send_afc_cmd_tlv,
 #endif
-	.extract_dpd_status_ev_param = extract_dpd_status_ev_param_tlv,
 	.extract_install_key_comp_event = extract_install_key_comp_event_tlv,
 	.send_vdev_set_ltf_key_seed_cmd =
 			send_vdev_set_ltf_key_seed_cmd_tlv,
-	.extract_halphy_cal_status_ev_param = extract_halphy_cal_status_ev_param_tlv,
-	.send_set_halphy_cal = send_set_halphy_cal_tlv,
-	.extract_halphy_cal_ev_param = extract_halphy_cal_ev_param_tlv,
 #ifdef WLAN_MGMT_RX_REO_SUPPORT
 	.extract_mgmt_rx_fw_consumed = extract_mgmt_rx_fw_consumed_tlv,
 	.extract_mgmt_rx_reo_params = extract_mgmt_rx_reo_params_tlv,
@@ -24160,6 +23981,12 @@ struct wmi_ops tlv_ops =  {
 	.send_pdev_pb_mem_ind_cmd = send_pdev_power_boost_mem_ind_cmd_tlv,
 	.extract_pdev_power_boost_event = extract_pdev_power_boost_event_tlv,
 	.pdev_pb_send_inference_cmd = pdev_pb_send_inference_cmd_tlv,
+#endif
+#ifdef WLAN_MLO_MULTI_CHIP
+	.extract_dpd_status_ev_param = extract_dpd_status_ev_param_tlv,
+	.extract_halphy_cal_status_ev_param = extract_halphy_cal_status_ev_param_tlv,
+	.send_set_halphy_cal = send_set_halphy_cal_tlv,
+	.extract_halphy_cal_ev_param = extract_halphy_cal_ev_param_tlv,
 #endif
 };
 
@@ -25457,6 +25284,183 @@ void wmi_ocb_ut_attach(struct wmi_unified *wmi_handle);
 static inline void wmi_ocb_ut_attach(struct wmi_unified *wmi_handle)
 {
 	return;
+}
+#endif
+
+#ifdef WLAN_MLO_MULTI_CHIP
+/**
+ * extract_dpd_status_ev_param_tlv() - extract dpd status from FW event
+ * @wmi_handle: wmi handle
+ * @evt_buf: event buffer
+ * @param: dpd status info
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+extract_dpd_status_ev_param_tlv(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct wmi_host_pdev_get_dpd_status_event *param)
+{
+	WMI_PDEV_GET_DPD_STATUS_EVENTID_param_tlvs *param_buf;
+	wmi_pdev_get_dpd_status_evt_fixed_param *dpd_status;
+
+	param_buf = (WMI_PDEV_GET_DPD_STATUS_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid get dpd_status event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	dpd_status = param_buf->fixed_param;
+	param->pdev_id = wmi_handle->ops->convert_pdev_id_target_to_host
+		(wmi_handle, dpd_status->pdev_id);
+	param->dpd_status = dpd_status->dpd_status;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static int
+convert_halphy_status(wmi_pdev_get_halphy_cal_status_evt_fixed_param *status,
+		      WMI_HALPHY_CAL_VALID_BITMAP_STATUS valid_bit)
+{
+	if (status->halphy_cal_valid_bmap && valid_bit)
+		return (status->halphy_cal_status && valid_bit);
+
+	return 0;
+}
+
+static QDF_STATUS
+extract_halphy_cal_status_ev_param_tlv(wmi_unified_t wmi_handle,
+				       void *evt_buf,
+				       struct wmi_host_pdev_get_halphy_cal_status_event *param)
+{
+	WMI_PDEV_GET_HALPHY_CAL_STATUS_EVENTID_param_tlvs *param_buf;
+	wmi_pdev_get_halphy_cal_status_evt_fixed_param *halphy_cal_status;
+
+	param_buf = (WMI_PDEV_GET_HALPHY_CAL_STATUS_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid get halphy cal status event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	halphy_cal_status = param_buf->fixed_param;
+	param->pdev_id = wmi_handle->ops->convert_pdev_id_target_to_host
+		(wmi_handle, halphy_cal_status->pdev_id);
+	param->halphy_cal_adc_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_ADC_BMAP);
+	param->halphy_cal_bwfilter_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_BWFILTER_BMAP);
+	param->halphy_cal_pdet_and_pal_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_PDET_AND_PAL_BMAP);
+	param->halphy_cal_rxdco_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_RXDCO_BMAP);
+	param->halphy_cal_comb_txiq_rxiq_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_COMB_TXLO_TXIQ_RXIQ_BMAP);
+	param->halphy_cal_ibf_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_IBF_BMAP);
+	param->halphy_cal_pa_droop_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_PA_DROOP_BMAP);
+	param->halphy_cal_dac_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_DAC_BMAP);
+	param->halphy_cal_ani_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_ANI_BMAP);
+	param->halphy_cal_noise_floor_status =
+		convert_halphy_status(halphy_cal_status,
+				      WMI_HALPHY_CAL_NOISE_FLOOR_BMAP);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * set_halphy_cal_fw_status_to_host_status() - Convert set halphy cal status to host enum
+ * @fw_status: set halphy cal status from WMI_PDEV_SET_HALPHY_CAL_BMAP_EVENTID event
+ *
+ * Return: host_set_halphy_cal_status
+ */
+static enum wmi_host_set_halphy_cal_status
+set_halphy_cal_fw_status_to_host_status(uint32_t fw_status)
+{
+	if (fw_status == 0)
+		return WMI_HOST_SET_HALPHY_CAL_STATUS_SUCCESS;
+	else if (fw_status == 1)
+		return WMI_HOST_SET_HALPHY_CAL_STATUS_FAIL;
+
+	wmi_debug("Unknown set halphy status code(%u) from WMI", fw_status);
+	return WMI_HOST_SET_HALPHY_CAL_STATUS_FAIL;
+}
+
+/**
+ * extract_halphy_cal_ev_param_tlv() - extract dpd status from FW event
+ * @wmi_handle: wmi handle
+ * @evt_buf: event buffer
+ * @param: set halphy cal status info
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+extract_halphy_cal_ev_param_tlv(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct wmi_host_pdev_set_halphy_cal_event *param)
+{
+	WMI_PDEV_SET_HALPHY_CAL_BMAP_EVENTID_param_tlvs *param_buf;
+	wmi_pdev_set_halphy_cal_bmap_evt_fixed_param *set_halphy_status;
+
+	param_buf = (WMI_PDEV_SET_HALPHY_CAL_BMAP_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid set halphy_status event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	set_halphy_status = param_buf->fixed_param;
+	param->pdev_id = wmi_handle->ops->convert_pdev_id_target_to_host
+		(wmi_handle, set_halphy_status->pdev_id);
+	param->status = set_halphy_cal_fw_status_to_host_status(set_halphy_status->status);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+send_set_halphy_cal_tlv(wmi_unified_t wmi_handle,
+			struct wmi_host_send_set_halphy_cal_info *param)
+{
+	wmi_buf_t buf;
+	wmi_pdev_set_halphy_cal_bmap_cmd_fixed_param *cmd;
+	QDF_STATUS ret;
+	uint32_t len;
+
+	len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_FAILURE;
+
+	cmd = (void *)wmi_buf_data(buf);
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_pdev_set_halphy_cal_bmap_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_pdev_set_halphy_cal_bmap_cmd_fixed_param));
+
+	cmd->pdev_id = wmi_handle->ops->convert_pdev_id_host_to_target(wmi_handle,
+								       param->pdev_id);
+	cmd->online_halphy_cals_bmap = param->value;
+	cmd->home_scan_channel = param->chan_sel;
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PDEV_SET_HALPHY_CAL_BMAP_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("WMI_PDEV_SET_HALPHY_CAL_BMAP_CMDID send returned Error %d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
 }
 #endif
 

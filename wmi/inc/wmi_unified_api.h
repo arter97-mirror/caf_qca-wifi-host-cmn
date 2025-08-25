@@ -4846,43 +4846,6 @@ QDF_STATUS wmi_unified_send_set_tpc_power_cmd(wmi_unified_t wmi_handle,
 					      uint8_t vdev_id,
 					      struct reg_tpc_power_info *param);
 
-/**
- * wmi_extract_dpd_status_ev_param() - extract dpd status from FW event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buf
- * @param: dpd status info
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-QDF_STATUS wmi_extract_dpd_status_ev_param(wmi_unified_t wmi_handle,
-					   void *evt_buf,
-					   struct wmi_host_pdev_get_dpd_status_event *param);
-
-/**
- * wmi_extract_halphy_cal_status_ev_param() - extract halphy cal status from FW event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buf
- * @param: halphy cal status info
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-QDF_STATUS
-wmi_extract_halphy_cal_status_ev_param(wmi_unified_t wmi_handle,
-				       void *evt_buf,
-				       struct wmi_host_pdev_get_halphy_cal_status_event *param);
-/**
- * wmi_extract_halphy_cal_ev_param() - extract halphy cal status from FW event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buf
- * @param: halphy cal status info
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-QDF_STATUS
-wmi_extract_halphy_cal_ev_param(wmi_unified_t wmi_handle,
-				void *evt_buf,
-				struct wmi_host_pdev_set_halphy_cal_event *param);
-
 #ifdef FEATURE_MEC_OFFLOAD
 /**
  * wmi_unified_pdev_set_mec_timer() - set mec timer value
@@ -5197,5 +5160,44 @@ wmi_extract_power_boost_capability(wmi_unified_t wmi_handle, void *evt_buf,
 QDF_STATUS
 wmi_extract_pdev_power_boost_ev_params(wmi_unified_t wmi_handle, uint8_t *buf,
 					struct reg_txpb_evt_params *pb_params);
+#endif
+
+#ifdef WLAN_MLO_MULTI_CHIP
+/**
+ * wmi_extract_dpd_status_ev_param() - extract dpd status from FW event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buf
+ * @param: dpd status info
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+QDF_STATUS wmi_extract_dpd_status_ev_param(wmi_unified_t wmi_handle,
+					   void *evt_buf,
+					   struct wmi_host_pdev_get_dpd_status_event *param);
+
+/**
+ * wmi_extract_halphy_cal_status_ev_param() - extract halphy cal status from FW event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buf
+ * @param: halphy cal status info
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+QDF_STATUS
+wmi_extract_halphy_cal_status_ev_param(wmi_unified_t wmi_handle,
+				       void *evt_buf,
+				       struct wmi_host_pdev_get_halphy_cal_status_event *param);
+/**
+ * wmi_extract_halphy_cal_ev_param() - extract halphy cal status from FW event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buf
+ * @param: halphy cal status info
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+QDF_STATUS
+wmi_extract_halphy_cal_ev_param(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct wmi_host_pdev_set_halphy_cal_event *param);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

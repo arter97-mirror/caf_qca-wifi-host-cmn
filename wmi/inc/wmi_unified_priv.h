@@ -3178,13 +3178,6 @@ QDF_STATUS (*send_big_data_stats_request_cmd)(
 				wmi_unified_t wmi_handle,
 				struct stats_request_params *param);
 #endif
-QDF_STATUS (*extract_dpd_status_ev_param)(wmi_unified_t wmi_handle,
-					  void *evt_buf,
-					  struct wmi_host_pdev_get_dpd_status_event *param);
-
-QDF_STATUS (*extract_halphy_cal_status_ev_param)(wmi_unified_t wmi_handle,
-						 void *evt_buf,
-						 struct wmi_host_pdev_get_halphy_cal_status_event *param);
 
 QDF_STATUS
 (*extract_install_key_comp_event)(wmi_unified_t wmi_handle,
@@ -3225,14 +3218,6 @@ QDF_STATUS
 			   struct wmi_wifi_radar_command_params *param);
 
 #endif
-
-QDF_STATUS (*send_set_halphy_cal)(wmi_unified_t wmi_handle,
-				  struct wmi_host_send_set_halphy_cal_info *param);
-
-QDF_STATUS
-(*extract_halphy_cal_ev_param)(wmi_unified_t wmi_handle,
-			       void *evt_buf,
-			       struct wmi_host_pdev_set_halphy_cal_event *param);
 
 QDF_STATUS (*extract_mgmt_rx_ext_params)(wmi_unified_t wmi_handle,
 					 void *evt_buf,
@@ -4305,4 +4290,21 @@ WMI_HOST_WLAN_PHY_MODE wmi_host_to_fw_phymode(enum wlan_phymode host_phymode);
  * Return: host trigger reason of enum roam_trigger_reason
  */
 uint32_t wmi_convert_fw_to_cm_trig_reason(uint32_t fw_trig_reason);
+
+#ifdef WLAN_MLO_MULTI_CHIP
+QDF_STATUS (*extract_dpd_status_ev_param)(wmi_unified_t wmi_handle,
+					  void *evt_buf,
+					  struct wmi_host_pdev_get_dpd_status_event *param);
+
+QDF_STATUS (*extract_halphy_cal_status_ev_param)(wmi_unified_t wmi_handle,
+						 void *evt_buf,
+						 struct wmi_host_pdev_get_halphy_cal_status_event *param);
+QDF_STATUS (*send_set_halphy_cal)(wmi_unified_t wmi_handle,
+				  struct wmi_host_send_set_halphy_cal_info *param);
+
+QDF_STATUS
+(*extract_halphy_cal_ev_param)(wmi_unified_t wmi_handle,
+			       void *evt_buf,
+			       struct wmi_host_pdev_set_halphy_cal_event *param);
+#endif
 #endif

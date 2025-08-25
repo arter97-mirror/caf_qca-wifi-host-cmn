@@ -3753,42 +3753,6 @@ wmi_unified_send_afc_cmd(wmi_unified_t wmi_handle, uint8_t pdev_id,
 }
 #endif
 
-QDF_STATUS
-wmi_extract_dpd_status_ev_param(wmi_unified_t wmi_handle,
-				void *evt_buf,
-				struct wmi_host_pdev_get_dpd_status_event *param)
-{
-	if (wmi_handle->ops->extract_dpd_status_ev_param)
-		return wmi_handle->ops->extract_dpd_status_ev_param(
-				wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_halphy_cal_status_ev_param(wmi_unified_t wmi_handle,
-				       void *evt_buf,
-				       struct wmi_host_pdev_get_halphy_cal_status_event *param)
-{
-	if (wmi_handle->ops->extract_halphy_cal_status_ev_param)
-		return wmi_handle->ops->extract_halphy_cal_status_ev_param(
-				wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_extract_halphy_cal_ev_param(wmi_unified_t wmi_handle,
-				void *evt_buf,
-				struct wmi_host_pdev_set_halphy_cal_event *param)
-{
-	if (wmi_handle->ops->extract_halphy_cal_ev_param)
-		return wmi_handle->ops->extract_halphy_cal_ev_param(
-			wmi_handle, evt_buf, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 #ifdef FEATURE_MEC_OFFLOAD
 QDF_STATUS
 wmi_unified_pdev_set_mec_timer(struct wmi_unified *wmi_handle,
@@ -4084,5 +4048,43 @@ void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
 									     ev_data,
 									     data_len);
 	return NULL;
+}
+#endif
+
+#ifdef WLAN_MLO_MULTI_CHIP
+QDF_STATUS
+wmi_extract_dpd_status_ev_param(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct wmi_host_pdev_get_dpd_status_event *param)
+{
+	if (wmi_handle->ops->extract_dpd_status_ev_param)
+		return wmi_handle->ops->extract_dpd_status_ev_param(
+				wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_halphy_cal_status_ev_param(wmi_unified_t wmi_handle,
+				       void *evt_buf,
+				       struct wmi_host_pdev_get_halphy_cal_status_event *param)
+{
+	if (wmi_handle->ops->extract_halphy_cal_status_ev_param)
+		return wmi_handle->ops->extract_halphy_cal_status_ev_param(
+				wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_halphy_cal_ev_param(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct wmi_host_pdev_set_halphy_cal_event *param)
+{
+	if (wmi_handle->ops->extract_halphy_cal_ev_param)
+		return wmi_handle->ops->extract_halphy_cal_ev_param(
+			wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
 }
 #endif
