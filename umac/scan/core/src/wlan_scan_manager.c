@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -595,6 +595,7 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 	uint16_t go_peer_count = 0;
 	struct wlan_objmgr_pdev *pdev;
 	uint32_t dwell_active_2g_frm_req;
+	bool nandisc_present, ll_lt_ap_present;
 
 	psoc = wlan_vdev_get_psoc(vdev);
 	pdev = wlan_vdev_get_pdev(vdev);
@@ -604,6 +605,9 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 
 	ap_present = policy_mgr_mode_specific_connection_count(
 				psoc, PM_SAP_MODE, NULL);
+	ll_lt_ap_present = policy_mgr_mode_specific_connection_count(psoc,
+								     PM_LL_LT_SAP_MODE,
+								     NULL);
 	go_present = policy_mgr_mode_specific_connection_count(
 				psoc, PM_P2P_GO_MODE, NULL);
 	p2p_cli_present = policy_mgr_mode_specific_connection_count(
@@ -612,6 +616,10 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 				psoc, PM_STA_MODE, NULL);
 	ndi_present = policy_mgr_mode_specific_connection_count(
 				psoc, PM_NDI_MODE, NULL);
+	nandisc_present = policy_mgr_mode_specific_connection_count(psoc,
+								    PM_NAN_DISC_MODE,
+								    NULL);
+
 	if (ap_present)
 		sap_peer_count =
 		wlan_util_get_peer_count_for_mode(pdev, QDF_SAP_MODE);
@@ -624,7 +632,11 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 
 	dwell_active_2g_frm_req = req->scan_req.dwell_time_active_2g;
 
-	if (policy_mgr_get_connection_count(psoc)) {
+	if (sta_active || p2p_cli_present ||
+	    (ap_present && sap_peer_count) ||
+	    (go_present && go_peer_count) ||
+	    ndi_present || nandisc_present ||
+	    ll_lt_ap_present) {
 		if (!req->scan_req.scan_f_passive) {
 			req->scan_req.dwell_time_active =
 				scan_obj->scan_def.conc_active_dwell;
@@ -794,6 +806,10 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 					QDF_MIN(req->scan_req.dwell_time_active,
 						(SCAN_CTS_DURATION_MS_MAX -
 					SCAN_ROAM_SCAN_CHANNEL_SWITCH_TIME));
+				req->scan_req.dwell_time_active_6g =
+					scan_obj->scan_def.active_dwell_time_6g_conc;
+				req->scan_req.dwell_time_passive_6g =
+					scan_obj->scan_def.passive_dwell_time_6g_conc;
 			}
 			if (!policy_mgr_is_hw_dbs_capable(psoc) ||
 			    (policy_mgr_is_hw_dbs_capable(psoc) &&
