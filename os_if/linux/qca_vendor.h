@@ -44,7 +44,8 @@
  * This document describes all of the attributes used in the vendor command
  * QCA_NL80211_VENDOR_SUBCMD_SET_WIFI_CONFIGURATION to configure the number of
  * spatial streams (NSS) and the number of chains used for transmitting (TX) and
- * receiving (RX) the data.
+ * receiving (RX) the data and define corresponding attributes to enable/disable
+ * TX power limit.
  *
  * Global NSS configuration - Applies to all bands (2.4 GHz and 5/6 GHz)
  * The following attributes are used to dynamically configure the number of
@@ -175,6 +176,10 @@
  * Case 8: Case 5 + Case 7 - Per band TX,RX NSS and chains are configured.
  *
  * Case 9: Case 2 + Case 8 - Per band TX,RX NSS and chains are configured.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_CONFIG_TX_POWER_LIMIT_ENABLE: Enables firmware to
+ * apply TX power limits from Board Data File (BDF) across all bands and
+ * interfaces when set.
  */
 
 /**
@@ -5351,6 +5356,9 @@ enum qca_wlan_vendor_attr_nd_offload {
  *	P2P Connection Compatibility mode in which GO allows connection
  *	with both P2P R1 and R2 clients.
  *
+ * @QCA_WLAN_VENDOR_FEATURE_SUPPORT_TX_POWER_LIMIT: Flag indicates that the
+ *	driver supports enabling TX power limit from the userspace.
+ *
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits
  */
 enum qca_wlan_vendor_features {
@@ -5383,6 +5391,7 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_NAN_USD_OFFLOAD = 26,
 	QCA_WLAN_VENDOR_FEATURE_P2P_V2 = 28,
 	QCA_WLAN_VENDOR_FEATURE_PCC_MODE = 29,
+	QCA_WLAN_VENDOR_FEATURE_SUPPORT_TX_POWER_LIMIT = 30,
 	NUM_QCA_WLAN_VENDOR_FEATURES /* keep last */
 };
 
@@ -6723,6 +6732,14 @@ enum qca_wlan_vendor_attr_config {
 	 * to %QCA_WLAN_VENDOR_OPM_MODE_LATENCY_BASED mode.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LATENCY_TOLERANCE = 134,
+
+	/* 8-bit unsigned value to control transmit tx power limit. When
+	 * this flag attribute is present, firmware shall apply the vendor
+	 * configured TX power limit that is stored in the Board Data File
+	 * (BDF) for all bands and all the interfaces.
+	 * 1 - Enable, 0 - Disable.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_TX_POWER_LIMIT_ENABLE = 135,
 
 	/* 8-bit unsigned value. The TX chain mask to be configured dynamically
 	 * for transmitting the data in the 2.4 GHz band.
