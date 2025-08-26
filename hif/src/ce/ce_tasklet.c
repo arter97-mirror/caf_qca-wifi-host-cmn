@@ -383,6 +383,7 @@ static void ce_tasklet(unsigned long data)
 			    HIF_PKT_PEND_BEFORE_INT, NULL, NULL, CE_state->before_int_count, 0);
 		}
 
+	if (!scn->free_irq_done)
 		hif_irq_enable(scn, tasklet_entry->ce_id);
 
 		if (ce_per_engine_pkt_pending_check(CE_state->scn, CE_state->id)) {
