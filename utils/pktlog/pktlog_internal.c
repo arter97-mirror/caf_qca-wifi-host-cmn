@@ -1281,7 +1281,8 @@ A_STATUS process_sw_event(void *pdev, void *data)
 							  ((uint8_t *)node_header + sizeof(struct ath_pktlog_hdr));
 					status = hdd_get_soctime_from_tsf64time(adapter, node_custom_hdr->qtime, &qtime);
 					/* qtime to ms */
-					node_custom_hdr->qtime  = qtime / QDF_NSEC_PER_MSEC;
+					node_custom_hdr->qtime = qdf_do_div(qtime,
+									    QDF_NSEC_PER_MSEC);
 				}
 			}
 			pkt_stats_len = (pkt_stats_len - (sizeof(struct ath_pktlog_hdr) + node_pkt_len));
@@ -1295,7 +1296,7 @@ A_STATUS process_sw_event(void *pdev, void *data)
 		status = hdd_get_soctime_from_tsf64time(adapter, pl_hdr.timestamp, &qtime);
 		pl_header = (struct mon_report_status *)(sw_event.sw_event);
 		/* qtime to ms */
-		pl_header->qtime  = qtime / QDF_NSEC_PER_MSEC;
+		pl_header->qtime = qdf_do_div(qtime, QDF_NSEC_PER_MSEC);
 	}
 		cds_custom_to_logger_thread(&pl_hdr, NULL, sw_event.sw_event);
 #else
