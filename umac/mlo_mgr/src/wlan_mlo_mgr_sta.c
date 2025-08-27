@@ -2655,6 +2655,23 @@ static void mlo_sta_handle_link_reconfig_standby_link(
 }
 #endif
 
+uint8_t mlo_mgr_get_def_dp_link_vdev(struct wlan_objmgr_vdev *vdev)
+{
+	struct mlo_mgr_context *g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
+
+	if (!g_mlo_ctx) {
+		mlo_err("mlo context is NULL");
+		return WLAN_INVALID_VDEV_ID;
+	}
+
+	if (!g_mlo_ctx->osif_ops->mlo_mgr_osif_get_def_dp_link_vdev) {
+		mlo_err("mlo_mgr_osif_get_def_link_vdev is NULL");
+		return WLAN_INVALID_VDEV_ID;
+	}
+
+	return g_mlo_ctx->osif_ops->mlo_mgr_osif_get_def_dp_link_vdev(vdev);
+}
+
 QDF_STATUS mlo_sta_csa_save_params(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				   uint8_t link_id,
 				   struct csa_offload_params *csa_param)

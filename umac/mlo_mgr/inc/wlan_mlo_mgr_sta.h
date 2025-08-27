@@ -808,6 +808,15 @@ bool mlo_is_sta_csa_synced(struct wlan_mlo_dev_context *mlo_dev_ctx,
 QDF_STATUS mlo_sta_csa_save_params(struct wlan_mlo_dev_context *mlo_dev_ctx,
 				   uint8_t link_id,
 				   struct csa_offload_params *csa_param);
+
+/**
+ * mlo_mgr_get_def_dp_link_vdev - Get default dp link vdev id
+ * @vdev: vdev object
+ *
+ * Return: default dp link vdev id
+ */
+uint8_t mlo_mgr_get_def_dp_link_vdev(struct wlan_objmgr_vdev *vdev);
+
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * mlo_sta_handle_csa_standby_link - Handle csa parameters for standby link
