@@ -208,7 +208,7 @@ dp_rx_link_desc_return_by_addr(struct dp_soc *soc,
 				&soc->last_op_info.wbm_rel_link_desc,
 				link_desc_addr);
 
-	if (qdf_unlikely(hal_srng_access_start(hal_soc, wbm_rel_srng))) {
+	if (qdf_unlikely(dp_hal_srng_access_start(hal_soc, wbm_rel_srng))) {
 
 		/* TODO */
 		/*
@@ -242,7 +242,7 @@ dp_rx_link_desc_return_by_addr(struct dp_soc *soc,
 		QDF_BUG(0);
 	}
 done:
-	hal_srng_access_end(hal_soc, wbm_rel_srng);
+	dp_hal_srng_access_end(hal_soc, wbm_rel_srng);
 	return status;
 
 }
