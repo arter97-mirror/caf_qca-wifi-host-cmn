@@ -3643,7 +3643,7 @@ static void dp_queue_ring_stats(struct dp_pdev *pdev)
 		}
 	}
 
-	if (!soc->rxdma2sw_rings_not_supported) {
+	if (dp_is_rxdma2sw_rings_enabled(soc)) {
 		for (i = 0; i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
 			lmac_id = dp_get_lmac_id_for_pdev_id(pdev->soc,
 							     i, pdev->pdev_id);

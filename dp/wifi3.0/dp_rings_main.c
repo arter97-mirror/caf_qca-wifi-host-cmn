@@ -3563,6 +3563,12 @@ static inline void dp_set_num_rxdma_dst_ring(struct dp_soc *soc)
 }
 #endif
 
+#ifdef BORON_MONITOR
+#define REPURPOSE_TO_RXDMA2SW_SUPPORTED 1
+#else
+#define REPURPOSE_TO_RXDMA2SW_SUPPORTED 0
+#endif
+
 /**
  * dp_soc_cfg_init() - initialize target specific configuration
  *		       during dp_soc_init
@@ -3641,6 +3647,8 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		dp_set_num_rxdma_dst_ring(soc);
 		soc->rxdma2sw_rings_not_supported = 1;
+		soc->repurpose_to_rxdma2sw_supported =
+					REPURPOSE_TO_RXDMA2SW_SUPPORTED;
 		break;
 	case TARGET_TYPE_QCA8074:
 		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, true);

@@ -16168,7 +16168,7 @@ static void dp_pdev_srng_deinit(struct dp_pdev *pdev)
 			       RXDMA_BUF,
 			       pdev->lmac_id);
 
-	if (!soc->rxdma2sw_rings_not_supported) {
+	if (dp_is_rxdma2sw_rings_supported(soc)) {
 		for (i = 0;
 		     i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
 			int lmac_id = dp_get_lmac_id_for_pdev_id(soc, i,
@@ -16219,7 +16219,7 @@ static QDF_STATUS dp_pdev_srng_init(struct dp_pdev *pdev)
 		/* Only valid for MCL */
 		pdev = soc->pdev_list[0];
 
-	if (!soc->rxdma2sw_rings_not_supported) {
+	if (dp_is_rxdma2sw_rings_supported(soc)) {
 		for (i = 0;
 		     i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
 			int lmac_id = dp_get_lmac_id_for_pdev_id(soc, i,
@@ -16264,7 +16264,7 @@ static void dp_pdev_srng_free(struct dp_pdev *pdev)
 	if (!soc->features.dmac_cmn_src_rxbuf_ring_enabled)
 		dp_srng_free(soc, &soc->rx_refill_buf_ring[pdev->lmac_id]);
 
-	if (!soc->rxdma2sw_rings_not_supported) {
+	if (dp_is_rxdma2sw_rings_supported(soc)) {
 		for (i = 0;
 		     i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
 			int lmac_id = dp_get_lmac_id_for_pdev_id(soc, i,
@@ -16311,7 +16311,7 @@ static QDF_STATUS dp_pdev_srng_alloc(struct dp_pdev *pdev)
 		/* Only valid for MCL */
 		pdev = soc->pdev_list[0];
 
-	if (!soc->rxdma2sw_rings_not_supported) {
+	if (dp_is_rxdma2sw_rings_supported(soc)) {
 		for (i = 0;
 		     i < soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; i++) {
 			int lmac_id = dp_get_lmac_id_for_pdev_id(soc, i,

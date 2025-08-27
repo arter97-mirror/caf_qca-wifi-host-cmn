@@ -6827,4 +6827,40 @@ static inline void dp_srng_record_timer_exit(struct dp_soc *dp_soc,
 {
 }
 #endif
+
+/**
+ * dp_is_rxdma2sw_rings_supported() - Check if RXDMA2SW rings can be supported
+ *                                    by the target
+ * @soc: DP SoC Handle
+ *
+ * Host should initialize the resources for RXDMA2SW rings if it can be
+ * supported, it includes the case RXDMA2SW ring exist in HW or the case
+ * RXDAM2SW ring not exist but some other rings can be repurposed to it.
+ *
+ * Returns: true if RXDMA2SW rings can be supported, false otherwise
+ */
+static inline bool
+dp_is_rxdma2sw_rings_supported(struct dp_soc *soc)
+{
+	return !soc->rxdma2sw_rings_not_supported ||
+		soc->repurpose_to_rxdma2sw_supported;
+}
+
+/**
+ * dp_is_rxdma2sw_rings_enabled() - Check if RXDMA2SW rings are enabled
+ *                                  in target side
+ * @soc: DP SoC Handle
+ *
+ * Check if RXDMA2SW ring has been enabled in target side, then host can
+ * reap the rings.
+ *
+ * Returns: true if RXDMA2SW rings are enabled, false otherwise
+ */
+static inline bool
+dp_is_rxdma2sw_rings_enabled(struct dp_soc *soc)
+{
+	return !soc->rxdma2sw_rings_not_supported ||
+		(soc->repurpose_to_rxdma2sw_supported &&
+		 soc->repurpose_to_rxdma2sw_done);
+}
 #endif /* #ifndef _DP_INTERNAL_H_ */

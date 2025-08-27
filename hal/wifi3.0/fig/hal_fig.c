@@ -2924,6 +2924,19 @@ struct hal_hw_srng_config hw_srng_table_fig[] = {
 		.max_size = HAL_RXDMA_MAX_RING_SIZE,
 	},
 	{ /* RXDMA_DST */
+#ifdef BORON_MONITOR
+		.start_ring_id = HAL_SRNG_WMAC1_RXDMA2SW0,
+		.max_rings = 1,
+		.entry_size = sizeof(struct reo_entrance_ring) >> 2,
+		.lmac_ring =  TRUE,
+		.ring_dir = HAL_SRNG_DST_RING,
+		/* reg_start is not set because LMAC rings are not accessed
+		 * from host
+		 */
+		.reg_start = {},
+		.reg_size = {},
+		.max_size = HAL_RXDMA_MAX_RING_SIZE,
+#endif
 	},
 	{ /* RXDMA_MONITOR_BUF */
 		.start_ring_id = HAL_SRNG_WMAC1_SW2RXDMA2_BUF,
