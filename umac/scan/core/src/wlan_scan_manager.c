@@ -1455,7 +1455,7 @@ static void scm_send_custom_scan_complete_event(struct wlan_objmgr_vdev* vdev)
 	event = (struct scan_complete_event *)(mon_report->payload);
 	mon_report->type = (sta_ctx->conn_info.conn_state ==
 			    eConnectionState_Associated) ?
-			    FGSCAN_COMPLETE_EVENT : BGSCAN_COMPLETE_EVENT;
+			    BGSCAN_COMPLETE_EVENT : FGSCAN_COMPLETE_EVENT;
 	mon_report->payload_len = sizeof(struct scan_complete_event);
 	mon_report->qtime = qdf_get_log_timestamp_usecs() /
 			    USEC_PER_MSEC;
@@ -1525,7 +1525,7 @@ static void scm_send_custom_scan_start_event(struct wlan_objmgr_vdev* vdev)
 	mon_report = (struct mon_report_status *)buf;
 	mon_report->type = (sta_ctx->conn_info.conn_state ==
 			    eConnectionState_Associated) ?
-			    INSTANT_FGREQ_EVENT : INSTANT_BGREQ_EVENT;
+			    INSTANT_BGREQ_EVENT : INSTANT_FGREQ_EVENT;
 	mon_report->payload_len = 0;
 	mon_report->qtime = qdf_get_log_timestamp_usecs() /
 			    USEC_PER_MSEC;
