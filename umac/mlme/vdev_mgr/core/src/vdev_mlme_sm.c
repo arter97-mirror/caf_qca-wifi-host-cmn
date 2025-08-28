@@ -897,6 +897,12 @@ static bool mlme_vdev_subst_start_restart_progress_event(void *ctx,
 		status = true;
 		break;
 
+	case WLAN_VDEV_SM_EV_REMOVAL:
+		mlme_vdev_link_reconfig_remove_delay(vdev_mlme, event_data_len,
+						     event_data);
+		status = true;
+		break;
+
 	default:
 		status = false;
 		break;
@@ -1507,6 +1513,12 @@ static bool mlme_vdev_subst_suspend_csa_restart_event(void *ctx,
 		/* since channel change is already in progress,
 		 * dfs ignore radar detected event
 		 */
+		status = true;
+		break;
+
+	case WLAN_VDEV_SM_EV_REMOVAL:
+		mlme_vdev_link_reconfig_remove_delay(vdev_mlme, event_data_len,
+						     event_data);
 		status = true;
 		break;
 

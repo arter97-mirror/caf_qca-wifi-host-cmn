@@ -733,6 +733,8 @@ enum vdev_start_resp_type {
  *                                      state
  *@mlme_vdev_link_reconfig_remove:      callback to send link removal in up
  *                                      remove state
+ *@mlme_vdev_set_link_remove_delay:     callback to set link removal delay
+ *                                      work flag
  */
 struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_validate_basic_params)(
@@ -827,6 +829,9 @@ struct vdev_mlme_ops {
 				void *t2lm);
 	void (*mlme_vdev_init_down)(struct vdev_mlme_obj *vdev_mlme);
 	QDF_STATUS (*mlme_vdev_link_reconfig_remove)(
+				struct vdev_mlme_obj *vdev_mlme,
+				uint16_t event_data_len, void *event_data);
+	QDF_STATUS (*mlme_vdev_set_link_remove_delay)(
 				struct vdev_mlme_obj *vdev_mlme,
 				uint16_t event_data_len, void *event_data);
 };
