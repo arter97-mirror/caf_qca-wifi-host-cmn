@@ -1089,6 +1089,12 @@ QDF_STATUS mlo_connect(struct wlan_objmgr_vdev *vdev,
 	return wlan_cm_start_connect(vdev, req);
 }
 
+static inline struct wlan_objmgr_vdev *
+wlan_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev)
+{
+	return vdev;
+}
+
 static inline
 void mlo_sta_link_connect_notify(struct wlan_objmgr_vdev *vdev,
 				 struct wlan_cm_connect_resp *rsp)

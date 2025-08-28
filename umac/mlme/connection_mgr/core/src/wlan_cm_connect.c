@@ -49,6 +49,7 @@
 #include "wlan_connectivity_logging.h"
 #endif
 #include "wlan_scan_utils_api.h"
+#include "wlan_mlme_vdev_mgr_interface.h"
 
 void
 cm_fill_failure_resp_from_cm_id(struct cnx_mgr *cm_ctx,
@@ -1212,6 +1213,9 @@ static void cm_connect_prepare_scan_filter(struct wlan_objmgr_pdev *pdev,
 
 	if (cm_req->req.is_non_assoc_link)
 		filter->ignore_6ghz_channel = false;
+
+	if (mlme_get_vdev_wifi_std(cm_ctx->vdev) < WMI_HOST_WIFI_STANDARD_6)
+		filter->ignore_6ghz_channel = true;
 
 	cm_update_security_filter(filter, &cm_req->req);
 	cm_update_advance_filter(pdev, cm_ctx, filter, cm_req);
