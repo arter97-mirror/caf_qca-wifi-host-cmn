@@ -4080,31 +4080,46 @@ void dp_ipa_dump_ring_hp_tp(struct cdp_soc_t *soc_hdl)
 	uint64_t hp_addr;
 
 	srng = &soc->reo_dest_ring[IPA_REO_DEST_RING_IDX];
-	hal_get_hw_hptp(soc->hal_soc, srng->hal_srng, &hw_headp,
-			&hw_tailp, REO_DST);
-	hal_srng_dst_get_hp_paddr((struct hal_srng *)srng->hal_srng,
-				  &hp_addr);
-	dp_ipa_debug("opt_dp: REO2IPA hp addr - 0x%llx, hp - 0x%x, tp - 0x%x",
-		     hp_addr, hw_headp, hw_tailp);
+	if (srng->hal_srng) {
+		hal_get_hw_hptp(soc->hal_soc, srng->hal_srng, &hw_headp,
+				&hw_tailp, REO_DST);
+		hal_srng_dst_get_hp_paddr((struct hal_srng *)srng->hal_srng,
+					  &hp_addr);
+		dp_ipa_debug("opt_dp: REO2IPA hp addr - 0x%llx, hp - 0x%x, tp - 0x%x",
+			     hp_addr, hw_headp, hw_tailp);
+	}
+
 	srng = &soc->reo_exception_ring;
-	hal_get_sw_hptp(soc->hal_soc, srng->hal_srng, &tailp, &headp);
-	dp_ipa_debug("opt_dp: REO exception hp - 0x%x, tp - 0x%x", headp,
-		     tailp);
+	if (srng->hal_srng) {
+		hal_get_sw_hptp(soc->hal_soc, srng->hal_srng, &tailp, &headp);
+		dp_ipa_debug("opt_dp: REO exception hp - 0x%x, tp - 0x%x",
+			     headp, tailp);
+	}
+
 	srng = &soc->rx_rel_ring;
-	hal_get_sw_hptp(soc->hal_soc, srng->hal_srng, &tailp, &headp);
-	dp_ipa_debug("opt_dp: WBM RX error hp - 0x%x, tp - 0x%x", headp,
-		     tailp);
+	if (srng->hal_srng) {
+		hal_get_sw_hptp(soc->hal_soc, srng->hal_srng, &tailp, &headp);
+		dp_ipa_debug("opt_dp: WBM RX error hp - 0x%x, tp - 0x%x",
+			     headp, tailp);
+	}
+
 	srng = &soc->tx_comp_ring[IPA_TCL_DATA_RING_IDX];
-	hal_get_hw_hptp(soc->hal_soc, srng->hal_srng, &hw_headp,
-			&hw_tailp, WBM2SW_RELEASE);
-	hal_srng_dst_get_hp_paddr((struct hal_srng *)srng->hal_srng, &hp_addr);
-	dp_ipa_debug("opt_dp: WBM2IPA hp addr - 0x%llx, hp - 0x%x, tp - 0x%x",
-		     hp_addr, hw_headp, hw_tailp);
+	if (srng->hal_srng) {
+		hal_get_hw_hptp(soc->hal_soc, srng->hal_srng, &hw_headp,
+				&hw_tailp, WBM2SW_RELEASE);
+		hal_srng_dst_get_hp_paddr((struct hal_srng *)srng->hal_srng,
+					  &hp_addr);
+		dp_ipa_debug("opt_dp: WBM2IPA hp addr - 0x%llx, hp - 0x%x, tp - 0x%x",
+			     hp_addr, hw_headp, hw_tailp);
+	}
+
 	srng = &soc->tcl_data_ring[IPA_TCL_DATA_RING_IDX];
-	hal_get_hw_hptp(soc->hal_soc, srng->hal_srng, &hw_headp,
-			&hw_tailp, TCL_DATA);
-	dp_ipa_debug("opt_dp: IPA2TCL hp - 0x%x, tp - 0x%x", hw_headp,
-		     hw_tailp);
+	if (srng->hal_srng) {
+		hal_get_hw_hptp(soc->hal_soc, srng->hal_srng, &hw_headp,
+				&hw_tailp, TCL_DATA);
+		dp_ipa_debug("opt_dp: IPA2TCL hp - 0x%x, tp - 0x%x",
+			     hw_headp, hw_tailp);
+	}
 }
 
 void dp_ipa_pcie_link_down(struct cdp_soc_t *soc_hdl)
