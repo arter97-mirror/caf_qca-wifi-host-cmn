@@ -315,4 +315,16 @@ static inline bool dfs_precac_check_home_chan_change(struct wlan_dfs *dfs)
 	return false;
 }
 #endif
+
+/**
+ * dfs_is_agile_idx_invalid() - Check if the agile dfs index is invalid.
+ * @dfs_soc_obj: Pointer to dfs_soc_priv_obj.
+ *
+ * Return: true if the agile dfs index is invalid, else false.
+ */
+static inline bool dfs_is_agile_idx_invalid(struct dfs_soc_priv_obj *dfs_soc_obj)
+{
+    return (dfs_soc_obj->cur_agile_dfs_index >= dfs_soc_obj->num_dfs_privs);
+}
+
 #endif /* _DFS_PRECAC_FOREST_H_ */

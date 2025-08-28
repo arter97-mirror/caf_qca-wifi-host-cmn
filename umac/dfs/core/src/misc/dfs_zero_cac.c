@@ -1335,7 +1335,17 @@ dfs_precac_timeout(qdf_hrtimer_data_t *arg)
 				   dfs_precac_timer);
 
 	dfs_soc_obj->dfs_precac_timer_running = 0;
+	DFS_AGILE_SM_SPIN_LOCK(dfs_soc_obj);
+	if (dfs_is_agile_idx_invalid(dfs_soc_obj)) {
+	    dfs_err(NULL, WLAN_DEBUG_DFS_ALWAYS,
+		    "Invalid DFS precac index %u, num dfs priv: %u",
+		    dfs_soc_obj->cur_agile_dfs_index,
+		    dfs_soc_obj->num_dfs_privs);
+	    DFS_AGILE_SM_SPIN_UNLOCK(dfs_soc_obj);
+	    return QDF_HRTIMER_NORESTART;
+	}
 	dfs = dfs_soc_obj->dfs_priv[dfs_soc_obj->cur_agile_dfs_index].dfs;
+	DFS_AGILE_SM_SPIN_UNLOCK(dfs_soc_obj);
 
 	if (dfs_is_agile_precac_enabled(dfs)) {
 		current_time = qdf_system_ticks_to_msecs(qdf_system_ticks());
@@ -2714,7 +2724,9 @@ dfs_set_fw_adfs_support_320(struct wlan_dfs *dfs, bool fw_adfs_support_320)
 #ifdef QCA_SUPPORT_AGILE_DFS
 void dfs_reset_agile_config(struct dfs_soc_priv_obj *dfs_soc)
 {
+	DFS_AGILE_SM_SPIN_LOCK(dfs_soc);
 	dfs_soc->cur_agile_dfs_index = PCAC_DFS_INDEX_ZERO;
+	DFS_AGILE_SM_SPIN_UNLOCK(dfs_soc);
 	dfs_soc->dfs_precac_timer_running = PCAC_TIMER_NOT_RUNNING;
 	dfs_soc->precac_state_started = PRECAC_NOT_STARTED;
 	dfs_soc->ocac_status = OCAC_RESET;
