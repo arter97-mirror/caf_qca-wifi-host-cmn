@@ -1115,6 +1115,7 @@ const struct reg_domain_pair g_reg_dmn_pairs[] = {
 	{ETSI25_WORLD, ETSI25, WORLD},
 	{ETSI26_WORLD, ETSI26, WORLD},
 	{ETSI27_WORLD, ETSI27, WORLD},
+	{ETSI28_WORLD, ETSI28, WORLD},
 	{ETSI29_WORLD, ETSI29, WORLD},
 	{ETSI50_WORLD, ETSI50, WORLD},
 
@@ -2382,6 +2383,7 @@ const uint32_t reg_5g_sub_dmn_code[REG_DOMAINS_5G_MAX] = {
 	[FCC24] = 0x0B79,
 	[FCC25] = 0x0B80,
 	[ETSI1] = 0x0130,
+	[ETSI2] = 0x0230,
 	[ETSI3] = 0x0330,
 	[ETSI4] = 0x0430,
 	[ETSI8] = 0x0830,
@@ -2421,6 +2423,7 @@ const uint32_t reg_5g_sub_dmn_code[REG_DOMAINS_5G_MAX] = {
 	[APL19] = 0x1240,
 	[APL20] = 0x1250,
 	[APL23] = 0x1280,
+	[APL24] = 0x1290,
 	[APL28] = 0x1233,
 	[APL29] = 0x1234,
 	[APL30] = 0x1235,
