@@ -1415,7 +1415,8 @@ enum wmi_host_vbss_action {
  * @vdev_id: Pass Host vdev_id
  * @action: Action as defined in %wmi_host_vbss_action
  * @omn_info: OMN inormation
- * @extd_info: Extended information
+ * @extd_info: Carries pm and emlsr info
+ * @extd_info2: Carries Extended information for emlsr
  * @num_sn_tids: Number of valid TIDs' SN
  * @sn: Per TID SN values
  * @tx_pn: STA Tx PN
@@ -1429,6 +1430,7 @@ struct win_host_vbss_sta_context {
 	uint32_t action;
 	uint32_t omn_info;
 	uint32_t extd_info;
+	uint32_t extd_info2;
 	uint32_t num_sn_tids;
 	uint32_t sn[WLAN_MAX_PER_PEER_SN_TIDS];
 	uint8_t tx_pn[WLAN_MAX_TX_PN_SIZE];
