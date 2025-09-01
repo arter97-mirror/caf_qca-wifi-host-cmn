@@ -3551,8 +3551,7 @@ send_ap_suspend_cmd_tlv(wmi_unified_t wmi_handle,
 		(wmi_set_ap_suspend_resume_fixed_param));
 	cmd->vdev_id = params->vdev_id;
 	cmd->is_ap_suspend = params->suspend;
-	qdf_mem_copy(&cmd->mld_mac_address, &params->mac_addr,
-		     sizeof(wmi_mac_addr));
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->mac_addr, &cmd->mld_mac_address);
 
 	wmi_mtrace(WMI_SET_AP_SUSPEND_RESUME_CMDID, cmd->vdev_id, 0);
 	wmi_debug("vdev_id:%d is_ap_suspend:%d, mld_addr: " QDF_MAC_ADDR_FMT,
