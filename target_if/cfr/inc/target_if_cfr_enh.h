@@ -97,15 +97,15 @@
 /* Max 37 users in MU case for Waikiki */
 #define WAIKIKI_CFR_MU_USERS 37
 
-#define WAIKIKI_MAX_HEADER_LENGTH_WORDS 88
+#define WAIKIKI_MAX_HEADER_LENGTH_WORDS 90
 
 #define WAIKIKI_MAX_DATA_LENGTH_BYTES 64512
 
 /* Max size :
- * sizeof(csi_cfr_header) + 352 bytes(cfr header) + 64512 bytes(cfr payload)
+ * sizeof(csi_cfr_header) + 368 bytes(cfr header) + 64512 bytes(cfr payload)
  * where cfr_header size = rtt upload header len + freeze_tlv len +
  *                         uplink user setup info + alignment/reserved bytes
- *                       = 16bytes + 32bytes + (8bytes * 37users) + 8bytes
+ *                       = 32bytes + 32bytes + (8bytes * 37users) + 8bytes
  */
 #define STREAMFS_MAX_SUBBUF_WAIKIKI \
 	(sizeof(struct csi_cfr_header) + \
@@ -134,20 +134,20 @@
 /* Max 8 users in MU case for QCN6432 */
 #define QCN6432_CFR_MU_USERS 8
 
-/* uCode header = (14 + (max number of MU users supported *2))*4 Bytes */
-#define QCN6432_MAX_HEADER_LENGTH_WORDS 30
+/* uCode header = (16 + (max number of MU users supported *2))*4 Bytes */
+#define QCN6432_MAX_HEADER_LENGTH_WORDS 32
 
 /* Maximum number of tones that can be uploaded is 1001
  * Max data len = Num tones per stream per chain * max chains
  * max nss * size of tone
  *              = 1001 * 2 * 4 * 4 = 32032 Bytes
- * Total length = Max data len + ucode header
- *              = 32032 + 120 = 32152 Bytes
+ * Max CFR buffer length received from ucode = Max data len + ucode header
+ *					     = 32032 + 128 = 32160 Bytes
  */
-#define QCN6432_MAX_DATA_LENGTH_BYTES 32152
+#define QCN6432_MAX_DATA_LENGTH_BYTES 32032
 
 /* Max size :
- * sizeof(csi_cfr_header) + 120 bytes(ucode header) + 32152 bytes(cfr payload)
+ * sizeof(csi_cfr_header) + 128 bytes(ucode header) + 32032 bytes(cfr payload)
  */
 #define STREAMFS_MAX_SUBBUF_QCN6432 \
 	(sizeof(struct csi_cfr_header) + \
@@ -159,11 +159,15 @@
  * Considering the maximum size of CFR log size to be 8MB
  * and which should be multiple of relayFS buffer pool memory.
  *
- * Size of a relayFS buffer = csi metadata + QCN6432_MAX_DATA_LENGTH_BYTES
- *                          = 310 + 32152
- *                          = 32462 Bytes
+ * csi metadata = Host metadata + ucode header
+ *		= sizeof(csi_cfr_header) + 128 bytes
+ *		= 360 + 128 = 488 bytes
  *
- * Num of streamfs sub buffers = 4MB / 32462B
+ * Size of a relayFS buffer = csi metadata + QCN6432_MAX_DATA_LENGTH_BYTES
+ *                          = 488 + 32032
+ *                          = 32520 Bytes
+ *
+ * Num of streamfs sub buffers = 4MB / 32520B
  *                             = 128 (approax)
  */
 #define STREAMFS_NUM_SUBBUF_QCN6432 128
@@ -171,15 +175,15 @@
 /* Max 4 users in MU case for QCA5332 */
 #define QCA5332_CFR_MU_USERS 4
 
-#define QCA5332_MAX_HEADER_LENGTH_WORDS 22
+#define QCA5332_MAX_HEADER_LENGTH_WORDS 24
 
 #define QCA5332_MAX_DATA_LENGTH_BYTES 8192
 
 /* Max size :
- * sizeof(csi_cfr_header) + 88 bytes(cfr header) + 8192 bytes(cfr payload)
+ * sizeof(csi_cfr_header) + 96 bytes(cfr header) + 8192 bytes(cfr payload)
  * where cfr_header size = rtt upload header len + freeze_tlv len +
- *                         uplink user setup info + alignment/reserved bytes
- *                       = 16bytes + 32bytes + (8bytes * 4users) + 8bytes
+ *                         uplink user setup info
+ *                       = 32bytes + 32bytes + (8bytes * 4users)
  */
 #define STREAMFS_MAX_SUBBUF_QCA5332 \
 	(sizeof(struct csi_cfr_header) + \
@@ -380,6 +384,170 @@ struct whal_cfir_enhanced_hdr {
 		 rsvd3             :4;
 
 	uint16_t rsvd4;
+};
+
+/*
+ * @tag: ucode fills this with 0xBA
+ *
+ * @length: length of CFR header in words (32-bit)
+ *
+ * @upload_done: ucode sets this to 1 to indicate DMA completion
+ *
+ * @capture_type:
+ *
+ *			0 - None
+ *			1 - RTT-H (Nss = 1, Nrx)
+ *			2 - Debug-H (Nss, Nrx)
+ *			3 - Reserved
+ *			5 - RTT-H + CIR(Nss, Nrx)
+ *
+ * @preamble_type:
+ *
+ *			0 - Legacy
+ *			1 - HT
+ *			2 - VHT
+ *			3 - HE
+ *
+ * @nss:
+ *
+ *			0 - 1-stream
+ *			1 - 2-stream
+ *			..	..
+ *			7 - 8-stream
+ *
+ *@num_chains:
+ *
+ *			0 - 1-chain
+ *			1 - 2-chain
+ *			..  ..
+ *			7 - 8-chain
+ *
+ *@upload_bw_pkt:
+ *
+ *			0 - 20 MHz
+ *			1 - 40 MHz
+ *			2 - 80 MHz
+ *			3 - 160 MHz
+ *
+ * @sw_peer_id_valid: Indicates whether sw_peer_id field is valid or not,
+ * sent from MAC to PHY via the MACRX_FREEZE_CAPTURE_CHANNEL TLV
+ *
+ * @sw_peer_id: Indicates peer id based on AST search, sent from MAC to PHY
+ * via the MACRX_FREEZE_CAPTURE_CHANNEL TLV
+ *
+ * @phy_ppdu_id: sent from PHY to MAC, copied to MACRX_FREEZE_CAPTURE_CHANNEL
+ * TLV
+ *
+ * @total_bytes: Total size of CFR payload (FFT bins)
+ *
+ * @header_version:
+ *
+ *			1 - HKV2/Hastings
+ *			2 - Cypress
+ *			2 - Hasting Prime
+ *			2 - Pine
+ *			2 - Evros
+ *			2 - Hamilton
+ *			2 - Ganges
+ *			2 - Orne/Colonge
+ *			3 - Waikiki
+ *			3 - Congo
+ *
+ * @target_id:
+ *
+ *			1 - Hastings
+ *			1 - Congo
+ *			2 - Cypress
+ *			3 - Hastings Prime
+ *			4 - Pine
+ *			7 - Evros
+ *			8 - Hamilton
+ *			9 - Waikiki
+ *			12 - Ganges
+ *			14 - Orne/Colonge
+ *
+ * @cfr_fmt:
+ *
+ *			0 - raw (32-bit format)
+ *			1 - compressed (24-bit format)
+ *
+ * @mu_rx_data_incl: Indicates whether CFR header contains UL-MU-MIMO info
+ *
+ * @freeze_data_incl: Indicates whether CFR header contains
+ * MACRX_FREEZE_CAPTURE_CHANNEL TLV
+ *
+ * @freeze_tlv_version: Indicates the version of freeze_tlv
+ *			1 - HSP, Cypress, Evros
+ *			2 - Maple/Spruce/Moselle
+ *			3 - Pine
+ *
+ * @decimation_factor: FFT bins decimation
+ * @mu_rx_num_users: Number of users in UL-MU-PPDU
+ * @he_ltf_type:
+ * @ext_preamble_type:
+ * @amplitude_gain_ratio_0_3:
+ * @rescale_amt_shift_pri80:
+ * @rescale_amt_shift_sec80:
+ * @cgim_status:
+ * @cgim_filter:
+ * @phy_mode:
+ * @demf_turbo_mode:
+ * @demf_pbs_en:
+ * @leg_cfr_mode:
+ * @puncture_pattern:
+ * @pri20_location:
+ * @channel_bandwidth:
+ * @_11az_mode:
+ * @_11az_node:
+ */
+struct whal_cfir_enhanced_hdr_v3 {
+	uint16_t tag              :  8,
+		 length           :  6,
+		 rsvd1            :  2;
+
+	uint16_t upload_done        :  1,
+		 capture_type       :  3,
+		 preamble_type      :  2,
+		 nss                :  3,
+		 num_chains         :  3,
+		 upload_pkt_bw      :  3,
+		 sw_peer_id_valid   :  1;
+
+	uint16_t sw_peer_id         : 16;
+
+	uint16_t phy_ppdu_id        : 16;
+
+	uint16_t total_bytes;
+
+	uint16_t header_version     :4,
+		 target_id          :4,
+		 cfr_fmt            :1,
+		 cir_fmt            :1,
+		 mu_rx_data_incl    :1,
+		 freeze_data_incl   :1,
+		 freeze_tlv_version :4;
+	uint16_t mu_rx_num_users    :8,
+		 decimation_factor  :4,
+		 he_ltf_type        :4;
+	uint16_t ext_preamble_type  :1,
+		 rsvd2              :15;
+	uint32_t amplitude_gain_ratio_0_3;
+	uint16_t rescale_amt_shift_pri80    : 8,
+		 rescale_amt_shift_sec80    : 8;
+	uint16_t cgim_status        : 1,
+		 cgim_filter        : 1,
+		 phy_mode           : 1,
+		 demf_turbo_mode    : 1,
+		 demf_pbs_en        : 2,
+		 leg_cfr_mode       : 2,
+		 puncture_pattern   : 8;
+	uint16_t pri20_location     : 8,
+		 channel_bandwidth  : 3,
+		 _11az_mode         : 4,
+		 _11az_node         : 1;
+	uint16_t rsvd3;
+	uint16_t rsvd4;
+	uint16_t rsvd5;
 };
 
 /*

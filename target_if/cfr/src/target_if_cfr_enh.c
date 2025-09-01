@@ -475,9 +475,15 @@ static void dump_metadata(struct csi_cfr_header *header, uint32_t cookie)
 	}
 }
 
+static bool is_enh_cfr_tlv_version_v3(struct whal_cfir_enhanced_hdr *data)
+{
+	return data->header_version == UPLOAD_HEADER_VERSION_3;
+}
+
 /**
  * dump_enh_dma_hdr() - Dump enhanced DMA header populated by ucode
  * @dma_hdr: pointer to enhanced DMA header
+ * @dma_hdr_v3: pointer to enhanced DMA header v3
  * @freeze_tlv: pointer to MACRX_FREEZE_CAPTURE_CHANNEL TLV
  * @mu_rx_user_info: UPLINK_USER_SETUP_INFO TLV
  * @header: pointer to metadata passed to userspace
@@ -487,6 +493,7 @@ static void dump_metadata(struct csi_cfr_header *header, uint32_t cookie)
  * Return: none
  */
 static void dump_enh_dma_hdr(struct whal_cfir_enhanced_hdr *dma_hdr,
+			     struct whal_cfir_enhanced_hdr_v3 *dma_hdr_v3,
 			     void *freeze_tlv, void *mu_rx_user_info,
 			     struct csi_cfr_header *header, int error,
 			     uint32_t cookie)
@@ -528,6 +535,68 @@ static void dump_enh_dma_hdr(struct whal_cfir_enhanced_hdr *dma_hdr,
 				  dma_hdr->rsvd3,
 				  dma_hdr->rsvd4);
 
+		} else if (dma_hdr->header_version == UPLOAD_HEADER_VERSION_3) {
+			cfr_debug("<DBRCOMP><%u>\n"
+				  "Tag: 0x%02x Length: %d udone: %d\n"
+				  "ctype: %d preamble: %d Nss: %d\n"
+				  "num_chains: %d bw: %d peervalid: %d\n"
+				  "peer_id: %d ppdu_id: 0x%04x\n"
+				  "total_bytes: %d header_version: %d\n"
+				  "target_id: %d cfr_fmt: %d cir_fmt: %d\n"
+				  "mu_rx_data_incl: %d freeze_data_incl: %d\n"
+				  "mu_rx_num_users: %d decimation_factor: %d\n"
+				  "freeze_tlv_version: %d\n"
+				  "he_ltf_type: %u ext_preamble_type = %u\n"
+				  "rsvd2: %d  amplitude_gain_ratio_0_3: %u\n"
+				  "rescale_amt_shift: pri80: %d  sec80: %d\n"
+				  "cgim_status: %d  cgim_filter: %d  phy_mode: %d\n",
+				  cookie,
+				  dma_hdr->tag,
+				  dma_hdr_v3->length,
+				  dma_hdr_v3->upload_done,
+				  dma_hdr_v3->capture_type,
+				  dma_hdr_v3->preamble_type,
+				  dma_hdr_v3->nss,
+				  dma_hdr_v3->num_chains,
+				  dma_hdr_v3->upload_pkt_bw,
+				  dma_hdr_v3->sw_peer_id_valid,
+				  dma_hdr_v3->sw_peer_id,
+				  dma_hdr_v3->phy_ppdu_id,
+				  dma_hdr_v3->total_bytes,
+				  dma_hdr_v3->header_version,
+				  dma_hdr_v3->target_id,
+				  dma_hdr_v3->cfr_fmt,
+				  dma_hdr_v3->cir_fmt,
+				  dma_hdr_v3->mu_rx_data_incl,
+				  dma_hdr_v3->freeze_data_incl,
+				  dma_hdr_v3->mu_rx_num_users,
+				  dma_hdr_v3->decimation_factor,
+				  dma_hdr_v3->freeze_tlv_version,
+				  dma_hdr_v3->he_ltf_type,
+				  dma_hdr_v3->ext_preamble_type,
+				  dma_hdr_v3->rsvd2,
+				  dma_hdr_v3->amplitude_gain_ratio_0_3,
+				  dma_hdr_v3->rescale_amt_shift_pri80,
+				  dma_hdr_v3->rescale_amt_shift_sec80,
+				  dma_hdr_v3->cgim_status,
+				  dma_hdr_v3->cgim_filter,
+				  dma_hdr_v3->phy_mode);
+			cfr_debug("demf_turbo_mode: %d  demf_pbs_en: %d\n"
+				  "leg_cfr_mode: %d  puncture_pattern: %d\n"
+				  "pri20_location: %d  channel_bw: %d\n"
+				  "_11az_mode: %d  _11az_node: %d\n"
+				  "rsvd3: %u  rsvd4: %u  rsvd5: %u\n",
+				  dma_hdr_v3->demf_turbo_mode,
+				  dma_hdr_v3->demf_pbs_en,
+				  dma_hdr_v3->leg_cfr_mode,
+				  dma_hdr_v3->puncture_pattern,
+				  dma_hdr_v3->pri20_location,
+				  dma_hdr_v3->channel_bandwidth,
+				  dma_hdr_v3->_11az_mode,
+				  dma_hdr_v3->_11az_node,
+				  dma_hdr_v3->rsvd3,
+				  dma_hdr_v3->rsvd4,
+				  dma_hdr_v3->rsvd5);
 		} else {
 			cfr_debug("<DBRCOMP><%u>\n"
 				  "Tag: 0x%02x Length: %d udone: %d\n"
@@ -573,13 +642,15 @@ static void dump_enh_dma_hdr(struct whal_cfir_enhanced_hdr *dma_hdr,
 				dump_freeze_tlv(freeze_tlv, cookie);
 		}
 
-		if ((dma_hdr->mu_rx_data_incl) &&
-		    (dma_hdr->freeze_tlv_version ==
-		     MACRX_FREEZE_TLV_VERSION_5)) {
+		if (dma_hdr->mu_rx_data_incl &&
+		    dma_hdr->freeze_tlv_version ==
+		    MACRX_FREEZE_TLV_VERSION_5) {
 			dump_mu_rx_info_v2(mu_rx_user_info,
 					   dma_hdr->mu_rx_num_users,
 					   cookie);
-		} else if (dma_hdr->mu_rx_data_incl) {
+		}
+
+		if (dma_hdr->mu_rx_data_incl) {
 			dump_mu_rx_info(mu_rx_user_info,
 					dma_hdr->mu_rx_num_users,
 					cookie);
@@ -1406,6 +1477,7 @@ static bool enh_cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 	uint8_t *data = NULL;
 	uint32_t cookie = 0;
 	struct whal_cfir_enhanced_hdr dma_hdr = {0};
+	struct whal_cfir_enhanced_hdr_v3 dma_hdr_v3 = {0};
 	int  length, status = 0;
 	struct wlan_objmgr_psoc *psoc;
 	struct pdev_cfr *pcfr;
@@ -1455,8 +1527,15 @@ static bool enh_cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 
 	qdf_mem_copy(&dma_hdr, &data[0],
 		     sizeof(struct whal_cfir_enhanced_hdr));
+	if (is_enh_cfr_tlv_version_v3(&dma_hdr))
+		/* Let's use header version_3 */
+		qdf_mem_copy(&dma_hdr_v3, &data[0],
+			     sizeof(struct whal_cfir_enhanced_hdr_v3));
 
-	if (dma_hdr.freeze_data_incl) {
+	if (dma_hdr.freeze_data_incl && is_enh_cfr_tlv_version_v3(&dma_hdr)) {
+		freeze_tlv = data + sizeof(struct whal_cfir_enhanced_hdr_v3);
+		capture_type = freeze_reason_to_capture_type(freeze_tlv);
+	} else if (dma_hdr.freeze_data_incl) {
 		freeze_tlv = data + sizeof(struct whal_cfir_enhanced_hdr);
 		capture_type = freeze_reason_to_capture_type(freeze_tlv);
 	}
@@ -1475,9 +1554,16 @@ static bool enh_cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 			freeze_tlv_len =
 				sizeof(struct macrx_freeze_capture_channel);
 		}
-		mu_rx_user_info = data +
+
+		if (is_enh_cfr_tlv_version_v3(&dma_hdr))
+			mu_rx_user_info = data +
+			sizeof(struct whal_cfir_enhanced_hdr_v3) +
+			(dma_hdr_v3.freeze_data_incl ? freeze_tlv_len : 0);
+		else
+			mu_rx_user_info = data +
 			sizeof(struct whal_cfir_enhanced_hdr) +
 			(dma_hdr.freeze_data_incl ? freeze_tlv_len : 0);
+
 	}
 
 	length  = dma_hdr.length * 4;
@@ -1522,10 +1608,10 @@ static bool enh_cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 		}
 	}
 
-	if (dma_hdr.freeze_data_incl) {
-		dump_enh_dma_hdr(&dma_hdr, freeze_tlv, mu_rx_user_info,
+	if (dma_hdr.freeze_data_incl)
+		dump_enh_dma_hdr(&dma_hdr, &dma_hdr_v3,
+				 freeze_tlv, mu_rx_user_info,
 				 header, 0, cookie);
-	}
 
 	/* Populate LUT and info_v3 fields before correlation */
 	if (is_enh_cfr_tlv_version_v3(&dma_hdr)) {
