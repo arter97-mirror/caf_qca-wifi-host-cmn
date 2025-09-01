@@ -585,6 +585,19 @@ osif_cm_roam_rt_stats_evt_cb(struct roam_stats_event *roam_stats,
 		osif_cm_legacy_ops->roam_rt_stats_event_cb(roam_stats, idx);
 }
 
+/*
+ * osif_cm_roam_complete_cb() - Callback to complete the roaming
+ * @vdev: pointer to vdev object
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS osif_cm_roam_complete_cb(struct wlan_objmgr_vdev *vdev)
+{
+	if (osif_cm_legacy_ops && osif_cm_legacy_ops->roam_complete_notify_cb)
+		osif_cm_legacy_ops->roam_complete_notify_cb(vdev);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
@@ -756,14 +769,6 @@ void osif_cm_connect_active_notify(uint8_t vdev_id)
 {
 	if (osif_cm_legacy_ops && osif_cm_legacy_ops->connect_active_notify_cb)
 		osif_cm_legacy_ops->connect_active_notify_cb(vdev_id);
-}
-
-QDF_STATUS osif_cm_roam_complete_cb(struct wlan_objmgr_vdev *vdev)
-{
-	if (osif_cm_legacy_ops && osif_cm_legacy_ops->roam_complete_notify_cb)
-		osif_cm_legacy_ops->roam_complete_notify_cb(vdev);
-
-	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS osif_cm_connect_comp_ind(struct wlan_objmgr_vdev *vdev,

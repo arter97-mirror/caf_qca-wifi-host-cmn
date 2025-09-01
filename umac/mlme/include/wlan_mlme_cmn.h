@@ -890,14 +890,6 @@ QDF_STATUS mlme_ext_hdl_get_acs_in_progress(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS mlme_cm_osif_connect_complete(struct wlan_objmgr_vdev *vdev,
 					 struct wlan_cm_connect_resp *rsp);
 
-/*
- * mlme_cm_osif_roam_connect_complete() - Roaming complete resp to osif
- * @vdev: pointer to vdev object
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev);
-
 /**
  * mlme_cm_osif_failed_candidate_ind() - Failed Candidate indication to osif
  * @vdev: vdev pointer
@@ -1043,6 +1035,20 @@ QDF_STATUS
 mlme_cm_osif_roam_get_scan_params(struct wlan_objmgr_vdev *vdev,
 				  struct element_info *scan_ie,
 				  enum dot11_mode_filter *dot11mode_filter);
+
+/*
+ * mlme_cm_osif_roam_connect_complete() - Roaming complete resp to osif
+ * @vdev: pointer to vdev object
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev);
+#else
+static inline QDF_STATUS
+mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev)
+{
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
