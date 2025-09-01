@@ -23,6 +23,7 @@
 #include <dp_htt.h>
 #include <dp_mon.h>
 #include <dp_rx_mon.h>
+#include "dp_rings.h"
 #include <dp_internal.h>
 #include "htt_ppdu_stats.h"
 #include "dp_cal_client_api.h"
@@ -55,6 +56,56 @@
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 #define MAX_STRING_LEN_PER_FIELD 6
 #define DP_UNDECODED_ERR_LENGTH (MAX_STRING_LEN_PER_FIELD * CDP_PHYRX_ERR_MAX)
+#endif
+
+#ifdef BORON_MONITOR
+/**
+ * dp_mon_dest_ring_enable() - Enable/Disable RXDMA2SW ring for
+ *                             monitor destination
+ * @pdev: pointer to pdev
+ * @is_enable: true - enable dest ring, false - disable dest ring
+ *
+ * For monitor mode, repurpose RXDMA2FWREO rings to RXDMA2SW as
+ * monitor destination ring.
+ *
+ * Return: none
+ */
+static void dp_mon_dest_ring_enable(struct dp_pdev *pdev, bool is_enable)
+{
+	int mac_id, lmac_id;
+	int mac_for_pdev;
+	struct dp_soc *soc = pdev->soc;
+
+	if (!soc->rxdma2sw_rings_not_supported ||
+	    !soc->repurpose_to_rxdma2sw_supported) {
+		dp_err("Monitor dest ring not support repurposing");
+		return;
+	}
+
+	for (mac_id = 0; mac_id <
+		soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev; mac_id++) {
+		/* Reset host SW HP/TP to 0 */
+		if (is_enable)
+			hal_srng_dst_reset_sw_hp_tp(
+				soc->rxdma_err_dst_ring[mac_id].hal_srng);
+
+		hal_srng_flag_update(soc->rxdma_err_dst_ring[mac_id].hal_srng,
+				     HAL_SRNG_HOST_MEM_BASE_DISABLE,
+				     !is_enable);
+		mac_for_pdev = dp_get_mac_id_for_pdev(mac_id, pdev->pdev_id);
+		lmac_id = dp_get_lmac_id_for_pdev_id(soc, mac_id,
+						     pdev->pdev_id);
+
+		dp_htt_setup_rxdma_err_dst_ring(soc,
+						mac_for_pdev, lmac_id);
+	}
+
+	soc->repurpose_to_rxdma2sw_done = is_enable;
+}
+#else
+static void dp_mon_dest_ring_enable(struct dp_pdev *pdev, bool is_enable)
+{
+}
 #endif
 
 #ifdef DP_TX_MON_BUF_RING_HISTORY
@@ -338,6 +389,10 @@ QDF_STATUS dp_reset_monitor_mode_unlock(struct cdp_soc_t *soc_hdl,
 	}
 
 	mon_pdev->monitor_configured = false;
+
+	/* Disable monitor destination ring */
+	if (!dp_mon_mode_local_pkt_capture(soc))
+		dp_mon_dest_ring_enable(pdev, false);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -638,6 +693,8 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 						  DP_FULL_MON_ENABLE);
 
 	if (!dp_mon_mode_local_pkt_capture(soc)) {
+		/* Setup the monitor destination ring */
+		dp_mon_dest_ring_enable(pdev, true);
 		dp_mon_filter_setup_mon_mode(pdev);
 		status = dp_mon_filter_update(pdev);
 	}

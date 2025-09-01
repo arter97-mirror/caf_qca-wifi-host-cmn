@@ -2093,7 +2093,9 @@ void hal_get_srng_params(hal_soc_handle_t hal_soc_hdl,
 	ring_params->ring_dir = srng->ring_dir;
 	ring_params->entry_size = srng->entry_size;
 
-	ring_params->ring_base_paddr = srng->ring_base_paddr;
+	ring_params->ring_base_paddr =
+		(srng->flags & HAL_SRNG_HOST_MEM_BASE_DISABLE) ?
+				0 : srng->ring_base_paddr;
 	ring_params->ring_base_vaddr = srng->ring_base_vaddr;
 	ring_params->num_entries = srng->num_entries;
 	ring_params->msi_addr = srng->msi_addr;

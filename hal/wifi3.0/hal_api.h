@@ -1027,6 +1027,7 @@ void hal_detach(void *hal_soc);
 
 #define HAL_SRNG_LMAC_RING 0x80000000
 /* SRNG flags passed in hal_srng_params.flags */
+#define HAL_SRNG_HOST_MEM_BASE_DISABLE		0x00000004
 #define HAL_SRNG_MSI_SWAP				0x00000008
 #define HAL_SRNG_RING_PTR_SWAP			0x00000010
 #define HAL_SRNG_DATA_TLV_SWAP			0x00000020
@@ -1458,6 +1459,52 @@ void *hal_srng_dst_peek(hal_soc_handle_t hal_soc_hdl,
 	return NULL;
 }
 
+/**
+ * hal_srng_flag_update() - Update ring flags
+ * @hal_ring_hdl: Ring pointer (Source or Destination ring)
+ * @flag: flag to set/reset
+ * @is_set: set/reset flag
+ *
+ * If is_set is true, then set the flag, else reset it.
+ *
+ * Return: void
+ */
+static inline
+void hal_srng_flag_update(hal_ring_handle_t hal_ring_hdl,
+			  uint32_t flag,
+			  bool is_set)
+{
+	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
+
+	if (is_set)
+		srng->flags |= flag;
+	else
+		srng->flags &= ~flag;
+}
+
+/**
+ * hal_srng_dst_reset_sw_hp_tp() - Reset destination ring SW head and
+ *                                 tail pointers
+ * @hal_ring_hdl: Ring pointer (Destination ring)
+ *
+ * Reset destination ring SW head and tail pointers
+ *
+ * Return: void
+ */
+static inline
+void hal_srng_dst_reset_sw_hp_tp(hal_ring_handle_t hal_ring_hdl)
+{
+	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
+
+	SRNG_LOCK(&srng->lock);
+	srng->u.dst_ring.cached_hp = 0;
+	srng->u.dst_ring.tp = 0;
+	if (srng->flags & HAL_SRNG_LMAC_RING)
+		*srng->u.dst_ring.tp_addr =
+				qdf_cpu_to_le32(srng->u.dst_ring.tp);
+
+	SRNG_UNLOCK(&srng->lock);
+}
 
 /**
  * hal_mem_dma_cache_sync() - Cache sync the specified virtual address Range
