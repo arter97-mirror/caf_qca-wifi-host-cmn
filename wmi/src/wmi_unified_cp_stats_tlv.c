@@ -614,7 +614,8 @@ prepare_infra_cp_stats_buf(wmi_unified_t wmi_handle,
 	for (index = 0; index < num_vdev_ids; index++)
 		vdev_id_array[index] = stats_req->vdev_id[index];
 
-	for (index = 0; index < num_mac_addr_list; index++) {
+	for (index = 0; index < num_mac_addr_list &&
+	     index < CTRL_PATH_STATS_MAX_MAC_ADDR; index++) {
 		qdf_mem_copy(mac_addr_array, stats_req->peer_mac_addr[index],
 			     QDF_MAC_ADDR_SIZE);
 		mac_addr_array += QDF_MAC_ADDR_SIZE;
