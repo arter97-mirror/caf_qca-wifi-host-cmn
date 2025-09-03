@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -50,7 +50,17 @@
 	((uint32_t)(((unsigned long long)(mon_desc) & DP_MON_DESC_COOKIE_MASK) \
 	>> DP_MON_DESC_COOKIE_LSB))
 
-#define DP_MON_DESC_64B_PTR_SZ 8
+#ifdef DP_RX_MON_DESC_64_BIT
+#define  DP_MON_GET_DESC(mon_desc) \
+	((struct dp_mon_desc *)(uintptr_t)(((unsigned long long)(mon_desc) & \
+	DP_MON_DESC_ADDR_MASK) | ((unsigned long long)DP_MON_DESC_FIXED_ADDR)))
+
+#else
+#define  DP_MON_GET_DESC(mon_desc) \
+	((struct dp_mon_desc *)(uintptr_t)(((unsigned long)(mon_desc) & \
+	DP_MON_DESC_ADDR_MASK)))
+#endif
+
 #define DP_MON_DECAP_FORMAT_INVALID 0xff
 #define DP_MON_MIN_FRAGS_FOR_RESTITCH 2
 
@@ -676,6 +686,7 @@ QDF_STATUS
 dp_disable_enhanced_stats_2_0(struct cdp_soc_t *soc, uint8_t pdev_id);
 #endif /* QCA_ENHANCED_STATS_SUPPORT */
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 static inline unsigned long long
 dp_mon_get_debug_desc_addr(union dp_mon_desc_list_elem_t **desc_list)
 {
@@ -686,22 +697,12 @@ dp_mon_get_debug_desc_addr(union dp_mon_desc_list_elem_t **desc_list)
 	desc = (desc | ((unsigned long long)(*desc_list)->mon_desc.cookie_2 << DP_MON_DESC_ADDR_SHIFT));
 	return desc;
 }
-
-/**
- * dp_mon_get_desc_addr() - Get desc addr from debug addr
- * @desc: debug desc addr
- *
- * Return: SW desc addr
- */
-static inline struct dp_mon_desc*
-dp_mon_get_desc_addr(unsigned long long desc)
+#else
+static inline unsigned long long
+dp_mon_get_debug_desc_addr(union dp_mon_desc_list_elem_t **desc_list)
 {
-	if (sizeof(void *) == DP_MON_DESC_64B_PTR_SZ) {
-		return ((struct dp_mon_desc *)(uintptr_t)(((unsigned long long)(desc) &
-						DP_MON_DESC_ADDR_MASK) | ((unsigned long long)DP_MON_DESC_FIXED_ADDR)));
-	} else {
-		return ((struct dp_mon_desc *)(uintptr_t)(((unsigned long)(desc) &
-						DP_MON_DESC_ADDR_MASK)));
-	}
+	unsigned long long desc = (unsigned long long)&((*desc_list)->mon_desc);
+	return desc;
 }
+#endif
 #endif /* _DP_MON_2_0_H_ */
