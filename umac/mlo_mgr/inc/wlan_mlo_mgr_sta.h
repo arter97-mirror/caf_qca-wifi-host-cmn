@@ -1395,11 +1395,12 @@ uint8_t mlo_get_ml_links_info(struct wlan_objmgr_psoc *psoc,
 			      uint8_t vdev_id,
 			      struct ml_link_info *link_info);
 /**
- * mlo_mgr_flush_connected_profile_scan_entry: Flush connect profile scan entry
+ * mlo_mgr_flush_connected_profile_scan_entry: Flush local entries of connected
+ * ssid
  * @vdev: Pointer to the vdev object manager
  *
  * This function is used to flush (remove or invalidate) the scan entry
- * corresponding to the currently connected profile for the given vdev.
+ * corresponding to the currently connected ssid profile.
  * This is necessary to ensure that stale or incorrect scan information is
  * removed, especially in scenarios like MLO reconfig or disconnections,
  * where the network topology or link capabilities might change.

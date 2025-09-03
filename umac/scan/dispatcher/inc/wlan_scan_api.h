@@ -562,18 +562,6 @@ struct scan_cache_entry *
 wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 			     struct qdf_mac_addr *bssid);
 
-/*
- * wlan_scan_is_locally_generated_entry() - Function to check
- * if bss entry is a locally generated scan entry
- * @pdev: pdev object
- * @bssid: bssid/link mac of the interface
- *
- * Return : true if scan entry is locally generated; false otherwise
- */
-bool
-wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
-				     struct qdf_mac_addr *bssid);
-
 /**
  * wlan_scan_get_mld_addr_by_link_addr() - Function to get MLD address
  * in the scan entry from the link BSSID.

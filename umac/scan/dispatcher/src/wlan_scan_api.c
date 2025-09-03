@@ -895,31 +895,6 @@ wlan_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 	return scm_scan_get_entry_by_bssid(pdev, bssid);
 }
 
-bool wlan_scan_is_locally_generated_entry(struct wlan_objmgr_pdev *pdev,
-					  struct qdf_mac_addr *bssid)
-{
-	struct scan_cache_entry *entry = NULL;
-	bool status = true;
-
-	if (qdf_is_macaddr_zero(bssid))
-		return false;
-
-	/* check if scan entry locally generated */
-	entry = wlan_scan_get_entry_by_bssid(pdev, bssid);
-	if (!entry)
-		return false;
-
-	if (!entry->is_gen_entry)
-		status = false;
-	else
-		scm_debug(QDF_MAC_ADDR_FMT ": Flushing the candidate scan entry",
-			  QDF_MAC_ADDR_REF(bssid->bytes));
-
-	util_scan_free_cache_entry(entry);
-
-	return status;
-}
-
 QDF_STATUS
 wlan_scan_get_mld_addr_by_link_addr(struct wlan_objmgr_pdev *pdev,
 				    struct qdf_mac_addr *link_addr,
