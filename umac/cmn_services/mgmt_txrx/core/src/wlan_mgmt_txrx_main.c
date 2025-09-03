@@ -1892,8 +1892,10 @@ QDF_STATUS wlan_mgmt_txrx_rx_frame_handler(
 				mgmt_rx_params->tsf_delta,
 				wh->i_fc[1] & IEEE80211_FC1_RETRY);
 
-		if (mgmt_txrx_frame_is_duplicate(psoc, wh, frm_type))
+		if (mgmt_txrx_frame_is_duplicate(psoc, wh, frm_type)) {
+			qdf_nbuf_free(buf);
 			return QDF_STATUS_E_FAILURE;
+		}
 	}
 
 	/* Print a hexdump of packet for host debug */
@@ -1918,8 +1920,10 @@ QDF_STATUS wlan_mgmt_txrx_rx_frame_handler(
 				   QDF_TRACE_LEVEL_DEBUG, data, buflen);
 	}
 
-	if (simulation_frame_update(psoc, buf, mgmt_rx_params))
+	if (simulation_frame_update(psoc, buf, mgmt_rx_params)) {
+		qdf_nbuf_free(buf);
 		return QDF_STATUS_E_FAILURE;
+	}
 
 	mgmt_txrx_psoc_ctx = (struct mgmt_txrx_priv_psoc_context *)
 			wlan_objmgr_psoc_get_comp_private_obj(psoc,
