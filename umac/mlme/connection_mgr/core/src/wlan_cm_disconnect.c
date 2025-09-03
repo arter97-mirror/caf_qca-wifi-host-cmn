@@ -33,6 +33,7 @@
 #include <wlan_mlo_mgr_peer.h>
 #endif
 #include <wlan_mlo_mgr_link_switch.h>
+#include "wlan_mlo_mgr_roam.h"
 
 void cm_send_disconnect_resp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id)
 {
@@ -457,6 +458,11 @@ cm_disconnect_continue_after_rso_stop(struct wlan_objmgr_vdev *vdev,
 	QDF_STATUS status;
 	struct qdf_mac_addr bssid = QDF_MAC_ADDR_ZERO_INIT;
 	struct cnx_mgr *cm_ctx = cm_get_cm_ctx(vdev);
+
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
+	    req->req.source != CM_MLO_ROAM_INTERNAL_DISCONNECT &&
+	    req->req.source != CM_MLO_LINK_SWITCH_DISCONNECT)
+		cm_delete_crypto_keys_for_all_links(vdev);
 
 	if (!cm_ctx)
 		return QDF_STATUS_E_INVAL;
