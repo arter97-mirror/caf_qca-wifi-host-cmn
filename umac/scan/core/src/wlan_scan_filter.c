@@ -1190,5 +1190,8 @@ bool scm_filter_match(struct wlan_objmgr_psoc *psoc,
 	}
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_SCAN_ID);
 
+	if (!util_is_local_generated_entry(filter->flush_local_gen, db_entry))
+		return false;
+
 	return true;
 }
