@@ -576,7 +576,7 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 	uint16_t sap_peer_count = 0;
 	uint16_t go_peer_count = 0;
 	struct wlan_objmgr_pdev *pdev;
-	bool nandisc_present, ll_lt_ap_present;
+	bool nandisc_present;
 
 	psoc = wlan_vdev_get_psoc(vdev);
 	pdev = wlan_vdev_get_pdev(vdev);
@@ -586,9 +586,6 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 
 	ap_present = policy_mgr_mode_specific_connection_count(
 				psoc, PM_SAP_MODE, NULL);
-	ll_lt_ap_present = policy_mgr_mode_specific_connection_count(psoc,
-								     PM_LL_LT_SAP_MODE,
-								     NULL);
 	go_present = policy_mgr_mode_specific_connection_count(
 				psoc, PM_P2P_GO_MODE, NULL);
 	p2p_cli_present = policy_mgr_mode_specific_connection_count(
@@ -614,9 +611,8 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 	if (sta_active || p2p_cli_present ||
 	    (ap_present && sap_peer_count) ||
 	    (go_present && go_peer_count) ||
-	    ndi_present || nandisc_present ||
-	    ll_lt_ap_present) {
-		if (!req->scan_req.scan_f_passive) {
+	    ndi_present || nandisc_present) {
+		if (!req->scan_req.scan_f_passive)
 			req->scan_req.dwell_time_active =
 				scan_obj->scan_def.conc_active_dwell;
 		req->scan_req.dwell_time_passive =
