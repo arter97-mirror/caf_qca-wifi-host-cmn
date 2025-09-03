@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -861,7 +861,7 @@ dp_rx_mon_handle_mon_buf_addr(struct dp_pdev *pdev,
 		rx_hdr_valid = false;
 
 	cookie_2 = DP_MON_GET_COOKIE(desc);
-	mon_desc = dp_mon_get_desc_addr(desc);
+	mon_desc = DP_MON_GET_DESC(desc);
 	qdf_assert_always(mon_desc);
 
 	if (mon_desc->cookie_2 != cookie_2) {
@@ -1952,7 +1952,7 @@ dp_rx_mon_flush_packet_tlv(struct dp_pdev *pdev, void *buf, uint16_t end_offset,
 			unsigned long long desc = ppdu_info->packet_info.sw_cookie;
 
 			cookie_2 = DP_MON_GET_COOKIE(desc);
-			mon_desc = dp_mon_get_desc_addr(desc);
+			mon_desc = DP_MON_GET_DESC(desc);
 
 			qdf_assert_always(mon_desc);
 
@@ -2642,7 +2642,7 @@ dp_rx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 		}
 		desc = hal_mon_rx_desc.buf_addr;
 		cookie_2 = DP_MON_GET_COOKIE(desc);
-		mon_desc = dp_mon_get_desc_addr(desc);
+		mon_desc = DP_MON_GET_DESC(desc);
 
 		qdf_assert_always(mon_desc);
 
