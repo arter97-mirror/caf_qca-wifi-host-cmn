@@ -1925,7 +1925,6 @@ dp_rx_mon_flush_packet_tlv(struct dp_pdev *pdev, void *buf, uint16_t end_offset,
 	uint8_t *rx_tlv_start;
 	uint16_t tlv_status = HAL_TLV_STATUS_BUF_DONE;
 	struct hal_rx_ppdu_info *ppdu_info;
-	uint32_t cookie_2;
 	uint8_t mac_id = 0;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
 
@@ -1948,19 +1947,9 @@ dp_rx_mon_flush_packet_tlv(struct dp_pdev *pdev, void *buf, uint16_t end_offset,
 							buf);
 
 		if (tlv_status == HAL_TLV_STATUS_MON_BUF_ADDR) {
-			struct dp_mon_desc *mon_desc;
-			unsigned long long desc = ppdu_info->packet_info.sw_cookie;
-
-			cookie_2 = DP_MON_GET_COOKIE(desc);
-			mon_desc = DP_MON_GET_DESC(desc);
+			struct dp_mon_desc *mon_desc = (struct dp_mon_desc *)(uintptr_t)ppdu_info->packet_info.sw_cookie;
 
 			qdf_assert_always(mon_desc);
-
-			if (mon_desc->cookie_2 != cookie_2) {
-				mon_mac->rx_mon_stats.dup_mon_sw_desc++;
-				qdf_err("duplicate cookie found mon_desc:%pK", mon_desc);
-				qdf_assert_always(0);
-			}
 
 			/* WAR: sometimes duplicate pkt desc are received
 			 * from HW, this check gracefully handles
@@ -2591,7 +2580,6 @@ dp_rx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 	uint32_t work_done = 0;
 	struct hal_rx_ppdu_info *ppdu_info = NULL;
 	QDF_STATUS status;
-	uint32_t cookie_2;
 	struct dp_mon_mac *mon_mac;
 
 	if (!pdev || !hal_soc) {
@@ -2625,7 +2613,6 @@ dp_rx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 				&& quota--)) {
 		struct hal_mon_desc hal_mon_rx_desc = {0};
 		struct dp_mon_desc *mon_desc;
-		unsigned long long desc;
 		hal_be_get_mon_dest_status(soc->hal_soc,
 					   rx_mon_dst_ring_desc,
 					   &hal_mon_rx_desc);
@@ -2640,17 +2627,8 @@ dp_rx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 			dp_rx_mon_update_drop_cnt(mon_mac, &hal_mon_rx_desc);
 			continue;
 		}
-		desc = hal_mon_rx_desc.buf_addr;
-		cookie_2 = DP_MON_GET_COOKIE(desc);
-		mon_desc = DP_MON_GET_DESC(desc);
-
+		mon_desc = (struct dp_mon_desc *)(uintptr_t)(hal_mon_rx_desc.buf_addr);
 		qdf_assert_always(mon_desc);
-
-		if (mon_desc->cookie_2 != cookie_2) {
-			mon_mac->rx_mon_stats.dup_mon_sw_desc++;
-			qdf_err("duplicate cookie found mon_desc:%pK", mon_desc);
-			qdf_assert_always(0);
-		}
 
 		if ((mon_desc == mon_pdev_be->prev_rxmon_desc) &&
 		    (mon_desc->cookie == mon_pdev_be->prev_rxmon_cookie)) {

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -920,7 +920,6 @@ dp_mon_buffers_replenish(struct dp_soc *dp_soc,
 	void *mon_ring_entry;
 	union dp_mon_desc_list_elem_t *next;
 	void *mon_srng;
-	unsigned long long desc;
 	QDF_STATUS ret = QDF_STATUS_E_FAILURE;
 	struct dp_mon_soc *mon_soc = dp_soc->monitor_soc;
 
@@ -1009,17 +1008,12 @@ dp_mon_buffers_replenish(struct dp_soc *dp_soc,
 		(*desc_list)->mon_desc.buf_addr = mon_desc.buf_addr;
 		(*desc_list)->mon_desc.paddr = mon_desc.paddr;
 		(*desc_list)->mon_desc.magic = DP_MON_DESC_MAGIC;
-		(*desc_list)->mon_desc.cookie_2++;
 
 		mon_soc->stats.frag_alloc++;
 
-		/* populate lower 40 bit mon_desc address in desc
-		 * and cookie_2 in upper 24 bits
-		 */
-		desc = dp_mon_get_debug_desc_addr(desc_list);
 		hal_mon_buff_addr_info_set(dp_soc->hal_soc,
 					   mon_ring_entry,
-					   desc,
+					   &((*desc_list)->mon_desc),
 					   mon_desc.paddr);
 
 		*desc_list = next;
