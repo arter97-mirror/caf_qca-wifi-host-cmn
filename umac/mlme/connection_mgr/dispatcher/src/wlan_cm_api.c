@@ -24,6 +24,7 @@
 #include <wlan_cm_api.h>
 #include "connection_mgr/core/src/wlan_cm_main_api.h"
 #include "connection_mgr/core/src/wlan_cm_roam.h"
+#include <wlan_mlme_api.h>
 #include <wlan_vdev_mgr_utils_api.h>
 #ifdef WLAN_FEATURE_11BE_MLO
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
@@ -601,6 +602,14 @@ QDF_STATUS wlan_cm_sta_update_bw_puncture(struct wlan_objmgr_vdev *vdev,
 		   des_chan->ch_cfreq1, des_chan->ch_cfreq2);
 	QDF_SET_BITS(bw_puncture, 0, 8, des_chan->ch_width);
 	QDF_SET_BITS(bw_puncture, 8, 16, des_chan->puncture_bitmap);
+
+	if (wlan_mlme_update_cur_ch_width(vdev,
+					  des_chan->ch_width, true) !=
+					  QDF_STATUS_SUCCESS) {
+		mlme_err("Failed to update chwidth %d", des_chan->ch_width);
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	return wlan_util_vdev_peer_set_param_send(vdev, peer_mac,
 						  WLAN_MLME_PEER_BW_PUNCTURE,
 						  bw_puncture);
