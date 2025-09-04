@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -898,6 +898,25 @@ cdp_ipa_pcie_link_down(ol_txrx_soc_handle soc)
 		soc->ops->ipa_ops->ipa_pcie_link_down(soc);
 
 	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * cdp_ipa_dump_ring_hp_tp() - dump hp-tp values of IPA and error ring
+ * @soc: data path soc handle
+ *
+ * Return:
+ */
+static inline void
+cdp_ipa_dump_ring_hp_tp(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return;
+	}
+
+	if (soc->ops->ipa_ops->ipa_dump_ring_hp_tp)
+		soc->ops->ipa_ops->ipa_dump_ring_hp_tp(soc);
 }
 #endif
 

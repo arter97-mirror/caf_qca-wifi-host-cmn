@@ -373,6 +373,7 @@ scm_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
  * @pdev: pdev object
  * @bssid: bssid to be fetched from scan db
  * @vdev_id: vdev id
+ * @ch_freq: channel frequency
  *
  * This API returns the scan entry with proper security_info.
  *
@@ -381,7 +382,8 @@ scm_scan_get_entry_by_bssid(struct wlan_objmgr_pdev *pdev,
 struct scan_cache_entry *
 scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 					 struct qdf_mac_addr *bssid,
-					 uint8_t vdev_id);
+					 uint8_t vdev_id,
+					 qdf_freq_t ch_freq);
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**

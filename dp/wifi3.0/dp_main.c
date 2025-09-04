@@ -15047,6 +15047,7 @@ static struct cdp_ipa_ops dp_ops_ipa = {
 	.ipa_tx_opt_dp_ctrl_pkt = dp_ipa_tx_opt_dp_ctrl_pkt,
 	.ipa_pcie_link_up = dp_ipa_pcie_link_up,
 	.ipa_pcie_link_down = dp_ipa_pcie_link_down,
+	.ipa_dump_ring_hp_tp = dp_ipa_dump_ring_hp_tp,
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	.ipa_opt_dp_ctrl_debug_enable = dp_ipa_opt_dp_ctrl_debug_enable,
 #endif

@@ -1576,6 +1576,17 @@ void hal_srng_dst_set_hp_paddr_confirm(struct hal_srng *srng, uint64_t paddr)
 
 qdf_export_symbol(hal_srng_dst_set_hp_paddr_confirm);
 
+void hal_srng_dst_get_hp_paddr(struct hal_srng *srng, uint64_t *headp)
+{
+	uint32_t lsb, msb;
+
+	lsb = SRNG_DST_REG_READ(srng, HP_ADDR_LSB);
+	msb = SRNG_DST_REG_READ(srng, HP_ADDR_MSB);
+	*headp = ((uint64_t)msb) << 32 | lsb;
+}
+
+qdf_export_symbol(hal_srng_dst_get_hp_paddr);
+
 void hal_srng_dst_init_hp(struct hal_soc_handle *hal_soc,
 			  struct hal_srng *srng,
 			  uint32_t *vaddr)

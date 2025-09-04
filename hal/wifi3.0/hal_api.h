@@ -1392,6 +1392,16 @@ void hal_srng_dst_set_hp_paddr_confirm(struct hal_srng *sring,
 				       uint64_t paddr);
 
 /**
+ * hal_srng_dst_get_hp_paddr() - Get physical address of dest SRNG head
+ * @sring: sring pointer
+ * @headp: pointer to store hp paddr
+ *
+ * Return: None
+ */
+void hal_srng_dst_get_hp_paddr(struct hal_srng *sring,
+			       uint64_t *headp);
+
+/**
  * hal_srng_dst_init_hp() - Initialize head pointer with cached head pointer
  * @hal_soc: hal_soc handle
  * @srng: sring pointer
