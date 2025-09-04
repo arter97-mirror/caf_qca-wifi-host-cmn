@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -783,7 +783,8 @@ hif_display_ctrl_traffic_pipes_state(struct hif_opaque_softc *hif_ctx)
 }
 #endif
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
+	defined(RECORD_DP_CE_EVTS)
 void hif_display_latest_desc_hist(struct hif_opaque_softc *hif_ctx);
 #else
 static
@@ -1029,7 +1030,8 @@ QDF_STATUS hif_diag_write_access(struct hif_opaque_softc *hif_ctx,
 QDF_STATUS hif_diag_write_mem(struct hif_opaque_softc *hif_ctx,
 			uint32_t address, uint8_t *data, int nbytes);
 
-typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t);
+typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t,
+				     unsigned int);
 
 void hif_enable_polled_mode(struct hif_opaque_softc *hif_ctx);
 bool hif_is_polled_mode_enabled(struct hif_opaque_softc *hif_ctx);
@@ -3045,8 +3047,14 @@ void hif_affinity_mgr_set_affinity(struct hif_opaque_softc *scn);
  * Return: None
  */
 void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx);
+void hif_flush_delayed_reg_write_work(struct hif_softc *scn);
 #else
 static inline void hif_print_reg_write_stats(struct hif_opaque_softc *hif_ctx)
+{
+}
+
+static inline void
+hif_flush_delayed_reg_write_work(struct hif_softc *scn)
 {
 }
 #endif

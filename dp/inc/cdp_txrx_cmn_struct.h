@@ -99,6 +99,7 @@
 #define CDP_DP_SWLM_STATS	   27
 #define CDP_DP_TX_HW_LATENCY_STATS 28
 #define CDP_DP_LAPB_STATS	   29
+#define CDP_TXRX_SOC_STATS	   30
 
 #define WME_AC_TO_TID(_ac) (       \
 		((_ac) == WME_AC_VO) ? 6 : \

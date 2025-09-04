@@ -1990,7 +1990,7 @@ static struct CE_pipe_config target_ce_config_wlan_wcn6450[] = {
 	{ /* CE4 */ 4, PIPEDIR_OUT, 256, 256,
 		(CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0,},
 	/* host->target HTT data */
-	{ /* CE5 */ 5, PIPEDIR_OUT, 256, 256,
+	{ /* CE5 */ 5, PIPEDIR_OUT, 512, 256,
 		(CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0,},
 	/* target->target HIF_memcpy*/
 	{ /* CE6 */ 6, PIPEDIR_INOUT, 1024, 2048, CE_ATTR_FLAGS, 0,},
