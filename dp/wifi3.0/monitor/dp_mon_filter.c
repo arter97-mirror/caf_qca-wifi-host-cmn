@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -329,8 +329,7 @@ dp_mon_ht2_rx_ring_cfg(struct dp_soc *soc,
 	/*
 	 * Overwrite the max_mac_rings for the status rings.
 	 */
-	if (srng_type == DP_MON_FILTER_SRNG_TYPE_RXDMA_MONITOR_STATUS)
-		dp_update_num_mac_rings(soc, &max_mac_rings);
+	dp_update_num_mac_rings(soc, &max_mac_rings);
 
 	dp_mon_filter_info("%pK: srng type %d Max_mac_rings %d ",
 			   soc, srng_type, max_mac_rings);
