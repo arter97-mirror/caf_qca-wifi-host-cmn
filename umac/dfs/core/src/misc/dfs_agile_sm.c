@@ -2472,7 +2472,7 @@ static bool dfs_puncturing_state_unpunctured_event(void *ctx,
 	dfs = dfs_punc->dfs;
 
 	switch (event) {
-	case DFS_PUNC_SM_EV_USER_PUNC:
+	case DFS_PUNC_SM_EV_USER_PUNC: {
 		bool is_weather_chan = dfs_is_weather_channel(dfs_punc);
 		qdf_freq_t freq = (dfs_punc->punc_low_freq + dfs_punc->punc_high_freq) / 2;
 		bool is_nol = wlan_reg_is_nol_for_freq(dfs->dfs_pdev_obj, freq);
@@ -2486,6 +2486,7 @@ static bool dfs_puncturing_state_unpunctured_event(void *ctx,
 		}
 		status = true;
 		break;
+	}
 	case DFS_PUNC_SM_EV_RADAR:
 		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Radar event received. Moving state to punctured");
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_PUNCTURED);
@@ -2563,7 +2564,7 @@ static bool dfs_puncturing_state_punctured_event(void *ctx,
 		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Ignore radar when channel is already punctured and in punctured state");
 		status = true;
 		break;
-	case DFS_PUNC_SM_EV_NOL_EXPIRY:
+	case DFS_PUNC_SM_EV_NOL_EXPIRY: {
 		struct dfs_channel *chan;
 		enum wlan_phymode des_mode;
 		bool is_weather_chan = dfs_is_weather_channel(dfs_punc);
@@ -2601,6 +2602,7 @@ static bool dfs_puncturing_state_punctured_event(void *ctx,
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_CAC_WAIT);
 		status = true;
 		break;
+	}
 	case DFS_PUNC_SM_EV_STOP:
 		dfs_debug(dfs, WLAN_DEBUG_DFS_PUNCTURING, "Punc sm stop triggered");
 		dfs_puncturing_sm_transition_to(dfs_punc, DFS_S_UNPUNCTURED);
