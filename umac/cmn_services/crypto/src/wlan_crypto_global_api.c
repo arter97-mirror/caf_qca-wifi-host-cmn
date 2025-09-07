@@ -3506,6 +3506,12 @@ uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
 		RSN_ADD_KEYMGMT_TO_SUITE(frm,
 					 WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY);
 	}
+
+	if (HAS_KEY_MGMT(crypto_params, WLAN_CRYPTO_KEY_MGMT_EPPKE)) {
+		selcnt[0]++;
+		RSN_ADD_KEYMGMT_TO_SUITE(frm, WLAN_CRYPTO_KEY_MGMT_EPPKE);
+	}
+
 add_rsn_caps:
 	WLAN_CRYPTO_ADDSHORT(frm, crypto_params->rsn_caps);
 	/* optional capabilities */
@@ -4790,6 +4796,8 @@ wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm)
 		return WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B_192;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B))
 		return WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B;
+	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_EPPKE))
+		return WLAN_CRYPTO_KEY_MGMT_EPPKE;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY))
 		return WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY))

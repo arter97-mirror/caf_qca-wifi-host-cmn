@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -37,6 +37,7 @@
 
 #include "wlan_nl_to_crypto_params.h"
 #include "wlan_crypto_global_def.h"
+#include "wlan_hdd_cfg80211.h"
 
 /**
  * struct osif_akm_type_crypto_mapping - mapping akm type received from
@@ -69,6 +70,14 @@ struct osif_cipher_crypto_mapping {
 /*
  * mapping table for auth type received from NL and crypto auth type
  */
+#ifdef WLAN_FEATURE_11BI_SECURITY
+#define OSIF_AUTH_TYPE_11BI_SECURITY_MAPPING \
+	[NL80211_AUTHTYPE_EPPKE] = WLAN_CRYPTO_AUTH_EPPKE, \
+	[NL80211_AUTHTYPE_IEEE8021X] = WLAN_CRYPTO_AUTH_1X_IN_AUTH,
+#else
+#define OSIF_AUTH_TYPE_11BI_SECURITY_MAPPING
+#endif
+
 static const wlan_crypto_auth_mode
 	osif_auth_type_crypto_mapping[] = {
 	[NL80211_AUTHTYPE_AUTOMATIC] = WLAN_CRYPTO_AUTH_AUTO,
@@ -82,6 +91,7 @@ static const wlan_crypto_auth_mode
 	[NL80211_AUTHTYPE_FILS_SK] = WLAN_CRYPTO_AUTH_FILS_SK,
 #endif
 	[NL80211_AUTHTYPE_SAE] = WLAN_CRYPTO_AUTH_SAE,
+	OSIF_AUTH_TYPE_11BI_SECURITY_MAPPING
 };
 
 /* mapping table for akm type received from NL and crypto akm type */
@@ -217,6 +227,13 @@ static const struct osif_akm_type_crypto_mapping
 #endif
 		.akm_suite = WLAN_AKM_SUITE_PASN,
 		.akm_type_crypto = WLAN_CRYPTO_KEY_MGMT_PASN,
+	},
+	{
+#ifndef WLAN_AKM_SUITE_EPPKE
+#define WLAN_AKM_SUITE_EPPKE 0x000FAC1D
+#endif
+		.akm_suite = WLAN_AKM_SUITE_EPPKE,
+		.akm_type_crypto = WLAN_CRYPTO_KEY_MGMT_EPPKE,
 	},
 };
 
