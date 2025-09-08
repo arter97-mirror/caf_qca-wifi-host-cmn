@@ -755,7 +755,7 @@ scm_check_mlo_cfg_partner_match(struct wlan_objmgr_pdev *pdev,
 
 	if (num_links == 0) {
 		cfg_link_found = true;
-		scm_debug("No configured partner links");
+		scm_debug_rl("No configured partner links");
 		return cfg_link_found;
 	}
 

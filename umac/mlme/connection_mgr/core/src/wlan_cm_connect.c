@@ -1988,9 +1988,25 @@ cm_adjust_partner_links_based_on_oui(struct wlan_objmgr_psoc *psoc,
 {
 	struct action_oui_search_attr attr = {0};
 	uint8_t max_def_link = WLAN_MAX_ML_DEFAULT_LINK - 1;
+	uint8_t i;
+	struct cm_connect_req *conn_req = &cm_req->connect_req;
 
 	attr.ie_data = util_scan_entry_ie_data(scan_entry);
 	attr.ie_length = util_scan_entry_ie_len(scan_entry);
+
+	if (wlan_action_oui_search(psoc, &attr, ACTION_OUI_RESTRICT_SLO)) {
+		for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++)
+			qdf_mem_zero(&partner_info->partner_link_info[i],
+				     sizeof(struct mlo_link_info));
+		partner_info->num_partner_links = 0;
+		mlme_debug(CM_PREFIX_FMT "Downgrade " QDF_MAC_ADDR_FMT " to SLO",
+			   CM_PREFIX_REF(cm_req->connect_req.req.vdev_id, cm_req->cm_id),
+			   QDF_MAC_ADDR_REF(scan_entry->ml_info.mld_mac_addr.bytes));
+	}
+
+	if (conn_req->req.ml_parnter_info.num_partner_links <
+	    WLAN_MAX_ML_DEFAULT_LINK)
+		return;
 
 	if (!wlan_action_oui_search(psoc, &attr,
 				    ACTION_OUI_RESTRICT_MAX_MLO_LINKS))
@@ -2036,10 +2052,6 @@ cm_connect_req_update_ml_partner_info(struct cnx_mgr *cm_ctx,
 	cm_modify_partner_info_based_on_dbs_or_sbs_mode(psoc, cm_req->cm_id,
 							scan_entry,
 							partner_info);
-	if (mlo_support_link_num <= WLAN_MAX_ML_DEFAULT_LINK ||
-	    conn_req->req.ml_parnter_info.num_partner_links <
-	    WLAN_MAX_ML_DEFAULT_LINK)
-		return;
 
 	cm_adjust_partner_links_based_on_oui(psoc, scan_entry, partner_info,
 					     cm_req);
