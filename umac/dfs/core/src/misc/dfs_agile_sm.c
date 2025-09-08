@@ -1048,7 +1048,9 @@ QDF_STATUS dfs_agile_sm_create(struct dfs_soc_priv_obj *dfs_soc_obj)
 	qdf_spinlock_create(&dfs_soc_obj->dfs_agile_sm_lock);
 
 	/* Initialize the RCAC DFS index to default (no index). */
+	DFS_AGILE_SM_SPIN_LOCK(dfs_soc_obj);
 	dfs_soc_obj->cur_agile_dfs_index = DFS_PSOC_NO_IDX;
+	DFS_AGILE_SM_SPIN_UNLOCK(dfs_soc_obj);
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -1134,7 +1136,18 @@ dfs_rcac_timeout(qdf_hrtimer_data_t *arg)
 	dfs_soc_obj = container_of(arg,
 				   struct dfs_soc_priv_obj,
 				   dfs_rcac_timer);
+
+	DFS_AGILE_SM_SPIN_LOCK(dfs_soc_obj);
+	if (dfs_is_agile_idx_invalid(dfs_soc_obj)) {
+	    dfs_err(NULL, WLAN_DEBUG_DFS_ALWAYS,
+		    "Invalid DFS rcac index %u, num dfs priv: %u",
+		    dfs_soc_obj->cur_agile_dfs_index,
+		    dfs_soc_obj->num_dfs_privs);
+	    DFS_AGILE_SM_SPIN_UNLOCK(dfs_soc_obj);
+	    return QDF_HRTIMER_NORESTART;
+	}
 	dfs = dfs_soc_obj->dfs_priv[dfs_soc_obj->cur_agile_dfs_index].dfs;
+	DFS_AGILE_SM_SPIN_UNLOCK(dfs_soc_obj);
 
 	dfs_soc_obj->ocac_status = OCAC_SUCCESS;
 	dfs_fill_adfs_completion_params(dfs, OCAC_SUCCESS);
