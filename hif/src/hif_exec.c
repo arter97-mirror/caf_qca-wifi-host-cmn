@@ -763,6 +763,7 @@ void hif_check_and_apply_irq_affinity(struct hif_opaque_softc *hif_ctx,
 	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
 	struct hif_exec_context *hif_ext_group;
 	qdf_cpu_mask cpu_mask;
+	qdf_cpu_mask old_cpu_mask;
 	QDF_STATUS status;
 	int i;
 
@@ -785,16 +786,22 @@ void hif_check_and_apply_irq_affinity(struct hif_opaque_softc *hif_ctx,
 			continue;
 		}
 
+		qdf_cpumask_copy(&old_cpu_mask,
+				 &hif_ext_group->new_cpu_mask[i]);
+		qdf_cpumask_copy(&hif_ext_group->new_cpu_mask[i],
+				 &cpu_mask);
+
 		status = hif_irq_set_affinity_hint(hif_ext_group->os_irq[i],
-						   &cpu_mask);
+						   &hif_ext_group->
+						   new_cpu_mask[i]);
 		if (QDF_IS_STATUS_SUCCESS(status)) {
-			qdf_cpumask_copy(&hif_ext_group->new_cpu_mask[i],
-					 &cpu_mask);
 			qdf_atomic_set(&hif_ext_group->force_napi_complete, -1);
 			hif_debug("Affined IRQ %d to cpu_mask %*pbl",
 				  hif_ext_group->os_irq[i],
 				  qdf_cpumask_pr_args(&hif_ext_group->new_cpu_mask[i]));
 		} else {
+			qdf_cpumask_copy(&hif_ext_group->new_cpu_mask[i],
+					 &old_cpu_mask);
 			hif_err("set affinity failed for IRQ %d",
 				hif_ext_group->os_irq[i]);
 		}
