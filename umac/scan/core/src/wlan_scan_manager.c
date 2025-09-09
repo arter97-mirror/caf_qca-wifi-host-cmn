@@ -1383,31 +1383,16 @@ scm_scan_update_scan_event(struct wlan_scan_obj *scan,
 }
 
 #ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
-static inline bool
-util_is_ssid_match(struct wlan_ssid *ssid1,
-		   struct wlan_ssid *ssid2)
-{
-	if (ssid1->length != ssid2->length)
-		return false;
-
-	if (!qdf_mem_cmp(ssid1->ssid,
-			 ssid2->ssid, ssid1->length))
-                return true;
-
-	return false;
-}
-
 static void update_top_aps(struct scan_ap_info *top_aps,
 			   int *num_top, uint8_t *bssid, int8_t rssi,
-			   struct wlan_ssid *ssid, uint32_t num_ssids,
-			   struct wlan_ssid *ssid_arr)
+			   struct wlan_ssid *ssid)
 {
-	int i,j = 0;
+	int i = 0;
 	int min_idx = -1;
 	int8_t min_rssi = 127;
 
 	if (*num_top < EVENT_MAX_AP) {
-		memcpy(top_aps[*num_top].bssid, bssid, 6);
+		qdf_mem_copy(top_aps[*num_top].bssid, bssid, 6);
 		top_aps[*num_top].rssi = rssi;
 		(*num_top)++;
 		return;
@@ -1420,14 +1405,11 @@ static void update_top_aps(struct scan_ap_info *top_aps,
 		}
 	}
 	if (rssi > min_rssi) {
-		memcpy(top_aps[min_idx].bssid, bssid, 6);
+		qdf_mem_copy(top_aps[min_idx].bssid, bssid, 6);
 		top_aps[min_idx].rssi = rssi;
-		for(j = 0; j < num_ssids; j++) {
-			if(util_is_ssid_match(ssid, &ssid_arr[j])){
-				top_aps[min_idx].is_ssid_match = true;
-				break;
-			}
-		}
+		top_aps[min_idx].ssid_len = ssid->length;
+		qdf_mem_copy(top_aps[min_idx].ssid, ssid->ssid,
+			     ssid->length);
 	}
 }
 
@@ -1530,9 +1512,7 @@ static void scm_send_custom_scan_complete_event(struct scan_event_info *scan_inf
 		update_top_aps(event->scan_ap, &num_top,
 			       bss_desc->Result.BssDescriptor.bssId,
 			       bss_desc->Result.BssDescriptor.rssi,
-			       (struct wlan_ssid *)&bss_desc->Result.ssId,
-			       scan_event->scan_start_req->scan_req.num_ssids,
-			       scan_event->scan_start_req->scan_req.ssid);
+			       (struct wlan_ssid *)&bss_desc->Result.ssId);
 
 		entry = csr_ll_next(&ret_list->List, entry,
 				LL_ACCESS_NOLOCK);
