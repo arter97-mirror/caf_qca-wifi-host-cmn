@@ -2515,7 +2515,6 @@ void dp_soc_deinit(void *txrx_soc)
 	qdf_spinlock_destroy(&soc->vdev_map_lock);
 
 	dp_reo_cmdlist_destroy(soc);
-	qdf_spinlock_destroy(&soc->rx.reo_cmd_lock);
 
 	dp_soc_tx_desc_sw_pools_deinit(soc);
 
@@ -4212,6 +4211,7 @@ dp_srng_deinit_non_bn_rings(struct dp_soc *soc)
 			     soc->ctrl_psoc, WLAN_MD_DP_SRNG_REO_STATUS,
 			     "reo_status_ring");
 	dp_srng_deinit(soc, &soc->reo_status_ring, REO_STATUS, 0);
+	qdf_spinlock_destroy(&soc->rx.reo_cmd_lock);
 }
 #endif
 
