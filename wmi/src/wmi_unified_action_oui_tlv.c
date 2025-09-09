@@ -87,6 +87,9 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
 	case ACTION_OUI_DISABLE_DYNAMIC_SMPS:
 		*id = WMI_VENDOR_OUI_ACTION_DISABLE_DYNAMIC_SMPS;
 		return true;
+	case ACTION_OUI_FORCE_TX_NULL_FRAME_ON_P2P:
+		*id = WMI_VENDOR_OUI_ACTION_FORCE_TX_NULL_FRAME_ON_P2P;
+		return true;
 	default:
 		return false;
 	}
