@@ -2198,6 +2198,22 @@ static inline void cdp_ath_getstats(ol_txrx_soc_handle soc,
 }
 
 /**
+ * cdp_custom_getstats() - get updated athstats
+ * @soc: opaque soc handle
+ * @dev: dp interface handle
+ * @stats: cdp network device stats structure
+ * @type: device type pdev/vdev
+ *
+ * Return: void
+ */
+static inline void cdp_custom_getstats(ol_txrx_soc_handle soc,
+		struct tx_rx_custom_stats *stats)
+{
+	if (soc && soc->ops && soc->ops->cmn_drv_ops->txrx_custom_getstats)
+		soc->ops->cmn_drv_ops->txrx_custom_getstats(stats);
+}
+
+/**
  * cdp_set_gid_flag() - set groupid flag
  * @soc: opaque soc handle
  * @pdev: data path pdev handle

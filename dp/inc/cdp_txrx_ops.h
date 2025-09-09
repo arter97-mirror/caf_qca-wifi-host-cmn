@@ -37,6 +37,9 @@
 #include <qdf_ipa.h>
 #endif
 #endif
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+#include "cds_api.h"
+#endif
 
 /**
  * bitmap values to indicate special handling of peer_delete
@@ -468,6 +471,9 @@ struct cdp_cmn_ops {
 	QDF_STATUS (*set_vdev_tidmap_prty)(struct cdp_vdev *vdev, uint8_t prty);
 	QDF_STATUS (*set_vdev_tidmap_tbl_id)(struct cdp_vdev *vdev,
 					     uint8_t mapid);
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	QDF_STATUS (*txrx_custom_getstats)(struct tx_rx_custom_stats *custom_stats);
+#endif
 };
 
 struct cdp_ctrl_ops {
