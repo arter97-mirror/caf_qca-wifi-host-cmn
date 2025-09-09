@@ -3311,6 +3311,8 @@ struct set_fwtest_params {
  * @WFA_FILS_DISCV_FRAMES: FD frames TX enable disable config
  * @WFA_IGNORE_H2E_RSNXE: configure driver/firmware to ignore H2E_RSNXE in case
  *                        of 6g connection
+ * @WFA_IGNORE_TWT_BCAST_ID: configure driver to ignore TWT BCAST_ID in
+ *                           TWT delete req
  */
 enum wfa_test_cmds {
 	WFA_CONFIG_RXNE,
@@ -3319,6 +3321,7 @@ enum wfa_test_cmds {
 	WFA_CONFIG_SA_QUERY,
 	WFA_FILS_DISCV_FRAMES,
 	WFA_IGNORE_H2E_RSNXE,
+	WFA_IGNORE_TWT_BCAST_ID,
 };
 
 /**
