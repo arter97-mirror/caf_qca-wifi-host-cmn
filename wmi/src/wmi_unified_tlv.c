@@ -11711,6 +11711,16 @@ static uint16_t wfa_config_param_len(enum wfa_test_cmds config)
 	else
 		len += WMI_TLV_HDR_SIZE;
 
+	if (config == WFA_CONFIG_OFDMA)
+		len += WMI_TLV_HDR_SIZE + sizeof(wmi_wfa_config_ofdma);
+	else
+		len += WMI_TLV_HDR_SIZE;
+
+	if (config == WFA_CONFIG_ML)
+		len += WMI_TLV_HDR_SIZE + sizeof(wmi_wfa_config_ml);
+	else
+		len += WMI_TLV_HDR_SIZE;
+
 	return len;
 }
 
@@ -11770,6 +11780,8 @@ QDF_STATUS send_wfa_test_cmd_tlv(wmi_unified_t wmi_handle,
 	wmi_wfa_config_csa *csa;
 	wmi_wfa_config_ocv *ocv;
 	wmi_wfa_config_saquery *saquery;
+	wmi_wfa_config_ofdma *ofdma;
+	wmi_wfa_config_ml *ml;
 	wmi_buf_t wmi_buf;
 	uint16_t len = sizeof(*cmd);
 	uint8_t *buf_ptr;
@@ -11844,6 +11856,33 @@ QDF_STATUS send_wfa_test_cmd_tlv(wmi_unified_t wmi_handle,
 
 		saquery = (wmi_wfa_config_saquery *)buf_ptr;
 		saquery->remain_connect_on_saquery_timeout = wmi_wfatest->value;
+	} else {
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+		buf_ptr += WMI_TLV_HDR_SIZE;
+	}
+
+	if (wmi_wfatest->cmd == WFA_CONFIG_OFDMA) {
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+			       sizeof(wmi_wfa_config_ofdma));
+		buf_ptr += WMI_TLV_HDR_SIZE;
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_STRUC_wmi_wfa_config_ofdma,
+			       WMITLV_GET_STRUCT_TLVLEN(wmi_wfa_config_ofdma));
+		ofdma = (wmi_wfa_config_ofdma *)buf_ptr;
+		ofdma->force_he_trigger_to_eht_sta = wmi_wfatest->value;
+	} else {
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+		buf_ptr += WMI_TLV_HDR_SIZE;
+	}
+
+	if (wmi_wfatest->cmd == WFA_CONFIG_ML) {
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+			       sizeof(wmi_wfa_config_ml));
+		buf_ptr += WMI_TLV_HDR_SIZE;
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_STRUC_wmi_wfa_config_ml,
+			       WMITLV_GET_STRUCT_TLVLEN(wmi_wfa_config_ml));
+		ml = (wmi_wfa_config_ml *)buf_ptr;
+		ml->force_add_ext_mld_cap_field = wmi_wfatest->value;
+		buf_ptr += sizeof(wmi_wfa_config_ml);
 	} else {
 		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
 		buf_ptr += WMI_TLV_HDR_SIZE;
