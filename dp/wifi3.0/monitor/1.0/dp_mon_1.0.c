@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -24,6 +24,7 @@
 #include <dp_rx_mon_1.0.h>
 #include <dp_mon_1.0.h>
 #include <dp_mon_filter_1.0.h>
+#include <hif.h>
 
 #include "htt_ppdu_stats.h"
 #if defined(DP_CON_MON)
@@ -568,12 +569,29 @@ static void dp_mon_vdev_timer(void *arg)
 	int max_mac_rings = wlan_cfg_get_num_mac_rings(pdev->wlan_cfg_ctx);
 	struct dp_mon_soc *mon_soc = soc->monitor_soc;
 	struct dp_mon_mac *mon_mac;
+	uint8_t mac_id = 0;
+	enum reg_wifi_band mon_band;
+	uint8_t dp_intr_id = wlan_cfg_get_num_contexts(soc->wlan_cfg_ctx);
+	struct dp_intr *dp_intr_ctx = NULL;
+
 
 	if (!qdf_atomic_read(&soc->cmn_init_done))
 		return;
 
 	start_time = qdf_get_log_timestamp();
 	dp_update_num_mac_rings_for_dbs(soc, &max_mac_rings);
+	if (dp_monitor_is_chan_band_known(pdev, mac_id)) {
+		mon_band = dp_monitor_get_chan_band(pdev, mac_id);
+		lmac_id = pdev->ch_band_lmac_id_mapping[mon_band];
+		if (qdf_likely(lmac_id != DP_MON_INVALID_LMAC_ID)) {
+			dp_intr_id = soc->mon_intr_id_lmac_map[lmac_id];
+			hif_record_event(soc->hif_handle, dp_intr_id, 0, 0, 0,
+					 HIF_EVENT_TIMER_ENTRY);
+		}
+	}
+
+	if (dp_intr_id < WLAN_CFG_INT_NUM_CONTEXTS)
+		dp_intr_ctx = &soc->intr_ctx[dp_intr_id];
 
 	while (yield == DP_TIMER_NO_YIELD) {
 		for (lmac_iter = 0; lmac_iter < max_mac_rings; lmac_iter++) {
@@ -583,7 +601,7 @@ static void dp_mon_vdev_timer(void *arg)
 
 			if (lmac_iter == lmac_id)
 				work_done = dp_monitor_process(
-						    soc, NULL,
+						    soc, dp_intr_ctx,
 						    lmac_iter, remaining_quota);
 			else
 				work_done =
@@ -612,6 +630,11 @@ budget_done:
 		qdf_timer_mod(&mon_soc->mon_vdev_timer, 1);
 	else
 		qdf_timer_mod(&mon_soc->mon_vdev_timer, DP_INTR_POLL_TIMER_MS);
+
+	if (lmac_id != DP_MON_INVALID_LMAC_ID)
+		hif_record_event(soc->hif_handle, dp_intr_id, 0, 0, 0,
+				 HIF_EVENT_TIMER_EXIT);
+
 }
 
 /* MCL specific functions */
