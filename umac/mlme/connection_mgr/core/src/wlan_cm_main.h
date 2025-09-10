@@ -136,6 +136,7 @@ struct cm_nontx_mbssid_scan_params {
  * @num_bss: bss number in original candidate list
  * @cur_candidate: current candidate
  * @cur_candidate_retries: attempts for current candidate
+ * @inval_pmkid_retry_cnt: retries due to invalid pmkid
  * @connect_attempts: number of connect attempts tried
  * @connect_active_time: timestamp when connect became active
  * @first_candidate_rsp: connect response for first candidate
@@ -149,6 +150,7 @@ struct cm_connect_req {
 	uint32_t num_bss;
 	struct scan_cache_node *cur_candidate;
 	uint8_t cur_candidate_retries;
+	uint8_t inval_pmkid_retry_cnt;
 	uint8_t connect_attempts;
 	qdf_time_t connect_active_time;
 	struct wlan_cm_connect_resp *first_candidate_rsp;
