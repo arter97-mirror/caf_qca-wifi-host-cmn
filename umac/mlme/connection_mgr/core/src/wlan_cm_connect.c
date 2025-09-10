@@ -971,21 +971,30 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	is_mlo_vdev = wlan_vdev_mlme_is_mlo_vdev(cm_ctx->vdev);
 	mlo_link_num = wlan_mlme_get_sta_mlo_conn_max_num(psoc);
 
-	/* Try once again for the invalid PMKID case without PMKID or
-	 * Association request rejected temporarily; try again later
-	*/
-	if (resp->status_code == STATUS_INVALID_PMKID ||
-	    resp->status_code == STATUS_ASSOC_REJECTED_TEMPORARILY)
-		goto use_same_candidate;
-
-	sae_connection = key_mgmt & (1 << WLAN_CRYPTO_KEY_MGMT_SAE |
-				     1 << WLAN_CRYPTO_KEY_MGMT_FT_SAE |
-				     1 << WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY |
-				     1 << WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY);
-
+	sae_connection = WLAN_CRYPTO_IS_AKM_SAE(key_mgmt);
 	/* For SAE use max retry count from INI */
 	if (sae_connection)
 		wlan_mlme_get_sae_assoc_retry_count(psoc, &max_retry_count);
+	/*
+	 * Try once again for the invalid PMKID case
+	 * without PMKID or Association request rejected temporarily;
+	 * try again later
+	 */
+	if (resp->status_code == STATUS_INVALID_PMKID &&
+	    !req->inval_pmkid_retry_cnt) {
+		/*
+		 * allow one extra retry for INVALID_PMKID by incrementing
+		 * max_retry_count when this status code is encountered and
+		 * the retry count has reached the current maximum.
+		 */
+		req->inval_pmkid_retry_cnt++;
+		if (req->cur_candidate_retries >= max_retry_count)
+			max_retry_count++;
+		goto use_same_candidate;
+	}
+
+	if (resp->status_code == STATUS_ASSOC_REJECTED_TEMPORARILY)
+		goto use_same_candidate;
 
 	/* Try again for the JOIN timeout if only one candidate */
 	if (resp->reason == CM_JOIN_TIMEOUT &&
@@ -1036,11 +1045,11 @@ use_same_candidate:
 	if (QDF_IS_STATUS_ERROR(status))
 		return false;
 
-	mlme_info(CM_PREFIX_FMT "Retry again with " QDF_MAC_ADDR_FMT ", status code %d reason %d key_mgmt 0x%x retry count %d max retry %d",
+	mlme_info(CM_PREFIX_FMT "Retry again with " QDF_MAC_ADDR_FMT ", status code %d reason %d key_mgmt 0x%x retry count %d inval_pmkid retry %d max retry %d",
 		  CM_PREFIX_REF(resp->vdev_id, resp->cm_id),
 		  QDF_MAC_ADDR_REF(resp->bssid.bytes), resp->status_code,
 		  resp->reason, key_mgmt, req->cur_candidate_retries,
-		  max_retry_count);
+		  req->inval_pmkid_retry_cnt, max_retry_count);
 
 	req->cur_candidate_retries++;
 
@@ -2254,6 +2263,7 @@ static QDF_STATUS cm_get_valid_candidate(struct cnx_mgr *cm_ctx,
 
 	/* Reset current candidate retries when a new candidate is tried */
 	cm_req->connect_req.cur_candidate_retries = 0;
+	cm_req->connect_req.inval_pmkid_retry_cnt = 0;
 
 try_same_candidate:
 	cm_req->connect_req.connect_attempts++;
