@@ -1587,230 +1587,6 @@ static QDF_STATUS send_peer_flush_tids_cmd_tlv(wmi_unified_t wmi,
 	return 0;
 }
 
-/**
- * map_to_wmi_ack_policy() - Map ack_policy to firmware defined values
- * @ack_policy: The ack policy for TID
- *
- * Return: WMI layer TID config ack policy value
- */
-static WMI_PEER_TID_CONFIG_ACK_POLICY
-map_to_wmi_ack_policy(enum peer_tid_ack_policy ack_policy)
-{
-	switch (ack_policy) {
-	case PEER_TID_CONFIG_ACK:
-		return WMI_PEER_TID_CONFIG_ACK;
-	case PEER_TID_CONFIG_NOACK:
-		return WMI_PEER_TID_CONFIG_NOACK;
-	default:
-		return WMI_PEER_TID_CONFIG_ACK_POLICY_IGNORE;
-	}
-}
-
-/**
- * map_to_wmi_aggr_control() - Map aggr_control to firmware defined values
- * @aggr_control: The aggregation control for TID
- *
- * Return: WMI layer TID config aggregation control
- */
-static WMI_PEER_TID_CONFIG_AGGR_CONTROL
-map_to_wmi_aggr_control(enum peer_tid_aggr_control aggr_control)
-{
-	switch (aggr_control) {
-	case PEER_TID_CONFIG_AGGR_CONTROL_ENABLE:
-		return WMI_PEER_TID_CONFIG_AGGR_CONTROL_ENABLE;
-	case PEER_TID_CONFIG_AGGR_CONTROL_DISABLE:
-		return WMI_PEER_TID_CONFIG_AGGR_CONTROL_DISABLE;
-	default:
-		return WMI_PEER_TID_CONFIG_AGGR_CONTROL_IGNORE;
-	}
-}
-
-/**
- * map_to_wmi_rate_control() - Map rate control to firmware defined values
- * @rate_control: The rate control for TID
- *
- * Return: WMI layer TID config rate control
- */
-static WMI_PEER_TID_CONFIG_RATE_CONTROL
-map_to_wmi_rate_control(enum peer_tid_rate_control rate_control)
-{
-	switch (rate_control) {
-	case PEER_TID_CONFIG_RATE_CONTROL_AUTO:
-		return WMI_PEER_TID_CONFIG_RATE_CONTROL_AUTO;
-	case PEER_TID_CONFIG_RATE_CONTROL_FIXED_RATE:
-		return WMI_PEER_TID_CONFIG_RATE_CONTROL_FIXED_RATE;
-	case PEER_TID_CONFIG_RATE_CONTROL_DEFAULT_LOWEST_RATE:
-		return WMI_PEER_TID_CONFIG_RATE_CONTROL_DEFAULT_LOWEST_RATE;
-	case PEER_TID_CONFIG_RATE_UPPER_CAP:
-		return WMI_PEER_TID_CONFIG_RATE_UPPER_CAP;
-	default:
-		return WMI_PEER_TID_CONFIG_RATE_CONTROL_IGNORE;
-	}
-}
-
-/**
- * map_to_wmi_sw_retry_threshold() - Map sw_retry_thresh to fw defined val
- * @sw_retry_thresh: The software retry threshold for TID
- *
- * Return: WMI layer TID config software retry threshold
- */
-static WMI_PEER_TID_CONFIG_SW_RETRY_THRESHOLD
-map_to_wmi_sw_retry_threshold(enum peer_tid_sw_retry_threshold sw_retry_thresh)
-{
-	switch (sw_retry_thresh) {
-	case PEER_TID_SW_RETRY_MIN:
-		return WMI_PEER_TID_SW_RETRY_MIN;
-	case PEER_TID_SW_RETRY_MAX:
-		return WMI_PEER_TID_SW_RETRY_MAX;
-	case PEER_TID_SW_RETRY_NO_RETRY:
-		return WMI_PEER_TID_SW_RETRY_NO_RETRY;
-	default:
-		return WMI_PEER_TID_SW_RETRY_IGNORE;
-	}
-}
-
-/**
- * map_to_wmi_tid_cfg_supp_bitmap() - Map tid_cfg_supp bitmap to fW defined val
- * @tid_cfg_supp_bitmap: The tid config bitmap for extended TID feature
- *
- * Return: WMI layer TID config ext config valid bitmap
- */
-static WMI_PEER_TID_EXT_CONFIG_VALID_BITMAP
-map_to_wmi_tid_cfg_supp_bitmap(enum peer_tid_supported_bitmap
-					tid_cfg_supp_bitmap)
-{
-	uint32_t tid_ext_cfg_bitmap = 0;
-
-	if ((tid_cfg_supp_bitmap & PEER_TID_DISABLE_RTS_CTS_VALID))
-		tid_ext_cfg_bitmap |= WMI_PEER_TID_DISABLE_RTS_CTS_VALID;
-
-	if ((tid_cfg_supp_bitmap & PEER_TID_MAX_NUM_MPDU_IN_PPDU_VALID))
-		tid_ext_cfg_bitmap |= WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_VALID;
-
-	if ((tid_cfg_supp_bitmap & PEER_TID_MAX_NUM_MSDU_IN_MPDU_VALID))
-		tid_ext_cfg_bitmap |= WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_VALID;
-
-	return tid_ext_cfg_bitmap;
-}
-
-/**
- * map_to_wmi_rts_cts_control() - Map rts_cts_control to fW defined val
- * @rts_cts_control: The rts_cts control for TID
- *
- * Return: WMI layer TID config rts cts control
- */
-static WMI_PEER_TID_CONFIG_RTSCTS_CONTROL
-map_to_wmi_rts_cts_control(enum peer_tid_rts_cts_control rts_cts_control)
-{
-	switch (rts_cts_control) {
-	case PEER_TID_RTSCTS_DISABLE:
-		return WMI_RTSCTS_DISABLE;
-	case PEER_TID_RTSCTS_ENABLE:
-		return WMI_RTSCTS_ENABLE;
-	default:
-		return WMI_RTSCTS_RESET;
-	}
-}
-
-/**
- * map_to_wmi_num_mpdu_in_ppdu() - Map num_mpdu_in_ppdu to fW define val
- * @num_mpdu_in_ppdu: The max num of mpdu in ppdu for TID
- *
- * Return: WMI layer TID config max mpdu in ppdu value
- */
-static WMI_PEER_TID_CONFIG_MAX_NUM_MPDU_IN_PPDU
-map_to_wmi_num_mpdu_in_ppdu(enum peer_tid_num_mpdu_in_ppdu num_mpdu_in_ppdu)
-{
-	switch (num_mpdu_in_ppdu) {
-	case PEER_TID_MAX_NUM_MPDU_IN_PPDU_MIN:
-		return WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_MIN;
-	case PEER_TID_MAX_NUM_MPDU_IN_PPDU_MAX:
-		return WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_MAX;
-	default:
-		return WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_DEFAULT;
-	}
-}
-
-/**
- * map_to_wmi_num_msdu_in_mpdu() - Map num_msdu_in_mpdu to fw defined val
- * @num_msdu_in_mpdu: The max num of msdu in mpdu for TID
- *
- * Return: WMI layer TID config max msdu in mpdu value
- */
-static WMI_PEER_TID_CONFIG_MAX_NUM_MSDU_IN_MPDU
-map_to_wmi_num_msdu_in_mpdu(enum peer_tid_num_msdu_in_mpdu num_msdu_in_mpdu)
-{
-	switch (num_msdu_in_mpdu) {
-	case PEER_TID_MAX_NUM_MSDU_IN_MPDU_MIN:
-		return WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_MIN;
-	case PEER_TID_MAX_NUM_MSDU_IN_MPDU_MAX:
-		return WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_MAX;
-	default:
-		return WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_DEFAULT;
-	}
-}
-
-/**
- * send_peer_tid_config_cmd_tlv() - send TID config command to fw
- * @wmi_handle: wmi handle
- * @macaddr: peer mac address
- * @params: pointer to hold peer tid config parameter
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS
-send_peer_tid_config_cmd_tlv(wmi_unified_t wmi_handle,
-			     uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-			     struct peer_tid_config_params *params)
-{
-	wmi_peer_tid_configurations_cmd_fixed_param *cmd;
-	wmi_buf_t buf;
-	int32_t len = sizeof(*cmd);
-	QDF_STATUS ret;
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-
-	if (!buf)
-		return QDF_STATUS_E_NOMEM;
-
-	cmd = (wmi_peer_tid_configurations_cmd_fixed_param *)wmi_buf_data(buf);
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		WMITLV_TAG_STRUC_wmi_peer_tid_configurations_cmd_fixed_param,
-		WMITLV_GET_STRUCT_TLVLEN
-		(wmi_peer_tid_configurations_cmd_fixed_param));
-	cmd->vdev_id = params->vdev_id;
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(macaddr, &cmd->peer_mac_address);
-	cmd->tid_num = params->tid_num;
-	cmd->ack_policy = map_to_wmi_ack_policy(params->ack_policy);
-	cmd->aggr_control = map_to_wmi_aggr_control(params->aggr_control);
-	cmd->rate_control = map_to_wmi_rate_control(params->rate_control);
-	cmd->rcode_rcflags = params->rcode_rcflags;
-	cmd->sw_retry_threshold =
-		map_to_wmi_sw_retry_threshold(params->sw_retry_threshold);
-	cmd->tid_config_supported_bitmap =
-		map_to_wmi_tid_cfg_supp_bitmap(params->tid_cfg_supp_bitmap);
-	cmd->disable_rts_cts =
-		map_to_wmi_rts_cts_control(params->disable_rts_cts);
-	cmd->max_num_mpdu_in_ppdu =
-		map_to_wmi_num_mpdu_in_ppdu(params->max_num_mpdu_in_ppdu);
-	cmd->max_num_msdu_in_mpdu =
-		map_to_wmi_num_msdu_in_mpdu(params->max_num_msdu_in_mpdu);
-
-	wmi_mtrace(WMI_PEER_TID_CONFIGURATIONS_CMDID, cmd->vdev_id, 0);
-	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
-				   WMI_PEER_TID_CONFIGURATIONS_CMDID);
-	if (QDF_IS_STATUS_ERROR(ret)) {
-		wmi_err("Failed to send WMI_PEER_TID_CONFIGURATIONS_CMDID");
-		wmi_buf_free(buf);
-	}
-
-	wmi_debug("peer macaddr "QDF_MAC_ADDR_FMT" vdev_id %d and tid_num %d",
-		  QDF_MAC_ADDR_REF(macaddr), params->vdev_id,
-		  params->tid_num);
-
-	return ret;
-}
-
 #ifdef WLAN_FEATURE_PEER_TXQ_FLUSH_CONF
 /**
  * map_to_wmi_flush_policy() - Map flush policy to firmware defined values
@@ -3009,54 +2785,6 @@ static QDF_STATUS send_pdev_set_hw_mode_cmd_tlv(wmi_unified_t wmi_handle,
 }
 
 /**
- * send_pdev_set_rf_path_cmd_tlv() - Send WMI_PDEV_SET_RF_PATH_CMDID to FW
- * @wmi_handle: wmi handle
- * @rf_path_index: the rf path mode to be selected
- * @pdev_id: pdev id
- *
- * Provides notification to the WLAN firmware that host driver is requesting a
- * rf path change.
- *
- * Return: Success if the cmd is sent successfully to the firmware
- */
-static QDF_STATUS send_pdev_set_rf_path_cmd_tlv(wmi_unified_t wmi_handle,
-						uint32_t rf_path_index,
-						uint8_t pdev_id)
-{
-	wmi_pdev_set_rf_path_cmd_fixed_param *cmd;
-	wmi_buf_t buf;
-	uint32_t len;
-
-	len = sizeof(*cmd);
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return QDF_STATUS_E_NOMEM;
-
-	cmd = (wmi_pdev_set_rf_path_cmd_fixed_param *)wmi_buf_data(buf);
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_pdev_set_rf_path_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN(
-				wmi_pdev_set_rf_path_cmd_fixed_param));
-
-	cmd->pdev_id = wmi_handle->ops->convert_pdev_id_host_to_target(
-							wmi_handle,
-							pdev_id);
-	cmd->rf_path = rf_path_index;
-	wmi_debug("HW mode index:%d", cmd->rf_path);
-
-	wmi_mtrace(WMI_PDEV_SET_RF_PATH_CMDID, NO_SESSION, 0);
-	if (wmi_unified_cmd_send(wmi_handle, buf, len,
-				 WMI_PDEV_SET_RF_PATH_CMDID)) {
-		wmi_err("Failed to send WMI_PDEV_SET_RF_PATH_CMDID");
-		wmi_buf_free(buf);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
  * send_suspend_cmd_tlv() - WMI suspend function
  * @wmi_handle: handle to WMI.
  * @param: pointer to hold suspend parameter
@@ -3626,146 +3354,6 @@ QDF_STATUS send_vdev_set_mu_snif_cmd_tlv(wmi_unified_t wmi_handle,
 				   WMI_VDEV_SET_MU_SNIF_CMDID);
 	if (QDF_IS_STATUS_ERROR(ret)) {
 		wmi_err("Failed to send set param command ret = %d", ret);
-		wmi_buf_free(buf);
-	}
-
-	return ret;
-}
-
-/**
- * send_peer_based_pktlog_cmd() - Send WMI command to enable packet-log
- * @wmi_handle: handle to WMI.
- * @macaddr: Peer mac address to be filter
- * @mac_id: mac id to have radio context
- * @enb_dsb: Enable MAC based filtering or Disable
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS send_peer_based_pktlog_cmd(wmi_unified_t wmi_handle,
-					     uint8_t *macaddr,
-					     uint8_t mac_id,
-					     uint8_t enb_dsb)
-{
-	int32_t ret;
-	wmi_pdev_pktlog_filter_cmd_fixed_param *cmd;
-	wmi_pdev_pktlog_filter_info *mac_info;
-	wmi_buf_t buf;
-	uint8_t *buf_ptr;
-	uint16_t len = sizeof(wmi_pdev_pktlog_filter_cmd_fixed_param) +
-			sizeof(wmi_pdev_pktlog_filter_info) + WMI_TLV_HDR_SIZE;
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return QDF_STATUS_E_NOMEM;
-
-	buf_ptr = (uint8_t *)wmi_buf_data(buf);
-	cmd = (wmi_pdev_pktlog_filter_cmd_fixed_param *)buf_ptr;
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_filter_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN
-			       (wmi_pdev_pktlog_filter_cmd_fixed_param));
-	cmd->pdev_id = mac_id;
-	cmd->enable = enb_dsb;
-	cmd->num_of_mac_addresses = 1;
-	wmi_mtrace(WMI_PDEV_PKTLOG_FILTER_CMDID, cmd->pdev_id, 0);
-
-	buf_ptr += sizeof(*cmd);
-	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
-		       sizeof(wmi_pdev_pktlog_filter_info));
-	buf_ptr += WMI_TLV_HDR_SIZE;
-
-	mac_info = (wmi_pdev_pktlog_filter_info *)(buf_ptr);
-
-	WMITLV_SET_HDR(&mac_info->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_filter_info,
-		       WMITLV_GET_STRUCT_TLVLEN
-		       (wmi_pdev_pktlog_filter_info));
-
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(macaddr, &mac_info->peer_mac_address);
-	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
-				   WMI_PDEV_PKTLOG_FILTER_CMDID);
-	if (ret) {
-		wmi_err("Failed to send peer based pktlog command to FW =%d"
-			 , ret);
-		wmi_buf_free(buf);
-	}
-
-	return ret;
-}
-
-/**
- * send_packet_log_enable_cmd_tlv() - Send WMI command to enable packet-log
- * @wmi_handle: handle to WMI.
- * @PKTLOG_EVENT: packet log event
- * @mac_id: mac id to have radio context
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS send_packet_log_enable_cmd_tlv(wmi_unified_t wmi_handle,
-			WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT, uint8_t mac_id)
-{
-	int32_t ret, idx, max_idx;
-	wmi_pdev_pktlog_enable_cmd_fixed_param *cmd;
-	wmi_buf_t buf;
-	uint16_t len = sizeof(wmi_pdev_pktlog_enable_cmd_fixed_param);
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return -QDF_STATUS_E_NOMEM;
-
-	cmd = (wmi_pdev_pktlog_enable_cmd_fixed_param *) wmi_buf_data(buf);
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_enable_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN
-			       (wmi_pdev_pktlog_enable_cmd_fixed_param));
-	max_idx = sizeof(pktlog_event_tlv) / (sizeof(pktlog_event_tlv[0]));
-	cmd->evlist = 0;
-	for (idx = 0; idx < max_idx; idx++) {
-		if (PKTLOG_EVENT & (1 << idx))
-			cmd->evlist |=  pktlog_event_tlv[idx];
-	}
-	cmd->pdev_id = mac_id;
-	wmi_mtrace(WMI_PDEV_PKTLOG_ENABLE_CMDID, cmd->pdev_id, 0);
-	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
-					 WMI_PDEV_PKTLOG_ENABLE_CMDID);
-	if (ret) {
-		wmi_err("Failed to send pktlog enable cmd to FW =%d", ret);
-		wmi_buf_free(buf);
-	}
-
-	return ret;
-}
-
-/**
- * send_packet_log_disable_cmd_tlv() - Send WMI command to disable packet-log
- * @wmi_handle: handle to WMI.
- * @mac_id: mac id to have radio context
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS send_packet_log_disable_cmd_tlv(wmi_unified_t wmi_handle,
-			uint8_t mac_id)
-{
-	int32_t ret;
-	wmi_pdev_pktlog_disable_cmd_fixed_param *cmd;
-	wmi_buf_t buf;
-	uint16_t len = sizeof(wmi_pdev_pktlog_disable_cmd_fixed_param);
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return -QDF_STATUS_E_NOMEM;
-
-	cmd = (wmi_pdev_pktlog_disable_cmd_fixed_param *) wmi_buf_data(buf);
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_disable_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN
-			       (wmi_pdev_pktlog_disable_cmd_fixed_param));
-	cmd->pdev_id = mac_id;
-	wmi_mtrace(WMI_PDEV_PKTLOG_DISABLE_CMDID, cmd->pdev_id, 0);
-	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
-					 WMI_PDEV_PKTLOG_DISABLE_CMDID);
-	if (ret) {
-		wmi_err("Failed to send pktlog disable cmd to FW =%d", ret);
 		wmi_buf_free(buf);
 	}
 
@@ -5370,87 +4958,6 @@ free_buf:
 #endif /* CONFIG_HL_SUPPORT */
 
 /**
- * send_offchan_data_tx_cmd_tlv() - Send off-chan tx data
- * @wmi_handle: handle to WMI.
- * @param: pointer to offchan data tx cmd parameter
- *
- * Return: QDF_STATUS_SUCCESS  on success and error on failure.
- */
-static QDF_STATUS send_offchan_data_tx_cmd_tlv(wmi_unified_t wmi_handle,
-				struct wmi_offchan_data_tx_params *param)
-{
-	wmi_buf_t buf;
-	wmi_offchan_data_tx_send_cmd_fixed_param *cmd;
-	int32_t cmd_len;
-	uint64_t dma_addr;
-	void *qdf_ctx = param->qdf_ctx;
-	uint8_t *bufp;
-	int32_t bufp_len = (param->frm_len < mgmt_tx_dl_frm_len) ?
-					param->frm_len : mgmt_tx_dl_frm_len;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-
-	cmd_len = sizeof(wmi_offchan_data_tx_send_cmd_fixed_param) +
-		  WMI_TLV_HDR_SIZE +
-		  roundup(bufp_len, sizeof(uint32_t));
-
-	buf = wmi_buf_alloc(wmi_handle, sizeof(wmi_tx_send_params) + cmd_len);
-	if (!buf)
-		return QDF_STATUS_E_NOMEM;
-
-	cmd = (wmi_offchan_data_tx_send_cmd_fixed_param *) wmi_buf_data(buf);
-	bufp = (uint8_t *) cmd;
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		WMITLV_TAG_STRUC_wmi_offchan_data_tx_send_cmd_fixed_param,
-		WMITLV_GET_STRUCT_TLVLEN
-		(wmi_offchan_data_tx_send_cmd_fixed_param));
-
-	cmd->vdev_id = param->vdev_id;
-
-	cmd->desc_id = param->desc_id;
-	cmd->chanfreq = param->chanfreq;
-	bufp += sizeof(wmi_offchan_data_tx_send_cmd_fixed_param);
-	WMITLV_SET_HDR(bufp, WMITLV_TAG_ARRAY_BYTE, roundup(bufp_len,
-							    sizeof(uint32_t)));
-	bufp += WMI_TLV_HDR_SIZE;
-	qdf_mem_copy(bufp, param->pdata, bufp_len);
-	qdf_nbuf_map_single(qdf_ctx, param->tx_frame, QDF_DMA_TO_DEVICE);
-	dma_addr = qdf_nbuf_get_frag_paddr(param->tx_frame, 0);
-	cmd->paddr_lo = (uint32_t)(dma_addr & 0xffffffff);
-#if defined(HTT_PADDR64)
-	cmd->paddr_hi = (uint32_t)((dma_addr >> 32) & 0x1F);
-#endif
-	cmd->frame_len = param->frm_len;
-	cmd->buf_len = bufp_len;
-	cmd->tx_params_valid = param->tx_params_valid;
-
-	wmi_mgmt_cmd_record(wmi_handle, WMI_OFFCHAN_DATA_TX_SEND_CMDID,
-			bufp, cmd->vdev_id, cmd->chanfreq);
-
-	bufp += roundup(bufp_len, sizeof(uint32_t));
-	if (param->tx_params_valid) {
-		status = populate_tx_send_params(bufp, param->tx_param);
-		if (status != QDF_STATUS_SUCCESS) {
-			wmi_err("Populate TX send params failed");
-			goto err1;
-		}
-		cmd_len += sizeof(wmi_tx_send_params);
-	}
-
-	wmi_mtrace(WMI_OFFCHAN_DATA_TX_SEND_CMDID, cmd->vdev_id, 0);
-	if (wmi_unified_cmd_send(wmi_handle, buf, cmd_len,
-				WMI_OFFCHAN_DATA_TX_SEND_CMDID)) {
-		wmi_err("Failed to offchan data Tx");
-		goto err1;
-	}
-
-	return QDF_STATUS_SUCCESS;
-
-err1:
-	wmi_buf_free(buf);
-	return QDF_STATUS_E_FAILURE;
-}
-
-/**
  * send_modem_power_state_cmd_tlv() - set modem power state to fw
  * @wmi_handle: wmi handle
  * @param_value: parameter value
@@ -5951,69 +5458,6 @@ static QDF_STATUS send_lro_config_cmd_tlv(wmi_unified_t wmi_handle,
 		wmi_err("Failed to send WMI_LRO_CONFIG_CMDID");
 	}
 
-	return status;
-}
-
-/**
- * send_peer_rate_report_cmd_tlv() - process the peer rate report command
- * @wmi_handle: Pointer to wmi handle
- * @rate_report_params: Pointer to peer rate report parameters
- *
- *
- * Return: QDF_STATUS_SUCCESS for success otherwise failure
- */
-static QDF_STATUS send_peer_rate_report_cmd_tlv(wmi_unified_t wmi_handle,
-	 struct wmi_peer_rate_report_params *rate_report_params)
-{
-	wmi_peer_set_rate_report_condition_fixed_param *cmd = NULL;
-	wmi_buf_t buf = NULL;
-	QDF_STATUS status = 0;
-	uint32_t len = 0;
-	uint32_t i, j;
-
-	len = sizeof(*cmd);
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return QDF_STATUS_E_FAILURE;
-
-	cmd = (wmi_peer_set_rate_report_condition_fixed_param *)
-		wmi_buf_data(buf);
-
-	WMITLV_SET_HDR(
-	&cmd->tlv_header,
-	WMITLV_TAG_STRUC_wmi_peer_set_rate_report_condition_fixed_param,
-	WMITLV_GET_STRUCT_TLVLEN(
-		wmi_peer_set_rate_report_condition_fixed_param));
-
-	cmd->enable_rate_report  = rate_report_params->rate_report_enable;
-	cmd->report_backoff_time = rate_report_params->backoff_time;
-	cmd->report_timer_period = rate_report_params->timer_period;
-	for (i = 0; i < PEER_RATE_REPORT_COND_MAX_NUM; i++) {
-		cmd->cond_per_phy[i].val_cond_flags	=
-			rate_report_params->report_per_phy[i].cond_flags;
-		cmd->cond_per_phy[i].rate_delta.min_delta  =
-			rate_report_params->report_per_phy[i].delta.delta_min;
-		cmd->cond_per_phy[i].rate_delta.percentage =
-			rate_report_params->report_per_phy[i].delta.percent;
-		for (j = 0; j < MAX_NUM_OF_RATE_THRESH; j++) {
-			cmd->cond_per_phy[i].rate_threshold[j] =
-			rate_report_params->report_per_phy[i].
-						report_rate_threshold[j];
-		}
-	}
-
-	wmi_debug("enable %d backoff_time %d period %d",
-		  cmd->enable_rate_report,
-		  cmd->report_backoff_time, cmd->report_timer_period);
-
-	wmi_mtrace(WMI_PEER_SET_RATE_REPORT_CONDITION_CMDID, NO_SESSION, 0);
-	status = wmi_unified_cmd_send(wmi_handle, buf, len,
-			WMI_PEER_SET_RATE_REPORT_CONDITION_CMDID);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		wmi_buf_free(buf);
-		wmi_err("Failed to send peer_set_report_cond command");
-	}
 	return status;
 }
 
@@ -7824,39 +7268,6 @@ static QDF_STATUS send_congestion_cmd_tlv(wmi_unified_t wmi_handle,
 	if (wmi_unified_cmd_send(wmi_handle, buf, len,
 				 WMI_REQUEST_STATS_CMDID)) {
 		wmi_err("Failed to send WMI_REQUEST_STATS_CMDID");
-		wmi_buf_free(buf);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * send_snr_request_cmd_tlv() - send request to fw to get RSSI stats
- * @wmi_handle: wmi handle
- *
- * Return: QDF status
- */
-static QDF_STATUS send_snr_request_cmd_tlv(wmi_unified_t wmi_handle)
-{
-	wmi_buf_t buf;
-	wmi_request_stats_cmd_fixed_param *cmd;
-	uint8_t len = sizeof(wmi_request_stats_cmd_fixed_param);
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return QDF_STATUS_E_FAILURE;
-
-	cmd = (wmi_request_stats_cmd_fixed_param *) wmi_buf_data(buf);
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_request_stats_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN
-			       (wmi_request_stats_cmd_fixed_param));
-	cmd->stats_id = WMI_REQUEST_VDEV_STAT;
-	wmi_mtrace(WMI_REQUEST_STATS_CMDID, cmd->vdev_id, 0);
-	if (wmi_unified_cmd_send(wmi_handle, buf, len,
-				 WMI_REQUEST_STATS_CMDID)) {
-		wmi_err("Failed to send host stats request to fw");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -23447,7 +22858,6 @@ struct wmi_ops tlv_ops =  {
 	.send_vdev_down_cmd = send_vdev_down_cmd_tlv,
 	.send_vdev_start_cmd = send_vdev_start_cmd_tlv,
 	.send_peer_flush_tids_cmd = send_peer_flush_tids_cmd_tlv,
-	.send_peer_tid_config_cmd = send_peer_tid_config_cmd_tlv,
 	.send_peer_param_cmd = send_peer_param_cmd_tlv,
 	.send_vdev_up_cmd = send_vdev_up_cmd_tlv,
 	.send_vdev_stop_cmd = send_vdev_stop_cmd_tlv,
@@ -23464,7 +22874,6 @@ struct wmi_ops tlv_ops =  {
 	.send_pdev_param_cmd = send_pdev_param_cmd_tlv,
 	.send_multiple_pdev_param_cmd = send_multiple_pdev_param_cmd_tlv,
 	.send_pdev_set_hw_mode_cmd = send_pdev_set_hw_mode_cmd_tlv,
-	.send_pdev_set_rf_path_cmd = send_pdev_set_rf_path_cmd_tlv,
 	.send_suspend_cmd = send_suspend_cmd_tlv,
 	.send_resume_cmd = send_resume_cmd_tlv,
 	.send_wow_enable_cmd = send_wow_enable_cmd_tlv,
@@ -23475,10 +22884,7 @@ struct wmi_ops tlv_ops =  {
 	.send_vdev_set_param_cmd = send_vdev_set_param_cmd_tlv,
 	.send_twt_vdev_config_cmd = send_twt_vdev_config_cmd_tlv,
 	.send_vdev_set_mu_snif_cmd = send_vdev_set_mu_snif_cmd_tlv,
-	.send_packet_log_enable_cmd = send_packet_log_enable_cmd_tlv,
-	.send_peer_based_pktlog_cmd = send_peer_based_pktlog_cmd,
 	.send_time_stamp_sync_cmd = send_time_stamp_sync_cmd_tlv,
-	.send_packet_log_disable_cmd = send_packet_log_disable_cmd_tlv,
 	.send_beacon_tmpl_send_cmd = send_beacon_tmpl_send_cmd_tlv,
 	.send_fd_tmpl_cmd = send_fd_tmpl_cmd_tlv,
 	.send_peer_assoc_cmd = send_peer_assoc_cmd_tlv,
@@ -23486,7 +22892,6 @@ struct wmi_ops tlv_ops =  {
 	.send_scan_stop_cmd = send_scan_stop_cmd_tlv,
 	.send_scan_chan_list_cmd = send_scan_chan_list_cmd_tlv,
 	.send_mgmt_cmd = send_mgmt_cmd_tlv,
-	.send_offchan_data_tx_cmd = send_offchan_data_tx_cmd_tlv,
 	.send_modem_power_state_cmd = send_modem_power_state_cmd_tlv,
 	.send_set_sta_ps_mode_cmd = send_set_sta_ps_mode_cmd_tlv,
 	.send_idle_roam_monitor_cmd = send_idle_roam_monitor_cmd_tlv,
@@ -23497,7 +22902,6 @@ struct wmi_ops tlv_ops =  {
 	.send_set_mimops_cmd = send_set_mimops_cmd_tlv,
 	.send_set_thermal_mgmt_cmd = send_set_thermal_mgmt_cmd_tlv,
 	.send_lro_config_cmd = send_lro_config_cmd_tlv,
-	.send_peer_rate_report_cmd = send_peer_rate_report_cmd_tlv,
 	.send_probe_rsp_tmpl_send_cmd =
 				send_probe_rsp_tmpl_send_cmd_tlv,
 	.send_p2p_go_set_beacon_ie_cmd =
@@ -23524,7 +22928,6 @@ struct wmi_ops tlv_ops =  {
 #endif /* FEATURE_CLUB_LL_STATS_AND_GET_STATION */
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS*/
 	.send_congestion_cmd = send_congestion_cmd_tlv,
-	.send_snr_request_cmd = send_snr_request_cmd_tlv,
 	.send_snr_cmd = send_snr_cmd_tlv,
 	.send_link_status_req_cmd = send_link_status_req_cmd_tlv,
 #if !defined(REMOVE_PKT_LOG) && defined(FEATURE_PKTLOG)
@@ -23986,6 +23389,14 @@ struct wmi_ops tlv_ops =  {
 	.extract_halphy_cal_status_ev_param = extract_halphy_cal_status_ev_param_tlv,
 	.send_set_halphy_cal = send_set_halphy_cal_tlv,
 	.extract_halphy_cal_ev_param = extract_halphy_cal_ev_param_tlv,
+	.send_snr_request_cmd = send_snr_request_cmd_tlv,
+	.send_peer_rate_report_cmd = send_peer_rate_report_cmd_tlv,
+	.send_offchan_data_tx_cmd = send_offchan_data_tx_cmd_tlv,
+	.send_packet_log_disable_cmd = send_packet_log_disable_cmd_tlv,
+	.send_peer_based_pktlog_cmd = send_peer_based_pktlog_cmd,
+	.send_packet_log_enable_cmd = send_packet_log_enable_cmd_tlv,
+	.send_peer_tid_config_cmd = send_peer_tid_config_cmd_tlv,
+	.send_pdev_set_rf_path_cmd = send_pdev_set_rf_path_cmd_tlv,
 #endif
 };
 
@@ -25462,6 +24873,601 @@ send_set_halphy_cal_tlv(wmi_unified_t wmi_handle,
 	}
 
 	return ret;
+}
+
+/**
+ * send_snr_request_cmd_tlv() - send request to fw to get RSSI stats
+ * @wmi_handle: wmi handle
+ *
+ * Return: QDF status
+ */
+static QDF_STATUS send_snr_request_cmd_tlv(wmi_unified_t wmi_handle)
+{
+	wmi_buf_t buf;
+	wmi_request_stats_cmd_fixed_param *cmd;
+	uint8_t len = sizeof(wmi_request_stats_cmd_fixed_param);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_FAILURE;
+
+	cmd = (wmi_request_stats_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_request_stats_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_request_stats_cmd_fixed_param));
+	cmd->stats_id = WMI_REQUEST_VDEV_STAT;
+	wmi_mtrace(WMI_REQUEST_STATS_CMDID, cmd->vdev_id, 0);
+	if (wmi_unified_cmd_send(wmi_handle, buf, len,
+				 WMI_REQUEST_STATS_CMDID)) {
+		wmi_err("Failed to send host stats request to fw");
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * send_peer_rate_report_cmd_tlv() - process the peer rate report command
+ * @wmi_handle: Pointer to wmi handle
+ * @rate_report_params: Pointer to peer rate report parameters
+ *
+ *
+ * Return: QDF_STATUS_SUCCESS for success otherwise failure
+ */
+static QDF_STATUS send_peer_rate_report_cmd_tlv(
+			wmi_unified_t wmi_handle,
+			struct wmi_peer_rate_report_params *rate_report_params)
+{
+	wmi_peer_set_rate_report_condition_fixed_param *cmd = NULL;
+	wmi_buf_t buf = NULL;
+	QDF_STATUS status = 0;
+	uint32_t len = 0;
+	uint32_t i, j;
+
+	len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_FAILURE;
+
+	cmd = (wmi_peer_set_rate_report_condition_fixed_param *)
+		wmi_buf_data(buf);
+
+	WMITLV_SET_HDR(
+	&cmd->tlv_header,
+	WMITLV_TAG_STRUC_wmi_peer_set_rate_report_condition_fixed_param,
+	WMITLV_GET_STRUCT_TLVLEN(
+		wmi_peer_set_rate_report_condition_fixed_param));
+
+	cmd->enable_rate_report  = rate_report_params->rate_report_enable;
+	cmd->report_backoff_time = rate_report_params->backoff_time;
+	cmd->report_timer_period = rate_report_params->timer_period;
+	for (i = 0; i < PEER_RATE_REPORT_COND_MAX_NUM; i++) {
+		cmd->cond_per_phy[i].val_cond_flags	=
+			rate_report_params->report_per_phy[i].cond_flags;
+		cmd->cond_per_phy[i].rate_delta.min_delta  =
+			rate_report_params->report_per_phy[i].delta.delta_min;
+		cmd->cond_per_phy[i].rate_delta.percentage =
+			rate_report_params->report_per_phy[i].delta.percent;
+		for (j = 0; j < MAX_NUM_OF_RATE_THRESH; j++) {
+			cmd->cond_per_phy[i].rate_threshold[j] =
+			rate_report_params->report_per_phy[i].
+						report_rate_threshold[j];
+		}
+	}
+
+	wmi_debug("enable %d backoff_time %d period %d",
+		  cmd->enable_rate_report,
+		  cmd->report_backoff_time, cmd->report_timer_period);
+
+	wmi_mtrace(WMI_PEER_SET_RATE_REPORT_CONDITION_CMDID, NO_SESSION, 0);
+	status = wmi_unified_cmd_send(
+				wmi_handle, buf, len,
+				WMI_PEER_SET_RATE_REPORT_CONDITION_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_buf_free(buf);
+		wmi_err("Failed to send peer_set_report_cond command");
+	}
+	return status;
+}
+
+/**
+ * send_offchan_data_tx_cmd_tlv() - Send off-chan tx data
+ * @wmi_handle: handle to WMI.
+ * @param: pointer to offchan data tx cmd parameter
+ *
+ * Return: QDF_STATUS_SUCCESS  on success and error on failure.
+ */
+static QDF_STATUS send_offchan_data_tx_cmd_tlv(
+				wmi_unified_t wmi_handle,
+				struct wmi_offchan_data_tx_params *param)
+{
+	wmi_buf_t buf;
+	wmi_offchan_data_tx_send_cmd_fixed_param *cmd;
+	int32_t cmd_len;
+	uint64_t dma_addr;
+	void *qdf_ctx = param->qdf_ctx;
+	uint8_t *bufp;
+	int32_t bufp_len = (param->frm_len < mgmt_tx_dl_frm_len) ?
+					param->frm_len : mgmt_tx_dl_frm_len;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	cmd_len = sizeof(wmi_offchan_data_tx_send_cmd_fixed_param) +
+		  WMI_TLV_HDR_SIZE +
+		  roundup(bufp_len, sizeof(uint32_t));
+
+	buf = wmi_buf_alloc(wmi_handle, sizeof(wmi_tx_send_params) + cmd_len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_offchan_data_tx_send_cmd_fixed_param *)wmi_buf_data(buf);
+	bufp = (uint8_t *)cmd;
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_offchan_data_tx_send_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN
+		(wmi_offchan_data_tx_send_cmd_fixed_param));
+
+	cmd->vdev_id = param->vdev_id;
+
+	cmd->desc_id = param->desc_id;
+	cmd->chanfreq = param->chanfreq;
+	bufp += sizeof(wmi_offchan_data_tx_send_cmd_fixed_param);
+	WMITLV_SET_HDR(bufp, WMITLV_TAG_ARRAY_BYTE, roundup(bufp_len,
+							    sizeof(uint32_t)));
+	bufp += WMI_TLV_HDR_SIZE;
+	qdf_mem_copy(bufp, param->pdata, bufp_len);
+	qdf_nbuf_map_single(qdf_ctx, param->tx_frame, QDF_DMA_TO_DEVICE);
+	dma_addr = qdf_nbuf_get_frag_paddr(param->tx_frame, 0);
+	cmd->paddr_lo = (uint32_t)(dma_addr & 0xffffffff);
+#if defined(HTT_PADDR64)
+	cmd->paddr_hi = (uint32_t)((dma_addr >> 32) & 0x1F);
+#endif
+	cmd->frame_len = param->frm_len;
+	cmd->buf_len = bufp_len;
+	cmd->tx_params_valid = param->tx_params_valid;
+
+	wmi_mgmt_cmd_record(wmi_handle, WMI_OFFCHAN_DATA_TX_SEND_CMDID,
+			    bufp, cmd->vdev_id, cmd->chanfreq);
+
+	bufp += roundup(bufp_len, sizeof(uint32_t));
+	if (param->tx_params_valid) {
+		status = populate_tx_send_params(bufp, param->tx_param);
+		if (status != QDF_STATUS_SUCCESS) {
+			wmi_err("Populate TX send params failed");
+			goto err1;
+		}
+		cmd_len += sizeof(wmi_tx_send_params);
+	}
+
+	wmi_mtrace(WMI_OFFCHAN_DATA_TX_SEND_CMDID, cmd->vdev_id, 0);
+	if (wmi_unified_cmd_send(wmi_handle, buf, cmd_len,
+				 WMI_OFFCHAN_DATA_TX_SEND_CMDID)) {
+		wmi_err("Failed to offchan data Tx");
+		goto err1;
+	}
+
+	return QDF_STATUS_SUCCESS;
+
+err1:
+	wmi_buf_free(buf);
+	return QDF_STATUS_E_FAILURE;
+}
+
+/**
+ * send_packet_log_disable_cmd_tlv() - Send WMI command to disable packet-log
+ * @wmi_handle: handle to WMI.
+ * @mac_id: mac id to have radio context
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS send_packet_log_disable_cmd_tlv(wmi_unified_t wmi_handle,
+						  uint8_t mac_id)
+{
+	int32_t ret;
+	wmi_pdev_pktlog_disable_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint16_t len = sizeof(wmi_pdev_pktlog_disable_cmd_fixed_param);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return -QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_pdev_pktlog_disable_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_disable_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_pdev_pktlog_disable_cmd_fixed_param));
+	cmd->pdev_id = mac_id;
+	wmi_mtrace(WMI_PDEV_PKTLOG_DISABLE_CMDID, cmd->pdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PDEV_PKTLOG_DISABLE_CMDID);
+	if (ret) {
+		wmi_err("Failed to send pktlog disable cmd to FW =%d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * send_peer_based_pktlog_cmd() - Send WMI command to enable packet-log
+ * @wmi_handle: handle to WMI.
+ * @macaddr: Peer mac address to be filter
+ * @mac_id: mac id to have radio context
+ * @enb_dsb: Enable MAC based filtering or Disable
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS send_peer_based_pktlog_cmd(wmi_unified_t wmi_handle,
+					     uint8_t *macaddr,
+					     uint8_t mac_id,
+					     uint8_t enb_dsb)
+{
+	int32_t ret;
+	wmi_pdev_pktlog_filter_cmd_fixed_param *cmd;
+	wmi_pdev_pktlog_filter_info *mac_info;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	uint16_t len = sizeof(wmi_pdev_pktlog_filter_cmd_fixed_param) +
+			sizeof(wmi_pdev_pktlog_filter_info) + WMI_TLV_HDR_SIZE;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_pdev_pktlog_filter_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_filter_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_pdev_pktlog_filter_cmd_fixed_param));
+	cmd->pdev_id = mac_id;
+	cmd->enable = enb_dsb;
+	cmd->num_of_mac_addresses = 1;
+	wmi_mtrace(WMI_PDEV_PKTLOG_FILTER_CMDID, cmd->pdev_id, 0);
+
+	buf_ptr += sizeof(*cmd);
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       sizeof(wmi_pdev_pktlog_filter_info));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	mac_info = (wmi_pdev_pktlog_filter_info *)(buf_ptr);
+
+	WMITLV_SET_HDR(&mac_info->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_filter_info,
+		       WMITLV_GET_STRUCT_TLVLEN
+		       (wmi_pdev_pktlog_filter_info));
+
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(macaddr, &mac_info->peer_mac_address);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PDEV_PKTLOG_FILTER_CMDID);
+	if (ret) {
+		wmi_err("Failed to send peer based pktlog command to FW =%d"
+			 , ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * send_packet_log_enable_cmd_tlv() - Send WMI command to enable packet-log
+ * @wmi_handle: handle to WMI.
+ * @PKTLOG_EVENT: packet log event
+ * @mac_id: mac id to have radio context
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS send_packet_log_enable_cmd_tlv(
+			wmi_unified_t wmi_handle,
+			WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT, uint8_t mac_id)
+{
+	int32_t ret, idx, max_idx;
+	wmi_pdev_pktlog_enable_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint16_t len = sizeof(wmi_pdev_pktlog_enable_cmd_fixed_param);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return -QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_pdev_pktlog_enable_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_pdev_pktlog_enable_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_pdev_pktlog_enable_cmd_fixed_param));
+	max_idx = sizeof(pktlog_event_tlv) / (sizeof(pktlog_event_tlv[0]));
+	cmd->evlist = 0;
+	for (idx = 0; idx < max_idx; idx++) {
+		if (PKTLOG_EVENT & (1 << idx))
+			cmd->evlist |=  pktlog_event_tlv[idx];
+	}
+	cmd->pdev_id = mac_id;
+	wmi_mtrace(WMI_PDEV_PKTLOG_ENABLE_CMDID, cmd->pdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PDEV_PKTLOG_ENABLE_CMDID);
+	if (ret) {
+		wmi_err("Failed to send pktlog enable cmd to FW =%d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * map_to_wmi_sw_retry_threshold() - Map sw_retry_thresh to fw defined val
+ * @sw_retry_thresh: The software retry threshold for TID
+ *
+ * Return: WMI layer TID config software retry threshold
+ */
+static WMI_PEER_TID_CONFIG_SW_RETRY_THRESHOLD
+map_to_wmi_sw_retry_threshold(enum peer_tid_sw_retry_threshold sw_retry_thresh)
+{
+	switch (sw_retry_thresh) {
+	case PEER_TID_SW_RETRY_MIN:
+		return WMI_PEER_TID_SW_RETRY_MIN;
+	case PEER_TID_SW_RETRY_MAX:
+		return WMI_PEER_TID_SW_RETRY_MAX;
+	case PEER_TID_SW_RETRY_NO_RETRY:
+		return WMI_PEER_TID_SW_RETRY_NO_RETRY;
+	default:
+		return WMI_PEER_TID_SW_RETRY_IGNORE;
+	}
+}
+
+/**
+ * map_to_wmi_tid_cfg_supp_bitmap() - Map tid_cfg_supp bitmap to fW defined val
+ * @tid_cfg_supp_bitmap: The tid config bitmap for extended TID feature
+ *
+ * Return: WMI layer TID config ext config valid bitmap
+ */
+static WMI_PEER_TID_EXT_CONFIG_VALID_BITMAP
+map_to_wmi_tid_cfg_supp_bitmap(enum peer_tid_supported_bitmap
+					tid_cfg_supp_bitmap)
+{
+	uint32_t tid_ext_cfg_bitmap = 0;
+
+	if ((tid_cfg_supp_bitmap & PEER_TID_DISABLE_RTS_CTS_VALID))
+		tid_ext_cfg_bitmap |= WMI_PEER_TID_DISABLE_RTS_CTS_VALID;
+
+	if ((tid_cfg_supp_bitmap & PEER_TID_MAX_NUM_MPDU_IN_PPDU_VALID))
+		tid_ext_cfg_bitmap |= WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_VALID;
+
+	if ((tid_cfg_supp_bitmap & PEER_TID_MAX_NUM_MSDU_IN_MPDU_VALID))
+		tid_ext_cfg_bitmap |= WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_VALID;
+
+	return tid_ext_cfg_bitmap;
+}
+
+/**
+ * map_to_wmi_rts_cts_control() - Map rts_cts_control to fW defined val
+ * @rts_cts_control: The rts_cts control for TID
+ *
+ * Return: WMI layer TID config rts cts control
+ */
+static WMI_PEER_TID_CONFIG_RTSCTS_CONTROL
+map_to_wmi_rts_cts_control(enum peer_tid_rts_cts_control rts_cts_control)
+{
+	switch (rts_cts_control) {
+	case PEER_TID_RTSCTS_DISABLE:
+		return WMI_RTSCTS_DISABLE;
+	case PEER_TID_RTSCTS_ENABLE:
+		return WMI_RTSCTS_ENABLE;
+	default:
+		return WMI_RTSCTS_RESET;
+	}
+}
+
+/**
+ * map_to_wmi_num_mpdu_in_ppdu() - Map num_mpdu_in_ppdu to fW define val
+ * @num_mpdu_in_ppdu: The max num of mpdu in ppdu for TID
+ *
+ * Return: WMI layer TID config max mpdu in ppdu value
+ */
+static WMI_PEER_TID_CONFIG_MAX_NUM_MPDU_IN_PPDU
+map_to_wmi_num_mpdu_in_ppdu(enum peer_tid_num_mpdu_in_ppdu num_mpdu_in_ppdu)
+{
+	switch (num_mpdu_in_ppdu) {
+	case PEER_TID_MAX_NUM_MPDU_IN_PPDU_MIN:
+		return WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_MIN;
+	case PEER_TID_MAX_NUM_MPDU_IN_PPDU_MAX:
+		return WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_MAX;
+	default:
+		return WMI_PEER_TID_MAX_NUM_MPDU_IN_PPDU_DEFAULT;
+	}
+}
+
+/**
+ * map_to_wmi_num_msdu_in_mpdu() - Map num_msdu_in_mpdu to fw defined val
+ * @num_msdu_in_mpdu: The max num of msdu in mpdu for TID
+ *
+ * Return: WMI layer TID config max msdu in mpdu value
+ */
+static WMI_PEER_TID_CONFIG_MAX_NUM_MSDU_IN_MPDU
+map_to_wmi_num_msdu_in_mpdu(enum peer_tid_num_msdu_in_mpdu num_msdu_in_mpdu)
+{
+	switch (num_msdu_in_mpdu) {
+	case PEER_TID_MAX_NUM_MSDU_IN_MPDU_MIN:
+		return WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_MIN;
+	case PEER_TID_MAX_NUM_MSDU_IN_MPDU_MAX:
+		return WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_MAX;
+	default:
+		return WMI_PEER_TID_MAX_NUM_MSDU_IN_MPDU_DEFAULT;
+	}
+}
+
+/**
+ * map_to_wmi_ack_policy() - Map ack_policy to firmware defined values
+ * @ack_policy: The ack policy for TID
+ *
+ * Return: WMI layer TID config ack policy value
+ */
+static WMI_PEER_TID_CONFIG_ACK_POLICY
+map_to_wmi_ack_policy(enum peer_tid_ack_policy ack_policy)
+{
+	switch (ack_policy) {
+	case PEER_TID_CONFIG_ACK:
+		return WMI_PEER_TID_CONFIG_ACK;
+	case PEER_TID_CONFIG_NOACK:
+		return WMI_PEER_TID_CONFIG_NOACK;
+	default:
+		return WMI_PEER_TID_CONFIG_ACK_POLICY_IGNORE;
+	}
+}
+
+/**
+ * map_to_wmi_aggr_control() - Map aggr_control to firmware defined values
+ * @aggr_control: The aggregation control for TID
+ *
+ * Return: WMI layer TID config aggregation control
+ */
+static WMI_PEER_TID_CONFIG_AGGR_CONTROL
+map_to_wmi_aggr_control(enum peer_tid_aggr_control aggr_control)
+{
+	switch (aggr_control) {
+	case PEER_TID_CONFIG_AGGR_CONTROL_ENABLE:
+		return WMI_PEER_TID_CONFIG_AGGR_CONTROL_ENABLE;
+	case PEER_TID_CONFIG_AGGR_CONTROL_DISABLE:
+		return WMI_PEER_TID_CONFIG_AGGR_CONTROL_DISABLE;
+	default:
+		return WMI_PEER_TID_CONFIG_AGGR_CONTROL_IGNORE;
+	}
+}
+
+/**
+ * map_to_wmi_rate_control() - Map rate control to firmware defined values
+ * @rate_control: The rate control for TID
+ *
+ * Return: WMI layer TID config rate control
+ */
+static WMI_PEER_TID_CONFIG_RATE_CONTROL
+map_to_wmi_rate_control(enum peer_tid_rate_control rate_control)
+{
+	switch (rate_control) {
+	case PEER_TID_CONFIG_RATE_CONTROL_AUTO:
+		return WMI_PEER_TID_CONFIG_RATE_CONTROL_AUTO;
+	case PEER_TID_CONFIG_RATE_CONTROL_FIXED_RATE:
+		return WMI_PEER_TID_CONFIG_RATE_CONTROL_FIXED_RATE;
+	case PEER_TID_CONFIG_RATE_CONTROL_DEFAULT_LOWEST_RATE:
+		return WMI_PEER_TID_CONFIG_RATE_CONTROL_DEFAULT_LOWEST_RATE;
+	case PEER_TID_CONFIG_RATE_UPPER_CAP:
+		return WMI_PEER_TID_CONFIG_RATE_UPPER_CAP;
+	default:
+		return WMI_PEER_TID_CONFIG_RATE_CONTROL_IGNORE;
+	}
+}
+
+/**
+ * send_peer_tid_config_cmd_tlv() - send TID config command to fw
+ * @wmi_handle: wmi handle
+ * @macaddr: peer mac address
+ * @params: pointer to hold peer tid config parameter
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+send_peer_tid_config_cmd_tlv(wmi_unified_t wmi_handle,
+			     uint8_t macaddr[QDF_MAC_ADDR_SIZE],
+			     struct peer_tid_config_params *params)
+{
+	wmi_peer_tid_configurations_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	int32_t len = sizeof(*cmd);
+	QDF_STATUS ret;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_peer_tid_configurations_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_peer_tid_configurations_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN
+		(wmi_peer_tid_configurations_cmd_fixed_param));
+	cmd->vdev_id = params->vdev_id;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(macaddr, &cmd->peer_mac_address);
+	cmd->tid_num = params->tid_num;
+	cmd->ack_policy = map_to_wmi_ack_policy(params->ack_policy);
+	cmd->aggr_control = map_to_wmi_aggr_control(params->aggr_control);
+	cmd->rate_control = map_to_wmi_rate_control(params->rate_control);
+	cmd->rcode_rcflags = params->rcode_rcflags;
+	cmd->sw_retry_threshold =
+		map_to_wmi_sw_retry_threshold(params->sw_retry_threshold);
+	cmd->tid_config_supported_bitmap =
+		map_to_wmi_tid_cfg_supp_bitmap(params->tid_cfg_supp_bitmap);
+	cmd->disable_rts_cts =
+		map_to_wmi_rts_cts_control(params->disable_rts_cts);
+	cmd->max_num_mpdu_in_ppdu =
+		map_to_wmi_num_mpdu_in_ppdu(params->max_num_mpdu_in_ppdu);
+	cmd->max_num_msdu_in_mpdu =
+		map_to_wmi_num_msdu_in_mpdu(params->max_num_msdu_in_mpdu);
+
+	wmi_mtrace(WMI_PEER_TID_CONFIGURATIONS_CMDID, cmd->vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PEER_TID_CONFIGURATIONS_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send WMI_PEER_TID_CONFIGURATIONS_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	wmi_debug("peer macaddr "QDF_MAC_ADDR_FMT" vdev_id %d and tid_num %d",
+		  QDF_MAC_ADDR_REF(macaddr), params->vdev_id,
+		  params->tid_num);
+
+	return ret;
+}
+
+/**
+ * send_pdev_set_rf_path_cmd_tlv() - Send WMI_PDEV_SET_RF_PATH_CMDID to FW
+ * @wmi_handle: wmi handle
+ * @rf_path_index: the rf path mode to be selected
+ * @pdev_id: pdev id
+ *
+ * Provides notification to the WLAN firmware that host driver is requesting a
+ * rf path change.
+ *
+ * Return: Success if the cmd is sent successfully to the firmware
+ */
+static QDF_STATUS send_pdev_set_rf_path_cmd_tlv(wmi_unified_t wmi_handle,
+						uint32_t rf_path_index,
+						uint8_t pdev_id)
+{
+	wmi_pdev_set_rf_path_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint32_t len;
+
+	len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_pdev_set_rf_path_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_pdev_set_rf_path_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_pdev_set_rf_path_cmd_fixed_param));
+
+	cmd->pdev_id = wmi_handle->ops->convert_pdev_id_host_to_target(
+							wmi_handle,
+							pdev_id);
+	cmd->rf_path = rf_path_index;
+	wmi_debug("HW mode index:%d", cmd->rf_path);
+
+	wmi_mtrace(WMI_PDEV_SET_RF_PATH_CMDID, NO_SESSION, 0);
+	if (wmi_unified_cmd_send(wmi_handle, buf, len,
+				 WMI_PDEV_SET_RF_PATH_CMDID)) {
+		wmi_err("Failed to send WMI_PDEV_SET_RF_PATH_CMDID");
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 

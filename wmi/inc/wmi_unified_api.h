@@ -821,20 +821,6 @@ QDF_STATUS wmi_unified_soc_set_hw_mode_cmd(wmi_unified_t wmi_handle,
 					   uint32_t hw_mode_index);
 
 /**
- * wmi_unified_soc_set_rf_path_cmd() - WMI_PDEV_SET_RF_PATH_CMDID to FW
- * @wmi_handle: wmi handle
- * @rf_path_index: RF path index to switch to
- * @pdev_id: pdev id
- *
- * Request RF path change to WLAN firmware
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_soc_set_rf_path_cmd(wmi_unified_t wmi_handle,
-					   uint32_t rf_path_index,
-					   uint8_t pdev_id);
-
-/**
  * wmi_unified_extract_hw_mode_resp() - Extract HW mode change response
  * @wmi: WMI handle
  * @evt_buf: Buffer holding event data
@@ -1110,19 +1096,6 @@ wmi_unified_peer_flush_tids_send(wmi_unified_t wmi_handle,
 				 uint8_t peer_addr[QDF_MAC_ADDR_SIZE],
 				 struct peer_flush_params *param);
 
-/**
- * wmi_unified_peer_tid_config_send() - send TID config command to fw
- * @wmi_handle: wmi handle
- * @macaddr: peer mac address
- * @params: pointer to hold TID config  parameter
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_peer_tid_config_send(wmi_unified_t wmi_handle,
-				 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-				 struct peer_tid_config_params *params);
-
 #ifdef WLAN_FEATURE_PEER_TXQ_FLUSH_CONF
 /**
  * wmi_unified_peer_txq_flush_config_send() - peer txq flush policy config in fw
@@ -1200,45 +1173,6 @@ QDF_STATUS wmi_unified_wow_enable_send(wmi_unified_t wmi_handle,
  * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
  */
 QDF_STATUS wmi_unified_wow_wakeup_send(wmi_unified_t wmi_handle);
-
-/**
- * wmi_unified_packet_log_enable_send() - WMI request stats function
- * @wmi_handle : handle to WMI.
- * @PKTLOG_EVENT : PKTLOG Event
- * @mac_id : MAC id corresponds to pdev id
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_packet_log_enable_send(wmi_unified_t wmi_handle,
-				   WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT,
-				   uint8_t mac_id);
-
-/**
- * wmi_unified_peer_based_pktlog_send() - WMI request enable peer
- * based filtering
- * @wmi_handle: handle to WMI.
- * @macaddr: PEER mac address to be filtered
- * @mac_id: Mac id
- * @enb_dsb: Enable or Disable peer based pktlog
- *           filtering
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_peer_based_pktlog_send(wmi_unified_t wmi_handle,
-					      uint8_t *macaddr,
-					      uint8_t mac_id,
-					      uint8_t enb_dsb);
-
-/**
- * wmi_unified_packet_log_disable_send() - WMI pktlog disable function
- * @wmi_handle: handle to WMI.
- * @mac_id: Mac id
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_packet_log_disable_send(wmi_unified_t wmi_handle,
-					       uint8_t mac_id);
 
 /**
  * wmi_unified_suspend_send() - WMI suspend function
@@ -1433,17 +1367,6 @@ QDF_STATUS wmi_mgmt_unified_cmd_send(wmi_unified_t wmi_handle,
 				     struct wmi_mgmt_params *param);
 
 /**
- *  wmi_offchan_data_tx_cmd_send() - Send offchan data tx cmd over wmi layer
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold offchan data cmd parameter
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_offchan_data_tx_cmd_send(
-		wmi_unified_t wmi_handle,
-		struct wmi_offchan_data_tx_params *param);
-
-/**
  * wmi_unified_modem_power_state() - set modem power state to fw
  * @wmi_handle: wmi handle
  * @param_value: parameter value
@@ -1555,19 +1478,6 @@ QDF_STATUS wmi_unified_send_opm_stats_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_set_thermal_mgmt_cmd(wmi_unified_t wmi_handle,
 				 struct thermal_cmd_params *thermal_info);
-
-/**
- * wmi_unified_peer_rate_report_cmd() - process the peer rate report command
- * @wmi_handle: Pointer to wmi handle
- * @rate_report_params: Pointer to peer rate report parameters
- *
- *
- * Return: QDF_STATUS_SUCCESS for success otherwise failure
- */
-QDF_STATUS
-wmi_unified_peer_rate_report_cmd(
-		wmi_unified_t wmi_handle,
-		struct wmi_peer_rate_report_params *rate_report_params);
 
 /**
  * wmi_unified_process_update_edca_param() - update EDCA params
@@ -1774,14 +1684,6 @@ QDF_STATUS wmi_process_unified_ll_stats_get_sta_cmd(
  */
 QDF_STATUS wmi_unified_congestion_request_cmd(wmi_unified_t wmi_handle,
 					      uint8_t vdev_id);
-
-/**
- * wmi_unified_snr_request_cmd() - send request to fw to get RSSI stats
- * @wmi_handle: wmi handle
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_snr_request_cmd(wmi_unified_t wmi_handle);
 
 /**
  * wmi_unified_snr_cmd() - get RSSI from fw
@@ -5199,5 +5101,103 @@ QDF_STATUS
 wmi_extract_halphy_cal_ev_param(wmi_unified_t wmi_handle,
 				void *evt_buf,
 				struct wmi_host_pdev_set_halphy_cal_event *param);
+
+/**
+ * wmi_unified_snr_request_cmd() - send request to fw to get RSSI stats
+ * @wmi_handle: wmi handle
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_snr_request_cmd(wmi_unified_t wmi_handle);
+
+/**
+ * wmi_unified_peer_rate_report_cmd() - process the peer rate report command
+ * @wmi_handle: Pointer to wmi handle
+ * @rate_report_params: Pointer to peer rate report parameters
+ *
+ *
+ * Return: QDF_STATUS_SUCCESS for success otherwise failure
+ */
+QDF_STATUS
+wmi_unified_peer_rate_report_cmd(
+		wmi_unified_t wmi_handle,
+		struct wmi_peer_rate_report_params *rate_report_params);
+
+/**
+ *  wmi_offchan_data_tx_cmd_send() - Send offchan data tx cmd over wmi layer
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold offchan data cmd parameter
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_offchan_data_tx_cmd_send(
+		wmi_unified_t wmi_handle,
+		struct wmi_offchan_data_tx_params *param);
+
+/**
+ * wmi_unified_packet_log_disable_send() - WMI pktlog disable function
+ * @wmi_handle: handle to WMI.
+ * @mac_id: Mac id
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_packet_log_disable_send(wmi_unified_t wmi_handle,
+					       uint8_t mac_id);
+
+/**
+ * wmi_unified_peer_based_pktlog_send() - WMI request enable peer
+ * based filtering
+ * @wmi_handle: handle to WMI.
+ * @macaddr: PEER mac address to be filtered
+ * @mac_id: Mac id
+ * @enb_dsb: Enable or Disable peer based pktlog
+ *           filtering
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_peer_based_pktlog_send(wmi_unified_t wmi_handle,
+					      uint8_t *macaddr,
+					      uint8_t mac_id,
+					      uint8_t enb_dsb);
+
+/**
+ * wmi_unified_packet_log_enable_send() - WMI request stats function
+ * @wmi_handle : handle to WMI.
+ * @PKTLOG_EVENT : PKTLOG Event
+ * @mac_id : MAC id corresponds to pdev id
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_packet_log_enable_send(wmi_unified_t wmi_handle,
+				   WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT,
+				   uint8_t mac_id);
+
+/**
+ * wmi_unified_peer_tid_config_send() - send TID config command to fw
+ * @wmi_handle: wmi handle
+ * @macaddr: peer mac address
+ * @params: pointer to hold TID config  parameter
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_peer_tid_config_send(wmi_unified_t wmi_handle,
+				 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
+				 struct peer_tid_config_params *params);
+
+/**
+ * wmi_unified_soc_set_rf_path_cmd() - WMI_PDEV_SET_RF_PATH_CMDID to FW
+ * @wmi_handle: wmi handle
+ * @rf_path_index: RF path index to switch to
+ * @pdev_id: pdev id
+ *
+ * Request RF path change to WLAN firmware
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_soc_set_rf_path_cmd(wmi_unified_t wmi_handle,
+					   uint32_t rf_path_index,
+					   uint8_t pdev_id);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

@@ -571,10 +571,6 @@ QDF_STATUS (*send_peer_delete_cmd)(wmi_unified_t wmi,
 				   uint8_t peer_addr[QDF_MAC_ADDR_SIZE],
 				   struct peer_delete_cmd_params *param);
 
-QDF_STATUS (*send_peer_tid_config_cmd)(wmi_unified_t wmi_handle,
-				       uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-				       struct peer_tid_config_params *params);
-
 QDF_STATUS (*send_peer_delete_all_cmd)(
 				wmi_unified_t wmi,
 				struct peer_delete_all_params *param);
@@ -631,10 +627,6 @@ QDF_STATUS
 QDF_STATUS
 (*send_pdev_set_hw_mode_cmd)(wmi_unified_t wmi_handle,
 			     uint32_t hw_mode_index);
-
-QDF_STATUS
-(*send_pdev_set_rf_path_cmd)(wmi_unified_t wmi_handle,
-			     uint32_t hw_mode_index, uint8_t pdev_id);
 
 QDF_STATUS (*send_suspend_cmd)(wmi_unified_t wmi_handle,
 				struct suspend_params *param,
@@ -699,12 +691,6 @@ QDF_STATUS (*send_request_peer_stats_info_cmd)(wmi_unified_t wmi_handle,
 				struct peer_stats_request_params *param);
 #endif /* QCA_SUPPORT_MC_CP_STATS */
 
-QDF_STATUS (*send_packet_log_enable_cmd)(wmi_unified_t wmi_handle,
-			WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT, uint8_t mac_id);
-
-QDF_STATUS (*send_packet_log_disable_cmd)(wmi_unified_t wmi_handle,
-	uint8_t mac_id);
-
 QDF_STATUS (*send_fd_tmpl_cmd)(wmi_unified_t wmi_handle,
 				struct fils_discovery_tmpl_params *param);
 
@@ -728,9 +714,6 @@ QDF_STATUS (*send_scan_chan_list_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_mgmt_cmd)(wmi_unified_t wmi_handle,
 				struct wmi_mgmt_params *param);
-
-QDF_STATUS (*send_offchan_data_tx_cmd)(wmi_unified_t wmi_handle,
-				struct wmi_offchan_data_tx_params *param);
 
 QDF_STATUS (*send_modem_power_state_cmd)(wmi_unified_t wmi_handle,
 		uint32_t param_value);
@@ -814,9 +797,6 @@ QDF_STATUS (*send_lro_config_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_set_thermal_mgmt_cmd)(wmi_unified_t wmi_handle,
 				struct thermal_cmd_params *thermal_info);
-
-QDF_STATUS (*send_peer_rate_report_cmd)(wmi_unified_t wmi_handle,
-	 struct wmi_peer_rate_report_params *rate_report_params);
 
 #ifdef WMI_CONCURRENCY_SUPPORT
 QDF_STATUS (*send_set_mcc_channel_time_quota_cmd)
@@ -1031,8 +1011,6 @@ QDF_STATUS (*send_unified_ll_stats_get_sta_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_congestion_cmd)(wmi_unified_t wmi_handle,
 				  uint8_t vdev_id);
 
-QDF_STATUS (*send_snr_request_cmd)(wmi_unified_t wmi_handle);
-
 QDF_STATUS (*send_snr_cmd)(wmi_unified_t wmi_handle, uint8_t vdev_id);
 
 QDF_STATUS (*send_link_status_req_cmd)(wmi_unified_t wmi_handle,
@@ -1177,11 +1155,6 @@ QDF_STATUS (*send_obss_color_collision_cfg_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*extract_obss_color_collision_info)(uint8_t *evt_buf,
 		struct wmi_obss_color_collision_info *info);
-
-QDF_STATUS (*send_peer_based_pktlog_cmd)(wmi_unified_t wmi_handle,
-					 uint8_t *macaddr,
-					 uint8_t mac_id,
-					 uint8_t enb_dsb);
 
 #ifdef WMI_STA_SUPPORT
 QDF_STATUS (*send_del_ts_cmd)(wmi_unified_t wmi_handle, uint8_t vdev_id,
@@ -4306,5 +4279,35 @@ QDF_STATUS
 (*extract_halphy_cal_ev_param)(wmi_unified_t wmi_handle,
 			       void *evt_buf,
 			       struct wmi_host_pdev_set_halphy_cal_event *param);
+
+QDF_STATUS (*send_snr_request_cmd)(wmi_unified_t wmi_handle);
+
+QDF_STATUS (*send_peer_rate_report_cmd)(
+	wmi_unified_t wmi_handle,
+	struct wmi_peer_rate_report_params *rate_report_params);
+
+QDF_STATUS (*send_offchan_data_tx_cmd)(
+				wmi_unified_t wmi_handle,
+				struct wmi_offchan_data_tx_params *param);
+
+QDF_STATUS (*send_packet_log_disable_cmd)(wmi_unified_t wmi_handle,
+					  uint8_t mac_id);
+
+QDF_STATUS (*send_peer_based_pktlog_cmd)(wmi_unified_t wmi_handle,
+					 uint8_t *macaddr,
+					 uint8_t mac_id,
+					 uint8_t enb_dsb);
+
+QDF_STATUS (*send_packet_log_enable_cmd)(
+			wmi_unified_t wmi_handle,
+			WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT, uint8_t mac_id);
+
+QDF_STATUS (*send_peer_tid_config_cmd)(wmi_unified_t wmi_handle,
+				       uint8_t macaddr[QDF_MAC_ADDR_SIZE],
+				       struct peer_tid_config_params *params);
+
+QDF_STATUS
+(*send_pdev_set_rf_path_cmd)(wmi_unified_t wmi_handle,
+			     uint32_t hw_mode_index, uint8_t pdev_id);
 #endif
 #endif

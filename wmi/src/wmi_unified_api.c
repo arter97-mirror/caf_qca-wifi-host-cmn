@@ -75,19 +75,6 @@ QDF_STATUS wmi_unified_soc_set_hw_mode_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS wmi_unified_soc_set_rf_path_cmd(wmi_unified_t wmi_handle,
-					   uint32_t rf_path_index,
-					   uint8_t pdev_id)
-{
-	if (wmi_handle->ops->send_pdev_set_rf_path_cmd)
-		return wmi_handle->ops->send_pdev_set_rf_path_cmd(
-								wmi_handle,
-								rf_path_index,
-								pdev_id);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_unified_vdev_create_send(wmi_unified_t wmi_handle,
 					uint8_t macaddr[QDF_MAC_ADDR_SIZE],
 					struct vdev_create_params *param)
@@ -168,18 +155,6 @@ wmi_unified_peer_flush_tids_send(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->send_peer_flush_tids_cmd)
 		return wmi_handle->ops->send_peer_flush_tids_cmd(wmi_handle,
 				  peer_addr, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_peer_tid_config_send(wmi_unified_t wmi_handle,
-				 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-				 struct peer_tid_config_params *params)
-{
-	if (wmi_handle->ops->send_peer_tid_config_cmd)
-		return wmi_handle->ops->send_peer_tid_config_cmd(wmi_handle,
-				macaddr, params);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -504,40 +479,6 @@ QDF_STATUS wmi_unified_sifs_trigger_send(wmi_unified_t wmi_handle,
 }
 
 QDF_STATUS
-wmi_unified_packet_log_enable_send(wmi_unified_t wmi_handle,
-				   WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT,
-				   uint8_t mac_id)
-{
-	if (wmi_handle->ops->send_packet_log_enable_cmd)
-		return wmi_handle->ops->send_packet_log_enable_cmd(wmi_handle,
-				  PKTLOG_EVENT, mac_id);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_peer_based_pktlog_send(wmi_unified_t wmi_handle,
-					      uint8_t *macaddr,
-					      uint8_t mac_id,
-					      uint8_t enb_dsb)
-{
-	if (wmi_handle->ops->send_peer_based_pktlog_cmd)
-		return wmi_handle->ops->send_peer_based_pktlog_cmd
-			(wmi_handle, macaddr, mac_id, enb_dsb);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_packet_log_disable_send(wmi_unified_t wmi_handle,
-					       uint8_t mac_id)
-{
-	if (wmi_handle->ops->send_packet_log_disable_cmd)
-		return wmi_handle->ops->send_packet_log_disable_cmd(wmi_handle,
-			mac_id);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
 wmi_unified_fd_tmpl_send_cmd(wmi_unified_t wmi_handle,
 			     struct fils_discovery_tmpl_params *param)
 {
@@ -608,17 +549,6 @@ QDF_STATUS wmi_mgmt_unified_cmd_send(wmi_unified_t wmi_handle,
 {
 	if (wmi_handle->ops->send_mgmt_cmd)
 		return wmi_handle->ops->send_mgmt_cmd(wmi_handle,
-				  param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_offchan_data_tx_cmd_send(wmi_unified_t wmi_handle,
-			     struct wmi_offchan_data_tx_params *param)
-{
-	if (wmi_handle->ops->send_offchan_data_tx_cmd)
-		return wmi_handle->ops->send_offchan_data_tx_cmd(wmi_handle,
 				  param);
 
 	return QDF_STATUS_E_FAILURE;
@@ -712,18 +642,6 @@ wmi_unified_lro_config_cmd(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->send_lro_config_cmd)
 		return wmi_handle->ops->send_lro_config_cmd(wmi_handle,
 					wmi_lro_cmd);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_peer_rate_report_cmd(
-		wmi_unified_t wmi_handle,
-		struct wmi_peer_rate_report_params *rate_report_params)
-{
-	if (wmi_handle->ops->send_peer_rate_report_cmd)
-		return wmi_handle->ops->send_peer_rate_report_cmd(wmi_handle,
-					rate_report_params);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -894,14 +812,6 @@ QDF_STATUS wmi_unified_congestion_request_cmd(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->send_congestion_cmd)
 		return wmi_handle->ops->send_congestion_cmd(wmi_handle,
 			   vdev_id);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_snr_request_cmd(wmi_unified_t wmi_handle)
-{
-	if (wmi_handle->ops->send_snr_request_cmd)
-		return wmi_handle->ops->send_snr_request_cmd(wmi_handle);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -4084,6 +3994,96 @@ wmi_extract_halphy_cal_ev_param(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->extract_halphy_cal_ev_param)
 		return wmi_handle->ops->extract_halphy_cal_ev_param(
 			wmi_handle, evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_snr_request_cmd(wmi_unified_t wmi_handle)
+{
+	if (wmi_handle->ops->send_snr_request_cmd)
+		return wmi_handle->ops->send_snr_request_cmd(wmi_handle);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_peer_rate_report_cmd(
+		wmi_unified_t wmi_handle,
+		struct wmi_peer_rate_report_params *rate_report_params)
+{
+	if (wmi_handle->ops->send_peer_rate_report_cmd)
+		return wmi_handle->ops->send_peer_rate_report_cmd(wmi_handle,
+					rate_report_params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_offchan_data_tx_cmd_send(wmi_unified_t wmi_handle,
+			     struct wmi_offchan_data_tx_params *param)
+{
+	if (wmi_handle->ops->send_offchan_data_tx_cmd)
+		return wmi_handle->ops->send_offchan_data_tx_cmd(wmi_handle,
+				  param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_packet_log_disable_send(wmi_unified_t wmi_handle,
+					       uint8_t mac_id)
+{
+	if (wmi_handle->ops->send_packet_log_disable_cmd)
+		return wmi_handle->ops->send_packet_log_disable_cmd(wmi_handle,
+			mac_id);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_peer_based_pktlog_send(wmi_unified_t wmi_handle,
+					      uint8_t *macaddr,
+					      uint8_t mac_id,
+					      uint8_t enb_dsb)
+{
+	if (wmi_handle->ops->send_peer_based_pktlog_cmd)
+		return wmi_handle->ops->send_peer_based_pktlog_cmd
+			(wmi_handle, macaddr, mac_id, enb_dsb);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_packet_log_enable_send(wmi_unified_t wmi_handle,
+				   WMI_HOST_PKTLOG_EVENT PKTLOG_EVENT,
+				   uint8_t mac_id)
+{
+	if (wmi_handle->ops->send_packet_log_enable_cmd)
+		return wmi_handle->ops->send_packet_log_enable_cmd(wmi_handle,
+				  PKTLOG_EVENT, mac_id);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_peer_tid_config_send(wmi_unified_t wmi_handle,
+				 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
+				 struct peer_tid_config_params *params)
+{
+	if (wmi_handle->ops->send_peer_tid_config_cmd)
+		return wmi_handle->ops->send_peer_tid_config_cmd(wmi_handle,
+				macaddr, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_soc_set_rf_path_cmd(wmi_unified_t wmi_handle,
+					   uint32_t rf_path_index,
+					   uint8_t pdev_id)
+{
+	if (wmi_handle->ops->send_pdev_set_rf_path_cmd)
+		return wmi_handle->ops->send_pdev_set_rf_path_cmd(
+								wmi_handle,
+								rf_path_index,
+								pdev_id);
 
 	return QDF_STATUS_E_FAILURE;
 }
