@@ -2106,6 +2106,14 @@ wlan_dcs_process(struct wlan_objmgr_psoc *psoc,
 	case WLAN_HOST_DCS_AFC:
 		wlan_dcs_afc_process(psoc, event->dcs_param.pdev_id);
 		break;
+	case WLAN_HOST_DCS_JAMMERIM:
+		if (!dcs_pdev_priv->dcs_host_params.dcs_enable)
+			break;
+
+		wlan_dcs_frequency_control(psoc,
+					   dcs_pdev_priv,
+					   event);
+		break;
 	default:
 		dcs_err("unidentified interference type reported");
 		break;
