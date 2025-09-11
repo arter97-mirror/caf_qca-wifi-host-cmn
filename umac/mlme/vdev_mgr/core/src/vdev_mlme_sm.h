@@ -762,11 +762,44 @@ QDF_STATUS mlme_vdev_link_reconfig_remove(struct vdev_mlme_obj *vdev_mlme,
 
 	return ret;
 }
+
+/**
+ * mlme_vdev_link_reconfig_remove_delay() - Set link removal delay
+ * @vdev_mlme:  VDEV MLME comp object
+ * @event_data_len: data size
+ * @event_data: event data
+ *
+ * if vdev state not in SS_UP_ACTIVE, set link reconfig remove delay until
+ * ap vdev restart done.
+ *
+ * Return: QDF_STATUS
+ */
+static inline
+QDF_STATUS mlme_vdev_link_reconfig_remove_delay(struct vdev_mlme_obj *vdev_mlme,
+						uint16_t event_data_len,
+						void *event_data)
+{
+	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+
+	if (vdev_mlme->ops && vdev_mlme->ops->mlme_vdev_set_link_remove_delay)
+		ret = vdev_mlme->ops->mlme_vdev_set_link_remove_delay(
+				vdev_mlme, event_data_len, event_data);
+
+	return ret;
+}
 #else
 static inline
 QDF_STATUS mlme_vdev_link_reconfig_remove(struct vdev_mlme_obj *vdev_mlme,
 					  uint16_t event_data_len,
 					  void *event_data)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS mlme_vdev_link_reconfig_remove_delay(struct vdev_mlme_obj *vdev_mlme,
+						uint16_t event_data_len,
+						void *event_data)
 {
 	return QDF_STATUS_SUCCESS;
 }
