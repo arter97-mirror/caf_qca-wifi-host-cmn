@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -175,7 +175,35 @@ enum dp_rx_hdr_dma_length {
 	RX_HDR_DMA_LENGTH_128B = 2,
 	/* dma length 256 bytes */
 	RX_HDR_DMA_LENGTH_256B = 3,
+	/* dma length 512 bytes */
+	RX_HDR_DMA_LENGTH_512B = 4,
+	/* dma length 1024 bytes */
+	RX_HDR_DMA_LENGTH_1024B = 5,
+	/* dma length 2048 bytes */
+	RX_HDR_DMA_LENGTH_2048B = 6,
+	/* Max dma length bytes – chipset dependency */
+	RX_HDR_DMA_LENGTH_MAX = 7,
 };
+
+#ifdef BORON_MONITOR
+#define RX_HDR_DMA_LENGTH_MAX_BYTES 2500
+#else
+#define RX_HDR_DMA_LENGTH_MAX_BYTES 256
+#endif
+
+/**
+ * dp_convert_rx_hdr_dma_len_to_bytes() - Convert the length in HTT filter
+ *                                        to number of bytes
+ * @htt_len: RX_HDR length configured in HTT filter
+ *
+ * Return: RX_HDR length in bytes
+ */
+static inline
+uint16_t dp_convert_rx_hdr_dma_len_to_bytes(uint16_t htt_len)
+{
+	return (htt_len == 0) ? 128 :
+		QDF_MIN((32 << htt_len), RX_HDR_DMA_LENGTH_MAX_BYTES);
+}
 
 /*
  * NB: intentionally not using kernel-doc comment because the kernel-doc

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1838,13 +1838,16 @@ dp_rx_mon_remove_mic_data(struct dp_mon_mac *mon_mac, qdf_nbuf_t buf)
 
 /**
  * dp_rx_mon_stitch_mpdu() - Stich MPDU from MSDU
+ * @mon_pdev: mon_pdev handle
  * @mon_mac: mon_mac handle
  * @tail: 1st MSDU of next MPDU
  *
  * Return: mpdu buf
  */
 static qdf_nbuf_t
-dp_rx_mon_stitch_mpdu(struct dp_mon_mac *mon_mac, qdf_nbuf_t tail)
+dp_rx_mon_stitch_mpdu(struct dp_mon_pdev *mon_pdev,
+		      struct dp_mon_mac *mon_mac,
+		      qdf_nbuf_t tail)
 {
 	qdf_nbuf_t head, nbuf, next;
 	qdf_nbuf_t mpdu_buf = NULL, head_frag_list = NULL;
@@ -1883,7 +1886,7 @@ dp_rx_mon_stitch_mpdu(struct dp_mon_mac *mon_mac, qdf_nbuf_t tail)
 		 * 4 bytes of RX FCS in the tail to avoid parsing issue.
 		 */
 		if (!head_frag_list &&
-		    qdf_nbuf_len(mpdu_buf) < LPC_RX_HDR_DMA_LENGTH) {
+		    qdf_nbuf_len(mpdu_buf) < mon_pdev->rx_hdr_dma_length) {
 			qdf_nbuf_trim_tail(mpdu_buf, HAL_RX_FCS_LEN);
 			dp_rx_mon_remove_mic_data(mon_mac, mpdu_buf);
 		}
@@ -2055,7 +2058,7 @@ int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 
 		/* last nbuf of queue points to 1st MSDU of next MPDU */
 		last = qdf_nbuf_queue_last(&mon_mac->msdu_queue);
-		buf = dp_rx_mon_stitch_mpdu(mon_mac, last);
+		buf = dp_rx_mon_stitch_mpdu(mon_pdev, mon_mac, last);
 		/* Add MPDU to queue */
 		if (qdf_likely(buf))
 			qdf_nbuf_queue_add(&mon_mac->mpdu_queue, buf);
@@ -2097,7 +2100,7 @@ int dp_rx_handle_local_pkt_capture(struct dp_pdev *pdev,
 			dp_rx_mon_send_mpdu(pdev, mon_mac, buf);
 
 		/* Stich and send Last MPDU of PPDU */
-		buf = dp_rx_mon_stitch_mpdu(mon_mac, NULL);
+		buf = dp_rx_mon_stitch_mpdu(mon_pdev, mon_mac, NULL);
 		if (buf)
 			dp_rx_mon_send_mpdu(pdev, mon_mac, buf);
 

@@ -78,7 +78,11 @@
 /* MONITOR STATUS BUFFER SIZE = 1408 data bytes, buffer allocation of 2k bytes
  * including buffer reservation, buffer alignment and skb shared info size.
  */
+#ifdef BORON_MONITOR
+#define RX_MON_STATUS_BASE_BUF_SIZE    4096
+#else
 #define RX_MON_STATUS_BASE_BUF_SIZE    2048
+#endif /* BORON_MONITOR */
 #define RX_MON_STATUS_BUF_ALIGN  128
 #define RX_MON_STATUS_BUF_RESERVATION  128
 #define RX_MON_STATUS_BUF_SIZE  (RX_MON_STATUS_BASE_BUF_SIZE - \

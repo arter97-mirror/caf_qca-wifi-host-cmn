@@ -958,6 +958,35 @@ bool dp_mon_get_is_local_pkt_capture_running(struct cdp_soc_t *cdp_soc,
 	return mon_pdev->is_local_pkt_capture_running;
 }
 
+#ifdef BORON_MONITOR
+static inline void
+dp_mon_lpc_rx_hdr_filter_cfg(struct dp_mon_pdev *mon_pdev,
+			     struct dp_mon_filter *dst_filter,
+			     struct cdp_monitor_filter *src_filter)
+{
+	dst_filter->tlv_filter.header_per_msdu = 0;
+	dst_filter->tlv_filter.rx_hdr_length =
+		src_filter->mode & MON_FILTER_OTHER ?
+		RX_HDR_DMA_LENGTH_512B : RX_HDR_DMA_LENGTH_MAX;
+	mon_pdev->rx_hdr_dma_length =
+			dp_convert_rx_hdr_dma_len_to_bytes(
+				dst_filter->tlv_filter.rx_hdr_length);
+}
+#else
+static inline void
+dp_mon_lpc_rx_hdr_filter_cfg(struct dp_mon_pdev *mon_pdev,
+			     struct dp_mon_filter *dst_filter,
+			     struct cdp_monitor_filter *src_filter)
+{
+	dst_filter->tlv_filter.header_per_msdu =
+			src_filter->mode & MON_FILTER_OTHER ? 0 : 1;
+	dst_filter->tlv_filter.rx_hdr_length = RX_HDR_DMA_LENGTH_256B;
+	mon_pdev->rx_hdr_dma_length =
+			dp_convert_rx_hdr_dma_len_to_bytes(
+				dst_filter->tlv_filter.rx_hdr_length);
+}
+#endif
+
 static void
 dp_mon_set_local_pkt_capture_rx_filter(struct dp_pdev *pdev,
 				       struct cdp_monitor_filter *src_filter)
@@ -971,9 +1000,7 @@ dp_mon_set_local_pkt_capture_rx_filter(struct dp_pdev *pdev,
 	dp_mon_filter_set_status_cmn(mon_pdev, &dst_filter);
 
 	dst_filter.tlv_filter.packet_header = 1;
-	dst_filter.tlv_filter.header_per_msdu =
-			src_filter->mode & MON_FILTER_OTHER ? 0 : 1;
-	dst_filter.tlv_filter.rx_hdr_length = RX_HDR_DMA_LENGTH_256B;
+	dp_mon_lpc_rx_hdr_filter_cfg(mon_pdev, &dst_filter, src_filter);
 	if (src_filter->mode & MON_FILTER_PASS) {
 		dst_filter.tlv_filter.fp_mgmt_filter = src_filter->fp_mgmt;
 		dst_filter.tlv_filter.fp_ctrl_filter = src_filter->fp_ctrl;

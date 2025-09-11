@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -825,9 +825,6 @@ dp_mon_rx_stats_update_rssi_dbm_params(struct dp_mon_pdev *mon_pdev,
 				       struct hal_rx_ppdu_info *ppdu_info);
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
-/* RX header dma length - 256 bytes */
-#define LPC_RX_HDR_DMA_LENGTH 256
-
 /**
  * dp_rx_handle_local_pkt_capture() - Rx handle for local packet capture
  * @pdev: Datapath PDEV handle
