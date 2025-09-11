@@ -25381,6 +25381,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_STA_TWT_STATS_EXT;
 	wmi_service[wmi_service_scc_tpc_power_support] =
 				WMI_SERVICE_SCC_TPC_POWER_SUPPORT;
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+	wmi_service[wmi_service_mlo_sap_link_removal_support] =
+				WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT;
+#endif
 }
 
 /**

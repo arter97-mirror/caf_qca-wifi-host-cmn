@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -85,6 +86,33 @@ osif_link_reconfig_status_cb(void *ctx)
 {
 	return QDF_STATUS_SUCCESS;
 }
+#endif
+
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+/**
+ * osif_mlo_sap_link_removal_evt_handler() - Handler for MLO link removal event
+ *
+ * @vdev: Object manager vdev
+ * @tbtt_count: tbtt count report from target
+ * @tsf: TSF of the reported beacon
+ * @link_id: link id of the link going for removal
+ *
+ * Return: QDF_STATUS of operation
+ */
+QDF_STATUS osif_mlo_sap_link_removal_evt_handler(struct wlan_objmgr_vdev *vdev,
+						 uint32_t tbtt_count,
+						 uint64_t tsf,
+						 uint16_t link_id);
+#else
+static inline
+QDF_STATUS osif_mlo_sap_link_removal_evt_handler(struct wlan_objmgr_vdev *vdev,
+						 uint32_t tbtt_count,
+						 uint64_t tsf,
+						 uint16_t link_id)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
 #endif
 #endif
 
