@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -4422,7 +4422,7 @@ void dp_mon_filter_setup_local_pkt_capture_tx(struct dp_pdev *pdev)
 	mon_pdev_be = dp_get_be_mon_pdev_from_dp_mon_pdev(mon_pdev);
 	dp_tx_mon_be_mode_set(mon_pdev_be, TX_MON_BE_FULL_CAPTURE);
 	mon_pdev_be->tx_mon_mode = 1;
-	mon_pdev_be->tx_mon_filter_length = DMA_LENGTH_256B;
+	mon_pdev_be->tx_mon_filter_length = TX_MON_DMA_LENGTH_CFG;
 
 	filter.tx_valid = true;
 	tx_tlv_filter->enable = 1;
@@ -4437,7 +4437,7 @@ void dp_mon_filter_setup_local_pkt_capture_tx(struct dp_pdev *pdev)
 		tx_tlv_filter->mgmt_msdu_start = 1;
 		tx_tlv_filter->mgmt_mpdu_start = 1;
 		tx_tlv_filter->mgmt_mpdu_log = 1;
-		tx_tlv_filter->mgmt_dma_length = DMA_LENGTH_256B;
+		tx_tlv_filter->mgmt_dma_length = TX_MON_DMA_LENGTH_CFG;
 	}
 
 	if (mon_pdev->fp_ctrl_filter) {
@@ -4447,7 +4447,7 @@ void dp_mon_filter_setup_local_pkt_capture_tx(struct dp_pdev *pdev)
 		tx_tlv_filter->ctrl_msdu_start = 1;
 		tx_tlv_filter->ctrl_mpdu_start = 1;
 		tx_tlv_filter->ctrl_mpdu_log = 1;
-		tx_tlv_filter->ctrl_dma_length = DMA_LENGTH_256B;
+		tx_tlv_filter->ctrl_dma_length = TX_MON_DMA_LENGTH_CFG;
 	}
 
 	if (mon_pdev->fp_data_filter) {
@@ -4457,7 +4457,7 @@ void dp_mon_filter_setup_local_pkt_capture_tx(struct dp_pdev *pdev)
 		tx_tlv_filter->data_msdu_start = 1;
 		tx_tlv_filter->data_mpdu_start = 1;
 		tx_tlv_filter->data_mpdu_log = 1;
-		tx_tlv_filter->data_dma_length = DMA_LENGTH_256B;
+		tx_tlv_filter->data_dma_length = TX_MON_DMA_LENGTH_CFG;
 	}
 
 	dp_mon_filter_show_tx_filter_be(mode, &filter);

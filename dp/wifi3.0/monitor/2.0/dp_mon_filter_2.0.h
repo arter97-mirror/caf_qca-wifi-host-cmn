@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -24,6 +24,23 @@
 #define DMA_LENGTH_64B 1
 #define DMA_LENGTH_128B 2
 #define DMA_LENGTH_256B 4
+
+enum dp_tx_mon_dma_length {
+	/* TX MON dma 64 bytes */
+	TX_MON_DMA_LENGTH_64B = 1,
+	/* TX MON dma 128 bytes */
+	TX_MON_DMA_LENGTH_128B = 2,
+	/* TX MON dma 256 bytes */
+	TX_MON_DMA_LENGTH_256B = 4,
+	/* TX MON dma full bytes */
+	TX_MON_DMA_LENGTH_FULL = 7,
+};
+
+#ifdef BORON_MONITOR
+#define TX_MON_DMA_LENGTH_CFG TX_MON_DMA_LENGTH_FULL
+#else
+#define TX_MON_DMA_LENGTH_CFG TX_MON_DMA_LENGTH_256B
+#endif
 
 /* fwd declarations */
 struct dp_mon_pdev_be;
