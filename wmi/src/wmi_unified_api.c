@@ -1392,26 +1392,6 @@ wmi_unified_addba_setresponse_cmd_send(wmi_unified_t wmi_handle,
 }
 
 QDF_STATUS
-wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
-			     struct mu_scan_params *param)
-{
-	if (wmi_handle->ops->send_mu_scan_cmd)
-		return wmi_handle->ops->send_mu_scan_cmd(wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
-				 struct lteu_config_params *param)
-{
-	if (wmi_handle->ops->send_lteu_config_cmd)
-		return wmi_handle->ops->send_lteu_config_cmd(wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
 wmi_unified_init_cmd_send(wmi_unified_t wmi_handle,
 			  struct wmi_init_cmd_param *param)
 {
@@ -1616,98 +1596,6 @@ uint8_t *wmi_extract_dbglog_data_len(wmi_unified_t wmi_handle, void *evt_buf,
 	return NULL;
 }
 qdf_export_symbol(wmi_extract_dbglog_data_len);
-
-QDF_STATUS wmi_send_ext_resource_config(wmi_unified_t wmi_handle,
-					wmi_host_ext_resource_config *ext_cfg)
-{
-	if (wmi_handle->ops->send_ext_resource_config)
-		return wmi_handle->ops->send_ext_resource_config(wmi_handle,
-				ext_cfg);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_rtt_meas_req_test_cmd_send(wmi_unified_t wmi_handle,
-				       struct rtt_meas_req_test_params *param)
-{
-	if (wmi_handle->ops->send_rtt_meas_req_test_cmd)
-		return wmi_handle->ops->send_rtt_meas_req_test_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_rtt_meas_req_cmd_send(wmi_unified_t wmi_handle,
-				  struct rtt_meas_req_params *param)
-{
-	if (wmi_handle->ops->send_rtt_meas_req_cmd)
-		return wmi_handle->ops->send_rtt_meas_req_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_lci_set_cmd_send(wmi_unified_t wmi_handle,
-					struct lci_set_params *param)
-{
-	if (wmi_handle->ops->send_lci_set_cmd)
-		return wmi_handle->ops->send_lci_set_cmd(wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_lcr_set_cmd_send(wmi_unified_t wmi_handle,
-					struct lcr_set_params *param)
-{
-	if (wmi_handle->ops->send_lcr_set_cmd)
-		return wmi_handle->ops->send_lcr_set_cmd(wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_rtt_keepalive_req_cmd_send(wmi_unified_t wmi_handle,
-				       struct rtt_keepalive_req_params *param)
-{
-	if (wmi_handle->ops->send_rtt_keepalive_req_cmd)
-		return wmi_handle->ops->send_rtt_keepalive_req_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_send_periodic_chan_stats_config_cmd(
-		wmi_unified_t wmi_handle,
-		struct periodic_chan_stats_params *param)
-{
-	if (wmi_handle->ops->send_periodic_chan_stats_config_cmd)
-		return wmi_handle->ops->send_periodic_chan_stats_config_cmd(
-						wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_send_get_user_position_cmd(wmi_unified_t wmi_handle, uint32_t value)
-{
-	if (wmi_handle->ops->send_get_user_position_cmd)
-		return wmi_handle->ops->send_get_user_position_cmd(wmi_handle,
-								value);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_send_get_peer_mumimo_tx_count_cmd(wmi_unified_t wmi_handle, uint32_t value)
-{
-	if (wmi_handle->ops->send_get_peer_mumimo_tx_count_cmd)
-		return wmi_handle->ops->send_get_peer_mumimo_tx_count_cmd(
-							wmi_handle, value);
-
-	return QDF_STATUS_E_FAILURE;
-}
 
 QDF_STATUS
 wmi_send_reset_peer_mumimo_tx_count_cmd(wmi_unified_t wmi_handle,
@@ -3804,6 +3692,16 @@ QDF_STATUS wmi_unified_snr_request_cmd(wmi_unified_t wmi_handle)
 }
 
 QDF_STATUS
+wmi_send_get_peer_mumimo_tx_count_cmd(wmi_unified_t wmi_handle, uint32_t value)
+{
+	if (wmi_handle->ops->send_get_peer_mumimo_tx_count_cmd)
+		return wmi_handle->ops->send_get_peer_mumimo_tx_count_cmd(
+							wmi_handle, value);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
 wmi_unified_peer_rate_report_cmd(
 		wmi_unified_t wmi_handle,
 		struct wmi_peer_rate_report_params *rate_report_params)
@@ -3811,6 +3709,27 @@ wmi_unified_peer_rate_report_cmd(
 	if (wmi_handle->ops->send_peer_rate_report_cmd)
 		return wmi_handle->ops->send_peer_rate_report_cmd(wmi_handle,
 					rate_report_params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_send_get_user_position_cmd(wmi_unified_t wmi_handle, uint32_t value)
+{
+	if (wmi_handle->ops->send_get_user_position_cmd)
+		return wmi_handle->ops->send_get_user_position_cmd(wmi_handle,
+								value);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_send_periodic_chan_stats_config_cmd(
+		wmi_unified_t wmi_handle,
+		struct periodic_chan_stats_params *param)
+{
+	if (wmi_handle->ops->send_periodic_chan_stats_config_cmd)
+		return wmi_handle->ops->send_periodic_chan_stats_config_cmd(
+						wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -3826,12 +3745,32 @@ wmi_offchan_data_tx_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
+QDF_STATUS
+wmi_unified_rtt_keepalive_req_cmd_send(wmi_unified_t wmi_handle,
+				       struct rtt_keepalive_req_params *param)
+{
+	if (wmi_handle->ops->send_rtt_keepalive_req_cmd)
+		return wmi_handle->ops->send_rtt_keepalive_req_cmd(wmi_handle,
+				param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
 QDF_STATUS wmi_unified_packet_log_disable_send(wmi_unified_t wmi_handle,
 					       uint8_t mac_id)
 {
 	if (wmi_handle->ops->send_packet_log_disable_cmd)
 		return wmi_handle->ops->send_packet_log_disable_cmd(wmi_handle,
 			mac_id);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_lcr_set_cmd_send(wmi_unified_t wmi_handle,
+					struct lcr_set_params *param)
+{
+	if (wmi_handle->ops->send_lcr_set_cmd)
+		return wmi_handle->ops->send_lcr_set_cmd(wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -3844,6 +3783,15 @@ QDF_STATUS wmi_unified_peer_based_pktlog_send(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->send_peer_based_pktlog_cmd)
 		return wmi_handle->ops->send_peer_based_pktlog_cmd
 			(wmi_handle, macaddr, mac_id, enb_dsb);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_lci_set_cmd_send(wmi_unified_t wmi_handle,
+					struct lci_set_params *param)
+{
+	if (wmi_handle->ops->send_lci_set_cmd)
+		return wmi_handle->ops->send_lci_set_cmd(wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -3861,6 +3809,17 @@ wmi_unified_packet_log_enable_send(wmi_unified_t wmi_handle,
 }
 
 QDF_STATUS
+wmi_unified_rtt_meas_req_cmd_send(wmi_unified_t wmi_handle,
+				  struct rtt_meas_req_params *param)
+{
+	if (wmi_handle->ops->send_rtt_meas_req_cmd)
+		return wmi_handle->ops->send_rtt_meas_req_cmd(wmi_handle,
+				param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
 wmi_unified_peer_tid_config_send(wmi_unified_t wmi_handle,
 				 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
 				 struct peer_tid_config_params *params)
@@ -3868,6 +3827,17 @@ wmi_unified_peer_tid_config_send(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->send_peer_tid_config_cmd)
 		return wmi_handle->ops->send_peer_tid_config_cmd(wmi_handle,
 				macaddr, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_rtt_meas_req_test_cmd_send(wmi_unified_t wmi_handle,
+				       struct rtt_meas_req_test_params *param)
+{
+	if (wmi_handle->ops->send_rtt_meas_req_test_cmd)
+		return wmi_handle->ops->send_rtt_meas_req_test_cmd(wmi_handle,
+				param);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -4083,4 +4053,33 @@ QDF_STATUS wmi_extract_bcnflt_stats(
 	return QDF_STATUS_E_FAILURE;
 }
 
+QDF_STATUS wmi_send_ext_resource_config(wmi_unified_t wmi_handle,
+					wmi_host_ext_resource_config *ext_cfg)
+{
+	if (wmi_handle->ops->send_ext_resource_config)
+		return wmi_handle->ops->send_ext_resource_config(wmi_handle,
+				ext_cfg);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
+				 struct lteu_config_params *param)
+{
+	if (wmi_handle->ops->send_lteu_config_cmd)
+		return wmi_handle->ops->send_lteu_config_cmd(wmi_handle, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
+			     struct mu_scan_params *param)
+{
+	if (wmi_handle->ops->send_mu_scan_cmd)
+		return wmi_handle->ops->send_mu_scan_cmd(wmi_handle, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif

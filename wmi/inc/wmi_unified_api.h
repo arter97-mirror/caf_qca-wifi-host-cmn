@@ -2007,28 +2007,6 @@ wmi_unified_set_apf_mode_bitmap_cmd(wmi_unified_t wmi, uint8_t vdev_id,
 #endif /* FEATURE_WLAN_APF */
 
 /**
- * wmi_send_get_user_position_cmd() - send get user position command to fw
- * @wmi_handle: wmi handle
- * @value: user pos value
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_send_get_user_position_cmd(wmi_unified_t wmi_handle, uint32_t value);
-
-/**
- * wmi_send_get_peer_mumimo_tx_count_cmd() - send get mumio tx count
- *                                           command to fw
- * @wmi_handle: wmi handle
- * @value: user pos value
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_send_get_peer_mumimo_tx_count_cmd(wmi_unified_t wmi_handle,
-				      uint32_t value);
-
-/**
  * wmi_send_reset_peer_mumimo_tx_count_cmd() - send reset peer mumimo
  *                                             tx count to fw
  * @wmi_handle: wmi handle
@@ -2483,27 +2461,6 @@ QDF_STATUS
 wmi_unified_addba_setresponse_cmd_send(wmi_unified_t wmi_handle,
 				       uint8_t macaddr[QDF_MAC_ADDR_SIZE],
 				       struct addba_setresponse_params *param);
-/**
- *  wmi_unified_mu_scan_cmd_send() - WMI set mu scan function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold mu scan param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
-			     struct mu_scan_params *param);
-
-/**
- *  wmi_unified_lteu_config_cmd_send() - WMI set mu scan function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold mu scan param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
-				 struct lteu_config_params *param);
 
 /**
  * wmi_unified_init_cmd_send() - send initialization cmd to fw
@@ -2713,69 +2670,6 @@ uint8_t *wmi_extract_dbglog_data_len(wmi_unified_t wmi_handle,
 				     void *evt_b, uint32_t *len);
 
 /**
- * wmi_send_ext_resource_config() - send extended resource configuration
- * @wmi_handle: wmi handle
- * @ext_cfg: pointer to extended resource configuration
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_send_ext_resource_config(wmi_unified_t wmi_handle,
-					wmi_host_ext_resource_config *ext_cfg);
-
-/**
- *  wmi_unified_rtt_meas_req_test_cmd_send() - WMI rtt meas req test function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold rtt meas req test param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_rtt_meas_req_test_cmd_send(wmi_unified_t wmi_handle,
-				       struct rtt_meas_req_test_params *param);
-
-/**
- *  wmi_unified_rtt_meas_req_cmd_send() - WMI rtt meas req function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold rtt meas req param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_rtt_meas_req_cmd_send(wmi_unified_t wmi_handle,
-				  struct rtt_meas_req_params *param);
-
-/**
- *  wmi_unified_rtt_keepalive_req_cmd_send() - WMI rtt meas req test function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold rtt meas req test param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_rtt_keepalive_req_cmd_send(wmi_unified_t wmi_handle,
-				       struct rtt_keepalive_req_params *param);
-
-/**
- *  wmi_unified_lci_set_cmd_send() - WMI lci set function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold lci param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_lci_set_cmd_send(wmi_unified_t wmi_handle,
-					struct lci_set_params *param);
-
-/**
- *  wmi_unified_lcr_set_cmd_send() - WMI lcr set function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold lcr param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_lcr_set_cmd_send(wmi_unified_t wmi_handle,
-					struct lcr_set_params *param);
-
-/**
  * wmi_unified_extract_pn() - extract pn event data
  * @wmi_hdl: wmi handle
  * @evt_buf: pointer to event buffer
@@ -2796,18 +2690,6 @@ QDF_STATUS wmi_unified_extract_pn(wmi_unified_t wmi_hdl, void *evt_buf,
  */
 QDF_STATUS wmi_unified_extract_rxpn(wmi_unified_t wmi_hdl, void *evt_buf,
 				    struct wmi_host_get_rxpn_event *param);
-
-/**
- * wmi_unified_send_periodic_chan_stats_config_cmd() - send periodic chan
- * stats cmd to fw
- * @wmi_handle: wmi handle
- * @param: pointer to hold periodic chan stats param
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_send_periodic_chan_stats_config_cmd(
-		wmi_unified_t wmi_handle,
-		struct periodic_chan_stats_params *param);
 
 /* Extract APIs */
 
@@ -5202,5 +5084,121 @@ QDF_STATUS wmi_extract_bss_chan_info_event(
 		wmi_unified_t wmi_handle, void *evt_buf,
 		wmi_host_pdev_bss_chan_info_event *bss_chan_info);
 
+/**
+ * wmi_send_get_peer_mumimo_tx_count_cmd() - send get mumio tx count
+ *                                           command to fw
+ * @wmi_handle: wmi handle
+ * @value: user pos value
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_send_get_peer_mumimo_tx_count_cmd(wmi_unified_t wmi_handle,
+				      uint32_t value);
+
+/**
+ * wmi_send_get_user_position_cmd() - send get user position command to fw
+ * @wmi_handle: wmi handle
+ * @value: user pos value
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_send_get_user_position_cmd(wmi_unified_t wmi_handle, uint32_t value);
+
+/**
+ * wmi_unified_send_periodic_chan_stats_config_cmd() - send periodic chan
+ * stats cmd to fw
+ * @wmi_handle: wmi handle
+ * @param: pointer to hold periodic chan stats param
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_send_periodic_chan_stats_config_cmd(
+		wmi_unified_t wmi_handle,
+		struct periodic_chan_stats_params *param);
+
+/**
+ *  wmi_unified_rtt_keepalive_req_cmd_send() - WMI rtt meas req test function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold rtt meas req test param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_rtt_keepalive_req_cmd_send(wmi_unified_t wmi_handle,
+				       struct rtt_keepalive_req_params *param);
+/**
+ *  wmi_unified_lcr_set_cmd_send() - WMI lcr set function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold lcr param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_lcr_set_cmd_send(wmi_unified_t wmi_handle,
+					struct lcr_set_params *param);
+
+/**
+ *  wmi_unified_lci_set_cmd_send() - WMI lci set function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold lci param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_lci_set_cmd_send(wmi_unified_t wmi_handle,
+					struct lci_set_params *param);
+
+/**
+ *  wmi_unified_rtt_meas_req_cmd_send() - WMI rtt meas req function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold rtt meas req param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_rtt_meas_req_cmd_send(wmi_unified_t wmi_handle,
+				  struct rtt_meas_req_params *param);
+/**
+ *  wmi_unified_rtt_meas_req_test_cmd_send() - WMI rtt meas req test function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold rtt meas req test param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_rtt_meas_req_test_cmd_send(wmi_unified_t wmi_handle,
+				       struct rtt_meas_req_test_params *param);
+
+/**
+ * wmi_send_ext_resource_config() - send extended resource configuration
+ * @wmi_handle: wmi handle
+ * @ext_cfg: pointer to extended resource configuration
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_send_ext_resource_config(wmi_unified_t wmi_handle,
+					wmi_host_ext_resource_config *ext_cfg);
+
+/**
+ *  wmi_unified_lteu_config_cmd_send() - WMI set mu scan function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold mu scan param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
+				 struct lteu_config_params *param);
+
+/**
+ *  wmi_unified_mu_scan_cmd_send() - WMI set mu scan function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold mu scan param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
+			     struct mu_scan_params *param);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */
