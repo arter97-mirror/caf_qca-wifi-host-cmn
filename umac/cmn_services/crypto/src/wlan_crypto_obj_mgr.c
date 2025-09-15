@@ -373,8 +373,15 @@ static void crypto_remove_entry(struct crypto_psoc_priv_obj *psoc,
 					   crypto_entry->link_id);
 	TAILQ_HEAD(, wlan_crypto_key_entry) * free_list = ptr;
 
-	crypto_info("crypto remove entry key index %d link id %d",
-		    index, crypto_entry->link_id);
+	if (qdf_atomic_read(&psoc->crypto_key_cnt) >
+		CRYPTO_MAX_HASH_ENTRY / 4)
+		crypto_debug_rl("crypto remove entry key index %d link id %d cnt %d",
+				index, crypto_entry->link_id,
+				qdf_atomic_read(&psoc->crypto_key_cnt));
+	else
+		crypto_debug("crypto remove entry key index %d link id %d cnt %d",
+			     index, crypto_entry->link_id,
+			     qdf_atomic_read(&psoc->crypto_key_cnt));
 
 	for (i = 0; i < WLAN_CRYPTO_MAX_VLANKEYIX; i++) {
 		if (crypto_entry->keys.key[i]) {
@@ -414,11 +421,22 @@ static void crypto_free_list(struct crypto_psoc_priv_obj *psoc, void *ptr)
 
 	TAILQ_FOREACH_SAFE(crypto_entry, free_list, hash_list_elem,
 			   hash_entry_next) {
-		crypto_debug("crypto delete for link_id %d mac_addr "
-			     QDF_MAC_ADDR_FMT " psoc key cnt %d",
-			     crypto_entry->link_id,
-			     QDF_MAC_ADDR_REF(crypto_entry->mac_addr.raw),
-			     qdf_atomic_read(&psoc->crypto_key_cnt));
+		if (qdf_atomic_read(&psoc->crypto_key_cnt) >
+			CRYPTO_MAX_HASH_ENTRY / 4)
+			crypto_debug_rl("crypto delete for link_id %d mac_addr "
+					QDF_MAC_ADDR_FMT " psoc key cnt %d",
+					crypto_entry->link_id,
+					QDF_MAC_ADDR_REF(
+					crypto_entry->mac_addr.raw),
+					qdf_atomic_read(
+					&psoc->crypto_key_cnt));
+		else
+			crypto_debug("crypto delete for link_id %d mac_addr "
+				     QDF_MAC_ADDR_FMT " psoc key cnt %d",
+				     crypto_entry->link_id,
+				     QDF_MAC_ADDR_REF(
+				     crypto_entry->mac_addr.raw),
+				     qdf_atomic_read(&psoc->crypto_key_cnt));
 		qdf_mem_free(crypto_entry);
 		if (!qdf_atomic_read(&psoc->crypto_key_cnt))
 			crypto_debug("Invalid crypto_key_cnt");

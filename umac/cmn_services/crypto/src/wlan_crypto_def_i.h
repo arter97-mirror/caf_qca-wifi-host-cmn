@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -349,6 +349,8 @@ static inline void wlan_crypto_put_be64(u8 *a, u64 val)
 #define crypto_err(params...) QDF_TRACE_ERROR(QDF_MODULE_ID_CRYPTO, params)
 #define crypto_info(params...) QDF_TRACE_INFO(QDF_MODULE_ID_CRYPTO, params)
 #define crypto_debug(params...) QDF_TRACE_DEBUG(QDF_MODULE_ID_CRYPTO, params)
+#define crypto_debug_rl(params...) \
+	QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_CRYPTO, params)
 
 /**
  * struct wlan_crypto_mmie - MMIE IE
