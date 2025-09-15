@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -357,7 +357,11 @@ struct qca_napi_stat {
  * instances.
  */
 struct qca_napi_info {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device   *netdev; /* dummy net_dev ptr */
+#else
 	struct net_device    netdev; /* dummy net_dev */
+#endif
 	void                 *hif_ctx;
 	struct napi_struct   napi;
 	uint8_t              scale;   /* currently same on all instances */
@@ -370,7 +374,11 @@ struct qca_napi_info {
 	/* will only be present for data rx CE's */
 	void (*offld_flush_cb)(void *);
 	struct napi_struct   rx_thread_napi;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device    *rx_thread_netdev;
+#else
 	struct net_device    rx_thread_netdev;
+#endif
 #endif /* RECEIVE_OFFLOAD */
 	qdf_lro_ctx_t        lro_ctx;
 #ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
