@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,6 +26,7 @@
 #include "hif_main.h"
 #include "qdf_util.h"
 #include "hif_exec.h"
+#include <qdf_tracepoint.h>
 
 #ifndef DATA_CE_SW_INDEX_NO_INLINE_UPDATE
 #define DATA_CE_UPDATE_SWINDEX(x, scn, addr)				\
@@ -393,6 +395,43 @@ bool hif_ce_cmn_cfg_supported(struct hif_softc *scn);
 static inline bool hif_ce_cmn_cfg_supported(struct hif_softc *scn)
 {
 	return false;
+}
+#endif
+
+#ifdef WLAN_TRACEPOINTS
+/**
+ * ce_trace_hif_hist_event() - Trace CE event
+ *  latency
+ * @ce_id: CE ID
+ * @hp: head pointor
+ * @tp: tail pointor
+ * @cpu_id: CPU ID
+ * @time: timestamp
+ * @type: event type
+ *
+ * Return: None
+ */
+static inline
+void ce_trace_hif_hist_event(uint8_t ce_id,
+			     uint32_t hp,
+			     uint32_t tp,
+			     int cpu_id,
+			     uint64_t time,
+			     uint8_t type)
+{
+	if (qdf_trace_hif_hist_event_enabled())
+		qdf_trace_hif_hist_event(true, ce_id, hp, tp,
+					 cpu_id, time, type);
+}
+#else
+static inline
+void ce_trace_hif_hist_event(uint8_t ce_id,
+			     uint32_t hp,
+			     uint32_t tp,
+			     int cpu_id,
+			     uint64_t time,
+			     uint8_t type)
+{
 }
 #endif
 #endif /* __CE_H__ */
