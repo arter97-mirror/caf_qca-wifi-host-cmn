@@ -370,6 +370,7 @@ struct stats_cfm_event {
 	uint32_t tx_retrans_pkts;     /* txretrans */
 	uint32_t rx_pkts;             /* rxframe */
 	uint32_t rx_ucast_pkts;
+	uint32_t bcn_cnt;
 } __attribute__((__packed__));
 
 struct scan_ap_info {

@@ -49,6 +49,9 @@ enum stats_req_type {
 	TYPE_CONNECTION_TX_POWER = 0,
 	TYPE_STATION_STATS,
 	TYPE_PEER_STATS,
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	TYPE_BCN_FILTER,
+#endif
 	TYPE_MAX,
 };
 
@@ -167,6 +170,9 @@ struct request_info {
 		void (*get_peer_rssi_cb)(struct stats_event *ev, void *cookie);
 		void (*get_station_stats_cb)(struct stats_event *ev,
 					     void *cookie);
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+		void (*get_bcnflt_cb)(uint64_t bcnflt_cnt, void *cookie);
+#endif
 	} u;
 	uint32_t vdev_id;
 	uint32_t pdev_id;
@@ -247,6 +253,14 @@ struct summary_stats {
 	uint32_t rx_error_cnt;
 };
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+struct bcn_flt_stats {
+	uint8_t vdev_id;
+	uint32_t bss_bcns_dropped;
+	uint32_t bss_bcns_delivered;
+};
+#endif
+
 /**
  * struct vdev_mc_cp_stats - vdev specific stats
  * @cca: cca stats
@@ -259,6 +273,9 @@ struct vdev_mc_cp_stats {
 	uint32_t tx_rate_flags;
 	int8_t chain_rssi[MAX_NUM_CHAINS];
 	struct summary_stats vdev_summary_stats;
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	struct bcn_flt_stats bcn_flt;
+#endif
 };
 
 /**
@@ -381,6 +398,10 @@ struct stats_event {
 	uint32_t rx_rate;
 	enum tx_rate_info tx_rate_flags;
 	uint32_t last_event;
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	uint32_t num_bcnflt_stats;
+	struct bcn_flt_stats *bcnflt_stats;
+#endif
 };
 
 #endif /* CONFIG_MCL */

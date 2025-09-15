@@ -41,6 +41,10 @@ static bool tgt_mc_cp_stats_is_last_event(struct stats_event *ev,
 	} else {
 		if (stats_type == TYPE_CONNECTION_TX_POWER)
 			is_last_event = true;
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+		else if (stats_type == TYPE_BCN_FILTER)
+			is_last_event = true;
+#endif
 		else
 			is_last_event = !!ev->peer_stats;
 	}
@@ -711,6 +715,82 @@ end:
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_CP_STATS_ID);
 }
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+static void tgt_mc_cp_stats_extract_bcnflt(struct wlan_objmgr_psoc *psoc,
+					struct stats_event *ev,
+					bool is_station_stats)
+{
+	struct wlan_objmgr_vdev *vdev = NULL;
+	struct vdev_mc_cp_stats *vdev_mc_stats;
+	uint8_t i;
+	uint64_t bss_bcns_total;
+	QDF_STATUS status;
+	struct request_info last_req = {0};
+	struct vdev_cp_stats *vdev_cp_stats_priv;
+
+	if (!ev->bcnflt_stats)
+		return;
+
+
+	status = ucfg_mc_cp_stats_get_pending_req(psoc,
+					TYPE_BCN_FILTER, &last_req);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cp_stats_err("ucfg_mc_cp_stats_get_pending_req failed");
+		goto end;
+	}
+
+	for (i = 0; i < ev->num_bcnflt_stats; i++) {
+		if (ev->bcnflt_stats[i].vdev_id == last_req.vdev_id)
+			break;
+	}
+
+	if (i == ev->num_bcnflt_stats) {
+		cp_stats_err("vdev_id %d not found", last_req.vdev_id);
+		return;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, last_req.vdev_id,
+						    WLAN_CP_STATS_ID);
+	if (!vdev) {
+		cp_stats_err("vdev is null");
+		goto end;
+	}
+
+	vdev_cp_stats_priv = wlan_cp_stats_get_vdev_stats_obj(vdev);
+	if (!vdev_cp_stats_priv) {
+		cp_stats_err("vdev cp stats object is null");
+		goto end;
+	}
+
+	wlan_cp_stats_vdev_obj_lock(vdev_cp_stats_priv);
+	vdev_mc_stats = vdev_cp_stats_priv->vdev_stats;
+	vdev_mc_stats->bcn_flt.vdev_id =
+			ev->bcnflt_stats[i].vdev_id;
+	vdev_mc_stats->bcn_flt.bss_bcns_dropped =
+			ev->bcnflt_stats[i].bss_bcns_dropped;
+	vdev_mc_stats->bcn_flt.bss_bcns_delivered =
+			ev->bcnflt_stats[i].bss_bcns_delivered;
+	bss_bcns_total = ev->bcnflt_stats[i].bss_bcns_dropped
+			+ ev->bcnflt_stats[i].bss_bcns_delivered ;
+	wlan_cp_stats_vdev_obj_unlock(vdev_cp_stats_priv);
+
+	if (is_station_stats)
+		goto end;
+
+	if (tgt_mc_cp_stats_is_last_event(ev, TYPE_BCN_FILTER)) {
+		ucfg_mc_cp_stats_reset_pending_req(psoc,
+						   TYPE_BCN_FILTER);
+		if (last_req.u.get_bcnflt_cb)
+			last_req.u.get_bcnflt_cb(bss_bcns_total,
+						 last_req.cookie);
+	}
+end:
+	if (vdev)
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_CP_STATS_ID);
+}
+#endif
+
 static void
 tgt_mc_cp_stats_prepare_n_send_raw_station_stats(struct wlan_objmgr_psoc *psoc,
 						 struct request_info *last_req)
@@ -869,6 +949,12 @@ QDF_STATUS tgt_mc_cp_stats_process_stats_event(struct wlan_objmgr_psoc *psoc,
 	tgt_mc_cp_stats_extract_cca_stats(psoc, ev);
 
 	tgt_mc_cp_send_lost_link_stats(psoc, ev);
+
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	if (ucfg_mc_cp_stats_is_req_pending(psoc, TYPE_BCN_FILTER)) {
+		tgt_mc_cp_stats_extract_bcnflt(psoc, ev, false);
+	}
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 

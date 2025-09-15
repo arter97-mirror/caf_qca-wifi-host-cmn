@@ -4622,10 +4622,18 @@ typedef struct {
 	uint32_t  peer_rssi_changed;
 } wmi_host_peer_stats;
 
+
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+typedef struct  {
+	uint32_t vdev_id;
+	uint32_t bss_bcns_dropped;
+	uint32_t bss_bcns_delivered;
+} wmi_host_bcnflt_stats;
+#else
 typedef struct {
 	uint32_t dummy;
 } wmi_host_bcnflt_stats;
-
+#endif
 /**
  * struct wmi_host_chan_stats - WMI chan stats
  * @chan_mhz: Primary channel freq of the channel for which stats are sent

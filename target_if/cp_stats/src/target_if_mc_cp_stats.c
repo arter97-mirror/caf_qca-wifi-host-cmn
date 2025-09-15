@@ -57,6 +57,10 @@ static void target_if_cp_stats_free_stats_event(struct stats_event *ev)
 	ev->vdev_summary_stats = NULL;
 	qdf_mem_free(ev->vdev_chain_rssi);
 	ev->vdev_chain_rssi = NULL;
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	qdf_mem_free(ev->bcnflt_stats);
+	ev->bcnflt_stats = NULL;
+#endif
 }
 
 static QDF_STATUS target_if_cp_stats_extract_pdev_stats(
@@ -370,6 +374,45 @@ static QDF_STATUS target_if_cp_stats_extract_vdev_chain_rssi_stats(
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+static QDF_STATUS target_if_cp_stats_extract_bcnflt_stats(
+					struct wmi_unified *wmi_hdl,
+					wmi_host_stats_event *stats_param,
+					struct stats_event *ev, uint8_t *data)
+{
+	QDF_STATUS status;
+	wmi_host_bcnflt_stats bcnflt_stats;
+	uint32_t i;
+
+	ev->num_bcnflt_stats = stats_param->num_bcnflt_stats;
+
+	if (!ev->num_bcnflt_stats)
+		return QDF_STATUS_SUCCESS;
+
+	ev->bcnflt_stats = qdf_mem_malloc(sizeof(*ev->bcnflt_stats) *
+						ev->num_bcnflt_stats);
+	if (!ev->bcnflt_stats)
+		return QDF_STATUS_E_NOMEM;
+
+	for (i = 0; i < ev->num_bcnflt_stats; i++) {
+		status = wmi_extract_bcnflt_stats(wmi_hdl, data, i,
+						     &bcnflt_stats);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			cp_stats_err("wmi_extract_bcnflt_stats failed");
+			continue;
+		}
+		ev->bcnflt_stats[i].vdev_id
+						= bcnflt_stats.vdev_id;
+		ev->bcnflt_stats[i].bss_bcns_dropped
+						= bcnflt_stats.bss_bcns_dropped;
+		ev->bcnflt_stats[i].bss_bcns_delivered
+						= bcnflt_stats.bss_bcns_delivered;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 static QDF_STATUS target_if_cp_stats_extract_event(struct wmi_unified *wmi_hdl,
 						   struct stats_event *ev,
 						   uint8_t *data)
@@ -382,11 +425,12 @@ static QDF_STATUS target_if_cp_stats_extract_event(struct wmi_unified *wmi_hdl,
 		cp_stats_err("stats param extract failed: %d", status);
 		return status;
 	}
-	cp_stats_nofl_debug("num: pdev: %d, vdev: %d, peer: %d, rssi: %d",
+	cp_stats_nofl_debug("num: pdev: %d, vdev: %d, peer: %d, rssi: %d bcn: %d",
 			    stats_param.num_pdev_stats,
 			    stats_param.num_vdev_stats,
 			    stats_param.num_peer_stats,
-			    stats_param.num_rssi_stats);
+			    stats_param.num_rssi_stats,
+			    stats_param.num_bcnflt_stats);
 	ev->last_event = stats_param.last_event;
 	status = target_if_cp_stats_extract_pdev_stats(wmi_hdl, &stats_param,
 						       ev, data);
@@ -415,6 +459,13 @@ static QDF_STATUS target_if_cp_stats_extract_event(struct wmi_unified *wmi_hdl,
 	if (QDF_IS_STATUS_ERROR(status))
 		return status;
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	status = target_if_cp_stats_extract_bcnflt_stats(wmi_hdl,
+							 &stats_param,
+							 ev, data);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -616,6 +667,10 @@ static uint32_t get_stats_id(enum stats_req_type type)
 			WMI_REQUEST_PDEV_STAT |
 			WMI_REQUEST_PEER_EXTD2_STAT |
 			WMI_REQUEST_RSSI_PER_CHAIN_STAT);
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	case TYPE_BCN_FILTER:
+		return WMI_REQUEST_BCNFLT_STAT;
+#endif
 	}
 
 	return 0;

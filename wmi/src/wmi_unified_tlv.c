@@ -9265,6 +9265,28 @@ static QDF_STATUS extract_peer_stats_tlv(wmi_unified_t wmi_handle,
 static QDF_STATUS extract_bcnflt_stats_tlv(wmi_unified_t wmi_handle,
 	void *evt_buf, uint32_t index, wmi_host_bcnflt_stats *peer_stats)
 {
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+	WMI_UPDATE_STATS_EVENTID_param_tlvs *param_buf;
+	wmi_stats_event_fixed_param *ev_param;
+	uint8_t *data;
+
+	param_buf = (WMI_UPDATE_STATS_EVENTID_param_tlvs *) evt_buf;
+	ev_param = (wmi_stats_event_fixed_param *) param_buf->fixed_param;
+	data = (uint8_t *) param_buf->data;
+
+	if (index < ev_param->num_bcnflt_stats) {
+		wmi_bcnfilter_stats_t *ev = (wmi_bcnfilter_stats_t *) ((data) +
+			((ev_param->num_pdev_stats) * sizeof(wmi_pdev_stats_v2)) +
+			((ev_param->num_vdev_stats) * sizeof(wmi_vdev_stats)) +
+			((ev_param->num_peer_stats) * sizeof(wmi_peer_stats)) +
+			(index * sizeof(wmi_host_bcnflt_stats)));
+
+		/* Non-TLV doesn't have num_chan_stats */
+		peer_stats->vdev_id = ev->bss_stats.vdev_id;
+		peer_stats->bss_bcns_dropped = ev->bss_stats.bss_bcnsdropped;
+		peer_stats->bss_bcns_delivered = ev->bss_stats.bss_bcnsdelivered;
+	}
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 

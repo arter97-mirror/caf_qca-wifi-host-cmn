@@ -475,6 +475,29 @@ QDF_STATUS ucfg_mc_cp_stats_get_tx_power(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+QDF_STATUS ucfg_mc_cp_stats_get_bcnflt(struct wlan_objmgr_vdev *vdev,
+					 uint64_t *bcnflt_total)
+{
+	struct vdev_mc_cp_stats *vdev_mc_stats;
+	struct vdev_cp_stats *vdev_cp_stats_priv;
+
+	vdev_cp_stats_priv = wlan_cp_stats_get_vdev_stats_obj(vdev);
+	if (!vdev_cp_stats_priv) {
+		cp_stats_err("vdev cp stats object is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	wlan_cp_stats_vdev_obj_lock(vdev_cp_stats_priv);
+	vdev_mc_stats = vdev_cp_stats_priv->vdev_stats;
+	*bcnflt_total = vdev_mc_stats->bcn_flt.bss_bcns_dropped +
+					vdev_mc_stats->bcn_flt.bss_bcns_delivered;
+	wlan_cp_stats_vdev_obj_unlock(vdev_cp_stats_priv);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 bool ucfg_mc_cp_stats_is_req_pending(struct wlan_objmgr_psoc *psoc,
 				     enum stats_req_type type)
 {

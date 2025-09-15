@@ -53,6 +53,18 @@ int wlan_cfg80211_mc_cp_stats_get_wakelock_stats(struct wlan_objmgr_psoc *psoc,
 int wlan_cfg80211_mc_cp_stats_get_tx_power(struct wlan_objmgr_vdev *vdev,
 					   int *dbm);
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+/**
+ * wlan_cfg80211_mc_cp_stats_get_bcnflt() - API to fetch bcn cnt
+ * @vdev:    Pointer to vdev
+ * @dbm:     Pointer to bcnflt_succss cnt
+ *
+ * Return: 0 on success, negative value on failure
+ */
+int wlan_cfg80211_mc_cp_stats_get_bcnflt(struct wlan_objmgr_vdev *vdev,
+					 uint64_t *bcnflt_succss);
+#endif
+
 /**
  * wlan_cfg80211_mc_cp_stats_get_station_stats() - API to get station
  * statistics to firmware

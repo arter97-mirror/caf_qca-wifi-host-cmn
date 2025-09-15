@@ -132,6 +132,11 @@ QDF_STATUS ucfg_mc_cp_stats_send_stats_request(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS ucfg_mc_cp_stats_get_tx_power(struct wlan_objmgr_vdev *vdev,
 					 int *dbm);
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+QDF_STATUS ucfg_mc_cp_stats_get_bcnflt(struct wlan_objmgr_vdev *vdev,
+				       uint64_t *bcnflt_total);
+#endif
+
 /**
  * ucfg_mc_cp_stats_is_req_pending() - API to tell if given request is pending
  * @psoc: pointer to psoc object

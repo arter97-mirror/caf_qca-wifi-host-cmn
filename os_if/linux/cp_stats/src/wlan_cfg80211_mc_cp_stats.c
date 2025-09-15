@@ -304,6 +304,98 @@ peer_is_null:
 	return ret;
 }
 
+#ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
+struct bcnflt_cnt_priv {
+	uint64_t bcnflt_success;
+};
+
+/**
+ * get_bcnflt_cb
+ *
+ * @cookie: a cookie for the request context
+ *
+ * Return: None
+ */
+static void get_bcnflt_cb(uint64_t bcnflt_cnt, void *cookie)
+{
+	struct osif_request *request;
+	struct bcnflt_cnt_priv *priv;
+
+	request = osif_request_get(cookie);
+	if (!request) {
+		cfg80211_err("Obsolete request");
+		return;
+	}
+
+	priv = osif_request_priv(request);
+	priv->bcnflt_success = bcnflt_cnt;
+
+	osif_request_complete(request);
+	osif_request_put(request);
+}
+
+int wlan_cfg80211_mc_cp_stats_get_bcnflt(struct wlan_objmgr_vdev *vdev,
+	uint64_t *bcnflt_total)
+{
+	int ret = 0;
+	void *cookie;
+	QDF_STATUS status;
+	struct request_info info = {0};
+	struct bcnflt_cnt_priv *priv = NULL;
+	struct osif_request *request = NULL;
+	static const struct osif_request_params params = {
+		.priv_size = sizeof(*priv),
+		.timeout_ms = CP_STATS_WAIT_TIME_STAT,
+	};
+
+	request = osif_request_alloc(&params);
+	if (!request) {
+		cfg80211_err("Request allocation failure, return cached value");
+		goto fetch_bcnflt;
+	}
+
+	cookie = osif_request_cookie(request);
+	info.cookie = cookie;
+	info.u.get_bcnflt_cb = get_bcnflt_cb;
+	info.vdev_id = wlan_vdev_get_id(vdev);
+	info.pdev_id = wlan_objmgr_pdev_get_pdev_id(wlan_vdev_get_pdev(vdev));
+
+	status = ucfg_mc_cp_stats_send_stats_request(vdev,
+						     TYPE_BCN_FILTER,
+						     &info);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cfg80211_err("status: %d", status);
+		ret = qdf_status_to_os_return(status);
+	} else {
+		ret = osif_request_wait_for_response(request);
+		if (ret)
+			cfg80211_err("wait failed or timed out ret: %d", ret);
+		else
+			priv = osif_request_priv(request);
+	}
+
+fetch_bcnflt:
+	if (priv) {
+		*bcnflt_total = priv->bcnflt_success;
+	} else {
+		status = ucfg_mc_cp_stats_get_bcnflt(vdev, bcnflt_total);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			cfg80211_err("status: %d", status);
+			ret = qdf_status_to_os_return(status);
+		}
+	}
+	/*
+	 * either we never sent a request, we sent a request and
+	 * received a response or we sent a request and timed out.
+	 * regardless we are done with the request.
+	 */
+	if (request)
+		osif_request_put(request);
+
+	return ret;
+}
+#endif
+
 /**
  * get_peer_rssi_cb() - get_peer_rssi_cb callback function
  * @ev: peer stats buffer
