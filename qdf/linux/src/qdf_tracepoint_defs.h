@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -270,6 +271,38 @@ TRACE_EVENT(dp_tx_enqueue,
 	    ),
 	    TP_printk("skb=%pK hp=%d ring_id=%d coalesce=%d", __entry->skb,
 		      __entry->hp, __entry->ring_id, __entry->coalesce)
+);
+
+TRACE_EVENT(hif_hist_event,
+	    TP_PROTO(bool ce, uint8_t hal_ring_id, uint32_t hp,
+		     uint32_t tp, int cpu_id, uint64_t timestamp,
+		     uint8_t type),
+	    TP_ARGS(ce, hal_ring_id, hp, tp, cpu_id, timestamp, type),
+	    TP_STRUCT__entry(
+		__field(bool, ce)
+		__field(uint8_t, hal_ring_id)
+		__field(uint32_t, hp)
+		__field(uint32_t, tp)
+		__field(int, cpu_id)
+		__field(uint64_t, timestamp)
+		__field(uint8_t, type)
+	    ),
+	    TP_fast_assign(
+		__entry->ce = ce;
+		__entry->hal_ring_id = hal_ring_id;
+		__entry->hp = hp;
+		__entry->tp = tp;
+		__entry->cpu_id = cpu_id;
+		__entry->timestamp = timestamp;
+		__entry->type = type;
+	    ),
+	    TP_printk("ce=%d ring=%d hp=0x%x tp=0x%x cpu=%d 0x%llx type=0x%x",
+		      __entry->ce,
+		      __entry->hal_ring_id,
+		      __entry->hp, __entry->tp,
+		      __entry->cpu_id,
+		      __entry->timestamp,
+		      __entry->type)
 );
 #endif /* _QDF_TRACEPOINT_DEFS_H */
 

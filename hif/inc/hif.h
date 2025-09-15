@@ -554,6 +554,7 @@ struct hif_direct_link_ce_info {
  * @HIF_EVENT_BH_COMPLETE: NAPI POLL completion event
  * @HIF_EVENT_BH_FORCE_BREAK: NAPI POLL force break event
  * @HIF_EVENT_IRQ_DISABLE_EXPIRED: IRQ disable expired event
+ * @HIF_EVENT_IRQ_REENABLED: IRQ re-enabled event
  */
 enum hif_event_type {
 	HIF_EVENT_IRQ_TRIGGER,
@@ -565,6 +566,7 @@ enum hif_event_type {
 	HIF_EVENT_BH_COMPLETE,
 	HIF_EVENT_BH_FORCE_BREAK,
 	HIF_EVENT_IRQ_DISABLE_EXPIRED,
+	HIF_EVENT_IRQ_REENABLED,
 	/* Do check hif_hist_skip_event_record when adding new events */
 };
 

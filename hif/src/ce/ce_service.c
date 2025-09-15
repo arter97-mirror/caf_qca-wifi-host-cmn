@@ -336,6 +336,8 @@ void hif_record_ce_desc_event(struct hif_softc *scn, int ce_id,
 		hif_ce_desc_data_record(event, len);
 
 	hif_record_latest_evt(ce_hist, type, ce_id, event->time, 0, 0);
+	ce_trace_hif_hist_event((uint8_t)ce_id, 0, 0, event->cpu_id,
+				event->time, event->type);
 }
 qdf_export_symbol(hif_record_ce_desc_event);
 

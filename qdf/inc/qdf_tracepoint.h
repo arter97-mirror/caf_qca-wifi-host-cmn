@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -320,5 +321,39 @@ static inline void
 qdf_trace_dp_ce_tasklet_sched_latency(uint8_t ce_id, uint64_t sched_latency)
 {
 	__qdf_trace_dp_ce_tasklet_sched_latency(ce_id, sched_latency);
+}
+
+/**
+ * qdf_trace_hif_hist_event_enabled() - Get the hif event tracepoint
+ *  enabled or disabled state
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_hif_hist_event_enabled(void)
+{
+	return __qdf_trace_hif_hist_event_enabled();
+}
+
+/**
+ * qdf_trace_hif_hist_event() - Trace hif history event
+ *  latency
+ * @ce: copy engine or not
+ * @hal_ring_id: ring id
+ * @hp: ring hp
+ * @tp: ring tp
+ * @cpu_id: cpu id
+ * @timestamp: time stamp
+ * @type: event type
+ *
+ * Return: None
+ */
+static inline void
+qdf_trace_hif_hist_event(bool ce, uint8_t hal_ring_id, uint32_t hp,
+			 uint32_t tp, int cpu_id, uint64_t timestamp,
+			 uint8_t type)
+{
+	__qdf_trace_hif_hist_event(ce, hal_ring_id, hp, tp, cpu_id,
+				   timestamp, type);
 }
 #endif /* _QDF_TRACEPOINT_H */
