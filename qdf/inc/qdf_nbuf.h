@@ -371,6 +371,19 @@ struct stats_cfm_event {
 	uint32_t rx_pkts;             /* rxframe */
 	uint32_t rx_ucast_pkts;
 	uint32_t bcn_cnt;
+	uint32_t rate_bitmap;
+	uint32_t rx1mbps_pkts;
+	uint32_t rx2mbps_pkts;
+	uint32_t rx5_5mbps_pkts;
+	uint32_t rx6mbps_pkts;
+	uint32_t rx9mbps_pkts;
+	uint32_t rx11mbps_pkts;
+	uint32_t rx12mbps_pkts;
+	uint32_t rx18mbps_pkts;
+	uint32_t rx24mbps_pkts;
+	uint32_t rx36mbps_pkts;
+	uint32_t rx48mbps_pkts;
+	uint32_t rx54mbps_pkts;
 } __attribute__((__packed__));
 
 struct scan_ap_info {
