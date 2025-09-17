@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -6392,6 +6392,18 @@ enum qca_wlan_vendor_attr_config {
 	 * minimize risk of issues.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_P2P_GO_BEACON_INTERVAL = 122,
+
+	/* 8-bit unsigned value to enable/disable DFS No Wait feature support
+	 * in AP mode.
+	 * 1 - Enable
+	 * 0 - Disable.
+	 *
+	 * DFS No Wait allows AP to be started within the subset of channel
+	 * bandwidth that does not require DFS while waiting for CAC to
+	 * complete on the subset that requires DFS. If no radar was detected,
+	 * switch to the full configured channel bandwidth.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_DFS_NO_WAIT_SUPPORT = 131,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,

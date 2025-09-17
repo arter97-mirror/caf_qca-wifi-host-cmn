@@ -4905,7 +4905,7 @@ static void reg_update_5g_bonded_channel_state_punc_for_pwrmode(
 	/* Validate puncture bitmap. Update channel state. */
 	final_bitmap = reg_find_nearest_puncture_pattern(ch_params->ch_width,
 							 puncture_bitmap);
-	if (final_bitmap) {
+	if (!puncture_bitmap || final_bitmap) {
 		*chan_state = update_state;
 		ch_params->reg_punc_bitmap = final_bitmap;
 	}
@@ -4989,6 +4989,7 @@ QDF_STATUS reg_remove_puncture(struct wlan_objmgr_pdev *pdev)
 			mas_chan_list[chan_enum].is_static_punctured = false;
 
 	reg_compute_pdev_current_chan_list(pdev_priv_obj);
+	reg_send_scheduler_msg_nb(wlan_pdev_get_psoc(pdev), pdev);
 
 	return QDF_STATUS_SUCCESS;
 }
