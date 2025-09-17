@@ -181,13 +181,15 @@ static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
  * @vdev: DP vdev handle
  * @nbuf: skb
  * @tx_desc: SW TX descriptor
+ * @new_nbuf: Newly allocated buffer
  *
  * This function allocates an nbuf from page pool memory, copies the
  * network layer generated TX packet into the page pool nbuf.
  */
-static qdf_nbuf_t
+static QDF_STATUS
 dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
-				   struct dp_tx_desc_s *tx_desc)
+				   struct dp_tx_desc_s *tx_desc,
+				   qdf_nbuf_t *new_nbuf)
 {
 	struct dp_soc *soc = vdev->pdev->soc;
 	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
@@ -196,68 +198,102 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	qdf_nbuf_t pp_nbuf;
 	qdf_page_t page;
 	uint32_t offset;
-	size_t size;
+	size_t size = qdf_nbuf_get_end_offset(nbuf);
+	bool is_sw_tso;
 
-	if (!dp_tx_is_page_pool_enabled(soc) || !tx_pp ||
-	    !tx_pp->page_pool_init)
-		return nbuf;
+	if (!dp_tx_is_page_pool_enabled(soc))
+		return QDF_STATUS_E_NOSUPPORT;
 
-	if (qdf_nbuf_get_dev_scratch(nbuf) != QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL)
+	if (qdf_unlikely(!tx_pp || !tx_pp->page_pool_init)) {
+		if (!qdf_is_pp_nbuf(nbuf))
+			return QDF_STATUS_E_INVAL;
+
+		/* In cases where TX page pool is enabled in the
+		 * INI and TX page pool is not yet initialized,
+		 * Copy RX page pool buffer into a normal buffer before
+		 * DMA map.
+		 */
+		pp_nbuf = qdf_nbuf_alloc_simple(soc->osdev, size, 0, 0, FALSE);
+		if (qdf_unlikely(!pp_nbuf))
+			return QDF_STATUS_E_NOMEM;
+		goto copy_data;
+	}
+
+	is_sw_tso = (qdf_nbuf_get_dev_scratch(nbuf) ==
+			QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL);
+	if (!is_sw_tso)
 		QDF_NBUF_CB_PADDR(nbuf) = 0;
 
 	if (tx_desc->flags & DP_TX_DESC_FLAG_TDLS_FRAME)
-		return nbuf;
-
-	/* Non linear SKBs are not expected in this path */
-	if (qdf_nbuf_is_nonlinear(nbuf))
-		return nbuf;
+		return QDF_STATUS_E_INVAL;
 
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
 	pp_params = &tx_pp->tx_pool;
-	pp = pp_params->pp;
 
 	/* Skip SW TSO packets */
-	if (qdf_nbuf_get_dev_scratch(nbuf) == QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL) {
+	if (is_sw_tso) {
 		if (qdf_is_pp_nbuf(nbuf))
 			pp_params->alloc_success++;
 		else
 			pp_params->alloc_fail++;
 
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
-		return nbuf;
+
+		/* Fill original nbuf into new_nbuf for SW TSO case,
+		 * page pool handling is already taken care for
+		 * SW TSO segments.
+		 */
+		*new_nbuf = nbuf;
+		return QDF_STATUS_SUCCESS;
 	}
 
-	if (!pp || qdf_page_pool_empty(pp))
-		goto alloc_fail;
+	/* Non linear SKBs are not expected in this path */
+	if (qdf_nbuf_is_nonlinear(nbuf)) {
+		pp_params->pp_err_nonlinear++;
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+		return QDF_STATUS_E_INVAL;
+	}
 
-	size = qdf_nbuf_get_end_offset(nbuf);
+	pp = pp_params->pp;
 
-	pp_nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, size, 0, 0, pp,
-					   &offset);
-	if (!pp_nbuf)
-		goto alloc_fail;
+	if (pp && !qdf_page_pool_empty(pp)) {
+		pp_nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, size, 0, 0, pp,
+						   &offset);
+		if (qdf_likely(pp_nbuf)) {
+			pp_params->alloc_success++;
+			qdf_spin_unlock_bh(&tx_pp->pp_lock);
+			goto copy_data;
+		}
+	}
 
-	pp_params->alloc_success++;
+	/* Fallback to direct allocation */
+	pp_params->alloc_fail++;
+	pp_nbuf = qdf_nbuf_alloc_simple(soc->osdev, size, 0, 0, FALSE);
+	if (qdf_unlikely(!pp_nbuf)) {
+		pp_params->direct_alloc_fail++;
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+		return QDF_STATUS_E_NOMEM;
+	}
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
-	/* Copy data in to the pp nbuf */
+copy_data:
+	/* Copy data in to the new nbuf */
 	qdf_mem_copy(pp_nbuf->data, nbuf->data, nbuf->len);
 	qdf_nbuf_set_pktlen(pp_nbuf, nbuf->len);
 	qdf_nbuf_copy_header(pp_nbuf, nbuf);
 
-	page = qdf_virt_to_head_page(pp_nbuf->data);
-	QDF_NBUF_CB_PADDR(pp_nbuf) = qdf_page_pool_get_dma_addr(page) + offset +
-				 qdf_nbuf_headroom(pp_nbuf);
+	if (qdf_is_pp_nbuf(pp_nbuf)) {
+		page = qdf_virt_to_head_page(pp_nbuf->data);
+		QDF_NBUF_CB_PADDR(pp_nbuf) = qdf_page_pool_get_dma_addr(page) +
+					      offset +
+					      qdf_nbuf_headroom(pp_nbuf);
+	}
 
 	tx_desc->nbuf = pp_nbuf;
 	tx_desc->orig_nbuf = nbuf;
+	*new_nbuf = pp_nbuf;
 
-	return pp_nbuf;
-
-alloc_fail:
-	pp_params->alloc_fail++;
-	qdf_spin_unlock_bh(&tx_pp->pp_lock);
-	return nbuf;
+	return QDF_STATUS_SUCCESS;
 }
 
 /**
@@ -272,7 +308,7 @@ dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
 {
 	qdf_nbuf_t orig_nbuf;
 
-	if (!qdf_is_pp_nbuf(nbuf) || !tx_desc->orig_nbuf)
+	if (!tx_desc->orig_nbuf)
 		return nbuf;
 
 	qdf_nbuf_free(nbuf);
@@ -293,11 +329,12 @@ static inline void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
 {
 }
 
-static inline qdf_nbuf_t
+static inline QDF_STATUS
 dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
-				   struct dp_tx_desc_s *tx_desc)
+				   struct dp_tx_desc_s *tx_desc,
+				   qdf_nbuf_t *new_nbuf)
 {
-	return nbuf;
+	return QDF_STATUS_E_NOSUPPORT;
 }
 
 static inline qdf_nbuf_t
@@ -3610,6 +3647,7 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	struct cdp_tid_tx_stats *tid_stats = NULL;
 	qdf_dma_addr_t paddr;
 	bool enable_eapol_drop_stats = vdev->dp_eapol_stats;
+	qdf_nbuf_t pp_nbuf = NULL;
 
 	/* Setup Tx descriptor for an MSDU, and MSDU extension descriptor */
 	tx_desc = dp_tx_prepare_desc_single(vdev, nbuf, tx_q->desc_pool_id,
@@ -3623,7 +3661,20 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	dp_tx_update_tdls_flags(soc, vdev, tx_desc);
 
-	nbuf = dp_tx_page_pool_handle_nbuf_single(vdev, nbuf, tx_desc);
+	status = dp_tx_page_pool_handle_nbuf_single(vdev, nbuf,
+						    tx_desc, &pp_nbuf);
+	if (QDF_IS_STATUS_SUCCESS(status)) {
+		nbuf = pp_nbuf;
+	} else if (qdf_is_pp_nbuf(nbuf) && status == QDF_STATUS_E_NOMEM) {
+		/* When original (input) nbuf is a page pool buffer (RX page
+		 * pool buffer redirected to the TX path by network stack or
+		 * a RX intra-bss forwarded page pool buffer), and if TX
+		 * page pool handling for such buffers has failed, do not
+		 * attempt TX; DMA map/unmap ops currently on such buffers
+		 * is complex and error prone.
+		 */
+		goto release_desc;
+	}
 
 	if (qdf_unlikely(peer_id == DP_INVALID_PEER)) {
 		htt_tcl_metadata = vdev->htt_tcl_metadata;

@@ -2391,7 +2391,7 @@ int hif_pci_bus_suspend(struct hif_softc *scn)
 	 */
 	ret = hif_drain_fw_diag_ce(scn);
 	if (ret)
-		hif_err("draining fw_diag_ce not got cleaned");
+		hif_err("draining fw_diag_ce not got cleaned %d", ret);
 
 	if (QDF_IS_STATUS_ERROR(hif_try_complete_tasks(scn)) ||
 	    (ret == -EAGAIN)) {

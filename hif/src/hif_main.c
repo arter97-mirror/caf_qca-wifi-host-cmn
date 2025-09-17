@@ -505,6 +505,11 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.id = WCN3990_CLARENCE,
 		.subid = 0,
 		.name = "WCN3990",
+	},
+	{
+		.id = WCN7760_COLOGNE,
+		.subid = 0,
+		.name = "WCN7760",
 	}
 
 };
@@ -1465,6 +1470,82 @@ static inline int hif_get_num_pending_work(struct hif_softc *scn)
 }
 #endif
 
+#if defined(QCA_WIFI_KIWI) && !defined(QCA_WIFI_WCN6450)
+/**
+ * hif_print_ce() - print CE HP TP values
+ * @scn: HIF context
+ * @print_type: print type
+ *
+ * Returns: QDF_STATUS_SUCCESS if all the rings are empty
+ *	QDF error code, if any ring is not empty
+ */
+QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type)
+{
+	struct HIF_CE_state *hif_ce_state = (struct HIF_CE_state *)scn;
+	struct ce_tasklet_entry *tasklet_entry;
+	struct CE_state *CE_state;
+	uint32_t hp = 0, tp = 0;
+	uint8_t ce_id = 0;
+	uint8_t non_empty = 0;
+
+	if (print_type == DIAG_PRINT) {
+		if (!hif_get_fw_diag_ce_id(scn, &ce_id)) {
+			CE_state = scn->ce_id_to_state[ce_id];
+			if (CE_state->status_ring) {
+				hal_get_sw_hptp(scn->hal_soc,
+						CE_state->status_ring->srng_ctx,
+						&tp, &hp);
+				hif_info("diag ce=%d HP=%d, TP=%d",
+					 ce_id, hp, tp);
+			}
+		}
+		return QDF_STATUS_SUCCESS;
+	}
+
+	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
+		tasklet_entry = &hif_ce_state->tasklets[ce_id];
+		if (print_type ||
+		    (qdf_atomic_test_bit(TASKLET_STATE_SCHED,
+					 &tasklet_entry->intr_tq.state) ||
+		     qdf_atomic_test_bit(TASKLET_STATE_RUN,
+					 &tasklet_entry->intr_tq.state))) {
+			CE_state = scn->ce_id_to_state[ce_id];
+			if (CE_state->status_ring) {
+				hal_get_sw_hptp(scn->hal_soc,
+						CE_state->status_ring->srng_ctx,
+						&tp, &hp);
+				hif_info("ce=%d sts%sHP=%d, TP=%d",
+					 ce_id, print_type ? " " : " pending ",
+					 hp, tp);
+				if (hp != tp)
+					non_empty++;
+			} else if (CE_state->src_ring) {
+				hal_get_sw_hptp(scn->hal_soc,
+						CE_state->src_ring->srng_ctx,
+						&tp, &hp);
+				hif_info("ce=%d src%sHP=%d, TP=%d",
+					 ce_id, print_type ? " " : " pending ",
+					 hp, tp);
+				if (hp != tp)
+					non_empty++;
+			}
+		}
+	}
+
+	if (print_type && non_empty) {
+		hif_info("full print shows %d rings are not empty", non_empty);
+		return QDF_STATUS_E_FAULT;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 QDF_STATUS hif_try_complete_tasks(struct hif_softc *scn)
 {
 	uint32_t task_drain_wait_cnt = 0;
@@ -1494,12 +1575,19 @@ QDF_STATUS hif_try_complete_tasks(struct hif_softc *scn)
 						oom_work);
 			return QDF_STATUS_E_FAULT;
 		}
+
 		hif_info("waiting for tasklets %d grp tasklets %d work %d oom_work %d",
 			 tasklet, grp_tasklet, work, oom_work);
+
+		if (tasklet)
+			hif_print_ce(scn, BUSY_PRINT);
+
 		msleep(10);
 	}
 
-	return QDF_STATUS_SUCCESS;
+	hif_info("CE HP-TP data:");
+
+	return hif_print_ce(scn, FULL_PRINT);
 }
 
 QDF_STATUS hif_try_complete_dp_tasks(struct hif_opaque_softc *hif_ctx)

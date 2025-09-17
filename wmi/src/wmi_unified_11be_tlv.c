@@ -1549,6 +1549,9 @@ extract_mlo_link_state_switch_event_tlv(struct wmi_unified *wmi_handle,
 	}
 
 	num_tlv = fixed_param->link_state_switch_count;
+	if (num_tlv > param_buf->num_switch_trigger_reason)
+		num_tlv = param_buf->num_switch_trigger_reason;
+
 	if (num_tlv > MAX_LINK_SWITCH_TLV)
 		num_tlv = MAX_LINK_SWITCH_TLV;
 

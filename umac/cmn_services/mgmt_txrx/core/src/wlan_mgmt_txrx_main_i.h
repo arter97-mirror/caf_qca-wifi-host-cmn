@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -190,16 +190,36 @@ struct mgmt_txrx_stats_t {
 	uint64_t dma_comp;
 };
 
+#define MAX_PEER_NUM 64
+
+/**
+ * struct mgmt_frame_dup_det_info - MGMT frame duplicate detection parameters
+ * @peer_addr: peer address
+ * @time: time at which frame received
+ * @retry_bit: flag for retry bit
+ * @subtype: subtype
+ * @seq_num: sequence number
+ */
+struct mgmt_frame_dup_det_info {
+	struct qdf_mac_addr peer_addr;
+	qdf_time_t time;
+	uint8_t retry_bit;
+	enum mgmt_frame_type subtype;
+	uint16_t seq_num;
+};
+
 /**
  * struct mgmt_txrx_priv_psoc_context - mgmt txrx private psoc context
  * @psoc:                psoc context
  * @mgmt_rx_comp_cb:     array of pointers of mgmt rx cbs
  * @mgmt_txrx_psoc_ctx_lock:  mgmt txrx psoc ctx lock
+ * @mgmt_frame_param: MGMT frame duplicate detection parameters
  */
 struct mgmt_txrx_priv_psoc_context {
 	struct wlan_objmgr_psoc *psoc;
 	struct mgmt_rx_handler *mgmt_rx_comp_cb[MGMT_MAX_FRAME_TYPE];
 	qdf_spinlock_t mgmt_txrx_psoc_ctx_lock;
+	struct mgmt_frame_dup_det_info mgmt_frame_param[MAX_PEER_NUM];
 };
 
 /**
@@ -284,3 +304,115 @@ QDF_STATUS iot_sim_mgmt_tx_update(struct wlan_objmgr_psoc *psoc,
 				  struct wlan_objmgr_vdev *vdev,
 				  qdf_nbuf_t buf);
 #endif
+
+/**
+ * mgmt_txrx_frame_is_duplicate - checks MGMT frame is duplicate or not.
+ * @psoc: pointer to PSOC object
+ * @wlan_hdr: Frame header
+ * @frm_type: Frame subtype categories
+ *
+ * This function compares the parameters of the current frame with those of the
+ * previously cached frame for the peer. If the provided frame is new, it
+ * updates the cache accordingly.
+ *
+ * Return: true if frame is duplicate otherwise false
+ */
+bool mgmt_txrx_frame_is_duplicate(struct wlan_objmgr_psoc *psoc,
+				  struct ieee80211_frame *wlan_hdr,
+				  enum mgmt_frame_type frm_type);
+
+/**
+ * mgmt_txrx_get_frm_type_string - get MGMT frame type in string format
+ * @frm_type: Frame subtype categories
+ *
+ * Return: MGMT frame type string
+ */
+uint8_t *mgmt_txrx_get_frm_type_string(enum mgmt_frame_type frm_type);
+
+/**
+ * wlan_mgmt_txrx_rx_frame_handler() - handles rx mgmt. frames
+ * @psoc: psoc context
+ * @buf: buffer
+ * @mgmt_rx_params: rx event params
+ *
+ * This function handles mgmt. rx frames and is registered to southbound
+ * interface through rx ops.
+ *
+ * Return: QDF_STATUS_SUCCESS - in case of success
+ */
+QDF_STATUS wlan_mgmt_txrx_rx_frame_handler(
+			struct wlan_objmgr_psoc *psoc,
+			qdf_nbuf_t buf,
+			struct mgmt_rx_event_params *mgmt_rx_params);
+
+/**
+ * wlan_mgmt_txrx_tx_completion_handler() - handles mgmt. tx completions
+ * @pdev: pdev context
+ * @desc_id: mgmt desc. id
+ * @status: status of download of tx packet
+ * @tx_compl_params: tx completion params
+ *
+ * This function handles tx completions of mgmt. frames and is registered to
+ * LMAC_if layer through lmac_if cbs.The cb needs to free the nbuf. In case no
+ * callback is registered, this function will free the nbuf.
+ *
+ * Return: QDF_STATUS_SUCCESS - in case of success
+ */
+QDF_STATUS wlan_mgmt_txrx_tx_completion_handler(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id, uint32_t status,
+			void *tx_compl_params);
+
+/**
+ * mgmt_txrx_get_nbuf_from_desc_id() - extracts nbuf from mgmt desc
+ * @pdev: pdev context
+ * @desc_id: desc_id
+ *
+ * This function extracts nbuf from mgmt desc extracted from desc id.
+ *
+ * Return: nbuf - in case of success
+ *         NULL - in case of failure
+ */
+qdf_nbuf_t mgmt_txrx_get_nbuf_from_desc_id(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id);
+
+/**
+ * mgmt_txrx_get_peer_from_desc_id() - extracts peer from mgmt desc
+ * @pdev: pdev context
+ * @desc_id: desc_id
+ *
+ * This function extracts peer from mgmt desc extracted from desc id.
+ *
+ * Return: peer - in case of success
+ *         NULL - in case of failure
+ */
+struct wlan_objmgr_peer *
+mgmt_txrx_get_peer_from_desc_id(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id);
+
+/**
+ * mgmt_txrx_get_vdev_id_from_desc_id() - extracts vdev id from mgmt desc
+ * @pdev: pdev context
+ * @desc_id: desc_id
+ *
+ * This function extracts vdev id from mgmt desc extracted from desc id.
+ *
+ * Return: vdev_id - in case of success
+ *         WLAN_UMAC_VDEV_ID_MAX - in case of failure
+ */
+uint8_t mgmt_txrx_get_vdev_id_from_desc_id(
+			struct wlan_objmgr_pdev *pdev,
+			uint32_t desc_id);
+
+/**
+ * wlan_mgmt_txrx_frame_hex_dump() - Print the type and dump the rx tx frame
+ * @frame_data: The base address of the mgmt frame data to be logged.
+ * @frame_len: The size of the frame to be logged.
+ * @is_tx: is tx frame
+ *
+ * Return:  None
+ */
+void wlan_mgmt_txrx_frame_hex_dump(void *frame_data, int frame_len, bool is_tx);
+
