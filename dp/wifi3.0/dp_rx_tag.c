@@ -914,6 +914,10 @@ dp_rx_ppe_add_flow_entry(struct ppe_drv_fse_rule_info *ppe_flow_info)
 		DP_RX_FSE_FLOW_UPDATE_VP_NUM(flow_info.fse_metadata,
 					     ppe_flow_info->vp_num);
 
+	flow_info.fse_metadata =
+		DP_RX_FSE_FLOW_UPDATE_EGRESS_MACID(flow_info.fse_metadata,
+					     ppe_flow_info->macid);
+
 	if (ppe_flow_info->flags & PPE_DRV_FSE_IPV4) {
 		flow_info.is_addr_ipv4 = 1;
 		flow_info.flow_tuple_info.src_ip_31_0 =
