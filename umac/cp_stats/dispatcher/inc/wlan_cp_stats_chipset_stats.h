@@ -16,7 +16,9 @@
 #include "wlan_cp_stats_chipset_stats_events.h"
 
 #define MAX_CSTATS_NODE_LENGTH 2048
-#define MAX_CSTATS_NODE_COUNT 256
+#define HOST_TYPE_NODE_COUNT 50
+#define FW_TYPE_NODE_COUNT 460
+
 #define MAX_CSTATS_VERSION_BUFF_LENGTH 100
 
 #define CSTATS_QMI_EVENT_TYPE 1

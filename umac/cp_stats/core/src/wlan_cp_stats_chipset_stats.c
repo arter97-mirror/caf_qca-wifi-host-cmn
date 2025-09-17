@@ -27,7 +27,7 @@ static struct cstats_node *gcstats_buffer[CSTATS_MAX_TYPE];
 QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 {
 	qdf_list_node_t *tmp_node = NULL;
-	int i, j, k;
+	int i, j, k, node_count;
 
 	if (!wlan_cp_stats_get_chipset_stats_enable(psoc)) {
 		qdf_info("Chipset Stats feature is disabled");
@@ -48,8 +48,16 @@ QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 	for (i = 0; i < CSTATS_MAX_TYPE; i++) {
 		qdf_spinlock_create(&cstats.cstats_lock[i]);
 
-		gcstats_buffer[i] = qdf_mem_valloc(MAX_CSTATS_NODE_COUNT *
+		if (i == CSTATS_HOST_TYPE)
+			node_count = HOST_TYPE_NODE_COUNT;
+		else if (i == CSTATS_FW_TYPE)
+			node_count = FW_TYPE_NODE_COUNT;
+		else
+			continue;
+
+		gcstats_buffer[i] = qdf_mem_valloc(node_count *
 						   sizeof(struct cstats_node));
+
 		if (!gcstats_buffer[i]) {
 			qdf_err("Could not allocate memory for chipset stats");
 			for (k = 0; k < i ; k++) {
@@ -64,14 +72,14 @@ QDF_STATUS wlan_cp_stats_cstats_init(struct wlan_objmgr_psoc *psoc)
 			return QDF_STATUS_E_NOMEM;
 		}
 
-		qdf_mem_zero(gcstats_buffer[i], MAX_CSTATS_NODE_COUNT *
+		qdf_mem_zero(gcstats_buffer[i], node_count *
 			     sizeof(struct cstats_node));
 
 		qdf_spin_lock_bh(&cstats.cstats_lock[i]);
 		qdf_init_list_head(&cstats.cstat_free_list[i].anchor);
 		qdf_init_list_head(&cstats.cstat_filled_list[i].anchor);
 
-		for (j = 0; j < MAX_CSTATS_NODE_COUNT; j++) {
+		for (j = 0; j < node_count; j++) {
 			qdf_list_insert_front(&cstats.cstat_free_list[i],
 					      &gcstats_buffer[i][j].node);
 			gcstats_buffer[i][j].index = j;
