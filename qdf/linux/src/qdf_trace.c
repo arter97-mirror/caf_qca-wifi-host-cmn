@@ -4168,19 +4168,19 @@ QDF_TRACE_LEVEL qdf_print_get_category_verbose(unsigned int idx,
 	/* Check if index passed is valid */
 	if (idx < 0 || idx >= MAX_PRINT_CONFIG_SUPPORTED) {
 		pr_info("%s: Invalid index - %d\n", __func__, idx);
-		return false;
+		return QDF_TRACE_LEVEL_NONE;
 	}
 
 	/* Check if print control object is in use */
 	if (!print_ctrl_obj[idx].in_use) {
 		pr_info("%s: Invalid print control object\n", __func__);
-		return false;
+		return QDF_TRACE_LEVEL_NONE;
 	}
 
 	/* Check if category passed is valid */
 	if (category < 0 || category >= MAX_SUPPORTED_CATEGORY) {
 		pr_info("%s: Invalid category: %d\n", __func__, category);
-		return false;
+		return QDF_TRACE_LEVEL_NONE;
 	}
 
 	return print_ctrl_obj[idx].cat_info[category].category_verbose_mask;
