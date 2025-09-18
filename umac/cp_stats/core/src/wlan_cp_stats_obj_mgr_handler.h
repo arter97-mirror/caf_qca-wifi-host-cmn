@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -217,6 +217,17 @@ int wlan_cp_stats_twt_get_peer_session_params(
  *	   False if Chipset Stats is not supported or disabled
  */
 bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_cp_stats_is_debug_logging_enabled() - Checks whether debug logging for
+ * chipset statistics is enabled via the INI chipset_stats_debug_log_enable.
+ *
+ * @psoc: psoc object
+ *
+ * Return: True if INI chipset_stats_debug_log_enable is enabled
+ * False if INI chipset_stats_debug_log_enable disabled
+ */
+bool wlan_cp_stats_is_debug_logging_enabled(struct wlan_objmgr_psoc *psoc);
 
 /**
  * wlan_cp_stats_get_user_delay_value_ms() - Returns INI

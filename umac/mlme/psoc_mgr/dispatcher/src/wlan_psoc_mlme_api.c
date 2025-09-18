@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -196,17 +196,44 @@ static void mlme_init_cfg(struct wlan_objmgr_psoc *psoc)
 			  WLAN_MD_OBJMGR_PSOC_MLME, "psoc_mlme");
 }
 
+static void mlme_vdev_rsp_timer_mutex_create(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+
+	if (!mlme_psoc_obj)
+		return;
+
+	qdf_mutex_create(&mlme_psoc_obj->vdev_rsp_timer_mutex);
+}
+
+static void mlme_vdev_rsp_timer_mutex_destroy(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+
+	if (!mlme_psoc_obj)
+		return;
+
+	qdf_mutex_destroy(&mlme_psoc_obj->vdev_rsp_timer_mutex);
+}
+
 QDF_STATUS mlme_psoc_open(struct wlan_objmgr_psoc *psoc)
 {
 	mlme_init_cfg(psoc);
+	mlme_vdev_rsp_timer_mutex_create(psoc);
 
 	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS mlme_psoc_close(struct wlan_objmgr_psoc *psoc)
 {
+	mlme_vdev_rsp_timer_mutex_destroy(psoc);
 	if (qdf_is_recovering())
 		tgt_vdev_mgr_reset_response_timer_info(psoc);
+
 	return QDF_STATUS_SUCCESS;
 }
 

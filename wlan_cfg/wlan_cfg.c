@@ -3396,6 +3396,13 @@ struct wlan_srng_cfg wlan_srng_tx_monitor_buf_cfg = {
 	.low_threshold = WLAN_CFG_TX_MONITOR_BUF_RING_SIZE_MAX >> 3,
 };
 
+/* RX Exception ring configuration */
+struct wlan_srng_cfg wlan_srng_rx_err_cfg = {
+	.timer_threshold = WLAN_CFG_INT_TIMER_THRESHOLD_RX_ERR,
+	.batch_count_threshold = WLAN_CFG_INT_BATCH_THRESHOLD_RX_ERR,
+	.low_threshold = 0,
+};
+
 /* DEFAULT_CONFIG ring configuration */
 struct wlan_srng_cfg wlan_srng_default_cfg = {
 	.timer_threshold = WLAN_CFG_INT_TIMER_THRESHOLD_OTHER,
@@ -3432,7 +3439,7 @@ void wlan_set_srng_cfg(struct wlan_srng_cfg **wlan_cfg)
 {
 	g_wlan_srng_cfg[REO_DST] = wlan_srng_reo_cfg;
 	g_wlan_srng_cfg[WBM2SW_RELEASE] = wlan_srng_wbm_release_cfg;
-	g_wlan_srng_cfg[REO_EXCEPTION] = wlan_srng_default_cfg;
+	g_wlan_srng_cfg[REO_EXCEPTION] = wlan_srng_rx_err_cfg;
 	g_wlan_srng_cfg[REO_REINJECT] = wlan_src_srng_default_cfg;
 	g_wlan_srng_cfg[REO_CMD] = wlan_src_srng_default_cfg;
 	g_wlan_srng_cfg[REO_STATUS] = wlan_srng_default_cfg;

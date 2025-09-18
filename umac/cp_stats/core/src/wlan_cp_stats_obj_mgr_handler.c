@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -69,6 +69,8 @@ void wlan_cp_stats_init_cfg(struct wlan_objmgr_psoc *psoc,
 
 	csc->host_params.chipset_stats_enable =
 				cfg_get(psoc, CHIPSET_STATS_ENABLE);
+	csc->host_params.is_cp_stats_logging_enabled =
+			cfg_get(psoc, CHIPSET_STATS_DEBUG_LOGGING_ENABLE);
 }
 
 void wlan_cp_stats_init_user_delay_value_ms_cfg(struct wlan_objmgr_psoc *psoc,
@@ -107,6 +109,20 @@ bool wlan_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 	}
 
 	return csc->host_params.chipset_stats_enable;
+}
+
+bool wlan_cp_stats_is_debug_logging_enabled(struct wlan_objmgr_psoc *psoc)
+{
+	struct cp_stats_context *csc;
+
+	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+						    WLAN_UMAC_COMP_CP_STATS);
+	if (!csc) {
+		cp_stats_err("CP Stats Context is NULL");
+		return false;
+	}
+
+	return csc->host_params.is_cp_stats_logging_enabled;
 }
 
 size_t wlan_cp_stats_get_user_delay_value_ms(struct wlan_objmgr_psoc *psoc)

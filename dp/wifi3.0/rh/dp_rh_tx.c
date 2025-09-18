@@ -751,6 +751,15 @@ void dp_tx_compl_handler_rh(struct dp_soc *soc, qdf_nbuf_t htt_msg)
 			qdf_assert_always(0);
 		}
 
+		if (qdf_unlikely(tx_desc->flags &
+			DP_TX_DESC_FLAG_REAPED)) {
+			dp_tx_comp_alert("Txdesc duplicate entry, flags = %x,id = %d",
+					 tx_desc->flags, tx_desc->id);
+			qdf_assert_always(0);
+		}
+
+		tx_desc->flags |= DP_TX_DESC_FLAG_REAPED;
+
 		if (HTT_TX_BUFFER_ADDR_INFO_RELEASE_SOURCE_GET(*(msg_word + 1)) ==
 		    HTT_TX_MSDU_RELEASE_SOURCE_FW)
 			tx_desc->buffer_src = HAL_TX_COMP_RELEASE_SOURCE_FW;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -364,6 +364,17 @@ target_if_crypto_install_key_comp_evt_handler(void *handle, uint8_t *event,
 	result.status = params.status;
 	qdf_mem_copy(result.peer_macaddr, params.peer_macaddr,
 		     QDF_MAC_ADDR_SIZE);
+
+	if (!result.status) {
+		struct wlan_crypto_key *crypto_key;
+
+		crypto_key = wlan_crypto_get_key(vdev, result.peer_macaddr,
+						 result.key_ix);
+		if (crypto_key && crypto_key->keylen)
+			wlan_peer_set_key_install_flag(psoc,
+						       result.peer_macaddr,
+						       true);
+	}
 
 	if (priv_obj->add_key_cb)
 		priv_obj->add_key_cb(priv_obj->add_key_ctx, &result);
