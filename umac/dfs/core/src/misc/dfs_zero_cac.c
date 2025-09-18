@@ -3015,7 +3015,7 @@ bool dfs_bwexpand_is_chanset_agile_eligible(struct wlan_dfs *dfs,
 		qdf_freq_t *p_tgt_freq = &target_freq_list[temp + offset];
 
 		if (dfs_is_freq_in_nol(dfs, *p_tgt_freq) ||
-		    dfs_is_subset_channel_for_freq(cur_freq_list,
+		    dfs_is_subset_channel_for_freq(dfs, cur_freq_list,
 						   n_cur_channels,
 						   p_tgt_freq,
 						   1))
