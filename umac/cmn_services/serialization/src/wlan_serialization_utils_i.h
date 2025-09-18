@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -574,7 +574,8 @@ bool wlan_serialization_match_cmd_blocking(
  * Return: Pointer to the node member in the list
  */
 qdf_list_node_t *
-wlan_serialization_find_cmd(qdf_list_t *queue, uint32_t match_type,
+wlan_serialization_find_cmd(qdf_list_t *queue,
+			    enum wlan_serialization_match_type match_type,
 			    struct wlan_serialization_command *cmd,
 			    enum wlan_serialization_cmd_type cmd_type,
 			    struct wlan_objmgr_pdev *pdev,

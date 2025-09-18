@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -306,7 +306,8 @@ target_if_update_wds_entry(struct cdp_ctrl_objmgr_psoc *soc, uint8_t vdev_id,
  */
 int target_if_peer_txq_flush_config(struct cdp_ctrl_objmgr_psoc *psoc,
 				    uint8_t vdev_id, uint8_t *mac,
-				    uint8_t ac, uint32_t tid, uint32_t policy);
+				    uint8_t ac, uint32_t tid,
+				    enum cdp_peer_txq_flush_policy policy);
 #else
 static inline int
 target_if_peer_txq_flush_config(struct cdp_ctrl_objmgr_psoc *psoc,

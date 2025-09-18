@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011,2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -427,7 +427,7 @@ tgt_spectral_use_broadcast(struct wlan_objmgr_pdev *pdev, bool use_bcast)
 	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
 	if (!tx_ops) {
 		spectral_err("tx_ops is NULL");
-		return false;
+		return QDF_STATUS_E_NULL_VALUE;
 	}
 
 	psptrl_tx_ops = &tx_ops->sptrl_tx_ops;
