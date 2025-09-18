@@ -1034,6 +1034,17 @@ static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 	hif_warn("FEATURE_NAPI not defined, making tasklet");
 	return hif_exec_tasklet_create();
 }
+
+static inline void
+hif_update_irq_handler_start_time(struct hif_exec_context *hif_ext_group)
+{
+}
+
+static inline void
+hif_update_irq_handle_time(struct hif_exec_context *hif_ext_group)
+{
+}
+
 #endif
 
 
