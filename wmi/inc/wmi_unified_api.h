@@ -1401,6 +1401,18 @@ QDF_STATUS wmi_unified_peer_assoc_send(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_sta_ps_cmd_send(wmi_unified_t wmi_handle,
 				       struct sta_ps_params *param);
 
+#if defined(SAP_PERF_TUNING)
+/**
+ * wmi_unified_sap_tm_cmd_send() - set sap traffic monitoring parameters
+ * @wmi_handle: wmi handle
+ * @param: pointer to sap_tm parameter structure
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_sap_tm_cmd_send(wmi_unified_t wmi_handle,
+				       struct sap_tm_params *param);
+#endif
+
 /**
  * wmi_unified_ap_ps_cmd_send() - set ap powersave parameters
  * @wmi_handle: wmi handle

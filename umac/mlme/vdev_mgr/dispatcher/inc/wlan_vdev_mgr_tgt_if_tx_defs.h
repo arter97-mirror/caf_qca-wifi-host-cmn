@@ -204,6 +204,18 @@ struct sta_ps_params {
 };
 
 /**
+ * struct sap_tm_params - sap tm cmd parameter
+ * @vdev_id: vdev id
+ * @sap_perf_data_threshold: SAP perf data threshold
+ * @sap_traffic_monitoring_time_s: SAP traffic monitoring time in unit of sec.
+ */
+struct sap_tm_params {
+	uint32_t vdev_id;
+	uint32_t sap_perf_data_threshold;
+	uint32_t sap_traffic_monitoring_time_s;
+};
+
+/**
  * struct rnr_bss_tbtt_info_param: Reported Vdev info
  * @bss_mac: Mac address
  * @beacon_intval: Beacon interval of reported AP

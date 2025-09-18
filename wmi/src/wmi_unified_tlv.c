@@ -3279,6 +3279,61 @@ static QDF_STATUS send_set_sta_ps_param_cmd_tlv(wmi_unified_t wmi_handle,
 	return 0;
 }
 
+#if defined(SAP_PERF_TUNING)
+/**
+ * send_set_sap_tm_param_cmd_tlv() - set sap traffic monitoring parameters
+ * @wmi_handle: wmi handle
+ * @param: pointer to sap_tm parameter structure
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS send_set_sap_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
+						struct sap_tm_params *param)
+{
+	wmi_vdev_traffic_monitoring_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	int32_t len = sizeof(*cmd);
+	QDF_STATUS ret;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_vdev_traffic_monitoring_cmd_fixed_param *)
+			wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_traffic_monitoring_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_vdev_traffic_monitoring_cmd_fixed_param));
+
+	cmd->vdev_id = param->vdev_id;
+	cmd->data_threshold = param->sap_perf_data_threshold;
+	cmd->traffic_monitoring_time = param->sap_traffic_monitoring_time_s;
+
+	wmi_debug("Set SAP Tm param vdevId %d Threshold %u time(s) %u",
+		  param->vdev_id, param->sap_perf_data_threshold,
+		  param->sap_traffic_monitoring_time_s);
+	wmi_mtrace(WMI_VDEV_TRAFFIC_MONITORING_CMDID, cmd->vdev_id, 0);
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_VDEV_TRAFFIC_MONITORING_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send SAP perf monitoring command ret = %d",
+			ret);
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return 0;
+}
+#else
+static QDF_STATUS send_set_sap_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
+						struct sap_tm_params *param)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 /**
  * send_crash_inject_cmd_tlv() - inject fw crash
  * @wmi_handle: wmi handle
@@ -23836,6 +23891,7 @@ struct wmi_ops tlv_ops =  {
 	.send_offchan_data_tx_cmd = send_offchan_data_tx_cmd_tlv,
 	.send_modem_power_state_cmd = send_modem_power_state_cmd_tlv,
 	.send_set_sta_ps_mode_cmd = send_set_sta_ps_mode_cmd_tlv,
+	.send_set_sap_tm_param_cmd = send_set_sap_tm_param_cmd_tlv,
 	.send_idle_roam_monitor_cmd = send_idle_roam_monitor_cmd_tlv,
 	.send_set_sta_uapsd_auto_trig_cmd =
 		send_set_sta_uapsd_auto_trig_cmd_tlv,

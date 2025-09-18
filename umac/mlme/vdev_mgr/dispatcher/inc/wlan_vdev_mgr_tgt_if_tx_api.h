@@ -200,6 +200,20 @@ QDF_STATUS tgt_vdev_mgr_sta_ps_param_send(
 				struct vdev_mlme_obj *mlme_obj,
 				struct sta_ps_params *param);
 
+#if defined(SAP_PERF_TUNING)
+/**
+ * tgt_vdev_mgr_sap_tm_param_send() - API to send sap traffic monitoring
+ * configuration.
+ * @mlme_obj: pointer to vdev_mlme_obj
+ * @param: pointer to sap_tm_params
+ *
+ * Return: QDF_STATUS - Success or Failure
+ */
+QDF_STATUS tgt_vdev_mgr_sap_tm_param_send(
+				struct vdev_mlme_obj *mlme_obj,
+				struct sap_tm_params *param);
+#endif
+
 /**
  * tgt_vdev_mgr_beacon_cmd_send() - API to send beacon
  * @mlme_obj: pointer to vdev_mlme_obj

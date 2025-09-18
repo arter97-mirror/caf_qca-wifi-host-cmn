@@ -51,6 +51,7 @@
 #include "wlan_mlme_vdev_mgr_interface.h"
 #include "wlan_cm_api.h"
 #include "wlan_mlo_mgr_link_switch.h"
+#include "wlan_mlme_api.h"
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
@@ -833,6 +834,31 @@ static QDF_STATUS vdev_mgr_sta_ps_param_update(
 	return QDF_STATUS_SUCCESS;
 }
 
+#if defined(SAP_PERF_TUNING)
+static QDF_STATUS vdev_mgr_sap_tm_param_update(
+				struct vdev_mlme_obj *mlme_obj)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct sap_tm_params param = {0};
+
+	vdev = mlme_obj->vdev;
+	param.vdev_id = wlan_vdev_get_id(vdev);
+	param.sap_perf_data_threshold =
+	    wlan_mlme_get_sap_perf_data_threshold(wlan_vdev_get_psoc(vdev));
+	param.sap_traffic_monitoring_time_s =
+	    wlan_mlme_get_sap_traffic_monitoring_time_s(
+						wlan_vdev_get_psoc(vdev));
+
+	return tgt_vdev_mgr_sap_tm_param_send(mlme_obj, &param);
+}
+#else
+static inline QDF_STATUS vdev_mgr_sap_tm_param_update(
+				struct vdev_mlme_obj *mlme_obj)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 static QDF_STATUS vdev_mgr_up_param_update(
 				struct vdev_mlme_obj *mlme_obj,
 				struct vdev_up_params *param)
@@ -966,6 +992,7 @@ QDF_STATUS vdev_mgr_up_send(struct vdev_mlme_obj *mlme_obj)
 	struct beacon_tmpl_params bcn_tmpl_param = {0};
 	enum QDF_OPMODE opmode;
 	struct wlan_objmgr_vdev *vdev;
+	struct wlan_objmgr_psoc *psoc;
 
 	if (!mlme_obj) {
 		mlme_err("VDEV_MLME is NULL");
@@ -1002,8 +1029,17 @@ QDF_STATUS vdev_mgr_up_send(struct vdev_mlme_obj *mlme_obj)
 	mlme_obj->mgmt.ap.max_chan_switch_time = 0;
 	mlme_obj->mgmt.ap.last_bcn_ts_ms = 0;
 
-	if (opmode == QDF_SAP_MODE)
+	if (opmode == QDF_SAP_MODE) {
 		status = vdev_mgr_configure_fd_for_sap(mlme_obj);
+		psoc = wlan_vdev_get_psoc(vdev);
+
+		/* In case of traffic monitoring is enabled, send traffic
+		 * monitoring params to FW.
+		 */
+		if (wlan_mlme_get_sap_perf_tuning_enabled(psoc) &&
+		    wlan_mlme_get_sap_perf_tuning_serv_cap(psoc))
+			vdev_mgr_sap_tm_param_update(mlme_obj);
+	}
 	return status;
 }
 

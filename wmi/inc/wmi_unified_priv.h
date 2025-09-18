@@ -667,6 +667,9 @@ QDF_STATUS (*send_set_ap_ps_param_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_set_sta_ps_param_cmd)(wmi_unified_t wmi_handle,
 					   struct sta_ps_params *param);
 
+QDF_STATUS (*send_set_sap_tm_param_cmd)(wmi_unified_t wmi_handle,
+					struct sap_tm_params *param);
+
 QDF_STATUS (*send_crash_inject_cmd)(wmi_unified_t wmi_handle,
 			 struct crash_inject *param);
 
