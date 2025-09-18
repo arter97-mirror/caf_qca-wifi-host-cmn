@@ -1272,6 +1272,45 @@ static QDF_STATUS target_if_vdev_mgr_sta_ps_param_send(
 	return status;
 }
 
+#if defined(SAP_PERF_TUNING)
+/**
+ * target_if_vdev_mgr_sap_tm_param_send() - API to send traffic monitoring
+ * commands on VDEV UP.
+ * @vdev: vdev object
+ * @param: pointer to traffic monitoring parameters
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS target_if_vdev_mgr_sap_tm_param_send(
+					struct wlan_objmgr_vdev *vdev,
+					struct sap_tm_params *param)
+{
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+
+	if (!vdev || !param) {
+		mlme_err("Invalid input");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wmi_handle = target_if_vdev_mgr_wmi_handle_get(vdev);
+	if (!wmi_handle) {
+		mlme_err("Failed to get WMI handle!");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	status = wmi_unified_sap_tm_cmd_send(wmi_handle, param);
+
+	return status;
+}
+#else
+static inline QDF_STATUS target_if_vdev_mgr_sap_tm_param_send(
+					struct wlan_objmgr_vdev *vdev,
+					struct sap_tm_params *param)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 static QDF_STATUS target_if_vdev_mgr_peer_delete_all_send(
 					struct wlan_objmgr_vdev *vdev,
 					struct peer_delete_all_params *param)
@@ -1628,5 +1667,7 @@ target_if_vdev_mgr_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 			target_if_sap_suspend_param_send;
 	mlme_tx_ops->is_sap_suspend_support_enabled =
 			target_if_sap_is_suspend_support_enabled;
+	mlme_tx_ops->vdev_sap_tm_param_send =
+			target_if_vdev_mgr_sap_tm_param_send;
 	return QDF_STATUS_SUCCESS;
 }
