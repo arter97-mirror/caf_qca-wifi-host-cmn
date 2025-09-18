@@ -3712,6 +3712,68 @@ static void dp_soc_tx_mon_buf_ring_history_detach(struct dp_soc *soc)
 }
 #endif
 
+#ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
+/**
+ * dp_soc_mon_dest_ring_history_attach() - Attach the monitor destination
+ *					   record history.
+ * @soc: DP soc handle
+ *
+ * This function allocates memory to track the buffers of mismatched ppdu
+ * of mon dest ring.
+ *
+ * Return: None
+ */
+static void dp_soc_mon_dest_ring_history_attach(struct dp_soc *soc)
+{
+	int i;
+	uint32_t mon_dest_ring_history_size;
+
+	mon_dest_ring_history_size = sizeof(*soc->mon_dest_ring_history[0]);
+	for (i = 0; i < MAX_NUM_LMAC_HW; i++) {
+		soc->mon_dest_ring_history[i] =
+			dp_context_alloc_mem(
+				      soc,
+				      DP_MON_DEST_BUF_HIST_TYPE,
+				      mon_dest_ring_history_size);
+
+		if (!soc->mon_dest_ring_history[i]) {
+			dp_err("Failed to alloc memory for mon dest ring history, mac - %d",
+			       i);
+		} else {
+			qdf_atomic_init(&soc->mon_dest_ring_history[i]->index);
+			qdf_atomic_init(
+				&soc->mon_dest_ring_history[i]->ppdu_index);
+		}
+	}
+}
+
+/**
+ * dp_soc_mon_dest_ring_history_detach() - Detach the monitor dest buffer
+ *					   record history.
+ * @soc: DP soc handle
+ *
+ * Return: None
+ */
+static void dp_soc_mon_dest_ring_history_detach(struct dp_soc *soc)
+{
+	int i;
+
+	for (i = 0; i < MAX_NUM_LMAC_HW; i++) {
+		dp_context_free_mem(soc, DP_MON_DEST_BUF_HIST_TYPE,
+				    soc->mon_dest_ring_history[i]);
+	}
+}
+
+#else
+static void dp_soc_mon_dest_ring_history_attach(struct dp_soc *soc)
+{
+}
+
+static void dp_soc_mon_dest_ring_history_detach(struct dp_soc *soc)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_DP_MON_STATUS_RING_HISTORY
 /**
  * dp_soc_mon_status_ring_history_attach() - Attach the monitor status
@@ -3746,6 +3808,7 @@ static void dp_soc_mon_status_ring_history_detach(struct dp_soc *soc)
 	dp_context_free_mem(soc, DP_MON_STATUS_BUF_HIST_TYPE,
 			    soc->mon_status_ring_history);
 }
+
 #else
 static void dp_soc_mon_status_ring_history_attach(struct dp_soc *soc)
 {
@@ -4494,6 +4557,7 @@ static void dp_soc_detach(struct cdp_soc_t *txrx_soc)
 	dp_soc_tx_hw_desc_history_detach(soc);
 	dp_soc_tx_history_detach(soc);
 	dp_soc_tx_mon_buf_ring_history_detach(soc);
+	dp_soc_mon_dest_ring_history_detach(soc);
 	dp_soc_mon_status_ring_history_detach(soc);
 	dp_soc_rx_history_detach(soc);
 	dp_soc_cfg_history_detach(soc);
@@ -15420,6 +15484,7 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 	dp_soc_tx_hw_desc_history_attach(soc);
 	dp_soc_rx_history_attach(soc);
 	dp_soc_mon_status_ring_history_attach(soc);
+	dp_soc_mon_dest_ring_history_attach(soc);
 	dp_soc_tx_mon_buf_ring_history_attach(soc);
 	dp_soc_tx_history_attach(soc);
 	dp_soc_msdu_done_fail_desc_list_attach(soc);
