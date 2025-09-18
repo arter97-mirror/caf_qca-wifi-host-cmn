@@ -4028,6 +4028,7 @@ void dp_send_data_to_stack(struct dp_pdev *pdev,
 				    &tx_capture_info.mpdu_info,
 				    user);
 	tx_capture_info.ppdu_desc = ppdu_desc;
+	tx_capture_info.ack_recvd = user->ack_ba_tlv;
 	tx_capture_info.mpdu_info.channel_num = pdev->operating_channel.num;
 
 	if (ppdu_desc->mprot_type && (usr_idx == 0))
