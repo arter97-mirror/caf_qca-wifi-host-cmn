@@ -4989,6 +4989,7 @@ QDF_STATUS reg_remove_puncture(struct wlan_objmgr_pdev *pdev)
 			mas_chan_list[chan_enum].is_static_punctured = false;
 
 	reg_compute_pdev_current_chan_list(pdev_priv_obj);
+	reg_send_scheduler_msg_nb(wlan_pdev_get_psoc(pdev), pdev);
 
 	return QDF_STATUS_SUCCESS;
 }
