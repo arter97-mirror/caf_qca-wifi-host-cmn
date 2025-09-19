@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -812,7 +812,7 @@ dp_rx_mon_parse_desc_buffer(struct dp_soc *dp_soc,
 			    void **first_rx_desc_tlv,
 			    bool *is_frag_non_raw_p, void *data)
 {
-	struct hal_rx_mon_dest_buf_info frame_info;
+	struct hal_rx_mon_dest_buf_info frame_info = {0};
 	uint32_t rx_pkt_tlv_len = dp_rx_mon_get_rx_pkt_tlv_size(dp_soc);
 
 	/*
