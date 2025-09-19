@@ -1585,6 +1585,9 @@ enum _ol_ath_param_t {
 	/* Disable(=True)/Enable(=False) auto-Unpuncturing by DFS module */
 	OL_ATH_PARAM_DFS_DISABLE_AUTO_UNPUNCTURE = 568,
 	OL_ATH_PARAM_DISABLE_EMLSR_ADV = 569,
+#ifdef WLAN_FEATURE_11BE
+	OL_ATH_PARAM_ACS_AUTO_PUNCTURE_DISABLE = 570,
+#endif /* WLAN_FEATURE_11BE */
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -3932,6 +3935,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_STRICT_PUNCTURING, SET_PARAM, 1},
 	{"g_puncture_strict",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_STRICT_PUNCTURING, GET_PARAM, 0},
+	{"disable_acs_auto_puncture",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ACS_AUTO_PUNCTURE_DISABLE, SET_PARAM, 1},
+	{"g_disable_acs_auto_puncture",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_ACS_AUTO_PUNCTURE_DISABLE, GET_PARAM, 0},
 #endif /* WLAN_FEATURE_11BE */
 #ifdef WLAN_FEATURE_11BE_MLO
 	{"g_mlo_override_mlsr_ptqm",
