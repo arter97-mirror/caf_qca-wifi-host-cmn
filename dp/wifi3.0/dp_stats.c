@@ -1039,8 +1039,6 @@ static void dp_print_rx_tid_reo_ba_stats_tlv(uint32_t *tag_buf)
 			(htt_stats_rx_peer_tid_reo_queue_ba_tlv *)tag_buf;
 
 	DP_PRINT_STATS("htt_stats_rx_peer_tid_reo_queue_ba_tlv:");
-	DP_PRINT_STATS("sw_peer_id__tid_num = 0x%x",
-		       rx_tid_tlv->sw_peer_id__tid_num);
 
 	DP_PRINT_STATS("ssn = %u", rx_tid_tlv->ssn);
 	DP_PRINT_STATS("current_index = %u", rx_tid_tlv->current_index);

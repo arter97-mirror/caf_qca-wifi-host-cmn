@@ -2311,8 +2311,7 @@ dp_htt_set_rx_tid_ext_stats(struct dp_pdev *pdev, uint32_t tag_type,
 		return;
 
 	rx_tid_tlv = (htt_stats_rx_peer_tid_reo_queue_ba_tlv *)tag_buf;
-	dp_info("peer_id_tid_num 0x%x, mpdu_frames_processed_cnt %d",
-		rx_tid_tlv->sw_peer_id__tid_num,
+	dp_info("mpdu_frames_processed_cnt %d",
 		rx_tid_tlv->mpdu_frames_processed_cnt);
 
 	qdf_spin_lock_bh(&soc->rx_hw_stats_lock);
