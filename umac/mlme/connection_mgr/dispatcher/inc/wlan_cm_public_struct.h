@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -223,7 +223,7 @@ enum wlan_cm_source {
  * for production.
  * @is_wps_connection: if its wps connection
  * @is_osen_connection: if its osen connection
- * @reassoc_in_non_init: if reassoc received in non init state
+ * @is_reassoc_connect: if reassoc received
  * @dot11mode_filter: dot11mode filter used to restrict connection to
  * 11n/11ac/11ax.
  * @sae_pwe: SAE mechanism for PWE derivation
@@ -257,7 +257,7 @@ struct wlan_cm_connect_req {
 	uint8_t force_rsne_override:1,
 		is_wps_connection:1,
 		is_osen_connection:1,
-		reassoc_in_non_init:1;
+		is_reassoc_connect:1;
 	enum dot11_mode_filter dot11mode_filter;
 	uint8_t sae_pwe;
 	uint16_t ht_caps;

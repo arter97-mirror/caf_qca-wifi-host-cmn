@@ -1804,27 +1804,6 @@ cm_handle_connect_req_in_non_init_state(struct cnx_mgr *cm_ctx,
 {
 	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 
-	/*
-	 * Connect re-assoc req should have been received in one of the
-	 * following states:
-	 * a) SB disconnect in progress
-	 * b) Roam start/Roam sync in progress
-	 * c) Reassoc
-	 * d) Connected state with LFR3 disabled
-	 * e) Invalid Roam request
-	 *
-	 * In this case, set reassoc_in_non_init flag, so that disconnect can
-	 * be notified to the upper layers if connect request fails. This is
-	 * required by upper layers to clear the connection state of the
-	 * previous connection.
-	 */
-	if (cm_is_connect_req_reassoc(&cm_req->req)) {
-		cm_req->req.reassoc_in_non_init = true;
-		mlme_debug(CM_PREFIX_FMT "Reassoc received in %d state",
-			   CM_PREFIX_REF(vdev_id, cm_req->cm_id),
-			   cm_state_substate);
-	}
-
 	/* Reject any link switch connect request while in non-init state */
 	if (cm_is_link_switch_connect_req(cm_req) ||
 	    cm_is_link_add_connect_req(cm_req)) {
@@ -3040,17 +3019,17 @@ cm_clear_vdev_mlo_cap(struct wlan_objmgr_vdev *vdev)
 #endif /*WLAN_FEATURE_11BE_MLO*/
 
 /**
- * cm_is_connect_id_reassoc_in_non_init()
+ * cm_is_connect_id_reassoc()
  * @cm_ctx: connection manager context
  * @cm_id: cm id
  *
- * If connect req is a reassoc req and received in non init state.
+ * Whether connect req is a reassoc req
  * Caller should take cm_ctx lock.
  *
  * Return: bool
  */
-static bool cm_is_connect_id_reassoc_in_non_init(struct cnx_mgr *cm_ctx,
-						 wlan_cm_id cm_id)
+static bool cm_is_connect_id_reassoc(struct cnx_mgr *cm_ctx,
+				     wlan_cm_id cm_id)
 {
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
 	struct cm_req *cm_req;
@@ -3066,7 +3045,7 @@ static bool cm_is_connect_id_reassoc_in_non_init(struct cnx_mgr *cm_ctx,
 		cm_req = qdf_container_of(cur_node, struct cm_req, node);
 
 		if (cm_req->cm_id == cm_id) {
-			if (cm_req->connect_req.req.reassoc_in_non_init)
+			if (cm_req->connect_req.req.is_reassoc_connect)
 				is_reassoc = true;
 			return is_reassoc;
 		}
@@ -3139,7 +3118,7 @@ QDF_STATUS cm_notify_connect_complete(struct cnx_mgr *cm_ctx,
 	    sm_state == WLAN_CM_S_INIT) {
 		if (acquire_lock)
 			cm_req_lock_acquire(cm_ctx);
-		if (cm_is_connect_id_reassoc_in_non_init(cm_ctx, resp->cm_id)) {
+		if (cm_is_connect_id_reassoc(cm_ctx, resp->cm_id)) {
 			resp->send_disconnect = true;
 			mlme_debug(CM_PREFIX_FMT "Set send disconnect to true to indicate disconnect instead of connect resp",
 				   CM_PREFIX_REF(wlan_vdev_get_id(cm_ctx->vdev),
@@ -3675,6 +3654,18 @@ QDF_STATUS cm_connect_start_req(struct wlan_objmgr_vdev *vdev,
 
 	connect_req = &cm_req->connect_req;
 	connect_req->req = *req;
+
+	/*
+	 * If connect req is reassoc, set reassoc flag, so that disconnect
+	 * can be notified to the upper layers if reassoc request fails. This is
+	 * required by upper layers to clear the connection state of the
+	 * previous connection.
+	 */
+	if (cm_is_connect_req_reassoc(&connect_req->req)) {
+		connect_req->req.is_reassoc_connect = true;
+		mlme_debug(CM_PREFIX_FMT "Reassoc received",
+			   CM_PREFIX_REF(wlan_vdev_get_id(vdev), cm_req->cm_id));
+	}
 
 	status = cm_allocate_and_copy_ies_and_keys(&connect_req->req, req);
 	if (QDF_IS_STATUS_ERROR(status))
