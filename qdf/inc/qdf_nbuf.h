@@ -347,6 +347,7 @@ struct auth_resp_event {
 
 /*host event definition*/
 #define EVENT_MAX_AP 3
+#define EVENT_SSID_MAX_LEN 32
 
 struct ap_info_event {
 	uint8_t bssid[6];
@@ -389,12 +390,14 @@ struct stats_cfm_event {
 struct scan_ap_info {
 	uint8_t bssid[6];
 	int8_t rssi;
-	uint8_t is_ssid_match;
+	uint8_t ssid_len;
+	uint8_t ssid[EVENT_SSID_MAX_LEN];
 }__attribute__((__packed__));
 
 struct conn_ap_info {
 	uint8_t bssid[6];
 	int8_t rssi;
+	uint8_t reserved;
 }__attribute__((__packed__));
 
 struct scan_complete_event {
