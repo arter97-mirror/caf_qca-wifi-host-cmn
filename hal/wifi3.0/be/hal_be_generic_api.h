@@ -387,6 +387,7 @@ hal_txmon_parse_tx_fes_status_end(hal_soc_handle_t hal_soc_hdl, void *tx_tlv,
 
 	TXMON_STATUS_INFO(tx_status_info,
 			  response_type) = tx_fes_end->response_type;
+
 	TXMON_STATUS_INFO(tx_status_info,
 			  r2r_to_follow) = tx_fes_end->r2r_end_status_to_follow;
 
@@ -1606,6 +1607,19 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 				TXMON_HAL_USER(ppdu_info, user_id, he_data6);
 		}
 
+		/**
+		 * If the phy_abort_reason is anything other than
+		 * No_phytx_error_reported. Then set the tx_status
+		 * as failure
+		 */
+		if (TXMON_STATUS_INFO(tx_status_info, phy_abort_reason))
+			TXMON_HAL_STATUS(ppdu_info, tx_status) |=
+					BIT(HAL_MON_TX_STATUS_FAIL);
+
+		if (!TXMON_STATUS_INFO(tx_status_info, response_type))
+			TXMON_HAL_STATUS(ppdu_info, tx_status) |=
+				BIT(HAL_MON_TX_STATUS_NOACK);
+
 		status = HAL_MON_TX_FES_STATUS_END;
 		SHOW_DEFINED(WIFITX_FES_STATUS_END_E);
 		break;
@@ -1953,6 +1967,12 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 				  response_type) = response_type;
 		TXMON_HAL_STATUS(ppdu_info, tsft) = tsft_64;
 
+		TXMON_HAL_STATUS(ppdu_info, tx_status_flag) = 1;
+		if (!response_type) {
+			TXMON_HAL_STATUS(ppdu_info, tx_status) |=
+					BIT(HAL_MON_TX_STATUS_NOACK);
+		}
+
 		SHOW_DEFINED(WIFITX_FES_STATUS_START_PROT_E);
 		break;
 	}
@@ -1971,6 +1991,7 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 	{
 		uint64_t tsft_64;
 		uint8_t ndp_frame;
+		uint32_t response_type;
 
 		status = HAL_MON_TX_FES_STATUS_START_PPDU;
 		tsft_64 = HAL_TX_MON_TLV_GET(tx_tlv,
@@ -1985,8 +2006,18 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 					       TX_FES_STATUS_START_PPDU,
 					       NDP_FRAME);
 
+		response_type = HAL_TX_MON_TLV_GET(tx_tlv,
+						   TX_FES_STATUS_START_PPDU,
+						   RESPONSE_TYPE);
+
 		TXMON_STATUS_INFO(tx_status_info, ndp_frame) = ndp_frame;
 		TXMON_HAL_STATUS(ppdu_info, tsft) = tsft_64;
+
+		TXMON_HAL_STATUS(ppdu_info, tx_status_flag) = 1;
+		if (!response_type) {
+			TXMON_HAL_STATUS(ppdu_info, tx_status) |=
+					BIT(HAL_MON_TX_STATUS_NOACK);
+		}
 
 		SHOW_DEFINED(WIFITX_FES_STATUS_START_PPDU_E);
 		break;

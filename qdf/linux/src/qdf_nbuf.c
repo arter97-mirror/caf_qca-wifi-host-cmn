@@ -6456,7 +6456,8 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 	}
 
 	/* update tx flags for pkt capture*/
-	if (rx_status->add_rtap_ext) {
+	if (rx_status->tx_status_flag) {
+		length = rtap_len;
 		it_present_val |=
 			cpu_to_le32(1 << IEEE80211_RADIOTAP_TX_FLAGS);
 		rtap_len = qdf_nbuf_update_radiotap_tx_flags(rx_status,
@@ -6592,17 +6593,6 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 		put_unaligned_le32(it_present_val, it_present);
 		it_present_val = 0;
 		it_present++;
-	}
-
-	/* Add Extension to Radiotap Header & corresponding data */
-	if (rx_status->add_rtap_ext) {
-		it_present_val |= (1 << IEEE80211_RADIOTAP_TX_STATUS);
-		it_present_val |= (1 << IEEE80211_RADIOTAP_RETRY_COUNT);
-
-		rtap_buf[rtap_len] = rx_status->tx_status;
-		rtap_len += 1;
-		rtap_buf[rtap_len] = rx_status->tx_retry_cnt;
-		rtap_len += 1;
 	}
 
 	/* Add Extension2 to Radiotap Header */
