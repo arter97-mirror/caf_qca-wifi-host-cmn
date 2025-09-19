@@ -1025,7 +1025,7 @@ send_over_wmi:
 	return wmi_unified_cmd_send(wmi_handle, buf, buflen, cmd_id);
 }
 
-#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
+#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
 /**
  * wmi_vdev_add_p2p_mode_tlv() - add P2P mode TLv in VDEV create command
  * @buf_ptr: pointer to TLV buffer

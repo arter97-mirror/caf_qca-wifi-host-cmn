@@ -139,7 +139,7 @@ vdev_mgr_param_mld_mac_addr_copy(struct wlan_objmgr_vdev *vdev,
 }
 #endif /* WLAN_FEATURE_11BE_MLO */
 
-#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
+#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
 /**
  * vdev_mgr_update_wfd_mode() - update WFD mode in VDEV parameters
  * @vdev: pointer to VDEV object
@@ -158,7 +158,7 @@ vdev_mgr_update_wfd_mode(struct wlan_objmgr_vdev *vdev,
 			 struct vdev_create_params *param)
 {
 }
-#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 */
+#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 || FEATURE_WLAN_SUPPORT_PCC */
 
 static QDF_STATUS vdev_mgr_create_param_update(
 					struct vdev_mlme_obj *mlme_obj,
