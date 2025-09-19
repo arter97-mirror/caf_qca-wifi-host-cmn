@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -68,6 +68,8 @@ wlan_mlme_get_lmac_tx_ops(struct wlan_objmgr_psoc *psoc)
  *                                        does not have substate)
  * @WLAN_VDEV_SS_MLO_SYNC_WAIT:           Sync wait sub state for MLO SAP
  * @WLAN_VDEV_SS_UP_ACTIVE:               Up active sub state
+ * @WLAN_VDEV_SS_UP_REMOVAL:              Up active sub state for MLO SAP which
+ *                                        is going to remove the link
  * @WLAN_VDEV_SS_MAX:                     Max substate
  */
 enum wlan_vdev_state {
@@ -91,7 +93,8 @@ enum wlan_vdev_state {
 	WLAN_VDEV_SS_IDLE = 17,
 	WLAN_VDEV_SS_MLO_SYNC_WAIT = 18,
 	WLAN_VDEV_SS_UP_ACTIVE = 19,
-	WLAN_VDEV_SS_MAX = 20,
+	WLAN_VDEV_SS_UP_REMOVAL = 20,
+	WLAN_VDEV_SS_MAX = 21,
 };
 
 /**
@@ -136,6 +139,8 @@ enum wlan_vdev_state {
  *                                       links finish vdev start rsp.
  * @WLAN_VDEV_SM_EV_SUSPEND_CSA_RESTART: Invoke peer deletion for only legacy
  *					 peers
+ * @WLAN_VDEV_SM_EV_REMOVAL:             User space send link removal request, and
+ *					 triggers this event in up state
  */
 enum wlan_vdev_sm_evt {
 	WLAN_VDEV_SM_EV_START = 0,
@@ -171,6 +176,7 @@ enum wlan_vdev_sm_evt {
 	WLAN_VDEV_SM_EV_CHAN_SWITCH_DISABLED = 30,
 	WLAN_VDEV_SM_EV_MLO_SYNC_COMPLETE = 31,
 	WLAN_VDEV_SM_EV_SUSPEND_CSA_RESTART = 32,
+	WLAN_VDEV_SM_EV_REMOVAL = 33,
 };
 
 /**

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -695,7 +695,25 @@ mlo_get_link_state_register_resp_cb(struct wlan_objmgr_vdev *vdev,
  * @vdev: vdev handler
  */
 QDF_STATUS ml_post_get_link_state_msg(struct wlan_objmgr_vdev *vdev);
+#endif
 
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+/**
+ * wlan_mlo_link_remove_event_handler() - handler target report tbtt event
+ * @psoc: psoc pointer
+ * @evt_params: parameters corresponding to the current link removal event
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wlan_mlo_link_remove_event_handler(struct wlan_objmgr_psoc *psoc,
+					      struct mlo_link_removal_evt_params *evt_params);
+#else
+static inline
+QDF_STATUS wlan_mlo_link_remove_event_handler(struct wlan_objmgr_psoc *psoc,
+					      struct mlo_link_removal_evt_params *evt_params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
 /**
