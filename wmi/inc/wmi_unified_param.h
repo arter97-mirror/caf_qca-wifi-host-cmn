@@ -6904,6 +6904,7 @@ struct target_feature_set {
  * @rf_path: Indicates RF path 0 primary, 1 secondary
  * @fw_ast_indication_disable: Disable AST indication
  * @is_full_bw_nol_supported: Is full bandwidth needed to put to NOL
+ * @haps_feature_flags: HAPS flags setting for power save config
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7039,6 +7040,7 @@ typedef struct {
 	bool rf_path;
 	bool fw_ast_indication_disable;
 	bool is_full_bw_nol_supported;
+	uint32_t haps_feature_flags;
 } target_resource_config;
 
 /**

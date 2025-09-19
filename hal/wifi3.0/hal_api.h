@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -497,7 +497,6 @@ void hal_write_address_32_mb(struct hal_soc *hal_soc,
 	else
 		hal_write32_mb(hal_soc, offset, value);
 }
-
 
 #ifdef DP_HAL_MULTIWINDOW_DIRECT_ACCESS
 static inline void hal_srng_write_address_32_mb(struct hal_soc *hal_soc,
@@ -2638,6 +2637,17 @@ hal_srng_rtpm_access_end(hal_soc_handle_t hal_soc_hdl,
 #define hal_le_srng_access_end_in_cpu_order \
 	hal_srng_access_end
 
+static inline void
+hal_srng_update_hp_direct(void *hal_soc, hal_ring_handle_t hal_ring_hdl)
+{
+	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
+
+	if (srng->ring_dir == HAL_SRNG_SRC_RING)
+		hal_write_address_32_mb(hal_soc, srng->u.src_ring.hp_addr,
+					srng->u.src_ring.hp, false);
+	SRNG_UNLOCK(&srng->lock);
+}
+
 /**
  * hal_srng_access_end_reap() - Unlock ring access
  * @hal_soc: Opaque HAL SOC handle
@@ -3650,6 +3660,20 @@ uint32_t hal_srng_src_get_hp(hal_ring_handle_t hal_ring_hdl)
 	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
 
 	return srng->u.src_ring.hp;
+}
+
+/**
+ * hal_srng_src_get_cached_tp() - get cached tp idx.
+ * @hal_ring_hdl: srng handle
+ *
+ * Return: Cached tail idx
+ */
+static inline
+uint32_t hal_srng_src_get_cached_tp(hal_ring_handle_t hal_ring_hdl)
+{
+	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
+
+	return srng->u.src_ring.cached_tp;
 }
 
 /**

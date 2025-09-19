@@ -9929,6 +9929,8 @@ void wmi_copy_resource_config(wmi_resource_config *resource_cfg,
 			 tgt_res_cfg->fw_ast_indication_disable);
 	}
 
+	resource_cfg->dp_haps_config = tgt_res_cfg->haps_feature_flags;
+
 	wmi_copy_latency_flowq_support(resource_cfg, tgt_res_cfg);
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
 
