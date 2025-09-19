@@ -1268,27 +1268,6 @@ QDF_STATUS wmi_unified_phyerr_enable_cmd_send(wmi_unified_t wmi_handle)
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS wmi_unified_phyerr_disable_cmd_send(wmi_unified_t wmi_handle)
-{
-	if (wmi_handle->ops->send_phyerr_disable_cmd)
-		return wmi_handle->ops->send_phyerr_disable_cmd(wmi_handle);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS
-wmi_unified_smart_ant_enable_tx_feedback_cmd_send(
-		wmi_unified_t wmi_handle,
-		struct smart_ant_enable_tx_feedback_params *param)
-{
-	if (wmi_handle->ops->send_smart_ant_enable_tx_feedback_cmd)
-		return wmi_handle->ops->send_smart_ant_enable_tx_feedback_cmd(
-							wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-qdf_export_symbol(wmi_unified_smart_ant_enable_tx_feedback_cmd_send);
-
 #ifdef WLAN_IOT_SIM_SUPPORT
 QDF_STATUS
 wmi_unified_simulation_test_cmd_send(
@@ -1322,17 +1301,6 @@ QDF_STATUS wmi_unified_vdev_spectral_enable_cmd_send(
 {
 	if (wmi_handle->ops->send_vdev_spectral_enable_cmd)
 		return wmi_handle->ops->send_vdev_spectral_enable_cmd(
-						wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_bss_chan_info_request_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct bss_chan_info_request_params *param)
-{
-	if (wmi_handle->ops->send_bss_chan_info_request_cmd)
-		return wmi_handle->ops->send_bss_chan_info_request_cmd(
 						wmi_handle, param);
 
 	return QDF_STATUS_E_FAILURE;
@@ -1375,40 +1343,6 @@ wmi_unified_vdev_set_custom_aggr_size_cmd_send(
 	return QDF_STATUS_E_FAILURE;
 }
 
-#ifdef WLAN_REG_PARTIAL_OFFLOAD
-QDF_STATUS wmi_unified_pdev_set_regdomain_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct pdev_set_regdomain_params *param)
-{
-	if (wmi_handle->ops->send_pdev_set_regdomain_cmd)
-		return wmi_handle->ops->send_pdev_set_regdomain_cmd(wmi_handle,
-				param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-#endif
-
-QDF_STATUS wmi_unified_remove_beacon_filter_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct remove_beacon_filter_params *param)
-{
-	if (wmi_handle->ops->send_remove_beacon_filter_cmd)
-		return wmi_handle->ops->send_remove_beacon_filter_cmd(
-						wmi_handle, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
-QDF_STATUS wmi_unified_get_pn_send_cmd(wmi_unified_t wmi_hdl,
-				       struct peer_request_pn_param *pn_params)
-{
-	if (wmi_hdl->ops->send_pdev_get_pn_cmd)
-		return wmi_hdl->ops->send_pdev_get_pn_cmd(wmi_hdl,
-							     pn_params);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_unified_get_rxpn_send_cmd(
 		wmi_unified_t wmi_hdl,
 		struct peer_request_rxpn_param *pn_params)
@@ -1420,18 +1354,6 @@ QDF_STATUS wmi_unified_get_rxpn_send_cmd(
 	return QDF_STATUS_E_FAILURE;
 }
 qdf_export_symbol(wmi_unified_get_rxpn_send_cmd);
-
-QDF_STATUS wmi_unified_addba_clearresponse_cmd_send(
-			wmi_unified_t wmi_handle,
-			uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-			struct addba_clearresponse_params *param)
-{
-	if (wmi_handle->ops->send_addba_clearresponse_cmd)
-		return wmi_handle->ops->send_addba_clearresponse_cmd(wmi_handle,
-				  macaddr, param);
-
-	return QDF_STATUS_E_FAILURE;
-}
 
 QDF_STATUS
 wmi_unified_addba_send_cmd_send(wmi_unified_t wmi_handle,
@@ -4087,4 +4009,82 @@ QDF_STATUS wmi_unified_soc_set_rf_path_cmd(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS wmi_unified_get_pn_send_cmd(wmi_unified_t wmi_hdl,
+				       struct peer_request_pn_param *pn_params)
+{
+	if (wmi_hdl->ops->send_pdev_get_pn_cmd)
+		return wmi_hdl->ops->send_pdev_get_pn_cmd(wmi_hdl,
+							  pn_params);
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_addba_clearresponse_cmd_send(wmi_unified_t wmi_handle,
+					 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
+					 struct addba_clearresponse_params *param)
+{
+	if (wmi_handle->ops->send_addba_clearresponse_cmd)
+		return wmi_handle->ops->send_addba_clearresponse_cmd(wmi_handle,
+								     macaddr,
+								     param);
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_remove_beacon_filter_cmd_send(
+			wmi_unified_t wmi_handle,
+			struct remove_beacon_filter_params *param)
+{
+	if (wmi_handle->ops->send_remove_beacon_filter_cmd)
+		return wmi_handle->ops->send_remove_beacon_filter_cmd(
+						wmi_handle, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+#ifdef WLAN_REG_PARTIAL_OFFLOAD
+QDF_STATUS wmi_unified_pdev_set_regdomain_cmd_send(
+			wmi_unified_t wmi_handle,
+			struct pdev_set_regdomain_params *param)
+{
+	if (wmi_handle->ops->send_pdev_set_regdomain_cmd)
+		return wmi_handle->ops->send_pdev_set_regdomain_cmd(wmi_handle,
+				param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
+QDF_STATUS wmi_unified_bss_chan_info_request_cmd_send(
+			wmi_unified_t wmi_handle,
+			struct bss_chan_info_request_params *param)
+{
+	if (wmi_handle->ops->send_bss_chan_info_request_cmd)
+		return wmi_handle->ops->send_bss_chan_info_request_cmd(
+						wmi_handle, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_smart_ant_enable_tx_feedback_cmd_send(
+		wmi_unified_t wmi_handle,
+		struct smart_ant_enable_tx_feedback_params *param)
+{
+	if (wmi_handle->ops->send_smart_ant_enable_tx_feedback_cmd)
+		return wmi_handle->ops->send_smart_ant_enable_tx_feedback_cmd(
+							wmi_handle, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+qdf_export_symbol(wmi_unified_smart_ant_enable_tx_feedback_cmd_send);
+
+QDF_STATUS wmi_unified_phyerr_disable_cmd_send(wmi_unified_t wmi_handle)
+{
+	if (wmi_handle->ops->send_phyerr_disable_cmd)
+		return wmi_handle->ops->send_phyerr_disable_cmd(wmi_handle);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
 #endif

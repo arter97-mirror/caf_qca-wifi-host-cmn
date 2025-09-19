@@ -1523,17 +1523,6 @@ wmi_unified_setup_install_key_cmd(wmi_unified_t wmi_handle,
 				  struct set_key_params *key_params);
 
 /**
- * wmi_unified_get_pn_send_cmd() - send command to fw get PN for peer
- * @wmi_hdl: wmi handle
- * @pn_params: PN parameters
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_get_pn_send_cmd(wmi_unified_t wmi_hdl,
-			    struct peer_request_pn_param *pn_params);
-
-/**
  * wmi_unified_get_rxpn_send_cmd() - send command to fw get Rx PN for peer
  * @wmi_hdl: wmi handle
  * @pn_params: PN parameters
@@ -2283,26 +2272,6 @@ QDF_STATUS wmi_unified_set_bridge_mac_addr_cmd_send(
  */
 QDF_STATUS wmi_unified_phyerr_enable_cmd_send(wmi_unified_t wmi_handle);
 
-/**
- *  wmi_unified_phyerr_disable_cmd_send() - WMI phyerr disable cmd function
- *  @wmi_handle: handle to WMI.
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_phyerr_disable_cmd_send(wmi_unified_t wmi_handle);
-
-/**
- *  wmi_unified_smart_ant_enable_tx_feedback_cmd_send() -
- *					WMI set tx antenna function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold antenna param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_smart_ant_enable_tx_feedback_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct smart_ant_enable_tx_feedback_params *param);
-
 #ifdef WLAN_IOT_SIM_SUPPORT
 /**
  *  wmi_unified_simulation_test_cmd_send() -
@@ -2454,18 +2423,6 @@ wmi_unified_vdev_fils_enable_cmd_send(struct wmi_unified *wmi_handle,
 #endif
 
 /**
- *  wmi_unified_bss_chan_info_request_cmd_send() - WMI bss chan info
- *  request function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold chan info param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_bss_chan_info_request_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct bss_chan_info_request_params *param);
-
-/**
  *  wmi_unified_thermal_mitigation_param_cmd_send() -
  *					WMI thermal mitigation function
  *  @wmi_handle: handle to WMI.
@@ -2487,43 +2444,6 @@ QDF_STATUS wmi_unified_thermal_mitigation_param_cmd_send(
 QDF_STATUS wmi_unified_vdev_set_custom_aggr_size_cmd_send(
 		wmi_unified_t wmi_handle,
 		struct set_custom_aggr_size_params *param);
-
-#ifdef WLAN_REG_PARTIAL_OFFLOAD
-/**
- *  wmi_unified_pdev_set_regdomain_cmd_send() - WMI set regdomain function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold regdomain param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_pdev_set_regdomain_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct pdev_set_regdomain_params *param);
-#endif
-
-/**
- *  wmi_unified_remove_beacon_filter_cmd_send() - WMI set beacon filter function
- *  @wmi_handle: handle to WMI.
- *  @param: pointer to hold beacon filter param
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_remove_beacon_filter_cmd_send(
-			wmi_unified_t wmi_handle,
-			struct remove_beacon_filter_params *param);
-
-/**
- *  wmi_unified_addba_clearresponse_cmd_send() - WMI addba resp cmd function
- *  @wmi_handle: handle to WMI.
- *  @macaddr: MAC address
- *  @param: pointer to hold addba resp parameter
- *
- *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_addba_clearresponse_cmd_send(
-			wmi_unified_t wmi_handle,
-			uint8_t macaddr[QDF_MAC_ADDR_SIZE],
-			struct addba_clearresponse_params *param);
 
 /**
  *  wmi_unified_addba_send_cmd_send() - WMI addba send function
@@ -5199,5 +5119,85 @@ wmi_unified_peer_tid_config_send(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_soc_set_rf_path_cmd(wmi_unified_t wmi_handle,
 					   uint32_t rf_path_index,
 					   uint8_t pdev_id);
+
+/**
+ * wmi_unified_get_pn_send_cmd() - send command to fw get PN for peer
+ * @wmi_hdl: wmi handle
+ * @pn_params: PN parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_get_pn_send_cmd(wmi_unified_t wmi_hdl,
+			    struct peer_request_pn_param *pn_params);
+
+/**
+ *  wmi_unified_addba_clearresponse_cmd_send() - WMI addba resp cmd function
+ *  @wmi_handle: handle to WMI.
+ *  @macaddr: MAC address
+ *  @param: pointer to hold addba resp parameter
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_addba_clearresponse_cmd_send(wmi_unified_t wmi_handle,
+					 uint8_t macaddr[QDF_MAC_ADDR_SIZE],
+					 struct addba_clearresponse_params *param);
+
+/**
+ *  wmi_unified_remove_beacon_filter_cmd_send() - WMI set beacon filter function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold beacon filter param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_remove_beacon_filter_cmd_send(
+			wmi_unified_t wmi_handle,
+			struct remove_beacon_filter_params *param);
+
+#ifdef WLAN_REG_PARTIAL_OFFLOAD
+/**
+ *  wmi_unified_pdev_set_regdomain_cmd_send() - WMI set regdomain function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold regdomain param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_pdev_set_regdomain_cmd_send(
+			wmi_unified_t wmi_handle,
+			struct pdev_set_regdomain_params *param);
+#endif
+
+/**
+ *  wmi_unified_bss_chan_info_request_cmd_send() - WMI bss chan info
+ *  request function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold chan info param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_bss_chan_info_request_cmd_send(
+			wmi_unified_t wmi_handle,
+			struct bss_chan_info_request_params *param);
+
+/**
+ *  wmi_unified_smart_ant_enable_tx_feedback_cmd_send() -
+ *					WMI set tx antenna function
+ *  @wmi_handle: handle to WMI.
+ *  @param: pointer to hold antenna param
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_smart_ant_enable_tx_feedback_cmd_send(
+			wmi_unified_t wmi_handle,
+			struct smart_ant_enable_tx_feedback_params *param);
+
+/**
+ *  wmi_unified_phyerr_disable_cmd_send() - WMI phyerr disable cmd function
+ *  @wmi_handle: handle to WMI.
+ *
+ *  Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_phyerr_disable_cmd_send(wmi_unified_t wmi_handle);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */
