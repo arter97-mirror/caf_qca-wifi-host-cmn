@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -71,8 +71,10 @@
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 #define IS_LOCAL_PKT_CAPTURE_RUNNING(var, field) ((var)->field)
+#define IS_LOCAL_PKT_CAPTURE_CONCURRENCY(var, field) ((var)->field)
 #else
 #define IS_LOCAL_PKT_CAPTURE_RUNNING(var, field) 0
+#define IS_LOCAL_PKT_CAPTURE_CONCURRENCY(var, field) 0
 #endif
 
 #define INVALID_MON_CHAN_NUM	0xFFFF
@@ -939,6 +941,8 @@ struct dp_mon_ops {
 	QDF_STATUS (*start_local_pkt_capture)(struct dp_pdev *pdev);
 	QDF_STATUS (*stop_local_pkt_capture)(struct dp_pdev *pdev);
 	bool (*is_local_pkt_capture_running)(struct dp_pdev *pdev);
+	QDF_STATUS (*set_local_pkt_concurrency)(struct dp_pdev *pdev);
+	QDF_STATUS (*update_link_info)(struct dp_pdev *pdev);
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
 	QDF_STATUS (*mon_config_mon_fcs_cap)(struct dp_pdev *pdev, uint8_t val);
 #ifdef QCA_PEER_EXT_STATS
@@ -1153,8 +1157,8 @@ struct dp_mon_mac {
 	bool first_mpdu;
 	/* LPC lock */
 	qdf_spinlock_t lpc_lock;
-#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 	uint16_t peer_id;
+#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 	uint16_t beacon_interval;
 	uint16_t nth_beacon;
 #endif
@@ -1351,14 +1355,14 @@ struct  dp_mon_pdev {
 	uint8_t phy_ppdu_id_size;
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 	bool is_local_pkt_capture_running;
+	bool lpc_conc_en;
 #endif
 	/* Monitor FCS capture */
 	bool mon_fcs_cap;
 	uint8_t mu_sniffer_enabled;
 	uint8_t mon_version;
-#ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
-	struct dp_mon_mac_link_info link_info[DP_MAX_MLO_LINKS];
-	uint32_t num_links;
+#ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
+	struct cdp_link_info link_info;
 #endif
 };
 

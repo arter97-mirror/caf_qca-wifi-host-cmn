@@ -1615,6 +1615,8 @@ struct cdp_mon_ops dp_ops_mon_1_0 = {
 	.start_local_pkt_capture = dp_mon_start_local_pkt_capture,
 	.stop_local_pkt_capture = dp_mon_stop_local_pkt_capture,
 	.is_local_pkt_capture_running = dp_mon_get_is_local_pkt_capture_running,
+	.set_local_pkt_concurrency = dp_mon_set_local_pkt_concurrency,
+	.update_link_info = dp_mon_update_link_info,
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
 	.txrx_set_mu_sniffer = NULL,
 };
