@@ -3289,7 +3289,7 @@ void hif_pci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 	struct hif_pci_softc *pci_sc = HIF_GET_PCI_SOFTC(scn);
 	struct CE_attr *host_ce_conf;
 	int ce_id;
-	qdf_cpu_mask ce_cpu_mask, updated_mask;
+	qdf_cpu_mask ce_cpu_mask;
 	int perf_cpu_cluster = hif_get_perf_cluster_bitmap();
 	int package_id;
 
@@ -3313,13 +3313,14 @@ void hif_pci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
 		if (host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR)
 			continue;
-		qdf_cpumask_copy(&updated_mask, &ce_cpu_mask);
-		ret = hif_affinity_mgr_set_ce_irq_affinity(scn, pci_sc->ce_irq_num[ce_id],
-							   ce_id,
-							   &updated_mask);
+
 		qdf_cpumask_clear(&pci_sc->ce_irq_cpu_mask[ce_id]);
 		qdf_cpumask_copy(&pci_sc->ce_irq_cpu_mask[ce_id],
-				 &updated_mask);
+				 &ce_cpu_mask);
+
+		ret = hif_affinity_mgr_set_ce_irq_affinity(scn, pci_sc->ce_irq_num[ce_id],
+							   ce_id,
+							   &pci_sc->ce_irq_cpu_mask[ce_id]);
 		if (ret)
 			hif_err_rl("Set affinity %*pbl fails for CE IRQ %d",
 				   qdf_cpumask_pr_args(

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -5320,6 +5320,26 @@ void dp_mon_register_tx_pkt_enh_ops_1_0(struct dp_mon_ops *mon_ops);
 QDF_STATUS dp_local_pkt_capture_tx_config(struct dp_pdev *pdev);
 
 /*
+ * dp_is_local_pkt_capture_allowed() - Check if local packet capture mode
+ * is supported/enabled in the current con_mode
+ * @soc: DP SOC handle
+ *
+ * Return: True if local packet capture feature is enabled and
+ * device is in mission mode, else false
+ */
+static inline bool
+dp_is_local_pkt_capture_allowed(struct dp_soc *soc)
+{
+	if (wlan_cfg_get_local_pkt_capture(soc->wlan_cfg_ctx) &&
+	    soc->cdp_soc.ol_ops->get_con_mode &&
+	    soc->cdp_soc.ol_ops->get_con_mode() ==
+		QDF_GLOBAL_MISSION_MODE)
+		return true;
+
+	return false;
+}
+
+/*
  * dp_mon_mode_local_pkt_capture() - Check if in LPC mode
  * @soc: DP SOC handle
  *
@@ -5338,10 +5358,7 @@ dp_mon_mode_local_pkt_capture(struct dp_soc *soc)
 	 * monitor interface add driver will consider current mode
 	 * as STA+MON mode, LPC otherwise.
 	 */
-	if (wlan_cfg_get_local_pkt_capture(soc->wlan_cfg_ctx) &&
-	    (soc->cdp_soc.ol_ops->get_con_mode &&
-	     soc->cdp_soc.ol_ops->get_con_mode() ==
-	     QDF_GLOBAL_MISSION_MODE) &&
+	if (dp_is_local_pkt_capture_allowed(soc) &&
 	    !(soc->mon_flags & QDF_MONITOR_FLAG_OTHER_BSS))
 		return true;
 
@@ -5352,6 +5369,12 @@ static inline
 QDF_STATUS dp_local_pkt_capture_tx_config(struct dp_pdev *pdev)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline bool
+dp_is_local_pkt_capture_allowed(struct dp_soc *soc)
+{
+	return false;
 }
 
 static inline bool

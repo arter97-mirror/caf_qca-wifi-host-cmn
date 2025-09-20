@@ -178,7 +178,8 @@
 #define FILTER_DATA_DATA		0x0001
 #define FILTER_DATA_NULL		0x0008
 
-#if defined(QCA_WIFI_PEACH) || defined(QCA_WIFI_WCN7750)
+#if defined(QCA_WIFI_PEACH) || defined(QCA_WIFI_WCN7750) || \
+    defined(QCA_WIFI_QCC2072)
 #define FP_MGMT_FILTER	FILTER_MGMT_ALL & \
 			~(FILTER_MGMT_PROBE_RES | FILTER_MGMT_BEACON)
 #else
