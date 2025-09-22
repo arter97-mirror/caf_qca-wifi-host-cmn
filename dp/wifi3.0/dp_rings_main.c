@@ -959,9 +959,6 @@ QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 		int umac_reset_intr_mask =
 			wlan_cfg_get_umac_reset_intr_mask(soc->wlan_cfg_ctx, i);
 
-		if (dp_skip_rx_mon_ring_mask_set(soc))
-			rx_mon_mask = 0;
-
 		soc->intr_ctx[i].dp_intr_id = i;
 		soc->intr_ctx[i].tx_ring_mask = tx_mask;
 		soc->intr_ctx[i].rx_ring_mask = rx_mask;

@@ -2610,31 +2610,17 @@ void dp_srng_access_end(struct dp_intr *int_ctx, struct dp_soc *dp_soc,
 	return dp_hal_srng_access_end(hal_soc, hal_ring_hdl);
 }
 
-static inline void dp_srng_record_timer_entry(struct dp_soc *dp_soc,
-					      uint8_t hist_group_id)
+void dp_srng_record_timer_entry(struct dp_soc *dp_soc, uint8_t hist_group_id)
 {
 	hif_record_event(dp_soc->hif_handle, hist_group_id,
 			 0, 0, 0, HIF_EVENT_TIMER_ENTRY);
 }
 
-static inline void dp_srng_record_timer_exit(struct dp_soc *dp_soc,
-					     uint8_t hist_group_id)
+void dp_srng_record_timer_exit(struct dp_soc *dp_soc, uint8_t hist_group_id)
 {
 	hif_record_event(dp_soc->hif_handle, hist_group_id,
 			 0, 0, 0, HIF_EVENT_TIMER_EXIT);
 }
-#else
-
-static inline void dp_srng_record_timer_entry(struct dp_soc *dp_soc,
-					      uint8_t hist_group_id)
-{
-}
-
-static inline void dp_srng_record_timer_exit(struct dp_soc *dp_soc,
-					     uint8_t hist_group_id)
-{
-}
-
 #endif /* WLAN_FEATURE_DP_EVENT_HISTORY */
 
 enum timer_yield_status
