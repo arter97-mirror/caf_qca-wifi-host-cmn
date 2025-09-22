@@ -585,8 +585,7 @@ static void dp_mon_vdev_timer(void *arg)
 		lmac_id = pdev->ch_band_lmac_id_mapping[mon_band];
 		if (qdf_likely(lmac_id != DP_MON_INVALID_LMAC_ID)) {
 			dp_intr_id = soc->mon_intr_id_lmac_map[lmac_id];
-			hif_record_event(soc->hif_handle, dp_intr_id, 0, 0, 0,
-					 HIF_EVENT_TIMER_ENTRY);
+			dp_srng_record_timer_entry(soc, dp_intr_id);
 		}
 	}
 
@@ -632,8 +631,7 @@ budget_done:
 		qdf_timer_mod(&mon_soc->mon_vdev_timer, DP_INTR_POLL_TIMER_MS);
 
 	if (lmac_id != DP_MON_INVALID_LMAC_ID)
-		hif_record_event(soc->hif_handle, dp_intr_id, 0, 0, 0,
-				 HIF_EVENT_TIMER_EXIT);
+		dp_srng_record_timer_exit(soc, dp_intr_id);
 
 }
 

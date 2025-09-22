@@ -6831,4 +6831,21 @@ dp_mlo_latency_req(struct dp_soc *soc, uint8_t vdev_id,
 {
 }
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
+
+#ifdef WLAN_FEATURE_DP_EVENT_HISTORY
+void dp_srng_record_timer_entry(struct dp_soc *dp_soc, uint8_t hist_group_id);
+
+void dp_srng_record_timer_exit(struct dp_soc *dp_soc, uint8_t hist_group_id);
+#else
+
+static inline void dp_srng_record_timer_entry(struct dp_soc *dp_soc,
+					      uint8_t hist_group_id)
+{
+}
+
+static inline void dp_srng_record_timer_exit(struct dp_soc *dp_soc,
+					     uint8_t hist_group_id)
+{
+}
+#endif
 #endif /* #ifndef _DP_INTERNAL_H_ */
