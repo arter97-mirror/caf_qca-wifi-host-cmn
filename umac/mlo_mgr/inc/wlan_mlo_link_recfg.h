@@ -1,5 +1,6 @@
 /*
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -41,6 +42,7 @@ struct link_recfg_rx_rsp;
  * @WLAN_LINK_RECFG_S_COMPLETED: State when Link Reconfig is completed
  * @WLAN_LINK_RECFG_S_ABORT: State when Link Reconfig is Aborted
  * @WLAN_LINK_RECFG_S_TTLM: State when Link Reconfig TTLM handling
+ * @WLAN_LINK_RECFG_S_WAIT: State when Link Reconfig is waiting
  * @WLAN_LINK_RECFG_S_MAX: Max State
  * @WLAN_LINK_RECFG_SS_IDLE: Link Reconfig substate Idle
  * @WLAN_LINK_RECFG_SS_START_PENDING: Link reconfig start pending for
@@ -62,6 +64,8 @@ struct link_recfg_rx_rsp;
  * while add link
  * @WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_LINK_SW: Link Reconfig is Aborted
  * while wait for link switch
+ * @WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC: Link Reconfig substate waiting for SMD
+ * execution
  * @WLAN_LINK_RECFG_SS_MAX: Max SubState
  */
 enum wlan_link_recfg_sm_state {
@@ -73,6 +77,7 @@ enum wlan_link_recfg_sm_state {
 	WLAN_LINK_RECFG_S_COMPLETED,
 	WLAN_LINK_RECFG_S_ABORT,
 	WLAN_LINK_RECFG_S_TTLM,
+	WLAN_LINK_RECFG_S_WAIT,
 	WLAN_LINK_RECFG_S_MAX,
 	/* substates */
 	WLAN_LINK_RECFG_SS_IDLE,
@@ -86,6 +91,7 @@ enum wlan_link_recfg_sm_state {
 	WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW,
 	WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_ADD_CONN,
 	WLAN_LINK_RECFG_SS_ADD_LINK_ABORT_WAIT_LINK_SW,
+	WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC,
 	WLAN_LINK_RECFG_SS_MAX,
 };
 
@@ -118,6 +124,10 @@ enum wlan_link_recfg_sm_state {
  * @WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT: generic timeout in substate
  * @WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT: Link Reconfig response timed out
  * @WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM: Update TTLM due to link reconfig
+ * @WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START: Link Reconfiguration event for SMD
+ * roam start
+ * @WLAN_LINK_RECFG_SM_EV_WAIT_FOR_EXEC: Link Reconfiguration event for wait
+ * for execution
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -141,6 +151,8 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM,
+	WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START,
+	WLAN_LINK_RECFG_SM_EV_WAIT_FOR_EXEC,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
