@@ -707,7 +707,11 @@ void wlan_cfg80211_ch_switch_notify(struct net_device *dev,
 				    uint16_t puncture_bitmap)
 {
 	chandef->punctured = puncture_bitmap;
+#ifdef CFG80211_BACK_COMPATIBLE_CHENDEF
+	cfg80211_ch_switch_notify(dev, chandef, link_id, 0);
+#else
 	cfg80211_ch_switch_notify(dev, chandef, link_id);
+#endif
 }
 
 static inline
@@ -718,8 +722,13 @@ void wlan_cfg80211_ch_switch_started_notify(struct net_device *dev,
 					    uint16_t puncture_bitmap)
 {
 	chandef->punctured = puncture_bitmap;
+#ifdef CFG80211_BACK_COMPATIBLE_CHENDEF
+	cfg80211_ch_switch_started_notify(dev, chandef, link_id,
+					  count, quiet, 0);
+#else
 	cfg80211_ch_switch_started_notify(dev, chandef, link_id,
 					  count, quiet);
+#endif
 }
 #else
 #ifdef CFG80211_SINGLE_NETDEV_MULTI_LINK_SUPPORT
