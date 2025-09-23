@@ -306,6 +306,9 @@ int wlan_cfg80211_crypto_add_key(struct wlan_objmgr_vdev *vdev,
 	}
 	wlan_crypto_release_lock();
 
+	if (wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev))
+		sync = false;
+
 	if (sync) {
 		priv = wlan_get_vdev_crypto_obj(vdev);
 		if (!priv) {
