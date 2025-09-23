@@ -3052,8 +3052,11 @@ hal_rx_tlv_get_pkt_capture_flags(hal_soc_handle_t hal_soc_hdl,
 {
 	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
 
-	return hal_soc->ops->hal_rx_tlv_get_pkt_capture_flags(rx_tlv_hdr,
-							      flags);
+	if (hal_soc->ops->hal_rx_tlv_get_pkt_capture_flags)
+		return hal_soc->ops->hal_rx_tlv_get_pkt_capture_flags(
+							rx_tlv_hdr, flags);
+
+	return;
 }
 
 static inline uint8_t
