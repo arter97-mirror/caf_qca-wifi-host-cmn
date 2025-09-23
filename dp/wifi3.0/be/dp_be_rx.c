@@ -365,10 +365,11 @@ static inline void dp_rx_vdev_flush(struct dp_soc *soc, uint8_t rx_pkt_vdev_map,
 	uint8_t vdev_id;
 
 	for (vdev_id = 0; rx_pkt_vdev_map && vdev_id < MAX_VDEV_CNT;
-	     rx_pkt_vdev_map >>= 1, vdev_id++) {
+	     vdev_id++) {
 		if (!(rx_pkt_vdev_map & BIT(vdev_id)))
 			continue;
 
+		rx_pkt_vdev_map ^= BIT(vdev_id);
 		vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_RX);
 		if (qdf_unlikely(!vdev))
 			continue;
