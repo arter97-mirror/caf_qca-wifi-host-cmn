@@ -3521,6 +3521,10 @@ dp_rx_peer_unmap_handler(struct dp_soc *soc, uint16_t peer_id,
 	if (!peer) {
 		dp_err("Received unmap event for invalid peer_id %u",
 		       peer_id);
+		dp_cfg_event_record_peer_map_unmap_evt(
+			soc, DP_CFG_EVENT_PEER_UNMAP,
+			NULL, mac_addr, 0, peer_id,
+			0, 0, vdev_id);
 		DP_STATS_INC(soc, t2h_msg_stats.invalid_peer_unmap, 1);
 		return;
 	}
