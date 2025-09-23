@@ -3147,6 +3147,20 @@ struct cdp_monitor_filter {
 };
 
 /**
+ * struct cdp_link_info - link info
+ * @mac_addr: mac address
+ * @link_addr: mlo link address info
+ * @freq: frequency
+ * @mlo_enabled: Indicates whether mlo enabled or not.
+ */
+struct cdp_link_info {
+	struct qdf_mac_addr mac_addr;
+	struct qdf_mac_addr link_addr[WLAN_MAX_ML_BSS_LINKS];
+	uint32_t freq[WLAN_MAX_ML_BSS_LINKS];
+	bool mlo_enabled;
+};
+
+/**
  * enum cdp_dp_cfg - CDP ENUMs to get to DP configation
  * @cfg_dp_enable_data_stall: context passed to be used by consumer
  * @cfg_dp_enable_p2p_ip_tcp_udp_checksum_offload: get P2P checksum config

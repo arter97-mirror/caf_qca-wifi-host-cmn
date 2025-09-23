@@ -1985,6 +1985,13 @@ dp_tx_mon_send_per_usr_mpdu(struct dp_pdev *pdev,
 			tx_mon_be->stats.pkt_buf_drop += num_frag;
 			continue;
 		}
+		if (IS_LOCAL_PKT_CAPTURE_CONCURRENCY(mon_pdev, lpc_conc_en) &&
+		    !dp_mon_filter_frame(pdev, buf, IEEE80211_FC1_DIR_TODS)) {
+			qdf_nbuf_free(buf);
+			tx_mon_be->stats.pkt_buf_drop += num_frag;
+			continue;
+		}
+
 		if (!dp_tx_mon_lpc_subfiltering(pdev, buf)) {
 			qdf_nbuf_free(buf);
 			tx_mon_be->stats.pkt_buf_drop += num_frag;

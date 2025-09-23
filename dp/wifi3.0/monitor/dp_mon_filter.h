@@ -744,7 +744,6 @@ QDF_STATUS dp_mon_stop_local_pkt_capture(struct cdp_soc_t *cdp_soc,
  */
 QDF_STATUS dp_mon_set_local_pkt_capture_running(struct dp_mon_pdev *mon_pdev,
 						bool val);
-
 /**
  * dp_mon_get_is_local_pkt_capture_running() - get local packet capture running
  * @cdp_soc: cdp soc
@@ -752,6 +751,36 @@ QDF_STATUS dp_mon_set_local_pkt_capture_running(struct dp_mon_pdev *mon_pdev,
  */
 bool dp_mon_get_is_local_pkt_capture_running(struct cdp_soc_t *cdp_soc,
 					     uint8_t pdev_id);
+
+/**
+ * dp_mon_set_local_pkt_concurrency() - set local packet capture concurrency
+ * @cdp_soc: cdp soc
+ * @pdev_id: pdev id
+ * @is_lpc_conc_en: True if local packet capture concurrency is enabled,
+ * otherwise false
+ */
+QDF_STATUS dp_mon_set_local_pkt_concurrency(struct cdp_soc_t *cdp_soc,
+					    uint8_t pdev_id,
+					    bool is_lpc_conc_en);
+
+/**
+ * dp_mon_update_link_info() - Update sta link info in monitor pdev
+ * @cdp_soc: cdp soc
+ * @pdev_id: pdev id
+ * @link_info: link info
+ */
+QDF_STATUS dp_mon_update_link_info(struct cdp_soc_t *cdp_soc,
+				   uint8_t pdev_id,
+				   struct cdp_link_info *link_info);
+
+/**
+ * dp_mon_filter_frame() - Filter frames using link info
+ * @pdev: Pointer to data path physical device object
+ * @buf: Pointer to  frame buffer
+ * @direction: Direction of the frame
+ */
+bool dp_mon_filter_frame(struct dp_pdev *pdev, qdf_nbuf_t buf,
+			 uint8_t direction);
 #else
 static inline
 QDF_STATUS dp_mon_set_local_pkt_capture_running(struct dp_mon_pdev *mon_pdev,
@@ -782,6 +811,19 @@ bool dp_mon_get_is_local_pkt_capture_running(struct cdp_soc_t *cdp_soc,
 	return false;
 }
 
+static inline
+QDF_STATUS dp_mon_set_local_pkt_concurrency(struct dp_mon_pdev *mon_pdev,
+					    bool is_lpc_conc_en)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline
+bool dp_mon_filter_frame(struct dp_pdev *pdev, qdf_nbuf_t buf,
+			 uint8_t direction)
+{
+	return true;
+}
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
 
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER

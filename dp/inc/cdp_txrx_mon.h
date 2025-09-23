@@ -374,6 +374,57 @@ bool cdp_is_local_pkt_capture_running(ol_txrx_soc_handle soc, uint8_t pdev_id)
 
 	return soc->ops->mon_ops->is_local_pkt_capture_running(soc, pdev_id);
 }
+
+/**
+ * cdp_set_local_pkt_concurrency() - set local pkt capture concurrency
+ * @soc: opaque soc handle
+ * @pdev_id: pdev id
+ * @val: True if local packet capture concurrency is enabled, otherwise false
+ *
+ * Return: QDF_STATUS_SUCCESS if success
+ *         QDF_STATUS_E_FAILURE if error
+ */
+static inline
+QDF_STATUS cdp_set_local_pkt_concurrency(ol_txrx_soc_handle soc,
+					 uint8_t pdev_id,
+					 bool val)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->mon_ops ||
+	    !soc->ops->mon_ops->set_local_pkt_concurrency)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->mon_ops->set_local_pkt_concurrency(soc, pdev_id, val);
+}
+
+/**
+ * cdp_lpc_update_link_info() - Update link info to DP
+ * @soc: opaque soc handle
+ * @pdev_id: pdev id
+ * @link_info: link info
+ *
+ * Return: None
+ */
+static inline
+QDF_STATUS cdp_lpc_update_link_info(ol_txrx_soc_handle soc,
+				    uint8_t pdev_id,
+				    struct cdp_link_info *link_info)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->mon_ops ||
+	    !soc->ops->mon_ops->update_link_info)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->mon_ops->update_link_info(soc, pdev_id, link_info);
+}
 #else
 static inline
 QDF_STATUS cdp_start_local_pkt_capture(ol_txrx_soc_handle soc,
@@ -394,6 +445,21 @@ bool cdp_is_local_pkt_capture_running(ol_txrx_soc_handle soc, uint8_t pdev_id)
 {
 	return false;
 }
-#endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
 
+static inline
+QDF_STATUS cdp_set_local_pkt_concurrency(ol_txrx_soc_handle soc,
+					 uint8_t pdev_id,
+					 bool val)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline
+QDF_STATUS cdp_lpc_update_link_info(ol_txrx_soc_handle soc,
+				    uint8_t pdev_id,
+				    struct cdp_link_info *link_info)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
 #endif
