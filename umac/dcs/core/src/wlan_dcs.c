@@ -66,6 +66,77 @@ end:
 	return dcs_pdev_priv;
 }
 
+void
+dcs_init_params_by_mode(struct wlan_objmgr_psoc *psoc,
+			struct dcs_core_priv_obj *dcs_core,
+			enum wlan_dcs_mode dcs_mode)
+{
+	struct dcs_psoc_priv_obj *dcs_psoc_obj;
+	struct psoc_dcs_params *per_mode_param;
+	struct core_dcs_params *host_params;
+
+	if (!psoc || !dcs_core) {
+		dcs_err("NULL param");
+		return;
+	}
+
+	if (dcs_mode < DCS_SAP || dcs_mode >= MAX_DCS_MODE_NUM) {
+		dcs_debug("inval dcs mode %d", dcs_mode);
+		dcs_mode = DCS_SAP;
+	}
+
+	dcs_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(
+					psoc, WLAN_UMAC_COMP_DCS);
+	if (!dcs_psoc_obj) {
+		dcs_err("dcs psoc private object is NULL");
+		return;
+	}
+
+	per_mode_param = &dcs_psoc_obj->dcs_per_mode_param;
+	host_params = &dcs_core->dcs_host_params;
+
+	/* Copy all relevant parameters from per_mode_param to host_params */
+	host_params->dcs_debug = per_mode_param->dcs_debug;
+	host_params->dcs_trnsprt_rjt_threshold_cu =
+		per_mode_param->dcs_trnsprt_rjt_threshold_cu[dcs_mode];
+	host_params->coch_intfr_threshold =
+		per_mode_param->dcs_coch_intfr_threshold[dcs_mode];
+	host_params->tx_err_threshold =
+		per_mode_param->dcs_tx_err_threshold[dcs_mode];
+	host_params->phy_err_penalty =
+		per_mode_param->dcs_phy_err_penalty[dcs_mode];
+	host_params->phy_err_threshold =
+		per_mode_param->dcs_phy_err_threshold[dcs_mode];
+	host_params->user_max_cu =
+		per_mode_param->user_max_cu[dcs_mode];
+	host_params->radar_err_threshold =
+		per_mode_param->dcs_radar_err_threshold[dcs_mode];
+	host_params->intfr_detection_window =
+		per_mode_param->dcs_intfr_detection_window[dcs_mode];
+	host_params->force_disable_algorithm =
+		per_mode_param->dcs_disable_algorithm[dcs_mode];
+
+	/* Initialize frequency control parameters */
+	dcs_core->dcs_freq_ctrl_params.disable_threshold_per_5mins =
+		per_mode_param->dcs_disable_thresh_per_5mins[dcs_mode];
+	dcs_core->dcs_freq_ctrl_params.restart_delay =
+		per_mode_param->dcs_restart_delay[dcs_mode];
+
+	/* If supports vdev level dcs, apply per mode config;
+	 * If not, apply legacy config.
+	 */
+	if (wlan_is_vdev_level_dcs_supported(psoc)) {
+		host_params->dcs_enable_cfg =
+			per_mode_param->dcs_enable_cfg[dcs_mode].val;
+		host_params->intfr_detection_threshold =
+			per_mode_param->intfr_detection_threshold[dcs_mode];
+	} else {
+		host_params->dcs_enable_cfg = dcs_psoc_obj->dcs_enable_cfg;
+		host_params->intfr_detection_threshold =
+				dcs_psoc_obj->intfr_detection_threshold;
+	}
+}
+
 QDF_STATUS wlan_dcs_attach(struct wlan_objmgr_psoc *psoc)
 {
 	struct wlan_target_if_dcs_tx_ops *dcs_tx_ops;

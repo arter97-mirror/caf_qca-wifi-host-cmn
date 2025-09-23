@@ -23,6 +23,8 @@
 
 #include "cfg_define.h"
 
+#define DCS_MAX_STR_LEN 256
+
 /*
  * <ini>
  * gEnableDcs - Enable/Disable DCS
@@ -58,7 +60,6 @@
  *
  * This ini is used to configure dcs debug trace level for debug purpose
  *
- *
  * Related: None
  *
  * Usage: External
@@ -74,12 +75,14 @@
 /*
  * <ini>
  * dcs_coch_intfr_threshold - Configure co-channel interference threshold
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 30
+ * @Default: "30"
  *
- * This ini is used to configure co-channel interference threshold
+ * This ini is used to configure co-channel interference threshold.
  *
+ * Supports per-mode configuration using comma-separated values, and each value
+ * must be within the range 0-0xFFFFFFFF. For example: "30,40,50,60" sets
+ * thresholds for SAP, XPAN, XR, and GO modes respectively. If fewer values are
+ * specified, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -87,21 +90,23 @@
  *
  * </ini>
  */
-#define CFG_DCS_COCH_INTFR_THRESHOLD CFG_INI_UINT(\
+#define CFG_DCS_COCH_INTFR_THRESHOLD CFG_INI_STRING(\
 		"dcs_coch_intfr_threshold",\
-		0, 0xFFFFFFFF, 30,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "30",\
 		"dcs co-channel interference threshold level")
 
 /*
  * <ini>
- * dcs_trnsprt_rjt_threshold_cu - Configure Transport reject interference threshold
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 30
+ * dcs_trnsprt_rjt_threshold_cu - Configure Transport reject interference
+ * threshold
+ * @Default: "30"
  *
- * This ini is used to configure Transport reject interference threshold
+ * This ini is used to configure Transport reject interference threshold.
  *
+ * Supports per-mode configuration using comma-separated values, and each value
+ * must be within the range 0-0xFFFFFFFF. For example: "30,40,50,60" sets
+ * thresholds for SAP, XPAN, XR, and GO modes respectively. If fewer values are
+ * provided, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -109,21 +114,22 @@
  *
  * </ini>
  */
-#define CFG_DCS_TRANSPORT_SWITCH_RJT_TH_CU CFG_INI_UINT(\
+#define CFG_DCS_TRANSPORT_SWITCH_RJT_TH_CU CFG_INI_STRING(\
 		"dcs_trnsprt_rjt_threshold_cu",\
-		0, 0xFFFFFFFF, 30,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "30",\
 		"dcs ll sap Transport reject interference threshold level")
 
 /*
  * <ini>
  * dcs_tx_err_threshold - Configure transmission failure rate threshold
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 30
+ * @Default: "30"
  *
- * This ini is used to configure transmission failure rate threshold
+ * This ini is used to configure transmission failure rate threshold.
  *
+ * Supports per-mode configuration using comma-separated values, and each value
+ * must be within the range 0-0xFFFFFFFF. For example: "30,40,50,60" sets
+ * thresholds for SAP, XPAN, XR, and GO modes respectively. If fewer values are
+ * provided, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -131,22 +137,23 @@
  *
  * </ini>
  */
-#define CFG_DCS_TX_ERR_THRESHOLD CFG_INI_UINT(\
+#define CFG_DCS_TX_ERR_THRESHOLD CFG_INI_STRING(\
 		"dcs_tx_err_threshold",\
-		0, 0xFFFFFFFF, 30,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "30",\
 		"dcs transmission failure rate threshold")
 
 /*
  * <ini>
  * dcs_phy_err_penalty - Configure channel time wasted due to each Phy
  * error(phy error penalty)
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 500
+ * @Default: "500"
  *
- * This ini is used to configure phy error penalty
+ * This ini is used to configure phy error penalty.
  *
+ * Supports per-mode configuration using comma-separated values, and each value
+ * must be within the range 0-0xFFFFFFFF. For example: "500,600,700,800" assigns
+ * different penalties for SAP, XPAN, XR, and GO modes respectively. If fewer
+ * values are specified, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -154,21 +161,22 @@
  *
  * </ini>
  */
-#define CFG_DCS_PHY_ERR_PENALTY CFG_INI_UINT(\
+#define CFG_DCS_PHY_ERR_PENALTY CFG_INI_STRING(\
 		"dcs_phy_err_penalty",\
-		0, 0xFFFFFFFF, 500,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "500",\
 		"dcs phy error penalty")
 
 /*
  * <ini>
  * dcs_phy_err_threshold - Configure phy err threshold
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 300
+ * @Default: "300"
  *
- * This ini is used to configure phy error threshold
+ * This ini is used to configure phy error threshold.
  *
+ * Supports per-mode configuration using comma-separated values. Each value must
+ * be within the range 0-0xFFFFFFFF. For example: "300,400,500,600" sets
+ * thresholds for SAP, XPAN, XR, and GO modes respectively. If fewer values are
+ * provided, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -176,21 +184,24 @@
  *
  * </ini>
  */
-#define CFG_DCS_PHY_ERR_THRESHOLD CFG_INI_UINT(\
+#define CFG_DCS_PHY_ERR_THRESHOLD CFG_INI_STRING(\
 		"dcs_phy_err_threshold",\
-		0, 0xFFFFFFFF, 300,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "300",\
 		"dcs phy error threshold")
 
 /*
  * <ini>
- * dcs_user_max_cu - Configure tx channel utilization due to AP's tx and rx
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 50
+ * dcs_user_max_cu - Configure tx channel utilization due to AP's tx
+ * and rx
+ * @Default: "50"
  *
- * This ini is used to configure tx channel utilization due to AP's tx and rx
+ * This ini is uised to configure tx channel utilization due to AP's tx
+ * and rx.
  *
+ * Supports per-mode configuration using comma-separated values, with each value
+ * must be within the range 0-0xFFFFFFFF. For example: "50,60,70,80" sets
+ * utilization values for SAP, XPAN, XR, and GO modes respectively. If fewer
+ * values are provided, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -198,21 +209,23 @@
  *
  * </ini>
  */
-#define CFG_DCS_USER_MAX_CU CFG_INI_UINT(\
+#define CFG_DCS_USER_MAX_CU CFG_INI_STRING(\
 		"user_max_cu",\
-		0, 0xFFFFFFFF, 50,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "50",\
 		"dcs tx channel utilization")
 
 /*
  * <ini>
  * dcs_radar_err_threshold - Configure radar error threshold
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 1000
+ * @Default: "1000"
  *
- * This ini is used to configure radar error threshold
+ * This ini is used to configure radar error threshold.
  *
+ * Supports per-mode configuration using comma-separated values, with each value
+ * must be within the range 0-0xFFFFFFFF. For example: "1000,1100,1200,1300"
+ * sets utilization values for SAP, XPAN, XR, and GO modes respectively. If
+ * fewer values are provided, the default value is applied to the remaining
+ * modes.
  *
  * Related: None
  *
@@ -220,10 +233,9 @@
  *
  * </ini>
  */
-#define CFG_DCS_RADAR_ERR_THRESHOLD CFG_INI_UINT(\
+#define CFG_DCS_RADAR_ERR_THRESHOLD CFG_INI_STRING(\
 		"dcs_radar_err_threshold",\
-		0, 0xFFFFFFFF, 1000,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "1000",\
 		"dcs radar error threshold")
 
 /*
@@ -251,12 +263,14 @@
 /*
  * <ini>
  * dcs_intfr_detection_window - Configure interference sampling window
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 10
+ * @Default: "10"
  *
- * This ini is used to configure interference sampling window
+ * This ini is used to configure interference sampling window.
  *
+ * Supports per-mode configuration using comma-separated values, with each value
+ * must be within the range 0-0xFFFFFFFF. For example: "10,15,20,25" sets
+ * utilization values for SAP, XPAN, XR, and GO modes respectively. If fewer
+ * values are provided, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -264,22 +278,23 @@
  *
  * </ini>
  */
-#define CFG_DCS_INTFR_DETECTION_WINDOW CFG_INI_UINT(\
+#define CFG_DCS_INTFR_DETECTION_WINDOW CFG_INI_STRING(\
 		"dcs_intfr_detection_window",\
-		0, 0xFFFFFFFF, 10,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "10",\
 		"dcs interference sampling window")
 
 /*
  * <ini>
  * dcs_disable_threshold_per_5mins - In five minutes, if dcs happen
  * more than threshold, then disable dcs for some time
- * @Min: 0
- * @Max: 10
- * @Default: 3
+ * @Default: "3"
  *
- * This ini is used to dcs happen times threshold in five minutes
+ * This ini is used to set the threshold for DCS events in five minutes.
  *
+ * Supports per-mode configuration using comma-separated values, with each value
+ * must be within the range 0-10. For example: "3,4,5,6" sets utilization values
+ * for SAP, XPAN, XR, and GO modes respectively. If fewer values are provided,
+ * the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -287,22 +302,24 @@
  *
  * </ini>
  */
-#define CFG_DCS_DISABLE_THRESHOLD_PER_5MINS CFG_INI_UINT(\
+#define CFG_DCS_DISABLE_THRESHOLD_PER_5MINS CFG_INI_STRING(\
 		"dcs_disable_thresh_per_5mins",\
-		0, 10, 3,\
-		CFG_VALUE_OR_DEFAULT,\
+		0, DCS_MAX_STR_LEN, "3",\
 		"dcs happen times threshold in five minutes")
 
 /*
  * <ini>
- * dcs_restart_delay - When dcs happen more than threshold in five minutes,
- * then start to disable dcs for some minutes, then enable dcs again.
- * @Min: 0
- * @Max: 0xFFFFFFFF
- * @Default: 30
+ * dcs_restart_delay - When dcs happen more than threshold in five
+ * minutes, then start to disable dcs for some minutes, then enable dcs
+ * again.
+ * @Default: "30"
  *
- * This ini is used to configure dcs disable time length in minute unit
+ * This ini is used to configure dcs disable time length in minute unit.
  *
+ * Supports per-mode configuration using comma-separated values, with each value
+ * must be within the range 0-0xFFFFFFFF. For example: "30,40,50,60" sets
+ * utilization values for SAP, XPAN, XR, and GO modes respectively. If fewer
+ * values are provided, the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -310,21 +327,23 @@
  *
  * </ini>
  */
-#define CFG_DCS_RESTART_DELAY CFG_INI_UINT(\
+#define CFG_DCS_RESTART_DELAY CFG_INI_STRING(\
 		"dcs_restart_delay",\
-		0, 0xFFFFFFFF, 30,\
-		CFG_VALUE_OR_DEFAULT, "dcs restart delay")
+		0, DCS_MAX_STR_LEN, "30",\
+		"dcs restart delay")
 
 /*
  * <ini>
  * dcs_disable_algorithm - Some feature like SON only need dcs stats,
  * then disable dcs algorithm for SON.
- * @Min: 0
- * @Max: 1
- * @Default: 0
+ * @Default: "0"
  *
- * This ini is used to disable dcs algorithm
+ * This ini is used to disable dcs algorithm.
  *
+ * Supports per-mode configuration using comma-separated values, with each value
+ * must be within the range 0-1. For example: "1,1,0,0" sets utilization values
+ * for SAP, XPAN, XR, and GO modes respectively. If fewer values are provided,
+ * the default value is applied to the remaining modes.
  *
  * Related: None
  *
@@ -332,8 +351,9 @@
  *
  * </ini>
  */
-#define CFG_DCS_DISABLE_ALGORITHM CFG_INI_BOOL(\
-		"dcs_disable_algorithm", false,\
+#define CFG_DCS_DISABLE_ALGORITHM CFG_INI_STRING(\
+		"dcs_disable_algorithm",\
+		0, DCS_MAX_STR_LEN, "0",\
 		"dcs disable algorithm")
 
 #ifdef WLAN_FEATURE_VDEV_DCS
@@ -429,5 +449,25 @@
 	CFG(CFG_DCS_DISABLE_ALGORITHM) \
 	CFG_DCS_PER_MODE
 
+
+#define DEFINE_DCS_CFG(name, min_val, max_val, default_val) \
+enum { \
+	name##_MIN     = (min_val), \
+	name##_MAX     = (max_val), \
+	name##_DEFAULT = (default_val) \
+}
+
+DEFINE_DCS_CFG(CFG_DCS_COCH_INTFR_THRESHOLD, 0, 0xFFFFFFFF, 30);
+DEFINE_DCS_CFG(CFG_DCS_TRANSPORT_SWITCH_RJT_TH_CU, 0, 0xFFFFFFFF, 30);
+DEFINE_DCS_CFG(CFG_DCS_TX_ERR_THRESHOLD, 0, 0xFFFFFFFF, 30);
+DEFINE_DCS_CFG(CFG_DCS_PHY_ERR_PENALTY, 0, 0xFFFFFFFF, 500);
+DEFINE_DCS_CFG(CFG_DCS_PHY_ERR_THRESHOLD, 0, 0xFFFFFFFF, 300);
+DEFINE_DCS_CFG(CFG_DCS_USER_MAX_CU, 0, 0xFFFFFFFF, 50);
+DEFINE_DCS_CFG(CFG_DCS_RADAR_ERR_THRESHOLD, 0, 0xFFFFFFFF, 1000);
+DEFINE_DCS_CFG(CFG_DCS_INTFR_DETECTION_THRESHOLD, 0, 0xFFFFFFFF, 6);
+DEFINE_DCS_CFG(CFG_DCS_INTFR_DETECTION_WINDOW, 0, 0xFFFFFFFF, 10);
+DEFINE_DCS_CFG(CFG_DCS_DISABLE_THRESHOLD_PER_5MINS, 0, 10, 3);
+DEFINE_DCS_CFG(CFG_DCS_RESTART_DELAY, 0, 0xFFFFFFFF, 30);
+DEFINE_DCS_CFG(CFG_DCS_DISABLE_ALGORITHM, 0, 1, 0);
 
 #endif /* __CONFIG_DCS_H */

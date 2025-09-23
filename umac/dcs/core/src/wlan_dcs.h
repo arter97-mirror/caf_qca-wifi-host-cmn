@@ -61,6 +61,100 @@ enum wlan_dcs_mode {
 };
 
 /**
+ * dcs_sanitize_quotes() - Sanitize quoted configuration string
+ * @raw: pointer to raw configuration string
+ *
+ * This helper function removes leading and trailing quotes from a
+ * configuration string returned by cfg_get(). It also performs basic
+ * validation to ensure the sanitized string is non-empty and not a
+ * duplicate/invalid entry.
+ *
+ * Return: pointer to sanitized string if valid, NULL otherwise
+ */
+static inline char *dcs_sanitize_quotes(char *raw)
+{
+	size_t len;
+
+	if (!raw)
+		return NULL;
+
+	len = strlen(raw);
+	if (len == 0)
+		return NULL;
+
+	if (raw[0] == '"') {
+		raw++;
+		len--;
+	}
+
+	if (len > 0 && raw[len - 1] == '"') {
+		raw[len - 1] = '\0';
+		len--;
+	}
+
+	if (len == 0)
+		return NULL;
+
+	return raw;
+}
+
+#define DCS_CFG_GET(psoc, CFG, type, array)                             \
+do {                                                                    \
+	uint8_t i;                                                      \
+	QDF_STATUS status;                                              \
+	type *arr_ = (array);                                           \
+	void *psoc_ = (psoc);                                           \
+	qdf_size_t out_size = 0;                                        \
+	uint32_t out[MAX_DCS_MODE_NUM];                                 \
+	char *raw;                                                      \
+									\
+	if (!arr_) {                                                    \
+		dcs_err("%s NULL arr_", #CFG);                          \
+		break;                                                  \
+	}                                                               \
+									\
+	/* Initialize defaults */                                       \
+	for (i = 0; i < MAX_DCS_MODE_NUM; i++)                          \
+		arr_[i] = (type)(CFG_DCS_##CFG##_DEFAULT);              \
+									\
+	if (!psoc_) {                                                   \
+		dcs_err("NULL psoc");                                   \
+		break;                                                  \
+	}                                                               \
+	raw  = (char *)cfg_get(psoc_, CFG_DCS_##CFG);                   \
+	if (!raw) {                                                     \
+		dcs_err("%s raw=NULL", #CFG);                           \
+		break;                                                  \
+	}                                                               \
+									\
+	char *str = dcs_sanitize_quotes(raw);                           \
+	if (!str) {                                                     \
+		dcs_debug("%s NULL", #CFG);                             \
+		break;                                                  \
+	}                                                               \
+									\
+	/* Parse sanitized string */                                    \
+	status = qdf_uint32_array_parse(str, out, MAX_DCS_MODE_NUM,     \
+					&out_size);                     \
+	if (QDF_IS_STATUS_ERROR(status) || out_size == 0) {             \
+		dcs_err("%s=%s parse failed, use default",              \
+			#CFG, raw);                                     \
+		break;                                                  \
+	}                                                               \
+									\
+	dcs_debug("%s=%s", #CFG, str);                                  \
+									\
+	/* Range check */                                               \
+	for (i = 0; i < out_size; i++) {                                \
+		if (out[i] < (CFG_DCS_##CFG##_MIN))                     \
+			out[i] = (CFG_DCS_##CFG##_MIN);                 \
+		else if (out[i] > (CFG_DCS_##CFG##_MAX))                \
+			out[i] = (CFG_DCS_##CFG##_MAX);                 \
+		arr_[i] = (type)out[i];                                 \
+	}                                                               \
+} while (0)
+
+/**
  * struct wlan_dcs_type_bitmap - types of DCS interference bitmap
  * @cwim: continuous wave interference
  * @wlanim: wlan interference stats
@@ -396,6 +490,20 @@ struct dcs_psoc_priv_obj {
 	uint8_t dcs_enable_cfg;
 	uint8_t intfr_detection_threshold;
 };
+
+/**
+ * dcs_init_params_by_mode() - Init DCS params for given mode
+ * @psoc: psoc object
+ * @dcs_core: DCS core private object
+ * @dcs_mode: DCS mode (SAP, XPAN, XR, GO)
+ *
+ * Copies per-mode config from psoc into core object.
+ * Defaults to SAP if mode is invalid.
+ */
+void
+dcs_init_params_by_mode(struct wlan_objmgr_psoc *psoc,
+			struct dcs_core_priv_obj *dcs_core,
+			enum wlan_dcs_mode dcs_mode);
 
 /**
  * wlan_dcs_get_pdev_private_obj() - get dcs pdev private object
