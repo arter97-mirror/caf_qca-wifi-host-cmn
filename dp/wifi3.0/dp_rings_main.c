@@ -3078,6 +3078,8 @@ static void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
 }
 #endif
 
+#define DP_SW2WBM_RING_IDLE_WAIT_CNT 5
+
 /**
  * dp_display_srng_info() - Dump the srng HP TP info
  * @soc_hdl: CDP Soc handle
@@ -3125,8 +3127,19 @@ bool dp_display_srng_info(struct cdp_soc_t *soc_hdl)
 
 	dp_display_li_be_only_srng_info(soc_hdl);
 
-	hal_get_sw_hptp(hal_soc, soc->wbm_desc_rel_ring.hal_srng, &tp, &hp);
+	for (i = 0; i < DP_SW2WBM_RING_IDLE_WAIT_CNT; i++) {
+		hal_get_sw_hptp(hal_soc, soc->wbm_desc_rel_ring.hal_srng,
+				&tp, &hp);
+		if (hp == tp)
+			break;
+
+		msleep(10);
+	}
+
 	dp_info("WBM desc release ring: hp=0x%x, tp=0x%x", hp, tp);
+
+	if (hp != tp)
+		ret = false;
 
 	return ret;
 }
