@@ -212,6 +212,8 @@ send_twt_add_dialog_cmd_tlv(wmi_unified_t wmi_handle,
 	TWT_FLAGS_SET_TRIGGER(cmd->flags, params->flag_trigger);
 	TWT_FLAGS_SET_FLOW_TYPE(cmd->flags, params->flag_flow_type);
 	TWT_FLAGS_SET_PROTECTION(cmd->flags, params->flag_protection);
+	TWT_FLAGS_SET_PM_RESPONDER_MODE_VALID(cmd->flags, 1);
+	TWT_FLAGS_SET_PM_RESPONDER_MODE(cmd->flags, params->responder_pm_mode);
 
 	twt_add_dialog_set_bcast_twt_params(params, cmd);
 
