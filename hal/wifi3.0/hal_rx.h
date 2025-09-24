@@ -785,6 +785,7 @@ hal_rx_priv_info_set_in_tlv(hal_soc_handle_t hal_soc_hdl,
 							 len);
 }
 
+#ifdef CONFIG_BORON
 /**
  * hal_rx_reo_ent_rxdma_push_reason_get() - Retrieves RXDMA push reason from
  *	reo_entrance_ring descriptor
@@ -797,10 +798,20 @@ static inline
 uint8_t hal_rx_reo_ent_rxdma_push_reason_get(hal_rxdma_desc_t reo_ent_desc)
 {
 	return _HAL_MS((*_OFFSET_TO_WORD_PTR(reo_ent_desc,
+		REO_ENTRANCE_RING_RXDMA_PUSH_REASON_OFFSET)),
+		REO_ENTRANCE_RING_RXDMA_PUSH_REASON_MASK,
+		REO_ENTRANCE_RING_RXDMA_PUSH_REASON_LSB);
+}
+#else
+static inline
+uint8_t hal_rx_reo_ent_rxdma_push_reason_get(hal_rxdma_desc_t reo_ent_desc)
+{
+	return _HAL_MS((*_OFFSET_TO_WORD_PTR(reo_ent_desc,
 		HAL_REO_ENTRANCE_RING_RXDMA_PUSH_REASON_OFFSET)),
 		HAL_REO_ENTRANCE_RING_RXDMA_PUSH_REASON_MASK,
 		HAL_REO_ENTRANCE_RING_RXDMA_PUSH_REASON_LSB);
 }
+#endif
 
 /**
  * hal_rx_reo_ent_rxdma_error_code_get() - Retrieves RXDMA error code from
