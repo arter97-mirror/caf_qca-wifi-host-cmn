@@ -5885,13 +5885,13 @@ static void dp_mon_pdev_per_target_config(struct dp_pdev *pdev)
 	case TARGET_TYPE_QCN6432:
 	case TARGET_TYPE_QCA5424:
 	case TARGET_TYPE_MANGO:
+	case TARGET_TYPE_FIG:
 		mon_pdev->is_tlv_hdr_64_bit = true;
 		mon_pdev->tlv_hdr_size = HAL_RX_TLV64_HDR_SIZE;
 		break;
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_QCC2072:
-	case TARGET_TYPE_FIG:
 	default:
 		mon_pdev->is_tlv_hdr_64_bit = false;
 		mon_pdev->tlv_hdr_size = HAL_RX_TLV32_HDR_SIZE;
