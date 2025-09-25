@@ -267,7 +267,7 @@ void hif_sdio_quirk_write_cccr(struct hif_softc *ol_sc, struct sdio_func *func)
 				(unsigned int)writecccr1value,
 				err);
 		else
-			hif_info("%s Write CCCR 0x%02X to 0x%02X OK",
+			hif_info("Write CCCR 0x%02X to 0x%02X OK",
 				 (unsigned int)writecccr1,
 				 writecccr1value);
 	}
@@ -281,7 +281,7 @@ void hif_sdio_quirk_write_cccr(struct hif_softc *ol_sc, struct sdio_func *func)
 				(unsigned int)writecccr2value,
 				err);
 		else
-			hif_info("%s Write CCCR 0x%02X to 0x%02X OK",
+			hif_info("Write CCCR 0x%02X to 0x%02X OK",
 				 (unsigned int)writecccr2,
 				 (unsigned int)writecccr2value);
 	}
@@ -294,7 +294,7 @@ void hif_sdio_quirk_write_cccr(struct hif_softc *ol_sc, struct sdio_func *func)
 				(unsigned int)writecccr3value,
 				err);
 		else
-			hif_info("%s Write CCCR 0x%02X to 0x%02X OK",
+			hif_info("Write CCCR 0x%02X to 0x%02X OK",
 				 (unsigned int)writecccr3,
 				 (unsigned int)writecccr3value);
 	}
@@ -307,7 +307,7 @@ void hif_sdio_quirk_write_cccr(struct hif_softc *ol_sc, struct sdio_func *func)
 				(unsigned int)writecccr4value,
 				err);
 		else
-			hif_info("%s Write CCCR 0x%02X to 0x%02X OK",
+			hif_info("Write CCCR 0x%02X to 0x%02X OK",
 				 (unsigned int)writecccr4,
 				 (unsigned int)writecccr4value);
 	}
