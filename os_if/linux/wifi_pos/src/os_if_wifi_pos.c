@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -777,7 +777,7 @@ static int  wifi_pos_parse_req(const void *data, int len, int pid,
 	}
 	return status;
 }
-#else
+#elif !defined(WLAN_POS_GET_BY_NAME_NOT_SUPPORT)
 static int wifi_pos_parse_req(struct sk_buff *skb, struct wifi_pos_req_msg *req,
 			      struct wlan_objmgr_psoc **psoc)
 {
@@ -877,6 +877,59 @@ static int wifi_pos_parse_req(struct sk_buff *skb, struct wifi_pos_req_msg *req,
 				*((uint32_t *)&req->buf[offset]) = tgt_pdev_id;
 			}
 		}
+	}
+
+	return 0;
+}
+#else
+static int wifi_pos_parse_req(struct sk_buff *skb, struct wifi_pos_req_msg *req,
+			      struct wlan_objmgr_psoc **psoc)
+{
+	/* SKB->data contains NL msg */
+	/* NLMSG_DATA(nlh) contains ANI msg */
+	struct nlmsghdr *nlh;
+	tAniMsgHdr *msg_hdr;
+	size_t field_info_len;
+
+	nlh = (struct nlmsghdr *)skb->data;
+	if (!nlh) {
+		osif_err("Netlink header null");
+		return OEM_ERR_NULL_MESSAGE_HEADER;
+	}
+
+	if (nlh->nlmsg_len < NLMSG_LENGTH(sizeof(*msg_hdr))) {
+		osif_err("nlmsg_len(%d) and msg_hdr_size(%zu) mismatch",
+			 nlh->nlmsg_len, sizeof(*msg_hdr));
+		return OEM_ERR_INVALID_MESSAGE_LENGTH;
+	}
+
+	msg_hdr = NLMSG_DATA(nlh);
+	if (!msg_hdr) {
+		osif_err("Message header null");
+		return OEM_ERR_NULL_MESSAGE_HEADER;
+	}
+
+	if (nlh->nlmsg_len < NLMSG_LENGTH(sizeof(*msg_hdr) + msg_hdr->length)) {
+		osif_err("nlmsg_len(%d) and animsg_len(%d) mismatch",
+			 nlh->nlmsg_len, msg_hdr->length);
+		return OEM_ERR_INVALID_MESSAGE_LENGTH;
+	}
+
+	req->msg_type = map_ani_msg_req_to_wifi_pos_cmd(
+				(uint32_t)msg_hdr->type);
+	req->rsp_version = WIFI_POS_RSP_V1_FLAT_MEMORY;
+	req->buf_len = msg_hdr->length;
+	req->buf = (uint8_t *)&msg_hdr[1];
+	req->pid = nlh->nlmsg_pid;
+	req->field_info_buf = NULL;
+	req->field_info_buf_len = 0;
+
+	field_info_len = nlh->nlmsg_len -
+			(NLMSG_LENGTH(sizeof(*msg_hdr) + msg_hdr->length));
+	if (field_info_len) {
+		req->field_info_buf = (struct wifi_pos_field_info *)
+				      (req->buf + req->buf_len);
+		req->field_info_buf_len = field_info_len;
 	}
 
 	return 0;
