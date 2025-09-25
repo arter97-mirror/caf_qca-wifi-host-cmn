@@ -2299,4 +2299,23 @@ mlo_mgr_link_switch_defer_disconnect_req(struct wlan_objmgr_vdev *vdev,
 	mlo_debug("Deferred disconnect source: %d, reason: %d", source, reason);
 	return QDF_STATUS_SUCCESS;
 }
+
+bool mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
+{
+	struct mlo_link_info *link_info;
+	uint8_t link_id = WLAN_INVALID_LINK_ID;
+
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev) || !vdev->mlo_dev_ctx)
+		return false;
+
+	link_id = wlan_vdev_get_link_id(vdev);
+	link_info = mlo_mgr_get_ap_link_by_link_id(vdev->mlo_dev_ctx, link_id);
+	if (!link_info) {
+		mlo_debug("Link info not found for link_id %d vdev %d",
+			  link_id, wlan_vdev_get_id(vdev));
+		return false;
+	}
+
+	return link_info->is_link_active;
+}
 #endif

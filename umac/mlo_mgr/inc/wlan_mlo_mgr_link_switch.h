@@ -803,6 +803,14 @@ mlo_mgr_update_link_state_delete_flag(
 void mlo_link_recfg_link_switch_timeout(
 		struct wlan_objmgr_psoc *psoc,
 		struct wlan_mlo_dev_context *mlo_dev_ctx);
+
+/*
+ * mlo_mgr_is_mlo_vdev_active() - This API checks if the vdev is active vdev
+ * @vdev: pointer to vdev object
+ *
+ * Return: True if vdev is active; false otherwise
+ */
+bool mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev);
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1051,6 +1059,12 @@ static inline void mlo_link_recfg_link_switch_timeout(
 		struct wlan_objmgr_psoc *psoc,
 		struct wlan_mlo_dev_context *mlo_dev_ctx)
 {
+}
+
+static inline bool
+mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
 }
 #endif
 #endif
