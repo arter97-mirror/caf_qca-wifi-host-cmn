@@ -1293,6 +1293,9 @@ QDF_STATUS ce_get_direct_link_srng_info(struct hif_softc *scn,
 
 		ce_save_srng_info(scn, &info[ce_info_idx].ring_info,
 				  ce_state->status_ring->srng_ctx);
+
+		ce_state->service_dl = true;
+
 		ce_info_idx++;
 	}
 

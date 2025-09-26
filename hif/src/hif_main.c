@@ -1510,6 +1510,8 @@ QDF_STATUS hif_print_ce(struct hif_softc *scn, uint8_t print_type)
 		     qdf_atomic_test_bit(TASKLET_STATE_RUN,
 					 &tasklet_entry->intr_tq.state))) {
 			CE_state = scn->ce_id_to_state[ce_id];
+			if (CE_state->service_dl)
+				continue;
 			if (CE_state->status_ring) {
 				hal_get_sw_hptp(scn->hal_soc,
 						CE_state->status_ring->srng_ctx,
