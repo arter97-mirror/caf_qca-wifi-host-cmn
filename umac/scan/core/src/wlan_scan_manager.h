@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2017-2018, 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -33,11 +33,11 @@
 /**
  * struct scan_event_listeners - listeners interested in a particular scan event
  * @count: number of listeners
- * @cb: callback handler
+ * @cb: callback handler pointers
  */
 struct scan_event_listeners {
 	uint32_t count;
-	struct cb_handler cb[MAX_SCAN_EVENT_LISTENERS];
+	struct cb_handler *cb[MAX_SCAN_EVENT_LISTENERS];
 };
 
 /**
