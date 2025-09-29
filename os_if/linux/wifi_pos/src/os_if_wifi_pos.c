@@ -928,7 +928,7 @@ static int __os_if_wifi_pos_callback(struct sk_buff *skb)
 	uint8_t err;
 	QDF_STATUS status;
 	struct wifi_pos_req_msg req = {0};
-	struct wlan_objmgr_psoc *psoc = NULL;
+	struct wlan_objmgr_psoc *psoc = wifi_pos_get_psoc();
 
 	osif_debug("enter");
 
