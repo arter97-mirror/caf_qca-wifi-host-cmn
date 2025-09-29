@@ -414,7 +414,13 @@ static bool cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 
 	length += tones * (dma_hdr.num_chains + 1);
 
-	lut = pdev_cfrobj->lut[cookie];
+	qdf_spin_lock_bh(&pdev_cfrobj->lut_lock);
+	lut = get_lut_entry(pdev_cfrobj, cookie);
+	if (!lut) {
+		cfr_err("lut is NULL");
+		qdf_spin_unlock_bh(&pdev_cfrobj->lut_lock);
+		return true;
+	}
 
 	lut->data = data;
 	lut->data_len = length;
@@ -444,6 +450,7 @@ static bool cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 		rx_ops = wlan_psoc_get_lmac_if_rxops(psoc);
 		if (!rx_ops) {
 			cfr_err("rx_ops is NULL");
+			qdf_spin_unlock_bh(&pdev_cfrobj->lut_lock);
 			return true;
 		}
 
@@ -462,6 +469,8 @@ static bool cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 		cfr_err("Correlation returned invalid status!!");
 		ret = true;
 	}
+
+	qdf_spin_unlock_bh(&pdev_cfrobj->lut_lock);
 	return ret;
 }
 
@@ -710,7 +719,14 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 	cfr_debug("buffer address: 0x%pK cookie: %u",
 		  (void *)((uintptr_t)buf_addr), cookie);
 
-	lut = pdev_cfrobj->lut[cookie];
+	qdf_spin_lock_bh(&pdev_cfrobj->lut_lock);
+	lut = get_lut_entry(pdev_cfrobj, cookie);
+	if (!lut) {
+		cfr_err("lut is NULL");
+		qdf_spin_unlock_bh(&pdev_cfrobj->lut_lock);
+		status = -EINVAL;
+		goto done;
+	}
 
 	pdev_cfrobj->tx_evt_cnt++;
 	pdev_cfrobj->total_tx_evt_cnt++;
@@ -777,10 +793,12 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 	} else {
 		cfr_err("Correlation returned invalid status!!");
 		status = -EINVAL;
+		qdf_spin_unlock_bh(&pdev_cfrobj->lut_lock);
 		goto done;
 	}
 
 	status = 0;
+	qdf_spin_unlock_bh(&pdev_cfrobj->lut_lock);
 	goto done;
 
 relay_failure:
@@ -1008,6 +1026,8 @@ QDF_STATUS cfr_dbr_init_pdev(struct wlan_objmgr_psoc *psoc,
 	pdev_cfrobj->subbuf_size = STREAMFS_MAX_SUBBUF_8S;
 	pdev_cfrobj->num_subbufs = STREAMFS_NUM_SUBBUF_8S;
 
+	qdf_spinlock_create(&pdev_cfrobj->lut_lock);
+	pdev_cfrobj->lut_lock_initialised = true;
 	return status;
 }
 
@@ -1042,6 +1062,11 @@ QDF_STATUS cfr_dbr_deinit_pdev(struct wlan_objmgr_psoc *psoc,
 	status = target_if_unregister_tx_completion_event_handler(psoc);
 	if (status != QDF_STATUS_SUCCESS)
 		cfr_err("Failed to register with dbr");
+
+	if (pdev_cfrobj->lut_lock_initialised) {
+		qdf_spinlock_destroy(&pdev_cfrobj->lut_lock);
+		pdev_cfrobj->lut_lock_initialised = false;
+	}
 
 	return status;
 }

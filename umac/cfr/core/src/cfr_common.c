@@ -110,6 +110,54 @@ wlan_cfr_get_dbr_num_entries(struct wlan_objmgr_pdev *pdev)
 	return num_entries;
 }
 
+static void
+wlan_cfr_update_dbr_num_entries(struct wlan_objmgr_pdev *pdev,
+				uint32_t num_entries)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_psoc_host_dbr_ring_caps *dbr_ring_cap;
+	uint8_t num_dbr_ring_caps, cap_idx;
+	struct target_psoc_info *tgt_psoc_info;
+	QDF_STATUS ret;
+
+	if (!pdev || !num_entries) {
+		cfr_err("Invalid input param");
+		return;
+	}
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		cfr_err("psoc is null");
+		return;
+	}
+
+	tgt_psoc_info = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!tgt_psoc_info) {
+		cfr_err("target_psoc_info is null");
+		return;
+	}
+
+	num_dbr_ring_caps = target_psoc_get_num_dbr_ring_caps(tgt_psoc_info);
+	dbr_ring_cap = target_psoc_get_dbr_ring_caps(tgt_psoc_info);
+
+	for (cap_idx = 0; cap_idx < num_dbr_ring_caps; cap_idx++) {
+		if (dbr_ring_cap[cap_idx].mod_id == DBR_MODULE_CFR &&
+		    dbr_ring_cap[cap_idx].ring_elems_min > num_entries) {
+			cfr_debug("update cap_idx %d pdev id %d from %d to %d",
+				  cap_idx, dbr_ring_cap[cap_idx].pdev_id,
+				  dbr_ring_cap[cap_idx].ring_elems_min,
+				  num_entries);
+			ret = target_psoc_set_dbr_ring_elems_min(tgt_psoc_info,
+								 cap_idx,
+								 num_entries);
+			if (ret != QDF_STATUS_SUCCESS)
+				cfr_err("update cfr dbr ring_elems_min fail!");
+		}
+	}
+
+	return;
+}
+
 #ifdef WLAN_CFR_PM
 /**
  * cfr_wakelock_init(): Create/init wake lock for CFR
@@ -223,6 +271,8 @@ wlan_cfr_pdev_obj_create_handler(struct wlan_objmgr_pdev *pdev, void *arg)
 		qdf_mem_free(pa);
 		return QDF_STATUS_E_INVAL;
 	}
+	wlan_cfr_update_dbr_num_entries(pdev, pa->lut_num);
+
 	pa->lut = (struct look_up_table **)qdf_mem_malloc(pa->lut_num *
 			sizeof(struct look_up_table *));
 	if (!pa->lut) {
