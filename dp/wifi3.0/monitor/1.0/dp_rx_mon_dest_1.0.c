@@ -605,6 +605,7 @@ static int dp_rx_mon_drop_one_mpdu(struct dp_pdev *pdev,
  * @head: HEAD if the rx_desc list to be freed
  * @tail: TAIL of the rx_desc list to be freed
  * @rx_bufs_dropped: Number of msdus dropped
+ * @ctx: dropping context
  *
  * Return: QDF_STATUS_SUCCESS, if the mpdu was to be dropped
  *	   QDF_STATUS_E_INVAL/QDF_STATUS_E_FAILURE, if the mpdu was not dropped
@@ -614,15 +615,14 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 			    hal_rxdma_desc_t rxdma_dst_ring_desc,
 			    union dp_rx_desc_list_elem_t **head,
 			    union dp_rx_desc_list_elem_t **tail,
-			    uint32_t *rx_bufs_dropped)
+			    uint32_t *rx_bufs_dropped,
+			    enum dp_rx_mon_drop_ctx ctx)
 {
 	struct dp_soc *soc = pdev->soc;
 	uint8_t src_link_id;
 	QDF_STATUS status;
+	struct dp_mon_mac *dst_entry_mon_mac;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
-
-	if (mon_mac->mon_chan_band == REG_BAND_UNKNOWN)
-		goto drop_mpdu;
 
 	status = hal_rx_reo_ent_get_src_link_id(soc->hal_soc,
 						rxdma_dst_ring_desc,
@@ -630,10 +630,14 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 	if (QDF_IS_STATUS_ERROR(status))
 		return QDF_STATUS_E_INVAL;
 
-	if (src_link_id == mon_mac->mac_id)
+	dst_entry_mon_mac = dp_get_mon_mac(pdev, src_link_id);
+	if (ctx == DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER &&
+	    dst_entry_mon_mac->mon_chan_band != REG_BAND_UNKNOWN)
+		return QDF_STATUS_E_INVAL;
+	else if (ctx == DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING &&
+		 src_link_id == mon_mac->mac_id)
 		return QDF_STATUS_E_INVAL;
 
-drop_mpdu:
 	*rx_bufs_dropped = dp_rx_mon_drop_one_mpdu(pdev, mac_id,
 						   rxdma_dst_ring_desc,
 						   head, tail);
@@ -646,7 +650,8 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 			    hal_rxdma_desc_t rxdma_dst_ring_desc,
 			    union dp_rx_desc_list_elem_t **head,
 			    union dp_rx_desc_list_elem_t **tail,
-			    uint32_t *rx_bufs_dropped)
+			    uint32_t *rx_bufs_dropped,
+			    enum dp_rx_mon_drop_ctx ctx)
 {
 	return QDF_STATUS_E_FAILURE;
 }
@@ -848,10 +853,12 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 		tail_msdu = (qdf_nbuf_t)NULL;
 
 		if (QDF_STATUS_SUCCESS ==
-		    dp_rx_mon_check_n_drop_mpdu(pdev, mac_id,
-						rxdma_dst_ring_desc,
-						&head, &tail,
-						&rx_bufs_dropped)) {
+		    dp_rx_mon_check_n_drop_mpdu(
+				pdev, mac_id,
+				rxdma_dst_ring_desc,
+				&head, &tail,
+				&rx_bufs_dropped,
+				DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING)) {
 			/* Increment stats */
 			rx_bufs_used += rx_bufs_dropped;
 			hal_srng_dst_get_next(hal_soc, mon_dst_srng);
@@ -1151,10 +1158,12 @@ dp_mon_dest_srng_drop_for_mac(struct dp_pdev *pdev, uint32_t mac_id,
 		(reap_cnt < MON_DROP_REAP_LIMIT || force_flush)) {
 		if (is_rxdma_dst_ring_common && !force_flush) {
 			if (QDF_STATUS_SUCCESS ==
-			    dp_rx_mon_check_n_drop_mpdu(pdev, mac_id,
-							rxdma_dst_ring_desc,
-							&head, &tail,
-							&rx_bufs_dropped)) {
+			    dp_rx_mon_check_n_drop_mpdu(
+				    pdev, mac_id,
+				    rxdma_dst_ring_desc,
+				    &head, &tail,
+				    &rx_bufs_dropped,
+				    DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER)) {
 				/* Increment stats */
 				rx_bufs_used += rx_bufs_dropped;
 			} else {
@@ -1489,7 +1498,8 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 			    hal_rxdma_desc_t rxdma_dst_ring_desc,
 			    union dp_rx_desc_list_elem_t **head,
 			    union dp_rx_desc_list_elem_t **tail,
-			    uint32_t *rx_bufs_dropped)
+			    uint32_t *rx_bufs_dropped,
+			    enum dp_rx_mon_drop_ctx ctx)
 {
 	return QDF_STATUS_E_FAILURE;
 }

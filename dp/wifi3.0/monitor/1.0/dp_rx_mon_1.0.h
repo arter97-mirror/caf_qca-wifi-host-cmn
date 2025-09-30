@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,6 +31,16 @@
  * RXDMA2SW ring.
  */
 #define MON_DROP_REAP_LIMIT 64
+
+/*
+ * enum dp_rx_mon_drop_ctx - MON DEST ring entry drop context
+ * @DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER: Drop from timer context
+ * @DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING: Drop from NAPI context
+ */
+enum dp_rx_mon_drop_ctx {
+	DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER,
+	DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING
+};
 
 QDF_STATUS dp_rx_pdev_mon_status_buffers_alloc(struct dp_pdev *pdev,
 					       uint32_t mac_id);

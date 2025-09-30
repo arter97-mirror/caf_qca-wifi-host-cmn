@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -6277,8 +6277,10 @@ dp_init_mon_chan_band(struct dp_mon_pdev *mon_pdev)
 {
 	uint8_t mac_id;
 
-	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++)
+	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
 		mon_pdev->mon_mac[mac_id].mon_chan_band = REG_BAND_UNKNOWN;
+		mon_pdev->mon_mac[mac_id].mac_id = mac_id;
+	}
 }
 #else
 static inline void
