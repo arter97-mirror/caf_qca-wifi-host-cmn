@@ -32,6 +32,16 @@
  */
 #define MON_DROP_REAP_LIMIT 64
 
+/*
+ * enum dp_rx_mon_drop_ctx - MON DEST ring entry drop context
+ * @DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER: Drop from timer context
+ * @DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING: Drop from NAPI context
+ */
+enum dp_rx_mon_drop_ctx {
+	DP_MON_DST_ENTRY_DROP_SCHEDULED_TIMER,
+	DP_MON_DST_ENTRY_DROP_SCHEDULED_PROCESSING
+};
+
 QDF_STATUS dp_rx_pdev_mon_status_buffers_alloc(struct dp_pdev *pdev,
 					       uint32_t mac_id);
 QDF_STATUS dp_rx_pdev_mon_status_desc_pool_alloc(struct dp_pdev *pdev,
