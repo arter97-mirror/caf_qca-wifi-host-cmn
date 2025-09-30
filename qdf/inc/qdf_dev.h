@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -156,6 +156,11 @@ qdf_dev_clear_irq_status_flags(unsigned int irnum, unsigned long clr)
 static inline int qdf_topology_physical_package_id(unsigned int cpu)
 {
 	return __qdf_topology_physical_package_id(cpu);
+}
+
+static inline qdf_cpu_mask *qdf_topology_cluster_cpumask(unsigned int cpu)
+{
+	return __qdf_topology_cluster_cpumask(cpu);
 }
 
 static inline int qdf_cpumask_subset(qdf_cpu_mask *srcp1,
