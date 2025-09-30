@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -154,6 +155,10 @@ void hif_record_ce_srng_desc_event(struct hif_softc *scn, int ce_id,
 
 	hif_record_latest_evt(ce_hist, type, ce_id, event->time,
 			      event->current_hp, event->current_tp);
+	ce_trace_hif_hist_event((uint8_t)ce_id, event->current_hp,
+				event->current_tp, event->cpu_id,
+				event->time, event->type);
+
 }
 #endif /* HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF */
 

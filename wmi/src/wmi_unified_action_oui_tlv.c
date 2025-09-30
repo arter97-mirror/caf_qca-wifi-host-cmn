@@ -72,6 +72,9 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
 	case ACTION_OUI_SEND_SMPS_FRAME_WITH_OMN:
 		*id = WMI_VENDOR_OUI_ACTION_SEND_SMPS_FRAME_WITH_OMN;
 		return true;
+	case ACTION_OUI_RESTRICT_SLO:
+		*id = WMI_VENDOR_OUI_ACTION_RESTRICT_SLO;
+		return true;
 	case ACTION_OUI_DISABLE_AUX_LISTEN:
 		*id = WMI_VENDOR_OUI_ACTION_DISABLE_AUXL;
 		return true;

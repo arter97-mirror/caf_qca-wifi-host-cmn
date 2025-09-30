@@ -17616,7 +17616,13 @@ static void extract_additional_cli_rules_meta_info(
 				WMI_REG_RULE_TYPE_indoor_enabled_sub_cli) {
 		client_type = REG_SUBORDINATE_CLIENT;
 		reg_info->addn_reg_rule_order[addn_meta_idx] = REG_CLI_SUB_C2C;
+	} else {
+		/* Unknown rule type, skip processing to avoid invalid index */
+		return;
 	}
+
+	if (client_type >= REG_MAX_CLIENT_TYPE)
+		return;
 
 	reg_info->num_6g_reg_rules_client[REG_INDOOR_ENABLED_AP][client_type] =
 		meta_data->num_6ghz_reg_rules;
@@ -25424,6 +25430,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_VENDOR_OUI_ACTION_V2;
 	wmi_service[wmi_service_ndp_dfs_channel_support] =
 				WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT;
+	wmi_service[wmi_service_tx_power_limit] =
+				WMI_SERVICE_TX_POWER_LIMIT;
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service[wmi_service_wfd_r2] = WMI_SERVICE_WFD_R2;
 #endif

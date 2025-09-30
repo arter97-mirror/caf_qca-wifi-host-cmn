@@ -26,6 +26,7 @@
 #include "if_pci.h"
 #endif
 #include "qdf_ssr_driver_dump.h"
+#include <qdf_tracepoint.h>
 
 static struct hif_exec_context *hif_exec_tasklet_create(void);
 
@@ -146,6 +147,33 @@ hif_hist_skip_event_record(struct hif_event_history *hist_ev,
 	return false;
 }
 
+#ifdef WLAN_TRACEPOINTS
+/**
+ * hif_trace_hif_hist_event() - Trace hif event
+ *  latency
+ * @record: hif record
+ *
+ * Return: None
+ */
+static inline
+void hif_trace_hif_hist_event(struct hif_event_record *record)
+{
+	if (qdf_trace_hif_hist_event_enabled())
+		qdf_trace_hif_hist_event(false,
+					 record->hal_ring_id,
+					 record->hp,
+					 record->tp,
+					 record->cpu_id,
+					 record->timestamp,
+					 record->type);
+}
+#else
+static inline
+void hif_trace_hif_hist_event(struct hif_event_record *record)
+{
+}
+#endif
+
 void hif_hist_record_event(struct hif_opaque_softc *hif_ctx,
 			   struct hif_event_record *event, uint8_t intr_grp_id)
 {
@@ -185,6 +213,7 @@ void hif_hist_record_event(struct hif_opaque_softc *hif_ctx,
 	record->cpu_id = qdf_get_cpu();
 	record->timestamp = hif_get_log_timestamp();
 	record->type = event->type;
+	hif_trace_hif_hist_event(record);
 }
 
 void hif_event_history_init(struct hif_opaque_softc *hif_ctx, uint8_t id)
@@ -876,6 +905,8 @@ static int hif_exec_poll(struct napi_struct *napi, int budget)
 		qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
 		hif_ext_group->irq_enable(hif_ext_group);
 		hif_ext_group->stats[cpu].napi_completes++;
+		hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
+				 0, 0, 0, HIF_EVENT_IRQ_REENABLED);
 	} else {
 		/* if the ext_group supports time based yield, claim full work
 		 * done anyways */

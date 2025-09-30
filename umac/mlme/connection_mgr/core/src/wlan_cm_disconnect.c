@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,6 +32,7 @@
 #endif
 #include <wlan_mlo_mgr_link_switch.h>
 #include <wlan_mlo_link_recfg.h>
+#include "wlan_mlo_mgr_roam.h"
 
 void cm_send_disconnect_resp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id)
 {
@@ -461,6 +462,11 @@ cm_disconnect_continue_after_rso_stop(struct wlan_objmgr_vdev *vdev,
 	QDF_STATUS status;
 	struct qdf_mac_addr bssid = QDF_MAC_ADDR_ZERO_INIT;
 	struct cnx_mgr *cm_ctx = cm_get_cm_ctx(vdev);
+
+	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE &&
+	    req->req.source != CM_MLO_ROAM_INTERNAL_DISCONNECT &&
+	    req->req.source != CM_MLO_LINK_SWITCH_DISCONNECT)
+		cm_delete_crypto_keys_for_all_links(vdev);
 
 	if (!cm_ctx)
 		return QDF_STATUS_E_INVAL;
