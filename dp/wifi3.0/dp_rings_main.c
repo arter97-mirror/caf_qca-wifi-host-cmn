@@ -1001,8 +1001,12 @@ QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 			rx_err_ring_intr_ctxt_id = i;
 
 		if (dp_is_mon_mask_valid(soc, &soc->intr_ctx[i])) {
-			soc->mon_intr_id_lmac_map[lmac_id] = i;
-			lmac_id++;
+			for (lmac_id = 0; lmac_id < MAX_NUM_LMAC_HW;
+			     lmac_id++) {
+				if (rx_mon_mask & BIT(lmac_id))
+					soc->mon_intr_id_lmac_map[lmac_id] = i;
+			}
+
 		}
 	}
 
