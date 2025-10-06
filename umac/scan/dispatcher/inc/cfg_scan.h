@@ -432,7 +432,7 @@ enum scan_mode_6ghz {
  * NL80211 scan policy flags
  * @Min: 0
  * @Max: 1
- * @Default: 1
+ * @Default: 0
  *
  * This parameter will decide whether to honour scan flags such as
  * NL80211_SCAN_FLAG_HIGH_ACCURACY , NL80211_SCAN_FLAG_LOW_SPAN,
@@ -451,7 +451,7 @@ enum scan_mode_6ghz {
  */
 #define CFG_HONOUR_NL_SCAN_POLICY_FLAGS CFG_INI_BOOL(\
 			"honour_nl_scan_policy_flags",\
-			true, \
+			false, \
 			"honour NL80211 scan policy flags")
 
 #ifdef FEATURE_WLAN_SCAN_PNO
