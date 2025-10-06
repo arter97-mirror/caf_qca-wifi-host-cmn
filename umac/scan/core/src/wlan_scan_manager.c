@@ -1085,6 +1085,10 @@ scm_update_channel_list(struct scan_start_request *req,
 	     !scan_obj->miracast_enabled)
 		skip_dfs_ch = false;
 
+	/* Skip DFS channels when LOW_SPAN scan flag is set */
+	if (req->scan_req.scan_policy_low_span)
+		skip_dfs_ch = true;
+
 	for (i = 0; i < req->scan_req.chan_list.num_chan; i++) {
 		uint32_t freq;
 
