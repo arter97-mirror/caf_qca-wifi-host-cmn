@@ -14274,7 +14274,6 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 #endif
 	.txrx_get_peer_stats_based_on_peer_type =
 			dp_txrx_get_peer_stats_based_on_peer_type,
-	.txrx_get_soc_stats = dp_txrx_get_soc_stats,
 	.txrx_get_peer_stats_param = dp_txrx_get_peer_stats_param,
 	.txrx_get_per_link_stats = dp_txrx_get_per_link_peer_stats,
 	.txrx_reset_peer_stats = dp_txrx_reset_peer_stats,

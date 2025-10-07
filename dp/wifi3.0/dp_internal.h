@@ -5688,17 +5688,6 @@ void dp_peer_flush_frags(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 void dp_soc_reset_mon_intr_mask(struct dp_soc *soc);
 
 /**
- * dp_txrx_get_soc_stats() - will return cdp_soc_stats
- * @soc_hdl: soc handle
- * @soc_stats: buffer to hold the values
- *
- * Return: QDF_STATUS_SUCCESS: Success
- *         QDF_STATUS_E_FAILURE: Error
- */
-QDF_STATUS dp_txrx_get_soc_stats(struct cdp_soc_t *soc_hdl,
-				 struct cdp_soc_stats *soc_stats);
-
-/**
  * dp_txrx_get_peer_delay_stats() - to get peer delay stats per TIDs
  * @soc_hdl: soc handle
  * @vdev_id: id of vdev handle
