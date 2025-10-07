@@ -9,6 +9,197 @@
 #include <qdf_status.h>
 #include "dp_types.h"
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#define PRIORITY_CLASS 8
+#define MAC_ADDR_LEN 6
+
+#define DAL_RX_RINGS_MAX 2
+#define DAL_TX_RINGS_MAX 2
+
+/**
+ * struct sta_info - STA information
+ * @bss_idx: BSS index
+ * @qos_txq_map: QoS TX queue map
+ * @addr: MAC address
+ */
+struct sta_info {
+	u16 bss_idx;
+	u16 qos_txq_map[PRIORITY_CLASS];
+	u8 addr[MAC_ADDR_LEN];
+};
+
+/**
+ * struct platform_bus_ops - Platform bus operations
+ * @init: Initialize the bus
+ * @exit: Exit the bus
+ * @start: Start the bus
+ * @stop: Stop the bus
+ * @request_irq: Request an interrupt
+ * @rx: RX operation
+ * @rx_replenish: Replenish RX buffers
+ * @rxbm_sync: Sync RX buffer manager
+ * @tx: TX operation
+ * @tx_cpl: TX completion
+ * @tx_queue_active: Check if TX queue is active
+ * @sta_active: Check if STA is active
+ * @notify_suspend: Notify suspend
+ * @notify_resume: Notify resume
+ * @ssr_dump: Dump SSR
+ */
+struct platform_bus_ops {
+	int (*init)(void *priv);
+	void (*exit)(void *priv);
+	int (*start)(void *priv);
+	void (*stop)(void *priv);
+	int (*request_irq)(void *priv);
+	bool (*rx)(void *priv, u32 *cnt);
+	int (*rx_replenish)(void *priv, u32 cnt, bool use_rsv_pktid);
+	int (*rxbm_sync)(void *priv, u32 cnt, void **rxbm);
+	int (*tx)(void *priv, void *pkt, u32 ifidx);
+	bool (*tx_cpl)(void *priv, u32 *cnt);
+	int (*tx_queue_active)(void *priv, u16 flowid, bool enable);
+	int (*sta_active)(void *priv, struct sta_info *info, bool enable);
+	int (*notify_suspend)(void *priv);
+	int (*notify_resume)(void *priv);
+	void (*ssr_dump)(void *segment);
+};
+
+/**
+ * struct vendor_cb_ops - Vendor callback operations
+ * @rx_isr_cb: RX ISR callback
+ * @rx_cpl_cb: RX completion callback
+ * @rx_replenish_alloc_cb: RX replenish allocation callback
+ * @tx_cpl_cb: TX completion callback
+ * @tx_isr_cb: Tx ISR callback
+ */
+struct vendor_cb_ops {
+	int (*rx_isr_cb)(int ring_num, void *priv);
+	int (*rx_cpl_cb)(void *priv, void *desc);
+	int (*rx_replenish_alloc_cb)(void *priv, u16 count);
+	int (*tx_cpl_cb)(void *priv, void *desc);
+	int (*tx_isr_cb)(int rint_num, void *priv);
+};
+
+/**
+ * struct dal_srng - Ring information for DAL rings
+ * @hal_ring_id: hal ring id
+ * @initialized: ring initialized or not
+ * @ring_base_paddr: ring base paddr
+ * @ring_base_vaddr: ring base vaddr
+ * @num_entries: number of entries in this ring
+ * @ring_size: ring size
+ * @ring_size_mask: ring size mask
+ * @entry_size: size of the ring entry
+ * @lmac_ring: ring is lmac ring or not
+ * @ring_type: HAL ring type
+ * @ring_dir: ring direction src or dest
+ * @u: union for src ring or dest ring
+ * @tp: tail pointer value
+ * @hp_addr: UMAC ring it is HP offset form BAR
+ *		LMAC ring it is HP physical addr
+ * @tp_addr: physical address of TP
+ * @hp: head pointer value
+ * @tp_addr: UMAC ring it is TP offset form BAR
+ *		LMAC ring it is TP physical addr
+ * @hp_addr: physical address of HP
+ *
+ *
+ * This structure has all the ring information that will be passed to DAL
+ * during init.
+ */
+struct dal_srng {
+	uint8_t hal_ring_id;
+	bool initialized;
+	qdf_dma_addr_t ring_base_paddr;
+	uint32_t *ring_base_vaddr;
+	uint32_t num_entries;
+	uint32_t ring_size;
+	uint32_t ring_size_mask;
+	uint32_t entry_size;
+	bool lmac_ring;
+	enum hal_ring_type ring_type;
+	enum hal_srng_dir ring_dir;
+	union {
+		struct {
+			uint32_t tp;
+			unsigned long hp_addr;
+			unsigned long tp_addr;
+		} dst_ring;
+
+		struct {
+			uint32_t hp;
+			unsigned long tp_addr;
+			unsigned long hp_addr;
+		} src_ring;
+	} u;
+};
+
+/**
+ * enum dal_intf_type - interface type
+ * @DAL_INTF_TYPE_STA: station interface
+ * @DAL_INTF_TYPE_SAP: SAP interface
+ *
+ * @DAL_INTF_TYPE_MAX: max supported interface type
+ */
+enum dal_intf_type {
+	DAL_INTF_TYPE_STA,
+	DAL_INTF_TYPE_SAP,
+	DAL_INTF_TYPE_MAX,
+};
+
+/**
+ * struct dal_intf_info - DAL interface information
+ * @type: Interface type
+ * @mac_address: MAC address
+ * @bss_idx: BSS index
+ * @vdev_id: VDEV ID
+ * @tcl_bank_id: TCL bank ID
+ */
+struct dal_intf_info {
+	enum dal_intf_type type;
+	uint8_t mac_address[MAC_ADDR_LEN];
+	int bss_idx;
+	uint16_t vdev_id;
+	uint8_t tcl_bank_id;
+};
+
+/**
+ * struct dp_dal_ctx - Context structure for DAL simulation
+ * @soc: Pointer to DP SoC
+ * @rx_ring: Array of HAL SRNG structures for RX rings.
+ * @tx_cmpl_ring: Array of HAL SRNG structures for TX completion rings.
+ * @tx_ring: Array of HAL SRNG structures for TX rings.
+ * @rx_refill_ring: HAL SRNG structure for RX refill ring.
+ *
+ * This structure maintains all necessary context for DAL operations,
+ * including pointers to datapath context, platform operations, vendor
+ * callbacks, for RX and TX operations. This structure is passed as priv
+ * argument in all DAL APIs.
+ */
+struct dp_dal_ctx {
+	struct dp_soc *soc;
+	struct dal_srng rx_ring[DAL_RX_RINGS_MAX];
+	struct dal_srng tx_cmpl_ring[DAL_TX_RINGS_MAX];
+	struct dal_srng tx_ring[DAL_TX_RINGS_MAX];
+	struct dal_srng rx_refill_ring;
+};
+
+/**
+ * dp_dal_soc_detach - detach DP DAL to SOC
+ * @soc: pointer to dp_soc structure
+ *
+ * Return: None.
+ */
+void dp_dal_soc_detach(struct dp_soc *soc);
+
+/**
+ * dp_dal_soc_deinit - De-initialize DP DAL for SOC
+ * @soc: pointer to dp_soc structure
+ *
+ * Return: None.
+ */
+void dp_dal_soc_deinit(struct dp_soc *soc);
+
 /**
  * dp_dal_soc_attach - Attach DP DAL to SOC
  * @soc: pointer to dp_soc structure
@@ -41,4 +232,120 @@ void dp_dal_bus_stop(struct dp_soc *soc);
  */
 void dp_dal_bus_exit(struct dp_soc *soc);
 
+/**
+ * dp_dal_bus_init() - DAL bus initialization function
+ * @soc: pointer to DP SoC
+ *
+ * Called during cdp_soc_attach_target(), this function sync TXBM information
+ * to the offload engine.
+ *
+ * Return: int
+ */
+int dp_dal_bus_init(struct dp_soc *soc);
+
+/**
+ * dp_dal_bus_start() - DAL bus start function
+ * @soc: pointer to DP SoC
+ *
+ * Called during cdp_soc_attach_target(), this function sync ring information
+ * to the offload engine.
+ *
+ * Return: int
+ */
+int dp_dal_bus_start(struct dp_soc *soc);
+
+/**
+ * dp_dal_bus_request_irq() - DAL IRQ registration function
+ * @soc: pointer to DP SoC
+ *
+ * Called during cdp_soc_attach_target(), this function sync IRQ info to OE,
+ * OE will register Tx & Rx interrupts.
+ *
+ * Return: int
+ */
+int dp_dal_bus_request_irq(struct dp_soc *soc);
+
+/**
+ * dp_dal_bus_rx_buffer_enqueue() - DAL RX buffer enqueue function
+ * @soc: pointer to DP SoC
+ * @cnt: Number of RX buffers to replenish
+ *
+ * Called during cdp_soc_attach_target() and during RX replenish, this function
+ * enqueues RX buffers to DAL, DAL/OE will in turn update the buffers into
+ * SW2FW ring.
+ *
+ * Return: int
+ */
+int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt);
+
+/**
+ * dp_dal_sta_active() - DAL API to send STA information
+ * @soc: pointer to DP SoC
+ * @info: station information
+ * @enable: 0: disconnect, 1: connect
+ *
+ * Called during STA connect/disconnect, this function will share station
+ * information to the offload engine.
+ *
+ * Return: int
+ */
+int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable);
+#else
+static inline void dp_dal_soc_detach(struct dp_soc *soc)
+{
+}
+
+static inline void dp_dal_soc_deinit(struct dp_soc *soc)
+{
+}
+
+static inline QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void dp_dal_bus_stop(struct dp_soc *soc)
+{
+}
+
+static inline void dp_dal_bus_exit(struct dp_soc *soc)
+{
+}
+
+static inline int dp_dal_bus_init(struct dp_soc *soc)
+{
+	return 0;
+}
+
+static inline int dp_dal_bus_start(struct dp_soc *soc)
+{
+	return 0;
+}
+
+static inline int dp_dal_bus_request_irq(struct dp_soc *soc)
+{
+	return 0;
+}
+
+static inline int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt)
+{
+	return 0;
+}
+
+static inline int
+dp_dal_interface_add(struct dp_soc *soc, uint16_t vdev_id)
+{
+	return 0;
+}
+
+static inline int dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
+{
+	return 0;
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_H */

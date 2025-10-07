@@ -4033,6 +4033,9 @@ struct dp_soc {
 #ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
 	struct dp_mon_dest_ring_history *mon_dest_ring_history[MAX_NUM_LMAC_HW];
 #endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+	struct dp_dal_ctx *dal_ctx;
+#endif
 };
 
 /*
