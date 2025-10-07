@@ -69,6 +69,10 @@ struct ml_rv_info;
  * @protection_mode: rts cts protection mode
  * @beacon_interval: beacon interval
  * @ldpc: low density parity check value
+ * @cap_tx_nss: Self cap Tx NSS of the current BSS session
+ * @cap_rx_nss: Self cap Rx NSS of the current BSS session
+ * @op_tx_nss: Self cp Tx NSS of the current BSS session
+ * @op_rx_nss: Self cp Rx NSS of the current BSS session
  * @nss: number of spatial stream
  * @nss_2g: 2.4GHz number of spatial stream
  * @nss_5g: 5GHz number of spatial stream
@@ -80,6 +84,10 @@ struct vdev_mlme_proto_generic {
 	uint32_t protection_mode;
 	uint16_t beacon_interval;
 	uint8_t ldpc;
+	uint8_t cap_tx_nss;
+	uint8_t cap_rx_nss;
+	uint8_t op_tx_nss;
+	uint8_t op_rx_nss;
 	uint8_t nss;
 	uint8_t nss_2g;
 	uint8_t nss_5g;
@@ -944,6 +952,48 @@ static inline QDF_STATUS wlan_vdev_mlme_get_ssid(
 		*ssid_len = 0;
 		return QDF_STATUS_E_FAILURE;
 	}
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS wlan_vdev_mlme_set_bss_nss_params(struct wlan_objmgr_vdev *vdev,
+					     uint8_t cap_tx_nss,
+					     uint8_t cap_rx_nss,
+					     uint8_t op_tx_nss,
+					     uint8_t op_rx_nss)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	vdev_mlme->proto.generic.cap_tx_nss = cap_tx_nss;
+	vdev_mlme->proto.generic.cap_rx_nss = cap_rx_nss;
+	vdev_mlme->proto.generic.op_tx_nss = op_tx_nss;
+	vdev_mlme->proto.generic.op_rx_nss = op_rx_nss;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS wlan_vdev_mlme_get_bss_nss_params(struct wlan_objmgr_vdev *vdev,
+					     uint8_t *cap_tx_nss,
+					     uint8_t *cap_rx_nss,
+					     uint8_t *op_tx_nss,
+					     uint8_t *op_rx_nss)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	*cap_tx_nss = vdev_mlme->proto.generic.cap_tx_nss;
+	*cap_rx_nss = vdev_mlme->proto.generic.cap_rx_nss;
+	*op_tx_nss = vdev_mlme->proto.generic.op_tx_nss;
+	*op_rx_nss = vdev_mlme->proto.generic.op_rx_nss;
+
 	return QDF_STATUS_SUCCESS;
 }
 
