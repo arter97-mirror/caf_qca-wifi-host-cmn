@@ -777,6 +777,7 @@ struct dp_tx_ext_desc_pool_s {
  * @length:
  * @magic:
  * @timestamp_tick:
+ * @deferred_timestamp: save the time delta of tx desc
  * @flags: Flags to track the state of descriptor and special frame handling
  * @id: Descriptor ID
  * @dma_addr:
@@ -810,6 +811,7 @@ struct dp_tx_desc_s {
 #ifdef DP_TX_TRACKING
 	uint32_t magic;
 	uint64_t timestamp_tick;
+	uint16_t deferred_timestamp;
 #endif
 	uint16_t peer_id;
 	uint8_t vdev_id;
@@ -848,6 +850,7 @@ struct dp_tx_desc_s {
 #ifdef DP_TX_TRACKING
 	uint32_t magic;
 	uint64_t timestamp_tick;
+	uint16_t deferred_timestamp;
 #endif
 	uint32_t flags;
 	uint32_t id;

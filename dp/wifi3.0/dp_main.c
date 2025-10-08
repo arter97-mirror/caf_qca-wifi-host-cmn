@@ -14377,6 +14377,8 @@ static struct cdp_sawf_ops dp_ops_sawf = {
 #ifdef DP_TX_TRACKING
 
 #define DP_TX_COMP_MAX_LATENCY_MS 60000
+#define DP_TX_COMP_MAX_LATENCY_2ND_STAGE 60
+#define DP_TX_COMP_MAX_DEFERRED_TIMESTAMP_SEC 255
 
 static bool dp_check_pending_tx(struct dp_soc *soc)
 {
@@ -14424,34 +14426,46 @@ static bool dp_check_pending_tx(struct dp_soc *soc)
  */
 static bool dp_tx_comp_delay_check(struct dp_tx_desc_s *tx_desc)
 {
-	uint64_t time_latency, timestamp_tick = tx_desc->timestamp_tick;
-	qdf_ktime_t current_time = qdf_ktime_real_get();
-	qdf_ktime_t timestamp = tx_desc->timestamp;
+	uint64_t time_latency;
+	qdf_ktime_t current_time;
+	bool use_ktime = dp_tx_pkt_tracepoints_enabled();
+	uint16_t time_latency_sec;
 
-	if (dp_tx_pkt_tracepoints_enabled()) {
-		if (!timestamp)
+	if (use_ktime) {
+		if (!tx_desc->timestamp)
 			return false;
 
+		current_time = qdf_ktime_real_get();
 		time_latency = qdf_ktime_to_ms(current_time) -
-				qdf_ktime_to_ms(timestamp);
-		if (time_latency >= DP_TX_COMP_MAX_LATENCY_MS) {
-			dp_err_rl("enqueued: %llu ms, current : %llu ms",
-				  timestamp, current_time);
-			return true;
-		}
+			qdf_ktime_to_ms(tx_desc->timestamp);
 	} else {
-		if (!timestamp_tick)
+		if (!tx_desc->timestamp_tick)
 			return false;
 
 		current_time = qdf_system_ticks();
 		time_latency = qdf_system_ticks_to_msecs(current_time -
-							 timestamp_tick);
-		if (time_latency >= DP_TX_COMP_MAX_LATENCY_MS) {
-			dp_err_rl("enqueued: %u ms, current : %u ms",
-				  qdf_system_ticks_to_msecs(timestamp_tick),
-				  qdf_system_ticks_to_msecs(current_time));
-			return true;
+							 tx_desc->timestamp_tick);
+	}
+	time_latency_sec = time_latency / 1000;
+	if (time_latency >= DP_TX_COMP_MAX_LATENCY_MS &&
+	    !tx_desc->deferred_timestamp) {
+		if (!hal_get_reg_write_pending_work(tx_desc->pdev->soc->hal_soc)) {
+			dp_debug("Desc %d: delayed work over, timeout set",
+				 tx_desc->id);
+			tx_desc->deferred_timestamp = time_latency_sec +
+				DP_TX_COMP_MAX_LATENCY_2ND_STAGE;
+			return false;
 		}
+	} else if (time_latency_sec >= tx_desc->deferred_timestamp) {
+		if (use_ktime) {
+			dp_err_rl("enqueued: %llu ms, current : %llu ms",
+				  tx_desc->timestamp, current_time);
+		} else {
+			dp_err_rl("enqueued: %u ms, current : %u ms",
+				  qdf_system_ticks_to_msecs(tx_desc->timestamp_tick),
+				  qdf_system_ticks_to_msecs(current_time));
+		}
+		return true;
 	}
 
 	return false;
