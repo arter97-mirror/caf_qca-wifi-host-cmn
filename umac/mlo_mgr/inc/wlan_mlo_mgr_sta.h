@@ -1057,6 +1057,27 @@ QDF_STATUS
 mlo_get_link_state_context(struct wlan_objmgr_psoc *psoc,
 			   get_ml_link_state_cb *resp_cb,
 			   void **context, uint8_t vdev_id);
+
+/**
+ * mlo_get_standby_mlo_link_chan_in_freq_range() - Get channel info from
+ * standby MLO link
+ * @psoc: Pointer to PSOC object
+ * @device_mode: Device mode to match with mlo vdev
+ * @start_freq: Start frequency of range
+ * @end_freq: End frequency of range
+ *
+ * This function checks for standby MLO links (links without vdev_id) and
+ * returns channel information if a standby link is found in the given
+ * frequency range. This is used for FCC constraint handling to preserve
+ * existing standby link connections.
+ *
+ * Return: pointer to link_chan or return NULL
+ */
+struct wlan_channel *
+mlo_get_standby_mlo_link_chan_in_freq_range(struct wlan_objmgr_psoc *psoc,
+					    enum QDF_OPMODE device_mode,
+					    qdf_freq_t start_freq,
+					    qdf_freq_t end_freq);
 #else
 static inline
 void mlo_clear_bridge_sta_ctx(struct wlan_objmgr_vdev *vdev)
@@ -1316,6 +1337,15 @@ void wlan_mlo_send_vdev_pause(struct wlan_objmgr_psoc *psoc,
 			      uint16_t vdev_pause_dur,
 			      enum mlo_vdev_pause_type type)
 {}
+
+static inline struct wlan_channel *
+mlo_get_standby_mlo_link_chan_in_freq_range(struct wlan_objmgr_psoc *psoc,
+					    enum QDF_OPMODE device_mode,
+					    qdf_freq_t start_freq,
+					    qdf_freq_t end_freq)
+{
+	return NULL;
+}
 #endif
 
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
