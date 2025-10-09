@@ -3575,4 +3575,80 @@ mlo_mgr_flush_connected_profile_scan_entry(struct wlan_objmgr_vdev *vdev)
 
 	qdf_mem_free(filter);
 }
+
+struct wlan_channel *
+mlo_get_standby_mlo_link_chan_in_freq_range(struct wlan_objmgr_psoc *psoc,
+					    enum QDF_OPMODE device_mode,
+					    qdf_freq_t start_freq,
+					    qdf_freq_t end_freq)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_link_info *ml_link_info;
+	uint8_t vdev_id, link_iter;
+
+	/* Iterate through vdevs to find MLO adapters */
+	for (vdev_id = 0; vdev_id < WLAN_UMAC_PSOC_MAX_VDEVS; vdev_id++) {
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+							    WLAN_LEGACY_MAC_ID);
+		if (!vdev)
+			continue;
+
+		/* Check if this is an MLO vdev with matching device mode */
+		if (!wlan_vdev_mlme_is_mlo_vdev(vdev) ||
+		    vdev->vdev_mlme.vdev_opmode != device_mode) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_MAC_ID);
+			continue;
+		}
+
+		/* Only consider standby links from connected STA vdevs */
+		if (device_mode == QDF_STA_MODE &&
+		    !wlan_cm_is_vdev_connected(vdev)) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_MAC_ID);
+			continue;
+		}
+
+		/* Get MLO dev context */
+		mlo_dev_ctx = vdev->mlo_dev_ctx;
+		if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx) {
+			wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_MAC_ID);
+			continue;
+		}
+
+		/* Check all links for standby links */
+		ml_link_info = &mlo_dev_ctx->link_ctx->links_info[0];
+		for (link_iter = 0; link_iter < WLAN_MAX_ML_BSS_LINKS;
+		     link_iter++) {
+			/* Skip unconfigured links */
+			if (qdf_is_macaddr_zero(&ml_link_info->ap_link_addr)) {
+				ml_link_info++;
+				continue;
+			}
+
+			/* Check if this is a STANDBY link (no vdev_id) */
+			if (ml_link_info->vdev_id != WLAN_INVALID_VDEV_ID) {
+				ml_link_info++;
+				continue;
+			}
+
+			/* Check if standby link is in frequency range */
+			if (ml_link_info->link_chan_info &&
+			    ml_link_info->link_chan_info->ch_freq >=
+			    start_freq &&
+			    ml_link_info->link_chan_info->ch_freq <=
+			    end_freq) {
+				wlan_objmgr_vdev_release_ref(vdev,
+							     WLAN_LEGACY_MAC_ID);
+				return ml_link_info->link_chan_info;
+			}
+
+			ml_link_info++;
+		}
+
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_MAC_ID);
+	}
+
+	return NULL;
+}
+
 #endif
