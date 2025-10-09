@@ -11013,53 +11013,6 @@ release_peer_ref:
 #endif
 
 /**
- * dp_txrx_get_peer_stats_param() - will return specified cdp_peer_stats
- * @soc: soc handle
- * @vdev_id: vdev_id of vdev object
- * @peer_mac: mac address of the peer
- * @type: enum of required stats
- * @buf: buffer to hold the value
- *
- * Return: status success/failure
- */
-static QDF_STATUS
-dp_txrx_get_peer_stats_param(struct cdp_soc_t *soc, uint8_t vdev_id,
-			     uint8_t *peer_mac, enum cdp_peer_stats_type type,
-			     cdp_peer_stats_param_t *buf)
-{
-	QDF_STATUS ret;
-	struct dp_peer *peer = NULL;
-	struct cdp_peer_info peer_info = { 0 };
-
-	DP_PEER_INFO_PARAMS_INIT(&peer_info, vdev_id, peer_mac, false,
-				 CDP_WILD_PEER_TYPE);
-
-	peer = dp_peer_hash_find_wrapper((struct dp_soc *)soc, &peer_info,
-				         DP_MOD_ID_CDP);
-
-	if (!peer) {
-		dp_peer_err("%pK: Invalid Peer for Mac " QDF_MAC_ADDR_FMT,
-			    soc, QDF_MAC_ADDR_REF(peer_mac));
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (type >= cdp_peer_per_pkt_stats_min &&
-	    type < cdp_peer_per_pkt_stats_max) {
-		ret = dp_txrx_get_peer_per_pkt_stats_param(peer, type, buf);
-	} else if (type >= cdp_peer_extd_stats_min &&
-		   type < cdp_peer_extd_stats_max) {
-		ret = dp_txrx_get_peer_extd_stats_param(peer, type, buf);
-	} else {
-		dp_err("%pK: Invalid stat type requested", soc);
-		ret = QDF_STATUS_E_FAILURE;
-	}
-
-	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-
-	return ret;
-}
-
-/**
  * dp_txrx_reset_peer_stats() - reset cdp_peer_stats for particular peer
  * @soc_hdl: soc handle
  * @vdev_id: id of vdev handle
@@ -14274,7 +14227,6 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 #endif
 	.txrx_get_peer_stats_based_on_peer_type =
 			dp_txrx_get_peer_stats_based_on_peer_type,
-	.txrx_get_peer_stats_param = dp_txrx_get_peer_stats_param,
 	.txrx_get_per_link_stats = dp_txrx_get_per_link_peer_stats,
 	.txrx_reset_peer_stats = dp_txrx_reset_peer_stats,
 	.txrx_get_pdev_stats = dp_txrx_get_pdev_stats,

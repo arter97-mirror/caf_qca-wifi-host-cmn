@@ -1941,30 +1941,6 @@ void dp_txrx_clear_tso_stats(struct dp_soc *soc)
 }
 #endif /* FEATURE_TSO_STATS */
 
-/**
- * dp_txrx_get_peer_per_pkt_stats_param() - Get peer per pkt stats param
- * @peer: DP peer handle
- * @type: Requested stats type
- * @buf: Buffer to hold the value
- *
- * Return: status success/failure
- */
-QDF_STATUS dp_txrx_get_peer_per_pkt_stats_param(struct dp_peer *peer,
-						enum cdp_peer_stats_type type,
-						cdp_peer_stats_param_t *buf);
-
-/**
- * dp_txrx_get_peer_extd_stats_param() - Get peer extd stats param
- * @peer: DP peer handle
- * @type: Requested stats type
- * @buf: Buffer to hold the value
- *
- * Return: status success/failure
- */
-QDF_STATUS dp_txrx_get_peer_extd_stats_param(struct dp_peer *peer,
-					     enum cdp_peer_stats_type type,
-					     cdp_peer_stats_param_t *buf);
-
 #define DP_HTT_T2H_HP_PIPE 5
 /**
  * dp_update_pdev_stats(): Update the pdev stats
