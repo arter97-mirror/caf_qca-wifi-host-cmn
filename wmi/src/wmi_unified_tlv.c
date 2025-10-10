@@ -20876,13 +20876,16 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	trig->present = true;
 
-	if (param_buf->roam_scan_info)
+	if (param_buf->roam_scan_info &&
+	    idx < param_buf->num_roam_scan_info)
 		scan_info = &param_buf->roam_scan_info[idx];
 
-	if (param_buf->roam_trigger_reason_cmm)
+	if (param_buf->roam_trigger_reason_cmm &&
+	    idx < param_buf->num_roam_trigger_reason_cmm)
 		cmn_data = &param_buf->roam_trigger_reason_cmm[idx];
 
-	if (param_buf->roam_trigger_reason)
+	if (param_buf->roam_trigger_reason &&
+	    idx < param_buf->num_roam_trigger_reason)
 		src_data = &param_buf->roam_trigger_reason[idx];
 
 	if (cmn_data) {
