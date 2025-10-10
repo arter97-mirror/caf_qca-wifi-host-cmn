@@ -14518,6 +14518,20 @@ extract_mlo_vdev_status_info(WMI_UPDATE_STATS_EVENTID_param_tlvs *param_buf,
 #endif
 
 /**
+ * wmi_is_vdev_ch_stats_present() - get if channel stats info present or not
+ * @flag: vdev link status info
+ *
+ * Return: True if present, else False
+ */
+static bool wmi_is_vdev_ch_stats_present(uint32_t flag)
+{
+	if (flag & WMI_VDEV_STATS_FLAGS_CHANNEL_STATS_PRESENT_MASK)
+		return true;
+
+	return false;
+}
+
+/**
  * extract_vdev_prb_fils_stats_tlv() - extract vdev probe and fils
  * stats from event
  * @wmi_handle: wmi handle
@@ -14555,7 +14569,18 @@ extract_vdev_prb_fils_stats_tlv(wmi_unified_t wmi_handle,
 			 ev->vdev_id, ev->fd_succ_cnt, ev->fd_fail_cnt,
 			 ev->unsolicited_prb_succ_cnt,
 			 ev->unsolicited_prb_fail_cnt);
-		wmi_debug("vdev txpwr: %d", ev->vdev_tx_power);
+		wmi_debug("vdev txpwr: %d flags: 0x%x", ev->vdev_tx_power,
+			  ev->flags);
+
+		if (wmi_is_vdev_ch_stats_present(ev->flags)) {
+			vdev_stats->rx_time = ev->rx_time;
+			vdev_stats->tx_time = ev->tx_time;
+			vdev_stats->cca_time = ev->cca_time;
+			vdev_stats->on_time = ev->on_time;
+			wmi_debug("time rx: %u, tx: %u, cca: %u, on: %u",
+				  ev->rx_time, ev->tx_time, ev->cca_time,
+				  ev->on_time);
+		}
 	}
 
 	return status;

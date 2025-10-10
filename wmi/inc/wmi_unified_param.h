@@ -5092,6 +5092,10 @@ typedef struct {
  * @unsolicited_prb_fail_cnt: Failed unsolictied probe response frames cnt
  * @is_mlo_vdev_active: is the mlo vdev currently active
  * @vdev_tx_power: Tx power for vdev
+ * @rx_time: msecs the radio is in active receive
+ * @tx_time: msecs the radio is is transmitting
+ * @on_time: msecs the radio is awake
+ * @cca_time:msecs the CCA register is busy
  */
 struct wmi_host_vdev_prb_fils_stats {
 	uint32_t vdev_id;
@@ -5101,6 +5105,10 @@ struct wmi_host_vdev_prb_fils_stats {
 	uint32_t unsolicited_prb_fail_cnt;
 	bool is_mlo_vdev_active;
 	uint32_t vdev_tx_power;
+	uint32_t rx_time;
+	uint32_t tx_time;
+	uint32_t on_time;
+	uint32_t cca_time;
 };
 
 /**
