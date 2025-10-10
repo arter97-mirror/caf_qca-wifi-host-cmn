@@ -611,11 +611,7 @@ static inline int hif_get_num_active_oom_work(struct hif_softc *scn)
  * Max waiting time during Runtime PM suspend to finish all
  * the tasks. This is in the multiple of 10ms.
  */
-#ifdef PANIC_ON_BUG
 #define HIF_TASK_DRAIN_WAIT_CNT 200
-#else
-#define HIF_TASK_DRAIN_WAIT_CNT 25
-#endif
 
 /**
  * hif_try_complete_tasks() - Try to complete all the pending tasks
