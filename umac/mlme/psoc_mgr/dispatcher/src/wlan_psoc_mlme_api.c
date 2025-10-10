@@ -175,6 +175,25 @@ void wlan_psoc_set_phy_config(struct wlan_objmgr_psoc *psoc,
 	qdf_mem_copy(config, phy_config, sizeof(*config));
 }
 
+void wlan_psoc_set_phy_config_nss(struct wlan_objmgr_psoc *psoc,
+				  uint8_t tx_nss_2g, uint8_t tx_nss_5g)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	struct psoc_phy_config *config;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return;
+
+	config = &mlme_psoc_obj->psoc_cfg.phy_config;
+
+	if (config->vdev_nss_24g != tx_nss_2g)
+		config->vdev_nss_24g = tx_nss_2g;
+
+	if (config->vdev_nss_5g != tx_nss_5g)
+		config->vdev_nss_5g = tx_nss_5g;
+}
+
 static void mlme_init_cfg(struct wlan_objmgr_psoc *psoc)
 {
 	struct psoc_mlme_obj *mlme_psoc_obj;

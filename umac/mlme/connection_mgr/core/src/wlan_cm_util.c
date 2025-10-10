@@ -31,6 +31,8 @@
 #ifdef WLAN_FEATURE_LL_LT_SAP
 #include "wlan_ll_sap_api.h"
 #endif
+#include <wlan_psoc_mlme_api.h>
+#include <wlan_mlme_main.h>
 
 static uint32_t cm_get_prefix_for_cm_id(enum wlan_cm_source source) {
 	switch (source) {
@@ -1992,6 +1994,24 @@ cm_get_pcl_chan_weigtage_for_sta(struct wlan_objmgr_pdev *pdev,
 	pcl_lst->num_of_pcl_channels = num_entries;
 }
 
+static void cm_update_scoring_nss_for_vdev(struct cnx_mgr *cm_ctx)
+{
+	QDF_STATUS status;
+	uint8_t tx_nss_2g, rx_nss_2g, tx_nss_5g, rx_nss_5g;
+
+	status = mlme_get_vdev_all_bands_nss_from_ini(cm_ctx->vdev,
+						      &tx_nss_2g, &rx_nss_2g,
+						      &tx_nss_5g, &rx_nss_5g);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_debug("Failed to get NSS from INI, using default max NSS");
+		tx_nss_2g = WLAN_MAX_VDEV_NSS;
+		tx_nss_5g = WLAN_MAX_VDEV_NSS;
+	}
+
+	wlan_psoc_set_phy_config_nss(wlan_vdev_get_psoc(cm_ctx->vdev),
+				     tx_nss_2g, tx_nss_5g);
+}
+
 void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 			 struct scan_filter *filter, qdf_list_t *list,
 			 bool allow_scan)
@@ -2006,6 +2026,9 @@ void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 			pcl_lst = NULL;
 		}
 	}
+
+	cm_update_scoring_nss_for_vdev(cm_ctx);
+
 	wlan_cm_calculate_bss_score(pdev, pcl_lst, list, &filter->bssid_hint,
 				    (struct qdf_mac_addr *)
 				    wlan_vdev_mlme_get_macaddr(cm_ctx->vdev),

@@ -1318,6 +1318,27 @@ cm_calculate_etp(struct wlan_objmgr_psoc *psoc,
 	return estimated_throughput_mbps;
 }
 
+static void cm_adjust_nss_for_ht_only_mode(struct wlan_objmgr_psoc *psoc,
+					   bool is_ht_intersect,
+					   bool is_vht_intersect,
+					   bool is_he_intersect,
+					   uint8_t *vdev_2g_nss,
+					   uint8_t *vdev_5g_nss)
+{
+	QDF_STATUS status;
+	uint8_t tx_nss, rx_nss;
+
+	if (!is_ht_intersect || is_vht_intersect || is_he_intersect)
+		return;
+
+	status = policy_mgr_fetch_min_nss_across_hw_modes(psoc,
+							  &tx_nss, &rx_nss);
+	if (QDF_IS_STATUS_SUCCESS(status)) {
+		*vdev_2g_nss = QDF_MIN(*vdev_2g_nss, tx_nss);
+		*vdev_5g_nss = QDF_MIN(*vdev_5g_nss, tx_nss);
+	}
+}
+
 static uint32_t
 cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 		       struct scan_cache_entry *entry,
@@ -1325,7 +1346,7 @@ cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 		       enum MLO_TYPE bss_mlo_type, uint8_t ml_flag)
 {
 	enum phy_ch_width ch_width;
-	uint32_t nss;
+	uint8_t nss, vdev_2g_nss, vdev_5g_nss;
 	bool is_he_intersect = false;
 	bool is_vht_intersect = false;
 	bool is_ht_intersect = false;
@@ -1344,9 +1365,15 @@ cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 		is_vht_intersect = true;
 	if (phy_config->ht_cap && entry->ie_list.htcap)
 		is_ht_intersect = true;
+
+	vdev_2g_nss = phy_config->vdev_nss_24g;
+	vdev_5g_nss = phy_config->vdev_nss_5g;
+	cm_adjust_nss_for_ht_only_mode(psoc, is_ht_intersect,
+				       is_vht_intersect, is_he_intersect,
+				       &vdev_2g_nss, &vdev_5g_nss);
+
 	nss = cm_get_sta_nss(psoc, entry->channel.chan_freq,
-			     phy_config->vdev_nss_24g,
-			     phy_config->vdev_nss_5g);
+			     vdev_2g_nss, vdev_5g_nss);
 	nss = QDF_MIN(nss, entry->nss);
 	ch_width = cm_calculate_bandwidth(entry, phy_config);
 
@@ -2646,13 +2673,15 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	struct wlan_ie_hecaps *he_cap;
 	struct scoring_cfg *score_config;
 	struct weight_cfg *weight_config;
-	uint32_t sta_nss;
+	uint8_t sta_nss, vdev_2g_nss, vdev_5g_nss;
 	struct psoc_mlme_obj *mlme_psoc_obj;
 	struct psoc_phy_config *phy_config;
 	uint32_t eht_score;
 	enum MLO_TYPE bss_mlo_type;
 	int ml_score = 0;
 	bool rsno = false;
+	bool is_he_intersect = false, is_vht_intersect = false;
+	bool is_ht_intersect = false;
 
 	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
 	if (!mlme_psoc_obj)
@@ -2725,6 +2754,15 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 		score += ml_score;
 	}
 
+	if (phy_config->he_cap && entry->ie_list.hecap)
+		is_he_intersect = true;
+	if ((phy_config->vht_cap || phy_config->vht_24G_cap) &&
+	    (entry->ie_list.vhtcap ||
+	     WLAN_REG_IS_6GHZ_CHAN_FREQ(entry->channel.chan_freq)))
+		is_vht_intersect = true;
+	if (phy_config->ht_cap && entry->ie_list.htcap)
+		is_ht_intersect = true;
+
 	/*
 	 * Check if the given entry matches with the BSSID Hint after
 	 * calculating ML Scores as the cm_calculate_ml_scores() also sorts
@@ -2745,29 +2783,24 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	 * these weightage to the same by default to match
 	 * with 2.4/5 GHZ APs where HT, VHT is supported
 	 */
-	if (phy_config->ht_cap && (entry->ie_list.htcap ||
-	    WLAN_REG_IS_6GHZ_CHAN_FREQ(entry->channel.chan_freq)))
-		ht_score = prorated_pcnt *
-				weight_config->ht_caps_weightage;
+	if (is_ht_intersect ||
+	    WLAN_REG_IS_6GHZ_CHAN_FREQ(entry->channel.chan_freq))
+		ht_score = prorated_pcnt * weight_config->ht_caps_weightage;
 	score += ht_score;
 
-	if (WLAN_REG_IS_24GHZ_CH_FREQ(entry->channel.chan_freq)) {
-		if (phy_config->vht_24G_cap)
-			is_vht = true;
-	} else if (phy_config->vht_cap) {
+	if (WLAN_REG_IS_24GHZ_CH_FREQ(entry->channel.chan_freq) &&
+	    phy_config->vht_24G_cap)
 		is_vht = true;
-	}
+	else if (phy_config->vht_cap)
+		is_vht = true;
 
 	/* Add VHT score to 6 GHZ AP to match with 2.4/5 GHZ APs */
-	if (is_vht && (entry->ie_list.vhtcap ||
-	    WLAN_REG_IS_6GHZ_CHAN_FREQ(entry->channel.chan_freq)))
-		vht_score = prorated_pcnt *
-				 weight_config->vht_caps_weightage;
+	if (is_vht && is_vht_intersect)
+		vht_score = prorated_pcnt * weight_config->vht_caps_weightage;
 	score += vht_score;
 
-	if (phy_config->he_cap && entry->ie_list.hecap)
-		he_score = prorated_pcnt *
-			   weight_config->he_caps_weightage;
+	if (is_he_intersect)
+		he_score = prorated_pcnt * weight_config->he_caps_weightage;
 	score += he_score;
 
 	good_rssi_threshold =
@@ -2823,9 +2856,14 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 							&sae_pk_cap_present);
 	score += sae_pk_score;
 
+	vdev_2g_nss = phy_config->vdev_nss_24g;
+	vdev_5g_nss = phy_config->vdev_nss_5g;
+	cm_adjust_nss_for_ht_only_mode(psoc, is_ht_intersect,
+				       is_vht_intersect, is_he_intersect,
+				       &vdev_2g_nss, &vdev_5g_nss);
+
 	sta_nss = cm_get_sta_nss(psoc, entry->channel.chan_freq,
-				 phy_config->vdev_nss_24g,
-				 phy_config->vdev_nss_5g);
+				 vdev_2g_nss, vdev_5g_nss);
 
 	/*
 	 * If station support nss as 2*2 but AP support NSS as 1*1,

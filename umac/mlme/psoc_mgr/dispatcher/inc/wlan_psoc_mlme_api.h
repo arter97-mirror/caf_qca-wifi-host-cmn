@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -122,6 +122,21 @@ void wlan_psoc_mlme_set_ext_hdl(struct psoc_mlme_obj *psoc_mlme,
  */
 void wlan_psoc_set_phy_config(struct wlan_objmgr_psoc *psoc,
 			      struct psoc_phy_config *phy_config);
+
+/**
+ * wlan_psoc_set_phy_config_nss() - Set the NSS configuration for
+ * 2G and 5G bands
+ * @psoc: Pointer to the PSOC object
+ * @tx_nss_2g: Transmit NSS value for 2.4GHz band
+ * @tx_nss_5g: Transmit NSS value for 5/6GHz band
+ *
+ * This function updates the NSS (Number of Spatial Streams) configuration
+ * for 2.4GHz and 5/6GHz bands in the PSOC's physical configuration.
+ *
+ * Return: None
+ */
+void wlan_psoc_set_phy_config_nss(struct wlan_objmgr_psoc *psoc,
+				  uint8_t tx_nss_2g, uint8_t tx_nss_5g);
 
 /**
  * mlme_psoc_open() - MLME component Open
