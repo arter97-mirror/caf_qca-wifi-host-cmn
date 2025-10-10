@@ -2046,43 +2046,8 @@ wmi_unified_set_apf_mode_bitmap_cmd(wmi_unified_t wmi, uint8_t vdev_id,
 				    uint32_t apf_mode);
 #endif /* FEATURE_WLAN_APF */
 
-/**
- * wmi_send_reset_peer_mumimo_tx_count_cmd() - send reset peer mumimo
- *                                             tx count to fw
- * @wmi_handle: wmi handle
- * @value: reset tx count value
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_send_reset_peer_mumimo_tx_count_cmd(wmi_unified_t wmi_handle,
-					uint32_t value);
 
-/**
- * wmi_unified_send_btcoex_wlan_priority_cmd() - send btcoex priority commands
- * @wmi_handle: wmi handle
- * @param: wmi btcoex cfg params
- *
- * Send WMI_BTCOEX_CFG_CMDID parameters to fw.
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS
-wmi_unified_send_btcoex_wlan_priority_cmd(wmi_unified_t wmi_handle,
-					  struct btcoex_cfg_params *param);
 
-/**
- *  wmi_unified_send_btcoex_duty_cycle_cmd() - send btcoex duty cycle commands
- * @wmi_handle: wmi handle
- * @param: wmi btcoex cfg params
- *
- * Send WMI_BTCOEX_CFG_CMDID parameters to fw.
- *
- * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
- */
-QDF_STATUS
-wmi_unified_send_btcoex_duty_cycle_cmd(wmi_unified_t wmi_handle,
-				       struct btcoex_cfg_params *param);
 /**
  * wmi_unified_send_coex_config_cmd() - send coex ver cfg command
  * @wmi_handle: wmi handle
@@ -2709,27 +2674,7 @@ QDF_STATUS wmi_check_and_update_fw_version(wmi_unified_t wmi_handle, void *ev);
 uint8_t *wmi_extract_dbglog_data_len(wmi_unified_t wmi_handle,
 				     void *evt_b, uint32_t *len);
 
-/**
- * wmi_unified_extract_pn() - extract pn event data
- * @wmi_hdl: wmi handle
- * @evt_buf: pointer to event buffer
- * @param: pointer to get pn event param
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_extract_pn(wmi_unified_t wmi_hdl, void *evt_buf,
-			  struct wmi_host_get_pn_event *param);
 
-/**
- * wmi_unified_extract_rxpn() - extract Rx PN event data
- * @wmi_hdl: wmi handle
- * @evt_buf: pointer to event buffer
- * @param: pointer to get Rx PN event param
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_unified_extract_rxpn(wmi_unified_t wmi_hdl, void *evt_buf,
-				    struct wmi_host_get_rxpn_event *param);
 
 /* Extract APIs */
 
@@ -2774,17 +2719,6 @@ QDF_STATUS
 wmi_extract_mgmt_rx_params(wmi_unified_t wmi_handle, void *evt_buf,
 			   struct mgmt_rx_event_params *hdr, uint8_t **bufp);
 
-/**
- * wmi_extract_mgmt_rx_ext_params() - extract extended rx params from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @params: Pointer to hold ext params
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_extract_mgmt_rx_ext_params(wmi_unified_t wmi_handle, void *evt_buf,
-			       struct mgmt_rx_event_ext_params *params);
 
 #ifdef WLAN_MGMT_RX_REO_SUPPORT
 /**
@@ -2827,29 +2761,7 @@ QDF_STATUS wmi_unified_mgmt_rx_reo_filter_config_cmd(
 					struct mgmt_rx_reo_filter *filter);
 #endif
 
-/**
- * wmi_extract_frame_pn_params() - extract PN params from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @pn_params: Pointer to Frame PN params
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_extract_frame_pn_params(wmi_unified_t wmi_handle, void *evt_buf,
-			    struct frame_pn_params *pn_params);
 
-/**
- * wmi_extract_is_conn_ap_frame() - extract is_conn_ap_frame param from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @is_conn_ap: is_conn_ap param
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_extract_is_conn_ap_frame(wmi_unified_t wmi_handle, void *evt_buf,
-			     struct frm_conn_ap *is_conn_ap);
 
 /**
  * wmi_extract_vdev_roam_param() - extract vdev roam param from event
@@ -2901,17 +2813,6 @@ wmi_extract_nlo_complete_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
 				  struct scan_event *param);
 #endif
 
-/**
- * wmi_extract_mu_ev_param() - extract mu param from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @param: Pointer to hold mu report
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_extract_mu_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
-			wmi_host_mu_report_event *param);
 
 /**
  * wmi_extract_rtt_hdr() - extract rtt header from event
@@ -3863,19 +3764,6 @@ wmi_extract_smartlog_ev(wmi_unified_t wmi_handle, void *evt_buf,
 void wmi_process_fw_event_worker_thread_ctx(struct wmi_unified *wmi_handle,
 					    void *evt_buf);
 
-/**
- * wmi_extract_ctl_failsafe_check_ev_param() - extract ctl failsafe
- * status from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @param: Pointer to hold ctl status
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_extract_ctl_failsafe_check_ev_param(
-		wmi_unified_t wmi_handle,
-		void *evt_buf,
-		struct wmi_host_pdev_ctl_failsafe_event *param);
 
 #ifdef OBSS_PD
 /**
@@ -4764,6 +4652,128 @@ wmi_extract_pdev_power_boost_ev_params(wmi_unified_t wmi_handle, uint8_t *buf,
 #endif
 
 #ifdef WLAN_MLO_MULTI_CHIP
+/**
+ * wmi_extract_mu_ev_param() - extract mu param from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @param: Pointer to hold mu report
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_mu_ev_param(wmi_unified_t wmi_handle, void *evt_buf,
+			struct wmi_host_mu_report_event *param);
+
+/**
+ * wmi_extract_is_conn_ap_frame() - extract is_conn_ap_frame param from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @is_conn_ap: is_conn_ap param
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_is_conn_ap_frame(wmi_unified_t wmi_handle, void *evt_buf,
+			     struct frm_conn_ap *is_conn_ap);
+
+/**
+ * wmi_extract_frame_pn_params() - extract PN params from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @pn_params: Pointer to Frame PN params
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_frame_pn_params(wmi_unified_t wmi_handle, void *evt_buf,
+			    struct frame_pn_params *pn_params);
+
+/**
+ * wmi_extract_mgmt_rx_ext_params() - extract extended rx params from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @params: Pointer to hold ext params
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_mgmt_rx_ext_params(wmi_unified_t wmi_handle, void *evt_buf,
+			       struct mgmt_rx_event_ext_params *params);
+
+/**
+ * wmi_unified_extract_rxpn() - extract Rx PN event data
+ * @wmi_hdl: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @param: pointer to get Rx PN event param
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_extract_rxpn(wmi_unified_t wmi_hdl, void *evt_buf,
+				    struct wmi_host_get_rxpn_event *param);
+
+/**
+ * wmi_unified_extract_pn() - extract pn event data
+ * @wmi_hdl: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @param: pointer to get pn event param
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_extract_pn(wmi_unified_t wmi_hdl, void *evt_buf,
+				  struct wmi_host_get_pn_event *param);
+
+/**
+ * wmi_extract_ctl_failsafe_check_ev_param() - extract ctl failsafe
+ * status from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @param: Pointer to hold ctl status
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_extract_ctl_failsafe_check_ev_param(
+		wmi_unified_t wmi_handle,
+		void *evt_buf,
+		struct wmi_host_pdev_ctl_failsafe_event *param);
+
+/**
+ * wmi_unified_send_btcoex_duty_cycle_cmd() - send btcoex duty cycle commands
+ * @wmi_handle: wmi handle
+ * @param: wmi btcoex cfg params
+ *
+ * Send WMI_BTCOEX_CFG_CMDID parameters to fw.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_send_btcoex_duty_cycle_cmd(wmi_unified_t wmi_handle,
+				       struct btcoex_cfg_params *param);
+
+/**
+ * wmi_unified_send_btcoex_wlan_priority_cmd() - send btcoex priority commands
+ * @wmi_handle: wmi handle
+ * @param: wmi btcoex cfg params
+ *
+ * Send WMI_BTCOEX_CFG_CMDID parameters to fw.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_send_btcoex_wlan_priority_cmd(wmi_unified_t wmi_handle,
+					  struct btcoex_cfg_params *param);
+
+/**
+ * wmi_send_reset_peer_mumimo_tx_count_cmd() - send reset peer mumimo
+ *                                             tx count to fw
+ * @wmi_handle: wmi handle
+ * @value: reset tx count value
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_send_reset_peer_mumimo_tx_count_cmd(wmi_unified_t wmi_handle,
+					uint32_t value);
+
 /**
  * wmi_extract_dpd_status_ev_param() - extract dpd status from FW event
  * @wmi_handle: wmi handle

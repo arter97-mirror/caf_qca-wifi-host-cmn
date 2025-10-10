@@ -1883,10 +1883,6 @@ QDF_STATUS
 QDF_STATUS (*send_get_user_position_cmd)(wmi_unified_t wmi_handle,
 			uint32_t value);
 
-QDF_STATUS
-(*send_reset_peer_mumimo_tx_count_cmd)(wmi_unified_t wmi_handle,
-			uint32_t value);
-
 QDF_STATUS (*send_get_peer_mumimo_tx_count_cmd)(wmi_unified_t wmi_handle,
 			uint32_t value);
 
@@ -1895,20 +1891,12 @@ QDF_STATUS
 			uint32_t value);
 
 QDF_STATUS
-(*send_btcoex_wlan_priority_cmd)(wmi_unified_t wmi_handle,
-			struct btcoex_cfg_params *param);
-
-QDF_STATUS
 (*send_start_11d_scan_cmd)(wmi_unified_t wmi_handle,
 			struct reg_start_11d_scan_req *param);
 
 QDF_STATUS
 (*send_stop_11d_scan_cmd)(wmi_unified_t wmi_handle,
 			struct reg_stop_11d_scan_req *param);
-
-QDF_STATUS
-(*send_btcoex_duty_cycle_cmd)(wmi_unified_t wmi_handle,
-			struct btcoex_cfg_params *param);
 
 QDF_STATUS
 (*send_egid_info_cmd)(wmi_unified_t wmi_handle,
@@ -2025,13 +2013,6 @@ QDF_STATUS (*extract_muedca_params_handler)(wmi_unified_t wmi_hdl,
 QDF_STATUS (*extract_mgmt_rx_params)(wmi_unified_t wmi_handle, void *evt_buf,
 	struct mgmt_rx_event_params *hdr, uint8_t **bufp);
 
-QDF_STATUS (*extract_frame_pn_params)(wmi_unified_t wmi_handle, void *evt_buf,
-				      struct frame_pn_params *pn_params);
-
-QDF_STATUS (*extract_is_conn_ap_frame)(wmi_unified_t wmi_handle,
-				       void *evt_buf,
-				       struct frm_conn_ap *is_conn_ap);
-
 QDF_STATUS (*extract_vdev_stopped_param)(wmi_unified_t wmi_handle,
 		void *evt_buf, uint32_t *vdev_id);
 
@@ -2050,9 +2031,6 @@ QDF_STATUS (*extract_nlo_complete_ev_param)(wmi_unified_t wmi_handle,
 					    void *evt_buf,
 					    struct scan_event *param);
 #endif
-
-QDF_STATUS (*extract_mu_ev_param)(wmi_unified_t wmi_handle, void *evt_buf,
-	wmi_host_mu_report_event *param);
 
 QDF_STATUS (*extract_mu_db_entry)(wmi_unified_t wmi_hdl, void *evt_buf,
 	uint8_t idx, wmi_host_mu_db_entry *param);
@@ -2900,12 +2878,6 @@ QDF_STATUS (*send_self_non_srg_obss_bssid_enable_bitmap)(
 	uint32_t bitmap_1, uint8_t pdev_id);
 #endif
 
-QDF_STATUS
-(*extract_ctl_failsafe_check_ev_param)(
-		wmi_unified_t wmi_handle,
-		void *evt_buf,
-		struct wmi_host_pdev_ctl_failsafe_event *param);
-
 QDF_STATUS (*send_peer_del_all_wds_entries_cmd)(wmi_unified_t wmi_handle,
 		struct peer_del_all_wds_entries_params *param);
 
@@ -2993,14 +2965,8 @@ QDF_STATUS (*send_get_thermal_stats_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_pdev_get_pn_cmd)(wmi_unified_t wmi_handle,
 				   struct peer_request_pn_param *pn_params);
-QDF_STATUS (*extract_get_pn_data)(wmi_unified_t wmi_handle,
-				  void *evt_buf,
-				  struct wmi_host_get_pn_event *param);
 QDF_STATUS (*send_pdev_get_rxpn_cmd)(wmi_unified_t wmi_handle,
 				     struct peer_request_rxpn_param *pn_params);
-QDF_STATUS (*extract_get_rxpn_data)(wmi_unified_t wmi_handle,
-				    void *evt_buf,
-				    struct wmi_host_get_rxpn_event *param);
 #ifdef FEATURE_ANI_LEVEL_REQUEST
 QDF_STATUS (*send_ani_level_cmd)(wmi_unified_t wmi_handle, uint32_t *freqs,
 				 uint8_t num_freqs);
@@ -3194,10 +3160,6 @@ QDF_STATUS
 			   struct wmi_wifi_radar_command_params *param);
 
 #endif
-
-QDF_STATUS (*extract_mgmt_rx_ext_params)(wmi_unified_t wmi_handle,
-					 void *evt_buf,
-					 struct mgmt_rx_event_ext_params *params);
 
 #ifdef WLAN_MGMT_RX_REO_SUPPORT
 QDF_STATUS (*extract_mgmt_rx_fw_consumed)(wmi_unified_t wmi_handle,
@@ -4312,5 +4274,43 @@ QDF_STATUS (*send_peer_tid_config_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS
 (*send_pdev_set_rf_path_cmd)(wmi_unified_t wmi_handle,
 			     uint32_t hw_mode_index, uint8_t pdev_id);
+
+QDF_STATUS (*send_reset_peer_mumimo_tx_count_cmd)(wmi_unified_t wmi_handle,
+						  uint32_t value);
+
+QDF_STATUS
+(*send_btcoex_wlan_priority_cmd)(wmi_unified_t wmi_handle,
+				 struct btcoex_cfg_params *param);
+
+QDF_STATUS
+(*send_btcoex_duty_cycle_cmd)(wmi_unified_t wmi_handle,
+			      struct btcoex_cfg_params *param);
+
+QDF_STATUS (*extract_frame_pn_params)(wmi_unified_t wmi_handle, void *evt_buf,
+				      struct frame_pn_params *pn_params);
+
+QDF_STATUS (*extract_is_conn_ap_frame)(wmi_unified_t wmi_handle,
+				       void *evt_buf,
+				       struct frm_conn_ap *is_conn_ap);
+
+QDF_STATUS (*extract_mu_ev_param)(wmi_unified_t wmi_handle, void *evt_buf,
+				  wmi_host_mu_report_event *param);
+
+QDF_STATUS (*extract_ctl_failsafe_check_ev_param)(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			struct wmi_host_pdev_ctl_failsafe_event *param);
+
+QDF_STATUS (*extract_get_pn_data)(wmi_unified_t wmi_handle,
+				  void *evt_buf,
+				  struct wmi_host_get_pn_event *param);
+
+QDF_STATUS (*extract_get_rxpn_data)(wmi_unified_t wmi_handle,
+				    void *evt_buf,
+				    struct wmi_host_get_rxpn_event *param);
+
+QDF_STATUS (*extract_mgmt_rx_ext_params)(wmi_unified_t wmi_handle,
+					 void *evt_buf,
+				struct mgmt_rx_event_ext_params *params);
 #endif
 #endif

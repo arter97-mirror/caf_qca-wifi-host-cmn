@@ -13006,35 +13006,6 @@ static QDF_STATUS extract_cca_stats_tlv(wmi_unified_t wmi_handle,
 #endif /* QCA_SUPPORT_CP_STATS */
 
 /**
- * extract_ctl_failsafe_check_ev_param_tlv() - extract ctl data from
- * event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @param: Pointer to hold peer ctl data
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS extract_ctl_failsafe_check_ev_param_tlv(
-			wmi_unified_t wmi_handle,
-			void *evt_buf,
-			struct wmi_host_pdev_ctl_failsafe_event *param)
-{
-	WMI_PDEV_CTL_FAILSAFE_CHECK_EVENTID_param_tlvs *param_buf;
-	wmi_pdev_ctl_failsafe_check_fixed_param *fix_param;
-
-	param_buf = (WMI_PDEV_CTL_FAILSAFE_CHECK_EVENTID_param_tlvs *)evt_buf;
-	if (!param_buf) {
-		wmi_err("Invalid ctl_failsafe event buffer");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	fix_param = param_buf->fixed_param;
-	param->ctl_failsafe_status = fix_param->ctl_FailsafeStatus;
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
  * save_service_bitmap_tlv() - save service bitmap
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer
@@ -13866,73 +13837,6 @@ static QDF_STATUS extract_mgmt_rx_params_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
-static QDF_STATUS extract_mgmt_rx_ext_params_tlv(wmi_unified_t wmi_handle,
-	void *evt_buf, struct mgmt_rx_event_ext_params *ext_params)
-{
-	WMI_MGMT_RX_EVENTID_param_tlvs *param_tlvs;
-	wmi_mgmt_rx_params_ext *ext_params_tlv;
-	wmi_mgmt_rx_hdr *ev_hdr;
-	wmi_mgmt_rx_params_ext_meta_t meta_id;
-	uint8_t *ie_data;
-
-	/* initialize to zero and set it only if tlv has valid meta data */
-	ext_params->u.addba.ba_win_size = 0;
-	ext_params->u.addba.reo_win_size = 0;
-
-	param_tlvs = (WMI_MGMT_RX_EVENTID_param_tlvs *) evt_buf;
-	if (!param_tlvs) {
-		wmi_err("param_tlvs is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	ev_hdr = param_tlvs->hdr;
-	if (!ev_hdr) {
-		wmi_err("Rx event is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	ext_params_tlv = param_tlvs->mgmt_rx_params_ext;
-	if (ext_params_tlv) {
-		meta_id = WMI_RX_PARAM_EXT_META_ID_GET(
-				ext_params_tlv->mgmt_rx_params_ext_dword0);
-		if (meta_id == WMI_RX_PARAMS_EXT_META_ADDBA) {
-			ext_params->meta_id = MGMT_RX_PARAMS_EXT_META_ADDBA;
-			ext_params->u.addba.ba_win_size =
-				WMI_RX_PARAM_EXT_BA_WIN_SIZE_GET(
-				ext_params_tlv->mgmt_rx_params_ext_dword1);
-			if (ext_params->u.addba.ba_win_size > 1024) {
-				wmi_info("ba win size %d from TLV is Invalid",
-					 ext_params->u.addba.ba_win_size);
-				return QDF_STATUS_E_INVAL;
-			}
-
-			ext_params->u.addba.reo_win_size =
-				WMI_RX_PARAM_EXT_REO_WIN_SIZE_GET(
-				ext_params_tlv->mgmt_rx_params_ext_dword1);
-			if (ext_params->u.addba.reo_win_size > 2048) {
-				wmi_info("reo win size %d from TLV is Invalid",
-					 ext_params->u.addba.reo_win_size);
-				return QDF_STATUS_E_INVAL;
-			}
-		}
-		if (meta_id == WMI_RX_PARAMS_EXT_META_TWT) {
-			ext_params->meta_id = MGMT_RX_PARAMS_EXT_META_TWT;
-			ext_params->u.twt.ie_len =
-				ext_params_tlv->twt_ie_buf_len;
-			ie_data = param_tlvs->ie_data;
-			if (ext_params->u.twt.ie_len &&
-			    (ext_params->u.twt.ie_len <
-					MAX_TWT_IE_RX_PARAMS_LEN)) {
-				qdf_mem_copy(ext_params->u.twt.ie_data,
-					     ie_data,
-					     ext_params_tlv->twt_ie_buf_len);
-			}
-		}
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-
 #ifdef WLAN_MGMT_RX_REO_SUPPORT
 /**
  * extract_mgmt_rx_fw_consumed_tlv() - extract MGMT Rx FW consumed event
@@ -14089,89 +13993,6 @@ static QDF_STATUS send_mgmt_rx_reo_filter_config_cmd_tlv(
 	return ret;
 }
 #endif
-
-/**
- * extract_frame_pn_params_tlv() - extract PN params from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @pn_params: Pointer to Frame PN params
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS extract_frame_pn_params_tlv(wmi_unified_t wmi_handle,
-					      void *evt_buf,
-					      struct frame_pn_params *pn_params)
-{
-	WMI_MGMT_RX_EVENTID_param_tlvs *param_tlvs;
-	wmi_frame_pn_params *pn_params_tlv;
-
-	if (!is_service_enabled_tlv(wmi_handle,
-				    WMI_SERVICE_PN_REPLAY_CHECK_SUPPORT))
-		return QDF_STATUS_SUCCESS;
-
-	param_tlvs = evt_buf;
-	if (!param_tlvs) {
-		wmi_err("Got NULL point message from FW");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (!pn_params) {
-		wmi_err("PN Params is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	/* PN Params TLV will be populated only if WMI_RXERR_PN error is
-	 * found by target
-	 */
-	pn_params_tlv = param_tlvs->pn_params;
-	if (!pn_params_tlv)
-		return QDF_STATUS_SUCCESS;
-
-	qdf_mem_copy(pn_params->curr_pn, pn_params_tlv->cur_pn,
-		     sizeof(pn_params->curr_pn));
-	qdf_mem_copy(pn_params->prev_pn, pn_params_tlv->prev_pn,
-		     sizeof(pn_params->prev_pn));
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * extract_is_conn_ap_frm_param_tlv() - extract is_conn_ap_frame param from
- *                                      event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @is_conn_ap: Pointer for is_conn_ap frame
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS extract_is_conn_ap_frm_param_tlv(
-						wmi_unified_t wmi_handle,
-						void *evt_buf,
-						struct frm_conn_ap *is_conn_ap)
-{
-	WMI_MGMT_RX_EVENTID_param_tlvs *param_tlvs;
-	wmi_is_my_mgmt_frame *my_frame_tlv;
-
-	param_tlvs = evt_buf;
-	if (!param_tlvs) {
-		wmi_err("Got NULL point message from FW");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (!is_conn_ap) {
-		wmi_err(" is connected ap param is NULL");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	my_frame_tlv = param_tlvs->my_frame;
-	if (!my_frame_tlv)
-		return QDF_STATUS_SUCCESS;
-
-	is_conn_ap->mgmt_frm_sub_type = my_frame_tlv->mgmt_frm_sub_type;
-	is_conn_ap->is_conn_ap_frm = my_frame_tlv->is_my_frame;
-
-	return QDF_STATUS_SUCCESS;
-}
 
 /**
  * extract_vdev_roam_param_tlv() - extract vdev roam param from event
@@ -16481,34 +16302,6 @@ send_pdev_get_pn_cmd_tlv(wmi_unified_t wmi_handle,
 }
 
 /**
- * extract_get_pn_data_tlv() - extract pn resp
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @param: PN response params for peer
- *
- * Return: QDF_STATUS - success or error status
- */
-static QDF_STATUS
-extract_get_pn_data_tlv(wmi_unified_t wmi_handle, void *evt_buf,
-			struct wmi_host_get_pn_event *param)
-{
-	WMI_PEER_TX_PN_RESPONSE_EVENTID_param_tlvs *param_buf;
-	wmi_peer_tx_pn_response_event_fixed_param *event = NULL;
-
-	param_buf = (WMI_PEER_TX_PN_RESPONSE_EVENTID_param_tlvs *)evt_buf;
-	event =
-	(wmi_peer_tx_pn_response_event_fixed_param *)param_buf->fixed_param;
-
-	param->vdev_id = event->vdev_id;
-	param->key_type = event->key_type;
-	param->key_ix = event->key_ix;
-	qdf_mem_copy(param->pn, event->pn, sizeof(event->pn));
-	WMI_MAC_ADDR_TO_CHAR_ARRAY(&event->peer_macaddr, param->mac_addr);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
  * send_pdev_get_rxpn_cmd_tlv() - send get Rx PN request params to fw
  * @wmi_handle: wmi handle
  * @params: Rx PN request params for peer
@@ -16552,32 +16345,6 @@ send_pdev_get_rxpn_cmd_tlv(wmi_unified_t wmi_handle,
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
-	return QDF_STATUS_SUCCESS;
-}
-
-/**
- * extract_get_rxpn_data_tlv() - extract Rx PN resp
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @params: Rx PN response params for peer
- *
- * Return: QDF_STATUS - success or error status
- */
-static QDF_STATUS
-extract_get_rxpn_data_tlv(wmi_unified_t wmi_handle, void *evt_buf,
-			  struct wmi_host_get_rxpn_event *params)
-{
-	WMI_PEER_RX_PN_RESPONSE_EVENTID_param_tlvs *param_buf;
-	wmi_peer_rx_pn_response_event_fixed_param *event;
-
-	param_buf = evt_buf;
-	event = param_buf->fixed_param;
-
-	params->vdev_id = event->vdev_id;
-	params->keyix = event->key_idx;
-	qdf_mem_copy(params->pn, event->pn, sizeof(event->pn));
-	WMI_MAC_ADDR_TO_CHAR_ARRAY(&event->peer_macaddr, params->mac_addr);
-
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -23163,8 +22930,6 @@ struct wmi_ops tlv_ops =  {
 	.extract_ready_event_params = extract_ready_event_params_tlv,
 	.extract_dbglog_data_len = extract_dbglog_data_len_tlv,
 	.extract_mgmt_rx_params = extract_mgmt_rx_params_tlv,
-	.extract_frame_pn_params = extract_frame_pn_params_tlv,
-	.extract_is_conn_ap_frame = extract_is_conn_ap_frm_param_tlv,
 	.extract_vdev_roam_param = extract_vdev_roam_param_tlv,
 	.extract_vdev_scan_ev_param = extract_vdev_scan_ev_param_tlv,
 #ifdef FEATURE_WLAN_SCAN_PNO
@@ -23228,9 +22993,7 @@ struct wmi_ops tlv_ops =  {
 	.send_pdev_fips_extend_cmd = send_pdev_fips_extend_cmd_tlv,
 	.send_pdev_fips_mode_set_cmd = send_pdev_fips_mode_set_cmd_tlv,
 #endif
-	.extract_get_pn_data = extract_get_pn_data_tlv,
 	.send_pdev_get_pn_cmd = send_pdev_get_pn_cmd_tlv,
-	.extract_get_rxpn_data = extract_get_rxpn_data_tlv,
 	.send_pdev_get_rxpn_cmd = send_pdev_get_rxpn_cmd_tlv,
 	.send_wlan_profile_enable_cmd = send_wlan_profile_enable_cmd_tlv,
 #ifdef WLAN_FEATURE_DISA
@@ -23345,8 +23108,6 @@ struct wmi_ops tlv_ops =  {
 		send_self_non_srg_obss_bssid_enable_bitmap_cmd_tlv,
 #endif
 	.extract_offload_bcn_tx_status_evt = extract_offload_bcn_tx_status_evt,
-	.extract_ctl_failsafe_check_ev_param =
-		extract_ctl_failsafe_check_ev_param_tlv,
 #ifdef WIFI_POS_CONVERGED
 	.extract_oem_response_param = extract_oem_response_param_tlv,
 #endif /* WIFI_POS_CONVERGED */
@@ -23444,7 +23205,6 @@ struct wmi_ops tlv_ops =  {
 	.extract_pktlog_decode_info_event =
 		extract_pktlog_decode_info_event_tlv,
 	.extract_pdev_telemetry_stats = extract_pdev_telemetry_stats_tlv,
-	.extract_mgmt_rx_ext_params = extract_mgmt_rx_ext_params_tlv,
 #ifdef WLAN_FEATURE_PEER_TXQ_FLUSH_CONF
 	.send_peer_txq_flush_config_cmd = send_peer_txq_flush_config_cmd_tlv,
 #endif
@@ -23519,6 +23279,13 @@ struct wmi_ops tlv_ops =  {
 	.send_packet_log_enable_cmd = send_packet_log_enable_cmd_tlv,
 	.send_peer_tid_config_cmd = send_peer_tid_config_cmd_tlv,
 	.send_pdev_set_rf_path_cmd = send_pdev_set_rf_path_cmd_tlv,
+	.extract_frame_pn_params = extract_frame_pn_params_tlv,
+	.extract_is_conn_ap_frame = extract_is_conn_ap_frm_param_tlv,
+	.extract_ctl_failsafe_check_ev_param =
+		extract_ctl_failsafe_check_ev_param_tlv,
+	.extract_get_pn_data = extract_get_pn_data_tlv,
+	.extract_get_rxpn_data = extract_get_rxpn_data_tlv,
+	.extract_mgmt_rx_ext_params = extract_mgmt_rx_ext_params_tlv,
 #endif
 };
 
@@ -25598,6 +25365,241 @@ static QDF_STATUS send_pdev_set_rf_path_cmd_tlv(wmi_unified_t wmi_handle,
 		wmi_err("Failed to send WMI_PDEV_SET_RF_PATH_CMDID");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_frame_pn_params_tlv() - extract PN params from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @pn_params: Pointer to Frame PN params
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS extract_frame_pn_params_tlv(wmi_unified_t wmi_handle,
+					      void *evt_buf,
+					      struct frame_pn_params *pn_params)
+{
+	WMI_MGMT_RX_EVENTID_param_tlvs *param_tlvs;
+	wmi_frame_pn_params *pn_params_tlv;
+
+	if (!is_service_enabled_tlv(wmi_handle,
+				    WMI_SERVICE_PN_REPLAY_CHECK_SUPPORT))
+		return QDF_STATUS_SUCCESS;
+
+	param_tlvs = evt_buf;
+	if (!param_tlvs) {
+		wmi_err("Got NULL point message from FW");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!pn_params) {
+		wmi_err("PN Params is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* PN Params TLV will be populated only if WMI_RXERR_PN error is
+	 * found by target
+	 */
+	pn_params_tlv = param_tlvs->pn_params;
+	if (!pn_params_tlv)
+		return QDF_STATUS_SUCCESS;
+
+	qdf_mem_copy(pn_params->curr_pn, pn_params_tlv->cur_pn,
+		     sizeof(pn_params->curr_pn));
+	qdf_mem_copy(pn_params->prev_pn, pn_params_tlv->prev_pn,
+		     sizeof(pn_params->prev_pn));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_is_conn_ap_frm_param_tlv() - extract is_conn_ap_frame param from
+ *                                      event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @is_conn_ap: Pointer for is_conn_ap frame
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS extract_is_conn_ap_frm_param_tlv(
+						wmi_unified_t wmi_handle,
+						void *evt_buf,
+						struct frm_conn_ap *is_conn_ap)
+{
+	WMI_MGMT_RX_EVENTID_param_tlvs *param_tlvs;
+	wmi_is_my_mgmt_frame *my_frame_tlv;
+
+	param_tlvs = evt_buf;
+	if (!param_tlvs) {
+		wmi_err("Got NULL point message from FW");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!is_conn_ap) {
+		wmi_err(" is connected ap param is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	my_frame_tlv = param_tlvs->my_frame;
+	if (!my_frame_tlv)
+		return QDF_STATUS_SUCCESS;
+
+	is_conn_ap->mgmt_frm_sub_type = my_frame_tlv->mgmt_frm_sub_type;
+	is_conn_ap->is_conn_ap_frm = my_frame_tlv->is_my_frame;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_ctl_failsafe_check_ev_param_tlv() - extract ctl data from
+ * event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @param: Pointer to hold peer ctl data
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS extract_ctl_failsafe_check_ev_param_tlv(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			struct wmi_host_pdev_ctl_failsafe_event *param)
+{
+	WMI_PDEV_CTL_FAILSAFE_CHECK_EVENTID_param_tlvs *param_buf;
+	wmi_pdev_ctl_failsafe_check_fixed_param *fix_param;
+
+	param_buf = (WMI_PDEV_CTL_FAILSAFE_CHECK_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid ctl_failsafe event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fix_param = param_buf->fixed_param;
+	param->ctl_failsafe_status = fix_param->ctl_FailsafeStatus;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_get_pn_data_tlv() - extract pn resp
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @param: PN response params for peer
+ *
+ * Return: QDF_STATUS - success or error status
+ */
+static QDF_STATUS
+extract_get_pn_data_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+			struct wmi_host_get_pn_event *param)
+{
+	WMI_PEER_TX_PN_RESPONSE_EVENTID_param_tlvs *param_buf;
+	wmi_peer_tx_pn_response_event_fixed_param *event = NULL;
+
+	param_buf = (WMI_PEER_TX_PN_RESPONSE_EVENTID_param_tlvs *)evt_buf;
+	event =
+	(wmi_peer_tx_pn_response_event_fixed_param *)param_buf->fixed_param;
+
+	param->vdev_id = event->vdev_id;
+	param->key_type = event->key_type;
+	param->key_ix = event->key_ix;
+	qdf_mem_copy(param->pn, event->pn, sizeof(event->pn));
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(&event->peer_macaddr, param->mac_addr);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_get_rxpn_data_tlv() - extract Rx PN resp
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @params: Rx PN response params for peer
+ *
+ * Return: QDF_STATUS - success or error status
+ */
+static QDF_STATUS
+extract_get_rxpn_data_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+			  struct wmi_host_get_rxpn_event *params)
+{
+	WMI_PEER_RX_PN_RESPONSE_EVENTID_param_tlvs *param_buf;
+	wmi_peer_rx_pn_response_event_fixed_param *event;
+
+	param_buf = evt_buf;
+	event = param_buf->fixed_param;
+
+	params->vdev_id = event->vdev_id;
+	params->keyix = event->key_idx;
+	qdf_mem_copy(params->pn, event->pn, sizeof(event->pn));
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(&event->peer_macaddr, params->mac_addr);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+extract_mgmt_rx_ext_params_tlv(wmi_unified_t wmi_handle,
+			       void *evt_buf,
+			       struct mgmt_rx_event_ext_params *ext_params)
+{
+	WMI_MGMT_RX_EVENTID_param_tlvs *param_tlvs;
+	wmi_mgmt_rx_params_ext *ext_params_tlv;
+	wmi_mgmt_rx_hdr *ev_hdr;
+	wmi_mgmt_rx_params_ext_meta_t meta_id;
+	uint8_t *ie_data;
+
+	/* initialize to zero and set it only if tlv has valid meta data */
+	ext_params->u.addba.ba_win_size = 0;
+	ext_params->u.addba.reo_win_size = 0;
+
+	param_tlvs = (WMI_MGMT_RX_EVENTID_param_tlvs *)evt_buf;
+	if (!param_tlvs) {
+		wmi_err("param_tlvs is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	ev_hdr = param_tlvs->hdr;
+	if (!ev_hdr) {
+		wmi_err("Rx event is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	ext_params_tlv = param_tlvs->mgmt_rx_params_ext;
+	if (ext_params_tlv) {
+		meta_id = WMI_RX_PARAM_EXT_META_ID_GET(
+				ext_params_tlv->mgmt_rx_params_ext_dword0);
+		if (meta_id == WMI_RX_PARAMS_EXT_META_ADDBA) {
+			ext_params->meta_id = MGMT_RX_PARAMS_EXT_META_ADDBA;
+			ext_params->u.addba.ba_win_size =
+				WMI_RX_PARAM_EXT_BA_WIN_SIZE_GET(
+				ext_params_tlv->mgmt_rx_params_ext_dword1);
+			if (ext_params->u.addba.ba_win_size > 1024) {
+				wmi_info("ba win size %d from TLV is Invalid",
+					 ext_params->u.addba.ba_win_size);
+				return QDF_STATUS_E_INVAL;
+			}
+
+			ext_params->u.addba.reo_win_size =
+				WMI_RX_PARAM_EXT_REO_WIN_SIZE_GET(
+				ext_params_tlv->mgmt_rx_params_ext_dword1);
+			if (ext_params->u.addba.reo_win_size > 2048) {
+				wmi_info("reo win size %d from TLV is Invalid",
+					 ext_params->u.addba.reo_win_size);
+				return QDF_STATUS_E_INVAL;
+			}
+		}
+		if (meta_id == WMI_RX_PARAMS_EXT_META_TWT) {
+			ext_params->meta_id = MGMT_RX_PARAMS_EXT_META_TWT;
+			ext_params->u.twt.ie_len =
+				ext_params_tlv->twt_ie_buf_len;
+			ie_data = param_tlvs->ie_data;
+			if (ext_params->u.twt.ie_len &&
+			    ext_params->u.twt.ie_len <
+			    MAX_TWT_IE_RX_PARAMS_LEN) {
+				qdf_mem_copy(ext_params->u.twt.ie_data,
+					     ie_data,
+					     ext_params_tlv->twt_ie_buf_len);
+			}
+		}
 	}
 
 	return QDF_STATUS_SUCCESS;
