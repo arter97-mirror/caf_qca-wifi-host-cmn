@@ -1579,8 +1579,10 @@ struct peer_assoc_ml_partner_links {
  * @rx_mcs_set: rx mcs
  * @tx_max_rate: max tx rates
  * @tx_mcs_set: tx mcs
- * @peer_max_tx_nss: Tx NSS of peer without intersecting with self cap
- * @peer_nss: peer nss
+ * @peer_supp_tx_nss: Max supported Tx NSS of peer
+ * (w/o intersecting with self cap, only to be used for STA/P2P-CLI modes)
+ * @peer_op_dl_nss: Current operating downlink (Rx) nss of peer
+ * @peer_cap_ul_nss: Intersected connection uplink (Tx) NSS of peer
  * @vht_capable: VHT capabalities
  * @min_data_rate: Peer minimum rate
  * @tx_max_mcs_nss: max tx MCS and NSS
@@ -1661,8 +1663,9 @@ struct peer_assoc_params {
 	uint32_t rx_mcs_set;
 	uint32_t tx_max_rate;
 	uint32_t tx_mcs_set;
-	uint8_t peer_max_tx_nss;
-	uint8_t peer_nss;
+	uint8_t peer_supp_tx_nss;
+	uint8_t peer_op_dl_nss;
+	uint8_t peer_cap_ul_nss;
 	uint8_t vht_capable;
 	uint8_t min_data_rate;
 	uint32_t peer_bw_rxnss_override;
