@@ -9260,6 +9260,8 @@ void dp_map_local_link_id_band(struct dp_peer *peer)
 	txrx_peer = dp_get_txrx_peer(peer);
 	if (txrx_peer && peer->local_link_id) {
 		band = dp_freq_to_band(peer->freq);
+		if (qdf_unlikely(qdf_trace_dp_band_enabled()))
+			qdf_trace_dp_band(band);
 		txrx_peer->ll_band[peer->local_link_id] = band;
 	} else {
 		dp_info("txrx_peer NULL or local link id not set: %u "
@@ -9313,7 +9315,8 @@ dp_set_peer_freq(struct cdp_soc_t *cdp_soc,  uint8_t vdev_id,
 	dp_check_map_link_id_band(peer);
 	dp_map_local_link_id_band(peer);
 	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-
+	if (qdf_unlikely(qdf_trace_dp_peer_info_enabled()))
+		qdf_trace_dp_peer_info(peer->freq, vdev_id, peer_mac);
 	dp_info("Peer " QDF_MAC_ADDR_FMT " vdev_id %u, frequency %u",
 		QDF_MAC_ADDR_REF(peer_mac), vdev_id,
 		peer->freq);

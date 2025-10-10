@@ -213,6 +213,95 @@ DEFINE_EVENT(dp_trace_pkt_class, dp_tx_comp_pkt,
 	     TP_ARGS(skb, ether_type, tdelta)
 );
 
+TRACE_EVENT(dp_peer_link_info,
+	    TP_PROTO(uint8_t link_id, uint32_t freq, uint8_t link_id_valid,
+		     const uint8_t *peer_mac),
+	    TP_ARGS(link_id, freq, link_id_valid, peer_mac),
+	    TP_STRUCT__entry(
+		__field(uint8_t, link_id)
+		__field(uint32_t, freq)
+		__field(uint8_t, link_id_valid)
+		__array(uint8_t, peer_mac, 6)
+	    ),
+	    TP_fast_assign(
+		__entry->link_id = link_id;
+		__entry->freq = freq;
+		__entry->link_id_valid = link_id_valid;
+		memcpy(__entry->peer_mac, peer_mac, sizeof(__entry->peer_mac));
+	    ),
+	    TP_printk("mac_addr = %02x:%02x:%02x:**:**:%02x, link_id = %u, freq = %d, link_id_valid = %u,",
+		      __entry->peer_mac[0], __entry->peer_mac[1],
+		      __entry->peer_mac[2], __entry->peer_mac[5],
+		      __entry->link_id, __entry->freq, __entry->link_id_valid)
+);
+
+TRACE_EVENT(dp_band_link_peer_info,
+	    TP_PROTO(uint32_t freq, uint8_t band, uint8_t link_id,
+		     const uint8_t *peer_mac),
+	    TP_ARGS(freq, band, link_id, peer_mac),
+	    TP_STRUCT__entry(
+		__field(uint32_t, freq)
+		__field(uint8_t, band)
+		__field(uint8_t, link_id)
+		__array(uint8_t, peer_mac, 6)
+	   ),
+	   TP_fast_assign(
+		__entry->freq = freq;
+		__entry->band = band;
+		__entry->link_id = link_id;
+		memcpy(__entry->peer_mac, peer_mac, sizeof(__entry->peer_mac));
+	   ),
+	   TP_printk("mac_addr: %02x:%02x:%02x:**:**:%02x, Band(Freq: %d): %u mapped to Link ID: %u",
+		     __entry->peer_mac[0], __entry->peer_mac[1],
+		     __entry->peer_mac[2], __entry->peer_mac[5],
+		     __entry->freq, __entry->band, __entry->link_id)
+);
+
+TRACE_EVENT(dp_peer_info,
+	    TP_PROTO(uint32_t freq, uint8_t vdev_id, const uint8_t *peer_mac),
+	    TP_ARGS(freq, vdev_id, peer_mac),
+	    TP_STRUCT__entry(
+		__field(uint32_t, freq)
+		__field(uint8_t, vdev_id)
+		__array(uint8_t, peer_mac, 6)
+	    ),
+	    TP_fast_assign(
+		__entry->freq = freq;
+		__entry->vdev_id = vdev_id;
+		memcpy(__entry->peer_mac, peer_mac, sizeof(__entry->peer_mac));
+	    ),
+	    TP_printk("mac_addr = %02x:%02x:%02x:**:**:%02x, freq = %d, vdev_id = %u",
+		      __entry->peer_mac[0], __entry->peer_mac[1],
+		      __entry->peer_mac[2], __entry->peer_mac[5],
+		      __entry->freq, __entry->vdev_id)
+);
+
+TRACE_EVENT(dp_band,
+	    TP_PROTO(uint8_t band),
+	    TP_ARGS(band),
+	    TP_STRUCT__entry(
+		__field(uint8_t, band)
+	    ),
+	    TP_fast_assign(
+		__entry->band = band;
+	    ),
+	    TP_printk("band=%u", __entry->band)
+);
+
+TRACE_EVENT(dp_band_link_id,
+	    TP_PROTO(uint8_t band, uint8_t link_id),
+	    TP_ARGS(band, link_id),
+	    TP_STRUCT__entry(
+		__field(uint8_t, band)
+		__field(uint8_t, link_id)
+	    ),
+	    TP_fast_assign(
+		__entry->band = band;
+		__entry->link_id = link_id;
+	    ),
+	    TP_printk("band=%u link_id=%u", __entry->band, __entry->link_id)
+);
+
 TRACE_EVENT(dp_del_reg_write,
 	    TP_PROTO(uint8_t srng_id, uint32_t enq_val, uint32_t deq_val,
 		     uint64_t sched_time, uint64_t enq_time, uint64_t deq_time),

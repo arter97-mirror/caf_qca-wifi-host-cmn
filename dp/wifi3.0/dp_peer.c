@@ -3644,7 +3644,7 @@ enum dp_bands dp_freq_to_band(qdf_freq_t freq)
 void dp_map_link_id_band(struct dp_peer *peer)
 {
 	struct dp_txrx_peer *txrx_peer = NULL;
-	enum dp_bands band;
+	enum dp_bands band = DP_BAND_UNKNOWN;
 
 	txrx_peer = dp_get_txrx_peer(peer);
 	if (txrx_peer) {
@@ -3656,6 +3656,11 @@ void dp_map_link_id_band(struct dp_peer *peer)
 		dp_info("txrx_peer NULL for peer: " QDF_MAC_ADDR_FMT,
 			QDF_MAC_ADDR_REF(peer->mac_addr.raw));
 	}
+	if (qdf_unlikely(qdf_trace_dp_band_link_peer_info_enabled()))
+		qdf_trace_dp_band_link_peer_info(peer->freq, band,
+						 peer->link_id,
+						 peer->mac_addr.raw);
+
 }
 
 QDF_STATUS
@@ -3680,7 +3685,10 @@ dp_rx_peer_ext_evt(struct dp_soc *soc, struct dp_peer_ext_evt_info *info)
 
 	peer->link_id = info->link_id;
 	peer->link_id_valid = info->link_id_valid;
-
+	if (qdf_unlikely(qdf_trace_dp_peer_link_info_enabled()))
+		qdf_trace_dp_peer_link_info(peer->link_id, peer->freq,
+					    peer->link_id_valid,
+					    info->peer_mac_addr);
 	if (peer->freq)
 		dp_map_link_id_band(peer);
 

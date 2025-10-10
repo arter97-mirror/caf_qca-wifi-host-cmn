@@ -52,6 +52,153 @@ void qdf_trace_dp_packet(qdf_nbuf_t nbuf, enum qdf_proto_dir dir,
 #endif
 
 /**
+ * qdf_trace_dp_band_link_id_enabled() - Check if dp_band_link_id
+ * tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_band_link_id_enabled(void)
+{
+	return __qdf_trace_dp_band_link_id_enabled();
+}
+
+/**
+ * qdf_trace_dp_band_link_id() - Trace band and link_id information
+ * @band: Band
+ * @link_id: Link ID
+ *
+ * This function triggers the dp_band_link_id tracepoint, which logs
+ * the band and link_id.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_band_link_id(uint8_t band, uint8_t link_id)
+{
+	__qdf_trace_dp_band_link_id(band, link_id);
+}
+
+/**
+ * qdf_trace_dp_band_enabled() - Check if dp_band tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_band_enabled(void)
+{
+	return __qdf_trace_dp_band_enabled();
+}
+
+/**
+ * qdf_trace_dp_band() - Trace band information
+ * @band: Band value (uint8_t)
+ *
+ * This function triggers the dp_band tracepoint, which logs
+ * the band.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_band(uint8_t band)
+{
+	__qdf_trace_dp_band(band);
+}
+
+/**
+ * qdf_trace_dp_peer_info_enabled() - Check if dp_peer_info tracepoint
+ * is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_peer_info_enabled(void)
+{
+	return __qdf_trace_dp_peer_info_enabled();
+}
+
+/**
+ * qdf_trace_dp_peer_info() - Trace peer info
+ * @freq: Peer frequency
+ * @vdev_id: VDEV ID
+ * @peer_mac: Peer MAC address
+ *
+ * This function triggers the dp_peer_info tracepoint, which logs
+ * peer frequency, vdev ID, peer MAC address, link ID validity,
+ * and local link ID.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_peer_info(uint32_t freq, uint8_t vdev_id,
+			    const uint8_t *peer_mac)
+{
+	__qdf_trace_dp_peer_info(freq, vdev_id, peer_mac);
+}
+
+/**
+ * qdf_trace_dp_band_link_peer_info_enabled() - Check dp_band_link_peer_info
+ * tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_band_link_peer_info_enabled(void)
+{
+	return __qdf_trace_dp_band_link_peer_info_enabled();
+}
+
+/**
+ * qdf_trace_dp_band_link_peer_info() - Trace band, link ID, and peer MAC info
+ * @freq: Frequency
+ * @band: Band
+ * @link_id: Link ID
+ * @peer_mac: Peer MAC address
+ *
+ * This function triggers the dp_band_link_peer_info tracepoint, which logs
+ * frequency, band, link ID, and peer MAC address.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_band_link_peer_info(uint32_t freq, uint8_t band,
+				      uint8_t link_id, const uint8_t *peer_mac)
+{
+	__qdf_trace_dp_band_link_peer_info(freq, band, link_id, peer_mac);
+}
+
+/**
+ * qdf_trace_dp_peer_link_info_enabled() - Check if dp_peer_link_info
+ * tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_peer_link_info_enabled(void)
+{
+	return __qdf_trace_dp_peer_link_info_enabled();
+}
+
+/**
+ * qdf_trace_dp_peer_link_info() - Trace peer link info
+ * @link_id: Link ID
+ * @freq: Frequency
+ * @link_id_valid: Link ID valid flag
+ * @peer_mac: Peer MAC address
+ *
+ * This function triggers the dp_peer_link_info tracepoint, which logs
+ * link ID, frequency, link ID validity, and peer MAC address.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_peer_link_info(uint8_t link_id, uint32_t freq,
+				 uint8_t link_id_valid, const uint8_t *peer_mac)
+{
+	__qdf_trace_dp_peer_link_info(link_id, freq, link_id_valid, peer_mac);
+}
+
+/**
  * qdf_trace_dp_rx_tcp_pkt_enabled() - Get the dp_rx_tcp_pkt tracepoint
  *  enabled or disabled state
  *

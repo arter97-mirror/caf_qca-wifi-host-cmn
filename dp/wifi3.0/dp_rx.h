@@ -2660,6 +2660,8 @@ static inline void
 dp_rx_set_nbuf_band(qdf_nbuf_t nbuf, struct dp_txrx_peer *txrx_peer,
 		    uint8_t link_id)
 {
+	if (qdf_unlikely(qdf_trace_dp_band_link_id_enabled()))
+		qdf_trace_dp_band_link_id(txrx_peer->band[link_id], link_id);
 	qdf_nbuf_rx_set_band(nbuf, txrx_peer->band[link_id]);
 }
 #else
