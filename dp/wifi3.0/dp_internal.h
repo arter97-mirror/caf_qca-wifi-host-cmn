@@ -4046,6 +4046,8 @@ void dp_print_tx_ppeds_stats(struct dp_soc *soc);
 
 /* REO destination ring's watermark mask */
 #define DP_SRNG_WM_MASK_REO_DST  BIT(REO_DST)
+/* REO exception ring's watermark mask */
+#define DP_SRNG_WM_MASK_REO_EXCEPTION  BIT(REO_EXCEPTION)
 /* TX completion ring's watermark mask */
 #ifdef CONFIG_BORON
 #define DP_SRNG_WM_MASK_TX_COMP  BIT(TQM2SW_RELEASE)

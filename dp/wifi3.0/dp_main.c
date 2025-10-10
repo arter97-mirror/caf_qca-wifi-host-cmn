@@ -9015,7 +9015,8 @@ dp_print_host_stats(struct dp_vdev *vdev,
 		/* Dump usage watermark stats for all SRNGs */
 		dp_dump_srng_high_wm_stats(
 			soc,
-			DP_SRNG_WM_MASK_REO_DST | DP_SRNG_WM_MASK_TX_COMP);
+			DP_SRNG_WM_MASK_REO_DST | DP_SRNG_WM_MASK_TX_COMP |
+			DP_SRNG_WM_MASK_REO_EXCEPTION);
 		break;
 	case TXRX_PEER_STATS:
 		dp_print_per_link_stats((struct cdp_soc_t *)pdev->soc,
@@ -11807,7 +11808,8 @@ static QDF_STATUS dp_txrx_dump_stats(struct cdp_soc_t *psoc, uint16_t value,
 		/* Dump usage watermark stats for core TX/RX SRNGs */
 		dp_dump_srng_high_wm_stats(soc,
 					   DP_SRNG_WM_MASK_REO_DST |
-					   DP_SRNG_WM_MASK_TX_COMP);
+					   DP_SRNG_WM_MASK_TX_COMP |
+					   DP_SRNG_WM_MASK_REO_EXCEPTION);
 		if (soc->cdp_soc.ol_ops->dp_print_fisa_stats)
 			soc->cdp_soc.ol_ops->dp_print_fisa_stats(
 						CDP_FISA_STATS_ID_ERR_STATS);

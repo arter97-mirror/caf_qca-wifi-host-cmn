@@ -1095,6 +1095,8 @@ more_data:
 		goto done;
 	}
 
+	hal_srng_update_ring_usage_wm_no_lock(soc->hal_soc, hal_ring_hdl);
+
 	while (qdf_likely(quota-- && (ring_desc =
 				hal_srng_dst_peek(hal_soc,
 						  hal_ring_hdl)))) {

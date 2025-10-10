@@ -9563,6 +9563,14 @@ void dp_dump_srng_high_wm_stats(struct dp_soc *soc, uint64_t srng_mask)
 		}
 	}
 
+	if (srng_mask & DP_SRNG_WM_MASK_REO_EXCEPTION) {
+		pos = 0;
+		pos += hal_dump_srng_high_wm_stats(soc->hal_soc,
+			soc->reo_exception_ring.hal_srng,
+			buf, buf_len, pos);
+		dp_info("%s", srng_high_wm_str);
+	}
+
 	dp_dump_lpc_coc_srng_high_wm_stats(soc, srng_mask, buf, buf_len);
 }
 #endif
