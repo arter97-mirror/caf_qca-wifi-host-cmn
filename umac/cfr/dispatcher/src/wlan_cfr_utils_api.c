@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -180,9 +180,10 @@ QDF_STATUS cfr_deinitialize_pdev(struct wlan_objmgr_pdev *pdev)
 }
 qdf_export_symbol(cfr_deinitialize_pdev);
 
-uint8_t count_set_bits(unsigned long value)
+uint8_t count_set_bits(unsigned long *bitmap)
 {
 	uint8_t count = 0;
+	unsigned long value = bitmap[0];
 
 	while (value) {
 		value &= (value - 1);
