@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1235,6 +1236,26 @@ target_if_send_link_reconfig_req_cmd(struct wlan_objmgr_psoc *psoc,
 	}
 
 	return wmi_send_link_reconfig_req_cmd(wmi_handle, &params);
+}
+#endif
+
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+bool
+target_if_mlo_sap_link_removal_offload_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("wmi handle is NULL");
+		return false;
+	}
+
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_mlo_sap_link_removal_support))
+		return true;
+
+	return false;
 }
 #endif
 

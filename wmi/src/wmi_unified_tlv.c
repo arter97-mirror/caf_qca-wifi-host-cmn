@@ -22161,6 +22161,12 @@ static QDF_STATUS extract_pdev_csa_switch_count_status_tlv(
 							wmi_handle,
 							csa_status->pdev_id);
 	param->current_switch_count = csa_status->current_switch_count;
+
+	if (param_buf->num_vdev_ids != csa_status->num_vdevs) {
+		wmi_err("Invalid number of vdevs: received = %d, expected = %d",
+			csa_status->num_vdevs, param_buf->num_vdev_ids);
+		return QDF_STATUS_E_INVAL;
+	}
 	param->num_vdevs = csa_status->num_vdevs;
 	param->vdev_ids = param_buf->vdev_ids;
 
@@ -25375,6 +25381,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_STA_TWT_STATS_EXT;
 	wmi_service[wmi_service_scc_tpc_power_support] =
 				WMI_SERVICE_SCC_TPC_POWER_SUPPORT;
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+	wmi_service[wmi_service_mlo_sap_link_removal_support] =
+				WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT;
+#endif
 }
 
 /**

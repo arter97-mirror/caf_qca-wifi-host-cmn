@@ -6860,6 +6860,9 @@ typedef enum {
 	wmi_service_twt_p2p_go_concurrency_support,
 	wmi_service_sta_twt_stats_ext,
 	wmi_service_scc_tpc_power_support,
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+	wmi_service_mlo_sap_link_removal_support,
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

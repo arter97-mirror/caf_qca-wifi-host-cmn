@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -27,6 +27,13 @@
 
 #define WLAN_RESV_AID_BITS 0xc000
 #define WLAN_AID(b)    ((b) & ~0xc000)
+
+/**
+ * AP_REMOVAL_TIMER_TBTT_MAX - Maximum value for AP removal timer in TBTT units
+ * This defines the maximum timeout value for MLO SAP link removal operations
+ */
+#define AP_REMOVAL_TIMER_TBTT_MAX 0xFFFF
+
 /**
  * mlo_ap_vdev_attach() - update vdev obj and vdev count to
  *                         wlan_mlo_dev_context
@@ -719,4 +726,29 @@ void mlo_ap_ml_ptqm_peerid_free(struct wlan_mlo_dev_context *ml_dev,
  */
 struct wlan_objmgr_vdev *mlo_get_first_active_vdev_by_ml_dev_ctx(
 				struct wlan_mlo_dev_context *dev_ctx);
+
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+/**
+ * wlan_mlo_link_removal_cmd() - send link removal cmd to target
+ * @vdev: vdev pointer
+ * @psoc: psoc pointer
+ * @ml_reconfig_ie: mlo link reconfig ie
+ * @elem_len: ML reconfigure element length
+ *
+ * Return: SUCCESS,if it send link removal cmd to target
+ */
+QDF_STATUS
+wlan_mlo_link_removal_cmd(struct wlan_objmgr_vdev *vdev,
+			  struct wlan_objmgr_psoc *psoc,
+			  uint8_t *ml_reconfig_ie,
+			  size_t elem_len);
+
+/**
+ * wlan_mlo_ap_get_link_removal_cap() - Get mlo sap link removal capability
+ * @psoc: psoc pointer
+ *
+ * Return: true if target support link removal, false for unsupported
+ */
+bool wlan_mlo_ap_get_link_removal_cap(struct wlan_objmgr_psoc *psoc);
+#endif
 #endif
