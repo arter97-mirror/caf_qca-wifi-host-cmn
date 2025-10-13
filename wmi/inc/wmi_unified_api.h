@@ -1621,6 +1621,34 @@ QDF_STATUS wmi_unified_pno_start_cmd(wmi_unified_t wmi_handle,
 #endif
 
 /**
+ * wmi_extract_rtt_ev() - extract rtt event
+ * @wmi_handle: wmi handle
+ * @evt_buf: Pointer to event buffer
+ * @ev: Pointer to hold rtt event
+ * @hdump: Pointer to hold hex dump
+ * @hdump_len: hex dump length
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_extract_rtt_ev(wmi_unified_t wmi_handle, void *evt_buf,
+			      wmi_host_rtt_meas_event *ev,
+			      uint8_t *hdump, uint16_t hdump_len);
+
+/**
+ * wmi_extract_bss_chan_info_event() - extract bss channel information
+ * from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @bss_chan_info: Pointer to hold bss channel information
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+
+QDF_STATUS wmi_extract_bss_chan_info_event(
+		wmi_unified_t wmi_handle, void *evt_buf,
+		wmi_host_pdev_bss_chan_info_event *bss_chan_info);
+
+/**
  * wmi_unified_nlo_mawc_cmd() - NLO MAWC cmd configuration
  * @wmi_handle: wmi handle
  * @params: Configuration parameters
@@ -5067,34 +5095,6 @@ QDF_STATUS wmi_extract_peer_ratecode_list_ev(
 QDF_STATUS wmi_extract_bcnflt_stats(
 		wmi_unified_t wmi_handle, void *evt_buf,
 		uint32_t index, wmi_host_bcnflt_stats *bcnflt_stats);
-
-/**
- * wmi_extract_rtt_ev() - extract rtt event
- * @wmi_handle: wmi handle
- * @evt_buf: Pointer to event buffer
- * @ev: Pointer to hold rtt event
- * @hdump: Pointer to hold hex dump
- * @hdump_len: hex dump length
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS wmi_extract_rtt_ev(wmi_unified_t wmi_handle, void *evt_buf,
-			      wmi_host_rtt_meas_event *ev,
-			      uint8_t *hdump, uint16_t hdump_len);
-
-/**
- * wmi_extract_bss_chan_info_event() - extract bss channel information
- * from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @bss_chan_info: Pointer to hold bss channel information
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-
-QDF_STATUS wmi_extract_bss_chan_info_event(
-		wmi_unified_t wmi_handle, void *evt_buf,
-		wmi_host_pdev_bss_chan_info_event *bss_chan_info);
 
 /**
  * wmi_send_get_peer_mumimo_tx_count_cmd() - send get mumio tx count
