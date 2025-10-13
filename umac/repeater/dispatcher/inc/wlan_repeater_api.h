@@ -501,6 +501,11 @@ QDF_STATUS wlan_rptr_pdev_ucfg_config_set(struct wlan_objmgr_pdev *pdev,
 int wlan_rptr_pdev_extd_ioctl(struct wlan_objmgr_pdev *pdev, int param,
 			      char *data);
 
+#if REPEATER_SAME_SSID && CONFIG_DRONE_MESH_SUPPORT
+int32_t wlan_rptr_ioctl_get_rssi_based_bssid(struct wlan_objmgr_pdev *pdev, caddr_t param);
+void wlan_rptr_reset_custom_chan_list(struct wlan_objmgr_pdev *pdev);
+void wlan_rptr_set_rssi_based_bssid(struct wlan_objmgr_pdev *pdev,bool rssi_based_bssid);
+#endif
 /**
  * wlan_rptr_vdev_get_qwrap_cflags() - Get qwrap cflags
  * @vdev: vdev object manager
@@ -733,6 +738,10 @@ wlan_rptr_allow_client_conn(struct wlan_objmgr_vdev *vdev, uint8_t *bssid);
 int
 wlan_rptr_validate_stavap_connection(struct wlan_objmgr_vdev *vdev,
 				     u_int8_t *bssid);
+
+#ifdef CONFIG_DRONE_MESH_SUPPORT
+QDF_STATUS wlan_rptr_set_custom_scan_chan_list_from_ic(struct ieee80211com *ic);
+#endif
 
 /**
  * wlan_rptr_s_ssid_vdev_connection_up - update same ssid feature info during
