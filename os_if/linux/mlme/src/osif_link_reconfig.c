@@ -116,7 +116,10 @@ osif_fill_link_reconfig_deleted_links_params(
 		return false;
 
 	del_link_info = recfg_ctx->curr_recfg_req.del_link_info;
-	for (i = 0; i < num_del_links && i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+	for (i = 0;
+	     i < num_del_links &&
+	     i < IEEE80211_MLD_MAX_NUM_LINKS &&
+	     i < WLAN_MAX_ML_BSS_LINKS; i++) {
 		if (del_link_info.link[i].link_id != WLAN_INVALID_LINK_ID)
 			*delete_valid_links |=
 				1 << del_link_info.link[i].link_id;
