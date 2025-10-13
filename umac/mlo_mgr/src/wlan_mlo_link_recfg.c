@@ -3442,6 +3442,11 @@ mlo_link_recfg_tranistion_to_next_state(
 	QDF_STATUS status;
 	struct mlo_link_recfg_state_tran *tran, *prev;
 
+	if (!recfg_ctx) {
+		mlo_err("recfg_ctx is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
 	if (recfg_ctx->sm.curr_state_idx != -1 &&
 	    recfg_ctx->sm.curr_state_idx >=
 		QDF_ARRAY_SIZE(recfg_ctx->sm.state_list)) {
@@ -3457,6 +3462,13 @@ mlo_link_recfg_tranistion_to_next_state(
 			  prev->state, prev->event);
 	}
 	recfg_ctx->sm.curr_state_idx++;
+
+	if (recfg_ctx->sm.curr_state_idx >=
+	    QDF_ARRAY_SIZE(recfg_ctx->sm.state_list)) {
+		mlo_err("curr_state_idx is out of bound %d",
+			recfg_ctx->sm.curr_state_idx);
+		return QDF_STATUS_E_FAILURE;
+	}
 	tran = &recfg_ctx->sm.state_list[recfg_ctx->sm.curr_state_idx];
 	mlo_debug("next idx %d st %d evt %d",
 		  recfg_ctx->sm.curr_state_idx,
