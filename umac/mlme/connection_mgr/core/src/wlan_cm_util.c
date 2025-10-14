@@ -1790,6 +1790,51 @@ bool cm_get_active_disconnect_req(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+bool cm_get_ho_disconnect_pending(struct wlan_objmgr_vdev *vdev)
+{
+	struct cnx_mgr *cm_ctx;
+	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
+	struct cm_req *cm_req = NULL;
+	bool status = false;
+	uint32_t cm_id_prefix;
+
+	if (vdev->vdev_mlme.vdev_opmode != QDF_STA_MODE)
+		return false;
+
+	cm_ctx = cm_get_cm_ctx(vdev);
+	if (!cm_ctx)
+		return status;
+
+	cm_req_lock_acquire(cm_ctx);
+	qdf_list_peek_front(&cm_ctx->req_list, &cur_node);
+	while (cur_node) {
+		qdf_list_peek_next(&cm_ctx->req_list, cur_node, &next_node);
+
+		cm_req = qdf_container_of(cur_node, struct cm_req, node);
+		cm_id_prefix = CM_ID_GET_PREFIX((cm_req->cm_id));
+
+		if (cm_id_prefix == DISCONNECT_REQ_PREFIX &&
+		    cm_req->cm_id != cm_ctx->active_cm_id &&
+		    cm_req->discon_req.req.source ==
+				CM_MLO_ROAM_INTERNAL_DISCONNECT &&
+		    cm_req->discon_req.req.reason_code ==
+				REASON_FW_TRIGGERED_ROAM_FAILURE) {
+			mlme_debug(CM_PREFIX_FMT " ho disconnect pending",
+				   CM_PREFIX_REF(wlan_vdev_get_id(vdev),
+						 cm_req->cm_id));
+			status = true;
+			cm_req_lock_release(cm_ctx);
+			return status;
+		}
+
+		cur_node = next_node;
+		next_node = NULL;
+	}
+	cm_req_lock_release(cm_ctx);
+
+	return status;
+}
+
 struct cm_req *cm_get_req_by_scan_id(struct cnx_mgr *cm_ctx,
 				     wlan_scan_id scan_id)
 {
