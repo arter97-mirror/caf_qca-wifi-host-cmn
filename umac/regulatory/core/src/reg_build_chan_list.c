@@ -802,10 +802,35 @@ static void reg_modify_chan_list_for_indoor_concurrency(
 	struct regulatory_channel *chan_list = pdev_priv_obj->cur_chan_list;
 	enum channel_enum chan, min_enum, max_enum;
 	uint8_t i;
+	bool cfg_sta_indoor_ch_peer_scc = false;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_pdev *pdev;
+	QDF_STATUS status;
+
+	pdev = pdev_priv_obj->pdev_ptr;
+	if (!pdev) {
+		reg_err("pdev is NULL");
+		return;
+	}
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("psoc is NULL");
+		return;
+	}
+
+	status = policy_mgr_get_cfg_sta_indoor_ch_peer_scc(psoc,
+							   &cfg_sta_indoor_ch_peer_scc);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		reg_err("Failed to get cfg_sta_indoor_ch_peer_scc");
+		cfg_sta_indoor_ch_peer_scc = false;
+	}
 
 	if (pdev_priv_obj->indoor_chan_enabled ||
 	    pdev_priv_obj->p2p_indoor_ch_support ||
-	    !pdev_priv_obj->sta_sap_scc_on_indoor_channel)
+	    (!pdev_priv_obj->sta_sap_scc_on_indoor_channel &&
+	     !cfg_sta_indoor_ch_peer_scc))
 		return;
 
 	indoor_list = pdev_priv_obj->indoor_list;
