@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -181,4 +181,30 @@ dp_tx_override_flow_pool_id_li(struct dp_vdev *vdev,
 			       struct dp_tx_queue *queue)
 {
 }
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_tx_gen_hw_desc_li() - Generate hardware descriptor for LI architecture
+ * @soc: DP soc handle
+ * @vdev: DP vdev handle
+ * @tx_desc: TX descriptor
+ * @fw_metadata: Firmware metadata
+ * @tx_exc_metadata: TX exception metadata
+ * @msdu_info: MSDU information
+ * @tcl_desc: TCL descriptor
+ *
+ * This function is a stub implementation for generating hardware descriptors
+ * in the Lithium (LI) architecture. Currently returns failure status as the
+ * functionality is not implemented.
+ *
+ * Return: QDF_STATUS_E_FAILURE - Always returns failure
+ */
+QDF_STATUS
+dp_tx_gen_hw_desc_li(struct dp_soc *soc, struct dp_vdev *vdev,
+		     struct dp_tx_desc_s *tx_desc,
+		     uint16_t fw_metadata,
+		     struct cdp_tx_exception_metadata *tx_exc_metadata,
+		     struct dp_tx_msdu_info_s *msdu_info,
+		     void *tcl_desc);
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

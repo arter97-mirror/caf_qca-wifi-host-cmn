@@ -2811,6 +2811,7 @@ enum dp_context_type {
  * @dp_mlo_tx_pool_map: TX desc pool map
  * @dp_mlo_tx_pool_unmap: TX desc pool unmap
  * @dp_tx_override_flow_pool_id: flow pool id override
+ * @dp_tx_gen_hw_desc: Function pointer for generating hw descriptor (DP DAL)
  */
 struct dp_arch_ops {
 	/* INIT/DEINIT Arch Ops */
@@ -3120,6 +3121,15 @@ struct dp_arch_ops {
 				     enum dp_mod_id mod_id);
 	void (*dp_tx_override_flow_pool_id)(struct dp_vdev *vdev,
 					    struct dp_tx_queue *queue);
+#ifdef FEATURE_DAL_DP_SUPPORT
+	QDF_STATUS (*dp_tx_gen_hw_desc)(struct dp_soc *soc,
+					struct dp_vdev *vdev,
+					struct dp_tx_desc_s *tx_desc,
+					uint16_t fw_metadata,
+					struct cdp_tx_exception_metadata *metadata,
+					struct dp_tx_msdu_info_s *msdu_info,
+					void *tcl_desc);
+#endif
 };
 
 /**

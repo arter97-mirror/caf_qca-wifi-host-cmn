@@ -1020,4 +1020,7 @@ void dp_initialize_arch_ops_rh(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_mlo_tx_pool_map = dp_mlo_tx_pool_map_rh;
 	arch_ops->dp_mlo_tx_pool_unmap = dp_mlo_tx_pool_unmap_rh;
 	arch_ops->dp_tx_override_flow_pool_id = dp_tx_override_flow_pool_id_rh;
+#ifdef FEATURE_DAL_DP_SUPPORT
+	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_rh;
+#endif /* FEATURE_DAL_DP_SUPPORT */
 }

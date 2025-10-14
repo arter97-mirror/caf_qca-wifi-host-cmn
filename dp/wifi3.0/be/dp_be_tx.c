@@ -1762,26 +1762,24 @@ static inline void dp_tx_print_bank_profile_config(struct dp_soc_be *be_soc,
 }
 
 QDF_STATUS
-dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
-		    struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
-		    struct cdp_tx_exception_metadata *tx_exc_metadata,
-		    struct dp_tx_msdu_info_s *msdu_info)
+dp_tx_gen_hw_desc_be(struct dp_soc *soc, struct dp_vdev *vdev,
+		     struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
+		     struct cdp_tx_exception_metadata *tx_exc_metadata,
+		     struct dp_tx_msdu_info_s *msdu_info, void *tcl_desc)
 {
-	void *hal_tx_desc;
 	uint32_t *hal_tx_desc_cached;
-	int coalesce = 0;
 	struct dp_tx_queue *tx_q = &msdu_info->tx_queue;
 	uint8_t ring_id = tx_q->ring_id;
 	uint8_t tid;
 	struct dp_vdev_be *be_vdev;
-	uint8_t cached_desc[HAL_TX_DESC_LEN_BYTES] = { 0 };
 	uint8_t bm_id = dp_tx_get_rbm_id_be(soc, ring_id);
-	hal_ring_handle_t hal_ring_hdl = NULL;
-	QDF_STATUS status = QDF_STATUS_E_RESOURCES;
-	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
 	uint16_t ast_idx = vdev->bss_ast_idx;
 	uint16_t ast_hash = vdev->bss_ast_hash;
-	uint32_t hp;
+
+	if (!tcl_desc) {
+		dp_err("tcl_desc is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
 
 	be_vdev = dp_get_be_vdev_from_dp_vdev(vdev);
 
@@ -1789,6 +1787,8 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 		dp_err_rl("Invalid tx desc id:%d", tx_desc->id);
 		return QDF_STATUS_E_RESOURCES;
 	}
+
+	qdf_mem_zero(tcl_desc, HAL_TX_DESC_LEN_BYTES);
 
 	if (qdf_unlikely(tx_exc_metadata)) {
 		if (dp_assert_always_internal_stat(
@@ -1806,14 +1806,14 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 					tx_exc_metadata->sec_type ==
 						vdev->sec_type), soc,
 							tx.invld_sec_type))
-			return QDF_STATUS_E_INVAL;
+				return QDF_STATUS_E_INVAL;
 
-		dp_get_peer_from_tx_exc_meta(soc, (void *)cached_desc,
+		dp_get_peer_from_tx_exc_meta(soc, tcl_desc,
 					     tx_exc_metadata,
 					     &ast_idx, &ast_hash);
 	}
 
-	hal_tx_desc_cached = (void *)cached_desc;
+	hal_tx_desc_cached = (uint32_t *)tcl_desc;
 
 	if (dp_sawf_tag_valid_get(tx_desc->nbuf)) {
 		dp_sawf_config_be(soc, hal_tx_desc_cached,
@@ -1863,6 +1863,37 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 						tx_desc->nbuf);
 	dp_tx_set_particular_tx_queue(soc, hal_tx_desc_cached,
 				      tx_desc->nbuf);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
+		    struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
+		    struct cdp_tx_exception_metadata *tx_exc_metadata,
+		    struct dp_tx_msdu_info_s *msdu_info)
+{
+	void *hal_tx_desc;
+	uint32_t *hal_tx_desc_cached;
+	int coalesce = 0;
+	struct dp_tx_queue *tx_q = &msdu_info->tx_queue;
+	uint8_t ring_id = tx_q->ring_id;
+	uint8_t tid;
+	uint8_t cached_desc[HAL_TX_DESC_LEN_BYTES] = { 0 };
+	hal_ring_handle_t hal_ring_hdl = NULL;
+	QDF_STATUS status = QDF_STATUS_E_RESOURCES;
+	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
+	uint32_t hp;
+
+	/* Generate TCL descriptor */
+	status = dp_tx_gen_hw_desc_be(soc, vdev, tx_desc, fw_metadata,
+				      tx_exc_metadata, msdu_info,
+				      (void *)cached_desc);
+	if (qdf_unlikely(status != QDF_STATUS_SUCCESS))
+		return status;
+
+	hal_tx_desc_cached = (void *)cached_desc;
+	tid = msdu_info->tid;
 
 	if (!dp_tx_desc_set_ktimestamp(vdev, tx_desc))
 		dp_tx_desc_set_timestamp(tx_desc);

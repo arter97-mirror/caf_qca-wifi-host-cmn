@@ -157,6 +157,32 @@ QDF_STATUS dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 				struct dp_tx_msdu_info_s *msdu_info);
 
 /**
+ * dp_tx_gen_hw_desc_be() - Generate HW descriptor without HW enqueue
+ * @soc: DP Soc Handle
+ * @vdev: DP vdev handle
+ * @tx_desc: Tx Descriptor Handle
+ * @fw_metadata: Metadata to send to Target Firmware along with frame
+ * @metadata: Handle that holds exception path meta data
+ * @msdu_info: msdu_info containing information about TX buffer
+ * @tcl_desc: Pre-allocated buffer for TCL descriptor (must be non-NULL)
+ *            Buffer size must be at least HAL_TX_DESC_LEN_BYTES
+ *
+ * This function generates a TCL descriptor similar to hw_enqueue but does not
+ * enqueue it to hardware. The TCL descriptor can be used for inspection or
+ * deferred enqueueing. Caller must provide a valid pre-allocated buffer.
+ *
+ * Return: QDF_STATUS_SUCCESS on success
+ *         QDF_STATUS_E_INVAL for invalid parameters
+ */
+QDF_STATUS dp_tx_gen_hw_desc_be(struct dp_soc *soc,
+				struct dp_vdev *vdev,
+				struct dp_tx_desc_s *tx_desc,
+				uint16_t fw_metadata,
+				struct cdp_tx_exception_metadata *metadata,
+				struct dp_tx_msdu_info_s *msdu_info,
+				void *tcl_desc);
+
+/**
  * dp_tx_hw_enqueue_be_bn() - Enqueue to TCL HW for transmit for BE target
  * @soc: DP Soc Handle
  * @vdev: DP vdev handle

@@ -4147,6 +4147,25 @@ void dp_initialize_arch_ops_be_ipa_opt_dp_ctrl(struct dp_arch_ops *arch_ops)
 }
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_initialize_arch_ops_be_dal() - Initialize DAL specific arch ops
+ * @arch_ops: arch ops handle
+ *
+ * Return: none
+ */
+static inline
+void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
+{
+	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_be;
+}
+#else
+static inline
+void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
+{
+}
+#endif
+
 void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 {
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
@@ -4270,6 +4289,7 @@ void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 	dp_initialize_arch_ops_be_single_dev(arch_ops);
 	dp_initialize_arch_ops_be_fisa(arch_ops);
 	dp_initialize_arch_ops_be_ipa_opt_dp_ctrl(arch_ops);
+	dp_initialize_arch_ops_be_dal(arch_ops);
 }
 
 #ifdef QCA_SUPPORT_PRIMARY_LINK_MIGRATE
