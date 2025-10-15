@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3028,6 +3028,19 @@ struct wlan_ml_rv_linfo_perstaprof_stainfo_opparams {
 /* End of definitions related to Reconfiguration variant Multi-Link element Link
  * Info field.
  */
+
+/* Max length of element info and common info in Reconfiguration variant
+ * Multi-Link IE
+ */
+#define WLAN_ML_RV_ELEM_COMMON_MAX_LEN \
+	(sizeof(struct wlan_ie_multilink) + \
+	 WLAN_ML_RV_CINFO_LENGTH_MAX)
+
+/* Max link info length of Reconfiguration variant Multi-Link IE */
+#define WLAN_ML_RV_LINK_INFO_MAX_LEN \
+	(sizeof(struct wlan_ml_rv_linfo_perstaprof) + \
+	  WLAN_ML_RV_LINFO_PERSTAPROF_STAINFO_LENGTH_MAX + \
+	  WLAN_STA_PROFILE_MAX_LEN)
 
 /* End of definitions related to Reconfiguration variant Multi-Link element. */
 

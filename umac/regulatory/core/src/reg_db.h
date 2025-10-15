@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -89,6 +89,8 @@ enum reg_domain {
 	FCC21_ETSIC = 0xD2,
 	FCC22_FCCA = 0xD3,
 	FCC23_FCCA = 0xD4,
+	FCC24_FCCA = 0X1B,
+	FCC25_FCCA = 0X2B,
 
 	ETSI1_WORLD = 0x37,
 	ETSI2_WORLD = 0x35,
@@ -117,10 +119,14 @@ enum reg_domain {
 	ETSI21_WORLD = 0x7D,
 	ETSI22_WORLD = 0x7F,
 	ETSI22_ETSIC = 0x8A,
+	ETSI23_WORLD = 0X9B,
 	ETSI24_WORLD = 0xD6,
 	ETSI25_WORLD = 0xD8,
 	ETSI26_WORLD = 0xD9,
 	ETSI27_WORLD = 0xDB,
+	ETSI28_WORLD = 0X9C,
+	ETSI29_WORLD = 0X9D,
+	ETSI50_WORLD = 0x1F,
 
 	APL1_WORLD = 0x52,
 	APL1_ETSIC = 0x55,
@@ -151,8 +157,11 @@ enum reg_domain {
 	APL23_WORLD = 0xE3,
 	APL23_ETSIC = 0x79,
 	APL24_ETSIC = 0xE2,
+	APL24_ETSIE = 0x83,
 	APL25_ETSIC = 0x75,
+	APL25_ETSIE = 0x80,
 	APL26_ETSIC = 0x72,
+	APL26_ETSIE = 0X81,
 	APL27_FCCA = 0x73,
 	APL28_ETSIC = 0x76,
 	APL29_ETSIC = 0x77,
@@ -205,8 +214,10 @@ enum reg_domain {
 	MKK11_MKKC = 0xD7,
 	MKK11_MKKA2 = 0xD8,
 	MKK16_MKKC = 0xDF,
+	MKK17_MKKA = 0x2d,
 	MKK17_MKKC = 0xE1,
 	MKK18_MKKC = 0xEE,
+	MKK50_MKKD = 0x2F,
 
 	WORLD_60 = 0x60,
 	WORLD_61 = 0x61,
@@ -248,6 +259,8 @@ enum reg_domains_5g {
 	FCC21,
 	FCC22,
 	FCC23,
+	FCC24,
+	FCC25,
 
 	ETSI1,
 	ETSI2,
@@ -270,10 +283,14 @@ enum reg_domains_5g {
 	ETSI20,
 	ETSI21,
 	ETSI22,
+	ETSI23,
 	ETSI24,
 	ETSI25,
 	ETSI26,
 	ETSI27,
+	ETSI28,
+	ETSI29,
+	ETSI50,
 
 	APL1,
 	APL2,
@@ -293,8 +310,8 @@ enum reg_domains_5g {
 	APL16,
 	APL17,
 	APL19,
-	APL23,
 	APL20,
+	APL23,
 	APL24,
 	APL25,
 	APL26,
@@ -312,6 +329,7 @@ enum reg_domains_5g {
 	MKK4,
 	MKK9,
 	MKK10,
+	MKK50,
 
 	WORLD_5G_1,
 	WORLD_5G_2,
@@ -323,12 +341,14 @@ enum reg_domains_2g {
 	FCCA,
 	MKKA,
 	MKKC,
+	MKKD,
 	KRRA,
 	CHNA,
 	FCCB,
 	ETSIC,
 	WORLD,
 	ETSID,
+	ETSIE,
 	WORLD_2G_1,
 	WORLD_2G_2,
 	WORLD_2G_3,
@@ -457,6 +477,7 @@ enum country_code {
 	CTRY_KENYA = 404,
 	CTRY_KOREA_ROC = 410,
 	CTRY_KUWAIT = 414,
+	CTRY_KYRGYZSTAN = 417,
 	CTRY_LAO_PEOPLES_DEMOCRATIC_REPUBLIC = 418,
 	CTRY_LATVIA = 428,
 	CTRY_LEBANON = 422,
@@ -720,6 +741,9 @@ struct reg_domain_pair {
  * @FCC1_6G_18: Super domain FCC1_6G_18 for US VLP enablement
  * @APL7_6G_19: Super domain APL7_6G_19 for KOREA LPI and VLP
  * @FCC2_6G_20: Super domain FCC2_6G_20 for CANADA LPI AND VLP
+ * @FCC2_6G_21: Super domain FCC2_6G_21 for FCC VLP,LPI & SP
+ * @APL8_6G_22: Super domain APL8_6G_22 for HONDURAS
+ * @APL5_APL9_6G_23: Super domain APL5_APL9_6G_23 for PARAGUAY
  */
 enum reg_super_domain_6g {
 	FCC1_6G_01 = 0x01,
@@ -746,6 +770,9 @@ enum reg_super_domain_6g {
 	FCC1_6G_18 = 0x18,
 	APL7_6G_19 = 0x19,
 	FCC2_6G_20 = 0x20,
+	FCC2_6G_21 = 0x21,
+	APL8_6G_22 = 0x22,
+	APL5_APL9_6G_23 = 0x23,
 };
 
 #if defined(COMPILE_REGDB_6G)

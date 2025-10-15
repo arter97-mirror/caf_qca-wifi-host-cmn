@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -209,5 +210,19 @@ void target_if_mlo_unregister_vdev_tid_to_link_map_event(
 		struct wmi_unified *wmi_handle)
 {
 }
+#endif
+
+#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
+/**
+ * target_if_mlo_sap_link_removal_offload_support() - link removal offload
+ * service bit support
+ * @psoc: PSOC object
+ *
+ * API to get service bit of link removal offload support
+ *
+ * Return: true if support, false if not support
+ */
+bool
+target_if_mlo_sap_link_removal_offload_support(struct wlan_objmgr_psoc *psoc);
 #endif
 #endif /* __TARGET_IF_MLO_MGR_H__ */
