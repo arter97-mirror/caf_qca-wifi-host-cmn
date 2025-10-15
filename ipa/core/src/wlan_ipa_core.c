@@ -2438,6 +2438,8 @@ end:
 	if (qdf_atomic_read(&ipa_ctx->pipes_disabled) &&
 	    qdf_atomic_read(&ipa_ctx->autonomy_disabled)) {
 		ipa_ctx->ipa_pipes_down = true;
+		ipa_ctx->ipa_init_state =
+			WLAN_IPA_STATE_PIPE_CONNECTION_DONE;
 	}
 	ipa_ctx->pipes_down_in_progress = false;
 	qdf_spin_unlock_bh(&ipa_ctx->enable_disable_lock);
@@ -5813,8 +5815,6 @@ QDF_STATUS wlan_ipa_cleanup(struct wlan_ipa_priv *ipa_ctx)
 
 	wlan_ipa_opt_dp_deinit(ipa_ctx);
 	wlan_ipa_opt_dp_ctrl_deinit(ipa_ctx);
-	ipa_ctx->ipa_init_state =
-		WLAN_IPA_STATE_DEINIT;
 
 	/* Teardown IPA sys_pipe for MCC */
 	if (wlan_ipa_uc_sta_is_enabled(ipa_ctx->config)) {
@@ -6109,6 +6109,7 @@ static inline void wlan_ipa_smmu_unmap_rx_buf(struct wlan_ipa_priv *ipa_ctx)
 	cdp_ipa_rx_buf_smmu_pool_mapping(ipa_ctx->dp_soc,
 					 IPA_DEF_PDEV_ID, false,
 					 false, __func__, __LINE__);
+	cdp_ipa_set_smmu_mapped(ipa_ctx->dp_soc, 0);
 	qdf_mutex_release(&ipa_ctx->ipa_lock);
 }
 
@@ -6672,7 +6673,7 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx)
 		return status;
 
 	wlan_ipa_uc_disable_pipes(ipa_ctx, true);
-
+	ipa_ctx->ipa_init_state = WLAN_IPA_STATE_DEINIT;
 	cdp_ipa_deregister_op_cb(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID);
 	qdf_atomic_set(&ipa_ctx->deinit_in_prog, 1);
 
@@ -7568,7 +7569,8 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 
 	if (!ipa_obj ||
 	    ipa_obj->ipa_init_state < WLAN_IPA_STATE_PIPE_CONNECTION_DONE) {
-		ipa_log_err("opt_dp_ctrl: Not initialized properly");
+		ipa_log_err("opt_dp_ctrl: IPA is not initialized, current state - %d",
+			    ipa_obj ? ipa_obj->ipa_init_state : -1);
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
