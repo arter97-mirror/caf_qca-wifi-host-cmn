@@ -1202,6 +1202,7 @@ static bool scm_skip_bcn_ch_mismatch_check_by_oui(
 	qdf_mem_zero(&attr, sizeof(attr));
 	attr.ie_data = util_scan_entry_ie_data(scan_entry);
 	attr.ie_length = util_scan_entry_ie_len(scan_entry);
+	attr.mac_addr = scan_entry->bssid.bytes;
 
 	if (!wlan_action_oui_search(psoc, &attr,
 				    ACTION_OUI_SKIP_BCN_CH_MISMATCH_CHK))

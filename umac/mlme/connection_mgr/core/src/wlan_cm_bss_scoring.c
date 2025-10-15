@@ -3211,6 +3211,7 @@ static bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
 
 	attr.ie_data = util_scan_entry_ie_data(scan_entry);
 	attr.ie_length = util_scan_entry_ie_len(scan_entry);
+	attr.mac_addr = scan_entry->bssid.bytes;
 
 	if (wlan_action_oui_search(psoc, &attr,
 				   ACTION_OUI_RESTRICT_MAX_MLO_LINKS)) {
