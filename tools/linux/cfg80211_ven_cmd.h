@@ -927,6 +927,7 @@ enum {
 	IEEE80211_PARAM_RSNO2CAPS = 840,
 	IEEE80211_PARAM_RSNXOCAPS = 841,
 	IEEE80211_PARAM_LIST_REG_CHAN = 842,
+	IEEE80211_PARAM_PURE_11AX_ENABLE = 843,
 	/* Add QCA enums above */
 	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
 	IEEE80211_PARAM_CUST_END, /* Cust enum end */
@@ -1590,6 +1591,7 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_LSIG_RLSIG_POWER_SCALING =573,
 	OL_ATH_PARAM_HESIGA_POWER_SCALING = 574,
 	OL_ATH_PARAM_PREAMBLE_POWER_REMOVAL =575,
+	OL_ATH_PARAM_PRE_11AX_PACKET_REMOVAL = 576,
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -2781,6 +2783,7 @@ struct vendor_commands vap_vendor_cmds[] = {
 #ifdef WLAN_FEATURE_VBSS
 	{"get_vbss", IEEE80211_PARAM_VBSS_ENABLE, GET_PARAM, 0},
 #endif /* WLAN_FEATURE_VBSS */
+	{"pure_11ax", IEEE80211_PARAM_PURE_11AX_ENABLE, SET_PARAM, 1},
 };
 
 struct vendor_commands radio_vendor_cmds[] = {
@@ -4196,6 +4199,8 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_HESIGA_POWER_SCALING, SET_PARAM, 1},
 	{"preamble_power_removal",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_PREAMBLE_POWER_REMOVAL, SET_PARAM, 1},
+	{"pre_11ax_packet_removal",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_PRE_11AX_PACKET_REMOVAL, SET_PARAM, 1},
 };
 #endif
 
