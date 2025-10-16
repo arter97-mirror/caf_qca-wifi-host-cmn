@@ -873,7 +873,7 @@ osif_free_ml_link_params(struct cfg80211_connect_resp_params *conn_rsp_params)
 
 #else
 
-#ifdef WLAN_FEATURE_11BE_MLO
+#if (defined WLAN_FEATURE_11BE_MLO) && (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
 static
 void osif_populate_connect_response_for_link(
 			struct wlan_objmgr_vdev *vdev,
@@ -1011,7 +1011,7 @@ static void osif_fill_connect_resp_mlo_params(
 		   assoc_link_id, link_info->chan_freq);
 	osif_populate_partner_links_mlo_params(vdev, rsp, conn_rsp_params);
 }
-#else
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
 static void osif_fill_connect_resp_mlo_params(
 			struct wlan_objmgr_vdev *vdev,
 			struct wlan_cm_connect_resp *rsp,
@@ -1020,6 +1020,14 @@ static void osif_fill_connect_resp_mlo_params(
 {
 	conn_rsp_params->links[0].bssid = rsp->bssid.bytes;
 	conn_rsp_params->links[0].bss = bss;
+}
+#else
+static void osif_fill_connect_resp_mlo_params(
+			struct wlan_objmgr_vdev *vdev,
+			struct wlan_cm_connect_resp *rsp,
+			struct cfg80211_bss *bss,
+			struct cfg80211_connect_resp_params *conn_rsp_params)
+{
 }
 #endif
 static void
