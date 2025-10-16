@@ -1100,7 +1100,6 @@ more_data:
 	while (qdf_likely(quota-- && (ring_desc =
 				hal_srng_dst_peek(hal_soc,
 						  hal_ring_hdl)))) {
-		dp_info("Receive pkts from REO2SW0 ring");
 		DP_STATS_INC(soc, rx.err_ring_pkts, 1);
 		reo_err_status = hal_rx_err_status_get(hal_soc, ring_desc);
 		rxdma_err_status = HAL_RX_RXDMA_ERR_STATUS_GET_BN(ring_desc);
@@ -1115,8 +1114,6 @@ more_data:
 			rxdma_error_code =
 				HAL_RX_RXDMA_ERR_CODE_GET_BN(ring_desc);
 
-		dp_info("reo push reason %d, error code %d, rxdma push reason %d, error code %d",
-			reo_err_status, reo_error_code, rxdma_err_status, rxdma_error_code);
 		qdf_mem_set(&mpdu_desc_info, sizeof(mpdu_desc_info), 0);
 
 		hal_rx_mpdu_desc_info_get(hal_soc, ring_desc,
@@ -1276,15 +1273,15 @@ more_data:
 		 */
 
 		if (reo_err_status == HAL_REO_ERROR_DETECTED) {
-			dp_info("Got pkt with REO ERROR: %d",
-				reo_error_code);
+			dp_info_rl("Got pkt with REO ERROR: %d",
+				   reo_error_code);
 			goto process_reo_err;
 		} else if (rxdma_err_status == HAL_RXDMA_ERROR_DETECTED) {
-			dp_info("Got pkt with RXDMA ERROR: %d",
-				rxdma_error_code);
+			dp_info_rl("Got pkt with RXDMA ERROR: %d",
+				   rxdma_error_code);
 			goto process_rxdma_err;
 		} else {
-			dp_err("Non of REO or RXDMA error is detected");
+			dp_err_rl("Non of REO or RXDMA error is detected");
 			qdf_trace_hex_dump(QDF_MODULE_ID_DP,
 					   QDF_TRACE_LEVEL_ERROR,
 					   ring_desc,
