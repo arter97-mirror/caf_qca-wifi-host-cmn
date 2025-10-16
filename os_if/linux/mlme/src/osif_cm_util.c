@@ -686,6 +686,7 @@ static struct mlme_cm_ops cm_ops = {
 	.mlme_cm_roam_cmpl_cb = osif_cm_roam_cmpl_cb,
 	.mlme_cm_roam_get_scan_ie_cb = osif_cm_get_scan_ie_info_cb,
 	.mlme_cm_roam_rt_stats_cb = osif_cm_roam_rt_stats_evt_cb,
+	.mlme_cm_roam_connect_complete_cb = osif_cm_roam_complete_cb,
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	.mlme_cm_ft_preauth_cmpl_cb = osif_cm_ft_preauth_cmpl_cb,
@@ -762,6 +763,14 @@ void osif_cm_connect_active_notify(uint8_t vdev_id)
 		osif_cm_legacy_ops->connect_active_notify_cb(vdev_id);
 }
 #endif
+
+QDF_STATUS osif_cm_roam_complete_cb(struct wlan_objmgr_vdev *vdev)
+{
+	if (osif_cm_legacy_ops && osif_cm_legacy_ops->roam_complete_notify_cb)
+		osif_cm_legacy_ops->roam_complete_notify_cb(vdev);
+
+	return QDF_STATUS_SUCCESS;
+}
 
 QDF_STATUS osif_cm_connect_comp_ind(struct wlan_objmgr_vdev *vdev,
 				    struct wlan_cm_connect_resp *rsp,
