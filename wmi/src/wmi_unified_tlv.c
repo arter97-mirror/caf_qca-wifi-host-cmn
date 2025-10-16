@@ -25669,6 +25669,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT;
 	wmi_service[wmi_service_tx_power_limit] =
 				WMI_SERVICE_TX_POWER_LIMIT;
+#if defined(SAP_PERF_TUNING)
+	wmi_service[wmi_service_vdev_traffic_monitoring] =
+				WMI_SERVICE_VDEV_TRAFFIC_MONITORING;
+#endif
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service[wmi_service_wfd_r2] = WMI_SERVICE_WFD_R2;
 #endif
