@@ -1270,6 +1270,8 @@ QDF_STATUS ce_get_direct_link_srng_info(struct hif_softc *scn,
 		if (ce_info_idx > max_ce_info_len)
 			return QDF_STATUS_E_FAILURE;
 
+		ce_state->service_dl = true;
+
 		info[ce_info_idx].ce_id = ce_state->id;
 		info[ce_info_idx].pipe_dir = tgt_svc_cfg[i].pipedir;
 
@@ -1293,9 +1295,6 @@ QDF_STATUS ce_get_direct_link_srng_info(struct hif_softc *scn,
 
 		ce_save_srng_info(scn, &info[ce_info_idx].ring_info,
 				  ce_state->status_ring->srng_ctx);
-
-		ce_state->service_dl = true;
-
 		ce_info_idx++;
 	}
 
