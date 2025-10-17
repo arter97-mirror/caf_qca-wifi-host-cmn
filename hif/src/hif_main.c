@@ -1310,11 +1310,13 @@ void hif_init_direct_link_rcv_pipe_num(struct hif_softc *scn)
 
 #if (defined(HIF_PCI) || defined(HIF_SNOC) || defined(HIF_AHB) || \
 	defined(HIF_IPCI))
+static inline
 void hif_ce_desc_history_log_reg(struct hif_softc *scn)
 {
 	return hif_ce_desc_history_log_register(scn);
 }
 
+static inline
 void hif_ce_desc_history_log_unreg(void)
 {
 	return hif_ce_desc_history_log_unregister();
