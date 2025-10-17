@@ -939,9 +939,10 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 
 		error = HTT_RX_DATA_MSDU_INFO_ERROR_VALID_GET(*(msg_word + 3));
 		if (qdf_unlikely(error)) {
-			dp_rx_err("MSDU RX error encountered error:%u", error);
 			error_code =
 			HTT_RX_DATA_MSDU_INFO_ERROR_INFO_GET(*(msg_word + 3));
+			dp_rx_err("MSDU RX error encountered error:%u",
+				  error_code);
 			qdf_nbuf_set_next(rx_desc->nbuf, NULL);
 			if (qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf)) {
 				if (!err_list_head) {
