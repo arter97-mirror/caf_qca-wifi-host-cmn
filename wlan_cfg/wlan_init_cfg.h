@@ -65,7 +65,12 @@
 
 /* Tx configuration */
 #define MAX_LINK_DESC_BANKS 8
+
+#ifdef WLAN_FEATURE_SON
+#define MAX_TXDESC_POOLS 6
+#else
 #define MAX_TXDESC_POOLS 4
+#endif
 
 /* Rx configuration */
 #define MAX_RXDESC_POOLS 4
