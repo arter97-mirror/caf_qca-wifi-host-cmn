@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2002-2010, Atheros Communications Inc.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -201,8 +201,10 @@ dfs_remove_from_nol(qdf_hrtimer_data_t *arg)
 
 	utils_dfs_save_nol(dfs->dfs_pdev_obj);
 
-	if (dfs->dfs_use_puncture)
+	if (dfs->dfs_use_puncture) {
 		dfs_handle_nol_puncture(dfs, nolfreq);
+		dfs_send_nol_remove_ind();
+	}
 	/*
 	 * Check if a channel is configured by the user to which we have to
 	 * switch after it's NOL expiry. If that is the case, change

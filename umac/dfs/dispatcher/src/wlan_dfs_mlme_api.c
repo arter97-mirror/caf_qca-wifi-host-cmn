@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -81,6 +80,19 @@ static void dfs_send_radar_ind(struct wlan_objmgr_pdev *pdev,
 			       QDF_MODULE_ID_SME, &sme_msg);
 	dfs_debug(NULL, WLAN_DEBUG_DFS_ALWAYS, "eWNI_SME_DFS_RADAR_FOUND pdev%d posted",
 		  vdev_id);
+}
+
+void dfs_send_nol_remove_ind(void)
+{
+	struct scheduler_msg sme_msg = {0};
+
+	sme_msg.type = eWNI_SME_DFS_NOL_REMOVE;
+	sme_msg.bodyptr = NULL;
+	sme_msg.bodyval = 0;
+	scheduler_post_message(QDF_MODULE_ID_DFS,
+			       QDF_MODULE_ID_SME,
+			       QDF_MODULE_ID_SME, &sme_msg);
+	dfs_debug(NULL, WLAN_DEBUG_DFS_ALWAYS, "eWNI_SME_DFS_NOL_REMOVE posted");
 }
 
 void dfs_mlme_mark_dfs(struct wlan_objmgr_pdev *pdev,
