@@ -4,6 +4,8 @@
  */
 
 #include "dp_dal_tx.h"
+#include "hal_tx.h"
+#include "qdf_mem.h"
 
 /**
  *dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
@@ -54,10 +56,11 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
  * @priv: private data
  * @pkt: tx packet
  * @ifidx: interface index
+ * @desc: TX descriptor
  *
  * Return: 0 on success
  */
-int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx)
+int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc)
 {
 	return 0;
 }
@@ -92,7 +95,7 @@ int dp_dal_tx_queue_active_bypass_mode(void *priv, u16 flowid, bool enable)
 }
 
 /**
- * dp_dal_tx_hw_enqueue - Enqueue a BE TX packet (DAL stub).
+ * dp_dal_tx_hw_enqueue - DAL layer's HW enqueue function for TX packets
  * @soc: DP SOC context.
  * @vdev: DP VDEV context.
  * @tx_desc: TX descriptor for the packet.
@@ -100,11 +103,9 @@ int dp_dal_tx_queue_active_bypass_mode(void *priv, u16 flowid, bool enable)
  * @metadata: Exception metadata for TX path.
  * @msdu_info: MSDU information for the packet.
  *
- * This is a placeholder implementation that currently returns
- * %QDF_STATUS_SUCCESS. It should be replaced with the actual
- * hardware enqueue logic.
+ * This function implements the DAL layer's hardware enqueue logic.
  *
- * Return: %QDF_STATUS_SUCCESS on success.
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure.
  */
 QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 				struct dp_vdev *vdev,
@@ -113,6 +114,60 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 				struct cdp_tx_exception_metadata *metadata,
 				struct dp_tx_msdu_info_s *msdu_info)
 {
-	/* TODO: implement hardware enqueue logic */
-	return QDF_STATUS_SUCCESS;
+	struct dp_dal_ctx *dal_ctx;
+	void *tcl_desc = NULL;
+	qdf_nbuf_t nbuf;
+	uint8_t vdev_id;
+	int ret;
+	QDF_STATUS status;
+
+	dal_ctx = soc->dal_ctx;
+	if (qdf_unlikely(!dal_ctx)) {
+		dp_tx_err_rl("DAL context is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	nbuf = tx_desc->nbuf;
+	vdev_id = tx_desc->vdev_id;
+
+	if (qdf_unlikely(!nbuf)) {
+		dp_tx_err_rl("nbuf is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	tcl_desc = qdf_mem_malloc(HAL_TX_DESC_LEN_BYTES);
+	if (qdf_unlikely(!tcl_desc)) {
+		dp_tx_err_rl("Failed to allocate TCL descriptor memory");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	/* Generate TCL command via tx_gen_hw_desc soc_ops */
+	status = soc->arch_ops.dp_tx_gen_hw_desc(soc, vdev, tx_desc,
+						 fw_metadata, metadata,
+						 msdu_info, tcl_desc);
+	if (qdf_unlikely(QDF_IS_STATUS_ERROR(status))) {
+		dp_tx_err_rl("Failed to generate HW descriptor, status: %d",
+			     status);
+		goto err_free_desc;
+	}
+
+	if (global_plat_ops && global_plat_ops->tx) {
+		ret = global_plat_ops->tx(dal_ctx, nbuf, vdev_id, tcl_desc);
+		if (qdf_unlikely(ret)) {
+			dp_tx_err_rl("platform tx failed, ret: %d", ret);
+			status = QDF_STATUS_E_FAILURE;
+			goto err_free_desc;
+		}
+	} else {
+		dp_tx_err_rl("Platform TX operation not available");
+		status = QDF_STATUS_E_NOSUPPORT;
+		goto err_free_desc;
+	}
+
+	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
+	status = QDF_STATUS_SUCCESS;
+
+err_free_desc:
+	qdf_mem_free(tcl_desc);
+	return status;
 }

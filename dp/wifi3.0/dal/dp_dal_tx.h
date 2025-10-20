@@ -27,10 +27,11 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv);
  * @priv: private data
  * @pkt: tx packet
  * @ifidx: interface index
+ * @desc: TX descriptor
  *
  * Return: 0 on success
  */
-int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx);
+int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc);
 
 /**
  * dp_dal_tx_cpl_bypass_mode() - Skeleton for platform bus tx completion
