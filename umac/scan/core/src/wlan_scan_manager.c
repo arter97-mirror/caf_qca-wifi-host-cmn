@@ -1384,31 +1384,38 @@ scm_scan_update_scan_event(struct wlan_scan_obj *scan,
 
 #ifdef WLAN_FEATURE_WIFI_EVENT_CUSTOM
 static void update_top_aps(struct scan_ap_info *top_aps,
-			   int *num_top, uint8_t *bssid, int8_t rssi,
+			   int *num_top, uint8_t *bssid, uint8_t abs_rssi,
 			   struct wlan_ssid *ssid)
 {
 	int i = 0;
-	int min_idx = -1;
-	int8_t min_rssi = 127;
+	int max_idx = -1;
+	uint8_t max_abs_rssi = 0;
 
 	if (*num_top < EVENT_MAX_AP) {
-		qdf_mem_copy(top_aps[*num_top].bssid, bssid, 6);
-		top_aps[*num_top].rssi = rssi;
+		qdf_mem_copy(top_aps[*num_top].bssid, bssid,
+			     QDF_MAC_ADDR_SIZE);
+		top_aps[*num_top].abs_rssi = abs_rssi;
 		(*num_top)++;
 		return;
 	}
 
 	for (i = 0; i < EVENT_MAX_AP; i++) {
-		if (top_aps[i].rssi < min_rssi) {
-			min_rssi = top_aps[i].rssi;
-			min_idx = i;
+		if (top_aps[i].abs_rssi > max_abs_rssi) {
+			max_abs_rssi = top_aps[i].abs_rssi;
+			max_idx = i;
 		}
 	}
-	if (rssi > min_rssi) {
-		qdf_mem_copy(top_aps[min_idx].bssid, bssid, 6);
-		top_aps[min_idx].rssi = rssi;
-		top_aps[min_idx].ssid_len = ssid->length;
-		qdf_mem_copy(top_aps[min_idx].ssid, ssid->ssid,
+	/* abs_rssi is the absolute value of RSSI, where a smaller value means stronger signal.
+	   For example:
+	   abs_rssi = 30 (from -30 dBm) is stronger than abs_rssi = 80 (from -80 dBm).
+	   Therefore, we compare using "abs_rssi < max_abs_rssi" to keep the strongest APs.
+	*/
+	if (abs_rssi < max_abs_rssi) {
+		qdf_mem_copy(top_aps[max_idx].bssid, bssid,
+			     QDF_MAC_ADDR_SIZE);
+		top_aps[max_idx].abs_rssi = abs_rssi;
+		top_aps[max_idx].ssid_len = ssid->length;
+		qdf_mem_copy(top_aps[max_idx].ssid, ssid->ssid,
 			     ssid->length);
 	}
 }
@@ -1433,6 +1440,7 @@ static void scm_send_custom_scan_complete_event(struct scan_event_info *scan_inf
 	bool is_connected;
 	struct scan_event *scan_event = NULL;
 	struct wlan_objmgr_vdev *vdev = NULL;
+	uint8_t abs_rssi;
 
 	vdev = scan_info->vdev;
 	scan_event = &(scan_info->event);
@@ -1475,8 +1483,9 @@ static void scm_send_custom_scan_complete_event(struct scan_event_info *scan_inf
 	event = (struct scan_complete_event *)(mon_report->payload);
 	if (is_connected) {
 		conn_ap = (struct conn_ap_info *)(event->conn_ap);
-		conn_ap->rssi = sta_ctx->conn_info.signal;
-		qdf_mem_copy(conn_ap->bssid, &sta_ctx->conn_info.bssid, 6);
+		conn_ap->abs_rssi = (uint8_t)abs((int)sta_ctx->conn_info.signal);
+		qdf_mem_copy(conn_ap->bssid, &sta_ctx->conn_info.bssid,
+			     QDF_MAC_ADDR_SIZE);
 	}
 
 	mon_report->type = is_connected ? BGSCAN_COMPLETE_EVENT : FGSCAN_COMPLETE_EVENT;
@@ -1509,9 +1518,10 @@ static void scm_send_custom_scan_complete_event(struct scan_event_info *scan_inf
 	while (entry) {
 		bss_desc = GET_BASE_ADDR(entry,
 				struct tag_csrscan_result, Link);
+		abs_rssi = (uint8_t)abs((int)bss_desc->Result.BssDescriptor.rssi);
 		update_top_aps(event->scan_ap, &num_top,
 			       bss_desc->Result.BssDescriptor.bssId,
-			       bss_desc->Result.BssDescriptor.rssi,
+			       abs_rssi,
 			       (struct wlan_ssid *)&bss_desc->Result.ssId);
 
 		entry = csr_ll_next(&ret_list->List, entry,

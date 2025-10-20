@@ -337,7 +337,7 @@ struct mon_report_status {
 
 struct auth_req_event {
     uint16_t mhz;
-    uint8_t  bssid[6];
+    uint8_t  bssid[QDF_MAC_ADDR_SIZE];
     uint8_t  isFT;
 }__attribute__((__packed__));
 
@@ -350,15 +350,15 @@ struct auth_resp_event {
 #define EVENT_SSID_MAX_LEN 32
 
 struct ap_info_event {
-	uint8_t bssid[6];
+	uint8_t bssid[QDF_MAC_ADDR_SIZE];
 	uint16_t channel;
-	int8_t rssi;
+	uint8_t abs_rssi;
 } __attribute__((__packed__));
 
 struct join_req_event {
-	uint8_t bssid[6];
+	uint8_t bssid[QDF_MAC_ADDR_SIZE];
 	uint16_t channel;
-	int8_t rssi;
+	uint8_t abs_rssi;
 } __attribute__((__packed__));
 
 struct join_resp_event {
@@ -388,15 +388,15 @@ struct stats_cfm_event {
 } __attribute__((__packed__));
 
 struct scan_ap_info {
-	uint8_t bssid[6];
-	int8_t rssi;
+	uint8_t bssid[QDF_MAC_ADDR_SIZE];
+	uint8_t abs_rssi;
 	uint8_t ssid_len;
 	uint8_t ssid[EVENT_SSID_MAX_LEN];
 }__attribute__((__packed__));
 
 struct conn_ap_info {
-	uint8_t bssid[6];
-	int8_t rssi;
+	uint8_t bssid[QDF_MAC_ADDR_SIZE];
+	uint8_t abs_rssi;
 	uint8_t reserved;
 }__attribute__((__packed__));
 
