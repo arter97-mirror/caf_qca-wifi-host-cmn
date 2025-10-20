@@ -3969,7 +3969,7 @@ bool dp_ipa_rx_wdsext_iface(struct cdp_soc_t *soc_hdl, uint8_t peer_id,
 	struct dp_soc *dp_soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	bool status = false;
 
-	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(soc_hdl, peer_id,
+	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(dp_soc, peer_id,
 						   &txrx_ref_handle,
 						   DP_MOD_ID_IPA);
 
