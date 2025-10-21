@@ -9929,6 +9929,8 @@ void wmi_copy_resource_config(wmi_resource_config *resource_cfg,
 			 tgt_res_cfg->fw_ast_indication_disable);
 	}
 
+	resource_cfg->dp_haps_config = tgt_res_cfg->haps_feature_flags;
+
 	wmi_copy_latency_flowq_support(resource_cfg, tgt_res_cfg);
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
 
@@ -20770,6 +20772,12 @@ static QDF_STATUS extract_pdev_csa_switch_count_status_tlv(
 							wmi_handle,
 							csa_status->pdev_id);
 	param->current_switch_count = csa_status->current_switch_count;
+
+	if (param_buf->num_vdev_ids != csa_status->num_vdevs) {
+		wmi_err("Invalid number of vdevs: received = %d, expected = %d",
+			csa_status->num_vdevs, param_buf->num_vdev_ids);
+		return QDF_STATUS_E_INVAL;
+	}
 	param->num_vdevs = csa_status->num_vdevs;
 	param->vdev_ids = param_buf->vdev_ids;
 
