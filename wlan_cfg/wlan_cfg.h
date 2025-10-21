@@ -355,6 +355,8 @@ struct wlan_srng_cfg {
  * @rx_rel_wbm2sw_ring_id: Rx WBM2SW ring id
  * @tx_rings_grp_bitmap: bitmap of group intr contexts which have
  *                       non-zero tx ring mask
+ * @rx_rings_grp_bitmap: bitmap of group intr contexts which have
+ *                       non-zero rx ring mask
  * @mlo_chip_rx_ring_map: map of chip_id to rx ring map
  * @vdev_stats_hw_offload_config: HW vdev stats config
  * @vdev_stats_hw_offload_timer: HW vdev stats timer duration
@@ -595,6 +597,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	uint32_t tx_mon_ring_fill_level;
 	uint8_t rx_rel_wbm2sw_ring_id;
 	uint32_t tx_rings_grp_bitmap;
+	uint32_t rx_rings_grp_bitmap;
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 	uint8_t mlo_chip_rx_ring_map;
 #endif

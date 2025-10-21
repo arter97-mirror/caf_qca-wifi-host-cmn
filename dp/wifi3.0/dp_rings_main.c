@@ -3528,6 +3528,13 @@ uint32_t dp_get_tx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl)
 	return soc->wlan_cfg_ctx->tx_rings_grp_bitmap;
 }
 
+uint32_t dp_get_rx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
+
+	return soc->wlan_cfg_ctx->rx_rings_grp_bitmap;
+}
+
 void dp_soc_set_txrx_ring_map(struct dp_soc *soc)
 {
 	uint32_t i;

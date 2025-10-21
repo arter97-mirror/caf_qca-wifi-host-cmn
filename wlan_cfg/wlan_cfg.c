@@ -3612,6 +3612,10 @@ void wlan_cfg_fill_interrupt_mask(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx,
 			wlan_cfg_ctx->int_rxdma2host_ring_mask[i] =
 						rxdma2host_ring_mask_msi[i];
 		}
+
+		if (wlan_cfg_ctx->int_rx_ring_mask[i])
+			wlan_cfg_ctx->rx_rings_grp_bitmap |= BIT(i);
+
 		wlan_cfg_ctx->int_host2rxdma_ring_mask[i] =
 						host2rxdma_ring_mask_msi[i];
 		wlan_cfg_ctx->int_host2rxdma_mon_ring_mask[i] =

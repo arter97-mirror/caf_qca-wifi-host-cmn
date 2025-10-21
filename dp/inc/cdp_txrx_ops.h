@@ -1945,6 +1945,7 @@ void (*peer_send_wds_disconnect)(struct cdp_ctrl_objmgr_psoc *psoc,
  * @is_swlm_enabled: Check if Software latency manager is enabled or not.
  * @display_txrx_hw_info: Dump the DP rings info
  * @get_tx_rings_grp_bitmap:
+ * @get_rx_rings_grp_bitmap:
  * @set_peer_txq_flush_config: Configures the ac/tid to be flushed and policy
  *			       to flush.
  * @set_bus_vote_lvl_high: The bus lvl is set to high or low based on tput
@@ -2043,6 +2044,7 @@ struct cdp_misc_ops {
 	uint8_t (*is_swlm_enabled)(struct cdp_soc_t *soc_hdl);
 	bool (*display_txrx_hw_info)(struct cdp_soc_t *soc_hdl);
 	uint32_t (*get_tx_rings_grp_bitmap)(struct cdp_soc_t *soc_hdl);
+	uint32_t (*get_rx_rings_grp_bitmap)(struct cdp_soc_t *soc_hdl);
 #ifdef WLAN_FEATURE_PEER_TXQ_FLUSH_CONF
 	int (*set_peer_txq_flush_config)(struct cdp_soc_t *soc_hdl,
 					 uint8_t vdev_id, uint8_t *addr,
