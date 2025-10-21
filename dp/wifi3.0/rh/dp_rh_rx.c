@@ -536,12 +536,8 @@ dp_rx_2k_jump_oor_err_handler_rh(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		goto free_nbuf;
 	}
 
-	if (error_code == HTT_RXDATA_ERR_OOR) {
-		frame_mask = FRAME_MASK_IPV4_ARP | FRAME_MASK_IPV4_DHCP |
-			FRAME_MASK_IPV4_EAPOL | FRAME_MASK_IPV6_DHCP;
-	} else {
-		frame_mask = FRAME_MASK_IPV4_ARP;
-	}
+	frame_mask = FRAME_MASK_IPV4_ARP | FRAME_MASK_IPV4_DHCP |
+		FRAME_MASK_IPV4_EAPOL | FRAME_MASK_IPV6_DHCP;
 
 	if (dp_rx_deliver_special_frame(soc, txrx_peer, nbuf, frame_mask,
 					rx_tlv_hdr)) {
