@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -354,7 +354,11 @@ struct qca_napi_stat {
  * instances.
  */
 struct qca_napi_info {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device   *netdev; /* dummy net_dev ptr */
+#else
 	struct net_device    netdev; /* dummy net_dev */
+#endif
 	void                 *hif_ctx;
 	struct napi_struct   napi;
 	uint8_t              scale;   /* currently same on all instances */
@@ -367,7 +371,11 @@ struct qca_napi_info {
 	/* will only be present for data rx CE's */
 	void (*offld_flush_cb)(void *);
 	struct napi_struct   rx_thread_napi;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device    *rx_thread_netdev;
+#else
 	struct net_device    rx_thread_netdev;
+#endif
 #endif /* RECEIVE_OFFLOAD */
 	qdf_lro_ctx_t        lro_ctx;
 #ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
@@ -773,7 +781,8 @@ static inline void hif_event_history_deinit(struct hif_opaque_softc *hif_ctx,
 
 void hif_display_ctrl_traffic_pipes_state(struct hif_opaque_softc *hif_ctx);
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
+	defined(RECORD_DP_CE_EVTS)
 void hif_display_latest_desc_hist(struct hif_opaque_softc *hif_ctx);
 #else
 static
@@ -1019,7 +1028,8 @@ QDF_STATUS hif_diag_write_access(struct hif_opaque_softc *hif_ctx,
 QDF_STATUS hif_diag_write_mem(struct hif_opaque_softc *hif_ctx,
 			uint32_t address, uint8_t *data, int nbytes);
 
-typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t);
+typedef void (*fastpath_msg_handler)(void *, qdf_nbuf_t *, uint32_t,
+				     unsigned int);
 
 void hif_enable_polled_mode(struct hif_opaque_softc *hif_ctx);
 bool hif_is_polled_mode_enabled(struct hif_opaque_softc *hif_ctx);

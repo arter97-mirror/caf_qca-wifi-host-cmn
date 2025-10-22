@@ -1301,6 +1301,8 @@ struct dp_soc_stats {
 		uint32_t rx_hw_stats_requested;
 		/* Number of hw stats request timeout */
 		uint32_t rx_hw_stats_timeout;
+		/* Dropped fragment count */
+		uint32_t rx_frag_drop_cnt;
 
 		struct {
 			/* Invalid RBM error count */

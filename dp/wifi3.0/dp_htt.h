@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -219,7 +219,6 @@ struct dp_htt_htc_pkt {
 	qdf_dma_addr_t nbuf_paddr;
 	HTC_PACKET htc_pkt;
 };
-
 struct dp_htt_htc_pkt_union {
 	union {
 		struct dp_htt_htc_pkt pkt;
@@ -269,6 +268,12 @@ struct htt_soc {
 		int htt_ver_req_put_skip;
 		int reserve_fail_cnt;
 		int abort_count;
+#ifdef WLAN_SOFTUMAC_SUPPORT
+		struct {
+			uint64_t rx_data_ind;
+			uint64_t tx_completion_ind;
+		} htt_msg_stats[CE_COUNT_MAX];
+#endif /* WLAN_SOFTUMAC_SUPPORT */
 	} stats;
 
 	HTT_TX_MUTEX_TYPE htt_tx_mutex;

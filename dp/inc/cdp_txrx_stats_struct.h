@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3227,6 +3227,7 @@ struct cdp_pdev_stats {
 		uint32_t x86_fail;
 		uint32_t low_thresh_intrs;
 		int32_t free_list;
+		uint32_t nbuf_alloc_succ;
 	} replenish;
 
 	uint32_t rx_raw_pkts;

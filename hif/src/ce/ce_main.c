@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2261,7 +2261,16 @@ void free_mem_ce_debug_hist_data(struct hif_softc *scn, uint32_t ce_id)
 #endif /* HIF_CE_DEBUG_DATA_BUF */
 
 #ifndef HIF_CE_DEBUG_DATA_DYNAMIC_BUF
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#ifdef RECORD_DP_CE_EVTS
+#define CE_DP_HISTORY_BUFF_CNT 3
+#define IS_CE_DEBUG_FOR_DP_ENABLED (BIT(1) | BIT(10) | BIT(11))
+#define HIF_CE_ALL_EVENT_MASK  0xFFFFFFFFFFFFFFFF
+#else
+#define CE_DP_HISTORY_BUFF_CNT 0
+#define IS_CE_DEBUG_FOR_DP_ENABLED 0
+#endif /* RECORD_DP_CE_EVTS */
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
+	defined(RECORD_DP_CE_EVTS)
 
 /* define below variables for crashscope parse */
 struct hif_ce_desc_event *hif_ce_desc_history[CE_COUNT_MAX];
@@ -2277,17 +2286,17 @@ uint32_t hif_ce_count_max = CE_COUNT_MAX;
 #define CE_DESC_HISTORY_BUFF_CNT  CE_COUNT_MAX
 #define IS_CE_DEBUG_ONLY_FOR_CRIT_CE  0
 #else
-
 #ifdef QCA_WIFI_SUPPORT_SRNG
 /* Enable CE-1 history only on targets not using CE-1 for datapath */
 #define CE_DESC_HISTORY_BUFF_CNT  4
 #define IS_CE_DEBUG_ONLY_FOR_CRIT_CE (BIT(1) | BIT(2) | BIT(3) | BIT(7))
 #else
 /* CE2, CE3, CE7 */
-#define CE_DESC_HISTORY_BUFF_CNT  3
-#define IS_CE_DEBUG_ONLY_FOR_CRIT_CE (BIT(2) | BIT(3) | BIT(7))
+#define CE_DESC_HISTORY_BUFF_CNT  3 + CE_DP_HISTORY_BUFF_CNT
+#define IS_CE_DEBUG_ONLY_FOR_CRIT_CE (BIT(2) | BIT(3) | BIT(7) | IS_CE_DEBUG_FOR_DP_ENABLED)
 #endif /* QCA_WIFI_SUPPORT_SRNG */
 #endif
+
 bool hif_ce_only_for_crit = IS_CE_DEBUG_ONLY_FOR_CRIT_CE;
 struct hif_ce_desc_event
 	hif_ce_desc_history_buff[CE_DESC_HISTORY_BUFF_CNT][HIF_CE_HISTORY_MAX];
@@ -2342,6 +2351,38 @@ static struct hif_ce_desc_event *
 	return hif_ce_desc_history[ce_id];
 }
 
+#ifdef RECORD_DP_CE_EVTS
+/**
+ * assign_event_mask() - Assign event mask to ce indicating which events are
+ * allowed for ce history.
+ * @scn: hif scn handle
+ * @ce_id: Copy Engine Id
+ * Return: None
+ */
+static inline void
+assign_event_mask(struct hif_softc *scn, unsigned int ce_id)
+{
+	struct ce_desc_hist *ce_hist = &scn->hif_ce_desc_hist;
+	uint64_t dp_ce_mask = (uint64_t)((1ULL << HIF_IRQ_EVENT) |
+				       (1ULL << NAPI_SCHEDULE) |
+				       (1ULL << NAPI_POLL_ENTER) |
+				       (1ULL << FAST_RX_SOFTWARE_INDEX_UPDATE) |
+				       (1ULL << FAST_RX_WRITE_INDEX_UPDATE) |
+				       (1ULL << NAPI_POLL_EXIT) |
+				       (1ULL << NAPI_COMPLETE));
+	// Check if CE belongs to datapath
+	if (IS_CE_DEBUG_FOR_DP_ENABLED & BIT(ce_id))
+		ce_hist->evt_mask[ce_id] = dp_ce_mask;
+	else
+		ce_hist->evt_mask[ce_id] = HIF_CE_ALL_EVENT_MASK;
+}
+#else
+static inline void
+assign_event_mask(struct hif_softc *scn, unsigned int ce_id)
+{
+}
+#endif /*RECORD_DP_CE_EVTS*/
+
 /**
  * alloc_mem_ce_debug_history() - Allocate CE descriptor history
  * @scn: hif scn handle
@@ -2366,7 +2407,7 @@ alloc_mem_ce_debug_history(struct hif_softc *scn, unsigned int ce_id,
 
 	ce_hist->hist_ev[ce_id] = hif_ce_debug_history_buf_get(scn, ce_id);
 	ce_hist->enable[ce_id] = true;
-
+	assign_event_mask(scn, ce_id);
 	if (src_nentries) {
 		status = alloc_mem_ce_debug_hist_data(scn, ce_id);
 		if (status != QDF_STATUS_SUCCESS) {
@@ -2420,7 +2461,9 @@ alloc_mem_ce_debug_history(struct hif_softc *scn, unsigned int CE_id,
 
 static inline void
 free_mem_ce_debug_history(struct hif_softc *scn, unsigned int CE_id) { }
-#endif /* (HIF_CONFIG_SLUB_DEBUG_ON) || (HIF_CE_DEBUG_DATA_BUF) */
+#endif /* (HIF_CONFIG_SLUB_DEBUG_ON) || (HIF_CE_DEBUG_DATA_BUF) ||
+	* (RECORD_DP_CE_EVTS)
+	*/
 #else
 #if defined(HIF_CE_DEBUG_DATA_BUF)
 
@@ -2486,7 +2529,8 @@ free_mem_ce_debug_history(struct hif_softc *scn, unsigned int CE_id) { }
 #endif /* HIF_CE_DEBUG_DATA_BUF */
 #endif /* HIF_CE_DEBUG_DATA_DYNAMIC_BUF */
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
+	defined(RECORD_DP_CE_EVTS)
 /**
  * reset_ce_debug_history() - reset the index and ce id used for dumping the
  * CE records on the console using sysfs.
@@ -2503,9 +2547,11 @@ static inline void reset_ce_debug_history(struct hif_softc *scn)
 	ce_hist->hist_index = 0;
 	ce_hist->hist_id = 0;
 }
-#else /* defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) */
+#else
 static inline void reset_ce_debug_history(struct hif_softc *scn) { }
-#endif /*defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) */
+#endif /* defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||
+	* defined(RECORD_DP_CE_EVTS)
+	*/
 
 void ce_enable_polling(void *cestate)
 {
@@ -5470,7 +5516,8 @@ err:
 	return rv;
 }
 
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
+#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
+	defined(RECORD_DP_CE_EVTS)
 static inline void hif_gen_ce_id_history_idx_mapping(struct hif_softc *scn)
 {
 	struct ce_desc_hist *ce_hist = &scn->hif_ce_desc_hist;

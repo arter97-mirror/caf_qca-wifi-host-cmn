@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1675,6 +1675,9 @@ static uint16_t cm_get_puncture_bw(struct scan_cache_entry *entry)
 	uint16_t puncture_bitmap;
 	uint8_t num_puncture_bw = 0;
 
+	if (!entry->ie_list.ehtcap || !entry->ie_list.ehtop)
+		return 0;
+
 	puncture_bitmap = entry->channel.puncture_bitmap;
 	while (puncture_bitmap) {
 		if (puncture_bitmap & 1)
@@ -1749,7 +1752,7 @@ static uint32_t cm_get_bw_score(uint8_t bw_weightage, uint16_t bw,
 static uint16_t cm_get_ch_width(struct scan_cache_entry *entry,
 				struct psoc_phy_config *phy_config)
 {
-	uint16_t bw, total_bw = 0;
+	uint16_t bw, punctured_bw, total_bw = 20;
 	uint8_t bw_above_20 = 0;
 	bool is_vht = false;
 
@@ -1777,7 +1780,11 @@ static uint16_t cm_get_ch_width(struct scan_cache_entry *entry,
 	if (!is_vht && bw > 40)
 		bw = 40;
 
-	total_bw = bw - cm_get_puncture_bw(entry);
+	punctured_bw = cm_get_puncture_bw(entry);
+	if (bw > punctured_bw)
+		total_bw = bw - punctured_bw;
+	else
+		mlme_err("Invalid bw %d punctured_bw %d", bw, punctured_bw);
 
 	return total_bw;
 }
@@ -3042,6 +3049,7 @@ cm_add_11_ax_candidate(struct wlan_objmgr_pdev *pdev,
 	tmp_scan_entry->ie_list.multi_link_bv = NULL;
 	tmp_scan_entry->ie_list.ehtcap = NULL;
 	tmp_scan_entry->ie_list.ehtop = NULL;
+	tmp_scan_entry->channel.puncture_bitmap = 0;
 	qdf_mem_zero(&tmp_scan_entry->ml_info, sizeof(struct ml_info));
 	tmp_scan_entry->phy_mode =
 		util_scan_get_phymode(pdev, tmp_scan_entry);

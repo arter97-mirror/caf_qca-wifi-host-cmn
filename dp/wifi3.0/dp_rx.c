@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -352,6 +352,8 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 		DP_STATS_INC(dp_pdev, replenish.nbuf_alloc_fail, 1);
 		return QDF_STATUS_E_NOMEM;
 	}
+
+	DP_STATS_INC(dp_pdev, replenish.nbuf_alloc_succ, 1);
 
 	ret = dp_rx_buffer_pool_nbuf_map(dp_soc, rx_desc_pool,
 					 nbuf_frag_info_t);
