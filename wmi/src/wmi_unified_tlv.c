@@ -24810,6 +24810,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_mlo_sap_link_removal_support] =
 				WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT;
 #endif
+	wmi_service[wmi_service_cck_rx_support_5g] =
+				WMI_SERVICE_CCK_RX_SUPPORT_5GHZ;
+	wmi_service[wmi_service_cck_tx_support_5g] =
+				WMI_SERVICE_CCK_TX_SUPPORT_5GHZ;
 }
 
 /**
