@@ -290,10 +290,10 @@ const char *qdf_get_current_comm(void)
 }
 qdf_export_symbol(qdf_get_current_comm);
 
-void
+QDF_STATUS
 qdf_thread_set_cpus_allowed_mask(qdf_thread_t *thread, qdf_cpu_mask *new_mask)
 {
-	set_cpus_allowed_ptr(thread, new_mask);
+	return set_cpus_allowed_ptr(thread, new_mask);
 }
 
 qdf_export_symbol(qdf_thread_set_cpus_allowed_mask);

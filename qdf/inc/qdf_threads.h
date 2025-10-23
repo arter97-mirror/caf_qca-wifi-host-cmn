@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -159,9 +159,9 @@ const char *qdf_get_current_comm(void);
  * @thread: thread for which new cpu mask is set
  * @new_mask: new cpu mask to be set for the thread
  *
- * Return: None
+ * Return: QDF_STATUS - 0 on success, non-zero on failure
  */
-void
+QDF_STATUS
 qdf_thread_set_cpus_allowed_mask(qdf_thread_t *thread, qdf_cpu_mask *new_mask);
 
 /**
