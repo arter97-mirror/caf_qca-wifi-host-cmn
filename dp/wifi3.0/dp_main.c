@@ -15622,8 +15622,6 @@ void dp_update_num_mac_rings_for_dbs(struct dp_soc *soc,
 				is_hw_dbs_capable((void *)soc->ctrl_psoc);
 
 	*max_mac_rings = dbs_enable ? (*max_mac_rings) : 1;
-	dp_info("dbs_enable %d, max_mac_rings %d",
-		dbs_enable, *max_mac_rings);
 }
 
 qdf_export_symbol(dp_update_num_mac_rings_for_dbs);
