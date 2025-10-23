@@ -539,6 +539,9 @@ struct hif_softc {
 #ifdef CE_CMN_REG_CFG_QMI
 	bool ce_cmn_reg_cfg_support_qmi;
 #endif
+#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
+	bool is_affinity_override_enabled;
+#endif
 };
 
 #if defined(NUM_SOC_PERF_CLUSTER) && (NUM_SOC_PERF_CLUSTER > 1)
@@ -892,6 +895,17 @@ static inline bool hif_is_ep_vote_access_disabled(struct hif_softc *scn)
 }
 #else
 static inline bool hif_is_ep_vote_access_disabled(struct hif_softc *scn)
+{
+	return false;
+}
+#endif
+#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
+static inline bool hif_affinity_override_enabled(struct hif_softc *scn)
+{
+	return scn->is_affinity_override_enabled;
+}
+#else
+static inline bool hif_affinity_override_enabled(struct hif_softc *scn)
 {
 	return false;
 }

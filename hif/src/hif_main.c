@@ -3529,7 +3529,10 @@ hif_affinity_mgr_set_qrg_irq_affinity(struct hif_softc *scn, uint32_t irq,
 				      qdf_cpu_mask *cpu_mask)
 {
 	struct hif_cpu_affinity *cfg;
-
+	if (hif_affinity_override_enabled(scn)) {
+		hif_info_rl("Skip affinity mgr: affn override enabled");
+		return QDF_STATUS_SUCCESS;
+	}
 	if (!scn->affinity_mgr_supported)
 		return hif_irq_set_affinity_hint(irq, cpu_mask);
 
@@ -3621,5 +3624,14 @@ void hif_set_load_balance_enabled_flag(struct hif_opaque_softc *hif_ctx)
 	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
 
 	scn->is_load_balance_enabled = true;
+}
+#endif
+
+#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
+void hif_set_affn_override_enabled(struct hif_opaque_softc *hif_ctx, bool value)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+
+	scn->is_affinity_override_enabled = value;
 }
 #endif
