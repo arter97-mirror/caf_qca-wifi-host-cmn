@@ -4267,6 +4267,8 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->peer_vht_caps = param->peer_vht_caps;
 	cmd->peer_phymode = param->peer_phymode;
 	cmd->bss_max_idle_option = param->peer_bss_max_idle_option;
+	cmd->peer_cck_rx_support_5ghz = param->peer_cck_rx_support_5ghz;
+	cmd->peer_cck_tx_support_5ghz = param->peer_cck_tx_support_5ghz;
 
 	/* Update 11ax capabilities */
 	cmd->peer_he_cap_info =
@@ -4280,7 +4282,6 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	qdf_mem_copy(&cmd->peer_ppet, &param->peer_ppet,
 				sizeof(param->peer_ppet));
 	cmd->peer_he_caps_6ghz = param->peer_he_caps_6ghz;
-
 	/* Update peer legacy rate information */
 	buf_ptr += sizeof(*cmd);
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
