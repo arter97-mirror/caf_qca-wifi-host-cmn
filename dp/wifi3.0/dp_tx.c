@@ -5044,8 +5044,8 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	}
 
 	if (status != QDF_STATUS_SUCCESS) {
-		dp_err("sw tso: failed to prepare sw tso nbuf list status %d",
-		       status);
+		dp_err_rl("sw tso: failed to prepare sw tso nbuf list status %d",
+			  status);
 		return status;
 	}
 
