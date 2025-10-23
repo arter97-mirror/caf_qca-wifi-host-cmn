@@ -1639,6 +1639,8 @@ struct peer_assoc_ml_partner_links {
  * @peer_dms_capable: is peer DMS capable
  * @reserved: spare bits
  * @t2lm_params: TID-to-link mapping params
+ * @peer_cck_rx_support_5ghz: Peer CCK RX support
+ * @peer_cck_tx_support_5ghz: Peer CCK TX support
  */
 struct peer_assoc_params {
 	uint32_t vdev_id;
@@ -1732,6 +1734,8 @@ struct peer_assoc_params {
 #ifdef WLAN_FEATURE_11BE
 	struct wmi_host_tid_to_link_map_params t2lm_params;
 #endif
+	uint8_t peer_cck_rx_support_5ghz : 1,
+		peer_cck_tx_support_5ghz: 1;
 };
 
 /**
