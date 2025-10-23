@@ -853,6 +853,111 @@ hif_update_irq_handle_time(struct hif_exec_context *hif_ext_group)
 }
 #endif /* WLAN_DP_LOAD_BALANCE_SUPPORT */
 
+#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
+
+/**
+ * hif_set_grp_affinity() - HIF API  to set IRQ affinity
+ * @hif_ext_group: hif_ext_group to extract the irq info
+ * @irq_cpumask: cpu mask to which irq should be affined
+ * @napi_thread_cpumask: cpu mask to which napi thread should be affined
+ *
+ * This function will set the IRQ affinity based on cpumask and hif ext group
+ * handle
+ *
+ * Return: none
+ */
+static inline void hif_set_grp_affinity(struct hif_exec_context *hif_ext_group,
+					qdf_cpu_mask irq_cpumask,
+					qdf_cpu_mask napi_thread_cpumask)
+{
+	struct hif_napi_exec_context *napi_exec_ctx;
+	qdf_napi_struct *napi;
+	QDF_STATUS status;
+	bool is_napi_thread;
+	int i;
+
+	for (i = 0; i < hif_ext_group->numirq; i++) {
+		/* Check if it is a napi thread.
+		 * If yes then set the napi thread cpumask.
+		 */
+		napi_exec_ctx = hif_exec_get_napi(hif_ext_group);
+		napi = &napi_exec_ctx->napi;
+		is_napi_thread = napi->thread ? TRUE : FALSE;
+		if (is_napi_thread) {
+			if (qdf_cpumask_empty(&napi_thread_cpumask))
+				continue;
+			status = qdf_thread_set_cpus_allowed_mask(
+					napi->thread,
+					&napi_thread_cpumask);
+		} else {
+			if (qdf_cpumask_empty(&irq_cpumask))
+				continue;
+			status = hif_irq_set_affinity_hint(
+					hif_ext_group->os_irq[i],
+					&irq_cpumask);
+		}
+		if (QDF_IS_STATUS_SUCCESS(status)) {
+			qdf_cpumask_copy(
+				&hif_ext_group->new_cpu_mask[i],
+				is_napi_thread ? &napi_thread_cpumask :
+						 &irq_cpumask);
+
+			qdf_atomic_set(&hif_ext_group->force_napi_complete, -1);
+			hif_debug("Affined IRQ/NAPI thread %d to cpumask %*pbl is_napi_thread %u",
+				  hif_ext_group->os_irq[i],
+				  qdf_cpumask_pr_args(
+					&hif_ext_group->new_cpu_mask[i]),
+					is_napi_thread);
+		} else {
+			hif_err("set affinity failed for IRQ %d is_napi_thread %u",
+				hif_ext_group->os_irq[i], is_napi_thread);
+		}
+	}
+}
+
+/**
+ * hif_set_grp_affinity_cpumaskwise() - Function to affine group interrupts
+ * based on cpumask and grp_irq_mask.
+ *
+ * @hif_ctx: hif context
+ * @grp_irq_mask: hif group interrupyt bit mask
+ * @irq_cpubitmask: cpu bitmask for irqs
+ * @napi_thread_cpubitmask: cpu bitmask for napi threads
+ *
+ * Return: none
+ */
+void hif_set_grp_affinity_cpumaskwise(struct hif_opaque_softc *hif_ctx,
+				      uint32_t grp_irq_mask,
+				      uint32_t irq_cpubitmask,
+				      uint32_t napi_thread_cpubitmask)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	struct hif_exec_context *hif_ext_group;
+	qdf_cpu_mask irq_cpu_mask, napi_th_cpu_mask;
+	int i;
+	unsigned int cpus;
+
+	for (i = 0; i < hif_state->hif_num_extgroup; i++) {
+		if (!(grp_irq_mask & BIT(i)))
+			continue;
+
+		hif_ext_group = hif_state->hif_ext_group[i];
+
+		qdf_cpumask_clear(&irq_cpu_mask);
+		qdf_cpumask_clear(&napi_th_cpu_mask);
+		qdf_for_each_possible_cpu(cpus) {
+			if (BIT(cpus) & irq_cpubitmask)
+				qdf_cpumask_set_cpu(cpus, &irq_cpu_mask);
+			if (BIT(cpus) & napi_thread_cpubitmask)
+				qdf_cpumask_set_cpu(cpus, &napi_th_cpu_mask);
+		}
+
+		hif_set_grp_affinity(hif_ext_group,
+				     irq_cpu_mask, napi_th_cpu_mask);
+	}
+}
+#endif
 /**
  * hif_exec_poll() - napi poll
  * @napi: napi struct

@@ -3125,6 +3125,14 @@ void hif_get_wlan_rx_time_stats(struct hif_opaque_softc *hif_ctx,
 void hif_check_and_apply_irq_affinity(struct hif_opaque_softc *hif_ctx,
 				      uint8_t grp_id, uint32_t cpu_id);
 #endif
+#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
+void hif_set_grp_affinity_cpumaskwise(struct hif_opaque_softc *hif_ctx,
+				      uint32_t grp_irq_mask,
+					  uint32_t irq_cpumask,
+					  uint32_t napi_thread_cpumask);
+void hif_set_affn_override_enabled(struct hif_opaque_softc *hif_ctx,
+				   bool value);
+#endif
 QDF_STATUS hif_bus_get_device_handle(struct hif_opaque_softc *hif_ctx,
 				     void **handle);
 #endif /* _HIF_H_ */
