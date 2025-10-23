@@ -4996,7 +4996,7 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		buff = dp_tx_send_msdu_single(vdev, buff, msdu_info,
 					      HTT_INVALID_PEER, NULL);
 		if (qdf_unlikely(buff)) {
-			dp_err("sw tso: failed to send msdu");
+			dp_err_rl("sw tso: failed to send msdu");
 			qdf_nbuf_free(buff);
 			qdf_nbuf_list_free(next);
 
