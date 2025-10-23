@@ -1649,8 +1649,8 @@ hal_txmon_status_parse_tlv_generic_be(hal_soc_handle_t hal_soc_hdl,
 				HAL_TX_MON_TLV_GET(tx_tlv,
 						   RX_RESPONSE_REQUIRED_INFO,
 						   ADDR1_31_0);
-		*(uint32_t *)&tx_status_info->addr2[4] =
-				HAL_TX_MON_TLV_GET(tx_tlv,
+		*(uint16_t *)&tx_status_info->addr2[4] =
+				(uint16_t)HAL_TX_MON_TLV_GET(tx_tlv,
 						   RX_RESPONSE_REQUIRED_INFO,
 						   ADDR1_47_32);
 		*(uint32_t *)&tx_status_info->addr1[0] =

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018,2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -197,4 +197,14 @@ void wlan_cp_stats_peer_rx_pnerr(struct wlan_objmgr_peer *peer)
 {}
 
 #endif /* QCA_SUPPORT_CP_STATS */
+
+/**
+ * wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable() - check whether
+ * bcn_rssi_history_report_cfg is enable or not
+ * @psoc: pointer to psoc
+ *
+ * Return: True/False
+ */
+bool wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(
+					struct wlan_objmgr_psoc *psoc);
 #endif /* __WLAN_CP_STATS_UTILS_API_H__ */

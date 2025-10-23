@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2204,6 +2204,10 @@ QDF_STATUS (*extract_peer_adv_stats)(wmi_unified_t wmi_handle, void *evt_buf,
 
 QDF_STATUS (*extract_chan_stats)(wmi_unified_t wmi_handle, void *evt_buf,
 			 uint32_t index, wmi_host_chan_stats *chan_stats);
+
+QDF_STATUS (*extract_recv_bcn_stats)(
+			wmi_unified_t wmi_handle, void *evt_buf, uint32_t index,
+			struct wmi_host_recv_bcn_stats *recv_bcn_stats);
 
 #ifdef WLAN_FEATURE_MIB_STATS
 QDF_STATUS (*extract_mib_stats)(wmi_unified_t wmi_handle, void *evt_buf,
