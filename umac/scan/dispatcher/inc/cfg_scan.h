@@ -1411,7 +1411,7 @@ enum scan_mode_6ghz {
  * scan_mode_6ghz_duty_cycle - 6ghz Scan mode duty cycle
  * @Min: 0
  * @Max: 10
- * @Default: 4
+ * @Default: 2
  *
  * Configure the 6Ghz scan mode duty cycle
  * 0 - No full scan needed, all scans are optimized
@@ -1434,7 +1434,7 @@ enum scan_mode_6ghz {
 			"scan_mode_6ghz_duty_cycle", \
 			0, \
 			10, \
-			4, \
+			2, \
 			CFG_VALUE_OR_DEFAULT, \
 			"6ghz scan mode duty cycle")
 
