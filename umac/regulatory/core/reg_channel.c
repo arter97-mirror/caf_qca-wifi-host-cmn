@@ -1574,116 +1574,6 @@ reg_is_sec_40_valid_for_freq(struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj
 	return !!first_valid_sec_freq;
 }
 
-/**
- * reg_get_320mhz_center_freq() - Compute center frequency for 320 MHz bandwidth
- * @pdev: Pointer to the radio object
- * @freq: Primary frequency
- * @in_6g_pwr_mode: AP power mode used for 6 GHz operation
- *
- * This function computes the center frequency for a 320 MHz wide channel
- * based on the primary frequency and the AP power mode. It queries the
- * channel state using reg_get_chan_state_for_320() and uses the bonded
- * channel frequency range to calculate the center frequency.
- *
- * Context: Any context.
- *
- * Return:
- * * Non-zero - if the channel is enabled and bonded channel info is valid
- * * Zero     - if the channel is disabled or bonded channel info is NULL
- */
-static qdf_freq_t
-reg_get_320mhz_center_freq(struct wlan_objmgr_pdev *pdev, qdf_freq_t freq,
-			   enum supported_6g_pwr_types in_6g_pwr_mode)
-{
-	qdf_freq_t cf;
-	const struct bonded_channel_freq *bonded_chan_ptr;
-	enum channel_state ch_st;
-
-	ch_st = reg_get_chan_state_for_320(pdev, freq, 0, CH_WIDTH_320MHZ,
-					   &bonded_chan_ptr, in_6g_pwr_mode, true, NO_SCHANS_PUNC);
-
-	if (!bonded_chan_ptr || ch_st != CHANNEL_STATE_ENABLE)
-		return 0;
-
-	cf = (bonded_chan_ptr->start_freq + bonded_chan_ptr->end_freq) / 2;
-
-	return cf;
-}
-
-/**
- * reg_get_bw_from_freq() - Get channel bandwidth for a given frequency
- * @pdev: Pointer to the radio object
- * @freq: Frequency in MHz for which bandwidth is to be determined
- * @in_6g_pwr_mode: Power mode applicable in 6 GHz band
- *
- * This function determines the channel bandwidth for the specified frequency
- * by querying the maximum channel width supported using regulatory information.
- * The bandwidth is derived from the channel width using a lookup table
- * (chwd_2_contbw_lst[]).
- *
- * Context: Any context. Caller must ensure @pdev is valid and initialized.
- *
- * Return:
- * * %uint16_t - Bandwidth in MHz corresponding to the frequency and power mode
- */
-static uint16_t
-reg_get_bw_from_freq(struct wlan_objmgr_pdev *pdev, qdf_freq_t freq,
-		     enum supported_6g_pwr_types in_6g_pwr_mode)
-{
-	enum phy_ch_width ch_width = CH_WIDTH_MAX;
-	uint16_t bw = 0;
-
-	ch_width = reg_get_max_channel_width(pdev, freq, ch_width,
-					     in_6g_pwr_mode, NO_SCHANS_PUNC);
-	if (ch_width <= CH_WIDTH_MAX)
-		bw = chwd_2_contbw_lst[ch_width];
-
-	return bw;
-}
-
-/**
- * reg_is_blacklisted_freq() - Check if a frequency is blacklisted
- * @pdev: Pointer to the radio object
- * @freq: Frequency in MHz to be checked for blacklisted
- * @bw: Bandwidth in MHz
- * @in_6g_pwr_mode: Power mode applicable in 6 GHz band
- *
- * This function determines whether the given frequency is blacklisted.
- * If the bandwidth is not provided, it is computed using
- * reg_get_bw_from_freq(). For 320 MHz bandwidth, the center frequency is
- * calculated using bonded channel information.
- *
- * The final decision is made by invoking reg_is_hw_blacklisted_channel(),
- * which checks against hardware-level blacklist rules.
- *
- * Context: Any context. Caller must ensure @pdev is valid and initialized.
- *
- * Return:
- * * true  - Frequency is blacklisted and should not be used
- * * false - Frequency is not blacklisted and allowed for use
- */
-static bool
-reg_is_blacklisted_freq(struct wlan_objmgr_pdev *pdev, qdf_freq_t freq,
-			int bw, enum supported_6g_pwr_types in_6g_pwr_mode)
-{
-	qdf_freq_t cf = 0;
-
-	if (!bw)
-		bw = reg_get_bw_from_freq(pdev, freq, in_6g_pwr_mode);
-
-	if (!bw)
-		return true;
-
-	if (bw == BW_320_MHZ) {
-		cf = reg_get_320mhz_center_freq(pdev, freq, in_6g_pwr_mode);
-		if (!cf)
-			return true;
-	}
-
-	return reg_is_hw_blacklisted_channel(pdev, freq, cf, bw,
-					     in_6g_pwr_mode, NO_SCHANS_PUNC);
-}
-
 QDF_STATUS
 reg_get_first_valid_freq(struct wlan_objmgr_pdev *pdev,
 			 enum supported_6g_pwr_types
@@ -1711,29 +1601,18 @@ reg_get_first_valid_freq(struct wlan_objmgr_pdev *pdev,
 	cur_chan_list = pdev_priv_obj->cur_chan_list;
 
 	for (freq_idx = start_chan; freq_idx <= end_chan; freq_idx++) {
-		reg_get_first_valid_frequency(pdev_priv_obj, freq_idx,
-					      in_6g_pwr_mode,
-					      first_valid_freq, bw);
-
-		if (*first_valid_freq) {
-			if (!reg_is_sec_40_valid_for_freq(pdev_priv_obj,
-							  *first_valid_freq,
-							  sec_40_offset,
-							  in_6g_pwr_mode)) {
-				*first_valid_freq = 0;
-				continue;
-			}
-
-			if (reg_is_blacklisted_freq(pdev,
-						    *first_valid_freq,
-						    bw,
-						    in_6g_pwr_mode)) {
-				*first_valid_freq = 0;
-				continue;
-			}
-
-			break;
-		}
+	    reg_get_first_valid_frequency(pdev_priv_obj, freq_idx,
+					  in_6g_pwr_mode,
+					  first_valid_freq, bw);
+	    if (*first_valid_freq) {
+		if (!reg_is_sec_40_valid_for_freq(pdev_priv_obj,
+						  *first_valid_freq,
+						  sec_40_offset,
+						  in_6g_pwr_mode))
+		    *first_valid_freq = 0;
+	    }
+	    if (*first_valid_freq)
+		break;
 	}
 
 	return QDF_STATUS_SUCCESS;
