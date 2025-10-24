@@ -86,6 +86,22 @@
 			      (reg_val)); \
 	} while (0)
 
+#define HAL_REO_RBM_DEST_RING_CTRL_IX_0_CONFIG(soc, reg_val, reo_dest_ring) \
+	do { \
+		reg_val = \
+			HAL_REG_READ((soc), \
+				     HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0_ADDR( \
+				     REO_REG_REG_BASE)); \
+		reg_val &= \
+			~(HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0_RBM_RING_MAPPING_6_BMSK); \
+		reg_val |= \
+			HAL_SM(HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0, \
+			       RBM_RING_MAPPING_6, reo_dest_ring); \
+		HAL_REG_WRITE((soc), \
+			      HWIO_REO_R0_RBM_DESTINATION_RING_CTRL_IX_0_ADDR( \
+			      REO_REG_REG_BASE), (reg_val)); \
+	} while (0)
+
 #define HAL_RX_MSDU_DESC_INFO_GET(msdu_details_ptr) \
 	((struct rx_msdu_desc_info *) \
 	_OFFSET_TO_BYTE_PTR(msdu_details_ptr, \
