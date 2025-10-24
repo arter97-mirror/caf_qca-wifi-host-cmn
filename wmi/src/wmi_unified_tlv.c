@@ -783,6 +783,7 @@ static const uint32_t vdev_param_tlv[] = {
 		  VDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
 	PARAM_MAP(vdev_param_disable_scan_start_twt,
 		  VDEV_PARAM_DISABLE_SCAN_START_TWT),
+       PARAM_MAP(vdev_param_cck_support, VDEV_PARAM_CCK_SUPPORT),
 };
 #endif
 
