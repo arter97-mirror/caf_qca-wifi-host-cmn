@@ -311,6 +311,12 @@
 
 #ifdef CONFIG_BORON
 #define WLAN_CFG_NUM_TCL_DATA_RINGS 5
+#elif defined(CONFIG_BERYLLIUM)
+#if defined(FEATURE_DAL_DP_SUPPORT) && !defined(IPA_OFFLOAD)
+#define WLAN_CFG_NUM_TCL_DATA_RINGS 5
+#else
+#define WLAN_CFG_NUM_TCL_DATA_RINGS 3
+#endif
 #else
 #define WLAN_CFG_NUM_TCL_DATA_RINGS 3
 #endif
