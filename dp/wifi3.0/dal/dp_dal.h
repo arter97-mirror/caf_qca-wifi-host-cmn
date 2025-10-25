@@ -290,6 +290,16 @@ int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt);
  * Return: int
  */
 int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable);
+
+/**
+ * dp_service_dal_srngs() - service DAL rings
+ * @dp_ctx: dp intr context
+ * @dp_budget: dp budget
+ * @cpu: cpu
+ *
+ * Return: work done
+ */
+uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu);
 #else
 static inline void dp_dal_soc_detach(struct dp_soc *soc)
 {

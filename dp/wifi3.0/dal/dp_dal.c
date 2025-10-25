@@ -6,6 +6,7 @@
 #include "dp_dal.h"
 #include "dp_dal_rx.h"
 #include "dp_dal_tx.h"
+#include <wlan_cfg.h>
 
 /**
  * dp_dal_bus_init_bypass_mode() - Skeleton for platform bus init
@@ -329,6 +330,39 @@ int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable)
 
 	if (global_plat_ops->sta_active)
 		return global_plat_ops->sta_active(dal_ctx, info, enable);
+
+	return 0;
+}
+
+uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
+{
+	struct dp_intr *int_ctx = (struct dp_intr *)dp_ctx;
+	struct dp_soc *soc = int_ctx->soc;
+	int dal_tx_mask = 0;
+	int dal_rx_mask = 0;
+	int i;
+
+	dal_tx_mask = int_ctx->dal_tx_ring_mask;
+	dal_rx_mask = int_ctx->dal_rx_ring_mask;
+
+	if (dal_rx_mask) {
+		for (i = 0; i < soc->num_reo_dest_rings; i++) {
+			if (!(dal_rx_mask & (1 << i)))
+				continue;
+
+			/* call platform_bus_rx() */
+		}
+	}
+
+	if (dal_tx_mask) {
+		for (i = 0; i < soc->num_tx_comp_rings; i++) {
+			if (!(1 <<  wlan_cfg_get_wbm_ring_num_for_index(soc->wlan_cfg_ctx, i) &
+			      dal_tx_mask))
+				continue;
+
+			/* call platform_bus_tx_cpl() */
+		}
+	}
 
 	return 0;
 }

@@ -60,6 +60,7 @@
 #ifdef IPA_OFFLOAD
 #include "dp_ipa.h"
 #endif
+#include "dp_dal.h"
 
 #ifdef WLAN_FEATURE_STATS_EXT
 #define INIT_RX_HW_STATS_LOCK(_soc) \
@@ -913,9 +914,24 @@ static inline void dp_dal_fill_dal_intr_ctx_mask(struct dp_soc *soc, int index)
 	soc->intr_ctx[index].dal_rx_ring_mask =
 		wlan_cfg_get_dal_rx_ring_mask(soc->wlan_cfg_ctx, index);
 }
+
+static inline void
+dp_soc_get_handler(struct dp_intr *intr_ctx, ext_intr_handler *handler)
+{
+	if (intr_ctx->dal_rx_ring_mask || intr_ctx->dal_tx_ring_mask)
+		*handler = dp_service_dal_srngs;
+	else
+		*handler = dp_service_srngs_wrapper;
+}
 #else
 static inline void dp_dal_fill_dal_intr_ctx_mask(struct dp_soc *soc, int index)
 {
+}
+
+static inline void
+dp_soc_get_handler(struct dp_intr *intr_ctx, ext_intr_handler *handler)
+{
+	*handler = dp_service_srngs_wrapper;
 }
 #endif
 
@@ -928,6 +944,7 @@ QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 	int rx_err_ring_intr_ctxt_id = HIF_MAX_GROUP;
 	int lmac_id = 0;
 	int napi_scale;
+	ext_intr_handler handler;
 
 	qdf_mem_set(&soc->mon_intr_id_lmac_map,
 		    sizeof(soc->mon_intr_id_lmac_map), DP_MON_INVALID_LMAC_ID);
@@ -1012,8 +1029,10 @@ QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 			if (!napi_scale)
 				napi_scale = QCA_NAPI_DEF_SCALE_BIN_SHIFT;
 
+			dp_soc_get_handler(&soc->intr_ctx[i], &handler);
+
 			ret = hif_register_ext_group(soc->hif_handle,
-				num_irq, irq_id_map, dp_service_srngs_wrapper,
+				num_irq, irq_id_map, handler,
 				&soc->intr_ctx[i], "dp_intr",
 				HIF_EXEC_NAPI_TYPE, napi_scale);
 		}
