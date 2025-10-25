@@ -467,6 +467,7 @@ QDF_STATUS ucfg_dfs_get_dfs_puncture(struct wlan_objmgr_pdev *pdev,
 {
 	struct wlan_dfs *dfs;
 
+	*is_dfs_punc_en = false;
 	dfs = wlan_pdev_get_dfs_obj(pdev);
 	if (!dfs)
 		return  QDF_STATUS_E_FAILURE;
