@@ -1308,6 +1308,10 @@ struct dp_intr {
 				associated with this napi context */
 	uint8_t rx_ring_mask;   /* Rx REO rings (0-3) associated
 				with this interrupt context */
+#ifdef FEATURE_DAL_DP_SUPPORT
+	uint8_t dal_tx_ring_mask;
+	uint8_t dal_rx_ring_mask;
+#endif
 	uint8_t rx_mon_ring_mask;  /* Rx monitor ring mask (0-2) */
 	uint8_t rx_err_ring_mask; /* REO Exception Ring */
 	uint8_t rx_wbm_rel_ring_mask; /* WBM2SW Rx Release Ring */

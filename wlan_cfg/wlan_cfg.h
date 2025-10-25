@@ -184,6 +184,8 @@ struct wlan_srng_cfg {
  * @htt_packet_type: Default 802.11 encapsulation type for any VAP created
  * @int_tx_ring_mask: Bitmap of Tx interrupts mapped to each NAPI/Intr context
  * @int_rx_ring_mask: Bitmap of Rx interrupts mapped to each NAPI/Intr context
+ * @dal_int_tx_ring_mask: Bitmap of DAL Tx intr mapped to each NAPI/Intr context
+ * @dal_int_rx_ring_mask: Bitmap of DAL Rx intr mapped to each NAPI/Intr context
  * @int_batch_threshold_ppe2tcl:
  * @int_timer_threshold_ppe2tcl:
  * @int_batch_threshold_tx:
@@ -455,6 +457,10 @@ struct wlan_cfg_dp_soc_ctxt {
 	int tx_comp_ring_size_nss;
 	uint8_t int_tx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t int_rx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
+#ifdef FEATURE_DAL_DP_SUPPORT
+	uint8_t dal_int_tx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
+	uint8_t dal_int_rx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
+#endif
 	uint8_t int_rx_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t int_tx_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t int_host2rxdma_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
@@ -2481,6 +2487,20 @@ uint32_t wlan_cfg_ipa_tx_comp_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg)
 	return 0;
 }
 #endif /* IPA_OFFLOAD */
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+static inline int
+wlan_cfg_get_dal_tx_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg_ctx, int idx)
+{
+	return cfg_ctx->dal_int_tx_ring_mask[idx];
+}
+
+static inline int
+wlan_cfg_get_dal_rx_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg_ctx, int idx)
+{
+	return cfg_ctx->dal_int_rx_ring_mask[idx];
+}
+#endif
 
 /**
  * wlan_cfg_radio0_default_reo_get -  Get Radio0 default REO

@@ -905,6 +905,20 @@ void dp_soc_interrupt_detach(struct cdp_soc_t *txrx_soc)
 		    DP_MON_INVALID_LMAC_ID);
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+static inline void dp_dal_fill_dal_intr_ctx_mask(struct dp_soc *soc, int index)
+{
+	soc->intr_ctx[index].dal_tx_ring_mask =
+		wlan_cfg_get_dal_tx_ring_mask(soc->wlan_cfg_ctx, index);
+	soc->intr_ctx[index].dal_rx_ring_mask =
+		wlan_cfg_get_dal_rx_ring_mask(soc->wlan_cfg_ctx, index);
+}
+#else
+static inline void dp_dal_fill_dal_intr_ctx_mask(struct dp_soc *soc, int index)
+{
+}
+#endif
+
 QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 {
 	struct dp_soc *soc = (struct dp_soc *)txrx_soc;
@@ -979,6 +993,7 @@ QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 		soc->intr_ctx[i].tx_mon_ring_mask = tx_mon_ring_mask;
 		soc->intr_ctx[i].host2txmon_ring_mask = host2txmon_ring_mask;
 		soc->intr_ctx[i].umac_reset_intr_mask = umac_reset_intr_mask;
+		dp_dal_fill_dal_intr_ctx_mask(soc, i);
 
 		soc->intr_ctx[i].soc = soc;
 

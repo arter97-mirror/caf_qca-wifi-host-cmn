@@ -3590,6 +3590,22 @@ void wlan_cfg_fill_interrupt_mask(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx,
 	}
 }
 #else
+#ifdef FEATURE_DAL_DP_SUPPORT
+static inline void
+wlan_cfg_fill_dal_int_ring_mask(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx,
+				int idx)
+{
+	wlan_cfg_ctx->dal_int_tx_ring_mask[idx] = dal_tx_ring_mask_msi[idx];
+	wlan_cfg_ctx->dal_int_rx_ring_mask[idx] = dal_rx_ring_mask_msi[idx];
+}
+#else
+static inline void
+wlan_cfg_fill_dal_int_ring_mask(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx,
+				int idx)
+{
+}
+#endif
+
 void wlan_cfg_fill_interrupt_mask(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx,
 				  int num_dp_msi,
 				  int interrupt_mode,
@@ -3643,6 +3659,7 @@ void wlan_cfg_fill_interrupt_mask(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx,
 					rx_ring_near_full_irq_2_mask_msi[i];
 		wlan_cfg_ctx->int_tx_ring_near_full_irq_mask[i] =
 					tx_ring_near_full_irq_mask_msi[i];
+		wlan_cfg_fill_dal_int_ring_mask(wlan_cfg_ctx, i);
 	}
 }
 #endif
