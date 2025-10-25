@@ -199,7 +199,15 @@ static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
 	[2] = WLAN_CFG_TX_RING_MASK_2, [3] = WLAN_CFG_TX_RING_MASK_6};
 #endif /* QCA_WIFI_KIWI_V2 */
 #endif /* IPA_WDI3_TX_TWO_PIPES*/
-#else /* !IPA_OFFLOAD */
+#elif defined(FEATURE_DAL_DP_SUPPORT)
+static const uint8_t dal_tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[0] = WLAN_CFG_TX_RING_MASK_0, [1] = WLAN_CFG_TX_RING_MASK_4,
+};
+
+static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[2] = WLAN_CFG_TX_RING_MASK_2, [3] = WLAN_CFG_TX_RING_MASK_5,
+	[4] = WLAN_CFG_TX_RING_MASK_6};
+#else /* !IPA_OFFLOAD && !FEATURE_DAL_DP_SUPPORT */
 #if defined(QCA_WIFI_KIWI_V2) || defined(QCA_WIFI_WCN7750) || \
 	defined(QCA_WIFI_QCC2072)
 static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
@@ -273,7 +281,14 @@ int wlan_cfg_get_intr_idx_from_rx_ring_id(uint8_t rx_ring_id)
 #define WLAN_CFG_RX_RING_TUNED_MASK_2 WLAN_CFG_RX_RING_MASK_2
 #define WLAN_CFG_RX_RING_TUNED_MASK_3 0
 #endif /* MDM_PLATFORM */
-#else /* !IPA_OFFLOAD */
+#elif defined(FEATURE_DAL_DP_SUPPORT)
+#define WLAN_CFG_RX_RING_TUNED_MASK_2 0
+#define WLAN_CFG_RX_RING_TUNED_MASK_3 0
+
+static const uint8_t dal_rx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[7] = WLAN_CFG_RX_RING_MASK_2, [8] = WLAN_CFG_RX_RING_MASK_3,
+};
+#else /* !IPA_OFFLOAD && !FEATURE_DAL_DP_SUPPORT */
 #define WLAN_CFG_RX_RING_TUNED_MASK_2 WLAN_CFG_RX_RING_MASK_2
 #define WLAN_CFG_RX_RING_TUNED_MASK_3 WLAN_CFG_RX_RING_MASK_3
 #endif /* IPA_OFFLOAD */
