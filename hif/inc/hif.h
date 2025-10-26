@@ -2171,6 +2171,16 @@ QDF_STATUS hif_register_ext_group(struct hif_opaque_softc *hif_ctx,
 				  void *cb_ctx, const char *context_name,
 				  enum hif_exec_type type, uint32_t scale);
 
+/**
+ * hif_get_ext_grp_id() - API to get ext group id
+ * @hif_ctx: HIF context
+ * @cb_ctx: interrupt context
+ *
+ * Return: group id corresponds to rx/rx ring interrupts
+ */
+int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx,
+		       void *cb_ctx);
+
 void hif_deregister_exec_group(struct hif_opaque_softc *hif_ctx,
 				const char *context_name);
 

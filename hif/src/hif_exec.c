@@ -1401,6 +1401,36 @@ hif_init_force_napi_complete(struct hif_exec_context *hif_ext_group)
 }
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#define HIF_GRP_ID_INVALID 0xFF
+/**
+ * hif_get_ext_grp_id() - API to get ext group id
+ * @hif_ctx: HIF context
+ * @cb_ctx: interrupt context
+ *
+ * Return: group id corresponds to rx/rx ring interrupts
+ */
+int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx, void *cb_ctx)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	struct hif_exec_context *hif_ext_group;
+	int i;
+
+	for (i = 0; i < HIF_MAX_GROUP; i++) {
+		hif_ext_group = hif_state->hif_ext_group[i];
+
+		if (!hif_ext_group)
+			continue;
+
+		if (hif_ext_group->context == cb_ctx)
+			return hif_ext_group->grp_id;
+	}
+
+	return HIF_GRP_ID_INVALID;
+}
+#endif
+
 /**
  * hif_register_ext_group() - API to register external group
  * interrupt handler.

@@ -189,6 +189,95 @@ QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc)
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS
+dp_dal_update_ring_grp_id(struct dp_soc *soc,
+			  struct dal_srng *dal_ring, enum hal_ring_type type)
+{
+	struct dp_intr *intr_ctx;
+	uint8_t grp_id;
+	uint8_t dal_tx_mask;
+	uint8_t dal_rx_mask;
+	uint8_t ring_idx;
+	int i;
+
+	for (i = 0; i < WLAN_CFG_INT_NUM_CONTEXTS; i++) {
+		dal_tx_mask = soc->intr_ctx[i].dal_tx_ring_mask;
+		dal_rx_mask = soc->intr_ctx[i].dal_rx_ring_mask;
+
+		if (type == REO_DST && dal_rx_mask) {
+			if (!(dal_rx_mask & (1 << dal_ring->ring_num)))
+				continue;
+
+			intr_ctx = &soc->intr_ctx[i];
+			goto get_grp_id;
+		}
+
+		if (type == COMP_RING_TYPE && dal_tx_mask) {
+			ring_idx = dal_ring->ring_num;
+
+			if (!(1 << wlan_cfg_get_wbm_ring_num_for_index(soc->wlan_cfg_ctx,
+								       ring_idx) &
+			      dal_tx_mask))
+				continue;
+
+			intr_ctx = &soc->intr_ctx[i];
+			goto get_grp_id;
+		}
+	}
+
+	dp_err("Failed to get grp id for the DAL ring %d type %d",
+	       dal_ring->ring_num, type);
+
+	return QDF_STATUS_E_FAILURE;
+
+get_grp_id:
+	grp_id = hif_get_ext_grp_id(soc->hif_handle, intr_ctx);
+	if (grp_id >= HIF_MAX_GROUP) {
+		dp_err("failed to get grp id for the DAL ring %d type %d",
+		       dal_ring->ring_num, type);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	dal_ring->grp_id = grp_id;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS dp_dal_create_ring_to_grp_mapping(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+	struct dal_srng *dal_ring;
+	int i;
+
+	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
+		dal_ring = &dal_ctx->rx_ring[i];
+
+		if (!dal_ring->initialized)
+			continue;
+
+		if (dp_dal_update_ring_grp_id(soc, dal_ring, REO_DST) !=
+		    QDF_STATUS_SUCCESS) {
+			dp_err("Failed to update grp_id for RX ring %d", i);
+			return QDF_STATUS_E_FAILURE;
+		}
+	}
+
+	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+		dal_ring = &dal_ctx->tx_cmpl_ring[i];
+
+		if (!dal_ring->initialized)
+			continue;
+
+		if (dp_dal_update_ring_grp_id(soc, dal_ring, COMP_RING_TYPE) !=
+		    QDF_STATUS_SUCCESS) {
+			dp_err("Failed to update grp_id for Tx cmp ring %d", i);
+			return QDF_STATUS_E_FAILURE;
+		}
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * dp_dal_soc_init - Initialize DP DAL for SOC
  * @soc: pointer to dp_soc structure
@@ -201,6 +290,12 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 
 	if (!soc || !soc->dal_ctx)
 		return QDF_STATUS_E_INVAL;
+
+	status = dp_dal_create_ring_to_grp_mapping(soc);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("failed to create DAL ring to grp mapping %d", status);
+		return status;
+	}
 
 	status = dp_dal_bus_init(soc);
 	if (status) {
