@@ -5139,6 +5139,64 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 }
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_tx_override_ring_id() - Override TCL ring ID for DAL rings based
+ *			      on VDEV type
+ * @vdev: DP vdev handle
+ * @ring_id: Pointer to ring ID to be updated
+ *
+ * For DAL (Data Abstraction Layer), TCL rings 0 & 1 are dedicated:
+ * - Ring 0: STA mode
+ * - Ring 1: SAP (AP) mode
+ * - Other rings: Shared amongst other VDEV types
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_INVAL on error
+ */
+static inline QDF_STATUS
+dp_tx_override_ring_id(struct dp_vdev *vdev, uint8_t *ring_id)
+{
+	struct dp_soc *soc;
+
+	if (qdf_unlikely(!vdev || !ring_id))
+		return QDF_STATUS_E_INVAL;
+
+	soc = vdev->pdev->soc;
+
+	/* DAL requires minimum 3 TCL rings */
+	if (qdf_unlikely(soc->num_tcl_data_rings < 3))
+		return QDF_STATUS_E_INVAL;
+
+	switch (vdev->qdf_opmode) {
+	case QDF_STA_MODE:
+		*ring_id = 0;
+		break;
+	case QDF_SAP_MODE:
+		*ring_id = 1;
+		break;
+	default:
+		/* Other VDEVs: avoid reserved rings 0,1 - use rings 2+ */
+		if (*ring_id < 2)
+			*ring_id += 2;
+
+		/* Ensure ring_id stays within available rings */
+		if (*ring_id >= soc->num_tcl_data_rings) {
+			*ring_id =
+				(*ring_id % (soc->num_tcl_data_rings - 2)) + 2;
+		}
+		break;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static inline QDF_STATUS
+dp_tx_override_ring_id(struct dp_vdev *vdev, uint8_t *ring_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      qdf_nbuf_t nbuf)
 {
@@ -5176,6 +5234,12 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	 *  to minimize lock contention for these resources.
 	 */
 	dp_tx_get_queue(vdev, nbuf, &msdu_info.tx_queue);
+
+	status = dp_tx_override_ring_id(vdev, &msdu_info.tx_queue.ring_id);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_tx_err_rl("Failed to override ring id");
+		return nbuf;
+	}
 
 	dp_tx_override_flow_pool_id(soc, vdev, &msdu_info);
 
