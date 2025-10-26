@@ -158,7 +158,11 @@ void dp_dal_soc_detach(struct dp_soc *soc)
  */
 void dp_dal_soc_deinit(struct dp_soc *soc)
 {
-	/* TODO: implement actual deinit logic */
+	if (!soc || !soc->dal_ctx)
+		return;
+
+	dp_dal_bus_stop(soc);
+	dp_dal_bus_exit(soc);
 }
 
 /**
@@ -193,8 +197,37 @@ QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc)
  */
 QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 {
-	/* TODO: implement actual init logic */
+	int status;
+
+	if (!soc || !soc->dal_ctx)
+		return QDF_STATUS_E_INVAL;
+
+	status = dp_dal_bus_init(soc);
+	if (status) {
+		dp_err("DAL platform bus init failed %d", status);
+		return status;
+	}
+
+	status = dp_dal_bus_request_irq(soc);
+	if (status) {
+		dp_err("DAL platform bus request IRQ failed %d", status);
+		goto bus_deinit;
+	}
+
+	status = dp_dal_bus_start(soc);
+	if (status) {
+		dp_err("DAL platform bus start failed %d", status);
+		goto bus_deinit;
+	}
+
+	dp_info("DAL SOC init completed successfully");
+
 	return QDF_STATUS_SUCCESS;
+
+bus_deinit:
+	dp_info("DAL SOC init failed");
+	dp_dal_bus_exit(soc);
+	return status;
 }
 
 /**

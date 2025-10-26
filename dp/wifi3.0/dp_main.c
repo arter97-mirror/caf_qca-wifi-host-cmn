@@ -4317,6 +4317,7 @@ static void dp_pdev_deinit(struct cdp_pdev *txrx_pdev, int force)
 	if (pdev->pdev_deinit)
 		return;
 
+	dp_dal_soc_deinit(pdev->soc);
 	dp_tx_me_exit(pdev);
 	dp_rx_pdev_buffers_free(pdev);
 	dp_rx_pdev_desc_pool_deinit(pdev);
@@ -4955,6 +4956,12 @@ dp_soc_attach_target_wifi3(struct cdp_soc_t *cdp_soc)
 	if (status != QDF_STATUS_SUCCESS &&
 	    status != QDF_STATUS_E_NOSUPPORT) {
 		dp_err("Failed to send htt fst setup config message to target");
+		return status;
+	}
+
+	status = dp_dal_soc_init(soc);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("DAL initialization failed");
 		return status;
 	}
 
