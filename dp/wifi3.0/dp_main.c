@@ -4541,6 +4541,7 @@ static void dp_soc_detach(struct cdp_soc_t *txrx_soc)
 {
 	struct dp_soc *soc = (struct dp_soc *)txrx_soc;
 
+	dp_dal_soc_detach(soc);
 	soc->arch_ops.txrx_soc_detach(soc);
 
 	qdf_ssr_driver_dump_unregister_region("wlan_cfg_ctx");
@@ -15573,6 +15574,11 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 	dp_soc_set_qref_debug_list(soc);
 	qdf_ssr_driver_dump_register_region("dp_soc", soc, sizeof(*soc));
 	qdf_nbuf_ssr_register_region();
+
+	if (dp_dal_soc_attach(soc)) {
+		dp_init_err("%pK: failed to attach DAL soc", soc);
+		goto fail10;
+	}
 
 	dp_info("Mem stats: DMA = %u HEAP = %u SKB = %u",
 		qdf_dma_mem_stats_read(),

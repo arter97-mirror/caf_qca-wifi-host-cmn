@@ -145,7 +145,9 @@ struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;
  */
 void dp_dal_soc_detach(struct dp_soc *soc)
 {
-	/* TODO: implement actual detach logic */
+	qdf_mem_common_free(soc->dal_ctx);
+	soc->dal_ctx = NULL;
+	dp_info("DAL context destroyed");
 }
 
 /**
@@ -167,7 +169,19 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
  */
 QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc)
 {
-	/* TODO: implement actual attach logic */
+	struct dp_dal_ctx *ctx;
+
+	ctx = qdf_mem_common_alloc(sizeof(*ctx));
+	if (!ctx) {
+		dp_init_err("Failed to allocate memory for DAL context");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	dp_info("DAL context allocated");
+
+	ctx->soc = soc;
+	soc->dal_ctx = ctx;
+
 	return QDF_STATUS_SUCCESS;
 }
 
