@@ -1078,6 +1078,7 @@ struct dp_txrx_pool_stats {
  * @crit_thresh: Critical threshold for near-full processing of this srng
  * @safe_thresh: Safe threshold for near-full processing of this srng
  * @near_full: Flag to indicate srng is near-full
+ * @dal_owned_ring: ring is used for DAL datapath
  */
 struct dp_srng {
 	hal_ring_handle_t hal_srng;
@@ -1097,6 +1098,9 @@ struct dp_srng {
 	uint16_t crit_thresh;
 	uint16_t safe_thresh;
 	qdf_atomic_t near_full;
+#endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+	bool dal_owned_ring;
 #endif
 };
 

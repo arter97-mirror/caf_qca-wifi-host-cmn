@@ -10,6 +10,9 @@
 #include "dp_types.h"
 
 #ifdef FEATURE_DAL_DP_SUPPORT
+#define DAL_DP_TCL_RING_MASK 0x3
+#define DAL_DP_REO_RING_MASK 0xc
+
 #define PRIORITY_CLASS 8
 #define MAC_ADDR_LEN 6
 
@@ -300,7 +303,31 @@ int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable);
  * Return: work done
  */
 uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu);
+
+static inline void
+dp_srng_mark_dal_owned_ring(struct dp_srng *srng, uint8_t idx,
+			    enum hal_ring_type type)
+{
+	int mask;
+
+	if (type == REO_DST)
+		mask = DAL_DP_REO_RING_MASK;
+	else
+		mask = DAL_DP_TCL_RING_MASK;
+
+	if (BIT(idx) & mask)
+		srng->dal_owned_ring = true;
+}
 #else
+#define DAL_DP_TCL_RING_MASK 0
+#define DAL_DP_REO_RING_MASK 0
+
+static inline void
+dp_srng_mark_dal_owned_ring(struct dp_srng *srng, uint8_t idx,
+			    enum hal_ring_type type)
+{
+}
+
 static inline void dp_dal_soc_detach(struct dp_soc *soc)
 {
 }
