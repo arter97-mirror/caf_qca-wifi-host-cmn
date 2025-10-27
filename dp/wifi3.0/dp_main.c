@@ -14494,7 +14494,8 @@ static bool dp_tx_comp_delay_check(struct dp_tx_desc_s *tx_desc)
 				DP_TX_COMP_MAX_LATENCY_2ND_STAGE;
 			return false;
 		}
-	} else if (time_latency_sec >= tx_desc->deferred_timestamp) {
+	} else if (tx_desc->deferred_timestamp &&
+		   (time_latency_sec >= tx_desc->deferred_timestamp)) {
 		if (use_ktime) {
 			dp_err_rl("enqueued: %llu ms, current : %llu ms",
 				  tx_desc->timestamp, current_time);
