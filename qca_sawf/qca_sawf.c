@@ -439,6 +439,10 @@ uint32_t qca_sawf_get_mark_metadata(struct qca_sawf_metadata_param *params)
 	uint32_t dscp_pcp = 0;
 	bool pcp = false;
 
+	if (params->mcast_flag) {
+		return DP_SAWF_META_DATA_INVALID;
+	}
+
 	if (params->valid_flag & QCA_SAWF_PCP_VALID) {
 		dscp_pcp = params->pcp;
 		pcp = true;
