@@ -1618,6 +1618,13 @@ scm_scan_event_handler(struct scheduler_msg *msg)
 	case SCAN_EVENT_TYPE_NLO_MATCH:
 		scm_pno_event_handler(vdev, event);
 		goto exit;
+	case SCAN_EVENT_TYPE_STARTED:
+		scm_send_custom_scan_start_event(vdev);
+		break;
+	case SCAN_EVENT_TYPE_COMPLETED:
+	case SCAN_EVENT_TYPE_DEQUEUED:
+		scm_send_custom_scan_complete_event(event_info);
+		break;
 	default:
 		break;
 	}
@@ -1664,11 +1671,7 @@ scm_scan_event_handler(struct scheduler_msg *msg)
 		scm_scan_update_scan_event(scan, event, scan_start_req);
 
 	switch (event->type) {
-	case SCAN_EVENT_TYPE_STARTED:
-		scm_send_custom_scan_start_event(vdev);
-		break;
 	case SCAN_EVENT_TYPE_COMPLETED:
-		scm_send_custom_scan_complete_event(event_info);
 		if (event->reason == SCAN_REASON_COMPLETED)
 			scm_11d_decide_country_code(vdev);
 		/* fall through to release the command */
