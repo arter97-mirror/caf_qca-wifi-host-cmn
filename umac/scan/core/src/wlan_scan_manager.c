@@ -711,17 +711,39 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 	 */
 	if ((ap_present && sap_peer_count) ||
 	    (go_present && go_peer_count)) {
-		if ((policy_mgr_is_hw_dbs_capable(psoc) &&
-		     policy_mgr_is_sap_go_on_2g(psoc)) ||
-		     !policy_mgr_is_hw_dbs_capable(psoc)) {
-			if (ap_present)
+		uint32_t sta_max_dwell_time;
+
+		sta_max_dwell_time = SCAN_CTS_DURATION_MS_MAX -
+			SCAN_ROAM_SCAN_CHANNEL_SWITCH_TIME;
+
+		if (ap_present) {
+			if (!policy_mgr_is_hw_dbs_capable(psoc)) {
 				req->scan_req.dwell_time_active_2g =
 					QDF_MIN(req->scan_req.dwell_time_active,
-						(SCAN_CTS_DURATION_MS_MAX -
-						SCAN_ROAM_SCAN_CHANNEL_SWITCH_TIME));
-			else
-				req->scan_req.dwell_time_active_2g = 0;
+						sta_max_dwell_time);
+
+				req->scan_req.dwell_time_active =
+					QDF_MIN(req->scan_req.dwell_time_active,
+						sta_max_dwell_time);
+				req->scan_req.dwell_time_passive =
+					QDF_MIN(req->scan_req.dwell_time_passive,
+						sta_max_dwell_time);
+
+				req->scan_req.dwell_time_active_6g =
+					QDF_MIN(req->scan_req.dwell_time_active_6g,
+						sta_max_dwell_time);
+				req->scan_req.dwell_time_passive_6g =
+					QDF_MIN(req->scan_req.dwell_time_passive_6g,
+						sta_max_dwell_time);
+			} else if (policy_mgr_is_sap_go_on_2g(psoc)) {
+				req->scan_req.dwell_time_active_2g =
+					QDF_MIN(req->scan_req.dwell_time_active,
+						sta_max_dwell_time);
+			}
+		} else {
+			req->scan_req.dwell_time_active_2g = 0;
 		}
+
 		req->scan_req.min_rest_time = req->scan_req.max_rest_time;
 	}
 
