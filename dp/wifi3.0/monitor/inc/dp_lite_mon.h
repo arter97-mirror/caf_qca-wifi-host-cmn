@@ -291,13 +291,14 @@ dp_lite_mon_vdev_delete(struct dp_pdev *pdev, struct dp_vdev *vdev);
  * @vdev_id: vdev id
  * @cmd: peer cmd
  * @macaddr: peer mac
+ * @is_vbss_peer: VBSS peer or not
  *
  * Return: 1 if success, 0 if failure
  */
 int
 dp_lite_mon_config_nac_peer(struct cdp_soc_t *soc_hdl,
 			    uint8_t vdev_id,
-			    uint32_t cmd, uint8_t *macaddr);
+			    uint32_t cmd, uint8_t *macaddr, bool is_vbss_peer);
 
 /**
  * dp_lite_mon_config_nac_rssi_peer - config nac rssi peer

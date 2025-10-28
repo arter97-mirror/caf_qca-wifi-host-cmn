@@ -1436,13 +1436,14 @@ dp_lite_mon_get_legacy_feature_enabled(struct cdp_soc_t *soc_hdl,
  * @vdev_id: vdev id
  * @cmd: peer cmd
  * @macaddr: peer mac
+ * @is_vbss_peer: VBSS peer or not
  *
  * Return: 1 if success, 0 if failure
  */
 int
 dp_lite_mon_config_nac_peer(struct cdp_soc_t *soc_hdl,
 			    uint8_t vdev_id,
-			    uint32_t cmd, uint8_t *macaddr)
+			    uint32_t cmd, uint8_t *macaddr, bool is_vbss_peer)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev =
@@ -1471,6 +1472,7 @@ dp_lite_mon_config_nac_peer(struct cdp_soc_t *soc_hdl,
 		     sizeof(struct cdp_lite_mon_peer_config));
 	peer_config.direction = CDP_LITE_MON_DIRECTION_RX;
 	peer_config.vdev_id = vdev_id;
+	peer_config.is_vbss_peer = is_vbss_peer;
 	qdf_mem_copy(peer_config.mac, macaddr, QDF_MAC_ADDR_SIZE);
 	if (cmd == DP_NAC_PARAM_ADD)
 		peer_config.action = CDP_LITE_MON_PEER_ADD;
@@ -1615,7 +1617,7 @@ dp_lite_mon_config_nac_rssi_peer(struct cdp_soc_t *soc_hdl,
 	int ret;
 
 	ret = dp_lite_mon_config_nac_peer(soc_hdl, vdev_id,
-					  cmd, macaddr);
+					  cmd, macaddr, false);
 	if (!ret) {
 		dp_mon_err("failed to add nac rssi peers");
 		return QDF_STATUS_E_FAILURE;
