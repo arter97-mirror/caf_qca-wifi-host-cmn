@@ -563,6 +563,9 @@ QDF_STATUS dp_srng_init_idx(struct dp_soc *soc, struct dp_srng *srng,
 	if (srng->cached)
 		ring_params.flags |= HAL_SRNG_CACHED_DESC;
 
+	if (srng->direct_refill)
+		ring_params.flags |= HAL_SRNG_FLAGS_DIRECT_REFILL;
+
 	idle_check = dp_check_umac_reset_in_progress(soc);
 
 	srng->hal_srng = hal_srng_setup_idx(hal_soc, ring_type, ring_num,

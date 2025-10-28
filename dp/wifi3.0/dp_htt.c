@@ -1032,6 +1032,10 @@ int htt_srng_setup(struct htt_soc *soc, int mac_id,
 		HTT_SRING_SETUP_INTR_LOW_TH_SET(*msg_word,
 			srng_params.low_threshold);
 	}
+
+	if (srng_params.flags & HAL_SRNG_FLAGS_DIRECT_REFILL)
+		HTT_SRING_SETUP_DIRECT_REFILL_SET(*msg_word, 1);
+
 	/* "response_required" field should be set if a HTT response message is
 	 * required after setting up the ring.
 	 */

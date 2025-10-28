@@ -1071,6 +1071,8 @@ struct dp_txrx_pool_stats {
  * @base_paddr_aligned: aligned physical base address of the srng ring
  * @alloc_size: size of the srng ring
  * @cached: is the srng ring memory cached or un-cached memory
+ * @direct_refill: Flag to indicate if this srng is used for Rx buffer refill
+ *		   via HOST directly.
  * @irq: irq number of the srng ring
  * @num_entries: number of entries in the srng ring
  * @stats: Structure to track the ring utilization stats
@@ -1088,6 +1090,7 @@ struct dp_srng {
 	qdf_dma_addr_t base_paddr_aligned;
 	uint32_t alloc_size;
 	uint8_t cached;
+	uint8_t direct_refill;
 	int irq;
 	uint32_t num_entries;
 	struct ring_util_stats stats;
@@ -4063,6 +4066,7 @@ QDF_COMPILE_TIME_ASSERT(num_cpu_check,
 #endif
 
 #define MAX_RX_MAC_RINGS 2
+#define DP_DIR_REFILL_RING_NUM 0
 /* Same as NAC_MAX_CLENT */
 #define DP_NAC_MAX_CLIENT  24
 
