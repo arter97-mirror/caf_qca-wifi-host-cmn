@@ -45,6 +45,25 @@ QDF_STATUS wmi_unified_nan_req_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_nan_disable_req_cmd(wmi_unified_t wmi_handle,
 					   struct nan_disable_req *nan_req);
 
+#if defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * wmi_unified_nan_stop_req_cmd() - to send nan stop request to target
+ * @wmi_handle: wmi handle
+ * @nan_req: pointer to NAN stop request structure
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
+					struct nan_disable_req *nan_req);
+#else
+static inline QDF_STATUS
+wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
+			     struct nan_disable_req *nan_req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+
 /**
  * wmi_unified_ndp_initiator_req_cmd_send - api to send initiator request to FW
  * @wmi_handle: wmi handle

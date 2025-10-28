@@ -1210,6 +1210,10 @@ QDF_STATUS (*send_nan_req_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_nan_disable_req_cmd)(wmi_unified_t wmi_handle,
 				       struct nan_disable_req *nan_msg);
+#if defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+QDF_STATUS (*send_nan_stop_req_cmd)(wmi_unified_t wmi_handle,
+				    struct nan_disable_req *nan_msg);
+#endif
 
 QDF_STATUS (*extract_nan_event_rsp)(wmi_unified_t wmi_handle, void *evt_buf,
 				    struct nan_event_params *evt_params,

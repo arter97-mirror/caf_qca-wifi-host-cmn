@@ -44,6 +44,18 @@ QDF_STATUS wmi_unified_nan_disable_req_cmd(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#if defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
+					struct nan_disable_req *nan_req)
+{
+	if (wmi_handle->ops->send_nan_stop_req_cmd)
+		return wmi_handle->ops->send_nan_stop_req_cmd(wmi_handle,
+							      nan_req);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
 				     struct nan_event_params *nan_evt_params,
 				     uint8_t **nan_msg_buf, uint32_t nan_config)

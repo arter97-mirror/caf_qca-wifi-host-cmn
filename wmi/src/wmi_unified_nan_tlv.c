@@ -389,6 +389,48 @@ static QDF_STATUS send_nan_disable_req_cmd_tlv(wmi_unified_t wmi_handle,
 	return ret;
 }
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * send_nan_stop_req_cmd_tlv() - to send nan stop request to target
+ * @wmi_handle: wmi handle
+ * @nan_req: request data which will be non-null
+ *
+ * Return: QDF status
+ */
+static QDF_STATUS send_nan_stop_req_cmd_tlv(wmi_unified_t wmi_handle,
+					    struct nan_disable_req *nan_req)
+{
+	wmi_nan_disable_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint16_t len;
+	QDF_STATUS ret;
+
+	len = sizeof(*cmd);
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_nan_disable_cmd_fixed_param *)wmi_buf_data(buf);
+	qdf_mem_zero(cmd, sizeof(*cmd));
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_disable_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_nan_disable_cmd_fixed_param));
+	cmd->vdev_id = nan_req->vdev_id;
+
+	wmi_mtrace(WMI_NAN_DISABLE_CMDID, NO_SESSION, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_NAN_DISABLE_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send NAN stop/disable command ret = %d",
+			ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+#endif
+
 /**
  * send_nan_req_cmd_tlv() - to send nan request to target
  * @wmi_handle: wmi handle
@@ -1619,6 +1661,7 @@ static void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
 	ops->extract_nan_disable_rsp_event = extract_nan_disable_rsp_event_tlv;
 	ops->extract_nan_disable_ind_event = extract_nan_disable_ind_event_tlv;
 	ops->extract_nan_enable_rsp_event = extract_nan_enable_rsp_event_tlv;
+	ops->send_nan_stop_req_cmd = send_nan_stop_req_cmd_tlv;
 }
 #else
 static inline
