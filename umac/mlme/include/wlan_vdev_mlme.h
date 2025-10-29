@@ -29,6 +29,7 @@
 struct vdev_mlme_obj;
 struct cnx_mgr;
 struct ml_rv_info;
+struct peer_oper_mode_event;
 
 /* Requestor ID for multiple vdev restart */
 #define MULTIPLE_VDEV_RESTART_REQ_ID 0x1234
@@ -739,6 +740,7 @@ enum vdev_start_resp_type {
  *                                      remove state
  *@mlme_vdev_set_link_remove_delay:     callback to set link removal delay
  *                                      work flag
+ *@mlme_vdev_peer_oper_mode_notify: Callback to handle peer oper mode notify
  */
 struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_validate_basic_params)(
@@ -838,6 +840,9 @@ struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_set_link_remove_delay)(
 				struct vdev_mlme_obj *vdev_mlme,
 				uint16_t event_data_len, void *event_data);
+	QDF_STATUS (*mlme_vdev_peer_oper_mode_notify)
+				(struct wlan_objmgr_vdev *vdev,
+				 struct peer_oper_mode_event *data);
 };
 
 /**
