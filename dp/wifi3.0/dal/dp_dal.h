@@ -65,7 +65,8 @@ struct platform_bus_ops {
 	bool (*rx)(void *priv, u32 *cnt);
 	int (*rx_replenish)(void *priv, u32 cnt, bool use_rsv_pktid);
 	int (*rxbm_sync)(void *priv, u32 cnt, void **rxbm);
-	int (*tx)(void *priv, void *pkt, u32 ifidx, void *desc);
+	int (*tx)(void *priv, void *pkt, u32 ifidx, void *desc,
+		  void *tx_metadata);
 	bool (*tx_cpl)(void *priv, u32 *cnt, u16 ring_id);
 	int (*tx_queue_active)(void *priv, u16 flowid, bool enable);
 	int (*sta_active)(void *priv, struct sta_info *info, bool enable);

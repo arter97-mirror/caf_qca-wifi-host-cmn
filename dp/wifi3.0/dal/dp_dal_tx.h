@@ -13,7 +13,20 @@
 #include "dp_tx.h"
 
 /**
- * dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
+ * struct dp_dal_tx_metadata - DAL TX metadata structure
+ * @msdu_info: Pointer to MSDU information structure containing packet
+ *             details for transmission
+ *
+ * This structure encapsulates metadata required for DAL
+ * TX operations, providing necessary packet information for
+ * transmission handling.
+ */
+struct dp_dal_tx_metadata {
+	struct dp_tx_msdu_info_s *msdu_info;
+};
+
+/**
+ * dp_dal_tx_cmp_isr_vendor_cb - tx cmlp ISR vendor callback
  * @ring_num: tx completion ring number
  * @priv: pointer to dp dal context
  *
@@ -28,10 +41,12 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv);
  * @pkt: tx packet
  * @ifidx: interface index
  * @desc: TX descriptor
+ * @tx_metadata: pointer to dp_dal_tx_metadata structure containing MSDU info
  *
  * Return: 0 on success
  */
-int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc);
+int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
+			  void *tx_metadata);
 
 /**
  * dp_dal_tx_cpl_bypass_mode() - Skeleton for platform bus tx completion

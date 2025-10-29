@@ -57,10 +57,12 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
  * @pkt: tx packet
  * @ifidx: interface index
  * @desc: TX descriptor
+ * @tx_metadata: pointer to dp_dal_tx_metadata structure containing MSDU info
  *
  * Return: 0 on success
  */
-int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc)
+int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
+			  void *tx_metadata)
 {
 	return 0;
 }
@@ -116,6 +118,7 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 				struct dp_tx_msdu_info_s *msdu_info)
 {
 	struct dp_dal_ctx *dal_ctx;
+	struct dp_dal_tx_metadata tx_metadata = {};
 	void *tcl_desc = NULL;
 	qdf_nbuf_t nbuf;
 	uint8_t vdev_id;
@@ -136,6 +139,8 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 		return QDF_STATUS_E_NULL_VALUE;
 	}
 
+	tx_metadata.msdu_info = msdu_info;
+
 	tcl_desc = qdf_mem_malloc(HAL_TX_DESC_LEN_BYTES);
 	if (qdf_unlikely(!tcl_desc)) {
 		dp_tx_err_rl("Failed to allocate TCL descriptor memory");
@@ -152,8 +157,9 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 		goto err_free_desc;
 	}
 
-	if (global_plat_ops && global_plat_ops->tx) {
-		ret = global_plat_ops->tx(dal_ctx, nbuf, vdev_id, tcl_desc);
+	if (global_plat_ops->tx) {
+		ret = global_plat_ops->tx(dal_ctx, nbuf, vdev_id, tcl_desc,
+					  &tx_metadata);
 		if (qdf_unlikely(ret)) {
 			dp_tx_err_rl("platform tx failed, ret: %d", ret);
 			status = QDF_STATUS_E_FAILURE;
