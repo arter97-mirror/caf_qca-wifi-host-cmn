@@ -6455,6 +6455,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_twt_resp_disable, VDEV_PARAM_TWT_RESP_DISABLE),
 	VDEV_PARAM(vdev_param_cck_support, VDEV_PARAM_CCK_SUPPORT),
 	VDEV_PARAM(vdev_param_dsmps_control, VDEV_PARAM_DSMPS_CONTROL),
+	VDEV_PARAM(vdev_param_su_txop_burst_limit_us,
+		   VDEV_PARAM_SU_TXOP_BURST_LIMIT_US),
 
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
