@@ -208,24 +208,6 @@ void mlo_mgr_update_link_info_reset(struct wlan_objmgr_psoc *psoc,
 				    struct wlan_mlo_dev_context *ml_dev);
 
 /**
- * mlo_mgr_fetch_cnx_nss_by_bssid() - Fetch connection NSS values by BSSID
- * @vdev: Pointer to the virtual device object
- * @bssid: Pointer to the BSSID MAC address to search for
- * @tx_nss: Pointer to store the transmit NSS value
- * @rx_nss: Pointer to store the receive NSS value
- *
- * This function searches for a link with the specified BSSID in the MLO device
- * context and retrieves the connection's transmit and receive NSS values.
- *
- * Return: QDF_STATUS_SUCCESS if the BSSID is found and NSS values are retrieved
- *         QDF_STATUS_E_NULL_VALUE if vdev or mlo_dev_ctx is NULL
- *         QDF_STATUS_E_NOENT if the BSSID is not found in any link
- */
-QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
-					  struct qdf_mac_addr *bssid,
-					  uint8_t *tx_nss, uint8_t *rx_nss);
-
-/**
  * mlo_mgr_update_ap_link_info() - Update AP links information
  * @vdev: Object Manager vdev
  * @data: Container of data to save
@@ -295,6 +277,25 @@ void mlo_mgr_update_ap_channel_info(struct wlan_objmgr_vdev *vdev,
  */
 struct mlo_link_info *mlo_mgr_get_ap_link(struct wlan_objmgr_vdev *vdev);
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+/**
+ * mlo_mgr_fetch_cnx_nss_by_bssid() - Fetch connection NSS values by BSSID
+ * @vdev: Pointer to the virtual device object
+ * @bssid: Pointer to the BSSID MAC address to search for
+ * @tx_nss: Pointer to store the transmit NSS value
+ * @rx_nss: Pointer to store the receive NSS value
+ *
+ * This function searches for a link with the specified BSSID in the MLO device
+ * context and retrieves the connection's transmit and receive NSS values.
+ *
+ * Return: QDF_STATUS_SUCCESS if the BSSID is found and NSS values are retrieved
+ *         QDF_STATUS_E_NULL_VALUE if vdev or mlo_dev_ctx is NULL
+ *         QDF_STATUS_E_NOENT if the BSSID is not found in any link
+ */
+QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
+					  struct qdf_mac_addr *bssid,
+					  uint8_t *tx_nss, uint8_t *rx_nss);
+
 /**
  * mlo_mgr_link_rejection_handler() - Link rejection handler
  * @vdev: Object Manager vdev
@@ -307,7 +308,6 @@ struct mlo_link_info *mlo_mgr_get_ap_link(struct wlan_objmgr_vdev *vdev);
  *
  * Return: none
  */
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 void
 mlo_mgr_link_rejection_handler(struct wlan_objmgr_vdev *vdev,
 			       struct mlo_link_info *rejected_link_info,
@@ -1025,6 +1025,14 @@ mlo_mgr_update_csa_link_info(struct wlan_mlo_dev_context *mlo_dev_ctx,
 			     uint8_t link_id)
 {
 	return false;
+}
+
+static inline
+QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
+					  struct qdf_mac_addr *bssid,
+					  uint8_t *tx_nss, uint8_t *rx_nss)
+{
+	return QDF_STATUS_E_NOSUPPORT;
 }
 
 static inline void

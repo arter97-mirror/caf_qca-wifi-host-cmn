@@ -43,6 +43,8 @@
 #define WLAN_UMAC_MLO_MAX_VDEVS 2
 #endif
 
+struct scan_cache_entry;
+
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 /* Max bridge vdevs supported */
 #define WLAN_UMAC_MLO_MAX_BRIDGE_VDEVS 2
@@ -281,6 +283,8 @@ typedef QDF_STATUS
  * reconfiguration add/del information.
  * @vdev_id: assigned vdev id for add link only
  * @link_id: IEEE Link id
+ * @cap_tx_nss: Capability Tx NSS of link
+ * @cap_rx_nss: Capability Rx NSS of link
  * @freq: channel frequency to be deleted/added
  * @ap_link_addr: AP Link address to be deleted/added
  * @self_link_addr: self link address for add link only
@@ -290,6 +294,8 @@ typedef QDF_STATUS
 struct wlan_mlo_link_recfg_bss_info {
 	uint8_t vdev_id;
 	uint8_t link_id;
+	uint8_t cap_tx_nss;
+	uint8_t cap_rx_nss;
 	qdf_freq_t freq;
 	struct qdf_mac_addr ap_link_addr;
 	struct qdf_mac_addr self_link_addr;
@@ -1620,6 +1626,7 @@ struct wlan_mlo_bridge_sta {
  * @mlo_mlme_ext_set_ieee_link_id: Callback to update ieee_link_id in vap
  * @mlo_mlme_ext_teardown_tdls: Callback to teardown TDLS
  * @mlo_mlme_ext_link_add_join_continue: Callback to continue link add connecting
+ * @mlo_mlme_ext_link_add_fetch_nss: Callback to fetch NSS for link add
  */
 struct mlo_mlme_ext_ops {
 	QDF_STATUS (*mlo_mlme_ext_validate_conn_req)(
@@ -1672,6 +1679,10 @@ struct mlo_mlme_ext_ops {
 					struct wlan_objmgr_psoc *psoc,
 					uint8_t vdev_id,
 					QDF_STATUS recfg_rsp_status);
+	QDF_STATUS (*mlo_mlme_ext_link_add_fetch_nss)
+				(uint8_t vdev_id,
+				 struct scan_cache_entry *scan_entry,
+				 uint8_t *tx_nss, uint8_t *rx_nss);
 };
 
 /*

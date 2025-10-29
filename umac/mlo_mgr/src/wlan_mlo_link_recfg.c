@@ -542,10 +542,14 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 {
 	struct wlan_objmgr_pdev *pdev;
 	struct scan_cache_entry *scan_entry;
-	uint8_t i;
+	uint8_t i, tx_nss, rx_nss;
 	struct wlan_mlo_link_recfg_bss_info *link;
 	struct mlo_link_info *ap_link_info;
+	struct mlo_mgr_context *g_mlo_ctx;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	QDF_STATUS (*link_add_fetch_nss_cb)(uint8_t vdev_id,
+					    struct scan_cache_entry *scan_entry,
+					    uint8_t *tx_nss, uint8_t *rx_nss);
 
 	pdev = wlan_objmgr_get_pdev_by_id(psoc, 0, WLAN_LINK_RECFG_ID);
 	if (!pdev) {
@@ -556,6 +560,22 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 		mlo_err("recfg_req null");
 		return QDF_STATUS_E_INVAL;
 	}
+
+	g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
+	if (!g_mlo_ctx) {
+		mlo_err("Global MLO ctx NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!g_mlo_ctx->mlme_ops ||
+	    !g_mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_fetch_nss) {
+		mlo_err("No callback to fetch NSS");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	link_add_fetch_nss_cb =
+		g_mlo_ctx->mlme_ops->mlo_mlme_ext_link_add_fetch_nss;
+
 	link = &recfg_req->add_link_info.link[0];
 	for (i = 0; i < recfg_req->add_link_info.num_links &&
 			i < WLAN_MAX_ML_BSS_LINKS; i++) {
@@ -568,8 +588,19 @@ mlo_link_recfg_update_channel_freq(struct wlan_objmgr_psoc *psoc,
 			break;
 		}
 		link[i].freq = scan_entry->channel.chan_freq;
-		mlo_debug("add: freq %d link id %d " QDF_MAC_ADDR_FMT "",
-			  link[i].freq, link[i].link_id,
+		status = link_add_fetch_nss_cb(recfg_req->vdev_id, scan_entry,
+					       &tx_nss, &rx_nss);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_debug("Failed to fetch NSS for %d, status %d",
+				  link[i].freq, status);
+			util_scan_free_cache_entry(scan_entry);
+			break;
+		}
+
+		link[i].cap_tx_nss = tx_nss;
+		link[i].cap_rx_nss = rx_nss;
+		mlo_debug("add: freq %d link id %d Tx/Rx NSS %dx%d " QDF_MAC_ADDR_FMT "",
+			  link[i].freq, link[i].link_id, tx_nss, rx_nss,
 			  QDF_MAC_ADDR_REF(link[i].ap_link_addr.bytes));
 
 		util_scan_free_cache_entry(scan_entry);
@@ -1606,8 +1637,9 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 		mlo_debug("delete old link id %d ap link " QDF_MAC_ADDR_FMT "",
 			  link_info->link_id,
 			  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
-		mlo_debug("update to added link id %d ap link " QDF_MAC_ADDR_FMT " ch %d phymode %d",
+		mlo_debug("update to added link id %d, Tx/Rx NSS %dx%d, ap link " QDF_MAC_ADDR_FMT " ch %d phymode %d",
 			  add_link->link_id,
+			  add_link->cap_tx_nss, add_link->cap_rx_nss,
 			  QDF_MAC_ADDR_REF(add_link->ap_link_addr.bytes),
 			  channel.ch_freq,
 			  channel.ch_phymode);
@@ -1625,6 +1657,8 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 		link_info->is_link_active = false;
 		link_info->chan_freq = add_link->freq;
 		link_info->link_status_code = STATUS_SUCCESS;
+		link_info->cnx_tx_nss = add_link->cap_tx_nss;
+		link_info->cnx_rx_nss = add_link->cap_rx_nss;
 		mlo_dev_lock_release(mlo_dev_ctx);
 		mlo_link_recfg_update_scan_mlme(vdev,
 						&link_info->ap_link_addr,
