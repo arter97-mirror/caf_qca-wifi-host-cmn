@@ -177,6 +177,7 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 	void *tcl_desc = NULL;
 	qdf_nbuf_t nbuf;
 	uint8_t vdev_id;
+	uint8_t ring_id;
 	int ret;
 	QDF_STATUS status;
 
@@ -188,6 +189,7 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 
 	nbuf = tx_desc->nbuf;
 	vdev_id = tx_desc->vdev_id;
+	ring_id = msdu_info->tx_queue.ring_id;
 
 	if (qdf_unlikely(!nbuf)) {
 		dp_tx_err_rl("nbuf is NULL");
@@ -214,11 +216,17 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 		goto err_free_desc;
 	}
 
+	if (!dp_tx_desc_set_ktimestamp(vdev, tx_desc))
+		dp_tx_desc_set_timestamp(tx_desc);
+
 	if (global_plat_ops->tx) {
 		ret = global_plat_ops->tx(dal_ctx, nbuf, vdev_id, tcl_desc,
 					  &tx_metadata);
 		if (qdf_unlikely(ret)) {
 			dp_tx_err_rl("platform tx failed, ret: %d", ret);
+			DP_STATS_INC(vdev,
+				     tx_i[msdu_info->xmit_type].dropped.enqueue_fail,
+				     1);
 			status = QDF_STATUS_E_FAILURE;
 			goto err_free_desc;
 		}
@@ -229,6 +237,14 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 	}
 
 	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
+	dp_tx_update_proto_stats(vdev, tx_desc->nbuf, ring_id, TX_ENQUEUE_HW);
+
+	DP_STATS_INC_PKT(vdev, tx_i[msdu_info->xmit_type].processed, 1,
+			 dp_tx_get_pkt_len(tx_desc));
+	DP_STATS_INC(soc, tx.tcl_enq[ring_id], 1);
+
+	dp_pkt_add_timestamp(vdev, QDF_PKT_TX_DRIVER_EXIT,
+			     qdf_get_log_timestamp(), tx_desc->nbuf);
 	status = QDF_STATUS_SUCCESS;
 
 err_free_desc:
