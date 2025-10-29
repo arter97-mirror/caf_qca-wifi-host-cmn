@@ -863,6 +863,9 @@ static void reg_modify_chan_list_for_indoor_concurrency(
 			if (chan_list[chan].chan_flags & REGULATORY_CHAN_INDOOR_ONLY &&
 			    !(chan_list[chan].chan_flags & REGULATORY_CHAN_DISABLED)) {
 				chan_list[chan].chan_flags &= ~REGULATORY_CHAN_NO_IR;
+				if (cfg_sta_indoor_ch_peer_scc)
+					chan_list[chan].state =
+						CHANNEL_STATE_ENABLE;
 			}
 		}
 	}
