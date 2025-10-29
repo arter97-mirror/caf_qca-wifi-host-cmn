@@ -1429,6 +1429,34 @@ int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx, void *cb_ctx)
 
 	return HIF_GRP_ID_INVALID;
 }
+
+/**
+ * hif_ext_grp_napi_schedule - Schedule napi for the corresponding ext grp
+ * @hif_ctx: HIF context
+ * @grp_id: ext group id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
+				     int grp_id)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	struct hif_exec_context *hif_ext_group;
+
+	if (grp_id >= HIF_MAX_GROUP)
+		return QDF_STATUS_E_FAILURE;
+
+	hif_ext_group = hif_state->hif_ext_group[grp_id];
+	if (!hif_ext_group) {
+		hif_err("hif_ext_group is NULL for grp_id %d", grp_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	hif_ext_group->sched_ops->schedule(hif_ext_group);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 /**

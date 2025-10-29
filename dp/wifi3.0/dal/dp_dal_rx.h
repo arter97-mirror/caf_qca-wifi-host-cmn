@@ -56,5 +56,14 @@ int dp_dal_rx_rxbm_sync_bypass_mode(void *priv, u32 cnt, void **rxbm);
  */
 QDF_STATUS dp_dal_rx_process_nbuf_list(struct dp_soc *soc,
 				       qdf_nbuf_t nbuf_list);
+
+/**
+ *dp_dal_rx_isr_vendor_cb - rx ISR vendor callback
+ *@ring_num: rx ring number
+ *@priv: pointer to dp dal context
+ *
+ * Return: 0 on success
+ */
+int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_RX_H */

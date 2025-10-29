@@ -5,6 +5,44 @@
 
 #include "dp_dal_rx.h"
 #include "dp_rx.h"
+#include "dp_dal.h"
+
+/**
+ *dp_dal_rx_isr_vendor_cb - rx ISR vendor callback
+ *@ring_num: rx ring number
+ *@priv: pointer to dp dal context
+ *
+ * Return: 0 on success
+ */
+int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	int grp_id;
+
+	if (!dal_ctx) {
+		dp_err("dal_ctx is NULL");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("soc is NULL");
+		return -EINVAL;
+	}
+
+	grp_id = dp_dal_get_ext_grp_id(dal_ctx, ring_num, REO_DST);
+	if (grp_id >= HIF_MAX_GROUP) {
+		dp_err("invalid group id:%d ring_num:%d ring_type:%s",
+		       grp_id, ring_num, " REO_DEST");
+		QDF_BUG(0);
+		return -EINVAL;
+	}
+
+	hif_ext_grp_napi_schedule(soc->hif_handle, grp_id);
+
+	return 0;
+}
 
 /**
  * dp_dal_rx_bypass_mode() - Skeleton for platform bus rx in bypass mode

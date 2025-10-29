@@ -363,6 +363,9 @@ static inline bool dp_srng_check_dal_owned_ring(struct dp_srng *srng)
 
 void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 			   enum hal_ring_type type, int ring_num);
+
+int dp_dal_get_ext_grp_id(struct dp_dal_ctx *dal_ctx,
+			  int ring_num, enum hal_ring_type type);
 #else
 #define DAL_DP_TCL_RING_MASK 0
 #define DAL_DP_REO_RING_MASK 0

@@ -2177,6 +2177,16 @@ QDF_STATUS hif_register_ext_group(struct hif_opaque_softc *hif_ctx,
 int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx,
 		       void *cb_ctx);
 
+/**
+ * hif_ext_grp_napi_schedule - Schedule napi for the corresponding ext grp
+ * @hif_ctx: HIF context
+ * @grp_id: ext group id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
+				     int grp_id);
+
 void hif_deregister_exec_group(struct hif_opaque_softc *hif_ctx,
 				const char *context_name);
 

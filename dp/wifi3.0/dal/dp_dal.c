@@ -165,6 +165,10 @@ struct platform_bus_ops plat_ops_bypass_mode = {
 
 struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;
 
+struct vendor_cb_ops vendor_cb = {
+	.rx_isr_cb = dp_dal_rx_isr_vendor_cb,
+};
+
 /**
  * dp_dal_soc_detach - detach DP DAL to SOC
  * @soc: pointer to dp_soc structure
@@ -766,6 +770,32 @@ void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 		dp_err("Invalid ring info rcvd srng %pK type %d ring_num %d",
 		       srng, type, ring_num);
 	}
+}
+
+int dp_dal_get_ext_grp_id(struct dp_dal_ctx *dal_ctx,
+			  int ring_num, enum hal_ring_type type)
+{
+	struct dal_srng *dal_ring;
+	int grp_id = 0xFF;
+	int i;
+
+	if (type == REO_DST) {
+		for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
+			dal_ring = &dal_ctx->rx_ring[i];
+			if (dal_ring->ring_num == ring_num)
+				return dal_ring->grp_id;
+		}
+	} else if (type == COMP_RING_TYPE) {
+		for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+			dal_ring = &dal_ctx->tx_cmpl_ring[i];
+			if (dal_ring->ring_num == ring_num)
+				return dal_ring->grp_id;
+		}
+	} else {
+		dp_err("invalid ring_type:%d received", type);
+	}
+
+	return grp_id;
 }
 
 uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
