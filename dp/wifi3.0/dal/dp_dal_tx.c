@@ -51,20 +51,75 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
 }
 
 /**
- * dp_dal_tx_bypass_mode() - Skeleton for platform bus tx in bypass mode
+ * dp_dal_tx_bypass_mode() - Platform bus tx in bypass mode
  *
- * @priv: private data
+ * @priv: dal private data
  * @pkt: tx packet
- * @ifidx: interface index
- * @desc: TX descriptor
+ * @ifidx: interface index (vdev_id)
+ * @desc: TCL descriptor
  * @tx_metadata: pointer to dp_dal_tx_metadata structure containing MSDU info
  *
- * Return: 0 on success
+ * This function implements the TX hardware enqueue functionality for
+ * bypass mode.
+ *
+ * Return: 0 on success, negative error code on failure
  */
 int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
 			  void *tx_metadata)
 {
-	return 0;
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_tx_metadata *metadata =
+		(struct dp_dal_tx_metadata *)tx_metadata;
+	struct dp_soc *soc = dal_ctx->soc;
+	struct dp_vdev *vdev = metadata->vdev;
+	struct dp_tx_desc_s *tx_desc = metadata->tx_desc;
+	struct dp_tx_msdu_info_s *msdu_info = metadata->msdu_info;
+	struct dp_tx_queue *tx_q = &msdu_info->tx_queue;
+	uint8_t ring_id = tx_q->ring_id;
+	uint8_t tid = msdu_info->tid;
+	uint32_t *hal_tx_desc_cached = desc;
+	hal_ring_handle_t hal_ring_hdl = NULL;
+	void *hal_tx_desc;
+	int coalesce = 0;
+	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
+	uint32_t hp;
+
+	hal_ring_hdl = dp_tx_get_hal_ring_hdl(soc, ring_id);
+
+	if (qdf_unlikely(dp_tx_hal_ring_access_start(soc, hal_ring_hdl))) {
+		dp_tx_err_rl("HAL RING Access Failed -- %pK", hal_ring_hdl);
+		DP_STATS_INC(soc, tx.tcl_ring_full[ring_id], 1);
+		return -ENOSPC;
+	}
+
+	hal_tx_desc = hal_srng_src_get_next(soc->hal_soc, hal_ring_hdl);
+	if (qdf_unlikely(!hal_tx_desc)) {
+		dp_verbose_debug("TCL ring full ring_id:%d", ring_id);
+		DP_STATS_INC(soc, tx.tcl_ring_full[ring_id], 1);
+		goto ring_access_fail;
+	}
+
+	/* Sync cached descriptor with HW */
+	soc->arch_ops.dp_tx_hw_desc_sync(hal_tx_desc_cached, hal_tx_desc,
+					 num_desc_bytes);
+
+	coalesce = dp_tx_attempt_coalescing_wrapper(soc, vdev, tx_desc, tid,
+						    msdu_info, ring_id);
+
+	if (qdf_unlikely(dp_tx_pkt_tracepoints_enabled())) {
+		hp = hal_srng_src_get_hp(hal_ring_hdl);
+		qdf_trace_dp_tx_enqueue(tx_desc->nbuf, hp, ring_id, coalesce);
+	}
+
+	dp_tx_update_stats(soc, tx_desc, ring_id);
+
+	dp_tx_hw_desc_update_evt((uint8_t *)hal_tx_desc_cached,
+				 hal_ring_hdl, soc, ring_id);
+
+ring_access_fail:
+	dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, coalesce);
+
+	return (hal_tx_desc) ? 0 : -ENOSPC;
 }
 
 /**
@@ -140,6 +195,8 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 	}
 
 	tx_metadata.msdu_info = msdu_info;
+	tx_metadata.vdev = vdev;
+	tx_metadata.tx_desc = tx_desc;
 
 	tcl_desc = qdf_mem_malloc(HAL_TX_DESC_LEN_BYTES);
 	if (qdf_unlikely(!tcl_desc)) {

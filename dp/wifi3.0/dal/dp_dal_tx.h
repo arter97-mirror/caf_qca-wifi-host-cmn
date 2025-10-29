@@ -16,6 +16,8 @@
  * struct dp_dal_tx_metadata - DAL TX metadata structure
  * @msdu_info: Pointer to MSDU information structure containing packet
  *             details for transmission
+ * @vdev: Pointer to DP VDEV structure
+ * @tx_desc: Pointer to TX descriptor structure
  *
  * This structure encapsulates metadata required for DAL
  * TX operations, providing necessary packet information for
@@ -23,6 +25,8 @@
  */
 struct dp_dal_tx_metadata {
 	struct dp_tx_msdu_info_s *msdu_info;
+	struct dp_vdev *vdev;
+	struct dp_tx_desc_s *tx_desc;
 };
 
 /**
@@ -35,7 +39,7 @@ struct dp_dal_tx_metadata {
 int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv);
 
 /**
- * dp_dal_tx_bypass_mode() - Skeleton for platform bus tx in bypass mode
+ * dp_dal_tx_bypass_mode() - Platform bus tx in bypass mode
  *
  * @priv: private data
  * @pkt: tx packet
