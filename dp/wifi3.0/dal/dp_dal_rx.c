@@ -4,6 +4,7 @@
  */
 
 #include "dp_dal_rx.h"
+#include "dp_rx.h"
 
 /**
  * dp_dal_rx_bypass_mode() - Skeleton for platform bus rx in bypass mode
@@ -19,7 +20,7 @@ bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt)
 }
 
 /**
- * dp_dal_rx_replenish_bypass_mode() - Skeleton for platform bus rx replenish
+ * dp_dal_rx_replenish_bypass_mode() - replenish rx buffers
  * in bypass mode
  *
  * @priv: private data
@@ -30,6 +31,30 @@ bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt)
  */
 int dp_dal_rx_replenish_bypass_mode(void *priv, u32 cnt, bool use_rsv_pktid)
 {
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	struct rx_desc_pool *rx_desc_pool;
+	union dp_rx_desc_list_elem_t *desc_list_head = NULL;
+	union dp_rx_desc_list_elem_t *desc_list_tail = NULL;
+	int mac_id = 0;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC is NULL in DAL context");
+		return -EINVAL;
+	}
+
+	rx_desc_pool = &soc->rx_desc_buf[mac_id];
+	dp_rx_buffers_replenish(soc, mac_id,
+				&soc->rx_refill_buf_ring[mac_id],
+				rx_desc_pool, cnt,
+				&desc_list_head, &desc_list_tail, true);
+
 	return 0;
 }
 

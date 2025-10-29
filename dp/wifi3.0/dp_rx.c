@@ -3727,6 +3727,13 @@ void __dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
 }
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+QDF_STATUS dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+{
+	/* Buffers will be attached during DAL SOC init */
+	return QDF_STATUS_SUCCESS;
+}
+#else
 QDF_STATUS
 dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 {
@@ -3763,6 +3770,7 @@ dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 							rx_desc_pool,
 							num_rx_buffers);
 }
+#endif
 
 void
 dp_rx_pdev_buffers_free(struct dp_pdev *pdev)

@@ -307,6 +307,36 @@ static QDF_STATUS dp_dal_create_ring_to_grp_mapping(struct dp_soc *soc)
 }
 
 /**
+ * dp_dal_attach_rx_buffers - attach rx buffers to RXDMA_BUF ring
+ * @soc: pointer to dp_soc structure
+ *
+ * Return: 0 on success
+ */
+static int dp_dal_attach_rx_buffers(struct dp_soc *soc)
+{
+	struct rx_desc_pool *rx_desc_pool;
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return -EINVAL;
+	}
+
+	rx_desc_pool = &soc->rx_desc_buf[0];
+
+	if (global_plat_ops->rx_replenish) {
+		return global_plat_ops->rx_replenish(dal_ctx,
+						     rx_desc_pool->pool_size,
+						     false);
+	} else {
+		dp_err("rx_replenish plat op is not registered");
+		QDF_BUG(0);
+	}
+
+	return -EOPNOTSUPP;
+}
+
+/**
  * dp_dal_soc_init - Initialize DP DAL for SOC
  * @soc: pointer to dp_soc structure
  *
@@ -334,6 +364,12 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	status = dp_dal_bus_request_irq(soc);
 	if (status) {
 		dp_err("DAL platform bus request IRQ failed %d", status);
+		goto bus_deinit;
+	}
+
+	status = dp_dal_attach_rx_buffers(soc);
+	if (status) {
+		dp_err("DAL rx buffer attach failed %d", status);
 		goto bus_deinit;
 	}
 
