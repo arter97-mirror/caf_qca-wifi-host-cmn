@@ -49,6 +49,61 @@ static inline uint16_t wmi_nan_get_tlv_len(uint8_t *ptlv)
 	return (uint16_t)((*(ptlv + 2) & 0xFF) | ((*(ptlv + 3) & 0xFF) << 8));
 }
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+static QDF_STATUS
+extract_nan_disable_rsp_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+				  struct nan_event_params *temp_evt_params)
+{
+	WMI_NAN_DISABLE_CNF_EVENTID_param_tlvs *param_tlvs;
+	wmi_nan_disable_cnf_event_fixed_param *fixed_param;
+
+	param_tlvs = (WMI_NAN_DISABLE_CNF_EVENTID_param_tlvs *)evt_buf;
+	if (!param_tlvs) {
+		wmi_err("Invalid param_tlvs for NAN disable rsp event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_tlvs->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid fixed_param for NAN disable rsp event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	temp_evt_params->evt_type = nan_event_id_disable_rsp;
+
+	wmi_debug("WMI_NAN_DISABLE_CNF_EVENTID, status %d",
+		  fixed_param->status);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+extract_nan_disable_ind_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+				  struct nan_event_params *temp_evt_params)
+{
+	WMI_NAN_DISABLE_IND_EVENTID_param_tlvs *param_tlvs;
+	wmi_nan_disable_ind_event_fixed_param *fixed_param;
+
+	param_tlvs = (WMI_NAN_DISABLE_IND_EVENTID_param_tlvs *)evt_buf;
+	if (!param_tlvs) {
+		wmi_err("Invalid param_tlvs for NAN disable ind event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_tlvs->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid fixed_param for NAN disable ind event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	temp_evt_params->evt_type = nan_event_id_disable_ind;
+
+	wmi_debug("WMI_NAN_DISABLE_IND_EVENTID");
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 static QDF_STATUS
 extract_nan_event_rsp_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 			  struct nan_event_params *evt_params,
@@ -1536,6 +1591,12 @@ void wmi_nan_attach_cluster_info_tlv(wmi_unified_t wmi_handle)
 
 	ops->extract_nan_cluster_event = extract_nan_cluster_event_tlv;
 }
+
+static void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
+{
+	ops->extract_nan_disable_rsp_event = extract_nan_disable_rsp_event_tlv;
+	ops->extract_nan_disable_ind_event = extract_nan_disable_ind_event_tlv;
+}
 #else
 static inline
 void wmi_nan_attach_dw_info_tlv(wmi_unified_t wmi_handle)
@@ -1544,6 +1605,10 @@ void wmi_nan_attach_dw_info_tlv(wmi_unified_t wmi_handle)
 static inline
 void wmi_nan_attach_cluster_info_tlv(wmi_unified_t wmi_handle)
 {}
+
+static inline void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
+{
+}
 #endif
 
 void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
@@ -1553,6 +1618,7 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_nan_req_cmd = send_nan_req_cmd_tlv;
 	ops->send_nan_disable_req_cmd = send_nan_disable_req_cmd_tlv;
 	ops->extract_nan_event_rsp = extract_nan_event_rsp_tlv;
+	wmi_nan_standard_mode_event_ops(ops);
 	ops->send_terminate_all_ndps_req_cmd = send_terminate_all_ndps_cmd_tlv;
 	ops->send_ndp_initiator_req_cmd = nan_ndp_initiator_req_tlv;
 	ops->send_ndp_responder_req_cmd = nan_ndp_responder_req_tlv;

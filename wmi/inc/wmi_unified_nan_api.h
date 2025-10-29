@@ -207,6 +207,32 @@ QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
 				     uint8_t **nan_msg_buf,
 				     uint32_t nan_config);
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * wmi_extract_nan_disable_rsp_event - extract nan disable rsp event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to the event buffer
+ * @temp_evt_params: Pointer to a temporary parameters structure to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS wmi_extract_nan_disable_rsp_event(wmi_unified_t wmi_handle,
+				     void *evt_buf,
+				     struct nan_event_params *temp_evt_params);
+
+/**
+ * wmi_extract_nan_disable_ind_event - extract nan disable ind event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to the event buffer
+ * @temp_evt_params: Pointer to a temporary parameters structure to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS
+wmi_extract_nan_disable_ind_event(wmi_unified_t wmi_handle, void *evt_buf,
+				  struct nan_event_params *temp_evt_params);
+#endif
+
 /**
  * wmi_extract_ndp_host_event - api to extract ndp event from event buffer
  * @wmi_handle: wmi handle
