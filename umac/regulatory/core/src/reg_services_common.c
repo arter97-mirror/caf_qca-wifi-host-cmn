@@ -6472,13 +6472,52 @@ reg_get_unii_5g_bitmap(struct wlan_objmgr_pdev *pdev, uint8_t *bitmap)
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * reg_is_11bn_phymode() - Check whether phymode is 11bn
+ * @phy_in: PHY mode to be checked
+ *
+ * Return: true if the PHY mode is REG_PHYMODE_11BN, else false.
+ */
+static bool reg_is_11bn_phymode(enum reg_phymode phy_in)
+{
+	if (phy_in == REG_PHYMODE_11BN)
+		return true;
+	return false;
+}
+
+/**
+ * reg_is_11bn_phymode_unallowed() - Check if 11bn phymode is disallowed
+ * @phymode_bitmap: Regulatory phymode disallow bitmap
+ *
+ * Return: true if REGULATORY_PHYMODE_NO11BN is set in the bitmap,
+ * otherwise false.
+ */
+static bool reg_is_11bn_phymode_unallowed(uint32_t phymode_bitmap)
+{
+		return phymode_bitmap & REGULATORY_PHYMODE_NO11BN;
+}
+#else
+static inline bool reg_is_11bn_phymode(enum reg_phymode phy_in)
+{
+	return false;
+}
+
+static inline bool reg_is_11bn_phymode_unallowed(uint32_t phymode_bitmap)
+{
+	return false;
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE
 bool reg_is_phymode_unallowed(enum reg_phymode phy_in, uint32_t phymode_bitmap)
 {
 	if (!phymode_bitmap)
 		return false;
 
-	if (phy_in == REG_PHYMODE_11BE)
+	if (reg_is_11bn_phymode(phy_in))
+		return reg_is_11bn_phymode_unallowed(phymode_bitmap);
+	else if (phy_in == REG_PHYMODE_11BE)
 		return phymode_bitmap & REGULATORY_PHYMODE_NO11BE;
 	else if (phy_in == REG_PHYMODE_11AX)
 		return phymode_bitmap & REGULATORY_PHYMODE_NO11AX;

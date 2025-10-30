@@ -1477,6 +1477,25 @@ wlan_reg_phybitmap_support_11be(struct wlan_objmgr_pdev *pdev)
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * wlan_reg_phybitmap_support_11bn() - API to check if current reg domain
+ * supports 11bn
+ * @pdev: PDEV object manager pointer
+ *
+ * If the max supported phy mode of current reg domain equals 11bn then
+ * return true else return false.
+ * Return: bool
+ */
+bool wlan_reg_phybitmap_support_11bn(struct wlan_objmgr_pdev *pdev);
+#else
+static inline bool
+wlan_reg_phybitmap_support_11bn(struct wlan_objmgr_pdev *pdev)
+{
+	return false;
+}
+#endif
+
 /**
  * wlan_reg_disable_chan_coex() - Disable Coexisting channels based on the input
  * bitmask

@@ -896,8 +896,18 @@ bool wlan_reg_phybitmap_support_11be(struct wlan_objmgr_pdev *pdev)
 {
 	enum reg_phymode cur_max_phymode;
 
-	cur_max_phymode = reg_get_max_phymode(pdev, REG_PHYMODE_MAX - 1, 0);
+	cur_max_phymode = reg_get_max_phymode(pdev, REG_PHYMODE_11BE, 0);
 	return (cur_max_phymode == REG_PHYMODE_11BE);
+}
+#endif
+
+#ifdef WLAN_FEATURE_11BN
+bool wlan_reg_phybitmap_support_11bn(struct wlan_objmgr_pdev *pdev)
+{
+	enum reg_phymode cur_max_phymode;
+
+	cur_max_phymode = reg_get_max_phymode(pdev, REG_PHYMODE_11BN, 0);
+	return (cur_max_phymode == REG_PHYMODE_11BN);
 }
 #endif
 
