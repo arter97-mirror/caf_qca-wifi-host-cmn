@@ -59,6 +59,9 @@
 #ifdef DP_FEATURE_TX_PAGE_POOL
 #include "qdf_page_pool.h"
 #endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dp_dal_tx.h"
+#endif
 
 /* Flag to skip CCE classify when mesh or tid override enabled */
 #define DP_TX_SKIP_CCE_CLASSIFY \
@@ -3691,6 +3694,51 @@ dp_tx_latency_stats_update(struct dp_soc *soc,
 }
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_tx_hw_enqueue_wrapper() - Wrapper function for DAL tx_hw_enqueue
+ * @soc: DP SOC handle
+ * @vdev: DP VDEV handle
+ * @tx_desc: TX descriptor
+ * @fw_metadata: Firmware metadata
+ * @tx_exc_metadata: Exception metadata
+ * @msdu_info: MSDU info
+ *
+ * This wrapper function decides whether to use DAL layer or direct
+ * soc_ops based on VDEV type when FEATURE_DAL_DP_SUPPORT is enabled.
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+dp_tx_hw_enqueue_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,
+			 struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
+			 struct cdp_tx_exception_metadata *tx_exc_metadata,
+			 struct dp_tx_msdu_info_s *msdu_info)
+{
+	/* For STA/SAP VDEV types, use DAL layer for TX */
+	if (vdev->qdf_opmode == QDF_STA_MODE ||
+	    vdev->qdf_opmode == QDF_SAP_MODE) {
+		return dp_dal_tx_hw_enqueue(soc, vdev, tx_desc, fw_metadata,
+					    tx_exc_metadata, msdu_info);
+	}
+
+	/* For all other VDEV types, use direct soc_ops */
+	return soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc, fw_metadata,
+					   tx_exc_metadata, msdu_info);
+}
+#else
+static inline QDF_STATUS
+dp_tx_hw_enqueue_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,
+			 struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
+			 struct cdp_tx_exception_metadata *tx_exc_metadata,
+			 struct dp_tx_msdu_info_s *msdu_info)
+{
+	/* Use direct soc_ops when DAL support is not enabled */
+	return soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc, fw_metadata,
+					   tx_exc_metadata, msdu_info);
+}
+#endif
+
 qdf_nbuf_t
 dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		       struct dp_tx_msdu_info_s *msdu_info, uint16_t peer_id,
@@ -3780,9 +3828,9 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 			       tx_desc->id, DP_TX_DESC_MAP);
 	dp_tx_update_mcast_param(peer_id, &htt_tcl_metadata, vdev, msdu_info);
 	/* Enqueue the Tx MSDU descriptor to HW for transmit */
-	status = soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc,
-					     htt_tcl_metadata,
-					     tx_exc_metadata, msdu_info);
+	status = dp_tx_hw_enqueue_wrapper(soc, vdev, tx_desc,
+					  htt_tcl_metadata,
+					  tx_exc_metadata, msdu_info);
 
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_tx_err_rl("Tx_hw_enqueue Fail tx_desc %pK queue %d",
@@ -4087,9 +4135,9 @@ qdf_nbuf_t dp_tx_send_msdu_multiple(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		/*
 		 * Enqueue the Tx MSDU descriptor to HW for transmit
 		 */
-		status = soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc,
-						     htt_tcl_metadata,
-						     NULL, msdu_info);
+		status = dp_tx_hw_enqueue_wrapper(soc, vdev, tx_desc,
+						  htt_tcl_metadata,
+						  NULL, msdu_info);
 
 		dp_tx_check_and_flush_hp(soc, status, msdu_info);
 
