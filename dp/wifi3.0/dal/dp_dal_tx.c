@@ -51,6 +51,42 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
 }
 
 /**
+ * dp_dal_tx_override_ring_id_bypass_mode() - Override ring ID for bypass mode
+ * @soc: DP SOC handle
+ * @ring_id: Pointer to ring ID to be updated
+ *
+ * When DAL is enabled(compile time), SW2TCL0 & SW2TCL1 is always reserved.
+ * In Offload mode, these two rings are used for STA and SAP respectively,
+ * but in the bypass mode, these rings are reserved/unused.
+ *
+ * Therefore, If ring_id is less than 2, add +2 to the ring_id.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_INVAL on error
+ */
+static inline QDF_STATUS
+dp_dal_tx_override_ring_id_bypass_mode(struct dp_soc *soc, uint8_t *ring_id)
+{
+	if (qdf_unlikely(!soc || !ring_id))
+		return QDF_STATUS_E_INVAL;
+
+	/* DAL requires minimum 3 TCL rings */
+	if (qdf_unlikely(soc->num_tcl_data_rings < 3))
+		return QDF_STATUS_E_INVAL;
+
+	if (*ring_id >= 2)
+		return QDF_STATUS_SUCCESS;
+
+	/* For bypass mode, if ring_id < 2, add +2 */
+	*ring_id += 2;
+
+	/* Limit it to remaining rings (2 to num_tcl_data_rings-1) */
+	if (*ring_id >= soc->num_tcl_data_rings)
+		*ring_id = (*ring_id % (soc->num_tcl_data_rings - 2)) + 2;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * dp_dal_tx_bypass_mode() - Platform bus tx in bypass mode
  *
  * @priv: dal private data
@@ -74,8 +110,7 @@ int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
 	struct dp_vdev *vdev = metadata->vdev;
 	struct dp_tx_desc_s *tx_desc = metadata->tx_desc;
 	struct dp_tx_msdu_info_s *msdu_info = metadata->msdu_info;
-	struct dp_tx_queue *tx_q = &msdu_info->tx_queue;
-	uint8_t ring_id = tx_q->ring_id;
+	struct dp_tx_queue *txq = &msdu_info->tx_queue;
 	uint8_t tid = msdu_info->tid;
 	uint32_t *hal_tx_desc_cached = desc;
 	hal_ring_handle_t hal_ring_hdl = NULL;
@@ -83,7 +118,17 @@ int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
 	int coalesce = 0;
 	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
 	uint32_t hp;
+	uint8_t ring_id;
+	QDF_STATUS status;
 
+	/* Override ring ID for bypass mode */
+	status = dp_dal_tx_override_ring_id_bypass_mode(soc, &txq->ring_id);
+	if (qdf_unlikely(status != QDF_STATUS_SUCCESS)) {
+		dp_tx_err_rl("Failed to override ring_id, status: %d", status);
+		return -EINVAL;
+	}
+
+	ring_id = txq->ring_id;
 	hal_ring_hdl = dp_tx_get_hal_ring_hdl(soc, ring_id);
 
 	if (qdf_unlikely(dp_tx_hal_ring_access_start(soc, hal_ring_hdl))) {
@@ -235,6 +280,9 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 		status = QDF_STATUS_E_NOSUPPORT;
 		goto err_free_desc;
 	}
+
+	/* Re-init ring_id as platform_bus_tx() might override it */
+	ring_id = msdu_info->tx_queue.ring_id;
 
 	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
 	dp_tx_update_proto_stats(vdev, tx_desc->nbuf, ring_id, TX_ENQUEUE_HW);
