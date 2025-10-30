@@ -42,14 +42,14 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv);
  * dp_dal_tx_bypass_mode() - Platform bus tx in bypass mode
  *
  * @priv: private data
- * @pkt: tx packet
+ * @ring_id: ring ID for TCL descriptor enqueue
  * @ifidx: interface index
  * @desc: TX descriptor
  * @tx_metadata: pointer to dp_dal_tx_metadata structure containing MSDU info
  *
  * Return: 0 on success
  */
-int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
+int dp_dal_tx_bypass_mode(void *priv, u8 ring_id, u32 ifidx, void *desc,
 			  void *tx_metadata);
 
 /**

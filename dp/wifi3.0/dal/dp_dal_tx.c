@@ -90,7 +90,7 @@ dp_dal_tx_override_ring_id_bypass_mode(struct dp_soc *soc, uint8_t *ring_id)
  * dp_dal_tx_bypass_mode() - Platform bus tx in bypass mode
  *
  * @priv: dal private data
- * @pkt: tx packet
+ * @ring_id: ring ID for TCL descriptor enqueue
  * @ifidx: interface index (vdev_id)
  * @desc: TCL descriptor
  * @tx_metadata: pointer to dp_dal_tx_metadata structure containing MSDU info
@@ -100,7 +100,7 @@ dp_dal_tx_override_ring_id_bypass_mode(struct dp_soc *soc, uint8_t *ring_id)
  *
  * Return: 0 on success, negative error code on failure
  */
-int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
+int dp_dal_tx_bypass_mode(void *priv, u8 ring_id, u32 ifidx, void *desc,
 			  void *tx_metadata)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
@@ -118,7 +118,6 @@ int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc,
 	int coalesce = 0;
 	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
 	uint32_t hp;
-	uint8_t ring_id;
 	QDF_STATUS status;
 
 	/* Override ring ID for bypass mode */
@@ -265,7 +264,7 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 		dp_tx_desc_set_timestamp(tx_desc);
 
 	if (global_plat_ops->tx) {
-		ret = global_plat_ops->tx(dal_ctx, nbuf, vdev_id, tcl_desc,
+		ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id, tcl_desc,
 					  &tx_metadata);
 		if (qdf_unlikely(ret)) {
 			dp_tx_err_rl("platform tx failed, ret: %d", ret);
