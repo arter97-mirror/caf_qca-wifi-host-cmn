@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -968,14 +968,17 @@ static QDF_STATUS dp_mon_filter_dest_update(struct dp_pdev *pdev,
 		status = dp_mon_ht2_rx_ring_cfg(soc, pdev,
 						srng_type,
 						&pfilter->tlv_filter);
+		mon_pdev->mon_dst_filter_reset = false;
 	} else if (dp_mon_should_reset_buf_ring_filter(pdev)) {
 		if (dp_mon_filter_dest_for_mm_rx_mon(soc)) {
 			dp_info("Reset rxdma buffer to regular filter");
 			status = soc->arch_ops.dp_rxdma_ring_sel_cfg(soc);
+			mon_pdev->mon_dst_filter_reset = false;
 		} else {
 			status = dp_mon_ht2_rx_ring_cfg(soc, pdev,
 							srng_type,
 							&pfilter->tlv_filter);
+			mon_pdev->mon_dst_filter_reset = true;
 		}
 	} else {
 		/*
