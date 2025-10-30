@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -999,6 +999,7 @@ static inline uint32_t hal_rx_tlv_mic_err_get_be(uint8_t *buf)
 	return mic_err;
 }
 
+#ifdef CONFIG_BORON
 /**
  * hal_get_reo_ent_desc_qdesc_addr_be() - API to get qdesc address of
  *                                        reo entrance ring desc
@@ -1008,8 +1009,14 @@ static inline uint32_t hal_rx_tlv_mic_err_get_be(uint8_t *buf)
  */
 static inline uint8_t *hal_get_reo_ent_desc_qdesc_addr_be(uint8_t *desc)
 {
+	return NULL;
+}
+#else
+static inline uint8_t *hal_get_reo_ent_desc_qdesc_addr_be(uint8_t *desc)
+{
 	return desc + REO_ENTRANCE_RING_RX_REO_QUEUE_DESC_ADDR_31_0_OFFSET;
 }
+#endif
 
 /**
  * hal_set_reo_ent_desc_reo_dest_ind_be() - API to set reo destination

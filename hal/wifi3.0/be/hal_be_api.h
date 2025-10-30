@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -89,6 +89,16 @@ uint8_t hal_rx_ret_buf_manager_get_be(hal_ring_desc_t ring_desc);
  */
 void hal_rx_wbm_err_info_get_generic_be(void *wbm_desc, void *wbm_er_info1);
 
+#ifdef CONFIG_BORON
+static inline
+void hal_reo_qdesc_setup_be(hal_soc_handle_t hal_soc_hdl,
+			    int tid, uint32_t ba_window_size,
+			    uint32_t start_seq, void *hw_qdesc_vaddr,
+			    qdf_dma_addr_t hw_qdesc_paddr,
+			    int pn_type, uint8_t vdev_stats_id)
+{
+}
+#else
 /**
  * hal_reo_qdesc_setup_be() - Setup HW REO queue descriptor
  * @hal_soc_hdl: Opaque HAL SOC handle
@@ -105,6 +115,7 @@ void hal_reo_qdesc_setup_be(hal_soc_handle_t hal_soc_hdl,
 			    uint32_t start_seq, void *hw_qdesc_vaddr,
 			    qdf_dma_addr_t hw_qdesc_paddr,
 			    int pn_type, uint8_t vdev_stats_id);
+#endif
 
 /**
  * hal_cookie_conversion_reg_cfg_be() - set cookie conversion relevant register

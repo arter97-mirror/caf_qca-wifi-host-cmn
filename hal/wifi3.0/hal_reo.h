@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -22,19 +22,23 @@
 
 #include <qdf_types.h>
 /* HW headers */
+
+#ifndef CONFIG_BORON
 #include <reo_descriptor_threshold_reached_status.h>
-#include <reo_flush_queue.h>
-#include <reo_flush_timeout_list_status.h>
-#include <reo_unblock_cache.h>
 #include <reo_flush_cache.h>
-#include <reo_flush_queue_status.h>
-#include <reo_get_queue_stats.h>
-#include <reo_unblock_cache_status.h>
 #include <reo_flush_cache_status.h>
+#include <reo_flush_queue.h>
+#include <reo_flush_queue_status.h>
 #include <reo_flush_timeout_list.h>
+#include <reo_flush_timeout_list_status.h>
+#include <reo_get_queue_stats.h>
 #include <reo_get_queue_stats_status.h>
+#include <reo_unblock_cache.h>
+#include <reo_unblock_cache_status.h>
 #include <reo_update_rx_reo_queue.h>
 #include <reo_update_rx_reo_queue_status.h>
+#endif /* !CONFIG_BORON */
+
 #include <tlv_tag_def.h>
 
 /* SW headers */

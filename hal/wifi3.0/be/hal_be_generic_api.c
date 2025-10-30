@@ -23,7 +23,9 @@
 #include "hal_be_reo.h"
 #include "hal_tx.h"	//HAL_SET_FLD
 #include "hal_be_rx.h"	//HAL_RX_BUF_RBM_GET
+#ifndef CONFIG_BORON
 #include "rx_reo_queue_1k.h"
+#endif /* !CONFIG_BORON */
 #include "hal_be_rx_tlv.h"
 #include "hal_hw_headers.h"
 
@@ -188,6 +190,12 @@ static uint16_t hal_get_rx_max_ba_window_be(int tid)
 	return  HAL_RX_BA_WINDOW_256;
 }
 
+#ifdef CONFIG_BORON
+static uint32_t hal_get_reo_qdesc_size_be(uint32_t ba_window_size, int tid)
+{
+	return 0;
+}
+#else
 static uint32_t hal_get_reo_qdesc_size_be(uint32_t ba_window_size, int tid)
 {
 	/* Hardcode the ba_window_size to HAL_RX_MAX_BA_WINDOW for
@@ -220,6 +228,7 @@ static uint32_t hal_get_reo_qdesc_size_be(uint32_t ba_window_size, int tid)
 	return sizeof(struct rx_reo_queue) +
 		(3 * sizeof(struct rx_reo_queue_ext));
 }
+#endif /* !CONFIG_BORON */
 
 void *hal_rx_msdu_ext_desc_info_get_ptr_be(void *msdu_details_ptr)
 {
@@ -590,6 +599,15 @@ static uint8_t hal_rx_err_status_get_be(hal_ring_desc_t rx_desc)
 	return HAL_RX_ERROR_STATUS_GET(rx_desc);
 }
 
+#ifdef CONFIG_BORON
+static QDF_STATUS hal_reo_status_update_be(hal_soc_handle_t hal_soc_hdl,
+					   hal_ring_desc_t reo_desc,
+					   void *st_handle,
+					   uint32_t tlv, int *num_ref)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#else /* !CONFIG_BORON */
 static QDF_STATUS hal_reo_status_update_be(hal_soc_handle_t hal_soc_hdl,
 					   hal_ring_desc_t reo_desc,
 					   void *st_handle,
@@ -654,6 +672,7 @@ static QDF_STATUS hal_reo_status_update_be(hal_soc_handle_t hal_soc_hdl,
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif /* !CONFIG_BORON */
 
 static uint8_t hal_rx_reo_buf_type_get_be(hal_ring_desc_t rx_desc)
 {
@@ -932,6 +951,13 @@ void hal_register_reo_send_cmd_be(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_reo_send_cmd = hal_reo_send_cmd_be;
 }
 
+#ifdef CONFIG_BORON
+static void
+hal_reset_rx_reo_tid_q_be(struct hal_soc *hal_soc, void *hw_qdesc_vaddr,
+			  uint32_t size)
+{
+}
+#else
 /**
  * hal_reset_rx_reo_tid_q_be() - reset the reo tid queue.
  * @hal_soc: HAL soc handle
@@ -1027,7 +1053,8 @@ hal_reset_rx_reo_tid_q_be(struct hal_soc *hal_soc, void *hw_qdesc_vaddr,
 		}
 	}
 }
-#endif
+#endif /* !CONFIG_BORON */
+#endif /* DP_UMAC_HW_RESET_SUPPORT */
 
 static inline uint8_t hal_rx_get_phy_ppdu_id_size_be(void)
 {

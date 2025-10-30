@@ -28,6 +28,8 @@
 #ifdef CONFIG_BORON
 #include "tqm2sw_completion_ring.h"
 #else
+#include <reo_descriptor_threshold_reached_status.h>
+#include <reo_flush_queue.h>
 #include "wbm2sw_completion_ring_tx.h"
 #endif
 #include "wbm2sw_completion_ring_rx.h"
@@ -146,8 +148,6 @@ defined(WLAN_PKT_CAPTURE_RX_2_0)
 /* WIFITRIGGER_RESPONSE_TX_DONE_E */
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
 
-#include <reo_descriptor_threshold_reached_status.h>
-#include <reo_flush_queue.h>
 #ifdef REO_SHARED_QREF_TABLE_EN
 #include "rx_reo_queue_reference.h"
 #endif

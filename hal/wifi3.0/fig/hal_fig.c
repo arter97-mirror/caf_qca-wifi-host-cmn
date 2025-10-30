@@ -32,7 +32,6 @@
 #include "rx_flow_search_entry.h"
 #include "hal_rx_flow_info.h"
 #include "hal_be_api.h"
-#include "rx_reo_queue_1k.h"
 #include "hal_bn_generic_api.h"
 
 #include <hal_be_rx.h>
@@ -1437,95 +1436,6 @@ hal_rx_tlv_populate_mpdu_desc_info_fig(uint8_t *buf,
 static void hal_reo_status_get_header_fig(hal_ring_desc_t ring_desc, int b,
 					   void *h1)
 {
-	uint32_t *d = (uint32_t *)ring_desc;
-	uint32_t val1 = 0;
-	struct hal_reo_status_header *h =
-			(struct hal_reo_status_header *)h1;
-
-	/* 4 bytes of TLV header */
-	d += HAL_GET_NUM_DWORDS(sizeof(struct tlv_32_hdr));
-
-	/* offset includes 4 bytes padding */
-	switch (b) {
-	case HAL_REO_QUEUE_STATS_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_GET_QUEUE_STATS_STATUS,
-			STATUS_HEADER_REO_STATUS_NUMBER)];
-		break;
-	case HAL_REO_FLUSH_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_FLUSH_QUEUE_STATUS,
-			STATUS_HEADER_REO_STATUS_NUMBER)];
-		break;
-	case HAL_REO_FLUSH_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_FLUSH_CACHE_STATUS,
-			STATUS_HEADER_REO_STATUS_NUMBER)];
-		break;
-	case HAL_REO_UNBLK_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_UNBLOCK_CACHE_STATUS,
-			STATUS_HEADER_REO_STATUS_NUMBER)];
-		break;
-	case HAL_REO_TIMOUT_LIST_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_FLUSH_TIMEOUT_LIST_STATUS,
-			STATUS_HEADER_REO_STATUS_NUMBER)];
-		break;
-	case HAL_REO_DESC_THRES_STATUS_TLV:
-		val1 =
-		  d[HAL_OFFSET_DW(REO_DESCRIPTOR_THRESHOLD_REACHED_STATUS,
-		  STATUS_HEADER_REO_STATUS_NUMBER)];
-		break;
-	case HAL_REO_UPDATE_RX_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_UPDATE_RX_REO_QUEUE_STATUS,
-			STATUS_HEADER_REO_STATUS_NUMBER)];
-		break;
-	default:
-		qdf_nofl_err("ERROR: Unknown tlv\n");
-		break;
-	}
-	h->cmd_num =
-		HAL_GET_FIELD(
-			      UNIFORM_REO_STATUS_HEADER, REO_STATUS_NUMBER,
-			      val1);
-	h->exec_time =
-		HAL_GET_FIELD(UNIFORM_REO_STATUS_HEADER,
-			      CMD_EXECUTION_TIME, val1);
-	h->status =
-		HAL_GET_FIELD(UNIFORM_REO_STATUS_HEADER,
-			      REO_CMD_EXECUTION_STATUS, val1);
-	switch (b) {
-	case HAL_REO_QUEUE_STATS_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_GET_QUEUE_STATS_STATUS,
-			STATUS_HEADER_TIMESTAMP)];
-		break;
-	case HAL_REO_FLUSH_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_FLUSH_QUEUE_STATUS,
-			STATUS_HEADER_TIMESTAMP)];
-		break;
-	case HAL_REO_FLUSH_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_FLUSH_CACHE_STATUS,
-			STATUS_HEADER_TIMESTAMP)];
-		break;
-	case HAL_REO_UNBLK_CACHE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_UNBLOCK_CACHE_STATUS,
-			STATUS_HEADER_TIMESTAMP)];
-		break;
-	case HAL_REO_TIMOUT_LIST_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_FLUSH_TIMEOUT_LIST_STATUS,
-			STATUS_HEADER_TIMESTAMP)];
-		break;
-	case HAL_REO_DESC_THRES_STATUS_TLV:
-		val1 =
-		  d[HAL_OFFSET_DW(REO_DESCRIPTOR_THRESHOLD_REACHED_STATUS,
-		  STATUS_HEADER_TIMESTAMP)];
-		break;
-	case HAL_REO_UPDATE_RX_QUEUE_STATUS_TLV:
-		val1 = d[HAL_OFFSET_DW(REO_UPDATE_RX_REO_QUEUE_STATUS,
-			STATUS_HEADER_TIMESTAMP)];
-		break;
-	default:
-		qdf_nofl_err("ERROR: Unknown tlv\n");
-		break;
-	}
-	h->tstamp =
-		HAL_GET_FIELD(UNIFORM_REO_STATUS_HEADER, TIMESTAMP, val1);
 }
 
 static
@@ -2152,40 +2062,7 @@ static uint16_t hal_get_rx_max_ba_window_fig(int tid)
  */
 static uint32_t hal_get_reo_qdesc_size_fig(uint32_t ba_window_size, int tid)
 {
-	/* Hardcode the ba_window_size to HAL_RX_MAX_BA_WINDOW for
-	 * NON_QOS_TID until HW issues are resolved.
-	 */
-	if (tid != HAL_NON_QOS_TID)
-		ba_window_size = hal_get_rx_max_ba_window_fig(tid);
-
-	/* Return descriptor size corresponding to window size of 2 since
-	 * we set ba_window_size to 2 while setting up REO descriptors as
-	 * a WAR to get 2k jump exception aggregates are received without
-	 * a BA session.
-	 */
-	if (ba_window_size <= 1) {
-		if (tid != HAL_NON_QOS_TID)
-			return sizeof(struct rx_reo_queue) +
-				sizeof(struct rx_reo_queue_ext);
-		else
-			return sizeof(struct rx_reo_queue);
-	}
-
-	if (ba_window_size <= 105)
-		return sizeof(struct rx_reo_queue) +
-			sizeof(struct rx_reo_queue_ext);
-
-	if (ba_window_size <= 210)
-		return sizeof(struct rx_reo_queue) +
-			(2 * sizeof(struct rx_reo_queue_ext));
-
-	if (ba_window_size <= 256)
-		return sizeof(struct rx_reo_queue) +
-			(3 * sizeof(struct rx_reo_queue_ext));
-
-	return sizeof(struct rx_reo_queue) +
-		(10 * sizeof(struct rx_reo_queue_ext)) +
-		sizeof(struct rx_reo_queue_1k);
+	return 0;
 }
 
 #ifdef QCA_GET_TSF_VIA_REG

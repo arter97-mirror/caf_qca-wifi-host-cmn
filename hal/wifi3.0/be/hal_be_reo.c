@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -29,6 +29,7 @@ uint32_t hal_get_reo_reg_base_offset_be(void)
 	return REO_REG_REG_BASE;
 }
 
+#ifndef CONFIG_BORON
 void hal_reo_qdesc_setup_be(hal_soc_handle_t hal_soc_hdl, int tid,
 			    uint32_t ba_window_size,
 			    uint32_t start_seq, void *hw_qdesc_vaddr,
@@ -1134,3 +1135,4 @@ uint8_t hal_get_tlv_hdr_size_be(void)
 {
 	return sizeof(struct tlv_32_hdr);
 }
+#endif /* !CONFIG_BORON */
