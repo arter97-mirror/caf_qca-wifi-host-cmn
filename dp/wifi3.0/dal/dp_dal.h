@@ -318,9 +318,19 @@ dp_srng_mark_dal_owned_ring(struct dp_srng *srng, uint8_t idx,
 	if (BIT(idx) & mask)
 		srng->dal_owned_ring = true;
 }
+
+static inline bool dp_srng_check_dal_owned_ring(struct dp_srng *srng)
+{
+	return srng->dal_owned_ring;
+}
 #else
 #define DAL_DP_TCL_RING_MASK 0
 #define DAL_DP_REO_RING_MASK 0
+
+static inline bool dp_srng_check_dal_owned_ring(struct dp_srng *srng)
+{
+	return false;
+}
 
 static inline void
 dp_srng_mark_dal_owned_ring(struct dp_srng *srng, uint8_t idx,

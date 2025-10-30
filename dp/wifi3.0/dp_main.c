@@ -120,6 +120,7 @@ cdp_dump_flow_pool_info(struct cdp_soc_t *soc)
 #ifdef WLAN_SUPPORT_DPDK
 #include <dp_dpdk.h>
 #endif
+#include "dp_dal.h"
 
 #ifdef QCA_DP_ENABLE_TX_COMP_RING4
 #define TXCOMP_RING4_NUM 3
@@ -1835,6 +1836,15 @@ void dp_srng_msi_setup(struct dp_soc *soc, struct dp_srng *srng,
 	uint32_t msi_data_start, msi_irq_start, addr_low, addr_high;
 	bool nf_irq_support;
 	int vector;
+
+	/* Skip msi setup for the DAL owned rings as it will be done when
+	 * the offload engine provides the MSI details.
+	 */
+	if (dp_srng_check_dal_owned_ring(srng)) {
+		dp_info("skip msi setup for DAL owned ring:%d type %d",
+			ring_num, ring_type);
+		return;
+	}
 
 	ret = pld_get_user_msi_assignment(soc->osdev->dev, "DP",
 					  &msi_data_count, &msi_data_start,
