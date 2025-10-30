@@ -6454,6 +6454,7 @@ typedef enum {
 		   VDEV_PARAM_DISABLE_SCAN_START_TWT),
 	VDEV_PARAM(vdev_param_twt_resp_disable, VDEV_PARAM_TWT_RESP_DISABLE),
 	VDEV_PARAM(vdev_param_cck_support, VDEV_PARAM_CCK_SUPPORT),
+	VDEV_PARAM(vdev_param_dsmps_control, VDEV_PARAM_DSMPS_CONTROL),
 
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
