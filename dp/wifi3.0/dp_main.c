@@ -14515,6 +14515,7 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 	.txrx_buffers_replenish_on_demand = dp_rx_buffers_replenish_on_demand,
 #endif
 	.txrx_trigger_page_pool_shrink = dp_tx_trigger_page_pool_shrink,
+	.trigger_traffic_end_indication = dp_trigger_traffic_end_indication,
 };
 
 static struct cdp_me_ops dp_ops_me = {

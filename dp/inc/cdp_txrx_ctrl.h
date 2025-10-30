@@ -246,6 +246,26 @@ static inline QDF_STATUS cdp_txrx_get_vdev_param(ol_txrx_soc_handle soc,
 }
 
 static inline QDF_STATUS
+cdp_tx_traffic_end_ind(ol_txrx_soc_handle soc, uint8_t vdev_id,
+		       struct qdf_mac_addr *mac_addr)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance:");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->ctrl_ops ||
+	    !soc->ops->ctrl_ops->trigger_traffic_end_indication) {
+		dp_cdp_nofl_debug("Traffic end indication NULL callback");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return soc->ops->ctrl_ops->trigger_traffic_end_indication(soc, vdev_id,
+								  mac_addr);
+}
+
+static inline QDF_STATUS
 cdp_txrx_set_vdev_param(ol_txrx_soc_handle soc,
 			uint8_t vdev_id, enum cdp_vdev_param_type type,
 			cdp_config_param_type val)

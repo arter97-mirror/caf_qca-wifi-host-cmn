@@ -1054,6 +1054,10 @@ struct cdp_ctrl_ops {
 				      struct cdp_qos_latency_stats_req *stats);
 	QDF_STATUS (*txrx_trigger_page_pool_shrink)(struct cdp_soc_t *soc,
 						    uint8_t vdev_id);
+	QDF_STATUS
+	(*trigger_traffic_end_indication)(struct cdp_soc_t *soc,
+					  uint8_t vdev_id,
+					  struct qdf_mac_addr *mac_addr);
 };
 
 struct cdp_me_ops {

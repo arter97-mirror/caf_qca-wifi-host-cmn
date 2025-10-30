@@ -2947,6 +2947,93 @@ dp_tx_send_msdu_multiple_wrapper(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	return nbuf;
 }
 
+static inline qdf_nbuf_t
+dp_create_traffic_end_indication_pkt(struct dp_vdev *vdev,
+				     struct qdf_mac_addr *mac_addr)
+{
+	/* Packet length should be enough to copy upto L3 header */
+	uint8_t end_nbuf_len = 64;
+	uint8_t htt_desc_size_aligned;
+	uint8_t htt_desc_size;
+	qdf_nbuf_t end_nbuf;
+	uint16_t alloc_len = 0;
+	qdf_ether_header_t eth_header;
+
+	/* Filling a dummy ethernet header */
+	qdf_mem_zero(&eth_header, sizeof(eth_header));
+	qdf_mem_copy(&eth_header.ether_shost[0], vdev->mac_addr.raw,
+		     QDF_MAC_ADDR_SIZE);
+	qdf_mem_copy(&eth_header.ether_dhost[0], mac_addr->bytes,
+		     QDF_MAC_ADDR_SIZE);
+	eth_header.ether_type = 0x0800;
+
+	htt_desc_size = sizeof(struct htt_tx_msdu_desc_ext2_t);
+	htt_desc_size_aligned = (htt_desc_size + 7) & ~0x7;
+	alloc_len += htt_desc_size_aligned + end_nbuf_len + NET_SKB_PAD;
+
+	qdf_spin_lock(&vdev->end_ind_pkt_lock);
+	end_nbuf = qdf_nbuf_queue_remove(&vdev->end_ind_pkt_q);
+	qdf_spin_unlock(&vdev->end_ind_pkt_lock);
+	if (!end_nbuf) {
+		end_nbuf = qdf_nbuf_alloc(NULL, alloc_len,
+					  htt_desc_size_aligned, 8, false);
+		if (!end_nbuf) {
+			dp_err("Packet allocation failed");
+			goto out;
+		}
+	} else {
+		qdf_nbuf_reset(end_nbuf, htt_desc_size_aligned, 8);
+	}
+	qdf_mem_copy(qdf_nbuf_data(end_nbuf), &eth_header, sizeof(eth_header));
+	qdf_nbuf_set_pktlen(end_nbuf, end_nbuf_len);
+
+	return end_nbuf;
+out:
+	return NULL;
+}
+
+QDF_STATUS dp_trigger_traffic_end_indication(struct cdp_soc_t *soc,
+					     uint8_t vdev_id,
+					     struct qdf_mac_addr *mac_addr)
+{
+	struct dp_vdev *dp_vdev = NULL;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct dp_soc *dp_soc = cdp_soc_t_to_dp_soc(soc);
+	qdf_nbuf_t nbuf;
+	struct dp_tx_msdu_info_s msdu_info = {0};
+
+	if (qdf_unlikely(!mac_addr)) {
+		status = QDF_STATUS_E_INVAL;
+		goto end;
+	}
+
+	if (qdf_unlikely(vdev_id >= MAX_VDEV_CNT)) {
+		status = QDF_STATUS_E_INVAL;
+		goto end;
+	}
+
+	dp_vdev = dp_soc->vdev_id_map[vdev_id];
+	if (qdf_unlikely(!dp_vdev)) {
+		status = QDF_STATUS_E_INVAL;
+		goto end;
+	}
+
+	msdu_info.tid = HTT_TX_EXT_TID_INVALID;
+	msdu_info.xmit_type = 0;
+	msdu_info.tx_queue.ring_id = DP_TX_GET_RING_ID(dp_vdev);
+	msdu_info.tx_queue.desc_pool_id = DP_TX_GET_DESC_POOL_ID(dp_vdev);
+
+	nbuf = dp_create_traffic_end_indication_pkt(dp_vdev, mac_addr);
+	if (qdf_unlikely(!nbuf)) {
+		status = QDF_STATUS_E_NOMEM;
+		goto end;
+	}
+	dp_tx_send_traffic_end_indication_pkt(dp_vdev, nbuf, &msdu_info,
+					      HTT_INVALID_PEER);
+end:
+	return status;
+}
+
 #else
 static inline qdf_nbuf_t
 dp_tx_get_traffic_end_indication_pkt(struct dp_vdev *vdev,

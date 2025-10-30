@@ -878,6 +878,28 @@ dp_tx_send_msdu_multiple(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 qdf_nbuf_t dp_tx_send_msdu_multiple(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 				    struct dp_tx_msdu_info_s *msdu_info);
 #endif
+
+#if defined(DP_TRAFFIC_END_INDICATION) && defined(WLAN_SUPPORT_LAPB)
+/**
+ * dp_trigger_traffic_end_indication - Trigger traffic end for TWT SP
+ * @soc: DP soc reference
+ * @vdev_id: vdev id
+ * @mac_addr: Peer mac address
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+dp_trigger_traffic_end_indication(struct cdp_soc_t *soc, uint8_t vdev_id,
+				  struct qdf_mac_addr *mac_addr);
+#else
+static inline QDF_STATUS
+dp_trigger_traffic_end_indication(struct cdp_soc_t *soc, uint8_t vdev_id,
+				  struct qdf_mac_addr *mac_addr)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 #ifdef FEATURE_WLAN_TDLS
 /**
  * dp_tx_non_std() - Allow the control-path SW to send data frames
