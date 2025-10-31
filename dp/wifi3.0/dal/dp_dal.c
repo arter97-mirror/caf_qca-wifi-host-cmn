@@ -169,6 +169,7 @@ struct vendor_cb_ops vendor_cb = {
 	.rx_isr_cb = dp_dal_rx_isr_vendor_cb,
 	.rx_replenish_alloc_cb = dp_dal_rx_replenish_alloc_vendor_cb,
 	.tx_isr_cb = dp_dal_tx_cmp_isr_vendor_cb,
+	.tx_cpl_cb = dp_dal_tx_cpl_cb,
 };
 
 /**
@@ -834,7 +835,7 @@ uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 			      dal_tx_mask))
 				continue;
 
-			/* call platform_bus_tx_cpl() */
+			dp_dal_tx_comp_handler(soc, i, dp_budget);
 		}
 	}
 

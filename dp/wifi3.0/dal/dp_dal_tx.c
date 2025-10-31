@@ -174,9 +174,202 @@ err_free_desc:
 }
 
 /**
+ * dp_dal_tx_cpl_cb() - DAL TX completion callback handler
+ * @priv: DAL context (dal_ctx)
+ * @desc: TX completion descriptor
+ * @ring_id: Ring ID
+ *
+ * This callback handler processes TX completion descriptors received from
+ * the platform layer. It replicates all descriptor validation checks from
+ * dp_tx_comp_handler and adds valid descriptors to a dedicated list within
+ * dal_ctx for later processing.
+ *
+ * Return: 0 for successful processing
+ */
+int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	void *tx_comp_hal_desc = desc;
+	struct dp_tx_desc_s *tx_desc = NULL;
+	uint8_t buffer_src;
+	QDF_STATUS status;
+	hal_soc_handle_t hal_soc;
+	uint8_t tx_status;
+
+	if (qdf_unlikely(!dal_ctx)) {
+		dp_err("DAL context is NULL");
+		return 0;
+	}
+
+	soc = dal_ctx->soc;
+	if (qdf_unlikely(!soc)) {
+		dp_err("SOC is NULL");
+		return 0;
+	}
+
+	if (qdf_unlikely(!tx_comp_hal_desc)) {
+		dp_err("TX completion descriptor is NULL");
+		return 0;
+	}
+
+	if (qdf_unlikely(ring_id >= MAX_TCL_DATA_RINGS)) {
+		dp_err("Invalid ring_id %u", ring_id);
+		return 0;
+	}
+
+	hal_soc = soc->hal_soc;
+
+	buffer_src = hal_tx_comp_get_buffer_source(hal_soc, tx_comp_hal_desc);
+
+	/* If this buffer was not released by TQM or FW, then it is not
+	 * Tx completion indication, assert.
+	 */
+	if (qdf_unlikely(buffer_src != HAL_TX_COMP_RELEASE_SOURCE_TQM) &&
+	    (qdf_unlikely(buffer_src != HAL_TX_COMP_RELEASE_SOURCE_FW))) {
+		uint8_t wbm_internal_error;
+
+		dp_err_rl("Tx comp release_src != TQM | FW but from %d",
+			  buffer_src);
+		hal_dump_comp_desc(tx_comp_hal_desc);
+		DP_STATS_INC(soc, tx.invalid_release_source, 1);
+
+		/* When WBM sees NULL buffer_addr_info in any of
+		 * ingress rings it sends an error indication,
+		 * with wbm_internal_error=1, to a specific ring.
+		 * The WBM2SW ring used to indicate these errors is
+		 * fixed in HW, and that ring is being used as Tx
+		 * completion ring. These errors are not related to
+		 * Tx completions, and should just be ignored
+		 */
+		wbm_internal_error =
+			hal_get_wbm_internal_error(hal_soc, tx_comp_hal_desc);
+
+		if (wbm_internal_error) {
+			dp_err_rl("Tx comp wbm_internal_error!!");
+			DP_STATS_INC(soc, tx.wbm_internal_error[WBM_INT_ERROR_ALL], 1);
+
+			if (HAL_TX_COMP_RELEASE_SOURCE_REO == buffer_src)
+				dp_handle_wbm_internal_error(soc,
+							     tx_comp_hal_desc,
+							     hal_tx_comp_get_buffer_type(
+							     tx_comp_hal_desc));
+		} else {
+			dp_err_rl("Tx comp wbm_internal_error false");
+			DP_STATS_INC(soc, tx.non_wbm_internal_err, 1);
+		}
+		return 0;
+	}
+
+	status = soc->arch_ops.tx_comp_get_params_from_hal_desc(
+				soc, tx_comp_hal_desc, &tx_desc);
+	if (qdf_unlikely(!tx_desc)) {
+		if (QDF_IS_STATUS_SUCCESS(
+			dp_tx_comp_stale_entry_handle(soc, ring_id, status))) {
+			return 0;
+		}
+
+		dp_err("unable to retrieve tx_desc!");
+		hal_dump_comp_desc(tx_comp_hal_desc);
+		DP_STATS_INC(soc, tx.invalid_tx_comp_desc, 1);
+		QDF_BUG(0);
+		return 0;
+	}
+
+	dp_tx_comp_reset_stale_entry_detection(soc, ring_id);
+	tx_desc->buffer_src = buffer_src;
+	tx_status = hal_tx_comp_get_tx_status(tx_comp_hal_desc);
+
+	/*
+	 * If the release source is FW, process the HTT status
+	 */
+	if (qdf_unlikely(buffer_src == HAL_TX_COMP_RELEASE_SOURCE_FW) ||
+	    dp_tx_fw_release_reason(tx_status)) {
+		uint8_t htt_tx_status[HAL_TX_COMP_HTT_STATUS_LEN];
+
+		hal_tx_comp_get_htt_desc(tx_comp_hal_desc, htt_tx_status);
+
+		if (qdf_unlikely(!tx_desc->pdev))
+			dp_tx_dump_tx_desc(tx_desc);
+
+		soc->arch_ops.dp_tx_process_htt_completion(soc, tx_desc,
+							   htt_tx_status,
+							   ring_id);
+	} else {
+		tx_desc->tx_status = tx_status;
+		tx_desc->buffer_src = buffer_src;
+
+		/*
+		 * If the descriptor is already freed in vdev_detach,
+		 * continue to next descriptor
+		 */
+		if (qdf_unlikely(tx_desc->vdev_id == DP_INVALID_VDEV_ID &&
+				 !tx_desc->flags)) {
+			dp_tx_comp_info_rl("Descriptor freed in vdev_detach %d",
+					   tx_desc->id);
+			DP_STATS_INC(soc, tx.tx_comp_exception, 1);
+			dp_tx_desc_check_corruption(tx_desc);
+			return 0;
+		}
+
+		if (qdf_unlikely(!tx_desc->pdev)) {
+			dp_tx_comp_warn("pdev is NULL in TX desc, ignored.");
+			dp_tx_dump_tx_desc(tx_desc);
+			DP_STATS_INC(soc, tx.tx_comp_exception, 1);
+			return 0;
+		}
+
+		if (qdf_unlikely(tx_desc->pdev->is_pdev_down)) {
+			dp_tx_comp_info_rl("pdev in down state %d",
+					   tx_desc->id);
+			tx_desc->flags |= DP_TX_DESC_FLAG_TX_COMP_ERR;
+			dp_tx_comp_free_buf(soc, tx_desc, false);
+			dp_tx_desc_release(soc, tx_desc, tx_desc->pool_id);
+			return 0;
+		}
+
+		if (!(tx_desc->flags & DP_TX_DESC_FLAG_ALLOCATED) ||
+		    !(tx_desc->flags & DP_TX_DESC_FLAG_QUEUED_TX)) {
+			dp_tx_comp_alert("Txdesc invalid, flgs = %x,id = %d",
+					 tx_desc->flags, tx_desc->id);
+			qdf_assert_always(0);
+		}
+
+		if (qdf_unlikely(tx_desc->flags & DP_TX_DESC_FLAG_REAPED)) {
+			dp_tx_comp_alert("Txdesc duplicate entry, flags = %x,id = %d",
+					 tx_desc->flags, tx_desc->id);
+			qdf_assert_always(0);
+		}
+
+		tx_desc->flags |= DP_TX_DESC_FLAG_REAPED;
+
+		hal_tx_comp_desc_sync_wrapper(tx_comp_hal_desc, NULL,
+					      tx_desc, buffer_src, 0, 1);
+
+		/* Add valid descriptor to the dedicated list for processing */
+		qdf_spin_lock_bh(&dal_ctx->dal_tx_cpl_lock);
+
+		if (!dal_ctx->tx_cpl_desc_list[ring_id]) {
+			dal_ctx->tx_cpl_desc_list[ring_id] = tx_desc;
+			dal_ctx->tx_cpl_desc_tail[ring_id] = tx_desc;
+		} else {
+			dal_ctx->tx_cpl_desc_tail[ring_id]->next = tx_desc;
+			dal_ctx->tx_cpl_desc_tail[ring_id] = tx_desc;
+		}
+		tx_desc->next = NULL;
+		dal_ctx->tx_cpl_desc_count[ring_id]++;
+
+		qdf_spin_unlock_bh(&dal_ctx->dal_tx_cpl_lock);
+	}
+
+	return 0;
+}
+
+/**
  * dp_dal_tx_comp_handler() - DAL TX completion handler
  * @soc: DP SOC context
  * @ring_id: Ring ID
+ * @dp_budget: NAPI budget
  *
  * This is the primary API for processing TX completions in the DAL module.
  * It invokes platform_tx_cpl to get completions from the platform layer,
@@ -185,7 +378,8 @@ err_free_desc:
  *
  * Return: Number of completions processed
  */
-uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id)
+uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
+				uint32_t dp_budget)
 {
 	struct dp_dal_ctx *dal_ctx;
 	struct dp_tx_desc_s *head_desc = NULL;

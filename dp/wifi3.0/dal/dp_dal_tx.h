@@ -80,9 +80,24 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 				struct dp_tx_msdu_info_s *msdu_info);
 
 /**
+ * dp_dal_tx_cpl_cb() - DAL TX completion callback handler
+ * @priv: DAL context (dal_ctx)
+ * @desc: TX completion descriptor
+ * @ring_id: Ring ID
+ *
+ * This callback handler processes TX completion descriptors received from
+ * the DAL module. It does descriptor validation checks from and adds
+ * descriptors to a dedicated list within dal_ctx for later processing.
+ *
+ * Return: 0 for successful processing
+ */
+int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id);
+
+/**
  * dp_dal_tx_comp_handler() - DAL TX completion handler
  * @soc: DP SOC context
  * @ring_id: Ring ID
+ * @dp_budget: NAPI budget
  *
  * This is the primary API for processing TX completions in the DAL module.
  * It invokes platform_bus_tx_cpl() to get completions from the DAL module,
@@ -91,6 +106,7 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
  *
  * Return: Number of completions processed
  */
-uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id);
+uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
+				uint32_t dp_budget);
 
 #endif /* DP_DAL_TX_H */
