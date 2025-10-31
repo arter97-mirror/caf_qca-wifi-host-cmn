@@ -1627,6 +1627,11 @@ void DP_PRINT_STATS(const char *fmt, ...);
 		++num_of_packets[_pdev_id]; \
 }
 
+#define DP_HIST_PACKET_COUNT_ADD(_pdev_id, cnt) \
+{ \
+		num_of_packets[_pdev_id] += cnt; \
+}
+
 #define DP_TX_HISTOGRAM_UPDATE(_pdev, _p_cntrs) \
 	do {                                                              \
 		if (_p_cntrs == 1) {                                      \
@@ -1709,6 +1714,7 @@ void DP_PRINT_STATS(const char *fmt, ...);
 #else
 #define DP_HIST_INIT()
 #define DP_HIST_PACKET_COUNT_INC(_pdev_id)
+#define DP_HIST_PACKET_COUNT_ADD(_pdev_id, cnt)
 #define DP_TX_HISTOGRAM_UPDATE(_pdev, _p_cntrs)
 #define DP_RX_HISTOGRAM_UPDATE(_pdev, _p_cntrs)
 #define DP_RX_HIST_STATS_PER_PDEV()

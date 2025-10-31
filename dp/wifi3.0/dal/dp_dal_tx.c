@@ -512,6 +512,8 @@ uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 	uint32_t cnt = 0;
 	bool ret;
 
+	DP_HIST_INIT();
+
 	if (qdf_unlikely(!soc)) {
 		dp_tx_err_rl("SOC is NULL");
 		return 0;
@@ -552,10 +554,17 @@ uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 	}
 	qdf_spin_unlock_bh(&dal_ctx->dal_tx_cpl_lock);
 
+	/* pdev_id is always zero. Pass zero instead of
+	 * iterating the tx_desc list for pdev id.
+	 */
+	DP_HIST_PACKET_COUNT_ADD(0, cnt);
+
 	/* Process the descriptor list using the standard DP function */
 	if (head_desc)
 		dp_tx_comp_process_desc_list(soc, head_desc, ring_id);
 
 	DP_STATS_INC(soc, tx.tx_comp[ring_id], cnt);
+
+	DP_TX_HIST_STATS_PER_PDEV();
 	return cnt;
 }
