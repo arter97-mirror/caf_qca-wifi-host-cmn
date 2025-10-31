@@ -62,6 +62,7 @@
 #ifdef FEATURE_DAL_DP_SUPPORT
 #include "dp_dal_tx.h"
 #endif
+#include "dp_dal.h"
 
 /* Flag to skip CCE classify when mesh or tid override enabled */
 #define DP_TX_SKIP_CCE_CLASSIFY \
@@ -2151,8 +2152,13 @@ dp_tx_is_hp_update_required(uint32_t i, struct dp_tx_msdu_info_s *msdu_info)
 static inline void
 dp_flush_tcp_hp(struct dp_soc *soc, uint8_t ring_id)
 {
+	struct dp_srng *dp_srng = &soc->tcl_data_ring[ring_id];
 	hal_ring_handle_t hal_ring_hdl =
 		dp_tx_get_hal_ring_hdl(soc, ring_id);
+
+	/* Skip flushing HP/TP values for DAL owned SRNGs */
+	if (dp_srng_check_dal_owned_ring(dp_srng))
+		return;
 
 	if (dp_tx_hal_ring_access_start(soc, hal_ring_hdl)) {
 		dp_err("Fillmore: SRNG access start failed");

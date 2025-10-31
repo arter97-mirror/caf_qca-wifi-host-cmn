@@ -3335,20 +3335,34 @@ static void dp_flush_ring_hptp(struct dp_soc *soc, hal_ring_handle_t hal_srng)
 
 void dp_update_ring_hptp(struct dp_soc *soc, bool force_flush_tx)
 {
-	 uint8_t i;
+	struct dp_srng *dp_srng;
+	uint8_t i;
 
 	if (force_flush_tx) {
 		for (i = 0; i < soc->num_tcl_data_rings; i++) {
-			hal_srng_set_event(soc->tcl_data_ring[i].hal_srng,
+			dp_srng = &soc->tcl_data_ring[i];
+
+			/* Skip flushing HP/TP values for DAL owned SRNGs */
+			if (dp_srng_check_dal_owned_ring(dp_srng))
+				continue;
+
+			hal_srng_set_event(dp_srng->hal_srng,
 					   HAL_SRNG_FLUSH_EVENT);
-			dp_flush_ring_hptp(soc, soc->tcl_data_ring[i].hal_srng);
+			dp_flush_ring_hptp(soc, dp_srng->hal_srng);
 		}
 
 		return;
 	}
 
-	for (i = 0; i < soc->num_tcl_data_rings; i++)
-		dp_flush_ring_hptp(soc, soc->tcl_data_ring[i].hal_srng);
+	for (i = 0; i < soc->num_tcl_data_rings; i++) {
+		dp_srng = &soc->tcl_data_ring[i];
+
+		/* Skip flushing HP/TP values for DAL owned SRNGs */
+		if (dp_srng_check_dal_owned_ring(dp_srng))
+			continue;
+
+		dp_flush_ring_hptp(soc, dp_srng->hal_srng);
+	}
 
 	dp_flush_ring_hptp(soc, soc->reo_cmd_ring.hal_srng);
 }
