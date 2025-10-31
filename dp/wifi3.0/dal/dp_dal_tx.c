@@ -71,10 +71,11 @@ int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc)
  *
  * @priv: private data
  * @cnt: packet count
+ * @ring_id: Ring Id of the completion ring
  *
  * Return: true on success
  */
-bool dp_dal_tx_cpl_bypass_mode(void *priv, u32 *cnt)
+bool dp_dal_tx_cpl_bypass_mode(void *priv, u32 *cnt, u16 ring_id)
 {
 	return true;
 }
@@ -170,4 +171,71 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 err_free_desc:
 	qdf_mem_free(tcl_desc);
 	return status;
+}
+
+/**
+ * dp_dal_tx_comp_handler() - DAL TX completion handler
+ * @soc: DP SOC context
+ * @ring_id: Ring ID
+ *
+ * This is the primary API for processing TX completions in the DAL module.
+ * It invokes platform_tx_cpl to get completions from the platform layer,
+ * then processes the descriptor list accumulated via dp_dal_tx_cpl_cb by
+ * calling dp_tx_comp_process_desc_list().
+ *
+ * Return: Number of completions processed
+ */
+uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id)
+{
+	struct dp_dal_ctx *dal_ctx;
+	struct dp_tx_desc_s *head_desc = NULL;
+	uint32_t cnt = 0;
+	bool ret;
+
+	if (qdf_unlikely(!soc)) {
+		dp_tx_err_rl("SOC is NULL");
+		return 0;
+	}
+
+	dal_ctx = soc->dal_ctx;
+	if (qdf_unlikely(!dal_ctx)) {
+		dp_tx_err_rl("DAL context is NULL");
+		return 0;
+	}
+
+	if (qdf_unlikely(ring_id >= MAX_TCL_DATA_RINGS)) {
+		dp_tx_err_rl("Invalid ring_id %u", ring_id);
+		return 0;
+	}
+
+	/* Invoke platform_tx_cpl to get completions from DAL layer */
+	if (global_plat_ops->tx_cpl) {
+		ret = global_plat_ops->tx_cpl(dal_ctx, &cnt, ring_id);
+		if (qdf_unlikely(!ret)) {
+			dp_debug("No TX completions available for ring %u",
+				 ring_id);
+			return 0;
+		}
+	} else {
+		dp_tx_err_rl("Platform TX CPL operation not available");
+		return 0;
+	}
+
+	/* Process the descriptor list accumulated via dp_dal_tx_cpl_cb */
+	qdf_spin_lock_bh(&dal_ctx->dal_tx_cpl_lock);
+	head_desc = dal_ctx->tx_cpl_desc_list[ring_id];
+	if (head_desc) {
+		dal_ctx->tx_cpl_desc_list[ring_id] = NULL;
+		dal_ctx->tx_cpl_desc_tail[ring_id] = NULL;
+		cnt = dal_ctx->tx_cpl_desc_count[ring_id];
+		dal_ctx->tx_cpl_desc_count[ring_id] = 0;
+	}
+	qdf_spin_unlock_bh(&dal_ctx->dal_tx_cpl_lock);
+
+	/* Process the descriptor list using the standard DP function */
+	if (head_desc)
+		dp_tx_comp_process_desc_list(soc, head_desc, ring_id);
+
+	DP_STATS_INC(soc, tx.tx_comp[ring_id], cnt);
+	return cnt;
 }

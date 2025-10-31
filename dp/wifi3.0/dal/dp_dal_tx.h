@@ -39,10 +39,11 @@ int dp_dal_tx_bypass_mode(void *priv, void *pkt, u32 ifidx, void *desc);
  *
  * @priv: private data
  * @cnt: packet count
+ * @ring_id: Ring Id of the completion ring
  *
  * Return: true on success
  */
-bool dp_dal_tx_cpl_bypass_mode(void *priv, u32 *cnt);
+bool dp_dal_tx_cpl_bypass_mode(void *priv, u32 *cnt, u16 ring_id);
 
 /**
  * dp_dal_tx_queue_active_bypass_mode() - Skeleton for platform tx queue active
@@ -77,4 +78,19 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 				uint16_t fw_metadata,
 				struct cdp_tx_exception_metadata *metadata,
 				struct dp_tx_msdu_info_s *msdu_info);
+
+/**
+ * dp_dal_tx_comp_handler() - DAL TX completion handler
+ * @soc: DP SOC context
+ * @ring_id: Ring ID
+ *
+ * This is the primary API for processing TX completions in the DAL module.
+ * It invokes platform_bus_tx_cpl() to get completions from the DAL module,
+ * then processes the descriptor list accumulated via tx_cpl_cb() by
+ * calling dp_tx_comp_process_desc_list().
+ *
+ * Return: Number of completions processed
+ */
+uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id);
+
 #endif /* DP_DAL_TX_H */
