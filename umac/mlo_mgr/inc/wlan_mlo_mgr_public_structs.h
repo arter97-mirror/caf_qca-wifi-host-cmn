@@ -1677,6 +1677,7 @@ struct mlo_mlme_ext_ops {
 /*
  * struct mlo_osif_ext_ops - MLO manager to OSIF callback functions
  * @mlo_mgr_osif_update_bss_info: Callback to update each link connection info.
+ * @mlo_mgr_osif_clear_link_info: Callback to clear existing link info.
  * @mlo_mgr_osif_update_mac_addr: Callback to notify MAC addr update complete
  *                                from old link id to new link id for the vdev.
  * @mlo_roam_osif_update_mac_addr: Callback to notify MAC addr update during
@@ -1700,6 +1701,7 @@ struct mlo_osif_ext_ops {
 					struct qdf_mac_addr *bssid,
 					int32_t link_id);
 
+	void (*mlo_mgr_osif_clear_link_info)(uint8_t vdev_id);
 	QDF_STATUS (*mlo_mgr_osif_update_mac_addr)(int32_t ieee_old_link_id,
 						   int32_t ieee_new_link_id,
 						   uint8_t vdev_id);

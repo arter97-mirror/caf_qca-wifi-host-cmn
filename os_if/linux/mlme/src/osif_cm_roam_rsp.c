@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -212,6 +212,7 @@ static void osif_fill_mlo_roam_params(struct wlan_objmgr_vdev *vdev,
 {
 	QDF_STATUS qdf_status;
 	uint8_t assoc_link_id;
+	struct mlo_mgr_context *g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
 
 	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
 		return;
@@ -222,6 +223,10 @@ static void osif_fill_mlo_roam_params(struct wlan_objmgr_vdev *vdev,
 		osif_err("Unable to fill peer mld address: %d", qdf_status);
 		return;
 	}
+
+	if (g_mlo_ctx && g_mlo_ctx->osif_ops &&
+	    g_mlo_ctx->osif_ops->mlo_mgr_osif_clear_link_info)
+		g_mlo_ctx->osif_ops->mlo_mgr_osif_clear_link_info(rsp->vdev_id);
 
 	assoc_link_id = wlan_vdev_get_link_id(vdev);
 	osif_roam_populate_mlo_info_for_link(vdev, info,
