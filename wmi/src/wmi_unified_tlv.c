@@ -4364,7 +4364,8 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 		 "HE cap_info %x ops %x "
 		 "HE cap_info_ext %x "
 		 "HE phy %x  %x  %x  "
-		 "peer_bw_rxnss_override %x",
+		 "peer_bw_rxnss_override %x"
+		 "peer CCK TX/RX: %d/%d",
 		 cmd->vdev_id, cmd->peer_associd, cmd->peer_flags,
 		 cmd->peer_rate_caps, cmd->peer_caps,
 		 cmd->peer_listen_intval, cmd->peer_ht_caps,
@@ -4374,7 +4375,9 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 		 cmd->peer_he_ops, cmd->peer_he_cap_info_ext,
 		 cmd->peer_he_cap_phy[0], cmd->peer_he_cap_phy[1],
 		 cmd->peer_he_cap_phy[2],
-		 cmd->peer_bw_rxnss_override);
+		 cmd->peer_bw_rxnss_override,
+		 cmd->peer_cck_tx_support_5ghz,
+		 cmd->peer_cck_rx_support_5ghz);
 
 	buf_ptr = peer_assoc_add_mlo_params(buf_ptr, param);
 
