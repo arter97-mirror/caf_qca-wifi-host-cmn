@@ -547,6 +547,22 @@ struct mlo_link_bss_params {
 	uint8_t op_code;
 };
 
+/**
+ * struct ml_link_info - ml link information
+ * @vdev_id: vdev id for this link
+ * @link_id: link id defined as in 802.11 BE spec.
+ * @link_status: inactive 0, active 1
+ * @reserved: reserved bits
+ * @chan_freq: Channel frequency in MHz
+ */
+struct ml_link_info {
+	uint32_t vdev_id:8,
+		 link_id:8,
+		 link_status:2,
+		 reserved:14;
+	uint32_t chan_freq;
+};
+
 #ifdef WLAN_FEATURE_11BE_MLO
 
 /**
@@ -575,22 +591,6 @@ enum mlo_link_info_event_status {
 struct mlo_link_state_cmd_params {
 	uint8_t vdev_id;
 	uint8_t mld_mac[QDF_MAC_ADDR_SIZE];
-};
-
-/**
- * struct ml_link_info - ml link information
- * @vdev_id: vdev id for this link
- * @link_id: link id defined as in 802.11 BE spec.
- * @link_status: inactive 0, active 1
- * @reserved: reserved bits
- * @chan_freq: Channel frequency in MHz
- */
-struct ml_link_info {
-	uint32_t vdev_id:8,
-		 link_id:8,
-		 link_status:2,
-		 reserved:14;
-	uint32_t chan_freq;
 };
 
 /**
