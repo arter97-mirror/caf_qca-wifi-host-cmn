@@ -704,7 +704,7 @@ static void vdev_update_dfs_master_state(struct wlan_objmgr_vdev *vdev)
 	if (op_mode == QDF_SAP_MODE || op_mode == QDF_P2P_GO_MODE)
 		policy_mgr_update_dfs_master_dynamic_enabled(
 				wlan_vdev_get_psoc(vdev),
-				true,
+				true, op_mode,
 				vdev->vdev_mlme.des_chan);
 }
 
