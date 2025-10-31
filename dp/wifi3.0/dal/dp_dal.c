@@ -194,6 +194,7 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 {
 	if (!soc || !soc->dal_ctx)
 		return;
+	qdf_spinlock_destroy(&soc->dal_ctx->dal_tx_cpl_lock);
 
 	dp_dal_bus_stop(soc);
 	dp_dal_bus_exit(soc);
@@ -350,21 +351,26 @@ static int dp_dal_attach_rx_buffers(struct dp_soc *soc)
  */
 QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 {
-	int status;
+	struct dp_dal_ctx *dal_ctx;
+	QDF_STATUS status;
 
 	if (!soc || !soc->dal_ctx)
 		return QDF_STATUS_E_INVAL;
 
+	dal_ctx = soc->dal_ctx;
+
+	qdf_spinlock_create(&dal_ctx->dal_tx_cpl_lock);
+
 	status = dp_dal_create_ring_to_grp_mapping(soc);
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err("failed to create DAL ring to grp mapping %d", status);
-		return status;
+		goto destroy_lock;
 	}
 
 	status = dp_dal_bus_init(soc);
 	if (status) {
 		dp_err("DAL platform bus init failed %d", status);
-		return status;
+		goto destroy_lock;
 	}
 
 	status = dp_dal_bus_request_irq(soc);
@@ -392,6 +398,8 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 bus_deinit:
 	dp_info("DAL SOC init failed");
 	dp_dal_bus_exit(soc);
+destroy_lock:
+	qdf_spinlock_destroy(&dal_ctx->dal_tx_cpl_lock);
 	return status;
 }
 

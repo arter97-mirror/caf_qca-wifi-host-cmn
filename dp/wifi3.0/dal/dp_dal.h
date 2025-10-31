@@ -188,6 +188,11 @@ struct dal_intf_info {
  * @num_tx_ring_info: number of tx ring info saved
  * @num_rx_ring_info: number of rx ring info saved
  * @num_tx_cmpl_ring_info: number of tx completion ring info saved
+ * @tx_cpl_desc_list: TX completion descriptor head list for each ring
+ * @tx_cpl_desc_tail: TX completion descriptor tail list for each ring
+ * @tx_cpl_desc_count: TX completion descriptor counts for each ring
+ * @dal_tx_cpl_lock: Spinlock to protect TX completion descriptor
+ *		     list operations
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -203,6 +208,10 @@ struct dp_dal_ctx {
 	int num_tx_ring_info;
 	int num_rx_ring_info;
 	int num_tx_cmpl_ring_info;
+	struct dp_tx_desc_s *tx_cpl_desc_list[MAX_TCL_DATA_RINGS];
+	struct dp_tx_desc_s *tx_cpl_desc_tail[MAX_TCL_DATA_RINGS];
+	uint32_t tx_cpl_desc_count[MAX_TCL_DATA_RINGS];
+	qdf_spinlock_t dal_tx_cpl_lock;
 };
 
 /**
