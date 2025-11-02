@@ -497,6 +497,7 @@ int dp_dal_tx_bypass_mode(void *priv, u8 ring_id, u32 ifidx, void *desc,
 	int coalesce = 0;
 	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
 	uint32_t hp;
+	uint8_t old_ring_id = ring_id;
 	QDF_STATUS status;
 
 	/* Override ring ID for bypass mode */
@@ -545,6 +546,16 @@ int dp_dal_tx_bypass_mode(void *priv, u8 ring_id, u32 ifidx, void *desc,
 
 ring_access_fail:
 	dp_tx_ring_access_end(soc, hal_ring_hdl, coalesce);
+
+	if (hal_tx_desc) {
+		DP_STATS_INC_PKT(dal_ctx,
+				 tx.offload[old_ring_id][DAL_TX_BYPASSED_PKT], 1,
+				 dp_tx_get_pkt_len(tx_desc));
+	} else {
+		DP_STATS_INC_PKT(dal_ctx,
+				 tx.offload[old_ring_id][DAL_TX_BYPASSED_DRP], 1,
+				 dp_tx_get_pkt_len(tx_desc));
+	}
 
 	return (hal_tx_desc) ? 0 : -ENOSPC;
 }

@@ -265,12 +265,16 @@ struct dal_pkt_info {
 /**
  * enum dal_tx_event_type - TX event types for dal stats
  * @DAL_TX_TOTAL_PKT_RCVD: Total packets received
+ * @DAL_TX_BYPASSED_PKT: Bypassed packet count
+ * @DAL_TX_BYPASSED_DRP: Bypassed drop count
  * @DAL_TX_NOSUPPORT_DRP: No support drop count
  * @DAL_TX_FAILED_DRP: Failed drop count
  * @DAL_TX_EVENT_MAX: Max event type
  */
 enum dal_tx_event_type {
 	DAL_TX_TOTAL_PKT_RCVD,
+	DAL_TX_BYPASSED_PKT,
+	DAL_TX_BYPASSED_DRP,
 	DAL_TX_NOSUPPORT_DRP,
 	DAL_TX_FAILED_DRP,
 	DAL_TX_EVENT_MAX,
