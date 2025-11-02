@@ -38,6 +38,7 @@
 #include <ppe_vp_public.h>
 #include <ppe_drv_sc.h>
 #endif
+#include "dp_dal.h"
 
 #ifdef WLAN_SUPPORT_PPEDS
 static const char *ring_usage_dump[RING_USAGE_MAX] = {
@@ -4034,7 +4035,7 @@ static void dp_peer_get_reo_hash_be(struct dp_vdev *vdev,
 	dp_vdev_get_default_reo_hash(vdev, reo_dest, hash_based);
 }
 
-#ifdef CONFIG_BORON
+#if defined(CONFIG_BORON) || defined(FEATURE_DAL_DP_SUPPORT)
 static bool dp_reo_remap_config_be(struct dp_soc *soc,
 				   uint32_t *remap0,
 				   uint32_t *remap1,
@@ -4051,9 +4052,10 @@ static bool dp_reo_remap_config_be(struct dp_soc *soc,
 		goto err_def;
 	}
 
-	/* Exclude the rings dedicated for IPA or LSR */
+	/* Exclude the rings dedicated for IPA or LSR or DAL*/
 	DP_REO_DST_REMAP_REMOVE_IPA(reo_config);
 	DP_REO_DST_REMAP_REMOVE_LSR(reo_config);
+	DP_REO_DST_REMAP_REMOVE_DAL(reo_config);
 
 	if (!reo_config) {
 		dp_err("no valid reo remap left");

@@ -9,6 +9,9 @@
 #include <qdf_status.h>
 #include "dp_types.h"
 
+#define DP_REO_DST_REMAP_REMOVE_DAL(_reo_config) \
+	((_reo_config) &= ~(DAL_DP_REO_RING_MASK))
+
 #ifdef FEATURE_DAL_DP_SUPPORT
 #define DAL_DP_TCL_RING_MASK 0x3
 #define DAL_DP_REO_RING_MASK 0xc
