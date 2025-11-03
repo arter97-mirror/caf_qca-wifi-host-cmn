@@ -34,4 +34,17 @@ QDF_STATUS dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 				uint16_t fw_metadata,
 				struct cdp_tx_exception_metadata *metadata,
 				struct dp_tx_msdu_info_s *msdu_info);
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_tx_hw_desc_sync_bn() - BN specific hw desc sync function
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync
+ *
+ * Return: None
+ */
+void dp_tx_hw_desc_sync_bn(void *hal_tx_desc_cached, void *hw_desc,
+			   uint8_t num_bytes);
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

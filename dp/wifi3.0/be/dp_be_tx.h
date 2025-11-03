@@ -550,4 +550,60 @@ dp_update_ppeds_tx_comp_stats(struct dp_soc *soc,
 			      struct hal_tx_completion_status *ts,
 			      struct dp_tx_desc_s *desc,
 			      uint8_t ring_id, uint16_t comp_index);
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+#ifdef CONFIG_BORON
+/**
+ * dp_tx_hw_desc_sync_bn() - BN specific hw desc sync function
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync
+ *
+ * Return: None
+ */
+void dp_tx_hw_desc_sync_bn(void *hal_tx_desc_cached, void *hw_desc,
+			   uint8_t num_bytes);
+
+/**
+ * dp_tx_hw_desc_sync_be_bn() - HW desc sync for BE/BN target
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync
+ *
+ * Return: None
+ */
+static inline
+void dp_tx_hw_desc_sync_be_bn(void *hal_tx_desc_cached, void *hw_desc,
+			      uint8_t num_bytes)
+{
+	dp_tx_hw_desc_sync_bn(hal_tx_desc_cached, hw_desc, num_bytes);
+}
+#else /* CONFIG_BORON */
+/**
+ * dp_tx_hw_desc_sync_be() - BE specific hw desc sync function
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync
+ *
+ * Return: None
+ */
+void dp_tx_hw_desc_sync_be(void *hal_tx_desc_cached, void *hw_desc,
+			   uint8_t num_bytes);
+
+/**
+ * dp_tx_hw_desc_sync_be_bn() - HW desc sync for BE/BN target
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync
+ *
+ * Return: None
+ */
+static inline
+void dp_tx_hw_desc_sync_be_bn(void *hal_tx_desc_cached, void *hw_desc,
+			      uint8_t num_bytes)
+{
+	dp_tx_hw_desc_sync_be(hal_tx_desc_cached, hw_desc, num_bytes);
+}
+#endif /* !CONFIG_BORON */
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

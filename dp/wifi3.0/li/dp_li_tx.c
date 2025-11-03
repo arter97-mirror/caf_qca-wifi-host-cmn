@@ -734,4 +734,18 @@ dp_tx_gen_hw_desc_li(struct dp_soc *soc, struct dp_vdev *vdev,
 {
 	return QDF_STATUS_E_FAILURE;
 }
+
+/**
+ * dp_tx_hw_desc_sync_li() - LI specific hw desc sync function
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync (unused in LI)
+ *
+ * Return: None
+ */
+void dp_tx_hw_desc_sync_li(void *hal_tx_desc_cached, void *hw_desc,
+			   uint8_t num_bytes)
+{
+	hal_tx_desc_sync(hal_tx_desc_cached, hw_desc);
+}
 #endif /* FEATURE_DAL_DP_SUPPORT */

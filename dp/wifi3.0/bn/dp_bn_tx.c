@@ -371,3 +371,19 @@ ring_access_fail:
 			     qdf_get_log_timestamp(), tx_desc->nbuf);
 	return status;
 }
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_tx_hw_desc_sync_bn() - BN specific hw desc sync function
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync
+ *
+ * Return: None
+ */
+void dp_tx_hw_desc_sync_bn(void *hal_tx_desc_cached, void *hw_desc,
+			   uint8_t num_bytes)
+{
+	hal_tx_desc_sync(hal_tx_desc_cached, hw_desc, num_bytes);
+}
+#endif

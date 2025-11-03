@@ -244,5 +244,16 @@ dp_tx_gen_hw_desc_rh(struct dp_soc *soc, struct dp_vdev *vdev,
 		     struct cdp_tx_exception_metadata *tx_exc_metadata,
 		     struct dp_tx_msdu_info_s *msdu_info,
 		     void *tcl_desc);
+
+/**
+ * dp_tx_hw_desc_sync_rh() - RH specific hw desc sync function
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @hw_desc: descriptor in hardware memory
+ * @num_bytes: number of bytes to sync
+ *
+ * Return: None
+ */
+void dp_tx_hw_desc_sync_rh(void *hal_tx_desc_cached, void *hw_desc,
+			   uint8_t num_bytes);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

@@ -744,6 +744,7 @@ void dp_initialize_arch_ops_li(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_tx_override_flow_pool_id = dp_tx_override_flow_pool_id_li;
 #ifdef FEATURE_DAL_DP_SUPPORT
 	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_li;
+	arch_ops->dp_tx_hw_desc_sync = dp_tx_hw_desc_sync_li;
 #endif /* FEATURE_DAL_DP_SUPPORT */
 }
 
