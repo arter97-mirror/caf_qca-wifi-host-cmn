@@ -2816,4 +2816,28 @@ void dp_tx_msdu_info_set_eth_type_fields(struct dp_tx_msdu_info_s *msdu_info,
 {
 }
 #endif /* !CONFIG_BORON */
+
+#ifndef WLAN_SOFTUMAC_SUPPORT
+#ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
+void
+dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num);
+
+QDF_STATUS
+dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
+			      QDF_STATUS status);
+#else
+static inline void
+dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
+{
+}
+
+static inline QDF_STATUS
+dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
+			      QDF_STATUS status)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* DP_TX_COMP_RING_DESC_SANITY_CHECK */
+#endif /* WLAN_SOFTUMAC_SUPPORT */
+
 #endif

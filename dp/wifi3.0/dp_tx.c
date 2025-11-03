@@ -8495,7 +8495,7 @@ void dp_tx_desc_check_corruption(struct dp_tx_desc_s *tx_desc)
 /* Increasing this value, runs the risk of srng backpressure */
 #define DP_STALE_TX_COMP_WAIT_TIMEOUT_US 1000
 
-static inline void
+void
 dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
 {
 	soc->stale_entry[ring_num].detected = 0;
@@ -8511,7 +8511,7 @@ dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
  * Return: QDF_STATUS_SUCCESS if stale entry is detected and handled
  *	   QDF_STATUS error code in other cases.
  */
-static inline QDF_STATUS
+QDF_STATUS
 dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
 			      QDF_STATUS status)
 {
@@ -8537,19 +8537,6 @@ dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
 		soc->stale_entry[ring_num].start_time = curr_timestamp;
 	}
 
-	return QDF_STATUS_SUCCESS;
-}
-#else
-
-static inline void
-dp_tx_comp_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
-{
-}
-
-static inline QDF_STATUS
-dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
-			      QDF_STATUS status)
-{
 	return QDF_STATUS_SUCCESS;
 }
 #endif
