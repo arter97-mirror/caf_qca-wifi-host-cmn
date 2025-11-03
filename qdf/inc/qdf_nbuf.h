@@ -6029,6 +6029,14 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 				      qdf_nbuf_t nbuf, uint32_t headroom_sz);
 
 /**
+ * qdf_nbuf_get_radiotap_len() - get radiotap header length
+ * @nbuf: Pointer to nbuf
+ *
+ * Return: radiotap length.
+ */
+uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf);
+
+/**
  * qdf_nbuf_mark_wakeup_frame() - mark wakeup frame.
  * @buf: Pointer to nbuf
  *
