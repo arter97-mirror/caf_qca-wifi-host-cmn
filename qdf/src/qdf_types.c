@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -61,6 +61,8 @@ const char *qdf_opmode_str(const enum QDF_OPMODE opmode)
 		return "TDLS";
 	case QDF_NAN_DISC_MODE:
 		return "NAN";
+	case QDF_PASSTHRU_MODE:
+		return "PASSTHRU";
 	default:
 		return "Invalid operating mode";
 	}
