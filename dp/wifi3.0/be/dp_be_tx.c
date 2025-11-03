@@ -1635,6 +1635,9 @@ dp_get_peer_from_tx_exc_meta(struct dp_soc *soc, uint32_t *hal_tx_desc_cached,
 		peer = dp_peer_get_ref_by_id(soc, tx_exc_metadata->peer_id,
 					     DP_MOD_ID_TX);
 		if (peer) {
+			dp_verbose_debug("peer_id %u ast_idx %u ast_hash %u",
+					 peer->peer_id, peer->ast_idx,
+					 peer->ast_hash);
 			*ast_idx = peer->ast_idx;
 			*ast_hash = peer->ast_hash;
 			hal_tx_desc_set_index_lookup_override

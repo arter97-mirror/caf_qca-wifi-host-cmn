@@ -10021,6 +10021,8 @@ dp_set_vdev_param(struct cdp_soc_t *cdp_soc, uint8_t vdev_id,
 		break;
 #ifdef QCA_SUPPORT_WDS_EXTENDED
 	case CDP_CFG_WDS_EXT:
+		dp_info("vdev_id %u wds_ext_enabled %d", vdev_id,
+			val.cdp_vdev_param_wds_ext);
 		if (vdev->opmode == wlan_op_mode_ap)
 			vdev->wds_ext_enabled = val.cdp_vdev_param_wds_ext;
 		break;
@@ -16135,6 +16137,9 @@ QDF_STATUS dp_wds_ext_set_peer_rx(ol_txrx_soc_handle soc,
 						       DP_MOD_ID_CDP);
 	QDF_STATUS status = QDF_STATUS_E_INVAL;
 
+	dp_info("vdev_id %u mac " QDF_MAC_ADDR_FMT " rx %pK", vdev_id,
+		QDF_MAC_ADDR_REF(mac), rx);
+
 	if (!peer) {
 		dp_cdp_debug("%pK: Peer is NULL!", (struct dp_soc *)soc);
 		return status;
@@ -16164,6 +16169,9 @@ QDF_STATUS dp_wds_ext_set_peer_rx(ol_txrx_soc_handle soc,
 
 	txrx_peer->wds_ext.osif_peer = osif_peer;
 	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
+
+	dp_info("osif_peer %pK status %d", txrx_peer->wds_ext.osif_peer,
+		status);
 
 	return status;
 }

@@ -2207,6 +2207,10 @@ dp_rx_deliver_to_stack_ext(struct dp_soc *soc, struct dp_vdev *vdev,
 	if (!txrx_peer->wds_ext.init)
 		return false;
 
+	dp_verbose_debug("vdev_id %u peer_id %u dest_mac " QDF_MAC_ADDR_FMT,
+			 vdev->vdev_id, txrx_peer->peer_id,
+			 QDF_MAC_ADDR_REF(nbuf_head->data));
+
 	if (txrx_peer->osif_rx)
 		txrx_peer->osif_rx(txrx_peer->wds_ext.osif_peer, nbuf_head);
 	else
