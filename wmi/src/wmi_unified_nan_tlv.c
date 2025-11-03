@@ -391,6 +391,52 @@ static QDF_STATUS send_nan_disable_req_cmd_tlv(wmi_unified_t wmi_handle,
 
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
 /**
+ * wmi_nan_populate_band_cfg() - Populate NAN band configuration parameters
+ * @buf_ptr: Pointer to pointer to buffer where band configs will be written
+ * @nan_conf: Pointer to NAN configuration
+ *
+ * This function iterates through all bands and populates the band configuration
+ * parameters for each enabled band in the NAN configuration.
+ *
+ * Return: None (buffer pointer is updated through the parameter)
+ */
+static inline void
+wmi_nan_populate_band_cfg(uint8_t **buf_ptr, struct nan_conf *nan_conf)
+{
+	uint32_t i;
+	wmi_nan_disc_band_config_param *band_cfg;
+
+	for (i = 0; i < NUM_NL80211_BANDS; i++) {
+		if (nan_conf->bands & BIT(i)) {
+			band_cfg = (wmi_nan_disc_band_config_param *)(*buf_ptr);
+			WMITLV_SET_HDR(
+				&band_cfg->tlv_header,
+				WMITLV_TAG_STRUC_wmi_nan_disc_band_config_param,
+				WMITLV_GET_STRUCT_TLVLEN(
+				wmi_nan_disc_band_config_param));
+			if (nan_conf->band_cfgs[i].freq)
+				band_cfg->chan_freq =
+					nan_conf->band_cfgs[i].freq;
+
+			band_cfg->rssi_close_val =
+				nan_conf->band_cfgs[i].rssi_close;
+			band_cfg->rssi_middle_val =
+				nan_conf->band_cfgs[i].rssi_middle;
+			band_cfg->awake_dw_intval =
+				nan_conf->band_cfgs[i].awake_dw_interval;
+			WMI_NAN_DISC_SCAN_PARAMS_SET_DWELL_MS(
+					band_cfg->dwell_ms,
+					nan_conf->scan_dwell_time);
+			WMI_NAN_DISC_SCAN_PARAMS_SET_INTERVAL_SEC(
+					band_cfg->scan_params_word,
+					nan_conf->scan_period);
+
+			*buf_ptr += sizeof(*band_cfg);
+		}
+	}
+}
+
+/**
  * send_nan_stop_req_cmd_tlv() - to send nan stop request to target
  * @wmi_handle: wmi handle
  * @nan_req: request data which will be non-null
@@ -424,6 +470,82 @@ static QDF_STATUS send_nan_stop_req_cmd_tlv(wmi_unified_t wmi_handle,
 	if (QDF_IS_STATUS_ERROR(ret)) {
 		wmi_err("Failed to send NAN stop/disable command ret = %d",
 			ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * send_nan_start_req_cmd_tlv() - to send nan start request to target
+ * @wmi_handle: wmi handle
+ * @nan_req: request data which will be non-null
+ *
+ * Return: QDF status
+ */
+static QDF_STATUS send_nan_start_req_cmd_tlv(wmi_unified_t wmi_handle,
+					     struct nan_enable_req *nan_req)
+{
+	wmi_nan_enable_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint32_t len;
+	uint16_t i = 0;
+	QDF_STATUS ret;
+	uint8_t *buf_ptr;
+	wmi_nan_ctrl_config_param *ctrl_cfg;
+	uint32_t vdev_id;
+	uint32_t band_len = 0;
+
+	vdev_id = nan_req->vdev_id;
+	for (i = 0; i < NUM_NL80211_BANDS; i++) {
+		if (nan_req->nan_conf.bands & BIT(i))
+			band_len++;
+	}
+	len = sizeof(wmi_nan_enable_cmd_fixed_param) +
+		sizeof(wmi_nan_ctrl_config_param) + WMI_TLV_HDR_SIZE +
+		+ WMI_TLV_HDR_SIZE
+		+ (sizeof(wmi_nan_disc_band_config_param) * band_len);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_nan_enable_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_nan_enable_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(wmi_nan_enable_cmd_fixed_param));
+	cmd->vdev_id = vdev_id;
+	buf_ptr += sizeof(wmi_nan_enable_cmd_fixed_param);
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       sizeof(wmi_nan_ctrl_config_param));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	ctrl_cfg = (wmi_nan_ctrl_config_param *)buf_ptr;
+	WMITLV_SET_HDR(&ctrl_cfg->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_ctrl_config_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_nan_ctrl_config_param));
+	ctrl_cfg->master_pref = nan_req->nan_conf.master_pref;
+	if (nan_req->nan_conf.cluster_id)
+		ctrl_cfg->cluster_id = (nan_req->nan_conf.cluster_id[4] << 8) |
+				       nan_req->nan_conf.cluster_id[5];
+	else
+		ctrl_cfg->cluster_id = 0;
+	ctrl_cfg->supp_disc_bands = nan_req->nan_conf.bands & 0x3;
+	buf_ptr += sizeof(wmi_nan_ctrl_config_param);
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       (sizeof(wmi_nan_disc_band_config_param) * band_len));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	wmi_nan_populate_band_cfg(&buf_ptr, &nan_req->nan_conf);
+
+	wmi_mtrace(WMI_NAN_ENABLE_CMDID, NO_SESSION, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_NAN_ENABLE_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send NAN enable command ret = %d", ret);
 		wmi_buf_free(buf);
 	}
 
@@ -1662,6 +1784,7 @@ static void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
 	ops->extract_nan_disable_ind_event = extract_nan_disable_ind_event_tlv;
 	ops->extract_nan_enable_rsp_event = extract_nan_enable_rsp_event_tlv;
 	ops->send_nan_stop_req_cmd = send_nan_stop_req_cmd_tlv;
+	ops->send_nan_start_req_cmd = send_nan_start_req_cmd_tlv;
 }
 #else
 static inline

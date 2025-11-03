@@ -55,12 +55,29 @@ QDF_STATUS wmi_unified_nan_disable_req_cmd(wmi_unified_t wmi_handle,
  */
 QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
 					struct nan_disable_req *nan_req);
+
+/**
+ * wmi_unified_nan_start_req() - Request to start NAN
+ * @wmi_handle: wmi handle
+ * @nan_req: Pointer to NAN enable request structure
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
+				     struct nan_enable_req *nan_req);
 #else
 static inline QDF_STATUS
 wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
 			     struct nan_disable_req *nan_req)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
+			  struct nan_enable_req *nan_req)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 

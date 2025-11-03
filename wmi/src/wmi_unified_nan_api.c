@@ -54,6 +54,30 @@ QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS wmi_extract_nan_enable_rsp_event(
+				wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct nan_enable_rsp_params *evt_params)
+{
+	if (wmi_handle->ops->extract_nan_enable_rsp_event)
+		return wmi_handle->ops->extract_nan_enable_rsp_event(
+								wmi_handle,
+								evt_buf,
+								evt_params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
+				     struct nan_enable_req *nan_req)
+{
+	if (wmi_handle->ops->send_nan_start_req_cmd)
+		return wmi_handle->ops->send_nan_start_req_cmd(wmi_handle,
+							       nan_req);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif
 
 QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
