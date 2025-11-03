@@ -231,6 +231,19 @@ QDF_STATUS wmi_extract_nan_disable_rsp_event(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_extract_nan_disable_ind_event(wmi_unified_t wmi_handle, void *evt_buf,
 				  struct nan_event_params *temp_evt_params);
+
+/**
+ * wmi_extract_nan_enable_rsp_event - api to extract nan enable rsp event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to the event buffer
+ * @evt_params: Pointer to a event parameters to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS wmi_extract_nan_enable_rsp_event(
+				wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct nan_enable_rsp_params *evt_params);
 #endif
 
 /**

@@ -252,4 +252,16 @@ wmi_extract_nan_disable_ind_event(wmi_unified_t wmi_handle, void *evt_buf,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_extract_nan_enable_rsp_event(wmi_unified_t wmi_handle,
+				 void *evt_buf,
+				 struct nan_enable_rsp_params *evt_params)
+{
+	if (wmi_handle->ops->extract_nan_enable_rsp_event)
+		return wmi_handle->ops->extract_nan_enable_rsp_event(
+					wmi_handle, evt_buf, evt_params);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif

@@ -1224,6 +1224,11 @@ QDF_STATUS (*extract_nan_disable_ind_event)(
 				wmi_unified_t wmi_handle,
 				void *evt_buf,
 				struct nan_event_params *temp_evt_params);
+
+QDF_STATUS (*extract_nan_enable_rsp_event)(
+				wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct nan_enable_rsp_params *evt_params);
 #endif
 #endif
 

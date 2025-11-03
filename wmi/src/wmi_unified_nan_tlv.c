@@ -102,6 +102,28 @@ extract_nan_disable_ind_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+static QDF_STATUS
+extract_nan_enable_rsp_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+				 struct nan_enable_rsp_params *evt_params)
+{
+	WMI_NAN_ENABLE_RSP_EVENTID_param_tlvs *event;
+	wmi_nan_enable_rsp_event_fixed_param *nan_rsp_event;
+
+	event = (WMI_NAN_ENABLE_RSP_EVENTID_param_tlvs *)evt_buf;
+	nan_rsp_event = event->fixed_param;
+
+	if (!nan_rsp_event) {
+		wmi_err("Invalid nan_enable_rsp evt");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	evt_params->vdev_id = nan_rsp_event->vdev_id;
+	evt_params->status = nan_rsp_event->status;
+	evt_params->mac_id = nan_rsp_event->mac_id;
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 static QDF_STATUS
@@ -1596,6 +1618,7 @@ static void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
 {
 	ops->extract_nan_disable_rsp_event = extract_nan_disable_rsp_event_tlv;
 	ops->extract_nan_disable_ind_event = extract_nan_disable_ind_event_tlv;
+	ops->extract_nan_enable_rsp_event = extract_nan_enable_rsp_event_tlv;
 }
 #else
 static inline

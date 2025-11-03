@@ -25672,6 +25672,8 @@ static void populate_tlv_events_id_nan_standard(WMI_EVT_ID *event_ids)
 		WMI_NAN_DISABLE_CNF_EVENTID;
 	event_ids[wmi_nan_disable_ind_event_id] =
 		WMI_NAN_DISABLE_IND_EVENTID;
+	event_ids[wmi_nan_enable_rsp_event_id] =
+		WMI_NAN_ENABLE_RSP_EVENTID;
 }
 #else
 static inline void populate_tlv_events_id_nan_standard(WMI_EVT_ID *event_ids)
