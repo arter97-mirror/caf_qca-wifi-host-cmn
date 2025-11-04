@@ -329,10 +329,9 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 					goto next_msdu;
 				}
 
-				msdu_ppdu_id = hal_rx_hw_desc_get_ppduid_get(
-						soc->hal_soc,
-						rx_desc_tlv,
-						rxdma_dst_ring_desc);
+				msdu_ppdu_id = hal_rx_reo_ent_phy_ppdu_id_get(
+							soc->hal_soc,
+							rxdma_dst_ring_desc);
 				is_first_msdu = false;
 
 				dp_rx_mon_dest_debug("%pK: msdu_ppdu_id=%x",
