@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -426,6 +426,17 @@ void hal_rx_reo_ent_buf_paddr_get(hal_soc_handle_t hal_soc_hdl,
 	dp_nofl_debug("[%s][%d] ReoAddr=%pK, addrInfo=%pK, paddr=0x%llx, loopcnt=%d",
 		      __func__, __LINE__, reo_ent_ring, buf_addr_info,
 	(unsigned long long)buf_info->paddr, loop_cnt);
+}
+
+static inline
+uint16_t hal_rx_reo_ent_phy_ppdu_id_get(hal_soc_handle_t hal_soc_hdl,
+					hal_rxdma_desc_t rx_desc)
+{
+	struct reo_entrance_ring *reo_ent_ring =
+				(struct reo_entrance_ring *)rx_desc;
+
+	return HAL_RX_GET(reo_ent_ring, HAL_REO_ENTRANCE_RING,
+			  PHY_PPDU_ID);
 }
 
 static inline
