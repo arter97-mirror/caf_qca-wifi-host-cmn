@@ -5386,9 +5386,6 @@ dp_mon_mode_local_pkt_capture(struct dp_soc *soc)
 #endif
 
 #ifdef WIFI_MONITOR_SUPPORT
-void
-dp_check_and_dump_full_mon_info(struct dp_soc *soc, struct dp_pdev *pdev,
-				int mac_id, int war);
 
 /**
  * dp_mon_rx_ppdu_status_reset() - reset and clear ppdu rx status
@@ -5421,12 +5418,6 @@ dp_set_monitor_version(struct dp_pdev *pdev, uint8_t version) {
 }
 
 #else
-void
-dp_check_and_dump_full_mon_info(struct dp_soc *soc, struct dp_pdev *pdev,
-				int mac_id, int war);
-
-{
-}
 
 static inline void
 dp_mon_rx_ppdu_status_reset(struct dp_mon_mac *mon_mac)
