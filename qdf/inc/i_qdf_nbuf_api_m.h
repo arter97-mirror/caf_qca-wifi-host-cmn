@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2017,2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -28,6 +28,16 @@
 
 #ifndef _QDF_NBUF_M_H
 #define _QDF_NBUF_M_H
+
+static inline int qdf_nbuf_dal_owned_get(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_dal_owned_get(buf);
+}
+
+static inline void qdf_nbuf_dal_owned_set(qdf_nbuf_t buf)
+{
+	__qdf_nbuf_dal_owned_set(buf);
+}
 
 static inline int qdf_nbuf_ipa_owned_get(qdf_nbuf_t buf)
 {

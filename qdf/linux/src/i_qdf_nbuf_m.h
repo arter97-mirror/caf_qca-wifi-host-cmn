@@ -219,7 +219,7 @@ struct qdf_nbuf_cb {
 					 * control block and tx control block.
 					 * Do not change location of this bit.
 					 */
-					uint32_t ipa_owned:1,
+					uint32_t ipa_or_dal_owned:1,
 						 peer_cached_buf_frm:1,
 						 flush_ind:1,
 						 packet_buf_pool:1,
@@ -601,6 +601,10 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 #define QDF_NBUF_CB_RX_LRO_CTX(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m.lro_ctx)
 
+#define QDF_NBUF_CB_RX_DAL_OWNED(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
+	ipa_or_dal_owned)
+
 #define QDF_NBUF_CB_TX_IPA_OWNED(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.ipa.owned)
 #define QDF_NBUF_CB_TX_IPA_PRIV(skb) \
@@ -687,6 +691,12 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 #define QDF_NBUF_CB_RX_AUDIO_SMMU_MAP(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
 	audio_smmu_map)
+
+#define __qdf_nbuf_dal_owned_get(skb) \
+	QDF_NBUF_CB_RX_DAL_OWNED(skb)
+
+#define __qdf_nbuf_dal_owned_set(skb) \
+	(QDF_NBUF_CB_RX_DAL_OWNED(skb) = 1)
 
 #define __qdf_nbuf_ipa_owned_get(skb) \
 	QDF_NBUF_CB_TX_IPA_OWNED(skb)
