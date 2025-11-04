@@ -2635,6 +2635,153 @@ dp_rx_err_update_protocol_stats_wrapper(struct dp_soc *soc,
 }
 #endif /* QCA_DP_PROTOCOL_STATS */
 
+#ifdef RX_WBM_ERR_SRC_REO
+/**
+ * dp_rx_wbm_err_src_reo() - Handle REO error source packets
+ * @soc: core DP main context
+ * @nbuf: buffer pointer
+ * @wbm_err: WBM error information
+ * @rx_tlv_hdr: start of rx tlv header
+ * @txrx_peer: txrx peer handle
+ * @dp_pdev: pdev handle
+ * @link_id: link id on which the packet is received
+ *
+ * This function handles packets received with REO error source.
+ *
+ * Return: None
+ */
+static void
+dp_rx_wbm_err_src_reo(struct dp_soc *soc, qdf_nbuf_t nbuf,
+		      union hal_wbm_err_info_u *wbm_err, uint8_t *rx_tlv_hdr,
+		      struct dp_txrx_peer *txrx_peer, struct dp_pdev *dp_pdev,
+		      uint8_t link_id)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	uint8_t pool_id;
+	uint8_t tid = 0;
+	uint16_t peer_id;
+	struct dp_peer *peer;
+
+	if (wbm_err->info_bit.reo_psh_rsn == HAL_RX_WBM_REO_PSH_RSN_ERROR) {
+		DP_STATS_INC(soc,
+			     rx.err.reo_error[wbm_err->info_bit.reo_err_code],
+			     1);
+		/* increment @pdev level */
+		if (dp_pdev)
+			DP_STATS_INC(dp_pdev, err.reo_error, 1);
+
+		switch (wbm_err->info_bit.reo_err_code) {
+		/*
+		 * Handling for packets which have NULL REO
+		 * queue descriptor
+		 */
+		case HAL_REO_ERR_QUEUE_DESC_ADDR_0:
+			pool_id = wbm_err->info_bit.pool_id;
+			soc->arch_ops.dp_rx_null_q_desc_handle(
+						soc, nbuf,
+						rx_tlv_hdr,
+						pool_id,
+						txrx_peer,
+						FALSE,
+						link_id);
+			break;
+		/* TODO */
+		/* Add per error code accounting */
+		case HAL_REO_ERR_REGULAR_FRAME_2K_JUMP:
+			if (txrx_peer)
+				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+							  rx.err.jump_2k_err,
+							  1,
+							  link_id);
+
+			pool_id = wbm_err->info_bit.pool_id;
+
+			if (hal_rx_msdu_end_first_msdu_get(soc->hal_soc,
+							   rx_tlv_hdr)) {
+				tid = hal_rx_mpdu_start_tid_get(hal_soc,
+								rx_tlv_hdr);
+			}
+			QDF_NBUF_CB_RX_PKT_LEN(nbuf) =
+				hal_rx_msdu_start_msdu_len_get(soc->hal_soc,
+							       rx_tlv_hdr);
+			nbuf->next = NULL;
+			peer_id = dp_rx_get_peer_id(soc, rx_tlv_hdr, nbuf);
+			dp_2k_jump_handle(soc, nbuf, rx_tlv_hdr, peer_id, tid);
+			break;
+		case HAL_REO_ERR_REGULAR_FRAME_OOR:
+			if (txrx_peer)
+				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+							  rx.err.oor_err,
+							  1,
+							  link_id);
+			if (hal_rx_msdu_end_first_msdu_get(soc->hal_soc,
+							   rx_tlv_hdr)) {
+				tid = hal_rx_mpdu_start_tid_get(hal_soc,
+								rx_tlv_hdr);
+			}
+			QDF_NBUF_CB_RX_PKT_LEN(nbuf) =
+				hal_rx_msdu_start_msdu_len_get(soc->hal_soc,
+							       rx_tlv_hdr);
+			nbuf->next = NULL;
+			peer_id = dp_rx_get_peer_id(soc, rx_tlv_hdr, nbuf);
+			dp_rx_oor_handle(soc, nbuf, peer_id, rx_tlv_hdr);
+			break;
+		case HAL_REO_ERR_BAR_FRAME_2K_JUMP:
+		case HAL_REO_ERR_BAR_FRAME_OOR:
+			peer_id = dp_rx_get_peer_id(soc, rx_tlv_hdr, nbuf);
+			peer = dp_peer_get_tgt_peer_by_id(soc, peer_id,
+							  DP_MOD_ID_RX_ERR);
+			if (peer) {
+				dp_rx_err_handle_bar(soc, peer, nbuf);
+				dp_peer_unref_delete(peer, DP_MOD_ID_RX_ERR);
+			}
+			dp_rx_nbuf_free(nbuf);
+			break;
+
+		case HAL_REO_ERR_PN_CHECK_FAILED:
+		case HAL_REO_ERR_PN_ERROR_HANDLING_FLAG_SET:
+			if (txrx_peer)
+				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+							  rx.err.pn_err,
+							  1,
+							  link_id);
+			dp_rx_nbuf_free(nbuf);
+			break;
+
+		default:
+			dp_info_rl("Got pkt with REO ERROR: %d",
+				   wbm_err->info_bit.reo_err_code);
+			dp_rx_nbuf_free(nbuf);
+		}
+	} else if (wbm_err->info_bit.reo_psh_rsn ==
+		   HAL_RX_WBM_REO_PSH_RSN_ROUTE) {
+		dp_rx_err_route_hdl(soc, nbuf, txrx_peer,
+				    rx_tlv_hdr,
+				    HAL_RX_WBM_ERR_SRC_REO,
+				    link_id);
+	} else {
+		/* should not enter here */
+		dp_rx_err_alert("invalid reo push reason %u",
+				wbm_err->info_bit.reo_psh_rsn);
+		dp_rx_nbuf_free(nbuf);
+		dp_assert_always_internal(0);
+	}
+}
+#else
+static void
+dp_rx_wbm_err_src_reo(struct dp_soc *soc, qdf_nbuf_t nbuf,
+		      union hal_wbm_err_info_u *wbm_err, uint8_t *rx_tlv_hdr,
+		      struct dp_txrx_peer *txrx_peer, struct dp_pdev *dp_pdev,
+		      uint8_t link_id)
+{
+	/* Do nothing when RX_WBM_ERR_SRC_REO is not defined */
+	dp_info_rl("REO error handling disabled on wbm ring, dropping packet with error code %u",
+		   wbm_err->info_bit.reo_err_code);
+
+	dp_rx_nbuf_free(nbuf);
+}
+#endif /* RX_WBM_ERR_SRC_REO */
+
 uint32_t
 dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		      hal_ring_handle_t hal_ring_hdl, uint32_t quota)
@@ -2648,7 +2795,6 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 	qdf_nbuf_t nbuf, next;
 	union hal_wbm_err_info_u wbm_err = { 0 };
 	uint8_t pool_id;
-	uint8_t tid = 0;
 	uint8_t link_id = 0;
 
 	/* Debug -- Remove later */
@@ -2666,7 +2812,6 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 	nbuf = nbuf_head;
 	while (nbuf) {
 		struct dp_txrx_peer *txrx_peer;
-		struct dp_peer *peer;
 		uint16_t peer_id;
 		uint8_t err_code;
 		uint8_t *tlv_hdr;
@@ -2742,115 +2887,8 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 							&wbm_err, rx_tlv_hdr);
 
 		if (wbm_err.info_bit.wbm_err_src == HAL_RX_WBM_ERR_SRC_REO) {
-			if (wbm_err.info_bit.reo_psh_rsn
-					== HAL_RX_WBM_REO_PSH_RSN_ERROR) {
-
-				DP_STATS_INC(soc,
-					rx.err.reo_error
-					[wbm_err.info_bit.reo_err_code], 1);
-				/* increment @pdev level */
-				if (dp_pdev)
-					DP_STATS_INC(dp_pdev, err.reo_error,
-						     1);
-
-				switch (wbm_err.info_bit.reo_err_code) {
-				/*
-				 * Handling for packets which have NULL REO
-				 * queue descriptor
-				 */
-				case HAL_REO_ERR_QUEUE_DESC_ADDR_0:
-					pool_id = wbm_err.info_bit.pool_id;
-					soc->arch_ops.dp_rx_null_q_desc_handle(
-								soc, nbuf,
-								rx_tlv_hdr,
-								pool_id,
-								txrx_peer,
-								FALSE,
-								link_id);
-					break;
-				/* TODO */
-				/* Add per error code accounting */
-				case HAL_REO_ERR_REGULAR_FRAME_2K_JUMP:
-					if (txrx_peer)
-						DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-									  rx.err.jump_2k_err,
-									  1,
-									  link_id);
-
-					pool_id = wbm_err.info_bit.pool_id;
-
-					if (hal_rx_msdu_end_first_msdu_get(soc->hal_soc,
-									   rx_tlv_hdr)) {
-						tid =
-						hal_rx_mpdu_start_tid_get(hal_soc, rx_tlv_hdr);
-					}
-					QDF_NBUF_CB_RX_PKT_LEN(nbuf) =
-					hal_rx_msdu_start_msdu_len_get(
-						soc->hal_soc, rx_tlv_hdr);
-					nbuf->next = NULL;
-					dp_2k_jump_handle(soc, nbuf,
-							  rx_tlv_hdr,
-							  peer_id, tid);
-					break;
-				case HAL_REO_ERR_REGULAR_FRAME_OOR:
-					if (txrx_peer)
-						DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-									  rx.err.oor_err,
-									  1,
-									  link_id);
-					if (hal_rx_msdu_end_first_msdu_get(soc->hal_soc,
-									   rx_tlv_hdr)) {
-						tid =
-							hal_rx_mpdu_start_tid_get(hal_soc, rx_tlv_hdr);
-					}
-					QDF_NBUF_CB_RX_PKT_LEN(nbuf) =
-						hal_rx_msdu_start_msdu_len_get(
-						soc->hal_soc, rx_tlv_hdr);
-					nbuf->next = NULL;
-					dp_rx_oor_handle(soc, nbuf,
-							 peer_id,
-							 rx_tlv_hdr);
-					break;
-				case HAL_REO_ERR_BAR_FRAME_2K_JUMP:
-				case HAL_REO_ERR_BAR_FRAME_OOR:
-					peer = dp_peer_get_tgt_peer_by_id(soc, peer_id, DP_MOD_ID_RX_ERR);
-					if (peer) {
-						dp_rx_err_handle_bar(soc, peer,
-								     nbuf);
-						dp_peer_unref_delete(peer, DP_MOD_ID_RX_ERR);
-					}
-					dp_rx_nbuf_free(nbuf);
-					break;
-
-				case HAL_REO_ERR_PN_CHECK_FAILED:
-				case HAL_REO_ERR_PN_ERROR_HANDLING_FLAG_SET:
-					if (txrx_peer)
-						DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-									  rx.err.pn_err,
-									  1,
-									  link_id);
-					dp_rx_nbuf_free(nbuf);
-					break;
-
-				default:
-					dp_info_rl("Got pkt with REO ERROR: %d",
-						   wbm_err.info_bit.
-						   reo_err_code);
-					dp_rx_nbuf_free(nbuf);
-				}
-			} else if (wbm_err.info_bit.reo_psh_rsn
-					== HAL_RX_WBM_REO_PSH_RSN_ROUTE) {
-				dp_rx_err_route_hdl(soc, nbuf, txrx_peer,
-						    rx_tlv_hdr,
-						    HAL_RX_WBM_ERR_SRC_REO,
-						    link_id);
-			} else {
-				/* should not enter here */
-				dp_rx_err_alert("invalid reo push reason %u",
-						wbm_err.info_bit.reo_psh_rsn);
-				dp_rx_nbuf_free(nbuf);
-				dp_assert_always_internal(0);
-			}
+			dp_rx_wbm_err_src_reo(soc, nbuf, &wbm_err, rx_tlv_hdr,
+					      txrx_peer, dp_pdev, link_id);
 		} else if (wbm_err.info_bit.wbm_err_src ==
 					HAL_RX_WBM_ERR_SRC_RXDMA) {
 			if (wbm_err.info_bit.rxdma_psh_rsn
