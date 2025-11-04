@@ -967,10 +967,14 @@ more_data:
 		if (qdf_unlikely(!ret)) {
 			dp_debug("No TX completions available for ring %u",
 				 ring_id);
+			DP_STATS_INC(dal_ctx,
+				     tx.tx_comp_failed[ring_id], 1);
 			goto done;
 		}
 	} else {
 		dp_tx_err_rl("Platform TX CPL operation not available");
+		DP_STATS_INC(dal_ctx,
+			     tx.tx_comp_nosupport[ring_id], 1);
 		goto done;
 	}
 

@@ -287,6 +287,10 @@ enum dal_tx_event_type {
 struct dp_dal_stats {
 	struct {
 		struct dal_pkt_info offload[DAL_TX_RINGS_MAX][DAL_TX_EVENT_MAX];
+		/* DAL Tx comp failed count */
+		uint32_t tx_comp_failed[MAX_TCL_DATA_RINGS];
+		/* Tx comp failed due to DAL no support */
+		uint32_t tx_comp_nosupport[MAX_TCL_DATA_RINGS];
 	} tx;
 };
 
