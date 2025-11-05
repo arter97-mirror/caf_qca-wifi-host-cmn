@@ -73,6 +73,8 @@ static const char *hif_rtpm_id_to_string(enum hif_rtpm_client_id id)
 					"HIF_RTPM_FORCE_WAKE",
 					"HIF_RTPM_ID_PM_QOS_NOTIFY",
 					"HIF_RTPM_ID_WIPHY_SUSPEND",
+					"HIF_RTPM_ID_DP_STC",
+					"HIF_RTPM_ID_OPT_DP",
 					"HIF_RTPM_ID_MAX"
 	};
 

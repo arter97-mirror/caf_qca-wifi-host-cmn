@@ -465,6 +465,7 @@ enum HOST_TWT_COMMAND {
  * @flag_reserved: unused bits
  * @b_twt_recommendation: defines types of frames tx during bTWT SP
  * @b_twt_persistence: Countdown VAL frames to param update/teardown
+ * @responder_pm_mode: Responder power management mode
  * @wake_time_tsf: Absolute TSF value to start first TWT service period
  * @announce_timeout_us: Timeout value before sending QoS NULL frame.
  * @link_id_bitmap: MLD links to which R-TWT element applies
@@ -492,7 +493,8 @@ struct twt_add_dialog_param {
 		flag_b_twt_id0:1,
 		flag_reserved:11,
 		b_twt_persistence:8,
-		b_twt_recommendation:3;
+		b_twt_recommendation:3,
+		responder_pm_mode:1;
 	uint64_t wake_time_tsf;
 	uint32_t announce_timeout_us;
 	uint32_t link_id_bitmap;

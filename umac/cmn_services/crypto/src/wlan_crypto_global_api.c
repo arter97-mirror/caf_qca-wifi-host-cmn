@@ -1932,7 +1932,8 @@ QDF_STATUS wlan_crypto_demic(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
-bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev)
+bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev,
+				     uint8_t rsno_gen)
 {
 
 	struct wlan_crypto_comp_priv *crypto_priv;
@@ -1940,10 +1941,16 @@ bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev)
 
 	if (!vdev)
 		return false;
-	vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
-							&crypto_priv);
-	if (!crypto_priv) {
-		crypto_err("crypto_priv NULL");
+
+	if (rsno_gen)
+		vdev_crypto_params = wlan_crypto_vdev_get_rsno_crypto(vdev,
+								      rsno_gen);
+	else
+		vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
+								&crypto_priv);
+
+	if (!vdev_crypto_params) {
+		crypto_err("ULL crypto params");
 		return false;
 	}
 
@@ -1957,7 +1964,8 @@ bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
-bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev)
+bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev,
+				      uint8_t rsno_gen)
 {
 	struct wlan_crypto_comp_priv *crypto_priv;
 	struct wlan_crypto_params *vdev_crypto_params;
@@ -1965,10 +1973,14 @@ bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev)
 	if (!vdev)
 		return false;
 
-	vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
-							      &crypto_priv);
-	if (!crypto_priv) {
-		crypto_err("crypto_priv NULL");
+	if (rsno_gen)
+		vdev_crypto_params = wlan_crypto_vdev_get_rsno_crypto(vdev,
+								      rsno_gen);
+	else
+		vdev_crypto_params = wlan_crypto_vdev_get_comp_params(vdev,
+								&crypto_priv);
+	if (!vdev_crypto_params) {
+		crypto_err("NULL crypto params");
 		return false;
 	}
 
@@ -2072,7 +2084,7 @@ wlan_crypto_is_store_in_psoc(struct wlan_objmgr_vdev *vdev)
 		wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE) &&
 		((wlan_vdev_mlme_is_mlo_vdev(vdev) &&
 		  is_mlo_adv_enable()) ||
-		 wlan_crypto_vdev_is_pmf_enabled(vdev));
+		 wlan_crypto_vdev_is_pmf_enabled(vdev, 0));
 }
 
 /**
@@ -3432,12 +3444,14 @@ uint8_t *wlan_crypto_build_rsnie(struct wlan_objmgr_vdev *vdev,
  * peer is match
  * @vdev: vdev object
  * @crypto_params: peer crypto parameters
+ * @rsno_gen: RSNO generation
  *
  * Return: true if rsn bip mismatch, otherwise false
  */
 static bool
 wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
-			     struct wlan_crypto_params *crypto_params)
+			     struct wlan_crypto_params *crypto_params,
+			     uint8_t rsno_gen)
 {
 	struct wlan_crypto_params *my_crypto_params;
 
@@ -3451,7 +3465,7 @@ wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
 	if (!AUTH_IS_RSNA(crypto_params) || !AUTH_IS_RSNA(my_crypto_params))
 		return false;
 
-	if (!wlan_crypto_vdev_is_pmf_required(vdev))
+	if (!wlan_crypto_vdev_is_pmf_required(vdev, rsno_gen))
 		return false;
 
 	if (MGMT_CIPHER_MATCH(my_crypto_params, crypto_params))
@@ -3466,7 +3480,8 @@ wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
 #else
 static inline bool
 wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
-			     struct wlan_crypto_params *crypto_params)
+			     struct wlan_crypto_params *crypto_params,
+			     uint8_t rsno_gen)
 {
 	return false;
 }
@@ -3474,10 +3489,16 @@ wlan_crypto_rsn_bip_mismatch(struct wlan_objmgr_vdev *vdev,
 
 bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
 			  struct wlan_crypto_params *crypto_params,
-			  enum wlan_status_code *status_code)
+			  enum wlan_status_code *status_code,
+			  uint8_t rsno_gen)
 {
 	struct wlan_crypto_params *my_crypto_params;
-	my_crypto_params = wlan_crypto_vdev_get_crypto_params(vdev);
+
+	if (rsno_gen)
+		my_crypto_params = wlan_crypto_vdev_get_rsno_crypto(vdev,
+								    rsno_gen);
+	else
+		my_crypto_params = wlan_crypto_vdev_get_crypto_params(vdev);
 
 	if (!my_crypto_params) {
 		if (status_code)
@@ -3513,14 +3534,14 @@ bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
 		crypto_debug("Key mgmt match failed");
 		return false;
 	}
-	if (wlan_crypto_vdev_is_pmf_required(vdev) &&
+	if (wlan_crypto_vdev_is_pmf_required(vdev, rsno_gen) &&
 	    !(crypto_params->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED)) {
 		if (status_code)
 			*status_code = STATUS_INVALID_RSN_IE_CAPAB;
 		crypto_debug("Peer is not PMF capable");
 		return false;
 	}
-	if (!wlan_crypto_vdev_is_pmf_enabled(vdev) &&
+	if (!wlan_crypto_vdev_is_pmf_enabled(vdev, rsno_gen) &&
 	    (crypto_params->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED)) {
 		if (status_code)
 			*status_code = STATUS_INVALID_RSN_IE_CAPAB;
@@ -3528,7 +3549,7 @@ bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
 		return false;
 	}
 
-	if (wlan_crypto_rsn_bip_mismatch(vdev, crypto_params)) {
+	if (wlan_crypto_rsn_bip_mismatch(vdev, crypto_params, rsno_gen)) {
 		if (status_code)
 			*status_code = STATUS_CIPHER_REJECTED_PER_POLICY;
 		return false;
@@ -3725,6 +3746,18 @@ struct wlan_crypto_params *wlan_crypto_vdev_get_crypto_params(
 	struct wlan_crypto_comp_priv *crypto_priv;
 
 	return wlan_crypto_vdev_get_comp_params(vdev, &crypto_priv);
+}
+
+struct wlan_crypto_params *
+wlan_crypto_vdev_get_rsno_crypto(struct wlan_objmgr_vdev *vdev, uint8_t gen)
+{
+	struct wlan_crypto_comp_priv *crypto_priv;
+
+	crypto_priv = wlan_get_vdev_crypto_obj(vdev);
+	if (!crypto_priv || gen < RSNO_GEN_WIFI6 || gen > RSNO_GEN_WIFI7)
+		return NULL;
+
+	return &crypto_priv->rsno_crypto[gen - RSNO_GEN_WIFI6];
 }
 
 struct wlan_crypto_params *wlan_crypto_peer_get_crypto_params(
@@ -4264,6 +4297,39 @@ wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
 }
 
 QDF_STATUS
+wlan_get_crypto_params_from_mrsno_ie(struct wlan_crypto_params *crypto_params,
+				     const uint8_t *ie_ptr, uint16_t ie_len,
+				     uint8_t rsno_gen)
+{
+	const uint8_t *rsn_ie = NULL;
+	QDF_STATUS status;
+
+	qdf_mem_zero(crypto_params, sizeof(struct wlan_crypto_params));
+
+	if (rsno_gen == RSNO_GEN_WIFI7)
+		rsn_ie = wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_WIFI7_RSN,
+							 RSNO_OUI_SIZE,
+							 ie_ptr, ie_len);
+	else if (rsno_gen == RSNO_GEN_WIFI6)
+		rsn_ie = wlan_get_vendor_ie_ptr_from_oui(RSNO_OUI_WIFI6_RSN,
+							 RSNO_OUI_SIZE,
+							 ie_ptr, ie_len);
+	else
+		return QDF_STATUS_E_FAILURE;
+
+	if (!rsn_ie)
+		return QDF_STATUS_E_INVAL;
+
+	status = wlan_crypto_rsnie_check(crypto_params, rsn_ie, NULL);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		crypto_err("MRSNO crypto generation failed");
+		return status;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
 wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
 				   const uint8_t *ie_ptr, uint16_t ie_len,
 				   enum wlan_status_code *status_code)
@@ -4319,18 +4385,17 @@ wlan_get_crypto_params_from_wapi_ie(struct wlan_crypto_params *crypto_params,
 #endif
 
 QDF_STATUS
-wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
-			    uint8_t vdev_id, uint8_t *ie_ptr,
-			    uint16_t ie_len,
+wlan_crypto_check_rsn_match(struct wlan_objmgr_vdev *vdev,
+			    uint8_t *ie_ptr, uint16_t ie_len,
 			    struct wlan_crypto_params *peer_crypto_params,
-			    enum wlan_status_code *status_code)
+			    enum wlan_status_code *status_code,
+			    uint8_t rsno_gen)
 {
-	struct wlan_objmgr_vdev *vdev;
 	bool match = true;
 	QDF_STATUS status;
 
-	if (!psoc) {
-		crypto_err("PSOC is NULL");
+	if (!vdev) {
+		crypto_err("vdev is NULL");
 		if (status_code)
 			*status_code = STATUS_UNSPECIFIED_FAILURE;
 		return QDF_STATUS_E_NULL_VALUE;
@@ -4342,20 +4407,11 @@ wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
 		crypto_err("get crypto prarams from RSN IE failed");
 		return status;
 	}
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
-						    WLAN_CRYPTO_ID);
-	if (!vdev) {
-		crypto_err("vdev is NULL");
-		if (status_code)
-			*status_code = STATUS_UNSPECIFIED_FAILURE;
-		return QDF_STATUS_E_NULL_VALUE;
-	}
 
-	match = wlan_crypto_rsn_info(vdev, peer_crypto_params, status_code);
+	match = wlan_crypto_rsn_info(vdev, peer_crypto_params,
+				     status_code, rsno_gen);
 	if (!match)
 		status = QDF_STATUS_E_FAILURE;
-
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_CRYPTO_ID);
 
 	return status;
 }
@@ -4393,7 +4449,7 @@ wlan_crypto_check_wpa_match(struct wlan_objmgr_psoc *psoc,
 		crypto_err("get crypto prarams from WPA IE failed");
 		goto send_res;
 	}
-	match = wlan_crypto_rsn_info(vdev, peer_crypto_params, status_code);
+	match = wlan_crypto_rsn_info(vdev, peer_crypto_params, status_code, 0);
 	if (!match)
 		status = QDF_STATUS_E_FAILURE;
 
@@ -4450,6 +4506,52 @@ wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 	*cap_len = ie[0] & 0xf;
 
 	return ie;
+}
+
+QDF_STATUS wlan_set_crypto_params_from_mrsno(struct wlan_objmgr_vdev *vdev,
+					     uint8_t *ie_ptr, uint16_t ie_len)
+{
+	struct wlan_crypto_params crypto_params;
+	QDF_STATUS status;
+	struct wlan_crypto_params *vdev_crypto_params;
+	struct wlan_crypto_comp_priv *crypto_priv;
+
+	if (!vdev) {
+		crypto_err("VDEV is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!ie_ptr) {
+		crypto_err("IE ptr is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	crypto_priv = (struct wlan_crypto_comp_priv *)
+				wlan_get_vdev_crypto_obj(vdev);
+	if (!crypto_priv) {
+		crypto_err("crypto_priv NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	vdev_crypto_params = &crypto_priv->rsno_crypto[0];
+	status = wlan_get_crypto_params_from_mrsno_ie(&crypto_params,
+						      ie_ptr, ie_len,
+						      RSNO_GEN_WIFI6);
+	if (QDF_IS_STATUS_SUCCESS(status))
+		wlan_crypto_merge_prarams(vdev_crypto_params, &crypto_params);
+	else
+		crypto_err("Parsing of RSNO1 failed");
+
+	vdev_crypto_params = &crypto_priv->rsno_crypto[1];
+	status = wlan_get_crypto_params_from_mrsno_ie(&crypto_params,
+						      ie_ptr, ie_len,
+						      RSNO_GEN_WIFI7);
+	if (QDF_IS_STATUS_SUCCESS(status))
+		wlan_crypto_merge_prarams(vdev_crypto_params, &crypto_params);
+	else
+		crypto_err("Parsing of RSNO2 failed");
+
+	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,

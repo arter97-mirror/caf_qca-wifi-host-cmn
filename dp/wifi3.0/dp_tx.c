@@ -8660,6 +8660,10 @@ more_data:
 				dp_tx_comp_alert("Txdesc duplicate entry, flags = %x,id = %d",
 						 tx_desc->flags, tx_desc->id);
 				qdf_assert_always(0);
+				dp_tx_comp_free_buf(soc, tx_desc, false);
+				dp_tx_desc_release(soc, tx_desc,
+						   tx_desc->pool_id);
+				goto next_desc;
 			}
 
 			tx_desc->flags |= DP_TX_DESC_FLAG_REAPED;

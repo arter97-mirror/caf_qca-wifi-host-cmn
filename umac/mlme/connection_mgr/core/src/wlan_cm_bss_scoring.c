@@ -3204,13 +3204,14 @@ cm_add_11_ax_candidate(struct wlan_objmgr_pdev *pdev,
 {};
 #endif
 
-static bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
-					struct scan_cache_entry *scan_entry)
+bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
+				 struct scan_cache_entry *scan_entry)
 {
 	struct action_oui_search_attr attr = {0};
 
 	attr.ie_data = util_scan_entry_ie_data(scan_entry);
 	attr.ie_length = util_scan_entry_ie_len(scan_entry);
+	attr.mac_addr = scan_entry->bssid.bytes;
 
 	if (wlan_action_oui_search(psoc, &attr,
 				   ACTION_OUI_RESTRICT_MAX_MLO_LINKS)) {

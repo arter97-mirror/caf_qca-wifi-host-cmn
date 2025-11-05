@@ -279,6 +279,8 @@ typedef void dp_ptnr_soc_iter_func(struct dp_soc *ptnr_soc, void *arg,
 
 #define RX_SIDE 0
 #define TX_SIDE 1
+#define DP_MON_DEST_HIST_MAX 32
+#define DP_MON_DEST_PPDU_HIST_MAX 17
 
 /**
  * enum dp_pkt_xmit_type - The type of ingress stats are being referred
@@ -653,6 +655,7 @@ struct dp_rx_nbuf_frag_info {
  * @DP_STC_TX_FLOW_TABLE_TYPE: DP STC tx flow table
  * @DP_STC_CLASSIFIED_FLOW_TABLE_TYPE: DP STC classified flow table
  * @DP_TX_MON_BUF_HIST_TYPE: DP TX monitor buffer history
+ * @DP_MON_DEST_BUF_HIST_TYPE: DP monitor destination buffer history
  */
 enum dp_ctxt_type {
 	DP_PDEV_TYPE,
@@ -676,6 +679,7 @@ enum dp_ctxt_type {
 	DP_STC_TX_FLOW_TABLE_TYPE,
 	DP_STC_CLASSIFIED_FLOW_TABLE_TYPE,
 	DP_TX_MON_BUF_HIST_TYPE,
+	DP_MON_DEST_BUF_HIST_TYPE,
 };
 
 /**
@@ -773,6 +777,7 @@ struct dp_tx_ext_desc_pool_s {
  * @length:
  * @magic:
  * @timestamp_tick:
+ * @deferred_timestamp: save the time delta of tx desc
  * @flags: Flags to track the state of descriptor and special frame handling
  * @id: Descriptor ID
  * @dma_addr:
@@ -806,6 +811,7 @@ struct dp_tx_desc_s {
 #ifdef DP_TX_TRACKING
 	uint32_t magic;
 	uint64_t timestamp_tick;
+	uint16_t deferred_timestamp;
 #endif
 	uint16_t peer_id;
 	uint8_t vdev_id;
@@ -844,6 +850,7 @@ struct dp_tx_desc_s {
 #ifdef DP_TX_TRACKING
 	uint32_t magic;
 	uint64_t timestamp_tick;
+	uint16_t deferred_timestamp;
 #endif
 	uint32_t flags;
 	uint32_t id;
@@ -3336,6 +3343,36 @@ struct dp_opt_dp_flt {
 };
 #endif
 
+#ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
+/**
+ * struct dp_mon_dest_stats_record - DP mon destination ring stats entry
+ * @link_desc_va: link desc virtual address of last mismatched ppdu
+ * @ppdu_id: ppdu id from last mismatch
+ * @ppdu_list: list of mismatched ppdu id before reaching max count
+ * @timestamp: timestamp when this entry was recorded
+ */
+struct dp_mon_dest_stats_record {
+	void *link_desc_va;
+	uint32_t ppdu_id;
+	uint32_t ppdu_list[DP_MON_DEST_PPDU_HIST_MAX];
+	uint64_t timestamp;
+};
+
+/**
+ * struct dp_mon_dest_ring_history - DP mon destination ring stats
+ * @entry: history entries
+ * @index: Index where the last entry is written
+ * @current_ppdu_list: list of mismatched ppdu id before max count
+ * @ppdu_index: Index where the last ppdu id is written
+ */
+struct dp_mon_dest_ring_history {
+	struct dp_mon_dest_stats_record entry[DP_MON_DEST_HIST_MAX];
+	qdf_atomic_t index;
+	uint32_t current_ppdu_list[DP_MON_DEST_PPDU_HIST_MAX];
+	qdf_atomic_t ppdu_index;
+};
+#endif
+
 /* SOC level structure for data path */
 struct dp_soc {
 	/**
@@ -3990,6 +4027,9 @@ struct dp_soc {
 #endif
 	/* flag to check if wds is not supported */
 	bool wds_not_supported;
+#ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
+	struct dp_mon_dest_ring_history *mon_dest_ring_history[MAX_NUM_LMAC_HW];
+#endif
 };
 
 /*

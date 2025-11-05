@@ -2610,31 +2610,17 @@ void dp_srng_access_end(struct dp_intr *int_ctx, struct dp_soc *dp_soc,
 	return dp_hal_srng_access_end(hal_soc, hal_ring_hdl);
 }
 
-static inline void dp_srng_record_timer_entry(struct dp_soc *dp_soc,
-					      uint8_t hist_group_id)
+void dp_srng_record_timer_entry(struct dp_soc *dp_soc, uint8_t hist_group_id)
 {
 	hif_record_event(dp_soc->hif_handle, hist_group_id,
 			 0, 0, 0, HIF_EVENT_TIMER_ENTRY);
 }
 
-static inline void dp_srng_record_timer_exit(struct dp_soc *dp_soc,
-					     uint8_t hist_group_id)
+void dp_srng_record_timer_exit(struct dp_soc *dp_soc, uint8_t hist_group_id)
 {
 	hif_record_event(dp_soc->hif_handle, hist_group_id,
 			 0, 0, 0, HIF_EVENT_TIMER_EXIT);
 }
-#else
-
-static inline void dp_srng_record_timer_entry(struct dp_soc *dp_soc,
-					      uint8_t hist_group_id)
-{
-}
-
-static inline void dp_srng_record_timer_exit(struct dp_soc *dp_soc,
-					     uint8_t hist_group_id)
-{
-}
-
 #endif /* WLAN_FEATURE_DP_EVENT_HISTORY */
 
 enum timer_yield_status
@@ -3726,6 +3712,68 @@ static void dp_soc_tx_mon_buf_ring_history_detach(struct dp_soc *soc)
 }
 #endif
 
+#ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
+/**
+ * dp_soc_mon_dest_ring_history_attach() - Attach the monitor destination
+ *					   record history.
+ * @soc: DP soc handle
+ *
+ * This function allocates memory to track the buffers of mismatched ppdu
+ * of mon dest ring.
+ *
+ * Return: None
+ */
+static void dp_soc_mon_dest_ring_history_attach(struct dp_soc *soc)
+{
+	int i;
+	uint32_t mon_dest_ring_history_size;
+
+	mon_dest_ring_history_size = sizeof(*soc->mon_dest_ring_history[0]);
+	for (i = 0; i < MAX_NUM_LMAC_HW; i++) {
+		soc->mon_dest_ring_history[i] =
+			dp_context_alloc_mem(
+				      soc,
+				      DP_MON_DEST_BUF_HIST_TYPE,
+				      mon_dest_ring_history_size);
+
+		if (!soc->mon_dest_ring_history[i]) {
+			dp_err("Failed to alloc memory for mon dest ring history, mac - %d",
+			       i);
+		} else {
+			qdf_atomic_init(&soc->mon_dest_ring_history[i]->index);
+			qdf_atomic_init(
+				&soc->mon_dest_ring_history[i]->ppdu_index);
+		}
+	}
+}
+
+/**
+ * dp_soc_mon_dest_ring_history_detach() - Detach the monitor dest buffer
+ *					   record history.
+ * @soc: DP soc handle
+ *
+ * Return: None
+ */
+static void dp_soc_mon_dest_ring_history_detach(struct dp_soc *soc)
+{
+	int i;
+
+	for (i = 0; i < MAX_NUM_LMAC_HW; i++) {
+		dp_context_free_mem(soc, DP_MON_DEST_BUF_HIST_TYPE,
+				    soc->mon_dest_ring_history[i]);
+	}
+}
+
+#else
+static void dp_soc_mon_dest_ring_history_attach(struct dp_soc *soc)
+{
+}
+
+static void dp_soc_mon_dest_ring_history_detach(struct dp_soc *soc)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_DP_MON_STATUS_RING_HISTORY
 /**
  * dp_soc_mon_status_ring_history_attach() - Attach the monitor status
@@ -3760,6 +3808,7 @@ static void dp_soc_mon_status_ring_history_detach(struct dp_soc *soc)
 	dp_context_free_mem(soc, DP_MON_STATUS_BUF_HIST_TYPE,
 			    soc->mon_status_ring_history);
 }
+
 #else
 static void dp_soc_mon_status_ring_history_attach(struct dp_soc *soc)
 {
@@ -4508,6 +4557,7 @@ static void dp_soc_detach(struct cdp_soc_t *txrx_soc)
 	dp_soc_tx_hw_desc_history_detach(soc);
 	dp_soc_tx_history_detach(soc);
 	dp_soc_tx_mon_buf_ring_history_detach(soc);
+	dp_soc_mon_dest_ring_history_detach(soc);
 	dp_soc_mon_status_ring_history_detach(soc);
 	dp_soc_rx_history_detach(soc);
 	dp_soc_cfg_history_detach(soc);
@@ -14365,6 +14415,8 @@ static struct cdp_sawf_ops dp_ops_sawf = {
 #ifdef DP_TX_TRACKING
 
 #define DP_TX_COMP_MAX_LATENCY_MS 60000
+#define DP_TX_COMP_MAX_LATENCY_2ND_STAGE 60
+#define DP_TX_COMP_MAX_DEFERRED_TIMESTAMP_SEC 255
 
 static bool dp_check_pending_tx(struct dp_soc *soc)
 {
@@ -14412,34 +14464,47 @@ static bool dp_check_pending_tx(struct dp_soc *soc)
  */
 static bool dp_tx_comp_delay_check(struct dp_tx_desc_s *tx_desc)
 {
-	uint64_t time_latency, timestamp_tick = tx_desc->timestamp_tick;
-	qdf_ktime_t current_time = qdf_ktime_real_get();
-	qdf_ktime_t timestamp = tx_desc->timestamp;
+	uint64_t time_latency;
+	qdf_ktime_t current_time;
+	bool use_ktime = dp_tx_pkt_tracepoints_enabled();
+	uint16_t time_latency_sec;
 
-	if (dp_tx_pkt_tracepoints_enabled()) {
-		if (!timestamp)
+	if (use_ktime) {
+		if (!tx_desc->timestamp)
 			return false;
 
+		current_time = qdf_ktime_real_get();
 		time_latency = qdf_ktime_to_ms(current_time) -
-				qdf_ktime_to_ms(timestamp);
-		if (time_latency >= DP_TX_COMP_MAX_LATENCY_MS) {
-			dp_err_rl("enqueued: %llu ms, current : %llu ms",
-				  timestamp, current_time);
-			return true;
-		}
+			qdf_ktime_to_ms(tx_desc->timestamp);
 	} else {
-		if (!timestamp_tick)
+		if (!tx_desc->timestamp_tick)
 			return false;
 
 		current_time = qdf_system_ticks();
 		time_latency = qdf_system_ticks_to_msecs(current_time -
-							 timestamp_tick);
-		if (time_latency >= DP_TX_COMP_MAX_LATENCY_MS) {
-			dp_err_rl("enqueued: %u ms, current : %u ms",
-				  qdf_system_ticks_to_msecs(timestamp_tick),
-				  qdf_system_ticks_to_msecs(current_time));
-			return true;
+							 tx_desc->timestamp_tick);
+	}
+	time_latency_sec = time_latency / 1000;
+	if (time_latency >= DP_TX_COMP_MAX_LATENCY_MS &&
+	    !tx_desc->deferred_timestamp) {
+		if (!hal_get_reg_write_pending_work(tx_desc->pdev->soc->hal_soc)) {
+			dp_debug("Desc %d: delayed work over, timeout set",
+				 tx_desc->id);
+			tx_desc->deferred_timestamp = time_latency_sec +
+				DP_TX_COMP_MAX_LATENCY_2ND_STAGE;
+			return false;
 		}
+	} else if (tx_desc->deferred_timestamp &&
+		   (time_latency_sec >= tx_desc->deferred_timestamp)) {
+		if (use_ktime) {
+			dp_err_rl("enqueued: %llu ms, current : %llu ms",
+				  tx_desc->timestamp, current_time);
+		} else {
+			dp_err_rl("enqueued: %u ms, current : %u ms",
+				  qdf_system_ticks_to_msecs(tx_desc->timestamp_tick),
+				  qdf_system_ticks_to_msecs(current_time));
+		}
+		return true;
 	}
 
 	return false;
@@ -15434,6 +15499,7 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 	dp_soc_tx_hw_desc_history_attach(soc);
 	dp_soc_rx_history_attach(soc);
 	dp_soc_mon_status_ring_history_attach(soc);
+	dp_soc_mon_dest_ring_history_attach(soc);
 	dp_soc_tx_mon_buf_ring_history_attach(soc);
 	dp_soc_tx_history_attach(soc);
 	dp_soc_msdu_done_fail_desc_list_attach(soc);

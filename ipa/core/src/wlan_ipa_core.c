@@ -2438,6 +2438,8 @@ end:
 	if (qdf_atomic_read(&ipa_ctx->pipes_disabled) &&
 	    qdf_atomic_read(&ipa_ctx->autonomy_disabled)) {
 		ipa_ctx->ipa_pipes_down = true;
+		ipa_ctx->ipa_init_state =
+			WLAN_IPA_STATE_PIPE_CONNECTION_DONE;
 	}
 	ipa_ctx->pipes_down_in_progress = false;
 	qdf_spin_unlock_bh(&ipa_ctx->enable_disable_lock);
@@ -3863,7 +3865,6 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 	struct wlan_ipa_iface_context *iface_ctx = NULL;
 	qdf_ipa_msg_meta_t meta;
 	qdf_ipa_wlan_msg_t *msg;
-	qdf_ipa_wlan_msg_ex_t *msg_ex = NULL;
 	int i;
 	QDF_STATUS status;
 	uint8_t sta_session_id = WLAN_IPA_MAX_SESSION;
@@ -4130,8 +4131,8 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 					      is_2g_iface, is_mlo_vdev);
 		if (status != QDF_STATUS_SUCCESS) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_err("%s: Evt: %d, Interface setup failed",
-				msg_ex->name, QDF_IPA_MSG_META_MSG_TYPE(&meta));
+			ipa_err("Evt: %d, Interface setup failed",
+				QDF_IPA_MSG_META_MSG_TYPE(&meta));
 			goto end;
 		}
 
@@ -4165,8 +4166,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 			struct wlan_ipa_iface_context *iface;
 
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_log_info("%s: Evt: %d, STA already disconnected",
-				     msg_ex->name,
+			ipa_log_info("Evt: %d, STA already disconnected",
 				     QDF_IPA_MSG_META_MSG_TYPE(&meta));
 
 			iface = wlan_ipa_get_iface_by_mode_netdev(ipa_ctx,
@@ -4182,8 +4182,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		ipa_ctx->sta_connected--;
 
 		if (!wlan_ipa_uc_is_enabled(ipa_ctx->config)) {
-			ipa_debug("%s: IPA UC OFFLOAD NOT ENABLED",
-				  msg_ex->name);
+			ipa_debug("IPA UC OFFLOAD NOT ENABLED");
 		} else {
 			/*
 			 * Disable IPA pipes when
@@ -4445,8 +4444,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 	case QDF_IPA_CLIENT_DISCONNECT:
 		if (!wlan_ipa_uc_is_enabled(ipa_ctx->config)) {
-			ipa_debug("%s: IPA UC OFFLOAD NOT ENABLED",
-				  msg_ex->name);
+			ipa_debug("IPA UC OFFLOAD NOT ENABLED");
 			return QDF_STATUS_SUCCESS;
 		}
 
@@ -4530,8 +4528,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		qdf_mutex_acquire(&ipa_ctx->event_lock);
 		if (!ipa_ctx->sap_num_connected_sta && !ipa_ctx->sap_num_mlo_connected_sta) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_debug("%s: Evt: %d, Client already disconnected",
-				  msg_ex->name,
+			ipa_debug("Evt: %d, Client already disconnected",
 				  QDF_IPA_MSG_META_MSG_TYPE(&meta));
 
 			return QDF_STATUS_SUCCESS;
@@ -5818,8 +5815,6 @@ QDF_STATUS wlan_ipa_cleanup(struct wlan_ipa_priv *ipa_ctx)
 
 	wlan_ipa_opt_dp_deinit(ipa_ctx);
 	wlan_ipa_opt_dp_ctrl_deinit(ipa_ctx);
-	ipa_ctx->ipa_init_state =
-		WLAN_IPA_STATE_DEINIT;
 
 	/* Teardown IPA sys_pipe for MCC */
 	if (wlan_ipa_uc_sta_is_enabled(ipa_ctx->config)) {
@@ -6114,6 +6109,7 @@ static inline void wlan_ipa_smmu_unmap_rx_buf(struct wlan_ipa_priv *ipa_ctx)
 	cdp_ipa_rx_buf_smmu_pool_mapping(ipa_ctx->dp_soc,
 					 IPA_DEF_PDEV_ID, false,
 					 false, __func__, __LINE__);
+	cdp_ipa_set_smmu_mapped(ipa_ctx->dp_soc, 0);
 	qdf_mutex_release(&ipa_ctx->ipa_lock);
 }
 
@@ -6677,7 +6673,7 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx)
 		return status;
 
 	wlan_ipa_uc_disable_pipes(ipa_ctx, true);
-
+	ipa_ctx->ipa_init_state = WLAN_IPA_STATE_DEINIT;
 	cdp_ipa_deregister_op_cb(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID);
 	qdf_atomic_set(&ipa_ctx->deinit_in_prog, 1);
 
@@ -7573,7 +7569,8 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 
 	if (!ipa_obj ||
 	    ipa_obj->ipa_init_state < WLAN_IPA_STATE_PIPE_CONNECTION_DONE) {
-		ipa_log_err("opt_dp_ctrl: Not initialized properly");
+		ipa_log_err("opt_dp_ctrl: IPA is not initialized, current state - %d",
+			    ipa_obj ? ipa_obj->ipa_init_state : -1);
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 

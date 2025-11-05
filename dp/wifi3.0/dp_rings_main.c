@@ -941,9 +941,6 @@ QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 		int umac_reset_intr_mask =
 			wlan_cfg_get_umac_reset_intr_mask(soc->wlan_cfg_ctx, i);
 
-		if (dp_skip_rx_mon_ring_mask_set(soc))
-			rx_mon_mask = 0;
-
 		soc->intr_ctx[i].dp_intr_id = i;
 		soc->intr_ctx[i].tx_ring_mask = tx_mask;
 		soc->intr_ctx[i].rx_ring_mask = rx_mask;
@@ -1004,8 +1001,12 @@ QDF_STATUS dp_soc_interrupt_attach(struct cdp_soc_t *txrx_soc)
 			rx_err_ring_intr_ctxt_id = i;
 
 		if (dp_is_mon_mask_valid(soc, &soc->intr_ctx[i])) {
-			soc->mon_intr_id_lmac_map[lmac_id] = i;
-			lmac_id++;
+			for (lmac_id = 0; lmac_id < MAX_NUM_LMAC_HW;
+			     lmac_id++) {
+				if (rx_mon_mask & BIT(lmac_id))
+					soc->mon_intr_id_lmac_map[lmac_id] = i;
+			}
+
 		}
 	}
 
@@ -3081,6 +3082,8 @@ static void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
 }
 #endif
 
+#define DP_SW2WBM_RING_IDLE_WAIT_CNT 5
+
 /**
  * dp_display_srng_info() - Dump the srng HP TP info
  * @soc_hdl: CDP Soc handle
@@ -3128,8 +3131,19 @@ bool dp_display_srng_info(struct cdp_soc_t *soc_hdl)
 
 	dp_display_li_be_only_srng_info(soc_hdl);
 
-	hal_get_sw_hptp(hal_soc, soc->wbm_desc_rel_ring.hal_srng, &tp, &hp);
+	for (i = 0; i < DP_SW2WBM_RING_IDLE_WAIT_CNT; i++) {
+		hal_get_sw_hptp(hal_soc, soc->wbm_desc_rel_ring.hal_srng,
+				&tp, &hp);
+		if (hp == tp)
+			break;
+
+		msleep(10);
+	}
+
 	dp_info("WBM desc release ring: hp=0x%x, tp=0x%x", hp, tp);
+
+	if (hp != tp)
+		ret = false;
 
 	return ret;
 }

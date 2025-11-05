@@ -1417,6 +1417,7 @@ uint16_t reg_get_bw_value(enum phy_ch_width bw)
 		return 0;
 	}
 }
+
 #else
 uint16_t reg_get_bw_value(enum phy_ch_width bw)
 {
@@ -2566,6 +2567,19 @@ bool reg_is_24ghz_ch_freq(uint32_t freq)
 bool reg_is_5ghz_ch_freq(uint32_t freq)
 {
 	return REG_IS_5GHZ_FREQ(freq);
+}
+
+#define MIN_UNII_3_BAND_CHANNEL 5725
+#define MAX_UNII_3_BAND_CHANNEL 5850
+bool reg_is_5ghz_unii3_chan_freq(qdf_freq_t freq)
+{
+	if (!REG_IS_5GHZ_FREQ(freq))
+		return false;
+
+	if (freq >= MIN_UNII_3_BAND_CHANNEL && freq <= MAX_UNII_3_BAND_CHANNEL)
+		return true;
+
+	return false;
 }
 
 /**

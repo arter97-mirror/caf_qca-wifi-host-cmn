@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -82,13 +82,19 @@ scm_scan_get_pdev_global_event_handlers(struct scan_event_listeners *listeners,
 	struct cb_handler *cb_handlers  = &(pdev_ev_handler->cb_handlers[0]);
 
 	for (i = 0; i < MAX_SCAN_EVENT_HANDLERS_PER_PDEV; i++, cb_handlers++) {
+		/* Allocate one callback at a time when cb_handlers->func is not null */
 		if ((cb_handlers->func) &&
 		    (listeners->count < MAX_SCAN_EVENT_LISTENERS)) {
-			listeners->cb[listeners->count].func =
-				cb_handlers->func;
-			listeners->cb[listeners->count].arg =
-				cb_handlers->arg;
-			listeners->count++;
+			listeners->cb[listeners->count] = qdf_mem_malloc_atomic(sizeof(struct cb_handler));
+			if (listeners->cb[listeners->count]) {
+				listeners->cb[listeners->count]->func =
+					cb_handlers->func;
+				listeners->cb[listeners->count]->arg =
+					cb_handlers->arg;
+				listeners->count++;
+			} else {
+				scm_err_rl("Failed to allocate memory for pdev global event handler %d", i);
+			}
 		}
 	}
 
@@ -110,13 +116,19 @@ scm_scan_get_requester_event_handler(struct scan_event_listeners *listeners,
 	idx = requester_id & WLAN_SCAN_REQUESTER_ID_MASK;
 	if (idx < WLAN_MAX_REQUESTORS) {
 		ev_handler = &(requesters[idx].ev_handler);
+		/* Allocate one callback at a time when ev_handler->func is not null */
 		if (ev_handler->func) {
 			if (listeners->count < MAX_SCAN_EVENT_LISTENERS) {
-				listeners->cb[listeners->count].func =
-							     ev_handler->func;
-				listeners->cb[listeners->count].arg =
-							     ev_handler->arg;
-				listeners->count++;
+				listeners->cb[listeners->count] = qdf_mem_malloc_atomic(sizeof(struct cb_handler));
+				if (listeners->cb[listeners->count]) {
+					listeners->cb[listeners->count]->func =
+								     ev_handler->func;
+					listeners->cb[listeners->count]->arg =
+								     ev_handler->arg;
+					listeners->count++;
+				} else {
+					scm_err_rl("Failed to allocate memory for requester event handler %d", idx);
+				}
 			}
 		}
 		return QDF_STATUS_SUCCESS;
@@ -181,9 +193,13 @@ static void scm_scan_post_event(struct wlan_objmgr_vdev *vdev,
 
 	/* notify all interested handlers */
 	for (i = 0; i < listeners->count; i++) {
-		scm_listener_cb_exe_dur_start(scan, i);
-		listeners->cb[i].func(vdev, event, listeners->cb[i].arg);
-		scm_listener_cb_exe_dur_end(scan, i);
+		if (listeners->cb[i] && listeners->cb[i]->func) {
+			scm_listener_cb_exe_dur_start(scan, i);
+			listeners->cb[i]->func(vdev, event, listeners->cb[i]->arg);
+			scm_listener_cb_exe_dur_end(scan, i);
+			qdf_mem_free(listeners->cb[i]);
+			listeners->cb[i] = NULL;
+		}
 	}
 	qdf_mem_free(listeners);
 }
@@ -1674,6 +1690,7 @@ scm_pno_event_handler(struct wlan_objmgr_vdev *vdev,
 
 	switch (event->type) {
 	case SCAN_EVENT_TYPE_NLO_COMPLETE:
+		scan_vdev_obj->nlo_complete_time = cur_time;
 		if (!scan_vdev_obj->pno_match_evt_received)
 			return QDF_STATUS_SUCCESS;
 		qdf_wake_lock_release(&scan_psoc_obj->pno_cfg.pno_wake_lock,
@@ -1684,12 +1701,13 @@ scm_pno_event_handler(struct wlan_objmgr_vdev *vdev,
 		qdf_runtime_pm_allow_suspend(
 			&scan_psoc_obj->pno_cfg.pno_runtime_pm_lock);
 		scan_vdev_obj->pno_match_evt_received = false;
-		scan_vdev_obj->nlo_complete_time = cur_time;
 		break;
 	case SCAN_EVENT_TYPE_NLO_MATCH:
 		if (qdf_system_time_before(cur_time,
 					   scan_vdev_obj->nlo_complete_time +
-					   NLO_COMPLETE_MATCH_TIME_DIFF)) {
+					   NLO_COMPLETE_MATCH_TIME_DIFF) &&
+		    qdf_system_time_after(cur_time,
+					  scan_vdev_obj->nlo_complete_time)) {
 			scm_debug("Drop duplicate NLO_MATCH current time = %ld, pno complete time = %ld",
 				  cur_time, scan_vdev_obj->nlo_complete_time);
 			return QDF_STATUS_SUCCESS;

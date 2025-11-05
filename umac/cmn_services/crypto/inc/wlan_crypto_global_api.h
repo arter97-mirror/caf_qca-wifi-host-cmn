@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -259,22 +259,26 @@ QDF_STATUS wlan_crypto_demic(struct wlan_objmgr_vdev *vdev,
 /**
  * wlan_crypto_vdev_is_pmf_enabled() - called to check is pmf enabled in vdev
  * @vdev: vdev
+ * @rsno_gen: RSN(O) generation
  *
  * This function gets called to check is pmf enabled or not in vdev.
  *
  * Return: true or false
  */
-bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev);
+bool wlan_crypto_vdev_is_pmf_enabled(struct wlan_objmgr_vdev *vdev,
+				     uint8_t rsno_gen);
 
 /**
  * wlan_crypto_vdev_is_pmf_required() - called to check is pmf required in vdev
  * @vdev: vdev
+ * @rsno_gen: RSN(O) generation
  *
  * This function gets called to check is pmf required or not in vdev.
  *
  * Return: true or false
  */
-bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev);
+bool wlan_crypto_vdev_is_pmf_required(struct wlan_objmgr_vdev *vdev,
+				      uint8_t rsno_gen);
 
 /**
  * wlan_crypto_is_pmf_enabled() - called by mgmt txrx to check is pmf enabled
@@ -442,6 +446,7 @@ uint8_t *wlan_crypto_build_wapiie(struct wlan_objmgr_vdev *vdev,
  * @vdev: vdev
  * @crypto_params: crypto params
  * @status_code: pointer to wlan status code to be retrieved, can be null
+ * @rsno_gen: type of RSN used
  *
  * This function gets called by mlme to check is given params matching with
  * vdev params.
@@ -450,7 +455,8 @@ uint8_t *wlan_crypto_build_wapiie(struct wlan_objmgr_vdev *vdev,
  */
 bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
 			  struct wlan_crypto_params *crypto_params,
-			  enum wlan_status_code *status_code);
+			  enum wlan_status_code *status_code,
+			  uint8_t rsno_gen);
 
 /**
  * wlan_crypto_pn_check() - called by data patch for PN check
@@ -474,6 +480,17 @@ QDF_STATUS wlan_crypto_pn_check(struct wlan_objmgr_vdev *vdev,
  */
 struct wlan_crypto_params *wlan_crypto_vdev_get_crypto_params(
 						struct wlan_objmgr_vdev *vdev);
+
+/*
+ * wlan_crypto_vdev_get_rsno_crypto() - called by mlme to get crypto params
+ * based on the RSNO generation
+ * @vdev: vdev
+ * @gen: RSN generation
+ *
+ * Return: wlan_crypto_params or NULL in case of failure
+ */
+struct wlan_crypto_params *
+wlan_crypto_vdev_get_rsno_crypto(struct wlan_objmgr_vdev *vdev, uint8_t gen);
 
 /**
  * wlan_crypto_peer_get_crypto_params() - called by mlme to get crypto params
@@ -727,23 +744,23 @@ void wlan_crypto_restore_keys(struct wlan_objmgr_vdev *vdev);
 
 /**
  * wlan_crypto_check_rsn_match() - called by ucfg to check for RSN match
- * @psoc: psoc pointer
- * @vdev_id: vdev id
+ * @vdev: vdev
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
  * @peer_crypto_params: return peer crypto parameters
  * @status_code: pointer to wlan status code to be retrieved, can be null
+ * @rsno_gen: rsno generation used
  *
  * This function gets called from ucfg to check RSN match.
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS
-wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
-			    uint8_t vdev_id, uint8_t *ie_ptr,
-			    uint16_t ie_len,
+wlan_crypto_check_rsn_match(struct wlan_objmgr_vdev *vdev,
+			    uint8_t *ie_ptr, uint16_t ie_len,
 			    struct wlan_crypto_params *peer_crypto_params,
-			    enum wlan_status_code *status_code);
+			    enum wlan_status_code *status_code,
+			    uint8_t rsno_gen);
 
 /**
  * wlan_crypto_check_wpa_match() - called by ucfg to check for WPA match
@@ -836,6 +853,35 @@ QDF_STATUS
 wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
 				   const uint8_t *ie_ptr, uint16_t ie_len,
 				   enum wlan_status_code *status_code);
+
+/**
+ * wlan_get_crypto_params_from_mrsno_ie() - Function to set crypto params
+ * from MRSNO IE
+ * @crypto_params: vdev crypto parameters
+ * @ie_ptr: pointer to IEs
+ * @ie_len: IE length
+ * @rsno_gen: RSNO generation
+ *
+ * This function is used to get the crypto parameters from MRSNO IE
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_get_crypto_params_from_mrsno_ie(struct wlan_crypto_params *crypto_params,
+				     const uint8_t *ie_ptr, uint16_t ie_len,
+				     uint8_t rsno_gen);
+
+/*
+ * wlan_set_crypto_params_from_mrsno - Sets vdev crypto params from RSNO IE
+ * @vdev: vdev pointer
+ * @ie_ptr: pointer to IE
+ * @ie_len: IE length
+ *
+ * This function gets called from ucfg to set crypto params from IE data.
+ *
+ * Return: QDF_STATUS_SUCCESS or error code
+ */
+QDF_STATUS wlan_set_crypto_params_from_mrsno(struct wlan_objmgr_vdev *vdev,
+					     uint8_t *ie_ptr, uint16_t ie_len);
 
 /**
  * wlan_set_vdev_crypto_params_from_ie() - Sets vdev crypto params from IE info

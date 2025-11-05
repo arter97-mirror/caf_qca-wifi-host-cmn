@@ -532,6 +532,8 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 	cdp_config_param_type val;
 	QDF_STATUS status;
 	bool opt_power = false;
+	int num_aux_dev_caps = 0;
+	int idx = 0;
 
 	if (!scn_handle) {
 		target_if_err("scn handle NULL in service ready ext2 handler");
@@ -651,9 +653,18 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 		if (err_code) {
 			target_if_debug("failed to populate aux_dev cap ext2");
 		} else {
+			num_aux_dev_caps =
+				info->service_ext2_param.num_aux_dev_caps;
 			/* Intersect FW optimize power caps with the INI val */
-			opt_power = WLAN_OPTIMIZE_POWER &
-				info->aux_dev_caps[0].supported_modes_bitmap;
+			for (idx = 0; idx < num_aux_dev_caps; idx++) {
+				if (info->aux_dev_caps[idx].hw_mode_id <=
+				     WMI_HW_MODE_AUX_EMLSR_SPLIT) {
+					opt_power |= WLAN_OPTIMIZE_POWER &
+						info->aux_dev_caps[idx].supported_modes_bitmap;
+					if (opt_power)
+						break;
+				}
+			}
 			target_if_debug("FW optimize power: %d", opt_power);
 			info->wlan_res_cfg.enable_optimize_power &= opt_power;
 		}

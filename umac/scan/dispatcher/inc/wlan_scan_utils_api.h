@@ -500,6 +500,19 @@ static inline bool util_mdie_match(uint16_t mobility_domain,
 	return false;
 }
 
+static inline bool
+util_is_local_generated_entry(bool is_local_gen,
+			      struct scan_cache_entry *scan_entry)
+{
+	if (!is_local_gen)
+		return true;
+
+	if (scan_entry->is_gen_entry)
+		return true;
+
+	return false;
+}
+
 /**
  * util_scan_entry_ssid() - function to read ssid of scan entry
  * @scan_entry: scan entry

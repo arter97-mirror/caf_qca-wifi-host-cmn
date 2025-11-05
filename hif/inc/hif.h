@@ -50,7 +50,7 @@ typedef void __iomem *A_target_id_t;
 typedef void *hif_handle_t;
 
 #if defined(HIF_IPCI) && defined(FEATURE_HAL_DELAYED_REG_WRITE)
-#define HIF_WORK_DRAIN_WAIT_CNT 50
+#define HIF_WORK_DRAIN_WAIT_CNT 200
 
 #define HIF_EP_WAKE_RESET_WAIT_CNT 10
 #endif

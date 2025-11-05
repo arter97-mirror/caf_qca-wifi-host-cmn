@@ -229,6 +229,7 @@ struct CE_state {
 	qdf_time_t last_dequeue_time;
 #endif
 	uint32_t ce_wrt_idx_offset;
+	bool service_dl;
 };
 
 /* Descriptor rings must be aligned to this boundary */
