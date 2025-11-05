@@ -3995,6 +3995,18 @@ static inline void wmi_populate_service_11bn(uint32_t *wmi_service)
 }
 #endif
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+static void wmi_populate_service_nan_standard_mode(uint32_t *wmi_service)
+{
+	wmi_service[wmi_service_nan_standard_mode_support] =
+					WMI_SERVICE_NAN_STANDARD_MODE_SUPPORT;
+}
+#else
+static inline void wmi_populate_service_nan_standard_mode(uint32_t *wmi_service)
+{
+}
+#endif
+
 /**
  * wmi_peer_assoc_cmd_fill_params() - Fill peer assoc command parameters
  * @cmd: wmi peer assoc command structure
@@ -25579,6 +25591,7 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_VDEV_OPERATING_PARAMS_EVENT_SUPPORT;
 	wmi_service[wmi_service_support_wow_ole_dal] =
 				WMI_SERVICE_SUPPORT_WOW_OLE_DAL;
+	wmi_populate_service_nan_standard_mode(wmi_service);
 }
 
 /**

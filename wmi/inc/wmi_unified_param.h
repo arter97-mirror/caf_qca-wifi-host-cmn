@@ -7104,6 +7104,9 @@ typedef enum {
 	wmi_service_delete_all_peer_bitmap_support,
 	wmi_service_vdev_operating_params_event_support,
 	wmi_service_support_wow_ole_dal,
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+	wmi_service_nan_standard_mode_support,
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
