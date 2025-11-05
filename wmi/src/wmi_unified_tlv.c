@@ -11919,6 +11919,7 @@ QDF_STATUS send_wfa_test_cmd_tlv(wmi_unified_t wmi_handle,
 
 		saquery = (wmi_wfa_config_saquery *)buf_ptr;
 		saquery->remain_connect_on_saquery_timeout = wmi_wfatest->value;
+		buf_ptr += sizeof(wmi_wfa_config_saquery);
 	} else {
 		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
 		buf_ptr += WMI_TLV_HDR_SIZE;
@@ -11932,6 +11933,7 @@ QDF_STATUS send_wfa_test_cmd_tlv(wmi_unified_t wmi_handle,
 			       WMITLV_GET_STRUCT_TLVLEN(wmi_wfa_config_ofdma));
 		ofdma = (wmi_wfa_config_ofdma *)buf_ptr;
 		ofdma->force_he_trigger_to_eht_sta = wmi_wfatest->value;
+		buf_ptr += sizeof(wmi_wfa_config_ofdma);
 	} else {
 		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
 		buf_ptr += WMI_TLV_HDR_SIZE;
