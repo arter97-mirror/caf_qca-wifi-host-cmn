@@ -105,7 +105,8 @@ struct vendor_cb_ops {
  * @tp_addr: UMAC ring it is TP offset form BAR
  *		LMAC ring it is TP physical addr
  * @hp_addr: physical address of HP
- *
+ * @ring_num: ring number used to indicate isr indication
+ * @grp_id: ext group context id associated with the ring
  *
  * This structure has all the ring information that will be passed to DAL
  * during init.
@@ -135,6 +136,8 @@ struct dal_srng {
 			unsigned long hp_addr;
 		} src_ring;
 	} u;
+	uint8_t ring_num;
+	uint8_t grp_id;
 };
 
 /**
@@ -173,6 +176,9 @@ struct dal_intf_info {
  * @tx_cmpl_ring: Array of HAL SRNG structures for TX completion rings.
  * @tx_ring: Array of HAL SRNG structures for TX rings.
  * @rx_refill_ring: HAL SRNG structure for RX refill ring.
+ * @num_tx_ring_info: number of tx ring info saved
+ * @num_rx_ring_info: number of rx ring info saved
+ * @num_tx_cmpl_ring_info: number of tx completion ring info saved
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -185,6 +191,9 @@ struct dp_dal_ctx {
 	struct dal_srng tx_cmpl_ring[DAL_TX_RINGS_MAX];
 	struct dal_srng tx_ring[DAL_TX_RINGS_MAX];
 	struct dal_srng rx_refill_ring;
+	int num_tx_ring_info;
+	int num_rx_ring_info;
+	int num_tx_cmpl_ring_info;
 };
 
 /**
@@ -323,9 +332,18 @@ static inline bool dp_srng_check_dal_owned_ring(struct dp_srng *srng)
 {
 	return srng->dal_owned_ring;
 }
+
+void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
+			   enum hal_ring_type type, int ring_num);
 #else
 #define DAL_DP_TCL_RING_MASK 0
 #define DAL_DP_REO_RING_MASK 0
+
+static inline void
+dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
+		      enum hal_ring_type type, int ring_num)
+{
+}
 
 static inline bool dp_srng_check_dal_owned_ring(struct dp_srng *srng)
 {

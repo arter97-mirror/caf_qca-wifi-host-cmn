@@ -16236,6 +16236,10 @@ static QDF_STATUS dp_pdev_srng_init(struct dp_pdev *pdev)
 				    soc);
 			goto fail1;
 		}
+
+		dp_dal_save_srng_info(soc,
+				      &soc->rx_refill_buf_ring[pdev->lmac_id],
+				      RXDMA_BUF, pdev->lmac_id);
 	}
 
 	/* LMAC RxDMA to SW Rings configuration */

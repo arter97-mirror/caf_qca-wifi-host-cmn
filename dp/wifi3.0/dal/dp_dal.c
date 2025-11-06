@@ -348,6 +348,124 @@ int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable)
 	return 0;
 }
 
+static void dp_dal_update_ring_params(struct dp_soc *soc,
+				      struct hal_srng *srng,
+				      struct dal_srng *dal_ring)
+{
+	struct hal_soc *hal = (struct hal_soc *)soc->hal_soc;
+
+	dal_ring->hal_ring_id = srng->ring_id;
+	dal_ring->ring_base_paddr = srng->ring_base_paddr;
+	dal_ring->ring_base_vaddr = srng->ring_base_vaddr;
+	dal_ring->num_entries = srng->num_entries;
+	dal_ring->ring_size = srng->ring_size;
+	dal_ring->ring_size_mask = srng->ring_size_mask;
+	dal_ring->entry_size = srng->entry_size;
+	dal_ring->ring_type = srng->ring_type;
+	dal_ring->ring_dir = srng->ring_dir;
+	dal_ring->lmac_ring = srng->flags & HAL_SRNG_LMAC_RING ? true : false;
+
+	if (srng->ring_dir == HAL_SRNG_SRC_RING) {
+		dal_ring->u.src_ring.hp = srng->u.src_ring.hp;
+
+		if (dal_ring->lmac_ring)
+			dal_ring->u.src_ring.hp_addr =
+				virt_to_phys(srng->u.src_ring.hp_addr);
+		else
+			dal_ring->u.src_ring.hp_addr =
+					srng->u.src_ring.hp_addr -
+					(uint32_t *)(hal->dev_base_addr);
+
+		dal_ring->u.src_ring.tp_addr =
+			virt_to_phys(srng->u.src_ring.tp_addr);
+	} else {
+		dal_ring->u.dst_ring.tp = srng->u.dst_ring.tp;
+
+		if (dal_ring->lmac_ring)
+			dal_ring->u.dst_ring.tp_addr =
+				virt_to_phys(srng->u.src_ring.tp_addr);
+		else
+			dal_ring->u.dst_ring.tp_addr =
+					srng->u.dst_ring.tp_addr -
+					(uint32_t *)(hal->dev_base_addr);
+
+		dal_ring->u.dst_ring.hp_addr =
+				virt_to_phys(srng->u.dst_ring.hp_addr);
+	}
+}
+
+void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
+			   enum hal_ring_type type, int ring_num)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+	struct dal_srng *dal_ring;
+	int ring_info_cnt;
+
+	if (!dp_srng_check_dal_owned_ring(srng))
+		return;
+
+	switch (type) {
+	case REO_DST:
+		ring_info_cnt = dal_ctx->num_rx_ring_info;
+		if (ring_info_cnt >= DAL_RX_RINGS_MAX) {
+			dp_err("Max rx ring info limit:%d reached",
+			       ring_info_cnt);
+			return;
+		}
+
+		dal_ring = &dal_ctx->rx_ring[ring_info_cnt];
+		dp_dal_update_ring_params(soc,
+					  (struct hal_srng *)srng->hal_srng,
+					  dal_ring);
+		dal_ring->ring_num = ring_num;
+		dal_ring->initialized = true;
+		dal_ctx->num_rx_ring_info++;
+		break;
+	case TCL_DATA:
+		ring_info_cnt = dal_ctx->num_tx_ring_info;
+		if (ring_info_cnt >= DAL_TX_RINGS_MAX) {
+			dp_err("Max tx ring info limit:%d reached",
+			       ring_info_cnt);
+			return;
+		}
+
+		dal_ring = &dal_ctx->tx_ring[ring_info_cnt];
+		dp_dal_update_ring_params(soc,
+					  (struct hal_srng *)srng->hal_srng,
+					  dal_ring);
+		dal_ring->ring_num = ring_num;
+		dal_ring->initialized = true;
+		dal_ctx->num_tx_ring_info++;
+		break;
+	case COMP_RING_TYPE:
+		ring_info_cnt = dal_ctx->num_tx_cmpl_ring_info;
+		if (ring_info_cnt >= DAL_TX_RINGS_MAX) {
+			dp_err("Max tx cmpl ring info limit:%d reached",
+			       ring_info_cnt);
+			return;
+		}
+
+		dal_ring = &dal_ctx->tx_cmpl_ring[ring_info_cnt];
+		dp_dal_update_ring_params(soc,
+					  (struct hal_srng *)srng->hal_srng,
+					  dal_ring);
+		dal_ring->ring_num = ring_num;
+		dal_ring->initialized = true;
+		dal_ctx->num_tx_cmpl_ring_info++;
+		break;
+	case RXDMA_BUF:
+		dal_ring = &dal_ctx->rx_refill_ring;
+		dp_dal_update_ring_params(soc,
+					  (struct hal_srng *)srng->hal_srng,
+					  dal_ring);
+		dal_ring->initialized = true;
+		break;
+	default:
+		dp_err("Invalid ring info rcvd srng %pK type %d ring_num %d",
+		       srng, type, ring_num);
+	}
+}
+
 uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 {
 	struct dp_intr *int_ctx = (struct dp_intr *)dp_ctx;

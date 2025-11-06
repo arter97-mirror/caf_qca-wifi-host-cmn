@@ -2221,6 +2221,8 @@ static QDF_STATUS dp_init_tx_ring_pair_by_index(struct dp_soc *soc,
 			  WLAN_MD_DP_SRNG_TCL_DATA,
 			  "tcl_data_ring");
 
+	dp_dal_save_srng_info(soc, &soc->tcl_data_ring[index], TCL_DATA, index);
+
 	if (wbm_ring_num == INVALID_WBM_RING_NUM)
 		goto set_rbm;
 
@@ -2229,6 +2231,9 @@ static QDF_STATUS dp_init_tx_ring_pair_by_index(struct dp_soc *soc,
 		dp_err("dp_srng_init failed for tx_comp_ring");
 		goto fail1;
 	}
+
+	dp_dal_save_srng_info(soc, &soc->tx_comp_ring[index],
+			      COMP_RING_TYPE, index);
 
 	dp_ssr_dump_srng_register("tcl_data_ring",
 				  &soc->tcl_data_ring[index], index);
@@ -4513,6 +4518,8 @@ QDF_STATUS dp_soc_srng_init(struct dp_soc *soc)
 			dp_init_err("%pK: dp_srng_init failed for reo_dest_ringn", soc);
 			goto fail1;
 		}
+
+		dp_dal_save_srng_info(soc, &soc->reo_dest_ring[i], REO_DST, i);
 
 		dp_ssr_dump_srng_register("reo_dest_ring",
 					  &soc->reo_dest_ring[i], i);
