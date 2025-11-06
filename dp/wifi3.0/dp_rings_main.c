@@ -3556,6 +3556,12 @@ static void dp_soc_cfg_dump(struct dp_soc *soc, uint32_t target_type)
 }
 
 #ifdef FEATURE_ML_MONITOR_MODE_SUPPORT
+#ifdef BORON_MONITOR
+static inline void dp_set_num_rxdma_dst_ring(struct dp_soc *soc)
+{
+	soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev = 2;
+}
+#else
 static inline void dp_set_num_rxdma_dst_ring(struct dp_soc *soc)
 {
 	if (QDF_GLOBAL_MONITOR_MODE == dp_soc_get_con_mode(soc))
@@ -3563,6 +3569,7 @@ static inline void dp_set_num_rxdma_dst_ring(struct dp_soc *soc)
 	else
 		soc->wlan_cfg_ctx->num_rxdma_dst_rings_per_pdev = 1;
 }
+#endif /* BORON_MONITOR */
 #else
 static inline void dp_set_num_rxdma_dst_ring(struct dp_soc *soc)
 {

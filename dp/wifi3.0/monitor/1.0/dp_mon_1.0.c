@@ -630,7 +630,8 @@ budget_done:
 	else
 		qdf_timer_mod(&mon_soc->mon_vdev_timer, DP_INTR_POLL_TIMER_MS);
 
-	if (lmac_id != DP_MON_INVALID_LMAC_ID)
+	if (lmac_id != DP_MON_INVALID_LMAC_ID &&
+	    dp_intr_id < WLAN_CFG_INT_NUM_CONTEXTS)
 		dp_srng_record_timer_exit(soc, dp_intr_id);
 
 }

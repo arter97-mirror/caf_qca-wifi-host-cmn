@@ -288,6 +288,7 @@ void dp_mon_filter_h2t_setup(struct dp_soc *soc, struct dp_pdev *pdev,
 	dp_mon_filter_show_filter(mon_pdev, 0, filter);
 }
 
+#ifdef BORON_MONITOR
 /**
  * dp_update_num_mac_rings() - Update number of MAC rings based on connection
  *                             mode and DBS check
@@ -296,6 +297,12 @@ void dp_mon_filter_h2t_setup(struct dp_soc *soc, struct dp_pdev *pdev,
  *
  * Return: None
  */
+static inline
+void dp_update_num_mac_rings(struct dp_soc *soc, int *mon_mac_rings)
+{
+	dp_update_num_mac_rings_for_dbs(soc, mon_mac_rings);
+}
+#else
 static void
 dp_update_num_mac_rings(struct dp_soc *soc, int *mon_mac_rings)
 {
@@ -308,6 +315,7 @@ dp_update_num_mac_rings(struct dp_soc *soc, int *mon_mac_rings)
 		dp_update_num_mac_rings_for_dbs(soc, mon_mac_rings);
 	}
 }
+#endif
 
 QDF_STATUS
 dp_mon_ht2_rx_ring_cfg(struct dp_soc *soc,
