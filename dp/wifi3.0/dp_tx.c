@@ -5175,10 +5175,10 @@ dp_tx_override_ring_id(struct dp_vdev *vdev, uint8_t *ring_id)
 
 	switch (vdev->qdf_opmode) {
 	case QDF_STA_MODE:
-		*ring_id = 0;
+		*ring_id = DAL_TX_RING_ID0_STA;
 		break;
 	case QDF_SAP_MODE:
-		*ring_id = 1;
+		*ring_id = DAL_TX_RING_ID0_SAP;
 		break;
 	default:
 		/* Other VDEVs: avoid reserved rings 0,1 - use rings 2+ */

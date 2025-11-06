@@ -22,6 +22,9 @@
 #define DAL_RX_RINGS_MAX 2
 #define DAL_TX_RINGS_MAX 2
 
+#define DAL_TX_RING_ID0_STA 0
+#define DAL_TX_RING_ID0_SAP 1
+
 extern struct platform_bus_ops *global_plat_ops;
 
 /**
@@ -170,6 +173,8 @@ enum dal_intf_type {
  * @bss_idx: BSS index
  * @vdev_id: VDEV ID
  * @tcl_bank_id: TCL bank ID
+ * @tx_ring_id: TX ring ID to use for tethered traffic
+ * @tx_rbm_id: TX RBM ID to use for tethered traffic
  */
 struct dal_intf_info {
 	enum dal_intf_type type;
@@ -177,6 +182,8 @@ struct dal_intf_info {
 	int bss_idx;
 	uint16_t vdev_id;
 	uint8_t tcl_bank_id;
+	uint8_t tx_ring_id;
+	uint8_t tx_rbm_id;
 };
 
 /**

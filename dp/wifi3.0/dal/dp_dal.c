@@ -574,6 +574,14 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 	intf_info.vdev_id = vdev->vdev_id;
 	intf_info.tcl_bank_id = vdev->bank_id;
 
+	if (type == DAL_INTF_TYPE_STA)
+		intf_info.tx_ring_id = DAL_TX_RING_ID0_STA;
+	else if (type == DAL_TX_RING_ID0_SAP)
+		intf_info.tx_ring_id = DAL_TX_RING_ID0_SAP;
+	intf_info.tx_rbm_id =
+		wlan_cfg_get_rbm_id_for_index(soc->wlan_cfg_ctx,
+					      intf_info.tx_ring_id);
+
 	qdf_mem_copy(&intf_info.mac_address[0],
 		     &vdev->mac_addr.raw[0], QDF_MAC_ADDR_SIZE);
 
