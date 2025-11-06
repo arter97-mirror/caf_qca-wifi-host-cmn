@@ -13,6 +13,15 @@
 #include "dp_tx.h"
 
 /**
+ * dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
+ * @ring_num: tx completion ring number
+ * @priv: pointer to dp dal context
+ *
+ * Return: 0 on success
+ */
+int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv);
+
+/**
  * dp_dal_tx_bypass_mode() - Skeleton for platform bus tx in bypass mode
  *
  * @priv: private data

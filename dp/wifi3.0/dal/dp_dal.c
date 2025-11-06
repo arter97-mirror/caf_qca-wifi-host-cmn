@@ -167,6 +167,7 @@ struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;
 
 struct vendor_cb_ops vendor_cb = {
 	.rx_isr_cb = dp_dal_rx_isr_vendor_cb,
+	.tx_isr_cb = dp_dal_tx_cmp_isr_vendor_cb,
 };
 
 /**

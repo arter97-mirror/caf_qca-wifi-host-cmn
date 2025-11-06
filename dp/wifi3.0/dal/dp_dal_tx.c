@@ -6,6 +6,49 @@
 #include "dp_dal_tx.h"
 
 /**
+ *dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
+ *@ring_num: tx completion ring number
+ *@priv: pointer to dp dal context
+ *
+ * Return: 0 on success
+ */
+int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	int grp_id;
+	QDF_STATUS status;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC is NULL");
+		return -EINVAL;
+	}
+
+	grp_id = dp_dal_get_ext_grp_id(dal_ctx, ring_num, COMP_RING_TYPE);
+	if (grp_id >= HIF_MAX_GROUP) {
+		dp_err("invalid group id:%d ring_num:%d ring_type:%s",
+		       grp_id, ring_num, "COMP_RING_TYPE");
+		QDF_BUG(0);
+		return -EINVAL;
+	}
+
+	status = hif_ext_grp_napi_schedule(soc->hif_handle, grp_id);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("Failed to sched NAPI for grp_id:%d ring:%d status:%d",
+		       grp_id, ring_num, status);
+		return qdf_status_to_os_return(status);
+	}
+
+	return 0;
+}
+
+/**
  * dp_dal_tx_bypass_mode() - Skeleton for platform bus tx in bypass mode
  *
  * @priv: private data
