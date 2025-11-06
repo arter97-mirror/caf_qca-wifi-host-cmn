@@ -2225,6 +2225,8 @@ bool dp_rx_intrabss_fwd_be(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 	bool ret = false;
 	struct dp_be_intrabss_params params;
 	struct hal_rx_msdu_metadata msdu_metadata;
+	struct dp_peer *da_peer;
+	uint16_t da_peer_id;
 
 	/* if it is a broadcast pkt (eg: ARP) and it is not its own
 	 * source, then clone the pkt and send the cloned pkt for
@@ -2245,13 +2247,19 @@ bool dp_rx_intrabss_fwd_be(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 
 	hal_rx_msdu_packet_metadata_get_generic_be(rx_tlv_hdr, &msdu_metadata);
 	params.dest_soc = soc;
-	if (dp_rx_intrabss_ucast_check_be(nbuf, ta_peer, rx_tlv_hdr,
-					  &msdu_metadata, &params)) {
-		ret = dp_rx_intrabss_ucast_fwd(params.dest_soc, ta_peer,
-					       params.tx_vdev_id,
-					       rx_tlv_hdr, nbuf, tid_stats,
-					       link_id);
-	}
+	if (!dp_rx_intrabss_ucast_check_be(nbuf, ta_peer, rx_tlv_hdr,
+					   &msdu_metadata, &params))
+		return false;
+
+	da_peer_id = dp_rx_peer_metadata_peer_id_get_be(soc,
+							msdu_metadata.da_idx);
+	da_peer = dp_peer_get_ref_by_id(soc, da_peer_id, DP_MOD_ID_RX);
+	ret = dp_rx_intrabss_ucast_fwd(params.dest_soc, ta_peer,
+				       da_peer, params.tx_vdev_id,
+				       rx_tlv_hdr, nbuf, tid_stats,
+				       link_id);
+	if (da_peer)
+		dp_peer_unref_delete(da_peer, DP_MOD_ID_RX);
 
 	return ret;
 }

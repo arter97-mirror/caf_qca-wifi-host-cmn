@@ -1664,6 +1664,7 @@ bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc,
  * dp_rx_intrabss_ucast_fwd() - Does intrabss forward for unicast packets
  * @soc: core txrx main context
  * @ta_peer: source peer entry
+ * @da_peer: destination peer entry
  * @tx_vdev_id: VDEV ID for Intra-BSS TX
  * @rx_tlv_hdr: start address of rx tlvs
  * @nbuf: nbuf that has to be intrabss forwarded
@@ -1674,6 +1675,7 @@ bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc,
  */
 bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc,
 			      struct dp_txrx_peer *ta_peer,
+			      struct dp_peer *da_peer,
 			      uint8_t tx_vdev_id,
 			      uint8_t *rx_tlv_hdr, qdf_nbuf_t nbuf,
 			      struct cdp_tid_rx_stats *tid_stats,

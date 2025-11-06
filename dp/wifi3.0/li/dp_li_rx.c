@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -181,9 +181,9 @@ dp_rx_intrabss_fwd_li(struct dp_soc *soc,
 
 	if (dp_rx_intrabss_ucast_check_li(soc, nbuf, ta_txrx_peer,
 					  &msdu_metadata, &tx_vdev_id))
-		return dp_rx_intrabss_ucast_fwd(soc, ta_txrx_peer, tx_vdev_id,
-						rx_tlv_hdr, nbuf, tid_stats,
-						0);
+		return dp_rx_intrabss_ucast_fwd(soc, ta_txrx_peer, NULL,
+						tx_vdev_id, rx_tlv_hdr,
+						nbuf, tid_stats, 0);
 
 	return false;
 }

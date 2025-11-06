@@ -232,9 +232,9 @@ dp_rx_intrabss_fwd_rh(struct dp_soc *soc,
 
 	if (dp_rx_intrabss_ucast_check_rh(soc, nbuf, ta_txrx_peer,
 					  &msdu_metadata, &tx_vdev_id))
-		return dp_rx_intrabss_ucast_fwd(soc, ta_txrx_peer, tx_vdev_id,
-						rx_tlv_hdr, nbuf, tid_stats,
-						0);
+		return dp_rx_intrabss_ucast_fwd(soc, ta_txrx_peer, NULL,
+						tx_vdev_id, rx_tlv_hdr,
+						nbuf, tid_stats, 0);
 
 	return false;
 }

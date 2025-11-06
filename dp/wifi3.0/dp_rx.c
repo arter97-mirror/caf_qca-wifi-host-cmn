@@ -1274,6 +1274,41 @@ void dp_rx_nbuf_queue_mapping_set(qdf_nbuf_t nbuf, uint8_t ring_id)
 }
 #endif
 
+#ifdef CONFIG_BORON
+/**
+ * dp_classify_txpt_idx() - Classify Tx MSDU flow pointer index
+ * @soc: Pointer to the dp_soc context
+ * @da_peer: Pointer to the destination peer
+ * @nbuf: Network buffer to be classified
+ *
+ * This function sets the classification metadata in the network buffer's
+ * control block based on the cached MSDU flow queue index from the destination
+ * peer entry. Specifically, it sets the following:
+ *
+ * - QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(nbuf) to 1
+ * - QDF_NBUF_CB_TXPT_IDX_VALUE(nbuf) to the peer's txpt_classify_idx
+ *
+ * These values are used to assist in transmit path classification.
+ *
+ * Return: None
+ */
+static inline void
+dp_classify_txpt_idx(struct dp_soc *soc,
+		     struct dp_peer *da_peer, qdf_nbuf_t nbuf)
+{
+	if (da_peer && da_peer->txpt_classify_idx_valid) {
+		QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(nbuf) = 1;
+		QDF_NBUF_CB_TXPT_IDX_VALUE(nbuf) = da_peer->txpt_classify_idx;
+	}
+}
+#else
+static inline void
+dp_classify_txpt_idx(struct dp_soc *soc,
+		     struct dp_peer *da_peer, qdf_nbuf_t nbuf)
+{
+}
+#endif
+
 bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 			     uint8_t *rx_tlv_hdr, qdf_nbuf_t nbuf,
 			     struct cdp_tid_rx_stats *tid_stats,
@@ -1335,6 +1370,7 @@ bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 }
 
 bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
+			      struct dp_peer *da_peer,
 			      uint8_t tx_vdev_id,
 			      uint8_t *rx_tlv_hdr, qdf_nbuf_t nbuf,
 			      struct cdp_tid_rx_stats *tid_stats,
@@ -1377,6 +1413,7 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 		QDF_NBUF_CB_PADDR(nbuf) = paddr;
 
 	dp_classify_critical_pkts(soc, ta_peer->vdev, nbuf);
+	dp_classify_txpt_idx(soc, da_peer, nbuf);
 
 	/* Don't send packets if tx is paused */
 	if (!soc->is_tx_pause && !dp_tx_send((struct cdp_soc_t *)soc,
