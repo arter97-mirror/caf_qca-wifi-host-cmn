@@ -48,6 +48,8 @@ struct sta_info {
  * @notify_suspend: Notify suspend
  * @notify_resume: Notify resume
  * @ssr_dump: Dump SSR
+ * @intf_init: Interface init
+ * @intf_deinit: Interface deinit
  */
 struct platform_bus_ops {
 	int (*init)(void *priv);
@@ -65,6 +67,8 @@ struct platform_bus_ops {
 	int (*notify_suspend)(void *priv);
 	int (*notify_resume)(void *priv);
 	void (*ssr_dump)(void *segment);
+	int (*intf_init)(void *priv, void *intf_info);
+	int (*intf_deinit)(void *priv, uint16_t vdev_id);
 };
 
 /**
@@ -291,6 +295,30 @@ int dp_dal_bus_request_irq(struct dp_soc *soc);
 int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt);
 
 /**
+ * dp_dal_interface_add() - DAL interface add
+ * @soc: pointer to DP SoC
+ * @vdev: DP vdev structure
+ *
+ * Called during dp_vdev_attach_wifi3(), this function will add interface
+ * details to offload engine.
+ *
+ * Return: int
+ */
+int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev);
+
+/**
+ * dp_dal_interface_remove() - DAL interface remove
+ * @soc: pointer to DP SoC
+ * @vdev_id: vdev ID of the interface
+ *
+ * Called during dp_vdev_detach_wifi3(), this function will remove interface
+ * details from the offload engine.
+ *
+ * Return: None
+ */
+void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id);
+
+/**
  * dp_dal_sta_active() - DAL API to send STA information
  * @soc: pointer to DP SoC
  * @info: station information
@@ -403,14 +431,13 @@ static inline int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt)
 }
 
 static inline int
-dp_dal_interface_add(struct dp_soc *soc, uint16_t vdev_id)
+dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 {
 	return 0;
 }
 
-static inline int dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
+static inline void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
 {
-	return 0;
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_H */

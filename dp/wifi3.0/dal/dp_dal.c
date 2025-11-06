@@ -7,6 +7,8 @@
 #include "dp_dal_rx.h"
 #include "dp_dal_tx.h"
 #include <wlan_cfg.h>
+#include <qdf_types.h>
+#include "qdf_mem.h"
 
 /**
  * dp_dal_bus_init_bypass_mode() - Skeleton for platform bus init
@@ -117,6 +119,30 @@ static void dp_dal_ssr_dump_bypass_mode(void *segment)
 {
 }
 
+/**
+ * dp_dal_intf_init_bypass_mode() - interface initialization in bypass mode
+ * @priv: pointer to dal context
+ * @intf_info: interface info
+ *
+ * Return: 0 on success
+ */
+static int dp_dal_intf_init_bypass_mode(void *priv, void *intf_info)
+{
+	return 0;
+}
+
+/**
+ * dp_dal_intf_deinit_bypass_mode() - interface deinitialization in bypass mode
+ * @priv: pointer to dal context
+ * @vdev_id: vdev id corresponds to interface
+ *
+ * Return: 0 on success
+ */
+static int dp_dal_intf_deinit_bypass_mode(void *priv, uint16_t vdev_id)
+{
+	return 0;
+}
+
 struct platform_bus_ops plat_ops_bypass_mode = {
 	.init = dp_dal_bus_init_bypass_mode,
 	.exit = dp_dal_bus_exit_bypass_mode,
@@ -133,6 +159,8 @@ struct platform_bus_ops plat_ops_bypass_mode = {
 	.notify_suspend = dp_dal_notify_suspend_bypass_mode,
 	.notify_resume = dp_dal_notify_resume_bypass_mode,
 	.ssr_dump = dp_dal_ssr_dump_bypass_mode,
+	.intf_init = dp_dal_intf_init_bypass_mode,
+	.intf_deinit = dp_dal_intf_deinit_bypass_mode,
 };
 
 struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;
@@ -450,6 +478,116 @@ int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt)
 		return global_plat_ops->rx_replenish(dal_ctx, cnt, false);
 
 	return 0;
+}
+
+static enum dal_intf_type
+qdf_opmode_to_dal_intf_type(enum QDF_OPMODE mode)
+{
+	switch (mode) {
+	case QDF_STA_MODE:
+		return DAL_INTF_TYPE_STA;
+	case QDF_SAP_MODE:
+		return DAL_INTF_TYPE_SAP;
+	default:
+		return DAL_INTF_TYPE_MAX;
+	}
+}
+
+/**
+ * dp_dal_interface_add() - DAL interface add
+ * @soc: pointer to DP SoC
+ * @vdev: DP vdev structure
+ *
+ * Called during dp_vdev_attach_wifi3(), this function will add interface
+ * details to offload engine.
+ *
+ * Return: int
+ */
+int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+	struct dal_intf_info intf_info = {0};
+	enum dal_intf_type type;
+	int status;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL, cannot add interface");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	type = qdf_opmode_to_dal_intf_type(vdev->qdf_opmode);
+	if (type >= DAL_INTF_TYPE_MAX)
+		return 0;
+
+	intf_info.type = type;
+	intf_info.vdev_id = vdev->vdev_id;
+	intf_info.tcl_bank_id = vdev->bank_id;
+
+	qdf_mem_copy(&intf_info.mac_address[0],
+		     &vdev->mac_addr.raw[0], QDF_MAC_ADDR_SIZE);
+
+	if (global_plat_ops->intf_init) {
+		status = global_plat_ops->intf_init(dal_ctx,
+						    &intf_info);
+		if (status) {
+			dp_err("dal interface add failed vdev_id:%d status %d",
+			       vdev->vdev_id, status);
+			return status;
+		}
+	}
+
+	if (global_plat_ops->tx_queue_active) {
+		status = global_plat_ops->tx_queue_active(dal_ctx,
+							  vdev->vdev_id, true);
+		if (status) {
+			dp_err("dal tx queue active failed vdev_id:%d status %d",
+			       vdev->vdev_id, status);
+			/* Cleanup the interface that was just initialized */
+			if (global_plat_ops->intf_deinit)
+				global_plat_ops->intf_deinit(dal_ctx,
+							     vdev->vdev_id);
+			return status;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * dp_dal_interface_remove() - DAL interface remove
+ * @soc: pointer to DP SoC
+ * @vdev_id: vdev ID of the interface
+ *
+ * Called during dp_vdev_detach_wifi3(), this function will remove interface
+ * details from the offload engine.
+ *
+ * Return: None
+ */
+void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+	int status;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL, cannot remove interface");
+		return;
+	}
+
+	if (global_plat_ops->tx_queue_active) {
+		status = global_plat_ops->tx_queue_active(dal_ctx,
+							  vdev_id, false);
+		if (status)
+			dp_err("dal txq deactivate failed vdev_id:%d status %d",
+			       vdev_id, status);
+		/* Continue to intf_deinit despite error */
+	}
+
+	if (global_plat_ops->intf_deinit) {
+		status = global_plat_ops->intf_deinit(dal_ctx, vdev_id);
+		if (status)
+			dp_err("dal intf remove failed vdev_id:%d status %d",
+			       vdev_id, status);
+	}
 }
 
 /**

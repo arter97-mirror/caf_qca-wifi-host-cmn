@@ -5492,6 +5492,11 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 	if (QDF_IS_STATUS_ERROR(soc->arch_ops.txrx_vdev_attach(soc, vdev)))
 		goto fail0;
 
+	if (dp_dal_interface_add(soc, vdev)) {
+		dp_err("failed to add intf to dal");
+		goto txrx_vdev_detach;
+	}
+
 	if (dp_vdev_self_peer_required(soc, vdev))
 		dp_peer_create_wifi3((struct cdp_soc_t *)soc, vdev_id,
 				     vdev->mac_addr.raw, CDP_LINK_PEER_TYPE);
@@ -5505,6 +5510,8 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 
 	return QDF_STATUS_SUCCESS;
 
+txrx_vdev_detach:
+	soc->arch_ops.txrx_vdev_detach(soc, vdev);
 fail0:
 	return QDF_STATUS_E_FAILURE;
 }
@@ -5898,6 +5905,7 @@ static QDF_STATUS dp_vdev_detach_wifi3(struct cdp_soc_t *cdp_soc,
 	if (!vdev)
 		return QDF_STATUS_E_FAILURE;
 
+	dp_dal_interface_remove(soc, vdev_id);
 	soc->arch_ops.txrx_vdev_detach(soc, vdev);
 
 	pdev = vdev->pdev;
