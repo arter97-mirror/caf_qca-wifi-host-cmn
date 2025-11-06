@@ -349,6 +349,20 @@ struct auth_resp_event {
 #define EVENT_MAX_AP 3
 #define EVENT_SSID_MAX_LEN 32
 
+/*RATE BITMAP Macros*/
+#define BIT_RX1MBPS  (1 << 0)
+#define BIT_RX2MBPS  (1 << 1)
+#define BIT_RX5MBPS5 (1 << 2)
+#define BIT_RX9MBPS  (1 << 3)
+#define BIT_RX11MBPS (1 << 4)
+#define BIT_RX6MBPS  (1 << 5)
+#define BIT_RX12MBPS (1 << 6)
+#define BIT_RX18MBPS (1 << 7)
+#define BIT_RX24MBPS (1 << 8)
+#define BIT_RX36MBPS (1 << 9)
+#define BIT_RX48MBPS (1 << 10)
+#define BIT_RX54MBPS (1 << 11)
+
 struct ap_info_event {
 	uint8_t bssid[QDF_MAC_ADDR_SIZE];
 	uint16_t channel;
@@ -386,6 +400,13 @@ struct stats_cfm_event {
 	uint32_t rx48mbps_pkts;
 	uint32_t rx54mbps_pkts;
 } __attribute__((__packed__));
+
+struct rate_field_info {
+    uint64_t cur_pkts;
+    uint64_t prev_pkts;
+    uint32_t *pkt_delta;
+    uint32_t bit;
+};
 
 struct scan_ap_info {
 	uint8_t bssid[QDF_MAC_ADDR_SIZE];
