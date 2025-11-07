@@ -314,8 +314,6 @@ void wlan_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
 	unsigned int *pfilled_length;
 	uint32_t header_len = sizeof(tAniNlHdr);
 
-	cstats.is_direct_log_dispatch_enabled = false;
-
 	node = cstats.ccur_node[CSTATS_HOST_TYPE];
 	if (!node) {
 		qdf_err("Current Node is NULL");
