@@ -1668,6 +1668,9 @@ reg_is_blacklisted_freq(struct wlan_objmgr_pdev *pdev, qdf_freq_t freq,
 {
 	qdf_freq_t cf = 0;
 
+	if (!reg_is_6ghz_chan_freq(freq))
+		return false;
+
 	if (!bw)
 		bw = reg_get_bw_from_freq(pdev, freq, in_6g_pwr_mode);
 
