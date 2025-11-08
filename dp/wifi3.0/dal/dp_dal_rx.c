@@ -6,6 +6,9 @@
 #include "dp_dal_rx.h"
 #include "dp_rx.h"
 #include "dp_dal.h"
+#include "wlan_cfg.h"
+#include "hif.h"
+#include "dp_rx_buffer_pool.h"
 
 #define BUFFER_ADDR_INFO_SIZE 8
 
@@ -199,10 +202,11 @@ int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv)
  *
  * @priv: private data
  * @cnt: count
+ * @ring_id: RX ring id
  *
  * Return: false
  */
-bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt)
+bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt, u16 ring_id)
 {
 	return false;
 }
@@ -410,4 +414,183 @@ dp_dal_rx_add_desc_to_head(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
 		dal_ctx->rx_desc_tail[ring_id] = node;
 
 	dal_ctx->rx_desc_count[ring_id]++;
+}
+
+/**
+ * dp_dal_rx_handler() - Unified DAL RX handler for both BE and BN
+ * @soc: DP SOC context
+ * @ring_id: Ring ID
+ * @dp_budget: NAPI budget
+ *
+ * This function implements the unified DAL RX handler following the precise
+ * steps:
+ * 1. Invoke platform_bus_rx(dal_ctx, &cnt) from NAPI context
+ * 2. Process accumulated rx_desc_list in dal_ctx and form skb_list like
+ *    first loop
+ * 3. Execute RX replenishment via platform_bus_rx_replenish(dal_ctx, cnt)
+ * Includes dp_rx_war_peek_msdu_done check for both BE and BN (as requested).
+ * Uses Beryllium-style vdev flushing for both architectures.
+ *
+ * Return: Number of packets processed
+ */
+uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
+{
+	struct dp_dal_ctx *dal_ctx;
+	struct dp_rx_desc *rx_desc;
+	qdf_nbuf_t nbuf_head = NULL;
+	qdf_nbuf_t nbuf_tail = NULL;
+	uint32_t cnt = 0;
+	uint32_t processed = 0;
+	uint32_t num_pending = 0;
+	bool ret;
+	qdf_nbuf_t ebuf_head = NULL;
+	qdf_nbuf_t ebuf_tail = NULL;
+	bool is_prev_msdu_last = true;
+	uint16_t buf_size;
+	union dp_rx_desc_list_elem_t *head[MAX_PDEV_CNT] = {NULL};
+	union dp_rx_desc_list_elem_t *tail[MAX_PDEV_CNT] = {NULL};
+	struct rx_desc_pool *rx_desc_pool;
+	qdf_nbuf_t curr_nbuf;
+	qdf_nbuf_t next_nbuf;
+	int mac_id;
+
+	if (qdf_unlikely(!soc)) {
+		dp_err_rl("SOC is NULL");
+		return 0;
+	}
+
+	dal_ctx = soc->dal_ctx;
+	if (qdf_unlikely(!dal_ctx)) {
+		dp_err_rl("DAL context is NULL");
+		return 0;
+	}
+
+	if (qdf_unlikely(ring_id >= MAX_REO_DEST_RINGS)) {
+		dp_err_rl("Invalid ring_id %u", ring_id);
+		return 0;
+	}
+
+	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
+
+	if (global_plat_ops && global_plat_ops->rx) {
+		ret = global_plat_ops->rx(dal_ctx, &cnt, ring_id);
+		if (qdf_unlikely(!ret)) {
+			dp_debug("No RX packets available for ring %u",
+				 ring_id);
+			return 0;
+		}
+	} else {
+		dp_err_rl("Platform RX operation not available");
+		return 0;
+	}
+
+	qdf_spin_lock_bh(&dal_ctx->dal_rx_desc_lock);
+
+	if (!dal_ctx->rx_desc_head[ring_id]) {
+		qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
+		dp_err_rl("Platform RX returned zero descriptors");
+		return 0;
+	}
+
+	num_pending = dal_ctx->rx_desc_count[ring_id];
+
+	while (dal_ctx->rx_desc_head[ring_id]) {
+		rx_desc = dp_dal_rx_remove_desc_from_head(dal_ctx, ring_id);
+		if (!rx_desc)
+			break;
+
+		if (qdf_unlikely(qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf))) {
+			qdf_nbuf_set_rx_chfrag_end(rx_desc->nbuf, 0);
+
+			if (is_prev_msdu_last) {
+				if ((QDF_NBUF_CB_RX_PKT_LEN(rx_desc->nbuf) /
+				     (buf_size - soc->rx_pkt_tlv_size) + 1) >
+				      num_pending) {
+					DP_STATS_INC(soc,
+						     rx.msdu_scatter_wait_break,
+						     1);
+					dp_rx_cookie_reset_invalid_bit(NULL);
+					/* Break the loop - insufficient descs
+					 * for sg, add descriptor back to head.
+					 */
+					dp_dal_rx_add_desc_to_head(dal_ctx,
+								   ring_id,
+								   rx_desc);
+					break;
+				}
+				is_prev_msdu_last = false;
+			}
+		} else if (qdf_unlikely(!dp_rx_war_peek_msdu_done(soc,
+								  rx_desc))) {
+			struct dp_rx_desc *old_rx_desc =
+				dp_rx_war_store_msdu_done_fail_desc(soc,
+								    rx_desc,
+								    ring_id);
+			if (qdf_likely(old_rx_desc)) {
+				dp_rx_add_to_free_desc_list(&head[old_rx_desc->pool_id],
+							    &tail[old_rx_desc->pool_id],
+							    old_rx_desc);
+				num_pending -= 1;
+				processed++;
+			}
+			rx_desc->msdu_done_fail = 1;
+			DP_STATS_INC(soc, rx.err.msdu_done_fail, 1);
+			dp_err_rl("MSDU DONE failure %d",
+				  soc->stats.rx.err.msdu_done_fail);
+			dp_rx_msdu_done_fail_event_record(soc, rx_desc,
+							  rx_desc->nbuf);
+			continue;
+		}
+
+		if (!is_prev_msdu_last &&
+		    !(qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf)))
+			is_prev_msdu_last = true;
+
+		DP_RX_PROCESS_NBUF(soc, nbuf_head, nbuf_tail, ebuf_head,
+				   ebuf_tail, rx_desc);
+
+		dp_rx_nbuf_unmap(soc, rx_desc, ring_id);
+
+		dp_rx_add_to_free_desc_list(&head[rx_desc->pool_id],
+					    &tail[rx_desc->pool_id], rx_desc);
+
+		num_pending -= 1;
+		processed++;
+	}
+
+	qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
+
+	dp_rx_per_core_stats_update(soc, ring_id, processed);
+
+	for (mac_id = 0; mac_id < MAX_PDEV_CNT; mac_id++) {
+		if (head[mac_id]) {
+			rx_desc_pool = &soc->rx_desc_buf[mac_id];
+			dp_rx_add_desc_list_to_free_list(soc, &head[mac_id],
+							 &tail[mac_id], mac_id,
+							 rx_desc_pool);
+		}
+	}
+
+	if (global_plat_ops->rx_replenish && processed > 0) {
+		ret = global_plat_ops->rx_replenish(dal_ctx, processed, false);
+		if (qdf_unlikely(ret))
+			dp_err_rl("Platform RX replenish failed, ret: %d", ret);
+	}
+
+	if (nbuf_head) {
+		if (soc->arch_ops.dp_dal_rx_process_nbuf_list) {
+			soc->arch_ops.dp_dal_rx_process_nbuf_list(soc, nbuf_head, ring_id);
+		} else {
+			dp_err_rl("Arch nbuf processing op not available");
+			/* Free the nbuf list if no arch_ops handler */
+			curr_nbuf = nbuf_head;
+			while (curr_nbuf) {
+				next_nbuf = qdf_nbuf_next(curr_nbuf);
+				dp_rx_nbuf_free(curr_nbuf);
+				curr_nbuf = next_nbuf;
+			}
+		}
+	}
+
+	return processed;
 }

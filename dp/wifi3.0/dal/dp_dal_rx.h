@@ -15,10 +15,11 @@
  *
  * @priv: private data
  * @cnt: count
+ * @ring_id: RX ring id
  *
  * Return: false
  */
-bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt);
+bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt, u16 ring_id);
 
 /**
  * dp_dal_rx_replenish_bypass_mode() - Skeleton for platform bus rx replenish
@@ -87,5 +88,20 @@ int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count);
  * Return: None
  */
 void dp_dal_rx_desc_list_cleanup(struct dp_dal_ctx *dal_ctx);
+
+/**
+ * dp_dal_rx_handler() - RX handler for DAL RX rings
+ * @soc: DP SOC context
+ * @ring_id: Ring ID
+ * @dp_budget: NAPI budget
+ *
+ * This function implements the DAL RX handler following the precise steps:
+ * 1. Invoke platform_bus_rx(dal_ctx, &cnt) from NAPI context
+ * 2. Process accumulated rx_desc_list in dal_ctx and form nbuf list
+ * 3. Execute RX replenishment via platform_bus_rx_replenish(dal_ctx, cnt)
+ *
+ * Return: Number of packets processed
+ */
+uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_RX_H */

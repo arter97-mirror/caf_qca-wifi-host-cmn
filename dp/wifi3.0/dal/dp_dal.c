@@ -839,7 +839,7 @@ uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 			if (!(dal_rx_mask & (1 << i)))
 				continue;
 
-			/* call platform_bus_rx() */
+			dp_dal_rx_handler(soc, i, dp_budget);
 		}
 	}
 
