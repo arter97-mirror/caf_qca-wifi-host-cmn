@@ -74,5 +74,18 @@ int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv);
  * Return: 0 on success
  */
 int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count);
+
+/**
+ * dp_dal_rx_desc_list_cleanup() - Cleanup DAL RX descriptor lists
+ * @dal_ctx: DAL context
+ *
+ * This function cleans up any remaining RX descriptors in the DAL RX
+ * descriptor lists during DAL deinit. It properly frees all allocated
+ * dp_dal_rx_desc_node structures and returns RX descriptors to their
+ * respective free lists.
+ *
+ * Return: None
+ */
+void dp_dal_rx_desc_list_cleanup(struct dp_dal_ctx *dal_ctx);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_RX_H */

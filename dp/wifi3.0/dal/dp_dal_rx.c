@@ -278,3 +278,136 @@ QDF_STATUS dp_dal_rx_process_nbuf_list(struct dp_soc *soc,
 	/* TODO: Implement RX processing of the nbuf list */
 	return QDF_STATUS_SUCCESS;
 }
+
+/**
+ * dp_dal_rx_desc_list_cleanup() - Cleanup DAL RX descriptor lists
+ * @dal_ctx: DAL context
+ *
+ * This function cleans up any remaining RX descriptors in the DAL RX
+ * descriptor lists during DAL deinit. It properly frees all allocated
+ * dp_dal_rx_desc_node structures and returns RX descriptors to their
+ * respective free lists.
+ *
+ * Return: None
+ */
+void dp_dal_rx_desc_list_cleanup(struct dp_dal_ctx *dal_ctx)
+{
+	struct dp_dal_rx_desc_node *node, *next_node;
+	struct dp_rx_desc *rx_desc;
+	struct dp_soc *soc;
+	struct rx_desc_pool *rx_desc_pool;
+	union dp_rx_desc_list_elem_t *desc_list_head[MAX_PDEV_CNT] = {NULL};
+	union dp_rx_desc_list_elem_t *desc_list_tail[MAX_PDEV_CNT] = {NULL};
+	int ring_id, mac_id;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC is NULL in DAL context");
+		return;
+	}
+
+	qdf_spin_lock_bh(&dal_ctx->dal_rx_desc_lock);
+
+	/* Cleanup RX descriptor lists for all rings */
+	for (ring_id = 0; ring_id < MAX_REO_DEST_RINGS; ring_id++) {
+		node = dal_ctx->rx_desc_head[ring_id];
+
+		while (node) {
+			next_node = node->next;
+			rx_desc = node->rx_desc;
+
+			if (rx_desc)
+				dp_rx_add_to_free_desc_list(
+					&desc_list_head[rx_desc->pool_id],
+					&desc_list_tail[rx_desc->pool_id],
+					rx_desc);
+
+			qdf_mem_free(node);
+			node = next_node;
+		}
+
+		dal_ctx->rx_desc_head[ring_id] = NULL;
+		dal_ctx->rx_desc_tail[ring_id] = NULL;
+		dal_ctx->rx_desc_count[ring_id] = 0;
+	}
+
+	qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
+
+	/* Return descriptors to their respective free lists */
+	for (mac_id = 0; mac_id < MAX_PDEV_CNT; mac_id++) {
+		if (desc_list_head[mac_id]) {
+			rx_desc_pool = &soc->rx_desc_buf[mac_id];
+			dp_rx_add_desc_list_to_free_list(
+					soc, &desc_list_head[mac_id],
+					&desc_list_tail[mac_id],
+					mac_id, rx_desc_pool);
+		}
+	}
+}
+
+/**
+ * dp_dal_rx_remove_desc_from_head() - Remove rx desc from head of global list
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ *
+ * Function to remove first descriptor from global list.
+ *
+ * Return: Pointer to removed descriptor, NULL if list is empty
+ */
+static inline struct dp_rx_desc *
+dp_dal_rx_remove_desc_from_head(struct dp_dal_ctx *dal_ctx, uint8_t ring_id)
+{
+	struct dp_dal_rx_desc_node *node;
+	struct dp_rx_desc *rx_desc;
+
+	node = dal_ctx->rx_desc_head[ring_id];
+	if (!node)
+		return NULL;
+
+	dal_ctx->rx_desc_head[ring_id] = node->next;
+
+	if (!node->next)
+		dal_ctx->rx_desc_tail[ring_id] = NULL;
+
+	dal_ctx->rx_desc_count[ring_id]--;
+	rx_desc = node->rx_desc;
+	qdf_mem_free(node);
+
+	return rx_desc;
+}
+
+/**
+ * dp_dal_rx_add_desc_to_head() - Add descriptor back to head of global list
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @rx_desc: Descriptor to add back
+ *
+ * Inline function to add descriptor back to head of global list.
+ */
+static inline void
+dp_dal_rx_add_desc_to_head(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
+			   struct dp_rx_desc *rx_desc)
+{
+	struct dp_dal_rx_desc_node *node;
+
+	node = qdf_mem_malloc(sizeof(*node));
+	if (qdf_unlikely(!node)) {
+		dp_err_rl("Failed to allocate DAL RX node for ring %u",
+			  ring_id);
+		return;
+	}
+
+	node->rx_desc = rx_desc;
+	node->next = dal_ctx->rx_desc_head[ring_id];
+
+	dal_ctx->rx_desc_head[ring_id] = node;
+	if (!dal_ctx->rx_desc_tail[ring_id])
+		dal_ctx->rx_desc_tail[ring_id] = node;
+
+	dal_ctx->rx_desc_count[ring_id]++;
+}

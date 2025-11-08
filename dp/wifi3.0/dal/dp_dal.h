@@ -187,6 +187,19 @@ struct dal_intf_info {
 };
 
 /**
+ * struct dp_dal_rx_desc_node - DAL RX descriptor list node
+ * @next: Next pointer for DAL queue
+ * @rx_desc: Pointer to actual RX descriptor
+ *
+ * This structure is used to create a linked list for DAL RX
+ * descriptor queuing.
+ */
+struct dp_dal_rx_desc_node {
+	struct dp_dal_rx_desc_node *next;
+	struct dp_rx_desc *rx_desc;
+};
+
+/**
  * struct dp_dal_ctx - Context structure for DAL simulation
  * @soc: Pointer to DP SoC
  * @rx_ring: Array of HAL SRNG structures for RX rings.
@@ -201,6 +214,10 @@ struct dal_intf_info {
  * @tx_cpl_desc_count: TX completion descriptor counts for each ring
  * @dal_tx_cpl_lock: Spinlock to protect TX completion descriptor
  *		     list operations
+ * @rx_desc_head: RX descriptor node head list for each ring
+ * @rx_desc_tail: RX descriptor node tail list for each ring
+ * @rx_desc_count: RX descriptor counts for each ring
+ * @dal_rx_desc_lock: Spinlock to protect RX descriptor list operations
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -220,6 +237,10 @@ struct dp_dal_ctx {
 	struct dp_tx_desc_s *tx_cpl_desc_tail[MAX_TCL_DATA_RINGS];
 	uint32_t tx_cpl_desc_count[MAX_TCL_DATA_RINGS];
 	qdf_spinlock_t dal_tx_cpl_lock;
+	struct dp_dal_rx_desc_node *rx_desc_head[MAX_REO_DEST_RINGS];
+	struct dp_dal_rx_desc_node *rx_desc_tail[MAX_REO_DEST_RINGS];
+	uint32_t rx_desc_count[MAX_REO_DEST_RINGS];
+	qdf_spinlock_t dal_rx_desc_lock;
 };
 
 /**

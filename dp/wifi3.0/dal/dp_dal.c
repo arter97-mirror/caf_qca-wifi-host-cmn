@@ -195,6 +195,10 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 {
 	if (!soc || !soc->dal_ctx)
 		return;
+
+	dp_dal_rx_desc_list_cleanup(dal_ctx);
+
+	qdf_spinlock_destroy(&soc->dal_ctx->dal_rx_desc_lock);
 	qdf_spinlock_destroy(&soc->dal_ctx->dal_tx_cpl_lock);
 
 	dp_dal_bus_stop(soc);
@@ -361,6 +365,7 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	dal_ctx = soc->dal_ctx;
 
 	qdf_spinlock_create(&dal_ctx->dal_tx_cpl_lock);
+	qdf_spinlock_create(&dal_ctx->dal_rx_desc_lock);
 
 	status = dp_dal_create_ring_to_grp_mapping(soc);
 	if (status != QDF_STATUS_SUCCESS) {
@@ -400,6 +405,7 @@ bus_deinit:
 	dp_info("DAL SOC init failed");
 	dp_dal_bus_exit(soc);
 destroy_lock:
+	qdf_spinlock_destroy(&dal_ctx->dal_rx_desc_lock);
 	qdf_spinlock_destroy(&dal_ctx->dal_tx_cpl_lock);
 	return status;
 }
