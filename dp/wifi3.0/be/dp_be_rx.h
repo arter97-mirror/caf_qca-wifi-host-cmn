@@ -1274,6 +1274,81 @@ dp_get_soc_by_chip_id_be(struct dp_soc *soc, uint8_t chip_id)
 QDF_STATUS dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc,
 					  qdf_nbuf_t nbuf_list,
 					  uint8_t reo_ring_num);
-#endif
 
+#ifdef CONFIG_BORON
+/**
+ * dp_rx_validate_and_fetch_rx_desc_bn() - RX descriptor validation for BN
+ * @soc: DP SOC context
+ * @ring_desc: HAL ring descriptor
+ * @ring_id: Ring ID
+ *
+ * This function performs BN-specific validation and fetches the RX descriptor.
+ * It includes all validation steps from error checking to descriptor sanity
+ * and error handling with descriptor cleanup.
+ *
+ * Return: Pointer to rx_desc on success, NULL on failure
+ */
+struct dp_rx_desc *
+dp_rx_validate_and_fetch_rx_desc_bn(struct dp_soc *soc,
+				    hal_ring_desc_t ring_desc,
+				    uint8_t ring_id);
+
+/**
+ * dp_rx_validate_and_fetch_rx_desc_be_bn() - BN RX descriptor validation API
+ * @soc: DP SOC context
+ * @ring_desc: HAL ring descriptor
+ * @ring_id: Ring ID
+ *
+ * This function performs BN-specific validation and fetches the RX descriptor.
+ * It includes all validation steps from error checking to descriptor sanity
+ * and error handling with descriptor cleanup.
+ *
+ * Return: Pointer to rx_desc on success, NULL on failure
+ */
+static inline struct dp_rx_desc *
+dp_rx_validate_and_fetch_rx_desc_be_bn(struct dp_soc *soc,
+				       hal_ring_desc_t ring_desc,
+				       uint8_t ring_id)
+{
+	return dp_rx_validate_and_fetch_rx_desc_bn(soc, ring_desc, ring_id);
+}
+#else /* Beryllium */
+/**
+ * dp_rx_validate_and_fetch_rx_desc_be() - RX descriptor validation API for BE
+ * @soc: DP SOC context
+ * @ring_desc: HAL ring descriptor
+ * @ring_id: Ring ID
+ *
+ * This function performs BE-specific validation and fetches the RX descriptor.
+ * It includes all validation steps from error checking to descriptor sanity
+ * and error handling with descriptor cleanup.
+ *
+ * Return: Pointer to rx_desc on success, NULL on failure
+ */
+struct dp_rx_desc *
+dp_rx_validate_and_fetch_rx_desc_be(struct dp_soc *soc,
+				    hal_ring_desc_t ring_desc,
+				    uint8_t ring_id);
+
+/**
+ * dp_rx_validate_and_fetch_rx_desc_be_bn() - BE RX descriptor validation API
+ * @soc: DP SOC context
+ * @ring_desc: HAL ring descriptor
+ * @ring_id: Ring ID
+ *
+ * This function performs BE-specific validation and fetches the RX descriptor.
+ * It includes all validation steps from error checking to descriptor sanity
+ * and error handling with descriptor cleanup.
+ *
+ * Return: Pointer to rx_desc on success, NULL on failure
+ */
+static inline struct dp_rx_desc *
+dp_rx_validate_and_fetch_rx_desc_be_bn(struct dp_soc *soc,
+				       hal_ring_desc_t ring_desc,
+				       uint8_t ring_id)
+{
+	return dp_rx_validate_and_fetch_rx_desc_be(soc, ring_desc, ring_id);
+}
+#endif /* CONFIG_BERYLLIUM */
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

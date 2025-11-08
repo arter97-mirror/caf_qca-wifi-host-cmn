@@ -374,6 +374,22 @@ dp_rx_null_q_desc_handle_li(struct dp_soc *soc, qdf_nbuf_t nbuf,
 QDF_STATUS dp_dal_rx_process_nbuf_list_li(struct dp_soc *soc,
 					  qdf_nbuf_t nbuf_list,
 					  uint8_t reo_ring_num);
+/**
+ * dp_rx_validate_and_fetch_rx_desc_li() - LI-specific RX descriptor validation
+ * @soc: DP SOC context
+ * @ring_desc: HAL ring descriptor
+ * @ring_id: Ring ID
+ *
+ * This function performs LI-specific validation and fetches the RX descriptor.
+ * It includes all validation steps from error checking to descriptor sanity
+ * and error handling with descriptor cleanup.
+ *
+ * Return: Pointer to rx_desc on success, NULL on failure
+ */
+struct dp_rx_desc *
+dp_rx_validate_and_fetch_rx_desc_li(struct dp_soc *soc,
+				    hal_ring_desc_t ring_desc,
+				    uint8_t ring_id)
 #endif /* FEATURE_DAL_DP_SUPPORT */
 
 #endif

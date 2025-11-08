@@ -4160,6 +4160,8 @@ void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_be;
 	arch_ops->dp_tx_hw_desc_sync = dp_tx_hw_desc_sync_be_bn;
 	arch_ops->dp_dal_rx_process_nbuf_list = dp_dal_rx_process_nbuf_list_be;
+	arch_ops->dp_rx_validate_and_fetch_rx_desc =
+					dp_rx_validate_and_fetch_rx_desc_be_bn;
 }
 #else
 static inline

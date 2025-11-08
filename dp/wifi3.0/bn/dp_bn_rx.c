@@ -1332,3 +1332,105 @@ next_entry:
 
 	return rx_bufs_used; /* Assume no scale factor for now */
 }
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_rx_validate_and_fetch_rx_desc_bn() - BN-specific RX descriptor validation
+ * @soc: DP SOC context
+ * @ring_desc: HAL ring descriptor
+ * @ring_id: Ring ID
+ *
+ * This function performs BN-specific validation and fetches the RX descriptor.
+ * It includes all validation steps from error checking to descriptor sanity
+ * and error handling with descriptor cleanup.
+ *
+ * Return: Pointer to rx_desc on success, NULL on failure
+ */
+struct dp_rx_desc *
+dp_rx_validate_and_fetch_rx_desc_bn(struct dp_soc *soc,
+				    hal_ring_desc_t ring_desc,
+				    uint8_t ring_id)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	struct dp_rx_desc *rx_desc = NULL;
+	uint32_t rx_buf_cookie;
+	QDF_STATUS status;
+	enum hal_reo_error_status error;
+	uint8_t buf_type;
+	uint8_t cc_status;
+	union dp_rx_desc_list_elem_t *head = NULL;
+	union dp_rx_desc_list_elem_t *tail = NULL;
+	struct rx_desc_pool *rx_desc_pool;
+	uint8_t is_ctrl_refill = 0;
+
+	error = HAL_RX_ERROR_STATUS_GET(ring_desc);
+	if (qdf_unlikely(error == HAL_REO_ERROR_DETECTED)) {
+		dp_rx_err("%pK: HAL RING 0x%pK:error %d", soc,
+			  ring_desc, error);
+		DP_STATS_INC(soc, rx.err.hal_reo_error[0], 1);
+		qdf_assert(0);
+		return NULL;
+	}
+
+	buf_type = hal_rx_reo_buf_type_get(hal_soc, ring_desc);
+	if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_BUF_ADDR_TYPE)) {
+		DP_STATS_INC(soc, rx.err.reo_err_msdu_buf_rcved, 1);
+		dp_rx_err("msdu with wrong buffer type received!!!");
+		qdf_assert(0);
+		return NULL;
+	}
+
+	cc_status = HAL_RX_REO_CC_STATUS_GET_BN(ring_desc);
+	if (qdf_likely(cc_status)) {
+		rx_desc = (struct dp_rx_desc *)hal_rx_get_reo_desc_va(ring_desc);
+	} else {
+		rx_desc = NULL;
+		rx_buf_cookie = HAL_RX_BUF_COOKIE_GET(ring_desc);
+		dp_rx_desc_sw_cc_check(soc, rx_buf_cookie, &rx_desc);
+	}
+
+	dp_rx_ring_record_entry(soc, ring_id, ring_desc);
+
+	status = dp_rx_desc_sanity(soc, hal_soc,
+				   soc->reo_dest_ring[ring_id].hal_srng,
+				   ring_desc, rx_desc);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		if (qdf_unlikely(rx_desc && rx_desc->nbuf)) {
+			qdf_assert_always(!rx_desc->unmapped);
+			dp_rx_nbuf_unmap(soc, rx_desc, ring_id);
+			dp_rx_buffer_pool_nbuf_free(soc, rx_desc->nbuf,
+						    rx_desc->pool_id);
+			goto err_free_desc;
+		}
+		qdf_assert(0);
+		return NULL;
+	}
+
+	if (qdf_unlikely(!rx_desc->in_use)) {
+		DP_STATS_INC(soc, rx.err.hal_reo_dest_dup, 1);
+		dp_info_rl("Reaping rx_desc not in use!");
+		dp_rx_dump_info_and_assert(soc, NULL, ring_desc, rx_desc);
+		goto err_free_desc;
+	}
+
+	if (qdf_unlikely(!dp_rx_desc_check_magic(rx_desc))) {
+		DP_STATS_INC(soc, rx.err.rx_desc_invalid_magic, 1);
+		dp_rx_dump_info_and_assert(soc, NULL, ring_desc, rx_desc);
+		goto err_free_desc;
+	}
+
+	dp_rx_copy_desc_info_in_nbuf_cb(soc, ring_desc,
+					rx_desc->nbuf,
+					ring_id,
+					&is_ctrl_refill);
+
+	return rx_desc;
+
+err_free_desc:
+	dp_rx_add_to_free_desc_list(&head, &tail, rx_desc);
+	rx_desc_pool = &soc->rx_desc_buf[rx_desc->pool_id];
+	dp_rx_add_desc_list_to_free_list(soc, &head, &tail,
+					 rx_desc->pool_id, rx_desc_pool);
+	return NULL;
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
