@@ -1684,3 +1684,21 @@ void dp_rx_desc_pool_deinit_rh(struct dp_soc *soc,
 			       uint32_t pool_id)
 {
 }
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_dal_rx_process_nbuf_list_rh() - Dummy implementation for RH
+ * @soc: DP SOC handle
+ * @nbuf_list: Network buffer list
+ * @reo_ring_num: REO ring number
+ *
+ * Return: QDF_STATUS_E_NOSUPPORT (dummy implementation)
+ */
+QDF_STATUS dp_dal_rx_process_nbuf_list_rh(struct dp_soc *soc,
+					  qdf_nbuf_t nbuf_list,
+					  uint8_t reo_ring_num)
+{
+	/* Dummy implementation for RH architecture */
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */

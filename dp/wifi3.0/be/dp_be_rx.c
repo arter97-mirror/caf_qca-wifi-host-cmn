@@ -2825,3 +2825,325 @@ drop_nbuf:
 	dp_rx_nbuf_free(nbuf);
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_dal_rx_process_nbuf_list_be - Process a list of qdf_nbufs for RX path.
+ * @soc: DP SOC context.
+ * @nbuf_list: Head of the qdf_nbuf list to be processed.
+ * @reo_ring_num: REO ring number for statistics and flushing.
+ *
+ * This is the main RX processing loop for DAL for BE arch. It handles packet
+ * validation, protocol processing, statistics updates, delivery to the
+ * network stack, and performs vdev flushing.
+ *
+ * Return: %QDF_STATUS_SUCCESS on success, or an appropriate error code.
+ */
+QDF_STATUS
+dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
+			       uint8_t reo_ring_num)
+{
+	qdf_nbuf_t nbuf = nbuf_list;
+	qdf_nbuf_t next;
+	uint8_t *rx_tlv_hdr;
+	uint16_t peer_id;
+	uint8_t vdev_id;
+	struct dp_vdev *vdev = NULL;
+	struct dp_txrx_peer *txrx_peer = NULL;
+	dp_txrx_ref_handle txrx_ref_handle = NULL;
+	int32_t tid = 0;
+	uint16_t msdu_len;
+	uint32_t pkt_len;
+	uint32_t l3_pad;
+	qdf_nbuf_t deliver_list_head = NULL;
+	qdf_nbuf_t deliver_list_tail = NULL;
+	uint8_t pkt_capture_offload = 0;
+	struct dp_pdev *rx_pdev = NULL;
+	uint32_t dsf = 0;
+	uint32_t old_tid = 0xff;
+	uint8_t enh_flag = 0;
+	uint8_t link_id = 0;
+	struct cdp_tid_rx_stats *tid_stats = NULL;
+	uint64_t current_time = 0;
+	uint32_t rx_ol_pkt_cnt = 0;
+	uint8_t rx_pkt_vdev_map = 0;
+	uint32_t peer_ext_stats;
+
+	if (qdf_unlikely(!soc || !nbuf_list))
+		return QDF_STATUS_E_INVAL;
+
+	peer_ext_stats = wlan_cfg_is_peer_ext_stats_enabled(soc->wlan_cfg_ctx);
+	dp_pkt_get_timestamp(&current_time);
+
+	/* Process each nbuf in the list using complete third-loop logic */
+	while (nbuf) {
+		next = qdf_nbuf_next(nbuf);
+
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
+			nbuf = next;
+			dp_verbose_debug("drop raw frame");
+			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
+			continue;
+		}
+
+		rx_tlv_hdr = qdf_nbuf_data(nbuf);
+		vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
+		peer_id = dp_rx_get_peer_id_be(nbuf);
+		dp_rx_set_mpdu_seq_number_be(nbuf, rx_tlv_hdr);
+
+		if (dp_rx_is_list_ready(deliver_list_head, vdev, txrx_peer,
+					peer_id, vdev_id)) {
+			dp_rx_deliver_to_stack(soc, vdev, txrx_peer,
+					       deliver_list_head,
+					       deliver_list_tail);
+			deliver_list_head = NULL;
+			deliver_list_tail = NULL;
+		}
+
+		/* Get TID from struct cb->tid_val */
+		tid = qdf_nbuf_get_tid_val(nbuf);
+		if (qdf_unlikely(tid >= CDP_MAX_DATA_TIDS)) {
+			DP_STATS_INC(soc, rx.err.rx_invalid_tid_err, 1);
+			dp_verbose_debug("drop invalid tid");
+			dp_rx_nbuf_free(nbuf);
+			nbuf = next;
+			continue;
+		}
+
+		/* Get peer and vdev context */
+		if (qdf_unlikely(!txrx_peer)) {
+			txrx_peer = dp_rx_get_txrx_peer_and_vdev(soc, nbuf,
+								 peer_id,
+								 &txrx_ref_handle,
+								 pkt_capture_offload,
+								 &vdev,
+								 &rx_pdev, &dsf,
+								 &old_tid);
+			if (qdf_unlikely(!txrx_peer) || qdf_unlikely(!vdev)) {
+				dp_verbose_debug("drop no peer frame");
+				nbuf = next;
+				continue;
+			}
+			enh_flag = rx_pdev->enhanced_stats_en;
+		} else if (txrx_peer && txrx_peer->peer_id != peer_id) {
+			dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX);
+
+			txrx_peer = dp_rx_get_txrx_peer_and_vdev(soc, nbuf,
+								 peer_id,
+								 &txrx_ref_handle,
+								 pkt_capture_offload,
+								 &vdev,
+								 &rx_pdev, &dsf,
+								 &old_tid);
+			if (qdf_unlikely(!txrx_peer) || qdf_unlikely(!vdev)) {
+				dp_verbose_debug("drop by unmatch peer_id");
+				nbuf = next;
+				continue;
+			}
+			enh_flag = rx_pdev->enhanced_stats_en;
+		}
+
+		/* Save vdev_ids for flushing */
+		rx_pkt_vdev_map |= BIT(vdev->vdev_id);
+
+		if (txrx_peer) {
+			QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) = false;
+			qdf_dp_trace_set_track(nbuf, QDF_RX);
+			QDF_NBUF_CB_RX_DP_TRACE(nbuf) = 1;
+			QDF_NBUF_CB_RX_PACKET_TRACK(nbuf) =
+				QDF_NBUF_RX_PKT_DATA_TRACK;
+		}
+
+		/* MLD Link Peer Statistics support */
+		if (txrx_peer->is_mld_peer && rx_pdev->link_peer_stats) {
+			link_id = dp_rx_get_stats_arr_idx_from_link_id(nbuf,
+								       txrx_peer);
+		} else {
+			link_id = 0;
+		}
+
+		dp_rx_set_nbuf_band(nbuf, txrx_peer, link_id);
+
+		/* when hlos tid override is enabled,
+		 * save tid in skb->priority.
+		 */
+		if (qdf_unlikely(vdev->skip_sw_tid_classification &
+				 DP_TXRX_HLOS_TID_OVERRIDE_ENABLED))
+			qdf_nbuf_set_priority(nbuf, tid);
+
+		DP_RX_TID_SAVE(nbuf, tid);
+		if (qdf_unlikely(dsf) || qdf_unlikely(peer_ext_stats) ||
+		    dp_rx_pkt_tracepoints_enabled())
+			qdf_nbuf_set_timestamp(nbuf);
+
+		if (qdf_likely(old_tid != tid)) {
+			tid_stats = &rx_pdev->stats.tid_stats.tid_rx_stats[reo_ring_num][tid];
+			old_tid = tid;
+		}
+
+		/* Check if DMA completed -- msdu_done is the last
+		 * bit to be written.
+		 */
+		if (qdf_unlikely(!qdf_nbuf_is_rx_chfrag_cont(nbuf) &&
+				 !hal_rx_tlv_msdu_done_get_be(rx_tlv_hdr))) {
+			DP_STATS_INC(soc, rx.err.msdu_done_fail, 1);
+			dp_err("MSDU DONE failure %d", soc->stats.rx.err.msdu_done_fail);
+			hal_rx_dump_pkt_tlvs(soc->hal_soc, rx_tlv_hdr,
+					     QDF_TRACE_LEVEL_INFO);
+			tid_stats->fail_cnt[MSDU_DONE_FAILURE]++;
+			dp_rx_nbuf_free(nbuf);
+			qdf_assert(0);
+			nbuf = next;
+			continue;
+		}
+
+		/* Process packet length and TLV headers */
+		if (qdf_unlikely(qdf_nbuf_is_frag(nbuf))) {
+			bool is_mcbc, is_sa_vld, is_da_vld;
+
+			is_mcbc = hal_rx_msdu_end_da_is_mcbc_get(soc->hal_soc,
+								 rx_tlv_hdr);
+			is_sa_vld =
+				hal_rx_msdu_end_sa_is_valid_get(soc->hal_soc,
+								rx_tlv_hdr);
+			is_da_vld =
+				hal_rx_msdu_end_da_is_valid_get(soc->hal_soc,
+								rx_tlv_hdr);
+			qdf_nbuf_set_da_mcbc(nbuf, is_mcbc);
+			qdf_nbuf_set_da_valid(nbuf, is_da_vld);
+			qdf_nbuf_set_sa_valid(nbuf, is_sa_vld);
+
+			qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
+		} else if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
+			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
+			nbuf = dp_rx_sg_create(soc, nbuf);
+			next = qdf_nbuf_next(nbuf);
+
+			if (qdf_nbuf_is_raw_frame(nbuf)) {
+				DP_STATS_INC(vdev->pdev, rx_raw_pkts, 1);
+				DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer,
+							      rx.raw, 1,
+							      msdu_len,
+							      link_id);
+			} else {
+				DP_STATS_INC(soc, rx.err.scatter_msdu, 1);
+
+				if (!dp_rx_is_sg_supported()) {
+					dp_rx_nbuf_free(nbuf);
+					dp_info_rl("sg msdu len %d, dropped", msdu_len);
+					nbuf = next;
+					continue;
+				}
+			}
+		} else {
+			l3_pad = hal_rx_get_l3_pad_bytes_be(nbuf, rx_tlv_hdr);
+			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
+			pkt_len = msdu_len + l3_pad + soc->rx_pkt_tlv_size;
+
+			qdf_nbuf_set_pktlen(nbuf, pkt_len);
+			dp_rx_skip_tlvs(soc, nbuf, l3_pad);
+		}
+
+		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
+
+		/* Drop non-EAPOL frames from unauthorized peer */
+		if (qdf_likely(txrx_peer) &&
+		    qdf_unlikely(!txrx_peer->authorize) &&
+		    !qdf_nbuf_is_raw_frame(nbuf)) {
+			bool is_eapol = qdf_nbuf_is_ipv4_eapol_pkt(nbuf) ||
+					qdf_nbuf_is_ipv4_wapi_pkt(nbuf);
+
+			if (!is_eapol) {
+				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+							  rx.peer_unauth_rx_pkt_drop,
+							  1, link_id);
+				dp_verbose_debug("drop by unauthorized peer");
+				dp_rx_nbuf_free(nbuf);
+				nbuf = next;
+				continue;
+			}
+		}
+
+		/* Apply checksum offload and update flow info */
+		dp_rx_cksum_offload(vdev->pdev, nbuf, rx_tlv_hdr);
+
+		if (qdf_unlikely(!rx_pdev->rx_fast_flag)) {
+			/* process frame for multipass phrase processing */
+			if (qdf_unlikely(vdev->multipass_en)) {
+				if (dp_rx_multipass_process(txrx_peer, nbuf,
+							    tid) == false) {
+					DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+								  rx.multipass_rx_pkt_drop,
+								  1, link_id);
+					dp_verbose_debug("drop multi pass");
+					dp_rx_nbuf_free(nbuf);
+					nbuf = next;
+					continue;
+				}
+			}
+		}
+
+		dp_rx_msdu_stats_update(soc, nbuf, rx_tlv_hdr, txrx_peer,
+					reo_ring_num, tid_stats, link_id);
+
+		if (qdf_likely(vdev->rx_decap_type ==
+			       htt_cmn_pkt_type_ethernet)) {
+			/* Intrabss-fwd */
+			if (dp_rx_check_ap_bridge(vdev))
+				if (dp_rx_intrabss_fwd_be(soc, txrx_peer,
+							  rx_tlv_hdr, nbuf,
+							  link_id)) {
+					nbuf = next;
+					tid_stats->intrabss_cnt++;
+					continue; /* Get next desc */
+				}
+		}
+
+		dp_rx_fill_gro_info(soc, rx_tlv_hdr, nbuf, &rx_ol_pkt_cnt);
+
+		dp_rx_mark_first_packet_after_wow_wakeup(vdev->pdev,
+							 rx_tlv_hdr, nbuf);
+
+		dp_rx_update_stats(soc, nbuf);
+
+		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
+				     current_time, nbuf);
+
+		/* Add to delivery list */
+		DP_RX_LIST_APPEND(deliver_list_head, deliver_list_tail, nbuf);
+
+		DP_PEER_TO_STACK_INCC_PKT(txrx_peer, 1,
+					  QDF_NBUF_CB_RX_PKT_LEN(nbuf),
+					  enh_flag);
+		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.rx_success, 1,
+					      QDF_NBUF_CB_RX_PKT_LEN(nbuf),
+					      link_id);
+
+		if (qdf_unlikely(txrx_peer->in_twt))
+			DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer,
+						      rx.to_stack_twt, 1,
+						      QDF_NBUF_CB_RX_PKT_LEN(nbuf),
+						      link_id);
+
+		tid_stats->delivered_to_stack++;
+
+		nbuf = next;
+	}
+
+	/* Final delivery to stack */
+	DP_RX_DELIVER_TO_STACK(soc, vdev, txrx_peer, 0,
+			       pkt_capture_offload,
+			       deliver_list_head,
+			       deliver_list_tail);
+
+	if (rx_pkt_vdev_map)
+		dp_rx_vdev_flush(soc, rx_pkt_vdev_map, reo_ring_num,
+				 rx_ol_pkt_cnt);
+
+	/* Clean up peer reference */
+	if (qdf_likely(txrx_peer))
+		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */

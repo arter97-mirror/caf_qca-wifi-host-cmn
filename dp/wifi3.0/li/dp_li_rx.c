@@ -1640,3 +1640,21 @@ drop_nbuf:
 	dp_rx_nbuf_free(nbuf);
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_dal_rx_process_nbuf_list_li() - Dummy implementation for LI
+ * @soc: DP SOC handle
+ * @nbuf_list: Network buffer list
+ * @reo_ring_num: REO ring number
+ *
+ * Return: QDF_STATUS_E_NOSUPPORT (dummy implementation)
+ */
+QDF_STATUS dp_dal_rx_process_nbuf_list_li(struct dp_soc *soc,
+					  qdf_nbuf_t nbuf_list,
+					  uint8_t reo_ring_num)
+{
+	/* Dummy implementation for LI architecture */
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */

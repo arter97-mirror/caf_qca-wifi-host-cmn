@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -355,4 +355,25 @@ dp_rx_null_q_desc_handle_li(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			    struct dp_txrx_peer *txrx_peer,
 			    bool is_reo_exception,
 			    uint8_t link_id);
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_dal_rx_process_nbuf_list_li() - Process network buffer list in DAL RX
+ *				       path for LI architecture
+ * @soc: Handle to DP SoC structure
+ * @nbuf_list: Linked list of network buffers to process
+ * @reo_ring_num: REO ring number (0-3) from which packets are received
+ *
+ * This function processes a list of network buffers in the Data Abstraction
+ * Layer (DAL) RX path. It handles the RX processing for packets that have
+ * been prepared with descriptor information in their control blocks. This
+ * is the LI architecture specific implementation.
+ *
+ * Return: QDF_STATUS - QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS dp_dal_rx_process_nbuf_list_li(struct dp_soc *soc,
+					  qdf_nbuf_t nbuf_list,
+					  uint8_t reo_ring_num);
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 #endif

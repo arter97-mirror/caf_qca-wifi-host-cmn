@@ -2813,6 +2813,7 @@ enum dp_context_type {
  * @dp_tx_override_flow_pool_id: flow pool id override
  * @dp_tx_gen_hw_desc: Function pointer for generating hw descriptor (DP DAL)
  * @dp_tx_hw_desc_sync: Function for syncing cached desc to HW desc (DP DAL)
+ * @dp_dal_rx_process_nbuf_list: Function for RX NBUF list processing (DP DAL)
  */
 struct dp_arch_ops {
 	/* INIT/DEINIT Arch Ops */
@@ -3132,6 +3133,9 @@ struct dp_arch_ops {
 					void *tcl_desc);
 	void (*dp_tx_hw_desc_sync)(void *hal_tx_desc_cached, void *hw_desc,
 				   uint8_t num_bytes);
+	QDF_STATUS (*dp_dal_rx_process_nbuf_list)(struct dp_soc *soc,
+						  qdf_nbuf_t nbuf_list,
+						  uint8_t reo_ring_num);
 #endif
 };
 
