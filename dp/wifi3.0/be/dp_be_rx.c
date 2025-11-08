@@ -144,37 +144,6 @@ dp_rx_update_flow_info(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
 }
 #endif
 
-#ifdef DP_RX_MSDU_DONE_FAIL_HISTORY
-static inline void
-dp_rx_msdu_done_fail_event_record(struct dp_soc *soc,
-				  struct dp_rx_desc *rx_desc,
-				  qdf_nbuf_t nbuf)
-{
-	struct dp_msdu_done_fail_entry *entry;
-	uint32_t idx;
-
-	if (qdf_unlikely(!soc->msdu_done_fail_hist))
-		return;
-
-	idx = dp_history_get_next_index(&soc->msdu_done_fail_hist->index,
-					DP_MSDU_DONE_FAIL_HIST_MAX);
-	entry = &soc->msdu_done_fail_hist->entry[idx];
-	entry->paddr = qdf_nbuf_get_frag_paddr(nbuf, 0);
-
-	if (rx_desc)
-		entry->sw_cookie = rx_desc->cookie;
-	else
-		entry->sw_cookie = 0xDEAD;
-}
-#else
-static inline void
-dp_rx_msdu_done_fail_event_record(struct dp_soc *soc,
-				  struct dp_rx_desc *rx_desc,
-				  qdf_nbuf_t nbuf)
-{
-}
-#endif
-
 #ifdef AST_OFFLOAD_ENABLE
 #ifdef QCA_SUPPORT_WDS_EXTENDED
 /**
@@ -255,84 +224,6 @@ dp_rx_wds_learn(struct dp_soc *soc,
 	dp_wds_ext_peer_learn_be(soc, ta_txrx_peer, rx_tlv_hdr, nbuf);
 }
 #endif /* AST_OFFLOAD_ENABLE */
-
-#ifdef DP_RX_PEEK_MSDU_DONE_WAR
-static inline int dp_rx_war_peek_msdu_done(struct dp_soc *soc,
-					   struct dp_rx_desc *rx_desc)
-{
-	uint8_t *rx_tlv_hdr;
-
-	qdf_nbuf_sync_for_cpu(soc->osdev, rx_desc->nbuf, QDF_DMA_FROM_DEVICE);
-	rx_tlv_hdr = qdf_nbuf_data(rx_desc->nbuf);
-
-	return hal_rx_tlv_msdu_done_get_be(rx_tlv_hdr);
-}
-
-/**
- * dp_rx_delink_n_rel_rx_desc() - unmap & free the nbuf in the rx_desc
- * @soc: DP SoC handle
- * @rx_desc: rx_desc handle of the nbuf to be unmapped & freed
- * @reo_ring_num: REO_RING_NUM corresponding to the REO for which the
- *		  bottom half is being serviced.
- *
- * Return: None
- */
-static inline void
-dp_rx_delink_n_rel_rx_desc(struct dp_soc *soc, struct dp_rx_desc *rx_desc,
-			   uint8_t reo_ring_num)
-{
-	if (!rx_desc)
-		return;
-
-	dp_rx_nbuf_unmap(soc, rx_desc, reo_ring_num);
-	dp_rx_nbuf_free(rx_desc->nbuf);
-	/*
-	 * RX_DESC flags:
-	 * in_use = 0 will be set when this rx_desc is added to local freelist
-	 * unmapped = 1 will be set by dp_rx_nbuf_unmap
-	 * in_err_state = 0 will be set during replenish
-	 * has_reuse_nbuf need not be touched.
-	 * msdu_done_fail = 0 should be set here ..!!
-	 */
-	rx_desc->msdu_done_fail = 0;
-}
-
-static inline struct dp_rx_desc *
-dp_rx_war_store_msdu_done_fail_desc(struct dp_soc *soc,
-				    struct dp_rx_desc *rx_desc,
-				    uint8_t reo_ring_num)
-{
-	struct dp_rx_msdu_done_fail_desc_list *msdu_done_fail_desc_list =
-						&soc->msdu_done_fail_desc_list;
-	struct dp_rx_desc *old_rx_desc;
-	uint32_t idx;
-
-	idx = dp_get_next_index(&msdu_done_fail_desc_list->index,
-				DP_MSDU_DONE_FAIL_DESCS_MAX);
-
-	old_rx_desc = msdu_done_fail_desc_list->msdu_done_fail_descs[idx];
-	dp_rx_delink_n_rel_rx_desc(soc, old_rx_desc, reo_ring_num);
-
-	msdu_done_fail_desc_list->msdu_done_fail_descs[idx] = rx_desc;
-
-	return old_rx_desc;
-}
-
-#else
-static inline int dp_rx_war_peek_msdu_done(struct dp_soc *soc,
-					   struct dp_rx_desc *rx_desc)
-{
-	return 1;
-}
-
-static inline struct dp_rx_desc *
-dp_rx_war_store_msdu_done_fail_desc(struct dp_soc *soc,
-				    struct dp_rx_desc *rx_desc,
-				    uint8_t reo_ring_num)
-{
-	return NULL;
-}
-#endif
 
 #ifdef QCA_DP_PROTOCOL_STATS
 static inline void
