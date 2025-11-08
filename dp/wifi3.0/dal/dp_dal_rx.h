@@ -90,6 +90,20 @@ int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count);
 void dp_dal_rx_desc_list_cleanup(struct dp_dal_ctx *dal_ctx);
 
 /**
+ * dp_dal_rx_desc_cb() - vendor callback for RX descriptor processing
+ * @priv: DAL context (dal_ctx)
+ * @desc: RX descriptor
+ * @ring_id: Ring ID for proper parameter passing
+ *
+ * This callback processes RX descriptors with complete validation
+ * checks from dp_rx_process_be/bn() first reap loop, and enqueues valid rx_desc
+ * into the global rx_desc list in dal_ctx after all validations.
+ *
+ * Return: 0 for successful processing
+ */
+int dp_dal_rx_desc_cb(void *priv, void *desc, u16 ring_id);
+
+/**
  * dp_dal_rx_handler() - RX handler for DAL RX rings
  * @soc: DP SOC context
  * @ring_id: Ring ID

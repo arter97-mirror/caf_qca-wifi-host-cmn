@@ -90,7 +90,7 @@ struct platform_bus_ops {
  */
 struct vendor_cb_ops {
 	int (*rx_isr_cb)(int ring_num, void *priv);
-	int (*rx_cpl_cb)(void *priv, void *desc);
+	int (*rx_cpl_cb)(void *priv, void *desc, u16 ring_id);
 	int (*rx_replenish_alloc_cb)(void *priv, u16 count);
 	int (*tx_cpl_cb)(void *priv, void *desc, u16 ring_id);
 	int (*tx_isr_cb)(int rint_num, void *priv);

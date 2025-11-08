@@ -266,21 +266,96 @@ int dp_dal_rx_rxbm_sync_bypass_mode(void *priv, u32 cnt, void **rxbm)
 }
 
 /**
- * dp_dal_rx_process_nbuf_list - Process a list of qdf_nbufs for RX path.
- * @soc: DP SOC context.
- * @nbuf_list: Head of the qdf_nbuf list to be processed.
+ * dp_dal_rx_add_desc_to_tail() - Add descriptor to tail of global list
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @rx_desc: Descriptor to add to tail
  *
- * This is a placeholder (skeleton) implementation that iterates over the
- * provided nbuf list. The actual processing logic should be added by the
- * driver developer.
- *
- * Return: %QDF_STATUS_SUCCESS on success, or an appropriate error code.
+ * Inline function to add descriptor to tail of global list.
+ * This is used by the rx vendor cb to enqueue new descriptors.
  */
-QDF_STATUS dp_dal_rx_process_nbuf_list(struct dp_soc *soc,
-				       qdf_nbuf_t nbuf_list)
+static inline int
+dp_dal_rx_add_desc_to_tail(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
+			   struct dp_rx_desc *rx_desc)
 {
-	/* TODO: Implement RX processing of the nbuf list */
-	return QDF_STATUS_SUCCESS;
+	struct dp_dal_rx_desc_node *node;
+
+	node = qdf_mem_malloc(sizeof(*node));
+	if (qdf_unlikely(!node)) {
+		dp_err_rl("Failed to allocate DAL RX node for ring %u",
+			  ring_id);
+		return -ENOMEM;
+	}
+
+	node->rx_desc = rx_desc;
+	node->next = NULL;
+
+	if (!dal_ctx->rx_desc_head[ring_id]) {
+		dal_ctx->rx_desc_head[ring_id] = node;
+		dal_ctx->rx_desc_tail[ring_id] = node;
+	} else {
+		dal_ctx->rx_desc_tail[ring_id]->next = node;
+		dal_ctx->rx_desc_tail[ring_id] = node;
+	}
+
+	dal_ctx->rx_desc_count[ring_id]++;
+
+	return 0;
+}
+
+/**
+ * dp_dal_rx_desc_cb() - Vendor callback for RX descriptor processing
+ * @priv: DAL context (dal_ctx)
+ * @desc: RX descriptor
+ * @ring_id: Ring ID for proper parameter passing
+ *
+ * This callback processes RX descriptors and enqueues valid rx_desc
+ * into the global rx_desc list in dal_ctx after all validations.
+ *
+ * Return: 0 for successful processing
+ */
+int dp_dal_rx_desc_cb(void *priv, void *desc, u16 ring_id)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	hal_ring_desc_t ring_desc = (hal_ring_desc_t)desc;
+	struct dp_rx_desc *rx_desc = NULL;
+
+	if (qdf_unlikely(!dal_ctx)) {
+		dp_err("DAL context is NULL");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (qdf_unlikely(!soc)) {
+		dp_err("SOC is NULL");
+		return -EINVAL;
+	}
+
+	if (qdf_unlikely(!ring_desc)) {
+		dp_err("RX descriptor is NULL");
+		return -EINVAL;
+	}
+
+	if (qdf_unlikely(ring_id >= MAX_REO_DEST_RINGS)) {
+		dp_err("Invalid ring_id %u, max allowed %u", ring_id,
+		       MAX_REO_DEST_RINGS);
+		return -EINVAL;
+	}
+
+	rx_desc = soc->arch_ops.dp_rx_validate_and_fetch_rx_desc(soc, ring_desc,
+								 ring_id);
+	if (!rx_desc)
+		return -EINVAL;
+
+	qdf_spin_lock_bh(&dal_ctx->dal_rx_desc_lock);
+	if (dp_dal_rx_add_desc_to_tail(dal_ctx, ring_id, rx_desc)) {
+		qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
+		return -ENOMEM;
+	}
+	qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
+
+	return 0;
 }
 
 /**
