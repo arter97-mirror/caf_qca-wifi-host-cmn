@@ -39,6 +39,9 @@
 #endif
 #include "dp_hist.h"
 #include "dp_rx_buffer_pool.h"
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dp_dal_rx.h"
+#endif
 
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
 #include "hal_rx_flow.h"
@@ -3031,6 +3034,16 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 				if (!dp_rx_is_sg_supported()) {
 					dp_rx_nbuf_free(nbuf);
 					dp_info_rl("sg msdu len %d, dropped", msdu_len);
+					nbuf = next;
+					continue;
+				}
+
+				/* Try to reinject SG packet via DAL API */
+				if (dp_dal_rx_pkt_reinject(nbuf)) {
+					/* DAL consumed the packet, free it and
+					 * move to next.
+					 */
+					dp_rx_nbuf_free(nbuf);
 					nbuf = next;
 					continue;
 				}
