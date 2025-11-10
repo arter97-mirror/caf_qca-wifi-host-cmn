@@ -1733,3 +1733,72 @@ QDF_STATUS hif_unregister_umac_reset_handler(struct hif_opaque_softc *hif_scn)
 
 qdf_export_symbol(hif_unregister_umac_reset_handler);
 #endif
+
+#ifdef FEATURE_NAPI
+/**
+ * hif_exec_set_threaded_napi() - Enable/disable threaded NAPI for a group
+ * @hif_ctx: HIF context
+ * @grp_id: Group ID
+ * @enable: true to enable threaded NAPI, false to disable
+ *
+ * This function enables or disables threaded NAPI for the specified
+ * execution group if it's of NAPI type.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS hif_exec_set_threaded_napi(struct hif_opaque_softc *hif_ctx,
+				      uint8_t grp_id, bool enable)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	struct hif_exec_context *hif_ext_group;
+	struct hif_napi_exec_context *napi_ctx;
+	struct net_device *netdev;
+
+	if (!hif_ctx) {
+		hif_err("Invalid HIF context");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (grp_id >= hif_state->hif_num_extgroup) {
+		hif_err("Invalid group ID %d, max groups: %d",
+			grp_id, hif_state->hif_num_extgroup);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	hif_ext_group = hif_state->hif_ext_group[grp_id];
+	if (!hif_ext_group) {
+		hif_err("Group %d not found", grp_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* Check if this is a NAPI execution context */
+	if (hif_ext_group->type != HIF_EXEC_NAPI_TYPE) {
+		hif_debug("Group %d is not NAPI type, skipping", grp_id);
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	/* Get the NAPI context */
+	napi_ctx = hif_exec_get_napi(hif_ext_group);
+	if (!napi_ctx) {
+		hif_err("Failed to get NAPI context for group %d", grp_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* Get the netdev using existing helper function */
+	netdev = qdf_napi_get_dummy_nd_ptr(napi_ctx);
+	if (!netdev) {
+		hif_err("Invalid netdev for group %d", grp_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* Enable/disable threaded NAPI */
+	dev_set_threaded(netdev, enable);
+	hif_info("%s threaded NAPI for group %d",
+		 enable ? "Enabled" : "Disabled", grp_id);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+qdf_export_symbol(hif_exec_set_threaded_napi);
+#endif /* FEATURE_NAPI */

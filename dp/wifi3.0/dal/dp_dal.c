@@ -351,6 +351,60 @@ static int dp_dal_attach_rx_buffers(struct dp_soc *soc)
 }
 
 /**
+ * dp_dal_enable_threaded_napi() - Enable threaded NAPI for DAL rings
+ * @dal_ctx: DAL context pointer
+ *
+ * This function enables threaded NAPI for all DAL RX and TX completion rings.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static QDF_STATUS dp_dal_enable_threaded_napi(struct dp_dal_ctx *dal_ctx)
+{
+	int i;
+	QDF_STATUS status;
+
+	if (!dal_ctx || !dal_ctx->soc) {
+		dp_err("Invalid DAL context or SoC");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Enable threaded NAPI for all DAL RX rings */
+	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
+		if (!dal_ctx->rx_ring[i].initialized)
+			continue;
+
+		status = hif_exec_set_threaded_napi(dal_ctx->soc->hif_handle,
+						    dal_ctx->rx_ring[i].grp_id,
+						    true);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			dp_err("Failed to enable threaded NAPI for RX ring %d",
+			       i);
+			return QDF_STATUS_E_FAILURE;
+		}
+
+		dp_info("Enabled threaded NAPI for RX ring %d", i);
+	}
+
+	/* Enable threaded NAPI for all DAL TX completion rings */
+	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+		if (!dal_ctx->tx_cmpl_ring[i].initialized)
+			continue;
+
+		status = hif_exec_set_threaded_napi(dal_ctx->soc->hif_handle,
+						    dal_ctx->tx_cmpl_ring[i].grp_id,
+						    true);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			dp_err("Failed to enable threaded NAPI for TX comp ring %d", i);
+			return QDF_STATUS_E_FAILURE;
+		}
+
+		dp_info("Enabled threaded NAPI for TX comp ring %d", i);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * dp_dal_soc_init - Initialize DP DAL for SOC
  * @soc: pointer to dp_soc structure
  *
@@ -373,6 +427,12 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err("failed to create DAL ring to grp mapping %d", status);
 		goto destroy_lock;
+	}
+
+	status = dp_dal_enable_threaded_napi(soc->dal_ctx);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("failed to create napi thread for dal %d", status);
+		return status;
 	}
 
 	status = dp_dal_bus_init(soc);

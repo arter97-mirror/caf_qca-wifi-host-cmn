@@ -192,6 +192,18 @@ struct hif_exec_context *hif_exec_get_ctx(struct hif_opaque_softc *hif,
 					  uint8_t id);
 void hif_exec_kill(struct hif_opaque_softc *scn);
 
+#ifdef FEATURE_NAPI
+QDF_STATUS hif_exec_set_threaded_napi(struct hif_opaque_softc *hif_ctx,
+				      uint8_t grp_id, bool enable);
+#else
+static inline QDF_STATUS
+hif_exec_set_threaded_napi(struct hif_opaque_softc *hif_ctx, uint8_t grp_id,
+			   bool enable)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* FEATURE_NAPI */
+
 #if defined(HIF_CPU_PERF_AFFINE_MASK) || defined(FEATURE_IRQ_AFFINITY)
 /**
  * hif_pci_irq_set_affinity_hint() - API to set IRQ affinity
