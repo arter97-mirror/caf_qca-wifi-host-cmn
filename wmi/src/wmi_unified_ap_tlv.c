@@ -1680,12 +1680,19 @@ static QDF_STATUS send_multiple_vdev_restart_req_cmd_tlv(
 		 "tchan_info->maxpower: %d ,tchan_info->maxregpower: %d ,"
 		 "tchan_info->reg_class_id: %d ,"
 		 "tchan_info->maxregpower : %d ,tchan_info->is_stadfs_en: %d",
+		 "tchan_info->half_rate: %u , tchan_info->quarter_rate: %u ",
 		 tchan_info->is_chan_passive, tchan_info->dfs_set,
 		 tchan_info->allow_vht, tchan_info->allow_ht,
 		 tchan_info->antennamax, tchan_info->phy_mode,
 		 tchan_info->minpower, tchan_info->maxpower,
 		 tchan_info->maxregpower, tchan_info->reg_class_id,
-		 tchan_info->maxregpower, tchan_info->is_stadfs_en);
+		 tchan_info->maxregpower, tchan_info->is_stadfs_en,
+		 tchan_info->half_rate, tchan_info->quarter_rate);
+
+	qdf_info("Freq: %u, dfs_set: %u, phymode: %d, is_half: %u, "
+    		"is_quarter: %u\n", chan_info->mhz,
+			tchan_info->dfs_set, tchan_info->phy_mode,
+			tchan_info->half_rate, tchan_info->quarter_rate);
 
 	buf_ptr += sizeof(*chan_info);
 	WMITLV_SET_HDR(buf_ptr,
