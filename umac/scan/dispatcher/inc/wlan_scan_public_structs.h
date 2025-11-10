@@ -32,6 +32,7 @@
 typedef uint16_t wlan_scan_requester;
 typedef uint32_t wlan_scan_id;
 
+#define MIN_IE_LEN 2
 #define WLAN_SCAN_MAX_NUM_SSID          16
 #define WLAN_SCAN_MAX_NUM_BSSID         4
 #define WLAN_SCAN_MAX_NUM_CHANNELS      68
