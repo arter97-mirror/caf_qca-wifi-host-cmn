@@ -195,7 +195,7 @@ static void dp_dal_pdev_set_default_routing_helper(struct dp_soc *soc,
  *
  * Return: None
  */
-void dp_dal_pdev_set_default_routing(struct dp_pdev *pdev)
+static void dp_dal_pdev_set_default_routing(struct dp_pdev *pdev)
 {
 	struct dp_soc *soc;
 	struct dp_vdev *vdev;
@@ -233,9 +233,58 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 	return QDF_STATUS_SUCCESS;
 }
 
+/**
+ * dp_dal_mode_switch_offload_to_bypass - Handle mode switch from offload mode
+ * to bypass mode
+ * @dal_ctx: DAL context
+ *
+ * This function performs the following actions:
+ * 1. Sets a flag indicating that a mode switch is in progress, which prevents
+ *	suspension during this transition
+ * 2. Updates the DAL mode to ensure that any new peer connection will be set
+ *	up with peer-based routing
+ * 3. Iterates over connected peers in STA/SAP modes to enable hash-based
+ *	routing for them
+ * 4. Retrieves the current HP/TP snapshot from DAL, which will be used to poll
+ *	DAL rings after the mode switch completes
+ * 5. Resets the mode switch in progress flag to false once the operation is
+ *	finished
+ *
+ * Return: QDF_STATUS
+ */
 static QDF_STATUS
 dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
 {
+	struct dp_soc *soc;
+	struct dp_pdev *pdev;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL, reject mode switch");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC is NULL, reject mode switch");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	pdev = soc->pdev_list[0];
+	if (!pdev) {
+		dp_err("PDEV is NULL reject mode switch");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	soc->dal_mode_switch_in_progress = true;
+	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
+
+	dp_dal_pdev_set_default_routing(pdev);
+
+	/* Start polling timer */
+	dal_ctx->poll_count = 0;
+	qdf_timer_mod(&dal_ctx->dal_poll_timer, DAL_POLL_TIMER_INTERVAL_MS);
+
+	soc->dal_mode_switch_in_progress = false;
 	return QDF_STATUS_SUCCESS;
 }
 
