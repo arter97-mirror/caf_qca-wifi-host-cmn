@@ -1216,6 +1216,9 @@ QDF_STATUS (*send_nan_stop_req_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_nan_start_req_cmd)(wmi_unified_t wmi_handle,
 				     struct nan_enable_req *nan_req);
+
+QDF_STATUS (*send_nan_change_conf_req_cmd)(wmi_unified_t wmi_handle,
+					   struct nan_change_conf_req *nan_req);
 #endif
 
 QDF_STATUS (*extract_nan_event_rsp)(wmi_unified_t wmi_handle, void *evt_buf,

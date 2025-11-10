@@ -65,6 +65,16 @@ QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
  */
 QDF_STATUS wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
 				     struct nan_enable_req *nan_req);
+
+/**
+ * wmi_unified_nan_change_conf_req() - Request to change NAN configuration
+ * @wmi_handle: wmi handle
+ * @nan_req: Pointer to NAN change config request structure
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wmi_unified_nan_change_conf_req(wmi_unified_t wmi_handle,
+					   struct nan_change_conf_req *nan_req);
 #else
 static inline QDF_STATUS
 wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
@@ -76,6 +86,13 @@ wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
 static inline QDF_STATUS
 wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
 			  struct nan_enable_req *nan_req)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+wmi_unified_nan_change_conf_req(wmi_unified_t wmi_handle,
+				struct nan_change_conf_req *nan_req)
 {
 	return QDF_STATUS_SUCCESS;
 }

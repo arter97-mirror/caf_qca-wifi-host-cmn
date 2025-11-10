@@ -551,6 +551,85 @@ static QDF_STATUS send_nan_start_req_cmd_tlv(wmi_unified_t wmi_handle,
 
 	return ret;
 }
+
+/**
+ * send_nan_change_conf_req_cmd_tlv() - to send nan config change to target
+ * @wmi_handle: wmi handle
+ * @nan_req: request data which will be non-null
+ *
+ * Return: QDF status
+ */
+static QDF_STATUS
+send_nan_change_conf_req_cmd_tlv(wmi_unified_t wmi_handle,
+				 struct nan_change_conf_req *nan_req)
+{
+	wmi_nan_config_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint16_t len, i = 0;
+	QDF_STATUS ret;
+	uint8_t *buf_ptr;
+	wmi_nan_ctrl_config_param *ctrl_cfg;
+	uint32_t vdev_id;
+	uint32_t band_len = 0;
+
+	vdev_id = nan_req->vdev_id;
+	for (i = 0; i < NUM_NL80211_BANDS; i++) {
+		if (nan_req->nan_conf.bands & (1 << i))
+			band_len++;
+	}
+	len = sizeof(wmi_nan_config_cmd_fixed_param) +
+		sizeof(wmi_nan_ctrl_config_param) + WMI_TLV_HDR_SIZE +
+		WMI_TLV_HDR_SIZE +
+		(sizeof(wmi_nan_disc_band_config_param) * band_len);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_nan_config_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_config_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+					wmi_nan_config_cmd_fixed_param));
+	cmd->vdev_id = vdev_id;
+	cmd->nan_conf_change_bitmap = nan_req->param_bit_map;
+
+	buf_ptr += sizeof(wmi_nan_config_cmd_fixed_param);
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       sizeof(wmi_nan_ctrl_config_param));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	ctrl_cfg = (wmi_nan_ctrl_config_param *)buf_ptr;
+	WMITLV_SET_HDR(&ctrl_cfg->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_ctrl_config_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_nan_ctrl_config_param));
+	ctrl_cfg->master_pref = nan_req->nan_conf.master_pref;
+	if (nan_req->nan_conf.cluster_id)
+		ctrl_cfg->cluster_id = (nan_req->nan_conf.cluster_id[4] << 8) |
+				       nan_req->nan_conf.cluster_id[5];
+	else
+		ctrl_cfg->cluster_id = 0;
+	ctrl_cfg->supp_disc_bands = nan_req->nan_conf.bands & 0x3;
+	buf_ptr += sizeof(wmi_nan_ctrl_config_param);
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       (sizeof(wmi_nan_disc_band_config_param) * band_len));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	wmi_nan_populate_band_cfg(&buf_ptr, &nan_req->nan_conf);
+
+	wmi_mtrace(WMI_NAN_CONFIG_CMDID, NO_SESSION, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_NAN_CONFIG_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send NAN config command ret = %d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
 #endif
 
 /**
@@ -1785,6 +1864,7 @@ static void wmi_nan_standard_mode_event_ops(struct wmi_ops *ops)
 	ops->extract_nan_enable_rsp_event = extract_nan_enable_rsp_event_tlv;
 	ops->send_nan_stop_req_cmd = send_nan_stop_req_cmd_tlv;
 	ops->send_nan_start_req_cmd = send_nan_start_req_cmd_tlv;
+	ops->send_nan_change_conf_req_cmd = send_nan_change_conf_req_cmd_tlv;
 }
 #else
 static inline
