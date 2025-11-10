@@ -35,6 +35,9 @@
 #include "dp_rx_defrag.h"
 #include "dp_ipa.h"
 #include "dp_rx_buffer_pool.h"
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dp_dal_rx.h"
+#endif
 
 const struct dp_rx_defrag_cipher dp_f_ccmp = {
 	"AES-CCM",
@@ -1116,6 +1119,27 @@ dp_rx_defrag_nwifi_to_8023(struct dp_soc *soc, struct dp_txrx_peer *txrx_peer,
 	qdf_mem_free(rx_desc_info);
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_rx_defrag_dal_reinject() - Try DAL reinjection for defrag packet
+ * @head: Nbuf to be reinjected (non-linear nbuf with fragments in frag_list)
+ *
+ * Return: true if DAL consumed the packet, false otherwise
+ */
+static inline bool dp_rx_defrag_dal_reinject(qdf_nbuf_t head)
+{
+	/* Try to reinject defragmented packet via DAL API for inspection
+	 * head is a non-linear nbuf with fragments in frag_list
+	 */
+	return dp_dal_rx_pkt_reinject(head);
+}
+#else
+static inline bool dp_rx_defrag_dal_reinject(qdf_nbuf_t head)
+{
+	return false;
+}
+#endif
+
 #ifdef RX_DEFRAG_DO_NOT_REINJECT
 /**
  * dp_rx_defrag_deliver() - Deliver defrag packet to stack
@@ -1140,6 +1164,12 @@ static inline void dp_rx_defrag_deliver(struct dp_txrx_peer *txrx_peer,
 	QDF_NBUF_CB_RX_VDEV_ID(head) = vdev->vdev_id;
 	qdf_nbuf_set_tid_val(head, tid);
 	qdf_nbuf_pull_head(head, soc->rx_pkt_tlv_size);
+
+	if (dp_rx_defrag_dal_reinject(head)) {
+		/* DAL consumed the packet, free it */
+		dp_rx_nbuf_free(head);
+		return;
+	}
 
 	DP_RX_LIST_APPEND(deliver_list_head, deliver_list_tail,
 			  head);
