@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -142,20 +142,6 @@ int target_if_cfr_get_target_type(struct wlan_objmgr_psoc *psoc);
  */
 void target_if_cfr_set_cfr_support(struct wlan_objmgr_psoc *psoc,
 				   uint8_t value);
-
-/**
- * target_if_cfr_info_send() - Function to send cfr info to upper layers
- * @pdev: pointer to pdev object
- * @head: pointer to cfr info head
- * @hlen: head len
- * @data: pointer to cfr info data
- * @dlen: data len
- * @tail: pointer to cfr info tail
- * @tlen: tail len
- */
-void target_if_cfr_info_send(struct wlan_objmgr_pdev *pdev, void *head,
-			     size_t hlen, void *data, size_t dlen, void *tail,
-			     size_t tlen);
 
 /**
  * target_if_cfr_fill_header() - Function to fill cfr header cmn section
