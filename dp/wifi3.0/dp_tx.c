@@ -5174,6 +5174,215 @@ static inline void dp_vdev_tx_mark_to_fw(qdf_nbuf_t nbuf, struct dp_vdev *vdev)
 #endif
 
 #ifdef WLAN_DP_ENABLE_SW_TSO
+/**
+ * dp_tx_sw_tso_prepare_nbuf_list () - prepare nbuf list from the given TCP
+ * jumbo packet.
+ *
+ * This API prepares the nbuf list by splitting the given TCP jumbo packet into
+ * multiple segments of gso size and attach EIT header for each segment. update
+ * the skb header and TCP headers as the nbus in the formed list are going to
+ * transmitted as a normal packet instead of tso packet.
+ *
+ * @osdev: qdf device handle
+ * @nbuf: TCP jumbo packet
+ * @head_nbuf: formed skb list
+ * @tx_pp: TX page pool reference
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dp_tx_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
+			       qdf_nbuf_t nbuf,
+			       qdf_nbuf_t *head_nbuf,
+			       qdf_page_pool_t tx_pp)
+{
+	qdf_nbuf_t tail_nbuf = NULL;
+	qdf_nbuf_t new_nbuf;
+	qdf_nbuf_frag_t *frag = NULL;
+	void *frag_vaddr;
+	uint32_t ori_gso_size = qdf_nbuf_get_gso_size(nbuf);
+	int num_seg = qdf_nbuf_get_tso_num_seg(nbuf);
+	uint32_t nbuf_proc = qdf_get_nbuf_len(nbuf);
+	uint32_t nbuf_frag_len = 0;
+	uint32_t gso_size = ori_gso_size;
+	uint32_t frag_len;
+	uint32_t tcp_seq_num;
+	int i = 0;
+	int eit_hdr_len;
+	uint16_t ethproto = qdf_vlan_get_protocol(nbuf);
+	uint16_t ip_id = 0;
+	uint16_t copied_len;
+	uint8_t more_frags;
+	uint8_t pack_more_data = 0;
+	qdf_dma_addr_t paddr;
+
+	*head_nbuf = NULL;
+
+	if (num_seg == 0) {
+		dp_err("sw tso: failed to prepare nbuf list for tso packet");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	eit_hdr_len = (qdf_nbuf_transport_header(nbuf) -
+		       qdf_nbuf_get_mac_header(nbuf)) + qdf_nbuf_get_tcp_hdr_len(nbuf);
+
+	nbuf_frag_len = qdf_nbuf_headlen(nbuf);
+	nbuf_frag_len -= eit_hdr_len;
+	nbuf_proc -= eit_hdr_len;
+
+	frag_vaddr = qdf_nbuf_data(nbuf) + eit_hdr_len;
+	frag_len = qdf_min(nbuf_frag_len, gso_size);
+
+	if (ethproto == qdf_htons(QDF_ETH_P_IP))
+		ip_id = qdf_ntohs(qdf_nbuf_get_ip_id(nbuf));
+
+	tcp_seq_num = qdf_ntohl(qdf_nbuf_get_tcp_seq(nbuf));
+
+	while (num_seg) {
+		more_frags = 1;
+		copied_len = 0;
+		new_nbuf = qdf_tx_page_pool_nbuf_alloc_map(osdev, tx_pp,
+							   ori_gso_size +
+							  eit_hdr_len);
+		if (!new_nbuf)
+			new_nbuf = qdf_nbuf_alloc_simple(osdev,
+							 ori_gso_size +
+							 eit_hdr_len,
+							 0, 0, false);
+
+		if (qdf_unlikely(!new_nbuf)) {
+			dp_err("sw tso: failed to allocate buffer");
+			qdf_nbuf_list_free(*head_nbuf);
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		/* Set magic value to ID the packet is a SW TSO packet */
+		qdf_nbuf_set_dev_scratch(new_nbuf,
+					 QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL);
+		paddr = QDF_NBUF_CB_PADDR(new_nbuf);
+		qdf_mem_copy(qdf_nbuf_get_cb(new_nbuf), qdf_nbuf_get_cb(nbuf),
+			     sizeof(struct qdf_nbuf_cb));
+		QDF_NBUF_CB_PADDR(new_nbuf) = paddr;
+
+		if (!(*head_nbuf)) {
+			*head_nbuf = new_nbuf;
+			tail_nbuf = new_nbuf;
+			qdf_nbuf_set_next(new_nbuf, NULL);
+		} else {
+			qdf_nbuf_set_next(tail_nbuf, new_nbuf);
+			qdf_nbuf_set_next(new_nbuf, NULL);
+			tail_nbuf = new_nbuf;
+		}
+
+		/* copy EIT header */
+		qdf_mem_copy(qdf_nbuf_data(new_nbuf), qdf_nbuf_data(nbuf),
+			     eit_hdr_len);
+		/* copy data */
+		qdf_mem_copy(qdf_nbuf_data(new_nbuf) + eit_hdr_len,
+			     frag_vaddr, frag_len);
+
+		qdf_nbuf_put(new_nbuf, eit_hdr_len + frag_len);
+		copied_len = eit_hdr_len + frag_len;
+		nbuf_proc -= frag_len;
+
+		qdf_nbuf_set_transport_header(new_nbuf,
+					      (qdf_nbuf_transport_header(nbuf) -
+					       qdf_nbuf_get_mac_header(nbuf)));
+		qdf_nbuf_set_network_header(new_nbuf,
+					    (qdf_nbuf_network_header(nbuf) -
+					     qdf_nbuf_get_mac_header(nbuf)));
+		qdf_nbuf_set_mac_header(new_nbuf, 0);
+
+		qdf_nbuf_set_tcp_seq(new_nbuf, qdf_htonl(tcp_seq_num));
+		tcp_seq_num += frag_len;
+		qdf_nbuf_set_protocol(new_nbuf, qdf_nbuf_get_protocol(nbuf));
+		qdf_nbuf_set_ip_summed(new_nbuf, QDF_NBUF_TX_CSUM_PARTIAL);
+		qdf_nbuf_set_tcp_psh(new_nbuf, 0);
+		qdf_nbuf_set_tcp_fin(new_nbuf, 0);
+
+		if (ethproto == qdf_htons(QDF_ETH_P_IP)) {
+			qdf_nbuf_set_ip_id(new_nbuf, qdf_htons(ip_id));
+			qdf_nbuf_set_ip_tot_len(new_nbuf, qdf_htons(copied_len -
+					  qdf_nbuf_get_mac_header_len(new_nbuf)));
+			ip_id++;
+		} else if (ethproto == qdf_htons(QDF_ETH_P_IPV6)) {
+			qdf_nbuf_set_ipv6_payload_len(new_nbuf, qdf_htons(copied_len -
+					  (qdf_nbuf_get_mac_header_len(new_nbuf) +
+					   qdf_nbuf_get_network_header_len(new_nbuf))));
+		}
+
+		/* if PSH and FIN flags are set in jumbo packet,
+		 * set them for the last segment.
+		 */
+		if (num_seg == 1) {
+			qdf_nbuf_set_tcp_psh(new_nbuf,
+					     qdf_nbuf_get_tcp_psh(nbuf));
+			qdf_nbuf_set_tcp_fin(new_nbuf,
+					     qdf_nbuf_get_tcp_fin(nbuf));
+		}
+
+		while (more_frags) {
+			if (unlikely(nbuf_proc == 0))
+				return QDF_STATUS_SUCCESS;
+
+			if (frag_len < gso_size) {
+				pack_more_data = 1;
+				gso_size = gso_size - frag_len;
+			} else {
+				more_frags = 0;
+				gso_size = ori_gso_size;
+			}
+
+			/* if the next fragment is contiguous */
+			if (frag_len != 0 && frag_len < nbuf_frag_len) {
+				frag_vaddr = frag_vaddr + frag_len;
+				nbuf_frag_len = nbuf_frag_len - frag_len;
+				frag_len = qdf_min(nbuf_frag_len, gso_size);
+			} else {
+				if (qdf_nbuf_get_nr_frags(nbuf) == 0) {
+					qdf_assert(0);
+					qdf_nbuf_list_free(*head_nbuf);
+					return QDF_STATUS_E_FAILURE;
+				}
+
+				if (i >= qdf_nbuf_get_nr_frags(nbuf)) {
+					qdf_assert(0);
+					qdf_nbuf_list_free(*head_nbuf);
+					return QDF_STATUS_E_FAILURE;
+				}
+
+				frag = qdf_nbuf_get_frag(nbuf, i);
+				nbuf_frag_len = qdf_nbuf_frag_size(frag);
+				frag_len = qdf_min(nbuf_frag_len, gso_size);
+				frag_vaddr = qdf_nbuf_frag_addr_safe(frag);
+				i++;
+			}
+			if (pack_more_data) {
+				qdf_mem_copy(qdf_nbuf_data(new_nbuf) +
+					     copied_len, frag_vaddr, frag_len);
+				copied_len += frag_len;
+				qdf_nbuf_put(new_nbuf, frag_len);
+				nbuf_proc -= frag_len;
+				pack_more_data = 0;
+				tcp_seq_num += frag_len;
+				if (ethproto == qdf_htons(QDF_ETH_P_IP))
+					qdf_nbuf_set_ip_tot_len(new_nbuf,
+								qdf_htons(copied_len -
+					      qdf_nbuf_get_mac_header_len(new_nbuf)));
+				else if (ethproto == qdf_htons(QDF_ETH_P_IPV6))
+					qdf_nbuf_set_ipv6_payload_len(new_nbuf,
+								      qdf_htons(copied_len -
+					      (qdf_nbuf_get_mac_header_len(new_nbuf) +
+					       qdf_nbuf_get_network_header_len(new_nbuf))));
+			}
+		}
+
+		num_seg--;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline bool dp_tx_is_sw_tso_enable(struct dp_soc *soc)
 {
 	return wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx);
@@ -5208,14 +5417,14 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	if (tx_pp && tx_pp->page_pool_init) {
 		qdf_spin_lock_bh(&tx_pp->pp_lock);
-		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
-							   nbuf, &buff,
-							   tx_pp->tx_pool.pp);
+		status = dp_tx_sw_tso_prepare_nbuf_list(soc->osdev,
+							nbuf, &buff,
+							tx_pp->tx_pool.pp);
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	} else {
-		status = qdf_nbuf_sw_tso_prepare_nbuf_list(soc->osdev,
-							   nbuf, &buff,
-							   NULL);
+		status = dp_tx_sw_tso_prepare_nbuf_list(soc->osdev,
+							nbuf, &buff,
+							NULL);
 	}
 
 	if (status != QDF_STATUS_SUCCESS) {

@@ -5577,24 +5577,16 @@ static inline void qdf_dmaaddr_to_32s(qdf_dma_addr_t dmaaddr,
 	return __qdf_dmaaddr_to_32s(dmaaddr, lo, hi);
 }
 
-#ifdef WLAN_DP_ENABLE_SW_TSO
-/**
- * qdf_nbuf_sw_tso_prepare_nbuf_list() - function to divide a jumbo TSO
- * network buffer into small network buffers.
- *
- * @osdev: qdf device handle
- * @nbuf: Jumbo TSO network buffer
- * @head_nbuf: nbuf list
- * @tx_pp: TX page pool reference
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS
-qdf_nbuf_sw_tso_prepare_nbuf_list(qdf_device_t osdev, qdf_nbuf_t nbuf,
-				  qdf_nbuf_t *head_nbuf, qdf_page_pool_t tx_pp)
+#ifdef DP_FEATURE_TX_PAGE_POOL
+qdf_nbuf_t
+qdf_tx_page_pool_nbuf_alloc_map(qdf_device_t osdev, qdf_page_pool_t tx_pp,
+				qdf_size_t size);
+#else
+static inline qdf_nbuf_t
+qdf_tx_page_pool_nbuf_alloc_map(qdf_device_t osdev, qdf_page_pool_t tx_pp,
+				qdf_size_t size)
 {
-	return __qdf_nbuf_sw_tso_prepare_nbuf_list(osdev, nbuf,
-						   head_nbuf, tx_pp);
+	return NULL;
 }
 #endif
 
