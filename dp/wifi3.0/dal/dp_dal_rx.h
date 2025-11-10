@@ -117,5 +117,28 @@ int dp_dal_rx_desc_cb(void *priv, void *desc, u16 ring_id);
  * Return: Number of packets processed
  */
 uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget);
+
+/**
+ * dp_dal_rx_pkt_reinject_bypass_mode() - Skeleton for platform bus rx packet
+ * reinject in bypass mode
+ *
+ * @pkt: packet data pointer
+ * @length: packet length
+ *
+ * Return: false (packet not consumed, let WLAN driver submit to network stack)
+ */
+bool dp_dal_rx_pkt_reinject_bypass_mode(void *pkt, uint32_t length);
+
+/**
+ * dp_dal_rx_pkt_reinject() - DAL API to reinject RX packet
+ * @nbuf: Network buffer to reinject
+ *
+ * This function checks if the NBUF is non-linear and linearizes it if needed,
+ * then invokes platform_bus_rx_pkt_reinject with packet data and length.
+ *
+ * Return: true if DAL module consumed the packet, false if WLAN driver
+ *         should submit to network stack
+ */
+bool dp_dal_rx_pkt_reinject(qdf_nbuf_t nbuf);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_RX_H */

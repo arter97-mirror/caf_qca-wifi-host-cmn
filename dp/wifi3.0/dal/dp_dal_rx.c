@@ -266,6 +266,21 @@ int dp_dal_rx_rxbm_sync_bypass_mode(void *priv, u32 cnt, void **rxbm)
 }
 
 /**
+ * dp_dal_rx_pkt_reinject_bypass_mode() - Skeleton for platform bus rx packet
+ * reinject in bypass mode
+ *
+ * @pkt: packet data pointer
+ * @length: packet length
+ *
+ * Return: false (packet not consumed, let WLAN driver submit to network stack)
+ */
+bool dp_dal_rx_pkt_reinject_bypass_mode(void *pkt, uint32_t length)
+{
+	/* In bypass mode, DAL does not consume packets for reinjection */
+	return false;
+}
+
+/**
  * dp_dal_rx_add_desc_to_tail() - Add descriptor to tail of global list
  * @dal_ctx: DAL context
  * @ring_id: Ring ID
@@ -668,4 +683,52 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 	}
 
 	return processed;
+}
+
+/**
+ * dp_dal_rx_pkt_reinject() - DAL API to reinject RX packet
+ * @nbuf: Network buffer to reinject
+ *
+ * This function checks if the NBUF is non-linear and linearizes it if needed,
+ * then invokes platform_bus_rx_pkt_reinject with packet data and length.
+ *
+ * Return true means DAL consumed the packet
+ * Return false means DAL did not consume the packet - driver must submit it
+ * to network stack
+ */
+bool dp_dal_rx_pkt_reinject(qdf_nbuf_t nbuf)
+{
+	void *pkt_data;
+	uint32_t pkt_len;
+	int ret;
+	bool consumed = false;
+
+	if (qdf_unlikely(!nbuf)) {
+		dp_err("Invalid nbuf parameter");
+		return false;
+	}
+
+	/* Check if NBUF is non-linear and linearize if needed */
+	if (qdf_nbuf_is_nonlinear(nbuf)) {
+		dp_debug("NBUF is non-linear, linearizing");
+		ret = qdf_nbuf_linearize(nbuf);
+		if (qdf_unlikely(ret)) {
+			dp_err("Failed to linearize nbuf, ret: %d", ret);
+			return false;
+		}
+	}
+
+	/* Get packet data and length */
+	pkt_data = qdf_nbuf_data(nbuf);
+	pkt_len = qdf_nbuf_len(nbuf);
+
+	if (qdf_likely(global_plat_ops &&
+		       global_plat_ops->rx_pkt_reinject)) {
+		consumed = global_plat_ops->rx_pkt_reinject(pkt_data, pkt_len);
+	} else {
+		dp_debug("Platform bus rx_pkt_reinject op not available");
+		consumed = false;
+	}
+
+	return consumed;
 }

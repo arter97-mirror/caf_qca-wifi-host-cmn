@@ -161,6 +161,7 @@ struct platform_bus_ops plat_ops_bypass_mode = {
 	.ssr_dump = dp_dal_ssr_dump_bypass_mode,
 	.intf_init = dp_dal_intf_init_bypass_mode,
 	.intf_deinit = dp_dal_intf_deinit_bypass_mode,
+	.rx_pkt_reinject = dp_dal_rx_pkt_reinject_bypass_mode,
 };
 
 struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;

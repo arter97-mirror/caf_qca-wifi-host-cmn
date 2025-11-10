@@ -58,6 +58,7 @@ struct sta_info {
  * @ssr_dump: Dump SSR
  * @intf_init: Interface init
  * @intf_deinit: Interface deinit
+ * @rx_pkt_reinject: RX packet reinject (Used during RX defrag & SG)
  */
 struct platform_bus_ops {
 	int (*init)(void *priv);
@@ -78,6 +79,7 @@ struct platform_bus_ops {
 	void (*ssr_dump)(void *segment);
 	int (*intf_init)(void *priv, void *intf_info);
 	int (*intf_deinit)(void *priv, uint16_t vdev_id);
+	bool (*rx_pkt_reinject)(void *pkt, uint32_t length);
 };
 
 /**
