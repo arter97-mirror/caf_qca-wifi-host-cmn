@@ -145,20 +145,6 @@ void target_if_cfr_set_cfr_support(struct wlan_objmgr_psoc *psoc,
 				   uint8_t value);
 
 /**
- * target_if_cfr_info_send() - Function to send cfr info to upper layers
- * @pdev: pointer to pdev object
- * @head: pointer to cfr info head
- * @hlen: head len
- * @data: pointer to cfr info data
- * @dlen: data len
- * @tail: pointer to cfr info tail
- * @tlen: tail len
- */
-void target_if_cfr_info_send(struct wlan_objmgr_pdev *pdev, void *head,
-			     size_t hlen, void *data, size_t dlen, void *tail,
-			     size_t tlen);
-
-/**
  * target_if_cfr_fill_header() - Function to fill cfr header cmn section
  * @hdr: pointer to the csi_cfr_header
  * @is_wifi_2_0: flag to indicate legacy and non legacy radio

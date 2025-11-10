@@ -1039,21 +1039,3 @@ void target_if_cfr_set_cfr_support(struct wlan_objmgr_psoc *psoc,
 		rx_ops->cfr_rx_ops.cfr_support_set(psoc, value);
 }
 
-void target_if_cfr_info_send(struct wlan_objmgr_pdev *pdev, void *head,
-			     size_t hlen, void *data, size_t dlen, void *tail,
-			     size_t tlen)
-{
-	struct wlan_objmgr_psoc *psoc;
-	struct wlan_lmac_if_rx_ops *rx_ops;
-
-	psoc = wlan_pdev_get_psoc(pdev);
-
-	rx_ops = wlan_psoc_get_lmac_if_rxops(psoc);
-	if (!rx_ops) {
-		cfr_err("rx_ops is NULL");
-		return;
-	}
-	if (rx_ops->cfr_rx_ops.cfr_info_send)
-		rx_ops->cfr_rx_ops.cfr_info_send(pdev, head, hlen, data, dlen,
-						 tail, tlen);
-}
