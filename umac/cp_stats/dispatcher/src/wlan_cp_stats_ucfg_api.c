@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -85,4 +85,10 @@ void ucfg_cp_stats_cstats_register_tx_rx_ops(struct cstats_tx_rx_ops *ops)
 int ucfg_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 {
 	return wlan_cp_stats_cstats_send_buffer_to_user(type);
+}
+
+bool ucfg_cp_stats_is_bcn_rssi_history_report_cfg_enable(
+					struct wlan_objmgr_psoc *psoc)
+{
+	return wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(psoc);
 }

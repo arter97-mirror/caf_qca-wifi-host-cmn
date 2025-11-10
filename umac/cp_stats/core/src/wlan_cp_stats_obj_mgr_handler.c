@@ -33,9 +33,7 @@
 #include <target_if_cp_stats.h>
 #include <wlan_twt_public_structs.h>
 #include <wlan_cp_stats_chipset_stats.h>
-#ifdef WLAN_CHIPSET_STATS
 #include <cfg_ucfg_api.h>
-#endif
 
 #ifdef WLAN_CHIPSET_STATS
 int wlan_cp_stats_cstats_qmi_event_handler(void *cb_ctx, uint16_t type,
@@ -212,6 +210,27 @@ void wlan_cp_stats_enable_init_cstats(struct wlan_objmgr_pdev *pdev)
 }
 #endif /* WLAN_CHIPSET_STATS */
 
+/**
+ * wlan_cp_stats_init_bcn_histroy_report_cfg() - Beacon history report
+ * cfg
+ * @psoc: pointer to psoc object
+ * @csc: pointer to cp_stats_context structure
+ *
+ * Return: None
+ */
+static void wlan_cp_stats_init_bcn_histroy_report_cfg(
+				struct wlan_objmgr_psoc *psoc,
+				struct cp_stats_context *csc)
+{
+	if (!psoc) {
+		cp_stats_err("psoc is NULL");
+		return;
+	}
+
+	csc->host_params.bcn_rssi_history_report_enable =
+			cfg_get(psoc, CFG_ENABLE_BCN_RSSI_HISTORY_REPORT);
+}
+
 QDF_STATUS
 wlan_cp_stats_psoc_obj_create_handler(struct wlan_objmgr_psoc *psoc, void *arg)
 {
@@ -273,6 +292,7 @@ wlan_cp_stats_psoc_obj_create_handler(struct wlan_objmgr_psoc *psoc, void *arg)
 		wlan_cp_stats_init_user_delay_value_ms_cfg(psoc, csc);
 		wlan_cp_stats_init_user_delay_interval_cfg(psoc, csc);
 		wlan_cp_stats_cstats_init(psoc);
+		wlan_cp_stats_init_bcn_histroy_report_cfg(psoc, csc);
 	}
 
 wlan_cp_stats_psoc_obj_create_handler_return:
@@ -424,6 +444,7 @@ wlan_cp_stats_vdev_obj_create_handler(struct wlan_objmgr_vdev *vdev, void *arg)
 	struct cp_stats_context *csc = NULL;
 	struct vdev_cp_stats *vdev_cs = NULL;
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	uint8_t i;
 
 	if (!vdev) {
 		cp_stats_err("vdev is NULL");
@@ -465,6 +486,10 @@ wlan_cp_stats_vdev_obj_create_handler_return:
 
 		if (vdev_cs)
 			qdf_mem_free(vdev_cs);
+	} else {
+		for (i = 0; i < WLAN_UMAC_MLO_MAX_VDEVS; i++)
+			vdev_cs->vdev_stats->bcn_stats[i].vdev_id =
+						WLAN_INVALID_VDEV_ID;
 	}
 
 	cp_stats_debug("vdev cp stats object attach");
