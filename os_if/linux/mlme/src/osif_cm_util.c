@@ -28,6 +28,7 @@
 #include "osif_cm_rsp.h"
 #include "wlan_cfg80211_scan.h"
 #include "wlan_mlo_mgr_sta.h"
+#include <scheduler_api.h>
 
 enum qca_sta_connect_fail_reason_codes
 osif_cm_mac_to_qca_connect_fail_reason(enum wlan_status_code internal_reason)
@@ -486,6 +487,7 @@ static QDF_STATUS osif_cm_disconnect_start_cb(struct wlan_objmgr_vdev *vdev,
 static QDF_STATUS
 osif_cm_roam_start_cb(struct wlan_objmgr_vdev *vdev)
 {
+	scheduler_perfd_set_cpumask();
 	osif_cm_perfd_set_cpufreq(true);
 	return osif_cm_netif_queue_ind(vdev,
 				       WLAN_STOP_ALL_NETIF_QUEUE,
@@ -505,6 +507,7 @@ static QDF_STATUS
 osif_cm_roam_abort_cb(struct wlan_objmgr_vdev *vdev)
 {
 	osif_cm_perfd_set_cpufreq(false);
+	scheduler_perfd_clear_cpumask();
 	osif_cm_napi_serialize(false);
 	return osif_cm_netif_queue_ind(vdev,
 				       WLAN_WAKE_ALL_NETIF_QUEUE,
@@ -525,6 +528,7 @@ static QDF_STATUS
 osif_cm_roam_cmpl_cb(struct wlan_objmgr_vdev *vdev)
 {
 	osif_cm_perfd_set_cpufreq(false);
+	scheduler_perfd_clear_cpumask();
 	return osif_cm_napi_serialize(false);
 }
 
@@ -662,6 +666,7 @@ osif_cm_cckm_preauth_cmpl_cb(struct wlan_objmgr_vdev *vdev,
 static void osif_cm_perfd_reset_cpufreq_ctrl_cb(void)
 {
 	osif_cm_perfd_set_cpufreq(false);
+	scheduler_perfd_clear_cpumask();
 }
 #endif
 
