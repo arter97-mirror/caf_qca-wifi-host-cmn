@@ -3430,6 +3430,16 @@ struct dp_soc {
 	/* Ring used to replenish rx buffers (maybe to the firmware of MAC) */
 	struct dp_srng rx_refill_buf_ring[MAX_PDEV_CNT];
 
+	/* Max number of replenish rings per pdev */
+#define MAX_REPLENISH_RINGS_PER_PDEV 2
+	/* Array of replenish rings used for rx buffer replenishment */
+	struct dp_srng *replenish_rings[MAX_PDEV_CNT][MAX_REPLENISH_RINGS_PER_PDEV];
+	/* Number of replenish rings per pdev */
+	uint8_t num_replenish_rings[MAX_PDEV_CNT];
+
+	/* number of mac rings (sw2wbm) configured */
+	uint8_t num_mac_rings;
+
 	struct dp_srng rxdma_mon_desc_ring[MAX_NUM_LMAC_HW];
 
 	/* RXDMA error destination ring */
