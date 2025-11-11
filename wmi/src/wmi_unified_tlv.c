@@ -15780,6 +15780,86 @@ extract_wifi_generations_info(wmi_service_ready_ext2_event_fixed_param *ev,
 		  param->supp_wifi_gen, param->cert_wifi_gen);
 }
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * extract_service_for_nan_caps - extract nan capabilities from service
+ * ready event.
+ * @wmi_handle: WMI handle
+ * @param: Pointer to hold the params
+ * @param_buf: parameter buffer from the target
+ *
+ * Return: none
+ */
+static void
+extract_service_for_nan_caps(
+		wmi_unified_t wmi_handle,
+		struct wlan_psoc_host_service_ext2_param *param,
+		WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf)
+{
+	bool is_nan_standard_mode;
+
+	if (!wmi_handle) {
+		wmi_err("wmi handle is null");
+		return;
+	}
+
+	is_nan_standard_mode = wmi_service_enabled(
+					wmi_handle,
+					wmi_service_nan_standard_mode_support);
+
+	if (param_buf->nan_cap) {
+		param->max_ndp_sessions = param_buf->nan_cap->max_ndp_sessions;
+		param->max_nan_pairing_sessions =
+				param_buf->nan_cap->max_pairing_sessions;
+
+		if (is_nan_standard_mode) {
+			param->nan_caps.vht_phy_mode =
+				param_buf->nan_cap->vht_phy_mode;
+			param->nan_caps.he_phy_mode =
+				param_buf->nan_cap->he_phy_mode;
+			param->nan_caps.he_vht_80_80 =
+				param_buf->nan_cap->he_vht_80_80;
+			param->nan_caps.he_vht_160 =
+				param_buf->nan_cap->he_vht_160;
+			param->nan_caps.num_tx_ant =
+				param_buf->nan_cap->num_tx_ant;
+			param->nan_caps.num_rx_ant =
+				param_buf->nan_cap->num_rx_ant;
+			param->nan_caps.s3_support =
+				param_buf->nan_cap->s3_support;
+			param->nan_caps.max_ndi_interfaces =
+				param_buf->nan_cap->max_ndi_interfaces;
+			param->nan_caps.ndp_supported_band =
+				param_buf->nan_cap->ndp_supported_band;
+			param->nan_caps.max_chan_switch_time =
+				param_buf->nan_cap->max_chan_switch_time;
+		} else {
+			qdf_mem_zero(&param->nan_caps, sizeof(param->nan_caps));
+		}
+	} else {
+		param->max_ndp_sessions = 0;
+		param->max_nan_pairing_sessions = 0;
+		qdf_mem_zero(&param->nan_caps, sizeof(param->nan_caps));
+	}
+}
+#else
+static inline void
+extract_service_for_nan_caps(
+			wmi_unified_t wmi_handle,
+			struct wlan_psoc_host_service_ext2_param *param,
+			WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf)
+{
+	if (param_buf->nan_cap) {
+		param->max_ndp_sessions = param_buf->nan_cap->max_ndp_sessions;
+		param->max_nan_pairing_sessions =
+				param_buf->nan_cap->max_pairing_sessions;
+	} else {
+		param->max_ndp_sessions = 0;
+		param->max_nan_pairing_sessions = 0;
+	}
+}
+#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
+
 /**
  * extract_service_ready_ext2_tlv() - extract service ready ext2 params from
  * event
@@ -15823,15 +15903,7 @@ extract_service_ready_ext2_tlv(wmi_unified_t wmi_handle, uint8_t *event,
 	param->num_msdu_idx_qtype_map =
 				param_buf->num_htt_msdu_idx_to_qtype_map;
 
-	if (param_buf->nan_cap) {
-		param->max_ndp_sessions =
-			param_buf->nan_cap->max_ndp_sessions;
-		param->max_nan_pairing_sessions =
-			param_buf->nan_cap->max_pairing_sessions;
-	} else {
-		param->max_ndp_sessions = 0;
-		param->max_nan_pairing_sessions = 0;
-	}
+	extract_service_for_nan_caps(wmi_handle, param, param_buf);
 
 	param->preamble_puncture_bw_cap = ev->preamble_puncture_bw;
 	param->num_scan_radio_caps = param_buf->num_wmi_scan_radio_caps;
