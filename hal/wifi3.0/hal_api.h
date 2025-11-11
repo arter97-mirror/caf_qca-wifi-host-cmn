@@ -3858,7 +3858,7 @@ bool hal_srng_batch_threshold_irq_enabled(hal_ring_handle_t hal_ring_hdl)
 		return false;
 }
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_DAL_DP_SUPPORT)
 /**
  * hal_srng_set_msi_irq_config() - Set the MSI irq configuration for srng
  * @hal_soc_hdl: hal soc handle

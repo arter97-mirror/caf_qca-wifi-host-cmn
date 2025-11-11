@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2588,7 +2588,7 @@ static void hal_hw_txrx_ops_attach_kiwi(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_get_tsf_time = hal_get_tsf_time_kiwi;
 	hal_soc->ops->hal_rx_reo_ent_get_src_link_id =
 					hal_rx_reo_ent_get_src_link_id_kiwi;
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_DAL_DP_SUPPORT)
 	hal_soc->ops->hal_srng_set_msi_config = hal_srng_set_msi_config;
 #endif
 	hal_soc->ops->hal_rx_en_mcast_fp_data_filter =

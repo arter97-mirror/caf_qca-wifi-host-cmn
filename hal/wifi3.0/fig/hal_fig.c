@@ -2431,7 +2431,7 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_get_tsf_time = hal_get_tsf_time_fig;
 	hal_soc->ops->hal_rx_reo_ent_get_src_link_id =
 					hal_rx_reo_ent_get_src_link_id_fig;
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_DAL_DP_SUPPORT)
 	hal_soc->ops->hal_srng_set_msi_config = hal_srng_set_msi_config;
 #endif
 	hal_soc->ops->hal_rx_en_mcast_fp_data_filter =

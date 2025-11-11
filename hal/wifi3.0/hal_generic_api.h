@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -605,7 +605,7 @@ void hal_srng_dst_hw_init_generic(struct hal_soc *hal,
 				  uint32_t idx) {}
 #endif
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_DAL_DP_SUPPORT)
 /**
  * hal_srng_set_msi_config() - Set the MSI config and enable the SRNG
  * @ring_hdl: srng handle
