@@ -167,12 +167,78 @@ struct platform_bus_ops plat_ops_bypass_mode = {
 
 struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;
 
+static inline void
+dp_dal_fill_srng_params(struct hal_srng *srng,
+			struct hal_srng_params *params,
+			uint64_t msi_addr, uint32_t msi_data)
+{
+	params->msi_addr = msi_addr;
+	params->msi_data = msi_data;
+	params->intr_timer_thres_us = srng->intr_timer_thres_us;
+	params->intr_batch_cntr_thres_entries =
+					srng->intr_batch_cntr_thres_entries;
+}
+
+static int
+dp_dal_set_msi_config(void *priv, uint8_t ring_num, uint8_t ring_type,
+		      uint64_t msi_addr, uint32_t msi_data)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *dp_soc = dal_ctx->soc;
+	struct hal_srng *srng;
+	struct hal_srng_params params = {0};
+
+	/*
+	 * This API is invoked only when the mode is set to offload.
+	 * Store the mode that will be applied when sending the default
+	 * routing configuration to the peer.
+	 */
+	if (dp_soc->dp_dal_mode != DAL_DP_OFFLOAD_MODE)
+		dp_soc->dp_dal_mode = DAL_DP_OFFLOAD_MODE;
+
+	dp_info("DAL: ring_type:%d num:%d msi_addr:%llu msi_data:%u",
+		ring_type, ring_num, msi_addr, msi_data);
+
+	if (ring_type == REO_DST) {
+		if (ring_num >= dp_soc->num_reo_dest_rings) {
+			dp_err("Invalid REO ring_num:%d received", ring_num);
+			return QDF_STATUS_E_INVAL;
+		}
+
+		srng =
+		(struct hal_srng *)dp_soc->reo_dest_ring[ring_num].hal_srng;
+
+		dp_dal_fill_srng_params(srng, &params, msi_addr, msi_data);
+		return hal_srng_set_msi_irq_config(dp_soc->hal_soc,
+						   (hal_ring_handle_t)srng,
+						   &params);
+	} else if (ring_type == COMP_RING_TYPE) {
+		if (ring_num >= dp_soc->num_tx_comp_rings) {
+			dp_err("Invalid TX comp ring_num:%d received",
+			       ring_num);
+			return QDF_STATUS_E_INVAL;
+		}
+
+		srng =
+		(struct hal_srng *)dp_soc->tx_comp_ring[ring_num].hal_srng;
+
+		dp_dal_fill_srng_params(srng, &params, msi_addr, msi_data);
+		return hal_srng_set_msi_irq_config(dp_soc->hal_soc,
+						   (hal_ring_handle_t)srng,
+						   &params);
+	} else {
+		dp_err("Invalid ring_type:%d received", ring_type);
+		return QDF_STATUS_E_INVAL;
+	}
+}
+
 struct vendor_cb_ops vendor_cb = {
 	.rx_isr_cb = dp_dal_rx_isr_vendor_cb,
 	.rx_replenish_alloc_cb = dp_dal_rx_replenish_alloc_vendor_cb,
 	.rx_cpl_cb = dp_dal_rx_desc_cb,
 	.tx_isr_cb = dp_dal_tx_cmp_isr_vendor_cb,
 	.tx_cpl_cb = dp_dal_tx_cpl_cb,
+	.set_msi_config = dp_dal_set_msi_config,
 };
 
 /**

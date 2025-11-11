@@ -4089,6 +4089,7 @@ struct dp_soc {
 #endif
 #ifdef FEATURE_DAL_DP_SUPPORT
 	struct dp_dal_ctx *dal_ctx;
+	int dp_dal_mode;
 #endif
 };
 

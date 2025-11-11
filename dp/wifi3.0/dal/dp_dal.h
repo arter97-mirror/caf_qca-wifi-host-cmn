@@ -28,6 +28,16 @@
 extern struct platform_bus_ops *global_plat_ops;
 
 /**
+ * enum dal_mode - dal operation mode
+ * @DAL_DP_BYPASS_MODE: bypass mode
+ * @DAL_DP_OFFLOAD_MODE: offload mode
+ */
+enum dal_mode {
+	DAL_DP_BYPASS_MODE,
+	DAL_DP_OFFLOAD_MODE,
+};
+
+/**
  * struct sta_info - STA information
  * @bss_idx: BSS index
  * @qos_txq_map: QoS TX queue map
@@ -89,6 +99,7 @@ struct platform_bus_ops {
  * @rx_replenish_alloc_cb: RX replenish allocation callback
  * @tx_cpl_cb: TX completion callback
  * @tx_isr_cb: Tx ISR callback
+ * @set_msi_config: Set MSI config callback
  */
 struct vendor_cb_ops {
 	int (*rx_isr_cb)(int ring_num, void *priv);
@@ -96,6 +107,8 @@ struct vendor_cb_ops {
 	int (*rx_replenish_alloc_cb)(void *priv, u16 count);
 	int (*tx_cpl_cb)(void *priv, void *desc, u16 ring_id);
 	int (*tx_isr_cb)(int rint_num, void *priv);
+	int (*set_msi_config)(void *priv, uint8_t ring_num, uint8_t ring_type,
+			      uint64_t msi_address, uint32_t msi_data);
 };
 
 /**
