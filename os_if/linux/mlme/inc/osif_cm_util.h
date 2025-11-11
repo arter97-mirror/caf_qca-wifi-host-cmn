@@ -34,6 +34,10 @@
 #ifdef CONN_MGR_ADV_FEATURE
 #include <cdp_txrx_mob_def.h>
 #endif
+#ifdef WLAN_BOOST_CPU_FREQ_IN_ROAM
+#include <qdf_threads.h>
+#include <qdf_types.h>
+#endif
 
 /**
  * osif_cm_mac_to_qca_connect_fail_reason() - Convert to qca internal connect
@@ -636,12 +640,39 @@ void osif_cm_reset_legacy_cb(void);
  * Return: QDF_STATUS
  */
 QDF_STATUS osif_cm_perfd_set_cpufreq(bool action);
+
+/**
+ * osif_cm_perfd_set_cpumask() - Function to set perf core CPU mask
+ * for the scheduler thread.
+ *
+ * This function sets the perf cores CPU mask for the scheduler
+ * thread.
+ *
+ * Return: void
+ */
+void osif_cm_perfd_set_cpumask(void);
+
+/**
+ * osif_cm_perfd_clear_cpumask() - Function to clear the CPU mask
+ * for the scheduler thread.
+ *
+ * This function clears the CPU mask for the scheduler thread.
+ *
+ * Return: void
+ */
+void osif_cm_perfd_clear_cpumask(void);
 #else
 static inline
 QDF_STATUS osif_cm_perfd_set_cpufreq(bool action)
 {
 	return QDF_STATUS_SUCCESS;
 }
+
+static inline
+void osif_cm_perfd_set_cpumask(void) {}
+
+static inline
+void osif_cm_perfd_clear_cpumask(void) {}
 #endif
 
 /**
