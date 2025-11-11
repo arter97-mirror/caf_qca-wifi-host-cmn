@@ -1588,6 +1588,9 @@ enum _ol_ath_param_t {
 #ifdef WLAN_FEATURE_11BE
 	OL_ATH_PARAM_ACS_AUTO_PUNCTURE_DISABLE = 570,
 #endif /* WLAN_FEATURE_11BE */
+#if QCN_IE
+	OL_ATH_PARAM_CCK_RX_5G = 571,
+#endif
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -4193,6 +4196,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		SET_PARAM, 1},
 	{"g_dcs_wlan_random_chan_en",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
+	{"cck_rx_support", OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_CCK_RX_5G,
+		SET_PARAM, 1},
+	{"g_cck_rx_support", OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_CCK_RX_5G,
 		GET_PARAM, 0},
 };
 #endif
