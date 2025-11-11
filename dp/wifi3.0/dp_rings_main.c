@@ -2737,7 +2737,39 @@ static void dp_peer_setup_get_reo_hash(struct dp_vdev *vdev,
 		}
 	}
 }
+#elif defined(FEATURE_DAL_DP_SUPPORT)
+/**
+ * dp_peer_setup_get_reo_hash() - get reo dest ring and hash values for a peer
+ * @vdev: Datapath VDEV handle
+ * @setup_info:
+ * @reo_dest: pointer to default reo_dest ring for vdev to be populated
+ * @hash_based: pointer to hash value (enabled/disabled) to be populated
+ * @lmac_peer_id_msb:
+ *
+ * Use system config values for hash based steering.
+ *
+ * Return: None
+ */
+static void dp_peer_setup_get_reo_hash(struct dp_vdev *vdev,
+				       struct cdp_peer_setup_info *setup_info,
+				       enum cdp_host_reo_dest_ring *reo_dest,
+				       bool *hash_based,
+				       uint8_t *lmac_peer_id_msb)
+{
+	struct dp_soc *soc = vdev->pdev->soc;
 
+	/* Disable hash-based routing if DAL mode is offload */
+	if (soc->dp_dal_mode == DAL_DP_OFFLOAD_MODE &&
+	    (vdev->qdf_opmode == QDF_STA_MODE ||
+	     vdev->qdf_opmode == QDF_SAP_MODE)) {
+		*hash_based = false;
+		*reo_dest = (vdev->qdf_opmode == QDF_STA_MODE) ?
+			DAL_DP_DEFAULT_REO_STA : DAL_DP_DEFAULT_REO_SAP;
+	} else {
+		soc->arch_ops.peer_get_reo_hash(vdev, setup_info, reo_dest,
+						hash_based, lmac_peer_id_msb);
+	}
+}
 #else
 
 /**

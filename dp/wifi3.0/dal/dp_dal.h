@@ -14,7 +14,16 @@
 
 #ifdef FEATURE_DAL_DP_SUPPORT
 #define DAL_DP_TCL_RING_MASK 0x3
+
+/*
+ * Changing DAL_DP_REO_RING_MASK should change the DAL_DP_DEFAULT_REO_STA
+ * and DAL_DP_DEFAULT_REO_SAP to get correct reo destination ring.
+ */
 #define DAL_DP_REO_RING_MASK 0xc
+
+/* used during the peer default routing config in DAL offload mode */
+#define DAL_DP_DEFAULT_REO_STA 3
+#define DAL_DP_DEFAULT_REO_SAP 4
 
 #define PRIORITY_CLASS 8
 #define MAC_ADDR_LEN 6
