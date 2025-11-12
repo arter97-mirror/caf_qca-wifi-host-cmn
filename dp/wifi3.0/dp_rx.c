@@ -3664,8 +3664,8 @@ static inline void dp_dump_opt_dp_pkt(uint8_t *pkt_data, size_t len,
 					       " ");
 	}
 
-	dp_info_rl("%d:%d:%d: RX: %s", rx_path_tag, cce_match,
-		   cce_metadata, fullbuf);
+	dp_ipa_info_rl("%d:%d:%d: RX: %s", rx_path_tag, cce_match,
+		       cce_metadata, fullbuf);
 }
 
 void __dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
