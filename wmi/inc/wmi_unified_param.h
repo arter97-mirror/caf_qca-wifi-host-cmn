@@ -6938,6 +6938,7 @@ typedef enum {
 	wmi_service_cck_tx_support_5g,
 	wmi_service_cfr_unassoc_rx_capture_support,
 	wmi_service_cfr_assoc_tx_capture_support,
+	wmi_service_direct_refill_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -7343,6 +7344,7 @@ struct target_feature_set {
  * @is_action_oui_v2_enabled: Is action oui v2 enabled
  * @enable_bcn_rssi_history_report: Enable beacon rssi history report
  * @haps_feature_flags: HAPS flags setting for power save config
+ * @direct_refill_ring_support: Direct refill feature support indication
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7496,6 +7498,7 @@ typedef struct {
 	bool is_action_oui_v2_enabled;
 	bool enable_bcn_rssi_history_report;
 	uint32_t haps_feature_flags;
+	bool direct_refill_ring_support;
 } target_resource_config;
 
 /**

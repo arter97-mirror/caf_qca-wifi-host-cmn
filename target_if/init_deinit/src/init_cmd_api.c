@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -604,6 +604,12 @@ void init_deinit_prepare_send_init_cmd(
 	target_if_set_reo_shared_qref_feature(psoc, info);
 
 	target_if_set_num_max_mlo_link(psoc, info);
+
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_direct_refill_support)) {
+		info->wlan_res_cfg.direct_refill_ring_support = true;
+		target_if_debug("Direct refill feature enabled");
+	}
 
 	wmi_unified_init_cmd_send(wmi_handle, &init_param);
 

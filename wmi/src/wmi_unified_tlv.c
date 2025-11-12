@@ -10082,6 +10082,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	if (tgt_res_cfg->enable_bcn_rssi_history_report)
 		WMI_RSRC_CFG_FLAGS2_RECV_BCN_STATS_ENABLED_SET(
 						resource_cfg->flags2, 1);
+
+	if (tgt_res_cfg->direct_refill_ring_support)
+		WMI_RSRC_CFG_HOST_SERVICE_FLAG_DIRECT_REFILL_SUPPORT_SET(
+				resource_cfg->host_service_flags, 1);
 }
 
 #ifdef FEATURE_SET
