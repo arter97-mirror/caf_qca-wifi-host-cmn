@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -14,7 +14,6 @@
 #include "cnss_nl.h"
 #define WLAN_IPA_THREAD_NAME_MAX 20
 #define WLAN_IPA_TEMP_BUF_LEN_MAX 20
-#define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 100
 #define WLAN_IPA_POST_HOST_LOG 0x001
 #define WLAN_IPA_SHUTDOWN_LOGGING_THREAD 0x002
 #define WLAN_IPA_MAX_WAIT_TIME 100
@@ -331,7 +330,7 @@ QDF_STATUS wlan_ipa_send_to_filled_list(char *log, int length, const char *func)
 	char tbuf[WLAN_IPA_PREFIX_BUFFER_LEN_MAX];
 	int tlen;
 	uint64_t ts;
-	int total_log_len, header_len;
+	int total_log_len, header_len, payload_len_avail;
 	char *ptr;
 	struct wlan_ipa_log_msg *curr_node = NULL;
 	char msg_header[WLAN_IPA_TEMP_BUF_LEN_MAX];
@@ -363,10 +362,17 @@ QDF_STATUS wlan_ipa_send_to_filled_list(char *log, int length, const char *func)
 
 	ts = qdf_get_log_timestamp();
 	tlen = wlan_ipa_add_process_time_stamp(tbuf, sizeof(tbuf), ts, func);
-	total_log_len = length + tlen + header_len;
 	qdf_mem_copy(ptr, msg_header, header_len);
 	qdf_mem_copy(&ptr[header_len], tbuf, tlen);
-	qdf_mem_copy(&ptr[header_len + tlen], log, length);
+	payload_len_avail = MAX_LOG_LENGTH - 2 - (tlen + header_len);
+	if (payload_len_avail > length) {
+		total_log_len = length + tlen + header_len;
+		payload_len_avail = length;
+	} else {
+		total_log_len = MAX_LOG_LENGTH - 2;
+	}
+
+	qdf_mem_copy(&ptr[header_len + tlen], log, payload_len_avail);
 	ptr[total_log_len] = '\n';
 	ptr[total_log_len + 1] = '\0';
 	qdf_spin_lock_bh(&g_ipa_logging_ctx.lock);
@@ -381,11 +387,11 @@ QDF_STATUS wlan_ipa_send_to_filled_list(char *log, int length, const char *func)
 
 void wlan_ipa_log_message(const char *func, const char *msg, ...)
 {
-	char buffer[MAX_LOG_LENGTH];
+	char buffer[MAX_LOG_PAYLOAD_LENGTH];
 	qdf_va_list args;
 
 	qdf_va_start(args, msg);
-	qdf_vscnprintf(buffer, MAX_LOG_LENGTH, msg, args);
+	qdf_vscnprintf(buffer, MAX_LOG_PAYLOAD_LENGTH, msg, args);
 	wlan_ipa_send_to_filled_list(buffer, qdf_str_len(buffer), func);
 	qdf_va_end(args);
 }
