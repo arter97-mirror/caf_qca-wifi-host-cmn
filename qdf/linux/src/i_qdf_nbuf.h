@@ -3487,6 +3487,19 @@ static inline void __qdf_nbuf_set_ip_id(struct sk_buff *skb, uint16_t id)
 }
 
 /**
+ * __qdf_nbuf_set_ip_tot_len() - set IP total length field
+ * @skb: network buffer
+ * @tot_len: total length value
+ *
+ * Return: none
+ */
+static inline void
+__qdf_nbuf_set_ip_tot_len(struct sk_buff *skb, uint16_t tot_len)
+{
+	ip_hdr(skb)->tot_len = tot_len;
+}
+
+/**
  * __qdf_nbuf_get_priv_ptr() - get the priv pointer from the nbuf'f private space
  *@skb: sk buff
  *

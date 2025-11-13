@@ -6006,6 +6006,18 @@ static inline void qdf_nbuf_set_ip_id(qdf_nbuf_t buf, uint16_t id)
 	__qdf_nbuf_set_ip_id(buf, id);
 }
 
+/**
+ * qdf_nbuf_set_ip_tot_len() - set IP total length field
+ * @buf: network buffer
+ * @tot_len: total length value
+ *
+ * Return: none
+ */
+static inline void qdf_nbuf_set_ip_tot_len(qdf_nbuf_t buf, uint16_t tot_len)
+{
+	__qdf_nbuf_set_ip_tot_len(buf, tot_len);
+}
+
 static inline qdf_size_t qdf_nbuf_l2l3l4_hdr_len(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_l2l3l4_hdr_len(buf);
