@@ -3500,6 +3500,19 @@ __qdf_nbuf_set_ip_tot_len(struct sk_buff *skb, uint16_t tot_len)
 }
 
 /**
+ * __qdf_nbuf_set_ipv6_payload_len() - set IPv6 payload length field
+ * @skb: network buffer
+ * @payload_len: payload length value
+ *
+ * Return: none
+ */
+static inline void
+__qdf_nbuf_set_ipv6_payload_len(struct sk_buff *skb, uint16_t payload_len)
+{
+	ipv6_hdr(skb)->payload_len = payload_len;
+}
+
+/**
  * __qdf_nbuf_get_priv_ptr() - get the priv pointer from the nbuf'f private space
  *@skb: sk buff
  *

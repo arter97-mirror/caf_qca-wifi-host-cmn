@@ -6018,6 +6018,19 @@ static inline void qdf_nbuf_set_ip_tot_len(qdf_nbuf_t buf, uint16_t tot_len)
 	__qdf_nbuf_set_ip_tot_len(buf, tot_len);
 }
 
+/**
+ * qdf_nbuf_set_ipv6_payload_len() - set IPv6 payload length field
+ * @buf: network buffer
+ * @payload_len: payload length value
+ *
+ * Return: none
+ */
+static inline void
+qdf_nbuf_set_ipv6_payload_len(qdf_nbuf_t buf, uint16_t payload_len)
+{
+	__qdf_nbuf_set_ipv6_payload_len(buf, payload_len);
+}
+
 static inline qdf_size_t qdf_nbuf_l2l3l4_hdr_len(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_l2l3l4_hdr_len(buf);
