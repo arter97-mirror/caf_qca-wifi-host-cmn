@@ -5983,6 +5983,29 @@ static inline void qdf_nbuf_set_tcp_fin(qdf_nbuf_t buf, bool fin)
 	__qdf_nbuf_set_tcp_fin(buf, fin);
 }
 
+/**
+ * qdf_nbuf_get_ip_id() - get IP identification field
+ * @buf: network buffer
+ *
+ * Return: IP ID value
+ */
+static inline uint16_t qdf_nbuf_get_ip_id(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_ip_id(buf);
+}
+
+/**
+ * qdf_nbuf_set_ip_id() - set IP identification field
+ * @buf: network buffer
+ * @id: IP ID value
+ *
+ * Return: none
+ */
+static inline void qdf_nbuf_set_ip_id(qdf_nbuf_t buf, uint16_t id)
+{
+	__qdf_nbuf_set_ip_id(buf, id);
+}
+
 static inline qdf_size_t qdf_nbuf_l2l3l4_hdr_len(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_l2l3l4_hdr_len(buf);

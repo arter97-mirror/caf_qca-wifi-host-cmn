@@ -3464,6 +3464,29 @@ static inline void __qdf_nbuf_set_tcp_fin(struct sk_buff *skb, bool fin)
 }
 
 /**
+ * __qdf_nbuf_get_ip_id() - get IP identification field
+ * @skb: network buffer
+ *
+ * Return: IP ID value
+ */
+static inline uint16_t __qdf_nbuf_get_ip_id(struct sk_buff *skb)
+{
+	return ip_hdr(skb)->id;
+}
+
+/**
+ * __qdf_nbuf_set_ip_id() - set IP identification field
+ * @skb: network buffer
+ * @id: IP ID value
+ *
+ * Return: none
+ */
+static inline void __qdf_nbuf_set_ip_id(struct sk_buff *skb, uint16_t id)
+{
+	ip_hdr(skb)->id = id;
+}
+
+/**
  * __qdf_nbuf_get_priv_ptr() - get the priv pointer from the nbuf'f private space
  *@skb: sk buff
  *
