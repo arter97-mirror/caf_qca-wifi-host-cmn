@@ -3117,6 +3117,12 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 		dp_rx_mark_first_packet_after_wow_wakeup(vdev->pdev,
 							 rx_tlv_hdr, nbuf);
 
+		/* Mark the RX NBUF as DAL owned, this is required to
+		 * enqueue the RX buffers in to correct RX threads
+		 * created for DAL rings.
+		 */
+		qdf_nbuf_dal_owned_set(nbuf);
+
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
