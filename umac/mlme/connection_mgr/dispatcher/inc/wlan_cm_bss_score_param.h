@@ -331,7 +331,7 @@ wlan_denylist_action_on_bssid(struct wlan_objmgr_pdev *pdev,
  * @pcl_lst: pcl list for scoring
  * @scan_list: scan list, contains the input list and after the
  *             func it will have sorted list
- * @bssid_hint: bssid hint
+ * @filter: scan filter params
  * @self_mac: connecting vdev self mac address
  * @allow_scan: Is scan allowed for this connection
  *
@@ -340,7 +340,7 @@ wlan_denylist_action_on_bssid(struct wlan_objmgr_pdev *pdev,
 void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 				 struct pcl_freq_weight_list *pcl_lst,
 				 qdf_list_t *scan_list,
-				 struct qdf_mac_addr *bssid_hint,
+				 struct scan_filter *filter,
 				 struct qdf_mac_addr *self_mac,
 				 bool allow_scan);
 

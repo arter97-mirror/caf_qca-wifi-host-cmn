@@ -3291,6 +3291,7 @@ bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
  * scan list
  * @pdev: Pointer to pdev object
  * @entry: Pointer to scan cache entry
+ * @orig_filter: original scan filter params
  * @link_info: Pointer to partner link information
  *
  * This function checks if a partner link exists in the scan cache by creating
@@ -3302,6 +3303,7 @@ bool cm_is_slo_candidate_allowed(struct wlan_objmgr_psoc *psoc,
 static bool
 cm_check_for_partner_link_in_scan_list(struct wlan_objmgr_pdev *pdev,
 				       struct scan_cache_entry *entry,
+				       struct scan_filter *orig_filter,
 				       struct partner_link_info *link_info)
 {
 	struct scan_filter *scan_filter;
@@ -3326,6 +3328,14 @@ cm_check_for_partner_link_in_scan_list(struct wlan_objmgr_pdev *pdev,
 		     link_info->link_addr.bytes,
 		     sizeof(struct qdf_mac_addr));
 
+	scan_filter->authmodeset = orig_filter->authmodeset;
+	scan_filter->ucastcipherset = orig_filter->ucastcipherset;
+	scan_filter->key_mgmt = orig_filter->key_mgmt;
+	scan_filter->mcastcipherset = orig_filter->mcastcipherset;
+	scan_filter->mgmtcipherset = orig_filter->mgmtcipherset;
+	scan_filter->pmf_cap = orig_filter->pmf_cap;
+	mlme_debug("Add crypto params to scan filter, auth mode: %d",
+		   scan_filter->authmodeset);
 	list = scm_get_scan_result(pdev, scan_filter);
 	qdf_mem_free(scan_filter);
 	if (!list || (list && !qdf_list_size(list))) {
@@ -3358,9 +3368,10 @@ done:
 }
 
 static void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
-				      struct scoring_cfg *score_config,
 				      struct scan_cache_entry *entry,
-				      qdf_list_t *scan_list, bool allow_scan)
+				      qdf_list_t *scan_list,
+				      struct scan_filter *filter,
+				      bool allow_mbssid_scan)
 {
 	struct wlan_objmgr_psoc *psoc;
 	uint8_t idx;
@@ -3405,6 +3416,7 @@ static void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
 			 * this link valid.
 			 */
 			if (cm_check_for_partner_link_in_scan_list(pdev, entry,
+								   filter,
 								   link_info))
 				continue;
 
@@ -3413,10 +3425,13 @@ static void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
 			 * part of MBSSID set's non-Tx BSSID, then clear the
 			 * partner links which don't have any scan entry.
 			 */
+			mlme_debug("Allow scan: %d", allow_mbssid_scan);
 			if (entry->mbssid_info.profile_num &&
-			    !(allow_scan &&
-			      score_config->scan_nontx_search_thresh))
+			    !allow_mbssid_scan) {
+				mlme_debug("Set non-tx BSS link " QDF_MAC_ADDR_FMT " as invalid",
+					   QDF_MAC_ADDR_REF(link_info->link_addr.bytes));
 				link_info->is_valid_link = false;
+			}
 			continue;
 		}
 
@@ -3435,6 +3450,7 @@ static void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
  * cm_mlo_generate_candidate_list() - generate candidate list
  * @pdev: pdev object
  * @candidate_list: candidate list
+ * @filter: scan filter params
  * @allow_scan: Is scan allowed for this connect request
  *
  * For any candidate list this api generates all possible unique
@@ -3462,6 +3478,7 @@ static void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
  */
 static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 					   qdf_list_t *candidate_list,
+					   struct scan_filter *filter,
 					   bool allow_scan)
 {
 	struct wlan_objmgr_psoc *psoc;
@@ -3472,7 +3489,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 	struct scan_cache_node *tmp_scan_node, *scan_node;
 	struct scan_cache_entry *tmp_scan_entry, *scan_entry;
 	uint8_t max_link_cnt, num_link, cur_valid_partners, cur_valid_bitmap;
-	bool allow_slo_candidate, remove_curr_candidate;
+	bool allow_slo_candidate, remove_curr_candidate, allow_mbssid_scan;
 	uint8_t gen_bmap, i, gen_link_cnt;
 
 	psoc = wlan_pdev_get_psoc(pdev);
@@ -3522,9 +3539,11 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 			goto add_11ax;
 		}
 
+		allow_mbssid_scan = allow_scan &
+					score_config->scan_nontx_search_thresh;
 		/* Validate the partner links */
-		cm_validate_partner_links(pdev, score_config, scan_entry,
-					  candidate_list, allow_scan);
+		cm_validate_partner_links(pdev, scan_entry, candidate_list,
+					  filter, allow_mbssid_scan);
 
 		if (!allow_slo_candidate)
 			goto next;
@@ -3660,6 +3679,7 @@ static void cm_eliminate_invalid_candidate(struct wlan_objmgr_psoc *psoc,
 #else
 static inline void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 						  qdf_list_t *candidate_list,
+						  struct scan_filter *filter,
 						  bool allow_scan)
 {
 }
@@ -3673,7 +3693,7 @@ static inline void cm_validate_partner_links(struct wlan_objmgr_pdev *pdev,
 					     struct scoring_cfg *score_config,
 					     struct scan_cache_entry *entry,
 					     qdf_list_t *scan_list,
-					     bool allow_scan)
+					     bool allow_mbssid_scan)
 {
 }
 
@@ -3714,7 +3734,7 @@ static void cm_dec_score_for_mcc(struct wlan_objmgr_psoc *psoc,
 void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 				 struct pcl_freq_weight_list *pcl_lst,
 				 qdf_list_t *scan_list,
-				 struct qdf_mac_addr *bssid_hint,
+				 struct scan_filter *filter,
 				 struct qdf_mac_addr *self_mac, bool allow_scan)
 {
 	struct scan_cache_node *scan_entry;
@@ -3730,6 +3750,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 	struct scan_cache_node *force_connect_candidate = NULL;
 	bool are_all_candidate_denylisted = true;
 	bool is_rssi_bad = false;
+	struct qdf_mac_addr bssid_hint;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 
@@ -3748,7 +3769,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 
 	score_config = &mlme_psoc_obj->psoc_cfg.score_config;
 	config = &mlme_psoc_obj->psoc_cfg.phy_config;
-
+	qdf_copy_macaddr(&bssid_hint, &filter->bssid_hint);
 	mlme_nofl_debug("Self caps: HT %d VHT %d HE %d EHT %d VHT_24Ghz %d BF cap %d bw_above_20_24ghz %d bw_above_20_5ghz %d 2.4G NSS %d 5G NSS %d",
 			config->ht_cap, config->vht_cap,
 			config->he_cap, config->eht_cap, config->vht_24G_cap,
@@ -3756,7 +3777,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 			config->bw_above_20_5ghz, config->vdev_nss_24g,
 			config->vdev_nss_5g);
 
-	cm_mlo_generate_candidate_list(pdev, scan_list, allow_scan);
+	cm_mlo_generate_candidate_list(pdev, scan_list, filter, allow_scan);
 
 	/* calculate score for each AP */
 	if (qdf_list_peek_front(scan_list, &cur_node) != QDF_STATUS_SUCCESS) {
@@ -3771,7 +3792,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 					      node);
 
 		is_rssi_bad = cm_is_bad_rssi_entry(scan_entry->entry,
-						   score_config, bssid_hint);
+						   score_config, &bssid_hint);
 
 		assoc_allowed = cm_is_assoc_allowed(mlme_psoc_obj,
 						    scan_entry->entry);
@@ -3804,7 +3825,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 		     CM_DLM_REMOVE)) {
 			cm_calculate_bss_score(psoc, pdev, scan_entry->entry,
 					       pcl_chan_weight,
-					       bssid_hint,
+					       &bssid_hint,
 					       scan_list, ASSOC_LINK);
 
 			/* Update MCC score for non DBS HW */

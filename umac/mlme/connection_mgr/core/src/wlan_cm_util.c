@@ -2067,7 +2067,7 @@ void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 
 	cm_update_scoring_nss_for_vdev(cm_ctx);
 
-	wlan_cm_calculate_bss_score(pdev, pcl_lst, list, &filter->bssid_hint,
+	wlan_cm_calculate_bss_score(pdev, pcl_lst, list, filter,
 				    (struct qdf_mac_addr *)
 				    wlan_vdev_mlme_get_macaddr(cm_ctx->vdev),
 				    allow_scan);
