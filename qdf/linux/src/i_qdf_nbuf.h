@@ -3441,6 +3441,29 @@ static inline void __qdf_nbuf_set_tcp_psh(struct sk_buff *skb, bool psh)
 }
 
 /**
+ * __qdf_nbuf_get_tcp_fin() - get TCP FIN flag
+ * @skb: network buffer
+ *
+ * Return: TCP FIN flag value
+ */
+static inline bool __qdf_nbuf_get_tcp_fin(struct sk_buff *skb)
+{
+	return tcp_hdr(skb)->fin;
+}
+
+/**
+ * __qdf_nbuf_set_tcp_fin() - set TCP FIN flag
+ * @skb: network buffer
+ * @fin: FIN flag value
+ *
+ * Return: none
+ */
+static inline void __qdf_nbuf_set_tcp_fin(struct sk_buff *skb, bool fin)
+{
+	tcp_hdr(skb)->fin = fin;
+}
+
+/**
  * __qdf_nbuf_get_priv_ptr() - get the priv pointer from the nbuf'f private space
  *@skb: sk buff
  *

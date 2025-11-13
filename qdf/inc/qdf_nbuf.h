@@ -5960,6 +5960,29 @@ static inline void qdf_nbuf_set_tcp_psh(qdf_nbuf_t buf, bool psh)
 	__qdf_nbuf_set_tcp_psh(buf, psh);
 }
 
+/**
+ * qdf_nbuf_get_tcp_fin() - get TCP FIN flag
+ * @buf: network buffer
+ *
+ * Return: TCP FIN flag value
+ */
+static inline bool qdf_nbuf_get_tcp_fin(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_tcp_fin(buf);
+}
+
+/**
+ * qdf_nbuf_set_tcp_fin() - set TCP FIN flag
+ * @buf: network buffer
+ * @fin: FIN flag value
+ *
+ * Return: none
+ */
+static inline void qdf_nbuf_set_tcp_fin(qdf_nbuf_t buf, bool fin)
+{
+	__qdf_nbuf_set_tcp_fin(buf, fin);
+}
+
 static inline qdf_size_t qdf_nbuf_l2l3l4_hdr_len(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_l2l3l4_hdr_len(buf);
