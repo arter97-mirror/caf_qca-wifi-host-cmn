@@ -3202,6 +3202,9 @@ bool dp_display_srng_info(struct cdp_soc_t *soc_hdl)
 
 	dp_info("SRNG HP-TP data:");
 	for (i = 0; i < soc->num_tcl_data_rings; i++) {
+		if (dp_srng_check_dal_owned_ring(&soc->tcl_data_ring[i]))
+			continue;
+
 		hal_get_sw_hptp(hal_soc, soc->tcl_data_ring[i].hal_srng,
 				&tp, &hp);
 		dp_info("TCL DATA ring[%d]: hp=0x%x, tp=0x%x", i, hp, tp);
@@ -3210,12 +3213,18 @@ bool dp_display_srng_info(struct cdp_soc_t *soc_hdl)
 		    INVALID_WBM_RING_NUM)
 			continue;
 
+		if (dp_srng_check_dal_owned_ring(&soc->tx_comp_ring[i]))
+			continue;
+
 		hal_get_sw_hptp(hal_soc, soc->tx_comp_ring[i].hal_srng,
 				&tp, &hp);
 		dp_info("TX comp ring[%d]: hp=0x%x, tp=0x%x", i, hp, tp);
 	}
 
 	for (i = 0; i < soc->num_reo_dest_rings; i++) {
+		if (dp_srng_check_dal_owned_ring(&soc->reo_dest_ring[i]))
+			continue;
+
 		hal_get_sw_hptp(hal_soc, soc->reo_dest_ring[i].hal_srng,
 				&tp, &hp);
 		if (hp != tp)
