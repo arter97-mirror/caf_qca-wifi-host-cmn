@@ -9,6 +9,7 @@
 #include "hal_be_hw_headers.h"
 #include "hal_be_tx.h"
 #include "hal_tx.h"
+#include "hal_flow.h"
 
 /*---------------------------------------------------------------------------
  * Structures
@@ -403,6 +404,34 @@ static inline uint64_t hal_tx_comp_get_desc_va(void *hal_desc)
  * TX BANK register accessor APIs
  * ---------------------------------------------------------------------------
  */
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * hal_tx_desc_clear_buf_addr_info_bn() - Clear buffer address fields in Tx Desc
+ * @desc: Handle to Tx Descriptor
+ *
+ * Return: void
+ */
+static inline void
+hal_tx_desc_clear_buf_addr_info_bn(void *desc)
+{
+	/* Clear buffer_addr_info.buffer_addr_31_0 */
+	HAL_CLR_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0);
+
+	/* Clear buffer_addr_info.buffer_addr_39_32 */
+	HAL_CLR_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32);
+
+	/* Clear buffer_addr_info.return_buffer_manager */
+	HAL_CLR_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_RETURN_BUFFER_MANAGER);
+
+	/* Clear buffer_addr_info.sw_buffer_cookie */
+	HAL_CLR_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE);
+
+	/* Clear Buffer or Ext Descriptor Type */
+	HAL_CLR_FLD(desc, TCL_ASSIST_CMD, BUF_OR_EXT_DESC_TYPE);
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 /**
  * hal_tx_desc_set_buf_addr_bn() - Fill Buffer Address information in Tx Desc
  * @hal_soc_hdl: HAL SoC context

@@ -22,6 +22,7 @@
 
 #include "hal_be_hw_headers.h"
 #include "hal_tx.h"
+#include "hal_flow.h"
 
 /* Number of TX banks reserved i.e, will not be used by host driver. */
 /* MAX_TCL_BANK reserved for FW use */
@@ -718,6 +719,37 @@ hal_tx_config_rbm_mapping_be(hal_soc_handle_t hal_soc_hdl,
 #endif
 
 #ifndef CONFIG_BORON
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * hal_tx_desc_clear_buf_addr_info_be() - Clear buffer address fields in Tx Desc
+ * @desc: Handle to Tx Descriptor
+ *
+ * This function clears the buffer address related fields in the TCL descriptor
+ * to prevent junk values when the descriptor is reused. Should be called before
+ * hal_tx_desc_set_buf_addr_be() to ensure clean field updates.
+ *
+ * Return: void
+ */
+static inline void
+hal_tx_desc_clear_buf_addr_info_be(void *desc)
+{
+	/* Clear buffer_addr_info.buffer_addr_31_0 */
+	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0);
+
+	/* Clear buffer_addr_info.buffer_addr_39_32 */
+	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32);
+
+	/* Clear buffer_addr_info.return_buffer_manager */
+	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_RETURN_BUFFER_MANAGER);
+
+	/* Clear buffer_addr_info.sw_buffer_cookie */
+	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE);
+
+	/* Clear Buffer or Ext Descriptor Type */
+	HAL_CLR_FLD(desc, TCL_DATA_CMD, BUF_OR_EXT_DESC_TYPE);
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 /**
  * hal_tx_desc_set_buf_addr_be() - Fill Buffer Address information in Tx Desc
  * @hal_soc_hdl: HAL SoC context

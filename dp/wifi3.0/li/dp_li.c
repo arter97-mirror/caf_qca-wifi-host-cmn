@@ -745,6 +745,8 @@ void dp_initialize_arch_ops_li(struct dp_arch_ops *arch_ops)
 #ifdef FEATURE_DAL_DP_SUPPORT
 	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_li;
 	arch_ops->dp_tx_hw_desc_sync = dp_tx_hw_desc_sync_li;
+	arch_ops->dp_tx_desc_update_buffer_info =
+					dp_tx_desc_update_buffer_info_li;
 	arch_ops->dp_dal_rx_process_nbuf_list = dp_dal_rx_process_nbuf_list_li;
 	arch_ops->dp_rx_validate_and_fetch_rx_desc =
 					dp_rx_validate_and_fetch_rx_desc_li;

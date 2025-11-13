@@ -255,5 +255,21 @@ dp_tx_gen_hw_desc_rh(struct dp_soc *soc, struct dp_vdev *vdev,
  */
 void dp_tx_hw_desc_sync_rh(void *hal_tx_desc_cached, void *hw_desc,
 			   uint8_t num_bytes);
+
+/**
+ * dp_tx_desc_update_buffer_info_rh() - Dummy function for RH architecture
+ * @soc: DP soc handle
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @tx_desc: tx descriptor
+ * @ring_id: ring ID
+ *
+ * This is a dummy place holder function for RH architecture.
+ *
+ * Return: None
+ */
+void dp_tx_desc_update_buffer_info_rh(struct dp_soc *soc,
+				      void *hal_tx_desc_cached,
+				      struct dp_tx_desc_s *tx_desc,
+				      uint8_t ring_id);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

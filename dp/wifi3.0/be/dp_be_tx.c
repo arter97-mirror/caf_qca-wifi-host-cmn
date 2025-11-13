@@ -2826,4 +2826,35 @@ void dp_tx_hw_desc_sync_be(void *hal_tx_desc_cached, void *hw_desc,
 {
 	hal_tx_desc_sync(hal_tx_desc_cached, hw_desc, num_bytes);
 }
+
+/**
+ * dp_tx_desc_update_buffer_info_be() - Update buffer info in HW descriptor
+ * @soc: DP soc handle
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @tx_desc: tx descriptor
+ * @ring_id: ring ID
+ *
+ * This function updates the buffer address and related fields in the HW
+ * descriptor after ring_id has been overridden in DAL bypass mode.
+ *
+ * Return: None
+ */
+void dp_tx_desc_update_buffer_info_be(struct dp_soc *soc,
+				      void *hal_tx_desc_cached,
+				      struct dp_tx_desc_s *tx_desc,
+				      uint8_t ring_id)
+{
+	uint8_t bm_id;
+
+	/* Get RBM ID from the new ring_id */
+	bm_id = dp_tx_get_rbm_id_be(soc, ring_id);
+
+	/* Clear buffer address fields to prevent junk values */
+	hal_tx_desc_clear_buf_addr_info_be(hal_tx_desc_cached);
+
+	/* Update buffer address with new BM ID */
+	hal_tx_desc_set_buf_addr_be(soc->hal_soc, hal_tx_desc_cached,
+				    tx_desc->dma_addr, bm_id, tx_desc->id,
+				    (tx_desc->flags & DP_TX_DESC_FLAG_FRAG));
+}
 #endif

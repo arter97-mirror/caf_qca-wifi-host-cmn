@@ -748,4 +748,23 @@ void dp_tx_hw_desc_sync_li(void *hal_tx_desc_cached, void *hw_desc,
 {
 	hal_tx_desc_sync(hal_tx_desc_cached, hw_desc);
 }
+
+/**
+ * dp_tx_desc_update_buffer_info_li() - Dummy function for LI architecture
+ * @soc: DP soc handle
+ * @hal_tx_desc_cached: cached descriptor in host memory
+ * @tx_desc: tx descriptor
+ * @ring_id: ring ID
+ *
+ * This is a dummy place holder function for LI architecture.
+ *
+ * Return: None
+ */
+void dp_tx_desc_update_buffer_info_li(struct dp_soc *soc,
+				      void *hal_tx_desc_cached,
+				      struct dp_tx_desc_s *tx_desc,
+				      uint8_t ring_id)
+{
+	/* Dummy implementation - no action needed for LI */
+}
 #endif /* FEATURE_DAL_DP_SUPPORT */

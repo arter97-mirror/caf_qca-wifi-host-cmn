@@ -128,6 +128,10 @@ int dp_dal_tx_bypass_mode(void *priv, u8 ring_id, u32 ifidx, void *desc,
 	}
 
 	ring_id = txq->ring_id;
+
+	/* Since ring_id is updated, update the BM_ID info in the desc */
+	soc->arch_ops.dp_tx_desc_update_buffer_info(soc, desc,
+						    tx_desc, ring_id);
 	hal_ring_hdl = dp_tx_get_hal_ring_hdl(soc, ring_id);
 
 	if (qdf_unlikely(dp_tx_hal_ring_access_start(soc, hal_ring_hdl))) {
