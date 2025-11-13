@@ -61,6 +61,8 @@
  */
 typedef struct sk_buff *__qdf_nbuf_t;
 
+typedef skb_frag_t __qdf_nbuf_frag_t;
+
 /*
  * typedef __qdf_nbuf_queue_head_t - abstraction for sk_buff_head linux struct
  *

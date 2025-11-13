@@ -1235,6 +1235,11 @@ typedef __qdf_flow_keys_t qdf_flow_keys_t;
 typedef __qdf_nbuf_shared_info_t qdf_nbuf_shared_info_t;
 
 /**
+ * typedef qdf_nbuf_frag_t - Platform independent nbuf frag abstraction
+ */
+typedef __qdf_nbuf_frag_t qdf_nbuf_frag_t;
+
+/**
  * struct qdf_nbuf_track_t - Network buffer track structure
  *
  * @p_next: Pointer to next
