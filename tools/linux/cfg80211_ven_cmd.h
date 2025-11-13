@@ -1579,6 +1579,10 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
 	OL_ATH_PARAM_WSI_REMAP_NETDEV_PRESERVE = 564,
 	OL_ATH_PARAM_OVERRIDE_MLSR_PTQM = 566,
+#ifdef CONFIG_SAWF_DEF_QUEUES
+        OL_ATH_PARAM_RC_UPPER_CAP_DL_DIR = 567,
+        OL_ATH_PARAM_RC_UPPER_CAP_UL_DIR = 568,
+#endif
 	/* Add QCA enums above */
 	OL_ATH_PARAM_CUST_BEGIN, /* Cust enum begin */
 	OL_ATH_PARAM_CUST_END, /* Cust enum end */
@@ -3971,6 +3975,12 @@ struct vendor_commands radio_vendor_cmds[] = {
 		GET_PARAM, 0},
 	{"get_rate_upper_cap_mcs",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RC_UPPER_CAP_MCS,
+		GET_PARAM, 0},
+	{"get_rate_upper_cap_dl_dir",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RC_UPPER_CAP_DL_DIR,
+		GET_PARAM, 0},
+	{"get_rate_upper_cap_ul_dir",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_RC_UPPER_CAP_UL_DIR,
 		GET_PARAM, 0},
 	{"disable_rate_upper_cap",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DISABLE_RATE_UPPER_CAP,
