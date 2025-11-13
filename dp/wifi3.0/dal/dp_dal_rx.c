@@ -242,10 +242,11 @@ int dp_dal_rx_replenish_bypass_mode(void *priv, u32 cnt, bool use_rsv_pktid)
 	}
 
 	rx_desc_pool = &soc->rx_desc_buf[mac_id];
-	dp_rx_buffers_replenish(soc, mac_id,
-				&soc->rx_refill_buf_ring[mac_id],
-				rx_desc_pool, cnt,
-				&desc_list_head, &desc_list_tail, true);
+	__dp_rx_buffers_replenish(soc, mac_id,
+				  &soc->rx_refill_buf_ring[mac_id],
+				  rx_desc_pool, cnt,
+				  &desc_list_head, &desc_list_tail, true,
+				  false, __func__);
 
 	return 0;
 }

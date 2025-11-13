@@ -327,16 +327,28 @@ int dp_dal_bus_start(struct dp_soc *soc);
 int dp_dal_bus_request_irq(struct dp_soc *soc);
 
 /**
- * dp_dal_bus_rx_buffer_enqueue() - DAL RX buffer enqueue function
+ * dp_dal_rx_buffers_replenish() - RX buffer enqueue function used from
+ * non-DAL path
  * @soc: pointer to DP SoC
- * @cnt: Number of RX buffers to replenish
+ * @mac_id: mac id
+ * @rx_desc_pool: pointer to rx desc pool
+ * @num_req_buffers: Number of Rx buffers to replenish
+ * @desc_list: HEAD pointer to rx desc list elem list
+ * @tail: TAIL pointer to rx desc list elem list
  *
- * Called during cdp_soc_attach_target() and during RX replenish, this function
- * enqueues RX buffers to DAL, DAL/OE will in turn update the buffers into
- * SW2FW ring.
+ * Invoked from a non-DAL path, such as the non-DAL REO DEST ring process, the
+ * Rx error path replenishes buffers for processed descriptors. Since the OE
+ * manages the rx buffer refill ring, all rx buffer replenishments must be
+ * performed through the OE.
  *
  * Return: int
  */
+int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
+				struct rx_desc_pool *rx_desc_pool,
+				uint32_t num_req_buffers,
+				union dp_rx_desc_list_elem_t **desc_list,
+				union dp_rx_desc_list_elem_t **tail);
+
 int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt);
 
 /**

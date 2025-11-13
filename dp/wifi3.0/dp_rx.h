@@ -28,6 +28,9 @@
 #ifdef FEATURE_WDS
 #include "dp_txrx_wds.h"
 #endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dp_dal.h"
+#endif
 
 #ifdef RXDMA_OPTIMIZATION
 #ifndef RX_DATA_BUFFER_ALIGNMENT
@@ -243,12 +246,18 @@ struct dp_rx_desc {
 #define dp_rx_add_to_free_desc_list_reuse(head, tail, new) \
 	__dp_rx_add_to_free_desc_list_reuse(head, tail, new, __func__)
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#define dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
+				num_buffers, desc_list, tail, req_only) \
+	dp_dal_rx_buffers_replenish(soc, mac_id, rx_desc_pool, \
+				    num_buffers, desc_list, tail)
+#else
 #define dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
 				num_buffers, desc_list, tail, req_only) \
 	__dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
 				  num_buffers, desc_list, tail, req_only, \
 				  false, __func__)
-
+#endif
 #ifdef WLAN_SUPPORT_RX_FISA
 /**
  * dp_rx_set_hdr_pad() - set l3 padding in nbuf cb
