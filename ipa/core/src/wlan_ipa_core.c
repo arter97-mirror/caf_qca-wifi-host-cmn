@@ -4759,6 +4759,7 @@ QDF_STATUS wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 	return status;
 }
 
+#ifndef IPA_OPT_WIFI_DP
 /**
  * wlan_ipa_uc_proc_pending_event() - Process IPA uC pending events
  * @ipa_ctx: Global IPA IPA context
@@ -4804,6 +4805,7 @@ wlan_ipa_uc_proc_pending_event(struct wlan_ipa_priv *ipa_ctx, bool is_loading)
 				      (qdf_list_node_t **)&pending_event);
 	}
 }
+#endif
 
 #if !defined(QCA_LL_TX_FLOW_CONTROL_V2) && !defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 
@@ -5046,6 +5048,13 @@ static QDF_STATUS wlan_ipa_uc_send_wdi_control_msg(struct wlan_ipa_priv *ipa_ctx
 }
 #endif
 
+#ifdef IPA_OPT_WIFI_DP
+static int wlan_ipa_setup_rx_sys_pipe(struct wlan_ipa_priv *ipa_ctx,
+				      int32_t desc_fifo_sz)
+{
+	return 0;
+}
+#else
 /**
  * wlan_ipa_setup_rx_sys_pipe() - Setup IPA Rx system pipes
  * @ipa_ctx: Global IPA IPA context
@@ -5086,7 +5095,7 @@ static int wlan_ipa_setup_rx_sys_pipe(struct wlan_ipa_priv *ipa_ctx,
 
 	return ret;
 }
-
+#endif
 /**
  * wlan_ipa_teardown_sys_pipe() - Tear down all IPA Sys pipes
  * @ipa_ctx: Global IPA IPA context
@@ -6139,34 +6148,10 @@ static inline void wlan_ipa_smmu_unmap_rx_buf(struct wlan_ipa_priv *ipa_ctx)
 	qdf_mutex_release(&ipa_ctx->ipa_lock);
 }
 
-/**
- * wlan_ipa_uc_op_cb() - IPA uC operation callback
- * @op_msg: operation message received from firmware
- * @ipa_ctx: user context registered with TL (we register the IPA Global
- * context)
- *
- * Return: None
- */
-static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
-			      struct wlan_ipa_priv *ipa_ctx)
+#ifndef IPA_OPT_WIFI_DP
+static void wlan_ipa_uc_op_tx_rx_suspend_resume(struct op_msg_type *msg,
+						struct wlan_ipa_priv *ipa_ctx)
 {
-	struct op_msg_type *msg = op_msg;
-	struct ipa_uc_fw_stats *uc_fw_stat;
-	bool add_status;
-	int status;
-
-	if (!ipa_ctx || !op_msg) {
-		ipa_err("INVALID ARG");
-		return;
-	}
-
-	if (msg->op_code >= WLAN_IPA_UC_OPCODE_MAX) {
-		ipa_err("INVALID OPCODE %d",  msg->op_code);
-		qdf_mem_free(op_msg);
-		return;
-	}
-
-	ipa_debug("OPCODE=%d", msg->op_code);
 
 	if ((msg->op_code == WLAN_IPA_UC_OPCODE_TX_RESUME) ||
 	    (msg->op_code == WLAN_IPA_UC_OPCODE_RX_RESUME)) {
@@ -6215,8 +6200,45 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 			ipa_ctx->pending_cons_req = false;
 		}
 		qdf_mutex_release(&ipa_ctx->ipa_lock);
-	} else if ((msg->op_code == WLAN_IPA_UC_OPCODE_STATS) &&
-		(ipa_ctx->stat_req_reason == WLAN_IPA_UC_STAT_REASON_DEBUG)) {
+	}
+}
+#else
+static void wlan_ipa_uc_op_tx_rx_suspend_resume(struct op_msg_type *msg,
+						struct wlan_ipa_priv *ipa_ctx)
+{
+}
+#endif
+/**
+ * wlan_ipa_uc_op_cb() - IPA uC operation callback
+ * @op_msg: operation message received from firmware
+ * @ipa_ctx: user context registered with TL (we register the IPA Global
+ * context)
+ *
+ * Return: None
+ */
+static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
+			      struct wlan_ipa_priv *ipa_ctx)
+{
+	struct op_msg_type *msg = op_msg;
+	struct ipa_uc_fw_stats *uc_fw_stat;
+	bool add_status;
+	int status;
+
+	if (!ipa_ctx || !op_msg) {
+		ipa_err("INVALID ARG");
+		return;
+	}
+
+	if (msg->op_code >= WLAN_IPA_UC_OPCODE_MAX) {
+		ipa_err("INVALID OPCODE %d",  msg->op_code);
+		qdf_mem_free(op_msg);
+		return;
+	}
+
+	ipa_debug("OPCODE=%d", msg->op_code);
+	wlan_ipa_uc_op_tx_rx_suspend_resume(msg, ipa_ctx);
+	if (msg->op_code == WLAN_IPA_UC_OPCODE_STATS &&
+	    ipa_ctx->stat_req_reason == WLAN_IPA_UC_STAT_REASON_DEBUG) {
 		uc_fw_stat = (struct ipa_uc_fw_stats *)
 			((uint8_t *)op_msg + sizeof(struct op_msg_type));
 

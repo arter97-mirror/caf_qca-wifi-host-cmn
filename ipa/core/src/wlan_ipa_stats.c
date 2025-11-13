@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -23,6 +23,7 @@
 #include "cdp_txrx_ipa.h"
 #include "qdf_platform.h"
 
+#ifdef IPA_RT_DEBUG_ENABLED
 /**
  * wlan_ipa_uc_rt_debug_host_fill - fill rt debug buffer
  * @ctext: pointer to ipa context.
@@ -126,22 +127,6 @@ static void wlan_ipa_uc_rt_debug_handler(void *ctext)
 		WLAN_IPA_UC_RT_DEBUG_PERIOD);
 }
 
-void wlan_ipa_uc_rt_debug_destructor(qdf_nbuf_t nbuff)
-{
-	/* Make change to get the ipa_ctx on per pdev basis
-	 * Currently storing the debug count only in global ipa_ctx
-	 * or to the last enumerated radio ipa_ctx
-	 */
-	struct wlan_ipa_priv *ipa_ctx = wlan_ipa_get_obj_context();
-
-	if (!ipa_ctx) {
-		ipa_err("invalid ipa context");
-		return;
-	}
-
-	ipa_ctx->ipa_rx_destructor_count++;
-}
-
 void wlan_ipa_uc_rt_debug_deinit(struct wlan_ipa_priv *ipa_ctx)
 {
 	qdf_mutex_destroy(&ipa_ctx->rt_debug_lock);
@@ -193,6 +178,27 @@ void wlan_ipa_uc_rt_debug_init(struct wlan_ipa_priv *ipa_ctx)
 	qdf_mc_timer_start(&ipa_ctx->rt_debug_timer,
 		WLAN_IPA_UC_RT_DEBUG_PERIOD);
 
+}
+#else
+void wlan_ipa_uc_rt_debug_host_dump(struct wlan_ipa_priv *ipa_ctx)
+{
+}
+#endif
+
+void wlan_ipa_uc_rt_debug_destructor(qdf_nbuf_t nbuff)
+{
+	/* Make change to get the ipa_ctx on per pdev basis
+	 * Currently storing the debug count only in global ipa_ctx
+	 * or to the last enumerated radio ipa_ctx
+	 */
+	struct wlan_ipa_priv *ipa_ctx = wlan_ipa_get_obj_context();
+
+	if (!ipa_ctx) {
+		ipa_err("invalid ipa context");
+		return;
+	}
+
+	ipa_ctx->ipa_rx_destructor_count++;
 }
 
 /**
