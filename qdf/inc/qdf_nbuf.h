@@ -369,10 +369,14 @@ struct ap_info_event {
 	uint8_t abs_rssi;
 } __attribute__((__packed__));
 
+/* Initial connect join request, HOST PKT
+   Roaming connect joint request, FW PKT
+   */
 struct join_req_event {
 	uint8_t bssid[QDF_MAC_ADDR_SIZE];
 	uint16_t channel;
 	uint8_t abs_rssi;
+	uint8_t reserved[3];/* align with FW */
 } __attribute__((__packed__));
 
 struct join_resp_event {
