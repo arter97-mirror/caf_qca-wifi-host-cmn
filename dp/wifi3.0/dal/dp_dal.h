@@ -250,6 +250,7 @@ struct dp_dal_rx_desc_node {
  * @dal_poll_timer: Timer used to poll the DAL rings during mode switch
  *		from offload to bypass
  * @poll_count: polling counter
+ * @dal_replenish_lock: Spinlock to synchronize rx replenish
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -275,6 +276,7 @@ struct dp_dal_ctx {
 	qdf_spinlock_t dal_rx_desc_lock;
 	qdf_timer_t dal_poll_timer;
 	uint32_t poll_count;
+	qdf_spinlock_t dal_replenish_lock;
 };
 
 /**

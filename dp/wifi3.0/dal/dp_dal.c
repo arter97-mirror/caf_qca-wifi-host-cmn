@@ -439,6 +439,13 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 	soc->dal_mode_switch_in_progress = false;
 	dp_info("Mode switch from bypass to offload completed successfully");
 
+	/*
+	 * Ensure that any ongoing replenish operations are completed before
+	 * returning from mode switch indication to DAL.
+	 */
+	qdf_spin_lock_bh(&dal_ctx->dal_replenish_lock);
+	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
+
 	dp_dal_vdev_pause_unpause_queues(pdev, false);
 
 	return QDF_STATUS_SUCCESS;
@@ -768,6 +775,7 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 
 	qdf_spinlock_destroy(&soc->dal_ctx->dal_rx_desc_lock);
 	qdf_spinlock_destroy(&soc->dal_ctx->dal_tx_cpl_lock);
+	qdf_spinlock_destroy(&soc->dal_ctx->dal_replenish_lock);
 
 	dp_dal_bus_stop(soc);
 	dp_dal_bus_exit(soc);
@@ -1084,6 +1092,7 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 
 	qdf_spinlock_create(&dal_ctx->dal_tx_cpl_lock);
 	qdf_spinlock_create(&dal_ctx->dal_rx_desc_lock);
+	qdf_spinlock_create(&dal_ctx->dal_replenish_lock);
 
 	qdf_timer_init(soc->osdev, &dal_ctx->dal_poll_timer,
 		       dp_dal_poll_timer_handler, dal_ctx,
@@ -1133,6 +1142,7 @@ bus_deinit:
 	dp_info("DAL SOC init failed");
 	dp_dal_bus_exit(soc);
 destroy_lock:
+	qdf_spinlock_destroy(&dal_ctx->dal_replenish_lock);
 	qdf_spinlock_destroy(&dal_ctx->dal_rx_desc_lock);
 	qdf_spinlock_destroy(&dal_ctx->dal_tx_cpl_lock);
 	return status;

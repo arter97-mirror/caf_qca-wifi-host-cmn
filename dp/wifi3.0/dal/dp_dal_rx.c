@@ -241,12 +241,14 @@ int dp_dal_rx_replenish_bypass_mode(void *priv, u32 cnt, bool use_rsv_pktid)
 		return -EINVAL;
 	}
 
+	qdf_spin_lock_bh(&dal_ctx->dal_replenish_lock);
 	rx_desc_pool = &soc->rx_desc_buf[mac_id];
 	__dp_rx_buffers_replenish(soc, mac_id,
 				  &soc->rx_refill_buf_ring[mac_id],
 				  rx_desc_pool, cnt,
 				  &desc_list_head, &desc_list_tail, true,
 				  false, __func__);
+	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
 
 	return 0;
 }
