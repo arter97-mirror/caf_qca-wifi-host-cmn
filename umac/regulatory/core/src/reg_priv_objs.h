@@ -260,6 +260,7 @@ struct indoor_concurrency_list {
  * @c2c_cbk: C2C callback entry
  * @is_indoor_ap_found: Flag to check if indoor AP is detected
  * @txpb_cbk: Tx powerboost callback entry
+ * @disable_unii_1_2a: Flag to disable/enable UNII 1/2A band
  */
 struct wlan_regulatory_psoc_priv_obj {
 	struct mas_chan_params mas_chan_params[PSOC_MAX_PHY_REG_CAP];
@@ -351,6 +352,7 @@ struct wlan_regulatory_psoc_priv_obj {
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	struct reg_txpb_cbk_entry txpb_cbk;
 #endif
+	bool disable_unii_1_2a;
 };
 
 /**
@@ -439,6 +441,7 @@ struct wlan_regulatory_psoc_priv_obj {
  * @keep_6ghz_sta_cli_connection: Keep current STA/P2P client connection
  * @is_c2c_supp: Flag to check C2C support.
  * @is_indoor_ap_found: Flag to check if indoor AP is detected
+ * @disable_unii_1_2a: Flag to disable/enable UNII 1/2A band
  */
 struct wlan_regulatory_pdev_priv_obj {
 	struct regulatory_channel cur_chan_list[NUM_CHANNELS];
@@ -525,6 +528,7 @@ struct wlan_regulatory_pdev_priv_obj {
 	bool is_c2c_supp;
 	bool is_indoor_ap_found;
 #endif
+	bool disable_unii_1_2a;
 };
 
 /**

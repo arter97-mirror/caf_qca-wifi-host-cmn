@@ -1789,35 +1789,6 @@ reg_modify_chan_list_for_6g_edge_channels(struct wlan_objmgr_pdev *pdev,
 }
 #endif
 
-#ifdef DISABLE_UNII_SHARED_BANDS
-/**
- * reg_is_reg_unii_band_1_set() - Check UNII bitmap
- * @unii_bitmap: 5G UNII band bitmap
- *
- * This function checks the input bitmap to disable UNII-1 band channels.
- *
- * Return: Return true if UNII-1 channels need to be disabled,
- * else return false.
- */
-static bool reg_is_reg_unii_band_1_set(uint8_t unii_bitmap)
-{
-	return !!(unii_bitmap & BIT(REG_UNII_BAND_1));
-}
-
-/**
- * reg_is_reg_unii_band_2a_set() - Check UNII bitmap
- * @unii_bitmap: 5G UNII band bitmap
- *
- * This function checks the input bitmap to disable UNII-2A band channels.
- *
- * Return: Return true if UNII-2A channels need to be disabled,
- * else return false.
- */
-static bool reg_is_reg_unii_band_2a_set(uint8_t unii_bitmap)
-{
-	return !!(unii_bitmap & BIT(REG_UNII_BAND_2A));
-}
-
 /**
  * reg_is_5g_enum() - Check if channel enum is a 5G channel enum
  * @chan_enum: channel enum
@@ -1858,6 +1829,35 @@ reg_remove_unii_chan_from_chan_list(struct regulatory_channel *chan_list,
 	}
 }
 
+#ifdef DISABLE_UNII_SHARED_BANDS
+/**
+ * reg_is_reg_unii_band_1_set() - Check UNII bitmap
+ * @unii_bitmap: 5G UNII band bitmap
+ *
+ * This function checks the input bitmap to disable UNII-1 band channels.
+ *
+ * Return: Return true if UNII-1 channels need to be disabled,
+ * else return false.
+ */
+static bool reg_is_reg_unii_band_1_set(uint8_t unii_bitmap)
+{
+	return !!(unii_bitmap & BIT(REG_UNII_BAND_1));
+}
+
+/**
+ * reg_is_reg_unii_band_2a_set() - Check UNII bitmap
+ * @unii_bitmap: 5G UNII band bitmap
+ *
+ * This function checks the input bitmap to disable UNII-2A band channels.
+ *
+ * Return: Return true if UNII-2A channels need to be disabled,
+ * else return false.
+ */
+static bool reg_is_reg_unii_band_2a_set(uint8_t unii_bitmap)
+{
+	return !!(unii_bitmap & BIT(REG_UNII_BAND_2A));
+}
+
 /**
  * reg_modify_disable_chan_list_for_unii1_and_unii2a() - Disable UNII-1 and
  * UNII2A band
@@ -1888,32 +1888,19 @@ reg_modify_disable_chan_list_for_unii1_and_unii2a(
 	}
 }
 #else
-static inline bool reg_is_reg_unii_band_1_set(uint8_t unii_bitmap)
-{
-	return false;
-}
-
-static inline bool reg_is_reg_unii_band_2a_set(uint8_t unii_bitmap)
-{
-	return false;
-}
-
-static inline bool reg_is_5g_enum(enum channel_enum chan_enum)
-{
-	return false;
-}
-
-static inline void
-reg_remove_unii_chan_from_chan_list(struct regulatory_channel *chan_list,
-				    enum channel_enum start_enum,
-				    enum channel_enum end_enum)
-{
-}
-
-static inline void
+static void
 reg_modify_disable_chan_list_for_unii1_and_unii2a(
 		struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj)
 {
+	bool disable_unii_1_2a = reg_get_disable_unii_1_2a(
+			pdev_priv_obj->pdev_ptr);
+
+	if (disable_unii_1_2a &&
+	    reg_disable_unii_1_2a_for_current_cc(pdev_priv_obj->pdev_ptr))
+		reg_remove_unii_chan_from_chan_list(
+					pdev_priv_obj->cur_chan_list,
+					MIN_UNII_1_BAND_CHANNEL,
+					MAX_UNII_2A_BAND_CHANNEL);
 }
 #endif
 

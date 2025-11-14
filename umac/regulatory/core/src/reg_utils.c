@@ -1450,3 +1450,79 @@ reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
 	return pdev_priv_obj->is_indoor_ap_found;
 }
 #endif
+
+bool reg_disable_unii_1_2a_for_current_cc(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("psoc is NULL");
+		return false;
+	}
+
+	psoc_priv_obj = reg_get_psoc_obj(psoc);
+	if (!IS_VALID_PSOC_REG_OBJ(psoc_priv_obj)) {
+		reg_err("psoc reg component is NULL");
+		return false;
+	}
+
+	if (psoc_priv_obj->cur_country[0] == 'C' &&
+	    psoc_priv_obj->cur_country[1] == 'A')
+		return true;
+
+	return false;
+}
+
+QDF_STATUS reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
+				     bool disable_unii_1_2a)
+{
+	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+	struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj;
+	struct wlan_objmgr_psoc *psoc;
+
+	pdev_priv_obj = reg_get_pdev_obj(pdev);
+	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
+		reg_err("pdev reg component is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (pdev_priv_obj->disable_unii_1_2a == disable_unii_1_2a) {
+		reg_debug("same disable UNII 1 and 2A set already %d",
+			  disable_unii_1_2a);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	reg_debug("set disable_unii_1_2a: %d", disable_unii_1_2a);
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc) {
+		reg_err("psoc is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc_priv_obj = reg_get_psoc_obj(psoc);
+	if (!IS_VALID_PSOC_REG_OBJ(psoc_priv_obj)) {
+		reg_err("psoc reg component is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc_priv_obj->disable_unii_1_2a = disable_unii_1_2a;
+	pdev_priv_obj->disable_unii_1_2a = disable_unii_1_2a;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+bool reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
+
+	pdev_priv_obj = reg_get_pdev_obj(pdev);
+	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
+		reg_err("pdev reg component is NULL");
+		return false;
+	}
+
+	return pdev_priv_obj->disable_unii_1_2a;
+}

@@ -655,4 +655,35 @@ reg_update_max_bw_6ghz_chan(struct wlan_objmgr_pdev *pdev,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif /* defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ) */
+
+/**
+ * reg_disable_unii_1_2a_for_current_cc() - Check if disable of UNII 1 and
+ * 2A applicable to current country
+ *
+ * @pdev: Pointer to pdev
+ *
+ * Return: True if current country is CA else false
+ */
+bool reg_disable_unii_1_2a_for_current_cc(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * reg_set_disable_unii_1_2a() - apply disable unii 1 and 2A
+ * @pdev: The physical pdev to reduce tx power for
+ * @disable_unii_1_2a: true to disable UNII 1/2A band, false to enable
+ *
+ * This function sets disable_unii_1_2a flag to enable/disable
+ * UNII 1/2A band.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
+				     bool disable_unii_1_2a);
+
+/**
+ * reg_get_disable_unii_1_2a() - Get disable unii 1 and 2A
+ * @pdev: The physical pdev to reduce tx power for
+ *
+ * Return: disable_unii_1_2a
+ */
+bool reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev);
 #endif
