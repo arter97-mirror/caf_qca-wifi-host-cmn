@@ -554,5 +554,20 @@ void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
 {
 	reg_txpb_unregister_callback(psoc);
 }
-
 #endif
+
+bool ucfg_reg_disable_unii_1_2a_for_current_cc(struct wlan_objmgr_pdev *pdev)
+{
+	return reg_disable_unii_1_2a_for_current_cc(pdev);
+}
+
+QDF_STATUS ucfg_reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
+					  bool disable_unii_1_2a)
+{
+	return reg_set_disable_unii_1_2a(pdev, disable_unii_1_2a);
+}
+
+bool ucfg_reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev)
+{
+	return reg_get_disable_unii_1_2a(pdev);
+}
