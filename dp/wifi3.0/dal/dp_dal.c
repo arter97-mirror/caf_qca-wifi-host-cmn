@@ -12,6 +12,10 @@
 #include "dp_rx.h"
 #include "dp_peer.h"
 
+/* DAL poll timer interval in milliseconds */
+#define DAL_POLL_TIMER_INTERVAL_MS 10
+#define DAL_POLL_TIMER_MAX_COUNT 10
+
 /**
  * dp_dal_bus_init_bypass_mode() - Skeleton for platform bus init
  * in bypass mode
@@ -495,6 +499,8 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 
 	dp_dal_bus_stop(soc);
 	dp_dal_bus_exit(soc);
+	qdf_timer_sync_cancel(&soc->dal_ctx->dal_poll_timer);
+	qdf_timer_free(&soc->dal_ctx->dal_poll_timer);
 }
 
 /**
@@ -695,6 +701,100 @@ static QDF_STATUS dp_dal_enable_threaded_napi(struct dp_dal_ctx *dal_ctx)
 }
 
 /**
+ * dp_dal_get_intr_ctx_from_ring() - get interrupt context from ring
+ * @soc: DP soc handle
+ * @ring_num: ring number
+ * @ring_type: ring type
+ *
+ * Return: dp_intr context
+ */
+static struct dp_intr*
+dp_dal_get_intr_ctx_from_ring(struct dp_soc *soc,
+			      int ring_num,
+			      enum hal_ring_type ring_type)
+{
+	struct dp_intr *intr_ctx;
+	int i;
+
+	for (i = 0; i < WLAN_CFG_INT_NUM_CONTEXTS; i++) {
+		intr_ctx = &soc->intr_ctx[i];
+		if (ring_type == REO_DST &&
+		    (intr_ctx->dal_rx_ring_mask & (1 << ring_num)))
+			return intr_ctx;
+		else if (ring_type == COMP_RING_TYPE &&
+			 (intr_ctx->dal_tx_ring_mask & (1 << ring_num)))
+			return intr_ctx;
+	}
+
+	return NULL;
+}
+
+/**
+ * dp_dal_poll_timer_handler() - Timer handler to poll DAL owned rings
+ * @arg: pointer to DAL context
+ *
+ * This timer handler iterates over DAL owned rings and processes pending
+ * entries during mode switch from offload to bypass.
+ */
+static void dp_dal_poll_timer_handler(void *arg)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)arg;
+	struct dp_soc *soc = dal_ctx->soc;
+	struct dp_intr *intr_ctx;
+	uint32_t hp, tp;
+	int i;
+	bool poll_again = false;
+
+	/* Process DAL owned REO destination rings */
+	for (i = 0; i < soc->num_reo_dest_rings; i++) {
+		if (dp_srng_check_dal_owned_ring(&soc->reo_dest_ring[i])) {
+			intr_ctx = dp_dal_get_intr_ctx_from_ring(soc, i,
+								 REO_DST);
+			if (intr_ctx) {
+				soc->arch_ops.dp_rx_process(intr_ctx,
+							    soc->reo_dest_ring[i].hal_srng,
+							    i, 64);
+				hal_get_sw_hptp(soc->hal_soc,
+						soc->reo_dest_ring[i].hal_srng,
+						&tp, &hp);
+				if (tp != hp)
+					poll_again = true;
+			}
+		}
+	}
+
+	/* Process DAL owned TX completion rings */
+	for (i = 0; i < soc->num_tx_comp_rings; i++) {
+		if (dp_srng_check_dal_owned_ring(&soc->tx_comp_ring[i])) {
+			intr_ctx =
+			dp_dal_get_intr_ctx_from_ring(soc, i, COMP_RING_TYPE);
+
+			if (intr_ctx) {
+				dp_tx_comp_handler(intr_ctx, soc,
+						   soc->tx_comp_ring[i].hal_srng,
+						   i, 64);
+				hal_get_sw_hptp(soc->hal_soc,
+						soc->tx_comp_ring[i].hal_srng,
+						&tp, &hp);
+				if (tp != hp)
+					poll_again = true;
+			}
+		}
+	}
+
+	dal_ctx->poll_count++;
+
+	/*
+	 * Reschedule the timer if poll_again is true and the poll count
+	 * is less than DAL_POLL_TIMER_MAX_COUNT.
+	 */
+	if (poll_again &&
+	    dal_ctx->poll_count < DAL_POLL_TIMER_MAX_COUNT)
+		qdf_timer_mod(&dal_ctx->dal_poll_timer,
+			      DAL_POLL_TIMER_INTERVAL_MS);
+}
+
+/**
  * dp_dal_soc_init - Initialize DP DAL for SOC
  * @soc: pointer to dp_soc structure
  *
@@ -712,6 +812,10 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 
 	qdf_spinlock_create(&dal_ctx->dal_tx_cpl_lock);
 	qdf_spinlock_create(&dal_ctx->dal_rx_desc_lock);
+
+	qdf_timer_init(soc->osdev, &dal_ctx->dal_poll_timer,
+		       dp_dal_poll_timer_handler, dal_ctx,
+		       QDF_TIMER_TYPE_WAKE_APPS);
 
 	status = dp_dal_create_ring_to_grp_mapping(soc);
 	if (status != QDF_STATUS_SUCCESS) {

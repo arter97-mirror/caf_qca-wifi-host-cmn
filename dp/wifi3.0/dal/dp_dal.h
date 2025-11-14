@@ -247,6 +247,9 @@ struct dp_dal_rx_desc_node {
  * @rx_desc_tail: RX descriptor node tail list for each ring
  * @rx_desc_count: RX descriptor counts for each ring
  * @dal_rx_desc_lock: Spinlock to protect RX descriptor list operations
+ * @dal_poll_timer: Timer used to poll the DAL rings during mode switch
+ *		from offload to bypass
+ * @poll_count: polling counter
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -270,6 +273,8 @@ struct dp_dal_ctx {
 	struct dp_dal_rx_desc_node *rx_desc_tail[MAX_REO_DEST_RINGS];
 	uint32_t rx_desc_count[MAX_REO_DEST_RINGS];
 	qdf_spinlock_t dal_rx_desc_lock;
+	qdf_timer_t dal_poll_timer;
+	uint32_t poll_count;
 };
 
 /**
