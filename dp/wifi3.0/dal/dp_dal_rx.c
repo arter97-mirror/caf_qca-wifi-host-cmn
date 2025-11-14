@@ -29,6 +29,8 @@ int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count)
 	union dp_rx_desc_list_elem_t *desc_list;
 	union dp_rx_desc_list_elem_t *tail;
 	union dp_rx_desc_list_elem_t *next;
+	struct dp_rx_desc *rx_desc;
+	union dp_rx_desc_list_elem_t *next_desc;
 	void *buffer_addr_info;
 	void *orig_buffer_addr_info;
 	uint16_t num_buffer_info_per_page;
@@ -82,6 +84,10 @@ int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count)
 
 	for (page_idx = 0; page_idx < total_pages; page_idx++) {
 		buffer_addr_info = orig_buffer_addr_info;
+		union dp_rx_desc_list_elem_t *desc_list_page_start = desc_list;
+		void *buf_addr_info_start = buffer_addr_info;
+
+		qdf_mem_zero(buffer_addr_info, DP_BLOCKMEM_SIZE);
 		nbuf_count = 0;
 
 		for (i = 0; i < num_buffer_info_per_page; i++) {
@@ -143,12 +149,79 @@ int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count)
 		}
 
 		if (nbuf_count) {
-			ret = global_plat_ops->rxbm_sync(dal_ctx, nbuf_count,
-							 &buffer_addr_info);
-			if (ret) {
-				dp_err("DAL rxbm_sync failed");
+			int synced_cnt;
+
+			if (!global_plat_ops || !global_plat_ops->rxbm_sync) {
+				dp_err("no rxbm_sync plat op registered");
+				ret = -EINVAL;
+			} else {
+				ret = global_plat_ops->rxbm_sync(dal_ctx,
+								 nbuf_count,
+								 &buf_addr_info_start);
+			}
+
+			if (ret == nbuf_count)
+				continue;
+
+			if (ret < 0) {
+				dp_err("DAL rxbm_sync failed with error: %d",
+				       ret);
+				synced_cnt = 0;
+			} else if (qdf_unlikely(ret > nbuf_count)) {
+				dp_err("rxbm_sync ret invalid count: %d > %d",
+				       ret, nbuf_count);
+				break;
+			} else {
+				dp_info("partial sync: synced %d of %d buffers",
+					ret, nbuf_count);
+				synced_cnt = ret;
+			}
+
+			/*
+			 * Free the remaining unsynced buffers for partial or
+			 * complete failures.
+			 */
+			union dp_rx_desc_list_elem_t *curr_desc =
+							desc_list_page_start;
+			int rem_count = nbuf_count - synced_cnt;
+			int j;
+
+			for (j = 0; j < synced_cnt && curr_desc; j++)
+				curr_desc = curr_desc->next;
+
+			if (!curr_desc && rem_count > 0) {
+				dp_err("Desc list exhausted, rem buffers %d",
+				       rem_count);
+				total_nbuf_count -= rem_count;
 				break;
 			}
+
+			for (j = 0; j < rem_count && curr_desc; j++) {
+				rx_desc = &curr_desc->rx_desc;
+				next_desc = curr_desc->next;
+
+				if (rx_desc->nbuf) {
+					dp_rx_nbuf_unmap_pool(soc, rx_desc_pool,
+							      rx_desc->nbuf);
+					rx_desc->unmapped = 1;
+					dp_rx_buffer_pool_nbuf_free(soc,
+								    rx_desc->nbuf,
+								    mac_id);
+					rx_desc->nbuf = NULL;
+				}
+
+				rx_desc->in_use = 0;
+				rx_desc->in_err_state = 0;
+
+				curr_desc->next = NULL;
+				dp_rx_add_desc_list_to_free_list(soc, &curr_desc,
+								 &curr_desc, mac_id,
+								 rx_desc_pool);
+				curr_desc = next_desc;
+			}
+
+			total_nbuf_count -= rem_count;
+			break;
 		}
 	}
 
