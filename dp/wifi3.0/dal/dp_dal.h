@@ -435,6 +435,29 @@ void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id);
 int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable);
 
 /**
+ * dp_dal_notify_suspend() - DAL wrapper for platform notify suspend
+ * @soc: pointer to DP SoC
+ *
+ * This function calls the global platform ops notify_suspend function.
+ * When this returns successfully, it means there are no pending transactions
+ * from the DAL and the device can suspend.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc);
+
+/**
+ * dp_dal_notify_resume() - DAL wrapper for platform notify resume
+ * @soc: pointer to DP SoC
+ *
+ * This function calls the global platform ops notify_resume function.
+ * This is called when the device is resuming from suspend state.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc);
+
+/**
  * dp_service_dal_srngs() - service DAL rings
  * @dp_ctx: dp intr context
  * @dp_budget: dp budget
@@ -544,6 +567,16 @@ dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 
 static inline void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
 {
+}
+
+static inline QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_H */

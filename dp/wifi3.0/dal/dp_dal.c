@@ -1543,6 +1543,87 @@ int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable)
 	return 0;
 }
 
+/**
+ * dp_dal_notify_suspend() - DAL wrapper for platform notify suspend
+ * @soc: pointer to DP SoC
+ *
+ * This function calls the global platform ops notify_suspend function.
+ * When this returns successfully, it means there are no pending transactions
+ * from the DAL and the device can suspend.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE on failure
+ */
+QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx;
+	QDF_STATUS status;
+	int ret = -EOPNOTSUPP;
+
+	if (!soc) {
+		dp_err("Invalid SoC pointer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	dal_ctx = soc->dal_ctx;
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (global_plat_ops && global_plat_ops->notify_suspend)
+		ret = global_plat_ops->notify_suspend(dal_ctx);
+
+	if (ret) {
+		dp_err_rl("Suspend notify to DAL failed %d", ret);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* Wait for pending tasks to complete */
+	status = hif_try_complete_dp_tasks(soc->hif_handle);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Failed to complete DP tasks");
+		return status;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_dal_notify_resume() - DAL wrapper for platform notify resume
+ * @soc: pointer to DP SoC
+ *
+ * This function calls the global platform ops notify_resume function.
+ * This is called when the device is resuming from suspend state.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE on failure
+ */
+QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx;
+	int ret = -EOPNOTSUPP;
+
+	if (!soc) {
+		dp_err("Invalid SoC pointer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	dal_ctx = soc->dal_ctx;
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (global_plat_ops && global_plat_ops->notify_resume)
+		ret = global_plat_ops->notify_resume(dal_ctx);
+
+	if (ret) {
+		dp_err_rl("Resume notify to DAL failed %d", ret);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static void dp_dal_update_ring_params(struct dp_soc *soc,
 				      struct hal_srng *srng,
 				      struct dal_srng *dal_ring)
