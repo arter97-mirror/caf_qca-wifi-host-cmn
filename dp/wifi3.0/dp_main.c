@@ -15278,6 +15278,51 @@ static QDF_STATUS dp_bus_resume(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_dal_send_suspend_notify() - CDP wrapper for DAL notify suspend
+ * @soc_hdl: datapath soc handle
+ *
+ * This function calls the DAL notify suspend function. When this returns
+ * successfully, it means there are no pending transactions from the DAL
+ * and the device can suspend.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static QDF_STATUS dp_dal_send_suspend_notify(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	if (qdf_unlikely(!soc)) {
+		dp_err("DP SoC is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return dp_dal_notify_suspend(soc);
+}
+
+/**
+ * dp_dal_send_resume_notify() - CDP wrapper for DAL notify resume
+ * @soc_hdl: datapath soc handle
+ *
+ * This function calls the DAL notify resume function. This is called
+ * when the device is resuming from suspend state.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static QDF_STATUS dp_dal_send_resume_notify(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	if (qdf_unlikely(!soc)) {
+		dp_err("DP SoC is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return dp_dal_notify_resume(soc);
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 /**
  * dp_process_wow_ack_rsp() - process wow ack response
  * @soc_hdl: datapath soc handle
@@ -15329,7 +15374,11 @@ static struct cdp_bus_ops dp_ops_bus = {
 	.bus_suspend = dp_bus_suspend,
 	.bus_resume = dp_bus_resume,
 	.process_wow_ack_rsp = dp_process_wow_ack_rsp,
-	.process_target_suspend_req = dp_process_target_suspend_req
+	.process_target_suspend_req = dp_process_target_suspend_req,
+#ifdef FEATURE_DAL_DP_SUPPORT
+	.dal_notify_suspend = dp_dal_send_suspend_notify,
+	.dal_notify_resume = dp_dal_send_resume_notify
+#endif
 };
 #endif
 

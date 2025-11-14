@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2017, 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -114,5 +114,52 @@ static inline void cdp_process_target_suspend_req(ol_txrx_soc_handle soc,
 	if (soc->ops->bus_ops->process_target_suspend_req)
 		return soc->ops->bus_ops->process_target_suspend_req(soc,
 								     pdev_id);
+}
+
+/**
+ * cdp_dal_notify_suspend() - Notify DAL about suspend
+ * @soc: data path soc handle
+ *
+ * Notify DAL layer about suspend. When this returns successfully,
+ * it means there are no pending transactions from the DAL and
+ * the device can suspend.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static inline QDF_STATUS cdp_dal_notify_suspend(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->bus_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (soc->ops->bus_ops->dal_notify_suspend)
+		return soc->ops->bus_ops->dal_notify_suspend(soc);
+
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+/**
+ * cdp_dal_notify_resume() - Notify DAL about resume
+ * @soc: data path soc handle
+ *
+ * Notify DAL layer about resume. This is called when the device
+ * is resuming from suspend state.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static inline QDF_STATUS cdp_dal_notify_resume(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->bus_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (soc->ops->bus_ops->dal_notify_resume)
+		return soc->ops->bus_ops->dal_notify_resume(soc);
+
+	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif /* _CDP_TXRX_BUS_H_ */
