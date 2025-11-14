@@ -32,6 +32,10 @@ defined(WLAN_PKT_CAPTURE_RX_2_0)
 
 #ifdef CONFIG_BORON
 #define WIFIPHYRX_GENERIC_EHT_SIG_E WIFIPHYRX_GENERIC_EHT_OR_UHR_SIG_E
+/* User info offset to bypass the common fields */
+#define HAL_RX_EHT_SIG_NON_OFDMA_USER_INFO_OFFSET_BITS 20
+#else
+#define HAL_RX_EHT_SIG_NON_OFDMA_USER_INFO_OFFSET_BITS 32
 #endif
 
 #define HAL_RX_PPDU_START_PHY_PPDU_ID_OFFSET                        0x00000000
@@ -2205,7 +2209,16 @@ static inline uint32_t
 hal_rx_parse_eht_sig_non_ofdma_be(struct hal_soc *hal_soc, void *tlv,
 				  struct hal_rx_ppdu_info *ppdu_info)
 {
-	void *user_info = (void *)((uint8_t *)tlv + 4);
+	uint64_t non_ofdma_tlv_payload;
+	void *user_info;
+
+	/* Copy TLV content to 64-bit variable */
+	non_ofdma_tlv_payload = *(uint64_t *)tlv;
+	non_ofdma_tlv_payload >>=
+		HAL_RX_EHT_SIG_NON_OFDMA_USER_INFO_OFFSET_BITS;
+
+	/* Use address of shifted payload as user_info */
+	user_info = (void *)&non_ofdma_tlv_payload;
 
 	hal_rx_parse_usig_overflow(hal_soc, tlv, ppdu_info);
 	hal_rx_parse_non_ofdma_users(hal_soc, tlv, ppdu_info);
