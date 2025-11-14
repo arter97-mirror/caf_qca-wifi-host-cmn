@@ -1453,6 +1453,8 @@ QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	qdf_atomic_inc(&scn->active_grp_tasklet_cnt);
+
 	hif_ext_group->sched_ops->schedule(hif_ext_group);
 
 	return QDF_STATUS_SUCCESS;
