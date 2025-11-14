@@ -34,6 +34,95 @@ static int dp_dal_bus_init_bypass_mode(void *priv)
 	return 0;
 }
 
+#ifdef FEATURE_RUNTIME_PM
+
+/**
+ * dp_dal_cleanup_suspended_tx_descs() - Cleanup suspended TX descriptors
+ * @dal_ctx: DAL context
+ *
+ * This function cleans up any remaining suspended TX descriptors during
+ * DAL deinit when FEATURE_RUNTIME_PM is enabled.
+ *
+ * Return: None
+ */
+static void dp_dal_cleanup_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
+{
+	struct dp_dal_suspended_tx_desc *suspended_desc;
+	qdf_list_node_t *node;
+
+	if (!dal_ctx)
+		return;
+
+	/* Clean up any remaining suspended TX descriptors */
+	qdf_spin_lock_bh(&dal_ctx->suspended_tx_lock);
+	while (!qdf_list_empty(&dal_ctx->suspended_tx_list)) {
+		qdf_list_remove_front(&dal_ctx->suspended_tx_list, &node);
+		dal_ctx->suspended_tx_count--;
+
+		suspended_desc =
+			qdf_container_of(node, struct dp_dal_suspended_tx_desc,
+					 node);
+
+		/* Free the TCL descriptor */
+		if (suspended_desc->tcl_desc)
+			qdf_mem_free(suspended_desc->tcl_desc);
+
+		/* Free the heap-allocated msdu_info copy */
+		if (suspended_desc->msdu_info)
+			qdf_mem_free(suspended_desc->msdu_info);
+
+		/* Free the suspended descriptor wrapper */
+		qdf_mem_free(suspended_desc);
+	}
+	qdf_spin_unlock_bh(&dal_ctx->suspended_tx_lock);
+
+	/* Destroy the suspended TX list and lock */
+	qdf_list_destroy(&dal_ctx->suspended_tx_list);
+	qdf_spinlock_destroy(&dal_ctx->suspended_tx_lock);
+}
+
+/**
+ * dp_dal_init_suspended_tx_descs() - Initialize suspended TX descriptors
+ * @dal_ctx: DAL context
+ *
+ * This function initializes suspended TX descriptor list and lock during
+ * DAL init when FEATURE_RUNTIME_PM is enabled.
+ *
+ * Return: None
+ */
+static void dp_dal_init_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
+{
+	if (!dal_ctx)
+		return;
+
+	qdf_spinlock_create(&dal_ctx->suspended_tx_lock);
+	qdf_list_create(&dal_ctx->suspended_tx_list, 0);
+	dal_ctx->suspended_tx_count = 0;
+}
+#else
+/**
+ * dp_dal_cleanup_suspended_tx_descs() - No-op when FEATURE_RUNTIME_PM disabled
+ * @dal_ctx: DAL context
+ *
+ * Return: None
+ */
+static void dp_dal_cleanup_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
+{
+	/* No-op when runtime PM is disabled */
+}
+
+/**
+ * dp_dal_init_suspended_tx_descs() - No-op when FEATURE_RUNTIME_PM disabled
+ * @dal_ctx: DAL context
+ *
+ * Return: None
+ */
+static void dp_dal_init_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
+{
+	/* No-op when runtime PM is disabled */
+}
+#endif /* FEATURE_RUNTIME_PM */
+
 /**
  * dp_dal_bus_exit_bypass_mode() - Skeleton for platform bus exit in bypass mode
  *
@@ -788,24 +877,30 @@ void dp_dal_soc_detach(struct dp_soc *soc)
  */
 void dp_dal_soc_deinit(struct dp_soc *soc)
 {
+	struct dp_dal_ctx *dal_ctx;
+
 	if (!soc || !soc->dal_ctx)
 		return;
 
+	dal_ctx = soc->dal_ctx;
+
 	qdf_atomic_set(&soc->dal_ctx->deinit_in_progress, 1);
+
+	dp_dal_cleanup_suspended_tx_descs(dal_ctx);
 
 	qdf_timer_sync_cancel(&soc->dal_ctx->dal_poll_timer);
 	qdf_timer_sync_cancel(&soc->dal_ctx->rx_replenish_retry_timer);
 
 	dp_dal_rx_desc_list_cleanup(dal_ctx);
 
-	qdf_spinlock_destroy(&soc->dal_ctx->dal_rx_desc_lock);
-	qdf_spinlock_destroy(&soc->dal_ctx->dal_tx_cpl_lock);
-	qdf_spinlock_destroy(&soc->dal_ctx->dal_replenish_lock);
+	qdf_spinlock_destroy(&dal_ctx->dal_rx_desc_lock);
+	qdf_spinlock_destroy(&dal_ctx->dal_tx_cpl_lock);
+	qdf_spinlock_destroy(&dal_ctx->dal_replenish_lock);
 
 	dp_dal_bus_stop(soc);
 	dp_dal_bus_exit(soc);
-	qdf_timer_free(&soc->dal_ctx->dal_poll_timer);
-	qdf_timer_free(&soc->dal_ctx->rx_replenish_retry_timer);
+	qdf_timer_free(&dal_ctx->dal_poll_timer);
+	qdf_timer_free(&dal_ctx->rx_replenish_retry_timer);
 }
 
 /**
@@ -1188,6 +1283,8 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 
 	dal_ctx->rx_replenish_retry_interval_ms =
 					DAL_RX_REPLENISH_RETRY_TIMER_MS;
+
+	dp_dal_init_suspended_tx_descs(dal_ctx);
 
 	qdf_timer_init(soc->osdev, &dal_ctx->dal_poll_timer,
 		       dp_dal_poll_timer_handler, dal_ctx,
@@ -1600,12 +1697,14 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
  *
  * This function calls the global platform ops notify_resume function.
  * This is called when the device is resuming from suspend state.
+ * It also flushes any suspended TX descriptors.
  *
  * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE on failure
  */
 QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 {
 	struct dp_dal_ctx *dal_ctx;
+	uint32_t flushed_count;
 	int ret = -EOPNOTSUPP;
 
 	if (!soc) {
@@ -1625,6 +1724,13 @@ QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 	if (ret) {
 		dp_err_rl("Resume notify to DAL failed %d", ret);
 		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* Flush any suspended TX descriptors */
+	flushed_count = dp_dal_tx_flush_suspended_descs(dal_ctx);
+	if (flushed_count > 0) {
+		dp_info("Resume: flushed %u suspended TX descriptors",
+			flushed_count);
 	}
 
 	return QDF_STATUS_SUCCESS;

@@ -7,6 +7,314 @@
 #include "hal_tx.h"
 #include "qdf_mem.h"
 
+#ifdef FEATURE_RUNTIME_PM
+/**
+ * dp_dal_tx_queue_suspended_desc() - Queue TX descriptor during suspend
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @vdev_id: VDEV ID
+ * @tcl_desc: TCL descriptor pointer (ownership transferred)
+ * @tx_metadata: TX metadata (contains stack pointers, create heap copies)
+ *
+ * Queue TX descriptors when system is in suspend state for processing
+ * during resume. Creates heap-allocated copies of stack-allocated structures
+ * to preserve TX metadata across suspend/resume cycles.
+ *
+ * Return: 0 : Success, -ve : Failure
+ */
+static int
+dp_dal_tx_queue_suspended_desc(struct dp_dal_ctx *dal_ctx,
+			       uint8_t ring_id, uint32_t vdev_id,
+			       void *tcl_desc,
+			       struct dp_dal_tx_metadata *tx_metadata)
+{
+	struct dp_dal_suspended_tx_desc *suspended_desc;
+	struct dp_tx_msdu_info_s *msdu_info_copy;
+
+	if (qdf_unlikely(!dal_ctx || !tcl_desc || !tx_metadata ||
+			 !tx_metadata->tx_desc || !tx_metadata->msdu_info)) {
+		dp_tx_err_rl("Invalid parameters for suspended TX desc");
+		return -EINVAL;
+	}
+
+	suspended_desc = qdf_mem_malloc(sizeof(*suspended_desc));
+	if (!suspended_desc) {
+		dp_tx_err_rl("Failed to allocate suspended TX descriptor");
+		return -ENOMEM;
+	}
+
+	msdu_info_copy = qdf_mem_malloc(sizeof(*msdu_info_copy));
+	if (!msdu_info_copy) {
+		dp_tx_err_rl("Failed to allocate msdu_info copy");
+		qdf_mem_free(suspended_desc);
+		return -ENOMEM;
+	}
+
+	qdf_mem_copy(msdu_info_copy, tx_metadata->msdu_info,
+		     sizeof(*msdu_info_copy));
+
+	suspended_desc->ring_id = ring_id;
+	suspended_desc->vdev_id = vdev_id;
+	suspended_desc->tcl_desc = tcl_desc;
+	suspended_desc->tx_desc = tx_metadata->tx_desc;
+	suspended_desc->msdu_info = msdu_info_copy;
+
+	qdf_spin_lock_bh(&dal_ctx->suspended_tx_lock);
+	qdf_list_insert_back(&dal_ctx->suspended_tx_list,
+			     &suspended_desc->node);
+	dal_ctx->suspended_tx_count++;
+	qdf_spin_unlock_bh(&dal_ctx->suspended_tx_lock);
+
+	return 0;
+}
+
+/**
+ * dp_dal_tx_rtpm_wrapper() - Runtime PM aware platform TX wrapper
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @vdev_id: VDEV ID
+ * @tcl_desc: TCL descriptor (ownership may be transferred)
+ * @tx_metadata: TX metadata
+ *
+ * This function wraps the platform TX call with runtime PM handling
+ * similar to dp_tx_ring_access_end_wrapper for bypass mode.
+ *
+ * Return: enum dp_dal_tx_status values
+ */
+static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
+				  uint32_t vdev_id, void *tcl_desc,
+				  struct dp_dal_tx_metadata *tx_metadata)
+{
+	struct dp_soc *soc = dal_ctx->soc;
+	int ret;
+	int platform_ret = 0;
+
+	if (!global_plat_ops || !global_plat_ops->tx) {
+		dp_tx_err_rl("Platform TX operation not available");
+		return DP_DAL_TX_FAILURE;
+	}
+
+	if (dp_get_rtpm_tput_policy_requirement(soc)) {
+		platform_ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id,
+						   tcl_desc, tx_metadata);
+		return (platform_ret == 0) ? DP_DAL_TX_SUCCESS :
+					      DP_DAL_TX_FAILURE;
+	}
+
+	ret = hif_rtpm_get(HIF_RTPM_GET_ASYNC, HIF_RTPM_ID_DP);
+	if (QDF_IS_STATUS_SUCCESS(ret)) {
+		if (hif_system_pm_state_check(soc->hif_handle)) {
+			/* System is in suspend state. In offload mode,
+			 * we need to defer the TX operation until resume.
+			 * Queue the descriptor for later processing.
+			 * Ownership of tcl_desc is transferred to suspended
+			 * list.
+			 */
+			ret = dp_dal_tx_queue_suspended_desc(dal_ctx, ring_id,
+							     vdev_id, tcl_desc,
+							     tx_metadata);
+			if (ret) {
+				hif_rtpm_put(HIF_RTPM_PUT_ASYNC,
+					     HIF_RTPM_ID_DP);
+				return DP_DAL_TX_FAILURE;
+			}
+
+			platform_ret = DP_DAL_TX_QUEUED;
+		} else {
+			platform_ret = global_plat_ops->tx(dal_ctx, ring_id,
+							   vdev_id, tcl_desc,
+							   tx_metadata);
+			platform_ret = (platform_ret == 0) ?
+					DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
+		}
+		hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_DP);
+	} else {
+		/*
+		 * Runtime PM get failed, system is likely suspending.
+		 * Queue the descriptor for processing during resume.
+		 * Ownership of tcl_desc is transferred to suspended list.
+		 */
+		dp_runtime_get(soc);
+		ret = dp_dal_tx_queue_suspended_desc(dal_ctx, ring_id,
+						     vdev_id, tcl_desc,
+						     tx_metadata);
+		if (ret) {
+			dp_runtime_put(soc);
+			return DP_DAL_TX_FAILURE;
+		}
+
+		qdf_atomic_inc(&soc->tx_pending_rtpm);
+		dp_runtime_put(soc);
+		platform_ret = DP_DAL_TX_QUEUED;
+	}
+
+	return platform_ret;
+}
+
+/**
+ * dp_dal_tx_flush_suspended_descs() - Flush suspended TX descriptors
+ * @dal_ctx: DAL context
+ *
+ * Process all suspended TX descriptors during resume by calling platform TX
+ * for each queued descriptor and updating statistics appropriately.
+ *
+ * Return: Number of descriptors processed
+ */
+uint32_t dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
+{
+	struct dp_dal_suspended_tx_desc *suspended_desc, *next_desc;
+	struct dp_dal_tx_metadata tx_metadata = {};
+	uint32_t processed_count = 0;
+	uint8_t ring_id;
+	int ret;
+
+	if (qdf_unlikely(!dal_ctx))
+		return 0;
+
+	qdf_spin_lock_bh(&dal_ctx->suspended_tx_lock);
+
+	if (qdf_atomic_read(&dal_ctx->deinit_in_progress)) {
+		qdf_spin_unlock_bh(&dal_ctx->suspended_tx_lock);
+		return 0;
+	}
+
+	qdf_list_for_each_del(&dal_ctx->suspended_tx_list, suspended_desc,
+			      next_desc, node) {
+		qdf_list_remove_node(&dal_ctx->suspended_tx_list,
+				     &suspended_desc->node);
+		dal_ctx->suspended_tx_count--;
+
+		tx_metadata.tx_desc = suspended_desc->tx_desc;
+		tx_metadata.msdu_info = suspended_desc->msdu_info;
+		tx_metadata.vdev =
+			dp_vdev_get_ref_by_id(dal_ctx->soc,
+					      suspended_desc->vdev_id,
+					      DP_MOD_ID_TX);
+
+		if (qdf_likely(tx_metadata.vdev && global_plat_ops &&
+			       global_plat_ops->tx)) {
+			suspended_desc->tx_desc->flags |=
+					DP_TX_DESC_FLAG_QUEUED_TX;
+
+			ret = global_plat_ops->tx(dal_ctx,
+						  suspended_desc->ring_id,
+						  suspended_desc->vdev_id,
+						  suspended_desc->tcl_desc,
+						  &tx_metadata);
+			if (ret == 0) {
+				ring_id = tx_metadata.msdu_info->tx_queue.ring_id;
+
+				dp_tx_update_proto_stats(
+						tx_metadata.vdev,
+						suspended_desc->tx_desc->nbuf,
+						ring_id, TX_ENQUEUE_HW);
+
+				DP_STATS_INC_PKT(tx_metadata.vdev,
+						 tx_i[tx_metadata.msdu_info->xmit_type].processed,
+						 1, dp_tx_get_pkt_len(suspended_desc->tx_desc));
+				DP_STATS_INC(dal_ctx->soc,
+					     tx.tcl_enq[ring_id], 1);
+				dp_pkt_add_timestamp(
+						tx_metadata.vdev,
+						QDF_PKT_TX_DRIVER_EXIT,
+						qdf_get_log_timestamp(),
+						suspended_desc->tx_desc->nbuf);
+			} else {
+				dp_tx_err_rl("Failed to flush suspended TX desc, ret: %d",
+					     ret);
+				DP_STATS_INC(tx_metadata.vdev,
+					     tx_i[tx_metadata.msdu_info->xmit_type].dropped.enqueue_fail,
+					     1);
+				suspended_desc->tx_desc->flags &=
+						~DP_TX_DESC_FLAG_QUEUED_TX;
+			}
+
+			dp_tx_hw_enqueue_post_process(dal_ctx->soc,
+						      tx_metadata.vdev,
+						      suspended_desc->tx_desc,
+						      tx_metadata.msdu_info,
+						      ret);
+			dp_vdev_unref_delete(dal_ctx->soc, tx_metadata.vdev,
+					     DP_MOD_ID_TX);
+		} else {
+			dp_tx_err_rl("VDEV/Platform ops is NULL during flush");
+			dp_tx_comp_free_buf(dal_ctx->soc,
+					    suspended_desc->tx_desc, false);
+			dp_tx_desc_release(
+				dal_ctx->soc, suspended_desc->tx_desc,
+				tx_metadata.msdu_info->tx_queue.desc_pool_id);
+		}
+
+		qdf_mem_free(suspended_desc->msdu_info);
+		qdf_mem_free(suspended_desc->tcl_desc);
+		qdf_mem_free(suspended_desc);
+		processed_count++;
+	}
+
+	qdf_spin_unlock_bh(&dal_ctx->suspended_tx_lock);
+
+	if (processed_count > 0) {
+		dp_debug("Flushed %u suspended TX descriptors during resume",
+			 processed_count);
+	}
+
+	return processed_count;
+}
+#else
+/**
+ * dp_dal_tx_rtpm_wrapper() - Direct platform TX wrapper (no runtime PM)
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @vdev_id: VDEV ID
+ * @tcl_desc: TCL descriptor
+ * @tx_metadata: TX metadata
+ *
+ * This function directly calls platform TX without runtime PM handling
+ * when FEATURE_RUNTIME_PM is not enabled.
+ *
+ * Return: DP_DAL_TX_SUCCESS for success, DP_DAL_TX_FAILURE for failure
+ */
+static inline int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx,
+					 uint8_t ring_id, uint32_t vdev_id,
+					 void *tcl_desc,
+					 struct dp_dal_tx_metadata *tx_metadata)
+{
+	int ret;
+
+	if (!global_plat_ops || !global_plat_ops->tx) {
+		dp_tx_err_rl("Platform TX operation not available");
+		return DP_DAL_TX_FAILURE;
+	}
+
+	ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id, tcl_desc,
+				  tx_metadata);
+	return (ret == 0) ? DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
+}
+
+/**
+ * dp_dal_tx_queue_suspended_desc() - No-op when FEATURE_RUNTIME_PM disabled
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @vdev_id: VDEV ID
+ * @tcl_desc: TCL descriptor
+ * @tx_metadata: TX metadata
+ *
+ * No-op function when runtime PM is disabled. Just frees the TCL descriptor.
+ *
+ * Return: None
+ */
+static inline void
+dp_dal_tx_queue_suspended_desc(struct dp_dal_ctx *dal_ctx,
+			       uint8_t ring_id, uint32_t vdev_id,
+			       void *tcl_desc,
+			       struct dp_dal_tx_metadata *tx_metadata)
+{
+	/* No-op when runtime PM is disabled */
+	if (tcl_desc)
+		qdf_mem_free(tcl_desc);
+}
+#endif /* FEATURE_RUNTIME_PM */
+
 /**
  *dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
  *@ring_num: tx completion ring number
@@ -165,7 +473,7 @@ int dp_dal_tx_bypass_mode(void *priv, u8 ring_id, u32 ifidx, void *desc,
 				 hal_ring_hdl, soc, ring_id);
 
 ring_access_fail:
-	dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, coalesce);
+	dp_tx_ring_access_end(soc, hal_ring_hdl, coalesce);
 
 	return (hal_tx_desc) ? 0 : -ENOSPC;
 }
@@ -267,29 +575,39 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 	if (!dp_tx_desc_set_ktimestamp(vdev, tx_desc))
 		dp_tx_desc_set_timestamp(tx_desc);
 
-	if (global_plat_ops->tx) {
-		ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id, tcl_desc,
-					  &tx_metadata);
-		if (qdf_unlikely(ret)) {
-			dp_tx_err_rl("platform tx failed, ret: %d", ret);
-			DP_STATS_INC(vdev,
-				     tx_i[msdu_info->xmit_type].dropped.enqueue_fail,
-				     1);
-			status = QDF_STATUS_E_FAILURE;
-			goto err_free_desc;
-		}
-	} else {
-		dp_tx_err_rl("Platform TX operation not available");
-		status = QDF_STATUS_E_NOSUPPORT;
+	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
+
+	/* Use runtime PM wrapper for platform TX call */
+	ret = dp_dal_tx_rtpm_wrapper(dal_ctx, ring_id, vdev_id, tcl_desc,
+				     &tx_metadata);
+
+	/* Handle TX failure */
+	if (qdf_unlikely(ret == DP_DAL_TX_FAILURE)) {
+		tx_desc->flags &= ~DP_TX_DESC_FLAG_QUEUED_TX;
+		dp_tx_err_rl("platform tx failed, ret: %d", ret);
+		DP_STATS_INC(vdev,
+			     tx_i[msdu_info->xmit_type].dropped.enqueue_fail,
+			     1);
+		status = QDF_STATUS_E_FAILURE;
 		goto err_free_desc;
 	}
 
+	/* Handle TX queued during suspend - return success, stats updated
+	 * during resume
+	 */
+	if (ret == DP_DAL_TX_QUEUED) {
+		/* TCL descriptor ownership transferred to suspended list */
+		tx_desc->flags &= ~DP_TX_DESC_FLAG_QUEUED_TX;
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* Handle immediate TX success (ret == DP_DAL_TX_SUCCESS) */
 	/* Re-init ring_id as platform_bus_tx() might override it */
 	ring_id = msdu_info->tx_queue.ring_id;
 
-	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
 	dp_tx_update_proto_stats(vdev, tx_desc->nbuf, ring_id, TX_ENQUEUE_HW);
 
+	/* Update stats for immediate TX success */
 	DP_STATS_INC_PKT(vdev, tx_i[msdu_info->xmit_type].processed, 1,
 			 dp_tx_get_pkt_len(tx_desc));
 	DP_STATS_INC(soc, tx.tcl_enq[ring_id], 1);

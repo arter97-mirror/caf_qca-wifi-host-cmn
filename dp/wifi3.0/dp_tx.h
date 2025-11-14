@@ -2840,4 +2840,27 @@ dp_tx_comp_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num,
 #endif /* DP_TX_COMP_RING_DESC_SANITY_CHECK */
 #endif /* WLAN_SOFTUMAC_SUPPORT */
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_tx_hw_enqueue_post_process() - Handle post-processing after hw_enqueue
+ * @soc: DP SOC handle
+ * @vdev: DP VDEV handle
+ * @tx_desc: TX descriptor
+ * @msdu_info: MSDU information
+ * @hw_enqueue_result: Result from hw_enqueue operation
+ *
+ * This function handles both success and failure cases after TX hw_enqueue.
+ * It replicates the handling logic that is normally done immediately after
+ * hw_enqueue in the regular TX path, but is needed for DAL flush operations
+ * where the original context has been split across suspend/resume.
+ *
+ * Return: QDF_STATUS_SUCCESS for success, QDF_STATUS_E_FAILURE for failure
+ */
+void dp_tx_hw_enqueue_post_process(struct dp_soc *soc,
+				   struct dp_vdev *vdev,
+				   struct dp_tx_desc_s *tx_desc,
+				   struct dp_tx_msdu_info_s *msdu_info,
+				   int hw_enqueue_result);
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 #endif

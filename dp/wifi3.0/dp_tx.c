@@ -3732,6 +3732,51 @@ dp_tx_hw_enqueue_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,
 	return soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc, fw_metadata,
 					   tx_exc_metadata, msdu_info);
 }
+
+/**
+ * dp_tx_hw_enqueue_post_process() - Handle post-processing after hw_enqueue
+ * @soc: DP SOC handle
+ * @vdev: DP VDEV handle
+ * @tx_desc: TX descriptor
+ * @msdu_info: MSDU information
+ * @hw_enqueue_result: Result from hw_enqueue (0=success, non-zero=failure)
+ *
+ * This function handles success and failure cases after hw_enqueue operation.
+ * It replicates the handling logic that is normally done immediately after
+ * hw_enqueue in the regular TX path, but is needed for DAL flush operations
+ * where the original context has been split across suspend/resume.
+ *
+ * Return: QDF_STATUS_SUCCESS for success, QDF_STATUS_E_FAILURE for failure
+ */
+void dp_tx_hw_enqueue_post_process(struct dp_soc *soc,
+				   struct dp_vdev *vdev,
+				   struct dp_tx_desc_s *tx_desc,
+				   struct dp_tx_msdu_info_s *msdu_info,
+				   int hw_enqueue_result)
+{
+	struct dp_tx_queue *tx_q;
+	struct dp_pdev *pdev;
+	struct cdp_tid_tx_stats *tid_stats = NULL;
+	qdf_nbuf_t nbuf;
+
+	if (qdf_unlikely(!soc || !vdev || !tx_desc || !msdu_info))
+		return;
+
+	tx_q = &msdu_info->tx_queue;
+	pdev = vdev->pdev;
+	nbuf = tx_desc->nbuf;
+
+	if (hw_enqueue_result == 0) {
+		dp_tx_update_ts_on_enqueued(vdev, msdu_info, tx_desc);
+	} else {
+		dp_tx_get_tid(vdev, nbuf, msdu_info);
+		tid_stats = &pdev->stats.tid_stats.tid_tx_stats[tx_q->ring_id][msdu_info->tid];
+		tid_stats->swdrop_cnt[TX_HW_ENQUEUE]++;
+
+		dp_tx_comp_free_buf(soc, tx_desc, false);
+		dp_tx_desc_release(soc, tx_desc, tx_q->desc_pool_id);
+	}
+}
 #else
 static inline QDF_STATUS
 dp_tx_hw_enqueue_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,

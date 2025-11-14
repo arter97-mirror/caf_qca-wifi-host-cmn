@@ -13,6 +13,18 @@
 #include "dp_tx.h"
 
 /**
+ * enum dp_dal_tx_status - DAL TX return status codes
+ * @DP_DAL_TX_SUCCESS: TX completed successfully
+ * @DP_DAL_TX_QUEUED: TX queued for later processing during suspend
+ * @DP_DAL_TX_FAILURE: TX failed
+ */
+enum dp_dal_tx_status {
+	DP_DAL_TX_SUCCESS = 0,
+	DP_DAL_TX_QUEUED = 1,
+	DP_DAL_TX_FAILURE = -1,
+};
+
+/**
  * struct dp_dal_tx_metadata - DAL TX metadata structure
  * @msdu_info: Pointer to MSDU information structure containing packet
  *             details for transmission
@@ -28,6 +40,31 @@ struct dp_dal_tx_metadata {
 	struct dp_vdev *vdev;
 	struct dp_tx_desc_s *tx_desc;
 };
+
+#ifdef FEATURE_RUNTIME_PM
+/**
+ * struct dp_dal_suspended_tx_desc - Suspended TX descriptor for runtime PM
+ * @node: List node for linking suspended descriptors
+ * @ring_id: Ring ID for the suspended TX
+ * @vdev_id: VDEV ID for the suspended TX
+ * @tcl_desc: Pointer to TCL descriptor (ownership transferred)
+ * @tx_desc: Pointer to TX descriptor (global memory, remains valid)
+ * @msdu_info: Heap-allocated copy of msdu_info (ownership transferred)
+ *
+ * This structure stores data needed for resume processing. The tx_desc
+ * pointer remains valid since it points to global memory. A heap-allocated
+ * copy of msdu_info is created to preserve the TX metadata across
+ * suspend/resume cycles.
+ */
+struct dp_dal_suspended_tx_desc {
+	qdf_list_node_t node;
+	uint8_t ring_id;
+	uint32_t vdev_id;
+	void *tcl_desc;
+	struct dp_tx_desc_s *tx_desc;
+	struct dp_tx_msdu_info_s *msdu_info;
+};
+#endif /* FEATURE_RUNTIME_PM */
 
 /**
  * dp_dal_tx_cmp_isr_vendor_cb - tx cmlp ISR vendor callback
@@ -127,5 +164,23 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id);
  */
 uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 				uint32_t dp_budget);
+
+#ifdef FEATURE_RUNTIME_PM
+/**
+ * dp_dal_tx_flush_suspended_descs() - Flush suspended TX descriptors
+ * @dal_ctx: DAL context
+ *
+ * Process all suspended TX descriptors during resume.
+ *
+ * Return: Number of descriptors processed
+ */
+uint32_t dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx);
+#else
+static inline uint32_t
+dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
+{
+	return 0;
+}
+#endif /* FEATURE_RUNTIME_PM */
 
 #endif /* DP_DAL_TX_H */
