@@ -739,8 +739,11 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 
 	if (global_plat_ops->rx_replenish && processed > 0) {
 		ret = global_plat_ops->rx_replenish(dal_ctx, processed, false);
-		if (qdf_unlikely(ret))
+		if (qdf_unlikely(ret)) {
 			dp_err_rl("Platform RX replenish failed, ret: %d", ret);
+			qdf_atomic_add(processed,
+				       &dal_ctx->rx_replenish_failures);
+		}
 	}
 
 	if (nbuf_head) {

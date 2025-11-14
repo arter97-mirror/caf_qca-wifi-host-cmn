@@ -251,6 +251,11 @@ struct dp_dal_rx_desc_node {
  *		from offload to bypass
  * @poll_count: polling counter
  * @dal_replenish_lock: Spinlock to synchronize rx replenish
+ * @rx_replenish_failures: Counter to track rx replenish failures
+ * @rx_replenish_retry_timer: timer to retry replenish
+ * @rx_replenish_retry_count: Max replenish retry count
+ * @rx_replenish_retry_interval_ms: Interval at which replenish timer runs
+ * @deinit_in_progress: flag to indicate dal_soc_deinit in progress
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -277,6 +282,11 @@ struct dp_dal_ctx {
 	qdf_timer_t dal_poll_timer;
 	uint32_t poll_count;
 	qdf_spinlock_t dal_replenish_lock;
+	qdf_atomic_t rx_replenish_failures;
+	qdf_timer_t rx_replenish_retry_timer;
+	int rx_replenish_retry_count;
+	int rx_replenish_retry_interval_ms;
+	qdf_atomic_t deinit_in_progress;
 };
 
 /**

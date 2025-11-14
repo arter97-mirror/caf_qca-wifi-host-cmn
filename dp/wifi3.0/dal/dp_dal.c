@@ -16,6 +16,11 @@
 #define DAL_POLL_TIMER_INTERVAL_MS 10
 #define DAL_POLL_TIMER_MAX_COUNT 10
 
+/* DAL rx replenish retry timer interval in milliseconds */
+#define DAL_RX_REPLENISH_RETRY_TIMER_MS 10
+#define DAL_RX_REPLENISH_MAX_RETRIES 10
+#define DAL_RX_REPLENISH_BACKOFF_MULTIPLIER 2
+
 /**
  * dp_dal_bus_init_bypass_mode() - Skeleton for platform bus init
  * in bypass mode
@@ -448,6 +453,10 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 
 	dp_dal_vdev_pause_unpause_queues(pdev, false);
 
+	if (qdf_atomic_read(&dal_ctx->rx_replenish_failures))
+		qdf_timer_mod(&dal_ctx->rx_replenish_retry_timer,
+			      dal_ctx->rx_replenish_retry_interval_ms);
+
 	return QDF_STATUS_SUCCESS;
 
 bus_exit:
@@ -771,6 +780,11 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 	if (!soc || !soc->dal_ctx)
 		return;
 
+	qdf_atomic_set(&soc->dal_ctx->deinit_in_progress, 1);
+
+	qdf_timer_sync_cancel(&soc->dal_ctx->dal_poll_timer);
+	qdf_timer_sync_cancel(&soc->dal_ctx->rx_replenish_retry_timer);
+
 	dp_dal_rx_desc_list_cleanup(dal_ctx);
 
 	qdf_spinlock_destroy(&soc->dal_ctx->dal_rx_desc_lock);
@@ -779,8 +793,8 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 
 	dp_dal_bus_stop(soc);
 	dp_dal_bus_exit(soc);
-	qdf_timer_sync_cancel(&soc->dal_ctx->dal_poll_timer);
 	qdf_timer_free(&soc->dal_ctx->dal_poll_timer);
+	qdf_timer_free(&soc->dal_ctx->rx_replenish_retry_timer);
 }
 
 /**
@@ -1009,6 +1023,47 @@ dp_dal_get_intr_ctx_from_ring(struct dp_soc *soc,
 	return NULL;
 }
 
+static void dp_dal_rx_replenish_retry_handler(void *arg)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)arg;
+	uint32_t failures;
+
+	if (!global_plat_ops || !global_plat_ops->rx_replenish) {
+		dp_err("DAL: rx_replenish op not available");
+		return;
+	}
+
+	if (qdf_atomic_read(&dal_ctx->deinit_in_progress))
+		return;
+
+	failures = qdf_atomic_read(&dal_ctx->rx_replenish_failures);
+	if (!failures) {
+		dal_ctx->rx_replenish_retry_count = 0;
+		dal_ctx->rx_replenish_retry_interval_ms =
+					DAL_RX_REPLENISH_RETRY_TIMER_MS;
+		return;
+	}
+
+	if (global_plat_ops->rx_replenish(dal_ctx, failures, false)) {
+		dp_err("DAL: rx_replenish failed in retry, failures:%u",
+		       failures);
+		dal_ctx->rx_replenish_retry_count++;
+		dal_ctx->rx_replenish_retry_interval_ms *=
+					DAL_RX_REPLENISH_BACKOFF_MULTIPLIER;
+	} else {
+		qdf_atomic_sub(failures, &dal_ctx->rx_replenish_failures);
+		dal_ctx->rx_replenish_retry_count = 0;
+		dal_ctx->rx_replenish_retry_interval_ms =
+					DAL_RX_REPLENISH_RETRY_TIMER_MS;
+	}
+
+	/* start timer again if replenish_failure count is non-zero */
+	if (!qdf_atomic_read(&dal_ctx->deinit_in_progress) &&
+	    qdf_atomic_read(&dal_ctx->rx_replenish_failures))
+		qdf_timer_mod(&dal_ctx->rx_replenish_retry_timer,
+			      dal_ctx->rx_replenish_retry_interval_ms);
+}
+
 /**
  * dp_dal_poll_timer_handler() - Timer handler to poll DAL owned rings
  * @arg: pointer to DAL context
@@ -1093,9 +1148,17 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	qdf_spinlock_create(&dal_ctx->dal_tx_cpl_lock);
 	qdf_spinlock_create(&dal_ctx->dal_rx_desc_lock);
 	qdf_spinlock_create(&dal_ctx->dal_replenish_lock);
+	qdf_atomic_init(&dal_ctx->rx_replenish_failures);
+	qdf_atomic_init(&dal_ctx->deinit_in_progress);
+
+	dal_ctx->rx_replenish_retry_interval_ms =
+					DAL_RX_REPLENISH_RETRY_TIMER_MS;
 
 	qdf_timer_init(soc->osdev, &dal_ctx->dal_poll_timer,
 		       dp_dal_poll_timer_handler, dal_ctx,
+		       QDF_TIMER_TYPE_WAKE_APPS);
+	qdf_timer_init(soc->osdev, &dal_ctx->rx_replenish_retry_timer,
+		       dp_dal_rx_replenish_retry_handler, dal_ctx,
 		       QDF_TIMER_TYPE_WAKE_APPS);
 
 	status = dp_dal_create_ring_to_grp_mapping(soc);
@@ -1275,6 +1338,7 @@ int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
 				union dp_rx_desc_list_elem_t **tail)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+	int ret;
 
 	if (!dal_ctx)
 		return -EINVAL;
@@ -1284,8 +1348,12 @@ int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
 						 mac_id, rx_desc_pool);
 
 	if (global_plat_ops->rx_replenish) {
-		return global_plat_ops->rx_replenish(dal_ctx,
-						     num_req_buffers, false);
+		ret = global_plat_ops->rx_replenish(dal_ctx,
+						    num_req_buffers, false);
+		if (ret)
+			qdf_atomic_add(num_req_buffers,
+				       &dal_ctx->rx_replenish_failures);
+		return ret;
 	} else {
 		dp_err("DAL: no op registers for rx_replenish req_buf:%u",
 		       num_req_buffers);
