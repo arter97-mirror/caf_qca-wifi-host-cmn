@@ -1570,6 +1570,12 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
 		return QDF_STATUS_E_INVAL;
 	}
 
+	/* Reject suspend when mode switch is in progress */
+	if (soc->dal_mode_switch_in_progress) {
+		dp_warn("Mode switch in progress, reject suspend");
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	if (global_plat_ops && global_plat_ops->notify_suspend)
 		ret = global_plat_ops->notify_suspend(dal_ctx);
 
