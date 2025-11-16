@@ -684,6 +684,44 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
  */
 static int dp_dal_sim_rx_replenish(void *priv, u32 cnt, bool use_rsv_pktid)
 {
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
+	uint32_t avail_entries;
+	int replenish_cnt;
+	int ret;
+
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in offload_mode_rx_replenish");
+		return -EINVAL;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL simulator context in offload_mode_rx_replenish");
+		return -EINVAL;
+	}
+
+	/* Get available entries in RX refill ring using offload sim wrapper */
+	avail_entries = dp_dal_offload_sim_get_rx_refill_avail_entries(sim_ctx);
+
+	/* Calculate minimum of available entries and requested count */
+	replenish_cnt = (avail_entries < cnt) ? avail_entries : cnt;
+
+	dp_debug("RX replenish: requested=%u, available=%d",
+		 cnt, avail_entries);
+
+	/* Call vendor RX replenish allocation callback to allocate buffers */
+	if (vendor_cb.rx_replenish_alloc_cb) {
+		ret = vendor_cb.rx_replenish_alloc_cb(dal_ctx, replenish_cnt);
+		if (ret) {
+			dp_err("RX replenish alloc cb failed, ret=%d", ret);
+			return -EINVAL;
+		}
+
+	} else {
+		dp_warn("RX replenish allocation callback not registered");
+	}
+
 	return 0;
 }
 

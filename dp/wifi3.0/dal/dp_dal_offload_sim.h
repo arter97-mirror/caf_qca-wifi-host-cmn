@@ -164,5 +164,21 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 				void **desc_list,
 				u32 *count,
 				u32 budget);
+
+/**
+ * dp_dal_offload_sim_get_rx_refill_avail_entries() - Get available entries in
+ * refill ring
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ *
+ * This wrapper function calculates and returns the number of available entries
+ * in the RX refill ring. It uses the vendor HAL API to get
+ * the available entries.
+ *
+ * Return: Number of available entries in the RX refill ring,
+ * negative error code on failure
+ */
+uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
+			struct dp_dal_sim_ctx *dal_sim_ctx);
+
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */
