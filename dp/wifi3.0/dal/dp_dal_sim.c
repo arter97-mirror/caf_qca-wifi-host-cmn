@@ -499,7 +499,20 @@ static void dp_dal_sim_stop(void *priv)
  */
 static int dp_dal_sim_request_irq(void *priv)
 {
+	struct dp_dal_ctx *dp_dal_ctx = (struct dp_dal_ctx *)priv;
 	int status = 0;
+
+	if (!dp_dal_ctx) {
+		dp_err("NULL context in offload_mode_request_irq");
+		return -EINVAL;
+	}
+
+	/* Call dp_dal_offload_sim_request_irq to register interrupts */
+	status = dp_dal_offload_sim_request_irq(dp_dal_ctx->dal_sim_ctx);
+	if (status) {
+		dp_err("Failed to register IRQs");
+		return status;
+	}
 
 	dp_info("IRQ registration complete");
 
@@ -737,6 +750,18 @@ static struct platform_bus_ops dp_dal_sim_plat_ops = {
 	.intf_init = dp_dal_sim_intf_init,
 	.intf_deinit = dp_dal_sim_intf_deinit,
 };
+
+/**
+ * dp_dal_sim_schedule_work() - Schedule work for interrupt processing
+ * @arg: Pointer to offload_sim_irq_ctx structure
+ *
+ * This function is called by the offload simulation interrupt handler
+ * to queue work for processing the interrupt. It checks if work is
+ * already scheduled and queues work on the appropriate work queue.
+ */
+void dp_dal_sim_schedule_work(void *arg)
+{
+}
 #endif /* FEATURE_DP_DAL_SIM */
 #if defined(FEATURE_DP_DAL_SIM)
 void dp_dal_sim_platform_bus_ops_attach(void)

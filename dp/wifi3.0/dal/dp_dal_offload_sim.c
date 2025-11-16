@@ -213,7 +213,171 @@ void dp_dal_offload_sim_deinit(struct dp_dal_sim_ctx *dal_sim_ctx)
 	dp_info("Offload simulation context deinitialized successfully");
 }
 
+/**
+ * dp_dal_offload_sim_interrupt_handler() - Interrupt handler for offload sim
+ * @irq: IRQ number
+ * @arg: Pointer to offload_sim_irq_ctx structure
+ *
+ * This function is called when an interrupt is received. It calls
+ * dp_dal_sim_schedule_work to queue work for processing the interrupt.
+ *
+ * Return: IRQ_HANDLED
+ */
+static irqreturn_t dp_dal_offload_sim_interrupt_handler(int irq, void *arg)
+{
+	struct offload_sim_irq_ctx *irq_ctx = (struct offload_sim_irq_ctx *)arg;
+	struct dp_dal_sim_ctx *sim_ctx;
+
+	if (!irq_ctx) {
+		dp_err("NULL IRQ context in interrupt handler");
+		return IRQ_HANDLED;
+	}
+
+	sim_ctx = irq_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL sim context in interrupt handler");
+		return IRQ_HANDLED;
+	}
+
+	dp_debug("Interrupt %d received for ring_type=%d, ring_id=%d",
+		 irq, irq_ctx->ring_type, irq_ctx->ring_id);
+	/* Call dal sim api to queue work for processing interrupt */
+	dp_dal_sim_schedule_work(arg);
+
+	return IRQ_HANDLED;
+}
+
+int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
+{
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	int i, ret;
+	char irq_name[OFFLOAD_SIM_IRQ_NAME_LEN];
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL DAL sim context in request_irq");
+		return -EINVAL;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload sim context in request_irq");
+		return -EINVAL;
+	}
+
+	dp_info("Registering IRQs for offload simulation");
+
+	/* Register RX ring IRQs */
+	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
+		/* Initialize IRQ context */
+		offload_ctx->rx_irq_ctx[i].dal_sim_ctx = dal_sim_ctx;
+		offload_ctx->rx_irq_ctx[i].ring_id = i;
+		offload_ctx->rx_irq_ctx[i].ring_type = OFFLOAD_SIM_RING_TYPE_RX;
+		offload_ctx->rx_irq_ctx[i].irq_configured = false;
+		/* Format IRQ name with group ID */
+		qdf_scnprintf(irq_name, OFFLOAD_SIM_IRQ_NAME_LEN,
+			      "offload_sim_wlan_grp_id_%d",
+			      dal_sim_ctx->rx_ring[i].grp_id);
+		/* Register IRQ using platform-specific function */
+		ret = pfrm_request_irq(
+			dal_sim_ctx->dev,
+			dal_sim_ctx->rx_ring[i].irq_num,
+			dp_dal_offload_sim_interrupt_handler,
+			IRQF_SHARED | IRQF_NO_SUSPEND,
+			irq_name,
+			&offload_ctx->rx_irq_ctx[i]);
+		if (ret) {
+			dp_err("Failed irq register RX ring %d, ret=%d",
+			       i, ret);
+			goto free_irqs;
+		}
+		/* Mark IRQ as configured on successful registration */
+		offload_ctx->rx_irq_ctx[i].irq_configured = true;
+		dp_info("Registered RX IRQ %d for ring %d",
+			dal_sim_ctx->rx_ring[i].irq_num, i);
+	}
+
+	/* Register TX completion ring IRQs */
+	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+		/* Initialize IRQ context */
+		offload_ctx->tx_cpl_irq_ctx[i].dal_sim_ctx = dal_sim_ctx;
+		offload_ctx->tx_cpl_irq_ctx[i].ring_id = i;
+		offload_ctx->tx_cpl_irq_ctx[i].ring_type =
+						OFFLOAD_SIM_RING_TYPE_TX_CPL;
+		offload_ctx->tx_cpl_irq_ctx[i].irq_configured = false;
+		/* Format IRQ name with group ID */
+		qdf_scnprintf(irq_name, OFFLOAD_SIM_IRQ_NAME_LEN,
+			      "offload_sim_wlan_grp_id_%d",
+			      dal_sim_ctx->tx_cmpl_ring[i].grp_id);
+		/* Register IRQ using platform-specific function */
+		ret = pfrm_request_irq(
+				dal_sim_ctx->dev,
+				dal_sim_ctx->tx_cmpl_ring[i].irq_num,
+				dp_dal_offload_sim_interrupt_handler,
+				IRQF_SHARED | IRQF_NO_SUSPEND,
+				irq_name,
+				&offload_ctx->tx_cpl_irq_ctx[i]);
+		if (ret) {
+			dp_err("Failed irq register TX compl ring %d, ret=%d",
+			       i, ret);
+			goto free_irqs;
+		}
+		/* Mark IRQ as configured on successful registration */
+		offload_ctx->tx_cpl_irq_ctx[i].irq_configured = true;
+		dp_info("Registered TX completion IRQ %d for ring %d",
+			dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
+	}
+
+	dp_info("IRQ registration complete");
+	return 0;
+
+free_irqs:
+	/* Free any IRQs that were successfully registered */
+	dp_dal_offload_sim_free_irq(dal_sim_ctx);
+	return ret;
+}
+
 void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	int i;
+
+	if (!dal_sim_ctx) {
+		dp_warn("NULL DAL sim context in free_irq");
+		return;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_warn("NULL offload sim context in free_irq");
+		return;
+	}
+
+	/* Free RX ring IRQs */
+	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
+		/* Only free IRQ if it was successfully configured */
+		if (offload_ctx->rx_irq_ctx[i].irq_configured) {
+			pfrm_free_irq(dal_sim_ctx->dev,
+				      dal_sim_ctx->rx_ring[i].irq_num,
+				      &offload_ctx->rx_irq_ctx[i]);
+			offload_ctx->rx_irq_ctx[i].irq_configured = false;
+			dp_debug("Freed RX IRQ %d for ring %d",
+				 dal_sim_ctx->rx_ring[i].irq_num, i);
+		}
+	}
+
+	/* Free TX completion ring IRQs */
+	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+		/* Only free IRQ if it was successfully configured */
+		if (offload_ctx->tx_cpl_irq_ctx[i].irq_configured) {
+			pfrm_free_irq(dal_sim_ctx->dev,
+				      dal_sim_ctx->tx_cmpl_ring[i].irq_num,
+				       &offload_ctx->tx_cpl_irq_ctx[i]);
+			offload_ctx->tx_cpl_irq_ctx[i].irq_configured = false;
+			dp_debug("Freed TX completion IRQ %d for ring %d",
+				 dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
+		}
+	}
 }
 #endif /* FEATURE_DP_DAL_SIM */

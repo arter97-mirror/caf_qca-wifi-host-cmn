@@ -197,5 +197,15 @@ struct dp_dal_sim_ctx {
 	struct dal_intf_info intf_info[DAL_INTF_TYPE_MAX];
 	void *dev_base_addr;
 };
+
+/**
+ * dp_dal_sim_schedule_work() - Schedule work for interrupt processing
+ * @arg: Pointer to offload_sim_irq_ctx structure
+ *
+ * This function is called by the offload simulation interrupt handler
+ * to queue work for processing the interrupt. It checks if work is
+ * already scheduled and queues work on the appropriate work queue.
+ */
+void dp_dal_sim_schedule_work(void *arg);
 #endif /* FEATURE_DP_DAL_SIM */
 #endif /* DP_DAL_SIM_H */

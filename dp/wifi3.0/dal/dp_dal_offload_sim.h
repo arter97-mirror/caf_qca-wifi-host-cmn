@@ -80,6 +80,17 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx);
  * This function deinitializes and frees the offload simulation context.
  */
 void dp_dal_offload_sim_deinit(struct dp_dal_sim_ctx *dal_sim_ctx);
+
+/**
+ * dp_dal_offload_sim_request_irq() - Register IRQs for offload simulation
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ *
+ * This function registers interrupt handlers for RX and TX completion rings
+ * using platform-specific IRQ registration (pfrm_request_irq).
+ *
+ * Return: 0 on success, error code on failure
+ */
+int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
 /**
  * dp_dal_offload_sim_free_irq() - Free IRQs for offload simulation
  * @dal_sim_ctx: Pointer to DAL simulation context
