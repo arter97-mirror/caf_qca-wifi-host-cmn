@@ -639,7 +639,64 @@ int dp_dal_offload_sim_rxbm_sync(
 				u32 cnt,
 				void **rx_buff)
 {
-	return cnt;
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *rx_refill_ring;
+	void *refill_desc;
+	u32 i;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL simulator context in rxbm_sync");
+		return 0;
+	}
+
+	if (!rx_buff) {
+		dp_err("NULL rx_buff array in rxbm_sync");
+		return 0;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context in rxbm_sync");
+		return 0;
+	}
+
+	/* Get RX refill ring */
+	rx_refill_ring = &offload_ctx->rx_refill_ring_hal_srng;
+
+	/* Lock the ring */
+	DAL_VNDR_SRNG_LOCK(&rx_refill_ring->lock);
+
+	/* Begin ring access */
+	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, rx_refill_ring);
+
+	/* Copy descriptors one by one to the refill ring entries */
+	for (i = 0; i < cnt; i++) {
+		/* Get next available entry in the refill ring */
+		refill_desc = dal_vndr_hal_srng_src_get_next(
+							&offload_ctx->hal_soc,
+							rx_refill_ring);
+		if (!refill_desc) {
+			dp_err_rl("refill ring full synced %u/%u descriptors",
+				  i, cnt);
+			break;
+		}
+
+		/* Copy descriptor from rx_buff array to refill ring entry */
+		dal_vndr_hal_rxbm_sync(&offload_ctx->hal_soc,
+				       refill_desc, rx_buff[i]);
+	}
+
+	/* End ring access and update the HP */
+	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, rx_refill_ring);
+
+	/* Unlock the ring */
+	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
+
+	dp_debug("synced %u RX buffer descriptors to refill ring",
+		 i);
+
+	return i;
 }
 
 #endif /* FEATURE_DP_DAL_SIM */
