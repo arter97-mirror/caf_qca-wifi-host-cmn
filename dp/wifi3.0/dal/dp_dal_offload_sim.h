@@ -180,5 +180,23 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
 			struct dp_dal_sim_ctx *dal_sim_ctx);
 
+/**
+ * dp_dal_offload_sim_rxbm_sync() - Sync RX buffer manager descriptors to
+ * refill ring
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ * @cnt: Number of descriptors to sync
+ * @rx_buff: Array of RX buffer pointers
+ *
+ * This wrapper function handles ring locking, access start/end, and copies
+ * RX buffer manager descriptors one by one to the RX refill ring entries.
+ * It encapsulates all HAL ring operations for RX buffer replenishment.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int dp_dal_offload_sim_rxbm_sync(
+				struct dp_dal_sim_ctx *dal_sim_ctx,
+				u32 cnt,
+				void **rx_buff);
+
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */

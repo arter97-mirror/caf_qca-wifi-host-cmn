@@ -634,4 +634,12 @@ uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
 	return num_entries_avail;
 }
 
+int dp_dal_offload_sim_rxbm_sync(
+				struct dp_dal_sim_ctx *dal_sim_ctx,
+				u32 cnt,
+				void **rx_buff)
+{
+	return cnt;
+}
+
 #endif /* FEATURE_DP_DAL_SIM */

@@ -747,7 +747,30 @@ static int dp_dal_sim_rx_replenish(void *priv, u32 cnt, bool use_rsv_pktid)
  */
 static int dp_dal_sim_rxbm_sync(void *priv, u32 cnt, void **rxbm)
 {
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
 	int synced_cnt = 0;
+
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in offload_mode_rxbm_sync");
+		return 0;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL simulator context in offload_mode_rxbm_sync");
+		return 0;
+	}
+
+	if (!rxbm) {
+		dp_err("NULL rxbm array in offload_mode_rxbm_sync");
+		return 0;
+	}
+
+	/* Call dp_dal_offload_sim wrapper to sync descriptors to refill ring */
+	synced_cnt = dp_dal_offload_sim_rxbm_sync(sim_ctx, cnt, rxbm);
+	sim_ctx->stats.rx_replenished += synced_cnt;
+	dp_debug("Synced %u RX buffer descriptors", synced_cnt);
 
 	return synced_cnt;
 }
