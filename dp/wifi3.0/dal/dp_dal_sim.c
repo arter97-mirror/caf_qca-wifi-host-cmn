@@ -761,6 +761,74 @@ static struct platform_bus_ops dp_dal_sim_plat_ops = {
  */
 void dp_dal_sim_schedule_work(void *arg)
 {
+	struct offload_sim_irq_ctx *irq_ctx = (struct offload_sim_irq_ctx *)arg;
+	struct dp_dal_sim_ctx *sim_ctx;
+	int ring_id;
+	bool already_scheduled;
+
+	if (!irq_ctx) {
+		dp_err("NULL IRQ context in schedule_work");
+		return;
+	}
+
+	sim_ctx = irq_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL sim context in schedule_work");
+		return;
+	}
+
+	ring_id = irq_ctx->ring_id;
+
+	dp_debug("Scheduling work for ring_type=%d, ring_id=%d",
+		 irq_ctx->ring_type, ring_id);
+
+	/* Handle interrupt based on ring type */
+	if (irq_ctx->ring_type == OFFLOAD_SIM_RING_TYPE_RX) {
+		if (ring_id < 0 || ring_id >= DAL_SIM_NUM_RX_RINGS) {
+			dp_err_rl("Invalid ring_id %d", ring_id);
+			return;
+		}
+		/* RX interrupt - increment ISR count every time */
+		sim_ctx->stats.rx_isr_count[ring_id]++;
+
+		/* RX interrupt - schedule RX work */
+		already_scheduled =
+			qdf_atomic_read(&sim_ctx->rx_work_scheduled[ring_id]);
+
+		if (!already_scheduled) {
+			qdf_atomic_set(&sim_ctx->rx_work_scheduled[ring_id], 1);
+			qdf_queue_work(0, sim_ctx->rx_work_queue[ring_id],
+				       &sim_ctx->rx_process_work[ring_id]);
+			sim_ctx->stats.rx_work_queued[ring_id]++;
+			dp_debug("RX work scheduled for ring_id=%d", ring_id);
+		}
+	} else if (irq_ctx->ring_type == OFFLOAD_SIM_RING_TYPE_TX_CPL) {
+		if (ring_id < 0 || ring_id >= DAL_SIM_NUM_TX_RINGS) {
+			dp_err_rl("Invalid ring_id %d", ring_id);
+			return;
+		}
+		/* TX completion interrupt - increment ISR count every time */
+		sim_ctx->stats.tx_cpl_isr_count[ring_id]++;
+
+		/* TX completion interrupt - schedule TX completion work */
+		already_scheduled = qdf_atomic_read(
+				&sim_ctx->tx_compl_work_scheduled[ring_id]);
+
+		if (!already_scheduled) {
+			qdf_atomic_set(
+				&sim_ctx->tx_compl_work_scheduled[ring_id],
+				1);
+			qdf_queue_work(
+				0,
+				sim_ctx->tx_compl_work_queue[ring_id],
+				&sim_ctx->tx_compl_process_work[ring_id]);
+			sim_ctx->stats.tx_cpl_work_queued[ring_id]++;
+			dp_debug("TX compl work scheduled for ring_id=%d",
+				 ring_id);
+		}
+	} else {
+		dp_err("Invalid ring type %d", irq_ctx->ring_type);
+	}
 }
 #endif /* FEATURE_DP_DAL_SIM */
 #if defined(FEATURE_DP_DAL_SIM)
