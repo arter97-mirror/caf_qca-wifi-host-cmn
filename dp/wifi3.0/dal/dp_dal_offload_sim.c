@@ -541,7 +541,34 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
 					struct dp_dal_sim_ctx *dal_sim_ctx)
 {
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *rx_refill_ring;
 	uint32_t num_entries_avail = 0;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL simulator context in get_rx_refill_avail_entries");
+		return 0;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context in get_rx_refill_avail_entries");
+		return 0;
+	}
+
+	/* Get RX refill ring */
+	rx_refill_ring = &offload_ctx->rx_refill_ring_hal_srng;
+
+	DAL_VNDR_SRNG_LOCK(&rx_refill_ring->lock);
+	/* Get number of available entries using vendor HAL API */
+	num_entries_avail = dal_vndr_hal_srng_src_num_avail(
+							&offload_ctx->hal_soc,
+							rx_refill_ring,
+							1);
+
+	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
+	dp_debug("RX refill ring available entries: %u", num_entries_avail);
 
 	return num_entries_avail;
 }
