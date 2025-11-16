@@ -3,12 +3,17 @@
  * SPDX-License-Identifier: ISC
  */
 
- #ifdef FEATURE_DAL_DP_SUPPORT
+#include "dp_dal_offload_sim.h"
+#include "dp_dal_sim.h"
+#include <qdf_mem.h>
+#include "dal_vndr_hal_be.h"
+/* Maximum length for IRQ name strings */
+#define OFFLOAD_SIM_IRQ_NAME_LEN 40
+#ifdef FEATURE_DP_DAL_SIM
 
-QDF_STATUS offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
+int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
 	/*TODO Implementation*/
-	return QDF_STATUS_SUCCESS;
+	return 0;
 }
-
- #endif /* FEATURE_DAL_DP_SUPPORT */
+#endif /* FEATURE_DP_DAL_SIM */
