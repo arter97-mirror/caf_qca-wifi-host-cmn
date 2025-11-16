@@ -664,7 +664,56 @@ static int dp_dal_sim_tx
 	(void *priv, u8 ring_num,
 	 u32 ifidx, void *desc, void *tx_metadata)
 {
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
+	struct dp_dal_tx_metadata *metadata =
+		(struct dp_dal_tx_metadata *)tx_metadata;
 	int ret = 0;
+	u32 i;
+	int ring_id = -1;
+
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in offload_mode_tx");
+		return -EINVAL;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL simulator context in offload_mode_tx");
+		return -EINVAL;
+	}
+
+	if (!desc || !metadata) {
+		dp_err("Invalid input parameters in offload_mode_tx");
+		return -EINVAL;
+	}
+
+	/* Find the ring array index based on ring_num from dp_dal_sim_srng */
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		if (sim_ctx->tx_ring[i].ring_num == ring_num) {
+			ring_id = i;
+			break;
+		}
+	}
+
+	if (ring_id < 0) {
+		dp_err("No TX ring found with ring_num %u", ring_num);
+		return -EINVAL;
+	}
+
+	dp_debug("Processing TX for ring_num %u (array index %d), ifidx %u",
+		 ring_num, ring_id, ifidx);
+
+	/* Call wrapper function to handle ring access and HW enqueue */
+	ret = dp_dal_offload_sim_tx_hw_enqueue(sim_ctx, ring_id,
+					       desc, tx_metadata);
+	if (ret) {
+		dp_err("Failed to enqueue TX descriptor, ret=%d", ret);
+		return ret;
+	}
+	sim_ctx->stats.tx_enqueued[ring_id]++;
+	dp_debug("TX enqueued successfully for ring_num %u (array index %d)",
+		 ring_num, ring_id);
 
 	return ret;
 }

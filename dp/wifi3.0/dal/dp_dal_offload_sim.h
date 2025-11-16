@@ -98,5 +98,24 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
  * This function frees interrupt handlers for RX and TX completion rings.
  */
 void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
+
+/**
+ * dp_dal_offload_sim_tx_hw_enqueue() - Enqueue TX descriptor to hardware ring
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ * @ring_id: Ring ID for TCL descriptor enqueue
+ * @desc: Pointer to the cached TCL descriptor
+ * @tx_metadata: Pointer to TX metadata
+ *
+ * This wrapper function handles ring access start/end and syncs the TX
+ * descriptor content to hardware. It encapsulates the ring access logic
+ * for TX descriptor enqueue operations.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int dp_dal_offload_sim_tx_hw_enqueue(
+			struct dp_dal_sim_ctx *dal_sim_ctx,
+			u8 ring_id,
+			void *desc,
+			void *tx_metadata);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */

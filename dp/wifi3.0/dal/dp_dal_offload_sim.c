@@ -380,4 +380,77 @@ void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 		}
 	}
 }
+
+/**
+ * dp_dal_offload_sim_tx_hw_enqueue() - Enqueue TX descriptor to hardware ring
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ * @ring_id: Ring ID for TCL descriptor enqueue
+ * @desc: Pointer to the cached TCL descriptor
+ * @tx_metadata: Pointer to TX metadata
+ *
+ * This wrapper function handles ring access start/end and syncs the TX
+ * descriptor content to hardware. It encapsulates the ring access logic
+ * for TX descriptor enqueue operations.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int dp_dal_offload_sim_tx_hw_enqueue(
+			struct dp_dal_sim_ctx *dal_sim_ctx,
+			u8 ring_id,
+			void *desc,
+			void *tx_metadata)
+{
+	struct dp_dal_ctx *dal_ctx;
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *tcl_ring;
+	void *hal_tx_desc;
+	int ret = 0;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL simulator context in tx_hw_enqueue");
+		return -EINVAL;
+	}
+
+	dal_ctx = (struct dp_dal_ctx *)dal_sim_ctx->dp_dal_ctx;
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in tx_hw_enqueue");
+		return -EINVAL;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context in tx_hw_enqueue");
+		return -EINVAL;
+	}
+
+	/* Get TCL ring for the specified ring_id from offload context */
+	tcl_ring = &offload_ctx->tx_ring_hal_srng[ring_id];
+
+	dp_debug("Enqueuing TX descriptor for ring_id %u", ring_id);
+	DAL_VNDR_SRNG_LOCK(&tcl_ring->lock);
+	/* Begin ring access */
+	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, tcl_ring);
+
+	/* Get next available descriptor slot in TCL ring */
+	hal_tx_desc = dal_vndr_hal_srng_src_get_next(&offload_ctx->hal_soc,
+						     tcl_ring);
+	if (!hal_tx_desc) {
+		dp_verbose_debug("TCL ring full for ring_id %u", ring_id);
+		ret = -ENOSPC;
+		goto exit;
+	}
+
+	/* Sync cached descriptor content to HW descriptor */
+	dal_vndr_hal_tx_desc_sync(desc, hal_tx_desc,
+				  DAL_VNDR_HAL_TX_DESC_LEN_BYTES);
+
+	dp_debug("TX descriptor enqueued successfully for ring_id %u", ring_id);
+exit:
+	/* End ring access and update the HP */
+	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, tcl_ring);
+	DAL_VNDR_SRNG_UNLOCK(&tcl_ring->lock);
+
+	return ret;
+}
 #endif /* FEATURE_DP_DAL_SIM */
