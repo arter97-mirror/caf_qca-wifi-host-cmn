@@ -206,6 +206,36 @@ static int dp_dal_sim_parse_ring_info(struct dp_dal_sim_ctx *sim_ctx,
  */
 static void dp_dal_sim_rx_work_handler(void *arg)
 {
+	struct dal_sim_work_ctx *work_ctx = (struct dal_sim_work_ctx *)arg;
+	struct dp_dal_sim_ctx *sim_ctx;
+	int ring_id;
+	uint8_t ring_num;
+
+	sim_ctx = work_ctx->sim_ctx;
+	ring_id = work_ctx->ring_id;
+
+	if (!sim_ctx) {
+		dp_err("NULL sim context in RX work handler");
+		return;
+	}
+
+	qdf_atomic_set(&sim_ctx->rx_work_scheduled[ring_id], 0);
+
+	/* Get ring_num from dal_sim_srng structure */
+	ring_num = sim_ctx->rx_ring[ring_id].ring_num;
+
+	/* Update statistics per ring */
+	sim_ctx->stats.rx_work_scheduled[ring_id]++;
+
+	dp_debug("RX work handler executing for ring_id=%d, ring_num=%d",
+		 ring_id, ring_num);
+
+	/* Call vendor RX ISR callback to notify driver */
+	if (vendor_cb.rx_isr_cb)
+		vendor_cb.rx_isr_cb(ring_num, sim_ctx->dp_dal_ctx);
+	else
+		dp_warn("RX ISR callback not registered");
+
 }
 
 /**
@@ -221,6 +251,36 @@ static void dp_dal_sim_rx_work_handler(void *arg)
  */
 static void dp_dal_sim_tx_cpl_work_handler(void *arg)
 {
+	struct dal_sim_work_ctx *work_ctx = (struct dal_sim_work_ctx *)arg;
+	struct dp_dal_sim_ctx *sim_ctx;
+	int ring_id;
+	uint8_t ring_num;
+
+	sim_ctx = work_ctx->sim_ctx;
+	ring_id = work_ctx->ring_id;
+
+	if (!sim_ctx) {
+		dp_err("NULL sim context in TX completion work handler");
+		return;
+	}
+
+	qdf_atomic_set(&sim_ctx->tx_compl_work_scheduled[ring_id], 0);
+
+	/* Get ring_num from dal_sim_srng structure */
+	ring_num = sim_ctx->tx_cmpl_ring[ring_id].ring_num;
+
+	/* Update statistics per ring */
+	sim_ctx->stats.tx_work_scheduled[ring_id]++;
+
+	dp_debug("TX compl work handler executing for ring_id=%d, ring_num=%d",
+		 ring_id, ring_num);
+
+	/* Call vendor TX ISR callback to notify driver */
+	if (vendor_cb.tx_isr_cb)
+		vendor_cb.tx_isr_cb(ring_num, sim_ctx->dp_dal_ctx);
+	else
+		dp_warn("TX ISR callback not registered");
+
 }
 
 /**
