@@ -103,6 +103,22 @@ static void dp_dal_offload_sim_hal_ring_init(
 	struct dal_sim_srng *sim_srng)
 {
 	/* Copy basic ring information */
+	hal_srng->ring_id = sim_srng->hal_ring_id;
+	hal_srng->num_entries = sim_srng->num_entries;
+	hal_srng->ring_size = sim_srng->ring_size;
+	hal_srng->ring_size_mask = sim_srng->ring_size_mask;
+	hal_srng->lmac_ring = sim_srng->lmac_ring;
+	hal_srng->entry_size = sim_srng->entry_size;
+	hal_srng->msi_addr = sim_srng->msi_addr;
+	hal_srng->msi_data = sim_srng->msi_data;
+	hal_srng->ring_type = sim_srng->ring_type;
+	hal_srng->ring_dir = sim_srng->ring_dir;
+	hal_srng->irq_num = sim_srng->irq_num;
+	hal_srng->hal_soc = &offload_sim_ctx->hal_soc;
+	/* copy ring address information from sim ring to hal ring */
+	dp_dal_offload_sim_hal_addrs_params_init(
+		offload_sim_ctx, hal_srng, sim_srng);
+	DAL_VNDR_SRNG_LOCK_INIT(&hal_srng->lock);
 }
 int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
