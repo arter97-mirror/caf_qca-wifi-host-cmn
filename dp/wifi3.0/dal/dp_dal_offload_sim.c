@@ -11,6 +11,84 @@
 #define OFFLOAD_SIM_IRQ_NAME_LEN 40
 #ifdef FEATURE_DP_DAL_SIM
 
+#ifdef DAL_OFFLOAD_SIM
+/**
+ * dp_dal_offload_sim_hal_addrs_params_init() - Form hal_srng address parameters
+ * for offload simulation.
+ * @offload_sim_ctx: Pointer to offload simulation context
+ * @hal_srng: Pointer to destination dal_vndr_hal_srng structure
+ * @sim_srng: Pointer to source dal_sim_srng structure
+ *
+ * hp/tp address are physical address for lmac rings and for umac rings
+ * they are offset from BAR. For HP/TP addr, we need to add base address of
+ * device to get the correct virtual address. Google offload engine has to
+ * use BAR address to form correct physical address. Vendor HAL APIS are
+ * agnostic of the address being used in the dal_vndr_hal_srng structure.
+ * Care must be taken to assign correct address based on simulation mode or
+ * real use case scenario.
+ *
+ * Return: None
+ *
+ */
+static inline void dp_dal_offload_sim_hal_addrs_params_init(
+	struct dp_dal_offload_sim_ctx *offload_sim_ctx,
+	struct dal_vndr_hal_srng *hal_srng,
+	struct dal_sim_srng *sim_srng)
+{
+	/* Here in simulation mode ring_base_addr is filled with virtual address
+	 * so that vendor hal apis can use directly ring_base_addr to access
+	 * descriptors. In real hardware, ring_base_addr will be filled with
+	 * physical address.
+	 */
+	hal_srng->ring_base_addr = sim_srng->ring_base_vaddr;
+	hal_srng->ring_base_paddr = sim_srng->ring_base_paddr;
+
+	if (sim_srng->ring_dir == DAL_VNDR_HAL_SRNG_SRC_RING) {
+		hal_srng->u.src_ring.hp = sim_srng->u.src_ring.hp;
+
+		if (sim_srng->lmac_ring)
+			/* In offload simulation we are filling virtual address
+			 * in  hp_addr and tp_addr field. Usage for offload
+			 * engine can vary.
+			 *
+			 * In case of lmac rings, hp_addr is physical address
+			 * which needs to be converted to virtual address before
+			 * passing to vendor HAL APIs in case of offload engine
+			 * simulation. Real offload engine can use physical
+			 * address.
+			 */
+			hal_srng->u.src_ring.hp_addr =
+				phys_to_virt(sim_srng->u.src_ring.hp_addr);
+		else
+			hal_srng->u.src_ring.hp_addr =
+				sim_srng->u.src_ring.hp_addr +
+				offload_sim_ctx->dev_base_addr;
+
+		hal_srng->u.src_ring.tp_addr =
+			phys_to_virt(sim_srng->u.src_ring.tp_addr);
+	} else {
+		hal_srng->u.dst_ring.tp = sim_srng->u.dst_ring.tp;
+
+		if (sim_srng->lmac_ring)
+			hal_srng->u.dst_ring.tp_addr =
+				phys_to_virt(sim_srng->u.dst_ring.tp_addr);
+		else
+			hal_srng->u.dst_ring.tp_addr =
+					sim_srng->u.dst_ring.tp_addr +
+					offload_sim_ctx->dev_base_addr;
+
+		hal_srng->u.dst_ring.hp_addr =
+				phys_to_virt(sim_srng->u.dst_ring.hp_addr);
+	}
+}
+#else
+static inline void dp_dal_offload_sim_hal_addrs_params_init(
+				struct dp_dal_offload_sim_ctx *offload_sim_ctx,
+				struct dal_vndr_hal_srng *hal_srng,
+				struct dal_sim_srng *sim_srng)
+{
+}
+#endif
 /**
  * dp_dal_offload_sim_hal_ring_init() - Init dal_vndr_hal_srng structure.
  * @offload_sim_ctx: offload sim ctx
