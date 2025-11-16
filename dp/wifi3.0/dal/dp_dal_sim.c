@@ -50,6 +50,31 @@ static int dp_dal_sim_ring_init(struct dp_dal_sim_ctx *sim_ctx,
 				struct dal_sim_srng *sim_ring)
 {
 	/* Copy basic ring information */
+	sim_ring->hal_ring_id = ring_info->hal_ring_id;
+	sim_ring->initialized = ring_info->initialized;
+	sim_ring->ring_base_paddr = ring_info->ring_base_paddr;
+	sim_ring->ring_base_vaddr = ring_info->ring_base_vaddr;
+	sim_ring->num_entries = ring_info->num_entries;
+	sim_ring->ring_size = ring_info->ring_size;
+	sim_ring->ring_size_mask = ring_info->ring_size_mask;
+	sim_ring->entry_size = ring_info->entry_size;
+	sim_ring->lmac_ring = ring_info->lmac_ring;
+	sim_ring->ring_type = ring_info->ring_type;
+	sim_ring->ring_dir = ring_info->ring_dir;
+
+	/* Copy ring-specific pointers based on ring direction */
+	if (sim_ring->ring_dir == HAL_SRNG_SRC_RING) {
+		sim_ring->u.src_ring.hp = ring_info->u.src_ring.hp;
+		sim_ring->u.src_ring.tp_addr = ring_info->u.src_ring.tp_addr;
+		sim_ring->u.src_ring.hp_addr = ring_info->u.src_ring.hp_addr;
+	} else {
+		sim_ring->u.dst_ring.tp = ring_info->u.dst_ring.tp;
+		sim_ring->u.dst_ring.hp_addr = ring_info->u.dst_ring.hp_addr;
+		sim_ring->u.dst_ring.tp_addr = ring_info->u.dst_ring.tp_addr;
+	}
+
+	sim_ring->ring_num = ring_info->ring_num;
+	sim_ring->grp_id = ring_info->grp_id;
 	return dp_dal_sim_calc_msi(sim_ctx, sim_ring);
 }
 
