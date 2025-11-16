@@ -16,4 +16,9 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 	/*TODO Implementation*/
 	return 0;
 }
+
+void dp_dal_offload_sim_deinit(struct dp_dal_sim_ctx *dal_sim_ctx)
+{
+	dp_info("Offload simulation context deinitialized successfully");
+}
 #endif /* FEATURE_DP_DAL_SIM */

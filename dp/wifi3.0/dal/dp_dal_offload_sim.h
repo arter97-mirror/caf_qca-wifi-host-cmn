@@ -31,5 +31,12 @@ enum offload_sim_ring_type {
  */
 int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx);
 
+/**
+ * dp_dal_offload_sim_deinit() - Deinitialize offload simulation context
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ *
+ * This function deinitializes and frees the offload simulation context.
+ */
+void dp_dal_offload_sim_deinit(struct dp_dal_sim_ctx *dal_sim_ctx);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */

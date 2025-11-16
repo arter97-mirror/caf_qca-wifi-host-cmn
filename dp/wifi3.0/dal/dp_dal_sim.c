@@ -11,8 +11,6 @@
 #include "dp_internal.h"
 #include "dp_dal_offload_sim.h"
 
-/* Forward declaration */
-
 #ifdef FEATURE_DP_DAL_SIM
 /* RX budget for processing descriptors */
 #define DP_DAL_SIM_RX_BUDGET 64
@@ -22,6 +20,186 @@
  * Platform Bus Operations - Offload Mode Implementation
  * ========================================================================
  */
+
+/**
+ * dp_dal_sim_calc_msi() - Calculate MSI and store in dal_sim_srng
+ * @sim_ctx: DAL sim context
+ * @sim_ring: DAL sim ring pointer
+ *
+ * Return: 0 on success, error code on failure
+ */
+static int dp_dal_sim_calc_msi(struct dp_dal_sim_ctx *sim_ctx,
+			       struct dal_sim_srng *sim_ring)
+{
+	return 0;
+}
+
+/**
+ * dp_dal_sim_ring_init() - Parse ring information from driver and save in dal
+ * sim context
+ * @sim_ctx: Pointer to sim ctx
+ * @ring_info: Pointer to ring info
+ * @sim_ring: DAL sim ring pointer
+ *
+ * Parse and initialize the dal_sim_srng.
+ *
+ * Return: 0 on success, error code on failure
+ */
+static int dp_dal_sim_ring_init(struct dp_dal_sim_ctx *sim_ctx,
+				struct dal_srng *ring_info,
+				struct dal_sim_srng *sim_ring)
+{
+	/* Copy basic ring information */
+	return dp_dal_sim_calc_msi(sim_ctx, sim_ring);
+}
+
+/**
+ * dp_dal_sim_parse_ring_info() - Parse ring information from driver
+ * @sim_ctx: Pointer to simulator context
+ * @priv: Pointer to private data from driver
+ *
+ * Parses the ring information passed from the driver and stores it
+ * in the simulator context.
+ *
+ * Return: 0 on success, error code on failure
+ */
+static int dp_dal_sim_parse_ring_info(struct dp_dal_sim_ctx *sim_ctx,
+				      void *priv)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	int i, ret;
+
+	if (!dal_ctx || !sim_ctx) {
+		dp_err("NULL context in parse_ring_info");
+		return -EINVAL;
+	}
+
+	/* Parse RX ring information */
+	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+		if (dal_ctx->rx_ring[i].initialized) {
+			ret = dp_dal_sim_ring_init(sim_ctx,
+						   &dal_ctx->rx_ring[i],
+						   &sim_ctx->rx_ring[i]);
+			if (ret)
+				return ret;
+		} else {
+			dp_err("Invalid ring info for RX ring[%d]", i);
+			return -EINVAL;
+		}
+	}
+
+	/* Parse TX completion ring information */
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		if (dal_ctx->tx_cmpl_ring[i].initialized) {
+			ret = dp_dal_sim_ring_init(sim_ctx,
+						   &dal_ctx->tx_cmpl_ring[i],
+						   &sim_ctx->tx_cmpl_ring[i]);
+			if (ret)
+				return ret;
+		} else {
+			dp_err("Invalid ring info for TX compl ring[%d]", i);
+			return -EINVAL;
+		}
+	}
+
+	/* Parse TX ring information */
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		if (dal_ctx->tx_ring[i].initialized) {
+			ret = dp_dal_sim_ring_init(sim_ctx,
+						   &dal_ctx->tx_ring[i],
+						   &sim_ctx->tx_ring[i]);
+			if (ret)
+				return ret;
+		} else {
+			dp_err("Invalid ring info for TX ring[%d]", i);
+			return -EINVAL;
+		}
+	}
+
+	/* Parse RX refill ring information */
+	if (dal_ctx->rx_refill_ring.initialized) {
+		ret = dp_dal_sim_ring_init(sim_ctx, &dal_ctx->rx_refill_ring,
+					   &sim_ctx->rx_refill_ring);
+		if (ret)
+			return ret;
+	} else {
+		dp_err("Invalid ring info for RX refill ring");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * dp_dal_sim_rx_work_handler() - RX work handler
+ * @arg: Pointer to work context
+ *
+ * Work handler for processing RX interrupts. Extracts ring_id from
+ * work context and calls the vendor RX ISR callback to notify the driver.
+ */
+static void dp_dal_sim_rx_work_handler(void *arg)
+{
+}
+
+/**
+ * dp_dal_sim_tx_cpl_work_handler - TX completion worker handler
+ * @arg: Pointer to work context
+ *
+ * This function processes TX completions in the worker thread context.
+ * Extracts ring_id from work context and processes only that specific ring.
+ * It reaps the WBM2SW ring, calls the vendor callback with descriptor info,
+ * frees the TX buffer, and returns the software TX descriptor to the free list.
+ *
+ * Return: None
+ */
+static void dp_dal_sim_tx_cpl_work_handler(void *arg)
+{
+}
+
+/**
+ * dp_dal_sim_destroy_work() - Destroy all workqueues and work items
+ * present in dal sim
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ *
+ * This function destroys all RX and TX completion workqueues and disables
+ * all work items to ensure proper cleanup during deinit or error handling.
+ */
+static void dp_dal_sim_destroy_work(struct dp_dal_sim_ctx *dal_sim_ctx)
+{
+	int i;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL DAL sim context in destroy_work");
+		return;
+	}
+
+	/* Flush and destroy all work */
+	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+		if (dal_sim_ctx->rx_work_queue[i]) {
+			qdf_flush_workqueue(0, dal_sim_ctx->rx_work_queue[i]);
+			qdf_destroy_workqueue(0, dal_sim_ctx->rx_work_queue[i]);
+			dal_sim_ctx->rx_work_queue[i] = NULL;
+		}
+		qdf_flush_work(&dal_sim_ctx->rx_process_work[i]);
+		qdf_disable_work(&dal_sim_ctx->rx_process_work[i]);
+	}
+
+	/* Flush and destroy all work */
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		if (dal_sim_ctx->tx_compl_work_queue[i]) {
+			qdf_flush_workqueue(
+					0, dal_sim_ctx->tx_compl_work_queue[i]);
+			qdf_destroy_workqueue(
+					0, dal_sim_ctx->tx_compl_work_queue[i]);
+			dal_sim_ctx->tx_compl_work_queue[i] = NULL;
+		}
+		qdf_flush_work(&dal_sim_ctx->tx_compl_process_work[i]);
+		qdf_disable_work(&dal_sim_ctx->tx_compl_process_work[i]);
+	}
+
+	dp_debug("DAL sim workqueues and work items destroyed successfully");
+}
+
 /**
  * dp_dal_sim_init() - Initialize DAL simulator
  * @pdev: Pointer to the platform device associated with initialization
@@ -33,8 +211,132 @@
  */
 static int dp_dal_sim_init(void *pdev, void *priv)
 {
+	int i;
+
 	int status = 0;
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx = NULL;
+
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in offload_mode_init");
+		return -EINVAL;
+	}
+
+	/* Allocate dal_sim_ctx */
+	sim_ctx = qdf_mem_malloc(sizeof(*sim_ctx));
+	if (!sim_ctx) {
+		dp_err("Failed to allocate simulator context");
+		return -ENOMEM;
+	}
+
+	/* Set dp_dal_ctx pointer */
+	sim_ctx->dp_dal_ctx = dal_ctx;
+
+	/* Get the device base address*/
+	struct hal_soc *hal_soc = (struct hal_soc *)dal_ctx->soc->hal_soc;
+
+	sim_ctx->dev_base_addr = hal_soc->dev_base_addr;
+
+	/* Get the device ptr */
+	sim_ctx->dev = dal_ctx->soc->osdev->dev;
+	/* Parse ring information from driver */
+	status = dp_dal_sim_parse_ring_info(sim_ctx, priv);
+	if (status) {
+		dp_err("Failed to parse ring information");
+		goto free_sim_ctx;
+	}
+
+	/* Initialize offload_sim_ctx */
+	status = dp_dal_offload_sim_init(sim_ctx);
+	if (status) {
+		dp_err("Failed to initialize offload sim context");
+		goto free_sim_ctx;
+	}
+
+	char wq_name[32];
+	/* Create high priority work queues and initialize work per ring */
+	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+		/* Create high priority work queue for RX ring */
+		qdf_snprintf(wq_name, sizeof(wq_name), "dal_sim_rx_%d", i);
+		sim_ctx->rx_work_queue[i] =
+				qdf_alloc_high_prior_ordered_workqueue(wq_name);
+		if (!sim_ctx->rx_work_queue[i]) {
+			dp_err("Failed to create RX workq for ring %d", i);
+			status = -ENOMEM;
+			goto free_offload_ctx;
+		}
+		/* Initialize RX work context */
+		sim_ctx->rx_work_ctx[i].sim_ctx = sim_ctx;
+		sim_ctx->rx_work_ctx[i].ring_id = i;
+		/* Create work structures with work contexts */
+		qdf_create_work(0, &sim_ctx->rx_process_work[i],
+				dp_dal_sim_rx_work_handler,
+				&sim_ctx->rx_work_ctx[i]);
+		/* Initialize atomic variables for this ring */
+		qdf_atomic_init(&sim_ctx->rx_work_scheduled[i]);
+	}
+
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		/* Create high priority work queue for TX completion ring */
+		qdf_snprintf(wq_name, sizeof(wq_name), "dal_sim_tx_cpl_%d", i);
+		sim_ctx->tx_compl_work_queue[i] =
+				qdf_alloc_high_prior_ordered_workqueue(wq_name);
+		if (!sim_ctx->tx_compl_work_queue[i]) {
+			dp_err("Failed to create TX compl workq for ring %d",
+			       i);
+			status = -ENOMEM;
+			goto free_offload_ctx;
+		}
+		/* Initialize TX completion work context */
+		sim_ctx->tx_cpl_work_ctx[i].sim_ctx = sim_ctx;
+		sim_ctx->tx_cpl_work_ctx[i].ring_id = i;
+
+		qdf_create_work(0, &sim_ctx->tx_compl_process_work[i],
+				dp_dal_sim_tx_cpl_work_handler,
+				&sim_ctx->tx_cpl_work_ctx[i]);
+
+		qdf_atomic_init(&sim_ctx->tx_compl_work_scheduled[i]);
+	}
+
+	/* Assign dal_sim_ctx to dp_dal_ctx */
+	dal_ctx->dal_sim_ctx = sim_ctx;
+
+	/* Mark as initialized */
+	sim_ctx->sim_ctx_initialized = true;
+
+	dp_info("dal sim init complete");
 	return status;
+free_offload_ctx:
+	dp_dal_offload_sim_deinit(sim_ctx);
+	/* Destroy any work queues that were successfully created */
+	dp_dal_sim_destroy_work(sim_ctx);
+free_sim_ctx:
+	dal_ctx->dal_sim_ctx = NULL;
+	qdf_mem_free(sim_ctx);
+	return status;
+}
+
+/**
+ * dp_dal_sim_deinit - Deinitialize DP DAL simulation context.
+ * @sim_ctx: Pointer to simulation context to clean up.
+ */
+void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
+{
+	if (!sim_ctx)
+		return;
+
+	/* Destroy all work queues and work items */
+	dp_dal_sim_destroy_work(sim_ctx);
+
+	/* Call offload mode exit api to free offload simulation resources */
+	dp_dal_offload_sim_deinit(sim_ctx);
+
+	/* Clear all fields */
+	sim_ctx->dp_dal_ctx = NULL;
+	sim_ctx->sim_ctx_initialized = false;
+
+	/* Free context */
+	qdf_mem_free(sim_ctx);
 }
 
 /**
@@ -46,17 +348,27 @@ static int dp_dal_sim_init(void *pdev, void *priv)
 static void dp_dal_sim_exit(void *priv)
 {
 	struct dp_dal_ctx *dp_dal_ctx = (struct dp_dal_ctx *)priv;
-	struct dp_dal_sim_ctx *sim_ctx = dp_dal_ctx->dal_sim_ctx;
+	struct dp_dal_sim_ctx *sim_ctx;
 
 	if (!dp_dal_ctx) {
 		dp_err("NULL DP DAL context in bus exit");
 		return;
 	}
+
+	sim_ctx = dp_dal_ctx->dal_sim_ctx;
+
 	if (!sim_ctx) {
 		dp_err("NULL simulator context in bus exit");
 		return;
 	}
 
+	if (!sim_ctx->sim_ctx_initialized) {
+		dp_err("Context not initialized");
+		return;
+	}
+
+	dp_dal_sim_deinit(sim_ctx);
+	dp_dal_ctx->dal_sim_ctx = NULL;
 	dp_info("dal sim exit complete");
 }
 
