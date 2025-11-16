@@ -735,7 +735,77 @@ static int dp_dal_sim_tx
  */
 static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 {
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
+	void *desc_list[DP_DAL_SIM_TX_BUDGET];
 	u32 desc_count = 0;
+	u32 budget = DP_DAL_SIM_TX_BUDGET;
+	int ret;
+	u32 i;
+	int ring_id = -1;
+
+	if (!cnt) {
+		dp_err("NULL count pointer in offload_mode_tx_cpl");
+		return false;
+	}
+
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in offload_mode_tx_cpl");
+		*cnt = 0;
+		return false;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL simulator context in offload_mode_tx_cpl");
+		*cnt = 0;
+		return false;
+	}
+
+	/* Find the ring array index based on ring_num from dp_dal_sim_srng */
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		if (sim_ctx->tx_cmpl_ring[i].ring_num == ring_num) {
+			ring_id = i;
+			break;
+		}
+	}
+
+	if (ring_id < 0) {
+		dp_err("No TX compl ring found with ring_num %u", ring_num);
+		*cnt = 0;
+		return false;
+	}
+
+	dp_debug("Processing TX compl ring_num %u (ring_id %d) with budget %u",
+		 ring_num, ring_id, budget);
+
+	/* Get TX completion descriptors */
+	ret = dp_dal_offload_sim_get_tx_compl_desc(sim_ctx,
+						   ring_id,
+						   desc_list, &desc_count,
+						   budget);
+	if (ret) {
+		dp_err("Failed to get TX completion descriptors, ret=%d", ret);
+		*cnt = 0;
+		return false;
+	}
+
+	/* Process all retrieved descriptors */
+	for (i = 0; i < desc_count; i++) {
+		/* Call vendor TX completion callback with ring_num from srng */
+		if (vendor_cb.tx_cpl_cb) {
+			vendor_cb.tx_cpl_cb(dal_ctx, desc_list[i], ring_num);
+			sim_ctx->stats.tx_completed[ring_id]++;
+		} else {
+			dp_warn("TX completion callback not registered");
+			break;
+		}
+	}
+
+	*cnt = desc_count;
+
+	dp_debug("Processed %u TX compl desc for ring_num %u (ring_id %d)",
+		 desc_count, ring_num, ring_id);
 
 	/* Return true if any descriptors were processed */
 	return (desc_count > 0);

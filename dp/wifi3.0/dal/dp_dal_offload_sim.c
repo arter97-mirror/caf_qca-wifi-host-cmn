@@ -453,4 +453,14 @@ exit:
 
 	return ret;
 }
+
+int dp_dal_offload_sim_get_tx_compl_desc(
+				struct dp_dal_sim_ctx *dal_sim_ctx,
+				u16 ring_id,
+				void **desc_list,
+				u32 *count,
+				u32 budget)
+{
+	return 0;
+}
 #endif /* FEATURE_DP_DAL_SIM */
