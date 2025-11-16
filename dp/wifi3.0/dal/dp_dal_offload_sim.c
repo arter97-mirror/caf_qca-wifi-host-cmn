@@ -461,6 +461,70 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 				u32 *count,
 				u32 budget)
 {
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *tx_compl_ring;
+	void *tx_compl_desc;
+	u32 retrieved = 0;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL simulator context in get_tx_compl_desc");
+		return -EINVAL;
+	}
+
+	if (!desc_list || !count) {
+		dp_err("NULL desc_list or count pointer in get_tx_compl_desc");
+		return -EINVAL;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context in get_tx_compl_desc");
+		return -EINVAL;
+	}
+
+	/* Get TX completion ring for the specified ring_id */
+	tx_compl_ring = &offload_ctx->tx_cmpl_ring_hal_srng[ring_id];
+
+	dp_debug("Getting TX compl descriptors for ring_id %u with budget %u",
+		 ring_id, budget);
+
+	/* Lock the ring */
+	DAL_VNDR_SRNG_LOCK(&tx_compl_ring->lock);
+
+	/* Begin ring access */
+	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, tx_compl_ring);
+
+	/* Reap TX completion descriptors until budget is reached or
+	 * no more descriptors.
+	 */
+	while (retrieved < budget) {
+		/* Get next TX completion descriptor from the ring */
+		tx_compl_desc = dal_vndr_hal_srng_dst_get_next(
+						&offload_ctx->hal_soc,
+						tx_compl_ring);
+		if (!tx_compl_desc) {
+			/* No more descriptors in this ring */
+			break;
+		}
+
+		/* Store descriptor in the list */
+		desc_list[retrieved] = tx_compl_desc;
+		retrieved++;
+	}
+
+	/* End ring access */
+	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, tx_compl_ring);
+
+	/* Unlock the ring */
+	DAL_VNDR_SRNG_UNLOCK(&tx_compl_ring->lock);
+
+	/* Update the count */
+	*count = retrieved;
+
+	dp_debug("Retrieved %u TX completion descriptors for ring_id %u",
+		 retrieved, ring_id);
+
 	return 0;
 }
 #endif /* FEATURE_DP_DAL_SIM */
