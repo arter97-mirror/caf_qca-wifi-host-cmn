@@ -461,6 +461,67 @@ int dp_dal_offload_sim_get_reo_desc(
 				u32 *count,
 				u32 budget)
 {
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *reo_ring;
+	void *reo_desc;
+	u32 retrieved = 0;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL simulator context in get_reo_desc");
+		return -EINVAL;
+	}
+
+	if (!desc_list || !count) {
+		dp_err("NULL desc_list or count pointer in get_reo_desc");
+		return -EINVAL;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context in get_reo_desc");
+		return -EINVAL;
+	}
+
+	/* Get REO ring for the specified ring_id */
+	reo_ring = &offload_ctx->rx_ring_hal_srng[ring_id];
+
+	dp_debug("Getting REO descriptors for ring_id %u with budget %u",
+		 ring_id, budget);
+
+	/* Lock the ring */
+	DAL_VNDR_SRNG_LOCK(&reo_ring->lock);
+
+	/* Begin ring access */
+	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, reo_ring);
+
+	/* Reap REO descriptors until budget is reached or no more descriptor */
+	while (retrieved < budget) {
+		/* Get next REO descriptor from the ring */
+		reo_desc = dal_vndr_hal_srng_dst_get_next(&offload_ctx->hal_soc,
+							  reo_ring);
+		if (!reo_desc) {
+			/* No more descriptors in this ring */
+			break;
+		}
+
+		/* Store descriptor in the list */
+		desc_list[retrieved] = reo_desc;
+		retrieved++;
+	}
+
+	/* End ring access */
+	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, reo_ring);
+
+	/* Unlock the ring */
+	DAL_VNDR_SRNG_UNLOCK(&reo_ring->lock);
+
+	/* Update the count */
+	*count = retrieved;
+
+	dp_debug("Retrieved %u REO descriptors for ring_id %u",
+		 retrieved, ring_id);
+
 	return 0;
 }
 
