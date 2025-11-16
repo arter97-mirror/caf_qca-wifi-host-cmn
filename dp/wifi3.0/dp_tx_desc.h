@@ -34,17 +34,6 @@
  */
 /* ???Ring ID needed??? */
 
-/* TODO: Need to revisit this change for Rhine */
-#ifdef WLAN_SOFTUMAC_SUPPORT
-#define DP_TX_DESC_ID_SPCL_MASK    0x100000
-#define DP_TX_DESC_ID_SPCL_OS      20
-#define DP_TX_DESC_ID_POOL_MASK    0x018000
-#define DP_TX_DESC_ID_POOL_OS      15
-#define DP_TX_DESC_ID_PAGE_MASK    0x007FF0
-#define DP_TX_DESC_ID_PAGE_OS      4
-#define DP_TX_DESC_ID_OFFSET_MASK  0x00000F
-#define DP_TX_DESC_ID_OFFSET_OS    0
-#else
 #ifdef QCA_DP_OPTIMIZED_TX_DESC
 #define DP_TX_DESC_ID_SPCL_MASK    0x100000
 #define DP_TX_DESC_ID_SPCL_OS      20
@@ -64,7 +53,6 @@
 #define DP_TX_DESC_ID_OFFSET_MASK  0x00001F
 #define DP_TX_DESC_ID_OFFSET_OS    0
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
-#endif /* WLAN_SOFTUMAC_SUPPORT */
 
 #ifndef CONFIG_BERYLLIUM
 /*

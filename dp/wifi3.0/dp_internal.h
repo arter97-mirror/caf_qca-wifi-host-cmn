@@ -3811,6 +3811,14 @@ char *dp_srng_get_str_from_hal_ring_type(enum hal_ring_type ring_type);
 void dp_txrx_path_stats(struct dp_soc *soc);
 
 /**
+ * dp_print_txrx_soc_stats() - Function to display soc tx rx stats
+ * @soc: soc handle
+ *
+ * Return: none
+ */
+void dp_print_txrx_soc_stats(struct dp_soc *soc);
+
+/**
  * dp_print_per_ring_stats(): Packet count per ring
  * @soc: soc handle
  *
@@ -6025,6 +6033,7 @@ dp_cfg_event_record_peer_evt(struct dp_soc *soc, enum dp_cfg_event_type event,
 	dp_cfg_event_record(soc, event, &cfg_evt_desc);
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO
 static inline void
 dp_cfg_event_record_mlo_link_delink_evt(struct dp_soc *soc,
 					enum dp_cfg_event_type event,
@@ -6070,6 +6079,27 @@ dp_cfg_event_record_mlo_setup_vdev_update_evt(struct dp_soc *soc,
 	dp_cfg_event_record(soc, DP_CFG_EVENT_MLO_SETUP_VDEV_UPDATE,
 			    &cfg_evt_desc);
 }
+
+#else
+
+static inline void
+dp_cfg_event_record_mlo_link_delink_evt(struct dp_soc *soc,
+					enum dp_cfg_event_type event,
+					struct dp_peer *mld_peer,
+					struct dp_peer *link_peer,
+					uint8_t idx, uint8_t result)
+{
+}
+
+static inline void
+dp_cfg_event_record_mlo_setup_vdev_update_evt(struct dp_soc *soc,
+					      struct dp_peer *mld_peer,
+					      struct dp_vdev *prev_vdev,
+					      struct dp_vdev *new_vdev)
+{
+}
+
+#endif
 
 static inline void
 dp_cfg_event_record_peer_map_unmap_evt(struct dp_soc *soc,
