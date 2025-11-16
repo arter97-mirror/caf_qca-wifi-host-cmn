@@ -119,6 +119,28 @@ int dp_dal_offload_sim_tx_hw_enqueue(
 			void *tx_metadata);
 
 /**
+ * dp_dal_offload_sim_get_reo_desc() - Get REO descriptors from RX ring
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ * @ring_id: Ring ID for REO descriptor retrieval
+ * @desc_list: Pointer to array where descriptors will be stored
+ * @count: Pointer to variable that will be updated with number of
+ * descriptors retrieved
+ * @budget: Maximum number of descriptors to retrieve
+ *
+ * This wrapper function handles ring locking, access start/end, and
+ * retrieves REO descriptors from the specified RX ring up to the budget limit.
+ * It encapsulates all HAL ring operations for RX descriptor retrieval.
+ * The descriptors are stored in the desc_list array and the count is updated.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int dp_dal_offload_sim_get_reo_desc(
+				struct dp_dal_sim_ctx *dal_sim_ctx,
+				u16 ring_id,
+				void **desc_list,
+				u32 *count,
+				u32 budget);
+/**
  * dp_dal_offload_sim_get_tx_compl_desc() - Get TX completion descriptors from
  * Tx compl ring
  * @dal_sim_ctx: Pointer to DAL simulation context
