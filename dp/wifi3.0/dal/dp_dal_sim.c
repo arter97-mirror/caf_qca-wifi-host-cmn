@@ -31,6 +31,43 @@
 static int dp_dal_sim_calc_msi(struct dp_dal_sim_ctx *sim_ctx,
 			       struct dal_sim_srng *sim_ring)
 {
+	if (!sim_ctx || !sim_ring) {
+		dp_info("Null context");
+		return -EINVAL;
+	}
+
+	/* Calculate msi addr, msi data using grp_id */
+	int msi_vector_count, ret, grp_id, irq_num;
+	uint32_t msi_base_data, msi_vector_start, addr_low, addr_high;
+	unsigned int vector;
+
+	struct dp_dal_ctx *dp_dal_ctx =
+			(struct dp_dal_ctx *)sim_ctx->dp_dal_ctx;
+	struct dp_soc *soc = (struct dp_soc *)(dp_dal_ctx->soc);
+
+	if (!soc) {
+		dp_err("Null dp soc context");
+		return -EINVAL;
+	}
+
+	ret = pld_get_user_msi_assignment(soc->osdev->dev, "DAL",
+					  &msi_vector_count,
+					  &msi_base_data,
+					  &msi_vector_start);
+	if (ret) {
+		dp_err("get user msi failed with ret = %d", ret);
+		return ret;
+	}
+	grp_id = sim_ring->grp_id;
+	vector = (grp_id % msi_vector_count) + msi_vector_start;
+	pld_get_msi_address(soc->osdev->dev, &addr_low, &addr_high);
+
+	sim_ring->msi_data = vector;
+	sim_ring->msi_addr = addr_low;
+	sim_ring->msi_addr |= (qdf_dma_addr_t)(((uint64_t)addr_high) << 32);
+	irq_num = pld_get_msi_irq(soc->osdev->dev, vector);
+
+	sim_ring->irq_num = irq_num;
 	return 0;
 }
 
@@ -49,6 +86,11 @@ static int dp_dal_sim_ring_init(struct dp_dal_sim_ctx *sim_ctx,
 				struct dal_srng *ring_info,
 				struct dal_sim_srng *sim_ring)
 {
+	if (!sim_ctx || !sim_ring) {
+		dp_info("Null context");
+		return -EINVAL;
+	}
+
 	/* Copy basic ring information */
 	sim_ring->hal_ring_id = ring_info->hal_ring_id;
 	sim_ring->initialized = ring_info->initialized;
