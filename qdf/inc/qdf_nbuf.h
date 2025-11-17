@@ -5937,6 +5937,29 @@ static inline uint32_t qdf_nbuf_tcp_seq(qdf_nbuf_t buf)
 	return __qdf_nbuf_tcp_seq(buf);
 }
 
+/**
+ * qdf_nbuf_get_tcp_psh() - get TCP PSH flag
+ * @buf: network buffer
+ *
+ * Return: TCP PSH flag value
+ */
+static inline bool qdf_nbuf_get_tcp_psh(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_tcp_psh(buf);
+}
+
+/**
+ * qdf_nbuf_set_tcp_psh() - set TCP PSH flag
+ * @buf: network buffer
+ * @psh: PSH flag value
+ *
+ * Return: none
+ */
+static inline void qdf_nbuf_set_tcp_psh(qdf_nbuf_t buf, bool psh)
+{
+	__qdf_nbuf_set_tcp_psh(buf, psh);
+}
+
 static inline qdf_size_t qdf_nbuf_l2l3l4_hdr_len(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_l2l3l4_hdr_len(buf);

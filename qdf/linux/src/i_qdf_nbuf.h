@@ -3418,6 +3418,29 @@ static inline uint32_t __qdf_nbuf_tcp_seq(struct sk_buff *skb)
 }
 
 /**
+ * __qdf_nbuf_get_tcp_psh() - get TCP PSH flag
+ * @skb: network buffer
+ *
+ * Return: TCP PSH flag value
+ */
+static inline bool __qdf_nbuf_get_tcp_psh(struct sk_buff *skb)
+{
+	return tcp_hdr(skb)->psh;
+}
+
+/**
+ * __qdf_nbuf_set_tcp_psh() - set TCP PSH flag
+ * @skb: network buffer
+ * @psh: PSH flag value
+ *
+ * Return: none
+ */
+static inline void __qdf_nbuf_set_tcp_psh(struct sk_buff *skb, bool psh)
+{
+	tcp_hdr(skb)->psh = psh;
+}
+
+/**
  * __qdf_nbuf_get_priv_ptr() - get the priv pointer from the nbuf'f private space
  *@skb: sk buff
  *
