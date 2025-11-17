@@ -1813,17 +1813,6 @@ wmi_extract_pdev_ext_stats(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS wmi_extract_rtt_ev(wmi_unified_t wmi_handle, void *evt_buf,
-			      wmi_host_rtt_meas_event *ev,
-			      uint8_t *hdump, uint16_t hdump_len)
-{
-	if (wmi_handle->ops->extract_rtt_ev)
-		return wmi_handle->ops->extract_rtt_ev(wmi_handle,
-			evt_buf, ev, hdump, hdump_len);
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_extract_peer_retry_stats(
 	wmi_unified_t wmi_handle, void *evt_buf,
 	uint32_t index, struct wmi_host_peer_retry_stats *peer_retry_stats)
@@ -4096,6 +4085,17 @@ wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
 {
 	if (wmi_handle->ops->send_mu_scan_cmd)
 		return wmi_handle->ops->send_mu_scan_cmd(wmi_handle, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_rtt_ev(wmi_unified_t wmi_handle, void *evt_buf,
+			      wmi_host_rtt_meas_event *ev,
+			      uint8_t *hdump, uint16_t hdump_len)
+{
+	if (wmi_handle->ops->extract_rtt_ev)
+		return wmi_handle->ops->extract_rtt_ev(wmi_handle,
+			evt_buf, ev, hdump, hdump_len);
 
 	return QDF_STATUS_E_FAILURE;
 }

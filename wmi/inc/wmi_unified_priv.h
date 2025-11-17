@@ -2112,9 +2112,6 @@ QDF_STATUS (*extract_composite_phyerr)(wmi_unified_t wmi_handle, void *evt_buf,
 QDF_STATUS (*extract_rtt_hdr)(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_host_rtt_event_hdr *ev);
 
-QDF_STATUS (*extract_rtt_ev)(wmi_unified_t wmi_handle, void *evt_buf,
-	wmi_host_rtt_meas_event *ev, uint8_t *hdump, uint16_t hdump_len);
-
 QDF_STATUS (*extract_rtt_error_report_ev)(wmi_unified_t wmi_handle,
 		void *evt_buf, wmi_host_rtt_error_report_event *ev);
 
@@ -4312,5 +4309,8 @@ QDF_STATUS (*extract_get_rxpn_data)(wmi_unified_t wmi_handle,
 QDF_STATUS (*extract_mgmt_rx_ext_params)(wmi_unified_t wmi_handle,
 					 void *evt_buf,
 				struct mgmt_rx_event_ext_params *params);
+
+QDF_STATUS (*extract_rtt_ev)(wmi_unified_t wmi_handle, void *evt_buf,
+	wmi_host_rtt_meas_event *ev, uint8_t *hdump, uint16_t hdump_len);
 #endif
 #endif

@@ -1620,6 +1620,7 @@ QDF_STATUS wmi_unified_pno_start_cmd(wmi_unified_t wmi_handle,
 				     struct pno_scan_req_params *pno);
 #endif
 
+#ifdef WLAN_MLO_MULTI_CHIP
 /**
  * wmi_extract_rtt_ev() - extract rtt event
  * @wmi_handle: wmi handle
@@ -1633,6 +1634,7 @@ QDF_STATUS wmi_unified_pno_start_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_extract_rtt_ev(wmi_unified_t wmi_handle, void *evt_buf,
 			      wmi_host_rtt_meas_event *ev,
 			      uint8_t *hdump, uint16_t hdump_len);
+#endif
 
 /**
  * wmi_extract_bss_chan_info_event() - extract bss channel information
