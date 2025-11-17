@@ -1107,4 +1107,517 @@ struct reo_destination_ring {
 #define REO_DESTINATION_RING_LOOPING_COUNT_LSB                                      28
 #define REO_DESTINATION_RING_LOOPING_COUNT_MSB                                      31
 #define REO_DESTINATION_RING_LOOPING_COUNT_MASK                                     0xf0000000
+
+/* 7 qwords for rx_mpdu_start without tag */
+#define MPDU_START_WMASK 0x07B8
+/* 8 qwords for rx_msdu_end without tag */
+#define MSDU_END_WMASK 0x115CA
+
+#ifndef WIFI_BIT_ORDER_BIG_ENDIAN
+struct rx_msdu_end_compact {
+	/* qword-0 */
+			 uint32_t rxpcu_mpdu_filter_in_category        :  2,
+					  sw_frame_group_id                    :  7,
+					  reserved_0                           :  7,
+					  phy_ppdu_id                          : 16;
+			 uint32_t ip_hdr_chksum                        : 16,
+					  reported_mpdu_length                 : 14,
+					  reserved_1a                          :  2;
+	/* qword-2 */
+			 uint32_t ipv6_options_crc;
+			 uint32_t da_offset                            :  6,
+					  sa_offset                            :  6,
+					  da_offset_valid                      :  1,
+					  sa_offset_valid                      :  1,
+					  reserved_5a                          :  2,
+					  l3_type                              : 16;
+	/* qword-5 */
+			 uint32_t sa_sw_peer_id                        : 16,
+					  sa_idx_timeout                       :  1,
+					  da_idx_timeout                       :  1,
+					  to_ds                                :  1,
+					  tid                                  :  4,
+					  sa_is_valid                          :  1,
+					  da_is_valid                          :  1,
+					  da_is_mcbc                           :  1,
+					  l3_header_padding                    :  2,
+					  first_msdu                           :  1,
+					  last_msdu                            :  1,
+					  fr_ds                                :  1,
+					  ip_chksum_fail_copy                  :  1;
+			 uint32_t sa_idx                               : 16,
+					  da_idx_or_sw_peer_id                 : 16;
+	/* qword-6 */
+			 uint32_t msdu_drop                            :  1,
+					  reo_destination_indication           :  5,
+					  flow_idx                             : 20,
+					  use_ppe                              :  1,
+					  __reserved_g_0003                    :  2,
+					  vlan_ctag_stripped                   :  1,
+					  vlan_stag_stripped                   :  1,
+					  fragment_flag                        :  1;
+			 uint32_t fse_metadata                         : 32;
+	/* qword-7 */
+			 uint32_t cce_metadata                         : 16,
+					  tcp_udp_chksum                       : 16;
+			 uint32_t aggregation_count                    :  8,
+					  flow_aggregation_continuation        :  1,
+					  fisa_timeout                         :  1,
+					  tcp_udp_chksum_fail_copy             :  1,
+					  msdu_limit_error                     :  1,
+					  flow_idx_timeout                     :  1,
+					  flow_idx_invalid                     :  1,
+					  cce_match                            :  1,
+					  amsdu_parser_error                   :  1,
+					  cumulative_ip_length                 : 16;
+	/* qword-9 */
+			 uint32_t msdu_length                          : 14,
+					  stbc                                 :  1,
+					  ipsec_esp                            :  1,
+					  l3_offset                            :  7,
+					  ipsec_ah                             :  1,
+					  l4_offset                            :  8;
+			 uint32_t msdu_number                          :  8,
+					  decap_format                         :  2,
+					  ipv4_proto                           :  1,
+					  ipv6_proto                           :  1,
+					  tcp_proto                            :  1,
+					  udp_proto                            :  1,
+					  ip_frag                              :  1,
+					  tcp_only_ack                         :  1,
+					  da_is_bcast_mcast                    :  1,
+					  toeplitz_hash_sel                    :  2,
+					  ip_fixed_header_valid                :  1,
+					  ip_extn_header_valid                 :  1,
+					  tcp_udp_header_valid                 :  1,
+					  mesh_control_present                 :  1,
+					  ldpc                                 :  1,
+					  ip4_protocol_ip6_next_header         :  8;
+	/* qword-11 */
+			 uint32_t user_rssi                            :  8,
+					  pkt_type                             :  4,
+					  sgi                                  :  2,
+					  rate_mcs                             :  4,
+					  receive_bandwidth                    :  3,
+					  reception_type                       :  3,
+					  mimo_ss_bitmap                       :  7,
+					  msdu_done_copy                       :  1;
+			 uint32_t flow_id_toeplitz                     : 32;
+	/* qword-15 */
+			 uint32_t first_mpdu                           :  1,
+					  reserved_30a                         :  1,
+					  mcast_bcast                          :  1,
+					  ast_index_not_found                  :  1,
+					  ast_index_timeout                    :  1,
+					  power_mgmt                           :  1,
+					  non_qos                              :  1,
+					  null_data                            :  1,
+					  mgmt_type                            :  1,
+					  ctrl_type                            :  1,
+					  more_data                            :  1,
+					  eosp                                 :  1,
+					  a_msdu_error                         :  1,
+					  reserved_30b                         :  1,
+					  order                                :  1,
+					  wifi_parser_error                    :  1,
+					  overflow_err                         :  1,
+					  msdu_length_err                      :  1,
+					  tcp_udp_chksum_fail                  :  1,
+					  ip_chksum_fail                       :  1,
+					  sa_idx_invalid                       :  1,
+					  da_idx_invalid                       :  1,
+					  amsdu_addr_mismatch                  :  1,
+					  rx_in_tx_decrypt_byp                 :  1,
+					  encrypt_required                     :  1,
+					  directed                             :  1,
+					  buffer_fragment                      :  1,
+					  mpdu_length_err                      :  1,
+					  tkip_mic_err                         :  1,
+					  decrypt_err                          :  1,
+					  unencrypted_frame_err                :  1,
+					  fcs_err                              :  1;
+			 uint32_t reserved_31a                         : 10,
+					  decrypt_status_code                  :  3,
+					  rx_bitmap_not_updated                :  1,
+					  reserved_31b                         : 17,
+					  msdu_done                            :  1;
+};
+
+struct rx_mpdu_start_compact {
+	/* qword-2 */
+			 uint32_t pn_31_0                              : 32;
+			 uint32_t pn_63_32                             : 32;
+	/* qword-3 */
+			 uint32_t pn_95_64                             : 32;
+			 uint32_t pn_127_96                            : 32;
+	/* qword-4 */
+			 uint32_t mpdu_frame_control_valid             :  1,
+					  mpdu_duration_valid                  :  1,
+					  mac_addr_ad1_valid                   :  1,
+					  mac_addr_ad2_valid                   :  1,
+					  mac_addr_ad3_valid                   :  1,
+					  mac_addr_ad4_valid                   :  1,
+					  mpdu_sequence_control_valid          :  1,
+					  mpdu_qos_control_valid               :  1,
+					  mpdu_ht_control_valid                :  1,
+					  frame_encryption_info_valid          :  1,
+					  mpdu_fragment_number                 :  4,
+					  more_fragment_flag                   :  1,
+					  reserved_11a                         :  1,
+					  fr_ds                                :  1,
+					  to_ds                                :  1,
+					  encrypted                            :  1,
+					  mpdu_retry                           :  1,
+					  mpdu_sequence_number                 : 12;
+			 uint32_t peer_meta_data                       : 32;
+	/* qword-6 */
+			 uint32_t key_id_octet                         :  8,
+					  new_peer_entry                       :  1,
+					  decrypt_needed                       :  1,
+					  decap_type                           :  2,
+					  rx_insert_vlan_c_tag_padding         :  1,
+					  rx_insert_vlan_s_tag_padding         :  1,
+					  strip_vlan_c_tag_decap               :  1,
+					  strip_vlan_s_tag_decap               :  1,
+					  pre_delim_count                      : 12,
+					  ampdu_flag                           :  1,
+					  bar_frame                            :  1,
+					  raw_mpdu                             :  1,
+					  reserved_12                          :  1;
+			 uint32_t mpdu_length                          : 14,
+					  first_mpdu                           :  1,
+					  mcast_bcast                          :  1,
+					  ast_index_not_found                  :  1,
+					  ast_index_timeout                    :  1,
+					  power_mgmt                           :  1,
+					  non_qos                              :  1,
+					  null_data                            :  1,
+					  mgmt_type                            :  1,
+					  ctrl_type                            :  1,
+					  more_data                            :  1,
+					  eosp                                 :  1,
+					  fragment_flag                        :  1,
+					  order                                :  1,
+					  u_apsd_trigger                       :  1,
+					  encrypt_required                     :  1,
+					  directed                             :  1,
+					  amsdu_present                        :  1,
+					  reserved_13                          :  1;
+	/* qword-7 */
+			 uint32_t mpdu_frame_control_field             : 16,
+					  mpdu_duration_field                  : 16;
+			 uint32_t mac_addr_ad1_31_0                    : 32;
+	/* qword-8 */
+			 uint32_t mac_addr_ad1_47_32                   : 16,
+					  mac_addr_ad2_15_0                    : 16;
+			 uint32_t mac_addr_ad2_47_16                   : 32;
+	/* qword-9 */
+			 uint32_t mac_addr_ad3_31_0                    : 32;
+			 uint32_t mac_addr_ad3_47_32                   : 16,
+					  mpdu_sequence_control_field          : 16;
+};
+#else
+struct rx_msdu_end_compact {
+	/* qword-0 */
+			 uint32_t phy_ppdu_id                          : 16,
+					  reserved_0                           :  7,
+					  sw_frame_group_id                    :  7,
+					  rxpcu_mpdu_filter_in_category        :  2;
+			 uint32_t reserved_1a                          :  2,
+					  reported_mpdu_length                 : 14,
+					  ip_hdr_chksum                        : 16;
+	/* qword-2 */
+			 uint32_t ipv6_options_crc;
+			 uint32_t l3_type                              : 16,
+					  reserved_5a                          :  2,
+					  sa_offset_valid                      :  1,
+					  da_offset_valid                      :  1,
+					  sa_offset                            :  6,
+					  da_offset                            :  6;
+	/* qword-5 */
+			 uint32_t ip_chksum_fail_copy                  :  1,
+					  fr_ds                                :  1,
+					  last_msdu                            :  1,
+					  first_msdu                           :  1,
+					  l3_header_padding                    :  2,
+					  da_is_mcbc                           :  1,
+					  da_is_valid                          :  1,
+					  sa_is_valid                          :  1,
+					  tid                                  :  4,
+					  to_ds                                :  1,
+					  da_idx_timeout                       :  1,
+					  sa_idx_timeout                       :  1,
+					  sa_sw_peer_id                        : 16;
+			 uint32_t da_idx_or_sw_peer_id                 : 16,
+					  sa_idx                               : 16;
+	/* qword-6 */
+			 uint32_t fragment_flag                        :  1,
+					  vlan_stag_stripped                   :  1,
+					  vlan_ctag_stripped                   :  1,
+					  __reserved_g_0003                    :  2,
+					  use_ppe                              :  1,
+					  flow_idx                             : 20,
+					  reo_destination_indication           :  5,
+					  msdu_drop                            :  1;
+			 uint32_t fse_metadata                         : 32;
+	/* qword-7 */
+			 uint32_t tcp_udp_chksum                       : 16,
+					  cce_metadata                         : 16;
+			 uint32_t cumulative_ip_length                 : 16,
+					  amsdu_parser_error                   :  1,
+					  cce_match                            :  1,
+					  flow_idx_invalid                     :  1,
+					  flow_idx_timeout                     :  1,
+					  msdu_limit_error                     :  1,
+					  tcp_udp_chksum_fail_copy             :  1,
+					  fisa_timeout                         :  1,
+					  flow_aggregation_continuation        :  1,
+					  aggregation_count                    :  8;
+	/* qword-9 */
+			 uint32_t l4_offset                            :  8,
+					  ipsec_ah                             :  1,
+					  l3_offset                            :  7,
+					  ipsec_esp                            :  1,
+					  stbc                                 :  1,
+					  msdu_length                          : 14;
+			 uint32_t ip4_protocol_ip6_next_header         :  8,
+					  ldpc                                 :  1,
+					  mesh_control_present                 :  1,
+					  tcp_udp_header_valid                 :  1,
+					  ip_extn_header_valid                 :  1,
+					  ip_fixed_header_valid                :  1,
+					  toeplitz_hash_sel                    :  2,
+					  da_is_bcast_mcast                    :  1,
+					  tcp_only_ack                         :  1,
+					  ip_frag                              :  1,
+					  udp_proto                            :  1,
+					  tcp_proto                            :  1,
+					  ipv6_proto                           :  1,
+					  ipv4_proto                           :  1,
+					  decap_format                         :  2,
+					  msdu_number                          :  8;
+	/* qword-11 */
+			 uint32_t msdu_done_copy                       :  1,
+					  mimo_ss_bitmap                       :  7,
+					  reception_type                       :  3,
+					  receive_bandwidth                    :  3,
+					  rate_mcs                             :  4,
+					  sgi                                  :  2,
+					  pkt_type                             :  4,
+					  user_rssi                            :  8;
+			 uint32_t flow_id_toeplitz                     : 32;
+	/* qword-15 */
+			 uint32_t fcs_err                              :  1,
+					  unencrypted_frame_err                :  1,
+					  decrypt_err                          :  1,
+					  tkip_mic_err                         :  1,
+					  mpdu_length_err                      :  1,
+					  buffer_fragment                      :  1,
+					  directed                             :  1,
+					  encrypt_required                     :  1,
+					  rx_in_tx_decrypt_byp                 :  1,
+					  amsdu_addr_mismatch                  :  1,
+					  da_idx_invalid                       :  1,
+					  sa_idx_invalid                       :  1,
+					  ip_chksum_fail                       :  1,
+					  tcp_udp_chksum_fail                  :  1,
+					  msdu_length_err                      :  1,
+					  overflow_err                         :  1,
+					  wifi_parser_error                    :  1,
+					  order                                :  1,
+					  reserved_30b                         :  1,
+					  a_msdu_error                         :  1,
+					  eosp                                 :  1,
+					  more_data                            :  1,
+					  ctrl_type                            :  1,
+					  mgmt_type                            :  1,
+					  null_data                            :  1,
+					  non_qos                              :  1,
+					  power_mgmt                           :  1,
+					  ast_index_timeout                    :  1,
+					  ast_index_not_found                  :  1,
+					  mcast_bcast                          :  1,
+					  reserved_30a                         :  1,
+					  first_mpdu                           :  1;
+			 uint32_t msdu_done                            :  1,
+					  reserved_31b                         : 17,
+					  rx_bitmap_not_updated                :  1,
+					  decrypt_status_code                  :  3,
+					  reserved_31a                         : 10;
+};
+
+struct rx_mpdu_start_compact {
+	/* qword-2 */
+			 uint32_t pn_31_0                              : 32;
+			 uint32_t pn_63_32                             : 32;
+	/* qword-3 */
+			 uint32_t pn_95_64                             : 32;
+			 uint32_t pn_127_96                            : 32;
+	/* qword-4 */
+			 uint32_t mpdu_sequence_number                 : 12,
+					  mpdu_retry                           :  1,
+					  encrypted                            :  1,
+					  to_ds                                :  1,
+					  fr_ds                                :  1,
+					  reserved_11a                         :  1,
+					  more_fragment_flag                   :  1,
+					  mpdu_fragment_number                 :  4,
+					  frame_encryption_info_valid          :  1,
+					  mpdu_ht_control_valid                :  1,
+					  mpdu_qos_control_valid               :  1,
+					  mpdu_sequence_control_valid          :  1,
+					  mac_addr_ad4_valid                   :  1,
+					  mac_addr_ad3_valid                   :  1,
+					  mac_addr_ad2_valid                   :  1,
+					  mac_addr_ad1_valid                   :  1,
+					  mpdu_duration_valid                  :  1,
+					  mpdu_frame_control_valid             :  1;
+			 uint32_t peer_meta_data                       : 32;
+	/* qword-6 */
+			 uint32_t reserved_12                          :  1,
+					  raw_mpdu                             :  1,
+					  bar_frame                            :  1,
+					  ampdu_flag                           :  1,
+					  pre_delim_count                      : 12,
+					  strip_vlan_s_tag_decap               :  1,
+					  strip_vlan_c_tag_decap               :  1,
+					  rx_insert_vlan_s_tag_padding         :  1,
+					  rx_insert_vlan_c_tag_padding         :  1,
+					  decap_type                           :  2,
+					  decrypt_needed                       :  1,
+					  new_peer_entry                       :  1,
+					  key_id_octet                         :  8;
+			 uint32_t reserved_13                          :  1,
+					  amsdu_present                        :  1,
+					  directed                             :  1,
+					  encrypt_required                     :  1,
+					  u_apsd_trigger                       :  1,
+					  order                                :  1,
+					  fragment_flag                        :  1,
+					  eosp                                 :  1,
+					  more_data                            :  1,
+					  ctrl_type                            :  1,
+					  mgmt_type                            :  1,
+					  null_data                            :  1,
+					  non_qos                              :  1,
+					  power_mgmt                           :  1,
+					  ast_index_timeout                    :  1,
+					  ast_index_not_found                  :  1,
+					  mcast_bcast                          :  1,
+					  first_mpdu                           :  1,
+					  mpdu_length                          : 14;
+	/* qword-7 */
+			 uint32_t mpdu_duration_field                  : 16,
+					  mpdu_frame_control_field             : 16;
+			 uint32_t mac_addr_ad1_31_0                    : 32;
+	/* qword-8 */
+			 uint32_t mac_addr_ad2_15_0                    : 16,
+					  mac_addr_ad1_47_32                   : 16;
+			 uint32_t mac_addr_ad2_47_16                   : 32;
+	/* qword-9 */
+			 uint32_t mac_addr_ad3_31_0                    : 32;
+			 uint32_t mpdu_sequence_control_field          : 16,
+					  mac_addr_ad3_47_32                   : 16;
+};
+#endif /* WIFI_BIT_ORDER_BIG_ENDIAN */
+
+typedef struct rx_mpdu_start_compact hal_rx_mpdu_start_t;
+typedef struct rx_msdu_end_compact hal_rx_msdu_end_t;
+
+struct rx_mpdu_start_tlv {
+	hal_rx_mpdu_start_t rx_mpdu_start;
+};
+
+struct rx_msdu_end_tlv {
+	hal_rx_msdu_end_t rx_msdu_end;
+};
+
+struct rx_pkt_tlvs {
+	struct rx_msdu_end_tlv   msdu_end_tlv;		/*  80 bytes */
+	struct rx_mpdu_start_tlv mpdu_start_tlv;	/*  48 bytes */
+};
+
+#define HAL_RX_BUF_COOKIE_GET(buff_addr_info)			\
+	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,		\
+		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_OFFSET)),	\
+		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK,	\
+		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB))
+
+#define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
+	(HAL_RX_BUF_COOKIE_GET(&		\
+	(((struct reo_destination_ring *)	\
+		reo_desc)->buf_or_link_desc_addr_info)))
+
+#define HAL_RX_MSDU_CONTINUATION_FLAG_GET(msdu_info_ptr)	\
+	((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		RX_MSDU_DESC_INFO_MSDU_CONTINUATION_OFFSET)) & \
+		RX_MSDU_DESC_INFO_MSDU_CONTINUATION_MASK)
+
+#define HAL_RX_BUF_RBM_GET(buff_addr_info)			\
+	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,		\
+		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_OFFSET)),\
+		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK,	\
+		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_LSB))
+
+#define HAL_RX_ERROR_STATUS_GET(reo_desc)			\
+	(_HAL_MS((*_OFFSET_TO_WORD_PTR(reo_desc,		\
+		REO_DESTINATION_RING_REO_PUSH_REASON_OFFSET)),\
+		REO_DESTINATION_RING_REO_PUSH_REASON_MASK,	\
+		REO_DESTINATION_RING_REO_PUSH_REASON_LSB))
+
+#define HAL_RX_BUFFER_ADDR_31_0_GET(buff_addr_info)	\
+	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,	\
+		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET)),	\
+		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK,	\
+		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB))
+
+#define HAL_RX_BUFFER_ADDR_39_32_GET(buff_addr_info)			\
+	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,			\
+		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET)),	\
+		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK,		\
+		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB))
+
+#define HAL_RX_MPDU_START(_rx_pkt_tlv)	\
+	(((struct rx_pkt_tlvs *)_rx_pkt_tlv)->mpdu_start_tlv.	\
+			rx_mpdu_start)
+
+#define HAL_RX_MSDU_END(_rx_pkt_tlv)		\
+	(((struct rx_pkt_tlvs *)_rx_pkt_tlv)->msdu_end_tlv.rx_msdu_end)
+
+#define HAL_RX_MPDU_SEQUENCE_NUMBER_GET(_rx_pkt_tlv)	\
+	HAL_RX_MPDU_START(_rx_pkt_tlv).mpdu_sequence_number
+
+#define HAL_RX_TLV_RATE_MCS_GET(_rx_pkt_tlv)	\
+	HAL_RX_MSDU_END(_rx_pkt_tlv).rate_mcs
+
+#define HAL_RX_TLV_SGI_GET(_rx_pkt_tlv)	\
+	HAL_RX_MSDU_END(_rx_pkt_tlv).sgi
+
+#define HAL_RX_TLV_PKT_TYPE_GET(_rx_pkt_tlv)	\
+	HAL_RX_MSDU_END(_rx_pkt_tlv).pkt_type
+
+#define HAL_RX_TLV_BW_GET(_rx_pkt_tlv)     \
+	HAL_RX_MSDU_END(_rx_pkt_tlv).receive_bandwidth
+
+#define HAL_RX_TLV_DA_IS_MCBC_GET(_rx_pkt_tlv)	\
+	HAL_RX_MSDU_END(_rx_pkt_tlv).da_is_mcbc
+
+#define HAL_RX_TLV_L3_HEADER_PADDING_GET(_rx_pkt_tlv)	\
+	HAL_RX_MSDU_END(_rx_pkt_tlv).l3_header_padding
+
+#define HAL_RX_TLV_MIMO_SS_BITMAP(_rx_pkt_tlv)\
+	HAL_RX_MSDU_END(_rx_pkt_tlv).mimo_ss_bitmap
+
+#define HAL_RX_TLV_MSDU_DONE_GET(_rx_pkt_tlv)	\
+	HAL_RX_MSDU_END(_rx_pkt_tlv).msdu_done
+
+#define HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
+	(HAL_RX_BUFFER_ADDR_39_32_GET(&			\
+	(((struct reo_destination_ring *)		\
+		reo_desc)->buf_or_link_desc_addr_info)))
+
+#define HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)	\
+	(HAL_RX_BUFFER_ADDR_31_0_GET(&			\
+	(((struct reo_destination_ring *)		\
+		reo_desc)->buf_or_link_desc_addr_info)))
 #endif /* _DAL_VNDR_HAL_DEFINES_BE_H_ */
