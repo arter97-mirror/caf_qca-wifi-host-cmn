@@ -280,6 +280,106 @@ static inline dma_addr_t hal_tx_comp_get_paddr_be(void *hal_desc)
 	return (dma_addr_t)(paddr_lo | (((uint64_t)paddr_hi) << 32));
 }
 
+/**
+ * dal_vndr_hal_rx_error_status_get_be() - Get rx error status from ring desc
+ * @ring_desc: reo ring descriptor
+ *
+ * Return: rx error status
+ */
+static inline uint8_t dal_vndr_hal_rx_error_status_get_be(void *ring_desc)
+{
+	return HAL_RX_ERROR_STATUS_GET(ring_desc);
+}
+
+/**
+ * dal_vndr_hal_rx_reo_buf_cookie_get_be() - Get sw cookie from ring desc
+ * @reo_desc: ring descriptor
+ *
+ * Return: sw cookie
+ */
+static inline uint32_t dal_vndr_hal_rx_reo_buf_cookie_get_be(void *reo_desc)
+{
+	return HAL_RX_REO_BUF_COOKIE_GET(reo_desc);
+}
+
+/**
+ * dal_vndr_hal_rx_ret_buf_manager_get_be() - Get return buffer manager from
+ * ring desc
+ * @ring_desc: ring descriptor
+ *
+ * Return: rbm
+ */
+static inline uint8_t dal_vndr_hal_rx_ret_buf_manager_get_be(void *ring_desc)
+{
+	return HAL_RX_BUF_RBM_GET(ring_desc);
+}
+
+/**
+ * dal_vndr_hal_rx_reo_buf_paddr_get_be() - Get reo buff paddr from ring desc
+ * @ring_desc: ring descriptor
+ *
+ * Return: reo buff paddr
+ */
+static inline dma_addr_t dal_vndr_hal_rx_reo_buf_paddr_get_be(void *ring_desc)
+{
+	struct reo_destination_ring *reo_ring =
+		 (struct reo_destination_ring *)ring_desc;
+
+	dma_addr_t paddr =
+	 (HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_ring) |
+	  ((uint64_t)(HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_ring)) << 32));
+	return paddr;
+}
+
+/**
+ * dal_vndr_hal_rx_reo_get_details_be() - Get desc info about paddr,sw_cookie
+ * and rbm from reo ring desc
+ * @rx_desc: ring descriptor
+ * @buf_info: buf_info pointer to be filled with details
+ *
+ * Return: buf_info is modified to return the paddr, cookie and rbm
+ */
+static void dal_vndr_hal_rx_reo_get_details_be(
+				void *rx_desc,
+				struct dal_vndr_hal_buf_info *buf_info)
+{
+	struct reo_destination_ring *reo_ring =
+		 (struct reo_destination_ring *)rx_desc;
+
+	buf_info->paddr = dal_vndr_hal_rx_reo_buf_paddr_get_be(
+							(void *)reo_ring);
+	buf_info->sw_cookie = dal_vndr_hal_rx_reo_buf_cookie_get_be(
+							(void *)reo_ring);
+	/*
+	 * buffer addr info is the first member of ring desc, so the below
+	 * call is valid.
+	 */
+	buf_info->rbm = dal_vndr_hal_rx_ret_buf_manager_get_be(
+							(void *)reo_ring);
+}
+
+/**
+ * dal_vndr_hal_rx_tlv_msdu_done_get_be() - API to get the msdu done bit.
+ * @buf: pointer to the start of RX PKT TLV header
+ *
+ * Return: msdu done bit
+ */
+static inline uint32_t dal_vndr_hal_rx_tlv_msdu_done_get_be(uint8_t *buf)
+{
+	return HAL_RX_TLV_MSDU_DONE_GET(buf);
+}
+
+/**
+ * dal_vndr_hal_rx_get_l3_pad_bytes_be() - API to get l3 padding  bytes
+ * @rx_tlv_hdr: pointer to the start of RX PKT TLV headers
+ *
+ * Return: l3 padding bytes
+ */
+static inline uint8_t dal_vndr_hal_rx_get_l3_pad_bytes_be(uint8_t *rx_tlv_hdr)
+{
+	return HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_tlv_hdr);
+}
+
 void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_lmac_id =
@@ -312,4 +412,18 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_tx_comp_get_status_generic_be;
 	hal_soc->ops->dal_vndr_hal_tx_comp_get_paddr =
 				hal_tx_comp_get_paddr_be;
+	hal_soc->ops->dal_vndr_hal_rx_error_status_get =
+				dal_vndr_hal_rx_error_status_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_reo_buf_cookie_get =
+				dal_vndr_hal_rx_reo_buf_cookie_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_ret_buf_manager_get =
+				dal_vndr_hal_rx_ret_buf_manager_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_reo_get_details =
+				dal_vndr_hal_rx_reo_get_details_be;
+	hal_soc->ops->dal_vndr_hal_rx_reo_buf_paddr_get =
+				dal_vndr_hal_rx_reo_buf_paddr_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_get_l3_pad_bytes =
+				dal_vndr_hal_rx_get_l3_pad_bytes_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_msdu_done_get =
+				dal_vndr_hal_rx_tlv_msdu_done_get_be;
 }
