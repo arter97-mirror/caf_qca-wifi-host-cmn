@@ -3498,6 +3498,30 @@ static inline uint16_t __qdf_nbuf_get_network_header_len(struct sk_buff *skb)
 }
 
 /**
+ * __qdf_nbuf_get_frag() - get frag pointer
+ * @skb: Network buffer
+ * @index: frag index
+ *
+ * Return: frag pointer
+ */
+static inline
+__qdf_nbuf_frag_t *__qdf_nbuf_get_frag(struct sk_buff *skb, int index)
+{
+	return &skb_shinfo(skb)->frags[index];
+}
+
+/**
+ * __qdf_nbuf_frag_addr_safe() - get frag address safely
+ * @frag: frag pointer
+ *
+ * Return: frag address
+ */
+static inline void *__qdf_nbuf_frag_addr_safe(__qdf_nbuf_frag_t *frag)
+{
+	return skb_frag_address_safe(frag);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *

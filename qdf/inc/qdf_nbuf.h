@@ -6150,6 +6150,29 @@ static inline uint16_t qdf_nbuf_get_network_header_len(qdf_nbuf_t nbuf)
 	return __qdf_nbuf_get_network_header_len(nbuf);
 }
 
+/**
+ * qdf_nbuf_get_frag() - get frag pointer
+ * @nbuf: Network buffer
+ * @idx: frag index
+ *
+ * Return: frag pointer
+ */
+static inline qdf_nbuf_frag_t *qdf_nbuf_get_frag(qdf_nbuf_t nbuf, int idx)
+{
+	return __qdf_nbuf_get_frag(nbuf, idx);
+}
+
+/**
+ * qdf_nbuf_frag_addr_safe() - get frag address safely
+ * @frag: frag pointer
+ *
+ * Return: frag address
+ */
+static inline void *qdf_nbuf_frag_addr_safe(qdf_nbuf_frag_t *frag)
+{
+	return __qdf_nbuf_frag_addr_safe(frag);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);
