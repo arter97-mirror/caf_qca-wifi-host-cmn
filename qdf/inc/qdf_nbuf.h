@@ -6197,6 +6197,17 @@ static inline void *qdf_nbuf_put(qdf_nbuf_t buf, qdf_size_t size)
 	return __qdf_nbuf_put(buf, size);
 }
 
+/**
+ * qdf_nbuf_frag_size() - Returns the size of a skb fragment
+ * @frag: skb fragment
+ *
+ * Return: size of skb fragment
+ */
+static inline unsigned int qdf_nbuf_frag_size(qdf_nbuf_frag_t *frag)
+{
+	return __qdf_nbuf_frag_size(frag);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

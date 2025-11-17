@@ -3545,6 +3545,17 @@ static inline void *__qdf_nbuf_put(struct sk_buff *skb, size_t size)
 }
 
 /**
+ * __qdf_nbuf_frag_size() - Returns the size of a skb fragment
+ * @frag: skb fragment
+ *
+ * Return: size of skb fragment
+ */
+static inline unsigned int __qdf_nbuf_frag_size(__qdf_nbuf_frag_t *frag)
+{
+	return skb_frag_size(frag);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
