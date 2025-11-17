@@ -6115,6 +6115,18 @@ static inline uint16_t qdf_nbuf_get_mac_header_len(qdf_nbuf_t nbuf)
 	return __qdf_nbuf_get_mac_header_len(nbuf);
 }
 
+/**
+ * qdf_nbuf_set_transport_header() - set transport header
+ * @nbuf: Network buffer
+ * @offset: offset from data
+ *
+ * Return: None
+ */
+static inline void qdf_nbuf_set_transport_header(qdf_nbuf_t nbuf, int offset)
+{
+	__qdf_nbuf_set_transport_header(nbuf, offset);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

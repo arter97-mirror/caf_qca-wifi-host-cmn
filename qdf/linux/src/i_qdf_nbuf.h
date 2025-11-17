@@ -3461,6 +3461,19 @@ static inline uint16_t __qdf_nbuf_get_mac_header_len(struct sk_buff *skb)
 }
 
 /**
+ * __qdf_nbuf_set_transport_header() - set transport header
+ * @skb: Network buffer
+ * @offset: offset from data
+ *
+ * Return: None
+ */
+static inline void __qdf_nbuf_set_transport_header(struct sk_buff *skb,
+						   int offset)
+{
+	skb_set_transport_header(skb, offset);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
