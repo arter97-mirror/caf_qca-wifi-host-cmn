@@ -43,6 +43,48 @@ struct buffer_addr_info {
 #define BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB                12
 #define BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MSB                31
 #define BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK               0xfffff000
+/*
+ * macro to set the LSW of the nbuf data physical address
+ * to the rxdma ring entry
+ */
+#define HAL_RXDMA_PADDR_LO_SET(buff_addr_info, paddr_lo) \
+	((*(((unsigned int *) buff_addr_info) + \
+	(HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET >> 2))) = \
+	(paddr_lo << HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB) & \
+	HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK)
+
+/*
+ * macro to set the LSB of MSW of the nbuf data physical address
+ * to the rxdma ring entry
+ */
+#define HAL_RXDMA_PADDR_HI_SET(buff_addr_info, paddr_hi) \
+	((*(((unsigned int *) buff_addr_info) + \
+	(HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET >> 2))) = \
+	(paddr_hi << HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB) & \
+	HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK)
+/*
+ * macro to set the cookie into the rxdma ring entry
+ */
+#define HAL_RXDMA_COOKIE_SET(buff_addr_info, cookie) \
+	((*(((unsigned int *)buff_addr_info) + \
+	(BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_OFFSET >> 2))) &= \
+	~BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK); \
+	((*(((unsigned int *)buff_addr_info) + \
+	(BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_OFFSET >> 2))) |= \
+	(cookie << BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB) & \
+	BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK)
+/*
+ * macro to set the manager into the rxdma ring entry
+ */
+#define HAL_RXDMA_MANAGER_SET(buff_addr_info, manager) \
+	((*(((unsigned int *)buff_addr_info) + \
+	(BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_OFFSET >> 2))) &= \
+	~BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK); \
+	((*(((unsigned int *)buff_addr_info) + \
+	(BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_OFFSET >> 2))) |= \
+	(manager << BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_LSB) & \
+	BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK)
+
 #define NUM_OF_DWORDS_TX_RATE_STATS_INFO 2
 
 struct tx_rate_stats_info {
