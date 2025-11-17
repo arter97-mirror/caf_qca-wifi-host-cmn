@@ -6047,6 +6047,17 @@ static inline size_t qdf_nbuf_get_tcp_hdr_len(qdf_nbuf_t nbuf)
 	return __qdf_nbuf_get_tcp_hdr_len(nbuf);
 }
 
+/**
+ * qdf_vlan_get_protocol() - get protocol from VLAN header
+ * @nbuf: Network buffer
+ *
+ * Return: protocol value
+ */
+static inline uint16_t qdf_vlan_get_protocol(qdf_nbuf_t nbuf)
+{
+	return __qdf_vlan_get_protocol(nbuf);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

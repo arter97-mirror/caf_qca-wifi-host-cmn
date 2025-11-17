@@ -3393,6 +3393,17 @@ static inline size_t __qdf_nbuf_get_tcp_hdr_len(struct sk_buff *skb)
 }
 
 /**
+ * __qdf_vlan_get_protocol() - get protocol from VLAN header
+ * @skb: Network buffer
+ *
+ * Return: protocol value
+ */
+static inline uint16_t __qdf_vlan_get_protocol(struct sk_buff *skb)
+{
+	return vlan_get_protocol(skb);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
