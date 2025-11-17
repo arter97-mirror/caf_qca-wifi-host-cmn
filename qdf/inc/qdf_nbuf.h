@@ -6127,6 +6127,18 @@ static inline void qdf_nbuf_set_transport_header(qdf_nbuf_t nbuf, int offset)
 	__qdf_nbuf_set_transport_header(nbuf, offset);
 }
 
+/**
+ * qdf_nbuf_set_network_header() - set network header
+ * @nbuf: Network buffer
+ * @offset: offset from data
+ *
+ * Return: None
+ */
+static inline void qdf_nbuf_set_network_header(qdf_nbuf_t nbuf, int offset)
+{
+	__qdf_nbuf_set_network_header(nbuf, offset);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

@@ -3474,6 +3474,19 @@ static inline void __qdf_nbuf_set_transport_header(struct sk_buff *skb,
 }
 
 /**
+ * __qdf_nbuf_set_network_header() - set network header
+ * @skb: Network buffer
+ * @offset: offset from data
+ *
+ * Return: None
+ */
+static inline void __qdf_nbuf_set_network_header(struct sk_buff *skb,
+						 int offset)
+{
+	skb_set_network_header(skb, offset);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
