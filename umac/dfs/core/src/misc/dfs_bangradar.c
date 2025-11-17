@@ -423,9 +423,14 @@ dfs_handle_scan_radio_radar(struct wlan_dfs *dfs,
 	struct wlan_lmac_if_target_tx_ops *tgt_tx_ops;
 	struct wlan_lmac_if_tx_ops *tx_ops;
 	uint32_t target_type;
+	struct wlan_objmgr_pdev *pdev = dfs->dfs_pdev_obj;
 
-	psoc = wlan_pdev_get_psoc(dfs->dfs_pdev_obj);
+	if (!pdev) {
+		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,  "pdev is NULL");
+		return status;
+	}
 
+	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
 		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,  "psoc is NULL");
 		return status;
@@ -436,10 +441,11 @@ dfs_handle_scan_radio_radar(struct wlan_dfs *dfs,
 		 dfs_info(dfs, WLAN_DEBUG_DFS_ALWAYS, "tx_ops is NULL");
 		 return status;
 	}
-	target_type = lmac_get_target_type(dfs->dfs_pdev_obj);
+	target_type = lmac_get_target_type(pdev);
 	tgt_tx_ops = &tx_ops->target_tx_ops;
 
-	if (tgt_tx_ops->tgt_is_tgt_type_qcn9160 &&
+	if (wlan_pdev_nif_feat_ext_cap_get(pdev, WLAN_PDEV_FEXT_SCAN_RADIO) &&
+	    tgt_tx_ops->tgt_is_tgt_type_qcn9160 &&
 	    tgt_tx_ops->tgt_is_tgt_type_qcn9160(target_type) &&
 	    dfs->is_enable_york_dfs) {
 		status = dfs_send_nol_event_to_user_space(dfs,
