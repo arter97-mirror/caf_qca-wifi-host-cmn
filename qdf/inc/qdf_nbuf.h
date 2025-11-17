@@ -6058,6 +6058,29 @@ static inline uint16_t qdf_vlan_get_protocol(qdf_nbuf_t nbuf)
 	return __qdf_vlan_get_protocol(nbuf);
 }
 
+/**
+ * qdf_nbuf_get_tcp_seq() - get raw TCP sequence number (network byte order)
+ * @buf: network buffer
+ *
+ * Return: TCP sequence number in network byte order
+ */
+static inline uint32_t qdf_nbuf_get_tcp_seq(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_tcp_seq(buf);
+}
+
+/**
+ * qdf_nbuf_set_tcp_seq() - set TCP sequence number
+ * @buf: network buffer
+ * @seq: TCP sequence number
+ *
+ * Return: none
+ */
+static inline void qdf_nbuf_set_tcp_seq(qdf_nbuf_t buf, uint32_t seq)
+{
+	__qdf_nbuf_set_tcp_seq(buf, seq);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

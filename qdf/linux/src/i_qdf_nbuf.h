@@ -3404,6 +3404,29 @@ static inline uint16_t __qdf_vlan_get_protocol(struct sk_buff *skb)
 }
 
 /**
+ * __qdf_nbuf_get_tcp_seq() - get raw TCP sequence number
+ * @skb: sk buff
+ *
+ * Return: TCP sequence number in network byte order
+ */
+static inline uint32_t __qdf_nbuf_get_tcp_seq(struct sk_buff *skb)
+{
+	return tcp_hdr(skb)->seq;
+}
+
+/**
+ * __qdf_nbuf_set_tcp_seq() - set TCP sequence number
+ * @skb: network buffer
+ * @seq: TCP sequence number
+ *
+ * Return: none
+ */
+static inline void __qdf_nbuf_set_tcp_seq(struct sk_buff *skb, uint32_t seq)
+{
+	tcp_hdr(skb)->seq = seq;
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
