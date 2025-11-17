@@ -87,6 +87,10 @@ typedef struct flow_keys __qdf_flow_keys_t;
 #define QDF_NBUF_ALIGN     SKB_DATA_ALIGN
 #define QDF_SHINFO_SIZE    QDF_NBUF_ALIGN(sizeof(struct skb_shared_info))
 
+#define QDF_NBUF_TX_CSUM_PARTIAL CHECKSUM_PARTIAL
+#define QDF_ETH_P_IP ETH_P_IP
+#define QDF_ETH_P_IPV6 ETH_P_IPV6
+
 /* QDF_NBUF_CB_TX_MAX_EXTRA_FRAGS -
  * max tx fragments added by the driver
  * The driver will always add one tx fragment (the tx descriptor)
