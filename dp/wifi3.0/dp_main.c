@@ -14217,6 +14217,7 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	.txrx_set_tsf_ul_delay_report = dp_set_tsf_ul_delay_report,
 	.txrx_get_uplink_delay = dp_get_uplink_delay,
+	.txrx_enable_ul_delay = dp_txrx_enable_ul_delay,
 	.txrx_qos_latency_stats_request = dp_qos_latency_stats_request,
 	.txrx_qos_latency_get_stats = dp_qos_latency_get_stats,
 #endif

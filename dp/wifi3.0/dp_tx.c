@@ -7198,6 +7198,25 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
 	return QDF_STATUS_SUCCESS;
 }
 
+QDF_STATUS dp_txrx_enable_ul_delay(struct cdp_soc_t *soc_hdl,
+				   uint8_t vdev_id, bool enable)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
+						     DP_MOD_ID_CDP);
+
+	if (!vdev) {
+		dp_err_rl("vdev %d does not exist", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	dp_info("vdev: %u enable: %u", vdev_id, enable);
+	dp_enable_ul_delay(vdev, UL_DELAY_CALC_ID_INTERNAL, enable);
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #define DP_HOST_AC_BE	0    /* best effort */
 #define DP_HOST_AC_BK	1    /* background */
 #define DP_HOST_AC_VI	2    /* video */

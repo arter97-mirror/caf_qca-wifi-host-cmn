@@ -1301,6 +1301,7 @@ static inline void cdp_set_delta_tsf(ol_txrx_soc_handle soc, uint8_t vdev_id,
 	soc->ops->ctrl_ops->txrx_set_delta_tsf(soc, vdev_id, delta_tsf);
 }
 #endif
+
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 /**
  * cdp_set_tsf_ul_delay_report() - Enable or disable reporting uplink delay
@@ -1355,6 +1356,22 @@ static inline QDF_STATUS cdp_get_uplink_delay(ol_txrx_soc_handle soc,
 		return QDF_STATUS_E_FAILURE;
 
 	return soc->ops->ctrl_ops->txrx_get_uplink_delay(soc, vdev_id, val);
+}
+
+static inline QDF_STATUS
+cdp_enable_ul_delay(struct cdp_soc_t *soc, uint8_t vdev_id, bool enable)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid SOC instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->ctrl_ops ||
+	    !soc->ops->ctrl_ops->txrx_enable_ul_delay)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->ctrl_ops->txrx_enable_ul_delay(soc, vdev_id, enable);
 }
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
 

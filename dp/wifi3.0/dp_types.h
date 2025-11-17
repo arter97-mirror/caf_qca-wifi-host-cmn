@@ -4711,12 +4711,14 @@ struct dp_vdev_stats {
  * @UL_DELAY_CALC_ID_TSF: TSF request report ID
  * @UL_DELAY_CALC_ID_FW: FW request report ID
  * @UL_DELAY_CALC_ID_QOS: QoS latency stats ID
+ * @UL_DELAY_CALC_ID_INTERNAL: DP internal stats ID
  * @UL_DELAY_CALC_ID_MAX: Max ID
  **/
 enum ul_delay_client_id {
 	UL_DELAY_CALC_ID_TSF,
 	UL_DELAY_CALC_ID_FW,
 	UL_DELAY_CALC_ID_QOS,
+	UL_DELAY_CALC_ID_INTERNAL,
 	UL_DELAY_CALC_ID_MAX
 };
 
