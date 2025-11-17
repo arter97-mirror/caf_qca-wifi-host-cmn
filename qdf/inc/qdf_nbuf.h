@@ -6081,6 +6081,29 @@ static inline void qdf_nbuf_set_tcp_seq(qdf_nbuf_t buf, uint32_t seq)
 	__qdf_nbuf_set_tcp_seq(buf, seq);
 }
 
+/**
+ * qdf_nbuf_get_mac_header() - get MAC header pointer
+ * @nbuf: Network buffer
+ *
+ * Return: MAC header pointer
+ */
+static inline void *qdf_nbuf_get_mac_header(qdf_nbuf_t nbuf)
+{
+	return __qdf_nbuf_get_mac_header(nbuf);
+}
+
+/**
+ * qdf_nbuf_set_mac_header() - set MAC header
+ * @nbuf: Network buffer
+ * @offset: offset from data
+ *
+ * Return: None
+ */
+static inline void qdf_nbuf_set_mac_header(qdf_nbuf_t nbuf, int offset)
+{
+	__qdf_nbuf_set_mac_header(nbuf, offset);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);
