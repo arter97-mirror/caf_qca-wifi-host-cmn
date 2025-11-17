@@ -3450,6 +3450,17 @@ static inline void __qdf_nbuf_set_mac_header(struct sk_buff *skb, int offset)
 }
 
 /**
+ * __qdf_nbuf_get_mac_header_len() - get MAC header length
+ * @skb: Network buffer
+ *
+ * Return: MAC header length
+ */
+static inline uint16_t __qdf_nbuf_get_mac_header_len(struct sk_buff *skb)
+{
+	return skb_mac_header_len(skb);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
