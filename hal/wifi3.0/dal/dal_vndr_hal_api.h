@@ -27,6 +27,9 @@ static inline void dal_vndr_hal_write32_mb(
 		struct dal_vndr_hal_soc *hal_soc, uint32_t offset,
 		uint32_t value)
 {
+	/* Region < BAR + 4K can be directly accessed */
+	if (offset < MAPPED_REF_OFF)
+		iowrite32(value, hal_soc->dev_base_addr + offset);
 }
 
 /**
@@ -39,6 +42,10 @@ static inline void dal_vndr_hal_write_address_32_mb(
 			struct dal_vndr_hal_soc *hal_soc,
 			void *addr, uint32_t value)
 {
+	uint32_t offset;
+
+	offset = addr - hal_soc->dev_base_addr;
+	dal_vndr_hal_write32_mb(hal_soc, offset, value);
 }
 
 /**
@@ -54,6 +61,7 @@ static inline void dal_vndr_hal_srng_write_address_32_mb(
 					void *addr,
 					uint32_t value)
 {
+	dal_vndr_hal_write_address_32_mb(hal_soc, addr, value);
 }
 
 /**
@@ -72,6 +80,16 @@ static inline int dal_vndr_hal_srng_access_start(
 			void *hal_soc_hdl,
 			void *hal_ring_hdl)
 {
+	struct dal_vndr_hal_srng *srng =
+		(struct dal_vndr_hal_srng *)hal_ring_hdl;
+
+	if (srng->ring_dir == DAL_VNDR_HAL_SRNG_SRC_RING)
+		srng->u.src_ring.cached_tp =
+			*(volatile uint32_t *)(srng->u.src_ring.tp_addr);
+	else
+		srng->u.dst_ring.cached_hp =
+			*(volatile uint32_t *)(srng->u.dst_ring.hp_addr);
+
 	return 0;
 }
 
@@ -86,7 +104,20 @@ static inline void *dal_vndr_hal_srng_dst_get_next(
 		void *hal_soc,
 		void *hal_ring_hdl)
 {
-	return NULL;
+	struct dal_vndr_hal_srng *srng =
+			(struct dal_vndr_hal_srng *)hal_ring_hdl;
+	uint32_t *desc;
+
+	if (srng->u.dst_ring.tp == srng->u.dst_ring.cached_hp)
+		return NULL;
+
+	desc = &srng->ring_base_addr[srng->u.dst_ring.tp];
+
+	srng->u.dst_ring.tp = (srng->u.dst_ring.tp + srng->entry_size);
+	if (srng->u.dst_ring.tp == srng->ring_size)
+		srng->u.dst_ring.tp = 0;
+
+	return (void *)desc;
 }
 
 /**
@@ -103,7 +134,22 @@ static inline uint32_t dal_vndr_hal_srng_dst_num_valid(
 		void *hal_ring_hdl,
 		int sync_hw_ptr)
 {
-	return 0;
+	struct dal_vndr_hal_srng *srng =
+			(struct dal_vndr_hal_srng *)hal_ring_hdl;
+	uint32_t hp;
+	uint32_t tp = srng->u.dst_ring.tp;
+
+	if (sync_hw_ptr) {
+		hp = *(volatile uint32_t *)(srng->u.dst_ring.hp_addr);
+		srng->u.dst_ring.cached_hp = hp;
+	} else {
+		hp = srng->u.dst_ring.cached_hp;
+	}
+
+	if (hp >= tp)
+		return (hp - tp) / srng->entry_size;
+
+	return (srng->ring_size - tp + hp) / srng->entry_size;
 }
 
 /**
@@ -119,7 +165,22 @@ static inline uint32_t dal_vndr_hal_srng_src_num_avail(
 		void *hal_soc,
 		void *hal_ring_hdl, int sync_hw_ptr)
 {
-	return 0;
+	struct dal_vndr_hal_srng *srng =
+				(struct dal_vndr_hal_srng *)hal_ring_hdl;
+	uint32_t tp;
+	uint32_t hp = srng->u.src_ring.hp;
+
+	if (sync_hw_ptr) {
+		tp = *(srng->u.src_ring.tp_addr);
+		srng->u.src_ring.cached_tp = tp;
+	} else {
+		tp = srng->u.src_ring.cached_tp;
+	}
+
+	if (tp > hp)
+		return ((tp - hp) / srng->entry_size) - 1;
+	else
+		return ((srng->ring_size - hp + tp) / srng->entry_size) - 1;
 }
 
 /**
@@ -134,6 +195,18 @@ static inline void *dal_vndr_hal_srng_src_get_next(
 			void *hal_soc,
 			void *hal_ring_hdl)
 {
+	struct dal_vndr_hal_srng *srng =
+			(struct dal_vndr_hal_srng *)hal_ring_hdl;
+	uint32_t *desc;
+	uint32_t next_hp = (srng->u.src_ring.hp + srng->entry_size) %
+				srng->ring_size;
+
+	if (next_hp != srng->u.src_ring.cached_tp) {
+		desc = &(srng->ring_base_addr[srng->u.src_ring.hp]);
+		srng->u.src_ring.hp = next_hp;
+		return (void *)desc;
+	}
+
 	return NULL;
 }
 
@@ -152,6 +225,34 @@ static inline void *dal_vndr_hal_srng_src_get_next(
 static inline void dal_vndr_hal_srng_access_end(
 		void *hal_soc, void *hal_ring_hdl)
 {
+	struct dal_vndr_hal_srng *srng =
+				(struct dal_vndr_hal_srng *)hal_ring_hdl;
+
+	if (srng->lmac_ring) {
+		/* For LMAC rings, ring pointer updates are done through FW and
+		 * hence written to a shared memory location that is read by FW
+		 */
+		if (srng->ring_dir == DAL_VNDR_HAL_SRNG_SRC_RING) {
+			*srng->u.src_ring.hp_addr =
+					cpu_to_le32(srng->u.src_ring.hp);
+		} else {
+			*srng->u.dst_ring.tp_addr =
+					cpu_to_le32(srng->u.dst_ring.tp);
+		}
+	} else {
+		if (srng->ring_dir == DAL_VNDR_HAL_SRNG_SRC_RING)
+			dal_vndr_hal_srng_write_address_32_mb(
+						hal_soc,
+						srng,
+						srng->u.src_ring.hp_addr,
+						srng->u.src_ring.hp);
+		else
+			dal_vndr_hal_srng_write_address_32_mb(
+						hal_soc,
+						srng,
+						srng->u.dst_ring.tp_addr,
+						srng->u.dst_ring.tp);
+	}
 }
 
 /**
@@ -164,6 +265,13 @@ static inline void dal_vndr_hal_tx_desc_sync(
 			void *hal_tx_desc_cached,
 			void *hw_desc, uint8_t num_bytes)
 {
+	if (!num_bytes)
+		return;
+
+	if (!hal_tx_desc_cached || !hw_desc)
+		return;
+
+	memcpy(hw_desc, hal_tx_desc_cached, num_bytes);
 }
 
 /**
