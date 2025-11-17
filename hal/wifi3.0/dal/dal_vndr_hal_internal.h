@@ -29,6 +29,19 @@ struct dal_vndr_hal_buf_info {
 };
 
 /**
+ * enum dal_vndr_hal_rx_msdu_desc_flags - Enum for flags in MSDU_DESC_INFO
+ *
+ * @DAL_VNDR_HAL_MSDU_F_FIRST_MSDU_IN_MPDU: First MSDU in MPDU
+ * @DAL_VNDR_HAL_MSDU_F_LAST_MSDU_IN_MPDU: Last MSDU in MPDU
+ * @DAL_VNDR_HAL_MSDU_F_MSDU_CONTINUATION: MSDU continuation
+ */
+enum dal_vndr_hal_rx_msdu_desc_flags {
+	DAL_VNDR_HAL_MSDU_F_FIRST_MSDU_IN_MPDU = (0x1 << 0),
+	DAL_VNDR_HAL_MSDU_F_LAST_MSDU_IN_MPDU = (0x1 << 1),
+	DAL_VNDR_HAL_MSDU_F_MSDU_CONTINUATION = (0x1 << 2),
+};
+
+/**
  * struct dal_vndr_hal_rx_msdu_desc_info - RX MSDU Descriptor
  * @msdu_flags: [0] first_msdu_in_mpdu
  *              [1] last_msdu_in_mpdu
@@ -95,6 +108,12 @@ struct dal_vndr_hal_hw_txrx_ops {
 	void (*dal_vndr_hal_rxbm_sync)(void *ring_desc, void *buff_addr_info);
 };
 
+/**
+ * enum dal_vndr_hal_srng_dir - Enum for ring direction
+ *
+ * @DAL_VNDR_HAL_SRNG_SRC_RING: Src ring
+ * @DAL_VNDR_HAL_SRNG_DST_RING: destination ring
+ */
 enum dal_vndr_hal_srng_dir {
 	DAL_VNDR_HAL_SRNG_SRC_RING,
 	DAL_VNDR_HAL_SRNG_DST_RING
@@ -179,5 +198,170 @@ struct dal_vndr_hal_srng {
 	struct dal_vndr_hal_soc *hal_soc;
 	/* Lock for serializing ring index updates */
 	dal_vndr_hal_srng_lock_t lock;
+};
+
+/*
+ * Given the offset of a field in bytes, returns uint8_t *
+ */
+#define _OFFSET_TO_BYTE_PTR(_ptr, _off_in_bytes)	\
+	(((uint8_t *)(_ptr)) + (_off_in_bytes))
+
+/*
+ * Given the offset of a field in bytes, returns uint32_t *
+ */
+#define _OFFSET_TO_WORD_PTR(_ptr, _off_in_bytes)	\
+	(((uint32_t *)(_ptr)) + ((_off_in_bytes) >> 2))
+
+/*
+ * Given the offset of a field in bytes, returns uint64_t *
+ */
+#define _OFFSET_TO_QWORD_PTR(_ptr, _off_in_bytes)	\
+	(((uint64_t *)(_ptr)) + ((_off_in_bytes) >> 3))
+
+#define _HAL_MS(_word, _mask, _shift)		\
+	(((_word) & (_mask)) >> (_shift))
+
+#define HAL_OFFSET(block, field) block ## _ ## field ## _OFFSET
+
+#define HAL_TX_LSB(block, field) block ## _ ## field ## _LSB
+
+#define HAL_TX_MASK(block, field) block ## _ ## field ## _MASK
+
+#define HAL_TX_DESC_OFFSET(desc, block, field) \
+	(((uint8_t *)desc) + HAL_OFFSET(block, field))
+
+#define HAL_SET_FLD(desc, block, field) \
+	(*(uint32_t *) ((uint8_t *) desc + HAL_OFFSET(block, field)))
+
+#define HAL_SET_FLD_OFFSET(desc, block, field, offset) \
+	(*(uint32_t *) ((uint8_t *) desc + HAL_OFFSET(block, field) + (offset)))
+
+#define HAL_SET_FLD_64(desc, block, field) \
+	(*(uint64_t *)((uint8_t *)desc + HAL_OFFSET(block, field)))
+
+#define HAL_SET_FLD_OFFSET_64(desc, block, field, offset) \
+	(*(uint64_t *)((uint8_t *)desc + HAL_OFFSET(block, field) + (offset)))
+
+#define HAL_TX_SM(block, field, value) \
+	((value << (block ## _ ## field ## _LSB)) & \
+	 (block ## _ ## field ## _MASK))
+
+#define HAL_TX_MS(block, field, value) \
+	(((value) & (block ## _ ## field ## _MASK)) >> \
+	 (block ## _ ## field ## _LSB))
+
+#define HAL_TX_DESC_GET(desc, block, field) \
+	HAL_TX_MS(block, field, HAL_SET_FLD(desc, block, field))
+
+#define HAL_TX_DESC_OFFSET_GET(desc, block, field, offset) \
+	HAL_TX_MS(block, field, HAL_SET_FLD_OFFSET(desc, block, field, offset))
+
+#define HAL_TX_DESC_SUBBLOCK_GET(desc, block, sub, field) \
+	HAL_TX_MS(sub, field, HAL_SET_FLD(desc, block, sub))
+
+#define HAL_TX_DESC_GET_64(desc, block, field) \
+	HAL_TX_MS(block, field, HAL_SET_FLD_64(desc, block, field))
+
+#define HAL_TX_DESC_OFFSET_GET_64(desc, block, field, offset) \
+	HAL_TX_MS(block, field, HAL_SET_FLD_OFFSET_64(desc, block, field,\
+		  offset))
+
+#define HAL_TX_DESC_SUBBLOCK_GET_64(desc, block, sub, field) \
+	HAL_TX_MS(sub, field, HAL_SET_FLD_64(desc, block, sub))
+
+/**
+ * enum dal_vndr_hal_reo_error_status - Enum which encapsulates
+ * "reo_push_reason"
+ *
+ * @DAL_VNDR_HAL_REO_ERROR_DETECTED: Packets arrived because of an error
+ * detected
+ * @DAL_VNDR_HAL_REO_ROUTING_INSTRUCTION: Packets arrived because of REO routing
+ */
+enum dal_vndr_hal_reo_error_status {
+	DAL_VNDR_HAL_REO_ERROR_DETECTED = 0,
+	DAL_VNDR_HAL_REO_ROUTING_INSTRUCTION = 1,
+};
+
+#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET                0x0
+#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB                   0
+#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK                  0xffffffff
+
+#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET	0x4
+#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB	0
+#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK	0x000000ff
+
+#define HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_OFFSET	0x0
+#define HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_LSB	0
+#define HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_MASK	0x00000001
+
+#define HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_OFFSET	0x0
+#define HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_LSB	1
+#define HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_MASK	0x00000002
+
+#define HAL_RX_FIRST_MSDU_IN_MPDU_FLAG_GET(msdu_info_ptr)	\
+	((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_OFFSET)) & \
+		HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_MASK)
+
+#define HAL_RX_LAST_MSDU_IN_MPDU_FLAG_GET(msdu_info_ptr) \
+	((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_OFFSET)) & \
+		HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_MASK)
+
+#define HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_OFFSET	0x0
+#define HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_LSB		3
+#define HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_MASK		0x0001fff8
+
+#define HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info_ptr)		\
+	(_HAL_MS((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,		\
+		HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_OFFSET)),	\
+		HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_MASK,		\
+		HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_LSB))
+
+/**
+ * get_hweight8() - count num of 1's in 8-bit bitmap
+ * @w: input bitmap
+ *
+ * Count num of 1's set in the 8-bit bitmap
+ *
+ * Return: num of 1's
+ */
+static inline
+unsigned int get_hweight8(unsigned int w)
+{
+	unsigned int res = w - ((w >> 1) & 0x55);
+
+	res = (res & 0x33) + ((res >> 2) & 0x33);
+
+	return (res + (res >> 4)) & 0x0F;
+}
+
+/**
+ * enum dal_vndr_hal_pkt_type - Type of packet type reported by HW
+ * @DAL_VNDR_HAL_DOT11A: 802.11a PPDU type
+ * @DAL_VNDR_HAL_DOT11B: 802.11b PPDU type
+ * @DAL_VNDR_HAL_DOT11N_MM: 802.11n Mixed Mode PPDU type
+ * @DAL_VNDR_HAL_DOT11AC: 802.11ac PPDU type
+ * @DAL_VNDR_HAL_DOT11AX: 802.11ax PPDU type
+ * @DAL_VNDR_HAL_DOT11BA: 802.11ba (WUR) PPDU type
+ * @DAL_VNDR_HAL_DOT11BE: 802.11be PPDU type
+ * @DAL_VNDR_HAL_DOT11AZ: 802.11az (ranging) PPDU type
+ * @DAL_VNDR_HAL_DOT11N_GF: 802.11n Green Field PPDU type
+ * @DAL_VNDR_HAL_DOT11_MAX: Maximum enumeration
+ *
+ * Enum indicating the packet type reported by HW in rx_pkt_tlvs (RX data)
+ * or WBM2SW ring entry's descriptor (TX data completion)
+ */
+enum dal_vndr_hal_pkt_type {
+	DAL_VNDR_HAL_DOT11A = 0,
+	DAL_VNDR_HAL_DOT11B = 1,
+	DAL_VNDR_HAL_DOT11N_MM = 2,
+	DAL_VNDR_HAL_DOT11AC = 3,
+	DAL_VNDR_HAL_DOT11AX = 4,
+	DAL_VNDR_HAL_DOT11BA = 5,
+	DAL_VNDR_HAL_DOT11BE = 6,
+	DAL_VNDR_HAL_DOT11AZ = 7,
+	DAL_VNDR_HAL_DOT11N_GF = 8,
+	DAL_VNDR_HAL_DOT11_MAX,
 };
 #endif /* _DAL_VNDR_HAL_INTERNAL_H_ */
