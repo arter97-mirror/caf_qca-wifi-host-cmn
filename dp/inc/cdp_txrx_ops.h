@@ -782,6 +782,9 @@ struct cdp_cmn_ops {
 	int (*get_ext_grp_id_from_reo_num)(struct cdp_soc_t *soc_hdl,
 					   uint8_t reo_num);
 #endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+	void (*dal_ssr_notify)(struct cdp_soc_t *soc_hdl);
+#endif
 };
 
 struct cdp_ctrl_ops {

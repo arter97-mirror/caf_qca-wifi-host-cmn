@@ -14075,6 +14075,30 @@ dp_dump_custom_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 	return QDF_STATUS_SUCCESS;
 }
 #endif
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_dal_send_ssr_notify() - CDP wrapper for DAL SSR notify
+ * @soc_hdl: datapath soc handle
+ *
+ * This function calls the DAL SSR notify function. This is called
+ * to notify the DAL about SSR (SubSystem Restart) events.
+ *
+ * Return: None
+ */
+static void dp_dal_send_ssr_notify(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	if (qdf_unlikely(!soc)) {
+		dp_err("DP SoC is NULL");
+		return;
+	}
+
+	dp_dal_ssr_notify(soc);
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_soc_attach_target = dp_soc_attach_target_wifi3,
 	.txrx_vdev_attach = dp_vdev_attach_wifi3,
@@ -14226,6 +14250,9 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 	.calculate_per_ring_pkt_avg = dp_rx_calculate_per_ring_pkt_avg,
 	.get_per_ring_pkt_avg = dp_rx_get_per_ring_pkt_avg,
 	.get_ext_grp_id_from_reo_num = dp_soc_get_ext_grp_id_from_reo_num,
+#endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+	.dal_ssr_notify = dp_dal_send_ssr_notify,
 #endif
 };
 

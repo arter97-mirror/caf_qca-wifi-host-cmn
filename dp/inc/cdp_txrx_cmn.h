@@ -3685,4 +3685,32 @@ cdp_get_ext_grp_id_from_reo_num(ol_txrx_soc_handle soc, uint8_t reo_num)
 	return soc->ops->cmn_drv_ops->get_ext_grp_id_from_reo_num(soc, reo_num);
 }
 #endif
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * cdp_dal_ssr_notify() - Notify DAL about SSR
+ * @soc: data path soc handle
+ *
+ * Notify DAL layer about SSR (SubSystem Restart). This function is called
+ * during SSR scenarios to inform the DAL layer about the restart event,
+ * allowing it to perform necessary cleanup and recovery operations.
+ *
+ * Return: None
+ */
+static inline void cdp_dal_ssr_notify(ol_txrx_soc_handle soc)
+{
+	if (!soc) {
+		dp_cdp_debug("Invalid soc instance");
+		return;
+	}
+
+	if (!soc->ops || !soc->ops->cmn_drv_ops) {
+		dp_cdp_debug("Invalid ops instance");
+		return;
+	}
+
+	if (soc->ops->cmn_drv_ops->dal_ssr_notify)
+		soc->ops->cmn_drv_ops->dal_ssr_notify(soc);
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* _CDP_TXRX_CMN_H_ */
