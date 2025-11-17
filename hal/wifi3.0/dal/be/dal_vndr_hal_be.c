@@ -231,6 +231,55 @@ static inline void dal_vndr_hal_tx_desc_set_tx_notify_frame_be(void *desc,
 		HAL_TX_SM(TCL_DATA_CMD, TX_NOTIFY_FRAME, val);
 }
 
+/**
+ * dal_vndr_hal_tx_comp_get_status_generic_be - Get generic tx completion status
+ * @desc: WBM descriptor
+ * @ts1: completion ring Tx status
+ *
+ * This function will parse the WBM completion descriptor and populate in
+ * HAL structure
+ *
+ * Return: none
+ */
+static inline void
+dal_vndr_hal_tx_comp_get_status_generic_be(void *desc, void *ts1)
+{
+	struct dal_vndr_hal_tx_completion_status *ts =
+		(struct dal_vndr_hal_tx_completion_status *)ts1;
+
+	*ts = *((struct dal_vndr_hal_tx_completion_status *)desc);
+
+	ts->msdu_part_of_amsdu = (ts->first_msdu && ts->last_msdu) ?
+				  false : true;
+	ts->tid = ts->tid & 0xF;
+}
+
+/**
+ * hal_tx_comp_get_paddr_be() - Get paddr within comp descriptor
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * This function will get buffer physical address within hardware completion
+ * descriptor
+ *
+ * Return: Buffer physical address
+ */
+static inline dma_addr_t hal_tx_comp_get_paddr_be(void *hal_desc)
+{
+	uint32_t paddr_lo;
+	uint32_t paddr_hi;
+
+	paddr_lo = *(uint32_t *)(((uint8_t *)hal_desc) +
+			BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET);
+
+	paddr_hi = *(uint32_t *)(((uint8_t *)hal_desc) +
+			BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET);
+
+	paddr_hi = (paddr_hi & BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK) >>
+		BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB;
+
+	return (dma_addr_t)(paddr_lo | (((uint64_t)paddr_hi) << 32));
+}
+
 void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_lmac_id =
@@ -259,4 +308,8 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 			dal_vndr_hal_tx_desc_set_who_classify_info_sel_be;
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_tx_notify_frame =
 				dal_vndr_hal_tx_desc_set_tx_notify_frame_be;
+	hal_soc->ops->dal_vndr_hal_tx_comp_get_status =
+				dal_vndr_hal_tx_comp_get_status_generic_be;
+	hal_soc->ops->dal_vndr_hal_tx_comp_get_paddr =
+				hal_tx_comp_get_paddr_be;
 }
