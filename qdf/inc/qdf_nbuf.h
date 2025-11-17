@@ -6173,6 +6173,17 @@ static inline void *qdf_nbuf_frag_addr_safe(qdf_nbuf_frag_t *frag)
 	return __qdf_nbuf_frag_addr_safe(frag);
 }
 
+/**
+ * qdf_get_nbuf_len() - get the length of the buf
+ * @buf: Network buf instance
+ *
+ * Return: total length of this buf.
+ */
+static inline qdf_size_t qdf_get_nbuf_len(qdf_nbuf_t buf)
+{
+	return __qdf_get_nbuf_len(buf);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

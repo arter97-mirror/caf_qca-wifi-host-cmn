@@ -3522,6 +3522,17 @@ static inline void *__qdf_nbuf_frag_addr_safe(__qdf_nbuf_frag_t *frag)
 }
 
 /**
+ * __qdf_get_nbuf_len() - get the length of the buf
+ * @buf: Network buf instance
+ *
+ * Return: total length of this buf.
+ */
+static inline qdf_size_t __qdf_get_nbuf_len(__qdf_nbuf_t buf)
+{
+	return buf->len;
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
