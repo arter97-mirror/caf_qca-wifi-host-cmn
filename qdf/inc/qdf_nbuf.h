@@ -6184,6 +6184,19 @@ static inline qdf_size_t qdf_get_nbuf_len(qdf_nbuf_t buf)
 	return __qdf_get_nbuf_len(buf);
 }
 
+/**
+ * qdf_nbuf_put - add data to a buffer
+ * @buf: buffer to use
+ * @size: amount of data to add
+ *
+ * Return: A pointer to the first byte of the extra data is returned.
+ */
+
+static inline void *qdf_nbuf_put(qdf_nbuf_t buf, qdf_size_t size)
+{
+	return __qdf_nbuf_put(buf, size);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

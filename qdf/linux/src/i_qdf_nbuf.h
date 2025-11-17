@@ -3533,6 +3533,18 @@ static inline qdf_size_t __qdf_get_nbuf_len(__qdf_nbuf_t buf)
 }
 
 /**
+ * __qdf_nbuf_put - add data to a buffer
+ * @skb: buffer to use
+ * @size: amount of data to add
+ *
+ * Return: A pointer to the first byte of the extra data is returned.
+ */
+static inline void *__qdf_nbuf_put(struct sk_buff *skb, size_t size)
+{
+	return skb_put(skb, size);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
