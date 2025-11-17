@@ -6139,6 +6139,17 @@ static inline void qdf_nbuf_set_network_header(qdf_nbuf_t nbuf, int offset)
 	__qdf_nbuf_set_network_header(nbuf, offset);
 }
 
+/**
+ * qdf_nbuf_get_network_header_len() - get network header length
+ * @nbuf: Network buffer
+ *
+ * Return: network header length
+ */
+static inline uint16_t qdf_nbuf_get_network_header_len(qdf_nbuf_t nbuf)
+{
+	return __qdf_nbuf_get_network_header_len(nbuf);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);

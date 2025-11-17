@@ -3487,6 +3487,17 @@ static inline void __qdf_nbuf_set_network_header(struct sk_buff *skb,
 }
 
 /**
+ * __qdf_nbuf_get_network_header_len() - get network header length
+ * @skb: Network buffer
+ *
+ * Return: network header length
+ */
+static inline uint16_t __qdf_nbuf_get_network_header_len(struct sk_buff *skb)
+{
+	return skb_network_header_len(skb);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *
