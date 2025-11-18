@@ -550,16 +550,60 @@ static void dp_dal_sim_stop(void *priv)
 }
 
 /**
+ * dp_dal_sim_set_ring_msi() - This function calls vendor cb which sets the msi
+ * config for dal owned rings.
+ *
+ * @dp_dal_ctx: Pointer to DP DAL context
+ * @sim_ctx: Pointer to simulator context
+ * @sim_srng: Array of ring configurations
+ * @num_rings: Number of rings in the array
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static inline int dp_dal_sim_set_ring_msi(
+		struct dp_dal_ctx *dp_dal_ctx,
+		struct dp_dal_sim_ctx *sim_ctx,
+		struct dal_sim_srng *sim_srng,
+		int num_rings)
+{
+	int i, status;
+
+	for (i = 0; i < num_rings; i++) {
+		dp_info("MSI cfg for ring_num=%u, ring_type=%d, msi_addr=0x%llx, msi_data=0x%x",
+			sim_srng[i].ring_num,
+			sim_srng[i].ring_type,
+			sim_srng[i].msi_addr,
+			sim_srng[i].msi_data);
+		status = vendor_cb.set_msi_config(
+			dp_dal_ctx,
+			sim_srng[i].ring_num,
+			sim_srng[i].ring_type,
+			sim_srng[i].msi_addr,
+			sim_srng[i].msi_data);
+
+		if (status) {
+			dp_err("MSI config for ring_num %d fail ret=%d",
+			       sim_srng[i].ring_num, status);
+			return status;
+		}
+	}
+	return 0;
+}
+
+/**
  * dp_dal_sim_request_irq() - Register IRQs for DAL simulator
  * @priv: Pointer to private data (DAL simulator context)
  *
  * Registers interrupt handlers for RX and TX completion rings.
+ * Iterates through all rings and calls set_msi_config vendor callback
+ * with priv as dp_dal_ctx, ring num, ring type, msi address and msi data.
  *
  * Return: 0 on success, negative error code on failure
  */
 static int dp_dal_sim_request_irq(void *priv)
 {
 	struct dp_dal_ctx *dp_dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
 	int status = 0;
 
 	if (!dp_dal_ctx) {
@@ -567,8 +611,33 @@ static int dp_dal_sim_request_irq(void *priv)
 		return -EINVAL;
 	}
 
+	sim_ctx = (struct dp_dal_sim_ctx *)dp_dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL simulator context in request_irq");
+		return -EINVAL;
+	}
+
+	if (!vendor_cb.set_msi_config) {
+		dp_warn("set_msi_config callback not registered");
+		return -EINVAL;
+	}
+
+	/* Iterate through all RX rings and call set_msi_config */
+	status = dp_dal_sim_set_ring_msi(dp_dal_ctx, sim_ctx,
+					 sim_ctx->rx_ring,
+					 DAL_SIM_NUM_RX_RINGS);
+	if (status)
+		return status;
+
+	status = dp_dal_sim_set_ring_msi(dp_dal_ctx, sim_ctx,
+					 sim_ctx->tx_cmpl_ring,
+					 DAL_SIM_NUM_TX_RINGS);
+	if (status)
+		return status;
+
 	/* Call dp_dal_offload_sim_request_irq to register interrupts */
 	status = dp_dal_offload_sim_request_irq(dp_dal_ctx->dal_sim_ctx);
+
 	if (status) {
 		dp_err("Failed to register IRQs");
 		return status;
