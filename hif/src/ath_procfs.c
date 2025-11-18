@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2013-2014, 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -374,6 +375,7 @@ static ssize_t ath_procfs_diag_read_ext(struct file *file, char __user *buf,
 		case TARGET_TYPE_WCN6450:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:
+		case TARGET_TYPE_QCN7605:
 			if (op_type == OP_TYPE_EXT_DIRECT)
 				rv = ath_procfs_direct_read(scn,
 							    offset,
@@ -456,6 +458,7 @@ static ssize_t ath_procfs_diag_write_ext(struct file *file,
 		case TARGET_TYPE_WCN6450:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:
+		case TARGET_TYPE_QCN7605:
 			if (op_type == OP_TYPE_EXT_DIRECT)
 				rv = ath_procfs_direct_write(scn,
 							     offset,
