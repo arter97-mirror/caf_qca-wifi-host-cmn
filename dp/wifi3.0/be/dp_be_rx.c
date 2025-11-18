@@ -3055,6 +3055,11 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 
 			qdf_nbuf_set_pktlen(nbuf, pkt_len);
 			dp_rx_skip_tlvs(soc, nbuf, l3_pad);
+
+			dp_rx_update_protocol_stats_wrapper(soc, txrx_peer,
+							    link_id, nbuf,
+							    rx_tlv_hdr,
+							    RX_RECV_FROM_HW);
 		}
 
 		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
@@ -3145,6 +3150,9 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 						      link_id);
 
 		tid_stats->delivered_to_stack++;
+		dp_rx_update_protocol_stats_wrapper(soc, txrx_peer,
+						    link_id, nbuf, rx_tlv_hdr,
+						    RX_SENT_TO_STACK);
 
 		nbuf = next;
 	}
