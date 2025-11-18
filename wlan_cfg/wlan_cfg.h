@@ -2699,12 +2699,42 @@ int wlan_cfg_psoc_get_num_tx_desc(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
 #ifdef DP_FEATURE_TX_PAGE_POOL
 void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			    bool *tx_pp_enabled);
+
+/**
+ * wlan_cfg_get_tx_dynamic_pp_enabled() - Get dynamic Tx page pool feature
+ * @ctrl_psoc: PSOC object
+ *
+ * Return: Dynamic page pool feature enabled from ini or not.
+ */
+bool wlan_cfg_get_tx_dynamic_pp_enabled(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
+
+/**
+ * wlan_cfg_get_tx_dynamic_pp_prealloc_buf() - Get num of prealloc buffer
+ * @ctrl_psoc: PSOC object
+ *
+ * Return: Number of prealloc buffer for tx page pool
+ */
+uint32_t
+wlan_cfg_get_tx_dynamic_pp_prealloc_buf(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
 #else
 static inline void
 wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 		       bool *tx_pp_enabled)
 {
 }
+
+static inline bool
+wlan_cfg_get_tx_dynamic_pp_enabled(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
+{
+	return false;
+}
+
+static inline uint32_t
+wlan_cfg_get_tx_dynamic_pp_prealloc_buf(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
+{
+	return 0;
+}
+
 #endif
 
 /**

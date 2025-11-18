@@ -6519,6 +6519,19 @@ void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 	*tx_pp_enabled = cfg_get(ctrl_psoc,
 				 CFG_DP_TX_PAGE_POOL_ENABLE);
 }
+
+bool wlan_cfg_get_tx_dynamic_pp_enabled(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
+{
+	/* Bit 0: Enable/Disable feature */
+	return cfg_get(ctrl_psoc, CFG_DP_TX_DYNAMIC_PAGE_POOL_CONFIG) & 0x1;
+}
+
+uint32_t
+wlan_cfg_get_tx_dynamic_pp_prealloc_buf(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
+{
+	/* Bits 1-31: Buffer count */
+	return (cfg_get(ctrl_psoc, CFG_DP_TX_DYNAMIC_PAGE_POOL_CONFIG) >> 1);
+}
 #endif
 
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
