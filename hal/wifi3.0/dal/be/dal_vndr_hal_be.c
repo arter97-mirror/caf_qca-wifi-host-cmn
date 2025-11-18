@@ -380,6 +380,99 @@ static inline uint8_t dal_vndr_hal_rx_get_l3_pad_bytes_be(uint8_t *rx_tlv_hdr)
 	return HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_tlv_hdr);
 }
 
+/**
+ * dal_vndr_hal_rx_tlv_sgi_get_be() - API to get the Short Guard Interval from
+ *                           rx_msdu_start TLV
+ * @buf: pointer to the start of RX PKT TLV headers
+ *
+ * Return: uint32_t(sgi)
+ */
+static inline uint32_t dal_vndr_hal_rx_tlv_sgi_get_be(uint8_t *buf)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
+
+	return HAL_RX_TLV_SGI_GET(rx_pkt_tlvs);
+}
+
+/*
+ * Care must be taken to get the correct MCS.
+ * The MCS index does not start with 0 when NSS>1 in HT mode.
+ * MCS params for optional 20/40MHz, NSS=1~3, EQM(NSS>1):
+ * ------------------------------------------------------
+ *         NSS     |   1   |   2    |    3    |    4
+ * ------------------------------------------------------
+ * MCS index: HT20 | 0 ~ 7 | 8 ~ 15 | 16 ~ 23 | 24 ~ 31
+ * ------------------------------------------------------
+ * MCS index: HT40 | 0 ~ 7 | 8 ~ 15 | 16 ~ 23 | 24 ~ 31
+ * ------------------------------------------------------
+ * Currently, the MAX_NSS=2. If NSS>2, MCS index = 8 * (NSS-1)
+ */
+/**
+ * dal_vndr_hal_rx_tlv_rate_mcs_get_be() - API to get the MCS rate from
+ *                                rx_msdu_start TLV
+ * @buf: pointer to the start of RX PKT TLV headers
+ *
+ * Return: uint32_t(rate_mcs)
+ */
+static inline uint32_t dal_vndr_hal_rx_tlv_rate_mcs_get_be(uint8_t *buf)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
+	uint32_t rate_mcs;
+
+	rate_mcs = HAL_RX_TLV_RATE_MCS_GET(rx_pkt_tlvs);
+
+	return rate_mcs;
+}
+
+/**
+ * dal_vndr_hal_rx_tlv_bw_get_be() - API to get the Bandwidth Interval from
+ * rx_msdu_start
+ * @buf: pointer to the start of RX PKT TLV header
+ *
+ * Return: uint32_t(bw)
+ */
+static inline uint32_t dal_vndr_hal_rx_tlv_bw_get_be(uint8_t *buf)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
+
+	return HAL_RX_TLV_BW_GET(rx_pkt_tlvs);
+}
+
+/**
+ * dal_vndr_hal_rx_tlv_get_pkt_type_be() - API to get the pkt type from
+ *                                rx_msdu_start
+ * @buf: pointer to the start of RX PKT TLV header
+ *
+ * Return: uint32_t(pkt type)
+ */
+
+static inline uint32_t dal_vndr_hal_rx_tlv_get_pkt_type_be(uint8_t *buf)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
+	uint32_t pkt_type;
+
+	pkt_type = HAL_RX_TLV_PKT_TYPE_GET(rx_pkt_tlvs);
+
+	return pkt_type;
+}
+
+/**
+ * dal_vndr_hal_rx_tlv_nss_get_be() - API to get the NSS Interval from
+ * rx_msdu_start
+ * @buf: pointer to the start of RX PKT TLV header
+ *
+ * Return: uint32_t(nss)
+ */
+static inline uint32_t dal_vndr_hal_rx_tlv_nss_get_be(uint8_t *buf)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
+	uint8_t mimo_ss_bitmap;
+
+	mimo_ss_bitmap = HAL_RX_TLV_MIMO_SS_BITMAP(rx_pkt_tlvs);
+
+	return get_hweight8(mimo_ss_bitmap);
+}
+
 void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_lmac_id =
@@ -422,6 +515,16 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_rx_reo_get_details_be;
 	hal_soc->ops->dal_vndr_hal_rx_reo_buf_paddr_get =
 				dal_vndr_hal_rx_reo_buf_paddr_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_msdu_start_nss_get =
+				dal_vndr_hal_rx_tlv_nss_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_sgi_get =
+				dal_vndr_hal_rx_tlv_sgi_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_rate_mcs_get =
+				dal_vndr_hal_rx_tlv_rate_mcs_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_bw_get =
+				dal_vndr_hal_rx_tlv_bw_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_get_pkt_type =
+				dal_vndr_hal_rx_tlv_get_pkt_type_be;
 	hal_soc->ops->dal_vndr_hal_rx_get_l3_pad_bytes =
 				dal_vndr_hal_rx_get_l3_pad_bytes_be;
 	hal_soc->ops->dal_vndr_hal_rx_tlv_msdu_done_get =
