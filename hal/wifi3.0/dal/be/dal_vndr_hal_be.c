@@ -473,6 +473,61 @@ static inline uint32_t dal_vndr_hal_rx_tlv_nss_get_be(uint8_t *buf)
 	return get_hweight8(mimo_ss_bitmap);
 }
 
+/**
+ * dal_vndr_hal_rx_msdu_flags_get_be() - Get msdu flags from ring desc
+ * @msdu_desc_info_hdl: msdu desc info handle
+ *
+ * This returns flags for msdu continuation, first msdu and last msdu
+ * in mpdu.
+ * Return: msdu flags
+ */
+static inline
+uint32_t dal_vndr_hal_rx_msdu_flags_get_be(void *msdu_desc_info_hdl)
+{
+	struct rx_msdu_desc_info *msdu_desc_info =
+		(struct rx_msdu_desc_info *)msdu_desc_info_hdl;
+	uint32_t flags = 0;
+
+	if (HAL_RX_FIRST_MSDU_IN_MPDU_FLAG_GET(msdu_desc_info))
+		flags |= DAL_VNDR_HAL_MSDU_F_FIRST_MSDU_IN_MPDU;
+
+	if (HAL_RX_LAST_MSDU_IN_MPDU_FLAG_GET(msdu_desc_info))
+		flags |= DAL_VNDR_HAL_MSDU_F_LAST_MSDU_IN_MPDU;
+
+	if (HAL_RX_MSDU_CONTINUATION_FLAG_GET(msdu_desc_info))
+		flags |= DAL_VNDR_HAL_MSDU_F_MSDU_CONTINUATION;
+
+	return flags;
+}
+
+/*
+ * dal_vndr_hal_rx_msdu_desc_info_get_be: Gets the flags related to
+ * MSDU descriptor.
+ * @desc_addr: REO ring descriptor addr
+ * @msdu_desc_info: Holds MSDU descriptor info from HAL Rx descriptor
+ *
+ * Specifically flags needed are: first_msdu_in_mpdu,
+ * last_msdu_in_mpdu, msdu_continuation.
+ *
+ * Return: void
+ */
+static inline void
+dal_vndr_hal_rx_msdu_desc_info_get_be(
+			void *desc_addr,
+			struct dal_vndr_hal_rx_msdu_desc_info *msdu_desc_info)
+{
+	struct reo_destination_ring *reo_dst_ring;
+	uint32_t *msdu_info;
+
+	reo_dst_ring = (struct reo_destination_ring *)desc_addr;
+
+	msdu_info = (uint32_t *)&reo_dst_ring->rx_msdu_desc_info_details;
+	msdu_desc_info->msdu_flags =
+			dal_vndr_hal_rx_msdu_flags_get_be(
+				(struct rx_msdu_desc_info *)msdu_info);
+	msdu_desc_info->msdu_len = HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info);
+}
+
 void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_lmac_id =
@@ -529,4 +584,6 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_rx_get_l3_pad_bytes_be;
 	hal_soc->ops->dal_vndr_hal_rx_tlv_msdu_done_get =
 				dal_vndr_hal_rx_tlv_msdu_done_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_msdu_desc_info_get =
+				dal_vndr_hal_rx_msdu_desc_info_get_be;
 }
