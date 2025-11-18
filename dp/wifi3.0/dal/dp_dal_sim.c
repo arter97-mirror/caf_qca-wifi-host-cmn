@@ -1138,13 +1138,46 @@ void dp_dal_sim_schedule_work(void *arg)
 	}
 }
 #endif /* FEATURE_DP_DAL_SIM */
-#if defined(FEATURE_DP_DAL_SIM)
+
+#if defined(FEATURE_DAL_DP_SUPPORT) && defined(FEATURE_DP_DAL_SIM)
+/* Global variable to track current DAL simulation mode
+ * 0 = bypass mode, 1 = offload mode
+ */
+unsigned int g_dal_sim_curr_mode;
 void dp_dal_sim_platform_bus_ops_attach(void)
 {
-	*global_plat_ops = dp_dal_sim_plat_ops;
+	struct dp_soc *soc = cds_get_context(QDF_MODULE_ID_SOC);
+
+	if (!soc) {
+		g_dal_sim_curr_mode = 0;
+		*global_plat_ops = plat_ops_bypass_mode;
+		dp_err("Failed to get soc context, attaching default bypass ops");
+		return;
+	}
+	if (!soc->ctrl_psoc) {
+		g_dal_sim_curr_mode = 0;
+		dp_err("ctrl_psoc not initialized, attaching default bypass ops");
+		*global_plat_ops = plat_ops_bypass_mode;
+		return;
+	}
+	g_dal_sim_curr_mode = cfg_get(soc->ctrl_psoc, CFG_DP_DAL_SIM_MODE);
+	if (g_dal_sim_curr_mode == 0) {
+		/* Bypass mode */
+		*global_plat_ops = plat_ops_bypass_mode;
+		dp_info("Platform bus operations attached - Bypass mode");
+	} else if (g_dal_sim_curr_mode == 1) {
+		/* Offload mode */
+		*global_plat_ops = dp_dal_sim_plat_ops;
+		dp_info("Platform bus operations attached - Offload mode");
+	} else {
+		dp_err("Invalid mode %u, defaulting to bypass mode",
+		       g_dal_sim_curr_mode);
+		*global_plat_ops = plat_ops_bypass_mode;
+	}
 }
 #else
 void dp_dal_sim_platform_bus_ops_attach(void)
 {
 }
-#endif /* FEATURE_DP_DAL_SIM */
+#endif /* FEATURE_DAL_DP_SUPPORT && FEATURE_DP_DAL_SIM */
+qdf_export_symbol(dp_dal_sim_platform_bus_ops_attach);
