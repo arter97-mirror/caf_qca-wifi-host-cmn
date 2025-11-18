@@ -551,6 +551,25 @@ dal_vndr_hal_rxdma_buff_addr_info_set_be(void *rxdma_entry,
 	HAL_RXDMA_MANAGER_SET(rxdma_entry, manager);
 }
 
+/**
+ * dal_vndr_hal_rxbm_sync_be() - Sync the buff addr info to refill ring
+ * @ring_desc: Ring descriptor pointer
+ * @buff_addr_info: Buffer address info pointer
+ *
+ * This function syncs the buffer address info to the refill ring by copying
+ * the buffer address info to the ring descriptor.
+ *
+ * Return: void
+ */
+static inline void dal_vndr_hal_rxbm_sync_be(void *ring_desc,
+					     void *buff_addr_info)
+{
+	if (!ring_desc || !buff_addr_info)
+		return;
+
+	memcpy(ring_desc, buff_addr_info, sizeof(struct buffer_addr_info));
+}
+
 void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_lmac_id =
@@ -611,4 +630,6 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_rx_msdu_desc_info_get_be;
 	hal_soc->ops->dal_vndr_hal_rxdma_buff_addr_info_set =
 				dal_vndr_hal_rxdma_buff_addr_info_set_be;
+	hal_soc->ops->dal_vndr_hal_rxbm_sync =
+				dal_vndr_hal_rxbm_sync_be;
 }
