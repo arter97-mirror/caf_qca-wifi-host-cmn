@@ -2668,6 +2668,14 @@ wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(struct wlan_cfg_dp_soc_ctxt *cfg)
 }
 #endif
 
+/**
+ * wlan_cfg_psoc_get_num_tx_desc() - Get num tx desc from cfg directly
+ * @ctrl_psoc: PSOC object
+ *
+ * Return: Num Tx descriptors
+ */
+int wlan_cfg_psoc_get_num_tx_desc(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
+
 #ifdef DP_FEATURE_TX_PAGE_POOL
 void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			    bool *tx_pp_enabled);
