@@ -283,6 +283,7 @@ enum dal_tx_event_type {
 /**
  * struct dp_dal_stats - DAL statistics
  * @tx: TX related statistics
+ * @rx: RX related statistics
  */
 struct dp_dal_stats {
 	struct {
@@ -292,6 +293,12 @@ struct dp_dal_stats {
 		/* Tx comp failed due to DAL no support */
 		uint32_t tx_comp_nosupport[MAX_TCL_DATA_RINGS];
 	} tx;
+	struct {
+		/* DAL Rx failed count */
+		uint32_t rx_dropped[MAX_REO_DEST_RINGS];
+		/* Rx failed due to DAL no support */
+		uint32_t rx_dropped_nosupport[MAX_REO_DEST_RINGS];
+	} rx;
 };
 
 /**
