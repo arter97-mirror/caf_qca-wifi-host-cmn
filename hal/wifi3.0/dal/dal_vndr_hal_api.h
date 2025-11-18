@@ -835,6 +835,16 @@ static inline
 void dal_vndr_hal_get_sw_hptp(void *hal_soc, void *hal_ring_hdl,
 			      uint32_t *tailp, uint32_t *headp)
 {
+	struct dal_vndr_hal_srng *srng =
+			(struct dal_vndr_hal_srng *)hal_ring_hdl;
+
+	if (srng->ring_dir == DAL_VNDR_HAL_SRNG_SRC_RING) {
+		*headp = srng->u.src_ring.hp;
+		*tailp = *srng->u.src_ring.tp_addr;
+	} else {
+		*tailp = srng->u.dst_ring.tp;
+		*headp = *srng->u.dst_ring.hp_addr;
+	}
 }
 
 /**
