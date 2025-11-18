@@ -2872,6 +2872,8 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 	uint8_t rx_pkt_vdev_map = 0;
 	uint32_t peer_ext_stats;
 
+	DP_HIST_INIT();
+
 	if (qdf_unlikely(!soc || !nbuf_list))
 		return QDF_STATUS_E_INVAL;
 
@@ -2999,6 +3001,8 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 			nbuf = next;
 			continue;
 		}
+
+		DP_HIST_PACKET_COUNT_INC(vdev->pdev->pdev_id);
 
 		/* Process packet length and TLV headers */
 		if (qdf_unlikely(qdf_nbuf_is_frag(nbuf))) {
@@ -3170,6 +3174,8 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 	/* Clean up peer reference */
 	if (qdf_likely(txrx_peer))
 		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX);
+
+	DP_RX_HIST_STATS_PER_PDEV();
 
 	return QDF_STATUS_SUCCESS;
 }
