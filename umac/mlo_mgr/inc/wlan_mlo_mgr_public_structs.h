@@ -1704,6 +1704,9 @@ struct mlo_mlme_ext_ops {
  * @mlo_link_recfg_osif_update_mac_addr: Callback to notify mac addr update for
  * link rejction in link recfg
  * @mlo_mgr_osif_link_switch_notification: Notify OSIF on start of link switch
+ * @mlo_roam_osif_update_deflink: Callback to update default link during
+ *                                cross-vdev roaming. Updates the deflink
+ *                                from the original vdev to the roamed vdev.
  * @mlo_mgr_osif_update_link_state: update link state in OSIF
  * @mlo_mgr_osif_chan_switch_notification: Callback to update standby link chan
  *                                         info to HDD on channel switch.
@@ -1736,6 +1739,9 @@ struct mlo_osif_ext_ops {
 	(*mlo_mgr_osif_link_switch_notification)(struct wlan_objmgr_vdev *vdev,
 						 uint8_t non_trans_vdev_id,
 						 bool is_start_notify);
+
+	QDF_STATUS (*mlo_roam_osif_update_deflink)(struct wlan_objmgr_vdev *vdev,
+						   uint8_t roamed_vdev_id);
 
 	void (*mlo_mgr_osif_update_link_state)(uint8_t vdev_id,
 					       bool is_link_active);
