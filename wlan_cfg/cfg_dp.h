@@ -2466,8 +2466,73 @@
 	CFG_INI_BOOL("dp_tx_page_pool", false, \
 		     "Enable/Disable page pool usage for TX buffers")
 #define CFG_DP_TX_PAGE_POOL CFG(CFG_DP_TX_PAGE_POOL_ENABLE)
+
+/**
+ * WLAN_TX_DYNAMIC_PAGE_POOL_MAX
+ *
+ * Represents the maximum TX dynamic page pool configuration value.
+ *
+ * Bit Layout:
+ * - Bit 0: Dynamic page pool enable flag (0 = disabled, 1 = enabled)
+ * - Bits 1–31: Number of TX buffers to pre-allocate during initialization
+ *
+ * Calculation Steps:
+ * 1. Base TX buffer count (WLAN_CFG_NUM_TX_DESC): 0x2000 (8192 decimal)
+ * 2. Add 25% headroom: 8192 × 1.25 = 10240 (0x2800)
+ * 3. Align to 16-byte boundary: 0x2800 (already aligned)
+ * 4. Encode:
+ *    - Shift buffer count left by 1: 0x2800 << 1 = 0x5000
+ *    - Set enable flag (OR with 1): 0x5000 | 0x1 = 0x5001
+ *
+ * Final Value: 0x5001
+ */
+#define WLAN_TX_DYNAMIC_PAGE_POOL_MAX  0x5001
+#define WLAN_TX_DYNAMIC_PAGE_POOL_MIN 0
+#define WLAN_TX_DYNAMIC_PAGE_POOL WLAN_TX_DYNAMIC_PAGE_POOL_MIN
+
+/*
+ * <ini>
+ * tx_dynamic_page_pool_config - Dynamic TX page pool configuration
+ * @Min: 0
+ * @Max: WLAN_TX_DYNAMIC_PAGE_POOL_CFG_MAX
+ * @Default: 0
+ *
+ * This ini configures the dynamic TX page pool feature using bit encoding:
+ * - Bit 0: Enable/Disable dynamic page pool (0=disabled, 1=enabled)
+ * - Bits 1-31: Number of TX buffers to pre-allocate at initialization
+ *
+ * The dynamic page pool reduces memory footprint by allocating buffers
+ * on-demand instead of pre-allocating all buffers at init time.
+ *
+ * Value 0: Dynamic page pool disabled (uses static pre-allocation)
+ * Value 1 (0b1): Dynamic page pool enabled, 0 buffers pre-allocated
+ * Value 3 (0b11): Dynamic page pool enabled, 1 buffer pre-allocated
+ * Value 2049 (0x801): Dynamic page pool enabled, 1024 buffers pre-allocated
+ *
+ * Note: This feature requires dp_tx_page_pool=1 to be effective.
+ * Buffer count is in multiples of 16 for optimal page pool alignment.
+ *
+ * Related: dp_tx_page_pool
+ *
+ * Supported Feature: All modes
+ *
+ * Usage: Internal
+ *
+ * </ini>
+ */
+#define CFG_DP_TX_DYNAMIC_PAGE_POOL_CONFIG \
+	CFG_INI_UINT("tx_dynamic_page_pool_config", \
+		     WLAN_TX_DYNAMIC_PAGE_POOL_MIN, \
+		     WLAN_TX_DYNAMIC_PAGE_POOL_MAX, \
+		     WLAN_TX_DYNAMIC_PAGE_POOL, \
+		     CFG_VALUE_OR_DEFAULT, \
+		     "Dynamic TX page pool configuration")
+
+#define CFG_DP_TX_DYNAMIC_PAGE_POOL \
+	CFG(CFG_DP_TX_DYNAMIC_PAGE_POOL_CONFIG)
 #else
 #define CFG_DP_TX_PAGE_POOL
+#define CFG_DP_TX_DYNAMIC_PAGE_POOL
 #endif
 
 #ifdef FEATURE_DP_DAL_SIM
@@ -2710,5 +2775,6 @@
 		CFG_DP_NDP_BW_FLOW_CTRL \
 		CFG_DP_TX_PAGE_POOL \
 		CFG_DP_DAL_SIM \
-		CFG_DP_DAL
+		CFG_DP_DAL \
+		CFG_DP_TX_DYNAMIC_PAGE_POOL
 #endif /* _CFG_DP_H_ */
