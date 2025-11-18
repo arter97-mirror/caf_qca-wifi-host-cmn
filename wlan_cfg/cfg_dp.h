@@ -2470,6 +2470,31 @@
 #define CFG_DP_TX_PAGE_POOL
 #endif
 
+#ifdef FEATURE_DP_DAL_SIM
+/*
+ * <ini>
+ * dp_dal_sim_mode - Set the dal simulation mode
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This ini is used to set mode for dal simulation. Basis on this mode during
+ * init time will decide which platform ops to use for dal simulation.
+ * 0 - dal simulation in bypass mode
+ * 1 - dal simulation in offload mode
+ *
+ * Usage: Internal
+ *
+ * </ini>
+ */
+#define CFG_DP_DAL_SIM_MODE \
+	CFG_INI_BOOL("dp_dal_sim_mode", false, \
+		     "set dal simulation mode of operation")
+#define CFG_DP_DAL_SIM CFG(CFG_DP_DAL_SIM_MODE)
+#else
+#define CFG_DP_DAL_SIM
+#endif /* FEATURE_DP_DAL_SIM */
+
 #define CFG_DP \
 		CFG(CFG_DP_HTT_PACKET_TYPE) \
 		CFG(CFG_DP_INT_BATCH_THRESHOLD_OTHER) \
@@ -2646,5 +2671,6 @@
 		CFG(CFG_DP_RXMON_MGMT_LINEARIZATION) \
 		CFG_DP_RX_BUFFER_RECYCLE \
 		CFG_DP_NDP_BW_FLOW_CTRL \
-		CFG_DP_TX_PAGE_POOL
+		CFG_DP_TX_PAGE_POOL \
+		CFG_DP_DAL_SIM
 #endif /* _CFG_DP_H_ */
