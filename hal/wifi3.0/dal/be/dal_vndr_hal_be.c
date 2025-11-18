@@ -528,6 +528,29 @@ dal_vndr_hal_rx_msdu_desc_info_get_be(
 	msdu_desc_info->msdu_len = HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info);
 }
 
+/**
+ * dal_vndr_hal_rxdma_buff_addr_info_set_be() - set the buffer_addr_info of the
+ * rxdma ring entry.
+ * @rxdma_entry: descriptor entry
+ * @paddr: physical address of nbuf data pointer.
+ * @cookie: SW cookie used as a index to SW rx desc.
+ * @manager: who owns the nbuf.
+ *
+ */
+static inline void
+dal_vndr_hal_rxdma_buff_addr_info_set_be(void *rxdma_entry,
+					 dma_addr_t paddr, uint32_t cookie,
+					 uint8_t manager)
+{
+	uint32_t paddr_lo = ((uint64_t)paddr & 0x00000000ffffffff);
+	uint32_t paddr_hi = ((uint64_t)paddr & 0xffffffff00000000) >> 32;
+
+	HAL_RXDMA_PADDR_LO_SET(rxdma_entry, paddr_lo);
+	HAL_RXDMA_PADDR_HI_SET(rxdma_entry, paddr_hi);
+	HAL_RXDMA_COOKIE_SET(rxdma_entry, cookie);
+	HAL_RXDMA_MANAGER_SET(rxdma_entry, manager);
+}
+
 void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_lmac_id =
@@ -586,4 +609,6 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_rx_tlv_msdu_done_get_be;
 	hal_soc->ops->dal_vndr_hal_rx_msdu_desc_info_get =
 				dal_vndr_hal_rx_msdu_desc_info_get_be;
+	hal_soc->ops->dal_vndr_hal_rxdma_buff_addr_info_set =
+				dal_vndr_hal_rxdma_buff_addr_info_set_be;
 }
