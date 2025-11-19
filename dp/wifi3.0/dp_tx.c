@@ -7604,9 +7604,6 @@ more_data:
 						 tx_desc->flags, tx_desc->id);
 				DP_STATS_INC(soc, tx.tx_desc_duplicate, 1);
 				qdf_assert_always(0);
-				dp_tx_comp_free_buf(soc, tx_desc, false);
-				dp_tx_desc_release(soc, tx_desc,
-						   tx_desc->pool_id);
 				goto next_desc;
 			}
 
