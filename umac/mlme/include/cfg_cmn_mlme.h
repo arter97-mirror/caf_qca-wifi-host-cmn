@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -128,10 +129,41 @@
 	CFG_VALUE_OR_DEFAULT, \
 	"MLO reconfig reassoc is supported by target")
 
+/*
+ * <ini>
+ * adaptive_early_rx - Adaptive early rx drift for extra sleep
+ * @Min: 0
+ * @Max: 10
+ * @Default: 5
+ *
+ * This ini is used to configure the adaptive early rx drift for extra sleep
+ * slop parameter (WMI_PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP).
+ *
+ * Related: None
+ *
+ * Supported Feature: Power Management
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define MIN_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP 0
+#define MAX_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP 10
+#define DEF_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP 5
+
+#define CFG_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP CFG_INI_UINT( \
+	"adaptive_early_rx", \
+	MIN_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP, \
+	MAX_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP, \
+	DEF_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP, \
+	CFG_VALUE_OR_DEFAULT, \
+	"Adaptive early rx drift for extra sleep")
+
 #define CFG_CMN_MLME_ALL \
 	CFG(CFG_MLME_MAX_CHAN_SWITCH_IE_ENABLE) \
 	CFG(CFG_MLME_11BE_TARGET_CAPAB) \
 	CFG(CFG_MLME_MLO_RECONFIG_REASSOC_ENABLE) \
-	CFG_MLME_11BE_ALL
+	CFG_MLME_11BE_ALL \
+	CFG(CFG_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP)
 
 #endif /* __CFG_CMN_MLME_H */
