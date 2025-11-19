@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -162,4 +163,14 @@ wlan_psoc_mlme_get_11be_capab(struct wlan_objmgr_psoc *psoc, bool *val);
  */
 QDF_STATUS
 wlan_psoc_mlme_set_11be_capab(struct wlan_objmgr_psoc *psoc, bool val);
+
+/**
+ * wlan_psoc_mlme_get_early_rx() - Get the early rx drift for target
+ * @psoc: psoc handle
+ * @val: pointer to the output variable
+ *
+ * return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_psoc_mlme_get_early_rx(struct wlan_objmgr_psoc *psoc, uint8_t *val);
 #endif
