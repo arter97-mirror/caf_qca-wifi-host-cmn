@@ -256,6 +256,85 @@ os_timer_func(lut_ageout_timer_task)
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
 }
 
+os_timer_func(cfr_report_interval_timer_task)
+{
+	struct pdev_cfr *pcfr = NULL;
+	struct wlan_objmgr_pdev *pdev = NULL;
+
+	OS_GET_TIMER_ARG(pcfr, struct pdev_cfr*);
+
+	if (!pcfr) {
+		cfr_err("pdev object for CFR is null");
+		return;
+	}
+
+	pdev = pcfr->pdev_obj;
+	if (!pdev) {
+		cfr_err("pdev is null");
+		return;
+	}
+
+	if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_CFR_ID)
+	    != QDF_STATUS_SUCCESS) {
+		cfr_err("failed to get pdev reference");
+		return;
+	}
+
+	if (pcfr->nl_cb.cfr_nl_cb_report_interval)
+		pcfr->nl_cb.cfr_nl_cb_report_interval(pcfr->nl_cb.vdev_id);
+
+	if (pcfr->report_interval_timer_init && pcfr->report_interval) {
+		qdf_timer_mod(&pcfr->report_interval_timer,
+			      pcfr->report_interval);
+	}
+
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+}
+
+/**
+ * target_if_cfr_start_report_interval_timer() - Start timer to send last report
+ * entries
+ * @pdev: pointer to pdev object
+ *
+ * Return: None
+ */
+void target_if_cfr_start_report_interval_timer(struct wlan_objmgr_pdev *pdev)
+{
+	struct pdev_cfr *pcfr;
+
+	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev,
+						     WLAN_UMAC_COMP_CFR);
+	if (!pcfr) {
+		cfr_err("pdev object for CFR is null");
+		return;
+	}
+
+	if (pcfr->report_interval_timer_init)
+		qdf_timer_mod(&pcfr->report_interval_timer,
+			      pcfr->report_interval);
+}
+
+/**
+ * target_if_cfr_stop_report_interval_timer() - Stop timer to send last report
+ * entries
+ * @pdev: pointer to pdev object
+ *
+ * Return: None
+ */
+void target_if_cfr_stop_report_interval_timer(struct wlan_objmgr_pdev *pdev)
+{
+	struct pdev_cfr *pcfr;
+
+	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev, WLAN_UMAC_COMP_CFR);
+	if (!pcfr) {
+		cfr_err("pdev object for CFR is null");
+		return;
+	}
+
+	if (pcfr->report_interval_timer_init)
+		qdf_timer_stop(&pcfr->report_interval_timer);
+}
+
 /**
  * cfr_free_pending_dbr_events() - Flush all pending DBR events. This is useful
  * in cases where for RXTLV drops in host monitor status ring is huge.
@@ -917,7 +996,13 @@ static void target_if_enh_cfr_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cfr_rx_tlv_process;
 	tx_ops->cfr_tx_ops.cfr_update_global_cfg =
 		target_if_cfr_update_global_cfg;
+
 	target_if_enh_cfr_add_ops(tx_ops);
+
+	tx_ops->cfr_tx_ops.cfr_start_report_interval_timer =
+		target_if_cfr_start_report_interval_timer;
+	tx_ops->cfr_tx_ops.cfr_stop_report_interval_timer =
+		target_if_cfr_stop_report_interval_timer;
 }
 #else
 static void target_if_enh_cfr_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)

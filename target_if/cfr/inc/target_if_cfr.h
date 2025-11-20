@@ -211,4 +211,31 @@ void release_lut_entry(struct wlan_objmgr_pdev *pdev,
  */
 os_timer_func(lut_ageout_timer_task);
 
+/**
+ * target_if_cfr_start_report_interval_timer() - Start timer to send
+ * last report entries
+ * @pdev: pointer to pdev object
+ *
+ * Return: None
+ */
+void target_if_cfr_start_report_interval_timer(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * target_if_cfr_stop_report_interval_timer() - Stop timer to send last data
+ * entries
+ * @pdev: pointer to pdev object
+ *
+ * Return: None
+ */
+void target_if_cfr_stop_report_interval_timer(struct wlan_objmgr_pdev *pdev);
+
+/*
+ * cfr_report_interval_timer_task() - Timer to send report to userspace
+ *
+ * Return: none
+ * NB: kernel-doc script doesn't parse os_timer_func
+
+ */
+os_timer_func(cfr_report_interval_timer_task);
+
 #endif
