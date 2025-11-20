@@ -71,8 +71,10 @@ dp_tx_set_min_rates_for_critical_frames(struct dp_soc *soc,
 	 * HOL queue= TXPT_CLASSIFY_INFO_BANK1 and index 0, udp entry of peer.
 	 */
 	if (QDF_NBUF_CB_TX_EXTRA_IS_CRITICAL(nbuf)) {
-		hal_tx_desc_txpt_ci_sel(hal_tx_desc, 0);
-		hal_tx_desc_txpt_ci_use_udp_flow_entry(hal_tx_desc, 1);
+		hal_tx_desc_txpt_ci_sel(hal_tx_desc,
+					TXPT_CLASSIFY_INFO_SEL_HOL_QUEUE);
+		hal_tx_desc_txpt_ci_use_udp_flow_entry(hal_tx_desc,
+						       FP_USE_NON_UDP);
 		hal_tx_desc_set_tx_notify_frame(hal_tx_desc,
 						TX_SEMI_HARD_NOTIFY_E);
 	}

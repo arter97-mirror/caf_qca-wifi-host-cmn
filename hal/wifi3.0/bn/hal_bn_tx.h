@@ -42,6 +42,15 @@ union hal_tx_bank_config {
 	uint32_t val;
 };
 
+/* <enum 0 FP_USE_NON_UDP> Use the non-UDP flow pointer (flow 0) */
+#define FP_USE_NON_UDP 0
+
+/* <enum 1 FP_USE_UDP> Use the UDP flow pointer (flow 1) */
+#define FP_USE_UDP 1
+
+/* TXPT_CLASSIFY_INFO_SEL 8 HOL queue */
+#define TXPT_CLASSIFY_INFO_SEL_HOL_QUEUE 8
+
 /*---------------------------------------------------------------------------
  *  Function declarations and documentation
  * ---------------------------------------------------------------------------
