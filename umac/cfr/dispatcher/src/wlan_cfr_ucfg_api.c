@@ -27,6 +27,8 @@
 #ifdef WLAN_ENH_CFR_ENABLE
 #include "cdp_txrx_ctrl.h"
 #endif
+#include "wlan_scan_api.h"
+
 
 #ifdef WLAN_ENH_CFR_ENABLE
 static bool cfr_is_filter_enabled(struct cfr_rcc_param *rcc_param)
@@ -56,6 +58,48 @@ static bool cfr_is_rcc_enabled(struct pdev_cfr *pa)
 	return false;
 }
 #endif
+
+void ucfg_cfr_send_stop(struct wlan_objmgr_vdev *vdev, uint32_t reason)
+{
+	struct wlan_objmgr_pdev *pdev;
+	struct pdev_cfr *pcfr;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (!vdev) {
+		cfr_err("invalid vdev");
+		return;
+	}
+
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		cfr_err("pdev is NULL");
+		return;
+	}
+
+	status = wlan_objmgr_pdev_try_get_ref(pdev, WLAN_CFR_ID);
+	if (status != QDF_STATUS_SUCCESS) {
+		cfr_err("Failed to get pdev reference");
+		return;
+	}
+
+	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev,
+						     WLAN_UMAC_COMP_CFR);
+	if (!pcfr) {
+		cfr_err("pdev is NULL");
+		goto exit;
+	}
+
+	if (!pcfr->is_cfr_version_v3) {
+		cfr_err("CFR not supported on this chip");
+		goto exit;
+	}
+
+	tgt_cfr_send_stop(pdev, reason);
+
+exit:
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+}
+
 int ucfg_cfr_start_capture(struct wlan_objmgr_pdev *pdev,
 			   struct wlan_objmgr_peer *peer,
 			   struct cfr_capture_params *params)
@@ -117,6 +161,9 @@ int ucfg_cfr_start_capture(struct wlan_objmgr_pdev *pdev,
 	}
 
 	status = tgt_cfr_start_capture(pdev, peer, params);
+
+	if (status == 0 && pa->report_interval)
+		tgt_cfr_start_report_interval_timer(pdev);
 
 	if (status == 0) {
 		pe->bandwidth = params->bandwidth;
@@ -790,6 +837,7 @@ ucfg_cfr_set_frame_type_subtype(struct wlan_objmgr_vdev *vdev,
 	struct wlan_objmgr_pdev *pdev = NULL;
 	struct ta_ra_cfr_cfg *curr_cfg = NULL;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	uint32_t subtype_mask = 0;
 
 	status = dev_sanity_check(vdev, &pdev, &pcfr);
 	if (status != QDF_STATUS_SUCCESS)
@@ -802,6 +850,30 @@ ucfg_cfr_set_frame_type_subtype(struct wlan_objmgr_vdev *vdev,
 		wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
 		return QDF_STATUS_E_INVAL;
 	}
+
+	if (pcfr->is_cfr_version_v3) {
+		subtype_mask = 1 << pcfr->frame_sub_type;
+
+		switch (pcfr->frame_type) {
+		case 0: /* Management frame */
+			params->expected_mgmt_subtype =
+				subtype_mask;
+			break;
+		case 1: /* Control frame */
+			params->expected_ctrl_subtype =
+				subtype_mask;
+			break;
+		case 2: /* Data frame */
+			params->expected_data_subtype =
+				subtype_mask;
+			break;
+		default:
+			cfr_err("Invalid frame type %d", pcfr->frame_type);
+			break;
+		}
+	}
+	cfr_debug("frame type %d frame sub type %d",
+		  pcfr->frame_type, subtype_mask);
 
 	/* Populating current config based on user's input */
 	curr_cfg = &pcfr->rcc_param.curr[params->grp_id];
@@ -1199,6 +1271,33 @@ QDF_STATUS ucfg_cfr_rcc_dump_lut(struct wlan_objmgr_vdev *vdev)
 	return status;
 }
 
+QDF_STATUS ucfg_cfr_stop_report_interval_timer(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_objmgr_pdev *pdev = NULL;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (!vdev) {
+		cfr_err("vdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		cfr_err("pdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_CFR_ID) !=
+	    QDF_STATUS_SUCCESS) {
+		return QDF_STATUS_E_INVAL;
+	}
+
+	tgt_cfr_stop_report_interval_timer(pdev);
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+
+	return status;
+}
+
 static void cfr_set_filter(struct wlan_objmgr_pdev *pdev, bool enable,
 			   struct cdp_monitor_filter *filter_val,
 			   bool cfr_enable_monitor_mode)
@@ -1335,8 +1434,21 @@ QDF_STATUS ucfg_cfr_committed_rcc_config(struct wlan_objmgr_vdev *vdev)
 		cfr_set_filter(pdev, 0, &filter_val, cfr_enable_monitor_mode);
 	}
 
+	if (pcfr->is_cfr_rx && !pcfr->is_associated) {
+		pcfr->rcc_param.unassoc_capture_config =
+			pcfr->unassoc_capture_config;
+		pcfr->rcc_param.unassoc_channel_mhz =
+			pcfr->freq;
+		pcfr->rcc_param.unassoc_phy_mode =
+			pcfr->unassoc_phy_mode;
+	}
+
 	/* Trigger wmi to start the TLV processing. */
 	status = tgt_cfr_config_rcc(pdev, &pcfr->rcc_param);
+
+	if (pcfr->report_interval && status == QDF_STATUS_SUCCESS)
+		tgt_cfr_start_report_interval_timer(pdev);
+
 	if (status == QDF_STATUS_SUCCESS) {
 		cfr_info("CFR commit done\n");
 		/* Update global config */
