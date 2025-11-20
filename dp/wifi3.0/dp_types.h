@@ -1478,6 +1478,12 @@ struct dp_soc_stats {
 		uint32_t hp_oos2;
 		/* tx desc freed as part of vdev detach */
 		uint32_t tx_comp_exception;
+		/* Number of duplicate tx desc */
+		uint32_t tx_desc_duplicate;
+		/* Number of unused tx desc */
+		uint32_t tx_desc_unused;
+		/* Number of tx desc when pdev is down */
+		uint32_t tx_desc_pdev_down;
 		/* TQM drops after/during peer delete */
 		uint64_t tqm_drop_no_peer;
 		/* Number of tx completions reaped per WBM2SW release ring */
