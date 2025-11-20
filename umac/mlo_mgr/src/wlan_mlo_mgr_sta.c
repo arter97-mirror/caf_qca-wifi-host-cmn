@@ -155,6 +155,17 @@ ucfg_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev)
 	return wlan_mlo_get_assoc_link_vdev(vdev);
 }
 
+struct wlan_objmgr_vdev *
+mlo_get_assoc_vdev_from_idle_link(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
+
+	if (!mlo_dev_ctx)
+		return NULL;
+
+	return mlo_get_assoc_link_vdev(mlo_dev_ctx);
+}
+
 /**
  * mlo_is_mld_disconnected - Check whether MLD is disconnected
  *

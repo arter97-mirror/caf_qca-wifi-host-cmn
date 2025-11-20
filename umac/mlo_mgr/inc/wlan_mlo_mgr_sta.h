@@ -236,6 +236,16 @@ static inline
 void mlo_sta_clear_vdev_roam_pointers(struct wlan_objmgr_vdev *vdev)
 {}
 #endif /* WLAN_FEATURE_ROAM_OFFLOAD */
+
+/**
+ * mlo_get_assoc_vdev_from_idle_link - get assoc link from idle vdev of ML STA
+ * @vdev: vdev object
+ *
+ * Return: MLD assoc link vdev
+ */
+struct wlan_objmgr_vdev *
+mlo_get_assoc_vdev_from_idle_link(struct wlan_objmgr_vdev *vdev);
+
 #ifndef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * ucfg_mlo_is_mld_connected - Check whether MLD is connected
@@ -1256,6 +1266,13 @@ bool mlo_is_ml_connection_in_progress(struct wlan_objmgr_psoc *psoc,
 				      uint8_t vdev_id)
 {
 	return false;
+}
+
+static inline
+struct wlan_objmgr_vdev *
+mlo_get_assoc_vdev_from_idle_link(struct wlan_objmgr_vdev *vdev)
+{
+	return vdev;
 }
 
 static inline

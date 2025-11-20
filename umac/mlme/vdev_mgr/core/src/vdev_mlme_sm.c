@@ -26,6 +26,7 @@
 #include "vdev_mlme_sm.h"
 #include <wlan_utility.h>
 #include <include/wlan_mlme_cmn.h>
+#include <wlan_cm_roam_api.h>
 
 /**
  * mlme_vdev_set_state() - set mlme state
@@ -211,8 +212,11 @@ static bool mlme_vdev_state_init_event(void *ctx, uint16_t event,
 		 * sync from firmware. The caller shall make sure the ROAM
 		 * event is sent on right vdev. It's not expected to receive
 		 * WLAN_VDEV_SM_EV_ROAM event on station vdev.
+		 * Cross-VDEV roaming: The link vdev in idle state receives
+		 * ROAM requests if fw sends roam events on non-assoc vdev
 		 */
-		if (wlan_vdev_mlme_is_mlo_link_vdev(vdev_mlme->vdev)) {
+		if (wlan_vdev_mlme_is_mlo_link_vdev(vdev_mlme->vdev) ||
+		    wlan_cm_is_cross_vdev_roaming(vdev_mlme->vdev)) {
 			mlme_vdev_sm_transition_to(vdev_mlme, WLAN_VDEV_S_UP);
 			sm_status = mlme_vdev_sm_deliver_event(vdev_mlme, event,
 							       event_data_len,
@@ -523,7 +527,8 @@ static bool mlme_vdev_state_up_event(void *ctx, uint16_t event,
 		 * event is sent on right vdev. It's not expected to receive
 		 * WLAN_VDEV_SM_EV_ROAM event on station vdev.
 		 */
-		if (wlan_vdev_mlme_is_mlo_link_vdev(vdev_mlme->vdev)) {
+		if (wlan_vdev_mlme_is_mlo_link_vdev(vdev_mlme->vdev) ||
+		    wlan_cm_is_cross_vdev_roaming(vdev_mlme->vdev)) {
 			mlme_vdev_sm_transition_to(vdev_mlme,
 						   WLAN_VDEV_SS_UP_ACTIVE);
 			sm_status = mlme_vdev_sm_deliver_event(vdev_mlme, event,
