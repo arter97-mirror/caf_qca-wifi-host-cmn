@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -24,6 +25,15 @@
 #include <wlan_objmgr_pdev_obj.h>
 #include <wlan_cfr_public_structs.h>
 #include <wlan_cfr_utils_api.h>
+
+/**
+ * ucfg_cfr_send_stop() - function to start cfr capture for connected client
+ * @vdev: pointer to vdev object
+ * @reason: reason
+ *
+ * Return: status of start capture.
+ */
+void ucfg_cfr_send_stop(struct wlan_objmgr_vdev *vdev, uint32_t reason);
 
 /**
  * ucfg_cfr_start_capture() - function to start cfr capture for connected client
@@ -337,6 +347,14 @@ QDF_STATUS ucfg_cfr_rcc_clr_dbg_counters(struct wlan_objmgr_vdev *vdev);
  * Return: status
  */
 QDF_STATUS ucfg_cfr_rcc_dump_lut(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * ucfg_cfr_stop_report_interval_timer() - stop report interval timer
+ * @vdev: pointer to vdev object
+ *
+ * Return: status
+ */
+QDF_STATUS ucfg_cfr_stop_report_interval_timer(struct wlan_objmgr_vdev *vdev);
 
 /**
  * ucfg_cfr_subscribe_ppdu_desc() - User space interface to
