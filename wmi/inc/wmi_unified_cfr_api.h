@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, 2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -70,6 +71,20 @@ QDF_STATUS
 wmi_extract_cfr_pdev_phase_delta_event(wmi_unified_t wmi_handle,
 				       void *evt_buf,
 				       struct wmi_cfr_phase_delta_param *param);
+
+/**
+ * wmi_extract_cfr_capture_filter_event() - WMI function to extract the
+ * capture filter event.
+ * @wmi_handle: WMI handle
+ * @evt_buf: Buffer holding the event data
+ * @param: cfr params to be updated from event
+ *
+ * Return: QDF_STATUS_SUCCESS if success, else returns proper error code.
+ */
+QDF_STATUS
+wmi_extract_cfr_capture_filter_event(wmi_unified_t wmi_handle,
+				     void *evt_buf,
+				     struct cfr_capture_filter_param *param);
 
 #ifdef WLAN_RCC_ENHANCED_AOA_SUPPORT
 QDF_STATUS

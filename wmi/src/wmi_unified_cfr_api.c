@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -60,6 +61,20 @@ wmi_extract_cfr_pdev_phase_delta_event(wmi_unified_t wmi_handle,
 		return wmi_handle->ops->extract_cfr_phase_param(wmi_handle,
 								evt_buf,
 								param);
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_cfr_capture_filter_event(wmi_unified_t wmi_handle,
+				     void *evt_buf,
+				       struct  cfr_capture_filter_param *param)
+{
+	if (wmi_handle->ops->extract_cfr_capture_filter_resp)
+		return wmi_handle->ops->extract_cfr_capture_filter_resp(
+				wmi_handle,
+				evt_buf,
+				param);
+
 	return QDF_STATUS_E_FAILURE;
 }
 
