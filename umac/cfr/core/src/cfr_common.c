@@ -652,6 +652,10 @@ QDF_STATUS cfr_stop_indication(struct wlan_objmgr_vdev *vdev)
 	if (pa->nl_cb.cfr_nl_cb)
 		return QDF_STATUS_SUCCESS;
 
+	if (pa->nl_cb.cfr_nl_cb_v3 &&
+	    pa->is_cfr_version_v3)
+		return QDF_STATUS_SUCCESS;
+
 	status = cfr_streamfs_write(pa, (const void *)CFR_STOP_STR,
 				    sizeof(CFR_STOP_STR));
 
