@@ -8709,6 +8709,7 @@ more_data:
 				dp_tx_comp_info_rl("pdev in down state %d",
 						   tx_desc->id);
 				tx_desc->flags |= DP_TX_DESC_FLAG_TX_COMP_ERR;
+				DP_STATS_INC(soc, tx.tx_desc_pdev_down, 1);
 				dp_tx_comp_free_buf(soc, tx_desc, false);
 				dp_tx_desc_release(soc, tx_desc,
 						   tx_desc->pool_id);
@@ -8719,6 +8720,7 @@ more_data:
 				!(tx_desc->flags & DP_TX_DESC_FLAG_QUEUED_TX)) {
 				dp_tx_comp_alert("Txdesc invalid, flgs = %x,id = %d",
 						 tx_desc->flags, tx_desc->id);
+				DP_STATS_INC(soc, tx.tx_desc_unused, 1);
 				qdf_assert_always(0);
 			}
 
@@ -8726,6 +8728,7 @@ more_data:
 			    DP_TX_DESC_FLAG_REAPED)) {
 				dp_tx_comp_alert("Txdesc duplicate entry, flags = %x,id = %d",
 						 tx_desc->flags, tx_desc->id);
+				DP_STATS_INC(soc, tx.tx_desc_duplicate, 1);
 				qdf_assert_always(0);
 				goto next_desc;
 			}
