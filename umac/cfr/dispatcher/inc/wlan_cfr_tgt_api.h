@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -148,6 +148,30 @@ uint32_t tgt_cfr_info_send(struct wlan_objmgr_pdev *pdev, void *head,
 			   size_t hlen, void *data, size_t dlen, void *tail,
 			   size_t tlen);
 
+/**
+ * tgt_cfr_info_send_v3() - API to send cfr info for version 3
+ * @pdev: pointer to pdev_object
+ * @header:cfr info head
+ * @data: pointer to cfr info data
+ * @dlen: data len
+ * @info_v3: version 3 info
+ *
+ * Return: success/failure of cfr info send
+ */
+uint32_t tgt_cfr_info_send_v3(struct wlan_objmgr_pdev *pdev,
+			      struct csi_cfr_header header,
+			      void *data, size_t dlen,
+			      struct cfr_info_v3 info_v3);
+
+/**
+ * tgt_cfr_send_stop() - API to send cfr stop for version 3
+ * @pdev: pdev obj
+ * @reason: reason
+ *
+ * Return: success/failure of cfr info send
+ */
+uint32_t tgt_cfr_send_stop(struct wlan_objmgr_pdev *pdev, uint32_t reason);
+
 #ifdef WLAN_ENH_CFR_ENABLE
 /**
  * tgt_cfr_config_rcc() - API to set RCC
@@ -220,5 +244,24 @@ void tgt_cfr_update_global_cfg(struct wlan_objmgr_pdev *pdev);
  */
 QDF_STATUS tgt_cfr_subscribe_ppdu_desc(struct wlan_objmgr_pdev *pdev,
 				       bool is_subscribe);
+
+/**
+ * tgt_cfr_start_report_interval_timer() - API to start timer to send
+ * last report entries
+ * @pdev: pointer to pdev_object
+ *
+ * Return: None
+ */
+void tgt_cfr_start_report_interval_timer(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * tgt_cfr_stop_report_interval_timer() - API to stop timer to send last reporta
+ * entries
+ * @pdev: pointer to pdev_object
+ *
+ * Return: None
+ */
+void tgt_cfr_stop_report_interval_timer(struct wlan_objmgr_pdev *pdev);
+
 #endif
 #endif
