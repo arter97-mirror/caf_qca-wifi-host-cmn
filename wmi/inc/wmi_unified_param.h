@@ -5704,7 +5704,7 @@ typedef enum {
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	wmi_pdev_power_boost_eventid,
 #endif
-
+	wmi_cfr_capture_filter_resp_eventid,
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -6919,6 +6919,8 @@ typedef enum {
 #endif
 	wmi_service_cck_rx_support_5g,
 	wmi_service_cck_tx_support_5g,
+	wmi_service_cfr_unassoc_rx_capture_support,
+	wmi_service_cfr_assoc_tx_capture_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -10156,6 +10158,7 @@ struct peer_vlan_config_param {
  * @mcs_rate:
  * @gi_type:
  * @agc_gain_tbl_index:
+ * @seq_num: seq number
  */
 typedef struct {
 	uint32_t capture_method;
@@ -10181,6 +10184,7 @@ typedef struct {
 	uint32_t mcs_rate;
 	uint32_t gi_type;
 	uint8_t agc_gain_tbl_index[WMI_HOST_MAX_CHAINS];
+	uint32_t seq_num;
 } wmi_cfr_peer_tx_event_param;
 
 /**

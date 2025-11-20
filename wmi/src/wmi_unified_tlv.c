@@ -24787,6 +24787,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	event_ids[wmi_pdev_power_boost_eventid] = WMI_PDEV_POWER_BOOST_EVENTID;
 #endif
+	event_ids[wmi_cfr_capture_filter_resp_eventid] =
+			WMI_CFR_CAPTURE_FILTER_RESP_EVENTID;
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -25497,6 +25499,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_CCK_RX_SUPPORT_5GHZ;
 	wmi_service[wmi_service_cck_tx_support_5g] =
 				WMI_SERVICE_CCK_TX_SUPPORT_5GHZ;
+	wmi_service[wmi_service_cfr_unassoc_rx_capture_support] =
+				WMI_SERVICE_CFR_UNASSOC_RX_CAPTURE_SUPPORT;
+	wmi_service[wmi_service_cfr_assoc_tx_capture_support] =
+				WMI_SERVICE_CFR_ASSOC_TX_CAPTURE_SUPPORT;
 }
 
 /**
