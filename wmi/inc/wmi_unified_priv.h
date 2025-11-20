@@ -3132,6 +3132,11 @@ QDF_STATUS
 (*extract_cfr_phase_param)(wmi_unified_t wmi_handle,
 			   void *evt_buf,
 			   struct wmi_cfr_phase_delta_param *param);
+
+QDF_STATUS
+(*extract_cfr_capture_filter_resp)(wmi_unified_t wmi_handle,
+				   void *evt_buf,
+				   struct cfr_capture_filter_param *param);
 #ifdef WLAN_RCC_ENHANCED_AOA_SUPPORT
 QDF_STATUS
 (*extract_cfr_enh_phase_data)(wmi_unified_t wmi_handle,
