@@ -3776,10 +3776,6 @@ void hif_schedule_ce_tasklet(struct hif_opaque_softc *hif_ctx, uint8_t pipe)
 		ce_dispatch_interrupt(pipe, &hif_state->tasklets[pipe]);
 	}
 }
-#else
-void hif_schedule_ce_tasklet(struct hif_opaque_softc *hif_ctx, uint8_t pipe)
-{
-}
 #endif
 
 uint16_t
