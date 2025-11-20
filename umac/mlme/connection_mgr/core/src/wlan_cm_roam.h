@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -531,6 +531,13 @@ QDF_STATUS cm_roam_abort_event(struct wlan_objmgr_vdev *vdev);
 static inline bool cm_roam_offload_enabled(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
+}
+
+static inline QDF_STATUS cm_prepare_roam_cmd(struct cnx_mgr *cm_ctx,
+			       struct cm_req **roam_req,
+			       enum wlan_cm_source source)
+{
+	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif
 

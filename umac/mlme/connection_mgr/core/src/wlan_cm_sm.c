@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -95,6 +95,7 @@ static bool cm_state_init_event(void *ctx, uint16_t event,
 {
 	struct cnx_mgr *cm_ctx = ctx;
 	bool event_handled = true;
+	struct cm_req *roam_cm_req;
 	QDF_STATUS status;
 
 	switch (event) {
@@ -153,6 +154,28 @@ static bool cm_state_init_event(void *ctx, uint16_t event,
 			 */
 			event_handled = false;
 		}
+		break;
+	case WLAN_CM_SM_EV_ROAM_START:
+		/**
+		 * Handle ROAM_START in INIT state for cross-vdev roaming.
+		 * This occurs when roaming is initiated on a vdev that is
+		 * not currently connected (e.g., vdev-0 connected, vdev-1 idle,
+		 * and FW decides to roam using vdev-1).
+		 */
+		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
+					     CM_ROAMING_FW);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlme_err("CM vdev %d: Failed to prepare roam cmd in INIT state",
+				 wlan_vdev_get_id(cm_ctx->vdev));
+			event_handled = false;
+			break;
+		}
+
+		/* Transition from INIT to ROAMING state */
+		cm_sm_transition_to(cm_ctx, WLAN_CM_S_ROAMING);
+		cm_sm_deliver_event_sync(cm_ctx, event,
+					 sizeof(*roam_cm_req),
+					 roam_cm_req);
 		break;
 	case WLAN_CM_SM_EV_ROAM_SYNC:
 		/**
