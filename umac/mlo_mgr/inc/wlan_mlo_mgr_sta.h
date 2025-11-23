@@ -164,6 +164,78 @@ bool mlo_is_mld_vdevs_active(struct wlan_objmgr_vdev *vdev);
  */
 bool mlo_is_mld_connected(struct wlan_objmgr_vdev *vdev);
 
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+/**
+ * mlo_sta_allocate_shared_roam_objects() - Allocates shared
+ * roaming-related objects for an MLO STA context
+ * creates roam_ext_obj and initializes RSO config.
+ * creates shared_mlme_roam create.
+ * @vdev: Pointer to vdev object
+ * @ml_dev: Pointer to MLO device context
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+mlo_sta_allocate_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
+				     struct wlan_mlo_dev_context *ml_dev);
+
+/**
+ * mlo_sta_assign_shared_roam_objects() - Assign shared roaming objects to
+ * vdev
+ * Binds previously allocated shared roaming objects to vdev-local structures
+ * Assigns @sta_ctx->roam_ext_obj to the connection manager @cm_ctx->ext_cm_ptr.
+ * Assigns @sta_ctx->shared_mlme_roam to the legacy MLME private mlme_priv->mlme_roam.
+ * @vdev: Pointer to vdev object
+ * @ml_dev: Pointer to MLO device context
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+mlo_sta_assign_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
+				   struct wlan_mlo_dev_context *ml_dev);
+
+/**
+ * mlo_sta_free_shared_roam_objects() - Frees the shared roaming objects
+ * owner by MLO STA context
+ * @ml_dev: Pointer to MLO device context
+ *
+ * Return: None
+ */
+void mlo_sta_free_shared_roam_objects(struct wlan_mlo_dev_context *ml_dev);
+
+/**
+ * mlo_sta_clear_vdev_roam_pointers() - Clears vdev-local references
+ * to shared roaming objects that are owned by the MLO STA
+ * @vdev: Pointer to vdev object
+ *
+ * Return: None
+ */
+void mlo_sta_clear_vdev_roam_pointers(struct wlan_objmgr_vdev *vdev);
+
+#else
+QDF_STATUS
+mlo_sta_allocate_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
+				     struct wlan_mlo_dev_context *ml_dev)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS
+mlo_sta_assign_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
+				   struct wlan_mlo_dev_context *ml_dev)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void mlo_sta_free_shared_roam_objects(struct wlan_mlo_dev_context *ml_dev)
+{}
+
+static inline
+void mlo_sta_clear_vdev_roam_pointers(struct wlan_objmgr_vdev *vdev)
+{}
+#endif /* WLAN_FEATURE_ROAM_OFFLOAD */
 #ifndef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * ucfg_mlo_is_mld_connected - Check whether MLD is connected

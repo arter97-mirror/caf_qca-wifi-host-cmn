@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1172,7 +1172,8 @@ static QDF_STATUS mlo_dev_ctx_init(struct wlan_objmgr_vdev *vdev)
 
 			if (wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE)
 				wlan_mlo_vdev_alloc_aid_mgr(ml_dev, vdev);
-
+			if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE)
+				mlo_sta_assign_shared_roam_objects(vdev, ml_dev);
 			break;
 		}
 		mlo_dev_lock_release(ml_dev);
@@ -1208,6 +1209,16 @@ static QDF_STATUS mlo_dev_ctx_init(struct wlan_objmgr_vdev *vdev)
 		}
 		wlan_minidump_log(ml_dev->sta_ctx, sizeof(*ml_dev->sta_ctx),
 				  psoc, WLAN_MD_CP_MLO_STA, "wlan_mlo_sta");
+		status = mlo_sta_allocate_shared_roam_objects(vdev, ml_dev);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("Failed to allocate shared roam objects");
+			tsf_recalculation_lock_destroy(ml_dev);
+			mlo_dev_lock_destroy(ml_dev);
+			qdf_mem_free(ml_dev->sta_ctx);
+			qdf_mem_free(ml_dev);
+			return status;
+		}
+		status = mlo_sta_assign_shared_roam_objects(vdev, ml_dev);
 		copied_conn_req_lock_create(ml_dev->sta_ctx);
 		mlo_sta_reset_requested_emlsr_mode(ml_dev);
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
@@ -1444,6 +1455,8 @@ static QDF_STATUS mlo_dev_ctx_deinit(struct wlan_objmgr_vdev *vdev)
 					     sizeof(*ml_dev->sta_ctx), psoc,
 					     WLAN_MD_CP_MLO_STA,
 					     "wlan_mlo_sta");
+			mlo_sta_clear_vdev_roam_pointers(vdev);
+			mlo_sta_free_shared_roam_objects(ml_dev);
 			qdf_mem_free(ml_dev->sta_ctx);
 			ml_dev->sta_ctx = NULL;
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
@@ -1478,7 +1491,8 @@ static QDF_STATUS mlo_dev_ctx_deinit(struct wlan_objmgr_vdev *vdev)
 		tsf_recalculation_lock_destroy(ml_dev);
 		mlo_dev_lock_destroy(ml_dev);
 		qdf_mem_free(ml_dev);
-	}
+	} else
+		mlo_sta_clear_vdev_roam_pointers(vdev);
 	ml_link_lock_release(g_mlo_ctx);
 	return status;
 }

@@ -1084,6 +1084,8 @@ struct link_assoc_rsp_info {
  * @ml_link_control_mode: link control mode configured via user space
  * @ml_chan_switch_in_progress: Flag to track CSA at MLD level
  * @ttlm_send_info: TTLM send command into
+ * @roam_ext_obj: Shared RSO config object for ML STA vdev
+ * @shared_mlme_roam: Shared mlme_roam object for ML STA vdev
  */
 struct wlan_mlo_sta {
 	qdf_bitmap(wlan_connect_req_links, WLAN_UMAC_MLO_MAX_VDEVS);
@@ -1103,6 +1105,8 @@ struct wlan_mlo_sta {
 	struct wlan_cm_disconnect_req *disconn_req;
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	struct wlan_cm_connect_resp *copied_reassoc_rsp;
+	struct cm_ext_obj *roam_ext_obj;
+	struct wlan_mlme_roam *shared_mlme_roam;
 #endif
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct ml_link_state_cmd_info ml_link_state;

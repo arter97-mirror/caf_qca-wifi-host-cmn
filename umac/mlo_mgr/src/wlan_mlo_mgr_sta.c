@@ -37,6 +37,8 @@
 #include <wlan_mlo_mgr_peer.h>
 #include <qdf_module.h>
 #include <wlan_mlo_mgr_public_api.h>
+#include <wlan_mlme_api.h>
+#include <../../core/src/wlan_cm_vdev_api.h>
 
 #ifdef WLAN_FEATURE_11BE_MLO
 static QDF_STATUS mlo_disconnect_req(struct wlan_objmgr_vdev *vdev,
@@ -194,6 +196,141 @@ bool mlo_is_mld_connecting(struct wlan_objmgr_vdev *vdev)
 			return true;
 	}
 	return false;
+}
+
+QDF_STATUS
+mlo_sta_allocate_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
+				     struct wlan_mlo_dev_context *ml_dev)
+{
+	struct wlan_mlo_sta *sta_ctx;
+
+	if (!ml_dev || !ml_dev->sta_ctx) {
+		mlo_err("Invalid ml_dev or sta_ctx");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	sta_ctx = ml_dev->sta_ctx;
+	sta_ctx->roam_ext_obj = qdf_mem_common_alloc(sizeof(struct cm_ext_obj));
+	if (!sta_ctx->roam_ext_obj) {
+		mlo_err("Failed to allocate roam_ext_obj");
+		return QDF_STATUS_E_NOMEM;
+	}
+	wlan_cm_rso_config_init(vdev, &sta_ctx->roam_ext_obj->rso_cfg);
+
+	sta_ctx->shared_mlme_roam = qdf_mem_common_alloc(sizeof(struct wlan_mlme_roam));
+	if (!sta_ctx->shared_mlme_roam) {
+		mlo_err("Failed to allocate shared_mlme_roam");
+		wlan_cm_rso_config_deinit(&sta_ctx->roam_ext_obj->rso_cfg);
+		qdf_mem_free(sta_ctx->roam_ext_obj);
+		sta_ctx->roam_ext_obj = NULL;
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+mlo_sta_assign_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
+				   struct wlan_mlo_dev_context *ml_dev)
+{
+	struct wlan_mlo_sta *sta_ctx;
+	struct cnx_mgr *cm_ctx;
+	struct vdev_mlme_obj *vdev_mlme;
+	struct mlme_legacy_priv *mlme_priv;
+
+	if (!vdev || !ml_dev || !ml_dev->sta_ctx) {
+		mlo_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	sta_ctx = ml_dev->sta_ctx;
+	if (!sta_ctx->roam_ext_obj || !sta_ctx->shared_mlme_roam) {
+		mlo_err("vdev_id:%d Shared objects not allocated",
+			wlan_vdev_get_id(vdev));
+		return QDF_STATUS_E_INVAL;
+	}
+
+	cm_ctx = cm_get_cm_ctx(vdev);
+	if (!cm_ctx) {
+		mlo_err("vdev_id:%d NULL cm_ctx", wlan_vdev_get_id(vdev));
+		return QDF_STATUS_E_INVAL;
+	}
+	cm_ctx->ext_cm_ptr = sta_ctx->roam_ext_obj;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme || !vdev_mlme->ext_vdev_ptr) {
+		mlo_err("vdev_id:%d Invalid vdev_mlme", wlan_vdev_get_id(vdev));
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlme_priv = vdev_mlme->ext_vdev_ptr;
+	mlme_priv->mlme_roam = sta_ctx->shared_mlme_roam;
+
+	mlo_debug("vdev_id:%d Assigned shared objects: cm_ext=%pK mlme_roam=%pK",
+		  wlan_vdev_get_id(vdev),
+		  sta_ctx->roam_ext_obj,
+		  sta_ctx->shared_mlme_roam);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+void
+mlo_sta_free_shared_roam_objects(struct wlan_mlo_dev_context *ml_dev)
+{
+	struct wlan_mlo_sta *sta_ctx;
+
+	if (!ml_dev || !ml_dev->sta_ctx) {
+		mlo_err("Invalid ml_dev or sta_ctx");
+		return;
+	}
+
+	sta_ctx = ml_dev->sta_ctx;
+
+	if (sta_ctx->roam_ext_obj) {
+		mlo_debug("Freeing roam_ext_obj=%pK",
+			  sta_ctx->roam_ext_obj);
+		wlan_cm_rso_config_deinit(&sta_ctx->roam_ext_obj->rso_cfg);
+		qdf_mem_free(sta_ctx->roam_ext_obj);
+		sta_ctx->roam_ext_obj = NULL;
+	}
+
+	if (sta_ctx->shared_mlme_roam) {
+		mlo_debug("Freeing shared_mlme_roam=%pK",
+			  sta_ctx->shared_mlme_roam);
+		qdf_mem_free(sta_ctx->shared_mlme_roam);
+		sta_ctx->shared_mlme_roam = NULL;
+	}
+	mlo_debug("Freed all shared roaming objects");
+}
+
+void
+mlo_sta_clear_vdev_roam_pointers(struct wlan_objmgr_vdev *vdev)
+{
+	struct cnx_mgr *cm_ctx;
+	struct vdev_mlme_obj *vdev_mlme;
+	struct mlme_legacy_priv *mlme_priv;
+
+	if (!vdev) {
+		mlo_err("NULL vdev");
+		return;
+	}
+
+	cm_ctx = cm_get_cm_ctx(vdev);
+	if (cm_ctx && cm_ctx->ext_cm_ptr) {
+		mlo_debug("vdev_id:%d Clearing cm_ext_ptr=%pK",
+			  wlan_vdev_get_id(vdev), cm_ctx->ext_cm_ptr);
+		cm_ctx->ext_cm_ptr = NULL;
+	}
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (vdev_mlme && vdev_mlme->ext_vdev_ptr) {
+		mlme_priv = vdev_mlme->ext_vdev_ptr;
+		if (mlme_priv->mlme_roam) {
+			mlo_debug("vdev_id:%d Clearing mlme_roam=%pK",
+				  wlan_vdev_get_id(vdev), mlme_priv->mlme_roam);
+			mlme_priv->mlme_roam = NULL;
+		}
+	}
 }
 
 bool mlo_is_ml_connection_in_progress(struct wlan_objmgr_psoc *psoc,
