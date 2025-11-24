@@ -126,6 +126,7 @@
  * @WLAN_IPA_CTRL_FILTER_DEL_NOTIFY: OPT WIFI DP CTRL filter delete notification
  * @WLAN_IPA_CTRL_FILTER_HIGH_TPUT_NOTIFY: OPT WIFI DP CTRL filter
  * delete notification in high TPUT
+ * @WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY: TX pkt classify info idx notification
  * @WLAN_IPA_UC_OPCODE_MAX: IPA UC max operation code
  */
 enum wlan_ipa_uc_op_code {
@@ -147,6 +148,7 @@ enum wlan_ipa_uc_op_code {
 	WLAN_IPA_CTRL_TX_REINJECT = 13,
 	WLAN_IPA_CTRL_FILTER_DEL_NOTIFY = 14,
 	WLAN_IPA_CTRL_FILTER_HIGH_TPUT_NOTIFY = 15,
+	WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY = 16,
 	/* keep this last */
 	WLAN_IPA_UC_OPCODE_MAX
 };
@@ -271,6 +273,18 @@ enum wlan_ipa_init_state {
 	WLAN_IPA_STATE_SETUP_DONE = 2,
 	WLAN_IPA_STATE_PIPE_CONNECTION_DONE = 3,
 	WLAN_IPA_STATE_PIPE_ENABLED = 4
+};
+
+/**
+ * enum wlan_ipa_work_flag: flag to indicated works
+ * @WLAN_IPA_FLAG_MSG_USES_LIST: list uses in work msg
+ * @WLAN_IPA_FLAG_MSG_USES_LIST_FLT_DEL: to notify ctrl flt delete
+ * @WLAN_IPA_FLAG_MSG_TX_PKT_CLASSIFY: to send tx pkt classify info
+ */
+enum wlan_ipa_work_flag {
+	WLAN_IPA_FLAG_MSG_USES_LIST = 0x1,
+	WLAN_IPA_FLAG_MSG_USES_LIST_FLT_DEL = 0x2,
+	WLAN_IPA_FLAG_MSG_TX_PKT_CLASSIFY = 0x4
 };
 
 /**
@@ -669,6 +683,7 @@ struct uc_rm_work_struct {
  * @op_code: IPA Operation type
  * @hdl: handle of filter deleted
  * @result: result of deletion
+ * @rsvd: reserved
  */
 struct msg_elem {
 	uint8_t vdev_id;
@@ -676,6 +691,7 @@ struct msg_elem {
 	uint16_t op_code;
 	uint32_t hdl;
 	uint16_t result;
+	uint16_t rsvd;
 };
 
 /**

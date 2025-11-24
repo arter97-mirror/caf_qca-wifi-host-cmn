@@ -412,6 +412,19 @@ QDF_STATUS dp_ipa_disable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 QDF_STATUS dp_ipa_set_perf_level(int client, uint32_t max_supported_bw_mbps,
 				 qdf_ipa_wdi_hdl_t hdl);
 #ifdef IPA_OPT_WIFI_DP
+#ifdef CONFIG_BORON
+/**
+ * dp_ipa_set_tx_classify_idx() - set tx pkt classify info
+ * @soc: dp soc
+ * @vdev_id: vdev id
+ * @peer_classify_info_idx: peer classify info idx
+ *
+ * Return
+ */
+void dp_ipa_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+				uint8_t peer_classify_info_idx);
+#endif
+
 QDF_STATUS dp_ipa_rx_super_rule_setup(struct cdp_soc_t *soc_hdl,
 				      void *flt_params);
 
@@ -918,6 +931,13 @@ static inline bool
 dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id)
 {
 	return false;
+}
+#endif
+#ifndef IPA_OPT_WIFI_DP
+static inline
+void dp_ipa_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+				uint8_t peer_classify_info_idx)
+{
 }
 #endif
 #endif /* _DP_IPA_H_ */

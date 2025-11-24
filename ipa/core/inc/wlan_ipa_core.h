@@ -984,6 +984,14 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_rel_cb_wrapper(void *ipa_ctx);
  */
 void wlan_ipa_wdi_opt_dpath_notify_flt_rlsd(int result0, int result1);
 
+/**
+ * wlan_ipa_set_tx_classify_idx() - set peer_classify_info_idx
+ * @vdev_id: vdev id
+ * @peer_classify_info_idx: peer_classify_info_idx
+ */
+void wlan_ipa_set_tx_classify_idx(uint8_t vdev_id,
+				  uint8_t peer_classify_info_idx);
+
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb - Add filter tuple to lce filter

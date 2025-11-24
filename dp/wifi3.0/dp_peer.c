@@ -3319,6 +3319,8 @@ void dp_vdev_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
 		return;
 	}
 	vdev->txpt_classify_idx = peer_classify_info_idx;
+	dp_ipa_set_tx_classify_idx(soc, vdev_id,
+				   peer_classify_info_idx);
 	qdf_atomic_set(&vdev->txpt_classify_idx_valid, 1);
 
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);

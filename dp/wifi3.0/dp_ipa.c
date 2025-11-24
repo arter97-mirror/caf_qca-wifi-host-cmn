@@ -3984,6 +3984,26 @@ bool dp_ipa_rx_wdsext_iface(struct cdp_soc_t *soc_hdl, uint8_t peer_id,
 #endif
 
 #ifdef IPA_OPT_WIFI_DP
+#ifdef CONFIG_BORON
+void dp_ipa_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+				uint8_t peer_classify_info_idx)
+{
+	struct dp_vdev *vdev;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_IPA);
+	if (!vdev) {
+		dp_err("invalid vdev, id - %d", vdev_id);
+		return;
+	}
+
+	if (vdev->opmode == wlan_op_mode_sta)
+		wlan_ipa_set_tx_classify_idx(vdev_id,
+					     peer_classify_info_idx);
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_IPA);
+}
+#endif
+
 /**
  * dp_ipa_rx_super_rule_setup()- pass cce super rule params to fw from ipa
  *

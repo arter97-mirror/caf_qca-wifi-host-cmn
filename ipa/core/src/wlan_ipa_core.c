@@ -59,8 +59,6 @@
 #define OPT_DP_TARGET_RESUME_WAIT_COUNT 10
 #endif
 #define WLAN_IPA_MSG_LIST_SIZE_MAX 16
-#define WLAN_IPA_FLAG_MSG_USES_LIST 0x1
-#define WLAN_IPA_FLAG_MSG_USES_LIST_FLT_DEL 0x2
 #define WLAN_IPA_FLT_DEL_WAIT_TIMEOUT_MS 200
 #define WLAN_IPA_CTRL_FLT_ADD_WAIT_TIMEOUT_MS 10
 #define WLAN_IPA_CTRL_FLT_ADD_WAIT_COUNT 20
@@ -3860,6 +3858,26 @@ wlan_ipa_set_peer_id(struct wlan_ipa_priv *ipa_ctx,
 	return QDF_STATUS_SUCCESS;
 }
 #endif
+#if defined(CONFIG_BORON) && defined(IPA_OPT_WIFI_DP)
+/**
+ * wlan_ipa_update_txpt_classfy_info_idx() - send tx pkt classify info to IPA
+ * @ipa_ctx: ipa context
+ * @msg: work msg
+ *
+ * Return:
+ */
+static inline
+void wlan_ipa_update_txpt_classfy_info_idx(struct wlan_ipa_priv *ipa_ctx,
+					   struct op_msg_type *msg)
+{
+}
+#else
+static inline
+void wlan_ipa_update_txpt_classfy_info_idx(struct wlan_ipa_priv *ipa_ctx,
+					   struct op_msg_type *msg)
+{
+}
+#endif
 
 /**
  * __wlan_ipa_wlan_evt() - IPA event handler
@@ -6333,6 +6351,8 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 	} else if (wlan_ipa_uc_op_metering(ipa_ctx, op_msg)) {
 		ipa_err("Invalid message: op_code=%d, reason=%d",
 			msg->op_code, ipa_ctx->stat_req_reason);
+	} else if (msg->op_code == WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY) {
+		wlan_ipa_update_txpt_classfy_info_idx(ipa_ctx, msg);
 	}
 
 	qdf_mem_free(op_msg);
@@ -6342,7 +6362,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 static QDF_STATUS
 wlan_fw_event_msg_list_enqueue(struct uc_op_work_struct *uc_op_work,
 			       uint8_t op_code, uint8_t vdev_id,
-			       qdf_nbuf_t nbuf)
+			       qdf_nbuf_t nbuf, uint16_t tx_pkt_classify_info)
 {
 	uint16_t hp, tp;
 	struct op_msg_list *list = uc_op_work->msg_list;
@@ -6373,6 +6393,7 @@ wlan_fw_event_msg_list_enqueue(struct uc_op_work_struct *uc_op_work,
 	msg->vdev_id = vdev_id;
 	msg->nbuf = nbuf;
 	msg->op_code = op_code;
+	msg->rsvd = tx_pkt_classify_info;
 	hp++;
 	hp &= (list->list_size - 1);
 	list->hp = hp;
@@ -6468,30 +6489,7 @@ static void __wlan_ipa_uc_fw_op_event_handler(void *data)
 		uc_op_work->msg = NULL;
 		ipa_debug("posted msg %d", msg->op_code);
 		wlan_ipa_uc_op_cb(msg, ipa_ctx);
-	} else if (uc_op_work->flag & WLAN_IPA_FLAG_MSG_USES_LIST_FLT_DEL) {
-		ipa_debug("filter delete notification");
-		notify_msg = wlan_fw_event_msg_list_dequeue(uc_op_work);
-		qdf_event_set(&ipa_ctx->ipa_ctrl_flt_rm_shutdown_evt);
-		while (notify_msg) {
-			msg = qdf_mem_malloc(sizeof(*msg));
-			if (!msg) {
-				ipa_err("Message memory allocation failed");
-				return;
-			}
-
-			msg->ctrl_del_hdl =
-				notify_msg->hdl;
-			msg->op_code =
-				notify_msg->op_code;
-			msg->rsvd_snd = notify_msg->result;
-			ipa_debug("posted msg %d", msg->op_code);
-			wlan_ipa_uc_op_cb(msg, ipa_ctx);
-			notify_msg =
-				 wlan_fw_event_msg_list_dequeue(uc_op_work);
-		}
-
 	} else {
-		ipa_debug("dequeuing msg from list");
 		notify_msg = wlan_fw_event_msg_list_dequeue(uc_op_work);
 		while (notify_msg) {
 			msg = qdf_mem_malloc(sizeof(*msg));
@@ -6501,12 +6499,26 @@ static void __wlan_ipa_uc_fw_op_event_handler(void *data)
 			}
 
 			msg->op_code = notify_msg->op_code;
-			msg->nbuf = notify_msg->nbuf;
-			msg->vdev_id = notify_msg->vdev_id;
-			ipa_debug("posted msg %d", msg->op_code);
+			ipa_debug("msg op code - %d", msg->op_code);
+			if (uc_op_work->flag &
+			    WLAN_IPA_FLAG_MSG_USES_LIST_FLT_DEL) {
+				msg->ctrl_del_hdl = notify_msg->hdl;
+				msg->rsvd_snd = notify_msg->result;
+				if (notify_msg->result ==
+				  WLAN_IPA_WDI_OPT_DPATH_RESP_SUCCESS_SHUTDOWN)
+					qdf_event_set(
+				     &ipa_ctx->ipa_ctrl_flt_rm_shutdown_evt);
+			} else if (uc_op_work->flag &
+				   WLAN_IPA_FLAG_MSG_TX_PKT_CLASSIFY) {
+				msg->vdev_id = notify_msg->vdev_id;
+				msg->rsvd = notify_msg->rsvd;
+			} else {
+				msg->nbuf = notify_msg->nbuf;
+				msg->vdev_id = notify_msg->vdev_id;
+			}
+
 			wlan_ipa_uc_op_cb(msg, ipa_ctx);
-			notify_msg =
-				wlan_fw_event_msg_list_dequeue(uc_op_work);
+			notify_msg = wlan_fw_event_msg_list_dequeue(uc_op_work);
 		}
 	}
 }
@@ -6599,7 +6611,8 @@ QDF_STATUS wlan_ipa_uc_ol_init(struct wlan_ipa_priv *ipa_ctx,
 		ipa_ctx->uc_op_work[i].msg = NULL;
 		ipa_ctx->uc_op_work[i].ipa_priv_bp = ipa_ctx;
 		if (i == WLAN_IPA_CTRL_TX_REINJECT ||
-		    i == WLAN_IPA_CTRL_FILTER_DEL_NOTIFY) {
+		    i == WLAN_IPA_CTRL_FILTER_DEL_NOTIFY ||
+		    i == WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY) {
 			ipa_ctx->uc_op_work[i].msg_list = qdf_mem_malloc(
 						sizeof(struct op_msg_list));
 			ipa_ctx->uc_op_work[i].flag =
@@ -6726,7 +6739,8 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx)
 		qdf_mem_free(ipa_ctx->uc_op_work[i].msg);
 		ipa_ctx->uc_op_work[i].msg = NULL;
 		if (i == WLAN_IPA_CTRL_TX_REINJECT ||
-		    i == WLAN_IPA_CTRL_FILTER_DEL_NOTIFY) {
+		    i == WLAN_IPA_CTRL_FILTER_DEL_NOTIFY ||
+		    i == WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY) {
 			qdf_mem_free(ipa_ctx->uc_op_work[i].msg_list->entries);
 			qdf_spinlock_destroy(&ipa_ctx->uc_op_work[i].
 					     msg_list->lock);
@@ -7549,6 +7563,27 @@ void wlan_ipa_wdi_opt_dpath_notify_flt_add_rem_cb(int flt0_rslt, int flt1_rslt)
 	qdf_event_set(&ipa_obj->ipa_flt_evnt);
 }
 
+void wlan_ipa_set_tx_classify_idx(uint8_t vdev_id,
+				  uint8_t peer_classify_info_idx)
+{
+	struct uc_op_work_struct *uc_op_work;
+	struct wlan_ipa_priv *ipa_ctx = gp_ipa;
+	QDF_STATUS status;
+
+	uc_op_work = &ipa_ctx->uc_op_work[WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY];
+	status = wlan_fw_event_msg_list_enqueue(
+					uc_op_work,
+					WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY,
+					vdev_id, NULL, peer_classify_info_idx);
+	if (status != QDF_STATUS_SUCCESS) {
+		ipa_err("peer classify info idx enqueue failed");
+		return;
+	}
+
+	uc_op_work->flag |= WLAN_IPA_FLAG_MSG_TX_PKT_CLASSIFY;
+	qdf_sched_work(0, &uc_op_work->work);
+}
+
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /*
  * dp_ipa_clean_tx_filter_db() - clean filters from host db
@@ -8178,7 +8213,7 @@ void wlan_ipa_tx_pkt_opt_dp_ctrl(uint8_t vdev_id, qdf_nbuf_t nbuf)
 		&ipa_ctx->uc_op_work[WLAN_IPA_CTRL_TX_REINJECT];
 	status = wlan_fw_event_msg_list_enqueue(uc_op_work,
 						WLAN_IPA_CTRL_TX_REINJECT,
-						vdev_id, nbuf);
+						vdev_id, nbuf, 0);
 	if (status != QDF_STATUS_SUCCESS) {
 		ipa_log_err("nbuf message enqueue failed");
 		ipa_ctx->ctrl_stats.reinject_pkt_enq_fail_cnt++;
