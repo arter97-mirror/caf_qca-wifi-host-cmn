@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -305,6 +305,7 @@ enum infra_cp_stats_id {
 	TYPE_REQ_CTRL_PATH_BMISS_STAT,
 	TYPE_REQ_CTRL_PATH_PMLO_STAT,
 	TYPE_REQ_CTRL_PATH_RRM_STA_STAT,
+	TYPE_REQ_CTRL_PATH_ENHANCED_STAT, /* Added for enhanced stat support */
 };
 
 /**
