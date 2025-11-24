@@ -5446,6 +5446,11 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 
 	dp_pdev_update_fast_rx_flag(soc, pdev);
 
+	for (i = 0; i < UL_DELAY_CALC_ID_MAX; i++) {
+		vdev->ul_delay_stats[i].prev_delay_accum = 0;
+		vdev->ul_delay_stats[i].prev_pkt_accum = 0;
+	}
+
 	return QDF_STATUS_SUCCESS;
 
 fail0:
@@ -14004,7 +14009,6 @@ update_tx_ilp:
 	return soc->tx_ilp_enable;
 }
 #endif
-
 static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_soc_attach_target = dp_soc_attach_target_wifi3,
 	.txrx_vdev_attach = dp_vdev_attach_wifi3,
