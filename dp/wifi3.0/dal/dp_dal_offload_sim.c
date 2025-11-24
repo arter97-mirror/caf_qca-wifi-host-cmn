@@ -11,6 +11,56 @@
 #define OFFLOAD_SIM_IRQ_NAME_LEN 40
 #ifdef FEATURE_DP_DAL_SIM
 
+/**
+ * dp_dal_offload_sim_ring_access_start() - Start ring access with lock
+ * @offload_ctx: Pointer to offload simulation context
+ * @ring: Pointer to vendor HAL SRNG structure
+ *
+ * This function takes the ring lock and calls the vendor HAL API to start
+ * ring access. It encapsulates the locking and ring access start operations
+ * to ensure consistent behavior across all ring access operations.
+ */
+static inline void dp_dal_offload_sim_ring_access_start(
+				struct dp_dal_offload_sim_ctx *offload_ctx,
+				struct dal_vndr_hal_srng *ring)
+{
+	if (!offload_ctx || !ring) {
+		dp_err("NULL context in ring_access_start");
+		return;
+	}
+
+	/* Take the ring lock */
+	DAL_VNDR_SRNG_LOCK(&ring->lock);
+
+	/* Begin ring access using vendor HAL API */
+	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, ring);
+}
+
+/**
+ * dp_dal_offload_sim_ring_access_end() - End ring access and release lock
+ * @offload_ctx: Pointer to offload simulation context
+ * @ring: Pointer to vendor HAL SRNG structure
+ *
+ * This function calls the vendor HAL API to end ring access and releases
+ * the ring lock. It encapsulates the ring access end and unlock operations
+ * to ensure consistent behavior across all ring access operations.
+ */
+static inline void dp_dal_offload_sim_ring_access_end(
+				struct dp_dal_offload_sim_ctx *offload_ctx,
+				struct dal_vndr_hal_srng *ring)
+{
+	if (!offload_ctx || !ring) {
+		dp_err("NULL context in ring_access_end");
+		return;
+	}
+
+	/* End ring access using vendor HAL API */
+	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, ring);
+
+	/* Release the ring lock */
+	DAL_VNDR_SRNG_UNLOCK(&ring->lock);
+}
+
 #ifdef DAL_OFFLOAD_SIM
 /**
  * dp_dal_offload_sim_hal_addrs_params_init() - Form hal_srng address parameters
@@ -488,9 +538,9 @@ int dp_dal_offload_sim_tx_hw_enqueue(
 	tcl_ring = &offload_ctx->tx_ring_hal_srng[ring_id];
 
 	dp_debug("Enqueuing TX descriptor for ring_id %u", ring_id);
-	DAL_VNDR_SRNG_LOCK(&tcl_ring->lock);
-	/* Begin ring access */
-	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, tcl_ring);
+
+	/* Begin ring access with lock */
+	dp_dal_offload_sim_ring_access_start(offload_ctx, tcl_ring);
 
 	/* Get next available descriptor slot in TCL ring */
 	hal_tx_desc = dal_vndr_hal_srng_src_get_next(&offload_ctx->hal_soc,
@@ -507,9 +557,8 @@ int dp_dal_offload_sim_tx_hw_enqueue(
 
 	dp_debug("TX descriptor enqueued successfully for ring_id %u", ring_id);
 exit:
-	/* End ring access and update the HP */
-	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, tcl_ring);
-	DAL_VNDR_SRNG_UNLOCK(&tcl_ring->lock);
+	/* End ring access and release lock */
+	dp_dal_offload_sim_ring_access_end(offload_ctx, tcl_ring);
 
 	return ret;
 }
@@ -517,22 +566,16 @@ exit:
 int dp_dal_offload_sim_get_reo_desc(
 				struct dp_dal_sim_ctx *dal_sim_ctx,
 				u16 ring_id,
-				void **desc_list,
-				u32 *count,
 				u32 budget)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *reo_ring;
 	void *reo_desc;
 	u32 retrieved = 0;
+	int ret;
 
 	if (!dal_sim_ctx) {
 		dp_err("NULL simulator context in get_reo_desc");
-		return -EINVAL;
-	}
-
-	if (!desc_list || !count) {
-		dp_err("NULL desc_list or count pointer in get_reo_desc");
 		return -EINVAL;
 	}
 
@@ -549,11 +592,11 @@ int dp_dal_offload_sim_get_reo_desc(
 	dp_debug("Getting REO descriptors for ring_id %u with budget %u",
 		 ring_id, budget);
 
-	/* Lock the ring */
-	DAL_VNDR_SRNG_LOCK(&reo_ring->lock);
+	/* Begin ring access with lock */
+	dp_dal_offload_sim_ring_access_start(offload_ctx, reo_ring);
 
-	/* Begin ring access */
-	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, reo_ring);
+	/* Start accessing descriptor list with lock */
+	dp_dal_sim_desc_list_access_start(&dal_sim_ctx->rx_desc_list[ring_id]);
 
 	/* Reap REO descriptors until budget is reached or no more descriptor */
 	while (retrieved < budget) {
@@ -573,45 +616,45 @@ int dp_dal_offload_sim_get_reo_desc(
 			break;
 		}
 
-		/* Store descriptor in the list */
-		desc_list[retrieved] = reo_desc;
+		/* Enqueue descriptor to DAL sim descriptor list */
+		ret = dp_dal_sim_desc_list_enqueue(
+					&dal_sim_ctx->rx_desc_list[ring_id],
+					reo_desc);
+		if (ret) {
+			dp_err_rl("Failed to enqueue RX desc, ret=%d", ret);
+			/* Decrementing TP in HAL ring since reaping stopped */
+			dal_vndr_hal_srng_dst_dec_tp(&offload_ctx->hal_soc,
+						     reo_ring);
+			break;
+		}
 		retrieved++;
 	}
 
-	/* End ring access */
-	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, reo_ring);
+	/* End accessing descriptor list and release lock */
+	dp_dal_sim_desc_list_access_end(&dal_sim_ctx->rx_desc_list[ring_id]);
 
-	/* Unlock the ring */
-	DAL_VNDR_SRNG_UNLOCK(&reo_ring->lock);
-
-	/* Update the count */
-	*count = retrieved;
+	/* End ring access and release lock */
+	dp_dal_offload_sim_ring_access_end(offload_ctx, reo_ring);
 
 	dp_debug("Retrieved %u REO descriptors for ring_id %u",
 		 retrieved, ring_id);
 
-	return 0;
+	return retrieved;
 }
 
 int dp_dal_offload_sim_get_tx_compl_desc(
 				struct dp_dal_sim_ctx *dal_sim_ctx,
 				u16 ring_id,
-				void **desc_list,
-				u32 *count,
 				u32 budget)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *tx_compl_ring;
 	void *tx_compl_desc;
 	u32 retrieved = 0;
+	int ret;
 
 	if (!dal_sim_ctx) {
 		dp_err("NULL simulator context in get_tx_compl_desc");
-		return -EINVAL;
-	}
-
-	if (!desc_list || !count) {
-		dp_err("NULL desc_list or count pointer in get_tx_compl_desc");
 		return -EINVAL;
 	}
 
@@ -628,11 +671,12 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 	dp_debug("Getting TX compl descriptors for ring_id %u with budget %u",
 		 ring_id, budget);
 
-	/* Lock the ring */
-	DAL_VNDR_SRNG_LOCK(&tx_compl_ring->lock);
+	/* Begin ring access with lock */
+	dp_dal_offload_sim_ring_access_start(offload_ctx, tx_compl_ring);
 
-	/* Begin ring access */
-	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, tx_compl_ring);
+	/* Start accessing descriptor list with lock */
+	dp_dal_sim_desc_list_access_start(
+				&dal_sim_ctx->tx_cpl_desc_list[ring_id]);
 
 	/* Reap TX completion descriptors until budget is reached or
 	 * no more descriptors.
@@ -655,24 +699,32 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 			break;
 		}
 
-		/* Store descriptor in the list */
-		desc_list[retrieved] = tx_compl_desc;
+		/* Enqueue descriptor to DAL sim descriptor list */
+		ret = dp_dal_sim_desc_list_enqueue(
+					&dal_sim_ctx->tx_cpl_desc_list[ring_id],
+					tx_compl_desc);
+		if (ret) {
+			dp_err_rl("Failed to enqueue TX compl desc, ret=%d",
+				  ret);
+			/* Decrementing TP in HAL ring since reaping stopped */
+			dal_vndr_hal_srng_dst_dec_tp(&offload_ctx->hal_soc,
+						     tx_compl_ring);
+			break;
+		}
 		retrieved++;
 	}
 
-	/* End ring access */
-	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, tx_compl_ring);
+	/* End accessing descriptor list and release lock */
+	dp_dal_sim_desc_list_access_end(
+				&dal_sim_ctx->tx_cpl_desc_list[ring_id]);
 
-	/* Unlock the ring */
-	DAL_VNDR_SRNG_UNLOCK(&tx_compl_ring->lock);
-
-	/* Update the count */
-	*count = retrieved;
+	/* End ring access and release lock */
+	dp_dal_offload_sim_ring_access_end(offload_ctx, tx_compl_ring);
 
 	dp_debug("Retrieved %u TX completion descriptors for ring_id %u",
 		 retrieved, ring_id);
 
-	return 0;
+	return retrieved;
 }
 
 uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
@@ -697,14 +749,18 @@ uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
 	/* Get RX refill ring */
 	rx_refill_ring = &offload_ctx->rx_refill_ring_hal_srng;
 
+	/* Take the ring lock */
 	DAL_VNDR_SRNG_LOCK(&rx_refill_ring->lock);
+
 	/* Get number of available entries using vendor HAL API */
 	num_entries_avail = dal_vndr_hal_srng_src_num_avail(
 							&offload_ctx->hal_soc,
 							rx_refill_ring,
 							1);
 
+	/* Release the ring lock */
 	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
+
 	dp_debug("RX refill ring available entries: %u", num_entries_avail);
 
 	return num_entries_avail;
@@ -740,11 +796,8 @@ int dp_dal_offload_sim_rxbm_sync(
 	/* Get RX refill ring */
 	rx_refill_ring = &offload_ctx->rx_refill_ring_hal_srng;
 
-	/* Lock the ring */
-	DAL_VNDR_SRNG_LOCK(&rx_refill_ring->lock);
-
-	/* Begin ring access */
-	dal_vndr_hal_srng_access_start(&offload_ctx->hal_soc, rx_refill_ring);
+	/* Begin ring access with lock */
+	dp_dal_offload_sim_ring_access_start(offload_ctx, rx_refill_ring);
 
 	/* Copy descriptors one by one to the refill ring entries */
 	for (i = 0; i < cnt; i++) {
@@ -763,11 +816,8 @@ int dp_dal_offload_sim_rxbm_sync(
 				       refill_desc, rx_buff[i]);
 	}
 
-	/* End ring access and update the HP */
-	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, rx_refill_ring);
-
-	/* Unlock the ring */
-	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
+	/* End ring access and release lock */
+	dp_dal_offload_sim_ring_access_end(offload_ctx, rx_refill_ring);
 
 	dp_debug("synced %u RX buffer descriptors to refill ring",
 		 i);

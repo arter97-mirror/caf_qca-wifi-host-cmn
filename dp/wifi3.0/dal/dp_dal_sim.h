@@ -8,6 +8,26 @@
 
 #include "dp_dal.h"
 #include <qdf_atomic.h>
+#include <qdf_list.h>
+
+/**
+ * struct dp_dal_sim_desc_list - Descriptor list for ring IDs
+ * @hp: Head pointer
+ * @tp: Tail pointer
+ * @entries: Array of descriptor entries
+ * @list_size: Maximum size of the list
+ * @lock: Spinlock to protect the list
+ */
+struct dp_dal_sim_desc_list {
+	uint16_t hp;
+	uint16_t tp;
+	void **entries;
+	uint16_t list_size;
+	qdf_spinlock_t lock;
+};
+
+/* Default descriptor list size */
+#define DP_DAL_SIM_DESC_LIST_SIZE 128
 
 /* Externs */
 extern struct platform_bus_ops *global_plat_ops;
@@ -165,6 +185,8 @@ struct dal_sim_srng {
  * @tx_cmpl_ring: Array of HAL SRNG structures for TX completion rings
  * @tx_ring: Array of HAL SRNG structures for TX rings
  * @rx_refill_ring: HAL SRNG structure for RX refill ring
+ * @rx_desc_list: Descriptor lists for RX rings (per ring ID)
+ * @tx_cpl_desc_list: Descriptor lists for TX completion rings (per ring ID)
  * @stats: Statistics for the simulator
  * @sim_ctx_initialized: Flag indicating if context is initialized
  * @dev: Pointer to device
@@ -204,6 +226,10 @@ struct dp_dal_sim_ctx {
 	struct dal_sim_srng tx_ring[DAL_SIM_NUM_TX_RINGS];
 	struct dal_sim_srng rx_refill_ring;
 
+	/* Descriptor lists for maintaining descriptors per ring ID */
+	struct dp_dal_sim_desc_list rx_desc_list[DAL_SIM_NUM_RX_RINGS];
+	struct dp_dal_sim_desc_list tx_cpl_desc_list[DAL_SIM_NUM_TX_RINGS];
+
 	/* Statistics */
 	struct dal_sim_stats stats;
 
@@ -234,6 +260,169 @@ struct dp_dal_sim_ctx {
  * already scheduled and queues work on the appropriate work queue.
  */
 void dp_dal_sim_schedule_work(void *arg);
+
+/**
+ * dp_dal_sim_desc_list_init() - Initialize descriptor list
+ * @desc_list: Pointer to descriptor list structure
+ * @list_size: Maximum size of the list
+ *
+ * This function initializes a descriptor list with the specified size.
+ * It allocates memory for the entries array and initializes HP/TP and lock.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int dp_dal_sim_desc_list_init(struct dp_dal_sim_desc_list *desc_list,
+			      uint16_t list_size);
+
+/**
+ * dp_dal_sim_desc_list_deinit() - Deinitialize descriptor list
+ * @desc_list: Pointer to descriptor list structure
+ *
+ * This function deinitializes a descriptor list and frees allocated memory.
+ */
+void dp_dal_sim_desc_list_deinit(struct dp_dal_sim_desc_list *desc_list);
+
+/**
+ * dp_dal_sim_is_desc_list_empty() - Check if descriptor list is empty in a
+ * thread-safe manner
+ * @desc_list: Pointer to descriptor list structure
+ *
+ * Returns true if the descriptor list is empty, false otherwise.
+ * The function takes and releases the list lock for thread safety.
+ */
+bool dp_dal_sim_is_desc_list_empty(struct dp_dal_sim_desc_list *desc_list);
+
+/**
+ * dp_dal_sim_desc_list_enqueue() - Enqueue descriptor to list
+ * @desc_list: Pointer to descriptor list structure
+ * @desc: Descriptor pointer to enqueue
+ *
+ * This function enqueues a descriptor to the list using HP/TP mechanism.
+ * It's called by the offload engine to queue descriptors.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static inline int dp_dal_sim_desc_list_enqueue(
+	struct dp_dal_sim_desc_list *desc_list,
+	void *desc)
+{
+	uint16_t hp, tp, num_entries;
+
+	if (!desc_list) {
+		dp_err("NULL descriptor list pointer");
+		return -EINVAL;
+	}
+
+	if (!desc) {
+		dp_err("NULL descriptor pointer");
+		return -EINVAL;
+	}
+
+	hp = desc_list->hp;
+	tp = desc_list->tp;
+
+	/* Calculate available entries using IPA-style logic */
+	if (tp > hp)
+		num_entries = (tp - hp - 1);
+	else
+		num_entries = (desc_list->list_size - hp + tp - 1);
+
+	if (!num_entries) {
+		dp_err_rl("Descriptor list is full, HP=%u, TP=%u",
+			  hp, tp);
+		return -ENOSPC;
+	}
+
+	/* Store descriptor at current HP position */
+	desc_list->entries[hp] = desc;
+
+	/* Update HP using bit masking */
+	hp++;
+	hp &= (desc_list->list_size - 1);
+	desc_list->hp = hp;
+
+	dp_debug("Descriptor enqueued, HP=%u, TP=%u", hp, tp);
+	return 0;
+}
+
+/**
+ * dp_dal_sim_desc_list_dequeue() - Dequeue descriptor from list
+ * @desc_list: Pointer to descriptor list structure
+ *
+ * This function dequeues a descriptor from the list using HP/TP mechanism.
+ * It's called by DAL sim to get descriptors for WLAN driver.
+ *
+ * Return: Descriptor pointer on success, NULL if list is empty
+ */
+static inline void *dp_dal_sim_desc_list_dequeue(
+	struct dp_dal_sim_desc_list *desc_list)
+{
+	void *desc = NULL;
+	uint16_t hp, tp;
+
+	if (!desc_list) {
+		dp_err("NULL descriptor list pointer");
+		return NULL;
+	}
+
+	hp = desc_list->hp;
+	tp = desc_list->tp;
+
+	/* Check if list is empty */
+	if (hp == tp) {
+		dp_debug("Descriptor list is empty, HP=%u, TP=%u", hp, tp);
+		return NULL;
+	}
+
+	/* Get descriptor from current TP position */
+	desc = desc_list->entries[tp];
+
+	/* Update TP using bit masking */
+	tp++;
+	tp &= (desc_list->list_size - 1);
+	desc_list->tp = tp;
+
+	dp_debug("Descriptor dequeued, HP=%u, TP=%u", hp, tp);
+	return desc;
+}
+
+/**
+ * dp_dal_sim_desc_list_access_start() - Start accessing descriptor list
+ * @desc_list: Pointer to descriptor list structure
+ *
+ * This function takes the spinlock for the descriptor list to allow
+ * safe access for multiple dequeue operations. Must be paired with
+ * dp_dal_sim_desc_list_access_end().
+ */
+static inline void dp_dal_sim_desc_list_access_start(
+	struct dp_dal_sim_desc_list *desc_list)
+{
+	if (!desc_list) {
+		dp_err("NULL descriptor list pointer in access_start");
+		return;
+	}
+
+	qdf_spin_lock_bh(&desc_list->lock);
+}
+
+/**
+ * dp_dal_sim_desc_list_access_end() - End accessing descriptor list
+ * @desc_list: Pointer to descriptor list structure
+ *
+ * This function releases the spinlock for the descriptor list after
+ * completing multiple dequeue operations. Must be paired with
+ * dp_dal_sim_desc_list_access_start().
+ */
+static inline void dp_dal_sim_desc_list_access_end(
+	struct dp_dal_sim_desc_list *desc_list)
+{
+	if (!desc_list) {
+		dp_err("NULL descriptor list pointer in access_end");
+		return;
+	}
+
+	qdf_spin_unlock_bh(&desc_list->lock);
+}
 
 /**
  * dp_dal_sim_trigger_mode_switch() - Trigger DAL sim mode switch
