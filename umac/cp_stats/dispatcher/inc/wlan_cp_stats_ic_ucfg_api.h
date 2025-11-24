@@ -322,6 +322,8 @@ UCFG_VDEV_CP_STATS_SET_FUNCS(rx_wrongdir);
 UCFG_VDEV_CP_STATS_SET_FUNCS(rx_not_assoc);
 UCFG_VDEV_CP_STATS_SET_FUNCS(rx_noprivacy);
 UCFG_VDEV_CP_STATS_SET_FUNCS(rx_mgmt_discard);
+UCFG_VDEV_CP_STATS_SET_FUNCS(rx_mgmt_sw_decrypt);
+UCFG_VDEV_CP_STATS_SET_FUNCS(rx_mgmt_sw_decrypt_fail);
 UCFG_VDEV_CP_STATS_SET_FUNCS(rx_ctl);
 UCFG_VDEV_CP_STATS_SET_FUNCS(rx_rs_too_big);
 UCFG_VDEV_CP_STATS_SET_FUNCS(rx_elem_missing);
