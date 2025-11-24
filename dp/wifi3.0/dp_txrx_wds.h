@@ -511,7 +511,7 @@ dp_rx_ipa_wds_srcport_learn(struct dp_soc *soc,
 	if (qdf_unlikely(!ta_peer))
 		return;
 
-	peer = (struct dp_txrx_peer *)ta_peer;
+	peer = dp_get_txrx_peer(ta_peer);
 
 	/*
 	 * Get the AST entry from HW SA index and mark it as active
