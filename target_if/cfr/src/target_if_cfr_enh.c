@@ -1395,6 +1395,7 @@ void target_if_cfr_rx_tlv_process(struct wlan_objmgr_pdev *pdev, void *nbuf)
 	info_v3.tsf_timestamp_31_16 = lut->tsf_timestamp_31_16;
 	info_v3.tsf_timestamp_47_32 = lut->tsf_timestamp_47_32;
 	info_v3.tsf_timestamp_63_48 = lut->tsf_timestamp_63_48;
+	info_v3.num_chains = lut->num_chains;
 
 	status = correlate_and_relay_enh(pdev, cookie, lut,
 					 CORRELATE_TX_EV_MODULE_ID);
@@ -1616,13 +1617,17 @@ static bool enh_cfr_dbr_event_handler(struct wlan_objmgr_pdev *pdev,
 	if (is_enh_cfr_tlv_version_v3(&dma_hdr)) {
 		lut->preamble = dma_hdr_v3.preamble_type;
 		lut->nss = dma_hdr_v3.nss;
+		lut->num_chains = dma_hdr_v3.num_chains;
 		info_v3.preamble = dma_hdr_v3.preamble_type;
 		info_v3.nss = dma_hdr_v3.nss;
+		info_v3.num_chains = dma_hdr_v3.num_chains;
 	} else {
 		lut->preamble = dma_hdr.preamble_type;
 		lut->nss = dma_hdr.nss;
+		lut->num_chains = dma_hdr.num_chains;
 		info_v3.preamble = dma_hdr.preamble_type;
 		info_v3.nss = dma_hdr.nss;
+		info_v3.num_chains = dma_hdr.num_chains;
 	}
 
 	/* Extract TSF timestamp from freeze TLV if available */
@@ -2002,7 +2007,7 @@ target_if_cfr_capture_filter_event_handler(ol_scn_t sc,
 	}
 
 	if (cfr_rx_ops->cfr_send_stop && param.status != 0) {
-		cfr_err("send stop cfr");
+		cfr_err("send stop cfr %d", param.status);
 		cfr_rx_ops->cfr_send_stop(pdev, param.status);
 	}
 
@@ -2474,6 +2479,7 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 	info_v3.tsf_timestamp_47_32 = lut->tsf_timestamp_47_32;
 	info_v3.tsf_timestamp_63_48 = lut->tsf_timestamp_63_48;
 	info_v3.seq_num = lut->seq_num;
+	info_v3.num_chains = lut->num_chains;
 
 	status = correlate_and_relay_enh(pdev, cookie, lut,
 					 CORRELATE_TX_EV_MODULE_ID);

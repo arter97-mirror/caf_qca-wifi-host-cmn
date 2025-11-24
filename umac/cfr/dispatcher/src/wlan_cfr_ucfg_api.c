@@ -984,6 +984,47 @@ QDF_STATUS ucfg_cfr_set_tara_config(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+QDF_STATUS ucfg_cfr_set_mode(struct wlan_objmgr_vdev *vdev)
+{
+	struct pdev_cfr *pcfr = NULL;
+	struct wlan_objmgr_pdev *pdev = NULL;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct ta_ra_cfr_cfg *curr_cfg = NULL;
+	struct wlan_objmgr_peer *peer = NULL;
+
+	status = dev_sanity_check(vdev, &pdev, &pcfr);
+	if (status != QDF_STATUS_SUCCESS)
+		return status;
+
+	curr_cfg = &pcfr->rcc_param.curr[0];
+	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)curr_cfg->tx_addr)) {
+		cfr_err("zero mac address");
+		/* Release the pdev ref from dev sanity */
+		wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+		return status;
+	}
+
+	peer = wlan_objmgr_get_peer_by_mac(
+			wlan_pdev_get_psoc(pdev),
+			curr_cfg->tx_addr, WLAN_CFR_ID);
+	if (!peer) {
+		cfr_err("No peer object found for MAC" QDF_MAC_ADDR_FMT,
+			QDF_MAC_ADDR_REF(curr_cfg->tx_addr));
+		pcfr->is_associated = false;
+		/* Release the pdev ref from dev sanity */
+		wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+		return status;
+	}
+
+	wlan_objmgr_peer_release_ref(peer, WLAN_CFR_ID);
+	cfr_debug("TX addr" QDF_MAC_ADDR_FMT "peer found",
+		  QDF_MAC_ADDR_REF(curr_cfg->tx_addr));
+		  pcfr->is_associated = true;
+
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+	return status;
+}
+
 QDF_STATUS ucfg_cfr_get_cfg(struct wlan_objmgr_vdev *vdev)
 {
 	struct pdev_cfr *pcfr = NULL;
