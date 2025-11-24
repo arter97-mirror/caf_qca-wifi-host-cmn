@@ -1039,6 +1039,9 @@ struct wlan_ipa_priv {
 	qdf_wake_lock_t opt_dp_wake_lock;
 	struct opt_dp_ctrl_stats ctrl_stats;
 	qdf_runtime_lock_t opt_dp_runtime_lock;
+#ifdef CONFIG_BORON
+	qdf_atomic_t tx_pkt_classify_info_set;
+#endif
 #endif
 #if defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 	struct wlan_ipa_evt_wq *ipa_evt_wq;

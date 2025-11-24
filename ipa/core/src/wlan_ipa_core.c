@@ -3870,11 +3870,50 @@ static inline
 void wlan_ipa_update_txpt_classfy_info_idx(struct wlan_ipa_priv *ipa_ctx,
 					   struct op_msg_type *msg)
 {
+	ipa_log_info("opt_dp: txpt_classfy_info set rsvd - %d, vdev_id - %d",
+		     msg->rsvd, msg->vdev_id);
+	qdf_atomic_inc(&ipa_ctx->tx_pkt_classify_info_set);
+}
+
+/**
+ * wlan_ipa_reset_tx_pkt_classify_info() - decrement internal counter of
+ * no. of classify info set during station connect.
+ * @ipa_ctx: ipa context
+ *
+ * Return:
+ */
+static inline
+void wlan_ipa_reset_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
+{
+	qdf_atomic_dec(&ipa_ctx->tx_pkt_classify_info_set);
+}
+
+/**
+ * wlan_ipa_init_tx_pkt_classify_info() - initialise internal counter of
+ * no. of classify info set.
+ * @ipa_ctx: ipa context
+ *
+ * Return:
+ */
+static inline
+void wlan_ipa_init_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
+{
+	qdf_atomic_init(&ipa_ctx->tx_pkt_classify_info_set);
 }
 #else
 static inline
 void wlan_ipa_update_txpt_classfy_info_idx(struct wlan_ipa_priv *ipa_ctx,
 					   struct op_msg_type *msg)
+{
+}
+
+static inline
+void wlan_ipa_reset_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
+{
+}
+
+static inline
+void wlan_ipa_init_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
 {
 }
 #endif
@@ -4277,6 +4316,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		if (qdf_ipa_get_lan_rx_napi() && ipa_ctx->sap_num_connected_sta)
 			ipa_set_rps_per_vdev(ipa_ctx, session_id, false);
 
+		wlan_ipa_reset_tx_pkt_classify_info(ipa_ctx);
 		qdf_mutex_release(&ipa_ctx->event_lock);
 
 		ipa_log_debug("sta_connected=%d", ipa_ctx->sta_connected);
@@ -5460,6 +5500,7 @@ QDF_STATUS wlan_ipa_opt_dp_init(struct wlan_ipa_priv *ipa_ctx)
 			ipa_ctx->flt_rel_src = 0;
 			qdf_event_create(&ipa_ctx->ipa_flt_evnt);
 			qdf_runtime_lock_init(&ipa_ctx->opt_dp_runtime_lock);
+			wlan_ipa_init_tx_pkt_classify_info(ipa_ctx);
 		} else {
 			ipa_log_debug("opt_dp: Disabled from WLAN INI");
 		}
@@ -7009,6 +7050,20 @@ void wlan_ipa_wdi_opt_dpath_notify_flt_rsvd(bool response)
 	qdf_sched_work(0, &uc_op_work->work);
 }
 
+#ifdef CONFIG_BORON
+bool wlan_ipa_check_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_obj)
+{
+	return qdf_atomic_read(&ipa_obj->tx_pkt_classify_info_set) > 0 ?
+		true : false;
+}
+#else
+static inline
+bool wlan_ipa_check_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_obj)
+{
+	return true;
+}
+#endif
+
 int wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(
 			void *ipa_ctx,
 			struct ipa_wdi_opt_dpath_flt_rsrv_cb_params *out_params)
@@ -7026,6 +7081,11 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(
 
 	if (ipa_obj->ipa_pipes_down || ipa_obj->pipes_down_in_progress) {
 		ipa_log_err("Pipes are going down. Reject flt rsrv request");
+		return QDF_STATUS_FILT_REQ_ERROR;
+	}
+
+	if (!wlan_ipa_check_tx_pkt_classify_info(ipa_obj)) {
+		ipa_log_err("opt_dp: tx pkt classify info is not set, reject rsrv request");
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
