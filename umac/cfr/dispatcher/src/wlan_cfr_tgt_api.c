@@ -26,6 +26,7 @@
 #include <wlan_cfr_utils_api.h>
 #include <target_type.h>
 #include <cfr_defs_i.h>
+#include <qca_vendor.h>
 
 uint32_t tgt_cfr_send_stop(struct wlan_objmgr_pdev *pdev, uint32_t reason)
 {
@@ -82,10 +83,12 @@ cfr_populate_antenna_info(struct cfr_enhanced_event_data *event_data,
 		return;
 	}
 
-	event_data->antenna_count = HOST_MAX_CHAINS;
-	cfr_debug("Populating antenna info for %d chains", HOST_MAX_CHAINS);
+	event_data->antenna_count = event_data->num_chains + 1;
+	cfr_debug("Populating antenna info for %d chains",
+		  event_data->antenna_count);
 
-	for (i = 0; i < HOST_MAX_CHAINS; i++) {
+	for (i = 0; i < HOST_MAX_CHAINS && i < event_data->antenna_count;
+	    i++) {
 		event_data->antenna_info[i].antenna_index = i;
 		event_data->antenna_info[i].rssi =
 			header->u.meta_enh.chain_rssi[i];
@@ -95,6 +98,20 @@ cfr_populate_antenna_info(struct cfr_enhanced_event_data *event_data,
 		cfr_debug("Antenna[%d]: RSSI=%d, AGC=%d", i,
 			  event_data->antenna_info[i].rssi,
 			  event_data->antenna_info[i].agc);
+	}
+}
+
+static enum
+qca_wlan_vendor_chip_id convert_chip_type_to_chip_id(uint8_t chip_type)
+{
+	switch (chip_type) {
+	case CFR_CAPTURE_RADIO_PEACH:
+		return QCA_WLAN_VENDOR_CHIP_ID_WCN7881;
+	case CFR_CAPTURE_RADIO_FIG:
+		return QCA_WLAN_VENDOR_CHIP_ID_WCN8850;
+	default:
+		cfr_err("Invalid chip_type %d", chip_type);
+		return QCA_WLAN_VENDOR_CHIP_ID_WCN7881;
 	}
 }
 
@@ -124,6 +141,7 @@ static void cfr_populate_event_data(struct cfr_enhanced_event_data *event_data,
 	event_data->num_spatial_streams = info_v3->nss;
 	event_data->frame_sequence_number = info_v3->seq_num;
 	event_data->freq = header->u.meta_enh.prim20_chan;
+	event_data->num_chains = info_v3->num_chains;
 
 	cfr_debug("CFO: %d, BW: %d, LTF: %d, NSS: %d, Seq: %d, Freq: %d",
 		  event_data->cfo, event_data->bandwidth, event_data->ltf_type,
@@ -150,7 +168,8 @@ static void cfr_populate_event_data(struct cfr_enhanced_event_data *event_data,
 		}
 	}
 
-	event_data->chip_id = pcfr->chip_id;
+	event_data->chip_id =
+		convert_chip_type_to_chip_id(header->cmn.chip_type);
 	event_data->frame_type = pcfr->frame_type;
 	event_data->frame_sub_type = pcfr->frame_sub_type;
 	event_data->cfr_version = ENHANCED_CFR_VERSION_V3;

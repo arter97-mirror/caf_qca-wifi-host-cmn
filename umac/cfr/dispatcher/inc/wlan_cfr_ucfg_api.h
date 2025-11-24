@@ -26,6 +26,7 @@
 #include <wlan_cfr_public_structs.h>
 #include <wlan_cfr_utils_api.h>
 
+#ifdef WLAN_CFR_ENABLE
 /**
  * ucfg_cfr_send_stop() - function to start cfr capture for connected client
  * @vdev: pointer to vdev object
@@ -34,6 +35,12 @@
  * Return: status of start capture.
  */
 void ucfg_cfr_send_stop(struct wlan_objmgr_vdev *vdev, uint32_t reason);
+#else
+static inline void
+ucfg_cfr_send_stop(struct wlan_objmgr_vdev *vdev, uint32_t reason)
+{
+}
+#endif
 
 /**
  * ucfg_cfr_start_capture() - function to start cfr capture for connected client
@@ -315,6 +322,14 @@ ucfg_cfr_set_freeze_tlv_delay_cnt(struct wlan_objmgr_vdev *vdev,
  * Return: status
  */
 QDF_STATUS ucfg_cfr_committed_rcc_config(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * ucfg_cfr_set_mode() - function to set active/passive mode
+ * @vdev: pointer to vdev object
+ *
+ * Return: status
+ */
+QDF_STATUS ucfg_cfr_set_mode(struct wlan_objmgr_vdev *vdev);
 
 /**
  * ucfg_cfr_get_cfg() - function to display user config

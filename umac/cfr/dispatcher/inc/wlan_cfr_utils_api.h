@@ -364,6 +364,7 @@ struct whal_cfir_dma_hdr {
  * @tsf_timestamp_31_16: tsf 31_16
  * @tsf_timestamp_47_32: tsf 47_32
  * @tsf_timestamp_63_48: tsf 63_48
+ * @num_chains: num chains
  */
 struct look_up_table {
 	bool dbr_recv;
@@ -388,6 +389,7 @@ struct look_up_table {
 	uint16_t tsf_timestamp_31_16;
 	uint16_t tsf_timestamp_47_32;
 	uint16_t tsf_timestamp_63_48;
+	uint8_t num_chains;
 };
 
 struct unassoc_pool_entry {
@@ -556,6 +558,7 @@ struct cfr_capture_filter_param {
  * @tsf_timestamp_31_16: tsf 2nd 16 bit
  * @tsf_timestamp_47_32: tsf 3rd 16 bit
  * @tsf_timestamp_63_48: tsf 4th 16 bit
+ * @num_chains: num chains
  *
  */
 struct cfr_info_v3 {
@@ -566,6 +569,7 @@ struct cfr_info_v3 {
 	uint16_t tsf_timestamp_31_16;
 	uint16_t tsf_timestamp_47_32;
 	uint16_t tsf_timestamp_63_48;
+	uint8_t num_chains;
 };
 
 /**
@@ -576,7 +580,7 @@ struct cfr_info_v3 {
  */
 struct cfr_antenna_info {
 	uint8_t antenna_index;
-	uint8_t rssi;
+	int8_t rssi;
 	uint8_t agc;
 };
 
@@ -602,6 +606,7 @@ struct cfr_antenna_info {
  * @format_version: format version
  * @freq: freq
  * @cfr_version: cfr version
+ * @num_chains: num chains
  * @cfr_data: Pointer to CFR data
  * @cfr_data_len: Length of CFR data
  */
@@ -626,6 +631,7 @@ struct cfr_enhanced_event_data {
 	uint8_t format_version;
 	uint32_t freq;
 	uint8_t cfr_version;
+	uint8_t num_chains;
 	const void *cfr_data;
 	uint32_t cfr_data_len;
 };
