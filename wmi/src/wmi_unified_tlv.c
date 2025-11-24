@@ -24570,6 +24570,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_CFR_UNASSOC_RX_CAPTURE_SUPPORT;
 	wmi_service[wmi_service_cfr_assoc_tx_capture_support] =
 				WMI_SERVICE_CFR_ASSOC_TX_CAPTURE_SUPPORT;
+	wmi_service[wmi_service_enhanced_stats_support] =
+				WMI_SERVICE_ENHANCED_STATS_SUPPORT;
 }
 
 /**
