@@ -577,8 +577,13 @@ static inline void wlan_ipa_wdi_get_wdi_version(struct wlan_ipa_priv *ipa_ctx)
 {
 	ipa_ctx->wdi_version = IPA_WDI_3;
 }
-#elif defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
-      defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
+#elif defined(QCA_WIFI_FIG) && defined(IPA_OPT_WIFI_DP)
+static inline void wlan_ipa_wdi_get_wdi_version(struct wlan_ipa_priv *ipa_ctx)
+{
+	ipa_ctx->wdi_version = IPA_WDI_5;
+}
+#elif (defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_KIWI_V2) || \
+	defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072))
 static inline void wlan_ipa_wdi_get_wdi_version(struct wlan_ipa_priv *ipa_ctx)
 {
 	ipa_ctx->wdi_version = IPA_WDI_3_V2;
