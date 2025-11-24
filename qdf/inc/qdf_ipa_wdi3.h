@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -706,6 +706,27 @@ static inline int qdf_ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(
 	return 0;
 }
 #endif /* IPA_OPT_WIFI_DP  */
+
+#if defined(CONFIG_BORON) && defined(IPA_OPT_WIFI_DP)
+/**
+ * qdf_ipa_wdi_update_txpt_classify_info_idx() - set tx pkt classify info
+ * @hdl: ipa handle
+ * @vdev_id: vdev id
+ * @txpt_classify_info_idx: peer classify info idx
+ *
+ * Return 0 on success, negative on failure
+ */
+static inline int qdf_ipa_wdi_update_txpt_classify_info_idx(
+					ipa_wdi_hdl_t hdl,
+					uint8_t vdev_id,
+					uint8_t txpt_classify_info_idx)
+{
+	return __qdf_ipa_wdi_update_txpt_classify_info_idx(
+					hdl,
+					vdev_id,
+					txpt_classify_info_idx);
+}
+#endif
 
 #ifndef IPA_OPT_WIFI_DP_CTRL
 static inline int qdf_ipa_wdi_opt_dpath_notify_ctrl_flt_del_per_inst(

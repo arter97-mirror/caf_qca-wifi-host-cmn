@@ -3870,9 +3870,19 @@ static inline
 void wlan_ipa_update_txpt_classfy_info_idx(struct wlan_ipa_priv *ipa_ctx,
 					   struct op_msg_type *msg)
 {
-	ipa_log_info("opt_dp: txpt_classfy_info set rsvd - %d, vdev_id - %d",
-		     msg->rsvd, msg->vdev_id);
-	qdf_atomic_inc(&ipa_ctx->tx_pkt_classify_info_set);
+	int status;
+
+	qdf_mutex_acquire(&ipa_ctx->ipa_lock);
+	status = qdf_ipa_wdi_update_txpt_classify_info_idx(
+			ipa_ctx->hdl,
+			msg->vdev_id,
+			msg->rsvd);
+	qdf_mutex_release(&ipa_ctx->ipa_lock);
+	if (!status)
+		qdf_atomic_inc(&ipa_ctx->tx_pkt_classify_info_set);
+
+	ipa_log_info("opt_dp: txpt_classfy_info set status - %d, rsvd - %d, vdev_id - %d",
+		     status, msg->rsvd, msg->vdev_id);
 }
 
 /**
@@ -3885,7 +3895,8 @@ void wlan_ipa_update_txpt_classfy_info_idx(struct wlan_ipa_priv *ipa_ctx,
 static inline
 void wlan_ipa_reset_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
 {
-	qdf_atomic_dec(&ipa_ctx->tx_pkt_classify_info_set);
+	if (qdf_atomic_read(&ipa_ctx->tx_pkt_classify_info_set) > 0)
+		qdf_atomic_dec(&ipa_ctx->tx_pkt_classify_info_set);
 }
 
 /**

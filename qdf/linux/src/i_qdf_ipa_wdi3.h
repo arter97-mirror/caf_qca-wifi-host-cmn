@@ -635,6 +635,26 @@ static inline int __qdf_ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(
 	return ipa_wdi_opt_dpath_notify_flt_rlsd_per_inst(hdl, is_success);
 }
 #endif /*IPA_OPT_WIFI_DP */
+
+#if defined(CONFIG_BORON) && defined(IPA_OPT_WIFI_DP)
+/**
+ * __qdf_ipa_wdi_update_txpt_classify_info_idx() - set tx pkt classify info
+ * @hdl: ipa handle
+ * @vdev_id: vdev_id
+ * @txpt_classify_info_idx: tx pkt classify info
+ *
+ * Return 0 on success, negative on failure
+ */
+static inline int __qdf_ipa_wdi_update_txpt_classify_info_idx(
+						ipa_wdi_hdl_t hdl,
+						uint8_t vdev_id,
+						uint8_t txpt_classify_info_idx)
+{
+	return ipa_wdi_update_txpt_classfy_info_idx(hdl, vdev_id,
+						    txpt_classify_info_idx);
+}
+#endif
+
 /**
  * __qdf_ipa_wdi_dereg_intf - Client Driver should call this
  * function to deregister before unload and after disconnect
