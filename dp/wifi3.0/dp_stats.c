@@ -11794,7 +11794,8 @@ void dp_tx_update_proto_stats(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	uint8_t field = 0;
 
 	if (!vdev->dp_proto_stats ||
-			qdf_unlikely(qdf_nbuf_is_nonlinear((nbuf))))
+	    vdev->opmode == wlan_op_mode_passthru ||
+	    qdf_unlikely(qdf_nbuf_is_nonlinear((nbuf))))
 		return;
 
 	field = dp_get_l3_protocol_type(NULL, nbuf, NULL, 0);

@@ -63,6 +63,9 @@
 #include "dp_dal_tx.h"
 #endif
 #include "dp_dal.h"
+#ifdef DRIVER_PASSTHRU_MODE
+#include "qdf_wondertap.h"
+#endif
 
 /* Flag to skip CCE classify when mesh or tid override enabled */
 #define DP_TX_SKIP_CCE_CLASSIFY \
@@ -2976,7 +2979,8 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 
 	/* Initialize the SW tx descriptor */
 	tx_desc->nbuf = nbuf;
-	tx_desc->frm_type = dp_tx_frm_std;
+	tx_desc->frm_type = (wlan_op_mode_passthru == vdev->opmode) ?
+				dp_tx_frm_raw : dp_tx_frm_std;
 	tx_desc->tx_encap_type = ((tx_exc_metadata &&
 		(tx_exc_metadata->tx_encap_type != CDP_INVALID_TX_ENCAP_TYPE)) ?
 		tx_exc_metadata->tx_encap_type : vdev->tx_encap_type);
@@ -11713,3 +11717,88 @@ void hal_tx_comp_get_status_wrapper(struct dp_soc *soc,
 	hal_tx_comp_get_status(&desc->comp, ts, soc->hal_soc);
 }
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
+
+#if defined(DRIVER_PASSTHRU_MODE)
+/**
+ * dp_tx_set_metadata_passthru() - Set TID for passthrough mode
+ * @vdev: DP vdev handle
+ * @nbuf: Network buffer
+ * @msdu_info: MSDU info structure
+ *
+ * Empty stub function replacing dp_tx_classify_tid() for passthrough mode.
+ * TID classification is not performed in passthrough mode.
+ *
+ * Return: void
+ */
+static inline
+void dp_tx_set_metadata_passthru(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				 struct dp_tx_msdu_info_s *msdu_info)
+{
+	qdf_wonder_txd_t *txd;
+
+	/*
+	 * nbuf data would start at the radiotap header so push size
+	 * is just the wonder txd size.
+	 */
+	qdf_nbuf_push_head(nbuf, sizeof(qdf_wonder_txd_t));
+
+	txd = (qdf_wonder_txd_t *)qdf_nbuf_data(nbuf);
+	msdu_info->is_unicast = txd->is_unicast;
+	msdu_info->frame_type = txd->frame_type;
+
+	/*
+	 * ToDo: Abstract the ieee enums for ftype
+	 */
+	if (!msdu_info->is_unicast)
+		msdu_info->tid = 0;
+	else if (msdu_info->frame_type == IEEE80211_FTYPE_MGMT ||
+		 msdu_info->frame_type == IEEE80211_FTYPE_CTL)
+		msdu_info->tid = 6;
+	else
+		msdu_info->tid = txd->tid;
+
+	qdf_nbuf_pull_head(nbuf, sizeof(qdf_wonder_txd_t));
+}
+
+qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			       qdf_nbuf_t nbuf)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	uint16_t peer_id = HTT_INVALID_PEER;
+	struct dp_tx_msdu_info_s msdu_info = {0};
+	struct dp_vdev *vdev = NULL;
+
+	if (qdf_unlikely(vdev_id >= MAX_VDEV_CNT))
+		return nbuf;
+
+	/*
+	 * dp_vdev_get_ref_by_id does does a atomic operation avoid using
+	 * this in per packet path.
+	 *
+	 * As in this path vdev memory is already protected with netdev
+	 * tx lock
+	 */
+	vdev = soc->vdev_id_map[vdev_id];
+	if (qdf_unlikely(!vdev))
+		return nbuf;
+
+	dp_tx_set_metadata_passthru(vdev, nbuf, &msdu_info);
+	dp_tx_get_queue(vdev, nbuf, &msdu_info.tx_queue);
+
+	/* Update protocol stats */
+	dp_tx_update_proto_stats(vdev, nbuf, msdu_info.tx_queue.desc_pool_id,
+				 TX_RECV_FROM_STACK);
+
+	/* Get driver ingress timestamp */
+	dp_tx_get_driver_ingress_ts(vdev, &msdu_info, nbuf);
+
+	/*
+	 * Pull the radiotap header before enqueueing the frame to TCL.
+	 */
+	qdf_nbuf_pull_head(nbuf, qdf_nbuf_get_radiotap_len(nbuf));
+
+	nbuf = dp_tx_send_msdu_single(vdev, nbuf, &msdu_info, peer_id, NULL);
+
+	return nbuf;
+}
+#endif /* DRIVER_PASSTHRU_MODE */
