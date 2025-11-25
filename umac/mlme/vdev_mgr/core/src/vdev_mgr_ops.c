@@ -872,6 +872,7 @@ static QDF_STATUS vdev_mgr_up_param_update(
 	struct qdf_mac_addr bcast_mac = QDF_MAC_ADDR_BCAST_INIT;
 	struct scan_cache_entry *entry;
 	struct wlan_channel *chan;
+	struct qdf_mac_addr orig_trans_bssid;
 
 	vdev = mlme_obj->vdev;
 	param->vdev_id = wlan_vdev_get_id(vdev);
@@ -879,37 +880,58 @@ static QDF_STATUS vdev_mgr_up_param_update(
 
 	mbss = &mlme_obj->mgmt.mbss_11ax;
 	wlan_vdev_mgr_get_param_bssid(vdev, bssid);
-	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_STA_MODE) {
-		if (!mbss->profile_num) {
-			entry = wlan_scan_get_entry_by_bssid(wlan_vdev_get_pdev(vdev),
-							     (struct qdf_mac_addr *)bssid);
-			if (entry) {
-				chan = wlan_vdev_mlme_get_bss_chan(vdev);
-				mlme_set_mbssid_info(vdev,
-						     &entry->mbssid_info,
-						     chan->ch_freq);
-				if (entry->is_gen_entry)
-					qdf_mem_copy(mbss->trans_bssid,
-						     bcast_mac.bytes,
-						     QDF_MAC_ADDR_SIZE);
 
-				util_scan_free_cache_entry(entry);
-			}
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
+		goto update_tx_prof;
+
+	qdf_mem_copy(&orig_trans_bssid, mbss->trans_bssid,
+		     QDF_MAC_ADDR_SIZE);
+	if (!mbss->profile_num) {
+		entry = wlan_scan_get_entry_by_bssid(wlan_vdev_get_pdev(vdev),
+						     (struct qdf_mac_addr *)bssid);
+		if (entry) {
+			chan = wlan_vdev_mlme_get_bss_chan(vdev);
+			mlme_set_mbssid_info(vdev,
+					     &entry->mbssid_info,
+					     chan->ch_freq);
+			if (entry->is_gen_entry)
+				qdf_mem_copy(mbss->trans_bssid,
+					     bcast_mac.bytes,
+					     QDF_MAC_ADDR_SIZE);
+
+			util_scan_free_cache_entry(entry);
 		}
-
-		mlme_debug("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT
-			   " profile_idx %d, profile_num %d",
-			   QDF_MAC_ADDR_REF(mbss->trans_bssid),
-			   QDF_MAC_ADDR_REF(mbss->non_trans_bssid),
-			  mbss->profile_idx, mbss->profile_num);
-		if (!qdf_mem_cmp(bcast_mac.bytes, mbss->trans_bssid,
-				 QDF_MAC_ADDR_SIZE))
-			goto update_tx_prof;
-
-		if ((qdf_mem_cmp(bssid, mbss->trans_bssid, QDF_MAC_ADDR_SIZE)) &&
-		    (qdf_mem_cmp(bssid, mbss->non_trans_bssid, QDF_MAC_ADDR_SIZE)))
-			return QDF_STATUS_SUCCESS;
 	}
+
+	mlme_info("trans BSSID " QDF_MAC_ADDR_FMT " non-trans BSSID " QDF_MAC_ADDR_FMT
+		  " profile_idx %d, profile_num %d",
+		  QDF_MAC_ADDR_REF(mbss->trans_bssid),
+		  QDF_MAC_ADDR_REF(mbss->non_trans_bssid),
+		  mbss->profile_idx, mbss->profile_num);
+
+	if (!qdf_mem_cmp(bcast_mac.bytes, mbss->trans_bssid,
+			 QDF_MAC_ADDR_SIZE))
+		goto update_tx_prof;
+
+	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)mbss->trans_bssid) &&
+	    !qdf_is_macaddr_zero(&orig_trans_bssid)) {
+		/*
+		 * Set Broadcast tx bssid mac, if a change is detected in the
+		 * trans bssid during VDEV restart. This allows firmware to
+		 * auto-detect the new trans bssid or disconnect if the AP moves
+		 * from MBSSID to non-MBSSID profile during channel switch.
+		 */
+		mlme_info("MBSSID profile change detected for bssid " QDF_MAC_ADDR_FMT
+			  " Original trans BSSID " QDF_MAC_ADDR_FMT,
+			  QDF_MAC_ADDR_REF(bssid),
+			  QDF_MAC_ADDR_REF(&orig_trans_bssid.bytes[0]));
+		qdf_mem_copy(mbss->trans_bssid, bcast_mac.bytes,
+			     QDF_MAC_ADDR_SIZE);
+	}
+
+	if ((qdf_mem_cmp(bssid, mbss->trans_bssid, QDF_MAC_ADDR_SIZE)) &&
+	    (qdf_mem_cmp(bssid, mbss->non_trans_bssid, QDF_MAC_ADDR_SIZE)))
+		return QDF_STATUS_SUCCESS;
 
 update_tx_prof:
 	param->profile_idx = mbss->profile_idx;
