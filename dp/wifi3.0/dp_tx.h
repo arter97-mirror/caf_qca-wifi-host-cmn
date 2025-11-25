@@ -233,6 +233,8 @@ struct dp_tx_queue {
  * @payload_addr:
  * @driver_ingress_ts: driver ingress timestamp
  * @is_opt_dp_ctrl: opt_dp_ctrl pkt
+ * @is_unicast: whether unicast frame or not
+ * @frame_type: 802.11 frame type
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -269,6 +271,10 @@ struct dp_tx_msdu_info_s {
 #endif
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	bool is_opt_dp_ctrl;
+#endif
+#ifdef DRIVER_PASSTHRU_MODE
+	bool is_unicast;
+	uint8_t frame_type;
 #endif
 };
 
@@ -627,6 +633,30 @@ QDF_STATUS dp_tso_soc_detach(struct cdp_soc_t *txrx_soc);
  */
 qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      qdf_nbuf_t nbuf);
+
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * dp_tx_send_passthru() - Simplified TX send function for passthrough mode
+ * @soc_hdl: CDP SoC handle
+ * @vdev_id: Virtual device ID
+ * @nbuf: Network buffer to transmit
+ *
+ * This is a simplified version of dp_tx_send() specifically designed for
+ * passthrough mode. It eliminates many checks and processing steps that
+ * are not needed in passthrough mode.
+ *
+ * Return: Network buffer on error, NULL on success
+ */
+qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			       qdf_nbuf_t nbuf);
+#else
+static inline
+qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			       qdf_nbuf_t nbuf)
+{
+	return nbuf;
+}
+#endif
 
 /**
  * dp_tx_send_vdev_id_check() - Transmit a frame on a given VAP in special
