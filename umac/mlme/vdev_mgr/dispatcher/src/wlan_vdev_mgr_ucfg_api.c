@@ -40,6 +40,14 @@ void ucfg_wlan_vdev_mgr_get_param_bssid(
 }
 qdf_export_symbol(ucfg_wlan_vdev_mgr_get_param_bssid);
 
+QDF_STATUS ucfg_wlan_vdev_mgr_set_param_bssid(struct wlan_objmgr_vdev *vdev,
+					      const uint8_t *bssid)
+{
+	return wlan_vdev_mgr_set_param_bssid(vdev, bssid);
+}
+
+qdf_export_symbol(ucfg_wlan_vdev_mgr_set_param_bssid);
+
 void ucfg_wlan_vdev_mgr_get_param_ssid(
 				struct wlan_objmgr_vdev *vdev,
 				uint8_t *ssid, uint8_t *ssid_len)
