@@ -1083,7 +1083,8 @@ QDF_STATUS wlan_objmgr_vdev_peer_attach(struct wlan_objmgr_vdev *vdev,
 		/* For AP mode, self peer and BSS peer are same */
 		if ((opmode == QDF_SAP_MODE) ||
 		    (opmode == QDF_P2P_GO_MODE) ||
-		    (opmode == QDF_NDI_MODE))
+		    (opmode == QDF_NDI_MODE) ||
+		    (opmode == QDF_PASSTHRU_MODE))
 			wlan_vdev_set_bsspeer(vdev, peer);
 	}
 	/* set BSS peer for sta */

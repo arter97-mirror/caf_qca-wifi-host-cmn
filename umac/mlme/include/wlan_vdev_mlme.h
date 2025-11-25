@@ -43,6 +43,7 @@ struct peer_oper_mode_event;
 #define WLAN_VDEV_MLME_TYPE_NAN 0x5
 #define WLAN_VDEV_MLME_TYPE_OCB 0x6
 #define WLAN_VDEV_MLME_TYPE_NDI 0x7
+#define WLAN_VDEV_MLME_TYPE_PASSTHRU 0x9
 
 /* values for vdev_subtype */
 #define WLAN_VDEV_MLME_SUBTYPE_UNKNOWN   0x0
