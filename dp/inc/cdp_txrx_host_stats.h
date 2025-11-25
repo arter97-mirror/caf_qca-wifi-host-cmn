@@ -1543,6 +1543,21 @@ cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
 
 	return soc->ops->host_stats_ops->txrx_process_ul_delay(soc, vdev_id);
 }
+
+static inline QDF_STATUS
+cdp_dump_custom_stats(ol_txrx_soc_handle soc, uint8_t vdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid SOC instance");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_dump_custom_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_dump_custom_stats(soc, vdev_id);
+}
 #else
 static inline QDF_STATUS
 cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)

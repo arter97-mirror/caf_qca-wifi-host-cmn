@@ -1298,6 +1298,7 @@ struct cdp_mon_ops {
  * mac address
  * @tx_latency_stats_register_cb: register tx latency stats callback
  * @txrx_process_ul_delay: Process UL delay
+ * @txrx_dump_custom_stats: dump custom stats
  */
 struct cdp_host_stats_ops {
 	int (*txrx_host_stats_get)(struct cdp_soc_t *soc, uint8_t vdev_id,
@@ -1536,6 +1537,8 @@ struct cdp_host_stats_ops {
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	QDF_STATUS (*txrx_process_ul_delay)(struct cdp_soc_t *soc,
 					    uint8_t vdev_id);
+	QDF_STATUS (*txrx_dump_custom_stats)(struct cdp_soc_t *soc,
+					     uint8_t vdev_id);
 #endif
 };
 

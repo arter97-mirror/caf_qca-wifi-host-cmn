@@ -13999,6 +13999,32 @@ update_tx_ilp:
 	return soc->tx_ilp_enable;
 }
 #endif
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+QDF_STATUS dp_dump_custom_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
+						     DP_MOD_ID_CDP);
+	struct dp_pdev *pdev;
+	uint32_t val;
+	int pkt_count;
+
+	if (!vdev)
+		return QDF_STATUS_E_INVAL;
+
+	pdev = vdev->pdev;
+	pkt_count = dp_tx_average_ul_delay(vdev, UL_DELAY_CALC_ID_INTERNAL,
+					   &val);
+	dp_info("UL delay = %u, pkts %d", val, pkt_count);
+	dp_print_tx_rates(pdev);
+	dp_print_rx_rates(pdev);
+	dp_info("PER: %d", dp_get_total_per(soc_hdl, 0));
+	dp_info("Tx Retries = %d", pdev->stats.tx.retries);
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_soc_attach_target = dp_soc_attach_target_wifi3,
 	.txrx_vdev_attach = dp_vdev_attach_wifi3,
@@ -14316,6 +14342,7 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	.txrx_process_ul_delay = dp_process_ul_delay,
+	.txrx_dump_custom_stats = dp_dump_custom_stats,
 #endif
 	/* TODO */
 };
