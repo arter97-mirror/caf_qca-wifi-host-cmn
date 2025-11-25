@@ -40,6 +40,19 @@ struct dal_sim_work_ctx {
 };
 
 /**
+ * struct dal_sim_error_stats - DAL simulator error statistics
+ * @mode_switch_desc_list_timeout: Count of forced mode switches due to desc
+ * list processing  timeout
+ * @bypass_mode_switch_ind_fail: bypass mode switch indication failure count
+ * @offload_mode_switch_ind_fail: offload mode switch indication failure count
+ */
+struct dal_sim_error_stats {
+	uint32_t mode_switch_desc_list_timeout;
+	uint32_t bypass_mode_switch_ind_fail;
+	uint32_t offload_mode_switch_ind_fail;
+};
+
+/**
  * struct dal_sim_stats - DAL simulator statistics per ring
  * @tx_enqueued: Number of TX packets enqueued
  * @tx_completed: Number of TX completions processed
@@ -51,6 +64,7 @@ struct dal_sim_work_ctx {
  * @tx_cpl_work_queued: Number of times TX completion work was queued
  * @rx_work_scheduled: Number of times RX work was scheduled
  * @tx_work_scheduled: Number of times TX completion work was scheduled
+ * @error_stats: Error statistics for DAL simulator
  */
 struct dal_sim_stats {
 	uint64_t tx_enqueued[DAL_SIM_NUM_TX_RINGS];
@@ -63,6 +77,7 @@ struct dal_sim_stats {
 	uint64_t tx_cpl_work_queued[DAL_SIM_NUM_TX_RINGS];
 	uint64_t rx_work_scheduled[DAL_SIM_NUM_RX_RINGS];
 	uint64_t tx_work_scheduled[DAL_SIM_NUM_TX_RINGS];
+	struct dal_sim_error_stats error_stats;
 };
 
 /**

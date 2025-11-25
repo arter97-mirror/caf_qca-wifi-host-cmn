@@ -457,6 +457,7 @@ free_offload_ctx:
 	dp_dal_offload_sim_deinit(sim_ctx);
 	/* Destroy any work queues that were successfully created */
 	dp_dal_sim_destroy_work(sim_ctx);
+	qdf_spinlock_destroy(&sim_ctx->rxbm_sync_lock);
 free_sim_ctx:
 	dal_ctx->dal_sim_ctx = NULL;
 	qdf_mem_free(sim_ctx);
@@ -724,8 +725,19 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 		return false;
 	}
 
+	/* Check if mode switch is in progress - block RX requests */
+	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		dp_info_rl("Mode switch in progress - blocking RX[%u]",
+			   ring_id);
+		*cnt = 0;
+		return false;
+	}
+
 	dp_debug("Processing RX ring_num %u (array index %d) with budget %u",
 		 ring_num, ring_id, budget);
+
+	/* Increment active RX descriptor processing counter */
+	qdf_atomic_inc(&sim_ctx->active_rx_desc_list_cnt);
 
 	/* Get REO descriptors from the ring using offload sim wrapper */
 	ret = dp_dal_offload_sim_get_reo_desc(sim_ctx, ring_id,
@@ -733,6 +745,8 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 	if (ret) {
 		dp_err("Failed to get REO descriptors, ret=%d", ret);
 		*cnt = 0;
+		/* Decrement active RX descriptor processing counter */
+		qdf_atomic_dec(&sim_ctx->active_rx_desc_list_cnt);
 		return false;
 	}
 
@@ -752,6 +766,9 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 
 	dp_debug("Processed %u RX descriptors for ring_num %u (array index %d)",
 		 desc_count, ring_num, ring_id);
+
+	/* Decrement active RX descriptor processing counter */
+	qdf_atomic_dec(&sim_ctx->active_rx_desc_list_cnt);
 
 	/* Return true if any descriptors were processed */
 	return (desc_count > 0);
@@ -788,6 +805,12 @@ static int dp_dal_sim_rx_replenish(void *priv, u32 cnt, bool use_rsv_pktid)
 	if (!sim_ctx) {
 		dp_err("NULL simulator context in offload_mode_rx_replenish");
 		return -EINVAL;
+	}
+
+	/* Check if mode switch is in progress - block replenish requests */
+	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		dp_info_rl("Mode switch in progress - blocking replenish req");
+		return -EBUSY;
 	}
 
 	/* Get available entries in RX refill ring using offload sim wrapper */
@@ -856,8 +879,16 @@ static int dp_dal_sim_rxbm_sync(void *priv, u32 cnt, void **rxbm)
 		return 0;
 	}
 
+	/* Check if mode switch is in progress - block rxbm sync requests */
+	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		dp_info_rl("Mode switch in progress - blocking rxbm sync req");
+		return 0;
+	}
+	/*Take spinlock to ensure mode switch does not interfere replenish */
+	qdf_spin_lock_bh(&sim_ctx->rxbm_sync_lock);
 	/* Call dp_dal_offload_sim wrapper to sync descriptors to refill ring */
 	synced_cnt = dp_dal_offload_sim_rxbm_sync(sim_ctx, cnt, rxbm);
+	qdf_spin_unlock_bh(&sim_ctx->rxbm_sync_lock);
 	sim_ctx->stats.rx_replenished += synced_cnt;
 	dp_debug("Synced %u RX buffer descriptors", synced_cnt);
 
@@ -916,6 +947,13 @@ static int dp_dal_sim_tx
 	if (ring_id < 0) {
 		dp_err("No TX ring found with ring_num %u", ring_num);
 		return -EINVAL;
+	}
+
+	/* Check if mode switch is in progress - block TX requests */
+	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		dp_info_rl("Mode switch in progress - blocking TX[%u]",
+			   ring_id);
+		return -EBUSY;
 	}
 
 	dp_debug("Processing TX for ring_num %u (array index %d), ifidx %u",
@@ -993,8 +1031,19 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 		return false;
 	}
 
+	/* Check if mode switch is in progress - block tx cpl requests */
+	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		*cnt = 0;
+		dp_info_rl("Mode switch in progress - blocking tx_compl[%d]",
+			   ring_id);
+		return false;
+	}
+
 	dp_debug("Processing TX compl ring_num %u (ring_id %d) with budget %u",
 		 ring_num, ring_id, budget);
+
+	/* Increment active TX descriptor processing counter */
+	qdf_atomic_inc(&sim_ctx->active_tx_desc_list_cnt);
 
 	/* Get TX completion descriptors */
 	ret = dp_dal_offload_sim_get_tx_compl_desc(sim_ctx,
@@ -1004,6 +1053,8 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 	if (ret) {
 		dp_err("Failed to get TX completion descriptors, ret=%d", ret);
 		*cnt = 0;
+		/* Decrement active TX descriptor processing counter */
+		qdf_atomic_dec(&sim_ctx->active_tx_desc_list_cnt);
 		return false;
 	}
 
@@ -1023,6 +1074,9 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 
 	dp_debug("Processed %u TX compl desc for ring_num %u (ring_id %d)",
 		 desc_count, ring_num, ring_id);
+
+	/* Decrement active TX descriptor processing counter */
+	qdf_atomic_dec(&sim_ctx->active_tx_desc_list_cnt);
 
 	/* Return true if any descriptors were processed */
 	return (desc_count > 0);
@@ -1268,6 +1322,59 @@ void dp_dal_sim_platform_bus_ops_attach(void)
 }
 
 /**
+ * dp_dal_sim_active_desc_processing() - Wait for active descriptor processing
+ * to complete
+ * @sim_ctx: Pointer to DAL sim context
+ *
+ * This function waits for all active RX and TX descriptor processing to
+ * complete before allowing mode switch. It checks atomic counters with
+ * retries and timeout.
+ *
+ * Return: 0 on success (all descriptors processed), -ETIMEDOUT on timeout
+ */
+static int dp_dal_sim_active_desc_processing(struct dp_dal_sim_ctx *sim_ctx)
+{
+	int retry = 0;
+	int active_tx_desc_list_cnt, active_rx_desc_list_cnt;
+
+	if (!sim_ctx) {
+		dp_err("NULL sim context");
+		return -EINVAL;
+	}
+
+	/* Wait for all active descriptor processing to complete */
+	for (retry = 0; retry < DP_DAL_SIM_MODE_SWITCH_MAX_RETRIES; retry++) {
+		active_tx_desc_list_cnt =
+			qdf_atomic_read(&sim_ctx->active_tx_desc_list_cnt);
+		active_rx_desc_list_cnt =
+			qdf_atomic_read(&sim_ctx->active_rx_desc_list_cnt);
+
+		if (active_tx_desc_list_cnt == 0 &&
+		    active_rx_desc_list_cnt == 0) {
+			dp_info("desc list processed (retry=%d)", retry);
+			return 0;
+		}
+
+		dp_debug("desc list pending process: tx=%d rx=%d (retry=%d/%d)",
+			 active_tx_desc_list_cnt, active_rx_desc_list_cnt,
+			 retry, DP_DAL_SIM_MODE_SWITCH_MAX_RETRIES);
+
+		/* Sleep for timeout milliseconds */
+		msleep(DP_DAL_SIM_MODE_SWITCH_TIMEOUT_MS);
+	}
+
+	/* Timeout - descriptors still being processed */
+	active_tx_desc_list_cnt =
+			qdf_atomic_read(&sim_ctx->active_tx_desc_list_cnt);
+	active_rx_desc_list_cnt =
+			qdf_atomic_read(&sim_ctx->active_rx_desc_list_cnt);
+	dp_err("Timeout waiting for active desc list processing: tx=%d, rx=%d",
+	       active_tx_desc_list_cnt, active_rx_desc_list_cnt);
+
+	return -ETIMEDOUT;
+}
+
+/**
  * dp_dal_sim_mode_bypass_switch() - Switch to bypass mode
  * @sim_ctx: pointer to dal sim context
  *
@@ -1279,6 +1386,50 @@ void dp_dal_sim_platform_bus_ops_attach(void)
 static inline void dp_dal_sim_mode_bypass_switch(
 	struct dp_dal_sim_ctx *sim_ctx)
 {
+	int status;
+
+	if (!sim_ctx) {
+		dp_err("Null sim ctx");
+		return;
+	}
+
+	if (!vendor_cb.mode_switch_ind) {
+		dp_err("mode_switch_ind callback not registered");
+		return;
+	}
+	/* disable irqs */
+	dp_dal_offload_sim_disable_irq(sim_ctx);
+	/* Set mode switch in progress flag to true */
+	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 1);
+	/* Take spinlock for rxbm sync to ensure ongoing sync is completed */
+	qdf_spin_lock_bh(&sim_ctx->rxbm_sync_lock);
+	qdf_spin_unlock_bh(&sim_ctx->rxbm_sync_lock);
+	/* Flush and cancel work*/
+	dp_dal_sim_destroy_work(sim_ctx);
+	/* Add logic to wait for desc list to be empty */
+	status = dp_dal_sim_active_desc_processing(sim_ctx);
+	if (status) {
+		dp_err("forced mode switch");
+		sim_ctx->stats.error_stats.mode_switch_desc_list_timeout++;
+	}
+	/* Update the global plat ops with offload mode ops */
+	*global_plat_ops = plat_ops_bypass_mode;
+
+	status = vendor_cb.mode_switch_ind(
+		sim_ctx->dp_dal_ctx, g_dal_sim_curr_mode, DAL_DP_BYPASS_MODE);
+	if (status) {
+		sim_ctx->stats.error_stats.bypass_mode_switch_ind_fail++;
+		/* If mode switch fails then bypass mode ops is now only present
+		 * since the intention is that offload engine is now unavailable
+		 * This scenario is not expected.
+		 */
+		dp_err("forced mode switch: ind fail status %d", status);
+	}
+	/*Deinit offload_ctx*/
+	dp_info("Switched to bypass mode");
+	g_dal_sim_curr_mode = DAL_DP_BYPASS_MODE;
+	dp_dal_offload_sim_deinit(sim_ctx);
+	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 0);
 }
 
 /**
@@ -1313,6 +1464,7 @@ static inline void dp_dal_sim_mode_offload_switch(
 					   g_dal_sim_curr_mode,
 					   DAL_DP_OFFLOAD_MODE);
 	if (status) {
+		sim_ctx->stats.error_stats.offload_mode_switch_ind_fail++;
 		*global_plat_ops = plat_ops_bypass_mode;
 		dp_err("mode switch ind fail status %d. Restored bypass ops",
 		       status);

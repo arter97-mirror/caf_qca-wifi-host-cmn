@@ -397,6 +397,50 @@ void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 	}
 }
 
+void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
+{
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	int i;
+
+	if (!dal_sim_ctx) {
+		dp_warn("NULL DAL sim context in disable_irq");
+		return;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_warn("NULL offload sim context in disable_irq");
+		return;
+	}
+
+	dp_info("Disabling dal owned rings irq");
+
+	/* Disable RX ring IRQs */
+	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
+		/* Only disable IRQ if it was successfully configured */
+		if (offload_ctx->rx_irq_ctx[i].irq_configured) {
+			pfrm_disable_irq(dal_sim_ctx->dev,
+					 dal_sim_ctx->rx_ring[i].irq_num);
+			dp_debug("Disabled RX IRQ %d for ring %d",
+				 dal_sim_ctx->rx_ring[i].irq_num, i);
+		}
+	}
+
+	/* Disable TX completion ring IRQs */
+	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+		/* Only disable IRQ if it was successfully configured */
+		if (offload_ctx->tx_cpl_irq_ctx[i].irq_configured) {
+			pfrm_disable_irq(dal_sim_ctx->dev,
+					 dal_sim_ctx->tx_cmpl_ring[i].irq_num);
+			dp_debug("Disabled TX completion IRQ %d for ring %d",
+				 dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
+		}
+	}
+
+	dp_info("IRQ disable complete");
+}
+
 /**
  * dp_dal_offload_sim_tx_hw_enqueue() - Enqueue TX descriptor to hardware ring
  * @dal_sim_ctx: Pointer to DAL simulation context
@@ -513,6 +557,14 @@ int dp_dal_offload_sim_get_reo_desc(
 
 	/* Reap REO descriptors until budget is reached or no more descriptor */
 	while (retrieved < budget) {
+		/* Check if mode switch is in progress before reaping */
+		if (qdf_atomic_read(
+				&dal_sim_ctx->sim_mode_switch_in_progress)) {
+			dp_debug("Mode switch: TX_Compl[%u] reaped %u desc",
+				 ring_id, retrieved);
+			break;
+		}
+
 		/* Get next REO descriptor from the ring */
 		reo_desc = dal_vndr_hal_srng_dst_get_next(&offload_ctx->hal_soc,
 							  reo_ring);
@@ -586,6 +638,14 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 	 * no more descriptors.
 	 */
 	while (retrieved < budget) {
+		/* Check if mode switch is in progress before reaping */
+		if (qdf_atomic_read(
+				&dal_sim_ctx->sim_mode_switch_in_progress)) {
+			dp_debug("Mode switch: RX[%u] reaped %u desc",
+				 ring_id, retrieved);
+			break;
+		}
+
 		/* Get next TX completion descriptor from the ring */
 		tx_compl_desc = dal_vndr_hal_srng_dst_get_next(
 						&offload_ctx->hal_soc,

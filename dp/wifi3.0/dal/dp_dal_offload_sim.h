@@ -100,6 +100,14 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
 void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
 
 /**
+ * dp_dal_offload_sim_disable_irq() - Disable IRQs for offload simulation
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ *
+ * This function disables interrupt handlers for RX and TX completion
+ */
+void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
+
+/**
  * dp_dal_offload_sim_tx_hw_enqueue() - Enqueue TX descriptor to hardware ring
  * @dal_sim_ctx: Pointer to DAL simulation context
  * @ring_id: Ring ID for TCL descriptor enqueue
