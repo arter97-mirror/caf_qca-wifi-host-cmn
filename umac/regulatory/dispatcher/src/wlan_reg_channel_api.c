@@ -400,3 +400,27 @@ wlan_reg_is_freq_txable(struct wlan_objmgr_pdev *pdev,
 }
 
 qdf_export_symbol(wlan_reg_is_freq_txable);
+
+bool wlan_reg_is_4dot9G_freq_allowable(qdf_freq_t freq, bool is_qr, bool is_hr,
+		                struct wlan_objmgr_pdev *pdev)
+{
+	int rate;
+
+	/* Half rate and quarter rate operations are currently supported only in the 4.9 GHz band */
+	if (!WLAN_REG_IS_49GHZ_FREQ(freq)) {
+		if(is_qr || is_hr)
+			return false;
+		else
+			return true;
+	}
+
+	if (is_qr)
+		rate = BW_5_MHZ;
+	else if (is_hr)
+		rate = BW_10_MHZ;
+	else
+		rate = BW_20_MHZ;
+
+	return reg_is_4dot9G_freq_rate_supported(pdev, freq, rate);
+}
+qdf_export_symbol(wlan_reg_is_4dot9G_freq_allowable);

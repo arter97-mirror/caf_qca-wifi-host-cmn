@@ -620,4 +620,32 @@ bool
 wlan_reg_is_freq_txable(struct wlan_objmgr_pdev *pdev,
 			qdf_freq_t freq,
 			enum supported_6g_pwr_types in_6ghz_pwr_mode);
+
+/**
+ * wlan_reg_is_4dot9G_freq_allowable() - Check if a frequency is allowed for scanning
+ * @freq: Frequency in MHz to be verified
+ * @is_qr: Flag that indicates whether quarter rate is set or not
+ * @is_hr: Flag that indicates whether half rate is set or not
+ * @pdev: Pointer to the radio object
+ *
+ * This function verifies whether the given frequency is allowable for scanning
+ * based on the scan rate (full, half, or quarter) configured in the scan request.
+ * For 4.9 GHz frequencies, it determines the appropriate bandwidth based on the
+ * scan rate flags and checks if the frequency supports that rate using regulatory
+ * information.
+ *
+ * If the scan is configured for half/quarter rate and the frequency only
+ * supports full rate, the function returns false to exclude such channels
+ * from the scan list.
+ *
+ * Context: Any context. Caller must ensure @req and @pdev are valid.
+ *
+ * Return:
+ * * true  - Frequency is allowed for scanning
+ * * false - Frequency is not allowed for scanning
+ */
+bool
+wlan_reg_is_4dot9G_freq_allowable(qdf_freq_t freq, bool is_qr, bool is_hr,
+		           struct wlan_objmgr_pdev *pdev);
+
 #endif /* __WLAN_REG_CHANNEL_API_H */
