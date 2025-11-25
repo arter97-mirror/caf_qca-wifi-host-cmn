@@ -3456,12 +3456,13 @@ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 			peer->ast_idx = hw_peer_id;
 			vdev = peer->vdev;
 			/* Only check for STA Vdev and peer is not for TDLS */
-			if (wlan_op_mode_sta == vdev->opmode &&
-			    !peer->is_tdls_peer) {
+			if ((wlan_op_mode_sta == vdev->opmode &&
+			     !peer->is_tdls_peer) ||
+			    vdev->opmode == wlan_op_mode_passthru) {
 				if (qdf_mem_cmp(peer->mac_addr.raw,
 						vdev->mac_addr.raw,
 						QDF_MAC_ADDR_SIZE) != 0) {
-					dp_info("%pK: STA vdev bss_peer", soc);
+					dp_info("%pK: vdev bss_peer", soc);
 					peer->bss_peer = 1;
 					if (peer->txrx_peer)
 						peer->txrx_peer->bss_peer = 1;
