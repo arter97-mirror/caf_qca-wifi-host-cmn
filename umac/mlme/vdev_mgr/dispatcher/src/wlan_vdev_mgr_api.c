@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -47,3 +47,30 @@ void wlan_vdev_mgr_get_param_bssid(struct wlan_objmgr_vdev *vdev,
 }
 
 qdf_export_symbol(wlan_vdev_mgr_get_param_bssid);
+
+QDF_STATUS wlan_vdev_mgr_set_param_bssid(struct wlan_objmgr_vdev *vdev,
+					 const uint8_t *bssid)
+{
+	struct vdev_mlme_mgmt *mlme_mgmt;
+	struct vdev_mlme_obj *vdev_mlme;
+
+	if (!bssid)
+		return QDF_STATUS_E_INVAL;
+
+	vdev_mlme = wlan_objmgr_vdev_get_comp_private_obj(
+						vdev, WLAN_UMAC_COMP_MLME);
+
+	if (!vdev_mlme) {
+		mlme_err("VDEV_MLME is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	mlme_mgmt = &vdev_mlme->mgmt;
+
+	qdf_mem_copy(mlme_mgmt->generic.bssid, bssid,
+		     QDF_MAC_ADDR_SIZE);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+qdf_export_symbol(wlan_vdev_mgr_set_param_bssid);
