@@ -771,6 +771,7 @@ struct cdp_tx_exception_metadata {
  * @wlan_op_mode_monitor: Monitor mode
  * @wlan_op_mode_ocb: OCB mode
  * @wlan_op_mode_ndi: NDI mode
+ * @wlan_op_mode_passthru: Passthrough mode
  */
 enum wlan_op_mode {
 	wlan_op_mode_unknown,
@@ -780,6 +781,7 @@ enum wlan_op_mode {
 	wlan_op_mode_monitor,
 	wlan_op_mode_ocb,
 	wlan_op_mode_ndi,
+	wlan_op_mode_passthru,
 };
 
 /**
