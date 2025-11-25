@@ -155,6 +155,10 @@ struct dal_sim_srng {
  * @dev: Pointer to device
  * @intf_info: Interface information maintained in DAL sim context
  * @dev_base_addr: device base address
+ * @sim_mode_switch_in_progress: Flag indicating if mode switch is in progress
+ * @rxbm_sync_lock: Lock for rxbm_sync operations during mode switch
+ * @active_tx_desc_list_cnt: count of active tx desc list being processed
+ * @active_rx_desc_list_cnt: count of active rx desc list being processed
  *
  * This structure maintains all necessary context for DAL simulation,
  * including pointers to datapath context, platform operations, vendor
@@ -196,6 +200,14 @@ struct dp_dal_sim_ctx {
 	/* Interface information maintained in DAL sim context */
 	struct dal_intf_info intf_info[DAL_INTF_TYPE_MAX];
 	void *dev_base_addr;
+
+	/* Mode switch control */
+	qdf_atomic_t sim_mode_switch_in_progress;
+	qdf_spinlock_t rxbm_sync_lock;
+
+	/* Descriptor processing counters for mode switch synchronization */
+	qdf_atomic_t active_tx_desc_list_cnt;
+	qdf_atomic_t active_rx_desc_list_cnt;
 };
 
 /**
@@ -207,5 +219,27 @@ struct dp_dal_sim_ctx {
  * already scheduled and queues work on the appropriate work queue.
  */
 void dp_dal_sim_schedule_work(void *arg);
+
+/**
+ * dp_dal_sim_trigger_mode_switch() - Trigger DAL sim mode switch
+ * @soc_hdl: soc handle
+ * @mode_requested: requested mode
+ * This function sets the sim_mode_switch_in_progress flag to true and
+ * blocks all replenish, tx, rx requests from wlan driver.
+ *
+ * Return: None
+ */
+void dp_dal_sim_trigger_mode_switch(
+	struct cdp_soc_t *soc_hdl, uint8_t mode_requested);
+
+/**
+ * dp_dal_sim_get_curr_mode() - Get current mode of dal sim
+ *
+ * This function gets the current mode of dal sim.
+ *
+ * Return: current mode of dal sim (0 = bypass, 1 = offload)
+ */
+uint8_t dp_dal_sim_get_curr_mode(void);
+
 #endif /* FEATURE_DP_DAL_SIM */
 #endif /* DP_DAL_SIM_H */

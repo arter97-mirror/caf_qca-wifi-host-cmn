@@ -16,6 +16,10 @@
 #define DP_DAL_SIM_RX_BUDGET 64
 #define DP_DAL_SIM_TX_BUDGET 64
 
+/* Mode switch descriptor list processing wait parameters */
+#define DP_DAL_SIM_MODE_SWITCH_MAX_RETRIES	10
+#define DP_DAL_SIM_MODE_SWITCH_TIMEOUT_MS	10
+
 /* ========================================================================
  * Platform Bus Operations - Offload Mode Implementation
  * ========================================================================
@@ -339,6 +343,7 @@ static void dp_dal_sim_destroy_work(struct dp_dal_sim_ctx *dal_sim_ctx)
 static int dp_dal_sim_init(void *pdev, void *priv)
 {
 	int i;
+	struct hal_soc *hal_soc;
 
 	int status = 0;
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
@@ -348,7 +353,15 @@ static int dp_dal_sim_init(void *pdev, void *priv)
 		dp_err("NULL DAL context in offload_mode_init");
 		return -EINVAL;
 	}
-
+	/* TODO Check if already sim_ctx was present because of subsequent mode
+	 * switch from
+	 * offload to bypass, and then to bypass again.
+	 */
+	if (dal_ctx->dal_sim_ctx) {
+		dp_info("dal sim ctx exists");
+		sim_ctx = dal_ctx->dal_sim_ctx;
+		goto skip_sim_ctx_alloc;
+	}
 	/* Allocate dal_sim_ctx */
 	sim_ctx = qdf_mem_malloc(sizeof(*sim_ctx));
 	if (!sim_ctx) {
@@ -356,12 +369,11 @@ static int dp_dal_sim_init(void *pdev, void *priv)
 		return -ENOMEM;
 	}
 
+skip_sim_ctx_alloc:
 	/* Set dp_dal_ctx pointer */
 	sim_ctx->dp_dal_ctx = dal_ctx;
-
 	/* Get the device base address*/
-	struct hal_soc *hal_soc = (struct hal_soc *)dal_ctx->soc->hal_soc;
-
+	hal_soc = (struct hal_soc *)dal_ctx->soc->hal_soc;
 	sim_ctx->dev_base_addr = hal_soc->dev_base_addr;
 
 	/* Get the device ptr */
@@ -425,6 +437,14 @@ static int dp_dal_sim_init(void *pdev, void *priv)
 		qdf_atomic_init(&sim_ctx->tx_compl_work_scheduled[i]);
 	}
 
+	/* Initialize mode switch control */
+	qdf_atomic_init(&sim_ctx->sim_mode_switch_in_progress);
+	qdf_spinlock_create(&sim_ctx->rxbm_sync_lock);
+
+	/* Initialize descriptor processing counters */
+	qdf_atomic_init(&sim_ctx->active_tx_desc_list_cnt);
+	qdf_atomic_init(&sim_ctx->active_rx_desc_list_cnt);
+
 	/* Assign dal_sim_ctx to dp_dal_ctx */
 	dal_ctx->dal_sim_ctx = sim_ctx;
 
@@ -452,6 +472,7 @@ void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
 	if (!sim_ctx)
 		return;
 
+	qdf_spinlock_destroy(&sim_ctx->rxbm_sync_lock);
 	/* Destroy all work queues and work items */
 	dp_dal_sim_destroy_work(sim_ctx);
 
@@ -461,7 +482,6 @@ void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
 	/* Clear all fields */
 	sim_ctx->dp_dal_ctx = NULL;
 	sim_ctx->sim_ctx_initialized = false;
-
 	/* Free context */
 	qdf_mem_free(sim_ctx);
 }
@@ -1215,34 +1235,113 @@ void dp_dal_sim_schedule_work(void *arg)
 unsigned int g_dal_sim_curr_mode;
 void dp_dal_sim_platform_bus_ops_attach(void)
 {
-	struct dp_soc *soc = cds_get_context(QDF_MODULE_ID_SOC);
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(
+					cds_get_context(QDF_MODULE_ID_SOC));
 
 	if (!soc) {
-		g_dal_sim_curr_mode = 0;
+		g_dal_sim_curr_mode = DAL_DP_BYPASS_MODE;
 		*global_plat_ops = plat_ops_bypass_mode;
-		dp_err("Failed to get soc context, attaching default bypass ops");
+		dp_err("Null soc context, attaching default bypass ops");
 		return;
 	}
 	if (!soc->ctrl_psoc) {
-		g_dal_sim_curr_mode = 0;
-		dp_err("ctrl_psoc not initialized, attaching default bypass ops");
+		g_dal_sim_curr_mode = DAL_DP_BYPASS_MODE;
+		dp_err("Null ctrl_psoc, attaching default bypass ops");
 		*global_plat_ops = plat_ops_bypass_mode;
 		return;
 	}
 	g_dal_sim_curr_mode = cfg_get(soc->ctrl_psoc, CFG_DP_DAL_SIM_MODE);
-	if (g_dal_sim_curr_mode == 0) {
+	if (g_dal_sim_curr_mode == DAL_DP_BYPASS_MODE) {
 		/* Bypass mode */
 		*global_plat_ops = plat_ops_bypass_mode;
 		dp_info("Platform bus operations attached - Bypass mode");
-	} else if (g_dal_sim_curr_mode == 1) {
+	} else if (g_dal_sim_curr_mode == DAL_DP_OFFLOAD_MODE) {
 		/* Offload mode */
 		*global_plat_ops = dp_dal_sim_plat_ops;
 		dp_info("Platform bus operations attached - Offload mode");
 	} else {
 		dp_err("Invalid mode %u, defaulting to bypass mode",
 		       g_dal_sim_curr_mode);
+		g_dal_sim_curr_mode = DAL_DP_BYPASS_MODE;
 		*global_plat_ops = plat_ops_bypass_mode;
 	}
+}
+
+/**
+ * dp_dal_sim_mode_bypass_switch() - Switch to bypass mode
+ * @sim_ctx: pointer to dal sim context
+ *
+ * This function performs the necessary steps to switch the dal sim mode to
+ * bypass mode.
+ *
+ * Return: None
+ */
+static inline void dp_dal_sim_mode_bypass_switch(
+	struct dp_dal_sim_ctx *sim_ctx)
+{
+}
+
+/**
+ * dp_dal_sim_mode_offload_switch() - Switch to offload mode
+ * @sim_ctx: pointer to dal sim context
+ *
+ * This function performs the necessary steps to switch the dal sim mode to
+ * offload mode.
+ *
+ * Return: None
+ */
+static inline void dp_dal_sim_mode_offload_switch(
+	struct dp_dal_sim_ctx *sim_ctx)
+{
+}
+
+void dp_dal_sim_trigger_mode_switch(
+	struct cdp_soc_t *soc_hdl, uint8_t mode_requested)
+{
+	struct dp_soc *dp_soc;
+	struct dp_dal_ctx *dal_ctx;
+	struct dp_dal_sim_ctx *sim_ctx;
+
+	dp_soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	if (!dp_soc) {
+		dp_err("Null soc context");
+		return;
+	}
+
+	dal_ctx = dp_soc->dal_ctx;
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("DAL sim context is NULL");
+		return;
+	}
+
+	if (g_dal_sim_curr_mode == mode_requested) {
+		dp_err_rl("curr_mode %d req_mode %d same",
+			  g_dal_sim_curr_mode, mode_requested);
+		return;
+	}
+
+	dp_info("mode switch request: curr_mode:%d, new mode %d",
+		g_dal_sim_curr_mode, mode_requested);
+	if (mode_requested == DAL_DP_BYPASS_MODE &&
+	    g_dal_sim_curr_mode != DAL_DP_BYPASS_MODE)
+		dp_dal_sim_mode_bypass_switch(sim_ctx);
+	else if (mode_requested == DAL_DP_OFFLOAD_MODE &&
+		 g_dal_sim_curr_mode != DAL_DP_OFFLOAD_MODE)
+		dp_dal_sim_mode_offload_switch(sim_ctx);
+	else
+		dp_err_rl("Invalid mode requested %d", mode_requested);
+}
+
+uint8_t dp_dal_sim_get_curr_mode(void)
+{
+	return g_dal_sim_curr_mode;
 }
 #else
 void dp_dal_sim_platform_bus_ops_attach(void)
