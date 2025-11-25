@@ -5393,8 +5393,14 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	vdev->tx_encap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
-	vdev->rx_decap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
+	if (vdev->opmode != wlan_op_mode_passthru) {
+		vdev->tx_encap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
+		vdev->rx_decap_type = wlan_cfg_pkt_type(soc->wlan_cfg_ctx);
+	} else {
+		vdev->tx_encap_type = htt_cmn_pkt_type_raw;
+		vdev->rx_decap_type = htt_cmn_pkt_type_raw;
+	}
+
 	vdev->dscp_tid_map_id = 0;
 	vdev->mcast_enhancement_en = 0;
 	vdev->igmp_mcast_enhanc_en = 0;
