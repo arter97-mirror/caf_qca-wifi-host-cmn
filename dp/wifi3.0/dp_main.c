@@ -5481,6 +5481,9 @@ static inline void dp_vdev_fetch_tx_handler(struct dp_vdev *vdev,
 		 (vdev->opmode == wlan_op_mode_ap)) {
 		ctx->tx = dp_tx_send_vdev_id_check;
 		ctx->tx_fast = dp_tx_send_vdev_id_check;
+	} else if (vdev->opmode == wlan_op_mode_passthru) {
+		ctx->tx = dp_tx_send_passthru;
+		ctx->tx_fast = soc->arch_ops.dp_tx_send_fast;
 	} else {
 		ctx->tx = dp_tx_send;
 		ctx->tx_fast = soc->arch_ops.dp_tx_send_fast;
