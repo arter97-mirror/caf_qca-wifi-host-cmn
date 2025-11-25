@@ -1293,6 +1293,35 @@ static inline void dp_dal_sim_mode_bypass_switch(
 static inline void dp_dal_sim_mode_offload_switch(
 	struct dp_dal_sim_ctx *sim_ctx)
 {
+	int status;
+
+	if (!sim_ctx) {
+		dp_err("Null sim ctx");
+		return;
+	}
+
+	if (!vendor_cb.mode_switch_ind) {
+		dp_err("mode_switch_ind callback not registered");
+		return;
+	}
+	/* Set mode switch in progress flag to true */
+	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 1);
+	/* Update the global plat ops with offload mode ops */
+	*global_plat_ops = dp_dal_sim_plat_ops;
+
+	status = vendor_cb.mode_switch_ind(sim_ctx->dp_dal_ctx,
+					   g_dal_sim_curr_mode,
+					   DAL_DP_OFFLOAD_MODE);
+	if (status) {
+		*global_plat_ops = plat_ops_bypass_mode;
+		dp_err("mode switch ind fail status %d. Restored bypass ops",
+		       status);
+		goto exit;
+	}
+	g_dal_sim_curr_mode = DAL_DP_OFFLOAD_MODE;
+	dp_info("Switched to offload mode");
+exit:
+	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 0);
 }
 
 void dp_dal_sim_trigger_mode_switch(
@@ -1330,10 +1359,10 @@ void dp_dal_sim_trigger_mode_switch(
 	dp_info("mode switch request: curr_mode:%d, new mode %d",
 		g_dal_sim_curr_mode, mode_requested);
 	if (mode_requested == DAL_DP_BYPASS_MODE &&
-	    g_dal_sim_curr_mode != DAL_DP_BYPASS_MODE)
+	    g_dal_sim_curr_mode == DAL_DP_OFFLOAD_MODE)
 		dp_dal_sim_mode_bypass_switch(sim_ctx);
 	else if (mode_requested == DAL_DP_OFFLOAD_MODE &&
-		 g_dal_sim_curr_mode != DAL_DP_OFFLOAD_MODE)
+		 g_dal_sim_curr_mode == DAL_DP_BYPASS_MODE)
 		dp_dal_sim_mode_offload_switch(sim_ctx);
 	else
 		dp_err_rl("Invalid mode requested %d", mode_requested);
