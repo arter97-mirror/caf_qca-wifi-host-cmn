@@ -369,9 +369,18 @@ QDF_STATUS osif_disconnect_handler(struct wlan_objmgr_vdev *vdev,
 		       qca_reason,
 		       osif_cm_qca_reason_to_str(qca_reason));
 
-	/* Unlink bss if disconnect is from peer or south bound */
+	/*
+	 * Unlink BSS entry when disconnect is triggered by:
+	 * - Peer initiated disconnect (CM_PEER_DISCONNECT)
+	 * - Southbound initiated disconnect (CM_SB_DISCONNECT)
+	 * - Internal roam failure (QCA_DISCONNECT_REASON_INTERNAL_ROAM_FAILURE)
+	 *
+	 * This ensures the host does not retain outdated BSS information,
+	 * which could lead to incorrect connection attempts.
+	 */
 	if (rsp->req.req.source == CM_PEER_DISCONNECT ||
-	    rsp->req.req.source == CM_SB_DISCONNECT)
+	    rsp->req.req.source == CM_SB_DISCONNECT ||
+	    qca_reason == QCA_DISCONNECT_REASON_INTERNAL_ROAM_FAILURE)
 		osif_cm_unlink_bss(vdev, &rsp->req.req.bssid);
 
 	if (!wlan_vdev_mlme_is_mlo_vdev(vdev) ||
