@@ -428,6 +428,33 @@ static inline uint32_t dal_vndr_hal_tx_comp_get_buffer_type_bn(void *hal_desc)
 		HAL_TX_COMP_BUFFER_OR_DESC_TYPE_LSB;
 }
 
+/**
+ * dal_vndr_hal_rx_get_reo_desc_va_bn() - Get Desc virtual addr within REO Desc
+ * @reo_desc: REO2SW ring descriptor pointer
+ *
+ * Return: RX descriptor virtual address
+ */
+static inline uintptr_t dal_vndr_hal_rx_get_reo_desc_va_bn(void *reo_desc)
+{
+	uint64_t va_from_desc;
+
+	/* first 64 bits block for VA */
+	va_from_desc = qdf_le64_to_cpu(*(uint64_t *)reo_desc);
+
+	return (uintptr_t)va_from_desc;
+}
+
+/**
+ * dal_vndr_hal_rx_reo_buf_type_get_bn() - Get REO buffer type
+ * @rx_desc: RX descriptor
+ *
+ * Return: buffer type
+ */
+static uint8_t dal_vndr_hal_rx_reo_buf_type_get_bn(hal_ring_desc_t rx_desc)
+{
+	return HAL_RX_REO_BUF_TYPE_GET(rx_desc);
+}
+
 void dal_vndr_hal_default_ops_attach_bn(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_buf_addr =
@@ -482,4 +509,22 @@ void dal_vndr_hal_default_ops_attach_bn(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_tx_comp_get_buffer_type_bn;
 	hal_soc->ops->dal_vndr_hal_tx_comp_get_paddr =
 				dal_vndr_hal_tx_comp_get_paddr_be;
+	hal_soc->ops->dal_vndr_hal_rx_error_status_get =
+				dal_vndr_hal_rx_error_status_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_reo_buf_cookie_get =
+				dal_vndr_hal_rx_reo_buf_cookie_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_ret_buf_manager_get =
+				dal_vndr_hal_rx_ret_buf_manager_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_reo_get_details =
+				dal_vndr_hal_rx_reo_get_details_be;
+	hal_soc->ops->dal_vndr_hal_rx_reo_buf_paddr_get =
+				dal_vndr_hal_rx_reo_buf_paddr_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_msdu_done_get =
+				dal_vndr_hal_rx_tlv_msdu_done_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_get_l3_pad_bytes =
+				dal_vndr_hal_rx_get_l3_pad_bytes_be;
+	hal_soc->ops->hal_rx_reo_buf_type_get =
+				dal_vndr_hal_rx_reo_buf_type_get_bn;
+	hal_soc->ops->hal_rx_get_reo_desc_va =
+				dal_vndr_hal_rx_get_reo_desc_va_bn;
 }
