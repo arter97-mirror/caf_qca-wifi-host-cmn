@@ -95,16 +95,32 @@ struct dal_tx_rate_stats_info {
 			 transmit_stbc                                           :  1,
 			 transmit_ldpc                                           :  1,
 			 transmit_sgi                                            :  2,
+#ifdef CONFIG_BORON
+			transmit_mcs                                     :  5,
+			unequal_modulation_info                          :  3,
+			ofdma_transmission                               :  1,
+			reserved_0a                                      :  4,
+			tones_in_ru                                      :  4,
+#else
 			 transmit_mcs                                            :  4,
 			 ofdma_transmission                                      :  1,
 			 tones_in_ru                                             : 12,
+#endif
 			 transmit_nss                                            :  3;
 	uint32_t ppdu_transmission_tsf                                   : 32;
-#else
+#else /* WIFI_BIT_ORDER_BIG_ENDIAN */
 	 uint32_t transmit_nss                                            :  3,
+#ifdef CONFIG_BORON
+			tones_in_ru                                     :  4,
+			reserved_0a                                     :  4,
+			ofdma_transmission                              :  1,
+			unequal_modulation_info                         :  3,
+			transmit_mcs                                    :  5,
+#else
 			  tones_in_ru                                             : 12,
 			  ofdma_transmission                                      :  1,
 			  transmit_mcs                                            :  4,
+#endif
 			  transmit_sgi                                            :  2,
 			  transmit_ldpc                                           :  1,
 			  transmit_stbc                                           :  1,
@@ -145,6 +161,34 @@ struct dal_tx_rate_stats_info {
 #define TX_RATE_STATS_INFO_TRANSMIT_SGI_MSB                                         11
 #define TX_RATE_STATS_INFO_TRANSMIT_SGI_MASK                                        0x00000c00
 
+#ifdef CONFIG_BORON
+#define TX_RATE_STATS_INFO_TRANSMIT_MCS_OFFSET                     0x00000000
+#define TX_RATE_STATS_INFO_TRANSMIT_MCS_LSB                        12
+#define TX_RATE_STATS_INFO_TRANSMIT_MCS_MSB                        16
+#define TX_RATE_STATS_INFO_TRANSMIT_MCS_MASK                       0x0001f000
+
+#define TX_RATE_STATS_INFO_UNEQUAL_MODULATION_INFO_OFFSET          0x00000000
+#define TX_RATE_STATS_INFO_UNEQUAL_MODULATION_INFO_LSB             17
+#define TX_RATE_STATS_INFO_UNEQUAL_MODULATION_INFO_MSB             19
+#define TX_RATE_STATS_INFO_UNEQUAL_MODULATION_INFO_MASK            0x000e0000
+
+#define TX_RATE_STATS_INFO_OFDMA_TRANSMISSION_OFFSET               0x00000000
+#define TX_RATE_STATS_INFO_OFDMA_TRANSMISSION_LSB                  20
+#define TX_RATE_STATS_INFO_OFDMA_TRANSMISSION_MSB                  20
+#define TX_RATE_STATS_INFO_OFDMA_TRANSMISSION_MASK                 0x00100000
+
+#define TX_RATE_STATS_INFO_RESERVED_0A_OFFSET                      0x00000000
+#define TX_RATE_STATS_INFO_RESERVED_0A_LSB                         21
+#define TX_RATE_STATS_INFO_RESERVED_0A_MSB                         24
+#define TX_RATE_STATS_INFO_RESERVED_0A_MASK                        0x01e00000
+
+#define TX_RATE_STATS_INFO_TONES_IN_RU_OFFSET                      0x00000000
+#define TX_RATE_STATS_INFO_TONES_IN_RU_LSB                         25
+#define TX_RATE_STATS_INFO_TONES_IN_RU_MSB                         28
+#define TX_RATE_STATS_INFO_TONES_IN_RU_MASK                        0x1e000000
+
+#else
+
 #define TX_RATE_STATS_INFO_TRANSMIT_MCS_OFFSET                                      0x00000000
 #define TX_RATE_STATS_INFO_TRANSMIT_MCS_LSB                                         12
 #define TX_RATE_STATS_INFO_TRANSMIT_MCS_MSB                                         15
@@ -159,6 +203,7 @@ struct dal_tx_rate_stats_info {
 #define TX_RATE_STATS_INFO_TONES_IN_RU_LSB                                          17
 #define TX_RATE_STATS_INFO_TONES_IN_RU_MSB                                          28
 #define TX_RATE_STATS_INFO_TONES_IN_RU_MASK                                         0x1ffe0000
+#endif
 
 #define TX_RATE_STATS_INFO_TRANSMIT_NSS_OFFSET                                      0x00000000
 #define TX_RATE_STATS_INFO_TRANSMIT_NSS_LSB                                         29
