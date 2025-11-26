@@ -7,6 +7,7 @@
 #include "dal_vndr_hal_internal.h"
 #include "dal_vndr_hal_be.h"
 #include "dal_vndr_hal_defines_be.h"
+#include "dal_vndr_hal_bn.h"
 
 #define DAL_VNDR_HAL_WBM2SW_RELEASE_SRC_GET(wbm_desc) (((*(((uint32_t *)wbm_desc) + \
 		(WBM_RELEASE_RING_TX_RELEASE_SOURCE_MODULE_OFFSET >> 2))) & \
@@ -115,6 +116,19 @@ static void dal_vndr_hal_attach_common_ops(struct dal_vndr_hal_soc *hal_soc)
  *
  * Return: void
  */
+#if defined(CONFIG_BORON) && defined(DAL_VNDR_HAL_BN)
+void dal_vndr_hal_ops_attach(void *hal_soc)
+{
+	struct dal_vndr_hal_soc *hal_soc_hdl =
+		(struct dal_vndr_hal_soc *)hal_soc;
+
+	if (!hal_soc_hdl)
+		return;
+	/* BORON-specific ops attach path */
+	dal_vndr_hal_default_ops_attach_bn(hal_soc_hdl);
+}
+
+#else /* Non-BORON (default/BE) */
 void dal_vndr_hal_ops_attach(void *hal_soc)
 {
 	struct dal_vndr_hal_soc *hal_soc_hdl =
@@ -135,3 +149,5 @@ void dal_vndr_hal_ops_attach(void *hal_soc)
 	 */
 	dal_vndr_hal_default_ops_attach_be(hal_soc_hdl);
 }
+#endif
+
