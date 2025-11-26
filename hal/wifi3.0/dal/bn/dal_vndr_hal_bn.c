@@ -527,4 +527,20 @@ void dal_vndr_hal_default_ops_attach_bn(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_rx_reo_buf_type_get_bn;
 	hal_soc->ops->hal_rx_get_reo_desc_va =
 				dal_vndr_hal_rx_get_reo_desc_va_bn;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_sgi_get =
+				dal_vndr_hal_rx_tlv_sgi_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_rate_mcs_get =
+				dal_vndr_hal_rx_tlv_rate_mcs_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_bw_get =
+				dal_vndr_hal_rx_tlv_bw_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_get_pkt_type =
+				dal_vndr_hal_rx_tlv_get_pkt_type_be;
+	hal_soc->ops->dal_vndr_hal_rx_tlv_nss_get =
+				dal_vndr_hal_rx_tlv_nss_get_be;
+	hal_soc->ops->dal_vndr_hal_rx_msdu_desc_info_get =
+				dal_vndr_hal_rx_msdu_desc_info_get_be;
+	hal_soc->ops->dal_vndr_hal_rxdma_buff_addr_info_set =
+				dal_vndr_hal_rxdma_buff_addr_info_set_be;
+	hal_soc->ops->dal_vndr_hal_rxbm_sync =
+				dal_vndr_hal_rxbm_sync_be;
 }
