@@ -27,6 +27,7 @@
 #include "wlan_scan_main.h"
 #include "wlan_scan_manager.h"
 #include "wlan_utility.h"
+#include "wlan_pmo_ucfg_api.h"
 #include <wlan_reg_services_api.h>
 #ifdef FEATURE_WLAN_SCAN_PNO
 #include <host_diag_core_event.h>
@@ -2150,7 +2151,8 @@ void scm_disable_obss_pdev_scan(struct wlan_objmgr_psoc *psoc,
 		return;
 	}
 
-	if (scan_obj->obss_scan_offload) {
+	if (scan_obj->obss_scan_offload &&
+	    !ucfg_pmo_is_wow_optimization_enabled(psoc)) {
 		pdev_objmgr = &pdev->pdev_objmgr;
 
 		wlan_pdev_obj_lock(pdev);
