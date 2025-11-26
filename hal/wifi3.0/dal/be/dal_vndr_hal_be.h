@@ -65,6 +65,7 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *soc);
  *       <enum 2     1_6_us_sgi > HE related GI
  *       <enum 3     3_2_us_sgi > HE
  * @mcs: Transmit MCS Rate
+ * @unequal_modulation: unequal modulation information for transmission
  * @ofdma: Set when the transmission was an OFDMA transmission
  * @reserved_bn: reserved
  * @tones_in_ru: The number of tones in the RU used.
@@ -96,11 +97,23 @@ struct dal_vndr_hal_tx_completion_status {
 		 stbc:1,
 		 ldpc:1,
 		 sgi:2,
-		 mcs:4,
-		 ofdma:1,
-		 tones_in_ru:12,
 
+#ifdef CONFIG_BORON
+		 mcs:5,
+		 unequal_modulation:3,
+		 ofdma:1,
+		 reserved_bn:4,
+		 tones_in_ru:4,
+#else
+		mcs:4,
+		ofdma:1,
+		tones_in_ru:12,
+#endif
+#ifdef TX_NSS_STATS_SUPPORT
+		 tx_nss:3;
+#else
 		 reserved5:3;
+#endif
 	uint32_t tsf;
 	uint32_t peer_id:16,
 		 tid:8,

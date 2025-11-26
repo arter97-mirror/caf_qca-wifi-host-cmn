@@ -386,6 +386,48 @@ dal_vndr_hal_tx_desc_set_c_vlan_tag_bn(void *desc, uint8_t c_vlan_present)
 		HAL_TX_SM(TCL_ASSIST_CMD, C_VLAN_TAG_PRESENT, c_vlan_present);
 }
 
+/**
+ * dal_vndr_hal_tx_comp_get_release_reason_generic_bn() - TQM Release reason
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * This function will return the type of pointer - buffer or descriptor
+ *
+ * Return: buffer type
+ */
+static uint8_t
+dal_vndr_hal_tx_comp_get_release_reason_generic_bn(void *hal_desc)
+{
+	uint32_t comp_desc = *(uint32_t *)(((uint8_t *)hal_desc) +
+			TQM2SW_COMPLETION_RING_TQM_RELEASE_REASON_OFFSET);
+
+	return (comp_desc &
+		TQM2SW_COMPLETION_RING_TQM_RELEASE_REASON_MASK) >>
+		TQM2SW_COMPLETION_RING_TQM_RELEASE_REASON_LSB;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * WBM Descriptor accessor APIs for Tx completions
+ * ---------------------------------------------------------------------------
+ */
+/**
+ * dal_vndr_hal_tx_comp_get_buffer_type_bn() - Buffer or Descriptor type
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * This function will return the type of pointer - buffer or descriptor
+ *
+ * Return: buffer type
+ */
+static inline uint32_t dal_vndr_hal_tx_comp_get_buffer_type_bn(void *hal_desc)
+{
+	uint32_t comp_desc =
+		*(uint32_t *)(((uint8_t *)hal_desc) +
+		HAL_TX_COMP_BUFFER_OR_DESC_TYPE_OFFSET);
+
+	return (comp_desc & HAL_TX_COMP_BUFFER_OR_DESC_TYPE_MASK) >>
+		HAL_TX_COMP_BUFFER_OR_DESC_TYPE_LSB;
+}
+
 void dal_vndr_hal_default_ops_attach_bn(struct dal_vndr_hal_soc *hal_soc)
 {
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_buf_addr =
@@ -432,4 +474,12 @@ void dal_vndr_hal_default_ops_attach_bn(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_tx_desc_set_s_vlan_tag_bn;
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_c_vlan_tag =
 				dal_vndr_hal_tx_desc_set_c_vlan_tag_bn;
+	hal_soc->ops->dal_vndr_hal_tx_comp_get_status_generic =
+				dal_vndr_hal_tx_comp_get_status_generic_be;
+	hal_soc->ops->dal_vndr_hal_tx_comp_get_release_reason_generic =
+			dal_vndr_hal_tx_comp_get_release_reason_generic_bn;
+	hal_soc->ops->dal_vndr_hal_tx_comp_get_buffer_type =
+				dal_vndr_hal_tx_comp_get_buffer_type_bn;
+	hal_soc->ops->dal_vndr_hal_tx_comp_get_paddr =
+				dal_vndr_hal_tx_comp_get_paddr_be;
 }
