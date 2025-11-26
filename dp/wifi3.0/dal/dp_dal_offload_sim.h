@@ -198,5 +198,26 @@ int dp_dal_offload_sim_rxbm_sync(
 				u32 cnt,
 				void **rx_buff);
 
+/**
+ * dp_dal_offload_sim_fetch_current_hp_tp() - Fetch current HP and TP values
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ * @hp: Pointer to store head pointer value
+ * @tp: Pointer to store tail pointer value
+ * @ring_type: Offload simulation ring type
+ * @ring_id: Ring ID
+ *
+ * This function fetches the current head pointer (HP) and tail pointer (TP)
+ * values for a specified ring in the offload simulation context.It calls
+ * dal vendor hal api to get hp tp of the ring.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+int dp_dal_offload_sim_fetch_current_hp_tp(
+				struct dp_dal_sim_ctx *dal_sim_ctx,
+				uint32_t *hp,
+				uint32_t *tp,
+				int ring_type,
+				int ring_id);
+
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */

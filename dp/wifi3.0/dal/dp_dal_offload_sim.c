@@ -825,4 +825,65 @@ int dp_dal_offload_sim_rxbm_sync(
 	return i;
 }
 
+int dp_dal_offload_sim_fetch_current_hp_tp(
+				struct dp_dal_sim_ctx *dal_sim_ctx,
+				uint32_t *hp,
+				uint32_t *tp,
+				int ring_type,
+				int ring_id)
+{
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *hal_srng = NULL;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL sim context");
+		return -EINVAL;
+	}
+
+	if (!hp || !tp) {
+		dp_err("NULL hp/tp");
+		return -EINVAL;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context");
+		return -EINVAL;
+	}
+
+	/* Get the appropriate ring based on ring_type and ring_id */
+	switch (ring_type) {
+	case OFFLOAD_SIM_RING_TYPE_RX:
+		if (ring_id < 0 || ring_id >= DAL_RX_RINGS_MAX) {
+			dp_err("Invalid RX ring_id %d", ring_id);
+			return -EINVAL;
+		}
+		hal_srng = &offload_ctx->rx_ring_hal_srng[ring_id];
+		break;
+
+	case OFFLOAD_SIM_RING_TYPE_TX_CPL:
+		if (ring_id < 0 || ring_id >= DAL_TX_RINGS_MAX) {
+			dp_err("Invalid TX completion ring_id %d", ring_id);
+			return -EINVAL;
+		}
+		hal_srng = &offload_ctx->tx_cmpl_ring_hal_srng[ring_id];
+		break;
+
+	default:
+		dp_err("Invalid ring_type %d", ring_type);
+		return -EINVAL;
+	}
+
+	if (!hal_srng) {
+		dp_err("NULL hal_srng for offload sim ring_type %d, ring_id %d",
+		       ring_type, ring_id);
+		return -EINVAL;
+	}
+
+	dal_vndr_hal_get_sw_hptp(&offload_ctx->hal_soc, hal_srng, tp, hp);
+
+	return 0;
+}
+
 #endif /* FEATURE_DP_DAL_SIM */
