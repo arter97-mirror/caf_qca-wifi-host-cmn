@@ -59,11 +59,6 @@
 #include <qdf_tracepoint.h>
 #include "qdf_ssr_driver_dump.h"
 
-void hif_dump(struct hif_opaque_softc *hif_ctx, uint8_t cmd_id, bool start)
-{
-	hif_trigger_dump(hif_ctx, cmd_id, start);
-}
-
 /**
  * hif_get_target_id(): hif_get_target_id
  * @scn: scn

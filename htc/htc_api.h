@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2014, 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -498,18 +498,6 @@ QDF_STATUS htc_start(HTC_HANDLE HTCHandle);
 QDF_STATUS htc_connect_service(HTC_HANDLE HTCHandle,
 			     struct htc_service_connect_req *pReq,
 			     struct htc_service_connect_resp *pResp);
-
-/**
- * htc_dump() - HTC register log dump
- * @HTCHandle: HTC handle
- * @CmdId: Log command
- * @start: start/print logs
- *
- * Register logs will be started/printed/ be flushed.
- *
- * Return: None
- */
-void htc_dump(HTC_HANDLE HTCHandle, uint8_t CmdId, bool start);
 
 /**
  * htc_ce_tasklet_debug_dump() - Dump ce tasklet rings debug data

@@ -44,12 +44,6 @@
 
 #define CE_POLL_TIMEOUT 10      /* ms */
 
-#define AGC_DUMP         1
-#define CHANINFO_DUMP    2
-#define BB_WATCHDOG_DUMP 3
-#ifdef CONFIG_ATH_PCIE_ACCESS_DEBUG
-#define PCIE_ACCESS_DUMP 4
-#endif
 #include "mp_dev.h"
 #ifdef HIF_CE_LOG_INFO
 #include "qdf_hang_event_notifier.h"
@@ -440,39 +434,6 @@ static struct ce_int_assignment ce_int_context[NUM_CE_CONTEXT] = {
 	} },
 #endif
 };
-
-
-void hif_trigger_dump(struct hif_opaque_softc *hif_ctx,
-		      uint8_t cmd_id, bool start)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-
-	switch (cmd_id) {
-	case AGC_DUMP:
-		if (start)
-			priv_start_agc(scn);
-		else
-			priv_dump_agc(scn);
-		break;
-	case CHANINFO_DUMP:
-		if (start)
-			priv_start_cap_chaninfo(scn);
-		else
-			priv_dump_chaninfo(scn);
-		break;
-	case BB_WATCHDOG_DUMP:
-		priv_dump_bbwatchdog(scn);
-		break;
-#ifdef CONFIG_ATH_PCIE_ACCESS_DEBUG
-	case PCIE_ACCESS_DUMP:
-		hif_target_access_log_dump();
-		break;
-#endif
-	default:
-		hif_err("Invalid htc dump command: %d", cmd_id);
-		break;
-	}
-}
 
 static void ce_poll_timeout(void *arg)
 {

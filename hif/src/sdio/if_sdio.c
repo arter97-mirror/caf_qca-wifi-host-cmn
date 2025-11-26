@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -247,18 +247,6 @@ void hif_sdio_mask_interrupt_call(struct hif_softc *scn)
 	struct hif_sdio_dev *hif_device = hif_ctx->hif_handle;
 
 	hif_mask_interrupt(hif_device);
-}
-
-/**
- * hif_trigger_dump() - trigger various dump cmd
- * @scn: struct hif_opaque_softc
- * @cmd_id: dump command id
- * @start: start/stop dump
- *
- * Return: None
- */
-void hif_trigger_dump(struct hif_opaque_softc *scn, uint8_t cmd_id, bool start)
-{
 }
 
 /**

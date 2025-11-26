@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -576,18 +576,6 @@ void hif_usb_irq_disable(struct hif_softc *scn, int ce_id)
  * Return: void
  */
 void hif_usb_shutdown_bus_device(struct hif_softc *scn)
-{
-}
-
-/**
- * hif_trigger_dump() - trigger various dump cmd
- * @scn: struct hif_opaque_softc
- * @cmd_id: dump command id
- * @start: start/stop dump
- *
- * Return: None
- */
-void hif_trigger_dump(struct hif_opaque_softc *scn, uint8_t cmd_id, bool start)
 {
 }
 
