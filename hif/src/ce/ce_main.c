@@ -44,7 +44,6 @@
 
 #define CE_POLL_TIMEOUT 10      /* ms */
 
-#include "mp_dev.h"
 #ifdef HIF_CE_LOG_INFO
 #include "qdf_hang_event_notifier.h"
 #endif

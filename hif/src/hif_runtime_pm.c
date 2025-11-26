@@ -35,7 +35,6 @@
 #include "qdf_status.h"
 #include "qdf_atomic.h"
 #include "pld_common.h"
-#include "mp_dev.h"
 #include "hif_debug.h"
 
 #include "ce_tasklet.h"

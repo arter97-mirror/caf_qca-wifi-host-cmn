@@ -41,7 +41,6 @@
 #include "qdf_atomic.h"
 #include "qdf_platform.h"
 #include "pld_common.h"
-#include "mp_dev.h"
 #include "hif_debug.h"
 
 #ifdef QCA_SUPPORT_LEGACY_INTERRUPTS
