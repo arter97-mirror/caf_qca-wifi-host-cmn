@@ -3236,6 +3236,20 @@ static int dp_rxdma_ring_alloc(struct dp_soc *soc, struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 
+static inline void
+dp_direct_refill_setup(struct dp_soc *soc, struct dp_pdev *pdev)
+{
+	if (soc->features.direct_refill_support) {
+		struct dp_srng *direct_refill_ring =
+				&pdev->rx_mac_buf_ring[DP_DIR_REFILL_RING_NUM];
+		direct_refill_ring->direct_refill = 1;
+		hal_srng_flag_update(direct_refill_ring->hal_srng,
+				     HAL_SRNG_FLAGS_DIRECT_REFILL, true);
+		dp_info("Direct refill enabled for rx_mac_buf_ring[%d]",
+			DP_DIR_REFILL_RING_NUM);
+	}
+}
+
 /**
  * dp_rxdma_ring_setup() - configure the RXDMA rings
  * @soc: data path SoC handle
@@ -3261,13 +3275,8 @@ static int dp_rxdma_ring_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 				return QDF_STATUS_E_FAILURE;
 			}
 		}
-		if (soc->features.direct_refill_support) {
-			struct dp_srng *direct_refill_ring =
-				&pdev->rx_mac_buf_ring[DP_DIR_REFILL_RING_NUM];
-			direct_refill_ring->direct_refill = 1;
-			dp_info("Direct refill enabled for rx_mac_buf_ring[%d]",
-				DP_DIR_REFILL_RING_NUM);
-		}
+
+		dp_direct_refill_setup(soc, pdev);
 	}
 	return QDF_STATUS_SUCCESS;
 }

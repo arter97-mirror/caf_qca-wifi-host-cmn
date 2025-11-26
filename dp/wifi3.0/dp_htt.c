@@ -898,10 +898,11 @@ int htt_srng_setup(struct htt_soc *soc, int mac_id,
 			goto fail1;
 	}
 
-	dp_info("ring_type %d ring_id %d htt_ring_id %d hp_addr 0x%llx tp_addr 0x%llx",
+	dp_info("ring_type %d ring_id %d htt_ring_id %d hp_addr 0x%llx tp_addr 0x%llx flags 0x%x",
 		hal_ring_type, srng_params.ring_id, htt_ring_id,
 		(uint64_t)hp_addr,
-		(uint64_t)tp_addr);
+		(uint64_t)tp_addr,
+		srng_params.flags);
 	/*
 	 * Set the length of the message.
 	 * The contribution from the HTC_HDR_ALIGNMENT_PADDING is added
