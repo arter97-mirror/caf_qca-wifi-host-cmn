@@ -1159,6 +1159,42 @@ static void dp_dal_sim_ssr_dump(void *segment)
  */
 static int dp_dal_sim_intf_init(void *priv, void *intf_info)
 {
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
+	struct dal_intf_info *info = (struct dal_intf_info *)intf_info;
+
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in intf_init");
+		return -EINVAL;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL simulator context in intf_init");
+		return -EINVAL;
+	}
+
+	if (!info) {
+		dp_err("NULL interface info in intf_init");
+		return -EINVAL;
+	}
+
+	if (info->type >= DAL_INTF_TYPE_MAX) {
+		dp_err("Invalid interface type %d", info->type);
+		return -EINVAL;
+	}
+
+	/* Copy interface information to simulator context.
+	 * interface info contains vdev_id, tcl_bank_id which will
+	 * used in enqueueing packets to TCL. Apart from these
+	 * bss_idx, mac_addr information is also present.
+	 */
+	qdf_mem_copy(&sim_ctx->intf_info[info->type], info,
+		     sizeof(struct dal_intf_info));
+
+	dp_info("Interface initialized: type=%d, vdev_id=%u, tcl_bank_id=%u",
+		info->type, info->vdev_id, info->tcl_bank_id);
+
 	return 0;
 }
 
@@ -1174,7 +1210,36 @@ static int dp_dal_sim_intf_init(void *priv, void *intf_info)
  */
 static int dp_dal_sim_intf_deinit(void *priv, uint16_t vdev_id)
 {
-	return 0;
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
+	int i;
+
+	if (!dal_ctx) {
+		dp_err("NULL DAL context in intf_deinit");
+		return -EINVAL;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err("NULL simulator context in intf_deinit");
+		return -EINVAL;
+	}
+
+	/* Find and clear the interface info matching the vdev_id */
+	for (i = 0; i < DAL_INTF_TYPE_MAX; i++) {
+		if (sim_ctx->intf_info[i].vdev_id == vdev_id) {
+			dp_info("Interface deinitialized: type=%d, vdev_id=%u",
+				sim_ctx->intf_info[i].type, vdev_id);
+
+			/* Clear the interface information */
+			qdf_mem_zero(&sim_ctx->intf_info[i],
+				     sizeof(struct dal_intf_info));
+			return 0;
+		}
+	}
+
+	dp_err("Interface with vdev_id %u not found", vdev_id);
+	return -ENOENT;
 }
 
 /*
