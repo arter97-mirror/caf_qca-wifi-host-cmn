@@ -2470,28 +2470,6 @@ static void dp_soc_interrupt_detach_be(struct cdp_soc_t *txrx_soc)
 	return dp_soc_interrupt_detach(txrx_soc);
 }
 
-#ifdef WLAN_MLO_MULTI_CHIP
-static inline
-uint32_t dp_tx_comp_handler_wrapper(struct dp_intr *int_ctx, struct dp_soc *soc,
-				    hal_ring_handle_t hal_ring_hdl,
-				    uint8_t ring_id, uint32_t quota)
-{
-	return dp_tx_comp_handler_be(int_ctx, soc,
-				     hal_ring_hdl,
-				     ring_id, quota);
-}
-#else
-static inline
-uint32_t dp_tx_comp_handler_wrapper(struct dp_intr *int_ctx, struct dp_soc *soc,
-				    hal_ring_handle_t hal_ring_hdl,
-				    uint8_t ring_id, uint32_t quota)
-{
-	return dp_tx_comp_handler(int_ctx, soc,
-				  hal_ring_hdl,
-				  ring_id, quota);
-}
-#endif /* WLAN_MLO_MULTI_CHIP */
-
 static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 {
 	struct dp_intr *int_ctx = (struct dp_intr *)dp_ctx;
@@ -2527,7 +2505,7 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 	for (index = 0; index < soc->num_tx_comp_rings; index++) {
 		if (!(1 << wlan_cfg_get_wbm_ring_num_for_index(soc->wlan_cfg_ctx, index) & tx_mask))
 			continue;
-		work_done = dp_tx_comp_handler_wrapper(
+		work_done = dp_tx_comp_handler(
 					int_ctx,
 					soc,
 					soc->tx_comp_ring[index].hal_srng,
