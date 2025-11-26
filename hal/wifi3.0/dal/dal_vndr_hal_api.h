@@ -995,6 +995,354 @@ void dal_vndr_hal_get_sw_hptp(void *hal_soc, void *hal_ring_hdl,
 }
 
 /**
+ * dal_vndr_hal_tx_desc_set_fw_metadata() - Sets the metadata that is part of
+ * TCL descriptor
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @metadata: Metadata to be sent to Firmware
+ */
+static inline void dal_vndr_hal_tx_desc_set_fw_metadata(
+					void *hal_soc_hdl,
+					void *desc,
+					uint16_t metadata)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_fw_metadata(desc, metadata);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_to_fw() - Set To_FW bit in Tx Descriptor.
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @to_fw: if set, Forward packet to FW along with classification result
+ */
+static inline void dal_vndr_hal_tx_desc_set_to_fw(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t to_fw)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_to_fw(desc, to_fw);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_peer_txpt_ci_index() - Set txpt_classify_info_index
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @peer_txpt_ci_index: peer txpt_classify_info index
+ */
+static inline void dal_vndr_hal_tx_desc_set_peer_txpt_ci_index(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t peer_txpt_ci_index)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_peer_txpt_ci_index(
+		desc, peer_txpt_ci_index);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_peer_txpt_ci_tos_tc_val() - Program dscp value to
+ * select TID  based txpt_ci entry selection
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @tos_tc_val: DSCP value
+ */
+static inline void dal_vndr_hal_tx_desc_set_peer_txpt_ci_tos_tc_val(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t tos_tc_val)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_peer_txpt_ci_tos_tc_val(
+		desc, tos_tc_val);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_da_is_bcast_mcast() - Set da is bcast or mcast
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: TX descriptor
+ * @is_bcast: is broadcast
+ * @is_mcast: is multicast
+ */
+static inline void dal_vndr_hal_tx_desc_set_da_is_bcast_mcast(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t is_bcast,
+					uint8_t is_mcast)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_da_is_bcast_mcast(
+		desc, is_bcast, is_mcast);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_l3_type() - Set l3_type, IPV4/IPV6...
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @l3_type: L3 type
+ */
+static inline void dal_vndr_hal_tx_desc_set_l3_type(
+					void *hal_soc_hdl,
+					void *desc,
+					uint16_t l3_type)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_l3_type(desc, l3_type);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_l4_protocol() - Set L4 protocol
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @l4_protocol: l4_protocol type
+ */
+static inline void dal_vndr_hal_tx_desc_set_l4_protocol(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t l4_protocol)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_l4_protocol(desc, l4_protocol);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_type_or_length() - Set type_or_length
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @type_or_length: type_or_length
+ */
+static inline void dal_vndr_hal_tx_desc_set_type_or_length(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t type_or_length)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_type_or_length(
+		desc, type_or_length);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_dport() - Set dport in Tx Descriptor.
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @l4_port: port
+ */
+static inline void dal_vndr_hal_tx_desc_set_dport(
+					void *hal_soc_hdl,
+					void *desc,
+					uint16_t l4_port)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_dport(desc, l4_port);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_snap_oui_zero_or_f8() - Set snap_oui_zero_or_f8
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @is_snap_oui_zero_or_f8: is snap_oui_zero_or_f8 present
+ */
+static inline void dal_vndr_hal_tx_desc_set_snap_oui_zero_or_f8(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t is_snap_oui_zero_or_f8)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_snap_oui_zero_or_f8(
+		desc, is_snap_oui_zero_or_f8);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_snap_oui_not_zero_or_not_f8() - Set
+ *						snap_oui_not_zero_or_not_f8
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @is_snap_oui_not_zero_or_not_f8: is snap_oui_not_zero_or_f8 present
+ */
+static inline void dal_vndr_hal_tx_desc_set_snap_oui_not_zero_or_not_f8(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t is_snap_oui_not_zero_or_not_f8)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_snap_oui_not_zero_or_not_f8(
+		desc, is_snap_oui_not_zero_or_not_f8);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_s_vlan_tag() - Set S_VLAN_TAG_PRESENT
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @s_vlan_present: is s_vlan present
+ */
+static inline void dal_vndr_hal_tx_desc_set_s_vlan_tag(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t s_vlan_present)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_s_vlan_tag(
+		desc, s_vlan_present);
+}
+
+/**
+ * dal_vndr_hal_tx_desc_set_c_vlan_tag() - Set C-VLAN tag present
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: Handle to Tx Descriptor
+ * @c_vlan_present: is c_vlan present
+ */
+static inline void dal_vndr_hal_tx_desc_set_c_vlan_tag(
+					void *hal_soc_hdl,
+					void *desc,
+					uint8_t c_vlan_present)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_desc_set_c_vlan_tag(
+		desc, c_vlan_present);
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_status_generic() - TQM Release reason
+ * @hal_soc_hdl: HAL SoC handle
+ * @desc: WBM descriptor
+ * @ts1: completion ring Tx status
+ * @hal: hal_soc
+ *
+ * This function will parse the WBM completion descriptor and populate in
+ * HAL structure
+ */
+static inline void dal_vndr_hal_tx_comp_get_status_generic(
+					void *hal_soc_hdl,
+					void *desc,
+					void *ts1,
+					void *hal)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	hal_soc->ops->dal_vndr_hal_tx_comp_get_status_generic(
+		desc, ts1, hal);
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_release_reason_generic() - TQM Release reason
+ * @hal_soc_hdl: HAL SoC handle
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * This function will return the type of pointer - buffer or descriptor
+ *
+ * Return: buffer type
+ */
+static inline uint8_t dal_vndr_hal_tx_comp_get_release_reason_generic(
+					void *hal_soc_hdl,
+					void *hal_desc)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	return hal_soc->ops->dal_vndr_hal_tx_comp_get_release_reason_generic(
+		hal_desc);
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_buffer_type() - Buffer or Descriptor type
+ * @hal_soc_hdl: HAL SoC handle
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * This function will return the type of pointer - buffer or descriptor
+ *
+ * Return: buffer type
+ */
+static inline uint32_t dal_vndr_hal_tx_comp_get_buffer_type(
+					void *hal_soc_hdl,
+					void *hal_desc)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	return hal_soc->ops->dal_vndr_hal_tx_comp_get_buffer_type(hal_desc);
+}
+
+/**
+ * dal_vndr_hal_rx_reo_buf_type_get() - Get REO buffer type
+ * @hal_soc_hdl: HAL SoC handle
+ * @rx_desc: RX descriptor
+ *
+ * Return: buffer type
+ */
+static inline uint8_t dal_vndr_hal_rx_reo_buf_type_get(
+					void *hal_soc_hdl,
+					void *rx_desc)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	return hal_soc->ops->dal_vndr_hal_rx_reo_buf_type_get(rx_desc);
+}
+
+/**
+ * dal_vndr_hal_rx_get_reo_desc_va() - Get Desc virtual address within REO Desc
+ * @hal_soc_hdl: HAL SoC handle
+ * @reo_desc: REO2SW ring descriptor pointer
+ *
+ * Return: RX descriptor virtual address
+ */
+static inline uintptr_t dal_vndr_hal_rx_get_reo_desc_va(
+					void *hal_soc_hdl,
+					void *reo_desc)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	return hal_soc->ops->dal_vndr_hal_rx_get_reo_desc_va(reo_desc);
+}
+
+/**
+ * dal_vndr_hal_rx_tlv_nss_get() - API to get the NSS Interval from
+ * rx_msdu_start
+ * @hal_soc_hdl: HAL SoC handle
+ * @buf: pointer to the start of RX PKT TLV header
+ *
+ * Return: uint32_t(nss)
+ */
+static inline uint32_t dal_vndr_hal_rx_tlv_nss_get(
+					void *hal_soc_hdl,
+					uint8_t *buf)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	return hal_soc->ops->dal_vndr_hal_rx_tlv_nss_get(buf);
+}
+
+/**
+ * dal_vndr_hal_rx_msdu_flags_get() - Get msdu flags from ring desc
+ * @hal_soc_hdl: HAL SoC handle
+ * @msdu_desc_info_hdl: msdu desc info handle
+ *
+ * This returns flags for msdu continuation, first msdu and last msdu
+ * in mpdu.
+ * Return: msdu flags
+ */
+static inline uint32_t dal_vndr_hal_rx_msdu_flags_get(
+					void *hal_soc_hdl,
+					void *msdu_desc_info_hdl)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+		(struct dal_vndr_hal_soc *)hal_soc_hdl;
+	return hal_soc->ops->dal_vndr_hal_rx_msdu_flags_get(
+		msdu_desc_info_hdl);
+}
+
+/**
  * dal_vndr_hal_ops_attach() - Attach HAL operations
  * @hal_soc: HAL SoC handle
  *
