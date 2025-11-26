@@ -1115,4 +1115,50 @@ cdp_is_dal_dp_enabled(ol_txrx_soc_handle soc)
 }
 
 #endif /* FEATURE_DAL_DP_SUPPORT */
+
+#if defined(FEATURE_DP_DAL_SIM) && defined(FEATURE_DAL_DP_SUPPORT)
+/**
+ * cdp_dal_sim_trigger_mode_switch() - Trigger DAL simulation mode switch
+ * @soc: data path soc handle
+ * @mode: requested DAL simulation mode
+ *
+ * This function triggers a mode switch in the DAL simulation layer between
+ * bypass and offload modes.
+ *
+ * Return: void
+ */
+static inline void
+cdp_dal_sim_trigger_mode_switch(ol_txrx_soc_handle soc, uint8_t mode)
+{
+	if (!soc || !soc->ops || !soc->ops->misc_ops) {
+		dp_cdp_debug("Invalid Instance:");
+		return;
+	}
+
+	if (soc->ops->misc_ops->dal_sim_trigger_mode_switch)
+		soc->ops->misc_ops->dal_sim_trigger_mode_switch(soc, mode);
+}
+
+/**
+ * cdp_dal_sim_get_curr_mode() - Get current DAL simulation mode
+ * @soc: data path soc handle
+ *
+ * This function retrieves the current DAL simulation mode (bypass or offload).
+ *
+ * Return: Current DAL simulation mode, 0 if not available
+ */
+static inline uint8_t
+cdp_dal_sim_get_curr_mode(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->misc_ops) {
+		dp_cdp_debug("Invalid Instance:");
+		return 0;
+	}
+
+	if (soc->ops->misc_ops->dal_sim_get_curr_mode)
+		return soc->ops->misc_ops->dal_sim_get_curr_mode();
+
+	return 0;
+}
+#endif /* FEATURE_DP_DAL_SIM && FEATURE_DAL_DP_SUPPORT*/
 #endif /* _CDP_TXRX_MISC_H_ */

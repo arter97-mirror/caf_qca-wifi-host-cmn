@@ -1959,6 +1959,8 @@ void (*peer_send_wds_disconnect)(struct cdp_ctrl_objmgr_psoc *psoc,
  *                         rx rate stats
  * @evaluate_update_tx_ilp_cfg: Evaluate and update DP TX ILP configuration
  * @is_dp_dal_enabled: check if dp dal is enabled
+ * @dal_sim_trigger_mode_switch: Trigger mode switch for dal sim
+ * @dal_sim_get_curr_mode: Get current dal sim mode
  *
  * Function pointers for miscellaneous soc/pdev/vdev related operations.
  */
@@ -2069,6 +2071,11 @@ struct cdp_misc_ops {
 #endif
 #if defined(FEATURE_DAL_DP_SUPPORT)
 	bool (*is_dp_dal_enabled)(struct cdp_soc_t *soc_hdl);
+#endif
+#if defined(FEATURE_DAL_DP_SUPPORT) && defined(FEATURE_DP_DAL_SIM)
+	void (*dal_sim_trigger_mode_switch)(struct cdp_soc_t *soc_hdl,
+					    uint8_t mode);
+	uint8_t (*dal_sim_get_curr_mode)(void);
 #endif
 };
 

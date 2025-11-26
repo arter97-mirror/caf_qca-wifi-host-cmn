@@ -51,6 +51,9 @@
 #include "dp_peer.h"
 #include "htt_stats.h"
 #include "dp_htt.h"
+#if defined(FEATURE_DAL_DP_SUPPORT) && defined(FEATURE_DP_DAL_SIM)
+#include "dp_dal_sim.h"
+#endif
 #ifdef WLAN_SUPPORT_RX_FISA
 #include <wlan_dp_fisa_rx.h>
 #endif
@@ -15134,6 +15137,10 @@ static struct cdp_misc_ops dp_ops_misc = {
 #endif
 #if defined(FEATURE_DAL_DP_SUPPORT)
 	.is_dp_dal_enabled = dp_is_dal_enabled,
+#endif
+#if defined(FEATURE_DP_DAL_SIM) && defined(FEATURE_DAL_DP_SUPPORT)
+	.dal_sim_trigger_mode_switch = dp_dal_sim_trigger_mode_switch,
+	.dal_sim_get_curr_mode = dp_dal_sim_get_curr_mode,
 #endif
 };
 #endif
