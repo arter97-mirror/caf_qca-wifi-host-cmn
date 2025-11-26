@@ -1281,14 +1281,25 @@ struct dal_rx_msdu_end_compact {
 					  ldpc                                 :  1,
 					  ip4_protocol_ip6_next_header         :  8;
 	/* qword-11 */
-			 uint32_t user_rssi                            :  8,
-					  pkt_type                             :  4,
-					  sgi                                  :  2,
-					  rate_mcs                             :  4,
-					  receive_bandwidth                    :  3,
-					  reception_type                       :  3,
-					  mimo_ss_bitmap                       :  7,
-					  msdu_done_copy                       :  1;
+#ifdef CONFIG_BORON
+		uint32_t user_rssi                                      :  8,
+			pkt_type                                        :  4,
+			sgi                                             :  2,
+			rate_mcs                                        :  5,
+			receive_bandwidth                               :  3,
+			reception_type                                  :  3,
+			mimo_ss_bitmap                                  :  6,
+			msdu_done_copy                                  :  1;
+#else
+		uint32_t user_rssi                                      :  8,
+			pkt_type                                        :  4,
+			sgi                                             :  2,
+			rate_mcs                                        :  4,
+			receive_bandwidth                               :  3,
+			reception_type                                  :  3,
+			mimo_ss_bitmap                                  :  7,
+			msdu_done_copy                                  :  1;
+#endif
 			 uint32_t flow_id_toeplitz                     : 32;
 	/* qword-15 */
 			 uint32_t first_mpdu                           :  1,
@@ -1484,14 +1495,25 @@ struct dal_rx_msdu_end_compact {
 					  decap_format                         :  2,
 					  msdu_number                          :  8;
 	/* qword-11 */
-			 uint32_t msdu_done_copy                       :  1,
-					  mimo_ss_bitmap                       :  7,
-					  reception_type                       :  3,
-					  receive_bandwidth                    :  3,
-					  rate_mcs                             :  4,
-					  sgi                                  :  2,
-					  pkt_type                             :  4,
-					  user_rssi                            :  8;
+#ifdef CONFIG_BORON
+			uint32_t msdu_done_copy                          :  1,
+			mimo_ss_bitmap                                   :  6,
+			reception_type                                   :  3,
+			receive_bandwidth                                :  3,
+			rate_mcs                                         :  5,
+			sgi                                              :  2,
+			pkt_type                                         :  4,
+			user_rssi                                        :  8;
+#else
+			uint32_t msdu_done_copy                          :  1,
+			mimo_ss_bitmap                                   :  7,
+			reception_type                                   :  3,
+			receive_bandwidth                                :  3,
+			rate_mcs                                         :  4,
+			sgi                                              :  2,
+			pkt_type                                         :  4,
+			user_rssi                                        :  8;
+#endif
 			 uint32_t flow_id_toeplitz                     : 32;
 	/* qword-15 */
 			 uint32_t fcs_err                              :  1,
@@ -1630,10 +1652,17 @@ struct dal_rx_pkt_tlvs {
 		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK,	\
 		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB))
 
-#define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
-	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&		\
-	(((struct dal_reo_destination_ring *)	\
+#ifdef CONFIG_BORON
+#define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)     \
+	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&                \
+	(((struct dal_reo_destination_ring *)       \
+		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+#else
+#define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)     \
+	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&                \
+	(((struct dal_reo_destination_ring *)       \
 		reo_desc)->buf_or_link_desc_addr_info)))
+#endif
 
 #define DAL_VNDR_HAL_RX_MSDU_CONTINUATION_FLAG_GET(msdu_info_ptr)	\
 	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
