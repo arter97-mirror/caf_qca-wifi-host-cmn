@@ -1032,7 +1032,8 @@ int hif_prevent_link_low_power_states(struct hif_opaque_softc *hif)
 			qdf_udelay(EP_VOTE_POLL_TIME_US);
 			count++;
 		} else {
-			qdf_sleep_us(EP_WAKE_RESET_DELAY_US);
+			qdf_usleep_range(EP_WAKE_RESET_DELAY_US - 10,
+					 EP_WAKE_RESET_DELAY_US);
 		}
 		curr_time = qdf_system_ticks_to_msecs(qdf_system_ticks());
 	}
@@ -1059,7 +1060,8 @@ int hif_prevent_link_low_power_states(struct hif_opaque_softc *hif)
 			qdf_udelay(EP_WAKE_RESET_DELAY_US);
 			count++;
 		} else {
-			qdf_sleep_us(EP_WAKE_DELAY_US);
+			qdf_usleep_range(EP_WAKE_DELAY_US - 50,
+					 EP_WAKE_DELAY_US);
 		}
 
 		curr_time = qdf_system_ticks_to_msecs(qdf_system_ticks());
