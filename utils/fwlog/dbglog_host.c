@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1446,6 +1446,7 @@ dbglog_printf_no_line_break(uint32_t timestamp,
 
 #define USE_NUMERIC 0
 
+#ifdef WLAN_DIAG_DEBUG_FEATURE
 static A_BOOL
 dbglog_default_print_handler(uint32_t mod_id, uint16_t vap_id, uint32_t dbg_id,
 			     uint32_t timestamp, uint16_t numargs,
@@ -1609,6 +1610,7 @@ dbglog_debugfs_raw_data(wmi_unified_t wmi_handle, const uint8_t *buf,
 	return true;
 }
 #endif /* WLAN_DBGLOG_DEBUGFS */
+#endif /* WLAN_DIAG_DEBUG_FEATURE */
 
 /**
  * nl_srv_bcast_fw_logs() - Wrapper func to send bcast msgs to FW logs mcast grp
@@ -1628,6 +1630,7 @@ static int nl_srv_bcast_fw_logs(struct sk_buff *skb)
 #endif
 }
 
+#ifdef WLAN_DIAG_DEBUG_FEATURE
 /**
  * send_fw_diag_nl_data() - pack the data from fw diag event handler
  * @buffer:	buffer of diag event
@@ -1731,6 +1734,7 @@ process_fw_diag_event_data(uint8_t *datap, uint32_t num_data)
 
 	return 0;
 }
+#endif
 
 static int
 send_diag_netlink_data(const uint8_t *buffer, uint32_t len, uint32_t cmd)
@@ -1797,6 +1801,7 @@ send_diag_netlink_data(const uint8_t *buffer, uint32_t len, uint32_t cmd)
 	return res;
 }
 
+#ifdef WLAN_DIAG_DEBUG_FEATURE
 static int
 dbglog_process_netlink_data(wmi_unified_t wmi_handle, const uint8_t *buffer,
 			    uint32_t len, uint32_t dropped)
@@ -1862,6 +1867,7 @@ dbglog_process_netlink_data(wmi_unified_t wmi_handle, const uint8_t *buffer,
 	}
 	return res;
 }
+#endif
 
 /*
  * WMI diag data event handler, this function invoked as a CB
@@ -1963,6 +1969,7 @@ static int diag_fw_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	return 0;
 }
 
+#ifdef WLAN_DIAG_DEBUG_FEATURE
 /*
  * WMI diag data event handler, this function invoked as a CB
  * when there DIAG_DATA to be forwarded from the FW.
@@ -1988,6 +1995,7 @@ fw_diag_data_event_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 
 	return process_fw_diag_event_data(datap, num_data);
 }
+#endif
 
 #ifdef IPA_OPT_WIFI_DP_LOGGING
 static int
@@ -2012,6 +2020,7 @@ fw_opt_dp_diag_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 }
 #endif
 
+#ifdef WLAN_DIAG_DEBUG_FEATURE
 int dbglog_parse_debug_logs(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 {
 	tp_wma_handle wma = (tp_wma_handle) scn;
@@ -2130,6 +2139,7 @@ int dbglog_parse_debug_logs(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	/* Always returns zero */
 	return A_OK;
 }
+#endif
 
 void dbglog_reg_modprint(uint32_t mod_id, module_dbg_print printfn)
 {
@@ -4562,6 +4572,7 @@ int dbglog_init(wmi_unified_t wmi_handle)
 			    dbglog_ibss_powersave_print_handler);
 	tgt_assert_enable = wmi_handle->tgt_force_assert_enable;
 
+#ifdef WLAN_DIAG_DEBUG_FEATURE
 	/* Register handler for F3 or debug messages */
 	res =
 		wmi_unified_register_event_handler(wmi_handle,
@@ -4578,6 +4589,7 @@ int dbglog_init(wmi_unified_t wmi_handle)
 						 WMI_RX_DIAG_WORK_CTX);
 	if (QDF_IS_STATUS_ERROR(res))
 		return A_ERROR;
+#endif
 
 	/* Register handler for new FW diag  Event, LOG, MSG combined */
 	res = wmi_unified_register_event_handler(wmi_handle, wmi_diag_event_id,
