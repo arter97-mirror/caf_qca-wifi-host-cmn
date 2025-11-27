@@ -1023,7 +1023,7 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	} else if (num_entries_avail < num_req_buffers) {
 		num_desc_to_free = num_req_buffers - num_entries_avail;
 		num_req_buffers = num_entries_avail;
-	} else if (((*desc_list) &&
+	} else if (((*desc_list) && dp_rxdma_srng->primary_refill &&
 		   dp_rxdma_srng->num_entries - num_entries_avail <
 		   CRITICAL_BUFFER_THRESHOLD) &&
 		   dp_rx_buffers_is_critical_threshold(rx_desc_pool)) {

@@ -1073,6 +1073,9 @@ struct dp_txrx_pool_stats {
  * @cached: is the srng ring memory cached or un-cached memory
  * @direct_refill: Flag to indicate if this srng is used for Rx buffer refill
  *		   via HOST directly.
+ * @primary_refill: Flag to indicate if this srng is the primary srng to be
+ *		    used for Rx buffer refill.
+ * @reserved: reserved
  * @irq: irq number of the srng ring
  * @num_entries: number of entries in the srng ring
  * @stats: Structure to track the ring utilization stats
@@ -1090,7 +1093,9 @@ struct dp_srng {
 	qdf_dma_addr_t base_paddr_aligned;
 	uint32_t alloc_size;
 	uint8_t cached;
-	uint8_t direct_refill;
+	uint8_t direct_refill : 1,
+		primary_refill : 1,
+		reserved : 6;
 	int irq;
 	uint32_t num_entries;
 	struct ring_util_stats stats;
