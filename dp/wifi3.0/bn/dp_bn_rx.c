@@ -68,8 +68,6 @@ uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
 	uint8_t mac_id = 0;
 	struct dp_pdev *rx_pdev;
 	uint8_t enh_flag;
-	struct dp_srng *dp_rxdma_srng;
-	struct rx_desc_pool *rx_desc_pool;
 	struct dp_soc *soc = int_ctx->soc;
 	struct cdp_tid_rx_stats *tid_stats;
 	qdf_nbuf_t nbuf_head;
@@ -320,26 +318,11 @@ refill_opt_dp_ctrl:
 
 	dp_rx_per_core_stats_update(soc, reo_ring_num, num_rx_bufs_reaped);
 
-	for (mac_id = 0; mac_id < MAX_PDEV_CNT; mac_id++) {
-		/*
-		 * continue with next mac_id if no pkts were reaped
-		 * from that pool
-		 */
-		if (!rx_bufs_reaped[mac_id])
-			continue;
-
-		dp_rxdma_srng =
-			&soc->rx_refill_buf_ring[mac_id];
-
-		rx_desc_pool = &soc->rx_desc_buf[mac_id];
-
-		dp_rx_buffers_replenish_simple(soc, mac_id,
-					       dp_rxdma_srng,
-					       rx_desc_pool,
-					       rx_bufs_reaped[mac_id],
-					       &head[mac_id],
-					       &tail[mac_id]);
-	}
+	if (rx_bufs_reaped[mac_id])
+		dp_rx_buffers_replenish_wrapper(soc, mac_id,
+						rx_bufs_reaped[mac_id],
+						&head[mac_id], &tail[mac_id],
+						false);
 
 	/* Peer can be NULL is case of LFR */
 	if (qdf_likely(txrx_peer))
@@ -1002,8 +985,6 @@ dp_rx_err_process_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
 	struct hal_rx_mpdu_desc_info mpdu_desc_info;
 	struct hal_buf_info hbi;
 	struct dp_pdev *dp_pdev;
-	struct dp_srng *dp_rxdma_srng;
-	struct rx_desc_pool *rx_desc_pool;
 	void *link_desc_va;
 	struct hal_rx_msdu_list msdu_list; /* MSDU's per MPDU */
 	uint16_t num_msdus;
@@ -1318,15 +1299,10 @@ next_entry:
 	}
 
 	if (rx_bufs_reaped) {
-		dp_rxdma_srng = &soc->rx_refill_buf_ring[mac_id];
-		rx_desc_pool = &soc->rx_desc_buf[mac_id];
-
-		dp_rx_buffers_replenish(soc, mac_id, dp_rxdma_srng,
-					rx_desc_pool,
-					rx_bufs_reaped,
-					&dp_pdev->free_list_head,
-					&dp_pdev->free_list_tail,
-					false);
+		dp_rx_buffers_replenish_wrapper(soc, mac_id, rx_bufs_reaped,
+						&dp_pdev->free_list_head,
+						&dp_pdev->free_list_tail,
+						false);
 		rx_bufs_used += rx_bufs_reaped;
 		rx_bufs_reaped = 0;
 	}

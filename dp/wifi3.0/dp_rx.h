@@ -4195,4 +4195,65 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 }
 #endif
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
+
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline uint32_t
+__dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
+				  uint32_t rx_bufs_reaped,
+				  union dp_rx_desc_list_elem_t **desc_list,
+				  union dp_rx_desc_list_elem_t **tail,
+				  bool req_only)
+{
+	int i;
+	uint32_t rx_bufs_used = 0;
+	struct rx_desc_pool *rx_desc_pool;
+	struct dp_srng *dp_rxdma_srng;
+
+	rx_desc_pool = &soc->rx_desc_buf[mac_id];
+	for (i = 0; i < soc->num_replenish_rings[mac_id]; i++) {
+		dp_rxdma_srng = soc->replenish_rings[mac_id][i];
+		dp_rx_buffers_replenish(soc, mac_id, dp_rxdma_srng,
+					rx_desc_pool, rx_bufs_reaped,
+					desc_list, tail, req_only);
+		rx_bufs_used += rx_bufs_reaped;
+	}
+
+	return rx_bufs_used;
+}
+#else
+static inline uint32_t
+__dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
+				  uint32_t rx_bufs_reaped,
+				  union dp_rx_desc_list_elem_t **desc_list,
+				  union dp_rx_desc_list_elem_t **tail,
+				  bool req_only)
+{
+	uint32_t rx_bufs_used = 0;
+	struct rx_desc_pool *rx_desc_pool;
+	struct dp_srng *dp_rxdma_srng = &soc->rx_refill_buf_ring[mac_id];
+
+	rx_desc_pool = &soc->rx_desc_buf[mac_id];
+	dp_rx_buffers_replenish(soc, mac_id, dp_rxdma_srng,
+				rx_desc_pool, rx_bufs_reaped,
+				desc_list, tail, req_only);
+	rx_bufs_used += rx_bufs_reaped;
+
+	return rx_bufs_used;
+}
+#endif
+
+static inline uint32_t
+dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
+				uint32_t rx_bufs_reaped,
+				union dp_rx_desc_list_elem_t **desc_list,
+				union dp_rx_desc_list_elem_t **tail,
+				bool req_only)
+{
+	if (!rx_bufs_reaped)
+		return 0;
+
+	return __dp_rx_buffers_replenish_wrapper(soc, mac_id, rx_bufs_reaped,
+						 desc_list, tail, req_only);
+}
+
 #endif /* _DP_RX_H */
