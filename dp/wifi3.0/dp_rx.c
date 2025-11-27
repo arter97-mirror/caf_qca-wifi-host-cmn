@@ -3718,35 +3718,20 @@ void __dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
 }
 #endif
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-QDF_STATUS dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+static inline QDF_STATUS
+__dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev, struct dp_srng *dp_rxdma_srng)
 {
-	/* Buffers will be attached during DAL SOC init */
-	return QDF_STATUS_SUCCESS;
-}
-#else
-QDF_STATUS
-dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
-{
-	int mac_for_pdev = pdev->lmac_id;
 	struct dp_soc *soc = pdev->soc;
-	struct dp_srng *dp_rxdma_srng;
+	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 	struct rx_desc_pool *rx_desc_pool;
 	uint32_t rxdma_entries;
-	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 	uint32_t num_rx_buffers;
-
-	dp_rxdma_srng = &soc->rx_refill_buf_ring[mac_for_pdev];
+	int mac_for_pdev = pdev->lmac_id;
 
 	rxdma_entries = dp_get_num_entries(pdev,
 					   dp_rxdma_srng->num_entries,
 					   QDF_BUFF_TYPE_RX);
 	rx_desc_pool = &soc->rx_desc_buf[mac_for_pdev];
-
-	/* Initialize RX buffer pool which will be
-	 * used during low memory conditions
-	 */
-	dp_rx_buffer_pool_init(soc, mac_for_pdev);
 	num_rx_buffers = dp_rx_get_num_buffers_required(rx_desc_pool,
 							rxdma_entries);
 
@@ -3761,6 +3746,56 @@ dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 							rx_desc_pool,
 							num_rx_buffers);
 }
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+QDF_STATUS dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+{
+	/* Buffers will be attached during DAL SOC init */
+	return QDF_STATUS_SUCCESS;
+}
+#else
+#ifdef DP_FEATURE_DIRECT_REFILL
+QDF_STATUS
+dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+{
+	int i, mac_for_pdev = pdev->lmac_id;
+	struct dp_soc *soc = pdev->soc;
+	struct dp_srng *dp_rxdma_srng;
+	QDF_STATUS status;
+
+	/* Initialize RX buffer pool which will be
+	 * used during low memory conditions
+	 */
+	dp_rx_buffer_pool_init(soc, mac_for_pdev);
+
+	dp_info("mac_for_pdev %d num_replenish_rings %d",
+		mac_for_pdev, soc->num_replenish_rings[mac_for_pdev]);
+	for (i = 0; i < soc->num_replenish_rings[mac_for_pdev]; i++) {
+		dp_rxdma_srng = soc->replenish_rings[mac_for_pdev][i];
+		status = __dp_rx_pdev_buffers_alloc(pdev, dp_rxdma_srng);
+		if (QDF_IS_STATUS_ERROR(status))
+			break;
+	}
+
+	return status;
+}
+#else
+QDF_STATUS
+dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+{
+	int mac_for_pdev = pdev->lmac_id;
+	struct dp_soc *soc = pdev->soc;
+	struct dp_srng *dp_rxdma_srng;
+
+	/* Initialize RX buffer pool which will be
+	 * used during low memory conditions
+	 */
+	dp_rx_buffer_pool_init(soc, mac_for_pdev);
+	dp_rxdma_srng = &soc->rx_refill_buf_ring[mac_for_pdev];
+
+	return __dp_rx_pdev_buffers_alloc(pdev, dp_rxdma_srng);
+}
+#endif
 #endif
 
 void
