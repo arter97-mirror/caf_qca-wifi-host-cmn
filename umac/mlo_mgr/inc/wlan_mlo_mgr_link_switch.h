@@ -114,6 +114,8 @@ enum wlan_mlo_link_switch_reason {
  * @MLO_LINK_SWITCH_STATE_ABORT_TRANS: Do not allow any further state
  *                                     transition, only allowed to move to
  *                                     MLO_LINK_SWITCH_STATE_IDLE state.
+ *
+ * Note: Add the new state to mlo_mgr_link_switch_req_state_string().
  */
 enum mlo_link_switch_req_state {
 	MLO_LINK_SWITCH_STATE_IDLE,
