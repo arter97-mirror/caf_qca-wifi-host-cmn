@@ -11612,7 +11612,7 @@ dp_fw_stats_process(struct dp_vdev *vdev,
 #ifdef WLAN_FEATURE_UL_JITTER
 #define VENDOR_ATTR_NSS_PKT_TX_PACKET_COUNT 0
 #define VENDOR_ATTR_NSS_PKT_RX_PACKET_COUNT 1
-#define SS_COUNT_JITTER 2
+#define SS_COUNT_JITTER 4
 static inline QDF_STATUS
 dp_tx_get_fw_nss_stats(struct dp_soc *soc, uint8_t vdev_id, int **stats_req)
 {
