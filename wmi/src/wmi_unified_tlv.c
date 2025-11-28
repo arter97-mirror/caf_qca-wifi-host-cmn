@@ -14280,43 +14280,6 @@ static QDF_STATUS extract_pdev_ext_stats_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
-/**
- * extract_bcn_stats_tlv() - extract bcn stats from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @index: Index into vdev stats
- * @bcn_stats: Pointer to hold bcn stats
- *
- * Return: QDF_STATUS_SUCCESS for success or error code
- */
-static QDF_STATUS extract_bcn_stats_tlv(wmi_unified_t wmi_handle,
-	void *evt_buf, uint32_t index, wmi_host_bcn_stats *bcn_stats)
-{
-	WMI_UPDATE_STATS_EVENTID_param_tlvs *param_buf;
-	wmi_stats_event_fixed_param *ev_param;
-	uint8_t *data;
-
-	param_buf = (WMI_UPDATE_STATS_EVENTID_param_tlvs *) evt_buf;
-	ev_param = (wmi_stats_event_fixed_param *) param_buf->fixed_param;
-	data = (uint8_t *) param_buf->data;
-
-	if (index < ev_param->num_bcn_stats) {
-		wmi_bcn_stats *ev = (wmi_bcn_stats *) ((data) +
-			((ev_param->num_pdev_stats) * sizeof(wmi_pdev_stats)) +
-			((ev_param->num_vdev_stats) * sizeof(wmi_vdev_stats)) +
-			((ev_param->num_peer_stats) * sizeof(wmi_peer_stats)) +
-			((ev_param->num_chan_stats) * sizeof(wmi_chan_stats)) +
-			((ev_param->num_mib_stats) * sizeof(wmi_mib_stats)) +
-			(index * sizeof(wmi_bcn_stats)));
-
-		bcn_stats->vdev_id = ev->vdev_id;
-		bcn_stats->tx_bcn_succ_cnt = ev->tx_bcn_succ_cnt;
-		bcn_stats->tx_bcn_outage_cnt = ev->tx_bcn_outage_cnt;
-	}
-
-	return QDF_STATUS_SUCCESS;
-}
-
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
  * wmi_is_mlo_vdev_active() - get if mlo vdev is active or not
@@ -22957,7 +22920,6 @@ struct wmi_ops tlv_ops =  {
 #endif
 	.extract_unit_test = extract_unit_test_tlv,
 	.extract_pdev_ext_stats = extract_pdev_ext_stats_tlv,
-	.extract_bcn_stats = extract_bcn_stats_tlv,
 	.extract_bcnflt_stats = extract_bcnflt_stats_tlv,
 	.extract_chan_stats = extract_chan_stats_tlv,
 	.extract_vdev_prb_fils_stats = extract_vdev_prb_fils_stats_tlv,
@@ -23305,6 +23267,7 @@ struct wmi_ops tlv_ops =  {
 	.extract_get_pn_data = extract_get_pn_data_tlv,
 	.extract_get_rxpn_data = extract_get_rxpn_data_tlv,
 	.extract_mgmt_rx_ext_params = extract_mgmt_rx_ext_params_tlv,
+	.extract_bcn_stats = extract_bcn_stats_tlv,
 #endif
 };
 
@@ -25625,6 +25588,43 @@ extract_mgmt_rx_ext_params_tlv(wmi_unified_t wmi_handle,
 					     ext_params_tlv->twt_ie_buf_len);
 			}
 		}
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_bcn_stats_tlv() - extract bcn stats from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @index: Index into vdev stats
+ * @bcn_stats: Pointer to hold bcn stats
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS extract_bcn_stats_tlv(wmi_unified_t wmi_handle,
+	void *evt_buf, uint32_t index, wmi_host_bcn_stats *bcn_stats)
+{
+	WMI_UPDATE_STATS_EVENTID_param_tlvs *param_buf;
+	wmi_stats_event_fixed_param *ev_param;
+	uint8_t *data;
+
+	param_buf = (WMI_UPDATE_STATS_EVENTID_param_tlvs *) evt_buf;
+	ev_param = (wmi_stats_event_fixed_param *) param_buf->fixed_param;
+	data = (uint8_t *) param_buf->data;
+
+	if (index < ev_param->num_bcn_stats) {
+		wmi_bcn_stats *ev = (wmi_bcn_stats *) ((data) +
+			((ev_param->num_pdev_stats) * sizeof(wmi_pdev_stats)) +
+			((ev_param->num_vdev_stats) * sizeof(wmi_vdev_stats)) +
+			((ev_param->num_peer_stats) * sizeof(wmi_peer_stats)) +
+			((ev_param->num_chan_stats) * sizeof(wmi_chan_stats)) +
+			((ev_param->num_mib_stats) * sizeof(wmi_mib_stats)) +
+			(index * sizeof(wmi_bcn_stats)));
+
+		bcn_stats->vdev_id = ev->vdev_id;
+		bcn_stats->tx_bcn_succ_cnt = ev->tx_bcn_succ_cnt;
+		bcn_stats->tx_bcn_outage_cnt = ev->tx_bcn_outage_cnt;
 	}
 
 	return QDF_STATUS_SUCCESS;

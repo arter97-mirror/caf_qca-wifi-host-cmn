@@ -3025,19 +3025,6 @@ wmi_extract_vdev_extd_stats(wmi_unified_t wmi_handle, void *evt_buf,
 			    wmi_host_vdev_extd_stats *vdev_extd_stats);
 
 /**
- * wmi_extract_bcn_stats() - extract beacon stats from event
- * @wmi_handle: wmi handle
- * @evt_buf: pointer to event buffer
- * @index: Index into beacon stats
- * @vdev_bcn_stats: Pointer to hold beacon stats
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_extract_bcn_stats(wmi_unified_t wmi_handle, void *evt_buf,
-		      uint32_t index, wmi_host_bcn_stats *vdev_bcn_stats);
-
-/**
  * wmi_extract_vdev_nac_rssi_stats() - extract NAC_RSSI stats from event
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer
@@ -5224,5 +5211,18 @@ wmi_unified_lteu_config_cmd_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
 			     struct mu_scan_params *param);
+
+/**
+ * wmi_extract_bcn_stats() - extract beacon stats from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @index: Index into beacon stats
+ * @vdev_bcn_stats: Pointer to hold beacon stats
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_bcn_stats(wmi_unified_t wmi_handle, void *evt_buf,
+		      uint32_t index, wmi_host_bcn_stats *vdev_bcn_stats);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

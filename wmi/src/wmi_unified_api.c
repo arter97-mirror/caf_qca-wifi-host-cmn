@@ -1928,16 +1928,6 @@ wmi_extract_vdev_extd_stats(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS
-wmi_extract_bcn_stats(wmi_unified_t wmi_handle, void *evt_buf,
-		      uint32_t index, wmi_host_bcn_stats *vdev_bcn_stats)
-{
-	if (wmi_handle->ops->extract_bcn_stats)
-		return wmi_handle->ops->extract_bcn_stats(wmi_handle,
-				evt_buf, index, vdev_bcn_stats);
-	return QDF_STATUS_E_FAILURE;
-}
-
 QDF_STATUS wmi_extract_vdev_nac_rssi_stats(
 		wmi_unified_t wmi_handle, void *evt_buf,
 		struct wmi_host_vdev_nac_rssi_event *vdev_nac_rssi_stats)
@@ -4097,6 +4087,16 @@ QDF_STATUS wmi_extract_rtt_ev(wmi_unified_t wmi_handle, void *evt_buf,
 		return wmi_handle->ops->extract_rtt_ev(wmi_handle,
 			evt_buf, ev, hdump, hdump_len);
 
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_bcn_stats(wmi_unified_t wmi_handle, void *evt_buf,
+		      uint32_t index, wmi_host_bcn_stats *vdev_bcn_stats)
+{
+	if (wmi_handle->ops->extract_bcn_stats)
+		return wmi_handle->ops->extract_bcn_stats(wmi_handle,
+				evt_buf, index, vdev_bcn_stats);
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
