@@ -1584,6 +1584,36 @@ static inline struct wlan_psoc_host_dbr_ring_caps
 }
 
 /**
+ * target_psoc_set_dbr_ring_elems_min() - set ring_elems_min
+ * according index.
+ * @psoc_info:  pointer to structure target_psoc_info
+ * @cap_idx: index of dbr_ring_cap
+ * @ring_elems_min: new ring_elems_min value
+ *
+ * API to set ring_elems_min
+ *
+ * Return: none
+ */
+static inline QDF_STATUS
+target_psoc_set_dbr_ring_elems_min(struct target_psoc_info *psoc_info,
+				   uint8_t cap_idx,
+				   uint32_t ring_elems_min)
+{
+	uint8_t num_dbr_ring_caps;
+
+	if (!psoc_info)
+		return QDF_STATUS_E_FAILURE;
+
+	num_dbr_ring_caps = target_psoc_get_num_dbr_ring_caps(psoc_info);
+
+	if (cap_idx >= num_dbr_ring_caps)
+		return QDF_STATUS_E_FAILURE;
+
+	psoc_info->info.dbr_ring_cap[cap_idx].ring_elems_min = ring_elems_min;
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * target_psoc_get_scan_radio_caps() - get scan_radio_cap
  * @psoc_info:  pointer to structure target_psoc_info
  *

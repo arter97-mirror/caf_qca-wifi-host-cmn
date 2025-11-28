@@ -175,6 +175,25 @@ int target_if_cfr_periodic_peer_cfr_enable(struct wlan_objmgr_pdev *pdev,
 }
 #endif
 
+/**
+ * get_lut_entry() - Retrieve LUT entry using cookie number
+ * @pcfr: PDEV CFR object
+ * @offset: cookie number
+ *
+ * Return: look up table entry
+ */
+struct look_up_table *get_lut_entry(struct pdev_cfr *pcfr,
+				    int offset)
+{
+	if (offset >= pcfr->lut_num) {
+		cfr_err("Invalid offset %d, lut_num %d",
+			offset, pcfr->lut_num);
+		return NULL;
+	}
+
+	return pcfr->lut[offset];
+}
+
 int target_if_cfr_enable_cfr_timer(struct wlan_objmgr_pdev *pdev,
 				   uint32_t cfr_timer)
 {

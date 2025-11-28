@@ -199,4 +199,14 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			       bool is_wifi_2_0,
 			       uint32_t target_type,
 			       bool is_rcc);
+
+/**
+ * get_lut_entry() - Retrieve LUT entry using cookie number
+ * @pcfr: PDEV CFR object
+ * @offset: cookie number
+ *
+ * Return: look up table entry
+ */
+struct look_up_table *get_lut_entry(struct pdev_cfr *pcfr,
+				    int offset);
 #endif
