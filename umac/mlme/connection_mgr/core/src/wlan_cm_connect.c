@@ -1697,7 +1697,8 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 		    qdf_is_macaddr_broadcast(bssid))
 			goto next;
 		found = cm_find_bss_from_candidate_list(cm_req->candidate_list,
-							bssid, NULL);
+							scan_entry->entry,
+							NULL);
 		if (found)
 			goto next;
 		status = qdf_list_remove_node(candidate_list, cur_node);
