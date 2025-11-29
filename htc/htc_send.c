@@ -128,6 +128,26 @@ static inline void restore_tx_packet(HTC_TARGET *target, HTC_PACKET *pPacket)
 	}
 }
 
+#ifdef CONFIG_HL_SUPPORT
+static bool htc_control_tx_force_free(HTC_TARGET *target,
+				      HTC_PACKET *packet)
+{
+	return FALSE;
+}
+#else
+static bool htc_control_tx_force_free(HTC_TARGET *target,
+				      HTC_PACKET *packet)
+{
+	bool ret = FALSE;
+
+	if (target->hif_dev && hif_get_target_status(target->hif_dev)) {
+		htc_free_control_tx_packet(target, packet);
+		ret = TRUE;
+	}
+	return ret;
+}
+#endif
+
 static void send_packet_completion(HTC_TARGET *target, HTC_PACKET *pPacket)
 {
 	HTC_ENDPOINT *pEndpoint = &target->endpoint[pPacket->Endpoint];
@@ -143,10 +163,8 @@ static void send_packet_completion(HTC_TARGET *target, HTC_PACKET *pPacket)
 	 * In case of SSR, we cannot call the upper layer completion
 	 * callbacks, hence just free the nbuf and HTC packet here.
 	 */
-	if (target->hif_dev && hif_get_target_status(target->hif_dev)) {
-		htc_free_control_tx_packet(target, pPacket);
+	if (htc_control_tx_force_free(target, pPacket))
 		return;
-	}
 
 	/* do completion */
 	AR_DEBUG_PRINTF(ATH_DEBUG_SEND,
