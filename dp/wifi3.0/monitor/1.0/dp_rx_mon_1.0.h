@@ -1070,6 +1070,26 @@ void *dp_rxdma_get_mon_dst_ring(struct dp_pdev *pdev,
 	return pdev->soc->rxdma_err_dst_ring[mac_for_pdev].hal_srng;
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+/**
+ * dp_rxdma_get_mon_buf_ring() - Return monitor buf ring address
+ *				    based on target
+ * @pdev: core physical device context
+ * @mac_for_pdev: mac id number
+ *
+ * Return: ring address
+ */
+static inline
+struct dp_srng *dp_rxdma_get_mon_buf_ring(struct dp_pdev *pdev,
+					  uint8_t mac_for_pdev)
+{
+	if (pdev->soc->wlan_cfg_ctx->rxdma1_enable)
+		return &pdev->soc->rxdma_mon_buf_ring[mac_for_pdev];
+
+	/* For MCL, return the SW2RXDMA ring used for direct Rx buffer refill */
+	return pdev->soc->replenish_rings[mac_for_pdev][DP_DIR_REFILL_RING_NUM];
+}
+#else
 /**
  * dp_rxdma_get_mon_buf_ring() - Return monitor buf ring address
  *				    based on target
@@ -1088,6 +1108,7 @@ struct dp_srng *dp_rxdma_get_mon_buf_ring(struct dp_pdev *pdev,
 	/* For MCL there is only 1 rx refill ring */
 	return &pdev->soc->rx_refill_buf_ring[0];
 }
+#endif
 
 /**
  * dp_rx_get_mon_desc() - Return Rx descriptor based on target
