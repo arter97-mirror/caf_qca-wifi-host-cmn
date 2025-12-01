@@ -24,7 +24,7 @@
 
 #define CTRL_PATH_STATS_MAX_MAC_ADDR 1
 #define CTRL_PATH_STATS_MAX_PDEV_ID 1
-#define CTRL_PATH_STATS_MAX_VDEV_ID 1
+#define CTRL_PATH_STATS_MAX_VDEV_ID 2
 
 
 #define INFRA_CP_STATS_MAX_REQ_TWT_DIALOG_ID 1
@@ -73,6 +73,57 @@ struct twt_infra_cp_stats_event {
 	uint32_t eosp_sp_count;
 };
 #endif /* WLAN_SUPPORT_TWT */
+
+#define BCN_MAX_HISTORY_LENGTH 32
+
+/**
+ * struct vdev_beacon_stats_event - vdev beacon stats event
+ * @vdev_id: ID of the vdev these beacon stats are from
+ * @length: Number of A_UINT32 elements within the bmiss_bitmask array which
+ *          contain valid data.
+ *          Array elements beyond this limit should be ignored.
+ * @bmiss_bitmask: Beacon miss bitmask indicating which beacons got missed
+ *                 from up to the last 255 expected beacons (8 * 32 bits).
+ */
+struct vdev_beacon_stats_event {
+	uint32_t vdev_id;
+	uint32_t length;
+	uint8_t bmiss_bitmask[BCN_MAX_HISTORY_LENGTH];
+};
+
+/**
+ * struct vdev_congestion_stats_event - Vdev congestion event structure
+ * @vdev_id: ID of the vdev these congestion stats are from
+ * @cca_busy_time: Number of milliseconds during which CCA is busy,
+ *                 out of total time spent on the channel
+ * @on_time: Total time in milliseconds for which we were on the channel
+ *           and monitored
+ */
+struct vdev_congestion_stats_event {
+	uint32_t vdev_id;
+	uint32_t cca_busy_time;
+	uint32_t on_time;
+};
+
+#define ENHANCE_STATS_MAX_MCS_COUNTERS 16
+
+enum stats_ext_event_vdev_ext_bw_counters {
+	STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_20MHz = 0,
+	STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_40MHz,
+	STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_80MHz,
+	STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_160MHz,
+	STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz,
+	/* values 5-7 reserved */
+	STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_MAX = 8
+};
+
+struct vdev_data_stats_event {
+	uint32_t vdev_id;
+	uint32_t tx_mcs_data_ppdu[ENHANCE_STATS_MAX_MCS_COUNTERS];
+	uint32_t tx_bw_data_ppdu[STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz + 1];
+	uint32_t rx_mcs_data_ppdu[ENHANCE_STATS_MAX_MCS_COUNTERS];
+	uint32_t rx_bw_data_ppdu[STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz + 1];
+};
 
 #ifdef CONFIG_WLAN_BMISS
 /**
@@ -267,6 +318,12 @@ struct cp_sta_stats {
  * @bmiss_infra_cp_stats: pointer to beacon miss statistics
  * @telemetry_stats: pointer to pmlo telemetry stats struct
  * @sta_stats: pointer to RRM sta stats struct
+ * @num_vdev_beacon_stats: number of vdev_beacon_stats buffers present
+ * @vdev_beacon_stats: vdev beacon stats
+ * @num_vdev_congestion_stats: num of vdev congestion stats present
+ * @vdev_congestion_stats: vdev congestion stats
+ * @num_vdev_data_stats: num of vdev data stats present
+ * @vdev_data_stats: vdev data stats
  *
  * This structure is used to store the statistics information
  * extracted from firmware event(wmi_pdev_cp_fwstats_eventid)
@@ -286,6 +343,12 @@ struct infra_cp_stats_event {
 	struct ctrl_path_pmlo_telemetry_stats_struct *telemetry_stats;
 #endif
 	struct cp_sta_stats *sta_stats;
+	uint32_t num_vdev_beacon_stats;
+	struct vdev_beacon_stats_event *vdev_beacon_stats;
+	uint32_t num_vdev_congestion_stats;
+	struct vdev_congestion_stats_event *vdev_congestion_stats;
+	uint32_t num_vdev_data_stats;
+	struct vdev_data_stats_event *vdev_data_stats;
 	/* Extend with other required infra_cp_stats structs */
 };
 

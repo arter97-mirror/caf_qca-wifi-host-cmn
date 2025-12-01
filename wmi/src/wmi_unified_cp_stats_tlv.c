@@ -144,6 +144,10 @@ static void wmi_twt_extract_stats_struct(void *tag_buf,
 {
 	struct twt_infra_cp_stats_event *twt_params;
 
+	if (params->num_twt_infra_cp_stats >=
+			INFRA_CP_STATS_MAX_RESP_TWT_DIALOG_ID)
+		return; // prevent out-of-bounds write
+
 	twt_params = params->twt_infra_cp_stats +
 		     params->num_twt_infra_cp_stats;
 
@@ -280,6 +284,161 @@ void wmi_bmiss_extract_stats_struct(void *tag_buf,
 
 #endif/* CONFIG_WLAN_BMISS */
 
+static void
+wmi_extract_vdev_beacon_stats_tlv(void *tag_buf,
+				   struct vdev_beacon_stats_event *beacon_stats)
+{
+	wmi_vdev_beacon_stats *fw_stats = (wmi_vdev_beacon_stats *)tag_buf;
+	uint32_t i;
+
+	if (!fw_stats || !beacon_stats)
+		return;
+
+	beacon_stats->vdev_id = fw_stats->vdev_id;
+
+	// Copy bmiss_bitmask; host expects uint8_t[], FW provides A_UINT32[].
+	// For each entry, copy the 4 bytes as uint8_t.
+	wmi_debug("FW stats length: %d", fw_stats->length);
+	beacon_stats->length = 4 * fw_stats->length;
+
+	if (beacon_stats->length > BCN_MAX_HISTORY_LENGTH) {
+		wmi_debug("Beacon stats length:%d exceed limit",
+			  beacon_stats->length);
+		return;
+	}
+
+	for (i = 0; i < fw_stats->length &&
+		    i < WMI_MAX_BCN_BMISS_HISTORY_LENGTH; i++) {
+		// (Assume little-endian; copy 4 bytes for each A_UINT32)
+		beacon_stats->bmiss_bitmask[i * 4 + 0] =
+				(fw_stats->bmiss_bitmask[i] >>  0) & 0xFF;
+		beacon_stats->bmiss_bitmask[i * 4 + 1] =
+				(fw_stats->bmiss_bitmask[i] >>  8) & 0xFF;
+		beacon_stats->bmiss_bitmask[i * 4 + 2] =
+				(fw_stats->bmiss_bitmask[i] >> 16) & 0xFF;
+		beacon_stats->bmiss_bitmask[i * 4 + 3] =
+				(fw_stats->bmiss_bitmask[i] >> 24) & 0xFF;
+	}
+
+	wmi_debug("VDEV_BEACON_STATS: vdev_id = %u, length = %u",
+		  beacon_stats->vdev_id, beacon_stats->length);
+	for (i = 0; i < beacon_stats->length; i++)
+		wmi_debug("bmiss_bitmask[%d] = 0x%x",
+			  i, beacon_stats->bmiss_bitmask[i]);
+}
+
+static void
+wmi_vdev_beacon_extract_stats_struct(void *tag_buf,
+				     struct infra_cp_stats_event *params)
+{
+	struct vdev_beacon_stats_event *beacon_stats;
+
+	if (params->num_vdev_beacon_stats >= CTRL_PATH_STATS_MAX_VDEV_ID)
+		return; // prevent out-of-bounds write
+
+	beacon_stats = params->vdev_beacon_stats +
+		       params->num_vdev_beacon_stats;
+	if (!beacon_stats)
+		return;
+
+	wmi_debug("VDEV_BEACON_STATS struct found - num_vdev_beacon_stats %d",
+		  params->num_vdev_beacon_stats);
+	params->num_vdev_beacon_stats++;
+	wmi_extract_vdev_beacon_stats_tlv(tag_buf, beacon_stats);
+}
+
+static void
+wmi_extract_vdev_congestion_stats_tlv(
+				void *tag_buf,
+				struct vdev_congestion_stats_event *cong_stats)
+{
+	wmi_vdev_congestion_stats *fw_stats =
+				(wmi_vdev_congestion_stats *)tag_buf;
+	if (!fw_stats || !cong_stats)
+		return;
+
+	cong_stats->vdev_id = fw_stats->vdev_id;
+	cong_stats->cca_busy_time = fw_stats->cca_busy_time;
+	cong_stats->on_time = fw_stats->on_time;
+
+	wmi_debug("VDEV_CONGESTION_STATS: vdev_id = %u, cca_busy_time = %u, on_time = %u",
+		  cong_stats->vdev_id, cong_stats->cca_busy_time,
+		  cong_stats->on_time);
+}
+
+static void
+wmi_vdev_congestion_extract_stats_struct(void *tag_buf,
+					 struct infra_cp_stats_event *params)
+{
+	struct vdev_congestion_stats_event *cong_stats;
+
+	if (params->num_vdev_congestion_stats >= CTRL_PATH_STATS_MAX_VDEV_ID)
+		return; // prevent out-of-bounds write
+
+	cong_stats = params->vdev_congestion_stats +
+		     params->num_vdev_congestion_stats;
+	if (!cong_stats)
+		return;
+
+	wmi_debug("Vdev congestion stats found - num_vdev_congestion_stats %d",
+		  params->num_vdev_congestion_stats);
+
+	params->num_vdev_congestion_stats++;
+	wmi_extract_vdev_congestion_stats_tlv(tag_buf, cong_stats);
+}
+
+static void
+wmi_extract_vdev_data_stats_tlv(void *tag_buf,
+				struct vdev_data_stats_event *data_stats)
+{
+	wmi_vdev_data_stats *fw_stats = (wmi_vdev_data_stats *)tag_buf;
+	int i;
+
+	if (!data_stats || !fw_stats)
+		return;
+
+	data_stats->vdev_id = fw_stats->vdev_id;
+	for (i = 0; i < ENHANCE_STATS_MAX_MCS_COUNTERS; i++) {
+		data_stats->tx_mcs_data_ppdu[i] = fw_stats->tx_mcs_data_ppdu[i];
+		data_stats->rx_mcs_data_ppdu[i] = fw_stats->rx_mcs_data_ppdu[i];
+	}
+
+	for (i = 0; i <= STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz; i++) {
+		data_stats->tx_bw_data_ppdu[i] = fw_stats->tx_bw_data_ppdu[i];
+		data_stats->rx_bw_data_ppdu[i] = fw_stats->rx_bw_data_ppdu[i];
+	}
+
+	wmi_debug("VDEV_DATA_STATS: vdev_id = %u", data_stats->vdev_id);
+	for (i = 0; i < ENHANCE_STATS_MAX_MCS_COUNTERS; i++)
+		wmi_debug("tx_mcs_data_ppdu[%d] = %u, rx_mcs_data_ppdu[%d] = %u",
+			  i, data_stats->tx_mcs_data_ppdu[i],
+			  i, data_stats->rx_mcs_data_ppdu[i]);
+	for (i = 0; i <= STATS_EXT_EVENT_VDEV_EXT_BW_COUNTERS_320MHz; i++)
+		wmi_debug("tx_bw_data_ppdu[%d] = %u, rx_bw_data_ppdu[%d] = %u",
+			  i, data_stats->tx_bw_data_ppdu[i],
+			  i, data_stats->rx_bw_data_ppdu[i]);
+}
+
+static void
+wmi_vdev_data_extract_stats_struct(void *tag_buf,
+				   struct infra_cp_stats_event *params)
+{
+	struct vdev_data_stats_event *data_stats;
+
+	if (params->num_vdev_data_stats >= CTRL_PATH_STATS_MAX_VDEV_ID)
+		return; // prevent out-of-bounds write
+
+	data_stats = params->vdev_data_stats + params->num_vdev_data_stats;
+	if (!data_stats)
+		return;
+
+	wmi_debug("Vdev data stats found - num_vdev_data_stats %d",
+		  params->num_vdev_data_stats);
+
+	params->num_vdev_data_stats++;
+	wmi_extract_vdev_data_stats_tlv(tag_buf, data_stats);
+}
+
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 static void
 wmi_extract_ctrl_path_pmlo_stats_tlv(wmi_unified_t wmi_handle, void *tag_buf,
@@ -412,26 +571,29 @@ static void wmi_stats_extract_tag_struct(wmi_unified_t wmi_handle,
 	switch (tag_type) {
 	case WMITLV_TAG_STRUC_wmi_ctrl_path_pdev_stats_struct:
 		break;
-
 	case WMITLV_TAG_STRUC_wmi_ctrl_path_mem_stats_struct:
 		break;
-
 	case WMITLV_TAG_STRUC_wmi_ctrl_path_twt_stats_struct:
 		wmi_twt_extract_stats_struct(tag_buf, params);
 		break;
-
 	case WMITLV_TAG_STRUC_wmi_ctrl_path_bmiss_stats_struct:
 		wmi_bmiss_extract_stats_struct(tag_buf, params);
 		break;
-
 	case WMITLV_TAG_STRUC_wmi_ctrl_path_pmlo_stats_struct:
 		wmi_pmlo_extract_stats_struct(wmi_handle, tag_buf, params);
 		break;
-
 	case WMITLV_TAG_STRUC_wmi_ctrl_path_sta_rrm_stats_struct:
 		wmi_rrm_extract_sta_stats_struct(tag_buf, params);
 		break;
-
+	case WMITLV_TAG_STRUC_wmi_vdev_beacon_stats:
+		wmi_vdev_beacon_extract_stats_struct(tag_buf, params);
+		break;
+	case WMITLV_TAG_STRUC_wmi_vdev_congestion_stats:
+		wmi_vdev_congestion_extract_stats_struct(tag_buf, params);
+		break;
+	case WMITLV_TAG_STRUC_wmi_vdev_data_stats:
+		wmi_vdev_data_extract_stats_struct(tag_buf, params);
+		break;
 	default:
 		break;
 	}
@@ -444,7 +606,7 @@ QDF_STATUS wmi_stats_handler(wmi_unified_t wmi_handle, void *buff, int32_t len,
 	wmi_ctrl_path_stats_event_fixed_param *ev;
 	uint8_t *buf_ptr = (uint8_t *)buff;
 	uint32_t curr_tlv_tag;
-	uint32_t curr_tlv_len;
+	uint32_t curr_tlv_len, sub_tlv_len, num_sub_tlv, i;
 	uint8_t *tag_start_ptr;
 
 	param_buf = (WMI_CTRL_PATH_STATS_EVENTID_param_tlvs *)buff;
@@ -469,8 +631,8 @@ QDF_STATUS wmi_stats_handler(wmi_unified_t wmi_handle, void *buff, int32_t len,
 	curr_tlv_tag = WMITLV_GET_TLVTAG(WMITLV_GET_HDR(buf_ptr));
 	curr_tlv_len = WMITLV_GET_TLVLEN(WMITLV_GET_HDR(buf_ptr));
 
-	wmi_debug("curr_tlv_len %d curr_tlv_tag %d rem_len %d", len,
-		  curr_tlv_len, curr_tlv_tag);
+	wmi_debug("curr_tlv_len %d curr_tlv_tag %d rem_len %d",
+		  curr_tlv_len, curr_tlv_tag, len);
 
 	while ((len >= curr_tlv_len) &&
 	       (curr_tlv_tag >= WMITLV_TAG_FIRST_ARRAY_ENUM)) {
@@ -485,19 +647,26 @@ QDF_STATUS wmi_stats_handler(wmi_unified_t wmi_handle, void *buff, int32_t len,
 		curr_tlv_len = WMITLV_GET_TLVLEN(WMITLV_GET_HDR(buf_ptr));
 
 		wmi_debug("curr_tlv_len %d curr_tlv_tag %d rem_len %d",
-			  len, curr_tlv_len, curr_tlv_tag);
+			  curr_tlv_len, curr_tlv_tag, len);
 		if (curr_tlv_len) {
 			/* point to the tag inside WMITLV_TAG_ARRAY_STRUC */
 			tag_start_ptr = buf_ptr + WMI_TLV_HDR_SIZE;
-			curr_tlv_tag = WMITLV_GET_TLVTAG(
-						WMITLV_GET_HDR(tag_start_ptr));
-			wmi_stats_extract_tag_struct(wmi_handle, curr_tlv_tag,
+			sub_tlv_len = WMITLV_GET_TLVLEN(WMITLV_GET_HDR(tag_start_ptr)) + WMI_TLV_HDR_SIZE;
+			num_sub_tlv = curr_tlv_len/sub_tlv_len;
+			wmi_debug("sub_tlv_len: %d num_sub_tlv:%d", sub_tlv_len, num_sub_tlv);
+			for (i = 0;i < num_sub_tlv; i++) {
+				curr_tlv_tag = WMITLV_GET_TLVTAG(
+							WMITLV_GET_HDR(tag_start_ptr));
+				wmi_stats_extract_tag_struct(wmi_handle, curr_tlv_tag,
 						     (void *)tag_start_ptr,
 						     params);
-			/* Move to next tag */
-			buf_ptr += curr_tlv_len + WMI_TLV_HDR_SIZE;
-			len -= (curr_tlv_len + WMI_TLV_HDR_SIZE);
+				tag_start_ptr += sub_tlv_len;
+			}
 		}
+
+		/* Move to next tag */
+		buf_ptr += curr_tlv_len + WMI_TLV_HDR_SIZE;
+		len -= (curr_tlv_len + WMI_TLV_HDR_SIZE);
 		if (len <= 0)
 			break;
 	}

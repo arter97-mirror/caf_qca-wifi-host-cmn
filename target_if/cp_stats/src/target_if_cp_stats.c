@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -120,6 +120,31 @@ target_if_infra_cp_stats_rrm_sta_stats_event_alloc(
 
 	return QDF_STATUS_SUCCESS;
 }
+
+static QDF_STATUS
+target_if_infra_cp_stats_enchance_stats_event_alloc(
+					struct infra_cp_stats_event *ev)
+{
+	ev->vdev_beacon_stats =
+		qdf_mem_malloc(sizeof(*ev->vdev_beacon_stats) *
+		CTRL_PATH_STATS_MAX_VDEV_ID);
+	if (!ev->vdev_beacon_stats)
+		return QDF_STATUS_E_NOMEM;
+
+	ev->vdev_congestion_stats =
+			qdf_mem_malloc(sizeof(*ev->vdev_congestion_stats) *
+			CTRL_PATH_STATS_MAX_VDEV_ID);
+	if (!ev->vdev_congestion_stats)
+		return QDF_STATUS_E_NOMEM;
+
+	ev->vdev_data_stats =
+			qdf_mem_malloc(sizeof(*ev->vdev_data_stats) *
+			CTRL_PATH_STATS_MAX_VDEV_ID);
+	if (!ev->vdev_data_stats)
+		return QDF_STATUS_E_NOMEM;
+
+	return QDF_STATUS_SUCCESS;
+}
 #ifdef CONFIG_WLAN_BMISS
 
 /**
@@ -169,6 +194,26 @@ target_if_infra_cp_stats_bmiss_event_alloc(struct infra_cp_stats_event *ev)
 }
 #endif /* CONFIG_WLAN_BMISS */
 
+/* Free memory for vdev_beacon_stats_event */
+static void
+target_if_infra_cp_stats_enchance_event_free(struct infra_cp_stats_event *ev)
+{
+	if (ev->vdev_beacon_stats) {
+		qdf_mem_free(ev->vdev_beacon_stats);
+		ev->vdev_beacon_stats = NULL;
+	}
+
+	if (ev->vdev_congestion_stats) {
+		qdf_mem_free(ev->vdev_congestion_stats);
+		ev->vdev_congestion_stats = NULL;
+	}
+
+	if (ev->vdev_data_stats) {
+		qdf_mem_free(ev->vdev_data_stats);
+		ev->vdev_data_stats = NULL;
+	}
+}
+
 /**
  * target_if_infra_cp_stats_event_free() - Free event buffer
  * @ev: pointer to infra cp stats event structure
@@ -181,6 +226,7 @@ void target_if_infra_cp_stats_event_free(struct infra_cp_stats_event *ev)
 	target_if_infra_cp_stats_twt_event_free(ev);
 	target_if_infra_cp_stats_bmiss_event_free(ev);
 	target_if_infra_cp_stats_rrm_sta_stats_event_free(ev);
+	target_if_infra_cp_stats_enchance_event_free(ev);
 }
 
 /**
@@ -205,6 +251,10 @@ target_if_infra_cp_stats_event_alloc(struct infra_cp_stats_event *ev)
 		return QDF_STATUS_E_NOMEM;
 
 	status = target_if_infra_cp_stats_rrm_sta_stats_event_alloc(ev);
+	if (QDF_IS_STATUS_ERROR(status))
+		return QDF_STATUS_E_NOMEM;
+
+	status = target_if_infra_cp_stats_enchance_stats_event_alloc(ev);
 	if (QDF_IS_STATUS_ERROR(status))
 		return QDF_STATUS_E_NOMEM;
 
