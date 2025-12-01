@@ -4197,6 +4197,12 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
 
 #ifdef DP_FEATURE_DIRECT_REFILL
+static inline struct dp_srng *dp_get_pri_replenish_srng(struct dp_soc *soc,
+							uint8_t mac_id)
+{
+	return soc->replenish_rings[mac_id][DP_DIR_REFILL_RING_NUM];
+}
+
 static inline uint32_t
 __dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
 				  uint32_t rx_bufs_reaped,
@@ -4221,6 +4227,12 @@ __dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
 	return rx_bufs_used;
 }
 #else
+static inline struct dp_srng *dp_get_pri_replenish_srng(struct dp_soc *soc,
+							uint8_t mac_id)
+{
+	return &soc->rx_refill_buf_ring[mac_id];
+}
+
 static inline uint32_t
 __dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
 				  uint32_t rx_bufs_reaped,

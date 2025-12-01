@@ -237,7 +237,7 @@ dp_rx_buffer_pool_nbuf_alloc(struct dp_soc *soc, uint32_t mac_id,
 		mac_id = dp_pdev->lmac_id;
 
 	buff_pool = &soc->rx_buff_pool[mac_id];
-	dp_rxdma_srng = &soc->rx_refill_buf_ring[mac_id];
+	dp_rxdma_srng = dp_get_pri_replenish_srng(soc, mac_id);
 
 	nbuf = qdf_nbuf_alloc(soc->osdev, rx_desc_pool->buf_size,
 			      RX_BUFFER_RESERVATION,

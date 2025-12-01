@@ -4110,10 +4110,8 @@ dp_rx_buffers_replenish_on_demand(struct cdp_soc_t *cdp_soc,
 		return num_alloc_desc;
 	}
 
-	dp_rx_buffers_replenish_simple(soc, pdev_id,
-				       &soc->rx_refill_buf_ring[pdev_id],
-				       rx_desc_pool, num_alloc_desc,
-				       &head, &tail);
+	dp_rx_buffers_replenish_wrapper(soc, pdev_id, num_alloc_desc,
+					&head, &tail, false);
 
 	return num_alloc_desc;
 }
