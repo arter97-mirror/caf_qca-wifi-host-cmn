@@ -6944,6 +6944,7 @@ typedef enum {
 	wmi_service_enhanced_stats_support,
 	wmi_service_wow_sta_ps_param_cache_support,
 	wmi_service_vdev_unified_connect_disconnect_support,
+	wmi_service_qos_null_frame_tx_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -8402,6 +8403,24 @@ typedef struct _wmi_host_phyerr {
 	uint32_t phy_err_mask1;
 	uint32_t pdev_id;
 } wmi_host_phyerr_t;
+
+/**
+ * struct qos_null_frame_tx_params - Parameters for QoS NULL frame transmission
+ * @vdev_id: vdev id
+ * @frame: Frame buffer
+ * @peer_addr: Peer MAC address
+ * @desc_id: Descriptor ID for tracking
+ * @frame_len: Length of qos null frame
+ * @qdf_ctx: qdf context for qdf_nbuf_map
+ */
+struct qos_null_frame_tx_params {
+	uint32_t vdev_id;
+	qdf_nbuf_t frame;
+	uint8_t peer_addr[QDF_MAC_ADDR_SIZE];
+	uint32_t desc_id;
+	uint32_t frame_len;
+	void *qdf_ctx;
+};
 
 /**
  * struct wmi_host_rtt_event_hdr

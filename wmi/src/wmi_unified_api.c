@@ -1791,6 +1791,17 @@ wmi_extract_composite_phyerr(wmi_unified_t wmi_handle, void *evt_buf,
 }
 
 QDF_STATUS
+wmi_unified_send_qos_null_frame_tx_cmd(wmi_unified_t wmi_handle,
+				       struct qos_null_frame_tx_params *params)
+{
+	if (wmi_handle->ops->send_qos_null_frame_tx_cmd)
+		return wmi_handle->ops->send_qos_null_frame_tx_cmd(wmi_handle,
+			params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
 wmi_extract_pmf_bcn_protect_stats(wmi_unified_t wmi_handle, void *evt_buf,
 				  wmi_host_pmf_bcn_protect_stats *bcn_stats)
 {

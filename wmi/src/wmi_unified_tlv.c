@@ -19138,6 +19138,100 @@ static QDF_STATUS extract_single_phyerr_tlv(wmi_unified_t wmi_handle,
 }
 
 /**
+ * send_qos_null_frame_tx_cmd_tlv() - Send QoS NULL frame WMI command
+ * @wmi_handle: WMI handle
+ * @param: QoS NULL TX parameters
+ *
+ * This function sends a QoS NULL frame command to firmware.
+ * The firmware will construct and transmit the QoS NULL frame.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS send_qos_null_frame_tx_cmd_tlv(wmi_unified_t wmi_handle,
+						 struct qos_null_frame_tx_params
+						 *param)
+{
+	wmi_qos_null_frame_tx_send_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint8_t *bufp;
+	uint32_t cmd_len;
+	int32_t bufp_len;
+	void *qdf_ctx;
+	QDF_STATUS status;
+	qdf_dma_addr_t dma_addr;
+
+	if (!param || !param->frame) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	bufp_len = (param->frame_len < mgmt_tx_dl_frm_len) ?
+			    param->frame_len : mgmt_tx_dl_frm_len;
+	qdf_ctx = param->qdf_ctx;
+
+	cmd_len = sizeof(wmi_qos_null_frame_tx_send_cmd_fixed_param) +
+			WMI_TLV_HDR_SIZE + roundup(bufp_len, sizeof(uint32_t));
+
+	buf = wmi_buf_alloc(wmi_handle, cmd_len);
+
+	if (!buf) {
+		wmi_err("Failed to allocate WMI buffer");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	cmd = (wmi_qos_null_frame_tx_send_cmd_fixed_param *)wmi_buf_data(buf);
+	bufp = (uint8_t *)cmd;
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+	WMITLV_TAG_STRUC_wmi_qos_null_frame_tx_send_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+		       (wmi_qos_null_frame_tx_send_cmd_fixed_param));
+
+	cmd->vdev_id = param->vdev_id;
+	cmd->desc_id = param->desc_id;
+	cmd->frame_len = param->frame_len;
+	cmd->buf_len = bufp_len;
+
+	bufp += sizeof(wmi_qos_null_frame_tx_send_cmd_fixed_param);
+
+	WMITLV_SET_HDR(bufp, WMITLV_TAG_ARRAY_BYTE, roundup(bufp_len,
+							    sizeof(uint32_t)));
+	bufp += WMI_TLV_HDR_SIZE;
+
+	WMI_HOST_IF_MSG_COPY_CHAR_ARRAY(bufp, qdf_nbuf_data(param->frame),
+					bufp_len);
+
+	status = qdf_nbuf_map_single(qdf_ctx, param->frame, QDF_DMA_TO_DEVICE);
+
+	if (status != QDF_STATUS_SUCCESS) {
+		wmi_err("QoS null frame DMA mapping failed");
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	dma_addr = qdf_nbuf_get_frag_paddr(param->frame, 0);
+	cmd->paddr_lo = (uint32_t)(dma_addr & 0xffffffff);
+	cmd->paddr_hi = (uint32_t)((dma_addr >> 32) & 0x1F);
+
+	wmi_debug("QoS null frame: vdev_id=%d len=%d dma_addr=0x%llx "
+		  "paddr_lo=0x%x paddr_hi=0x%x", cmd->vdev_id, cmd->frame_len,
+		  dma_addr, cmd->paddr_lo, cmd->paddr_hi);
+
+	status = wmi_unified_cmd_send(wmi_handle, buf, cmd_len,
+				      WMI_QOS_NULL_FRAME_TX_SEND_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI command: %d", status);
+		/* Unmap DMA on failure */
+		qdf_nbuf_unmap_single(qdf_ctx, param->frame, QDF_DMA_TO_DEVICE);
+		wmi_buf_free(buf);
+		return status;
+	}
+
+	wmi_debug("QoS null frame WMI command sent successfully");
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * extract_esp_estimation_ev_param_tlv() - extract air time from event
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer
@@ -23064,6 +23158,7 @@ struct wmi_ops tlv_ops =  {
 	.wmi_check_command_params = wmitlv_check_command_tlv_params,
 	.extract_comb_phyerr = extract_comb_phyerr_tlv,
 	.extract_single_phyerr = extract_single_phyerr_tlv,
+	.send_qos_null_frame_tx_cmd = send_qos_null_frame_tx_cmd_tlv,
 #ifdef QCA_SUPPORT_CP_STATS
 	.extract_cca_stats = extract_cca_stats_tlv,
 #endif
@@ -24576,6 +24671,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_WOW_STA_PS_PARAM_CACHE_SUPPORT;
 	wmi_service[wmi_service_vdev_unified_connect_disconnect_support] =
 			WMI_SERVICE_VDEV_UNIFIED_CONNECT_DISCONNECT_SUPPORT;
+	wmi_service[wmi_service_qos_null_frame_tx_support] =
+				WMI_SERVICE_QOS_NULL_FRAME_TX_OVER_WMI;
 }
 
 /**

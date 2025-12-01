@@ -2109,6 +2109,10 @@ QDF_STATUS (*extract_single_phyerr)(wmi_unified_t wmi_handle, void *evt_buf,
 QDF_STATUS (*extract_composite_phyerr)(wmi_unified_t wmi_handle, void *evt_buf,
 	uint16_t datalen, wmi_host_phyerr_t *phyerr);
 
+QDF_STATUS
+(*send_qos_null_frame_tx_cmd)(wmi_unified_t wmi_handle,
+			      struct qos_null_frame_tx_params *params);
+
 QDF_STATUS (*extract_rtt_hdr)(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_host_rtt_event_hdr *ev);
 

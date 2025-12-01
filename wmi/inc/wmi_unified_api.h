@@ -2959,6 +2959,17 @@ wmi_extract_profile_data(wmi_unified_t wmi_handle, void *evt_buf, uint8_t idx,
 			 wmi_host_wlan_profile_t *profile_data);
 
 /**
+ * wmi_unified_send_qos_null_frame_tx_cmd() - Send QoS null frame TX command
+ * @wmi_handle: wmi handle
+ * @params: QoS null frame TX parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE otherwise
+ */
+QDF_STATUS
+wmi_unified_send_qos_null_frame_tx_cmd(wmi_unified_t wmi_handle,
+				       struct qos_null_frame_tx_params *params);
+
+/**
  * wmi_extract_pmf_bcn_protect_stats() - extract pmf bcn stats from event
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer
