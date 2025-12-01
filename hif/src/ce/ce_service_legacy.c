@@ -486,7 +486,7 @@ more_data:
 			hif_err("Potential infinite loop detected during Rx processing nentries_mask:0x%x sw read_idx:0x%x hw read_idx:0x%x",
 				  nentries_mask,
 				  ce_state->dest_ring->sw_index,
-				  CE_DEST_RING_READ_IDX_GET(scn, ctrl_addr));
+				  (uint32_t)CE_DEST_RING_READ_IDX_GET(scn, ctrl_addr));
 		}
 	}
 #ifdef NAPI_YIELD_BUDGET_BASED
