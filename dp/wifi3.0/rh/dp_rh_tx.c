@@ -113,7 +113,7 @@ QDF_STATUS dp_tx_comp_desc_sanity_check_rh(uint32_t *msg_word,
 					(((uint64_t)paddr_hi) << 32));
 
 	if (desc_dma_addr != tx_desc->dma_addr) {
-		dp_err("Mismatched paddr. tx desc %pK sw cookie %lu",
+		dp_err("Mismatched paddr. tx desc %pK sw cookie %u",
 		       tx_desc,
 		       HTT_TX_BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_GET(*(msg_word + 1)));
 		dp_err("dma addr in tx desc 0x%llx,dma addr in msdu info 0x%llx",
