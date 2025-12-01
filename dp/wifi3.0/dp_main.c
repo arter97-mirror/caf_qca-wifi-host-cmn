@@ -793,7 +793,8 @@ static void dp_wds_flush_ast_table_wifi3(struct cdp_soc_t  *soc_hdl)
 	dp_peer_mec_flush_entries(soc);
 }
 
-#if defined(IPA_WDS_EASYMESH_FEATURE) && defined(FEATURE_AST)
+#ifdef FEATURE_AST
+#if defined(IPA_WDS_EASYMESH_FEATURE)
 /**
  * dp_peer_send_wds_disconnect() - Send Disconnect event to IPA for each peer
  * @soc: Datapath SOC
@@ -833,12 +834,13 @@ dp_peer_send_wds_disconnect(struct dp_soc *soc, struct dp_peer *peer)
 								      ase->mac_addr.raw);
 	}
 }
-#elif defined(FEATURE_AST)
+#else
 static void
 dp_peer_send_wds_disconnect(struct dp_soc *soc, struct dp_peer *peer)
 {
 }
 #endif
+#endif /* FEATURE_AST */
 
 /**
  * dp_peer_check_ast_offload() - check ast offload support is enable or not
