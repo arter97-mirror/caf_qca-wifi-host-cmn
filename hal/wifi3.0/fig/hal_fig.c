@@ -2172,6 +2172,12 @@ hal_srng_dst_get_num_avail_words_fig(hal_ring_handle_t hal_ring_hdl)
 	return SRNG_MS(SRNG_DST_HW_FLD(STATUS, NUM_AVAIL_WORDS), ring_status);
 }
 
+static inline
+uint8_t hal_is_direct_refill_supported_fig(hal_soc_handle_t hal_soc_hdl)
+{
+	return 1;
+}
+
 static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2446,6 +2452,8 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 				hal_rx_flow_cmem_update_reo_dst_ind;
 	hal_soc->ops->hal_srng_dst_get_num_avail_words =
 				hal_srng_dst_get_num_avail_words_fig;
+	hal_soc->ops->hal_is_direct_refill_supported =
+					hal_is_direct_refill_supported_fig;
 };
 
 struct hal_hw_srng_config hw_srng_table_fig[] = {
