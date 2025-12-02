@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -180,6 +180,12 @@ QDF_STATUS target_if_vdev_mgr_rsp_timer_mod(
 	}
 
 	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
+	if (!vdev_rsp) {
+		mlme_err("VDEV_%d PSOC_%d vdev response timer info is NULL",
+			 vdev_id, wlan_psoc_get_id(psoc));
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	qdf_timer_mod(&vdev_rsp->rsp_timer, mseconds);
 	return QDF_STATUS_SUCCESS;
 }
