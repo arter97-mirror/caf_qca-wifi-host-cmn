@@ -14010,7 +14010,8 @@ update_tx_ilp:
 }
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
-QDF_STATUS dp_dump_custom_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
+static QDF_STATUS
+dp_dump_custom_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
