@@ -23,12 +23,14 @@
 #define WLAN_IPA_LOGGING(arg, ...) \
 	WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__)
 #define WLAN_IPA_LOGGING_RL(arg, ...) \
-	static ulong __last_ticks; \
-	ulong __ticks = jiffies; \
-	if (time_after(__ticks, __last_ticks + HZ)) { \
-		WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__); \
-		__last_ticks = __ticks; \
-	} \
+	do { \
+		static ulong __last_ticks; \
+		ulong __ticks = jiffies; \
+		if (time_after(__ticks, __last_ticks + HZ)) { \
+			WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__); \
+			__last_ticks = __ticks; \
+		} \
+	} while (0)
 
 #define WLAN_IPA_LOGGING_FUNC wlan_ipa_log_message
 #define WLAN_IPA_LOG_MSG_LENGTH_MAX 2048
