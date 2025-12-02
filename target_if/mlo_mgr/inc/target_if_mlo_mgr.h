@@ -225,4 +225,14 @@ void target_if_mlo_unregister_vdev_tid_to_link_map_event(
 bool
 target_if_mlo_sap_link_removal_offload_support(struct wlan_objmgr_psoc *psoc);
 #endif
+
+/**
+ * target_if_is_unified_connect_disconnect_enabled() - handler to check whether
+ * unified_connect_disconnect FW service cap is enabled or not.
+ * @psoc: psoc pointer
+ *
+ * Return: True if service capabilities are present, false otherwise.
+ */
+bool
+target_if_is_unified_connect_disconnect_enabled(struct wlan_objmgr_psoc *psoc);
 #endif /* __TARGET_IF_MLO_MGR_H__ */

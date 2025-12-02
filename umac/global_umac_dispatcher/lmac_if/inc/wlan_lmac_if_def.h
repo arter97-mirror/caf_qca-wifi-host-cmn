@@ -1722,6 +1722,8 @@ struct wlan_lmac_if_son_rx_ops {
  * @send_link_reconfig_req_params_cmd: send link reconfig command to FW
  * @send_mlo_ttlm_complete_cmd: Send TTLM complete cmd to FW
  * @send_wsi_link_info_cmd: send WSI link stats to FW
+ * @unified_connect_disconnect_enabled: check whether unified_connect_disconnect
+ *                                      FW service cap is enabled or not
  */
 struct wlan_lmac_if_mlo_tx_ops {
 	QDF_STATUS (*register_events)(struct wlan_objmgr_psoc *psoc);
@@ -1772,6 +1774,8 @@ struct wlan_lmac_if_mlo_tx_ops {
 				struct wlan_objmgr_pdev *pdev,
 				struct mlo_wsi_link_stats *param);
 
+	bool (*unified_connect_disconnect_enabled)(
+				struct wlan_objmgr_psoc *psoc);
 };
 
 typedef void (*trace_link_set_active_cb_type)(

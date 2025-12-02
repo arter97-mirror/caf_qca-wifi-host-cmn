@@ -2391,3 +2391,15 @@ bool mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
 	return link_info->is_link_active;
 }
 #endif
+
+bool
+mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_lmac_if_mlo_tx_ops *mlo_tx_ops;
+
+	mlo_tx_ops = &psoc->soc_cb.tx_ops->mlo_ops;
+	if (mlo_tx_ops && mlo_tx_ops->unified_connect_disconnect_enabled)
+		return mlo_tx_ops->unified_connect_disconnect_enabled(psoc);
+
+	return false;
+}

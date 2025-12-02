@@ -24574,6 +24574,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_ENHANCED_STATS_SUPPORT;
 	wmi_service[wmi_service_wow_sta_ps_param_cache_support] =
 				WMI_SERVICE_WOW_STA_PS_PARAM_CACHE_SUPPORT;
+	wmi_service[wmi_service_vdev_unified_connect_disconnect_support] =
+			WMI_SERVICE_VDEV_UNIFIED_CONNECT_DISCONNECT_SUPPORT;
 }
 
 /**

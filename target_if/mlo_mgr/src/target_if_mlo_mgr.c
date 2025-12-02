@@ -1350,6 +1350,28 @@ target_if_mlo_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_send_link_reconfig_req_cmd;
 
 	target_if_mlo_register_peer_ptqm_migrate_send(mlo_tx_ops);
+
+	mlo_tx_ops->unified_connect_disconnect_enabled =
+		target_if_is_unified_connect_disconnect_enabled;
+
 	return QDF_STATUS_SUCCESS;
 }
 
+bool
+target_if_is_unified_connect_disconnect_enabled(struct wlan_objmgr_psoc *psoc)
+{
+	struct wmi_unified *wmi_handle;
+
+	if (!psoc)
+		return false;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("wmi handle is NULL");
+		return false;
+	}
+
+	return wmi_service_enabled(
+			wmi_handle,
+			wmi_service_vdev_unified_connect_disconnect_support);
+}

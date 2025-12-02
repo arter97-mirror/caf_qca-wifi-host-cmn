@@ -830,6 +830,17 @@ void mlo_link_recfg_link_switch_timeout(
  * Return: True if vdev is active; false otherwise
  */
 bool mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_mgr_is_unified_connect_disconnect_supported() - check if unified
+ * connect/disconnect is enabled
+ * @psoc: psoc pointer
+ *
+ * Return: true if enabled, false otherwise
+ */
+bool
+mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc);
+
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1090,6 +1101,12 @@ static inline void mlo_link_recfg_link_switch_timeout(
 
 static inline bool
 mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+
+static inline bool
+mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }
