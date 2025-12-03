@@ -680,12 +680,79 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
  */
 qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			       qdf_nbuf_t nbuf);
+
+/**
+ * dp_tx_comp_process_desc_passthru() - Process tx descriptor and free
+ *  associated nbuf
+ * @soc: DP Soc handle
+ * @desc: software Tx descriptor
+ * @ts: Tx completion status from HAL/HTT descriptor
+ * @txrx_peer: DP peer context
+ *
+ * Return: none
+ */
+void dp_tx_comp_process_desc_passthru(struct dp_soc *soc,
+				      struct dp_tx_desc_s *desc,
+				      struct hal_tx_completion_status *ts,
+				      struct dp_txrx_peer *txrx_peer);
+
+/**
+ * dp_tx_comp_process_tx_status_passthru() - Process TX completion status
+ * in passthrough mode
+ * @soc: DP soc handle
+ * @tx_desc: TX descriptor
+ * @ts: TX completion status from HAL
+ * @txrx_peer: DP peer handle
+ * @ring_id: Completion ring ID
+ *
+ * This is a streamlined version of dp_tx_comp_process_tx_status() optimized
+ * for passthrough mode. It skips various statistics collection and monitoring
+ * functions to reduce processing overhead.
+ *
+ * Return: None
+ */
+void dp_tx_comp_process_tx_status_passthru(struct dp_soc *soc,
+					   struct dp_tx_desc_s *tx_desc,
+					   struct hal_tx_completion_status *ts,
+					   struct dp_txrx_peer *txrx_peer,
+					   uint8_t ring_id);
+
+static inline
+void dp_tx_comp_process_tx_status_n_desc_wrapper(struct dp_soc *soc,
+						 struct dp_vdev *vdev,
+						 struct dp_tx_desc_s *tx_desc,
+						 struct hal_tx_completion_status *ts,
+						 struct dp_txrx_peer *txrx_peer,
+						 uint8_t ring_id)
+{
+	if (qdf_unlikely(vdev && vdev->opmode == wlan_op_mode_passthru)) {
+		dp_tx_comp_process_tx_status_passthru(soc, tx_desc, ts,
+						      txrx_peer, ring_id);
+		dp_tx_comp_process_desc_passthru(soc, tx_desc, ts, txrx_peer);
+		return;
+	}
+
+	dp_tx_comp_process_tx_status(soc, tx_desc, ts, txrx_peer, ring_id);
+	dp_tx_comp_process_desc(soc, tx_desc, ts, txrx_peer);
+}
 #else
 static inline
 qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			       qdf_nbuf_t nbuf)
 {
 	return nbuf;
+}
+
+static inline
+void dp_tx_comp_process_tx_status_n_desc_wrapper(struct dp_soc *soc,
+						 struct dp_vdev *vdev,
+						 struct dp_tx_desc_s *tx_desc,
+						 struct hal_tx_completion_status *ts,
+						 struct dp_txrx_peer *txrx_peer,
+						 uint8_t ring_id)
+{
+	dp_tx_comp_process_tx_status(soc, tx_desc, ts, txrx_peer, ring_id);
+	dp_tx_comp_process_desc(soc, tx_desc, ts, txrx_peer);
 }
 #endif
 
