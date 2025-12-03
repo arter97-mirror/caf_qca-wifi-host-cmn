@@ -8599,7 +8599,7 @@ void dp_tx_update_connectivity_stats(struct dp_soc *soc,
 	qdf_assert(tx_desc);
 
 	if (!vdev || vdev->delete.pending || !vdev->osif_vdev ||
-	    !vdev->stats_cb)
+	    !vdev->stats_cb || (vdev->opmode == wlan_op_mode_passthru))
 		return;
 
 	osif_dev = vdev->osif_vdev;
@@ -10114,10 +10114,10 @@ dp_tx_comp_process_desc_list(struct dp_soc *soc,
 					       &ts, comp_index);
 		comp_index++;
 
-		dp_tx_comp_process_tx_status(soc, desc, &ts, txrx_peer,
-					     ring_id);
-
-		dp_tx_comp_process_desc(soc, desc, &ts, txrx_peer);
+		dp_tx_comp_process_tx_status_n_desc_wrapper(soc,
+							    txrx_peer ? txrx_peer->vdev : NULL,
+							    desc, &ts,
+							    txrx_peer, ring_id);
 
 		if (qdf_likely(desc->flags & DP_TX_DESC_FLAG_FAST)) {
 			vdev_id = desc->vdev_id;
@@ -11800,5 +11800,126 @@ qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	nbuf = dp_tx_send_msdu_single(vdev, nbuf, &msdu_info, peer_id, NULL);
 
 	return nbuf;
+}
+
+void
+dp_tx_comp_process_desc_passthru(struct dp_soc *soc,
+				 struct dp_tx_desc_s *desc,
+				 struct hal_tx_completion_status *ts,
+				 struct dp_txrx_peer *txrx_peer)
+{
+	uint64_t time_latency = 0;
+
+	if (qdf_unlikely(!!desc->pdev->latency_capture_enable)) {
+		time_latency = (qdf_ktime_to_ms(qdf_ktime_real_get()) -
+				qdf_ktime_to_ms(desc->timestamp));
+	}
+
+	if (dp_tx_pkt_tracepoints_enabled())
+		qdf_trace_dp_packet(desc->nbuf, QDF_TX,
+				    desc->msdu_ext_desc ?
+				    desc->msdu_ext_desc->tso_desc : NULL,
+				    qdf_ktime_to_us(desc->timestamp),
+				    desc->tx_status);
+
+	desc->flags |= DP_TX_DESC_FLAG_COMPLETED_TX;
+}
+
+void dp_tx_comp_process_tx_status_passthru(struct dp_soc *soc,
+					   struct dp_tx_desc_s *tx_desc,
+					   struct hal_tx_completion_status *ts,
+					   struct dp_txrx_peer *txrx_peer,
+					   uint8_t ring_id)
+{
+	uint32_t length;
+	struct dp_vdev *vdev = NULL;
+	qdf_nbuf_t nbuf = tx_desc->nbuf;
+	enum qdf_dp_tx_rx_status dp_status;
+	uint8_t link_id = 0;
+	enum QDF_OPMODE op_mode = QDF_MAX_NO_OF_MODE;
+
+	if (!nbuf) {
+		dp_info_rl("invalid tx descriptor. nbuf NULL");
+		goto out;
+	}
+
+	length = dp_tx_get_pkt_len(tx_desc);
+
+	dp_status = dp_tx_hw_to_qdf(ts->status);
+	if (soc->dp_debug_log_en) {
+		dp_tx_comp_debug("--------------------\n"
+				 "Tx Completion Stats:\n"
+				 "--------------------\n"
+				 "ack_frame_rssi = %d\n"
+				 "first_msdu = %d\n"
+				 "last_msdu = %d\n"
+				 "msdu_part_of_amsdu = %d\n"
+				 "rate_stats valid = %d\n"
+				 "bw = %d\n"
+				 "pkt_type = %d\n"
+				 "stbc = %d\n"
+				 "ldpc = %d\n"
+				 "sgi = %d\n"
+				 "mcs = %d\n"
+				 "ofdma = %d\n"
+				 "tones_in_ru = %d\n"
+				 "tsf = %d\n"
+				 "ppdu_id = %d\n"
+				 "transmit_cnt = %d\n"
+				 "tid = %d\n"
+				 "peer_id = %d\n"
+				 "tx_status = %d\n"
+				 "tx_release_source = %d\n",
+				 ts->ack_frame_rssi, ts->first_msdu,
+				 ts->last_msdu, ts->msdu_part_of_amsdu,
+				 ts->valid, ts->bw, ts->pkt_type, ts->stbc,
+				 ts->ldpc, ts->sgi, ts->mcs, ts->ofdma,
+				 ts->tones_in_ru, ts->tsf, ts->ppdu_id,
+				 ts->transmit_cnt, ts->tid, ts->peer_id,
+				 ts->status, ts->release_src);
+	}
+
+	/* Update SoC level stats */
+	DP_STATS_INCC(soc, tx.dropped_fw_removed, 1,
+		      (ts->status == HAL_TX_TQM_RR_REM_CMD_REM));
+
+	if (!txrx_peer) {
+		/* PASSTHRU: Skip dp_tx_comp_set_nbuf_band() */
+		dp_info_rl("peer is null or deletion in progress");
+		DP_STATS_INC_PKT(soc, tx.tx_invalid_peer, 1, length);
+
+		vdev = dp_vdev_get_ref_by_id(soc, tx_desc->vdev_id,
+					     DP_MOD_ID_CDP);
+		if (qdf_likely(vdev)) {
+			op_mode = vdev->qdf_opmode;
+			dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+		}
+
+		goto out_log;
+	}
+	vdev = txrx_peer->vdev;
+
+	link_id = dp_tx_get_link_id_from_ppdu_id(soc, ts, txrx_peer, vdev);
+
+	dp_tx_set_nbuf_band(nbuf, txrx_peer, link_id);
+
+	op_mode = vdev->qdf_opmode;
+
+	/* check tx complete notification */
+	if (qdf_nbuf_tx_notify_comp_get(nbuf))
+		dp_tx_notify_completion(soc, vdev, tx_desc,
+					nbuf, ts->status);
+
+	dp_tx_update_peer_stats(tx_desc, ts, txrx_peer, ring_id, link_id);
+
+out_log:
+	DPTRACE(qdf_dp_trace_ptr(tx_desc->nbuf,
+				 QDF_DP_TRACE_LI_DP_FREE_PACKET_PTR_RECORD,
+				 QDF_TRACE_DEFAULT_PDEV_ID,
+				 qdf_nbuf_data_addr(nbuf),
+				 sizeof(qdf_nbuf_data(nbuf)),
+				 tx_desc->id, ts->status, dp_status, op_mode));
+out:
+	return;
 }
 #endif /* DRIVER_PASSTHRU_MODE */

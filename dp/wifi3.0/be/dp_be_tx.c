@@ -418,22 +418,27 @@ void dp_tx_process_htt_completion_be(struct dp_soc *soc,
 		ts.peer_id = HTT_INVALID_PEER;
 		ts.tid = HTT_INVALID_TID;
 	}
-	txrx_peer = dp_txrx_peer_get_ref_by_id(soc, ts.peer_id,
-					       &txrx_ref_handle,
-					       DP_MOD_ID_HTT_COMP);
-	if (qdf_likely(txrx_peer)) {
-		if (qdf_unlikely(qdf_nbuf_is_ipv4_eapol_pkt(tx_desc->nbuf))) {
-			eapol_type = qdf_nbuf_get_eapol_subtype(tx_desc->nbuf);
-			pairwise = (eapol_type == QDF_PROTO_EAPOL_G1 ||
-				    eapol_type == QDF_PROTO_EAPOL_G2) ? 0 : 1;
-			dp_tx_update_eapol_comp_status_stats(soc, vdev,
-							     tx_desc->nbuf,
-							     txrx_peer, 0,
-							     tx_status,
-							     pairwise);
+
+	if (qdf_likely(wlan_op_mode_passthru != vdev->opmode)) {
+		txrx_peer = dp_txrx_peer_get_ref_by_id(soc, ts.peer_id,
+						       &txrx_ref_handle,
+						       DP_MOD_ID_HTT_COMP);
+		if (qdf_likely(txrx_peer)) {
+			if (qdf_unlikely(qdf_nbuf_is_ipv4_eapol_pkt(tx_desc->nbuf))) {
+				eapol_type = qdf_nbuf_get_eapol_subtype(tx_desc->nbuf);
+				pairwise = (eapol_type == QDF_PROTO_EAPOL_G1 ||
+					    eapol_type == QDF_PROTO_EAPOL_G2) ?
+					   0 : 1;
+				dp_tx_update_eapol_comp_status_stats(soc, vdev,
+								     tx_desc->nbuf,
+								     txrx_peer,
+								     0,
+								     tx_status,
+								     pairwise);
+			}
+			dp_txrx_peer_unref_delete(txrx_ref_handle,
+						  DP_MOD_ID_HTT_COMP);
 		}
-		dp_txrx_peer_unref_delete(txrx_ref_handle,
-					  DP_MOD_ID_HTT_COMP);
 	}
 	dp_tx_comp_fw_reinject_war(&tx_status);
 
@@ -504,9 +509,10 @@ void dp_tx_process_htt_completion_be(struct dp_soc *soc,
 						tx_status,
 						pdev->enhanced_stats_en);
 
-		dp_tx_comp_process_tx_status(soc, tx_desc, &ts, txrx_peer,
-					     ring_id);
-		dp_tx_comp_process_desc(soc, tx_desc, &ts, txrx_peer);
+		dp_tx_comp_process_tx_status_n_desc_wrapper(soc, vdev, tx_desc,
+							    &ts, txrx_peer,
+							    ring_id);
+
 		if (tx_desc->flags & DP_TX_DESC_FLAG_COMPLETED_TX)
 			dp_tx_comp_free_buf(soc, tx_desc, false);
 		dp_tx_desc_release(soc, tx_desc, tx_desc->pool_id);
