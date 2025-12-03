@@ -10600,6 +10600,14 @@ static QDF_STATUS dp_get_psoc_param(struct cdp_soc_t *cdp_soc,
 		val->cdp_tx_vdev_nss_support =
 					soc->features.vdev_tx_nss_support;
 		break;
+	case CDP_CFG_REPLENISH_RING_SIZE:
+		if (soc->features.direct_refill_support)
+			val->cdp_replenish_ring_size =
+				wlan_cfg_get_rxdma_buf_ring_size(soc->ctrl_psoc);
+		else
+			val->cdp_replenish_ring_size =
+				wlan_cfg_get_dp_soc_rxdma_refill_ring_size(wlan_cfg_ctx);
+		break;
 	default:
 		dp_warn("Invalid param: %u", param);
 		break;

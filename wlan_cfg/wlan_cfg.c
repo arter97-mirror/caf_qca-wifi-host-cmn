@@ -6475,6 +6475,11 @@ int wlan_cfg_psoc_get_num_tx_desc(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
 	return cfg_get(ctrl_psoc, CFG_DP_TX_DESC);
 }
 
+int wlan_cfg_get_rxdma_buf_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
+{
+	return cfg_get(ctrl_psoc, CFG_DP_RXDMA_BUF_RING);
+}
+
 #ifdef DP_FEATURE_TX_PAGE_POOL
 void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			    bool *tx_pp_enabled)

@@ -2687,6 +2687,14 @@ wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 }
 #endif
 
+/**
+ * wlan_cfg_get_rxdma_buf_ring_size() - Get the RXDMA buf ring size
+ * @ctrl_psoc: PSOC object
+ *
+ * Return: RXDMA buf ring size
+ */
+int wlan_cfg_get_rxdma_buf_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
+
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			    bool *rx_pp_enabled, size_t *rx_buf_size,

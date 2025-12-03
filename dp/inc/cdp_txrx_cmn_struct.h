@@ -1600,6 +1600,8 @@ enum cdp_pdev_param_type {
  * @pkt_info.pkts: packet count
  * @cdp_dyn_resource_mgr_support: Dynamic resource manager support
  * @cdp_direct_refill_ring_support: Direct Refill support
+ * @cdp_replenish_ring_size: Replenish ring size (accounts for direct refill
+ *			     ring feature enabled)
  */
 typedef union cdp_config_param_t {
 	/* peer params */
@@ -1735,6 +1737,7 @@ typedef union cdp_config_param_t {
 	} pkt_info;
 	bool cdp_dyn_resource_mgr_support;
 	bool cdp_direct_refill_ring_support;
+	int cdp_replenish_ring_size;
 } cdp_config_param_type;
 
 /**
@@ -1926,6 +1929,7 @@ enum cdp_vdev_param_type {
  * @CDP_VDEV_TX_NSS_SUPPORT: FW Support vdev Tx NSS command
  * @CDP_DYN_RESOURCE_MGR_SUPPORT: Dynamic RX buffer allocation support
  * @CDP_DIRECT_REFILL_RING_SUPPORT: Direct Refill support
+ * @CDP_CFG_REPLENISH_RING_SIZE: Replenish ring size
  */
 enum cdp_psoc_param_type {
 	CDP_ENABLE_RATE_STATS,
@@ -1966,6 +1970,7 @@ enum cdp_psoc_param_type {
 	CDP_VDEV_TX_NSS_SUPPORT,
 	CDP_DYN_RESOURCE_MGR_SUPPORT,
 	CDP_DIRECT_REFILL_RING_SUPPORT,
+	CDP_CFG_REPLENISH_RING_SIZE,
 };
 
 #ifdef CONFIG_AP_PLATFORM
