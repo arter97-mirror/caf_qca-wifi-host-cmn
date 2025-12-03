@@ -3205,6 +3205,32 @@ static void dp_rxdma_ring_free(struct dp_pdev *pdev)
 	}
 }
 #elif defined(QCA_HOST2FW_RXBUF_RING)
+static inline void
+dp_direct_refill_setup(struct dp_soc *soc, struct dp_pdev *pdev)
+{
+	if (soc->features.direct_refill_support) {
+		struct dp_srng *direct_refill_ring =
+				&pdev->rx_mac_buf_ring[DP_DIR_REFILL_RING_NUM];
+		uint8_t lmac_id = pdev->lmac_id;
+		uint8_t num_replenish_ring = soc->num_replenish_rings[lmac_id];
+
+		if (direct_refill_ring->direct_refill)
+			return;
+
+		direct_refill_ring->direct_refill = 1;
+		if (direct_refill_ring->hal_srng)
+			hal_srng_flag_update(direct_refill_ring->hal_srng,
+					     HAL_SRNG_FLAGS_DIRECT_REFILL,
+					     true);
+		soc->replenish_rings[lmac_id][num_replenish_ring] =
+						direct_refill_ring;
+		soc->num_replenish_rings[lmac_id]++;
+		dp_info("Direct refill enabled lmac_id %d rx_mac_buf_ring[%d] num_replenish_rings %d",
+			lmac_id, DP_DIR_REFILL_RING_NUM,
+			soc->num_replenish_rings[lmac_id]);
+	}
+}
+
 /**
  * dp_rxdma_ring_alloc() - allocate the RXDMA rings
  * @soc: data path SoC handle
@@ -3231,33 +3257,11 @@ static int dp_rxdma_ring_alloc(struct dp_soc *soc, struct dp_pdev *pdev)
 					    soc);
 				return QDF_STATUS_E_FAILURE;
 			}
+
+			dp_direct_refill_setup(soc, pdev);
 		}
 	}
 	return QDF_STATUS_SUCCESS;
-}
-
-static inline void
-dp_direct_refill_setup(struct dp_soc *soc, struct dp_pdev *pdev)
-{
-	if (soc->features.direct_refill_support) {
-		struct dp_srng *direct_refill_ring =
-				&pdev->rx_mac_buf_ring[DP_DIR_REFILL_RING_NUM];
-		uint8_t lmac_id = pdev->lmac_id;
-		uint8_t num_replenish_ring = soc->num_replenish_rings[lmac_id];
-
-		if (direct_refill_ring->direct_refill)
-			return;
-
-		direct_refill_ring->direct_refill = 1;
-		hal_srng_flag_update(direct_refill_ring->hal_srng,
-				     HAL_SRNG_FLAGS_DIRECT_REFILL, true);
-		soc->replenish_rings[lmac_id][num_replenish_ring] =
-						direct_refill_ring;
-		soc->num_replenish_rings[lmac_id]++;
-		dp_info("Direct refill enabled lmac_id %d rx_mac_buf_ring[%d] num_replenish_rings %d",
-			lmac_id, DP_DIR_REFILL_RING_NUM,
-			soc->num_replenish_rings[lmac_id]);
-	}
 }
 
 /**
@@ -3285,8 +3289,6 @@ static int dp_rxdma_ring_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 				return QDF_STATUS_E_FAILURE;
 			}
 		}
-
-		dp_direct_refill_setup(soc, pdev);
 	}
 	return QDF_STATUS_SUCCESS;
 }
@@ -16333,13 +16335,6 @@ static QDF_STATUS dp_pdev_srng_init(struct dp_pdev *pdev)
 				      &soc->rx_refill_buf_ring[pdev->lmac_id],
 				      RXDMA_BUF, pdev->lmac_id);
 
-		/*
-		 * rx_refill_buf_ring is the always places at index 0,
-		 * to maintain parity with all legacy targets, which
-		 * do not support direct refill ring
-		 */
-		soc->replenish_rings[pdev->lmac_id][0] =
-					&soc->rx_refill_buf_ring[pdev->lmac_id];
 	}
 
 	/* LMAC RxDMA to SW Rings configuration */
@@ -16425,12 +16420,21 @@ static QDF_STATUS dp_pdev_srng_alloc(struct dp_pdev *pdev)
 		ring_size = wlan_cfg_get_dp_soc_rxdma_scan_radio_refill_ring_size(soc_cfg_ctx);
 
 	if (!soc->features.dmac_cmn_src_rxbuf_ring_enabled) {
-		if (dp_srng_alloc(soc, &soc->rx_refill_buf_ring[pdev->lmac_id],
+		struct dp_srng *refill_buf_ring =
+					&soc->rx_refill_buf_ring[pdev->lmac_id];
+		if (dp_srng_alloc(soc, refill_buf_ring,
 				  RXDMA_BUF, ring_size, 0)) {
 			dp_init_err("%pK: dp_srng_alloc failed rx refill ring",
 				    soc);
 			goto fail1;
 		}
+
+		/*
+		 * rx_refill_buf_ring is the always places at index 0,
+		 * to maintain parity with all legacy targets, which
+		 * do not support direct refill ring
+		 */
+		soc->replenish_rings[pdev->lmac_id][0] = refill_buf_ring;
 	}
 
 	ring_size = wlan_cfg_get_dp_soc_rxdma_err_dst_ring_size(soc_cfg_ctx);
