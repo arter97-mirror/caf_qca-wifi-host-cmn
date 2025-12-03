@@ -6942,6 +6942,7 @@ typedef enum {
 	wmi_service_cfr_assoc_tx_capture_support,
 	wmi_service_direct_refill_support,
 	wmi_service_enhanced_stats_support,
+	wmi_service_wow_sta_ps_param_cache_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
