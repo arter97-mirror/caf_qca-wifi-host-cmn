@@ -1327,6 +1327,17 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 
 		scan_entry = scan_node->entry;
 
+		if (wlan_reg_is_6ghz_chan_freq(scan_entry->channel.chan_freq) &&
+		    (!scan_entry->ie_list.hecap || !scan_entry->ie_list.heop)) {
+			scm_nofl_debug(QDF_MAC_ADDR_FMT ": Drop frame(%d) as HE cap or HE op not present for 6GHz(%d)",
+				  QDF_MAC_ADDR_REF(
+				  scan_entry->bssid.bytes),
+				  bcn->frm_type,
+				  scan_entry->channel.chan_freq);
+			util_scan_free_cache_entry(scan_entry);
+			qdf_mem_free(scan_node);
+			continue;
+		}
 		if (scan_obj->drop_bcn_on_chan_mismatch &&
 		    scan_entry->channel_mismatch &&
 		    !scm_skip_bcn_ch_mismatch_check_by_oui(psoc, scan_entry,

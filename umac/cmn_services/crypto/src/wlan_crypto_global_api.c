@@ -3161,6 +3161,7 @@ static inline uint8_t *generate_pmkid(struct wlan_objmgr_vdev *vdev,
 {
 	int32_t random_pmkid;
 	uint8_t *pmkid_buf = NULL, *temp_ptr = NULL;
+	uint8_t zero_pmkid[PMKID_LEN] = {0};
 
 	random_pmkid = wlan_crypto_get_param(vdev,
 					     WLAN_CRYPTO_PARAM_RANDOM_PMKID);
@@ -3179,11 +3180,15 @@ static inline uint8_t *generate_pmkid(struct wlan_objmgr_vdev *vdev,
 	if (!pmksa && !random_pmkid)
 		return NULL;
 
-	if (pmksa)
+	if (pmksa && qdf_mem_cmp(pmksa->pmkid, zero_pmkid, PMKID_LEN))
 		*pmkid_cnt = 1;
 
 	*pmkid_cnt += random_pmkid;
 
+	if (*pmkid_cnt == 0) {
+		crypto_debug("vdev:%d PMKID is 0", vdev->vdev_objmgr.vdev_id);
+		return NULL;
+	}
 	if (*pmkid_cnt > 1)
 		crypto_debug("Appending %d PMKIDs to the RSN IE", *pmkid_cnt);
 
@@ -3195,7 +3200,7 @@ static inline uint8_t *generate_pmkid(struct wlan_objmgr_vdev *vdev,
 
 	temp_ptr = pmkid_buf;
 
-	if (pmksa) {
+	if (pmksa && qdf_mem_cmp(pmksa->pmkid, zero_pmkid, PMKID_LEN)) {
 		qdf_mem_copy(pmkid_buf, pmksa->pmkid, PMKID_LEN);
 		pmkid_buf += PMKID_LEN;
 	}

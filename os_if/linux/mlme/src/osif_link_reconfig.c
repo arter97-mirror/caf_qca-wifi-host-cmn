@@ -183,13 +183,13 @@ osif_fill_link_reconfig_added_links_params(
 	 */
 	for (i = 0; i < QDF_MIN(req_param->num_link_add_param,
 				IEEE80211_MLD_MAX_NUM_LINKS) &&
-	     !cfg_rsp->driver_initiated; i++) {
+	     i < WLAN_MAX_ML_BSS_LINKS && !cfg_rsp->driver_initiated; i++) {
 		link_id = req_param->add_link[i].link_id;
 		cfg_rsp->links[link_id].bss = req_param->add_link[i].bss;
 	}
 
-	for (i = 0; i < QDF_MIN(num_add_links, IEEE80211_MLD_MAX_NUM_LINKS);
-	     i++) {
+	for (i = 0; i < QDF_MIN(num_add_links, IEEE80211_MLD_MAX_NUM_LINKS) &&
+	     i < WLAN_MAX_ML_BSS_LINKS; i++) {
 		if (add_link_info.link[i].link_id == WLAN_INVALID_LINK_ID) {
 			osif_err_rl("link id is invalid %d",
 				    WLAN_INVALID_LINK_ID);

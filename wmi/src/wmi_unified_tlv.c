@@ -783,6 +783,10 @@ static const uint32_t vdev_param_tlv[] = {
 		  VDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
 	PARAM_MAP(vdev_param_disable_scan_start_twt,
 		  VDEV_PARAM_DISABLE_SCAN_START_TWT),
+	PARAM_MAP(vdev_param_cck_support, VDEV_PARAM_CCK_SUPPORT),
+	PARAM_MAP(vdev_param_su_txop_burst_limit_us,
+		  VDEV_PARAM_SU_TXOP_BURST_LIMIT_US),
+
 };
 #endif
 
@@ -1024,7 +1028,7 @@ send_over_wmi:
 	return wmi_unified_cmd_send(wmi_handle, buf, buflen, cmd_id);
 }
 
-#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
+#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
 /**
  * wmi_vdev_add_p2p_mode_tlv() - add P2P mode TLv in VDEV create command
  * @buf_ptr: pointer to TLV buffer
@@ -4266,6 +4270,8 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->peer_vht_caps = param->peer_vht_caps;
 	cmd->peer_phymode = param->peer_phymode;
 	cmd->bss_max_idle_option = param->peer_bss_max_idle_option;
+	cmd->peer_cck_rx_support_5ghz = param->peer_cck_rx_support_5ghz;
+	cmd->peer_cck_tx_support_5ghz = param->peer_cck_tx_support_5ghz;
 
 	/* Update 11ax capabilities */
 	cmd->peer_he_cap_info =
@@ -4279,7 +4285,6 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	qdf_mem_copy(&cmd->peer_ppet, &param->peer_ppet,
 				sizeof(param->peer_ppet));
 	cmd->peer_he_caps_6ghz = param->peer_he_caps_6ghz;
-
 	/* Update peer legacy rate information */
 	buf_ptr += sizeof(*cmd);
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
@@ -4362,7 +4367,8 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 		 "HE cap_info %x ops %x "
 		 "HE cap_info_ext %x "
 		 "HE phy %x  %x  %x  "
-		 "peer_bw_rxnss_override %x",
+		 "peer_bw_rxnss_override %x"
+		 "peer CCK TX/RX: %d/%d",
 		 cmd->vdev_id, cmd->peer_associd, cmd->peer_flags,
 		 cmd->peer_rate_caps, cmd->peer_caps,
 		 cmd->peer_listen_intval, cmd->peer_ht_caps,
@@ -4372,7 +4378,9 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 		 cmd->peer_he_ops, cmd->peer_he_cap_info_ext,
 		 cmd->peer_he_cap_phy[0], cmd->peer_he_cap_phy[1],
 		 cmd->peer_he_cap_phy[2],
-		 cmd->peer_bw_rxnss_override);
+		 cmd->peer_bw_rxnss_override,
+		 cmd->peer_cck_tx_support_5ghz,
+		 cmd->peer_cck_rx_support_5ghz);
 
 	buf_ptr = peer_assoc_add_mlo_params(buf_ptr, param);
 
@@ -25474,6 +25482,9 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service[wmi_service_wfd_r2] = WMI_SERVICE_WFD_R2;
 #endif
+#ifdef FEATURE_WLAN_SUPPORT_PCC
+	wmi_service[wmi_service_pcc_mode] = WMI_SERVICE_PCC_MODE;
+#endif
 #if defined(FEATURE_WLAN_TDLS) && defined(WLAN_FEATURE_TDLS_NSS_4_4)
 	wmi_service[wmi_service_tdls_nss_confirm_support] =
 				WMI_SERVICE_TDLS_NSS_CONFIRM_SUPPORT;
@@ -25482,6 +25493,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_mlo_sap_link_removal_support] =
 				WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT;
 #endif
+	wmi_service[wmi_service_cck_rx_support_5g] =
+				WMI_SERVICE_CCK_RX_SUPPORT_5GHZ;
+	wmi_service[wmi_service_cck_tx_support_5g] =
+				WMI_SERVICE_CCK_TX_SUPPORT_5GHZ;
 }
 
 /**

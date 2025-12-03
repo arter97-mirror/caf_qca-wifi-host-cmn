@@ -329,10 +329,9 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 					goto next_msdu;
 				}
 
-				msdu_ppdu_id = hal_rx_hw_desc_get_ppduid_get(
-						soc->hal_soc,
-						rx_desc_tlv,
-						rxdma_dst_ring_desc);
+				msdu_ppdu_id = hal_rx_reo_ent_phy_ppdu_id_get(
+							soc->hal_soc,
+							rxdma_dst_ring_desc);
 				is_first_msdu = false;
 
 				dp_rx_mon_dest_debug("%pK: msdu_ppdu_id=%x",
@@ -619,10 +618,14 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 			    enum dp_rx_mon_drop_ctx ctx)
 {
 	struct dp_soc *soc = pdev->soc;
+	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
 	uint8_t src_link_id;
 	QDF_STATUS status;
 	struct dp_mon_mac *dst_entry_mon_mac;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
+
+	if (mon_pdev && mon_pdev->mon_dst_filter_reset)
+		goto drop_mpdu;
 
 	status = hal_rx_reo_ent_get_src_link_id(soc->hal_soc,
 						rxdma_dst_ring_desc,
@@ -638,6 +641,7 @@ dp_rx_mon_check_n_drop_mpdu(struct dp_pdev *pdev, uint32_t mac_id,
 		 src_link_id == mon_mac->mac_id)
 		return QDF_STATUS_E_INVAL;
 
+drop_mpdu:
 	*rx_bufs_dropped = dp_rx_mon_drop_one_mpdu(pdev, mac_id,
 						   rxdma_dst_ring_desc,
 						   head, tail);

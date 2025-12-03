@@ -132,7 +132,7 @@ static struct vdev_osif_priv *wlan_objmgr_vdev_get_osif_priv(
 	return osif_priv;
 }
 
-#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
+#if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
 void wlan_vdev_set_wfd_mode(struct wlan_objmgr_vdev *vdev, uint8_t wfd_mode)
 {
 	vdev->vdev_mlme.wfd_mode = wfd_mode;
@@ -149,7 +149,15 @@ wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
 {
 	return params->wfd_mode;
 }
+#else
+static inline uint8_t
+wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
+{
+	return 0xFF;
+}
+#endif /* FEATURE_WLAN_SUPPORT_P2P_R2 || FEATURE_WLAN_SUPPORT_PCC */
 
+#ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 bool wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc,
 				  uint8_t vdev_id)
 {
@@ -171,18 +179,41 @@ bool wlan_vdev_p2p_is_wfd_r2_mode(struct wlan_objmgr_psoc *psoc,
 	wfd_mode = wlan_vdev_mlme_get_wfd_mode(vdev);
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
-	if (wfd_mode == P2P_MODE_WFD_R2 || wfd_mode == P2P_MODE_WFD_PCC)
+	if (wfd_mode == P2P_MODE_WFD_R2)
 		return true;
 
 	return false;
 }
-#else
-static inline uint8_t
-wlan_vdev_get_wfd_mode(struct wlan_vdev_create_params *params)
-{
-	return 0xFF;
-}
 #endif /* FEATURE_WLAN_SUPPORT_P2P_R2 */
+
+#ifdef FEATURE_WLAN_SUPPORT_PCC
+bool wlan_vdev_p2p_is_pcc_mode(struct wlan_objmgr_psoc *psoc,
+			       uint8_t vdev_id)
+{
+	uint8_t wfd_mode;
+	struct wlan_objmgr_vdev *vdev;
+
+	if (!psoc) {
+		obj_mgr_err("psoc is NULL");
+		return false;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_MLME_OBJMGR_ID);
+	if (!vdev) {
+		obj_mgr_err("vdev is NULL for id%d", vdev_id);
+		return false;
+	}
+
+	wfd_mode = wlan_vdev_mlme_get_wfd_mode(vdev);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_OBJMGR_ID);
+	if (wfd_mode == P2P_MODE_WFD_PCC)
+		return true;
+
+	return false;
+}
+#endif /* FEATURE_WLAN_SUPPORT_PCC */
 
 struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 			struct wlan_objmgr_pdev *pdev,

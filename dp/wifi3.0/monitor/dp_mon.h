@@ -1390,6 +1390,7 @@ struct  dp_mon_pdev {
 	struct dp_mon_mac_link_info link_info[DP_MAX_MLO_LINKS];
 	uint32_t num_links;
 #endif
+	bool mon_dst_filter_reset;
 };
 
 struct  dp_mon_vdev {

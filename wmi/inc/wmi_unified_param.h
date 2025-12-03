@@ -1639,6 +1639,8 @@ struct peer_assoc_ml_partner_links {
  * @peer_dms_capable: is peer DMS capable
  * @reserved: spare bits
  * @t2lm_params: TID-to-link mapping params
+ * @peer_cck_rx_support_5ghz: Peer CCK RX support
+ * @peer_cck_tx_support_5ghz: Peer CCK TX support
  */
 struct peer_assoc_params {
 	uint32_t vdev_id;
@@ -1732,6 +1734,8 @@ struct peer_assoc_params {
 #ifdef WLAN_FEATURE_11BE
 	struct wmi_host_tid_to_link_map_params t2lm_params;
 #endif
+	uint8_t peer_cck_rx_support_5ghz : 1,
+		peer_cck_tx_support_5ghz: 1;
 };
 
 /**
@@ -6449,6 +6453,11 @@ typedef enum {
 	VDEV_PARAM(vdev_param_disable_scan_start_twt,
 		   VDEV_PARAM_DISABLE_SCAN_START_TWT),
 	VDEV_PARAM(vdev_param_twt_resp_disable, VDEV_PARAM_TWT_RESP_DISABLE),
+	VDEV_PARAM(vdev_param_cck_support, VDEV_PARAM_CCK_SUPPORT),
+	VDEV_PARAM(vdev_param_dsmps_control, VDEV_PARAM_DSMPS_CONTROL),
+	VDEV_PARAM(vdev_param_su_txop_burst_limit_us,
+		   VDEV_PARAM_SU_TXOP_BURST_LIMIT_US),
+
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
@@ -6899,12 +6908,17 @@ typedef enum {
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service_wfd_r2,
 #endif
+#ifdef FEATURE_WLAN_SUPPORT_PCC
+	wmi_service_pcc_mode,
+#endif
 #if defined(FEATURE_WLAN_TDLS) && defined(WLAN_FEATURE_TDLS_NSS_4_4)
 	wmi_service_tdls_nss_confirm_support,
 #endif
 #ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
 	wmi_service_mlo_sap_link_removal_support,
 #endif
+	wmi_service_cck_rx_support_5g,
+	wmi_service_cck_tx_support_5g,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
