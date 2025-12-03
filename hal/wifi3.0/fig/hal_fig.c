@@ -1115,23 +1115,6 @@ static inline uint32_t hal_rx_peer_meta_data_get_fig(uint8_t *buf)
 }
 
 /**
- * hal_rx_hw_desc_get_ppduid_get_fig() - retrieve ppdu id
- * @rx_tlv_hdr: start address of rx_pkt_tlvs
- * @rxdma_dst_ring_desc: Rx HW descriptor
- *
- * Return: ppdu id
- */
-static inline uint32_t
-hal_rx_hw_desc_get_ppduid_get_fig(void *rx_tlv_hdr,
-				    void *rxdma_dst_ring_desc)
-{
-	struct rx_pkt_tlvs *rx_pkt_tlvs =
-					(struct rx_pkt_tlvs *)rx_tlv_hdr;
-
-	return HAL_RX_TLV_PHY_PPDU_ID_GET(rx_pkt_tlvs);
-}
-
-/**
  * hal_rx_mpdu_info_ampdu_flag_get_fig() - get ampdu flag bit
  * from rx mpdu info
  * @buf: pointer to rx_pkt_tlvs
@@ -1224,20 +1207,6 @@ static inline uint32_t hal_rx_tlv_get_freq_fig(uint8_t *buf)
 }
 
 /**
- * hal_rx_mpdu_start_sw_peer_id_get_fig() - Retrieve sw peer_id
- * @buf: network buffer
- *
- * Return: sw peer_id
- */
-static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_fig(uint8_t *buf)
-{
-	/* sw_peer_id in rx_mpdu_start is not subscribed */
-	hal_warn("sw_peer_id is not subscribed");
-
-	return 0;
-}
-
-/**
  * hal_rx_mpdu_start_tlv_tag_valid_fig() - API to check if RX_MPDU_START
  *                                           tlv tag is valid
  * @rx_tlv_hdr: start address of rx_pkt_tlvs
@@ -1258,13 +1227,6 @@ static inline uint32_t hal_rx_tlv_get_freq_fig(uint8_t *buf)
 	freq = HAL_RX_TLV_FREQ_GET(rx_pkt_tlvs);
 
 	return freq;
-}
-
-static inline uint32_t hal_rx_mpdu_start_sw_peer_id_get_fig(uint8_t *buf)
-{
-	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
-
-	return HAL_RX_TLV_SW_PEER_ID_GET(rx_pkt_tlvs);
 }
 #endif
 
@@ -1400,69 +1362,6 @@ hal_rx_get_mpdu_flags_from_tlv(hal_rx_mpdu_start_info_t *mpdu_info)
 }
 
 /**
- * hal_rx_tlv_populate_mpdu_desc_info_fig() - Populate the local mpdu_desc_info
- *			elements from the rx tlvs
- * @buf: start address of rx tlvs [Validated by caller]
- * @mpdu_desc_info_hdl: Buffer to populate the mpdu_dsc_info
- *			[To be validated by caller]
- *
- * Return: None
- */
-static void
-hal_rx_tlv_populate_mpdu_desc_info_fig(uint8_t *buf,
-					void *mpdu_desc_info_hdl)
-{
-	struct hal_rx_mpdu_desc_info *mpdu_desc_info =
-		(struct hal_rx_mpdu_desc_info *)mpdu_desc_info_hdl;
-	struct rx_pkt_tlvs *pkt_tlvs = (struct rx_pkt_tlvs *)buf;
-	hal_rx_mpdu_start_info_t *mpdu_info =
-					&HAL_RX_MPDU_START(pkt_tlvs);
-
-	mpdu_desc_info->mpdu_seq = mpdu_info->mpdu_sequence_number;
-	mpdu_desc_info->mpdu_flags = hal_rx_get_mpdu_flags_from_tlv(mpdu_info);
-	mpdu_desc_info->peer_meta_data = mpdu_info->peer_meta_data;
-	mpdu_desc_info->bar_frame = mpdu_info->bar_frame;
-}
-
-/**
- * hal_reo_status_get_header_fig() - Process reo desc info
- * @ring_desc: Pointer to reo descriptor
- * @b: tlv type info
- * @h1: Pointer to hal_reo_status_header where info to be stored
- *
- * Return: none.
- *
- */
-static void hal_reo_status_get_header_fig(hal_ring_desc_t ring_desc, int b,
-					   void *h1)
-{
-}
-
-static
-void *hal_rx_msdu0_buffer_addr_lsb_fig(void *link_desc_va)
-{
-	return (void *)HAL_RX_MSDU0_BUFFER_ADDR_LSB(link_desc_va);
-}
-
-static
-void *hal_rx_msdu_desc_info_ptr_get_fig(void *msdu0)
-{
-	return (void *)HAL_RX_MSDU_DESC_INFO_PTR_GET(msdu0);
-}
-
-static
-void *hal_ent_mpdu_desc_info_fig(void *ent_ring_desc)
-{
-	return (void *)HAL_ENT_MPDU_DESC_INFO(ent_ring_desc);
-}
-
-static
-void *hal_dst_mpdu_desc_info_fig(void *dst_ring_desc)
-{
-	return (void *)HAL_DST_MPDU_DESC_INFO(dst_ring_desc);
-}
-
-/**
  * hal_rx_get_tlv_fig() - API to get the tlv
  * @rx_tlv: TLV data extracted from the rx packet
  *
@@ -1483,43 +1382,6 @@ static uint8_t hal_rx_get_tlv_fig(void *rx_tlv)
 static int8_t hal_rx_phy_legacy_get_rssi_fig(uint8_t *buf)
 {
 	return HAL_RX_GET(buf, PHYRX_RSSI_LEGACY, RSSI_COMB_PPDU);
-}
-
-/**
- * hal_rx_proc_phyrx_other_receive_info_tlv_fig()
- *				    - process other receive info TLV
- * @rx_tlv_hdr: pointer to TLV header
- * @ppdu_info_handle: pointer to ppdu_info
- *
- * Return: None
- */
-static
-void hal_rx_proc_phyrx_other_receive_info_tlv_fig(void *rx_tlv_hdr,
-						   void *ppdu_info_handle)
-{
-	uint32_t tlv_tag, tlv_len;
-	uint32_t temp_len, other_tlv_len, other_tlv_tag;
-	void *rx_tlv = (uint8_t *)rx_tlv_hdr + HAL_RX_TLV32_HDR_SIZE;
-	void *other_tlv_hdr = NULL;
-	void *other_tlv = NULL;
-
-	tlv_tag = HAL_RX_GET_USER_TLV32_TYPE(rx_tlv_hdr);
-	tlv_len = HAL_RX_GET_USER_TLV32_LEN(rx_tlv_hdr);
-	temp_len = 0;
-
-	other_tlv_hdr = rx_tlv + HAL_RX_TLV32_HDR_SIZE;
-
-	other_tlv_tag = HAL_RX_GET_USER_TLV32_TYPE(other_tlv_hdr);
-	other_tlv_len = HAL_RX_GET_USER_TLV32_LEN(other_tlv_hdr);
-	temp_len += other_tlv_len;
-	other_tlv = other_tlv_hdr + HAL_RX_TLV32_HDR_SIZE;
-
-	switch (other_tlv_tag) {
-	default:
-		hal_err_rl("unhandled TLV type: %d, TLV len:%d",
-			   other_tlv_tag, other_tlv_len);
-		break;
-	}
 }
 
 /**
@@ -2341,8 +2203,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 		hal_rx_mon_hw_desc_get_mpdu_status_be;
 	hal_soc->ops->hal_rx_get_tlv = hal_rx_get_tlv_fig;
 	hal_soc->ops->hal_rx_pkt_hdr_get = hal_rx_pkt_hdr_get_be;
-	hal_soc->ops->hal_rx_proc_phyrx_other_receive_info_tlv =
-		hal_rx_proc_phyrx_other_receive_info_tlv_fig;
 
 	hal_soc->ops->hal_rx_dump_msdu_end_tlv = hal_rx_dump_msdu_end_tlv_fig;
 	hal_soc->ops->hal_rx_dump_mpdu_start_tlv =
@@ -2360,8 +2220,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 					hal_rx_msdu_desc_info_get_ptr_fig;
 	hal_soc->ops->hal_rx_link_desc_msdu0_ptr =
 					hal_rx_link_desc_msdu0_ptr_fig;
-	hal_soc->ops->hal_reo_status_get_header =
-					hal_reo_status_get_header_fig;
 	hal_soc->ops->hal_rx_status_get_tlv_info =
 					hal_rx_status_get_tlv_info_wrapper_be;
 	hal_soc->ops->hal_rx_wbm_err_info_get =
@@ -2413,8 +2271,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 					hal_rx_tlv_last_msdu_get_be;
 	hal_soc->ops->hal_rx_get_mpdu_mac_ad4_valid =
 					hal_rx_get_mpdu_mac_ad4_valid_be;
-	hal_soc->ops->hal_rx_mpdu_start_sw_peer_id_get =
-		hal_rx_mpdu_start_sw_peer_id_get_fig;
 	hal_soc->ops->hal_rx_tlv_peer_meta_data_get =
 		hal_rx_peer_meta_data_get_fig;
 	hal_soc->ops->hal_rx_mpdu_get_to_ds = hal_rx_mpdu_get_to_ds_be;
@@ -2435,14 +2291,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 		hal_rx_get_mpdu_sequence_control_valid_be;
 	hal_soc->ops->hal_rx_is_unicast = hal_rx_is_unicast_be;
 	hal_soc->ops->hal_rx_tid_get = hal_rx_tid_get_be;
-	hal_soc->ops->hal_rx_hw_desc_get_ppduid_get =
-					hal_rx_hw_desc_get_ppduid_get_fig;
-	hal_soc->ops->hal_rx_msdu0_buffer_addr_lsb =
-					hal_rx_msdu0_buffer_addr_lsb_fig;
-	hal_soc->ops->hal_rx_msdu_desc_info_ptr_get =
-					hal_rx_msdu_desc_info_ptr_get_fig;
-	hal_soc->ops->hal_ent_mpdu_desc_info = hal_ent_mpdu_desc_info_fig;
-	hal_soc->ops->hal_dst_mpdu_desc_info = hal_dst_mpdu_desc_info_fig;
 	hal_soc->ops->hal_rx_phy_legacy_get_rssi =
 					hal_rx_phy_legacy_get_rssi_fig;
 	hal_soc->ops->hal_rx_get_fc_valid = hal_rx_get_fc_valid_be;
@@ -2550,8 +2398,6 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 					hal_rx_mpdu_info_ampdu_flag_get_fig;
 	hal_soc->ops->hal_rx_tlv_msdu_len_set =
 					hal_rx_msdu_start_msdu_len_set_be;
-	hal_soc->ops->hal_rx_tlv_populate_mpdu_desc_info =
-				hal_rx_tlv_populate_mpdu_desc_info_fig;
 	hal_soc->ops->hal_get_idle_link_bm_id = hal_get_idle_link_bm_id_fig;
 #ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
 	hal_soc->ops->hal_get_first_wow_wakeup_packet =
