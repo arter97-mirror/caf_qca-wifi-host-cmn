@@ -2113,6 +2113,12 @@ QDF_STATUS
 (*send_qos_null_frame_tx_cmd)(wmi_unified_t wmi_handle,
 			      struct qos_null_frame_tx_params *params);
 
+QDF_STATUS
+(*extract_qos_null_frame_tx_compl_event)(wmi_unified_t wmi_handle,
+					 uint8_t *event_buf,
+					 struct qos_null_frame_tx_compl_params
+					 *param);
+
 QDF_STATUS (*extract_rtt_hdr)(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_host_rtt_event_hdr *ev);
 

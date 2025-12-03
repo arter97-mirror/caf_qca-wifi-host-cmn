@@ -19232,6 +19232,61 @@ static QDF_STATUS send_qos_null_frame_tx_cmd_tlv(wmi_unified_t wmi_handle,
 }
 
 /**
+ * extract_qos_null_frame_tx_compl_event_tlv() - Extract QoS NULL TX
+ *						 completion event
+ * @wmi_handle: WMI handle
+ * @event_buf: Event buffer from firmware
+ * @params: Output parameter structure
+ *
+ * This function extracts TLV parameters from the event buffer.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_qos_null_frame_tx_compl_event_tlv(wmi_unified_t wmi_handle,
+					  uint8_t *event_buf,
+					  struct qos_null_frame_tx_compl_params
+					  *params)
+{
+	WMI_QOS_NULL_FRAME_TX_COMPLETION_EVENTID_param_tlvs *param_buf;
+	wmi_qos_null_frame_tx_compl_event_fixed_param *event;
+
+	if (!wmi_handle || !event_buf || !params) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	param_buf = (WMI_QOS_NULL_FRAME_TX_COMPLETION_EVENTID_param_tlvs *)
+		     event_buf;
+	if (!param_buf) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	event = param_buf->fixed_param;
+	if (!event) {
+		wmi_err("Invalid fixed_param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	params->desc_id = event->desc_id;
+	params->status = event->status;
+	params->ack_rssi = event->ack_rssi;
+	params->pdev_id = event->pdev_id;
+	params->ppdu_id = event->ppdu_id;
+	params->ieee_link_id_valid = event->ieee_link_id_valid;
+	params->ieee_link_id = event->ieee_link_id;
+
+	wmi_debug("QoS NULL completion extracted: desc_id=%u status=%u "
+		  "pdev_id=%u ppdu_id=%u ack_rssi=%d ieee_link_id_valid=%u "
+		  "ieee_link_id=%u", params->desc_id, params->status,
+		  params->pdev_id, params->ppdu_id, params->ack_rssi,
+		  params->ieee_link_id_valid, params->ieee_link_id);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * extract_esp_estimation_ev_param_tlv() - extract air time from event
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer
@@ -23159,6 +23214,8 @@ struct wmi_ops tlv_ops =  {
 	.extract_comb_phyerr = extract_comb_phyerr_tlv,
 	.extract_single_phyerr = extract_single_phyerr_tlv,
 	.send_qos_null_frame_tx_cmd = send_qos_null_frame_tx_cmd_tlv,
+	.extract_qos_null_frame_tx_compl_event =
+				extract_qos_null_frame_tx_compl_event_tlv,
 #ifdef QCA_SUPPORT_CP_STATS
 	.extract_cca_stats = extract_cca_stats_tlv,
 #endif
@@ -23947,6 +24004,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 #endif
 	event_ids[wmi_cfr_capture_filter_resp_eventid] =
 			WMI_CFR_CAPTURE_FILTER_RESP_EVENTID;
+	event_ids[wmi_qos_null_frame_tx_completion_event_id] =
+				WMI_QOS_NULL_FRAME_TX_COMPLETION_EVENTID;
+
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS

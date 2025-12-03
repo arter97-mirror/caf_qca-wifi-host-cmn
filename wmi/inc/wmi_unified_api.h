@@ -2970,6 +2970,21 @@ wmi_unified_send_qos_null_frame_tx_cmd(wmi_unified_t wmi_handle,
 				       struct qos_null_frame_tx_params *params);
 
 /**
+ * wmi_extract_qos_null_frame_tx_compl_event() - extract QoS NULL TX completion
+ * event
+ * @wmi_handle: wmi handle
+ * @event_buf: pointer to event buffer
+ * @params: pointer to QoS NULL completion parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE on failure
+ **/
+QDF_STATUS
+wmi_extract_qos_null_frame_tx_compl_event(wmi_unified_t wmi_handle,
+					  uint8_t *event_buf,
+					  struct qos_null_frame_tx_compl_params
+					  *params);
+
+/**
  * wmi_extract_pmf_bcn_protect_stats() - extract pmf bcn stats from event
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer

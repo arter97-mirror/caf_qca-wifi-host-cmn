@@ -5719,6 +5719,7 @@ typedef enum {
 	wmi_pdev_power_boost_eventid,
 #endif
 	wmi_cfr_capture_filter_resp_eventid,
+	wmi_qos_null_frame_tx_completion_event_id,
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -8421,6 +8422,26 @@ struct qos_null_frame_tx_params {
 	uint32_t desc_id;
 	uint32_t frame_len;
 	void *qdf_ctx;
+};
+
+/**
+ * struct qos_null_frame_tx_compl_params - QoS NULL TX completion parameters
+ * @desc_id: Descriptor ID
+ * @status: Transmission status
+ * @ack_rssi: ack rssi in dBm
+ * @pdev_id: pdev ID
+ * @ppdu_id: Hardware ppdu ID
+ * @ieee_link_id_valid: true when ieee_link_id is valid
+ * @ieee_link_id: IEEE Link ID for MLO cases
+ */
+struct qos_null_frame_tx_compl_params {
+	uint32_t desc_id;
+	uint32_t status;
+	int32_t ack_rssi;
+	uint32_t pdev_id;
+	uint32_t ppdu_id;
+	uint32_t ieee_link_id_valid;
+	uint32_t ieee_link_id;
 };
 
 /**

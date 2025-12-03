@@ -1802,6 +1802,19 @@ wmi_unified_send_qos_null_frame_tx_cmd(wmi_unified_t wmi_handle,
 }
 
 QDF_STATUS
+wmi_extract_qos_null_frame_tx_compl_event(wmi_unified_t wmi_handle,
+					  uint8_t *event_buf,
+					  struct qos_null_frame_tx_compl_params
+					  *params)
+{
+	if (wmi_handle->ops->extract_qos_null_frame_tx_compl_event)
+		return wmi_handle->ops->extract_qos_null_frame_tx_compl_event
+			(wmi_handle, event_buf, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
 wmi_extract_pmf_bcn_protect_stats(wmi_unified_t wmi_handle, void *evt_buf,
 				  wmi_host_pmf_bcn_protect_stats *bcn_stats)
 {
