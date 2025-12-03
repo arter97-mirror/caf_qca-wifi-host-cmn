@@ -44,7 +44,7 @@ static QDF_STATUS send_twt_enable_cmd_tlv(wmi_unified_t wmi_handle,
 			(wmi_twt_enable_cmd_fixed_param));
 
 	cmd->pdev_id =
-		wmi_handle->ops->convert_pdev_id_host_to_target(
+		wmi_handle->ops->convert_host_pdev_id_to_target(
 						wmi_handle,
 						params->pdev_id);
 	cmd->sta_cong_timer_ms =            params->sta_cong_timer_ms;
@@ -500,11 +500,8 @@ static QDF_STATUS extract_twt_enable_comp_event_tlv(wmi_unified_t wmi_handle,
 
 	ev = param_buf->fixed_param;
 
-	/*
-	 * No conversion required
-	 * as target already converted the PDEV ID to host
-	 */
-	params->mac_id = ev->pdev_id;
+	params->mac_id = wmi_handle->ops->convert_target_pdev_id_to_host(
+						wmi_handle, ev->pdev_id);
 	params->status = wmi_twt_enable_status_to_host_twt_status(ev->status);
 
 	return QDF_STATUS_SUCCESS;
@@ -542,11 +539,8 @@ static QDF_STATUS extract_twt_disable_comp_event_tlv(wmi_unified_t wmi_handle,
 
 	ev = param_buf->fixed_param;
 
-	/*
-	 * No conversion required
-	 * as target already converted the PDEV ID to host
-	 */
-	params->mac_id = ev->pdev_id;
+	params->mac_id = wmi_handle->ops->convert_target_pdev_id_to_host(
+						wmi_handle, ev->pdev_id);
 	params->status = wmi_twt_disable_status_to_host_twt_status(ev->status);
 
 	return QDF_STATUS_SUCCESS;
