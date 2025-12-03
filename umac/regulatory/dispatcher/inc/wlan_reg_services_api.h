@@ -720,6 +720,28 @@ wlan_reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 				enum reg_6g_ap_type *pwr_type_6g,
 				enum reg_6g_ap_type ap_pwr_type,
 				uint32_t chan_freq);
+
+/**
+ * wlan_reg_get_best_6g_power_type_for_bw() - Return best power type for 6GHz
+ * connection for specific bandwidth
+ * @psoc: pointer to psoc
+ * @pdev: pointer to pdev
+ * @pwr_type_6g: pointer to 6G power type
+ * @ap_pwr_type: AP's power type for 6G as advertised in HE ops IE
+ * @chan_freq: Connection channel frequency
+ * @center_320: 320 MHz center frequency
+ * @ch_width: bandwdith
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_reg_get_best_6g_power_type_for_bw(struct wlan_objmgr_psoc *psoc,
+				       struct wlan_objmgr_pdev *pdev,
+				       enum reg_6g_ap_type *pwr_type_6g,
+				       enum reg_6g_ap_type ap_pwr_type,
+				       uint32_t chan_freq,
+				       qdf_freq_t center_320,
+				       enum phy_ch_width ch_width);
 #endif
 
 #ifdef CONFIG_CHAN_FREQ_API

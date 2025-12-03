@@ -630,6 +630,107 @@ vlp_support_check:
 	reg_err_rl("AP power type = %d, not supported", ap_pwr_type);
 	return QDF_STATUS_E_NOSUPPORT;
 }
+
+static bool
+reg_is_6g_power_type_supp_for_bonded_channel(
+			struct wlan_objmgr_pdev *pdev,
+			qdf_freq_t freq, enum phy_ch_width chwidth,
+			qdf_freq_t cen320_freq,
+			enum reg_6g_ap_type pwr_type_6g)
+{
+	const struct bonded_channel_freq *bonded_freq;
+	qdf_freq_t start_freq;
+	enum channel_enum chan_idx;
+
+	bonded_freq = wlan_reg_get_bonded_chan_entry(freq, chwidth,
+						     cen320_freq);
+	if (!bonded_freq)
+		return false;
+
+	/* Validate frequency range */
+	if (bonded_freq->end_freq < bonded_freq->start_freq ||
+	    !bonded_freq->end_freq || !bonded_freq->start_freq) {
+		reg_debug_rl("invalid bonded freq range: start=%d end=%d",
+			     bonded_freq->start_freq,
+			     bonded_freq->end_freq);
+		return false;
+	}
+
+	for (start_freq = bonded_freq->start_freq;
+			start_freq <= bonded_freq->end_freq;) {
+		chan_idx = reg_get_chan_enum_for_freq(start_freq);
+		if (chan_idx == INVALID_CHANNEL) {
+			reg_debug_rl("invalid freq %d", start_freq);
+
+			return false;
+		}
+		if (QDF_IS_STATUS_ERROR(
+			reg_check_if_6g_pwr_type_supp_for_chan(
+					pdev, pwr_type_6g, chan_idx))) {
+			reg_debug_rl("AP power type = %d is not supp by freq %d",
+				     pwr_type_6g, start_freq);
+			return false;
+		}
+
+		start_freq += BW_20_MHZ;
+	}
+
+	return true;
+}
+
+QDF_STATUS
+reg_get_best_6g_power_type_for_bw(struct wlan_objmgr_psoc *psoc,
+				  struct wlan_objmgr_pdev *pdev,
+				  enum reg_6g_ap_type *best_pwr_type_6g,
+				  enum reg_6g_ap_type ap_pwr_type,
+				  uint32_t chan_freq,
+				  qdf_freq_t cen320_freq,
+				  enum phy_ch_width chwidth)
+{
+	QDF_STATUS status;
+	enum reg_6g_ap_type selected_pwr_type_6g = ap_pwr_type;
+
+	reg_debug("ap_pwr_type %d chan_freq %d, chwidth %d cen320 %d",
+		  ap_pwr_type, chan_freq, chwidth, cen320_freq);
+	status = reg_get_best_6g_power_type(psoc, pdev, &selected_pwr_type_6g,
+					    ap_pwr_type, chan_freq);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	if (reg_get_bw_value(chwidth) <= 20 ||
+	    selected_pwr_type_6g == REG_VERY_LOW_POWER_AP) {
+		*best_pwr_type_6g = selected_pwr_type_6g;
+		reg_debug("AP power type = %d, selected power type = %d",
+			  ap_pwr_type, *best_pwr_type_6g);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* If BW > 20Mhz and non-vlp, to check the bonded channel support
+	 * the selected best 6g ap power type or not.
+	 */
+	if (reg_is_6g_power_type_supp_for_bonded_channel(
+		pdev, chan_freq, chwidth, cen320_freq,
+		selected_pwr_type_6g)) {
+		*best_pwr_type_6g = selected_pwr_type_6g;
+		return QDF_STATUS_SUCCESS;
+	}
+	reg_debug("not all bonded chan supp ap power mode %d, try vlp",
+		  selected_pwr_type_6g);
+
+	selected_pwr_type_6g = REG_VERY_LOW_POWER_AP;
+	if (reg_is_6g_power_type_supp_for_bonded_channel(
+		pdev, chan_freq, chwidth, cen320_freq,
+		selected_pwr_type_6g)) {
+		*best_pwr_type_6g = selected_pwr_type_6g;
+		reg_debug("AP power type = %d, selected power type = %d",
+			  ap_pwr_type, *best_pwr_type_6g);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	reg_debug("not all bonded chan supp ap power mode REG_VERY_LOW_POWER_AP");
+
+	return QDF_STATUS_E_INVAL;
+}
 #else
 QDF_STATUS
 reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
@@ -637,6 +738,18 @@ reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 			   enum reg_6g_ap_type *pwr_type_6g,
 			   enum reg_6g_ap_type ap_pwr_type,
 			   uint32_t chan_freq)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+reg_get_best_6g_power_type_for_bw(struct wlan_objmgr_psoc *psoc,
+				  struct wlan_objmgr_pdev *pdev,
+				  enum reg_6g_ap_type *best_pwr_type_6g,
+				  enum reg_6g_ap_type ap_pwr_type,
+				  uint32_t chan_freq,
+				  qdf_freq_t cen320_freq,
+				  enum phy_ch_width chwidth)
 {
 	return QDF_STATUS_SUCCESS;
 }
