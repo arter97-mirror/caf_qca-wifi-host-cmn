@@ -136,6 +136,21 @@ wlan_reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
 	return reg_get_best_6g_power_type(psoc, pdev, pwr_type_6g,
 					  ap_pwr_type, chan_freq);
 }
+
+QDF_STATUS
+wlan_reg_get_best_6g_power_type_for_bw(
+				struct wlan_objmgr_psoc *psoc,
+				struct wlan_objmgr_pdev *pdev,
+				enum reg_6g_ap_type *pwr_type_6g,
+				enum reg_6g_ap_type ap_pwr_type,
+				uint32_t chan_freq,
+				qdf_freq_t center_320,
+				enum phy_ch_width ch_width)
+{
+	return reg_get_best_6g_power_type_for_bw(
+			psoc, pdev, pwr_type_6g,
+			ap_pwr_type, chan_freq, center_320, ch_width);
+}
 #endif
 
 QDF_STATUS wlan_reg_get_dfs_region(struct wlan_objmgr_pdev *pdev,
