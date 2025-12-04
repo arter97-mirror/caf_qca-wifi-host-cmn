@@ -4034,6 +4034,28 @@ wlan_cm_get_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc,
 
 	return num_links;
 }
+
+void
+wlan_cm_clear_mlo_allowed_bss_links(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+	struct psoc_mlo_config *psoc_mlo_cfg = NULL;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return;
+
+	psoc_mlo_cfg = &mlme_psoc_obj->psoc_cfg.mlo_config;
+	if (!psoc_mlo_cfg) {
+		mlme_debug("psoc mlo config is NULL");
+		return;
+	}
+
+	qdf_mem_set(psoc_mlo_cfg, sizeof(psoc_mlo_cfg), 0);
+
+	mlme_debug("Clear the allowed BSS links: %d",
+		   mlme_psoc_obj->psoc_cfg.mlo_config.num_links);
+}
 #endif
 
 bool wlan_cm_6ghz_allowed_for_akm(struct wlan_objmgr_psoc *psoc,
