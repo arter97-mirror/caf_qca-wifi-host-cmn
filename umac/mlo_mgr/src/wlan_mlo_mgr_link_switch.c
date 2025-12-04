@@ -2478,6 +2478,40 @@ mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+QDF_STATUS
+mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
+				struct vdev_start_params *vdev_start_params)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_vdev_connect_params_cache *connect_params;
+
+	if (!vdev || !vdev_start_params)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	connect_params = &mlo_dev_ctx->link_ctx->connect_params;
+
+	if (!connect_params->vdev_start) {
+		connect_params->vdev_start =
+			qdf_mem_malloc(sizeof(struct vdev_start_params));
+		if (!connect_params->vdev_start)
+			return QDF_STATUS_E_NOMEM;
+	}
+
+	/* Cache the vdev start parameters directly into the structure */
+	qdf_mem_copy(connect_params->vdev_start, vdev_start_params,
+		     sizeof(struct vdev_start_params));
+
+	mlo_debug("vdev:%d cached vdev start params freq:%d",
+		  connect_params->vdev_start->vdev_id,
+		  vdev_start_params->channel.mhz);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
@@ -2496,4 +2530,10 @@ void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
 		qdf_mem_free(connect_params->peer_create);
 		connect_params->peer_create = NULL;
 	}
+
+	if (connect_params->vdev_start) {
+		qdf_mem_free(connect_params->vdev_start);
+		connect_params->vdev_start = NULL;
+	}
+
 }

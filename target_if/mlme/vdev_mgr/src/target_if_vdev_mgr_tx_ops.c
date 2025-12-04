@@ -40,6 +40,7 @@
 #include <target_if_psoc_timer_tx_ops.h>
 #include <target_if_psoc_wake_lock.h>
 #include <wlan_psoc_mlme_api.h>
+#include <wlan_mlo_mgr_link_switch.h>
 
 static QDF_STATUS target_if_vdev_mgr_register_event_handler(
 					struct wlan_objmgr_psoc *psoc)
@@ -483,6 +484,49 @@ static QDF_STATUS target_if_vdev_mgr_create_send(
 	return status;
 }
 
+static QDF_STATUS
+target_if_vdev_mgr_handle_link_switch_start(struct wlan_objmgr_vdev *vdev,
+					    struct vdev_start_params *param)
+{
+	QDF_STATUS status;
+	struct wlan_objmgr_psoc *psoc;
+	uint8_t vdev_id;
+	struct vdev_start_response vdev_start_resp = {0};
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	psoc = wlan_vdev_get_psoc(vdev);
+
+	mlme_debug("vdev:%d link switch in progress, skipping vdev start",
+		   vdev_id);
+
+	/* Prepare response structure for common processing */
+	vdev_start_resp.vdev_id = vdev_id;
+	vdev_start_resp.status = WLAN_MLME_HOST_VDEV_START_OK;
+	if (param->is_restart)
+		vdev_start_resp.resp_type = WMI_HOST_VDEV_RESTART_RESP_EVENT;
+	else
+		vdev_start_resp.resp_type = WMI_HOST_VDEV_START_RESP_EVENT;
+
+	/**
+	 * Cache vdev_start params in MLO link switch context to send to
+	 * FW later for unifed connect params
+	 */
+	status = mlo_mgr_cache_vdev_start_params(vdev, param);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("vdev:%d failed to cache vdev start params", vdev_id);
+		return status;
+	}
+	/* Call common response processing */
+	status = target_if_vdev_mgr_start_response_common(psoc,
+							  &vdev_start_resp);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("vdev:%d common response processing failed", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS target_if_vdev_mgr_start_send(
 					struct wlan_objmgr_vdev *vdev,
 					struct vdev_start_params *param)
@@ -519,6 +563,15 @@ static QDF_STATUS target_if_vdev_mgr_start_send(
 		return QDF_STATUS_E_INVAL;
 	}
 
+	/**
+	 * Check for link switch before acquiring resources to avoid
+	 * race condition
+	 */
+	if (mlo_mgr_is_link_switch_in_progress(vdev) &&
+	    mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc))
+		return target_if_vdev_mgr_handle_link_switch_start(vdev, param);
+
+	/* Normal path: acquire resources and send WMI command */
 	vdev_rsp->expire_time = START_RESPONSE_TIMER;
 	target_if_wake_lock_timeout_acquire(psoc, START_WAKELOCK);
 	target_if_acquire_vdev_cmd_rt_lock(vdev_rsp);

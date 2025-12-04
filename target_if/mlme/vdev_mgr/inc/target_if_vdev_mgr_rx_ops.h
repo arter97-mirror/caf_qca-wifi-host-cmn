@@ -164,4 +164,21 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_unregister(
  */
 void target_if_vdev_mgr_rsp_timer_cb(void *arg);
 
+/**
+ * target_if_vdev_mgr_start_response_common() - Common vdev start response
+ * processing api
+ * @psoc: psoc object
+ * @vdev_start_resp: vdev start response structure
+ *
+ * This function handles the common processing for vdev start responses
+ * that doesn't depend on firmware events. It can be called both from
+ * firmware response handlers and when operations are skipped due to
+ * conditions like link switch in progress.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS target_if_vdev_mgr_start_response_common(
+				struct wlan_objmgr_psoc *psoc,
+				struct vdev_start_response *vdev_start_resp);
+
 #endif /* __TARGET_IF_VDEV_MGR_RX_OPS_H__ */

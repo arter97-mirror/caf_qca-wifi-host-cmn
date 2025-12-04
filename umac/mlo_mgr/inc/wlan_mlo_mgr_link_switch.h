@@ -915,6 +915,22 @@ mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
 				 struct peer_create_params *peer_create_params);
 
 /**
+ * mlo_mgr_cache_vdev_start_params() - Cache vdev start parameters for
+ * unified connect command processing
+ * @vdev: pointer to vdev object
+ * @vdev_start_params: pointer to vdev start parameters to cache
+ *
+ * This API caches vdev start parameters in MLO manager context during
+ * link switch or unified connect scenarios. The cached parameters will
+ * be used later when the actual vdev start command needs to be sent.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
+				struct vdev_start_params *vdev_start_params);
+
+/**
  * mlo_mgr_cleanup_cached_connect_params() - Cleanup all cached connect params
  * @vdev: Pointer to vdev object
  *
@@ -1206,6 +1222,13 @@ mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
 static inline QDF_STATUS
 mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
 				 struct peer_create_params *peer_create_params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
+				struct vdev_start_params *vdev_start_params)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

@@ -381,6 +381,88 @@ void target_if_vdev_mgr_rsp_timer_mgmt_cb(void *arg)
 #define VDEV_RSP_RX_CTX WMI_RX_UMAC_CTX
 #endif
 
+QDF_STATUS target_if_vdev_mgr_start_response_common(
+				struct wlan_objmgr_psoc *psoc,
+				struct vdev_start_response *vdev_start_resp)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	uint8_t vdev_id;
+	struct vdev_response_timer *vdev_rsp;
+	struct wlan_objmgr_vdev *vdev;
+	enum QDF_OPMODE mode = QDF_MAX_NO_OF_MODE;
+	bool timer_running = false;
+
+	if (!psoc || !vdev_start_resp) {
+		mlme_err("psoc or vdev_start_resp is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->vdev_mgr_start_response) {
+		mlme_err("vdev_mgr_start_response rx ops is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = vdev_start_resp->vdev_id;
+	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
+	if (!vdev_rsp) {
+		mlme_err("vdev response timer is null vdev:%d", vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_VDEV_TARGET_IF_ID);
+	if (!vdev) {
+		mlme_err("vdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mode = wlan_vdev_mlme_get_opmode(vdev);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
+
+	/* Check if timers are running to determine if we need to stop them */
+	if (vdev_start_resp->resp_type == WMI_HOST_VDEV_RESTART_RESP_EVENT) {
+		timer_running = qdf_atomic_test_bit(RESTART_RESPONSE_BIT,
+						    &vdev_rsp->rsp_status);
+		if (timer_running)
+			status = target_if_vdev_mgr_rsp_timer_stop(
+							psoc, vdev_rsp,
+							RESTART_RESPONSE_BIT);
+	} else {
+		timer_running = qdf_atomic_test_bit(START_RESPONSE_BIT,
+						    &vdev_rsp->rsp_status);
+		/*
+		 * START_WAKELOCK is acquired before sending the start command
+		 * and released after sending up command to fw.
+		 * But if vdev start fails, then release it here.
+		 * Only release if timer was running (meaning locks were
+		 * acquired).
+		 */
+		if (timer_running &&
+		    (mode == QDF_MONITOR_MODE || mode == QDF_SAP_MODE ||
+		    mode == QDF_P2P_GO_MODE)) {
+			target_if_wake_lock_timeout_release(psoc,
+							    START_WAKELOCK);
+			target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
+		}
+
+		if (timer_running)
+			status = target_if_vdev_mgr_rsp_timer_stop(
+							psoc, vdev_rsp,
+							START_RESPONSE_BIT);
+	}
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("vdev:%d vdev mgr rsp timer stop failed", vdev_id);
+		return status;
+	}
+
+	status = rx_ops->vdev_mgr_start_response(psoc, vdev_start_resp);
+
+	return status;
+}
+
 static int target_if_vdev_mgr_start_response_handler(ol_scn_t scn,
 						     uint8_t *data,
 						     uint32_t datalen)
@@ -388,12 +470,7 @@ static int target_if_vdev_mgr_start_response_handler(ol_scn_t scn,
 	QDF_STATUS status = QDF_STATUS_E_INVAL;
 	struct wlan_objmgr_psoc *psoc;
 	struct wmi_unified *wmi_handle;
-	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
 	struct vdev_start_response vdev_start_resp = {0};
-	uint8_t vdev_id;
-	struct vdev_response_timer *vdev_rsp;
-	struct wlan_objmgr_vdev *vdev;
-	enum QDF_OPMODE mode = QDF_MAX_NO_OF_MODE;
 
 	if (!scn || !data) {
 		mlme_err("Invalid input");
@@ -403,12 +480,6 @@ static int target_if_vdev_mgr_start_response_handler(ol_scn_t scn,
 	psoc = target_if_get_psoc_from_scn_hdl(scn);
 	if (!psoc) {
 		mlme_err("PSOC is NULL");
-		return -EINVAL;
-	}
-
-	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
-	if (!rx_ops || !rx_ops->vdev_mgr_start_response) {
-		mlme_err("No Rx Ops");
 		return -EINVAL;
 	}
 
@@ -423,53 +494,10 @@ static int target_if_vdev_mgr_start_response_handler(ol_scn_t scn,
 		return -EINVAL;
 	}
 
-	vdev_id = vdev_start_resp.vdev_id;
-	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
-	if (!vdev_rsp) {
-		mlme_err("vdev response timer is null VDEV_%d PSOC_%d",
-			 vdev_id, wlan_psoc_get_id(psoc));
-		return -EINVAL;
-	}
+	/* Call the common processing function */
+	status = target_if_vdev_mgr_start_response_common(psoc,
+							  &vdev_start_resp);
 
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
-						    WLAN_VDEV_TARGET_IF_ID);
-	if (!vdev) {
-		mlme_err("Null Vdev");
-		return -EINVAL;
-	}
-
-	mode = wlan_vdev_mlme_get_opmode(vdev);
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
-
-	if (vdev_start_resp.resp_type == WMI_HOST_VDEV_RESTART_RESP_EVENT) {
-		status = target_if_vdev_mgr_rsp_timer_stop(
-							psoc, vdev_rsp,
-							RESTART_RESPONSE_BIT);
-	} else {
-		/*
-		 * START_WAKELOCK is acquired before sending the start command
-		 * and released after sending up command to fw.
-		 * But if vdev start fails, then release it here.
-		 */
-		if (mode == QDF_MONITOR_MODE || mode == QDF_SAP_MODE ||
-		    mode == QDF_P2P_GO_MODE) {
-			target_if_wake_lock_timeout_release(psoc,
-							    START_WAKELOCK);
-			target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
-		}
-		status = target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp,
-							   START_RESPONSE_BIT);
-	}
-
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlme_err("PSOC_%d VDEV_%d: VDE MGR RSP Timer stop failed",
-			 psoc->soc_objmgr.psoc_id, vdev_id);
-		goto err;
-	}
-
-	status = rx_ops->vdev_mgr_start_response(psoc, &vdev_start_resp);
-
-err:
 	return qdf_status_to_os_return(status);
 }
 
