@@ -148,16 +148,7 @@ more_data:
 							    &max_reap_limit);
 
 	peer_ext_stats = wlan_cfg_is_peer_ext_stats_enabled(soc->wlan_cfg_ctx);
-	if (qdf_unlikely(dp_rx_srng_access_start(int_ctx, soc, hal_ring_hdl))) {
-		/*
-		 * Need API to convert from hal_ring pointer to
-		 * Ring Type / Ring Id combo
-		 */
-		DP_STATS_INC(soc, rx.err.hal_ring_access_fail, 1);
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  FL("HAL RING Access Failed -- %pK"), hal_ring_hdl);
-		goto done;
-	}
+	dp_rx_srng_access_start(int_ctx, soc, hal_ring_hdl);
 
 	hal_srng_update_ring_usage_wm_no_lock(soc->hal_soc, hal_ring_hdl);
 
@@ -212,19 +203,8 @@ more_data:
 
 		status = dp_rx_desc_sanity(soc, hal_soc, hal_ring_hdl,
 					   ring_desc, rx_desc);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			if (qdf_unlikely(rx_desc && rx_desc->nbuf)) {
-				qdf_assert_always(!rx_desc->unmapped);
-				dp_rx_nbuf_unmap(soc, rx_desc, reo_ring_num);
-				dp_rx_buffer_pool_nbuf_free(soc, rx_desc->nbuf,
-							    rx_desc->pool_id);
-				dp_rx_add_to_free_desc_list(
-						&head[rx_desc->pool_id],
-						&tail[rx_desc->pool_id],
-						rx_desc);
-			}
+		if (QDF_IS_STATUS_ERROR(status))
 			continue;
-		}
 
 		/*
 		 * this is a unlikely scenario where the host is reaping
@@ -235,10 +215,8 @@ more_data:
 		 */
 
 		if (qdf_unlikely(!rx_desc->in_use)) {
-			DP_STATS_INC(soc, rx.err.hal_reo_dest_dup, 1);
-			dp_info_rl("Reaping rx_desc not in use!");
-			dp_rx_dump_info_and_assert(soc, hal_ring_hdl,
-						   ring_desc, rx_desc);
+			DP_RX_ERR_HANDLE_DESC_DUP(soc, hal_ring_hdl,
+						  ring_desc, rx_desc);
 			continue;
 		}
 
@@ -336,7 +314,7 @@ refill_opt_dp_ctrl:
 						  max_reap_limit))
 			break;
 	}
-done:
+
 	dp_rx_srng_access_end(int_ctx, soc, hal_ring_hdl);
 	qdf_dsb();
 
@@ -501,10 +479,6 @@ done:
 		DP_HIST_PACKET_COUNT_INC(vdev->pdev->pdev_id);
 		/*
 		 * First IF condition:
-		 * 802.11 Fragmented pkts are reinjected to REO
-		 * HW block as SG pkts and for these pkts we only
-		 * need to pull the RX TLVS header length.
-		 * Second IF condition:
 		 * The below condition happens when an MSDU is spread
 		 * across multiple buffers. This can happen in two cases
 		 * 1. The nbuf size is smaller then the received msdu.
@@ -520,28 +494,11 @@ done:
 		 *
 		 * for these scenarios let us create a skb frag_list and
 		 * append these buffers till the last MSDU of the AMSDU
-		 * Third condition:
+		 * Second condition:
 		 * This is the most likely case, we receive 802.3 pkts
 		 * decapsulated by HW, here we need to set the pkt length.
 		 */
-		if (qdf_unlikely(qdf_nbuf_is_frag(nbuf))) {
-			bool is_mcbc, is_sa_vld, is_da_vld;
-
-			is_mcbc = hal_rx_msdu_end_da_is_mcbc_get(soc->hal_soc,
-								 rx_tlv_hdr);
-			is_sa_vld =
-				hal_rx_msdu_end_sa_is_valid_get(soc->hal_soc,
-								rx_tlv_hdr);
-			is_da_vld =
-				hal_rx_msdu_end_da_is_valid_get(soc->hal_soc,
-								rx_tlv_hdr);
-
-			qdf_nbuf_set_da_mcbc(nbuf, is_mcbc);
-			qdf_nbuf_set_da_valid(nbuf, is_da_vld);
-			qdf_nbuf_set_sa_valid(nbuf, is_sa_vld);
-
-			qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
-		} else if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
+		if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
 			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
 			nbuf = dp_rx_sg_create(soc, nbuf);
 			next = nbuf->next;
@@ -573,19 +530,6 @@ done:
 		}
 
 		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
-
-		if (!dp_wds_rx_policy_check(rx_tlv_hdr, vdev, txrx_peer)) {
-			dp_rx_err("%pK: Policy Check Drop pkt", soc);
-			DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-						  rx.policy_check_drop,
-						  1, link_id);
-			tid_stats->fail_cnt[POLICY_CHECK_DROP]++;
-			/* Drop & free packet */
-			dp_rx_nbuf_free(nbuf);
-			/* Statistics */
-			nbuf = next;
-			continue;
-		}
 
 		/*
 		 * Drop non-EAPOL frames from unauthorized peer.
@@ -851,10 +795,8 @@ more_msdu_link_desc:
 		 */
 		if (qdf_unlikely(!rx_desc->in_use) ||
 		    qdf_unlikely(!nbuf)) {
-			DP_STATS_INC(soc, rx.err.hal_reo_dest_dup, 1);
-			dp_info_rl("Reaping rx_desc not in use!");
-			dp_rx_dump_info_and_assert(soc, hal_ring_hdl,
-						   ring_desc, rx_desc);
+			DP_RX_ERR_HANDLE_DESC_DUP(soc, hal_ring_hdl,
+						  ring_desc, rx_desc);
 			/* ignore duplicate RX desc and continue to process */
 			/* Pop out the descriptor */
 			msdu_dropped = true;
@@ -1088,13 +1030,7 @@ dp_rx_err_process_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
 	dp_pdev = soc->pdev_list[0];
 
 more_data:
-	if (qdf_unlikely(dp_srng_access_start(int_ctx, soc, hal_ring_hdl))) {
-		DP_STATS_INC(soc, rx.err.hal_ring_access_fail, 1);
-		dp_rx_err_err("%pK: HAL RING Access Failed -- %pK", soc,
-			      hal_ring_hdl);
-		goto done;
-	}
-
+	dp_srng_access_start(int_ctx, soc, hal_ring_hdl);
 	hal_srng_update_ring_usage_wm_no_lock(soc->hal_soc, hal_ring_hdl);
 
 	while (qdf_likely(quota-- && (ring_desc =
@@ -1223,10 +1159,8 @@ more_data:
 			 */
 
 			if (qdf_unlikely(!rx_desc->in_use)) {
-				DP_STATS_INC(soc, rx.err.hal_reo_dest_dup, 1);
-				dp_info_rl("Reaping rx_desc not in use!");
-				dp_rx_dump_info_and_assert(soc, hal_ring_hdl,
-							   ring_desc, rx_desc);
+				DP_RX_ERR_HANDLE_DESC_DUP(soc, hal_ring_hdl,
+							  ring_desc, rx_desc);
 				/* ignore duplicate RX desc and continue */
 				/* Pop out the descriptor */
 				goto next_entry;
@@ -1373,7 +1307,6 @@ next_entry:
 			break;
 	}
 
-done:
 	dp_srng_access_end(int_ctx, soc, hal_ring_hdl);
 
 	if (soc->rx.flags.defrag_timeout_check) {

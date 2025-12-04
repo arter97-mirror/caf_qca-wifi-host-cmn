@@ -4155,6 +4155,25 @@ dp_rx_buffers_replenish_on_demand(struct cdp_soc_t *cdp_soc,
 }
 #endif
 
+/**
+ * DP_RX_ERR_HANDLE_DESC_DUP - Handle duplicate RX descriptor error
+ * @soc: DP soc handle
+ * @hal_ring_hdl: HAL ring handle
+ * @ring_desc: ring descriptor
+ * @rx_desc: RX descriptor
+ *
+ * This macro handles the case when a RX descriptor is found to be duplicated
+ * or not in use during REO processing. It updates error statistics and
+ * performs debug dump and assertion.
+ */
+#define DP_RX_ERR_HANDLE_DESC_DUP(soc, hal_ring_hdl, ring_desc, rx_desc) \
+do { \
+	DP_STATS_INC(soc, rx.err.hal_reo_dest_dup, 1); \
+	dp_info_rl("Reaping rx_desc not in use!"); \
+	dp_rx_dump_info_and_assert(soc, hal_ring_hdl, \
+				   ring_desc, rx_desc); \
+} while (0)
+
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 #if defined(IPA_OFFLOAD) && !defined(DP_RX_BUFFER_OPTIMIZATION)
 static inline void
