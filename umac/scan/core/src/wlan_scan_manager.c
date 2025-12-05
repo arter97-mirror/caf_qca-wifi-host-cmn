@@ -193,13 +193,19 @@ static void scm_scan_post_event(struct wlan_objmgr_vdev *vdev,
 
 	/* notify all interested handlers */
 	for (i = 0; i < listeners->count; i++) {
-		if (listeners->cb[i] && listeners->cb[i]->func) {
+		struct cb_handler *cb = listeners->cb[i];
+
+		if (!cb)
+			continue;
+
+		if (cb->func) {
 			scm_listener_cb_exe_dur_start(scan, i);
-			listeners->cb[i]->func(vdev, event, listeners->cb[i]->arg);
+			cb->func(vdev, event, cb->arg);
 			scm_listener_cb_exe_dur_end(scan, i);
-			qdf_mem_free(listeners->cb[i]);
-			listeners->cb[i] = NULL;
 		}
+
+		qdf_mem_free(listeners->cb[i]);
+		listeners->cb[i] = NULL;
 	}
 	qdf_mem_free(listeners);
 }
