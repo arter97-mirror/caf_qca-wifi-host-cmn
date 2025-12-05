@@ -618,6 +618,31 @@ util_scan_get_phymode_2g(struct scan_cache_entry *scan_params)
 		}
 	}
 
+	/*
+	 * Sanity check for invalid HT40 configuration on 2.4 GHz.
+	 * If an AP advertises HT40PLUS/MINUS but the implied secondary
+	 * 20 MHz channel would be out of band or disabled, downgrade to HT20.
+	 */
+	if (IS_WLAN_PHYMODE_HT(phymode)) {
+		qdf_freq_t pri_freq = scan_params->channel.chan_freq;
+		qdf_freq_t sec_pri_freq = 0;
+
+		if (phymode == WLAN_PHYMODE_11NG_HT40PLUS)
+			sec_pri_freq = pri_freq + WLAN_CHAN_SPACING_20MHZ;
+		else if (phymode == WLAN_PHYMODE_11NG_HT40MINUS)
+			sec_pri_freq = pri_freq - WLAN_CHAN_SPACING_20MHZ;
+
+		/* If the secondary channel for HT40 operation is outside the 2.4 GHz band,
+		 * fall back to 20 MHz (HT20) mode.
+		 */
+		if (sec_pri_freq > 0 &&
+				(sec_pri_freq < WLAN_REG_MIN_24GHZ_CHAN_FREQ ||
+				 sec_pri_freq > WLAN_REG_MAX_24GHZ_CHAN_FREQ)) {
+			phymode = WLAN_PHYMODE_11NG_HT20;
+			scan_params->channel.cfreq0 = 0;
+		}
+	}
+
 	/* Check for VHT only if HT cap is present */
 	if (!IS_WLAN_PHYMODE_HT(phymode))
 		return phymode;
