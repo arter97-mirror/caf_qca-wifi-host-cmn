@@ -22,6 +22,12 @@
 #ifndef _WLAN_DCS_PUBLIC_STRUCTS_H_
 #define _WLAN_DCS_PUBLIC_STRUCTS_H_
 
+/*
+ * Maximum number of vdevs supported for DCS.
+ * Determined by the FW service bit: WMI_SERVICE_CONC_2VDEV_DCS_STATS_SUPPORT
+ */
+#define WLAN_DCS_MAX_VDEVS 2
+
 /**
  * enum wlan_host_dcs_type - types of DCS interference events
  * @WLAN_HOST_DCS_NONE: invalid type

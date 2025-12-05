@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -46,6 +46,40 @@ QDF_STATUS wmi_extract_dcs_im_tgt_stats(
 		return wmi_handle->ops->extract_dcs_im_tgt_stats(wmi_handle,
 								 evt_buf,
 								 wlan_stat);
+	}
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_dcs_im_tgt_stats_count(
+		void *wmi_hdl,
+		void *evt_buf,
+		uint32_t *num_wlan_stat)
+{
+	wmi_unified_t wmi_handle = (wmi_unified_t)wmi_hdl;
+
+	if (wmi_handle->ops->extract_dcs_im_tgt_stats_count) {
+		return wmi_handle->ops->extract_dcs_im_tgt_stats_count(
+								wmi_handle,
+								evt_buf,
+								num_wlan_stat);
+	}
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_extract_dcs_im_tgt_stats_idx(
+		void *wmi_hdl,
+		void *evt_buf,
+		uint32_t idx,
+		struct wlan_host_dcs_event *dcs_event)
+{
+	wmi_unified_t wmi_handle = (wmi_unified_t)wmi_hdl;
+
+	if (wmi_handle->ops->extract_dcs_im_tgt_stats_idx) {
+		return wmi_handle->ops->extract_dcs_im_tgt_stats_idx(
+								wmi_handle,
+								evt_buf,
+								idx,
+								dcs_event);
 	}
 	return QDF_STATUS_E_FAILURE;
 }

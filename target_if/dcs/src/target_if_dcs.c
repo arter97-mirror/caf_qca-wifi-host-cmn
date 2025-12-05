@@ -29,6 +29,71 @@
 #include "target_if_dcs.h"
 
 /**
+ * target_if_dcs_multi_wlanim_event_handler() - Handle multiple WLAN IM stats
+ * @psoc: Pointer to psoc object
+ * @wmi_handle: wmi handle
+ * @rx_ops: Pointer to target if rx operations
+ * @data: data buffer for event
+ *
+ * This function extracts multiple VDEV DCS statistics when
+ * conc_2vdev_dcs_stats_support is enabled.
+ *
+ * Return: 0 on success, -EINVAL on error
+ */
+static QDF_STATUS target_if_dcs_multi_wlanim_event_handler(
+				struct wlan_objmgr_psoc *psoc,
+				struct wmi_unified *wmi_handle,
+				struct wlan_target_if_dcs_rx_ops *rx_ops,
+				uint8_t *data)
+{
+	struct wlan_host_dcs_event ev;
+	uint32_t i;
+	uint32_t num_wlan_stat = 0;
+	uint32_t success_count = 0;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
+
+	status = wmi_extract_dcs_im_tgt_stats_count(wmi_handle, data,
+						    &num_wlan_stat);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("Unable to extract WLAN IM stats count");
+		return status;
+	}
+
+	if ((!num_wlan_stat) ||
+	    (num_wlan_stat > WLAN_DCS_MAX_VDEVS)) {
+		target_if_err("Invalid num_wlan_stat %d max %d",
+			      num_wlan_stat, WLAN_DCS_MAX_VDEVS);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	for (i = 0; i < num_wlan_stat; i++) {
+		status = wmi_extract_dcs_im_tgt_stats_idx(wmi_handle, data, i,
+							  &ev);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			target_if_err("Failed to get WLAN IM stats, idx %d total %d",
+				      i, num_wlan_stat);
+			continue;
+		}
+
+		status = rx_ops->process_dcs_event(psoc, &ev);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			target_if_err("Failed to process DCS event, idx %d total %d",
+				      i, num_wlan_stat);
+			continue;
+		}
+		success_count++;
+	}
+
+	if (!success_count) {
+		target_if_err("Failed to process any DCS stats");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * target_if_dcs_interference_event_handler() - function to handle dcs event
  * from firmware.
  * @scn: scn handle
@@ -76,11 +141,20 @@ static int target_if_dcs_interference_event_handler(ol_scn_t scn,
 		return -EINVAL;
 	}
 
-	if (ev.dcs_param.interference_type == WLAN_HOST_DCS_WLANIM &&
-	    wmi_extract_dcs_im_tgt_stats(wmi_handle, data, &ev.wlan_stat) !=
-	    QDF_STATUS_SUCCESS) {
-		target_if_err("Unable to extract WLAN IM stats");
-		return -EINVAL;
+	if (ev.dcs_param.interference_type == WLAN_HOST_DCS_WLANIM) {
+		if (target_if_two_vdev_dcs_is_supported(psoc)) {
+			/* Handle two WLAN stats in a single event */
+			status = target_if_dcs_multi_wlanim_event_handler(
+					psoc, wmi_handle, rx_ops, data);
+			return qdf_status_to_os_return(status);
+		}
+		/* Legacy behavior - single WLAN stats */
+		if (wmi_extract_dcs_im_tgt_stats(wmi_handle, data,
+						 &ev.wlan_stat) !=
+		    QDF_STATUS_SUCCESS) {
+			target_if_err("Unable to extract WLAN IM stats");
+			return -EINVAL;
+		}
 	}
 
 	if (ev.dcs_param.interference_type == WLAN_HOST_DCS_AWGNIM &&

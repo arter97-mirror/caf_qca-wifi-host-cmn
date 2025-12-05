@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -57,6 +57,40 @@ QDF_STATUS wmi_extract_dcs_im_tgt_stats(
 	void *wmi_hdl,
 	void *evt_buf,
 	struct wlan_host_dcs_im_tgt_stats *wlan_stat);
+
+/**
+ * wmi_extract_dcs_im_tgt_stats_count() - extract count of dcs im target stats
+ * @wmi_hdl: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @num_wlan_stat: Pointer to hold number of wlan stats
+ *
+ * This function gets called to extract count of dcs im target stats from event
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_extract_dcs_im_tgt_stats_count(
+	void *wmi_hdl,
+	void *evt_buf,
+	uint32_t *num_wlan_stat);
+
+/**
+ * wmi_extract_dcs_im_tgt_stats_idx() - extract dcs im target stats by index
+ * @wmi_hdl: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @idx: index of the VDEV stats to extract
+ * @dcs_event: Pointer to hold dcs event including pdev_id, vdev_id and stats
+ *
+ * This function gets called to extract dcs im target stats by index from event
+ * It validates vdev_id_and_pdev_id_valid flag and extracts pdev_id, vdev_id
+ * along with the statistics.
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_extract_dcs_im_tgt_stats_idx(
+	void *wmi_hdl,
+	void *evt_buf,
+	uint32_t idx,
+	struct wlan_host_dcs_event *dcs_event);
 
 /**
  * wmi_extract_dcs_awgn_info() - extract DCS AWGN interference info from event

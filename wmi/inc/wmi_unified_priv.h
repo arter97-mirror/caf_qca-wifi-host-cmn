@@ -1943,6 +1943,17 @@ QDF_STATUS (*extract_dcs_im_tgt_stats)(
 		void *evt_buf,
 		struct wlan_host_dcs_im_tgt_stats *wlan_stat);
 
+QDF_STATUS (*extract_dcs_im_tgt_stats_count)(
+		wmi_unified_t wmi_handle,
+		void *evt_buf,
+		uint32_t *num_wlan_stat);
+
+QDF_STATUS (*extract_dcs_im_tgt_stats_idx)(
+		wmi_unified_t wmi_handle,
+		void *evt_buf,
+		uint32_t idx,
+		struct wlan_host_dcs_event *dcs_event);
+
 QDF_STATUS (*extract_dcs_awgn_info)(wmi_unified_t wmi_handle, void *evt_buf,
 				    struct wlan_host_dcs_awgn_info *awgn_info);
 #else
