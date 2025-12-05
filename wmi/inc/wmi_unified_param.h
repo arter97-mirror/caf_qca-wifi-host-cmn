@@ -6876,6 +6876,7 @@ typedef enum {
 	wmi_service_wifi_radar_support,
 	wmi_service_dcs_obss_int_support,
 	wmi_service_vdev_dcs_stats_support,
+	wmi_service_conc_2vdev_dcs_stats_support,
 	wmi_service_smem_mailbox_dlkm_support,
 	wmi_service_mlo_mode2_recovery_supported,
 	wmi_service_dynamic_wsi_remap_support,
@@ -7355,6 +7356,7 @@ struct target_feature_set {
  * @enable_bcn_rssi_history_report: Enable beacon rssi history report
  * @haps_feature_flags: HAPS flags setting for power save config
  * @direct_refill_ring_support: Direct refill feature support indication
+ * @conc_2vdev_dcs_stats_support: Support 2 vdev concurrency DCS
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7509,6 +7511,7 @@ typedef struct {
 	bool enable_bcn_rssi_history_report;
 	uint32_t haps_feature_flags;
 	bool direct_refill_ring_support;
+	bool conc_2vdev_dcs_stats_support;
 } target_resource_config;
 
 /**

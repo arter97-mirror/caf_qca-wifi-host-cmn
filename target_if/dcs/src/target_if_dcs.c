@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -221,8 +221,17 @@ target_if_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 }
 #endif
 
-bool
-target_if_vdev_level_dcs_is_supported(struct wlan_objmgr_psoc *psoc)
+/**
+ * target_if_dcs_service_is_supported() - API to check whether a specific DCS
+ * service is supported or not
+ * @psoc: pointer to psoc object
+ * @service_id: WMI service ID to check
+ *
+ * Return: True/False
+ */
+static bool
+target_if_dcs_service_is_supported(struct wlan_objmgr_psoc *psoc,
+				   wmi_conv_service_ids service_id)
 {
 	struct wmi_unified *wmi_handle;
 
@@ -232,8 +241,21 @@ target_if_vdev_level_dcs_is_supported(struct wlan_objmgr_psoc *psoc)
 		return false;
 	}
 
-	return wmi_service_enabled(wmi_handle,
-				   wmi_service_vdev_dcs_stats_support);
+	return wmi_service_enabled(wmi_handle, service_id);
+}
+
+bool
+target_if_vdev_level_dcs_is_supported(struct wlan_objmgr_psoc *psoc)
+{
+	return target_if_dcs_service_is_supported(
+			psoc, wmi_service_vdev_dcs_stats_support);
+}
+
+bool
+target_if_two_vdev_dcs_is_supported(struct wlan_objmgr_psoc *psoc)
+{
+	return target_if_dcs_service_is_supported(
+			psoc, wmi_service_conc_2vdev_dcs_stats_support);
 }
 
 QDF_STATUS
@@ -259,7 +281,7 @@ target_if_dcs_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	dcs_tx_ops->dcs_cmd_send = target_if_dcs_cmd_send;
 	dcs_tx_ops->dcs_cmd_send_for_vdev = target_if_send_dcs_cmd_for_vdev;
 	dcs_tx_ops->dcs_vdev_support = target_if_vdev_level_dcs_is_supported;
+	dcs_tx_ops->dcs_two_vdev_support = target_if_two_vdev_dcs_is_supported;
 
 	return QDF_STATUS_SUCCESS;
 }
-

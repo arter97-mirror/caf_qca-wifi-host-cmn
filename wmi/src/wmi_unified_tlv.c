@@ -10083,6 +10083,9 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	if (tgt_res_cfg->direct_refill_ring_support)
 		WMI_RSRC_CFG_HOST_SERVICE_FLAG_DIRECT_REFILL_SUPPORT_SET(
 				resource_cfg->host_service_flags, 1);
+	if (tgt_res_cfg->conc_2vdev_dcs_stats_support)
+		WMI_RSRC_CFG_DCS_STATS_FOR_2VDEVS_ENABLE_SET(
+				resource_cfg->host_service_flags, 1);
 }
 
 #ifdef FEATURE_SET
@@ -24616,6 +24619,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_DCS_OBSS_INT_SUPPORT;
 	wmi_service[wmi_service_vdev_dcs_stats_support] =
 				WMI_SERVICE_VDEV_DCS_STATS_SUPPORT;
+	wmi_service[wmi_service_conc_2vdev_dcs_stats_support] =
+				WMI_SERVICE_CONC_2VDEV_DCS_STATS_SUPPORT;
 	wmi_service[wmi_service_smem_mailbox_dlkm_support] =
 			WMI_SERVICE_SMEM_MAILBOX_SUPPORT;
 	wmi_service[wmi_service_mlo_mode2_recovery_supported] =
