@@ -2289,6 +2289,9 @@ struct wlan_ml_probe_req {
 /* Type */
 #define WLAN_ML_CTRL_TYPE_IDX                                       0
 #define WLAN_ML_CTRL_TYPE_BITS                                      3
+/* Reserved field */
+#define WLAN_ML_CTRL_RESERVED_BIT_IDX                               3
+#define WLAN_ML_CTRL_RESERVED_BIT_BITS                              1
 /* Presence Bitmap */
 #define WLAN_ML_CTRL_PBM_IDX                                        4
 #define WLAN_ML_CTRL_PBM_BITS                                       12
@@ -2416,7 +2419,9 @@ enum wlan_ml_linfo_subelementid {
 /* Transition Timeout */
 #define WLAN_ML_BV_CINFO_EMLCAP_TRANSTIMEOUT_IDX                    11
 #define WLAN_ML_BV_CINFO_EMLCAP_TRANSTIMEOUT_BITS                   4
-
+/* Reserved field */
+#define WLAN_ML_BV_CINFO_EMLCAP_RESERVED_BIT_IDX                    15
+#define WLAN_ML_BV_CINFO_EMLCAP_RESERVED_BIT_BITS                   1
 /**
  * enum wlan_ml_bv_cinfo_emlcap_emlsr_padding_delay - Encoding for EMLSR Padding
  * Delay sub field in EML Capabilities subfield in Basic variant Multi-Link
@@ -2561,6 +2566,9 @@ enum wlan_ml_bv_cinfo_emlcap_transtimeout {
 /* Link Reconfig Support */
 #define WLAN_ML_BV_CINFO_MLDCAPANDOP_LINK_RECONFIG_IDX                   13
 #define WLAN_ML_BV_CINFO_MLDCAPANDOP_LINK_RECONFIG_BITS                  1
+/* Reserved field */
+#define WLAN_ML_BV_CINFO_MLDCAPANDOP_RESERVED_BIT_IDX                    15
+#define WLAN_ML_BV_CINFO_MLDCAPANDOP_RESERVED_BIT_BITS                   1
 
 /* Size in octets of MLD ID subfield in Basic variant Multi-Link
  * element Common Info field.
@@ -2588,6 +2596,9 @@ enum wlan_ml_bv_cinfo_emlcap_transtimeout {
 /* BTM MLD Recommendation For Multiple APs Support */
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_IDX        7
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_BTM_MLD_RECOM_MULTI_AP_BITS       1
+/* Reserved field */
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RESERVED_BIT_IDX                  8
+#define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RESERVED_BIT_BITS                 8
 
 /* Max value in octets of Common Info Length subfield of Common Info field in
  * Basic variant Multi-Link element
@@ -2667,6 +2678,9 @@ struct wlan_ml_bv_linfo_perstaprof {
 /* BSS Parameters Change Count Present */
 #define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_BSSPARAMCHNGCNTP_IDX    11
 #define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_BSSPARAMCHNGCNTP_BITS   1
+/* Reserved field */
+#define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_IDX        12
+#define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_BITS       4
 
 /* Definitions for subfields in STA Info field of Per-STA Profile subelement
  * in Basic variant Multi-Link element Link Info field.
@@ -2771,6 +2785,9 @@ struct wlan_ml_prv_linfo_perstaprof {
 /* Complete Profile */
 #define WLAN_ML_PRV_LINFO_PERSTAPROF_STACTRL_CMPLTPROF_IDX           4
 #define WLAN_ML_PRV_LINFO_PERSTAPROF_STACTRL_CMPLTPROF_BITS          1
+/* Reserved field */
+#define WLAN_ML_PRV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_IDX        5
+#define WLAN_ML_PRV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_BITS       11
 
 /* Definitions for bits in the Presence Bitmap subfield in Probe Req variant
  * Multi-Link element Control field. Any unused bits are reserved.
