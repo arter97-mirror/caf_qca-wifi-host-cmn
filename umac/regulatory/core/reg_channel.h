@@ -449,4 +449,25 @@ bool
 reg_is_freq_txable(struct wlan_objmgr_pdev *pdev,
 		   qdf_freq_t freq,
 		   enum supported_6g_pwr_types in_6ghz_pwr_mode);
+
+/**
+ * reg_is_4dot9G_freq_rate_supported() - Check if a frequency supports a given rate
+ * @pdev: Pointer to the radio object
+ * @freq: Frequency in MHz to be checked
+ * @rate: Requested bandwidth (e.g., 5, 10, or 20 MHz)
+ *
+ * This function verifies whether the specified frequency supports the requested
+ * scan rate by checking the minimum and maximum bandwidth capabilities of the
+ * channel corresponding to the frequency. It uses the regulatory channel list
+ * associated with the pdev to determine support.
+ *
+ * Context: Any context. Caller must ensure @pdev is valid.
+ *
+ * Return:
+ * * true  - Frequency supports the requested scan rate
+ * * false - Frequency does not support the requested scan rate
+ */
+
+bool reg_is_4dot9G_freq_rate_supported(struct wlan_objmgr_pdev *pdev,
+		                qdf_freq_t freq, uint8_t rate);
 #endif /* __REG_CHANNEL_H_ */
