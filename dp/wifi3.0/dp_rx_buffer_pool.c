@@ -600,6 +600,18 @@ dp_rx_pp_prealloc_get(struct dp_soc *soc, size_t *pp_size,
 	    pool_t->page_size == *page_size)
 		return pool_t->pp;
 
+	/*
+	 * Since the prealloc entry has already been marked as in_use,
+	 * return this entry back to prealloc, since this won't be used due to
+	 * size mismatch in pool_size
+	 */
+	if (pool_t && pool_t->pp && soc->cdp_soc.ol_ops->dp_put_page_pool) {
+		dp_info("return: pool size mismatch req_size %lu got_size %lu",
+			*pp_size, pool_t->pp_size);
+		soc->cdp_soc.ol_ops->dp_put_page_pool(pool_t->pp,
+						      QDF_DP_PAGE_POOL_RX);
+	}
+
 	return NULL;
 }
 
@@ -851,6 +863,7 @@ __dp_rx_page_pool_create(struct dp_soc *soc, uint32_t pool_size,
 	size_t bufs_per_page;
 	QDF_STATUS status;
 
+	*prealloc = 0;
 	*page_size = DP_PP_PAGE_SIZE_HIGHER_ORDER;
 alloc_page_pool:
 	bufs_per_page = *page_size / buf_size;
