@@ -1171,6 +1171,14 @@
  *     a specific feature enablement based on the OUI data and capabilities of
  *     the AP. The attributes used with this command are defined in
  *     enum qca_wlan_vendor_attr_feature_config.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_DCS_CONFIG: Vendor subcommand used to get or set
+ *     DCS (Dynamic Channel Selection) configuration parameters. This enables or
+ *     disables different types of interference mitigation. DCS monitors
+ *     wireless channels for periodic interference events, typically one event
+ *     per second, and automatically switches to a cleaner channel when
+ *     necessary. The attributes used with this command are defined in
+ *     enum qca_wlan_vendor_attr_dcs.
  */
 
 enum qca_nl80211_vendor_subcmds {
@@ -1460,6 +1468,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_P2P_SET_NOA = 261,
 	QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE = 264,
 	QCA_NL80211_VENDOR_SUBCMD_FEATURE_CONFIG = 266,
+	QCA_NL80211_VENDOR_SUBCMD_DCS_CONFIG = 269,
 };
 
 enum qca_wlan_vendor_tos {
@@ -21369,5 +21378,91 @@ enum qca_wlan_vendor_attr_p2p_set_noa {
 	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_MAX =
 	QCA_WLAN_VENDOR_ATTR_P2P_SET_NOA_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_dcs - Attributes used by
+ * %QCA_NL80211_VENDOR_SUBCMD_DCS_CONFIG.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_LINK_ID: 8-bit unsigned value for link ID.
+ * Specifies which link to set/get in a multi-link setup.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_CMD_TYPE: 8-bit unsigned value for DCS
+ * command type
+ *	0: GET – Retrieve the current DCS configuration.
+ *	   User must provide QCA_WLAN_VENDOR_ATTR_DCS_CMD_TYPE.
+ *	   QCA_WLAN_VENDOR_ATTR_DCS_LINK_ID is also required in multi-link SAP
+ *	   scenarios.
+ *	   Host will return the following attributes:
+ *		QCA_WLAN_VENDOR_ATTR_DCS_ENABLE
+ *		QCA_WLAN_VENDOR_ATTR_DCS_INTERFERENCE_DETECTION_THRESHOLD
+ *		QCA_WLAN_VENDOR_ATTR_DCS_PHY_ERR_PENALTY
+ *		QCA_WLAN_VENDOR_ATTR_DCS_PHY_ERR_THRESHOLD
+ *		QCA_WLAN_VENDOR_ATTR_DCS_RADAR_ERR_THRESHOLD
+ *		QCA_WLAN_VENDOR_ATTR_DCS_TX_ERR_THRESHOLD
+ *		QCA_WLAN_VENDOR_ATTR_DCS_INTERFERENCE_DETECTION_WINDOW
+ *		QCA_WLAN_VENDOR_ATTR_DCS_COCHANNEL_INTERFERENCE_THRESHOLD
+ *		QCA_WLAN_VENDOR_ATTR_DCS_MAX_CU
+ *	1: SET – Update the DCS configuration.
+ *	   User must provide QCA_WLAN_VENDOR_ATTR_DCS_CMD_TYPE.
+ *	   QCA_WLAN_VENDOR_ATTR_DCS_LINK_ID is also required in multi-link SAP
+ *	   scenarios.
+ *	   One or more of the above attributes must be included with new
+ *	   values to apply the configuration update.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_ENABLE: 16-bit bitmap to set/get
+ * enable/disable DCS
+ *	bit 0: Enable Continuous Wave Interference Management(CW IM)
+ *	bit 1: Enable WLAN Interference Mitigation(WLAN IM)
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_INTERFERENCE_DETECTION_THRESHOLD: 32-bit
+ * unsigned value to set/get interference detection threshold. This
+ * attribute specifies the threshold for detecting interference that
+ * triggers DCS channel change.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_PHY_ERR_PENALTY: 32-bit unsigned value to
+ * set/get the PHY error penalty. This value specifies the amount of
+ * channel time penalized for each PHY error detected.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_PHY_ERR_THRESHOLD: 32-bit unsigned value
+ * to set/get the PHY error count threshold.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_RADAR_ERR_THRESHOLD: 32-bit unsigned
+ * value to set/get radar error count threshold.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_TX_ERR_THRESHOLD: 32-bit unsigned value
+ * to set/get TX error count threshold.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_INTERFERENCE_DETECTION_WINDOW: 32-bit
+ * unsigned value to set/get the interference detection sampling
+ * window. The unit is a beacon interval.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_COCHANNEL_INTERFERENCE_THRESHOLD: 8-bit
+ * unsigned value to set/get the co-channel interference threshold
+ * level, interpreted as a percentage (0-100).
+ *
+ * @QCA_WLAN_VENDOR_ATTR_DCS_MAX_CU: 8-bit unsigned value to set/get
+ * the maximum channel utilization percentage allowed. If the combined
+ * TX and RX channel utilization exceeds this threshold, DCS may
+ * trigger a channel change.
+ */
+enum qca_wlan_vendor_attr_dcs {
+	QCA_WLAN_VENDOR_ATTR_DCS_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_DCS_LINK_ID,
+	QCA_WLAN_VENDOR_ATTR_DCS_CMD_TYPE,
+	QCA_WLAN_VENDOR_ATTR_DCS_ENABLE,
+	QCA_WLAN_VENDOR_ATTR_DCS_INTERFERENCE_DETECTION_THRESHOLD,
+	QCA_WLAN_VENDOR_ATTR_DCS_PHY_ERR_PENALTY,
+	QCA_WLAN_VENDOR_ATTR_DCS_PHY_ERR_THRESHOLD,
+	QCA_WLAN_VENDOR_ATTR_DCS_RADAR_ERR_THRESHOLD,
+	QCA_WLAN_VENDOR_ATTR_DCS_TX_ERR_THRESHOLD,
+	QCA_WLAN_VENDOR_ATTR_DCS_INTERFERENCE_DETECTION_WINDOW,
+	QCA_WLAN_VENDOR_ATTR_DCS_COCHANNEL_INTERFERENCE_THRESHOLD,
+	QCA_WLAN_VENDOR_ATTR_DCS_MAX_CU,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_DCS_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_DCS_MAX =
+	QCA_WLAN_VENDOR_ATTR_DCS_AFTER_LAST - 1
 };
 #endif
