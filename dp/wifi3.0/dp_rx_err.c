@@ -1538,8 +1538,10 @@ void dp_rx_process_mic_error(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	struct cdp_rx_mic_err_info mic_failure_info;
 
 	if (!hal_rx_msdu_end_first_msdu_get(soc->hal_soc,
-					    rx_tlv_hdr))
-		return;
+					    rx_tlv_hdr)) {
+		dp_info_rl("first msdu is false");
+		goto fail;
+	}
 
 	if (!txrx_peer) {
 		dp_info_rl("txrx_peer not found");
