@@ -1057,10 +1057,27 @@ static void scs_api_qca_nl_cb(char *ifname, uint32_t cmdid, uint8_t *data,
 
 static struct nl_ctxt *scs_api_nl_init(void)
 {
+	int ret;
+
 	g_nl_ctxt.cfg80211_ctxt.event_callback = scs_api_qca_nl_cb;
 
-	wifi_init_nl80211(&g_nl_ctxt.cfg80211_ctxt);
-	wifi_nl80211_start_event_thread(&g_nl_ctxt.cfg80211_ctxt);
+	ret = wifi_init_nl80211(&g_nl_ctxt.cfg80211_ctxt);
+	if (ret) {
+		printf("scs_api: NL init failed, cmd_sock = %p, event_sock = %p, "
+		       "family_id = %d, ret = %d\n",
+		       (void*)g_nl_ctxt.cfg80211_ctxt.cmd_sock,
+		       (void*)g_nl_ctxt.cfg80211_ctxt.event_sock,
+		       g_nl_ctxt.cfg80211_ctxt.nl80211_family_id, ret);
+		return NULL;
+	}
+
+	ret = wifi_nl80211_start_event_thread(&g_nl_ctxt.cfg80211_ctxt);
+	if (ret) {
+		 printf("scs_api: setup nl80211 event thread failed, ret = %d\n",
+		        ret);
+		 wifi_destroy_nl80211(&g_nl_ctxt.cfg80211_ctxt);
+		 return NULL;
+	}
 
 	return &g_nl_ctxt;
 }
@@ -1145,7 +1162,7 @@ int main(int argc, char *argv[])
 
 	nl_ctxt = scs_api_nl_init();
 	if (!nl_ctxt) {
-		printf("Unable to create NL receive context");
+		printf("scs_api: Unable to create NL receive context\n");
 		goto fail;
 	}
 
