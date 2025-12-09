@@ -553,43 +553,6 @@ refill_opt_dp_ctrl:
 					continue;
 				}
 			}
-			if (qdf_unlikely(txrx_peer &&
-					 (txrx_peer->nawds_enabled) &&
-					 (qdf_nbuf_is_da_mcbc(nbuf)) &&
-					 (hal_rx_get_mpdu_mac_ad4_valid_be
-						(rx_tlv_hdr) == false))) {
-				tid_stats->fail_cnt[NAWDS_MCAST_DROP]++;
-				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-							  rx.nawds_mcast_drop,
-							  1, link_id);
-				dp_verbose_debug("drop nawds");
-				dp_rx_nbuf_free(nbuf);
-				nbuf = next;
-				continue;
-			}
-
-			/* Update the protocol tag in SKB based on CCE metadata
-			 */
-			dp_rx_update_protocol_tag(soc, vdev, nbuf, rx_tlv_hdr,
-						  reo_ring_num, false, true);
-
-			if (qdf_unlikely(vdev->mesh_vdev)) {
-				if (dp_rx_filter_mesh_packets(vdev, nbuf,
-							      rx_tlv_hdr)
-						== QDF_STATUS_SUCCESS) {
-					dp_rx_info("%pK: mesh pkt filtered",
-						   soc);
-					tid_stats->fail_cnt[MESH_FILTER_DROP]++;
-					DP_STATS_INC(vdev->pdev,
-						     dropped.mesh_filter, 1);
-
-					dp_rx_nbuf_free(nbuf);
-					nbuf = next;
-					continue;
-				}
-				dp_rx_fill_mesh_stats(vdev, nbuf, rx_tlv_hdr,
-						      txrx_peer);
-			}
 		}
 
 		if (qdf_likely(vdev->rx_decap_type ==
@@ -1273,8 +1236,6 @@ process_rxdma_err:
 		default:
 			dp_err("Non expected RXDMA status %d, error code %d",
 			       rxdma_err_status, rxdma_error_code);
-			/* Assert if unexpected error type */
-			qdf_assert_always(0);
 			count = dp_rx_msdus_drop(soc, ring_desc,
 						 &mpdu_desc_info,
 						 &mac_id, false);
