@@ -172,12 +172,28 @@ struct mlo_link_switch_stats {
 };
 
 /**
+ * struct mlo_vdev_connect_params_cache - Cache for connection parameters
+ * during link switch
+ * @peer_create: Cached peer creation parameters
+ * @vdev_start: Cached VDEV start parameters
+ * @peer_assoc: Cached peer assoc parameters
+ * @vdev_up: Cached vdev up parameters
+ */
+struct mlo_vdev_connect_params_cache {
+	struct peer_create_params *peer_create;
+	struct vdev_start_params *vdev_start;
+	struct peer_assoc_params *peer_assoc;
+	struct vdev_up_params *vdev_up;
+};
+
+/**
  * struct mlo_link_switch_context - Link switch data structure.
  * @links_info: Hold information regarding all the links of ml connection
  * @last_req: Last link switch request received from FW
  * @lswitch_stats: History of the link switch stats
  *                 Includes both fail and success stats.
  * @link_rej_req: Link reject request info
+ * @connect_params: Cache for connection parameters during link switch
  */
 struct mlo_link_switch_context {
 	struct mlo_link_info links_info[WLAN_MAX_ML_BSS_LINKS];
@@ -186,6 +202,7 @@ struct mlo_link_switch_context {
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 	struct wlan_mlo_link_reject_req link_rej_req;
 #endif
+	struct mlo_vdev_connect_params_cache connect_params;
 };
 
 /**

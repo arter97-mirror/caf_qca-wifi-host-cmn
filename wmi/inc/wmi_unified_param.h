@@ -1742,6 +1742,22 @@ struct peer_assoc_params {
 };
 
 /**
+ * struct vdev_unified_connect_param - Combined vdev/peer connection parameters
+ * @peer_create: Peer creation parameters
+ * @vdev_start: VDEV start parameters
+ * @peer_assoc: Peer association parameters
+ * @vdev_up: VDEV up parameters
+ *
+ * This structure aggregates the primary params used for vdev connect flows.
+ */
+struct vdev_unified_connect_param {
+	struct peer_create_params peer_create;
+	struct vdev_start_params vdev_start;
+	struct peer_assoc_params peer_assoc;
+	struct vdev_up_params vdev_up;
+};
+
+/**
  * struct ap_ps_params - ap ps cmd parameter
  * @vdev_id: vdev id
  * @param: ap ps parameter
