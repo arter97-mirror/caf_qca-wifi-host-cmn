@@ -1382,4 +1382,16 @@ struct rnr_chan_weight {
 	uint32_t chan_freq;
 	uint32_t weight;
 };
+
+/**
+ * trim_channel_list - which channel list need trim
+ * @TRIM_CHANNEL_LIST_NONE: no channel need trim
+ * @TRIM_CHANNEL_LIST_5G: 5G channel need trim
+ * @TRIM_CHANNEL_LIST_24G: 2.4G channel need trim
+ */
+enum trim_channel_list {
+	TRIM_CHANNEL_LIST_NONE,
+	TRIM_CHANNEL_LIST_5G,
+	TRIM_CHANNEL_LIST_24G,
+};
 #endif
