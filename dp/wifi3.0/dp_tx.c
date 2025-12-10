@@ -181,6 +181,89 @@ static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
 }
 
 /**
+ * dp_tx_page_pool_alloc_from_pool() - Allocate nbuf from specific pool
+ * @pp_params: Pool parameters
+ * @osdev: OS device handle
+ * @size: Size of buffer to allocate
+ * @offset: Pointer to store offset (output parameter)
+ *
+ * Helper function to allocate nbuf from a specific page pool.
+ * Extracted to eliminate goto and improve code clarity.
+ *
+ * Return: Allocated nbuf on success, NULL on failure
+ */
+static inline qdf_nbuf_t
+dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
+				qdf_device_t osdev,
+				size_t size,
+				uint32_t *offset)
+{
+	return qdf_nbuf_page_pool_alloc(osdev, size, 0, 0,
+					pp_params->pp, offset);
+}
+
+/**
+ * dp_tx_page_pool_alloc_nbuf() - Allocate nbuf from specific pool
+ * @tx_pp: TX page pool handle
+ * @osdev: OS device handle
+ * @size: Size of buffer to allocate
+ * @offset: Pointer to store offset (output parameter)
+ *
+ * Helper function to select and allocated from page pool
+ *
+ * Return: Allocated nbuf on success, NULL on failure
+ */
+static inline qdf_nbuf_t
+dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
+			   size_t size, uint32_t *offset)
+{
+	struct dp_tx_pp_params *pp_params;
+	qdf_nbuf_t nbuf = NULL;
+
+	*offset = 0;
+
+	pp_params = &tx_pp->tx_pool;
+	if (qdf_likely(pp_params->pp &&
+		       !qdf_page_pool_empty(pp_params->pp))) {
+		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
+						       size, offset);
+		return nbuf;
+	}
+
+	return NULL;
+}
+
+/**
+ * dp_tx_page_pool_nbuf_alloc_map() - Allocate and set nbuf paddr
+ * @tx_pp: TX page pool handle
+ * @osdev: OS device handle
+ * @size: Size of buffer to allocate
+ *
+ * Allocates nbuf from page pool and sets nbuff CB paddr.
+ *
+ *
+ * Return: Allocated nbuf on success, NULL on failure
+ */
+static inline qdf_nbuf_t
+dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
+			       qdf_device_t osdev, size_t size)
+{
+	qdf_nbuf_t nbuf;
+	qdf_page_t page;
+	uint32_t offset;
+
+	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, osdev, size, &offset);
+	if (!nbuf)
+		return NULL;
+
+	page = qdf_virt_to_head_page(qdf_nbuf_data(nbuf));
+	QDF_NBUF_CB_PADDR(nbuf) = qdf_page_pool_get_dma_addr(page) + offset +
+				 qdf_nbuf_headroom(nbuf);
+
+	return nbuf;
+}
+
+/**
  * dp_tx_page_pool_handle_nbuf_single() - Copy nbuf into page pool buffer
  * @vdev: DP vdev handle
  * @nbuf: skb
@@ -197,7 +280,6 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 {
 	struct dp_soc *soc = vdev->pdev->soc;
 	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
-	qdf_page_pool_t pp;
 	qdf_nbuf_t pp_nbuf;
 	qdf_page_t page;
 	uint32_t offset;
@@ -256,15 +338,11 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	pp = tx_pp->tx_pool.pp;
-	if (pp && !qdf_page_pool_empty(pp)) {
-		pp_nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, size, 0, 0, pp,
-						   &offset);
-		if (qdf_likely(pp_nbuf)) {
-			tx_pp->alloc_success++;
-			qdf_spin_unlock_bh(&tx_pp->pp_lock);
-			goto copy_data;
-		}
+	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc->osdev, size, &offset);
+	if (qdf_likely(pp_nbuf)) {
+		tx_pp->alloc_success++;
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+		goto copy_data;
 	}
 
 	/* Fallback to direct allocation */
@@ -5191,7 +5269,7 @@ static QDF_STATUS
 dp_tx_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 			       qdf_nbuf_t nbuf,
 			       qdf_nbuf_t *head_nbuf,
-			       qdf_page_pool_t tx_pp)
+			       struct dp_tx_page_pool *tx_pp)
 {
 	qdf_nbuf_t tail_nbuf = NULL;
 	qdf_nbuf_t new_nbuf;
@@ -5238,9 +5316,10 @@ dp_tx_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 	while (num_seg) {
 		more_frags = 1;
 		copied_len = 0;
-		new_nbuf = qdf_tx_page_pool_nbuf_alloc_map(osdev, tx_pp,
-							   ori_gso_size +
+		new_nbuf = dp_tx_page_pool_nbuf_alloc_map(tx_pp, osdev,
+							  ori_gso_size +
 							  eit_hdr_len);
+
 		if (!new_nbuf)
 			new_nbuf = qdf_nbuf_alloc_simple(osdev,
 							 ori_gso_size +
@@ -5416,7 +5495,7 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		qdf_spin_lock_bh(&tx_pp->pp_lock);
 		status = dp_tx_sw_tso_prepare_nbuf_list(soc->osdev,
 							nbuf, &buff,
-							tx_pp->tx_pool.pp);
+							tx_pp);
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	} else {
 		status = dp_tx_sw_tso_prepare_nbuf_list(soc->osdev,
