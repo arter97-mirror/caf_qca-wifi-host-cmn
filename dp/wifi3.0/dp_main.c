@@ -15595,6 +15595,20 @@ void dp_soc_init_tx_ilp(struct dp_soc *soc)
 }
 #endif
 
+#ifdef DP_FEATURE_TX_PAGE_POOL
+static inline void
+dp_soc_set_dynamic_pool_enable(struct dp_soc *soc)
+{
+	soc->tx_dyn_pool_en =
+		wlan_cfg_get_tx_dynamic_pp_enabled(soc->ctrl_psoc);
+}
+#else
+static inline void
+dp_soc_set_dynamic_pool_enable(struct dp_soc *soc)
+{
+}
+#endif
+
 /**
  * dp_soc_attach() - Attach txrx SOC
  * @ctrl_psoc: Opaque SOC handle from control plane
@@ -15763,6 +15777,7 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 		dp_init_err("%pK: failed to attach DAL soc", soc);
 		goto fail10;
 	}
+	dp_soc_set_dynamic_pool_enable(soc);
 
 	dp_info("Mem stats: DMA = %u HEAP = %u SKB = %u",
 		qdf_dma_mem_stats_read(),
