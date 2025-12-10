@@ -3045,7 +3045,7 @@ cm_update_bss_score_for_mac_addr_matching(struct scan_cache_node *scan_entry,
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
-void cm_print_candidate_list(qdf_list_t *candidate_list)
+void cm_print_candidate_list(qdf_list_t *candidate_list, bool print_updated)
 {
 	struct scan_cache_node *scan_entry = NULL;
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
@@ -3063,7 +3063,8 @@ void cm_print_candidate_list(qdf_list_t *candidate_list)
 	}
 
 	scan_entry = qdf_container_of(cur_node, struct scan_cache_node, node);
-	mlme_nofl_debug("Sorted candidate list for SSID: "QDF_SSID_FMT,
+	mlme_nofl_debug("%s Sorted candidate list for SSID: "QDF_SSID_FMT,
+			print_updated ? "New updated" : "",
 			QDF_SSID_REF(scan_entry->entry->ssid.length,
 			scan_entry->entry->ssid.ssid));
 	while (cur_node) {
@@ -3735,7 +3736,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 				 struct pcl_freq_weight_list *pcl_lst,
 				 qdf_list_t *scan_list,
 				 struct scan_filter *filter,
-				 struct qdf_mac_addr *self_mac, bool allow_scan)
+				 struct qdf_mac_addr *self_mac, uint32_t flag)
 {
 	struct scan_cache_node *scan_entry;
 	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
@@ -3777,7 +3778,9 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 			config->bw_above_20_5ghz, config->vdev_nss_24g,
 			config->vdev_nss_5g);
 
-	cm_mlo_generate_candidate_list(pdev, scan_list, filter, allow_scan);
+	cm_mlo_generate_candidate_list(pdev, scan_list, filter,
+				       QDF_HAS_PARAM(flag,
+						     CM_SCAN_SSID_ALLOWED));
 
 	/* calculate score for each AP */
 	if (qdf_list_peek_front(scan_list, &cur_node) != QDF_STATUS_SUCCESS) {
@@ -3934,7 +3937,9 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 
 	cm_eliminate_invalid_candidate(psoc, scan_list);
 
-	cm_print_candidate_list(scan_list);
+	/* Print only if fresh candidate is requested */
+	if (!QDF_HAS_PARAM(flag, CM_UPDATE_CANDIDATE_REQ))
+		cm_print_candidate_list(scan_list, false);
 }
 
 #if defined(WLAN_FEATURE_11BE_MLO_ADV_FEATURE) && defined(FEATURE_DENYLIST_MGR)

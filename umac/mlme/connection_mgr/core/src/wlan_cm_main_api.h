@@ -50,6 +50,13 @@
 #define CM_PREFIX_FMT "vdev %d cm_id 0x%x: "
 #define CM_PREFIX_REF(vdev_id, cm_id) (vdev_id), (cm_id)
 
+
+/* Get candidate flags */
+/* Is scan for ssid is not done for this connection */
+#define CM_SCAN_SSID_ALLOWED 0
+/* Call is from update candidate list */
+#define CM_UPDATE_CANDIDATE_REQ 1
+
 /*************** CONNECT APIs ****************/
 
 /**
@@ -1364,13 +1371,13 @@ cm_update_scan_mlme_on_disconnect(struct wlan_objmgr_vdev *vdev,
  * @pdev: Object manager pdev
  * @filter: Scan filter params
  * @list: List of candidates to be scored
- * @allow_scan: Is scan allowed
+ * @flag: get candidate flag passed
  *
  * Return: void
  */
 void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 			 struct scan_filter *filter, qdf_list_t *list,
-			 bool allow_scan);
+			 uint32_t flag);
 
 /**
  * cm_req_lock_acquire() - Acquire connection manager request lock

@@ -2052,7 +2052,7 @@ static void cm_update_scoring_nss_for_vdev(struct cnx_mgr *cm_ctx)
 
 void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 			 struct scan_filter *filter, qdf_list_t *list,
-			 bool allow_scan)
+			 uint32_t flag)
 {
 	struct pcl_freq_weight_list *pcl_lst = NULL;
 
@@ -2070,7 +2070,7 @@ void cm_calculate_scores(struct cnx_mgr *cm_ctx, struct wlan_objmgr_pdev *pdev,
 	wlan_cm_calculate_bss_score(pdev, pcl_lst, list, filter,
 				    (struct qdf_mac_addr *)
 				    wlan_vdev_mlme_get_macaddr(cm_ctx->vdev),
-				    allow_scan);
+				    flag);
 	if (pcl_lst)
 		qdf_mem_free(pcl_lst);
 }

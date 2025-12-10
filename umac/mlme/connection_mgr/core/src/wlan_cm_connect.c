@@ -1525,7 +1525,8 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 			    struct cnx_mgr *cm_ctx,
 			    struct cm_connect_req *cm_req,
 			    qdf_list_t **fetched_candidate_list,
-			    uint32_t *num_bss_found)
+			    uint32_t *num_bss_found,
+			    bool update_list_req)
 {
 	struct scan_filter *filter;
 	uint32_t num_bss = 0;
@@ -1534,6 +1535,7 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 	bool security_valid_for_6ghz;
 	const uint8_t *rsnxe;
+	uint32_t flag = 0;
 
 	rsnxe = wlan_get_rsnxe_data_from_ie_ptr(cm_req->req.assoc_ie.ptr,
 						cm_req->req.assoc_ie.len);
@@ -1576,8 +1578,11 @@ cm_connect_fetch_candidates(struct wlan_objmgr_pdev *pdev,
 	op_mode = wlan_vdev_mlme_get_opmode(cm_ctx->vdev);
 	if (num_bss && op_mode == QDF_STA_MODE &&
 	    !cm_req->req.is_non_assoc_link) {
-		cm_calculate_scores(cm_ctx, pdev, filter, candidate_list,
-				    !cm_req->scan_id);
+		if (!cm_req->scan_id)
+			QDF_SET_PARAM(flag, CM_SCAN_SSID_ALLOWED);
+		if (update_list_req)
+			QDF_SET_PARAM(flag, CM_UPDATE_CANDIDATE_REQ);
+		cm_calculate_scores(cm_ctx, pdev, filter, candidate_list, flag);
 		cm_prepare_scan_params_for_nontx(pdev, candidate_list, cm_req);
 	}
 	qdf_mem_free(filter);
@@ -1602,7 +1607,7 @@ static QDF_STATUS cm_connect_get_candidates(struct wlan_objmgr_pdev *pdev,
 	QDF_STATUS status;
 
 	status = cm_connect_fetch_candidates(pdev, cm_ctx, cm_req,
-					     &candidate_list, &num_bss);
+					     &candidate_list, &num_bss, false);
 	if (QDF_IS_STATUS_ERROR(status) ||
 	    (!cm_req->scan_id && cm_is_nontx_scan_params_valid(cm_req))) {
 		if (candidate_list)
@@ -1671,7 +1676,7 @@ static void cm_update_candidate_list(struct cnx_mgr *cm_ctx,
 	}
 
 	status = cm_connect_fetch_candidates(pdev, cm_ctx, cm_req,
-					     &candidate_list, &num_bss);
+					     &candidate_list, &num_bss, true);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlme_debug(CM_PREFIX_FMT "failed to fetch bss: %d",
 			   CM_PREFIX_REF(vdev_id, cm_req->cm_id), num_bss);
@@ -2238,12 +2243,11 @@ static QDF_STATUS cm_get_valid_candidate(struct cnx_mgr *cm_ctx,
 					cm_req->connect_req.candidate_list,
 					&prev_candidate->node,
 					&dlm_canidate_list_updated);
-		if (dlm_canidate_list_updated || canidate_list_updated) {
-			mlme_debug(CM_PREFIX_FMT "dump updated candidate list",
-				   CM_PREFIX_REF(vdev_id, cm_req->cm_id));
+		if (dlm_canidate_list_updated || canidate_list_updated)
 			cm_print_candidate_list(
-					cm_req->connect_req.candidate_list);
-		}
+					cm_req->connect_req.candidate_list,
+					true);
+
 		qdf_list_peek_next(cm_req->connect_req.candidate_list,
 				   &prev_candidate->node, &cur_node);
 	} else {

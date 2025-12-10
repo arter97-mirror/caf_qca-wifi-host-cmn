@@ -333,7 +333,7 @@ wlan_denylist_action_on_bssid(struct wlan_objmgr_pdev *pdev,
  *             func it will have sorted list
  * @filter: scan filter params
  * @self_mac: connecting vdev self mac address
- * @allow_scan: Is scan allowed for this connection
+ * @flag: get candidate flag passed
  *
  * Return: void
  */
@@ -342,7 +342,7 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 				 qdf_list_t *scan_list,
 				 struct scan_filter *filter,
 				 struct qdf_mac_addr *self_mac,
-				 bool allow_scan);
+				 uint32_t flag);
 
 #if defined(WLAN_FEATURE_11BE_MLO_ADV_FEATURE) && defined(FEATURE_DENYLIST_MGR)
 /**
@@ -411,12 +411,14 @@ wlan_cm_is_eht_allowed_for_current_security(struct wlan_objmgr_psoc *psoc,
 /**
  * cm_print_candidate_list() - print candidate list
  * @candidate_list: candidate list
+ * @print_updated: print candidates as updated list
  *
  * Return: None
  */
-void cm_print_candidate_list(qdf_list_t *candidate_list);
+void cm_print_candidate_list(qdf_list_t *candidate_list, bool print_updated);
 #else
-static inline void cm_print_candidate_list(qdf_list_t *candidate_list)
+static inline
+void cm_print_candidate_list(qdf_list_t *candidate_list, bool print_updated)
 {
 }
 #endif
