@@ -122,7 +122,8 @@
 
 #define CM_BEST_CANDIDATE_MAX_BSS_SCORE (CM_BEST_CANDIDATE_MAX_WEIGHT * 100)
 #define CM_AVOID_CANDIDATE_NON_ML_MIN_SCORE 1
-#define CM_AVOID_CANDIDATE_ML_MIN_SCORE 2
+#define CM_AVOID_CANDIDATE_NON_ML_EHT_MIN_SCORE 2
+#define CM_AVOID_CANDIDATE_ML_MIN_SCORE 3
 
 #define CM_GET_SCORE_PERCENTAGE(value32, bw_index) \
 	QDF_GET_BITS(value32, (8 * (bw_index)), 8)
@@ -152,18 +153,34 @@ SNR_DB_TO_BIT_PER_TONE_LUT[DB_NUM] = {0, 171, 212, 262, 323, 396, 484,
 
 #ifdef WLAN_FEATURE_11BE_MLO
 static bool
-cm_is_mlo_entry(struct scan_cache_entry *bss1, struct scan_cache_entry *bss2)
+cm_phy_mode_better(struct scan_cache_entry *bss1, struct scan_cache_entry *bss2)
 {
-	if (bss1->ie_list.multi_link_bv &&
-	    !bss2->ie_list.multi_link_bv)
+	/* Check if bss1 has MLO IE and greater number of links */
+	if (bss1->ie_list.multi_link_bv && !bss2->ie_list.multi_link_bv) {
 		return true;
-	else
+	} else if (!bss1->ie_list.multi_link_bv &&
+		   bss2->ie_list.multi_link_bv) {
 		return false;
+	} else if (bss1->ie_list.multi_link_bv &&
+		   bss2->ie_list.multi_link_bv) {
+		if (bss1->ml_info.num_links > bss2->ml_info.num_links)
+			return true;
+		return false;
+	}
+
+	/* Check if bss1 has better phy mode */
+	if (bss1->phy_mode > bss2->phy_mode)
+		return true;
+
+	return false;
 }
 #else
 static inline bool
-cm_is_mlo_entry(struct scan_cache_entry *bss1, struct scan_cache_entry *bss2)
+cm_phy_mode_better(struct scan_cache_entry *bss1, struct scan_cache_entry *bss2)
 {
+	if (bss1->phy_mode > bss2->phy_mode)
+		return true;
+
 	return false;
 }
 #endif
@@ -176,8 +193,9 @@ bool cm_is_better_bss(struct scan_cache_entry *bss1,
 	else if (bss1->bss_score == bss2->bss_score) {
 		if (bss1->rssi_raw > bss2->rssi_raw)
 			return true;
+		/* If same bssid check for MLO links and phymode */
 		if (qdf_is_macaddr_equal(&bss1->bssid, &bss2->bssid))
-			return cm_is_mlo_entry(bss1, bss2);
+			return cm_phy_mode_better(bss1, bss2);
 	}
 
 	return false;
@@ -616,7 +634,11 @@ static uint32_t cm_get_sta_nss(struct wlan_objmgr_psoc *psoc,
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 static uint32_t wlan_cm_get_min_score(struct scan_cache_entry *entry)
 {
-	if (!entry->ie_list.multi_link_bv)
+	/* Add more score for EHT without ml IE than HE or lower phy_mode */
+	if (IS_WLAN_PHYMODE_EHT(entry->phy_mode) &&
+	    !entry->ie_list.multi_link_bv)
+		return CM_AVOID_CANDIDATE_NON_ML_EHT_MIN_SCORE;
+	else if (!entry->ie_list.multi_link_bv)
 		return CM_AVOID_CANDIDATE_NON_ML_MIN_SCORE;
 	/* Add more weigh for candidate with partner link */
 	return CM_AVOID_CANDIDATE_ML_MIN_SCORE +
@@ -3022,12 +3044,13 @@ void cm_print_candidate_list(qdf_list_t *candidate_list)
 					     QDF_MAC_ADDR_REF(link[i].link_addr.bytes),
 					     link[i].freq, link[i].link_id,
 					     link[i].is_valid_link);
-		mlme_nofl_debug("Candidate(" QDF_MAC_ADDR_FMT " %s freq %d phy %d self_link_id %d): %s bss_score %d ",
+		mlme_nofl_debug("Candidate(" QDF_MAC_ADDR_FMT " %s freq %d phy %d rssi %d self_link_id %d): %s bss_score %d ",
 			       QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
 			       scan_entry->entry->ie_list.multi_link_bv ? "MLO" :
 			       "NON MLO",
 			       scan_entry->entry->channel.chan_freq,
 			       scan_entry->entry->phy_mode,
+			       scan_entry->entry->rssi_raw,
 			       scan_entry->entry->ml_info.self_link_id,
 			       log_str,
 			       scan_entry->entry->bss_score);
