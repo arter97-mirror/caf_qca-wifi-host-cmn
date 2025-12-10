@@ -681,12 +681,128 @@ int dp_tx_delete_flow_pool(struct dp_soc *soc, struct dp_tx_desc_pool_s *pool,
 
 #ifdef DP_FEATURE_TX_PAGE_POOL
 #define DP_TX_PAGE_POOL_SIZE (10 * 1024)
+#define DP_TX_PAGE_POOL_BUFSIZE 2048
+
+/**
+ * dp_tx_page_pool_destroy_idle_pools() - Destroy idle page pools
+ * @tx_pp: TX page pool handle
+ *
+ * Return: None
+ */
+static void
+dp_tx_page_pool_destroy_idle_pools(struct dp_tx_page_pool *tx_pp)
+{
+	struct dp_tx_pp_params *pp_params;
+	int i;
+
+	/* Destroy all idle pools - higher order */
+	for (i = 0; i < tx_pp->idle_pool_ho_cnt; i++) {
+		pp_params = &tx_pp->idle_pool_ho[i];
+		if (pp_params->pp) {
+			qdf_page_pool_destroy(pp_params->pp);
+			dp_nofl_info("TX_PP_DEST Destroyed HO idle pool %d", i);
+		}
+	}
+
+	/* Destroy all idle pools - lower order */
+	for (i = 0; i < tx_pp->idle_pool_lo_cnt; i++) {
+		pp_params = &tx_pp->idle_pool_lo[i];
+		if (pp_params->pp) {
+			qdf_page_pool_destroy(pp_params->pp);
+			dp_nofl_info("TX_PP_DEST Destroyed LO idle pool %d", i);
+		}
+	}
+}
+
+/**
+ * dp_tx_page_pool_create_idle_pools() - Create idle page pools
+ * @soc: DP SoC handle
+ * @tx_pp: TX page pool handle
+ * @pool_size: Total pool size to divide among idle pools
+ *
+ * Creates idle pools for both higher-order and lower-order pages.
+ * Each type gets 5 pools, with pool_size divided equally among them.
+ *
+ * Return: None
+ */
+static void
+dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
+				  struct dp_tx_page_pool *tx_pp,
+				  uint32_t pool_size)
+{
+	struct dp_tx_pp_params *pp_params;
+	qdf_page_pool_t new_pp;
+	uint32_t idle_pool_size = pool_size / MAX_TX_IDLE_POOLS;
+	size_t bufs_per_page;
+	size_t pp_size;
+	int i;
+
+	bufs_per_page = DP_PP_PAGE_SIZE_HIGHER_ORDER / DP_TX_PAGE_POOL_BUFSIZE;
+	pp_size = idle_pool_size / bufs_per_page;
+	if (idle_pool_size % bufs_per_page)
+		pp_size = (pp_size + 1);
+
+	/* Create higher-order idle pools */
+	for (i = 0; i < MAX_TX_IDLE_POOLS; i++) {
+		new_pp = qdf_page_pool_create(soc->osdev,
+					      pp_size,
+					      DP_PP_PAGE_SIZE_HIGHER_ORDER,
+					      QDF_DMA_BIDIRECTIONAL);
+		if (new_pp) {
+			pp_params = &tx_pp->idle_pool_ho[i];
+			pp_params->pp = new_pp;
+			pp_params->pool_size = idle_pool_size;
+			pp_params->page_size = DP_PP_PAGE_SIZE_HIGHER_ORDER;
+			pp_params->pp_size = pp_size;
+			pp_params->is_prealloc = false;
+			tx_pp->idle_pool_ho_cnt++;
+			dp_nofl_info("TX_PP_CR Created higher-order idle pool %d (size %u)",
+				     i, idle_pool_size);
+		} else {
+			dp_err("Failed to create higher-order idle pool %d", i);
+			break;
+		}
+	}
+
+	bufs_per_page = DP_PP_PAGE_SIZE_LOWER_ORDER / DP_TX_PAGE_POOL_BUFSIZE;
+	pp_size = idle_pool_size / bufs_per_page;
+	if (idle_pool_size % bufs_per_page)
+		pp_size = (pp_size + 1);
+
+	/* Create lower-order idle pools */
+	for (i = 0; i < MAX_TX_IDLE_POOLS; i++) {
+		new_pp = qdf_page_pool_create(soc->osdev,
+					      pp_size,
+					      qdf_page_size,
+					      QDF_DMA_BIDIRECTIONAL);
+		if (new_pp) {
+			pp_params = &tx_pp->idle_pool_lo[i];
+			pp_params->pp = new_pp;
+			pp_params->pool_size = idle_pool_size;
+			pp_params->page_size = DP_PP_PAGE_SIZE_LOWER_ORDER;
+			pp_params->pp_size = pp_size;
+			pp_params->is_prealloc = false;
+			tx_pp->idle_pool_lo_cnt++;
+			dp_nofl_info("TX_PP_CR Created lower-order idle pool %d (size %u)",
+				     i, idle_pool_size);
+		} else {
+			dp_err("Failed to create lower-order idle pool %d", i);
+			break;
+		}
+	}
+
+	dp_nofl_info("TX_PP_CR Created %d higher-order and %d lower-order idle pools (size %u each)",
+		     tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt,
+		     idle_pool_size);
+}
 
 static void
 dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 {
 	struct dp_tx_pp_params *pp_params =
 		&tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
+	bool dynamic_pp_enabled =
+		wlan_cfg_get_tx_dynamic_pp_enabled(soc->ctrl_psoc);
 
 	if (!tx_pp->page_pool_init)
 		return;
@@ -703,6 +819,9 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 
 	tx_pp->page_pool_init = false;
 	tx_pp->active_pool_count = 0;
+	/* Destroy idle pools if dynamic page pool is enabled */
+	if (dynamic_pp_enabled)
+		dp_tx_page_pool_destroy_idle_pools(tx_pp);
 	qdf_spinlock_destroy(&tx_pp->pp_lock);
 }
 
@@ -713,6 +832,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	struct dp_tx_pp_params *pp_params =
 		&tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 	struct dp_page_pool_t *pool_t = NULL;
+	bool dynamic_pp_enabled =
+		wlan_cfg_get_tx_dynamic_pp_enabled(soc->ctrl_psoc);
 
 	memset(tx_pp, 0, sizeof(*tx_pp));
 
@@ -736,6 +857,10 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 		pool_t->pool_size,  pool_t->pp_size);
 
 	qdf_spinlock_create(&tx_pp->pp_lock);
+	/* Create idle pools if dynamic page pool is enabled */
+	if (dynamic_pp_enabled)
+		dp_tx_page_pool_create_idle_pools(soc, tx_pp, pool_size);
+
 	qdf_atomic_init(&tx_pp->ref_cnt);
 	tx_pp->page_pool_init = true;
 	tx_pp->active_pool_count = 1;
@@ -822,6 +947,7 @@ static void dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
 	struct dp_soc *soc = pdev->soc;
 	struct dp_tx_page_pool *tx_pp;
 	struct dp_vdev *vdev;
+	bool should_init = false;
 
 	if (!wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx)) {
 		dp_info("Tx page pool disabled from INI");
@@ -843,30 +969,50 @@ static void dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
 	if (soc->tx_pp[vdev_id]) {
 		dp_err("Not expected to have tx_pp attached for a new vdev");
 		qdf_assert_always(0);
-		goto unref_vdev;
+		qdf_spin_unlock_bh(&soc->tx_pp_lock);
+		goto unref_vdev_no_lock;
 	}
 
-	if (dp_tx_page_pool_mlo_vdev_attach(soc, vdev))
-		goto unref_vdev;
+	if (dp_tx_page_pool_mlo_vdev_attach(soc, vdev)) {
+		qdf_spin_unlock_bh(&soc->tx_pp_lock);
+		goto unref_vdev_no_lock;
+	}
+	qdf_spin_unlock_bh(&soc->tx_pp_lock);
 
+	/* Allocate and initialize page pool outside spinlock (can sleep) */
 	tx_pp = qdf_mem_malloc(sizeof(*tx_pp));
 	if (!tx_pp) {
 		dp_err("Failed to allocated memory for tx page pool");
-		goto unref_vdev;
+		goto unref_vdev_no_lock;
 	}
 
+	/* Initialize page pool - this can sleep, so must be outside spinlock */
 	dp_tx_page_pool_init(soc, tx_pp, pool_size);
 	if (!tx_pp->page_pool_init) {
 		dp_err("Unable to init tx page pool for vdev %d", vdev_id);
 		qdf_mem_free(tx_pp);
-		goto unref_vdev;
+		goto unref_vdev_no_lock;
 	}
 
-	soc->tx_pp[vdev_id] = tx_pp;
-	qdf_atomic_inc(&tx_pp->ref_cnt);
-
-unref_vdev:
+	/* Now attach the initialized pool (under lock) */
+	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	if (!soc->tx_pp[vdev_id]) {
+		soc->tx_pp[vdev_id] = tx_pp;
+		qdf_atomic_inc(&tx_pp->ref_cnt);
+		should_init = true;
+	} else {
+		/* Race condition: another thread created pool, clean up ours */
+		dp_err("Race: tx_pp already attached for vdev %d", vdev_id);
+	}
 	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+
+	/* If we lost the race, clean up our pool */
+	if (!should_init) {
+		dp_tx_page_pool_deinit(soc, tx_pp);
+		qdf_mem_free(tx_pp);
+	}
+
+unref_vdev_no_lock:
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 }
 
@@ -880,23 +1026,29 @@ unref_vdev:
 static void dp_tx_page_pool_vdev_detach(struct dp_pdev *pdev, uint8_t vdev_id)
 {
 	struct dp_soc *soc = pdev->soc;
-	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev_id];
+	struct dp_tx_page_pool *tx_pp;
+	bool should_deinit = false;
 
 	if (!wlan_cfg_get_dp_tx_page_pool_enabled(soc->wlan_cfg_ctx))
 		return;
 
 	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	tx_pp = soc->tx_pp[vdev_id];
 	if (!tx_pp || !tx_pp->page_pool_init)
 		goto out_unlock;
 
-	if (!qdf_atomic_dec_and_test(&tx_pp->ref_cnt))
-		goto out_unlock;
+	if (qdf_atomic_dec_and_test(&tx_pp->ref_cnt))
+		should_deinit = true;
 
-	dp_tx_page_pool_deinit(soc, tx_pp);
-	qdf_mem_free(tx_pp);
 out_unlock:
 	soc->tx_pp[vdev_id] = NULL;
 	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+
+	/* Deinit outside the spinlock to avoid sleeping in atomic context */
+	if (should_deinit) {
+		dp_tx_page_pool_deinit(soc, tx_pp);
+		qdf_mem_free(tx_pp);
+	}
 }
 #else /* !DP_FEATURE_TX_PAGE_POOL */
 static inline void

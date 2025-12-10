@@ -1983,11 +1983,16 @@ struct dp_tx_pp_params {
 
 #define TX_PRE_ALLOC_POOL_IDX 0
 #define MAX_TX_DYNAMIC_POOL 10
+#define MAX_TX_IDLE_POOLS 5
 
 /**
  * struct dp_tx_page_pool - TX Page pool info
  * @active_pool: TX active pool list
+ * @idle_pool_ho: Higher order idle page pool list
+ * @idle_pool_lo: Lower order idle page pool list
  * @active_pool_count: active pool list count
+ * @idle_pool_ho_cnt: Higher order idle page pool list count
+ * @idle_pool_lo_cnt: Lower order idle page pool list count
  * @pp_lock: Lock protecting page pool parameters
  * @page_pool_init: Page pool initialize or not
  * @ref_cnt: Reference count for the page pool, delete pool if ref_cnt is zero
@@ -1999,7 +2004,11 @@ struct dp_tx_pp_params {
  */
 struct dp_tx_page_pool {
 	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
+	struct dp_tx_pp_params idle_pool_ho[MAX_TX_IDLE_POOLS];
+	struct dp_tx_pp_params idle_pool_lo[MAX_TX_IDLE_POOLS];
 	uint8_t active_pool_count;
+	uint8_t idle_pool_ho_cnt;
+	uint8_t idle_pool_lo_cnt;
 	qdf_spinlock_t pp_lock;
 	bool page_pool_init;
 	qdf_atomic_t ref_cnt;
