@@ -90,8 +90,7 @@ enum wlan_dcs_debug_level {
 };
 
 /**
- * struct pdev_dcs_im_stats - define dcs interference mitigation
- *                            stats in pdev object
+ * struct dcs_im_stats - define dcs interference mitigation stats
  * @prev_dcs_im_stats: previous statistics at last time
  * @user_dcs_im_stats: statistics requested from userspace
  * @dcs_ch_util_im_stats: chan utilization statistics
@@ -99,7 +98,7 @@ enum wlan_dcs_debug_level {
  *                detected within detection window
  * @im_samp_cnt: sample counter
  */
-struct pdev_dcs_im_stats {
+struct dcs_im_stats {
 	struct wlan_host_dcs_im_tgt_stats prev_dcs_im_stats;
 	struct wlan_host_dcs_im_user_stats user_dcs_im_stats;
 	struct wlan_host_dcs_ch_util_stats dcs_ch_util_im_stats;
@@ -108,7 +107,7 @@ struct pdev_dcs_im_stats {
 };
 
 /**
- * struct pdev_dcs_params - define dcs configuration parameter in pdev object
+ * struct core_dcs_params - define dcs configuration parameters
  * @dcs_enable_cfg: dcs enable from ini config
  * @dcs_enable: dcs enable from ucfg config
  * @dcs_algorithm_process: do dcs algorithm process or not
@@ -125,11 +124,8 @@ struct pdev_dcs_im_stats {
  * @tx_err_threshold: transmission failure rate threshold
  * @user_request_count: counter of stats requested from userspace
  * @notify_user: whether to notify userspace
- * @dcs_enable_cfg_per_mode: dcs enable per mode from ini config
- * @intfr_detection_threshold_per_mode: interference detection threshold per
- * mode
  */
-struct pdev_dcs_params {
+struct core_dcs_params {
 	uint8_t dcs_enable_cfg;
 	uint8_t dcs_enable;
 	bool dcs_algorithm_process;
@@ -146,15 +142,10 @@ struct pdev_dcs_params {
 	uint32_t tx_err_threshold;
 	uint32_t user_request_count;
 	uint8_t notify_user;
-#ifdef WLAN_FEATURE_VDEV_DCS
-	union wlan_dcs_cfg dcs_enable_cfg_per_mode[MAX_DCS_MODE_NUM];
-	uint8_t intfr_detection_threshold_per_mode[MAX_DCS_MODE_NUM];
-#endif
 };
 
 /**
- * struct pdev_dcs_freq_ctrl_params - define dcs frequency control parameter
- *                                    in pdebv object
+ * struct dcs_freq_ctrl_params - define dcs frequency control parameters
  * @disable_threshold_per_5mins: in five minutes, if dcs happen more than
  *                               threshold, then disable dcs for some time
  * @restart_delay: when dcs happen more than threshold in five minutes,
@@ -163,7 +154,7 @@ struct pdev_dcs_params {
  * @dcs_happened_count: dcs happened count
  * @disable_delay_process: in dcs disable delay process or not
  */
-struct pdev_dcs_freq_ctrl_params {
+struct dcs_freq_ctrl_params {
 	uint8_t disable_threshold_per_5mins;
 	uint32_t restart_delay;
 	unsigned long timestamp[MAX_DCS_TIME_RECORD];
@@ -172,13 +163,15 @@ struct pdev_dcs_freq_ctrl_params {
 };
 
 /**
- * struct pdev_dcs_timer_args - define pdev dcs timer args
+ * struct core_dcs_timer_args - define dcs core timer args
  * @psoc: psoc pointer
  * @pdev_id: pdev id
+ * @vdev_id: vdev id
  */
-struct pdev_dcs_timer_args {
+struct core_dcs_timer_args {
 	struct wlan_objmgr_psoc *psoc;
-	uint32_t pdev_id;
+	uint8_t pdev_id;
+	uint8_t vdev_id;
 };
 
 /**
@@ -238,7 +231,7 @@ struct dcs_afc_select_chan_cbk {
 };
 
 /**
- * struct dcs_pdev_priv_obj  - define dcs pdev priv
+ * struct dcs_core_priv_obj  - define dcs core priv
  * @dcs_host_params: dcs host configuration parameter
  * @dcs_im_stats: dcs im statistics
  * @dcs_freq_ctrl_params: dcs frequency control parameter
@@ -248,17 +241,37 @@ struct dcs_afc_select_chan_cbk {
  * @requestor_vdev_id: user request vdev id
  * @user_cb: user request callback
  */
-struct dcs_pdev_priv_obj {
-	struct pdev_dcs_params dcs_host_params;
-	struct pdev_dcs_im_stats dcs_im_stats;
-	struct pdev_dcs_freq_ctrl_params dcs_freq_ctrl_params;
+struct dcs_core_priv_obj {
+	struct core_dcs_params dcs_host_params;
+	struct dcs_im_stats dcs_im_stats;
+	struct dcs_freq_ctrl_params dcs_freq_ctrl_params;
 	qdf_timer_t dcs_disable_timer;
-	struct pdev_dcs_timer_args dcs_timer_args;
+	struct core_dcs_timer_args dcs_timer_args;
 	qdf_spinlock_t lock;
 	uint8_t requestor_vdev_id;
 	void (*user_cb)(uint8_t vdev_id,
 			struct wlan_host_dcs_im_user_stats *stats,
 			int status);
+};
+
+/**
+ * struct dcs_pdev_priv_obj  - define dcs pdev priv
+ * @dcs_core: Pointer to DCS core private object
+ * @pdev_id: PDEV ID
+ */
+struct dcs_pdev_priv_obj {
+	struct dcs_core_priv_obj *dcs_core;
+	uint8_t pdev_id;
+};
+
+/**
+ * struct dcs_vdev_priv_obj  - define dcs vdev priv
+ * @dcs_core: Pointer to DCS core private object
+ * @vdev: Pointer to VDEV object
+ */
+struct dcs_vdev_priv_obj {
+	struct dcs_core_priv_obj *dcs_core;
+	struct wlan_objmgr_vdev *vdev;
 };
 
 /**
@@ -307,17 +320,81 @@ enum wlan_dcs_chan_seg {
 	   ((__freq) <= ((__cfreq1) + (6 * WLAN_DCS_CHAN_FREQ_OFFSET)))))))
 
 /**
+ * struct psoc_dcs_params - define per-mode DCS configuration parameters
+ * @dcs_debug: DCS debug trace level
+ * @dcs_enable_cfg: DCS enable configuration per mode
+ *                  Controls which interference types are enabled
+ *                  for each mode (SAP, XPAN, XR, GO)
+ * @intfr_detection_threshold: Interference detection threshold per mode
+ *                             Number of times interference must be
+ *                             detected within the detection window
+ *                             to trigger DCS
+ * @dcs_trnsprt_rjt_threshold_cu: Transport reject threshold per mode
+ *                                Channel utilization threshold for
+ *                                transport rejection
+ * @dcs_coch_intfr_threshold: Co-channel interference threshold per mode
+ *                            Threshold for detecting co-channel
+ *                            interference
+ * @dcs_tx_err_threshold: Transmission error threshold per mode
+ *                        Threshold for transmission failure rate
+ * @dcs_phy_err_penalty: PHY error penalty per mode
+ *                       Penalty for each PHY error detected
+ * @dcs_phy_err_threshold: PHY error threshold per mode
+ *                         Threshold for PHY errors
+ * @user_max_cu: Maximum channel utilization per mode
+ *               Maximum allowed channel utilization due to AP's
+ *               TX and RX
+ * @dcs_radar_err_threshold: Radar error threshold per mode
+ *                           Threshold for radar errors
+ * @dcs_intfr_detection_window: Interference detection window per mode
+ *                              Sampling window for interference
+ *                              detection
+ * @dcs_disable_thresh_per_5mins: DCS disable threshold per mode
+ *                                If DCS happens more than this
+ *                                threshold in 5 minutes, disable DCS
+ * @dcs_restart_delay: DCS restart delay per mode
+ *                     When DCS is disabled, wait this many minutes
+ *                     before re-enabling
+ * @dcs_disable_algorithm: DCS algorithm disable flag per mode
+ *                         When true, disables DCS algorithm for
+ *                         the specific mode
+ */
+struct psoc_dcs_params {
+	enum wlan_dcs_debug_level dcs_debug;
+	union wlan_dcs_cfg dcs_enable_cfg[MAX_DCS_MODE_NUM];
+	uint8_t intfr_detection_threshold[MAX_DCS_MODE_NUM];
+	uint32_t dcs_trnsprt_rjt_threshold_cu[MAX_DCS_MODE_NUM];
+	uint32_t dcs_coch_intfr_threshold[MAX_DCS_MODE_NUM];
+	uint32_t dcs_tx_err_threshold[MAX_DCS_MODE_NUM];
+	uint32_t dcs_phy_err_penalty[MAX_DCS_MODE_NUM];
+	uint32_t dcs_phy_err_threshold[MAX_DCS_MODE_NUM];
+	uint32_t user_max_cu[MAX_DCS_MODE_NUM];
+	uint32_t dcs_radar_err_threshold[MAX_DCS_MODE_NUM];
+	uint32_t dcs_intfr_detection_window[MAX_DCS_MODE_NUM];
+	uint8_t dcs_disable_thresh_per_5mins[MAX_DCS_MODE_NUM];
+	uint32_t dcs_restart_delay[MAX_DCS_MODE_NUM];
+	bool dcs_disable_algorithm[MAX_DCS_MODE_NUM];
+};
+
+/**
  * struct dcs_psoc_priv_obj - define dcs psoc priv
  * @dcs_pdev_priv: dcs pdev priv
  * @dcs_cbk: dcs callback
  * @switch_chan_cb: callback for switching channel
  * @afc_sel_chan_cbk: callback for afc channel selection
+ * @dcs_per_mode_param: per-mode DCS configuration parameters
+ * @dcs_enable_cfg: enable dcs for pdev mode DCS
+ * @intfr_detection_threshold:Interference detection threshold
+ *                            for pdev mode DCS
  */
 struct dcs_psoc_priv_obj {
 	struct dcs_pdev_priv_obj dcs_pdev_priv[WLAN_DCS_MAX_PDEVS];
 	struct psoc_dcs_cbk dcs_cbk;
 	dcs_switch_chan_cb switch_chan_cb;
 	struct dcs_afc_select_chan_cbk afc_sel_chan_cbk;
+	struct psoc_dcs_params dcs_per_mode_param;
+	uint8_t dcs_enable_cfg;
+	uint8_t intfr_detection_threshold;
 };
 
 /**
@@ -455,25 +532,25 @@ void wlan_dcs_set_algorithm_process(struct wlan_objmgr_psoc *psoc,
 				    bool dcs_algorithm_process);
 
 /**
- * wlan_dcs_pdev_obj_lock() - private API to acquire spinlock at pdev
- * @dcs_pdev: pointer to dcs pdev object
+ * wlan_dcs_core_obj_lock() - private API to acquire spinlock for core object
+ * @dcs_core: pointer to dcs core object
  *
  * Return: void
  */
-static inline void wlan_dcs_pdev_obj_lock(struct dcs_pdev_priv_obj *dcs_pdev)
+static inline void wlan_dcs_core_obj_lock(struct dcs_core_priv_obj *dcs_core)
 {
-	qdf_spin_lock_bh(&dcs_pdev->lock);
+	qdf_spin_lock_bh(&dcs_core->lock);
 }
 
 /**
- * wlan_dcs_pdev_obj_unlock() - private api to release spinlock at pdev
- * @dcs_pdev: pointer to dcs pdev object
+ * wlan_dcs_core_obj_unlock() - private api to release spinlock for core object
+ * @dcs_core: pointer to dcs core object
  *
  * Return: void
  */
-static inline void wlan_dcs_pdev_obj_unlock(struct dcs_pdev_priv_obj *dcs_pdev)
+static inline void wlan_dcs_core_obj_unlock(struct dcs_core_priv_obj *dcs_core)
 {
-	qdf_spin_unlock_bh(&dcs_pdev->lock);
+	qdf_spin_unlock_bh(&dcs_core->lock);
 }
 
 /**

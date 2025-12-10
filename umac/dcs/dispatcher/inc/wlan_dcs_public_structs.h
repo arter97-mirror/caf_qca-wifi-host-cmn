@@ -188,4 +188,28 @@ struct dcs_param {
 	uint8_t vdev_id;
 	uint8_t interference_type;
 };
+
+/**
+ * struct wlan_dcs_user_config - define dcs user configuration
+ * @dcs_enable: dcs enable from ucfg config
+ * @intfr_detection_threshold: interference detection threshold
+ * @phy_err_penalty: phy error penalty
+ * @phy_err_threshold: phy error threshold
+ * @radar_err_threshold: radar error threshold
+ * @tx_err_threshold: transmission failure rate threshold
+ * @intfr_detection_window: interference sampling window
+ * @coch_intfr_threshold: co-channel interference threshold
+ * @max_cu: tx channel utilization due to AP's tx and rx
+ */
+struct wlan_dcs_user_config {
+	uint8_t dcs_enable;
+	uint32_t intfr_detection_threshold;
+	uint32_t phy_err_penalty;
+	uint32_t phy_err_threshold;
+	uint32_t radar_err_threshold;
+	uint32_t tx_err_threshold;
+	uint32_t intfr_detection_window;
+	uint32_t coch_intfr_threshold;
+	uint32_t max_cu;
+};
 #endif
