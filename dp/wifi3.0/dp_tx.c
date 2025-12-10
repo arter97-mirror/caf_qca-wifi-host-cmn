@@ -203,9 +203,193 @@ dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
 }
 
 /**
- * dp_tx_page_pool_alloc_nbuf() - Allocate nbuf from specific pool
+ * dp_tx_page_pool_attach_idle() - Attach an idle pool to active list
  * @tx_pp: TX page pool handle
  * @osdev: OS device handle
+ * @size: Size of buffer to allocate
+ * @offset: Pointer to store offset (output parameter)
+ *
+ * Helper function to attach an idle pool from idle lists to active list.
+ * Tries higher-order pools first, then falls back to lower-order pools.
+ * Allocates the requested buffer directly instead of just a page.
+ *
+ * Return: Allocated nbuf on success, NULL on failure
+ */
+static inline qdf_nbuf_t
+dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp,
+			    qdf_device_t osdev,
+			    size_t size,
+			    uint32_t *offset)
+{
+	struct dp_tx_pp_params *idle_pp_params = NULL;
+	struct dp_tx_pp_params *new_active_pp;
+	qdf_nbuf_t nbuf = NULL;
+
+	if (qdf_unlikely(tx_pp->active_pool_count >= MAX_TX_DYNAMIC_POOL))
+		return NULL;
+
+	/* Try high-order pools first */
+	if (qdf_likely(tx_pp->idle_pool_ho_cnt > 0)) {
+		idle_pp_params =
+			&tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt - 1];
+		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp_params, osdev,
+						       size, offset);
+		if (nbuf) {
+			tx_pp->idle_pool_ho_cnt--;
+			goto attach_pool;
+		}
+	}
+
+	/* Try low-order pools */
+	if (qdf_likely(tx_pp->idle_pool_lo_cnt > 0)) {
+		idle_pp_params =
+			&tx_pp->idle_pool_lo[tx_pp->idle_pool_lo_cnt - 1];
+		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp_params, osdev,
+						       size, offset);
+		if (nbuf) {
+			tx_pp->idle_pool_lo_cnt--;
+			goto attach_pool;
+		}
+	}
+
+	return NULL;
+
+attach_pool:
+	new_active_pp = &tx_pp->active_pool[tx_pp->active_pool_count];
+	*new_active_pp = *idle_pp_params;
+	tx_pp->active_pool_count++;
+
+	return nbuf;
+}
+
+/**
+ * dp_tx_page_pool_try_grow_last() - Try to grow the last active pool
+ * @tx_pp: TX page pool handle
+ * @pp_params: Pool parameters for the last active pool
+ * @osdev: OS device handle
+ * @size: Size of buffer to allocate
+ * @offset: Pointer to store offset (output parameter)
+ *
+ * Helper function to attempt growing the last pool in the active list.
+ * Allocates the requested buffer directly instead of just a page.
+ *
+ * Return: Allocated nbuf on success, NULL on failure
+ */
+static inline qdf_nbuf_t
+dp_tx_page_pool_try_grow_last(
+			struct dp_tx_page_pool *tx_pp,
+			struct dp_tx_pp_params *pp_params,
+			qdf_device_t osdev,
+			size_t size,
+			uint32_t *offset)
+{
+	qdf_nbuf_t nbuf;
+
+	/* Track growth attempt */
+	qdf_atomic_inc(&tx_pp->grow_attempts);
+
+	/* Validate pool exists */
+	if (qdf_unlikely(!pp_params->pp))
+		goto grow_failed;
+
+	/* Check if pool has reached size limit */
+	if (qdf_page_pool_get_page_hold_cnt(pp_params->pp) >=
+			pp_params->pp_size)
+		return NULL;
+
+	/* Try to allocate the requested buffer directly */
+	nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev, size, offset);
+	if (!nbuf)
+		goto grow_failed;
+
+	/* Success - update statistics and return */
+	qdf_atomic_inc(&tx_pp->grow_successes);
+
+	return nbuf;
+
+grow_failed:
+	/* Track failure */
+	qdf_atomic_inc(&tx_pp->grow_failures);
+	return NULL;
+}
+
+/**
+ * dp_tx_page_pool_find_available_slow() - Find available pool (slow path)
+ * @tx_pp: TX page pool handle
+ * @osdev: OS device handle
+ * @size: Size of buffer to allocate
+ * @offset: Pointer to store offset (output parameter)
+ *
+ * This helper implements the slow path pool selection when cache misses:
+ * 1. Linear search through active pools (O(n))
+ * 2. Growth: Try to grow last pool if all pools empty
+ * 3. Attach: Attach idle pool as last resort
+ *
+ * Note: This is the SLOW PATH - only called on cache miss (~10% of cases)
+ *
+ * Return: nbuf
+ */
+static inline qdf_nbuf_t
+dp_tx_page_pool_find_available_slow(struct dp_tx_page_pool *tx_pp,
+				    qdf_device_t osdev, size_t size,
+				    uint32_t *offset)
+{
+	struct dp_tx_pp_params *pp_params;
+	qdf_nbuf_t nbuf;
+	uint8_t i;
+
+	/* Search all active pools for available pages */
+	for (i = 0; i < tx_pp->active_pool_count; i++) {
+		pp_params = &tx_pp->active_pool[i];
+
+		/* Skip invalid or empty pools */
+		if (qdf_unlikely(!pp_params->pp))
+			continue;
+
+		if (qdf_likely(!qdf_page_pool_empty(pp_params->pp)))
+			return dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
+							       size, offset);
+	}
+
+	/*
+	 * All active pools empty. Try to grow last pool,
+	 * or attach idle pool if growth fails.
+	 */
+	if (qdf_likely(tx_pp->active_pool_count)) {
+		pp_params = &tx_pp->active_pool[tx_pp->active_pool_count - 1];
+		nbuf = dp_tx_page_pool_try_grow_last(tx_pp, pp_params, osdev,
+						     size, offset);
+		if (qdf_likely(nbuf))
+			return nbuf;
+	}
+
+	/* Last resort: Attach idle pool */
+	return dp_tx_page_pool_attach_idle(tx_pp, osdev, size, offset);
+}
+
+/**
+ * dp_tx_page_pool_dyn_alloc_nbuf() - Allocate nbuf from page pool
+ * @tx_pp: TX page pool handle
+ * @osdev: OS device handle
+ * @size: Size of buffer to allocate
+ * @offset: Pointer to store offset (output parameter)
+ *
+ * Return: Allocated nbuf on success, NULL on failure
+ */
+static inline qdf_nbuf_t
+dp_tx_page_pool_dyn_alloc_nbuf(struct dp_tx_page_pool *tx_pp,
+			       qdf_device_t osdev, size_t size,
+			       uint32_t *offset)
+{
+	*offset = 0;
+
+	return dp_tx_page_pool_find_available_slow(tx_pp, osdev, size, offset);
+}
+
+/**
+ * dp_tx_page_pool_alloc_nbuf() - Allocate nbuf from specific pool
+ * @tx_pp: TX page pool handle
+ * @soc: SOC handle
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
  *
@@ -214,20 +398,23 @@ dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
  * Return: Allocated nbuf on success, NULL on failure
  */
 static inline qdf_nbuf_t
-dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
+dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 			   size_t size, uint32_t *offset)
 {
 	struct dp_tx_pp_params *pp_params;
-	qdf_nbuf_t nbuf = NULL;
+	qdf_device_t osdev = soc->osdev;
 
 	*offset = 0;
+
+	if (soc->tx_dyn_pool_en)
+		return dp_tx_page_pool_dyn_alloc_nbuf(tx_pp, osdev,
+						      size, offset);
 
 	pp_params = &tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 	if (qdf_likely(pp_params->pp &&
 		       !qdf_page_pool_empty(pp_params->pp))) {
-		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
+		return dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
 						       size, offset);
-		return nbuf;
 	}
 
 	return NULL;
@@ -236,7 +423,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 /**
  * dp_tx_page_pool_nbuf_alloc_map() - Allocate and set nbuf paddr
  * @tx_pp: TX page pool handle
- * @osdev: OS device handle
+ * @soc: SOC handle
  * @size: Size of buffer to allocate
  *
  * Allocates nbuf from page pool and sets nbuff CB paddr.
@@ -246,13 +433,13 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
-			       qdf_device_t osdev, size_t size)
+			       struct dp_soc *soc, size_t size)
 {
 	qdf_nbuf_t nbuf;
 	qdf_page_t page;
 	uint32_t offset;
 
-	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, osdev, size, &offset);
+	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset);
 	if (!nbuf)
 		return NULL;
 
@@ -338,7 +525,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc->osdev, size, &offset);
+	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset);
 	if (qdf_likely(pp_nbuf)) {
 		tx_pp->alloc_success++;
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
@@ -5258,7 +5445,7 @@ static inline void dp_vdev_tx_mark_to_fw(qdf_nbuf_t nbuf, struct dp_vdev *vdev)
  * the skb header and TCP headers as the nbus in the formed list are going to
  * transmitted as a normal packet instead of tso packet.
  *
- * @osdev: qdf device handle
+ * @soc: soc handle
  * @nbuf: TCP jumbo packet
  * @head_nbuf: formed skb list
  * @tx_pp: TX page pool reference
@@ -5266,7 +5453,7 @@ static inline void dp_vdev_tx_mark_to_fw(qdf_nbuf_t nbuf, struct dp_vdev *vdev)
  * Return: QDF_STATUS
  */
 static QDF_STATUS
-dp_tx_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
+dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 			       qdf_nbuf_t nbuf,
 			       qdf_nbuf_t *head_nbuf,
 			       struct dp_tx_page_pool *tx_pp)
@@ -5275,6 +5462,7 @@ dp_tx_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 	qdf_nbuf_t new_nbuf;
 	qdf_nbuf_frag_t *frag = NULL;
 	void *frag_vaddr;
+	qdf_device_t osdev = soc->osdev;
 	uint32_t ori_gso_size = qdf_nbuf_get_gso_size(nbuf);
 	int num_seg = qdf_nbuf_get_tso_num_seg(nbuf);
 	uint32_t nbuf_proc = qdf_get_nbuf_len(nbuf);
@@ -5316,7 +5504,7 @@ dp_tx_sw_tso_prepare_nbuf_list(qdf_device_t osdev,
 	while (num_seg) {
 		more_frags = 1;
 		copied_len = 0;
-		new_nbuf = dp_tx_page_pool_nbuf_alloc_map(tx_pp, osdev,
+		new_nbuf = dp_tx_page_pool_nbuf_alloc_map(tx_pp, soc,
 							  ori_gso_size +
 							  eit_hdr_len);
 
@@ -5493,12 +5681,12 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	if (tx_pp && tx_pp->page_pool_init) {
 		qdf_spin_lock_bh(&tx_pp->pp_lock);
-		status = dp_tx_sw_tso_prepare_nbuf_list(soc->osdev,
+		status = dp_tx_sw_tso_prepare_nbuf_list(soc,
 							nbuf, &buff,
 							tx_pp);
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	} else {
-		status = dp_tx_sw_tso_prepare_nbuf_list(soc->osdev,
+		status = dp_tx_sw_tso_prepare_nbuf_list(soc,
 							nbuf, &buff,
 							NULL);
 	}

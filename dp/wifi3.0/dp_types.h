@@ -2001,6 +2001,9 @@ struct dp_tx_pp_params {
  * @direct_alloc_fail: Buffer allocation failure stat for the buffers allocated
  *			by invoking qdf_nbuf_alloc() directly
  * @pp_err_nonlinear: Stat for non-linear packets entering TX page pool logic
+ * @grow_attempts: Pool growth attempts
+ * @grow_successes: Successful pool growths
+ * @grow_failures: Failed pool growths
  */
 struct dp_tx_page_pool {
 	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
@@ -2016,6 +2019,11 @@ struct dp_tx_page_pool {
 	uint64_t alloc_fail;
 	uint64_t direct_alloc_fail;
 	uint64_t pp_err_nonlinear;
+	/* Growth and allocation statistics */
+	qdf_atomic_t grow_attempts;
+	qdf_atomic_t grow_successes;
+	qdf_atomic_t grow_failures;
+
 };
 #endif
 
