@@ -1970,16 +1970,24 @@ struct dp_rx_page_pool {
  * @pp: Reference to the page pool
  * @pool_size: Actual pool size the page pool is requested for during allocation
  * @pp_size: Size of the page pool
+ * @page_size: Page size of page pool
+ * @is_prealloc: Prealloc page pool
  */
 struct dp_tx_pp_params {
 	qdf_page_pool_t pp;
 	size_t pool_size;
 	size_t pp_size;
+	size_t page_size;
+	bool is_prealloc;
 };
+
+#define TX_PRE_ALLOC_POOL_IDX 0
+#define MAX_TX_DYNAMIC_POOL 10
 
 /**
  * struct dp_tx_page_pool - TX Page pool info
- * @tx_pool: TX page pool parameters
+ * @active_pool: TX active pool list
+ * @active_pool_count: active pool list count
  * @pp_lock: Lock protecting page pool parameters
  * @page_pool_init: Page pool initialize or not
  * @ref_cnt: Reference count for the page pool, delete pool if ref_cnt is zero
@@ -1990,7 +1998,8 @@ struct dp_tx_pp_params {
  * @pp_err_nonlinear: Stat for non-linear packets entering TX page pool logic
  */
 struct dp_tx_page_pool {
-	struct dp_tx_pp_params tx_pool;
+	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
+	uint8_t active_pool_count;
 	qdf_spinlock_t pp_lock;
 	bool page_pool_init;
 	qdf_atomic_t ref_cnt;

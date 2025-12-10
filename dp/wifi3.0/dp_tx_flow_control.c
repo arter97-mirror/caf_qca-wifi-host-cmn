@@ -685,7 +685,8 @@ int dp_tx_delete_flow_pool(struct dp_soc *soc, struct dp_tx_desc_pool_s *pool,
 static void
 dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 {
-	struct dp_tx_pp_params *pp_params = &tx_pp->tx_pool;
+	struct dp_tx_pp_params *pp_params =
+		&tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 
 	if (!tx_pp->page_pool_init)
 		return;
@@ -701,6 +702,7 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
 	tx_pp->page_pool_init = false;
+	tx_pp->active_pool_count = 0;
 	qdf_spinlock_destroy(&tx_pp->pp_lock);
 }
 
@@ -708,7 +710,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 				       struct dp_tx_page_pool *tx_pp,
 				       uint32_t pool_size)
 {
-	struct dp_tx_pp_params *pp_params = &tx_pp->tx_pool;
+	struct dp_tx_pp_params *pp_params =
+		&tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 	struct dp_page_pool_t *pool_t = NULL;
 
 	memset(tx_pp, 0, sizeof(*tx_pp));
@@ -722,6 +725,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 		pp_params->pp = pool_t->pp;
 		pp_params->pool_size = pool_t->pool_size;
 		pp_params->pp_size = pool_t->pp_size;
+		pp_params->page_size = pool_t->page_size;
+		pp_params->is_prealloc = true;
 	} else {
 		dp_err("failed to get tx page pool");
 		return QDF_STATUS_E_FAILURE;
@@ -733,6 +738,7 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	qdf_spinlock_create(&tx_pp->pp_lock);
 	qdf_atomic_init(&tx_pp->ref_cnt);
 	tx_pp->page_pool_init = true;
+	tx_pp->active_pool_count = 1;
 	soc->osdev->no_dma_map = true;
 
 	return QDF_STATUS_SUCCESS;
@@ -798,6 +804,10 @@ dp_tx_page_pool_mlo_vdev_attach(struct dp_soc *soc, struct dp_vdev *vdev)
 }
 #endif /* WLAN_FEATURE_11BE_MLO */
 
+/* Pool sizing policy: add 25% headroom and align to 16 */
+#define TX_POOL_HEADROOM_PERCENT     25
+#define TX_POOL_ALIGNMENT            16
+
 /**
  * dp_tx_page_pool_vdev_attach() - Attach TX page pool to the VDEV
  * @pdev: Handle to struct dp_pdev
@@ -818,7 +828,9 @@ static void dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
 		return;
 	}
 
-	pool_size = DP_TX_PAGE_POOL_SIZE;
+	pool_size = qdf_align(wlan_cfg_psoc_get_num_tx_desc(soc->ctrl_psoc) *
+				  (100 + TX_POOL_HEADROOM_PERCENT) / 100,
+				  TX_POOL_ALIGNMENT);
 
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev) {

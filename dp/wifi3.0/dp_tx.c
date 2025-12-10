@@ -222,7 +222,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 
 	*offset = 0;
 
-	pp_params = &tx_pp->tx_pool;
+	pp_params = &tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 	if (qdf_likely(pp_params->pp &&
 		       !qdf_page_pool_empty(pp_params->pp))) {
 		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
