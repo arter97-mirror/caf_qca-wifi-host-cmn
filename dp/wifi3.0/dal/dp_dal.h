@@ -19,6 +19,8 @@
 #define DAL_RX_RINGS_MAX 2
 #define DAL_TX_RINGS_MAX 2
 
+extern struct platform_bus_ops *global_plat_ops;
+
 /**
  * struct sta_info - STA information
  * @bss_idx: BSS index

@@ -4256,4 +4256,28 @@ dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
 						 desc_list, tail, req_only);
 }
 
+QDF_STATUS
+dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
+				     uint32_t mac_id,
+				     uint32_t num_entries_avail,
+				     struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
+				     struct dp_pdev *dp_pdev,
+				     struct rx_desc_pool *rx_desc_pool);
+
+#ifdef DP_RX_MON_MEM_FRAG
+QDF_STATUS
+dp_pdev_frag_alloc_and_map(struct dp_soc *dp_soc,
+			   struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
+			   struct dp_pdev *dp_pdev,
+			   struct rx_desc_pool *rx_desc_pool);
+#else
+static inline QDF_STATUS
+dp_pdev_frag_alloc_and_map(struct dp_soc *dp_soc,
+			   struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
+			   struct dp_pdev *dp_pdev,
+			   struct rx_desc_pool *rx_desc_pool)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 #endif /* _DP_RX_H */

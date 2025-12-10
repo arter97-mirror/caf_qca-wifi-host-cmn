@@ -255,7 +255,7 @@ void dp_rx_mark_first_packet_after_wow_wakeup(struct dp_pdev *pdev,
  * Return: QDF_STATUS
  */
 #ifdef DP_RX_MON_MEM_FRAG
-static inline QDF_STATUS
+QDF_STATUS
 dp_pdev_frag_alloc_and_map(struct dp_soc *dp_soc,
 			   struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
 			   struct dp_pdev *dp_pdev,
@@ -285,15 +285,6 @@ dp_pdev_frag_alloc_and_map(struct dp_soc *dp_soc,
 		return QDF_STATUS_E_FAULT;
 	}
 
-	return QDF_STATUS_SUCCESS;
-}
-#else
-static inline QDF_STATUS
-dp_pdev_frag_alloc_and_map(struct dp_soc *dp_soc,
-			   struct dp_rx_nbuf_frag_info *nbuf_frag_info_t,
-			   struct dp_pdev *dp_pdev,
-			   struct rx_desc_pool *rx_desc_pool)
-{
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* DP_RX_MON_MEM_FRAG */
@@ -357,7 +348,7 @@ dp_rx_refill_ring_record_entry(struct dp_soc *soc, uint8_t ring_num,
  *
  * Return: QDF_STATUS
  */
-static inline QDF_STATUS
+QDF_STATUS
 dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 				     uint32_t mac_id,
 				     uint32_t num_entries_avail,

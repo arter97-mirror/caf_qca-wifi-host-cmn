@@ -65,5 +65,14 @@ QDF_STATUS dp_dal_rx_process_nbuf_list(struct dp_soc *soc,
  * Return: 0 on success
  */
 int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv);
+
+/**
+ *dp_dal_rx_replenish_alloc_vendor_cb - vendor callback to alloc rx buffers
+ * @priv: pointer to dp dal context
+ * @count: number of buffers to allocate
+ *
+ * Return: 0 on success
+ */
+int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_RX_H */
