@@ -11811,8 +11811,8 @@ static void dp_print_tx_page_pool_stats(struct dp_soc *soc)
 		}
 
 		dp_info("vdev id %d: success %llu failure %llu", vdev_id,
-			tx_pp->tx_pool.alloc_success,
-			tx_pp->tx_pool.alloc_fail);
+			tx_pp->alloc_success,
+			tx_pp->alloc_fail);
 	}
 	qdf_spin_unlock_bh(&soc->tx_pp_lock);
 }

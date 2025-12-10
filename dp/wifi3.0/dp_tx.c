@@ -197,7 +197,6 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 {
 	struct dp_soc *soc = vdev->pdev->soc;
 	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
-	struct dp_tx_pp_params *pp_params;
 	qdf_page_pool_t pp;
 	qdf_nbuf_t pp_nbuf;
 	qdf_page_t page;
@@ -232,14 +231,13 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		return QDF_STATUS_E_INVAL;
 
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
-	pp_params = &tx_pp->tx_pool;
 
 	/* Skip SW TSO packets */
 	if (is_sw_tso) {
 		if (qdf_is_pp_nbuf(nbuf))
-			pp_params->alloc_success++;
+			tx_pp->alloc_success++;
 		else
-			pp_params->alloc_fail++;
+			tx_pp->alloc_fail++;
 
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
@@ -253,28 +251,27 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	/* Non linear SKBs are not expected in this path */
 	if (qdf_nbuf_is_nonlinear(nbuf)) {
-		pp_params->pp_err_nonlinear++;
+		tx_pp->pp_err_nonlinear++;
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 		return QDF_STATUS_E_INVAL;
 	}
 
-	pp = pp_params->pp;
-
+	pp = tx_pp->tx_pool.pp;
 	if (pp && !qdf_page_pool_empty(pp)) {
 		pp_nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, size, 0, 0, pp,
 						   &offset);
 		if (qdf_likely(pp_nbuf)) {
-			pp_params->alloc_success++;
+			tx_pp->alloc_success++;
 			qdf_spin_unlock_bh(&tx_pp->pp_lock);
 			goto copy_data;
 		}
 	}
 
 	/* Fallback to direct allocation */
-	pp_params->alloc_fail++;
+	tx_pp->alloc_fail++;
 	pp_nbuf = qdf_nbuf_alloc_simple(soc->osdev, size, 0, 0, FALSE);
 	if (qdf_unlikely(!pp_nbuf)) {
-		pp_params->direct_alloc_fail++;
+		tx_pp->direct_alloc_fail++;
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 		return QDF_STATUS_E_NOMEM;
 	}
