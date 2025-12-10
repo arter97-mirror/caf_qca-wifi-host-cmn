@@ -795,10 +795,140 @@ dp_tx_page_pool_execute_shrink_action(struct dp_soc *soc,
 	}
 }
 
+#define PP_LOG_POOL_LEN 60
+#define PP_LOG_STR_SIZE ((PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL) + 200)
+
+/*
+ * dp_tx_page_pool_log_decision() - Compact logging for page pool stats
+ * @vdev_id: VDEV ID
+ * @tx_pp: TX page pool handle
+ * @snap: Snapshot data
+ * @sd: Decision data
+ *
+ * Logs global stats and per-pool stats in compact format similar to
+ * hdd_display_netif_queue_history_compact. Format:
+ * STATS |[vdev_id] GLOBAL cap=X->Y tgt=Z eff=A peak=B inst=C act=D idle=E |
+ * POOL [0](sz) alloc=X/Y | [1](sz) alloc=X/Y | ...
+ */
+static void
+dp_tx_page_pool_log_decision(uint8_t vdev_id,
+			     struct dp_tx_page_pool *tx_pp,
+			     const struct dp_tx_pp_shrink_snapshot *snap,
+			     const struct dp_tx_pp_shrink_decision *sd)
+{
+	const char *action_str;
+	uint32_t new_capacity;
+	char *log_str;
+	char *pool_buf;
+	int bytes_written = 0;
+	int pool_bytes = 0;
+	int i;
+
+	/* Determine action string and new capacity */
+	switch (sd->action) {
+	case DP_TX_PP_SHRINK_ACTION_NONE:
+		action_str = "KP";
+		new_capacity = sd->total_capacity;
+		break;
+
+	case DP_TX_PP_SHRINK_ACTION_REMOVE_POOLS:
+		action_str = "RM";
+		new_capacity = sd->total_capacity - sd->capacity_removed;
+		break;
+
+	case DP_TX_PP_SHRINK_ACTION_REMOVE_LAST:
+		action_str = "RL";
+		new_capacity = 0;
+		break;
+
+	default:
+		return;
+	}
+
+	log_str = qdf_mem_malloc(PP_LOG_STR_SIZE);
+	if (!log_str)
+		return;
+
+	pool_buf = qdf_mem_malloc(PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL);
+	if (!pool_buf) {
+		qdf_mem_free(log_str);
+		return;
+	}
+
+	/* Pre-build pool information in batch to reduce loop overhead */
+	pool_buf[0] = '\0';
+	for (i = 0; i < snap->active_count && pool_bytes <
+	     (PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL) - PP_LOG_POOL_LEN; i++) {
+		pool_bytes += qdf_snprint(pool_buf + pool_bytes,
+				      (PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL) -
+				      pool_bytes, "[%d](%c%c) %u/%u | ", i,
+				      snap->pools[i].is_prealloc ? 'P' : 'D',
+				      snap->pools[i].page_size > qdf_page_size ?
+							'H' : 'L',
+				      snap->pools[i].total_pages,
+				      snap->pools[i].pp_size);
+	}
+
+	/* Build complete log string in single operation */
+	bytes_written =
+		qdf_snprint(log_str, PP_LOG_STR_SIZE,
+			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u %u %u/%u/%u %u/%u | POOL %s",
+			    vdev_id, action_str, sd->total_capacity,
+			    new_capacity, sd->target_capacity,
+			    sd->effective_usage, snap->instant_usage,
+			    tx_pp->active_pool_count, sd->active_prealloc,
+			    sd->total_idle,
+			    qdf_atomic_read(&tx_pp->current_bufs_double_dec),
+			    qdf_atomic_read(&tx_pp->grow_attempts),
+			    qdf_atomic_read(&tx_pp->grow_successes),
+			    qdf_atomic_read(&tx_pp->grow_failures),
+			    qdf_atomic_read(&tx_pp->cache_hits),
+			    qdf_atomic_read(&tx_pp->cache_misses), pool_buf);
+
+	if (bytes_written >= PP_LOG_STR_SIZE)
+		dp_warn("PP log truncated");
+
+	/**
+	 * Complete Log Format Documentation:
+	 *
+	 * TX_PP_STATS |[vdev_id] action_str old_cap->new_cap target/effective/instant active(prealloc)/idle double grow/succ/fail cache_hit/miss | POOL [idx](type) alloc/pool | ...
+	 *
+	 * Where:
+	 * - vdev_id: VDEV identifier for per-vdev tracking
+	 * - action_str: Shrink action taken
+	 *   * KP = Keep (no shrinking needed)
+	 *   * RM = Remove pools
+	 *   * RL = Remove last pool
+	 * - old_cap->new_cap: Capacity before and after shrink operation
+	 * - target: Target capacity calculated with safety margin
+	 * - effective: Usage value used for shrink decision (peak usage during monitoring window)
+	 * - instant: Current instantaneous buffer usage
+	 * - active(prealloc): Total active pools (preallocated pools count)
+	 * - idle: Total idle pools (higher + lower order)
+	 * - double: Double decrement counter
+	 * - grow/succ/fail: Growth attempts/successes/failures
+	 * - cache_hit/miss: Cache hit/miss counters
+	 * - POOL section: Per-pool details
+	 *   * idx: Pool index in active list
+	 *   * type: Pool type indicators [P/D][H/L]
+	 *     - P/D: Preallocated/Dynamic allocation type
+	 *     - H/L: Higher/Lower order (based on page_size > qdf_page_size)
+	 *   * alloc/pool: Pages allocated / Maximum pages
+	 *
+	 * Example:
+	 * TX_PP_STATS |[2] RM 512->384 400/350/320 3(2)/1 5 10/8/2 45/12 | POOL [0](PH) 128/256 | [1](DL) 64/128 |
+	 */
+	dp_nofl_info("TX_PP_STATS |%s", log_str);
+
+	qdf_mem_free(pool_buf);
+	qdf_mem_free(log_str);
+}
+
 /**
  * dp_tx_page_pool_shrink_monitor() - Monitor and shrink TX page pool
  * @soc: DP SoC handle
  * @tx_pp: TX page pool handle
+ * @vdev_id: VDEV ID
  *
  * This function is called periodically to monitor the usage of TX page pool
  * and shrink it if necessary. It takes a snapshot of the current state,
@@ -808,7 +938,8 @@ dp_tx_page_pool_execute_shrink_action(struct dp_soc *soc,
  */
 static QDF_STATUS
 dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
-			       struct dp_tx_page_pool *tx_pp)
+			       struct dp_tx_page_pool *tx_pp,
+			       uint8_t vdev_id)
 {
 	struct dp_tx_pp_shrink_snapshot snapshot;
 	struct dp_tx_pp_shrink_decision shrink_decision;
@@ -849,6 +980,9 @@ dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
 	if (QDF_IS_STATUS_ERROR(status))
 		return status;
 
+	dp_tx_page_pool_log_decision(vdev_id, tx_pp, &snapshot,
+				     &shrink_decision);
+
 	/* PHASE 3: ACT - Apply decision with minimal locking */
 	status = dp_tx_page_pool_execute_shrink_action(soc, tx_pp,
 						       &shrink_decision);
@@ -878,7 +1012,8 @@ dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 	TAILQ_FOREACH(vdev, &pdev->vdev_list, vdev_list_elem) {
 		tx_pp = soc->tx_pp[vdev->vdev_id];
 		if (tx_pp && tx_pp->page_pool_init)
-			dp_tx_page_pool_shrink_monitor(soc, tx_pp);
+			dp_tx_page_pool_shrink_monitor(soc, tx_pp,
+						       vdev->vdev_id);
 	}
 
 	return QDF_STATUS_SUCCESS;
