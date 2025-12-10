@@ -110,3 +110,8 @@ void __qdf_page_pool_destroy(__qdf_page_pool_t pp)
 {
 	return page_pool_destroy(pp);
 }
+
+uint32_t __qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp)
+{
+	return pp->pages_state_hold_cnt;
+}

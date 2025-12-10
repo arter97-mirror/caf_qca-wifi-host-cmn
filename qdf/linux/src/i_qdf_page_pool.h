@@ -126,6 +126,14 @@ __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
  */
 void __qdf_page_pool_destroy(__qdf_page_pool_t pp);
 
+/**
+ * __qdf_page_pool_get_page_hold_cnt() - Get number of page held by page pool
+ *
+ * @pp: Page Pool reference
+ *
+ * Return: Number of page held by page pool
+ */
+uint32_t __qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp);
 #else
 
 typedef void *__qdf_page_pool_t;
@@ -246,5 +254,19 @@ __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
 static inline void __qdf_page_pool_destroy(__qdf_page_pool_t pp)
 {
 }
+
+/**
+ * __qdf_page_pool_get_page_hold_cnt() - Get number of page held by page pool
+ *
+ * @pp: Page Pool reference
+ *
+ * Return: Number of page held by page pool
+ */
+static inline uint32_t
+__qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp)
+{
+	return 0;
+}
+
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE  || DP_FEATURE_TX_PAGE_POOL */
 #endif /* _I_QDF_PAGE_POOL_H */

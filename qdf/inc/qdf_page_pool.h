@@ -130,4 +130,18 @@ static inline void qdf_page_pool_destroy(qdf_page_pool_t pp)
 {
 	return __qdf_page_pool_destroy(pp);
 }
+
+/**
+ * qdf_page_pool_get_page_hold_cnt() - Get number of page held by page pool
+ *
+ * @pp: Page Pool reference
+ *
+ * Return: Number of page held by page pool
+ */
+static inline uint32_t
+qdf_page_pool_get_page_hold_cnt(qdf_page_pool_t pp)
+{
+	return __qdf_page_pool_get_page_hold_cnt(pp);
+}
+
 #endif /* _QDF_PAGE_POOL_H */
