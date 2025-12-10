@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1152,6 +1152,12 @@ wlan_ipa_reg_is_mlo_vdev_cb(struct wlan_ipa_priv *ipa_ctx,
 	ipa_ctx->is_mlo_vdev = cb;
 }
 #endif /* WLAN_FEATURE_MULTI_LINK_SAP */
-
+/**
+ * wlan_ipa_ps_suspend_resume() - set power save suspend and resume in IPA
+ * @suspend: True if supend else False
+ *
+ * Return: None
+ */
+void wlan_ipa_ps_suspend_resume(bool suspend);
 #endif /* IPA_OFFLOAD */
 #endif /* _WLAN_IPA_CORE_H_ */

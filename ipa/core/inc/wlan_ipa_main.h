@@ -715,6 +715,13 @@ bool ipa_set_perf_level_bw_enabled(struct wlan_objmgr_pdev *pdev);
  */
 void ipa_set_perf_level_bw(struct wlan_objmgr_pdev *pdev,
 			   enum wlan_ipa_bw_level lvl);
+/*
+ * ipa_ps_suspend_resume() - set power save suspend and resume in IPA
+ * @suspend: True is suspend else False
+ *
+ * Return: None
+ */
+void ipa_ps_suspend_resume(bool suspend);
 
 #if defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 /**

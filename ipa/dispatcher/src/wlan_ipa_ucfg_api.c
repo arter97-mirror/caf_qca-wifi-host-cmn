@@ -460,3 +460,10 @@ int ucfg_ipa_get_psoc_idx(void)
 }
 
 qdf_export_symbol(ucfg_ipa_get_psoc_idx);
+
+void ucfg_ipa_ps_suspend_resume(bool suspend)
+{
+	return ipa_ps_suspend_resume(suspend);
+}
+
+qdf_export_symbol(ucfg_ipa_ps_suspend_resume);

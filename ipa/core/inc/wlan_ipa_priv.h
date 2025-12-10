@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1031,6 +1031,7 @@ struct wlan_ipa_priv {
 	/* callback to get if vdev is mlo vdev by vdev id */
 	wlan_ipa_is_mlo_vdev is_mlo_vdev;
 #endif
+	qdf_atomic_t ipa_suspend_state;
 };
 
 #define WLAN_IPA_WLAN_FRAG_HEADER        sizeof(struct frag_header)

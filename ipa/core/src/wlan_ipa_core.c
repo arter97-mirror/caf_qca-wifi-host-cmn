@@ -7632,6 +7632,11 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
+	if (qdf_atomic_read(&ipa_obj->ipa_suspend_state)) {
+		ipa_log_err("WLAN in power save state, reject filter operation");
+		return QDF_STATUS_FILT_REQ_ERROR;
+	}
+
 	if (ipa_obj->opt_dp_ctrl_ssr ||
 	    ipa_obj->opt_dp_ctrl_wlan_shutdown) {
 		ipa_log_debug("opt_dp_ctrl, reject flt addition while ssr or shutdown");
@@ -7849,6 +7854,11 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb(
 	htc_handle = lmac_get_htc_hdl(psoc);
 	if (!htc_handle) {
 		ipa_log_err("HTC Handle is null");
+		return WLAN_IPA_WDI_OPT_DPATH_RESP_ERR_INTERNAL;
+	}
+
+	if (qdf_atomic_read(&ipa_obj->ipa_suspend_state)) {
+		ipa_log_err("WLAN in power save state, reject filter operation");
 		return WLAN_IPA_WDI_OPT_DPATH_RESP_ERR_INTERNAL;
 	}
 
@@ -8185,4 +8195,13 @@ void wlan_ipa_tx_pkt_opt_dp_ctrl(uint8_t vdev_id, qdf_nbuf_t nbuf)
 }
 
 #endif
+void wlan_ipa_ps_suspend_resume(bool suspend)
+{
+	struct wlan_ipa_priv *ipa_obj;
 
+	ipa_obj = wlan_ipa_get_obj_context();
+	if (suspend)
+		qdf_atomic_set(&ipa_obj->ipa_suspend_state, 1);
+	else
+		qdf_atomic_set(&ipa_obj->ipa_suspend_state, 0);
+}

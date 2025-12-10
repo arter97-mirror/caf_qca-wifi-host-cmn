@@ -1344,3 +1344,8 @@ int ipa_get_psoc_idx(void)
 	return 0;
 }
 #endif
+
+void ipa_ps_suspend_resume(bool suspend)
+{
+	return wlan_ipa_ps_suspend_resume(suspend);
+}

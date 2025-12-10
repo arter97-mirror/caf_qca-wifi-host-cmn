@@ -589,6 +589,14 @@ void ucfg_ipa_set_shared_smmu_enable(bool flag);
  */
 bool ucfg_ipa_get_shared_smmu_enable(void);
 
+/*
+ * ucfg_ipa_ps_suspend_resume() - set power save suspend resume in IPA
+ * @suspend: True if suspend else false
+ *
+ * Return: None
+ */
+void ucfg_ipa_ps_suspend_resume(bool suspend);
+
 #ifdef WLAN_FEATURE_MULTI_LINK_SAP
 /**
  * ucfg_ipa_reg_is_mlo_vdev_cb() - Register callback to get if vdev is mlo vdev
@@ -920,5 +928,9 @@ ucfg_ipa_get_psoc_idx(void)
 	return 0;
 }
 
+static inline
+void ucfg_ipa_ps_suspend_resume(bool suspend)
+{
+}
 #endif /* IPA_OFFLOAD */
 #endif /* _WLAN_IPA_UCFG_API_H_ */
