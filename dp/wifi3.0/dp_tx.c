@@ -154,6 +154,711 @@ uint16_t cdp_latency_hist_bucket[] = {0, 5, 10, 20, 30, 50, 100, 200};
 uint16_t cdp_latency_perc_bucket[] = {50, 75, 90, 95, 99};
 
 #ifdef DP_FEATURE_TX_PAGE_POOL
+/* Monitoring window duration in microseconds (15 seconds) */
+#define DP_TX_PP_SHRINK_WINDOW_US (15 * 1000000)
+/* Shrink decision output */
+#define MAX_POOLS_PER_CYCLE 4
+#define DP_TX_PAGE_POOL_BUFSIZE 2048
+#define TX_POOL_ALIGNMENT 16
+
+/* Last pool removal usage threshold (10%) */
+#define DP_TX_PP_LAST_POOL_USAGE_THRESHOLD_PERCENT 10
+
+/* Target capacity safety margin (150%) */
+#define DP_TX_PP_TARGET_CAPACITY_PERCENT 150
+
+/**
+ * struct dp_tx_pool_snapshot - TX Page pool info
+ * @total_pages: Total pages
+ * @pp_size: Page pool size
+ * @capacity: Pre-calculated buffer capacity
+ * @buffers_per_page: Pre-calculated buffers per page
+ * @pool_size: Pool size
+ * @page_size: Page size
+ * @is_prealloc: Is preallocated
+ */
+/* Pool snapshot for lock-free analysis */
+struct dp_tx_pool_snapshot {
+	uint32_t total_pages;
+	uint32_t pp_size;
+	uint32_t capacity;
+	uint32_t buffers_per_page;
+	size_t pool_size;
+	size_t page_size;
+	bool is_prealloc;
+};
+
+/**
+ * enum dp_tx_pp_shrink_action - Shrink action types for shrink monitor
+ * @DP_TX_PP_SHRINK_ACTION_NONE:         No shrink action required.
+ * @DP_TX_PP_SHRINK_ACTION_REMOVE_POOLS: Remove one or more idle pools.
+ * @DP_TX_PP_SHRINK_ACTION_REMOVE_LAST:  Remove the last remaining dynamic pool.
+ */
+enum dp_tx_pp_shrink_action {
+	DP_TX_PP_SHRINK_ACTION_NONE,
+	DP_TX_PP_SHRINK_ACTION_REMOVE_POOLS,
+	DP_TX_PP_SHRINK_ACTION_REMOVE_LAST,
+};
+
+/**
+ * struct dp_tx_pp_shrink_snapshot - Shrink snapshot for evaluation
+ * @current_time_us: Current timestamp in microseconds
+ * @time_since_last_eval_us: Time elapsed since last evaluation
+ * @window_peak_usage: Peak buffer usage during the monitoring window
+ * @instant_usage: Current instantaneous buffer usage
+ * @active_count: Number of active pools
+ * @active_prealloc: Number of preallocated pools in active list
+ * @total_idle: Total idle pools (higher + lower order)
+ * @pools: Array of pool snapshots
+ */
+struct dp_tx_pp_shrink_snapshot {
+	uint64_t current_time_us;
+	uint64_t time_since_last_eval_us;
+	uint32_t window_peak_usage;
+	uint32_t instant_usage;
+	uint8_t active_count;
+	uint8_t active_prealloc;
+	uint8_t total_idle;
+	struct dp_tx_pool_snapshot pools[MAX_TX_DYNAMIC_POOL];
+};
+
+/**
+ * struct dp_tx_pp_shrink_decision - Shrink decision output
+ * @action: Shrink action to take
+ * @new_capacity: Pre-calculated for logging
+ * @active_prealloc: Pre-calculated for logging
+ * @total_idle: Pre-calculated for logging
+ * @current_usage: Current usage for logging
+ * @effective_usage: Usage value used for decision
+ * @total_capacity: Total current capacity
+ * @target_capacity: Target capacity calculated
+ * @capacity_removed: Amount of capacity to remove
+ * @pools_to_remove_count: Number of pools selected for removal
+ * @pools_to_remove: Array of pool indices to remove
+ */
+struct dp_tx_pp_shrink_decision {
+	enum dp_tx_pp_shrink_action action;
+	uint32_t new_capacity;
+	uint8_t active_prealloc;
+	uint8_t total_idle;
+	uint32_t current_usage;
+	uint32_t effective_usage;
+	uint32_t total_capacity;
+	uint32_t target_capacity;
+	uint32_t capacity_removed;
+	uint8_t pools_to_remove_count;
+	uint8_t pools_to_remove[MAX_POOLS_PER_CYCLE];
+};
+
+/**
+ * dp_tx_page_pool_calculate_target_capacity() - Calculate target capacity
+ * @current_usage: current usage
+ *
+ * Returns: Target pool capacity with 50% safety margin, aligned to 16
+ */
+static inline uint32_t
+dp_tx_page_pool_calculate_target_capacity(uint32_t current_usage)
+{
+	uint32_t target;
+
+	/* Add 50% safety margin */
+	target = (current_usage * DP_TX_PP_TARGET_CAPACITY_PERCENT) / 100;
+
+	/* Round up to multiple of 16 */
+	target = qdf_align(target, TX_POOL_ALIGNMENT);
+
+	return target;
+}
+
+/**
+ * dp_tx_page_pool_reset_shrink_state() - Reset shrink evaluation state
+ * @tx_pp: TX page pool handle
+ * @current_time_us: Current timestamp
+ *
+ * Resets watermark and timestamp for next monitoring window with locking.
+ *
+ * Note: Must be called under pp_lock.
+ */
+static inline void
+dp_tx_page_pool_reset_shrink_state(struct dp_tx_page_pool *tx_pp,
+				   uint64_t current_time_us)
+{
+	/* Lock required to protect last_shrink_eval_time_us from races */
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	tx_pp->last_shrink_eval_time_us = current_time_us;
+	qdf_atomic_set(&tx_pp->max_buffer_usage_watermark, 0);
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+}
+
+/**
+ * dp_tx_page_pool_record_shrink_attempt() - Record shrink attempt
+ * @tx_pp: TX page pool handle
+ * @success: Whether the shrink succeeded
+ *
+ * Updates shrink statistics atomically.
+ */
+static inline void
+dp_tx_page_pool_record_shrink_attempt(struct dp_tx_page_pool *tx_pp,
+				      bool success)
+{
+	qdf_atomic_inc(&tx_pp->shrink_attempts);
+	if (success)
+		qdf_atomic_inc(&tx_pp->shrink_success);
+}
+
+/**
+ * dp_tx_page_pool_copy_pools_locked() - Copy pool data (lock already held)
+ * @tx_pp: TX page pool handle
+ * @pool_data: Output array for pool snapshots
+ * @max_pools: Maximum pools to snapshot
+ * @active_prealloc: Output - count of active preallocated pools
+ * @total_idle: Output - total idle pools (higher + lower order)
+ *
+ * Internal helper that assumes pp_lock is already held by caller.
+ * Used to avoid nested lock acquisition.
+ *
+ * Return: Number of pools copied
+ */
+static inline uint8_t
+dp_tx_page_pool_copy_pools_locked(struct dp_tx_page_pool *tx_pp,
+				  struct dp_tx_pool_snapshot *pool_data,
+				  uint8_t max_pools, uint8_t *active_prealloc,
+				  uint8_t *total_idle)
+{
+	struct dp_tx_pp_params *pp_params;
+	uint8_t active_count;
+	uint8_t i;
+
+	active_count = tx_pp->active_pool_count;
+	if (active_count > max_pools)
+		active_count = max_pools;
+
+	/* Calculate idle pools once while we have the lock */
+	*active_prealloc = 0;
+	*total_idle = tx_pp->idle_pool_ho_cnt + tx_pp->idle_pool_lo_cnt;
+
+	/* Bulk copy pool data */
+	if (active_count > 0) {
+		for (i = 0; i < active_count; i++) {
+			pp_params = &tx_pp->active_pool[i];
+			pool_data[i].pp_size = pp_params->pp_size;
+			pool_data[i].total_pages = pp_params->pp ?
+			qdf_page_pool_get_page_hold_cnt(pp_params->pp) : 0;
+			pool_data[i].pool_size = pp_params->pool_size;
+			pool_data[i].page_size = pp_params->page_size;
+			pool_data[i].is_prealloc = pp_params->is_prealloc;
+			pool_data[i].buffers_per_page = pp_params->pool_size ?
+				(pp_params->page_size /
+				 DP_TX_PAGE_POOL_BUFSIZE) : 1;
+			pool_data[i].capacity = pool_data[i].total_pages *
+						pool_data[i].buffers_per_page;
+			if (pp_params->is_prealloc)
+				(*active_prealloc)++;
+		}
+	}
+
+	return active_count;
+}
+
+/**
+ * dp_tx_page_pool_take_snapshot() - Capture atomic snapshot of pool state
+ * @tx_pp: TX page pool handle
+ * @snap: Output snapshot structure
+ * @current_time_us: Current timestamp
+ *
+ * CONCURRENCY MODEL
+ * - Called from periodic work queue (single-threaded per vdev)
+ * - No concurrent calls to this function for same tx_pp
+ * - Atomics used for metrics updated by TX fast path
+ * - Lock protects pool list
+ *
+ * Collects all metrics needed for shrink decision with minimal locking.
+ *
+ * Return: QDF_STATUS_SUCCESS or error
+ */
+static QDF_STATUS
+dp_tx_page_pool_take_snapshot(
+		struct dp_tx_page_pool *tx_pp,
+		struct dp_tx_pp_shrink_snapshot *snap,
+		uint64_t current_time_us)
+{
+	qdf_mem_zero(snap, sizeof(*snap));
+
+	/* Capture timing */
+	snap->current_time_us = current_time_us;
+	snap->time_since_last_eval_us =
+		current_time_us - tx_pp->last_shrink_eval_time_us;
+
+	/* Capture usage metrics atomically */
+	snap->window_peak_usage =
+		qdf_atomic_read(&tx_pp->max_buffer_usage_watermark);
+	snap->instant_usage = qdf_atomic_read(&tx_pp->current_buffers_in_use);
+
+	/* Take pool snapshot under lock */
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	snap->active_count =
+		dp_tx_page_pool_copy_pools_locked(tx_pp, snap->pools,
+						  MAX_TX_DYNAMIC_POOL,
+						  &snap->active_prealloc,
+						  &snap->total_idle);
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_tx_page_pool_evaluate_shrink() - Pure decision logic for shrink operation
+ * @snapshot: Snapshot of current state
+ * @decision: Output decision structure
+ *
+ * Determines shrink action based on snapshot. Pure function - no side effects.
+ * All calculations done without locks or mutations.
+ *
+ * Return: QDF_STATUS_SUCCESS
+ */
+static QDF_STATUS
+dp_tx_page_pool_evaluate_shrink(
+const struct dp_tx_pp_shrink_snapshot *snapshot,
+			struct dp_tx_pp_shrink_decision *decision)
+{
+	uint32_t total_capacity = 0;
+	uint32_t target_capacity;
+	uint8_t i;
+
+	qdf_mem_zero(decision, sizeof(*decision));
+
+	/* Use actual peak usage for shrink decision */
+	decision->effective_usage = snapshot->window_peak_usage;
+
+	/* Copy stats for logging */
+	decision->active_prealloc = snapshot->active_prealloc;
+	decision->total_idle = snapshot->total_idle;
+	decision->current_usage = snapshot->instant_usage;
+
+	/* Calculate total buffer capacity using pre-calculated values */
+	for (i = 0; i < snapshot->active_count; i++)
+		total_capacity += snapshot->pools[i].capacity;
+
+	decision->total_capacity = total_capacity;
+	target_capacity =
+		dp_tx_page_pool_calculate_target_capacity(snapshot->window_peak_usage);
+	decision->target_capacity = target_capacity;
+
+	/* No shrink needed */
+	if (target_capacity >= total_capacity) {
+		decision->action = DP_TX_PP_SHRINK_ACTION_NONE;
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* Determine pools to remove - O(n) algorithm using marked[] array */
+	decision->pools_to_remove_count = 0;
+
+	if (target_capacity < total_capacity) {
+		bool marked[MAX_TX_DYNAMIC_POOL] = {false};
+
+		while (decision->pools_to_remove_count < MAX_POOLS_PER_CYCLE) {
+			int8_t pool_idx = -1;
+			uint32_t min_allocated = UINT_MAX;
+
+			/* Find smallest non-prealloc pool not already marked */
+			for (i = 0; i < snapshot->active_count; i++) {
+				if (marked[i] || snapshot->pools[i].is_prealloc)
+					continue;
+
+				/* Prefer removing from end of list
+				 * (higher index) to minimize memmove
+				 * overhead
+				 */
+				if (snapshot->pools[i].total_pages <=
+						min_allocated) {
+					min_allocated =
+						snapshot->pools[i].total_pages;
+					pool_idx = i;
+				}
+			}
+
+			if (pool_idx < 0)
+				break;  /* No more pools to remove */
+
+			/* Use pre-calculated capacity */
+			{
+				uint32_t pool_capacity =
+					snapshot->pools[pool_idx].capacity;
+				uint32_t remaining_capacity =
+					total_capacity - pool_capacity;
+
+				/* Stop if would go below target */
+				if (remaining_capacity < target_capacity)
+					break;
+
+				/* Mark pool for removal */
+				marked[pool_idx] = true;
+				decision->pools_to_remove[decision->pools_to_remove_count++] =
+					pool_idx;
+				decision->capacity_removed += pool_capacity;
+				total_capacity = remaining_capacity;
+			}
+		}
+	}
+
+	if (decision->pools_to_remove_count > 0) {
+		decision->action = DP_TX_PP_SHRINK_ACTION_REMOVE_POOLS;
+		decision->new_capacity = total_capacity -
+					 decision->capacity_removed;
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* Check last pool removal condition */
+	if (snapshot->active_count == 1 && !snapshot->pools[0].is_prealloc) {
+		uint32_t usage_threshold = (total_capacity *
+			DP_TX_PP_LAST_POOL_USAGE_THRESHOLD_PERCENT) / 100;
+
+		if (decision->effective_usage < usage_threshold) {
+			decision->action = DP_TX_PP_SHRINK_ACTION_REMOVE_LAST;
+			decision->new_capacity = 0;
+			return QDF_STATUS_SUCCESS;
+		}
+	}
+
+	/* No shrink needed */
+	decision->action = DP_TX_PP_SHRINK_ACTION_NONE;
+	decision->new_capacity = total_capacity;
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_tx_page_pool_safe_to_free_locked() - Check if pool can be safely freed
+ * @pp_params: Pool parameters (must hold pp_lock)
+ *
+ * Validates pool is safe to destroy. Must be called under pp_lock.
+ *
+ * Return: true if safe to free, false otherwise
+ */
+static inline bool
+dp_tx_page_pool_safe_to_free_locked(struct dp_tx_pp_params *pp_params)
+{
+	/* Never free prealloc pools */
+	if (pp_params->is_prealloc)
+		return false;
+
+	return true;
+}
+
+/**
+ * dp_tx_page_pool_apply_pool_removal() - Execute single pool removal
+ * @soc: DP SoC handle
+ * @tx_pp: TX page pool handle
+ * @pool_idx: Index of pool to remove
+ *
+ * Removes pool from active list with minimal locking. Heavy operations
+ * (destroy/create) done outside locks. Always creates an idle pool replacement
+ * to maintain constant pool count.
+ *
+ * Return: QDF_STATUS_SUCCESS or error
+ */
+static QDF_STATUS
+dp_tx_page_pool_apply_pool_removal(
+			struct dp_soc *soc,
+			struct dp_tx_page_pool *tx_pp,
+			uint8_t pool_idx)
+{
+	struct dp_tx_pp_params *pp_params;
+	struct dp_tx_pp_params params_copy;
+	qdf_page_pool_t old_pp;
+	qdf_page_pool_t new_pp = NULL;
+	struct dp_tx_pp_params new_pool_params;
+	uint8_t j;
+	QDF_STATUS status;
+
+	/* CRITICAL SECTION 1: Validate and remove from active list */
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+
+	/* Validate pool index */
+	if (pool_idx >= tx_pp->active_pool_count) {
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	pp_params = &tx_pp->active_pool[pool_idx];
+
+	/* Safety check */
+	if (!dp_tx_page_pool_safe_to_free_locked(pp_params)) {
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+		return QDF_STATUS_E_PERM;
+	}
+
+	/* Save pool handle and params */
+	old_pp = pp_params->pp;
+	params_copy = *pp_params;
+
+	/* Invalidate cache if it points to the pool being removed */
+	if (tx_pp->last_used_pool == pp_params)
+		tx_pp->last_used_pool = NULL;
+
+	/* Remove from active list */
+	for (j = pool_idx; j < tx_pp->active_pool_count - 1; j++)
+		tx_pp->active_pool[j] =
+			tx_pp->active_pool[j + 1];
+	tx_pp->active_pool_count--;
+
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+	/* END CRITICAL SECTION 1 */
+
+	/* Heavy operations outside lock */
+	if (old_pp)
+		qdf_page_pool_destroy(old_pp);
+
+	/* Create replacement idle pool */
+	new_pp = qdf_page_pool_create(soc->osdev,
+				      params_copy.pool_size,
+				      params_copy.page_size,
+				      QDF_DMA_BIDIRECTIONAL);
+	if (!new_pp)
+		return QDF_STATUS_E_NOMEM;
+
+	/* Initialize new pool params */
+	qdf_mem_zero(&new_pool_params, sizeof(new_pool_params));
+	new_pool_params.pp = new_pp;
+	new_pool_params.pool_size = params_copy.pool_size;
+	new_pool_params.page_size = params_copy.page_size;
+	new_pool_params.pp_size = params_copy.pp_size;
+	new_pool_params.is_prealloc = false;
+
+	/* CRITICAL SECTION 2: Add to idle list */
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+
+	if (new_pool_params.page_size > qdf_page_size) {
+		if (tx_pp->idle_pool_ho_cnt < MAX_TX_IDLE_POOLS) {
+			tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt] =
+				new_pool_params;
+			tx_pp->idle_pool_ho_cnt++;
+			status = QDF_STATUS_SUCCESS;
+		} else {
+			status = QDF_STATUS_E_RESOURCES;
+		}
+	} else {
+		if (tx_pp->idle_pool_lo_cnt < MAX_TX_IDLE_POOLS) {
+			tx_pp->idle_pool_lo[tx_pp->idle_pool_lo_cnt] =
+				new_pool_params;
+			tx_pp->idle_pool_lo_cnt++;
+			status = QDF_STATUS_SUCCESS;
+		} else {
+			status = QDF_STATUS_E_RESOURCES;
+		}
+	}
+
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+	/* END CRITICAL SECTION 2 */
+
+	/* Cleanup if idle list full */
+	if (QDF_IS_STATUS_ERROR(status) && new_pp)
+		qdf_page_pool_destroy(new_pp);
+
+	return status;
+}
+
+/**
+ * dp_tx_page_pool_count_active_prealloc() - Count active prealloc pools
+ * @tx_pp: TX page pool handle
+ *
+ * Return: Number of prealloc pools in active list
+ */
+static inline uint8_t
+dp_tx_page_pool_count_active_prealloc(struct dp_tx_page_pool *tx_pp)
+{
+	uint8_t count = 0;
+	uint8_t i;
+
+	for (i = 0; i < tx_pp->active_pool_count; i++) {
+		if (tx_pp->active_pool[i].is_prealloc)
+			count++;
+	}
+
+	return count;
+}
+
+/**
+ * dp_tx_page_pool_sort_removal_indices() - Sort pool indices for safe removal
+ * @indices: Array of pool indices to sort
+ * @count: Number of indices
+ *
+ * Sorts pool indices in ascending order so they can be removed in reverse
+ * (descending) order. This ensures array compaction doesn't invalidate
+ * subsequent indices.
+ *
+ * Uses insertion sort - optimal for small arrays (n ≤ 4).
+ */
+static void
+dp_tx_page_pool_sort_removal_indices(uint8_t *indices, uint8_t count)
+{
+	uint8_t i, j, key;
+
+	for (i = 1; i < count; i++) {
+		key = indices[i];
+		j = i;
+
+		while (j > 0 && indices[j - 1] > key) {
+			indices[j] = indices[j - 1];
+			j--;
+		}
+		indices[j] = key;
+	}
+}
+
+/**
+ * dp_tx_page_pool_remove_selected_pools() - Remove pools in safe order
+ * @soc: SoC handle
+ * @tx_pp: TX page pool handle
+ * @decision: Shrink decision containing pools to remove
+ *
+ * Removes pools in descending index order to handle array compaction safely.
+ * Skips preallocated pools and continues with remaining pools.
+ *
+ * Return: QDF_STATUS_SUCCESS if at least one pool removed, error otherwise
+ */
+static QDF_STATUS
+dp_tx_page_pool_remove_selected_pools(struct dp_soc *soc,
+				      struct dp_tx_page_pool *tx_pp,
+				      struct dp_tx_pp_shrink_decision *decision)
+{
+	QDF_STATUS status;
+	uint8_t i, pool_idx;
+	bool any_removed = false;
+	uint8_t sorted_indices[MAX_POOLS_PER_CYCLE];
+
+	/* Create local copy for sorting to avoid modifying const data */
+	qdf_mem_copy(sorted_indices, decision->pools_to_remove,
+		     decision->pools_to_remove_count);
+
+	/* Sort indices for safe removal order */
+	dp_tx_page_pool_sort_removal_indices(sorted_indices,
+					     decision->pools_to_remove_count);
+
+	/* Remove in reverse order (highest index first) */
+	for (i = decision->pools_to_remove_count; i > 0; i--) {
+		pool_idx = sorted_indices[i - 1];
+
+		status = dp_tx_page_pool_apply_pool_removal(soc, tx_pp,
+							    pool_idx);
+		if (QDF_IS_STATUS_SUCCESS(status)) {
+			any_removed = true;
+			dp_tx_page_pool_record_shrink_attempt(tx_pp, true);
+		} else if (status == QDF_STATUS_E_PERM) {
+			/* Preallocated pool - skip and continue */
+			dp_debug("Pool %u is preallocated, skipping", pool_idx);
+		} else {
+			/* Real error - log and stop */
+			dp_err("Failed to remove pool %u:%d", pool_idx, status);
+			break;
+		}
+	}
+
+	return any_removed ? QDF_STATUS_SUCCESS : QDF_STATUS_E_FAILURE;
+}
+
+/**
+ * dp_tx_page_pool_execute_shrink_action() - Execute shrink decision
+ * @soc: SoC handle
+ * @tx_pp: TX page pool handle
+ * @decision: Shrink decision to execute
+ *
+ * Executes the shrink action determined by the evaluation phase.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dp_tx_page_pool_execute_shrink_action(struct dp_soc *soc,
+				      struct dp_tx_page_pool *tx_pp,
+				      struct dp_tx_pp_shrink_decision *decision)
+{
+	QDF_STATUS status;
+
+	switch (decision->action) {
+	case DP_TX_PP_SHRINK_ACTION_NONE:
+		return QDF_STATUS_SUCCESS;
+
+	case DP_TX_PP_SHRINK_ACTION_REMOVE_POOLS:
+		/* Remove selected pools */
+		status = dp_tx_page_pool_remove_selected_pools(soc, tx_pp,
+							       decision);
+		return status;
+
+	case DP_TX_PP_SHRINK_ACTION_REMOVE_LAST:
+		/* Remove last pool and create idle replacement */
+		status = dp_tx_page_pool_apply_pool_removal(soc, tx_pp, 0);
+		dp_tx_page_pool_record_shrink_attempt(
+			tx_pp, QDF_IS_STATUS_SUCCESS(status));
+		return status;
+
+	default:
+		return QDF_STATUS_E_INVAL;
+	}
+}
+
+/**
+ * dp_tx_page_pool_shrink_monitor() - Monitor and shrink TX page pool
+ * @soc: DP SoC handle
+ * @tx_pp: TX page pool handle
+ *
+ * This function is called periodically to monitor the usage of TX page pool
+ * and shrink it if necessary. It takes a snapshot of the current state,
+ * evaluates if shrinking is needed, and executes the shrink action.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
+			       struct dp_tx_page_pool *tx_pp)
+{
+	struct dp_tx_pp_shrink_snapshot snapshot;
+	struct dp_tx_pp_shrink_decision shrink_decision;
+	uint64_t current_time_us;
+	uint64_t time_since_last_eval;
+	QDF_STATUS status;
+
+	if (!tx_pp || !tx_pp->page_pool_init)
+		return QDF_STATUS_E_INVAL;
+
+	/* Increment monitoring counter atomically */
+	qdf_atomic_inc(&tx_pp->monitoring_checks);
+
+	current_time_us = qdf_get_log_timestamp_usecs();
+
+	/* First call initialization */
+	if (tx_pp->last_shrink_eval_time_us == 0) {
+		tx_pp->last_shrink_eval_time_us = current_time_us;
+		qdf_atomic_set(&tx_pp->max_buffer_usage_watermark, 0);
+		dp_nofl_info("TX_PP_MONITOR: Initialized monitoring window");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* Check if 15 seconds elapsed */
+	time_since_last_eval =
+		current_time_us - tx_pp->last_shrink_eval_time_us;
+	if (time_since_last_eval < DP_TX_PP_SHRINK_WINDOW_US)
+		return QDF_STATUS_SUCCESS;  /* Still monitoring */
+
+	/* PHASE 1: SNAPSHOT - Collect metrics with minimal locking */
+	status = dp_tx_page_pool_take_snapshot(tx_pp, &snapshot,
+					       current_time_us);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	/* PHASE 2: DECISION - Pure computation, no locks */
+	status = dp_tx_page_pool_evaluate_shrink(&snapshot, &shrink_decision);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	/* PHASE 3: ACT - Apply decision with minimal locking */
+	status = dp_tx_page_pool_execute_shrink_action(soc, tx_pp,
+						       &shrink_decision);
+
+	/* Reset for next window (lock held internally) */
+	dp_tx_page_pool_reset_shrink_state(tx_pp, current_time_us);
+
+	return status;
+}
+
 /**
  * dp_tx_is_page_pool_enabled() - Check if TX page pool is enabled
  * @soc: DP SoC

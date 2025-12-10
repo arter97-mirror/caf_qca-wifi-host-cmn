@@ -2010,6 +2010,10 @@ struct dp_tx_pp_params {
  * @current_buffers_in_use: Current buffer in use count
  * @max_buffer_usage_watermark: Max buffer usage watermark
  * @current_bufs_double_dec: Track double decrement
+ * @last_shrink_eval_time_us: Last shrink evaluation time
+ * @shrink_attempts: Number of shrink attempts
+ * @shrink_success: Number of shrink success
+ * @monitoring_checks: Monitor counter
  */
 struct dp_tx_page_pool {
 	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
@@ -2035,7 +2039,10 @@ struct dp_tx_page_pool {
 	qdf_atomic_t current_buffers_in_use;
 	qdf_atomic_t max_buffer_usage_watermark;
 	qdf_atomic_t current_bufs_double_dec;
-
+	uint64_t last_shrink_eval_time_us;
+	qdf_atomic_t shrink_attempts;
+	qdf_atomic_t shrink_success;
+	qdf_atomic_t monitoring_checks;
 };
 #endif
 
