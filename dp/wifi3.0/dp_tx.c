@@ -203,6 +203,23 @@ dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
 }
 
 /**
+ * dp_tx_page_pool_update_cache() - Update cache
+ * @tx_pp: TX page pool handle
+ * @pp_params: Pool params to cache and return
+ *
+ * Updates the last_used_pool cache with the given pool params.
+ * This exploits temporal locality for faster subsequent allocations.
+ *
+ * Return: None
+ */
+static __always_inline void
+dp_tx_page_pool_update_cache(struct dp_tx_page_pool *tx_pp,
+			     struct dp_tx_pp_params *pp_params)
+{
+	tx_pp->last_used_pool = pp_params;
+}
+
+/**
  * dp_tx_page_pool_attach_idle() - Attach an idle pool to active list
  * @tx_pp: TX page pool handle
  * @osdev: OS device handle
@@ -257,6 +274,8 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp,
 attach_pool:
 	new_active_pp = &tx_pp->active_pool[tx_pp->active_pool_count];
 	*new_active_pp = *idle_pp_params;
+	/* Update cache with the pool that was used */
+	dp_tx_page_pool_update_cache(tx_pp, new_active_pp);
 	tx_pp->active_pool_count++;
 
 	return nbuf;
@@ -346,9 +365,12 @@ dp_tx_page_pool_find_available_slow(struct dp_tx_page_pool *tx_pp,
 		if (qdf_unlikely(!pp_params->pp))
 			continue;
 
-		if (qdf_likely(!qdf_page_pool_empty(pp_params->pp)))
+		if (qdf_likely(!qdf_page_pool_empty(pp_params->pp))) {
+			/* Update cache with the pool that was used */
+			dp_tx_page_pool_update_cache(tx_pp, pp_params);
 			return dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
 							       size, offset);
+		}
 	}
 
 	/*
@@ -359,8 +381,11 @@ dp_tx_page_pool_find_available_slow(struct dp_tx_page_pool *tx_pp,
 		pp_params = &tx_pp->active_pool[tx_pp->active_pool_count - 1];
 		nbuf = dp_tx_page_pool_try_grow_last(tx_pp, pp_params, osdev,
 						     size, offset);
-		if (qdf_likely(nbuf))
+		if (qdf_likely(nbuf)) {
+			/* Update cache with the pool that was used */
+			dp_tx_page_pool_update_cache(tx_pp, pp_params);
 			return nbuf;
+		}
 	}
 
 	/* Last resort: Attach idle pool */
@@ -381,8 +406,30 @@ dp_tx_page_pool_dyn_alloc_nbuf(struct dp_tx_page_pool *tx_pp,
 			       qdf_device_t osdev, size_t size,
 			       uint32_t *offset)
 {
+	struct dp_tx_pp_params *pp_params;
+	qdf_nbuf_t nbuf = NULL;
 	*offset = 0;
+	/*
+	 * FAST PATH: Inline cache check (most common case ~90%)
+	 * This avoids function call overhead and keeps hot path tight
+	 */
+	pp_params = tx_pp->last_used_pool;
+	if (qdf_likely(pp_params && !qdf_page_pool_empty(pp_params->pp))) {
+		/* Cache hit - allocate directly from cached pool */
+		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
+						       size, offset);
+		if (qdf_likely(nbuf)) {
+			qdf_atomic_inc(&tx_pp->cache_hits);
 
+			return nbuf;
+		}
+	}
+
+	/*
+	 * SLOW PATH: Cache miss - call helper for complex logic
+	 * This handles pool search, growth, and idle pool attachment
+	 */
+	qdf_atomic_inc(&tx_pp->cache_misses);
 	return dp_tx_page_pool_find_available_slow(tx_pp, osdev, size, offset);
 }
 

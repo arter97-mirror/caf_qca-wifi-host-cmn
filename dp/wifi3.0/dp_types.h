@@ -1990,6 +1990,7 @@ struct dp_tx_pp_params {
  * @active_pool: TX active pool list
  * @idle_pool_ho: Higher order idle page pool list
  * @idle_pool_lo: Lower order idle page pool list
+ * @last_used_pool: Fast path optimization: Cache last successfully used pool
  * @active_pool_count: active pool list count
  * @idle_pool_ho_cnt: Higher order idle page pool list count
  * @idle_pool_lo_cnt: Lower order idle page pool list count
@@ -2004,11 +2005,14 @@ struct dp_tx_pp_params {
  * @grow_attempts: Pool growth attempts
  * @grow_successes: Successful pool growths
  * @grow_failures: Failed pool growths
+ * @cache_hits: Last-used pool cache hits
+ * @cache_misses: Last-used pool cache misses
  */
 struct dp_tx_page_pool {
 	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
 	struct dp_tx_pp_params idle_pool_ho[MAX_TX_IDLE_POOLS];
 	struct dp_tx_pp_params idle_pool_lo[MAX_TX_IDLE_POOLS];
+	struct dp_tx_pp_params *last_used_pool;
 	uint8_t active_pool_count;
 	uint8_t idle_pool_ho_cnt;
 	uint8_t idle_pool_lo_cnt;
@@ -2023,7 +2027,8 @@ struct dp_tx_page_pool {
 	qdf_atomic_t grow_attempts;
 	qdf_atomic_t grow_successes;
 	qdf_atomic_t grow_failures;
-
+	qdf_atomic_t cache_hits;
+	qdf_atomic_t cache_misses;
 };
 #endif
 

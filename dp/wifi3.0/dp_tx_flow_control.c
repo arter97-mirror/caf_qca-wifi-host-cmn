@@ -848,6 +848,7 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 		pp_params->pp_size = pool_t->pp_size;
 		pp_params->page_size = pool_t->page_size;
 		pp_params->is_prealloc = true;
+		tx_pp->last_used_pool = pp_params;
 	} else {
 		dp_err("failed to get tx page pool");
 		return QDF_STATUS_E_FAILURE;
