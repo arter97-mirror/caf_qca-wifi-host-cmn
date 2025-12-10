@@ -859,6 +859,31 @@ dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
 	return status;
 }
 
+QDF_STATUS
+dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_pdev *pdev;
+	struct dp_vdev *vdev;
+	struct dp_tx_page_pool *tx_pp;
+
+	if (!soc->tx_dyn_pool_en)
+		return QDF_STATUS_SUCCESS;
+
+	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
+	if (!pdev)
+		return QDF_STATUS_E_INVAL;
+
+	/* Iterate through all vdevs and trigger shrink monitor */
+	TAILQ_FOREACH(vdev, &pdev->vdev_list, vdev_list_elem) {
+		tx_pp = soc->tx_pp[vdev->vdev_id];
+		if (tx_pp && tx_pp->page_pool_init)
+			dp_tx_page_pool_shrink_monitor(soc, tx_pp);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * dp_tx_is_page_pool_enabled() - Check if TX page pool is enabled
  * @soc: DP SoC

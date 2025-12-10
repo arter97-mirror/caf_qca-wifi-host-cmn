@@ -2862,7 +2862,23 @@ void dp_tx_hw_enqueue_post_process(struct dp_soc *soc,
 				   struct dp_tx_msdu_info_s *msdu_info,
 				   int hw_enqueue_result);
 #endif /* FEATURE_DAL_DP_SUPPORT */
-
+#ifdef DP_FEATURE_TX_PAGE_POOL
+/**
+ * dp_tx_trigger_page_pool_shrink() - Trigger shrink monitor for all vdevs
+ * @soc_hdl: soc handle
+ * @pdev_id: pdev id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id);
+#else
+static inline QDF_STATUS
+dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* DP_FEATURE_TX_PAGE_POOL */
 #ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
 static inline
 bool dp_tx_comp_loop_pkt_limit_hit(struct dp_soc *soc, int num_reaped,
