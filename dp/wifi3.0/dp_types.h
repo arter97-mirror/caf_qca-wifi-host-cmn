@@ -2007,6 +2007,9 @@ struct dp_tx_pp_params {
  * @grow_failures: Failed pool growths
  * @cache_hits: Last-used pool cache hits
  * @cache_misses: Last-used pool cache misses
+ * @current_buffers_in_use: Current buffer in use count
+ * @max_buffer_usage_watermark: Max buffer usage watermark
+ * @current_bufs_double_dec: Track double decrement
  */
 struct dp_tx_page_pool {
 	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
@@ -2029,6 +2032,10 @@ struct dp_tx_page_pool {
 	qdf_atomic_t grow_failures;
 	qdf_atomic_t cache_hits;
 	qdf_atomic_t cache_misses;
+	qdf_atomic_t current_buffers_in_use;
+	qdf_atomic_t max_buffer_usage_watermark;
+	qdf_atomic_t current_bufs_double_dec;
+
 };
 #endif
 

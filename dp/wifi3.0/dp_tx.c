@@ -203,6 +203,55 @@ dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
 }
 
 /**
+ * dp_tx_page_pool_inc_usage() - Increment buffer usage for a vdev's pool
+ * @tx_pp: TX page pool handle
+ *
+ * Called during buffer allocation to track current usage globally.
+ * Uses atomic operations to avoid lock contention on the Tx path.
+ */
+static inline void
+dp_tx_page_pool_inc_usage(struct dp_tx_page_pool *tx_pp)
+{
+	uint32_t current_usage;
+
+	/* Increment usage counter atomically */
+	current_usage = qdf_atomic_inc_return(&tx_pp->current_buffers_in_use);
+
+	if (current_usage > qdf_atomic_read(&tx_pp->max_buffer_usage_watermark))
+		qdf_atomic_set(&tx_pp->max_buffer_usage_watermark,
+			       current_usage);
+}
+
+/**
+ * dp_tx_page_pool_dec_usage() - Decrement buffer usage for a vdev's pool
+ * @soc: DP soc handle
+ * @vdev_id: VDEV ID associated with the buffer
+ *
+ * Called during buffer deallocation to track current usage globally.
+ * Uses atomic operations to avoid lock contention on the Tx path.
+ */
+
+static inline void
+dp_tx_page_pool_dec_usage(struct dp_soc *soc, uint8_t vdev_id)
+{
+	struct dp_tx_page_pool *tx_pp;
+
+	if (qdf_unlikely(vdev_id == DP_INVALID_VDEV_ID))
+		return;
+
+	tx_pp = soc->tx_pp[vdev_id];
+	if (tx_pp && tx_pp->page_pool_init) {
+		qdf_spin_lock_bh(&tx_pp->pp_lock);
+		/* Decrement usage counter atomically, but never below zero */
+		if (qdf_atomic_read(&tx_pp->current_buffers_in_use) > 0)
+			qdf_atomic_dec(&tx_pp->current_buffers_in_use);
+		else
+			qdf_atomic_inc(&tx_pp->current_bufs_double_dec);
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+	}
+}
+
+/**
  * dp_tx_page_pool_update_cache() - Update cache
  * @tx_pp: TX page pool handle
  * @pp_params: Pool params to cache and return
@@ -575,6 +624,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset);
 	if (qdf_likely(pp_nbuf)) {
 		tx_pp->alloc_success++;
+		dp_tx_page_pool_inc_usage(tx_pp);
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 		goto copy_data;
 	}
@@ -620,11 +670,16 @@ static qdf_nbuf_t
 dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
 {
 	qdf_nbuf_t orig_nbuf;
+	bool pp_buf;
 
 	if (!tx_desc->orig_nbuf)
 		return nbuf;
 
+	pp_buf = qdf_is_pp_nbuf(nbuf);
 	qdf_nbuf_free(nbuf);
+
+	if (pp_buf && tx_desc->pdev)
+		dp_tx_page_pool_dec_usage(tx_desc->pdev->soc, tx_desc->vdev_id);
 
 	orig_nbuf = tx_desc->orig_nbuf;
 	tx_desc->nbuf = orig_nbuf;
@@ -654,6 +709,11 @@ static inline qdf_nbuf_t
 dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
 {
 	return nbuf;
+}
+
+static inline void
+dp_tx_page_pool_dec_usage(struct dp_soc *soc, uint8_t vdev_id)
+{
 }
 #endif /* DP_FEATURE_TX_PAGE_POOL */
 
@@ -4321,6 +4381,7 @@ qdf_nbuf_t dp_tx_comp_free_buf(struct dp_soc *soc, struct dp_tx_desc_s *desc,
 {
 	qdf_nbuf_t nbuf = desc->nbuf;
 	enum dp_tx_event_type type = dp_tx_get_event_type(desc->flags);
+	bool pp_buf;
 
 	/* nbuf already freed in vdev detach path */
 	if (!nbuf)
@@ -4391,7 +4452,11 @@ nbuf_free:
 	if (delayed_free)
 		return nbuf;
 
+	pp_buf = qdf_is_pp_nbuf(nbuf);
 	qdf_nbuf_free(nbuf);
+
+	if (pp_buf)
+		dp_tx_page_pool_dec_usage(soc, desc->vdev_id);
 
 	return NULL;
 }
@@ -5554,8 +5619,9 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 		new_nbuf = dp_tx_page_pool_nbuf_alloc_map(tx_pp, soc,
 							  ori_gso_size +
 							  eit_hdr_len);
-
-		if (!new_nbuf)
+		if (new_nbuf)
+			dp_tx_page_pool_inc_usage(tx_pp);
+		else
 			new_nbuf = qdf_nbuf_alloc_simple(osdev,
 							 ori_gso_size +
 							 eit_hdr_len,
@@ -8956,6 +9022,8 @@ dp_tx_comp_process_desc_list(struct dp_soc *soc,
 	qdf_nbuf_queue_head_t h;
 	uint16_t comp_index = 0, ppeds_comp_index = 0;
 	struct dp_tx_desc_pool_s *tx_desc_pool = NULL;
+	uint8_t vdev_id;
+	bool pp_buf;
 
 	desc = comp_head;
 
@@ -9025,9 +9093,13 @@ dp_tx_comp_process_desc_list(struct dp_soc *soc,
 			 */
 			dp_tx_desc_history_add(soc, desc->dma_addr, desc->nbuf,
 					       desc->id, DP_TX_COMP_UNMAP);
+			vdev_id = desc->vdev_id;
+			pp_buf = qdf_is_pp_nbuf(desc->nbuf);
 			dp_tx_nbuf_unmap(soc, desc);
 			dp_tx_nbuf_dev_queue_free(&h, desc);
 			dp_tx_desc_free(soc, desc, desc->pool_id);
+			if (pp_buf)
+				dp_tx_page_pool_dec_usage(soc, vdev_id);
 			desc = next;
 			continue;
 		}
@@ -9042,8 +9114,12 @@ dp_tx_comp_process_desc_list(struct dp_soc *soc,
 		dp_tx_comp_process_desc(soc, desc, &ts, txrx_peer);
 
 		if (qdf_likely(desc->flags & DP_TX_DESC_FLAG_FAST)) {
+			vdev_id = desc->vdev_id;
+			pp_buf = qdf_is_pp_nbuf(desc->nbuf);
 			dp_tx_nbuf_dev_queue_free(&h, desc);
 			dp_tx_desc_free(soc, desc, desc->pool_id);
+			if (pp_buf)
+				dp_tx_page_pool_dec_usage(soc, vdev_id);
 		} else {
 			if (desc->flags & DP_TX_DESC_FLAG_COMPLETED_TX)
 				dp_tx_comp_free_buf(soc, desc, false);
@@ -9164,6 +9240,8 @@ uint32_t dp_tx_comp_handler(struct dp_intr *int_ctx, struct dp_soc *soc,
 	uint16_t comp_index = 0;
 	struct dp_tx_desc_pool_s *tx_desc_pool = NULL;
 	uint8_t tx_status;
+	uint8_t vdev_id;
+	bool pp_buf;
 
 	DP_HIST_INIT();
 
@@ -9385,6 +9463,8 @@ add_to_pool2:
 
 			if (tx_desc->flags & DP_TX_DESC_FLAG_FASTPATH_SIMPLE ||
 			    tx_desc->flags & DP_TX_DESC_FLAG_PPEDS) {
+				vdev_id = tx_desc->vdev_id;
+				pp_buf = qdf_is_pp_nbuf(tx_desc->nbuf);
 				dp_tx_nbuf_dev_queue_free(&h, tx_desc);
 				fast_desc_count++;
 				if (!fast_head_desc) {
@@ -9394,6 +9474,8 @@ add_to_pool2:
 				fast_tail_desc->next = tx_desc;
 				fast_tail_desc = tx_desc;
 				dp_tx_desc_clear(tx_desc);
+				if (pp_buf)
+					dp_tx_page_pool_dec_usage(soc, vdev_id);
 			} else {
 				if (!head_desc) {
 					head_desc = tx_desc;
