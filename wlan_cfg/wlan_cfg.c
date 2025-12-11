@@ -4374,6 +4374,21 @@ wlan_soc_tx_page_pool_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+static inline void
+wlan_soc_dal_dp_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+			   struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx)
+{
+	wlan_cfg_ctx->dal_dp_enabled = cfg_get(psoc, CFG_DP_DAL_SUPPORT);
+}
+#else
+static inline void
+wlan_soc_dal_dp_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+			   struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx)
+{
+}
+#endif
+
 #ifdef FEATURE_DIRECT_LINK
 static inline void
 wlan_soc_direct_link_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
@@ -4683,6 +4698,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 	wlan_soc_sawf_msduq_tid_skid_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_direct_link_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_rx_buffer_recycle_cfg_attach(psoc, wlan_cfg_ctx);
+	wlan_soc_dal_dp_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_ndp_bw_flow_ctrl_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_tx_page_pool_cfg_attach(psoc, wlan_cfg_ctx);
 
@@ -5001,6 +5017,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 	wlan_soc_sawf_msduq_tid_skid_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_direct_link_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_soc_rx_buffer_recycle_cfg_attach(psoc, wlan_cfg_ctx);
+	wlan_soc_dal_dp_cfg_attach(psoc, wlan_cfg_ctx);
 	wlan_cfg_ctx->rxmon_mgmt_linearization =
 		cfg_get(psoc, CFG_DP_RXMON_MGMT_LINEARIZATION);
 	wlan_soc_dp_proto_stats_cfg_attach(psoc, wlan_cfg_ctx);

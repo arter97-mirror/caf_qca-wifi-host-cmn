@@ -186,6 +186,7 @@ struct wlan_srng_cfg {
  * @int_rx_ring_mask: Bitmap of Rx interrupts mapped to each NAPI/Intr context
  * @dal_int_tx_ring_mask: Bitmap of DAL Tx intr mapped to each NAPI/Intr context
  * @dal_int_rx_ring_mask: Bitmap of DAL Rx intr mapped to each NAPI/Intr context
+ * @dal_dp_enabled: Flag indicating if DAL DP is enabled
  * @int_batch_threshold_ppe2tcl:
  * @int_timer_threshold_ppe2tcl:
  * @int_batch_threshold_tx:
@@ -460,6 +461,7 @@ struct wlan_cfg_dp_soc_ctxt {
 #ifdef FEATURE_DAL_DP_SUPPORT
 	uint8_t dal_int_tx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t dal_int_rx_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
+	bool dal_dp_enabled;
 #endif
 	uint8_t int_rx_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
 	uint8_t int_tx_mon_ring_mask[WLAN_CFG_INT_NUM_CONTEXTS];
