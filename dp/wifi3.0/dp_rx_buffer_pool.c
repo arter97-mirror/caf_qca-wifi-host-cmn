@@ -595,7 +595,7 @@ dp_rx_pp_prealloc_get(struct dp_soc *soc, size_t *pp_size,
 		return NULL;
 
 	pool_t = soc->cdp_soc.ol_ops->dp_get_page_pool(QDF_DP_PAGE_POOL_RX,
-						       pool_size);
+						       pool_size, false);
 	if (pool_t && pool_t->pp && pool_t->pp_size == *pp_size &&
 	    pool_t->page_size == *page_size)
 		return pool_t->pp;

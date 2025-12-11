@@ -861,8 +861,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	if (soc->cdp_soc.ol_ops->dp_get_page_pool)
 		pool_t =
 		soc->cdp_soc.ol_ops->dp_get_page_pool(QDF_DP_PAGE_POOL_TX,
-						      pool_size);
-
+						      pool_size,
+						      dynamic_pp_enabled);
 	if (pool_t && pool_t->pp) {
 		pp_params->pp = pool_t->pp;
 		pp_params->pool_size = pool_t->pool_size;
@@ -870,22 +870,28 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 		pp_params->page_size = pool_t->page_size;
 		pp_params->is_prealloc = true;
 		tx_pp->last_used_pool = pp_params;
-	} else {
+		tx_pp->active_pool_count = 1;
+	} else if (!dynamic_pp_enabled) {
 		dp_err("failed to get tx page pool");
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	dp_info("Tx pp init success pool_size %d pp_size %lu",
-		pool_t->pool_size,  pool_t->pp_size);
-
 	qdf_spinlock_create(&tx_pp->pp_lock);
 	/* Create idle pools if dynamic page pool is enabled */
-	if (dynamic_pp_enabled)
+	if (dynamic_pp_enabled) {
 		dp_tx_page_pool_create_idle_pools(soc, tx_pp, pool_size);
+		dp_nofl_info("TX_PP_INIT: active_pools=%u(%zu:%lu), ho_idle=%u, lo_idle=%u",
+			     tx_pp->active_pool_count, pp_params->pool_size,
+			     pp_params->pp_size, tx_pp->idle_pool_ho_cnt,
+			     tx_pp->idle_pool_lo_cnt);
+
+	} else {
+		dp_nofl_info("TX_PP_INIT init success pool_size %d pp_size %lu",
+			     pool_t->pool_size,  pool_t->pp_size);
+	}
 
 	qdf_atomic_init(&tx_pp->ref_cnt);
 	tx_pp->page_pool_init = true;
-	tx_pp->active_pool_count = 1;
 	soc->osdev->no_dma_map = true;
 
 	return QDF_STATUS_SUCCESS;
