@@ -15071,6 +15071,17 @@ dp_get_bus_vote_lvl_high(ol_txrx_soc_handle soc_hdl)
 }
 #endif
 
+#if defined(FEATURE_DAL_DP_SUPPORT)
+static bool dp_is_dal_enabled(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *dp_soc;
+
+	dp_soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	return dp_soc->wlan_cfg_ctx->dal_dp_enabled;
+}
+#endif
+
 #ifdef DP_PEER_EXTENDED_API
 static struct cdp_misc_ops dp_ops_misc = {
 #ifdef FEATURE_WLAN_TDLS
@@ -15123,6 +15134,9 @@ static struct cdp_misc_ops dp_ops_misc = {
 #endif
 #ifdef DP_TX_PACKET_INSPECT_FOR_ILP
 	.evaluate_update_tx_ilp_cfg = dp_evaluate_update_tx_ilp_config,
+#endif
+#if defined(FEATURE_DAL_DP_SUPPORT)
+	.is_dp_dal_enabled = dp_is_dal_enabled,
 #endif
 };
 #endif

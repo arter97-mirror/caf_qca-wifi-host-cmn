@@ -1958,6 +1958,7 @@ void (*peer_send_wds_disconnect)(struct cdp_ctrl_objmgr_psoc *psoc,
  * @get_bus_vote_lvl_high: Get bus lvl to determine whether or not get
  *                         rx rate stats
  * @evaluate_update_tx_ilp_cfg: Evaluate and update DP TX ILP configuration
+ * @is_dp_dal_enabled: check if dp dal is enabled
  *
  * Function pointers for miscellaneous soc/pdev/vdev related operations.
  */
@@ -2065,6 +2066,9 @@ struct cdp_misc_ops {
 	bool (*evaluate_update_tx_ilp_cfg)(struct cdp_soc_t *soc_hdl,
 					   uint8_t num_msdu_idx_map,
 					   uint8_t *msdu_idx_map_arr);
+#endif
+#if defined(FEATURE_DAL_DP_SUPPORT)
+	bool (*is_dp_dal_enabled)(struct cdp_soc_t *soc_hdl);
 #endif
 };
 

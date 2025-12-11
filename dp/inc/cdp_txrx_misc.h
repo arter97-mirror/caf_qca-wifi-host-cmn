@@ -1094,4 +1094,25 @@ cdp_evaluate_update_tx_ilp_cfg(ol_txrx_soc_handle soc,
 						msdu_idx_map_arr);
 }
 #endif /* DP_TX_PACKET_INSPECT_FOR_ILP */
+
+#if defined(FEATURE_DAL_DP_SUPPORT)
+/*
+ * cdp_is_dal_dp_enabled() - Get DAL DP support status
+ * @soc: DP SOC handle
+ *
+ * Return: true if DAL DP is supported else false
+ */
+static inline bool
+cdp_is_dal_dp_enabled(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->misc_ops ||
+	    !soc->ops->misc_ops->is_dp_dal_enabled) {
+		dp_cdp_debug("Invalid Instance:");
+		return false;
+	}
+
+	return soc->ops->misc_ops->is_dp_dal_enabled(soc);
+}
+
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* _CDP_TXRX_MISC_H_ */
