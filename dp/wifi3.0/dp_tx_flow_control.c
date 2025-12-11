@@ -796,6 +796,24 @@ dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 		     idle_pool_size);
 }
 
+static inline void
+dp_tx_flush_active_pool_list(struct dp_tx_page_pool *tx_pp)
+{
+	struct dp_tx_pp_params *pp_params;
+	uint8_t flush_count = 0;
+	int i;
+
+	for (i = 0; i < tx_pp->active_pool_count; i++) {
+		pp_params = &tx_pp->active_pool[i];
+		if (!pp_params->pp || pp_params->is_prealloc)
+			continue;
+		qdf_page_pool_destroy(pp_params->pp);
+		flush_count++;
+	}
+	if (flush_count)
+		dp_nofl_info("TX_PP_FLUSH flushed %u active pools",
+			     flush_count);
+}
 static void
 dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 {
@@ -808,7 +826,8 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 		return;
 
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
-	if (pp_params->pp && soc->cdp_soc.ol_ops->dp_put_page_pool) {
+	if (pp_params->pp && soc->cdp_soc.ol_ops->dp_put_page_pool &&
+	    pp_params->is_prealloc) {
 		soc->cdp_soc.ol_ops->dp_put_page_pool(pp_params->pp,
 						      QDF_DP_PAGE_POOL_TX);
 		pp_params->pp = NULL;
@@ -817,11 +836,13 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 	}
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
-	tx_pp->page_pool_init = false;
-	tx_pp->active_pool_count = 0;
 	/* Destroy idle pools if dynamic page pool is enabled */
-	if (dynamic_pp_enabled)
+	if (dynamic_pp_enabled) {
 		dp_tx_page_pool_destroy_idle_pools(tx_pp);
+		dp_tx_flush_active_pool_list(tx_pp);
+	}
+	tx_pp->active_pool_count = 0;
+	tx_pp->page_pool_init = false;
 	qdf_spinlock_destroy(&tx_pp->pp_lock);
 }
 
