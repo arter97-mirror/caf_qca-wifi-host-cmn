@@ -589,6 +589,11 @@ QDF_STATUS (*send_vdev_up_cmd)(wmi_unified_t wmi,
 			     uint8_t bssid[QDF_MAC_ADDR_SIZE],
 				 struct vdev_up_params *params);
 
+QDF_STATUS (*send_unified_vdev_connect_cmd)(
+				wmi_unified_t wmi,
+				uint8_t bssid[QDF_MAC_ADDR_SIZE],
+				struct vdev_unified_connect_param *params);
+
 QDF_STATUS (*send_peer_create_cmd)(wmi_unified_t wmi,
 					struct peer_create_params *param);
 

@@ -41,6 +41,7 @@
 #include <target_if_psoc_wake_lock.h>
 #include <wlan_psoc_mlme_api.h>
 #include <wlan_mlo_mgr_link_switch.h>
+#include <target_if_mlo_mgr.h>
 
 static QDF_STATUS target_if_vdev_mgr_register_event_handler(
 					struct wlan_objmgr_psoc *psoc)
@@ -521,6 +522,7 @@ target_if_vdev_mgr_handle_link_switch_start(struct wlan_objmgr_vdev *vdev,
 							  &vdev_start_resp);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlme_err("vdev:%d common response processing failed", vdev_id);
+		mlo_mgr_cleanup_cached_connect_params(vdev);
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -862,6 +864,116 @@ static QDF_STATUS target_if_vdev_mgr_down_send(
 	return status;
 }
 
+/**
+ * target_if_vdev_mgr_handle_link_switch_up(): Send link switch unified connect
+ * command to firmware
+ * @vdev: pointer to vdev
+ * @param: pointer to vdev_up_params
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+target_if_vdev_mgr_handle_link_switch_up(struct wlan_objmgr_vdev *vdev,
+					 struct vdev_up_params *param)
+{
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+	uint8_t bssid[QDF_MAC_ADDR_SIZE];
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	uint8_t vdev_id;
+	struct vdev_response_timer *vdev_rsp;
+	struct vdev_unified_connect_param unified_connect_param = {0};
+
+	wmi_handle = target_if_vdev_mgr_wmi_handle_get(vdev);
+	if (!wmi_handle) {
+		mlme_err("Failed to get WMI handle!");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		mlme_err("Failed to get PSOC Object");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	ucfg_wlan_vdev_mgr_get_param_bssid(vdev, bssid);
+
+	/* Cache vdev_up params using MLO manager function */
+	status = mlo_mgr_cache_vdev_up_params(vdev, param);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("vdev:%d failed to cache vdev up params", vdev_id);
+		goto cleanup;
+	}
+
+	/* Get response timer info for unified connect */
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->psoc_get_vdev_response_timer_info) {
+		status = QDF_STATUS_E_INVAL;
+		goto cleanup;
+	}
+
+	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
+	if (!vdev_rsp) {
+		status = QDF_STATUS_E_INVAL;
+		goto cleanup;
+	}
+
+	/* Setup timer for unified connect command */
+	vdev_rsp->expire_time = UP_UNIFIED_CONNECT_RESPONSE_TIMER;
+	target_if_wake_lock_timeout_acquire(psoc, START_WAKELOCK);
+	target_if_acquire_vdev_cmd_rt_lock(vdev_rsp);
+	target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp,
+					   UP_UNIFIED_CONNECT_RESPONSE_BIT);
+
+	/* Populate unified connect parameters from MLO context */
+	status = target_if_mlo_populate_unified_connect_params(
+							vdev,
+							&unified_connect_param);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("Failed to populate unified connect params");
+		vdev_rsp->timer_status = QDF_STATUS_E_CANCELED;
+		vdev_rsp->expire_time = 0;
+		target_if_vdev_mgr_rsp_timer_stop(
+					psoc, vdev_rsp,
+					UP_UNIFIED_CONNECT_RESPONSE_BIT);
+		target_if_wake_lock_timeout_release(psoc, START_WAKELOCK);
+		target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
+		goto cleanup;
+	}
+
+	/* Set flag to indicate unified connect command is in progress */
+	mlo_mgr_set_unified_connect_in_progress(vdev, true);
+
+	status = wmi_unified_vdev_connect_send(
+					wmi_handle, bssid,
+					&unified_connect_param);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		vdev_rsp->timer_status = QDF_STATUS_E_CANCELED;
+		vdev_rsp->expire_time = 0;
+		target_if_vdev_mgr_rsp_timer_stop(
+					psoc, vdev_rsp,
+					UP_UNIFIED_CONNECT_RESPONSE_BIT);
+		target_if_wake_lock_timeout_release(psoc, START_WAKELOCK);
+		target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
+	}
+
+cleanup:
+	/*
+	 * Cleanup ALL cached connect params after sending to firmware
+	 * This includes ALL FOUR pointers:
+	 * - peer_create
+	 * - vdev_start
+	 * - peer_assoc
+	 * - vdev_up
+	 */
+	mlo_mgr_cleanup_cached_connect_params(vdev);
+	return status;
+}
+
 static QDF_STATUS target_if_vdev_mgr_up_send(
 					struct wlan_objmgr_vdev *vdev,
 					struct vdev_up_params *param)
@@ -888,6 +1000,10 @@ static QDF_STATUS target_if_vdev_mgr_up_send(
 		return QDF_STATUS_E_INVAL;
 	}
 	ucfg_wlan_vdev_mgr_get_param_bssid(vdev, bssid);
+
+	if (mlo_mgr_is_link_switch_in_progress(vdev) &&
+	    mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc))
+		return target_if_vdev_mgr_handle_link_switch_up(vdev, param);
 
 	status = wmi_unified_vdev_up_send(wmi_handle, bssid, param);
 	target_if_wake_lock_timeout_release(psoc, START_WAKELOCK);
