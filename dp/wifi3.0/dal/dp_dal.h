@@ -448,6 +448,7 @@ void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 
 int dp_dal_get_ext_grp_id(struct dp_dal_ctx *dal_ctx,
 			  int ring_num, enum hal_ring_type type);
+void dp_dal_pdev_set_default_routing(struct dp_pdev *pdev);
 #else
 #define DAL_DP_TCL_RING_MASK 0
 #define DAL_DP_REO_RING_MASK 0

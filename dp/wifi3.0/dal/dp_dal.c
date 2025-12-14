@@ -10,6 +10,7 @@
 #include <qdf_types.h>
 #include "qdf_mem.h"
 #include "dp_rx.h"
+#include "dp_peer.h"
 
 /**
  * dp_dal_bus_init_bypass_mode() - Skeleton for platform bus init
@@ -142,6 +143,84 @@ static int dp_dal_intf_init_bypass_mode(void *priv, void *intf_info)
 static int dp_dal_intf_deinit_bypass_mode(void *priv, uint16_t vdev_id)
 {
 	return 0;
+}
+
+/**
+ * dp_dal_pdev_set_default_routing_helper() - Helper to set default routing
+ * @soc: pointer to dp_soc structure
+ * @peer: pointer to dp_peer structure
+ * @arg: pointer to dp_pdev structure
+ *
+ * Return: None
+ */
+static void dp_dal_pdev_set_default_routing_helper(struct dp_soc *soc,
+						   struct dp_peer *peer,
+						   void *arg)
+{
+	struct dp_pdev *pdev = (struct dp_pdev *)arg;
+	struct dp_vdev *vdev = peer->vdev;
+	uint32_t reo_dest;
+	uint8_t lmac_peer_id_msb = 0;
+	bool hash_based;
+
+	if (soc->dp_dal_mode == DAL_DP_OFFLOAD_MODE) {
+		hash_based = false;
+		reo_dest = (peer->vdev->qdf_opmode == QDF_STA_MODE) ?
+			DAL_DP_DEFAULT_REO_STA : DAL_DP_DEFAULT_REO_SAP;
+	} else {
+		dp_vdev_get_default_reo_hash(vdev, &reo_dest, &hash_based);
+	}
+
+	if (soc->cdp_soc.ol_ops->peer_set_default_routing)
+		soc->cdp_soc.ol_ops->peer_set_default_routing(soc->ctrl_psoc,
+							      pdev->pdev_id,
+							      peer->mac_addr.raw,
+							      peer->vdev->vdev_id,
+							      hash_based,
+							      reo_dest,
+							      lmac_peer_id_msb);
+}
+
+/**
+ * dp_dal_pdev_set_default_routing - Iterate over pdev->vdev->peer list
+ * and set default routing for each peer.
+ * @pdev: pointer to dp_pdev structure
+ *
+ * This function is called during mode switch from bypass to offload
+ * and vice versa.
+ *
+ * Return: None
+ */
+void dp_dal_pdev_set_default_routing(struct dp_pdev *pdev)
+{
+	struct dp_soc *soc;
+	struct dp_vdev *vdev;
+
+	if (!pdev) {
+		dp_err("Invalid pdev");
+		return;
+	}
+
+	soc = pdev->soc;
+	if (!soc) {
+		dp_err("Invalid soc");
+		return;
+	}
+
+	qdf_spin_lock_bh(&pdev->vdev_list_lock);
+	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
+		if (dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CDP))
+			continue;
+
+		if (vdev->qdf_opmode == QDF_STA_MODE ||
+		    vdev->qdf_opmode == QDF_SAP_MODE)
+			dp_vdev_iterate_peer(vdev,
+					     dp_dal_pdev_set_default_routing_helper,
+					     pdev, DP_MOD_ID_CDP);
+
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+	}
+	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 }
 
 struct platform_bus_ops plat_ops_bypass_mode = {
