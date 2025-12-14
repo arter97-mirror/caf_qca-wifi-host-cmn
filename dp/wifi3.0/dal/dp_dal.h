@@ -109,6 +109,7 @@ struct platform_bus_ops {
  * @tx_cpl_cb: TX completion callback
  * @tx_isr_cb: Tx ISR callback
  * @set_msi_config: Set MSI config callback
+ * @store_ring_hp_tp: Store HP/TP of DAL rings locally
  */
 struct vendor_cb_ops {
 	int (*rx_isr_cb)(int ring_num, void *priv);
@@ -118,6 +119,8 @@ struct vendor_cb_ops {
 	int (*tx_isr_cb)(int rint_num, void *priv);
 	int (*set_msi_config)(void *priv, uint8_t ring_num, uint8_t ring_type,
 			      uint64_t msi_address, uint32_t msi_data);
+	int (*store_ring_hp_tp)(void *priv, int ring_type,
+				int ring_num, uint32_t hp, uint32_t tp);
 };
 
 /**

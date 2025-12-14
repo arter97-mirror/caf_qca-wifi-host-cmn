@@ -232,6 +232,105 @@ dp_dal_set_msi_config(void *priv, uint8_t ring_num, uint8_t ring_type,
 	}
 }
 
+static int
+dp_dal_store_ring_hp_tp(void *priv, int ring_type,
+			int ring_num, uint32_t hp, uint32_t tp)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	struct hal_srng *hal_srng;
+
+	if (!dal_ctx) {
+		dp_err("DAL ctx is null");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+
+	switch (ring_type) {
+	case REO_DST:
+		if (ring_num >= soc->num_reo_dest_rings) {
+			dp_err("invalid reo ring num %d rcvc", ring_num);
+			return -EINVAL;
+		}
+
+		hal_srng =
+		(struct hal_srng *)soc->reo_dest_ring[ring_num].hal_srng;
+		if (hal_srng) {
+			hal_srng->u.dst_ring.tp = tp;
+			hal_srng->u.dst_ring.cached_hp = hp;
+			dp_info("Updated REO DST ring %d: TP=0x%x HP= 0x%x",
+				ring_num, tp, hp);
+		} else {
+			dp_err("SRNG is null for reo dst ring %d", ring_num);
+			return -EINVAL;
+		}
+
+		break;
+	case COMP_RING_TYPE:
+		if (ring_num >= soc->num_tx_comp_rings) {
+			dp_err("invalid tx cmpl ring num %d rcvc", ring_num);
+			return -EINVAL;
+		}
+
+		hal_srng =
+		(struct hal_srng *)soc->tx_comp_ring[ring_num].hal_srng;
+		if (hal_srng) {
+			hal_srng->u.dst_ring.tp = tp;
+			hal_srng->u.dst_ring.cached_hp = hp;
+			dp_info("Updated TX comp ring %d: TP=0x%x HP= 0x%x",
+				ring_num, tp, hp);
+		} else {
+			dp_err("SRNG is null for tx cmpl ring %d", ring_num);
+			return -EINVAL;
+		}
+
+		break;
+	case TCL_DATA:
+		if (ring_num >= soc->num_tcl_data_rings) {
+			dp_err("invalid tx cmpl ring num %d rcvc", ring_num);
+			return -EINVAL;
+		}
+
+		hal_srng =
+		(struct hal_srng *)soc->tcl_data_ring[ring_num].hal_srng;
+		if (hal_srng) {
+			hal_srng->u.src_ring.hp = hp;
+			hal_srng->u.src_ring.cached_tp = tp;
+			dp_info("Updated tx ring %d:  HP=0x%x TP=0x%x",
+				ring_num, hp, tp);
+		} else {
+			dp_err("invalid tx data ring num %d rcvc", ring_num);
+			return -EINVAL;
+		}
+		break;
+	case RXDMA_BUF:
+		if (ring_num != 0) {
+			dp_err("Invalid Rx refill ring num %d rcvd", ring_num);
+			return -EINVAL;
+		}
+
+		hal_srng =
+		(struct hal_srng *)soc->rx_refill_buf_ring[ring_num].hal_srng;
+		if (hal_srng) {
+			hal_srng->u.src_ring.hp = hp;
+			hal_srng->u.src_ring.cached_tp = tp;
+			dp_info("Updated rx refill ring  HP=0x%x TP=0x%x",
+				hp, tp);
+		} else {
+			dp_err("SRNG is null for rx refill ring");
+			return -EINVAL;
+		}
+
+		break;
+	default:
+		dp_err("invalid ring type %d received", ring_type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 struct vendor_cb_ops vendor_cb = {
 	.rx_isr_cb = dp_dal_rx_isr_vendor_cb,
 	.rx_replenish_alloc_cb = dp_dal_rx_replenish_alloc_vendor_cb,
@@ -239,6 +338,7 @@ struct vendor_cb_ops vendor_cb = {
 	.tx_isr_cb = dp_dal_tx_cmp_isr_vendor_cb,
 	.tx_cpl_cb = dp_dal_tx_cpl_cb,
 	.set_msi_config = dp_dal_set_msi_config,
+	.store_ring_hp_tp = dp_dal_store_ring_hp_tp,
 };
 
 /**
