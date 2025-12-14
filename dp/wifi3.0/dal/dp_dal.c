@@ -227,10 +227,176 @@ static void dp_dal_pdev_set_default_routing(struct dp_pdev *pdev)
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 }
 
+static void dp_dal_save_ring_hp_tp(struct dp_dal_ctx *dal_ctx,
+				   struct dp_soc *soc)
+{
+	struct dal_srng *dal_srng;
+	struct hal_srng *hal_srng;
+	uint8_t ring_num;
+	int i;
+
+	/* REO DST ring */
+	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
+		dal_srng = &dal_ctx->rx_ring[i];
+		ring_num = dal_srng->ring_num;
+
+		if (!dal_srng->initialized ||
+		    ring_num >= soc->num_reo_dest_rings)
+			continue;
+
+		hal_srng =
+		(struct hal_srng *)soc->reo_dest_ring[ring_num].hal_srng;
+		if (!hal_srng) {
+			dp_err("hal_srng is NULL for REO DST ring:%d",
+			       ring_num);
+			continue;
+		}
+
+		dal_srng->u.dst_ring.tp = hal_srng->u.dst_ring.tp;
+		dp_info("updated REO DST ring:%d TP:%u to dal srng",
+			ring_num, dal_srng->u.dst_ring.tp);
+	}
+
+	/* TX completion ring */
+	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+		dal_srng = &dal_ctx->tx_cmpl_ring[i];
+		ring_num = dal_srng->ring_num;
+
+		if (!dal_srng->initialized ||
+		    ring_num >= soc->num_tx_comp_rings)
+			continue;
+
+		hal_srng =
+		(struct hal_srng *)soc->tx_comp_ring[ring_num].hal_srng;
+		if (!hal_srng) {
+			dp_err("hal_srng is NULL for TX compl ring:%d",
+			       ring_num);
+			continue;
+		}
+
+		dal_srng->u.dst_ring.tp = hal_srng->u.dst_ring.tp;
+		dp_info("updated TX comp ring:%d TP:%u to dal srng",
+			ring_num, dal_srng->u.dst_ring.tp);
+	}
+}
+
+/**
+ * dp_dal_mode_switch_bypass_to_offload - Handles mode switch indication from
+ * bypass to offload
+ * @dal_ctx: DAL context
+ *
+ * This function performs the following actions:
+ * 1. Sets a flag indicating that a mode switch is in progress, which prevents
+ *	suspension during this transition
+ * 2. Updates the DAL mode to ensure that any new peer connection will be set
+ *	up with hash-based routing
+ * 3. Update the latest TP for DAL owned rings in dal srng.
+ * 4. Completes the init sequence with DAL
+ * 5. Iterates over the vdev list and send interface information of STA and SAP
+ * 6. Iterates over connected peers in STA/SAP modes to enable peer-based
+ *	routing for them
+ * 7. Resets the mode switch in progress flag to false once the operation
+ *	is finished
+ *
+ * Return: QDF_STATUS
+ */
 static QDF_STATUS
 dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 {
+	struct dp_soc *soc;
+	struct dp_pdev *pdev;
+	struct dp_vdev *vdev;
+	QDF_STATUS status;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL, reject mode switch");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC context is NULL, reject mode switch");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	pdev = soc->pdev_list[0];
+	if (!pdev) {
+		dp_err("PDEV is NULL, reject mode switch");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_timer_sync_cancel(&dal_ctx->dal_poll_timer);
+
+	soc->dal_mode_switch_in_progress = true;
+	soc->dp_dal_mode = DAL_DP_OFFLOAD_MODE;
+
+	/*
+	 * This is necessary when a previous mode switch occurred from offload
+	 * to bypass, and the host driver may have polled the rings managed by
+	 * OE. Therefore, the latest TP value must be provided to DAL during
+	 * the switch back from bypass to offload mode.
+	 */
+	dp_dal_save_ring_hp_tp(dal_ctx, soc);
+
+	status = dp_dal_bus_init(soc);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("DAL platform bus init failed during mode switch %d",
+		       status);
+		goto abort_mode_switch;
+	}
+
+	status = dp_dal_bus_request_irq(soc);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("DAL ptfm bus request IRQ failed during mode switch %d",
+		       status);
+		goto bus_exit;
+	}
+
+	status = dp_dal_bus_start(soc);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("DAL platform bus start failed during mode switch %d",
+		       status);
+		goto bus_exit;
+	}
+
+	qdf_spin_lock_bh(&pdev->vdev_list_lock);
+	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
+		if (dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CDP))
+			continue;
+
+		if (vdev->qdf_opmode == QDF_STA_MODE ||
+		    vdev->qdf_opmode == QDF_SAP_MODE) {
+			status = dp_dal_interface_add(soc, vdev);
+			if (status) {
+				dp_err("Failed to add interface for vdev_id:%d",
+				       vdev->vdev_id);
+				dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+				qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+				goto bus_exit;
+			}
+		}
+
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+	}
+	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+
+	dp_dal_pdev_set_default_routing(pdev);
+
+	soc->dal_mode_switch_in_progress = false;
+	dp_info("Mode switch from bypass to offload completed successfully");
+
 	return QDF_STATUS_SUCCESS;
+
+bus_exit:
+	dp_dal_bus_exit(soc);
+abort_mode_switch:
+	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
+	/* set hash-based routing since the offload mode switch failed */
+	dp_dal_pdev_set_default_routing(pdev);
+	soc->dal_mode_switch_in_progress = false;
+	qdf_timer_mod(&dal_ctx->dal_poll_timer, DAL_POLL_TIMER_INTERVAL_MS);
+	dp_err("DAL mode switch from bypass to offload aborted due to failure");
+	return QDF_STATUS_E_FAILURE;
 }
 
 /**
