@@ -227,6 +227,59 @@ static void dp_dal_pdev_set_default_routing(struct dp_pdev *pdev)
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 }
 
+/**
+ * dp_dal_vdev_pause_unpause_queues() - Pause/unpause vdevs queues
+ * @pdev: pointer to dp_pdev structure
+ * @pause: true for pause, false for unpause
+ *
+ * This function is called to pause or unpause STA/SAP vdevs.
+ *
+ * Return: None
+ */
+static void dp_dal_vdev_pause_unpause_queues(struct dp_pdev *pdev, bool pause)
+{
+	struct dp_soc *soc;
+	struct dp_vdev *vdev;
+
+	if (!pdev) {
+		dp_err("Invalid pdev");
+		return;
+	}
+
+	soc = pdev->soc;
+	if (!soc) {
+		dp_err("Invalid soc");
+		return;
+	}
+
+	if (!soc->pause_cb) {
+		dp_err("pause_cb is not registered");
+		return;
+	}
+
+	qdf_spin_lock_bh(&pdev->vdev_list_lock);
+	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
+		if (dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CDP))
+			continue;
+
+		if (vdev->qdf_opmode == QDF_STA_MODE ||
+		    vdev->qdf_opmode == QDF_SAP_MODE) {
+			if (pause) {
+				soc->pause_cb(vdev->vdev_id,
+					      WLAN_STOP_ALL_NETIF_QUEUE,
+					      WLAN_DAL_DP_MODE_SWITCH);
+			} else {
+				soc->pause_cb(vdev->vdev_id,
+					      WLAN_START_ALL_NETIF_QUEUE,
+					      WLAN_DAL_DP_MODE_SWITCH);
+			}
+		}
+
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+	}
+	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+}
+
 static void dp_dal_save_ring_hp_tp(struct dp_dal_ctx *dal_ctx,
 				   struct dp_soc *soc)
 {
@@ -326,6 +379,7 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 	}
 
 	qdf_timer_sync_cancel(&dal_ctx->dal_poll_timer);
+	dp_dal_vdev_pause_unpause_queues(pdev, true);
 
 	soc->dal_mode_switch_in_progress = true;
 	soc->dp_dal_mode = DAL_DP_OFFLOAD_MODE;
@@ -385,6 +439,8 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 	soc->dal_mode_switch_in_progress = false;
 	dp_info("Mode switch from bypass to offload completed successfully");
 
+	dp_dal_vdev_pause_unpause_queues(pdev, false);
+
 	return QDF_STATUS_SUCCESS;
 
 bus_exit:
@@ -396,6 +452,7 @@ abort_mode_switch:
 	soc->dal_mode_switch_in_progress = false;
 	qdf_timer_mod(&dal_ctx->dal_poll_timer, DAL_POLL_TIMER_INTERVAL_MS);
 	dp_err("DAL mode switch from bypass to offload aborted due to failure");
+	dp_dal_vdev_pause_unpause_queues(pdev, false);
 	return QDF_STATUS_E_FAILURE;
 }
 

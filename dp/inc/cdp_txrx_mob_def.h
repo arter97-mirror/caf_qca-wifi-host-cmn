@@ -164,6 +164,7 @@ enum netif_action_type {
  * @WLAN_DATA_FLOW_CTRL_BE_80MHZ: bw based flow control for 80MHz peers
  * @WLAN_DATA_FLOW_CTRL_BE_160MHZ: bw based flow control for 160MHz peers
  * @WLAN_DATA_FLOW_CTRL_BE_320MHZ: bw based flow control for 320MHz peers
+ * @WLAN_DAL_DP_MODE_SWITCH: because of DAL datapath mode switch
  * @WLAN_REASON_TYPE_MAX: maximum reason
  */
 enum netif_reason_type {
@@ -186,6 +187,7 @@ enum netif_reason_type {
 	WLAN_DATA_FLOW_CTRL_BE_160MHZ,
 	WLAN_DATA_FLOW_CTRL_BE_320MHZ,
 #endif
+	WLAN_DAL_DP_MODE_SWITCH,
 	WLAN_REASON_TYPE_MAX,
 };
 
