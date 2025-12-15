@@ -801,6 +801,7 @@ int dp_dal_offload_sim_rxbm_sync(
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *rx_refill_ring;
+	struct buffer_addr_info *buf_addr_info;
 	void *refill_desc;
 	u32 i;
 
@@ -813,6 +814,8 @@ int dp_dal_offload_sim_rxbm_sync(
 		dp_err("NULL rx_buff array in rxbm_sync");
 		return 0;
 	}
+
+	buf_addr_info = (struct buffer_addr_info *)(*rx_buff);
 
 	offload_ctx =
 		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
@@ -841,7 +844,8 @@ int dp_dal_offload_sim_rxbm_sync(
 
 		/* Copy descriptor from rx_buff array to refill ring entry */
 		dal_vndr_hal_rxbm_sync(&offload_ctx->hal_soc,
-				       refill_desc, rx_buff[i]);
+				       refill_desc,
+				       &buf_addr_info[i]);
 	}
 
 	/* End ring access and release lock */
