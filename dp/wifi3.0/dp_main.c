@@ -4962,6 +4962,12 @@ dp_soc_attach_target_wifi3(struct cdp_soc_t *cdp_soc)
 		return status;
 	}
 
+	status = dp_dal_soc_init(soc);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("DAL initialization failed");
+		return status;
+	}
+
 	status = dp_rxdma_ring_config(soc);
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err("Failed to send htt srng setup messages to target");
@@ -4987,12 +4993,6 @@ dp_soc_attach_target_wifi3(struct cdp_soc_t *cdp_soc)
 	if (status != QDF_STATUS_SUCCESS &&
 	    status != QDF_STATUS_E_NOSUPPORT) {
 		dp_err("Failed to send htt fst setup config message to target");
-		return status;
-	}
-
-	status = dp_dal_soc_init(soc);
-	if (status != QDF_STATUS_SUCCESS) {
-		dp_err("DAL initialization failed");
 		return status;
 	}
 
