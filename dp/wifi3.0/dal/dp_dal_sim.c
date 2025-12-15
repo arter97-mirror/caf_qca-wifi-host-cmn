@@ -9,7 +9,9 @@
 #include <qdf_trace.h>
 #include <qdf_module.h>
 #include "dp_internal.h"
+#ifdef DAL_OFFLOAD_SIM
 #include "dp_dal_offload_sim.h"
+#endif
 
 #ifdef FEATURE_DP_DAL_SIM
 /* RX budget for processing descriptors */
@@ -564,14 +566,13 @@ static void dp_dal_sim_destroy_work(struct dp_dal_sim_ctx *dal_sim_ctx)
 
 /**
  * dp_dal_sim_init() - Initialize DAL simulator
- * @pdev: Pointer to the platform device associated with initialization
  * @priv: Pointer to driver-specific private data
  *
  * This function initializes the DAL simulator.
  *
  * Return: 0 on success, negative error code on failure
  */
-static int dp_dal_sim_init(void *pdev, void *priv)
+static int dp_dal_sim_init(void *priv)
 {
 	int i;
 	struct hal_soc *hal_soc;
@@ -1445,86 +1446,6 @@ static int dp_dal_sim_intf_deinit(void *priv, uint16_t vdev_id)
 	return -ENOENT;
 }
 
-/**
- * dp_dal_sim_fetch_current_hp_tp() - Fetch current HP and TP values for a ring
- * @priv: Pointer to private data (DAL context)
- * @ring_num: Ring number
- * @ring_type: Ring type
- * @hp: Pointer to store head pointer value
- * @tp: Pointer to store tail pointer value
- *
- * This function fetches the current head pointer (HP) and tail pointer (TP)
- * values for a specified ring. It maps the ring_num and ring_type to the
- * appropriate ring_id in the simulator context and calls the offload
- * simulation API to get the current HP/TP values.
- *
- * Return: 0 on success, negative error code on failure
- */
-static int dp_dal_sim_fetch_current_hp_tp(
-	void *priv, int ring_num,
-	int ring_type, uint32_t *hp, uint32_t *tp)
-{
-	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
-	struct dp_dal_sim_ctx *sim_ctx;
-	int ring_id = -1;
-	int offload_ring_type;
-	int i;
-
-	if (!dal_ctx) {
-		dp_err("NULL DAL context");
-		return -EINVAL;
-	}
-
-	sim_ctx = (struct dp_dal_sim_ctx *)dal_ctx->dal_sim_ctx;
-	if (!sim_ctx) {
-		dp_err("NULL dal sim context");
-		return -EINVAL;
-	}
-
-	if (!hp || !tp) {
-		dp_err("NULL hp/tp");
-		return -EINVAL;
-	}
-
-	/* Map ring_type to offload simulation ring type */
-	switch (ring_type) {
-	case REO_DST:
-		offload_ring_type = OFFLOAD_SIM_RING_TYPE_RX;
-		/* Find the ring array index based on ring_num */
-		for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
-			if (sim_ctx->rx_ring[i].ring_num == ring_num) {
-				ring_id = i;
-				break;
-			}
-		}
-		break;
-	case COMP_RING_TYPE:
-		offload_ring_type = OFFLOAD_SIM_RING_TYPE_TX_CPL;
-		/* Find the ring array index based on ring_num */
-		for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
-			if (sim_ctx->tx_cmpl_ring[i].ring_num == ring_num) {
-				ring_id = i;
-				break;
-			}
-		}
-		break;
-	default:
-		dp_err("Unsupported ring type %d", ring_type);
-		return -EINVAL;
-	}
-
-	if (ring_id < 0) {
-		dp_err("No ring found with ring_num %d and type %d",
-		       ring_num, ring_type);
-		return -EINVAL;
-	}
-
-	/* Call offload simulation API to fetch current HP/TP values */
-	return dp_dal_offload_sim_fetch_current_hp_tp(sim_ctx, hp, tp,
-						      offload_ring_type,
-						      ring_id);
-}
-
 /*
  * This structure contains all platform bus operations for the DAL simulator.
  * It is assigned to global plat ops if mode of operation is offload mode.
@@ -1547,7 +1468,6 @@ static struct platform_bus_ops dp_dal_sim_plat_ops = {
 	.ssr_dump = dp_dal_sim_ssr_dump,
 	.intf_init = dp_dal_sim_intf_init,
 	.intf_deinit = dp_dal_sim_intf_deinit,
-	.fetch_current_hp_tp = dp_dal_sim_fetch_current_hp_tp,
 };
 
 /**

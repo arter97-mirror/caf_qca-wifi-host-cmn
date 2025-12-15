@@ -9,6 +9,10 @@
 #include <qdf_status.h>
 #include "dp_types.h"
 
+#ifdef FEATURE_DP_DAL_SIM
+struct dp_dal_sim_ctx;
+#endif
+
 #define DP_REO_DST_REMAP_REMOVE_DAL(_reo_config) \
 	((_reo_config) &= ~(DAL_DP_REO_RING_MASK))
 
@@ -258,6 +262,7 @@ struct dp_dal_rx_desc_node {
  * @suspended_tx_list: List of suspended TX descriptors during runtime PM
  * @suspended_tx_lock: Spinlock to protect suspended TX list operations
  * @suspended_tx_count: Count of suspended TX descriptors
+ * @dal_sim_ctx: DAL simulation context
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -295,6 +300,9 @@ struct dp_dal_ctx {
 	qdf_spinlock_t suspended_tx_lock;
 	uint32_t suspended_tx_count;
 #endif /* FEATURE_RUNTIME_PM */
+#ifdef FEATURE_DP_DAL_SIM
+	struct dp_dal_sim_ctx *dal_sim_ctx;
+#endif
 };
 
 /**

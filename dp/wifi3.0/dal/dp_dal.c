@@ -12,6 +12,7 @@
 #include "dp_rx.h"
 #include "dp_peer.h"
 #include "qdf_module.h"
+#include "dp_dal_sim.h"
 
 extern struct platform_bus_ops *global_plat_ops;
 
