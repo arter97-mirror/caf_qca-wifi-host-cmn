@@ -1860,7 +1860,8 @@ void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 	struct dal_srng *dal_ring;
 	int ring_info_cnt;
 
-	if (!dp_srng_check_dal_owned_ring(srng))
+	if (type != RXDMA_BUF &&
+	    !dp_srng_check_dal_owned_ring(srng))
 		return;
 
 	switch (type) {
