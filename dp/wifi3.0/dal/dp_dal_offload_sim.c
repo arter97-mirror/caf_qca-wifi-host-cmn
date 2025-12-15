@@ -7,8 +7,7 @@
 #include "dp_dal_sim.h"
 #include <qdf_mem.h>
 #include "dal_vndr_hal_be.h"
-/* Maximum length for IRQ name strings */
-#define OFFLOAD_SIM_IRQ_NAME_LEN 40
+
 #ifdef FEATURE_DP_DAL_SIM
 
 /**
@@ -320,7 +319,6 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	int i, ret;
-	char irq_name[OFFLOAD_SIM_IRQ_NAME_LEN];
 
 	if (!dal_sim_ctx) {
 		dp_err("NULL DAL sim context in request_irq");
@@ -343,17 +341,13 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 		offload_ctx->rx_irq_ctx[i].ring_id = i;
 		offload_ctx->rx_irq_ctx[i].ring_type = OFFLOAD_SIM_RING_TYPE_RX;
 		offload_ctx->rx_irq_ctx[i].irq_configured = false;
-		/* Format IRQ name with group ID */
-		qdf_scnprintf(irq_name, OFFLOAD_SIM_IRQ_NAME_LEN,
-			      "offload_sim_wlan_grp_id_%d",
-			      dal_sim_ctx->rx_ring[i].grp_id);
 		/* Register IRQ using platform-specific function */
 		ret = pfrm_request_irq(
 			dal_sim_ctx->dev,
 			dal_sim_ctx->rx_ring[i].irq_num,
 			dp_dal_offload_sim_interrupt_handler,
 			IRQF_SHARED | IRQF_NO_SUSPEND,
-			irq_name,
+			"dal_offload_sim_wlan_rx",
 			&offload_ctx->rx_irq_ctx[i]);
 		if (ret) {
 			dp_err("Failed irq register RX ring %d, ret=%d",
@@ -374,17 +368,13 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 		offload_ctx->tx_cpl_irq_ctx[i].ring_type =
 						OFFLOAD_SIM_RING_TYPE_TX_CPL;
 		offload_ctx->tx_cpl_irq_ctx[i].irq_configured = false;
-		/* Format IRQ name with group ID */
-		qdf_scnprintf(irq_name, OFFLOAD_SIM_IRQ_NAME_LEN,
-			      "offload_sim_wlan_grp_id_%d",
-			      dal_sim_ctx->tx_cmpl_ring[i].grp_id);
 		/* Register IRQ using platform-specific function */
 		ret = pfrm_request_irq(
 				dal_sim_ctx->dev,
 				dal_sim_ctx->tx_cmpl_ring[i].irq_num,
 				dp_dal_offload_sim_interrupt_handler,
 				IRQF_SHARED | IRQF_NO_SUSPEND,
-				irq_name,
+				"dal_offload_sim_wlan_tx",
 				&offload_ctx->tx_cpl_irq_ctx[i]);
 		if (ret) {
 			dp_err("Failed irq register TX compl ring %d, ret=%d",
