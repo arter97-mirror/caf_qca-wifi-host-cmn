@@ -258,7 +258,7 @@ static int dp_dal_sim_calc_msi(struct dp_dal_sim_ctx *sim_ctx,
 	vector = (grp_id % msi_vector_count) + msi_vector_start;
 	pld_get_msi_address(soc->osdev->dev, &addr_low, &addr_high);
 
-	sim_ring->msi_data = vector;
+	sim_ring->msi_data = (grp_id % msi_vector_count) + msi_base_data;
 	sim_ring->msi_addr = addr_low;
 	sim_ring->msi_addr |= (qdf_dma_addr_t)(((uint64_t)addr_high) << 32);
 	irq_num = pld_get_msi_irq(soc->osdev->dev, vector);
