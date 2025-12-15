@@ -2495,6 +2495,29 @@
 #define CFG_DP_DAL_SIM
 #endif /* FEATURE_DP_DAL_SIM */
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/*
+ * <ini>
+ * dp_dal_enable - Enable/disable DAL support in DP
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This ini is used to enable/disable DAL support in DP
+ *
+ * Usage: Internal
+ *
+ * </ini>
+ */
+
+#define CFG_DP_DAL_SUPPORT \
+	CFG_INI_BOOL("dp_dal_enable", false, \
+		     "Enable/Disable DAL support")
+#define CFG_DP_DAL CFG(CFG_DP_DAL_SUPPORT)
+#else
+#define CFG_DP_DAL
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 #define CFG_DP \
 		CFG(CFG_DP_HTT_PACKET_TYPE) \
 		CFG(CFG_DP_INT_BATCH_THRESHOLD_OTHER) \
@@ -2672,5 +2695,6 @@
 		CFG_DP_RX_BUFFER_RECYCLE \
 		CFG_DP_NDP_BW_FLOW_CTRL \
 		CFG_DP_TX_PAGE_POOL \
-		CFG_DP_DAL_SIM
+		CFG_DP_DAL_SIM \
+		CFG_DP_DAL
 #endif /* _CFG_DP_H_ */
