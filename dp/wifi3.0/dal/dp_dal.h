@@ -110,6 +110,7 @@ struct platform_bus_ops {
  * @tx_isr_cb: Tx ISR callback
  * @set_msi_config: Set MSI config callback
  * @store_ring_hp_tp: Store HP/TP of DAL rings locally
+ * @mode_switch_ind: Mode switch indication callback
  */
 struct vendor_cb_ops {
 	int (*rx_isr_cb)(int ring_num, void *priv);
@@ -121,6 +122,7 @@ struct vendor_cb_ops {
 			      uint64_t msi_address, uint32_t msi_data);
 	int (*store_ring_hp_tp)(void *priv, int ring_type,
 				int ring_num, uint32_t hp, uint32_t tp);
+	int (*mode_switch_ind)(void *priv, u8 cur_mode, u8 new_mode);
 };
 
 /**

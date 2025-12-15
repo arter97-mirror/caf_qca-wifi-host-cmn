@@ -223,6 +223,49 @@ void dp_dal_pdev_set_default_routing(struct dp_pdev *pdev)
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 }
 
+static QDF_STATUS
+dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_dal_mode_switch_ind_handler - handler for mode switch indication
+ * @priv: pointer to dal context
+ * @cur_mode: current operating mode
+ * @new_mode: new operating mode
+ *
+ * Return: 0 on success, non-zero on failure.
+ */
+static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+
+	if (cur_mode == DAL_DP_BYPASS_MODE &&
+	    new_mode == DAL_DP_OFFLOAD_MODE) {
+		if (dp_dal_mode_switch_bypass_to_offload(dal_ctx) !=
+		    QDF_STATUS_SUCCESS)
+			return -EINVAL;
+	} else if (cur_mode == DAL_DP_OFFLOAD_MODE &&
+		   new_mode == DAL_DP_BYPASS_MODE) {
+		if (dp_dal_mode_switch_offload_to_bypass(dal_ctx) !=
+		    QDF_STATUS_SUCCESS)
+			return -EINVAL;
+	} else {
+		dp_err("invalid mode switch ind rcvd cur_mode:%d new_mode:%d",
+		       cur_mode, new_mode);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 struct platform_bus_ops plat_ops_bypass_mode = {
 	.init = dp_dal_bus_init_bypass_mode,
 	.exit = dp_dal_bus_exit_bypass_mode,
@@ -418,6 +461,7 @@ struct vendor_cb_ops vendor_cb = {
 	.tx_cpl_cb = dp_dal_tx_cpl_cb,
 	.set_msi_config = dp_dal_set_msi_config,
 	.store_ring_hp_tp = dp_dal_store_ring_hp_tp,
+	.mode_switch_ind = dp_dal_mode_switch_ind_handler,
 };
 
 /**
