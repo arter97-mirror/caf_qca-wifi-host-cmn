@@ -1703,9 +1703,6 @@ static int dp_srng_calculate_msi_group(struct dp_soc *soc,
 			/* dp_rx_wbm_err_process - soc->rx_rel_ring */
 			grp_mask = &cfg_ctx->int_rx_wbm_rel_ring_mask[0];
 			ring_num = 0;
-		} else if (ring_num == WBM2_SW_PPE_REL_RING_ID) {
-			grp_mask = &cfg_ctx->int_ppeds_wbm_release_ring_mask[0];
-			ring_num = 0;
 		}  else { /* dp_tx_comp_handler - soc->tx_comp_ring */
 			grp_mask = &soc->wlan_cfg_ctx->int_tx_ring_mask[0];
 			nf_irq_mask = dp_srng_get_near_full_irq_mask(soc,
