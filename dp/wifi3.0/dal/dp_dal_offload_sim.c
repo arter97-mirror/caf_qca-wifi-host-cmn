@@ -307,6 +307,9 @@ static irqreturn_t dp_dal_offload_sim_interrupt_handler(int irq, void *arg)
 
 	dp_debug("Interrupt %d received for ring_type=%d, ring_id=%d",
 		 irq, irq_ctx->ring_type, irq_ctx->ring_id);
+
+	dp_dal_offload_sim_disable_ring_irq(sim_ctx, irq_ctx->ring_type,
+					    irq_ctx->ring_id);
 	/* Call dal sim api to queue work for processing interrupt */
 	dp_dal_sim_schedule_work(arg);
 

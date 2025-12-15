@@ -112,6 +112,60 @@ void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
 void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx);
 
 /**
+ * dp_dal_offload_sim_enable_ring_irq() - Enable irq for particular ring type
+ *					  and ring_num.
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ * @ring_type: ring type (rx or tx_completion)
+ * @ring_id: ring id
+ * This function enables irq for a partticular ring type and ring num.
+ *
+ * Return: None
+ */
+static inline void
+dp_dal_offload_sim_enable_ring_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+				   int ring_type, int ring_id)
+{
+	int irq_num;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL sim context");
+		return;
+	}
+
+	irq_num = ring_type == OFFLOAD_SIM_RING_TYPE_RX ?
+				dal_sim_ctx->rx_ring[ring_id].irq_num :
+				dal_sim_ctx->tx_cmpl_ring[ring_id].irq_num;
+	pfrm_enable_irq(dal_sim_ctx->dev, irq_num);
+}
+
+/**
+ * dp_dal_offload_sim_disable_ring_irq() - Disable irq for particular ring type
+ *					   and ring_num.
+ * @dal_sim_ctx: Pointer to DAL simulation context
+ * @ring_type: ring type (rx or tx_completion)
+ * @ring_id: ring id
+ * This function disables irq for a partticular ring type and ring num.
+ *
+ * Return: None
+ */
+static inline void
+dp_dal_offload_sim_disable_ring_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+				    int ring_type, int ring_id)
+{
+	int irq_num;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL sim context");
+		return;
+	}
+
+	irq_num = ring_type == OFFLOAD_SIM_RING_TYPE_RX ?
+			       dal_sim_ctx->rx_ring[ring_id].irq_num :
+			       dal_sim_ctx->tx_cmpl_ring[ring_id].irq_num;
+	pfrm_disable_irq_nosync(dal_sim_ctx->dev, irq_num);
+}
+
+/**
  * dp_dal_offload_sim_tx_hw_enqueue() - Enqueue TX descriptor to hardware ring
  * @dal_sim_ctx: Pointer to DAL simulation context
  * @ring_id: Ring ID for TCL descriptor enqueue

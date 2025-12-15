@@ -928,6 +928,8 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 
 	*cnt = desc_count;
 
+	dp_dal_offload_sim_enable_ring_irq(sim_ctx, OFFLOAD_SIM_RING_TYPE_RX,
+					   ring_id);
 	dp_debug("Processed %u RX descriptors for ring_num %u (array index %d)",
 		 desc_count, ring_num, ring_id);
 
@@ -1250,6 +1252,9 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 
 	*cnt = desc_count;
 
+	dp_dal_offload_sim_enable_ring_irq(sim_ctx,
+					   OFFLOAD_SIM_RING_TYPE_TX_CPL,
+					   ring_id);
 	dp_debug("Processed %u TX compl desc for ring_num %u (ring_id %d)",
 		 desc_count, ring_num, ring_id);
 
