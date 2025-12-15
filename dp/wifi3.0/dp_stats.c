@@ -7320,6 +7320,8 @@ void dp_print_rx_rates(struct dp_pdev *pdev)
 		       pdev->stats.rx.amsdu_cnt);
 	DP_PRINT_STATS("Number of Msdu's With No Msdu Level Aggregation: %d",
 		       pdev->stats.rx.non_amsdu_cnt);
+	DP_PRINT_STATS("Number of MPDUs: %d",
+		       pdev->stats.rx.mpdu_cnt);
 }
 
 #ifdef TX_NSS_STATS_SUPPORT
@@ -10339,6 +10341,7 @@ void dp_update_pdev_stats(struct dp_pdev *tgtobj,
 	tgtobj->stats.rx.ampdu_cnt += srcobj->rx.ampdu_cnt;
 	tgtobj->stats.rx.non_amsdu_cnt += srcobj->rx.non_amsdu_cnt;
 	tgtobj->stats.rx.amsdu_cnt += srcobj->rx.amsdu_cnt;
+	tgtobj->stats.rx.mpdu_cnt += srcobj->rx.mpdu_cnt;
 	tgtobj->stats.rx.nawds_mcast_drop += srcobj->rx.nawds_mcast_drop;
 	tgtobj->stats.rx.mcast_3addr_drop += srcobj->rx.mcast_3addr_drop;
 	tgtobj->stats.rx.to_stack.num += srcobj->rx.to_stack.num;
@@ -11293,6 +11296,8 @@ dp_print_per_link_peer_txrx_stats(struct cdp_peer_stats *peer_stats,
 		       peer_stats->rx.non_amsdu_cnt);
 	DP_PRINT_STATS("MSDUs Received As Part of Amsdu = %u",
 		       peer_stats->rx.amsdu_cnt);
+	DP_PRINT_STATS("MPDUs Received = %u",
+		       peer_stats->rx.mpdu_cnt);
 	DP_PRINT_STATS("MSDU Rx Retries= %u",
 		       peer_stats->rx.rx_retries);
 	DP_PRINT_STATS("MPDU Rx Retries= %u",

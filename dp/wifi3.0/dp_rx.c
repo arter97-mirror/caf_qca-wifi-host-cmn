@@ -2876,6 +2876,9 @@ void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 				   is_not_amsdu, link_id);
 	DP_PEER_PER_PKT_STATS_INCC(txrx_peer, rx.amsdu_cnt, 1,
 				   !is_not_amsdu, link_id);
+	DP_PEER_PER_PKT_STATS_INCC(txrx_peer, rx.mpdu_cnt, 1,
+				   qdf_nbuf_is_rx_chfrag_start(nbuf),
+				   link_id);
 	DP_PEER_PER_PKT_STATS_INCC(txrx_peer, rx.rx_retries, 1,
 				   qdf_nbuf_is_rx_retry_flag(nbuf), link_id);
 	dp_peer_update_rx_pkt_per_lmac(txrx_peer, nbuf, link_id);

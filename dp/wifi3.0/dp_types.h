@@ -5702,6 +5702,7 @@ struct dp_peer_ezmesh_tx_stats {
  * @err.rxdma_wifi_parse_err: rxdma wifi parse errors
  * @non_amsdu_cnt: Number of MSDUs with no MSDU level aggregation
  * @amsdu_cnt: Number of MSDUs part of AMSDU
+ * @mpdu_cnt: Number of MPDUs
  * @rx_retries: retries of packet in rx
  * @multipass_rx_pkt_drop: Dropped multipass rx pkt
  * @peer_unauth_rx_pkt_drop: Unauth rx packet drops
@@ -5741,6 +5742,7 @@ struct dp_peer_per_pkt_rx_stats {
 	} err;
 	uint32_t non_amsdu_cnt;
 	uint32_t amsdu_cnt;
+	uint32_t mpdu_cnt;
 	uint32_t rx_retries;
 	uint32_t multipass_rx_pkt_drop;
 	uint32_t peer_unauth_rx_pkt_drop;

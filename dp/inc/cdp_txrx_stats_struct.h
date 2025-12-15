@@ -2003,6 +2003,7 @@ struct cdp_tx_stats {
  * @ampdu_cnt: Number of MSDUs part of AMSPU
  * @non_amsdu_cnt: Number of MSDUs with no MSDU level aggregation
  * @amsdu_cnt: Number of MSDUs part of AMSDU
+ * @mpdu_cnt: Number of MPDUs
  * @bar_recv_cnt: Number of bar received
  * @avg_snr: Average snr
  * @rx_rate: Rx rate
@@ -2106,6 +2107,7 @@ struct cdp_rx_stats {
 	uint32_t ampdu_cnt;
 	uint32_t non_amsdu_cnt;
 	uint32_t amsdu_cnt;
+	uint32_t mpdu_cnt;
 	uint32_t bar_recv_cnt;
 	uint32_t avg_snr;
 	uint32_t rx_rate;

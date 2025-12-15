@@ -2429,6 +2429,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 					_srcobj->rx.err.rxdma_wifi_parse_err; \
 		_tgtobj->rx.non_amsdu_cnt += _srcobj->rx.non_amsdu_cnt; \
 		_tgtobj->rx.amsdu_cnt += _srcobj->rx.amsdu_cnt; \
+		_tgtobj->rx.mpdu_cnt += _srcobj->rx.mpdu_cnt; \
 		_tgtobj->rx.rx_retries += _srcobj->rx.rx_retries; \
 		_tgtobj->rx.multipass_rx_pkt_drop += \
 					_srcobj->rx.multipass_rx_pkt_drop; \
