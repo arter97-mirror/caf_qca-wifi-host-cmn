@@ -34,8 +34,6 @@
 #define DAL_TX_RING_ID0_STA 0
 #define DAL_TX_RING_ID0_SAP 1
 
-extern struct platform_bus_ops *global_plat_ops;
-
 /**
  * enum dal_mode - dal operation mode
  * @DAL_DP_BYPASS_MODE: bypass mode

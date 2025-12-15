@@ -29,21 +29,28 @@ struct dp_dal_sim_desc_list {
 /* Default descriptor list size */
 #define DP_DAL_SIM_DESC_LIST_SIZE 128
 
-/* Externs */
-extern struct platform_bus_ops *global_plat_ops;
-extern struct platform_bus_ops plat_ops_bypass_mode;
-extern struct vendor_cb_ops vendor_cb;
-/**
- * dp_dal_sim_platform_bus_ops_attach() - Attach platform bus operations
- *
- * Based on g_dal_sim_curr_mode, assigns the appropriate platform operations
- * to the global platform ops structure:
- * - Mode 0 (bypass): Assigns plat_ops_bypass_mode
- * - Mode 1 (offload): Assigns dal_sim_plat_ops
- */
-void dp_dal_sim_platform_bus_ops_attach(void);
-
 #ifdef FEATURE_DP_DAL_SIM
+/**
+ * dp_dal_sim_attach() - Attach dal sim context to DAL context
+ * @priv: pointer to dal context
+ *
+ * This function allocates memory for DAL SIM context and attach it to
+ * the DAL context. It attaches the platform bus ops as well.
+ *
+ * Return: 0 on success
+ */
+int dp_dal_sim_attach(void *priv);
+
+/**
+ * dp_dal_sim_detach() - Detach dal sim context from DAL context
+ * @priv: pointer to DAL context
+ *
+ * This function detaches DAL SIM context from DAL context and free the
+ * dal sim context.
+ *
+ * Return: None
+ */
+void dp_dal_sim_detach(void *priv);
 
 /* Number of RX and TX rings for DAL simulator */
 #define DAL_SIM_NUM_RX_RINGS DAL_RX_RINGS_MAX
@@ -444,6 +451,14 @@ void dp_dal_sim_trigger_mode_switch(
  * Return: current mode of dal sim (0 = bypass, 1 = offload)
  */
 uint8_t dp_dal_sim_get_curr_mode(void);
+#else
+static inline int dp_dal_sim_attach(void *priv)
+{
+	return 0;
+}
 
+static inline void dp_dal_sim_detach(void *priv)
+{
+}
 #endif /* FEATURE_DP_DAL_SIM */
 #endif /* DP_DAL_SIM_H */

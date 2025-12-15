@@ -10,6 +10,8 @@
 #include "hif.h"
 #include "dp_rx_buffer_pool.h"
 
+extern struct platform_bus_ops *global_plat_ops;
+
 #define BUFFER_ADDR_INFO_SIZE 8
 
 /**

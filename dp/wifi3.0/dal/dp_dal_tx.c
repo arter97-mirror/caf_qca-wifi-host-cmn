@@ -7,6 +7,8 @@
 #include "hal_tx.h"
 #include "qdf_mem.h"
 
+extern struct platform_bus_ops *global_plat_ops;
+
 #ifdef FEATURE_RUNTIME_PM
 /**
  * dp_dal_tx_queue_suspended_desc() - Queue TX descriptor during suspend

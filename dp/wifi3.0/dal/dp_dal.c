@@ -11,6 +11,9 @@
 #include "qdf_mem.h"
 #include "dp_rx.h"
 #include "dp_peer.h"
+#include "qdf_module.h"
+
+extern struct platform_bus_ops *global_plat_ops;
 
 /* DAL poll timer interval in milliseconds */
 #define DAL_POLL_TIMER_INTERVAL_MS 10
@@ -681,7 +684,7 @@ struct platform_bus_ops plat_ops_bypass_mode = {
 	.rx_pkt_reinject = dp_dal_rx_pkt_reinject_bypass_mode,
 };
 
-struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;
+qdf_export_symbol(plat_ops_bypass_mode);
 
 static inline void
 dp_dal_fill_srng_params(struct hal_srng *srng,
@@ -858,6 +861,8 @@ struct vendor_cb_ops vendor_cb = {
 	.mode_switch_ind = dp_dal_mode_switch_ind_handler,
 };
 
+qdf_export_symbol(vendor_cb);
+
 /**
  * dp_dal_soc_detach - detach DP DAL to SOC
  * @soc: pointer to dp_soc structure
@@ -866,6 +871,7 @@ struct vendor_cb_ops vendor_cb = {
  */
 void dp_dal_soc_detach(struct dp_soc *soc)
 {
+	dp_dal_sim_detach(soc->dal_ctx);
 	qdf_mem_common_free(soc->dal_ctx);
 	soc->dal_ctx = NULL;
 	dp_info("DAL context destroyed");
@@ -925,6 +931,13 @@ QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc)
 
 	ctx->soc = soc;
 	soc->dal_ctx = ctx;
+
+	if (dp_dal_sim_attach(ctx)) {
+		qdf_mem_common_free(ctx);
+		soc->dal_ctx = NULL;
+		dp_init_err("DP DAL sim attach failed");
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	return QDF_STATUS_SUCCESS;
 }
