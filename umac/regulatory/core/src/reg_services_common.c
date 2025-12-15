@@ -3832,6 +3832,12 @@ reg_skip_invalid_chan_freq(struct wlan_objmgr_pdev *pdev,
 								res_msg,
 								chan_enum);
 					}
+				} else if (!reg_is_state_allowed(chan_state)) {
+					res_msg[chan_enum].iface_mode_mask &=
+							~(iface_mode);
+					if (!res_msg[chan_enum].iface_mode_mask)
+						reg_remove_freq(res_msg,
+								chan_enum);
 				}
 srd_check:
 				if (!(enable_srd_chan & srd_mask) &&
