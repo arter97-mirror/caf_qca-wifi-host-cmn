@@ -100,34 +100,32 @@ static inline void dp_dal_offload_sim_hal_addrs_params_init(
 			 * in  hp_addr and tp_addr field. Usage for offload
 			 * engine can vary.
 			 *
-			 * In case of lmac rings, hp_addr is physical address
-			 * which needs to be converted to virtual address before
-			 * passing to vendor HAL APIs in case of offload engine
-			 * simulation. Real offload engine can use physical
-			 * address.
+			 * In case of lmac rings, hp_addr is virtual address
+			 * in case of offload engine simulation. Real offload
+			 * engine can use physical address.
 			 */
 			hal_srng->u.src_ring.hp_addr =
-				phys_to_virt(sim_srng->u.src_ring.hp_addr);
+				(uint32_t *)(sim_srng->u.src_ring.hp_addr);
 		else
 			hal_srng->u.src_ring.hp_addr =
 				sim_srng->u.src_ring.hp_addr +
-				offload_sim_ctx->dev_base_addr;
+				offload_sim_ctx->hal_soc.dev_base_addr;
 
 		hal_srng->u.src_ring.tp_addr =
-			phys_to_virt(sim_srng->u.src_ring.tp_addr);
+			(uint32_t *)(sim_srng->u.src_ring.tp_addr);
 	} else {
 		hal_srng->u.dst_ring.tp = sim_srng->u.dst_ring.tp;
 
 		if (sim_srng->lmac_ring)
 			hal_srng->u.dst_ring.tp_addr =
-				phys_to_virt(sim_srng->u.dst_ring.tp_addr);
+				(uint32_t *)(sim_srng->u.dst_ring.tp_addr);
 		else
 			hal_srng->u.dst_ring.tp_addr =
 					sim_srng->u.dst_ring.tp_addr +
-					offload_sim_ctx->dev_base_addr;
+					offload_sim_ctx->hal_soc.dev_base_addr;
 
 		hal_srng->u.dst_ring.hp_addr =
-				phys_to_virt(sim_srng->u.dst_ring.hp_addr);
+				(uint32_t *)(sim_srng->u.dst_ring.hp_addr);
 	}
 }
 #else

@@ -166,13 +166,13 @@ struct dal_sim_srng {
 	union {
 		struct {
 			uint32_t tp;
-			unsigned long hp_addr;
-			unsigned long tp_addr;
+			uint64_t hp_addr;
+			uint64_t tp_addr;
 		} dst_ring;
 		struct {
 			uint32_t hp;
-			unsigned long tp_addr;
-			unsigned long hp_addr;
+			uint64_t tp_addr;
+			uint64_t hp_addr;
 		} src_ring;
 	} u;
 

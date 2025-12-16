@@ -170,14 +170,32 @@ struct dal_srng {
 	union {
 		struct {
 			uint32_t tp;
-			unsigned long hp_addr;
-			unsigned long tp_addr;
+#ifndef FEATURE_DP_DAL_SIM
+			/* This is the PADDR of the shadow DDR memory */
+			uint64_t hp_addr;
+			/* This is the shadow TP register offset */
+			uint32_t tp_addr;
+#else
+			/* In the case of DAL sim, this is the VADDR */
+			uint64_t hp_addr;
+			/* This is the shadow TP register offset */
+			uint64_t tp_addr;
+#endif
 		} dst_ring;
 
 		struct {
 			uint32_t hp;
-			unsigned long tp_addr;
-			unsigned long hp_addr;
+#ifndef FEATURE_DP_DAL_SIM
+			/* This is the PADDR of the shadow DDR memory */
+			uint64_t tp_addr;
+			/* This is the shadow HP register offset */
+			uint32_t hp_addr;
+#else
+			/* In the case of DAL sim, this is the VADDR */
+			uint64_t tp_addr;
+			/* This is the shadow TP register offset */
+			uint64_t hp_addr;
+#endif
 		} src_ring;
 	} u;
 	uint8_t ring_num;

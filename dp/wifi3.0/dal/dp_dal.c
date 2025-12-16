@@ -1807,12 +1807,88 @@ void dp_dal_ssr_notify(struct dp_soc *soc)
 	}
 }
 
-static void dp_dal_update_ring_params(struct dp_soc *soc,
-				      struct hal_srng *srng,
-				      struct dal_srng *dal_ring)
+#ifdef FEATURE_DP_DAL_SIM
+static void
+dp_dal_update_ring_hp_tp_addr(struct dp_soc *soc, struct hal_srng *srng,
+			      struct dal_srng *dal_ring)
 {
 	struct hal_soc *hal = (struct hal_soc *)soc->hal_soc;
 
+	if (srng->ring_dir == HAL_SRNG_SRC_RING) {
+		dal_ring->u.src_ring.hp = srng->u.src_ring.hp;
+
+		if (dal_ring->lmac_ring) {
+			dal_ring->u.src_ring.hp_addr =
+				(uint64_t)(srng->u.src_ring.hp_addr);
+		} else {
+			dal_ring->u.src_ring.hp_addr =
+				(void *)srng->u.src_ring.hp_addr -
+				hal->dev_base_addr;
+		}
+
+		dal_ring->u.src_ring.tp_addr =
+			(uint64_t)(srng->u.src_ring.tp_addr);
+	} else {
+		dal_ring->u.dst_ring.tp = srng->u.dst_ring.tp;
+
+		if (dal_ring->lmac_ring) {
+			dal_ring->u.dst_ring.tp_addr =
+				(uint64_t)(srng->u.src_ring.tp_addr);
+		} else {
+			dal_ring->u.dst_ring.tp_addr =
+				(void *)srng->u.dst_ring.tp_addr -
+				hal->dev_base_addr;
+		}
+		dal_ring->u.dst_ring.hp_addr =
+			(uint64_t)(srng->u.dst_ring.hp_addr);
+	}
+}
+#else
+static void
+dp_dal_update_ring_hp_tp_addr(struct dp_soc *soc, struct hal_srng *srng,
+			      struct dal_srng *dal_ring)
+{
+	struct hal_soc *hal = (struct hal_soc *)soc->hal_soc;
+
+	if (srng->ring_dir == HAL_SRNG_SRC_RING) {
+		dal_ring->u.src_ring.hp = srng->u.src_ring.hp;
+
+		if (dal_ring->lmac_ring)
+			dal_ring->u.src_ring.hp_addr =
+				hal_srng_get_hp_addr(soc->hal_soc, srng);
+		else
+			dal_ring->u.src_ring.hp_addr =
+				srng->u.src_ring.hp_addr -
+				(uint32_t *)(hal->dev_base_addr);
+
+		dal_ring->u.src_ring.tp_addr =
+				(uint64_t)(hal->shadow_rdptr_mem_paddr +
+				((unsigned long)(srng->u.src_ring.tp_addr) -
+				 (unsigned long)(hal->shadow_rdptr_mem_vaddr)));
+
+	} else {
+		dal_ring->u.dst_ring.tp = srng->u.dst_ring.tp;
+
+		if (dal_ring->lmac_ring)
+			dal_ring->u.dst_ring.tp_addr =
+				hal_srng_get_tp_addr(soc->hal_soc, srng);
+		else
+			dal_ring->u.dst_ring.tp_addr =
+				srng->u.dst_ring.tp_addr -
+				(uint32_t *)(hal->dev_base_addr);
+
+		dal_ring->u.dst_ring.hp_addr =
+				(uint64_t)(hal->shadow_rdptr_mem_paddr +
+				((unsigned long)(srng->u.dst_ring.hp_addr) -
+				 (unsigned long)(hal->shadow_rdptr_mem_vaddr)));
+	}
+}
+#endif
+
+static void
+dp_dal_update_ring_params(struct dp_soc *soc, struct hal_srng *srng,
+			  struct dal_srng *dal_ring)
+{
 	dal_ring->hal_ring_id = srng->ring_id;
 	dal_ring->ring_base_paddr = srng->ring_base_paddr;
 	dal_ring->ring_base_vaddr = srng->ring_base_vaddr;
@@ -1824,33 +1900,7 @@ static void dp_dal_update_ring_params(struct dp_soc *soc,
 	dal_ring->ring_dir = srng->ring_dir;
 	dal_ring->lmac_ring = srng->flags & HAL_SRNG_LMAC_RING ? true : false;
 
-	if (srng->ring_dir == HAL_SRNG_SRC_RING) {
-		dal_ring->u.src_ring.hp = srng->u.src_ring.hp;
-
-		if (dal_ring->lmac_ring)
-			dal_ring->u.src_ring.hp_addr =
-				virt_to_phys(srng->u.src_ring.hp_addr);
-		else
-			dal_ring->u.src_ring.hp_addr =
-					srng->u.src_ring.hp_addr -
-					(uint32_t *)(hal->dev_base_addr);
-
-		dal_ring->u.src_ring.tp_addr =
-			virt_to_phys(srng->u.src_ring.tp_addr);
-	} else {
-		dal_ring->u.dst_ring.tp = srng->u.dst_ring.tp;
-
-		if (dal_ring->lmac_ring)
-			dal_ring->u.dst_ring.tp_addr =
-				virt_to_phys(srng->u.src_ring.tp_addr);
-		else
-			dal_ring->u.dst_ring.tp_addr =
-					srng->u.dst_ring.tp_addr -
-					(uint32_t *)(hal->dev_base_addr);
-
-		dal_ring->u.dst_ring.hp_addr =
-				virt_to_phys(srng->u.dst_ring.hp_addr);
-	}
+	dp_dal_update_ring_hp_tp_addr(soc, srng, dal_ring);
 }
 
 void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
