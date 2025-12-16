@@ -1846,6 +1846,9 @@ static inline void dp_dal_sim_mode_offload_switch(
 		       status);
 		goto exit;
 	}
+
+	dp_dal_offload_sim_sync_refill_ring_hp(sim_ctx);
+
 	g_dal_sim_curr_mode = DAL_DP_OFFLOAD_MODE;
 	dp_info("Switched to offload mode");
 exit:

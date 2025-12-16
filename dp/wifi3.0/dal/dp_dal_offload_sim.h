@@ -219,5 +219,14 @@ int dp_dal_offload_sim_fetch_current_hp_tp(
 				int ring_type,
 				int ring_id);
 
+/**
+ * dp_dal_offload_sim_sync_refill_ring_hp() - sync refill ring hp from DDR
+ * @dal_sim_ctx: DAL SIM context
+ *
+ * This function sync the HP to refill ring from DDR
+ *
+ * Return: none
+ */
+void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */

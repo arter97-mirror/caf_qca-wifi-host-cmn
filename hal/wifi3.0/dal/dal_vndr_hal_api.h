@@ -93,6 +93,16 @@ static inline int dal_vndr_hal_srng_access_start(
 	return 0;
 }
 
+static inline void
+dal_vndr_hal_srng_sync_hp(void *hal_soc_hdl, void *hal_ring_hdl)
+{
+	struct dal_vndr_hal_srng *srng =
+		(struct dal_vndr_hal_srng *)hal_ring_hdl;
+
+	srng->u.src_ring.hp =
+		*(volatile uint32_t *)(srng->u.src_ring.hp_addr);
+}
+
 /**
  * dal_vndr_hal_srng_dst_get_next() - Get next entry from a destination ring
  * @hal_soc: Opaque HAL SOC handle
