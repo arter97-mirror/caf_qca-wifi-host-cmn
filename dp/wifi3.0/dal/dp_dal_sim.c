@@ -1750,6 +1750,81 @@ static int dp_dal_sim_active_desc_processing(struct dp_dal_sim_ctx *sim_ctx)
 	return -ETIMEDOUT;
 }
 
+static void dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx)
+{
+	uint32_t hp;
+	uint32_t tp;
+	int i;
+	int ring_id;
+
+	if (!sim_ctx) {
+		dp_err("NULL sim context");
+		return;
+	}
+
+	if (!vendor_cb.store_ring_hp_tp) {
+		dp_err("No vendor cb registered to store DAL rings hp/tp");
+		return;
+	}
+
+	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+		ring_id = sim_ctx->rx_ring[i].ring_num;
+
+		if (dp_dal_offload_sim_fetch_current_hp_tp(
+					sim_ctx, &hp, &tp,
+					OFFLOAD_SIM_RING_TYPE_RX, i)) {
+			dp_err("failed to fetch cur hp/tp rx ring %d", ring_id);
+			continue;
+		}
+
+		dp_info("reo dest ring:%d hp:%d tp:%d", ring_id, hp, tp);
+		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, REO_DST,
+					   ring_id, hp, tp);
+	}
+
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		ring_id = sim_ctx->tx_cmpl_ring[i].ring_num;
+
+		if (dp_dal_offload_sim_fetch_current_hp_tp(
+					sim_ctx, &hp, &tp,
+					OFFLOAD_SIM_RING_TYPE_TX_CPL, i)) {
+			dp_err("failed to fetch cur hp/tp tx cmpl ring %d",
+			       ring_id);
+			continue;
+		}
+
+		dp_info("Tx cmpl ring:%d hp:%d tp:%d", ring_id, hp, tp);
+		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, COMP_RING_TYPE,
+					   ring_id, hp, tp);
+	}
+
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		ring_id = sim_ctx->tx_ring[i].ring_num;
+
+		if (dp_dal_offload_sim_fetch_current_hp_tp(
+					sim_ctx, &hp, &tp,
+					OFFLOAD_SIM_RING_TYPE_TX,
+					i)) {
+			dp_err("failed to fetch cur hp/tp tx ring %d", ring_id);
+			continue;
+		}
+
+		dp_info("Tx data ring:%d hp:%d tp:%d", ring_id, hp, tp);
+		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, TCL_DATA,
+					   ring_id, hp, tp);
+	}
+
+	if (!dp_dal_offload_sim_fetch_current_hp_tp(
+				sim_ctx, &hp, &tp,
+				OFFLOAD_SIM_RING_TYPE_RX_REFILL, 0)) {
+		dp_info("Refill ring  hp:%d tp:%d", hp, tp);
+		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, RXDMA_BUF,
+					   0, hp, tp);
+	} else {
+		dp_err("failed to fetch cur hp/tp rx refill ring");
+	}
+}
+
 /**
  * dp_dal_sim_mode_bypass_switch() - Switch to bypass mode
  * @sim_ctx: pointer to dal sim context
@@ -1790,6 +1865,7 @@ static inline void dp_dal_sim_mode_bypass_switch(
 	}
 
 	dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(sim_ctx);
+	dp_dal_sim_store_current_hp_tp(sim_ctx);
 
 	/* Update the global plat ops with offload mode ops */
 	*global_plat_ops = plat_ops_bypass_mode;

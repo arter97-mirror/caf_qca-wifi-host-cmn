@@ -13,10 +13,14 @@
  * enum offload_sim_ring_type - Ring type for interrupt handling
  * @OFFLOAD_SIM_RING_TYPE_RX: RX ring (REO destination)
  * @OFFLOAD_SIM_RING_TYPE_TX_CPL: TX completion ring (WBM2SW)
+ * @OFFLOAD_SIM_RING_TYPE_TX: Tx data ring (TCL DATA)
+ * @OFFLOAD_SIM_RING_TYPE_RX_REFILL: Rx refill ring
  */
 enum offload_sim_ring_type {
 	OFFLOAD_SIM_RING_TYPE_RX = 0,
 	OFFLOAD_SIM_RING_TYPE_TX_CPL = 1,
+	OFFLOAD_SIM_RING_TYPE_TX = 2,
+	OFFLOAD_SIM_RING_TYPE_RX_REFILL = 3,
 };
 
 /**

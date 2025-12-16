@@ -907,6 +907,7 @@ int dp_dal_offload_sim_fetch_current_hp_tp(
 			dp_err("Invalid RX ring_id %d", ring_id);
 			return -EINVAL;
 		}
+
 		hal_srng = &offload_ctx->rx_ring_hal_srng[ring_id];
 		break;
 
@@ -915,9 +916,20 @@ int dp_dal_offload_sim_fetch_current_hp_tp(
 			dp_err("Invalid TX completion ring_id %d", ring_id);
 			return -EINVAL;
 		}
+
 		hal_srng = &offload_ctx->tx_cmpl_ring_hal_srng[ring_id];
 		break;
+	case OFFLOAD_SIM_RING_TYPE_TX:
+		if (ring_id < 0 || ring_id >= DAL_TX_RINGS_MAX) {
+			dp_err("Invalid TX ring_id %d", ring_id);
+			return -EINVAL;
+		}
 
+		hal_srng = &offload_ctx->tx_ring_hal_srng[ring_id];
+		break;
+	case OFFLOAD_SIM_RING_TYPE_RX_REFILL:
+		hal_srng = &offload_ctx->rx_refill_ring_hal_srng;
+		break;
 	default:
 		dp_err("Invalid ring_type %d", ring_type);
 		return -EINVAL;
