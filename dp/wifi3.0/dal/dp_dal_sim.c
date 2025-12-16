@@ -15,8 +15,8 @@
 
 #ifdef FEATURE_DP_DAL_SIM
 /* RX budget for processing descriptors */
-#define DP_DAL_SIM_RX_BUDGET 64
-#define DP_DAL_SIM_TX_BUDGET 64
+#define DP_DAL_SIM_RX_BUDGET 255
+#define DP_DAL_SIM_TX_BUDGET 255
 
 /* Suspend notification timeout parameters */
 #define DP_DAL_SIM_SUSPEND_WAIT_INTERVAL_MS 10
