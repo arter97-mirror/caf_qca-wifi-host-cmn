@@ -244,9 +244,10 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 	if (rcc->unassoc_channel_mhz) {
 		WMI_CFR_UNASSOC_CAPTURE_EN_SET(cmd->unassoc_capture_config, 1);
 		cmd->unassoc_channel_mhz = rcc->unassoc_channel_mhz;
-		cmd->unassoc_phy_mode = WMI_HOST_MODE_11NA_HT20;
-		wmi_debug("RX based unassociated  phy mode %d",
-			  cmd->unassoc_phy_mode);
+		cmd->unassoc_phy_mode =
+			wmi_host_to_fw_phymode(rcc->unassoc_phy_mode);
+		wmi_debug("RX based unassociated  phy mode %d freq %d",
+			  cmd->unassoc_phy_mode, rcc->unassoc_channel_mhz);
 	}
 
 	/* TLV indicating array of structures to follow */
