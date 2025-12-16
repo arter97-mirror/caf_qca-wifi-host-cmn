@@ -13899,6 +13899,17 @@ static void dp_soc_cfg_dump(struct dp_soc *soc, uint32_t target_type)
 	wlan_cfg_dp_soc_ctx_dump(soc->wlan_cfg_ctx);
 }
 
+#ifdef WLAN_FEATURE_SON
+static inline void dp_soc_set_da_war_enabled(struct dp_soc *soc)
+{
+	soc->da_war_enabled = true;
+}
+#else /* !WLAN_FEATURE_SON */
+static inline void dp_soc_set_da_war_enabled(struct dp_soc *soc)
+{
+}
+#endif /* WLAN_FEATURE_SON */
+
 /**
  * dp_soc_cfg_init() - initialize target specific configuration
  *		       during dp_soc_init
@@ -13918,6 +13929,8 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 		break;
 	case TARGET_TYPE_QCA6390:
 	case TARGET_TYPE_QCA6490:
+		dp_soc_set_da_war_enabled(soc);
+		/* fall through */
 	case TARGET_TYPE_QCA6750:
 		wlan_cfg_set_reo_dst_ring_size(soc->wlan_cfg_ctx,
 					       REO_DST_RING_SIZE_QCA6290);
