@@ -1000,6 +1000,7 @@ dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 	struct dp_pdev *pdev;
 	struct dp_vdev *vdev;
 	struct dp_tx_page_pool *tx_pp;
+	bool should_deinit;
 
 	if (!soc->tx_dyn_pool_en)
 		return QDF_STATUS_SUCCESS;
@@ -1010,10 +1011,38 @@ dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 
 	/* Iterate through all vdevs and trigger shrink monitor */
 	TAILQ_FOREACH(vdev, &pdev->vdev_list, vdev_list_elem) {
+		should_deinit = false;
+
+		qdf_spin_lock_bh(&soc->tx_pp_lock);
 		tx_pp = soc->tx_pp[vdev->vdev_id];
-		if (tx_pp && tx_pp->page_pool_init)
-			dp_tx_page_pool_shrink_monitor(soc, tx_pp,
-						       vdev->vdev_id);
+
+		if (!tx_pp || !tx_pp->page_pool_init) {
+			qdf_spin_unlock_bh(&soc->tx_pp_lock);
+			continue;
+		}
+
+		qdf_atomic_inc(&tx_pp->shrink_ref_cnt);
+		qdf_spin_unlock_bh(&soc->tx_pp_lock);
+
+		/* Safe to call monitor */
+		dp_tx_page_pool_shrink_monitor(soc, tx_pp, vdev->vdev_id);
+
+		/* Release shrink reference and check for deferred free */
+		qdf_spin_lock_bh(&soc->tx_pp_lock);
+		if (qdf_atomic_dec_and_test(&tx_pp->shrink_ref_cnt)) {
+			/* Last shrink reference - check if deinit is pending */
+			if (qdf_atomic_read(&tx_pp->pending_deinit))
+				should_deinit = true;
+		}
+		qdf_spin_unlock_bh(&soc->tx_pp_lock);
+
+		/* Finalize free if needed */
+		if (should_deinit) {
+			/* Destroy pools now (safe - no shrink active) */
+			dp_tx_page_pool_destroy_all_pools(tx_pp);
+			qdf_spinlock_destroy(&tx_pp->pp_lock);
+			qdf_mem_free(tx_pp);
+		}
 	}
 
 	return QDF_STATUS_SUCCESS;

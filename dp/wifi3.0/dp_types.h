@@ -2016,6 +2016,8 @@ struct dp_tx_pp_params {
  * @shrink_attempts: Number of shrink attempts
  * @shrink_success: Number of shrink success
  * @monitoring_checks: Monitor counter
+ * @shrink_ref_cnt: Track shrink operation in progress
+ * @pending_deinit: Track pending deinit
  */
 struct dp_tx_page_pool {
 	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
@@ -2045,6 +2047,8 @@ struct dp_tx_page_pool {
 	qdf_atomic_t shrink_attempts;
 	qdf_atomic_t shrink_success;
 	qdf_atomic_t monitoring_checks;
+	qdf_atomic_t shrink_ref_cnt;
+	qdf_atomic_t pending_deinit;
 };
 #endif
 

@@ -6581,7 +6581,15 @@ dp_tx_latency_stats_update_cca(struct dp_soc *soc, uint16_t peer_id,
  */
 void dp_tx_latency_stats_report(struct dp_soc *soc, struct dp_pdev *pdev);
 #endif
-
+#ifdef DP_FEATURE_TX_PAGE_POOL
+/**
+ * dp_tx_page_pool_destroy_all_pools() - Destroy all dynamic pools
+ * @tx_pp: TX page pool handle
+ *
+ * Return: None
+ */
+void dp_tx_page_pool_destroy_all_pools(struct dp_tx_page_pool *tx_pp);
+#endif
 #ifndef WLAN_SUPPORT_FLOW_PRIORTIZATION
 static inline bool wlan_dp_fpm_is_tid_override(qdf_nbuf_t nbuf, uint8_t *tid)
 {

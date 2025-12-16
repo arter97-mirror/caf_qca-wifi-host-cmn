@@ -814,6 +814,18 @@ dp_tx_flush_active_pool_list(struct dp_tx_page_pool *tx_pp)
 		dp_nofl_info("TX_PP_FLUSH flushed %u active pools",
 			     flush_count);
 }
+
+void dp_tx_page_pool_destroy_all_pools(struct dp_tx_page_pool *tx_pp)
+{
+	/* Destroy idle pools */
+	dp_tx_page_pool_destroy_idle_pools(tx_pp);
+
+	/* Destroy active pools */
+	dp_tx_flush_active_pool_list(tx_pp);
+
+	tx_pp->active_pool_count = 0;
+}
+
 static void
 dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 {
@@ -821,11 +833,14 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 		&tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 	bool dynamic_pp_enabled =
 		wlan_cfg_get_tx_dynamic_pp_enabled(soc->ctrl_psoc);
+	bool should_free_now = false;
 
 	if (!tx_pp->page_pool_init)
 		return;
 
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	tx_pp->page_pool_init = false;
+
 	if (pp_params->pp && soc->cdp_soc.ol_ops->dp_put_page_pool &&
 	    pp_params->is_prealloc) {
 		soc->cdp_soc.ol_ops->dp_put_page_pool(pp_params->pp,
@@ -836,14 +851,20 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 	}
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
-	/* Destroy idle pools if dynamic page pool is enabled */
-	if (dynamic_pp_enabled) {
-		dp_tx_page_pool_destroy_idle_pools(tx_pp);
-		dp_tx_flush_active_pool_list(tx_pp);
+	/* Check if shrink reference is there */
+	qdf_spin_lock_bh(&soc->tx_pp_lock);
+	if (qdf_atomic_read(&tx_pp->shrink_ref_cnt) == 0)
+		should_free_now = true;
+	else
+		qdf_atomic_set(&tx_pp->pending_deinit, 1);
+	qdf_spin_unlock_bh(&soc->tx_pp_lock);
+
+	if (should_free_now) {
+		if (dynamic_pp_enabled)
+			dp_tx_page_pool_destroy_all_pools(tx_pp);
+		qdf_spinlock_destroy(&tx_pp->pp_lock);
+		qdf_mem_free(tx_pp);
 	}
-	tx_pp->active_pool_count = 0;
-	tx_pp->page_pool_init = false;
-	qdf_spinlock_destroy(&tx_pp->pp_lock);
 }
 
 static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
@@ -891,6 +912,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	}
 
 	qdf_atomic_init(&tx_pp->ref_cnt);
+	qdf_atomic_init(&tx_pp->shrink_ref_cnt);
+	qdf_atomic_init(&tx_pp->pending_deinit);
 	tx_pp->page_pool_init = true;
 	soc->osdev->no_dma_map = true;
 
@@ -1035,10 +1058,8 @@ static void dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
 	qdf_spin_unlock_bh(&soc->tx_pp_lock);
 
 	/* If we lost the race, clean up our pool */
-	if (!should_init) {
+	if (!should_init)
 		dp_tx_page_pool_deinit(soc, tx_pp);
-		qdf_mem_free(tx_pp);
-	}
 
 unref_vdev_no_lock:
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
@@ -1073,10 +1094,8 @@ out_unlock:
 	qdf_spin_unlock_bh(&soc->tx_pp_lock);
 
 	/* Deinit outside the spinlock to avoid sleeping in atomic context */
-	if (should_deinit) {
+	if (should_deinit)
 		dp_tx_page_pool_deinit(soc, tx_pp);
-		qdf_mem_free(tx_pp);
-	}
 }
 #else /* !DP_FEATURE_TX_PAGE_POOL */
 static inline void
