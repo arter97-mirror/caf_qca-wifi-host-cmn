@@ -1788,6 +1788,9 @@ static inline void dp_dal_sim_mode_bypass_switch(
 		dp_err("forced mode switch");
 		sim_ctx->stats.error_stats.mode_switch_desc_list_timeout++;
 	}
+
+	dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(sim_ctx);
+
 	/* Update the global plat ops with offload mode ops */
 	*global_plat_ops = plat_ops_bypass_mode;
 

@@ -228,5 +228,17 @@ int dp_dal_offload_sim_fetch_current_hp_tp(
  * Return: none
  */
 void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx);
+
+/**
+ * dp_dal_offload_sim_sync_refill_ring_hp_to_ddr() - sync refill ring local hp
+ * to DDR
+ * @sim_ctx: DAL SIM context
+ *
+ * This function sync the refill ring local HP to DDR
+ *
+ * Return: none
+ */
+void
+dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(struct dp_dal_sim_ctx *sim_ctx);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */

@@ -766,6 +766,30 @@ uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
 	return num_entries_avail;
 }
 
+void
+dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(struct dp_dal_sim_ctx *sim_ctx)
+{
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *rx_refill_ring;
+
+	if (!sim_ctx) {
+		dp_err("NULL simulator context, can't sync refill ring");
+		return;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context, can't sync refill ring hp");
+		return;
+	}
+
+	rx_refill_ring = &offload_ctx->rx_refill_ring_hal_srng;
+	DAL_VNDR_SRNG_LOCK(&rx_refill_ring->lock);
+	dal_vndr_hal_srng_access_end(&offload_ctx->hal_soc, rx_refill_ring);
+	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
+}
+
 void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
