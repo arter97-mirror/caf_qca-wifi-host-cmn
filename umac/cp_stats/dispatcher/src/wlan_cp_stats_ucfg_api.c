@@ -77,6 +77,20 @@ bool ucfg_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 #endif
 #endif
 
+QDF_STATUS
+ucfg_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc_obj,
+					 bool is_enhanced_stats_support)
+{
+	return wlan_cp_stats_set_enhanced_stats_support(psoc_obj,
+							is_enhanced_stats_support);
+}
+
+bool
+ucfg_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc_obj)
+{
+	return wlan_cp_stats_get_enhanced_stats_support(psoc_obj);
+}
+
 #ifdef WLAN_CHIPSET_STATS
 void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 					      bool direct_log_dispatch)

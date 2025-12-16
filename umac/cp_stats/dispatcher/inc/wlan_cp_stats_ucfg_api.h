@@ -106,6 +106,27 @@ bool ucfg_cp_stats_get_chipset_stats_enable(struct wlan_objmgr_psoc *psoc)
 	return false;
 }
 #endif
+
+/**
+ * ucfg_cp_stats_set_enhanced_stats_support() - set a enhanced_stats_support FW cap
+ * @psoc: PSOC
+ * @is_enhanced_stats_support: parameter is supported or not
+ *
+ * Return: QDF_STATUS_SUCCESS on Success, other QDF_STATUS error codes
+ * on failure
+ */
+QDF_STATUS
+ucfg_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc,
+					 bool is_enhanced_stats_support);
+
+/**
+ * ucfg_cp_stats_get_enhanced_stats_support() - get a enhanced_stats_support FW cap
+ * @psoc: PSOC
+ *
+ * Return: True if enhanced stats is supported
+ *         false if not
+ */
+bool ucfg_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc);
 #endif /* QCA_SUPPORT_CP_STATS */
 
 #ifdef WLAN_CHIPSET_STATS

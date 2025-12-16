@@ -617,6 +617,42 @@ wlan_cp_stats_peer_obj_destroy_handler(struct wlan_objmgr_peer *peer, void *arg)
 	return QDF_STATUS_SUCCESS;
 }
 
+
+QDF_STATUS
+wlan_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc,
+					 bool is_enhanced_stats_support)
+{
+	struct cp_stats_context *csc;
+
+	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+						    WLAN_UMAC_COMP_CP_STATS);
+	if (!csc) {
+		cp_stats_err("CP Stats Context is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	csc->host_params.is_enhanced_stats_support = is_enhanced_stats_support;
+	cp_stats_debug("is_enhanced_stats_support: %d",
+		       csc->host_params.is_enhanced_stats_support);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+bool
+wlan_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc)
+{
+	struct cp_stats_context *csc;
+
+	csc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
+						   WLAN_UMAC_COMP_CP_STATS);
+	if (!csc) {
+		cp_stats_err("CP Stats Context is NULL");
+		return false;
+	}
+
+	return csc->host_params.is_enhanced_stats_support;
+}
+
 #ifdef WLAN_SUPPORT_INFRA_CTRL_PATH_STATS
 QDF_STATUS
 wlan_cp_stats_infra_cp_register_resp_cb(struct wlan_objmgr_psoc *psoc,

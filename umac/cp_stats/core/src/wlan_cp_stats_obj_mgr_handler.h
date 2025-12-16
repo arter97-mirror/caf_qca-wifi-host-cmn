@@ -206,6 +206,27 @@ int wlan_cp_stats_twt_get_peer_session_params(
 					struct wlan_objmgr_psoc *psoc,
 					struct twt_session_stats_info *params);
 #endif
+
+/**
+ * wlan_cp_stats_set_enhanced_stats_support() - set enhanced_stats_support
+ * @psoc: psoc
+ * @is_enhanced_stats_support: bool
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_cp_stats_set_enhanced_stats_support(struct wlan_objmgr_psoc *psoc,
+					 bool is_enhanced_stats_support);
+
+/**
+ * wlan_cp_stats_get_enhanced_stats_support() - get enhanced_stats_support
+ * @psoc: psoc
+ *
+ * Return: True if enhanced_stats is supported
+ */
+bool
+wlan_cp_stats_get_enhanced_stats_support(struct wlan_objmgr_psoc *psoc);
+
 #ifdef WLAN_CHIPSET_STATS
 /**
  * wlan_cp_stats_get_chipset_stats_enable() - Returns INI
