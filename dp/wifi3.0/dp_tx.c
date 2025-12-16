@@ -9950,7 +9950,7 @@ void dp_tx_set_metadata_passthru(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	/*
 	 * ToDo: Abstract the ieee enums for ftype
 	 */
-	if (!msdu_info->is_unicast)
+	if (!msdu_info->is_unicast || txd->tid >= 8)
 		msdu_info->tid = 0;
 	else if (msdu_info->frame_type == IEEE80211_FTYPE_MGMT ||
 		 msdu_info->frame_type == IEEE80211_FTYPE_CTL)
