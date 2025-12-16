@@ -430,6 +430,28 @@ static void dp_dal_save_ring_hp_tp(struct dp_dal_ctx *dal_ctx,
 		dp_info("updated TX comp ring:%d TP:%u to dal srng",
 			ring_num, dal_srng->u.dst_ring.tp);
 	}
+
+	/* TX ring */
+	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
+		dal_srng = &dal_ctx->tx_ring[i];
+		ring_num = dal_srng->ring_num;
+
+		if (!dal_srng->initialized ||
+		    ring_num >= soc->num_tcl_data_rings)
+			continue;
+
+		hal_srng =
+		(struct hal_srng *)soc->tcl_data_ring[ring_num].hal_srng;
+		if (!hal_srng) {
+			dp_err("hal_srng is NULL for TX ring:%d",
+			       ring_num);
+			continue;
+		}
+
+		dal_srng->u.src_ring.hp = hal_srng->u.src_ring.hp;
+		dp_info("updated Tx ring :%d HP:%u to dal srng",
+			ring_num, hal_srng->u.src_ring.hp);
+	}
 }
 
 /**

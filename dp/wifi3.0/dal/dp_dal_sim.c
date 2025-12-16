@@ -1043,13 +1043,14 @@ static int dp_dal_sim_rxbm_sync(void *priv, u32 cnt, void **rxbm)
 		return 0;
 	}
 
+	/*Take spinlock to ensure mode switch does not interfere replenish */
+	qdf_spin_lock_bh(&sim_ctx->rxbm_sync_lock);
 	/* Check if mode switch is in progress - block rxbm sync requests */
 	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		qdf_spin_unlock_bh(&sim_ctx->rxbm_sync_lock);
 		dp_info_rl("Mode switch in progress - blocking rxbm sync req");
 		return 0;
 	}
-	/*Take spinlock to ensure mode switch does not interfere replenish */
-	qdf_spin_lock_bh(&sim_ctx->rxbm_sync_lock);
 	/* Call dp_dal_offload_sim wrapper to sync descriptors to refill ring */
 	synced_cnt = dp_dal_offload_sim_rxbm_sync(sim_ctx, cnt, rxbm);
 	qdf_spin_unlock_bh(&sim_ctx->rxbm_sync_lock);
@@ -1868,7 +1869,7 @@ static inline void dp_dal_sim_mode_bypass_switch(
 	dp_dal_sim_store_current_hp_tp(sim_ctx);
 
 	/* Update the global plat ops with offload mode ops */
-	*global_plat_ops = plat_ops_bypass_mode;
+	global_plat_ops = &plat_ops_bypass_mode;
 
 	status = vendor_cb.mode_switch_ind(
 		sim_ctx->dp_dal_ctx, g_dal_sim_curr_mode, DAL_DP_BYPASS_MODE);
@@ -1913,14 +1914,14 @@ static inline void dp_dal_sim_mode_offload_switch(
 	/* Set mode switch in progress flag to true */
 	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 1);
 	/* Update the global plat ops with offload mode ops */
-	*global_plat_ops = dp_dal_sim_plat_ops;
+	global_plat_ops = &dp_dal_sim_plat_ops;
 
 	status = vendor_cb.mode_switch_ind(sim_ctx->dp_dal_ctx,
 					   g_dal_sim_curr_mode,
 					   DAL_DP_OFFLOAD_MODE);
 	if (status) {
 		sim_ctx->stats.error_stats.offload_mode_switch_ind_fail++;
-		*global_plat_ops = plat_ops_bypass_mode;
+		global_plat_ops = &plat_ops_bypass_mode;
 		dp_err("mode switch ind fail status %d. Restored bypass ops",
 		       status);
 		goto exit;
