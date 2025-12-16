@@ -1189,6 +1189,27 @@ free_descs:
 
 qdf_export_symbol(__dp_rx_buffers_replenish);
 
+#ifdef DRIVER_PASSTHRU_MODE
+static
+int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+			       qdf_nbuf_t nbuf)
+{
+	qdf_nbuf_populate_radiotap_hdr(nbuf);
+
+	if (vdev->osif_rx)
+		vdev->osif_rx(vdev->osif_vdev, nbuf);
+
+	return 0;
+}
+#else
+static
+int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+			       qdf_nbuf_t nbuf)
+{
+	return -EINVAL;
+}
+#endif
+
 void
 dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 		  struct dp_txrx_peer *txrx_peer, uint8_t link_id)
@@ -1201,12 +1222,25 @@ dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 	while (nbuf) {
 		qdf_nbuf_t next = qdf_nbuf_next(nbuf);
 
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			if (next)
+				qdf_nbuf_set_next(nbuf, NULL);
+
+			dp_rx_deliver_raw_passthru(vdev->pdev->soc, vdev, nbuf);
+
+			if (next)
+				goto next_nbuf;
+
+			return;
+		}
+
 		DP_RX_LIST_APPEND(deliver_list_head, deliver_list_tail, nbuf);
 
 		DP_STATS_INC(vdev->pdev, rx_raw_pkts, 1);
 		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.raw, 1,
 					      qdf_nbuf_len(nbuf), link_id);
 
+next_nbuf:
 		nbuf = next;
 	}
 
@@ -1753,12 +1787,6 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 
 	wh = (struct ieee80211_frame *)rx_pkt_hdr;
 
-	if (!DP_FRAME_IS_DATA(wh)) {
-		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DP,
-				   "only for data frames");
-		goto free;
-	}
-
 	nbuf_len = qdf_nbuf_len(mpdu);
 	if (nbuf_len < sizeof(struct ieee80211_frame)) {
 		dp_rx_info_rl("%pK: Invalid nbuf length: %u", soc, nbuf_len);
@@ -1773,10 +1801,25 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 
 	qdf_spin_lock_bh(&pdev->vdev_list_lock);
 	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
-		if (qdf_mem_cmp(wh->i_addr1, vdev->mac_addr.raw,
+		if (vdev->opmode != wlan_op_mode_passthru &&
+		    qdf_mem_cmp(wh->i_addr1, vdev->mac_addr.raw,
 				QDF_MAC_ADDR_SIZE) == 0) {
 			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 			goto out;
+		} else if (vdev->opmode == wlan_op_mode_passthru) {
+			uint32_t l3_hdr_pad;
+
+			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+
+			l3_hdr_pad =
+				hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
+								   rx_tlv_hdr);
+
+			dp_rx_skip_tlvs(soc, mpdu, l3_hdr_pad);
+			if (dp_rx_deliver_raw_passthru(soc, vdev, mpdu))
+				goto free;
+			else
+				return 0;
 		}
 	}
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
@@ -1787,6 +1830,12 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 	}
 
 out:
+	if (!DP_FRAME_IS_DATA(wh)) {
+		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DP,
+				   "only for data frames");
+		goto free;
+	}
+
 	if (vdev->opmode == wlan_op_mode_ap) {
 		peer = dp_peer_find_hash_find(soc, wh->i_addr2, 0,
 					      vdev->vdev_id,

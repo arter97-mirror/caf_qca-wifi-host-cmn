@@ -6487,6 +6487,17 @@ uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf)
 {
 	return ieee80211_get_radiotap_len(qdf_nbuf_data(nbuf));
 }
+
+void qdf_nbuf_populate_radiotap_hdr(qdf_nbuf_t nbuf)
+{
+	struct ieee80211_radiotap_header *rtap_hdr;
+
+	qdf_nbuf_push_head(nbuf, sizeof(struct ieee80211_radiotap_header));
+
+	rtap_hdr = (struct ieee80211_radiotap_header *)qdf_nbuf_data(nbuf);
+	qdf_mem_zero(rtap_hdr, sizeof(*rtap_hdr));
+	rtap_hdr->it_len = cpu_to_le16(sizeof(*rtap_hdr));
+}
 #else
 static unsigned int qdf_nbuf_update_radiotap_vht_flags(
 					struct mon_rx_status *rx_status,
@@ -6521,6 +6532,12 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 }
 
 uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf)
+{
+	qdf_err("ERROR: struct ieee80211_radiotap_header not supported");
+	return 0;
+}
+
+void qdf_nbuf_populate_radiotap_hdr(qdf_nbuf_t nbuf)
 {
 	qdf_err("ERROR: struct ieee80211_radiotap_header not supported");
 	return 0;
