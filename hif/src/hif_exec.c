@@ -30,6 +30,88 @@
 
 static struct hif_exec_context *hif_exec_tasklet_create(void);
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#define HIF_GRP_ID_INVALID 0xFF
+
+static inline void
+hif_dal_napi_complete_and_dec_counter(struct hif_exec_context *hif_ext_group,
+				      struct hif_softc *scn)
+{
+	if (qdf_atomic_test_bit(0, &hif_ext_group->dal_napi_scheduled)) {
+		qdf_atomic_clear_bit(0, &hif_ext_group->dal_napi_scheduled);
+		qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
+	} else {
+		qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
+	}
+}
+
+/**
+ * hif_get_ext_grp_id() - API to get ext group id
+ * @hif_ctx: HIF context
+ * @cb_ctx: interrupt context
+ *
+ * Return: group id corresponds to rx/rx ring interrupts
+ */
+int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx, void *cb_ctx)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	struct hif_exec_context *hif_ext_group;
+	int i;
+
+	for (i = 0; i < HIF_MAX_GROUP; i++) {
+		hif_ext_group = hif_state->hif_ext_group[i];
+
+		if (!hif_ext_group)
+			continue;
+
+		if (hif_ext_group->context == cb_ctx)
+			return hif_ext_group->grp_id;
+	}
+
+	return HIF_GRP_ID_INVALID;
+}
+
+/**
+ * hif_ext_grp_napi_schedule - Schedule napi for the corresponding ext grp
+ * @hif_ctx: HIF context
+ * @grp_id: ext group id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
+				     int grp_id)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	struct hif_exec_context *hif_ext_group;
+
+	if (grp_id >= HIF_MAX_GROUP)
+		return QDF_STATUS_E_FAILURE;
+
+	hif_ext_group = hif_state->hif_ext_group[grp_id];
+	if (!hif_ext_group) {
+		hif_err("hif_ext_group is NULL for grp_id %d", grp_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!qdf_atomic_test_and_set_bit(0,
+					 &hif_ext_group->dal_napi_scheduled)) {
+		qdf_atomic_inc(&scn->active_grp_tasklet_cnt);
+		hif_ext_group->sched_ops->schedule(hif_ext_group);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static inline void
+hif_dal_napi_complete_and_dec_counter(struct hif_exec_context *hif_ext_group,
+				      struct hif_softc *scn)
+{
+	qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
+}
+#endif
+
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 struct hif_event_history hif_event_desc_history[HIF_NUM_INT_CONTEXTS];
 uint32_t hif_event_hist_max = HIF_EVENT_HIST_MAX;
@@ -1007,7 +1089,7 @@ static int hif_exec_poll(struct napi_struct *napi, int budget)
 		hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
 				 0, 0, 0, HIF_EVENT_BH_COMPLETE);
 		napi_complete(napi);
-		qdf_atomic_dec(&scn->active_grp_tasklet_cnt);
+		hif_dal_napi_complete_and_dec_counter(hif_ext_group, scn);
 		hif_ext_group->irq_enable(hif_ext_group);
 		hif_ext_group->stats[cpu].napi_completes++;
 		hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
@@ -1398,66 +1480,6 @@ hif_init_force_napi_complete(struct hif_exec_context *hif_ext_group)
 static inline void
 hif_init_force_napi_complete(struct hif_exec_context *hif_ext_group)
 {
-}
-#endif
-
-#ifdef FEATURE_DAL_DP_SUPPORT
-#define HIF_GRP_ID_INVALID 0xFF
-/**
- * hif_get_ext_grp_id() - API to get ext group id
- * @hif_ctx: HIF context
- * @cb_ctx: interrupt context
- *
- * Return: group id corresponds to rx/rx ring interrupts
- */
-int hif_get_ext_grp_id(struct hif_opaque_softc *hif_ctx, void *cb_ctx)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-	struct hif_exec_context *hif_ext_group;
-	int i;
-
-	for (i = 0; i < HIF_MAX_GROUP; i++) {
-		hif_ext_group = hif_state->hif_ext_group[i];
-
-		if (!hif_ext_group)
-			continue;
-
-		if (hif_ext_group->context == cb_ctx)
-			return hif_ext_group->grp_id;
-	}
-
-	return HIF_GRP_ID_INVALID;
-}
-
-/**
- * hif_ext_grp_napi_schedule - Schedule napi for the corresponding ext grp
- * @hif_ctx: HIF context
- * @grp_id: ext group id
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
-				     int grp_id)
-{
-	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-	struct hif_exec_context *hif_ext_group;
-
-	if (grp_id >= HIF_MAX_GROUP)
-		return QDF_STATUS_E_FAILURE;
-
-	hif_ext_group = hif_state->hif_ext_group[grp_id];
-	if (!hif_ext_group) {
-		hif_err("hif_ext_group is NULL for grp_id %d", grp_id);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	qdf_atomic_inc(&scn->active_grp_tasklet_cnt);
-
-	hif_ext_group->sched_ops->schedule(hif_ext_group);
-
-	return QDF_STATUS_SUCCESS;
 }
 #endif
 

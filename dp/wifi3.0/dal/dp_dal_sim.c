@@ -29,93 +29,115 @@ extern struct platform_bus_ops plat_ops_bypass_mode;
  * ========================================================================
  */
 
-int dp_dal_sim_desc_list_init(struct dp_dal_sim_desc_list *desc_list,
-			      uint16_t list_size)
+int dp_dal_sim_sw2sw_ring_init(struct dp_dal_sim_sw2sw_ring *ring,
+			       uint16_t ring_size, uint16_t desc_size)
 {
-	if (!desc_list) {
-		dp_err("NULL descriptor list pointer");
+	uint32_t buffer_size_bytes;
+	uint32_t buffer_size_dwords;
+
+	if (!ring) {
+		dp_err("NULL SW2SW ring pointer");
 		return -EINVAL;
 	}
 
-	if (list_size == 0 || (list_size & (list_size - 1)) != 0) {
-		dp_err("Invalid list size: %u (must be power of 2)", list_size);
+	if (ring_size == 0 || (ring_size & (ring_size - 1)) != 0) {
+		dp_err("Invalid ring size: %u (must be power of 2)", ring_size);
 		return -EINVAL;
 	}
 
-	/* Allocate memory for entries array */
-	desc_list->entries = qdf_mem_malloc(sizeof(void *) * list_size);
-	if (!desc_list->entries) {
-		dp_err("Failed to allocate memory for descriptor entries");
+	if (desc_size == 0 || (desc_size % sizeof(uint32_t)) != 0) {
+		dp_err("Invalid descriptor size: %u (must be DWORD aligned)",
+		       desc_size);
+		return -EINVAL;
+	}
+
+	/* Calculate total ring size in bytes */
+	buffer_size_bytes = ring_size * desc_size;
+
+	/* Calculate buffer size in DWORDs for uint32_t array allocation */
+	buffer_size_dwords = buffer_size_bytes / sizeof(uint32_t);
+
+	/* Allocate memory for SW2SW SRNG buffer as uint32_t array */
+	ring->ring_base_vaddr = qdf_mem_malloc(buffer_size_dwords *
+					       sizeof(uint32_t));
+	if (!ring->ring_base_vaddr) {
+		dp_err("Failed to allocate SW2SW SRNG buffer of size %u bytes",
+		       buffer_size_bytes);
 		return -ENOMEM;
 	}
 
-	/* Initialize HP/TP and list size */
-	desc_list->hp = 0;
-	desc_list->tp = 0;
-	desc_list->list_size = list_size;
+	/* Initialize HP/TP as DWORD indices like HAL SRNG */
+	ring->hp = 0;
+	ring->tp = 0;
+	ring->ring_size = buffer_size_dwords;
+	ring->entry_size = desc_size / sizeof(uint32_t);
+	ring->entry_size_bytes = desc_size;
 
 	/* Initialize spinlock */
-	qdf_spinlock_create(&desc_list->lock);
+	qdf_spinlock_create(&ring->lock);
 
-	dp_debug("Descriptor list initialized with size %u", list_size);
+	dp_debug("SW2SW SRNG initialized: entries=%u, entry_size=%u, total=%u bytes",
+		 ring_size, desc_size, buffer_size_bytes);
 	return 0;
 }
 
-void dp_dal_sim_desc_list_deinit(struct dp_dal_sim_desc_list *desc_list)
+void dp_dal_sim_sw2sw_ring_deinit(struct dp_dal_sim_sw2sw_ring *ring)
 {
-	if (!desc_list) {
-		dp_warn("NULL descriptor list pointer in deinit");
+	if (!ring) {
+		dp_warn("NULL SW2SW ring pointer in deinit");
 		return;
 	}
 
-	/* Free entries array */
-	if (desc_list->entries) {
-		qdf_mem_free(desc_list->entries);
-		desc_list->entries = NULL;
+	/* Free SW2SW SRNG buffer */
+	if (ring->ring_base_vaddr) {
+		qdf_mem_free(ring->ring_base_vaddr);
+		ring->ring_base_vaddr = NULL;
 		/* Destroy spinlock */
-		qdf_spinlock_destroy(&desc_list->lock);
+		qdf_spinlock_destroy(&ring->lock);
 	}
 
-	/* Reset HP/TP and list size */
-	desc_list->hp = 0;
-	desc_list->tp = 0;
-	desc_list->list_size = 0;
+	/* Reset HP/TP and ring parameters */
+	ring->hp = 0;
+	ring->tp = 0;
+	ring->ring_size = 0;
+	ring->entry_size = 0;
+	ring->entry_size_bytes = 0;
 
-	dp_debug("Descriptor list deinitialized");
+	dp_debug("SW2SW SRNG deinitialized");
 }
 
 /**
- * dp_dal_sim_is_desc_list_empty() - Check if descriptor list is empty in a
+ * dp_dal_sim_is_sw2sw_ring_empty() - Check if SW2SW ring is empty in a
  * thread-safe manner
- * @desc_list: Pointer to descriptor list structure
+ * @ring: Pointer to SW2SW ring structure
  *
- * Takes the list lock, checks if hp == tp, releases the lock,
- * returns true if the descriptor list is empty, false otherwise.
+ * Takes the ring lock, checks if hp == tp, releases the lock,
+ * returns true if the SW2SW ring is empty, false otherwise.
  */
-bool dp_dal_sim_is_desc_list_empty(struct dp_dal_sim_desc_list *desc_list)
+bool dp_dal_sim_is_sw2sw_ring_empty(struct dp_dal_sim_sw2sw_ring *ring)
 {
 	bool empty;
 
-	if (!desc_list)
+	if (!ring)
 		return true;
 
-	qdf_spin_lock_bh(&desc_list->lock);
-	empty = (desc_list->hp == desc_list->tp);
-	qdf_spin_unlock_bh(&desc_list->lock);
+	qdf_spin_lock_bh(&ring->lock);
+	empty = (ring->hp == ring->tp);
+	qdf_spin_unlock_bh(&ring->lock);
 
 	return empty;
 }
 
 /**
- * dp_dal_sim_desc_lists_init() - Initialize all descriptor lists
+ * dp_dal_sim_sw2sw_rings_init() - Initialize all SW2SW rings
  * @sim_ctx: Pointer to DAL simulation context
  *
- * This function initializes all RX and TX completion descriptor lists
+ * This function initializes all RX and TX completion SW2SW rings
  * for all rings in the simulation context.
  *
  * Return: 0 on success, negative error code on failure
  */
-static int dp_dal_sim_desc_lists_init(struct dp_dal_sim_ctx *sim_ctx)
+static int dp_dal_sim_sw2sw_rings_init(struct dp_dal_sim_ctx *sim_ctx)
 {
 	int i, status;
 
@@ -124,50 +146,53 @@ static int dp_dal_sim_desc_lists_init(struct dp_dal_sim_ctx *sim_ctx)
 		return -EINVAL;
 	}
 
-	/* Initialize descriptor lists for RX rings */
+	/* Initialize SW2SW rings for RX rings */
 	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
-		status = dp_dal_sim_desc_list_init(&sim_ctx->rx_desc_list[i],
-						   DP_DAL_SIM_DESC_LIST_SIZE);
+		status = dp_dal_sim_sw2sw_ring_init(
+				&sim_ctx->rx_sw2sw_ring[i],
+				DP_DAL_SIM_SW2SW_SRNG_SIZE,
+				DP_DAL_SIM_RX_CPL_DESC_SIZE);
 		if (status) {
-			dp_err("Failed to init RX desc list for ring %d", i);
-			goto cleanup_rx_lists;
+			dp_err("Failed to init RX SW2SW ring for ring %d", i);
+			goto cleanup_rx_rings;
 		}
 	}
 
-	/* Initialize descriptor lists for TX completion rings */
+	/* Initialize SW2SW rings for TX completion rings */
 	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
-		status = dp_dal_sim_desc_list_init(
-					&sim_ctx->tx_cpl_desc_list[i],
-					DP_DAL_SIM_DESC_LIST_SIZE);
+		status = dp_dal_sim_sw2sw_ring_init(
+					&sim_ctx->tx_cpl_sw2sw_ring[i],
+					DP_DAL_SIM_SW2SW_SRNG_SIZE,
+					DP_DAL_SIM_TX_CPL_DESC_SIZE);
 		if (status) {
-			dp_err("Failed to init TX cpl desc list for ring %d",
+			dp_err("Failed to init TX cpl SW2SW ring for ring %d",
 			       i);
-			goto cleanup_tx_lists;
+			goto cleanup_tx_rings;
 		}
 	}
 
-	dp_debug("All descriptor lists initialized successfully");
+	dp_debug("All SW2SW rings initialized successfully");
 	return 0;
 
-cleanup_tx_lists:
+cleanup_tx_rings:
 	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++)
-		dp_dal_sim_desc_list_deinit(&sim_ctx->tx_cpl_desc_list[i]);
+		dp_dal_sim_sw2sw_ring_deinit(&sim_ctx->tx_cpl_sw2sw_ring[i]);
 
-cleanup_rx_lists:
+cleanup_rx_rings:
 	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++)
-		dp_dal_sim_desc_list_deinit(&sim_ctx->rx_desc_list[i]);
+		dp_dal_sim_sw2sw_ring_deinit(&sim_ctx->rx_sw2sw_ring[i]);
 
 	return status;
 }
 
 /**
- * dp_dal_sim_desc_lists_deinit() - Deinitialize all descriptor lists
+ * dp_dal_sim_sw2sw_rings_deinit() - Deinitialize all SW2SW rings
  * @sim_ctx: Pointer to DAL simulation context
  *
- * This function deinitializes all RX and TX completion descriptor lists
+ * This function deinitializes all RX and TX completion SW2SW rings
  * for all rings in the simulation context.
  */
-static void dp_dal_sim_desc_lists_deinit(struct dp_dal_sim_ctx *sim_ctx)
+static void dp_dal_sim_sw2sw_rings_deinit(struct dp_dal_sim_ctx *sim_ctx)
 {
 	int i;
 
@@ -177,12 +202,12 @@ static void dp_dal_sim_desc_lists_deinit(struct dp_dal_sim_ctx *sim_ctx)
 	}
 
 	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++)
-		dp_dal_sim_desc_list_deinit(&sim_ctx->rx_desc_list[i]);
+		dp_dal_sim_sw2sw_ring_deinit(&sim_ctx->rx_sw2sw_ring[i]);
 
 	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++)
-		dp_dal_sim_desc_list_deinit(&sim_ctx->tx_cpl_desc_list[i]);
+		dp_dal_sim_sw2sw_ring_deinit(&sim_ctx->tx_cpl_sw2sw_ring[i]);
 
-	dp_debug("All descriptor lists deinitialized successfully");
+	dp_debug("All SW2SW rings deinitialized successfully");
 }
 
 /* ========================================================================
@@ -370,8 +395,9 @@ static int dp_dal_sim_parse_ring_info(struct dp_dal_sim_ctx *sim_ctx,
  * dp_dal_sim_rx_work_handler() - RX work handler
  * @arg: Pointer to work context
  *
- * Work handler for processing RX interrupts. Extracts ring_id from
- * work context and calls the vendor RX ISR callback to notify the driver.
+ * Work handler for processing RX interrupts. Instead of calling ISR callback,
+ * this function directly reaps the RX rings based on budget and enqueues
+ * descriptors into SW2SW ring for later consumption by platform APIs.
  */
 static void dp_dal_sim_rx_work_handler(void *arg)
 {
@@ -379,6 +405,8 @@ static void dp_dal_sim_rx_work_handler(void *arg)
 	struct dp_dal_sim_ctx *sim_ctx;
 	int ring_id;
 	uint8_t ring_num;
+	u32 budget = DP_DAL_SIM_RX_BUDGET;
+	int reaped_desc;
 
 	sim_ctx = work_ctx->sim_ctx;
 	ring_id = work_ctx->ring_id;
@@ -399,24 +427,39 @@ static void dp_dal_sim_rx_work_handler(void *arg)
 	dp_debug("RX work handler executing for ring_id=%d, ring_num=%d",
 		 ring_id, ring_num);
 
-	/* Call vendor RX ISR callback to notify driver */
+	/* Reap RX descriptors from the ring and enqueue to SW2SW ring */
+	reaped_desc = dp_dal_offload_sim_get_reo_desc(sim_ctx, ring_id,
+						      budget);
+	if (reaped_desc < 0) {
+		dp_err("Failed to get REO descs, reaped_desc=%d", reaped_desc);
+		return;
+	}
+
+	dp_debug("Reaped %d RX descriptors for ring_id=%d, enqueued to SW2SW",
+		 reaped_desc, ring_id);
+
+	/* Update statistics */
+	sim_ctx->stats.rx_received[ring_id] += reaped_desc;
+
+	/* Call vendor RX ISR callback to notify driver about availability */
 	if (vendor_cb.rx_isr_cb)
 		vendor_cb.rx_isr_cb(ring_num, sim_ctx->dp_dal_ctx);
 	else
 		dp_warn("RX ISR callback not registered");
 
+	/* Re-enable IRQ after work completion */
+	dp_dal_offload_sim_enable_ring_irq(sim_ctx, OFFLOAD_SIM_RING_TYPE_RX,
+					   ring_id);
 }
 
 /**
  * dp_dal_sim_tx_cpl_work_handler - TX completion worker handler
  * @arg: Pointer to work context
  *
- * This function processes TX completions in the worker thread context.
- * Extracts ring_id from work context and processes only that specific ring.
- * It reaps the WBM2SW ring, calls the vendor callback with descriptor info,
- * frees the TX buffer, and returns the software TX descriptor to the free list.
- *
- * Return: None
+ * Work handler for processing TX completion interrupts. Instead of calling ISR
+ * callback, this function directly reaps the TX completion rings based on
+ * budget and enqueues descriptors into SW2SW ring for later consumption by
+ * platform APIs.
  */
 static void dp_dal_sim_tx_cpl_work_handler(void *arg)
 {
@@ -424,6 +467,8 @@ static void dp_dal_sim_tx_cpl_work_handler(void *arg)
 	struct dp_dal_sim_ctx *sim_ctx;
 	int ring_id;
 	uint8_t ring_num;
+	u32 budget = DP_DAL_SIM_TX_BUDGET;
+	int reaped_desc;
 
 	sim_ctx = work_ctx->sim_ctx;
 	ring_id = work_ctx->ring_id;
@@ -444,12 +489,33 @@ static void dp_dal_sim_tx_cpl_work_handler(void *arg)
 	dp_debug("TX compl work handler executing for ring_id=%d, ring_num=%d",
 		 ring_id, ring_num);
 
-	/* Call vendor TX ISR callback to notify driver */
+	/* Reap TX completion descriptors from the ring and enqueue
+	 * to SW2SW ring.
+	 */
+	reaped_desc = dp_dal_offload_sim_get_tx_compl_desc(sim_ctx, ring_id,
+							   budget);
+	if (reaped_desc < 0) {
+		dp_err("Failed to get TX compl descs, reaped_desc=%d",
+		       reaped_desc);
+		return;
+	}
+
+	dp_debug("Reaped %d TX completion descriptors for ring_id=%d",
+		 reaped_desc, ring_id);
+
+	/* Update statistics */
+	sim_ctx->stats.tx_completed[ring_id] += reaped_desc;
+
+	/* Call vendor TX ISR callback to notify driver about availability */
 	if (vendor_cb.tx_isr_cb)
 		vendor_cb.tx_isr_cb(ring_num, sim_ctx->dp_dal_ctx);
 	else
 		dp_warn("TX ISR callback not registered");
 
+	/* Re-enable IRQ after work completion */
+	dp_dal_offload_sim_enable_ring_irq(sim_ctx,
+					   OFFLOAD_SIM_RING_TYPE_TX_CPL,
+					   ring_id);
 }
 
 /**
@@ -590,18 +656,14 @@ static int dp_dal_sim_init(void *pdev, void *priv)
 		qdf_atomic_init(&sim_ctx->tx_compl_work_scheduled[i]);
 	}
 
-	/* Initialize descriptor lists for all rings */
-	status = dp_dal_sim_desc_lists_init(sim_ctx);
-	if (status) {
-		dp_err("Failed to initialize descriptor lists");
-		goto free_offload_ctx;
-	}
-
 	qdf_spinlock_create(&sim_ctx->rxbm_sync_lock);
 
-	/* Initialize descriptor processing counters */
-	qdf_atomic_init(&sim_ctx->active_tx_desc_list_cnt);
-	qdf_atomic_init(&sim_ctx->active_rx_desc_list_cnt);
+	/* Initialize SW2SW rings for all rings */
+	status = dp_dal_sim_sw2sw_rings_init(sim_ctx);
+	if (status) {
+		dp_err("Failed to initialize SW2SW rings");
+		goto free_offload_ctx;
+	}
 
 	/* Mark as initialized */
 	sim_ctx->sim_ctx_initialized = true;
@@ -630,8 +692,8 @@ void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
 	/* Destroy all work queues and work items */
 	dp_dal_sim_destroy_work(sim_ctx);
 
-	/* Deinitialize descriptor lists for all rings */
-	dp_dal_sim_desc_lists_deinit(sim_ctx);
+	/* Deinitialize SW2SW rings for all rings */
+	dp_dal_sim_sw2sw_rings_deinit(sim_ctx);
 
 	/* Call offload mode exit api to free offload simulation resources */
 	dp_dal_offload_sim_deinit(sim_ctx);
@@ -840,7 +902,6 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 	struct dp_dal_sim_ctx *sim_ctx;
 	u32 desc_count = 0;
 	u32 budget = DP_DAL_SIM_RX_BUDGET;
-	int reaped_desc;
 	void *desc;
 	u32 i;
 	int ring_id = -1;
@@ -887,26 +948,13 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 	dp_debug("Processing RX ring_num %u (array index %d) with budget %u",
 		 ring_num, ring_id, budget);
 
-	/* Increment active RX descriptor processing counter */
-	qdf_atomic_inc(&sim_ctx->active_rx_desc_list_cnt);
-
-	/* Get REO descriptors from the ring using offload sim wrapper */
-	reaped_desc = dp_dal_offload_sim_get_reo_desc(sim_ctx, ring_id, budget);
-	if (reaped_desc < 0) {
-		dp_err("Failed to get REO descs, reaped_desc=%d", reaped_desc);
-		*cnt = 0;
-		/* Decrement active RX descriptor processing counter */
-		qdf_atomic_dec(&sim_ctx->active_rx_desc_list_cnt);
-		return false;
-	}
-
-	/* Start accessing descriptor list with lock */
-	dp_dal_sim_desc_list_access_start(&sim_ctx->rx_desc_list[ring_id]);
+	/* Start accessing SW2SW ring with lock */
+	dp_dal_sim_sw2sw_ring_access_start(&sim_ctx->rx_sw2sw_ring[ring_id]);
 
 	/* Dequeue descriptors one by one and directly send to WLAN driver */
-	for (i = 0; i < reaped_desc; i++) {
-		desc = dp_dal_sim_desc_list_dequeue(
-					&sim_ctx->rx_desc_list[ring_id]);
+	for (i = 0; i < budget; i++) {
+		desc = dp_dal_sim_sw2sw_ring_dequeue(
+					&sim_ctx->rx_sw2sw_ring[ring_id]);
 		if (!desc) {
 			/* No more descriptors available */
 			break;
@@ -915,7 +963,6 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 		/* Call vendor RX completion callback */
 		if (vendor_cb.rx_cpl_cb) {
 			vendor_cb.rx_cpl_cb(dal_ctx, desc, ring_num);
-			sim_ctx->stats.rx_received[ring_id]++;
 			desc_count++;
 		} else {
 			dp_warn("RX completion callback not registered");
@@ -923,18 +970,13 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 		}
 	}
 
-	/* End accessing descriptor list and release lock */
-	dp_dal_sim_desc_list_access_end(&sim_ctx->rx_desc_list[ring_id]);
+	/* End accessing SW2SW ring and release lock */
+	dp_dal_sim_sw2sw_ring_access_end(&sim_ctx->rx_sw2sw_ring[ring_id]);
 
 	*cnt = desc_count;
 
-	dp_dal_offload_sim_enable_ring_irq(sim_ctx, OFFLOAD_SIM_RING_TYPE_RX,
-					   ring_id);
 	dp_debug("Processed %u RX descriptors for ring_num %u (array index %d)",
 		 desc_count, ring_num, ring_id);
-
-	/* Decrement active RX descriptor processing counter */
-	qdf_atomic_dec(&sim_ctx->active_rx_desc_list_cnt);
 
 	/* Return true if any descriptors were processed */
 	return (desc_count > 0);
@@ -1161,7 +1203,6 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 	struct dp_dal_sim_ctx *sim_ctx;
 	u32 desc_count = 0;
 	u32 budget = DP_DAL_SIM_TX_BUDGET;
-	int reaped_desc;
 	u32 i;
 	void *desc;
 	int ring_id = -1;
@@ -1209,28 +1250,14 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 	dp_debug("Processing TX compl ring_num %u (ring_id %d) with budget %u",
 		 ring_num, ring_id, budget);
 
-	/* Increment active TX descriptor processing counter */
-	qdf_atomic_inc(&sim_ctx->active_tx_desc_list_cnt);
-
-	/* Get TX completion descriptors */
-	reaped_desc = dp_dal_offload_sim_get_tx_compl_desc(sim_ctx,
-							   ring_id, budget);
-	if (reaped_desc < 0) {
-		dp_err("Failed to get TX completion descs, reaped_desc=%d",
-		       reaped_desc);
-		*cnt = 0;
-		/* Decrement active TX descriptor processing counter */
-		qdf_atomic_dec(&sim_ctx->active_tx_desc_list_cnt);
-		return false;
-	}
-
-	/* Start accessing descriptor list with lock */
-	dp_dal_sim_desc_list_access_start(&sim_ctx->tx_cpl_desc_list[ring_id]);
+	/* Start accessing SW2SW ring with lock */
+	dp_dal_sim_sw2sw_ring_access_start(
+				&sim_ctx->tx_cpl_sw2sw_ring[ring_id]);
 
 	/* Dequeue descriptors one by one and directly send to WLAN driver */
-	for (i = 0; i < reaped_desc; i++) {
-		desc = dp_dal_sim_desc_list_dequeue(
-					&sim_ctx->tx_cpl_desc_list[ring_id]);
+	for (i = 0; i < budget; i++) {
+		desc = dp_dal_sim_sw2sw_ring_dequeue(
+					&sim_ctx->tx_cpl_sw2sw_ring[ring_id]);
 		if (!desc) {
 			/* No more descriptors available */
 			break;
@@ -1239,7 +1266,6 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 		/* Call vendor TX completion callback */
 		if (vendor_cb.tx_cpl_cb) {
 			vendor_cb.tx_cpl_cb(dal_ctx, desc, ring_num);
-			sim_ctx->stats.tx_completed[ring_id]++;
 			desc_count++;
 		} else {
 			dp_warn("TX completion callback not registered");
@@ -1247,19 +1273,13 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 		}
 	}
 
-	/* End accessing descriptor list and release lock */
-	dp_dal_sim_desc_list_access_end(&sim_ctx->tx_cpl_desc_list[ring_id]);
+	/* End accessing SW2SW ring and release lock */
+	dp_dal_sim_sw2sw_ring_access_end(&sim_ctx->tx_cpl_sw2sw_ring[ring_id]);
 
 	*cnt = desc_count;
 
-	dp_dal_offload_sim_enable_ring_irq(sim_ctx,
-					   OFFLOAD_SIM_RING_TYPE_TX_CPL,
-					   ring_id);
 	dp_debug("Processed %u TX compl desc for ring_num %u (ring_id %d)",
 		 desc_count, ring_num, ring_id);
-
-	/* Decrement active TX descriptor processing counter */
-	qdf_atomic_dec(&sim_ctx->active_tx_desc_list_cnt);
 
 	/* Return true if any descriptors were processed */
 	return (desc_count > 0);
@@ -1704,54 +1724,87 @@ int dp_dal_sim_attach(void *priv)
 }
 
 /**
- * dp_dal_sim_active_desc_processing() - Wait for active descriptor processing
- * to complete
+ * dp_dal_sim_wait_sw2sw_rings_empty() - Wait for SW2SW rings to become empty
  * @sim_ctx: Pointer to DAL sim context
  *
- * This function waits for all active RX and TX descriptor processing to
- * complete before allowing mode switch. It checks atomic counters with
- * retries and timeout.
+ * This function waits for all SW2SW rings to become empty before allowing
+ * mode switch. It checks SW2SW ring empty status with retries and timeout.
  *
- * Return: 0 on success (all descriptors processed), -ETIMEDOUT on timeout
+ * Return: 0 on success (all rings empty), -ETIMEDOUT on timeout
  */
-static int dp_dal_sim_active_desc_processing(struct dp_dal_sim_ctx *sim_ctx)
+static int dp_dal_sim_wait_sw2sw_rings_empty(struct dp_dal_sim_ctx *sim_ctx)
 {
 	int retry = 0;
-	int active_tx_desc_list_cnt, active_rx_desc_list_cnt;
+	int i;
+	bool rings_empty = false;
 
 	if (!sim_ctx) {
 		dp_err("NULL sim context");
 		return -EINVAL;
 	}
 
-	/* Wait for all active descriptor processing to complete */
+	/* Wait for all SW2SW rings to become empty */
 	for (retry = 0; retry < DP_DAL_SIM_MODE_SWITCH_MAX_RETRIES; retry++) {
-		active_tx_desc_list_cnt =
-			qdf_atomic_read(&sim_ctx->active_tx_desc_list_cnt);
-		active_rx_desc_list_cnt =
-			qdf_atomic_read(&sim_ctx->active_rx_desc_list_cnt);
+		rings_empty = true;
 
-		if (active_tx_desc_list_cnt == 0 &&
-		    active_rx_desc_list_cnt == 0) {
-			dp_info("desc list processed (retry=%d)", retry);
+		/* Check all RX SW2SW rings */
+		for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+			if (!dp_dal_sim_is_sw2sw_ring_empty(
+					&sim_ctx->rx_sw2sw_ring[i])) {
+				rings_empty = false;
+				dp_debug("RX SW2SW ring[%d] not empty", i);
+				break;
+			}
+		}
+
+		/* Check all TX completion SW2SW rings if RX rings are empty */
+		if (rings_empty) {
+			for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+				if (!dp_dal_sim_is_sw2sw_ring_empty(
+					&sim_ctx->tx_cpl_sw2sw_ring[i])) {
+					rings_empty = false;
+					dp_debug("TX cpl SW2SW ring[%d] not empty",
+						 i);
+					break;
+				}
+			}
+		}
+
+		/* If all rings are empty, allow mode switch */
+		if (rings_empty) {
+			dp_info("All SW2SW rings empty - mode switch allowed (retry=%d)",
+				retry);
 			return 0;
 		}
 
-		dp_debug("desc list pending process: tx=%d rx=%d (retry=%d/%d)",
-			 active_tx_desc_list_cnt, active_rx_desc_list_cnt,
+		dp_debug("SW2SW rings not empty (retry=%d/%d)",
 			 retry, DP_DAL_SIM_MODE_SWITCH_MAX_RETRIES);
 
 		/* Sleep for timeout milliseconds */
 		msleep(DP_DAL_SIM_MODE_SWITCH_TIMEOUT_MS);
 	}
 
-	/* Timeout - descriptors still being processed */
-	active_tx_desc_list_cnt =
-			qdf_atomic_read(&sim_ctx->active_tx_desc_list_cnt);
-	active_rx_desc_list_cnt =
-			qdf_atomic_read(&sim_ctx->active_rx_desc_list_cnt);
-	dp_err("Timeout waiting for active desc list processing: tx=%d, rx=%d",
-	       active_tx_desc_list_cnt, active_rx_desc_list_cnt);
+	/* Timeout reached - SW2SW rings still not empty */
+	dp_err("Timeout waiting for SW2SW rings to empty after %dms",
+	       DP_DAL_SIM_MODE_SWITCH_MAX_RETRIES *
+	       DP_DAL_SIM_MODE_SWITCH_TIMEOUT_MS);
+
+	/* Log current state for debugging */
+	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+		if (!dp_dal_sim_is_sw2sw_ring_empty(
+					&sim_ctx->rx_sw2sw_ring[i])) {
+			dp_err("RX SW2SW ring[%d] still has pending descriptors",
+			       i);
+		}
+	}
+
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		if (!dp_dal_sim_is_sw2sw_ring_empty(
+				&sim_ctx->tx_cpl_sw2sw_ring[i])) {
+			dp_err("TX cpl SW2SW ring[%d] still has pending descriptors",
+			       i);
+		}
+	}
 
 	return -ETIMEDOUT;
 }
@@ -1863,8 +1916,8 @@ static inline void dp_dal_sim_mode_bypass_switch(
 	qdf_spin_unlock_bh(&sim_ctx->rxbm_sync_lock);
 	/* Flush and cancel work*/
 	dp_dal_sim_destroy_work(sim_ctx);
-	/* Add logic to wait for desc list to be empty */
-	status = dp_dal_sim_active_desc_processing(sim_ctx);
+	/* Add logic to wait for SW2SW rings to be empty */
+	status = dp_dal_sim_wait_sw2sw_rings_empty(sim_ctx);
 	if (status) {
 		dp_err("forced mode switch");
 		sim_ctx->stats.error_stats.mode_switch_desc_list_timeout++;

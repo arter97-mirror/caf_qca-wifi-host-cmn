@@ -9,25 +9,34 @@
 #include "dp_dal.h"
 #include <qdf_atomic.h>
 #include <qdf_list.h>
+#include "hal_tx.h"
 
 /**
- * struct dp_dal_sim_desc_list - Descriptor list for ring IDs
- * @hp: Head pointer
- * @tp: Tail pointer
- * @entries: Array of descriptor entries
- * @list_size: Maximum size of the list
- * @lock: Spinlock to protect the list
+ * struct dp_dal_sim_sw2sw_ring - SW2SW SRNG for descriptor storage
+ * @hp: Head pointer (DWORD index, like HAL SRNG)
+ * @tp: Tail pointer (DWORD index, like HAL SRNG)
+ * @ring_base_vaddr: Ring buffer base address (uint32_t array like HAL SRNG)
+ * @ring_size: Total ring size in DWORDs (like HAL SRNG)
+ * @entry_size: Size of each descriptor entry in DWORDs (like HAL SRNG)
+ * @entry_size_bytes: Size of each descriptor entry in bytes (for qdf_mem_copy)
+ * @lock: Spinlock to protect the ring
  */
-struct dp_dal_sim_desc_list {
-	uint16_t hp;
-	uint16_t tp;
-	void **entries;
-	uint16_t list_size;
+struct dp_dal_sim_sw2sw_ring {
+	uint32_t hp;
+	uint32_t tp;
+	uint32_t *ring_base_vaddr;
+	uint32_t ring_size;
+	uint32_t entry_size;
+	uint32_t entry_size_bytes;
 	qdf_spinlock_t lock;
 };
 
-/* Default descriptor list size */
-#define DP_DAL_SIM_DESC_LIST_SIZE 128
+/* SW2SW SRNG configuration */
+#define DP_DAL_SIM_SW2SW_SRNG_SIZE 2048 /* 2K entries per ring */
+
+/* Descriptor sizes for SW2SW SRNG */
+#define DP_DAL_SIM_TX_CPL_DESC_SIZE HAL_TX_COMPLETION_DESC_LEN_BYTES
+#define DP_DAL_SIM_RX_CPL_DESC_SIZE 32
 
 #ifdef FEATURE_DP_DAL_SIM
 /**
@@ -192,8 +201,8 @@ struct dal_sim_srng {
  * @tx_cmpl_ring: Array of HAL SRNG structures for TX completion rings
  * @tx_ring: Array of HAL SRNG structures for TX rings
  * @rx_refill_ring: HAL SRNG structure for RX refill ring
- * @rx_desc_list: Descriptor lists for RX rings (per ring ID)
- * @tx_cpl_desc_list: Descriptor lists for TX completion rings (per ring ID)
+ * @rx_sw2sw_ring: SW2SW rings for RX rings (per ring ID)
+ * @tx_cpl_sw2sw_ring: SW2SW rings for TX completion rings (per ring ID)
  * @stats: Statistics for the simulator
  * @sim_ctx_initialized: Flag indicating if context is initialized
  * @dev: Pointer to device
@@ -201,8 +210,6 @@ struct dal_sim_srng {
  * @dev_base_addr: device base address
  * @sim_mode_switch_in_progress: Flag indicating if mode switch is in progress
  * @rxbm_sync_lock: Lock for rxbm_sync operations during mode switch
- * @active_tx_desc_list_cnt: count of active tx desc list being processed
- * @active_rx_desc_list_cnt: count of active rx desc list being processed
  *
  * This structure maintains all necessary context for DAL simulation,
  * including pointers to datapath context, platform operations, vendor
@@ -233,9 +240,9 @@ struct dp_dal_sim_ctx {
 	struct dal_sim_srng tx_ring[DAL_SIM_NUM_TX_RINGS];
 	struct dal_sim_srng rx_refill_ring;
 
-	/* Descriptor lists for maintaining descriptors per ring ID */
-	struct dp_dal_sim_desc_list rx_desc_list[DAL_SIM_NUM_RX_RINGS];
-	struct dp_dal_sim_desc_list tx_cpl_desc_list[DAL_SIM_NUM_TX_RINGS];
+	/* SW2SW rings for maintaining descriptors per ring ID */
+	struct dp_dal_sim_sw2sw_ring rx_sw2sw_ring[DAL_SIM_NUM_RX_RINGS];
+	struct dp_dal_sim_sw2sw_ring tx_cpl_sw2sw_ring[DAL_SIM_NUM_TX_RINGS];
 
 	/* Statistics */
 	struct dal_sim_stats stats;
@@ -253,9 +260,6 @@ struct dp_dal_sim_ctx {
 	qdf_atomic_t sim_mode_switch_in_progress;
 	qdf_spinlock_t rxbm_sync_lock;
 
-	/* Descriptor processing counters for mode switch synchronization */
-	qdf_atomic_t active_tx_desc_list_cnt;
-	qdf_atomic_t active_rx_desc_list_cnt;
 };
 
 /**
@@ -269,166 +273,161 @@ struct dp_dal_sim_ctx {
 void dp_dal_sim_schedule_work(void *arg);
 
 /**
- * dp_dal_sim_desc_list_init() - Initialize descriptor list
- * @desc_list: Pointer to descriptor list structure
- * @list_size: Maximum size of the list
+ * dp_dal_sim_sw2sw_ring_init() - Initialize SW2SW ring
+ * @sw2sw_ring: Pointer to SW2SW ring structure
+ * @ring_size: Ring Size
+ * @desc_size: Size of each descriptor in bytes
  *
- * This function initializes a descriptor list with the specified size.
- * It allocates memory for the entries array and initializes HP/TP and lock.
+ * This function initializes a SW2SW ring with the specified size.
+ * It allocates memory for the SW2SW SRNG buffer and initializes HP/TP.
  *
  * Return: 0 on success, negative error code on failure
  */
-int dp_dal_sim_desc_list_init(struct dp_dal_sim_desc_list *desc_list,
-			      uint16_t list_size);
+int dp_dal_sim_sw2sw_ring_init(struct dp_dal_sim_sw2sw_ring *sw2sw_ring,
+			       uint16_t ring_size, uint16_t desc_size);
 
 /**
- * dp_dal_sim_desc_list_deinit() - Deinitialize descriptor list
- * @desc_list: Pointer to descriptor list structure
+ * dp_dal_sim_sw2sw_ring_deinit() - Deinitialize SW2SW ring
+ * @sw2sw_ring: Pointer to SW2SW ring structure
  *
- * This function deinitializes a descriptor list and frees allocated memory.
+ * This function deinitializes a SW2SW ring and frees allocated memory.
  */
-void dp_dal_sim_desc_list_deinit(struct dp_dal_sim_desc_list *desc_list);
+void dp_dal_sim_sw2sw_ring_deinit(struct dp_dal_sim_sw2sw_ring *sw2sw_ring);
 
 /**
- * dp_dal_sim_is_desc_list_empty() - Check if descriptor list is empty in a
+ * dp_dal_sim_is_sw2sw_ring_empty() - Check if SW2SW ring is empty in a
  * thread-safe manner
- * @desc_list: Pointer to descriptor list structure
+ * @sw2sw_ring: Pointer to SW2SW ring structure
  *
- * Returns true if the descriptor list is empty, false otherwise.
- * The function takes and releases the list lock for thread safety.
+ * Returns true if the SW2SW ring is empty, false otherwise.
+ * The function takes and releases the ring lock for thread safety.
  */
-bool dp_dal_sim_is_desc_list_empty(struct dp_dal_sim_desc_list *desc_list);
+bool dp_dal_sim_is_sw2sw_ring_empty(struct dp_dal_sim_sw2sw_ring *sw2sw_ring);
 
 /**
- * dp_dal_sim_desc_list_enqueue() - Enqueue descriptor to list
- * @desc_list: Pointer to descriptor list structure
+ * dp_dal_sim_sw2sw_ring_enqueue() - Enqueue descriptor to SW2SW ring
+ * @ring: Pointer to SW2SW ring structure
  * @desc: Descriptor pointer to enqueue
  *
- * This function enqueues a descriptor to the list using HP/TP mechanism.
+ * This function enqueues a descriptor to the SW2SW ring using HP/TP mechanism.
  * It's called by the offload engine to queue descriptors.
+ * Follows hal_srng_src_get_next pattern for optimal performance.
  *
  * Return: 0 on success, negative error code on failure
  */
-static inline int dp_dal_sim_desc_list_enqueue(
-	struct dp_dal_sim_desc_list *desc_list,
+static inline int dp_dal_sim_sw2sw_ring_enqueue(
+	struct dp_dal_sim_sw2sw_ring *ring,
 	void *desc)
 {
-	uint16_t hp, tp, num_entries;
+	uint32_t *dest_desc;
+	uint32_t next_hp;
 
-	if (!desc_list) {
-		dp_err("NULL descriptor list pointer");
-		return -EINVAL;
-	}
-
-	if (!desc) {
+	if (!ring || !desc || !ring->ring_base_vaddr) {
 		dp_err("NULL descriptor pointer");
 		return -EINVAL;
 	}
 
-	hp = desc_list->hp;
-	tp = desc_list->tp;
+	/* Follow hal_srng_src_get_next pattern exactly */
+	next_hp = (ring->hp + ring->entry_size) % ring->ring_size;
 
-	/* Calculate available entries using IPA-style logic */
-	if (tp > hp)
-		num_entries = (tp - hp - 1);
-	else
-		num_entries = (desc_list->list_size - hp + tp - 1);
-
-	if (!num_entries) {
-		dp_err_rl("Descriptor list is full, HP=%u, TP=%u",
-			  hp, tp);
+	/* Check if ring is full (next_hp would equal TP) */
+	if (next_hp == ring->tp) {
+		dp_err_rl("SW2SW SRNG is full, HP=%u, TP=%u",
+			  ring->hp, ring->tp);
 		return -ENOSPC;
 	}
 
-	/* Store descriptor at current HP position */
-	desc_list->entries[hp] = desc;
+	/* Get descriptor address at current HP like HAL SRNG */
+	dest_desc = &ring->ring_base_vaddr[ring->hp];
 
-	/* Update HP using bit masking */
-	hp++;
-	hp &= (desc_list->list_size - 1);
-	desc_list->hp = hp;
+	/* Copy descriptor content into SW2SW SRNG */
+	qdf_mem_copy(dest_desc, desc, ring->entry_size_bytes);
 
-	dp_debug("Descriptor enqueued, HP=%u, TP=%u", hp, tp);
+	/* Update HP to next_hp like HAL SRNG */
+	ring->hp = next_hp;
+
+	dp_debug("Descriptor enqueued to SW2SW SRNG, HP=%u, TP=%u",
+		 ring->hp, ring->tp);
 	return 0;
 }
 
 /**
- * dp_dal_sim_desc_list_dequeue() - Dequeue descriptor from list
- * @desc_list: Pointer to descriptor list structure
+ * dp_dal_sim_sw2sw_ring_dequeue() - Dequeue descriptor from SW2SW ring
+ * @ring: Pointer to SW2SW ring structure
  *
- * This function dequeues a descriptor from the list using HP/TP mechanism.
+ * This function dequeues a descriptor from the SW2SW ring.
  * It's called by DAL sim to get descriptors for WLAN driver.
+ * Follows hal_srng_dst_get_next pattern for optimal performance.
  *
- * Return: Descriptor pointer on success, NULL if list is empty
+ * Return: Descriptor pointer on success, NULL if ring is empty
  */
-static inline void *dp_dal_sim_desc_list_dequeue(
-	struct dp_dal_sim_desc_list *desc_list)
+static inline void *dp_dal_sim_sw2sw_ring_dequeue(
+	struct dp_dal_sim_sw2sw_ring *ring)
 {
-	void *desc = NULL;
-	uint16_t hp, tp;
+	uint32_t *desc;
 
-	if (!desc_list) {
-		dp_err("NULL descriptor list pointer");
+	if (!ring || !ring->ring_base_vaddr) {
+		dp_err("NULL SW2SW ring pointer");
 		return NULL;
 	}
 
-	hp = desc_list->hp;
-	tp = desc_list->tp;
-
-	/* Check if list is empty */
-	if (hp == tp) {
-		dp_debug("Descriptor list is empty, HP=%u, TP=%u", hp, tp);
+	/* Follow hal_srng_dst_get_next pattern exactly */
+	/* Check if ring is empty (TP == HP) */
+	if (ring->tp == ring->hp) {
+		dp_debug("SW2SW SRNG is empty, HP=%u, TP=%u",
+			 ring->hp, ring->tp);
 		return NULL;
 	}
 
-	/* Get descriptor from current TP position */
-	desc = desc_list->entries[tp];
+	/* Get descriptor address at current TP like HAL SRNG */
+	desc = &ring->ring_base_vaddr[ring->tp];
 
-	/* Update TP using bit masking */
-	tp++;
-	tp &= (desc_list->list_size - 1);
-	desc_list->tp = tp;
+	/* Update TP like HAL SRNG dst_get_next */
+	ring->tp = (ring->tp + ring->entry_size);
+	if (ring->tp == ring->ring_size)
+		ring->tp = 0;
 
-	dp_debug("Descriptor dequeued, HP=%u, TP=%u", hp, tp);
-	return desc;
+	dp_debug("Descriptor dequeued from SW2SW SRNG, HP=%u, TP=%u",
+		 ring->hp, ring->tp);
+	return (void *)desc;
 }
 
 /**
- * dp_dal_sim_desc_list_access_start() - Start accessing descriptor list
- * @desc_list: Pointer to descriptor list structure
+ * dp_dal_sim_sw2sw_ring_access_start() - Start accessing SW2SW ring
+ * @ring: Pointer to SW2SW ring structure
  *
- * This function takes the spinlock for the descriptor list to allow
+ * This function takes the spinlock for the SW2SW ring to allow
  * safe access for multiple dequeue operations. Must be paired with
- * dp_dal_sim_desc_list_access_end().
+ * dp_dal_sim_sw2sw_ring_access_end().
  */
-static inline void dp_dal_sim_desc_list_access_start(
-	struct dp_dal_sim_desc_list *desc_list)
+static inline void dp_dal_sim_sw2sw_ring_access_start(
+	struct dp_dal_sim_sw2sw_ring *ring)
 {
-	if (!desc_list) {
-		dp_err("NULL descriptor list pointer in access_start");
+	if (!ring) {
+		dp_err("NULL SW2SW ring pointer in access_start");
 		return;
 	}
 
-	qdf_spin_lock_bh(&desc_list->lock);
+	qdf_spin_lock_bh(&ring->lock);
 }
 
 /**
- * dp_dal_sim_desc_list_access_end() - End accessing descriptor list
- * @desc_list: Pointer to descriptor list structure
+ * dp_dal_sim_sw2sw_ring_access_end() - End accessing SW2SW ring
+ * @ring: Pointer to SW2SW ring structure
  *
- * This function releases the spinlock for the descriptor list after
+ * This function releases the spinlock for the SW2SW ring after
  * completing multiple dequeue operations. Must be paired with
- * dp_dal_sim_desc_list_access_start().
+ * dp_dal_sim_sw2sw_ring_access_start().
  */
-static inline void dp_dal_sim_desc_list_access_end(
-	struct dp_dal_sim_desc_list *desc_list)
+static inline void dp_dal_sim_sw2sw_ring_access_end(
+	struct dp_dal_sim_sw2sw_ring *ring)
 {
-	if (!desc_list) {
-		dp_err("NULL descriptor list pointer in access_end");
+	if (!ring) {
+		dp_err("NULL SW2SW ring pointer in access_end");
 		return;
 	}
 
-	qdf_spin_unlock_bh(&desc_list->lock);
+	qdf_spin_unlock_bh(&ring->lock);
 }
 
 /**

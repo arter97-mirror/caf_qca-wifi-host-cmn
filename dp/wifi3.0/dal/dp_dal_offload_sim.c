@@ -45,9 +45,9 @@ static inline void dp_dal_offload_sim_ring_access_start(
  * the ring lock. It encapsulates the ring access end and unlock operations
  * to ensure consistent behavior across all ring access operations.
  */
-static inline void dp_dal_offload_sim_ring_access_end(
-				struct dp_dal_offload_sim_ctx *offload_ctx,
-				struct dal_vndr_hal_srng *ring)
+static inline void
+dp_dal_offload_sim_ring_access_end(struct dp_dal_offload_sim_ctx *offload_ctx,
+				   struct dal_vndr_hal_srng *ring)
 {
 	if (!offload_ctx || !ring) {
 		dp_err("NULL context in ring_access_end");
@@ -598,18 +598,12 @@ int dp_dal_offload_sim_get_reo_desc(
 	/* Begin ring access with lock */
 	dp_dal_offload_sim_ring_access_start(offload_ctx, reo_ring);
 
-	/* Start accessing descriptor list with lock */
-	dp_dal_sim_desc_list_access_start(&dal_sim_ctx->rx_desc_list[ring_id]);
+	/* Start accessing SW2SW ring with lock */
+	dp_dal_sim_sw2sw_ring_access_start(
+				&dal_sim_ctx->rx_sw2sw_ring[ring_id]);
 
 	/* Reap REO descriptors until budget is reached or no more descriptor */
 	while (retrieved < budget) {
-		/* Check if mode switch is in progress before reaping */
-		if (qdf_atomic_read(
-				&dal_sim_ctx->sim_mode_switch_in_progress)) {
-			dp_debug("Mode switch: TX_Compl[%u] reaped %u desc",
-				 ring_id, retrieved);
-			break;
-		}
 
 		/* Get next REO descriptor from the ring */
 		reo_desc = dal_vndr_hal_srng_dst_get_next(&offload_ctx->hal_soc,
@@ -619,9 +613,9 @@ int dp_dal_offload_sim_get_reo_desc(
 			break;
 		}
 
-		/* Enqueue descriptor to DAL sim descriptor list */
-		ret = dp_dal_sim_desc_list_enqueue(
-					&dal_sim_ctx->rx_desc_list[ring_id],
+		/* Enqueue descriptor to DAL sim SW2SW ring */
+		ret = dp_dal_sim_sw2sw_ring_enqueue(
+					&dal_sim_ctx->rx_sw2sw_ring[ring_id],
 					reo_desc);
 		if (ret) {
 			dp_err_rl("Failed to enqueue RX desc, ret=%d", ret);
@@ -633,8 +627,8 @@ int dp_dal_offload_sim_get_reo_desc(
 		retrieved++;
 	}
 
-	/* End accessing descriptor list and release lock */
-	dp_dal_sim_desc_list_access_end(&dal_sim_ctx->rx_desc_list[ring_id]);
+	/* End accessing SW2SW ring and release lock */
+	dp_dal_sim_sw2sw_ring_access_end(&dal_sim_ctx->rx_sw2sw_ring[ring_id]);
 
 	/* End ring access and release lock */
 	dp_dal_offload_sim_ring_access_end(offload_ctx, reo_ring);
@@ -677,21 +671,14 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 	/* Begin ring access with lock */
 	dp_dal_offload_sim_ring_access_start(offload_ctx, tx_compl_ring);
 
-	/* Start accessing descriptor list with lock */
-	dp_dal_sim_desc_list_access_start(
-				&dal_sim_ctx->tx_cpl_desc_list[ring_id]);
+	/* Start accessing SW2SW ring with lock */
+	dp_dal_sim_sw2sw_ring_access_start(
+				&dal_sim_ctx->tx_cpl_sw2sw_ring[ring_id]);
 
 	/* Reap TX completion descriptors until budget is reached or
 	 * no more descriptors.
 	 */
 	while (retrieved < budget) {
-		/* Check if mode switch is in progress before reaping */
-		if (qdf_atomic_read(
-				&dal_sim_ctx->sim_mode_switch_in_progress)) {
-			dp_debug("Mode switch: RX[%u] reaped %u desc",
-				 ring_id, retrieved);
-			break;
-		}
 
 		/* Get next TX completion descriptor from the ring */
 		tx_compl_desc = dal_vndr_hal_srng_dst_get_next(
@@ -702,10 +689,10 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 			break;
 		}
 
-		/* Enqueue descriptor to DAL sim descriptor list */
-		ret = dp_dal_sim_desc_list_enqueue(
-					&dal_sim_ctx->tx_cpl_desc_list[ring_id],
-					tx_compl_desc);
+		/* Enqueue descriptor to DAL sim SW2SW ring */
+		ret = dp_dal_sim_sw2sw_ring_enqueue(
+				&dal_sim_ctx->tx_cpl_sw2sw_ring[ring_id],
+				tx_compl_desc);
 		if (ret) {
 			dp_err_rl("Failed to enqueue TX compl desc, ret=%d",
 				  ret);
@@ -717,9 +704,9 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 		retrieved++;
 	}
 
-	/* End accessing descriptor list and release lock */
-	dp_dal_sim_desc_list_access_end(
-				&dal_sim_ctx->tx_cpl_desc_list[ring_id]);
+	/* End accessing SW2SW ring and release lock */
+	dp_dal_sim_sw2sw_ring_access_end(
+				&dal_sim_ctx->tx_cpl_sw2sw_ring[ring_id]);
 
 	/* End ring access and release lock */
 	dp_dal_offload_sim_ring_access_end(offload_ctx, tx_compl_ring);

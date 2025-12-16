@@ -90,6 +90,7 @@ struct hif_execution_ops {
  * @total_irq_time: total time this group spent in irq/softirq processing
  *			in nanoseconds
  * @ksoftirqd_time: total time this group spent in ksoftirqd processing in ns
+ * @dal_napi_scheduled: A bit mask indicating NAPI on DAL rings is scheduled
  */
 struct hif_exec_context {
 	struct hif_execution_ops *sched_ops;
@@ -137,6 +138,9 @@ struct hif_exec_context {
 	uint64_t irq_start_time;
 	uint64_t total_irq_time[NR_CPUS];
 	uint64_t ksoftirqd_time[NR_CPUS];
+#endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+	unsigned long dal_napi_scheduled;
 #endif
 };
 
