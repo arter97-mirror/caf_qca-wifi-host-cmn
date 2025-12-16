@@ -32,14 +32,16 @@ struct osif_tdls_vdev;
  * struct pdev_osif_priv - OS private structure
  * @wiphy:            wiphy handle
  * @legacy_osif_priv: legacy osif private handle
- * @scan_priv:        Scan related data used by cfg80211 scan
+ * @osif_scan:        Scan related data used by cfg80211 scan
  * @nif:              pdev net device
+ * @osif_check_netdev_state: check driver internal netdev state
  */
 struct pdev_osif_priv {
 	struct wiphy *wiphy;
 	void *legacy_osif_priv;
 	struct osif_scan_pdev *osif_scan;
 	struct qdf_net_if *nif;
+	int (*osif_check_netdev_state)(struct net_device *netdev);
 };
 
 #ifdef FEATURE_CM_ENABLE
