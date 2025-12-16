@@ -47,7 +47,7 @@
 #define KIWI_V2                         0x40170200
 #define QCA6490_v2_1                    0x400c1211
 #define QCA6490_v2                      0x400c0200
-#define QCA6490_V2_2			0x400C0210
+#define QCA6490_V2_2		        0x400C0210
 #define WCN6750_V1                      0x40140110
 #define WCN6750_V2                      0x40140120
 #define WCN7750_V1                      0x40260100
@@ -65,6 +65,8 @@
 #define WCN3990_STRAIT                  0x400E0000
 #define WCN3990_NETRANI                 0x400F0000
 #define WCN3990_CLARENCE                0x406A0000
+#define WCN3990_ALDABRA                 0x900A0000
+#define WCN3990_PORUS                   0xA02E0000
 #define WCN7760_COLOGNE                 0x40292100
 
 struct qwlan_hw {

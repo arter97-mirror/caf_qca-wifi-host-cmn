@@ -506,6 +506,16 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.name = "WCN3990",
 	},
 	{
+		.id = WCN3990_ALDABRA,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
+		.id = WCN3990_PORUS,
+		.subid = 0,
+		.name = "WCN3990",
+	},
+	{
 		.id = WCN7760_COLOGNE,
 		.subid = 0,
 		.name = "WCN7760",
