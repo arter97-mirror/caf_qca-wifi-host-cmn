@@ -18,6 +18,12 @@
 #define DP_DAL_SIM_RX_BUDGET 64
 #define DP_DAL_SIM_TX_BUDGET 64
 
+/* Suspend notification timeout parameters */
+#define DP_DAL_SIM_SUSPEND_WAIT_INTERVAL_MS 10
+#define DP_DAL_SIM_SUSPEND_MAX_WAIT_MS 100
+#define DP_DAL_SIM_SUSPEND_MAX_WAIT_ITERATIONS \
+	(DP_DAL_SIM_SUSPEND_MAX_WAIT_MS / DP_DAL_SIM_SUSPEND_WAIT_INTERVAL_MS)
+
 /* Mode switch descriptor list processing wait parameters */
 #define DP_DAL_SIM_MODE_SWITCH_MAX_RETRIES	10
 #define DP_DAL_SIM_MODE_SWITCH_TIMEOUT_MS	10
@@ -1314,14 +1320,95 @@ static int dp_dal_sim_sta_active(void *priv, struct sta_info *info, bool enable)
  * @priv: Pointer to private data (DAL context)
  *
  * This function handles system suspend notifications for the DAL simulator.
- * Currently implemented as a stub function.
+ * It checks if descriptor lists are empty and waits up to 100ms (in 10ms
+ * chunks) for them to drain before allowing suspend.
  *
- * Return: 0 on success
+ * Return: 0 on success (lists are empty), negative error code on failure
  */
 static int dp_dal_sim_notify_suspend(void *priv)
 {
-	dp_info("Suspend notification (stub)");
-	return 0;
+	struct dp_dal_ctx *dp_dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
+	int i, wait_count = 0;
+	bool rings_empty;
+
+	if (!dp_dal_ctx) {
+		dp_err_rl("NULL DP DAL context in notify_suspend");
+		return -EINVAL;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dp_dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err_rl("NULL simulator context in notify_suspend");
+		return -EINVAL;
+	}
+
+	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		dp_err_rl("Mode switch in progress, reject suspend");
+		return -EBUSY;
+	}
+
+	/* Wait up to 100ms for descriptor lists to become empty */
+	while (wait_count < DP_DAL_SIM_SUSPEND_MAX_WAIT_ITERATIONS) {
+		rings_empty = true;
+
+		/* Check all RX SW2SW rings */
+		for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+			if (!dp_dal_sim_is_sw2sw_ring_empty(
+					&sim_ctx->rx_sw2sw_ring[i])) {
+				rings_empty = false;
+				dp_debug("RX SW2SW ring[%d] not empty", i);
+				break;
+			}
+		}
+
+		/* Check all TX completion SW2SW rings if RX rings are empty */
+		if (rings_empty) {
+			for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+				if (!dp_dal_sim_is_sw2sw_ring_empty(
+					&sim_ctx->tx_cpl_sw2sw_ring[i])) {
+					rings_empty = false;
+					dp_debug("TX cpl SW2SW ring[%d] not empty", i);
+					break;
+				}
+			}
+		}
+
+		/* If all lists are empty, allow suspend */
+		if (rings_empty) {
+			dp_debug("All descriptor lists empty - suspend allowed");
+			return 0;
+		}
+
+		/* Wait 10ms before checking again */
+		qdf_sleep(DP_DAL_SIM_SUSPEND_WAIT_INTERVAL_MS);
+		wait_count++;
+		dp_debug("Suspend wait iteration %d/%d", wait_count,
+			 DP_DAL_SIM_SUSPEND_MAX_WAIT_ITERATIONS);
+	}
+
+	/* Timeout reached - descriptor lists still not empty */
+	dp_warn("Suspend timeout: descriptor lists not empty after %dms",
+		DP_DAL_SIM_SUSPEND_MAX_WAIT_MS);
+
+	/* Log current state for debugging */
+	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
+		if (!dp_dal_sim_is_sw2sw_ring_empty(
+					&sim_ctx->rx_sw2sw_ring[i])) {
+			dp_warn("RX SW2SW ring[%d] still has pending descriptors",
+				i);
+		}
+	}
+
+	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
+		if (!dp_dal_sim_is_sw2sw_ring_empty(
+				&sim_ctx->tx_cpl_sw2sw_ring[i])) {
+			dp_warn("TX cpl SW2SW ring[%d] still has pending descriptors",
+				i);
+		}
+	}
+
+	return -EBUSY;
 }
 
 /**
