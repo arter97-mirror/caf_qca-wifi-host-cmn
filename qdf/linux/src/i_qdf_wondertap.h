@@ -135,30 +135,10 @@ typedef struct wondertap_deinit_params __qdf_wondertap_deinit_params_t;
 typedef struct wondertap_ops __qdf_wondertap_ops_t;
 
 /**
- * __qdf_wondertap_register_ops() - wondertap register operations
- * @ops: Pointer to wondertap operations structure
+ * typedef __qdf_wondertap_priv_t - Wondertap private data structure
  *
- * Wondertap operations registration.
- * Calls the underlying wondertap_register_ops() function.
- *
- * Return: 0 on success, negative error code on failure
+ * Wondertap private data structure that holds version info and
+ * operations table for vendor specific implementation.
  */
-static inline int __qdf_wondertap_register_ops(__qdf_wondertap_ops_t *ops)
-{
-	return wondertap_register_ops(ops);
-}
-
-/**
- * __qdf_wondertap_unregister_ops() - wondertap unregister operations
- * @ops: Pointer to wondertap operations structure
- *
- * Wondertap operations unregistration.
- * Calls the underlying wondertap_unregister_ops() function.
- *
- * Return: None
- */
-static inline void __qdf_wondertap_unregister_ops(__qdf_wondertap_ops_t *ops)
-{
-	wondertap_unregister_ops(ops);
-}
+typedef struct wondertap_priv __qdf_wondertap_priv_t;
 #endif /* _I_QDF_WONDERTAP_H */
