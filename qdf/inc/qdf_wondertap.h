@@ -142,32 +142,10 @@ typedef __qdf_wondertap_deinit_params_t qdf_wondertap_deinit_params_t;
 typedef __qdf_wondertap_ops_t qdf_wondertap_ops_t;
 
 /**
- * qdf_wondertap_register_ops() - Register wondertap operations
- * @ops: Pointer to wondertap operations structure
+ * typedef qdf_wondertap_priv_t - Wondertap private data structure
  *
- * Registers the wondertap operations callbacks with the wonder driver.
- * This function must be called during driver initialization to enable
- * wondertap mode functionality.
- *
- * Return: 0 on success, negative error code on failure
+ * Wondertap private data structure that holds version info and
+ * operations table for vendor specific implementation.
  */
-static inline int qdf_wondertap_register_ops(qdf_wondertap_ops_t *ops)
-{
-	return __qdf_wondertap_register_ops(ops);
-}
-
-/**
- * qdf_wondertap_unregister_ops() - Unregister wondertap operations
- * @ops: Pointer to wondertap operations structure
- *
- * Unregisters the wondertap operations callbacks from the wonder driver.
- * This function should be called during driver deinitialization to
- * clean up wondertap/passthrough mode resources.
- *
- * Return: None
- */
-static inline void qdf_wondertap_unregister_ops(qdf_wondertap_ops_t *ops)
-{
-	__qdf_wondertap_unregister_ops(ops);
-}
+typedef __qdf_wondertap_priv_t qdf_wondertap_priv_t;
 #endif /* _QDF_WONDERTAP_H */
