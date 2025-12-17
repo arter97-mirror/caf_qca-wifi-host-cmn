@@ -445,6 +445,100 @@ void qdf_trace_dp_tx_enqueue(qdf_nbuf_t nbuf, uint32_t hp, uint8_t ring_id,
 }
 
 /**
+ * qdf_trace_dp_tx_pp_alloc_enabled() - Check if dp_tx_pp_alloc tracepoint
+ *  is enabled
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_dp_tx_pp_alloc_enabled(void)
+{
+	return __qdf_trace_dp_tx_pp_alloc_enabled();
+}
+
+/**
+ * qdf_trace_dp_tx_pp_alloc() - Trace page pool allocation
+ * @pp: Page pool pointer
+ * @pool_id: Pool ID
+ * @offset: Buffer offset in page
+ * @from_cache: Whether allocation was from cache
+ * @latency_ns: Latency in nanoseconds
+ * @loop_count: Number of pools checked before allocation
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_tx_pp_alloc(void *pp, uint32_t pool_id, uint32_t offset,
+			      bool from_cache, uint64_t latency_ns,
+			      uint8_t loop_count)
+{
+	__qdf_trace_dp_tx_pp_alloc(pp, pool_id, offset, from_cache,
+				   latency_ns, loop_count);
+}
+
+/**
+ * qdf_trace_dp_tx_pp_grow_enabled() - Check if dp_tx_pp_grow tracepoint
+ *  is enabled
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_dp_tx_pp_grow_enabled(void)
+{
+	return __qdf_trace_dp_tx_pp_grow_enabled();
+}
+
+/**
+ * qdf_trace_dp_tx_pp_grow() - Trace page pool growth
+ * @pp: Page pool pointer
+ * @pool_id: Pool ID
+ * @old_size: Size before growth
+ * @new_size: Size after growth
+ * @success: Whether growth succeeded
+ * @latency_ns: Latency in nanoseconds
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_tx_pp_grow(void *pp, uint32_t pool_id, uint32_t old_size,
+			     uint32_t new_size, bool success,
+			     uint64_t latency_ns)
+{
+	__qdf_trace_dp_tx_pp_grow(pp, pool_id, old_size, new_size, success,
+				  latency_ns);
+}
+
+/**
+ * qdf_trace_dp_tx_pp_attach_idle_enabled() - Check if dp_tx_pp_attach_idle
+ *  tracepoint is enabled
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_dp_tx_pp_attach_idle_enabled(void)
+{
+	return __qdf_trace_dp_tx_pp_attach_idle_enabled();
+}
+
+/**
+ * qdf_trace_dp_tx_pp_attach_idle() - Trace idle pool attachment
+ * @pp: Page pool pointer
+ * @pool_id: Pool ID
+ * @from_ho: Whether from high-order idle pool
+ * @active_count: New active pool count
+ * @latency_ns: Latency in nanoseconds
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_tx_pp_attach_idle(void *pp, uint32_t pool_id, bool from_ho,
+				    uint32_t active_count, uint64_t latency_ns)
+{
+	__qdf_trace_dp_tx_pp_attach_idle(pp, pool_id, from_ho, active_count,
+					 latency_ns);
+}
+
+/**
  * qdf_trace_dp_ce_tasklet_sched_latency_enabled() - Get the
  *   dp_ce_tasklet_sched_latency tracepoint enabled or disabled state
  *
