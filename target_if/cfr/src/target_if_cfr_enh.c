@@ -1932,10 +1932,27 @@ target_if_pdev_aoa_phasedaelta_event_handler(ol_scn_t sc,
 	return retval;
 }
 
+static void
+target_if_cfr_srng_id_update(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
+			     uint8_t *srng_id)
+{
+	struct wlan_objmgr_pdev *pdev;
+	*srng_id = 0;
+
+	pdev = wlan_objmgr_get_pdev_by_id(psoc, pdev_id, WLAN_CFR_ID);
+	if (!pdev) {
+		cfr_debug("update srng id from %d to %d",
+			  *srng_id, pdev_id);
+			  *srng_id = pdev_id;
+	}
+	if (pdev)
+		wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+}
+
 static int
 target_if_cfr_capture_filter_event_handler(ol_scn_t sc,
 					   uint8_t *data,
-					     uint32_t datalen)
+					   uint32_t datalen)
 {
 	struct wmi_unified *wmi_handle;
 	struct wlan_objmgr_psoc *psoc;
@@ -1945,6 +1962,7 @@ target_if_cfr_capture_filter_event_handler(ol_scn_t sc,
 	struct cfr_capture_filter_param param = {0};
 	struct wlan_lmac_if_cfr_rx_ops *cfr_rx_ops = NULL;
 	struct wlan_lmac_if_rx_ops *rx_ops = NULL;
+	uint8_t srng_id = 0;
 
 	if (!sc || !data) {
 		cfr_err("sc or data is null");
@@ -2000,13 +2018,19 @@ target_if_cfr_capture_filter_event_handler(ol_scn_t sc,
 		return -EINVAL;
 	}
 
+	/* update SRNG ID based on cfr response */
+	target_if_cfr_srng_id_update(psoc, param.pdev_id, &srng_id);
+	if (param.status == WMI_CFR_CAPTURE_FILTER_STATUS_SUCCESS)
+		pcfr->rcc_param.srng_id = srng_id;
+
 	if (!cfr_rx_ops->cfr_send_stop) {
 		cfr_err("stop cfr not registered");
 		wlan_objmgr_psoc_release_ref(psoc, WLAN_CFR_ID);
 		return -EINVAL;
 	}
 
-	if (cfr_rx_ops->cfr_send_stop && param.status != 0) {
+	if (cfr_rx_ops->cfr_send_stop &&
+	    param.status != WMI_CFR_CAPTURE_FILTER_STATUS_SUCCESS) {
 		cfr_err("send stop cfr %d", param.status);
 		cfr_rx_ops->cfr_send_stop(pdev, param.status);
 	}
