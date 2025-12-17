@@ -1697,7 +1697,8 @@ struct mlo_osif_ext_ops {
 	QDF_STATUS (*mlo_mgr_osif_update_mac_addr)(int32_t ieee_old_link_id,
 						   int32_t ieee_new_link_id,
 						   uint8_t vdev_id);
-	QDF_STATUS (*mlo_roam_osif_update_mac_addr)(struct wlan_objmgr_vdev *vdev,
+	QDF_STATUS (*mlo_roam_osif_update_mac_addr)(struct wlan_objmgr_vdev *primary_vdev,
+						    uint8_t vdev_id,
 						    struct qdf_mac_addr *old_self_mac,
 						    struct qdf_mac_addr *new_self_mac);
 	QDF_STATUS (*mlo_link_recfg_osif_update_mac_addr)(
