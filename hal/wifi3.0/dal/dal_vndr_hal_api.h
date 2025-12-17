@@ -780,6 +780,66 @@ static inline dma_addr_t dal_vndr_hal_tx_comp_get_paddr(void *hal_soc_hdl,
 }
 
 /**
+ * dal_vndr_hal_tx_comp_get_desc_id() - Get descriptor ID from Tx
+ * completion descriptor
+ * @hal_soc_hdl: HAL SoC handle
+ * @hal_desc: Tx completion descriptor pointer
+ *
+ * This function extracts the descriptor ID (sw_buffer_cookie) from the
+ * hardware completion descriptor.
+ *
+ * Return: Descriptor ID
+ */
+static inline uint32_t dal_vndr_hal_tx_comp_get_desc_id(void *hal_soc_hdl,
+							void *hal_desc)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+				(struct dal_vndr_hal_soc *)hal_soc_hdl;
+
+	return hal_soc->ops->dal_vndr_hal_tx_comp_get_desc_id(hal_desc);
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_buffer_source() - Get buffer release source from
+ * Tx completion descriptor
+ * @hal_soc_hdl: HAL SoC handle
+ * @hal_desc: Tx completion descriptor pointer
+ *
+ * This function extracts the buffer release source module from the
+ * hardware completion descriptor.
+ *
+ * Return: Buffer release source module
+ */
+static inline uint32_t dal_vndr_hal_tx_comp_get_buffer_source(
+						void *hal_soc_hdl,
+						void *hal_desc)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+				(struct dal_vndr_hal_soc *)hal_soc_hdl;
+
+	return hal_soc->ops->dal_vndr_hal_tx_comp_get_buffer_source(hal_desc);
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_tx_status() - Get Tx transmission status
+ * @hal_soc_hdl: HAL SoC handle
+ * @hal_desc: Tx completion descriptor pointer
+ *
+ * This function extracts the transmit status value from the Tx completion
+ * descriptor (TQM release reason).
+ *
+ * Return: Transmit status value
+ */
+static inline uint8_t dal_vndr_hal_tx_comp_get_tx_status(void *hal_soc_hdl,
+							 void *hal_desc)
+{
+	struct dal_vndr_hal_soc *hal_soc =
+				(struct dal_vndr_hal_soc *)hal_soc_hdl;
+
+	return hal_soc->ops->dal_vndr_hal_tx_comp_get_tx_status(hal_desc);
+}
+
+/**
  * dal_vndr_hal_rx_msdu_desc_info_get() - Get MSDU descriptor info from REO
  * ring descriptor
  * @hal_soc_hdl: HAL SoC handle

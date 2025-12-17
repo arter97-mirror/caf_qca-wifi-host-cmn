@@ -14,6 +14,9 @@
  */
 #define DAL_VNDR_HAL_TX_DESC_LEN_DWORDS (8)
 #define DAL_VNDR_HAL_TX_DESC_LEN_BYTES  (DAL_VNDR_HAL_TX_DESC_LEN_DWORDS * 4)
+#define DAL_VNDR_HAL_TX_COMP_DESC_LEN_DWORDS (8)
+#define DAL_VNDR_HAL_TX_COMP_DESC_LEN_BYTES \
+	(DAL_VNDR_HAL_TX_COMP_DESC_LEN_DWORDS * 4)
 
 /**
  * dal_vndr_hal_default_ops_attach_be() - Add default ops for BE chips

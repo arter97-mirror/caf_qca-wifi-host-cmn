@@ -83,6 +83,9 @@ struct dal_vndr_hal_hw_txrx_ops {
 							 uint8_t val);
 	void (*dal_vndr_hal_tx_comp_get_status)(void *desc, void *ts1);
 	dma_addr_t (*dal_vndr_hal_tx_comp_get_paddr)(void *hal_desc);
+	uint32_t (*dal_vndr_hal_tx_comp_get_desc_id)(void *hal_desc);
+	uint32_t (*dal_vndr_hal_tx_comp_get_buffer_source)(void *hal_desc);
+	uint8_t (*dal_vndr_hal_tx_comp_get_tx_status)(void *hal_desc);
 	/* rx */
 	uint8_t (*dal_vndr_hal_rx_error_status_get)(void *reo_desc);
 	uint32_t (*dal_vndr_hal_rx_reo_buf_cookie_get)(void *reo_desc);
@@ -364,4 +367,73 @@ enum dal_vndr_hal_pkt_type {
 	DAL_VNDR_HAL_DOT11N_GF = 8,
 	DAL_VNDR_HAL_DOT11_MAX,
 };
+
+/**
+ * enum dal_vndr_hal_tx_comp_rel_src - Indicates the release source module
+ * @DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_TQM : TQM released this buffer
+ * @DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_RXDMA : RXDMA released this buffer
+ * @DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_REO : REO released this buffer
+ * @DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_FW : FW released this buffer
+ * @DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_MAX : count of number of enumerator
+ */
+enum dal_vndr_hal_tx_comp_rel_src {
+	DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_TQM,
+	DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_RXDMA,
+	DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_REO,
+	DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_FW,
+	DAL_VNDR_HAL_TX_COMP_RELEASE_SOURCE_MAX
+};
+
+/**
+ * enum dal_vndr_hal_tx_tqm_release_reason - TQM Release reason codes
+ *
+ * @DAL_VNDR_HAL_TX_TQM_RR_FRAME_ACKED : ACK of BA for it was received
+ * @DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_REM : Remove cmd of type “Remove_mpdus”
+ * by SW
+ * @DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_TX  : Remove command of type
+ * Remove_transmitted_mpdus initiated by SW
+ * @DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_NOTX : Remove cmd of type
+ * Remove_untransmitted_mpdus initiated by SW
+ * @DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_AGED : Remove command of type
+ * “Remove_aged_mpdus” or “Remove_aged_msdus” initiated by SW
+ * @DAL_VNDR_HAL_TX_TQM_RR_FW_REASON1 : Remove command where fw indicated that
+ * remove reason is fw_reason1
+ * @DAL_VNDR_HAL_TX_TQM_RR_FW_REASON2 : Remove command where fw indicated that
+ * remove reason is fw_reason2
+ * @DAL_VNDR_HAL_TX_TQM_RR_FW_REASON3 : Remove command where fw indicated that
+ * remove reason is fw_reason3
+ * @DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_DISABLE_QUEUE : Remove command where fw
+ * indicated that remove reason is remove disable queue
+ * @DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_TILL_NONMATCHING: Remove command from fw to
+ * remove all mpdu until 1st non-match
+ * @DAL_VNDR_HAL_TX_TQM_RR_DROP_THRESHOLD: Dropped due to drop threshold
+ * criteria
+ * @DAL_VNDR_HAL_TX_TQM_RR_LINK_DESC_UNAVAILABLE: Dropped due to link desc not
+ * available
+ * @DAL_VNDR_HAL_TX_TQM_RR_DROP_OR_INVALID_MSDU: Dropped due drop bit set or
+ * null flow
+ * @DAL_VNDR_HAL_TX_TQM_RR_MULTICAST_DROP: Dropped due mcast drop set for VDEV
+ * @DAL_VNDR_HAL_TX_TQM_RR_VDEV_MISMATCH_DROP: Dropped due to being set with
+ * 'TCL_drop_reason'
+ * @DAL_VNDR_HAL_TX_TQM_RR_MAX: Max value TQM release reason code
+ */
+enum dal_vndr_hal_tx_tqm_release_reason {
+	DAL_VNDR_HAL_TX_TQM_RR_FRAME_ACKED,
+	DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_REM,
+	DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_TX,
+	DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_NOTX,
+	DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_AGED,
+	DAL_VNDR_HAL_TX_TQM_RR_FW_REASON1,
+	DAL_VNDR_HAL_TX_TQM_RR_FW_REASON2,
+	DAL_VNDR_HAL_TX_TQM_RR_FW_REASON3,
+	DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_DISABLE_QUEUE,
+	DAL_VNDR_HAL_TX_TQM_RR_REM_CMD_TILL_NONMATCHING,
+	DAL_VNDR_HAL_TX_TQM_RR_DROP_THRESHOLD,
+	DAL_VNDR_HAL_TX_TQM_RR_LINK_DESC_UNAVAILABLE,
+	DAL_VNDR_HAL_TX_TQM_RR_DROP_OR_INVALID_MSDU,
+	DAL_VNDR_HAL_TX_TQM_RR_MULTICAST_DROP,
+	DAL_VNDR_HAL_TX_TQM_RR_VDEV_MISMATCH_DROP,
+	DAL_VNDR_HAL_TX_TQM_RR_MAX,
+};
+
 #endif /* _DAL_VNDR_HAL_INTERNAL_H_ */
