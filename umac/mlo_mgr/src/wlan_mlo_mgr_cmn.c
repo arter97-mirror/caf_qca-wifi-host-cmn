@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1112,16 +1112,46 @@ static void ml_extract_link_state(struct wlan_objmgr_psoc *psoc,
 	QDF_STATUS status;
 	get_ml_link_state_cb resp_cb = NULL;
 	void *context = NULL;
-	uint8_t vdev_id;
+	uint8_t vdev_id, i;
+	struct wlan_objmgr_vdev *vdev;
+	struct mlo_link_switch_params params = {0};
+	struct mlo_mgr_context *g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
+
+	if (!g_mlo_ctx) {
+		mlo_err("Global MLO context NULL");
+		return;
+	}
 
 	vdev_id = event->vdev_id;
-
-	status = mlo_get_link_state_context(psoc,
-					    &resp_cb, &context, vdev_id);
-
+	status = mlo_get_link_state_context(psoc, &resp_cb, &context, vdev_id);
 	if (QDF_IS_STATUS_ERROR(status))
 		return;
 
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_MLO_MGR_ID);
+	if (!vdev) {
+		mlo_err("Failed to get VDEV %d", vdev_id);
+		goto exit;
+	}
+
+	if (!vdev->mlo_dev_ctx) {
+		mlo_err("MLD context NULL for vdev %d", vdev_id);
+		goto ref_rel;
+	}
+
+	for (i = 0; i < event->num_mlo_vdev_link_info; i++)
+		if (event->link_info[i].link_status)
+			params.active_link_bitmap |=
+				BIT(event->link_info[i].link_id);
+
+	mlo_mgr_update_links_current_active_state(psoc, g_mlo_ctx,
+						  vdev->mlo_dev_ctx,
+						  &params, false);
+
+ref_rel:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+
+exit:
 	if (resp_cb)
 		resp_cb(event, context);
 }

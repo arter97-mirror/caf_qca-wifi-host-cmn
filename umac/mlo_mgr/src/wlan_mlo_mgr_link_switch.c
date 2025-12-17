@@ -2115,38 +2115,53 @@ static uint32_t mlo_mgr_get_link_state_change_reason(uint32_t reason_code)
 	}
 }
 
-#define IS_LINK_SET(link_bitmap, link_id) ((link_bitmap) & (BIT(link_id)))
-
 #define WLAN_MLO_SINGLE_LINK 1
-static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
-				      struct wlan_mlo_dev_context *mld_ctx,
-				      struct mlo_link_switch_params *params)
+#define IS_LINK_SET(link_bitmap, link_id) ((link_bitmap) & (BIT(link_id)))
+void
+mlo_mgr_update_links_current_active_state(struct wlan_objmgr_psoc *psoc,
+					  struct mlo_mgr_context *g_mlo_ctx,
+					  struct wlan_mlo_dev_context *mld_ctx,
+					  struct mlo_link_switch_params *params,
+					  bool is_async_event)
 {
 	uint8_t i, vdev_id, num_links = 0;
+	uint32_t reason_code, inact_link_bitmap = 0x0;
 	struct mlo_link_info *link_info;
 	struct wlan_objmgr_vdev *vdev;
-	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
-	bool is_cb_register = false;
-	uint32_t inactive_link_bitmap = 0, reason_code;
+	QDF_STATUS (*tdls_teardown_cb)(struct wlan_objmgr_psoc *psoc,
+				       uint8_t vdev_id) = NULL;
+	void (*osif_link_state_update_cb)(uint8_t vdev_id,
+					  bool is_link_active) = NULL;
+	void (*osif_link_state_change_cb)(uint32_t reason,
+					  uint32_t curr_active_bmap,
+					  uint32_t inactive_bmap) = NULL;
 
-	if (mlo_ctx && mlo_ctx->osif_ops &&
-	    mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state)
-		is_cb_register = true;
+	if (g_mlo_ctx->mlme_ops &&
+	    g_mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls)
+		tdls_teardown_cb =
+			g_mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls;
+
+	if (g_mlo_ctx->osif_ops &&
+	    g_mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state)
+		osif_link_state_update_cb =
+			g_mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state;
 
 	num_links = mlo_get_sta_num_links(mld_ctx);
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
 		link_info = &mld_ctx->link_ctx->links_info[i];
-
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr) ||
 		    qdf_is_macaddr_zero(&link_info->link_addr))
 			continue;
 
-		if (IS_LINK_SET(params->active_link_bitmap, link_info->link_id)) {
-			link_info->is_link_active = true;
-		} else {
-			link_info->is_link_active = false;
-			inactive_link_bitmap |= BIT(link_info->link_id);
-		}
+		link_info->is_link_active =
+				IS_LINK_SET(params->active_link_bitmap,
+					    link_info->link_id);
+
+		if (!is_async_event)
+			continue;
+
+		if (!link_info->is_link_active)
+			inact_link_bitmap |= BIT(link_info->link_id);
 
 		vdev_id = link_info->vdev_id;
 		mlo_debug("vdev:%d is_link_active:%d num_links:%d", vdev_id,
@@ -2156,17 +2171,14 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 		 * connected links is > 1, so that it can be formed again on
 		 * active link.
 		 */
-		if (num_links > WLAN_MLO_SINGLE_LINK &&
-		    !link_info->is_link_active &&
-		    mlo_ctx && mlo_ctx->mlme_ops &&
-		    mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls)
-			mlo_ctx->mlme_ops->mlo_mlme_ext_teardown_tdls(psoc,
-								      vdev_id);
 
-		if (is_cb_register)
-			mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state(
-						link_info->vdev_id,
-						link_info->is_link_active);
+		if (num_links > WLAN_MLO_SINGLE_LINK &&
+		    !link_info->is_link_active && tdls_teardown_cb)
+			tdls_teardown_cb(psoc, vdev_id);
+
+		if (osif_link_state_update_cb)
+			osif_link_state_update_cb(vdev_id,
+						  link_info->is_link_active);
 
 		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
 							    WLAN_MLO_MGR_ID);
@@ -2186,16 +2198,18 @@ static void mlo_mgr_update_link_state(struct wlan_objmgr_psoc *psoc,
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	}
 
-	reason_code = mlo_mgr_get_link_state_change_reason(params->reason_code);
-
-	if (!mlo_ctx || !mlo_ctx->osif_ops ||
-	    !mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state_change)
+	if (!is_async_event)
 		return;
 
-	mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state_change(
-						reason_code,
-						params->active_link_bitmap,
-						inactive_link_bitmap);
+	if (!g_mlo_ctx->osif_ops ||
+	    !g_mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state_change)
+		return;
+
+	reason_code = mlo_mgr_get_link_state_change_reason(params->reason_code);
+	osif_link_state_change_cb =
+		g_mlo_ctx->osif_ops->mlo_mgr_osif_update_link_state_change;
+	osif_link_state_change_cb(reason_code, params->active_link_bitmap,
+				  inact_link_bitmap);
 }
 
 QDF_STATUS
@@ -2205,6 +2219,12 @@ mlo_mgr_link_state_switch_info_handler(struct wlan_objmgr_psoc *psoc,
 	uint8_t i;
 	struct wlan_mlo_dev_context *mld_ctx = NULL;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct mlo_mgr_context *g_mlo_ctx = wlan_objmgr_get_mlo_ctx();
+
+	if (!g_mlo_ctx) {
+		mlo_err("Global MLO context NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
 
 	wlan_mlo_get_mlpeer_by_peer_mladdr(
 			&info->link_switch_param[0].mld_addr, &mld_ctx);
@@ -2216,11 +2236,12 @@ mlo_mgr_link_state_switch_info_handler(struct wlan_objmgr_psoc *psoc,
 	}
 
 	for (i = 0; i < info->num_params; i++) {
-		wlan_connectivity_mld_link_status_event(
-				psoc,
-				&info->link_switch_param[i]);
-		mlo_mgr_update_link_state(psoc, mld_ctx,
-					  &info->link_switch_param[i]);
+		wlan_connectivity_mld_link_status_event(psoc,
+							&info->link_switch_param[i]);
+		mlo_mgr_update_links_current_active_state(psoc, g_mlo_ctx,
+							  mld_ctx,
+							  &info->link_switch_param[i],
+							  true);
 	}
 
 	return status;

@@ -698,6 +698,31 @@ mlo_mgr_link_state_switch_info_handler(struct wlan_objmgr_psoc *psoc,
 				       struct mlo_link_switch_state_info *info);
 
 /**
+ * mlo_mgr_update_links_current_active_state() - Update the current active state
+ * of links in an MLO device context based on a provided link bitmap.
+ *
+ * @psoc: Pointer to the PSOC object
+ * @g_mlo_ctx: Pointer to the global MLO manager context
+ * @mld_ctx: Pointer to the MLO device context
+ * @params: Link state switch params holder
+ * @is_async_event: Flag indicating if the update is from an asynchronous event
+ *
+ * This function iterates through all the links in the given MLO device context
+ * and updates their 'is_link_active' flag according to the bits set in the
+ * provided active_link_bitmap in @params. It also handles notifications to
+ * the OSIF layer and updates the policy manager tables accordingly when
+ * applicable based on the @is_async_event flag.
+ *
+ * Return: None
+ */
+void
+mlo_mgr_update_links_current_active_state(struct wlan_objmgr_psoc *psoc,
+					  struct mlo_mgr_context *g_mlo_ctx,
+					  struct wlan_mlo_dev_context *mld_ctx,
+					  struct mlo_link_switch_params *params,
+					  bool is_async_event);
+
+/**
  * mlo_mgr_link_switch_complete() - Link switch complete notification to FW
  * @vdev: VDV object manager
  *
