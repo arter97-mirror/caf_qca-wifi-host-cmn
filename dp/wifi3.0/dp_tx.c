@@ -1155,6 +1155,14 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp,
 	struct dp_tx_pp_params *idle_pp_params = NULL;
 	struct dp_tx_pp_params *new_active_pp;
 	qdf_nbuf_t nbuf = NULL;
+	bool from_ho_pool = false;
+	uint64_t start_time_ns;
+	uint64_t latency_ns;
+	bool trace_enabled;
+
+	trace_enabled = qdf_trace_dp_tx_pp_attach_idle_enabled();
+	if (qdf_unlikely(trace_enabled))
+		start_time_ns = qdf_ktime_get_real_ns();
 
 	if (qdf_unlikely(tx_pp->active_pool_count >= MAX_TX_DYNAMIC_POOL))
 		return NULL;
@@ -1167,6 +1175,7 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp,
 						       size, offset);
 		if (nbuf) {
 			tx_pp->idle_pool_ho_cnt--;
+			from_ho_pool = true;
 			goto attach_pool;
 		}
 	}
@@ -1179,6 +1188,7 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp,
 						       size, offset);
 		if (nbuf) {
 			tx_pp->idle_pool_lo_cnt--;
+			from_ho_pool = false;
 			goto attach_pool;
 		}
 	}
@@ -1190,7 +1200,17 @@ attach_pool:
 	*new_active_pp = *idle_pp_params;
 	/* Update cache with the pool that was used */
 	dp_tx_page_pool_update_cache(tx_pp, new_active_pp);
+	new_active_pp->pool_id = tx_pp->active_pool_count;
 	tx_pp->active_pool_count++;
+
+	if (qdf_unlikely(trace_enabled)) {
+		latency_ns = qdf_ktime_get_real_ns() - start_time_ns;
+		qdf_trace_dp_tx_pp_attach_idle(idle_pp_params->pp,
+					       new_active_pp->pool_id,
+					       from_ho_pool,
+					       tx_pp->active_pool_count,
+					       latency_ns);
+	}
 
 	return nbuf;
 }
@@ -1217,6 +1237,18 @@ dp_tx_page_pool_try_grow_last(
 			uint32_t *offset)
 {
 	qdf_nbuf_t nbuf;
+	uint64_t start_time_ns;
+	uint64_t latency_ns;
+	uint32_t old_size = 0, new_size = 0;
+	bool trace_enabled;
+
+	trace_enabled = qdf_trace_dp_tx_pp_grow_enabled();
+	if (qdf_unlikely(trace_enabled)) {
+		start_time_ns = qdf_ktime_get_real_ns();
+		if (pp_params->pp)
+			old_size =
+				qdf_page_pool_get_page_hold_cnt(pp_params->pp);
+	}
 
 	/* Track growth attempt */
 	qdf_atomic_inc(&tx_pp->grow_attempts);
@@ -1238,11 +1270,26 @@ dp_tx_page_pool_try_grow_last(
 	/* Success - update statistics and return */
 	qdf_atomic_inc(&tx_pp->grow_successes);
 
+	if (qdf_unlikely(trace_enabled)) {
+		new_size = qdf_page_pool_get_page_hold_cnt(pp_params->pp);
+		latency_ns = qdf_ktime_get_real_ns() - start_time_ns;
+		qdf_trace_dp_tx_pp_grow(pp_params->pp, pp_params->pool_id,
+					old_size, new_size, true, latency_ns);
+	}
+
 	return nbuf;
 
 grow_failed:
 	/* Track failure */
 	qdf_atomic_inc(&tx_pp->grow_failures);
+
+	if (qdf_unlikely(trace_enabled)) {
+		latency_ns = qdf_ktime_get_real_ns() - start_time_ns;
+		qdf_trace_dp_tx_pp_grow(pp_params->pp ? pp_params->pp : NULL,
+					pp_params->pool_id,
+					old_size, old_size, false, latency_ns);
+	}
+
 	return NULL;
 }
 
@@ -1252,6 +1299,7 @@ grow_failed:
  * @osdev: OS device handle
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
+ * @loop_count: Pointer to store number of pools checked (output parameter)
  *
  * This helper implements the slow path pool selection when cache misses:
  * 1. Linear search through active pools (O(n))
@@ -1265,7 +1313,7 @@ grow_failed:
 static inline qdf_nbuf_t
 dp_tx_page_pool_find_available_slow(struct dp_tx_page_pool *tx_pp,
 				    qdf_device_t osdev, size_t size,
-				    uint32_t *offset)
+				    uint32_t *offset, uint8_t *loop_count)
 {
 	struct dp_tx_pp_params *pp_params;
 	qdf_nbuf_t nbuf;
@@ -1280,6 +1328,7 @@ dp_tx_page_pool_find_available_slow(struct dp_tx_page_pool *tx_pp,
 			continue;
 
 		if (qdf_likely(!qdf_page_pool_empty(pp_params->pp))) {
+			*loop_count = i + 1;
 			/* Update cache with the pool that was used */
 			dp_tx_page_pool_update_cache(tx_pp, pp_params);
 			return dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
@@ -1322,7 +1371,16 @@ dp_tx_page_pool_dyn_alloc_nbuf(struct dp_tx_page_pool *tx_pp,
 {
 	struct dp_tx_pp_params *pp_params;
 	qdf_nbuf_t nbuf = NULL;
+	uint64_t latency_ns;
+	uint64_t start_time_ns;
+	bool trace_enabled;
+
 	*offset = 0;
+
+	trace_enabled = qdf_trace_dp_tx_pp_alloc_enabled();
+	if (qdf_unlikely(trace_enabled))
+		start_time_ns = qdf_ktime_get_real_ns();
+
 	/*
 	 * FAST PATH: Inline cache check (most common case ~90%)
 	 * This avoids function call overhead and keeps hot path tight
@@ -1335,6 +1393,16 @@ dp_tx_page_pool_dyn_alloc_nbuf(struct dp_tx_page_pool *tx_pp,
 		if (qdf_likely(nbuf)) {
 			qdf_atomic_inc(&tx_pp->cache_hits);
 
+			/* Trace cache hit allocation */
+			if (qdf_unlikely(trace_enabled)) {
+				latency_ns = qdf_ktime_get_real_ns() -
+							start_time_ns;
+				qdf_trace_dp_tx_pp_alloc(pp_params->pp,
+							 pp_params->pool_id,
+							 *offset, true,
+							 latency_ns, 0);
+			}
+
 			return nbuf;
 		}
 	}
@@ -1343,8 +1411,32 @@ dp_tx_page_pool_dyn_alloc_nbuf(struct dp_tx_page_pool *tx_pp,
 	 * SLOW PATH: Cache miss - call helper for complex logic
 	 * This handles pool search, growth, and idle pool attachment
 	 */
+	uint8_t loop_count = 0;
+
 	qdf_atomic_inc(&tx_pp->cache_misses);
-	return dp_tx_page_pool_find_available_slow(tx_pp, osdev, size, offset);
+	nbuf = dp_tx_page_pool_find_available_slow(tx_pp, osdev, size,
+						   offset, &loop_count);
+
+	/* Trace cache miss allocation */
+	if (qdf_unlikely(trace_enabled)) {
+		latency_ns = qdf_ktime_get_real_ns() - start_time_ns;
+
+		/*
+		 * Get the pool that was actually used (from cache).
+		 * The slow path helper updates the cache with the pool used.
+		 */
+		pp_params = tx_pp->last_used_pool;
+
+		/* Only trace if we have a valid pool */
+		if (pp_params && pp_params->pp) {
+			qdf_trace_dp_tx_pp_alloc(pp_params->pp,
+						 pp_params->pool_id,
+						 *offset, false, latency_ns,
+						 loop_count);
+		}
+	}
+
+	return nbuf;
 }
 
 /**
@@ -1364,6 +1456,10 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 {
 	struct dp_tx_pp_params *pp_params;
 	qdf_device_t osdev = soc->osdev;
+	qdf_nbuf_t nbuf;
+	uint64_t start_time_ns;
+	uint64_t latency_ns;
+	bool trace_enabled;
 
 	*offset = 0;
 
@@ -1371,11 +1467,25 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 		return dp_tx_page_pool_dyn_alloc_nbuf(tx_pp, osdev,
 						      size, offset);
 
+	trace_enabled = qdf_trace_dp_tx_pp_alloc_enabled();
+	if (trace_enabled)
+		start_time_ns = qdf_ktime_get_real_ns();
+
 	pp_params = &tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 	if (qdf_likely(pp_params->pp &&
 		       !qdf_page_pool_empty(pp_params->pp))) {
-		return dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
+		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
 						       size, offset);
+		if (trace_enabled) {
+			latency_ns = qdf_ktime_get_real_ns() - start_time_ns;
+			/* Preallocated pool - always cache hit,
+			 * loop_count = 0
+			 */
+			qdf_trace_dp_tx_pp_alloc(pp_params->pp,
+						 pp_params->pool_id,
+						 *offset, true, latency_ns, 0);
+		}
+		return nbuf;
 	}
 
 	return NULL;

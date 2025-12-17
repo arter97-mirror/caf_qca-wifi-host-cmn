@@ -1972,6 +1972,7 @@ struct dp_rx_page_pool {
  * @pp_size: Size of the page pool
  * @page_size: Page size of page pool
  * @is_prealloc: Prealloc page pool
+ * @pool_id: Pool id
  */
 struct dp_tx_pp_params {
 	qdf_page_pool_t pp;
@@ -1979,6 +1980,7 @@ struct dp_tx_pp_params {
 	size_t pp_size;
 	size_t page_size;
 	bool is_prealloc;
+	uint8_t pool_id;
 };
 
 #define TX_PRE_ALLOC_POOL_IDX 0
