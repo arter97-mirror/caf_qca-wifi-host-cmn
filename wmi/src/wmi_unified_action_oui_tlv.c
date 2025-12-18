@@ -95,7 +95,8 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
 	}
 }
 
-uint32_t wmi_get_action_oui_info_mask(uint32_t info_mask)
+uint32_t wmi_get_action_oui_info_mask(uint32_t info_mask,
+				      bool is_mac_exclusion_enabled)
 {
 	uint32_t info_presence = 0;
 
@@ -117,13 +118,19 @@ uint32_t wmi_get_action_oui_info_mask(uint32_t info_mask)
 	if (info_mask & ACTION_OUI_INFO_AP_CAPABILITY_BAND)
 		info_presence |= WMI_BEACON_INFO_PRESENCE_AP_CAPABILITY_BAND;
 
+	/* Convert MAC exclusion bit only if enabled */
+	if ((info_mask & ACTION_OUI_INFO_MAC_EXCLUSION) &&
+	    is_mac_exclusion_enabled)
+		info_presence |= WMI_BEACON_INFO_PRESENCE_EXCLUSIVE_MAC_ADDRESS;
+
 	return info_presence;
 }
 
 void wmi_fill_oui_extensions(struct action_oui_extension *extension,
 			     uint32_t no_oui_extns,
 			     wmi_vendor_oui_ext *cmd_ext,
-			     bool is_action_oui_v2_enabled)
+			     bool is_action_oui_v2_enabled,
+			     bool is_mac_exclusion_enabled)
 {
 	uint32_t i;
 	uint32_t buffer_length;
@@ -133,13 +140,15 @@ void wmi_fill_oui_extensions(struct action_oui_extension *extension,
 			       WMITLV_TAG_STRUC_wmi_vendor_oui_ext,
 			       WMITLV_GET_STRUCT_TLVLEN(wmi_vendor_oui_ext));
 		cmd_ext->info_presence_bit_mask =
-			wmi_get_action_oui_info_mask(extension->info_mask);
+			wmi_get_action_oui_info_mask(extension->info_mask,
+						     is_mac_exclusion_enabled);
 
 		cmd_ext->oui_header_length = extension->oui_length;
 		cmd_ext->oui_data_length = extension->data_length;
 		cmd_ext->mac_address_length = extension->mac_addr_length;
 		cmd_ext->capability_data_length =
 					extension->capability_length;
+		cmd_ext->exclusive_mac_address_length = 0;
 
 		buffer_length = extension->oui_length +
 				extension->data_length +
@@ -147,6 +156,19 @@ void wmi_fill_oui_extensions(struct action_oui_extension *extension,
 				extension->mac_addr_length +
 				extension->mac_mask_length +
 				extension->capability_length;
+
+		/* Add MAC exclusion fields if present and enabled */
+		if (is_mac_exclusion_enabled) {
+			cmd_ext->exclusive_mac_address_length =
+				extension->mac_exclusion_length;
+			buffer_length += extension->mac_exclusion_length +
+					 extension->mac_exclusion_mask_length;
+			if (extension->mac_exclusion_length)
+				wmi_debug("Extension %d has MAC exclusion: "
+					QDF_MAC_ADDR_FMT " mask=0x%02X", i,
+					QDF_MAC_ADDR_REF(extension->mac_exclusion.mac_addr),
+					extension->mac_exclusion.mac_addr_mask);
+		}
 
 		if (is_action_oui_v2_enabled && !extension->and_oui_index)
 			cmd_ext->buf_data_length = buffer_length + 2;
@@ -156,15 +178,16 @@ void wmi_fill_oui_extensions(struct action_oui_extension *extension,
 		cmd_ext++;
 		extension++;
 	}
-
 }
 
 QDF_STATUS
 wmi_fill_oui_extensions_buffer(struct action_oui_extension *extension,
 			       wmi_vendor_oui_ext *cmd_ext,
-			       uint32_t no_oui_extns, uint32_t rem_var_buf_len,
+			       uint32_t no_oui_extns,
+			       uint32_t rem_var_buf_len,
 			       uint8_t *var_buf,
-			       bool is_action_oui_v2_enabled)
+			       bool is_action_oui_v2_enabled,
+			       bool is_mac_exclusion_enabled)
 {
 	uint8_t i, and_oui_num = 0;
 	uint8_t *and_oui_num_ptr = NULL;
@@ -233,6 +256,24 @@ wmi_fill_oui_extensions_buffer(struct action_oui_extension *extension,
 			var_buf += extension->capability_length;
 		}
 
+		/* Copy MAC exclusion address if present and enabled */
+		if (is_mac_exclusion_enabled && extension->mac_exclusion_length) {
+			qdf_mem_copy(var_buf,
+				     extension->mac_exclusion.mac_addr,
+				     QDF_MAC_ADDR_SIZE);
+			var_buf += extension->mac_exclusion_length;
+			wmi_debug("Copied MAC exclusion addr " QDF_MAC_ADDR_FMT,
+				  QDF_MAC_ADDR_REF(extension->mac_exclusion.mac_addr));
+		}
+
+		/* Copy MAC exclusion mask if present and enabled */
+		if (is_mac_exclusion_enabled && extension->mac_exclusion_mask_length) {
+			var_buf[0] = extension->mac_exclusion.mac_addr_mask;
+			var_buf += extension->mac_exclusion_mask_length;
+			wmi_debug("Copied MAC exclusion mask 0x%02X",
+				  extension->mac_exclusion.mac_addr_mask);
+		}
+
 		rem_var_buf_len -= cmd_ext->buf_data_length;
 		qdf_trace_hex_dump(QDF_MODULE_ID_WMI, QDF_TRACE_LEVEL_TRACE,
 				   buf, cmd_ext->buf_data_length);
@@ -279,6 +320,7 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 	bool valid;
 	uint32_t rem_var_buf_len;
 	QDF_STATUS status;
+	bool is_mac_exclusion_enabled;
 
 	if (!req) {
 		wmi_err("action oui is empty");
@@ -287,6 +329,11 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 
 	no_oui_extns = req->no_oui_extensions;
 	total_no_oui_extns = req->total_no_oui_extensions;
+
+	/* Check if MAC exclusion is supported by firmware */
+	is_mac_exclusion_enabled =
+		wmi_service_enabled(wmi_handle,
+				    wmi_service_vendor_oui_support_exclusive_mac_address);
 
 	len = sizeof(*cmd);
 	len += WMI_TLV_HDR_SIZE; /* Array of wmi_vendor_oui_ext structures */
@@ -303,8 +350,10 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 		wmi_err("Invalid action id");
 		return QDF_STATUS_E_INVAL;
 	}
-	wmi_debug("wmi action_id %d num %d total_num %d", action_id,
-		  no_oui_extns, total_no_oui_extns);
+	wmi_debug("wmi action_id %d num %d v2 %d mac_exclusion %d",
+		  action_id, no_oui_extns,
+		  req->is_action_oui_v2_enabled,
+		  is_mac_exclusion_enabled);
 
 	len += no_oui_extns * sizeof(*cmd_ext);
 	len += WMI_TLV_HDR_SIZE; /* Variable length buffer */
@@ -319,6 +368,9 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 		       extension->capability_length;
 		if (req->is_action_oui_v2_enabled && !extension->and_oui_index)
 			var_buf_len += 1; /* to store and OUI num */
+		if (is_mac_exclusion_enabled)
+			var_buf_len += extension->mac_exclusion_length +
+				       extension->mac_exclusion_mask_length;
 		extension++;
 	}
 
@@ -350,8 +402,9 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 		       no_oui_extns * sizeof(*cmd_ext));
 	buf_ptr += WMI_TLV_HDR_SIZE;
 	cmd_ext = (wmi_vendor_oui_ext *)buf_ptr;
-	wmi_fill_oui_extensions(req->extension, no_oui_extns, cmd_ext,
-				req->is_action_oui_v2_enabled);
+	wmi_fill_oui_extensions(req->extension, no_oui_extns,
+				cmd_ext, req->is_action_oui_v2_enabled,
+				is_mac_exclusion_enabled);
 
 	buf_ptr += no_oui_extns * sizeof(*cmd_ext);
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, var_buf_len);
@@ -359,7 +412,8 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 	status = wmi_fill_oui_extensions_buffer(req->extension,
 						cmd_ext, no_oui_extns,
 						rem_var_buf_len, buf_ptr,
-						req->is_action_oui_v2_enabled);
+						req->is_action_oui_v2_enabled,
+						is_mac_exclusion_enabled);
 	if (!QDF_IS_STATUS_SUCCESS(status)) {
 		wmi_buf_free(wmi_buf);
 		wmi_buf = NULL;

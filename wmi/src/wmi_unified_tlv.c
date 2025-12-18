@@ -24635,6 +24635,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_PER_VDEV_TWT_RESP_DISABLE_SUPPORT;
 	wmi_service[wmi_service_vendor_oui_action_v2] =
 				WMI_SERVICE_VENDOR_OUI_ACTION_V2;
+	wmi_service[wmi_service_vendor_oui_support_exclusive_mac_address] =
+				WMI_SERVICE_VENDOR_OUI_SUPPORT_EXCLUSIVE_MAC_ADDRESS;
 	wmi_service[wmi_service_ndp_dfs_channel_support] =
 				WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT;
 	wmi_service[wmi_service_tx_power_limit] =
