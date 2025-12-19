@@ -899,7 +899,7 @@ bool mlo_mgr_is_link_switch_on_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 	return vdev->mlo_dev_ctx->link_ctx->last_req.restore_vdev_flag;
 }
 
-const char*
+static inline const char*
 mlo_mgr_link_switch_req_state_string(enum mlo_link_switch_req_state state)
 {
 	static const char * const ls_state_string[] = {
