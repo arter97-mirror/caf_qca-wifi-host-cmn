@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -235,7 +235,7 @@ QDF_STATUS ipa_register_is_ipa_ready(struct wlan_objmgr_pdev *pdev)
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	ipa_log("IPA ini configuration: 0x%x", get_ipa_config(psoc));
+	ipa_log_debug("IPA ini configuration: 0x%x", get_ipa_config(psoc));
 	ipa_obj = ipa_psoc_get_priv_obj(psoc);
 	if (!ipa_obj) {
 		ipa_err("IPA object is NULL");
