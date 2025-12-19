@@ -139,6 +139,42 @@ scm_scan_get_requester_event_handler(struct scan_event_listeners *listeners,
 
 }
 
+static void
+scm_scan_invoke_requester_ev_handler(
+		struct wlan_objmgr_vdev *vdev,
+		struct scan_event *event,
+		struct wlan_scan_obj *scan,
+		struct scan_requester_info *requesters,
+		wlan_scan_requester requester_id)
+{
+	uint32_t idx;
+	struct cb_handler cb;
+	struct cb_handler *ev_handler;
+
+	idx = requester_id & WLAN_SCAN_REQUESTER_ID_PREFIX;
+	if (idx != WLAN_SCAN_REQUESTER_ID_PREFIX)
+		return;
+
+	idx = requester_id & WLAN_SCAN_REQUESTER_ID_MASK;
+	if (idx < WLAN_MAX_REQUESTORS) {
+		qdf_mem_zero(&cb, sizeof(cb));
+		qdf_spin_lock_bh(&scan->lock);
+		/* find owner who triggered this scan request */
+		ev_handler = &(requesters[idx].ev_handler);
+		if (ev_handler->func) {
+			cb.func = ev_handler->func;
+			cb.arg = ev_handler->arg;
+		}
+		qdf_spin_unlock_bh(&scan->lock);
+		/* notify requester handler */
+		if (cb.func)
+			cb.func(vdev, event, cb.arg);
+	} else {
+		scm_err("invalid requester id %d",
+			requester_id);
+	}
+}
+
 static void scm_scan_post_event(struct wlan_objmgr_vdev *vdev,
 		struct scan_event *event)
 {
@@ -166,8 +202,21 @@ static void scm_scan_post_event(struct wlan_objmgr_vdev *vdev,
 
 	listeners = qdf_mem_malloc_atomic(sizeof(*listeners));
 	if (!listeners) {
-		scm_warn("couldn't allocate listeners list");
-		return;
+		/* In lower memory case, atomic allocation may be failed.
+		 * To avoid app layer stuck for waiting scan completion,
+		 * try normal allocation and invoke requester handler only.
+		 */
+		scm_warn("couldn't allocate listeners list by atomic way");
+		listeners = qdf_mem_malloc(sizeof(*listeners));
+		if (!listeners) {
+			scm_warn("couldn't allocate listeners list by normal way");
+			scm_scan_invoke_requester_ev_handler(
+				vdev, event, scan, requesters,
+				event->requester);
+			scm_debug("requester id %d handler invoked",
+				  event->requester);
+			return;
+		}
 	}
 
 	/* initialize number of listeners */
