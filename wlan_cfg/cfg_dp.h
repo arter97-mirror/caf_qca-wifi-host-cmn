@@ -2471,25 +2471,39 @@
 #endif
 
 #ifdef FEATURE_DP_DAL_SIM
+#define CFG_DP_DAL_SIM_MODE_MIN 0
+#define CFG_DP_DAL_SIM_MODE_MAX 0xF
+#define CFG_DP_DAL_SIM_MODE_DEFAULT 0
+
 /*
  * <ini>
  * dp_dal_sim_mode - Set the dal simulation mode
  * @Min: 0
- * @Max: 1
+ * @Max: 0xF
  * @Default: 0
  *
  * This ini is used to set mode for dal simulation. Basis on this mode during
- * init time will decide which platform ops to use for dal simulation.
+ * init time will decide which platform ops to use for dal simulation and
+ * whether to use dal vendor hal for overwriting tx descriptors in offload sim.
+ *
+ * BIT0 - dal simulation mode (set - offload mode unset - bypass mode)
+ * BIT1 - dal vendor hal use cfg (set - overwrite tx descriptors
+ * unset - not overwrite)
+ *
  * 0 - dal simulation in bypass mode
  * 1 - dal simulation in offload mode
+ * 3 - use dal vendor hal cfg in offload mode
  *
  * Usage: Internal
  *
  * </ini>
  */
 #define CFG_DP_DAL_SIM_MODE \
-	CFG_INI_BOOL("dp_dal_sim_mode", false, \
-		     "set dal simulation mode of operation")
+		CFG_INI_UINT("dp_dal_sim_mode", \
+		CFG_DP_DAL_SIM_MODE_MIN, \
+		CFG_DP_DAL_SIM_MODE_MAX, \
+		CFG_DP_DAL_SIM_MODE_DEFAULT, \
+		CFG_VALUE_OR_DEFAULT, "set dal simulation mode of operation")
 #define CFG_DP_DAL_SIM CFG(CFG_DP_DAL_SIM_MODE)
 #else
 #define CFG_DP_DAL_SIM
