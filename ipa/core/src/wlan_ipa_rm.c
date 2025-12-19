@@ -203,13 +203,6 @@ void wlan_ipa_init_metering(struct wlan_ipa_priv *ipa_ctx)
 }
 #endif
 
-#ifdef IPA_OPT_WIFI_DP
-void wlan_ipa_add_rem_flt_cb_event(struct wlan_ipa_priv *ipa_ctx)
-{
-	qdf_event_create(&ipa_ctx->ipa_flt_evnt);
-}
-#endif
-
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) && \
 	!defined(CONFIG_IPA_WDI_UNIFIED_API)
 /**

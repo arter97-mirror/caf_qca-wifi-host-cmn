@@ -961,6 +961,7 @@ struct wlan_ipa_priv {
 	qdf_ipa_wdi_in_params_t cons_pipe_in;
 	qdf_ipa_wdi_in_params_t prod_pipe_in;
 	bool uc_loaded;
+	bool uc_load_handled;
 	bool wdi_enabled;
 	bool over_gsi;
 	qdf_mc_timer_t rt_debug_fill_timer;

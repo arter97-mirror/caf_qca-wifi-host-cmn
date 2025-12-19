@@ -476,21 +476,6 @@ static inline void wlan_ipa_update_tx_stats(struct wlan_ipa_priv *ipa_ctx,
 }
 #endif /* FEATURE_METERING */
 
-#ifdef IPA_OPT_WIFI_DP
-/*
- * wlan_ipa_add_rem_flt_cb_event() - Set event to get notified when cce
- * super rule filter is added/removed
- * @ipa_ctx: IPA context
- *
- * Return: None
- */
-void wlan_ipa_add_rem_flt_cb_event(struct wlan_ipa_priv *ipa_ctx);
-#else
-static inline void wlan_ipa_add_rem_flt_cb_event(struct wlan_ipa_priv *ipa_ctx)
-{
-}
-#endif /* IPA_OPT_WIFI_DP */
-
 /*
  * wlan_ipa_uc_stat() - Print IPA uC stats
  * @ipa_ctx: IPA context
