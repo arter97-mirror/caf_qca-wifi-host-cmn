@@ -32,6 +32,7 @@
 #endif
 #include "host_diag_core_event.h"
 #include <wlan_t2lm_api.h>
+#include <wlan_mlme_api.h>
 
 static QDF_STATUS
 mlo_mgr_update_link_rej_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -2402,4 +2403,16 @@ mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc)
 		return mlo_tx_ops->unified_connect_disconnect_enabled(psoc);
 
 	return false;
+}
+
+bool
+mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
+					struct wlan_objmgr_psoc *psoc)
+{
+	/*
+	 * Intersect MLME configuration with firmware service capability.
+	 * Both must be true for unified connect/disconnect to be enabled.
+	 */
+	return wlan_mlme_get_sta_mlo_unified_connect_disconnect(psoc) &&
+	       mlo_mgr_is_unified_connect_disconnect_supported(psoc);
 }

@@ -841,6 +841,21 @@ bool mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev);
 bool
 mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc);
 
+/**
+ * mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled() - Check if MLO
+ * unified connect/disconnect is both configured and supported by firmware
+ * @psoc: pointer to psoc object
+ *
+ * This API intersects the MLME configuration setting with firmware service
+ * capability to determine if unified connect/disconnect is actually enabled.
+ *
+ * Return: true if both MLME config is enabled AND firmware supports it,
+ *         false otherwise
+ */
+bool
+mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
+						struct wlan_objmgr_psoc *psoc);
+
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1107,6 +1122,13 @@ mlo_mgr_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
 
 static inline bool
 mlo_mgr_is_unified_connect_disconnect_supported(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
+static inline bool
+mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
+						struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }
