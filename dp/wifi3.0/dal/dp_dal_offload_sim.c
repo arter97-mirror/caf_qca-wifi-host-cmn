@@ -7,6 +7,7 @@
 #include "dp_dal_sim.h"
 #include <qdf_mem.h>
 #include "dal_vndr_hal_be.h"
+#include "dal_vndr_hal_internal.h"
 
 #ifdef FEATURE_DP_DAL_SIM
 
@@ -136,6 +137,118 @@ static inline void dp_dal_offload_sim_hal_addrs_params_init(
 {
 }
 #endif
+
+/**
+ * dp_dal_offload_sim_overwrite_tx_desc() - Overwrite tx descriptor
+ * for offload simulation.
+ * @hal_soc_hdl: hal soc handle
+ * @txdesc: tx descriptor
+ *
+ * This function overwrites tx descriptor sent by wlan host to
+ * offload sim with those field values whose set apis are provided
+ * in dal vendor hal.
+ *
+ * Return: None
+ *
+ */
+static inline void dp_dal_offload_sim_overwrite_tx_desc(
+		void *hal_soc_hdl, void *txdesc)
+{
+	uint8_t lmac_id;
+	dma_addr_t paddr;
+	uint32_t paddr_lo, paddr_hi;
+	uint8_t rbm_id;
+	uint32_t desc_id;
+	uint8_t buf_type;
+	uint16_t data_length;
+	uint8_t buf_offset;
+	uint8_t l3_checksum_en;
+	uint8_t l4_checksum_en;
+	uint8_t bank_id;
+	uint8_t vdev_id;
+	uint8_t hlos_tid;
+	uint8_t flow_override_enable;
+	uint8_t flow_override;
+	uint8_t who_classify_info_sel;
+	uint8_t tx_notify_frame;
+
+	if (!hal_soc_hdl || !txdesc) {
+		dp_err_rl("Invalid parameters");
+		return;
+	}
+	/* Read all fields from TX descriptor using HAL_TX_DESC_GET APIs */
+	lmac_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, PMAC_ID);
+
+	paddr_lo = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+				   BUF_ADDR_INFO_BUFFER_ADDR_31_0);
+	paddr_hi = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+				   BUF_ADDR_INFO_BUFFER_ADDR_39_32);
+	paddr = (dma_addr_t)paddr_lo | (((dma_addr_t)paddr_hi) << 32);
+
+	rbm_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+				 BUF_ADDR_INFO_RETURN_BUFFER_MANAGER);
+
+	desc_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+				  BUF_ADDR_INFO_SW_BUFFER_COOKIE);
+
+	buf_type = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+				   BUF_OR_EXT_DESC_TYPE);
+
+	data_length = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, DATA_LENGTH);
+
+	buf_offset = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, PACKET_OFFSET);
+
+	l3_checksum_en = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					 IPV4_CHECKSUM_EN);
+
+	l4_checksum_en = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					 TCP_OVER_IPV4_CHECKSUM_EN) |
+			 HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					 TCP_OVER_IPV6_CHECKSUM_EN) |
+			 HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					 UDP_OVER_IPV4_CHECKSUM_EN) |
+			 HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					 UDP_OVER_IPV6_CHECKSUM_EN);
+
+	bank_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, BANK_ID);
+
+	vdev_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, VDEV_ID);
+
+	hlos_tid = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, HLOS_TID);
+
+	flow_override_enable = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					       FLOW_OVERRIDE_ENABLE);
+
+	flow_override = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, FLOW_OVERRIDE);
+
+	who_classify_info_sel = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+						WHO_CLASSIFY_INFO_SEL);
+
+	tx_notify_frame = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					  TX_NOTIFY_FRAME);
+	/* Overwrite all fields using DAL VNDR HAL set APIs */
+	dal_vndr_hal_tx_desc_set_lmac_id(hal_soc_hdl, txdesc, lmac_id);
+	dal_vndr_hal_tx_desc_set_buf_addr(hal_soc_hdl, txdesc, paddr,
+					  rbm_id, desc_id, buf_type);
+	dal_vndr_hal_tx_desc_set_buf_length(hal_soc_hdl, txdesc, data_length);
+	dal_vndr_hal_tx_desc_set_buf_offset(hal_soc_hdl, txdesc, buf_offset);
+	dal_vndr_hal_tx_desc_set_l3_checksum_en(hal_soc_hdl, txdesc,
+						l3_checksum_en);
+	dal_vndr_hal_tx_desc_set_l4_checksum_en(hal_soc_hdl, txdesc,
+						l4_checksum_en);
+	dal_vndr_hal_tx_desc_set_bank_id(hal_soc_hdl, txdesc, bank_id);
+	dal_vndr_hal_tx_desc_set_vdev_id(hal_soc_hdl, txdesc, vdev_id);
+	dal_vndr_hal_tx_desc_set_hlos_tid(hal_soc_hdl, txdesc, hlos_tid);
+	dal_vndr_hal_tx_desc_set_flow_override_enable(hal_soc_hdl, txdesc,
+						      flow_override_enable);
+	dal_vndr_hal_tx_desc_set_flow_override(hal_soc_hdl, txdesc,
+					       flow_override);
+	dal_vndr_hal_tx_desc_set_who_classify_info_sel(hal_soc_hdl, txdesc,
+						       who_classify_info_sel);
+	dal_vndr_hal_tx_desc_set_tx_notify_frame(hal_soc_hdl, txdesc,
+						 tx_notify_frame);
+}
+
 /**
  * dp_dal_offload_sim_hal_ring_init() - Init dal_vndr_hal_srng structure.
  * @offload_sim_ctx: offload sim ctx
@@ -229,7 +342,7 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 					 &dal_sim_ctx->rx_refill_ring);
 
 	/* Vendor HAL ops can be overridden here if needed with target_type*/
-	dal_vndr_hal_default_ops_attach_be(&offload_ctx->hal_soc);
+	dal_vndr_hal_ops_attach(&offload_ctx->hal_soc);
 
 	/* Mark as offload_sim_ctx_initialized */
 	offload_ctx->offload_sim_ctx_initialized = true;
@@ -541,7 +654,9 @@ int dp_dal_offload_sim_tx_hw_enqueue(
 		ret = -ENOSPC;
 		goto exit;
 	}
-
+	if (dp_dal_sim_cfg_use_vndr_hal(dal_sim_ctx))
+		dp_dal_offload_sim_overwrite_tx_desc(&offload_ctx->hal_soc,
+						     desc);
 	/* Sync cached descriptor content to HW descriptor */
 	dal_vndr_hal_tx_desc_sync(desc, hal_tx_desc,
 				  DAL_VNDR_HAL_TX_DESC_LEN_BYTES);

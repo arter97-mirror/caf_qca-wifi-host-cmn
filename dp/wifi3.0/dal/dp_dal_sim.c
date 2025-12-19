@@ -218,6 +218,41 @@ static void dp_dal_sim_sw2sw_rings_deinit(struct dp_dal_sim_ctx *sim_ctx)
 	dp_debug("All SW2SW rings deinitialized successfully");
 }
 
+#define DAL_SIM_MODE_MASK					0x1
+#define DAL_SIM_MODE_VNDR_HAL_USE_MASK		0x2
+/**
+ * dp_dal_sim_set_vndr_hal_use_cfg() - Schedule work for interrupt processing
+ * @sim_ctx: dal sim ctx
+ *
+ * This function is called during init time to store config whether to use
+ * dal vendor hal for overwriting tx desc during tx hw enqueue.
+ */
+static inline void dp_dal_sim_set_vndr_hal_use_cfg(
+	struct dp_dal_sim_ctx *sim_ctx)
+{
+	uint8_t dal_vndr_hal_use_cfg;
+
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(
+					cds_get_context(QDF_MODULE_ID_SOC));
+
+	if (!soc) {
+		dp_err("Null soc context");
+		return;
+	}
+	if (!soc->ctrl_psoc) {
+		dp_err("Null ctrl_psoc");
+		return;
+	}
+
+	dal_vndr_hal_use_cfg = cfg_get(soc->ctrl_psoc, CFG_DP_DAL_SIM_MODE) &
+						DAL_SIM_MODE_VNDR_HAL_USE_MASK;
+	dp_info("cfg use DAL vndr HAL for overwriting tx desc %d",
+		dal_vndr_hal_use_cfg);
+	if (dal_vndr_hal_use_cfg)
+		sim_ctx->use_dal_vndr_hal = true;
+	else
+		sim_ctx->use_dal_vndr_hal = false;
+}
 /* ========================================================================
  * Platform Bus Operations - Offload Mode Implementation
  * ========================================================================
@@ -674,7 +709,7 @@ static int dp_dal_sim_init(void *priv)
 
 	/* Mark as initialized */
 	sim_ctx->sim_ctx_initialized = true;
-
+	dp_dal_sim_set_vndr_hal_use_cfg(sim_ctx);
 	dp_info("dal sim init complete");
 	return status;
 free_offload_ctx:
@@ -1663,7 +1698,8 @@ static void dp_dal_sim_platform_bus_ops_attach(struct dp_dal_ctx *dal_ctx)
 		global_plat_ops = &plat_ops_bypass_mode;
 		return;
 	}
-	g_dal_sim_curr_mode = cfg_get(soc->ctrl_psoc, CFG_DP_DAL_SIM_MODE);
+	g_dal_sim_curr_mode = cfg_get(soc->ctrl_psoc, CFG_DP_DAL_SIM_MODE) &
+							DAL_SIM_MODE_MASK;
 	if (g_dal_sim_curr_mode == DAL_DP_BYPASS_MODE) {
 		/* Bypass mode */
 		global_plat_ops = &plat_ops_bypass_mode;

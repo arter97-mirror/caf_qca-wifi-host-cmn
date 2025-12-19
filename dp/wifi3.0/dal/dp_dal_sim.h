@@ -210,6 +210,7 @@ struct dal_sim_srng {
  * @dev_base_addr: device base address
  * @sim_mode_switch_in_progress: Flag indicating if mode switch is in progress
  * @rxbm_sync_lock: Lock for rxbm_sync operations during mode switch
+ * @use_dal_vndr_hal: Use dal vendor hal for overwriitng tx desc
  *
  * This structure maintains all necessary context for DAL simulation,
  * including pointers to datapath context, platform operations, vendor
@@ -260,6 +261,8 @@ struct dp_dal_sim_ctx {
 	qdf_atomic_t sim_mode_switch_in_progress;
 	qdf_spinlock_t rxbm_sync_lock;
 
+	/* Use dal vendor hal for overwriitng tx desc*/
+	bool use_dal_vndr_hal;
 };
 
 /**
@@ -450,6 +453,24 @@ void dp_dal_sim_trigger_mode_switch(
  * Return: current mode of dal sim (0 = bypass, 1 = offload)
  */
 uint8_t dp_dal_sim_get_curr_mode(void);
+
+/**
+ * dp_dal_sim_cfg_use_vndr_hal() - This function returns if config to use
+ * dal vendor hal for overwriting tx desc is present.
+ * @sim_ctx: sim ctx
+ *
+ * Returns true if use dal vendor hal config is true else false
+ *
+ */
+static inline bool dp_dal_sim_cfg_use_vndr_hal(struct dp_dal_sim_ctx *sim_ctx)
+{
+	if (!sim_ctx) {
+		dp_err("Null sim ctx");
+		return false;
+	}
+
+	return sim_ctx->use_dal_vndr_hal;
+}
 #else
 static inline int dp_dal_sim_attach(void *priv)
 {
