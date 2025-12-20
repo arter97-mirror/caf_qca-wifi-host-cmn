@@ -446,9 +446,11 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 
 	/*
 	 * Ensure that any ongoing replenish operations are completed before
-	 * returning from mode switch indication to DAL.
+	 * returning from mode switch indication to DAL. Also make sure no
+	 * further replenish from bypass path after this.
 	 */
 	qdf_spin_lock_bh(&dal_ctx->dal_replenish_lock);
+	qdf_atomic_set(&dal_ctx->bm_replenish_not_allowed, 1);
 	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
 
 	dp_dal_vdev_pause_unpause_queues(pdev, false);
@@ -463,9 +465,14 @@ bus_exit:
 	dp_dal_bus_exit(soc);
 abort_mode_switch:
 	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
+	soc->dal_mode_switch_in_progress = false;
+
+	qdf_spin_lock_bh(&dal_ctx->dal_replenish_lock);
+	qdf_atomic_set(&dal_ctx->bm_replenish_not_allowed, 0);
+	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
+
 	/* set hash-based routing since the offload mode switch failed */
 	dp_dal_pdev_set_default_routing(pdev);
-	soc->dal_mode_switch_in_progress = false;
 	qdf_timer_mod(&dal_ctx->dal_poll_timer, DAL_POLL_TIMER_INTERVAL_MS);
 	dp_err("DAL mode switch from bypass to offload aborted due to failure");
 	dp_dal_vdev_pause_unpause_queues(pdev, false);
@@ -513,6 +520,10 @@ dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
 		dp_err("PDEV is NULL reject mode switch");
 		return QDF_STATUS_E_INVAL;
 	}
+
+	qdf_spin_lock_bh(&dal_ctx->dal_replenish_lock);
+	qdf_atomic_set(&dal_ctx->bm_replenish_not_allowed, 0);
+	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
 
 	soc->dal_mode_switch_in_progress = true;
 	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
@@ -1026,7 +1037,19 @@ dp_dal_get_intr_ctx_from_ring(struct dp_soc *soc,
 static void dp_dal_rx_replenish_retry_handler(void *arg)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)arg;
+	struct dp_soc *soc;
 	uint32_t failures;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC context is NULL");
+		return;
+	}
 
 	if (!global_plat_ops || !global_plat_ops->rx_replenish) {
 		dp_err("DAL: rx_replenish op not available");
@@ -1045,11 +1068,22 @@ static void dp_dal_rx_replenish_retry_handler(void *arg)
 	}
 
 	if (global_plat_ops->rx_replenish(dal_ctx, failures, false)) {
-		dp_err("DAL: rx_replenish failed in retry, failures:%u",
-		       failures);
-		dal_ctx->rx_replenish_retry_count++;
-		dal_ctx->rx_replenish_retry_interval_ms *=
+		/* replenish via bypass path if mode switch in progress */
+		if (soc->dal_mode_switch_in_progress) {
+			dp_dal_rx_replenish_bypass_mode(dal_ctx,
+							failures, false);
+			qdf_atomic_sub(failures,
+				       &dal_ctx->rx_replenish_failures);
+			dal_ctx->rx_replenish_retry_count = 0;
+			dal_ctx->rx_replenish_retry_interval_ms =
+					DAL_RX_REPLENISH_RETRY_TIMER_MS;
+		} else {
+			dp_err("DAL: rx_replenish failed in retry, failures:%u",
+			       failures);
+			dal_ctx->rx_replenish_retry_count++;
+			dal_ctx->rx_replenish_retry_interval_ms *=
 					DAL_RX_REPLENISH_BACKOFF_MULTIPLIER;
+		}
 	} else {
 		qdf_atomic_sub(failures, &dal_ctx->rx_replenish_failures);
 		dal_ctx->rx_replenish_retry_count = 0;
@@ -1150,6 +1184,7 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	qdf_spinlock_create(&dal_ctx->dal_replenish_lock);
 	qdf_atomic_init(&dal_ctx->rx_replenish_failures);
 	qdf_atomic_init(&dal_ctx->deinit_in_progress);
+	qdf_atomic_init(&dal_ctx->bm_replenish_not_allowed);
 
 	dal_ctx->rx_replenish_retry_interval_ms =
 					DAL_RX_REPLENISH_RETRY_TIMER_MS;
@@ -1347,18 +1382,23 @@ int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
 		dp_rx_add_desc_list_to_free_list(soc, desc_list, tail,
 						 mac_id, rx_desc_pool);
 
-	if (global_plat_ops->rx_replenish) {
-		ret = global_plat_ops->rx_replenish(dal_ctx,
-						    num_req_buffers, false);
-		if (ret)
-			qdf_atomic_add(num_req_buffers,
-				       &dal_ctx->rx_replenish_failures);
-		return ret;
-	} else {
+	if (!global_plat_ops || !global_plat_ops->rx_replenish) {
 		dp_err("DAL: no op registers for rx_replenish req_buf:%u",
 		       num_req_buffers);
 		return QDF_STATUS_E_FAILURE;
 	}
+
+	ret = global_plat_ops->rx_replenish(dal_ctx, num_req_buffers, false);
+	if (ret) {
+		if (soc->dal_mode_switch_in_progress)
+			dp_dal_rx_replenish_bypass_mode(dal_ctx,
+							num_req_buffers, false);
+		else
+			qdf_atomic_add(num_req_buffers,
+				       &dal_ctx->rx_replenish_failures);
+	}
+
+	return ret;
 }
 
 static enum dal_intf_type

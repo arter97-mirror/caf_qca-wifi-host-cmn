@@ -315,6 +315,11 @@ int dp_dal_rx_replenish_bypass_mode(void *priv, u32 cnt, bool use_rsv_pktid)
 	}
 
 	qdf_spin_lock_bh(&dal_ctx->dal_replenish_lock);
+	if (qdf_atomic_read(&dal_ctx->bm_replenish_not_allowed)) {
+		qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
+		return 0;
+	}
+
 	rx_desc_pool = &soc->rx_desc_buf[mac_id];
 	__dp_rx_buffers_replenish(soc, mac_id,
 				  &soc->rx_refill_buf_ring[mac_id],
@@ -740,9 +745,15 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 	if (global_plat_ops->rx_replenish && processed > 0) {
 		ret = global_plat_ops->rx_replenish(dal_ctx, processed, false);
 		if (qdf_unlikely(ret)) {
-			dp_err_rl("Platform RX replenish failed, ret: %d", ret);
-			qdf_atomic_add(processed,
-				       &dal_ctx->rx_replenish_failures);
+			if (soc->dal_mode_switch_in_progress) {
+				dp_dal_rx_replenish_bypass_mode(dal_ctx,
+								processed,
+								false);
+			} else {
+				dp_err_rl("RX replenish failed, ret: %d", ret);
+				qdf_atomic_add(processed,
+					       &dal_ctx->rx_replenish_failures);
+			}
 		}
 	}
 

@@ -256,6 +256,7 @@ struct dp_dal_rx_desc_node {
  * @rx_replenish_retry_count: Max replenish retry count
  * @rx_replenish_retry_interval_ms: Interval at which replenish timer runs
  * @deinit_in_progress: flag to indicate dal_soc_deinit in progress
+ * @bm_replenish_not_allowed: flag to reject replenish from bypass pass
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -287,6 +288,7 @@ struct dp_dal_ctx {
 	int rx_replenish_retry_count;
 	int rx_replenish_retry_interval_ms;
 	qdf_atomic_t deinit_in_progress;
+	qdf_atomic_t bm_replenish_not_allowed;
 };
 
 /**
