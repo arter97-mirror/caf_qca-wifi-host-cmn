@@ -683,6 +683,16 @@ mlme_cm_osif_roam_get_scan_params(struct wlan_objmgr_vdev *vdev,
 	return ret;
 }
 
+QDF_STATUS mlme_cm_osif_reset_scan_reject_params(struct wlan_objmgr_vdev *vdev)
+{
+	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+
+	if (glbl_cm_ops &&
+	    glbl_cm_ops->mlme_cm_reset_scan_reject_params_cb)
+		ret = glbl_cm_ops->mlme_cm_reset_scan_reject_params_cb(vdev);
+
+	return ret;
+}
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE

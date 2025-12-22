@@ -602,6 +602,24 @@ QDF_STATUS osif_cm_roam_complete_cb(struct wlan_objmgr_vdev *vdev)
 
 	return QDF_STATUS_SUCCESS;
 }
+
+/**
+ * osif_cm_reset_scan_reject_params() - to reset scan reject params
+ * @vdev: vdev pointer
+ *
+ * This callback resets scan reject params
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+osif_cm_reset_scan_reject_params(struct wlan_objmgr_vdev *vdev)
+{
+	if (osif_cm_legacy_ops &&
+	    osif_cm_legacy_ops->reset_scan_reject_params_cb)
+		osif_cm_legacy_ops->reset_scan_reject_params_cb(vdev);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
@@ -694,6 +712,7 @@ static struct mlme_cm_ops cm_ops = {
 	.mlme_cm_roam_get_scan_ie_cb = osif_cm_get_scan_ie_info_cb,
 	.mlme_cm_roam_rt_stats_cb = osif_cm_roam_rt_stats_evt_cb,
 	.mlme_cm_roam_connect_complete_cb = osif_cm_roam_complete_cb,
+	.mlme_cm_reset_scan_reject_params_cb = osif_cm_reset_scan_reject_params,
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	.mlme_cm_ft_preauth_cmpl_cb = osif_cm_ft_preauth_cmpl_cb,
