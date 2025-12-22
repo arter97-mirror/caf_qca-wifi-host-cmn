@@ -1083,6 +1083,7 @@ static QDF_STATUS vdev_mgr_down_param_update(
 					struct vdev_down_params *param)
 {
 	struct wlan_objmgr_vdev *vdev;
+	struct wlan_objmgr_psoc *psoc;
 
 	vdev = mlme_obj->vdev;
 	if (!vdev) {
@@ -1090,7 +1091,13 @@ static QDF_STATUS vdev_mgr_down_param_update(
 		return QDF_STATUS_E_INVAL;
 	}
 
+	psoc = wlan_vdev_get_psoc(vdev);
 	param->vdev_id = wlan_vdev_get_id(vdev);
+
+	if (mlo_mgr_is_link_switch_in_progress(vdev) &&
+	    mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc))
+		mlo_mgr_get_link_switch_peer_mac_addr(vdev,
+						      &param->peer_macaddr);
 
 	return QDF_STATUS_SUCCESS;
 }

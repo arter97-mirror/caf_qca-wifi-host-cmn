@@ -557,6 +557,9 @@ QDF_STATUS (*send_vdev_stop_cmd)(wmi_unified_t wmi,
 QDF_STATUS (*send_vdev_down_cmd)(wmi_unified_t wmi,
 			uint8_t vdev_id);
 
+QDF_STATUS (*send_unified_vdev_disconnect_cmd)(wmi_unified_t wmi,
+					       struct vdev_down_params *params);
+
 QDF_STATUS (*send_vdev_start_cmd)(wmi_unified_t wmi,
 		struct vdev_start_params *req);
 

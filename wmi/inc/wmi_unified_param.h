@@ -11029,4 +11029,16 @@ struct wmi_sta_vdev_report_ap_oper_bw_params {
 	enum wlan_phymode ap_phymode;
 };
 
+/**
+ * struct vdev_unified_disconnect_param - Combined vdev/peer disconnection
+ * parameters
+ * @peer_delete: Peer delete parameters
+ * @vdev_stop: VDEV stop parameters
+ *
+ * This structure aggregates the primary params used for vdev disconnect flows.
+ */
+struct vdev_unified_disconnect_param {
+	uint8_t vdev_id;
+	wmi_mac_addr peer_macaddr;
+};
 #endif /* _WMI_UNIFIED_PARAM_H_ */

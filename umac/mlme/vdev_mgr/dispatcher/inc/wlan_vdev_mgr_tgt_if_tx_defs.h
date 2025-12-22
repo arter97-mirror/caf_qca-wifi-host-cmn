@@ -955,9 +955,12 @@ struct vdev_up_params {
 /**
  * struct vdev_down_params - vdev down cmd parameter
  * @vdev_id: vdev id
+ * @peer_macaddr: MAC address of the peer associated with the vdev that is
+ * being brought down
  */
 struct vdev_down_params {
 	uint8_t vdev_id;
+	struct qdf_mac_addr peer_macaddr;
 };
 
 /**

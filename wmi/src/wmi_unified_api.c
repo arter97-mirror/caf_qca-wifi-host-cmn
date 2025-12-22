@@ -128,6 +128,17 @@ QDF_STATUS wmi_unified_vdev_down_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
+QDF_STATUS wmi_unified_vdev_disconnect_send(wmi_unified_t wmi_handle,
+					    struct vdev_down_params *params)
+{
+	if (wmi_handle->ops->send_unified_vdev_disconnect_cmd)
+		return wmi_handle->ops->send_unified_vdev_disconnect_cmd(
+								wmi_handle,
+								params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
 QDF_STATUS wmi_unified_vdev_start_send(wmi_unified_t wmi_handle,
 				       struct vdev_start_params *req)
 {

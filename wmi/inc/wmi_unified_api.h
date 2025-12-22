@@ -981,6 +981,16 @@ QDF_STATUS wmi_unified_vdev_down_send(wmi_unified_t wmi_handle,
 				      uint8_t vdev_id);
 
 /**
+ * wmi_unified_vdev_disconnect_send() - send unified disconnect command to fw
+ * @wmi_handle: wmi handle
+ * @params: vdev down parameters to send
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_vdev_disconnect_send(wmi_unified_t wmi_handle,
+					    struct vdev_down_params *params);
+
+/**
  * wmi_unified_vdev_start_send() - send vdev start command to fw
  * @wmi_handle: wmi handle
  * @req: pointer to hold vdev start parameters

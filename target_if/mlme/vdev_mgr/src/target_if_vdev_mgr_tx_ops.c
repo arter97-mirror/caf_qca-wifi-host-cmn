@@ -884,9 +884,24 @@ static QDF_STATUS target_if_vdev_mgr_down_send(
 		return QDF_STATUS_E_INVAL;
 	}
 
-	status = wmi_unified_vdev_down_send(wmi_handle, param->vdev_id);
-	target_if_wake_lock_timeout_release(psoc, STOP_WAKELOCK);
-	target_if_release_vdev_cmd_rt_lock(psoc, param->vdev_id);
+	/* Send VDEV UNIFIED DISCONNECT command if link switch is in progress */
+	if (mlo_mgr_is_link_switch_in_progress(vdev) &&
+	    mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc)) {
+		mlme_debug("VDEV %d: Send VDEV UNIFIED DISCONNECT during link switch",
+			   param->vdev_id);
+		status = wmi_unified_vdev_disconnect_send(wmi_handle, param);
+		if (QDF_IS_STATUS_ERROR(status))
+			mlme_err("vdev %d: Unified disconnect command failed with status %d",
+				 param->vdev_id, status);
+	} else {
+		status = wmi_unified_vdev_down_send(wmi_handle, param->vdev_id);
+		if (QDF_IS_STATUS_ERROR(status))
+			mlme_err("vdev %d: Vdev down command failed with status %d",
+				 param->vdev_id, status);
+
+		target_if_wake_lock_timeout_release(psoc, STOP_WAKELOCK);
+		target_if_release_vdev_cmd_rt_lock(psoc, param->vdev_id);
+	}
 
 	return status;
 }

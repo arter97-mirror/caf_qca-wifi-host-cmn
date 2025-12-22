@@ -1365,6 +1365,90 @@ static QDF_STATUS send_vdev_down_cmd_tlv(wmi_unified_t wmi, uint8_t vdev_id)
 	return 0;
 }
 
+static QDF_STATUS
+send_unified_vdev_disconnect_cmd_tlv(wmi_unified_t wmi,
+				     struct vdev_down_params *params)
+{
+	wmi_vdev_unified_disconnect_cmd_fixed_param *cmd;
+	wmi_peer_delete_cmd_fixed_param *peer_delete_cmd;
+	wmi_vdev_stop_cmd_fixed_param *vdev_stop_cmd;
+	wmi_vdev_down_cmd_fixed_param *vdev_down_cmd;
+	wmi_buf_t buf;
+	int32_t len = sizeof(*cmd);
+	QDF_STATUS status;
+	uint8_t *buf_ptr;
+	struct vdev_stop_params vdev_stop_param = {0};
+	struct peer_delete_cmd_params peer_delete_param = {0};
+
+	vdev_stop_param.is_mlo_link_switch = 1;
+	peer_delete_param.hw_link_id_bitmap = 0;
+	peer_delete_param.is_mlo_link_switch = 1;
+
+	/* Calculate total length following the exact TLV structure */
+	len += sizeof(wmi_peer_delete_cmd_fixed_param);
+	len += peer_delete_mlo_params_size(&peer_delete_param);
+	len += sizeof(wmi_vdev_stop_cmd_fixed_param);
+	len += vdev_stop_mlo_params_size(&vdev_stop_param);
+	len += sizeof(wmi_vdev_down_cmd_fixed_param);
+
+	buf = wmi_buf_alloc(wmi, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+
+	/* 1. Fill the main unified disconnect command */
+	cmd = (wmi_vdev_unified_disconnect_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_unified_disconnect_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_unified_disconnect_cmd_fixed_param));
+	cmd->vdev_id = params->vdev_id;
+	buf_ptr += sizeof(wmi_vdev_unified_disconnect_cmd_fixed_param);
+
+	/* 2. Fill peer delete command structure */
+	peer_delete_cmd = (wmi_peer_delete_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(
+		&peer_delete_cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_peer_delete_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(wmi_peer_delete_cmd_fixed_param));
+	peer_delete_cmd->vdev_id = params->vdev_id;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->peer_macaddr.bytes,
+				   &peer_delete_cmd->peer_macaddr);
+	buf_ptr += sizeof(wmi_peer_delete_cmd_fixed_param);
+
+	/* 3. Add peer delete MLO params */
+	buf_ptr = peer_delete_add_mlo_params(buf_ptr, &peer_delete_param);
+
+	/* 4. Fill vdev stop command structure */
+	vdev_stop_cmd = (wmi_vdev_stop_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&vdev_stop_cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_stop_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_stop_cmd_fixed_param));
+	vdev_stop_cmd->vdev_id = params->vdev_id;
+	buf_ptr += sizeof(wmi_vdev_stop_cmd_fixed_param);
+
+	/* 5. Add vdev stop MLO params */
+	buf_ptr = vdev_stop_add_mlo_params(buf_ptr, &vdev_stop_param);
+
+	/* Fill vdev down command structure */
+	vdev_down_cmd = (wmi_vdev_down_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&vdev_down_cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_down_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_down_cmd_fixed_param));
+	vdev_down_cmd->vdev_id = params->vdev_id;
+	buf_ptr += sizeof(wmi_vdev_down_cmd_fixed_param);
+
+	wmi_mtrace(WMI_VDEV_UNIFIED_DISCONNECT_CMDID, cmd->vdev_id, 0);
+	status = wmi_unified_cmd_send(wmi, buf, len,
+				      WMI_VDEV_UNIFIED_DISCONNECT_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI_VDEV_UNIFIED_DISCONNECT_CMDID");
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline void copy_channel_info(
 		wmi_vdev_start_request_cmd_fixed_param * cmd,
 		wmi_channel *chan,
@@ -23685,6 +23769,8 @@ struct wmi_ops tlv_ops =  {
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
 	.send_vdev_nss_chain_params_cmd = send_vdev_nss_chain_params_cmd_tlv,
 	.send_vdev_down_cmd = send_vdev_down_cmd_tlv,
+	.send_unified_vdev_disconnect_cmd =
+		send_unified_vdev_disconnect_cmd_tlv,
 	.send_vdev_start_cmd = send_vdev_start_cmd_tlv,
 	.send_peer_flush_tids_cmd = send_peer_flush_tids_cmd_tlv,
 	.send_peer_param_cmd = send_peer_param_cmd_tlv,
