@@ -466,6 +466,17 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc);
 QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc);
 
 /**
+ * dp_dal_ssr_notify() - DAL wrapper for platform SSR notify
+ * @soc: pointer to DP SoC
+ *
+ * This function calls the global platform ops ssr_dump function.
+ * This is called to notify the DAL about SSR events.
+ *
+ * Return: None
+ */
+void dp_dal_ssr_notify(struct dp_soc *soc);
+
+/**
  * dp_service_dal_srngs() - service DAL rings
  * @dp_ctx: dp intr context
  * @dp_budget: dp budget
@@ -585,6 +596,10 @@ static inline QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
 static inline QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline void dp_dal_ssr_notify(struct dp_soc *soc)
+{
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_H */

@@ -210,8 +210,10 @@ static int dp_dal_notify_resume_bypass_mode(void *priv)
 }
 
 /**
- * dp_dal_ssr_dump_bypass_mode() - Skeleton for platform bus ssr dump
- * in bypass mode
+ * dp_dal_ssr_dump_bypass_mode() - platform bus ssr dump
+ *				   in bypass mode.
+ *
+ * This function is no-op in bypass mode.
  *
  * @segment: segment
  */
@@ -1734,6 +1736,39 @@ QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 	}
 
 	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_dal_ssr_notify() - DAL wrapper for platform SSR notify
+ * @soc: pointer to DP SoC
+ *
+ * This function calls the global platform ops ssr_dump function.
+ * This is called to notify the DAL about SSR event.
+ *
+ * Return: None
+ */
+void dp_dal_ssr_notify(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx;
+
+	if (!soc) {
+		dp_err("Invalid SoC pointer");
+		return;
+	}
+
+	dal_ctx = soc->dal_ctx;
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return;
+	}
+
+	if (global_plat_ops && global_plat_ops->ssr_dump) {
+		dp_info("Notifying DAL about SSR event");
+		/* TODO: Implement proper segment data collection */
+		global_plat_ops->ssr_dump(NULL);
+	} else {
+		dp_debug("ssr_dump() not supported by platform ops");
+	}
 }
 
 static void dp_dal_update_ring_params(struct dp_soc *soc,
