@@ -570,15 +570,15 @@ QDF_STATUS hif_rtpm_set_autosuspend_delay(int delay)
 QDF_STATUS hif_rtpm_restore_autosuspend_delay(void)
 {
 	if (gp_hif_rtpm_ctx->delay == gp_hif_rtpm_ctx->cfg_delay) {
-		hif_info_rl("RTPM delay already default: %d",
-			    gp_hif_rtpm_ctx->delay);
+		hif_debug_rl("RTPM delay already default: %d",
+			     gp_hif_rtpm_ctx->delay);
 		return QDF_STATUS_E_ALREADY;
 	}
 
 	__hif_rtpm_set_autosuspend_delay(gp_hif_rtpm_ctx->dev,
 					 gp_hif_rtpm_ctx->cfg_delay);
 	gp_hif_rtpm_ctx->delay = gp_hif_rtpm_ctx->cfg_delay;
-	hif_info_rl("RTPM delay set: %d ms", gp_hif_rtpm_ctx->delay);
+	hif_debug_rl("RTPM delay set: %d ms", gp_hif_rtpm_ctx->delay);
 
 	return QDF_STATUS_SUCCESS;
 }

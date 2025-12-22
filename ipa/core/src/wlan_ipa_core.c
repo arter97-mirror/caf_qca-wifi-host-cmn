@@ -2884,9 +2884,9 @@ static void wlan_ipa_cleanup_iface(struct wlan_ipa_iface_context *iface_context,
 	char *ifname;
 
 	ipa_debug("enter");
-	ipa_log_err("net:%pK mode:%d MAC:" QDF_MAC_ADDR_FMT " id:%d",
-		    iface_context->dev, iface_context->device_mode,
-		    QDF_MAC_ADDR_REF(mac_addr), iface_context->session_id);
+	ipa_log_debug("net:%pK mode:%d MAC:" QDF_MAC_ADDR_FMT " id:%d",
+		      iface_context->dev, iface_context->device_mode,
+		      QDF_MAC_ADDR_REF(mac_addr), iface_context->session_id);
 
 	if (iface_context->session_id == WLAN_IPA_MAX_SESSION)
 		return;

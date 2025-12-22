@@ -2355,7 +2355,7 @@ mlo_mgr_link_switch_defer_disconnect_req(struct wlan_objmgr_vdev *vdev,
 	struct wlan_mlo_sta *sta_ctx;
 
 	if (!mlo_mgr_is_link_switch_in_progress(vdev)) {
-		mlo_info("Link switch not in progress");
+		mlo_debug("Link switch not in progress");
 		return QDF_STATUS_E_INVAL;
 	}
 
