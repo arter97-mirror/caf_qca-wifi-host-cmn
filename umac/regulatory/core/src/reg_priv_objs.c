@@ -309,6 +309,38 @@ reg_set_pdev_afc_dev_type(struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj,
 }
 #endif
 
+#ifdef AUTO_PLATFORM
+/**
+ * reg_set_pdev_disable_5ghz_high_channel_from_165() - Update
+ * pdev_priv_obj->disable_5ghz_high_channel_from_165
+ *
+ * @pdev_priv_obj: pointer to wlan_regulatory_pdev_priv_obj
+ * @psoc_priv_obj: pointer to wlan_regulatory_psoc_priv_obj
+ *
+ * Return : void
+ */
+static void
+reg_set_pdev_disable_5ghz_high_channel_from_165(
+			struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj,
+			struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj)
+{
+	if (!pdev_priv_obj || !psoc_priv_obj) {
+		reg_err("Invalid pdev or psoc private object");
+		return;
+	}
+
+	pdev_priv_obj->disable_5ghz_high_channel_from_165 =
+			psoc_priv_obj->disable_5ghz_high_channel_from_165;
+}
+#else
+static void
+reg_set_pdev_disable_5ghz_high_channel_from_165(
+			struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj,
+			struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj)
+{
+}
+#endif
+
 QDF_STATUS wlan_regulatory_pdev_obj_created_notification(
 	struct wlan_objmgr_pdev *pdev, void *arg_list)
 {
@@ -369,6 +401,9 @@ QDF_STATUS wlan_regulatory_pdev_obj_created_notification(
 		psoc_priv_obj->sta_sap_scc_on_indoor_channel;
 	pdev_priv_obj->p2p_indoor_ch_support =
 		psoc_priv_obj->p2p_indoor_ch_support;
+
+	reg_set_pdev_disable_5ghz_high_channel_from_165(
+				pdev_priv_obj, psoc_priv_obj);
 
 	for (cnt = 0; cnt < PSOC_MAX_PHY_REG_CAP; cnt++) {
 		if (!reg_cap_ptr) {

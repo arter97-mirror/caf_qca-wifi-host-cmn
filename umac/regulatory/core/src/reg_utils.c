@@ -619,6 +619,24 @@ void reg_get_coex_unsafe_chan_reg_disable(
 }
 #endif
 
+#ifdef AUTO_PLATFORM
+static inline
+void reg_get_disable_5ghz_high_channel_from_165(
+		struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj,
+		struct reg_config_vars config_vars)
+{
+	psoc_priv_obj->disable_5ghz_high_channel_from_165 =
+		config_vars.disable_5ghz_high_channel_from_165;
+}
+#else
+static inline
+void reg_get_disable_5ghz_high_channel_from_165(
+		struct wlan_regulatory_psoc_priv_obj *psoc_priv_obj,
+		struct reg_config_vars config_vars)
+{
+}
+#endif
+
 #ifdef CONFIG_CHAN_FREQ_API
 bool reg_is_passive_or_disable_for_pwrmode(
 				struct wlan_objmgr_pdev *pdev,
@@ -1147,6 +1165,8 @@ QDF_STATUS reg_set_config_vars(struct wlan_objmgr_psoc *psoc,
 		config_vars.sta_sap_scc_on_indoor_channel;
 	psoc_priv_obj->p2p_indoor_ch_support =
 		config_vars.p2p_indoor_ch_support;
+	reg_get_disable_5ghz_high_channel_from_165(psoc_priv_obj,
+						   config_vars);
 
 	reg_set_afc_vars(psoc_priv_obj, &config_vars);
 
