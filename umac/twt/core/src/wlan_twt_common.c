@@ -27,6 +27,8 @@
 #include "wlan_policy_mgr_public_struct.h"
 
 #define TWT_NUM_BIT 1
+#define TWT_ALL_MACS_ID 255
+#define MAX_MAC 2
 
 QDF_STATUS
 wlan_twt_tgt_caps_get_responder(struct wlan_objmgr_psoc *psoc, bool *val)
@@ -370,9 +372,7 @@ wlan_twt_cfg_get_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
 				    uint8_t mac_id, bool *val)
 {
 	struct twt_psoc_priv_obj *twt_psoc_obj;
-
-	if (mac_id > MAX_MAC)
-		return QDF_STATUS_E_FAILURE;
+	uint8_t i;
 
 	twt_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(
 							psoc,
@@ -381,6 +381,24 @@ wlan_twt_cfg_get_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
 		twt_err("twt psoc priv obj is null");
 		*val = false;
 		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	/* Handle mac_id 255 which represents all MACs */
+	if (mac_id == TWT_ALL_MACS_ID) {
+		*val = true;
+		for (i = 0; i < MAX_MAC; i++) {
+			if (!QDF_GET_BITS(twt_psoc_obj->twt_resp_flag, i,
+					  TWT_NUM_BIT)) {
+				*val = false;
+				break;
+			}
+		}
+		return QDF_STATUS_SUCCESS;
+	}
+
+	if (mac_id >= MAX_MAC) {
+		twt_err("mac id %d greater than or equal to MAX value", mac_id);
+		return QDF_STATUS_E_FAILURE;
 	}
 
 	*val = QDF_GET_BITS(twt_psoc_obj->twt_resp_flag, mac_id, TWT_NUM_BIT);
@@ -392,9 +410,7 @@ wlan_twt_cfg_set_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
 				    uint8_t mac_id, bool val)
 {
 	struct twt_psoc_priv_obj *twt_psoc_obj;
-
-	if (mac_id > MAX_MAC)
-		return QDF_STATUS_E_FAILURE;
+	uint8_t i;
 
 	twt_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(
 							psoc,
@@ -402,6 +418,19 @@ wlan_twt_cfg_set_mac_responder_flag(struct wlan_objmgr_psoc *psoc,
 	if (!twt_psoc_obj) {
 		twt_err("twt psoc priv obj is null");
 		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	/* Handle mac_id 255 which represents all MACs */
+	if (mac_id == TWT_ALL_MACS_ID) {
+		for (i = 0; i < MAX_MAC; i++)
+			QDF_SET_BITS(twt_psoc_obj->twt_resp_flag, i,
+				     TWT_NUM_BIT, val);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	if (mac_id >= MAX_MAC) {
+		twt_err("mac id %d greater MAX MAC allowed", mac_id);
+		return QDF_STATUS_E_FAILURE;
 	}
 
 	QDF_SET_BITS(twt_psoc_obj->twt_resp_flag, mac_id, TWT_NUM_BIT, val);
@@ -534,4 +563,3 @@ wlan_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
-
