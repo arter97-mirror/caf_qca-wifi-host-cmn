@@ -2586,6 +2586,17 @@ void hal_srng_dst_hw_init_2072(struct hal_soc *hal_soc,
 	hal_srng_dst_hw_init_generic(hal_soc, srng, idle_check, idx);
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline void hal_hw_attach_get_rssi_op(struct hal_soc *hal_soc)
+{
+	hal_soc->ops->hal_rx_tlv_get_rssi = hal_rx_tlv_get_rssi_be;
+}
+#else
+static inline void hal_hw_attach_get_rssi_op(struct hal_soc *hal_soc)
+{
+}
+#endif
+
 static void hal_hw_txrx_ops_attach_2072(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2869,6 +2880,7 @@ static void hal_hw_txrx_ops_attach_2072(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_txmon_status_get_num_users =
 				hal_txmon_status_get_num_users_generic_be;
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
+	hal_hw_attach_get_rssi_op(hal_soc);
 };
 
 struct hal_hw_srng_config hw_srng_table_2072[] = {
