@@ -1425,39 +1425,22 @@ vdev_start_cmd_fill_11be(wmi_vdev_start_request_cmd_fixed_param *cmd,
 {
 }
 #endif
-
 /**
- * send_vdev_start_cmd_tlv() - send vdev start request to fw
- * @wmi_handle: wmi handle
+ * wmi_vdev_start_cmd_fill_params() - Fill vdev start command parameters
+ * @cmd: wmi vdev start command structure
+ * @chan: wmi channel structure
  * @req: vdev start params
  *
- * Return: QDF status
+ * This function fills the vdev start command parameters from the input
+ * vdev_start_params structure. It can be reused from other contexts.
+ *
+ * Return: None
  */
-static QDF_STATUS send_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
-			  struct vdev_start_params *req)
+static void wmi_vdev_start_cmd_fill_params(
+			wmi_vdev_start_request_cmd_fixed_param *cmd,
+			wmi_channel *chan,
+			struct vdev_start_params *req)
 {
-	wmi_vdev_start_request_cmd_fixed_param *cmd;
-	wmi_buf_t buf;
-	wmi_channel *chan;
-	int32_t len, ret;
-	uint8_t *buf_ptr;
-
-	len = sizeof(*cmd) + sizeof(wmi_channel) + WMI_TLV_HDR_SIZE;
-	if (!req->is_restart)
-		len += vdev_start_mlo_params_size(req);
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return QDF_STATUS_E_NOMEM;
-
-	buf_ptr = (uint8_t *) wmi_buf_data(buf);
-	cmd = (wmi_vdev_start_request_cmd_fixed_param *) buf_ptr;
-	chan = (wmi_channel *) (buf_ptr + sizeof(*cmd));
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_vdev_start_request_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN
-			       (wmi_vdev_start_request_cmd_fixed_param));
-	WMITLV_SET_HDR(&chan->tlv_header, WMITLV_TAG_STRUC_wmi_channel,
-		       WMITLV_GET_STRUCT_TLVLEN(wmi_channel));
 	cmd->vdev_id = req->vdev_id;
 
 	/* Fill channel info */
@@ -1508,18 +1491,10 @@ static QDF_STATUS send_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
 		cmd->target_tsf_us_hi = req->target_tsf_us_hi;
 	}
 
-	buf_ptr = (uint8_t *) (((uintptr_t) cmd) + sizeof(*cmd) +
-			       sizeof(wmi_channel));
-	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
-		       cmd->num_noa_descriptors *
-		       sizeof(wmi_p2p_noa_descriptor));
-	if (!req->is_restart) {
-		buf_ptr += WMI_TLV_HDR_SIZE +
-			   (cmd->num_noa_descriptors * sizeof(wmi_p2p_noa_descriptor));
+	/* Fill 11be specific parameters */
+	vdev_start_cmd_fill_11be(cmd, req);
 
-		buf_ptr = vdev_start_add_mlo_params(buf_ptr, req);
-		buf_ptr = vdev_start_add_ml_partner_links(buf_ptr, req);
-	}
+	/* Debug logging for vdev start parameters */
 	wmi_info("vdev_id %d freq %d chanmode %d ch_info: 0x%x is_dfs %d "
 		 "beacon interval %d dtim %d center_chan %d center_freq2 %d "
 		 "reg_info_1: 0x%x reg_info_2: 0x%x, req->max_txpow: 0x%x "
@@ -1534,8 +1509,97 @@ static QDF_STATUS send_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
 		 req->oper_rx_ss, req->ldpc_rx_enabled, req->cac_duration_ms,
 		 req->regdomain, req->he_ops, req->disable_hw_ack,
 		 req->target_tsf_us_lo, req->target_tsf_us_hi);
+}
 
-	vdev_start_cmd_fill_11be(cmd, req);
+/**
+ * wmi_vdev_start_setup_tlv_buffer() - Setup TLV buffer for vdev start command
+ * @cmd: wmi vdev start command structure
+ * @req: vdev start params
+ *
+ * This function sets up the TLV buffer for NOA descriptors and MLO parameters.
+ * It can be reused from other contexts that need the same TLV buffer setup.
+ *
+ * Return: Updated buffer pointer after TLV setup
+ */
+static uint8_t *wmi_vdev_start_setup_tlv_buffer(
+		wmi_vdev_start_request_cmd_fixed_param *cmd,
+		struct vdev_start_params *req)
+{
+	uint8_t *buf_ptr;
+
+	/* Position after cmd and channel structures */
+	buf_ptr = (uint8_t *)(((uintptr_t)cmd) + sizeof(*cmd) +
+				sizeof(wmi_channel));
+
+	/* --- NOA descriptors (ARRAY_STRUC) --- */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       cmd->num_noa_descriptors *
+		       sizeof(wmi_p2p_noa_descriptor));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	if (!req->is_restart) {
+		/* If any NOA descriptors exist, write/advance for payload */
+		if (cmd->num_noa_descriptors) {
+			buf_ptr += cmd->num_noa_descriptors *
+					sizeof(wmi_p2p_noa_descriptor);
+		}
+
+		/* MLO params array (1 element) + header;
+		 * partner links array + header */
+		buf_ptr = vdev_start_add_mlo_params(buf_ptr, req);
+		buf_ptr = vdev_start_add_ml_partner_links(buf_ptr, req);
+	} else {
+		/* Restart: keep TLV order stable by sending EMPTY arrays */
+
+		/* Empty MLO params array */
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+		buf_ptr += WMI_TLV_HDR_SIZE;
+
+		/* Empty partner_link_params array */
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+		buf_ptr += WMI_TLV_HDR_SIZE;
+	}
+
+	return buf_ptr;
+}
+
+/**
+ * send_vdev_start_cmd_tlv() - send vdev start request to fw
+ * @wmi_handle: wmi handle
+ * @req: vdev start params
+ *
+ * Return: QDF status
+ */
+static QDF_STATUS send_vdev_start_cmd_tlv(wmi_unified_t wmi_handle,
+					  struct vdev_start_params *req)
+{
+	wmi_vdev_start_request_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	wmi_channel *chan;
+	int32_t len, ret;
+	uint8_t *buf_ptr;
+
+	len = sizeof(*cmd) + sizeof(wmi_channel) + WMI_TLV_HDR_SIZE;
+	if (!req->is_restart)
+		len += vdev_start_mlo_params_size(req);
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = (uint8_t *) wmi_buf_data(buf);
+	cmd = (wmi_vdev_start_request_cmd_fixed_param *) buf_ptr;
+	chan = (wmi_channel *) (buf_ptr + sizeof(*cmd));
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_start_request_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_vdev_start_request_cmd_fixed_param));
+	WMITLV_SET_HDR(&chan->tlv_header, WMITLV_TAG_STRUC_wmi_channel,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_channel));
+	/* Fill vdev start command parameters */
+	wmi_vdev_start_cmd_fill_params(cmd, chan, req);
+
+	/* Setup TLV buffer for NOA descriptors and MLO parameters */
+	buf_ptr = wmi_vdev_start_setup_tlv_buffer(cmd, req);
 
 	if (req->is_restart) {
 		wmi_mtrace(WMI_VDEV_RESTART_REQUEST_CMDID, cmd->vdev_id, 0);
@@ -1998,6 +2062,38 @@ static QDF_STATUS send_peer_param_cmd_tlv(wmi_unified_t wmi,
 }
 
 /**
+ * wmi_vdev_up_cmd_fill_params() - Fill vdev up command parameters
+ * @cmd: wmi vdev up command structure
+ * @bssid: bssid
+ * @params: vdev up parameters
+ *
+ * This function fills the vdev up command parameters from the input
+ * parameters. It can be reused from other contexts.
+ *
+ * Return: None
+ */
+static void wmi_vdev_up_cmd_fill_params(
+			wmi_vdev_up_cmd_fixed_param *cmd,
+			uint8_t bssid[QDF_MAC_ADDR_SIZE],
+			struct vdev_up_params *params)
+{
+	cmd->vdev_id = params->vdev_id;
+	cmd->vdev_assoc_id = params->assoc_id;
+	cmd->profile_idx = params->profile_idx;
+	cmd->profile_num = params->profile_num;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->trans_bssid, &cmd->trans_bssid);
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(bssid, &cmd->vdev_bssid);
+
+	/* Debug logging for vdev up parameters */
+	wmi_debug("vdev_id %d aid %d profile idx %d count %d bssid "
+		  QDF_MAC_ADDR_FMT " trans bssid " QDF_MAC_ADDR_FMT,
+		  params->vdev_id, params->assoc_id,
+		  params->profile_idx, params->profile_num,
+		  QDF_MAC_ADDR_REF(bssid),
+		  QDF_MAC_ADDR_REF(params->trans_bssid));
+}
+
+/**
  * send_vdev_up_cmd_tlv() - send vdev up command in fw
  * @wmi: wmi handle
  * @bssid: bssid
@@ -2013,12 +2109,6 @@ static QDF_STATUS send_vdev_up_cmd_tlv(wmi_unified_t wmi,
 	wmi_buf_t buf;
 	int32_t len = sizeof(*cmd);
 
-	wmi_debug("VDEV_UP");
-	wmi_debug("vdev_id %d aid %d profile idx %d count %d bssid "
-		  QDF_MAC_ADDR_FMT " trans bssid " QDF_MAC_ADDR_FMT,
-		  params->vdev_id, params->assoc_id,
-		  params->profile_idx, params->profile_num,
-		  QDF_MAC_ADDR_REF(bssid), QDF_MAC_ADDR_REF(params->trans_bssid));
 	buf = wmi_buf_alloc(wmi, len);
 	if (!buf)
 		return QDF_STATUS_E_NOMEM;
@@ -2027,12 +2117,8 @@ static QDF_STATUS send_vdev_up_cmd_tlv(wmi_unified_t wmi,
 	WMITLV_SET_HDR(&cmd->tlv_header,
 		       WMITLV_TAG_STRUC_wmi_vdev_up_cmd_fixed_param,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_up_cmd_fixed_param));
-	cmd->vdev_id = params->vdev_id;
-	cmd->vdev_assoc_id = params->assoc_id;
-	cmd->profile_idx = params->profile_idx;
-	cmd->profile_num = params->profile_num;
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->trans_bssid, &cmd->trans_bssid);
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(bssid, &cmd->vdev_bssid);
+	/* Fill vdev up command parameters */
+	wmi_vdev_up_cmd_fill_params(cmd, bssid, params);
 	wmi_mtrace(WMI_VDEV_UP_CMDID, cmd->vdev_id, 0);
 	if (wmi_unified_cmd_send(wmi, buf, len, WMI_VDEV_UP_CMDID)) {
 		wmi_err("Failed to send vdev up command");
@@ -2064,6 +2150,54 @@ static uint32_t convert_peer_type_host_to_target(uint32_t peer_type)
 	return peer_type;
 }
 #endif
+
+/**
+ * wmi_peer_create_cmd_fill_params() - Fill peer create command parameters
+ * @cmd: wmi peer create command structure
+ * @param: peer create parameters
+ *
+ * This function fills the peer create command parameters from the input
+ * peer_create_params structure. It can be reused from other contexts.
+ *
+ * Return: None
+ */
+static void wmi_peer_create_cmd_fill_params(
+			wmi_peer_create_cmd_fixed_param *cmd,
+			struct peer_create_params *param)
+{
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(param->peer_addr.bytes, &cmd->peer_macaddr);
+	cmd->peer_type = convert_peer_type_host_to_target(param->peer_type);
+	cmd->vdev_id = param->vdev_id;
+	cmd->is_11bi_peer = param->is_11bi_peer;
+
+	wmi_debug("peer_addr "QDF_MAC_ADDR_FMT" vdev_id %d 11bi_peer:%d",
+		  QDF_MAC_ADDR_REF(param->peer_addr.bytes),
+		  param->vdev_id, cmd->is_11bi_peer);
+}
+
+/**
+ * wmi_peer_create_setup_buffer() - Setup buffer for peer create command
+ * @cmd: wmi peer create command structure
+ * @param: peer create parameters
+ *
+ * This function sets up the buffer for MLO parameters in peer create command.
+ * It can be reused from other contexts that need the same buffer setup.
+ *
+ * Return: Updated buffer pointer after setup
+ */
+static uint8_t *wmi_peer_create_setup_buffer(
+			wmi_peer_create_cmd_fixed_param *cmd,
+			struct peer_create_params *param)
+{
+	uint8_t *buf_ptr;
+
+	/* Calculate buffer position after cmd structure */
+	buf_ptr = (uint8_t *)cmd;
+	buf_ptr += sizeof(*cmd);
+	buf_ptr = peer_create_add_mlo_params(buf_ptr, param);
+
+	return buf_ptr;
+}
 /**
  * send_peer_create_cmd_tlv() - send peer create command to fw
  * @wmi: wmi handle
@@ -2089,24 +2223,18 @@ static QDF_STATUS send_peer_create_cmd_tlv(wmi_unified_t wmi,
 		       WMITLV_TAG_STRUC_wmi_peer_create_cmd_fixed_param,
 		       WMITLV_GET_STRUCT_TLVLEN
 			       (wmi_peer_create_cmd_fixed_param));
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(param->peer_addr.bytes, &cmd->peer_macaddr);
-	cmd->peer_type = convert_peer_type_host_to_target(param->peer_type);
-	cmd->vdev_id = param->vdev_id;
-	cmd->is_11bi_peer = param->is_11bi_peer;
 
-	buf_ptr = (uint8_t *)wmi_buf_data(buf);
-	buf_ptr += sizeof(*cmd);
-	buf_ptr = peer_create_add_mlo_params(buf_ptr, param);
+	/* Fill peer create command parameters */
+	wmi_peer_create_cmd_fill_params(cmd, param);
+
+	/* Setup buffer for MLO parameters */
+	buf_ptr = wmi_peer_create_setup_buffer(cmd, param);
 	wmi_mtrace(WMI_PEER_CREATE_CMDID, cmd->vdev_id, 0);
 	if (wmi_unified_cmd_send(wmi, buf, len, WMI_PEER_CREATE_CMDID)) {
 		wmi_err("Failed to send WMI_PEER_CREATE_CMDID");
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
 	}
-
-	wmi_debug("peer_addr "QDF_MAC_ADDR_FMT" vdev_id %d 11bi_peer:%d",
-		  QDF_MAC_ADDR_REF(param->peer_addr.bytes),
-		  param->vdev_id, cmd->is_11bi_peer);
 
 	return 0;
 }
@@ -3851,54 +3979,20 @@ static void wmi_populate_service_11be(uint32_t *wmi_service)
 #endif
 
 /**
- * send_peer_assoc_cmd_tlv() - WMI peer assoc function
- * @wmi_handle: handle to WMI.
- * @param: pointer to peer assoc parameter
+ * wmi_peer_assoc_cmd_fill_params() - Fill peer assoc command parameters
+ * @cmd: wmi peer assoc command structure
+ * @param: peer assoc parameters
  *
- * Return: QDF_STATUS_SUCCESS for success or error code
+ * This function fills the peer assoc command parameters from the input
+ * peer_assoc_params structure. It can be reused from other contexts.
+ *
+ * Return: None
  */
-static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
-				struct peer_assoc_params *param)
+static void wmi_peer_assoc_cmd_fill_params(
+			wmi_peer_assoc_complete_cmd_fixed_param *cmd,
+			struct peer_assoc_params *param)
 {
-	wmi_peer_assoc_complete_cmd_fixed_param *cmd;
-	wmi_vht_rate_set *mcs;
-	wmi_he_rate_set *he_mcs;
-	wmi_buf_t buf;
-	int32_t len;
-	uint8_t *buf_ptr;
-	QDF_STATUS ret;
-	uint32_t peer_legacy_rates_align;
-	uint32_t peer_ht_rates_align;
-	int32_t i;
-
-
-	peer_legacy_rates_align = wmi_align(param->peer_legacy_rates.num_rates);
-	peer_ht_rates_align = wmi_align(param->peer_ht_rates.num_rates);
-
-	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE +
-		(peer_legacy_rates_align * sizeof(uint8_t)) +
-		WMI_TLV_HDR_SIZE +
-		(peer_ht_rates_align * sizeof(uint8_t)) +
-		sizeof(wmi_vht_rate_set) +
-		(sizeof(wmi_he_rate_set) * param->peer_he_mcs_count
-		+ WMI_TLV_HDR_SIZE)
-		+ wmi_eht_peer_assoc_params_len(param) +
-		peer_assoc_mlo_params_size(param) +
-		peer_assoc_t2lm_params_size(param);
-
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf)
-		return QDF_STATUS_E_NOMEM;
-
-	buf_ptr = (uint8_t *) wmi_buf_data(buf);
-	cmd = (wmi_peer_assoc_complete_cmd_fixed_param *) buf_ptr;
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		       WMITLV_TAG_STRUC_wmi_peer_assoc_complete_cmd_fixed_param,
-		       WMITLV_GET_STRUCT_TLVLEN
-			       (wmi_peer_assoc_complete_cmd_fixed_param));
-
 	cmd->vdev_id = param->vdev_id;
-
 	cmd->peer_new_assoc = param->peer_new_assoc;
 	cmd->peer_associd = param->peer_associd;
 
@@ -3929,10 +4023,64 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	qdf_mem_copy(&cmd->peer_ppet, &param->peer_ppet,
 				sizeof(param->peer_ppet));
 	cmd->peer_he_caps_6ghz = param->peer_he_caps_6ghz;
+
+	cmd->auth_mode = param->akm;
+	cmd->peer_nss = param->peer_op_dl_nss;
+	cmd->max_downlink_nss = param->peer_cap_ul_nss;
+	cmd->peer_max_tx_nss = param->peer_supp_tx_nss;
+
+	/* Update bandwidth-NSS mapping */
+	cmd->peer_bw_rxnss_override = 0;
+	cmd->peer_bw_rxnss_override |= param->peer_bw_rxnss_override;
+
+	wmi_debug("vdev_id %d associd %d peer_flags %x rate_caps %x "
+		"peer_caps %x listen_intval %d ht_caps %x max_mpdu %d "
+		"nss %d max_tx_nss %d phymode %d peer_mpdu_density %d "
+		"cmd->peer_vht_caps %x "
+		"HE cap_info %x ops %x "
+		"HE cap_info_ext %x "
+		"HE phy %x  %x  %x  "
+		"peer_bw_rxnss_override %x",
+		cmd->vdev_id, cmd->peer_associd, cmd->peer_flags,
+		cmd->peer_rate_caps, cmd->peer_caps,
+		cmd->peer_listen_intval, cmd->peer_ht_caps,
+		cmd->peer_max_mpdu, cmd->peer_nss, cmd->peer_max_tx_nss,
+		cmd->peer_phymode, cmd->peer_mpdu_density,
+		cmd->peer_vht_caps, cmd->peer_he_cap_info,
+		cmd->peer_he_ops, cmd->peer_he_cap_info_ext,
+		cmd->peer_he_cap_phy[0], cmd->peer_he_cap_phy[1],
+		cmd->peer_he_cap_phy[2],
+		cmd->peer_bw_rxnss_override);
+}
+
+/**
+ * wmi_peer_assoc_cmd_fill_rates() - Fill peer assoc rate information
+ * @buf_ptr: buffer pointer for rate information
+ * @param: peer assoc parameters
+ * @peer_legacy_rates_align: legacy rates alignment
+ * @peer_ht_rates_align: HT rates alignment
+ *
+ * This function fills the peer assoc rate information (legacy, HT, VHT)
+ * and can be reused from other contexts.
+ *
+ * Return: updated buffer pointer
+ */
+static uint8_t *wmi_peer_assoc_cmd_fill_rates(
+			uint8_t *buf_ptr,
+			struct peer_assoc_params *param,
+			uint32_t peer_legacy_rates_align,
+			uint32_t peer_ht_rates_align)
+{
+	wmi_vht_rate_set *mcs;
+	wmi_peer_assoc_complete_cmd_fixed_param *cmd;
+
+	/* Get cmd pointer to update rate counts */
+	cmd = (wmi_peer_assoc_complete_cmd_fixed_param *)
+		(buf_ptr - sizeof(wmi_peer_assoc_complete_cmd_fixed_param));
+
 	/* Update peer legacy rate information */
-	buf_ptr += sizeof(*cmd);
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
-				peer_legacy_rates_align);
+			peer_legacy_rates_align);
 	buf_ptr += WMI_TLV_HDR_SIZE;
 	cmd->num_peer_legacy_rates = param->peer_legacy_rates.num_rates;
 	qdf_mem_copy(buf_ptr, param->peer_legacy_rates.rates,
@@ -3952,15 +4100,6 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_STRUC_wmi_vht_rate_set,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_vht_rate_set));
 
-	cmd->auth_mode = param->akm;
-	cmd->peer_nss = param->peer_op_dl_nss;
-	cmd->max_downlink_nss = param->peer_cap_ul_nss;
-	cmd->peer_max_tx_nss = param->peer_supp_tx_nss;
-
-	/* Update bandwidth-NSS mapping */
-	cmd->peer_bw_rxnss_override = 0;
-	cmd->peer_bw_rxnss_override |= param->peer_bw_rxnss_override;
-
 	mcs = (wmi_vht_rate_set *) buf_ptr;
 	if (param->vht_capable) {
 		mcs->rx_max_rate = param->rx_max_rate;
@@ -3969,6 +4108,29 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 		mcs->tx_mcs_set = param->tx_mcs_set;
 		mcs->tx_max_mcs_nss = param->tx_max_mcs_nss;
 	}
+
+	return buf_ptr;
+}
+
+/**
+ * wmi_peer_assoc_cmd_fill_he_rates() - Fill peer assoc HE rate information
+ * and debug
+ * @buf_ptr: buffer pointer for HE rate information
+ * @cmd: wmi peer assoc command structure
+ * @param: peer assoc parameters
+ *
+ * This function fills the peer assoc HE rate information and comprehensive
+ * debug logging. It can be reused from other contexts.
+ *
+ * Return: updated buffer pointer
+ */
+static uint8_t *wmi_peer_assoc_cmd_fill_he_rates(
+			uint8_t *buf_ptr,
+			wmi_peer_assoc_complete_cmd_fixed_param *cmd,
+			struct peer_assoc_params *param)
+{
+	wmi_he_rate_set *he_mcs;
+	uint32_t i;
 
 	/* HE Rates */
 	cmd->min_data_rate = param->min_data_rate;
@@ -4006,23 +4168,79 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	}
 
 	wmi_debug("vdev_id %d associd %d peer_flags %x rate_caps %x "
-		 "peer_caps %x listen_intval %d ht_caps %x max_mpdu %d "
-		 "peer_op_rx_nss %d peer_supp_tx_nss %d peer_cap_tx_nss %d "
-		 "phymode %d peer_mpdu_density %d cmd->peer_vht_caps %x "
-		 "HE cap_info %x ops %x HE cap_info_ext %x HE phy %x  %x  %x  "
-		 "peer_bw_rxnss_override %x, peer CCK TX/RX: %d/%d",
-		 cmd->vdev_id, cmd->peer_associd, cmd->peer_flags,
-		 cmd->peer_rate_caps, cmd->peer_caps,
-		 cmd->peer_listen_intval, cmd->peer_ht_caps,
-		 cmd->peer_max_mpdu, cmd->peer_nss, cmd->peer_max_tx_nss,
-		 cmd->max_downlink_nss, cmd->peer_phymode,
-		 cmd->peer_mpdu_density, cmd->peer_vht_caps,
-		 cmd->peer_he_cap_info, cmd->peer_he_ops,
-		 cmd->peer_he_cap_info_ext, cmd->peer_he_cap_phy[0],
-		 cmd->peer_he_cap_phy[1], cmd->peer_he_cap_phy[2],
-		 cmd->peer_bw_rxnss_override, cmd->peer_cck_tx_support_5ghz,
-		 cmd->peer_cck_rx_support_5ghz);
+		  "peer_caps %x listen_intval %d ht_caps %x max_mpdu %d "
+		  "peer_op_rx_nss %d peer_supp_tx_nss %d peer_cap_tx_nss %d "
+		  "phymode %d peer_mpdu_density %d cmd->peer_vht_caps %x "
+		  "HE cap_info %x ops %x HE cap_info_ext %x HE phy %x  %x  %x  "
+		  "peer_bw_rxnss_override %x, peer CCK TX/RX: %d/%d",
+		  cmd->vdev_id, cmd->peer_associd, cmd->peer_flags,
+		  cmd->peer_rate_caps, cmd->peer_caps,
+		  cmd->peer_listen_intval, cmd->peer_ht_caps,
+		  cmd->peer_max_mpdu, cmd->peer_nss, cmd->peer_max_tx_nss,
+		  cmd->max_downlink_nss, cmd->peer_phymode,
+		  cmd->peer_mpdu_density, cmd->peer_vht_caps,
+		  cmd->peer_he_cap_info, cmd->peer_he_ops,
+		  cmd->peer_he_cap_info_ext, cmd->peer_he_cap_phy[0],
+		  cmd->peer_he_cap_phy[1], cmd->peer_he_cap_phy[2],
+		  cmd->peer_bw_rxnss_override, cmd->peer_cck_tx_support_5ghz,
+		  cmd->peer_cck_rx_support_5ghz);
 
+	return buf_ptr;
+}
+
+/**
+ * send_peer_assoc_cmd_tlv() - WMI peer assoc function
+ * @wmi_handle: handle to WMI.
+ * @param: pointer to peer assoc parameter
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
+					  struct peer_assoc_params *param)
+{
+	wmi_peer_assoc_complete_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	int32_t len;
+	uint8_t *buf_ptr;
+	QDF_STATUS ret;
+	uint32_t peer_legacy_rates_align;
+	uint32_t peer_ht_rates_align;
+
+	peer_legacy_rates_align = wmi_align(param->peer_legacy_rates.num_rates);
+	peer_ht_rates_align = wmi_align(param->peer_ht_rates.num_rates);
+
+	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE +
+		(peer_legacy_rates_align * sizeof(uint8_t)) +
+		WMI_TLV_HDR_SIZE +
+		(peer_ht_rates_align * sizeof(uint8_t)) +
+		sizeof(wmi_vht_rate_set) +
+		(sizeof(wmi_he_rate_set) * param->peer_he_mcs_count
+		+ WMI_TLV_HDR_SIZE)
+		+ wmi_eht_peer_assoc_params_len(param) +
+		peer_assoc_mlo_params_size(param) +
+		peer_assoc_t2lm_params_size(param);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = (uint8_t *) wmi_buf_data(buf);
+	cmd = (wmi_peer_assoc_complete_cmd_fixed_param *) buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_complete_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_peer_assoc_complete_cmd_fixed_param));
+
+	/* Fill peer assoc command parameters */
+	wmi_peer_assoc_cmd_fill_params(cmd, param);
+	/* Fill peer assoc rate information */
+	buf_ptr += sizeof(*cmd);
+	buf_ptr = wmi_peer_assoc_cmd_fill_rates(buf_ptr, param,
+						peer_legacy_rates_align,
+						peer_ht_rates_align);
+
+	/* Fill peer assoc HE rate information and debug logging */
+	buf_ptr = wmi_peer_assoc_cmd_fill_he_rates(buf_ptr, cmd, param);
 	buf_ptr = peer_assoc_add_mlo_params(buf_ptr, param);
 
 	buf_ptr = update_peer_flags_tlv_ehtinfo(cmd, param, buf_ptr);
