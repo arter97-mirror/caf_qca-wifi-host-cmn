@@ -2865,6 +2865,21 @@ dp_peer_set_local_link_id(struct dp_peer *peer)
 }
 #endif
 
+#ifdef CONFIG_BORON
+void dp_peer_set_classify_idx(struct dp_soc *soc, struct dp_peer *peer,
+			      struct dp_vdev *vdev)
+{
+	if (!peer->txpt_classify_idx_valid) {
+		dp_info("txpt classify info is not set");
+		qdf_atomic_set(&peer->txpt_info_setup_done, 1);
+		return;
+	}
+
+	dp_vdev_set_tx_classify_idx(soc, vdev->vdev_id,
+				    peer->txpt_classify_idx);
+}
+#endif
+
 /**
  * dp_peer_setup_wifi3() - initialize the peer
  * @soc_hdl: soc handle object
@@ -2990,6 +3005,9 @@ dp_peer_setup_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			dp_peer_rx_init_wrapper(pdev, peer, setup_info);
 		}
 	}
+
+	if (!IS_MLO_DP_LINK_PEER(peer))
+		dp_peer_set_classify_idx(soc, peer, vdev);
 
 	dp_peer_set_local_link_id(peer);
 

@@ -243,7 +243,6 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
 	uint32_t hp;
 	qdf_nbuf_t nbuf = tx_desc->nbuf;
-
 	be_vdev = dp_get_be_vdev_from_dp_vdev(vdev);
 
 	if (!dp_tx_is_desc_id_valid(soc, tx_desc->id)) {
@@ -283,6 +282,9 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 	if (qdf_likely(QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(nbuf))) {
 		hal_tx_desc_set_peer_txpt_ci_index(hal_tx_desc_cached,
 					     QDF_NBUF_CB_TXPT_IDX_VALUE(nbuf));
+	} else if (qdf_likely(&vdev->txpt_classify_idx_valid)) {
+		hal_tx_desc_set_peer_txpt_ci_index(hal_tx_desc_cached,
+						   vdev->txpt_classify_idx);
 	} else {
 		dp_err_rl("TXPT classify_info idx invalid");
 		DP_STATS_INC(soc, tx.inv_txpt_ci, 1);

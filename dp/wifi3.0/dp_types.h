@@ -5248,6 +5248,11 @@ struct dp_vdev {
 	/* Tx NSS stats received from FW */
 	struct cdp_htt_stats_tx_vdev_nss_tlv tx_vdev_nss;
 	struct dp_ul_delay_stats ul_delay_stats[UL_DELAY_CALC_ID_MAX];
+#ifdef CONFIG_BORON
+	/* Tx msdu flow pointer index */
+	qdf_atomic_t txpt_classify_idx_valid;
+	uint8_t txpt_classify_idx;
+#endif
 };
 
 enum {
@@ -6213,6 +6218,7 @@ struct dp_peer {
 	/* Tx msdu flow pointer index */
 	bool txpt_classify_idx_valid;
 	uint8_t txpt_classify_idx;
+	qdf_atomic_t txpt_info_setup_done;
 #endif
 };
 

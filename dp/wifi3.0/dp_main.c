@@ -6351,6 +6351,31 @@ dp_tx_cfg_astidx_cache_mapping_wrapper(struct dp_soc *soc, struct dp_peer *peer,
 	qdf_spin_unlock_bh(&soc->peer_map_lock);
 }
 
+#ifdef CONFIG_BORON
+static inline
+void dp_peer_reset_tx_classify_valid(struct dp_peer *peer)
+{
+	peer->txpt_classify_idx_valid = false;
+}
+
+static inline
+void dp_peer_init_tx_classify_idx(struct dp_peer *peer)
+{
+	qdf_atomic_init(&peer->txpt_info_setup_done);
+}
+#else
+
+static inline
+void dp_peer_reset_tx_classify_valid(struct dp_peer *peer)
+{
+}
+
+static inline
+void dp_peer_init_tx_classify_idx(struct dp_peer *peer)
+{
+}
+#endif
+
 /**
  * dp_peer_create_wifi3() - attach txrx peer
  * @soc_hdl: Datapath soc handle
@@ -6406,6 +6431,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		if (IS_MLO_DP_MLD_PEER(peer))
 			dp_mld_peer_init_link_peers_info(peer);
 
+		dp_peer_init_tx_classify_idx(peer);
 		qdf_spin_lock_bh(&soc->ast_lock);
 		dp_peer_delete_ast_entries(soc, peer);
 		qdf_spin_unlock_bh(&soc->ast_lock);
@@ -6865,6 +6891,7 @@ QDF_STATUS dp_peer_mlo_setup(
 		/* associate mld and link peer */
 		dp_link_peer_add_mld_peer(peer, mld_peer);
 		dp_mld_peer_add_link_peer(mld_peer, peer, setup_info->is_bridge_peer);
+		dp_peer_set_classify_idx(soc, mld_peer, peer->vdev);
 
 		mld_peer->txrx_peer->is_mld_peer = 1;
 		dp_peer_unref_delete(mld_peer, DP_MOD_ID_CDP);
@@ -7687,6 +7714,7 @@ static QDF_STATUS dp_peer_delete_wifi3(struct cdp_soc_t *soc_hdl,
 	dp_peer_vdev_list_remove(soc, vdev, peer);
 
 	dp_peer_mlo_delete(peer);
+	dp_peer_reset_tx_classify_valid(peer);
 
 	dp_peer_unmap_track_update(soc, peer);
 

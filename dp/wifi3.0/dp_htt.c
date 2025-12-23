@@ -3940,6 +3940,9 @@ static void dp_htt_mlo_peer_map_handler(struct htt_soc *soc,
 		dp_peer_set_tx_classify_idx(soc->dp_soc, ml_peer_id,
 					    DP_VDEV_ALL,
 					    peer_classify_info_idx);
+		dp_vdev_check_n_set_tx_classify_idx(soc->dp_soc, DP_VDEV_ALL,
+						    peer_classify_info_idx,
+						    ml_peer_id);
 	}
 }
 
@@ -5099,6 +5102,10 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 			dp_peer_set_tx_classify_idx(soc->dp_soc, peer_id,
 						    vdev_id,
 						    peer_classify_info_idx);
+			dp_vdev_check_n_set_tx_classify_idx(
+						soc->dp_soc, vdev_id,
+						peer_classify_info_idx,
+						peer_id);
 		}
 
 

@@ -3306,6 +3306,57 @@ void dp_rx_reset_roaming_peer(struct dp_soc *soc, uint8_t vdev_id,
 #endif
 
 #ifdef CONFIG_BORON
+void dp_vdev_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+				 uint8_t peer_classify_info_idx)
+{
+	struct dp_vdev *vdev;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_HTT);
+	if (!vdev) {
+		dp_err("invalid vdev, id - %d", vdev_id);
+		return;
+	}
+	vdev->txpt_classify_idx = peer_classify_info_idx;
+	qdf_atomic_set(&vdev->txpt_classify_idx_valid, 1);
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_HTT);
+}
+
+void dp_vdev_check_n_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+					 uint8_t peer_classify_info_idx,
+					 uint16_t peer_id)
+{
+	struct dp_peer *peer;
+	int i;
+	struct dp_peer_link_info *link_peer_info;
+
+	peer = __dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_HTT);
+	if (!peer) {
+		dp_err("invalid peer, id - %d", peer_id);
+		return;
+	}
+
+	if (!qdf_atomic_read(&peer->txpt_info_setup_done))
+		goto exit;
+	if (IS_MLO_DP_MLD_PEER(peer)) {
+		for (i = 0; i < DP_MAX_MLO_LINKS; i++) {
+			link_peer_info = &peer->link_peers[i];
+			if (link_peer_info->is_valid)
+				dp_vdev_set_tx_classify_idx(
+					soc,
+					link_peer_info->vdev_id,
+					peer_classify_info_idx);
+		}
+
+	} else if (!IS_MLO_DP_LINK_PEER(peer))
+		dp_vdev_set_tx_classify_idx(soc, vdev_id,
+					    peer_classify_info_idx);
+exit:
+	dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
+}
+#endif
+
+#ifdef CONFIG_BORON
 QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
 				       uint8_t vdev_id,
 				       uint8_t peer_classify_info_idx)

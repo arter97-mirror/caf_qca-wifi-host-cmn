@@ -739,6 +739,46 @@ QDF_STATUS dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
 void dp_rx_peer_unmap_handler(struct dp_soc *soc, uint16_t peer_id,
 			      uint8_t vdev_id, uint8_t *peer_mac_addr,
 			      uint8_t is_wds, uint32_t free_wds_count);
+
+#ifdef CONFIG_BORON
+/**
+ * dp_vdev_check_n_set_tx_classify_idx() - check and set tx pkt classify info
+ * @soc: dp soc
+ * @vdev_id: vdev id
+ * @peer_classify_info_idx: peer classify info idx
+ * @peer_id: peer id
+ *
+ * Return
+ */
+void dp_vdev_check_n_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+					 uint8_t peer_classify_info_idx,
+					 uint16_t peer_id);
+
+/**
+ * dp_vdev_set_tx_classify_idx() - set tx pkt classify info
+ * @soc: dp soc
+ * @vdev_id: vdev id
+ * @peer_classify_info_idx: peer classify info idx
+ *
+ * Return
+ */
+void dp_vdev_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+				 uint8_t peer_classify_info_idx);
+#else
+static inline
+void dp_vdev_check_n_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+					 uint8_t peer_classify_info_idx,
+					 uint16_t peer_id)
+{
+}
+
+static inline
+void dp_vdev_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
+				 uint8_t peer_classify_info_idx)
+{
+}
+#endif
+
 /**
  * dp_peer_set_tx_classify_idx() - DP set peer Tx flow queue index
  * @soc: generic soc handle
@@ -751,6 +791,25 @@ void dp_rx_peer_unmap_handler(struct dp_soc *soc, uint16_t peer_id,
 QDF_STATUS dp_peer_set_tx_classify_idx(struct dp_soc *soc, uint16_t peer_id,
 				       uint8_t vdev_id,
 				       uint8_t peer_classify_info_idx);
+
+#ifdef CONFIG_BORON
+/**
+ * dp_peer_set_classify_idx() - set peer Tx flow queue index
+ * @soc: generic soc handle
+ * @peer: dp peer
+ * @vdev: vdev
+ *
+ * Return: none
+ */
+void dp_peer_set_classify_idx(struct dp_soc *soc, struct dp_peer *peer,
+			      struct dp_vdev *vdev);
+#else
+static inline
+void dp_peer_set_classify_idx(struct dp_soc *soc, struct dp_peer *peer,
+			      struct dp_vdev *vdev)
+{
+}
+#endif
 
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(DP_MLO_LINK_STATS_SUPPORT)
 /**
