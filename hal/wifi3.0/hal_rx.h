@@ -3323,4 +3323,17 @@ hal_rx_get_phy_ppdu_id_size(hal_soc_handle_t hal_soc_hdl)
 	return hal_soc->ops->hal_rx_get_phy_ppdu_id_size();
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline
+uint32_t hal_rx_tlv_get_user_rssi(hal_soc_handle_t hal_soc_hdl,
+				  uint8_t *rx_pkt_tlv)
+{
+	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
+
+	if (hal_soc->ops->hal_rx_tlv_get_rssi)
+		return hal_soc->ops->hal_rx_tlv_get_rssi(rx_pkt_tlv);
+
+	return 0;
+}
+#endif
 #endif /* _HAL_RX_H */

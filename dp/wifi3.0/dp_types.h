@@ -5264,6 +5264,9 @@ struct dp_vdev {
 	qdf_atomic_t txpt_classify_idx_valid;
 	uint8_t txpt_classify_idx;
 #endif
+#ifdef DRIVER_PASSTHRU_MODE
+	qdf_freq_t passthru_freq;
+#endif
 };
 
 enum {

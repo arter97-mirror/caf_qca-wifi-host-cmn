@@ -9979,6 +9979,19 @@ static QDF_STATUS dp_get_vdev_param(struct cdp_soc_t *cdp_soc, uint8_t vdev_id,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline
+void dp_set_passthru_vdev_freq(struct dp_vdev *vdev, qdf_freq_t freq)
+{
+	vdev->passthru_freq = freq;
+}
+#else
+static inline
+void dp_set_passthru_vdev_freq(struct dp_vdev *vdev, qdf_freq_t freq)
+{
+}
+#endif
+
 /**
  * dp_set_vdev_param() - function to set parameters in vdev
  * @cdp_soc: DP soc handle
@@ -10174,6 +10187,11 @@ dp_set_vdev_param(struct cdp_soc_t *cdp_soc, uint8_t vdev_id,
 			   vdev, vdev->vdev_id);
 		vdev->eapol_over_control_port_disable =
 				val.cdp_eapol_over_control_port_disable;
+		break;
+	case CDP_VDEV_SET_PASSTHRU_FREQ:
+		if (vdev->opmode == wlan_op_mode_passthru)
+			dp_set_passthru_vdev_freq(vdev,
+						  val.cdp_passthru_vdev_freq);
 		break;
 	default:
 		break;

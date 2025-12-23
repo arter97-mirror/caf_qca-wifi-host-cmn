@@ -1559,6 +1559,9 @@ struct hal_hw_txrx_ops {
 	uint16_t (*hal_srng_dst_get_num_avail_words)(
 			hal_ring_handle_t hal_ring_hdl);
 	uint8_t (*hal_is_direct_refill_supported)(hal_soc_handle_t hal_soc_hdl);
+#ifdef DRIVER_PASSTHRU_MODE
+	uint32_t (*hal_rx_tlv_get_rssi)(uint8_t *buf);
+#endif
 };
 
 /**
