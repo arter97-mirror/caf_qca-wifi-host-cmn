@@ -228,6 +228,7 @@ struct indoor_concurrency_list {
  * from firmware
  * @set_fcc_channel: Flag to set fcc channels
  * @country_max_allowed_bw: max allowed bw for all reg rules of client
+ * @disable_5ghz_high_channel_from_165: disable 5ghz high channel from 165
  */
 struct wlan_regulatory_psoc_priv_obj {
 	struct mas_chan_params mas_chan_params[PSOC_MAX_PHY_REG_CAP];
@@ -312,6 +313,9 @@ struct wlan_regulatory_psoc_priv_obj {
 #endif
 	bool set_fcc_channel;
 	uint32_t country_max_allowed_bw;
+#ifdef AUTO_PLATFORM
+	bool disable_5ghz_high_channel_from_165;
+#endif
 };
 
 /**
@@ -399,6 +403,7 @@ struct wlan_regulatory_psoc_priv_obj {
  * @indoor_list: List of current indoor station interfaces
  * @keep_6ghz_sta_cli_connection: Keep current STA/P2P client connection
  * @is_c2c_supp: Flag to check C2C support.
+ * @disable_5ghz_high_channel_from_165: disable 5ghz high channel from 165
  */
 struct wlan_regulatory_pdev_priv_obj {
 	struct regulatory_channel cur_chan_list[NUM_CHANNELS];
@@ -483,6 +488,9 @@ struct wlan_regulatory_pdev_priv_obj {
 	struct indoor_concurrency_list indoor_list[MAX_INDOOR_LIST_SIZE];
 	bool keep_6ghz_sta_cli_connection;
 	bool is_c2c_supp;
+#endif
+#ifdef AUTO_PLATFORM
+	bool disable_5ghz_high_channel_from_165;
 #endif
 };
 

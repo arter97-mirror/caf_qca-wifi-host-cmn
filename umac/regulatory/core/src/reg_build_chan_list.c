@@ -1108,6 +1108,46 @@ static void reg_modify_chan_list_for_chan_144(
 	}
 }
 
+#if defined(AUTO_PLATFORM) && defined(CONFIG_REG_CLIENT)
+/**
+ * reg_modify_chan_list_for_chan_from_165_in_5ghz_band() - Disable 5ghz band
+ * high channel from channel 165 if disable_5ghz_high_channel_from_165 is
+ * set to true.
+ * @chan_list: Pointer to regulatory channel list.
+ * @disable_5ghz_high_channel_from_165: if true, then disable 5ghz band high
+ * channel from channel 165.
+ */
+static void reg_modify_chan_list_for_chan_from_165_in_5ghz_band(
+		struct regulatory_channel *chan_list,
+		bool disable_5ghz_high_channel_from_165)
+{
+	enum channel_enum chan_enum;
+
+	if (!disable_5ghz_high_channel_from_165)
+		return;
+
+	for (chan_enum = MIN_5GHZ_CHANNEL;
+	     chan_enum < MAX_5GHZ_CHANNEL; chan_enum++) {
+		if (chan_list[chan_enum].chan_flags &
+		    REGULATORY_CHAN_DISABLED)
+			continue;
+
+		if (chan_list[chan_enum].center_freq >= 5825 &&
+		    chan_list[chan_enum].center_freq <= 5885) {
+			chan_list[chan_enum].chan_flags |=
+				REGULATORY_CHAN_DISABLED;
+			chan_list[chan_enum].state = CHANNEL_STATE_DISABLE;
+		}
+	}
+}
+#else
+static void reg_modify_chan_list_for_chan_from_165_in_5ghz_band(
+		struct regulatory_channel *chan_list,
+		bool disable_5ghz_high_channel_from_165)
+{
+}
+#endif
+
 /**
  * reg_modify_chan_list_for_nol_list() - Disable the channel if nol_chan flag is
  * set.
@@ -3498,6 +3538,10 @@ void reg_compute_pdev_current_chan_list(struct wlan_regulatory_pdev_priv_obj
 
 	reg_modify_chan_list_for_chan_144(pdev_priv_obj->cur_chan_list,
 					  pdev_priv_obj->en_chan_144);
+
+	reg_modify_chan_list_for_chan_from_165_in_5ghz_band(
+			pdev_priv_obj->cur_chan_list,
+			pdev_priv_obj->disable_5ghz_high_channel_from_165);
 
 	reg_modify_chan_list_for_srd_channels(pdev_priv_obj->pdev_ptr,
 					      pdev_priv_obj->cur_chan_list);
