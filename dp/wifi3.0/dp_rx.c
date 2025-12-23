@@ -1198,11 +1198,39 @@ free_descs:
 qdf_export_symbol(__dp_rx_buffers_replenish);
 
 #ifdef DRIVER_PASSTHRU_MODE
+#define DP_NORMALIZED_NOISE_FLOOR (-96)
+
 static
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 			       qdf_nbuf_t nbuf)
 {
-	qdf_nbuf_populate_radiotap_hdr(nbuf);
+	uint8_t *rx_pkt_tlvs;
+	struct mon_rx_status rx_status = {0};
+	uint8_t l3_pad = QDF_NBUF_CB_RX_PACKET_L3_HDR_PAD(nbuf);
+
+	qdf_nbuf_push_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
+	rx_pkt_tlvs = qdf_nbuf_data(nbuf);
+	qdf_nbuf_pull_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
+
+	rx_status.tsft = qdf_get_log_timestamp();
+	rx_status.rs_fcs_err = hal_rx_tlv_mpdu_fcs_err_get(soc->hal_soc,
+							   rx_pkt_tlvs);
+	rx_status.mon_fcs_cap = 1;
+	rx_status.rssi_comb = hal_rx_tlv_get_user_rssi(soc->hal_soc,
+						       rx_pkt_tlvs);
+	rx_status.chan_noise_floor = DP_NORMALIZED_NOISE_FLOOR;
+	rx_status.nr_ant = hal_rx_msdu_start_nss_get(soc->hal_soc,
+						     rx_pkt_tlvs);
+	rx_status.chan_freq = vdev->passthru_freq;
+
+	rx_status.preamble_type = hal_rx_tlv_get_pkt_type(soc->hal_soc,
+							  rx_pkt_tlvs);
+	if (rx_status.preamble_type != HAL_DOT11B)
+		rx_status.ofdm_flag = 1;
+	else
+		rx_status.cck_flag = 1;
+
+	qdf_nbuf_update_radiotap(&rx_status, nbuf, qdf_nbuf_headroom(nbuf));
 
 	if (vdev->osif_rx)
 		vdev->osif_rx(vdev->osif_vdev, nbuf);
