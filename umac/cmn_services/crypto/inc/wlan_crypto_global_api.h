@@ -351,6 +351,7 @@ bool wlan_crypto_is_mmie_valid(struct wlan_objmgr_vdev *vdev,
  * wlan_crypto_wpaie_check() - called by mlme to check the wpaie
  * @crypto_params: crypto params
  * @frm: ie buffer
+ * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function gets called by mlme to check the contents of wpa is
  * matching with given crypto params
@@ -358,12 +359,14 @@ bool wlan_crypto_is_mmie_valid(struct wlan_objmgr_vdev *vdev,
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_crypto_wpaie_check(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *frm);
+				   const uint8_t *frm,
+				   enum wlan_status_code *status_code);
 
 /**
  * wlan_crypto_rsnie_check() - called by mlme to check the rsnie
  * @crypto_params: crypto params
  * @frm: rsn buffer beginning from RSN data
+ * @status_code: pointer to wlan status code to retrieve, can be null
  *
  * This function gets called by mlme to check the contents of rsn is
  * matching with given crypto params
@@ -371,7 +374,8 @@ QDF_STATUS wlan_crypto_wpaie_check(struct wlan_crypto_params *crypto_params,
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_crypto_rsnie_check(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *frm);
+				   const uint8_t *frm,
+				   enum wlan_status_code *status_code);
 
 /**
  * wlan_crypto_rsnxie_check() - called by mlme to parse rsnx capabilities
@@ -454,6 +458,7 @@ uint8_t *wlan_crypto_build_wapiie(struct wlan_objmgr_vdev *vdev,
  * wlan_crypto_rsn_info() - check is given params matching with vdev params.
  * @vdev: vdev
  * @crypto_params: crypto params
+ * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function gets called by mlme to check is given params matching with
  * vdev params.
@@ -461,7 +466,8 @@ uint8_t *wlan_crypto_build_wapiie(struct wlan_objmgr_vdev *vdev,
  * Return: true success or false for failure.
  */
 bool wlan_crypto_rsn_info(struct wlan_objmgr_vdev *vdev,
-				struct wlan_crypto_params *crypto_params);
+			  struct wlan_crypto_params *crypto_params,
+			  enum wlan_status_code *status_code);
 
 /**
  * wlan_crypto_pn_check() - called by data patch for PN check
@@ -743,6 +749,7 @@ void wlan_crypto_restore_keys(struct wlan_objmgr_vdev *vdev);
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
  * @peer_crypto_params: return peer crypto parameters
+ * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function gets called from ucfg to check RSN match.
  *
@@ -751,8 +758,9 @@ void wlan_crypto_restore_keys(struct wlan_objmgr_vdev *vdev);
 QDF_STATUS
 wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
 			    uint8_t vdev_id, uint8_t *ie_ptr,
-			    uint16_t ie_len, struct wlan_crypto_params *
-			    peer_crypto_params);
+			    uint16_t ie_len,
+			    struct wlan_crypto_params *peer_crypto_params,
+			    enum wlan_status_code *status_code);
 
 /**
  * wlan_crypto_check_wpa_match() - called by ucfg to check for WPA match
@@ -761,6 +769,7 @@ wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
  * @peer_crypto_params: return peer crypto parameters
+ * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function gets called from ucfg to check WPA match.
  *
@@ -769,8 +778,9 @@ wlan_crypto_check_rsn_match(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 wlan_crypto_check_wpa_match(struct wlan_objmgr_psoc *psoc,
 			    uint8_t vdev_id, uint8_t *ie_ptr,
-			    uint16_t ie_len, struct wlan_crypto_params *
-			    peer_crypto_params);
+			    uint16_t ie_len,
+			    struct wlan_crypto_params *peer_crypto_params,
+			    enum wlan_status_code *status_code);
 
 /**
  * wlan_crypto_parse_rsnxe_ie() - parse RSNXE IE
@@ -814,6 +824,7 @@ wlan_get_crypto_params_from_wapi_ie(struct wlan_crypto_params *crypto_params,
  * @crypto_params: return crypto parameters
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
+ * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function is used to get the crypto parameters from wpa ie
  *
@@ -822,7 +833,8 @@ wlan_get_crypto_params_from_wapi_ie(struct wlan_crypto_params *crypto_params,
  */
 QDF_STATUS
 wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *ie_ptr, uint16_t ie_len);
+				   const uint8_t *ie_ptr, uint16_t ie_len,
+				   enum wlan_status_code *status_code);
 
 /**
  * wlan_get_crypto_params_from_rsn_ie() - Function to get crypto params
@@ -830,6 +842,7 @@ wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
  * @crypto_params: vdev crypto parameters
  * @ie_ptr: pointer to IEs
  * @ie_len: IE length
+ * @status_code: pointer to wlan status code to be retrieved, can be null
  *
  * This function is used to get the crypto parameters from rsn ie
  *
@@ -838,7 +851,8 @@ wlan_get_crypto_params_from_wpa_ie(struct wlan_crypto_params *crypto_params,
  */
 QDF_STATUS
 wlan_get_crypto_params_from_rsn_ie(struct wlan_crypto_params *crypto_params,
-				   const uint8_t *ie_ptr, uint16_t ie_len);
+				   const uint8_t *ie_ptr, uint16_t ie_len,
+				   enum wlan_status_code *status_code);
 
 /**
  * wlan_set_vdev_crypto_params_from_ie() - Sets vdev crypto params from IE info
