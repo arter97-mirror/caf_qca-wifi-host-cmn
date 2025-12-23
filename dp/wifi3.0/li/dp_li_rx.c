@@ -1448,8 +1448,7 @@ dp_rx_null_q_desc_handle_li(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	if (qdf_nbuf_is_frag(nbuf))
 		qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
 	else
-		qdf_nbuf_pull_head(nbuf, (msdu_metadata.l3_hdr_pad +
-				   soc->rx_pkt_tlv_size));
+		dp_rx_skip_tlvs(soc, nbuf, msdu_metadata.l3_hdr_pad);
 
 	DP_STATS_INC_PKT(vdev, rx_i.null_q_desc_pkt, 1, qdf_nbuf_len(nbuf));
 

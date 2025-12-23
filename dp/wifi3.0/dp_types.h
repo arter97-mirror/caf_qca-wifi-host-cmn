@@ -4791,6 +4791,9 @@ struct dp_vdev {
 	bool dp_eapol_stats;
 	/* Tx NSS stats received from FW */
 	struct cdp_htt_stats_tx_vdev_nss_tlv tx_vdev_nss;
+#ifdef DRIVER_PASSTHRU_MODE
+	qdf_freq_t passthru_freq;
+#endif
 };
 
 enum {
