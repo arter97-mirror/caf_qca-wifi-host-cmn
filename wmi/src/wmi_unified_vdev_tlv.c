@@ -253,6 +253,128 @@ extract_vdev_start_resp_tlv(struct wmi_unified *wmi_handle, void *evt_buf,
 	return QDF_STATUS_SUCCESS;
 }
 
+/**
+ * wmi_vdev_unified_connect_status_to_host_status() - Convert WMI connect status
+ * to host status using enum
+ * @fw_status: WMI connect status from firmware (enum type)
+ *
+ * This function converts WMI connect status enum values to corresponding host
+ * connect status enum values.
+ *
+ * Return: Host connect status enum value
+ */
+static enum host_vdev_unified_connect_event_status
+wmi_vdev_unified_connect_status_to_host_status(
+				WMI_VDEV_UNIFIED_CONNECT_EVENT_STATUS status)
+{
+	switch (status) {
+	case WMI_VDEV_UNIFIED_CONNECT_EVENT_SUCCESS:
+		return HOST_VDEV_UNIFIED_CONNECT_EVENT_SUCCESS;
+	case WMI_VDEV_UNIFIED_CONNECT_EVENT_FAILURE:
+	default:
+		wmi_err("Unknown unified connect status: %d ", status);
+		return HOST_VDEV_UNIFIED_CONNECT_EVENT_FAILURE;
+	}
+}
+
+static QDF_STATUS
+extract_vdev_unified_connect_resp_tlv(
+			struct wmi_unified *wmi_handle, void *evt_buf,
+			struct vdev_unified_connect_response *unified_rsp)
+{
+	WMI_VDEV_UNIFIED_CONNECT_EVENTID_param_tlvs *param_buf;
+	wmi_vdev_unified_connect_event_fixed_param *unified_ev;
+	wmi_peer_create_conf_event_fixed_param *peer_create_ev;
+	wmi_vdev_start_response_event_fixed_param *vdev_start_ev;
+	wmi_peer_assoc_conf_event_fixed_param *peer_assoc_ev;
+
+	param_buf = (WMI_VDEV_UNIFIED_CONNECT_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid unified connect event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	unified_ev = param_buf->fixed_param;
+	if (!unified_ev) {
+		wmi_err("Invalid unified connect event fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Extract peer create confirmation */
+	peer_create_ev = param_buf->peer_create_fixed_param;
+	if (!peer_create_ev) {
+		wmi_err("Invalid peer create conf fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Extract vdev start response */
+	vdev_start_ev = param_buf->vdev_start_fixed_param;
+	if (!vdev_start_ev) {
+		wmi_err("Invalid vdev start resp fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Extract peer association confirmation */
+	peer_assoc_ev = param_buf->peer_assoc_fixed_param;
+	if (!peer_assoc_ev) {
+		wmi_err("Invalid peer assoc conf fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_mem_zero(unified_rsp, sizeof(*unified_rsp));
+
+	/* Fill unified response structure */
+	unified_rsp->vdev_id = unified_ev->vdev_id;
+	unified_rsp->status = wmi_vdev_unified_connect_status_to_host_status(
+							unified_ev->status);
+
+	/* Fill peer create response structure */
+	unified_rsp->peer_create_resp.vdev_id = peer_create_ev->vdev_id;
+	unified_rsp->peer_create_resp.status = peer_create_ev->status;
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(
+			&peer_create_ev->peer_macaddr,
+			unified_rsp->peer_create_resp.peer_macaddr.bytes);
+
+	/* Fill vdev start response structure */
+	unified_rsp->vdev_start_resp.vdev_id = vdev_start_ev->vdev_id;
+	unified_rsp->vdev_start_resp.requestor_id = vdev_start_ev->requestor_id;
+	unified_rsp->vdev_start_resp.status = vdev_start_ev->status;
+	switch (vdev_start_ev->resp_type) {
+	case WMI_VDEV_START_RESP_EVENT:
+		unified_rsp->vdev_start_resp.resp_type =
+					WMI_HOST_VDEV_START_RESP_EVENT;
+		break;
+	case WMI_VDEV_RESTART_RESP_EVENT:
+		unified_rsp->vdev_start_resp.resp_type =
+					WMI_HOST_VDEV_RESTART_RESP_EVENT;
+		break;
+	default:
+		wmi_err("Invalid vdev start response type");
+		break;
+	}
+	unified_rsp->vdev_start_resp.chain_mask = vdev_start_ev->chain_mask;
+	unified_rsp->vdev_start_resp.smps_mode = vdev_start_ev->smps_mode;
+	unified_rsp->vdev_start_resp.mac_id = vdev_start_ev->mac_id;
+	unified_rsp->vdev_start_resp.cfgd_tx_streams =
+					vdev_start_ev->cfgd_tx_streams;
+	unified_rsp->vdev_start_resp.cfgd_rx_streams =
+					vdev_start_ev->cfgd_rx_streams;
+	unified_rsp->vdev_start_resp.max_allowed_tx_power =
+					vdev_start_ev->max_allowed_tx_power;
+	if (vdev_start_ev->min_device_tx_pwr_valid)
+		unified_rsp->vdev_start_resp.min_allowed_tx_power =
+					vdev_start_ev->min_device_tx_pwr;
+
+	/* Fill peer association response structure */
+	unified_rsp->peer_assoc_resp.vdev_id = peer_assoc_ev->vdev_id;
+	unified_rsp->peer_assoc_resp.status = peer_assoc_ev->status;
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(
+			&peer_assoc_ev->peer_macaddr,
+			unified_rsp->peer_assoc_resp.peer_macaddr.bytes);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS
 extract_vdev_delete_resp_tlv(struct wmi_unified *wmi_handle, void *evt_buf,
 			     struct vdev_delete_response *delete_rsp)
@@ -603,6 +725,8 @@ void wmi_vdev_attach_tlv(struct wmi_unified *wmi_handle)
 	wmi_ops->extract_vdev_delete_resp = extract_vdev_delete_resp_tlv;
 	wmi_ops->extract_vdev_stopped_param = extract_vdev_stopped_param_tlv;
 	wmi_ops->extract_vdev_start_resp = extract_vdev_start_resp_tlv;
+	wmi_ops->extract_vdev_unified_connect_resp =
+				extract_vdev_unified_connect_resp_tlv;
 	wmi_ops->extract_vdev_peer_delete_all_response_event =
 				extract_vdev_peer_delete_all_response_event_tlv;
 	wmi_ops->extract_tbttoffset_num_vdevs =

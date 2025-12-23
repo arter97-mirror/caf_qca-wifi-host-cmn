@@ -94,6 +94,19 @@ wmi_extract_vdev_start_resp(struct wmi_unified *wmi_handle, void *evt_buf,
 }
 
 QDF_STATUS
+wmi_extract_vdev_unified_connect_resp(
+			struct wmi_unified *wmi_handle, void *evt_buf,
+			struct vdev_unified_connect_response *unified_rsp)
+{
+	if (wmi_handle->ops->extract_vdev_unified_connect_resp)
+		return wmi_handle->ops->extract_vdev_unified_connect_resp(
+								wmi_handle,
+								evt_buf,
+								unified_rsp);
+
+	return QDF_STATUS_E_FAILURE;
+}
+QDF_STATUS
 wmi_extract_vdev_delete_resp(struct wmi_unified *wmi_handle, void *evt_buf,
 			     struct vdev_delete_response *delete_rsp)
 {

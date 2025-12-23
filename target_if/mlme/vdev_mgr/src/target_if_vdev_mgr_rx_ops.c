@@ -159,6 +159,7 @@ void target_if_vdev_mgr_rsp_timer_cb(void *arg)
 	struct vdev_stop_response stop_rsp = {0};
 	struct vdev_delete_response del_rsp = {0};
 	struct peer_delete_all_response peer_del_all_rsp = {0};
+	struct vdev_unified_connect_response timeout_resp = {0};
 	struct vdev_response_timer *vdev_rsp = arg;
 	enum qdf_hang_reason recovery_reason;
 	uint8_t vdev_id;
@@ -191,6 +192,8 @@ void target_if_vdev_mgr_rsp_timer_cb(void *arg)
 	    !qdf_atomic_test_bit(RSO_STOP_RESPONSE_BIT,
 				 &vdev_rsp->rsp_status) &&
 	    !qdf_atomic_test_bit(UPDATE_MAC_ADDR_RESPONSE_BIT,
+				 &vdev_rsp->rsp_status) &&
+	    !qdf_atomic_test_bit(UP_UNIFIED_CONNECT_RESPONSE_BIT,
 				 &vdev_rsp->rsp_status)) {
 		mlme_debug("No response bit is set, ignoring actions :%d",
 			   vdev_rsp->vdev_id);
@@ -287,6 +290,19 @@ void target_if_vdev_mgr_rsp_timer_cb(void *arg)
 		mlme_debug("VDEV %d MAC addr update resp timeout", vdev_id);
 		target_if_vdev_mgr_mac_addr_rsp_timeout(psoc,
 							vdev_rsp, vdev_id);
+	} else if (qdf_atomic_test_bit(UP_UNIFIED_CONNECT_RESPONSE_BIT,
+				&vdev_rsp->rsp_status)) {
+		timeout_resp.vdev_id = vdev_id;
+		timeout_resp.status = HOST_VDEV_UNIFIED_CONNECT_EVENT_TIMEOUT;
+		rsp_pos = UP_UNIFIED_CONNECT_RESPONSE_BIT;
+		recovery_reason = QDF_VDEV_START_RESPONSE_TIMED_OUT;
+		target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp, rsp_pos);
+		target_if_vdev_mgr_handle_recovery(psoc, vdev_id,
+						   recovery_reason, rsp_pos);
+		if (rx_ops->vdev_mgr_unified_connect_response)
+			rx_ops->vdev_mgr_unified_connect_response(
+								psoc,
+								&timeout_resp);
 	} else {
 		mlme_err("PSOC_%d VDEV_%d: Unknown error",
 			 wlan_psoc_get_id(psoc), vdev_id);
@@ -497,6 +513,108 @@ static int target_if_vdev_mgr_start_response_handler(ol_scn_t scn,
 	/* Call the common processing function */
 	status = target_if_vdev_mgr_start_response_common(psoc,
 							  &vdev_start_resp);
+
+	return qdf_status_to_os_return(status);
+}
+
+static int target_if_vdev_mgr_unified_connect_response_handler(ol_scn_t scn,
+							       uint8_t *data,
+							       uint32_t datalen)
+{
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
+	struct wlan_objmgr_psoc *psoc;
+	struct wmi_unified *wmi_handle;
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	struct vdev_unified_connect_response vdev_unified_connect_resp = {0};
+	uint8_t vdev_id;
+	struct wlan_objmgr_vdev *vdev;
+	struct vdev_response_timer *vdev_rsp;
+	bool timer_running = false;
+
+	if (!scn || !data) {
+		mlme_err("Invalid input");
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		mlme_err("PSOC is NULL");
+		return -EINVAL;
+	}
+
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->vdev_mgr_unified_connect_response ||
+	    !rx_ops->psoc_get_vdev_response_timer_info) {
+		mlme_err("No Rx Ops");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		mlme_err("wmi_handle is null");
+		return -EINVAL;
+	}
+
+	/*
+	 * Extract the unified connect event which contains three fixed params:
+	 * 1. wmi_peer_create_conf_event_fixed_param
+	 * 2. wmi_vdev_start_response_event_fixed_param
+	 * 3. wmi_peer_assoc_conf_event_fixed_param
+	 */
+	if (wmi_extract_vdev_unified_connect_resp(
+					wmi_handle, data,
+					&vdev_unified_connect_resp)) {
+		mlme_err("WMI extract failed");
+		return -EINVAL;
+	}
+
+	vdev_id = vdev_unified_connect_resp.vdev_id;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_VDEV_TARGET_IF_ID);
+	if (!vdev) {
+		mlme_err("Null Vdev");
+		return -EINVAL;
+	}
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
+
+	/* Get vdev response timer info to stop the timer */
+	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
+	if (!vdev_rsp) {
+		mlme_err("vdev response timer is null VDEV_%d PSOC_%d",
+			 vdev_id, wlan_psoc_get_id(psoc));
+		return -EINVAL;
+	}
+
+	/* Check if unified connect timer is running and stop it */
+	timer_running = qdf_atomic_test_bit(UP_UNIFIED_CONNECT_RESPONSE_BIT,
+					    &vdev_rsp->rsp_status);
+	if (timer_running) {
+		status = target_if_vdev_mgr_rsp_timer_stop(
+					psoc, vdev_rsp,
+					UP_UNIFIED_CONNECT_RESPONSE_BIT);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlme_err("PSOC_%d VDEV_%d: VDE MGR RSP Timer stop failed",
+				 psoc->soc_objmgr.psoc_id, vdev_id);
+			return qdf_status_to_os_return(status);
+		}
+	}
+
+	mlme_debug("psoc:%d vdev:%d: unified connect event - peer_create_status: %d, vdev_start_status: %d, peer_assoc_status: %d",
+		   psoc->soc_objmgr.psoc_id, vdev_id,
+		   vdev_unified_connect_resp.peer_create_resp.status,
+		   vdev_unified_connect_resp.vdev_start_resp.status,
+		   vdev_unified_connect_resp.peer_assoc_resp.status);
+
+	status = rx_ops->vdev_mgr_unified_connect_response(
+						psoc,
+						&vdev_unified_connect_resp);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("PSOC_%d VDEV_%d: Unified connect response failed",
+			 psoc->soc_objmgr.psoc_id, vdev_id);
+	}
 
 	return qdf_status_to_os_return(status);
 }
@@ -1401,6 +1519,14 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_register(
 
 	retval = wmi_unified_register_event_handler(
 			wmi_handle,
+			wmi_vdev_unified_connect_event_id,
+			target_if_vdev_mgr_unified_connect_response_handler,
+			VDEV_RSP_RX_CTX);
+	if (QDF_IS_STATUS_ERROR(retval))
+		mlme_err("failed to register for unified connect response");
+
+	retval = wmi_unified_register_event_handler(
+			wmi_handle,
 			wmi_peer_delete_all_response_event_id,
 			target_if_vdev_mgr_peer_delete_all_response_handler,
 			VDEV_RSP_RX_CTX);
@@ -1476,6 +1602,8 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_unregister(
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_vdev_start_resp_event_id);
 
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_vdev_unified_connect_event_id);
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_vdev_delete_resp_event_id);
 

@@ -188,6 +188,30 @@ struct vdev_delete_response {
 };
 
 /**
+ * struct peer_create_response - peer create response structure
+ * @vdev_id: vdev id
+ * @status: status of peer create request
+ * @peer_macaddr: peer MAC address
+ */
+struct peer_create_response {
+	uint8_t vdev_id;
+	uint32_t status;
+	struct qdf_mac_addr peer_macaddr;
+};
+
+/**
+ * struct peer_assoc_response - peer association response structure
+ * @vdev_id: vdev id
+ * @status: status of peer association request
+ * @peer_macaddr: peer MAC address
+ */
+struct peer_assoc_response {
+	uint8_t vdev_id;
+	uint32_t status;
+	struct qdf_mac_addr peer_macaddr;
+};
+
+/**
  * struct peer_delete_all_response - peer delete all response structure
  * @vdev_id: vdev id
  * @status: FW status for vdev delete all peer request
@@ -197,6 +221,35 @@ struct peer_delete_all_response {
 	uint8_t vdev_id;
 	uint8_t status;
 	uint32_t peer_type_bitmap;
+};
+
+/**
+ * enum host_vdev_unified_connect_event_status - Host unified connect
+ * event status
+ * @HOST_VDEV_UNIFIED_CONNECT_EVENT_SUCCESS: Unified connect success
+ * @HOST_VDEV_UNIFIED_CONNECT_EVENT_FAILURE: Unified connect failure
+ * @HOST_VDEV_UNIFIED_CONNECT_EVENT_TIMEOUT: Unified connect timeout
+ */
+enum host_vdev_unified_connect_event_status {
+	HOST_VDEV_UNIFIED_CONNECT_EVENT_SUCCESS = 0,
+	HOST_VDEV_UNIFIED_CONNECT_EVENT_FAILURE = 1,
+	HOST_VDEV_UNIFIED_CONNECT_EVENT_TIMEOUT = 2,
+};
+
+/**
+ * struct vdev_unified_connect_response - Unified connect response structure
+ * @vdev_id: VDEV ID for which the unified connect event is received
+ * @status: Overall status from host_vdev_unified_connect_event_status
+ * @peer_create_resp: Peer create confirmation response
+ * @vdev_start_resp: VDEV start response
+ * @peer_assoc_resp: Peer association confirmation response
+ */
+struct vdev_unified_connect_response {
+	uint8_t vdev_id;
+	uint32_t status;
+	struct peer_create_response peer_create_resp;
+	struct vdev_start_response vdev_start_resp;
+	struct peer_assoc_response peer_assoc_resp;
 };
 
 /**

@@ -5854,6 +5854,7 @@ typedef enum {
 #ifdef WLAN_FEATURE_POWER_STATISTICS
 	wmi_pdev_power_datapath_stats_eventid,
 #endif
+	wmi_vdev_unified_connect_event_id,
 	wmi_events_max,
 } wmi_conv_event_id;
 

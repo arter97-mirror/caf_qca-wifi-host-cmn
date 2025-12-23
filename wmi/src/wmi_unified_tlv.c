@@ -24045,6 +24045,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_service_ready_ext2_event_id] =
 						WMI_SERVICE_READY_EXT2_EVENTID;
 	event_ids[wmi_vdev_start_resp_event_id] = WMI_VDEV_START_RESP_EVENTID;
+	event_ids[wmi_vdev_unified_connect_event_id] =
+					WMI_VDEV_UNIFIED_CONNECT_EVENTID;
 	event_ids[wmi_vdev_stopped_event_id] = WMI_VDEV_STOPPED_EVENTID;
 	event_ids[wmi_vdev_install_key_complete_event_id] =
 				WMI_VDEV_INSTALL_KEY_COMPLETE_EVENTID;

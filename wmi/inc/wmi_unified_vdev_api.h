@@ -101,6 +101,19 @@ wmi_extract_vdev_start_resp(struct wmi_unified *wmi_handle, void *evt_buf,
 			    struct vdev_start_response *vdev_rsp);
 
 /**
+ * wmi_extract_vdev_unified_connect_resp() - extract vdev unified connect
+ * response
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @unified_rsp: Pointer to hold vdev unified connect response
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_vdev_unified_connect_resp(
+			struct wmi_unified *wmi_handle, void *evt_buf,
+			struct vdev_unified_connect_response *unified_rsp);
+/**
  * wmi_extract_vdev_stopped_param() - extract vdev stop param from event
  * @wmi_handle: wmi handle
  * @evt_buf: pointer to event buffer

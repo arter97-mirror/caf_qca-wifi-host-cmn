@@ -3032,6 +3032,10 @@ struct wlan_lmac_if_mlme_rx_ops {
 
 	QDF_STATUS (*vdev_mgr_unified_disconnect_rsp)(struct wlan_objmgr_psoc *psoc,
 						      struct vdev_unified_disconnect_response *rsp);
+
+	QDF_STATUS (*vdev_mgr_unified_connect_response)(
+				struct wlan_objmgr_psoc *psoc,
+				struct vdev_unified_connect_response *rsp);
 };
 
 #ifdef WLAN_SUPPORT_GREEN_AP

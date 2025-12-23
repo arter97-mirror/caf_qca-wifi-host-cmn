@@ -35,6 +35,8 @@
 #include <include/wlan_mlme_cmn.h>
 #include <wlan_vdev_mgr_utils_api.h>
 #include "wlan_policy_mgr_api.h"
+#include <target_if_psoc_timer_tx_ops.h>
+#include <target_if_psoc_wake_lock.h>
 
 void
 tgt_vdev_mgr_reset_response_timer_info(struct wlan_objmgr_psoc *psoc)
@@ -207,6 +209,66 @@ static QDF_STATUS tgt_vdev_mgr_peer_delete_all_response_handler(
 
 tgt_vdev_mgr_peer_delete_all_response_handler_end:
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
+	return status;
+}
+
+static QDF_STATUS tgt_vdev_mgr_unified_connect_response_handler(
+				struct wlan_objmgr_psoc *psoc,
+				struct vdev_unified_connect_response *rsp)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	QDF_STATUS evt_status = QDF_STATUS_SUCCESS;
+	struct wlan_objmgr_vdev *vdev = NULL;
+	struct vdev_mlme_obj *vdev_mlme = NULL;
+	uint8_t vdev_id;
+
+	if (!rsp || !psoc) {
+		mlme_err("Invalid input");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = rsp->vdev_id;
+
+	/* Get VDEV object and hold reference throughout the operation */
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_VDEV_TARGET_IF_ID);
+	if (!vdev) {
+		mlme_err("vdev:%d Failed to get vdev object", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme) {
+		mlme_err("vdev:%d Failed to get VDEV MLME object", vdev_id);
+		status = QDF_STATUS_E_FAILURE;
+		goto end;
+	}
+
+	target_if_wake_lock_timeout_release(psoc, START_WAKELOCK);
+	target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
+
+	if (rsp->status == HOST_VDEV_UNIFIED_CONNECT_EVENT_SUCCESS)
+		evt_status = QDF_STATUS_SUCCESS;
+	else if (rsp->status == HOST_VDEV_UNIFIED_CONNECT_EVENT_TIMEOUT)
+		evt_status = QDF_STATUS_E_TIMEOUT;
+	else
+		evt_status = QDF_STATUS_E_FAILURE;
+
+	if ((vdev_mlme->ops) &&
+	    vdev_mlme->ops->mlme_vdev_ext_unified_connect_rsp) {
+		status = vdev_mlme->ops->mlme_vdev_ext_unified_connect_rsp(
+						vdev, rsp, evt_status);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlme_err("vdev:%d Component-specific operations failed: %d",
+				 vdev_id, status);
+			goto end;
+		}
+	}
+end:
+	/* Clean up references */
+	if (vdev)
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
+
 	return status;
 }
 
@@ -437,6 +499,8 @@ void tgt_vdev_mgr_register_rx_ops(struct wlan_lmac_if_rx_ops *rx_ops)
 		tgt_vdev_mgr_delete_response_handler;
 	mlme_rx_ops->vdev_mgr_peer_delete_all_response =
 		tgt_vdev_mgr_peer_delete_all_response_handler;
+	mlme_rx_ops->vdev_mgr_unified_connect_response =
+		tgt_vdev_mgr_unified_connect_response_handler;
 	mlme_rx_ops->psoc_get_vdev_response_timer_info =
 		tgt_vdev_mgr_get_response_timer_info;
 	mlme_rx_ops->vdev_mgr_multi_vdev_restart_resp =

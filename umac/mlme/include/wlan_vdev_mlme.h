@@ -811,6 +811,10 @@ struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_ext_start_rsp)(
 				struct vdev_mlme_obj *vdev_mlme,
 				struct vdev_start_response *rsp);
+	QDF_STATUS (*mlme_vdev_ext_unified_connect_rsp)(
+				struct wlan_objmgr_vdev *vdev,
+				struct vdev_unified_connect_response *rsp,
+				QDF_STATUS evt_status);
 	QDF_STATUS (*mlme_vdev_notify_start_state_exit)(
 				struct vdev_mlme_obj *vdev_mlme);
 	QDF_STATUS (*mlme_vdev_is_newchan_no_cac)(

@@ -2013,6 +2013,10 @@ QDF_STATUS
 QDF_STATUS (*extract_vdev_start_resp)(wmi_unified_t wmi_handle, void *evt_buf,
 				      struct vdev_start_response *vdev_rsp);
 
+QDF_STATUS (*extract_vdev_unified_connect_resp)(
+			wmi_unified_t wmi_handle, void *evt_buf,
+			struct vdev_unified_connect_response *unified_rsp);
+
 QDF_STATUS (*extract_vdev_delete_resp)(
 				wmi_unified_t wmi_handle, void *evt_buf,
 				struct vdev_delete_response *delete_rsp);
