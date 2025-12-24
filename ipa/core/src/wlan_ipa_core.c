@@ -4700,7 +4700,7 @@ wlan_host_to_ipa_wlan_event(enum wlan_ipa_wlan_event wlan_ipa_event_type)
 	return ipa_event;
 }
 
-#ifdef IPA_P2P_SUPPORT
+#if defined(IPA_P2P_SUPPORT) || defined(IPA_NAN_SUPPORT)
 /**
  * wlan_ipa_device_mode_switch() - Switch P2p GO/CLI to SAP/STA mode
  * @device_mode: device mode
@@ -4713,6 +4713,7 @@ static uint8_t wlan_ipa_device_mode_switch(uint8_t device_mode)
 	case QDF_P2P_CLIENT_MODE:
 		return QDF_STA_MODE;
 	case QDF_P2P_GO_MODE:
+	case QDF_NDI_MODE:
 		return QDF_SAP_MODE;
 	default:
 		break;
