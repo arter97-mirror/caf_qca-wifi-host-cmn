@@ -84,6 +84,7 @@
 #include <wlan_gpio_api.h>
 
 #include <wlan_twt_api.h>
+#include <wlan_ipa_ring_stats_api.h>
 
 /**
  * DOC: This file provides various init/deinit trigger point for new
@@ -1029,6 +1030,61 @@ static QDF_STATUS mlo_mgr_psoc_disable(struct wlan_objmgr_psoc *psoc)
 }
 #endif
 
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+static QDF_STATUS ipa_ring_stats_psoc_enable(struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_lmac_if_tx_ops *tx_ops;
+	struct wlan_lmac_if_ipa_ring_stats_tx_ops *ipa_ring_tx_ops;
+
+	if (!psoc)
+		return QDF_STATUS_E_INVAL;
+
+	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	ipa_ring_tx_ops = &tx_ops->ipa_ring_stats_tx_ops;
+
+	if (ipa_ring_tx_ops->register_ipa_ring_stats_event_handler)
+		return ipa_ring_tx_ops->register_ipa_ring_stats_event_handler(psoc);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS ipa_ring_stats_psoc_disable(struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_lmac_if_tx_ops *tx_ops;
+	struct wlan_lmac_if_ipa_ring_stats_tx_ops *ipa_ring_tx_ops;
+
+	if (!psoc)
+		return QDF_STATUS_E_INVAL;
+
+	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
+	if (!tx_ops)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	ipa_ring_tx_ops = &tx_ops->ipa_ring_stats_tx_ops;
+
+	if (ipa_ring_tx_ops->unregister_ipa_ring_stats_event_handler)
+		return ipa_ring_tx_ops->unregister_ipa_ring_stats_event_handler(psoc);
+
+	return QDF_STATUS_SUCCESS;
+
+}
+
+#else
+static QDF_STATUS ipa_ring_stats_psoc_enable(struct wlan_objmgr_psoc *psoc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS ipa_ring_stats_psoc_disable(struct wlan_objmgr_psoc *psoc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+#endif
+
 QDF_STATUS dispatcher_init(void)
 {
 	if (QDF_STATUS_SUCCESS != wlan_objmgr_global_obj_init())
@@ -1115,6 +1171,9 @@ QDF_STATUS dispatcher_init(void)
 	if (QDF_STATUS_SUCCESS != dispatcher_twt_init())
 		goto twt_init_fail;
 
+	if (QDF_STATUS_SUCCESS != wlan_ipa_ring_stats_init())
+		goto ipa_stats_init_fail;
+
 	/*
 	 * scheduler INIT has to be the last as each component's
 	 * initialization has to happen first and then at the end
@@ -1126,6 +1185,8 @@ QDF_STATUS dispatcher_init(void)
 	return QDF_STATUS_SUCCESS;
 
 scheduler_init_fail:
+	wlan_ipa_ring_stats_deinit();
+ipa_stats_init_fail:
 	dispatcher_twt_deinit();
 twt_init_fail:
 	wlan_gpio_deinit();
@@ -1192,6 +1253,8 @@ QDF_STATUS dispatcher_deinit(void)
 	QDF_STATUS status;
 
 	QDF_BUG(QDF_STATUS_SUCCESS == scheduler_deinit());
+
+	QDF_BUG(QDF_STATUS_SUCCESS == wlan_ipa_ring_stats_deinit());
 
 	QDF_BUG(QDF_STATUS_SUCCESS == dispatcher_twt_deinit());
 
@@ -1417,6 +1480,9 @@ QDF_STATUS dispatcher_psoc_enable(struct wlan_objmgr_psoc *psoc)
 	if (QDF_STATUS_SUCCESS != wlan_mgmt_txrx_psoc_enable(psoc))
 		goto mgmt_txrx_psoc_enable_fail;
 
+	if (QDF_STATUS_SUCCESS != ipa_ring_stats_psoc_enable(psoc))
+		goto ipa_ring_stats_psoc_enable_fail;
+
 	if (QDF_STATUS_SUCCESS != mlo_mgr_psoc_enable(psoc))
 		goto mlo_mgr_psoc_enable_fail;
 
@@ -1429,6 +1495,8 @@ twt_psoc_enable_fail:
 	mlo_mgr_psoc_disable(psoc);
 mlo_mgr_psoc_enable_fail:
 	wlan_mgmt_txrx_psoc_disable(psoc);
+ipa_ring_stats_psoc_enable_fail:
+	ipa_ring_stats_psoc_disable(psoc);
 mgmt_txrx_psoc_enable_fail:
 	spectral_psoc_disable(psoc);
 spectral_psoc_enable_fail:
@@ -1467,6 +1535,8 @@ QDF_STATUS dispatcher_psoc_disable(struct wlan_objmgr_psoc *psoc)
 	QDF_BUG(QDF_STATUS_SUCCESS == dispatcher_twt_psoc_disable(psoc));
 
 	QDF_BUG(QDF_STATUS_SUCCESS == mlo_mgr_psoc_disable(psoc));
+
+	QDF_BUG(QDF_STATUS_SUCCESS == ipa_ring_stats_psoc_disable(psoc));
 
 	QDF_BUG(QDF_STATUS_SUCCESS == wlan_mgmt_txrx_psoc_disable(psoc));
 

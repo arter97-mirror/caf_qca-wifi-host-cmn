@@ -1383,6 +1383,25 @@ struct wlan_lmac_if_twt_rx_ops {
 };
 #endif
 
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+/**
+ * struct wlan_lmac_if_ipa_tx_ops - south bound tx function pointers for IPA stats
+ * @send_ipa_stats_req: function pointer to send IPA stats request to fw
+ * @register_ipa_ring_stats_event_handler: function pointer to register ipa ring
+ *                                         stats event handler
+ * @unregister_ipa_ring_stats_event_handler: function pointer to unregister ipa ring
+ *                                           stats event handler
+ */
+struct wlan_lmac_if_ipa_ring_stats_tx_ops {
+	QDF_STATUS (*send_ipa_ring_stats_req)(struct wlan_objmgr_psoc *psoc,
+					 uint32_t ring_id);
+	QDF_STATUS (*register_ipa_ring_stats_event_handler)(
+				struct wlan_objmgr_psoc *psoc);
+	QDF_STATUS (*unregister_ipa_ring_stats_event_handler)(
+				struct wlan_objmgr_psoc *psoc);
+};
+#endif /* WLAN_FEATURE_IPA_RING_STATS */
+
 /**
  * struct wlan_lmac_if_tx_ops - south bound tx function pointers
  * @mgmt_txrx_tx_ops: mgmt txrx tx ops
@@ -1485,6 +1504,10 @@ struct wlan_lmac_if_tx_ops {
 
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 	struct wlan_lmac_if_twt_tx_ops twt_tx_ops;
+#endif
+
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+	struct wlan_lmac_if_ipa_ring_stats_tx_ops ipa_ring_stats_tx_ops;
 #endif
 };
 

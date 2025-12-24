@@ -344,6 +344,7 @@ enum wlan_umac_comp_id {
 	WLAN_UMAC_COMP_MBSS               = 42,
 	WLAN_UMAC_COMP_WIFI_RADAR         = 43,
 	WLAN_UMAC_COMP_TWT                = 44,
+	WLAN_UMAC_COMP_IPA_RING_STATS     = 54,
 	WLAN_UMAC_COMP_ID_MAX,
 };
 

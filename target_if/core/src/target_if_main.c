@@ -110,6 +110,8 @@
 #include <target_if_mlo_mgr.h>
 #endif
 
+#include <target_if_ipa_ring_stats.h>
+
 static struct target_if_ctx *g_target_if_ctx;
 
 struct target_if_ctx *target_if_get_ctx()
@@ -617,6 +619,9 @@ QDF_STATUS target_if_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	/* Converged UMAC components to register P2P TX-ops */
 	target_if_p2p_register_tx_ops(tx_ops);
 #endif
+
+	/* Converged UMAC components to register IPA ring stats tx ops */
+	target_if_ipa_ring_stats_register_tx_ops(tx_ops);
 
 	return QDF_STATUS_SUCCESS;
 }
