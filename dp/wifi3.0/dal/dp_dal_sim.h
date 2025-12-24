@@ -61,6 +61,13 @@ int dp_dal_sim_attach(void *priv);
  */
 void dp_dal_sim_detach(void *priv);
 
+/* Total number of rings used for DAL SIM
+ * 2 Rx rings + 2 Tx rings + 2 Tx cmpl rings + 1 Rx reffill ring
+ */
+#define DAL_SIM_TOTAL_NUM_RINGS (DAL_SIM_NUM_RX_RINGS + \
+				 DAL_SIM_NUM_TX_RINGS + \
+				 DAL_SIM_NUM_TX_RINGS + 1)
+
 /* Number of RX and TX rings for DAL simulator */
 #define DAL_SIM_NUM_RX_RINGS DAL_RX_RINGS_MAX
 #define DAL_SIM_NUM_TX_RINGS DAL_TX_RINGS_MAX

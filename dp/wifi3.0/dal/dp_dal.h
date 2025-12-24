@@ -39,6 +39,20 @@ struct dp_dal_sim_ctx;
 #define DAL_TX_RING_ID0_SAP 1
 
 /**
+ * struct dal_ring_hp_tp_info - ring info
+ * @ring_type: ring type
+ * @ring_id: ring id
+ * @hp: HP value
+ * @tp: TP value
+ */
+struct dal_ring_hp_tp_info {
+	uint8_t ring_type;
+	uint8_t ring_id;
+	uint32_t hp;
+	uint32_t tp;
+};
+
+/**
  * enum dal_mode - dal operation mode
  * @DAL_DP_BYPASS_MODE: bypass mode
  * @DAL_DP_OFFLOAD_MODE: offload mode
@@ -112,6 +126,7 @@ struct platform_bus_ops {
  * @tx_isr_cb: Tx ISR callback
  * @set_msi_config: Set MSI config callback
  * @store_ring_hp_tp: Store HP/TP of DAL rings locally
+ * @early_mode_switch_ind: Early mode switch indication callback
  * @mode_switch_ind: Mode switch indication callback
  */
 struct vendor_cb_ops {
@@ -122,8 +137,9 @@ struct vendor_cb_ops {
 	int (*tx_isr_cb)(int rint_num, void *priv);
 	int (*set_msi_config)(void *priv, uint8_t ring_num, uint8_t ring_type,
 			      uint64_t msi_address, uint32_t msi_data);
-	int (*store_ring_hp_tp)(void *priv, int ring_type,
-				int ring_num, uint32_t hp, uint32_t tp);
+	int (*early_mode_switch_ind)(void *priv, void *ring_info,
+				     uint8_t num_info, uint8_t cur_mode,
+				     uint8_t new_mode);
 	int (*mode_switch_ind)(void *priv, u8 cur_mode, u8 new_mode);
 };
 

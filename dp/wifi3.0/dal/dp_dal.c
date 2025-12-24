@@ -586,9 +586,6 @@ dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
 	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
 
 	soc->dal_mode_switch_in_progress = true;
-	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
-
-	dp_dal_pdev_set_default_routing(pdev);
 
 	/* Start polling timer */
 	dal_ctx->poll_count = 0;
@@ -717,30 +714,21 @@ dp_dal_set_msi_config(void *priv, uint8_t ring_num, uint8_t ring_type,
 	}
 }
 
-static int
-dp_dal_store_ring_hp_tp(void *priv, int ring_type,
-			int ring_num, uint32_t hp, uint32_t tp)
+static inline void
+dp_dal_store_ring_info(struct dp_soc *soc, uint8_t ring_type,
+		       uint8_t ring_num, uint32_t hp, uint32_t tp)
 {
-	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
-	struct dp_soc *soc;
 	struct hal_srng *hal_srng;
-
-	if (!dal_ctx) {
-		dp_err("DAL ctx is null");
-		return -EINVAL;
-	}
-
-	soc = dal_ctx->soc;
 
 	switch (ring_type) {
 	case REO_DST:
 		if (ring_num >= soc->num_reo_dest_rings) {
 			dp_err("invalid reo ring num %d rcvc", ring_num);
-			return -EINVAL;
+			return;
 		}
 
 		hal_srng =
-		(struct hal_srng *)soc->reo_dest_ring[ring_num].hal_srng;
+			(struct hal_srng *)soc->reo_dest_ring[ring_num].hal_srng;
 		if (hal_srng) {
 			hal_srng->u.dst_ring.tp = tp;
 			hal_srng->u.dst_ring.cached_hp = hp;
@@ -748,18 +736,18 @@ dp_dal_store_ring_hp_tp(void *priv, int ring_type,
 				ring_num, tp, hp);
 		} else {
 			dp_err("SRNG is null for reo dst ring %d", ring_num);
-			return -EINVAL;
+			return;
 		}
 
 		break;
 	case COMP_RING_TYPE:
 		if (ring_num >= soc->num_tx_comp_rings) {
 			dp_err("invalid tx cmpl ring num %d rcvc", ring_num);
-			return -EINVAL;
+			return;
 		}
 
 		hal_srng =
-		(struct hal_srng *)soc->tx_comp_ring[ring_num].hal_srng;
+			(struct hal_srng *)soc->tx_comp_ring[ring_num].hal_srng;
 		if (hal_srng) {
 			hal_srng->u.dst_ring.tp = tp;
 			hal_srng->u.dst_ring.cached_hp = hp;
@@ -767,18 +755,18 @@ dp_dal_store_ring_hp_tp(void *priv, int ring_type,
 				ring_num, tp, hp);
 		} else {
 			dp_err("SRNG is null for tx cmpl ring %d", ring_num);
-			return -EINVAL;
+			return;
 		}
 
 		break;
 	case TCL_DATA:
 		if (ring_num >= soc->num_tcl_data_rings) {
 			dp_err("invalid tx cmpl ring num %d rcvc", ring_num);
-			return -EINVAL;
+			return;
 		}
 
 		hal_srng =
-		(struct hal_srng *)soc->tcl_data_ring[ring_num].hal_srng;
+			(struct hal_srng *)soc->tcl_data_ring[ring_num].hal_srng;
 		if (hal_srng) {
 			hal_srng->u.src_ring.hp = hp;
 			hal_srng->u.src_ring.cached_tp = tp;
@@ -786,17 +774,17 @@ dp_dal_store_ring_hp_tp(void *priv, int ring_type,
 				ring_num, hp, tp);
 		} else {
 			dp_err("invalid tx data ring num %d rcvc", ring_num);
-			return -EINVAL;
+			return;
 		}
 		break;
 	case RXDMA_BUF:
 		if (ring_num != 0) {
 			dp_err("Invalid Rx refill ring num %d rcvd", ring_num);
-			return -EINVAL;
+			return;
 		}
 
 		hal_srng =
-		(struct hal_srng *)soc->rx_refill_buf_ring[ring_num].hal_srng;
+			(struct hal_srng *)soc->rx_refill_buf_ring[ring_num].hal_srng;
 		if (hal_srng) {
 			hal_srng->u.src_ring.hp = hp;
 			hal_srng->u.src_ring.cached_tp = tp;
@@ -804,13 +792,54 @@ dp_dal_store_ring_hp_tp(void *priv, int ring_type,
 				hp, tp);
 		} else {
 			dp_err("SRNG is null for rx refill ring");
-			return -EINVAL;
+			return;
 		}
 
 		break;
 	default:
 		dp_err("invalid ring type %d received", ring_type);
+	}
+}
+
+static int
+dp_dal_early_mode_switch_ind_handler(void *priv, void *ring_info,
+				     uint8_t num_info, uint8_t cur_mode,
+				     uint8_t new_mode)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	struct dal_ring_hp_tp_info *info;
+	int i;
+
+	if (!dal_ctx) {
+		dp_err("DAL ctx is null");
 		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC ctx is null");
+		return -EINVAL;
+	}
+
+	if (!ring_info) {
+		dp_err("ring info is empty");
+		/* TODO: trigger self recovery? */
+		QDF_BUG(0);
+		goto set_def_routing;
+	}
+
+	info = (struct dal_ring_hp_tp_info *)ring_info;
+
+	for (i = 0; i < num_info; i++)
+		dp_dal_store_ring_info(soc, info[i].ring_type, info[i].ring_id,
+				       info[i].hp, info[i].tp);
+
+set_def_routing:
+	if (cur_mode == DAL_DP_OFFLOAD_MODE &&
+	    new_mode == DAL_DP_BYPASS_MODE) {
+		soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
+		dp_dal_pdev_set_default_routing(soc->pdev_list[0]);
 	}
 
 	return 0;
@@ -823,7 +852,7 @@ struct vendor_cb_ops vendor_cb = {
 	.tx_isr_cb = dp_dal_tx_cmp_isr_vendor_cb,
 	.tx_cpl_cb = dp_dal_tx_cpl_cb,
 	.set_msi_config = dp_dal_set_msi_config,
-	.store_ring_hp_tp = dp_dal_store_ring_hp_tp,
+	.early_mode_switch_ind = dp_dal_early_mode_switch_ind_handler,
 	.mode_switch_ind = dp_dal_mode_switch_ind_handler,
 };
 

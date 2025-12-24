@@ -1852,22 +1852,34 @@ static int dp_dal_sim_wait_sw2sw_rings_empty(struct dp_dal_sim_ctx *sim_ctx)
 	return -ETIMEDOUT;
 }
 
-static void dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx)
+static inline void
+dp_dal_sim_fill_current_hp_tp(struct dal_ring_hp_tp_info *ring_info,
+			      uint8_t ring_type, uint8_t ring_id,
+			      uint32_t hp, uint32_t tp)
+{
+	ring_info->ring_type = ring_type;
+	ring_info->ring_id = ring_id;
+	ring_info->hp = hp;
+	ring_info->tp = tp;
+}
+
+static uint8_t
+dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx,
+			       void *info)
 {
 	uint32_t hp;
 	uint32_t tp;
 	int i;
 	int ring_id;
+	struct dal_ring_hp_tp_info *ring_info;
+	uint8_t num_info = 0;
 
 	if (!sim_ctx) {
 		dp_err("NULL sim context");
-		return;
+		return 0;
 	}
 
-	if (!vendor_cb.store_ring_hp_tp) {
-		dp_err("No vendor cb registered to store DAL rings hp/tp");
-		return;
-	}
+	ring_info = (struct dal_ring_hp_tp_info *)info;
 
 	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
 		ring_id = sim_ctx->rx_ring[i].ring_num;
@@ -1880,8 +1892,9 @@ static void dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx)
 		}
 
 		dp_info("reo dest ring:%d hp:%d tp:%d", ring_id, hp, tp);
-		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, REO_DST,
-					   ring_id, hp, tp);
+		dp_dal_sim_fill_current_hp_tp(&ring_info[num_info], REO_DST,
+					      ring_id, hp, tp);
+		num_info++;
 	}
 
 	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
@@ -1896,8 +1909,10 @@ static void dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx)
 		}
 
 		dp_info("Tx cmpl ring:%d hp:%d tp:%d", ring_id, hp, tp);
-		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, COMP_RING_TYPE,
-					   ring_id, hp, tp);
+		dp_dal_sim_fill_current_hp_tp(&ring_info[num_info],
+					      COMP_RING_TYPE,
+					      ring_id, hp, tp);
+		num_info++;
 	}
 
 	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
@@ -1912,19 +1927,23 @@ static void dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx)
 		}
 
 		dp_info("Tx data ring:%d hp:%d tp:%d", ring_id, hp, tp);
-		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, TCL_DATA,
-					   ring_id, hp, tp);
+		dp_dal_sim_fill_current_hp_tp(&ring_info[num_info], TCL_DATA,
+					      ring_id, hp, tp);
+		num_info++;
 	}
 
 	if (!dp_dal_offload_sim_fetch_current_hp_tp(
 				sim_ctx, &hp, &tp,
 				OFFLOAD_SIM_RING_TYPE_RX_REFILL, 0)) {
 		dp_info("Refill ring  hp:%d tp:%d", hp, tp);
-		vendor_cb.store_ring_hp_tp(sim_ctx->dp_dal_ctx, RXDMA_BUF,
-					   0, hp, tp);
+		dp_dal_sim_fill_current_hp_tp(&ring_info[num_info], RXDMA_BUF,
+					      0, hp, tp);
+		num_info++;
 	} else {
 		dp_err("failed to fetch cur hp/tp rx refill ring");
 	}
+
+	return num_info;
 }
 
 /**
@@ -1940,6 +1959,8 @@ static inline void dp_dal_sim_mode_bypass_switch(
 	struct dp_dal_sim_ctx *sim_ctx)
 {
 	int status;
+	void *ring_hp_tp_info;
+	uint8_t num_ring_info;
 
 	if (!sim_ctx) {
 		dp_err("Null sim ctx");
@@ -1950,6 +1971,14 @@ static inline void dp_dal_sim_mode_bypass_switch(
 		dp_err("mode_switch_ind callback not registered");
 		return;
 	}
+
+	ring_hp_tp_info = qdf_mem_malloc(DAL_SIM_TOTAL_NUM_RINGS *
+			      sizeof(struct dal_ring_hp_tp_info));
+	if (!ring_hp_tp_info) {
+		dp_err("failed to alloc mem for ring hp/tp info");
+		return;
+	}
+
 	/* disable irqs */
 	dp_dal_offload_sim_disable_irq(sim_ctx);
 	/* Set mode switch in progress flag to true */
@@ -1959,15 +1988,22 @@ static inline void dp_dal_sim_mode_bypass_switch(
 	qdf_spin_unlock_bh(&sim_ctx->rxbm_sync_lock);
 	/* Flush and cancel work*/
 	dp_dal_sim_destroy_work(sim_ctx);
+
+	dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(sim_ctx);
+	num_ring_info = dp_dal_sim_store_current_hp_tp(sim_ctx,
+						       ring_hp_tp_info);
+	/* Early mode switch ind */
+	vendor_cb.early_mode_switch_ind(sim_ctx->dp_dal_ctx,
+					ring_hp_tp_info, num_ring_info,
+					g_dal_sim_curr_mode,
+					DAL_DP_BYPASS_MODE);
+
 	/* Add logic to wait for SW2SW rings to be empty */
 	status = dp_dal_sim_wait_sw2sw_rings_empty(sim_ctx);
 	if (status) {
 		dp_err("forced mode switch");
 		sim_ctx->stats.error_stats.mode_switch_desc_list_timeout++;
 	}
-
-	dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(sim_ctx);
-	dp_dal_sim_store_current_hp_tp(sim_ctx);
 
 	/* Update the global plat ops with offload mode ops */
 	global_plat_ops = &plat_ops_bypass_mode;
@@ -1987,6 +2023,7 @@ static inline void dp_dal_sim_mode_bypass_switch(
 	g_dal_sim_curr_mode = DAL_DP_BYPASS_MODE;
 	dp_dal_offload_sim_deinit(sim_ctx);
 	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 0);
+	qdf_mem_free(ring_hp_tp_info);
 }
 
 /**
