@@ -183,4 +183,19 @@ dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
 }
 #endif /* FEATURE_RUNTIME_PM */
 
+static inline bool
+dp_dal_tx_is_special_frame(qdf_nbuf_t nbuf, uint32_t frame_mask)
+{
+	if (((frame_mask & FRAME_MASK_IPV4_ARP) &&
+	     qdf_nbuf_is_ipv4_arp_pkt(nbuf)) ||
+	    ((frame_mask & FRAME_MASK_IPV4_DHCP) &&
+	     qdf_nbuf_is_ipv4_dhcp_pkt(nbuf)) ||
+	    ((frame_mask & FRAME_MASK_IPV4_EAPOL) &&
+	     qdf_nbuf_is_ipv4_eapol_pkt(nbuf)) ||
+	    ((frame_mask & FRAME_MASK_IPV6_DHCP) &&
+	     qdf_nbuf_is_ipv6_dhcp_pkt(nbuf)))
+		return true;
+
+	return false;
+}
 #endif /* DP_DAL_TX_H */

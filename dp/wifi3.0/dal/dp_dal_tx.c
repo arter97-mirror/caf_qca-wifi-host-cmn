@@ -9,6 +9,11 @@
 
 extern struct platform_bus_ops *global_plat_ops;
 
+#define DP_DAL_SPECIAL_FRAME_MASK (FRAME_MASK_IPV4_ARP | \
+				   FRAME_MASK_IPV4_DHCP | \
+				   FRAME_MASK_IPV4_EAPOL | \
+				   FRAME_MASK_IPV6_DHCP)
+
 #ifdef FEATURE_RUNTIME_PM
 /**
  * dp_dal_tx_queue_suspended_desc() - Queue TX descriptor during suspend
@@ -99,6 +104,17 @@ static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
 	if (dp_get_rtpm_tput_policy_requirement(soc)) {
 		platform_ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id,
 						   tcl_desc, tx_metadata);
+
+		/* DAL will return -EBUSY if mode switch is in progress, try to
+		 * send via bypass mode tx path if it a special frame.
+		 */
+		if (platform_ret == -EBUSY &&
+		    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
+					       DP_DAL_SPECIAL_FRAME_MASK))
+			platform_ret = dp_dal_tx_bypass_mode(dal_ctx, ring_id,
+							     vdev_id, tcl_desc,
+							     tx_metadata);
+
 		return (platform_ret == 0) ? DP_DAL_TX_SUCCESS :
 					      DP_DAL_TX_FAILURE;
 	}
@@ -126,6 +142,16 @@ static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
 			platform_ret = global_plat_ops->tx(dal_ctx, ring_id,
 							   vdev_id, tcl_desc,
 							   tx_metadata);
+			/* DAL will return -EBUSY if mode switch is in progress,
+			 * try to send via bypass mode tx path if it a special
+			 * frame.
+			 */
+			if (platform_ret == -EBUSY &&
+			    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
+						       DP_DAL_SPECIAL_FRAME_MASK))
+				platform_ret = dp_dal_tx_bypass_mode(dal_ctx, ring_id,
+								     vdev_id, tcl_desc,
+								     tx_metadata);
 			platform_ret = (platform_ret == 0) ?
 					DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
 		}
@@ -203,6 +229,20 @@ uint32_t dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
 						  suspended_desc->vdev_id,
 						  suspended_desc->tcl_desc,
 						  &tx_metadata);
+
+			/* DAL will return -EBUSY if mode switch is in progress,
+			 * try to send via bypass mode tx path if it a special
+			 * frame.
+			 */
+			if (ret == -EBUSY &&
+			    dp_dal_tx_is_special_frame(suspended_desc->tx_desc->nbuf,
+						       DP_DAL_SPECIAL_FRAME_MASK))
+				ret = dp_dal_tx_bypass_mode(dal_ctx,
+							    suspended_desc->ring_id,
+							    suspended_desc->vdev_id,
+							    suspended_desc->tcl_desc,
+							    &tx_metadata);
+
 			if (ret == 0) {
 				ring_id = tx_metadata.msdu_info->tx_queue.ring_id;
 
@@ -290,6 +330,15 @@ static inline int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx,
 
 	ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id, tcl_desc,
 				  tx_metadata);
+	/* DAL will return -EBUSY if mode switch is in progress, try to send
+	 * via bypass mode tx path if it a special frame.
+	 */
+	if (ret == -EBUSY &&
+	    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
+				       DP_DAL_SPECIAL_FRAME_MASK))
+		ret = dp_dal_tx_bypass_mode(dal_ctx, ring_id, vdev_id,
+					    tcl_desc, tx_metadata);
+
 	return (ret == 0) ? DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
 }
 
