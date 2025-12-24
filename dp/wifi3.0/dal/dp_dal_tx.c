@@ -98,6 +98,9 @@ static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
 	int platform_ret = 0;
 
 	if (!global_plat_ops || !global_plat_ops->tx) {
+		DP_STATS_INC_PKT(dal_ctx,
+				 tx.offload[ring_id][DAL_TX_NOSUPPORT_DRP], 1,
+				 dp_tx_get_pkt_len(tx_metadata->tx_desc));
 		dp_tx_err_rl("Platform TX operation not available");
 		return DP_DAL_TX_FAILURE;
 	}
@@ -325,6 +328,9 @@ static inline int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx,
 	int ret;
 
 	if (!global_plat_ops || !global_plat_ops->tx) {
+		DP_STATS_INC_PKT(dal_ctx,
+				 tx.offload[ring_id][DAL_TX_NOSUPPORT_DRP], 1,
+				 dp_tx_get_pkt_len(tx_metadata->tx_desc));
 		dp_tx_err_rl("Platform TX operation not available");
 		return DP_DAL_TX_FAILURE;
 	}
@@ -640,6 +646,10 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 	if (!dp_tx_desc_set_ktimestamp(vdev, tx_desc))
 		dp_tx_desc_set_timestamp(tx_desc);
 
+	DP_STATS_INC_PKT(dal_ctx,
+			 tx.offload[ring_id][DAL_TX_TOTAL_PKT_RCVD], 1,
+			 dp_tx_get_pkt_len(tx_desc));
+
 	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
 
 	/* Use runtime PM wrapper for platform TX call */
@@ -653,6 +663,9 @@ QDF_STATUS dp_dal_tx_hw_enqueue(struct dp_soc *soc,
 		DP_STATS_INC(vdev,
 			     tx_i[msdu_info->xmit_type].dropped.enqueue_fail,
 			     1);
+		DP_STATS_INC_PKT(dal_ctx,
+				 tx.offload[ring_id][DAL_TX_FAILED_DRP],
+				 1, dp_tx_get_pkt_len(tx_desc));
 		status = QDF_STATUS_E_FAILURE;
 		goto err_free_desc;
 	}

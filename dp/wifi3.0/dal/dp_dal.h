@@ -253,6 +253,40 @@ struct dal_intf_info {
 };
 
 /**
+ * struct dal_pkt_info - packet info for dal stats
+ * @num: number of packets
+ * @bytes: number of bytes
+ */
+struct dal_pkt_info {
+	uint64_t num;
+	uint64_t bytes;
+};
+
+/**
+ * enum dal_tx_event_type - TX event types for dal stats
+ * @DAL_TX_TOTAL_PKT_RCVD: Total packets received
+ * @DAL_TX_NOSUPPORT_DRP: No support drop count
+ * @DAL_TX_FAILED_DRP: Failed drop count
+ * @DAL_TX_EVENT_MAX: Max event type
+ */
+enum dal_tx_event_type {
+	DAL_TX_TOTAL_PKT_RCVD,
+	DAL_TX_NOSUPPORT_DRP,
+	DAL_TX_FAILED_DRP,
+	DAL_TX_EVENT_MAX,
+};
+
+/**
+ * struct dp_dal_stats - DAL statistics
+ * @tx: TX related statistics
+ */
+struct dp_dal_stats {
+	struct {
+		struct dal_pkt_info offload[DAL_TX_RINGS_MAX][DAL_TX_EVENT_MAX];
+	} tx;
+};
+
+/**
  * struct dp_dal_rx_desc_node - DAL RX descriptor list node
  * @next: Next pointer for DAL queue
  * @rx_desc: Pointer to actual RX descriptor
@@ -299,6 +333,7 @@ struct dp_dal_rx_desc_node {
  * @suspended_tx_lock: Spinlock to protect suspended TX list operations
  * @suspended_tx_count: Count of suspended TX descriptors
  * @dal_sim_ctx: DAL simulation context
+ * @stats: DAL statistics
  *
  * This structure maintains all necessary context for DAL operations,
  * including pointers to datapath context, platform operations, vendor
@@ -340,6 +375,7 @@ struct dp_dal_ctx {
 #ifdef FEATURE_DP_DAL_SIM
 	struct dp_dal_sim_ctx *dal_sim_ctx;
 #endif
+	struct dp_dal_stats stats;
 };
 
 /**
