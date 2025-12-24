@@ -3040,7 +3040,7 @@ send_set_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->data_threshold = param->perf_data_threshold;
 	cmd->traffic_monitoring_time = param->traffic_monitoring_time;
 
-	wmi_debug("Set Tm param vdevId %d Threshold %u time(s) %u",
+	wmi_debug("Set Tm param vdevId %d Threshold %u time %u",
 		  param->vdev_id, param->perf_data_threshold,
 		  param->traffic_monitoring_time);
 	wmi_mtrace(WMI_VDEV_TRAFFIC_MONITORING_CMDID, cmd->vdev_id, 0);
@@ -3048,7 +3048,7 @@ send_set_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_VDEV_TRAFFIC_MONITORING_CMDID);
 	if (QDF_IS_STATUS_ERROR(ret)) {
-		wmi_err("Failed to send SAP perf monitoring command ret = %d",
+		wmi_err("Failed to send traffic monitoring command ret = %d",
 			ret);
 		wmi_buf_free(buf);
 		return QDF_STATUS_E_FAILURE;
