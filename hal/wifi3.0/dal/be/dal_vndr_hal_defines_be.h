@@ -10,7 +10,7 @@
 
 #define NUM_OF_DWORDS_BUFFER_ADDR_INFO 2
 
-struct buffer_addr_info {
+struct dal_buffer_addr_info {
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
 	 uint32_t buffer_addr_31_0                   : 32;
 	 uint32_t buffer_addr_39_32                  :  8,
@@ -47,25 +47,25 @@ struct buffer_addr_info {
  * macro to set the LSW of the nbuf data physical address
  * to the rxdma ring entry
  */
-#define HAL_RXDMA_PADDR_LO_SET(buff_addr_info, paddr_lo) \
+#define DAL_VNDR_HAL_RXDMA_PADDR_LO_SET(buff_addr_info, paddr_lo) \
 	((*(((unsigned int *) buff_addr_info) + \
-	(HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET >> 2))) = \
-	(paddr_lo << HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB) & \
-	HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK)
+	(DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET >> 2))) = \
+	(paddr_lo << DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB) & \
+	DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK)
 
 /*
  * macro to set the LSB of MSW of the nbuf data physical address
  * to the rxdma ring entry
  */
-#define HAL_RXDMA_PADDR_HI_SET(buff_addr_info, paddr_hi) \
+#define DAL_VNDR_HAL_RXDMA_PADDR_HI_SET(buff_addr_info, paddr_hi) \
 	((*(((unsigned int *) buff_addr_info) + \
-	(HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET >> 2))) = \
-	(paddr_hi << HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB) & \
-	HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK)
+	(DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET >> 2))) = \
+	(paddr_hi << DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB) & \
+	DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK)
 /*
  * macro to set the cookie into the rxdma ring entry
  */
-#define HAL_RXDMA_COOKIE_SET(buff_addr_info, cookie) \
+#define DAL_VNDR_HAL_RXDMA_COOKIE_SET(buff_addr_info, cookie) \
 	((*(((unsigned int *)buff_addr_info) + \
 	(BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_OFFSET >> 2))) &= \
 	~BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK); \
@@ -76,7 +76,7 @@ struct buffer_addr_info {
 /*
  * macro to set the manager into the rxdma ring entry
  */
-#define HAL_RXDMA_MANAGER_SET(buff_addr_info, manager) \
+#define DAL_VNDR_HAL_RXDMA_MANAGER_SET(buff_addr_info, manager) \
 	((*(((unsigned int *)buff_addr_info) + \
 	(BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_OFFSET >> 2))) &= \
 	~BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK); \
@@ -87,7 +87,7 @@ struct buffer_addr_info {
 
 #define NUM_OF_DWORDS_TX_RATE_STATS_INFO 2
 
-struct tx_rate_stats_info {
+struct dal_tx_rate_stats_info {
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
 	uint32_t tx_rate_stats_info_valid                                :  1,
 			 transmit_bw                                             :  3,
@@ -172,9 +172,9 @@ struct tx_rate_stats_info {
 
 #define NUM_OF_DWORDS_TCL_DATA_CMD 8
 
-struct tcl_data_cmd {
+struct dal_tcl_data_cmd {
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
-	 struct   buffer_addr_info                                          buf_addr_info;
+	 struct   dal_buffer_addr_info                       buf_addr_info;
 	 uint32_t tcl_cmd_type                                            :  1,
 			  buf_or_ext_desc_type                                    :  1,
 			  bank_id                                                 :  6,
@@ -210,7 +210,7 @@ struct tcl_data_cmd {
 			  ring_id                                                 :  8,
 			  looping_count                                           :  4;
 #else
-	 struct   buffer_addr_info                                          buf_addr_info;
+	 struct   dal_buffer_addr_info                       buf_addr_info;
 	 uint32_t buffer_timestamp_valid                                  :  1,
 			  buffer_timestamp                                        : 19,
 			  header_length_read_sel                                  :  1,
@@ -442,7 +442,7 @@ struct tcl_data_cmd {
 
 struct wbm_release_ring_tx {
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
-	 struct   buffer_addr_info                                          released_buff_or_desc_addr_info;
+	 struct   dal_buffer_addr_info          released_buff_or_desc_addr_info;
 	 uint32_t release_source_module                                   :  3,
 			  bm_action                                               :  3,
 			  buffer_or_desc_type                                     :  3,
@@ -462,13 +462,13 @@ struct wbm_release_ring_tx {
 			  last_msdu                                               :  1,
 			  fw_tx_notify_frame                                      :  3,
 			  buffer_timestamp                                        : 19;
-	 struct   tx_rate_stats_info                                        tx_rate_stats;
+	 struct   dal_tx_rate_stats_info                          tx_rate_stats;
 	 uint32_t sw_peer_id                                              : 16,
 			  tid                                                     :  4,
 			  tqm_status_number_31_24                                 :  8,
 			  looping_count                                           :  4;
 #else
-	 struct   buffer_addr_info                                          released_buff_or_desc_addr_info;
+	 struct   dal_buffer_addr_info          released_buff_or_desc_addr_info;
 	 uint32_t wbm_internal_error                                      :  1,
 			  cookie_conversion_status                                :  1,
 			  cache_id                                                :  1,
@@ -488,7 +488,7 @@ struct wbm_release_ring_tx {
 			  last_msdu                                               :  1,
 			  first_msdu                                              :  1,
 			  ack_frame_rssi                                          :  8;
-	 struct   tx_rate_stats_info                                        tx_rate_stats;
+	 struct   dal_tx_rate_stats_info                          tx_rate_stats;
 	 uint32_t looping_count                                           :  4,
 			  tqm_status_number_31_24                                 :  8,
 			  tid                                                     :  4,
@@ -687,7 +687,7 @@ struct wbm_release_ring_tx {
 #define WBM_RELEASE_RING_TX_LOOPING_COUNT_MASK                       0xf0000000
 #define NUM_OF_DWORDS_RX_MPDU_DESC_INFO 2
 
-struct rx_mpdu_desc_info {
+struct dal_rx_mpdu_desc_info {
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
 	 uint32_t msdu_count                                  :  8,
 			  fragment_flag                               :  1,
@@ -779,7 +779,7 @@ struct rx_mpdu_desc_info {
 
 #define NUM_OF_DWORDS_RX_MSDU_DESC_INFO 1
 
-struct rx_msdu_desc_info {
+struct dal_rx_msdu_desc_info {
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
 			 uint32_t first_msdu_in_mpdu_flag                   :  1,
 					  last_msdu_in_mpdu_flag                    :  1,
@@ -901,11 +901,11 @@ struct rx_msdu_desc_info {
 /* REO destination ring*/
 #define NUM_OF_DWORDS_REO_DESTINATION_RING 8
 
-struct reo_destination_ring {
+struct dal_reo_destination_ring {
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
-	 struct   buffer_addr_info               buf_or_link_desc_addr_info;
-	 struct   rx_mpdu_desc_info              rx_mpdu_desc_info_details;
-	 struct   rx_msdu_desc_info              rx_msdu_desc_info_details;
+	 struct   dal_buffer_addr_info      buf_or_link_desc_addr_info;
+	 struct   dal_rx_mpdu_desc_info     rx_mpdu_desc_info_details;
+	 struct   dal_rx_msdu_desc_info     rx_msdu_desc_info_details;
 	 uint32_t buffer_virt_addr_31_0              : 32;
 	 uint32_t buffer_virt_addr_63_32             : 32;
 	 uint32_t reo_dest_buffer_type               :  1,
@@ -918,9 +918,9 @@ struct reo_destination_ring {
 			  ring_id                            :  8,
 			  looping_count                      :  4;
 #else
-	 struct   buffer_addr_info               buf_or_link_desc_addr_info;
-	 struct   rx_mpdu_desc_info              rx_mpdu_desc_info_details;
-	 struct   rx_msdu_desc_info              rx_msdu_desc_info_details;
+	 struct   dal_buffer_addr_info      buf_or_link_desc_addr_info;
+	 struct   dal_rx_mpdu_desc_info     rx_mpdu_desc_info_details;
+	 struct   dal_rx_msdu_desc_info     rx_msdu_desc_info_details;
 	 uint32_t buffer_virt_addr_31_0              : 32;
 	 uint32_t buffer_virt_addr_63_32             : 32;
 	 uint32_t looping_count                      :  4,
@@ -1156,7 +1156,7 @@ struct reo_destination_ring {
 #define MSDU_END_WMASK 0x115CA
 
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
-struct rx_msdu_end_compact {
+struct dal_rx_msdu_end_compact {
 	/* qword-0 */
 			 uint32_t rxpcu_mpdu_filter_in_category        :  2,
 					  sw_frame_group_id                    :  7,
@@ -1285,7 +1285,7 @@ struct rx_msdu_end_compact {
 					  msdu_done                            :  1;
 };
 
-struct rx_mpdu_start_compact {
+struct dal_rx_mpdu_start_compact {
 	/* qword-2 */
 			 uint32_t pn_31_0                              : 32;
 			 uint32_t pn_63_32                             : 32;
@@ -1359,7 +1359,7 @@ struct rx_mpdu_start_compact {
 					  mpdu_sequence_control_field          : 16;
 };
 #else
-struct rx_msdu_end_compact {
+struct dal_rx_msdu_end_compact {
 	/* qword-0 */
 			 uint32_t phy_ppdu_id                          : 16,
 					  reserved_0                           :  7,
@@ -1488,7 +1488,7 @@ struct rx_msdu_end_compact {
 					  reserved_31a                         : 10;
 };
 
-struct rx_mpdu_start_compact {
+struct dal_rx_mpdu_start_compact {
 	/* qword-2 */
 			 uint32_t pn_31_0                              : 32;
 			 uint32_t pn_63_32                             : 32;
@@ -1563,103 +1563,103 @@ struct rx_mpdu_start_compact {
 };
 #endif /* WIFI_BIT_ORDER_BIG_ENDIAN */
 
-typedef struct rx_mpdu_start_compact hal_rx_mpdu_start_t;
-typedef struct rx_msdu_end_compact hal_rx_msdu_end_t;
+typedef struct dal_rx_mpdu_start_compact dal_vndr_hal_rx_mpdu_start_t;
+typedef struct dal_rx_msdu_end_compact dal_vndr_hal_rx_msdu_end_t;
 
-struct rx_mpdu_start_tlv {
-	hal_rx_mpdu_start_t rx_mpdu_start;
+struct dal_rx_mpdu_start_tlv {
+	dal_vndr_hal_rx_mpdu_start_t rx_mpdu_start;
 };
 
-struct rx_msdu_end_tlv {
-	hal_rx_msdu_end_t rx_msdu_end;
+struct dal_rx_msdu_end_tlv {
+	dal_vndr_hal_rx_msdu_end_t rx_msdu_end;
 };
 
-struct rx_pkt_tlvs {
-	struct rx_msdu_end_tlv   msdu_end_tlv;		/*  80 bytes */
-	struct rx_mpdu_start_tlv mpdu_start_tlv;	/*  48 bytes */
+struct dal_rx_pkt_tlvs {
+	struct dal_rx_msdu_end_tlv   msdu_end_tlv;		/*  80 bytes */
+	struct dal_rx_mpdu_start_tlv mpdu_start_tlv;	/*  48 bytes */
 };
 
-#define HAL_RX_BUF_COOKIE_GET(buff_addr_info)			\
-	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,		\
+#define DAL_VNDR_HAL_RX_BUF_COOKIE_GET(buff_addr_info)			\
+	(DAL_VNDR_HAL_MS((*DAL_VNDR_OFFSET_TO_WORD_PTR(buff_addr_info,	\
 		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_OFFSET)),	\
 		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK,	\
 		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB))
 
-#define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
-	(HAL_RX_BUF_COOKIE_GET(&		\
-	(((struct reo_destination_ring *)	\
+#define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
+	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&		\
+	(((struct dal_reo_destination_ring *)	\
 		reo_desc)->buf_or_link_desc_addr_info)))
 
-#define HAL_RX_MSDU_CONTINUATION_FLAG_GET(msdu_info_ptr)	\
-	((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+#define DAL_VNDR_HAL_RX_MSDU_CONTINUATION_FLAG_GET(msdu_info_ptr)	\
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
 		RX_MSDU_DESC_INFO_MSDU_CONTINUATION_OFFSET)) & \
 		RX_MSDU_DESC_INFO_MSDU_CONTINUATION_MASK)
 
-#define HAL_RX_BUF_RBM_GET(buff_addr_info)			\
-	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,		\
+#define DAL_VNDR_HAL_RX_BUF_RBM_GET(buff_addr_info)			\
+	(DAL_VNDR_HAL_MS((*DAL_VNDR_OFFSET_TO_WORD_PTR(buff_addr_info,	\
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_OFFSET)),\
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK,	\
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_LSB))
 
-#define HAL_RX_ERROR_STATUS_GET(reo_desc)			\
-	(_HAL_MS((*_OFFSET_TO_WORD_PTR(reo_desc,		\
+#define DAL_VNDR_HAL_RX_ERROR_STATUS_GET(reo_desc)			\
+	(DAL_VNDR_HAL_MS((*DAL_VNDR_OFFSET_TO_WORD_PTR(reo_desc,	\
 		REO_DESTINATION_RING_REO_PUSH_REASON_OFFSET)),\
 		REO_DESTINATION_RING_REO_PUSH_REASON_MASK,	\
 		REO_DESTINATION_RING_REO_PUSH_REASON_LSB))
 
-#define HAL_RX_BUFFER_ADDR_31_0_GET(buff_addr_info)	\
-	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,	\
-		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET)),	\
-		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK,	\
-		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB))
+#define DAL_VNDR_HAL_RX_BUFFER_ADDR_31_0_GET(buff_addr_info)	\
+	(DAL_VNDR_HAL_MS((*DAL_VNDR_OFFSET_TO_WORD_PTR(buff_addr_info,	\
+		DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET)), \
+		DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK,	\
+		DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB))
 
-#define HAL_RX_BUFFER_ADDR_39_32_GET(buff_addr_info)			\
-	(_HAL_MS((*_OFFSET_TO_WORD_PTR(buff_addr_info,			\
-		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET)),	\
-		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK,		\
-		HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB))
+#define DAL_VNDR_HAL_RX_BUFFER_ADDR_39_32_GET(buff_addr_info)		\
+	(DAL_VNDR_HAL_MS((*DAL_VNDR_OFFSET_TO_WORD_PTR(buff_addr_info,	\
+		DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET)), \
+		DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK,	\
+		DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB))
 
-#define HAL_RX_MPDU_START(_rx_pkt_tlv)	\
-	(((struct rx_pkt_tlvs *)_rx_pkt_tlv)->mpdu_start_tlv.	\
+#define DAL_VNDR_HAL_RX_MPDU_START(_rx_pkt_tlv)	\
+	(((struct dal_rx_pkt_tlvs *)_rx_pkt_tlv)->mpdu_start_tlv.	\
 			rx_mpdu_start)
 
-#define HAL_RX_MSDU_END(_rx_pkt_tlv)		\
-	(((struct rx_pkt_tlvs *)_rx_pkt_tlv)->msdu_end_tlv.rx_msdu_end)
+#define DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv)		\
+	(((struct dal_rx_pkt_tlvs *)_rx_pkt_tlv)->msdu_end_tlv.rx_msdu_end)
 
-#define HAL_RX_MPDU_SEQUENCE_NUMBER_GET(_rx_pkt_tlv)	\
-	HAL_RX_MPDU_START(_rx_pkt_tlv).mpdu_sequence_number
+#define DAL_VNDR_HAL_RX_MPDU_SEQUENCE_NUMBER_GET(_rx_pkt_tlv)	\
+	DAL_VNDR_HAL_RX_MPDU_START(_rx_pkt_tlv).mpdu_sequence_number
 
-#define HAL_RX_TLV_RATE_MCS_GET(_rx_pkt_tlv)	\
-	HAL_RX_MSDU_END(_rx_pkt_tlv).rate_mcs
+#define DAL_VNDR_HAL_RX_TLV_RATE_MCS_GET(_rx_pkt_tlv)	\
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).rate_mcs
 
-#define HAL_RX_TLV_SGI_GET(_rx_pkt_tlv)	\
-	HAL_RX_MSDU_END(_rx_pkt_tlv).sgi
+#define DAL_VNDR_HAL_RX_TLV_SGI_GET(_rx_pkt_tlv)	\
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).sgi
 
-#define HAL_RX_TLV_PKT_TYPE_GET(_rx_pkt_tlv)	\
-	HAL_RX_MSDU_END(_rx_pkt_tlv).pkt_type
+#define DAL_VNDR_HAL_RX_TLV_PKT_TYPE_GET(_rx_pkt_tlv)	\
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).pkt_type
 
-#define HAL_RX_TLV_BW_GET(_rx_pkt_tlv)     \
-	HAL_RX_MSDU_END(_rx_pkt_tlv).receive_bandwidth
+#define DAL_VNDR_HAL_RX_TLV_BW_GET(_rx_pkt_tlv)     \
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).receive_bandwidth
 
-#define HAL_RX_TLV_DA_IS_MCBC_GET(_rx_pkt_tlv)	\
-	HAL_RX_MSDU_END(_rx_pkt_tlv).da_is_mcbc
+#define DAL_VNDR_HAL_RX_TLV_DA_IS_MCBC_GET(_rx_pkt_tlv)	\
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).da_is_mcbc
 
-#define HAL_RX_TLV_L3_HEADER_PADDING_GET(_rx_pkt_tlv)	\
-	HAL_RX_MSDU_END(_rx_pkt_tlv).l3_header_padding
+#define DAL_VNDR_HAL_RX_TLV_L3_HEADER_PADDING_GET(_rx_pkt_tlv)	\
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).l3_header_padding
 
-#define HAL_RX_TLV_MIMO_SS_BITMAP(_rx_pkt_tlv)\
-	HAL_RX_MSDU_END(_rx_pkt_tlv).mimo_ss_bitmap
+#define DAL_VNDR_HAL_RX_TLV_MIMO_SS_BITMAP(_rx_pkt_tlv)\
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).mimo_ss_bitmap
 
-#define HAL_RX_TLV_MSDU_DONE_GET(_rx_pkt_tlv)	\
-	HAL_RX_MSDU_END(_rx_pkt_tlv).msdu_done
+#define DAL_VNDR_HAL_RX_TLV_MSDU_DONE_GET(_rx_pkt_tlv)	\
+	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).msdu_done
 
-#define HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
-	(HAL_RX_BUFFER_ADDR_39_32_GET(&			\
-	(((struct reo_destination_ring *)		\
+#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
+	(DAL_VNDR_HAL_RX_BUFFER_ADDR_39_32_GET(&			\
+	(((struct dal_reo_destination_ring *)		\
 		reo_desc)->buf_or_link_desc_addr_info)))
 
-#define HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)	\
-	(HAL_RX_BUFFER_ADDR_31_0_GET(&			\
-	(((struct reo_destination_ring *)		\
+#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)	\
+	(DAL_VNDR_HAL_RX_BUFFER_ADDR_31_0_GET(&			\
+	(((struct dal_reo_destination_ring *)		\
 		reo_desc)->buf_or_link_desc_addr_info)))
 #endif /* _DAL_VNDR_HAL_DEFINES_BE_H_ */

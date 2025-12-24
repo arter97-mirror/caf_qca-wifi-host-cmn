@@ -34,11 +34,23 @@ struct dal_vndr_hal_buf_info {
  * @DAL_VNDR_HAL_MSDU_F_FIRST_MSDU_IN_MPDU: First MSDU in MPDU
  * @DAL_VNDR_HAL_MSDU_F_LAST_MSDU_IN_MPDU: Last MSDU in MPDU
  * @DAL_VNDR_HAL_MSDU_F_MSDU_CONTINUATION: MSDU continuation
+ * @DAL_VNDR_HAL_MSDU_F_SA_IS_VALID: Found match for SA in AST
+ * @DAL_VNDR_HAL_MSDU_F_SA_IDX_TIMEOUT: AST search for SA timed out
+ * @DAL_VNDR_HAL_MSDU_F_DA_IS_VALID: Found match for DA in AST
+ * @DAL_VNDR_HAL_MSDU_F_DA_IS_MCBC: DA is MC/BC address
+ * @DAL_VNDR_HAL_MSDU_F_DA_IDX_TIMEOUT: AST search for DA timed out
+ * @DAL_VNDR_HAL_MSDU_F_INTRA_BSS: This is an intrabss packet
  */
 enum dal_vndr_hal_rx_msdu_desc_flags {
 	DAL_VNDR_HAL_MSDU_F_FIRST_MSDU_IN_MPDU = (0x1 << 0),
 	DAL_VNDR_HAL_MSDU_F_LAST_MSDU_IN_MPDU = (0x1 << 1),
 	DAL_VNDR_HAL_MSDU_F_MSDU_CONTINUATION = (0x1 << 2),
+	DAL_VNDR_HAL_MSDU_F_SA_IS_VALID = (0x1 << 23),
+	DAL_VNDR_HAL_MSDU_F_SA_IDX_TIMEOUT = (0x1 << 24),
+	DAL_VNDR_HAL_MSDU_F_DA_IS_VALID = (0x1 << 25),
+	DAL_VNDR_HAL_MSDU_F_DA_IS_MCBC = (0x1 << 26),
+	DAL_VNDR_HAL_MSDU_F_DA_IDX_TIMEOUT = (0x1 << 27),
+	DAL_VNDR_HAL_MSDU_F_INTRA_BSS = (0x1 << 28),
 };
 
 /**
@@ -206,71 +218,71 @@ struct dal_vndr_hal_srng {
 /*
  * Given the offset of a field in bytes, returns uint8_t *
  */
-#define _OFFSET_TO_BYTE_PTR(_ptr, _off_in_bytes)	\
+#define DAL_VNDR_OFFSET_TO_BYTE_PTR(_ptr, _off_in_bytes)	\
 	(((uint8_t *)(_ptr)) + (_off_in_bytes))
 
 /*
  * Given the offset of a field in bytes, returns uint32_t *
  */
-#define _OFFSET_TO_WORD_PTR(_ptr, _off_in_bytes)	\
+#define DAL_VNDR_OFFSET_TO_WORD_PTR(_ptr, _off_in_bytes)	\
 	(((uint32_t *)(_ptr)) + ((_off_in_bytes) >> 2))
 
 /*
  * Given the offset of a field in bytes, returns uint64_t *
  */
-#define _OFFSET_TO_QWORD_PTR(_ptr, _off_in_bytes)	\
+#define DAL_VNDR_OFFSET_TO_QWORD_PTR(_ptr, _off_in_bytes)	\
 	(((uint64_t *)(_ptr)) + ((_off_in_bytes) >> 3))
 
-#define _HAL_MS(_word, _mask, _shift)		\
+#define DAL_VNDR_HAL_MS(_word, _mask, _shift)		\
 	(((_word) & (_mask)) >> (_shift))
 
-#define HAL_OFFSET(block, field) block ## _ ## field ## _OFFSET
+#define DAL_VNDR_HAL_OFFSET(block, field) block ## _ ## field ## _OFFSET
 
-#define HAL_TX_LSB(block, field) block ## _ ## field ## _LSB
+#define DAL_VNDR_HAL_TX_LSB(block, field) block ## _ ## field ## _LSB
 
-#define HAL_TX_MASK(block, field) block ## _ ## field ## _MASK
+#define DAL_VNDR_HAL_TX_MASK(block, field) block ## _ ## field ## _MASK
 
-#define HAL_TX_DESC_OFFSET(desc, block, field) \
-	(((uint8_t *)desc) + HAL_OFFSET(block, field))
+#define DAL_VNDR_HAL_TX_DESC_OFFSET(desc, block, field) \
+	(((uint8_t *)desc) + DAL_VNDR_HAL_OFFSET(block, field))
 
-#define HAL_SET_FLD(desc, block, field) \
-	(*(uint32_t *) ((uint8_t *) desc + HAL_OFFSET(block, field)))
+#define DAL_VNDR_HAL_SET_FLD(desc, block, field) \
+	(*(uint32_t *) ((uint8_t *) desc + DAL_VNDR_HAL_OFFSET(block, field)))
 
-#define HAL_SET_FLD_OFFSET(desc, block, field, offset) \
-	(*(uint32_t *) ((uint8_t *) desc + HAL_OFFSET(block, field) + (offset)))
+#define DAL_VNDR_HAL_SET_FLD_OFFSET(desc, block, field, offset) \
+	(*(uint32_t *) ((uint8_t *) desc + DAL_VNDR_HAL_OFFSET(block, field) + (offset)))
 
-#define HAL_SET_FLD_64(desc, block, field) \
-	(*(uint64_t *)((uint8_t *)desc + HAL_OFFSET(block, field)))
+#define DAL_VNDR_HAL_SET_FLD_64(desc, block, field) \
+	(*(uint64_t *)((uint8_t *)desc + DAL_VNDR_HAL_OFFSET(block, field)))
 
-#define HAL_SET_FLD_OFFSET_64(desc, block, field, offset) \
-	(*(uint64_t *)((uint8_t *)desc + HAL_OFFSET(block, field) + (offset)))
+#define DAL_VNDR_HAL_SET_FLD_OFFSET_64(desc, block, field, offset) \
+	(*(uint64_t *)((uint8_t *)desc + DAL_VNDR_HAL_OFFSET(block, field) + (offset)))
 
-#define HAL_TX_SM(block, field, value) \
+#define DAL_VNDR_HAL_TX_SM(block, field, value) \
 	((value << (block ## _ ## field ## _LSB)) & \
 	 (block ## _ ## field ## _MASK))
 
-#define HAL_TX_MS(block, field, value) \
+#define DAL_VNDR_HAL_TX_MS(block, field, value) \
 	(((value) & (block ## _ ## field ## _MASK)) >> \
 	 (block ## _ ## field ## _LSB))
 
-#define HAL_TX_DESC_GET(desc, block, field) \
-	HAL_TX_MS(block, field, HAL_SET_FLD(desc, block, field))
+#define DAL_VNDR_HAL_TX_DESC_GET(desc, block, field) \
+	DAL_VNDR_HAL_TX_MS(block, field, DAL_VNDR_HAL_SET_FLD(desc, block, field))
 
-#define HAL_TX_DESC_OFFSET_GET(desc, block, field, offset) \
-	HAL_TX_MS(block, field, HAL_SET_FLD_OFFSET(desc, block, field, offset))
+#define DAL_VNDR_HAL_TX_DESC_OFFSET_GET(desc, block, field, offset) \
+	DAL_VNDR_HAL_TX_MS(block, field, DAL_VNDR_HAL_SET_FLD_OFFSET(desc, block, field, offset))
 
-#define HAL_TX_DESC_SUBBLOCK_GET(desc, block, sub, field) \
-	HAL_TX_MS(sub, field, HAL_SET_FLD(desc, block, sub))
+#define DAL_VNDR_HAL_TX_DESC_SUBBLOCK_GET(desc, block, sub, field) \
+	DAL_VNDR_HAL_TX_MS(sub, field, DAL_VNDR_HAL_SET_FLD(desc, block, sub))
 
-#define HAL_TX_DESC_GET_64(desc, block, field) \
-	HAL_TX_MS(block, field, HAL_SET_FLD_64(desc, block, field))
+#define DAL_VNDR_HAL_TX_DESC_GET_64(desc, block, field) \
+	DAL_VNDR_HAL_TX_MS(block, field, DAL_VNDR_HAL_SET_FLD_64(desc, block, field))
 
-#define HAL_TX_DESC_OFFSET_GET_64(desc, block, field, offset) \
-	HAL_TX_MS(block, field, HAL_SET_FLD_OFFSET_64(desc, block, field,\
+#define DAL_VNDR_HAL_TX_DESC_OFFSET_GET_64(desc, block, field, offset) \
+	DAL_VNDR_HAL_TX_MS(block, field, DAL_VNDR_HAL_SET_FLD_OFFSET_64(desc, block, field,\
 		  offset))
 
-#define HAL_TX_DESC_SUBBLOCK_GET_64(desc, block, sub, field) \
-	HAL_TX_MS(sub, field, HAL_SET_FLD_64(desc, block, sub))
+#define DAL_VNDR_HAL_TX_DESC_SUBBLOCK_GET_64(desc, block, sub, field) \
+	DAL_VNDR_HAL_TX_MS(sub, field, DAL_VNDR_HAL_SET_FLD_64(desc, block, sub))
 
 /**
  * enum dal_vndr_hal_reo_error_status - Enum which encapsulates
@@ -285,41 +297,82 @@ enum dal_vndr_hal_reo_error_status {
 	DAL_VNDR_HAL_REO_ROUTING_INSTRUCTION = 1,
 };
 
-#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET                0x0
-#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB                   0
-#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK                  0xffffffff
+#define DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_OFFSET       0x0
+#define DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_LSB          0
+#define DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_31_0_MASK         0xffffffff
 
-#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET	0x4
-#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB	0
-#define HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK	0x000000ff
+#define DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_OFFSET	0x4
+#define DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_LSB	0
+#define DAL_VNDR_HAL_BUFFER_ADDR_INFO_BUFFER_ADDR_39_32_MASK	0x000000ff
 
-#define HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_OFFSET	0x0
-#define HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_LSB	0
-#define HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_MASK	0x00000001
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_OFFSET 0x0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_LSB    0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_MASK   0x00000001
 
-#define HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_OFFSET	0x0
-#define HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_LSB	1
-#define HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_MASK	0x00000002
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_OFFSET 0x0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_LSB    1
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_MASK   0x00000002
 
-#define HAL_RX_FIRST_MSDU_IN_MPDU_FLAG_GET(msdu_info_ptr)	\
-	((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
-		HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_OFFSET)) & \
-		HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_MASK)
+#define DAL_VNDR_HAL_RX_FIRST_MSDU_IN_MPDU_FLAG_GET(msdu_info_ptr)	\
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_OFFSET)) & \
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_FIRST_MSDU_IN_MPDU_FLAG_MASK)
 
-#define HAL_RX_LAST_MSDU_IN_MPDU_FLAG_GET(msdu_info_ptr) \
-	((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
-		HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_OFFSET)) & \
-		HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_MASK)
+#define DAL_VNDR_HAL_RX_LAST_MSDU_IN_MPDU_FLAG_GET(msdu_info_ptr) \
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_OFFSET)) & \
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_LAST_MSDU_IN_MPDU_FLAG_MASK)
 
-#define HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_OFFSET	0x0
-#define HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_LSB		3
-#define HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_MASK		0x0001fff8
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_OFFSET	0x0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_LSB		3
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_MASK		0x0001fff8
 
-#define HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info_ptr)		\
-	(_HAL_MS((*_OFFSET_TO_WORD_PTR(msdu_info_ptr,		\
-		HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_OFFSET)),	\
-		HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_MASK,		\
-		HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_LSB))
+#define DAL_VNDR_HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info_ptr)		\
+	(DAL_VNDR_HAL_MS((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,		\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_OFFSET)),	\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_MASK,		\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_MSDU_LENGTH_LSB))
+
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_SA_IS_VALID_OFFSET	0x0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_SA_IS_VALID_LSB		18
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_SA_IS_VALID_MASK		0x00040000
+
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_VALID_OFFSET	0x0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_VALID_LSB		19
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_VALID_MASK		0x00080000
+
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_MCBC_OFFSET	0x0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_MCBC_LSB		20
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_MCBC_MASK		0x00100000
+
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_INTRA_BSS_OFFSET		0x0
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_INTRA_BSS_LSB		26
+#define DAL_VNDR_HAL_RX_MSDU_DESC_INFO_INTRA_BSS_MASK		0x04000000
+
+#define DAL_VNDR_HAL_RX_MSDU_CONTINUATION_FLAG_GET(msdu_info_ptr)	\
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		RX_MSDU_DESC_INFO_MSDU_CONTINUATION_OFFSET)) & \
+		RX_MSDU_DESC_INFO_MSDU_CONTINUATION_MASK)
+
+#define DAL_VNDR_HAL_RX_MSDU_SA_IS_VALID_FLAG_GET(msdu_info_ptr)	\
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_SA_IS_VALID_OFFSET)) &	\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_SA_IS_VALID_MASK)
+
+#define DAL_VNDR_HAL_RX_MSDU_DA_IS_VALID_FLAG_GET(msdu_info_ptr)	\
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_VALID_OFFSET)) &	\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_VALID_MASK)
+
+#define DAL_VNDR_HAL_RX_MSDU_DA_IS_MCBC_FLAG_GET(msdu_info_ptr)	\
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_MCBC_OFFSET)) &	\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_DA_IS_MCBC_MASK)
+
+#define DAL_VNDR_HAL_RX_MSDU_INTRA_BSS_FLAG_GET(msdu_info_ptr)		\
+	((*DAL_VNDR_OFFSET_TO_WORD_PTR(msdu_info_ptr,			\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_INTRA_BSS_OFFSET)) &	\
+		DAL_VNDR_HAL_RX_MSDU_DESC_INFO_INTRA_BSS_MASK)
 
 /**
  * get_hweight8() - count num of 1's in 8-bit bitmap

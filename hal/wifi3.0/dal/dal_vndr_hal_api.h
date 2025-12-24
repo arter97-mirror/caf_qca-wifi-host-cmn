@@ -9,6 +9,83 @@
 #include <linux/types.h>
 #include <linux/io.h>
 #include "dal_vndr_hal_internal.h"
+#include "dal_vndr_hal_defines_be.h"
+
+#define DAL_VNDR_HAL_WBM2SW_RELEASE_SRC_GET(wbm_desc) (((*(((uint32_t *)wbm_desc) + \
+		(WBM_RELEASE_RING_TX_RELEASE_SOURCE_MODULE_OFFSET >> 2))) & \
+		 WBM_RELEASE_RING_TX_RELEASE_SOURCE_MODULE_MASK) >> \
+		 WBM_RELEASE_RING_TX_RELEASE_SOURCE_MODULE_LSB)
+
+/* sw_cookie is 20-bit field, MSB is bit 19 */
+#define DAL_VNDR_HAL_TX_DESC_COOKIE_MSB_BIT	\
+	(TCL_DATA_CMD_BUF_ADDR_INFO_SW_BUFFER_COOKIE_MSB - \
+		TCL_DATA_CMD_BUF_ADDR_INFO_SW_BUFFER_COOKIE_LSB)
+#define DAL_VNDR_HAL_TX_DESC_COOKIE_MSB_MASK \
+	(1 << DAL_VNDR_HAL_TX_DESC_COOKIE_MSB_BIT)
+
+/* Macro to set MSB bit of sw_cookie for buffer tracking */
+#define DAL_VNDR_HAL_TX_DESC_COOKIE_SET_MSB(cookie) \
+	((cookie) | DAL_VNDR_HAL_TX_DESC_COOKIE_MSB_MASK)
+
+/* Macro to check if MSB bit is set in sw_cookie */
+#define DAL_VNDR_HAL_TX_COMP_COOKIE_MSB_IS_SET(cookie) \
+	((cookie) & DAL_VNDR_HAL_TX_DESC_COOKIE_MSB_MASK)
+
+/**
+ * dal_vndr_hal_tx_comp_get_desc_id_generic() - Get descriptor ID from Tx
+ * completion descriptor
+ * @hal_desc: Tx completion descriptor pointer
+ *
+ * This function extracts the descriptor ID (sw_buffer_cookie) from the
+ * hardware completion descriptor.
+ *
+ * Return: Descriptor ID
+ */
+static inline uint32_t dal_vndr_hal_tx_comp_get_desc_id_generic(void *hal_desc)
+{
+	uint32_t comp_desc =
+			*(uint32_t *)(((uint8_t *)hal_desc) +
+				BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_OFFSET);
+
+	/* Cookie is placed on 2nd word */
+	return (comp_desc & BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK) >>
+			BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB;
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_buffer_source_generic() - Get buffer release source
+ * from Tx completion descriptor
+ * @hal_desc: Tx completion descriptor pointer
+ *
+ * This function extracts the buffer release source module from the
+ * hardware completion descriptor.
+ *
+ * Return: Buffer release source module
+ */
+static inline uint32_t dal_vndr_hal_tx_comp_get_buffer_source_generic(
+	void *hal_desc)
+{
+	return DAL_VNDR_HAL_WBM2SW_RELEASE_SRC_GET(hal_desc);
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_tx_status_generic() - Get Tx transmission status
+ * @hal_desc: Tx completion descriptor pointer
+ *
+ * This function extracts the transmit status value from the Tx completion
+ * descriptor (TQM release reason).
+ *
+ * Return: Transmit status value
+ */
+static inline uint8_t dal_vndr_hal_tx_comp_get_tx_status_generic(void *hal_desc)
+{
+	uint32_t comp_desc =
+		*(uint32_t *)(((uint8_t *)hal_desc) +
+			WBM_RELEASE_RING_TX_TQM_RELEASE_REASON_OFFSET);
+
+	return (comp_desc & WBM_RELEASE_RING_TX_TQM_RELEASE_REASON_MASK) >>
+			WBM_RELEASE_RING_TX_TQM_RELEASE_REASON_LSB;
+}
 
 /*
  * BAR + 4K is always accessible, any access outside this
