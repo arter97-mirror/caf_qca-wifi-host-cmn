@@ -26,6 +26,9 @@
 #include <hal_api_mon.h>
 #include <hal_generic_api.h>
 #include "txmon_tlvs.h"
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dal_vndr_hal_be.h"
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /*
  * Debug macro to print the TLV header tag
@@ -54,6 +57,7 @@ do { \
 } while (0)
 #endif /* WLAN_FEATURE_TSF_AUTO_REPORT || WLAN_CONFIG_TX_DELAY */
 
+#ifdef FEATURE_DAL_DP_SUPPORT
 /**
  * hal_tx_comp_get_status_generic_be() - TQM Release reason
  * @desc: WBM descriptor
@@ -69,6 +73,14 @@ static inline void
 hal_tx_comp_get_status_generic_be(void *desc, void *ts1,
 				  struct hal_soc *hal)
 {
+	dal_vndr_hal_tx_comp_get_status_generic_be(desc, ts1);
+	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts);
+}
+#else
+static inline void
+hal_tx_comp_get_status_generic_be(void *desc, void *ts1,
+				  struct hal_soc *hal)
+{
 	struct hal_tx_completion_status *ts =
 		(struct hal_tx_completion_status *)ts1;
 
@@ -79,6 +91,7 @@ hal_tx_comp_get_status_generic_be(void *desc, void *ts1,
 	ts->tid = ts->tid & 0xF;
 	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts);
 }
+#endif
 
 #ifdef CONFIG_BORON
 static void hal_tx_set_pcp_tid_map_generic_be(struct hal_soc *soc, uint8_t *map)

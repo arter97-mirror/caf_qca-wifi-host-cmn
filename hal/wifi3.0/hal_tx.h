@@ -27,6 +27,9 @@
 #include "wcss_version.h"
 #include "hal_hw_headers.h"
 #include "hal_tx_hw_defines.h"
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dal_vndr_hal_api.h"
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #define HAL_WBM_RELEASE_RING_2_BUFFER_TYPE    0
 #define HAL_WBM_RELEASE_RING_2_DESC_TYPE      1
@@ -686,6 +689,14 @@ static inline uint32_t hal_tx_comp_get_buffer_type(void *hal_desc)
 		HAL_TX_COMP_BUFFER_OR_DESC_TYPE_LSB;
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+static inline uint32_t
+hal_tx_comp_get_buffer_source(hal_soc_handle_t hal_soc_hdl,
+			      void *hal_desc)
+{
+	return dal_vndr_hal_tx_comp_get_buffer_source_generic(hal_desc);
+}
+#else
 #ifdef QCA_WIFI_KIWI
 /**
  * hal_tx_comp_get_buffer_source() - Get buffer release source value
@@ -712,6 +723,7 @@ hal_tx_comp_get_buffer_source(hal_soc_handle_t hal_soc_hdl,
 	return HAL_WBM2SW_RELEASE_SRC_GET(hal_desc);
 }
 #endif
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /**
  * hal_tx_comp_get_release_reason() - TQM Release reason
@@ -749,6 +761,7 @@ static inline uint16_t hal_tx_comp_get_peer_id(void *hal_desc)
 		HAL_TX_COMP_SW_PEER_ID_LSB;
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
 /**
  * hal_tx_comp_get_tx_status() - Get tx transmission status()
  * @hal_desc: completion ring descriptor pointer
@@ -759,6 +772,11 @@ static inline uint16_t hal_tx_comp_get_peer_id(void *hal_desc)
  */
 static inline uint8_t hal_tx_comp_get_tx_status(void *hal_desc)
 {
+	return dal_vndr_hal_tx_comp_get_tx_status_generic(hal_desc);
+}
+#else
+static inline uint8_t hal_tx_comp_get_tx_status(void *hal_desc)
+{
 	uint32_t comp_desc =
 		*(uint32_t *)(((uint8_t *)hal_desc) +
 			       HAL_TX_COMP_TQM_RELEASE_REASON_OFFSET);
@@ -766,6 +784,7 @@ static inline uint8_t hal_tx_comp_get_tx_status(void *hal_desc)
 	return (comp_desc & HAL_TX_COMP_TQM_RELEASE_REASON_MASK) >>
 		HAL_TX_COMP_TQM_RELEASE_REASON_LSB;
 }
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /**
  * hal_tx_comp_desc_sync() - collect hardware descriptor contents

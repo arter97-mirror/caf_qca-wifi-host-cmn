@@ -24,6 +24,11 @@
 #include "hal_tx.h"
 #include "hal_flow.h"
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dal_vndr_hal_be.h"
+#include "dal_vndr_hal_api.h"
+#endif
+
 /* Number of TX banks reserved i.e, will not be used by host driver. */
 /* MAX_TCL_BANK reserved for FW use */
 #define HAL_TX_NUM_RESERVED_BANKS 1
@@ -529,6 +534,21 @@ static inline uint32_t hal_tx_get_wbm_sw0_bm_id(void)
 	return HAL_BE_WBM_SW0_BM_ID;
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * hal_tx_comp_get_desc_id() - Get TX descriptor id within comp descriptor
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * This function will tx descriptor id, cookie, within hardware completion
+ * descriptor using DAL vendor HAL APIs.
+ *
+ * Return: cookie
+ */
+static inline uint32_t hal_tx_comp_get_desc_id(void *hal_desc)
+{
+	return dal_vndr_hal_tx_comp_get_desc_id_generic(hal_desc);
+}
+#else
 /**
  * hal_tx_comp_get_desc_id() - Get TX descriptor id within comp descriptor
  * @hal_desc: completion ring descriptor pointer
@@ -549,7 +569,23 @@ static inline uint32_t hal_tx_comp_get_desc_id(void *hal_desc)
 	return (comp_desc & BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_MASK) >>
 		BUFFER_ADDR_INFO_SW_BUFFER_COOKIE_LSB;
 }
+#endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * hal_tx_comp_get_paddr() - Get paddr within comp descriptor
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * This function will get buffer physical address within hardware completion
+ * descriptor using DAL vendor HAL APIs.
+ *
+ * Return: Buffer physical address
+ */
+static inline qdf_dma_addr_t hal_tx_comp_get_paddr(void *hal_desc)
+{
+	return dal_vndr_hal_tx_comp_get_paddr_be(hal_desc);
+}
+#else
 /**
  * hal_tx_comp_get_paddr() - Get paddr within comp descriptor
  * @hal_desc: completion ring descriptor pointer
@@ -575,6 +611,7 @@ static inline qdf_dma_addr_t hal_tx_comp_get_paddr(void *hal_desc)
 
 	return (qdf_dma_addr_t)(paddr_lo | (((uint64_t)paddr_hi) << 32));
 }
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef DP_HW_COOKIE_CONVERT_EXCEPTION
 /* HW set dowrd-2 bit30 to 1 if HW CC is done */

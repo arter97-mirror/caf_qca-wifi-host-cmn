@@ -24,6 +24,10 @@
 #include "hal_be_rx_compact_tlv.h"
 #include "hal_be_api_mon.h"
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dal_vndr_hal_be.h"
+#endif
+
 /*
  * Structures & Macros to obtain fields from the TLV's in the Rx packet
  * pre-header.
@@ -1283,6 +1287,7 @@ static inline uint32_t hal_rx_desc_is_first_msdu_be(void *hw_desc_addr)
 	return HAL_RX_TLV_FIRST_MSDU_GET(rx_pkt_tlvs);
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
 /**
  * hal_rx_tlv_l3_hdr_padding_get_be() - API to get the l3_header padding
  *					from rx_msdu_end TLV
@@ -1292,6 +1297,11 @@ static inline uint32_t hal_rx_desc_is_first_msdu_be(void *hw_desc_addr)
  */
 static inline uint32_t hal_rx_tlv_l3_hdr_padding_get_be(uint8_t *buf)
 {
+	return dal_vndr_hal_rx_get_l3_pad_bytes_be(buf);
+}
+#else
+static inline uint32_t hal_rx_tlv_l3_hdr_padding_get_be(uint8_t *buf)
+{
 	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
 	uint32_t l3_header_padding;
 
@@ -1299,6 +1309,7 @@ static inline uint32_t hal_rx_tlv_l3_hdr_padding_get_be(uint8_t *buf)
 
 	return l3_header_padding;
 }
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /**
  * hal_rx_encryption_info_valid_be() - Returns encryption type.

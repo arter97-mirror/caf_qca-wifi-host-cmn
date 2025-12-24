@@ -104,7 +104,168 @@
 #include "hal_be_api_mon.h"
 #include <hal_be_generic_api.h>
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dal_vndr_hal_be.h"
+#include "dal_vndr_hal_api.h"
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 #define LINK_DESC_SIZE (NUM_OF_DWORDS_RX_MSDU_LINK << 2)
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+/*
+ * DAL Vendor HAL API Wrappers for QCC2072
+ *
+ * These wrapper functions replace the regular HAL APIs with DAL vendor APIs
+ * when FEATURE_DAL_DP_SUPPORT is enabled. This centralizes all DAL API
+ * replacements in one place instead of scattered #ifdef blocks throughout
+ * the HAL code.
+ */
+
+/**
+ * hal_tx_comp_get_buffer_source_dal_2072() - DAL wrapper for buffer source
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * Return: buffer source
+ */
+static uint32_t hal_tx_comp_get_buffer_source_dal_2072(void *hal_desc)
+{
+	return dal_vndr_hal_tx_comp_get_buffer_source_generic(hal_desc);
+}
+
+/**
+ * hal_tx_comp_get_release_reason_dal_2072() - DAL wrapper for release reason
+ * @hal_desc: completion ring descriptor pointer
+ *
+ * Return: release reason
+ */
+static uint8_t hal_tx_comp_get_release_reason_dal_2072(void *hal_desc)
+{
+	return dal_vndr_hal_tx_comp_get_tx_status_generic(hal_desc);
+}
+
+/**
+ * hal_tx_comp_get_status_dal_2072() - DAL wrapper for TX completion status
+ * @desc: WBM descriptor
+ * @ts1: TX status
+ * @hal: HAL soc handle
+ *
+ * Return: none
+ */
+static void hal_tx_comp_get_status_dal_2072(void *desc, void *ts1,
+					    struct hal_soc *hal)
+{
+	dal_vndr_hal_tx_comp_get_status_generic_be(desc, ts1);
+	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts);
+}
+
+/**
+ * hal_rx_reo_buf_paddr_get_dal_2072() - DAL wrapper for REO buffer paddr
+ * @rx_desc: REO ring descriptor
+ * @buf_info: Buffer info structure
+ *
+ * Return: none
+ */
+static void hal_rx_reo_buf_paddr_get_dal_2072(hal_ring_desc_t rx_desc,
+					      struct hal_buf_info *buf_info)
+{
+	buf_info->paddr = dal_vndr_hal_rx_reo_buf_paddr_get_be(rx_desc);
+	buf_info->sw_cookie = dal_vndr_hal_rx_reo_buf_cookie_get_be(rx_desc);
+}
+
+/**
+ * hal_rxdma_buff_addr_info_set_dal_2072() - DAL wrapper for RXDMA buffer setup
+ * @rxdma_entry: RXDMA entry
+ * @paddr: Physical address
+ * @cookie: SW cookie
+ * @manager: Buffer manager
+ *
+ * Return: none
+ */
+static void hal_rxdma_buff_addr_info_set_dal_2072(void *rxdma_entry,
+						  qdf_dma_addr_t paddr,
+						  uint32_t cookie,
+						  uint8_t manager)
+{
+	dal_vndr_hal_rxdma_buff_addr_info_set_be(rxdma_entry, paddr, cookie,
+						 manager);
+}
+
+/**
+ * hal_rx_tlv_rate_mcs_get_dal_2072() - DAL wrapper for rate MCS
+ * @buf: RX buffer
+ *
+ * Return: rate MCS
+ */
+static uint32_t hal_rx_tlv_rate_mcs_get_dal_2072(uint8_t *buf)
+{
+	return dal_vndr_hal_rx_tlv_rate_mcs_get_be(buf);
+}
+
+/**
+ * hal_rx_tlv_get_pkt_type_dal_2072() - DAL wrapper for packet type
+ * @buf: RX buffer
+ *
+ * Return: packet type
+ */
+static uint32_t hal_rx_tlv_get_pkt_type_dal_2072(uint8_t *buf)
+{
+	return dal_vndr_hal_rx_tlv_get_pkt_type_be(buf);
+}
+
+/**
+ * hal_rx_tlv_nss_get_dal_2072() - DAL wrapper for NSS
+ * @buf: RX buffer
+ *
+ * Return: NSS value
+ */
+static uint32_t hal_rx_tlv_nss_get_dal_2072(uint8_t *buf)
+{
+	return dal_vndr_hal_rx_tlv_nss_get_be(buf);
+}
+
+/**
+ * hal_hw_txrx_dal_ops_attach_qcc2072() - Attach DAL vendor HAL ops for QCC2072
+ * @hal_soc: HAL SOC handle
+ *
+ * This function replaces the regular HAL ops with DAL vendor HAL ops
+ * for QCC2072 when FEATURE_DAL_DP_SUPPORT is enabled. This centralizes
+ * all DAL API replacements in one place instead of scattered #ifdef blocks.
+ *
+ * Return: none
+ */
+static void hal_hw_txrx_dal_ops_attach_qcc2072(struct hal_soc *hal_soc)
+{
+	/* TX completion ops */
+	hal_soc->ops->hal_tx_comp_get_buffer_source =
+					hal_tx_comp_get_buffer_source_dal_2072;
+	hal_soc->ops->hal_tx_comp_get_release_reason =
+					hal_tx_comp_get_release_reason_dal_2072;
+	hal_soc->ops->hal_tx_comp_get_status =
+					hal_tx_comp_get_status_dal_2072;
+
+	/* RX ops */
+	hal_soc->ops->hal_rx_reo_buf_paddr_get =
+					hal_rx_reo_buf_paddr_get_dal_2072;
+	hal_soc->ops->hal_rxdma_buff_addr_info_set =
+					hal_rxdma_buff_addr_info_set_dal_2072;
+	hal_soc->ops->hal_rx_tlv_rate_mcs_get =
+					hal_rx_tlv_rate_mcs_get_dal_2072;
+	hal_soc->ops->hal_rx_tlv_get_pkt_type =
+					hal_rx_tlv_get_pkt_type_dal_2072;
+	hal_soc->ops->hal_rx_msdu_start_nss_get =
+					hal_rx_tlv_nss_get_dal_2072;
+
+	hal_info("DAL vendor HAL ops attached for QCC2072");
+}
+
+#else /* !FEATURE_DAL_DP_SUPPORT */
+
+static void hal_hw_txrx_dal_ops_attach_qcc2072(struct hal_soc *hal_soc)
+{
+	/* No-op when DAL support is not enabled */
+}
+
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef QCA_GET_TSF_VIA_REG
 #define PCIE_PCIE_MHI_TIME_LOW 0xA28
@@ -3125,4 +3286,5 @@ void hal_qcc2072_attach(struct hal_soc *hal_soc)
 	hal_srng_hw_reg_offset_init_2072(hal_soc);
 	hal_hw_txrx_default_ops_attach_be(hal_soc);
 	hal_hw_txrx_ops_attach_2072(hal_soc);
+	hal_hw_txrx_dal_ops_attach_qcc2072(hal_soc);
 }

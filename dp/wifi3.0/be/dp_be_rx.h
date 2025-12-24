@@ -1121,11 +1121,19 @@ static inline uint8_t dp_rx_copy_desc_info_in_nbuf_cb(struct dp_soc *soc,
 	return pkt_capture_offload;
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+static inline uint8_t hal_rx_get_l3_pad_bytes_be(qdf_nbuf_t nbuf,
+						 uint8_t *rx_tlv_hdr)
+{
+	return dal_vndr_hal_rx_get_l3_pad_bytes_be(rx_tlv_hdr);
+}
+#else
 static inline uint8_t hal_rx_get_l3_pad_bytes_be(qdf_nbuf_t nbuf,
 						 uint8_t *rx_tlv_hdr)
 {
 	return HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_tlv_hdr);
 }
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 static inline uint8_t
 dp_rx_wbm_err_msdu_continuation_get(struct dp_soc *soc,

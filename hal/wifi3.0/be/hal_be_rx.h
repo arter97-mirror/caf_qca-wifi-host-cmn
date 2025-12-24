@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -24,6 +24,10 @@
 #include "hal_be_rx_tlv.h"
 #include "hal_rx.h"
 #include <wbm_release_ring_rx.h>
+
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dal_vndr_hal_be.h"
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #define HAL_RX_DA_IDX_CHIP_ID_OFFSET    14
 #define HAL_RX_DA_IDX_CHIP_ID_MASK      0x3
@@ -55,6 +59,16 @@
 		(manager << BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_LSB) & \
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK)
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+#define HAL_RX_ERROR_STATUS_GET(reo_desc)			\
+	DAL_VNDR_HAL_RX_ERROR_STATUS_GET(reo_desc)
+
+#define HAL_RX_BUF_COOKIE_GET(buff_addr_info)			\
+	DAL_VNDR_HAL_RX_BUF_COOKIE_GET(buff_addr_info)
+
+#define HAL_RX_BUF_RBM_GET(buff_addr_info)			\
+	DAL_VNDR_HAL_RX_BUF_RBM_GET(buff_addr_info)
+#else
 #define HAL_RX_ERROR_STATUS_GET(reo_desc)			\
 	(_HAL_MS((*_OFFSET_TO_WORD_PTR(reo_desc,		\
 		REO_DESTINATION_RING_REO_PUSH_REASON_OFFSET)),\
@@ -72,6 +86,7 @@
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_OFFSET)),\
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_MASK,	\
 		BUFFER_ADDR_INFO_RETURN_BUFFER_MANAGER_LSB))
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /* TODO: Convert the following structure fields accesseses to offsets */
 
@@ -81,10 +96,15 @@
 	(((struct reo_destination_ring *)	\
 		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
 #else
+#ifdef FEATURE_DAL_DP_SUPPORT
+#define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
+	DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)
+#else
 #define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
 	(HAL_RX_BUF_COOKIE_GET(&		\
 	(((struct reo_destination_ring *)	\
 		reo_desc)->buf_or_link_desc_addr_info)))
+#endif /* FEATURE_DAL_DP_SUPPORT */
 #endif
 
 #define HAL_RX_MSDU_DESC_IP_CHKSUM_FAIL_GET(msdu_desc_info_ptr)	\
@@ -464,6 +484,30 @@ void hal_rx_mpdu_desc_info_get_be(void *desc_addr,
 	mpdu_desc_info->tid = HAL_RX_MPDU_TID_GET(mpdu_info);
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/*
+ *hal_rx_msdu_desc_info_get_be: Gets the flags related to MSDU descriptor
+ *                              using DAL vendor HAL APIs.
+ *@desc_addr: REO ring descriptor addr
+ *@msdu_desc_info: Holds MSDU descriptor info from HAL Rx descriptor
+ *
+ * Specifically flags needed are: first_msdu_in_mpdu,
+ * last_msdu_in_mpdu, msdu_continuation, sa_is_valid,
+ * sa_idx_timeout, da_is_valid, da_idx_timeout, da_is_MCBC
+ *
+ *Return: void
+ */
+static inline void
+hal_rx_msdu_desc_info_get_be(void *desc_addr,
+			     struct hal_rx_msdu_desc_info *msdu_desc_info)
+{
+	struct dal_vndr_hal_rx_msdu_desc_info dal_msdu_desc_info;
+
+	dal_vndr_hal_rx_msdu_desc_info_get_be(desc_addr, &dal_msdu_desc_info);
+	msdu_desc_info->msdu_flags = dal_msdu_desc_info.msdu_flags;
+	msdu_desc_info->msdu_len = dal_msdu_desc_info.msdu_len;
+}
+#else
 /*
  *hal_rx_msdu_desc_info_get_be: Gets the flags related to MSDU descriptor.
  *@desc_addr: REO ring descriptor addr
@@ -473,7 +517,6 @@ void hal_rx_mpdu_desc_info_get_be(void *desc_addr,
  * last_msdu_in_mpdu, msdu_continuation, sa_is_valid,
  * sa_idx_timeout, da_is_valid, da_idx_timeout, da_is_MCBC
  *
-
  *Return: void
  */
 static inline void
@@ -490,6 +533,7 @@ hal_rx_msdu_desc_info_get_be(void *desc_addr,
 		hal_rx_msdu_flags_get_be((struct rx_msdu_desc_info *)msdu_info);
 	msdu_desc_info->msdu_len = HAL_RX_MSDU_PKT_LENGTH_GET(msdu_info);
 }
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef CONFIG_BORON
 /**
