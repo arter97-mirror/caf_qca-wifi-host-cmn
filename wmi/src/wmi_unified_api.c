@@ -422,12 +422,12 @@ QDF_STATUS wmi_unified_sta_ps_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-QDF_STATUS wmi_unified_sap_tm_cmd_send(wmi_unified_t wmi_handle,
-				       struct sap_tm_params *param)
+QDF_STATUS wmi_unified_tm_cmd_send(wmi_unified_t wmi_handle,
+				   struct traffic_monitoring_params *param)
 {
-	if (wmi_handle->ops->send_set_sap_tm_param_cmd)
-		return wmi_handle->ops->send_set_sap_tm_param_cmd(wmi_handle,
-								  param);
+	if (wmi_handle->ops->send_set_tm_param_cmd)
+		return wmi_handle->ops->send_set_tm_param_cmd(wmi_handle,
+							      param);
 
 	return QDF_STATUS_E_FAILURE;
 }

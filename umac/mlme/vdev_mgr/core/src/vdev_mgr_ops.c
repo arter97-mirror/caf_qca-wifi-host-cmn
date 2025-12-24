@@ -841,17 +841,17 @@ static QDF_STATUS vdev_mgr_sap_tm_param_update(
 				struct vdev_mlme_obj *mlme_obj)
 {
 	struct wlan_objmgr_vdev *vdev;
-	struct sap_tm_params param = {0};
+	struct traffic_monitoring_params param = {0};
 
 	vdev = mlme_obj->vdev;
 	param.vdev_id = wlan_vdev_get_id(vdev);
-	param.sap_perf_data_threshold =
+	param.perf_data_threshold =
 	    wlan_mlme_get_sap_perf_data_threshold(wlan_vdev_get_psoc(vdev));
-	param.sap_traffic_monitoring_time_s =
+	param.traffic_monitoring_time =
 	    wlan_mlme_get_sap_traffic_monitoring_time_s(
 						wlan_vdev_get_psoc(vdev));
 
-	return tgt_vdev_mgr_sap_tm_param_send(mlme_obj, &param);
+	return tgt_vdev_mgr_tm_param_send(mlme_obj, &param);
 }
 
 static QDF_STATUS vdev_mgr_up_param_update(
