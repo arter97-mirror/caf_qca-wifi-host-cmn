@@ -204,15 +204,15 @@ struct sta_ps_params {
 };
 
 /**
- * struct sap_tm_params - sap tm cmd parameter
+ * struct traffic_monitoring_params - traffic monitoring cmd parameter
  * @vdev_id: vdev id
- * @sap_perf_data_threshold: SAP perf data threshold
- * @sap_traffic_monitoring_time_s: SAP traffic monitoring time in unit of sec.
+ * @perf_data_threshold: perf data threshold
+ * @traffic_monitoring_time: traffic monitoring time
  */
-struct sap_tm_params {
+struct traffic_monitoring_params {
 	uint32_t vdev_id;
-	uint32_t sap_perf_data_threshold;
-	uint32_t sap_traffic_monitoring_time_s;
+	uint32_t perf_data_threshold;
+	uint32_t traffic_monitoring_time;
 };
 
 /**

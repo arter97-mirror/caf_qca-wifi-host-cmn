@@ -3280,14 +3280,15 @@ static QDF_STATUS send_set_sta_ps_param_cmd_tlv(wmi_unified_t wmi_handle,
 }
 
 /**
- * send_set_sap_tm_param_cmd_tlv() - set sap traffic monitoring parameters
+ * send_set_tm_param_cmd_tlv() - set traffic monitoring parameters
  * @wmi_handle: wmi handle
- * @param: pointer to sap_tm parameter structure
+ * @param: pointer to traffic_monitoring parameter structure
  *
  * Return: QDF_STATUS_SUCCESS for success or error code
  */
-static QDF_STATUS send_set_sap_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
-						struct sap_tm_params *param)
+static QDF_STATUS
+send_set_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
+			  struct traffic_monitoring_params *param)
 {
 	wmi_vdev_traffic_monitoring_cmd_fixed_param *cmd;
 	wmi_buf_t buf;
@@ -3306,12 +3307,12 @@ static QDF_STATUS send_set_sap_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
 			       (wmi_vdev_traffic_monitoring_cmd_fixed_param));
 
 	cmd->vdev_id = param->vdev_id;
-	cmd->data_threshold = param->sap_perf_data_threshold;
-	cmd->traffic_monitoring_time = param->sap_traffic_monitoring_time_s;
+	cmd->data_threshold = param->perf_data_threshold;
+	cmd->traffic_monitoring_time = param->traffic_monitoring_time;
 
-	wmi_debug("Set SAP Tm param vdevId %d Threshold %u time(s) %u",
-		  param->vdev_id, param->sap_perf_data_threshold,
-		  param->sap_traffic_monitoring_time_s);
+	wmi_debug("Set Tm param vdevId %d Threshold %u time(s) %u",
+		  param->vdev_id, param->perf_data_threshold,
+		  param->traffic_monitoring_time);
 	wmi_mtrace(WMI_VDEV_TRAFFIC_MONITORING_CMDID, cmd->vdev_id, 0);
 
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
@@ -23883,7 +23884,7 @@ struct wmi_ops tlv_ops =  {
 	.send_offchan_data_tx_cmd = send_offchan_data_tx_cmd_tlv,
 	.send_modem_power_state_cmd = send_modem_power_state_cmd_tlv,
 	.send_set_sta_ps_mode_cmd = send_set_sta_ps_mode_cmd_tlv,
-	.send_set_sap_tm_param_cmd = send_set_sap_tm_param_cmd_tlv,
+	.send_set_tm_param_cmd = send_set_tm_param_cmd_tlv,
 	.send_idle_roam_monitor_cmd = send_idle_roam_monitor_cmd_tlv,
 	.send_set_sta_uapsd_auto_trig_cmd =
 		send_set_sta_uapsd_auto_trig_cmd_tlv,
