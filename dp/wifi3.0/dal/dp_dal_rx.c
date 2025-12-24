@@ -626,6 +626,11 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 	qdf_nbuf_t curr_nbuf;
 	qdf_nbuf_t next_nbuf;
 	int mac_id;
+	bool force_break = false;
+	uint32_t intr_id;
+	uint32_t loop_processed;
+	int max_reap_limit;
+	struct hif_opaque_softc *scn;
 
 	if (qdf_unlikely(!soc)) {
 		dp_err_rl("SOC is NULL");
@@ -643,29 +648,47 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 		return 0;
 	}
 
+	scn = soc->hif_handle;
+	intr_id = dp_dal_get_ext_grp_id(dal_ctx, ring_id, REO_DST);
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
+	max_reap_limit = dp_rx_get_loop_pkt_limit(soc);
 
-	if (global_plat_ops && global_plat_ops->rx) {
-		ret = global_plat_ops->rx(dal_ctx, &cnt, ring_id);
-		if (qdf_unlikely(!ret)) {
-			dp_debug("No RX packets available for ring %u",
-				 ring_id);
-			return 0;
+more_data:
+	nbuf_head = NULL;
+	nbuf_tail = NULL;
+	ebuf_head = NULL;
+	ebuf_tail = NULL;
+	qdf_mem_zero(head, sizeof(head));
+	qdf_mem_zero(tail, sizeof(tail));
+	is_prev_msdu_last = true;
+
+	/* Check if we have pending descriptors from previous
+	 * platform->rx call.
+	 */
+	if (!num_pending) {
+		/* No pending descriptors, try to get new ones */
+		if (global_plat_ops && global_plat_ops->rx) {
+			ret = global_plat_ops->rx(dal_ctx, &cnt, ring_id);
+			if (qdf_unlikely(!ret)) {
+				dp_debug("No RX packets available for ring %u",
+					 ring_id);
+				goto done;
+			}
+		} else {
+			dp_err_rl("Platform RX operation not available");
+			goto done;
 		}
-	} else {
-		dp_err_rl("Platform RX operation not available");
-		return 0;
+
+		if (!dal_ctx->rx_desc_head[ring_id]) {
+			dp_debug("Platform RX returned zero descriptors for ring %u",
+				 ring_id);
+			goto done;
+		}
 	}
 
 	qdf_spin_lock_bh(&dal_ctx->dal_rx_desc_lock);
-
-	if (!dal_ctx->rx_desc_head[ring_id]) {
-		qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
-		dp_err_rl("Platform RX returned zero descriptors");
-		return 0;
-	}
-
 	num_pending = dal_ctx->rx_desc_count[ring_id];
+	loop_processed = 0;
 
 	while (dal_ctx->rx_desc_head[ring_id]) {
 		rx_desc = dp_dal_rx_remove_desc_from_head(dal_ctx, ring_id);
@@ -704,6 +727,7 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 							    &tail[old_rx_desc->pool_id],
 							    old_rx_desc);
 				num_pending -= 1;
+				loop_processed++;
 				processed++;
 			}
 			rx_desc->msdu_done_fail = 1;
@@ -728,12 +752,22 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 					    &tail[rx_desc->pool_id], rx_desc);
 
 		num_pending -= 1;
+		loop_processed++;
 		processed++;
+
+		/*
+		 * Only if complete msdu is received for scatter case,
+		 * then allow break.
+		 */
+		if (is_prev_msdu_last &&
+		    dp_rx_reap_loop_pkt_limit_hit(soc, loop_processed,
+						  max_reap_limit))
+			break;
 	}
 
 	qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
 
-	dp_rx_per_core_stats_update(soc, ring_id, processed);
+	dp_rx_per_core_stats_update(soc, ring_id, loop_processed);
 
 	for (mac_id = 0; mac_id < MAX_PDEV_CNT; mac_id++) {
 		if (head[mac_id]) {
@@ -744,18 +778,20 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 		}
 	}
 
-	if (global_plat_ops && global_plat_ops->rx_replenish && processed > 0) {
-		ret = global_plat_ops->rx_replenish(dal_ctx, processed, false);
+	if (global_plat_ops && global_plat_ops->rx_replenish &&
+	    loop_processed > 0) {
+		ret = global_plat_ops->rx_replenish(dal_ctx, loop_processed,
+						    false);
 		if (qdf_unlikely(ret)) {
 			if (soc->dal_mode_switch_in_progress) {
 				ret = dp_dal_rx_replenish_bypass_mode(
-						dal_ctx, processed, false);
+						dal_ctx, loop_processed, false);
 				if (ret)
-					qdf_atomic_add(processed,
+					qdf_atomic_add(loop_processed,
 						       &dal_ctx->rx_replenish_failures);
 			} else {
 				dp_err_rl("RX replenish failed, ret: %d", ret);
-				qdf_atomic_add(processed,
+				qdf_atomic_add(loop_processed,
 					       &dal_ctx->rx_replenish_failures);
 			}
 		}
@@ -778,6 +814,21 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 		}
 	}
 
+	if (dp_rx_enable_eol_data_check(soc) && processed > 0) {
+		if (processed >= dp_budget)
+			force_break = true;
+
+		if (!force_break) {
+			DP_STATS_INC(soc, rx.hp_oos2, 1);
+
+			/* If we still have time, continue processing */
+			if (intr_id < HIF_MAX_GROUP &&
+			    !hif_exec_should_yield(scn, intr_id))
+				goto more_data;
+		}
+	}
+
+done:
 	return processed;
 }
 

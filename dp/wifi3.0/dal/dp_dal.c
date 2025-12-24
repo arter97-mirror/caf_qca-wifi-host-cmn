@@ -1989,6 +1989,9 @@ uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 	struct dp_soc *soc = int_ctx->soc;
 	int dal_tx_mask = 0;
 	int dal_rx_mask = 0;
+	uint32_t work_done = 0;
+	int budget = dp_budget;
+	uint32_t remaining_quota = dp_budget;
 	int i;
 
 	dal_tx_mask = int_ctx->dal_tx_ring_mask;
@@ -1999,19 +2002,41 @@ uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 			if (!(dal_rx_mask & (1 << i)))
 				continue;
 
-			dp_dal_rx_handler(soc, i, dp_budget);
+			work_done = dp_dal_rx_handler(soc, i, remaining_quota);
+			if (work_done) {
+				dp_verbose_debug("dal rx mask 0x%x ring %d, budget %d, work_done %d",
+						 dal_rx_mask, i,
+						 budget, work_done);
+			}
+			budget -= work_done;
+			if (budget <= 0)
+				goto budget_done;
+
+			remaining_quota = budget;
 		}
 	}
 
 	if (dal_tx_mask) {
 		for (i = 0; i < soc->num_tx_comp_rings; i++) {
-			if (!(1 <<  wlan_cfg_get_wbm_ring_num_for_index(soc->wlan_cfg_ctx, i) &
+			if (!(1 << wlan_cfg_get_wbm_ring_num_for_index(soc->wlan_cfg_ctx, i) &
 			      dal_tx_mask))
 				continue;
 
-			dp_dal_tx_comp_handler(soc, i, dp_budget);
+			work_done = dp_dal_tx_comp_handler(soc, i,
+							   remaining_quota);
+			if (work_done) {
+				dp_verbose_debug("dal tx mask 0x%x ring %d, budget %d, work_done %d",
+						 dal_tx_mask, i,
+						 budget, work_done);
+			}
+			budget -= work_done;
+			if (budget <= 0)
+				goto budget_done;
+
+			remaining_quota = budget;
 		}
 	}
 
-	return 0;
+budget_done:
+	return dp_budget - budget;
 }

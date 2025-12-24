@@ -883,7 +883,11 @@ uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 	struct dp_dal_ctx *dal_ctx;
 	struct dp_tx_desc_s *head_desc = NULL;
 	uint32_t cnt = 0;
+	uint32_t total_processed = 0;
 	bool ret;
+	bool force_break = false;
+	uint32_t intr_id;
+	struct hif_opaque_softc *scn;
 
 	DP_HIST_INIT();
 
@@ -903,17 +907,24 @@ uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 		return 0;
 	}
 
+	scn = soc->hif_handle;
+	intr_id = dp_dal_get_ext_grp_id(dal_ctx, ring_id, COMP_RING_TYPE);
+
+more_data:
+	cnt = 0;
+	head_desc = NULL;
+
 	/* Invoke platform_tx_cpl to get completions from DAL layer */
 	if (global_plat_ops && global_plat_ops->tx_cpl) {
 		ret = global_plat_ops->tx_cpl(dal_ctx, &cnt, ring_id);
 		if (qdf_unlikely(!ret)) {
 			dp_debug("No TX completions available for ring %u",
 				 ring_id);
-			return 0;
+			goto done;
 		}
 	} else {
 		dp_tx_err_rl("Platform TX CPL operation not available");
-		return 0;
+		goto done;
 	}
 
 	/* Process the descriptor list accumulated via dp_dal_tx_cpl_cb */
@@ -927,6 +938,8 @@ uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 	}
 	qdf_spin_unlock_bh(&dal_ctx->dal_tx_cpl_lock);
 
+	total_processed += cnt;
+
 	/* pdev_id is always zero. Pass zero instead of
 	 * iterating the tx_desc list for pdev id.
 	 */
@@ -936,8 +949,23 @@ uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 	if (head_desc)
 		dp_tx_comp_process_desc_list(soc, head_desc, ring_id);
 
-	DP_STATS_INC(soc, tx.tx_comp[ring_id], cnt);
+	if (dp_tx_comp_enable_eol_data_check(soc) && cnt > 0) {
+		if (total_processed >= dp_budget)
+			force_break = true;
+
+		if (!force_break) {
+			DP_STATS_INC(soc, tx.hp_oos2, 1);
+
+			/* If we still have time, continue processing */
+			if (intr_id < HIF_MAX_GROUP &&
+			    !hif_exec_should_yield(scn, intr_id))
+				goto more_data;
+		}
+	}
+
+done:
+	DP_STATS_INC(soc, tx.tx_comp[ring_id], total_processed);
 
 	DP_TX_HIST_STATS_PER_PDEV();
-	return cnt;
+	return total_processed;
 }

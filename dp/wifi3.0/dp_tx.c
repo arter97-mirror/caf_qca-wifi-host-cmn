@@ -8531,52 +8531,6 @@ dp_tx_comp_process_desc_list(struct dp_soc *soc,
 		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_TX_COMP);
 }
 
-#ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
-static inline
-bool dp_tx_comp_loop_pkt_limit_hit(struct dp_soc *soc, int num_reaped,
-				   int max_reap_limit)
-{
-	bool limit_hit = false;
-
-	limit_hit =
-		(num_reaped >= max_reap_limit) ? true : false;
-
-	if (limit_hit)
-		DP_STATS_INC(soc, tx.tx_comp_loop_pkt_limit_hit, 1);
-
-	return limit_hit;
-}
-
-static inline bool dp_tx_comp_enable_eol_data_check(struct dp_soc *soc)
-{
-	return soc->wlan_cfg_ctx->tx_comp_enable_eol_data_check;
-}
-
-static inline int dp_tx_comp_get_loop_pkt_limit(struct dp_soc *soc)
-{
-	struct wlan_cfg_dp_soc_ctxt *cfg = soc->wlan_cfg_ctx;
-
-	return cfg->tx_comp_loop_pkt_limit;
-}
-#else
-static inline
-bool dp_tx_comp_loop_pkt_limit_hit(struct dp_soc *soc, int num_reaped,
-				   int max_reap_limit)
-{
-	return false;
-}
-
-static inline bool dp_tx_comp_enable_eol_data_check(struct dp_soc *soc)
-{
-	return false;
-}
-
-static inline int dp_tx_comp_get_loop_pkt_limit(struct dp_soc *soc)
-{
-	return 0;
-}
-#endif
-
 #ifdef WLAN_FEATURE_NEAR_FULL_IRQ
 static inline int
 dp_srng_test_and_update_nf_params(struct dp_soc *soc, struct dp_srng *dp_srng,
