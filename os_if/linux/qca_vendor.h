@@ -571,6 +571,11 @@
  *     used to retrieve WLAN host driver side TX/RX statistics.
  *     The attributes used with this command are defined in
  *     enum qca_wlan_host_txrx_stats_attr.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_IPA_RING_STATS: This vendor subcommand is
+ *     used to retrieve IP Accelerator (IPA) ring statistics.
+ *     The attributes used with this command are defined in
+ *     enum qca_wlan_ipa_ring_stats_attr.
  */
 
 enum qca_nl80211_vendor_subcmds {
@@ -811,7 +816,8 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_SET_MONITOR_MODE = 202,
 	QCA_NL80211_VENDOR_SUBCMD_ROAM_EVENTS = 203,
 	QCA_NL80211_VENDOR_SUBCMD_MCC_QUOTA = 205,
-	QCA_NL80211_VENDOR_SUBCMD_WLAN_HOST_TXRX_STATS = 270,
+	QCA_NL80211_VENDOR_SUBCMD_WLAN_HOST_TXRX_STATS = 271,
+	QCA_NL80211_VENDOR_SUBCMD_IPA_RING_STATS = 272,
 };
 
 enum qca_wlan_vendor_tos {
@@ -12911,17 +12917,73 @@ enum qca_wlan_vendor_opm_mode {
  */
 
 enum qca_wlan_host_txrx_stats_attr {
-	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_INVALID          = 0,
-	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_TX_PKTS    = 1,
+	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_TX_PKTS = 1,
 	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_TX_DROPPED = 2,
-	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_RX_PKTS    = 3,
+	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_RX_PKTS = 3,
 	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_RX_DROPPED = 4,
-	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_IPA_EXCEPTION_RX_DROPPE = 5,
+	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_IPA_EXCEPTION_RX_DROPPED = 5,
 	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_PAD = 6,
 
 	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_LAST,
 	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_MAX =
 		QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_LAST - 1
+};
+
+/**
+ * enum qca_wlan_ipa_ring_stats_attr - Defines attributes to be used
+ * with vendor subcmd QCA_NL80211_VENDOR_SUBCMD_IPA_RING_STATS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_RING_ID: 32-bit unsigned value
+ *	for the ring identifier (ring_id). Distinguishes between different
+ *	rings (e.g., REO, TCL).
+ *	In the request, this specifies which ring to query.
+ *	In the response, this identifies the ring the statistics belong to.
+ *	Values are defined in enum qca_ipa_ring_stats_id.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_HP_IDX: 32-bit unsigned value
+ *	for the head pointer index (entry index) of the ring.
+ *	(Response only)
+ *
+ * @QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_TP_IDX: 32-bit unsigned value
+ *	for the tail pointer index (entry index) of the ring.
+ *	(Response only)
+ *
+ * @QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_FREE_ENTRIES: 32-bit unsigned
+ *	value for the number of free entries available in the ring.
+ *	(Response only)
+ *
+ * @QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_RING_ENTRIES: 32-bit unsigned
+ *	value for the total number of entries in the ring (capacity).
+ *	(Response only)
+ */
+enum qca_wlan_ipa_ring_stats_attr {
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_INVALID      = 0,
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_RING_ID      = 1,
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_HP_IDX       = 2,
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_TP_IDX       = 3,
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_FREE_ENTRIES = 4,
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_RING_ENTRIES = 5,
+
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_LAST,
+	QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_MAX =
+		QCA_WLAN_VENDOR_ATTR_IPA_RING_STATS_PARAM_LAST - 1,
+};
+
+/**
+ * enum qca_ipa_ring_stats_id - IPA statistics ring type
+ *
+ * @QCA_WLAN_VENDOR_IPA_RING_STATS_ID_REO: Ring ID for REO (Rx) ring.
+ * @QCA_WLAN_VENDOR_IPA_RING_STATS_ID_TCL: Ring ID for TCL (Tx) ring.
+ *
+ * These values are used to distinguish which IPA path statistics
+ * are being queried or reported.
+ */
+enum qca_ipa_ring_stats_id {
+	QCA_WLAN_VENDOR_IPA_RING_STATS_ID_REO = 0,
+	QCA_WLAN_VENDOR_IPA_RING_STATS_ID_TCL = 1,
+
+	QCA_WLAN_VENDOR_IPA_RING_STATS_ID_MAX,
 };
 
 #endif
