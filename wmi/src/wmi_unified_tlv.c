@@ -66,6 +66,7 @@
 #include <wmi_unified_vdev_api.h>
 #include <wmi_unified_vdev_tlv.h>
 #include <wmi_unified_11be_tlv.h>
+#include "wmi_unified_ipa_ring_stats_api.h"
 
 /*
  * If FW supports WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL,
@@ -18083,6 +18084,11 @@ event_ids[wmi_roam_scan_chan_list_id] =
 	event_ids[wmi_vdev_quiet_offload_eventid] =
 			WMI_QUIET_HANDLING_EVENTID;
 #endif
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+	event_ids[wmi_vendor_get_ipa_ring_stats_id] =
+			WMI_IPA_RING_STATS_CONF_EVENTID;
+
+#endif
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -18601,6 +18607,7 @@ void wmi_tlv_attach(wmi_unified_t wmi_handle)
 	wmi_cp_stats_attach_tlv(wmi_handle);
 	wmi_gpio_attach_tlv(wmi_handle);
 	wmi_11be_attach_tlv(wmi_handle);
+	wmi_ipa_ring_stats_attach_tlv(wmi_handle);
 }
 qdf_export_symbol(wmi_tlv_attach);
 

@@ -103,6 +103,11 @@
 #include <wlan_twt_public_structs.h>
 #endif
 
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+#include <hal_internal.h>
+#include <wlan_ipa_ring_stats_api.h>
+#endif
+
 #define WMI_UNIFIED_MAX_EVENT 0x100
 
 #ifdef WMI_EXT_DBG
@@ -2941,6 +2946,15 @@ QDF_STATUS (*extract_quiet_offload_event)(
 				wmi_unified_t wmi_handle, void *evt_buf,
 				struct vdev_sta_quiet_event *quiet_event);
 #endif
+
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+QDF_STATUS (*send_ipa_ring_stats_req_cmd)(wmi_unified_t wmi_handle,
+				enum hal_srng_ring_id srng_id);
+QDF_STATUS (*extract_ipa_ring_stats_event)(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				uint32_t evt_len,
+				struct ipa_ring_stats_event_params *param);
+#endif
 };
 
 /* Forward declartion for psoc*/
@@ -3411,6 +3425,21 @@ void wmi_gpio_attach_tlv(wmi_unified_t wmi_handle);
 #else
 static inline void
 wmi_gpio_attach_tlv(struct wmi_unified *wmi_handle)
+{
+}
+#endif
+
+/**
+ * wmi_ipa_stats_attach_tlv() - attach ipa stats tlv handlers
+ * @wmi_handle: wmi handle
+ *
+ * Return: void
+ */
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+void wmi_ipa_ring_stats_attach_tlv(wmi_unified_t wmi_handle);
+#else
+static inline void
+wmi_ipa_ring_stats_attach_tlv(wmi_unified_t wmi_handle)
 {
 }
 #endif

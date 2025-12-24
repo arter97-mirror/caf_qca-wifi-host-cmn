@@ -4911,6 +4911,9 @@ typedef enum {
 #ifdef WLAN_FEATURE_11BE_MLO
 	wmi_vdev_quiet_offload_eventid,
 #endif
+#ifdef WLAN_FEATURE_IPA_RING_STATS
+	wmi_vendor_get_ipa_ring_stats_id,
+#endif
 	wmi_events_max,
 } wmi_conv_event_id;
 
