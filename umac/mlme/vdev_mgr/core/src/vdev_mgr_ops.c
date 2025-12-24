@@ -837,7 +837,6 @@ static QDF_STATUS vdev_mgr_sta_ps_param_update(
 	return QDF_STATUS_SUCCESS;
 }
 
-#if defined(SAP_PERF_TUNING)
 static QDF_STATUS vdev_mgr_sap_tm_param_update(
 				struct vdev_mlme_obj *mlme_obj)
 {
@@ -854,13 +853,6 @@ static QDF_STATUS vdev_mgr_sap_tm_param_update(
 
 	return tgt_vdev_mgr_sap_tm_param_send(mlme_obj, &param);
 }
-#else
-static inline QDF_STATUS vdev_mgr_sap_tm_param_update(
-				struct vdev_mlme_obj *mlme_obj)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 static QDF_STATUS vdev_mgr_up_param_update(
 				struct vdev_mlme_obj *mlme_obj,

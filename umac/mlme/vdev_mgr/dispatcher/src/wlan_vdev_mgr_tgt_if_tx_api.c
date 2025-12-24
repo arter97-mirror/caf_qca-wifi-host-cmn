@@ -668,7 +668,6 @@ QDF_STATUS tgt_vdev_mgr_sta_ps_param_send(
 	return status;
 }
 
-#if defined(SAP_PERF_TUNING)
 QDF_STATUS tgt_vdev_mgr_sap_tm_param_send(
 				struct vdev_mlme_obj *mlme_obj,
 				struct sap_tm_params *param)
@@ -697,7 +696,6 @@ QDF_STATUS tgt_vdev_mgr_sap_tm_param_send(
 
 	return status;
 }
-#endif
 
 QDF_STATUS tgt_vdev_mgr_peer_delete_all_send(
 				struct wlan_objmgr_vdev *vdev,

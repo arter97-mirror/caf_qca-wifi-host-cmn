@@ -6925,9 +6925,7 @@ typedef enum {
 	wmi_service_vendor_oui_support_exclusive_mac_address,
 	wmi_service_ndp_dfs_channel_support,
 	wmi_service_tx_power_limit,
-#if defined(SAP_PERF_TUNING)
 	wmi_service_vdev_traffic_monitoring,
-#endif
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service_wfd_r2,
 #endif
