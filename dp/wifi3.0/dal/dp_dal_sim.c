@@ -979,14 +979,6 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 		return false;
 	}
 
-	/* Check if mode switch is in progress - block RX requests */
-	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
-		dp_info_rl("Mode switch in progress - blocking RX[%u]",
-			   ring_id);
-		*cnt = 0;
-		return false;
-	}
-
 	dp_debug("Processing RX ring_num %u (array index %d) with budget %u",
 		 ring_num, ring_id, budget);
 
@@ -1278,14 +1270,6 @@ static bool dp_dal_sim_tx_cpl(void *priv, u32 *cnt, u16 ring_num)
 	if (ring_id < 0) {
 		dp_err("No TX compl ring found with ring_num %u", ring_num);
 		*cnt = 0;
-		return false;
-	}
-
-	/* Check if mode switch is in progress - block tx cpl requests */
-	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
-		*cnt = 0;
-		dp_info_rl("Mode switch in progress - blocking tx_compl[%d]",
-			   ring_id);
 		return false;
 	}
 
@@ -2021,6 +2005,7 @@ static inline void dp_dal_sim_mode_bypass_switch(
 	/*Deinit offload_ctx*/
 	dp_info("Switched to bypass mode");
 	g_dal_sim_curr_mode = DAL_DP_BYPASS_MODE;
+	dp_dal_sim_sw2sw_rings_deinit(sim_ctx);
 	dp_dal_offload_sim_deinit(sim_ctx);
 	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 0);
 	qdf_mem_free(ring_hp_tp_info);

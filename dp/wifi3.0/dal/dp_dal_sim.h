@@ -32,7 +32,7 @@ struct dp_dal_sim_sw2sw_ring {
 };
 
 /* SW2SW SRNG configuration */
-#define DP_DAL_SIM_SW2SW_SRNG_SIZE 2048 /* 2K entries per ring */
+#define DP_DAL_SIM_SW2SW_SRNG_SIZE 8192 /* 8K entries per ring */
 
 /* Descriptor sizes for SW2SW SRNG */
 #define DP_DAL_SIM_TX_CPL_DESC_SIZE HAL_TX_COMPLETION_DESC_LEN_BYTES

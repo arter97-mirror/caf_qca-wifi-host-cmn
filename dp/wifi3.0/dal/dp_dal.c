@@ -25,6 +25,9 @@ extern struct platform_bus_ops *global_plat_ops;
 #define DAL_RX_REPLENISH_MAX_RETRIES 10
 #define DAL_RX_REPLENISH_BACKOFF_MULTIPLIER 2
 
+#define DAL_RX_POLL_BUDGET 255
+#define DAL_TX_POLL_BUDGET 255
+
 /**
  * dp_dal_bus_init_bypass_mode() - Skeleton for platform bus init
  * in bypass mode
@@ -1044,7 +1047,7 @@ static int dp_dal_attach_rx_buffers(struct dp_soc *soc)
 
 	rx_desc_pool = &soc->rx_desc_buf[0];
 
-	if (global_plat_ops->rx_replenish) {
+	if (global_plat_ops && global_plat_ops->rx_replenish) {
 		return global_plat_ops->rx_replenish(dal_ctx,
 						     rx_desc_pool->pool_size,
 						     false);
@@ -1144,6 +1147,7 @@ static void dp_dal_rx_replenish_retry_handler(void *arg)
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)arg;
 	struct dp_soc *soc;
 	uint32_t failures;
+	int ret;
 
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL");
@@ -1175,13 +1179,16 @@ static void dp_dal_rx_replenish_retry_handler(void *arg)
 	if (global_plat_ops->rx_replenish(dal_ctx, failures, false)) {
 		/* replenish via bypass path if mode switch in progress */
 		if (soc->dal_mode_switch_in_progress) {
-			dp_dal_rx_replenish_bypass_mode(dal_ctx,
-							failures, false);
-			qdf_atomic_sub(failures,
-				       &dal_ctx->rx_replenish_failures);
-			dal_ctx->rx_replenish_retry_count = 0;
-			dal_ctx->rx_replenish_retry_interval_ms =
-					DAL_RX_REPLENISH_RETRY_TIMER_MS;
+			ret = dp_dal_rx_replenish_bypass_mode(
+						dal_ctx, failures, false);
+			if (!ret) {
+				qdf_atomic_sub(failures,
+					       &dal_ctx->rx_replenish_failures);
+				dal_ctx->rx_replenish_retry_count = 0;
+				dal_ctx->rx_replenish_retry_interval_ms =
+						DAL_RX_REPLENISH_RETRY_TIMER_MS;
+			}
+
 		} else {
 			dp_err("DAL: rx_replenish failed in retry, failures:%u",
 			       failures);
@@ -1225,9 +1232,10 @@ static void dp_dal_poll_timer_handler(void *arg)
 			intr_ctx = dp_dal_get_intr_ctx_from_ring(soc, i,
 								 REO_DST);
 			if (intr_ctx) {
-				soc->arch_ops.dp_rx_process(intr_ctx,
-							    soc->reo_dest_ring[i].hal_srng,
-							    i, 64);
+				soc->arch_ops.dp_rx_process(
+						intr_ctx,
+						soc->reo_dest_ring[i].hal_srng,
+						i, DAL_RX_POLL_BUDGET);
 				hal_get_sw_hptp(soc->hal_soc,
 						soc->reo_dest_ring[i].hal_srng,
 						&tp, &hp);
@@ -1244,9 +1252,10 @@ static void dp_dal_poll_timer_handler(void *arg)
 			dp_dal_get_intr_ctx_from_ring(soc, i, COMP_RING_TYPE);
 
 			if (intr_ctx) {
-				dp_tx_comp_handler(intr_ctx, soc,
-						   soc->tx_comp_ring[i].hal_srng,
-						   i, 64);
+				dp_tx_comp_handler(
+					intr_ctx, soc,
+					soc->tx_comp_ring[i].hal_srng,
+					i, DAL_TX_POLL_BUDGET);
 				hal_get_sw_hptp(soc->hal_soc,
 						soc->tx_comp_ring[i].hal_srng,
 						&tp, &hp);
@@ -1369,7 +1378,7 @@ void dp_dal_bus_exit(struct dp_soc *soc)
 	if (!dal_ctx)
 		return;
 
-	if (global_plat_ops->exit)
+	if (global_plat_ops && global_plat_ops->exit)
 		global_plat_ops->exit(dal_ctx);
 }
 
@@ -1389,7 +1398,7 @@ int dp_dal_bus_init(struct dp_soc *soc)
 	if (!dal_ctx)
 		return -EINVAL;
 
-	if (global_plat_ops->init)
+	if (global_plat_ops && global_plat_ops->init)
 		return global_plat_ops->init(dal_ctx);
 
 	return 0;
@@ -1408,7 +1417,7 @@ void dp_dal_bus_stop(struct dp_soc *soc)
 	if (!dal_ctx)
 		return;
 
-	if (global_plat_ops->stop)
+	if (global_plat_ops && global_plat_ops->stop)
 		global_plat_ops->stop(dal_ctx);
 }
 
@@ -1428,7 +1437,7 @@ int dp_dal_bus_start(struct dp_soc *soc)
 	if (!dal_ctx)
 		return -EINVAL;
 
-	if (global_plat_ops->start)
+	if (global_plat_ops && global_plat_ops->start)
 		return global_plat_ops->start(dal_ctx);
 
 	return 0;
@@ -1450,7 +1459,7 @@ int dp_dal_bus_request_irq(struct dp_soc *soc)
 	if (!dal_ctx)
 		return -EINVAL;
 
-	if (global_plat_ops->request_irq)
+	if (global_plat_ops && global_plat_ops->request_irq)
 		return global_plat_ops->request_irq(dal_ctx);
 
 	return 0;
@@ -1562,7 +1571,7 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 	qdf_mem_copy(&intf_info.mac_address[0],
 		     &vdev->mac_addr.raw[0], QDF_MAC_ADDR_SIZE);
 
-	if (global_plat_ops->intf_init) {
+	if (global_plat_ops && global_plat_ops->intf_init) {
 		status = global_plat_ops->intf_init(dal_ctx,
 						    &intf_info);
 		if (status) {
@@ -1572,7 +1581,7 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 		}
 	}
 
-	if (global_plat_ops->tx_queue_active) {
+	if (global_plat_ops && global_plat_ops->tx_queue_active) {
 		status = global_plat_ops->tx_queue_active(dal_ctx,
 							  vdev->vdev_id, true);
 		if (status) {
@@ -1609,7 +1618,7 @@ void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
 		return;
 	}
 
-	if (global_plat_ops->tx_queue_active) {
+	if (global_plat_ops && global_plat_ops->tx_queue_active) {
 		status = global_plat_ops->tx_queue_active(dal_ctx,
 							  vdev_id, false);
 		if (status)
@@ -1618,7 +1627,7 @@ void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
 		/* Continue to intf_deinit despite error */
 	}
 
-	if (global_plat_ops->intf_deinit) {
+	if (global_plat_ops && global_plat_ops->intf_deinit) {
 		status = global_plat_ops->intf_deinit(dal_ctx, vdev_id);
 		if (status)
 			dp_err("dal intf remove failed vdev_id:%d status %d",
@@ -1644,7 +1653,7 @@ int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable)
 	if (!dal_ctx || !info)
 		return -EINVAL;
 
-	if (global_plat_ops->sta_active)
+	if (global_plat_ops && global_plat_ops->sta_active)
 		return global_plat_ops->sta_active(dal_ctx, info, enable);
 
 	return 0;

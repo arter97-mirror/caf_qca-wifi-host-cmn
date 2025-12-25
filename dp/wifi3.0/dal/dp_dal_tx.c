@@ -904,7 +904,7 @@ uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 	}
 
 	/* Invoke platform_tx_cpl to get completions from DAL layer */
-	if (global_plat_ops->tx_cpl) {
+	if (global_plat_ops && global_plat_ops->tx_cpl) {
 		ret = global_plat_ops->tx_cpl(dal_ctx, &cnt, ring_id);
 		if (qdf_unlikely(!ret)) {
 			dp_debug("No TX completions available for ring %u",

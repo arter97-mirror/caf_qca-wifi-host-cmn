@@ -124,7 +124,7 @@ static inline void cdp_process_target_suspend_req(ol_txrx_soc_handle soc,
  * it means there are no pending transactions from the DAL and
  * the device can suspend.
  *
- * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ * Return: QDF_STATUS_SUCCESS on success/op is null, error code on failure
  */
 static inline QDF_STATUS cdp_dal_notify_suspend(ol_txrx_soc_handle soc)
 {
@@ -137,7 +137,7 @@ static inline QDF_STATUS cdp_dal_notify_suspend(ol_txrx_soc_handle soc)
 	if (soc->ops->bus_ops->dal_notify_suspend)
 		return soc->ops->bus_ops->dal_notify_suspend(soc);
 
-	return QDF_STATUS_E_NOSUPPORT;
+	return QDF_STATUS_SUCCESS;
 }
 
 /**
@@ -147,7 +147,7 @@ static inline QDF_STATUS cdp_dal_notify_suspend(ol_txrx_soc_handle soc)
  * Notify DAL layer about resume. This is called when the device
  * is resuming from suspend state.
  *
- * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ * Return: QDF_STATUS_SUCCESS on success/op is null, error code on failure
  */
 static inline QDF_STATUS cdp_dal_notify_resume(ol_txrx_soc_handle soc)
 {
@@ -160,6 +160,6 @@ static inline QDF_STATUS cdp_dal_notify_resume(ol_txrx_soc_handle soc)
 	if (soc->ops->bus_ops->dal_notify_resume)
 		return soc->ops->bus_ops->dal_notify_resume(soc);
 
-	return QDF_STATUS_E_NOSUPPORT;
+	return QDF_STATUS_SUCCESS;
 }
 #endif /* _CDP_TXRX_BUS_H_ */
