@@ -43,6 +43,7 @@
 #include "dp_ratetable.h"
 #endif
 #include "enet.h"
+#include "dp_dal.h"
 
 #ifndef WLAN_SOFTUMAC_SUPPORT /* WLAN_SOFTUMAC_SUPPORT */
 
@@ -3983,6 +3984,9 @@ void dp_rx_calculate_per_ring_pkt_avg(struct cdp_soc_t *cdp_soc)
 	int cpu;
 
 	for (i = 0; i < MAX_REO_DEST_RINGS; i++) {
+		if (dp_srng_check_dal_owned_ring(&soc->reo_dest_ring[i]))
+			continue;
+
 		rx_pkt_cnt = 0;
 		for (cpu = 0; cpu < num_possible_cpus(); cpu++)
 			rx_pkt_cnt += soc->stats.rx.ring_packets[cpu][i];
@@ -4032,6 +4036,9 @@ void dp_rx_get_per_ring_pkt_avg(struct cdp_soc_t *cdp_soc,
 	int i;
 
 	for (i = 0; i < MAX_REO_DEST_RINGS; i++) {
+		if (dp_srng_check_dal_owned_ring(&soc->reo_dest_ring[i]))
+			continue;
+
 		rx_ring_stats = &soc->stats.rx.rx_pkt_cnt[i];
 		avg_pkt_cnt[i] = rx_ring_stats->avg_pkt_cnt;
 		*total_avg_pkts += rx_ring_stats->avg_pkt_cnt;

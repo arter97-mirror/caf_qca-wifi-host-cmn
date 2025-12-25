@@ -778,7 +778,11 @@ hif_exec_update_soft_irq_time(struct hif_exec_context *hif_ext_group)
 	int cpu;
 	uint64_t time;
 
-	if (!scn->is_load_balance_enabled)
+	/* No need to account soft irq time if the ext group doesn't register
+	 * with any interrupts.
+	 */
+	if (!scn->is_load_balance_enabled ||
+	    !hif_ext_group->numirq)
 		return;
 
 	cpu = qdf_get_cpu();
@@ -801,8 +805,14 @@ hif_update_irq_handler_start_time(struct hif_exec_context *hif_ext_group)
 {
 	struct hif_softc *scn = HIF_GET_SOFTC(hif_ext_group->hif);
 
-	if (scn->is_load_balance_enabled)
-		hif_ext_group->irq_start_time = qdf_time_sched_clock();
+	/* No need to account irq time if the ext group doesn't register
+	 * with any interrupts.
+	 */
+	if (!scn->is_load_balance_enabled ||
+	    !hif_ext_group->numirq)
+		return;
+
+	hif_ext_group->irq_start_time = qdf_time_sched_clock();
 }
 
 /**
@@ -818,7 +828,11 @@ hif_update_irq_handle_time(struct hif_exec_context *hif_ext_group)
 	uint64_t cur_time;
 	int cpu;
 
-	if (!scn->is_load_balance_enabled)
+	/* No need to account irq time if the ext group doesn't register
+	 * with any interrupts.
+	 */
+	if (!scn->is_load_balance_enabled ||
+	    !hif_ext_group->numirq)
 		return;
 
 	cur_time = qdf_time_sched_clock();
@@ -848,6 +862,9 @@ void hif_get_wlan_rx_time_stats(struct hif_opaque_softc *hif_ctx,
 		for (grp = 0; grp < hif_state->hif_num_extgroup; grp++) {
 			hif_ext_group = hif_state->hif_ext_group[grp];
 			if (hif_ext_group) {
+				if (!hif_ext_group->numirq)
+					continue;
+
 				wlan_irq_time[i] +=
 					hif_ext_group->total_irq_time[i];
 				wlan_ksoftirqd_time[i] +=
