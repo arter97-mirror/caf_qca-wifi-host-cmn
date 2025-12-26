@@ -90,6 +90,9 @@ QDF_STATUS hif_ext_grp_napi_schedule(struct hif_opaque_softc *hif_ctx,
 		return QDF_STATUS_E_FAILURE;
 
 	hif_ext_group = hif_state->hif_ext_group[grp_id];
+
+	hif_record_event(hif_ext_group->hif, hif_ext_group->grp_id,
+			 0, 0, 0, HIF_EVENT_IRQ_TRIGGER);
 	if (!hif_ext_group) {
 		hif_err("hif_ext_group is NULL for grp_id %d", grp_id);
 		return QDF_STATUS_E_FAILURE;
