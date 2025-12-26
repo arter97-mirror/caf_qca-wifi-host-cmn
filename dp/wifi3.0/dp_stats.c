@@ -39,6 +39,9 @@
 #ifdef IPA_OFFLOAD
 #include "dp_ipa.h"
 #endif
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dp_dal.h"
+#endif
 #define DP_MAX_STRING_LEN 1000
 #define DP_HTT_TX_RX_EXPECTED_TLVS (((uint64_t)1 << HTT_STATS_TX_PDEV_CMN_TAG) |\
 	((uint64_t)1 << HTT_STATS_TX_PDEV_UNDERRUN_TAG) |\
@@ -8630,6 +8633,73 @@ static inline void dp_print_opt_dp_stats(struct dp_soc *soc)
 }
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+void dp_print_dal_tx_stats(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+	int ring_id;
+
+	if (!dal_ctx) {
+		dp_err("Invalid access");
+		return;
+	}
+
+	DP_PRINT_STATS("DAL Tx stats:");
+
+	for (ring_id = 0; ring_id < DAL_TX_RINGS_MAX; ring_id++) {
+		DP_PRINT_STATS("DAL Tx Ring %d ", ring_id);
+		DP_PRINT_STATS("Total packets received on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_TOTAL_PKT_RCVD].num);
+		DP_PRINT_STATS("Total bytes received on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_TOTAL_PKT_RCVD].bytes);
+		DP_PRINT_STATS("Bypassed packet count on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_BYPASSED_PKT].num);
+		DP_PRINT_STATS("Bypassed byte count on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_BYPASSED_PKT].bytes);
+
+		DP_PRINT_STATS("Bypassed drop count on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_BYPASSED_DRP].num);
+		DP_PRINT_STATS("Bypassed drop bytes on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_BYPASSED_DRP].bytes);
+
+		DP_PRINT_STATS("No support drop count on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_NOSUPPORT_DRP].num);
+		DP_PRINT_STATS("No support drop bytes on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_NOSUPPORT_DRP].bytes);
+
+		DP_PRINT_STATS("Failed drop count on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_FAILED_DRP].num);
+		DP_PRINT_STATS("Failed drop bytes on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.offload[ring_id][DAL_TX_FAILED_DRP].bytes);
+	}
+
+	for (ring_id = 0; ring_id < MAX_TCL_DATA_RINGS; ring_id++) {
+		DP_PRINT_STATS("DAL Tx Completion Ring %d ", ring_id);
+
+		DP_PRINT_STATS("Failed drop count on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.tx_comp_failed[ring_id]);
+		DP_PRINT_STATS("No support drop count on ring %d: %llu",
+			       ring_id,
+			       dal_ctx->stats.tx.tx_comp_nosupport[ring_id]);
+	}
+}
+#else
+void dp_print_dal_tx_stats(struct dp_soc *soc)
+{
+}
+#endif
+
 void dp_txrx_path_stats(struct dp_soc *soc)
 {
 	uint8_t error_code;
@@ -8720,6 +8790,7 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 			       pdev->soc->stats.tx.sw_tso_pkts);
 		DP_PRINT_STATS("SW tso fail cnt: %u",
 			       pdev->soc->stats.tx.sw_tso_fail);
+		dp_print_dal_tx_stats(soc);
 
 		dp_txrx_path_stats_ext_drop(pdev);
 		buf = dp_stats_str;
