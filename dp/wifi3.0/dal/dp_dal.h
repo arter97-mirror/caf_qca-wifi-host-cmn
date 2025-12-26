@@ -8,6 +8,7 @@
 
 #include <qdf_status.h>
 #include "dp_types.h"
+#include <wlan_cfg.h>
 
 #ifdef FEATURE_DP_DAL_SIM
 struct dp_dal_sim_ctx;
@@ -425,10 +426,12 @@ int dp_dal_bus_request_irq(struct dp_soc *soc);
  * non-DAL path
  * @soc: pointer to DP SoC
  * @mac_id: mac id
+ * @dp_rxdma_srng: dp rxdma circular ring
  * @rx_desc_pool: pointer to rx desc pool
  * @num_req_buffers: Number of Rx buffers to replenish
  * @desc_list: HEAD pointer to rx desc list elem list
  * @tail: TAIL pointer to rx desc list elem list
+ * @req_only: If true don't replenish more than req buffers
  *
  * Invoked from a non-DAL path, such as the non-DAL REO DEST ring process, the
  * Rx error path replenishes buffers for processed descriptors. Since the OE
@@ -438,10 +441,12 @@ int dp_dal_bus_request_irq(struct dp_soc *soc);
  * Return: int
  */
 int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
+				struct dp_srng *dp_rxdma_srng,
 				struct rx_desc_pool *rx_desc_pool,
 				uint32_t num_req_buffers,
 				union dp_rx_desc_list_elem_t **desc_list,
-				union dp_rx_desc_list_elem_t **tail);
+				union dp_rx_desc_list_elem_t **tail,
+				bool req_only);
 
 int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt);
 
@@ -527,10 +532,13 @@ void dp_dal_ssr_notify(struct dp_soc *soc);
 uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu);
 
 static inline void
-dp_srng_mark_dal_owned_ring(struct dp_srng *srng, uint8_t idx,
-			    enum hal_ring_type type)
+dp_srng_mark_dal_owned_ring(struct dp_soc *soc, struct dp_srng *srng,
+			    uint8_t idx, enum hal_ring_type type)
 {
 	int mask;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
+		return;
 
 	if (type == REO_DST)
 		mask = DAL_DP_REO_RING_MASK;
@@ -567,8 +575,8 @@ static inline bool dp_srng_check_dal_owned_ring(struct dp_srng *srng)
 }
 
 static inline void
-dp_srng_mark_dal_owned_ring(struct dp_srng *srng, uint8_t idx,
-			    enum hal_ring_type type)
+dp_srng_mark_dal_owned_ring(struct dp_soc *soc, struct dp_srng *srng,
+			    uint8_t idx, enum hal_ring_type type)
 {
 }
 

@@ -2298,7 +2298,7 @@ static QDF_STATUS dp_alloc_tx_ring_pair_by_index(struct dp_soc *soc,
 		goto fail1;
 	}
 
-	dp_srng_mark_dal_owned_ring(&soc->tcl_data_ring[index],
+	dp_srng_mark_dal_owned_ring(soc, &soc->tcl_data_ring[index],
 				    index, TCL_DATA);
 
 	tx_comp_ring_size = wlan_cfg_tx_comp_ring_size(soc_cfg_ctx, index);
@@ -2317,7 +2317,7 @@ static QDF_STATUS dp_alloc_tx_ring_pair_by_index(struct dp_soc *soc,
 		goto fail1;
 	}
 
-	dp_srng_mark_dal_owned_ring(&soc->tx_comp_ring[index],
+	dp_srng_mark_dal_owned_ring(soc, &soc->tx_comp_ring[index],
 				    index, COMP_RING_TYPE);
 
 	if (soc->arch_ops.tx_comp_ring_desc_mark_invalid)
@@ -4821,7 +4821,7 @@ QDF_STATUS dp_soc_srng_alloc(struct dp_soc *soc)
 			goto fail1;
 		}
 
-		dp_srng_mark_dal_owned_ring(&soc->reo_dest_ring[i],
+		dp_srng_mark_dal_owned_ring(soc, &soc->reo_dest_ring[i],
 					    i, REO_DST);
 	}
 

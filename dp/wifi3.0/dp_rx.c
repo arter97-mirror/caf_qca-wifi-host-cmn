@@ -3751,16 +3751,9 @@ __dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev, struct dp_srng *dp_rxdma_srng)
 							num_rx_buffers);
 }
 
-#ifdef FEATURE_DAL_DP_SUPPORT
-QDF_STATUS dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
-{
-	/* Buffers will be attached during DAL SOC init */
-	return QDF_STATUS_SUCCESS;
-}
-#else
 #ifdef DP_FEATURE_DIRECT_REFILL
 QDF_STATUS
-dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+_dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 {
 	int i, mac_for_pdev = pdev->lmac_id;
 	struct dp_soc *soc = pdev->soc;
@@ -3785,7 +3778,7 @@ dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 }
 #else
 QDF_STATUS
-dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+_dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 {
 	int mac_for_pdev = pdev->lmac_id;
 	struct dp_soc *soc = pdev->soc;
@@ -3800,7 +3793,26 @@ dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 	return __dp_rx_pdev_buffers_alloc(pdev, dp_rxdma_srng);
 }
 #endif
-#endif
+
+#ifndef FEATURE_DAL_DP_SUPPORT
+QDF_STATUS
+dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+{
+	return _dp_rx_pdev_buffers_alloc(pdev);
+}
+#else
+QDF_STATUS
+dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+
+	/* Buffers will be attached during DAL SOC init */
+	if (wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
+		return QDF_STATUS_SUCCESS;
+
+	return _dp_rx_pdev_buffers_alloc(pdev);
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 void
 dp_rx_pdev_buffers_free(struct dp_pdev *pdev)

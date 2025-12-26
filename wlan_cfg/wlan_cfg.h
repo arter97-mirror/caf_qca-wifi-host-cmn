@@ -2502,6 +2502,24 @@ wlan_cfg_get_dal_rx_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg_ctx, int idx)
 {
 	return cfg_ctx->dal_int_rx_ring_mask[idx];
 }
+
+/**
+ * wlan_cfg_is_dal_feature_enabled() - Get DAL feature enable status
+ * @cfg: Configuration Handle
+ *
+ * Return: true if DAL feature is enabled, false otherwise
+ */
+static inline bool
+wlan_cfg_is_dal_feature_enabled(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return cfg->dal_dp_enabled;
+}
+#else
+static inline bool
+wlan_cfg_is_dal_feature_enabled(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return false;
+}
 #endif
 
 /**

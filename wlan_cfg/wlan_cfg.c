@@ -3595,8 +3595,23 @@ static inline void
 wlan_cfg_fill_dal_int_ring_mask(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx,
 				int idx)
 {
-	wlan_cfg_ctx->dal_int_tx_ring_mask[idx] = dal_tx_ring_mask_msi[idx];
-	wlan_cfg_ctx->dal_int_rx_ring_mask[idx] = dal_rx_ring_mask_msi[idx];
+	if (wlan_cfg_is_dal_feature_enabled(wlan_cfg_ctx)) {
+		wlan_cfg_ctx->dal_int_tx_ring_mask[idx] =
+						dal_tx_ring_mask_msi[idx];
+		wlan_cfg_ctx->dal_int_rx_ring_mask[idx] =
+						dal_rx_ring_mask_msi[idx];
+	} else {
+		wlan_cfg_ctx->dal_int_tx_ring_mask[idx] = 0;
+		wlan_cfg_ctx->dal_int_rx_ring_mask[idx] = 0;
+
+		if (dal_tx_ring_mask_msi[idx])
+			wlan_cfg_ctx->int_tx_ring_mask[idx] |=
+						dal_tx_ring_mask_msi[idx];
+
+		if (dal_rx_ring_mask_msi[idx])
+			wlan_cfg_ctx->int_rx_ring_mask[idx] |=
+						dal_rx_ring_mask_msi[idx];
+	}
 }
 #else
 static inline void

@@ -3773,6 +3773,11 @@ dp_tx_hw_enqueue_wrapper(struct dp_soc *soc, struct dp_vdev *vdev,
 {
 	QDF_STATUS status;
 
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
+		return soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc,
+						   fw_metadata,
+						   tx_exc_metadata, msdu_info);
+
 	status = dp_tx_override_ring_id(vdev, &msdu_info->tx_queue.ring_id);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		dp_tx_err_rl("Failed to override ring id for vdev %d %d",

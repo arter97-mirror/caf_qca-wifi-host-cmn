@@ -4055,7 +4055,8 @@ static bool dp_reo_remap_config_be(struct dp_soc *soc,
 	/* Exclude the rings dedicated for IPA or LSR or DAL*/
 	DP_REO_DST_REMAP_REMOVE_IPA(reo_config);
 	DP_REO_DST_REMAP_REMOVE_LSR(reo_config);
-	DP_REO_DST_REMAP_REMOVE_DAL(reo_config);
+	if (wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
+		DP_REO_DST_REMAP_REMOVE_DAL(reo_config);
 
 	if (!reo_config) {
 		dp_err("no valid reo remap left");

@@ -6,7 +6,6 @@
 #include "dp_dal.h"
 #include "dp_dal_rx.h"
 #include "dp_dal_tx.h"
-#include <wlan_cfg.h>
 #include <qdf_types.h>
 #include "qdf_mem.h"
 #include "dp_rx.h"
@@ -609,6 +608,23 @@ dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
 static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL, reject mode switch");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC is NULL, reject mode switch");
+		return -EINVAL;
+	}
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, reject mode switch");
+		return -EINVAL;
+	}
 
 	if (cur_mode == DAL_DP_BYPASS_MODE &&
 	    new_mode == DAL_DP_OFFLOAD_MODE) {
@@ -869,6 +885,11 @@ qdf_export_symbol(vendor_cb);
  */
 void dp_dal_soc_detach(struct dp_soc *soc)
 {
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping soc detach");
+		return;
+	}
+
 	dp_dal_sim_detach(soc->dal_ctx);
 	qdf_mem_common_free(soc->dal_ctx);
 	soc->dal_ctx = NULL;
@@ -885,7 +906,15 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 {
 	struct dp_dal_ctx *dal_ctx;
 
-	if (!soc || !soc->dal_ctx)
+	if (!soc)
+		return;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping soc deinit");
+		return;
+	}
+
+	if (!soc->dal_ctx)
 		return;
 
 	dal_ctx = soc->dal_ctx;
@@ -918,6 +947,11 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc)
 {
 	struct dp_dal_ctx *ctx;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_info("DAL feature disabled, skipping soc attach");
+		return QDF_STATUS_SUCCESS;
+	}
 
 	ctx = qdf_mem_common_alloc(sizeof(*ctx));
 	if (!ctx) {
@@ -1288,7 +1322,15 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	struct dp_dal_ctx *dal_ctx;
 	QDF_STATUS status;
 
-	if (!soc || !soc->dal_ctx)
+	if (!soc)
+		return QDF_STATUS_E_INVAL;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping soc init");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	if (!soc->dal_ctx)
 		return QDF_STATUS_E_INVAL;
 
 	dal_ctx = soc->dal_ctx;
@@ -1470,10 +1512,12 @@ int dp_dal_bus_request_irq(struct dp_soc *soc)
  * non-DAL path
  * @soc: pointer to DP SoC
  * @mac_id: mac id
+ * @dp_rxdma_srng: dp rxdma circular ring
  * @rx_desc_pool: pointer to rx desc pool
  * @num_req_buffers: Number of Rx buffers to replenish
  * @desc_list: HEAD pointer to rx desc list elem list
  * @tail: TAIL pointer to rx desc list elem list
+ * @req_only: If true don't replenish more than req buffers
  *
  * Invoked from a non-DAL path, such as the non-DAL REO DEST ring process, the
  * Rx error path replenishes buffers for processed descriptors. Since the OE
@@ -1483,14 +1527,21 @@ int dp_dal_bus_request_irq(struct dp_soc *soc)
  * Return: int
  */
 int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
+				struct dp_srng *dp_rxdma_srng,
 				struct rx_desc_pool *rx_desc_pool,
 				uint32_t num_req_buffers,
 				union dp_rx_desc_list_elem_t **desc_list,
-				union dp_rx_desc_list_elem_t **tail)
+				union dp_rx_desc_list_elem_t **tail,
+				bool req_only)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 	int ret;
 
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
+		return __dp_rx_buffers_replenish(soc, mac_id, dp_rxdma_srng,
+						 rx_desc_pool, num_req_buffers,
+						 desc_list, tail, req_only,
+						 false, __func__);
 	if (!dal_ctx)
 		return -EINVAL;
 
@@ -1546,6 +1597,11 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 	struct dal_intf_info intf_info = {0};
 	enum dal_intf_type type;
 	int status;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping interface add");
+		return 0;
+	}
 
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL, cannot add interface");
@@ -1612,6 +1668,11 @@ void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 	int status;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping interface remove");
+		return;
+	}
 
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL, cannot remove interface");
@@ -1680,6 +1741,11 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
 		return QDF_STATUS_E_INVAL;
 	}
 
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping notify suspend");
+		return QDF_STATUS_SUCCESS;
+	}
+
 	dal_ctx = soc->dal_ctx;
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL");
@@ -1731,6 +1797,11 @@ QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 		return QDF_STATUS_E_INVAL;
 	}
 
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping notify resume");
+		return QDF_STATUS_SUCCESS;
+	}
+
 	dal_ctx = soc->dal_ctx;
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL");
@@ -1770,6 +1841,11 @@ void dp_dal_ssr_notify(struct dp_soc *soc)
 
 	if (!soc) {
 		dp_err("Invalid SoC pointer");
+		return;
+	}
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping ssr notify");
 		return;
 	}
 
@@ -1890,6 +1966,11 @@ void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 	struct dal_srng *dal_ring;
 	int ring_info_cnt;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, skipping save srng info");
+		return;
+	}
 
 	if (type != RXDMA_BUF &&
 	    !dp_srng_check_dal_owned_ring(srng))

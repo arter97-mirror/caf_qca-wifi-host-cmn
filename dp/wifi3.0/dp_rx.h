@@ -249,8 +249,8 @@ struct dp_rx_desc {
 #ifdef FEATURE_DAL_DP_SUPPORT
 #define dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
 				num_buffers, desc_list, tail, req_only) \
-	dp_dal_rx_buffers_replenish(soc, mac_id, rx_desc_pool, \
-				    num_buffers, desc_list, tail)
+	dp_dal_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
+				    num_buffers, desc_list, tail, req_only)
 #else
 #define dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
 				num_buffers, desc_list, tail, req_only) \
