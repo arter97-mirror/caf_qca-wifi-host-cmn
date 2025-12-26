@@ -177,55 +177,58 @@ static inline void dp_dal_offload_sim_overwrite_tx_desc(
 		return;
 	}
 	/* Read all fields from TX descriptor using HAL_TX_DESC_GET APIs */
-	lmac_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, PMAC_ID);
+	lmac_id = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, PMAC_ID);
 
-	paddr_lo = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-				   BUF_ADDR_INFO_BUFFER_ADDR_31_0);
-	paddr_hi = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-				   BUF_ADDR_INFO_BUFFER_ADDR_39_32);
+	paddr_lo = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					    BUF_ADDR_INFO_BUFFER_ADDR_31_0);
+	paddr_hi = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					    BUF_ADDR_INFO_BUFFER_ADDR_39_32);
 	paddr = (dma_addr_t)paddr_lo | (((dma_addr_t)paddr_hi) << 32);
 
-	rbm_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-				 BUF_ADDR_INFO_RETURN_BUFFER_MANAGER);
+	rbm_id = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					  BUF_ADDR_INFO_RETURN_BUFFER_MANAGER);
 
-	desc_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-				  BUF_ADDR_INFO_SW_BUFFER_COOKIE);
+	desc_id = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					   BUF_ADDR_INFO_SW_BUFFER_COOKIE);
 
-	buf_type = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-				   BUF_OR_EXT_DESC_TYPE);
+	buf_type = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+					    BUF_OR_EXT_DESC_TYPE);
 
-	data_length = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, DATA_LENGTH);
+	data_length = DAL_VNDR_HAL_TX_DESC_GET(txdesc,
+					       TCL_DATA_CMD, DATA_LENGTH);
 
-	buf_offset = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, PACKET_OFFSET);
+	buf_offset = DAL_VNDR_HAL_TX_DESC_GET(txdesc,
+					      TCL_DATA_CMD, PACKET_OFFSET);
 
-	l3_checksum_en = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-					 IPV4_CHECKSUM_EN);
+	l3_checksum_en = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+						  IPV4_CHECKSUM_EN);
 
-	l4_checksum_en = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-					 TCP_OVER_IPV4_CHECKSUM_EN) |
-			 HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-					 TCP_OVER_IPV6_CHECKSUM_EN) |
-			 HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-					 UDP_OVER_IPV4_CHECKSUM_EN) |
-			 HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-					 UDP_OVER_IPV6_CHECKSUM_EN);
+	l4_checksum_en = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+						  TCP_OVER_IPV4_CHECKSUM_EN) |
+			 DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+						  TCP_OVER_IPV6_CHECKSUM_EN) |
+			 DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+						  UDP_OVER_IPV4_CHECKSUM_EN) |
+			 DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+						  UDP_OVER_IPV6_CHECKSUM_EN);
 
-	bank_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, BANK_ID);
+	bank_id = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, BANK_ID);
 
-	vdev_id = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, VDEV_ID);
+	vdev_id = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, VDEV_ID);
 
-	hlos_tid = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, HLOS_TID);
+	hlos_tid = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, HLOS_TID);
 
-	flow_override_enable = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-					       FLOW_OVERRIDE_ENABLE);
+	flow_override_enable = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+							FLOW_OVERRIDE_ENABLE);
 
-	flow_override = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, FLOW_OVERRIDE);
+	flow_override = DAL_VNDR_HAL_TX_DESC_GET(txdesc,
+						 TCL_DATA_CMD, FLOW_OVERRIDE);
 
-	who_classify_info_sel = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-						WHO_CLASSIFY_INFO_SEL);
+	who_classify_info_sel = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+							 WHO_CLASSIFY_INFO_SEL);
 
-	tx_notify_frame = HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
-					  TX_NOTIFY_FRAME);
+	tx_notify_frame = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD,
+						   TX_NOTIFY_FRAME);
 	/* Overwrite all fields using DAL VNDR HAL set APIs */
 	dal_vndr_hal_tx_desc_set_lmac_id(hal_soc_hdl, txdesc, lmac_id);
 	dal_vndr_hal_tx_desc_set_buf_addr(hal_soc_hdl, txdesc, paddr,
@@ -914,7 +917,7 @@ int dp_dal_offload_sim_rxbm_sync(
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *rx_refill_ring;
-	struct buffer_addr_info *buf_addr_info;
+	struct dal_buffer_addr_info *buf_addr_info;
 	void *refill_desc;
 	u32 i;
 
@@ -928,7 +931,7 @@ int dp_dal_offload_sim_rxbm_sync(
 		return 0;
 	}
 
-	buf_addr_info = (struct buffer_addr_info *)(*rx_buff);
+	buf_addr_info = (struct dal_buffer_addr_info *)(*rx_buff);
 
 	offload_ctx =
 		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
