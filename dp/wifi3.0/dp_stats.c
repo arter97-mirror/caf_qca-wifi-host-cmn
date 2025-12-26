@@ -8694,8 +8694,37 @@ void dp_print_dal_tx_stats(struct dp_soc *soc)
 			       dal_ctx->stats.tx.tx_comp_nosupport[ring_id]);
 	}
 }
+
+void dp_print_dal_rx_stats(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx) {
+		dp_err("Invalid access");
+		return;
+	}
+
+	DP_PRINT_STATS("DAL Rx stats:");
+	DP_PRINT_STATS("Failed drop count on ring %d: %llu",
+		       DAL_DP_DEFAULT_REO_STA - 1,
+		       dal_ctx->stats.rx.rx_dropped[DAL_DP_DEFAULT_REO_STA - 1]);
+	DP_PRINT_STATS("No support drop count on ring %d: %llu",
+		       DAL_DP_DEFAULT_REO_STA - 1,
+		       dal_ctx->stats.rx.rx_dropped_nosupport[DAL_DP_DEFAULT_REO_STA - 1]);
+
+	DP_PRINT_STATS("Failed drop count on ring %d: %llu",
+		       DAL_DP_DEFAULT_REO_SAP - 1,
+		       dal_ctx->stats.rx.rx_dropped[DAL_DP_DEFAULT_REO_SAP - 1]);
+	DP_PRINT_STATS("No support drop count on ring %d: %llu",
+		       DAL_DP_DEFAULT_REO_SAP - 1,
+		       dal_ctx->stats.rx.rx_dropped_nosupport[DAL_DP_DEFAULT_REO_SAP - 1]);
+}
 #else
 void dp_print_dal_tx_stats(struct dp_soc *soc)
+{
+}
+
+void dp_print_dal_rx_stats(struct dp_soc *soc)
 {
 }
 #endif
@@ -8856,6 +8885,7 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 				       .rxdma_error[error_code]);
 		}
 
+		dp_print_dal_rx_stats(soc);
 		dp_print_opt_dp_stats(soc);
 
 		pos = 0;
