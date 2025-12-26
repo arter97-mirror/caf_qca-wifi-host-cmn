@@ -465,14 +465,14 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev);
 /**
  * dp_dal_interface_remove() - DAL interface remove
  * @soc: pointer to DP SoC
- * @vdev_id: vdev ID of the interface
+ * @vdev: DP vdev structure
  *
  * Called during dp_vdev_detach_wifi3(), this function will remove interface
  * details from the offload engine.
  *
  * Return: None
  */
-void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id);
+void dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev);
 
 /**
  * dp_dal_sta_active() - DAL API to send STA information
@@ -632,7 +632,8 @@ dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 	return 0;
 }
 
-static inline void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
+static inline void
+dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev)
 {
 }
 

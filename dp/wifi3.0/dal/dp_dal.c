@@ -1618,7 +1618,7 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 
 	if (type == DAL_INTF_TYPE_STA)
 		intf_info.tx_ring_id = DAL_TX_RING_ID0_STA;
-	else if (type == DAL_TX_RING_ID0_SAP)
+	else if (type == DAL_INTF_TYPE_SAP)
 		intf_info.tx_ring_id = DAL_TX_RING_ID0_SAP;
 	intf_info.tx_rbm_id =
 		wlan_cfg_get_rbm_id_for_index(soc->wlan_cfg_ctx,
@@ -1657,17 +1657,18 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev)
 /**
  * dp_dal_interface_remove() - DAL interface remove
  * @soc: pointer to DP SoC
- * @vdev_id: vdev ID of the interface
+ * @vdev: DP vdev structure
  *
  * Called during dp_vdev_detach_wifi3(), this function will remove interface
  * details from the offload engine.
  *
  * Return: None
  */
-void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
+void dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 	int status;
+	uint8_t vdev_id = vdev->vdev_id;
 
 	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
 		dp_debug("DAL feature disabled, skipping interface remove");
@@ -1678,6 +1679,10 @@ void dp_dal_interface_remove(struct dp_soc *soc, uint16_t vdev_id)
 		dp_err("DAL context is NULL, cannot remove interface");
 		return;
 	}
+
+	if (vdev->qdf_opmode != QDF_STA_MODE &&
+	    vdev->qdf_opmode != QDF_SAP_MODE)
+		return;
 
 	if (global_plat_ops && global_plat_ops->tx_queue_active) {
 		status = global_plat_ops->tx_queue_active(dal_ctx,

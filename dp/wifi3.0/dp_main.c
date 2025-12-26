@@ -5908,7 +5908,7 @@ static QDF_STATUS dp_vdev_detach_wifi3(struct cdp_soc_t *cdp_soc,
 	if (!vdev)
 		return QDF_STATUS_E_FAILURE;
 
-	dp_dal_interface_remove(soc, vdev_id);
+	dp_dal_interface_remove(soc, vdev);
 	soc->arch_ops.txrx_vdev_detach(soc, vdev);
 
 	pdev = vdev->pdev;
