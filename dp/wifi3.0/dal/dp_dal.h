@@ -294,6 +294,7 @@ struct dp_dal_rx_desc_node {
  * @rx_replenish_retry_interval_ms: Interval at which replenish timer runs
  * @deinit_in_progress: flag to indicate dal_soc_deinit in progress
  * @bm_replenish_not_allowed: flag to reject replenish from bypass pass
+ * @mode_switch_runtime_lock: lock to prevent runtime suspend during dal ops
  * @suspended_tx_list: List of suspended TX descriptors during runtime PM
  * @suspended_tx_lock: Spinlock to protect suspended TX list operations
  * @suspended_tx_count: Count of suspended TX descriptors
@@ -330,6 +331,7 @@ struct dp_dal_ctx {
 	int rx_replenish_retry_interval_ms;
 	qdf_atomic_t deinit_in_progress;
 	qdf_atomic_t bm_replenish_not_allowed;
+	qdf_runtime_lock_t mode_switch_runtime_lock;
 #ifdef FEATURE_RUNTIME_PM
 	qdf_list_t suspended_tx_list;
 	qdf_spinlock_t suspended_tx_lock;

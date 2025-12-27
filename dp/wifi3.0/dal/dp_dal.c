@@ -611,6 +611,7 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_soc *soc;
 	struct qdf_op_sync *op_sync;
+	QDF_STATUS pm_status;
 	int ret = 0;
 
 	if (qdf_op_protect(&op_sync)) {
@@ -638,6 +639,18 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 		goto out;
 	}
 
+	/* Prevent runtime suspend during mode switch to avoid register access
+	 * during suspend state which can cause system crash
+	 */
+	pm_status = qdf_runtime_pm_prevent_suspend_sync(
+				&dal_ctx->mode_switch_runtime_lock);
+	if (QDF_IS_STATUS_ERROR(pm_status)) {
+		dp_err("Failed to prevent runtime suspend, reject mode switch cur:%d new:%d",
+		       cur_mode, new_mode);
+		ret = -EBUSY;
+		goto out;
+	}
+
 	if (cur_mode == DAL_DP_BYPASS_MODE &&
 	    new_mode == DAL_DP_OFFLOAD_MODE) {
 		if (dp_dal_mode_switch_bypass_to_offload(dal_ctx) !=
@@ -653,6 +666,9 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 		       cur_mode, new_mode);
 		ret = -EINVAL;
 	}
+
+	/* Allow runtime suspend after mode switch operations complete */
+	qdf_runtime_pm_allow_suspend(&dal_ctx->mode_switch_runtime_lock);
 
 out:
 	qdf_op_unprotect(op_sync);
@@ -941,6 +957,9 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 	qdf_timer_sync_cancel(&soc->dal_ctx->rx_replenish_retry_timer);
 
 	dp_dal_rx_desc_list_cleanup(dal_ctx);
+
+	/* Deinitialize runtime lock */
+	qdf_runtime_lock_deinit(&dal_ctx->mode_switch_runtime_lock);
 
 	qdf_spinlock_destroy(&dal_ctx->dal_rx_desc_lock);
 	qdf_spinlock_destroy(&dal_ctx->dal_tx_cpl_lock);
@@ -1355,6 +1374,9 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	qdf_atomic_init(&dal_ctx->rx_replenish_failures);
 	qdf_atomic_init(&dal_ctx->deinit_in_progress);
 	qdf_atomic_init(&dal_ctx->bm_replenish_not_allowed);
+
+	/* Initialize runtime lock for mode switch operations */
+	qdf_runtime_lock_init(&dal_ctx->mode_switch_runtime_lock);
 
 	dal_ctx->rx_replenish_retry_interval_ms =
 					DAL_RX_REPLENISH_RETRY_TIMER_MS;
