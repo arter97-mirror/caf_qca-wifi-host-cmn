@@ -12,6 +12,7 @@
 #include "dp_peer.h"
 #include "qdf_module.h"
 #include "dp_dal_sim.h"
+#include "qdf_platform.h"
 
 extern struct platform_bus_ops *global_plat_ops;
 
@@ -609,40 +610,53 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_soc *soc;
+	struct qdf_op_sync *op_sync;
+	int ret = 0;
+
+	if (qdf_op_protect(&op_sync)) {
+		dp_err("Driver in transitional state, reject mode switch cur:%d new:%d",
+		       cur_mode, new_mode);
+		return -EINVAL;
+	}
 
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL, reject mode switch");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	soc = dal_ctx->soc;
 	if (!soc) {
 		dp_err("SOC is NULL, reject mode switch");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
 		dp_debug("DAL feature disabled, reject mode switch");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (cur_mode == DAL_DP_BYPASS_MODE &&
 	    new_mode == DAL_DP_OFFLOAD_MODE) {
 		if (dp_dal_mode_switch_bypass_to_offload(dal_ctx) !=
 		    QDF_STATUS_SUCCESS)
-			return -EINVAL;
+			ret = -EINVAL;
 	} else if (cur_mode == DAL_DP_OFFLOAD_MODE &&
 		   new_mode == DAL_DP_BYPASS_MODE) {
 		if (dp_dal_mode_switch_offload_to_bypass(dal_ctx) !=
 		    QDF_STATUS_SUCCESS)
-			return -EINVAL;
+			ret = -EINVAL;
 	} else {
 		dp_err("invalid mode switch ind rcvd cur_mode:%d new_mode:%d",
 		       cur_mode, new_mode);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	return 0;
+out:
+	qdf_op_unprotect(op_sync);
+	return ret;
 }
 
 struct platform_bus_ops plat_ops_bypass_mode = {

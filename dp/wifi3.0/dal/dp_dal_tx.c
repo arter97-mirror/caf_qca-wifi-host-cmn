@@ -6,6 +6,7 @@
 #include "dp_dal_tx.h"
 #include "hal_tx.h"
 #include "qdf_mem.h"
+#include "qdf_platform.h"
 
 extern struct platform_bus_ops *global_plat_ops;
 
@@ -377,18 +378,27 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_soc *soc;
+	struct qdf_op_sync *op_sync;
 	int grp_id;
 	QDF_STATUS status;
+	int ret = 0;
 
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL");
 		return -EINVAL;
 	}
 
+	if (qdf_op_protect(&op_sync)) {
+		dp_err("Driver in transitional state, reject TX CMP ISR ring:%d",
+		       ring_num);
+		return -EINVAL;
+	}
+
 	soc = dal_ctx->soc;
 	if (!soc) {
 		dp_err("SOC is NULL");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	grp_id = dp_dal_get_ext_grp_id(dal_ctx, ring_num, COMP_RING_TYPE);
@@ -396,17 +406,21 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
 		dp_err("invalid group id:%d ring_num:%d ring_type:%s",
 		       grp_id, ring_num, "COMP_RING_TYPE");
 		QDF_BUG(0);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	status = hif_ext_grp_napi_schedule(soc->hif_handle, grp_id);
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err("Failed to sched NAPI for grp_id:%d ring:%d status:%d",
 		       grp_id, ring_num, status);
-		return qdf_status_to_os_return(status);
+		ret = qdf_status_to_os_return(status);
+		goto out;
 	}
 
-	return 0;
+out:
+	qdf_op_unprotect(op_sync);
+	return ret;
 }
 
 /**
@@ -689,6 +703,7 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_soc *soc;
+	struct qdf_op_sync *op_sync;
 	void *tx_comp_hal_desc = desc;
 	struct dp_tx_desc_s *tx_desc = NULL;
 	uint8_t buffer_src;
@@ -701,20 +716,26 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 		return 0;
 	}
 
+	if (qdf_op_protect(&op_sync)) {
+		dp_err("Driver in transitional state, reject TX CPL ring:%u",
+		       ring_id);
+		return 0;
+	}
+
 	soc = dal_ctx->soc;
 	if (qdf_unlikely(!soc)) {
 		dp_err("SOC is NULL");
-		return 0;
+		goto out;
 	}
 
 	if (qdf_unlikely(!tx_comp_hal_desc)) {
 		dp_err("TX completion descriptor is NULL");
-		return 0;
+		goto out;
 	}
 
 	if (qdf_unlikely(ring_id >= MAX_TCL_DATA_RINGS)) {
 		dp_err("Invalid ring_id %u", ring_id);
-		return 0;
+		goto out;
 	}
 
 	hal_soc = soc->hal_soc;
@@ -757,7 +778,7 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 			dp_err_rl("Tx comp wbm_internal_error false");
 			DP_STATS_INC(soc, tx.non_wbm_internal_err, 1);
 		}
-		return 0;
+		goto out;
 	}
 
 	status = soc->arch_ops.tx_comp_get_params_from_hal_desc(
@@ -765,14 +786,14 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 	if (qdf_unlikely(!tx_desc)) {
 		if (QDF_IS_STATUS_SUCCESS(
 			dp_tx_comp_stale_entry_handle(soc, ring_id, status))) {
-			return 0;
+			goto out;
 		}
 
 		dp_err("unable to retrieve tx_desc!");
 		hal_dump_comp_desc(tx_comp_hal_desc);
 		DP_STATS_INC(soc, tx.invalid_tx_comp_desc, 1);
 		QDF_BUG(0);
-		return 0;
+		goto out;
 	}
 
 	dp_tx_comp_reset_stale_entry_detection(soc, ring_id);
@@ -808,14 +829,14 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 					   tx_desc->id);
 			DP_STATS_INC(soc, tx.tx_comp_exception, 1);
 			dp_tx_desc_check_corruption(tx_desc);
-			return 0;
+			goto out;
 		}
 
 		if (qdf_unlikely(!tx_desc->pdev)) {
 			dp_tx_comp_warn("pdev is NULL in TX desc, ignored.");
 			dp_tx_dump_tx_desc(tx_desc);
 			DP_STATS_INC(soc, tx.tx_comp_exception, 1);
-			return 0;
+			goto out;
 		}
 
 		if (qdf_unlikely(tx_desc->pdev->is_pdev_down)) {
@@ -824,7 +845,7 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 			tx_desc->flags |= DP_TX_DESC_FLAG_TX_COMP_ERR;
 			dp_tx_comp_free_buf(soc, tx_desc, false);
 			dp_tx_desc_release(soc, tx_desc, tx_desc->pool_id);
-			return 0;
+			goto out;
 		}
 
 		if (!(tx_desc->flags & DP_TX_DESC_FLAG_ALLOCATED) ||
@@ -861,6 +882,8 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 		qdf_spin_unlock_bh(&dal_ctx->dal_tx_cpl_lock);
 	}
 
+out:
+	qdf_op_unprotect(op_sync);
 	return 0;
 }
 

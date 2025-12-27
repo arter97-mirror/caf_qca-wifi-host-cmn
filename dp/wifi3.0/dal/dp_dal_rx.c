@@ -9,6 +9,7 @@
 #include "wlan_cfg.h"
 #include "hif.h"
 #include "dp_rx_buffer_pool.h"
+#include "qdf_platform.h"
 
 extern struct platform_bus_ops *global_plat_ops;
 
@@ -246,17 +247,26 @@ int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_soc *soc;
+	struct qdf_op_sync *op_sync;
 	int grp_id;
+	int ret = 0;
 
 	if (!dal_ctx) {
 		dp_err("dal_ctx is NULL");
 		return -EINVAL;
 	}
 
+	if (qdf_op_protect(&op_sync)) {
+		dp_err("Driver in transitional state, reject RX ISR ring:%d",
+		       ring_num);
+		return -EINVAL;
+	}
+
 	soc = dal_ctx->soc;
 	if (!soc) {
 		dp_err("soc is NULL");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	grp_id = dp_dal_get_ext_grp_id(dal_ctx, ring_num, REO_DST);
@@ -264,12 +274,15 @@ int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv)
 		dp_err("invalid group id:%d ring_num:%d ring_type:%s",
 		       grp_id, ring_num, " REO_DEST");
 		QDF_BUG(0);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	hif_ext_grp_napi_schedule(soc->hif_handle, grp_id);
 
-	return 0;
+out:
+	qdf_op_unprotect(op_sync);
+	return ret;
 }
 
 /**
@@ -416,44 +429,60 @@ int dp_dal_rx_desc_cb(void *priv, void *desc, u16 ring_id)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_soc *soc;
+	struct qdf_op_sync *op_sync;
 	hal_ring_desc_t ring_desc = (hal_ring_desc_t)desc;
 	struct dp_rx_desc *rx_desc = NULL;
+	int ret = 0;
 
 	if (qdf_unlikely(!dal_ctx)) {
 		dp_err("DAL context is NULL");
 		return -EINVAL;
 	}
 
+	if (qdf_op_protect(&op_sync)) {
+		dp_err("Driver in transitional state, reject RX desc ring:%u",
+		       ring_id);
+		return -EINVAL;
+	}
+
 	soc = dal_ctx->soc;
 	if (qdf_unlikely(!soc)) {
 		dp_err("SOC is NULL");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (qdf_unlikely(!ring_desc)) {
 		dp_err("RX descriptor is NULL");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (qdf_unlikely(ring_id >= MAX_REO_DEST_RINGS)) {
 		dp_err("Invalid ring_id %u, max allowed %u", ring_id,
 		       MAX_REO_DEST_RINGS);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	rx_desc = soc->arch_ops.dp_rx_validate_and_fetch_rx_desc(soc, ring_desc,
 								 ring_id);
-	if (!rx_desc)
-		return -EINVAL;
+	if (!rx_desc) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	qdf_spin_lock_bh(&dal_ctx->dal_rx_desc_lock);
 	if (dp_dal_rx_add_desc_to_tail(dal_ctx, ring_id, rx_desc)) {
 		qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto out;
 	}
 	qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
 
-	return 0;
+out:
+	qdf_op_unprotect(op_sync);
+	return ret;
 }
 
 /**
