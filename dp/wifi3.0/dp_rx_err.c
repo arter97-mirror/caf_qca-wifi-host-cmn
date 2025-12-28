@@ -1182,7 +1182,7 @@ more_msdu_link_desc:
 			 */
 			QDF_NBUF_CB_RX_PKT_LEN(head_nbuf) =
 					QDF_NBUF_CB_RX_PKT_LEN(tail_nbuf);
-			nbuf = dp_rx_sg_create(soc, head_nbuf);
+			nbuf = dp_rx_sg_create(soc, head_nbuf, false);
 			qdf_nbuf_set_is_frag(nbuf, 1);
 			DP_STATS_INC(soc, rx.err.reo_err_oor_sg_count, 1);
 		}
@@ -2704,7 +2704,7 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		 * QCN9000 has this support
 		 */
 		if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
-			nbuf = dp_rx_sg_create(soc, nbuf);
+			nbuf = dp_rx_sg_create(soc, nbuf, true);
 			next = nbuf->next;
 			/*
 			 * SG error handling is not done correctly,
