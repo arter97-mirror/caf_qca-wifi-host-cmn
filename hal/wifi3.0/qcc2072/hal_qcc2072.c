@@ -2481,6 +2481,8 @@ static void hal_hw_txrx_ops_attach_2072(struct hal_soc *hal_soc)
 					hal_rx_desc_is_first_msdu_be;
 	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_get =
 		hal_rx_tlv_l3_hdr_padding_get_be;
+	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set =
+					hal_rx_tlv_l3_hdr_padding_set_be;
 	hal_soc->ops->hal_rx_encryption_info_valid =
 					hal_rx_encryption_info_valid_be;
 	hal_soc->ops->hal_rx_print_pn = hal_rx_print_pn_be;
