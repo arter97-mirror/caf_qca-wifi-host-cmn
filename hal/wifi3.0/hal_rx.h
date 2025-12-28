@@ -896,6 +896,25 @@ hal_rx_print_pn(hal_soc_handle_t hal_soc_hdl, uint8_t *buf)
 }
 
 /**
+ * hal_rx_msdu_end_l3_hdr_padding_set() - API to set the
+ * l3_header padding from rx_msdu_end TLV
+ * @hal_soc_hdl: hal_soc handle
+ * @buf: pointer to the start of RX PKT TLV headers
+ * @l3_hdr_pad: l3_hdr_pad value to be set
+ *
+ * Return: void
+ */
+static inline void
+hal_rx_msdu_end_l3_hdr_padding_set(hal_soc_handle_t hal_soc_hdl,
+				   uint8_t *buf,
+				   uint32_t l3_hdr_pad)
+{
+	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
+
+	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set(buf, l3_hdr_pad);
+}
+
+/**
  * hal_rx_msdu_end_l3_hdr_padding_get() - API to get the
  * l3_header padding from rx_msdu_end TLV
  * @hal_soc_hdl: hal_soc handle

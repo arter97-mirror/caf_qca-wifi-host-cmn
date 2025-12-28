@@ -840,7 +840,7 @@ done:
 			qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
 		} else if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
 			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
-			nbuf = dp_rx_sg_create(soc, nbuf);
+			nbuf = dp_rx_sg_create(soc, nbuf, true);
 			next = nbuf->next;
 
 			if (qdf_nbuf_is_raw_frame(nbuf)) {
@@ -3023,7 +3023,7 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 			qdf_nbuf_pull_head(nbuf, soc->rx_pkt_tlv_size);
 		} else if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
 			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
-			nbuf = dp_rx_sg_create(soc, nbuf);
+			nbuf = dp_rx_sg_create(soc, nbuf, true);
 			next = qdf_nbuf_next(nbuf);
 
 			if (qdf_nbuf_is_raw_frame(nbuf)) {

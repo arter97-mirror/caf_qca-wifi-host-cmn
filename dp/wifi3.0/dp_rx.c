@@ -2052,13 +2052,14 @@ static inline uint32_t dp_get_l3_hdr_pad_len(struct dp_soc *soc,
 	return l3_hdr_pad;
 }
 
-qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
+qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs)
 {
 	qdf_nbuf_t parent, frag_list, frag_tail, next = NULL;
 	uint16_t frag_list_len = 0;
 	uint16_t mpdu_len;
 	bool last_nbuf;
 	uint32_t l3_hdr_pad_offset = 0;
+	uint8_t *parent_tlvs;
 
 	/*
 	 * Use msdu len got from REO entry descriptor instead since
@@ -2106,6 +2107,16 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	nbuf = nbuf->next;
 
 	/*
+	 * Delivering packet via invalid peer path uses parent nbuf tlvs
+	 * to find the l3_hdr_pad value. Since the MSDU_END tlv is valid
+	 * only for the last msdu, set the correct value in the parent
+	 * nbuf tlvs for referencing later.
+	 */
+	parent_tlvs = qdf_nbuf_data(parent);
+	hal_rx_msdu_end_l3_hdr_padding_set(soc->hal_soc, parent_tlvs,
+					   l3_hdr_pad_offset);
+
+	/*
 	 * set the start bit in the first nbuf we encounter with continuation
 	 * bit set. This has the proper mpdu length set as it is the first
 	 * msdu of the mpdu. this becomes the parent nbuf and the subsequent
@@ -2127,8 +2138,10 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	 */
 	if (last_nbuf) {
 		DP_STATS_INC(soc, rx.err.msdu_continuation_err, 1);
-		qdf_nbuf_pull_head(parent,
-				   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
+		if (skip_tlvs)
+			qdf_nbuf_pull_head(parent,
+					   soc->rx_pkt_tlv_size +
+					   l3_hdr_pad_offset);
 		return parent;
 	}
 
@@ -2158,8 +2171,9 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	qdf_nbuf_append_ext_list(parent, frag_list, frag_list_len);
 	parent->next = next;
 
-	qdf_nbuf_pull_head(parent,
-			   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
+	if (skip_tlvs)
+		qdf_nbuf_pull_head(parent,
+				   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
 	return parent;
 }
 

@@ -1185,13 +1185,15 @@ dp_rx_process(struct dp_intr *int_ctx, hal_ring_handle_t hal_ring_hdl,
  *		     multiple nbufs.
  * @soc: core txrx main context
  * @nbuf: pointer to the first msdu of an amsdu.
+ * @skip_tlvs: Flag indicating if the rx_pkt_tlvs are to be stripped from the
+ *	       head nbuf
  *
  * This function implements the creation of RX frag_list for cases
  * where an MSDU is spread across multiple nbufs.
  *
  * Return: returns the head nbuf which contains complete frag_list.
  */
-qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf);
+qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs);
 
 /**
  * dp_rx_is_sg_supported() - SG packets processing supported or not.
