@@ -939,6 +939,10 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 	if (!soc)
 		return;
 
+	if (soc->cdp_soc.ol_ops->get_con_mode &&
+	    soc->cdp_soc.ol_ops->get_con_mode() == QDF_GLOBAL_FTM_MODE)
+		return;
+
 	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
 		dp_debug("DAL feature disabled, skipping soc deinit");
 		return;
