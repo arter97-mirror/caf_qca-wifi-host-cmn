@@ -347,12 +347,32 @@ struct wlan_channel {
 };
 
 /**
+ * struct vdev_op_info - VDEV operational mode and bandwidth info
+ * @op_bw: Current operating bandwidth (updated by CSA/OMN)
+ * @max_supported_bw: Maximum capability (min of self/peer/regulatory)
+ * @assoc_bw: Bandwidth at association time (static)
+ * @user_defined_bw: User-configured bandwidth limit
+ * @dot11_mode: Negotiated 802.11 standard (11n/ac/ax/be),
+ *              see enum mlme_dot11_mode
+ * @phymode: Physical layer mode (derived from dot11_mode + op_bw)
+ */
+struct vdev_op_info {
+	enum phy_ch_width    op_bw;
+	enum phy_ch_width    max_supported_bw;
+	enum phy_ch_width    assoc_bw;
+	enum phy_ch_width    user_defined_bw;
+	uint32_t             dot11_mode;
+	enum wlan_phymode    phymode;
+};
+
+/**
  * struct wlan_objmgr_vdev_mlme - VDEV MLME specific sub structure
  * @vdev_opmode:        Opmode of VDEV
  * @mlme_state:         VDEV MLME SM state
  * @mlme_substate:      VDEV MLME SM substate
  * @bss_chan:           BSS channel
  * @des_chan:           Desired channel, for STA Desired may not be used
+ * @op_info:            VDEV operational bandwidth and mode information
  * @vdev_caps:          VDEV capabilities
  * @vdev_feat_caps:     VDEV feature caps
  * @vdev_feat_ext_caps: VDEV Extended feature caps
@@ -380,6 +400,7 @@ struct wlan_objmgr_vdev_mlme {
 	enum wlan_vdev_state mlme_substate;
 	struct wlan_channel *bss_chan;
 	struct wlan_channel *des_chan;
+	struct vdev_op_info op_info;
 	uint32_t vdev_caps;
 	uint32_t vdev_feat_caps;
 	uint32_t vdev_feat_ext_caps;
