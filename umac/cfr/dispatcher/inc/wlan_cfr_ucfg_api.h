@@ -324,12 +324,16 @@ ucfg_cfr_set_freeze_tlv_delay_cnt(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS ucfg_cfr_committed_rcc_config(struct wlan_objmgr_vdev *vdev);
 
 /**
- * ucfg_cfr_set_mode() - function to set active/passive mode
+ * ucfg_cfr_get_peer_info() - function to get peer info
  * @vdev: pointer to vdev object
+ * @peer_bw: peer bw
+ * @bss_freq: bss_freq
  *
  * Return: status
  */
-QDF_STATUS ucfg_cfr_set_mode(struct wlan_objmgr_vdev *vdev);
+QDF_STATUS ucfg_cfr_get_peer_info(struct wlan_objmgr_vdev *vdev,
+				  enum phy_ch_width *peer_bw,
+				  uint32_t *bss_freq);
 
 /**
  * ucfg_cfr_get_cfg() - function to display user config

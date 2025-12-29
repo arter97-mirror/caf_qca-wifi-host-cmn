@@ -28,6 +28,7 @@
 #include "cdp_txrx_ctrl.h"
 #endif
 #include "wlan_scan_api.h"
+#include "wlan_mlme_ucfg_api.h"
 
 
 #ifdef WLAN_ENH_CFR_ENABLE
@@ -984,13 +985,25 @@ QDF_STATUS ucfg_cfr_set_tara_config(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
-QDF_STATUS ucfg_cfr_set_mode(struct wlan_objmgr_vdev *vdev)
+QDF_STATUS ucfg_cfr_get_peer_info(struct wlan_objmgr_vdev *vdev,
+				  enum phy_ch_width *peer_bw,
+				  uint32_t *bss_freq)
 {
 	struct pdev_cfr *pcfr = NULL;
 	struct wlan_objmgr_pdev *pdev = NULL;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct ta_ra_cfr_cfg *curr_cfg = NULL;
 	struct wlan_objmgr_peer *peer = NULL;
+	enum wlan_phymode peer_phymode;
+	struct wlan_channel *bss_chan;
+
+	if (!vdev || !peer_bw || !bss_freq) {
+		cfr_err("Invalid input parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	*peer_bw = CH_WIDTH_INVALID;
+	*bss_freq = 0;
 
 	status = dev_sanity_check(vdev, &pdev, &pcfr);
 	if (status != QDF_STATUS_SUCCESS)
@@ -999,7 +1012,6 @@ QDF_STATUS ucfg_cfr_set_mode(struct wlan_objmgr_vdev *vdev)
 	curr_cfg = &pcfr->rcc_param.curr[0];
 	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)curr_cfg->tx_addr)) {
 		cfr_err("zero mac address");
-		/* Release the pdev ref from dev sanity */
 		wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
 		return status;
 	}
@@ -1011,15 +1023,33 @@ QDF_STATUS ucfg_cfr_set_mode(struct wlan_objmgr_vdev *vdev)
 		cfr_err("No peer object found for MAC" QDF_MAC_ADDR_FMT,
 			QDF_MAC_ADDR_REF(curr_cfg->tx_addr));
 		pcfr->is_associated = false;
-		/* Release the pdev ref from dev sanity */
 		wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
 		return status;
 	}
 
+	peer_phymode = wlan_peer_get_phymode(peer);
+	*peer_bw = ucfg_mlme_get_ch_width_from_phymode(peer_phymode);
+
+	bss_chan = wlan_vdev_mlme_get_bss_chan(wlan_peer_get_vdev(peer));
+	if (bss_chan) {
+		cfr_debug("valid bss freq %d", bss_chan->ch_freq);
+		*bss_freq = bss_chan->ch_freq;
+	}
+
+	pcfr->is_associated = true;
+
+	/*if vdev is ml let's check active/inactive */
+	if (wlan_vdev_mlme_is_mlo_vdev(wlan_peer_get_vdev(peer)) &&
+	    !ucfg_mlo_is_mlo_vdev_active(wlan_peer_get_vdev(peer))) {
+		*peer_bw = CH_WIDTH_INVALID;
+		*bss_freq = 0;
+		cfr_err("reject cfr for in-active ml vdev");
+		status = QDF_STATUS_E_INVAL;
+	}
+
 	wlan_objmgr_peer_release_ref(peer, WLAN_CFR_ID);
-	cfr_debug("TX addr" QDF_MAC_ADDR_FMT "peer found",
-		  QDF_MAC_ADDR_REF(curr_cfg->tx_addr));
-		  pcfr->is_associated = true;
+	cfr_debug("TX addr" QDF_MAC_ADDR_FMT "peer found bw %d bss freq %d",
+		  QDF_MAC_ADDR_REF(curr_cfg->tx_addr), *peer_bw, *bss_freq);
 
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
 	return status;
