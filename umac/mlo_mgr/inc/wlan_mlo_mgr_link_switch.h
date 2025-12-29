@@ -190,11 +190,22 @@ struct mlo_vdev_connect_params_cache {
 };
 
 /**
+ * struct mlo_link_switch_disconnect_params - Disconnect params for link switch
+ * @vdev_id: VDEV ID
+ * @peer_macaddr: Peer MAC address
+ */
+struct unified_disconnect_params {
+	uint8_t vdev_id;
+	struct qdf_mac_addr peer_macaddr;
+};
+
+/**
  * struct mlo_link_switch_context - Link switch data structure.
  * @links_info: Hold information regarding all the links of ml connection
  * @last_req: Last link switch request received from FW
  * @lswitch_stats: History of the link switch stats
  *                 Includes both fail and success stats.
+ * @disconnect_params: Disconnect params for link switch
  * @link_rej_req: Link reject request info
  * @connect_params: Cache for connection parameters during link switch
  */
@@ -202,6 +213,7 @@ struct mlo_link_switch_context {
 	struct mlo_link_info links_info[WLAN_MAX_ML_BSS_LINKS];
 	struct wlan_mlo_link_switch_req last_req;
 	struct mlo_link_switch_stats lswitch_stats[MLO_LINK_SWITCH_CNF_STATUS_MAX];
+	struct unified_disconnect_params disconnect_params;
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 	struct wlan_mlo_link_reject_req link_rej_req;
 #endif
@@ -705,6 +717,7 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
  */
 QDF_STATUS mlo_mgr_link_switch_request_params(struct wlan_objmgr_psoc *psoc,
 					      void *evt_params);
+
 /**
  * mlo_mgr_link_state_switch_info_handler() - Handle Link State change related
  * information and generate corresponding connectivity logging event
@@ -988,6 +1001,35 @@ void mlo_mgr_set_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev,
  */
 bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev);
 
+/**
+ * mlo_mgr_copy_peer_delete_param_for_link_switch() - Copy peer delete
+ * params when link switch is in progress
+ * @vdev: VDEV object manager
+ * @peer: peer mac address
+ *
+ * This API copies peer delete parameters to MLO link context when link switch
+ * is in progress. The parameters will be used later during link switch
+ * processing. Only copies the peer MAC address and vdev_id.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_mgr_copy_peer_delete_param_for_link_switch(struct wlan_objmgr_vdev *vdev,
+					       uint8_t *peer_mac);
+
+/**
+ * mlo_mgr_get_link_switch_peer_mac_addr() - Get cached peer MAC address
+ * @vdev: VDEV object manager
+ * @peer_mac: Pointer to populate with peer MAC address
+ *
+ * This API retrieves the cached peer MAC address from MLO link context
+ * that was stored for link switch unified disconnect.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_mgr_get_link_switch_peer_mac_addr(struct wlan_objmgr_vdev *vdev,
+				      struct qdf_mac_addr *peer_mac);
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1273,8 +1315,22 @@ mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
 }
 
 static inline QDF_STATUS
+mlo_mgr_copy_peer_delete_param_for_link_switch(struct wlan_objmgr_vdev *vdev,
+					       uint8_t *peer_mac)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
 mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
 				struct vdev_start_params *vdev_start_params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_mgr_get_link_switch_peer_mac_addr(struct wlan_objmgr_vdev *vdev,
+				      struct qdf_mac_addr *peer_mac)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

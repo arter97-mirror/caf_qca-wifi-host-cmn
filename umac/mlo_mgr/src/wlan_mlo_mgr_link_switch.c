@@ -2478,6 +2478,26 @@ mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+
+static inline QDF_STATUS
+mlo_mgr_get_valid_link_ctx(struct wlan_objmgr_vdev *vdev,
+			   struct mlo_link_switch_context **out_link_ctx)
+{
+	if (!vdev->mlo_dev_ctx || !vdev->mlo_dev_ctx->link_ctx) {
+		mlo_err("VDEV_%d: MLO dev ctx or link ctx is NULL",
+			wlan_vdev_get_id(vdev));
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!out_link_ctx) {
+		mlo_err("Invalid input: out_link_ctx is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	*out_link_ctx = vdev->mlo_dev_ctx->link_ctx;
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS
 mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
 				struct vdev_start_params *vdev_start_params)
@@ -2606,4 +2626,66 @@ bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev)
 
 	connect_params = &mlo_dev_ctx->link_ctx->connect_params;
 	return connect_params->unified_connect_in_progress;
+}
+
+QDF_STATUS
+mlo_mgr_copy_peer_delete_param_for_link_switch(struct wlan_objmgr_vdev *vdev,
+					       uint8_t *peer_mac)
+{
+	uint8_t vdev_id;
+	QDF_STATUS status;
+	struct mlo_link_switch_context *link_ctx;
+
+	if (!vdev) {
+		mlo_err("Invalid input: vdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!peer_mac) {
+		mlo_err("Invalid input: peer_mac is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+
+	status = mlo_mgr_get_valid_link_ctx(vdev, &link_ctx);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	/* Copy the vdev_id and peer MAC address via the validated link_ctx */
+	link_ctx->disconnect_params.vdev_id = vdev_id;
+	qdf_mem_copy(&link_ctx->disconnect_params.peer_macaddr, peer_mac,
+		     QDF_MAC_ADDR_SIZE);
+
+	mlo_debug("VDEV_%d: Copied peer MAC address " QDF_MAC_ADDR_FMT " for link switch",
+		  vdev_id, QDF_MAC_ADDR_REF(link_ctx->disconnect_params.peer_macaddr.bytes));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+mlo_mgr_get_link_switch_peer_mac_addr(struct wlan_objmgr_vdev *vdev,
+				      struct qdf_mac_addr *peer_mac)
+{
+	QDF_STATUS status;
+	struct mlo_link_switch_context *link_ctx;
+
+	if (!vdev) {
+		mlo_err("Invalid input: vdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!peer_mac) {
+		mlo_err("Invalid input: peer_mac is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	status = mlo_mgr_get_valid_link_ctx(vdev, &link_ctx);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	/* Copy the peer MAC address from disconnect params via validated link_ctx */
+	qdf_copy_macaddr(peer_mac, &link_ctx->disconnect_params.peer_macaddr);
+
+	return QDF_STATUS_SUCCESS;
 }
