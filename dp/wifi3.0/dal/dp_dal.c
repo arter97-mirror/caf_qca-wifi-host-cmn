@@ -13,8 +13,21 @@
 #include "qdf_module.h"
 #include "dp_dal_sim.h"
 #include "qdf_platform.h"
+#ifdef FEATURE_DP_DAL_OE_SUPPORT
+/* Include the required dal headers to access DAL
+ * platform ops.
+ */
+#endif /* FEATURE_DP_DAL_OE_SUPPORT */
 
+#if defined(FEATURE_DP_DAL_OE_SUPPORT) || defined(FEATURE_DP_DAL_SIM)
 extern struct platform_bus_ops *global_plat_ops;
+#else
+/* If DAL OE/DAL SIM support is not present, init platform ops
+ * with bypass mode ops.
+ */
+extern struct platform_bus_ops plat_ops_bypass_mode;
+struct platform_bus_ops *global_plat_ops = &plat_ops_bypass_mode;
+#endif
 
 /* DAL poll timer interval in milliseconds */
 #define DAL_POLL_TIMER_INTERVAL_MS 10
@@ -1957,7 +1970,8 @@ dp_dal_update_ring_hp_tp_addr(struct dp_soc *soc, struct hal_srng *srng,
 
 		if (dal_ring->lmac_ring)
 			dal_ring->u.src_ring.hp_addr =
-				hal_srng_get_hp_addr(soc->hal_soc, srng);
+				hal_srng_get_hp_addr(soc->hal_soc,
+						     (hal_ring_handle_t)srng);
 		else
 			dal_ring->u.src_ring.hp_addr =
 				srng->u.src_ring.hp_addr -
@@ -1973,7 +1987,8 @@ dp_dal_update_ring_hp_tp_addr(struct dp_soc *soc, struct hal_srng *srng,
 
 		if (dal_ring->lmac_ring)
 			dal_ring->u.dst_ring.tp_addr =
-				hal_srng_get_tp_addr(soc->hal_soc, srng);
+				hal_srng_get_tp_addr(soc->hal_soc,
+						     (hal_ring_handle_t)srng);
 		else
 			dal_ring->u.dst_ring.tp_addr =
 				srng->u.dst_ring.tp_addr -
