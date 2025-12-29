@@ -1939,6 +1939,11 @@ target_if_cfr_srng_id_update(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
 	struct wlan_objmgr_pdev *pdev;
 	*srng_id = 0;
 
+	if (pdev_id > WMI_PDEV_ID_2ND) {
+		cfr_err("Invalid pdev ID %d", pdev_id);
+		return;
+	}
+
 	pdev = wlan_objmgr_get_pdev_by_id(psoc, pdev_id, WLAN_CFR_ID);
 	if (!pdev) {
 		cfr_debug("update srng id from %d to %d",
