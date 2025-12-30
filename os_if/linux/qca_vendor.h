@@ -11624,7 +11624,13 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 * 1-set the reserved fields, 0-default behavior
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_EHT_SET_MLE_RESERVED_FIELDS = 82,
-
+	/* 8-bit unsigned value to configure the STA interface to operate in
+	 * 20 MHz only mode.
+	 *
+	 * This attribute is used to configure the testbed device.
+	 * 1-set the 20 MHz only mode, 0-default behavior
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_20MHZ_ONLY_STA = 83,
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_MAX =
