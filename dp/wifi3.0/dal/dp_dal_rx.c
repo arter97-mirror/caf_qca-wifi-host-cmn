@@ -660,6 +660,7 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 	uint32_t loop_processed;
 	int max_reap_limit;
 	struct hif_opaque_softc *scn;
+	uint32_t rx_desc_cnt = 0;
 
 	if (qdf_unlikely(!soc)) {
 		dp_err_rl("SOC is NULL");
@@ -691,10 +692,14 @@ more_data:
 	qdf_mem_zero(tail, sizeof(tail));
 	is_prev_msdu_last = true;
 
-	/* Check if we have pending descriptors from previous
-	 * platform->rx call.
+	qdf_spin_lock_bh(&dal_ctx->dal_rx_desc_lock);
+	rx_desc_cnt = dal_ctx->rx_desc_count[ring_id];
+	qdf_spin_unlock_bh(&dal_ctx->dal_rx_desc_lock);
+
+	/* Check if we have pending descriptors in the list before
+	 * fetching new ones.
 	 */
-	if (!num_pending) {
+	if (!rx_desc_cnt) {
 		/* No pending descriptors, try to get new ones */
 		if (global_plat_ops && global_plat_ops->rx) {
 			ret = global_plat_ops->rx(dal_ctx, &cnt, ring_id);
