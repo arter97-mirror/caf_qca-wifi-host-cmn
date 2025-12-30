@@ -69,8 +69,8 @@ int dp_dal_sim_sw2sw_ring_init(struct dp_dal_sim_sw2sw_ring *ring,
 	ring->ring_base_vaddr = qdf_mem_malloc(buffer_size_dwords *
 					       sizeof(uint32_t));
 	if (!ring->ring_base_vaddr) {
-		dp_err("Failed to allocate SW2SW SRNG buffer of size %u bytes",
-		       buffer_size_bytes);
+		dp_err_rl("Failed to allocate SW2SW SRNG buffer of size %u bytes",
+			  buffer_size_bytes);
 		return -ENOMEM;
 	}
 

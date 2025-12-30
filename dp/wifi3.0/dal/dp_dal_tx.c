@@ -395,8 +395,8 @@ int dp_dal_tx_cmp_isr_vendor_cb(int ring_num, void *priv)
 	}
 
 	if (qdf_op_protect(&op_sync)) {
-		dp_err("Driver in transitional state, reject TX CMP ISR ring:%d",
-		       ring_num);
+		dp_err_rl("Driver in transitional state, reject TX CMP ISR ring:%d",
+			  ring_num);
 		return -EINVAL;
 	}
 
@@ -741,8 +741,8 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 	}
 
 	if (qdf_op_protect(&op_sync)) {
-		dp_err("Driver in transitional state, reject TX CPL ring:%u",
-		       ring_id);
+		dp_err_rl("Driver in transitional state, reject TX CPL ring:%u",
+			  ring_id);
 		return 0;
 	}
 

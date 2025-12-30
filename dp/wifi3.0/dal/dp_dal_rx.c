@@ -257,8 +257,8 @@ int dp_dal_rx_isr_vendor_cb(int ring_num, void *priv)
 	}
 
 	if (qdf_op_protect(&op_sync)) {
-		dp_err("Driver in transitional state, reject RX ISR ring:%d",
-		       ring_num);
+		dp_err_rl("Driver in transitional state, reject RX ISR ring:%d",
+			  ring_num);
 		return -EINVAL;
 	}
 
@@ -453,14 +453,14 @@ int dp_dal_rx_desc_cb(void *priv, void *desc, u16 ring_id)
 	}
 
 	if (qdf_unlikely(!ring_desc)) {
-		dp_err("RX descriptor is NULL");
+		dp_err_rl("RX descriptor is NULL");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (qdf_unlikely(ring_id >= MAX_REO_DEST_RINGS)) {
-		dp_err("Invalid ring_id %u, max allowed %u", ring_id,
-		       MAX_REO_DEST_RINGS);
+		dp_err_rl("Invalid ring_id %u, max allowed %u", ring_id,
+			  MAX_REO_DEST_RINGS);
 		ret = -EINVAL;
 		goto out;
 	}

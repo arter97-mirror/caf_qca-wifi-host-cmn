@@ -628,8 +628,8 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 	int ret = 0;
 
 	if (qdf_op_protect(&op_sync)) {
-		dp_err("Driver in transitional state, reject mode switch cur:%d new:%d",
-		       cur_mode, new_mode);
+		dp_err_rl("Driver in transitional state, reject mode switch cur:%d new:%d",
+			  cur_mode, new_mode);
 		return -EINVAL;
 	}
 

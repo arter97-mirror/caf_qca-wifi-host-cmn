@@ -88,11 +88,13 @@ struct dal_sim_work_ctx {
  * list processing  timeout
  * @bypass_mode_switch_ind_fail: bypass mode switch indication failure count
  * @offload_mode_switch_ind_fail: offload mode switch indication failure count
+ * @sw2sw_ring_enq_fail: SW2SW ring enqueue failure count
  */
 struct dal_sim_error_stats {
 	uint32_t mode_switch_desc_list_timeout;
 	uint32_t bypass_mode_switch_ind_fail;
 	uint32_t offload_mode_switch_ind_fail;
+	uint64_t sw2sw_ring_enq_fail;
 };
 
 /**
@@ -316,6 +318,7 @@ bool dp_dal_sim_is_sw2sw_ring_empty(struct dp_dal_sim_sw2sw_ring *sw2sw_ring);
 
 /**
  * dp_dal_sim_sw2sw_ring_enqueue() - Enqueue descriptor to SW2SW ring
+ * @sim_ctx: DAL SIM context
  * @ring: Pointer to SW2SW ring structure
  * @desc: Descriptor pointer to enqueue
  *
@@ -325,9 +328,10 @@ bool dp_dal_sim_is_sw2sw_ring_empty(struct dp_dal_sim_sw2sw_ring *sw2sw_ring);
  *
  * Return: 0 on success, negative error code on failure
  */
-static inline int dp_dal_sim_sw2sw_ring_enqueue(
-	struct dp_dal_sim_sw2sw_ring *ring,
-	void *desc)
+static inline int
+dp_dal_sim_sw2sw_ring_enqueue(struct dp_dal_sim_ctx *sim_ctx,
+			      struct dp_dal_sim_sw2sw_ring *ring,
+			      void *desc)
 {
 	uint32_t *dest_desc;
 	uint32_t next_hp;
@@ -342,8 +346,9 @@ static inline int dp_dal_sim_sw2sw_ring_enqueue(
 
 	/* Check if ring is full (next_hp would equal TP) */
 	if (next_hp == ring->tp) {
-		dp_err_rl("SW2SW SRNG is full, HP=%u, TP=%u",
-			  ring->hp, ring->tp);
+		sim_ctx->stats.error_stats.sw2sw_ring_enq_fail++;
+		dp_debug("SW2SW SRNG is full, HP=%u, TP=%u",
+			 ring->hp, ring->tp);
 		return -ENOSPC;
 	}
 

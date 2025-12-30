@@ -721,6 +721,7 @@ int dp_dal_offload_sim_get_reo_desc(
 
 		/* Enqueue descriptor to DAL sim SW2SW ring */
 		ret = dp_dal_sim_sw2sw_ring_enqueue(
+					dal_sim_ctx,
 					&dal_sim_ctx->rx_sw2sw_ring[ring_id],
 					reo_desc);
 		if (ret) {
@@ -797,6 +798,7 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 
 		/* Enqueue descriptor to DAL sim SW2SW ring */
 		ret = dp_dal_sim_sw2sw_ring_enqueue(
+				dal_sim_ctx,
 				&dal_sim_ctx->tx_cpl_sw2sw_ring[ring_id],
 				tx_compl_desc);
 		if (ret) {
