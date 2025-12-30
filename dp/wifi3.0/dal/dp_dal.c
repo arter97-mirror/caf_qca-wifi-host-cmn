@@ -1023,6 +1023,26 @@ struct vendor_cb_ops vendor_cb = {
 
 qdf_export_symbol(vendor_cb);
 
+#if defined(FEATURE_DAL_DP_SUPPORT) && !defined(FEATURE_DP_DAL_SIM)
+static inline void dp_dal_bus_vote_link_up(struct dp_soc *soc)
+{
+	return hif_vote_link_up(soc->hif_handle);
+}
+
+static inline void dp_dal_bus_vote_link_down(struct dp_soc *soc)
+{
+	return hif_vote_link_down(soc->hif_handle);
+}
+#else
+static inline void dp_dal_bus_vote_link_up(struct dp_soc *soc)
+{
+}
+
+static inline void dp_dal_bus_vote_link_down(struct dp_soc *soc)
+{
+}
+#endif
+
 /**
  * dp_dal_soc_detach - detach DP DAL to SOC
  * @soc: pointer to dp_soc structure
@@ -1068,6 +1088,8 @@ void dp_dal_soc_deinit(struct dp_soc *soc)
 		return;
 
 	dal_ctx = soc->dal_ctx;
+
+	dp_dal_bus_vote_link_down(soc);
 
 	qdf_atomic_set(&soc->dal_ctx->deinit_in_progress, 1);
 
@@ -1545,6 +1567,8 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 		dp_err("DAL platform bus start failed %d", status);
 		goto bus_deinit;
 	}
+
+	dp_dal_bus_vote_link_up(soc);
 
 	dp_info("DAL SOC init completed successfully");
 
