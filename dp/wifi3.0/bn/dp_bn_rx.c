@@ -446,7 +446,7 @@ refill_opt_dp_ctrl:
 		 * to be written
 		 */
 		if (qdf_unlikely(!qdf_nbuf_is_rx_chfrag_cont(nbuf) &&
-				 !hal_rx_tlv_msdu_done_get_be(rx_tlv_hdr))) {
+				 !hal_rx_attn_msdu_done_get(hal_soc, rx_tlv_hdr))) {
 			DP_STATS_INC(soc, rx.err.msdu_done_fail, 1);
 			dp_err("MSDU DONE failure %d",
 			       soc->stats.rx.err.msdu_done_fail);

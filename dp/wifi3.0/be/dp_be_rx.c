@@ -780,7 +780,7 @@ done:
 		 * to be written
 		 */
 		if (qdf_unlikely(!qdf_nbuf_is_rx_chfrag_cont(nbuf) &&
-				 !hal_rx_tlv_msdu_done_get_be(rx_tlv_hdr))) {
+				 !hal_rx_attn_msdu_done_get(hal_soc, rx_tlv_hdr))) {
 			DP_STATS_INC(soc, rx.err.msdu_done_fail, 1);
 			dp_err("MSDU DONE failure %d",
 			       soc->stats.rx.err.msdu_done_fail);
@@ -2990,7 +2990,7 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 		 * bit to be written.
 		 */
 		if (qdf_unlikely(!qdf_nbuf_is_rx_chfrag_cont(nbuf) &&
-				 !hal_rx_tlv_msdu_done_get_be(rx_tlv_hdr))) {
+				 !hal_rx_attn_msdu_done_get(soc->hal_soc, rx_tlv_hdr))) {
 			DP_STATS_INC(soc, rx.err.msdu_done_fail, 1);
 			dp_err("MSDU DONE failure %d", soc->stats.rx.err.msdu_done_fail);
 			hal_rx_dump_pkt_tlvs(soc->hal_soc, rx_tlv_hdr,

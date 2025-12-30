@@ -224,6 +224,39 @@ static uint32_t hal_rx_tlv_nss_get_dal_2072(uint8_t *buf)
 }
 
 /**
+ * hal_rx_tlv_sgi_get_dal_2072() - DAL wrapper for sgi
+ * @buf: pointer to the start of RX PKT TLV headers
+ *
+ * Return: uint32_t(sgi)
+ */
+static inline uint32_t hal_rx_tlv_sgi_get_dal_2072(uint8_t *buf)
+{
+	return dal_vndr_hal_rx_tlv_sgi_get_be(buf);
+}
+
+/**
+ * hal_rx_tlv_bw_get_dal_2072() - DAL wrapper for bw
+ * @buf: pointer to the start of RX PKT TLV header
+ *
+ * Return: uint32_t(bw)
+ */
+static inline uint32_t hal_rx_tlv_bw_get_dal_2072(uint8_t *buf)
+{
+	return dal_vndr_hal_rx_tlv_bw_get_be(buf);
+}
+
+/**
+ * hal_rx_tlv_msdu_done_get_dal_2072() - DAL wrapper for msdu_done
+ * @buf: pointer to the start of RX PKT TLV header
+ *
+ * Return: msdu done
+ */
+static inline uint32_t hal_rx_tlv_msdu_done_get_dal_2072(uint8_t *buf)
+{
+	return dal_vndr_hal_rx_tlv_msdu_done_get_be(buf);
+}
+
+/**
  * hal_hw_txrx_dal_ops_attach_qcc2072() - Attach DAL vendor HAL ops for QCC2072
  * @hal_soc: HAL SOC handle
  *
@@ -254,7 +287,10 @@ static void hal_hw_txrx_dal_ops_attach_qcc2072(struct hal_soc *hal_soc)
 					hal_rx_tlv_get_pkt_type_dal_2072;
 	hal_soc->ops->hal_rx_msdu_start_nss_get =
 					hal_rx_tlv_nss_get_dal_2072;
-
+	hal_soc->ops->hal_rx_tlv_sgi_get = hal_rx_tlv_sgi_get_dal_2072;
+	hal_soc->ops->hal_rx_tlv_bw_get = hal_rx_tlv_bw_get_dal_2072;
+	hal_soc->ops->hal_rx_tlv_msdu_done_get =
+					hal_rx_tlv_msdu_done_get_dal_2072;
 	hal_info("DAL vendor HAL ops attached for QCC2072");
 }
 
