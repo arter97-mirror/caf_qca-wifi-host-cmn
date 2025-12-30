@@ -5446,6 +5446,11 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 
 	dp_pdev_update_fast_rx_flag(soc, pdev);
 
+	for (i = 0; i < UL_DELAY_CALC_ID_MAX; i++) {
+		vdev->ul_delay_stats[i].prev_delay_accum = 0;
+		vdev->ul_delay_stats[i].prev_pkt_accum = 0;
+	}
+
 	return QDF_STATUS_SUCCESS;
 
 fail0:
@@ -14004,7 +14009,33 @@ update_tx_ilp:
 	return soc->tx_ilp_enable;
 }
 #endif
+#ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
+static QDF_STATUS
+dp_dump_custom_stats(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
+						     DP_MOD_ID_CDP);
+	struct dp_pdev *pdev;
+	uint32_t val;
+	int pkt_count;
 
+	if (!vdev)
+		return QDF_STATUS_E_INVAL;
+
+	pdev = vdev->pdev;
+	pkt_count = dp_tx_average_ul_delay(vdev, UL_DELAY_CALC_ID_INTERNAL,
+					   &val);
+	dp_info("UL delay = %u, pkts %d", val, pkt_count);
+	dp_print_tx_rates(pdev);
+	dp_print_rx_rates(pdev);
+	dp_info("PER: %d", dp_get_total_per(soc_hdl, 0));
+	dp_info("Tx Retries = %d", pdev->stats.tx.retries);
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_soc_attach_target = dp_soc_attach_target_wifi3,
 	.txrx_vdev_attach = dp_vdev_attach_wifi3,
@@ -14217,6 +14248,7 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	.txrx_set_tsf_ul_delay_report = dp_set_tsf_ul_delay_report,
 	.txrx_get_uplink_delay = dp_get_uplink_delay,
+	.txrx_enable_ul_delay = dp_txrx_enable_ul_delay,
 	.txrx_qos_latency_stats_request = dp_qos_latency_stats_request,
 	.txrx_qos_latency_get_stats = dp_qos_latency_get_stats,
 #endif
@@ -14323,6 +14355,7 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 #endif
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	.txrx_process_ul_delay = dp_process_ul_delay,
+	.txrx_dump_custom_stats = dp_dump_custom_stats,
 #endif
 	/* TODO */
 };

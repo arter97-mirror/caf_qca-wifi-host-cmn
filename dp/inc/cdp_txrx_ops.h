@@ -997,6 +997,9 @@ struct cdp_ctrl_ops {
 	QDF_STATUS (*txrx_get_uplink_delay)(struct cdp_soc_t *soc,
 					    uint8_t vdev_id,
 					    uint32_t *val);
+	QDF_STATUS (*txrx_enable_ul_delay)(struct cdp_soc_t *soc,
+					   uint8_t vdev_id,
+					   bool enable);
 #endif
 #ifdef WLAN_FEATURE_UL_JITTER
 	QDF_STATUS (*txrx_nss_request)(struct cdp_soc_t *soc_handle,
@@ -1297,6 +1300,7 @@ struct cdp_mon_ops {
  * mac address
  * @tx_latency_stats_register_cb: register tx latency stats callback
  * @txrx_process_ul_delay: Process UL delay
+ * @txrx_dump_custom_stats: dump custom stats
  */
 struct cdp_host_stats_ops {
 	int (*txrx_host_stats_get)(struct cdp_soc_t *soc, uint8_t vdev_id,
@@ -1544,6 +1548,8 @@ struct cdp_host_stats_ops {
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	QDF_STATUS (*txrx_process_ul_delay)(struct cdp_soc_t *soc,
 					    uint8_t vdev_id);
+	QDF_STATUS (*txrx_dump_custom_stats)(struct cdp_soc_t *soc,
+					     uint8_t vdev_id);
 #endif
 };
 

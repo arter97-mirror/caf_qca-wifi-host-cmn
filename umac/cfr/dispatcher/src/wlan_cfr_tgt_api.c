@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -26,6 +26,227 @@
 #include <wlan_cfr_utils_api.h>
 #include <target_type.h>
 #include <cfr_defs_i.h>
+#include <qca_vendor.h>
+
+uint32_t tgt_cfr_send_stop(struct wlan_objmgr_pdev *pdev, uint32_t reason)
+{
+	struct pdev_cfr *pcfr;
+	uint32_t status = QDF_STATUS_SUCCESS;
+
+	if (!pdev) {
+		cfr_err("Invalid pdev pointer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev, WLAN_UMAC_COMP_CFR);
+	if (!pcfr) {
+		cfr_err("pdev_cfr is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!pcfr->cfr_stop_cb) {
+		cfr_err("No CFR v3 stop callback registered");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	pcfr->cfr_stop_cb(pcfr->vdev_id, reason);
+
+	return status;
+}
+
+static uint64_t cfr_construct_tsf_timestamp(struct cfr_info_v3 info_v3)
+{
+	uint64_t tsf_timestamp;
+
+	tsf_timestamp = ((uint64_t)info_v3.tsf_timestamp_15_0)        |
+			((uint64_t)info_v3.tsf_timestamp_31_16 << 16) |
+			((uint64_t)info_v3.tsf_timestamp_47_32 << 32) |
+			((uint64_t)info_v3.tsf_timestamp_63_48 << 48);
+
+	cfr_debug("timestamp: 0x%llx from parts [0x%x, 0x%x, 0x%x, 0x%x]",
+		  tsf_timestamp, info_v3.tsf_timestamp_15_0,
+		  info_v3.tsf_timestamp_31_16, info_v3.tsf_timestamp_47_32,
+		  info_v3.tsf_timestamp_63_48);
+
+	return tsf_timestamp;
+}
+
+static void
+cfr_populate_antenna_info(struct cfr_enhanced_event_data *event_data,
+			  struct csi_cfr_header *header)
+{
+	uint8_t i;
+
+	if (!event_data || !header) {
+		cfr_err("Invalid parameters: event_data=%pK, header=%pK",
+			event_data, header);
+		return;
+	}
+
+	event_data->antenna_count = event_data->num_chains + 1;
+	cfr_debug("Populating antenna info for %d chains",
+		  event_data->antenna_count);
+
+	for (i = 0; i < HOST_MAX_CHAINS && i < event_data->antenna_count;
+	    i++) {
+		event_data->antenna_info[i].antenna_index = i;
+		event_data->antenna_info[i].rssi =
+			header->u.meta_enh.chain_rssi[i];
+		event_data->antenna_info[i].agc =
+			header->u.meta_enh.agc_gain[i];
+
+		cfr_debug("Antenna[%d]: RSSI=%d, AGC=%d", i,
+			  event_data->antenna_info[i].rssi,
+			  event_data->antenna_info[i].agc);
+	}
+}
+
+static enum
+qca_wlan_vendor_chip_id convert_chip_type_to_chip_id(uint8_t chip_type)
+{
+	switch (chip_type) {
+	case CFR_CAPTURE_RADIO_PEACH:
+		return QCA_WLAN_VENDOR_CHIP_ID_WCN7881;
+	case CFR_CAPTURE_RADIO_FIG:
+		return QCA_WLAN_VENDOR_CHIP_ID_WCN8850;
+	default:
+		cfr_err("Invalid chip_type %d", chip_type);
+		return QCA_WLAN_VENDOR_CHIP_ID_WCN7881;
+	}
+}
+
+static void cfr_populate_event_data(struct cfr_enhanced_event_data *event_data,
+				    struct csi_cfr_header *header,
+				    struct cfr_info_v3 *info_v3,
+				    struct pdev_cfr *pcfr)
+{
+	cfr_debug("Populating CFR enhanced event data");
+
+	qdf_mem_copy(&event_data->peer_mac_addr[0],
+		     &header->u.meta_enh.peer_addr.su_peer_addr[0],
+		     QDF_MAC_ADDR_SIZE);
+
+	cfr_debug("Peer MAC: " QDF_MAC_ADDR_FMT,
+		  QDF_MAC_ADDR_REF(event_data->peer_mac_addr));
+
+	event_data->timestamp_us = header->u.meta_enh.timestamp;
+	event_data->capture_tsf = cfr_construct_tsf_timestamp(*info_v3);
+
+	cfr_debug("Timing - timestamp_us: %llu, capture_tsf: 0x%llx",
+		  event_data->timestamp_us, event_data->capture_tsf);
+
+	event_data->cfo = header->u.meta_enh.rtt_cfo_measurement;
+	event_data->bandwidth = header->u.meta_enh.channel_bw;
+	event_data->ltf_type = info_v3->preamble;
+	event_data->num_spatial_streams = info_v3->nss;
+	event_data->frame_sequence_number = info_v3->seq_num;
+	event_data->freq = header->u.meta_enh.prim20_chan;
+	event_data->num_chains = info_v3->num_chains;
+
+	cfr_debug("CFO: %d, BW: %d, LTF: %d, NSS: %d, Seq: %d, Freq: %d",
+		  event_data->cfo, event_data->bandwidth, event_data->ltf_type,
+		  event_data->num_spatial_streams,
+		  event_data->frame_sequence_number,
+		  event_data->freq);
+
+	cfr_populate_antenna_info(event_data, header);
+
+	event_data->oui_length = pcfr->oui_length;
+	event_data->format_version = pcfr->format_version;
+
+	if (pcfr->oui_length) {
+		if (pcfr->oui_length <= MAX_CFR_OUI_LEN) {
+			qdf_mem_copy(&event_data->oui[0], &pcfr->oui[0],
+				     pcfr->oui_length);
+			cfr_debug("Copied OUI of length %d", pcfr->oui_length);
+		} else {
+			cfr_err("OUI length %d exceeds maximum %d, truncating",
+				pcfr->oui_length, MAX_CFR_OUI_LEN);
+			qdf_mem_copy(&event_data->oui[0], &pcfr->oui[0],
+				     MAX_CFR_OUI_LEN);
+			event_data->oui_length = MAX_CFR_OUI_LEN;
+		}
+	}
+
+	event_data->chip_id =
+		convert_chip_type_to_chip_id(header->cmn.chip_type);
+	event_data->frame_type = pcfr->frame_type;
+	event_data->frame_sub_type = pcfr->frame_sub_type;
+	event_data->cfr_version = ENHANCED_CFR_VERSION_V3;
+
+	cfr_debug("chip_id: %d, frame_type: %d, sub_type: %d, version: %d",
+		  event_data->chip_id, event_data->frame_type,
+		  event_data->frame_sub_type, event_data->cfr_version);
+}
+
+uint32_t tgt_cfr_info_send_v3(struct wlan_objmgr_pdev *pdev,
+			      struct csi_cfr_header header,
+			      void *data, size_t dlen,
+			      struct cfr_info_v3 info_v3)
+{
+	struct pdev_cfr *pcfr;
+	uint8_t *nl_data = NULL;
+	struct cfr_enhanced_event_data event_data = {0};
+	uint32_t status = QDF_STATUS_SUCCESS;
+
+	cfr_debug("CFR v3 info send: dlen=%zu, preamble=%d, nss=%d, seq=%d",
+		  dlen, info_v3.preamble, info_v3.nss, info_v3.seq_num);
+
+	if (!pdev) {
+		cfr_err("Invalid pdev pointer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	pcfr = wlan_objmgr_pdev_get_comp_private_obj(pdev, WLAN_UMAC_COMP_CFR);
+	if (!pcfr) {
+		cfr_err("pdev_cfr is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	cfr_debug("CFR vdev_id=%d, chip_id=%d, oui_length=%d",
+		  pcfr->nl_cb.vdev_id, pcfr->chip_id, pcfr->oui_length);
+
+	if (!pcfr->nl_cb.cfr_nl_cb_v3) {
+		cfr_debug("No CFR v3 netlink callback registered");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	if ((dlen > 0 && !data) || (dlen >= WLAN_CFR_DATA_MAX_LEN)) {
+		cfr_err("Invalid data: non-zero length %zu", dlen);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	cfr_populate_event_data(&event_data, &header, &info_v3, pcfr);
+
+	if (!dlen) {
+		cfr_err("Invalid data length %zu", dlen);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	nl_data = qdf_mem_malloc(dlen);
+	if (!nl_data) {
+		cfr_err("Failed to allocate %zu bytes vdev_id=%d",
+			dlen, pcfr->nl_cb.vdev_id);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	qdf_mem_copy(nl_data, data, dlen);
+
+	pcfr->nl_cb.cfr_nl_cb_v3(pcfr->nl_cb.vdev_id,
+				  event_data,
+				  (const void *)nl_data, dlen);
+
+	cfr_info("CFR v3 vdev_id=%d, dlen=%zu, peer=" QDF_MAC_ADDR_FMT,
+		 pcfr->nl_cb.vdev_id, dlen,
+		 QDF_MAC_ADDR_REF(event_data.peer_mac_addr));
+
+	pcfr->is_cfr_data_present = true;
+
+	qdf_mem_free(nl_data);
+	cfr_debug("Freed allocated CFR data memory");
+
+	return status;
+}
 
 uint32_t tgt_cfr_info_send(struct wlan_objmgr_pdev *pdev, void *head,
 			   size_t hlen, void *data, size_t dlen, void *tail,
@@ -309,6 +530,38 @@ void tgt_cfr_stop_lut_age_timer(struct wlan_objmgr_pdev *pdev)
 
 	if (cfr_tx_ops->cfr_stop_lut_timer)
 		cfr_tx_ops->cfr_stop_lut_timer(pdev);
+}
+
+void tgt_cfr_start_report_interval_timer(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_lmac_if_cfr_tx_ops *cfr_tx_ops = NULL;
+	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
+
+	if (!psoc) {
+		cfr_err("Invalid PSOC: Flush LUT Timer cannot be started\n");
+		return;
+	}
+
+	cfr_tx_ops = wlan_psoc_get_cfr_txops(psoc);
+
+	if (cfr_tx_ops && cfr_tx_ops->cfr_start_report_interval_timer)
+		cfr_tx_ops->cfr_start_report_interval_timer(pdev);
+}
+
+void tgt_cfr_stop_report_interval_timer(struct wlan_objmgr_pdev *pdev)
+{
+	struct wlan_lmac_if_cfr_tx_ops *cfr_tx_ops = NULL;
+	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
+
+	if (!psoc) {
+		cfr_err("Invalid PSOC: Flush LUT Timer cannot be stopped\n");
+		return;
+	}
+
+	cfr_tx_ops = wlan_psoc_get_cfr_txops(psoc);
+
+	if (cfr_tx_ops && cfr_tx_ops->cfr_stop_report_interval_timer)
+		cfr_tx_ops->cfr_stop_report_interval_timer(pdev);
 }
 
 void tgt_cfr_default_ta_ra_cfg(struct wlan_objmgr_pdev *pdev,

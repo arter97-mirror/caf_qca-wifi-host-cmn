@@ -48,7 +48,7 @@
 #define CFR_HOST_MEM_READ_INDEX_DEFAULT 8
 #define CFR_VENDOR_ID 0x8cfdf0
 #ifdef WLAN_ENH_CFR_ENABLE
-#define MAX_CFR_MU_USERS 4
+#define MAX_CFR_MU_USERS 37
 #define NUM_CHAN_CAPTURE_STATUS 4
 #define NUM_CHAN_CAPTURE_REASON 6
 #if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_QCA6490) || \
@@ -68,6 +68,10 @@
 
 #define MAX_AGC_GAIN 62
 #define INVALID_AGC_GAIN 0xFFFF
+
+#define MAX_CFR_OUI_LEN 5
+#define ENHANCED_CFR_VERSION_V3 3
+#define WLAN_CFR_DATA_MAX_LEN 32768
 
 enum cfrmetaversion {
 	CFR_META_VERSION_NONE,
@@ -353,6 +357,14 @@ struct whal_cfir_dma_hdr {
  * @dbr_tstamp: Timestamp when DBR completion event was received
  * @header_length: Length of header DMAed by ucode in words
  * @payload_length: Length of CFR payload
+ * @preamble: preamble
+ * @nss: nss
+ * @seq_num: seq_num
+ * @tsf_timestamp_15_0: tsf 15_0
+ * @tsf_timestamp_31_16: tsf 31_16
+ * @tsf_timestamp_47_32: tsf 47_32
+ * @tsf_timestamp_63_48: tsf 63_48
+ * @num_chains: num chains
  */
 struct look_up_table {
 	bool dbr_recv;
@@ -370,6 +382,14 @@ struct look_up_table {
 	uint64_t dbr_tstamp;
 	uint32_t header_length;
 	uint32_t payload_length;
+	uint8_t preamble;
+	uint8_t nss;
+	uint16_t seq_num;
+	uint16_t tsf_timestamp_15_0;
+	uint16_t tsf_timestamp_31_16;
+	uint16_t tsf_timestamp_47_32;
+	uint16_t tsf_timestamp_63_48;
+	uint8_t num_chains;
 };
 
 struct unassoc_pool_entry {
@@ -476,6 +496,9 @@ struct ta_ra_cfr_cfg {
  * @capture_intval_mode_sel: 0 indicates capture_duration mode, 1 indicates the
  * capture_count mode.
  * @rsvd2: reserved bits
+ * @unassoc_capture_config: unassociated capture config
+ * @unassoc_channel_mhz: unassociated freq
+ * @unassoc_phy_mode: unassociated phy mode
  */
 struct cfr_rcc_param {
 	uint8_t pdev_id;
@@ -504,20 +527,132 @@ struct cfr_rcc_param {
 	uint32_t capture_count            :16,
 		 capture_intval_mode_sel  :1,
 		 rsvd2                    :15;
+	uint32_t unassoc_capture_config;
+	uint32_t unassoc_channel_mhz;
+	enum wlan_phymode unassoc_phy_mode;
+};
+
+/**
+ * struct cfr_capture_filter_param - CFR capture filter response parameters
+ * @status: Status of the CFR capture filter response
+ * @pdev_id: Physical device identifier (converted from target to host)
+ * @vdev_id: Virtual device identifier
+ * @mac_addr: MAC address array (6 bytes)
+ * @request: Request type/value from the response event
+ */
+struct cfr_capture_filter_param {
+	uint32_t status;
+	uint32_t pdev_id;
+	uint32_t vdev_id;
+	uint8_t mac_addr[QDF_MAC_ADDR_SIZE];
+	uint32_t request;
 };
 #endif /* WLAN_ENH_CFR_ENABLE */
+
+/**
+ * struct cfr_info_v3 - cfr version3 info
+ * @preamble: preamble
+ * @nss: NSS
+ * @seq_num: sequence number
+ * @tsf_timestamp_15_0: tsf 1st 16 bit
+ * @tsf_timestamp_31_16: tsf 2nd 16 bit
+ * @tsf_timestamp_47_32: tsf 3rd 16 bit
+ * @tsf_timestamp_63_48: tsf 4th 16 bit
+ * @num_chains: num chains
+ *
+ */
+struct cfr_info_v3 {
+	uint8_t preamble;
+	uint8_t nss;
+	uint16_t seq_num;
+	uint16_t tsf_timestamp_15_0;
+	uint16_t tsf_timestamp_31_16;
+	uint16_t tsf_timestamp_47_32;
+	uint16_t tsf_timestamp_63_48;
+	uint8_t num_chains;
+};
+
+/**
+ * struct cfr_antenna_info - CFR antenna information
+ * @antenna_index: Index of the receiving antenna
+ * @rssi: RSSI value in dBm for this antenna
+ * @agc: AGC value in dB for this antenna
+ */
+struct cfr_antenna_info {
+	uint8_t antenna_index;
+	int8_t rssi;
+	uint8_t agc;
+};
+
+/**
+ * struct cfr_enhanced_event_data - Enhanced CFR event data structure for v3
+ * @vdev_id: VDEV ID where CFR was captured
+ * @peer_mac_addr: MAC address of peer (6 bytes)
+ * @bandwidth: Bandwidth used for CFR capture
+ * @timestamp_us: Timestamp in microseconds when packet was received
+ * @capture_tsf: TSF timestamp in microseconds
+ * @cfo: Carrier Frequency Offset in ppm
+ * @ltf_type: CSI LTF type (enum qca_wlan_vendor_cfr_ltf_type)
+ * @num_spatial_streams: Number of spatial streams used
+ * @chip_id: Vendor-specific chip identifier
+ * @frame_sequence_number: IEEE 802.11 frame sequence number
+ * @is_last_report: Flag indicating if this is the last report in batch
+ * @antenna_count: Number of antenna entries
+ * @antenna_info: Array of antenna information
+ * @oui: cfr vendor oui
+ * @oui_length: oui length
+ * @frame_type: frame type
+ * @frame_sub_type: frame sub type
+ * @format_version: format version
+ * @freq: freq
+ * @cfr_version: cfr version
+ * @num_chains: num chains
+ * @cfr_data: Pointer to CFR data
+ * @cfr_data_len: Length of CFR data
+ */
+struct cfr_enhanced_event_data {
+	uint8_t vdev_id;
+	uint8_t peer_mac_addr[QDF_MAC_ADDR_SIZE];
+	uint8_t bandwidth;
+	uint64_t timestamp_us;
+	uint64_t capture_tsf;
+	int16_t cfo;
+	uint8_t ltf_type;
+	uint8_t num_spatial_streams;
+	uint16_t chip_id;
+	uint16_t frame_sequence_number;
+	bool is_last_report;
+	uint8_t antenna_count;
+	struct cfr_antenna_info antenna_info[HOST_MAX_CHAINS];
+	uint8_t oui[MAX_CFR_OUI_LEN];
+	uint8_t oui_length;
+	uint8_t frame_type;
+	uint8_t frame_sub_type;
+	uint8_t format_version;
+	uint32_t freq;
+	uint8_t cfr_version;
+	uint8_t num_chains;
+	const void *cfr_data;
+	uint32_t cfr_data_len;
+};
 
 /**
  * struct nl_event_cb - nl event cb for cfr data
  * @vdev_id: vdev id
  * @pid: PID to which data is sent via unicast nl event
  * @cfr_nl_cb: callback to send nl event
+ * @cfr_nl_cb_v3: callback to send event for version 3
+ * @cfr_nl_cb_report_interval: callback to send report interval
  */
 struct nl_event_cb {
 	uint8_t vdev_id;
 	uint32_t pid;
 	void (*cfr_nl_cb)(uint8_t vdev_id, uint32_t pid,
 			  const void *data, uint32_t data_len);
+	void (*cfr_nl_cb_v3)(uint8_t vdev_id,
+			     struct cfr_enhanced_event_data event_data,
+			     const void *data, uint32_t data_len);
+	void (*cfr_nl_cb_report_interval)(uint8_t vdev_id);
 };
 
 /**
@@ -583,6 +718,31 @@ struct nl_event_cb {
  * by FW via WMI_PDEV_AOA_PHASEDELTA_EVENTID. This is for the targets which
  * supports only default gain table.
  * @ibf_cal_val: Per chain IBF cal value from FW.
+ * @is_cfr_version_v3: if cfr version 3 is present
+ * @frame_type: frame type
+ * @frame_sub_type: frame sub type
+ * @oui: cfr vendor oui
+ * @format_version: oui version
+ * @oui_length: oui length
+ * @report_interval: report interval
+ * @is_associated: is associated
+ * @is_cfr_rx: is rx based cfr
+ * @is_cfr_tx: is tx based cfr
+ * @unassoc_capture_config: unassoc capture config
+ * @unassoc_channel_mhz: unassoc freq
+ * @unassoc_phy_mode: unassoc phy mode
+ * @peer_addr: peer address
+ * @bandwidth: bandwidth
+ * @method: method for TX capture
+ * @chip_id: chip id
+ * @vdev_id: vdev id
+ * @cfr_stop_cb: callback to stop cfr
+ * @is_cfr_data_present: cfr data present
+ * @report_interval_timer:  report interval timer
+ * @report_interval_timer_init: report interval timer init
+ * @report_interval_lock: report interval lock
+ * @report_interval_lock_initialised: report interval lock init
+ * @format_version: format version
  * @is_enh_aoa_data: flag to indicate the pdev supports enhanced AoA.
  * @max_agc_gain_tbls: Max rx AGC gain tables supported & advertised by target.
  * @max_agc_gain_per_tbl_2g: Max possible rx AGC gain per table on 2GHz band.
@@ -656,6 +816,28 @@ struct pdev_cfr {
 	uint32_t max_aoa_chains;
 	uint16_t phase_delta[HOST_MAX_CHAINS][MAX_AGC_GAIN];
 	uint32_t ibf_cal_val[HOST_MAX_CHAINS];
+	bool is_cfr_version_v3;
+	uint8_t frame_type;
+	uint8_t frame_sub_type;
+	uint8_t oui[MAX_CFR_OUI_LEN];
+	uint8_t format_version;
+	uint8_t oui_length;
+	uint32_t report_interval;
+	bool is_associated;
+	bool is_cfr_rx;
+	bool is_cfr_tx;
+	uint32_t unassoc_capture_config;
+	uint32_t unassoc_channel_mhz;
+	uint32_t unassoc_phy_mode;
+	uint8_t peer_addr[QDF_MAC_ADDR_SIZE];
+	uint8_t bandwidth;
+	uint8_t method;
+	uint8_t chip_id;
+	bool is_cfr_data_present;
+	uint8_t vdev_id;
+	void (*cfr_stop_cb)(uint8_t vdev_id, uint32_t reason);
+	qdf_timer_t report_interval_timer;
+	uint8_t report_interval_timer_init;
 #ifdef WLAN_RCC_ENHANCED_AOA_SUPPORT
 	bool is_enh_aoa_data;
 	uint32_t max_agc_gain_tbls;

@@ -1835,6 +1835,25 @@ QDF_STATUS dp_set_tsf_ul_delay_report(struct cdp_soc_t *soc_hdl,
  */
 QDF_STATUS dp_get_uplink_delay(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			       uint32_t *val);
+
+/**
+ * dp_txrx_enable_ul_delay() - Enable UL delay calculation
+ * @soc_hdl: cdp soc pointer
+ * @vdev_id: vdev id
+ * @enable: 0 - disable, 1 - enable
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_txrx_enable_ul_delay(struct cdp_soc_t *soc_hdl,
+				   uint8_t vdev_id, bool enable);
+
+/**
+ * dp_tx_average_ul_delay() - calculate average ul delay
+ * @vdev: vdev handle
+ * @client: ul delay for client_id
+ * @val: pointer to store average delay
+ */
+int dp_tx_average_ul_delay(struct dp_vdev *vdev, uint8_t client, uint32_t *val);
 #endif /* WLAN_FEATURE_TSF_UPLINK_TSF */
 
 #ifdef WLAN_TRACEPOINTS

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: ISC
  */
 
@@ -16,10 +16,22 @@
 #include "qdf_event.h"
 #include "wlan_cfg80211.h"
 #include <wlan_nlink_srv.h>
-#define MAX_LOG_LENGTH 512
+#define MAX_LOG_PAYLOAD_LENGTH 384
+#define WLAN_IPA_PREFIX_BUFFER_LEN_MAX 128
+#define MAX_LOG_LENGTH MAX_LOG_PAYLOAD_LENGTH + WLAN_IPA_PREFIX_BUFFER_LEN_MAX
 #define WLAN_IPA_MAX_LIST_SIZE 64
 #define WLAN_IPA_LOGGING(arg, ...) \
 	WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__)
+#define WLAN_IPA_LOGGING_RL(arg, ...) \
+	do { \
+		static ulong __last_ticks; \
+		ulong __ticks = jiffies; \
+		if (time_after(__ticks, __last_ticks + HZ)) { \
+			WLAN_IPA_LOGGING_FUNC(__func__, arg, ##__VA_ARGS__); \
+			__last_ticks = __ticks; \
+		} \
+	} while (0)
+
 #define WLAN_IPA_LOGGING_FUNC wlan_ipa_log_message
 #define WLAN_IPA_LOG_MSG_LENGTH_MAX 2048
 #define WLAN_IPA_HOST_MSG_MARKER "OPT_DP_HOST"

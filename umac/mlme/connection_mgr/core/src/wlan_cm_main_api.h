@@ -384,13 +384,13 @@ cm_send_connect_start_fail(struct cnx_mgr *cm_ctx,
 /**
  * cm_find_bss_from_candidate_list() - get bss entry by bssid value
  * @candidate_list: candidate list
- * @bssid: bssid to find
+ * @scan_entry: scan entry
  * @entry_found: found bss entry
  *
  * Return: true if find bss entry with bssid
  */
 bool cm_find_bss_from_candidate_list(qdf_list_t *candidate_list,
-				     struct qdf_mac_addr *bssid,
+				     struct scan_cache_entry *scan_entry,
 				     struct scan_cache_node **entry_found);
 
 /**

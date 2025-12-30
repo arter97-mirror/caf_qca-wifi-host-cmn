@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,11 +55,16 @@ extern bool is_dp_verbose_debug_enabled;
 #define dp_debug(params...) QDF_TRACE_DEBUG(QDF_MODULE_ID_DP, params)
 /* logs for IPA logging Infra */
 #define dp_ipa_log(params...) WLAN_IPA_LOGGING(params)
+#define dp_ipa_log_rl(params...) WLAN_IPA_LOGGING_RL(params)
 /* To collect common log in both wlan and IPA logging infra */
 #define dp_ipa_debug(params...) \
 	do { dp_info(params); dp_ipa_log(params); } while (0)
+#define dp_ipa_info_rl(params...) \
+	do { dp_info_rl(params); dp_ipa_log_rl(params); } while (0)
 #define dp_ipa_err(params...) \
 	do { dp_err(params); dp_ipa_log(params); } while (0)
+#define dp_ipa_err_rl(params...) \
+	do { dp_err_rl(params); dp_ipa_log_rl(params); } while (0)
 
 #ifdef DP_PRINT_NO_CONSOLE
 #define dp_err_log(params...) \

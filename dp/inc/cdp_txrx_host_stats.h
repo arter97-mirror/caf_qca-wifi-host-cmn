@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1598,6 +1598,21 @@ cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
 		return QDF_STATUS_E_FAILURE;
 
 	return soc->ops->host_stats_ops->txrx_process_ul_delay(soc, vdev_id);
+}
+
+static inline QDF_STATUS
+cdp_dump_custom_stats(ol_txrx_soc_handle soc, uint8_t vdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid SOC instance");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_dump_custom_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_dump_custom_stats(soc, vdev_id);
 }
 #else
 static inline QDF_STATUS

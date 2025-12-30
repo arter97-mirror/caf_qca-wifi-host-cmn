@@ -1478,6 +1478,12 @@ struct dp_soc_stats {
 		uint32_t hp_oos2;
 		/* tx desc freed as part of vdev detach */
 		uint32_t tx_comp_exception;
+		/* Number of duplicate tx desc */
+		uint32_t tx_desc_duplicate;
+		/* Number of unused tx desc */
+		uint32_t tx_desc_unused;
+		/* Number of tx desc when pdev is down */
+		uint32_t tx_desc_pdev_down;
 		/* TQM drops after/during peer delete */
 		uint64_t tqm_drop_no_peer;
 		/* Number of tx completions reaped per WBM2SW release ring */
@@ -4705,12 +4711,14 @@ struct dp_vdev_stats {
  * @UL_DELAY_CALC_ID_TSF: TSF request report ID
  * @UL_DELAY_CALC_ID_FW: FW request report ID
  * @UL_DELAY_CALC_ID_QOS: QoS latency stats ID
+ * @UL_DELAY_CALC_ID_INTERNAL: DP internal stats ID
  * @UL_DELAY_CALC_ID_MAX: Max ID
  **/
 enum ul_delay_client_id {
 	UL_DELAY_CALC_ID_TSF,
 	UL_DELAY_CALC_ID_FW,
 	UL_DELAY_CALC_ID_QOS,
+	UL_DELAY_CALC_ID_INTERNAL,
 	UL_DELAY_CALC_ID_MAX
 };
 
@@ -4729,16 +4737,12 @@ struct dp_latency_stats {
 /**
  * struct dp_ul_delay_stats - Delay stats for bus bw
  * and opt_dp
- * @prev_delay_accum_opt_dp: Total delay during last poll in opt_dp
- * @prev_pkt_accum_opt_dp: pkt accumulated during last poll in opt_dp
- * @prev_delay_accum_bus_bw: Total delay during last scheduled bus bw
- * @prev_pkt_accum_bus_bw: pkt accumulated during last scheduled bus bw
+ * @prev_delay_accum: Total delay during last poll
+ * @prev_pkt_accum: pkt accumulated during last poll
  */
 struct dp_ul_delay_stats {
-	uint32_t prev_delay_accum_opt_dp;
-	uint32_t prev_pkt_accum_opt_dp;
-	uint32_t prev_delay_accum_bus_bw;
-	uint32_t prev_pkt_accum_bus_bw;
+	uint32_t prev_delay_accum;
+	uint32_t prev_pkt_accum;
 };
 
 #define PERC_BUCKET_SIZE 26
@@ -5127,7 +5131,7 @@ struct dp_vdev {
 	bool dp_eapol_stats;
 	/* Tx NSS stats received from FW */
 	struct cdp_htt_stats_tx_vdev_nss_tlv tx_vdev_nss;
-	struct dp_ul_delay_stats prev_delay_stats;
+	struct dp_ul_delay_stats ul_delay_stats[UL_DELAY_CALC_ID_MAX];
 };
 
 enum {

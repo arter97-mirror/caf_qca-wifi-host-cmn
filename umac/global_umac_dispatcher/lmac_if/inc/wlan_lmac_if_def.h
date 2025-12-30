@@ -876,6 +876,9 @@ struct wlan_lmac_if_wifi_radar_tx_ops {
  * @cfr_config_rcc: Function to set the Repetitive channel capture params
  * @cfr_start_lut_timer: Function to start timer to flush aged-out LUT entries
  * @cfr_stop_lut_timer: Function to stop timer to flush aged-out LUT entries
+ * @cfr_start_report_interval_timer: Function to start timer to send last entry
+ * @cfr_stop_report_interval_timer: Function to stop timer to stop send
+ * last entry
  * @cfr_default_ta_ra_cfg: Function to configure default values for TA_RA mode
  * @cfr_dump_lut_enh: Function to dump LUT entries
  * @cfr_rx_tlv_process: Function to process PPDU status TLVs
@@ -900,6 +903,8 @@ struct wlan_lmac_if_cfr_tx_ops {
 				     struct cfr_rcc_param *params);
 	void (*cfr_start_lut_timer)(struct wlan_objmgr_pdev *pdev);
 	void (*cfr_stop_lut_timer)(struct wlan_objmgr_pdev *pdev);
+	void (*cfr_start_report_interval_timer)(struct wlan_objmgr_pdev *pdev);
+	void (*cfr_stop_report_interval_timer)(struct wlan_objmgr_pdev *pdev);
 	void (*cfr_default_ta_ra_cfg)(struct cfr_rcc_param *params,
 				      bool allvalid, uint16_t reset_cfg);
 	void (*cfr_dump_lut_enh)(struct wlan_objmgr_pdev *pdev);
@@ -2546,6 +2551,8 @@ struct wlan_lmac_if_wifi_radar_rx_ops {
  * struct wlan_lmac_if_cfr_rx_ops - CFR south bound rx function pointers
  * @cfr_support_set: Set the CFR support based on FW advert
  * @cfr_info_send: Send cfr info to upper layers
+ * @cfr_info_send_v3: cfr info for version 3
+ * @cfr_send_stop: cfr stop cb
  * @cfr_capture_count_support_set: Set the capture_count support based on FW
  * advert
  * @cfr_mo_marking_support_set: Set MO marking supported based on FW advert
@@ -2556,6 +2563,12 @@ struct wlan_lmac_if_cfr_rx_ops {
 	uint32_t (*cfr_info_send)(struct wlan_objmgr_pdev *pdev, void *head,
 				  size_t hlen, void *data, size_t dlen,
 				  void *tail, size_t tlen);
+	uint32_t (*cfr_info_send_v3)(struct wlan_objmgr_pdev *pdev,
+				     struct csi_cfr_header header,
+				     void *data, size_t dlen,
+				     struct cfr_info_v3 cfr_info);
+	uint32_t (*cfr_send_stop)(struct wlan_objmgr_pdev *pdev,
+				  uint32_t reason);
 	QDF_STATUS (*cfr_capture_count_support_set)(
 			struct wlan_objmgr_psoc *psoc, uint32_t value);
 	QDF_STATUS (*cfr_mo_marking_support_set)(struct wlan_objmgr_psoc *psoc,
