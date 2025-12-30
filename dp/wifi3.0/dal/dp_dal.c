@@ -302,6 +302,109 @@ static void dp_dal_pdev_set_default_routing_helper(struct dp_soc *soc,
 }
 
 /**
+ * dp_dal_bus_exit() - DAL bus exit
+ * @soc: pointer to DP SoC
+ *
+ * Called during driver deinit dp_pdev_deinit(), this function will release all
+ * allocated resources in the offload engine and stops the Offload Engine.
+ *
+ * Return: void
+ */
+static void dp_dal_bus_exit(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx)
+		return;
+
+	if (global_plat_ops && global_plat_ops->exit)
+		global_plat_ops->exit(dal_ctx);
+}
+
+/**
+ * dp_dal_bus_init() - DAL bus initialization function
+ * @soc: pointer to DP SoC
+ *
+ * Called during cdp_soc_attach_target(), this function sync TXBM information
+ * to the offload engine.
+ *
+ * Return: int
+ */
+static int dp_dal_bus_init(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx)
+		return -EINVAL;
+
+	if (global_plat_ops && global_plat_ops->init)
+		return global_plat_ops->init(dal_ctx);
+
+	return 0;
+}
+
+/**
+ * dp_dal_bus_stop - Stop DP DAL bus
+ * @soc: pointer to dp_soc structure
+ *
+ * This function stops the DP DAL bus associated with the given SOC.
+ */
+static void dp_dal_bus_stop(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx)
+		return;
+
+	if (global_plat_ops && global_plat_ops->stop)
+		global_plat_ops->stop(dal_ctx);
+}
+
+/**
+ * dp_dal_bus_start() - DAL bus start function
+ * @soc: pointer to DP SoC
+ *
+ * Called during cdp_soc_attach_target(), this function sync ring information
+ * to the offload engine.
+ *
+ * Return: int
+ */
+static int dp_dal_bus_start(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx)
+		return -EINVAL;
+
+	if (global_plat_ops && global_plat_ops->start)
+		return global_plat_ops->start(dal_ctx);
+
+	return 0;
+}
+
+/**
+ * dp_dal_bus_request_irq() - DAL IRQ registration function
+ * @soc: pointer to DP SoC
+ *
+ * Called during cdp_soc_attach_target(), this function sync IRQ info to OE,
+ * OE will register Tx & Rx interrupts.
+ *
+ * Return: int
+ */
+static int dp_dal_bus_request_irq(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx)
+		return -EINVAL;
+
+	if (global_plat_ops && global_plat_ops->request_irq)
+		return global_plat_ops->request_irq(dal_ctx);
+
+	return 0;
+}
+
+/**
  * dp_dal_pdev_set_default_routing - Iterate over pdev->vdev->peer list
  * and set default routing for each peer.
  * @pdev: pointer to dp_pdev structure
@@ -1458,109 +1561,6 @@ destroy_lock:
 }
 
 /**
- * dp_dal_bus_exit() - DAL bus exit
- * @soc: pointer to DP SoC
- *
- * Called during driver deinit dp_pdev_deinit(), this function will release all
- * allocated resources in the offload engine and stops the Offload Engine.
- *
- * Return: void
- */
-void dp_dal_bus_exit(struct dp_soc *soc)
-{
-	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
-
-	if (!dal_ctx)
-		return;
-
-	if (global_plat_ops && global_plat_ops->exit)
-		global_plat_ops->exit(dal_ctx);
-}
-
-/**
- * dp_dal_bus_init() - DAL bus initialization function
- * @soc: pointer to DP SoC
- *
- * Called during cdp_soc_attach_target(), this function sync TXBM information
- * to the offload engine.
- *
- * Return: int
- */
-int dp_dal_bus_init(struct dp_soc *soc)
-{
-	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
-
-	if (!dal_ctx)
-		return -EINVAL;
-
-	if (global_plat_ops && global_plat_ops->init)
-		return global_plat_ops->init(dal_ctx);
-
-	return 0;
-}
-
-/**
- * dp_dal_bus_stop - Stop DP DAL bus
- * @soc: pointer to dp_soc structure
- *
- * This function stops the DP DAL bus associated with the given SOC.
- */
-void dp_dal_bus_stop(struct dp_soc *soc)
-{
-	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
-
-	if (!dal_ctx)
-		return;
-
-	if (global_plat_ops && global_plat_ops->stop)
-		global_plat_ops->stop(dal_ctx);
-}
-
-/**
- * dp_dal_bus_start() - DAL bus start function
- * @soc: pointer to DP SoC
- *
- * Called during cdp_soc_attach_target(), this function sync ring information
- * to the offload engine.
- *
- * Return: int
- */
-int dp_dal_bus_start(struct dp_soc *soc)
-{
-	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
-
-	if (!dal_ctx)
-		return -EINVAL;
-
-	if (global_plat_ops && global_plat_ops->start)
-		return global_plat_ops->start(dal_ctx);
-
-	return 0;
-}
-
-/**
- * dp_dal_bus_request_irq() - DAL IRQ registration function
- * @soc: pointer to DP SoC
- *
- * Called during cdp_soc_attach_target(), this function sync IRQ info to OE,
- * OE will register Tx & Rx interrupts.
- *
- * Return: int
- */
-int dp_dal_bus_request_irq(struct dp_soc *soc)
-{
-	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
-
-	if (!dal_ctx)
-		return -EINVAL;
-
-	if (global_plat_ops && global_plat_ops->request_irq)
-		return global_plat_ops->request_irq(dal_ctx);
-
-	return 0;
-}
-
-/**
  * dp_dal_rx_buffers_replenish() - RX buffer enqueue function used from
  * non-DAL path
  * @soc: pointer to DP SoC
@@ -1605,7 +1605,7 @@ int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
 	if (!global_plat_ops || !global_plat_ops->rx_replenish) {
 		dp_err("DAL: no op registers for rx_replenish req_buf:%u",
 		       num_req_buffers);
-		return QDF_STATUS_E_FAILURE;
+		return -EINVAL;
 	}
 
 	ret = global_plat_ops->rx_replenish(dal_ctx, num_req_buffers, false);

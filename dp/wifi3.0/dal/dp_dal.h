@@ -426,55 +426,6 @@ QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc);
 QDF_STATUS dp_dal_soc_init(struct dp_soc *soc);
 
 /**
- * dp_dal_bus_stop - Stop DP DAL bus
- * @soc: pointer to dp_soc structure
- *
- * This function stops the DP DAL bus associated with the given SOC.
- */
-void dp_dal_bus_stop(struct dp_soc *soc);
-
-/**
- * dp_dal_bus_exit - Exit DP DAL bus
- * @soc: pointer to dp_soc structure
- *
- * This function performs cleanup when exiting the DP DAL bus.
- */
-void dp_dal_bus_exit(struct dp_soc *soc);
-
-/**
- * dp_dal_bus_init() - DAL bus initialization function
- * @soc: pointer to DP SoC
- *
- * Called during cdp_soc_attach_target(), this function sync TXBM information
- * to the offload engine.
- *
- * Return: int
- */
-int dp_dal_bus_init(struct dp_soc *soc);
-
-/**
- * dp_dal_bus_start() - DAL bus start function
- * @soc: pointer to DP SoC
- *
- * Called during cdp_soc_attach_target(), this function sync ring information
- * to the offload engine.
- *
- * Return: int
- */
-int dp_dal_bus_start(struct dp_soc *soc);
-
-/**
- * dp_dal_bus_request_irq() - DAL IRQ registration function
- * @soc: pointer to DP SoC
- *
- * Called during cdp_soc_attach_target(), this function sync IRQ info to OE,
- * OE will register Tx & Rx interrupts.
- *
- * Return: int
- */
-int dp_dal_bus_request_irq(struct dp_soc *soc);
-
-/**
  * dp_dal_rx_buffers_replenish() - RX buffer enqueue function used from
  * non-DAL path
  * @soc: pointer to DP SoC
@@ -500,8 +451,6 @@ int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
 				union dp_rx_desc_list_elem_t **desc_list,
 				union dp_rx_desc_list_elem_t **tail,
 				bool req_only);
-
-int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt);
 
 /**
  * dp_dal_interface_add() - DAL interface add
@@ -649,34 +598,6 @@ static inline QDF_STATUS dp_dal_soc_attach(struct dp_soc *soc)
 static inline QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 {
 	return QDF_STATUS_SUCCESS;
-}
-
-static inline void dp_dal_bus_stop(struct dp_soc *soc)
-{
-}
-
-static inline void dp_dal_bus_exit(struct dp_soc *soc)
-{
-}
-
-static inline int dp_dal_bus_init(struct dp_soc *soc)
-{
-	return 0;
-}
-
-static inline int dp_dal_bus_start(struct dp_soc *soc)
-{
-	return 0;
-}
-
-static inline int dp_dal_bus_request_irq(struct dp_soc *soc)
-{
-	return 0;
-}
-
-static inline int dp_dal_bus_rx_buffer_enqueue(struct dp_soc *soc, uint32_t cnt)
-{
-	return 0;
 }
 
 static inline int

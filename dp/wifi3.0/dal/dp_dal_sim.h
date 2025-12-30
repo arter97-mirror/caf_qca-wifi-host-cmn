@@ -285,38 +285,6 @@ struct dp_dal_sim_ctx {
 void dp_dal_sim_schedule_work(void *arg);
 
 /**
- * dp_dal_sim_sw2sw_ring_init() - Initialize SW2SW ring
- * @sw2sw_ring: Pointer to SW2SW ring structure
- * @ring_size: Ring Size
- * @desc_size: Size of each descriptor in bytes
- *
- * This function initializes a SW2SW ring with the specified size.
- * It allocates memory for the SW2SW SRNG buffer and initializes HP/TP.
- *
- * Return: 0 on success, negative error code on failure
- */
-int dp_dal_sim_sw2sw_ring_init(struct dp_dal_sim_sw2sw_ring *sw2sw_ring,
-			       uint16_t ring_size, uint16_t desc_size);
-
-/**
- * dp_dal_sim_sw2sw_ring_deinit() - Deinitialize SW2SW ring
- * @sw2sw_ring: Pointer to SW2SW ring structure
- *
- * This function deinitializes a SW2SW ring and frees allocated memory.
- */
-void dp_dal_sim_sw2sw_ring_deinit(struct dp_dal_sim_sw2sw_ring *sw2sw_ring);
-
-/**
- * dp_dal_sim_is_sw2sw_ring_empty() - Check if SW2SW ring is empty in a
- * thread-safe manner
- * @sw2sw_ring: Pointer to SW2SW ring structure
- *
- * Returns true if the SW2SW ring is empty, false otherwise.
- * The function takes and releases the ring lock for thread safety.
- */
-bool dp_dal_sim_is_sw2sw_ring_empty(struct dp_dal_sim_sw2sw_ring *sw2sw_ring);
-
-/**
  * dp_dal_sim_sw2sw_ring_enqueue() - Enqueue descriptor to SW2SW ring
  * @sim_ctx: DAL SIM context
  * @ring: Pointer to SW2SW ring structure

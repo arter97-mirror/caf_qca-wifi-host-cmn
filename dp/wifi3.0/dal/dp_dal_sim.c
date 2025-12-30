@@ -37,8 +37,8 @@ extern struct platform_bus_ops plat_ops_bypass_mode;
  * ========================================================================
  */
 
-int dp_dal_sim_sw2sw_ring_init(struct dp_dal_sim_sw2sw_ring *ring,
-			       uint16_t ring_size, uint16_t desc_size)
+static int dp_dal_sim_sw2sw_ring_init(struct dp_dal_sim_sw2sw_ring *ring,
+				      uint16_t ring_size, uint16_t desc_size)
 {
 	uint32_t buffer_size_bytes;
 	uint32_t buffer_size_dwords;
@@ -89,7 +89,7 @@ int dp_dal_sim_sw2sw_ring_init(struct dp_dal_sim_sw2sw_ring *ring,
 	return 0;
 }
 
-void dp_dal_sim_sw2sw_ring_deinit(struct dp_dal_sim_sw2sw_ring *ring)
+static void dp_dal_sim_sw2sw_ring_deinit(struct dp_dal_sim_sw2sw_ring *ring)
 {
 	if (!ring) {
 		dp_warn("NULL SW2SW ring pointer in deinit");
@@ -122,7 +122,7 @@ void dp_dal_sim_sw2sw_ring_deinit(struct dp_dal_sim_sw2sw_ring *ring)
  * Takes the ring lock, checks if hp == tp, releases the lock,
  * returns true if the SW2SW ring is empty, false otherwise.
  */
-bool dp_dal_sim_is_sw2sw_ring_empty(struct dp_dal_sim_sw2sw_ring *ring)
+static bool dp_dal_sim_is_sw2sw_ring_empty(struct dp_dal_sim_sw2sw_ring *ring)
 {
 	bool empty;
 
