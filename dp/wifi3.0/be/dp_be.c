@@ -445,6 +445,29 @@ void dp_cc_reo_sw_en_cfg(struct hal_hw_cc_config *cc_cfg)
 }
 #endif /* !CONFIG_BORON */
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/**
+ * dp_hw_cc_is_enabled() - Check if HW CC should be enabled
+ * @soc: SOC handle
+ *
+ * Return: true if HW CC should be enabled, false otherwise
+ */
+static inline bool dp_hw_cc_is_enabled(struct dp_soc *soc)
+{
+	if (wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_info("DAL feature enabled, disable HW CC");
+		return false;
+	}
+
+	return soc->wlan_cfg_ctx->hw_cc_enabled;
+}
+#else
+static inline bool dp_hw_cc_is_enabled(struct dp_soc *soc)
+{
+	return soc->wlan_cfg_ctx->hw_cc_enabled;
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
+
 /**
  * dp_cc_reg_cfg_init() - initialize and configure HW cookie
  *			  conversion register
@@ -464,7 +487,7 @@ static void dp_cc_reg_cfg_init(struct dp_soc *soc,
 	    soc->cdp_soc.ol_ops->get_con_mode() == QDF_GLOBAL_FTM_MODE)
 		return;
 
-	if (!soc->wlan_cfg_ctx->hw_cc_enabled) {
+	if (!dp_hw_cc_is_enabled(soc)) {
 		dp_info("INI skip HW CC register setting");
 		return;
 	}
