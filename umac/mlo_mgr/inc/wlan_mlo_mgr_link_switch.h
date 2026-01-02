@@ -898,6 +898,34 @@ bool
 mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
 						struct wlan_objmgr_psoc *psoc);
 
+/**
+ * mlo_mgr_cache_peer_create_params() - Cache peer create parameters for
+ * unified connect command processing
+ * @vdev: pointer to vdev object
+ * @peer_create_params: pointer to peer create parameters to cache
+ *
+ * This API caches peer create parameters in MLO manager context during
+ * link switch or unified connect scenarios. The cached parameters will
+ * be used later when the actual peer create command needs to be sent.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
+				 struct peer_create_params *peer_create_params);
+
+/**
+ * mlo_mgr_cleanup_cached_connect_params() - Cleanup all cached connect params
+ * @vdev: Pointer to vdev object
+ *
+ * This function frees the memory allocated for ALL cached connection parameters
+ * (peer_create, vdev_start, peer_assoc, vdev_up) after they have been sent to
+ * firmware via unified connect command.
+ *
+ * Return: None
+ */
+void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev);
+
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1173,6 +1201,18 @@ mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
 						struct wlan_objmgr_psoc *psoc)
 {
 	return false;
+}
+
+static inline QDF_STATUS
+mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
+				 struct peer_create_params *peer_create_params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline void
+mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
+{
 }
 #endif
 #endif

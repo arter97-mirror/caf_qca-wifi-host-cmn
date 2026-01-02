@@ -1024,7 +1024,7 @@ struct peer_active_traffic_map_params {
  * @mlo_bridge_peer: Indicates bridge peer
  */
 struct peer_create_params {
-	const uint8_t *peer_addr;
+	struct qdf_mac_addr peer_addr;
 	uint32_t peer_type;
 	uint32_t vdev_id;
 	bool is_11bi_peer;

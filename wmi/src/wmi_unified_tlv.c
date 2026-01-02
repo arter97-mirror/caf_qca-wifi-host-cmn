@@ -2089,7 +2089,7 @@ static QDF_STATUS send_peer_create_cmd_tlv(wmi_unified_t wmi,
 		       WMITLV_TAG_STRUC_wmi_peer_create_cmd_fixed_param,
 		       WMITLV_GET_STRUCT_TLVLEN
 			       (wmi_peer_create_cmd_fixed_param));
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(param->peer_addr, &cmd->peer_macaddr);
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(param->peer_addr.bytes, &cmd->peer_macaddr);
 	cmd->peer_type = convert_peer_type_host_to_target(param->peer_type);
 	cmd->vdev_id = param->vdev_id;
 	cmd->is_11bi_peer = param->is_11bi_peer;
@@ -2105,7 +2105,7 @@ static QDF_STATUS send_peer_create_cmd_tlv(wmi_unified_t wmi,
 	}
 
 	wmi_debug("peer_addr "QDF_MAC_ADDR_FMT" vdev_id %d 11bi_peer:%d",
-		  QDF_MAC_ADDR_REF(param->peer_addr),
+		  QDF_MAC_ADDR_REF(param->peer_addr.bytes),
 		  param->vdev_id, cmd->is_11bi_peer);
 
 	return 0;

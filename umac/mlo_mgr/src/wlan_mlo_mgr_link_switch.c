@@ -2437,3 +2437,63 @@ mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(
 	return wlan_mlme_get_sta_mlo_unified_connect_disconnect(psoc) &&
 	       mlo_mgr_is_unified_connect_disconnect_supported(psoc);
 }
+
+QDF_STATUS
+mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
+				 struct peer_create_params *peer_create_params)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_vdev_connect_params_cache *connect_params;
+
+	if (!vdev || !peer_create_params)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	connect_params = &mlo_dev_ctx->link_ctx->connect_params;
+
+	if (!connect_params->peer_create) {
+		connect_params->peer_create =
+			qdf_mem_malloc(sizeof(struct peer_create_params));
+		if (!connect_params->peer_create)
+			return QDF_STATUS_E_NOMEM;
+	}
+
+	/*
+	 * Cache the peer create parameters directly into the structure.
+	 * The memory will get freed after unified connect command send
+	 * to firmware
+	 */
+	qdf_mem_copy(connect_params->peer_create, peer_create_params,
+		     sizeof(struct peer_create_params));
+
+	mlo_debug("vdev:%d peer_type:%d cached peer create params for:"
+		  QDF_MAC_ADDR_FMT, connect_params->peer_create->vdev_id,
+		  connect_params->peer_create->peer_type,
+		  QDF_MAC_ADDR_REF(
+			connect_params->peer_create->peer_addr.bytes));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_vdev_connect_params_cache *connect_params;
+
+	if (!vdev)
+		return;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx)
+		return;
+
+	connect_params = &mlo_dev_ctx->link_ctx->connect_params;
+
+	if (connect_params->peer_create) {
+		qdf_mem_free(connect_params->peer_create);
+		connect_params->peer_create = NULL;
+	}
+}
