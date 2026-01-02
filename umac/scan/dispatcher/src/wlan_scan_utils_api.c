@@ -4318,6 +4318,17 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 	return ret;
 }
 
+bool util_is_scan_entry_non_tx_bssid(struct scan_cache_entry *scan_entry)
+{
+	if (scan_entry->mbssid_info.profile_num &&
+	    qdf_mem_cmp(scan_entry->mbssid_info.trans_bssid,
+			scan_entry->mbssid_info.non_trans_bssid,
+			QDF_MAC_ADDR_SIZE))
+		return true;
+
+	return false;
+}
+
 void
 util_scan_entry_renew_timestamp(struct wlan_objmgr_pdev *pdev,
 				struct scan_cache_entry *scan_entry)
