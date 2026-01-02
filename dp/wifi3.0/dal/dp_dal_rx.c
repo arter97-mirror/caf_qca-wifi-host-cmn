@@ -440,8 +440,8 @@ int dp_dal_rx_desc_cb(void *priv, void *desc, u16 ring_id)
 	}
 
 	if (qdf_op_protect(&op_sync)) {
-		dp_err("Driver in transitional state, reject RX desc ring:%u",
-		       ring_id);
+		dp_err_rl("Driver in transitional state, reject RX desc ring:%u",
+			  ring_id);
 		return -EINVAL;
 	}
 
