@@ -352,6 +352,11 @@ struct wlan_channel {
  * @max_supported_bw: Maximum capability (min of self/peer/regulatory)
  * @assoc_bw: Bandwidth at association time (static)
  * @user_defined_bw: User-configured bandwidth limit
+ * @sta_max_ch_width: STA's maximum supported channel width capability.
+ *                    This represents the STA's true maximum bandwidth
+ *                    capability independent of AP's current operational
+ *                    bandwidth. Used for advertising in Association Request
+ *                    to allow AP to make informed bandwidth decisions.
  * @dot11_mode: Negotiated 802.11 standard (11n/ac/ax/be),
  *              see enum mlme_dot11_mode
  * @phymode: Physical layer mode (derived from dot11_mode + op_bw)
@@ -361,8 +366,12 @@ struct vdev_op_info {
 	enum phy_ch_width    max_supported_bw;
 	enum phy_ch_width    assoc_bw;
 	enum phy_ch_width    user_defined_bw;
+	enum phy_ch_width    sta_max_ch_width;
 	uint32_t             dot11_mode;
 	enum wlan_phymode    phymode;
+#ifdef WLAN_FEATURE_11BE
+	uint16_t             puncture_bitmap;
+#endif
 };
 
 /**
@@ -879,6 +888,249 @@ static inline enum QDF_OPMODE wlan_vdev_mlme_get_opmode(
 {
 	return vdev->vdev_mlme.vdev_opmode;
 }
+
+/**
+ * wlan_vdev_mlme_set_op_bw() - set vdev operational bandwidth
+ * @vdev: VDEV object
+ * @bw: operational bandwidth
+ *
+ * API to set operational bandwidth of vdev object
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_op_bw(struct wlan_objmgr_vdev *vdev,
+					    enum phy_ch_width bw)
+{
+	vdev->vdev_mlme.op_info.op_bw = bw;
+}
+
+/**
+ * wlan_vdev_mlme_get_op_bw() - get vdev operational bandwidth
+ * @vdev: VDEV object
+ *
+ * API to get operational bandwidth of vdev object
+ *
+ * Return: operational bandwidth
+ */
+static inline enum phy_ch_width wlan_vdev_mlme_get_op_bw(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.op_bw;
+}
+
+/**
+ * wlan_vdev_mlme_set_max_supported_bw() - set vdev max supported bandwidth
+ * @vdev: VDEV object
+ * @bw: max supported bandwidth
+ *
+ * API to set max supported bandwidth of vdev object
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_max_supported_bw(
+					struct wlan_objmgr_vdev *vdev,
+					enum phy_ch_width bw)
+{
+	vdev->vdev_mlme.op_info.max_supported_bw = bw;
+}
+
+/**
+ * wlan_vdev_mlme_get_max_supported_bw() - get vdev max supported bandwidth
+ * @vdev: VDEV object
+ *
+ * API to get max supported bandwidth of vdev object
+ *
+ * Return: max supported bandwidth
+ */
+static inline enum phy_ch_width wlan_vdev_mlme_get_max_supported_bw(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.max_supported_bw;
+}
+
+/**
+ * wlan_vdev_mlme_set_assoc_bw() - set vdev association bandwidth
+ * @vdev: VDEV object
+ * @bw: association bandwidth
+ *
+ * API to set association bandwidth of vdev object
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_assoc_bw(struct wlan_objmgr_vdev *vdev,
+					       enum phy_ch_width bw)
+{
+	vdev->vdev_mlme.op_info.assoc_bw = bw;
+}
+
+/**
+ * wlan_vdev_mlme_get_assoc_bw() - get vdev association bandwidth
+ * @vdev: VDEV object
+ *
+ * API to get association bandwidth of vdev object
+ *
+ * Return: association bandwidth
+ */
+static inline enum phy_ch_width wlan_vdev_mlme_get_assoc_bw(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.assoc_bw;
+}
+
+/**
+ * wlan_vdev_mlme_set_user_defined_bw() - set vdev user defined bandwidth
+ * @vdev: VDEV object
+ * @bw: user defined bandwidth
+ *
+ * API to set user defined bandwidth of vdev object
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_user_defined_bw(
+					struct wlan_objmgr_vdev *vdev,
+					enum phy_ch_width bw)
+{
+	vdev->vdev_mlme.op_info.user_defined_bw = bw;
+}
+
+/**
+ * wlan_vdev_mlme_get_user_defined_bw() - get vdev user defined bandwidth
+ * @vdev: VDEV object
+ *
+ * API to get user defined bandwidth of vdev object
+ *
+ * Return: user defined bandwidth
+ */
+static inline enum phy_ch_width wlan_vdev_mlme_get_user_defined_bw(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.user_defined_bw;
+}
+
+/**
+ * wlan_vdev_mlme_set_sta_max_ch_width() - set vdev STA max channel width
+ * @vdev: VDEV object
+ * @bw: STA maximum channel width
+ *
+ * API to set STA maximum channel width of vdev object. This represents
+ * the STA's true maximum bandwidth capability independent of AP's current
+ * operational bandwidth.
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_sta_max_ch_width(
+					struct wlan_objmgr_vdev *vdev,
+					enum phy_ch_width bw)
+{
+	vdev->vdev_mlme.op_info.sta_max_ch_width = bw;
+}
+
+/**
+ * wlan_vdev_mlme_get_sta_max_ch_width() - get vdev STA max channel width
+ * @vdev: VDEV object
+ *
+ * API to get STA maximum channel width of vdev object. This represents
+ * the STA's true maximum bandwidth capability independent of AP's current
+ * operational bandwidth.
+ *
+ * Return: STA maximum channel width
+ */
+static inline enum phy_ch_width wlan_vdev_mlme_get_sta_max_ch_width(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.sta_max_ch_width;
+}
+
+/**
+ * wlan_vdev_mlme_set_dot11_mode() - set vdev dot11 mode
+ * @vdev: VDEV object
+ * @mode: dot11 mode
+ *
+ * API to set dot11 mode of vdev object
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_dot11_mode(
+					struct wlan_objmgr_vdev *vdev,
+					uint32_t mode)
+{
+	vdev->vdev_mlme.op_info.dot11_mode = mode;
+}
+
+/**
+ * wlan_vdev_mlme_get_dot11_mode() - get vdev dot11 mode
+ * @vdev: VDEV object
+ *
+ * API to get dot11 mode of vdev object
+ *
+ * Return: dot11 mode
+ */
+static inline uint32_t wlan_vdev_mlme_get_dot11_mode(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.dot11_mode;
+}
+
+/**
+ * wlan_vdev_mlme_set_phymode() - set vdev phymode
+ * @vdev: VDEV object
+ * @phymode: phymode
+ *
+ * API to set phymode of vdev object
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_phymode(struct wlan_objmgr_vdev *vdev,
+					      enum wlan_phymode phymode)
+{
+	vdev->vdev_mlme.op_info.phymode = phymode;
+}
+
+/**
+ * wlan_vdev_mlme_get_phymode() - get vdev phymode
+ * @vdev: VDEV object
+ *
+ * API to get phymode of vdev object
+ *
+ * Return: phymode
+ */
+static inline enum wlan_phymode wlan_vdev_mlme_get_phymode(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.phymode;
+}
+
+#ifdef WLAN_FEATURE_11BE
+/**
+ * wlan_vdev_mlme_set_puncture_bitmap() - set vdev puncture bitmap
+ * @vdev: VDEV object
+ * @puncture_bitmap: puncture bitmap
+ *
+ * API to set puncture bitmap of vdev object
+ *
+ * Return: void
+ */
+static inline void wlan_vdev_mlme_set_puncture_bitmap(
+					struct wlan_objmgr_vdev *vdev,
+					uint16_t puncture_bitmap)
+{
+	vdev->vdev_mlme.op_info.puncture_bitmap = puncture_bitmap;
+}
+
+/**
+ * wlan_vdev_mlme_get_puncture_bitmap() - get vdev puncture bitmap
+ * @vdev: VDEV object
+ *
+ * API to get puncture bitmap of vdev object
+ *
+ * Return: puncture bitmap
+ */
+static inline uint16_t wlan_vdev_mlme_get_puncture_bitmap(
+					struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.op_info.puncture_bitmap;
+}
+#endif
 
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_MULTI_LINK_SAP)
 /**
