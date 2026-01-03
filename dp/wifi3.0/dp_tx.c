@@ -286,7 +286,7 @@ dp_tx_page_pool_reset_shrink_state(struct dp_tx_page_pool *tx_pp,
 	/* Lock required to protect last_shrink_eval_time_us from races */
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
 	tx_pp->last_shrink_eval_time_us = current_time_us;
-	qdf_atomic_set(&tx_pp->max_buffer_usage_watermark, 0);
+	tx_pp->max_buffer_usage_watermark = 0;
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 }
 
@@ -390,9 +390,8 @@ dp_tx_page_pool_take_snapshot(
 		current_time_us - tx_pp->last_shrink_eval_time_us;
 
 	/* Capture usage metrics atomically */
-	snap->window_peak_usage =
-		qdf_atomic_read(&tx_pp->max_buffer_usage_watermark);
-	snap->instant_usage = qdf_atomic_read(&tx_pp->current_buffers_in_use);
+	snap->window_peak_usage = tx_pp->max_buffer_usage_watermark;
+	snap->instant_usage = tx_pp->current_buffers_in_use;
 
 	/* Take pool snapshot under lock */
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
@@ -872,18 +871,18 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	/* Build complete log string in single operation */
 	bytes_written =
 		qdf_snprint(log_str, PP_LOG_STR_SIZE,
-			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u %u %u/%u/%u %u/%u | POOL %s",
+			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u %u %u/%u/%u %llu/%llu | POOL %s",
 			    vdev_id, action_str, sd->total_capacity,
 			    new_capacity, sd->target_capacity,
 			    sd->effective_usage, snap->instant_usage,
 			    tx_pp->active_pool_count, sd->active_prealloc,
 			    sd->total_idle,
-			    qdf_atomic_read(&tx_pp->current_bufs_double_dec),
-			    qdf_atomic_read(&tx_pp->grow_attempts),
-			    qdf_atomic_read(&tx_pp->grow_successes),
-			    qdf_atomic_read(&tx_pp->grow_failures),
-			    qdf_atomic_read(&tx_pp->cache_hits),
-			    qdf_atomic_read(&tx_pp->cache_misses), pool_buf);
+			    tx_pp->current_bufs_double_dec,
+			    tx_pp->grow_attempts,
+			    tx_pp->grow_successes,
+			    tx_pp->grow_failures,
+			    tx_pp->cache_hits,
+			    tx_pp->cache_misses, pool_buf);
 
 	if (bytes_written >= PP_LOG_STR_SIZE)
 		dp_warn("PP log truncated");
@@ -958,7 +957,7 @@ dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
 	/* First call initialization */
 	if (tx_pp->last_shrink_eval_time_us == 0) {
 		tx_pp->last_shrink_eval_time_us = current_time_us;
-		qdf_atomic_set(&tx_pp->max_buffer_usage_watermark, 0);
+		tx_pp->max_buffer_usage_watermark = 0;
 		dp_nofl_info("TX_PP_MONITOR: Initialized monitoring window");
 		return QDF_STATUS_SUCCESS;
 	}
@@ -1109,11 +1108,10 @@ dp_tx_page_pool_inc_usage(struct dp_tx_page_pool *tx_pp)
 	uint32_t current_usage;
 
 	/* Increment usage counter atomically */
-	current_usage = qdf_atomic_inc_return(&tx_pp->current_buffers_in_use);
+	current_usage = ++tx_pp->current_buffers_in_use;
 
-	if (current_usage > qdf_atomic_read(&tx_pp->max_buffer_usage_watermark))
-		qdf_atomic_set(&tx_pp->max_buffer_usage_watermark,
-			       current_usage);
+	if (qdf_unlikely(current_usage > tx_pp->max_buffer_usage_watermark))
+		tx_pp->max_buffer_usage_watermark = current_usage;
 }
 
 /**
@@ -1137,10 +1135,10 @@ dp_tx_page_pool_dec_usage(struct dp_soc *soc, uint8_t vdev_id)
 	if (tx_pp && tx_pp->page_pool_init) {
 		qdf_spin_lock_bh(&tx_pp->pp_lock);
 		/* Decrement usage counter atomically, but never below zero */
-		if (qdf_atomic_read(&tx_pp->current_buffers_in_use) > 0)
-			qdf_atomic_dec(&tx_pp->current_buffers_in_use);
+		if (tx_pp->current_buffers_in_use > 0)
+			tx_pp->current_buffers_in_use--;
 		else
-			qdf_atomic_inc(&tx_pp->current_bufs_double_dec);
+			tx_pp->current_bufs_double_dec++;
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	}
 }
@@ -1280,7 +1278,7 @@ dp_tx_page_pool_try_grow_last(
 	}
 
 	/* Track growth attempt */
-	qdf_atomic_inc(&tx_pp->grow_attempts);
+	tx_pp->grow_attempts++;
 
 	/* Validate pool exists */
 	if (qdf_unlikely(!pp_params->pp))
@@ -1297,7 +1295,7 @@ dp_tx_page_pool_try_grow_last(
 		goto grow_failed;
 
 	/* Success - update statistics and return */
-	qdf_atomic_inc(&tx_pp->grow_successes);
+	tx_pp->grow_successes++;
 
 	if (qdf_unlikely(trace_enabled)) {
 		new_size = qdf_page_pool_get_page_hold_cnt(pp_params->pp);
@@ -1310,7 +1308,7 @@ dp_tx_page_pool_try_grow_last(
 
 grow_failed:
 	/* Track failure */
-	qdf_atomic_inc(&tx_pp->grow_failures);
+	tx_pp->grow_failures++;
 
 	if (qdf_unlikely(trace_enabled)) {
 		latency_ns = qdf_ktime_get_real_ns() - start_time_ns;
@@ -1420,7 +1418,7 @@ dp_tx_page_pool_dyn_alloc_nbuf(struct dp_tx_page_pool *tx_pp,
 		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
 						       size, offset);
 		if (qdf_likely(nbuf)) {
-			qdf_atomic_inc(&tx_pp->cache_hits);
+			tx_pp->cache_hits++;
 
 			/* Trace cache hit allocation */
 			if (qdf_unlikely(trace_enabled)) {
@@ -1442,7 +1440,7 @@ dp_tx_page_pool_dyn_alloc_nbuf(struct dp_tx_page_pool *tx_pp,
 	 */
 	uint8_t loop_count = 0;
 
-	qdf_atomic_inc(&tx_pp->cache_misses);
+	tx_pp->cache_misses++;
 	nbuf = dp_tx_page_pool_find_available_slow(tx_pp, osdev, size,
 						   offset, &loop_count);
 

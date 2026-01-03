@@ -2035,14 +2035,14 @@ struct dp_tx_page_pool {
 	uint64_t direct_alloc_fail;
 	uint64_t pp_err_nonlinear;
 	/* Growth and allocation statistics */
-	qdf_atomic_t grow_attempts;
-	qdf_atomic_t grow_successes;
-	qdf_atomic_t grow_failures;
-	qdf_atomic_t cache_hits;
-	qdf_atomic_t cache_misses;
-	qdf_atomic_t current_buffers_in_use;
-	qdf_atomic_t max_buffer_usage_watermark;
-	qdf_atomic_t current_bufs_double_dec;
+	uint32_t grow_attempts;
+	uint32_t grow_successes;
+	uint32_t grow_failures;
+	uint64_t cache_hits;
+	uint64_t cache_misses;
+	uint32_t current_buffers_in_use;
+	uint32_t max_buffer_usage_watermark;
+	uint32_t current_bufs_double_dec;
 	uint64_t last_shrink_eval_time_us;
 	qdf_atomic_t shrink_attempts;
 	qdf_atomic_t shrink_success;
