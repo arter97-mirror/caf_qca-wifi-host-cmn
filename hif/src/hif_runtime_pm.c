@@ -373,7 +373,8 @@ static void hif_rtpm_sanitize_exit(void)
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->prevent_list_lock);
 	list_for_each_entry_safe(ctx, tmp,
 				 &gp_hif_rtpm_ctx->prevent_list, list) {
-		hif_runtime_lock_deinit(ctx);
+		hif_debug("Deinitializing Runtime PM wakelock %s", ctx->name);
+		__hif_pm_runtime_allow_suspend(ctx);
 	}
 	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->prevent_list_lock);
 
