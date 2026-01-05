@@ -516,6 +516,8 @@ struct wlan_connect_rsp_ies {
  * @pmkid: fils pmkid
  * @update_erp_next_seq_num: if seq update required
  * @next_erp_seq_num: next seq number
+ * @kde_data_len: KDE data length
+ * @kde_data: KDE data buffer
  * @smd_kdk_len: SMD KDK length derived during SMD-ME initial association
  * @smd_kdk: SMD KDK buffer derived during SMD-ME initial association
  */
@@ -536,6 +538,8 @@ struct wlan_roam_sync_info {
 	uint8_t pmkid[PMKID_LEN];
 	bool update_erp_next_seq_num;
 	uint16_t next_erp_seq_num;
+	uint8_t kde_data_len;
+	uint8_t kde_data[255];
 #ifdef WLAN_FEATURE_11BN_SMD
 	uint32_t smd_kdk_len;
 	uint8_t smd_kdk[MAX_PMK_LEN];
