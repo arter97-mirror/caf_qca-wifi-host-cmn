@@ -8639,10 +8639,8 @@ void dp_print_dal_tx_stats(struct dp_soc *soc)
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 	int ring_id;
 
-	if (!dal_ctx) {
-		dp_err("Invalid access");
+	if (!dal_ctx)
 		return;
-	}
 
 	DP_PRINT_STATS("DAL Tx stats:");
 
@@ -8699,10 +8697,8 @@ void dp_print_dal_rx_stats(struct dp_soc *soc)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 
-	if (!dal_ctx) {
-		dp_err("Invalid access");
+	if (!dal_ctx)
 		return;
-	}
 
 	DP_PRINT_STATS("DAL Rx stats:");
 	DP_PRINT_STATS("Failed drop count on ring %d: %llu",
