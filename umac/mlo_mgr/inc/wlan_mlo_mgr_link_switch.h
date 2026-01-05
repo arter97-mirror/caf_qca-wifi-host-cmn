@@ -931,6 +931,22 @@ mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
 				struct vdev_start_params *vdev_start_params);
 
 /**
+ * mlo_mgr_cache_peer_assoc_params() - Cache peer association parameters for
+ * unified connect command processing
+ * @vdev: pointer to vdev object
+ * @peer_assoc_params: pointer to peer association parameters to cache
+ *
+ * This API caches peer association parameters in MLO manager context during
+ * link switch or unified connect scenarios. The cached parameters will
+ * be used later when the actual peer association command needs to be sent.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
+				struct peer_assoc_params *peer_assoc_params);
+
+/**
  * mlo_mgr_cleanup_cached_connect_params() - Cleanup all cached connect params
  * @vdev: Pointer to vdev object
  *
@@ -941,7 +957,6 @@ mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
  * Return: None
  */
 void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev);
-
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1229,6 +1244,13 @@ mlo_mgr_cache_peer_create_params(struct wlan_objmgr_vdev *vdev,
 static inline QDF_STATUS
 mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
 				struct vdev_start_params *vdev_start_params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
+				struct peer_assoc_params *peer_assoc_params)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

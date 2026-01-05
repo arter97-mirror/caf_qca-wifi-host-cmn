@@ -2512,6 +2512,39 @@ mlo_mgr_cache_vdev_start_params(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+QDF_STATUS
+mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
+				struct peer_assoc_params *peer_assoc_params)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_vdev_connect_params_cache *connect_params;
+
+	if (!vdev || !peer_assoc_params)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	connect_params = &mlo_dev_ctx->link_ctx->connect_params;
+
+	if (!connect_params->peer_assoc) {
+		connect_params->peer_assoc =
+			qdf_mem_malloc(sizeof(struct peer_assoc_params));
+		if (!connect_params->peer_assoc)
+			return QDF_STATUS_E_NOMEM;
+	}
+
+	qdf_mem_copy(connect_params->peer_assoc, peer_assoc_params,
+		     sizeof(struct peer_assoc_params));
+
+	mlo_debug("vdev:%d cached peer assoc params " QDF_MAC_ADDR_FMT,
+		  connect_params->peer_assoc->vdev_id,
+		  QDF_MAC_ADDR_REF(connect_params->peer_assoc->peer_mac));
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
@@ -2536,4 +2569,8 @@ void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
 		connect_params->vdev_start = NULL;
 	}
 
+	if (connect_params->peer_assoc) {
+		qdf_mem_free(connect_params->peer_assoc);
+		connect_params->peer_assoc = NULL;
+	}
 }
