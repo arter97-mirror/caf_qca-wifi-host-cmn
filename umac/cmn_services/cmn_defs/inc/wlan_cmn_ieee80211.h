@@ -153,6 +153,9 @@
 /* Max channel switch time IE length */
 #define WLAN_MAX_CHAN_SWITCH_TIME_IE_LEN         4
 
+#define WLAN_MIN_HECAP_IE_LEN                    22
+#define WLAN_MAX_HECAP_IE_LEN                    55
+
 /* HT capability flags */
 #define WLAN_HTCAP_C_ADVCODING             0x0001
 #define WLAN_HTCAP_C_CHWIDTH40             0x0002
@@ -1323,6 +1326,8 @@ struct wlan_ie_vhtop {
 #define WLAN_HE_MACCAP_LEN 6
 #define WLAN_HE_PHYCAP_LEN 11
 #define WLAN_HE_MAX_MCS_MAPS 3
+#define WLAN_HE_MCS_MAP_LEN 2
+#define WLAN_INVALID_RX_MCS_MAP 0xFFFF
 /**
  * struct wlan_ie_hecaps - HT capabilities
  * @elem_id: HE caps IE
