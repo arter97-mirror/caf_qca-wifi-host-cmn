@@ -116,7 +116,6 @@ int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count)
 			}
 
 			nbuf_count++;
-
 			next = (desc_list)->next;
 
 			if (qdf_unlikely(rx_desc_pool->rx_mon_dest_frag_enable))
@@ -233,13 +232,14 @@ int dp_dal_rx_replenish_alloc_vendor_cb(void *priv, uint16_t count)
 	if (desc_list)
 		dp_rx_add_desc_list_to_free_list(soc, &desc_list, &tail,
 						 mac_id, rx_desc_pool);
+
 	return 0;
 }
 
 /**
- *dp_dal_rx_isr_vendor_cb - rx ISR vendor callback
- *@ring_num: rx ring number
- *@priv: pointer to dp dal context
+ * dp_dal_rx_isr_vendor_cb - rx ISR vendor callback
+ * @ring_num: rx ring number
+ * @priv: pointer to dp dal context
  *
  * Return: 0 on success
  */

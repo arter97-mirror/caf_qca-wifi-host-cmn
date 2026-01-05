@@ -20,9 +20,9 @@
  * ring access. It encapsulates the locking and ring access start operations
  * to ensure consistent behavior across all ring access operations.
  */
-static inline void dp_dal_offload_sim_ring_access_start(
-				struct dp_dal_offload_sim_ctx *offload_ctx,
-				struct dal_vndr_hal_srng *ring)
+static inline void
+dp_dal_offload_sim_ring_access_start(struct dp_dal_offload_sim_ctx *offload_ctx,
+				     struct dal_vndr_hal_srng *ring)
 {
 	if (!offload_ctx || !ring) {
 		dp_err("NULL context in ring_access_start");
@@ -80,10 +80,10 @@ dp_dal_offload_sim_ring_access_end(struct dp_dal_offload_sim_ctx *offload_ctx,
  * Return: None
  *
  */
-static inline void dp_dal_offload_sim_hal_addrs_params_init(
-	struct dp_dal_offload_sim_ctx *offload_sim_ctx,
-	struct dal_vndr_hal_srng *hal_srng,
-	struct dal_sim_srng *sim_srng)
+static inline void
+dp_dal_offload_sim_hal_addrs_params_init(struct dp_dal_offload_sim_ctx *offload_sim_ctx,
+					 struct dal_vndr_hal_srng *hal_srng,
+					 struct dal_sim_srng *sim_srng)
 {
 	/* Here in simulation mode ring_base_addr is filled with virtual address
 	 * so that vendor hal apis can use directly ring_base_addr to access
@@ -130,10 +130,10 @@ static inline void dp_dal_offload_sim_hal_addrs_params_init(
 	}
 }
 #else
-static inline void dp_dal_offload_sim_hal_addrs_params_init(
-				struct dp_dal_offload_sim_ctx *offload_sim_ctx,
-				struct dal_vndr_hal_srng *hal_srng,
-				struct dal_sim_srng *sim_srng)
+static inline void
+dp_dal_offload_sim_hal_addrs_params_init(struct dp_dal_offload_sim_ctx *offload_sim_ctx,
+					 struct dal_vndr_hal_srng *hal_srng,
+					 struct dal_sim_srng *sim_srng)
 {
 }
 #endif
@@ -151,8 +151,8 @@ static inline void dp_dal_offload_sim_hal_addrs_params_init(
  * Return: None
  *
  */
-static inline void dp_dal_offload_sim_overwrite_tx_desc(
-		void *hal_soc_hdl, void *txdesc)
+static inline void
+dp_dal_offload_sim_overwrite_tx_desc(void *hal_soc_hdl, void *txdesc)
 {
 	uint8_t lmac_id;
 	dma_addr_t paddr;
@@ -176,6 +176,7 @@ static inline void dp_dal_offload_sim_overwrite_tx_desc(
 		dp_err_rl("Invalid parameters");
 		return;
 	}
+
 	/* Read all fields from TX descriptor using HAL_TX_DESC_GET APIs */
 	lmac_id = DAL_VNDR_HAL_TX_DESC_GET(txdesc, TCL_DATA_CMD, PMAC_ID);
 
@@ -260,10 +261,10 @@ static inline void dp_dal_offload_sim_overwrite_tx_desc(
  *
  * Copies ring information field by field from dal_sim_srng to dal_vndr_hal_srng
  */
-static void dp_dal_offload_sim_hal_ring_init(
-	struct dp_dal_offload_sim_ctx *offload_sim_ctx,
-	struct dal_vndr_hal_srng *hal_srng,
-	struct dal_sim_srng *sim_srng)
+static void
+dp_dal_offload_sim_hal_ring_init(struct dp_dal_offload_sim_ctx *offload_sim_ctx,
+				 struct dal_vndr_hal_srng *hal_srng,
+				 struct dal_sim_srng *sim_srng)
 {
 	/* Copy basic ring information */
 	hal_srng->ring_id = sim_srng->hal_ring_id;
@@ -278,11 +279,13 @@ static void dp_dal_offload_sim_hal_ring_init(
 	hal_srng->ring_dir = sim_srng->ring_dir;
 	hal_srng->irq_num = sim_srng->irq_num;
 	hal_srng->hal_soc = &offload_sim_ctx->hal_soc;
+
 	/* copy ring address information from sim ring to hal ring */
 	dp_dal_offload_sim_hal_addrs_params_init(
 		offload_sim_ctx, hal_srng, sim_srng);
 	DAL_VNDR_SRNG_LOCK_INIT(&hal_srng->lock);
 }
+
 int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
@@ -294,13 +297,12 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 		return -EINVAL;
 	}
 
-	/* Allocate offload simulation context */
 	offload_ctx = qdf_mem_malloc(sizeof(*offload_ctx));
 	if (!offload_ctx) {
 		dp_err("Failed to allocate offload sim context");
 		return -ENOMEM;
 	}
-	/* Zero out the structure */
+
 	qdf_mem_zero(offload_ctx, sizeof(*offload_ctx));
 
 	offload_ctx->hal_soc.ops = qdf_mem_malloc(
@@ -314,6 +316,7 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 	 * Google DAL has to assign BAR address here.
 	 */
 	offload_ctx->hal_soc.dev_base_addr = dal_sim_ctx->dev_base_addr;
+
 	/* Copy dal_vndr_hal_srng from dal_sim_srng structures */
 	/* RX rings */
 	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
@@ -347,13 +350,11 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 	/* Vendor HAL ops can be overridden here if needed with target_type*/
 	dal_vndr_hal_ops_attach(&offload_ctx->hal_soc);
 
-	/* Mark as offload_sim_ctx_initialized */
 	offload_ctx->offload_sim_ctx_initialized = true;
-
-	/* Assign to dal_sim_ctx */
 	dal_sim_ctx->offload_sim_ctx = offload_ctx;
 
 	return 0;
+
 free_offload_ctx:
 	qdf_mem_free(offload_ctx);
 	return status;
@@ -377,17 +378,12 @@ void dp_dal_offload_sim_deinit(struct dp_dal_sim_ctx *dal_sim_ctx)
 
 	dp_info("Deinitializing offload simulation context");
 
-	/* Free IRQs before deinitializing */
 	dp_dal_offload_sim_free_irq(dal_sim_ctx);
 
-	/* Mark as not initialized */
 	offload_ctx->offload_sim_ctx_initialized = false;
-	/* Free hal_soc ops memory allocated in init */
 	qdf_mem_free(offload_ctx->hal_soc.ops);
-	/* Free the context */
 	qdf_mem_free(offload_ctx);
 
-	/* Nullify the pointer in dal_sim_ctx */
 	dal_sim_ctx->offload_sim_ctx = NULL;
 	dp_info("Offload simulation context deinitialized successfully");
 }
@@ -423,6 +419,7 @@ static irqreturn_t dp_dal_offload_sim_interrupt_handler(int irq, void *arg)
 
 	dp_dal_offload_sim_disable_ring_irq(sim_ctx, irq_ctx->ring_type,
 					    irq_ctx->ring_id);
+
 	/* Call dal sim api to queue work for processing interrupt */
 	dp_dal_sim_schedule_work(arg);
 
@@ -450,12 +447,11 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 
 	/* Register RX ring IRQs */
 	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
-		/* Initialize IRQ context */
 		offload_ctx->rx_irq_ctx[i].dal_sim_ctx = dal_sim_ctx;
 		offload_ctx->rx_irq_ctx[i].ring_id = i;
 		offload_ctx->rx_irq_ctx[i].ring_type = OFFLOAD_SIM_RING_TYPE_RX;
 		offload_ctx->rx_irq_ctx[i].irq_configured = false;
-		/* Register IRQ using platform-specific function */
+
 		ret = pfrm_request_irq(
 			dal_sim_ctx->dev,
 			dal_sim_ctx->rx_ring[i].irq_num,
@@ -468,7 +464,7 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 			       i, ret);
 			goto free_irqs;
 		}
-		/* Mark IRQ as configured on successful registration */
+
 		offload_ctx->rx_irq_ctx[i].irq_configured = true;
 		dp_info("Registered RX IRQ %d for ring %d",
 			dal_sim_ctx->rx_ring[i].irq_num, i);
@@ -476,13 +472,12 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 
 	/* Register TX completion ring IRQs */
 	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
-		/* Initialize IRQ context */
 		offload_ctx->tx_cpl_irq_ctx[i].dal_sim_ctx = dal_sim_ctx;
 		offload_ctx->tx_cpl_irq_ctx[i].ring_id = i;
 		offload_ctx->tx_cpl_irq_ctx[i].ring_type =
 						OFFLOAD_SIM_RING_TYPE_TX_CPL;
 		offload_ctx->tx_cpl_irq_ctx[i].irq_configured = false;
-		/* Register IRQ using platform-specific function */
+
 		ret = pfrm_request_irq(
 				dal_sim_ctx->dev,
 				dal_sim_ctx->tx_cmpl_ring[i].irq_num,
@@ -495,7 +490,7 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 			       i, ret);
 			goto free_irqs;
 		}
-		/* Mark IRQ as configured on successful registration */
+
 		offload_ctx->tx_cpl_irq_ctx[i].irq_configured = true;
 		dp_info("Registered TX completion IRQ %d for ring %d",
 			dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
@@ -505,7 +500,6 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 	return 0;
 
 free_irqs:
-	/* Free any IRQs that were successfully registered */
 	dp_dal_offload_sim_free_irq(dal_sim_ctx);
 	return ret;
 }
@@ -529,7 +523,6 @@ void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 
 	/* Free RX ring IRQs */
 	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
-		/* Only free IRQ if it was successfully configured */
 		if (offload_ctx->rx_irq_ctx[i].irq_configured) {
 			pfrm_free_irq(dal_sim_ctx->dev,
 				      dal_sim_ctx->rx_ring[i].irq_num,
@@ -542,7 +535,6 @@ void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 
 	/* Free TX completion ring IRQs */
 	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
-		/* Only free IRQ if it was successfully configured */
 		if (offload_ctx->tx_cpl_irq_ctx[i].irq_configured) {
 			pfrm_free_irq(dal_sim_ctx->dev,
 				      dal_sim_ctx->tx_cmpl_ring[i].irq_num,
@@ -571,11 +563,8 @@ void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 		return;
 	}
 
-	dp_info("Disabling dal owned rings irq");
-
 	/* Disable RX ring IRQs */
 	for (i = 0; i < DAL_RX_RINGS_MAX; i++) {
-		/* Only disable IRQ if it was successfully configured */
 		if (offload_ctx->rx_irq_ctx[i].irq_configured) {
 			pfrm_disable_irq(dal_sim_ctx->dev,
 					 dal_sim_ctx->rx_ring[i].irq_num);
@@ -586,7 +575,6 @@ void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 
 	/* Disable TX completion ring IRQs */
 	for (i = 0; i < DAL_TX_RINGS_MAX; i++) {
-		/* Only disable IRQ if it was successfully configured */
 		if (offload_ctx->tx_cpl_irq_ctx[i].irq_configured) {
 			pfrm_disable_irq(dal_sim_ctx->dev,
 					 dal_sim_ctx->tx_cmpl_ring[i].irq_num);
@@ -594,8 +582,6 @@ void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 				 dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
 		}
 	}
-
-	dp_info("IRQ disable complete");
 }
 
 /**
@@ -611,11 +597,8 @@ void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
  *
  * Return: 0 on success, negative error code on failure
  */
-int dp_dal_offload_sim_tx_hw_enqueue(
-			struct dp_dal_sim_ctx *dal_sim_ctx,
-			u8 ring_id,
-			void *desc,
-			void *tx_metadata)
+int dp_dal_offload_sim_tx_hw_enqueue(struct dp_dal_sim_ctx *dal_sim_ctx,
+				     u8 ring_id, void *desc, void *tx_metadata)
 {
 	struct dp_dal_ctx *dal_ctx;
 	struct dp_dal_offload_sim_ctx *offload_ctx;
@@ -657,14 +640,18 @@ int dp_dal_offload_sim_tx_hw_enqueue(
 		ret = -ENOSPC;
 		goto exit;
 	}
+
+	/* Overwrite descriptor if vendor HAL is configured */
 	if (dp_dal_sim_cfg_use_vndr_hal(dal_sim_ctx))
 		dp_dal_offload_sim_overwrite_tx_desc(&offload_ctx->hal_soc,
 						     desc);
+
 	/* Sync cached descriptor content to HW descriptor */
 	dal_vndr_hal_tx_desc_sync(desc, hal_tx_desc,
 				  DAL_VNDR_HAL_TX_DESC_LEN_BYTES);
 
 	dp_debug("TX descriptor enqueued successfully for ring_id %u", ring_id);
+
 exit:
 	/* End ring access and release lock */
 	dp_dal_offload_sim_ring_access_end(offload_ctx, tcl_ring);
@@ -672,10 +659,8 @@ exit:
 	return ret;
 }
 
-int dp_dal_offload_sim_get_reo_desc(
-				struct dp_dal_sim_ctx *dal_sim_ctx,
-				u16 ring_id,
-				u32 budget)
+int dp_dal_offload_sim_get_reo_desc(struct dp_dal_sim_ctx *dal_sim_ctx,
+				    u16 ring_id, u32 budget)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *reo_ring;
@@ -710,7 +695,6 @@ int dp_dal_offload_sim_get_reo_desc(
 
 	/* Reap REO descriptors until budget is reached or no more descriptor */
 	while (retrieved < budget) {
-
 		/* Get next REO descriptor from the ring */
 		reo_desc = dal_vndr_hal_srng_dst_get_next(&offload_ctx->hal_soc,
 							  reo_ring);
@@ -746,10 +730,8 @@ int dp_dal_offload_sim_get_reo_desc(
 	return retrieved;
 }
 
-int dp_dal_offload_sim_get_tx_compl_desc(
-				struct dp_dal_sim_ctx *dal_sim_ctx,
-				u16 ring_id,
-				u32 budget)
+int dp_dal_offload_sim_get_tx_compl_desc(struct dp_dal_sim_ctx *dal_sim_ctx,
+					 u16 ring_id, u32 budget)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *tx_compl_ring;
@@ -786,7 +768,6 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 	 * no more descriptors.
 	 */
 	while (retrieved < budget) {
-
 		/* Get next TX completion descriptor from the ring */
 		tx_compl_desc = dal_vndr_hal_srng_dst_get_next(
 						&offload_ctx->hal_soc,
@@ -825,8 +806,8 @@ int dp_dal_offload_sim_get_tx_compl_desc(
 	return retrieved;
 }
 
-uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
-					struct dp_dal_sim_ctx *dal_sim_ctx)
+uint32_t
+dp_dal_offload_sim_get_rx_refill_avail_entries(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *rx_refill_ring;
@@ -855,7 +836,6 @@ uint32_t dp_dal_offload_sim_get_rx_refill_avail_entries(
 							&offload_ctx->hal_soc,
 							rx_refill_ring,
 							1);
-
 	/* Release the ring lock */
 	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
 
@@ -912,10 +892,8 @@ void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx)
 	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
 }
 
-int dp_dal_offload_sim_rxbm_sync(
-				struct dp_dal_sim_ctx *dal_sim_ctx,
-				u32 cnt,
-				void **rx_buff)
+int dp_dal_offload_sim_rxbm_sync(struct dp_dal_sim_ctx *dal_sim_ctx,
+				 u32 cnt, void **rx_buff)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *rx_refill_ring;
@@ -975,12 +953,9 @@ int dp_dal_offload_sim_rxbm_sync(
 	return i;
 }
 
-int dp_dal_offload_sim_fetch_current_hp_tp(
-				struct dp_dal_sim_ctx *dal_sim_ctx,
-				uint32_t *hp,
-				uint32_t *tp,
-				int ring_type,
-				int ring_id)
+int dp_dal_offload_sim_fetch_current_hp_tp(struct dp_dal_sim_ctx *dal_sim_ctx,
+					   uint32_t *hp, uint32_t *tp,
+					   int ring_type, int ring_id)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
 	struct dal_vndr_hal_srng *hal_srng = NULL;
@@ -995,14 +970,12 @@ int dp_dal_offload_sim_fetch_current_hp_tp(
 		return -EINVAL;
 	}
 
-	offload_ctx =
-		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	offload_ctx = (struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
 	if (!offload_ctx) {
 		dp_err("NULL offload context");
 		return -EINVAL;
 	}
 
-	/* Get the appropriate ring based on ring_type and ring_id */
 	switch (ring_type) {
 	case OFFLOAD_SIM_RING_TYPE_RX:
 		if (ring_id < 0 || ring_id >= DAL_RX_RINGS_MAX) {

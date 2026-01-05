@@ -159,6 +159,7 @@ static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
 			platform_ret = (platform_ret == 0) ?
 					DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
 		}
+
 		hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_DP);
 	} else {
 		/*
@@ -374,9 +375,9 @@ dp_dal_tx_queue_suspended_desc(struct dp_dal_ctx *dal_ctx,
 #endif /* FEATURE_RUNTIME_PM */
 
 /**
- *dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
- *@ring_num: tx completion ring number
- *@priv: pointer to dp dal context
+ * dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
+ * @ring_num: tx completion ring number
+ * @priv: pointer to dp dal context
  *
  * Return: 0 on success
  */

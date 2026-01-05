@@ -227,8 +227,8 @@ static void dp_dal_sim_sw2sw_rings_deinit(struct dp_dal_sim_ctx *sim_ctx)
  * This function is called during init time to store config whether to use
  * dal vendor hal for overwriting tx desc during tx hw enqueue.
  */
-static inline void dp_dal_sim_set_vndr_hal_use_cfg(
-	struct dp_dal_sim_ctx *sim_ctx)
+static inline void
+dp_dal_sim_set_vndr_hal_use_cfg(struct dp_dal_sim_ctx *sim_ctx)
 {
 	uint8_t dal_vndr_hal_use_cfg;
 
@@ -253,6 +253,7 @@ static inline void dp_dal_sim_set_vndr_hal_use_cfg(
 	else
 		sim_ctx->use_dal_vndr_hal = false;
 }
+
 /* ========================================================================
  * Platform Bus Operations - Offload Mode Implementation
  * ========================================================================
@@ -273,7 +274,6 @@ static int dp_dal_sim_calc_msi(struct dp_dal_sim_ctx *sim_ctx,
 		return -EINVAL;
 	}
 
-	/* Calculate msi addr, msi data using grp_id */
 	int msi_vector_count, ret, grp_id, irq_num;
 	uint32_t msi_base_data, msi_vector_start, addr_low, addr_high;
 	unsigned int vector;
@@ -461,10 +461,7 @@ static void dp_dal_sim_rx_work_handler(void *arg)
 
 	qdf_atomic_set(&sim_ctx->rx_work_scheduled[ring_id], 0);
 
-	/* Get ring_num from dal_sim_srng structure */
 	ring_num = sim_ctx->rx_ring[ring_id].ring_num;
-
-	/* Update statistics per ring */
 	sim_ctx->stats.rx_work_scheduled[ring_id]++;
 
 	dp_debug("RX work handler executing for ring_id=%d, ring_num=%d",
@@ -481,7 +478,6 @@ static void dp_dal_sim_rx_work_handler(void *arg)
 	dp_debug("Reaped %d RX descriptors for ring_id=%d, enqueued to SW2SW",
 		 reaped_desc, ring_id);
 
-	/* Update statistics */
 	sim_ctx->stats.rx_received[ring_id] += reaped_desc;
 
 	/* Call vendor RX ISR callback to notify driver about availability */
@@ -523,10 +519,7 @@ static void dp_dal_sim_tx_cpl_work_handler(void *arg)
 
 	qdf_atomic_set(&sim_ctx->tx_compl_work_scheduled[ring_id], 0);
 
-	/* Get ring_num from dal_sim_srng structure */
 	ring_num = sim_ctx->tx_cmpl_ring[ring_id].ring_num;
-
-	/* Update statistics per ring */
 	sim_ctx->stats.tx_work_scheduled[ring_id]++;
 
 	dp_debug("TX compl work handler executing for ring_id=%d, ring_num=%d",
@@ -617,10 +610,10 @@ static int dp_dal_sim_init(void *priv)
 {
 	int i;
 	struct hal_soc *hal_soc;
-
 	int status = 0;
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_dal_sim_ctx *sim_ctx = NULL;
+	char wq_name[32];
 
 	if (!dal_ctx) {
 		dp_err("NULL DAL context in offload_mode_init");
@@ -639,6 +632,7 @@ static int dp_dal_sim_init(void *priv)
 
 	/* Get the device ptr */
 	sim_ctx->dev = dal_ctx->soc->osdev->dev;
+
 	/* Parse ring information from driver */
 	status = dp_dal_sim_parse_ring_info(sim_ctx, priv);
 	if (status) {
@@ -653,10 +647,8 @@ static int dp_dal_sim_init(void *priv)
 		return status;
 	}
 
-	char wq_name[32];
-	/* Create high priority work queues and initialize work per ring */
+	/* Create high priority work queues for RX rings */
 	for (i = 0; i < DAL_SIM_NUM_RX_RINGS; i++) {
-		/* Create high priority work queue for RX ring */
 		qdf_snprintf(wq_name, sizeof(wq_name), "dal_sim_rx_%d", i);
 		sim_ctx->rx_work_queue[i] =
 				qdf_alloc_high_prior_ordered_workqueue(wq_name);
@@ -665,19 +657,18 @@ static int dp_dal_sim_init(void *priv)
 			status = -ENOMEM;
 			goto free_offload_ctx;
 		}
-		/* Initialize RX work context */
+
 		sim_ctx->rx_work_ctx[i].sim_ctx = sim_ctx;
 		sim_ctx->rx_work_ctx[i].ring_id = i;
-		/* Create work structures with work contexts */
+
 		qdf_create_work(0, &sim_ctx->rx_process_work[i],
 				dp_dal_sim_rx_work_handler,
 				&sim_ctx->rx_work_ctx[i]);
-		/* Initialize atomic variables for this ring */
 		qdf_atomic_init(&sim_ctx->rx_work_scheduled[i]);
 	}
 
+	/* Create high priority work queue for TX completion rings */
 	for (i = 0; i < DAL_SIM_NUM_TX_RINGS; i++) {
-		/* Create high priority work queue for TX completion ring */
 		qdf_snprintf(wq_name, sizeof(wq_name), "dal_sim_tx_cpl_%d", i);
 		sim_ctx->tx_compl_work_queue[i] =
 				qdf_alloc_high_prior_ordered_workqueue(wq_name);
@@ -687,7 +678,7 @@ static int dp_dal_sim_init(void *priv)
 			status = -ENOMEM;
 			goto free_offload_ctx;
 		}
-		/* Initialize TX completion work context */
+
 		sim_ctx->tx_cpl_work_ctx[i].sim_ctx = sim_ctx;
 		sim_ctx->tx_cpl_work_ctx[i].ring_id = i;
 
@@ -707,14 +698,14 @@ static int dp_dal_sim_init(void *priv)
 		goto free_offload_ctx;
 	}
 
-	/* Mark as initialized */
 	sim_ctx->sim_ctx_initialized = true;
 	dp_dal_sim_set_vndr_hal_use_cfg(sim_ctx);
 	dp_info("dal sim init complete");
+
 	return status;
+
 free_offload_ctx:
 	dp_dal_offload_sim_deinit(sim_ctx);
-	/* Destroy any work queues that were successfully created */
 	dp_dal_sim_destroy_work(sim_ctx);
 	qdf_spinlock_destroy(&sim_ctx->rxbm_sync_lock);
 
@@ -731,13 +722,8 @@ void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
 		return;
 
 	qdf_spinlock_destroy(&sim_ctx->rxbm_sync_lock);
-	/* Destroy all work queues and work items */
 	dp_dal_sim_destroy_work(sim_ctx);
-
-	/* Deinitialize SW2SW rings for all rings */
 	dp_dal_sim_sw2sw_rings_deinit(sim_ctx);
-
-	/* Call offload mode exit api to free offload simulation resources */
 	dp_dal_offload_sim_deinit(sim_ctx);
 
 	sim_ctx->sim_ctx_initialized = false;
@@ -836,11 +822,11 @@ static void dp_dal_sim_stop(void *priv)
  *
  * Return: 0 on success, negative error code on failure
  */
-static inline int dp_dal_sim_set_ring_msi(
-		struct dp_dal_ctx *dp_dal_ctx,
-		struct dp_dal_sim_ctx *sim_ctx,
-		struct dal_sim_srng *sim_srng,
-		int num_rings)
+static inline int
+dp_dal_sim_set_ring_msi(struct dp_dal_ctx *dp_dal_ctx,
+			struct dp_dal_sim_ctx *sim_ctx,
+			struct dal_sim_srng *sim_srng,
+			int num_rings)
 {
 	int i, status;
 
@@ -958,6 +944,7 @@ static bool dp_dal_sim_rx(void *priv, u32 *cnt, u16 ring_num)
 		*cnt = 0;
 		return false;
 	}
+
 	sim_ctx = dal_ctx->dal_sim_ctx;
 	if (!sim_ctx) {
 		dp_err("NULL simulator context in offload_mode_rx");
@@ -1151,9 +1138,8 @@ static int dp_dal_sim_rxbm_sync(void *priv, u32 cnt, void **rxbm)
  *
  * Return: 0 on success, negative error code on failure
  */
-static int dp_dal_sim_tx
-	(void *priv, u8 ring_num,
-	 u32 ifidx, void *desc, void *tx_metadata)
+static int dp_dal_sim_tx(void *priv, u8 ring_num, u32 ifidx, void *desc,
+			 void *tx_metadata)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_dal_sim_ctx *sim_ctx;
@@ -1387,7 +1373,8 @@ static int dp_dal_sim_notify_suspend(void *priv)
 				if (!dp_dal_sim_is_sw2sw_ring_empty(
 					&sim_ctx->tx_cpl_sw2sw_ring[i])) {
 					rings_empty = false;
-					dp_debug("TX cpl SW2SW ring[%d] not empty", i);
+					dp_debug("TX cpl SW2SW ring[%d] not empty",
+						 i);
 					break;
 				}
 			}
@@ -1541,7 +1528,6 @@ static int dp_dal_sim_intf_deinit(void *priv, uint16_t vdev_id)
 			dp_info("Interface deinitialized: type=%d, vdev_id=%u",
 				sim_ctx->intf_info[i].type, vdev_id);
 
-			/* Clear the interface information */
 			qdf_mem_zero(&sim_ctx->intf_info[i],
 				     sizeof(struct dal_intf_info));
 			return 0;
@@ -1613,13 +1599,11 @@ void dp_dal_sim_schedule_work(void *arg)
 			dp_err_rl("Invalid ring_id %d", ring_id);
 			return;
 		}
-		/* RX interrupt - increment ISR count every time */
+
 		sim_ctx->stats.rx_isr_count[ring_id]++;
 
-		/* RX interrupt - schedule RX work */
 		already_scheduled =
 			qdf_atomic_read(&sim_ctx->rx_work_scheduled[ring_id]);
-
 		if (!already_scheduled) {
 			qdf_atomic_set(&sim_ctx->rx_work_scheduled[ring_id], 1);
 			qdf_queue_work(0, sim_ctx->rx_work_queue[ring_id],
@@ -1632,13 +1616,11 @@ void dp_dal_sim_schedule_work(void *arg)
 			dp_err_rl("Invalid ring_id %d", ring_id);
 			return;
 		}
-		/* TX completion interrupt - increment ISR count every time */
+
 		sim_ctx->stats.tx_cpl_isr_count[ring_id]++;
 
-		/* TX completion interrupt - schedule TX completion work */
 		already_scheduled = qdf_atomic_read(
 				&sim_ctx->tx_compl_work_scheduled[ring_id]);
-
 		if (!already_scheduled) {
 			qdf_atomic_set(
 				&sim_ctx->tx_compl_work_scheduled[ring_id],
@@ -1939,8 +1921,8 @@ dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx,
  *
  * Return: None
  */
-static inline void dp_dal_sim_mode_bypass_switch(
-	struct dp_dal_sim_ctx *sim_ctx)
+static inline void
+dp_dal_sim_mode_bypass_switch(struct dp_dal_sim_ctx *sim_ctx)
 {
 	int status;
 	void *ring_hp_tp_info;
@@ -1965,17 +1947,21 @@ static inline void dp_dal_sim_mode_bypass_switch(
 
 	/* disable irqs */
 	dp_dal_offload_sim_disable_irq(sim_ctx);
+
 	/* Set mode switch in progress flag to true */
 	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 1);
+
 	/* Take spinlock for rxbm sync to ensure ongoing sync is completed */
 	qdf_spin_lock_bh(&sim_ctx->rxbm_sync_lock);
 	qdf_spin_unlock_bh(&sim_ctx->rxbm_sync_lock);
+
 	/* Flush and cancel work*/
 	dp_dal_sim_destroy_work(sim_ctx);
 
 	dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(sim_ctx);
 	num_ring_info = dp_dal_sim_store_current_hp_tp(sim_ctx,
 						       ring_hp_tp_info);
+
 	/* Early mode switch ind */
 	vendor_cb.early_mode_switch_ind(sim_ctx->dp_dal_ctx,
 					ring_hp_tp_info, num_ring_info,
@@ -2020,8 +2006,8 @@ static inline void dp_dal_sim_mode_bypass_switch(
  *
  * Return: None
  */
-static inline void dp_dal_sim_mode_offload_switch(
-	struct dp_dal_sim_ctx *sim_ctx)
+static inline void
+dp_dal_sim_mode_offload_switch(struct dp_dal_sim_ctx *sim_ctx)
 {
 	int status;
 
@@ -2034,8 +2020,10 @@ static inline void dp_dal_sim_mode_offload_switch(
 		dp_err("mode_switch_ind callback not registered");
 		return;
 	}
+
 	/* Set mode switch in progress flag to true */
 	qdf_atomic_set(&sim_ctx->sim_mode_switch_in_progress, 1);
+
 	/* Update the global plat ops with offload mode ops */
 	global_plat_ops = &dp_dal_sim_plat_ops;
 
@@ -2066,7 +2054,6 @@ void dp_dal_sim_trigger_mode_switch(
 	struct dp_dal_sim_ctx *sim_ctx;
 
 	dp_soc = cdp_soc_t_to_dp_soc(soc_hdl);
-
 	if (!dp_soc) {
 		dp_err("Null soc context");
 		return;
@@ -2092,6 +2079,7 @@ void dp_dal_sim_trigger_mode_switch(
 
 	dp_info("mode switch request: curr_mode:%d, new mode %d",
 		g_dal_sim_curr_mode, mode_requested);
+
 	if (mode_requested == DAL_DP_BYPASS_MODE &&
 	    g_dal_sim_curr_mode == DAL_DP_OFFLOAD_MODE)
 		dp_dal_sim_mode_bypass_switch(sim_ctx);
