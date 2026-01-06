@@ -543,7 +543,7 @@ static bool reg_is_band_found_internal(enum channel_enum start_idx,
 				       enum channel_enum end_idx,
 				       struct regulatory_channel *cur_chan_list)
 {
-	uint8_t i;
+	uint16_t i;
 
 	for (i = start_idx; i <= end_idx; i++)
 		if (!(reg_is_chan_disabled_and_not_nol(&cur_chan_list[i])))
