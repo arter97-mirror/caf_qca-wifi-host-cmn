@@ -4362,9 +4362,9 @@ static inline void dp_htt_rx_nbuf_free(qdf_nbuf_t nbuf)
  * @peer_mac_addr: peer mac address
  * @is_wds: wds flag
  *
- * Return: None
+ * Return: false in case wds is not supported and is_wds is set else true
  */
-static inline void dp_check_is_wds_valid(struct dp_soc *soc, uint16_t peer_id,
+static inline bool dp_check_is_wds_valid(struct dp_soc *soc, uint16_t peer_id,
 					 uint16_t hw_peer_id, uint8_t vdev_id,
 					 uint8_t *peer_mac_addr,
 					 uint8_t is_wds)
@@ -4374,7 +4374,9 @@ static inline void dp_check_is_wds_valid(struct dp_soc *soc, uint16_t peer_id,
 		       soc, peer_id, hw_peer_id,
 		       QDF_MAC_ADDR_REF(peer_mac_addr), vdev_id);
 		qdf_assert_always(0);
+		return false;
 	}
+	return true;
 }
 
 #ifdef WLAN_HAPS_ENABLE
@@ -4744,8 +4746,13 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 			 * peer ast_list.
 			 */
 			is_wds = !!(dpsoc->peer_id_to_obj_map[peer_id]);
-			dp_check_is_wds_valid(soc->dp_soc, peer_id, hw_peer_id,
-					      vdev_id, peer_mac_addr, is_wds);
+			if (!dp_check_is_wds_valid(soc->dp_soc, peer_id,
+						   hw_peer_id, vdev_id,
+						   peer_mac_addr, is_wds)) {
+				dp_err("invalid peer map trigger self recovery");
+				qdf_trigger_self_recovery(NULL, QDF_DP_INVALID_PEER_MAP);
+				break;
+			}
 			dp_rx_peer_map_handler(soc->dp_soc, peer_id, hw_peer_id,
 					       vdev_id, peer_mac_addr, 0,
 					       is_wds);
