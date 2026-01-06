@@ -382,11 +382,11 @@ struct dp_dal_ctx {
 	qdf_atomic_t deinit_in_progress;
 	qdf_atomic_t bm_replenish_not_allowed;
 	qdf_runtime_lock_t mode_switch_runtime_lock;
-#ifdef FEATURE_RUNTIME_PM
+#if defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE)
 	qdf_list_t suspended_tx_list;
 	qdf_spinlock_t suspended_tx_lock;
 	uint32_t suspended_tx_count;
-#endif /* FEATURE_RUNTIME_PM */
+#endif /* defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE) */
 #ifdef FEATURE_DP_DAL_SIM
 	struct dp_dal_sim_ctx *dal_sim_ctx;
 #endif
@@ -513,6 +513,18 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc);
 QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc);
 
 /**
+ * dp_dal_flush_suspended_tx_descs() - Wrapper to flush suspended TX descs
+ * @soc: pointer to DP SoC
+ *
+ * This function provides a wrapper around dp_dal_tx_flush_suspended_descs
+ * that can be called from dp_main.c. It takes a dp_soc pointer and internally
+ * calls the DAL TX function with the dal_ctx.
+ *
+ * Return: Number of descriptors flushed
+ */
+uint32_t dp_dal_flush_suspended_tx_descs(struct dp_soc *soc);
+
+/**
  * dp_dal_ssr_notify() - DAL wrapper for platform SSR notify
  * @soc: pointer to DP SoC
  *
@@ -623,6 +635,12 @@ static inline QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 
 static inline void dp_dal_ssr_notify(struct dp_soc *soc)
 {
+}
+
+static inline uint32_t
+dp_dal_flush_suspended_tx_descs(struct dp_soc *soc)
+{
+	return 0;
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_H */

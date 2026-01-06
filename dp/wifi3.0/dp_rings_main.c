@@ -3397,6 +3397,9 @@ void dp_update_ring_hptp(struct dp_soc *soc, bool force_flush_tx)
 	struct dp_srng *dp_srng;
 	uint8_t i;
 
+	/* Flush pending TX descs in DAL layer */
+	dp_dal_flush_suspended_tx_descs(soc);
+
 	if (force_flush_tx) {
 		for (i = 0; i < soc->num_tcl_data_rings; i++) {
 			dp_srng = &soc->tcl_data_ring[i];

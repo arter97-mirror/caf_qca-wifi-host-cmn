@@ -54,8 +54,7 @@ static int dp_dal_bus_init_bypass_mode(void *priv)
 	return 0;
 }
 
-#ifdef FEATURE_RUNTIME_PM
-
+#if defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE)
 /**
  * dp_dal_cleanup_suspended_tx_descs() - Cleanup suspended TX descriptors
  * @dal_ctx: DAL context
@@ -126,9 +125,9 @@ static void dp_dal_init_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
  *
  * Return: None
  */
-static void dp_dal_cleanup_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
+static inline void
+dp_dal_cleanup_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
 {
-	/* No-op when runtime PM is disabled */
 }
 
 /**
@@ -137,11 +136,11 @@ static void dp_dal_cleanup_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
  *
  * Return: None
  */
-static void dp_dal_init_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
+static inline void
+dp_dal_init_suspended_tx_descs(struct dp_dal_ctx *dal_ctx)
 {
-	/* No-op when runtime PM is disabled */
 }
-#endif /* FEATURE_RUNTIME_PM */
+#endif /* defined(FEATURE_RUNTIME_PM) || defined (DP_POWER_SAVE) */
 
 /**
  * dp_dal_bus_exit_bypass_mode() - Skeleton for platform bus exit in bypass mode
@@ -1871,7 +1870,6 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
 QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 {
 	struct dp_dal_ctx *dal_ctx;
-	uint32_t flushed_count;
 	int ret = -EOPNOTSUPP;
 
 	if (!soc) {
@@ -1896,13 +1894,6 @@ QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 	if (ret) {
 		dp_err_rl("Resume notify to DAL failed %d", ret);
 		return QDF_STATUS_E_FAILURE;
-	}
-
-	/* Flush any suspended TX descriptors */
-	flushed_count = dp_dal_tx_flush_suspended_descs(dal_ctx);
-	if (flushed_count > 0) {
-		dp_info("Resume: flushed %u suspended TX descriptors",
-			flushed_count);
 	}
 
 	return QDF_STATUS_SUCCESS;
@@ -2204,4 +2195,30 @@ uint32_t dp_service_dal_srngs(void *dp_ctx, uint32_t dp_budget, int cpu)
 
 budget_done:
 	return dp_budget - budget;
+}
+
+/**
+ * dp_dal_flush_suspended_tx_descs() - Wrapper to flush suspended TX descs
+ * @soc: pointer to DP SoC
+ *
+ * This function provides a wrapper around dp_dal_tx_flush_suspended_descs
+ * that can be called from dp_main.c. It takes a dp_soc pointer and internally
+ * calls the DAL TX function with the dal_ctx.
+ *
+ * Return: Number of descriptors flushed
+ */
+uint32_t dp_dal_flush_suspended_tx_descs(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx)) {
+		dp_debug("DAL feature disabled, no suspended TX descs to flush");
+		return 0;
+	}
+
+	dal_ctx = soc->dal_ctx;
+	if (!dal_ctx)
+		return 0;
+
+	return dp_dal_tx_flush_suspended_descs(dal_ctx);
 }

@@ -15,7 +15,7 @@ extern struct platform_bus_ops *global_plat_ops;
 				   FRAME_MASK_IPV4_EAPOL | \
 				   FRAME_MASK_IPV6_DHCP)
 
-#ifdef FEATURE_RUNTIME_PM
+#if defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE)
 /**
  * dp_dal_tx_queue_suspended_desc() - Queue TX descriptor during suspend
  * @dal_ctx: DAL context
@@ -74,114 +74,6 @@ dp_dal_tx_queue_suspended_desc(struct dp_dal_ctx *dal_ctx,
 	qdf_spin_unlock_bh(&dal_ctx->suspended_tx_lock);
 
 	return 0;
-}
-
-/**
- * dp_dal_tx_rtpm_wrapper() - Runtime PM aware platform TX wrapper
- * @dal_ctx: DAL context
- * @ring_id: Ring ID
- * @vdev_id: VDEV ID
- * @tcl_desc: TCL descriptor (ownership may be transferred)
- * @tx_metadata: TX metadata
- *
- * This function wraps the platform TX call with runtime PM handling
- * similar to dp_tx_ring_access_end_wrapper for bypass mode.
- *
- * Return: enum dp_dal_tx_status values
- */
-static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
-				  uint32_t vdev_id, void *tcl_desc,
-				  struct dp_dal_tx_metadata *tx_metadata)
-{
-	struct dp_soc *soc = dal_ctx->soc;
-	int ret;
-	int platform_ret = 0;
-
-	if (!global_plat_ops || !global_plat_ops->tx) {
-		DP_STATS_INC_PKT(dal_ctx,
-				 tx.offload[ring_id][DAL_TX_NOSUPPORT_DRP], 1,
-				 dp_tx_get_pkt_len(tx_metadata->tx_desc));
-		dp_tx_err_rl("Platform TX operation not available");
-		return DP_DAL_TX_FAILURE;
-	}
-
-	if (dp_get_rtpm_tput_policy_requirement(soc)) {
-		platform_ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id,
-						   tcl_desc, tx_metadata);
-
-		/* DAL will return -EBUSY if mode switch is in progress, try to
-		 * send via bypass mode tx path if it a special frame.
-		 */
-		if (platform_ret == -EBUSY &&
-		    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
-					       DP_DAL_SPECIAL_FRAME_MASK))
-			platform_ret = dp_dal_tx_bypass_mode(dal_ctx, ring_id,
-							     vdev_id, tcl_desc,
-							     tx_metadata);
-
-		return (platform_ret == 0) ? DP_DAL_TX_SUCCESS :
-					      DP_DAL_TX_FAILURE;
-	}
-
-	ret = hif_rtpm_get(HIF_RTPM_GET_ASYNC, HIF_RTPM_ID_DP);
-	if (QDF_IS_STATUS_SUCCESS(ret)) {
-		if (hif_system_pm_state_check(soc->hif_handle)) {
-			/* System is in suspend state. In offload mode,
-			 * we need to defer the TX operation until resume.
-			 * Queue the descriptor for later processing.
-			 * Ownership of tcl_desc is transferred to suspended
-			 * list.
-			 */
-			ret = dp_dal_tx_queue_suspended_desc(dal_ctx, ring_id,
-							     vdev_id, tcl_desc,
-							     tx_metadata);
-			if (ret) {
-				hif_rtpm_put(HIF_RTPM_PUT_ASYNC,
-					     HIF_RTPM_ID_DP);
-				return DP_DAL_TX_FAILURE;
-			}
-
-			platform_ret = DP_DAL_TX_QUEUED;
-		} else {
-			platform_ret = global_plat_ops->tx(dal_ctx, ring_id,
-							   vdev_id, tcl_desc,
-							   tx_metadata);
-			/* DAL will return -EBUSY if mode switch is in progress,
-			 * try to send via bypass mode tx path if it a special
-			 * frame.
-			 */
-			if (platform_ret == -EBUSY &&
-			    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
-						       DP_DAL_SPECIAL_FRAME_MASK))
-				platform_ret = dp_dal_tx_bypass_mode(dal_ctx, ring_id,
-								     vdev_id, tcl_desc,
-								     tx_metadata);
-			platform_ret = (platform_ret == 0) ?
-					DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
-		}
-
-		hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_DP);
-	} else {
-		/*
-		 * Runtime PM get failed, system is likely suspending.
-		 * Queue the descriptor for processing during resume.
-		 * Ownership of tcl_desc is transferred to suspended list.
-		 */
-		dp_runtime_get(soc);
-		ret = dp_dal_tx_queue_suspended_desc(dal_ctx, ring_id,
-						     vdev_id, tcl_desc,
-						     tx_metadata);
-		if (ret) {
-			dp_runtime_put(soc);
-			return DP_DAL_TX_FAILURE;
-		}
-
-		qdf_atomic_inc(&soc->tx_pending_rtpm);
-		dp_runtime_put(soc);
-		platform_ret = DP_DAL_TX_QUEUED;
-	}
-
-	return platform_ret;
 }
 
 /**
@@ -308,6 +200,123 @@ uint32_t dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
 	return processed_count;
 }
 #else
+static inline uint32_t
+dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
+{
+	return 0;
+}
+#endif /* defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE) */
+
+#ifdef FEATURE_RUNTIME_PM
+/**
+ * dp_dal_tx_rtpm_wrapper() - Runtime PM aware platform TX wrapper
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @vdev_id: VDEV ID
+ * @tcl_desc: TCL descriptor (ownership may be transferred)
+ * @tx_metadata: TX metadata
+ *
+ * This function wraps the platform TX call with runtime PM handling
+ * similar to dp_tx_ring_access_end_wrapper for bypass mode.
+ *
+ * Return: enum dp_dal_tx_status values
+ */
+static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
+				  uint32_t vdev_id, void *tcl_desc,
+				  struct dp_dal_tx_metadata *tx_metadata)
+{
+	struct dp_soc *soc = dal_ctx->soc;
+	int ret;
+	int platform_ret = 0;
+
+	if (!global_plat_ops || !global_plat_ops->tx) {
+		DP_STATS_INC_PKT(dal_ctx,
+				 tx.offload[ring_id][DAL_TX_NOSUPPORT_DRP], 1,
+				 dp_tx_get_pkt_len(tx_metadata->tx_desc));
+		dp_tx_err_rl("Platform TX operation not available");
+		return DP_DAL_TX_FAILURE;
+	}
+
+	if (dp_get_rtpm_tput_policy_requirement(soc)) {
+		platform_ret = global_plat_ops->tx(dal_ctx, ring_id, vdev_id,
+						   tcl_desc, tx_metadata);
+
+		/* DAL will return -EBUSY if mode switch is in progress, try to
+		 * send via bypass mode tx path if it a special frame.
+		 */
+		if (platform_ret == -EBUSY &&
+		    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
+					       DP_DAL_SPECIAL_FRAME_MASK))
+			platform_ret = dp_dal_tx_bypass_mode(dal_ctx, ring_id,
+							     vdev_id, tcl_desc,
+							     tx_metadata);
+
+		return (platform_ret == 0) ? DP_DAL_TX_SUCCESS :
+					      DP_DAL_TX_FAILURE;
+	}
+
+	ret = hif_rtpm_get(HIF_RTPM_GET_ASYNC, HIF_RTPM_ID_DP);
+	if (QDF_IS_STATUS_SUCCESS(ret)) {
+		if (hif_system_pm_state_check(soc->hif_handle)) {
+			/* System is in suspend state. In offload mode,
+			 * we need to defer the TX operation until resume.
+			 * Queue the descriptor for later processing.
+			 * Ownership of tcl_desc is transferred to suspended
+			 * list.
+			 */
+			ret = dp_dal_tx_queue_suspended_desc(dal_ctx, ring_id,
+							     vdev_id, tcl_desc,
+							     tx_metadata);
+			if (ret) {
+				hif_rtpm_put(HIF_RTPM_PUT_ASYNC,
+					     HIF_RTPM_ID_DP);
+				return DP_DAL_TX_FAILURE;
+			}
+
+			platform_ret = DP_DAL_TX_QUEUED;
+		} else {
+			platform_ret = global_plat_ops->tx(dal_ctx, ring_id,
+							   vdev_id, tcl_desc,
+							   tx_metadata);
+			/* DAL will return -EBUSY if mode switch is in progress,
+			 * try to send via bypass mode tx path if it a special
+			 * frame.
+			 */
+			if (platform_ret == -EBUSY &&
+			    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
+						       DP_DAL_SPECIAL_FRAME_MASK))
+				platform_ret =
+					dp_dal_tx_bypass_mode(dal_ctx, ring_id,
+							      vdev_id, tcl_desc,
+							      tx_metadata);
+			platform_ret = (platform_ret == 0) ?
+					DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
+		}
+
+		hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_DP);
+	} else {
+		/*
+		 * Runtime PM get failed, system is likely suspending.
+		 * Queue the descriptor for processing during resume.
+		 * Ownership of tcl_desc is transferred to suspended list.
+		 */
+		dp_runtime_get(soc);
+		ret = dp_dal_tx_queue_suspended_desc(dal_ctx, ring_id,
+						     vdev_id, tcl_desc,
+						     tx_metadata);
+		if (ret) {
+			dp_runtime_put(soc);
+			return DP_DAL_TX_FAILURE;
+		}
+
+		qdf_atomic_inc(&soc->tx_pending_rtpm);
+		dp_runtime_put(soc);
+		platform_ret = DP_DAL_TX_QUEUED;
+	}
+
+	return platform_ret;
+}
+#elif defined(DP_POWER_SAVE)
 /**
  * dp_dal_tx_rtpm_wrapper() - Direct platform TX wrapper (no runtime PM)
  * @dal_ctx: DAL context
@@ -321,10 +330,71 @@ uint32_t dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
  *
  * Return: DP_DAL_TX_SUCCESS for success, DP_DAL_TX_FAILURE for failure
  */
-static inline int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx,
-					 uint8_t ring_id, uint32_t vdev_id,
-					 void *tcl_desc,
-					 struct dp_dal_tx_metadata *tx_metadata)
+static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
+				  uint32_t vdev_id, void *tcl_desc,
+				  struct dp_dal_tx_metadata *tx_metadata)
+{
+	struct dp_soc *soc = dal_ctx->soc;
+	int ret;
+	int platform_ret = 0;
+
+	if (!global_plat_ops || !global_plat_ops->tx) {
+		DP_STATS_INC_PKT(dal_ctx,
+				 tx.offload[ring_id][DAL_TX_NOSUPPORT_DRP], 1,
+				 dp_tx_get_pkt_len(tx_metadata->tx_desc));
+		dp_tx_err_rl("Platform TX operation not available");
+		return DP_DAL_TX_FAILURE;
+	}
+
+	if (hif_system_pm_state_check(soc->hif_handle)) {
+		/* System is in suspend state. In offload mode,
+		 * we need to defer the TX operation until resume.
+		 * Queue the descriptor for later processing.
+		 * Ownership of tcl_desc is transferred to suspended
+		 * list.
+		 */
+		ret = dp_dal_tx_queue_suspended_desc(dal_ctx, ring_id,
+						     vdev_id, tcl_desc,
+						     tx_metadata);
+		platform_ret = (ret == 0) ?
+				DP_DAL_TX_QUEUED : DP_DAL_TX_FAILURE;
+	} else {
+		platform_ret = global_plat_ops->tx(dal_ctx, ring_id,
+						   vdev_id, tcl_desc,
+						   tx_metadata);
+		/* DAL will return -EBUSY if mode switch is in progress,
+		 * try to send via bypass mode tx path if it a special
+		 * frame.
+		 */
+		if (platform_ret == -EBUSY &&
+		    dp_dal_tx_is_special_frame(tx_metadata->tx_desc->nbuf,
+					       DP_DAL_SPECIAL_FRAME_MASK))
+			platform_ret = dp_dal_tx_bypass_mode(dal_ctx, ring_id,
+							     vdev_id, tcl_desc,
+							     tx_metadata);
+		platform_ret = (platform_ret == 0) ?
+				DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
+	}
+
+	return platform_ret;
+}
+#else
+/**
+ * dp_dal_tx_rtpm_wrapper() - Direct platform TX wrapper (no runtime PM)
+ * @dal_ctx: DAL context
+ * @ring_id: Ring ID
+ * @vdev_id: VDEV ID
+ * @tcl_desc: TCL descriptor
+ * @tx_metadata: TX metadata
+ *
+ * This function directly calls platform TX without runtime PM handling
+ * when FEATURE_RUNTIME_PM is not enabled.
+ *
+ * Return: DP_DAL_TX_SUCCESS for success, DP_DAL_TX_FAILURE for failure
+ */
+static int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx, uint8_t ring_id,
+				  uint32_t vdev_id, void *tcl_desc,
+				  struct dp_dal_tx_metadata *tx_metadata)
 {
 	int ret;
 
@@ -349,30 +419,7 @@ static inline int dp_dal_tx_rtpm_wrapper(struct dp_dal_ctx *dal_ctx,
 
 	return (ret == 0) ? DP_DAL_TX_SUCCESS : DP_DAL_TX_FAILURE;
 }
-
-/**
- * dp_dal_tx_queue_suspended_desc() - No-op when FEATURE_RUNTIME_PM disabled
- * @dal_ctx: DAL context
- * @ring_id: Ring ID
- * @vdev_id: VDEV ID
- * @tcl_desc: TCL descriptor
- * @tx_metadata: TX metadata
- *
- * No-op function when runtime PM is disabled. Just frees the TCL descriptor.
- *
- * Return: None
- */
-static inline void
-dp_dal_tx_queue_suspended_desc(struct dp_dal_ctx *dal_ctx,
-			       uint8_t ring_id, uint32_t vdev_id,
-			       void *tcl_desc,
-			       struct dp_dal_tx_metadata *tx_metadata)
-{
-	/* No-op when runtime PM is disabled */
-	if (tcl_desc)
-		qdf_mem_free(tcl_desc);
-}
-#endif /* FEATURE_RUNTIME_PM */
+#endif
 
 /**
  * dp_dal_tx_cmp_isr_vendor_cb - tx cmpl ISR vendor callback
