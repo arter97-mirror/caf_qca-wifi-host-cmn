@@ -1643,6 +1643,7 @@ enum qdf_suspend_type {
  * @QDF_VDEV_ACTIVE_SER_LINK_SWITCH_TIMEOUT: Active link switch cmd in
  * serialization timed out.
  * @QDF_ENABLE_IRQ_FAILURE: Failed to enable IRQs
+ * @QDF_DP_INVALID_PEER_MAP: DP Invalid peer map
  */
 enum qdf_hang_reason {
 	QDF_REASON_UNSPECIFIED,
@@ -1688,6 +1689,7 @@ enum qdf_hang_reason {
 	QDF_VDEV_ACTIVE_SER_REASSOC_TIMEOUT,
 	QDF_VDEV_ACTIVE_SER_LINK_SWITCH_TIMEOUT,
 	QDF_ENABLE_IRQ_FAILURE,
+	QDF_DP_INVALID_PEER_MAP,
 };
 
 /**
