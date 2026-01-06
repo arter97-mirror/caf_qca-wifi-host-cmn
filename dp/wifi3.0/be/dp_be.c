@@ -4181,7 +4181,7 @@ void dp_initialize_arch_ops_be_ipa_opt_dp_ctrl(struct dp_arch_ops *arch_ops)
 static inline
 void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
 {
-	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_be;
+	arch_ops->dp_tx_gen_hw_desc = dp_tx_gen_hw_desc_be_bn;
 	arch_ops->dp_tx_hw_desc_sync = dp_tx_hw_desc_sync_be_bn;
 	arch_ops->dp_tx_desc_update_buffer_info =
 					dp_tx_desc_update_buffer_info_be_bn;
@@ -4191,11 +4191,13 @@ void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
 	arch_ops->dp_dal_tx_comp_check_reserved_cookie =
 					dp_dal_tx_comp_check_reserved_cookie_be;
 }
+
 #else
 static inline
 void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
 {
 }
+
 #endif
 
 void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)

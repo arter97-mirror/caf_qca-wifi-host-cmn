@@ -234,25 +234,21 @@ static inline void dp_tx_dump_tcl_desc(uint8_t *cached_desc)
 #endif /* QCA_WIFI_EMULATION */
 
 QDF_STATUS
-dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
-		    struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
-		    struct cdp_tx_exception_metadata *tx_exc_metadata,
-		    struct dp_tx_msdu_info_s *msdu_info)
+dp_tx_gen_hw_desc_bn(struct dp_soc *soc, struct dp_vdev *vdev,
+		     struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
+		     struct cdp_tx_exception_metadata *tx_exc_metadata,
+		     struct dp_tx_msdu_info_s *msdu_info, void *tcl_desc)
 {
-	void *hal_tx_desc;
 	uint32_t *hal_tx_desc_cached;
-	int coalesce = 0;
 	struct dp_tx_queue *tx_q = &msdu_info->tx_queue;
 	uint8_t ring_id = tx_q->ring_id;
 	uint8_t tid;
 	struct dp_vdev_be *be_vdev;
-	uint8_t cached_desc[HAL_TX_DESC_LEN_BYTES] = { 0 };
 	uint8_t bm_id = dp_tx_get_rbm_id_bn(soc, ring_id);
-	hal_ring_handle_t hal_ring_hdl = NULL;
-	QDF_STATUS status = QDF_STATUS_E_RESOURCES;
-	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
-	uint32_t hp;
-	qdf_nbuf_t nbuf = tx_desc->nbuf;
+	if (!tcl_desc) {
+		dp_err("tcl_desc is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
 	be_vdev = dp_get_be_vdev_from_dp_vdev(vdev);
 
 	if (!dp_tx_is_desc_id_valid(soc, tx_desc->id)) {
@@ -260,23 +256,22 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 		return QDF_STATUS_E_RESOURCES;
 	}
 
-	hal_tx_desc_cached = (void *)cached_desc;
+	qdf_mem_zero(tcl_desc, HAL_TX_DESC_LEN_BYTES);
+	hal_tx_desc_cached = (uint32_t *)tcl_desc;
 
 	hal_tx_desc_set_buf_addr_bn(soc->hal_soc, hal_tx_desc_cached,
 				    tx_desc->dma_addr, bm_id, tx_desc->id,
 				    (tx_desc->flags & DP_TX_DESC_FLAG_FRAG));
-
 	/*
 	 * Bank_ID is used as DSCP_TABLE number in beryllium/boron
 	 * So there is no explicit field used for DSCP_TID_TABLE_NUM.
-	 */
+	*/
 	hal_tx_desc_set_fw_metadata(hal_tx_desc_cached, fw_metadata);
 	hal_tx_desc_set_buf_length(hal_tx_desc_cached, tx_desc->length);
 	hal_tx_desc_set_buf_offset(hal_tx_desc_cached, tx_desc->pkt_offset);
 
 	if (tx_desc->flags & DP_TX_DESC_FLAG_TO_FW)
 		hal_tx_desc_set_to_fw(hal_tx_desc_cached, 1);
-
 	/* verify checksum offload configuration*/
 	if ((vdev->opmode != wlan_op_mode_passthru &&
 	     (qdf_nbuf_get_tx_cksum(tx_desc->nbuf) ==
@@ -288,12 +283,11 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 	}
 
 	hal_tx_desc_set_bank_id(hal_tx_desc_cached, vdev->bank_id);
-
 	dp_tx_vdev_id_set_hal_tx_desc(hal_tx_desc_cached, vdev, msdu_info);
 
-	if (qdf_likely(QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(nbuf))) {
+	if (qdf_likely(QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(tx_desc->nbuf))) {
 		hal_tx_desc_set_peer_txpt_ci_index(hal_tx_desc_cached,
-					     QDF_NBUF_CB_TXPT_IDX_VALUE(nbuf));
+			QDF_NBUF_CB_TXPT_IDX_VALUE(tx_desc->nbuf));
 	} else if (qdf_likely(&vdev->txpt_classify_idx_valid)) {
 		hal_tx_desc_set_peer_txpt_ci_index(hal_tx_desc_cached,
 						   vdev->txpt_classify_idx);
@@ -304,11 +298,9 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 
 	hal_tx_desc_set_peer_txpt_ci_tos_tc_val(hal_tx_desc_cached,
 						msdu_info->ip_dscp);
-
 	hal_tx_desc_set_da_is_bcast_mcast(hal_tx_desc_cached,
 					  msdu_info->is_bcast,
 					  msdu_info->is_mcast);
-
 	hal_tx_desc_set_l3_type(hal_tx_desc_cached, msdu_info->l3_type);
 	hal_tx_desc_set_l4_protocol(hal_tx_desc_cached, msdu_info->l4_proto);
 	hal_tx_desc_set_type_or_length(hal_tx_desc_cached,
@@ -336,6 +328,36 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 	if (msdu_info->is_custom_txpt_sel_valid)
 		hal_tx_desc_txpt_ci_sel(hal_tx_desc_cached,
 					msdu_info->custom_txpt_classify_info_sel);
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS
+dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
+		    struct dp_tx_desc_s *tx_desc, uint16_t fw_metadata,
+		    struct cdp_tx_exception_metadata *tx_exc_metadata,
+		    struct dp_tx_msdu_info_s *msdu_info)
+{
+	void *hal_tx_desc;
+	uint32_t *hal_tx_desc_cached;
+	int coalesce = 0;
+	struct dp_tx_queue *tx_q = &msdu_info->tx_queue;
+	uint8_t ring_id = tx_q->ring_id;
+	uint8_t tid;
+	uint8_t cached_desc[HAL_TX_DESC_LEN_BYTES] = { 0 };
+	hal_ring_handle_t hal_ring_hdl = NULL;
+	QDF_STATUS status = QDF_STATUS_E_RESOURCES;
+	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
+	uint32_t hp;
+
+	/* Generate TCL descriptor */
+	status = dp_tx_gen_hw_desc_bn(soc, vdev, tx_desc, fw_metadata,
+				      tx_exc_metadata, msdu_info,
+				      (void *)cached_desc);
+	if (qdf_unlikely(status != QDF_STATUS_SUCCESS))
+		return status;
+
+	hal_tx_desc_cached = (void *)cached_desc;
+	tid = msdu_info->tid;
 
 	if (!dp_tx_desc_set_ktimestamp(vdev, tx_desc))
 		dp_tx_desc_set_timestamp(tx_desc);
