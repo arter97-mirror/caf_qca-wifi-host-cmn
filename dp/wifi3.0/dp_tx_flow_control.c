@@ -826,13 +826,53 @@ void dp_tx_page_pool_destroy_all_pools(struct dp_tx_page_pool *tx_pp)
 	tx_pp->active_pool_count = 0;
 }
 
+/**
+ * dp_tx_page_pool_destroy_list_work_handler() - Work handler to destroy TX
+ *                                                page pools
+ * @arg: Pointer to dp_soc structure
+ *
+ * This work handler processes the deferred destruction queue for TX page pools.
+ * It safely destroys page pools outside of atomic/spinlock contexts where
+ * sleeping operations are not allowed.
+ *
+ * Return: None
+ */
+static void dp_tx_page_pool_destroy_list_work_handler(void *arg)
+{
+	struct dp_soc *soc = (struct dp_soc *)arg;
+	struct dp_tx_page_pool *tx_pp, *next_tx_pp;
+	qdf_list_t destroy_list;
+
+	qdf_list_create(&destroy_list, 0);
+
+	qdf_spin_lock_bh(&soc->tx_pp_destroy_lock);
+	qdf_list_for_each_del(&soc->tx_pp_destroy_list, tx_pp, next_tx_pp,
+			      node) {
+		if (!tx_pp)
+			continue;
+
+		qdf_list_remove_node(&soc->tx_pp_destroy_list, &tx_pp->node);
+		qdf_list_insert_back(&destroy_list, &tx_pp->node);
+	}
+	qdf_spin_unlock_bh(&soc->tx_pp_destroy_lock);
+
+	qdf_list_for_each_del(&destroy_list, tx_pp, next_tx_pp, node) {
+		dp_nofl_info("TX_PP_DEST: %pK vdev_id:%u alloc:%llu/%llu ac:%u ho:%u lo:=%u",
+			     tx_pp, tx_pp->vdev_id, tx_pp->alloc_success,
+			     tx_pp->alloc_fail, tx_pp->active_pool_count,
+			     tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt);
+		dp_tx_page_pool_destroy_all_pools(tx_pp);
+		qdf_list_remove_node(&destroy_list, &tx_pp->node);
+		qdf_spinlock_destroy(&tx_pp->pp_lock);
+		qdf_mem_free(tx_pp);
+	}
+}
+
 static void
 dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 {
 	struct dp_tx_pp_params *pp_params =
 		&tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
-	bool dynamic_pp_enabled =
-		wlan_cfg_get_tx_dynamic_pp_enabled(soc->ctrl_psoc);
 	bool should_free_now = false;
 
 	if (!tx_pp->page_pool_init)
@@ -860,10 +900,10 @@ dp_tx_page_pool_deinit(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp)
 	qdf_spin_unlock_bh(&soc->tx_pp_lock);
 
 	if (should_free_now) {
-		if (dynamic_pp_enabled)
-			dp_tx_page_pool_destroy_all_pools(tx_pp);
-		qdf_spinlock_destroy(&tx_pp->pp_lock);
-		qdf_mem_free(tx_pp);
+		qdf_spin_lock_bh(&soc->tx_pp_destroy_lock);
+		qdf_list_insert_back(&soc->tx_pp_destroy_list, &tx_pp->node);
+		qdf_spin_unlock_bh(&soc->tx_pp_destroy_lock);
+		qdf_sched_work(0, &soc->tx_pp_destroy_work);
 	}
 }
 
@@ -1049,6 +1089,7 @@ static void dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
 	qdf_spin_lock_bh(&soc->tx_pp_lock);
 	if (!soc->tx_pp[vdev_id]) {
 		soc->tx_pp[vdev_id] = tx_pp;
+		tx_pp->vdev_id = vdev_id;
 		qdf_atomic_inc(&tx_pp->ref_cnt);
 		should_init = true;
 	} else {
@@ -1097,6 +1138,25 @@ out_unlock:
 	if (should_deinit)
 		dp_tx_page_pool_deinit(soc, tx_pp);
 }
+
+static inline void
+dp_tx_page_pool_destroy_work_init(struct dp_soc *soc)
+{
+	qdf_list_create(&soc->tx_pp_destroy_list, 0);
+	qdf_spinlock_create(&soc->tx_pp_destroy_lock);
+	qdf_create_work(0, &soc->tx_pp_destroy_work,
+			dp_tx_page_pool_destroy_list_work_handler, soc);
+}
+
+static inline void
+dp_tx_page_pool_destroy_work_deinit(struct dp_soc *soc)
+{
+	qdf_flush_work(&soc->tx_pp_destroy_work);
+	qdf_destroy_work(0, &soc->tx_pp_destroy_work);
+	qdf_list_destroy(&soc->tx_pp_destroy_list);
+	qdf_spinlock_destroy(&soc->tx_pp_destroy_lock);
+}
+
 #else /* !DP_FEATURE_TX_PAGE_POOL */
 static inline void
 dp_tx_page_pool_vdev_attach(struct dp_pdev *pdev, uint8_t vdev_id,
@@ -1108,6 +1168,17 @@ static inline void
 dp_tx_page_pool_vdev_detach(struct dp_pdev *pdev, uint8_t vdev_id)
 {
 }
+
+static inline void
+dp_tx_page_pool_destroy_work_init(struct dp_soc *soc)
+{
+}
+
+static inline void
+dp_tx_page_pool_destroy_work_deinit(struct dp_soc *soc)
+{
+}
+
 #endif /* DP_FEATURE_TX_PAGE_POOL */
 
 /**
@@ -1326,6 +1397,7 @@ void dp_tx_flow_pool_unmap_handler(struct dp_pdev *pdev, uint8_t flow_id,
 void dp_tx_flow_control_init(struct dp_soc *soc)
 {
 	qdf_spinlock_create(&soc->flow_pool_array_lock);
+	dp_tx_page_pool_destroy_work_init(soc);
 }
 
 /**
@@ -1358,7 +1430,7 @@ static inline void dp_tx_desc_pool_dealloc(struct dp_soc *soc)
 void dp_tx_flow_control_deinit(struct dp_soc *soc)
 {
 	dp_tx_desc_pool_dealloc(soc);
-
+	dp_tx_page_pool_destroy_work_deinit(soc);
 	qdf_spinlock_destroy(&soc->flow_pool_array_lock);
 }
 

@@ -1989,6 +1989,8 @@ struct dp_tx_pp_params {
 
 /**
  * struct dp_tx_page_pool - TX Page pool info
+ * @node: List node for tx page pool
+ * @vdev_id: Vdev to which page pool is attached (MLO case 1st Vdev)
  * @active_pool: TX active pool list
  * @idle_pool_ho: Higher order idle page pool list
  * @idle_pool_lo: Lower order idle page pool list
@@ -2020,6 +2022,9 @@ struct dp_tx_pp_params {
  * @pending_deinit: Track pending deinit
  */
 struct dp_tx_page_pool {
+	/* Node for destroy list */
+	qdf_list_node_t node;
+	uint8_t vdev_id;
 	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
 	struct dp_tx_pp_params idle_pool_ho[MAX_TX_IDLE_POOLS];
 	struct dp_tx_pp_params idle_pool_lo[MAX_TX_IDLE_POOLS];
@@ -4138,6 +4143,12 @@ struct dp_soc {
 	struct dp_tx_page_pool *tx_pp[MAX_VDEV_CNT];
 	qdf_spinlock_t tx_pp_lock;
 	bool tx_dyn_pool_en;
+	/* List of page pools pending destruction */
+	qdf_list_t tx_pp_destroy_list;
+	/* Work queue for deferred destruction */
+	qdf_work_t tx_pp_destroy_work;
+	/* Lock protecting the destroy list */
+	qdf_spinlock_t tx_pp_destroy_lock;
 #endif
 	/* flag to check if wds is not supported */
 	bool wds_not_supported;
