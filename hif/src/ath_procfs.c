@@ -367,6 +367,7 @@ static ssize_t ath_procfs_diag_read_ext(struct file *file, char __user *buf,
 		case TARGET_TYPE_KIWI:
 		case TARGET_TYPE_PEACH:
 		case TARGET_TYPE_MANGO:
+		case TARGET_TYPE_QCN7605:
 			if (op_type == OP_TYPE_EXT_DIRECT)
 				rv = ath_procfs_direct_read(scn,
 							    offset,
@@ -444,6 +445,7 @@ static ssize_t ath_procfs_diag_write_ext(struct file *file,
 		case TARGET_TYPE_KIWI:
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_PEACH:
+		case TARGET_TYPE_QCN7605:
 			if (op_type == OP_TYPE_EXT_DIRECT)
 				rv = ath_procfs_direct_write(scn,
 							     offset,
