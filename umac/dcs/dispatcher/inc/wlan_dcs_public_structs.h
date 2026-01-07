@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -29,6 +29,8 @@
  * @WLAN_HOST_DCS_WLANIM: wlan interference stats
  * @WLAN_HOST_DCS_AWGNIM: additive white Gaussian noise (awgn) interference
  * @WLAN_HOST_DCS_AFC: AFC data update 6 GHz SP channels
+ * @WLAN_HOST_DCS_OBSSIM: OBSS Type
+ * @WLAN_HOST_DCS_JAMMERIM: Cambium Type interference
  */
 enum wlan_host_dcs_type {
 	WLAN_HOST_DCS_NONE   = 0,      /* 0x0 */
@@ -36,6 +38,8 @@ enum wlan_host_dcs_type {
 	WLAN_HOST_DCS_WLANIM = BIT(1), /* 0x2 */
 	WLAN_HOST_DCS_AWGNIM = BIT(2), /* 0x4 */
 	WLAN_HOST_DCS_AFC    = BIT(3), /* 0x8 */
+	WLAN_HOST_DCS_OBSSIM = BIT(4), /* 0x10 */
+	WLAN_HOST_DCS_JAMMERIM = BIT(5), /* 0x20 */
 };
 
 /**

@@ -4372,21 +4372,21 @@ util_scan_is_valid_rsn_present(struct scan_cache_entry *entry,
 
 	rsn_ie = util_scan_entry_rsn(entry);
 	if (rsn_ie) {
-		status = wlan_crypto_rsnie_check(params, rsn_ie);
+		status = wlan_crypto_rsnie_check(params, rsn_ie, NULL);
 		if (QDF_IS_STATUS_SUCCESS(status))
 			return status;
 	}
 
 	rsn_ie = util_scan_entry_wifi6_rsno(entry);
 	if (rsn_ie) {
-		status = wlan_crypto_rsnie_check(params, rsn_ie);
+		status = wlan_crypto_rsnie_check(params, rsn_ie, NULL);
 		if (QDF_IS_STATUS_SUCCESS(status))
 			return status;
 	}
 
 	rsn_ie = util_scan_entry_wifi7_rsno(entry);
 	if (rsn_ie) {
-		status = wlan_crypto_rsnie_check(params, rsn_ie);
+		status = wlan_crypto_rsnie_check(params, rsn_ie, NULL);
 		if (QDF_IS_STATUS_SUCCESS(status))
 			return status;
 	}
