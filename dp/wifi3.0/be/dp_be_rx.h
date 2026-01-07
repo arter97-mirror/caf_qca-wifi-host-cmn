@@ -1316,6 +1316,32 @@ QDF_STATUS dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc,
 
 #ifdef CONFIG_BORON
 /**
+ * dp_dal_rx_process_nbuf_list_bn() - Process network buffer list in DAL RX
+ *				       path for BN architecture
+ * @soc: Handle to DP SoC structure
+ * @nbuf_list: Linked list of network buffers to process
+ * @reo_ring_num: REO ring number (0-3) from which packets are received
+ *
+ * This function processes a list of network buffers in the Data Abstraction
+ * Layer (DAL) RX path. It handles the RX processing for packets that have
+ * been prepared with descriptor information in their control blocks. This
+ * is the BN architecture specific implementation.
+ *
+ * Return: QDF_STATUS - QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc,
+					  qdf_nbuf_t nbuf_list,
+					  uint8_t reo_ring_num);
+
+static inline
+QDF_STATUS dp_dal_rx_process_nbuf_list_be_bn(struct dp_soc *soc,
+					     qdf_nbuf_t nbuf_list,
+					     uint8_t reo_ring_num)
+{
+	return dp_dal_rx_process_nbuf_list_bn(soc, nbuf_list, reo_ring_num);
+}
+
+/**
  * dp_rx_validate_and_fetch_rx_desc_bn() - RX descriptor validation for BN
  * @soc: DP SOC context
  * @ring_desc: HAL ring descriptor
@@ -1352,6 +1378,14 @@ dp_rx_validate_and_fetch_rx_desc_be_bn(struct dp_soc *soc,
 	return dp_rx_validate_and_fetch_rx_desc_bn(soc, ring_desc, ring_id);
 }
 #else /* Beryllium */
+
+static inline
+QDF_STATUS dp_dal_rx_process_nbuf_list_be_bn(struct dp_soc *soc,
+					     qdf_nbuf_t nbuf_list,
+					     uint8_t reo_ring_num)
+{
+	return dp_dal_rx_process_nbuf_list_be(soc, nbuf_list, reo_ring_num);
+}
 /**
  * dp_rx_validate_and_fetch_rx_desc_be() - RX descriptor validation API for BE
  * @soc: DP SOC context
