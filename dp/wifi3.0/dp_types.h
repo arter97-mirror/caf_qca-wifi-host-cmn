@@ -3450,6 +3450,16 @@ struct dp_opt_dp_flt {
 };
 #endif
 
+/**
+ * struct dp_stale_entry - Stale entry detection structure
+ * @detected: Flag to indicate stale entry detection is in progress
+ * @start_time: Timestamp when stale entry detection started
+ */
+struct dp_stale_entry {
+	uint32_t detected;
+	uint64_t start_time;
+};
+
 #ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
 /**
  * struct dp_mon_dest_stats_record - DP mon destination ring stats entry
@@ -4115,11 +4125,10 @@ struct dp_soc {
 #endif
 
 #ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
-	struct {
-		uint32_t detected;
-		uint64_t start_time;
-	} stale_entry[MAX_TCL_DATA_RINGS];
+	struct dp_stale_entry tx_comp_stale_entry[MAX_TCL_DATA_RINGS];
 #endif
+	/* TX Monitor stale entry tracking - one per MAC ID */
+	struct dp_stale_entry tx_mon_stale_entry[MAX_NUM_LMAC_HW];
 #ifdef DP_RX_MSDU_DONE_FAIL_HISTORY
 	struct dp_msdu_done_fail_history *msdu_done_fail_hist;
 #endif

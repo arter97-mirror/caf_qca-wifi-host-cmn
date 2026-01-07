@@ -867,6 +867,7 @@ hal_be_get_mon_dest_status(hal_soc_handle_t hal_soc,
 			   struct hal_mon_desc *status)
 {
 	struct mon_destination_ring *desc = hw_desc;
+	uint32_t buf_virt_addr_63_32;
 
 	status->empty_descriptor = desc->empty_descriptor;
 	if (status->empty_descriptor) {
@@ -878,10 +879,21 @@ hal_be_get_mon_dest_status(hal_soc_handle_t hal_soc,
 		status->tlv_drop_count = drop_desc->tlv_drop_cnt;
 		status->end_of_ppdu_dropped = drop_desc->end_of_ppdu_seen;
 	} else {
-		status->buf_addr = HAL_RX_GET(desc, MON_DESTINATION_RING_STAT,BUF_VIRT_ADDR_31_0) |
-						(((uint64_t)HAL_RX_GET(desc,
-								       MON_DESTINATION_RING_STAT,
-								       BUF_VIRT_ADDR_63_32)) << 32);
+		/* Check BUF_VIRT_ADDR_63_32 field value */
+		buf_virt_addr_63_32 = HAL_RX_GET(desc,
+						 MON_DESTINATION_RING_STAT,
+						 BUF_VIRT_ADDR_63_32);
+
+		if (qdf_likely(buf_virt_addr_63_32)) {
+			status->buf_addr =
+				HAL_RX_GET(desc, MON_DESTINATION_RING_STAT,
+					   BUF_VIRT_ADDR_31_0) |
+				(((uint64_t)buf_virt_addr_63_32) << 32);
+			/* Set BUF_VIRT_ADDR_63_32 to invalidate value 0 */
+			desc->stat_buf_virt_addr_63_32 = 0;
+		} else {
+			status->buf_addr = 0;
+		}
 		status->end_reason = desc->end_reason;
 		status->end_offset = desc->end_offset;
 	}
