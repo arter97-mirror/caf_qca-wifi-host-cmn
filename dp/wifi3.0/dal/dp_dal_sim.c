@@ -721,6 +721,8 @@ void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
 	if (!sim_ctx)
 		return;
 
+	dp_dal_offload_sim_disable_irq(sim_ctx);
+
 	qdf_spinlock_destroy(&sim_ctx->rxbm_sync_lock);
 	dp_dal_sim_destroy_work(sim_ctx);
 	dp_dal_sim_sw2sw_rings_deinit(sim_ctx);
