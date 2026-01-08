@@ -306,6 +306,8 @@ struct cp_sta_stats {
 	struct group_id_stats group;
 };
 
+#define ENHANCED_REQUEST_ID 127
+
 /**
  * struct infra_cp_stats_event - Event structure to store stats
  * @action: action for which this response was received
