@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2018, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -77,7 +77,7 @@
  * struct direct_buf_rx_rsp: direct buffer rx response structure
  *
  * @pdev_id: Index of the pdev for which response is received
- * @mod_id: Index of the module for which respone is received
+ * @mod_id: Index of the module for which response is received
  * @num_buf_release_entry: Number of buffers released through event
  * @num_meta_data_entry: Number of meta data released
  * @num_cv_meta_data_entry: Number of cv meta data released
@@ -100,7 +100,7 @@ struct direct_buf_rx_rsp {
  * struct direct_buf_rx_cfg_req: direct buffer rx config request structure
  *
  * @pdev_id: Index of the pdev for which response is received
- * @mod_id: Index of the module for which respone is received
+ * @mod_id: Index of the module for which response is received
  * @base_paddr_lo: Lower 32bits of ring base address
  * @base_paddr_hi: Higher 32bits of ring base address
  * @head_idx_paddr_lo: Lower 32bits of head idx register address
@@ -194,7 +194,7 @@ struct direct_buf_rx_cqi_per_user_info {
 /**
  * struct direct_buf_rx_cqi_metadata: direct buffer metadata for CQI upload
  *
- * @num_users: Number of user info in a metadta buffer
+ * @num_users: Number of user info in a metadata buffer
  * @is_valid: Set cqi metadata is valid,
  *            false if sw_peer_id is invalid or FCS error
  * @fb_type: Feedback type, 0 for SU 1 for MU 2 for CQI

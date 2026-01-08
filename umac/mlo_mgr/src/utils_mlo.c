@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2147,7 +2147,7 @@ QDF_STATUS util_gen_link_reqrsp_cmn(uint8_t *frame, qdf_size_t frame_len,
 	bool is_beaconinterval_valid;
 	/* TSF timer of the reporting AP */
 	uint64_t tsf;
-	/* TSF offset of the reproted AP */
+	/* TSF offset of the reported AP */
 	uint64_t tsfoffset;
 	/* TSF offset value valid */
 	bool is_tsfoffset_valid;

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2002-2006, Atheros Communications Inc.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -409,7 +409,7 @@ int dfs_control(struct wlan_dfs *dfs,
 					dfsparams->dfs_inband))
 			error = -EINVAL;
 
-		/* 5413 speicfic. */
+		/* 5413 specific. */
 		if (!dfs_set_thresholds(dfs, DFS_PARAM_RELPWR,
 					dfsparams->dfs_relpwr))
 			error = -EINVAL;

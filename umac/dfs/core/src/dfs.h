@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013, 2016-2021 The Linux Foundation.  All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2005-2006 Atheros Communications, Inc.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -796,7 +796,7 @@ struct dfs_nolelem {
 /**
  * struct dfs_info - DFS Info.
  * @rn_ftindex:            Number of different types of radars.
- * @rn_lastfull_ts:        Last 64 bit timstamp from recv interrupt.
+ * @rn_lastfull_ts:        Last 64 bit timestamp from recv interrupt.
  * @rn_last_ts:            last 15 bit ts from recv descriptor.
  * @rn_last_unique_ts:     last unique 32 bit ts from recv descriptor.
  * @rn_ts_prefix:          Prefix to prepend to 15 bit recv ts.
@@ -2836,7 +2836,7 @@ static inline int dfs_check_etsi_overlap(int center_freq, int chan_width,
 #endif
 
 /**
- * dfs_is_en302_502_applicable() - Check whether current channel frequecy spread
+ * dfs_is_en302_502_applicable() - Check whether current channel frequency spread
  *					overlaps with EN 302 502 radar type
  *					frequency range.
  *@dfs: Pointer to wlan_dfs structure.

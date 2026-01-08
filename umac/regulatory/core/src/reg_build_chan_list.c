@@ -2697,7 +2697,7 @@ reg_modify_chan_list_for_avoid_chan_ext(struct wlan_regulatory_pdev_priv_obj
 				goto second_chan_handle;
 
 			/* For 2.4G, just only disable the channel if center
-			 * frequecy is in avoid_chan_ext_list.
+			 * frequency is in avoid_chan_ext_list.
 			 * For 5G, customer ask for bandwidth reduction if
 			 * it affect by the nearby channel that in the
 			 * avoid_chan_ext_list.

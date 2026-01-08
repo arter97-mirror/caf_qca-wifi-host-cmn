@@ -2786,7 +2786,7 @@ typedef struct __qdf_nbuf_qhead {
 /******************Functions *************/
 
 /**
- * __qdf_nbuf_queue_init() - initiallize the queue head
+ * __qdf_nbuf_queue_init() - initialize the queue head
  * @qhead: Queue head
  *
  * Return: QDF status
@@ -3050,7 +3050,7 @@ __qdf_nbuf_realloc_headroom(struct sk_buff *skb, uint32_t headroom)
 
 /**
  * __qdf_nbuf_realloc_tailroom() - This keeps the skb shell intact
- *        exapnds the tailroom
+ *        expands the tailroom
  *        in data region. In case of failure it releases the skb.
  * @skb: sk buff
  * @tailroom: size of tailroom
@@ -3299,7 +3299,7 @@ static inline size_t __qdf_nbuf_tcp_tso_size(struct sk_buff *skb)
 }
 
 /**
- * __qdf_nbuf_init() - Re-initializes the skb for re-use
+ * __qdf_nbuf_init() - Re-initializes the skb for reuse
  * @nbuf: sk buff
  *
  * Return: none

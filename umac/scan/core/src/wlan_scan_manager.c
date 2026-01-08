@@ -1351,7 +1351,7 @@ scm_scan_req_update_params(struct wlan_objmgr_vdev *vdev,
 		scm_update_aux_scan_ctrl_ext_flag(req);
 
 	/*
-	 * No need to update conncurrency parmas if req is passive scan on
+	 * No need to update conncurrency params if req is passive scan on
 	 * single channel ie ROC, Preauth etc
 	 */
 	if (!(req->scan_req.scan_f_passive &&

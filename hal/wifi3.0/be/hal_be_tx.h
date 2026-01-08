@@ -98,7 +98,7 @@ enum hal_tx_notify_frame_type {
  * @mesh_enable:mesh enable flag
  * @vdev_id_check_en: vdev id check
  * @pmac_id: mac id
- * @mcast_pkt_ctrl: mulitcast packet control
+ * @mcast_pkt_ctrl: multicast packet control
  * @dscp_tid_map_id: DSCP to TID map id
  * @reserved: unused bits
  * @val: value representing bank config

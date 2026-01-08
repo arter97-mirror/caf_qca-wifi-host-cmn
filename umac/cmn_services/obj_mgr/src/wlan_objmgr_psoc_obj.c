@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -792,7 +792,7 @@ QDF_STATUS wlan_objmgr_psoc_pdev_attach(struct wlan_objmgr_psoc *psoc,
 		/* save pdev id */
 		pdev->pdev_objmgr.wlan_pdev_id = id;
 		status = QDF_STATUS_SUCCESS;
-		/* Inrement psoc ref count to block its free before pdev */
+		/* Increment psoc ref count to block its free before pdev */
 		wlan_objmgr_psoc_get_ref(psoc, WLAN_OBJMGR_ID);
 	}
 	wlan_psoc_obj_unlock(psoc);

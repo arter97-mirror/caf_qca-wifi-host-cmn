@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1163,7 +1163,7 @@ void qdf_dp_trace_ptr(qdf_nbuf_t nbuf, enum QDF_DP_TRACE_ID code,
  *
  * The intention is to allow occasional pings and data packets and really low
  * throughput levels while suppressing bursts and higher throughput levels so
- * that we donot hog the live buffer.
+ * that we do not hog the live buffer.
  *
  * If the number of packets printed in a particular second exceeds the thresh,
  * disable printing in the next second.

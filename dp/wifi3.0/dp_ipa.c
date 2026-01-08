@@ -2288,7 +2288,7 @@ int dp_ipa_ring_resource_setup(struct dp_soc *soc)
  * dp_ipa_rx_alt_ring_get_resource() - get IPA 2nd RX ring resources
  * @soc: data path instance
  *
- * Return: Success if resourece is found
+ * Return: Success if resource is found
  */
 static QDF_STATUS dp_ipa_rx_alt_ring_get_resource(struct dp_soc *soc)
 {

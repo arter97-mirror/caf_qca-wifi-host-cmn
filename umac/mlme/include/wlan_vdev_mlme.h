@@ -673,7 +673,7 @@ enum vdev_cmd_type {
 };
 
 /**
- * enum vdev_start_resp_type - start respone type
+ * enum vdev_start_resp_type - start response type
  * @START_RESPONSE:  Start response
  * @RESTART_RESPONSE: Restart response
  */

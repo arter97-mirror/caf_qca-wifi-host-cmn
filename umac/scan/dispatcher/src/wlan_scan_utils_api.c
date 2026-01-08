@@ -2651,7 +2651,7 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 
 	/*
 	 * In case if the beacon doesn't have
-	 * valid beacon interval falback to def
+	 * valid beacon interval fallback to def
 	 */
 	if (!scan_entry->bcn_int)
 		scan_entry->bcn_int = 100;

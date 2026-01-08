@@ -103,7 +103,7 @@ typedef void *hif_handle_t;
 #endif
 
 /* enum hif_ic_irq - enum defining integrated chip irq numbers
- * defining irq nubers that can be used by external modules like datapath
+ * defining irq numbers that can be used by external modules like datapath
  */
 enum hif_ic_irq {
 	host2wbm_desc_feed = 16,
@@ -3066,7 +3066,7 @@ void hif_affinity_mgr_affine_irq(struct hif_softc *scn);
  * hif_affinity_mgr_supported() - checks for affinity mgr support
  * @hif_ctx: hif opaque handle
  *
- * Return: true if affinity mgr supported else return flase
+ * Return: true if affinity mgr supported else return false
  */
 bool hif_affinity_mgr_supported(struct hif_opaque_softc *hif_ctx);
 #else

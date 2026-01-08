@@ -155,8 +155,8 @@ uint16_t wlan_reg_get_max_chwidth(struct wlan_objmgr_pdev *pdev,
 				  qdf_freq_t freq);
 
 /**
- * wlan_reg_get_next_lower_bandwidth() - Get next lower bandwdith
- * @ch_width: channel bandwdith
+ * wlan_reg_get_next_lower_bandwidth() - Get next lower bandwidth
+ * @ch_width: channel bandwidth
  *
  * Return: Return next lower bandwidth of input channel bandwidth
  */
@@ -164,8 +164,8 @@ enum phy_ch_width
 wlan_reg_get_next_lower_bandwidth(enum phy_ch_width ch_width);
 
 /**
- * wlan_reg_get_next_higher_bandwidth() - Get next higher bandwdith
- * @ch_width: channel bandwdith
+ * wlan_reg_get_next_higher_bandwidth() - Get next higher bandwidth
+ * @ch_width: channel bandwidth
  *
  * Return: Return next higher bandwidth of input channel bandwidth
  */
@@ -655,7 +655,7 @@ uint32_t wlan_reg_get_country_max_allowed_bw(struct wlan_objmgr_pdev *pdev);
  * wlan_reg_is_6ghz_band_set - Check if 6 GHz band set
  * @pdev: Pointer to pdev
  *
- * Return: True if 6 GHz band set else return flase
+ * Return: True if 6 GHz band set else return false
  */
 bool wlan_reg_is_6ghz_band_set(struct wlan_objmgr_pdev *pdev);
 
@@ -730,7 +730,7 @@ wlan_reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
  * @ap_pwr_type: AP's power type for 6G as advertised in HE ops IE
  * @chan_freq: Connection channel frequency
  * @center_320: 320 MHz center frequency
- * @ch_width: bandwdith
+ * @ch_width: bandwidth
  *
  * Return: QDF_STATUS
  */

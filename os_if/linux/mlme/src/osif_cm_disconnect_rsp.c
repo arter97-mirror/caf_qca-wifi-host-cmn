@@ -38,7 +38,7 @@
  * osif_validate_disconnect_and_reset_src_id() - Validate disconnection
  * and resets source and id
  * @osif_priv: Pointer to vdev osif priv
- * @rsp: Disconnect response from connectin manager
+ * @rsp: Disconnect response from connection manager
  *
  * This function validates disconnect response and if the disconnect
  * response is valid, resets the source and id of the command

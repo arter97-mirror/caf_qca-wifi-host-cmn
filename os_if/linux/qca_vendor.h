@@ -4558,7 +4558,7 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  * @QCA_ATTR_ROAM_CONTROL_PERIODIC_ROAM_SCAN_INTERVAL: Unsigned 32-bit
  *	value in seconds.
  *	This attribute defines the interval after which the next roam scan will
- *	start if the current scan finds no candidates. The scan repeates at this
+ *	start if the current scan finds no candidates. The scan repeats at this
  *	interval until a candidate is found.
  *	This configuration is valid until next the next disconnection. If this
  *	attribute is not present, the existing configuration shall be used.
@@ -4693,7 +4693,7 @@ enum qca_vendor_attr_roam_control {
  *	value. 1-Enable, 0-Disable. Represents "Lazy" mode, where
  *	firmware is hunting for a better BSSID or white listed SSID even though
  *	the RSSI of the link is good. The parameters enabling the roaming are
- *	configured through the PARAM_A_BAND_XX attrbutes.
+ *	configured through the PARAM_A_BAND_XX attributes.
  *
  * @QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_SET_BSSID_PREFS: Nested attribute,
  *	represents the BSSIDs preferred over others while evaluating them
@@ -12232,7 +12232,7 @@ enum qca_wlan_vendor_attr_twt_resume {
  *
  * @QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_WAKE_TIME_TSF: Optional (u64)
  * This field contains absolute TSF value of the time at which twt
- * sesion will be resumed.
+ * session will be resumed.
  *
  * @QCA_WLAN_VENDOR_ATTR_TWT_NUDGE_SP_START_OFFSET: Optional (s32)
  * This field will be used when device supports Flexible TWT.
@@ -12535,7 +12535,7 @@ enum qca_wlan_vendor_twt_setup_req_type {
  * Indicates the current level of throughput calculated by driver. The driver
  * may choose different thresholds to decide whether the throughput level is
  * low or medium or high based on variety of parameters like physical link
- * capacity of current connection, number of pakcets being dispatched per
+ * capacity of current connection, number of packets being dispatched per
  * second etc. The throughput level events might not be consistent with the
  * actual current throughput value being observed.
  *
@@ -16268,7 +16268,7 @@ enum qca_wlan_vendor_attr_mdns_offload {
  * QCA_WLAN_VENDOR_ATTR_DIAG_KERNEL_TIMESTAMP.
  *
  * @QCA_WLAN_VENDOR_DIAG_EVENT_TYPE_REASSOC_REQ: Diag event sent from driver
- * /firmware to indicate Reassocation request. Uses the following attributes
+ * /firmware to indicate Reassociation request. Uses the following attributes
  * of enum qca_wlan_vendor_attr_diag:
  * QCA_WLAN_VENDOR_ATTR_DIAG_KERNEL_TIMESTAMP,
  * QCA_WLAN_VENDOR_ATTR_DIAG_BSSID,
@@ -16280,7 +16280,7 @@ enum qca_wlan_vendor_attr_mdns_offload {
  * QCA_WLAN_VENDOR_ATTR_DIAG_FIRMWARE_TIMESTAMP.
  *
  * @QCA_WLAN_VENDOR_DIAG_EVENT_TYPE_REASSOC_RES: Diag event sent from driver
- * /firmware to indicate Reassocation response. Uses the following attributes
+ * /firmware to indicate Reassociation response. Uses the following attributes
  * of enum qca_wlan_vendor_attr_diag:
  * QCA_WLAN_VENDOR_ATTR_DIAG_KERNEL_TIMESTAMP,
  * QCA_WLAN_VENDOR_ATTR_DIAG_BSSID,
@@ -21207,7 +21207,7 @@ enum qca_wlan_vendor_link_state_change_reason {
  * reasons.
  *
  * @QCA_WLAN_VENDOR_ATTR_LINK_STATE_CHANGE_ACTIVE_LINK_BITMAP: u32 attribute.
- * Indicates the link ID bitmap of the current active links among the affliated
+ * Indicates the link ID bitmap of the current active links among the affiliated
  * MLO links.
  *
  * @QCA_WLAN_VENDOR_ATTR_LINK_STATE_CHANGE_INACTIVE_LINK_BITMAP: u32 attribute.

@@ -50,7 +50,7 @@ struct hif_execution_ops {
  * struct hif_exec_context - only ever allocated as a subtype eg.
  *					hif_tasklet_exec_context
  *
- * @sched_ops: HIF executon ops
+ * @sched_ops: HIF execution ops
  * @hif: HIF context
  * @numirq: number of IRQs
  * @irq: irq handle corresponding to hw block
@@ -284,4 +284,3 @@ void hif_pci_config_irq_clear_cpu_affinity(struct hif_softc *scn,
 #endif /* HIF_CPU_CLEAR_AFFINITY */
 
 #endif
-

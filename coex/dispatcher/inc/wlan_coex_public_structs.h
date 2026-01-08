@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -39,7 +39,7 @@ enum coex_dbam_config_mode {
 
 /**
  * enum coex_dbam_comp_status - dbam config response
- * @COEX_DBAM_COMP_SUCCESS: FW enabled/disabled DBAM mode succssfully
+ * @COEX_DBAM_COMP_SUCCESS: FW enabled/disabled DBAM mode successfully
  * @COEX_DBAM_COMP_NOT_SUPPORT: DBAM mode is not supported
  * @COEX_DBAM_COMP_FAIL: FW failed to enable/disable DBAM mode
  */

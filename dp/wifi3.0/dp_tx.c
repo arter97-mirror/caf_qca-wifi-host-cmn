@@ -3104,7 +3104,7 @@ failure:
  * In SOFTUMAC architecture, FW can't access the EXT_DESC memory to
  * calculate the data payload size of the segment. Hence, update the
  * data segment length in the TCL_DATA_CMD.data_len for SOFTUMAC
- * architecture which is used by the FW to populate MSDU deatils
+ * architecture which is used by the FW to populate MSDU details
  * structure to TQM.
  *
  * In Boron TCL-Lite will not perform MSDU extn read. Update the msdu length
@@ -3136,7 +3136,7 @@ dp_tx_desc_update_length(struct dp_tx_desc_s *tx_desc,
  * @msdu_info: Info to be setup in MSDU descriptor and MSDU extension descriptor
  * @desc_pool_id : Descriptor Pool ID
  *
- * Allocate and prepare Tx descriptor with msdu and fragment descritor
+ * Allocate and prepare Tx descriptor with msdu and fragment descriptor
  * information. For frames with fragments, allocate and prepare
  * an MSDU extension descriptor
  *
@@ -7973,7 +7973,7 @@ dp_update_tx_nss(struct hal_tx_completion_status *ts,
 /**
  * dp_tx_update_peer_extd_stats()- Update Tx extended path stats for peer
  *
- * @ts: Tx compltion status
+ * @ts: Tx completion status
  * @txrx_peer: datapath txrx_peer handle
  * @link_id: Link id
  *
@@ -8036,12 +8036,12 @@ dp_tx_update_peer_extd_stats(struct hal_tx_completion_status *ts,
 /**
  * dp_tx_update_peer_ezmesh_stats()- Update Tx ezmesh_stats for peer
  *
- * @ts: Tx compltion status
+ * @ts: Tx completion status
  * @txrx_peer: datapath txrx_peer handle
  * @link_id: Link id
  *
  * ezmesh requires avg_ack_rssi, last_ack_rssi, etc.
- * They can be obtained from Tx compltion status.
+ * They can be obtained from Tx completion status.
  * Return: void
  */
 static inline void
@@ -10252,7 +10252,7 @@ uint32_t dp_tx_comp_handler(struct dp_intr *int_ctx, struct dp_soc *soc,
 more_data:
 
 	hal_soc = soc->hal_soc;
-	/* Re-initialize local variables to be re-used */
+	/* Re-initialize local variables to be reused */
 	head_desc = NULL;
 	tail_desc = NULL;
 	count = 0;

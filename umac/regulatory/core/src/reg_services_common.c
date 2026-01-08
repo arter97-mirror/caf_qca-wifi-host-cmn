@@ -6851,7 +6851,7 @@ reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 
 #ifdef CONFIG_AFC_SUPPORT
 /**
- * reg_is_empty_range() - If both left, right frquency edges in the input range
+ * reg_is_empty_range() - If both left, right frequency edges in the input range
  * are zero then the range is empty, else not.
  * @in_range: Pointer to input range
  *
@@ -7396,7 +7396,7 @@ reg_free_afc_opclass_list(struct wlan_afc_opclass_obj_list *opclass_obj_lst)
 
 /**
  * reg_fill_freq_lst() - Allocate and fill the frange buffer and return
- * the buffer. Also return the number of frequence ranges
+ * the buffer. Also return the number of frequency ranges
  * @pdev: Pointer to pdev
  * @pdev_priv_obj: Pointer to pdev private object
  *
@@ -10572,4 +10572,3 @@ reg_process_txpb_event(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 #endif
-

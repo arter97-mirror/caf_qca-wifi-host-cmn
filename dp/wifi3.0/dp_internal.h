@@ -4837,7 +4837,7 @@ struct cdp_soc_t *dp_soc_to_cdp_soc_t(struct dp_soc *psoc)
  * @rx_flow_info: flow information in the Rx FST
  * @stats: stats to update
  *
- * Return: Success when flow statistcs is updated, error on failure
+ * Return: Success when flow statistics is updated, error on failure
  */
 QDF_STATUS dp_rx_flow_get_fse_stats(struct dp_pdev *pdev,
 				    struct cdp_rx_flow_info *rx_flow_info,
@@ -4886,7 +4886,7 @@ void dp_rx_fst_detach(struct dp_soc *soc, struct dp_pdev *pdev);
  * @pdev: pdev handle
  * @flow_id: flow index (truncated hash) in the Rx FST
  *
- * Return: Success when flow statistcs is updated, error on failure
+ * Return: Success when flow statistics is updated, error on failure
  */
 QDF_STATUS
 dp_mon_rx_update_rx_flow_tag_stats(struct dp_pdev *pdev, uint32_t flow_id);

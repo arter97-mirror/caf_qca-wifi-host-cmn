@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -173,7 +173,7 @@ void *mlo_glb_h_shmem_arena_get_recovery_mode_address(uint8_t grp_id,
  * @grp_id: Id of the required MLO Group
  *
  * Return: number of chips participating in MLO from crash info shared by target
- * in case of sccess, else returns 0
+ * in case of success, else returns 0
  */
 uint8_t mlo_glb_h_shmem_arena_get_no_of_chips_from_crash_info(uint8_t grp_id);
 #endif

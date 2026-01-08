@@ -420,7 +420,7 @@ static inline bool qdf_is_macaddr_group(struct qdf_mac_addr *mac_addr)
  * is a "broadcast" address.
  *
  * Return: true if the input MacAddress is a broadcast address
- * flase if the input MacAddress is not a broadcast address
+ * false if the input MacAddress is not a broadcast address
  */
 static inline bool qdf_is_macaddr_broadcast(const struct qdf_mac_addr *mac_addr)
 {

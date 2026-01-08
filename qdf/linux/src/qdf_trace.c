@@ -2389,7 +2389,7 @@ void qdf_dp_display_ptr_record(struct qdf_dp_trace_record_s *record,
 			  buf->status);
 
 	if (info & QDF_DP_TRACE_RECORD_INFO_LIVE) {
-		/* In live mode donot dump the contents of the cookie */
+		/* In live mode do not dump the contents of the cookie */
 		DPTRACE_PRINT("%s", prepend_str);
 	} else {
 		dump_dp_hex_trace(prepend_str, (uint8_t *)&buf->cookie,

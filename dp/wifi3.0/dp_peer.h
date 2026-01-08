@@ -180,7 +180,7 @@ struct ast_del_ctxt {
  *
  * This API checks whether the peer is WDS_EXT peer or not
  *
- * Return: true in the wds_ext peer else flase
+ * Return: true in the wds_ext peer else false
  */
 static inline bool dp_peer_is_wds_ext_peer(struct dp_txrx_peer *peer)
 {

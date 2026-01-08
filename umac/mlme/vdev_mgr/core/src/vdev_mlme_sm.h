@@ -188,7 +188,7 @@ static inline QDF_STATUS mlme_vdev_restart_send(
  *
  * API invokes stops pending VDEV restart operation
  *
- * Return: SUCCESS alsways
+ * Return: SUCCESS always
  */
 static inline QDF_STATUS mlme_vdev_stop_start_send(
 				struct vdev_mlme_obj *vdev_mlme,

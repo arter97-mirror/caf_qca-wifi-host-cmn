@@ -439,9 +439,9 @@ struct cdp_mon_lpc_coc_stats {
  * @mon_rx_bufs_replenished_dest: Rx buffers replenish count
  * @mon_rx_bufs_reaped_dest: Rx buffer reap count
  * @ppdu_id_mismatch: counter to track ppdu id mismatch in
- *  mointor status and monitor destination ring
+ *  monitor status and monitor destination ring
  * @ppdu_id_match: counter to track ppdu id match in
- *  mointor status and monitor destination ring
+ *  monitor status and monitor destination ring
  * @status_ppdu_drop: Number of ppdu dropped from monitor status ring
  * @dest_ppdu_drop: Number of ppdu dropped from monitor destination ring
  * @mon_link_desc_invalid: msdu link desc invalid count

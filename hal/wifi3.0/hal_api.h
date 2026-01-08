@@ -3495,7 +3495,7 @@ uint32_t hal_get_ring_usage(
 }
 
 /*
- * hal_update_ring_util_stats - API for tracking ring utlization
+ * hal_update_ring_util_stats - API for tracking ring utilization
  * @hal_soc: Opaque HAL SOC handle
  * @hal_ring_hdl: Source ring pointer
  * @ring_type: Ring type

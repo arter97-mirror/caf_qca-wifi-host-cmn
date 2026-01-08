@@ -512,7 +512,7 @@ ce_completed_recv_next_nolock_srng(struct CE_state *CE_state,
 
 	/* NOTE: sw_index is more like a read_index in this context. It has a
 	 * one-to-one mapping with status ring.
-	 * Get the per trasnfer context from dest_ring.
+	 * Get the per transfer context from dest_ring.
 	 */
 	if (per_transfer_contextp)
 		*per_transfer_contextp =
@@ -564,7 +564,7 @@ ce_revoke_recv_next_srng(struct CE_handle *copyeng,
 
 	/* NOTE: sw_index is more like a read_index in this context. It has a
 	 * one-to-one mapping with status ring.
-	 * Get the per trasnfer context from dest_ring.
+	 * Get the per transfer context from dest_ring.
 	 */
 	if (per_transfer_contextp)
 		*per_transfer_contextp =

@@ -3781,7 +3781,7 @@ struct wmi_process_fw_event_params {
 };
 
 /**
- * wmi_mtrace() - Wrappper function for qdf_mtrace api
+ * wmi_mtrace() - Wrapper function for qdf_mtrace api
  * @message_id: 32-Bit Wmi message ID
  * @vdev_id: Vdev ID
  * @data: Actual message contents

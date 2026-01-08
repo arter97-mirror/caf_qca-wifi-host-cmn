@@ -186,7 +186,7 @@ static inline int dp_srng_find_ring_in_mask(int ring_num, uint8_t *grp_mask)
  *
  * For MCL, monitor mode rings are being processed in timer contexts (polled).
  * This function is returning 0, since in interrupt mode(softirq based RX),
- * we donot want to process monitor mode rings in a softirq.
+ * we do not want to process monitor mode rings in a softirq.
  *
  * So, in case packet log is enabled for SAP/STA/P2P modes,
  * regular interrupt processing will not process monitor mode rings. It would be
@@ -207,7 +207,7 @@ dp_soc_get_mon_mask_for_interrupt_mode(struct dp_soc *soc, int intr_ctx_num)
  *
  * For MCL, monitor mode rings are being processed in timer contexts (polled).
  * This function is returning 0, since in interrupt mode(softirq based RX),
- * we donot want to process monitor mode rings in a softirq.
+ * we do not want to process monitor mode rings in a softirq.
  *
  * So, in case packet log is enabled for SAP/STA/P2P modes,
  * regular interrupt processing will not process monitor mode rings. It would be

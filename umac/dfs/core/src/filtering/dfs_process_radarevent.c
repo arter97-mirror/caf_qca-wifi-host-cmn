@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013, 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2002-2010, Atheros Communications Inc.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -425,7 +425,7 @@ static inline bool dfs_reject_on_pri(
 }
 
 /**
- * dfs_confirm_radar_check() - Do additioal check to conirm radar except for
+ * dfs_confirm_radar_check() - Do additional check to conirm radar except for
  * the staggered, chirp FCC Bin 5, frequency hopping indicated by
  * rf_patterntype == 1.
  * @dfs: Pointer to wlan_dfs structure.
@@ -1121,7 +1121,7 @@ static inline void  dfs_calculate_timestamps(
 		dfs->dfs_rinfo.rn_ts_prefix = 0;
 	} else {
 		/* WAR 23031- patch duplicate ts on very short pulses.
-		 * This pacth has two problems in linux environment.
+		 * This patch has two problems in linux environment.
 		 * 1)The time stamp created and hence PRI depends
 		 * entirely on the latency. If the latency is high, it
 		 * possibly can split two consecutive pulses in the

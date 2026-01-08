@@ -192,7 +192,7 @@ void __qdf_trace_dp_peer_link_info(uint8_t link_id, uint32_t freq,
  * __qdf_trace_dp_rx_tcp_pkt() - Trace tcp packet in rx direction
  * @skb: pointer to network buffer
  * @tcp_seq_num: TCP sequence number
- * @tcp_ack_num: TCP acknowlegment number
+ * @tcp_ack_num: TCP acknowledgment number
  * @srcport: TCP source port
  * @dstport: TCP destination port
  * @latency: latency
@@ -226,7 +226,7 @@ bool __qdf_trace_dp_tx_comp_tcp_pkt_enabled(void)
  * __qdf_trace_dp_tx_comp_tcp_pkt() - Trace tcp packet in tx completion
  * @skb: pointer to network buffer
  * @tcp_seq_num: TCP sequence number
- * @tcp_ack_num: TCP acknowlegment number
+ * @tcp_ack_num: TCP acknowledgment number
  * @srcport: TCP source port
  * @dstport: TCP destination port
  * @latency: latency

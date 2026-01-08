@@ -53,7 +53,7 @@ extern "C" {
  *
  * @MGMT: Indicates management frames
  * @CTRL: Indicates control frames
- * @DATA: Inidcates data frames
+ * @DATA: Indicates data frames
  */
 enum wifi_frm_type {
 	MGMT = 0x00,

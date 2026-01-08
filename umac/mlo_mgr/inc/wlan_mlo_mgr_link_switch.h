@@ -460,7 +460,7 @@ QDF_STATUS mlo_mgr_link_switch_disconnect_done(struct wlan_objmgr_vdev *vdev,
  *
  * The function will handle the response for set MAC address request sent to FW
  * as part of link switch. If the response is error, then abort the link switch
- * and send the appropirate status to FW
+ * and send the appropriate status to FW
  *
  * Return: QDF_STATUS
  */

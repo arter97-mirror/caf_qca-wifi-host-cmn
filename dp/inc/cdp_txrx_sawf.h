@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -248,10 +248,10 @@ cdp_sawf_mpdu_details_stats_req(ol_txrx_soc_handle soc, uint8_t enable)
 }
 
 /**
- * cdp_sawf_set_mov_avg_params - Set moving average pararms
+ * cdp_sawf_set_mov_avg_params - Set moving average params
  * @soc: SOC handle
- * @num_pkt: No of packets per window to calucalte moving average
- * @num_win: No of windows to calucalte moving average
+ * @num_pkt: No of packets per window to calculate moving average
+ * @num_win: No of windows to calculate moving average
  *
  * Return: QDF_STATUS
  */
@@ -275,7 +275,7 @@ cdp_sawf_set_mov_avg_params(ol_txrx_soc_handle soc,
 }
 
 /**
- * cdp_sawf_set_sla_params - Set SLA pararms
+ * cdp_sawf_set_sla_params - Set SLA params
  * @soc: SOC handle
  * @num_pkt: No of packets to detect SLA breach
  * @time_secs: Time ins secs to detect breach
@@ -302,7 +302,7 @@ cdp_sawf_set_sla_params(ol_txrx_soc_handle soc,
 }
 
 /**
- * cdp_sawf_init_telemtery_params() - Initialize telemetry pararms
+ * cdp_sawf_init_telemtery_params() - Initialize telemetry params
  * @soc: SOC handle
  *
  * Return: none

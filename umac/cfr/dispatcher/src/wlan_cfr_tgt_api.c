@@ -19,7 +19,7 @@
 
 /*
  * Layer b/w umac and target_if (ol) txops
- * It contains wrapers for txops
+ * It contains wrappers for txops
  */
 
 #include <wlan_cfr_tgt_api.h>

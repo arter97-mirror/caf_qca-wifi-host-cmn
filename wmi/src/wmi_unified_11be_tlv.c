@@ -1686,7 +1686,7 @@ static uint32_t find_buf_len_pref_link(
 
 	/* Update the length for Preferred Link TLV.
 	 * The Link Preference TLV is planned to be deprecated,
-	 * so the TLV is going to be exlcuded by default
+	 * so the TLV is going to be excluded by default
 	 */
 	buf_len += WMI_TLV_HDR_SIZE;
 
@@ -1711,7 +1711,7 @@ static uint8_t *populate_link_control_tlv(
 	uint8_t links = 0;
 
 	/* The Link Preference TLV is planned to be deprecated,
-	 * so the TLV is going to be exlcuded by default.
+	 * so the TLV is going to be excluded by default.
 	 */
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
 	buf_ptr = buf_ptr + WMI_TLV_HDR_SIZE;

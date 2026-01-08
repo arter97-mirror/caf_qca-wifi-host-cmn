@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011,2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1293,7 +1293,7 @@ struct target_if_spectral_scan_timer {
  * @tlvhdr_size: Expected PHYERR TLV header size, for the given hardware
  * generation
  * @spectral_buf_cb: Spectral buffer callbacks
- * @use_bcast: Inidication to use broadcast/unicast while
+ * @use_bcast: Indication to use broadcast/unicast while
  *             sending messages to the application layer
  * @send_phy_data: Send data to the application layer for a particular msg type
  * @len_adj_swar: Spectral fft bin length adjustment SWAR related info
@@ -1303,7 +1303,7 @@ struct target_if_spectral_scan_timer {
  * @dbr_buff_debug: Whether Spectral DBR buffer debug is enabled
  * @direct_dma_support: Whether Direct-DMA is supported on the current radio
  * @prev_tstamp: Timestamp of the previously received sample, which has to be
- * compared with the current tstamp to check descrepancy
+ * compared with the current tstamp to check discrepancy
  * @rparams: Parameters related to Spectral report structure
  * @param_min_max: Spectral parameter's minimum and maximum values
  * @finite_scan: Parameters for finite Spectral scan

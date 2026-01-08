@@ -446,7 +446,7 @@ struct non_inheritance_ie {
  * struct rnr_bss_info - Reduced Neighbor Report BSS information
  * @neighbor_ap_tbtt_offset: Neighbor AP TBTT offset
  * @channel_number: channel number
- * @operating_class: operting class
+ * @operating_class: operating class
  * @bssid: BSS MAC address
  * @short_ssid: short ssid
  * @bss_params: BSS parameters

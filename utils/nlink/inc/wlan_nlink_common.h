@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -266,7 +266,7 @@ struct wlan_core_minfreq {
 /**
  * struct wlan_rx_tp_data - msg to TCP delayed ack and advance window scaling
  * @level:            Throughput level.
- * @rx_tp_flags:      Bit map of flags, for which this indcation will take
+ * @rx_tp_flags:      Bit map of flags, for which this indication will take
  *                    effect, bit map for TCP_ADV_WIN_SCL and TCP_DEL_ACK_IND.
  */
 struct wlan_rx_tp_data {

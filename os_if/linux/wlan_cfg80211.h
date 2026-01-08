@@ -187,7 +187,7 @@
  * switch event index
  * @QCA_NL80211_VENDOR_SUBCMD_TX_LATENCY_INDEX: event index for transmit
  *	latency stats
- * @QCA_NL80211_VENDOR_SUBCMD_HIGH_AP_AVAILABILITY_INDEX: High AP availablility
+ * @QCA_NL80211_VENDOR_SUBCMD_HIGH_AP_AVAILABILITY_INDEX: High AP availability
  * index
  * @QCA_NL80211_VENDOR_SUBCMD_TTLM_LINK_UPDATE_INDEX: MLO Link
  * enable/disable event index

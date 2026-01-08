@@ -90,7 +90,7 @@ bool dp_rx_mcast_echo_check(struct dp_soc *soc,
 		return true;
 
 	/*
-	 * In case of qwrap isolation mode, donot drop loopback packets.
+	 * In case of qwrap isolation mode, do not drop loopback packets.
 	 * In isolation mode, all packets from the wired stations need to go
 	 * to rootap and loop back to reach the wireless stations and
 	 * vice-versa.

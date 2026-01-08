@@ -1076,7 +1076,7 @@ struct link_assoc_rsp_info {
  * @shared_mlme_roam: Shared mlme_roam object for ML STA vdev
  * @is_cross_vdev_roam: Flag to track cross vdev roam
  * @copied_reassoc_rsp: Reassoc response copied from assoc link roam handling
- *                      to re-use while link connect in case of deferred/need
+ *                      to reuse while link connect in case of deferred/need
  *                      basis link connect (e.g. MLO OWE roaming).
  * @ml_link_state: ml link state command info param
  * @copied_t2lm_ie_assoc_rsp: copy of t2lm ie received in assoc response
@@ -1549,7 +1549,7 @@ struct ml_rv_info {
  * @mlo_assoc_link: indicate is the link used to initialize the association
  *                  of mlo connection
  * @mlo_primary_umac: indicate is the link on primary UMAC, WIN only flag
- * @mlo_logical_link_index_valid: indicate if the logial link index in is valid
+ * @mlo_logical_link_index_valid: indicate if the logical link index in is valid
  * @mlo_peer_id_valid: indicate if the mlo peer id is valid
  * @mlo_force_link_inactive: force the peer inactive
  * @emlsr_support: indicate if eMLSR supported
@@ -1821,7 +1821,7 @@ struct mlo_link_num_param {
  * @post_re_evaluate: run link state check again after command response event
  * handled
  * @post_re_evaluate_loops: current re-evaluate count if this set link is
- * from set link event respone handler
+ * from set link event response handler
  * @dont_reschedule_workqueue: don't reschedule force scc workqueue
  * after set link response
  * @set_link_for_recfg: set link command for link recfg

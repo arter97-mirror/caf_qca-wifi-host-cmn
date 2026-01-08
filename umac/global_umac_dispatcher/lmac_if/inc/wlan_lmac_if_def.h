@@ -1585,7 +1585,7 @@ struct wlan_lmac_if_dbam_rx_ops {
 
 /**
  * struct wlan_lmac_if_sched_mode_rx_ops - defines southbound rx callback for
- * sched mode of deteministic scheduler
+ * sched mode of deterministic scheduler
  * @sched_mode_probe_resp_handler: function pointer to rx sched mode response
  * event from FW.
  */

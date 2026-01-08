@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -131,7 +132,7 @@ fill_ieee80211_hdr_data(struct cdp_pdev *pdev,
 		/*
 		 * Handle big endianness
 		 * Increment msdu_id once after retrieving
-		 * lower 16 bits and uppper 16 bits
+		 * lower 16 bits and upper 16 bits
 		 */
 		if (!(i % 2)) {
 			tx_desc_id = ((*msdu_id & TX_DESC_ID_LOW_MASK)

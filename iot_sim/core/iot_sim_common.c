@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -99,7 +99,7 @@ iot_sim_parse_action_frame(uint16_t length, uint16_t offset, uint8_t *content,
 		if (QDF_IS_STATUS_ERROR(status))
 			return status;
 
-		/* Offset represet category type and action type */
+		/* Offset represent category type and action type */
 		status = iot_sim_get_index_for_action_frm(hex, category,
 							  action, false);
 		if (status == QDF_STATUS_E_FAULT) {
@@ -1704,7 +1704,7 @@ struct iot_sim_dbgfs_file iot_sim_dbgfs_files[IOT_SIM_DEBUGFS_FILE_NUM] = {
 
 /**
  * iot_sim_debugfs_deinit() - Deinit functions to remove debugfs directory and
- *			      it's file enteries.
+ *			      it's file entries.
  * @isc: iot_sim context
  *
  * Return: init status
@@ -1771,7 +1771,7 @@ iot_sim_remove_all_rules(struct iot_sim_context *isc)
 
 /**
  * iot_sim_debugfs_init() - debugfs functions to create debugfs directory and to
- *			    create debugfs enteries.
+ *			    create debugfs entries.
  * @isc: iot_sim context
  *
  * Return: init status
@@ -1893,4 +1893,3 @@ wlan_iot_sim_pdev_obj_destroy_handler(struct wlan_objmgr_pdev *pdev,
 
 	return QDF_STATUS_SUCCESS;
 }
-

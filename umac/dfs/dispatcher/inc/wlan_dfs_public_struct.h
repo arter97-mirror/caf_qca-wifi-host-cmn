@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -116,7 +116,7 @@ struct dfs_user_config {
  * @pri_max: Max PRI of detected radar pulse.
  * @duration_min: Min duration of detected pulse in us.
  * @duration_max: Max duration of detected pulse in us.
- * @sidx_min: Min softare index of detected radar pulse.
+ * @sidx_min: Min software index of detected radar pulse.
  * @sidx_max: Max software index of detected radar pulse.
  */
 struct dfs_radar_found_params {

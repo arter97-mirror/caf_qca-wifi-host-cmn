@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -135,7 +135,7 @@ QDF_STATUS wmi_extract_nan_msg(wmi_unified_t wmi_handle, uint8_t *data,
 			       struct nan_dump_msg *msg);
 
 /**
- * wmi_extract_ndp_confirm - api to extract ndp confim struct from even buffer
+ * wmi_extract_ndp_confirm - api to extract ndp confirm struct from even buffer
  * @wmi_handle: wmi handle
  * @data: event buffer
  * @ev: buffer to populate

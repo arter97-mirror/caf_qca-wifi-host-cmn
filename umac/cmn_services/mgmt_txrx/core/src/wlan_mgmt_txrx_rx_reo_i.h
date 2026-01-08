@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -402,7 +402,7 @@ struct mgmt_rx_reo_wait_count {
  * @pdev: Pointer to pdev object corresponding to this frame
  * @release_reason: Release reason
  * @is_delivered: Indicates whether the frame is delivered successfully
- * @is_dropped: Indciates whether the frame is dropped in reo layer
+ * @is_dropped: Indicates whether the frame is dropped in reo layer
  * @is_premature_delivery: Indicates whether the frame is delivered
  * prematurely
  * @is_parallel_rx: Indicates that this frame is received in parallel to the
@@ -689,7 +689,7 @@ struct reo_ingress_debug_frame_info {
  * struct reo_egress_debug_frame_info - Debug information about a frame
  * leaving the reorder module
  * @is_delivered: Indicates whether the frame is delivered to upper layers
- * @is_dropped: Indciates whether the frame is dropped in reo layer
+ * @is_dropped: Indicates whether the frame is dropped in reo layer
  * @is_premature_delivery: Indicates whether the frame is delivered
  * prematurely
  * @link_id: link id
@@ -861,7 +861,7 @@ struct reo_egress_debug_info {
 
 /**
  * struct reo_scheduler_debug_frame_info - Debug information about a frame
- * gettign scheduled by management Rx reo scheduler
+ * getting scheduled by management Rx reo scheduler
  * @link_id: link id
  * @mgmt_pkt_ctr: management packet counter
  * @global_timestamp: MLO global time stamp

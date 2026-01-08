@@ -1198,7 +1198,7 @@ enum wlan_status_code {
 	STATUS_EPCS_DENIED_VERIFICATION_FAILURE = 140,
 	STATUS_DENIED_OPERATION_PARAMETER_UPDATE = 141,
 
-	/* Error STATUS code for intenal usage*/
+	/* Error STATUS code for internal usage*/
 	STATUS_PROP_START = 65528,
 	STATUS_NO_NETWORK_FOUND = 65528,
 	STATUS_AUTH_TX_FAIL = 65529,
@@ -1817,7 +1817,7 @@ struct wlan_vendor_ie_htinfo {
  * @vht_txops: TXOP power save
  * @htc_vhtcap: HTC VHT capability
  * @max_ampdu_lenexp: AMPDU length
- * @vht_link_adapt: VHT link adapatation capable
+ * @vht_link_adapt: VHT link adaptation capable
  * @rx_antpattern: Rx Antenna pattern
  * @tx_antpattern: Tx Antenna pattern
  * @unused: reserved bits
@@ -2850,7 +2850,7 @@ struct wlan_ml_prv_linfo_perstaprof {
  * as the EML Capabilities subfield of the Common Info field of the Basic
  * variant Multi-Link element. Hence the definitions related to the EML
  * Capabilities subfield of the Common Info field of the Basic variant
- * Multi-Link element should be re-used here.
+ * Multi-Link element should be reused here.
  */
 
 /* Definitions related to the MLD Capabilities And Operations subfield of the
@@ -2860,7 +2860,7 @@ struct wlan_ml_prv_linfo_perstaprof {
  * as the MLD Capabilities And Operations subfield of the Common Info field of
  * the Basic variant Multi-Link element. Hence the definitions related to the
  * MLD Capabilities And Operations subfield of the Common Info field of the
- * Basic variant Multi-Link element should be re-used here.
+ * Basic variant Multi-Link element should be reused here.
  */
 
 /* Definitions related to the Extended MLD Capabilities And Operations subfield
@@ -2870,7 +2870,7 @@ struct wlan_ml_prv_linfo_perstaprof {
  * as the Extended MLD Capabilities And Operations subfield of the Common Info
  * field of the Basic variant Multi-Link element. Hence the definitions related
  * to the Extended MLD Capabilities And Operations subfield of the Common Info
- * field of the Basic Multi-Link variant element should be re-used here.
+ * field of the Basic Multi-Link variant element should be reused here.
  */
 
 /* Max recognized value in octets of Common Info Length subfield of Common Info
@@ -3410,7 +3410,7 @@ struct wlan_srp_ie {
 #define ESP_INFORMATION_LIST_LENGTH 3
 #define MAX_ESP_INFORMATION_FIELD 4
 /*
- * enum access_category: tells about access category in ESP paramameter
+ * enum access_category: tells about access category in ESP parameter
  * @ESP_AC_BK: ESP access category for background
  * @ESP_AC_BE: ESP access category for best effort
  * @ESP_AC_VI: ESP access category for video

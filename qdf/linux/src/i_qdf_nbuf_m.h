@@ -113,7 +113,7 @@
  * @u.rx.flag_chfrag_cont: middle or part of MSDU in an AMSDU
  * @u.rx.flag_chfrag_end: last MSDU in an AMSDU
  * @u.rx.flag_retry: flag to indicate MSDU is retried
- * @u.rx.flag_da_mcbc: flag to indicate mulicast or broadcast packets
+ * @u.rx.flag_da_mcbc: flag to indicate multicast or broadcast packets
  * @u.rx.flag_da_valid: flag to indicate DA is valid for RX packet
  * @u.rx.flag_sa_valid: flag to indicate SA is valid for RX packet
  * @u.rx.flag_is_frag: flag to indicate skb has frag list

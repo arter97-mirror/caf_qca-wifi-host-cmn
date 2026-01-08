@@ -95,7 +95,7 @@ struct page *__qdf_page_pool_alloc_frag(__qdf_page_pool_t pp, uint32_t *offset,
 /**
  * __qdf_page_pool_put_page() - Decrement frag reference count of page pool page
  *
- * @pp: Page Pool eference
+ * @pp: Page Pool reference
  * @page: Page reference
  * @direct_recycle: Direct recycle to lockless cache in page pool
  *
@@ -216,7 +216,7 @@ __qdf_page_pool_alloc_frag(__qdf_page_pool_t pp, uint32_t *offset, size_t size)
 /**
  * __qdf_page_pool_put_page() - Decrement frag reference count of page pool page
  *
- * @pp: Page Pool eference
+ * @pp: Page Pool reference
  * @page: Page reference
  * @direct_recycle: Direct recycle to lockless cache in page pool
  *

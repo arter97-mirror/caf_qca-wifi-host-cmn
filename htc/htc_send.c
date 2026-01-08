@@ -1107,7 +1107,7 @@ void htc_inc_wmi_runtime_cnt(HTC_TARGET *target, uint8_t rtpm_code)
  * htc_send_pkts_get_rtpm_id() - get runtime pm dbgid by service_id
  * @service_id: service for endpoint
  *
- * For service_id HTT_DATA_MSG_SVC, HTT message donot have a tx complete
+ * For service_id HTT_DATA_MSG_SVC, HTT message do not have a tx complete
  * from CE level, so they need runtime put which only can happen in fw
  * response. runtime put will happens at 2 ways.
  *    1 if packet tag HTC_TX_PACKET_TAG_RUNTIME_PUT, runtime put

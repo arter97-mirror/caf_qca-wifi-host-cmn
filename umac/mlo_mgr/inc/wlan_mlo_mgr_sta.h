@@ -493,7 +493,7 @@ wlan_mlo_get_assoc_link_vdev(struct wlan_objmgr_vdev *vdev);
 /**
  * mlo_update_connected_links_bmap: update connected links bitmap
  * @mlo_dev_ctx: mlo dev context ptr
- * @ml_partner_info: ml parnter info ptr
+ * @ml_partner_info: ml partner info ptr
  *
  * Return: none
  */

@@ -186,10 +186,10 @@ util_scan_entry_bssid(struct scan_cache_entry *scan_entry)
 }
 
 /**
- * util_scan_entry_capinfo() - function to read capibility info
+ * util_scan_entry_capinfo() - function to read capability info
  * @scan_entry: scan entry
  *
- * API, function to read capibility info of scan entry
+ * API, function to read capability info of scan entry
  *
  * Return: capability info
  */
@@ -1037,7 +1037,7 @@ util_scan_entry_rsnxo(struct scan_cache_entry *scan_entry)
  *
  * API, function to read adaptive 11r IE
  *
- * Return:  apaptive 11r ie or NULL if ie is not present
+ * Return:  adaptive 11r ie or NULL if ie is not present
  */
 static inline uint8_t*
 util_scan_entry_adaptive_11r(struct scan_cache_entry *scan_entry)
@@ -1393,10 +1393,10 @@ util_scan_entry_bss_type(struct scan_cache_entry *scan_entry)
 }
 
 /**
- * util_scan_entry_privacy() - function to check if privacy is enebled
+ * util_scan_entry_privacy() - function to check if privacy is enabled
  * @scan_entry: scan entry
  *
- * API, function to check if privacy is enebled
+ * API, function to check if privacy is enabled
  *
  * Return: true if privacy is enabled, false other wise
  */

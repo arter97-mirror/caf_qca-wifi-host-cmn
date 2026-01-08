@@ -360,7 +360,7 @@ more_data:
 	if (qdf_likely(txrx_peer))
 		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX);
 
-	/* reset local variables here to be re-used in the function */
+	/* reset local variables here to be reused in the function */
 	nbuf_head = NULL;
 	nbuf_tail = NULL;
 	deliver_list_head = NULL;
@@ -2653,7 +2653,7 @@ dp_rx_null_q_desc_handle_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 
 	/*
 	 * In qwrap mode if the received packet matches with any of the vdev
-	 * mac addresses, drop it. Donot receive multicast packets originated
+	 * mac addresses, drop it. Do not receive multicast packets originated
 	 * from any proxysta.
 	 */
 	if (check_qwrap_multicast_loopback(vdev, nbuf)) {

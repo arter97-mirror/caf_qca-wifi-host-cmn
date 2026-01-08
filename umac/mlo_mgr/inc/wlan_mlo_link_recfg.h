@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -296,10 +296,10 @@ typedef QDF_STATUS (*two_frm_handler)(struct mlo_link_recfg_context *recfg_ctx);
 /**
  * struct mlo_link_recfg_state_tran - Link Reconfig state transition
  * info
- * @state: target tansition state
+ * @state: target transition state
  * @event: first event id for the state
  * @req: state request param, also the event data
- * @abort_handler: error handler if error happends in the state,
+ * @abort_handler: error handler if error happens in the state,
  * it will be invoked after link config completed
  * @two_frame_xmit_handler: two frame xmit handler callback
  * @pre_link_add_handler: pre link add callback

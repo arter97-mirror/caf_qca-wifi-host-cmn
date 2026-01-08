@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2002-2010, Atheros Communications Inc.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -492,7 +492,7 @@ static inline void dfs_bump_up_bin5_pulse_dur(
  * @e: Pointer to dfs_phy_err structure.
  * @retval: Return value
  *
- * Rssi is not accurate for short pulses, so donot filter based on that for
+ * Rssi is not accurate for short pulses, so do not filter based on that for
  * short duration pulses.
  */
 static inline void dfs_filter_short_pulses(
@@ -952,7 +952,7 @@ void dfs_process_phyerr_filter_offload(struct wlan_dfs *dfs,
 	 * This event will then be processed by
 	 * dfs_radar_processevent() to see if the pattern
 	 * of pulses in radar pulse list match any radar
-	 * singnature in the current regulatory domain.
+	 * signature in the current regulatory domain.
 	 */
 
 	WLAN_DFSEVENTQ_LOCK(dfs);

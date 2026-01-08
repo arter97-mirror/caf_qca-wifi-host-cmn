@@ -2200,7 +2200,7 @@ dp_rx_mon_restitch_mpdu_from_msdus(struct dp_soc *soc,
 
 mpdu_stitch_done:
 	/* Check if this buffer contains the PPDU end status for TSF */
-	/* Need revist this code to see where we can get tsf timestamp */
+	/* Need revisit this code to see where we can get tsf timestamp */
 #if 0
 	/* PPDU end TLV will be retrieved from monitor status ring */
 	last_mpdu =

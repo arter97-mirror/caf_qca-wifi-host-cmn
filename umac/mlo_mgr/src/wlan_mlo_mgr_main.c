@@ -965,7 +965,7 @@ void mlo_t2lm_reset_established_and_upcoming_mapping(
 {
 	struct wlan_t2lm_info *t2lm;
 
-	/* Reset establishd T2LM */
+	/* Reset established T2LM */
 	qdf_mem_zero(&ml_dev->t2lm_ctx.established_t2lm,
 		     sizeof(struct wlan_mlo_t2lm_ie));
 
@@ -1654,4 +1654,3 @@ bool ucfg_mlo_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
 {
 	return mlo_mgr_is_mlo_vdev_active(vdev);
 }
-

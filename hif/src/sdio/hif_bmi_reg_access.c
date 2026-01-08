@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -184,7 +184,7 @@ hif_bmi_buffer_receive(struct hif_sdio_dev *device,
 			     &mbox_address[0], sizeof(mbox_address));
 
 	/*
-	 * During normal bootup, small reads may be required.
+	 * During normal boot-up, small reads may be required.
 	 * Rather than issue an HIF Read and then wait as the Target
 	 * adds successive bytes to the FIFO, we wait here until
 	 * we know that response data is available.

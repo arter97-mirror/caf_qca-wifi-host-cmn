@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -56,7 +56,7 @@ struct BMI_transaction {
 	qdf_dma_addr_t bmi_response_CE;   /* Rsp BMI msg in CE addr space */
 	unsigned int bmi_response_length; /* Length of received response */
 	unsigned int bmi_timeout_ms;
-	uint32_t bmi_transaction_flags;   /* flags for the transcation */
+	uint32_t bmi_transaction_flags;   /* flags for the transaction */
 };
 
 /*

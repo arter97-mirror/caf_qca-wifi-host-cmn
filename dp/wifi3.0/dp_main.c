@@ -2050,7 +2050,7 @@ dp_srng_configure_interrupt_thresholds(struct dp_soc *soc,
 			wlan_cfg_get_int_batch_threshold_other(soc->wlan_cfg_ctx);
 	}
 
-	/* These rings donot require interrupt to host. Make them zero */
+	/* These rings do not require interrupt to host. Make them zero */
 	switch (ring_type) {
 	case REO_REINJECT:
 	case REO_CMD:
@@ -16949,7 +16949,7 @@ QDF_STATUS dp_set_vlan_groupkey(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 
 		/*
 		 * 0 is invalid group key.
-		 * Initilalize array with invalid group keys.
+		 * Initialize array with invalid group keys.
 		 */
 		qdf_mem_zero(vdev->iv_vlan_map, vlan_map_size);
 	}

@@ -323,7 +323,7 @@ wlan_vdev_mlme_get_is_mlo_vdev(struct wlan_objmgr_psoc *psoc,
  *
  * API to Update SR value based on AP advertisement and provided by userspace
  *
- * Return: true/flase
+ * Return: true/false
  */
 void
 wlan_mlme_update_sr_data(struct wlan_objmgr_vdev *vdev, int *val,
@@ -348,7 +348,7 @@ void wlan_mlme_disable_fd_in_6ghz_band(struct wlan_objmgr_vdev *vdev,
 				       bool disable_fd);
 
 /**
- * wlan_mlme_is_fd_disabled_in_6ghz_band() - Get fd disabled flag fom vdev
+ * wlan_mlme_is_fd_disabled_in_6ghz_band() - Get fd disabled flag from vdev
  * @vdev: vdev obj
  *
  * Return: true/false

@@ -3758,7 +3758,7 @@ hif_disable_ce_custom_cb(struct hif_opaque_softc *hif_ctx, uint8_t pipe)
 #if defined(CE_TASKLET_SCHEDULE_ON_FULL) && defined(CE_TASKLET_DEBUG_ENABLE)
 #define CE_RING_FULL_THRESHOLD_TIME 3000000
 #define CE_RING_FULL_THRESHOLD 1024
-/* This function is called from htc_send path. If there is no resourse to send
+/* This function is called from htc_send path. If there is no resource to send
  * packet via HTC, then check if interrupts are not processed from that
  * CE for last 3 seconds. If so, schedule a tasklet to reap available entries.
  * Also if Queue has reached 1024 entries within 3 seconds, then also schedule

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -360,7 +360,7 @@ qdf_export_symbol(qdf_wait_for_event_completion);
  *
  * This function creates a list for maintaining events on which threads
  * wait for completion. A spinlock is also created to protect related
- * oprations.
+ * operations.
  *
  * Return: None
  */

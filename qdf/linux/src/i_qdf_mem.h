@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -686,7 +686,7 @@ __qdf_mem_get_dma_pa(qdf_device_t osdev,
  * __qdf_mem_set_dma_pa() - Set DMA physical address
  * @osdev: parent device instance
  * @mem_info: Pointer to allocated memory information
- * @dma_pa: DMA phsical address
+ * @dma_pa: DMA physical address
  *
  * Return: none
  */
@@ -706,7 +706,7 @@ __qdf_mem_set_dma_pa(qdf_device_t osdev,
  * @size: Size to be allocated
  * @paddr: Physical address
  * @func: Function name of the call site
- * @line: line numbe rof the call site
+ * @line: line number rof the call site
  *
  * Return: pointer of allocated memory or null if memory alloc fails
  */
@@ -719,7 +719,7 @@ void *__qdf_mem_alloc_consistent(qdf_device_t osdev, void *dev,
  * @size: Number of bytes of memory to allocate.
  *
  * @func: Function name of the call site
- * @line: line numbe rof the call site
+ * @line: line number rof the call site
  *
  * This function will dynamicallly allocate the specified number of bytes of
  * memory.

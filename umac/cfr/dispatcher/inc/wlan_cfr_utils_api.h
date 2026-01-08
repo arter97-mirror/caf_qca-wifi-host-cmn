@@ -747,7 +747,7 @@ struct nl_event_cb {
  * @max_agc_gain_tbls: Max rx AGC gain tables supported & advertised by target.
  * @max_agc_gain_per_tbl_2g: Max possible rx AGC gain per table on 2GHz band.
  * @max_agc_gain_per_tbl_5g: Max possible rx AGC gain per table on 5GHz band.
- * @max_agc_gain_per_tbl_6g: Max possbile rx AGC gain per table on 6GHz band.
+ * @max_agc_gain_per_tbl_6g: Max possible rx AGC gain per table on 6GHz band.
  * @max_bdf_entries_per_tbl: Max entries per table in gain & phase array.
  * @max_entries_all_table: Max entries across table in gain & phase array.
  * @gain_stop_index_array: This array has optimized gain range values stored.

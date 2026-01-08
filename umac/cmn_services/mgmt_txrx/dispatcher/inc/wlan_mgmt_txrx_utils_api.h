@@ -673,7 +673,7 @@ struct action_frm_hdr {
  * @MGMT_ACTION_MESH_MCCA_SETUP_REPLY: mesh mcca setup reply action frame
  * @MGMT_ACTION_MESH_MCCA_ADVERTISEMENT_REQUEST: mesh mcca advertisement req.
  * @MGMT_ACTION_MESH_MCCA_ADVERTISEMENT: mesh mcca advertisement action frame
- * @MGMT_ACTION_MESH_MCCA_TEARDOWN: mesh mcca teardown action fram
+ * @MGMT_ACTION_MESH_MCCA_TEARDOWN: mesh mcca teardown action frame
  * @MGMT_ACTION_MESH_TBTT_ADJUSTMENT_REQUEST: mesh tbtt adjustment req. frame
  * @MGMT_ACTION_MESH_TBTT_ADJUSTMENT_RESPONSE: mesh tbtt adjustment rsp. frame
  * @MGMT_ACTION_SP_MESH_PEERING_OPEN: self protected mesh peering open frame
@@ -1443,5 +1443,4 @@ QDF_STATUS wlan_mgmt_txrx_psoc_enable(struct wlan_objmgr_psoc *psoc);
  */
 QDF_STATUS wlan_mgmt_txrx_psoc_disable(struct wlan_objmgr_psoc *psoc);
 #endif
-
 

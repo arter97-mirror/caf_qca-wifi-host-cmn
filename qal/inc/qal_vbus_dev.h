@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -74,7 +74,7 @@ QDF_STATUS
 qal_vbus_allocate_iorsc(unsigned int pinnum, const char *label);
 
 /**
- * qal_vbus_iorsc_dir_output() - set pin dirction to output
+ * qal_vbus_iorsc_dir_output() - set pin direction to output
  * @pin: pin Number
  * @val: value
  *

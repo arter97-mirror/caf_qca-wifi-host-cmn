@@ -1601,7 +1601,7 @@ mlo_link_recfg_update_added_link_in_mlo_mgr(
 			break;
 		} else if (link_info->link_id == add_link->link_id) {
 			/* link delete and add back case, for example:
-			 * AB->A->AB, do not flush cached link assoc respone,
+			 * AB->A->AB, do not flush cached link assoc response,
 			 * since the cache is updated after receive link recfg
 			 * response for same link id.
 			 */

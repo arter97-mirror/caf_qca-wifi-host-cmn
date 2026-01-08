@@ -345,7 +345,7 @@ void hal_srng_src_hw_init_generic(struct hal_soc *hal,
 		reg_val |= SRNG_SM(SRNG_SRC_FLD(MISC, RING_ID_DISABLE), 1);
 	}
 
-	/* Initilaize head and tail pointers to indicate ring is empty */
+	/* Initialize head and tail pointers to indicate ring is empty */
 	SRNG_SRC_REG_WRITE(srng, HP, idx * srng->entry_size);
 	SRNG_SRC_REG_WRITE(srng, TP, idx * srng->entry_size);
 	*srng->u.src_ring.tp_addr = idx * srng->entry_size;
@@ -522,7 +522,7 @@ void hal_srng_dst_hw_init_generic(struct hal_soc *hal,
 	SRNG_DST_REG_WRITE(srng, HP_ADDR_LSB, hp_addr & 0xffffffff);
 	SRNG_DST_REG_WRITE(srng, HP_ADDR_MSB, hp_addr >> 32);
 
-	/* Initilaize head and tail pointers to indicate ring is empty */
+	/* Initialize head and tail pointers to indicate ring is empty */
 	SRNG_DST_REG_WRITE(srng, HP, idx * srng->entry_size);
 	SRNG_DST_REG_WRITE(srng, TP, idx * srng->entry_size);
 	*srng->u.dst_ring.hp_addr = idx * srng->entry_size;

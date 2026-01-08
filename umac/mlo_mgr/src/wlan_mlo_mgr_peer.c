@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1357,7 +1357,7 @@ wlan_mlo_get_bridge_peer_psoc_id(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	/* Check if derived psoc is adjecent to both links */
+	/* Check if derived psoc is adjacent to both links */
 	for (i = 0; i < WLAN_NUM_TWO_LINK_PSOC; i++) {
 		status = mlo_chip_adjacent(psoc_ids[i], bridge_peer_psoc_id,
 					   &is_adjacent);
@@ -1368,7 +1368,7 @@ wlan_mlo_get_bridge_peer_psoc_id(struct wlan_objmgr_vdev *vdev,
 			return status;
 		}
 		if (!is_adjacent) {
-			mlo_err("Derived psoc is not adjecent to one of the links for " QDF_MAC_ADDR_FMT ", psoc_0 %u, psoc_1 %u psoc_2 %u",
+			mlo_err("Derived psoc is not adjacent to one of the links for " QDF_MAC_ADDR_FMT ", psoc_0 %u, psoc_1 %u psoc_2 %u",
 				QDF_MAC_ADDR_REF(ml_peer->peer_mld_addr.bytes),
 				psoc_ids[0], psoc_ids[1], bridge_peer_psoc_id);
 			return QDF_STATUS_E_FAILURE;
@@ -1398,7 +1398,7 @@ wlan_mlo_get_bridge_peer_psoc_id(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	mlo_debug("%u is adjecent psoc for " QDF_MAC_ADDR_FMT " is_adjacent %u",
+	mlo_debug("%u is adjacent psoc for " QDF_MAC_ADDR_FMT " is_adjacent %u",
 		  bridge_peer_psoc_id,
 		  QDF_MAC_ADDR_REF(ml_peer->peer_mld_addr.bytes),
 		  is_adjacent);
@@ -1908,7 +1908,7 @@ QDF_STATUS wlan_mlo_peer_create(struct wlan_objmgr_vdev *vdev,
 		 ml_peer);
 
 	/*
-	 * wlan_mlo_peer_create() is trigggered after getting peer
+	 * wlan_mlo_peer_create() is triggered after getting peer
 	 * assoc confirm from FW. For single link MLO connection, it is
 	 * OK to trigger assoc response from here.
 	 */
@@ -3041,4 +3041,3 @@ void wlan_mlo_ap_delete_assoc_list_entries(void *ctx)
 	}
 	qdf_spin_unlock_bh(&assoc_list->list_lock);
 }
-

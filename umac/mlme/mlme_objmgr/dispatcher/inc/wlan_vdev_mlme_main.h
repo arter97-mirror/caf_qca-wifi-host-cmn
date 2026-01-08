@@ -127,10 +127,10 @@ enum wlan_vdev_state {
  *                                       channel should be selected before
  *                                       triggering this event
  * @WLAN_VDEV_SM_EV_CSA_RESTART:         Invokes CSA IE operation
- * @WLAN_VDEV_SM_EV_CSA_COMPLETE:        Notifiction of CSA process complete
+ * @WLAN_VDEV_SM_EV_CSA_COMPLETE:        Notification of CSA process complete
  * @WLAN_VDEV_SM_EV_MLME_DOWN_REQ:       Invoke DOWN command operation
  * @WLAN_VDEV_SM_EV_DOWN_COMPLETE:       Notification of DOWN complete
- * @WLAN_VDEV_SM_EV_ROAM:                Notifiction on ROAMING
+ * @WLAN_VDEV_SM_EV_ROAM:                Notification on ROAMING
  * @WLAN_VDEV_SM_EV_STOP_REQ:            Invoke API to initiate STOP handshake
  * @WLAN_VDEV_SM_EV_CHAN_SWITCH_DISABLED:Test only, CSA completes without
  *					 change in channel

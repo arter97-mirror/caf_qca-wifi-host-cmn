@@ -339,7 +339,7 @@
  *
  * This ini is used to increase/decrease OCE WAN caps weightage in best
  * candidate selection. If AP have OCE WAN information, give weightage depending
- * on the downaload available capacity.
+ * on the download available capacity.
  *
  * Related: num_oce_wan_slots
  *

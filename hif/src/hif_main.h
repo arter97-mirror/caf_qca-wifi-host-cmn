@@ -26,7 +26,7 @@
 /*
  * This holds all state needed to process a pending send/recv interrupt.
  * The information is saved here as soon as the interrupt occurs (thus
- * allowing the underlying CE to re-use the ring descriptor). The
+ * allowing the underlying CE to reuse the ring descriptor). The
  * information here is eventually processed by a completion processing
  * thread.
  */

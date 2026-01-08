@@ -220,7 +220,7 @@ bool reg_is_fcc_constraint_set(struct wlan_objmgr_pdev *pdev);
  * reg_is_6ghz_band_set - Check if 6 GHz band set
  * @pdev: Pointer to pdev
  *
- * Return: True if 6 GHz band set else return flase
+ * Return: True if 6 GHz band set else return false
  */
 bool reg_is_6ghz_band_set(struct wlan_objmgr_pdev *pdev);
 

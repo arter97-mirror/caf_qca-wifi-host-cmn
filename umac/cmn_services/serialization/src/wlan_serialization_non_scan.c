@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -300,7 +300,7 @@ wlan_ser_move_non_scan_pending_to_active(
 			wlan_serialization_release_lock(
 				&pdev_queue->pdev_queue_lock);
 			ser_debug(
-				"non scan cmd cannot move frm pendin to actv");
+				"non scan cmd cannot move frm pending to actv");
 			goto error;
 		}
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -63,7 +63,7 @@ QDF_STATUS ucfg_cm_disconnect_sync(struct wlan_objmgr_vdev *vdev,
 				   enum wlan_reason_code reason_code);
 
 /**
- * ucfg_cm_is_vdev_connecting() - check if vdev is in conneting state
+ * ucfg_cm_is_vdev_connecting() - check if vdev is in connecting state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -71,7 +71,7 @@ QDF_STATUS ucfg_cm_disconnect_sync(struct wlan_objmgr_vdev *vdev,
 bool ucfg_cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 
 /**
- * ucfg_cm_is_vdev_connected() - check if vdev is in conneted state
+ * ucfg_cm_is_vdev_connected() - check if vdev is in connected state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -79,7 +79,7 @@ bool ucfg_cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 bool ucfg_cm_is_vdev_connected(struct wlan_objmgr_vdev *vdev);
 
 /**
- * ucfg_cm_is_vdev_active() - check if vdev is in active state ie conneted or
+ * ucfg_cm_is_vdev_active() - check if vdev is in active state ie connected or
  * roaming state
  * @vdev: vdev pointer
  *

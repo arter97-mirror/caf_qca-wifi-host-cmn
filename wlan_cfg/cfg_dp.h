@@ -578,7 +578,7 @@
 #define WLAN_CFG_RADIO_0_DEFAULT_REO 0xA	//REO_REMAP_SW8
 #else
 /* FEATURE_ALLOW_PKT_DROPPING is only defined on consolidate
- * build, re-use this marcro and don't set default route to REO2SW8
+ * build, reuse this marcro and don't set default route to REO2SW8
  * on consolidate build either.
  */
 #define WLAN_CFG_RADIO_0_DEFAULT_REO 0x1	//REO_REMAP_SW1
@@ -1746,11 +1746,11 @@
 
 #define CFG_DP_TXMON_SW_PEER_FILTERING \
 	CFG_INI_BOOL("tx_litemon_sw_peer_filtering", false, \
-		     "Enable SW based tx monitor peer fitlering")
+		     "Enable SW based tx monitor peer filtering")
 
 #define CFG_DP_TXMON_DISABLE_HW_FILTER \
 	CFG_INI_BOOL("tx_litemon_disable_hw_filter", false, \
-		     "Disable HW based tx monitor and enable sw fitlering")
+		     "Disable HW based tx monitor and enable sw filtering")
 
 #define CFG_DP_POINTER_TIMER_THRESHOLD_RX \
 	CFG_INI_UINT("dp_rx_ptr_timer_threshold", \
@@ -1812,7 +1812,7 @@
  * initialized and used.
  * If value is 0, it means this INI configuration is bypassed,
  * number of RX contexts used still same as before which depends on
- * number of RX rings used relevants with INI "dp_reo_rings_map".
+ * number of RX rings used relevant with INI "dp_reo_rings_map".
  * If value is non-0, this INI value will be used as number of RX contexts
  * directly.
  *

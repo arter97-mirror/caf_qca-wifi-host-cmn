@@ -35,7 +35,7 @@
 
 typedef uint32_t wlan_cm_id;
 
-/* Diconnect active timeout */
+/* Disconnect active timeout */
 #define DISCONNECT_TIMEOUT \
 	((STOP_RESPONSE_TIMER) + (DELETE_RESPONSE_TIMER) +\
 	 (RSO_STOP_RESPONSE_TIMER) + (1000))
@@ -156,7 +156,7 @@ struct wlan_fils_con_info {
  * @CM_ROAMING_LINK_REMOVAL: Roaming request initiate by link removal
  * @CM_OSIF_DISCONNECT: Disconnect req initiated by OSIF or north bound
  * @CM_PEER_DISCONNECT: Disconnect req initiated by peer sending deauth/disassoc
- * only for this localy generated will be false while indicating to kernel
+ * only for this locally generated will be false while indicating to kernel
  * @CM_SB_DISCONNECT: Disconnect initiated from firmware. eg HB failure,
  * sta kickout etc
  * @CM_MLME_DISCONNECT: Disconnect req initiated by mlme. eg VDEV mgr or any

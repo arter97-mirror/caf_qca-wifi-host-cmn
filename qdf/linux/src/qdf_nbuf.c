@@ -1660,7 +1660,7 @@ qdf_export_symbol(__qdf_nbuf_data_get_dhcp_subtype);
  * @data: Pointer to EAPOL packet data buffer
  *
  * We can distinguish M1/M3 from M2/M4 by the ack bit in the keyinfo field
- * The ralationship between the ack bit and EAPOL type is as follows:
+ * The relationship between the ack bit and EAPOL type is as follows:
  *
  *  EAPOL type  |   M1    M2   M3  M4
  * --------------------------------------

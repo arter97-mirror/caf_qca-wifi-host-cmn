@@ -214,7 +214,7 @@ bool qdf_trace_dp_rx_tcp_pkt_enabled(void)
  * qdf_trace_dp_rx_tcp_pkt() - Trace tcp packet in rx direction
  * @nbuf: pointer to network buffer
  * @tcp_seq_num: TCP sequence number
- * @tcp_ack_num: TCP acknowlegment number
+ * @tcp_ack_num: TCP acknowledgment number
  * @srcport: TCP source port
  * @dstport: TCP destination port
  * @latency: latency in milliseconds
@@ -248,7 +248,7 @@ bool qdf_trace_dp_tx_comp_tcp_pkt_enabled(void)
  * qdf_trace_dp_tx_comp_tcp_pkt() - Trace tcp packet in tx completion
  * @nbuf: pointer to network buffer
  * @tcp_seq_num: TCP sequence number
- * @tcp_ack_num: TCP acknowlegment number
+ * @tcp_ack_num: TCP acknowledgment number
  * @srcport: TCP source port
  * @dstport: TCP destination port
  * @latency: latency in milliseconds

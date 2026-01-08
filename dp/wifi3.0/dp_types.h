@@ -1410,7 +1410,7 @@ struct reo_cmd_event_history {
  * @invalid_peer_unmap: Peer unmap with invalid peer id
  * @ml_peer_map: MLD peer map count
  * @ml_peer_unmap: MLD peer unmap count
- * @peer_unmap_add: unmap old peer manuallly and replace with new peer
+ * @peer_unmap_add: unmap old peer manually and replace with new peer
  */
 struct htt_t2h_msg_stats {
 	uint32_t peer_map;
@@ -3483,7 +3483,7 @@ struct dp_mon_dest_ring_history {
 /* SOC level structure for data path */
 struct dp_soc {
 	/**
-	 * re-use memory section starts
+	 * reuse memory section starts
 	 */
 
 	/* Common base structure - Should be the first member */
@@ -3736,7 +3736,7 @@ struct dp_soc {
 	/* Protect peer_id_to_objmap */
 	DP_MUTEX_TYPE peer_map_lock;
 
-	/* maximum number of suppoerted peers */
+	/* maximum number of supported peers */
 	uint32_t max_peers;
 	/* maximum value for peer_id */
 	uint32_t max_peer_id;
@@ -4475,7 +4475,7 @@ struct dp_mlo_sync_timestamp {
 /* PDEV level structure for data path */
 struct dp_pdev {
 	/**
-	 * Re-use Memory Section Starts
+	 * Reuse Memory Section Starts
 	 */
 
 	/* PDEV Id */
@@ -5751,7 +5751,7 @@ struct dp_peer_ezmesh_tx_stats {
  * @unicast: Total unicast packets
  * @multicast: Total multicast packets
  * @bcast:  Broadcast Packet Count
- * @raw: Raw Pakets received
+ * @raw: Raw Packets received
  * @nawds_mcast_drop: Total NAWDS multicast packets dropped
  * @mec_drop: Total MEC packets dropped
  * @ppeds_drop: Total DS packets dropped

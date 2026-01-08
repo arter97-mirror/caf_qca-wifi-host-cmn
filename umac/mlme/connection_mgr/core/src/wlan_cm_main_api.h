@@ -1071,7 +1071,7 @@ void cm_set_max_connect_timeout(struct wlan_objmgr_vdev *vdev,
 				uint32_t max_connect_timeout);
 
 /**
- * cm_is_vdev_connecting() - check if vdev is in conneting state
+ * cm_is_vdev_connecting() - check if vdev is in connecting state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -1079,7 +1079,7 @@ void cm_set_max_connect_timeout(struct wlan_objmgr_vdev *vdev,
 bool cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 
 /**
- * cm_is_vdev_connected() - check if vdev is in conneted state
+ * cm_is_vdev_connected() - check if vdev is in connected state
  * @vdev: vdev pointer
  *
  * Return: bool
@@ -1087,7 +1087,7 @@ bool cm_is_vdev_connecting(struct wlan_objmgr_vdev *vdev);
 bool cm_is_vdev_connected(struct wlan_objmgr_vdev *vdev);
 
 /**
- * cm_is_vdev_active() - check if vdev is in active state ie conneted or roaming
+ * cm_is_vdev_active() - check if vdev is in active state ie connected or roaming
  * state
  * @vdev: vdev pointer
  *

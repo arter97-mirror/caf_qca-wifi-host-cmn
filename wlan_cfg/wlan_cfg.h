@@ -899,7 +899,7 @@ int wlan_cfg_get_wbm_ring_num_for_index(struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ct
  * @index: TCL index for which WBM rbm value is needed
  *
  * The function fills in wbm rbm value corresponding to a TX ring index in
- * soc->tcl_data_ring. This is needed since WBM ring numbers donot map
+ * soc->tcl_data_ring. This is needed since WBM ring numbers do not map
  * sequentially to wbm rbm values.
  * The function returns rbm id values as stored in tcl_wbm_map_array global
  * array.

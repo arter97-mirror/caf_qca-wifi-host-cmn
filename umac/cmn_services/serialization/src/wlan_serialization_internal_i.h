@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -191,7 +191,7 @@ wlan_serialization_find_and_cancel_cmd(
  * @vdev: pointer to vdev
  * @cmd_type: pointer to cmd_type
  * @queue_type: If active queue or pending queue
- * @cmd_attr: Attrbute to indicate a blocking or a non-blocking command
+ * @cmd_attr: Attribute to indicate a blocking or a non-blocking command
  *
  * This API will decide from which queue, command needs to be cancelled
  * and pass that queue and other parameter required to cancel the command

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -152,7 +152,7 @@ struct mlo_ctxt_switch_msg_s {
 
 /**
  * mlo_msgq_post() - Posts message to defer context
- * @type: msg tupe
+ * @type: msg type
  * @ml_dev: MLO dev context
  * @payload: msg buf
  *

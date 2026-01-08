@@ -759,7 +759,7 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 	dp_runtime_pm_mark_last_busy(soc);
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
 
-	/* reset local variables here to be re-used in the function */
+	/* reset local variables here to be reused in the function */
 	nbuf_head = NULL;
 	nbuf_tail = NULL;
 	deliver_list_head = NULL;

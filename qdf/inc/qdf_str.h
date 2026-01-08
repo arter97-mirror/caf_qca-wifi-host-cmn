@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -174,7 +174,7 @@ qdf_str_ncmp(const char *str1, const char *str2, qdf_size_t limit)
 /**
  * qdf_str_sep - extract token from string
  * @str: String buffer
- * @delim: Delimitter
+ * @delim: Delimiter
  * Return: Pointer to the first token
  *
  */

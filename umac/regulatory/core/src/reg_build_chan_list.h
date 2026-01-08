@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -203,7 +203,7 @@ uint8_t reg_get_subchannels_for_opclass(uint8_t cfi,
  * channel list
  * @pdev: pdev pointer
  * @psd: Power Spectral Density in dBm/MHz
- * @ch_bw: Bandwdith of a channel in MHz (20/40/80/160/320 etc)
+ * @ch_bw: Bandwidth of a channel in MHz (20/40/80/160/320 etc)
  * @eirp:  EIRP power  in dBm
  *
  * Return: QDF_STATUS
@@ -217,7 +217,7 @@ QDF_STATUS reg_psd_2_eirp(struct wlan_objmgr_pdev *pdev,
  * reg_eirp_2_psd() - Calculate PSD from EIRP and bandwidth
  * channel list
  * @pdev: pdev pointer
- * @ch_bw: Bandwdith of a channel in MHz (20/40/80/160/320 etc)
+ * @ch_bw: Bandwidth of a channel in MHz (20/40/80/160/320 etc)
  * @eirp:  EIRP power  in dBm
  * @psd: Power Spectral Density in dBm/MHz
  *

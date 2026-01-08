@@ -547,7 +547,7 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 					&my_bss_rx_delta, &reg_tsf_delta);
 
 	if (QDF_IS_STATUS_ERROR(status)) {
-		/* only if level is critial as for verbose its already dumped */
+		/* only if level is critical as for verbose its already dumped */
 		if (unlikely(dcs_host_params.dcs_debug == DCS_DEBUG_CRITICAL))
 			wlan_dcs_im_print_stats(prev_stats, curr_stats,
 						vdev_id);
@@ -712,7 +712,7 @@ wlan_dcs_wlan_interference_process(struct wlan_objmgr_psoc *psoc,
 
 	/*
 	 * Add the influence of ofdm phy errors to the wasted channel
-	 * utillization, this computed through time wasted in errors
+	 * utilization, this computed through time wasted in errors
 	 */
 	reg_ofdm_phyerr_cu = reg_ofdm_phyerr_delta *
 				dcs_host_params.phy_err_penalty;

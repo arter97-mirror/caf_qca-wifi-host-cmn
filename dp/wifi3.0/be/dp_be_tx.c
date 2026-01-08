@@ -1738,7 +1738,7 @@ void dp_tx_get_vdev_bank_config(struct dp_vdev_be *be_vdev,
 
 	bank_config->dscp_tid_map_id = vdev->dscp_tid_map_id;
 
-	/* Disabling vdev id check for now. Needs revist. */
+	/* Disabling vdev id check for now. Needs revisit. */
 	bank_config->vdev_id_check_en = be_vdev->vdev_id_check_en;
 
 	bank_config->pmac_id = vdev->lmac_id;

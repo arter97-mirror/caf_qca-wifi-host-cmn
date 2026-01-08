@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1485,7 +1485,7 @@ static void hal_reo_setup_6432(struct hal_soc *soc, void *reoparams,
 						REO_REG_REG_BASE)));
 	}
 
-	/* TODO: Check if the following registers shoould be setup by host:
+	/* TODO: Check if the following registers should be setup by host:
 	 * AGING_CONTROL
 	 * HIGH_MEMORY_THRESHOLD
 	 * GLOBAL_LINK_DESC_COUNT_THRESH_IX_0[1,2]

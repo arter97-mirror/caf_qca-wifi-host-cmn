@@ -588,7 +588,7 @@ wmi_get_converted_twt_add_dialog_status(WMI_ADD_TWT_STATUS_T tgt_status)
 }
 
 /**
- * extract_twt_add_dialog_comp_event_tlv - Extacts twt add dialog complete wmi
+ * extract_twt_add_dialog_comp_event_tlv - Extracts twt add dialog complete wmi
  * event from firmware
  * @wmi_handle: WMI handle
  * @evt_buf: Pointer to wmi event buf of twt add dialog complete event
@@ -1762,7 +1762,7 @@ wmi_get_converted_twt_add_dialog_status(WMI_ADD_TWT_STATUS_T tgt_status)
 }
 
 /**
- * extract_twt_add_dialog_comp_event_tlv - Extacts twt add dialog complete wmi
+ * extract_twt_add_dialog_comp_event_tlv - Extracts twt add dialog complete wmi
  * event from firmware
  * @wmi_handle: WMI handle
  * @evt_buf: Pointer to wmi event buf of twt add dialog complete event

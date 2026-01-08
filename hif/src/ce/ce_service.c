@@ -68,7 +68,7 @@ static int war1_allow_sleep;
 static int hif_ce_war1;
 
 /**
- * hif_ce_war_disable() - disable ce war gobally
+ * hif_ce_war_disable() - disable ce war globally
  */
 void hif_ce_war_disable(void)
 {
@@ -76,7 +76,7 @@ void hif_ce_war_disable(void)
 }
 
 /**
- * hif_ce_war_enable() - enable ce war gobally
+ * hif_ce_war_enable() - enable ce war globally
  */
 void hif_ce_war_enable(void)
 {
@@ -394,7 +394,7 @@ bool hif_ce_service_should_yield(struct hif_softc *scn,
 	bool yield =  hif_max_num_receives_reached(scn, ce_state->receive_count);
 
 	/* Setting receive_count to MAX_NUM_OF_RECEIVES when this count goes
-	 * beyond MAX_NUM_OF_RECEIVES for NAPI backet calculation issue. This
+	 * beyond MAX_NUM_OF_RECEIVES for NAPI bracket calculation issue. This
 	 * can happen in fast path handling as processing is happening in
 	 * batches.
 	 */
@@ -424,7 +424,7 @@ bool hif_ce_service_should_yield(struct hif_softc *scn,
 					(scn, ce_state->receive_count);
 
 	/* Setting receive_count to MAX_NUM_OF_RECEIVES when this count goes
-	 * beyond MAX_NUM_OF_RECEIVES for NAPI backet calculation issue. This
+	 * beyond MAX_NUM_OF_RECEIVES for NAPI bracket calculation issue. This
 	 * can happen in fast path handling as processing is happening in
 	 * batches.
 	 */
@@ -2232,4 +2232,3 @@ uint8_t *hif_log_dump_ce(struct hif_softc *scn, uint8_t *buf_cur,
 
 qdf_export_symbol(hif_log_dump_ce);
 #endif /* OL_ATH_SMART_LOGGING */
-

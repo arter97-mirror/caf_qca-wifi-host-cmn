@@ -4366,7 +4366,7 @@ dp_primary_link_migration(struct dp_soc *soc, void *cb_ctxt,
 
 	hw_peer_id = pr_peer_info->hw_peer_id;
 	ast_hash = pr_peer_info->ast_hash;
-	/* Add ast enteries for new primary peer */
+	/* Add ast entries for new primary peer */
 	if (pr_soc->ast_offload_support && pr_soc->host_ast_db_enable) {
 		dp_peer_host_add_map_ast(pr_soc, mld_peer->peer_id, mld_peer->mac_addr.raw,
 					 hw_peer_id, new_primary_peer->vdev->vdev_id,

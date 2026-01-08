@@ -3205,7 +3205,7 @@ struct cdp_monitor_filter {
 };
 
 /**
- * enum cdp_dp_cfg - CDP ENUMs to get to DP configation
+ * enum cdp_dp_cfg - CDP ENUMs to get to DP configuration
  * @cfg_dp_enable_data_stall: context passed to be used by consumer
  * @cfg_dp_enable_p2p_ip_tcp_udp_checksum_offload: get P2P checksum config
  * @cfg_dp_enable_nan_ip_tcp_udp_checksum_offload: get NAN TX checksum config

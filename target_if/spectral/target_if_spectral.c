@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011,2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3615,7 +3615,7 @@ target_if_spectral_report_params_init(
 /**
  * target_if_spectral_timestamp_war_init() - Initialize Spectral timestamp WAR
  * related info
- * @twar: Pointer to Spectral timstamp WAR related info
+ * @twar: Pointer to Spectral timestamp WAR related info
  *
  * Function to Initialize parameters related to Spectral timestamp WAR
  *

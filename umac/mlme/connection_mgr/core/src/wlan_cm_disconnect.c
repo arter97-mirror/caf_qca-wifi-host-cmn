@@ -97,7 +97,7 @@ cm_ser_disconnect_cb(struct wlan_serialization_command *cmd,
 		 * Handle failure if posting fails, i.e. the SM state has
 		 * changes. Disconnect should be handled in JOIN_PENDING,
 		 * JOIN-SCAN state as well apart from DISCONNECTING.
-		 * Also no need to check for head list as diconnect needs to be
+		 * Also no need to check for head list as disconnect needs to be
 		 * completed always once active.
 		 */
 

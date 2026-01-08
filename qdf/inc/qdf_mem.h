@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1262,7 +1262,7 @@ qdf_mem_get_dma_pa(qdf_device_t osdev,
  * qdf_mem_set_dma_pa() - Set DMA physical address
  * @osdev: parent device instance
  * @mem_info: Pointer to allocated memory information
- * @dma_pa: DMA phsical address
+ * @dma_pa: DMA physical address
  *
  * Return: none
  */

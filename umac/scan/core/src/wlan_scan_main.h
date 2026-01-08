@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -279,7 +279,7 @@ struct scan_vdev_obj {
  * @pno_runtime_pm_lock: pno runtime pm lock
  * @pno_cb: callback to call on PNO completion
  * @mawc_params: Configuration parameters for NLO MAWC.
- * @user_config_sched_scan_plan: if enabled set user confing sched scan plan
+ * @user_config_sched_scan_plan: if enabled set user config sched scan plan
  */
 struct pno_def_config {
 	bool pno_offload_enabled;

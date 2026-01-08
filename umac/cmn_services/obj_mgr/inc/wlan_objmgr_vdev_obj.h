@@ -1885,7 +1885,7 @@ static inline bool wlan_vdev_mlme_is_mlo_ap_sync_disabled(
 /**
  * wlan_vdev_mlme_set_epcs_flag() - Set epcs flag for vdev
  * @vdev: VDEV object
- * @flag: True or Flase
+ * @flag: True or False
  *
  * Return: void
  */
@@ -1902,7 +1902,7 @@ bool wlan_vdev_mlme_get_epcs_flag(struct wlan_objmgr_vdev *vdev);
 /**
  * wlan_vdev_mlme_set_user_dis_eht_flag() - Set user disable eht flag for vdev
  * @vdev: VDEV object
- * @flag: True or Flase
+ * @flag: True or False
  *
  * Return: void
  */

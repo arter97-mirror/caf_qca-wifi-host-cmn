@@ -90,7 +90,7 @@ qdf_page_pool_alloc_frag(qdf_page_pool_t pp, uint32_t *offset, size_t size)
 /**
  * qdf_page_pool_put_page() - Decrement frag reference count of page pool page
  *
- * @pp: Page Pool eference
+ * @pp: Page Pool reference
  * @page: Page reference
  * @direct_recycle: Direct recycle to lockless cache in page pool
  *

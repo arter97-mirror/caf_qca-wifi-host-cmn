@@ -43,7 +43,7 @@ void hal_reo_setup_generic_be(struct hal_soc *soc,
  *			descriptor pointer.
  * @msdu_details_ptr: msdu details
  *
- * Return: msdu exntension descriptor pointer.
+ * Return: msdu extension descriptor pointer.
  */
 void *hal_rx_msdu_ext_desc_info_get_ptr_be(void *msdu_details_ptr);
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011,2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -296,7 +296,7 @@ target_if_dbg_print_samp_msg(struct spectral_samp_msg *ss_msg)
 	spectral_debug("max index       :   %d", p->spectral_max_index);
 	spectral_debug("max exp         :   %d", p->spectral_max_exp);
 	spectral_debug("max mag         :   %d", p->spectral_max_mag);
-	spectral_debug("last timstamp   :   %d", p->spectral_last_tstamp);
+	spectral_debug("last timestamp   :   %d", p->spectral_last_tstamp);
 	spectral_debug("upper max idx   :   %d", p->spectral_upper_max_index);
 	spectral_debug("lower max idx   :   %d", p->spectral_lower_max_index);
 	spectral_debug("bin power count :   %d", p->bin_pwr_count);

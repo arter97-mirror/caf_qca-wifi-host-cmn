@@ -119,7 +119,7 @@ void ucfg_reg_restore_cached_channels(struct wlan_objmgr_pdev *pdev)
  *                                               connection flag
  * @pdev: The physical pdev to get keep_6ghz_sta_cli_connection
  *
- * Return: Return true if keep 6ghz sta cli connection set else return flase
+ * Return: Return true if keep 6ghz sta cli connection set else return false
  */
 bool ucfg_reg_get_keep_6ghz_sta_cli_connection(
 					struct wlan_objmgr_pdev *pdev);

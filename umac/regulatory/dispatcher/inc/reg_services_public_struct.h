@@ -871,7 +871,7 @@ struct reg_stop_11d_scan_req {
 };
 
 /**
- * struct reg_11d_new_country: regulatory 11d new coutry code
+ * struct reg_11d_new_country: regulatory 11d new country code
  * @alpha2: new 11d alpha2
  */
 struct reg_11d_new_country {

@@ -1715,7 +1715,7 @@ struct cdp_rx_err_proto_stats {
  * @avg_ack_rssi: Averaged RSSI of acked packets
  * @tx_bytes_success_last: last Tx success bytes
  * @tx_data_success_last: last Tx success data
- * @tx_byte_rate: Bytes Trasmitted in last one sec
+ * @tx_byte_rate: Bytes Transmitted in last one sec
  * @tx_data_rate: Data Transmitted in last one sec
  * @tx_data_ucast_last:
  * @tx_data_ucast_rate:
@@ -1967,7 +1967,7 @@ struct cdp_tx_stats {
  * @unicast: Total unicast packets
  * @multicast: Total multicast packets
  * @bcast:  Broadcast Packet Count
- * @raw: Raw Pakets received
+ * @raw: Raw Packets received
  * @nawds_mcast_drop: Total multicast packets
  * @mec_drop: Total MEC packets dropped
  * @ppeds_drop: Total DS packets dropped
@@ -2346,7 +2346,7 @@ struct cdp_vdev_stats {
  * @last_per: Tx last packet error rate
  * @tx_bytes_success_last: last Tx success bytes
  * @tx_data_success_last: last Tx success data
- * @tx_byte_rate: Bytes Trasmitted in last one sec
+ * @tx_byte_rate: Bytes Transmitted in last one sec
  * @tx_data_rate: Data Transmitted in last one sec
  * @tx_data_ucast_last: last unicast Tx bytes
  * @tx_data_ucast_rate: last unicast Tx data
@@ -2632,7 +2632,7 @@ struct cdp_htt_tx_pdev_stats_cmn_tlv {
     uint32_t hw_filt;
     /* Num PPDUs cleaned up in TX abort */
     uint32_t tx_abort;
-    /* Num MPDUs requed by SW */
+    /* Num MPDUs requeued by SW */
     uint32_t mpdu_requed;
     /* excessive retries */
     uint32_t tx_xretry;

@@ -507,7 +507,7 @@ static bool mlme_vdev_state_up_event(void *ctx, uint16_t event,
 		break;
 
 	/**
-	 * Channel switch disabled case, then tansition to up state
+	 * Channel switch disabled case, then transition to up state
 	 * and deliver EV_UP_HOST_RESTART, hand it in up state and
 	 * move to up active state
 	 */

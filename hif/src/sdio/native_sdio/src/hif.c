@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -526,7 +526,7 @@ hif_configure_device(struct hif_softc *ol_sc, struct hif_sdio_dev *device,
 
 /**
  * hif_sdio_shutdown() - hif-sdio shutdown routine
- * @hif_ctx: pointer to hif_softc structore
+ * @hif_ctx: pointer to hif_softc structure
  *
  * Return: None.
  */

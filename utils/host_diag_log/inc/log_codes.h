@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -77,7 +78,7 @@
 /* -------------------------------------------------------------------------
  * Log equipment IDs.
  * The most significant 4 bits of the 16 bit log code is the equipment ID.
- * Orignally, the mobile was to have an ID, and base stations and other
+ * Originally, the mobile was to have an ID, and base stations and other
  * IDs.  As QCT technology diversifies, new equipment IDs are assigned to new
  * technology areas.  0x2000 and 0x3000 are reserved for legacy reasons, so
  * the first
@@ -1761,7 +1762,7 @@
 /* CGPS Reserved */
 #define LOG_GNSS_CC_PERFORMANCE_STATS_C                 (0x48E + LOG_1X_BASE_C)
 
-/* GNSS PDSM Set Paramerters */
+/* GNSS PDSM Set Parameters */
 #define LOG_GNSS_PDSM_SET_PARAMETERS_C                  (0x48F + LOG_1X_BASE_C)
 
 /* GNSS PDSM PD Event Callback */
@@ -1890,7 +1891,7 @@
 /* XO calibration raw IQ data */
 #define LOG_XO_IQ_DATA_C                                (0x4BA + LOG_1X_BASE_C)
 
-/*DTV CMMB Control Tabl Updated*/
+/*DTV CMMB Control Table Updated*/
 #define LOG_DTV_CMMB_CONTROL_TABLE_UPDATE                  ((0x4BB) + LOG_1X_BASE_C)
 
 /*DTV CMMB Media API Buffering Status*/

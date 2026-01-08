@@ -92,7 +92,7 @@ static void scheduler_watchdog_timeout(void *arg)
 	if (qdf_atomic_test_bit(MC_SHUTDOWN_EVENT_MASK, &sched->sch_event_flag))
 		return;
 
-	sched_err("Triggering self recovery on sheduler timeout");
+	sched_err("Triggering self recovery on scheduler timeout");
 	qdf_trigger_self_recovery(NULL, QDF_SCHED_TIMEOUT);
 }
 

@@ -618,7 +618,7 @@ int nl_srv_unregister(tWlanNlModTypes msg_type, nl_srv_msg_callback msg_handler)
 }
 
 /*
- * Unicast the message to the process in user space identfied
+ * Unicast the message to the process in user space identified
  * by the dst-pid
  */
 int nl_srv_ucast(struct sk_buff *skb, int dst_pid, int flag)

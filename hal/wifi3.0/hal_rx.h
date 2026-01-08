@@ -248,7 +248,7 @@ enum hal_rxdma_error_status {
  *              [2] msdu_continuation - MSDU spread across buffers
  *             [23] sa_is_valid - SA match in peer table
  *             [24] sa_idx_timeout - Timeout while searching for SA match
- *             [25] da_is_valid - Used to identtify intra-bss forwarding
+ *             [25] da_is_valid - Used to identify intra-bss forwarding
  *             [26] da_is_MCBC
  *             [27] da_idx_timeout - Timeout while searching for DA match
  * @msdu_len: length of the MSDU (14 bits of length)

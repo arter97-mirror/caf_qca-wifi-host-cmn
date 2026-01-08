@@ -936,7 +936,7 @@ static inline void target_psoc_set_total_mac_phy_cnt
  *
  * API to get total_mac_phy
  *
- * Return: unint8_t
+ * Return: uint8_t
  */
 static inline uint8_t target_psoc_get_total_mac_phy_cnt(
 		struct target_psoc_info *psoc_info)
@@ -1086,7 +1086,7 @@ static inline void target_psoc_set_num_mem_chunks(
  *
  * API to get total_mac_phy
  *
- * Return: unint8_t
+ * Return: uint8_t
  */
 static inline uint32_t target_psoc_get_num_mem_chunks
 		(struct target_psoc_info *psoc_info)

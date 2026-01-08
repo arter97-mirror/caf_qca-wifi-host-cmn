@@ -1593,7 +1593,7 @@ QDF_STATUS init_deinit_register_tgt_psoc_ev_handlers(
 
 	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
 	if (!tgt_hdl) {
-		target_if_err("target_psoc_info null in register wmi hadler");
+		target_if_err("target_psoc_info null in register wmi handler");
 		return QDF_STATUS_E_FAILURE;
 	}
 
@@ -1632,4 +1632,3 @@ QDF_STATUS init_deinit_register_tgt_psoc_ev_handlers(
 
 	return retval;
 }
-
