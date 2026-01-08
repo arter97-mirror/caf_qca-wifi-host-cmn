@@ -1442,5 +1442,30 @@ QDF_STATUS wlan_mgmt_txrx_psoc_enable(struct wlan_objmgr_psoc *psoc);
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_mgmt_txrx_psoc_disable(struct wlan_objmgr_psoc *psoc);
-#endif
 
+/**
+ * wlan_mgmt_txrx_desc_id_allocate() - Allocate a management descriptor ID
+ * @pdev: pdev context
+ * @vdev_id: vdev ID to store in the descriptor
+ * @nbuf: frame buffer to store in the descriptor
+ * @desc_id: pointer to store the allocated descriptor ID
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS wlan_mgmt_txrx_desc_id_allocate(struct wlan_objmgr_pdev *pdev,
+					   uint8_t vdev_id, qdf_nbuf_t nbuf,
+					   uint32_t *desc_id);
+
+/**
+ * wlan_mgmt_txrx_desc_id_free() - Free a management descriptor ID
+ * @pdev: pdev context
+ * @desc_id: descriptor ID to free
+ * @nbuf: pointer to receive the frame buffer (optional, can be NULL)
+ * @vdev_id: pointer to receive the vdev_id (optional, can be NULL)
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS wlan_mgmt_txrx_desc_id_free(struct wlan_objmgr_pdev *pdev,
+				       uint32_t desc_id, qdf_nbuf_t nbuf,
+				       uint8_t *vdev_id);
+#endif

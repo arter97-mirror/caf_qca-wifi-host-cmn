@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1020,6 +1020,91 @@ QDF_STATUS wlan_mgmt_txrx_vdev_drain(struct wlan_objmgr_vdev *vdev,
 			}
 		}
 	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS wlan_mgmt_txrx_desc_id_allocate(struct wlan_objmgr_pdev *pdev,
+					   uint8_t vdev_id, qdf_nbuf_t nbuf,
+					   uint32_t *desc_id)
+{
+	struct mgmt_txrx_priv_pdev_context *mgmt_txrx_pdev_ctx;
+	struct mgmt_txrx_desc_elem_t *desc;
+
+	if (!pdev) {
+		mgmt_txrx_err("pdev context is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!nbuf) {
+		mgmt_txrx_err("nbuf is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!desc_id) {
+		mgmt_txrx_err("desc_id pointer is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mgmt_txrx_pdev_ctx = (struct mgmt_txrx_priv_pdev_context *)
+			      wlan_objmgr_pdev_get_comp_private_obj(pdev, WLAN_UMAC_COMP_MGMT_TXRX);
+
+	if (!mgmt_txrx_pdev_ctx) {
+		mgmt_txrx_err("mgmt txrx context is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	desc = wlan_mgmt_txrx_desc_get(mgmt_txrx_pdev_ctx);
+	if (!desc) {
+		mgmt_txrx_err("Failed to allocate mgmt descriptor");
+		return QDF_STATUS_E_RESOURCES;
+	}
+	desc->nbuf = nbuf;
+	desc->vdev_id = vdev_id;
+	*desc_id = desc->desc_id;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS wlan_mgmt_txrx_desc_id_free(struct wlan_objmgr_pdev *pdev,
+				       uint32_t desc_id, qdf_nbuf_t nbuf,
+				       uint8_t *vdev_id)
+{
+	struct mgmt_txrx_priv_pdev_context *mgmt_txrx_pdev_ctx;
+	struct mgmt_txrx_desc_elem_t *desc;
+
+	if (!pdev) {
+		mgmt_txrx_err("pdev context is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mgmt_txrx_pdev_ctx = (struct mgmt_txrx_priv_pdev_context *)
+			      wlan_objmgr_pdev_get_comp_private_obj(pdev, WLAN_UMAC_COMP_MGMT_TXRX);
+	if (!mgmt_txrx_pdev_ctx) {
+		mgmt_txrx_err("mgmt txrx context is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	desc = &mgmt_txrx_pdev_ctx->mgmt_desc_pool.pool[desc_id];
+	if (!desc) {
+		mgmt_txrx_err("Invalid or unused descriptor: desc_id=%u in_use=%d",
+			      desc_id, desc ? desc->in_use : -1);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (desc->nbuf)
+		nbuf = desc->nbuf;
+	else
+		nbuf = NULL;
+
+	if (!nbuf)
+		mgmt_txrx_err("Mgmt txrx nbuf is NULL for desc_id=%u", desc_id);
+
+	if (vdev_id)
+		*vdev_id = desc->vdev_id;
+
+	desc->nbuf = NULL;
+	wlan_mgmt_txrx_desc_put(mgmt_txrx_pdev_ctx, desc_id);
 
 	return QDF_STATUS_SUCCESS;
 }
