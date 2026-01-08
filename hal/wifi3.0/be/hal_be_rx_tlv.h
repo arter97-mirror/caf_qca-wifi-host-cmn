@@ -26,6 +26,9 @@
 
 #ifdef FEATURE_DAL_DP_SUPPORT
 #include "dal_vndr_hal_be.h"
+#ifdef CONFIG_BORON
+#include "dal_vndr_hal_bn.h"
+#endif /* CONFIG_BORON */
 #endif
 
 /*
