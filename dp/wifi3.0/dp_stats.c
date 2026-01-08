@@ -5524,7 +5524,7 @@ void dp_pdev_print_tid_stats(struct dp_pdev *pdev)
 			       total_tx.swdrop_cnt[TX_HAL_RING_ACCESS_ERR]);
 		DP_PRINT_STATS("Tx Dma Map Error Count: %llu",
 			       total_tx.swdrop_cnt[TX_DMA_MAP_ERR]);
-		DP_PRINT_STATS("Rx Delievered Count: %llu",
+		DP_PRINT_STATS("Rx Delivered Count: %llu",
 			       total_rx.delivered_to_stack);
 		DP_PRINT_STATS("Rx Software Enqueue Drop Count: %llu",
 			       total_rx.fail_cnt[ENQUEUE_DROP]);
@@ -8634,7 +8634,7 @@ static inline void dp_print_opt_dp_stats(struct dp_soc *soc)
 #endif
 
 #ifdef FEATURE_DAL_DP_SUPPORT
-void dp_print_dal_tx_stats(struct dp_soc *soc)
+static inline void dp_print_dal_tx_stats(struct dp_soc *soc)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 	int ring_id;
@@ -8693,7 +8693,7 @@ void dp_print_dal_tx_stats(struct dp_soc *soc)
 	}
 }
 
-void dp_print_dal_rx_stats(struct dp_soc *soc)
+static inline void dp_print_dal_rx_stats(struct dp_soc *soc)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 
@@ -8716,11 +8716,11 @@ void dp_print_dal_rx_stats(struct dp_soc *soc)
 		       dal_ctx->stats.rx.rx_dropped_nosupport[DAL_DP_DEFAULT_REO_SAP - 1]);
 }
 #else
-void dp_print_dal_tx_stats(struct dp_soc *soc)
+static inline void dp_print_dal_tx_stats(struct dp_soc *soc)
 {
 }
 
-void dp_print_dal_rx_stats(struct dp_soc *soc)
+static inline void dp_print_dal_rx_stats(struct dp_soc *soc)
 {
 }
 #endif

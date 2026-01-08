@@ -3752,7 +3752,7 @@ __dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev, struct dp_srng *dp_rxdma_srng)
 }
 
 #ifdef DP_FEATURE_DIRECT_REFILL
-QDF_STATUS
+static inline QDF_STATUS
 _dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 {
 	int i, mac_for_pdev = pdev->lmac_id;
@@ -3777,7 +3777,7 @@ _dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 	return status;
 }
 #else
-QDF_STATUS
+static inline QDF_STATUS
 _dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 {
 	int mac_for_pdev = pdev->lmac_id;
