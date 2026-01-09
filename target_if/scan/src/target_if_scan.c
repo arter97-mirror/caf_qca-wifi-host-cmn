@@ -262,19 +262,21 @@ target_if_scan_register_pno_event_handler(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	status = wmi_unified_register_event(
+	status = wmi_unified_register_event_handler(
 			wmi_handle,
 			wmi_nlo_match_event_id,
-			target_if_nlo_match_event_handler);
+			target_if_nlo_match_event_handler,
+			WMI_RX_WORK_CTX);
 	if (status) {
 		target_if_err("Failed to register nlo match event cb");
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	status = wmi_unified_register_event(
+	status = wmi_unified_register_event_handler(
 			wmi_handle,
 			wmi_nlo_scan_complete_event_id,
-			target_if_nlo_complete_handler);
+			target_if_nlo_complete_handler,
+			WMI_RX_WORK_CTX);
 	if (status) {
 		target_if_err("Failed to register nlo scan comp event cb");
 		return QDF_STATUS_E_FAILURE;
