@@ -42,6 +42,107 @@
 #include "hal_internal.h"
 #include "dp_rx_defrag.h"
 
+/**
+ * dp_rx_handle_nbuf_rxdma_err_bn() - Handle RXDMA error processing
+ * @pdev: DP pdev
+ * @nbuf: network buffer
+ * @peer_id: peer ID
+ * @err_code: RXDMA error code
+ * @rx_tlv_hdr: RX TLV header
+ * @rx_desc_pool_id: RX descriptor pool ID
+ *
+ * This function handles RXDMA error processing including peer lookup,
+ * link ID determination, and error-specific processing.
+ *
+ * Return: None
+ */
+static void
+dp_rx_handle_nbuf_rxdma_err_bn(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
+			       uint16_t peer_id,
+			       enum hal_rxdma_error_code err_code,
+			       uint8_t *rx_tlv_hdr,
+			       uint8_t rx_desc_pool_id)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct dp_txrx_peer *txrx_peer = NULL;
+	dp_txrx_ref_handle txrx_ref_handle = NULL;
+	uint8_t link_id = 0;
+
+	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(
+			soc, peer_id,
+			&txrx_ref_handle,
+			DP_MOD_ID_RX_ERR);
+	if (!txrx_peer)
+		dp_info_rl("txrx_peer is null peer_id %u",
+			   peer_id);
+
+	dp_rx_nbuf_set_link_id_from_tlv(soc, qdf_nbuf_data(nbuf), nbuf);
+
+	if (pdev && pdev->link_peer_stats &&
+	    txrx_peer && txrx_peer->is_mld_peer) {
+		link_id = dp_rx_get_stats_arr_idx_from_link_id(
+							nbuf,
+							txrx_peer);
+	}
+
+	if (txrx_peer)
+		dp_rx_set_nbuf_band(nbuf, txrx_peer, link_id);
+
+	switch (err_code) {
+	case HAL_RXDMA_ERR_DECRYPT:
+		if (txrx_peer) {
+			DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+						  rx.err.decrypt_err,
+						  1,
+						  link_id);
+			dp_rx_nbuf_free(nbuf);
+			break;
+		}
+
+		dp_rx_process_rxdma_err(soc, nbuf,
+					rx_tlv_hdr, NULL,
+					err_code,
+					rx_desc_pool_id,
+					link_id);
+		break;
+	case HAL_RXDMA_ERR_TKIP_MIC:
+		dp_rx_process_mic_error(soc, nbuf,
+					rx_tlv_hdr,
+					txrx_peer);
+		if (txrx_peer)
+			DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+						  rx.err.mic_err,
+						  1,
+						  link_id);
+		break;
+	case HAL_RXDMA_ERR_UNENCRYPTED:
+		if (txrx_peer)
+			DP_PEER_PER_PKT_STATS_INC(txrx_peer,
+						  rx.err.rxdma_wifi_parse_err,
+						  1,
+						  link_id);
+
+		dp_rx_process_rxdma_err(soc, nbuf,
+					rx_tlv_hdr,
+					txrx_peer,
+					err_code,
+					rx_desc_pool_id,
+					link_id);
+		break;
+	case HAL_RXDMA_ERR_MSDU_LIMIT:
+	case HAL_RXDMA_ERR_FLUSH_REQUEST:
+		dp_rx_nbuf_free(nbuf);
+		break;
+	default:
+		dp_err_rl("Non-support error code %d", err_code);
+		dp_rx_nbuf_free(nbuf);
+	}
+
+	if (txrx_peer)
+		dp_txrx_peer_unref_delete(txrx_ref_handle,
+					  DP_MOD_ID_RX_ERR);
+}
+
 uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
 			  uint32_t quota)
@@ -118,7 +219,7 @@ more_data:
 	if (qdf_likely(txrx_peer))
 		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX);
 
-	/* reset local variables here to be re-used in the function */
+	/* reset local variables here to be reused in the function */
 	nbuf_head = NULL;
 	nbuf_tail = NULL;
 	deliver_list_head = NULL;
@@ -668,6 +769,88 @@ refill_opt_dp_ctrl:
 }
 
 /**
+ * dp_rx_handle_rxdma_err_msdu_buf_bn() - Handle RXDMA error for MSDU buffer
+ * @soc: DP SOC handle
+ * @ring_desc: ring descriptor
+ * @rxdma_err_status: RXDMA error status
+ * @rxdma_error_code: RXDMA error code
+ *
+ * This function handles RXDMA error processing for MSDU buffer descriptor
+ * types when RXDMA error is detected.
+ *
+ * Return: number of buffers processed
+ */
+static uint32_t
+dp_rx_handle_rxdma_err_msdu_buf_bn(struct dp_soc *soc,
+				   hal_ring_desc_t ring_desc,
+				   uint8_t rxdma_err_status,
+				   uint32_t rxdma_error_code)
+{
+	struct dp_rx_desc *rx_desc = NULL;
+	qdf_nbuf_t nbuf;
+	uint32_t rx_buf_cookie;
+	uint8_t cc_status;
+	uint16_t peer_id;
+	uint8_t *rx_tlv_hdr;
+	struct dp_pdev *pdev;
+	uint8_t rx_desc_pool_id;
+	uint32_t rx_bufs_used = 0;
+	uint8_t is_ctrl_refill = 0;
+
+	/* Check if RXDMA error is detected for non-link desc */
+	if (rxdma_err_status != HAL_RXDMA_ERROR_DETECTED)
+		return 0;
+
+	dp_info_rl("Got non-link desc with RXDMA ERROR: %d", rxdma_error_code);
+
+	cc_status = HAL_RX_REO_CC_STATUS_GET_BN(ring_desc);
+	/* cookie conversion status 1, fetch VA directly */
+	if (qdf_likely(cc_status)) {
+		rx_desc = (struct dp_rx_desc *)
+				hal_rx_get_reo_desc_va(ring_desc);
+	} else {
+		rx_desc = NULL;
+		rx_buf_cookie = HAL_RX_BUF_COOKIE_GET(ring_desc);
+		dp_rx_desc_sw_cc_check(soc, rx_buf_cookie, &rx_desc);
+	}
+
+	if (qdf_unlikely(!rx_desc || !rx_desc->in_use)) {
+		dp_info_rl("Invalid rx_desc or not in use");
+		return 0;
+	}
+
+	nbuf = rx_desc->nbuf;
+	if (qdf_unlikely(!nbuf)) {
+		dp_info_rl("nbuf is NULL");
+		return 0;
+	}
+
+	/* Unmap the buffer */
+	dp_rx_nbuf_unmap(soc, rx_desc, 0);
+	rx_bufs_used++;
+
+	/* Copy descriptor info to nbuf control block before getting peer_id */
+	dp_rx_copy_desc_info_in_nbuf_cb(soc, ring_desc, nbuf,
+					0, &is_ctrl_refill);
+
+	/* Get peer_id and other info from nbuf */
+	rx_tlv_hdr = qdf_nbuf_data(nbuf);
+	peer_id = dp_rx_get_peer_id_be(nbuf);
+	rx_desc_pool_id = rx_desc->pool_id;
+	pdev = soc->pdev_list[0];
+
+	/* Add rx_desc to free list */
+	dp_rx_add_to_free_desc_list(&pdev->free_list_head,
+				    &pdev->free_list_tail, rx_desc);
+
+	/* Handle the RXDMA error using the existing function */
+	dp_rx_handle_nbuf_rxdma_err_bn(pdev, nbuf, peer_id, rxdma_error_code,
+				       rx_tlv_hdr, rx_desc_pool_id);
+
+	return rx_bufs_used;
+}
+
+/**
  * dp_rx_rxdma_err_entry_process_bn() - Handles for RXDMA error
  *                                      entry processing
  * @soc: core txrx main context
@@ -691,7 +874,6 @@ dp_rx_rxdma_err_entry_process_bn(struct dp_soc *soc,
 	uint32_t rx_bufs_used = 0;
 	struct dp_pdev *pdev = soc->pdev_list[0];
 	int i;
-	uint8_t *rx_tlv_hdr_first;
 	uint8_t *rx_tlv_hdr_last;
 	uint16_t peer_id;
 	struct dp_rx_desc *rx_desc;
@@ -710,11 +892,8 @@ dp_rx_rxdma_err_entry_process_bn(struct dp_soc *soc,
 	uint16_t msdu_processed = 0;
 	bool ret;
 	uint8_t rx_desc_pool_id;
-	struct dp_txrx_peer *txrx_peer = NULL;
-	dp_txrx_ref_handle txrx_ref_handle = NULL;
 	hal_ring_handle_t hal_ring_hdl = soc->reo_exception_ring.hal_srng;
 	bool msdu_dropped = false;
-	uint8_t link_id = 0;
 
 	peer_id = dp_rx_peer_metadata_peer_id_get(
 					soc, mpdu_desc_info->peer_meta_data);
@@ -787,7 +966,6 @@ more_msdu_link_desc:
 			goto process_next_msdu;
 		}
 
-		rx_tlv_hdr_first = qdf_nbuf_data(head_nbuf);
 		rx_tlv_hdr_last = qdf_nbuf_data(tail_nbuf);
 
 		if (qdf_unlikely(head_nbuf != tail_nbuf)) {
@@ -806,79 +984,9 @@ more_msdu_link_desc:
 		}
 		head_nbuf = NULL;
 
-		txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(
-				soc, peer_id,
-				&txrx_ref_handle,
-				DP_MOD_ID_RX_ERR);
-		if (!txrx_peer)
-			dp_info_rl("txrx_peer is null peer_id %u",
-				   peer_id);
-
-		dp_rx_nbuf_set_link_id_from_tlv(soc, qdf_nbuf_data(nbuf), nbuf);
-
-		if (pdev && pdev->link_peer_stats &&
-		    txrx_peer && txrx_peer->is_mld_peer) {
-			link_id = dp_rx_get_stats_arr_idx_from_link_id(
-								nbuf,
-								txrx_peer);
-		}
-
-		if (txrx_peer)
-			dp_rx_set_nbuf_band(nbuf, txrx_peer, link_id);
-
-		switch (err_code) {
-		case HAL_RXDMA_ERR_DECRYPT:
-			if (txrx_peer) {
-				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-							  rx.err.decrypt_err,
-							  1,
-							  link_id);
-				dp_rx_nbuf_free(nbuf);
-				break;
-			}
-
-			dp_rx_process_rxdma_err(soc, nbuf,
-						rx_tlv_hdr_last, NULL,
-						err_code,
-						rx_desc_pool_id,
-						link_id);
-			break;
-		case HAL_RXDMA_ERR_TKIP_MIC:
-			dp_rx_process_mic_error(soc, nbuf,
-						rx_tlv_hdr_last,
-						txrx_peer);
-			if (txrx_peer)
-				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-							  rx.err.mic_err,
-							  1,
-							  link_id);
-			break;
-		case HAL_RXDMA_ERR_UNENCRYPTED:
-			if (txrx_peer)
-				DP_PEER_PER_PKT_STATS_INC(txrx_peer,
-							  rx.err.rxdma_wifi_parse_err,
-							  1,
-							  link_id);
-
-			dp_rx_process_rxdma_err(soc, nbuf,
-						rx_tlv_hdr_last,
-						txrx_peer,
-						err_code,
-						rx_desc_pool_id,
-						link_id);
-			break;
-		case HAL_RXDMA_ERR_MSDU_LIMIT:
-		case HAL_RXDMA_ERR_FLUSH_REQUEST:
-			dp_rx_nbuf_free(nbuf);
-			break;
-		default:
-			dp_err_rl("Non-support error code %d", err_code);
-			dp_rx_nbuf_free(nbuf);
-		}
-
-		if (txrx_peer)
-			dp_txrx_peer_unref_delete(txrx_ref_handle,
-						  DP_MOD_ID_RX_ERR);
+		dp_rx_handle_nbuf_rxdma_err_bn(pdev, nbuf, peer_id, err_code,
+					       rx_tlv_hdr_last,
+					       rx_desc_pool_id);
 process_next_msdu:
 		nbuf = head_nbuf;
 		while (nbuf) {
@@ -1002,6 +1110,15 @@ more_data:
 		/* For REO error ring, only MSDU LINK DESC is expected. */
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
 			int lmac_id;
+
+			/* Try to handle RXDMA error for MSDU buffer */
+			count = dp_rx_handle_rxdma_err_msdu_buf_bn(
+					soc, ring_desc, rxdma_err_status,
+					rxdma_error_code);
+			if (count > 0) {
+				rx_bufs_reaped += count;
+				goto next_entry;
+			}
 
 			lmac_id = dp_rx_err_exception(soc, ring_desc);
 			if (lmac_id >= 0)
