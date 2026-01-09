@@ -5967,6 +5967,10 @@ void dp_rx_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
 {
 	ol_txrx_pktdump_cb packetdump_cb = pdev->dp_rx_packetdump_cb;
 
+	/* Non-linear SKBs are not supported in this path. */
+	if (qdf_nbuf_is_nonlinear((nbuf)))
+		return;
+
 	if (qdf_unlikely(packetdump_cb)) {
 		packetdump_cb((ol_txrx_soc_handle)soc, pdev->pdev_id,
 			      QDF_NBUF_CB_RX_VDEV_ID(nbuf),
