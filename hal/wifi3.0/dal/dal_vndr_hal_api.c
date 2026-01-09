@@ -7,7 +7,10 @@
 #include "dal_vndr_hal_internal.h"
 #include "dal_vndr_hal_be.h"
 #include "dal_vndr_hal_defines_be.h"
+
+#if defined(CONFIG_BORON) && defined(DAL_VNDR_HAL_BN)
 #include "dal_vndr_hal_bn.h"
+#endif
 
 /**
  * dal_vndr_hal_attach_common_ops() - Attach common HAL operations

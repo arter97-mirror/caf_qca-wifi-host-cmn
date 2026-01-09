@@ -199,12 +199,6 @@ uint32_t dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
 
 	return processed_count;
 }
-#else
-static inline uint32_t
-dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
-{
-	return 0;
-}
 #endif /* defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE) */
 
 #ifdef FEATURE_RUNTIME_PM

@@ -41,7 +41,7 @@ struct dp_dal_tx_metadata {
 	struct dp_tx_desc_s *tx_desc;
 };
 
-#ifdef FEATURE_RUNTIME_PM
+#if defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE)
 /**
  * struct dp_dal_suspended_tx_desc - Suspended TX descriptor for runtime PM
  * @node: List node for linking suspended descriptors
@@ -64,7 +64,7 @@ struct dp_dal_suspended_tx_desc {
 	struct dp_tx_desc_s *tx_desc;
 	struct dp_tx_msdu_info_s *msdu_info;
 };
-#endif /* FEATURE_RUNTIME_PM */
+#endif /* defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE) */
 
 /**
  * dp_dal_tx_cmp_isr_vendor_cb - tx cmlp ISR vendor callback
@@ -165,7 +165,7 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id);
 uint32_t dp_dal_tx_comp_handler(struct dp_soc *soc, u16 ring_id,
 				uint32_t dp_budget);
 
-#ifdef FEATURE_RUNTIME_PM
+#if defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE)
 /**
  * dp_dal_tx_flush_suspended_descs() - Flush suspended TX descriptors
  * @dal_ctx: DAL context
@@ -181,7 +181,7 @@ dp_dal_tx_flush_suspended_descs(struct dp_dal_ctx *dal_ctx)
 {
 	return 0;
 }
-#endif /* FEATURE_RUNTIME_PM */
+#endif /* defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE) */
 
 static inline bool
 dp_dal_tx_is_special_frame(qdf_nbuf_t nbuf, uint32_t frame_mask)
