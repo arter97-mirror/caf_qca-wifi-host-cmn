@@ -6731,18 +6731,6 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 	qdf_err("ERROR: struct ieee80211_radiotap_header not supported");
 	return 0;
 }
-
-uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf)
-{
-	qdf_err("ERROR: struct ieee80211_radiotap_header not supported");
-	return 0;
-}
-
-void qdf_nbuf_populate_radiotap_hdr(qdf_nbuf_t nbuf)
-{
-	qdf_err("ERROR: struct ieee80211_radiotap_header not supported");
-	return 0;
-}
 #endif
 qdf_export_symbol(qdf_nbuf_update_radiotap);
 
