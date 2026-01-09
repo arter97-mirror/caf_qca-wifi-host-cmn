@@ -336,7 +336,7 @@ struct dp_dal_sim_ctx {
 	struct device *dev;
 
 	/* Interface information maintained in DAL sim context */
-	struct dal_intf_info intf_info[DAL_INTF_TYPE_MAX];
+	struct dal_intf_info intf_info[MAX_VDEV_CNT];
 	void *dev_base_addr;
 
 	/* Mode switch control */

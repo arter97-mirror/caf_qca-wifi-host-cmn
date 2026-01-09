@@ -1452,7 +1452,7 @@ static void dp_dal_sim_ssr_dump(void *segment)
  * @intf_info: Pointer to interface information
  *
  * This function is called when an interface is added. It copies the interface
- * information to the DAL simulator context based on the interface type.
+ * information to the DAL simulator context based on the vdev_id.
  *
  * Return: 0 on success, negative error code on failure
  */
@@ -1461,6 +1461,7 @@ static int dp_dal_sim_intf_init(void *priv, void *intf_info)
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_dal_sim_ctx *sim_ctx;
 	struct dal_intf_info *info = (struct dal_intf_info *)intf_info;
+	uint8_t zero_mac[MAC_ADDR_LEN] = {0};
 
 	if (!dal_ctx) {
 		dp_err("NULL DAL context in intf_init");
@@ -1483,16 +1484,29 @@ static int dp_dal_sim_intf_init(void *priv, void *intf_info)
 		return -EINVAL;
 	}
 
-	/* Copy interface information to simulator context.
-	 * interface info contains vdev_id, tcl_bank_id which will
+	if (info->vdev_id >= MAX_VDEV_CNT) {
+		dp_err("Invalid vdev_id %u", info->vdev_id);
+		return -EINVAL;
+	}
+
+	if (qdf_mem_cmp(sim_ctx->intf_info[info->vdev_id].mac_address,
+			zero_mac, MAC_ADDR_LEN)) {
+		dp_err("Interface at vdev_id %u already initialized with MAC " QDF_MAC_ADDR_FMT,
+		       info->vdev_id,
+		       QDF_MAC_ADDR_REF(sim_ctx->intf_info[info->vdev_id].mac_address));
+	}
+
+	/* Copy interface information to simulator context based on vdev_id.
+	 * interface info contains vdev_id, tcl_bank_id which will be
 	 * used in enqueueing packets to TCL. Apart from these
 	 * bss_idx, mac_addr information is also present.
 	 */
-	qdf_mem_copy(&sim_ctx->intf_info[info->type], info,
+	qdf_mem_copy(&sim_ctx->intf_info[info->vdev_id], info,
 		     sizeof(struct dal_intf_info));
 
-	dp_info("Interface initialized: type=%d, vdev_id=%u, tcl_bank_id=%u",
-		info->type, info->vdev_id, info->tcl_bank_id);
+	dp_info("Interface initialized: type=%d, vdev_id=%u, tcl_bank_id=%u, MAC=" QDF_MAC_ADDR_FMT,
+		info->type, info->vdev_id, info->tcl_bank_id,
+		QDF_MAC_ADDR_REF(info->mac_address));
 
 	return 0;
 }
@@ -1503,7 +1517,7 @@ static int dp_dal_sim_intf_init(void *priv, void *intf_info)
  * @vdev_id: VDEV ID of the interface to remove
  *
  * This function is called when an interface is removed. It clears the interface
- * information from the DAL simulator context.
+ * information from the DAL simulator context based on vdev_id.
  *
  * Return: 0 on success, negative error code on failure
  */
@@ -1511,7 +1525,7 @@ static int dp_dal_sim_intf_deinit(void *priv, uint16_t vdev_id)
 {
 	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_dal_sim_ctx *sim_ctx;
-	int i;
+	uint8_t zero_mac[MAC_ADDR_LEN] = {0};
 
 	if (!dal_ctx) {
 		dp_err("NULL DAL context in intf_deinit");
@@ -1524,20 +1538,26 @@ static int dp_dal_sim_intf_deinit(void *priv, uint16_t vdev_id)
 		return -EINVAL;
 	}
 
-	/* Find and clear the interface info matching the vdev_id */
-	for (i = 0; i < DAL_INTF_TYPE_MAX; i++) {
-		if (sim_ctx->intf_info[i].vdev_id == vdev_id) {
-			dp_info("Interface deinitialized: type=%d, vdev_id=%u",
-				sim_ctx->intf_info[i].type, vdev_id);
-
-			qdf_mem_zero(&sim_ctx->intf_info[i],
-				     sizeof(struct dal_intf_info));
-			return 0;
-		}
+	if (vdev_id >= MAX_VDEV_CNT) {
+		dp_err("Invalid vdev_id %u", vdev_id);
+		return -EINVAL;
 	}
 
-	dp_err("Interface with vdev_id %u not found", vdev_id);
-	return -ENOENT;
+	if (!qdf_mem_cmp(sim_ctx->intf_info[vdev_id].mac_address,
+			 zero_mac, MAC_ADDR_LEN)) {
+		dp_err("Interface at vdev_id %u already has zero MAC address",
+		       vdev_id);
+	}
+
+	/* Clear the interface info at vdev_id index */
+	dp_info("Interface deinitialized: type=%d, vdev_id=%u, MAC=" QDF_MAC_ADDR_FMT,
+		sim_ctx->intf_info[vdev_id].type, vdev_id,
+		QDF_MAC_ADDR_REF(sim_ctx->intf_info[vdev_id].mac_address));
+
+	qdf_mem_zero(&sim_ctx->intf_info[vdev_id],
+		     sizeof(struct dal_intf_info));
+
+	return 0;
 }
 
 /*
