@@ -509,8 +509,18 @@ static int nl_srv_bcast_host_logs(struct sk_buff *skb)
 {
 	return nl_srv_bcast(skb, CLD80211_MCGRP_HOST_LOGS, ANI_NL_MSG_LOG);
 }
+
+static int nl_srv_bcast_apf(struct sk_buff *skb)
+{
+	return nl_srv_bcast(skb, CLD80211_MCGRP_HOST_LOGS, ANI_NL_MSG_LOG);
+}
 #else
 static int nl_srv_bcast_host_logs(struct sk_buff *skb)
+{
+	return nl_srv_bcast(skb);
+}
+
+static int nl_srv_bcast_apf(struct sk_buff *skb)
 {
 	return nl_srv_bcast(skb);
 }
@@ -1911,4 +1921,79 @@ void wlan_set_chipset_stats_bit(bool is_drv_dump_in_progress_valid,
 	}
 }
 #endif /* WLAN_CHIPSET_STATS */
+/**
+ * wlan_log_apf_to_user() - Send APF data to userspace
+ * @data: Pointer to data buffer
+ * @len: Length of data
+ *
+ * This function packs the APF data into a tAniMsgHdr and sends it
+ * to userspace via Netlink broadcast using ANI_NL_MSG_LOG protocol.
+ *
+ * Return: 0 on success, error code on failure
+ */
+int wlan_log_apf_to_user(void *data, uint16_t len)
+{
+	struct sk_buff *skb;
+	struct nlmsghdr *nlh;
+	tAniNlHdr *wnl;
+	tAniMsgHdr *aniHdr;
+	int payload_len;
+	static int nlmsg_seq;
+	int ret;
+
+	if (!data || len == 0) {
+		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
+			  "APF: Invalid data or length for APF event");
+		return -EINVAL;
+	}
+
+	/*
+	 * Calculate total payload length: Radio(4) + Header + Data
+	 * ANI_NL_MSG_LOG expects 'radio' field before tAniMsgHdr
+	 */
+	payload_len = sizeof(int) + sizeof(tAniMsgHdr) + len;
+
+	/*
+	 * Allocate SKB.
+	 * NLMSG_SPACE includes alignment padding.
+	 */
+	skb = dev_alloc_skb(NLMSG_SPACE(payload_len));
+	if (!skb) {
+		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
+			  "APF: Failed to allocate SKB for APF event");
+		return -ENOMEM;
+	}
+
+	/* Initialize Netlink Header */
+	nlh = nlmsg_put(skb, 0, nlmsg_seq++, ANI_NL_MSG_LOG, payload_len, NLM_F_REQUEST);
+	if (!nlh) {
+		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
+			  "APF: Failed to put netlink header");
+		dev_kfree_skb(skb);
+		return -ENOMEM;
+	}
+
+	/* Populate Payload */
+	wnl = (tAniNlHdr *)nlh;
+	wnl->radio = 0; /* Default radio ID */
+
+	aniHdr = &wnl->wmsg;
+	aniHdr->type = ANI_NL_MSG_APF_LOG_TYPE;
+	aniHdr->length = len;
+
+	/* Copy Data Payload after tAniMsgHdr */
+	qdf_mem_copy((uint8_t *)(aniHdr + 1), data, len);
+
+	QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_INFO,
+		  "APF: Sending APF Log (len=%d)", len);
+
+	/* Broadcast */
+	ret = nl_srv_bcast_apf(skb);
+	if (ret < 0) {
+		QDF_TRACE(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_ERROR,
+			  "APF: Send Failed %d", ret);
+	}
+
+	return ret;
+}
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */
