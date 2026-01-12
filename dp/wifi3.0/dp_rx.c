@@ -2112,9 +2112,11 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs)
 	 * only for the last msdu, set the correct value in the parent
 	 * nbuf tlvs for referencing later.
 	 */
-	parent_tlvs = qdf_nbuf_data(parent);
-	hal_rx_msdu_end_l3_hdr_padding_set(soc->hal_soc, parent_tlvs,
-					   l3_hdr_pad_offset);
+	if (!skip_tlvs) {
+		parent_tlvs = qdf_nbuf_data(parent);
+		hal_rx_msdu_end_l3_hdr_padding_set(soc->hal_soc, parent_tlvs,
+						   l3_hdr_pad_offset);
+	}
 
 	/*
 	 * set the start bit in the first nbuf we encounter with continuation
