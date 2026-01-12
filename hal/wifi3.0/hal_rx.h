@@ -896,7 +896,9 @@ hal_rx_msdu_end_l3_hdr_padding_set(hal_soc_handle_t hal_soc_hdl,
 {
 	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
 
-	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set(buf, l3_hdr_pad);
+	if (hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set)
+		hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set(buf,
+								 l3_hdr_pad);
 }
 
 /**
