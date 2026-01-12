@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021,2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1178,7 +1178,7 @@ QDF_STATUS wmi_unified_sta_ps_cmd_send(wmi_unified_t wmi_handle,
  * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
  */
 QDF_STATUS wmi_unified_ap_ps_cmd_send(wmi_unified_t wmi_handle,
-				      uint8_t macaddr[QDF_MAC_ADDR_SIZE],
+				      uint8_t *macaddr,
 				      struct ap_ps_params *param);
 
 /**
@@ -1895,6 +1895,18 @@ QDF_STATUS
 wmi_extract_apf_read_memory_resp_event(wmi_unified_t wmi, void *evt_buf,
 				struct wmi_apf_read_memory_resp_event_params
 								*read_mem_evt);
+
+/**
+ * wmi_unified_set_apf_supported_offload_bitmap_cmd() - config APF supported
+ * offload bitmap in FW
+ * @wmi: the WMI handle
+ * @vdev_id: the Id of the vdev to apply the configuration to
+ * @offload_bitmap: the bitmap for APF supported offloads
+ */
+QDF_STATUS
+wmi_unified_set_apf_supported_offload_bitmap_cmd(wmi_unified_t wmi,
+						 uint8_t vdev_id,
+						 uint32_t offload_bitmap);
 #endif /* FEATURE_WLAN_APF */
 
 /**
