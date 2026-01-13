@@ -29,6 +29,7 @@
 #include <wlan_twt_public_structs.h>
 #include <wlan_twt_ext_defs.h>
 #include <wlan_twt_ext_type.h>
+#include <wlan_policy_mgr_public_struct.h>
 
 /**
  * struct twt_tgt_caps -
@@ -78,6 +79,8 @@ struct twt_tgt_caps {
  * @twt_requestor_enable_pending: If TWT requestor enable command is pending
  * @twt_resp_flag: flag to check the TWT responder enable/disable per MAC
  * BIT0: MAC0 and BIT1: MAC1
+ * @twt_congestion_timeout: congestion timeout per MAC (index0: MAC0,
+ *                                                      index1: MAC1)
  */
 struct twt_psoc_priv_obj {
 	psoc_twt_ext_cfg_params_t cfg_params;
@@ -87,6 +90,7 @@ struct twt_psoc_priv_obj {
 	uint32_t twt_pmo_disabled;
 	qdf_atomic_t twt_requestor_enable_pending;
 	uint8_t twt_resp_flag;
+	uint32_t twt_congestion_timeout[MAX_MAC];
 };
 
 /**
@@ -223,4 +227,3 @@ static inline void twt_lock_release(qdf_mutex_t *twt_lock)
 #endif /* WLAN_TWT_SPINLOCK */
 
 #endif /* End  of _WLAN_TWT_PRIV_H_ */
-

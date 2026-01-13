@@ -235,7 +235,8 @@ wlan_twt_requestor_enable(struct wlan_objmgr_psoc *psoc,
 	twt_psoc->enable_context.twt_role = TWT_ROLE_REQUESTOR;
 	twt_psoc->enable_context.context = context;
 
-	wlan_twt_cfg_get_congestion_timeout(psoc, &req->sta_cong_timer_ms);
+	wlan_twt_cfg_get_congestion_timeout_per_mac(psoc, req->pdev_id,
+						    &req->sta_cong_timer_ms);
 	wlan_twt_cfg_get_bcast_requestor(psoc, &twt_bcast_requestor);
 	req->b_twt_enable = twt_bcast_requestor;
 	req->twt_role = TWT_ROLE_REQUESTOR;
