@@ -24735,6 +24735,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_VDEV_UNIFIED_CONNECT_DISCONNECT_SUPPORT;
 	wmi_service[wmi_service_qos_null_frame_tx_support] =
 				WMI_SERVICE_QOS_NULL_FRAME_TX_OVER_WMI;
+	wmi_service[wmi_service_p2p_cancel_one_shot_noa_support] =
+			WMI_SERVICE_P2P_CANCEL_ONE_SHOT_NOA_SUPPORT;
 }
 
 /**
