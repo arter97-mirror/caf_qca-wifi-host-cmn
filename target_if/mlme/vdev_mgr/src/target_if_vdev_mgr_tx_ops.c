@@ -1489,6 +1489,20 @@ target_if_vdev_mgr_set_mac_address_send(struct qdf_mac_addr mac_addr,
 		return QDF_STATUS_E_INVAL;
 	}
 
+	/* Do not send command if link switch is in progress and
+	 * unified connect/disconnect is enabled
+	 */
+	if (mlo_mgr_is_link_switch_in_progress(vdev) &&
+	    mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc)) {
+		mlme_debug("VDEV %d: Skip MAC addr update during link switch with unified connect/disconnect",
+			   vdev_id);
+		/* Mimic firmware response by calling the response callback */
+		if (rx_ops->vdev_mgr_set_mac_addr_response)
+			rx_ops->vdev_mgr_set_mac_addr_response(vdev, 0);
+
+		return QDF_STATUS_SUCCESS;
+	}
+
 	vdev_rsp->expire_time = WLAN_SET_MAC_ADDR_TIMEOUT;
 	status = target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp,
 						    UPDATE_MAC_ADDR_RESPONSE_BIT);
