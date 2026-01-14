@@ -8797,6 +8797,11 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 			       pdev->soc->stats.tx.sw_tso_pkts);
 		DP_PRINT_STATS("SW tso fail cnt: %u",
 			       pdev->soc->stats.tx.sw_tso_fail);
+		DP_PRINT_STATS("USO pkt cnt: %u",
+			       pdev->soc->stats.tx.uso_pkts);
+		DP_PRINT_STATS("USO fail cnt: %u",
+			       pdev->soc->stats.tx.uso_pkts_fail);
+
 		dp_print_dal_tx_stats(soc);
 
 		dp_txrx_path_stats_ext_drop(pdev);

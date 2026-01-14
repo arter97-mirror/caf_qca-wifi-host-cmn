@@ -1543,6 +1543,10 @@ struct dp_soc_stats {
 		uint32_t sw_tso_pkts;
 		/* Number of TSO packets failed to transmit in sw tso path */
 		uint32_t sw_tso_fail;
+		/* Number of pkts transmitted through uso path */
+		uint32_t uso_pkts;
+		/* Number of pkts failed to transmit in uso path */
+		uint32_t uso_pkts_fail;
 #ifdef CONFIG_BORON
 		/* Drop count due to missing valid TXPT_CLASSIFY_INFO */
 		uint32_t inv_txpt_ci;

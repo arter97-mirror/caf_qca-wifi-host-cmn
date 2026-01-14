@@ -2703,6 +2703,25 @@ static inline bool __qdf_nbuf_is_tso(struct sk_buff *skb)
 		return false;
 }
 
+/**
+ * __qdf_nbuf_is_uso() - check if the network buffer is UDP
+ *                       segment offload packet
+ * @skb: Pointer to network buffer
+ *
+ * This function checks whether the network buffer is a UDP Segment
+ * Offload (USO) packet by examining the SKB_GSO_UDP_L4 flag.
+ *
+ * Return: true if packet is USO packet, false otherwise
+ */
+static inline bool __qdf_nbuf_is_uso(struct sk_buff *skb)
+{
+	if (skb_is_gso(skb) &&
+	    (skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4))
+		return true;
+	else
+		return false;
+}
+
 struct sk_buff *__qdf_nbuf_inc_users(struct sk_buff *skb);
 
 int __qdf_nbuf_get_users(struct sk_buff *skb);

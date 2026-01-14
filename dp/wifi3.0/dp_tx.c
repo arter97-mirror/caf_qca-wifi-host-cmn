@@ -2241,6 +2241,12 @@ static void dp_tx_prepare_tso_ext_desc(struct dp_soc *soc,
 
 	hal_tx_ext_desc_set_tcp_seq(ext_desc, tso_seg->tso_flags.tcp_seq_num);
 	hal_tx_ext_desc_set_ip_id(ext_desc, tso_seg->tso_flags.ip_id);
+	/* Add length for UDP header */
+	if (tso_seg->tso_flags.is_udp)
+		hal_tx_ext_desc_set_udp_len(
+			ext_desc,
+			(tso_seg->total_len - tso_seg->tso_flags.eit_hdr_len +
+			 sizeof(struct udphdr)));
 
 	for (num_frag = 0; num_frag < tso_seg->num_frags; num_frag++) {
 		uint32_t lo = 0;
@@ -7048,6 +7054,20 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		DP_STATS_INC(vdev, tx_i[xmit_type].rcvd.num,
 			     msdu_info.num_seg - 1);
 
+		goto send_multiple;
+	}
+
+	if (qdf_nbuf_is_uso(nbuf)) {
+		if (dp_tx_prepare_tso(vdev, nbuf, &msdu_info)) {
+			DP_STATS_INC_PKT(vdev->pdev, tso_stats.dropped_host, 1,
+					 qdf_nbuf_len(nbuf));
+			DP_STATS_INC(soc, tx.uso_pkts_fail, 1);
+			return nbuf;
+		}
+
+		DP_STATS_INC(vdev, tx_i[xmit_type].rcvd.num,
+			     msdu_info.num_seg - 1);
+		DP_STATS_INC(soc, tx.uso_pkts, 1);
 		goto send_multiple;
 	}
 

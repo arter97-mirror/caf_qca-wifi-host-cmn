@@ -1173,6 +1173,16 @@
 	CFG_INI_BOOL("TSOEnable", false, \
 	"DP TSO Enabled")
 
+#ifdef DP_FEATURE_USO
+#define USO_ENABLE_DEFAULT true
+#else
+#define USO_ENABLE_DEFAULT false
+#endif
+
+#define CFG_DP_USO \
+	CFG_INI_BOOL("USOEnable", USO_ENABLE_DEFAULT, \
+	"DP USO Enabled")
+
 #define CFG_DP_LRO \
 	CFG_INI_BOOL("LROEnable", WLAN_LRO_ENABLE, \
 	"DP LRO Enable")
@@ -2745,6 +2755,7 @@
 		CFG(CFG_DP_RX_HASH) \
 		CFG(CFG_DP_RX_RR) \
 		CFG(CFG_DP_TSO) \
+		CFG(CFG_DP_USO) \
 		CFG(CFG_DP_LRO) \
 		CFG(CFG_DP_SG) \
 		CFG(CFG_DP_GRO) \

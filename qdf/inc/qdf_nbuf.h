@@ -2273,6 +2273,17 @@ static inline uint8_t qdf_nbuf_is_tso(qdf_nbuf_t nbuf)
 }
 
 /**
+ * qdf_nbuf_is_uso() - is the network buffer a UDP segment offload packet?
+ * @nbuf: Network buffer
+ *
+ * Return: 1 - this is a USO packet 0 - not a USO packet
+ */
+static inline uint8_t qdf_nbuf_is_uso(qdf_nbuf_t nbuf)
+{
+	return __qdf_nbuf_is_uso(nbuf);
+}
+
+/**
  * qdf_nbuf_get_users() - function to get the number of users referencing this
  * network buffer
  *

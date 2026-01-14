@@ -236,6 +236,7 @@ struct wlan_srng_cfg {
  * @base_hw_macid:
  * @rx_hash: Enable hash based steering of rx packets
  * @tso_enabled: enable/disable tso feature
+ * @uso_enabled: enable/disable uso feature
  * @lro_enabled: enable/disable LRO feature
  * @sg_enabled: enable disable scatter gather feature
  * @gro_enabled: enable disable GRO feature
@@ -486,6 +487,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	int base_hw_macid;
 	bool rx_hash;
 	bool tso_enabled;
+	bool uso_enabled;
 	bool lro_enabled;
 	bool sg_enabled;
 	bool gro_enabled;
