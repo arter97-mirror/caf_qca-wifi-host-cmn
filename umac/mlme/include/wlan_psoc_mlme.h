@@ -59,6 +59,7 @@ struct wlan_6ghz_rnr_global_cache {
  * @bw_above_20_5ghz: BW greater than 20Mhz supported for 5Ghz
  * @bw_above_20_24ghz: BW greater than 20Mhz supported for 2.4Ghz
  * @max_chan_switch_ie: If max channel switch IE is supported
+ * @early_rx: extra sleep time for adaptive early rx
  */
 struct psoc_phy_config {
 	uint8_t vdev_nss_24g;
@@ -72,6 +73,7 @@ struct psoc_phy_config {
 		 bw_above_20_5ghz:1,
 		 bw_above_20_24ghz:1,
 		 max_chan_switch_ie:1;
+	uint8_t early_rx;
 };
 
 /* Maximum number of allowed BSSIDs that is configured through userspace */

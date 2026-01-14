@@ -156,6 +156,23 @@ void wlan_psoc_mlme_set_ext_hdl(struct psoc_mlme_obj *psoc_mlme,
 	psoc_mlme->ext_psoc_ptr = psoc_ext_hdl;
 }
 
+QDF_STATUS
+wlan_psoc_mlme_get_early_rx(struct wlan_objmgr_psoc *psoc, uint8_t *val)
+{
+	struct psoc_mlme_obj *psoc_mlme;
+
+	psoc_mlme = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!psoc_mlme) {
+		mlme_err("psoc_mlme is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	*val = psoc_mlme->psoc_cfg.phy_config.early_rx;
+	return QDF_STATUS_SUCCESS;
+}
+
+qdf_export_symbol(wlan_psoc_mlme_get_early_rx);
+
 void wlan_psoc_set_phy_config(struct wlan_objmgr_psoc *psoc,
 			      struct psoc_phy_config *phy_config)
 {
@@ -191,6 +208,8 @@ static void mlme_init_cfg(struct wlan_objmgr_psoc *psoc)
 		cfg_default(CFG_MLME_11BE_TARGET_CAPAB);
 	mlme_psoc_obj->psoc_cfg.mlo_config.reconfig_reassoc_en =
 		cfg_get(psoc, CFG_MLME_MLO_RECONFIG_REASSOC_ENABLE);
+	mlme_psoc_obj->psoc_cfg.phy_config.early_rx =
+		cfg_get(psoc, CFG_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP);
 
 	wlan_minidump_log(mlme_psoc_obj, sizeof(*mlme_psoc_obj), psoc,
 			  WLAN_MD_OBJMGR_PSOC_MLME, "psoc_mlme");
