@@ -6208,12 +6208,19 @@ static inline void wlan_ipa_enable_powersave(struct wlan_ipa_priv *ipa_obj)
 static inline void wlan_ipa_smmu_unmap_rx_buf(struct wlan_ipa_priv *ipa_ctx)
 {
 	ipa_log_info("opt_dp: IPA smmu pool unmap");
-	qdf_mutex_acquire(&ipa_ctx->ipa_lock);
 	cdp_ipa_rx_buf_smmu_pool_mapping(ipa_ctx->dp_soc,
 					 IPA_DEF_PDEV_ID, false,
 					 false, __func__, __LINE__);
 	cdp_ipa_set_smmu_mapped(ipa_ctx->dp_soc, 0);
-	qdf_mutex_release(&ipa_ctx->ipa_lock);
+}
+
+static inline void wlan_ipa_smmu_map_rx_buf(struct wlan_ipa_priv *ipa_ctx)
+{
+	ipa_log_info("opt_dp: IPA smmu pool map");
+	cdp_ipa_rx_buf_smmu_pool_mapping(ipa_ctx->dp_soc,
+					 IPA_DEF_PDEV_ID, false,
+					 true, __func__, __LINE__);
+	cdp_ipa_set_smmu_mapped(ipa_ctx->dp_soc, 1);
 }
 
 #ifndef IPA_OPT_WIFI_DP
@@ -6341,6 +6348,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 		ipa_log_info("opt_dp: IPA notify filter resrv response: %d",
 			     msg->rsvd);
 		qdf_mutex_acquire(&ipa_ctx->ipa_lock);
+		wlan_ipa_smmu_map_rx_buf(ipa_ctx);
 		qdf_ipa_wdi_opt_dpath_notify_flt_rsvd_per_inst(ipa_ctx->hdl,
 							       msg->rsvd);
 		qdf_mutex_release(&ipa_ctx->ipa_lock);
@@ -6395,16 +6403,6 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 			ipa_debug("opt_dp_ctrl: return status for handle %d: %d",
 				  msg->ctrl_del_hdl, status);
 		}
-
-	} else if (msg->op_code == WLAN_IPA_SMMU_MAP) {
-		ipa_log_info("opt_dp: IPA smmu pool map");
-		qdf_mutex_acquire(&ipa_ctx->ipa_lock);
-		cdp_ipa_rx_buf_smmu_pool_mapping(ipa_ctx->dp_soc,
-						 IPA_DEF_PDEV_ID, false,
-						 true, __func__, __LINE__);
-		qdf_mutex_release(&ipa_ctx->ipa_lock);
-	} else if (msg->op_code == WLAN_IPA_SMMU_UNMAP) {
-		wlan_ipa_smmu_unmap_rx_buf(ipa_ctx);
 	} else if (wlan_ipa_uc_op_metering(ipa_ctx, op_msg)) {
 		ipa_err("Invalid message: op_code=%d, reason=%d",
 			msg->op_code, ipa_ctx->stat_req_reason);
@@ -7035,29 +7033,12 @@ wlan_is_ipa_rx_cce_port_config_enabled(struct wlan_ipa_config *ipa_cfg)
 void wlan_ipa_wdi_opt_dpath_notify_flt_rsvd(bool response)
 {
 	struct wlan_ipa_priv *ipa_ctx = gp_ipa;
-	struct op_msg_type *smmu_msg;
 	struct op_msg_type *notify_msg;
 	struct uc_op_work_struct *uc_op_work;
 
-	smmu_msg = qdf_mem_malloc(sizeof(*smmu_msg));
-	if (!smmu_msg)
-		return;
-
-	if (response && !ipa_get_shared_smmu_enable()) {
-		smmu_msg->op_code = WLAN_IPA_SMMU_MAP;
-		uc_op_work = &ipa_ctx->uc_op_work[WLAN_IPA_SMMU_MAP];
-		uc_op_work->msg = smmu_msg;
-		cdp_ipa_set_smmu_mapped(ipa_ctx->dp_soc, 1);
-		qdf_sched_work(0, &uc_op_work->work);
-	} else {
-		qdf_mem_free(smmu_msg);
-	}
-
 	notify_msg = qdf_mem_malloc(sizeof(*notify_msg));
-	if (!notify_msg) {
-		qdf_mem_free(smmu_msg);
+	if (!notify_msg)
 		return;
-	}
 
 	notify_msg->op_code = WLAN_IPA_FILTER_RSV_NOTIFY;
 	notify_msg->rsvd = response;
