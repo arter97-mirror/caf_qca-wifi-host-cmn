@@ -38,6 +38,12 @@ static uint8_t __qdf_to_ipa_wlan_event(int qdf_ipa_event)
 	case QDF_IPA_CLIENT_DISCONNECT:
 		ipa_event = WLAN_CLIENT_DISCONNECT;
 		break;
+	case QDF_IPA_SW_ROUTING_ENABLE:
+		ipa_event = SW_ROUTING_ENABLE;
+		break;
+	case QDF_IPA_SW_ROUTING_DISABLE:
+		ipa_event = SW_ROUTING_DISABLE;
+		break;
 	case QDF_IPA_AP_CONNECT:
 		ipa_event = WLAN_AP_CONNECT;
 		break;
