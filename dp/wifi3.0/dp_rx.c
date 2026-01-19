@@ -1197,6 +1197,55 @@ free_descs:
 
 qdf_export_symbol(__dp_rx_buffers_replenish);
 
+#ifdef DRIVER_PASSTHRU_MODE
+#define DP_NORMALIZED_NOISE_FLOOR (-96)
+
+static
+int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+			       qdf_nbuf_t nbuf)
+{
+	uint8_t *rx_pkt_tlvs;
+	struct mon_rx_status rx_status = {0};
+	uint8_t l3_pad = QDF_NBUF_CB_RX_PACKET_L3_HDR_PAD(nbuf);
+
+	qdf_nbuf_push_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
+	rx_pkt_tlvs = qdf_nbuf_data(nbuf);
+	qdf_nbuf_pull_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
+
+	rx_status.tsft = qdf_get_log_timestamp();
+	rx_status.rs_fcs_err = hal_rx_tlv_mpdu_fcs_err_get(soc->hal_soc,
+							   rx_pkt_tlvs);
+	rx_status.mon_fcs_cap = 1;
+	rx_status.rssi_comb = hal_rx_tlv_get_user_rssi(soc->hal_soc,
+						       rx_pkt_tlvs);
+	rx_status.chan_noise_floor = DP_NORMALIZED_NOISE_FLOOR;
+	rx_status.nr_ant = hal_rx_msdu_start_nss_get(soc->hal_soc,
+						     rx_pkt_tlvs);
+	rx_status.chan_freq = vdev->passthru_freq;
+
+	rx_status.preamble_type = hal_rx_tlv_get_pkt_type(soc->hal_soc,
+							  rx_pkt_tlvs);
+	if (rx_status.preamble_type != HAL_DOT11B)
+		rx_status.ofdm_flag = 1;
+	else
+		rx_status.cck_flag = 1;
+
+	qdf_nbuf_update_radiotap(&rx_status, nbuf, qdf_nbuf_headroom(nbuf));
+
+	if (vdev->osif_rx)
+		vdev->osif_rx(vdev->osif_vdev, nbuf);
+
+	return 0;
+}
+#else
+static
+int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+			       qdf_nbuf_t nbuf)
+{
+	return -EINVAL;
+}
+#endif
+
 void
 dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 		  struct dp_txrx_peer *txrx_peer, uint8_t link_id)
@@ -1209,12 +1258,25 @@ dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 	while (nbuf) {
 		qdf_nbuf_t next = qdf_nbuf_next(nbuf);
 
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			if (next)
+				qdf_nbuf_set_next(nbuf, NULL);
+
+			dp_rx_deliver_raw_passthru(vdev->pdev->soc, vdev, nbuf);
+
+			if (next)
+				goto next_nbuf;
+
+			return;
+		}
+
 		DP_RX_LIST_APPEND(deliver_list_head, deliver_list_tail, nbuf);
 
 		DP_STATS_INC(vdev->pdev, rx_raw_pkts, 1);
 		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.raw, 1,
 					      qdf_nbuf_len(nbuf), link_id);
 
+next_nbuf:
 		nbuf = next;
 	}
 
@@ -1724,12 +1786,6 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 
 	wh = (struct ieee80211_frame *)rx_pkt_hdr;
 
-	if (!DP_FRAME_IS_DATA(wh)) {
-		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DP,
-				   "only for data frames");
-		goto free;
-	}
-
 	nbuf_len = qdf_nbuf_len(mpdu);
 	if (nbuf_len < sizeof(struct ieee80211_frame)) {
 		dp_rx_info_rl("%pK: Invalid nbuf length: %u", soc, nbuf_len);
@@ -1744,10 +1800,25 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 
 	qdf_spin_lock_bh(&pdev->vdev_list_lock);
 	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
-		if (qdf_mem_cmp(wh->i_addr1, vdev->mac_addr.raw,
+		if (vdev->opmode != wlan_op_mode_passthru &&
+		    qdf_mem_cmp(wh->i_addr1, vdev->mac_addr.raw,
 				QDF_MAC_ADDR_SIZE) == 0) {
 			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 			goto out;
+		} else if (vdev->opmode == wlan_op_mode_passthru) {
+			uint32_t l3_hdr_pad;
+
+			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+
+			l3_hdr_pad =
+				hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
+								   rx_tlv_hdr);
+
+			dp_rx_skip_tlvs(soc, mpdu, l3_hdr_pad);
+			if (dp_rx_deliver_raw_passthru(soc, vdev, mpdu))
+				goto free;
+			else
+				return 0;
 		}
 	}
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
@@ -1758,6 +1829,12 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 	}
 
 out:
+	if (!DP_FRAME_IS_DATA(wh)) {
+		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DP,
+				   "only for data frames");
+		goto free;
+	}
+
 	if (vdev->opmode == wlan_op_mode_ap) {
 		peer = dp_peer_find_hash_find(soc, wh->i_addr2, 0,
 					      vdev->vdev_id,
@@ -1946,13 +2023,14 @@ static inline uint32_t dp_get_l3_hdr_pad_len(struct dp_soc *soc,
 	return l3_hdr_pad;
 }
 
-qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
+qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs)
 {
 	qdf_nbuf_t parent, frag_list, frag_tail, next = NULL;
 	uint16_t frag_list_len = 0;
 	uint16_t mpdu_len;
 	bool last_nbuf;
 	uint32_t l3_hdr_pad_offset = 0;
+	uint8_t *parent_tlvs;
 
 	/*
 	 * Use msdu len got from REO entry descriptor instead since
@@ -2000,6 +2078,16 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	nbuf = nbuf->next;
 
 	/*
+	 * Delivering packet via invalid peer path uses parent nbuf tlvs
+	 * to find the l3_hdr_pad value. Since the MSDU_END tlv is valid
+	 * only for the last msdu, set the correct value in the parent
+	 * nbuf tlvs for referencing later.
+	 */
+	parent_tlvs = qdf_nbuf_data(parent);
+	hal_rx_msdu_end_l3_hdr_padding_set(soc->hal_soc, parent_tlvs,
+					   l3_hdr_pad_offset);
+
+	/*
 	 * set the start bit in the first nbuf we encounter with continuation
 	 * bit set. This has the proper mpdu length set as it is the first
 	 * msdu of the mpdu. this becomes the parent nbuf and the subsequent
@@ -2021,8 +2109,10 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	 */
 	if (last_nbuf) {
 		DP_STATS_INC(soc, rx.err.msdu_continuation_err, 1);
-		qdf_nbuf_pull_head(parent,
-				   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
+		if (skip_tlvs)
+			qdf_nbuf_pull_head(parent,
+					   soc->rx_pkt_tlv_size +
+					   l3_hdr_pad_offset);
 		return parent;
 	}
 
@@ -2052,8 +2142,9 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	qdf_nbuf_append_ext_list(parent, frag_list, frag_list_len);
 	parent->next = next;
 
-	qdf_nbuf_pull_head(parent,
-			   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
+	if (skip_tlvs)
+		qdf_nbuf_pull_head(parent,
+				   soc->rx_pkt_tlv_size + l3_hdr_pad_offset);
 	return parent;
 }
 

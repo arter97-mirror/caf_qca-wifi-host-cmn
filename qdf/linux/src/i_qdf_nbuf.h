@@ -3387,6 +3387,29 @@ static inline size_t __qdf_nbuf_get_tcp_hdr_len(struct sk_buff *skb)
 }
 
 /**
+ * __qdf_nbuf_get_mac_header() - get MAC header pointer
+ * @skb: Network buffer
+ *
+ * Return: MAC header pointer
+ */
+static inline void *__qdf_nbuf_get_mac_header(struct sk_buff *skb)
+{
+	return skb_mac_header(skb);
+}
+
+/**
+ * __qdf_nbuf_set_mac_header() - set MAC header
+ * @skb: Network buffer
+ * @offset: offset from data
+ *
+ * Return: None
+ */
+static inline void __qdf_nbuf_set_mac_header(struct sk_buff *skb, int offset)
+{
+	skb_set_mac_header(skb, offset);
+}
+
+/**
  * __qdf_nbuf_is_nonlinear() - test whether the nbuf is nonlinear or not
  * @skb: sk buff
  *

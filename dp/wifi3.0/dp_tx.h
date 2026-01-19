@@ -250,6 +250,8 @@ struct dp_tx_queue {
  * @is_s_vlan: Outer VLAN tag is present in the packet header
  * @is_c_vlan: Inner VLAN tag is present in the packet header
  * @l4_dport: destination port
+ * @is_unicast: whether unicast frame or not
+ * @frame_type: 802.11 frame type
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -300,6 +302,10 @@ struct dp_tx_msdu_info_s {
 	uint8_t is_s_vlan;
 	uint8_t is_c_vlan;
 	uint16_t l4_dport;
+#endif
+#ifdef DRIVER_PASSTHRU_MODE
+	bool is_unicast;
+	uint8_t frame_type;
 #endif
 };
 
@@ -658,6 +664,97 @@ QDF_STATUS dp_tso_soc_detach(struct cdp_soc_t *txrx_soc);
  */
 qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      qdf_nbuf_t nbuf);
+
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * dp_tx_send_passthru() - Simplified TX send function for passthrough mode
+ * @soc_hdl: CDP SoC handle
+ * @vdev_id: Virtual device ID
+ * @nbuf: Network buffer to transmit
+ *
+ * This is a simplified version of dp_tx_send() specifically designed for
+ * passthrough mode. It eliminates many checks and processing steps that
+ * are not needed in passthrough mode.
+ *
+ * Return: Network buffer on error, NULL on success
+ */
+qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			       qdf_nbuf_t nbuf);
+
+/**
+ * dp_tx_comp_process_desc_passthru() - Process tx descriptor and free
+ *  associated nbuf
+ * @soc: DP Soc handle
+ * @desc: software Tx descriptor
+ * @ts: Tx completion status from HAL/HTT descriptor
+ * @txrx_peer: DP peer context
+ *
+ * Return: none
+ */
+void dp_tx_comp_process_desc_passthru(struct dp_soc *soc,
+				      struct dp_tx_desc_s *desc,
+				      struct hal_tx_completion_status *ts,
+				      struct dp_txrx_peer *txrx_peer);
+
+/**
+ * dp_tx_comp_process_tx_status_passthru() - Process TX completion status
+ * in passthrough mode
+ * @soc: DP soc handle
+ * @tx_desc: TX descriptor
+ * @ts: TX completion status from HAL
+ * @txrx_peer: DP peer handle
+ * @ring_id: Completion ring ID
+ *
+ * This is a streamlined version of dp_tx_comp_process_tx_status() optimized
+ * for passthrough mode. It skips various statistics collection and monitoring
+ * functions to reduce processing overhead.
+ *
+ * Return: None
+ */
+void dp_tx_comp_process_tx_status_passthru(struct dp_soc *soc,
+					   struct dp_tx_desc_s *tx_desc,
+					   struct hal_tx_completion_status *ts,
+					   struct dp_txrx_peer *txrx_peer,
+					   uint8_t ring_id);
+
+static inline
+void dp_tx_comp_process_tx_status_n_desc_wrapper(struct dp_soc *soc,
+						 struct dp_vdev *vdev,
+						 struct dp_tx_desc_s *tx_desc,
+						 struct hal_tx_completion_status *ts,
+						 struct dp_txrx_peer *txrx_peer,
+						 uint8_t ring_id)
+{
+	if (qdf_unlikely(vdev && vdev->opmode == wlan_op_mode_passthru)) {
+		dp_tx_comp_process_tx_status_passthru(soc, tx_desc, ts,
+						      txrx_peer, ring_id);
+		dp_tx_comp_process_desc_passthru(soc, tx_desc, ts, txrx_peer);
+		return;
+	}
+
+	dp_tx_comp_process_tx_status(soc, tx_desc, ts, txrx_peer, ring_id);
+	dp_tx_comp_process_desc(soc, tx_desc, ts, txrx_peer);
+}
+#else
+static inline
+qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			       qdf_nbuf_t nbuf)
+{
+	return nbuf;
+}
+
+static inline
+void dp_tx_comp_process_tx_status_n_desc_wrapper(struct dp_soc *soc,
+						 struct dp_vdev *vdev,
+						 struct dp_tx_desc_s *tx_desc,
+						 struct hal_tx_completion_status *ts,
+						 struct dp_txrx_peer *txrx_peer,
+						 uint8_t ring_id)
+{
+	dp_tx_comp_process_tx_status(soc, tx_desc, ts, txrx_peer, ring_id);
+	dp_tx_comp_process_desc(soc, tx_desc, ts, txrx_peer);
+}
+#endif
 
 /**
  * dp_tx_send_vdev_id_check() - Transmit a frame on a given VAP in special

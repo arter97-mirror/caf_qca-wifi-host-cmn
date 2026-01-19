@@ -2466,6 +2466,17 @@ hal_srng_dst_get_num_avail_words_peach(hal_ring_handle_t hal_ring_hdl)
 	return SRNG_MS(SRNG_DST_HW_FLD(STATUS, NUM_AVAIL_WORDS), ring_status);
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline void hal_hw_attach_get_rssi_op(struct hal_soc *hal_soc)
+{
+	hal_soc->ops->hal_rx_tlv_get_rssi = hal_rx_tlv_get_rssi_be;
+}
+#else
+static inline void hal_hw_attach_get_rssi_op(struct hal_soc *hal_soc)
+{
+}
+#endif
+
 static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2558,6 +2569,8 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 					hal_rx_desc_is_first_msdu_be;
 	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_get =
 		hal_rx_tlv_l3_hdr_padding_get_be;
+	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set =
+		hal_rx_tlv_l3_hdr_padding_set_be;
 	hal_soc->ops->hal_rx_encryption_info_valid =
 					hal_rx_encryption_info_valid_be;
 	hal_soc->ops->hal_rx_print_pn = hal_rx_print_pn_be;
@@ -2757,6 +2770,7 @@ static void hal_hw_txrx_ops_attach_peach(struct hal_soc *hal_soc)
 				hal_rx_flow_cmem_update_reo_dst_ind;
 	hal_soc->ops->hal_srng_dst_get_num_avail_words =
 				hal_srng_dst_get_num_avail_words_peach;
+	hal_hw_attach_get_rssi_op(hal_soc);
 };
 
 struct hal_hw_srng_config hw_srng_table_peach[] = {
