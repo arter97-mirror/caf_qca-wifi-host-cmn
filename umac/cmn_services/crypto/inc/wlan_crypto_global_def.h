@@ -192,32 +192,142 @@ typedef enum wlan_crypto_rsn_cap {
 } wlan_crypto_rsn_cap;
 
 /**
- * enum wlan_crypto_rsnx_cap - RSNXE capabilities
- * @WLAN_CRYPTO_RSNX_CAP_PROTECTED_TWT: Protected TWT
- * @WLAN_CRYPTO_RSNX_CAP_SAE_H2E: SAE Hash to Element
- * @WLAN_CRYPTO_RSNX_CAP_SAE_PK: SAE PK
- * @WLAN_CRYPTO_RSNX_CAP_SECURE_LTF: Secure LTF
- * @WLAN_CRYPTO_RSNX_CAP_SECURE_RTT: Secure RTT
- * @WLAN_CRYPTO_RSNX_CAP_URNM_MFPR_X20: Unassociated Range
- * Negotiation and Measurement MFP Required Exempt 20MHz
- * @WLAN_CRYPTO_RSNX_CAP_URNM_MFPR: Unassociated Range
- * Negotiation and Measurement MFP Required
+ * enum wlan_crypto_rsnx_cap - The RSNX Capabilities field encodes optional
+ * security capabilities. Bits 0–3 hold a 4-bit length subfield (n - 1).
+ * Remaining bits are flags.
  *
- * Definition: (IEEE Std 802.11-2020, 9.4.2.241, Table 9-780)
- * The Extended RSN Capabilities field, except its first 4 bits, is a
- * bit field indicating the extended RSN capabilities being advertised
- * by the STA transmitting the element. The length of the Extended
- * RSN Capabilities field is a variable n, in octets, as indicated by
- * the first 4 bits in the field.
+ * @WLAN_CRYPTO_RSNX_CAP_LEN_MASK: Bits 0–3 mask for (n - 1) length subfield.
+ * @WLAN_CRYPTO_RSNX_CAP_LEN_SHIFT: Shift for the length subfield (0).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_TWT_PROT: Protected TWT Operations Support.
+ *   Set if STA supports protected TWT operations (per 10.46.1).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_SAE_H2E: SAE Hash-to-Element.
+ *   Set if STA supports SAE hash-to-element method (12.4.4.2.3/12.4.4.3.3).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_SAE_PK: SAE PK - Wi-Fi Alliance allocated.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_WUR_PROT: Protected WUR Frame Support.
+ *   Set when 11RSNAWURFrameProtectionActivated is true (11.21.6.3.1).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_SECURE_LTF: Secure HE-LTF Support.
+ *   Set when dot11SecureLTFImplemented is true (11.21.6.4.5).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_SECURE_RTT: Secure RTT Support.
+ *   Set if STA supports Secure RTT Measurement exchange (11.21.6.4.2.7).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_URNM_MFPR_X20: Unassociated Range Negotiation and
+ *   Measurement MFP Required Exempt 20 MHz.
+ *   Set when dot11RSTARequiresPMFActivated is set to 1 for 20 MHz exempt case
+ *   (11.21.6.3.1, Annex C.3).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_PROT_ANNOUNCE: Protected Announce Support.
+ *   Non-EDMG STA sets when dot11ProtectedAnnounceImplemented is true (12.6.18).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_PBAC: PBAC (Policy-Based Admission Control).
+ *   Set when PBAC is enabled to protect block ack agreements (11.16).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_EXT_SIG_ACT_PROT: Extended SIG Action Protection.
+ *   Set when Extended SIG Action Protection operations are implemented.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_SPP_AMSDU: SPP AMSDU Capable.
+ *   Non‑DMG STA sets when dot11SPPAMSDUCapable is true (10.11).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_URNM_MFPR: Unassociated Range Negotiation and
+ *   Measurement MFP Required.
+ *   Set when dot11RSTARequiresPMFActivated is 2 (11.21.6.3.1).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_RSVD_16: Reserved (bit 16).
+ * @WLAN_CRYPTO_RSNX_CAP_RSVD_17: Reserved (bit 17).
+ * @WLAN_CRYPTO_RSNX_CAP_RSVD_18: Reserved (bit 18).
+ * @WLAN_CRYPTO_RSNX_CAP_RSVD_19: Reserved (bit 19).
+ * @WLAN_CRYPTO_RSNX_CAP_RSVD_20: Reserved (bit 20).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_SSID_PROT: SSID Protection.
+ *   Set to indicate support for protected SSID exchange during 4‑way HS.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_QMF_ACI_UNMASK: QMF ACI Subfield Unmask Support.
+ *   Set if STA supports unmasking ACI subfield during AAD construction.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_EDP_MGMT_IADDR: EDP Robust Individually Addressed
+ *   Management Frame Support.
+ *   Set by EDP STA if robust individually addressed mgmt frames are supported
+ *   (12.16.3).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_TB_TX: EDP Robust Individually Addressed
+ *   Beamforming/CSI/CQI Frame TB Tx Support.
+ *   Set if TB Tx is supported for individually addressed BF/CSI/CQI frames.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_RX: EDP Robust Individually Addressed
+ *   Beamforming/CSI/CQI Frame Rx Support.
+ *   Set if Rx is supported for individually addressed BF/CSI/CQI frames.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_EDP_CAPS_REQRES: EDP Capabilities & Operation
+ *   Parameters Request/Response Support.
+ *   Set if EDP Caps & Operation Params Req/Resp is supported (12.16.4).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_ASSOC_FRM_ENCRYPTION: (Re)Association Frame
+ *   Encryption Support.
+ *   Set if STA supports encrypting (Re)Association Request/Response frames.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_DOT1X_OVER_AUTH_FRM: IEEE 802.1X Authentication
+ *  Utilizing Authentication Frame Support.
+ *   Set when 802.1X authentication via Authentication frames is supported.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_PMKSA_PRIVACY: PMKSA Caching Privacy Support.
+ *   Set when PMKSA caching privacy is activated (12.16.7).
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_GRP_EDP_EPOCH: Group EDP Epoch Supported.
+ *   Non-AP MLD sets when dot11EDPGroupEpochActivated is true.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_DS_MAC_ADDR: DS MAC Address Support.
+ *   Set when dot11DSMACAddressActivated is true.
+ *
+ * @WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_NTB_TX: EDP Robust Individually Addressed
+ *   Beamforming/CSI/CQI Frame Non-TB Tx Support.
+ *   Set if Non-TB Tx is supported for individually addressed BF/CSI/CQI frames.
+ *
+ * Definition: (IEEE Std 802.11-2024, 9.4.2.240, Table 9-373)
  */
 enum wlan_crypto_rsnx_cap {
-	WLAN_CRYPTO_RSNX_CAP_PROTECTED_TWT = 0x10,
-	WLAN_CRYPTO_RSNX_CAP_SAE_H2E = 0x20,
-	WLAN_CRYPTO_RSNX_CAP_SAE_PK = 0x40,
-	WLAN_CRYPTO_RSNX_CAP_SECURE_LTF = 0x100,
-	WLAN_CRYPTO_RSNX_CAP_SECURE_RTT = 0x200,
-	WLAN_CRYPTO_RSNX_CAP_URNM_MFPR_X20 = 0x400,
-	WLAN_CRYPTO_RSNX_CAP_URNM_MFPR = 0x8000,
+	/* 0–3: length subfield (n − 1), 4 bits */
+	WLAN_CRYPTO_RSNX_CAP_LEN_MASK        = 0x0F,
+	WLAN_CRYPTO_RSNX_CAP_LEN_SHIFT       = 0,
+
+	/* single bit flags */
+	WLAN_CRYPTO_RSNX_CAP_TWT_PROT          = BIT(4),
+	WLAN_CRYPTO_RSNX_CAP_SAE_H2E           = BIT(5),
+	WLAN_CRYPTO_RSNX_CAP_SAE_PK            = BIT(6),
+	WLAN_CRYPTO_RSNX_CAP_WUR_PROT          = BIT(7),
+	WLAN_CRYPTO_RSNX_CAP_SECURE_LTF        = BIT(8),
+	WLAN_CRYPTO_RSNX_CAP_SECURE_RTT        = BIT(9),
+	WLAN_CRYPTO_RSNX_CAP_URNM_MFPR_X20     = BIT(10),
+	WLAN_CRYPTO_RSNX_CAP_PROT_ANNOUNCE     = BIT(11),
+	WLAN_CRYPTO_RSNX_CAP_PBAC              = BIT(12),
+	WLAN_CRYPTO_RSNX_CAP_EXT_SIG_ACT_PROT  = BIT(13),
+	WLAN_CRYPTO_RSNX_CAP_SPP_AMSDU         = BIT(14),
+	WLAN_CRYPTO_RSNX_CAP_URNM_MFPR         = BIT(15),
+
+	WLAN_CRYPTO_RSNX_CAP_RSVD_16         = BIT(16),
+	WLAN_CRYPTO_RSNX_CAP_RSVD_17         = BIT(17),
+	WLAN_CRYPTO_RSNX_CAP_RSVD_18         = BIT(18),
+	WLAN_CRYPTO_RSNX_CAP_RSVD_19         = BIT(19),
+	WLAN_CRYPTO_RSNX_CAP_RSVD_20         = BIT(20),
+
+	WLAN_CRYPTO_RSNX_CAP_SSID_PROT             = BIT(21),
+	WLAN_CRYPTO_RSNX_CAP_QMF_ACI_UNMASK        = BIT(22),
+	WLAN_CRYPTO_RSNX_CAP_EDP_MGMT_IADDR        = BIT(23),
+	WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_TB_TX      = BIT(24),
+	WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_RX         = BIT(25),
+	WLAN_CRYPTO_RSNX_CAP_EDP_CAPS_REQRES       = BIT(26),
+	WLAN_CRYPTO_RSNX_CAP_ASSOC_FRM_ENCRYPTION  = BIT(27),
+	WLAN_CRYPTO_RSNX_CAP_DOT1X_OVER_AUTH_FRM   = BIT(28),
+	WLAN_CRYPTO_RSNX_CAP_PMKSA_PRIVACY         = BIT(29),
+	WLAN_CRYPTO_RSNX_CAP_GRP_EDP_EPOCH         = BIT(30),
+	WLAN_CRYPTO_RSNX_CAP_DS_MAC_ADDR           = BIT(31),
+
+	/* bit 32 requires 64-bit backing if stored in u32 */
+	WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_NTB_TX = BIT_ULL(32),
 };
 
 /**
