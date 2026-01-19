@@ -1184,6 +1184,10 @@
  *     used to retrieve WLAN host driver side TX/RX statistics.
  *     The attributes used with this command are defined in
  *     enum qca_wlan_host_txrx_stats_attr.
+ * QCA_NL80211_VENDOR_SUBCMD_QSH_GET_STATS: Retrieves the Wi-Fi scan count from
+ *     the sensor (currently only scan count may be extended to include
+ *     additional statistics in the future), enabling analysis of power usage
+ *     related to QSH-driven scans.
  */
 
 enum qca_nl80211_vendor_subcmds {
@@ -1475,6 +1479,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_FEATURE_CONFIG = 266,
 	QCA_NL80211_VENDOR_SUBCMD_DCS_CONFIG = 269,
 	QCA_NL80211_VENDOR_SUBCMD_WLAN_HOST_TXRX_STATS = 271,
+	QCA_NL80211_VENDOR_SUBCMD_QSH_GET_STATS = 270,
 };
 
 enum qca_wlan_vendor_tos {
@@ -6901,6 +6906,20 @@ enum qca_wlan_vendor_attr_config {
 	 * 1 - Enable, 0 - Disable.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_ALLOW_STA_DFS_CH_SCC_P2P = 140,
+
+	/*
+	 * 8-bit unsigned value to enable or disable QSH-initiated Wi-Fi scans,
+	 * providing a mechanism to optimize power consumption. By default, this
+	 * feature is enabled.
+	 *
+	 * Valid values:
+	 * 0 - Disable
+	 * 1 - Enable
+	 *
+	 * Values other than 0 or 1 are invalid and shall be rejected.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_QSH_SCAN_CTRL = 141,
+
 	/* 8-bit bitmap to enable the feature to allow SCC with STA connected
 	 * indoor channel per peer protocol to the driver in STA mode. This
 	 * configuration is applicable only when a STA interface is in
@@ -21543,6 +21562,24 @@ enum qca_wlan_host_txrx_stats_attr {
 	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_LAST,
 	QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_MAX =
 		QCA_WLAN_VENDOR_ATTR_HOST_TXRX_STATS_PARAM_LAST - 1
+};
+
+/**
+ * enum qca_wlan_vendor_attr_qsh_stats - Attributes used by
+ * %QCA_NL80211_VENDOR_SUBCMD_QSH_GET_STATS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_QSH_STATS_SCAN_COUNT: 32-bit unsigned value
+ *     representing the Wi-Fi scan count from the sensor. This attribute is
+ *     mandatory. it's a response-only attribute.
+ */
+enum qca_wlan_vendor_attr_qsh_stats {
+	QCA_WLAN_VENDOR_ATTR_QSH_STATS_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_QSH_STATS_SCAN_COUNT = 1,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_QSH_STATS_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_QSH_STATS_MAX =
+	QCA_WLAN_VENDOR_ATTR_QSH_STATS_AFTER_LAST - 1
 };
 
 #endif
