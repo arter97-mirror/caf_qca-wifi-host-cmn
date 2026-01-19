@@ -597,11 +597,19 @@ dp_tx_page_pool_apply_pool_removal(
 	if (tx_pp->last_used_pool == pp_params)
 		tx_pp->last_used_pool = NULL;
 
-	/* Remove from active list */
-	for (j = pool_idx; j < tx_pp->active_pool_count - 1; j++)
-		tx_pp->active_pool[j] =
-			tx_pp->active_pool[j + 1];
+	/* Remove from active list and update metadata during shift */
+	for (j = pool_idx; j < tx_pp->active_pool_count - 1; j++) {
+		tx_pp->active_pool[j] = tx_pp->active_pool[j + 1];
+		/* Update pool_id to reflect new array position */
+		tx_pp->active_pool[j].pool_id = j;
+		/* Update cache pointer if it's being shifted to new index */
+		if (tx_pp->last_used_pool == &tx_pp->active_pool[j + 1])
+			tx_pp->last_used_pool = &tx_pp->active_pool[j];
+	}
 	tx_pp->active_pool_count--;
+	/* Clear stale last entry to prevent duplicate pool pointers */
+	qdf_mem_zero(&tx_pp->active_pool[tx_pp->active_pool_count],
+		     sizeof(struct dp_tx_pp_params));
 
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	/* END CRITICAL SECTION 1 */
