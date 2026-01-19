@@ -755,6 +755,11 @@ static QDF_STATUS check_dma_length(struct look_up_table *lut,
 		    lut->payload_length <= QCA5332_MAX_DATA_LENGTH_BYTES) {
 			return QDF_STATUS_SUCCESS;
 		}
+	} else if (target_type == TARGET_TYPE_FIG) {
+		if (lut->header_length <= WCN8850_MAX_HEADER_LENGTH_WORDS &&
+		    lut->payload_length <= WCN8850_MAX_DATA_LENGTH_BYTES) {
+			return QDF_STATUS_SUCCESS;
+		}
 	} else {
 		if (lut->header_length <= CYP_MAX_HEADER_LENGTH_WORDS &&
 		    lut->payload_length <= CYP_MAX_DATA_LENGTH_BYTES) {

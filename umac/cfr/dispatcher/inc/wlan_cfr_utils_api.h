@@ -65,7 +65,7 @@
 
 #define MAX_CFR_OUI_LEN 5
 #define ENHANCED_CFR_VERSION_V3 3
-#define WLAN_CFR_DATA_MAX_LEN 32768
+#define WLAN_CFR_DATA_MAX_LEN 64256
 
 enum cfrmetaversion {
 	CFR_META_VERSION_NONE,

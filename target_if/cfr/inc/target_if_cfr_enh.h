@@ -236,6 +236,25 @@ enum macrx_freeze_tlv_version {
 	 (MAPLE_MAX_HEADER_LENGTH_WORDS * 4) + \
 	 MAPLE_MAX_DATA_LENGTH_BYTES)
 
+/* Max 8 users in MU case for WCN8850 */
+#define WCN8850_CFR_MU_USERS 8
+
+/* uCode header = (16 + (max number of MU users supported *2))*4 Bytes */
+#define WCN8850_MAX_HEADER_LENGTH_WORDS 32
+
+/* Maximum number of tones that can be uploaded is 1002
+ * Max data len = Num tones per stream per chain * max chains
+ * max nss * size of tone
+ *              = 1002 * 4 * 4 * 4 = 64128 Bytes
+ * Max CFR buffer length received from ucode = Max data len + ucode header
+ *                                           = 64128 + 128 = 64256 Bytes
+ */
+#define WCN8850_MAX_DATA_LENGTH_BYTES 64256
+
+/* Max size :
+ * sizeof(csi_cfr_header) + 128 bytes(ucode header) + 64128 bytes(cfr payload)
+ */
+
 /*
  * RelayFS memory required:
  * Max sub buffer size * Number of sub buffers
