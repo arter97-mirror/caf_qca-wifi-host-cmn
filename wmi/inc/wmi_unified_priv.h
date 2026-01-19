@@ -718,6 +718,10 @@ QDF_STATUS (*send_scan_start_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_scan_stop_cmd)(wmi_unified_t wmi_handle,
 				struct scan_cancel_param *param);
 
+QDF_STATUS (*send_scan_suppress_cmd)(wmi_unified_t wmi_handle,
+				     uint32_t vdev_id,
+				     struct suppress_scan_param *param);
+
 QDF_STATUS (*send_scan_chan_list_cmd)(wmi_unified_t wmi_handle,
 				struct scan_chan_list_params *param);
 

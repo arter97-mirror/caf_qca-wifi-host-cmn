@@ -4724,6 +4724,40 @@ error:
 	return ret;
 }
 
+#ifdef WLAN_FEATURE_QSH_SCAN
+static QDF_STATUS send_scan_suppress_cmd_tlv(wmi_unified_t wmi_handle,
+					     uint32_t vdev_id,
+					     struct suppress_scan_param *param)
+{
+	wmi_scan_suppress_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	int32_t len = sizeof(*cmd);
+	QDF_STATUS ret;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_scan_suppress_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_scan_suppress_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_scan_suppress_cmd_fixed_param));
+
+	cmd->suppress_scan = param->suppress_scan;
+	cmd->scan_client_id = param->scan_req_id;
+
+	wmi_mtrace(WMI_SCAN_SUPPRESS_CMDID, vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_SCAN_SUPPRESS_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_buf_free(buf);
+		wmi_err("Failed to send scan suppress command");
+	}
+
+	return ret;
+}
+#endif
+
 #define WMI_MAX_CHAN_INFO_LOG 192
 
 /**
@@ -23465,6 +23499,9 @@ struct wmi_ops tlv_ops =  {
 	.send_peer_assoc_cmd = send_peer_assoc_cmd_tlv,
 	.send_scan_start_cmd = send_scan_start_cmd_tlv,
 	.send_scan_stop_cmd = send_scan_stop_cmd_tlv,
+#ifdef WLAN_FEATURE_QSH_SCAN
+	.send_scan_suppress_cmd = send_scan_suppress_cmd_tlv,
+#endif
 	.send_scan_chan_list_cmd = send_scan_chan_list_cmd_tlv,
 	.send_mgmt_cmd = send_mgmt_cmd_tlv,
 	.send_modem_power_state_cmd = send_modem_power_state_cmd_tlv,

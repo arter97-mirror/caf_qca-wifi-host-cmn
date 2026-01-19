@@ -1328,6 +1328,22 @@ wmi_unified_scan_stop_cmd_send(wmi_unified_t wmi_handle,
 			       struct scan_cancel_param *param);
 
 /**
+ * wmi_unified_scan_suppress_cmd_send() - WMI scan suppress function
+ * @wmi_handle: handle to WMI
+ * @vdev_id: vdev ID
+ * @param: pointer to hold suppress scan params
+ *
+ * This function sends WMI_SCAN_SUPPRESS_CMDID to firmware to control
+ * scan suppression behavior.
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_scan_suppress_cmd_send(wmi_unified_t wmi_handle,
+				   uint32_t vdev_id,
+				   struct suppress_scan_param *param);
+
+/**
  * wmi_unified_scan_chan_list_cmd_send() - WMI scan channel list function
  * @wmi_handle: handle to WMI.
  * @param: pointer to hold scan channel list parameter

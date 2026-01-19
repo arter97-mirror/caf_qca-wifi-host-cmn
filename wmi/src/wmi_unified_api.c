@@ -557,6 +557,19 @@ wmi_unified_scan_stop_cmd_send(wmi_unified_t wmi_handle,
 }
 
 QDF_STATUS
+wmi_unified_scan_suppress_cmd_send(wmi_unified_t wmi_handle,
+				   uint32_t vdev_id,
+				   struct suppress_scan_param *param)
+{
+	if (wmi_handle->ops->send_scan_suppress_cmd)
+		return wmi_handle->ops->send_scan_suppress_cmd(wmi_handle,
+								vdev_id,
+								param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
 wmi_unified_scan_chan_list_cmd_send(wmi_unified_t wmi_handle,
 				    struct scan_chan_list_params *param)
 {

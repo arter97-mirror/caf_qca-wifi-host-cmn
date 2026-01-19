@@ -1323,6 +1323,16 @@ struct scan_cancel_param {
 };
 
 /**
+ * struct suppress_scan_param - suppress scan cmd parameter
+ * @scan_req_id: module id for which scan has to be suppressed
+ * @suppress_scan: flag to disable scan
+ */
+struct suppress_scan_param {
+	uint8_t scan_req_id;
+	uint8_t suppress_scan;
+};
+
+/**
  * struct scan_cancel_request - stop scan cmd
  * @vdev: vdev object
  * @wait_tgt_cancel: wait for target to cancel scan
