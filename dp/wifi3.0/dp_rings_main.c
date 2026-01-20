@@ -3199,6 +3199,30 @@ static void dp_display_li_be_only_srng_info(struct cdp_soc_t *soc_hdl)
 #endif
 
 #define DP_SW2WBM_RING_IDLE_WAIT_CNT 5
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline void dp_print_replenish_ring_info(struct dp_soc *soc)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	struct dp_srng *dp_rxdma_srng;
+	uint32_t hp, tp, i;
+	uint8_t mac_id = 0;
+
+	for (i = 0; i < soc->num_replenish_rings[mac_id]; i++) {
+		dp_rxdma_srng = soc->replenish_rings[mac_id][i];
+		hal_get_sw_hptp(hal_soc, dp_rxdma_srng->hal_srng, &tp, &hp);
+		dp_info("Replenish_ring[%d]: hp=0x%x, tp=0x%x", i, hp, tp);
+	}
+}
+#else
+static inline void dp_print_replenish_ring_info(struct dp_soc *soc)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	uint32_t hp, tp;
+
+	hal_get_sw_hptp(hal_soc, soc->rx_refill_buf_ring[0].hal_srng, &tp, &hp);
+	dp_info("Refill buf ring: hp=0x%x, tp=0x%x", hp, tp);
+}
+#endif
 
 /**
  * dp_display_srng_info() - Dump the srng HP TP info
@@ -3266,6 +3290,8 @@ bool dp_display_srng_info(struct cdp_soc_t *soc_hdl)
 	}
 
 	dp_info("WBM desc release ring: hp=0x%x, tp=0x%x", hp, tp);
+
+	dp_print_replenish_ring_info(soc);
 
 	if (hp != tp)
 		ret = false;
