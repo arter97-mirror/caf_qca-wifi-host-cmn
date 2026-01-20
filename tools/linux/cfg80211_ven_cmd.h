@@ -928,6 +928,7 @@ enum {
 	IEEE80211_PARAM_RSNXOCAPS = 841,
 	IEEE80211_PARAM_LIST_REG_CHAN = 842,
 	IEEE80211_PARAM_PURE_11AX_ENABLE = 843,
+	IEEE80211_PARAM_HE_ULOFDMA_DCM =844,
 	/* Add QCA enums above */
 	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
 	IEEE80211_PARAM_CUST_END, /* Cust enum end */
@@ -2784,6 +2785,8 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"get_vbss", IEEE80211_PARAM_VBSS_ENABLE, GET_PARAM, 0},
 #endif /* WLAN_FEATURE_VBSS */
 	{"pure_11ax", IEEE80211_PARAM_PURE_11AX_ENABLE, SET_PARAM, 1},
+	{"he_ulofdma_dcm",        IEEE80211_PARAM_HE_ULOFDMA_DCM, SET_PARAM, 1},
+	{"g_he_ulofdma_dcm",    IEEE80211_PARAM_HE_ULOFDMA_DCM, GET_PARAM, 0},
 };
 
 struct vendor_commands radio_vendor_cmds[] = {
