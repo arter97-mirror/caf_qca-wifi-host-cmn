@@ -2376,6 +2376,8 @@ QDF_STATUS dp_peer_update_wds(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 		return status;
 	}
 
+	dp_wds_ext_peer_learn(soc, peer);
+
 	/* Update target with new associated peer and wds_macaddr */
 	ret = dp_update_wds_entry_wrapper(soc, peer, wds_macaddr, 0);
 
