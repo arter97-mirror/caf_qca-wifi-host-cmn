@@ -3350,6 +3350,18 @@ static void dp_rxdma_ring_free(struct dp_pdev *pdev)
 #endif
 
 #ifdef IPA_OFFLOAD
+#ifdef DP_FEATURE_DIRECT_REFILL
+static int dp_ipa_get_rxdma_refill_ring_size(struct dp_soc *soc)
+{
+	return wlan_cfg_get_rxdma_buf_ring_size(soc->ctrl_psoc);
+}
+#else
+static int dp_ipa_get_rxdma_refill_ring_size(struct dp_soc *soc)
+{
+	return wlan_cfg_get_dp_soc_rxdma_refill_ring_size(
+					soc->wlan_cfg_ctx);
+}
+#endif
 /**
  * dp_setup_ipa_rx_refill_buf_ring - Setup second Rx refill buffer ring
  * @soc: data path instance
@@ -3359,13 +3371,11 @@ static void dp_rxdma_ring_free(struct dp_pdev *pdev)
  */
 static int dp_setup_ipa_rx_refill_buf_ring(struct dp_soc *soc)
 {
-	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx;
 	int entries;
 
 	if (wlan_cfg_is_ipa_enabled(soc->wlan_cfg_ctx)) {
-		soc_cfg_ctx = soc->wlan_cfg_ctx;
 		entries =
-			wlan_cfg_get_dp_soc_rxdma_refill_ring_size(soc_cfg_ctx);
+			dp_ipa_get_rxdma_refill_ring_size(soc);
 
 		/* Setup second Rx refill buffer ring */
 		if (dp_srng_alloc(soc, &soc->rx_refill_buf_ring2, RXDMA_BUF,
