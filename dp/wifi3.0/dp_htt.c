@@ -5606,6 +5606,7 @@ QDF_STATUS dp_h2t_hw_vdev_stats_config_send(struct dp_soc *dpsoc,
 }
 #endif
 
+#ifndef QCA_HOST2FW_RXBUF_RING
 /**
  * dp_h2t_3tuple_config_send(): function to construct 3 tuple configuration
  * HTT message to pass to FW
@@ -5697,6 +5698,7 @@ QDF_STATUS dp_h2t_3tuple_config_send(struct dp_pdev *pdev,
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 /* This macro will revert once proper HTT header will define for
  * HTT_H2T_MSG_TYPE_PPDU_STATS_CFG in htt.h file

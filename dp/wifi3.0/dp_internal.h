@@ -3725,6 +3725,7 @@ void dp_htt_stats_print_tag(struct dp_pdev *pdev,
  */
 void dp_htt_stats_copy_tag(struct dp_pdev *pdev, uint8_t tag_type, uint32_t *tag_buf);
 
+#ifndef QCA_HOST2FW_RXBUF_RING
 /**
  * dp_h2t_3tuple_config_send(): function to construct 3 tuple configuration
  * HTT message to pass to FW
@@ -3743,6 +3744,7 @@ void dp_htt_stats_copy_tag(struct dp_pdev *pdev, uint8_t tag_type, uint32_t *tag
  */
 QDF_STATUS dp_h2t_3tuple_config_send(struct dp_pdev *pdev, uint32_t tuple_mask,
 				     uint8_t mac_id);
+#endif
 
 #ifdef IPA_OFFLOAD
 /**
