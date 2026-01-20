@@ -494,6 +494,7 @@ struct ta_ra_cfr_cfg {
  * @unassoc_capture_config: unassociated capture config
  * @unassoc_channel_mhz: unassociated freq
  * @unassoc_phy_mode: unassociated phy mode
+ * @agc_gain_fixed: 0 indicates agc gain fixed, 1 indicates dynamic
  */
 struct cfr_rcc_param {
 	uint8_t pdev_id;
@@ -525,6 +526,7 @@ struct cfr_rcc_param {
 	uint32_t unassoc_capture_config;
 	uint32_t unassoc_channel_mhz;
 	enum wlan_phymode unassoc_phy_mode;
+	bool agc_gain_fixed;
 };
 
 /**

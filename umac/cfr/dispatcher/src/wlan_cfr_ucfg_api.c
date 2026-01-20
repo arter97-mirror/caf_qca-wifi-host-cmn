@@ -987,6 +987,24 @@ QDF_STATUS ucfg_cfr_set_tara_config(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+QDF_STATUS
+ucfg_cfr_set_capture_agc(struct wlan_objmgr_vdev *vdev,
+			 struct cfr_wlanconfig_param *params)
+{
+	struct pdev_cfr *pcfr = NULL;
+	struct wlan_objmgr_pdev *pdev = NULL;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	status = dev_sanity_check(vdev, &pdev, &pcfr);
+	if (status != QDF_STATUS_SUCCESS)
+		return status;
+
+	pcfr->rcc_param.agc_gain_fixed = params->agc_gain_fixed;
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
+
+	return status;
+}
+
 QDF_STATUS ucfg_cfr_get_peer_info(struct wlan_objmgr_vdev *vdev,
 				  enum phy_ch_width *peer_bw,
 				  uint32_t *bss_freq)
@@ -1536,6 +1554,7 @@ QDF_STATUS ucfg_cfr_committed_rcc_config(struct wlan_objmgr_vdev *vdev)
 
 	pcfr->rcc_param.num_grp_tlvs = 0;
 	pcfr->rcc_param.modified_in_curr_session[0] = 0;
+	pcfr->rcc_param.agc_gain_fixed = 0;
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
 
 	return status;

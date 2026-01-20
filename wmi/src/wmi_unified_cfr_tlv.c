@@ -189,6 +189,7 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 {
 	wmi_cfr_capture_filter_cmd_fixed_param *cmd;
 	wmi_cfr_filter_group_config *param;
+	wmi_cfr_capture_fix_agc_gain_config *agc_gain;
 	uint8_t *buf_ptr, grp_id;
 	wmi_buf_t buf;
 	uint32_t len;
@@ -197,6 +198,8 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 
 	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE;
 	len += rcc->num_grp_tlvs * sizeof(wmi_cfr_filter_group_config);
+	len += WMI_TLV_HDR_SIZE;
+	len += sizeof(wmi_cfr_capture_fix_agc_gain_config);
 	buf = wmi_buf_alloc(wmi_handle, len);
 
 	if (!buf) {
@@ -257,9 +260,9 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 
 	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
 		       rcc->num_grp_tlvs * sizeof(wmi_cfr_filter_group_config));
+	buf_ptr += WMI_TLV_HDR_SIZE;
 
 	if (rcc->num_grp_tlvs) {
-		buf_ptr += WMI_TLV_HDR_SIZE;
 		param = (wmi_cfr_filter_group_config *)buf_ptr;
 
 		for (grp_id = 0; grp_id < MAX_TA_RA_ENTRIES; grp_id++) {
@@ -271,6 +274,19 @@ static QDF_STATUS send_cfr_rcc_cmd_tlv(wmi_unified_t wmi_handle,
 			}
 		}
 	}
+
+	buf_ptr += rcc->num_grp_tlvs * sizeof(wmi_cfr_filter_group_config);
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       sizeof(wmi_cfr_capture_fix_agc_gain_config));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	agc_gain = (wmi_cfr_capture_fix_agc_gain_config *)buf_ptr;
+	WMITLV_SET_HDR(&agc_gain->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_cfr_capture_fix_agc_gain_config,
+		       WMITLV_GET_STRUCT_TLVLEN
+		       (wmi_cfr_capture_fix_agc_gain_config));
+	agc_gain->cfr_fix_agc_gain_enable = rcc->agc_gain_fixed;
+
 	status = wmi_unified_cmd_send(wmi_handle, buf, len,
 				      WMI_CFR_CAPTURE_FILTER_CMDID);
 	if (status)
