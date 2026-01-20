@@ -476,6 +476,7 @@ struct ta_ra_cfr_cfg {
  * @capture_intval_mode_sel: 0 indicates capture_duration mode, 1 indicates the
  * capture_count mode.
  * @rsvd2: reserved bits
+ * @agc_gain_fixed: 0 indicates agc gain fixed, 1 indicates dynamic
  */
 struct cfr_rcc_param {
 	uint8_t pdev_id;
@@ -504,6 +505,7 @@ struct cfr_rcc_param {
 	uint32_t capture_count            :16,
 		 capture_intval_mode_sel  :1,
 		 rsvd2                    :15;
+	bool agc_gain_fixed;
 };
 #endif /* WLAN_ENH_CFR_ENABLE */
 

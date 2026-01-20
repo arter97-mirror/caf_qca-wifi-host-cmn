@@ -168,6 +168,16 @@ QDF_STATUS ucfg_cfr_set_rcc_mode(struct wlan_objmgr_vdev *vdev,
 bool ucfg_cfr_get_rcc_enabled(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * ucfg_cfr_set_capture_agc() - function to configure agc gain fixed or not
+ * @vdev: pointer to vdev object
+ * @params: user config
+ *
+ * Return: status
+ */
+QDF_STATUS ucfg_cfr_set_capture_agc(struct wlan_objmgr_vdev *vdev,
+				    struct cfr_wlanconfig_param *params);
+
+/**
  * ucfg_cfr_set_tara_config() - function to configure TA/RA address and mask
  * @vdev: pointer to vdev object
  * @params: user config
