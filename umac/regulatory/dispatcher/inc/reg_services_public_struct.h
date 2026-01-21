@@ -2459,12 +2459,16 @@ enum reg_host_pdev_power_boost_event_status {
  * enum reg_host_tx_pb_inference_stage - Inference stage
  * @REG_HOST_TX_PB_INFERENCE_FIRST_PASS: 1st pass
  * @REG_HOST_TX_PB_INFERENCE_SECOND_PASS: 2nd pass
+ * @REG_HOST_TX_PB_INFERENCE_THIRD_PASS: 3rd pass
+ * @REG_HOST_TX_PB_INFERENCE_FOURTH_PASS: 4th pass
  *
  * This enum is 1:1 mapping to enum wmi_pdev_power_boost_inferencing_stage
  */
 enum reg_host_tx_pb_inference_stage {
 	REG_HOST_TX_PB_INFERENCE_FIRST_PASS  = 0,
 	REG_HOST_TX_PB_INFERENCE_SECOND_PASS = 1,
+	REG_HOST_TX_PB_INFERENCE_THIRD_PASS  = 2,
+	REG_HOST_TX_PB_INFERENCE_FOURTH_PASS = 3,
 };
 
 /**
