@@ -55,6 +55,7 @@ void target_if_wake_lock_init(struct wlan_objmgr_psoc *psoc)
 	qdf_runtime_lock_init(&psoc_wakelock->roam_sync_runtime_lock);
 
 	psoc_wakelock->is_link_up = false;
+	psoc_wakelock->is_roam_lock_acquired = false;
 }
 
 void target_if_wake_lock_deinit(struct wlan_objmgr_psoc *psoc)
@@ -309,7 +310,7 @@ void target_if_vdev_stop_link_handler(struct wlan_objmgr_vdev *vdev)
 			target_if_vote_for_link_down(psoc, psoc_wakelock);
 }
 
-void target_if_prevent_pm_during_roam_sync(struct wlan_objmgr_psoc *psoc)
+void target_if_prevent_pm_during_roam(struct wlan_objmgr_psoc *psoc)
 {
 	struct psoc_mlme_wakelock *psoc_wakelock;
 	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
@@ -322,10 +323,14 @@ void target_if_prevent_pm_during_roam_sync(struct wlan_objmgr_psoc *psoc)
 	}
 
 	psoc_wakelock = rx_ops->psoc_get_wakelock_info(psoc);
+	if (psoc_wakelock->is_roam_lock_acquired)
+		return;
+
 	qdf_runtime_pm_prevent_suspend(&psoc_wakelock->roam_sync_runtime_lock);
+	psoc_wakelock->is_roam_lock_acquired = true;
 }
 
-void target_if_allow_pm_after_roam_sync(struct wlan_objmgr_psoc *psoc)
+void target_if_allow_pm_after_roam(struct wlan_objmgr_psoc *psoc)
 {
 	struct psoc_mlme_wakelock *psoc_wakelock;
 	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
@@ -338,5 +343,9 @@ void target_if_allow_pm_after_roam_sync(struct wlan_objmgr_psoc *psoc)
 	}
 
 	psoc_wakelock = rx_ops->psoc_get_wakelock_info(psoc);
+	if (!psoc_wakelock->is_roam_lock_acquired)
+		return;
+
 	qdf_runtime_pm_allow_suspend(&psoc_wakelock->roam_sync_runtime_lock);
+	psoc_wakelock->is_roam_lock_acquired = false;
 }
