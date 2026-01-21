@@ -782,9 +782,41 @@ bool mlo_mgr_is_link_switch_on_assoc_vdev(struct wlan_objmgr_vdev *vdev)
 	return vdev->mlo_dev_ctx->link_ctx->last_req.restore_vdev_flag;
 }
 
+const char*
+mlo_mgr_link_switch_req_state_string(enum mlo_link_switch_req_state state)
+{
+	static const char * const ls_state_string[] = {
+		[MLO_LINK_SWITCH_STATE_IDLE] = "IDLE",
+		[MLO_LINK_SWITCH_STATE_INIT] = "INIT",
+		[MLO_LINK_SWITCH_STATE_DISCONNECT_CURR_LINK] = "DISCONNECT_CURR_LINK",
+		[MLO_LINK_SWITCH_STATE_SET_MAC_ADDR] = "SET_MAC_ADDR",
+		[MLO_LINK_SWITCH_STATE_CONNECT_NEW_LINK] = "CONNECT_NEW_LINK",
+		[MLO_LINK_SWITCH_STATE_COMPLETE_SUCCESS] = "COMPLETE_SUCCESS",
+		[MLO_LINK_SWITCH_STATE_ABORT_TRANS] = "ABORT_TRANSITION",
+	};
+
+	if (state > MLO_LINK_SWITCH_STATE_ABORT_TRANS)
+		return "UNKNOWN";
+
+	return ls_state_string[state];
+}
+
+static inline void
+mlo_mgr_link_switch_log_transition(enum mlo_link_switch_req_state from,
+				   enum mlo_link_switch_req_state to,
+				   uint8_t mld_id)
+{
+	mlo_nofl_debug("LS_SM_mld%d: %s -> %s", mld_id,
+		       mlo_mgr_link_switch_req_state_string(from),
+		       mlo_mgr_link_switch_req_state_string(to));
+}
+
 void mlo_mgr_link_switch_init_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 {
 	mlo_dev_lock_acquire(mlo_dev_ctx);
+	mlo_mgr_link_switch_log_transition(mlo_dev_ctx->link_ctx->last_req.state,
+					   MLO_LINK_SWITCH_STATE_IDLE,
+					   mlo_dev_ctx->mld_id);
 	mlo_dev_ctx->link_ctx->last_req.state = MLO_LINK_SWITCH_STATE_IDLE;
 	mlo_dev_lock_release(mlo_dev_ctx);
 }
@@ -826,6 +858,8 @@ mlo_mgr_link_switch_trans_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 		break;
 	}
 	mlo_dev_ctx->link_ctx->last_req.state = next_state;
+	mlo_mgr_link_switch_log_transition(cur_state, next_state,
+					   mlo_dev_ctx->mld_id);
 	mlo_dev_lock_release(mlo_dev_ctx);
 
 	return status;
@@ -838,6 +872,8 @@ mlo_mgr_link_switch_trans_abort_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 					MLO_LINK_SWITCH_STATE_ABORT_TRANS;
 
 	mlo_dev_lock_acquire(mlo_dev_ctx);
+	mlo_mgr_link_switch_log_transition(mlo_dev_ctx->link_ctx->last_req.state,
+					   next_state, mlo_dev_ctx->mld_id);
 	mlo_dev_ctx->link_ctx->last_req.state = next_state;
 	mlo_dev_lock_release(mlo_dev_ctx);
 }
@@ -1166,11 +1202,6 @@ QDF_STATUS mlo_mgr_link_switch_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
 
 	req = &vdev->mlo_dev_ctx->link_ctx->last_req;
 	cur_state = mlo_mgr_link_switch_get_curr_state(vdev->mlo_dev_ctx);
-	if (cur_state != MLO_LINK_SWITCH_STATE_SET_MAC_ADDR) {
-		mlo_err("Link switch cmd flushed, there can be MAC addr mismatch with FW");
-		mlo_mgr_remove_link_switch_cmd(vdev);
-		return status;
-	}
 
 	new_link_info =
 		mlo_mgr_get_ap_link_by_link_id(vdev->mlo_dev_ctx,
@@ -1187,6 +1218,14 @@ QDF_STATUS mlo_mgr_link_switch_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
 							req->curr_ieee_link_id,
 							req->new_ieee_link_id,
 							req->vdev_id);
+
+	if (cur_state != MLO_LINK_SWITCH_STATE_SET_MAC_ADDR) {
+		mlo_err("Aborting the link switch due to invalid state %s",
+			mlo_mgr_link_switch_req_state_string(cur_state));
+		mlo_mgr_remove_link_switch_cmd(vdev);
+		return QDF_STATUS_E_INVAL;
+	}
+
 	if (QDF_IS_STATUS_ERROR(status)) {
 		mlo_debug("VDEV %d OSIF MAC addr update failed %d",
 			  req->vdev_id, status);
@@ -1304,6 +1343,9 @@ mlo_mgr_link_switch_connect_success_trans_state(struct wlan_objmgr_vdev *vdev)
 	curr_state = vdev->mlo_dev_ctx->link_ctx->last_req.state;
 	vdev->mlo_dev_ctx->link_ctx->last_req.state =
 					MLO_LINK_SWITCH_STATE_COMPLETE_SUCCESS;
+	mlo_mgr_link_switch_log_transition(curr_state,
+					   MLO_LINK_SWITCH_STATE_COMPLETE_SUCCESS,
+					   vdev->mlo_dev_ctx->mld_id);
 	mlo_dev_lock_release(vdev->mlo_dev_ctx);
 
 	if (curr_state != MLO_LINK_SWITCH_STATE_CONNECT_NEW_LINK)
@@ -1983,7 +2025,9 @@ mlo_mgr_link_switch_defer_disconnect_req(struct wlan_objmgr_vdev *vdev,
 	sta_ctx->disconn_req->source = source;
 	sta_ctx->disconn_req->reason_code = reason;
 
-	mlo_debug("Deferred disconnect source: %d, reason: %d", source, reason);
+	mlo_info("Defer disconnect for vdev: %d source: %d, reason: %d",
+		 wlan_vdev_get_id(vdev), source, reason);
+
 	return QDF_STATUS_SUCCESS;
 }
 
