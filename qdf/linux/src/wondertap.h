@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Public API for the WonderTap Operations.
  *
@@ -361,7 +361,7 @@ struct wondertap_init_params {
      * - 0: The frame will be transmitted once with no retries.
      * - 1-254: The frame will be re-transmitted up to this many times if no
      *   acknowledgment is received.
-     * - 255: The hardware will use an unlimited number of retries.
+     * - 255: The hardware will use its an unlimited number of retries.
 	 */
     u8 mgmt_retry_limit;
 
@@ -373,7 +373,7 @@ struct wondertap_init_params {
      * - 0: The frame will be transmitted once with no retries.
      * - 1-254: The frame will be re-transmitted up to this many times if no
      *   acknowledgment is received.
-     * - 255: The hardware will use an unlimited number of retries.
+     * - 255: The hardware will use its an unlimited number of retries.
      */
     u8 data_retry_limit;
 
@@ -400,7 +400,7 @@ struct wondertap_init_params {
 
 /**
  * @brief Deinitialization parameters passed from the core to the vendor driver.
- */
+ * */
 struct wondertap_deinit_params {
     /**
      * @brief The two-letter ISO 3166 country code (e.g., "US", "TW").
@@ -482,7 +482,7 @@ struct wondertap_ops {
 	 *
 	 * @return: 0 on success, or a negative errno code on failure.
 	 */
-	int (*set_tx_rate_mask)(void *handle, const struct wondertap_tx_rate_mask_params *params);
+	int (*set_tx_rate_mask)(void* handle, const struct wondertap_tx_rate_mask_params *params);
 
 	/**
 	 * @brief Retrieves a bitmask of supported vendor features.
@@ -494,30 +494,24 @@ struct wondertap_ops {
 };
 
 /**
- * @brief Enumeration of WonderTap interface versions.
+ * @brief Register a vendor's wondertap operations.
  *
- * This enum defines the supported versions of the WonderTap interface.
+ * @param ops A pointer to the vendor's statically defined wondertap_ops structure.
+ * This pointer must remain valid until wondertap_unregister_ops() is
+ * called.
+ *
+ * Return 0 on success.
+ * @note Only one vendor implementation can be registered at a time.
  */
-enum wondertap_ver {
-	WONDER_VERSION_1_0,
-	WONDER_VERSION_1_1,
-	WONDER_VERSION_1_2,
-	WONDER_VERSION_1_3,
-	WONDER_VERSION_1_4,
-	WONDER_VERSION_1_4_1,
-	WONDER_VERSION_MAX,
-};
+extern int wondertap_register_ops(const struct wondertap_ops * ops);
 
 /**
- * @brief Private data structure for the WonderTap driver.
+ * @brief Unregister a vendor's wondertap operations.
  *
- * This structure holds the version information and the operations
- * table for the specific vendor implementation.
+ * @param ops The exact same pointer to the wondertap_ops structure that was
+ * previously passed to wondertap_register_ops(). The unregistration
+ * will only proceed if this pointer matches the currently active one.
  */
-struct wondertap_priv {
-	/** @brief The version of the WonderTap interface being used. */
-	enum wondertap_ver ver;
-	/** @brief Pointer to the vendor-specific operations table. */
-	const struct wondertap_ops *wonder_ops;
-};
+extern void wondertap_unregister_ops(const struct wondertap_ops *ops);
+
 #endif /* __WONDER_WONDERTAP_H__ */
