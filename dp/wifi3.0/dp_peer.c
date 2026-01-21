@@ -30,6 +30,7 @@
 #include <hal_reo.h>
 #include <cdp_txrx_handle.h>
 #include <wlan_cfg.h>
+#include "dp_dal.h"
 #ifdef WIFI_MONITOR_SUPPORT
 #include <dp_mon.h>
 #endif
@@ -4331,6 +4332,9 @@ QDF_STATUS dp_peer_state_update(struct cdp_soc_t *soc_hdl, uint8_t *peer_mac,
 		     peer, QDF_MAC_ADDR_REF(peer->mac_addr.raw),
 		     peer->state);
 
+	/* Call DAL STA active for STA mode during connect/disconnect */
+	dp_dal_notify_sta_active(soc, peer, peer_mac);
+
 	if (IS_MLO_DP_LINK_PEER(peer) && peer->first_link) {
 		peer->mld_peer->state = peer->state;
 		peer->mld_peer->txrx_peer->authorize = peer->authorize;
@@ -4397,6 +4401,10 @@ QDF_STATUS dp_peer_state_update(struct cdp_soc_t *soc_hdl, uint8_t *peer_mac,
 		peer->txrx_peer->authorize = peer->authorize;
 
 	dp_info("peer %pK state %d", peer, peer->state);
+
+	/* Call DAL STA active for STA mode during connect/disconnect */
+	dp_dal_notify_sta_active(soc, peer, peer_mac);
+
 	/* ref_cnt is incremented inside dp_peer_find_hash_find().
 	 * Decrement it here.
 	 */

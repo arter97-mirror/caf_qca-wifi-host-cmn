@@ -7713,6 +7713,9 @@ static QDF_STATUS dp_peer_delete_wifi3(struct cdp_soc_t *soc_hdl,
 	/* Drop all rx packets before deleting peer */
 	dp_clear_peer_internal(soc, peer);
 
+	/* Call DAL STA active for STA mode during connect/disconnect */
+	dp_dal_notify_sta_active(soc, peer, peer_mac);
+
 	qdf_spinlock_destroy(&peer->peer_info_lock);
 	dp_peer_3_link_tx_flow_info_deinit(peer);
 	dp_peer_multipass_list_remove(peer);

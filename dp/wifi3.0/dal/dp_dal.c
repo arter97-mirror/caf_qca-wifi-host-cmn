@@ -1788,7 +1788,8 @@ void dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev)
  *
  * Return: int
  */
-int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable)
+static int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info,
+			     bool enable)
 {
 	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
 
@@ -1799,6 +1800,51 @@ int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable)
 		return global_plat_ops->sta_active(dal_ctx, info, enable);
 
 	return 0;
+}
+
+/**
+ * dp_dal_notify_sta_active() - Notify DAL about STA/SAP active state
+ * @soc: pointer to DP SoC
+ * @peer: pointer to DP peer
+ * @peer_mac: peer MAC address
+ *
+ * This function notifies DAL about STA connect/disconnect events for both
+ * STA and AP modes. It is called during peer state transitions.
+ *
+ * Return: None
+ */
+void dp_dal_notify_sta_active(struct dp_soc *soc,
+			      struct dp_peer *peer,
+			      uint8_t *peer_mac)
+{
+	struct sta_info info = {0};
+	bool enable;
+	enum ol_txrx_peer_state peer_state;
+
+	if (!wlan_cfg_is_dal_feature_enabled(soc->wlan_cfg_ctx))
+		return;
+
+	/* Call DAL STA active for STA mode during connect/disconnect */
+	if (!peer->vdev)
+		return;
+
+	if (peer->vdev->opmode != wlan_op_mode_sta &&
+	    peer->vdev->opmode != wlan_op_mode_ap)
+		return;
+
+	qdf_spin_lock_bh(&peer->peer_info_lock);
+	peer_state = peer->state;
+	qdf_spin_unlock_bh(&peer->peer_info_lock);
+
+	/* Enable for AUTH state (connect), disable for other states */
+	enable = (peer_state == OL_TXRX_PEER_STATE_AUTH) ? true : false;
+
+	info.bss_idx = peer->vdev->vdev_id;
+	qdf_mem_copy(info.addr, peer_mac, MAC_ADDR_LEN);
+
+	if (peer_state == OL_TXRX_PEER_STATE_DISC ||
+	    peer_state == OL_TXRX_PEER_STATE_AUTH)
+		dp_dal_sta_active(soc, &info, enable);
 }
 
 /**

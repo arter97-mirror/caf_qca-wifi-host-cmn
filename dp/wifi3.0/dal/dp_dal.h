@@ -477,19 +477,6 @@ int dp_dal_interface_add(struct dp_soc *soc, struct dp_vdev *vdev);
 void dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev);
 
 /**
- * dp_dal_sta_active() - DAL API to send STA information
- * @soc: pointer to DP SoC
- * @info: station information
- * @enable: 0: disconnect, 1: connect
- *
- * Called during STA connect/disconnect, this function will share station
- * information to the offload engine.
- *
- * Return: int
- */
-int dp_dal_sta_active(struct dp_soc *soc, struct sta_info *info, bool enable);
-
-/**
  * dp_dal_notify_suspend() - DAL wrapper for platform notify suspend
  * @soc: pointer to DP SoC
  *
@@ -573,6 +560,21 @@ void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 
 int dp_dal_get_ext_grp_id(struct dp_dal_ctx *dal_ctx,
 			  int ring_num, enum hal_ring_type type);
+/**
+ * dp_dal_notify_sta_active() - Notify DAL about STA/SAP active state
+ * @soc: pointer to DP SoC
+ * @peer: pointer to DP peer
+ * @peer_mac: peer MAC address
+ *
+ * This function notifies DAL about STA connect/disconnect events for both
+ * STA and AP modes. It is called during peer state transitions.
+ *
+ * Return: None
+ */
+void dp_dal_notify_sta_active(struct dp_soc *soc,
+			      struct dp_peer *peer,
+			      uint8_t *peer_mac);
+
 #else
 #define DAL_DP_TCL_RING_MASK 0
 #define DAL_DP_REO_RING_MASK 0
@@ -641,6 +643,13 @@ static inline uint32_t
 dp_dal_flush_suspended_tx_descs(struct dp_soc *soc)
 {
 	return 0;
+}
+
+static inline void
+dp_dal_notify_sta_active(struct dp_soc *soc,
+			 struct dp_peer *peer,
+			 uint8_t *peer_mac)
+{
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_H */
