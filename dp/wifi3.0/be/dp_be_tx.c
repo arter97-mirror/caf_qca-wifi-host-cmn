@@ -2822,6 +2822,38 @@ dp_tx_override_flow_pool_id_be(struct dp_vdev *vdev,
 
 #ifdef FEATURE_DAL_DP_SUPPORT
 /**
+ * dp_dal_tx_comp_check_reserved_cookie_be() - Check if SW cookie has DAL reserved bit set
+ * @soc: DP soc handle
+ * @tx_comp_hal_desc: TX completion HAL descriptor
+ *
+ * Return: true if cookie should be ignored (has DAL reserved bit), false otherwise
+ */
+#ifdef DP_FEATURE_HW_COOKIE_CONVERSION
+bool dp_dal_tx_comp_check_reserved_cookie_be(struct dp_soc *soc,
+					     void *tx_comp_hal_desc)
+{
+	uint8_t hw_cc_done;
+	uint32_t sw_cookie;
+
+	hw_cc_done = hal_tx_comp_get_cookie_convert_done(tx_comp_hal_desc);
+	if (hw_cc_done)
+		return false;
+
+	sw_cookie = hal_tx_comp_get_desc_id(tx_comp_hal_desc);
+	return dp_dal_is_reserved_cookie(sw_cookie);
+}
+#else
+bool dp_dal_tx_comp_check_reserved_cookie_be(struct dp_soc *soc,
+					     void *tx_comp_hal_desc)
+{
+	uint32_t sw_cookie;
+
+	sw_cookie = hal_tx_comp_get_desc_id(tx_comp_hal_desc);
+	return dp_dal_is_reserved_cookie(sw_cookie);
+}
+#endif
+
+/**
  * dp_tx_hw_desc_sync_be() - BE specific hw desc sync function
  * @hal_tx_desc_cached: cached descriptor in host memory
  * @hw_desc: descriptor in hardware memory

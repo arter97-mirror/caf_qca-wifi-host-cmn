@@ -806,6 +806,14 @@ int dp_dal_tx_cpl_cb(void *priv, void *desc, u16 ring_id)
 
 	hal_soc = soc->hal_soc;
 
+	/* Check if SW cookie has DAL reserved bit set */
+	if (soc->arch_ops.dp_dal_tx_comp_check_reserved_cookie &&
+	    soc->arch_ops.dp_dal_tx_comp_check_reserved_cookie(soc,
+							       tx_comp_hal_desc)) {
+		dp_tx_comp_debug("Ignoring DAL reserved cookie completion");
+		goto out;
+	}
+
 	buffer_src = hal_tx_comp_get_buffer_source(hal_soc, tx_comp_hal_desc);
 
 	/* If this buffer was not released by TQM or FW, then it is not

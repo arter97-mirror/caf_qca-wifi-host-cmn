@@ -76,11 +76,33 @@ enum CMEM_MEM_CLIENTS {
 /* higher 11 bits in Desc ID for offset in CMEM of PPT */
 #define DP_CC_DESC_ID_PPT_PAGE_OS_LSB 9
 
+#ifdef FEATURE_DAL_DP_SUPPORT
+/* Reduce to 10 bits when DAL feature is enabled */
+#define DP_CC_DESC_ID_PPT_PAGE_OS_MSB 18
+#define DP_CC_DESC_ID_PPT_PAGE_OS_MASK 0x7FE00
+#else
 #define DP_CC_DESC_ID_PPT_PAGE_OS_MSB 19
+#define DP_CC_DESC_ID_PPT_PAGE_OS_MASK 0xFFE00
+#endif
 
 #define DP_CC_DESC_ID_PPT_PAGE_OS_SHIFT 9
 
-#define DP_CC_DESC_ID_PPT_PAGE_OS_MASK 0xFFE00
+#ifdef FEATURE_DAL_DP_SUPPORT
+/* DAL reserved bit - bit 19 (MSB of 20-bit SW cookie) for DAL use only */
+#define DP_DAL_COOKIE_RESERVED_BIT 19
+#define DP_DAL_COOKIE_RESERVED_MASK BIT(DP_DAL_COOKIE_RESERVED_BIT)
+
+/**
+ * dp_dal_is_reserved_cookie() - Check if SW cookie has DAL reserved bit set
+ * @cookie: SW cookie to check
+ *
+ * Return: true if DAL reserved bit is set, false otherwise
+ */
+static inline bool dp_dal_is_reserved_cookie(uint32_t cookie)
+{
+	return !!(cookie & DP_DAL_COOKIE_RESERVED_MASK);
+}
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 /*
  * page 4K unaligned case, single SPT page physical address

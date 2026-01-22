@@ -2877,6 +2877,7 @@ enum dp_context_type {
  * @dp_tx_desc_update_buffer_info: API to update TX buffer address info (DP DAL)
  * @dp_dal_rx_process_nbuf_list: Function for RX NBUF list processing (DP DAL)
  * @dp_rx_validate_and_fetch_rx_desc: Validate and fetch RX desc (DP DAL)
+ * @dp_dal_tx_comp_check_reserved_cookie: Check DAL reserved bit in cookie (DP DAL)
  */
 struct dp_arch_ops {
 	/* INIT/DEINIT Arch Ops */
@@ -3207,6 +3208,8 @@ struct dp_arch_ops {
 					   struct dp_soc *soc,
 					   hal_ring_desc_t ring_desc,
 					   uint8_t ring_id);
+	bool (*dp_dal_tx_comp_check_reserved_cookie)(struct dp_soc *soc,
+						     void *tx_comp_hal_desc);
 #endif
 };
 

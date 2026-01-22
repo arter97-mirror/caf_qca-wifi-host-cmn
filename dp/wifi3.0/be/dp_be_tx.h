@@ -682,6 +682,22 @@ void dp_tx_desc_update_buffer_info_be_bn(struct dp_soc *soc,
 	dp_tx_desc_update_buffer_info_be(soc, hal_tx_desc_cached, tx_desc,
 					 ring_id);
 }
+
+/**
+ * dp_dal_tx_comp_check_reserved_cookie_be() - Check if cookie is DAL reserved
+ * @soc: DP soc handle
+ * @tx_comp_hal_desc: TX completion HAL descriptor
+ *
+ * This function checks if the SW cookie in the TX completion descriptor has
+ * the DAL reserved bit set. For BE architecture, it first checks if hardware
+ * cookie conversion was completed. If HW conversion is done, returns false.
+ * If HW conversion is not done, extracts the SW cookie and checks bit 19
+ * (MSB of 20-bit SW cookie) for DAL reservation.
+ *
+ * Return: true if cookie should be ignored (DAL reserved), false otherwise
+ */
+bool dp_dal_tx_comp_check_reserved_cookie_be(struct dp_soc *soc,
+					     void *tx_comp_hal_desc);
 #endif /* !CONFIG_BORON */
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

@@ -232,5 +232,18 @@ void dp_tx_desc_update_buffer_info_li(struct dp_soc *soc,
 				      void *hal_tx_desc_cached,
 				      struct dp_tx_desc_s *tx_desc,
 				      uint8_t ring_id);
+
+/**
+ * dp_dal_tx_comp_check_reserved_cookie_li() - Check if cookie is DAL reserved
+ * @soc: DP soc handle
+ * @tx_comp_hal_desc: TX completion HAL descriptor
+ *
+ * This is a dummy implementation for LI architecture that always returns false
+ * since LI doesn't support DAL reserved cookie functionality.
+ *
+ * Return: false - Always returns false for LI architecture
+ */
+bool dp_dal_tx_comp_check_reserved_cookie_li(struct dp_soc *soc,
+					     void *tx_comp_hal_desc);
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif
