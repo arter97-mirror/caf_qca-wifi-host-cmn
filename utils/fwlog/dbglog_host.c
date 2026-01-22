@@ -1893,47 +1893,40 @@ static int diag_fw_handler(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 	if (cds_is_pm_fw_debug_enable())
 		qdf_debug("Received fw data of len: %d\n", datalen);
 
-	/* when fw assert occurs,host can't use TLV format. */
-	if (wma->is_fw_assert) {
-		datap = data;
-		len = datalen;
-		wma->is_fw_assert = 0;
-	} else {
-		param_buf = (WMI_DIAG_EVENTID_param_tlvs *) data;
-		if (!param_buf) {
+	param_buf = (WMI_DIAG_EVENTID_param_tlvs *) data;
+	if (!param_buf) {
+		AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+				("Get NULL point message from FW\n"));
+		return A_ERROR;
+	}
+
+	datap = param_buf->bufp;
+	len = param_buf->num_bufp;
+
+	if (!get_version) {
+		if (len < 2 * (sizeof(uint32_t))) {
 			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-					("Get NULL point message from FW\n"));
+					("len is less than expected\n"));
 			return A_ERROR;
 		}
-
-		datap = param_buf->bufp;
-		len = param_buf->num_bufp;
-
-		if (!get_version) {
-			if (len < 2*(sizeof(uint32_t))) {
+		buffer = (uint32_t *)datap;
+		buffer++;       /* skip offset */
+		if (WLAN_DIAG_TYPE_CONFIG == DIAG_GET_TYPE(*buffer)) {
+			if (len < 3 * (sizeof(uint32_t))) {
 				AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
 						("len is less than expected\n"));
 				return A_ERROR;
 			}
-			buffer = (uint32_t *) datap;
-			buffer++;       /* skip offset */
-			if (WLAN_DIAG_TYPE_CONFIG == DIAG_GET_TYPE(*buffer)) {
-				if (len < 3*(sizeof(uint32_t))) {
+			buffer++;       /* skip  */
+			if (DIAG_VERSION_INFO == DIAG_GET_ID(*buffer)) {
+				if (len < 4 * (sizeof(uint32_t))) {
 					AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
 							("len is less than expected\n"));
 					return A_ERROR;
 				}
 				buffer++;       /* skip  */
-				if (DIAG_VERSION_INFO == DIAG_GET_ID(*buffer)) {
-					if (len < 4*(sizeof(uint32_t))) {
-						AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-								("len is less than expected\n"));
-						return A_ERROR;
-					}
-					buffer++;       /* skip  */
-					/* get payload */
-					get_version = *buffer;
-				}
+				/* get payload */
+				get_version = *buffer;
 			}
 		}
 	}
@@ -2041,22 +2034,16 @@ int dbglog_parse_debug_logs(ol_scn_t scn, uint8_t *data, uint32_t datalen)
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("NULL Pointer assigned\n"));
 		return A_ERROR;
 	}
-	/*when fw assert occurs,host can't use TLV format. */
-	if (wma->is_fw_assert) {
-		datap = data;
-		len = datalen;
-		wma->is_fw_assert = 0;
-	} else {
-		param_buf = (WMI_DEBUG_MESG_EVENTID_param_tlvs *) data;
-		if (!param_buf) {
-			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-					("Get NULL point message from FW\n"));
-			return A_ERROR;
-		}
 
-		datap = param_buf->bufp;
-		len = param_buf->num_bufp;
+	param_buf = (WMI_DEBUG_MESG_EVENTID_param_tlvs *)data;
+	if (!param_buf) {
+		AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+				("Get NULL point message from FW\n"));
+		return A_ERROR;
 	}
+
+	datap = param_buf->bufp;
+	len = param_buf->num_bufp;
 
 	if (len < sizeof(dropped)) {
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Invalid length\n"));
