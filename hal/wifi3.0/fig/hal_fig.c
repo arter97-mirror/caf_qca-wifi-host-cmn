@@ -1369,7 +1369,7 @@ hal_rx_get_mpdu_flags_from_tlv(hal_rx_mpdu_start_info_t *mpdu_info)
  */
 static uint8_t hal_rx_get_tlv_fig(void *rx_tlv)
 {
-	return HAL_RX_GET(rx_tlv, PHYRX_RSSI_LEGACY, RECEIVE_BANDWIDTH);
+	return HAL_RX_GET_64(rx_tlv, PHYRX_RSSI_LEGACY, RECEIVE_BANDWIDTH);
 }
 
 /**
