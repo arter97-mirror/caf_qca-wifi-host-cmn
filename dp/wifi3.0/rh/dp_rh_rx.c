@@ -536,12 +536,8 @@ dp_rx_2k_jump_oor_err_handler_rh(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		goto free_nbuf;
 	}
 
-	if (error_code == HTT_RXDATA_ERR_OOR) {
-		frame_mask = FRAME_MASK_IPV4_ARP | FRAME_MASK_IPV4_DHCP |
-			FRAME_MASK_IPV4_EAPOL | FRAME_MASK_IPV6_DHCP;
-	} else {
-		frame_mask = FRAME_MASK_IPV4_ARP;
-	}
+	frame_mask = FRAME_MASK_IPV4_ARP | FRAME_MASK_IPV4_DHCP |
+		FRAME_MASK_IPV4_EAPOL | FRAME_MASK_IPV6_DHCP;
 
 	if (dp_rx_deliver_special_frame(soc, txrx_peer, nbuf, frame_mask,
 					rx_tlv_hdr)) {
@@ -939,9 +935,10 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 
 		error = HTT_RX_DATA_MSDU_INFO_ERROR_VALID_GET(*(msg_word + 3));
 		if (qdf_unlikely(error)) {
-			dp_rx_err("MSDU RX error encountered error:%u", error);
 			error_code =
 			HTT_RX_DATA_MSDU_INFO_ERROR_INFO_GET(*(msg_word + 3));
+			dp_rx_err("MSDU RX error encountered error:%u",
+				  error_code);
 			qdf_nbuf_set_next(rx_desc->nbuf, NULL);
 			if (qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf)) {
 				if (!err_list_head) {

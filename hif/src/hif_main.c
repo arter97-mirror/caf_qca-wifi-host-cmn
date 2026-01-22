@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -409,6 +409,11 @@ static const struct qwlan_hw qwlan_hw_list[] = {
 		.id = WCN6450_V1,
 		.subid = 0,
 		.name = "WCN6450_V1",
+	},
+	{
+		.id = WCN6450_V2,
+		.subid = 0,
+		.name = "WCN6450_V2",
 	},
 	{
 		.id = QCA6490_v2_1,

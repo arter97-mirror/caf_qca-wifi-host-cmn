@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1337,6 +1337,9 @@ extract_mlo_link_state_switch_event_tlv(struct wmi_unified *wmi_handle,
 	}
 
 	num_tlv = fixed_param->link_state_switch_count;
+	if (num_tlv > param_buf->num_switch_trigger_reason)
+		num_tlv = param_buf->num_switch_trigger_reason;
+
 	if (num_tlv > MAX_LINK_SWITCH_TLV)
 		num_tlv = MAX_LINK_SWITCH_TLV;
 
