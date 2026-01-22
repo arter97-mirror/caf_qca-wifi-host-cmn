@@ -99,10 +99,12 @@ struct vdev_mlme_proto_ap {
  * struct vdev_mlme_proto_sta - sta specific mlme protocol
  * @assoc_id: association id of station
  * @uapsd_cfg: uapsd configuration
+ * @sta_in_20mhz: STA is 20 MHz only or not
  */
 struct vdev_mlme_proto_sta {
 	uint16_t assoc_id;
 	uint16_t uapsd_cfg;
+	bool sta_in_20mhz;
 };
 
 /**
@@ -912,6 +914,47 @@ static inline QDF_STATUS wlan_vdev_mlme_set_ssid(
 		return QDF_STATUS_E_FAILURE;
 	}
 	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * wlan_vdev_mlme_set_sta_in_20mhz() - Set whether STA is allowed on
+ * 20 MHz only or not
+ * @psoc: pointer to psoc object
+ * @value: value to set STA is allowed on 20 MHz only or not
+ * Return: QDF Status
+ */
+static inline QDF_STATUS
+wlan_vdev_mlme_set_sta_in_20mhz(struct wlan_objmgr_vdev *vdev,
+					      bool value)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return QDF_STATUS_E_FAILURE;
+
+	vdev_mlme->proto.sta.sta_in_20mhz = value;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * wlan_vdev_mlme_get_sta_in_20mhz() - Check if the STA is allowed on 20 MHz
+ * only or not
+ * @psoc: pointer to psoc object
+ *
+ * Return: bool to check if STA is allowed on 20 MHz only or not
+ */
+static inline bool
+wlan_vdev_mlme_get_sta_in_20mhz(struct wlan_objmgr_vdev *vdev)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return false;
+
+	return vdev_mlme->proto.sta.sta_in_20mhz;
 }
 
 /**
