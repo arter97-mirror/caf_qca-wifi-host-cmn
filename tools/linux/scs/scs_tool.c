@@ -636,11 +636,28 @@ scs_tool_qca_nl_cb(char *ifname, uint32_t cmdid, uint8_t *data, size_t len)
 
 static struct nl_ctxt *scs_tool_nl_init(void)
 {
+	int ret;
+
 	g_nl_ctxt.cfg80211_ctxt.event_callback = scs_tool_qca_nl_cb;
 
-	wifi_init_nl80211(&g_nl_ctxt.cfg80211_ctxt);
+	ret = wifi_init_nl80211(&g_nl_ctxt.cfg80211_ctxt);
+	if (ret) {
+		PRINT("scs_tool: NL init failed, cmd_sock = %p, event_sock = %p, "
+		      "family_id = %d, ret = %d\n",
+		      (void*)g_nl_ctxt.cfg80211_ctxt.cmd_sock,
+		      (void*)g_nl_ctxt.cfg80211_ctxt.event_sock,
+		      g_nl_ctxt.cfg80211_ctxt.nl80211_family_id, ret);
 
-	wifi_nl80211_start_event_thread(&g_nl_ctxt.cfg80211_ctxt);
+		return NULL;
+	}
+
+	ret = wifi_nl80211_start_event_thread(&g_nl_ctxt.cfg80211_ctxt);
+	if (ret) {
+		PRINT("scs_tool: setup nl80211 event thread failed, ret = %d\n",
+		      ret);
+		wifi_destroy_nl80211(&g_nl_ctxt.cfg80211_ctxt);
+		return NULL;
+	}
 
 	return &g_nl_ctxt;
 }
@@ -695,13 +712,13 @@ int main(int argc, char *argv[])
 
 	sal_ctxt = scs_tool_sal_init();
 	if (!sal_ctxt) {
-		PRINT("Unable to create SAL context");
+		PRINT("scs_tool: Unable to create SAL context");
 		goto fail1;
 	}
 
 	nl_ctxt = scs_tool_nl_init();
 	if (!nl_ctxt) {
-		PRINT("Unable to create NL receive context");
+		PRINT("scs_tool: Unable to create NL receive context");
 		goto fail2;
 	}
 
