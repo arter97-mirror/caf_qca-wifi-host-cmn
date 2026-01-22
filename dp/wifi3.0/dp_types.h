@@ -1967,6 +1967,7 @@ struct dp_rx_page_pool {
 #ifdef DP_FEATURE_TX_PAGE_POOL
 /**
  * struct dp_tx_pp_params - TX Page pool parameters
+ * @node: List node for tx pp params
  * @pp: Reference to the page pool
  * @pool_size: Actual pool size the page pool is requested for during allocation
  * @pp_size: Size of the page pool
@@ -1975,6 +1976,7 @@ struct dp_rx_page_pool {
  * @pool_id: Pool id
  */
 struct dp_tx_pp_params {
+	qdf_list_node_t node;
 	qdf_page_pool_t pp;
 	size_t pool_size;
 	size_t pp_size;
@@ -2020,6 +2022,7 @@ struct dp_tx_pp_params {
  * @monitoring_checks: Monitor counter
  * @shrink_ref_cnt: Track shrink operation in progress
  * @pending_deinit: Track pending deinit
+ * @inactive_list: Inactive page pool list
  */
 struct dp_tx_page_pool {
 	/* Node for destroy list */
@@ -2054,6 +2057,8 @@ struct dp_tx_page_pool {
 	qdf_atomic_t monitoring_checks;
 	qdf_atomic_t shrink_ref_cnt;
 	qdf_atomic_t pending_deinit;
+	/* List to hold page pools with pages still in use during removal */
+	qdf_list_t inactive_list;
 };
 #endif
 

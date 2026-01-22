@@ -547,6 +547,72 @@ dp_tx_page_pool_safe_to_free_locked(struct dp_tx_pp_params *pp_params)
 }
 
 /**
+ * dp_tx_page_pool_create_idle() - Create replacement idle pool
+ * @soc: DP SoC handle
+ * @tx_pp: TX page pool handle
+ * @params_copy: Parameters for the new pool
+ *
+ * Creates a new idle pool and adds it to the appropriate idle list
+ * (high or low order) based on page size.
+ *
+ * Return: QDF_STATUS_SUCCESS or error
+ */
+static QDF_STATUS
+dp_tx_page_pool_create_idle(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp,
+			    struct dp_tx_pp_params *params_copy)
+{
+	struct dp_tx_pp_params new_pool_params;
+	qdf_page_pool_t new_pp;
+	QDF_STATUS status;
+
+	/* Create replacement idle pool */
+	new_pp = qdf_page_pool_create(soc->osdev,
+				      params_copy->pool_size,
+				      params_copy->page_size,
+				      QDF_DMA_BIDIRECTIONAL);
+	if (!new_pp)
+		return QDF_STATUS_E_NOMEM;
+
+	/* Initialize new pool params */
+	qdf_mem_zero(&new_pool_params, sizeof(new_pool_params));
+	new_pool_params.pp = new_pp;
+	new_pool_params.pool_size = params_copy->pool_size;
+	new_pool_params.page_size = params_copy->page_size;
+	new_pool_params.pp_size = params_copy->pp_size;
+	new_pool_params.is_prealloc = false;
+
+	/* CRITICAL SECTION: Add to idle list */
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	if (new_pool_params.page_size > qdf_page_size) {
+		if (tx_pp->idle_pool_ho_cnt < MAX_TX_IDLE_POOLS) {
+			tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt] =
+				new_pool_params;
+			tx_pp->idle_pool_ho_cnt++;
+			status = QDF_STATUS_SUCCESS;
+		} else {
+			status = QDF_STATUS_E_RESOURCES;
+		}
+	} else {
+		if (tx_pp->idle_pool_lo_cnt < MAX_TX_IDLE_POOLS) {
+			tx_pp->idle_pool_lo[tx_pp->idle_pool_lo_cnt] =
+				new_pool_params;
+			tx_pp->idle_pool_lo_cnt++;
+			status = QDF_STATUS_SUCCESS;
+		} else {
+			status = QDF_STATUS_E_RESOURCES;
+		}
+	}
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+	/* END CRITICAL SECTION */
+
+	/* Cleanup if idle list full */
+	if (QDF_IS_STATUS_ERROR(status) && new_pp)
+		qdf_page_pool_destroy(new_pp);
+
+	return status;
+}
+
+/**
  * dp_tx_page_pool_apply_pool_removal() - Execute single pool removal
  * @soc: DP SoC handle
  * @tx_pp: TX page pool handle
@@ -567,10 +633,7 @@ dp_tx_page_pool_apply_pool_removal(
 	struct dp_tx_pp_params *pp_params;
 	struct dp_tx_pp_params params_copy;
 	qdf_page_pool_t old_pp;
-	qdf_page_pool_t new_pp = NULL;
-	struct dp_tx_pp_params new_pool_params;
 	uint8_t j;
-	QDF_STATUS status;
 
 	/* CRITICAL SECTION 1: Validate and remove from active list */
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
@@ -614,57 +677,37 @@ dp_tx_page_pool_apply_pool_removal(
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	/* END CRITICAL SECTION 1 */
 
-	/* Heavy operations outside lock */
-	if (old_pp)
-		qdf_page_pool_destroy(old_pp);
+	/* Check if page pool has pages in use */
+	if (!qdf_page_pool_full_bh(old_pp) && tx_pp->current_buffers_in_use) {
+		struct dp_tx_pp_params *inactive_params;
 
-	/* Create replacement idle pool */
-	new_pp = qdf_page_pool_create(soc->osdev,
-				      params_copy.pool_size,
-				      params_copy.page_size,
-				      QDF_DMA_BIDIRECTIONAL);
-	if (!new_pp)
-		return QDF_STATUS_E_NOMEM;
-
-	/* Initialize new pool params */
-	qdf_mem_zero(&new_pool_params, sizeof(new_pool_params));
-	new_pool_params.pp = new_pp;
-	new_pool_params.pool_size = params_copy.pool_size;
-	new_pool_params.page_size = params_copy.page_size;
-	new_pool_params.pp_size = params_copy.pp_size;
-	new_pool_params.is_prealloc = false;
-
-	/* CRITICAL SECTION 2: Add to idle list */
-	qdf_spin_lock_bh(&tx_pp->pp_lock);
-
-	if (new_pool_params.page_size > qdf_page_size) {
-		if (tx_pp->idle_pool_ho_cnt < MAX_TX_IDLE_POOLS) {
-			tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt] =
-				new_pool_params;
-			tx_pp->idle_pool_ho_cnt++;
-			status = QDF_STATUS_SUCCESS;
-		} else {
-			status = QDF_STATUS_E_RESOURCES;
+		/* Allocate persistent memory for inactive list entry */
+		inactive_params =
+			qdf_mem_malloc(sizeof(struct dp_tx_pp_params));
+		if (!inactive_params) {
+			dp_err("Failed to allocate memory for inactive pool params");
+			goto destroy_pp;
 		}
-	} else {
-		if (tx_pp->idle_pool_lo_cnt < MAX_TX_IDLE_POOLS) {
-			tx_pp->idle_pool_lo[tx_pp->idle_pool_lo_cnt] =
-				new_pool_params;
-			tx_pp->idle_pool_lo_cnt++;
-			status = QDF_STATUS_SUCCESS;
-		} else {
-			status = QDF_STATUS_E_RESOURCES;
-		}
+		/* Copy params to persistent memory */
+		*inactive_params = params_copy;
+
+		qdf_spin_lock_bh(&tx_pp->pp_lock);
+		/* Add to inactive list for later cleanup */
+		qdf_list_insert_back(&tx_pp->inactive_list,
+				     &inactive_params->node);
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+		dp_nofl_info("TX_PP_MONITOR Pool %pK in use, move to inactive",
+			     old_pp);
+
+		return QDF_STATUS_SUCCESS;
 	}
 
-	qdf_spin_unlock_bh(&tx_pp->pp_lock);
-	/* END CRITICAL SECTION 2 */
+destroy_pp:
+	/* No pages in use, safe to destroy */
+	qdf_page_pool_destroy(old_pp);
 
-	/* Cleanup if idle list full */
-	if (QDF_IS_STATUS_ERROR(status) && new_pp)
-		qdf_page_pool_destroy(new_pp);
-
-	return status;
+	return dp_tx_page_pool_create_idle(soc, tx_pp, &params_copy);
 }
 
 /**
@@ -935,6 +978,58 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 }
 
 /**
+ * dp_tx_page_pool_flush_inactive() - Flush inactive pool list
+ * @soc: DP SoC handle
+ * @tx_pp: TX page pool handle
+ *
+ * Checks inactive list for pools that are safe to destroy (full or no buffers
+ * in use) and replaces them with new idle pools.
+ *
+ * Return: None
+ */
+static inline void
+dp_tx_page_pool_flush_inactive(struct dp_soc *soc,
+			       struct dp_tx_page_pool *tx_pp)
+{
+	struct dp_tx_pp_params *curr, *next;
+	qdf_list_t destroy_list;
+	uint8_t flush_count = 0;
+
+	qdf_list_create(&destroy_list, 0);
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	qdf_list_for_each_del(&tx_pp->inactive_list, curr, next, node) {
+		if (!curr->pp) {
+			qdf_list_remove_node(&tx_pp->inactive_list,
+					     &curr->node);
+			qdf_mem_free(curr);
+			continue;
+		}
+
+		if (qdf_page_pool_full_bh(curr->pp) ||
+		    !tx_pp->current_buffers_in_use) {
+			qdf_list_remove_node(&tx_pp->inactive_list,
+					     &curr->node);
+			qdf_list_insert_back(&destroy_list, &curr->node);
+		}
+	}
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+	qdf_list_for_each_del(&destroy_list, curr, next, node) {
+		dp_tx_page_pool_create_idle(soc, tx_pp, curr);
+		qdf_list_remove_node(&destroy_list, &curr->node);
+		qdf_page_pool_destroy(curr->pp);
+		qdf_mem_free(curr);
+		flush_count++;
+	}
+
+	if (flush_count)
+		dp_nofl_info("TX_PP_MONITOR flushed %u inactive pools",
+			     flush_count);
+
+	qdf_list_destroy(&destroy_list);
+}
+
+/**
  * dp_tx_page_pool_shrink_monitor() - Monitor and shrink TX page pool
  * @soc: DP SoC handle
  * @tx_pp: TX page pool handle
@@ -978,6 +1073,8 @@ dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
 		current_time_us - tx_pp->last_shrink_eval_time_us;
 	if (time_since_last_eval < DP_TX_PP_SHRINK_WINDOW_US)
 		return QDF_STATUS_SUCCESS;  /* Still monitoring */
+
+	dp_tx_page_pool_flush_inactive(soc, tx_pp);
 
 	/* PHASE 1: SNAPSHOT - Collect metrics with minimal locking */
 	status = dp_tx_page_pool_take_snapshot(tx_pp, &snapshot,
@@ -1191,12 +1288,13 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp,
 			    uint32_t *offset)
 {
 	struct dp_tx_pp_params *idle_pp_params = NULL;
-	struct dp_tx_pp_params *new_active_pp;
+	struct dp_tx_pp_params *new_active_pp, *next;
 	qdf_nbuf_t nbuf = NULL;
 	bool from_ho_pool = false;
 	uint64_t start_time_ns;
 	uint64_t latency_ns;
 	bool trace_enabled;
+	bool free_idle_params = false;
 
 	trace_enabled = qdf_trace_dp_tx_pp_attach_idle_enabled();
 	if (qdf_unlikely(trace_enabled))
@@ -1204,6 +1302,21 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp,
 
 	if (qdf_unlikely(tx_pp->active_pool_count >= MAX_TX_DYNAMIC_POOL))
 		return NULL;
+
+	qdf_list_for_each_del(&tx_pp->inactive_list, idle_pp_params, next,
+			      node) {
+		if (qdf_unlikely(!idle_pp_params->pp))
+			continue;
+
+		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp_params, osdev,
+						       size, offset);
+		if (qdf_likely(nbuf)) {
+			qdf_list_remove_node(&tx_pp->inactive_list,
+					     &idle_pp_params->node);
+			free_idle_params = true;
+			goto attach_pool;
+		}
+	}
 
 	/* Try high-order pools first */
 	if (qdf_likely(tx_pp->idle_pool_ho_cnt > 0)) {
@@ -1243,12 +1356,15 @@ attach_pool:
 
 	if (qdf_unlikely(trace_enabled)) {
 		latency_ns = qdf_ktime_get_real_ns() - start_time_ns;
-		qdf_trace_dp_tx_pp_attach_idle(idle_pp_params->pp,
+		qdf_trace_dp_tx_pp_attach_idle(new_active_pp->pp,
 					       new_active_pp->pool_id,
 					       from_ho_pool,
 					       tx_pp->active_pool_count,
 					       latency_ns);
 	}
+
+	if (free_idle_params)
+		qdf_mem_free(idle_pp_params);
 
 	return nbuf;
 }

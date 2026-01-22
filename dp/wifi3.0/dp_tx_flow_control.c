@@ -815,8 +815,37 @@ dp_tx_flush_active_pool_list(struct dp_tx_page_pool *tx_pp)
 			     flush_count);
 }
 
+/**
+ * dp_tx_page_pool_flush_inactive_pool() - Flush inactive page pool
+ * @tx_pp: TX page pool handle
+ *
+ * Return: None
+ */
+static inline void
+dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp)
+{
+	struct dp_tx_pp_params *curr, *next;
+	uint8_t flush_count = 0;
+
+	qdf_list_for_each_del(&tx_pp->inactive_list, curr, next, node) {
+		qdf_list_remove_node(&tx_pp->inactive_list, &curr->node);
+		if (curr->pp) {
+			qdf_page_pool_destroy(curr->pp);
+			flush_count++;
+		}
+		qdf_mem_free(curr);
+	}
+
+	qdf_list_destroy(&tx_pp->inactive_list);
+
+	if (flush_count)
+		dp_nofl_info("TX_PP_FLUSH flushed %u inactive pools",
+			     flush_count);
+}
 void dp_tx_page_pool_destroy_all_pools(struct dp_tx_page_pool *tx_pp)
 {
+	dp_tx_page_pool_flush_inactive_pool(tx_pp);
+
 	/* Destroy idle pools */
 	dp_tx_page_pool_destroy_idle_pools(tx_pp);
 
@@ -954,6 +983,7 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	qdf_atomic_init(&tx_pp->ref_cnt);
 	qdf_atomic_init(&tx_pp->shrink_ref_cnt);
 	qdf_atomic_init(&tx_pp->pending_deinit);
+	qdf_list_create(&tx_pp->inactive_list, 0);
 	tx_pp->page_pool_init = true;
 	soc->osdev->no_dma_map = true;
 
