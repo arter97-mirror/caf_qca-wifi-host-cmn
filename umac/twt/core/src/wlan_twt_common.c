@@ -485,6 +485,7 @@ wlan_twt_disable_event_handler(struct wlan_objmgr_psoc *psoc,
 {
 	struct twt_psoc_priv_obj *twt_psoc;
 	struct twt_en_dis_context *twt_context;
+	QDF_STATUS status;
 
 	twt_psoc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
 							 WLAN_UMAC_COMP_TWT);
@@ -499,14 +500,24 @@ wlan_twt_disable_event_handler(struct wlan_objmgr_psoc *psoc,
 		  event->mac_id, event->status, twt_context->twt_role);
 	switch (event->status) {
 	case HOST_TWT_DISABLE_STATUS_OK:
-		if (twt_context->twt_role == TWT_ROLE_REQUESTOR)
+		if (twt_context->twt_role == TWT_ROLE_REQUESTOR) {
 			wlan_twt_cfg_set_requestor_flag(psoc, false);
-		else if (twt_context->twt_role == TWT_ROLE_RESPONDER)
+
+			/* Reset congestion timeout to INI for requestor */
+			status =
+			wlan_twt_cfg_reset_congestion_timeout_per_mac_to_ini(
+								psoc,
+								event->mac_id);
+			if (QDF_IS_STATUS_ERROR(status))
+				twt_err("Failed reset congestion_timeout MAC%d",
+					event->mac_id);
+		} else if (twt_context->twt_role == TWT_ROLE_RESPONDER) {
 			wlan_twt_cfg_set_mac_responder_flag(psoc,
 							    event->mac_id,
 							    false);
-		else
+		} else {
 			twt_err("Invalid role:%d", twt_context->twt_role);
+		}
 
 		break;
 
