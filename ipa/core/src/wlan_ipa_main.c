@@ -1347,5 +1347,10 @@ int ipa_get_psoc_idx(void)
 
 void ipa_ps_suspend_resume(bool suspend)
 {
+	if (!ipa_config_is_enabled()) {
+		ipa_debug("ipa is disabled");
+		return;
+	}
+
 	return wlan_ipa_ps_suspend_resume(suspend);
 }

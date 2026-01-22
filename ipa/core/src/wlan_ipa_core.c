@@ -7630,6 +7630,11 @@ void wlan_ipa_set_tx_classify_idx(uint8_t vdev_id,
 	struct wlan_ipa_priv *ipa_ctx = gp_ipa;
 	QDF_STATUS status;
 
+	if (!ipa_ctx) {
+		ipa_debug("IPA context is null");
+		return;
+	}
+
 	uc_op_work = &ipa_ctx->uc_op_work[WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY];
 	status = wlan_fw_event_msg_list_enqueue(
 					uc_op_work,
@@ -8291,6 +8296,11 @@ void wlan_ipa_ps_suspend_resume(bool suspend)
 	struct wlan_ipa_priv *ipa_obj;
 
 	ipa_obj = wlan_ipa_get_obj_context();
+	if (!ipa_obj) {
+		ipa_debug("invalid ipa obj");
+		return;
+	}
+
 	if (suspend)
 		qdf_atomic_set(&ipa_obj->ipa_suspend_state, 1);
 	else
