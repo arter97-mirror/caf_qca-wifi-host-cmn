@@ -143,6 +143,13 @@ typedef struct wake_lock_stats stats_wake_lock;
 typedef struct big_data_stats_event stats_big_data_stats_event;
 
 /**
+ * typedef stats_cp_stats_power_datapath_info - Definition of power datapath
+ * cp stats
+ * Define cp_stats_power_datapath_info from external cp stats component to
+ * stats_cp_stats_power_datapath_info
+ */
+typedef struct cp_stats_power_datapath_info stats_cp_stats_power_datapath_info;
+/**
  * struct wlan_lmac_if_cp_stats_tx_ops - defines southbound tx callbacks for
  * control plane statistics component
  * @cp_stats_attach: function pointer to register events from FW
@@ -213,6 +220,7 @@ struct wlan_lmac_if_cp_stats_tx_ops {
  * @process_stats_event: function pointer to process stats event
  * @process_infra_stats_event:
  * @process_big_data_stats_event:
+ * @process_power_datapath_stats_event:
  * @twt_get_session_param_resp:
  */
 struct wlan_lmac_if_cp_stats_rx_ops {
@@ -228,6 +236,11 @@ struct wlan_lmac_if_cp_stats_rx_ops {
 	QDF_STATUS (*process_big_data_stats_event)(
 					struct wlan_objmgr_psoc *psoc,
 					stats_big_data_stats_event *ev);
+#endif
+#ifdef WLAN_FEATURE_POWER_STATISTICS
+	QDF_STATUS (*process_power_datapath_stats_event)(
+			struct wlan_objmgr_psoc *psoc,
+			stats_cp_stats_power_datapath_info *event);
 #endif
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 	QDF_STATUS (*twt_get_session_param_resp)(struct wlan_objmgr_psoc *psoc,

@@ -404,6 +404,45 @@ wlan_cp_stats_pdev_obj_create_handler_return:
 	return status;
 }
 
+#ifdef WLAN_FEATURE_POWER_STATISTICS
+/**
+ * wlan_cp_stats_free_power_datapath_stats() - Free power datapath stats memory
+ * @pdev_cs: Pointer to pdev CP stats object
+ *
+ * This function frees the dynamically allocated memory for power and datapath
+ * statistics when the pdev object is being destroyed.
+ *
+ * Return: None
+ */
+static void
+wlan_cp_stats_free_power_datapath_stats(struct pdev_cp_stats *pdev_cs)
+{
+	struct pdev_mc_cp_stats *pdev_mc_stats;
+
+	if (!pdev_cs || !pdev_cs->pdev_stats)
+		return;
+
+	pdev_mc_stats = pdev_cs->pdev_stats;
+
+	if (pdev_mc_stats->power_datapath_stats.power_stats) {
+		qdf_mem_free(pdev_mc_stats->power_datapath_stats.power_stats);
+		pdev_mc_stats->power_datapath_stats.power_stats = NULL;
+	}
+
+	if (pdev_mc_stats->power_datapath_stats.tx_rate_stats) {
+		qdf_mem_free(pdev_mc_stats->power_datapath_stats.tx_rate_stats);
+		pdev_mc_stats->power_datapath_stats.tx_rate_stats = NULL;
+	}
+
+	cp_stats_debug("Power datapath stats memory freed");
+}
+#else
+static void
+wlan_cp_stats_free_power_datapath_stats(struct pdev_cp_stats *pdev_cs)
+{
+}
+#endif
+
 QDF_STATUS
 wlan_cp_stats_pdev_obj_destroy_handler(struct wlan_objmgr_pdev *pdev, void *arg)
 {
@@ -421,6 +460,10 @@ wlan_cp_stats_pdev_obj_destroy_handler(struct wlan_objmgr_pdev *pdev, void *arg)
 		cp_stats_err("pdev is NULL");
 		return QDF_STATUS_E_INVAL;
 	}
+
+	/* Free power datapath stats memory if feature is enabled */
+	wlan_cp_stats_free_power_datapath_stats(pdev_cs);
+
 	csc = wlan_cp_stats_ctx_get_from_pdev(pdev);
 	if (!csc) {
 		cp_stats_err("cp_stats context is NULL!");

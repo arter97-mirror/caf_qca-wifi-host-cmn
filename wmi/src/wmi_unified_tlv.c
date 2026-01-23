@@ -24120,6 +24120,10 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 			WMI_HALPHY_CTRL_PATH_STATS_EVENTID;
 	event_ids[wmi_vdev_send_big_data_p2_eventid] =
 			WMI_VDEV_SEND_BIG_DATA_P2_EVENTID;
+#ifdef WLAN_FEATURE_POWER_STATISTICS
+	event_ids[wmi_pdev_power_datapath_stats_eventid] =
+			WMI_PDEV_POWER_DATAPATH_STATS_EVENTID;
+#endif
 	event_ids[wmi_pdev_get_dpd_status_event_id] =
 			WMI_PDEV_GET_DPD_STATUS_EVENTID;
 #ifdef WLAN_FEATURE_PKT_CAPTURE_V2
