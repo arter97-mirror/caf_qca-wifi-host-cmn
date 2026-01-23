@@ -25,7 +25,7 @@
 /* 7 qwords for rx_mpdu_start without tag */
 #define MPDU_START_WMASK 0x07B8
 /* 8 qwords for rx_msdu_end without tag */
-#define MSDU_END_WMASK 0x115CA
+#define MSDU_END_WMASK 0x155CA
 
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
 struct rx_msdu_end_compact {
@@ -128,6 +128,9 @@ struct rx_msdu_end_compact {
                       msdu_done_copy                                          :  1;
 #endif
              uint32_t flow_id_toeplitz                                        : 32;
+	/* qword-13 */
+             uint32_t ppdu_start_timestamp_31_0                               : 32;
+             uint32_t toeplitz_hash_2_or_4                                    : 32;
 	/* qword-15 */
              uint32_t first_mpdu                                              :  1,
                       reserved_30a                                            :  1,
