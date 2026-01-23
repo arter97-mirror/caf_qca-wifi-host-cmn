@@ -54,6 +54,7 @@ struct wlan_6ghz_rnr_global_cache {
  * @vht_cap:If dev is configured as VHT capable
  * @he_cap: If dev is configured as HE capable
  * @eht_cap: If dev is configured as EHT capable
+ * @uhr_cap: If dev is configured as UHR capable
  * @vht_24G_cap:If dev is configured as VHT capable for 2.4Ghz
  * @beamformee_cap:If dev is configured as BF capable
  * @bw_above_20_5ghz: BW greater than 20Mhz supported for 5Ghz
@@ -68,6 +69,7 @@ struct psoc_phy_config {
 		 vht_cap:1,
 		 he_cap:1,
 		 eht_cap:1,
+		 uhr_cap:1,
 		 vht_24G_cap:1,
 		 beamformee_cap:1,
 		 bw_above_20_5ghz:1,

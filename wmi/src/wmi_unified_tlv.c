@@ -3978,6 +3978,17 @@ static void wmi_populate_service_11be(uint32_t *wmi_service)
 
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+static void wmi_populate_service_11bn(uint32_t *wmi_service)
+{
+	wmi_service[wmi_service_11bn] = WMI_SERVICE_11BN;
+}
+#else
+static inline void wmi_populate_service_11bn(uint32_t *wmi_service)
+{
+}
+#endif
+
 /**
  * wmi_peer_assoc_cmd_fill_params() - Fill peer assoc command parameters
  * @cmd: wmi peer assoc command structure
@@ -15984,6 +15995,62 @@ static void extract_mac_phy_cap_ehtcaps(
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * extract_mac_phy_cap_uhrcaps- api to extract uhr mac phy caps
+ * @param: host ext2 mac phy capabilities
+ * @mac_phy_caps2: ext2 mac phy capabilities
+ *
+ * Return: void
+ */
+static void extract_mac_phy_cap_uhrcaps(
+	struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2)
+{
+	uint32_t i;
+
+	if (!param)
+		return;
+
+	qdf_mem_copy(&param->uhr_cap_mac_info_2G,
+		     &mac_phy_caps2->uhr_cap_mac_info_2G,
+		     sizeof(param->uhr_cap_mac_info_2G));
+	qdf_mem_copy(&param->uhr_cap_mac_info_5G,
+		     &mac_phy_caps2->uhr_cap_mac_info_5G,
+		     sizeof(param->uhr_cap_mac_info_5G));
+
+	qdf_mem_copy(&param->uhr_cap_phy_info_2G,
+		     &mac_phy_caps2->uhr_cap_phy_info_2G,
+		     sizeof(param->uhr_cap_phy_info_2G));
+	qdf_mem_copy(&param->uhr_cap_phy_info_5G,
+		     &mac_phy_caps2->uhr_cap_phy_info_5G,
+		     sizeof(param->uhr_cap_phy_info_5G));
+
+	wmi_debug("uhr mac caps: mac cap_info_2G %x, mac cap_info_5G %x",
+		  mac_phy_caps2->uhr_cap_mac_info_2G[0],
+		  mac_phy_caps2->uhr_cap_mac_info_5G[0]);
+
+	wmi_nofl_debug("uhr phy caps: ");
+
+	wmi_nofl_debug("2G:");
+	for (i = 0; i < PSOC_HOST_MAX_UHR_PHY_SIZE; i++) {
+		wmi_nofl_debug("index %d value %x",
+			       i, param->uhr_cap_phy_info_2G[i]);
+	}
+	wmi_nofl_debug("5G:");
+	for (i = 0; i < PSOC_HOST_MAX_UHR_PHY_SIZE; i++) {
+		wmi_nofl_debug("index %d value %x",
+			       i, param->uhr_cap_phy_info_5G[i]);
+	}
+}
+#else
+static void extract_mac_phy_cap_uhrcaps(
+	struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2)
+{
+}
+#endif
+
 static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 			wmi_unified_t wmi_handle,
 			uint8_t *event, uint8_t hw_mode_id, uint8_t phy_id,
@@ -15992,6 +16059,7 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 {
 	WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf;
 	WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps;
+	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2;
 
 	if (!event) {
 		wmi_err("null evt_buf");
@@ -16007,6 +16075,7 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 		return QDF_STATUS_E_INVAL;
 
 	mac_phy_caps = &param_buf->mac_phy_caps[phy_idx];
+	mac_phy_caps2 = &param_buf->mac_phy_caps2[phy_idx];
 
 	if ((hw_mode_id != mac_phy_caps->hw_mode_id) ||
 	    (phy_id != mac_phy_caps->phy_id))
@@ -16024,6 +16093,7 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 	extract_mac_phy_mldcap(param, mac_phy_caps);
 	extract_mac_phy_msdcap(param, mac_phy_caps);
 	extract_mac_phy_ext_mldcap(param, mac_phy_caps);
+	extract_mac_phy_cap_uhrcaps(param, mac_phy_caps2);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -25437,6 +25507,7 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_PEER_METADATA_V2_SUPPORT;
 	wmi_service[wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable] =
 				WMI_SERVICE_HANDLE_ROAMING_WITHOUT_RSO_STOP_FOR_4WAY_HS_OFFLOAD_DISABLE;
+	wmi_populate_service_11bn(wmi_service);
 }
 
 /**

@@ -282,6 +282,10 @@ struct wlan_psoc_host_hw_mode_caps {
  * @mldcap: MLD Capabilities info
  * @msdcap: Medium Synchronization Delay capabilities info
  * @ext_mldcap: Extended MLD Capabilities info
+ * @uhr_cap_mac_info_2G: UHR capability mac info 2G
+ * @uhr_cap_mac_info_5G: UHR capability mac info 5G
+ * @uhr_cap_phy_info_2G: UHR capability phy info 2G
+ * @uhr_cap_phy_info_5G: UHR capability phy info 5G
  */
 struct wlan_psoc_host_mac_phy_caps_ext2 {
 	uint32_t hw_mode_id;
@@ -306,6 +310,12 @@ struct wlan_psoc_host_mac_phy_caps_ext2 {
 	struct wlan_mlo_mld_cap mldcap;
 	struct wlan_mlo_msd_cap msdcap;
 	struct wlan_mlo_ext_mld_cap ext_mldcap;
+#endif
+#ifdef WLAN_FEATURE_11BN
+	uint32_t uhr_cap_mac_info_2G[PSOC_HOST_MAX_UHR_MAC_SIZE];
+	uint32_t uhr_cap_mac_info_5G[PSOC_HOST_MAX_UHR_MAC_SIZE];
+	uint32_t uhr_cap_phy_info_2G[PSOC_HOST_MAX_UHR_PHY_SIZE];
+	uint32_t uhr_cap_phy_info_5G[PSOC_HOST_MAX_UHR_PHY_SIZE];
 #endif
 };
 

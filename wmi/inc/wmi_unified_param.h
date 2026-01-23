@@ -7093,6 +7093,9 @@ typedef enum {
 	wmi_service_11bi_ds_mac_addr_support,
 	wmi_service_peer_metadata_v2_support,
 	wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable,
+#ifdef WLAN_FEATURE_11BN
+	wmi_service_11bn,
+#endif
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

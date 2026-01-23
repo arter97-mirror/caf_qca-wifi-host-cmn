@@ -179,6 +179,26 @@ QDF_STATUS
 wlan_psoc_mlme_set_11be_capab(struct wlan_objmgr_psoc *psoc, bool val);
 
 /**
+ * wlan_psoc_mlme_get_11bn_capab() - Get the 11bn capability for target
+ * @psoc: psoc handle
+ * @val: pointer to the output variable
+ *
+ * return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_psoc_mlme_get_11bn_capab(struct wlan_objmgr_psoc *psoc, bool *val);
+
+/**
+ * wlan_psoc_mlme_set_11bn_capab() - Set the 11bn capability for target
+ * @psoc: psoc handle
+ * @val: pointer to the output variable
+ *
+ * return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_psoc_mlme_set_11bn_capab(struct wlan_objmgr_psoc *psoc, bool val);
+
+/**
  * wlan_psoc_mlme_get_early_rx() - Get the early rx drift for target
  * @psoc: psoc handle
  * @val: pointer to the output variable

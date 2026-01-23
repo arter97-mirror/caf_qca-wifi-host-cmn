@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -739,6 +739,11 @@ struct wlan_ssid {
 #define PSOC_HOST_MAX_EHT_PHY_SIZE 3
 #define PSOC_HOST_EHT_MCS_NSS_MAP_2G_SIZE 2
 #define PSOC_HOST_EHT_MCS_NSS_MAP_5G_SIZE 4
+#endif
+
+#ifdef WLAN_FEATURE_11BN
+#define PSOC_HOST_MAX_UHR_MAC_SIZE 4
+#define PSOC_HOST_MAX_UHR_PHY_SIZE 8
 #endif
 
 /**

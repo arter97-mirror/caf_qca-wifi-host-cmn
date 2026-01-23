@@ -3811,6 +3811,149 @@ struct wlan_eht_cap_info {
 #endif
 } qdf_packed;
 
+#ifdef WLAN_FEATURE_11BN
+#define WLAN_UHR_CAP_IE_MAX_LEN 16
+/**
+ * struct wlan_uhr_cap_info - UHR (Ultra High Reliability) capability info
+ * @present: UHR capability IE present
+ * @dps_present: Dynamic Power Save (DPS) present
+ * @dps_assist_support: Dynamic Power Save assist support
+ * @ap_static_hcm_support: AP static HCM (Host Connection Manager) support
+ * @ml_power_mgmt: Multi-link power management
+ * @npca_support: NPCA (Network-based Power Control Algorithm) support
+ * @bsr_support: BSR (Buffer Status Report) support
+ * @addn_mapped_tid_support: Additional mapped TID support
+ * @eotsp_support: EOTSP (End of Transmission Service Period) support
+ * @dso_support: DSO (Dynamic Spatial reuse Operation) support
+ * @p_edca_support: Prioritized EDCA support
+ * @dbe_support: DBE (Dual Band Enhancement) support
+ * @ul_lli_support: Uplink LLI (Low Latency Interface) support
+ * @p2p_lli_support: P2P LLI (Low Latency Interface) support
+ * @puo_support: PUO (Punctured Uplink OFDMA) support
+ * @ap_puo_support: AP PUO (Punctured Uplink OFDMA) support
+ * @duo_support: DUO (Downlink Uplink OFDMA) support
+ * @ul_mu_data_disable_rx_support: Uplink MU data disable RX support
+ * @aom_support: AOM (Adaptive OFDMA Management) support
+ * @ifcs_support: IFCS (Interference Free Channel Selection) support
+ * @uhr_trs_support: UHR TRS (Triggered Response Scheduling) support
+ * @txspg_support: TXSPG (Transmit Spatial Reuse Parameter Group) support
+ * @txop_return_support_intxspg: TXOP return support in TXSPG
+ * @uhr_op_mode_param_update_timeout: UHR operating mode parameter update
+ *                                    timeout
+ * @param_update_adv_notify: Parameter update advance notification
+ * @unused: Unused bits
+ * @update_ind_in_tim: Update indication in TIM (Traffic Indication Map)
+ * @bounded_ess: Bounded ESS (Extended Service Set)
+ * @btm_assurance: BTM (BSS Transition Management) assurance
+ * @cobf_support: COBF (Coordinated beamforming) support
+ * @reserved: Reserved bits
+ * @dbe_param: DBE parameters array
+ * @num_data: Length of data
+ * @data: UHR capability IE data. Element ID + length + extension element ID +
+ *        UHR capability information
+ * @max_nss_rx_ndp_sounding_80mhz: Maximum NSS for RX NDP sounding in 80MHz
+ * @max_nss_rx_dl_mumimo_80mhz: Maximum NSS for RX downlink MU-MIMO in 80MHz
+ * @max_nss_rx_ndp_sounding_160mhz: Maximum NSS for RX NDP sounding in 160MHz
+ * @max_nss_total_rx_dl_mumimo_160mhz: Maximum total NSS for RX downlink
+ *                                     MU-MIMO in 160MHz
+ * @max_nss_rx_ndp_sounding_320mhz: Maximum NSS for RX NDP sounding in 320MHz
+ * @max_nss_total_rx_dl_mumimo_320mhz: Maximum total NSS for RX downlink
+ *                                     MU-MIMO in 320MHz
+ * @elr_rx_support: Extended Long Range RX support
+ * @elr_tx_support: Extended Long Range TX support
+ * @reserved2: Reserved bits
+ */
+struct wlan_uhr_cap_info {
+	bool present;
+	uint16_t          dps_present:1;
+	uint16_t   dps_assist_support:1;
+	uint16_t ap_static_hcm_support:1;
+	uint16_t        ml_power_mgmt:1;
+	uint16_t         npca_support:1;
+	uint16_t          bsr_support:1;
+	uint16_t addn_mapped_tid_support:1;
+	uint16_t        eotsp_support:1;
+	uint16_t          dso_support:1;
+	uint16_t       p_edca_support:1;
+	uint16_t          dbe_support:1;
+	uint16_t       ul_lli_support:1;
+	uint16_t      p2p_lli_support:1;
+	uint16_t          puo_support:1;
+	uint16_t       ap_puo_support:1;
+	uint16_t          duo_support:1;
+	uint16_t ul_mu_data_disable_rx_support:1;
+	uint16_t          aom_support:1;
+	uint16_t         ifcs_support:1;
+	uint16_t      uhr_trs_support:1;
+	uint16_t        txspg_support:1;
+	uint16_t txop_return_support_intxspg:1;
+	uint16_t uhr_op_mode_param_update_timeout:4;
+	uint16_t param_update_adv_notify:3;
+	uint16_t               unused:3;
+
+	uint16_t    update_ind_in_tim:5;
+	uint16_t          bounded_ess:1;
+	uint16_t        btm_assurance:1;
+	uint16_t         cobf_support:1;
+	uint8_t  dbe_param[8];
+
+	uint16_t max_nss_rx_ndp_sounding_80mhz:1;
+	uint16_t max_nss_rx_dl_mumimo_80mhz:1;
+	uint16_t max_nss_rx_ndp_sounding_160mhz:1;
+	uint16_t max_nss_total_rx_dl_mumimo_160mhz:1;
+	uint16_t max_nss_rx_ndp_sounding_320mhz:1;
+	uint16_t max_nss_total_rx_dl_mumimo_320mhz:1;
+	uint16_t       elr_rx_support:1;
+	uint16_t       elr_tx_support:1;
+	uint16_t             reserved2:8;
+	uint16_t num_data;
+	uint8_t data[WLAN_UHR_CAP_IE_MAX_LEN];
+} qdf_packed;
+
+/* ---- Bit indices for UHR Operation Parameters (2 octets) ---- */
+#define WLAN_UHR_CAPPARAM_DPS_SUPP_IDX					0
+#define WLAN_UHR_CAPPARAM_DPS_ASSIST_SUPP_IDX				1
+#define WLAN_UHR_CAPPARAM_AP_STATIC_HCM_SUPP_IDX			2
+#define WLAN_UHR_CAPPARAM_ML_POWER_MGMT_IDX				3
+#define WLAN_UHR_CAPPARAM_NPCA_SUPP_IDX					4
+#define WLAN_UHR_CAPPARAM_BSR_SUPP_IDX					5
+#define WLAN_UHR_CAPPARAM_ADDN_MAPPED_TID_SUPP_IDX			6
+#define WLAN_UHR_CAPPARAM_EOTSP_SUPP_IDX				7
+#define WLAN_UHR_CAPPARAM_DSO_SUPP_IDX					8
+#define WLAN_UHR_CAPPARAM_PEDCA_SUPP_IDX				9
+#define WLAN_UHR_CAPPARAM_DBE_SUPP_IDX					10
+#define WLAN_UHR_CAPPARAM_UL_LLI_SUPP_IDX				11
+#define WLAN_UHR_CAPPARAM_P2P_LLI_SUPP_IDX				12
+#define WLAN_UHR_CAPPARAM_PUO_SUPP_IDX					13
+#define WLAN_UHR_CAPPARAM_AP_PUO_SUPP_IDX				14
+#define WLAN_UHR_CAPPARAM_DUO_SUPP_IDX					15
+#define WLAN_UHR_CAPPARAM_UL_MU_DATA_DIS_RX_SUPP_IDX			16
+#define WLAN_UHR_CAPPARAM_AOM_SUPP_IDX					17
+#define WLAN_UHR_CAPPARAM_IFCS_SUPP_IDX					18
+#define WLAN_UHR_CAPPARAM_TRS_SUPP_IDX					19
+#define WLAN_UHR_CAPPARAM_TXSPG_SUPP_IDX				20
+#define WLAN_UHR_CAPPARAM_TXOP_RET_SUPP_IDX				21
+#define WLAN_UHR_CAPPARAM_PARAM_UPDATE_TIMEOUT_IDX			22
+#define WLAN_UHR_CAPPARAM_PARAM_UPDATE_TIMEOUT_BITS			4
+#define WLAN_UHR_CAPPARAM_PARAM_UPDATE_ADV_NOTIFY_IDX			26
+#define WLAN_UHR_CAPPARAM_PARAM_UPDATE_ADV_NOTIFY_BITS			3
+#define WLAN_UHR_CAPPARAM_UPDATE_IND_IN_TIM_IDX				29
+#define WLAN_UHR_CAPPARAM_UPDATE_IND_IN_TIM_BITS			5
+#define WLAN_UHR_CAPPARAM_BOUNDED_ESS_IDX				34
+#define WLAN_UHR_CAPPARAM_BTM_ASSURANCE_IDX				35
+#define WLAN_UHR_CAPPARAM_CO_BF_SUPP_IDX				36
+
+/* UHR PHY Capabilities first octet bit positions */
+#define WLAN_UHR_PHY_MAX_NSS_RX_NDP_80MHZ_IDX                           0
+#define WLAN_UHR_PHY_MAX_NSS_TOT_RX_DL_MUMIMO_80MHZ_IDX                 1
+#define WLAN_UHR_PHY_MAX_NSS_RX_NDP_160MHZ_IDX                          2
+#define WLAN_UHR_PHY_MAX_NSS_TOT_RX_DL_MUMIMO_160MHZ_IDX                3
+#define WLAN_UHR_PHY_MAX_NSS_RX_NDP_320MHZ_IDX                          4
+#define WLAN_UHR_PHY_MAX_NSS_TOT_RX_DL_MUMIMO_320MHZ_IDX                5
+#define WLAN_UHR_PHY_ELR_RX_SUPP_IDX                                    6
+#define WLAN_UHR_PHY_ELR_TX_SUPP_IDX                                    7
+#endif
+
 /**
  * struct wlan_eht_cap_info_network_endian - struct for eht capabilities
  *                                           information
