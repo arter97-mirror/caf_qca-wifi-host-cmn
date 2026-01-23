@@ -4372,6 +4372,118 @@ struct gpio_output_params {
 	enum gpio_value pin_set;
 };
 
+/**
+ * struct wmi_power_datapath_stats_cmd_param - Power and datapath stats
+ * command parameters
+ * @core_index: Core index (PDEV ID)
+ * @operation: Operation type (enable/disable or retrieve)
+ * @stats_type: Bitmap of stats types to collect
+ */
+struct wmi_power_datapath_stats_cmd_param {
+	uint32_t core_index;
+	uint32_t operation;
+	uint32_t stats_type;
+};
+
+#define WMI_MAX_SLEEP_LEVELS 5
+
+/**
+ * enum wmi_pdev_rate_idx - Rate index for datapath stats
+ */
+enum wmi_pdev_rate_idx {
+	CCK_1M = 0,
+	CCK_2M,
+	CCK_5M,
+	CCK_11M,
+	OFDM_6M,
+	OFDM_9M,
+	OFDM_12M,
+	OFDM_18M,
+	OFDM_24M,
+	OFDM_36M,
+	OFDM_48M,
+	OFDM_54M,
+	MCS0,
+	MCS1,
+	MCS2,
+	MCS3,
+	MCS4,
+	MCS5,
+	MCS6,
+	MCS7,
+	MCS8,
+	MCS9,
+	MCS10,
+	MCS11,
+	MCS12,
+	MCS13,
+	WMI_MAX_RATE_INDEX, /* Sentinel value - not valid rate */
+};
+
+/**
+ * struct wmi_pdev_tx_rate_info - TX rate info for datapath stats
+ * @core_index: Core index (PDEV ID)
+ * @rate_index: Rate index
+ * @band: Operating band (0: 2.4GHz, 1: 5GHz, 2: 6GHz)
+ * @bw: Bandwidth (0: 20MHz, 1: 40MHz, 2: 80MHz, 3: 160MHz, 4: 320MHz)
+ * @nss: Number of spatial streams (0: NSS1, 1: NSS2, etc.)
+ * @count: Number of transmits with this rate combination
+ * @tx_retry_count: Accumulated retry count
+ */
+struct wmi_pdev_tx_rate_info {
+	uint32_t core_index;
+	uint32_t rate_index;
+	uint32_t band;
+	uint32_t bw;
+	uint32_t nss;
+	uint32_t count;
+	uint32_t tx_retry_count;
+};
+
+/**
+ * struct wmi_power_stats_info - Power statistics information
+ * @core_index: PDEV ID
+ * @radio_on_time: Time radio was on (ms)
+ * @radio_off_time: Time radio was off (ms)
+ * @wlan_pwr_on_time: WLAN power on time (ms)
+ * @tx_time: Continuous transmit state duration (ms)
+ * @rx_time: Continuous receiving state duration (ms)
+ * @sleep_levels_num: Number of sleep levels supported
+ * @sleep_time_per_levels: Array of sleep time per level (ms)
+ */
+struct wmi_power_stats_info {
+	uint32_t core_index;
+	uint32_t radio_on_time;
+	uint32_t radio_off_time;
+	uint32_t wlan_pwr_on_time;
+	uint32_t tx_time;
+	uint32_t rx_time;
+	uint32_t sleep_levels_num;
+	uint32_t sleep_time_per_levels[WMI_MAX_SLEEP_LEVELS];
+};
+
+/**
+ * struct wmi_power_datapath_stats_event - Power and datapath stats event data
+ * @status: Status of the request (0 = success)
+ * @stats_type_bitmap: Bitmap indicating which stats are included
+ * @num_power_stats: Number of power stats structures (one per core)
+ * @power_stats: Pointer to array of power stats (allocated by WMI)
+ * @power_stats_valid: Flag indicating if power stats are valid
+ * @num_tx_rate_stats: Number of TX rate stats entries (from firmware TLV)
+ * @tx_rate_stats: Pointer to array of TX rate stats (allocated by WMI)
+ * @tx_rate_stats_valid: Flag indicating if TX rate stats are valid
+ */
+struct wmi_power_datapath_stats_event {
+	uint32_t status;
+	uint32_t stats_type_bitmap;
+	uint32_t num_power_stats;
+	struct wmi_power_stats_info *power_stats;
+	bool power_stats_valid;
+	uint32_t num_tx_rate_stats;
+	struct wmi_pdev_tx_rate_info *tx_rate_stats;
+	bool tx_rate_stats_valid;
+};
+
 /* flags bit 0: to configure wlan priority bitmap */
 #define WMI_HOST_BTCOEX_PARAM_FLAGS_WLAN_PRIORITY_BITMAP_BIT (1<<0)
 /* flags bit 1: to configure both period and wlan duration */
@@ -5739,6 +5851,9 @@ typedef enum {
 	wmi_cfr_capture_filter_resp_eventid,
 	wmi_qos_null_frame_tx_completion_event_id,
 	wmi_vdev_unified_disconnect_eventid,
+#ifdef WLAN_FEATURE_POWER_STATISTICS
+	wmi_pdev_power_datapath_stats_eventid,
+#endif
 	wmi_events_max,
 } wmi_conv_event_id;
 
