@@ -6626,6 +6626,11 @@ reg_add_indoor_concurrency(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	if (width == CH_WIDTH_INVALID) {
+		reg_err("invalid chan_width");
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	if (width > CH_WIDTH_20MHZ)
 		range = wlan_reg_get_bonded_chan_entry(freq, width, 0);
 
