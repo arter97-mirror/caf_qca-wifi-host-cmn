@@ -5249,5 +5249,23 @@ wmi_unified_mu_scan_cmd_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_extract_bcn_stats(wmi_unified_t wmi_handle, void *evt_buf,
 		      uint32_t index, wmi_host_bcn_stats *vdev_bcn_stats);
+
+#endif
+
+#ifdef WLAN_FEATURE_POWER_STATISTICS
+/**
+ * wmi_unified_power_datapath_stats_request_send() -Send power/datapath stats
+ * command
+ * @wmi_handle: WMI handle
+ * @param: Pointer to power datapath stats command parameters
+ *
+ * This function sends the power and datapath stats command to firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_power_datapath_stats_request_send(
+			wmi_unified_t wmi_handle,
+			struct wmi_power_datapath_stats_cmd_param *param);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */

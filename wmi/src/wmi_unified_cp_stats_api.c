@@ -77,6 +77,21 @@ wmi_unified_big_data_stats_request_send(wmi_unified_t wmi_handle,
 }
 #endif
 
+#ifdef WLAN_FEATURE_POWER_STATISTICS
+QDF_STATUS
+wmi_unified_power_datapath_stats_request_send(
+			wmi_unified_t wmi_handle,
+			struct wmi_power_datapath_stats_cmd_param *param)
+{
+	if (wmi_handle->ops->send_pdev_power_datapath_stats_cmd)
+		return wmi_handle->ops->send_pdev_power_datapath_stats_cmd(
+							wmi_handle,
+							param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 QDF_STATUS
 wmi_extract_stats_param(wmi_unified_t wmi_handle, void *evt_buf,
 			wmi_host_stats_event *stats_param)

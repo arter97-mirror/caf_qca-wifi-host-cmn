@@ -956,6 +956,75 @@ send_big_data_stats_request_cmd_tlv(wmi_unified_t wmi_handle,
 }
 #endif
 
+#ifdef WLAN_FEATURE_POWER_STATISTICS
+/**
+ * send_pdev_power_datapath_stats_cmd_tlv() - Send power/datapath stats command
+ * @wmi_handle: WMI handle
+ * @param: Command parameters
+ *
+ * This function sends the power and datapath stats command to firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
+send_pdev_power_datapath_stats_cmd_tlv(
+			wmi_unified_t wmi_handle,
+			struct wmi_power_datapath_stats_cmd_param *param)
+{
+	wmi_pdev_power_datapath_stats_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint32_t len;
+	QDF_STATUS ret;
+
+	if (!param) {
+		wmi_err("Invalid param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("Failed to allocate buffer");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	cmd =
+	(wmi_pdev_power_datapath_stats_cmd_fixed_param *)wmi_buf_data(buf);
+
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_pdev_power_datapath_stats_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+			wmi_pdev_power_datapath_stats_cmd_fixed_param));
+
+	cmd->core_index = param->core_index;
+	cmd->operation = param->operation;
+	cmd->stats_type_bitmap = param->stats_type;
+
+	wmi_debug("core_index %d, operation %d, stats_type 0x%x",
+		  cmd->core_index, cmd->operation, cmd->stats_type_bitmap);
+
+	wmi_mtrace(WMI_PDEV_POWER_DATAPATH_STATS_CMDID, NO_SESSION, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PDEV_POWER_DATAPATH_STATS_CMDID);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send power datapath stats cmd: %d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+#else
+static QDF_STATUS
+send_pdev_power_datapath_stats_cmd_tlv(wmi_unified_t wmi_handle,
+				       struct wmi_power_datapath_stats_cmd_param *param)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+
 /**
  * extract_all_stats_counts_tlv() - extract all stats count from event
  * @wmi_handle: wmi handle
@@ -1471,6 +1540,8 @@ void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_big_data_stats_request_cmd =
 				send_big_data_stats_request_cmd_tlv;
 #endif
+	ops->send_pdev_power_datapath_stats_cmd =
+		send_pdev_power_datapath_stats_cmd_tlv;
 	ops->extract_all_stats_count = extract_all_stats_counts_tlv;
 	ops->extract_pdev_stats = extract_pdev_stats_tlv;
 	ops->extract_vdev_stats = extract_vdev_stats_tlv;

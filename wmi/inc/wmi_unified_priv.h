@@ -1830,6 +1830,10 @@ QDF_STATUS (*send_gpio_output_cmd)(wmi_unified_t wmi_handle,
 		      struct gpio_output_params *param);
 #endif
 
+QDF_STATUS (*send_pdev_power_datapath_stats_cmd)(
+			wmi_unified_t wmi_handle,
+			struct wmi_power_datapath_stats_cmd_param *param);
+
 QDF_STATUS (*send_rtt_meas_req_test_cmd)(wmi_unified_t wmi_handle,
 		      struct rtt_meas_req_test_params *param);
 
