@@ -1562,6 +1562,7 @@ struct hal_hw_txrx_ops {
 			hal_ring_handle_t hal_ring_hdl);
 #ifdef DRIVER_PASSTHRU_MODE
 	uint32_t (*hal_rx_tlv_get_rssi)(uint8_t *buf);
+	uint32_t (*hal_rx_tlv_get_ppdu_start_ts)(uint8_t *rx_tlv_hdr);
 #endif
 };
 
