@@ -1087,7 +1087,7 @@ struct dp_srng *dp_rxdma_get_mon_buf_ring(struct dp_pdev *pdev,
 		return &pdev->soc->rxdma_mon_buf_ring[mac_for_pdev];
 
 	/* For MCL, return the SW2RXDMA ring used for direct Rx buffer refill */
-	return pdev->soc->replenish_rings[mac_for_pdev][DP_DIR_REFILL_RING_NUM];
+	return pdev->soc->replenish_rings[0][DP_NUM_SW_REFILL_RINGS];
 }
 #else
 /**

@@ -4215,7 +4215,8 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 static inline struct dp_srng *dp_get_pri_replenish_srng(struct dp_soc *soc,
 							uint8_t mac_id)
 {
-	return soc->replenish_rings[mac_id][DP_DIR_REFILL_RING_NUM];
+	/* This is the index of the direct refill ring facing HW */
+	return soc->replenish_rings[mac_id][DP_NUM_SW_REFILL_RINGS];
 }
 
 static inline uint32_t

@@ -4190,6 +4190,9 @@ QDF_COMPILE_TIME_ASSERT(num_cpu_check,
 #endif
 
 #define MAX_RX_MAC_RINGS 2
+/* This is the num of SW refill rings (eg: rx_refill_ring between HOST2FW) */
+#define DP_NUM_SW_REFILL_RINGS 1
+/* This is the ring_num amongst the SW2RXDMA rings */
 #define DP_DIR_REFILL_RING_NUM 0
 /* Same as NAC_MAX_CLENT */
 #define DP_NAC_MAX_CLIENT  24
