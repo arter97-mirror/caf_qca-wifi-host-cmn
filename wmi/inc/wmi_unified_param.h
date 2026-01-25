@@ -4075,6 +4075,7 @@ struct wmi_host_peer_adv_stats {
  * @rx_other_11ax_msdu_cnt: number of Rx 11ax MSDUs with other BSS color counter
  *                          updated at EOP (end of packet)
  * @pdev_id: pdev id
+ * @pending_mpdu_msdus: number of pending MPDU MSDUs
  */
 typedef struct {
 	uint32_t	rx_rssi_comb;
@@ -4089,6 +4090,7 @@ typedef struct {
 	uint32_t	rx_matched_11ax_msdu_cnt;
 	uint32_t	rx_other_11ax_msdu_cnt;
 	uint32_t	pdev_id;
+	uint32_t        pending_mpdu_msdus;
 } wmi_host_pdev_ext_stats;
 
 /**
@@ -4426,7 +4428,8 @@ typedef struct {
 	uint32_t mpdu_suc_retry;
 	uint32_t mpdu_suc_multitry;
 	uint32_t mpdu_fail_retry;
-	uint32_t reserved[13];
+	uint32_t pending_mpdu_msdus;
+	uint32_t reserved[12];
 } wmi_host_vdev_extd_stats;
 
 /**

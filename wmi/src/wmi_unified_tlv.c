@@ -11774,6 +11774,7 @@ static QDF_STATUS extract_pdev_ext_stats_tlv(wmi_unified_t wmi_handle,
 	pdev_ext_stats->my_rx_count = ev->my_rx_count;
 	pdev_ext_stats->rx_matched_11ax_msdu_cnt = ev->rx_matched_11ax_msdu_cnt;
 	pdev_ext_stats->rx_other_11ax_msdu_cnt = ev->rx_other_11ax_msdu_cnt;
+	pdev_ext_stats->pending_mpdu_msdus = ev->pending_mpdu_msdus;
 
 	return QDF_STATUS_SUCCESS;
 }
