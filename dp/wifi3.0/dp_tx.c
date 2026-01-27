@@ -925,7 +925,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	/* Build complete log string in single operation */
 	bytes_written =
 		qdf_snprint(log_str, PP_LOG_STR_SIZE,
-			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u %u %u/%u/%u %llu/%llu | POOL %s",
+			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u %u %u/%u/%u | POOL %s",
 			    vdev_id, action_str, sd->total_capacity,
 			    new_capacity, sd->target_capacity,
 			    sd->effective_usage, snap->instant_usage,
@@ -935,8 +935,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 			    tx_pp->grow_attempts,
 			    tx_pp->grow_successes,
 			    tx_pp->grow_failures,
-			    tx_pp->cache_hits,
-			    tx_pp->cache_misses, pool_buf);
+			    pool_buf);
 
 	if (bytes_written >= PP_LOG_STR_SIZE)
 		dp_warn("PP log truncated");
@@ -944,7 +943,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	/**
 	 * Complete Log Format Documentation:
 	 *
-	 * TX_PP_STATS |[vdev_id] action_str old_cap->new_cap target/effective/instant active(prealloc)/idle double grow/succ/fail cache_hit/miss | POOL [idx](type) alloc/pool | ...
+	 * TX_PP_STATS |[vdev_id] action_str old_cap->new_cap target/effective/instant active(prealloc)/idle double grow/succ/fail | POOL [idx](type) alloc/pool | ...
 	 *
 	 * Where:
 	 * - vdev_id: VDEV identifier for per-vdev tracking
@@ -960,7 +959,6 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	 * - idle: Total idle pools (higher + lower order)
 	 * - double: Double decrement counter
 	 * - grow/succ/fail: Growth attempts/successes/failures
-	 * - cache_hit/miss: Cache hit/miss counters
 	 * - POOL section: Per-pool details
 	 *   * idx: Pool index in active list
 	 *   * type: Pool type indicators [P/D][H/L]
@@ -969,7 +967,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	 *   * alloc/pool: Pages allocated / Maximum pages
 	 *
 	 * Example:
-	 * TX_PP_STATS |[2] RM 512->384 400/350/320 3(2)/1 5 10/8/2 45/12 | POOL [0](PH) 128/256 | [1](DL) 64/128 |
+	 * TX_PP_STATS |[2] RM 512->384 400/350/320 3(2)/1 5 10/8/2 | POOL [0](PH) 128/256 | [1](DL) 64/128 |
 	 */
 	dp_nofl_info("TX_PP_STATS |%s", log_str);
 
@@ -1485,8 +1483,6 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 			dp_tx_trace_alloc(pp_params, *offset, true,
 					  start_time, 0, trace_enabled);
 
-			tx_pp->cache_hits++;
-
 			return nbuf;
 		}
 	}
@@ -1494,10 +1490,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 	if (qdf_unlikely(!soc->tx_dyn_pool_en))
 		return NULL;
 
-	/* SLOW PATH: Cache miss */
-	tx_pp->cache_misses++;
-
-	/* Search all active pools for available pages */
+	/* SLOW PATH: search all active pools for available pages */
 	for (i = 0; i < tx_pp->active_pool_count; i++) {
 		pp_params = &tx_pp->active_pool[i];
 		if (qdf_unlikely(!pp_params->pp))

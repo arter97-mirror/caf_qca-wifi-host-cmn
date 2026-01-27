@@ -2015,8 +2015,6 @@ struct dp_tx_pp_params {
  * @grow_attempts: Pool growth attempts
  * @grow_successes: Successful pool growths
  * @grow_failures: Failed pool growths
- * @cache_hits: Last-used pool cache hits
- * @cache_misses: Last-used pool cache misses
  * @current_buffers_in_use: Current buffer in use count
  * @max_buffer_usage_watermark: Max buffer usage watermark
  * @current_bufs_double_dec: Track double decrement
@@ -2050,8 +2048,6 @@ struct dp_tx_page_pool {
 	uint32_t grow_attempts;
 	uint32_t grow_successes;
 	uint32_t grow_failures;
-	uint64_t cache_hits;
-	uint64_t cache_misses;
 	uint32_t current_buffers_in_use;
 	uint32_t max_buffer_usage_watermark;
 	uint32_t current_bufs_double_dec;
