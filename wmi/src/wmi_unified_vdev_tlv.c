@@ -570,6 +570,26 @@ send_peer_vlan_config_cmd_tlv(wmi_unified_t wmi,
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS
+extract_unified_disconnect_response_tlv(struct wmi_unified *wmi_handle,
+					void *evt_buf,
+					struct vdev_unified_disconnect_response *rsp)
+{
+	WMI_VDEV_UNIFIED_DISCONNECT_EVENTID_param_tlvs *param_buf;
+	wmi_vdev_unified_disconnect_event_fixed_param *resp_event;
+
+	param_buf = (WMI_VDEV_UNIFIED_DISCONNECT_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	resp_event = param_buf->fixed_param;
+	rsp->vdev_id = resp_event->vdev_id;
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void wmi_vdev_attach_tlv(struct wmi_unified *wmi_handle)
 {
 	struct wmi_ops *wmi_ops;
@@ -603,4 +623,6 @@ void wmi_vdev_attach_tlv(struct wmi_unified *wmi_handle)
 	wmi_ops->send_peer_filter_set_tx_cmd = send_peer_filter_set_tx_cmd_tlv;
 	wmi_ops->send_peer_vlan_config_cmd = send_peer_vlan_config_cmd_tlv;
 	wmi_vdev_attach_sr_cmds_tlv(wmi_ops);
+	wmi_ops->extract_unified_disconnect_response =
+				extract_unified_disconnect_response_tlv;
 }

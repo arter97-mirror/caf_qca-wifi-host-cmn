@@ -217,4 +217,17 @@ wmi_unified_vdev_param_sr_prohibit_send(wmi_unified_t wmi_hdl,
 	return QDF_STATUS_SUCCESS;
 }
 #endif
+
+/**
+ * wmi_extract_unified_disconnect_response() - extract unified disconnect response
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @disconnect_rsp: pointer to host disconnect response
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_unified_disconnect_response(struct wmi_unified *wmi_handle,
+					void *evt_buf,
+					struct vdev_unified_disconnect_response *disconnect_rsp);
 #endif

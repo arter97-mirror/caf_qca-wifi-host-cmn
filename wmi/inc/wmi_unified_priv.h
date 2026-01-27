@@ -3621,6 +3621,11 @@ QDF_STATUS
 (*pdev_pb_send_inference_cmd)(wmi_unified_t wmi_handle,
 				 struct reg_txpb_cmd_params *params);
 #endif
+
+QDF_STATUS
+(*extract_unified_disconnect_response)(struct wmi_unified *wmi_handle,
+				       void *evt_buf,
+				       struct vdev_unified_disconnect_response *rsp);
 };
 
 /* Forward declaration for psoc*/

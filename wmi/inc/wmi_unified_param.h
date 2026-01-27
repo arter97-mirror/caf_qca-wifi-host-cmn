@@ -5720,6 +5720,7 @@ typedef enum {
 #endif
 	wmi_cfr_capture_filter_resp_eventid,
 	wmi_qos_null_frame_tx_completion_event_id,
+	wmi_vdev_unified_disconnect_eventid,
 	wmi_events_max,
 } wmi_conv_event_id;
 

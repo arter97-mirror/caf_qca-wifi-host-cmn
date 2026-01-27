@@ -24002,7 +24002,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 			WMI_CFR_CAPTURE_FILTER_RESP_EVENTID;
 	event_ids[wmi_qos_null_frame_tx_completion_event_id] =
 				WMI_QOS_NULL_FRAME_TX_COMPLETION_EVENTID;
-
+	event_ids[wmi_vdev_unified_disconnect_eventid] =
+				WMI_VDEV_UNIFIED_DISCONNECT_EVENTID;
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS

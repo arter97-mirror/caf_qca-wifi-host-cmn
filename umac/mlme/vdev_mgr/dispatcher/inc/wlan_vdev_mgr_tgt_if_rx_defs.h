@@ -222,4 +222,14 @@ struct vdev_sta_quiet_event {
 	bool quiet_status;
 };
 #endif
+
+/**
+ * struct vdev_unified_disconnect_response - unified disconnect response struct
+ * @vdev_id: vdev id
+ * @status: FW status for vdev unified disconnect
+ */
+struct vdev_unified_disconnect_response {
+	uint8_t vdev_id;
+	int status;
+};
 #endif /* __WLAN_VDEV_MGR_TGT_IF_RX_DEFS_H__ */

@@ -221,3 +221,15 @@ wmi_unified_vdev_param_sr_prohibit_send(wmi_unified_t wmi_hdl,
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
+
+QDF_STATUS
+wmi_extract_unified_disconnect_response(struct wmi_unified *wmi_handle,
+					void *evt_buf,
+					struct vdev_unified_disconnect_response *disconnect_rsp)
+{
+	if (wmi_handle->ops->extract_unified_disconnect_response)
+		return wmi_handle->ops->extract_unified_disconnect_response(wmi_handle,
+									    evt_buf,
+									    disconnect_rsp);
+	return QDF_STATUS_E_FAILURE;
+}
