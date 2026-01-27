@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -692,6 +692,19 @@ util_get_rvmlie_persta_link_info(uint8_t *mlieseq,
 QDF_STATUS util_get_pav_mlie_link_info(uint8_t *mlieseq,
 				       qdf_size_t mlieseqlen,
 				       struct ml_pa_info *pa_info);
+
+/**
+ * util_find_extn_eid() - Find the occurrence of an element with given
+ * extension element ID in an element buffer
+ * @eid: Element ID to look for
+ * @extn_eid: Extension Element ID to look for
+ * @frame: Buffer containing the element(s) to be searched
+ * @len: Length of the buffer
+ *
+ * Return: element pointer if found, NULL otherwise
+ */
+uint8_t *util_find_extn_eid(uint8_t eid, uint8_t extn_eid,
+			    uint8_t *frame, qdf_size_t len);
 #else
 static inline QDF_STATUS
 util_gen_link_assoc_req(uint8_t *frame, qdf_size_t frame_len, bool isreassoc,
@@ -829,5 +842,11 @@ QDF_STATUS util_get_pav_mlie_link_info(uint8_t *mlieseq,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 
+static inline
+uint8_t *util_find_extn_eid(uint8_t eid, uint8_t extn_eid,
+			    uint8_t *frame, qdf_size_t len)
+{
+	return NULL;
+}
 #endif /* WLAN_FEATURE_11BE_MLO */
 #endif /* _WLAN_UTILS_MLO_H_ */

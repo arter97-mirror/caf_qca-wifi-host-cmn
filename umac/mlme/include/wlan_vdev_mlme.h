@@ -340,6 +340,16 @@ struct vdev_mlme_eht_ops_info {
 };
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+struct vdev_mlme_uhr_caps_info {
+	uint32_t uhr_caps;
+};
+
+struct vdev_mlme_uhr_ops_info {
+	uint32_t uhr_ops;
+};
+#endif
+
 /**
  * enum mlme_vdev_dot11_mode - Dot11 mode of the vdev
  * @MLME_VDEV_DOT11_MODE_AUTO: vdev uses mlme_dot11_mode
@@ -371,6 +381,8 @@ enum mlme_vdev_dot11_mode {
  * @eht_cap_info: EHT capability information
  * @eht_ops_info: EHT operation information
  * @bss_color: 11ax HE BSS Color information
+ * @uhr_cap_info: UHR capability information
+ * @uhr_ops_info: UHR operation information
  */
 struct vdev_mlme_proto {
 	enum mlme_vdev_dot11_mode vdev_dot11_mode;
@@ -385,6 +397,10 @@ struct vdev_mlme_proto {
 	struct vdev_mlme_eht_ops_info eht_ops_info;
 #endif
 	struct vdev_mlme_proto_bss_color bss_color;
+#ifdef WLAN_FEATURE_11BN
+	struct vdev_mlme_uhr_caps_info uhr_cap_info;
+	struct vdev_mlme_uhr_ops_info uhr_ops_info;
+#endif
 };
 
 /**

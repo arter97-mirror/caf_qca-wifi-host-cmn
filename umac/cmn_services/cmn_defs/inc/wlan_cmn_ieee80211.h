@@ -4877,4 +4877,250 @@ struct csa_offload_params {
 	uint32_t ies_present_flag;
 	struct qdf_mac_addr bssid;
 };
+
+#ifdef WLAN_FEATURE_11BN
+
+/* Max IE size = 1(EID) + 1(Len) + 1(ExtID) + 13(payload) = 16 bytes */
+#define WLAN_UHR_CAP_IE_MAX_LEN 16
+#define WLAN_UHR_DBE_CAP_PARAM_LEN 1
+
+/* Max IE size = 1(EID) + 1(Len) + 1(ExtID) + 27(payload) = 30 bytes */
+#define WLAN_UHR_OP_IE_MAX_LEN 30
+
+#define WLAN_UHR_CAP_MAC_FIXED_FIELD_LEN         5
+#define WLAN_UHR_CAP_PHY_FIXED_FIELD_LEN         1
+
+#define WLAN_UHR_BASIC_MCS_NSS_SET_LEN           4
+#define WLAN_UHR_UHR_OP_INFO_MAX_LEN             5
+#define WLAN_UHR_DPS_OP_PARAM_LEN                4
+#define WLAN_UHR_NPCA_OP_PARAM_LEN               6
+#define WLAN_UHR_PEDCA_OP_PARAM_LEN              3
+#define WLAN_UHR_DBE_OP_PARAM_LEN                3
+#define WLAN_UHR_UHR_OP_MAX_LEN                  26
+
+/**
+ * struct wlan_uhr_dps_op_params - DPS Operation Parameters field (4 octets)
+ * @present:                    Indicates DPS Operation Parameters are present
+ * @dps_padding_delay:          DPS Padding Delay (B0..B5)
+ * @reserved0:                  Reserved (B6..B7)
+ * @dps_transition_delay:       DPS Transition Delay (B8..B13)
+ * @reserved1:                  Reserved (B14..B15)
+ * @icf_required:               ICF Required (B16)
+ * @parameterize_mode:          Parameterize Mode (B17)
+ * @lc_mode_bandwidth:          LC Mode Bandwidth (B18..B20)
+ * @lc_mode_nss:                LC Mode NSS (B21..B24)
+ * @lc_mode_mcs:                LC Mode MCS (B25..B28)
+ * @mobile_ap_dps_static_hcm:   Mobile AP DPS Static HCM (B29)
+ * @reserved2:                  Reserved (B30..B31)
+ *
+ */
+struct wlan_uhr_dps_op_params {
+	bool present;
+	uint32_t dps_padding_delay:6;
+	uint32_t reserved0:2;
+	uint32_t dps_transition_delay:6;
+	uint32_t reserved1:2;
+	uint32_t icf_required:1;
+	uint32_t parameterize_mode:1;
+	uint32_t lc_mode_bandwidth:3;
+	uint32_t lc_mode_nss:4;
+	uint32_t lc_mode_mcs:4;
+	uint32_t mobile_ap_dps_static_hcm:1;
+	uint32_t reserved2:2;
+}; qdf_packed;
+
+/**
+ * struct wlan_uhr_npca_op_params - NPCA Operation Parameters field (6 octets)
+ * @present:                        Indicates NPCA Operation Parameters present
+ * @npca_primary_channel:           NPCA Primary Channel (B0..B3)
+ * @npca_min_duration_threshold:    NPCA Minimum Duration Threshold (B4..B7)
+ * @npca_switch_delay:              NPCA Switch Delay (B8..B13)
+ * @npca_switch_back_delay:         NPCA Switch Back Delay (B14..B19)
+ * @initial_npca_qsrc:              Initial NPCA QSRC (B20..B21)
+ * @moplen_npca:                    MOPLEN NPCA (B22)
+ * @disabled_subchan_bmap_present:  NPCA Disabled Subchannel Bitmap
+ *                                  Present (B23)
+ * @reserved0:                      Reserved (B24..B31)
+ * @disabled_subchannel_bitmap:     NPCA Disabled Subchannel Bitmap (B32..B47)
+ *                                  (0 or 16 bits meaningful based on
+ *                                  @disabled_subchan_bmap_present)
+ */
+struct wlan_uhr_npca_op_params {
+	bool present;
+	uint64_t npca_primary_channel:4;
+	uint64_t npca_min_duration_threshold:4;
+	uint64_t npca_switch_delay:6;
+	uint64_t npca_switch_back_delay:6;
+	uint64_t initial_npca_qsrc:2;
+	uint64_t moplen_npca:1;
+	uint64_t disabled_subchan_bmap_present:1;
+	uint64_t reserved0:8;
+	uint64_t disabled_subchannel_bitmap:16;
+} qdf_packed;
+
+/**
+ * struct wlan_uhr_pedca_op_params - P-EDCA Operation Parameters field
+ *                                   (3 octets)
+ * @present:                         Indicates P-EDCA Operation Parameters
+ *                                   are present
+ * @ecw_min:                         P-EDCA ECWmin (B0..B3)
+ * @ecw_max:                         P-EDCA ECWmax (B4..B7)
+ * @aifsn:                           P-EDCA AIFSN (B8..B11)
+ * @cw_ds:                           CW DS (B12..B13)
+ * @psrc_threshold:                  P-EDCA PSRC Threshold (B14..B16)
+ * @qsrc_threshold:                  P-EDCA QSRC Threshold (B17..B18)
+ * @reserved:                        Reserved (B19..B23)
+ *
+ */
+struct wlan_uhr_pedca_op_params {
+	bool present;
+	uint32_t ecw_min:4;
+	uint32_t ecw_max:4;
+	uint32_t aifsn:4;
+	uint32_t cw_ds:2;
+	uint32_t psrc_threshold:3;
+	uint32_t qsrc_threshold:2;
+	uint32_t reserved:5;
+} qdf_packed;
+
+/**
+ * struct wlan_uhr_dbe_op_params - DBE Operation Parameters field (3 octets)
+ * @present:                       Indicates DBE Operation Parameters are
+ *                                 present
+ * @dbe_bandwidth:                 DBE Bandwidth (B0..B2)
+ * @disabled_subchan_bmap_present: DBE Disabled Subchannel Bitmap Present (B3)
+ * @reserved:                      Reserved (B4..B7)
+ * @disabled_subchannel_bitmap:    DBE Disabled Subchannel Bitmap (B8..B23)
+ *                                 (0 or 16 bits meaningful based on
+ *                                 @disabled_subchan_bmap_present)
+ */
+struct wlan_uhr_dbe_op_params {
+	bool present;
+	uint32_t dbe_bandwidth:3;
+	uint32_t disabled_subchan_bmap_present:1;
+	uint32_t reserved:4;
+	uint32_t disabled_subchannel_bitmap:16;
+} qdf_packed;
+
+/**
+ * struct wlan_uhr_op_ie - Parsed UHR Operation element (host-side container)
+ * @present:               Indicates UHR Operation element is present
+ * UHR Operation Parameters (2 octets):
+ * @dps_enabled:           DPS Enabled (B0)
+ * @npca_enabled:          NPCA Enabled (B1)
+ * @dbe_enabled:           DBE Enabled (B2)
+ * @p_edca_enabled:        P-EDCA Enabled (B3)
+ * @dbe_bandwidth:         DBE Bandwidth (B4..B6)
+ * @reserved0:             Reserved (B7..B15)
+ *
+ * Fixed fields:
+ * @basic_uhr_mcs_nss_set: Basic UHR-MCS And NSS Set (4 octets)
+ *
+ * Optional blocks:
+ * @uhr_op_info_present:   Indicates UHR Operation Information is present
+ * @uhr_op_info_len:       Length of UHR Operation Information (0, 3 or 5)
+ * @uhr_op_info:           UHR Operation Information bytes (max 5)
+ *
+ * @dps_params:            DPS Operation Parameters (present when DPS enabled)
+ * @npca_params:           NPCA Operation Parameters (present when NPCA enabled)
+ * @pedca_params:          P-EDCA Operation Parameters (present when P-EDCA
+ *                         enabled)
+ * @dbe_params:            DBE Operation Parameters (present when DBE enabled)
+ * @num_data:              Length of UHR OP IE
+ * @data:                  UHR OP IE
+ *
+ */
+struct wlan_uhr_op_ie {
+	bool present;
+	/* UHR Operation Parameters (2 octets) */
+	uint16_t dps_enabled:1;
+	uint16_t npca_enabled:1;
+	uint16_t dbe_enabled:1;
+	uint16_t p_edca_enabled:1;
+	uint16_t dbe_bandwidth:3;
+	uint16_t reserved0:9;
+
+	/* Basic UHR-MCS And NSS Set (4 octets) */
+	uint8_t basic_uhr_mcs_nss_set[WLAN_UHR_BASIC_MCS_NSS_SET_LEN];
+
+	/* UHR Operation Information (0/3/5 octets) */
+	bool uhr_op_info_present;
+	uint8_t uhr_op_info_len;
+	uint8_t uhr_op_info[WLAN_UHR_UHR_OP_INFO_MAX_LEN];
+
+	/* Optional parameter blocks */
+	struct wlan_uhr_dps_op_params   dps_params;
+	struct wlan_uhr_npca_op_params  npca_params;
+	struct wlan_uhr_pedca_op_params pedca_params;
+	struct wlan_uhr_dbe_op_params   dbe_params;
+	uint16_t num_data;
+	uint8_t data[WLAN_UHR_OP_IE_MAX_LEN];
+} qdf_packed;
+
+/* Bit indices for UHR Operation Parameters (2 octets) */
+#define WLAN_UHR_OPPARAM_DPS_EN_IDX        0
+#define WLAN_UHR_OPPARAM_NPCA_EN_IDX       1
+#define WLAN_UHR_OPPARAM_DBE_EN_IDX        2
+#define WLAN_UHR_OPPARAM_PEDCA_EN_IDX      3
+#define WLAN_UHR_OPPARAM_DBE_BW_IDX        4
+#define WLAN_UHR_OPPARAM_DBE_BW_BITS       3
+
+/* DPS Operation Parameters bit layout (4 octets) */
+#define WLAN_UHR_DPS_PADDING_DELAY_IDX     0
+#define WLAN_UHR_DPS_PADDING_DELAY_BITS    6
+#define WLAN_UHR_DPS_TRANS_DELAY_IDX       8
+#define WLAN_UHR_DPS_TRANS_DELAY_BITS      6
+#define WLAN_UHR_DPS_ICF_REQ_IDX           16
+#define WLAN_UHR_DPS_ICF_REQ_BITS          1
+#define WLAN_UHR_DPS_PARAM_MODE_IDX        17
+#define WLAN_UHR_DPS_PARAM_MODE_BITS       1
+#define WLAN_UHR_DPS_LC_BW_IDX             18
+#define WLAN_UHR_DPS_LC_BW_BITS            3
+#define WLAN_UHR_DPS_LC_NSS_IDX            21
+#define WLAN_UHR_DPS_LC_NSS_BITS           4
+#define WLAN_UHR_DPS_LC_MCS_IDX            25
+#define WLAN_UHR_DPS_LC_MCS_BITS           4
+#define WLAN_UHR_DPS_MOBILE_AP_HCM_IDX     29
+#define WLAN_UHR_DPS_MOBILE_AP_HCM_BITS    1
+
+/* NPCA Operation Parameters bit layout (6 octets) */
+#define WLAN_UHR_NPCA_PRIMARY_CH_IDX       0
+#define WLAN_UHR_NPCA_PRIMARY_CH_BITS      4
+#define WLAN_UHR_NPCA_MIN_DUR_TH_IDX       4
+#define WLAN_UHR_NPCA_MIN_DUR_TH_BITS      4
+#define WLAN_UHR_NPCA_SWITCH_DELAY_IDX     8
+#define WLAN_UHR_NPCA_SWITCH_DELAY_BITS    6
+#define WLAN_UHR_NPCA_SWITCHBACK_DELAY_IDX 14
+#define WLAN_UHR_NPCA_SWITCHBACK_DELAY_BITS 6
+#define WLAN_UHR_NPCA_INIT_QSRC_IDX        20
+#define WLAN_UHR_NPCA_INIT_QSRC_BITS       2
+#define WLAN_UHR_NPCA_MOPLEN_IDX           22
+#define WLAN_UHR_NPCA_MOPLEN_BITS          1
+#define WLAN_UHR_NPCA_DSBMP_PRESENT_IDX    23
+#define WLAN_UHR_NPCA_DSBMP_PRESENT_BITS   1
+#define WLAN_UHR_NPCA_DSBMP_IDX            32
+#define WLAN_UHR_NPCA_DSBMP_BITS           16
+
+/* P-EDCA Operation Parameters bit layout (3 octets) */
+#define WLAN_UHR_PEDCA_ECWMIN_IDX          0
+#define WLAN_UHR_PEDCA_ECWMIN_BITS         4
+#define WLAN_UHR_PEDCA_ECWMAX_IDX          4
+#define WLAN_UHR_PEDCA_ECWMAX_BITS         4
+#define WLAN_UHR_PEDCA_AIFSN_IDX           8
+#define WLAN_UHR_PEDCA_AIFSN_BITS          4
+#define WLAN_UHR_PEDCA_CWDS_IDX            12
+#define WLAN_UHR_PEDCA_CWDS_BITS           2
+#define WLAN_UHR_PEDCA_PSRC_TH_IDX         14
+#define WLAN_UHR_PEDCA_PSRC_TH_BITS        3
+#define WLAN_UHR_PEDCA_QSRC_TH_IDX         17
+#define WLAN_UHR_PEDCA_QSRC_TH_BITS        2
+
+/* DBE Operation Parameters bit layout (3 octets) */
+#define WLAN_UHR_DBE_BW_IDX                0
+#define WLAN_UHR_DBE_BW_BITS               3
+#define WLAN_UHR_DBE_DSBMP_PRESENT_IDX     3
+#define WLAN_UHR_DBE_DSBMP_PRESENT_BITS    1
+#define WLAN_UHR_DBE_DSBMP_IDX             8
+#define WLAN_UHR_DBE_DSBMP_BITS            16
+#endif
 #endif /* _WLAN_CMN_IEEE80211_DEFS_H_ */

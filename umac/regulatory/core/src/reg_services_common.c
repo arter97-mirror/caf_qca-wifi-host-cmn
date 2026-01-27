@@ -6479,7 +6479,7 @@ reg_get_unii_5g_bitmap(struct wlan_objmgr_pdev *pdev, uint8_t *bitmap)
  *
  * Return: true if the PHY mode is REG_PHYMODE_11BN, else false.
  */
-static bool reg_is_11bn_phymode(enum reg_phymode phy_in)
+static inline bool reg_is_11bn_phymode(enum reg_phymode phy_in)
 {
 	if (phy_in == REG_PHYMODE_11BN)
 		return true;
@@ -6493,9 +6493,9 @@ static bool reg_is_11bn_phymode(enum reg_phymode phy_in)
  * Return: true if REGULATORY_PHYMODE_NO11BN is set in the bitmap,
  * otherwise false.
  */
-static bool reg_is_11bn_phymode_unallowed(uint32_t phymode_bitmap)
+static inline bool reg_is_11bn_phymode_unallowed(uint32_t phymode_bitmap)
 {
-		return phymode_bitmap & REGULATORY_PHYMODE_NO11BN;
+	return phymode_bitmap & REGULATORY_PHYMODE_NO11BN;
 }
 #else
 static inline bool reg_is_11bn_phymode(enum reg_phymode phy_in)

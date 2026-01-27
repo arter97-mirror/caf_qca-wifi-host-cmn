@@ -47,7 +47,6 @@ static uint8_t *util_find_eid(uint8_t eid, uint8_t *frame, qdf_size_t len)
 	return NULL;
 }
 
-static
 uint8_t *util_find_extn_eid(uint8_t eid, uint8_t extn_eid,
 			    uint8_t *frame, qdf_size_t len)
 {
