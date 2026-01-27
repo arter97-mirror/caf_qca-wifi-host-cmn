@@ -1804,6 +1804,9 @@ struct ol_if_ops {
 	void (*dp_page_pool_init)(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
 #endif
 #endif
+#ifdef WLAN_DP_DYNAMIC_RESOURCE_MGMT
+	uint16_t (*dp_get_dynamic_pool_size)(uint32_t level);
+#endif
 	int (*get_soc_nss_cfg)(struct cdp_ctrl_objmgr_psoc *ol_soc_handle);
 
 	char *(*get_device_name)(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,

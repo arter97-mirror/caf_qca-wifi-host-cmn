@@ -981,6 +981,8 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	qdf_spinlock_create(&rx_pp->pp_lock);
 	rx_pp->page_pool_init = false;
 	rx_pp->soc = soc;
+	rx_pp->curr_rsrc_level = 0;
+	rx_pp->curr_rsrc_size = 0;
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
 	dp_rx_page_pool_get_buf_params(&buf_size, &align);
@@ -1003,6 +1005,8 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 		pp_params->pool_size = pool_size;
 		pp_params->pp_size = pp_size;
 		pp_params->prealloc = prealloc;
+		rx_pp->curr_rsrc_size += pool_size;
+		rx_pp->curr_rsrc_level++;
 
 		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
 			pool_size, pp_size);
@@ -1066,26 +1070,14 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 {
 	struct dp_rx_pp_params *pp_params;
 	qdf_page_pool_t pp;
-	size_t rem_size;
-	size_t pp_count;
 	size_t buf_size;
 	size_t pp_size;
-	uint16_t upscale_cnt = 1;
+	uint16_t upscale_cnt = 0;
 	uint32_t pool_size;
 	uint8_t prealloc = 0;
+	uint8_t prev_level;
 	size_t page_size;
 	int i;
-
-	pp_count = new_size / rx_pp->base_pool_size;
-	rem_size = new_size % rx_pp->base_pool_size;
-	if (rem_size)
-		pp_count++;
-
-	if (pp_count > DP_PAGE_POOL_MAX) {
-		dp_err("Failed to allocate page pools, invalid pool count %zu",
-		       pp_count);
-		return QDF_STATUS_E_FAILURE;
-	}
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
 
@@ -1093,25 +1085,27 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		buf_size += RX_DATA_BUFFER_OPT_ALIGNMENT - 1;
 	buf_size += QDF_SHINFO_SIZE;
 	buf_size = QDF_NBUF_ALIGN(buf_size);
+	prev_level = rx_pp->curr_rsrc_level;
 
 	/* Base page pool at 0th index is always present,
 	 * so allocate page pools from 1st index.
 	 */
-	for (i = 1; i < pp_count; i++) {
+	for (i = 1; i < DP_PAGE_POOL_MAX; i++) {
 		pp_params = &rx_pp->main_pool[i];
 		if (pp_params->pp)
 			continue;
 
-		pool_size = rx_pp->base_pool_size;
+		if (rx_pp->curr_rsrc_size >= new_size)
+			break;
 
-		if (i == pp_count - 1 && rem_size)
-			pool_size = rem_size;
-
+		pool_size = soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(i);
 		/* Try to rettach pools which are inactive first
 		 * before allocating new pools.
 		 */
 		if (dp_rx_page_pool_reattach(rx_pp, pp_params, pool_size)) {
 			upscale_cnt++;
+			rx_pp->curr_rsrc_size += pool_size;
+			rx_pp->curr_rsrc_level++;
 			continue;
 		}
 
@@ -1127,13 +1121,15 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 		pp_params->pp_size = pp_size;
 		pp_params->prealloc = prealloc;
 		upscale_cnt++;
-
+		rx_pp->curr_rsrc_size += pool_size;
+		rx_pp->curr_rsrc_level++;
 		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
 			pool_size, pp_size);
 	}
 
-	if (upscale_cnt != pp_count) {
-		dp_err("Failed to upscale RX buffers using page pool");
+	if (upscale_cnt != rx_pp->curr_rsrc_level - prev_level) {
+		dp_err("Upscale RX bufs fail, upscale_cnt %d, level upgrade %d",
+		       upscale_cnt, rx_pp->curr_rsrc_level - prev_level);
 		goto out_pp_fail;
 	}
 
@@ -1144,9 +1140,14 @@ out_pp_fail:
 		pp_params = &rx_pp->main_pool[--i];
 		if (!pp_params->pp)
 			continue;
+
 		dp_rx_pp_destroy(soc, pp_params);
 		pp_params->pp = NULL;
 	}
+
+	rx_pp->curr_rsrc_level = i;
+	rx_pp->curr_rsrc_size =
+		soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(--i);
 	return QDF_STATUS_E_FAILURE;
 }
 
@@ -1185,12 +1186,18 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 	/* Base page pool at 0th index is always present,
 	 * so destroy page pools from 1st index.
 	 */
-	for (i = 1; i < DP_PAGE_POOL_MAX; i++) {
+	for (i = DP_PAGE_POOL_MAX - 1; i > 0; i--) {
 		pp_params = &rx_pp->main_pool[i];
 
 		if (!pp_params->pp)
 			continue;
 
+		if (rx_pp->curr_rsrc_size <= new_size)
+			break;
+
+		rx_pp->curr_rsrc_size -=
+			soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(i);
+		rx_pp->curr_rsrc_level--;
 		/* Immediately destroy the page pool if there
 		 * are no inflight buffers.
 		 */

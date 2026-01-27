@@ -1921,7 +1921,7 @@ struct dp_page_pool_t {
 #endif
 
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
-#define DP_PAGE_POOL_MAX 4
+#define DP_PAGE_POOL_MAX 5
 
 #define DP_RX_PP_POOL_SIZE_THRES	 4096
 #define DP_RX_PP_AUX_POOL_SIZE           2048
@@ -1951,6 +1951,8 @@ struct dp_rx_page_pool {
 	struct dp_rx_pp_params aux_pool;
 	struct dp_soc *soc;
 	uint8_t active_pp_idx;
+	uint8_t curr_rsrc_level;
+	uint16_t curr_rsrc_size;
 	qdf_spinlock_t pp_lock;
 	size_t curr_pool_size;
 	size_t base_pool_size;
