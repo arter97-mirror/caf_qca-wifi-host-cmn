@@ -697,9 +697,6 @@ dp_tx_page_pool_apply_pool_removal(
 				     &inactive_params->node);
 		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
-		dp_nofl_info("TX_PP_MONITOR Pool %pK in use, move to inactive",
-			     old_pp);
-
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -925,11 +922,12 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	/* Build complete log string in single operation */
 	bytes_written =
 		qdf_snprint(log_str, PP_LOG_STR_SIZE,
-			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u %u %u/%u/%u | POOL %s",
+			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u/%u %u %u/%u/%u | POOL %s",
 			    vdev_id, action_str, sd->total_capacity,
 			    new_capacity, sd->target_capacity,
 			    sd->effective_usage, snap->instant_usage,
 			    tx_pp->active_pool_count, sd->active_prealloc,
+			    qdf_list_size(&tx_pp->inactive_list),
 			    sd->total_idle,
 			    tx_pp->current_bufs_double_dec,
 			    tx_pp->grow_attempts,
@@ -943,7 +941,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	/**
 	 * Complete Log Format Documentation:
 	 *
-	 * TX_PP_STATS |[vdev_id] action_str old_cap->new_cap target/effective/instant active(prealloc)/idle double grow/succ/fail | POOL [idx](type) alloc/pool | ...
+	 * TX_PP_STATS |[vdev_id] action_str old_cap->new_cap target/effective/instant active(prealloc)/inactive/idle double grow/succ/fail | POOL [idx](type) alloc/pool | ...
 	 *
 	 * Where:
 	 * - vdev_id: VDEV identifier for per-vdev tracking
@@ -956,6 +954,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	 * - effective: Usage value used for shrink decision (peak usage during monitoring window)
 	 * - instant: Current instantaneous buffer usage
 	 * - active(prealloc): Total active pools (preallocated pools count)
+	 * - inactive: Pools moved to inactive list (still have buffers in use)
 	 * - idle: Total idle pools (higher + lower order)
 	 * - double: Double decrement counter
 	 * - grow/succ/fail: Growth attempts/successes/failures
@@ -967,7 +966,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	 *   * alloc/pool: Pages allocated / Maximum pages
 	 *
 	 * Example:
-	 * TX_PP_STATS |[2] RM 512->384 400/350/320 3(2)/1 5 10/8/2 | POOL [0](PH) 128/256 | [1](DL) 64/128 |
+	 * TX_PP_STATS |[2] RM 512->384 400/350/320 3(2)/0/1 5 10/8/2 | POOL [0](PH) 128/256 | [1](DL) 64/128 |
 	 */
 	dp_nofl_info("TX_PP_STATS |%s", log_str);
 
