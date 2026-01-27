@@ -2964,6 +2964,7 @@ struct wlan_lmac_if_dfs_rx_ops {
  * @vdev_mgr_quiet_offload: handle quiet status for given link mac addr or
  * mld addr and link id.
  * @vdev_mgr_csa_received: function to handle csa ie received event
+ * @vdev_mgr_unified_disconnect_rsp: function to handle unified disconnect rsp
  */
 struct wlan_lmac_if_mlme_rx_ops {
 	QDF_STATUS (*vdev_mgr_start_response)(
@@ -3009,6 +3010,9 @@ struct wlan_lmac_if_mlme_rx_ops {
 	QDF_STATUS (*vdev_mgr_csa_received)(struct wlan_objmgr_psoc *psoc,
 					    uint8_t vdev_id,
 					    struct csa_offload_params *csa_event);
+
+	QDF_STATUS (*vdev_mgr_unified_disconnect_rsp)(struct wlan_objmgr_psoc *psoc,
+						      struct vdev_unified_disconnect_response *rsp);
 };
 
 #ifdef WLAN_SUPPORT_GREEN_AP

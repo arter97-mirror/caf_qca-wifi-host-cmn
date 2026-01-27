@@ -1245,6 +1245,50 @@ static int target_if_quiet_offload_event_handler(ol_scn_t scn,
 	return 0;
 }
 
+static int
+target_if_vdev_mgr_unified_disconnect_response_handler(ol_scn_t scn,
+						       uint8_t *data,
+						       uint32_t datalen)
+{
+	QDF_STATUS status;
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	struct vdev_unified_disconnect_response rsp = {0};
+	struct wmi_unified *wmi_handle;
+	struct wlan_objmgr_psoc *psoc;
+
+	if (!scn || !data) {
+		mlme_err("Invalid input");
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		mlme_err("PSOC is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		mlme_err("wmi_handle is null");
+		return -EINVAL;
+	}
+
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->vdev_mgr_unified_disconnect_rsp) {
+		mlme_err("No Rx Ops");
+		return -EINVAL;
+	}
+
+	if (wmi_extract_unified_disconnect_response(wmi_handle, data, &rsp)) {
+		mlme_err("WMI extract failed");
+		return -EINVAL;
+	}
+
+	status = rx_ops->vdev_mgr_unified_disconnect_rsp(psoc, &rsp);
+
+	return qdf_status_to_os_return(status);
+}
+
 static inline void
 target_if_register_quiet_offload_event(struct wmi_unified *wmi_handle)
 {
@@ -1259,6 +1303,16 @@ target_if_unregister_quiet_offload_event(struct wmi_unified *wmi_handle)
 	wmi_unified_unregister_event_handler(
 			wmi_handle, wmi_vdev_quiet_offload_eventid);
 }
+
+static inline void
+target_if_register_unified_disconnect_event(struct wmi_unified *wmi_handle)
+{
+	/* Register unified disconnect event handler */
+	wmi_unified_register_event_handler(wmi_handle,
+					   wmi_vdev_unified_disconnect_eventid,
+					   target_if_vdev_mgr_unified_disconnect_response_handler,
+					   VDEV_RSP_RX_CTX);
+}
 #else
 static inline void
 target_if_register_quiet_offload_event(struct wmi_unified *wmi_handle)
@@ -1267,6 +1321,11 @@ target_if_register_quiet_offload_event(struct wmi_unified *wmi_handle)
 
 static inline void
 target_if_unregister_quiet_offload_event(struct wmi_unified *wmi_handle)
+{
+}
+
+static inline void
+target_if_register_unified_disconnect_event(struct wmi_unified *wmi_handle)
 {
 }
 #endif
@@ -1349,6 +1408,8 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_register(
 	target_if_register_set_mac_addr_evt_cbk(wmi_handle);
 
 	target_if_register_quiet_offload_event(wmi_handle);
+
+	target_if_register_unified_disconnect_event(wmi_handle);
 
 	return retval;
 }

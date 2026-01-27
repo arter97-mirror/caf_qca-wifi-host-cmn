@@ -370,10 +370,54 @@ static inline void tgt_vdev_mgr_reg_quiet_offload(
 	mlme_rx_ops->vdev_mgr_quiet_offload =
 				tgt_vdev_mgr_quiet_offload_handler;
 }
+
+static QDF_STATUS
+tgt_vdev_mgr_unified_disconnect_response(struct wlan_objmgr_psoc *psoc,
+					 struct vdev_unified_disconnect_response *rsp)
+{
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	struct vdev_mlme_obj *vdev_mlme;
+	struct wlan_objmgr_vdev *vdev;
+
+	if (!rsp || !psoc) {
+		mlme_err("Invalid input");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, rsp->vdev_id,
+						    WLAN_VDEV_TARGET_IF_ID);
+	if (!vdev) {
+		mlme_err("VDEV is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme) {
+		mlme_err("VDEV_%d: PSOC_%d VDEV_MLME is NULL", rsp->vdev_id,
+			 wlan_psoc_get_id(psoc));
+		goto tgt_vdev_mgr_unified_disconnect_response_handler_end;
+	}
+
+	if (vdev_mlme->ops && vdev_mlme->ops->mlme_vdev_ext_unified_disconnect_rsp)
+		status = vdev_mlme->ops->mlme_vdev_ext_unified_disconnect_rsp(
+								vdev_mlme,
+								rsp);
+
+tgt_vdev_mgr_unified_disconnect_response_handler_end:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
+	return status;
+}
 #else
 static inline void tgt_vdev_mgr_reg_quiet_offload(
 				struct wlan_lmac_if_mlme_rx_ops *mlme_rx_ops)
 {
+}
+
+static inline QDF_STATUS
+tgt_vdev_mgr_unified_disconnect_response(struct wlan_objmgr_psoc *psoc,
+					 struct vdev_unified_disconnect_response *rsp)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 
@@ -404,4 +448,6 @@ void tgt_vdev_mgr_register_rx_ops(struct wlan_lmac_if_rx_ops *rx_ops)
 	tgt_psoc_reg_wakelock_info_rx_op(&rx_ops->mops);
 	tgt_vdev_mgr_reg_set_mac_address_response(mlme_rx_ops);
 	tgt_vdev_mgr_reg_quiet_offload(mlme_rx_ops);
+	mlme_rx_ops->vdev_mgr_unified_disconnect_rsp =
+		tgt_vdev_mgr_unified_disconnect_response;
 }

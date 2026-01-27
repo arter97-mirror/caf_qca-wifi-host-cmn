@@ -744,6 +744,8 @@ enum vdev_start_resp_type {
  *@mlme_vdev_set_link_remove_delay:     callback to set link removal delay
  *                                      work flag
  *@mlme_vdev_peer_oper_mode_notify: Callback to handle peer oper mode notify
+ *@mlme_vdev_ext_unified_disconnect_rsp: callback to handle unified disconnect rsp
+ *
  */
 struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_validate_basic_params)(
@@ -846,6 +848,9 @@ struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_peer_oper_mode_notify)
 				(struct wlan_objmgr_vdev *vdev,
 				 struct peer_oper_mode_event *data);
+	QDF_STATUS (*mlme_vdev_ext_unified_disconnect_rsp)(
+				struct vdev_mlme_obj *vdev_mlme,
+				struct vdev_unified_disconnect_response *rsp);
 };
 
 /**
