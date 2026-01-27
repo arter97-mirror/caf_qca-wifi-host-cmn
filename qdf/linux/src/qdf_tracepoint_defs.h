@@ -421,28 +421,24 @@ TRACE_EVENT(dp_tx_pp_alloc,
 );
 
 TRACE_EVENT(dp_tx_pp_grow,
-	    TP_PROTO(void *pp, uint32_t pool_id, uint32_t old_size,
-		     uint32_t new_size, bool success, uint64_t latency_ns),
-	    TP_ARGS(pp, pool_id, old_size, new_size, success, latency_ns),
+	    TP_PROTO(void *pp, uint32_t pool_id,
+		     uint32_t new_size, uint64_t latency_ns),
+	    TP_ARGS(pp, pool_id, new_size, latency_ns),
 	    TP_STRUCT__entry(
 		__field(void *, pp)
 		__field(uint32_t, pool_id)
-		__field(uint32_t, old_size)
 		__field(uint32_t, new_size)
-		__field(bool, success)
 		__field(uint64_t, latency_ns)
 	    ),
 	    TP_fast_assign(
 		__entry->pp = pp;
 		__entry->pool_id = pool_id;
-		__entry->old_size = old_size;
 		__entry->new_size = new_size;
-		__entry->success = success;
 		__entry->latency_ns = latency_ns;
 	    ),
-	    TP_printk("pp=%pK pool_id=%u old_size=%u new_size=%u success=%d latency(ns)=%llu",
-		      __entry->pp, __entry->pool_id, __entry->old_size,
-		      __entry->new_size, __entry->success, __entry->latency_ns)
+	    TP_printk("pp=%pK pool_id=%u new_size=%u latency(ns)=%llu",
+		      __entry->pp, __entry->pool_id,
+		      __entry->new_size, __entry->latency_ns)
 );
 
 TRACE_EVENT(dp_tx_pp_attach_idle,

@@ -596,20 +596,16 @@ bool __qdf_trace_dp_tx_pp_grow_enabled(void)
  * __qdf_trace_dp_tx_pp_grow() - Trace page pool growth
  * @pp: Page pool pointer
  * @pool_id: Pool ID
- * @old_size: Size before growth
  * @new_size: Size after growth
- * @success: Whether growth succeeded
  * @latency_ns: Latency in nanoseconds
  *
  * Return: None
  */
 static inline
-void __qdf_trace_dp_tx_pp_grow(void *pp, uint32_t pool_id, uint32_t old_size,
-			       uint32_t new_size, bool success,
-			       uint64_t latency_ns)
+void __qdf_trace_dp_tx_pp_grow(void *pp, uint32_t pool_id,
+			       uint32_t new_size, uint64_t latency_ns)
 {
-	trace_dp_tx_pp_grow(pp, pool_id, old_size, new_size, success,
-			    latency_ns);
+	trace_dp_tx_pp_grow(pp, pool_id, new_size, latency_ns);
 }
 
 /**
