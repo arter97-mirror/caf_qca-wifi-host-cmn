@@ -111,6 +111,31 @@ typedef struct wondertap_capability __qdf_wondertap_capability_t;
 typedef struct wonder_txd __qdf_wonder_txd_t;
 
 /**
+ * typedef __qdf_wondertap_role_t - Wondertap role enumerator
+ *
+ * Wondertap data enum that defines role in channel hopping list.
+ */
+typedef enum wondertap_role __qdf_wondertap_role_t;
+
+/**
+ * typedef __qdf_wondertap_chan_list_params_t - Wondertap channel list params
+ *  data structure
+ *
+ * Wondertap data structure that provides channel list parameters such as freq,
+ * bandwidth and role.
+ */
+typedef struct wondertap_channel_list_params __qdf_wondertap_chan_list_params_t;
+
+/**
+ * typedef __qdf_wondertap_channel_sch_req_t - Wondertap channel schedule request
+ *  data structure
+ *
+ * Wondertap data structure that provides channel schedule
+ * request to be followed by vendor driver.
+ */
+typedef struct channel_schedule_request __qdf_wondertap_channel_sch_req_t;
+
+/**
  * typedef __qdf_wondertap_init_params_t - wondertap init parameters
  *
  * Wondertap initialization parameters and maps to the underlying
