@@ -2574,3 +2574,36 @@ void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
 		connect_params->peer_assoc = NULL;
 	}
 }
+
+void mlo_mgr_set_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev,
+					     bool in_progress)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_vdev_connect_params_cache *connect_params;
+
+	if (!vdev)
+		return;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx)
+		return;
+
+	connect_params = &mlo_dev_ctx->link_ctx->connect_params;
+	connect_params->unified_connect_in_progress = in_progress;
+}
+
+bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_vdev_connect_params_cache *connect_params;
+
+	if (!vdev)
+		return false;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx)
+		return false;
+
+	connect_params = &mlo_dev_ctx->link_ctx->connect_params;
+	return connect_params->unified_connect_in_progress;
+}

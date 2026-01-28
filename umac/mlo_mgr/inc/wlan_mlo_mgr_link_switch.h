@@ -178,12 +178,15 @@ struct mlo_link_switch_stats {
  * @vdev_start: Cached VDEV start parameters
  * @peer_assoc: Cached peer assoc parameters
  * @vdev_up: Cached vdev up parameters
+ * @unified_connect_in_progress: Flag to track if unified connect
+ * is in command path
  */
 struct mlo_vdev_connect_params_cache {
 	struct peer_create_params *peer_create;
 	struct vdev_start_params *vdev_start;
 	struct peer_assoc_params *peer_assoc;
 	struct vdev_up_params *vdev_up;
+	bool unified_connect_in_progress;
 };
 
 /**
@@ -957,6 +960,34 @@ mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
  * Return: None
  */
 void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlo_mgr_set_unified_connect_in_progress() - Set unified connect in
+ * progress flag
+ * @vdev: pointer to vdev object
+ * @in_progress: true to set flag, false to clear flag
+ *
+ * This API sets or clears the unified connect in progress flag in MLO context.
+ * This flag is used to differentiate between command path and response path
+ * for crypto operations during unified connect.
+ *
+ * Return: None
+ */
+void mlo_mgr_set_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev,
+					     bool in_progress);
+
+/**
+ * mlo_mgr_is_unified_connect_in_progress() - Check if unified connect is
+ * in progress or not
+ * @vdev: pointer to vdev object
+ *
+ * This API checks if unified connect is currently in command path by reading
+ * the unified connect in progress flag from MLO context.
+ *
+ * Return: true if unified connect is in command path, false otherwise
+ */
+bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev);
+
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1258,6 +1289,18 @@ mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
 static inline void
 mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
 {
+}
+
+static inline
+void mlo_mgr_set_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev,
+					     bool in_progress)
+{
+}
+
+static inline
+bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
 }
 #endif
 #endif
