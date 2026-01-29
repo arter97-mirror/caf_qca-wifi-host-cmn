@@ -800,6 +800,10 @@ static const uint32_t vdev_param_tlv[] = {
 	PARAM_MAP(vdev_param_reject_addba, VDEV_PARAM_REJECT_ADDBA),
 	PARAM_MAP(vdev_param_disable_oui_bpcc_wow_wake,
 		  VDEV_PARAM_DISABLE_OUI_BPCC_WOW_WAKE),
+	PARAM_MAP(vdev_param_enable_twt_concurrency,
+		  VDEV_PARAM_ENABLE_TWT_CONCURRENCY),
+	PARAM_MAP(vdev_param_use_btwt_id0,
+		  VDEV_PARAM_USE_BTWT_ID0),
 };
 #endif
 

@@ -6845,6 +6845,10 @@ typedef enum {
 	VDEV_PARAM(vdev_param_reject_addba, VDEV_PARAM_REJECT_ADDBA),
 	VDEV_PARAM(vdev_param_disable_oui_bpcc_wow_wake,
 		   VDEV_PARAM_DISABLE_OUI_BPCC_WOW_WAKE),
+	VDEV_PARAM(vdev_param_enable_twt_concurrency,
+		   VDEV_PARAM_ENABLE_TWT_CONCURRENCY),
+	VDEV_PARAM(vdev_param_use_btwt_id0,
+		   VDEV_PARAM_USE_BTWT_ID0),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
