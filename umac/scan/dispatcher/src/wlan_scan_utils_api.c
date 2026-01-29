@@ -1790,6 +1790,11 @@ static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 	tmp_old = util_scan_find_ie(WLAN_ELEMID_SSID, ie, ielen);
 	tmp_old = (tmp_old) ? tmp_old + tmp_old[1] + 2 : ie;
 
+	if (((tmp_old + 2) - ie) >= ielen) {
+		qdf_mem_free(sub_copy);
+		return 0;
+	}
+
 	while (tmp_old + tmp_old[1] + 2 - ie <= ielen) {
 		if (tmp_old[0] == 0) {
 			tmp_old++;
@@ -1843,7 +1848,7 @@ static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 			}
 		}
 
-		if (tmp_old + tmp_old[1] + 2 - ie == ielen)
+		if (((tmp_old + tmp_old[1] + 2) - ie) >= (ielen - 2))
 			break;
 
 		tmp_old += tmp_old[1] + 2;
