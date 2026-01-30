@@ -10042,6 +10042,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 			resource_cfg->flags2,
 			tgt_res_cfg->dp_peer_meta_data_ver);
 
+	WMI_RSRC_CFG_FLAGS2_RX_PEER_METADATA_EXTENSION_SET(
+			resource_cfg->flags2,
+			tgt_res_cfg->dp_peer_meta_data_ext_ver);
+
 	if (tgt_res_cfg->notify_frame_support)
 		WMI_RSRC_CFG_FLAGS2_NOTIFY_FRAME_CONFIG_ENABLE_SET(
 			resource_cfg->flags2, 1);
@@ -15159,6 +15163,9 @@ extract_service_ready_ext2_tlv(wmi_unified_t wmi_handle, uint8_t *event,
 
 	param->dp_peer_meta_data_ver =
 			WMI_TARGET_CAP_FLAGS_RX_PEER_METADATA_VERSION_GET(
+						ev->target_cap_flags);
+	param->dp_peer_meta_data_ext_ver =
+		WMI_TARGET_CAP_FLAGS_RX_PEER_METADATA_VERSION_EXTENSION_GET(
 						ev->target_cap_flags);
 
 	extract_multipass_sap_cap(param, ev->target_cap_flags);
@@ -24760,6 +24767,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_11BI_PMKID_PRIVACY_SUPPORT;
 	wmi_service[wmi_service_11bi_ds_mac_addr_support] =
 				WMI_SERVICE_11BI_DS_MAC_ADDR_SUPPORT;
+	wmi_service[wmi_service_peer_metadata_v2_support] =
+				WMI_SERVICE_PEER_METADATA_V2_SUPPORT;
 }
 
 /**

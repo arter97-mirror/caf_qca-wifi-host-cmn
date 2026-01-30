@@ -509,6 +509,7 @@ void init_deinit_prepare_send_init_cmd(
 	struct wmi_unified *wmi_handle;
 	QDF_STATUS ret_val;
 	uint32_t fw_build_vers_ext;
+	uint8_t peer_metadata_ver = 0;
 
 	if (!tgt_hdl) {
 		target_if_err("target_psoc_info is null");
@@ -582,12 +583,26 @@ void init_deinit_prepare_send_init_cmd(
 	if (wmi_service_enabled(wmi_handle, wmi_service_ext2_msg))
 		init_deinit_derive_afc_dev_type_param(psoc, &init_param);
 
-	if (wmi_service_enabled(wmi_handle, wmi_service_v1a_v1b_supported))
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_peer_metadata_v2_support)) {
+		peer_metadata_ver =
+			target_psoc_get_target_dp_peer_meta_data_ext_ver(
+								tgt_hdl);
+		info->wlan_res_cfg.dp_peer_meta_data_ext_ver =
+						peer_metadata_ver;
+		target_if_debug("peer_meta_data extended version 0x%x",
+				peer_metadata_ver);
+	} else if (wmi_service_enabled(wmi_handle,
+				       wmi_service_v1a_v1b_supported)) {
+		peer_metadata_ver = CDP_RX_PEER_METADATA_V1_A_B;
 		info->wlan_res_cfg.dp_peer_meta_data_ver =
 					CDP_RX_PEER_METADATA_V1_A_B;
-	else
-		info->wlan_res_cfg.dp_peer_meta_data_ver =
+	} else {
+		peer_metadata_ver =
 			target_psoc_get_target_dp_peer_meta_data_ver(tgt_hdl);
+		info->wlan_res_cfg.dp_peer_meta_data_ver =
+						peer_metadata_ver;
+	}
 
 	if (!wmi_service_enabled(wmi_handle,
 				 wmi_service_apf_data_offload_support_enabled))
@@ -595,7 +610,7 @@ void init_deinit_prepare_send_init_cmd(
 
 	/* notify DP rx peer metadata version */
 	init_deinit_set_dp_rx_peer_metadata_ver(
-			psoc, info->wlan_res_cfg.dp_peer_meta_data_ver);
+				psoc, peer_metadata_ver);
 
 	init_deinit_set_tdls_mlo_vdev(&init_param, wmi_handle);
 

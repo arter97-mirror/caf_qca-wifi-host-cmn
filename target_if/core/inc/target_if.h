@@ -3110,6 +3110,23 @@ static inline uint8_t target_psoc_get_target_dp_peer_meta_data_ver(
 	return psoc_info->info.service_ext2_param.dp_peer_meta_data_ver;
 }
 
+/**
+ * target_psoc_get_target_dp_peer_meta_data_ext_ver() - Get DP RX peer
+ * metadata extended version reported by target
+ *
+ * @psoc_info:  pointer to structure target_psoc_info
+ *
+ * Return: value of DP RX peer metadata extended version
+ */
+static inline uint8_t target_psoc_get_target_dp_peer_meta_data_ext_ver(
+				struct target_psoc_info *psoc_info)
+{
+	if (!psoc_info)
+		return 0;
+
+	return psoc_info->info.service_ext2_param.dp_peer_meta_data_ext_ver;
+}
+
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_MLO_MULTI_CHIP)
 #define PDEV_INVALID_HW_LINK_ID 0xFFFF
 

@@ -6972,6 +6972,7 @@ typedef enum {
 	wmi_service_11bi_8021x_auth_support,
 	wmi_service_11bi_pmkid_privacy_support,
 	wmi_service_11bi_ds_mac_addr_support,
+	wmi_service_peer_metadata_v2_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -7361,6 +7362,7 @@ struct target_feature_set {
  * @num_max_mlo_link_per_ml_bss: number of max partner links of a ML BSS
  * @notify_frame_support: capability to mark notify frames from host
  * @dp_peer_meta_data_ver: datapath peer meta data version flag
+ * @dp_peer_meta_data_ext_ver: datapath peer meta data extended version flag
  * @tx_ilp_enable: capability to support TX ILP from host
  * @rf_path: Indicates RF path 0 primary, 1 secondary
  * @fw_ast_indication_disable: Disable AST indication
@@ -7507,6 +7509,7 @@ typedef struct {
 	uint32_t num_max_mlo_link_per_ml_bss;
 	uint8_t notify_frame_support;
 	uint8_t dp_peer_meta_data_ver;
+	uint8_t dp_peer_meta_data_ext_ver;
 #ifdef DP_TX_PACKET_INSPECT_FOR_ILP
 	uint8_t tx_ilp_enable;
 #endif
