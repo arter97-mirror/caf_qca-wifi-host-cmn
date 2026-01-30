@@ -3969,6 +3969,16 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		msdu_info->tid = pdev->dscp_tid_map[vdev->dscp_tid_map_id][tos];
 	}
 
+	/*
+	 * If the mark is set, it indicates the packet has been prioritized
+	 * by higher layers. Overwrite TID to preserve this
+	 * priority and prevent it from being overwritten by the default
+	 * mapping (e.g. TID 0).
+	 */
+	if ((qdf_nbuf_get_mark(nbuf) & CDP_STC_CLASSIFIED_TAG) ==
+	    CDP_STC_CLASSIFIED_TAG)
+		msdu_info->tid = qdf_nbuf_get_priority(nbuf);
+
 	if (msdu_info->tid >= CDP_MAX_DATA_TIDS)
 		msdu_info->tid = CDP_MAX_DATA_TIDS - 1;
 
@@ -6770,6 +6780,7 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 		qdf_mem_copy(qdf_nbuf_get_cb(new_nbuf), qdf_nbuf_get_cb(nbuf),
 			     sizeof(struct qdf_nbuf_cb));
 		QDF_NBUF_CB_PADDR(new_nbuf) = paddr;
+		qdf_nbuf_set_mark(new_nbuf, qdf_nbuf_get_mark(nbuf));
 
 		if (!(*head_nbuf)) {
 			*head_nbuf = new_nbuf;

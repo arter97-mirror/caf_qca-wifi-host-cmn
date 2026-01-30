@@ -124,6 +124,9 @@
 #define CDP_DATA_TID_MAX 8
 #define CDP_DATA_NON_QOS_TID 16
 
+/* STC classification tag */
+#define CDP_STC_CLASSIFIED_TAG 0xCAFD0000
+
 #define CDP_NUM_SA_BW 4
 /* Smart Antenna 320MHz BW Phy MAX Rate Code Index */
 #define CDP_SA_BW320_INX 4
