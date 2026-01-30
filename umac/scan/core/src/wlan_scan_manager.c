@@ -1160,7 +1160,9 @@ scm_update_channel_list(struct scan_start_request *req,
 
 	req->scan_req.chan_list.num_chan = num_scan_channels;
 
-	scm_update_6ghz_channel_list(req, scan_obj);
+	if (!req->scan_req.scan_f_skip_6ghz)
+		scm_update_6ghz_channel_list(req, scan_obj);
+
 	scm_scan_chlist_concurrency_modify(req->vdev, req);
 }
 
