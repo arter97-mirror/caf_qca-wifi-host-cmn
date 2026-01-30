@@ -6588,7 +6588,7 @@ static inline void dp_vdev_tx_mark_to_fw(qdf_nbuf_t nbuf, struct dp_vdev *vdev)
  * @soc: soc handle
  * @nbuf: TCP jumbo packet
  * @head_nbuf: formed skb list
- * @tx_pp: TX page pool reference
+ * @vdev_id: VDEV ID
  *
  * Return: QDF_STATUS
  */
@@ -6596,10 +6596,14 @@ static QDF_STATUS
 dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 			       qdf_nbuf_t nbuf,
 			       qdf_nbuf_t *head_nbuf,
-			       struct dp_tx_page_pool *tx_pp)
+			       uint8_t vdev_id)
 {
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev_id];
+	qdf_nbuf_t alloc_list_head = NULL;
+	qdf_nbuf_t alloc_list_tail = NULL;
 	qdf_nbuf_t tail_nbuf = NULL;
 	qdf_nbuf_t new_nbuf;
+	qdf_nbuf_t curr_nbuf;
 	qdf_nbuf_frag_t *frag = NULL;
 	void *frag_vaddr;
 	qdf_device_t osdev = soc->osdev;
@@ -6618,6 +6622,7 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 	uint8_t more_frags;
 	uint8_t pack_more_data = 0;
 	qdf_dma_addr_t paddr;
+	uint32_t seg_idx = 0;
 
 	*head_nbuf = NULL;
 
@@ -6641,25 +6646,62 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 
 	tcp_seq_num = qdf_ntohl(qdf_nbuf_get_tcp_seq(nbuf));
 
-	while (num_seg) {
-		more_frags = 1;
-		copied_len = 0;
-		new_nbuf = dp_tx_page_pool_nbuf_alloc_map(tx_pp, soc,
-							  ori_gso_size +
-							  eit_hdr_len);
-		if (new_nbuf)
-			dp_tx_page_pool_inc_usage(tx_pp);
-		else
-			new_nbuf = qdf_nbuf_alloc_simple(osdev,
-							 ori_gso_size +
-							 eit_hdr_len,
-							 0, 0, false);
+	if (qdf_likely(tx_pp)) {
+		qdf_spin_lock_bh(&tx_pp->pp_lock);
+		for (seg_idx = 0; seg_idx < num_seg; seg_idx++) {
+			new_nbuf =
+				dp_tx_page_pool_nbuf_alloc_map(tx_pp, soc,
+							       ori_gso_size +
+							       eit_hdr_len);
+			if (qdf_unlikely(!new_nbuf))
+				break;
 
+			dp_tx_page_pool_inc_usage(tx_pp);
+			if (!alloc_list_head) {
+				alloc_list_head = new_nbuf;
+				alloc_list_tail = new_nbuf;
+				qdf_nbuf_set_next(new_nbuf, NULL);
+			} else {
+				qdf_nbuf_set_next(alloc_list_tail, new_nbuf);
+				alloc_list_tail = new_nbuf;
+				qdf_nbuf_set_next(new_nbuf, NULL);
+			}
+		}
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+	}
+
+	/* Fallback: allocate remaining segments using simple allocation */
+	for (; seg_idx < num_seg; seg_idx++) {
+		new_nbuf = qdf_nbuf_alloc_simple(osdev, ori_gso_size +
+						 eit_hdr_len, 0, 0, false);
 		if (qdf_unlikely(!new_nbuf)) {
-			dp_err("sw tso: failed to allocate buffer");
-			qdf_nbuf_list_free(*head_nbuf);
+			dp_err_rl("sw tso: failed to allocate segment %d/%d",
+				  seg_idx, num_seg);
+			qdf_nbuf_list_free(alloc_list_head);
 			return QDF_STATUS_E_NOMEM;
 		}
+
+		if (!alloc_list_head) {
+			alloc_list_head = new_nbuf;
+			alloc_list_tail = new_nbuf;
+			qdf_nbuf_set_next(new_nbuf, NULL);
+		} else {
+			qdf_nbuf_set_next(alloc_list_tail, new_nbuf);
+			alloc_list_tail = new_nbuf;
+			qdf_nbuf_set_next(new_nbuf, NULL);
+		}
+	}
+
+	/* Iterate through pre-allocated buffer list */
+	curr_nbuf = alloc_list_head;
+
+	while (curr_nbuf) {
+		more_frags = 1;
+		copied_len = 0;
+
+		/* Use pre-allocated buffer from list */
+		new_nbuf = curr_nbuf;
+		curr_nbuf = qdf_nbuf_next(curr_nbuf);
 
 		/* Set magic value to ID the packet is a SW TSO packet */
 		qdf_nbuf_set_dev_scratch(new_nbuf,
@@ -6720,7 +6762,7 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 		/* if PSH and FIN flags are set in jumbo packet,
 		 * set them for the last segment.
 		 */
-		if (num_seg == 1) {
+		if (!curr_nbuf) {
 			qdf_nbuf_set_tcp_psh(new_nbuf,
 					     qdf_nbuf_get_tcp_psh(nbuf));
 			qdf_nbuf_set_tcp_fin(new_nbuf,
@@ -6728,8 +6770,10 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 		}
 
 		while (more_frags) {
-			if (unlikely(nbuf_proc == 0))
+			if (unlikely(nbuf_proc == 0)) {
+				qdf_nbuf_list_free(curr_nbuf);
 				return QDF_STATUS_SUCCESS;
+			}
 
 			if (frag_len < gso_size) {
 				pack_more_data = 1;
@@ -6747,12 +6791,14 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 			} else {
 				if (qdf_nbuf_get_nr_frags(nbuf) == 0) {
 					qdf_assert(0);
+					qdf_nbuf_list_free(curr_nbuf);
 					qdf_nbuf_list_free(*head_nbuf);
 					return QDF_STATUS_E_FAILURE;
 				}
 
 				if (i >= qdf_nbuf_get_nr_frags(nbuf)) {
 					qdf_assert(0);
+					qdf_nbuf_list_free(curr_nbuf);
 					qdf_nbuf_list_free(*head_nbuf);
 					return QDF_STATUS_E_FAILURE;
 				}
@@ -6782,8 +6828,6 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 					       qdf_nbuf_get_network_header_len(new_nbuf))));
 			}
 		}
-
-		num_seg--;
 	}
 
 	return QDF_STATUS_SUCCESS;
@@ -6815,23 +6859,13 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		     struct dp_tx_msdu_info_s *msdu_info)
 {
 	struct dp_soc *soc = vdev->pdev->soc;
-	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
 	qdf_nbuf_t buff = NULL;
 	qdf_nbuf_t next;
 	QDF_STATUS status;
 	int count = 0;
 
-	if (tx_pp && tx_pp->page_pool_init) {
-		qdf_spin_lock_bh(&tx_pp->pp_lock);
-		status = dp_tx_sw_tso_prepare_nbuf_list(soc,
-							nbuf, &buff,
-							tx_pp);
-		qdf_spin_unlock_bh(&tx_pp->pp_lock);
-	} else {
-		status = dp_tx_sw_tso_prepare_nbuf_list(soc,
-							nbuf, &buff,
-							NULL);
-	}
+	status = dp_tx_sw_tso_prepare_nbuf_list(soc, nbuf, &buff,
+						vdev->vdev_id);
 
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err_rl("sw tso: failed to prepare sw tso nbuf list status %d",
