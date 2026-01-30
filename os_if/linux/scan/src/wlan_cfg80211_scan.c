@@ -1949,6 +1949,8 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 	enum QDF_OPMODE opmode;
 	uint32_t extra_ie_len = 0;
 	struct scan_filter *filter = NULL;
+	bool is_passthru_present;
+	uint8_t num_6g_chan = 0;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
@@ -2093,6 +2095,11 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 		req->scan_req.scan_f_5ghz = true;
 	}
 
+	is_passthru_present =
+		policy_mgr_mode_specific_connection_count(psoc,
+							  PM_PASSTHRU_MODE,
+							  NULL);
+
 	if (request->n_channels) {
 		bool ap_or_go_present;
 
@@ -2104,7 +2111,7 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 			if (wlan_reg_is_dsrc_freq(c_freq))
 				continue;
 
-			if (ap_or_go_present) {
+			if (ap_or_go_present || is_passthru_present) {
 				bool ok;
 
 				qdf_status = policy_mgr_is_chan_ok_for_dnbs(
@@ -2134,6 +2141,10 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 				else
 					req->scan_req.chan_list.chan[num_chan].phymode =
 						SCAN_PHY_MODE_11A;
+
+				if (WLAN_REG_IS_6GHZ_CHAN_FREQ(c_freq))
+					num_6g_chan++;
+
 				num_chan++;
 				if (num_chan >= NUM_CHANNELS)
 					break;
@@ -2146,6 +2157,9 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 		goto err;
 	}
 	req->scan_req.chan_list.num_chan = num_chan;
+
+	if (is_passthru_present && !num_6g_chan)
+		req->scan_req.scan_f_skip_6ghz = 1;
 
 	/* P2P increase the scan priority */
 	if (is_p2p_scan)
