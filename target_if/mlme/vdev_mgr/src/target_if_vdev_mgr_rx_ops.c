@@ -160,6 +160,7 @@ void target_if_vdev_mgr_rsp_timer_cb(void *arg)
 	struct vdev_delete_response del_rsp = {0};
 	struct peer_delete_all_response peer_del_all_rsp = {0};
 	struct vdev_unified_connect_response timeout_resp = {0};
+	struct vdev_unified_disconnect_response uni_disconnect_rsp = {0};
 	struct vdev_response_timer *vdev_rsp = arg;
 	enum qdf_hang_reason recovery_reason;
 	uint8_t vdev_id;
@@ -194,6 +195,8 @@ void target_if_vdev_mgr_rsp_timer_cb(void *arg)
 	    !qdf_atomic_test_bit(UPDATE_MAC_ADDR_RESPONSE_BIT,
 				 &vdev_rsp->rsp_status) &&
 	    !qdf_atomic_test_bit(UP_UNIFIED_CONNECT_RESPONSE_BIT,
+				 &vdev_rsp->rsp_status) &&
+	    !qdf_atomic_test_bit(UNIFIED_DISCONNECT_RESPONSE_BIT,
 				 &vdev_rsp->rsp_status)) {
 		mlme_debug("No response bit is set, ignoring actions :%d",
 			   vdev_rsp->vdev_id);
@@ -303,6 +306,26 @@ void target_if_vdev_mgr_rsp_timer_cb(void *arg)
 			rx_ops->vdev_mgr_unified_connect_response(
 								psoc,
 								&timeout_resp);
+	} else if (qdf_atomic_test_bit(UNIFIED_DISCONNECT_RESPONSE_BIT,
+				       &vdev_rsp->rsp_status)) {
+		mlme_debug("vdev:%d unified disconnect response timeout",
+			   vdev_id);
+		rsp_pos = UNIFIED_DISCONNECT_RESPONSE_BIT;
+		recovery_reason = QDF_VDEV_STOP_RESPONSE_TIMED_OUT;
+		uni_disconnect_rsp.vdev_id = vdev_id;
+
+		target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp, rsp_pos);
+		target_if_vdev_mgr_handle_recovery(psoc, vdev_id,
+						   recovery_reason, rsp_pos);
+		/* Call vdev stop response handler for unified disconnect
+		 * timeout
+		 */
+		if (rx_ops->vdev_mgr_stop_response) {
+			stop_rsp.vdev_id = vdev_id;
+			rx_ops->vdev_mgr_unified_disconnect_rsp(
+							psoc,
+							&uni_disconnect_rsp);
+		}
 	} else {
 		mlme_err("PSOC_%d VDEV_%d: Unknown error",
 			 wlan_psoc_get_id(psoc), vdev_id);

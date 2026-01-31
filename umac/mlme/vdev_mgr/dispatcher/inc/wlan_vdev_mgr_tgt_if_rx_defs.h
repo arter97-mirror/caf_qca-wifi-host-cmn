@@ -45,6 +45,7 @@
  * @RSO_STOP_RESPONSE_BIT: RSO stop response bit
  * @UPDATE_MAC_ADDR_RESPONSE_BIT: MAC address update response bit
  * @UP_UNIFIED_CONNECT_RESPONSE_BIT: vdev up unified connect response bit
+ * @UNIFIED_DISCONNECT_RESPONSE_BIT: vdev up unified disconnect response bit
  * @RESPONSE_BIT_MAX: Max enumeration
  */
 enum wlan_vdev_mgr_tgt_if_rsp_bit {
@@ -56,6 +57,7 @@ enum wlan_vdev_mgr_tgt_if_rsp_bit {
 	RSO_STOP_RESPONSE_BIT = 5,
 	UPDATE_MAC_ADDR_RESPONSE_BIT = 6,
 	UP_UNIFIED_CONNECT_RESPONSE_BIT = 7,
+	UNIFIED_DISCONNECT_RESPONSE_BIT = 8,
 	RESPONSE_BIT_MAX,
 };
 
@@ -76,7 +78,8 @@ static inline char *string_from_rsp_bit(enum wlan_vdev_mgr_tgt_if_rsp_bit bit)
 					"RSO STOP",
 					"UPDATE_MAC_ADDR",
 					"UP_UNIFIED_CONNECT",
-					"RESPONE MAX"};
+					"UNIFIED_DISCONNECT",
+					"RESPONSE MAX"};
 	return (char *)strings[bit];
 }
 
@@ -88,6 +91,7 @@ static inline char *string_from_rsp_bit(enum wlan_vdev_mgr_tgt_if_rsp_bit bit)
 #define PEER_DELETE_ALL_RESPONSE_TIMER (6000 + PMO_RESUME_TIMEOUT)
 #define RSO_STOP_RESPONSE_TIMER        (6000 + PMO_RESUME_TIMEOUT)
 #define UP_UNIFIED_CONNECT_RESPONSE_TIMER (6000 + PMO_RESUME_TIMEOUT)
+#define UNIFIED_DISCONNECT_RESPONSE_TIMER (4000 + PMO_RESUME_TIMEOUT)
 #elif defined(QCA_LOWMEM_CONFIG) || defined(QCA_512M_CONFIG) || \
 defined(QCA_WIFI_QCA5018)
 #define START_RESPONSE_TIMER           15000
@@ -96,6 +100,7 @@ defined(QCA_WIFI_QCA5018)
 #define PEER_DELETE_ALL_RESPONSE_TIMER 15000
 #define RSO_STOP_RESPONSE_TIMER        15000
 #define UP_UNIFIED_CONNECT_RESPONSE_TIMER 15000
+#define UNIFIED_DISCONNECT_RESPONSE_TIMER 15000
 #else
 #define START_RESPONSE_TIMER           8000
 #define STOP_RESPONSE_TIMER            6000
@@ -103,6 +108,7 @@ defined(QCA_WIFI_QCA5018)
 #define PEER_DELETE_ALL_RESPONSE_TIMER 6000
 #define RSO_STOP_RESPONSE_TIMER        6000
 #define UP_UNIFIED_CONNECT_RESPONSE_TIMER 8000
+#define UNIFIED_DISCONNECT_RESPONSE_TIMER 6000
 #endif
 
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE

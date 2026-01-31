@@ -859,6 +859,76 @@ static QDF_STATUS target_if_vdev_mgr_stop_send(
 	return status;
 }
 
+QDF_STATUS target_if_vdev_mgr_unified_disconnect_timer_start(
+					struct wlan_objmgr_vdev *vdev,
+					struct wlan_objmgr_psoc *psoc)
+{
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	struct vdev_response_timer *vdev_rsp;
+	uint8_t vdev_id;
+
+	if (!vdev || !psoc) {
+		mlme_err("Invalid input");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+
+	/* Get RX ops and vdev response timer for unified disconnect */
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->psoc_get_vdev_response_timer_info) {
+		mlme_err("VDEV %d: No Rx Ops", vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
+	if (!vdev_rsp) {
+		mlme_err("VDEV %d: No vdev rsp timer", vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Set timer expiry time and start timer */
+	vdev_rsp->expire_time = UNIFIED_DISCONNECT_RESPONSE_TIMER;
+	target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp,
+					   UNIFIED_DISCONNECT_RESPONSE_BIT);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS target_if_vdev_mgr_unified_disconnect_timer_stop(
+					struct wlan_objmgr_psoc *psoc,
+					uint8_t vdev_id)
+{
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	struct vdev_response_timer *vdev_rsp;
+
+	if (!psoc) {
+		mlme_err("Invalid input");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Get RX ops and vdev response timer for unified disconnect */
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->psoc_get_vdev_response_timer_info) {
+		mlme_err("VDEV %d: No Rx Ops", vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_rsp = rx_ops->psoc_get_vdev_response_timer_info(psoc, vdev_id);
+	if (!vdev_rsp) {
+		mlme_err("VDEV %d: No vdev rsp timer", vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Handle timer cleanup on command failure */
+	vdev_rsp->expire_time = 0;
+	vdev_rsp->timer_status = QDF_STATUS_E_CANCELED;
+	target_if_vdev_mgr_rsp_timer_stop(psoc, vdev_rsp,
+					  UNIFIED_DISCONNECT_RESPONSE_BIT);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS target_if_vdev_mgr_down_send(
 					struct wlan_objmgr_vdev *vdev,
 					struct vdev_down_params *param)
@@ -889,6 +959,13 @@ static QDF_STATUS target_if_vdev_mgr_down_send(
 	    mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc)) {
 		mlme_debug("VDEV %d: Send VDEV UNIFIED DISCONNECT during link switch",
 			   param->vdev_id);
+		status = target_if_vdev_mgr_unified_disconnect_timer_start(
+								vdev, psoc);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlme_err("vdev:%d unified disconnect timer start failed",
+				 param->vdev_id);
+			return status;
+		}
 		status = wmi_unified_vdev_disconnect_send(wmi_handle, param);
 		if (QDF_IS_STATUS_ERROR(status))
 			mlme_err("vdev %d: Unified disconnect command failed with status %d",
