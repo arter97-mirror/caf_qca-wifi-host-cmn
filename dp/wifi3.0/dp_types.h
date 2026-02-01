@@ -1075,6 +1075,9 @@ struct dp_txrx_pool_stats {
  *		   via HOST directly.
  * @primary_refill: Flag to indicate if this srng is the primary srng to be
  *		    used for Rx buffer refill.
+ * @aux_refill: Flag to indicate if this srng is the AUX srng to be
+ *		    used for Rx buffer refill
+ *		    (Set when direct refill feature is enabled).
  * @reserved: reserved
  * @irq: irq number of the srng ring
  * @num_entries: number of entries in the srng ring
@@ -1095,6 +1098,7 @@ struct dp_srng {
 	uint8_t cached;
 	uint8_t direct_refill : 1,
 		primary_refill : 1,
+		aux_refill : 1,
 		reserved : 6;
 	int irq;
 	uint32_t num_entries;

@@ -1044,6 +1044,8 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 		/* Free all desc */
 		num_desc_to_free = num_req_buffers;
 		hal_srng_access_end(dp_soc->hal_soc, rxdma_srng);
+		if (dp_rxdma_srng->aux_refill)
+			goto exit;
 		goto free_descs;
 	}
 
@@ -1124,7 +1126,7 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	count = 0;
 
 	dp_rx_buf_smmu_mapping_lock(dp_soc);
-	while (count < num_req_buffers) {
+	while ((*desc_list) && count < num_req_buffers) {
 		/* rx_desc.in_use should be zero at this time*/
 		if (dp_assert_always_internal_stat(
 			(!(*desc_list)->rx_desc.in_use), dp_soc,
@@ -1217,6 +1219,7 @@ free_descs:
 		dp_rx_add_desc_list_to_free_list(dp_soc, desc_list, tail,
 			mac_id, rx_desc_pool);
 
+exit:
 	return count;
 }
 

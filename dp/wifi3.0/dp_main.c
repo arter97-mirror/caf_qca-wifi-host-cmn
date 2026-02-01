@@ -16616,6 +16616,8 @@ static QDF_STATUS dp_pdev_srng_alloc(struct dp_pdev *pdev)
 		soc->replenish_rings[pdev->lmac_id][0] = refill_buf_ring;
 		if (!soc->features.direct_refill_support)
 			refill_buf_ring->primary_refill = 1;
+		else
+			refill_buf_ring->aux_refill = 1;
 	}
 
 	ring_size = wlan_cfg_get_dp_soc_rxdma_err_dst_ring_size(soc_cfg_ctx);
