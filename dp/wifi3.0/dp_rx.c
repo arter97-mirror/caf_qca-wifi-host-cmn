@@ -961,20 +961,20 @@ void dp_rx_desc_reuse(struct dp_soc *soc, qdf_nbuf_t *nbuf_list)
 }
 #endif
 
-QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
-				struct dp_srng *dp_rxdma_srng,
-				struct rx_desc_pool *rx_desc_pool,
-				uint32_t num_req_buffers,
-				union dp_rx_desc_list_elem_t **desc_list,
-				union dp_rx_desc_list_elem_t **tail,
-				bool req_only, bool force_replenish,
-				const char *func_name)
+uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
+				   struct dp_srng *dp_rxdma_srng,
+				   struct rx_desc_pool *rx_desc_pool,
+				   uint32_t num_req_buffers,
+				   union dp_rx_desc_list_elem_t **desc_list,
+				   union dp_rx_desc_list_elem_t **tail,
+				   bool req_only, bool force_replenish,
+				   const char *func_name)
 {
 	uint32_t num_alloc_desc;
 	uint16_t num_desc_to_free = 0;
 	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(dp_soc, mac_id);
 	uint32_t num_entries_avail;
-	uint32_t count;
+	uint32_t count = 0;
 	uint32_t extra_buffers;
 	int sync_hw_ptr = 1;
 	struct dp_rx_nbuf_frag_info nbuf_frag_info = {0};
@@ -991,13 +991,13 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	if (qdf_unlikely(!dp_pdev)) {
 		dp_rx_err("%pK: pdev is null for mac_id = %d",
 			  dp_soc, mac_id);
-		return QDF_STATUS_E_FAILURE;
+		return 0;
 	}
 
 	if (qdf_unlikely(!rxdma_srng)) {
 		dp_rx_debug("%pK: rxdma srng not initialized", dp_soc);
 		DP_STATS_INC(dp_pdev, replenish.rxdma_err, num_req_buffers);
-		return QDF_STATUS_E_FAILURE;
+		return 0;
 	}
 
 	dp_verbose_debug("%pK: requested %d buffers for replenish",
@@ -1005,7 +1005,7 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 
 	if (dp_rx_buffers_is_skip_replenish(dp_soc, rx_desc_pool, desc_list,
 					    tail, &num_req_buffers, mac_id))
-		return QDF_STATUS_SUCCESS;
+		return 0;
 
 	hal_srng_access_start(dp_soc->hal_soc, rxdma_srng);
 
@@ -1079,7 +1079,7 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 			DP_STATS_INC(dp_pdev, err.desc_alloc_fail,
 					num_req_buffers);
 			hal_srng_access_end(dp_soc->hal_soc, rxdma_srng);
-			return QDF_STATUS_E_NOMEM;
+			return 0;
 		}
 
 		dp_verbose_debug("%pK: %d rx desc allocated", dp_soc,
@@ -1184,7 +1184,7 @@ free_descs:
 		dp_rx_add_desc_list_to_free_list(dp_soc, desc_list, tail,
 			mac_id, rx_desc_pool);
 
-	return QDF_STATUS_SUCCESS;
+	return count;
 }
 
 qdf_export_symbol(__dp_rx_buffers_replenish);

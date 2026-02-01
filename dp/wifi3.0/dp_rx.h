@@ -1904,17 +1904,16 @@ dp_rx_update_flow_tag(struct dp_soc *soc, struct dp_vdev *vdev,
  *                   is NULL and req_only is false
  * @func_name: name of the caller function
  *
- * Return: return success or failure
+ * Return: Num of buffers replenished
  */
-QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
-				 struct dp_srng *dp_rxdma_srng,
-				 struct rx_desc_pool *rx_desc_pool,
-				 uint32_t num_req_buffers,
-				 union dp_rx_desc_list_elem_t **desc_list,
-				 union dp_rx_desc_list_elem_t **tail,
-				 bool req_only,
-				 bool force_replenish,
-				 const char *func_name);
+uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
+				   struct dp_srng *dp_rxdma_srng,
+				   struct rx_desc_pool *rx_desc_pool,
+				   uint32_t num_req_buffers,
+				   union dp_rx_desc_list_elem_t **desc_list,
+				   union dp_rx_desc_list_elem_t **tail,
+				   bool req_only, bool force_replenish,
+				   const char *func_name);
 
 /**
  * __dp_rx_buffers_no_map_replenish() - replenish rxdma ring with rx nbufs

@@ -984,13 +984,16 @@ dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 	} else {
 		union dp_rx_desc_list_elem_t *tail = NULL;
 		union dp_rx_desc_list_elem_t *desc_list = NULL;
+		uint32_t count;
 
-		status = dp_rx_buffers_replenish(soc, mac_id,
-						 mon_buf_ring,
-						 rx_desc_pool,
-						 num_entries,
-						 &desc_list,
-						 &tail, false);
+		count = dp_rx_buffers_replenish(soc, mac_id,
+						mon_buf_ring,
+						rx_desc_pool,
+						num_entries,
+						&desc_list,
+						&tail, false);
+		if (!count)
+			status = QDF_STATUS_E_FAILURE;
 	}
 
 	return status;
