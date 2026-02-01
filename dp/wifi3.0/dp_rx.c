@@ -1012,9 +1012,14 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	num_entries_avail = hal_srng_src_num_avail(dp_soc->hal_soc,
 						   rxdma_srng,
 						   sync_hw_ptr);
-
 	dp_verbose_debug("%pK: no of available entries in rxdma ring: %d",
 			 dp_soc, num_entries_avail);
+	if (!num_entries_avail) {
+		/* Free all desc */
+		num_desc_to_free = num_req_buffers;
+		hal_srng_access_end(dp_soc->hal_soc, rxdma_srng);
+		goto free_descs;
+	}
 
 	if (!req_only && !(*desc_list) &&
 	    (force_replenish || (num_entries_avail >
