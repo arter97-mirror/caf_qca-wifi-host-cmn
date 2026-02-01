@@ -4233,10 +4233,12 @@ __dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
 	rx_desc_pool = &soc->rx_desc_buf[mac_id];
 	for (i = 0; i < soc->num_replenish_rings[mac_id]; i++) {
 		dp_rxdma_srng = soc->replenish_rings[mac_id][i];
-		dp_rx_buffers_replenish(soc, mac_id, dp_rxdma_srng,
-					rx_desc_pool, rx_bufs_reaped,
-					desc_list, tail, req_only);
-		rx_bufs_used += rx_bufs_reaped;
+		rx_bufs_used += dp_rx_buffers_replenish(soc, mac_id,
+							dp_rxdma_srng,
+							rx_desc_pool,
+							rx_bufs_reaped,
+							desc_list, tail,
+							req_only);
 	}
 
 	return rx_bufs_used;
