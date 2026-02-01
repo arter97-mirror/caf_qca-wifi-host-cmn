@@ -1173,9 +1173,9 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	 */
 	DP_STATS_INC_PKT(dp_pdev, replenish.pkts, count, 0);
 	DP_STATS_INC(dp_pdev, replenish.free_list, num_req_buffers - count);
-	dp_rx_desc_dec_in_use_count(rx_desc_pool, num_req_buffers, count);
 
 free_descs:
+	dp_rx_desc_dec_in_use_count(rx_desc_pool, num_req_buffers, count);
 	DP_STATS_INC(dp_pdev, buf_freelist, num_desc_to_free);
 	/*
 	 * add any available free desc back to the free list
