@@ -3258,8 +3258,6 @@ static int dp_rxdma_ring_alloc(struct dp_soc *soc, struct dp_pdev *pdev)
 					    soc);
 				return QDF_STATUS_E_FAILURE;
 			}
-
-			dp_direct_refill_setup(soc, pdev);
 		}
 	}
 	return QDF_STATUS_SUCCESS;
@@ -3290,6 +3288,7 @@ static int dp_rxdma_ring_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 				return QDF_STATUS_E_FAILURE;
 			}
 		}
+		dp_direct_refill_setup(soc, pdev);
 	}
 	return QDF_STATUS_SUCCESS;
 }
