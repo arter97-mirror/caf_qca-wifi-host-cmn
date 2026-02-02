@@ -97,6 +97,9 @@ struct ring_util_stats {
 
 #define HAL_OFFSET(block, field) block ## _ ## field ## _OFFSET
 
+#define HAL_DIRECT_REFILL_RING_NUM 1
+#define HAL_DIRECT_REFILL_RING_LMAC_ID 0
+
 #ifdef ENABLE_VERBOSE_DEBUG
 static inline void
 hal_set_verbose_debug(bool flag)

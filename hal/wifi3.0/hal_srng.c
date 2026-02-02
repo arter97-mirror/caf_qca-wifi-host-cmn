@@ -179,15 +179,15 @@ static struct hal_srng *hal_get_srng(struct hal_soc *hal, int ring_id)
 #define OFFSET_FROM_HP_TO_TP 4
 static void hal_update_srng_hp_tp_address(struct hal_soc *hal_soc,
 					  int shadow_config_index,
-					  int ring_type,
-					  int ring_num)
+					  int ring_type, int ring_num,
+					  uint8_t lmac_id)
 {
 	struct hal_srng *srng;
 	int ring_id;
 	struct hal_hw_srng_config *ring_config =
 		HAL_SRNG_CONFIG(hal_soc, ring_type);
 
-	ring_id = hal_get_srng_ring_id(hal_soc, ring_type, ring_num, 0);
+	ring_id = hal_get_srng_ring_id(hal_soc, ring_type, ring_num, lmac_id);
 	if (ring_id < 0)
 		return;
 
@@ -315,7 +315,7 @@ QDF_STATUS hal_set_one_shadow_config(void *hal_soc,
 
 	/* update hp/tp addr in the hal_soc structure*/
 	hal_update_srng_hp_tp_address(hal_soc, shadow_config_index, ring_type,
-				      ring_num);
+				      ring_num, 0);
 
 	hal_debug("target_reg %x, shadow register 0x%x shadow_index 0x%x, ring_type %d, ring num %d",
 		  target_register,
@@ -327,6 +327,86 @@ QDF_STATUS hal_set_one_shadow_config(void *hal_soc,
 }
 
 qdf_export_symbol(hal_set_one_shadow_config);
+
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline bool hal_srng_is_direct_refill(int ring_type, int ring_num,
+					     uint8_t lmac_id)
+{
+	if (ring_type == RXDMA_BUF && ring_num == HAL_DIRECT_REFILL_RING_NUM &&
+	    lmac_id == HAL_DIRECT_REFILL_RING_LMAC_ID)
+		return true;
+
+	return false;
+}
+
+QDF_STATUS hal_set_one_lmac_shadow_config(void *hal_soc_hdl, int ring_type,
+					  int ring_num, uint8_t lmac_id)
+{
+	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
+	struct hal_hw_srng_config *srng_config;
+	uint32_t target_register;
+	int shadow_config_index;
+
+	/* Below is the only LMAC ring for which shadow is configured */
+	if (!hal_srng_is_direct_refill(ring_type, ring_num, lmac_id))
+		return QDF_STATUS_SUCCESS;
+
+	srng_config = HAL_SRNG_CONFIG(hal_soc, ring_type);
+	shadow_config_index = hal_soc->num_shadow_registers_configured;
+	if (shadow_config_index >= MAX_SHADOW_REGISTERS) {
+		QDF_ASSERT(0);
+		return QDF_STATUS_E_RESOURCES;
+	}
+
+	hal_soc->num_shadow_registers_configured++;
+
+	target_register = HAL_PMM_SCRATCH_REG_IX_26;
+
+	hal_soc->shadow_config[shadow_config_index].addr = target_register;
+
+	/* update hp/tp addr in the hal_soc structure*/
+	hal_update_srng_hp_tp_address(hal_soc, shadow_config_index, ring_type,
+				      ring_num, lmac_id);
+
+	hal_debug("target_reg %x, shadow register 0x%x shadow_index 0x%x, ring_type %d, ring num %d lmac_id %u",
+		  target_register,
+		  SHADOW_REGISTER(shadow_config_index),
+		  shadow_config_index,
+		  ring_type, ring_num, lmac_id);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void hal_assign_lmac_ring_shadow(struct hal_soc *hal_soc,
+					       int ring_type)
+{
+	struct hal_hw_srng_config *srng_config =
+					HAL_SRNG_CONFIG(hal_soc, ring_type);
+	int ring_num;
+	uint8_t lmac_id;
+
+	/* As of now, only RXDMA_BUF type LMAC srng support shadow */
+	if (ring_type != RXDMA_BUF)
+		return;
+
+	for (lmac_id = 0; lmac_id < HAL_MAX_LMACS; lmac_id++)
+		for (ring_num = 0; ring_num < srng_config->max_rings;
+		     ring_num++)
+			hal_set_one_lmac_shadow_config(hal_soc, ring_type,
+						       ring_num, lmac_id);
+}
+#else
+static inline void hal_assign_lmac_ring_shadow(struct hal_soc *hal_soc,
+					       int ring_type)
+{
+}
+
+static inline bool hal_srng_is_direct_refill(int ring_type, int ring_num,
+					     uint8_t lmac_id)
+{
+	return false;
+}
+#endif
 
 QDF_STATUS hal_construct_srng_shadow_regs(void *hal_soc)
 {
@@ -342,8 +422,10 @@ QDF_STATUS hal_construct_srng_shadow_regs(void *hal_soc)
 		    ring_type == CE_DST_STATUS)
 			continue;
 
-		if (srng_config->lmac_ring)
+		if (srng_config->lmac_ring) {
+			hal_assign_lmac_ring_shadow(hal_soc, ring_type);
 			continue;
+		}
 
 		for (ring_num = 0; ring_num < srng_config->max_rings;
 		     ring_num++)
@@ -1871,7 +1953,9 @@ void *hal_srng_setup_idx(void *hal_soc, int ring_type, int ring_num, int mac_id,
 			qdf_mem_zero(srng->u.src_ring.tp_addr,
 				     sizeof(*hal->shadow_rdptr_mem_vaddr));
 
-		if (ring_config->lmac_ring) {
+		if (hal_srng_is_direct_refill(ring_type, ring_num, mac_id)) {
+			/* Do nothing for the direct refill srng */
+		} else if (ring_config->lmac_ring) {
 			/* For LMAC rings, head pointer updates will be done
 			 * through FW by writing to a shared memory location
 			 */

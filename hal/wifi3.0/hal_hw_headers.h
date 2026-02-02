@@ -78,6 +78,12 @@
 #include "rx_msdu_link.h"
 #include "hal_internal.h"
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+#include "wcss_seq_hwioreg_wifi_top.h"
+
+#define HAL_PMM_SCRATCH_REG_IX_26 HWIO_WFSS_PMM_R0_PMM_SW_META_S_PARE_IX_26_ADDR(WFSS_PMM_REG_BASE)
+#endif
+
 #define HAL_SRNG_REO_EXCEPTION HAL_SRNG_REO2SW1
 #define HAL_SRNG_REO_ALTERNATE_SELECT 0x7
 #define HAL_NON_QOS_TID 16
