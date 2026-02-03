@@ -238,8 +238,8 @@ static QDF_STATUS extract_dcs_im_tgt_stats_idx_tlv(
 	dcs_event->dcs_param.pdev_id =
 		wmi_handle->ops->convert_target_pdev_id_to_host(
 			wmi_handle,
-			param_buf->fixed_param->pdev_id);
-	dcs_event->dcs_param.vdev_id = param_buf->fixed_param->vdev_id;
+			ev->pdev_id);
+	dcs_event->dcs_param.vdev_id = ev->vdev_id;
 	copy_dcs_im_stats(&dcs_event->wlan_stat, ev);
 
 	return QDF_STATUS_SUCCESS;
