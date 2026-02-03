@@ -382,6 +382,39 @@ static int dp_dal_bus_start(struct dp_soc *soc)
 	return 0;
 }
 
+#if defined(FEATURE_DP_DAL_D3_WOW)
+static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
+				     uint32_t msi_data,
+				     void *suspend_msg_data_vaddr,
+				     qdf_dma_addr_t suspend_msg_data_paddr)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return -EINVAL;
+	}
+
+	dal_ctx->suspend_msg_msi_addr = msi_addr;
+	dal_ctx->suspend_msg_msi_data = msi_data;
+
+	/* Store DMA buffer info passed from dp_dal_sim.c */
+	dal_ctx->suspend_msg_data_vaddr = suspend_msg_data_vaddr;
+	dal_ctx->suspend_msg_data_paddr = suspend_msg_data_paddr;
+
+	return 0;
+}
+
+#else
+static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
+				     uint32_t msi_data,
+				     void *suspend_msg_data_vaddr,
+				     qdf_dma_addr_t suspend_msg_data_paddr)
+{
+	return 0;
+}
+#endif
+
 /**
  * dp_dal_bus_request_irq() - DAL IRQ registration function
  * @soc: pointer to DP SoC
@@ -1019,6 +1052,7 @@ struct vendor_cb_ops vendor_cb = {
 	.set_msi_config = dp_dal_set_msi_config,
 	.early_mode_switch_ind = dp_dal_early_mode_switch_ind_handler,
 	.mode_switch_ind = dp_dal_mode_switch_ind_handler,
+	.set_suspend_msi_config = dp_dal_set_suspend_config,
 };
 
 qdf_export_symbol(vendor_cb);
