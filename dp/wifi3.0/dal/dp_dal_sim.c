@@ -44,6 +44,98 @@ dp_dal_sim_d3_wow_event_destroy(struct dp_dal_sim_ctx *sim_ctx)
 {
 	qdf_event_destroy(&sim_ctx->suspend_msg_event);
 }
+
+/**
+ * dp_dal_sim_alloc_suspend_msg_buffer() - Allocate DMA buffer for FW write data
+ * @dal_ctx: DAL context
+ * @sim_ctx: DAL sim context
+ * @vaddr: Pointer to store virtual address
+ * @paddr: Pointer to store physical address
+ *
+ * This function allocates a DMA-coherent buffer for FW write data.
+ *
+ * Return: 0 on success, -ENOMEM on allocation failure
+ */
+static int
+dp_dal_sim_alloc_suspend_msg_buffer(struct dp_dal_ctx *dal_ctx,
+				  struct dp_dal_sim_ctx *sim_ctx,
+				  void **vaddr,
+				  qdf_dma_addr_t *paddr)
+{
+	void *suspend_msg_data_vaddr;
+	qdf_dma_addr_t suspend_msg_data_paddr;
+
+	suspend_msg_data_vaddr = qdf_mem_alloc_consistent(
+					dal_ctx->soc->osdev,
+					dal_ctx->soc->osdev->dev,
+					sizeof(uint32_t),
+					&suspend_msg_data_paddr);
+	if (!suspend_msg_data_vaddr) {
+		dp_err("Failed to allocate DMA buffer for FW write data");
+		return -ENOMEM;
+	}
+
+	*vaddr = suspend_msg_data_vaddr;
+	*paddr = suspend_msg_data_paddr;
+
+	dp_info("Allocated FW write DMA buffer: vaddr=%pK, paddr=0x%llx, size=%lu",
+		suspend_msg_data_vaddr, (uint64_t)suspend_msg_data_paddr,
+		sizeof(uint32_t));
+
+	return 0;
+}
+
+/**
+ * dp_dal_sim_free_suspend_msg_buffer() - Free DMA buffer for FW write data
+ * @sim_ctx: DAL sim context
+ *
+ * This function frees the DMA-coherent buffer allocated for FW write data.
+ */
+static void
+dp_dal_sim_free_suspend_msg_buffer(struct dp_dal_sim_ctx *sim_ctx)
+{
+	struct dp_dal_ctx *dal_ctx;
+
+	if (!sim_ctx)
+		return;
+
+	dal_ctx = (struct dp_dal_ctx *)sim_ctx->dp_dal_ctx;
+	if (!dal_ctx || !dal_ctx->soc)
+		return;
+
+	if (sim_ctx->suspend_msg_data_vaddr) {
+		qdf_mem_free_consistent(dal_ctx->soc->osdev,
+					dal_ctx->soc->osdev->dev,
+					sizeof(uint32_t),
+					sim_ctx->suspend_msg_data_vaddr,
+					sim_ctx->suspend_msg_data_paddr,
+					0);
+		sim_ctx->suspend_msg_data_vaddr = NULL;
+		sim_ctx->suspend_msg_data_paddr = 0;
+
+		dp_info("Freed FW write DMA buffer");
+	}
+}
+
+static inline int
+dp_dal_sim_suspend_msg_buffer_init(struct dp_dal_ctx *dal_ctx)
+{
+	struct dp_dal_sim_ctx *sim_ctx = dal_ctx->dal_sim_ctx;
+	void *vaddr;
+	qdf_dma_addr_t paddr;
+	int status;
+
+	/* Allocate DMA buffer for suspend message data */
+	status = dp_dal_sim_alloc_suspend_msg_buffer(dal_ctx, sim_ctx,
+						     &vaddr, &paddr);
+	if (status)
+		return status;
+
+	sim_ctx->suspend_msg_data_vaddr = vaddr;
+	sim_ctx->suspend_msg_data_paddr = paddr;
+
+	return 0;
+}
 #else
 static inline void
 dp_dal_sim_d3_wow_event_create(struct dp_dal_sim_ctx *sim_ctx)
@@ -53,6 +145,17 @@ dp_dal_sim_d3_wow_event_create(struct dp_dal_sim_ctx *sim_ctx)
 static inline void
 dp_dal_sim_d3_wow_event_destroy(struct dp_dal_sim_ctx *sim_ctx)
 {
+}
+
+static inline void
+dp_dal_sim_free_suspend_msg_buffer(struct dp_dal_sim_ctx *sim_ctx)
+{
+}
+
+static inline int
+dp_dal_sim_suspend_msg_buffer_init(struct dp_dal_ctx *dal_ctx)
+{
+	return 0;
 }
 #endif /* FEATURE_DP_DAL_D3_WOW */
 
@@ -756,6 +859,9 @@ void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
 	dp_dal_sim_sw2sw_rings_deinit(sim_ctx);
 	dp_dal_offload_sim_deinit(sim_ctx);
 
+	/* Free FW write DMA buffer if allocated */
+	dp_dal_sim_free_suspend_msg_buffer(sim_ctx);
+
 	sim_ctx->sim_ctx_initialized = false;
 }
 
@@ -924,6 +1030,10 @@ static int dp_dal_sim_request_irq(void *priv)
 	status = dp_dal_sim_set_ring_msi(dp_dal_ctx, sim_ctx,
 					 sim_ctx->tx_cmpl_ring,
 					 DAL_SIM_NUM_TX_RINGS);
+	if (status)
+		return status;
+
+	status = dp_dal_sim_suspend_msg_buffer_init(dp_dal_ctx);
 	if (status)
 		return status;
 
@@ -1353,6 +1463,7 @@ static int dp_dal_sim_sta_active(void *priv, struct sta_info *info, bool enable)
 /**
  * dp_dal_sim_notify_suspend() - Handle suspend notification
  * @priv: Pointer to private data (DAL context)
+ * @intf_pause: Flag to indicate if interface pause is required
  *
  * This function handles system suspend notifications for the DAL simulator.
  * It checks if descriptor lists are empty and waits up to 100ms (in 10ms
