@@ -32,6 +32,30 @@ struct platform_bus_ops *global_plat_ops;
 extern struct vendor_cb_ops vendor_cb;
 extern struct platform_bus_ops plat_ops_bypass_mode;
 
+#ifdef FEATURE_DP_DAL_D3_WOW
+static inline void
+dp_dal_sim_d3_wow_event_create(struct dp_dal_sim_ctx *sim_ctx)
+{
+	qdf_event_create(&sim_ctx->suspend_msg_event);
+}
+
+static inline void
+dp_dal_sim_d3_wow_event_destroy(struct dp_dal_sim_ctx *sim_ctx)
+{
+	qdf_event_destroy(&sim_ctx->suspend_msg_event);
+}
+#else
+static inline void
+dp_dal_sim_d3_wow_event_create(struct dp_dal_sim_ctx *sim_ctx)
+{
+}
+
+static inline void
+dp_dal_sim_d3_wow_event_destroy(struct dp_dal_sim_ctx *sim_ctx)
+{
+}
+#endif /* FEATURE_DP_DAL_D3_WOW */
+
 /* ========================================================================
  * Descriptor List Management Functions
  * ========================================================================
@@ -595,6 +619,8 @@ static void dp_dal_sim_destroy_work(struct dp_dal_sim_ctx *dal_sim_ctx)
 		qdf_disable_work(&dal_sim_ctx->tx_compl_process_work[i]);
 	}
 
+	dp_dal_sim_d3_wow_event_destroy(dal_sim_ctx);
+
 	dp_debug("DAL sim workqueues and work items destroyed successfully");
 }
 
@@ -688,6 +714,8 @@ static int dp_dal_sim_init(void *priv)
 
 		qdf_atomic_init(&sim_ctx->tx_compl_work_scheduled[i]);
 	}
+
+	dp_dal_sim_d3_wow_event_create(sim_ctx);
 
 	qdf_spinlock_create(&sim_ctx->rxbm_sync_lock);
 
