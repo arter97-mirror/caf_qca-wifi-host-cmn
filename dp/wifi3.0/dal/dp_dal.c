@@ -207,10 +207,11 @@ static int dp_dal_sta_active_bypass_mode(void *priv,
  * suspend in bypass mode
  *
  * @priv: private data
+ * @intf_pause: Interface pause flag
  *
  * Return: 0 on success
  */
-static int dp_dal_notify_suspend_bypass_mode(void *priv)
+static int dp_dal_notify_suspend_bypass_mode(void *priv, bool intf_pause)
 {
 	return 0;
 }
@@ -1850,6 +1851,7 @@ void dp_dal_notify_sta_active(struct dp_soc *soc,
 /**
  * dp_dal_notify_suspend() - DAL wrapper for platform notify suspend
  * @soc: pointer to DP SoC
+ * @intf_pause: Interface pause flag
  *
  * This function calls the global platform ops notify_suspend function.
  * When this returns successfully, it means there are no pending transactions
@@ -1857,7 +1859,7 @@ void dp_dal_notify_sta_active(struct dp_soc *soc,
  *
  * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE on failure
  */
-QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
+QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc, bool intf_pause)
 {
 	struct dp_dal_ctx *dal_ctx;
 	QDF_STATUS status;
@@ -1886,7 +1888,7 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
 	}
 
 	if (global_plat_ops && global_plat_ops->notify_suspend)
-		ret = global_plat_ops->notify_suspend(dal_ctx);
+		ret = global_plat_ops->notify_suspend(dal_ctx, intf_pause);
 
 	if (ret) {
 		dp_err_rl("Suspend notify to DAL failed %d", ret);

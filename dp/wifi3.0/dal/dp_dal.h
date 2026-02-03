@@ -110,7 +110,7 @@ struct platform_bus_ops {
 	bool (*tx_cpl)(void *priv, u32 *cnt, u16 ring_id);
 	int (*tx_queue_active)(void *priv, u16 flowid, bool enable);
 	int (*sta_active)(void *priv, struct sta_info *info, bool enable);
-	int (*notify_suspend)(void *priv);
+	int (*notify_suspend)(void *priv, bool intf_pause);
 	int (*notify_resume)(void *priv);
 	void (*ssr_dump)(void *segment);
 	int (*intf_init)(void *priv, void *intf_info);
@@ -484,6 +484,7 @@ void dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev);
 /**
  * dp_dal_notify_suspend() - DAL wrapper for platform notify suspend
  * @soc: pointer to DP SoC
+ * @intf_pause: Interface pause flag
  *
  * This function calls the global platform ops notify_suspend function.
  * When this returns successfully, it means there are no pending transactions
@@ -491,7 +492,7 @@ void dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev);
  *
  * Return: 0 on success, negative error code on failure
  */
-QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc);
+QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc, bool intf_pause);
 
 /**
  * dp_dal_notify_resume() - DAL wrapper for platform notify resume
@@ -630,7 +631,8 @@ dp_dal_interface_remove(struct dp_soc *soc, struct dp_vdev *vdev)
 {
 }
 
-static inline QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc)
+static inline QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc,
+					       bool intf_pause)
 {
 	return QDF_STATUS_SUCCESS;
 }

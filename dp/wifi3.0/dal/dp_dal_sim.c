@@ -1332,7 +1332,7 @@ static int dp_dal_sim_sta_active(void *priv, struct sta_info *info, bool enable)
  *
  * Return: 0 on success (lists are empty), negative error code on failure
  */
-static int dp_dal_sim_notify_suspend(void *priv)
+static int dp_dal_sim_notify_suspend(void *priv, bool intf_pause)
 {
 	struct dp_dal_ctx *dp_dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_dal_sim_ctx *sim_ctx;
