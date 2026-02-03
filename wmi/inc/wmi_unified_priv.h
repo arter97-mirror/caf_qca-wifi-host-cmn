@@ -2211,6 +2211,8 @@ QDF_STATUS (*extract_chan_stats)(wmi_unified_t wmi_handle, void *evt_buf,
 QDF_STATUS (*extract_recv_bcn_stats)(
 			wmi_unified_t wmi_handle, void *evt_buf, uint32_t index,
 			struct wmi_host_recv_bcn_stats *recv_bcn_stats);
+QDF_STATUS (*send_peer_assoc_v2_cmd)(wmi_unified_t wmi_handle,
+				     struct peer_assoc_params *param);
 
 #ifdef WLAN_FEATURE_MIB_STATS
 QDF_STATUS (*extract_mib_stats)(wmi_unified_t wmi_handle, void *evt_buf,

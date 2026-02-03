@@ -752,6 +752,8 @@ enum element_ie {
  * @WLAN_EXTN_ELEMID_T2LM: TID-to-link mapping IE
  * @WLAN_EXTN_ELEMID_MULTI_LINK_TRAFFIC_IND: Multi-link Traffic Indication IE
  * @WLAN_EXTN_ELEMID_BW_IND: Bandwidth Indication Element Sub IE
+ * @WLAN_EXTN_ELEMID_UHRCAP: UHR Capabilities IE
+ * @WLAN_EXTN_ELEMID_UHROP: UHR Operation IE
  */
 enum extn_element_ie {
 	WLAN_EXTN_ELEMID_ESP         = 11,
@@ -778,6 +780,10 @@ enum extn_element_ie {
 	WLAN_EXTN_ELEMID_MULTI_LINK_TRAFFIC_IND = 110,
 #ifdef WLAN_FEATURE_11BE
 	WLAN_EXTN_ELEMID_BW_IND = 135,
+#endif
+#ifdef WLAN_FEATURE_11BN
+	WLAN_EXTN_ELEMID_UHROP       = 151,
+	WLAN_EXTN_ELEMID_UHRCAP      = 152,
 #endif
 };
 

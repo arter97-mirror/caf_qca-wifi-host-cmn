@@ -186,6 +186,8 @@ enum mgmt_ch_width {
  * @DOT11_MODE_11AX_ONLY: 802.11-AX only mode
  * @DOT11_MODE_11BE: 802.11-BE mode
  * @DOT11_MODE_11BE_ONLY: 802.11-BE only mode
+ * @DOT11_MODE_11BN: 802.11-BN mode
+ * @DOT11_MODE_11BN_ONLY: 802.11-BN only mode
  * @DOT11_MODE_MAX: max enumeration
  */
 enum mgmt_dot11_mode {
@@ -203,6 +205,8 @@ enum mgmt_dot11_mode {
 	DOT11_MODE_11AX_ONLY = 0x0b,
 	DOT11_MODE_11BE = 0x0c,
 	DOT11_MODE_11BE_ONLY = 0x0d,
+	DOT11_MODE_11BN = 0x0e,
+	DOT11_MODE_11BN_ONLY = 0x0f,
 	DOT11_MODE_MAX = 0xff,
 };
 

@@ -347,6 +347,7 @@ struct vdev_mlme_eht_ops_info {
  * @MLME_VDEV_DOT11_MODE_11AC: vdev supports 11AC mode
  * @MLME_VDEV_DOT11_MODE_11AX: vdev supports 11AX mode
  * @MLME_VDEV_DOT11_MODE_11BE: vdev supports 11BE mode
+ * @MLME_VDEV_DOT11_MODE_11BN: vdev supports 11BN mode
  */
 enum mlme_vdev_dot11_mode {
 	MLME_VDEV_DOT11_MODE_AUTO,
@@ -354,6 +355,7 @@ enum mlme_vdev_dot11_mode {
 	MLME_VDEV_DOT11_MODE_11AC,
 	MLME_VDEV_DOT11_MODE_11AX,
 	MLME_VDEV_DOT11_MODE_11BE,
+	MLME_VDEV_DOT11_MODE_11BN,
 };
 
 /**

@@ -3820,6 +3820,24 @@ static QDF_STATUS send_beacon_tmpl_send_cmd_tlv(wmi_unified_t wmi_handle,
 	return 0;
 }
 
+#ifdef WLAN_FEATURE_11BN
+static inline void copy_peer_flags_tlv_11bn(
+			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
+			struct peer_assoc_params *param)
+{
+	if (param->uhr_flag)
+		cmd->peer_flags_ext |= WMI_PEER_EXT_UHR;
+
+	wmi_debug("UHR peer_flags_ext 0x%x", cmd->peer_flags_ext);
+}
+#else
+static inline void copy_peer_flags_tlv_11bn(
+			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
+			struct peer_assoc_params *param)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE
 static inline void copy_peer_flags_tlv_11be(
 			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
@@ -3891,6 +3909,7 @@ static inline void copy_peer_flags_tlv(
 			cmd->peer_flags |= WMI_PEER_160MHZ;
 
 		copy_peer_flags_tlv_11be(cmd, param);
+		copy_peer_flags_tlv_11bn(cmd, param);
 		copy_peer_flags_tlv_vendor(cmd, param);
 
 		/* Typically if STBC is enabled for VHT it should be enabled
@@ -4042,6 +4061,100 @@ static uint8_t *update_peer_flags_tlv_ehtinfo(
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+static uint8_t *update_peer_flags_tlv_uhrinfo(
+			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
+			struct peer_assoc_params *param, uint8_t *buf_ptr)
+{
+	wmi_uhr_rate_set *uhr_mcs;
+	int i;
+
+	cmd->peer_uhr_ops = param->peer_uhr_ops;
+
+	 /* Copy EHT ppet and MCS rates to UHR */
+	if (param->peer_eht_mcs_count) {
+		qdf_mem_copy(&param->peer_uhr_ppet, &param->peer_eht_ppet,
+			     sizeof(param->peer_eht_ppet));
+		param->peer_uhr_mcs_count = QDF_MIN(param->peer_eht_mcs_count,
+						    WMI_HOST_MAX_UHR_RATE_SET);
+		qdf_mem_copy(param->peer_uhr_rx_mcs_set,
+			     param->peer_eht_rx_mcs_set,
+			     param->peer_uhr_mcs_count *
+			     sizeof(param->peer_eht_rx_mcs_set[0]));
+		qdf_mem_copy(param->peer_uhr_tx_mcs_set,
+			     param->peer_eht_tx_mcs_set,
+			     param->peer_uhr_mcs_count *
+			     sizeof(param->peer_eht_tx_mcs_set[0]));
+	}
+
+	qdf_mem_copy(&cmd->peer_uhr_cap_mac, &param->peer_uhr_cap_macinfo,
+		     sizeof(param->peer_uhr_cap_macinfo));
+	qdf_mem_copy(&cmd->peer_uhr_cap_phy, &param->peer_uhr_cap_phyinfo,
+		     sizeof(param->peer_uhr_cap_phyinfo));
+	qdf_mem_copy(&cmd->peer_uhr_ppet, &param->peer_uhr_ppet,
+		     sizeof(param->peer_uhr_ppet));
+
+	if (param->peer_uhr_mcs_count > WMI_HOST_MAX_UHR_RATE_SET) {
+		wmi_debug("UHR MCS count %d exceeds max %d",
+			  param->peer_uhr_mcs_count, WMI_HOST_MAX_UHR_RATE_SET);
+		param->peer_uhr_mcs_count = WMI_HOST_MAX_UHR_RATE_SET;
+	}
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       (param->peer_uhr_mcs_count * sizeof(wmi_uhr_rate_set)));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* Loop through the UHR rate set */
+	for (i = 0; i < param->peer_uhr_mcs_count; i++) {
+		uhr_mcs = (wmi_uhr_rate_set *)buf_ptr;
+		WMITLV_SET_HDR(uhr_mcs, WMITLV_TAG_STRUC_wmi_uhr_rate_set,
+			       WMITLV_GET_STRUCT_TLVLEN(wmi_uhr_rate_set));
+
+		uhr_mcs->rx_mcs_set = param->peer_uhr_rx_mcs_set[i];
+		uhr_mcs->tx_mcs_set = param->peer_uhr_tx_mcs_set[i];
+		wmi_debug("UHR idx %d RxMCSmap %x TxMCSmap %x ",
+			  i, uhr_mcs->rx_mcs_set, uhr_mcs->tx_mcs_set);
+		buf_ptr += sizeof(wmi_uhr_rate_set);
+	}
+
+	wmi_debug("nss %d ru mask 0x%x",
+		  cmd->peer_uhr_ppet.numss_m1, cmd->peer_uhr_ppet.ru_mask);
+	for (i = 0; i <  WMI_MAX_NUM_SS; i++) {
+		wmi_debug("ppet idx %d ppet %x ",
+			  i, cmd->peer_uhr_ppet.ppet16_ppet8_ru3_ru0[i]);
+	}
+
+	if ((param->uhr_flag) && (param->peer_uhr_mcs_count > 1) &&
+	    (param->peer_uhr_rx_mcs_set[WMI_HOST_UHR_TXRX_MCS_NSS_IDX_160]
+	     == WMI_HOST_UHR_INVALID_MCSNSSMAP ||
+	     param->peer_uhr_tx_mcs_set[WMI_HOST_UHR_TXRX_MCS_NSS_IDX_160]
+	     == WMI_HOST_UHR_INVALID_MCSNSSMAP)) {
+		wmi_debug("param->peer_uhr_tx_mcs_set[160MHz] = %x",
+			  param->peer_uhr_tx_mcs_set
+			  [WMI_HOST_UHR_TXRX_MCS_NSS_IDX_160]);
+		wmi_debug("param->peer_uhr_rx_mcs_set[160MHz] = %x",
+			  param->peer_uhr_rx_mcs_set
+			  [WMI_HOST_UHR_TXRX_MCS_NSS_IDX_160]);
+		wmi_debug("peer_mac = " QDF_MAC_ADDR_FMT,
+			  QDF_MAC_ADDR_REF(param->peer_mac));
+	}
+
+	wmi_debug("UHR cap_mac %x %x uhrops %x  UHR phy %x  %x  %x  pp %x",
+		  cmd->peer_uhr_cap_mac[0],
+		  cmd->peer_uhr_cap_mac[1], cmd->peer_uhr_ops,
+		  cmd->peer_uhr_cap_phy[0], cmd->peer_uhr_cap_phy[1],
+		  cmd->peer_uhr_cap_phy[2], cmd->puncture_20mhz_bitmap);
+	return buf_ptr;
+}
+#else
+static uint8_t *update_peer_flags_tlv_uhrinfo(
+			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
+			struct peer_assoc_params *param, uint8_t *buf_ptr)
+{
+	return buf_ptr;
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE
 static
 uint32_t wmi_eht_peer_assoc_params_len(struct peer_assoc_params *param)
@@ -4073,9 +4186,22 @@ static void wmi_populate_service_11bn(uint32_t *wmi_service)
 {
 	wmi_service[wmi_service_11bn] = WMI_SERVICE_11BN;
 }
+
+static
+uint32_t wmi_uhr_peer_assoc_params_len(struct peer_assoc_params *param)
+{
+	return (sizeof(wmi_uhr_rate_set) * param->peer_eht_mcs_count
+		+ WMI_TLV_HDR_SIZE);
+}
 #else
 static inline void wmi_populate_service_11bn(uint32_t *wmi_service)
 {
+}
+
+static
+uint32_t wmi_uhr_peer_assoc_params_len(struct peer_assoc_params *param)
+{
+	return 0;
 }
 #endif
 
@@ -4342,7 +4468,7 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	WMITLV_SET_HDR(&cmd->tlv_header,
 		       WMITLV_TAG_STRUC_wmi_peer_assoc_complete_cmd_fixed_param,
 		       WMITLV_GET_STRUCT_TLVLEN
-			       (wmi_peer_assoc_complete_cmd_fixed_param));
+		       (wmi_peer_assoc_complete_cmd_fixed_param));
 
 	/* Fill peer assoc command parameters */
 	wmi_peer_assoc_cmd_fill_params(cmd, param);
@@ -4363,10 +4489,140 @@ static QDF_STATUS send_peer_assoc_cmd_tlv(wmi_unified_t wmi_handle,
 	buf_ptr = peer_assoc_add_tid_to_link_map(buf_ptr, param);
 
 	wmi_mtrace(WMI_PEER_ASSOC_CMDID, cmd->vdev_id, 0);
-	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
-				   WMI_PEER_ASSOC_CMDID);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len, WMI_PEER_ASSOC_CMDID);
 	if (QDF_IS_STATUS_ERROR(ret)) {
-		wmi_err("Failed to send peer assoc command ret = %d", ret);
+		wmi_err("Failed to send peer assoc cmd, ret = %d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * send_peer_assoc_v2_cmd_tlv() - WMI peer assoc v2 function
+ * @wmi_handle: handle to WMI.
+ * @param: pointer to peer assoc parameter
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS send_peer_assoc_v2_cmd_tlv(wmi_unified_t wmi_handle,
+					     struct peer_assoc_params *param)
+{
+	wmi_peer_assoc_complete_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	int32_t len;
+	uint8_t *buf_ptr;
+	QDF_STATUS ret;
+	uint32_t peer_legacy_rates_align;
+	uint32_t peer_ht_rates_align;
+	wmi_peer_assoc_cfp_params *v2_cfp;
+	wmi_peer_assoc_smd_params *smd;
+
+	peer_legacy_rates_align = wmi_align(param->peer_legacy_rates.num_rates);
+	peer_ht_rates_align = wmi_align(param->peer_ht_rates.num_rates);
+
+	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE +
+		(peer_legacy_rates_align * sizeof(uint8_t)) +
+		WMI_TLV_HDR_SIZE +
+		(peer_ht_rates_align * sizeof(uint8_t)) +
+		sizeof(wmi_vht_rate_set) +
+		(sizeof(wmi_he_rate_set) * param->peer_he_mcs_count
+		+ WMI_TLV_HDR_SIZE)
+		+ wmi_eht_peer_assoc_params_len(param) +
+		peer_assoc_mlo_params_size(param) +
+		peer_assoc_t2lm_params_size(param) +
+		/* wmi_peer_assoc_operating_mode_params */
+		WMI_TLV_HDR_SIZE +
+		/* wmi_peer_assoc_mgmt_mpduq_params */
+		WMI_TLV_HDR_SIZE +
+		/* wmi_peer_assoc_mgmt_msduq_params */
+		WMI_TLV_HDR_SIZE +
+		/* wmi_peer_assoc_hol_msduq_params */
+		WMI_TLV_HDR_SIZE +
+		/* wmi_peer_uhr_npca_cap_params */
+		WMI_TLV_HDR_SIZE +
+		/* wmi_peer_create_mlo_params */
+		WMI_TLV_HDR_SIZE +
+		/* wmi_peer_assoc_cfp_params */
+		sizeof(wmi_peer_assoc_cfp_params) +
+		/* wmi_peer_assoc_smd_params */
+		sizeof(wmi_peer_assoc_smd_params) +
+		wmi_uhr_peer_assoc_params_len(param);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = (uint8_t *) wmi_buf_data(buf);
+	cmd = (wmi_peer_assoc_complete_cmd_fixed_param *) buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_complete_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_peer_assoc_complete_cmd_fixed_param));
+
+	/* Fill peer assoc command parameters */
+	wmi_peer_assoc_cmd_fill_params(cmd, param);
+	/* Fill peer assoc rate information */
+	buf_ptr += sizeof(*cmd);
+	buf_ptr = wmi_peer_assoc_cmd_fill_rates(buf_ptr, param,
+						peer_legacy_rates_align,
+						peer_ht_rates_align);
+
+	/* Fill peer assoc HE rate information and debug logging */
+	buf_ptr = wmi_peer_assoc_cmd_fill_he_rates(buf_ptr, cmd, param);
+	buf_ptr = peer_assoc_add_mlo_params(buf_ptr, param);
+
+	buf_ptr = update_peer_flags_tlv_ehtinfo(cmd, param, buf_ptr);
+
+	buf_ptr = peer_assoc_add_ml_partner_links(buf_ptr, param);
+
+	buf_ptr = peer_assoc_add_tid_to_link_map(buf_ptr, param);
+
+	/* operating mode params */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* Mgmt mpduq params */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* Mgmt msduq params */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* Hol msduq params */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* NPCA capabilities */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* peer create MLO params */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* v2 CFP struct */
+	v2_cfp = (wmi_peer_assoc_cfp_params *)buf_ptr;
+	WMITLV_SET_HDR(&v2_cfp->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_cfp_params,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_cfp_params));
+	/* Optionally fill v2_cfp */
+	buf_ptr += sizeof(*v2_cfp);
+
+	/* smd_params (STRUCT) */
+	smd = (wmi_peer_assoc_smd_params *)buf_ptr;
+	WMITLV_SET_HDR(&smd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_smd_params,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_smd_params));
+	buf_ptr += sizeof(*smd);
+
+	buf_ptr = update_peer_flags_tlv_uhrinfo(cmd, param, buf_ptr);
+	wmi_mtrace(WMI_PEER_ASSOC_V2_CMDID, cmd->vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_PEER_ASSOC_V2_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send peer assoc v2 cmd, ret = %d", ret);
 		wmi_buf_free(buf);
 	}
 
@@ -9055,6 +9311,39 @@ wmi_host_to_fw_phymode_11be(enum wlan_phymode host_phymode)
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+static WMI_HOST_WLAN_PHY_MODE
+wmi_host_to_fw_phymode_11bn(enum wlan_phymode host_phymode)
+{
+	switch (host_phymode) {
+	case WLAN_PHYMODE_11BNA_UHR20:
+		return WMI_HOST_MODE_11BN_UHR20;
+	case WLAN_PHYMODE_11BNA_UHR40:
+		return WMI_HOST_MODE_11BN_UHR40;
+	case WLAN_PHYMODE_11BNA_UHR80:
+		return WMI_HOST_MODE_11BN_UHR80;
+	case WLAN_PHYMODE_11BNA_UHR160:
+		return WMI_HOST_MODE_11BN_UHR160;
+	case WLAN_PHYMODE_11BNA_UHR320:
+		return WMI_HOST_MODE_11BN_UHR320;
+	case WLAN_PHYMODE_11BNG_UHR20:
+		return WMI_HOST_MODE_11BN_UHR20_2G;
+	case WLAN_PHYMODE_11BNG_UHR40:
+	case WLAN_PHYMODE_11BNG_UHR40PLUS:
+	case WLAN_PHYMODE_11BNG_UHR40MINUS:
+		return WMI_HOST_MODE_11BN_UHR40_2G;
+	default:
+		return WMI_HOST_MODE_UNKNOWN;
+	}
+}
+#else
+static WMI_HOST_WLAN_PHY_MODE
+wmi_host_to_fw_phymode_11bn(enum wlan_phymode host_phymode)
+{
+	return WMI_HOST_MODE_UNKNOWN;
+}
+#endif
+
 WMI_HOST_WLAN_PHY_MODE wmi_host_to_fw_phymode(enum wlan_phymode host_phymode)
 {
 	switch (host_phymode) {
@@ -9113,7 +9402,11 @@ WMI_HOST_WLAN_PHY_MODE wmi_host_to_fw_phymode(enum wlan_phymode host_phymode)
 	case WLAN_PHYMODE_11AXG_HE80:
 		return WMI_HOST_MODE_11AX_HE80_2G;
 	default:
-		return wmi_host_to_fw_phymode_11be(host_phymode);
+		if (wmi_host_to_fw_phymode_11be(host_phymode) !=
+		    WMI_HOST_MODE_UNKNOWN)
+			return wmi_host_to_fw_phymode_11be(host_phymode);
+		return wmi_host_to_fw_phymode_11bn(host_phymode);
+
 	}
 }
 
@@ -16161,7 +16454,7 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 {
 	WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf;
 	WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps;
-	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2;
+	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2 = NULL;
 
 	if (!event) {
 		wmi_err("null evt_buf");
@@ -16177,7 +16470,8 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 		return QDF_STATUS_E_INVAL;
 
 	mac_phy_caps = &param_buf->mac_phy_caps[phy_idx];
-	mac_phy_caps2 = &param_buf->mac_phy_caps2[phy_idx];
+	if (param_buf->num_mac_phy_caps2)
+		mac_phy_caps2 = &param_buf->mac_phy_caps2[phy_idx];
 
 	if ((hw_mode_id != mac_phy_caps->hw_mode_id) ||
 	    (phy_id != mac_phy_caps->phy_id))
@@ -16195,6 +16489,12 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 	extract_mac_phy_mldcap(param, mac_phy_caps);
 	extract_mac_phy_msdcap(param, mac_phy_caps);
 	extract_mac_phy_ext_mldcap(param, mac_phy_caps);
+
+	if (qdf_unlikely(!mac_phy_caps2) ||
+	    hw_mode_id != mac_phy_caps2->hw_mode_id ||
+	    phy_id != mac_phy_caps2->phy_id)
+		return QDF_STATUS_SUCCESS;
+
 	extract_mac_phy_cap_uhrcaps(param, mac_phy_caps2);
 
 	return QDF_STATUS_SUCCESS;
@@ -24327,6 +24627,7 @@ struct wmi_ops tlv_ops =  {
 #endif
 	.extract_vdev_current_operating_param_event =
 			extract_vdev_current_operating_param_event_tlv,
+	.send_peer_assoc_v2_cmd = send_peer_assoc_v2_cmd_tlv,
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO

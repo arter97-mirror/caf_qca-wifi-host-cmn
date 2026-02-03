@@ -627,6 +627,15 @@ typedef enum {
 	WMI_HOST_MODE_11BE_EHT20_2G = 31,
 	WMI_HOST_MODE_11BE_EHT40_2G = 32,
 #endif
+#ifdef WLAN_FEATURE_11BN
+	WMI_HOST_MODE_11BN_UHR20 = 33,
+	WMI_HOST_MODE_11BN_UHR40 = 34,
+	WMI_HOST_MODE_11BN_UHR80 = 35,
+	WMI_HOST_MODE_11BN_UHR160 = 36,
+	WMI_HOST_MODE_11BN_UHR320 = 37,
+	WMI_HOST_MODE_11BN_UHR20_2G = 38,
+	WMI_HOST_MODE_11BN_UHR40_2G = 39,
+#endif
 	WMI_HOST_MODE_UNKNOWN,
 	WMI_HOST_MODE_MAX = WMI_HOST_MODE_UNKNOWN,
 } WMI_HOST_WLAN_PHY_MODE;
@@ -1256,6 +1265,18 @@ typedef struct {
 #define WMI_HOST_EHT_TXRX_MCS_NSS_IDX_320   2
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+#define WMI_HOST_MAX_UHRCAP_PHY_SIZE        8
+#define WMI_HOST_MAX_UHRCAP_MAC_SIZE        4
+#define WMI_HOST_UHRCAP_MAC_WORD1           0
+#define WMI_HOST_UHRCAP_MAC_WORD2           1
+#define WMI_HOST_MAX_UHR_RATE_SET           4
+#define WMI_HOST_UHR_INVALID_MCSNSSMAP (0xFFFF)
+#define WMI_HOST_UHR_TXRX_MCS_NSS_IDX_80    0
+#define WMI_HOST_UHR_TXRX_MCS_NSS_IDX_160   1
+#define WMI_HOST_UHR_TXRX_MCS_NSS_IDX_320   2
+#endif
+
 /**
  * struct wmi_host_ppe_threshold -PPE threshold
  * @numss_m1: NSS - 1
@@ -1615,6 +1636,7 @@ struct peer_assoc_ml_partner_links {
  * @peer_mac: Peer mac address
  * @he_flag: HE flags
  * @eht_flag: EHT flags
+ * @uhr_flag: UHR flags
  * @twt_requester: TWT Requester Support bit in Extended Capabilities element
  * @twt_responder: TWT Responder Support bit in Extended Capabilities element
  * @peer_he_cap_macinfo: Peer HE Cap MAC info
@@ -1647,6 +1669,13 @@ struct peer_assoc_ml_partner_links {
  * @t2lm_params: TID-to-link mapping params
  * @peer_cck_rx_support_5ghz: Peer CCK RX support
  * @peer_cck_tx_support_5ghz: Peer CCK TX support
+ * @peer_uhr_cap_macinfo: Peer UHR Cap MAC info
+ * @peer_uhr_ops: Peer UHR operation info
+ * @peer_uhr_cap_phyinfo: Peer UHR Cap PHY info
+ * @peer_uhr_mcs_count: Peer UHR MCS TX/RX MAP count
+ * @peer_uhr_rx_mcs_set: Peer UHR RX MCS MAP
+ * @peer_uhr_tx_mcs_set: Peer UHR TX MCS MAP
+ * @peer_uhr_ppet: Peer UHR PPET info
  */
 struct peer_assoc_params {
 	uint32_t vdev_id;
@@ -1705,6 +1734,9 @@ struct peer_assoc_params {
 #ifdef WLAN_FEATURE_11BE
 	bool eht_flag;
 #endif
+#ifdef WLAN_FEATURE_11BN
+	bool uhr_flag;
+#endif
 	bool twt_requester;
 	bool twt_responder;
 	uint32_t peer_he_cap_macinfo[WMI_HOST_MAX_HECAP_MAC_SIZE];
@@ -1743,6 +1775,15 @@ struct peer_assoc_params {
 #endif
 	uint8_t peer_cck_rx_support_5ghz : 1,
 		peer_cck_tx_support_5ghz: 1;
+#ifdef WLAN_FEATURE_11BN
+	uint32_t peer_uhr_cap_macinfo[WMI_HOST_MAX_UHRCAP_MAC_SIZE];
+	uint32_t peer_uhr_ops;
+	uint32_t peer_uhr_cap_phyinfo[WMI_HOST_MAX_UHRCAP_PHY_SIZE];
+	uint32_t peer_uhr_mcs_count;
+	uint32_t peer_uhr_rx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];
+	uint32_t peer_uhr_tx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];
+	struct wmi_host_ppe_threshold peer_uhr_ppet;
+#endif
 };
 
 /**

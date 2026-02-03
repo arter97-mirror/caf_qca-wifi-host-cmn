@@ -1283,6 +1283,16 @@ QDF_STATUS wmi_unified_peer_assoc_send(wmi_unified_t wmi_handle,
 				       struct peer_assoc_params *param);
 
 /**
+ * wmi_unified_peer_assoc_v2_send() - WMI peer assoc v2 function
+ * @wmi_handle: handle to WMI.
+ * @param: pointer to peer assoc parameter
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_peer_assoc_v2_send(wmi_unified_t wmi_handle,
+					  struct peer_assoc_params *param);
+
+/**
  * wmi_unified_sta_ps_cmd_send() - set sta powersave parameters
  * @wmi_handle: wmi handle
  * @param: pointer to sta_ps parameter structure
