@@ -12,6 +12,9 @@
 #include "dp_peer.h"
 #include "qdf_module.h"
 #include "dp_dal_sim.h"
+#ifdef FEATURE_DP_DAL_D3_WOW
+#include "dp_htt.h"
+#endif /* FEATURE_DP_DAL_D3_WOW */
 #include "qdf_platform.h"
 #ifdef FEATURE_DP_DAL_OE_SUPPORT
 /* Include the required dal headers to access DAL
@@ -405,6 +408,56 @@ static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
 	return 0;
 }
 
+/**
+ * dp_dal_d3_wow_htt_send() - Send DAL mode info to firmware
+ * @soc: Pointer to DP soc
+ *
+ * This function sends the DAL mode and FW write configuration to firmware
+ * via HTT message.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS dp_dal_d3_wow_htt_send(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+	struct htt_h2t_msg_dal_suspend_info dal_suspend_info;
+	struct dp_pdev *pdev;
+	QDF_STATUS status;
+
+	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, 0);
+	if (!pdev)
+		return QDF_STATUS_E_INVAL;
+
+	qdf_mem_zero(&dal_suspend_info, sizeof(dal_suspend_info));
+	dal_suspend_info.pdev_id = pdev->pdev_id;
+	dal_suspend_info.mode = soc->dp_dal_mode;
+
+	if (soc->dp_dal_mode == DAL_DP_OFFLOAD_MODE) {
+		/* Fill FW write buffer addresses */
+		dal_suspend_info.write_data_addr_lo =
+			(uint32_t)(dal_ctx->suspend_msg_data_paddr & 0xFFFFFFFF);
+		dal_suspend_info.write_data_addr_hi =
+			(uint32_t)((dal_ctx->suspend_msg_data_paddr >> 32) &
+				   0xFFFFFFFF);
+
+		/* Fill MSI configuration */
+		dal_suspend_info.write_msi_addr_lo =
+			(uint32_t)(dal_ctx->suspend_msg_msi_addr & 0xFFFFFFFF);
+		dal_suspend_info.write_msi_addr_hi =
+			(uint32_t)((dal_ctx->suspend_msg_msi_addr >> 32) &
+				   0xFFFFFFFF);
+		dal_suspend_info.write_msi_data = dal_ctx->suspend_msg_msi_data;
+	}
+
+	status = dp_h2t_dal_mode_info_send(soc, &dal_suspend_info);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Failed to send DAL mode info to FW, status=%d", status);
+		return status;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #else
 static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
 				     uint32_t msi_data,
@@ -412,6 +465,10 @@ static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
 				     qdf_dma_addr_t suspend_msg_data_paddr)
 {
 	return 0;
+}
+static inline QDF_STATUS dp_dal_d3_wow_htt_send(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif
 
@@ -1587,6 +1644,12 @@ QDF_STATUS dp_dal_soc_init(struct dp_soc *soc)
 	status = dp_dal_bus_request_irq(soc);
 	if (status) {
 		dp_err("DAL platform bus request IRQ failed %d", status);
+		goto bus_deinit;
+	}
+
+	status = dp_dal_d3_wow_htt_send(soc);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Failed to send DAL mode info to FW");
 		goto bus_deinit;
 	}
 
