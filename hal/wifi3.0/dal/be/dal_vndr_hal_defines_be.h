@@ -1656,7 +1656,7 @@ struct dal_rx_pkt_tlvs {
 #define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)     \
 	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&                \
 	(((struct dal_reo_destination_ring *)       \
-		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+		reo_desc)->buf_or_link_desc_addr_info)))
 #else
 #define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)     \
 	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&                \

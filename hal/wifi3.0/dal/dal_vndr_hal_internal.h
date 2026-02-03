@@ -121,6 +121,32 @@ struct dal_vndr_hal_hw_txrx_ops {
 						      uint32_t cookie,
 						      uint8_t manager);
 	void (*dal_vndr_hal_rxbm_sync)(void *ring_desc, void *buff_addr_info);
+
+	/* Optional/extended TX descriptor setters (may be NULL if unsupported) */
+	void (*dal_vndr_hal_tx_desc_set_fw_metadata)(void *desc, uint16_t metadata);
+	void (*dal_vndr_hal_tx_desc_set_to_fw)(void *desc, uint8_t to_fw);
+	void (*dal_vndr_hal_tx_desc_set_peer_txpt_ci_index)(void *desc, uint8_t peer_txpt_ci_index);
+	void (*dal_vndr_hal_tx_desc_set_peer_txpt_ci_tos_tc_val)(void *desc, uint8_t tos_tc_val);
+	void (*dal_vndr_hal_tx_desc_set_da_is_bcast_mcast)(void *desc, uint8_t is_bcast, uint8_t is_mcast);
+	void (*dal_vndr_hal_tx_desc_set_l3_type)(void *desc, uint16_t l3_type);
+	void (*dal_vndr_hal_tx_desc_set_l4_protocol)(void *desc, uint8_t l4_protocol);
+	void (*dal_vndr_hal_tx_desc_set_type_or_length)(void *desc, uint8_t type_or_length);
+	void (*dal_vndr_hal_tx_desc_set_dport)(void *desc, uint16_t l4_port);
+	void (*dal_vndr_hal_tx_desc_set_snap_oui_zero_or_f8)(void *desc, uint8_t is_snap_oui_zero_or_f8);
+	void (*dal_vndr_hal_tx_desc_set_snap_oui_not_zero_or_not_f8)(void *desc, uint8_t is_snap_oui_not_zero_or_not_f8);
+	void (*dal_vndr_hal_tx_desc_set_s_vlan_tag)(void *desc, uint8_t s_vlan_present);
+	void (*dal_vndr_hal_tx_desc_set_c_vlan_tag)(void *desc, uint8_t c_vlan_present);
+
+	/* Optional/extended TX completion accessors */
+	void (*dal_vndr_hal_tx_comp_get_status_generic)(void *hal_desc, void *ts1, void *hal);
+	uint8_t (*dal_vndr_hal_tx_comp_get_release_reason_generic)(void *hal_desc);
+	uint32_t (*dal_vndr_hal_tx_comp_get_buffer_type)(void *hal_desc);
+
+	/* Optional/extended RX helpers */
+	uint8_t (*dal_vndr_hal_rx_reo_buf_type_get)(void *rx_desc);
+	uintptr_t (*dal_vndr_hal_rx_get_reo_desc_va)(void *reo_desc);
+	uint32_t (*dal_vndr_hal_rx_tlv_nss_get)(uint8_t *buf);
+	uint32_t (*dal_vndr_hal_rx_msdu_flags_get)(void *msdu_desc_info_hdl);
 };
 
 /**
