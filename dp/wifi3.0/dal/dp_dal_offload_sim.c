@@ -61,6 +61,117 @@ dp_dal_offload_sim_ring_access_end(struct dp_dal_offload_sim_ctx *offload_ctx,
 	DAL_VNDR_SRNG_UNLOCK(&ring->lock);
 }
 
+#ifdef FEATURE_DP_DAL_D3_WOW
+static irqreturn_t dp_dal_offload_sim_suspend_msg_handler(int irq, void *arg)
+{
+	struct dp_dal_sim_ctx *sim_ctx = (struct dp_dal_sim_ctx *)arg;
+	uint32_t val = 0;
+
+	if (!sim_ctx) {
+		dp_err("NULL sim context in suspend msg handler");
+		return IRQ_HANDLED;
+	}
+
+	if (sim_ctx->suspend_msg_data_vaddr)
+		val = *(uint32_t *)sim_ctx->suspend_msg_data_vaddr;
+
+	dp_info("Suspend msg interrupt received, value=0x%x", val);
+
+	/* Signal the event to unblock any waiters */
+	qdf_event_set(&sim_ctx->suspend_msg_event);
+
+	return IRQ_HANDLED;
+}
+
+static inline void
+dp_dal_offload_sim_init_d3_wow(struct dp_dal_offload_sim_ctx *offload_ctx,
+			       struct dp_dal_sim_ctx *dal_sim_ctx)
+{
+	offload_ctx->dev_base_addr = dal_sim_ctx->dev_base_addr;
+}
+
+static inline int
+dp_dal_offload_sim_request_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+					struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+	int irq_num = dal_sim_ctx->suspend_msg_irq_num;
+	int ret;
+
+	if (irq_num <= 0) {
+		dp_err("Invalid suspend msg IRQ number %d", irq_num);
+		return -EINVAL;
+	}
+
+	offload_ctx->suspend_msg_irq_num = irq_num;
+
+	ret = pfrm_request_irq(
+			dal_sim_ctx->dev,
+			irq_num,
+			dp_dal_offload_sim_suspend_msg_handler,
+			IRQF_SHARED | IRQF_NO_SUSPEND,
+			"dal_offload_sim_suspend_msg",
+			dal_sim_ctx);
+	if (ret) {
+		dp_err("Failed irq register suspend msg IRQ, ret=%d", ret);
+		return ret;
+	}
+
+	dp_info("Registered suspend msg IRQ %d (from sim_ctx)",
+		irq_num);
+
+	return 0;
+}
+
+static inline void
+dp_dal_offload_sim_free_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+				     struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+	if (offload_ctx->suspend_msg_irq_num > 0) {
+		pfrm_free_irq(dal_sim_ctx->dev,
+			      offload_ctx->suspend_msg_irq_num,
+			      dal_sim_ctx);
+		offload_ctx->suspend_msg_irq_num = 0;
+		dp_debug("Freed suspend msg IRQ");
+	}
+}
+
+static inline void
+dp_dal_offload_sim_disable_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+					struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+	if (offload_ctx->suspend_msg_irq_num > 0) {
+		pfrm_disable_irq(dal_sim_ctx->dev,
+				 offload_ctx->suspend_msg_irq_num);
+		dp_debug("Disabled suspend msg IRQ %d", offload_ctx->suspend_msg_irq_num);
+	}
+}
+#else
+static inline void
+dp_dal_offload_sim_init_d3_wow(struct dp_dal_offload_sim_ctx *offload_ctx,
+			       struct dp_dal_sim_ctx *dal_sim_ctx)
+{
+}
+
+static inline int
+dp_dal_offload_sim_request_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+					struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+	return 0;
+}
+
+static inline void
+dp_dal_offload_sim_free_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+				     struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+}
+
+static inline void
+dp_dal_offload_sim_disable_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
+					struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+}
+#endif
+
 #ifdef DAL_OFFLOAD_SIM
 /**
  * dp_dal_offload_sim_hal_addrs_params_init() - Form hal_srng address parameters
@@ -316,6 +427,7 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 	 * Google DAL has to assign BAR address here.
 	 */
 	offload_ctx->hal_soc.dev_base_addr = dal_sim_ctx->dev_base_addr;
+	dp_dal_offload_sim_init_d3_wow(offload_ctx, dal_sim_ctx);
 
 	/* Copy dal_vndr_hal_srng from dal_sim_srng structures */
 	/* RX rings */
@@ -496,6 +608,10 @@ int dp_dal_offload_sim_request_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 			dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
 	}
 
+	ret = dp_dal_offload_sim_request_suspend_msg_irq(dal_sim_ctx, offload_ctx);
+	if (ret)
+		goto free_irqs;
+
 	dp_info("IRQ registration complete");
 	return 0;
 
@@ -544,6 +660,8 @@ void dp_dal_offload_sim_free_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 				 dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
 		}
 	}
+
+	dp_dal_offload_sim_free_suspend_msg_irq(dal_sim_ctx, offload_ctx);
 }
 
 void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
@@ -582,6 +700,8 @@ void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 				 dal_sim_ctx->tx_cmpl_ring[i].irq_num, i);
 		}
 	}
+
+	dp_dal_offload_sim_disable_suspend_msg_irq(dal_sim_ctx, offload_ctx);
 }
 
 /**
