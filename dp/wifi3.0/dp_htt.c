@@ -504,6 +504,94 @@ static int htt_h2t_ver_req_msg(struct htt_soc *soc)
 	return status;
 }
 
+#ifdef FEATURE_DP_DAL_D3_WOW
+QDF_STATUS dp_h2t_dal_mode_info_send(struct dp_soc *dp_soc,
+				     struct htt_h2t_msg_dal_suspend_info *info)
+{
+	struct htt_soc *soc = dp_soc->htt_handle;
+	struct dp_htt_htc_pkt *pkt;
+	uint8_t *htt_logger_bufp;
+	qdf_nbuf_t msg;
+	uint32_t *msg_word;
+	QDF_STATUS status;
+	qdf_size_t size;
+
+	size = sizeof(struct htt_h2t_msg_dal_suspend_info);
+	msg = dp_htt_htc_msg_alloc(
+			soc->osdev, HTT_MSG_BUF_SIZE(size),
+			HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING,
+			4, TRUE);
+	if (!msg)
+		return QDF_STATUS_E_NOMEM;
+
+	if (!qdf_nbuf_put_tail(msg, size)) {
+		dp_htt_err("Failed to expand head");
+		qdf_nbuf_free(msg);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	msg_word = (uint32_t *)qdf_nbuf_data(msg);
+	memset(msg_word, 0, size);
+
+	qdf_nbuf_push_head(msg, HTC_HDR_ALIGNMENT_PADDING);
+	htt_logger_bufp = (uint8_t *)msg_word;
+
+	HTT_H2T_MSG_TYPE_SET(*msg_word, HTT_H2T_MSG_TYPE_DAL_MODE_INFO);
+	HTT_H2T_MSG_DAL_MODE_INFO_PDEV_ID_SET(*msg_word, info->pdev_id);
+	HTT_H2T_MSG_DAL_MODE_INFO_MODE_SET(*msg_word, info->mode);
+
+	msg_word++;
+	*msg_word = info->write_data_addr_lo;
+
+	msg_word++;
+	*msg_word = info->write_data_addr_hi;
+
+	msg_word++;
+	*msg_word = info->write_msi_addr_lo;
+
+	msg_word++;
+	*msg_word = info->write_msi_addr_hi;
+
+	msg_word++;
+	*msg_word = info->write_msi_data;
+
+	pkt = htt_htc_pkt_alloc(soc);
+	if (!pkt) {
+		dp_htt_err("Fail to allocate dp_htt_htc_pkt buffer");
+		/* Pop the HTC header padding before freeing */
+		qdf_nbuf_pull_head(msg, HTC_HDR_ALIGNMENT_PADDING);
+		qdf_nbuf_free(msg);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	pkt->soc_ctxt = NULL;
+
+	SET_HTC_PACKET_INFO_TX(
+			&pkt->htc_pkt,
+			dp_htt_h2t_send_complete_free_netbuf,
+			qdf_nbuf_data(msg),
+			qdf_nbuf_len(msg),
+			soc->htc_endpoint,
+			HTC_TX_PACKET_TAG_RUNTIME_PUT);
+
+	SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
+
+	status = DP_HTT_SEND_HTC_PKT(
+			soc, pkt,
+			HTT_H2T_MSG_TYPE_DAL_MODE_INFO,
+			htt_logger_bufp);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		qdf_nbuf_free(msg);
+		htt_htc_pkt_free(soc, pkt);
+	}
+
+	return status;
+}
+
+qdf_export_symbol(dp_h2t_dal_mode_info_send);
+#endif /* FEATURE_DP_DAL_D3_WOW */
+
 #ifdef IPA_OPT_WIFI_DP
 QDF_STATUS htt_h2t_rx_cce_super_rule_setup(struct htt_soc *soc, void *param)
 {
