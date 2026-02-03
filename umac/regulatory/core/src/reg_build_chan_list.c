@@ -802,7 +802,7 @@ static void reg_modify_chan_list_for_indoor_concurrency(
 	struct regulatory_channel *chan_list = pdev_priv_obj->cur_chan_list;
 	enum channel_enum chan, min_enum, max_enum;
 	uint8_t i;
-	bool cfg_sta_indoor_ch_peer_scc = false;
+	uint8_t cfg_sta_indoor_ch_peer_scc = 0;
 	struct wlan_objmgr_psoc *psoc;
 	struct wlan_objmgr_pdev *pdev;
 	QDF_STATUS status;
@@ -824,7 +824,7 @@ static void reg_modify_chan_list_for_indoor_concurrency(
 
 	if (QDF_IS_STATUS_ERROR(status)) {
 		reg_err("Failed to get cfg_sta_indoor_ch_peer_scc");
-		cfg_sta_indoor_ch_peer_scc = false;
+		cfg_sta_indoor_ch_peer_scc = 0;
 	}
 
 	if (pdev_priv_obj->indoor_chan_enabled ||
