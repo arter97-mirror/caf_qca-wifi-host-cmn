@@ -395,6 +395,12 @@ struct dp_dal_ctx {
 #ifdef FEATURE_DP_DAL_SIM
 	struct dp_dal_sim_ctx *dal_sim_ctx;
 #endif
+#ifdef FEATURE_DP_DAL_D3_WOW
+	qdf_dma_addr_t suspend_msg_msi_addr;
+	uint32_t suspend_msg_msi_data;
+	void *suspend_msg_data_vaddr;
+	qdf_dma_addr_t suspend_msg_data_paddr;
+#endif
 	struct dp_dal_stats stats;
 };
 
