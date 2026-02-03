@@ -683,11 +683,17 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 		goto bus_exit;
 	}
 
+	status = dp_dal_d3_wow_htt_send(soc);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Failed to send DAL mode info to FW");
+		goto bus_exit;
+	}
+
 	status = dp_dal_bus_start(soc);
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err("DAL platform bus start failed during mode switch %d",
 		       status);
-		goto bus_exit;
+		goto revert_fw_mode;
 	}
 
 	qdf_spin_lock_bh(&pdev->vdev_list_lock);
@@ -703,7 +709,7 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 				       vdev->vdev_id);
 				dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 				qdf_spin_unlock_bh(&pdev->vdev_list_lock);
-				goto bus_exit;
+				goto revert_fw_mode;
 			}
 		}
 
@@ -730,6 +736,12 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 			      dal_ctx->rx_replenish_retry_interval_ms);
 
 	return QDF_STATUS_SUCCESS;
+
+revert_fw_mode:
+	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
+	status = dp_dal_d3_wow_htt_send(soc);
+	if (QDF_IS_STATUS_ERROR(status))
+		dp_err("Failed to send DAL mode info to FW");
 
 bus_exit:
 	dp_dal_bus_exit(soc);
