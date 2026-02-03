@@ -129,6 +129,7 @@ struct platform_bus_ops {
  * @store_ring_hp_tp: Store HP/TP of DAL rings locally
  * @early_mode_switch_ind: Early mode switch indication callback
  * @mode_switch_ind: Mode switch indication callback
+ * @set_suspend_msi_config: Set suspend MSI config callback
  */
 struct vendor_cb_ops {
 	int (*rx_isr_cb)(int ring_num, void *priv);
@@ -142,6 +143,10 @@ struct vendor_cb_ops {
 				     uint8_t num_info, uint8_t cur_mode,
 				     uint8_t new_mode);
 	int (*mode_switch_ind)(void *priv, u8 cur_mode, u8 new_mode);
+	int (*set_suspend_msi_config)(void *priv, uint64_t msi_addr,
+				      uint32_t msi_data,
+				      void *suspend_msg_data_vaddr,
+				      qdf_dma_addr_t suspend_msg_data_paddr);
 };
 
 /**
