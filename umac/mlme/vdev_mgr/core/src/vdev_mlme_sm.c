@@ -349,6 +349,23 @@ static void mlme_vdev_state_dfs_cac_wait_exit(void *ctx)
 	/* NONE */
 }
 
+static void mlme_vdev_rt_lock_release(struct vdev_mlme_obj *vdev_mlme)
+{
+	struct  wlan_lmac_if_tx_ops *tx_ops;
+	struct wlan_objmgr_psoc *psoc;
+
+	if (!vdev_mlme)
+		mlme_err("vdev is NULL");
+
+	psoc = wlan_vdev_get_psoc(vdev_mlme->vdev);
+	if (!psoc)
+		mlme_err("psoc is NULL");
+
+	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
+	if (tx_ops && tx_ops->mops.mlme_vdev_rt_lock_release)
+		tx_ops->mops.mlme_vdev_rt_lock_release(vdev_mlme->vdev);
+}
+
 /**
  * mlme_vdev_state_dfs_cac_wait_event() - DFS CAC WAIT State event handler
  * @ctx: VDEV MLME object
@@ -397,6 +414,7 @@ static bool mlme_vdev_state_dfs_cac_wait_event(void *ctx, uint16_t event,
 		break;
 
 	case WLAN_VDEV_SM_EV_RADAR_DETECTED:
+		mlme_vdev_rt_lock_release(vdev_mlme);
 		/* the random channel should have been selected, before issuing
 		 * this event
 		 */
@@ -503,7 +521,7 @@ static bool mlme_vdev_state_up_event(void *ctx, uint16_t event,
 		break;
 
 	/**
-	 * Channel switch disabled case, then tansition to up state
+	 * Channel switch disabled case, then transition to up state
 	 * and deliver EV_UP_HOST_RESTART, hand it in up state and
 	 * move to up active state
 	 */

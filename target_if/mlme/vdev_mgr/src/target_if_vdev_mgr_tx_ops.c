@@ -40,6 +40,7 @@
 #include <target_if_psoc_timer_tx_ops.h>
 #include <target_if_psoc_wake_lock.h>
 #include <wlan_psoc_mlme_api.h>
+#include <target_if_psoc_timer_tx_ops.h>
 
 static QDF_STATUS target_if_vdev_mgr_register_event_handler(
 					struct wlan_objmgr_psoc *psoc)
@@ -1553,6 +1554,39 @@ static QDF_STATUS target_if_vdev_peer_set_param_send(
 	return wmi_set_peer_param_send(wmi_handle, peer_mac_addr, &param);
 }
 
+/**
+ * target_if_vdev_mgr_rt_lock_release() - Release RT lock for vdev
+ * @vdev: VDEV object
+ *
+ * API to release RT lock if it was acquired for the vdev.
+ * This is typically called during radar detection in CAC wait state.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS target_if_vdev_mgr_rt_lock_release(
+					struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_objmgr_psoc *psoc;
+	uint8_t vdev_id;
+
+	if (!vdev) {
+		mlme_err("Invalid vdev_mlme or vdev");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		mlme_err("VDEV %d: Failed to get psoc", vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Release RT lock if it was acquired for this vdev */
+	target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 QDF_STATUS
 target_if_vdev_mgr_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 {
@@ -1628,5 +1662,7 @@ target_if_vdev_mgr_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 			target_if_sap_suspend_param_send;
 	mlme_tx_ops->is_sap_suspend_support_enabled =
 			target_if_sap_is_suspend_support_enabled;
+	mlme_tx_ops->mlme_vdev_rt_lock_release =
+			target_if_vdev_mgr_rt_lock_release;
 	return QDF_STATUS_SUCCESS;
 }

@@ -527,6 +527,7 @@ enum wlan_mlme_cfg_id;
  * @vdev_peer_set_param_send: API to send peer param to FW
  * @sap_suspend_param_send: API to send SAP vdev suspend param
  * @is_sap_suspend_support_enabled: API to check SAP vdev suspend support
+ * @mlme_vdev_rt_lock_release: API to release rl lock
  */
 struct wlan_lmac_if_mlme_tx_ops {
 	uint32_t (*get_wifi_iface_id) (struct wlan_objmgr_pdev *pdev);
@@ -640,6 +641,8 @@ QDF_STATUS (*vdev_send_set_mac_addr)(struct qdf_mac_addr mac_addr,
 				struct vdev_suspend_params *param);
 	bool (*is_sap_suspend_support_enabled)
 				(struct wlan_objmgr_vdev *vdev);
+	QDF_STATUS (*mlme_vdev_rt_lock_release)(
+				struct wlan_objmgr_vdev *vdev);
 
 };
 
@@ -1582,7 +1585,7 @@ struct wlan_lmac_if_dbam_rx_ops {
 
 /**
  * struct wlan_lmac_if_sched_mode_rx_ops - defines southbound rx callback for
- * sched mode of deteministic scheduler
+ * sched mode of deterministic scheduler
  * @sched_mode_probe_resp_handler: function pointer to rx sched mode response
  * event from FW.
  */
