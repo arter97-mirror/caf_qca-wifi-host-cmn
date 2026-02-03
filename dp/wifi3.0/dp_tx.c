@@ -1664,6 +1664,9 @@ dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
 	qdf_page_t page;
 	uint32_t offset;
 
+	if (qdf_unlikely(!tx_pp))
+		return NULL;
+
 	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset);
 	if (!nbuf)
 		return NULL;
