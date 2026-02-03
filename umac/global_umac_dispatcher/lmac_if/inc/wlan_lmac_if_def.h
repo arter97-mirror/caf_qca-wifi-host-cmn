@@ -550,6 +550,7 @@ enum wlan_mlme_cfg_id;
  * @sap_suspend_param_send: API to send SAP vdev suspend param
  * @is_sap_suspend_support_enabled: API to check SAP vdev suspend support
  * @vdev_tm_param_send: API to send traffic monitoring params
+ * @mlme_vdev_rt_lock_release: API to release rl lock
  */
 struct wlan_lmac_if_mlme_tx_ops {
 	uint32_t (*get_wifi_iface_id) (struct wlan_objmgr_pdev *pdev);
@@ -666,6 +667,8 @@ QDF_STATUS (*vdev_send_set_mac_addr)(struct qdf_mac_addr mac_addr,
 	QDF_STATUS (*vdev_tm_param_send)
 				(struct wlan_objmgr_vdev *vdev,
 				 struct traffic_monitoring_params *param);
+	QDF_STATUS (*mlme_vdev_rt_lock_release)(
+				struct wlan_objmgr_vdev *vdev);
 
 };
 
