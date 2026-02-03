@@ -38,6 +38,7 @@ struct dp_dal_sim_sw2sw_ring {
 #define DP_DAL_SIM_TX_CPL_DESC_SIZE HAL_TX_COMPLETION_DESC_LEN_BYTES
 #define DP_DAL_SIM_RX_CPL_DESC_SIZE 32
 
+#ifdef FEATURE_DP_DAL_D3_WOW
 /* D3 WoW Message Format Definitions */
 /* Message format: Bits [31:28] - Tag, [27:12] - Type, [11:0] - Value/Payload */
 #define DAL_D3_WOW_MSG_TAG_SHIFT        28
@@ -68,6 +69,13 @@ struct dp_dal_sim_sw2sw_ring {
 #define DAL_D3_WOW_MSG_WLAN_ACK         0x20001000
 #define DAL_D3_WOW_MSG_WLAN_NACK_BASE   0x20002000
 #define DAL_D3_WOW_MSG_WLAN_CRASH       0x20004000
+
+/* Helper Macros for Message Construction/Parsing */
+#define DAL_MSG_GET_TAG(msg)        (((msg) & DAL_D3_WOW_MSG_TAG_MASK) >> DAL_D3_WOW_MSG_TAG_SHIFT)
+#define DAL_MSG_GET_TYPE(msg)       (((msg) & DAL_D3_WOW_MSG_TYPE_MASK) >> DAL_D3_WOW_MSG_TYPE_SHIFT)
+#define DAL_MSG_GET_VAL(msg)        (((msg) & DAL_D3_WOW_MSG_VALUE_MASK) >> DAL_D3_WOW_MSG_VALUE_SHIFT)
+#define DAL_MSG_CONSTRUCT(tag, type, val) \
+    (((tag) << DAL_D3_WOW_MSG_TAG_SHIFT) | ((type) << DAL_D3_WOW_MSG_TYPE_SHIFT) | ((val) & DAL_D3_WOW_MSG_VALUE_MASK))
 
 /**
  * enum dal_d3_wow_ack_status - WoW ACK/NACK status reasons
@@ -110,6 +118,7 @@ enum dal_d3_wow_ack_status {
 	DAL_D3_WOW_NACK_REASON_USD = 16,
 	DAL_D3_WOW_NACK_CLOSE_TO_TBTT = 17,
 };
+#endif /* FEATURE_DP_DAL_D3_WOW */
 
 #ifdef FEATURE_DP_DAL_SIM
 /**
@@ -293,6 +302,11 @@ struct dal_sim_srng {
  * @sim_mode_switch_in_progress: Flag indicating if mode switch is in progress
  * @rxbm_sync_lock: Lock for rxbm_sync operations during mode switch
  * @use_dal_vndr_hal: Use dal vendor hal for overwriitng tx desc
+ * @suspend_msg_msi_addr: Derived MSI address for FW write
+ * @suspend_msg_msi_data: Derived MSI data for FW write
+ * @suspend_msg_event: Event for FW write completion
+ * @suspend_msg_data_vaddr: Coherent buffer virtual address for FW messages
+ * @suspend_msg_data_paddr: Coherent buffer physical address for FW messages
  *
  * This structure maintains all necessary context for DAL simulation,
  * including pointers to datapath context, platform operations, vendor
@@ -345,6 +359,18 @@ struct dp_dal_sim_ctx {
 
 	/* Use dal vendor hal for overwriitng tx desc*/
 	bool use_dal_vndr_hal;
+
+#ifdef FEATURE_DP_DAL_D3_WOW
+	/* Derived MSI config for FW write */
+	qdf_dma_addr_t suspend_msg_msi_addr;
+	uint32_t suspend_msg_msi_data;
+	int suspend_msg_irq_num;
+	qdf_event_t suspend_msg_event;
+
+	/* Coherent buffer for FW to write messages to Host */
+	void *suspend_msg_data_vaddr;
+	qdf_dma_addr_t suspend_msg_data_paddr;
+#endif /* FEATURE_DP_DAL_D3_WOW */
 };
 
 /**
