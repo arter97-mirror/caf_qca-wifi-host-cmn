@@ -784,6 +784,7 @@ dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
 {
 	struct dp_soc *soc;
 	struct dp_pdev *pdev;
+	QDF_STATUS status;
 
 	if (!dal_ctx) {
 		dp_err("DAL context is NULL, reject mode switch");
@@ -807,6 +808,15 @@ dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
 	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
 
 	soc->dal_mode_switch_in_progress = true;
+
+	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
+	status = dp_dal_d3_wow_htt_send(soc);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Failed to send DAL mode info to FW");
+		soc->dp_dal_mode = DAL_DP_OFFLOAD_MODE;
+		soc->dal_mode_switch_in_progress = false;
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	/* Start polling timer */
 	dal_ctx->poll_count = 0;
