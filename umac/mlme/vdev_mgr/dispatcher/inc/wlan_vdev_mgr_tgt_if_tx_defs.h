@@ -732,6 +732,7 @@ struct mlo_vdev_start_partner_links {
  * @mbssid_multi_group_id: Group id of current vdev
  * @target_tsf_us_lo: Target TSF value of current vdev from bits 31:0
  * @target_tsf_us_hi: Target TSF value of current vdev from bits 63:32
+ * @uhr_ops: UHR ops IE
  */
 struct vdev_start_params {
 	uint8_t vdev_id;
@@ -769,6 +770,9 @@ struct vdev_start_params {
 	uint32_t mbssid_multi_group_id;
 	uint32_t target_tsf_us_lo;
 	uint32_t target_tsf_us_hi;
+#ifdef WLAN_FEATURE_11BN
+	uint32_t uhr_ops;
+#endif
 };
 
 /**

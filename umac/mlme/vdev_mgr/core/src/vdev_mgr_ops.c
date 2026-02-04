@@ -249,7 +249,7 @@ static inline bool vdev_mgr_is_49G_5G_chan_freq(uint16_t chan_freq)
 #endif
 
 #ifdef WLAN_FEATURE_11BE
-static void
+static inline void
 vdev_mgr_start_param_update_11be(struct vdev_mlme_obj *mlme_obj,
 				 struct vdev_start_params *param,
 				 struct wlan_channel *des_chan)
@@ -265,7 +265,7 @@ vdev_mgr_set_cur_chan_punc_bitmap(struct wlan_channel *des_chan,
 	*puncture_bitmap = des_chan->puncture_bitmap;
 }
 #else
-static void
+static inline void
 vdev_mgr_start_param_update_11be(struct vdev_mlme_obj *mlme_obj,
 				 struct vdev_start_params *param,
 				 struct wlan_channel *des_chan)
@@ -277,6 +277,23 @@ vdev_mgr_set_cur_chan_punc_bitmap(struct wlan_channel *des_chan,
 				  uint16_t *puncture_bitmap)
 {
 	*puncture_bitmap = 0;
+}
+#endif
+
+#ifdef WLAN_FEATURE_11BN
+static inline void
+vdev_mgr_start_param_update_11bn(struct vdev_mlme_obj *mlme_obj,
+				 struct vdev_start_params *param,
+				 struct wlan_channel *des_chan)
+{
+	param->uhr_ops = mlme_obj->proto.uhr_ops_info.uhr_ops;
+}
+#else
+static inline void
+vdev_mgr_start_param_update_11bn(struct vdev_mlme_obj *mlme_obj,
+				 struct vdev_start_params *param,
+				 struct wlan_channel *des_chan)
+{
 }
 #endif
 
@@ -674,6 +691,8 @@ static QDF_STATUS vdev_mgr_start_param_update(struct vdev_mlme_obj *mlme_obj,
 		vdev_mgr_start_param_update_cac_ms(vdev, param);
 	}
 	wlan_vdev_mlme_get_ssid(vdev, param->ssid.ssid, &param->ssid.length);
+
+	vdev_mgr_start_param_update_11bn(mlme_obj, param, des_chan);
 
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_MLME_SB_ID);
 	return QDF_STATUS_SUCCESS;

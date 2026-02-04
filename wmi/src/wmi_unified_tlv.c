@@ -1498,23 +1498,47 @@ static inline void copy_channel_info(
  * Return: QDF status
  */
 #ifdef WLAN_FEATURE_11BE
-static void
+static inline void
 vdev_start_cmd_fill_11be(wmi_vdev_start_request_cmd_fixed_param *cmd,
 			 struct vdev_start_params *req)
 {
 	cmd->eht_ops = req->eht_ops;
 	cmd->puncture_20mhz_bitmap = ~req->channel.puncture_bitmap;
-	wmi_info("EHT ops: %x puncture_bitmap %x wmi cmd puncture bitmap %x",
-		 req->eht_ops, req->channel.puncture_bitmap,
-		 cmd->puncture_20mhz_bitmap);
+	wmi_debug("EHT ops: %x puncture_bitmap %x wmi cmd puncture bitmap %x",
+		  req->eht_ops, req->channel.puncture_bitmap,
+		  cmd->puncture_20mhz_bitmap);
 }
 #else
-static void
+static inline void
 vdev_start_cmd_fill_11be(wmi_vdev_start_request_cmd_fixed_param *cmd,
 			 struct vdev_start_params *req)
 {
 }
 #endif
+
+#ifdef WLAN_FEATURE_11BN
+/**
+ * vdev_start_cmd_fill_11bn() - 11bn information filling in vdev_start
+ * @cmd: wmi cmd
+ * @req: vdev start params
+ *
+ * Return: QDF status
+ */
+static inline void
+vdev_start_cmd_fill_11bn(wmi_vdev_start_request_cmd_fixed_param *cmd,
+			 struct vdev_start_params *req)
+{
+	cmd->uhr_ops = req->uhr_ops;
+	wmi_debug("UHR ops: %x", req->uhr_ops);
+}
+#else
+static inline void
+vdev_start_cmd_fill_11bn(wmi_vdev_start_request_cmd_fixed_param *cmd,
+			 struct vdev_start_params *req)
+{
+}
+#endif
+
 /**
  * wmi_vdev_start_cmd_fill_params() - Fill vdev start command parameters
  * @cmd: wmi vdev start command structure
@@ -1583,6 +1607,8 @@ static void wmi_vdev_start_cmd_fill_params(
 
 	/* Fill 11be specific parameters */
 	vdev_start_cmd_fill_11be(cmd, req);
+	/* Fill 11bn specific parameters */
+	vdev_start_cmd_fill_11bn(cmd, req);
 
 	/* Debug logging for vdev start parameters */
 	wmi_info("vdev_id %d freq %d chanmode %d ch_info: 0x%x is_dfs %d "

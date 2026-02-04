@@ -341,10 +341,101 @@ struct vdev_mlme_eht_ops_info {
 #endif
 
 #ifdef WLAN_FEATURE_11BN
+/**
+ * struct vdev_mlme_uhr_caps_info - vdev mlme UHR capability information
+ * @uhr_maccap_dps_support: Dynamic Power Save support
+ * @uhr_maccap_dps_assist_support: Dynamic Power Save assist support
+ * @uhr_maccap_ap_static_hcm_support: AP static HCM (Host Connection Manager)
+ *                                    support
+ * @uhr_maccap_ml_power_mgmt: Multi-link power management
+ * @uhr_maccap_npca_support: NPCA (Network-based Power Control Algorithm)
+ *                           support
+ * @uhr_maccap_bsr_support: BSR (Buffer Status Report) support
+ * @uhr_maccap_addn_mapped_tid_support: Additional mapped TID support
+ * @uhr_maccap_eotsp_support: EOTSP (End of Transmission Service Period)
+ *                            support
+ * @uhr_maccap_dso_support: DSO (Dynamic Spatial reuse Operation) support
+ * @uhr_maccap_p_edca_support: Prioritized EDCA support
+ * @uhr_maccap_dbe_support: DBE (Dual Band Enhancement) support
+ * @uhr_maccap_ul_lli_support: Uplink LLI (Low Latency Interface) support
+ * @uhr_maccap_p2p_lli_support: P2P LLI (Low Latency Interface) support
+ * @uhr_maccap_puo_support: PUO (Punctured Uplink OFDMA) support
+ * @uhr_maccap_ap_puo_support: AP PUO (Punctured Uplink OFDMA) support
+ * @uhr_maccap_duo_support: DUO (Downlink Uplink OFDMA) support
+ * @uhr_maccap_ul_mu_data_disable_rx_support: Uplink MU data disable RX support
+ * @uhr_maccap_aom_support: AOM (Adaptive OFDMA Management) support
+ * @uhr_maccap_ifcs_support: IFCS (Interference Free Channel Selection) support
+ * @uhr_maccap_trs_support: UHR TRS (Triggered Response Scheduling) support
+ * @uhr_maccap_txspg_support: TXSPG (Transmit Spatial Reuse Parameter Group)
+ *                            support
+ * @uhr_maccap_txop_return_support_intxspg: TXOP return support in TXSPG
+ * @uhr_maccap_op_mode_param_update_timeout: UHR operating mode parameter
+ *                                           update timeout
+ * @uhr_maccap_param_update_adv_notify: Parameter update advance notification
+ * @uhr_maccap_unused: Unused bits
+ * @uhr_maccap_update_ind_in_tim: Update indication in TIM
+ * @uhr_maccap_bounded_ess: Bounded ESS (Extended Service Set)
+ * @uhr_maccap_btm_assurance: BTM (BSS Transition Management) assurance
+ * @uhr_maccap_co_bf_support: Co-located Beamforming support
+ * @uhr_phycap_max_nss_rx_ndp_sounding_80mhz: Maximum NSS for RX NDP sounding
+ *                                            in 80 MHz
+ * @uhr_phycap_max_nss_rx_dl_mumimo_80mhz: Maximum NSS for RX DL MU-MIMO
+ *                                         in 80 MHz
+ * @uhr_phycap_max_nss_rx_ndp_sounding_160mhz: Maximum NSS for RX NDP sounding
+ *                                             in 160 MHz
+ * @uhr_phycap_max_nss_total_rx_dl_mumimo_160mhz: Maximum total NSS for RX DL
+ *                                                MU-MIMO in 160 MHz
+ * @uhr_phycap_max_nss_rx_ndp_sounding_320mhz: Maximum NSS for RX NDP sounding
+ *                                             in 320 MHz
+ * @uhr_phycap_max_nss_total_rx_dl_mumimo_320mhz: Maximum total NSS for RX DL
+ *                                                MU-MIMO in 320 MHz
+ * @uhr_phycap_elr_rx_support: ELR (Extended Long Range) RX support
+ * @uhr_phycap_elr_tx_support: ELR (Extended Long Range) TX support
+ */
 struct vdev_mlme_uhr_caps_info {
-	uint32_t uhr_caps;
+	uint32_t uhr_maccap_dps_support:1,
+		 uhr_maccap_dps_assist_support:1,
+		 uhr_maccap_ap_static_hcm_support:1,
+		 uhr_maccap_ml_power_mgmt:1,
+		 uhr_maccap_npca_support:1,
+		 uhr_maccap_bsr_support:1,
+		 uhr_maccap_addn_mapped_tid_support:1,
+		 uhr_maccap_eotsp_support:1,
+		 uhr_maccap_dso_support:1,
+		 uhr_maccap_p_edca_support:1,
+		 uhr_maccap_dbe_support:1,
+		 uhr_maccap_ul_lli_support:1,
+		 uhr_maccap_p2p_lli_support:1,
+		 uhr_maccap_puo_support:1,
+		 uhr_maccap_ap_puo_support:1,
+		 uhr_maccap_duo_support:1,
+		 uhr_maccap_ul_mu_data_disable_rx_support:1,
+		 uhr_maccap_aom_support:1,
+		 uhr_maccap_ifcs_support:1,
+		 uhr_maccap_trs_support:1,
+		 uhr_maccap_txspg_support:1,
+		 uhr_maccap_txop_return_support_intxspg:1,
+		 uhr_maccap_op_mode_param_update_timeout:4,
+		 uhr_maccap_param_update_adv_notify:3,
+		 uhr_maccap_unused:3;
+	uint32_t uhr_maccap_update_ind_in_tim:5,
+		 uhr_maccap_bounded_ess:1,
+		 uhr_maccap_btm_assurance:1,
+		 uhr_maccap_co_bf_support:1,
+		 uhr_phycap_max_nss_rx_ndp_sounding_80mhz:1,
+		 uhr_phycap_max_nss_rx_dl_mumimo_80mhz:1,
+		 uhr_phycap_max_nss_rx_ndp_sounding_160mhz:1,
+		 uhr_phycap_max_nss_total_rx_dl_mumimo_160mhz:1,
+		 uhr_phycap_max_nss_rx_ndp_sounding_320mhz:1,
+		 uhr_phycap_max_nss_total_rx_dl_mumimo_320mhz:1,
+		 uhr_phycap_elr_rx_support:1,
+		 uhr_phycap_elr_tx_support:1;
 };
 
+/**
+ * struct vdev_mlme_uhr_ops_info - vdev mlme UHR operations information
+ * @uhr_ops: uhr ops
+ */
 struct vdev_mlme_uhr_ops_info {
 	uint32_t uhr_ops;
 };
