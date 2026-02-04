@@ -24,6 +24,7 @@
 
 #include <qdf_status.h>
 #include <wlan_objmgr_pdev_obj.h>
+#include <wlan_objmgr_vdev_obj.h>
 #include <wlan_dcs_public_structs.h>
 
 /**
@@ -288,6 +289,32 @@ ucfg_dcs_switch_chan(struct wlan_objmgr_vdev *vdev, qdf_freq_t tgt_freq,
 QDF_STATUS ucfg_dcs_set_mode_config(struct wlan_objmgr_psoc *psoc,
 				    uint8_t vdev_id, enum QDF_OPMODE mode,
 				    uint8_t ap_policy);
+
+/**
+ * ucfg_dcs_get_config() - Get DCS configuration
+ * @vdev: Pointer to vdev object
+ * @config: Pointer to store the DCS configuration
+ *
+ * This function retrieves the current DCS configuration for the specified vdev
+ * and stores it in the provided config structure.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS ucfg_dcs_get_config(struct wlan_objmgr_vdev *vdev,
+			       struct wlan_dcs_user_config *config);
+
+/**
+ * ucfg_dcs_set_config() - Set DCS configuration
+ * @vdev: Pointer to vdev object
+ * @config: Pointer to the DCS configuration to set
+ *
+ * This function sets the DCS configuration for the specified vdev
+ * using the provided config structure.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS ucfg_dcs_set_config(struct wlan_objmgr_vdev *vdev,
+			       struct wlan_dcs_user_config *config);
 #else
 static inline void
 ucfg_dcs_register_cb(struct wlan_objmgr_psoc *psoc, dcs_callback cbk, void *arg)
@@ -388,6 +415,20 @@ static inline
 QDF_STATUS ucfg_dcs_set_mode_config(struct wlan_objmgr_psoc *psoc,
 				    uint8_t vdev_id, enum QDF_OPMODE mode,
 				    uint8_t ap_policy)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS ucfg_dcs_get_config(struct wlan_objmgr_vdev *vdev,
+			       struct wlan_dcs_user_config *config)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS ucfg_dcs_set_config(struct wlan_objmgr_vdev *vdev,
+			       struct wlan_dcs_user_config *config)
 {
 	return QDF_STATUS_SUCCESS;
 }

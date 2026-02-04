@@ -202,11 +202,18 @@ wlan_dcs_psoc_obj_create_notification(struct wlan_objmgr_psoc *psoc,
 {
 	QDF_STATUS status;
 	struct dcs_psoc_priv_obj *dcs_psoc_obj;
+	uint8_t loop;
 
 	dcs_psoc_obj = qdf_mem_malloc(sizeof(*dcs_psoc_obj));
 
 	if (!dcs_psoc_obj)
 		return QDF_STATUS_E_NOMEM;
+
+	/* Initialize VDEV tracking for concurrent DCS limit enforcement */
+	dcs_psoc_obj->dcs_enable_count = 0;
+	qdf_spinlock_create(&dcs_psoc_obj->dcs_psoc_lock);
+	for (loop = 0; loop < WLAN_DCS_MAX_VDEVS; loop++)
+		dcs_psoc_obj->enabled_vdev_ids[loop] = DCS_INVALID_VDEV_ID;
 
 	status = wlan_objmgr_psoc_component_obj_attach(psoc,
 						       WLAN_UMAC_COMP_DCS,
@@ -243,6 +250,9 @@ wlan_dcs_psoc_obj_destroy_notification(struct wlan_objmgr_psoc *psoc,
 		dcs_err("invalid wifi dcs obj");
 		return QDF_STATUS_E_FAULT;
 	}
+
+	/* Cleanup VDEV tracking */
+	qdf_spinlock_destroy(&dcs_psoc_obj->dcs_psoc_lock);
 
 	dcs_deinit_pdev_priv_obj(psoc);
 	status = wlan_objmgr_psoc_component_obj_detach(psoc,

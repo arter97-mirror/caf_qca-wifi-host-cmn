@@ -37,6 +37,9 @@
 
 #define WLAN_DCS_MAX_PDEVS 3
 
+/* Invalid VDEV ID marker for DCS tracking */
+#define DCS_INVALID_VDEV_ID 0xFF
+
 #define DCS_TX_MAX_CU  30
 #define MAX_DCS_TIME_RECORD 10
 #define DCS_FREQ_CONTROL_TIME (5 * 60 * 1000)
@@ -481,6 +484,9 @@ struct psoc_dcs_params {
  * @dcs_enable_cfg: enable dcs for pdev mode DCS
  * @intfr_detection_threshold:Interference detection threshold
  *                            for pdev mode DCS
+ * @dcs_enable_count: Number of VDEVs with DCS currently enabled
+ * @enabled_vdev_ids: Array of VDEV IDs that have DCS enabled
+ * @dcs_psoc_lock: Lock to protect VDEV tracking data
  */
 struct dcs_psoc_priv_obj {
 	struct dcs_pdev_priv_obj dcs_pdev_priv[WLAN_DCS_MAX_PDEVS];
@@ -490,6 +496,9 @@ struct dcs_psoc_priv_obj {
 	struct psoc_dcs_params dcs_per_mode_param;
 	uint8_t dcs_enable_cfg;
 	uint8_t intfr_detection_threshold;
+	uint8_t dcs_enable_count;
+	uint8_t enabled_vdev_ids[WLAN_DCS_MAX_VDEVS];
+	qdf_spinlock_t dcs_psoc_lock;
 };
 
 /**
@@ -574,6 +583,31 @@ QDF_STATUS wlan_dcs_attach(struct wlan_objmgr_psoc *psoc);
  * Return: QDF_STATUS
  */
 QDF_STATUS wlan_dcs_detach(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * wlan_dcs_inc_enable_count() - Increment DCS enable count and add VDEV to list
+ * @psoc: psoc pointer
+ * @vdev_id: VDEV ID to add to enabled list
+ *
+ * This function increments the DCS enable count and adds the VDEV ID to the
+ * enabled VDEV list. It is called when DCS is enabled on a VDEV.
+ *
+ * Return: void
+ */
+void wlan_dcs_inc_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
+
+/**
+ * wlan_dcs_dec_enable_count() - Decrement DCS enable count and remove VDEV
+ * from list
+ * @psoc: psoc pointer
+ * @vdev_id: VDEV ID to remove from enabled list
+ *
+ * This function decrements the DCS enable count and removes the VDEV ID from
+ * the enabled VDEV list. It is called when DCS is disabled on a VDEV.
+ *
+ * Return: void
+ */
+void wlan_dcs_dec_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
 
 /**
  * wlan_dcs_cmd_send() - Send dcs command to target_if layer

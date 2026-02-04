@@ -245,6 +245,98 @@ QDF_STATUS wlan_dcs_detach(struct wlan_objmgr_psoc *psoc)
 	return dcs_tx_ops->dcs_detach(psoc);
 }
 
+void wlan_dcs_inc_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
+{
+	struct dcs_psoc_priv_obj *dcs_psoc_obj;
+	uint8_t i;
+
+	if (!psoc) {
+		dcs_err("psoc is null");
+		return;
+	}
+
+	/* Only track enable count if firmware supports 2 VDEV DCS */
+	if (!wlan_is_two_vdev_dcs_supported(psoc))
+		return;
+
+	dcs_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(
+					psoc, WLAN_UMAC_COMP_DCS);
+	if (!dcs_psoc_obj) {
+		dcs_err("dcs psoc object is null");
+		return;
+	}
+
+	qdf_spin_lock_bh(&dcs_psoc_obj->dcs_psoc_lock);
+
+	/* Check if vdev is already in the list */
+	for (i = 0; i < WLAN_DCS_MAX_VDEVS; i++) {
+		if (dcs_psoc_obj->enabled_vdev_ids[i] == vdev_id) {
+			dcs_debug("vdev_id %d already in enabled list",
+				  vdev_id);
+			goto unlock;
+		}
+	}
+
+	/* Find an empty slot and add the vdev */
+	for (i = 0; i < WLAN_DCS_MAX_VDEVS; i++) {
+		if (dcs_psoc_obj->enabled_vdev_ids[i] ==
+		    DCS_INVALID_VDEV_ID) {
+			dcs_psoc_obj->enabled_vdev_ids[i] = vdev_id;
+			dcs_psoc_obj->dcs_enable_count++;
+			dcs_info("Added vdev %d to DCS enabled list (count %d)",
+				 vdev_id, dcs_psoc_obj->dcs_enable_count);
+			goto unlock;
+		}
+	}
+
+	dcs_err("No empty slot to add vdev %d", vdev_id);
+
+unlock:
+	qdf_spin_unlock_bh(&dcs_psoc_obj->dcs_psoc_lock);
+}
+
+void wlan_dcs_dec_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
+{
+	struct dcs_psoc_priv_obj *dcs_psoc_obj;
+	uint8_t i;
+
+	if (!psoc) {
+		dcs_err("psoc is null");
+		return;
+	}
+
+	/* Only track enable count if firmware supports 2 VDEV DCS */
+	if (!wlan_is_two_vdev_dcs_supported(psoc))
+		return;
+
+	dcs_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(
+					psoc, WLAN_UMAC_COMP_DCS);
+	if (!dcs_psoc_obj) {
+		dcs_err("dcs psoc object is null");
+		return;
+	}
+
+	qdf_spin_lock_bh(&dcs_psoc_obj->dcs_psoc_lock);
+
+	/* Find and remove the vdev from the list */
+	for (i = 0; i < WLAN_DCS_MAX_VDEVS; i++) {
+		if (dcs_psoc_obj->enabled_vdev_ids[i] == vdev_id) {
+			dcs_psoc_obj->enabled_vdev_ids[i] =
+				DCS_INVALID_VDEV_ID;
+			if (dcs_psoc_obj->dcs_enable_count > 0)
+				dcs_psoc_obj->dcs_enable_count--;
+			dcs_info("Removed vdev %d from DCS enabled list (count %d)",
+				 vdev_id, dcs_psoc_obj->dcs_enable_count);
+			goto unlock;
+		}
+	}
+
+	dcs_debug("vdev %d not found in enabled list", vdev_id);
+
+unlock:
+	qdf_spin_unlock_bh(&dcs_psoc_obj->dcs_psoc_lock);
+}
+
 QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 			     uint8_t vdev_id,
 			     bool is_host_pdev_id)
@@ -304,6 +396,7 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 {
 	struct wlan_target_if_dcs_tx_ops *dcs_tx_ops;
 	struct dcs_core_priv_obj *dcs_core_priv;
+	struct dcs_psoc_priv_obj *dcs_psoc_obj;
 	uint32_t dcs_enable;
 	QDF_STATUS status;
 
@@ -321,6 +414,26 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 	dcs_enable = dcs_core_priv->dcs_host_params.dcs_enable &
 			dcs_core_priv->dcs_host_params.dcs_enable_cfg;
 
+	/* Check if enabling DCS would exceed the maximum allowed VDEVs */
+	if (dcs_enable && wlan_is_two_vdev_dcs_supported(psoc)) {
+		dcs_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(
+						psoc, WLAN_UMAC_COMP_DCS);
+		if (!dcs_psoc_obj) {
+			dcs_err("dcs psoc object is null");
+			return QDF_STATUS_E_NULL_VALUE;
+		}
+
+		qdf_spin_lock_bh(&dcs_psoc_obj->dcs_psoc_lock);
+		if (dcs_psoc_obj->dcs_enable_count >= WLAN_DCS_MAX_VDEVS) {
+			qdf_spin_unlock_bh(&dcs_psoc_obj->dcs_psoc_lock);
+			dcs_err("DCS enable count %d already at max %d, rejecting vdev %d",
+				dcs_psoc_obj->dcs_enable_count,
+				WLAN_DCS_MAX_VDEVS, vdev_id);
+			return QDF_STATUS_E_RESOURCES;
+		}
+		qdf_spin_unlock_bh(&dcs_psoc_obj->dcs_psoc_lock);
+	}
+
 	dcs_tx_ops = target_if_dcs_get_tx_ops(psoc);
 
 	if (!dcs_tx_ops || !dcs_tx_ops->dcs_cmd_send_for_vdev) {
@@ -330,6 +443,12 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 
 	dcs_debug("vdev %d enable: %u pdev_id %u",
 		  vdev_id, dcs_enable, mac_id);
+
+	/* Update DCS enable count before sending command to firmware */
+	if (dcs_enable)
+		wlan_dcs_inc_enable_count(psoc, vdev_id);
+	else
+		wlan_dcs_dec_enable_count(psoc, vdev_id);
 
 	status = dcs_tx_ops->dcs_cmd_send_for_vdev(psoc, vdev_id,
 						   dcs_enable);

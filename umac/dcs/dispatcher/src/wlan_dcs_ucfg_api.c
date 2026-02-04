@@ -25,6 +25,7 @@
 #include "wlan_objmgr_vdev_obj.h"
 #include <wlan_mlme_public_struct.h>
 #include "wlan_dcs_init_deinit_api.h"
+#include "cfg_dcs.h"
 
 void ucfg_dcs_register_cb(
 			struct wlan_objmgr_psoc *psoc,
@@ -330,3 +331,280 @@ ucfg_dcs_switch_chan(struct wlan_objmgr_vdev *vdev, qdf_freq_t tgt_freq,
 	return wlan_dcs_switch_chan(vdev, tgt_freq, tgt_width);
 }
 #endif
+
+/**
+ * ucfg_dcs_get_config() - Get DCS configuration
+ * @vdev: Pointer to vdev object
+ * @config: Pointer to store the DCS configuration
+ *
+ * This function retrieves the current DCS configuration for the specified vdev
+ * and stores it in the provided config structure.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS ucfg_dcs_get_config(struct wlan_objmgr_vdev *vdev,
+			       struct wlan_dcs_user_config *config)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct dcs_core_priv_obj *dcs_core_priv;
+	uint8_t vdev_id;
+
+	if (!vdev || !config) {
+		dcs_err("vdev or config is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		dcs_err("psoc is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wlan_dcs_core_obj_lock(dcs_core_priv);
+	config->dcs_enable = dcs_core_priv->dcs_host_params.dcs_enable &
+			     dcs_core_priv->dcs_host_params.dcs_enable_cfg;
+	config->intfr_detection_threshold =
+		dcs_core_priv->dcs_host_params.intfr_detection_threshold;
+	config->phy_err_penalty =
+		dcs_core_priv->dcs_host_params.phy_err_penalty;
+	config->phy_err_threshold =
+		dcs_core_priv->dcs_host_params.phy_err_threshold;
+	config->radar_err_threshold =
+		dcs_core_priv->dcs_host_params.radar_err_threshold;
+	config->tx_err_threshold =
+		dcs_core_priv->dcs_host_params.tx_err_threshold;
+	config->intfr_detection_window =
+		dcs_core_priv->dcs_host_params.intfr_detection_window;
+	config->coch_intfr_threshold =
+		dcs_core_priv->dcs_host_params.coch_intfr_threshold;
+	config->max_cu = dcs_core_priv->dcs_host_params.user_max_cu;
+	wlan_dcs_core_obj_unlock(dcs_core_priv);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * ucfg_dcs_set_config() - Set DCS configuration
+ * @vdev: Pointer to vdev object
+ * @config: Pointer to the DCS configuration to set
+ *
+ * This function sets the DCS configuration for the specified vdev
+ * using the provided config structure.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS ucfg_dcs_set_config(struct wlan_objmgr_vdev *vdev,
+			       struct wlan_dcs_user_config *config)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct dcs_core_priv_obj *dcs_core_priv;
+	struct core_dcs_params *dcs_param;
+	uint8_t vdev_id, dcs_enable_cfg;
+	bool bchanged = false;
+
+	if (!vdev || !config) {
+		dcs_err("vdev or config is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		dcs_err("psoc is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	dcs_param = &dcs_core_priv->dcs_host_params;
+
+	/* Validate configuration parameters */
+	if (config->intfr_detection_threshold <
+	    CFG_DCS_INTFR_DETECTION_THRESHOLD_MIN ||
+	    config->intfr_detection_threshold >
+	    CFG_DCS_INTFR_DETECTION_THRESHOLD_MAX) {
+		dcs_err("Invalid intfr_detection_threshold: %u (min: %u, max: %u)",
+			config->intfr_detection_threshold,
+			CFG_DCS_INTFR_DETECTION_THRESHOLD_MIN,
+			CFG_DCS_INTFR_DETECTION_THRESHOLD_MAX);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->phy_err_penalty < CFG_DCS_PHY_ERR_PENALTY_MIN ||
+	    config->phy_err_penalty > CFG_DCS_PHY_ERR_PENALTY_MAX) {
+		dcs_err("Invalid phy_err_penalty: %u (min: %u, max: %u)",
+			config->phy_err_penalty,
+			CFG_DCS_PHY_ERR_PENALTY_MIN,
+			CFG_DCS_PHY_ERR_PENALTY_MAX);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->phy_err_threshold < CFG_DCS_PHY_ERR_THRESHOLD_MIN ||
+	    config->phy_err_threshold > CFG_DCS_PHY_ERR_THRESHOLD_MAX) {
+		dcs_err("Invalid phy_err_threshold: %u (min: %u, max: %u)",
+			config->phy_err_threshold,
+			CFG_DCS_PHY_ERR_THRESHOLD_MIN,
+			CFG_DCS_PHY_ERR_THRESHOLD_MAX);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->radar_err_threshold < CFG_DCS_RADAR_ERR_THRESHOLD_MIN ||
+	    config->radar_err_threshold > CFG_DCS_RADAR_ERR_THRESHOLD_MAX) {
+		dcs_err("Invalid radar_err_threshold: %u (min: %u, max: %u)",
+			config->radar_err_threshold,
+			CFG_DCS_RADAR_ERR_THRESHOLD_MIN,
+			CFG_DCS_RADAR_ERR_THRESHOLD_MAX);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->tx_err_threshold < CFG_DCS_TX_ERR_THRESHOLD_MIN ||
+	    config->tx_err_threshold > CFG_DCS_TX_ERR_THRESHOLD_MAX) {
+		dcs_err("Invalid tx_err_threshold: %u (min: %u, max: %u)",
+			config->tx_err_threshold,
+			CFG_DCS_TX_ERR_THRESHOLD_MIN,
+			CFG_DCS_TX_ERR_THRESHOLD_MAX);
+		wlan_dcs_core_obj_unlock(dcs_core_priv);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->intfr_detection_window <
+	    CFG_DCS_INTFR_DETECTION_WINDOW_MIN ||
+	    config->intfr_detection_window >
+	    CFG_DCS_INTFR_DETECTION_WINDOW_MAX) {
+		dcs_err("Invalid intfr_detection_window: %u (min: %u, max: %u)",
+			config->intfr_detection_window,
+			CFG_DCS_INTFR_DETECTION_WINDOW_MIN,
+			CFG_DCS_INTFR_DETECTION_WINDOW_MAX);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->coch_intfr_threshold < CFG_DCS_COCH_INTFR_THRESHOLD_MIN ||
+	    config->coch_intfr_threshold > CFG_DCS_COCH_INTFR_THRESHOLD_MAX) {
+		dcs_err("Invalid coch_intfr_threshold: %u (min: %u, max: %u)",
+			config->coch_intfr_threshold,
+			CFG_DCS_COCH_INTFR_THRESHOLD_MIN,
+			CFG_DCS_COCH_INTFR_THRESHOLD_MAX);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->max_cu < CFG_DCS_USER_MAX_CU_MIN ||
+	    config->max_cu > CFG_DCS_USER_MAX_CU_MAX) {
+		dcs_err("Invalid max_cu: %u (min: %u, max: %u)",
+			config->max_cu,
+			CFG_DCS_USER_MAX_CU_MIN,
+			CFG_DCS_USER_MAX_CU_MAX);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (config->dcs_enable != 0 &&
+	    config->dcs_enable != WLAN_HOST_DCS_WLANIM) {
+		dcs_err("Unsupport DCS enable: 0x%x", config->dcs_enable);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (dcs_param->dcs_enable != config->dcs_enable) {
+		dcs_debug("set dcs_enable from %d to %d",
+			  dcs_param->dcs_enable, config->dcs_enable);
+		dcs_enable_cfg = dcs_param->dcs_enable_cfg;
+		if (config->dcs_enable) {
+			dcs_param->dcs_enable |= WLAN_HOST_DCS_WLANIM;
+			dcs_param->dcs_enable_cfg |= WLAN_HOST_DCS_WLANIM;
+			wlan_send_dcs_cmd_for_vdev(psoc, DCS_INVALID_PDEV_ID,
+						   vdev_id);
+		} else {
+			dcs_param->dcs_enable &= (~WLAN_HOST_DCS_WLANIM);
+			dcs_param->dcs_enable_cfg &= (~WLAN_HOST_DCS_WLANIM);
+			wlan_send_dcs_cmd_for_vdev(psoc, DCS_INVALID_PDEV_ID,
+						   vdev_id);
+		}
+		bchanged = true;
+		dcs_param->dcs_enable_cfg = dcs_enable_cfg;
+	}
+
+	if (dcs_param->intfr_detection_threshold !=
+	    config->intfr_detection_threshold) {
+		dcs_debug("set intfr_detection_threshold from %d to %d",
+			  dcs_param->intfr_detection_threshold,
+			  config->intfr_detection_threshold);
+		bchanged = true;
+	}
+
+	if (dcs_param->phy_err_penalty != config->phy_err_penalty) {
+		dcs_debug("set phy_err_penalty from %d to %d",
+			  dcs_param->phy_err_penalty, config->phy_err_penalty);
+		bchanged = true;
+	}
+
+	if (dcs_param->phy_err_threshold != config->phy_err_threshold) {
+		dcs_debug("set phy_err_threshold from %d to %d",
+			  dcs_param->phy_err_threshold,
+			  config->phy_err_threshold);
+		bchanged = true;
+	}
+
+	if (dcs_param->radar_err_threshold != config->radar_err_threshold) {
+		dcs_debug("set radar_err_threshold from %d to %d",
+			  dcs_param->radar_err_threshold,
+			  config->radar_err_threshold);
+		bchanged = true;
+	}
+
+	if (dcs_param->tx_err_threshold != config->tx_err_threshold) {
+		dcs_debug("set tx_err_threshold from %d to %d",
+			  dcs_param->tx_err_threshold,
+			  config->tx_err_threshold);
+		bchanged = true;
+	}
+
+	if (dcs_param->intfr_detection_window !=
+	    config->intfr_detection_window) {
+		dcs_debug("set intfr_detection_window from %d to %d",
+			  dcs_param->intfr_detection_window,
+			  config->intfr_detection_window);
+		bchanged = true;
+	}
+
+	if (dcs_param->coch_intfr_threshold != config->coch_intfr_threshold) {
+		dcs_debug("set coch_intfr_threshold from %d to %d",
+			  dcs_param->coch_intfr_threshold,
+			  config->coch_intfr_threshold);
+		bchanged = true;
+	}
+
+	if (dcs_param->user_max_cu != config->max_cu) {
+		dcs_debug("set max_cu from %d to %d",
+			  dcs_param->user_max_cu, config->max_cu);
+		bchanged = true;
+	}
+
+	if (bchanged) {
+		wlan_dcs_core_obj_lock(dcs_core_priv);
+		dcs_param->dcs_enable = config->dcs_enable;
+		dcs_param->intfr_detection_threshold =
+			config->intfr_detection_threshold;
+		dcs_param->phy_err_penalty = config->phy_err_penalty;
+		dcs_param->phy_err_threshold = config->phy_err_threshold;
+		dcs_param->radar_err_threshold = config->radar_err_threshold;
+		dcs_param->tx_err_threshold = config->tx_err_threshold;
+		dcs_param->intfr_detection_window =
+			config->intfr_detection_window;
+		dcs_param->coch_intfr_threshold = config->coch_intfr_threshold;
+		dcs_param->user_max_cu = config->max_cu;
+		wlan_dcs_core_obj_unlock(dcs_core_priv);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
