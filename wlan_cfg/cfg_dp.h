@@ -2666,6 +2666,36 @@
 #define CFG_DP_DAL
 #endif /* FEATURE_DAL_DP_SUPPORT */
 
+#ifdef DP_TCP_MEM_PARAM_CTRL
+/*
+ * <ini>
+ * tcp_mem_param_ctrl - Enable/Disable rmem_max and wmem_max setting
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This ini is used to enable/disable the setting of /proc/sys/net/core/rmem_max
+ * and /proc/sys/net/core/wmem_max values.
+ * When set to 1, the driver will dynamically adjust these values.
+ * When set to 0, the driver will not modify these system parameters.
+ *
+ * Related: None
+ *
+ * Supported Feature: hamoa
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+
+#define CFG_DP_TCP_MEM_PARAM_CTRL \
+		CFG_INI_BOOL("tcp_mem_param_ctrl", false, \
+		"Enable/Disable rmem_max and wmem_max setting")
+#define CFG_DP_TCP_MEM_PARAM CFG(CFG_DP_TCP_MEM_PARAM_CTRL)
+#else
+#define CFG_DP_TCP_MEM_PARAM
+#endif /* DP_TCP_MEM_PARAM_CTRL */
+
 #define CFG_DP \
 		CFG(CFG_DP_HTT_PACKET_TYPE) \
 		CFG(CFG_DP_INT_BATCH_THRESHOLD_OTHER) \
@@ -2848,5 +2878,6 @@
 		CFG_DP_TX_PAGE_POOL \
 		CFG_DP_DAL_SIM \
 		CFG_DP_DAL \
-		CFG_DP_TX_DYNAMIC_PAGE_POOL
+		CFG_DP_TX_DYNAMIC_PAGE_POOL \
+		CFG_DP_TCP_MEM_PARAM
 #endif /* _CFG_DP_H_ */
