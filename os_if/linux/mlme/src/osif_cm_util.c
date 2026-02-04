@@ -344,6 +344,20 @@ osif_cm_send_keys_cb(struct wlan_objmgr_vdev *vdev, uint8_t key_index,
 				       cipher_type);
 }
 
+static QDF_STATUS
+osif_cm_mgmt_tx_status_cb(struct wlan_objmgr_vdev *vdev, uint64_t cookie,
+			  const uint8_t *buf, uint32_t len, bool ack)
+{
+	if (!cookie || !buf || !len)
+		return QDF_STATUS_E_INVAL;
+
+	if (!osif_cm_legacy_ops || !osif_cm_legacy_ops->mgmt_tx_status_cb)
+		return QDF_STATUS_E_FAILURE;
+
+	return osif_cm_legacy_ops->mgmt_tx_status_cb(vdev, cookie, buf,
+						     len, ack);
+}
+
 #ifdef WLAN_FEATURE_11BE_MLO
 void
 osif_standby_link_reconfig_notify(struct wlan_objmgr_vdev *assoc_vdev,
@@ -748,6 +762,7 @@ static struct mlme_cm_ops cm_ops = {
 	.mlme_cm_pmksa_candidate_notify_cb = osif_pmksa_candidate_notify_cb,
 	.mlme_cm_send_keys_cb = osif_cm_send_keys_cb,
 	.mlme_cm_link_reconfig_notify_cb = osif_link_reconfig_notify_cb,
+	.mlme_cm_mgmt_tx_status_cb = osif_cm_mgmt_tx_status_cb,
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	.mlme_cm_roam_start_cb = osif_cm_roam_start_cb,
 	.mlme_cm_roam_abort_cb = osif_cm_roam_abort_cb,

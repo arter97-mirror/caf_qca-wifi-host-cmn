@@ -619,6 +619,22 @@ QDF_STATUS mlme_cm_osif_link_reconfig_notify(struct wlan_objmgr_vdev *vdev)
 	return ret;
 }
 
+QDF_STATUS mlme_cm_osif_mgmt_tx_status(struct wlan_objmgr_vdev *vdev,
+				       uint64_t cookie,
+				       const uint8_t *buf,
+				       uint32_t len,
+				       bool ack)
+{
+	QDF_STATUS ret = QDF_STATUS_E_INVAL;
+
+	if (glbl_cm_ops &&
+	    glbl_cm_ops->mlme_cm_mgmt_tx_status_cb)
+		ret = glbl_cm_ops->mlme_cm_mgmt_tx_status_cb(vdev, cookie, buf,
+							     len, ack);
+
+	return ret;
+}
+
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 QDF_STATUS mlme_cm_osif_roam_connect_complete(struct wlan_objmgr_vdev *vdev)
 {

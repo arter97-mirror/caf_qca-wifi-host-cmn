@@ -288,6 +288,13 @@ typedef QDF_STATUS
 			     bool pairwise,
 			     enum wlan_crypto_cipher_type cipher_type);
 
+typedef QDF_STATUS
+(*osif_cm_mgmt_frame_tx_status_cb)(struct wlan_objmgr_vdev *vdev,
+				   uint64_t cookie,
+				   const uint8_t *buf,
+				   uint32_t len,
+				   bool ack);
+
 /**
  * osif_cm_unlink_bss() - function to unlink bss from kernel and scan database
  * on connect timeouts reasons
@@ -397,6 +404,7 @@ typedef struct net_device *
  * @napi_serialize_control_cb: callback to legacy module to take
  * actions on napi serialization
  * @save_gtk_cb : callback to legacy module to save gtk
+ * @mgmt_tx_status_cb: Callback to indicate mgmt frame tx status
  * @send_vdev_keys_cb: callback to send vdev keys
  * @get_scan_ie_params_cb: callback to get scan ie params
  * @set_hlp_data_cb: callback to legacy module to save hlp data
@@ -422,6 +430,7 @@ struct osif_cm_ops {
 	osif_cm_save_gtk_cb save_gtk_cb;
 	osif_cm_send_vdev_keys_cb send_vdev_keys_cb;
 	osif_cm_get_scan_ie_params_cb get_scan_ie_params_cb;
+	osif_cm_mgmt_frame_tx_status_cb mgmt_tx_status_cb;
 #ifdef WLAN_FEATURE_FILS_SK
 	osif_cm_set_hlp_data_cb set_hlp_data_cb;
 #endif

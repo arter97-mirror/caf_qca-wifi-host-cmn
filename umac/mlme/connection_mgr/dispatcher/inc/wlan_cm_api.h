@@ -755,4 +755,17 @@ bool wlan_cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev);
  */
 void wlan_cm_update_all_sta_links_assoc_state(struct wlan_objmgr_pdev *pdev);
 
+/**
+ * wlan_cm_mgmt_tx_status() - indicate mgmt tx status to OSIF
+ * @vdev: vdev pointer
+ * @cookie: cookie from NL80211 mgmt tx (0 if not applicable)
+ * @buf: management frame buffer
+ * @len: frame length
+ * @ack: true if acked by peer, false otherwise
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wlan_cm_mgmt_tx_status(struct wlan_objmgr_vdev *vdev,
+				  uint64_t cookie, const uint8_t *buf,
+				  uint32_t len, bool ack);
 #endif /* __WLAN_CM_UCFG_API_H */

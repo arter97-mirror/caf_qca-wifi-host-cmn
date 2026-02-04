@@ -73,6 +73,13 @@
  * @mlme_cm_link_reconfig_notify_cb:
  * @vdev: vdev object
  *
+ * @mlme_cm_mgmt_tx_status_cb: callback to indicate mgmt frame tx status
+ * @vdev: vdev pointer
+ * @cookie: nl80211 cookie for mgmt tx status
+ * @buf: management frame buffer
+ * @len: frame length
+ * @ack: true if acked by peer
+ *
  * @mlme_cm_roam_start_cb: Roam start callback
  * @vdev: vdev pointer
  *
@@ -152,6 +159,11 @@ struct mlme_cm_ops {
 					   enum wlan_crypto_cipher_type cipher_type);
 	QDF_STATUS (*mlme_cm_link_reconfig_notify_cb)(
 					struct wlan_objmgr_vdev *vdev);
+	QDF_STATUS (*mlme_cm_mgmt_tx_status_cb)(struct wlan_objmgr_vdev *vdev,
+						uint64_t cookie,
+						const uint8_t *buf,
+						uint32_t len,
+						bool ack);
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	QDF_STATUS (*mlme_cm_roam_start_cb)(struct wlan_objmgr_vdev *vdev);
 	QDF_STATUS (*mlme_cm_roam_abort_cb)(struct wlan_objmgr_vdev *vdev);
@@ -1002,6 +1014,22 @@ QDF_STATUS mlme_cm_osif_send_keys(struct wlan_objmgr_vdev *vdev,
  * Return: QDF_STATUS
  */
 QDF_STATUS mlme_cm_osif_link_reconfig_notify(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * mlme_cm_osif_mgmt_tx_status() - OSIF indication for mgmt tx status
+ * @vdev: vdev pointer
+ * @cookie: cookie from userspace mgmt-tx request
+ * @buf: management frame buffer
+ * @len: buffer length
+ * @ack: whether FW reports ACK success
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlme_cm_osif_mgmt_tx_status(struct wlan_objmgr_vdev *vdev,
+				       uint64_t cookie,
+				       const uint8_t *buf,
+				       uint32_t len,
+				       bool ack);
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /**

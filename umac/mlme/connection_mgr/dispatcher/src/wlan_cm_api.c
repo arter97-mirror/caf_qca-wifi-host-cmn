@@ -638,3 +638,10 @@ bool wlan_cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev)
 {
 	return cm_is_link_switch_connection(vdev);
 }
+
+QDF_STATUS wlan_cm_mgmt_tx_status(struct wlan_objmgr_vdev *vdev,
+				  uint64_t cookie, const uint8_t *buf,
+				  uint32_t len, bool ack)
+{
+	return mlme_cm_osif_mgmt_tx_status(vdev, cookie, buf, len, ack);
+}
