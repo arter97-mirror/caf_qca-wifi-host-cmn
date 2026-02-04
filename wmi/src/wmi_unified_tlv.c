@@ -16472,7 +16472,7 @@ static bool is_diag_event_tlv(uint32_t event_id)
 	return false;
 }
 
-static uint16_t wmi_tag_fw_hang_cmd(wmi_unified_t wmi_handle)
+static inline uint16_t wmi_tag_fw_hang_cmd(wmi_unified_t wmi_handle)
 {
 	uint16_t tag = 0;
 
@@ -16487,6 +16487,21 @@ static uint16_t wmi_tag_fw_hang_cmd(wmi_unified_t wmi_handle)
 
 	wmi_handle->tag_crash_inject = false;
 	return tag;
+}
+
+/**
+ * wmi_tag_rt_pm_action() - set HTC TX tag for runtime PM commands
+ * @wmi_handle: WMI handle
+ *
+ * Return: htc_tx_tag
+ */
+static uint16_t wmi_tag_rt_pm_action(wmi_unified_t wmi_handle)
+{
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_wow_sta_ps_param_cache_support))
+		return 0;
+
+	return HTC_TX_PACKET_TAG_AUTO_PM;
 }
 
 /**
@@ -16509,7 +16524,6 @@ static uint16_t wmi_set_htc_tx_tag_tlv(wmi_unified_t wmi_handle,
 	case WMI_WOW_HOSTWAKEUP_FROM_SLEEP_CMDID:
 	case WMI_PDEV_RESUME_CMDID:
 	case WMI_HB_SET_ENABLE_CMDID:
-	case WMI_WOW_SET_ACTION_WAKE_UP_CMDID:
 #ifdef FEATURE_WLAN_D0WOW
 	case WMI_D0_WOW_ENABLE_DISABLE_CMDID:
 #endif
@@ -16517,6 +16531,9 @@ static uint16_t wmi_set_htc_tx_tag_tlv(wmi_unified_t wmi_handle,
 		break;
 	case WMI_FORCE_FW_HANG_CMDID:
 		htc_tx_tag = wmi_tag_fw_hang_cmd(wmi_handle);
+		break;
+	case WMI_WOW_SET_ACTION_WAKE_UP_CMDID:
+		htc_tx_tag = wmi_tag_rt_pm_action(wmi_handle);
 		break;
 	default:
 		break;
