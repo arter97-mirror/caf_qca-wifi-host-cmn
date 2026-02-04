@@ -278,6 +278,7 @@ struct psoc_dcs_cbk {
 	void *arg;
 };
 
+#define DCS_INVALID_PDEV_ID 0xFF
 #define WLAN_DCS_MAX_STA_NUM  1
 #define WLAN_DCS_MAX_SAP_NUM  2
 #define WLAN_DCS_AFC_PREFER_BW  CH_WIDTH_80MHZ
@@ -518,6 +519,32 @@ struct dcs_pdev_priv_obj *
 wlan_dcs_get_pdev_private_obj(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id);
 
 /**
+ * wlan_dcs_get_vdev_private_obj() - get dcs vdev private object
+ * @psoc: psoc pointer
+ * @vdev_id: vdev_id
+ *
+ * API to retrieve the vdev private object from the psoc context
+ *
+ * Return: vdev private object pointer on success, NULL on error
+ */
+struct dcs_vdev_priv_obj *
+wlan_dcs_get_vdev_private_obj(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id);
+
+/**
+ * wlan_dcs_get_core_private_obj() - get dcs core object
+ * @psoc: psoc pointer
+ * @pdev_id: pdev_id
+ * @vdev_id: vdev_id
+ *
+ * API to retrieve the core object based on vdev or pdev
+ *
+ * Return: core object pointer on success, NULL on error
+ */
+struct dcs_core_priv_obj *
+wlan_dcs_get_core_private_obj(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
+			      uint8_t vdev_id);
+
+/**
  * dcs_get_trnsprt_switch_rjt_th_cu() - get unused cu threshold
  * @psoc: psoc pointer
  * @pdev_id: pdev_id
@@ -551,7 +578,7 @@ QDF_STATUS wlan_dcs_detach(struct wlan_objmgr_psoc *psoc);
 /**
  * wlan_dcs_cmd_send() - Send dcs command to target_if layer
  * @psoc: psoc pointer
- * @pdev_id: pdev_id
+ * @vdev_id: vdev_id
  * @is_host_pdev_id: pdev_id is host id or not
  *
  * The function gets called to send dcs command to FW
@@ -559,7 +586,7 @@ QDF_STATUS wlan_dcs_detach(struct wlan_objmgr_psoc *psoc);
  * return: QDF_STATUS_SUCCESS for success or error code
  */
 QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
-			     uint32_t pdev_id,
+			     uint8_t vdev_id,
 			     bool is_host_pdev_id);
 
 #ifdef WLAN_FEATURE_VDEV_DCS
@@ -589,6 +616,15 @@ QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 bool wlan_is_vdev_level_dcs_supported(struct wlan_objmgr_psoc *psoc);
 
 /**
+ * wlan_is_two_vdev_dcs_supported() - API to check whether concurrent 2 VDEV
+ * DCS is supported or not
+ * @psoc: pointer to psoc object
+ *
+ * Return: True/False
+ */
+bool wlan_is_two_vdev_dcs_supported(struct wlan_objmgr_psoc *psoc);
+
+/**
  * wlan_dcs_process() - dcs process main entry
  * @psoc: psoc pointer
  * @event: dcs event pointer
@@ -614,20 +650,21 @@ void wlan_dcs_disable_timer_fn(void *dcs_timer_args);
 /**
  * wlan_dcs_clear() - clear dcs information
  * @psoc: psoc pointer
- * @pdev_id: pdev_id
+ * @vdev_id: vdev_id
  *
  * The function gets called to clear dcs information such as dcs
  * frequency control parameters and stop dcs disable timer
  *
  * Return: None
  */
-void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id);
+void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
 
 /**
  * wlan_dcs_set_algorithm_process() - config dcs event data to do algorithm
  * process or not
  * @psoc: psoc pointer
- * @pdev_id: pdev_id
+ * @pdev_id: pdev id
+ * @vdev_id: vdev id
  * @dcs_algorithm_process: dcs algorithm process
  *
  * The function gets called to config dcs event data to do algorithm
@@ -636,7 +673,7 @@ void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint32_t pdev_id);
  * Return: None
  */
 void wlan_dcs_set_algorithm_process(struct wlan_objmgr_psoc *psoc,
-				    uint32_t pdev_id,
+				    uint8_t pdev_id, uint8_t vdev_id,
 				    bool dcs_algorithm_process);
 
 /**

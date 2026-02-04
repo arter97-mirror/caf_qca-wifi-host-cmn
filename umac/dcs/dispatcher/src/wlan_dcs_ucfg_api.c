@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,6 +23,8 @@
 #include "wlan_dcs_ucfg_api.h"
 #include "../../core/src/wlan_dcs.h"
 #include "wlan_objmgr_vdev_obj.h"
+#include <wlan_mlme_public_struct.h>
+#include "wlan_dcs_init_deinit_api.h"
 
 void ucfg_dcs_register_cb(
 			struct wlan_objmgr_psoc *psoc,
@@ -45,28 +47,29 @@ void ucfg_dcs_register_cb(
 
 void
 ucfg_dcs_register_user_cb(struct wlan_objmgr_psoc *psoc,
-			  uint8_t mac_id, uint8_t vdev_id,
+			  uint8_t vdev_id,
 			  void (*cb)(uint8_t vdev_id,
 				     struct wlan_host_dcs_im_user_stats *stats,
 				     int status))
 {
-	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+	struct dcs_core_priv_obj *dcs_core_priv;
 
-	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, mac_id);
-	if (!dcs_pdev_priv) {
-		dcs_err("dcs pdev private object is null");
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
 		return;
 	}
 
-	dcs_pdev_priv->requestor_vdev_id = vdev_id;
-	dcs_pdev_priv->user_cb = cb;
+	dcs_core_priv->requestor_vdev_id = vdev_id;
+	dcs_core_priv->user_cb = cb;
 }
 
 uint32_t
 wlan_dcs_get_trnsprt_switch_rjt_th_cu(struct wlan_objmgr_psoc *psoc,
-				      uint8_t pdev_id)
+				      uint8_t vdev_id)
 {
-	return dcs_get_trnsprt_switch_rjt_th_cu(psoc, pdev_id);
+	return dcs_get_trnsprt_switch_rjt_th_cu(psoc, vdev_id);
 }
 
 QDF_STATUS ucfg_dcs_register_awgn_cb(struct wlan_objmgr_psoc *psoc,
@@ -103,142 +106,211 @@ QDF_STATUS ucfg_dcs_register_afc_sel_chan_cb(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_SUCCESS;
 }
 
-QDF_STATUS
-ucfg_wlan_dcs_cmd(struct wlan_objmgr_psoc *psoc,
-		  uint32_t mac_id,
-		  bool is_host_pdev_id)
-{
-	return wlan_dcs_cmd_send(psoc, mac_id, is_host_pdev_id);
-}
-
 #ifdef WLAN_FEATURE_VDEV_DCS
 QDF_STATUS
-ucfg_wlan_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc, uint32_t mac_id,
-			   uint8_t vdev_id)
+ucfg_wlan_dcs_cmd(struct wlan_objmgr_psoc *psoc, uint32_t mac_id,
+		  uint8_t vdev_id)
 {
-	return wlan_send_dcs_cmd_for_vdev(psoc, mac_id, vdev_id);
+	if (wlan_is_vdev_level_dcs_supported(psoc))
+		return wlan_send_dcs_cmd_for_vdev(psoc, mac_id, vdev_id);
+	else
+		return wlan_dcs_cmd_send(psoc, mac_id, true);
+}
+#else
+QDF_STATUS
+ucfg_wlan_dcs_cmd(struct wlan_objmgr_psoc *psoc, uint32_t mac_id,
+		  uint8_t vdev_id)
+{
+	return wlan_dcs_cmd_send(psoc, mac_id, true);
 }
 #endif
 
-bool ucfg_is_vdev_level_dcs_supported(struct wlan_objmgr_psoc *psoc)
+bool ucfg_is_two_vdev_dcs_supported(struct wlan_objmgr_psoc *psoc)
 {
-	return wlan_is_vdev_level_dcs_supported(psoc);
+	return wlan_is_two_vdev_dcs_supported(psoc);
 }
 
 void ucfg_config_dcs_enable(struct wlan_objmgr_psoc *psoc,
-			    uint32_t mac_id,
-			    uint8_t interference_type)
+			uint32_t mac_id,
+			uint8_t vdev_id,
+			uint8_t interference_type)
 {
-	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+	struct dcs_core_priv_obj *dcs_core_priv;
 
-	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, mac_id);
-	if (!dcs_pdev_priv) {
-		dcs_err("dcs pdev private object is null");
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, mac_id,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
 		return;
 	}
 
-	dcs_pdev_priv->dcs_host_params.dcs_enable |= interference_type;
+	dcs_core_priv->dcs_host_params.dcs_enable |= interference_type;
 }
 
 void ucfg_config_dcs_disable(struct wlan_objmgr_psoc *psoc,
-			     uint32_t mac_id,
-			     uint8_t interference_type)
+			uint8_t vdev_id,
+			uint8_t interference_type)
 {
-	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+	struct dcs_core_priv_obj *dcs_core_priv;
 
-	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, mac_id);
-	if (!dcs_pdev_priv) {
-		dcs_err("dcs pdev private object is null");
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
 		return;
 	}
 
-	dcs_pdev_priv->dcs_host_params.dcs_enable &= (~interference_type);
+	dcs_core_priv->dcs_host_params.dcs_enable &= (~interference_type);
 }
 
-uint8_t ucfg_get_dcs_enable(struct wlan_objmgr_psoc *psoc, uint8_t mac_id)
+uint8_t ucfg_get_dcs_enable(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 {
-	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+	struct dcs_core_priv_obj *dcs_core_priv;
 	uint8_t enable = 0;
 
-	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, mac_id);
-	if (!dcs_pdev_priv) {
-		dcs_err("dcs pdev private object is null");
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
 		return 0;
 	}
 
-	if (dcs_pdev_priv->dcs_host_params.dcs_enable_cfg)
-		enable = dcs_pdev_priv->dcs_host_params.dcs_enable;
+	if (dcs_core_priv->dcs_host_params.dcs_enable_cfg)
+		enable = dcs_core_priv->dcs_host_params.dcs_enable;
 
 	return enable;
 }
 
-void ucfg_dcs_clear(struct wlan_objmgr_psoc *psoc, uint32_t mac_id)
+void ucfg_dcs_clear(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 {
-	wlan_dcs_clear(psoc, mac_id);
+	wlan_dcs_clear(psoc, vdev_id);
 }
 
-void ucfg_config_dcs_event_data(struct wlan_objmgr_psoc *psoc, uint32_t mac_id,
-				bool dcs_algorithm_process)
+void ucfg_config_dcs_event_data(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
+				uint8_t vdev_id, bool dcs_algorithm_process)
 {
-	wlan_dcs_set_algorithm_process(psoc, mac_id, dcs_algorithm_process);
+	wlan_dcs_set_algorithm_process(psoc, pdev_id, vdev_id,
+				       dcs_algorithm_process);
 }
 
-void ucfg_dcs_reset_user_stats(struct wlan_objmgr_psoc *psoc, uint8_t mac_id)
+void ucfg_dcs_reset_user_stats(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 {
-	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+	struct dcs_core_priv_obj *dcs_core_priv;
 	struct wlan_host_dcs_im_user_stats *user_stats;
 
-	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, mac_id);
-	if (!dcs_pdev_priv) {
-		dcs_err("dcs pdev private object is null");
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
 		return;
 	}
 
-	wlan_dcs_pdev_obj_lock(dcs_pdev_priv);
-	dcs_pdev_priv->dcs_host_params.user_request_count = 0;
-	dcs_pdev_priv->dcs_host_params.notify_user = 0;
-	user_stats = &dcs_pdev_priv->dcs_im_stats.user_dcs_im_stats;
+	wlan_dcs_core_obj_lock(dcs_core_priv);
+	dcs_core_priv->dcs_host_params.user_request_count = 0;
+	dcs_core_priv->dcs_host_params.notify_user = 0;
+	user_stats = &dcs_core_priv->dcs_im_stats.user_dcs_im_stats;
 	user_stats->cycle_count = 0;
 	user_stats->rxclr_count = 0;
 	user_stats->rx_frame_count = 0;
 	user_stats->my_bss_rx_cycle_count = 0;
 	user_stats->max_rssi = 0;
 	user_stats->min_rssi = 0;
-	wlan_dcs_pdev_obj_unlock(dcs_pdev_priv);
+	wlan_dcs_core_obj_unlock(dcs_core_priv);
 }
 
-void ucfg_dcs_set_user_request(struct wlan_objmgr_psoc *psoc, uint8_t mac_id,
+void ucfg_dcs_set_user_request(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 			       uint32_t user_request_count)
 {
-	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+	struct dcs_core_priv_obj *dcs_core_priv;
 
-	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, mac_id);
-	if (!dcs_pdev_priv) {
-		dcs_err("dcs pdev private object is null");
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
 		return;
 	}
 
-	wlan_dcs_pdev_obj_lock(dcs_pdev_priv);
-	dcs_pdev_priv->dcs_host_params.user_request_count = user_request_count;
-	wlan_dcs_pdev_obj_unlock(dcs_pdev_priv);
+	wlan_dcs_core_obj_lock(dcs_core_priv);
+	dcs_core_priv->dcs_host_params.user_request_count = user_request_count;
+	wlan_dcs_core_obj_unlock(dcs_core_priv);
 }
 
-QDF_STATUS ucfg_dcs_get_ch_util(struct wlan_objmgr_psoc *psoc, uint8_t mac_id,
+QDF_STATUS ucfg_dcs_get_ch_util(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 				struct wlan_host_dcs_ch_util_stats *dcs_stats)
 {
-	struct dcs_pdev_priv_obj *dcs_pdev_priv;
+	struct dcs_core_priv_obj *dcs_core_priv;
 
-	dcs_pdev_priv = wlan_dcs_get_pdev_private_obj(psoc, mac_id);
-	if (!dcs_pdev_priv) {
-		dcs_err("dcs pdev private object is null");
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("dcs core private object is null");
 		return QDF_STATUS_E_INVAL;
 	}
 
-	wlan_dcs_pdev_obj_lock(dcs_pdev_priv);
+	wlan_dcs_core_obj_lock(dcs_core_priv);
 	qdf_mem_copy(dcs_stats,
-		     &dcs_pdev_priv->dcs_im_stats.dcs_ch_util_im_stats,
+		     &dcs_core_priv->dcs_im_stats.dcs_ch_util_im_stats,
 		     sizeof(*dcs_stats));
-	wlan_dcs_pdev_obj_unlock(dcs_pdev_priv);
+	wlan_dcs_core_obj_unlock(dcs_core_priv);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS ucfg_dcs_set_mode_config(struct wlan_objmgr_psoc *psoc,
+				    uint8_t vdev_id, enum QDF_OPMODE mode,
+				    uint8_t ap_policy)
+{
+	struct dcs_core_priv_obj *dcs_core_priv;
+	enum wlan_dcs_mode dcs_mode;
+	uint8_t dcs_enable, dcs_enable_cfg;
+
+	if (!psoc) {
+		dcs_err("NULL psoc");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	switch (mode) {
+	case QDF_P2P_GO_MODE:
+		dcs_mode = DCS_GO;
+		break;
+	case QDF_SAP_MODE:
+		if (ap_policy == HOST_CONCURRENT_AP_POLICY_XR)
+			dcs_mode = DCS_XR;
+		else if (ap_policy == HOST_CONCURRENT_AP_POLICY_GAMING_AUDIO ||
+			 ap_policy ==
+			 HOST_CONCURRENT_AP_POLICY_LOSSLESS_AUDIO_STREAMING)
+			dcs_mode = DCS_XPAN;
+		else
+			dcs_mode = DCS_SAP;
+		break;
+	default:
+		dcs_err("Unsupported opmode %d", mode);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	dcs_debug("vdev %d mode %d", vdev_id, dcs_mode);
+
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
+						      vdev_id);
+	if (!dcs_core_priv) {
+		dcs_err("NULL core obj vdev %d", vdev_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	dcs_enable = dcs_core_priv->dcs_host_params.dcs_enable;
+	dcs_enable_cfg = dcs_core_priv->dcs_host_params.dcs_enable_cfg;
+
+	dcs_init_params_by_mode(psoc, dcs_core_priv, dcs_mode);
+
+	if ((dcs_enable & dcs_enable_cfg) !=
+	    (dcs_core_priv->dcs_host_params.dcs_enable &
+	     dcs_core_priv->dcs_host_params.dcs_enable_cfg)) {
+		dcs_debug("Send DCS cmd vdev %d, ori %d cfg %d new %d cfg %d",
+			  vdev_id, dcs_enable, dcs_enable_cfg,
+			  dcs_core_priv->dcs_host_params.dcs_enable,
+			  dcs_core_priv->dcs_host_params.dcs_enable_cfg);
+		wlan_send_dcs_cmd_for_vdev(psoc, DCS_INVALID_PDEV_ID, vdev_id);
+	}
 
 	return QDF_STATUS_SUCCESS;
 }
