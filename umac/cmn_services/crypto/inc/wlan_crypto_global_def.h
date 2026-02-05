@@ -148,17 +148,19 @@ typedef enum wlan_crypto_cipher_type {
 
 /* Auth types */
 typedef enum wlan_crypto_auth_mode {
-	WLAN_CRYPTO_AUTH_NONE     = 0,
-	WLAN_CRYPTO_AUTH_OPEN     = 1,
-	WLAN_CRYPTO_AUTH_SHARED   = 2,
-	WLAN_CRYPTO_AUTH_8021X    = 3,
-	WLAN_CRYPTO_AUTH_AUTO     = 4,
-	WLAN_CRYPTO_AUTH_WPA      = 5,
-	WLAN_CRYPTO_AUTH_RSNA     = 6,
-	WLAN_CRYPTO_AUTH_CCKM     = 7,
-	WLAN_CRYPTO_AUTH_WAPI     = 8,
-	WLAN_CRYPTO_AUTH_SAE      = 9,
-	WLAN_CRYPTO_AUTH_FILS_SK  = 10,
+	WLAN_CRYPTO_AUTH_NONE          = 0,
+	WLAN_CRYPTO_AUTH_OPEN          = 1,
+	WLAN_CRYPTO_AUTH_SHARED        = 2,
+	WLAN_CRYPTO_AUTH_8021X         = 3,
+	WLAN_CRYPTO_AUTH_AUTO          = 4,
+	WLAN_CRYPTO_AUTH_WPA           = 5,
+	WLAN_CRYPTO_AUTH_RSNA          = 6,
+	WLAN_CRYPTO_AUTH_CCKM          = 7,
+	WLAN_CRYPTO_AUTH_WAPI          = 8,
+	WLAN_CRYPTO_AUTH_SAE           = 9,
+	WLAN_CRYPTO_AUTH_FILS_SK       = 10,
+	WLAN_CRYPTO_AUTH_EPPKE         = 11,
+	WLAN_CRYPTO_AUTH_8021X_IN_AUTH = 12,
 	/** Keep WLAN_CRYPTO_AUTH_MAX at the end. */
 	WLAN_CRYPTO_AUTH_MAX,
 } wlan_crypto_auth_mode;
@@ -396,6 +398,7 @@ typedef enum wlan_crypto_key_mgmt {
 	WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY           = 27,
 	WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY        = 28,
 	WLAN_CRYPTO_KEY_MGMT_PASN                  = 29,
+	WLAN_CRYPTO_KEY_MGMT_EPPKE                 = 30,
 	/** Keep WLAN_CRYPTO_KEY_MGMT_MAX at the end. */
 	WLAN_CRYPTO_KEY_MGMT_MAX,
 } wlan_crypto_key_mgmt;
