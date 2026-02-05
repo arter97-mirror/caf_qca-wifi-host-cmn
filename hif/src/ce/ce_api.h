@@ -178,11 +178,6 @@ int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 		    uint8_t encap_type);
 
 void ce_update_tx_ring(struct CE_handle *ce_tx_hdl, uint32_t num_htt_cmpls);
-extern qdf_nbuf_t ce_batch_send(struct CE_handle *ce_tx_hdl,
-		qdf_nbuf_t msdu,
-		uint32_t transfer_id,
-		uint32_t len,
-		uint32_t sendhead);
 
 /*
  * Register a Send Callback function.

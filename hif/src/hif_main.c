@@ -3059,29 +3059,6 @@ void hif_prealloc_put_multi_pages(struct hif_softc *scn, uint32_t desc_type,
 }
 #endif
 
-/**
- * hif_batch_send() - API to access hif specific function
- * ce_batch_send.
- * @osc: HIF Context
- * @msdu: list of msdus to be sent
- * @transfer_id: transfer id
- * @len: downloaded length
- * @sendhead:
- *
- * Return: list of msds not sent
- */
-qdf_nbuf_t hif_batch_send(struct hif_opaque_softc *osc, qdf_nbuf_t msdu,
-		uint32_t transfer_id, u_int32_t len, uint32_t sendhead)
-{
-	void *ce_tx_hdl = hif_get_ce_handle(osc, CE_HTT_TX_CE);
-
-	if (!ce_tx_hdl)
-		return NULL;
-
-	return ce_batch_send((struct CE_handle *)ce_tx_hdl, msdu, transfer_id,
-			len, sendhead);
-}
-qdf_export_symbol(hif_batch_send);
 
 /**
  * hif_update_tx_ring() - API to access hif specific function
