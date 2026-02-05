@@ -1170,6 +1170,7 @@ static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
 	tx_desc->orig_nbuf = NULL;
 }
 
+#define TX_BUF_ALIGN 256
 /**
  * dp_tx_page_pool_alloc_from_pool() - Allocate nbuf from specific pool
  * @pp_params: Pool parameters
@@ -1188,7 +1189,7 @@ dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
 				size_t size,
 				uint32_t *offset)
 {
-	return qdf_nbuf_page_pool_alloc(osdev, size, 0, 0,
+	return qdf_nbuf_page_pool_alloc(osdev, size, 0, TX_BUF_ALIGN,
 					pp_params->pp, offset);
 }
 
