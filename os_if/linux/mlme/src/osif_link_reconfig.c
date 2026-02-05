@@ -32,9 +32,7 @@
 #include "qdf_status.h"
 #include "osif_cm_util.h"
 #include <wlan_cfg80211.h>
-#ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
 #include "osif_link_reconfig.h"
-#endif
 
 enum links_reconfig_op {
 	LINKS_RECONFIG_OP_ADD,

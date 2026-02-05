@@ -7049,7 +7049,7 @@ void wlan_ipa_wdi_opt_dpath_notify_flt_rsvd(bool response)
 }
 
 #ifdef CONFIG_BORON
-bool wlan_ipa_check_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_obj)
+static bool wlan_ipa_check_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_obj)
 {
 	return qdf_atomic_read(&ipa_obj->tx_pkt_classify_info_set) > 0 ?
 		true : false;
