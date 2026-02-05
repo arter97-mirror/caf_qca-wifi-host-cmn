@@ -210,6 +210,8 @@
  * @QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX: Power boost event index
  * @QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX: Event index for MLO
  * link state switch event
+ * @QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH_INDEX: Event index for external
+ * authentication event.
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -364,6 +366,7 @@ enum qca_nl80211_vendor_subcmds_index {
 #ifdef WLAN_FEATURE_11BE_MLO
 	QCA_NL80211_VENDOR_SUBCMD_LINK_STATE_CHANGE_INDEX,
 #endif
+	QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH_INDEX,
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \
