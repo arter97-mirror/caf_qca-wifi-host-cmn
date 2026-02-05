@@ -7728,6 +7728,11 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 	bool indices[IPA_WDI_MAX_TX_FILTER] = {false};
 	QDF_STATUS status;
 
+	if (!cds_is_driver_loaded()) {
+		ipa_log_err("Driver not loaded, reject filter add request");
+		return QDF_STATUS_FILT_REQ_ERROR;
+	}
+
 	if (!ipa_obj ||
 	    ipa_obj->ipa_init_state < WLAN_IPA_STATE_PIPE_CONNECTION_DONE) {
 		ipa_log_err("opt_dp_ctrl: IPA is not initialized, current state - %d",
