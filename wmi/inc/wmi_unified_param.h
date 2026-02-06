@@ -1019,6 +1019,7 @@ struct peer_active_traffic_map_params {
  * @peer_addr: peer mac addr
  * @peer_type: peer type
  * @vdev_id: vdev id
+ * @is_11bi_peer: is 11bi security used for peer association
  * @mlo_enabled: Indicates MLO is enabled
  * @mlo_bridge_peer: Indicates bridge peer
  */
@@ -1026,6 +1027,7 @@ struct peer_create_params {
 	const uint8_t *peer_addr;
 	uint32_t peer_type;
 	uint32_t vdev_id;
+	bool is_11bi_peer;
 #ifdef WLAN_FEATURE_11BE_MLO
 	bool mlo_enabled;
 	bool mlo_bridge_peer;
