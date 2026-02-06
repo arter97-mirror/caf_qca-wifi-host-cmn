@@ -93,8 +93,6 @@ void hif_ce_war_enable(void)
 #define CE_DEBUG_PRINT_BUF_SIZE(x) (((x) * 3) - 1)
 #define CE_DEBUG_DATA_PER_ROW 16
 
-static const char *ce_event_type_to_str(enum hif_ce_event_type type);
-
 int get_next_record_index(qdf_atomic_t *table_index, int array_size)
 {
 	int record_index = qdf_atomic_inc_return(table_index);
@@ -1638,182 +1636,12 @@ void ce_ipa_get_resource(struct CE_handle *ce,
 
 #endif /* IPA_OFFLOAD */
 
-#ifdef HIF_CE_DEBUG_DATA_BUF
-/**
- * hif_dump_desc_data_buf() - record ce descriptor events
- * @buf: buffer to copy to
- * @pos: Current position till which the buf is filled
- * @data: Data to be copied
- * @data_len: Length of the data to be copied
- */
-static uint32_t hif_dump_desc_data_buf(uint8_t *buf, ssize_t pos,
-					uint8_t *data, uint32_t data_len)
-{
-	pos += snprintf(buf + pos, PAGE_SIZE - pos, "Data:(Max%dBytes)\n",
-			CE_DEBUG_MAX_DATA_BUF_SIZE);
-
-	if ((data_len > 0) && data) {
-		if (data_len < 16) {
-			hex_dump_to_buffer(data,
-						CE_DEBUG_DATA_PER_ROW,
-						16, 1, buf + pos,
-						(ssize_t)PAGE_SIZE - pos,
-						false);
-			pos += CE_DEBUG_PRINT_BUF_SIZE(data_len);
-			pos += snprintf(buf + pos, PAGE_SIZE - pos, "\n");
-		} else {
-			uint32_t rows = (data_len / 16) + 1;
-			uint32_t row = 0;
-
-			for (row = 0; row < rows; row++) {
-				hex_dump_to_buffer(data + (row * 16),
-							CE_DEBUG_DATA_PER_ROW,
-							16, 1, buf + pos,
-							(ssize_t)PAGE_SIZE
-							- pos, false);
-				pos +=
-				CE_DEBUG_PRINT_BUF_SIZE(CE_DEBUG_DATA_PER_ROW);
-				pos += snprintf(buf + pos, PAGE_SIZE - pos,
-						"\n");
-			}
-		}
-	}
-
-	return pos;
-}
-#endif
-
 /*
  * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
  * for defined here
  */
 #if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
 	defined(RECORD_DP_CE_EVTS)
-static const char *ce_event_type_to_str(enum hif_ce_event_type type)
-{
-	switch (type) {
-	case HIF_RX_DESC_POST:
-		return "HIF_RX_DESC_POST";
-	case HIF_RX_DESC_COMPLETION:
-		return "HIF_RX_DESC_COMPLETION";
-	case HIF_TX_GATHER_DESC_POST:
-		return "HIF_TX_GATHER_DESC_POST";
-	case HIF_TX_DESC_POST:
-		return "HIF_TX_DESC_POST";
-	case HIF_TX_DESC_SOFTWARE_POST:
-		return "HIF_TX_DESC_SOFTWARE_POST";
-	case HIF_TX_DESC_COMPLETION:
-		return "HIF_TX_DESC_COMPLETION";
-	case FAST_RX_WRITE_INDEX_UPDATE:
-		return "FAST_RX_WRITE_INDEX_UPDATE";
-	case FAST_RX_SOFTWARE_INDEX_UPDATE:
-		return "FAST_RX_SOFTWARE_INDEX_UPDATE";
-	case FAST_TX_WRITE_INDEX_UPDATE:
-		return "FAST_TX_WRITE_INDEX_UPDATE";
-	case FAST_TX_WRITE_INDEX_SOFTWARE_UPDATE:
-		return "FAST_TX_WRITE_INDEX_SOFTWARE_UPDATE";
-	case FAST_TX_SOFTWARE_INDEX_UPDATE:
-		return "FAST_TX_SOFTWARE_INDEX_UPDATE";
-	case RESUME_WRITE_INDEX_UPDATE:
-		return "RESUME_WRITE_INDEX_UPDATE";
-	case HIF_IRQ_EVENT:
-		return "HIF_IRQ_EVENT";
-	case HIF_CE_TASKLET_ENTRY:
-		return "HIF_CE_TASKLET_ENTRY";
-	case HIF_CE_TASKLET_RESCHEDULE:
-		return "HIF_CE_TASKLET_RESCHEDULE";
-	case HIF_CE_TASKLET_EXIT:
-		return "HIF_CE_TASKLET_EXIT";
-	case HIF_CE_REAP_ENTRY:
-		return "HIF_CE_REAP_ENTRY";
-	case HIF_CE_REAP_EXIT:
-		return "HIF_CE_REAP_EXIT";
-	case NAPI_SCHEDULE:
-		return "NAPI_SCHEDULE";
-	case NAPI_POLL_ENTER:
-		return "NAPI_POLL_ENTER";
-	case NAPI_COMPLETE:
-		return "NAPI_COMPLETE";
-	case NAPI_POLL_EXIT:
-		return "NAPI_POLL_EXIT";
-	case HIF_RX_NBUF_ALLOC_FAILURE:
-		return "HIF_RX_NBUF_ALLOC_FAILURE";
-	case HIF_RX_NBUF_MAP_FAILURE:
-		return "HIF_RX_NBUF_MAP_FAILURE";
-	case HIF_RX_NBUF_ENQUEUE_FAILURE:
-		return "HIF_RX_NBUF_ENQUEUE_FAILURE";
-	default:
-		return "invalid";
-	}
-}
-
-/**
- * hif_dump_desc_event() - record ce descriptor events
- * @scn: HIF context
- * @buf: Buffer to which to be copied
- */
-ssize_t hif_dump_desc_event(struct hif_softc *scn, char *buf)
-{
-	struct hif_ce_desc_event *event;
-	uint64_t secs, usecs;
-	ssize_t len = 0;
-	struct ce_desc_hist *ce_hist = NULL;
-	struct hif_ce_desc_event *hist_ev = NULL;
-
-	if (!scn)
-		return -EINVAL;
-
-	ce_hist = &scn->hif_ce_desc_hist;
-
-	if (ce_hist->hist_id >= CE_COUNT_MAX ||
-	    ce_hist->hist_index >= HIF_CE_HISTORY_MAX) {
-		qdf_print("Invalid values");
-		return -EINVAL;
-	}
-
-	hist_ev =
-		(struct hif_ce_desc_event *)ce_hist->hist_ev[ce_hist->hist_id];
-
-	if (!hist_ev) {
-		qdf_print("Low Memory");
-		return -EINVAL;
-	}
-
-	event = &hist_ev[ce_hist->hist_index];
-
-	qdf_log_timestamp_to_secs(event->time, &secs, &usecs);
-
-	len += snprintf(buf, PAGE_SIZE - len,
-			"\nTime:%lld.%06lld, CE:%d, EventType: %s, EventIndex: %d\nDataAddr=%pK",
-			secs, usecs, ce_hist->hist_id,
-			ce_event_type_to_str(event->type),
-			event->index, event->memory);
-#ifdef HIF_CE_DEBUG_DATA_BUF
-	len += snprintf(buf + len, PAGE_SIZE - len, ", Data len=%zu",
-			event->actual_data_len);
-#endif
-
-	len += snprintf(buf + len, PAGE_SIZE - len, "\nCE descriptor: ");
-
-	hex_dump_to_buffer(&event->descriptor, sizeof(union ce_desc),
-				16, 1, buf + len,
-				(ssize_t)PAGE_SIZE - len, false);
-	len += CE_DEBUG_PRINT_BUF_SIZE(sizeof(union ce_desc));
-	len += snprintf(buf + len, PAGE_SIZE - len, "\n");
-
-#ifdef HIF_CE_DEBUG_DATA_BUF
-	if (ce_hist->data_enable[ce_hist->hist_id])
-		len = hif_dump_desc_data_buf(buf, len, event->data,
-						(event->actual_data_len <
-						 CE_DEBUG_MAX_DATA_BUF_SIZE) ?
-						event->actual_data_len :
-						CE_DEBUG_MAX_DATA_BUF_SIZE);
-#endif /*HIF_CE_DEBUG_DATA_BUF*/
-
-	len += snprintf(buf + len, PAGE_SIZE - len, "END\n");
-
-	return len;
-}
 
 /*
  * hif_store_desc_trace_buf_index() -
