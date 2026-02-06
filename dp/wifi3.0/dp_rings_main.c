@@ -3493,6 +3493,17 @@ static inline void dp_set_num_rxdma_dst_ring(struct dp_soc *soc)
 }
 #endif
 
+#ifdef QCA_SUPPORT_WDS_EXTENDED
+static inline void dp_set_wds_ext_ast_override(struct dp_soc *soc)
+{
+	soc->features.wds_ext_ast_override_enable = true;
+}
+#else /* !QCA_SUPPORT_WDS_EXTENDED */
+static inline void dp_set_wds_ext_ast_override(struct dp_soc *soc)
+{
+}
+#endif /* QCA_SUPPORT_WDS_EXTENDED */
+
 /**
  * dp_soc_cfg_init() - initialize target specific configuration
  *		       during dp_soc_init
@@ -3530,6 +3541,8 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	case TARGET_TYPE_KIWI:
+		dp_set_wds_ext_ast_override(soc);
+		fallthrough;
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
