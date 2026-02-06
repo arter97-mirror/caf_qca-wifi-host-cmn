@@ -211,6 +211,90 @@ dp_dal_offload_sim_hal_addrs_params_init(struct dp_dal_offload_sim_ctx *offload_
 }
 #endif
 
+#ifdef CONFIG_BORON
+/**
+ * dp_dal_offload_sim_overwrite_tx_desc() - Overwrite tx descriptor
+ * for offload simulation for BN.
+ * @hal_soc_hdl: hal soc handle
+ * @txdesc: tx descriptor
+ *
+ * This function overwrites tx descriptor sent by wlan host to
+ * offload sim with those field values whose set apis are provided
+ * in dal vendor hal.
+ *
+ * Return: None
+ *
+ */
+static inline void
+dp_dal_offload_sim_overwrite_tx_desc(void *soc_hdl, void *src_desc, void *dst_desc)
+{
+	uint64_t dma_addr;
+	uint32_t paddr_lo, paddr_hi;
+	uint8_t rbm_id, frag;
+	uint32_t desc_id;
+	uint16_t buf_len, pkt_offset;
+	uint8_t l3_cksum_en, l4_cksum_en;
+	uint8_t bank_id, vdev_id;
+	uint8_t txpt_ci_idx, txpt_tos_tc, is_bcast, is_mcast;
+	uint8_t l3_type, l4_proto, type_or_len;
+	uint16_t l4_dport;
+	uint8_t snap_oui_zero_or_f8, snap_oui_not_zero_or_not_f8;
+	uint8_t is_s_vlan, is_c_vlan;
+	uint8_t hlos_tid;
+
+	if (!soc_hdl || !src_desc || !dst_desc) {
+		dp_err_rl("Invalid parameters");
+		return;
+	}
+
+	paddr_lo = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0);
+	paddr_hi = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32);
+	dma_addr = ((uint64_t)paddr_hi << 32) | (uint64_t)paddr_lo;
+	rbm_id = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_RETURN_BUFFER_MANAGER);
+	desc_id = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE);
+	frag = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, BUF_OR_EXT_DESC_TYPE);
+	buf_len = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, DATA_LENGTH);
+	pkt_offset = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, PACKET_OFFSET);
+	l3_cksum_en = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, L3_CHECKSUM_ENABLE);
+	l4_cksum_en = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, L4_CHECKSUM_ENABLE);
+	bank_id = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, BANK_ID);
+	vdev_id = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, VDEV_ID);
+	txpt_ci_idx = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, TXPT_CLASSIFY_INFO_INDEX);
+	txpt_tos_tc = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, TOS_TC_VALUE);
+	is_bcast = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, DA_IS_BCAST);
+	is_mcast = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, DA_IS_BCAST_MCAST);
+	l3_type = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, L3_TYPE);
+	l4_proto = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, L4_PROTOCOL);
+	type_or_len = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, TYPE_OR_LENGTH);
+	l4_dport = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, L4_PORT);
+	snap_oui_zero_or_f8 = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, SNAP_OUI_ZERO_OR_F8);
+	snap_oui_not_zero_or_not_f8 = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, SNAP_OUI_NOT_ZERO_AND_NOT_F8);
+	is_s_vlan = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, S_VLAN_TAG_PRESENT);
+	is_c_vlan = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, C_VLAN_TAG_PRESENT);
+	hlos_tid = DAL_VNDR_HAL_TX_DESC_GET_BN(src_desc, TCL_ASSIST_CMD, HLOS_TID);
+
+	dal_vndr_hal_tx_desc_set_buf_addr_bn(soc_hdl, dst_desc, dma_addr, rbm_id, desc_id, frag);
+	dal_vndr_hal_tx_desc_set_buf_length(dst_desc, buf_len);
+	dal_vndr_hal_tx_desc_set_buf_offset(dst_desc, pkt_offset);
+	dal_vndr_hal_tx_desc_set_l3_checksum_en(dst_desc, l3_cksum_en);
+	dal_vndr_hal_tx_desc_set_l4_checksum_en(dst_desc, l4_cksum_en);
+	dal_vndr_hal_tx_desc_set_bank_id(dst_desc, bank_id);
+	dal_vndr_hal_tx_desc_set_vdev_id(dst_desc, vdev_id);
+	dal_vndr_hal_tx_desc_set_peer_txpt_ci_index(dst_desc, txpt_ci_idx);
+	dal_vndr_hal_tx_desc_set_peer_txpt_ci_tos_tc_val(dst_desc, txpt_tos_tc);
+	dal_vndr_hal_tx_desc_set_da_is_bcast_mcast(dst_desc, is_bcast, is_mcast);
+	dal_vndr_hal_tx_desc_set_l3_type(dst_desc, l3_type);
+	dal_vndr_hal_tx_desc_set_l4_protocol(dst_desc, l4_proto);
+	dal_vndr_hal_tx_desc_set_type_or_length(dst_desc, type_or_len);
+	dal_vndr_hal_tx_desc_set_dport(dst_desc, l4_dport);
+	dal_vndr_hal_tx_desc_set_snap_oui_zero_or_f8(dst_desc, snap_oui_zero_or_f8);
+	dal_vndr_hal_tx_desc_set_snap_oui_not_zero_or_not_f8(dst_desc, snap_oui_not_zero_or_not_f8);
+	dal_vndr_hal_tx_desc_set_s_vlan_tag(dst_desc, is_s_vlan);
+	dal_vndr_hal_tx_desc_set_c_vlan_tag(dst_desc, is_c_vlan);
+	dal_vndr_hal_tx_desc_set_hlos_tid(dst_desc, hlos_tid);
+}
+
+#else
 /**
  * dp_dal_offload_sim_overwrite_tx_desc() - Overwrite tx descriptor
  * for offload simulation.
@@ -325,7 +409,7 @@ dp_dal_offload_sim_overwrite_tx_desc(void *hal_soc_hdl, void *txdesc)
 	dal_vndr_hal_tx_desc_set_tx_notify_frame(hal_soc_hdl, txdesc,
 						 tx_notify_frame);
 }
-
+#endif
 /**
  * dp_dal_offload_sim_hal_ring_init() - Init dal_vndr_hal_srng structure.
  * @offload_sim_ctx: offload sim ctx
