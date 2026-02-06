@@ -24736,6 +24736,14 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_P2P_CANCEL_ONE_SHOT_NOA_SUPPORT;
 	wmi_service[wmi_service_pdev_div_states_report] =
 				WMI_SERVICE_PDEV_DIV_STATES_REPORT;
+	wmi_service[wmi_service_11bi_eppke_support] =
+				WMI_SERVICE_11BI_EPPKE_SUPPORT;
+	wmi_service[wmi_service_11bi_8021x_auth_support] =
+				WMI_SERVICE_11BI_1X_OVER_AUTH_SUPPORT;
+	wmi_service[wmi_service_11bi_pmkid_privacy_support] =
+				WMI_SERVICE_11BI_PMKID_PRIVACY_SUPPORT;
+	wmi_service[wmi_service_11bi_ds_mac_addr_support] =
+				WMI_SERVICE_11BI_DS_MAC_ADDR_SUPPORT;
 }
 
 /**
