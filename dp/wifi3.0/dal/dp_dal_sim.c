@@ -1762,6 +1762,11 @@ static int dp_dal_sim_notify_resume(void *priv)
 		return -EINVAL;
 	}
 
+	if (qdf_atomic_read(&sim_ctx->sim_mode_switch_in_progress)) {
+		dp_err_rl("Mode switch in progress, reject resume");
+		return -EBUSY;
+	}
+
 	dp_info("Resume notification received");
 
 	/* Send INTF_RESUME to Offload Engine */

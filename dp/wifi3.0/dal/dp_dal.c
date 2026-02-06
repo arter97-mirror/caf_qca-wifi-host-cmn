@@ -658,7 +658,6 @@ dp_dal_mode_switch_bypass_to_offload(struct dp_dal_ctx *dal_ctx)
 
 	qdf_timer_sync_cancel(&dal_ctx->dal_poll_timer);
 
-	soc->dal_mode_switch_in_progress = true;
 	soc->dp_dal_mode = DAL_DP_OFFLOAD_MODE;
 
 	/*
@@ -807,8 +806,6 @@ dp_dal_mode_switch_offload_to_bypass(struct dp_dal_ctx *dal_ctx)
 	qdf_atomic_set(&dal_ctx->bm_replenish_not_allowed, 0);
 	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
 
-	soc->dal_mode_switch_in_progress = true;
-
 	soc->dp_dal_mode = DAL_DP_BYPASS_MODE;
 	status = dp_dal_d3_wow_htt_send(soc);
 	if (QDF_IS_STATUS_ERROR(status)) {
@@ -867,6 +864,11 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 		goto out;
 	}
 
+	/* Set mode switch in progress flag before preventing runtime suspend
+	 * to ensure to call local ops in dp dal resume sequence during mode switch
+	 */
+	soc->dal_mode_switch_in_progress = true;
+
 	/* Prevent runtime suspend during mode switch to avoid register access
 	 * during suspend state which can cause system crash
 	 */
@@ -876,6 +878,7 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 		dp_err("Failed to prevent runtime suspend, reject mode switch cur:%d new:%d",
 		       cur_mode, new_mode);
 		ret = -EBUSY;
+		soc->dal_mode_switch_in_progress = false;
 		goto out;
 	}
 
@@ -894,6 +897,9 @@ static int dp_dal_mode_switch_ind_handler(void *priv, u8 cur_mode, u8 new_mode)
 		       cur_mode, new_mode);
 		ret = -EINVAL;
 	}
+
+	/* Reset mode switch in progress flag*/
+	soc->dal_mode_switch_in_progress = false;
 
 	/* Allow runtime suspend after mode switch operations complete */
 	qdf_runtime_pm_allow_suspend(&dal_ctx->mode_switch_runtime_lock);
@@ -954,6 +960,12 @@ dp_dal_set_msi_config(void *priv, uint8_t ring_num, uint8_t ring_type,
 	 */
 	if (dp_soc->dp_dal_mode != DAL_DP_OFFLOAD_MODE)
 		dp_soc->dp_dal_mode = DAL_DP_OFFLOAD_MODE;
+
+	/* Save offload platform ops to use during mode switch resume call */
+	if (!dal_ctx->offload_plat_ops) {
+		dal_ctx->offload_plat_ops = global_plat_ops;
+		dp_info("Saved offload platform ops");
+	}
 
 	dp_info("DAL: ring_type:%d num:%d msi_addr:%llu msi_data:%u",
 		ring_type, ring_num, msi_addr, msi_data);
@@ -2055,8 +2067,21 @@ QDF_STATUS dp_dal_notify_resume(struct dp_soc *soc)
 		return QDF_STATUS_E_INVAL;
 	}
 
-	if (global_plat_ops && global_plat_ops->notify_resume)
-		ret = global_plat_ops->notify_resume(dal_ctx);
+	/* If mode switch is in progress, use ops based on current mode */
+	if (soc->dal_mode_switch_in_progress) {
+		dp_info("Mode switch in progress, using ops for current mode: %d",
+			soc->dp_dal_mode);
+		if (soc->dp_dal_mode == DAL_DP_BYPASS_MODE) {
+			/* Use bypass ops */
+				ret = plat_ops_bypass_mode.notify_resume(dal_ctx);
+		} else if (soc->dp_dal_mode == DAL_DP_OFFLOAD_MODE) {
+			/* Use saved offload ops */
+				ret = dal_ctx->offload_plat_ops->notify_resume(dal_ctx);
+		}
+	} else {
+		if (global_plat_ops && global_plat_ops->notify_resume)
+			ret = global_plat_ops->notify_resume(dal_ctx);
+	}
 
 	if (ret) {
 		dp_err_rl("Resume notify to DAL failed %d", ret);

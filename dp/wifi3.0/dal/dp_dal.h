@@ -349,10 +349,15 @@ struct dp_dal_rx_desc_node {
  * @deinit_in_progress: flag to indicate dal_soc_deinit in progress
  * @bm_replenish_not_allowed: flag to reject replenish from bypass pass
  * @mode_switch_runtime_lock: lock to prevent runtime suspend during dal ops
+ * @offload_plat_ops: Offload platform operations
  * @suspended_tx_list: List of suspended TX descriptors during runtime PM
  * @suspended_tx_lock: Spinlock to protect suspended TX list operations
  * @suspended_tx_count: Count of suspended TX descriptors
  * @dal_sim_ctx: DAL simulation context
+ * @suspend_msg_msi_addr: Suspend message MSI address
+ * @suspend_msg_msi_data: Suspend message MSI data
+ * @suspend_msg_data_vaddr: Suspend message data virtual address
+ * @suspend_msg_data_paddr: Suspend message data physical address
  * @stats: DAL statistics
  *
  * This structure maintains all necessary context for DAL operations,
@@ -387,6 +392,7 @@ struct dp_dal_ctx {
 	qdf_atomic_t deinit_in_progress;
 	qdf_atomic_t bm_replenish_not_allowed;
 	qdf_runtime_lock_t mode_switch_runtime_lock;
+	struct platform_bus_ops *offload_plat_ops;
 #if defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE)
 	qdf_list_t suspended_tx_list;
 	qdf_spinlock_t suspended_tx_lock;
