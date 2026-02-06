@@ -1695,12 +1695,12 @@ cdp_qos_latency_get_stats(struct cdp_soc_t *soc, uint8_t vdev_id,
 /**
  * cdp_trigger_page_pool_shrink() - Trigger page pool shrink operation
  * @soc: DP soc handle
- * @pdev_id: pdev id
+ * @vdev_id: vdev id
  *
  * Return: QDF_STATUS
  */
 static inline QDF_STATUS
-cdp_trigger_page_pool_shrink(struct cdp_soc_t *soc, uint8_t pdev_id)
+cdp_trigger_page_pool_shrink(struct cdp_soc_t *soc, uint8_t vdev_id)
 {
 	if (!soc || !soc->ops) {
 		dp_cdp_err("Invalid Instance:");
@@ -1711,6 +1711,6 @@ cdp_trigger_page_pool_shrink(struct cdp_soc_t *soc, uint8_t pdev_id)
 	    !soc->ops->ctrl_ops->txrx_trigger_page_pool_shrink)
 		return QDF_STATUS_E_FAILURE;
 
-	return soc->ops->ctrl_ops->txrx_trigger_page_pool_shrink(soc, pdev_id);
+	return soc->ops->ctrl_ops->txrx_trigger_page_pool_shrink(soc, vdev_id);
 }
 #endif /* _CDP_TXRX_CTRL_H_ */

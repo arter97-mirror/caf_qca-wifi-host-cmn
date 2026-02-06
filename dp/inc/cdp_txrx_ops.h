@@ -1053,7 +1053,7 @@ struct cdp_ctrl_ops {
 				      uint8_t vdev_id,
 				      struct cdp_qos_latency_stats_req *stats);
 	QDF_STATUS (*txrx_trigger_page_pool_shrink)(struct cdp_soc_t *soc,
-						    uint8_t pdev_id);
+						    uint8_t vdev_id);
 };
 
 struct cdp_me_ops {
