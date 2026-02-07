@@ -1083,11 +1083,14 @@ static inline
 struct dp_srng *dp_rxdma_get_mon_buf_ring(struct dp_pdev *pdev,
 					  uint8_t mac_for_pdev)
 {
-	if (pdev->soc->wlan_cfg_ctx->rxdma1_enable)
+	if (qdf_unlikely(pdev->soc->wlan_cfg_ctx->rxdma1_enable))
 		return &pdev->soc->rxdma_mon_buf_ring[mac_for_pdev];
 
 	/* For MCL, return the SW2RXDMA ring used for direct Rx buffer refill */
-	return pdev->soc->replenish_rings[0][DP_NUM_SW_REFILL_RINGS];
+	if (qdf_likely(pdev->soc->features.direct_refill_support))
+		return pdev->soc->replenish_rings[0][DP_NUM_SW_REFILL_RINGS];
+
+	return pdev->soc->replenish_rings[0][0];
 }
 #else
 /**

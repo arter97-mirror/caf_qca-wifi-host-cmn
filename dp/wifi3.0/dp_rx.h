@@ -4215,7 +4215,11 @@ static inline struct dp_srng *dp_get_pri_replenish_srng(struct dp_soc *soc,
 							uint8_t mac_id)
 {
 	/* This is the index of the direct refill ring facing HW */
-	return soc->replenish_rings[mac_id][DP_NUM_SW_REFILL_RINGS];
+	if (qdf_likely(soc->features.direct_refill_support))
+		return soc->replenish_rings[mac_id][DP_NUM_SW_REFILL_RINGS];
+
+	/* This is the index of the refill ring facing FW */
+	return soc->replenish_rings[mac_id][0];
 }
 
 static inline uint32_t
