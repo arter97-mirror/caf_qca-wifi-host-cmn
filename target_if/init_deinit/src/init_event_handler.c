@@ -712,18 +712,6 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 	if (QDF_IS_STATUS_ERROR(status))
 		target_if_err("Failed to set tx_vdev_nss_support");
 
-	/* Check for direct refill support from FW */
-	if (wmi_service_enabled(wmi_handle,
-				wmi_service_direct_refill_support)) {
-		target_if_debug("FW supports direct refill");
-		val.cdp_direct_refill_ring_support = true;
-		status = cdp_txrx_set_psoc_param(wlan_psoc_get_dp_handle(psoc),
-						 CDP_DIRECT_REFILL_RING_SUPPORT,
-						 val);
-		if (QDF_IS_STATUS_ERROR(status))
-			target_if_err("Failed to set direct_refill_ring_support");
-	}
-
 	wlan_ipa_set_fw_cap_opt_dp_ctrl(
 			psoc, info->service_ext2_param.fw_support_opt_dp_ctrl);
 

@@ -10080,9 +10080,6 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 		WMI_RSRC_CFG_FLAGS2_RECV_BCN_STATS_ENABLED_SET(
 						resource_cfg->flags2, 1);
 
-	if (tgt_res_cfg->direct_refill_ring_support)
-		WMI_RSRC_CFG_HOST_SERVICE_FLAG_DIRECT_REFILL_SUPPORT_SET(
-				resource_cfg->host_service_flags, 1);
 	if (tgt_res_cfg->conc_2vdev_dcs_stats_support)
 		WMI_RSRC_CFG_DCS_STATS_FOR_2VDEVS_ENABLE_SET(
 				resource_cfg->host_service_flags, 1);

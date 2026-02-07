@@ -606,12 +606,6 @@ void init_deinit_prepare_send_init_cmd(
 	target_if_set_num_max_mlo_link(psoc, info);
 
 	if (wmi_service_enabled(wmi_handle,
-				wmi_service_direct_refill_support)) {
-		info->wlan_res_cfg.direct_refill_ring_support = true;
-		target_if_debug("Direct refill feature enabled");
-	}
-
-	if (wmi_service_enabled(wmi_handle,
 				wmi_service_conc_2vdev_dcs_stats_support)) {
 		info->wlan_res_cfg.conc_2vdev_dcs_stats_support = true;
 		target_if_debug("Two vdev DCS stats enabled");
