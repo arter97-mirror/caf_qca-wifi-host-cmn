@@ -155,22 +155,10 @@ static inline int cdp_get_arch_type_from_devid(uint16_t devid)
 }
 
 static inline
-ol_txrx_soc_handle cdp_soc_attach(u_int16_t devid,
-				  struct hif_opaque_softc *hif_handle,
-				  struct cdp_ctrl_objmgr_psoc *psoc,
-				  HTC_HANDLE htc_handle,
-				  qdf_device_t qdf_dev,
-				  struct ol_if_ops *dp_ol_if_ops)
+ol_txrx_soc_handle cdp_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+				  struct cdp_soc_attach_params *params)
 {
-	struct cdp_soc_attach_params params = {0};
-
-	params.hif_handle = hif_handle;
-	params.device_id = devid;
-	params.htc_handle = htc_handle;
-	params.qdf_osdev = qdf_dev;
-	params.ol_ops = dp_ol_if_ops;
-
-	switch (devid) {
+	switch (params->device_id) {
 	case LITHIUM_DP: /*FIXME Add lithium device IDs */
 	case BERYLLIUM_DP:
 	case RHINE_DP:
@@ -201,10 +189,10 @@ ol_txrx_soc_handle cdp_soc_attach(u_int16_t devid,
 	case WCN7750_DEVICE_ID:
 	case QCC2072_DEVICE_ID:
 	case FIG_DEVICE_ID:
-		return dp_soc_attach_wifi3(psoc, &params);
+		return dp_soc_attach_wifi3(psoc, params);
 	break;
 	default:
-		return ol_txrx_soc_attach(psoc, dp_ol_if_ops);
+		return ol_txrx_soc_attach(psoc, params->ol_ops);
 	}
 	return NULL;
 }
