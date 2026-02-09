@@ -3492,6 +3492,7 @@ struct cdp_scan_spcl_vap_stats {
  * @ml_context: DP ML object context
  * @mlo_chip_id: MLO chip id, for legacy SOCs chip_id need to 0
  * @mlo_enabled: MLO enable bit
+ * @direct_refill_support: Flag indicating direct_refill feature support
  */
 struct cdp_soc_attach_params {
 	struct hif_opaque_softc *hif_handle;
@@ -3502,6 +3503,7 @@ struct cdp_soc_attach_params {
 	struct cdp_mlo_ctxt *ml_context;
 	uint8_t mlo_chip_id;
 	uint8_t mlo_enabled;
+	uint8_t direct_refill_support;
 };
 
 /**

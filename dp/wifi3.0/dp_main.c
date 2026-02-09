@@ -15732,6 +15732,7 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			    &soc->rx_mon_pkt_tlv_size);
 	soc->idle_link_bm_id = hal_get_idle_link_bm_id(soc->hal_soc,
 						       params->mlo_chip_id);
+	soc->features.direct_refill_support = params->direct_refill_support;
 	soc->features.dmac_cmn_src_rxbuf_ring_enabled =
 		hal_dmac_cmn_src_rxbuf_ring_get(soc->hal_soc);
 	soc->arch_id = arch_id;
