@@ -796,63 +796,193 @@ dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 		     idle_pool_size);
 }
 
-static inline void
-dp_tx_flush_active_pool_list(struct dp_tx_page_pool *tx_pp)
-{
-	struct dp_tx_pp_params *pp_params;
-	uint8_t flush_count = 0;
-	int i;
-
-	for (i = 0; i < tx_pp->active_pool_count; i++) {
-		pp_params = &tx_pp->active_pool[i];
-		if (!pp_params->pp || pp_params->is_prealloc)
-			continue;
-		qdf_page_pool_destroy(pp_params->pp);
-		flush_count++;
-	}
-	if (flush_count)
-		dp_nofl_info("TX_PP_FLUSH flushed %u active pools",
-			     flush_count);
-}
-
 /**
- * dp_tx_page_pool_flush_inactive_pool() - Flush inactive page pool
+ * dp_tx_flush_active_pool_list() - Flush active pool list
  * @tx_pp: TX page pool handle
+ * @can_destroy: True if pools can be destroyed (force or idle)
+ *
+ * Single-pass algorithm: evaluate, destroy if needed, and compact.
+ * Removes NULL entries and prealloc pools, destroys full/idle pools.
  *
  * Return: None
  */
 static inline void
-dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp)
+dp_tx_flush_active_pool_list(struct dp_tx_page_pool *tx_pp, bool can_destroy)
+{
+	struct dp_tx_pp_params *pp_params;
+	uint32_t destroyed = 0;
+	uint32_t compacted = 0;
+	int read_idx, write_idx;
+
+	write_idx = 0;
+
+	/* Single pass: evaluate, destroy if needed, and compact */
+	for (read_idx = 0; read_idx < tx_pp->active_pool_count; read_idx++) {
+		pp_params = &tx_pp->active_pool[read_idx];
+
+		/* Prealloc pool already cleared by caller - remove it */
+		if (pp_params->is_prealloc) {
+			compacted++;
+			continue;
+		}
+
+		/* Destroy pool if conditions met */
+		if (pp_params->pp &&
+		    (can_destroy || qdf_page_pool_full_bh(pp_params->pp))) {
+			qdf_page_pool_destroy(pp_params->pp);
+			destroyed++;
+			compacted++;
+		} else if (pp_params->pp) {
+			/* Keep this pool */
+			if (write_idx != read_idx)
+				tx_pp->active_pool[write_idx] = *pp_params;
+			write_idx++;
+		} else {
+			/* NULL entry - remove it */
+			compacted++;
+		}
+	}
+
+	tx_pp->active_pool_count = write_idx;
+
+	if (destroyed || compacted)
+		dp_nofl_info("TX_PP_FLUSH active: destroyed=%u compacted=%u remaining=%u",
+			     destroyed, compacted, write_idx);
+}
+
+/**
+ * dp_tx_page_pool_flush_inactive_pool() - Flush inactive pool list
+ * @tx_pp: TX page pool handle
+ * @can_destroy: True if pools can be destroyed (force or idle)
+ *
+ * Removes items from list, destroys if possible, puts back if not.
+ * Properly handles NULL entries without corrupting the list.
+ *
+ * Return: None
+ */
+static inline void
+dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp,
+				    bool can_destroy)
 {
 	struct dp_tx_pp_params *curr, *next;
-	uint8_t flush_count = 0;
+	uint32_t destroyed = 0;
+	uint32_t removed = 0;
 
 	qdf_list_for_each_del(&tx_pp->inactive_list, curr, next, node) {
 		qdf_list_remove_node(&tx_pp->inactive_list, &curr->node);
+
 		if (curr->pp) {
-			qdf_page_pool_destroy(curr->pp);
-			flush_count++;
+			/* Check if pool should be destroyed */
+			if (can_destroy || qdf_page_pool_full_bh(curr->pp)) {
+				qdf_page_pool_destroy(curr->pp);
+				qdf_mem_free(curr);
+				destroyed++;
+			} else {
+				/* Can't destroy yet - put back */
+				qdf_list_insert_back(&tx_pp->inactive_list,
+						     &curr->node);
+			}
+		} else {
+			/* NULL entry - just free the wrapper */
+			qdf_mem_free(curr);
+			removed++;
 		}
-		qdf_mem_free(curr);
 	}
 
-	qdf_list_destroy(&tx_pp->inactive_list);
-
-	if (flush_count)
-		dp_nofl_info("TX_PP_FLUSH flushed %u inactive pools",
-			     flush_count);
+	if (destroyed || removed)
+		dp_nofl_info("TX_PP_FLUSH inactive: destroyed=%u removed=%u remaining=%d",
+			     destroyed, removed,
+			     qdf_list_size(&tx_pp->inactive_list));
 }
-void dp_tx_page_pool_destroy_all_pools(struct dp_tx_page_pool *tx_pp)
+
+/**
+ * dp_tx_page_pool_destroy_list_work_handler() - Destroy TX page pools
+ * @soc: Pointer to dp_soc structure
+ *
+ *
+ *
+ * Return: None
+ */
+static void dp_tx_page_pool_process_destroy_list(struct dp_soc *soc)
 {
-	dp_tx_page_pool_flush_inactive_pool(tx_pp);
+	struct dp_tx_page_pool *tx_pp, *next_tx_pp;
+	struct dp_pdev *pdev;
+	qdf_list_t process_list, requeue_list;
+	bool force_destroy;
+	uint32_t processed = 0, freed = 0, requeued = 0;
 
-	/* Destroy idle pools */
-	dp_tx_page_pool_destroy_idle_pools(tx_pp);
+	/* Check if there are pending TX descriptors */
+	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, OL_TXRX_PDEV_ID);
+	force_destroy = !pdev || !qdf_atomic_read(&pdev->num_tx_outstanding);
 
-	/* Destroy active pools */
-	dp_tx_flush_active_pool_list(tx_pp);
+	qdf_list_create(&process_list, 0);
+	qdf_list_create(&requeue_list, 0);
 
-	tx_pp->active_pool_count = 0;
+	/* Phase 1: Move items to local list (LOCK #1) */
+	qdf_spin_lock_bh(&soc->tx_pp_destroy_lock);
+	qdf_list_for_each_del(&soc->tx_pp_destroy_list, tx_pp, next_tx_pp,
+			      node) {
+		qdf_list_remove_node(&soc->tx_pp_destroy_list, &tx_pp->node);
+		qdf_list_insert_back(&process_list, &tx_pp->node);
+	}
+	qdf_spin_unlock_bh(&soc->tx_pp_destroy_lock);
+
+	/* Phase 2: Process without holding lock */
+	qdf_list_for_each_del(&process_list, tx_pp, next_tx_pp, node) {
+		bool can_destroy;
+
+		qdf_list_remove_node(&process_list, &tx_pp->node);
+		processed++;
+
+		dp_nofl_info("TX_PP_DEST: %pK vdev:%u alloc:%llu/%llu ac:%u in:%d ho:%u lo:%u",
+			     tx_pp, tx_pp->vdev_id, tx_pp->alloc_success,
+			     tx_pp->alloc_fail, tx_pp->active_pool_count,
+			     qdf_list_size(&tx_pp->inactive_list),
+			     tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt);
+
+		/* Compute destroy condition once for both flush functions */
+		can_destroy = force_destroy || !tx_pp->current_buffers_in_use;
+
+		dp_tx_page_pool_flush_inactive_pool(tx_pp, can_destroy);
+		dp_tx_flush_active_pool_list(tx_pp, can_destroy);
+
+		/* Check if we can free the tx_pp structure */
+		if (tx_pp->active_pool_count == 0 &&
+		    qdf_list_empty(&tx_pp->inactive_list)) {
+			/* Destroy idle pools */
+			dp_tx_page_pool_destroy_idle_pools(tx_pp);
+			qdf_list_destroy(&tx_pp->inactive_list);
+			qdf_spinlock_destroy(&tx_pp->pp_lock);
+			qdf_mem_free(tx_pp);
+			freed++;
+		} else {
+			/* Still has pools - add to requeue list */
+			qdf_list_insert_back(&requeue_list, &tx_pp->node);
+			requeued++;
+			dp_nofl_info("TX_PP_DEST: %pK vdev:%u re-queued (ac:%u in:%d)",
+				     tx_pp, tx_pp->vdev_id,
+				     tx_pp->active_pool_count,
+				     qdf_list_size(&tx_pp->inactive_list));
+		}
+	}
+
+	/* Phase 3: Merge requeue list back (LOCK #2) */
+	if (!qdf_list_empty(&requeue_list)) {
+		qdf_spin_lock_bh(&soc->tx_pp_destroy_lock);
+		qdf_list_for_each_del(&requeue_list, tx_pp, next_tx_pp, node) {
+			qdf_list_remove_node(&requeue_list, &tx_pp->node);
+			qdf_list_insert_back(&soc->tx_pp_destroy_list,
+					     &tx_pp->node);
+		}
+		qdf_spin_unlock_bh(&soc->tx_pp_destroy_lock);
+	}
+
+	qdf_list_destroy(&process_list);
+	qdf_list_destroy(&requeue_list);
+
+	if (processed)
+		dp_nofl_info("TX_PP_DEST: processed=%u freed=%u requeued=%u",
+			     processed, freed, requeued);
 }
 
 /**
@@ -864,37 +994,12 @@ void dp_tx_page_pool_destroy_all_pools(struct dp_tx_page_pool *tx_pp)
  * It safely destroys page pools outside of atomic/spinlock contexts where
  * sleeping operations are not allowed.
  *
+ *
  * Return: None
  */
 static void dp_tx_page_pool_destroy_list_work_handler(void *arg)
 {
-	struct dp_soc *soc = (struct dp_soc *)arg;
-	struct dp_tx_page_pool *tx_pp, *next_tx_pp;
-	qdf_list_t destroy_list;
-
-	qdf_list_create(&destroy_list, 0);
-
-	qdf_spin_lock_bh(&soc->tx_pp_destroy_lock);
-	qdf_list_for_each_del(&soc->tx_pp_destroy_list, tx_pp, next_tx_pp,
-			      node) {
-		if (!tx_pp)
-			continue;
-
-		qdf_list_remove_node(&soc->tx_pp_destroy_list, &tx_pp->node);
-		qdf_list_insert_back(&destroy_list, &tx_pp->node);
-	}
-	qdf_spin_unlock_bh(&soc->tx_pp_destroy_lock);
-
-	qdf_list_for_each_del(&destroy_list, tx_pp, next_tx_pp, node) {
-		dp_nofl_info("TX_PP_DEST: %pK vdev_id:%u alloc:%llu/%llu ac:%u ho:%u lo:=%u",
-			     tx_pp, tx_pp->vdev_id, tx_pp->alloc_success,
-			     tx_pp->alloc_fail, tx_pp->active_pool_count,
-			     tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt);
-		dp_tx_page_pool_destroy_all_pools(tx_pp);
-		qdf_list_remove_node(&destroy_list, &tx_pp->node);
-		qdf_spinlock_destroy(&tx_pp->pp_lock);
-		qdf_mem_free(tx_pp);
-	}
+	dp_tx_page_pool_process_destroy_list((struct dp_soc *)arg);
 }
 
 static void
@@ -1183,6 +1288,7 @@ dp_tx_page_pool_destroy_work_deinit(struct dp_soc *soc)
 {
 	qdf_flush_work(&soc->tx_pp_destroy_work);
 	qdf_destroy_work(0, &soc->tx_pp_destroy_work);
+	dp_tx_page_pool_process_destroy_list(soc);
 	qdf_list_destroy(&soc->tx_pp_destroy_list);
 	qdf_spinlock_destroy(&soc->tx_pp_destroy_lock);
 }

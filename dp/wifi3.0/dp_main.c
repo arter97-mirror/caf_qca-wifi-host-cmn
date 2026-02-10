@@ -4045,6 +4045,7 @@ static inline void dp_soc_tx_page_pool_detach(struct dp_soc *soc)
 {
 	qdf_spinlock_destroy(&soc->tx_pp_lock);
 }
+
 #else
 static inline void dp_soc_tx_page_pool_attach(struct dp_soc *soc)
 {
@@ -11934,8 +11935,20 @@ static void dp_print_tx_page_pool_stats(struct dp_soc *soc)
 	}
 	qdf_spin_unlock_bh(&soc->tx_pp_lock);
 }
+
+static inline void
+dp_tx_pp_check_and_trigger_destroy_work(struct dp_soc *soc)
+{
+	if (!qdf_list_empty(&soc->tx_pp_destroy_list))
+		qdf_sched_work(0, &soc->tx_pp_destroy_work);
+}
 #else
 static inline void dp_print_tx_page_pool_stats(struct dp_soc *soc)
+{
+}
+
+static inline void
+dp_tx_pp_check_and_trigger_destroy_work(struct dp_soc *soc)
 {
 }
 #endif
@@ -14826,6 +14839,8 @@ static QDF_STATUS dp_runtime_suspend(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 		return QDF_STATUS_E_AGAIN;
 	}
 
+	dp_tx_pp_check_and_trigger_destroy_work(soc);
+
 	if (dp_runtime_get_refcount(soc)) {
 		dp_init_info("refcount: %d", dp_runtime_get_refcount(soc));
 
@@ -15389,6 +15404,8 @@ static QDF_STATUS dp_bus_suspend(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 		}
 		timeout = timeout - drain_wait_delay;
 	}
+
+	dp_tx_pp_check_and_trigger_destroy_work(soc);
 
 	if (soc->intr_mode == DP_INTR_POLL)
 		qdf_timer_stop(&soc->int_timer);

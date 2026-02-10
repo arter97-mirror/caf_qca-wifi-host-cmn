@@ -1135,10 +1135,10 @@ dp_tx_trigger_page_pool_shrink(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 
 	/* Finalize free if needed */
 	if (should_deinit) {
-		/* Destroy pools now (safe - no shrink active) */
-		dp_tx_page_pool_destroy_all_pools(tx_pp);
-		qdf_spinlock_destroy(&tx_pp->pp_lock);
-		qdf_mem_free(tx_pp);
+		qdf_spin_lock_bh(&soc->tx_pp_destroy_lock);
+		qdf_list_insert_back(&soc->tx_pp_destroy_list, &tx_pp->node);
+		qdf_spin_unlock_bh(&soc->tx_pp_destroy_lock);
+		qdf_sched_work(0, &soc->tx_pp_destroy_work);
 	}
 
 	return QDF_STATUS_SUCCESS;
