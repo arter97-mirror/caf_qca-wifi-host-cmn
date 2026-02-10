@@ -1038,4 +1038,27 @@ static inline qdf_page_t qdf_virt_to_head_page(void *addr)
 {
 	return __qdf_virt_to_head_page(addr);
 }
+
+/**
+ * qdf_log2_ceil() - Calculate ceil(log2(value))
+ *
+ * @value: input integer
+ *
+ * Return: calculated value of ceil(log2(value))
+ */
+static inline int qdf_log2_ceil(unsigned int value)
+{
+	unsigned int tmp = value;
+	int log2 = -1;
+
+	if (qdf_unlikely(value == 0))
+		return 0;
+	while (tmp) {
+		log2++;
+		tmp >>= 1;
+	}
+	if (1U << log2 != value)
+		log2++;
+	return log2;
+}
 #endif /*_QDF_UTIL_H*/
