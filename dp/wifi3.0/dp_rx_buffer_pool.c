@@ -37,6 +37,8 @@
 #define DP_RX_BUFF_POOL_ALLOC_THRES 1
 #endif
 
+#define MAX_PAGE_POOL_UPSCALE_SIZE 6144
+
 #ifdef WLAN_FEATURE_RX_PREALLOC_BUFFER_POOL
 bool dp_rx_buffer_pool_refill(struct dp_soc *soc, qdf_nbuf_t nbuf, u8 mac_id)
 {
@@ -1074,10 +1076,11 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 	size_t pp_size;
 	uint16_t upscale_cnt = 0;
 	uint32_t pool_size;
+	uint64_t total_pool_size;
 	uint8_t prealloc = 0;
 	uint8_t prev_level;
 	size_t page_size;
-	int i;
+	int i = 1;
 
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
 
@@ -1090,44 +1093,54 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 	/* Base page pool at 0th index is always present,
 	 * so allocate page pools from 1st index.
 	 */
-	for (i = 1; i < DP_PAGE_POOL_MAX; i++) {
-		pp_params = &rx_pp->main_pool[i];
-		if (pp_params->pp)
-			continue;
+	while (rx_pp->curr_rsrc_size < new_size) {
+		total_pool_size = soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(
+							rx_pp->curr_rsrc_level);
+		pool_size = total_pool_size;
+		for (; i < DP_PAGE_POOL_MAX && pool_size > 0; i++) {
+			pp_params = &rx_pp->main_pool[i];
+			if (pp_params->pp)
+				continue;
 
-		if (rx_pp->curr_rsrc_size >= new_size)
-			break;
+			if (pool_size > MAX_PAGE_POOL_UPSCALE_SIZE)
+				pool_size = MAX_PAGE_POOL_UPSCALE_SIZE;
 
-		pool_size = soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(i);
-		/* Try to rettach pools which are inactive first
-		 * before allocating new pools.
-		 */
-		if (dp_rx_page_pool_reattach(rx_pp, pp_params, pool_size)) {
+			/* Try to rettach pools which are inactive first
+			 * before allocating new pools.
+			 */
+			if (dp_rx_page_pool_reattach(rx_pp, pp_params,
+						     pool_size)) {
+				upscale_cnt++;
+				pool_size = total_pool_size - pool_size;
+				total_pool_size -= pp_params->pool_size;
+				continue;
+			}
+
+			pp = __dp_rx_page_pool_create(soc, pool_size,
+						      buf_size, &page_size,
+						      &pp_size, &prealloc,
+						      &pp_params->pp_track_id);
+			if (!pp)
+				goto out_pp_fail;
+
+			pp_params->pp = pp;
+			pp_params->pool_size = pool_size;
+			pp_params->pp_size = pp_size;
+			pp_params->prealloc = prealloc;
 			upscale_cnt++;
-			rx_pp->curr_rsrc_size += pool_size;
-			rx_pp->curr_rsrc_level++;
-			continue;
+			dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
+				pool_size, pp_size);
+			pool_size = total_pool_size - pool_size;
+			total_pool_size -= pp_params->pool_size;
 		}
 
-		pp = __dp_rx_page_pool_create(soc, pool_size,
-					      buf_size, &page_size,
-					      &pp_size, &prealloc,
-					      &pp_params->pp_track_id);
-		if (!pp)
-			goto out_pp_fail;
-
-		pp_params->pp = pp;
-		pp_params->pool_size = pool_size;
-		pp_params->pp_size = pp_size;
-		pp_params->prealloc = prealloc;
-		upscale_cnt++;
-		rx_pp->curr_rsrc_size += pool_size;
+		rx_pp->curr_rsrc_size +=
+			soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(
+							rx_pp->curr_rsrc_level);
 		rx_pp->curr_rsrc_level++;
-		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
-			pool_size, pp_size);
 	}
 
-	if (upscale_cnt != rx_pp->curr_rsrc_level - prev_level) {
+	if (upscale_cnt < rx_pp->curr_rsrc_level - prev_level) {
 		dp_err("Upscale RX bufs fail, upscale_cnt %d, level upgrade %d",
 		       upscale_cnt, rx_pp->curr_rsrc_level - prev_level);
 		goto out_pp_fail;
@@ -1161,6 +1174,7 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	qdf_list_t destroy_list;
 	int i;
+	uint64_t total_pool_size, pool_size;
 
 	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx))
 		return QDF_STATUS_E_FAILURE;
@@ -1186,37 +1200,54 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 	/* Base page pool at 0th index is always present,
 	 * so destroy page pools from 1st index.
 	 */
-	for (i = DP_PAGE_POOL_MAX - 1; i > 0; i--) {
-		pp_params = &rx_pp->main_pool[i];
+	while (rx_pp->curr_rsrc_size > new_size) {
+		total_pool_size =
+			soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(
+					rx_pp->curr_rsrc_level - 1);
+		pool_size = total_pool_size;
+		for (i = DP_PAGE_POOL_MAX - 1; i > 0 && pool_size > 0; i--) {
+			pp_params = &rx_pp->main_pool[i];
+			if (!pp_params->pp)
+				continue;
 
-		if (!pp_params->pp)
-			continue;
+			pool_size -= pp_params->pool_size;
+			/* Immediately destroy the page pool if there
+			 * are no inflight pages.
+			 */
+			if (qdf_page_pool_full_bh(pp_params->pp)) {
+				qdf_list_insert_back(&destroy_list,
+						     &pp_params->node);
+				continue;
+			}
 
-		if (rx_pp->curr_rsrc_size <= new_size)
-			break;
+			/* Immediately destroy the page pool if there
+			 * are no inflight buffers.
+			 */
+			if (!qdf_page_pool_check_inflight_buffers(pp_params->pp,
+								  pp_params->pp_track_id)) {
+				qdf_list_insert_back(&destroy_list,
+						     &pp_params->node);
+				continue;
+			}
 
-		rx_pp->curr_rsrc_size -=
-			soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(i);
+			inactive_pp = qdf_mem_malloc(sizeof(*inactive_pp));
+			if (!inactive_pp) {
+				dp_info("Failed to alloc inactive pp node for %pK",
+					pp_params);
+				qdf_list_insert_back(&destroy_list,
+						     &pp_params->node);
+				continue;
+			}
+
+			qdf_mem_copy(inactive_pp, pp_params,
+				     sizeof(*pp_params));
+			qdf_mem_set(pp_params, sizeof(*pp_params), 0);
+			qdf_list_insert_back(&rx_pp->inactive_list,
+					     &inactive_pp->node);
+		}
+
+		rx_pp->curr_rsrc_size -= total_pool_size;
 		rx_pp->curr_rsrc_level--;
-		/* Immediately destroy the page pool if there
-		 * are no inflight buffers.
-		 */
-		if (!qdf_page_pool_check_inflight_buffers(pp_params->pp, pp_params->pp_track_id)) {
-			qdf_list_insert_back(&destroy_list, &pp_params->node);
-			continue;
-		}
-
-		inactive_pp = qdf_mem_malloc(sizeof(*inactive_pp));
-		if (!inactive_pp) {
-			dp_info("Failed to alloc inactive pp node for %pK",
-				pp_params);
-			qdf_list_insert_back(&destroy_list, &pp_params->node);
-			continue;
-		}
-
-		qdf_mem_copy(inactive_pp, pp_params, sizeof(*pp_params));
-		qdf_mem_set(pp_params, sizeof(*pp_params), 0);
-		qdf_list_insert_back(&rx_pp->inactive_list, &inactive_pp->node);
 	}
 
 	if (!qdf_list_empty(&rx_pp->inactive_list))
