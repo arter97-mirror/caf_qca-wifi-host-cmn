@@ -4493,6 +4493,46 @@ void wlan_soc_ndp_bw_flow_ctrl_cfg_attach(struct cdp_ctrl_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static void
+wlan_cfg_soc_direct_refill_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+				  struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx)
+{
+	wlan_cfg_ctx->dp_aux_refill_ring = cfg_get(psoc,
+						   CFG_DP_AUX_REFILL_RING);
+}
+
+static void
+wlan_cfg_pdev_direct_refill_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+				   struct wlan_cfg_dp_pdev_ctxt *wlan_cfg_ctx)
+{
+	wlan_cfg_ctx->dp_direct_refill_ring = cfg_get(psoc,
+						      CFG_DP_DIRECT_REFILL_RING);
+}
+
+int wlan_cfg_get_dp_aux_refill_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg)
+{
+	return cfg->dp_aux_refill_ring;
+}
+
+int wlan_cfg_get_dp_direct_refill_ring_size(struct wlan_cfg_dp_pdev_ctxt *cfg)
+{
+	return cfg->dp_direct_refill_ring;
+}
+#else
+static inline void
+wlan_cfg_soc_direct_refill_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+				  struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx)
+{
+}
+
+static void
+wlan_cfg_pdev_direct_refill_attach(struct cdp_ctrl_objmgr_psoc *psoc,
+				   struct wlan_cfg_dp_pdev_ctxt *wlan_cfg_ctx)
+{
+}
+#endif
+
 #ifdef WLAN_SOFTUMAC_SUPPORT
 struct wlan_cfg_dp_soc_ctxt *
 wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
@@ -4885,6 +4925,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 						CFG_DP_REO_STATUS_RING);
 	wlan_cfg_ctx->rxdma_refill_ring = cfg_get(psoc,
 						  CFG_DP_RXDMA_REFILL_RING);
+	wlan_cfg_soc_direct_refill_attach(psoc, wlan_cfg_ctx);
 	wlan_cfg_ctx->rxdma_scan_radio_refill_ring = cfg_get(psoc,
 					CFG_DP_RXDMA_SCAN_RADIO_REFILL_RING);
 	wlan_cfg_ctx->rxdma_refill_lt_disable =
@@ -5063,6 +5104,7 @@ wlan_cfg_pdev_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 
 	wlan_cfg_ctx->rx_dma_buf_ring_size = cfg_get(psoc,
 					CFG_DP_RXDMA_BUF_RING);
+	wlan_cfg_pdev_direct_refill_attach(psoc, wlan_cfg_ctx);
 	wlan_cfg_ctx->dma_mon_buf_ring_size = cfg_get(psoc,
 					CFG_DP_RXDMA_MONITOR_BUF_RING);
 	wlan_cfg_ctx->dma_rx_mon_dest_ring_size = cfg_get(psoc,

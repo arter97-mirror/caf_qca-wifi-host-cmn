@@ -681,6 +681,9 @@ struct wlan_cfg_dp_soc_ctxt {
 #ifdef DP_FEATURE_TX_PAGE_POOL
 	bool dp_tx_page_pool;
 #endif
+#ifdef DP_FEATURE_DIRECT_REFILL
+	int dp_aux_refill_ring;
+#endif
 };
 
 /**
@@ -707,6 +710,9 @@ struct wlan_cfg_dp_pdev_ctxt {
 	int nss_enabled;
 	int dma_tx_mon_buf_ring_size;
 	int sw2rxdma_link_ring_size;
+#ifdef DP_FEATURE_DIRECT_REFILL
+	int dp_direct_refill_ring;
+#endif
 };
 
 /**
@@ -1950,6 +1956,24 @@ wlan_cfg_get_dp_soc_rxdma_refill_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg);
 void
 wlan_cfg_set_dp_soc_rxdma_refill_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg,
 					   int ring_size);
+
+#ifdef DP_FEATURE_DIRECT_REFILL
+/**
+ * wlan_cfg_get_dp_direct_refill_ring_size() - Get direct refill ring size
+ * @cfg: pdev configuration context
+ *
+ * Return: direct refill ring size
+ */
+int wlan_cfg_get_dp_direct_refill_ring_size(struct wlan_cfg_dp_pdev_ctxt *cfg);
+
+/**
+ * wlan_cfg_get_dp_aux_refill_ring_size() - Get AUX refill ring size
+ * @cfg: soc configuration context
+ *
+ * Return: direct refill ring size
+ */
+int wlan_cfg_get_dp_aux_refill_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg);
+#endif
 
 /**
  * wlan_cfg_get_dp_soc_rxdma_refill_lt_disable - Get RxDMA refill LT status

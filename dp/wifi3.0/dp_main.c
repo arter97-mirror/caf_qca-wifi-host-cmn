@@ -4097,6 +4097,46 @@ static inline void dp_soc_page_pool_detach(struct dp_soc *soc)
 }
 #endif
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline void dp_soc_direct_refill_cfg_update(struct dp_soc *soc)
+{
+	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = soc->wlan_cfg_ctx;
+	int aux_refill_ring_size;
+
+	if (!soc->features.direct_refill_support)
+		return;
+
+	aux_refill_ring_size = wlan_cfg_get_dp_aux_refill_ring_size(soc_cfg_ctx);
+	wlan_cfg_set_dp_soc_rxdma_refill_ring_size(soc_cfg_ctx,
+						   aux_refill_ring_size);
+	dp_info("update aux_refill_ring_size %d", aux_refill_ring_size);
+}
+
+static inline void dp_pdev_direct_refill_cfg_update(struct dp_pdev *pdev)
+{
+	struct dp_soc *soc = pdev->soc;
+	struct wlan_cfg_dp_pdev_ctxt *pdev_cfg_ctx = pdev->wlan_cfg_ctx;
+	uint32_t direct_refill_ring_size;
+
+	if (!soc->features.direct_refill_support)
+		return;
+
+	direct_refill_ring_size =
+			wlan_cfg_get_dp_direct_refill_ring_size(pdev_cfg_ctx);
+	wlan_cfg_set_rx_dma_buf_ring_size(pdev_cfg_ctx,
+					  direct_refill_ring_size);
+	dp_info("update direct_refill_ring_size %d", direct_refill_ring_size);
+}
+#else
+static inline void dp_soc_direct_refill_cfg_update(struct dp_soc *soc)
+{
+}
+
+static inline void dp_pdev_direct_refill_cfg_update(struct dp_pdev *pdev)
+{
+}
+#endif
+
 /**
  * dp_pdev_attach_wifi3() - attach txrx pdev
  * @txrx_soc: Datapath SOC handle
@@ -4144,6 +4184,7 @@ QDF_STATUS dp_pdev_attach_wifi3(struct cdp_soc_t *txrx_soc,
 	pdev->lmac_id = wlan_cfg_get_hw_mac_idx(soc->wlan_cfg_ctx, pdev_id);
 	soc->pdev_count++;
 
+	dp_pdev_direct_refill_cfg_update(pdev);
 	/* This is to reserve replenish_ring[0] for rx_refill_buf_ring */
 	soc->num_replenish_rings[pdev->lmac_id] = 1;
 	dp_ssr_dump_pdev_register(pdev, pdev_id);
@@ -15769,6 +15810,7 @@ dp_soc_attach(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 		goto fail2;
 	}
 
+	dp_soc_direct_refill_cfg_update(soc);
 	dp_soc_page_pool_attach(soc);
 
 	qdf_ssr_driver_dump_register_region("wlan_cfg_ctx", soc->wlan_cfg_ctx,
