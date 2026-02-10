@@ -100,6 +100,17 @@ QDF_STATUS wmi_unified_ndp_end_req_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
+QDF_STATUS
+wmi_unified_ndp_update_config_cmd_send(wmi_unified_t wmi_handle,
+				       struct nan_datapath_update_config *req)
+{
+	if (wmi_handle->ops->send_ndp_update_config_cmd)
+		return wmi_handle->ops->send_ndp_update_config_cmd(wmi_handle,
+								   req);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
 QDF_STATUS wmi_extract_nan_msg(wmi_unified_t wmi_handle,
 			       uint8_t *data,
 			       struct nan_dump_msg *msg)
