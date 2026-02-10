@@ -9,6 +9,7 @@
 #include "dal_vndr_hal_internal.h"
 #include "dal_vndr_hal_defines_be.h"
 
+#ifdef CONFIG_BORON
 #define NUM_OF_DWORDS_REO_DESTINATION_RING 8
 
 struct dal_reo_destination_ring {
@@ -301,6 +302,8 @@ struct dal_reo_destination_ring {
 #define REO_DESTINATION_RING_LOOPING_COUNT_LSB      28
 #define REO_DESTINATION_RING_LOOPING_COUNT_MSB      31
 #define REO_DESTINATION_RING_LOOPING_COUNT_MASK     0xf0000000
+
+#endif
 
 #define NUM_OF_DWORDS_TCL_ASSIST_CMD 16
 
@@ -703,6 +706,7 @@ struct dal_tcl_assist_cmd {
 #define TCL_ASSIST_CMD_LOOPING_COUNT_MSB                           31
 #define TCL_ASSIST_CMD_LOOPING_COUNT_MASK                          0xf0000000
 
+#ifdef CONFIG_BORON
 #define NUM_OF_DWORDS_WBM_RELEASE_RING_TX 4
 
 struct dal_wbm_release_ring_tx {
@@ -778,6 +782,7 @@ struct dal_wbm_release_ring_tx {
 		REO_DESTINATION_RING_RXDMA_ERROR_CODE_MASK,    \
 		REO_DESTINATION_RING_RXDMA_ERROR_CODE_LSB))
 
+#endif
 #define NUM_OF_DWORDS_TQM2SW_COMPLETION_RING 8
 
 struct dal_tqm2sw_completion_ring {
@@ -801,7 +806,7 @@ struct dal_tqm2sw_completion_ring {
 		last_msdu                                               :  1,
 		fw_tx_notify_frame                                      :  3,
 		buffer_timestamp                                        : 19;
-	struct   tx_rate_stats_info                            tx_rate_stats;
+	struct  dal_tx_rate_stats_info                           tx_rate_stats;
 	uint32_t sw_peer_id                                              : 16,
 		tid                                                     :  4,
 		sw_buffer_cookie_19_12                                  :  8,
@@ -826,7 +831,7 @@ struct dal_tqm2sw_completion_ring {
 		last_msdu                                               :  1,
 		first_msdu                                              :  1,
 		ack_frame_rssi                                          :  8;
-	struct   tx_rate_stats_info                             tx_rate_stats;
+	struct  dal_tx_rate_stats_info                           tx_rate_stats;
 	uint32_t looping_count                                           :  4,
 		sw_buffer_cookie_19_12                                  :  8,
 		tid                                                     :  4,
@@ -1028,5 +1033,9 @@ struct dal_tqm2sw_completion_ring {
 #define TQM2SW_COMPLETION_RING_LOOPING_COUNT_LSB     28
 #define TQM2SW_COMPLETION_RING_LOOPING_COUNT_MSB     31
 #define TQM2SW_COMPLETION_RING_LOOPING_COUNT_MASK    0xf0000000
+
+/* BN helper: map BN-specific getter to generic DAL getter */
+#define DAL_VNDR_HAL_TX_DESC_GET_BN(desc, block, field) \
+	DAL_VNDR_HAL_TX_DESC_GET(desc, block, field)
 
 #endif /* _DAL_VNDR_HAL_DEFINES_BN_H_ */

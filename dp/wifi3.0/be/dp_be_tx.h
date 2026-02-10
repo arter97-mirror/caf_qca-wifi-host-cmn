@@ -761,6 +761,7 @@ void dp_tx_desc_update_buffer_info_be_bn(struct dp_soc *soc,
 					 ring_id);
 }
 
+#endif /* !CONFIG_BORON */
 /**
  * dp_dal_tx_comp_check_reserved_cookie_be() - Check if cookie is DAL reserved
  * @soc: DP soc handle
@@ -776,6 +777,5 @@ void dp_tx_desc_update_buffer_info_be_bn(struct dp_soc *soc,
  */
 bool dp_dal_tx_comp_check_reserved_cookie_be(struct dp_soc *soc,
 					     void *tx_comp_hal_desc);
-#endif /* !CONFIG_BORON */
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif

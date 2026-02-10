@@ -10,6 +10,7 @@
 #include <linux/io.h>
 #include "dal_vndr_hal_internal.h"
 #include "dal_vndr_hal_defines_be.h"
+#include "dal_vndr_hal_defines_bn.h"
 
 #define DAL_VNDR_HAL_WBM2SW_RELEASE_SRC_GET(wbm_desc) (((*(((uint32_t *)wbm_desc) + \
 		(WBM_RELEASE_RING_TX_RELEASE_SOURCE_MODULE_OFFSET >> 2))) & \
@@ -68,6 +69,27 @@ static inline uint32_t dal_vndr_hal_tx_comp_get_buffer_source_generic(
 	return DAL_VNDR_HAL_WBM2SW_RELEASE_SRC_GET(hal_desc);
 }
 
+#ifdef CONFIG_BORON
+/**
+ * dal_vndr_hal_tx_comp_get_tx_status_generic() - Get Tx transmission status
+ * @hal_desc: Tx completion descriptor pointer
+ *
+ * This function extracts the transmit status value from the Tx completion
+ * descriptor (TQM release reason).
+ *
+ * Return: Transmit status value
+ */
+static inline uint8_t dal_vndr_hal_tx_comp_get_tx_status_generic(void *hal_desc)
+{
+	uint32_t comp_desc = *(uint32_t *)(((uint8_t *)hal_desc) +
+			TQM2SW_COMPLETION_RING_TQM_RELEASE_REASON_OFFSET);
+
+	return (comp_desc &
+		TQM2SW_COMPLETION_RING_TQM_RELEASE_REASON_MASK) >>
+		TQM2SW_COMPLETION_RING_TQM_RELEASE_REASON_LSB;
+}
+
+#else
 /**
  * dal_vndr_hal_tx_comp_get_tx_status_generic() - Get Tx transmission status
  * @hal_desc: Tx completion descriptor pointer
@@ -86,6 +108,7 @@ static inline uint8_t dal_vndr_hal_tx_comp_get_tx_status_generic(void *hal_desc)
 	return (comp_desc & WBM_RELEASE_RING_TX_TQM_RELEASE_REASON_MASK) >>
 			WBM_RELEASE_RING_TX_TQM_RELEASE_REASON_LSB;
 }
+#endif
 
 /*
  * BAR + 4K is always accessible, any access outside this

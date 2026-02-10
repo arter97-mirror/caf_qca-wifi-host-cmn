@@ -862,7 +862,7 @@ hal_tx_desc_set_buf_addr_be(hal_soc_handle_t hal_soc_hdl, void *desc,
 		HAL_TX_SM(TCL_DATA_CMD, BUF_OR_EXT_DESC_TYPE, type);
 }
 #endif
-#endif /* !CONFIG_BORON */
+#endif
 
 /**
  * hal_tx_vdev_mismatch_routing_set() - set vdev mismatch exception routing

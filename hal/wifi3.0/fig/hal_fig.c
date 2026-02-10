@@ -170,8 +170,8 @@ static uint8_t hal_tx_comp_get_release_reason_dal_fig(void *hal_desc)
 static void hal_tx_comp_get_status_dal_fig(void *desc, void *ts1,
 					   struct hal_soc *hal)
 {
-	dal_vndr_hal_tx_comp_get_status_generic_be(desc, ts1);
-	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts);
+	dal_vndr_hal_tx_comp_get_status_generic_be(desc, ts1, hal);
+	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts1);
 }
 
 /**

@@ -41,6 +41,9 @@
 #include "dp_rx_buffer_pool.h"
 #include "hal_internal.h"
 #include "dp_rx_defrag.h"
+#ifdef FEATURE_DAL_DP_SUPPORT
+#include "dp_dal_rx.h"
+#endif
 
 #ifdef WLAN_FEATURE_DP_RX_RING_HISTORY
 /**
@@ -1745,12 +1748,14 @@ dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 	struct cdp_tid_rx_stats *tid_stats = NULL;
 	uint64_t current_time = 0;
 	uint32_t rx_ol_pkt_cnt = 0;
+	uint32_t peer_ext_stats;
 
 	DP_HIST_INIT();
 
 	if (qdf_unlikely(!soc || !nbuf_list))
 		return QDF_STATUS_E_INVAL;
 
+	peer_ext_stats = wlan_cfg_is_peer_ext_stats_enabled(soc->wlan_cfg_ctx);
 	dp_pkt_get_timestamp(&current_time);
 
 	/* Process each nbuf in list following BN third-loop semantics */
@@ -1875,7 +1880,7 @@ dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 		/* Length and TLV handling, SG creation where needed */
 		if (qdf_nbuf_is_rx_chfrag_cont(nbuf)) {
 			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
-			nbuf = dp_rx_sg_create(soc, nbuf);
+			nbuf = dp_rx_sg_create(soc, nbuf, true);
 			next = qdf_nbuf_next(nbuf);
 
 			if (qdf_nbuf_is_raw_frame(nbuf)) {
@@ -1894,7 +1899,7 @@ dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 					continue;
 				}
 				/* Try to reinject SG packet via DAL API */
-				if (dp_dal_rx_sg_reinject(nbuf)) {
+				if (dp_dal_rx_pkt_reinject(nbuf)) {
 					/* DAL consumed the packet, free it and
 					 * move to next.
 					 */

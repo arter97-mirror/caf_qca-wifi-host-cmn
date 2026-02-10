@@ -8,6 +8,9 @@
 #include <linux/types.h>
 #include "dal_vndr_hal_internal.h"
 #include "dal_vndr_hal_defines_be.h"
+#ifdef CONFIG_BORON
+#include "dal_vndr_hal_defines_bn.h"
+#endif
 
 /* See  dal_vndr_hal_defines_be.h fo reference
  * DAL_VNDR_HAL_TX_DESC_LEN_DWORDS is NUM_OF_DWORDS_TCL_DATA_CMD
@@ -351,6 +354,7 @@ static inline void dal_vndr_hal_tx_desc_set_tx_notify_frame_be(void *desc,
  * dal_vndr_hal_tx_comp_get_status_generic_be - Get generic tx completion status
  * @desc: WBM descriptor
  * @ts1: completion ring Tx status
+ * @hal: HAL SOC handle (unused, for signature compatibility)
  *
  * This function will parse the WBM completion descriptor and populate in
  * HAL structure
@@ -358,7 +362,7 @@ static inline void dal_vndr_hal_tx_desc_set_tx_notify_frame_be(void *desc,
  * Return: none
  */
 static inline void
-dal_vndr_hal_tx_comp_get_status_generic_be(void *desc, void *ts1)
+dal_vndr_hal_tx_comp_get_status_generic_be(void *desc, void *ts1, void *hal)
 {
 	struct dal_vndr_hal_tx_completion_status *ts =
 		(struct dal_vndr_hal_tx_completion_status *)ts1;
@@ -368,6 +372,21 @@ dal_vndr_hal_tx_comp_get_status_generic_be(void *desc, void *ts1)
 	ts->msdu_part_of_amsdu = (ts->first_msdu && ts->last_msdu) ?
 				  false : true;
 	ts->tid = ts->tid & 0xF;
+}
+
+/**
+ * dal_vndr_hal_tx_comp_get_status_be() - Get tx completion status
+ * @desc: WBM descriptor
+ * @ts1: completion ring Tx status
+ *
+ * This is a 2-parameter wrapper that calls the 3-parameter generic function
+ *
+ * Return: none
+ */
+static inline void
+dal_vndr_hal_tx_comp_get_status_be(void *desc, void *ts1)
+{
+	dal_vndr_hal_tx_comp_get_status_generic_be(desc, ts1, NULL);
 }
 
 /**

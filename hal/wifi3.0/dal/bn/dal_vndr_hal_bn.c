@@ -7,6 +7,21 @@
 #include "dal_vndr_hal_defines_be.h"
 #include "dal_vndr_hal_defines_bn.h"
 #include "dal_vndr_hal_internal.h"
+#include "qdf_util.h"
+#include "qdf_types.h"
+#include "hal_tx_hw_defines.h"
+#include "hal_rx.h"
+
+/* BN does not provide HAL_RX_REO_BUF_TYPE_GET macro in its rx header.
+ * Define it here using REO destination ring field offsets.
+ */
+#ifndef HAL_RX_REO_BUF_TYPE_GET
+#define HAL_RX_REO_BUF_TYPE_GET(reo_desc) \
+	(((*(((uint32_t *)(reo_desc)) + \
+	    (REO_DESTINATION_RING_REO_DEST_BUFFER_TYPE_OFFSET >> 2))) & \
+	  REO_DESTINATION_RING_REO_DEST_BUFFER_TYPE_MASK) >> \
+	 REO_DESTINATION_RING_REO_DEST_BUFFER_TYPE_LSB)
+#endif
 
 /**
  * dal_vndr_hal_tx_desc_set_buf_addr_bn() - Fill Buffer Address information
@@ -26,27 +41,27 @@ dal_vndr_hal_tx_desc_set_buf_addr_bn(void *desc, dma_addr_t paddr,
 				     uint8_t type)
 {
 	/* Set buffer_addr_info.buffer_addr_31_0 */
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0) =
-	      HAL_TX_SM(TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0, paddr);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0) =
+	      DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_31_0, paddr);
 
 	/* Set buffer_addr_info.buffer_addr_39_32 */
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32,
-			  (((uint64_t)paddr) >> 32));
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, BUF_ADDR_INFO_BUFFER_ADDR_39_32,
+				   (((uint64_t)paddr) >> 32));
 
 	/* Set buffer_addr_info.return_buffer_manager = rbm id */
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD,
-		    BUF_ADDR_INFO_RETURN_BUFFER_MANAGER) |=
-			HAL_TX_SM(TCL_ASSIST_CMD,
-				  BUF_ADDR_INFO_RETURN_BUFFER_MANAGER, rbm_id);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD,
+			     BUF_ADDR_INFO_RETURN_BUFFER_MANAGER) |=
+			DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD,
+					   BUF_ADDR_INFO_RETURN_BUFFER_MANAGER, rbm_id);
 
 	/* Set buffer_addr_info.sw_buffer_cookie = desc_id */
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE) |=
-	    HAL_TX_SM(TCL_ASSIST_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE, desc_id);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE) |=
+	    DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, BUF_ADDR_INFO_SW_BUFFER_COOKIE, desc_id);
 
 	/* Set  Buffer or Ext Descriptor Type */
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_OR_EXT_DESC_TYPE) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, BUF_OR_EXT_DESC_TYPE, type);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, BUF_OR_EXT_DESC_TYPE) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, BUF_OR_EXT_DESC_TYPE, type);
 }
 
 /**
@@ -67,8 +82,8 @@ static inline void dal_vndr_hal_tx_desc_set_buf_length_bn(void *desc,
 		hal_err("data_length overflow %d", data_length);
 		qdf_assert_always(0);
 	}
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, DATA_LENGTH) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, DATA_LENGTH, data_length);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, DATA_LENGTH) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, DATA_LENGTH, data_length);
 }
 
 /**
@@ -82,8 +97,8 @@ static inline void dal_vndr_hal_tx_desc_set_buf_length_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_buf_offset_bn(void *desc,
 							  uint8_t offset)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, METADATA_LENGTH) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, METADATA_LENGTH, offset);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, METADATA_LENGTH) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, METADATA_LENGTH, offset);
 }
 
 /**
@@ -97,8 +112,8 @@ static inline void dal_vndr_hal_tx_desc_set_buf_offset_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_l3_checksum_en_bn(void *desc,
 							      uint8_t en)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L3_CHECKSUM_ENABLE) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, L3_CHECKSUM_ENABLE, en);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, L3_CHECKSUM_ENABLE) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, L3_CHECKSUM_ENABLE, en);
 }
 
 /**
@@ -112,8 +127,8 @@ static inline void dal_vndr_hal_tx_desc_set_l3_checksum_en_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_l4_checksum_en_bn(void *desc,
 							      uint8_t en)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_CHECKSUM_ENABLE) |=
-		 HAL_TX_SM(TCL_ASSIST_CMD, L4_CHECKSUM_ENABLE, en);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_CHECKSUM_ENABLE) |=
+		 DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, L4_CHECKSUM_ENABLE, en);
 }
 
 /**
@@ -125,8 +140,8 @@ static inline void dal_vndr_hal_tx_desc_set_l4_checksum_en_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_bank_id_bn(void *desc,
 						       uint8_t bank_id)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, BANK_ID) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, BANK_ID, bank_id);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, BANK_ID) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, BANK_ID, bank_id);
 }
 
 /**
@@ -140,8 +155,8 @@ static inline void dal_vndr_hal_tx_desc_set_bank_id_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_fw_metadata_bn(void *desc,
 							   uint16_t metadata)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, TCL_CMD_NUMBER) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, TCL_CMD_NUMBER, metadata);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, TCL_CMD_NUMBER) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, TCL_CMD_NUMBER, metadata);
 }
 
 /**
@@ -152,8 +167,8 @@ static inline void dal_vndr_hal_tx_desc_set_fw_metadata_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_vdev_id_bn(void *desc,
 						       uint8_t vdev_id)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, VDEV_ID) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, VDEV_ID, vdev_id);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, VDEV_ID) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, VDEV_ID, vdev_id);
 }
 
 /**
@@ -167,11 +182,11 @@ static inline void dal_vndr_hal_tx_desc_set_vdev_id_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_hlos_tid_bn(void *desc,
 							uint8_t hlos_tid)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, HLOS_TID) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, HLOS_TID, hlos_tid);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, HLOS_TID) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, HLOS_TID, hlos_tid);
 
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, HLOS_TID_OVERWRITE) |=
-	   HAL_TX_SM(TCL_ASSIST_CMD, HLOS_TID_OVERWRITE, 1);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, HLOS_TID_OVERWRITE) |=
+	   DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, HLOS_TID_OVERWRITE, 1);
 }
 
 /**
@@ -185,8 +200,8 @@ static inline void dal_vndr_hal_tx_desc_set_hlos_tid_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_tx_notify_frame_bn(void *desc,
 							       uint8_t val)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, TX_NOTIFY_FRAME) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, TX_NOTIFY_FRAME, val);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, TX_NOTIFY_FRAME) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, TX_NOTIFY_FRAME, val);
 }
 
 /**
@@ -198,8 +213,8 @@ static inline void dal_vndr_hal_tx_desc_set_tx_notify_frame_bn(void *desc,
  */
 static inline void dal_vndr_hal_tx_desc_set_to_fw_bn(void *desc, uint8_t to_fw)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, TO_FW_TQM) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, TO_FW_TQM, to_fw);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, TO_FW_TQM) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, TO_FW_TQM, to_fw);
 }
 
 /**
@@ -214,9 +229,9 @@ static inline void
 dal_vndr_hal_tx_desc_set_peer_txpt_ci_index_bn(void *desc,
 					       uint8_t peer_txpt_ci_index)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, TXPT_CLASSIFY_INFO_INDEX) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, TXPT_CLASSIFY_INFO_INDEX,
-			  peer_txpt_ci_index);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, TXPT_CLASSIFY_INFO_INDEX) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, TXPT_CLASSIFY_INFO_INDEX,
+				   peer_txpt_ci_index);
 }
 
 /**
@@ -232,8 +247,8 @@ static inline void
 dal_vndr_hal_tx_desc_set_peer_txpt_ci_tos_tc_val_bn(void *desc,
 						    uint8_t tos_tc_val)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, TOS_TC_VALUE) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, TOS_TC_VALUE, tos_tc_val);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, TOS_TC_VALUE) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, TOS_TC_VALUE, tos_tc_val);
 }
 
 /**
@@ -253,11 +268,11 @@ dal_vndr_hal_tx_desc_set_da_is_bcast_mcast_bn(void *desc, uint8_t is_bcast,
 	 * HAL specific, so checking here.
 	 */
 	if (qdf_unlikely(is_bcast || is_mcast))
-		HAL_SET_FLD(desc, TCL_ASSIST_CMD, DA_IS_BCAST_MCAST) |=
-			HAL_TX_SM(TCL_ASSIST_CMD, DA_IS_BCAST_MCAST, 1);
+		DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, DA_IS_BCAST_MCAST) |=
+			DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, DA_IS_BCAST_MCAST, 1);
 
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, DA_IS_BCAST) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, DA_IS_BCAST, is_bcast);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, DA_IS_BCAST) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, DA_IS_BCAST, is_bcast);
 }
 
 /**
@@ -271,8 +286,8 @@ dal_vndr_hal_tx_desc_set_da_is_bcast_mcast_bn(void *desc, uint8_t is_bcast,
 static inline void dal_vndr_hal_tx_desc_set_l3_type_bn(void *desc,
 						       uint16_t l3_type)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L3_TYPE) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, L3_TYPE, l3_type);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, L3_TYPE) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, L3_TYPE, l3_type);
 }
 
 /**
@@ -286,8 +301,8 @@ static inline void dal_vndr_hal_tx_desc_set_l3_type_bn(void *desc,
 static inline void dal_vndr_hal_tx_desc_set_l4_protocol_bn(void *desc,
 							   uint8_t l4_protocol)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PROTOCOL) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, L4_PROTOCOL, l4_protocol);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PROTOCOL) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, L4_PROTOCOL, l4_protocol);
 }
 
 /**
@@ -301,8 +316,8 @@ static inline void dal_vndr_hal_tx_desc_set_l4_protocol_bn(void *desc,
 static inline void
 dal_vndr_hal_tx_desc_set_type_or_length_bn(void *desc, uint8_t type_or_length)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, TYPE_OR_LENGTH) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, TYPE_OR_LENGTH, type_or_length);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, TYPE_OR_LENGTH) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, TYPE_OR_LENGTH, type_or_length);
 }
 
 /**
@@ -315,11 +330,11 @@ dal_vndr_hal_tx_desc_set_type_or_length_bn(void *desc, uint8_t type_or_length)
 static inline void dal_vndr_hal_tx_desc_set_dport_bn(void *desc,
 						     uint16_t l4_port)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PORT) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, L4_PORT, l4_port);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PORT) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, L4_PORT, l4_port);
 
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PORT_TYPE) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, L4_PORT_TYPE, 1);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, L4_PORT_TYPE) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, L4_PORT_TYPE, 1);
 }
 
 /**
@@ -334,8 +349,8 @@ static inline void
 dal_vndr_hal_tx_desc_set_snap_oui_zero_or_f8_bn(void *desc,
 						uint8_t is_snap_oui_zero_or_f8)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, SNAP_OUI_ZERO_OR_F8) |=
-	HAL_TX_SM(TCL_ASSIST_CMD, SNAP_OUI_ZERO_OR_F8, is_snap_oui_zero_or_f8);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, SNAP_OUI_ZERO_OR_F8) |=
+	DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, SNAP_OUI_ZERO_OR_F8, is_snap_oui_zero_or_f8);
 }
 
 /**
@@ -351,9 +366,9 @@ static inline void
 dal_vndr_hal_tx_desc_set_snap_oui_not_zero_or_not_f8_bn(void *desc,
 							uint8_t is_snap_oui_not_zero_or_not_f8)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, SNAP_OUI_NOT_ZERO_AND_NOT_F8) |=
-	 HAL_TX_SM(TCL_ASSIST_CMD, SNAP_OUI_NOT_ZERO_AND_NOT_F8,
-		   is_snap_oui_not_zero_or_not_f8);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, SNAP_OUI_NOT_ZERO_AND_NOT_F8) |=
+	 DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, SNAP_OUI_NOT_ZERO_AND_NOT_F8,
+			    is_snap_oui_not_zero_or_not_f8);
 }
 
 /**
@@ -367,8 +382,8 @@ dal_vndr_hal_tx_desc_set_snap_oui_not_zero_or_not_f8_bn(void *desc,
 static inline void
 dal_vndr_hal_tx_desc_set_s_vlan_tag_bn(void *desc, uint8_t s_vlan_present)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, S_VLAN_TAG_PRESENT) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, S_VLAN_TAG_PRESENT, s_vlan_present);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, S_VLAN_TAG_PRESENT) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, S_VLAN_TAG_PRESENT, s_vlan_present);
 }
 
 /**
@@ -382,8 +397,8 @@ dal_vndr_hal_tx_desc_set_s_vlan_tag_bn(void *desc, uint8_t s_vlan_present)
 static inline void
 dal_vndr_hal_tx_desc_set_c_vlan_tag_bn(void *desc, uint8_t c_vlan_present)
 {
-	HAL_SET_FLD(desc, TCL_ASSIST_CMD, C_VLAN_TAG_PRESENT) |=
-		HAL_TX_SM(TCL_ASSIST_CMD, C_VLAN_TAG_PRESENT, c_vlan_present);
+	DAL_VNDR_HAL_SET_FLD(desc, TCL_ASSIST_CMD, C_VLAN_TAG_PRESENT) |=
+		DAL_VNDR_HAL_TX_SM(TCL_ASSIST_CMD, C_VLAN_TAG_PRESENT, c_vlan_present);
 }
 
 /**
@@ -450,7 +465,7 @@ static inline uintptr_t dal_vndr_hal_rx_get_reo_desc_va_bn(void *reo_desc)
  *
  * Return: buffer type
  */
-static uint8_t dal_vndr_hal_rx_reo_buf_type_get_bn(hal_ring_desc_t rx_desc)
+static uint8_t dal_vndr_hal_rx_reo_buf_type_get_bn(void *rx_desc)
 {
 	return HAL_RX_REO_BUF_TYPE_GET(rx_desc);
 }
@@ -523,9 +538,9 @@ void dal_vndr_hal_default_ops_attach_bn(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_rx_tlv_msdu_done_get_be;
 	hal_soc->ops->dal_vndr_hal_rx_get_l3_pad_bytes =
 				dal_vndr_hal_rx_get_l3_pad_bytes_be;
-	hal_soc->ops->hal_rx_reo_buf_type_get =
+	hal_soc->ops->dal_vndr_hal_rx_reo_buf_type_get =
 				dal_vndr_hal_rx_reo_buf_type_get_bn;
-	hal_soc->ops->hal_rx_get_reo_desc_va =
+	hal_soc->ops->dal_vndr_hal_rx_get_reo_desc_va =
 				dal_vndr_hal_rx_get_reo_desc_va_bn;
 	hal_soc->ops->dal_vndr_hal_rx_tlv_sgi_get =
 				dal_vndr_hal_rx_tlv_sgi_get_be;

@@ -483,6 +483,7 @@ struct dal_tcl_data_cmd {
 #define TCL_DATA_CMD_LOOPING_COUNT_MSB                           31
 #define TCL_DATA_CMD_LOOPING_COUNT_MASK                          0xf0000000
 
+#ifndef CONFIG_BORON
 #define NUM_OF_DWORDS_WBM_RELEASE_RING_TX 8
 
 struct wbm_release_ring_tx {
@@ -730,6 +731,8 @@ struct wbm_release_ring_tx {
 #define WBM_RELEASE_RING_TX_LOOPING_COUNT_LSB                        28
 #define WBM_RELEASE_RING_TX_LOOPING_COUNT_MSB                        31
 #define WBM_RELEASE_RING_TX_LOOPING_COUNT_MASK                       0xf0000000
+
+#endif
 #define NUM_OF_DWORDS_RX_MPDU_DESC_INFO 2
 
 struct dal_rx_mpdu_desc_info {
@@ -943,6 +946,8 @@ struct dal_rx_msdu_desc_info {
 #define RX_MSDU_DESC_INFO_DECAP_FORMAT_LSB                     29
 #define RX_MSDU_DESC_INFO_DECAP_FORMAT_MSB                     30
 #define RX_MSDU_DESC_INFO_DECAP_FORMAT_MASK                    0x60000000
+
+#ifndef CONFIG_BORON
 /* REO destination ring*/
 #define NUM_OF_DWORDS_REO_DESTINATION_RING 8
 
@@ -1195,6 +1200,7 @@ struct dal_reo_destination_ring {
 #define REO_DESTINATION_RING_LOOPING_COUNT_MSB                                      31
 #define REO_DESTINATION_RING_LOOPING_COUNT_MASK                                     0xf0000000
 
+#endif
 /* 7 qwords for rx_mpdu_start without tag */
 #define MPDU_START_WMASK 0x07B8
 /* 8 qwords for rx_msdu_end without tag */
@@ -1656,11 +1662,31 @@ struct dal_rx_pkt_tlvs {
 #define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)     \
 	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&                \
 	(((struct dal_reo_destination_ring *)       \
-		reo_desc)->buf_or_link_desc_addr_info)))
+		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)     \
+	(DAL_VNDR_HAL_RX_BUFFER_ADDR_39_32_GET(&                        \
+	(((struct dal_reo_destination_ring *)           \
+		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+
+#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)      \
+	(DAL_VNDR_HAL_RX_BUFFER_ADDR_31_0_GET(&                 \
+	(((struct dal_reo_destination_ring *)           \
+		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+
 #else
 #define DAL_VNDR_HAL_RX_REO_BUF_COOKIE_GET(reo_desc)     \
 	(DAL_VNDR_HAL_RX_BUF_COOKIE_GET(&                \
 	(((struct dal_reo_destination_ring *)       \
+		reo_desc)->buf_or_link_desc_addr_info)))
+
+#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)     \
+	(DAL_VNDR_HAL_RX_BUFFER_ADDR_39_32_GET(&                        \
+	(((struct dal_reo_destination_ring *)           \
+		reo_desc)->buf_or_link_desc_addr_info)))
+
+#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)      \
+	(DAL_VNDR_HAL_RX_BUFFER_ADDR_31_0_GET(&                 \
+	(((struct dal_reo_destination_ring *)           \
 		reo_desc)->buf_or_link_desc_addr_info)))
 #endif
 
@@ -1727,13 +1753,4 @@ struct dal_rx_pkt_tlvs {
 #define DAL_VNDR_HAL_RX_TLV_MSDU_DONE_GET(_rx_pkt_tlv)	\
 	DAL_VNDR_HAL_RX_MSDU_END(_rx_pkt_tlv).msdu_done
 
-#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_39_32_GET(reo_desc)	\
-	(DAL_VNDR_HAL_RX_BUFFER_ADDR_39_32_GET(&			\
-	(((struct dal_reo_destination_ring *)		\
-		reo_desc)->buf_or_link_desc_addr_info)))
-
-#define DAL_VNDR_HAL_RX_REO_BUFFER_ADDR_31_0_GET(reo_desc)	\
-	(DAL_VNDR_HAL_RX_BUFFER_ADDR_31_0_GET(&			\
-	(((struct dal_reo_destination_ring *)		\
-		reo_desc)->buf_or_link_desc_addr_info)))
 #endif /* _DAL_VNDR_HAL_DEFINES_BE_H_ */

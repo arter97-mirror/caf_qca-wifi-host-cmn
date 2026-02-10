@@ -28,6 +28,7 @@
 #include "txmon_tlvs.h"
 #ifdef FEATURE_DAL_DP_SUPPORT
 #include "dal_vndr_hal_be.h"
+#include "dal_vndr_hal_bn.h"
 #endif /* FEATURE_DAL_DP_SUPPORT */
 
 /*
@@ -73,8 +74,8 @@ static inline void
 hal_tx_comp_get_status_generic_be(void *desc, void *ts1,
 				  struct hal_soc *hal)
 {
-	dal_vndr_hal_tx_comp_get_status_generic_be(desc, ts1);
-	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts);
+	dal_vndr_hal_tx_comp_get_status_generic_be(desc, ts1, hal);
+	HAL_TX_BUFFER_TIMESTAMP_INVALIDATE(ts1);
 }
 #else
 static inline void

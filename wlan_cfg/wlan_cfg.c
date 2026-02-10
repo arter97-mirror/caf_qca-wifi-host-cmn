@@ -177,6 +177,18 @@ uint8_t *wlan_cfg_get_tx_ring_int_mask(struct wlan_cfg_dp_soc_ctxt *cfg_ctx)
 {
 	return &tx_ring_mask_msi[0];
 }
+
+#if defined(FEATURE_DAL_DP_SUPPORT)
+/*
+ * DAL DP offload support for Boron:
+ * Define TX and RX ring mask mappings used by wlan_cfg_fill_dal_int_ring_mask()
+ * so builds with CONFIG_BORON + FEATURE_DAL_DP_SUPPORT have dal_* symbols.
+ */
+static const uint8_t dal_tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[0] = WLAN_CFG_TX_RING_MASK_0, [1] = WLAN_CFG_TX_RING_MASK_1,
+};
+
+#endif
 #elif defined(CONFIG_BERYLLIUM)
 
 #ifdef IPA_OFFLOAD

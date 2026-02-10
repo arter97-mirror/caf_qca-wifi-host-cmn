@@ -33,7 +33,7 @@ void dal_vndr_hal_default_ops_attach_be(struct dal_vndr_hal_soc *hal_soc)
 	hal_soc->ops->dal_vndr_hal_tx_desc_set_tx_notify_frame =
 				dal_vndr_hal_tx_desc_set_tx_notify_frame_be;
 	hal_soc->ops->dal_vndr_hal_tx_comp_get_status =
-				dal_vndr_hal_tx_comp_get_status_generic_be;
+				dal_vndr_hal_tx_comp_get_status_be;
 	hal_soc->ops->dal_vndr_hal_tx_comp_get_paddr =
 				dal_vndr_hal_tx_comp_get_paddr_be;
 	hal_soc->ops->dal_vndr_hal_rx_error_status_get =

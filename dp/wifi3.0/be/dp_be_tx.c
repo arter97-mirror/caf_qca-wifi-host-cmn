@@ -21,6 +21,7 @@
 #include "dp_types.h"
 #include "dp_tx.h"
 #include "dp_be_tx.h"
+#include <hal_be_tx.h>
 #include "dp_tx_desc.h"
 #include "hal_tx.h"
 #include <hal_be_api.h>
