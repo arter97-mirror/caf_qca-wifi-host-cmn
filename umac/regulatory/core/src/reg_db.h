@@ -91,6 +91,9 @@ enum reg_domain {
 	FCC23_FCCA = 0xD4,
 	FCC24_FCCA = 0X1B,
 	FCC25_FCCA = 0X2B,
+	FCC26_FCCA = 0xB1,
+	FCC27_FCCA = 0xB2,
+	FCC28_FCCA = 0xB3,
 
 	ETSI1_WORLD = 0x37,
 	ETSI2_WORLD = 0x35,
@@ -166,6 +169,7 @@ enum reg_domain {
 	APL28_ETSIC = 0x76,
 	APL29_ETSIC = 0x77,
 	APL30_CHNA = 0x78,
+	APL31_WORLD = 0x84,
 
 	WOR0_WORLD = 0x60,
 	WOR1_WORLD = 0x61,
@@ -261,6 +265,9 @@ enum reg_domains_5g {
 	FCC23,
 	FCC24,
 	FCC25,
+	FCC26,
+	FCC27,
+	FCC28,
 
 	ETSI1,
 	ETSI2,
@@ -319,6 +326,7 @@ enum reg_domains_5g {
 	APL28,
 	APL29,
 	APL30,
+	APL31,
 
 	MKK3,
 	MKK5,
@@ -476,6 +484,7 @@ enum country_code {
 	CTRY_KAZAKHSTAN = 398,
 	CTRY_KENYA = 404,
 	CTRY_KOREA_ROC = 410,
+	CTRY_KOSOVO = 926,
 	CTRY_KUWAIT = 414,
 	CTRY_KYRGYZSTAN = 417,
 	CTRY_LAO_PEOPLES_DEMOCRATIC_REPUBLIC = 418,
@@ -744,6 +753,9 @@ struct reg_domain_pair {
  * @FCC2_6G_21: Super domain FCC2_6G_21 for FCC VLP,LPI & SP
  * @APL8_6G_22: Super domain APL8_6G_22 for HONDURAS
  * @APL5_APL9_6G_23: Super domain APL5_APL9_6G_23 for PARAGUAY
+ * @FCC2_6G_24: Super domain FCC2_6G_24 for CANADA
+ * @ETSI3_6G_25: Super domain ETSI3_6G_25 for VIETNAM
+ * @FCC2_6G_90: Super domain FCC2_6G_90 for MCC WW mode
  */
 enum reg_super_domain_6g {
 	FCC1_6G_01 = 0x01,
@@ -773,6 +785,9 @@ enum reg_super_domain_6g {
 	FCC2_6G_21 = 0x21,
 	APL8_6G_22 = 0x22,
 	APL5_APL9_6G_23 = 0x23,
+	FCC2_6G_24 = 0x24,
+	ETSI3_6G_25 = 0x25,
+	FCC2_6G_90 = 0x90,
 };
 
 #if defined(COMPILE_REGDB_6G)
