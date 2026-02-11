@@ -208,7 +208,6 @@ os_timer_func(lut_ageout_timer_task)
 	struct wlan_objmgr_pdev *pdev = NULL;
 	struct look_up_table *lut = NULL;
 	uint64_t diff, cur_tstamp;
-	uint8_t srng_id = 0;
 
 	OS_GET_TIMER_ARG(pcfr, struct pdev_cfr*);
 
@@ -240,9 +239,11 @@ os_timer_func(lut_ageout_timer_task)
 		if (lut->dbr_recv && !lut->tx_recv) {
 			diff = cur_tstamp - lut->dbr_tstamp;
 			if (diff > LUT_AGE_THRESHOLD) {
-				target_if_dbr_buf_release(pdev, DBR_MODULE_CFR,
-							  lut->dbr_address,
-							  i, srng_id);
+				target_if_dbr_buf_release(
+						pdev, DBR_MODULE_CFR,
+						lut->dbr_address,
+						i,
+						pcfr->rcc_param.srng_id);
 				pcfr->flush_timeout_dbr_cnt++;
 				release_lut_entry(pdev, lut);
 			}
@@ -371,7 +372,7 @@ void cfr_free_pending_dbr_events(struct wlan_objmgr_pdev *pdev)
 		    (lut->dbr_tstamp < pcfr->last_success_tstamp)) {
 			target_if_dbr_buf_release(pdev, DBR_MODULE_CFR,
 						  lut->dbr_address,
-						  i, 0);
+						  i, pcfr->rcc_param.srng_id);
 			pcfr->flush_dbr_cnt++;
 			release_lut_entry(pdev, lut);
 		}

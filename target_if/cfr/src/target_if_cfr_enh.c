@@ -2533,7 +2533,7 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 		dump_metadata(header, cookie);
 		release_lut_entry(pdev, lut);
 		target_if_dbr_buf_release(pdev, DBR_MODULE_CFR, buf_addr,
-					  cookie, 0);
+					  cookie, pcfr->rcc_param.srng_id);
 	} else {
 		retval = -EINVAL;
 	}
