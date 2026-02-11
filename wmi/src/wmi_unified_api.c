@@ -580,6 +580,31 @@ wmi_unified_scan_chan_list_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef WLAN_FEATURE_QSH_SCAN
+QDF_STATUS
+wmi_unified_get_scan_stats_cmd_send(wmi_unified_t wmi_handle,
+				    struct wmi_get_scan_stats_param *param)
+{
+	if (wmi_handle->ops->send_get_scan_stats_cmd)
+		return wmi_handle->ops->send_get_scan_stats_cmd(wmi_handle,
+				  param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_extract_scan_stats_event(wmi_unified_t wmi_handle, void *evt_buf,
+				     struct wmi_scan_stats_event *event)
+{
+	if (wmi_handle->ops->extract_scan_stats_event)
+		return wmi_handle->ops->extract_scan_stats_event(wmi_handle,
+								 evt_buf,
+								 event);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 QDF_STATUS wmi_mgmt_unified_cmd_send(wmi_unified_t wmi_handle,
 				     struct wmi_mgmt_params *param)
 {

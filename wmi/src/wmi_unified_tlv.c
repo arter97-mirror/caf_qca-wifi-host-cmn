@@ -18930,6 +18930,84 @@ send_roam_scan_stats_cmd_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_QSH_SCAN
+/**
+ * send_get_scan_stats_cmd_tlv() - Send get scan stats command to fw
+ * @wmi_handle: wmi handle
+ * @param: pointer to request structure
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+send_get_scan_stats_cmd_tlv(wmi_unified_t wmi_handle,
+			    struct wmi_get_scan_stats_param *param)
+{
+	wmi_buf_t buf;
+	wmi_get_scan_stats_cmd_fixed_param *cmd;
+	WMITLV_TAG_ID tag;
+	uint32_t size;
+	uint32_t len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_FAILURE;
+
+	cmd = (wmi_get_scan_stats_cmd_fixed_param *)wmi_buf_data(buf);
+
+	tag = WMITLV_TAG_STRUC_wmi_get_scan_stats_cmd_fixed_param;
+	size = WMITLV_GET_STRUCT_TLVLEN(wmi_get_scan_stats_cmd_fixed_param);
+	WMITLV_SET_HDR(&cmd->tlv_header, tag, size);
+
+	cmd->scan_client_id = param->scan_req_id;
+
+	wmi_debug("Get Scan Stats Req scan_client_id: %u", cmd->scan_client_id);
+	if (wmi_unified_cmd_send(wmi_handle, buf, len,
+				 WMI_GET_SCAN_STATS_CMDID)) {
+		wmi_err("Failed to send WMI_GET_SCAN_STATS_CMDID");
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_scan_stats_event_tlv() - Extract scan stats event from FW
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @event: pointer to hold scan stats event data
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_scan_stats_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+			     struct wmi_scan_stats_event *event)
+{
+	WMI_GET_SCAN_STATS_RESP_EVENTID_param_tlvs *param_buf;
+	wmi_get_scan_stats_resp_fixed_param *fixed_param;
+
+	param_buf = (WMI_GET_SCAN_STATS_RESP_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid scan stats event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid scan stats fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	event->scan_req_id = fixed_param->scan_client_id;
+	event->scan_count = fixed_param->scan_count;
+
+	wmi_debug("Scan Stats: scan_client_id=%u scan_count=%u",
+		  fixed_param->scan_client_id, fixed_param->scan_count);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 /**
  * send_roam_scan_ch_list_req_cmd_tlv() - send wmi cmd to get roam scan
  * channel list from firmware
@@ -23815,6 +23893,10 @@ struct wmi_ops tlv_ops =  {
 	.extract_esp_estimation_ev_param =
 				extract_esp_estimation_ev_param_tlv,
 	.send_roam_scan_stats_cmd = send_roam_scan_stats_cmd_tlv,
+#ifdef WLAN_FEATURE_QSH_SCAN
+	.send_get_scan_stats_cmd = send_get_scan_stats_cmd_tlv,
+	.extract_scan_stats_event = extract_scan_stats_event_tlv,
+#endif
 	.extract_roam_scan_stats_res_evt = extract_roam_scan_stats_res_evt_tlv,
 #ifdef OBSS_PD
 	.send_obss_spatial_reuse_set = send_obss_spatial_reuse_set_cmd_tlv,
@@ -24607,6 +24689,10 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 				WMI_QOS_NULL_FRAME_TX_COMPLETION_EVENTID;
 	event_ids[wmi_vdev_unified_disconnect_eventid] =
 				WMI_VDEV_UNIFIED_DISCONNECT_EVENTID;
+#ifdef WLAN_FEATURE_QSH_SCAN
+	event_ids[wmi_get_scan_stats_resp_event_id] =
+				WMI_GET_SCAN_STATS_RESP_EVENTID;
+#endif
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS

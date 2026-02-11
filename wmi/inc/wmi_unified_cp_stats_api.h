@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2013-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2021,2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -180,4 +181,18 @@ QDF_STATUS
 wmi_extract_inst_rssi_stats_resp(wmi_unified_t wmi_handle, void *evt_buf,
 			struct wmi_host_inst_rssi_stats_resp *inst_rssi_resp);
 #endif
+
+#ifdef WLAN_FEATURE_QSH_SCAN
+/**
+ * wmi_unified_extract_scan_stats_event() - extract qsh scan stats from event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @scan_stats: Pointer to hold qsh scan stats
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_extract_scan_stats_event(wmi_unified_t wmi_handle, void *evt_buf,
+				     struct wmi_scan_stats_event *scan_stats);
+#endif /* WLAN_FEATURE_QSH_SCAN*/
 #endif /* _WMI_UNIFIED_CP_STATS_API_H_ */

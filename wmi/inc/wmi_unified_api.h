@@ -1354,6 +1354,16 @@ QDF_STATUS
 wmi_unified_scan_chan_list_cmd_send(wmi_unified_t wmi_handle,
 				    struct scan_chan_list_params *param);
 
+/**
+ * wmi_unified_get_scan_stats_cmd_send() - WMI get scan stats function
+ * @wmi_handle: handle to WMI.
+ * @param: pointer to hold get scan stats cmd parameter
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_get_scan_stats_cmd_send(wmi_unified_t wmi_handle,
+				    struct wmi_get_scan_stats_param *param);
 
 /**
  * wmi_crash_inject() - inject fw crash

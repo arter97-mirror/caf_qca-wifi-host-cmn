@@ -361,6 +361,71 @@ int target_if_infra_cp_stats_event_handler(ol_scn_t scn, uint8_t *data,
 }
 #endif /* WLAN_SUPPORT_INFRA_CTRL_PATH_STATS */
 
+#ifdef WLAN_FEATURE_QSH_SCAN
+/**
+ * target_if_scan_stats_event_handler() - Handle WMI_GET_SCAN_STATS_RESP_EVENTID
+ * @scn: opaque scn handle
+ * @data: event buffer received from fw
+ * @datalen: length of event buffer
+ *
+ * Return: 0 for success or non zero error codes for failure
+ */
+static int target_if_scan_stats_event_handler(ol_scn_t scn, uint8_t *data,
+					      uint32_t datalen)
+{
+	QDF_STATUS status;
+	struct wlan_objmgr_psoc *psoc;
+	struct wmi_unified *wmi_handle;
+	struct wmi_scan_stats_event event = {0};
+	struct qsh_stats_event qsh_ev = {0};
+	struct wlan_lmac_if_cp_stats_rx_ops *rx_ops;
+
+	cp_stats_debug("Scan stats event received");
+
+	if (!scn || !data) {
+		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		cp_stats_err("null psoc");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("wmi_handle is null");
+		return -EINVAL;
+	}
+
+	/* Extract event data */
+	status =
+		wmi_unified_extract_scan_stats_event(wmi_handle, data, &event);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cp_stats_err("Failed to extract scan stats event");
+		return qdf_status_to_os_return(status);
+	}
+
+	qsh_ev.scan_req_id = event.scan_req_id;
+	qsh_ev.scan_count = event.scan_count;
+
+	cp_stats_debug("Scan stats: scan_req_id=%u scan_count=%u",
+		       event.scan_req_id, event.scan_count);
+
+	/* Get RX ops and call process function */
+	rx_ops = target_if_cp_stats_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->process_scan_stats_event) {
+		cp_stats_err("QSH scan stats callback not registered");
+		return -EINVAL;
+	}
+
+	status = rx_ops->process_scan_stats_event(psoc, &qsh_ev);
+
+	return qdf_status_to_os_return(status);
+}
+#endif
+
 #ifdef WLAN_FEATURE_LL_LT_SAP
 /**
  * target_if_ll_sap_twt_session_params() - TWT session params for LL_SAP
@@ -581,6 +646,36 @@ target_if_cp_stats_infra_register_event_handler(struct wlan_objmgr_psoc *psoc,
 }
 #endif /* WLAN_SUPPORT_INFRA_CTRL_PATH_STATS */
 
+#ifdef WLAN_FEATURE_QSH_SCAN
+static QDF_STATUS
+target_if_cp_stats_register_qsh_event_handler(struct wmi_unified *wmi_handle)
+{
+
+	return wmi_unified_register_event_handler(wmi_handle,
+						  wmi_get_scan_stats_resp_event_id,
+						  target_if_scan_stats_event_handler,
+						  WMI_RX_WORK_CTX);
+}
+
+static void
+target_if_cp_stats_unregister_qsh_event_handler(struct wmi_unified *wmi_handle)
+{
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_get_scan_stats_resp_event_id);
+}
+#else
+static QDF_STATUS
+target_if_cp_stats_register_qsh_event_handler(struct wmi_unified *wmi_handle)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static void
+target_if_cp_stats_unregister_qsh_event_handler(struct wmi_unified *wmi_handle)
+{
+}
+#endif /* WLAN_FEATURE_QSH_SCAN */
+
 static QDF_STATUS
 target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 {
@@ -611,6 +706,12 @@ target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 		return ret_val;
 	}
 
+	ret_val = target_if_cp_stats_register_qsh_event_handler(wmi_handle);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register scan stats event handler");
+		return ret_val;
+	}
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -633,6 +734,9 @@ target_if_cp_stats_unregister_event_handler(struct wlan_objmgr_psoc *psoc)
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_pdev_cp_fwstats_eventid);
 	target_if_cp_stats_unregister_twt_session_event(wmi_handle);
+
+	target_if_cp_stats_unregister_qsh_event_handler(wmi_handle);
+
 	return QDF_STATUS_SUCCESS;
 }
 

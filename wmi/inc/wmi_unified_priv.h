@@ -2626,6 +2626,16 @@ QDF_STATUS
 				   void *evt_buf,
 				   uint32_t *vdev_id,
 				   struct wmi_roam_scan_stats_res **res_param);
+#ifdef WLAN_FEATURE_QSH_SCAN
+QDF_STATUS
+(*send_get_scan_stats_cmd)(wmi_unified_t wmi_handle,
+			   struct wmi_get_scan_stats_param *param);
+QDF_STATUS
+(*extract_scan_stats_event)(wmi_unified_t wmi_handle,
+			    void *evt_buf,
+			    struct wmi_scan_stats_event *event);
+#endif
+
 QDF_STATUS
 (*extract_offload_bcn_tx_status_evt)(wmi_unified_t wmi_handle,
 				     void *evt_buf, uint32_t *vdev_id,

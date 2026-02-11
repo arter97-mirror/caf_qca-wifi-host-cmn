@@ -5855,6 +5855,9 @@ typedef enum {
 	wmi_pdev_power_datapath_stats_eventid,
 #endif
 	wmi_vdev_unified_connect_event_id,
+#ifdef WLAN_FEATURE_QSH_SCAN
+	wmi_get_scan_stats_resp_event_id,
+#endif
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -7746,6 +7749,26 @@ typedef struct {
 	uint32_t scan_id;
 	uint32_t vdev_id;
 } wmi_host_scan_event;
+
+/**
+ * struct wmi_get_scan_stats_param - Get scan stats command parameter
+ * @scan_req_id: Module ID whose scan count is requested
+ */
+struct wmi_get_scan_stats_param {
+	uint32_t scan_req_id;
+};
+
+#ifdef WLAN_FEATURE_QSH_SCAN
+/**
+ * struct wmi_scan_stats_event - Scan stats event from firmware
+ * @scan_req_id: Module ID
+ * @scan_count: Scan count from FW
+ */
+struct wmi_scan_stats_event {
+	uint32_t scan_req_id;
+	uint32_t scan_count;
+};
+#endif
 
 /**
  * struct wmi_host_pdev_reserve_ast_entry_event - Reserve AST entry

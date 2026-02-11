@@ -84,6 +84,8 @@ struct module_ring_params;
 /*Forward declaration for dbr_module_config */
 struct dbr_module_config;
 #endif
+/* Forward declaration for qsh_stats_event */
+struct qsh_stats_event;
 
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_tdls_public_structs.h"
@@ -170,6 +172,7 @@ typedef struct cp_stats_power_datapath_info stats_cp_stats_power_datapath_info;
  * @send_req_telemetry_cp_stats: API to send stats request to wmi
  * @send_cstats_enable: Sends Pdev set param command to enable chipset stats
  * @send_req_power_datapath_stats: Sends power datapath stats request
+ * @send_req_qsh_stats: Sends qsh scan stats request to FW
  */
 struct wlan_lmac_if_cp_stats_tx_ops {
 	QDF_STATUS (*cp_stats_attach)(struct wlan_objmgr_psoc *psoc);
@@ -211,6 +214,11 @@ struct wlan_lmac_if_cp_stats_tx_ops {
 					struct wlan_objmgr_psoc *psoc,
 					struct request_info *req);
 #endif
+#ifdef WLAN_FEATURE_QSH_SCAN
+	QDF_STATUS (*send_req_qsh_stats)(
+					struct wlan_objmgr_psoc *psoc,
+					struct request_info *req);
+#endif
 };
 
 /**
@@ -222,6 +230,7 @@ struct wlan_lmac_if_cp_stats_tx_ops {
  * @process_big_data_stats_event:
  * @process_power_datapath_stats_event:
  * @twt_get_session_param_resp:
+ * @process_scan_stats_event: function pointer to process qsh stats event
  */
 struct wlan_lmac_if_cp_stats_rx_ops {
 	QDF_STATUS (*cp_stats_rx_event_handler)(struct wlan_objmgr_vdev *vdev);
@@ -245,6 +254,10 @@ struct wlan_lmac_if_cp_stats_rx_ops {
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 	QDF_STATUS (*twt_get_session_param_resp)(struct wlan_objmgr_psoc *psoc,
 					struct twt_session_stats_info *params);
+#endif
+#ifdef WLAN_FEATURE_QSH_SCAN
+	QDF_STATUS (*process_scan_stats_event)(struct wlan_objmgr_psoc *psoc,
+					       struct qsh_stats_event *event);
 #endif
 };
 #endif
