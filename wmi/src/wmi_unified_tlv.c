@@ -488,6 +488,8 @@ static const uint32_t pdev_param_tlv[] = {
 		  PDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
 	PARAM_MAP(pdev_param_adaptive_early_rx_extra_sleep_slop,
 		  PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP),
+	PARAM_MAP(pdev_param_set_tas_mode,
+		  PDEV_PARAM_SET_TAS_MODE),
 };
 
 /* Populate vdev_param array whose index is host param, value is target param */

@@ -6262,6 +6262,8 @@ typedef enum {
 		   PDEV_PARAM_MGMT_SRNG_REAP_EVENT_THRESHOLD),
 	PDEV_PARAM(pdev_param_adaptive_early_rx_extra_sleep_slop,
 		   PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP),
+	PDEV_PARAM(pdev_param_set_tas_mode,
+		   PDEV_PARAM_SET_TAS_MODE),
 	pdev_param_max,
 } wmi_conv_pdev_params_id;
 
