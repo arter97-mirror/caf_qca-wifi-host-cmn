@@ -25510,6 +25510,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_CFR_ASSOC_TX_CAPTURE_SUPPORT;
 	wmi_service[wmi_service_p2p_cancel_one_shot_noa_support] =
 			WMI_SERVICE_P2P_CANCEL_ONE_SHOT_NOA_SUPPORT;
+	wmi_service[wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable] =
+				WMI_SERVICE_HANDLE_ROAMING_WITHOUT_RSO_STOP_FOR_4WAY_HS_OFFLOAD_DISABLE;
 }
 
 /**

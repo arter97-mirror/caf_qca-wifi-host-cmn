@@ -6926,6 +6926,7 @@ typedef enum {
 	wmi_service_cfr_unassoc_rx_capture_support,
 	wmi_service_cfr_assoc_tx_capture_support,
 	wmi_service_p2p_cancel_one_shot_noa_support,
+	wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
