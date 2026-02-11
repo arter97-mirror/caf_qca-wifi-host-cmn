@@ -412,6 +412,11 @@ static int init_deinit_service_ready_event_handler(ol_scn_t scn_handle,
 
 	init_deinit_update_roam_stats_cap(wmi_handle, psoc);
 
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable))
+		wlan_psoc_nif_fw_ext2_cap_set(psoc,
+					      WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE);
+
 	init_deinit_update_wifi_pos_caps(wmi_handle, psoc);
 	init_deinit_update_tdls_caps(wmi_handle, psoc);
 

@@ -24991,6 +24991,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_11BI_DS_MAC_ADDR_SUPPORT;
 	wmi_service[wmi_service_peer_metadata_v2_support] =
 				WMI_SERVICE_PEER_METADATA_V2_SUPPORT;
+	wmi_service[wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable] =
+				WMI_SERVICE_HANDLE_ROAMING_WITHOUT_RSO_STOP_FOR_4WAY_HS_OFFLOAD_DISABLE;
 }
 
 /**
