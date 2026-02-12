@@ -962,8 +962,21 @@ void dp_rx_desc_reuse(struct dp_soc *soc, qdf_nbuf_t *nbuf_list)
 #endif
 
 #ifdef WLAN_DP_DYNAMIC_RESOURCE_MGMT
+static inline uint32_t
+dp_rx_get_max_repl_entries(struct rx_desc_pool *rx_desc_pool,
+			   struct dp_srng *dp_rxdma_srng)
+{
+	uint32_t required_count;
+
+	required_count = qdf_atomic_read(&rx_desc_pool->required_count);
+	if (!required_count)
+		return dp_rxdma_srng->num_entries;
+
+	return required_count;
+}
 static inline uint32_t dp_rx_get_max_repl_opp(struct rx_desc_pool *rx_desc_pool,
-					      struct dp_srng *dp_rxdma_srng)
+					      struct dp_srng *dp_rxdma_srng,
+					      uint32_t num_entries_avail)
 {
 	uint64_t required_count, in_use_count;
 	uint32_t num_descs;
@@ -979,10 +992,18 @@ static inline uint32_t dp_rx_get_max_repl_opp(struct rx_desc_pool *rx_desc_pool,
 	return num_descs;
 }
 #else
-static inline uint32_t dp_rx_get_max_repl_opp(struct rx_desc_pool *rx_desc_pool,
-					      struct dp_srng *dp_rxdma_srng)
+static inline uint32_t
+dp_rx_get_max_repl_entries(struct rx_desc_pool *rx_desc_pool,
+			   struct dp_srng *dp_rxdma_srng)
 {
 	return dp_rxdma_srng->num_entries;
+}
+
+static inline uint32_t dp_rx_get_max_repl_opp(struct rx_desc_pool *rx_desc_pool,
+					      struct dp_srng *dp_rxdma_srng,
+					      uint32_t num_entries_avail)
+{
+	return num_entries_avail;
 }
 #endif
 
@@ -1007,7 +1028,7 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	union dp_rx_desc_list_elem_t *next;
 	QDF_STATUS ret;
 	void *rxdma_srng;
-	uint32_t repl_opp_max;
+	uint32_t repl_opp_max, repl_max_entries;
 	union dp_rx_desc_list_elem_t *desc_list_append = NULL;
 	union dp_rx_desc_list_elem_t *tail_append = NULL;
 	union dp_rx_desc_list_elem_t *temp_list = NULL;
@@ -1049,12 +1070,15 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 		goto free_descs;
 	}
 
-	repl_opp_max = dp_rx_get_max_repl_opp(rx_desc_pool, dp_rxdma_srng);
+	repl_opp_max = dp_rx_get_max_repl_opp(rx_desc_pool, dp_rxdma_srng,
+					      num_entries_avail);
+	repl_max_entries = dp_rx_get_max_repl_entries(rx_desc_pool,
+						      dp_rxdma_srng);
 	num_entries_used = dp_rxdma_srng->num_entries - num_entries_avail;
 
 	if (!req_only && !(*desc_list) &&
-	    (force_replenish || (num_entries_used < (repl_opp_max / 4)))) {
-		num_req_buffers = num_entries_avail;
+	    (force_replenish || (num_entries_used < (repl_max_entries / 4)))) {
+		num_req_buffers = repl_opp_max;
 		DP_STATS_INC(dp_pdev, replenish.low_thresh_intrs, 1);
 	} else if (num_entries_avail < num_req_buffers) {
 		num_desc_to_free = num_req_buffers - num_entries_avail;
