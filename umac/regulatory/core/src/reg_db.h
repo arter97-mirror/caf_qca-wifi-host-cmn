@@ -567,6 +567,7 @@ enum country_code {
 	CTRY_SINT_MAARTEN = 534,
 	CTRY_SLOVAKIA = 703,
 	CTRY_SLOVENIA = 705,
+	CTRY_SOLOMON_ISLANDS = 90,
 	CTRY_SOUTH_AFRICA = 710,
 	CTRY_SOUTH_GEORGIA_AND_THE_SOUTH_SANDWICH_ISLANDS = 239,
 	CTRY_SPAIN = 724,
@@ -755,6 +756,8 @@ struct reg_domain_pair {
  * @APL5_APL9_6G_23: Super domain APL5_APL9_6G_23 for PARAGUAY
  * @FCC2_6G_24: Super domain FCC2_6G_24 for CANADA
  * @ETSI3_6G_25: Super domain ETSI3_6G_25 for VIETNAM
+ * @ETSI4_6G_26: Super domain ETSI4_6G_26 for AUSTRALIA LPI and VLP
+ * @APL10_6G_27: Super domain APL10_6G_27 for INDIA LPI
  * @FCC2_6G_90: Super domain FCC2_6G_90 for MCC WW mode
  */
 enum reg_super_domain_6g {
@@ -787,6 +790,8 @@ enum reg_super_domain_6g {
 	APL5_APL9_6G_23 = 0x23,
 	FCC2_6G_24 = 0x24,
 	ETSI3_6G_25 = 0x25,
+	ETSI4_6G_26 = 0x26,
+	APL10_6G_27 = 0x27,
 	FCC2_6G_90 = 0x90,
 };
 
