@@ -1957,6 +1957,7 @@ void
 wlan_cfg_set_dp_soc_rxdma_refill_ring_size(struct wlan_cfg_dp_soc_ctxt *cfg,
 					   int ring_size);
 
+int wlan_cfg_get_replenish_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
 #ifdef DP_FEATURE_DIRECT_REFILL
 /**
  * wlan_cfg_get_dp_direct_refill_ring_size() - Get direct refill ring size

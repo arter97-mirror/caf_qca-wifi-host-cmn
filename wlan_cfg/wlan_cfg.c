@@ -4519,6 +4519,11 @@ int wlan_cfg_get_dp_direct_refill_ring_size(struct wlan_cfg_dp_pdev_ctxt *cfg)
 {
 	return cfg->dp_direct_refill_ring;
 }
+
+int wlan_cfg_get_replenish_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
+{
+	return cfg_get(ctrl_psoc, CFG_DP_DIRECT_REFILL_RING);
+}
 #else
 static inline void
 wlan_cfg_soc_direct_refill_attach(struct cdp_ctrl_objmgr_psoc *psoc,
@@ -4530,6 +4535,11 @@ static void
 wlan_cfg_pdev_direct_refill_attach(struct cdp_ctrl_objmgr_psoc *psoc,
 				   struct wlan_cfg_dp_pdev_ctxt *wlan_cfg_ctx)
 {
+}
+
+int wlan_cfg_get_replenish_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
+{
+	return cfg_get(ctrl_psoc, CFG_DP_RXDMA_REFILL_RING);
 }
 #endif
 

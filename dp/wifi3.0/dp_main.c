@@ -3352,7 +3352,7 @@ static void dp_rxdma_ring_free(struct dp_pdev *pdev)
 #ifdef DP_FEATURE_DIRECT_REFILL
 static int dp_ipa_get_rxdma_refill_ring_size(struct dp_soc *soc)
 {
-	return wlan_cfg_get_rxdma_buf_ring_size(soc->ctrl_psoc);
+	return wlan_cfg_get_replenish_ring_size(soc->ctrl_psoc);
 }
 #else
 static int dp_ipa_get_rxdma_refill_ring_size(struct dp_soc *soc)
@@ -10724,7 +10724,7 @@ static QDF_STATUS dp_get_psoc_param(struct cdp_soc_t *cdp_soc,
 	case CDP_CFG_REPLENISH_RING_SIZE:
 		if (soc->features.direct_refill_support)
 			val->cdp_replenish_ring_size =
-				wlan_cfg_get_rxdma_buf_ring_size(soc->ctrl_psoc);
+				wlan_cfg_get_replenish_ring_size(soc->ctrl_psoc);
 		else
 			val->cdp_replenish_ring_size =
 				wlan_cfg_get_dp_soc_rxdma_refill_ring_size(wlan_cfg_ctx);
