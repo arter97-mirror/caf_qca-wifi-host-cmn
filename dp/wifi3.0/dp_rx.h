@@ -44,8 +44,6 @@
 #ifdef DP_RX_BUFFER_OPTIMIZATION
 /* no extra alignment need */
 #define RX_DATA_BUFFER_OPT_ALIGNMENT	0
-/* This is the final size of the RX buffer after adding metadata sizes */
-#define RX_DATA_BUFFER_SIZE_MAX	2048
 #else
 #define RX_DATA_BUFFER_OPT_ALIGNMENT	RX_DATA_BUFFER_ALIGNMENT
 #endif
@@ -4164,6 +4162,9 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 	*align = 0;
 }
 #else
+/* This is the final size of the RX buffer after adding metadata sizes */
+#define RX_DATA_BUFFER_SIZE_MAX	2048
+
 static inline void
 dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 {
