@@ -1515,28 +1515,6 @@ static int dp_get_num_msi_available(struct dp_soc *soc, int interrupt_mode)
 }
 #endif
 
-#if defined(IPA_OFFLOAD) && defined(IPA_WDI3_VLAN_SUPPORT)
-static void
-dp_ipa_vlan_srng_msi_setup(struct hal_srng_params *ring_params, int ring_type,
-			   int ring_num)
-{
-	if (wlan_ipa_is_vlan_enabled()) {
-		if ((ring_type == REO_DST) &&
-				(ring_num == IPA_ALT_REO_DEST_RING_IDX)) {
-			ring_params->msi_addr = 0;
-			ring_params->msi_data = 0;
-			ring_params->flags &= ~HAL_SRNG_MSI_INTR;
-		}
-	}
-}
-#else
-static inline void
-dp_ipa_vlan_srng_msi_setup(struct hal_srng_params *ring_params, int ring_type,
-			   int ring_num)
-{
-}
-#endif
-
 static void dp_srng_msi_setup(struct dp_soc *soc, struct hal_srng_params
 			      *ring_params, int ring_type, int ring_num)
 {
@@ -1595,8 +1573,6 @@ static void dp_srng_msi_setup(struct dp_soc *soc, struct hal_srng_params
 	ring_params->msi_data = (reg_msi_grp_num % msi_data_count)
 		+ msi_data_start;
 	ring_params->flags |= HAL_SRNG_MSI_INTR;
-
-	dp_ipa_vlan_srng_msi_setup(ring_params, ring_type, ring_num);
 
 	dp_debug("ring type %u ring_num %u msi->data %u msi_addr %llx",
 		 ring_type, ring_num, ring_params->msi_data,
@@ -3833,6 +3809,48 @@ static void dp_soc_disable_unused_mac_intr_mask(struct dp_soc *soc,
 
 #ifdef IPA_OFFLOAD
 #ifdef IPA_WDI3_VLAN_SUPPORT
+
+#ifdef WLAN_FEATURE_NEAR_FULL_IRQ
+static void dp_soc_reset_ipa_vlan_nf_intr_mask(struct dp_soc *soc)
+{
+	uint8_t *nf_grp_mask = NULL;
+	int grp_index;
+	int mask;
+
+	if (dp_is_reo_ring_num_in_nf_grp1(soc, IPA_ALT_REO_DEST_RING_IDX))
+		nf_grp_mask =
+		&soc->wlan_cfg_ctx->int_rx_ring_near_full_irq_1_mask[0];
+	else if (dp_is_reo_ring_num_in_nf_grp2(soc, IPA_ALT_REO_DEST_RING_IDX))
+		nf_grp_mask =
+		&soc->wlan_cfg_ctx->int_rx_ring_near_full_irq_2_mask[0];
+
+	if (qdf_unlikely(!nf_grp_mask)) {
+		dp_init_debug("%pK: ring_type %d ring_num %d not in nf grp",
+			      soc, REO_DST, IPA_ALT_REO_DEST_RING_IDX);
+		return;
+	}
+
+	grp_index = dp_srng_find_ring_in_mask(IPA_ALT_REO_DEST_RING_IDX,
+					      nf_grp_mask);
+	if (grp_index < 0) {
+		dp_init_debug("%pK: ring_type %d ring_num %d not nf masked",
+			      soc, REO_DST, IPA_ALT_REO_DEST_RING_IDX);
+		return;
+	}
+
+	mask = nf_grp_mask[grp_index];
+	mask &= ~(1 << IPA_ALT_REO_DEST_RING_IDX);
+	nf_grp_mask[grp_index] = mask;
+
+	dp_init_debug("%pK: nf_grp_mask index %d mask %d", soc, grp_index,
+		      mask);
+}
+#else /* !WLAN_FEATURE_NEAR_FULL_IRQ */
+static inline void dp_soc_reset_ipa_vlan_nf_intr_mask(struct dp_soc *soc)
+{
+}
+#endif /* WLAN_FEATURE_NEAR_FULL_IRQ */
+
 /*
  * dp_soc_reset_ipa_vlan_intr_mask() - reset interrupt mask for IPA offloaded
  * ring for vlan tagged traffic
@@ -3847,6 +3865,8 @@ static void dp_soc_reset_ipa_vlan_intr_mask(struct dp_soc *soc)
 
 	if (!wlan_ipa_is_vlan_enabled())
 		return;
+
+	dp_soc_reset_ipa_vlan_nf_intr_mask(soc);
 
 	grp_mask = &soc->wlan_cfg_ctx->int_rx_ring_mask[0];
 
@@ -3867,12 +3887,12 @@ static void dp_soc_reset_ipa_vlan_intr_mask(struct dp_soc *soc)
 	 */
 	wlan_cfg_set_rx_ring_mask(soc->wlan_cfg_ctx, group_number, mask);
 }
-#else
+#else /* !IPA_WDI3_VLAN_SUPPORT */
 static inline
 void dp_soc_reset_ipa_vlan_intr_mask(struct dp_soc *soc)
 { }
-#endif /*  IPA_WDI3_VLAN_SUPPORT */
-#else
+#endif /* IPA_WDI3_VLAN_SUPPORT */
+#else /* !IPA_OFFLOAD */
 static inline
 void dp_soc_reset_ipa_vlan_intr_mask(struct dp_soc *soc)
 { }
@@ -12717,6 +12737,9 @@ void *dp_soc_init(struct dp_soc *soc, HTC_HANDLE htc_handle,
 	wlan_cfg_fill_interrupt_mask(soc->wlan_cfg_ctx, num_dp_msi,
 				     soc->intr_mode, is_monitor_mode);
 
+	/* Reset the cpu ring map if radio is NSS/IPA offloaded */
+	dp_soc_reset_ipa_vlan_intr_mask(soc);
+
 	/* initialize WBM_IDLE_LINK ring */
 	if (dp_hw_link_desc_ring_init(soc)) {
 		dp_init_err("%pK: dp_hw_link_desc_ring_init failed", soc);
@@ -13876,6 +13899,17 @@ static void dp_soc_cfg_dump(struct dp_soc *soc, uint32_t target_type)
 	wlan_cfg_dp_soc_ctx_dump(soc->wlan_cfg_ctx);
 }
 
+#ifdef WLAN_FEATURE_SON
+static inline void dp_soc_set_da_war_enabled(struct dp_soc *soc)
+{
+	soc->da_war_enabled = true;
+}
+#else /* !WLAN_FEATURE_SON */
+static inline void dp_soc_set_da_war_enabled(struct dp_soc *soc)
+{
+}
+#endif /* WLAN_FEATURE_SON */
+
 /**
  * dp_soc_cfg_init() - initialize target specific configuration
  *		       during dp_soc_init
@@ -13895,6 +13929,8 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 		break;
 	case TARGET_TYPE_QCA6390:
 	case TARGET_TYPE_QCA6490:
+		dp_soc_set_da_war_enabled(soc);
+		/* fall through */
 	case TARGET_TYPE_QCA6750:
 		wlan_cfg_set_reo_dst_ring_size(soc->wlan_cfg_ctx,
 					       REO_DST_RING_SIZE_QCA6290);
@@ -14170,9 +14206,6 @@ static QDF_STATUS dp_pdev_init(struct cdp_soc_t *txrx_soc,
 		dp_soc_reset_cpu_ring_map(soc);
 		dp_soc_reset_intr_mask(soc);
 	}
-
-	/* Reset the cpu ring map if radio is NSS offloaded */
-	dp_soc_reset_ipa_vlan_intr_mask(soc);
 
 	TAILQ_INIT(&pdev->vdev_list);
 	qdf_spinlock_create(&pdev->vdev_list_lock);

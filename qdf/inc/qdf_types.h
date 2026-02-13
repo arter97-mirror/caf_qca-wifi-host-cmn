@@ -768,7 +768,7 @@ enum QDF_GLOBAL_MODE {
 #define qdf_kstrtoint __qdf_kstrtoint
 #define qdf_kstrtouint __qdf_kstrtouint
 
-#ifdef WLAN_OPEN_P2P_INTERFACE
+#if defined(WLAN_OPEN_P2P_INTERFACE) || defined(WLAN_FEATURE_SON)
 /* This should match with WLAN_MAX_INTERFACES */
 #define QDF_MAX_CONCURRENCY_PERSONA  (WLAN_MAX_VDEVS)
 #else
