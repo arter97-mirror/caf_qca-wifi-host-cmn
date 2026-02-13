@@ -612,7 +612,7 @@ void wlan_dcs_dec_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
 /**
  * wlan_dcs_cmd_send() - Send dcs command to target_if layer
  * @psoc: psoc pointer
- * @vdev_id: vdev_id
+ * @pdev_id: pdev_id
  * @is_host_pdev_id: pdev_id is host id or not
  *
  * The function gets called to send dcs command to FW
@@ -620,7 +620,7 @@ void wlan_dcs_dec_enable_count(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
  * return: QDF_STATUS_SUCCESS for success or error code
  */
 QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
-			     uint8_t vdev_id,
+			     uint8_t pdev_id,
 			     bool is_host_pdev_id);
 
 #ifdef WLAN_FEATURE_VDEV_DCS

@@ -338,7 +338,7 @@ unlock:
 }
 
 QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
-			     uint8_t vdev_id,
+			     uint8_t pdev_id,
 			     bool is_host_pdev_id)
 {
 	struct wlan_target_if_dcs_tx_ops *dcs_tx_ops;
@@ -350,8 +350,8 @@ QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_NULL_VALUE;
 	}
 
-	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, DCS_INVALID_PDEV_ID,
-						      vdev_id);
+	dcs_core_priv = wlan_dcs_get_core_private_obj(psoc, pdev_id,
+						      0);
 	if (!dcs_core_priv) {
 		dcs_err("dcs core private object is null");
 		return QDF_STATUS_E_NULL_VALUE;
@@ -363,9 +363,9 @@ QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 	dcs_tx_ops = target_if_dcs_get_tx_ops(psoc);
 	dcs_debug("dcs_enable %d", dcs_enable);
 	if (dcs_tx_ops && dcs_tx_ops->dcs_cmd_send) {
-		dcs_debug("dcs_enable: %u, vdev_id: %u", dcs_enable, vdev_id);
+		dcs_debug("dcs_enable: %u, pdev_id: %u", dcs_enable, pdev_id);
 		return dcs_tx_ops->dcs_cmd_send(psoc,
-						vdev_id,
+						pdev_id,
 						is_host_pdev_id,
 						dcs_enable);
 	}
