@@ -141,6 +141,17 @@ enum osif_cb_type {
 typedef void (*osif_cm_connect_active_notify_cb)(uint8_t vdev_id);
 
 typedef void (*osif_cm_roam_connect_complete_cb)(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * typedef osif_cm_reset_scan_reject_params_cb - Callback to reset scan reject
+ * parameters
+ * @vdev: vdev pointer
+ *
+ * Return: QDF_STATUS
+ */
+typedef QDF_STATUS
+(*osif_cm_reset_scan_reject_params_cb)(struct wlan_objmgr_vdev *vdev);
+
 /**
  * typedef osif_cm_connect_comp_cb  - Connect complete callback
  * @vdev: vdev pointer
@@ -389,6 +400,7 @@ typedef struct net_device *
  * @set_hlp_data_cb: callback to legacy module to save hlp data
  * @roam_rt_stats_event_cb: callback to send roam stats to userspace
  * @roam_complete_notify_cb: callback to cleanup roaming context
+ * @reset_scan_reject_params_cb: callback to reset scan reject params
  * @ft_preauth_complete_cb: callback to legacy module to send fast
  * transition event
  * @cckm_preauth_complete_cb: callback to legacy module to send cckm
@@ -413,6 +425,7 @@ struct osif_cm_ops {
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 	osif_cm_roam_rt_stats_cb roam_rt_stats_event_cb;
 	osif_cm_roam_connect_complete_cb roam_complete_notify_cb;
+	osif_cm_reset_scan_reject_params_cb reset_scan_reject_params_cb;
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	osif_cm_ft_preauth_complete_cb ft_preauth_complete_cb;

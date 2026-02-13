@@ -1635,3 +1635,9 @@ uint8_t ucfg_mlo_get_active_vdev_id(struct wlan_objmgr_vdev *vdev)
 {
 	return wlan_mlo_get_active_vdev_id(vdev);
 }
+
+bool ucfg_mlo_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
+{
+	return mlo_mgr_is_mlo_vdev_active(vdev);
+}
+

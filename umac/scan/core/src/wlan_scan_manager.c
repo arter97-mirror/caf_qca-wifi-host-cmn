@@ -139,6 +139,42 @@ scm_scan_get_requester_event_handler(struct scan_event_listeners *listeners,
 
 }
 
+static void
+scm_scan_invoke_requester_ev_handler(
+		struct wlan_objmgr_vdev *vdev,
+		struct scan_event *event,
+		struct wlan_scan_obj *scan,
+		struct scan_requester_info *requesters,
+		wlan_scan_requester requester_id)
+{
+	uint32_t idx;
+	struct cb_handler cb;
+	struct cb_handler *ev_handler;
+
+	idx = requester_id & WLAN_SCAN_REQUESTER_ID_PREFIX;
+	if (idx != WLAN_SCAN_REQUESTER_ID_PREFIX)
+		return;
+
+	idx = requester_id & WLAN_SCAN_REQUESTER_ID_MASK;
+	if (idx < WLAN_MAX_REQUESTORS) {
+		qdf_mem_zero(&cb, sizeof(cb));
+		qdf_spin_lock_bh(&scan->lock);
+		/* find owner who triggered this scan request */
+		ev_handler = &(requesters[idx].ev_handler);
+		if (ev_handler->func) {
+			cb.func = ev_handler->func;
+			cb.arg = ev_handler->arg;
+		}
+		qdf_spin_unlock_bh(&scan->lock);
+		/* notify requester handler */
+		if (cb.func)
+			cb.func(vdev, event, cb.arg);
+	} else {
+		scm_err("invalid requester id %d",
+			requester_id);
+	}
+}
+
 static void scm_scan_post_event(struct wlan_objmgr_vdev *vdev,
 		struct scan_event *event)
 {
@@ -166,8 +202,21 @@ static void scm_scan_post_event(struct wlan_objmgr_vdev *vdev,
 
 	listeners = qdf_mem_malloc_atomic(sizeof(*listeners));
 	if (!listeners) {
-		scm_warn("couldn't allocate listeners list");
-		return;
+		/* In lower memory case, atomic allocation may be failed.
+		 * To avoid app layer stuck for waiting scan completion,
+		 * try normal allocation and invoke requester handler only.
+		 */
+		scm_warn("couldn't allocate listeners list by atomic way");
+		listeners = qdf_mem_malloc(sizeof(*listeners));
+		if (!listeners) {
+			scm_warn("couldn't allocate listeners list by normal way");
+			scm_scan_invoke_requester_ev_handler(
+				vdev, event, scan, requesters,
+				event->requester);
+			scm_debug("requester id %d handler invoked",
+				  event->requester);
+			return;
+		}
 	}
 
 	/* initialize number of listeners */
@@ -662,17 +711,39 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 	 */
 	if ((ap_present && sap_peer_count) ||
 	    (go_present && go_peer_count)) {
-		if ((policy_mgr_is_hw_dbs_capable(psoc) &&
-		     policy_mgr_is_sap_go_on_2g(psoc)) ||
-		     !policy_mgr_is_hw_dbs_capable(psoc)) {
-			if (ap_present)
+		uint32_t sta_max_dwell_time;
+
+		sta_max_dwell_time = SCAN_CTS_DURATION_MS_MAX -
+			SCAN_ROAM_SCAN_CHANNEL_SWITCH_TIME;
+
+		if (ap_present) {
+			if (!policy_mgr_is_hw_dbs_capable(psoc)) {
 				req->scan_req.dwell_time_active_2g =
 					QDF_MIN(req->scan_req.dwell_time_active,
-						(SCAN_CTS_DURATION_MS_MAX -
-						SCAN_ROAM_SCAN_CHANNEL_SWITCH_TIME));
-			else
-				req->scan_req.dwell_time_active_2g = 0;
+						sta_max_dwell_time);
+
+				req->scan_req.dwell_time_active =
+					QDF_MIN(req->scan_req.dwell_time_active,
+						sta_max_dwell_time);
+				req->scan_req.dwell_time_passive =
+					QDF_MIN(req->scan_req.dwell_time_passive,
+						sta_max_dwell_time);
+
+				req->scan_req.dwell_time_active_6g =
+					QDF_MIN(req->scan_req.dwell_time_active_6g,
+						sta_max_dwell_time);
+				req->scan_req.dwell_time_passive_6g =
+					QDF_MIN(req->scan_req.dwell_time_passive_6g,
+						sta_max_dwell_time);
+			} else if (policy_mgr_is_sap_go_on_2g(psoc)) {
+				req->scan_req.dwell_time_active_2g =
+					QDF_MIN(req->scan_req.dwell_time_active,
+						sta_max_dwell_time);
+			}
+		} else {
+			req->scan_req.dwell_time_active_2g = 0;
 		}
+
 		req->scan_req.min_rest_time = req->scan_req.max_rest_time;
 	}
 

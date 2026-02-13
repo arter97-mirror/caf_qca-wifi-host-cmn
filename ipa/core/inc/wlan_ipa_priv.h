@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -961,6 +961,7 @@ struct wlan_ipa_priv {
 	qdf_ipa_wdi_in_params_t cons_pipe_in;
 	qdf_ipa_wdi_in_params_t prod_pipe_in;
 	bool uc_loaded;
+	bool uc_load_handled;
 	bool wdi_enabled;
 	bool over_gsi;
 	qdf_mc_timer_t rt_debug_fill_timer;

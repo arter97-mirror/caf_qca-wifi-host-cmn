@@ -140,7 +140,7 @@ static void cfr_populate_event_data(struct cfr_enhanced_event_data *event_data,
 	event_data->ltf_type = info_v3->preamble;
 	event_data->num_spatial_streams = info_v3->nss;
 	event_data->frame_sequence_number = info_v3->seq_num;
-	event_data->freq = header->u.meta_enh.prim20_chan;
+	event_data->freq = pcfr->freq;
 	event_data->num_chains = info_v3->num_chains;
 
 	cfr_debug("CFO: %d, BW: %d, LTF: %d, NSS: %d, Seq: %d, Freq: %d",

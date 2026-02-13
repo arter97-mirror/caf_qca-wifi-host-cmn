@@ -438,15 +438,16 @@ dp_tx_hw_enqueue_rh(struct dp_soc *soc, struct dp_vdev *vdev,
 	coalesce = dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid,
 					    msdu_info, 0);
 
+	DP_STATS_INC_PKT(vdev, tx_i[DP_XMIT_LINK].processed, 1,
+			 tx_desc->length);
+	dp_tx_update_stats(soc, tx_desc, 0);
+
 	dp_tx_update_write_index(soc, tx_ep_info, coalesce);
 	ce_ring_release_lock(tx_ep_info->ce_tx_hdl);
 
 	dp_vdev_peer_stats_update_protocol_cnt_tx(vdev, nbuf);
-	DP_STATS_INC_PKT(vdev, tx_i[DP_XMIT_LINK].processed, 1,
-			 tx_desc->length);
 	DP_STATS_INC(soc, tx.tcl_enq[0], 1);
 
-	dp_tx_update_stats(soc, tx_desc, 0);
 	status = QDF_STATUS_SUCCESS;
 
 	dp_tx_record_hw_desc_rh((uint8_t *)hal_tx_desc_cached, soc);
