@@ -3064,7 +3064,7 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 				      qdf_nbuf_t nbuf)
 {
 	struct hal_soc *hal = (struct hal_soc *)hal_soc_hdl;
-	uint32_t tlv_tag, user_id, tlv_len, value;
+	uint32_t tlv_tag, user_id, tlv_len, value, ppdu_id;
 	uint8_t group_id = 0;
 	uint8_t he_dcm = 0;
 	uint8_t he_stbc = 0;
@@ -3085,15 +3085,14 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 	switch (tlv_tag) {
 	case WIFIRX_PPDU_START_E:
 	{
-		if (qdf_unlikely(ppdu_info->com_info.last_ppdu_id ==
-		    HAL_RX_GET(rx_tlv, HAL_RX_PPDU_START, PHY_PPDU_ID)))
+		ppdu_id = HAL_RX_GET(rx_tlv, HAL_RX_PPDU_START, PHY_PPDU_ID);
+		if (qdf_unlikely(ppdu_id && ppdu_info->com_info.last_ppdu_id ==
+				 ppdu_id))
 			hal_err("Matching ppdu_id(%u) detected",
 				ppdu_info->com_info.last_ppdu_id);
 
 		ppdu_info->com_info.last_ppdu_id =
-			ppdu_info->com_info.ppdu_id =
-				HAL_RX_GET(rx_tlv, HAL_RX_PPDU_START,
-					   PHY_PPDU_ID);
+			ppdu_info->com_info.ppdu_id = ppdu_id;
 
 		/* channel number is set in PHY meta data */
 		ppdu_info->rx_status.chan_num =
