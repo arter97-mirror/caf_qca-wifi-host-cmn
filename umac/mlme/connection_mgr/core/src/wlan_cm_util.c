@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1821,6 +1821,51 @@ bool cm_get_active_disconnect_req(struct wlan_objmgr_vdev *vdev,
 			req->req.bssid = cm_req->discon_req.req.bssid;
 			req->req.is_no_disassoc_disconnect =
 				cm_req->discon_req.req.is_no_disassoc_disconnect;
+			status = true;
+			cm_req_lock_release(cm_ctx);
+			return status;
+		}
+
+		cur_node = next_node;
+		next_node = NULL;
+	}
+	cm_req_lock_release(cm_ctx);
+
+	return status;
+}
+
+bool cm_get_ho_disconnect_pending(struct wlan_objmgr_vdev *vdev)
+{
+	struct cnx_mgr *cm_ctx;
+	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
+	struct cm_req *cm_req = NULL;
+	bool status = false;
+	uint32_t cm_id_prefix;
+
+	if (vdev->vdev_mlme.vdev_opmode != QDF_STA_MODE)
+		return false;
+
+	cm_ctx = cm_get_cm_ctx(vdev);
+	if (!cm_ctx)
+		return status;
+
+	cm_req_lock_acquire(cm_ctx);
+	qdf_list_peek_front(&cm_ctx->req_list, &cur_node);
+	while (cur_node) {
+		qdf_list_peek_next(&cm_ctx->req_list, cur_node, &next_node);
+
+		cm_req = qdf_container_of(cur_node, struct cm_req, node);
+		cm_id_prefix = CM_ID_GET_PREFIX((cm_req->cm_id));
+
+		if (cm_id_prefix == DISCONNECT_REQ_PREFIX &&
+		    cm_req->cm_id != cm_ctx->active_cm_id &&
+		    cm_req->discon_req.req.source ==
+				CM_MLO_ROAM_INTERNAL_DISCONNECT &&
+		    cm_req->discon_req.req.reason_code ==
+				REASON_FW_TRIGGERED_ROAM_FAILURE) {
+			mlme_debug(CM_PREFIX_FMT " ho disconnect pending",
+				   CM_PREFIX_REF(wlan_vdev_get_id(vdev),
+						 cm_req->cm_id));
 			status = true;
 			cm_req_lock_release(cm_ctx);
 			return status;
