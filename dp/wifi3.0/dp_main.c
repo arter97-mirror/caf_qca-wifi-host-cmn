@@ -3280,6 +3280,7 @@ static int dp_rxdma_ring_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 	max_mac_rings = wlan_cfg_get_num_mac_rings(pdev_cfg_ctx);
 
 	if (pdev->pdev_id == 0) {
+		dp_direct_refill_setup(soc, pdev);
 		for (i = 0; i < max_mac_rings; i++) {
 			if (dp_srng_init(soc, &pdev->rx_mac_buf_ring[i],
 					 RXDMA_BUF, 1, i)) {
@@ -3288,7 +3289,6 @@ static int dp_rxdma_ring_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 				return QDF_STATUS_E_FAILURE;
 			}
 		}
-		dp_direct_refill_setup(soc, pdev);
 	}
 	return QDF_STATUS_SUCCESS;
 }

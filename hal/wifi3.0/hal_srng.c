@@ -329,9 +329,13 @@ QDF_STATUS hal_set_one_shadow_config(void *hal_soc,
 qdf_export_symbol(hal_set_one_shadow_config);
 
 #ifdef DP_FEATURE_DIRECT_REFILL
-static inline bool hal_srng_is_direct_refill(int ring_type, int ring_num,
+static inline bool hal_srng_is_direct_refill(struct hal_soc *hal_soc,
+					     int ring_type, int ring_num,
 					     uint8_t lmac_id)
 {
+	if (!pld_is_direct_refill_supported(hal_soc->qdf_dev->dev))
+		return false;
+
 	if (ring_type == RXDMA_BUF && ring_num == HAL_DIRECT_REFILL_RING_NUM &&
 	    lmac_id == HAL_DIRECT_REFILL_RING_LMAC_ID)
 		return true;
@@ -348,7 +352,7 @@ QDF_STATUS hal_set_one_lmac_shadow_config(void *hal_soc_hdl, int ring_type,
 	int shadow_config_index;
 
 	/* Below is the only LMAC ring for which shadow is configured */
-	if (!hal_srng_is_direct_refill(ring_type, ring_num, lmac_id))
+	if (!hal_srng_is_direct_refill(hal_soc, ring_type, ring_num, lmac_id))
 		return QDF_STATUS_SUCCESS;
 
 	srng_config = HAL_SRNG_CONFIG(hal_soc, ring_type);
@@ -401,7 +405,8 @@ static inline void hal_assign_lmac_ring_shadow(struct hal_soc *hal_soc,
 {
 }
 
-static inline bool hal_srng_is_direct_refill(int ring_type, int ring_num,
+static inline bool hal_srng_is_direct_refill(struct hal_soc *hal_soc,
+					     int ring_type, int ring_num,
 					     uint8_t lmac_id)
 {
 	return false;
@@ -1953,7 +1958,8 @@ void *hal_srng_setup_idx(void *hal_soc, int ring_type, int ring_num, int mac_id,
 			qdf_mem_zero(srng->u.src_ring.tp_addr,
 				     sizeof(*hal->shadow_rdptr_mem_vaddr));
 
-		if (hal_srng_is_direct_refill(ring_type, ring_num, mac_id)) {
+		if (hal_srng_is_direct_refill(hal_soc, ring_type, ring_num,
+					      mac_id)) {
 			/* Do nothing for the direct refill srng */
 		} else if (ring_config->lmac_ring) {
 			/* For LMAC rings, head pointer updates will be done
