@@ -1116,6 +1116,7 @@ struct link_assoc_rsp_info {
  * @wlan_connect_req_links: list of vdevs selected for connection with the MLAP
  * @wlan_connected_links: list of vdevs associated with this MLO connection
  * @key_mgmt:
+ * @links_info: Hold information regarding all the links of ml connection
  * @connect_req: connect params
  * @copied_conn_req: original connect req
  * @copied_conn_req_lock: lock for the original connect request
@@ -1144,6 +1145,7 @@ struct wlan_mlo_sta {
 	qdf_bitmap(wlan_connect_req_links, WLAN_UMAC_MLO_MAX_VDEVS);
 	qdf_bitmap(wlan_connected_links, WLAN_UMAC_MLO_MAX_VDEVS);
 	struct wlan_mlo_key_mgmt key_mgmt[WLAN_MAX_ML_BSS_LINKS];
+	struct mlo_link_info links_info[WLAN_MAX_ML_BSS_LINKS];
 	struct wlan_cm_connect_req *connect_req;
 	struct wlan_cm_connect_req *copied_conn_req;
 #ifdef WLAN_MLO_USE_SPINLOCK

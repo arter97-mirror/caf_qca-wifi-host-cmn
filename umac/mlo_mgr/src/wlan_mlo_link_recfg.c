@@ -848,7 +848,7 @@ mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
 	}
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			continue;
 
@@ -936,7 +936,7 @@ mlo_link_recfg_has_idle_vdev_for_add_link(
 			continue;
 		}
 		for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-			link_info = &mlo_dev_ctx->link_ctx->links_info[j];
+			link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
 
 			if (link_info->link_id != link_add->link_id)
 				continue;
@@ -993,7 +993,7 @@ mlo_link_recfg_has_idle_vdev_for_add_link(
 	 */
 	if (link_add_reject && link_add_accept) {
 		for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-			link_info = &mlo_dev_ctx->link_ctx->links_info[j];
+			link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
 
 			if (link_info->vdev_id == WLAN_INVALID_VDEV_ID)
 				continue;
@@ -1058,7 +1058,7 @@ mlo_link_recfg_find_link_info_with_active_vdev(
 	uint8_t j;
 
 	for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-		link_info = &mlo_dev_ctx->link_ctx->links_info[j];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
 
 		if (link_info->link_id != link_add->link_id)
 			continue;
@@ -1196,7 +1196,7 @@ mlo_link_recfg_has_active_vdev_for_add_link(
 	 */
 	if (link_add_reject && link_add_accept) {
 		for (j = 0; j < WLAN_MAX_ML_BSS_LINKS; j++) {
-			link_info = &mlo_dev_ctx->link_ctx->links_info[j];
+			link_info = &mlo_dev_ctx->sta_ctx->links_info[j];
 
 			if (link_info->vdev_id == WLAN_INVALID_VDEV_ID)
 				continue;
@@ -1327,7 +1327,7 @@ mlo_link_recfg_is_standby_link_present_for_link_switch(
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_LINK_RECFG_ID);
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			continue;
@@ -1775,7 +1775,7 @@ mlo_link_recfg_update_partner_info(struct mlo_link_recfg_context *recfg_ctx)
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
 		if (idx >= QDF_ARRAY_SIZE(ml_partner_info->partner_link_info))
 			break;
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			continue;
@@ -2918,7 +2918,7 @@ mlo_link_recfg_assign_self_link_addr(
 	 */
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
 	     idx < recfg_req->add_link_info.num_links; i++) {
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 		if (allocated_bitmap & (1 << i))
 			continue;
 
@@ -2972,7 +2972,7 @@ mlo_link_recfg_assign_self_link_addr(
 		/* only checking the first one is enough */
 		if (link_add[idx].vdev_id == WLAN_INVALID_VDEV_ID)
 			break;
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 		if (allocated_bitmap & (1 << i))
 			continue;
 		if (link_info->vdev_id != link_add[idx].vdev_id)
@@ -3031,7 +3031,7 @@ mlo_link_recfg_assign_self_link_addr(
 	 */
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
 	     idx < recfg_req->add_link_info.num_links; i++) {
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 		if (allocated_bitmap & (1 << i))
 			continue;
 
@@ -3098,7 +3098,7 @@ mlo_link_recfg_assign_self_link_addr(
 	 */
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS &&
 	     idx < recfg_req->add_link_info.num_links; i++) {
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 		if (allocated_bitmap & (1 << i))
 			continue;
 
@@ -3172,7 +3172,7 @@ mlo_link_recfg_set_tx_link_addr(
 	}
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &mlo_dev_ctx->sta_ctx->links_info[i];
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			continue;
 

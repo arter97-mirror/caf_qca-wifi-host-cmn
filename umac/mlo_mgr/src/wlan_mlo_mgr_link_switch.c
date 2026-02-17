@@ -90,8 +90,11 @@ void mlo_mgr_update_link_info_mac_addr(struct wlan_objmgr_vdev *vdev,
 	if (!vdev || !vdev->mlo_dev_ctx || !ml_mac_update)
 		return;
 
+	if (!vdev->mlo_dev_ctx->sta_ctx)
+		return;
+
 	link_mac_info = &ml_mac_update->link_mac_info[0];
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
@@ -118,7 +121,10 @@ QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
 	if (!vdev || !vdev->mlo_dev_ctx)
 		return QDF_STATUS_E_NULL_VALUE;
 
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	if (!vdev->mlo_dev_ctx->sta_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (qdf_is_macaddr_equal(&link_info->ap_link_addr, bssid)) {
@@ -143,8 +149,11 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 	if (!vdev || !vdev->mlo_dev_ctx)
 		return;
 
+	if (!vdev->mlo_dev_ctx->sta_ctx)
+		return;
+
 	/* Check if link already exists */
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (qdf_is_macaddr_equal(&link_info->ap_link_addr,
@@ -157,7 +166,7 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 
 	/* Find first free link index if link does not exists */
 	if (!link_exist) {
-		link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+		link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 		for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 		     link_info_iter++) {
 			if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
@@ -198,7 +207,10 @@ mlo_mgr_get_ap_link_info(struct wlan_objmgr_vdev *vdev,
 	    qdf_is_macaddr_zero(ap_link_addr))
 		return NULL;
 
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	if (!vdev->mlo_dev_ctx->sta_ctx)
+		return NULL;
+
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (qdf_is_macaddr_equal(&link_info->ap_link_addr,
@@ -269,8 +281,10 @@ void mlo_mgr_update_link_info_reset(struct wlan_objmgr_psoc *psoc,
 	if (!ml_dev)
 		return;
 
-	link_info = &ml_dev->link_ctx->links_info[0];
+	if (!ml_dev->sta_ctx)
+		return;
 
+	link_info = &ml_dev->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (!qdf_is_macaddr_zero(&link_info->ap_link_addr) &&
@@ -296,7 +310,7 @@ void mlo_mgr_reset_ap_link_info(struct wlan_objmgr_vdev *vdev)
 	uint8_t link_info_iter;
 	struct wlan_objmgr_psoc *psoc;
 
-	if (!vdev || !vdev->mlo_dev_ctx || !vdev->mlo_dev_ctx->link_ctx)
+	if (!vdev || !vdev->mlo_dev_ctx || !vdev->mlo_dev_ctx->sta_ctx)
 		return;
 
 	psoc = wlan_vdev_get_psoc(vdev);
@@ -305,7 +319,7 @@ void mlo_mgr_reset_ap_link_info(struct wlan_objmgr_vdev *vdev)
 		return;
 	}
 
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
@@ -334,7 +348,7 @@ struct mlo_link_info
 	if (!vdev || !vdev->mlo_dev_ctx)
 		return NULL;
 
-	return &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	return &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 }
 
 static
@@ -346,7 +360,10 @@ void mlo_mgr_alloc_link_info_wmi_chan(struct wlan_mlo_dev_context *ml_dev)
 	if (!ml_dev)
 		return;
 
-	link_info = &ml_dev->link_ctx->links_info[0];
+	if (!ml_dev->sta_ctx)
+		return;
+
+	link_info = &ml_dev->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		link_info->link_chan_info =
@@ -366,7 +383,10 @@ void mlo_mgr_free_link_info_wmi_chan(struct wlan_mlo_dev_context *ml_dev)
 	if (!ml_dev)
 		return;
 
-	link_info = &ml_dev->link_ctx->links_info[0];
+	if (!ml_dev->sta_ctx)
+		return;
+
+	link_info = &ml_dev->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (link_info->link_chan_info)
@@ -689,7 +709,7 @@ struct mlo_link_info
 	if (!mlo_dev_ctx || link_id < 0 || link_id >= MAX_MLO_LINK_ID)
 		return NULL;
 
-	link_info = &mlo_dev_ctx->link_ctx->links_info[0];
+	link_info = &mlo_dev_ctx->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (link_info->link_id == link_id)
@@ -729,7 +749,7 @@ bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
 
 	tid_mapped_link_id = t2lm_get_tids_mapped_link_id(tid_mapped);
 
-	link_info = &mlo_dev_ctx->link_ctx->links_info[0];
+	link_info = &mlo_dev_ctx->sta_ctx->links_info[0];
 	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
 	     link_info_iter++) {
 		if (link_info->is_link_active ||
@@ -2148,7 +2168,7 @@ mlo_mgr_update_links_current_active_state(struct wlan_objmgr_psoc *psoc,
 
 	num_links = mlo_get_sta_num_links(mld_ctx);
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mld_ctx->link_ctx->links_info[i];
+		link_info = &mld_ctx->sta_ctx->links_info[i];
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr) ||
 		    qdf_is_macaddr_zero(&link_info->link_addr))
 			continue;

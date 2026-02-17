@@ -847,7 +847,7 @@ QDF_STATUS mlo_set_cu_bpcc(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 	for (idx = 0; idx < WLAN_MAX_ML_BSS_LINKS; idx++) {
 		if (link_info[idx].link_id == link_id) {
 			link_info[idx].bpcc = bpcc;
@@ -876,7 +876,7 @@ QDF_STATUS mlo_get_cu_bpcc(struct wlan_objmgr_vdev *vdev,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[0];
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 	for (idx = 0; idx < WLAN_MAX_ML_BSS_LINKS; idx++) {
 		if (link_info[idx].link_id == link_id) {
 			*bpcc = link_info[idx].bpcc;
@@ -1636,7 +1636,7 @@ mlo_mgr_validate_connection_partner_links(struct wlan_objmgr_vdev *vdev,
 	 * This code is not to be executed for roaming cases as the order may
 	 * change from any previous link switches.
 	 */
-	link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[1];
+	link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[1];
 	for (idx = 1; idx < WLAN_MAX_ML_BSS_LINKS; idx++) {
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
 			goto next_link;
@@ -3660,7 +3660,7 @@ uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx)
 	struct mlo_link_info *link_info;
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &mld_ctx->link_ctx->links_info[i];
+		link_info = &mld_ctx->sta_ctx->links_info[i];
 		if (qdf_is_macaddr_zero(&link_info->ap_link_addr) ||
 		    qdf_is_macaddr_zero(&link_info->link_addr))
 			continue;
@@ -3696,7 +3696,7 @@ uint8_t mlo_get_ml_links_info(struct wlan_objmgr_psoc *psoc,
 		goto rel_ref;
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_i = &mld_ctx->link_ctx->links_info[i];
+		link_i = &mld_ctx->sta_ctx->links_info[i];
 		if (qdf_is_macaddr_zero(&link_i->ap_link_addr) ||
 		    qdf_is_macaddr_zero(&link_i->link_addr))
 			continue;
@@ -3781,7 +3781,7 @@ mlo_get_standby_mlo_link_chan_in_freq_range(struct wlan_objmgr_psoc *psoc,
 		}
 
 		/* Check all links for standby links */
-		ml_link_info = &mlo_dev_ctx->link_ctx->links_info[0];
+		ml_link_info = &mlo_dev_ctx->sta_ctx->links_info[0];
 		for (link_iter = 0; link_iter < WLAN_MAX_ML_BSS_LINKS;
 		     link_iter++) {
 			/* Skip unconfigured links */

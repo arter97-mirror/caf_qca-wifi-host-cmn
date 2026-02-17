@@ -1636,7 +1636,7 @@ static uint8_t wlan_mlo_get_active_vdev_id(struct wlan_objmgr_vdev *vdev)
 		return WLAN_UMAC_VDEV_ID_MAX;
 
 	for (i = 0; i < WLAN_MAX_ML_BSS_LINKS; i++) {
-		link_info = &vdev->mlo_dev_ctx->link_ctx->links_info[i];
+		link_info = &vdev->mlo_dev_ctx->sta_ctx->links_info[i];
 
 		if (link_info->is_link_active)
 			return link_info->vdev_id;

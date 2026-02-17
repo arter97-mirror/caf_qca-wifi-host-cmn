@@ -201,7 +201,6 @@ struct unified_disconnect_params {
 
 /**
  * struct mlo_link_switch_context - Link switch data structure.
- * @links_info: Hold information regarding all the links of ml connection
  * @last_req: Last link switch request received from FW
  * @lswitch_stats: History of the link switch stats
  *                 Includes both fail and success stats.
@@ -210,7 +209,6 @@ struct unified_disconnect_params {
  * @connect_params: Cache for connection parameters during link switch
  */
 struct mlo_link_switch_context {
-	struct mlo_link_info links_info[WLAN_MAX_ML_BSS_LINKS];
 	struct wlan_mlo_link_switch_req last_req;
 	struct mlo_link_switch_stats lswitch_stats[MLO_LINK_SWITCH_CNF_STATUS_MAX];
 	struct unified_disconnect_params disconnect_params;
