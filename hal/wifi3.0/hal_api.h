@@ -3600,17 +3600,6 @@ hal_dmac_cmn_src_rxbuf_ring_get(hal_soc_handle_t hal_soc_hdl)
 	return hal_soc->dmac_cmn_src_rxbuf_ring;
 }
 
-static inline
-uint8_t hal_is_direct_refill_supported(hal_soc_handle_t hal_soc_hdl)
-{
-	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
-
-	if (hal_soc->ops->hal_is_direct_refill_supported)
-		return hal_soc->ops->hal_is_direct_refill_supported(hal_soc_hdl);
-
-	return 0;
-}
-
 /**
  * hal_srng_dst_prefetch() - function to prefetch 4 destination ring descs
  * @hal_soc_hdl: HAL SOC handle
