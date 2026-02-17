@@ -4186,9 +4186,6 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 	if (*buf_size < RX_DATA_BUFFER_SIZE_MAX &&
 	    *buf_size % RX_DATA_BUFFER_ALIGNMENT) {
 		*buf_size += (RX_DATA_BUFFER_SIZE_MAX - *buf_size);
-	} else {
-		*buf_size = PAGE_SIZE;
-		*align = 0;
 	}
 }
 #endif
