@@ -119,3 +119,11 @@ ucfg_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
 {
 	return wlan_twt_tgt_caps_get_resp_disable_per_vdev(psoc, val);
 }
+
+QDF_STATUS
+ucfg_twt_handle_p2p_chan_usage_unavail(
+			struct wlan_objmgr_psoc *psoc,
+			struct twt_p2p_chan_usage_unavail_params *params)
+{
+	return wlan_twt_handle_p2p_chan_usage_unavail(psoc, params);
+}

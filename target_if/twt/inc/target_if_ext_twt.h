@@ -135,6 +135,18 @@ target_if_twt_ac_param_send(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 target_if_twt_send_responder_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
 					      uint8_t vdev_id);
+
+/**
+ * target_if_twt_p2p_chan_usage_unavail() - p2p channel usage unavailable
+ * @psoc: Pointer to psoc object
+ * @params: p2p channel usage unavailable params
+ *
+ * Return: QDF status
+ */
+QDF_STATUS
+target_if_twt_p2p_chan_usage_unavail(
+			struct wlan_objmgr_psoc *psoc,
+			struct twt_p2p_chan_usage_unavail_params *params);
 #else
 static inline QDF_STATUS
 target_if_twt_register_ext_tx_ops(struct wlan_lmac_if_twt_tx_ops *twt_tx_ops)
@@ -199,6 +211,14 @@ target_if_twt_ac_param_send(struct wlan_objmgr_psoc *psoc,
 static inline QDF_STATUS
 target_if_twt_send_responder_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
 					      uint8_t vdev_id)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+target_if_twt_p2p_chan_usage_unavail(
+			struct wlan_objmgr_psoc *psoc,
+			struct twt_p2p_chan_usage_unavail_params *params)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

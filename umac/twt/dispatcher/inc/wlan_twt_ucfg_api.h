@@ -326,4 +326,17 @@ ucfg_twt_tgt_caps_get_p2p_go_concurrency_support(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 ucfg_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
 					    bool *val);
+
+/**
+ * ucfg_twt_handle_p2p_chan_usage_unavail() - Handle P2P channel usage
+ * unavailability
+ * @psoc: psoc pointer
+ * @params: P2P channel usage unavailability parameters
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+ucfg_twt_handle_p2p_chan_usage_unavail(
+			struct wlan_objmgr_psoc *psoc,
+			struct twt_p2p_chan_usage_unavail_params *params);
 #endif /* _WLAN_TWT_UCFG_API_H_ */

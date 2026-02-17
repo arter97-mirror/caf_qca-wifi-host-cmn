@@ -575,3 +575,29 @@ wlan_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+QDF_STATUS
+wlan_twt_handle_p2p_chan_usage_unavail(
+			struct wlan_objmgr_psoc *psoc,
+			struct twt_p2p_chan_usage_unavail_params *params)
+{
+	struct wlan_lmac_if_twt_tx_ops *tx_ops;
+
+	if (!psoc || !params) {
+		twt_err("Invalid params");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	tx_ops = wlan_twt_get_tx_ops(psoc);
+	if (!tx_ops) {
+		twt_err("twt tx_ops is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!tx_ops->p2p_chan_usage_unavail) {
+		twt_err("p2p_chan_usage_unavail tx op is NULL");
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	return tx_ops->p2p_chan_usage_unavail(psoc, params);
+}
