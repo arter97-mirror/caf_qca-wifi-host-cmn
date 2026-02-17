@@ -1605,7 +1605,6 @@ enum cdp_pdev_param_type {
  * @pkt_info.peer_id: ID of the peer
  * @pkt_info.pkts: packet count
  * @cdp_dyn_resource_mgr_support: Dynamic resource manager support
- * @cdp_direct_refill_ring_support: Direct Refill support
  * @cdp_replenish_ring_size: Replenish ring size (accounts for direct refill
  *			     ring feature enabled)
  */
@@ -1743,7 +1742,6 @@ typedef union cdp_config_param_t {
 		struct cdp_pkt_info pkts;
 	} pkt_info;
 	bool cdp_dyn_resource_mgr_support;
-	bool cdp_direct_refill_ring_support;
 	int cdp_replenish_ring_size;
 } cdp_config_param_type;
 
@@ -1937,7 +1935,6 @@ enum cdp_vdev_param_type {
  * @CDP_SAWF_MSDUQ_RECLAIM_SUPPORT: To initiate msduq reclaim related functions
  * @CDP_VDEV_TX_NSS_SUPPORT: FW Support vdev Tx NSS command
  * @CDP_DYN_RESOURCE_MGR_SUPPORT: Dynamic RX buffer allocation support
- * @CDP_DIRECT_REFILL_RING_SUPPORT: Direct Refill support
  * @CDP_CFG_REPLENISH_RING_SIZE: Replenish ring size
  */
 enum cdp_psoc_param_type {
@@ -1978,7 +1975,6 @@ enum cdp_psoc_param_type {
 #endif
 	CDP_VDEV_TX_NSS_SUPPORT,
 	CDP_DYN_RESOURCE_MGR_SUPPORT,
-	CDP_DIRECT_REFILL_RING_SUPPORT,
 	CDP_CFG_REPLENISH_RING_SIZE,
 };
 

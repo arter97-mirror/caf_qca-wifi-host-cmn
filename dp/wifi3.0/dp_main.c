@@ -10581,12 +10581,6 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 		dp_info("Dynamic resource manager support: %u",
 			soc->features.dyn_resource_mgr_support);
 		break;
-	case CDP_DIRECT_REFILL_RING_SUPPORT:
-		soc->features.direct_refill_support =
-			val.cdp_direct_refill_ring_support;
-		dp_info("Direct refill ring support: %u",
-			soc->features.direct_refill_support);
-		break;
 	default:
 		break;
 	}
