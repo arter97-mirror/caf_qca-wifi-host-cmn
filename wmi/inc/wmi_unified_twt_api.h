@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -348,6 +349,17 @@ QDF_STATUS wmi_extract_twt_ack_comp_event(
 			wmi_unified_t wmi_handle,
 			uint8_t *evt_buf,
 			struct twt_ack_complete_event_param *param);
+
+/**
+ * wmi_unified_twt_add_ch_usage_cmd() - Send WMI command for P2P channel usage
+ * @wmi_handle: wmi handle
+ * @params: P2P channel usage parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_twt_add_ch_usage_cmd(wmi_unified_t wmi_handle,
+				 struct twt_p2p_chan_usage_unavail_params *params);
 #elif defined(WLAN_SUPPORT_TWT)
 /**
  * wmi_unified_twt_enable_cmd() - Send WMI command to Enable TWT

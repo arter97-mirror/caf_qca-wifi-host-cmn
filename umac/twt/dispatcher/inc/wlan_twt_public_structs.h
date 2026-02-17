@@ -1097,19 +1097,25 @@ enum twt_disable_reason {
  * struct twt_p2p_chan_usage_unavail_params - P2P channel usage unavailability
  * parameters
  * @vdev_id: VDEV identifier
+ * @peer_macaddr: Peer MAC address
  * @responder_pm_mode: Responder PM mode (0 or 1)
- * @req_type: TWT request type
+ * @req_type: TWT request type (negotiation_type in WMI)
+ * @twt_request: TWT request flag (1 = request, 0 = response)
+ * @twt_setup_cmd: TWT setup command type from enum HOST_TWT_COMMAND
  * @is_trigger_enabled: TWT with trigger support
  * @flow_type: Flow type (0: Announced, 1: Unannounced)
  * @wake_intvl_exp: Wake interval exponent
  * @is_protection_enabled: Protection required
- * @wake_duration: Wake duration in multiples of 256us
- * @wake_intvl_mantissa: Wake interval mantissa in TU
+ * @wake_duration: Wake duration in microseconds
+ * @wake_intvl_mantissa: Wake interval mantissa in microseconds
  */
 struct twt_p2p_chan_usage_unavail_params {
 	uint32_t vdev_id;
+	struct qdf_mac_addr peer_macaddr;
 	uint8_t responder_pm_mode;
 	uint8_t req_type;
+	uint8_t twt_request;
+	enum HOST_TWT_COMMAND twt_setup_cmd;
 	bool is_trigger_enabled;
 	uint8_t flow_type;
 	uint8_t wake_intvl_exp;

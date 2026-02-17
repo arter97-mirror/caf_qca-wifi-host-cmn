@@ -391,6 +391,59 @@ static QDF_STATUS send_twt_resume_dialog_cmd_tlv(wmi_unified_t wmi_handle,
 	return status;
 }
 
+static QDF_STATUS
+send_twt_add_ch_usage_cmd_tlv(wmi_unified_t wmi_handle,
+			      struct twt_p2p_chan_usage_unavail_params *params)
+{
+	wmi_ch_usage_add_dialog_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	QDF_STATUS status;
+
+	buf = wmi_buf_alloc(wmi_handle, sizeof(*cmd));
+	if (!buf) {
+		wmi_err("Failed to allocate memory");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	cmd = (wmi_ch_usage_add_dialog_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_ch_usage_add_dialog_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+		       (wmi_ch_usage_add_dialog_cmd_fixed_param));
+
+	cmd->vdev_id = params->vdev_id;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->peer_macaddr.bytes,
+				   &cmd->peer_macaddr);
+	cmd->twt_request = params->twt_request;
+	cmd->twt_setup_cmd = params->twt_setup_cmd;
+	cmd->responder_pm_mode = params->responder_pm_mode;
+	cmd->negotiation_type = params->req_type;
+	cmd->is_triggered = params->is_trigger_enabled;
+	cmd->flow_type = params->flow_type;
+	cmd->wake_interval_exp = params->wake_intvl_exp;
+	cmd->twt_protection = params->is_protection_enabled;
+	cmd->nominal_min_wake_duration = params->wake_duration;
+	cmd->wake_interval_mantisa = params->wake_intvl_mantissa;
+
+	wmi_debug("vdev_id=%d peer=" QDF_MAC_ADDR_FMT" twt_req=%d twt_cmd=%d pm_mode=%d req_type=%d trigger=%d flow=%d exp=%d prot=%d dur=%d mant=%d",
+		  cmd->vdev_id,
+		  QDF_MAC_ADDR_REF(params->peer_macaddr.bytes),
+		  cmd->twt_request, cmd->twt_setup_cmd,
+		  cmd->responder_pm_mode, cmd->negotiation_type,
+		  cmd->is_triggered, cmd->flow_type, cmd->wake_interval_exp,
+		  cmd->twt_protection, cmd->nominal_min_wake_duration,
+		  cmd->wake_interval_mantisa);
+
+	status = wmi_unified_cmd_send(wmi_handle, buf, sizeof(*cmd),
+				      WMI_TWT_ADD_CH_USAGE_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI_TWT_ADD_CH_USAGE_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+
 #ifdef WLAN_SUPPORT_BCAST_TWT
 static QDF_STATUS
 send_twt_btwt_invite_sta_cmd_tlv(wmi_unified_t wmi_handle,
@@ -2398,6 +2451,7 @@ void wmi_twt_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_twt_pause_dialog_cmd = send_twt_pause_dialog_cmd_tlv;
 	ops->send_twt_nudge_dialog_cmd = send_twt_nudge_dialog_cmd_tlv;
 	ops->send_twt_resume_dialog_cmd = send_twt_resume_dialog_cmd_tlv;
+	ops->send_twt_add_ch_usage_cmd = send_twt_add_ch_usage_cmd_tlv;
 	ops->extract_twt_enable_comp_event = extract_twt_enable_comp_event_tlv;
 	ops->extract_twt_disable_comp_event =
 				extract_twt_disable_comp_event_tlv;

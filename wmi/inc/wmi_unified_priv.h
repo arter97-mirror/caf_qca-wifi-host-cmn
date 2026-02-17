@@ -2714,6 +2714,9 @@ QDF_STATUS (*send_twt_nudge_dialog_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_twt_resume_dialog_cmd)(wmi_unified_t wmi_handle,
 			struct twt_resume_dialog_cmd_param *params);
+
+QDF_STATUS (*send_twt_add_ch_usage_cmd)(wmi_unified_t wmi_handle,
+			struct twt_p2p_chan_usage_unavail_params *params);
 #ifdef WLAN_SUPPORT_BCAST_TWT
 QDF_STATUS (*send_twt_btwt_invite_sta_cmd)(wmi_unified_t wmi_handle,
 			struct twt_btwt_invite_sta_cmd_param *params);
