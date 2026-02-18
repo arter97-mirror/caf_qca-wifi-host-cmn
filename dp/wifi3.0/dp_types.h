@@ -2001,8 +2001,16 @@ struct dp_tx_pp_params {
 };
 
 #define TX_PRE_ALLOC_POOL_IDX 0
-#define MAX_TX_DYNAMIC_POOL 10
-#define MAX_TX_IDLE_POOLS 5
+#define MAX_HIGHER_ORDER_POOL_PAGES 128
+
+/*
+ * Maximum number of buffers per pool
+ * Note: Using HIGHER ORDER page size to calculate max buffers per pool
+ * to ensure consistent buffer capacity across both HO and LO pools
+ */
+#define MAX_BUFFERS_PER_POOL \
+	((MAX_HIGHER_ORDER_POOL_PAGES * DP_PP_PAGE_SIZE_HIGHER_ORDER) / \
+	 DP_TX_PAGE_POOL_BUFSIZE)
 
 /**
  * struct dp_tx_page_pool - TX Page pool info
@@ -2012,6 +2020,8 @@ struct dp_tx_pp_params {
  * @idle_pool_ho: Higher order idle page pool list
  * @idle_pool_lo: Lower order idle page pool list
  * @last_used_pool: Fast path optimization: Cache last successfully used pool
+ * @max_active_pools: Maximum number of active pools allocated
+ * @'max_idle_pools: Maximum number of idle pools allowed
  * @active_pool_count: active pool list count
  * @idle_pool_ho_cnt: Higher order idle page pool list count
  * @idle_pool_lo_cnt: Lower order idle page pool list count
@@ -2041,10 +2051,12 @@ struct dp_tx_page_pool {
 	/* Node for destroy list */
 	qdf_list_node_t node;
 	uint8_t vdev_id;
-	struct dp_tx_pp_params active_pool[MAX_TX_DYNAMIC_POOL];
-	struct dp_tx_pp_params idle_pool_ho[MAX_TX_IDLE_POOLS];
-	struct dp_tx_pp_params idle_pool_lo[MAX_TX_IDLE_POOLS];
+	struct dp_tx_pp_params *active_pool;
+	struct dp_tx_pp_params *idle_pool_ho;
+	struct dp_tx_pp_params *idle_pool_lo;
 	struct dp_tx_pp_params *last_used_pool;
+	uint8_t max_active_pools;
+	uint8_t max_idle_pools;
 	uint8_t active_pool_count;
 	uint8_t idle_pool_ho_cnt;
 	uint8_t idle_pool_lo_cnt;

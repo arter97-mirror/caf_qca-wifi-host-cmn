@@ -693,25 +693,46 @@ static void
 dp_tx_page_pool_destroy_idle_pools(struct dp_tx_page_pool *tx_pp)
 {
 	struct dp_tx_pp_params *pp_params;
-	int i;
+	uint8_t i, ho_count = 0, lo_count = 0;
 
 	/* Destroy all idle pools - higher order */
-	for (i = 0; i < tx_pp->idle_pool_ho_cnt; i++) {
-		pp_params = &tx_pp->idle_pool_ho[i];
-		if (pp_params->pp) {
-			qdf_page_pool_destroy(pp_params->pp);
-			dp_nofl_info("TX_PP_DEST Destroyed HO idle pool %d", i);
+	if (tx_pp->idle_pool_ho) {
+		for (i = 0; i < tx_pp->idle_pool_ho_cnt; i++) {
+			pp_params = &tx_pp->idle_pool_ho[i];
+			if (pp_params->pp) {
+				qdf_page_pool_destroy(pp_params->pp);
+				ho_count++;
+			}
 		}
 	}
 
 	/* Destroy all idle pools - lower order */
-	for (i = 0; i < tx_pp->idle_pool_lo_cnt; i++) {
-		pp_params = &tx_pp->idle_pool_lo[i];
-		if (pp_params->pp) {
-			qdf_page_pool_destroy(pp_params->pp);
-			dp_nofl_info("TX_PP_DEST Destroyed LO idle pool %d", i);
+	if (tx_pp->idle_pool_lo) {
+		for (i = 0; i < tx_pp->idle_pool_lo_cnt; i++) {
+			pp_params = &tx_pp->idle_pool_lo[i];
+			if (pp_params->pp) {
+				qdf_page_pool_destroy(pp_params->pp);
+				lo_count++;
+			}
 		}
 	}
+
+	dp_nofl_info("TX_PP_DEST %d HO + %d LO pools", ho_count, lo_count);
+}
+
+static inline void
+dp_tx_page_pool_calculate_config(struct dp_tx_page_pool *tx_pp,
+				 uint32_t pool_size)
+{
+	uint32_t num_idle_pools_needed;
+
+	/* Calculate number of idle pools needed to accommodate pool_size */
+	num_idle_pools_needed = pool_size / MAX_BUFFERS_PER_POOL;
+	if (pool_size % MAX_BUFFERS_PER_POOL)
+		num_idle_pools_needed++;
+
+	tx_pp->max_idle_pools = num_idle_pools_needed;
+	tx_pp->max_active_pools = (2 * num_idle_pools_needed) + 1;
 }
 
 /**
@@ -721,29 +742,39 @@ dp_tx_page_pool_destroy_idle_pools(struct dp_tx_page_pool *tx_pp)
  * @pool_size: Total pool size to divide among idle pools
  *
  * Creates idle pools for both higher-order and lower-order pages.
- * Each type gets 5 pools, with pool_size divided equally among them.
+ * Dynamically calculates the number of pools needed based on pool_size
+ * using Higher Order page calculation. Both HO and LO use same pool count
+ * but different idle_pool_size based on their page sizes.
  *
- * Return: None
+ * Return: QDF_STATUS
  */
-static void
+static QDF_STATUS
 dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 				  struct dp_tx_page_pool *tx_pp,
 				  uint32_t pool_size)
 {
 	struct dp_tx_pp_params *pp_params;
 	qdf_page_pool_t new_pp;
-	uint32_t idle_pool_size = pool_size / MAX_TX_IDLE_POOLS;
 	size_t bufs_per_page;
 	size_t pp_size;
 	int i;
 
+	/* Allocate arrays for idle pools */
+	tx_pp->idle_pool_ho = qdf_mem_malloc(tx_pp->max_idle_pools *
+					     sizeof(struct dp_tx_pp_params));
+	tx_pp->idle_pool_lo = qdf_mem_malloc(tx_pp->max_idle_pools *
+					     sizeof(struct dp_tx_pp_params));
+
+	if (!tx_pp->idle_pool_ho || !tx_pp->idle_pool_lo) {
+		dp_err("Failed to allocate idle pools");
+		goto fail;
+	}
+
 	bufs_per_page = DP_PP_PAGE_SIZE_HIGHER_ORDER / DP_TX_PAGE_POOL_BUFSIZE;
-	pp_size = idle_pool_size / bufs_per_page;
-	if (idle_pool_size % bufs_per_page)
-		pp_size = (pp_size + 1);
+	pp_size = MAX_BUFFERS_PER_POOL / bufs_per_page;
 
 	/* Create higher-order idle pools */
-	for (i = 0; i < MAX_TX_IDLE_POOLS; i++) {
+	for (i = 0; i < tx_pp->max_idle_pools; i++) {
 		new_pp = qdf_page_pool_create(soc->osdev,
 					      pp_size,
 					      DP_PP_PAGE_SIZE_HIGHER_ORDER,
@@ -752,13 +783,11 @@ dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 		if (new_pp) {
 			pp_params = &tx_pp->idle_pool_ho[i];
 			pp_params->pp = new_pp;
-			pp_params->pool_size = idle_pool_size;
+			pp_params->pool_size = MAX_BUFFERS_PER_POOL;
 			pp_params->page_size = DP_PP_PAGE_SIZE_HIGHER_ORDER;
 			pp_params->pp_size = pp_size;
 			pp_params->is_prealloc = false;
 			tx_pp->idle_pool_ho_cnt++;
-			dp_nofl_info("TX_PP_CR Created higher-order idle pool %d (size %u)",
-				     i, idle_pool_size);
 		} else {
 			dp_err("Failed to create higher-order idle pool %d", i);
 			break;
@@ -766,12 +795,10 @@ dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 	}
 
 	bufs_per_page = DP_PP_PAGE_SIZE_LOWER_ORDER / DP_TX_PAGE_POOL_BUFSIZE;
-	pp_size = idle_pool_size / bufs_per_page;
-	if (idle_pool_size % bufs_per_page)
-		pp_size = (pp_size + 1);
+	pp_size = MAX_BUFFERS_PER_POOL / bufs_per_page;
 
 	/* Create lower-order idle pools */
-	for (i = 0; i < MAX_TX_IDLE_POOLS; i++) {
+	for (i = 0; i < tx_pp->max_idle_pools; i++) {
 		new_pp = qdf_page_pool_create(soc->osdev,
 					      pp_size,
 					      qdf_page_size,
@@ -780,22 +807,37 @@ dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 		if (new_pp) {
 			pp_params = &tx_pp->idle_pool_lo[i];
 			pp_params->pp = new_pp;
-			pp_params->pool_size = idle_pool_size;
+			pp_params->pool_size = MAX_BUFFERS_PER_POOL;
 			pp_params->page_size = DP_PP_PAGE_SIZE_LOWER_ORDER;
 			pp_params->pp_size = pp_size;
 			pp_params->is_prealloc = false;
 			tx_pp->idle_pool_lo_cnt++;
-			dp_nofl_info("TX_PP_CR Created lower-order idle pool %d (size %u)",
-				     i, idle_pool_size);
 		} else {
 			dp_err("Failed to create lower-order idle pool %d", i);
 			break;
 		}
 	}
 
-	dp_nofl_info("TX_PP_CR Created %d higher-order and %d lower-order idle pools (size %u each)",
+	if (!tx_pp->idle_pool_ho_cnt  && !tx_pp->idle_pool_lo_cnt)
+		goto fail;
+
+	dp_nofl_info("TX_PP_CR %d HO + %d LO pools (sz %lu)",
 		     tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt,
-		     idle_pool_size);
+		     MAX_BUFFERS_PER_POOL);
+
+	return QDF_STATUS_SUCCESS;
+
+fail:
+	if (tx_pp->idle_pool_ho)
+		qdf_mem_free(tx_pp->idle_pool_ho);
+	if (tx_pp->idle_pool_lo)
+		qdf_mem_free(tx_pp->idle_pool_lo);
+
+	tx_pp->idle_pool_ho = NULL;
+	tx_pp->idle_pool_lo = NULL;
+
+	return QDF_STATUS_E_NOMEM;
+
 }
 
 /**
@@ -955,6 +997,14 @@ static void dp_tx_page_pool_process_destroy_list(struct dp_soc *soc)
 			dp_tx_page_pool_destroy_idle_pools(tx_pp);
 			qdf_list_destroy(&tx_pp->inactive_list);
 			qdf_spinlock_destroy(&tx_pp->pp_lock);
+
+			if (tx_pp->active_pool)
+				qdf_mem_free(tx_pp->active_pool);
+			if (tx_pp->idle_pool_ho)
+				qdf_mem_free(tx_pp->idle_pool_ho);
+			if (tx_pp->idle_pool_lo)
+				qdf_mem_free(tx_pp->idle_pool_lo);
+
 			qdf_mem_free(tx_pp);
 			freed++;
 		} else {
@@ -1047,13 +1097,27 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 				       struct dp_tx_page_pool *tx_pp,
 				       uint32_t pool_size)
 {
-	struct dp_tx_pp_params *pp_params =
-		&tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
+	QDF_STATUS status;
+	struct dp_tx_pp_params *pp_params;
 	struct dp_page_pool_t *pool_t = NULL;
 	bool dynamic_pp_enabled =
 		wlan_cfg_get_tx_dynamic_pp_enabled(soc->ctrl_psoc);
 
 	memset(tx_pp, 0, sizeof(*tx_pp));
+
+	if (dynamic_pp_enabled) {
+		dp_tx_page_pool_calculate_config(tx_pp, pool_size);
+	} else {
+		/* Static mode: only need 1 active pool (pre-allocated) */
+		tx_pp->max_active_pools = 1;
+	}
+
+	tx_pp->active_pool = qdf_mem_malloc(tx_pp->max_active_pools *
+					    sizeof(struct dp_tx_pp_params));
+	if (!tx_pp->active_pool)
+		return QDF_STATUS_E_NOMEM;
+
+	pp_params = &tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 
 	if (soc->cdp_soc.ol_ops->dp_get_page_pool)
 		pool_t =
@@ -1071,23 +1135,29 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 		tx_pp->active_pool_count = 1;
 	} else if (!dynamic_pp_enabled) {
 		dp_err("failed to get tx page pool");
+		qdf_mem_free(tx_pp->active_pool);
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_spinlock_create(&tx_pp->pp_lock);
 	/* Create idle pools if dynamic page pool is enabled */
 	if (dynamic_pp_enabled) {
-		dp_tx_page_pool_create_idle_pools(soc, tx_pp, pool_size);
-		dp_nofl_info("TX_PP_INIT: active_pools=%u(%zu:%lu), ho_idle=%u, lo_idle=%u",
-			     tx_pp->active_pool_count, pp_params->pool_size,
-			     pp_params->pp_size, tx_pp->idle_pool_ho_cnt,
-			     tx_pp->idle_pool_lo_cnt);
+		status = dp_tx_page_pool_create_idle_pools(soc, tx_pp,
+							   pool_size);
+		if (QDF_IS_STATUS_ERROR(status) && !tx_pp->active_pool_count) {
+			qdf_mem_free(tx_pp->active_pool);
+			return status;
+		}
 
+		dp_nofl_info("TX_PP_INIT: active_pools=%u(%zu:%lu)/%u, ho_idle=%u, lo_idle=%u",
+			     tx_pp->active_pool_count, pp_params->pool_size,
+			     pp_params->pp_size, tx_pp->max_active_pools,
+			     tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt);
 	} else {
 		dp_nofl_info("TX_PP_INIT init success pool_size %d pp_size %lu",
-			     pool_t->pool_size,  pool_t->pp_size);
+			     pool_t->pool_size, pool_t->pp_size);
 	}
 
+	qdf_spinlock_create(&tx_pp->pp_lock);
 	qdf_atomic_init(&tx_pp->ref_cnt);
 	qdf_atomic_init(&tx_pp->shrink_ref_cnt);
 	qdf_atomic_init(&tx_pp->pending_deinit);

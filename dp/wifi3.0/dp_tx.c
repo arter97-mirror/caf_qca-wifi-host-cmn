@@ -222,7 +222,7 @@ struct dp_tx_pp_shrink_snapshot {
 	uint8_t active_count;
 	uint8_t active_prealloc;
 	uint8_t total_idle;
-	struct dp_tx_pool_snapshot pools[MAX_TX_DYNAMIC_POOL];
+	struct dp_tx_pool_snapshot *pools;
 };
 
 /**
@@ -385,8 +385,6 @@ dp_tx_page_pool_take_snapshot(
 		struct dp_tx_pp_shrink_snapshot *snap,
 		uint64_t current_time_us)
 {
-	qdf_mem_zero(snap, sizeof(*snap));
-
 	/* Capture timing */
 	snap->current_time_us = current_time_us;
 	snap->time_since_last_eval_us =
@@ -400,7 +398,7 @@ dp_tx_page_pool_take_snapshot(
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
 	snap->active_count =
 		dp_tx_page_pool_copy_pools_locked(tx_pp, snap->pools,
-						  MAX_TX_DYNAMIC_POOL,
+						  tx_pp->max_active_pools,
 						  &snap->active_prealloc,
 						  &snap->total_idle);
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
@@ -456,7 +454,11 @@ const struct dp_tx_pp_shrink_snapshot *snapshot,
 	decision->pools_to_remove_count = 0;
 
 	if (target_capacity < total_capacity) {
-		bool marked[MAX_TX_DYNAMIC_POOL] = {false};
+		bool *marked;
+
+		marked = qdf_mem_malloc(snapshot->active_count * sizeof(bool));
+		if (!marked)
+			return QDF_STATUS_E_NOMEM;
 
 		while (decision->pools_to_remove_count < MAX_POOLS_PER_CYCLE) {
 			int8_t pool_idx = -1;
@@ -501,6 +503,7 @@ const struct dp_tx_pp_shrink_snapshot *snapshot,
 				total_capacity = remaining_capacity;
 			}
 		}
+		qdf_mem_free(marked);
 	}
 
 	if (decision->pools_to_remove_count > 0) {
@@ -585,7 +588,7 @@ dp_tx_page_pool_create_idle(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp,
 	/* CRITICAL SECTION: Add to idle list */
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
 	if (new_pool_params.page_size > qdf_page_size) {
-		if (tx_pp->idle_pool_ho_cnt < MAX_TX_IDLE_POOLS) {
+		if (tx_pp->idle_pool_ho_cnt < tx_pp->max_idle_pools) {
 			tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt] =
 				new_pool_params;
 			tx_pp->idle_pool_ho_cnt++;
@@ -594,7 +597,7 @@ dp_tx_page_pool_create_idle(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp,
 			status = QDF_STATUS_E_RESOURCES;
 		}
 	} else {
-		if (tx_pp->idle_pool_lo_cnt < MAX_TX_IDLE_POOLS) {
+		if (tx_pp->idle_pool_lo_cnt < tx_pp->max_idle_pools) {
 			tx_pp->idle_pool_lo[tx_pp->idle_pool_lo_cnt] =
 				new_pool_params;
 			tx_pp->idle_pool_lo_cnt++;
@@ -847,7 +850,6 @@ dp_tx_page_pool_execute_shrink_action(struct dp_soc *soc,
 }
 
 #define PP_LOG_POOL_LEN 60
-#define PP_LOG_STR_SIZE ((PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL) + 200)
 
 /*
  * dp_tx_page_pool_log_decision() - Compact logging for page pool stats
@@ -874,6 +876,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	int bytes_written = 0;
 	int pool_bytes = 0;
 	int i;
+	size_t log_size;
 
 	/* Determine action string and new capacity */
 	switch (sd->action) {
@@ -896,11 +899,12 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 		return;
 	}
 
-	log_str = qdf_mem_malloc(PP_LOG_STR_SIZE);
+	log_size = (PP_LOG_POOL_LEN * tx_pp->max_active_pools) + 200;
+	log_str = qdf_mem_malloc(log_size);
 	if (!log_str)
 		return;
 
-	pool_buf = qdf_mem_malloc(PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL);
+	pool_buf = qdf_mem_malloc(PP_LOG_POOL_LEN * tx_pp->max_active_pools);
 	if (!pool_buf) {
 		qdf_mem_free(log_str);
 		return;
@@ -909,10 +913,12 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 	/* Pre-build pool information in batch to reduce loop overhead */
 	pool_buf[0] = '\0';
 	for (i = 0; i < snap->active_count && pool_bytes <
-	     (PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL) - PP_LOG_POOL_LEN; i++) {
+	     (PP_LOG_POOL_LEN * tx_pp->max_active_pools) -
+	     PP_LOG_POOL_LEN; i++) {
 		pool_bytes += qdf_snprint(pool_buf + pool_bytes,
-				      (PP_LOG_POOL_LEN * MAX_TX_DYNAMIC_POOL) -
-				      pool_bytes, "[%d](%c%c) %u/%u | ", i,
+				      (PP_LOG_POOL_LEN *
+				       tx_pp->max_active_pools) - pool_bytes,
+				      "[%d](%c%c) %u/%u | ", i,
 				      snap->pools[i].is_prealloc ? 'P' : 'D',
 				      snap->pools[i].page_size > qdf_page_size ?
 							'H' : 'L',
@@ -922,7 +928,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 
 	/* Build complete log string in single operation */
 	bytes_written =
-		qdf_snprint(log_str, PP_LOG_STR_SIZE,
+		qdf_snprint(log_str, log_size,
 			    "[%u] %s %u->%u %u/%u/%u %u(%u)/%u/%u %u %u/%u/%u | POOL %s",
 			    vdev_id, action_str, sd->total_capacity,
 			    new_capacity, sd->target_capacity,
@@ -936,7 +942,7 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 			    tx_pp->grow_failures,
 			    pool_buf);
 
-	if (bytes_written >= PP_LOG_STR_SIZE)
+	if (bytes_written >= log_size)
 		dp_warn("PP log truncated");
 
 	/**
@@ -1074,16 +1080,24 @@ dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
 
 	dp_tx_page_pool_flush_inactive(soc, tx_pp);
 
+	qdf_mem_zero(&snapshot, sizeof(snapshot));
+
+	/* Allocate memory for snapshot pools */
+	snapshot.pools = qdf_mem_malloc(tx_pp->max_active_pools *
+					sizeof(struct dp_tx_pool_snapshot));
+	if (!snapshot.pools)
+		return QDF_STATUS_E_NOMEM;
+
 	/* PHASE 1: SNAPSHOT - Collect metrics with minimal locking */
 	status = dp_tx_page_pool_take_snapshot(tx_pp, &snapshot,
 					       current_time_us);
 	if (QDF_IS_STATUS_ERROR(status))
-		return status;
+		goto free_snap;
 
 	/* PHASE 2: DECISION - Pure computation, no locks */
 	status = dp_tx_page_pool_evaluate_shrink(&snapshot, &shrink_decision);
 	if (QDF_IS_STATUS_ERROR(status))
-		return status;
+		goto free_snap;
 
 	dp_tx_page_pool_log_decision(vdev_id, tx_pp, &snapshot,
 				     &shrink_decision);
@@ -1095,6 +1109,8 @@ dp_tx_page_pool_shrink_monitor(struct dp_soc *soc,
 	/* Reset for next window (lock held internally) */
 	dp_tx_page_pool_reset_shrink_state(tx_pp, current_time_us);
 
+free_snap:
+	qdf_mem_free(snapshot.pools);
 	return status;
 }
 
@@ -1281,7 +1297,7 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 	qdf_nbuf_t nbuf = NULL;
 	bool free_idle_params = false;
 
-	if (qdf_unlikely(tx_pp->active_pool_count >= MAX_TX_DYNAMIC_POOL))
+	if (qdf_unlikely(tx_pp->active_pool_count >= tx_pp->max_active_pools))
 		return NULL;
 
 	qdf_list_for_each_del(&tx_pp->inactive_list, idle_pp, next, node) {
