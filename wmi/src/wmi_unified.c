@@ -3236,6 +3236,7 @@ static QDF_STATUS wmi_initialize_worker_context(struct wmi_unified *wmi_handle)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_MLO_MULTI_CHIP
 void *wmi_unified_get_pdev_handle(struct wmi_soc *soc, uint32_t pdev_idx)
 {
 	struct wmi_unified *wmi_handle;
@@ -3298,6 +3299,7 @@ error:
 	return NULL;
 }
 qdf_export_symbol(wmi_unified_get_pdev_handle);
+#endif
 
 static void (*wmi_attach_register[WMI_MAX_TARGET_TYPE])(wmi_unified_t);
 

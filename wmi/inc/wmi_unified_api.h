@@ -778,15 +778,6 @@ bool wmi_has_wow_enable_ack_failed(wmi_unified_t wmi_handle);
 void *wmi_unified_get_soc_handle(struct wmi_unified *wmi_handle);
 
 /**
- * wmi_unified_get_pdev_handle: Get WMI SoC handle
- * @soc: Pointer to wmi soc object
- * @pdev_idx: pdev index
- *
- * Return: Pointer to wmi handle or NULL on failure
- */
-void *wmi_unified_get_pdev_handle(struct wmi_soc *soc, uint32_t pdev_idx);
-
-/**
  * wmi_process_fw_event() - UMAC Callback to process fw event.
  * @wmi_handle: handle to WMI.
  * @evt_buf: wmi event buffer
@@ -5250,6 +5241,14 @@ QDF_STATUS
 wmi_extract_bcn_stats(wmi_unified_t wmi_handle, void *evt_buf,
 		      uint32_t index, wmi_host_bcn_stats *vdev_bcn_stats);
 
+/**
+ * wmi_unified_get_pdev_handle: Get WMI SoC handle
+ * @soc: Pointer to wmi soc object
+ * @pdev_idx: pdev index
+ *
+ * Return: Pointer to wmi handle or NULL on failure
+ */
+void *wmi_unified_get_pdev_handle(struct wmi_soc *soc, uint32_t pdev_idx);
 #endif
 
 #ifdef WLAN_FEATURE_POWER_STATISTICS
