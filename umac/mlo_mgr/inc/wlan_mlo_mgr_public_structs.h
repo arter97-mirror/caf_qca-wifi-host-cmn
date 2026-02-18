@@ -68,7 +68,6 @@ struct scan_cache_entry;
 #endif
 #endif
 
-
 /* Default Initialization value for Max Recommended Simultaneous Links */
 #ifndef WLAN_UMAC_MLO_RECOM_MAX_SIMULT_LINKS_DEFAULT
 #define WLAN_UMAC_MLO_RECOM_MAX_SIMULT_LINKS_DEFAULT 2
@@ -81,6 +80,57 @@ struct scan_cache_entry;
 
 /* Max PEER support */
 #define MAX_MLO_PEER 512
+
+#ifdef WLAN_FEATURE_11BN_SMD
+#define SMD_MAX_PREPARED_TARGETS 8
+
+/**
+ * struct smd_prepared_target - Prepared target AP context
+ * @target_bss_ctx: Target AP's STA context (prepared but not active)
+ * @prepared: ST preparation completed for this target
+ * @prep_timestamp: System timestamp(ms) when the preparation is completed
+ */
+struct smd_prepared_target {
+	struct wlan_mlo_sta *target_bss_ctx;
+	bool prepared;
+	qdf_time_t prep_timestamp;
+};
+
+/**
+ * struct smd_context - SMD roaming context at device level
+ * @smd_identifier: SMD ID (MAC address format, SMD-wide)
+ * @smd_capabilities: SMD capabilities from SMD Information Element
+ * @timeout_tu: Timeout in TU for ST prep->exec transition
+ * @prepared_targets: Array of prepared target contexts
+ * @num_prepared: Number of currently prepared targets
+ * @active_target_idx: Index of target being transitioned to
+ * @smd_roaming_in_progress: SMD roaming in progress
+ * @same_smd_roaming: Same SMD or cross-SMD roaming
+ * @st_prep_in_progress: ST preparation ongoing
+ * @st_exec_in_progress: ST execution ongoing
+ * @smd_ctx_lock: Mutex to protect SMD context
+ */
+struct smd_context {
+	struct qdf_mac_addr smd_identifier;
+	struct {
+		uint8_t dl_data_forwarding:1;
+		uint8_t max_prepared_targets:3;
+		uint8_t smd_type:1;
+		uint8_t ptk_mode:1;
+		uint8_t neighbor_ap_probe_support:1;
+		uint8_t reserved:1;
+	} smd_capabilities;
+	uint16_t timeout_tu;
+	struct smd_prepared_target prepared_targets[SMD_MAX_PREPARED_TARGETS];
+	uint8_t num_prepared;
+	uint8_t active_target_idx;
+	bool smd_roaming_in_progress;
+	bool same_smd_roaming;
+	bool st_prep_in_progress;
+	bool st_exec_in_progress;
+	qdf_mutex_t smd_ctx_lock;
+};
+#endif
 
 struct mlo_mlme_ext_ops;
 struct mlo_osif_ext_ops;
@@ -1219,6 +1269,7 @@ struct wlan_mlo_link_mac_update {
  *                                advertisement
  * @link_ptqm_migrate_ctx: PTQM migration link context
  * @link_recfg_op_support: Peer link reconfig operation support
+ * @smd_ctx: SMD roaming context information for device level
  */
 struct wlan_mlo_dev_context {
 	qdf_list_node_t node;
@@ -1259,6 +1310,9 @@ struct wlan_mlo_dev_context {
 	uint8_t mlo_max_recom_simult_links;
 	bool mlo_extmld_cap_advertisement;
 	bool link_recfg_op_support;
+#ifdef WLAN_FEATURE_11BN_SMD
+	struct smd_context *smd_ctx;
+#endif
 };
 
 /**
