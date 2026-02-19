@@ -1632,7 +1632,7 @@ QDF_STATUS dispatcher_pdev_open(struct wlan_objmgr_pdev *pdev)
 
 	status = dispatcher_cfr_pdev_open(pdev);
 	if (status != QDF_STATUS_SUCCESS && status != QDF_STATUS_COMP_DISABLED)
-		goto cfr_pdev_open_fail;
+		qdf_err("dispatcher_cfr_pdev_open failed");
 
 	status = dispatcher_wifi_radar_pdev_open(pdev);
 	if (status != QDF_STATUS_SUCCESS && status != QDF_STATUS_COMP_DISABLED)
@@ -1652,7 +1652,6 @@ mgmt_txrx_pdev_open_fail:
 	dispatcher_wifi_radar_pdev_close(pdev);
 wifi_radar_pdev_open_fail:
 	dispatcher_cfr_pdev_close(pdev);
-cfr_pdev_open_fail:
 	dispatcher_spectral_pdev_close(pdev);
 spectral_pdev_open_fail:
 	dispatcher_regulatory_pdev_close(pdev);
