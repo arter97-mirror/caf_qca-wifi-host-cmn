@@ -1067,8 +1067,7 @@ QDF_STATUS wlan_mgmt_txrx_desc_id_allocate(struct wlan_objmgr_pdev *pdev,
 }
 
 QDF_STATUS wlan_mgmt_txrx_desc_id_free(struct wlan_objmgr_pdev *pdev,
-				       uint32_t desc_id, qdf_nbuf_t nbuf,
-				       uint8_t *vdev_id)
+				       uint32_t desc_id, uint8_t *vdev_id)
 {
 	struct mgmt_txrx_priv_pdev_context *mgmt_txrx_pdev_ctx;
 	struct mgmt_txrx_desc_elem_t *desc;
@@ -1091,14 +1090,6 @@ QDF_STATUS wlan_mgmt_txrx_desc_id_free(struct wlan_objmgr_pdev *pdev,
 			      desc_id, desc ? desc->in_use : -1);
 		return QDF_STATUS_E_INVAL;
 	}
-
-	if (desc->nbuf)
-		nbuf = desc->nbuf;
-	else
-		nbuf = NULL;
-
-	if (!nbuf)
-		mgmt_txrx_err("Mgmt txrx nbuf is NULL for desc_id=%u", desc_id);
 
 	if (vdev_id)
 		*vdev_id = desc->vdev_id;

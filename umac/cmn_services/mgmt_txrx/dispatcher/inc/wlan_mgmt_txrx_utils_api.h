@@ -1460,12 +1460,10 @@ QDF_STATUS wlan_mgmt_txrx_desc_id_allocate(struct wlan_objmgr_pdev *pdev,
  * wlan_mgmt_txrx_desc_id_free() - Free a management descriptor ID
  * @pdev: pdev context
  * @desc_id: descriptor ID to free
- * @nbuf: pointer to receive the frame buffer (optional, can be NULL)
  * @vdev_id: pointer to receive the vdev_id (optional, can be NULL)
  *
  * Return: QDF_STATUS_SUCCESS on success, error code on failure
  */
 QDF_STATUS wlan_mgmt_txrx_desc_id_free(struct wlan_objmgr_pdev *pdev,
-				       uint32_t desc_id, qdf_nbuf_t nbuf,
-				       uint8_t *vdev_id);
+				       uint32_t desc_id, uint8_t *vdev_id);
 #endif
