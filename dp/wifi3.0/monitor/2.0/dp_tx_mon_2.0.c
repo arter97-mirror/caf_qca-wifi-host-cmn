@@ -2351,6 +2351,11 @@ static void dp_tx_mon_ppdu_process(void *context)
 	if (qdf_unlikely(!mon_pdev_be))
 		return;
 
+	if (qdf_unlikely(mac_id >= MAX_NUM_LMAC_HW)) {
+		dp_mon_err("Invalid mac_id: %d", mac_id);
+		return;
+	}
+
 	tx_mon_be = dp_mon_pdev_get_tx_mon(mon_pdev_be, mac_id);
 	if (qdf_unlikely(TX_MON_BE_DISABLE == tx_mon_be->mode &&
 			 !dp_lite_mon_is_tx_enabled(mon_pdev)))
