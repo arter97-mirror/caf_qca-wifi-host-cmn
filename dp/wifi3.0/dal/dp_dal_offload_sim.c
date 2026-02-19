@@ -1021,4 +1021,180 @@ int dp_dal_offload_sim_fetch_current_hp_tp(struct dp_dal_sim_ctx *dal_sim_ctx,
 	return 0;
 }
 
+#ifdef FEATURE_DP_DAL_D3_WOW
+static int dp_dal_offload_sim_send_msg_to_fw(struct dp_dal_sim_ctx *dal_sim_ctx,
+					      uint32_t msg_type, uint32_t val)
+{
+	uint32_t msg;
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	void *dev_base_addr;
+	QDF_STATUS status;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL sim context");
+		return -EINVAL;
+	}
+
+	offload_ctx = (struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context");
+		return -EINVAL;
+	}
+
+	dev_base_addr = offload_ctx->dev_base_addr;
+
+	/* Construct message with TAG, TYPE, and VAL
+	 * Format: [TAG(4 bits)][TYPE(16 bits)][VAL(12 bits)]
+	 */
+	msg = DAL_MSG_CONSTRUCT(OLE_WOW_MSG_TAG_OLE_TO_WLAN, msg_type, val);
+
+	/* Step 1: Write message to PCIE doorbell message address
+	 * FW reads the message value from PCIE_DOORBELL_MSG_ADDR (0x3224)
+	 */
+	qdf_iowrite32(dev_base_addr + PCIE_DOORBELL_MSG_ADDR, msg);
+
+	/* Step 2: Trigger interrupt by writing to PCIE doorbell interrupt address
+	 * Writing PCIE_DOORBELL_IRQ_TRIGGER to PCIE_DOORBELL_IRQ_ADDR (0x3228)
+	 * triggers the interrupt to notify FW that a message is available
+	 */
+	/* Event is already in reset state from previous completion or init */
+	qdf_iowrite32(dev_base_addr + PCIE_DOORBELL_IRQ_ADDR, PCIE_DOORBELL_IRQ_TRIGGER);
+
+	dp_info("Sent msg 0x%x to FW: msg_addr=0x%x, irq_addr=0x%x, irq_trigger=0x%x",
+		msg, PCIE_DOORBELL_MSG_ADDR, PCIE_DOORBELL_IRQ_ADDR, PCIE_DOORBELL_IRQ_TRIGGER);
+
+	/* Poll for MSI address (wait for interrupt)
+	 * We wait for the ISR to signal the event, which indicates FW has written
+	 * to the MSI address.
+	 */
+	status = qdf_wait_for_event_completion(&dal_sim_ctx->suspend_msg_event, 100);
+	if (status != QDF_STATUS_SUCCESS) {
+		dp_err("Timeout waiting for FW write MSI interrupt");
+		return -ETIMEDOUT;
+	}
+
+	dp_info("Received FW write MSI interrupt");
+	return 0;
+}
+
+int dp_dal_offload_sim_handle_msg(struct dp_dal_sim_ctx *dal_sim_ctx,
+				  uint32_t msg_type)
+{
+	int ret_val = 0;
+	uint32_t type = DAL_MSG_GET_TYPE(msg_type);
+	uint32_t tag = DAL_MSG_GET_TAG(msg_type);
+	uint32_t val = DAL_MSG_GET_VAL(msg_type);
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	void *fw_write_vaddr;
+	uint32_t resp;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL sim context");
+		return -EINVAL;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context");
+		return -EINVAL;
+	}
+
+	fw_write_vaddr = dal_sim_ctx->suspend_msg_data_vaddr;
+	if (!fw_write_vaddr) {
+		dp_err("NULL FW write DDR buffer");
+		return -EINVAL;
+	}
+
+	dp_info("Offload Sim received msg: Tag=%u Type=%u Val=%u", tag, type, val);
+
+	switch (type) {
+	case OLE_WOW_MSG_TYPE_INTF_PAUSE:
+		dp_info("Handling INTF_PAUSE");
+
+		/* Clear response area in DDR buffer */
+		*(uint32_t *)fw_write_vaddr = 0;
+
+		/* Send message to FW and trigger MSI interrupt */
+		ret_val = dp_dal_offload_sim_send_msg_to_fw(dal_sim_ctx,
+						  OLE_WOW_MSG_TYPE_INTF_PAUSE,
+						  val);
+		if (ret_val)
+			return ret_val;
+
+		/* Read response from DDR buffer */
+		resp = *(uint32_t *)fw_write_vaddr;
+		if (resp != 0) {
+			uint32_t resp_tag = DAL_MSG_GET_TAG(resp);
+			uint32_t resp_type = DAL_MSG_GET_TYPE(resp);
+
+			if (resp_tag == OLE_WOW_MSG_TAG_WLAN_TO_OLE) {
+				/* Validate response type is ACK or NACK */
+				if (resp_type == OLE_WOW_MSG_TYPE_ACK ||
+				    resp_type == OLE_WOW_MSG_TYPE_NACK) {
+					dp_info("Received response from FW: 0x%x", resp);
+					ret_val = resp;
+				} else {
+					dp_err("Invalid response type from FW: 0x%x", resp);
+					ret_val = -EINVAL;
+				}
+			} else {
+				dp_err("Invalid response tag from FW: 0x%x", resp);
+				ret_val = -EINVAL;
+			}
+		} else {
+			dp_err("No response from FW in DDR buffer after interrupt");
+			ret_val = -EIO;
+		}
+		break;
+
+	case OLE_WOW_MSG_TYPE_INTF_RESUME:
+		dp_info("Handling INTF_RESUME");
+
+		/* Clear response area in DDR buffer */
+		*(uint32_t *)fw_write_vaddr = 0;
+
+		/* Send message to FW and trigger MSI interrupt */
+		ret_val = dp_dal_offload_sim_send_msg_to_fw(dal_sim_ctx,
+						  OLE_WOW_MSG_TYPE_INTF_RESUME,
+						  val);
+		if (ret_val)
+			return ret_val;
+
+		/* Read response from DDR buffer */
+		resp = *(uint32_t *)fw_write_vaddr;
+		if (resp != 0) {
+			uint32_t resp_tag = DAL_MSG_GET_TAG(resp);
+			uint32_t resp_type = DAL_MSG_GET_TYPE(resp);
+
+			if (resp_tag == OLE_WOW_MSG_TAG_WLAN_TO_OLE) {
+				/* Validate response type is ACK or NACK */
+				if (resp_type == OLE_WOW_MSG_TYPE_ACK ||
+				    resp_type == OLE_WOW_MSG_TYPE_NACK) {
+					dp_info("Received response from FW: 0x%x", resp);
+					ret_val = resp;
+				} else {
+					dp_err("Invalid response type from FW: 0x%x", resp);
+					ret_val = -EINVAL;
+				}
+			} else {
+				dp_err("Invalid response tag from FW: 0x%x", resp);
+				ret_val = -EINVAL;
+			}
+		} else {
+			dp_err("No response from FW in DDR buffer after interrupt");
+			ret_val = -EIO;
+		}
+		break;
+
+	default:
+		dp_err("Unknown message type %u", type);
+		ret_val = -EINVAL;
+		break;
+	}
+
+	return ret_val;
+}
+#endif /* FEATURE_DP_DAL_D3_WOW */
+
 #endif /* FEATURE_DP_DAL_SIM */
