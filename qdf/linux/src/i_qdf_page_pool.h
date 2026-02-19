@@ -111,12 +111,14 @@ void __qdf_page_pool_put_page(__qdf_page_pool_t pp, struct page *page,
  * @pool_size: Pool Size
  * @pp_page_size: Page pool page size
  * @dir: DMA direction
+ * @rx_pp_track_id: Pointer to store the track id assigned by tracker
  *
  * Return: Page Pool Reference
  */
 __qdf_page_pool_t
 __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
-		       size_t pp_page_size, qdf_dma_dir_t dir);
+		       size_t pp_page_size, qdf_dma_dir_t dir,
+		       int *rx_pp_track_id);
 
 /**
  * __qdf_page_pool_destroy() - Destroy page_pool
@@ -134,6 +136,34 @@ void __qdf_page_pool_destroy(__qdf_page_pool_t pp);
  * Return: Number of page held by page pool
  */
 uint32_t __qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp);
+
+/**
+ * __qdf_page_pool_inc_buf_count() - Increment page count for a pool
+ * @nbuf: Network buffer
+ *
+ * Return: None
+ */
+void __qdf_page_pool_inc_buf_count(struct sk_buff *nbuf);
+
+/**
+ * __qdf_page_pool_dec_buf_count() - Decrement page count for a pool
+ * @nbuf: Network buffer
+ *
+ * Return: None
+ */
+void __qdf_page_pool_dec_buf_count(struct sk_buff *nbuf);
+
+/**
+ * __qdf_page_pool_check_inflight_buffers() - Check if page pool has in-flight
+ *					      buffers
+ * @pp: Page pool pointer
+ * @rx_pp_idx: Page pool tracker index for rx page pool
+ *
+ * Return: true if there are inflight buffers, false otherwise
+ */
+bool __qdf_page_pool_check_inflight_buffers(__qdf_page_pool_t pp,
+					    int rx_pp_idx);
+
 #else
 
 typedef void *__qdf_page_pool_t;
@@ -235,12 +265,14 @@ __qdf_page_pool_put_page(__qdf_page_pool_t pp, struct page *page,
  * @pool_size: Pool Size
  * @pp_page_size: Page pool page size
  * @dir: DMA direction
+ * @rx_pp_track_id: Pointer to store the track id assigned by tracker
  *
  * Return: Page Pool Reference
  */
 static inline __qdf_page_pool_t
 __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
-		       size_t pp_page_size, qdf_dma_dir_t dir)
+		       size_t pp_page_size, qdf_dma_dir_t dir,
+		       int *rx_pp_track_id)
 {
 	return NULL;
 }
@@ -266,6 +298,40 @@ static inline uint32_t
 __qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp)
 {
 	return 0;
+}
+
+/**
+ * __qdf_page_pool_inc_buf_count() - Increment page count for a pool
+ * @nbuf: Network buffer
+ *
+ * Return: None
+ */
+static inline void __qdf_page_pool_inc_buf_count(struct sk_buff *nbuf)
+{
+}
+
+/**
+ * __qdf_page_pool_dec_buf_count() - Decrement page count for a pool
+ * @nbuf: Network buffer
+ *
+ * Return: None
+ */
+static inline void __qdf_page_pool_dec_buf_count(struct sk_buff *nbuf)
+{
+}
+
+/**
+ * __qdf_page_pool_check_inflight_buffers() - Check if page pool has in-flight
+ *					      buffers
+ * @pp: Page pool pointer
+ * @rx_pp_idx: Page pool tracker index for rx page pool
+ *
+ * Return: true if there are inflight buffers, false otherwise
+ */
+static inline bool
+__qdf_page_pool_check_inflight_buffers(__qdf_page_pool_t pp, int rx_pp_idx)
+{
+	return false;
 }
 
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE  || DP_FEATURE_TX_PAGE_POOL */

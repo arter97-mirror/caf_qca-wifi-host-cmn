@@ -553,6 +553,8 @@ nbuf_alloc:
 		goto out_fail;
 	}
 
+	qdf_nbuf_rx_pp_track_id_set(nbuf, pp_params->pp_track_id);
+
 	page = qdf_virt_to_head_page(nbuf->data);
 	nbuf_frag_info->paddr = QDF_NBUF_CB_PADDR(nbuf) =
 		qdf_page_pool_get_dma_addr(page) + offset +
@@ -560,7 +562,9 @@ nbuf_alloc:
 
 	(nbuf_frag_info->virt_addr).nbuf = nbuf;
 
-	ret = qdf_nbuf_track_map_single(soc->osdev, nbuf, QDF_DMA_FROM_DEVICE);
+	ret = qdf_nbuf_map_nbytes_single(soc->osdev, nbuf,
+					 QDF_DMA_FROM_DEVICE,
+					 rx_desc_pool->buf_size);
 	if (!QDF_IS_STATUS_SUCCESS(ret)) {
 		qdf_nbuf_free(nbuf);
 		goto out_fail;
@@ -587,7 +591,7 @@ out_fail:
 
 static qdf_page_pool_t
 dp_rx_pp_prealloc_get(struct dp_soc *soc, size_t *pp_size,
-		      size_t *page_size, uint32_t pool_size)
+		      size_t *page_size, uint32_t pool_size, int *pp_track_id)
 {
 	struct dp_page_pool_t *pool_t = NULL;
 
@@ -595,7 +599,8 @@ dp_rx_pp_prealloc_get(struct dp_soc *soc, size_t *pp_size,
 		return NULL;
 
 	pool_t = soc->cdp_soc.ol_ops->dp_get_page_pool(QDF_DP_PAGE_POOL_RX,
-						       pool_size, false);
+						       pool_size, false,
+						       pp_track_id);
 	if (pool_t && pool_t->pp && pool_t->pp_size == *pp_size &&
 	    pool_t->page_size == *page_size)
 		return pool_t->pp;
@@ -646,7 +651,8 @@ static void dp_rx_page_pool_inactive_work(void *arg)
 		if (!curr->pp)
 			continue;
 
-		if (!qdf_page_pool_full_bh(curr->pp))
+		if (qdf_page_pool_check_inflight_buffers(curr->pp,
+							 curr->pp_track_id))
 			continue;
 
 		qdf_list_remove_node(&rx_pp->inactive_list, &curr->node);
@@ -857,7 +863,7 @@ void dp_rx_page_pool_free(struct dp_soc *soc, uint32_t pool_id)
 static qdf_page_pool_t
 __dp_rx_page_pool_create(struct dp_soc *soc, uint32_t pool_size,
 			 size_t buf_size, size_t *page_size,
-			 size_t *pp_size, uint8_t *prealloc)
+			 size_t *pp_size, uint8_t *prealloc, int *pp_track_id)
 {
 	qdf_page_pool_t pp;
 	size_t bufs_per_page;
@@ -872,14 +878,15 @@ alloc_page_pool:
 		*pp_size = (*pp_size + 1);
 
 	/* Try to allocate from prealloc pool first */
-	pp = dp_rx_pp_prealloc_get(soc, pp_size, page_size, pool_size);
+	pp = dp_rx_pp_prealloc_get(soc, pp_size, page_size,
+				   pool_size, pp_track_id);
 	if (pp) {
 		*prealloc = 1;
 		return pp;
 	}
 
 	pp = qdf_page_pool_create(soc->osdev, *pp_size,
-				  *page_size, QDF_DMA_FROM_DEVICE);
+				  *page_size, QDF_DMA_FROM_DEVICE, pp_track_id);
 	if (!pp) {
 		dp_err("Failed to create page pool");
 		return NULL;
@@ -987,7 +994,8 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 
 		pp = __dp_rx_page_pool_create(soc, pool_size,
 					      buf_size, &page_size,
-					      &pp_size, &prealloc);
+					      &pp_size, &prealloc,
+					      &pp_params->pp_track_id);
 		if (!pp)
 			goto out_pp_fail;
 
@@ -1005,7 +1013,8 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 	rx_pp->aux_pool.pp = __dp_rx_page_pool_create(soc,
 						      rx_pp->aux_pool.pool_size,
 						      buf_size, &page_size,
-						      &pp_size, &prealloc);
+						      &pp_size, &prealloc,
+						      &rx_pp->aux_pool.pp_track_id);
 	if (!rx_pp->aux_pool.pp)
 		goto out_pp_fail;
 
@@ -1108,7 +1117,8 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 
 		pp = __dp_rx_page_pool_create(soc, pool_size,
 					      buf_size, &page_size,
-					      &pp_size, &prealloc);
+					      &pp_size, &prealloc,
+					      &pp_params->pp_track_id);
 		if (!pp)
 			goto out_pp_fail;
 
@@ -1182,9 +1192,9 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 			continue;
 
 		/* Immediately destroy the page pool if there
-		 * are no inflight pages.
+		 * are no inflight buffers.
 		 */
-		if (qdf_page_pool_full_bh(pp_params->pp)) {
+		if (!qdf_page_pool_check_inflight_buffers(pp_params->pp, pp_params->pp_track_id)) {
 			qdf_list_insert_back(&destroy_list, &pp_params->node);
 			continue;
 		}

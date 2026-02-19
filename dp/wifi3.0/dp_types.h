@@ -1916,6 +1916,7 @@ struct dp_page_pool_t {
 	size_t pp_size;
 	size_t page_size;
 	bool in_use;
+	int pp_track_id;
 };
 #endif
 
@@ -1942,6 +1943,7 @@ struct dp_rx_pp_params {
 	size_t pool_size;
 	size_t pp_size;
 	uint8_t prealloc;
+	int pp_track_id;
 };
 
 struct dp_rx_page_pool {

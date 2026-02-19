@@ -747,7 +747,8 @@ dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 		new_pp = qdf_page_pool_create(soc->osdev,
 					      pp_size,
 					      DP_PP_PAGE_SIZE_HIGHER_ORDER,
-					      QDF_DMA_BIDIRECTIONAL);
+					      QDF_DMA_BIDIRECTIONAL,
+					      NULL);
 		if (new_pp) {
 			pp_params = &tx_pp->idle_pool_ho[i];
 			pp_params->pp = new_pp;
@@ -774,7 +775,8 @@ dp_tx_page_pool_create_idle_pools(struct dp_soc *soc,
 		new_pp = qdf_page_pool_create(soc->osdev,
 					      pp_size,
 					      qdf_page_size,
-					      QDF_DMA_BIDIRECTIONAL);
+					      QDF_DMA_BIDIRECTIONAL,
+					      NULL);
 		if (new_pp) {
 			pp_params = &tx_pp->idle_pool_lo[i];
 			pp_params->pp = new_pp;
@@ -1057,7 +1059,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 		pool_t =
 		soc->cdp_soc.ol_ops->dp_get_page_pool(QDF_DP_PAGE_POOL_TX,
 						      pool_size,
-						      dynamic_pp_enabled);
+						      dynamic_pp_enabled,
+						      NULL);
 	if (pool_t && pool_t->pp) {
 		pp_params->pp = pool_t->pp;
 		pp_params->pool_size = pool_t->pool_size;

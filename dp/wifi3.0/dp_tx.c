@@ -569,7 +569,8 @@ dp_tx_page_pool_create_idle(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp,
 	new_pp = qdf_page_pool_create(soc->osdev,
 				      params_copy->pool_size,
 				      params_copy->page_size,
-				      QDF_DMA_BIDIRECTIONAL);
+				      QDF_DMA_BIDIRECTIONAL,
+				      NULL);
 	if (!new_pp)
 		return QDF_STATUS_E_NOMEM;
 

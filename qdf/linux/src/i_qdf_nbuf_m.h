@@ -78,6 +78,7 @@
  * @u.rx.dev.priv_cb_m.to_ds: to DS bit in RX packet
  * @u.rx.dev.priv_cb_m.logical_link_id: link id of RX packet
  * @u.rx.dev.priv_cb_m.audio_smmu_map: audio smmu map
+ * @u.rx.dev.priv_cb_m.pp_track_id: RX page pool track id for tracking buffers
  * @u.rx.dev.priv_cb_m.reserved1: reserved bits
  * @u.rx.dev.priv_cb_m.dp_ext: Union of tcp and ext structs
  * @u.rx.dev.priv_cb_m.dp_ext.tcp: TCP structs
@@ -234,7 +235,8 @@ struct qdf_nbuf_cb {
 						 logical_link_id:4,
 						 band:3,
 						 audio_smmu_map:1,
-						 reserved1:6;
+						 pp_track_id:4,
+						 reserved1:2;
 					union {
 						struct {
 							uint32_t tcp_seq_num;
@@ -692,6 +694,16 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
 	audio_smmu_map)
 
+#define QDF_NBUF_CB_RX_PP_TRACK_ID(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
+	pp_track_id)
+
+#define __qdf_nbuf_rx_pp_track_id_get(skb) \
+	QDF_NBUF_CB_RX_PP_TRACK_ID(skb)
+
+#define __qdf_nbuf_rx_pp_track_id_set(skb, rx_pp_track_id) \
+	(QDF_NBUF_CB_RX_PP_TRACK_ID(skb) = (rx_pp_track_id))
+
 #define __qdf_nbuf_dal_owned_get(skb) \
 	QDF_NBUF_CB_RX_DAL_OWNED(skb)
 
@@ -769,6 +781,9 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
 		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
 					   nbytes, __qdf_dma_dir_to_os(dir));
+
+		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
+			qdf_page_pool_inc_buf_count(buf);
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -812,10 +827,14 @@ __qdf_nbuf_unmap_nbytes_single(qdf_device_t osdev, struct sk_buff *buf,
 	 */
 	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
 	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
-	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf))
-		return dma_sync_single_for_cpu(osdev->dev, paddr, nbytes,
-					       __qdf_dma_dir_to_os(dir));
+	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
 
+		dma_sync_single_for_cpu(osdev->dev, paddr, nbytes,
+					__qdf_dma_dir_to_os(dir));
+		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
+			qdf_page_pool_dec_buf_count(buf);
+		return;
+	}
 	if (qdf_likely(paddr)) {
 		__qdf_record_nbuf_nbytes(
 			__qdf_nbuf_get_end_offset(buf), dir, false);

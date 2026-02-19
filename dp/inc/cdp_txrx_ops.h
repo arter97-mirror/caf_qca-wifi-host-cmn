@@ -1797,7 +1797,8 @@ struct ol_if_ops {
 #if defined(DP_FEATURE_TX_PAGE_POOL) || defined(DP_FEATURE_RX_BUFFER_RECYCLE)
 	struct dp_page_pool_t* (*dp_get_page_pool)(enum qdf_dp_tx_pp_type type,
 						   uint32_t pool_size,
-						   bool dynamic_pp_request);
+						   bool dynamic_pp_request,
+						   int *pp_track_id);
 	void (*dp_put_page_pool)(qdf_page_pool_t pp,
 				 enum qdf_dp_tx_pp_type type);
 	void (*dp_page_pool_init)(struct cdp_ctrl_objmgr_psoc *ctrl_psoc);
