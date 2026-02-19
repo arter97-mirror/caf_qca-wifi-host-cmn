@@ -6384,18 +6384,6 @@ void dp_print_tso_seg_stats(struct dp_pdev *pdev, uint32_t id)
 static inline
 void dp_print_mon_ring_stat_from_hal(struct dp_pdev *pdev, uint8_t mac_id)
 {
-	if (pdev->soc->wlan_cfg_ctx->rxdma1_enable) {
-		dp_print_ring_stat_from_hal(pdev->soc,
-			&pdev->soc->rxdma_mon_buf_ring[mac_id],
-			RXDMA_MONITOR_BUF);
-		dp_print_ring_stat_from_hal(pdev->soc,
-			&pdev->soc->rxdma_mon_dst_ring[mac_id],
-			RXDMA_MONITOR_DST);
-		dp_print_ring_stat_from_hal(pdev->soc,
-			&pdev->soc->rxdma_mon_desc_ring[mac_id],
-			RXDMA_MONITOR_DESC);
-	}
-
 	dp_print_ring_stat_from_hal(pdev->soc,
 				    &pdev->soc->rxdma_mon_status_ring[mac_id],
 					RXDMA_MONITOR_STATUS);

@@ -1041,23 +1041,6 @@ dp_rx_pdev_mon_buf_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_id)
 }
 
 static void
-dp_rx_pdev_mon_buf_desc_pool_deinit(struct dp_pdev *pdev, uint32_t mac_id)
-{
-	uint8_t pdev_id = pdev->pdev_id;
-	struct dp_soc *soc = pdev->soc;
-	struct rx_desc_pool *rx_desc_pool;
-
-	rx_desc_pool = &soc->rx_desc_mon[mac_id];
-
-	dp_debug("Mon RX Desc buf Pool[%d] deinit", pdev_id);
-
-	dp_rx_desc_pool_deinit(soc, rx_desc_pool, mac_id);
-
-	/* Detach full monitor mode resources */
-	dp_full_mon_detach(pdev);
-}
-
-static void
 dp_rx_pdev_mon_buf_desc_pool_free(struct dp_pdev *pdev, uint32_t mac_id)
 {
 	uint8_t pdev_id = pdev->pdev_id;
@@ -1069,22 +1052,6 @@ dp_rx_pdev_mon_buf_desc_pool_free(struct dp_pdev *pdev, uint32_t mac_id)
 	dp_debug("Mon RX Buf Desc Pool Free pdev[%d]", pdev_id);
 
 	dp_rx_desc_pool_free(soc, rx_desc_pool);
-}
-
-void dp_rx_pdev_mon_buf_buffers_free(struct dp_pdev *pdev, uint32_t mac_id)
-{
-	uint8_t pdev_id = pdev->pdev_id;
-	struct dp_soc *soc = pdev->soc;
-	struct rx_desc_pool *rx_desc_pool;
-
-	rx_desc_pool = &soc->rx_desc_mon[mac_id];
-
-	dp_debug("Mon RX Buf buffers Free pdev[%d]", pdev_id);
-
-	if (rx_desc_pool->rx_mon_dest_frag_enable)
-		dp_rx_desc_frag_free(soc, rx_desc_pool);
-	else
-		dp_rx_desc_nbuf_free(soc, rx_desc_pool, true);
 }
 
 QDF_STATUS
@@ -1367,126 +1334,12 @@ dp_rx_pdev_mon_dest_desc_pool_free(struct dp_pdev *pdev, int mac_for_pdev)
 	dp_rx_pdev_mon_buf_desc_pool_free(pdev, mac_for_pdev);
 	dp_hw_link_desc_pool_banks_free(soc, mac_for_pdev);
 }
-
-static void
-dp_rx_pdev_mon_dest_desc_pool_deinit(struct dp_pdev *pdev, int mac_for_pdev)
-{
-	struct dp_soc *soc = pdev->soc;
-
-	if (!soc->wlan_cfg_ctx->rxdma1_enable)
-		return;
-
-	dp_rx_pdev_mon_buf_desc_pool_deinit(pdev, mac_for_pdev);
-}
-
-static void
-dp_rx_pdev_mon_dest_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_for_pdev)
-{
-	struct dp_soc *soc = pdev->soc;
-
-	if (!soc->wlan_cfg_ctx->rxdma1_enable ||
-	    !wlan_cfg_is_delay_mon_replenish(soc->wlan_cfg_ctx))
-		return;
-
-	dp_rx_pdev_mon_buf_desc_pool_init(pdev, mac_for_pdev);
-	dp_link_desc_ring_replenish(soc, mac_for_pdev, true);
-}
-
-static void
-dp_rx_pdev_mon_dest_buffers_free(struct dp_pdev *pdev, int mac_for_pdev)
-{
-	struct dp_soc *soc = pdev->soc;
-
-	if (!soc->wlan_cfg_ctx->rxdma1_enable)
-		return;
-
-	dp_rx_pdev_mon_buf_buffers_free(pdev, mac_for_pdev);
-}
-
-static QDF_STATUS
-dp_rx_pdev_mon_dest_buffers_alloc(struct dp_pdev *pdev, int mac_for_pdev)
-{
-	struct dp_soc *soc = pdev->soc;
-	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = soc->wlan_cfg_ctx;
-	bool delayed_replenish;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-
-	delayed_replenish = soc_cfg_ctx->delayed_replenish_entries ? 1 : 0;
-	if (!soc->wlan_cfg_ctx->rxdma1_enable ||
-	    !wlan_cfg_is_delay_mon_replenish(soc->wlan_cfg_ctx))
-		return status;
-
-	status = dp_rx_pdev_mon_buf_buffers_alloc(pdev, mac_for_pdev,
-						  delayed_replenish);
-	if (!QDF_IS_STATUS_SUCCESS(status))
-		dp_err("dp_rx_pdev_mon_buf_desc_pool_alloc() failed");
-
-	return status;
-}
-
-static QDF_STATUS
-dp_rx_pdev_mon_dest_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_for_pdev)
-{
-	struct dp_soc *soc = pdev->soc;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-
-	if (!soc->wlan_cfg_ctx->rxdma1_enable ||
-	    !wlan_cfg_is_delay_mon_replenish(soc->wlan_cfg_ctx))
-		return status;
-
-	/* Allocate sw rx descriptor pool for monitor RxDMA buffer ring */
-	status = dp_rx_pdev_mon_buf_desc_pool_alloc(pdev, mac_for_pdev);
-	if (!QDF_IS_STATUS_SUCCESS(status)) {
-		dp_err("dp_rx_pdev_mon_buf_desc_pool_alloc() failed");
-		goto fail;
-	}
-
-	/* Allocate link descriptors for the monitor link descriptor ring */
-	status = dp_hw_link_desc_pool_banks_alloc(soc, mac_for_pdev);
-	if (!QDF_IS_STATUS_SUCCESS(status)) {
-		dp_err("dp_hw_link_desc_pool_banks_alloc() failed");
-		goto mon_buf_dealloc;
-	}
-
-	return status;
-
-mon_buf_dealloc:
-	dp_rx_pdev_mon_status_desc_pool_free(pdev, mac_for_pdev);
-fail:
-	return status;
-}
 #else
 static void
 dp_rx_pdev_mon_dest_desc_pool_free(struct dp_pdev *pdev, int mac_for_pdev)
 {
 }
 
-static void
-dp_rx_pdev_mon_dest_desc_pool_deinit(struct dp_pdev *pdev, int mac_for_pdev)
-{
-}
-
-static void
-dp_rx_pdev_mon_dest_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_for_pdev)
-{
-}
-
-static void
-dp_rx_pdev_mon_dest_buffers_free(struct dp_pdev *pdev, int mac_for_pdev)
-{
-}
-
-static QDF_STATUS
-dp_rx_pdev_mon_dest_buffers_alloc(struct dp_pdev *pdev, int mac_for_pdev)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static QDF_STATUS
-dp_rx_pdev_mon_dest_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_for_pdev)
-{
-	return QDF_STATUS_SUCCESS;
-}
 
 #if !defined(DISABLE_MON_CONFIG) && defined(MON_ENABLE_DROP_FOR_MAC)
 uint32_t
@@ -1640,8 +1493,6 @@ dp_rx_pdev_mon_cmn_desc_pool_deinit(struct dp_pdev *pdev, int mac_id)
 	int mac_for_pdev = dp_get_lmac_id_for_pdev_id(soc, mac_id, pdev_id);
 
 	dp_rx_pdev_mon_status_desc_pool_deinit(pdev, mac_for_pdev);
-
-	dp_rx_pdev_mon_dest_desc_pool_deinit(pdev, mac_for_pdev);
 }
 
 static void
@@ -1653,8 +1504,6 @@ dp_rx_pdev_mon_cmn_desc_pool_init(struct dp_pdev *pdev, int mac_id)
 	mac_for_pdev = dp_get_lmac_id_for_pdev_id(soc, mac_id, pdev->pdev_id);
 	dp_rx_pdev_mon_status_desc_pool_init(pdev, mac_for_pdev);
 	dp_mon_link_desc_ring_replenish(soc, mac_for_pdev);
-
-	dp_rx_pdev_mon_dest_desc_pool_init(pdev, mac_for_pdev);
 }
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
@@ -1744,13 +1593,6 @@ dp_rx_pdev_mon_buffers_free(struct dp_pdev *pdev)
 							  pdev_id);
 		dp_rx_pdev_mon_status_buffers_free(pdev, mac_for_pdev);
 	}
-
-	for (mac_id = 0; mac_id < soc_cfg_ctx->num_rxdma_dst_rings_per_pdev;
-	     mac_id++) {
-		mac_for_pdev = dp_get_lmac_id_for_pdev_id(pdev->soc, mac_id,
-							  pdev_id);
-		dp_rx_pdev_mon_dest_buffers_free(pdev, mac_for_pdev);
-	}
 	pdev->monitor_pdev->pdev_mon_init = 0;
 }
 
@@ -1775,19 +1617,8 @@ dp_rx_pdev_mon_buffers_alloc(struct dp_pdev *pdev)
 		}
 	}
 
-	for (mac_id = 0; mac_id < soc_cfg_ctx->num_rxdma_dst_rings_per_pdev;
-	     mac_id++) {
-		mac_for_pdev = dp_get_lmac_id_for_pdev_id(pdev->soc, mac_id,
-							  pdev_id);
-		status = dp_rx_pdev_mon_dest_buffers_alloc(pdev, mac_for_pdev);
-		if (!QDF_IS_STATUS_SUCCESS(status))
-			goto mon_stat_buf_dealloc;
-	}
-
 	return status;
 
-mon_stat_buf_dealloc:
-	dp_rx_pdev_mon_status_buffers_free(pdev, mac_for_pdev);
 mon_status_buf_fail:
 	return status;
 }
@@ -1818,14 +1649,8 @@ dp_rx_pdev_mon_cmn_desc_pool_alloc(struct dp_pdev *pdev, int mac_id)
 		goto mon_status_dealloc;
 	}
 
-	status = dp_rx_pdev_mon_dest_desc_pool_alloc(pdev, mac_for_pdev);
-	if (!QDF_IS_STATUS_SUCCESS(status))
-		goto link_desc_bank_free;
-
 	return status;
 
-link_desc_bank_free:
-	dp_mon_hw_link_desc_bank_free(soc, mac_for_pdev);
 mon_status_dealloc:
 	dp_rx_pdev_mon_status_desc_pool_free(pdev, mac_for_pdev);
 fail:
@@ -2775,136 +2600,4 @@ void dp_rx_mon_update_pf_tag_to_buf_headroom(struct dp_soc *soc,
 	}
 }
 #endif
-#endif
-
-#ifdef QCA_MONITOR_PKT_SUPPORT
-QDF_STATUS dp_mon_htt_dest_srng_setup(struct dp_soc *soc,
-				      struct dp_pdev *pdev,
-				      int mac_id,
-				      int mac_for_pdev)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-
-	if (soc->wlan_cfg_ctx->rxdma1_enable) {
-		status = htt_srng_setup(soc->htt_handle, mac_for_pdev,
-					soc->rxdma_mon_buf_ring[mac_id]
-					.hal_srng,
-					RXDMA_MONITOR_BUF);
-
-		if (status != QDF_STATUS_SUCCESS) {
-			dp_mon_err("Failed to send htt srng setup message for Rxdma mon buf ring");
-			return status;
-		}
-
-		status = htt_srng_setup(soc->htt_handle, mac_for_pdev,
-					soc->rxdma_mon_dst_ring[mac_id]
-					.hal_srng,
-					RXDMA_MONITOR_DST);
-
-		if (status != QDF_STATUS_SUCCESS) {
-			dp_mon_err("Failed to send htt srng setup message for Rxdma mon dst ring");
-			return status;
-		}
-
-		status = htt_srng_setup(soc->htt_handle, mac_for_pdev,
-					soc->rxdma_mon_desc_ring[mac_id]
-					.hal_srng,
-					RXDMA_MONITOR_DESC);
-
-		if (status != QDF_STATUS_SUCCESS) {
-			dp_mon_err("Failed to send htt srng message for Rxdma mon desc ring");
-			return status;
-		}
-	}
-
-	return status;
-}
-#endif /* QCA_MONITOR_PKT_SUPPORT */
-
-#ifdef QCA_MONITOR_PKT_SUPPORT
-void dp_mon_dest_rings_deinit(struct dp_pdev *pdev, int lmac_id)
-{
-	struct dp_soc *soc = pdev->soc;
-
-	if (soc->wlan_cfg_ctx->rxdma1_enable) {
-		dp_srng_deinit(soc, &soc->rxdma_mon_buf_ring[lmac_id],
-			       RXDMA_MONITOR_BUF, 0);
-		dp_srng_deinit(soc, &soc->rxdma_mon_dst_ring[lmac_id],
-			       RXDMA_MONITOR_DST, 0);
-		dp_srng_deinit(soc, &soc->rxdma_mon_desc_ring[lmac_id],
-			       RXDMA_MONITOR_DESC, 0);
-	}
-}
-
-void dp_mon_dest_rings_free(struct dp_pdev *pdev, int lmac_id)
-{
-	struct dp_soc *soc = pdev->soc;
-
-	if (soc->wlan_cfg_ctx->rxdma1_enable) {
-		dp_srng_free(soc, &soc->rxdma_mon_buf_ring[lmac_id]);
-		dp_srng_free(soc, &soc->rxdma_mon_dst_ring[lmac_id]);
-		dp_srng_free(soc, &soc->rxdma_mon_desc_ring[lmac_id]);
-	}
-}
-
-QDF_STATUS dp_mon_dest_rings_init(struct dp_pdev *pdev, int lmac_id)
-{
-	struct dp_soc *soc = pdev->soc;
-
-	if (soc->wlan_cfg_ctx->rxdma1_enable) {
-		if (dp_srng_init(soc, &soc->rxdma_mon_buf_ring[lmac_id],
-				 RXDMA_MONITOR_BUF, 0, lmac_id)) {
-			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_buf_ring ", soc);
-			goto fail1;
-		}
-
-		if (dp_srng_init(soc, &soc->rxdma_mon_dst_ring[lmac_id],
-				 RXDMA_MONITOR_DST, 0, lmac_id)) {
-			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_dst_ring", soc);
-			goto fail1;
-		}
-
-		if (dp_srng_init(soc, &soc->rxdma_mon_desc_ring[lmac_id],
-				 RXDMA_MONITOR_DESC, 0, lmac_id)) {
-			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_desc_ring", soc);
-			goto fail1;
-		}
-	}
-	return QDF_STATUS_SUCCESS;
-
-fail1:
-	return QDF_STATUS_E_NOMEM;
-}
-
-QDF_STATUS dp_mon_dest_rings_alloc(struct dp_pdev *pdev, int lmac_id)
-{
-	int entries;
-	struct dp_soc *soc = pdev->soc;
-	struct wlan_cfg_dp_pdev_ctxt *pdev_cfg_ctx = pdev->wlan_cfg_ctx;
-
-	if (soc->wlan_cfg_ctx->rxdma1_enable) {
-		entries = wlan_cfg_get_dma_mon_buf_ring_size(pdev_cfg_ctx);
-		if (dp_srng_alloc(soc, &soc->rxdma_mon_buf_ring[lmac_id],
-				  RXDMA_MONITOR_BUF, entries, 0)) {
-			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_buf_ring ", soc);
-			goto fail1;
-		}
-		entries = wlan_cfg_get_dma_rx_mon_dest_ring_size(pdev_cfg_ctx);
-		if (dp_srng_alloc(soc, &soc->rxdma_mon_dst_ring[lmac_id],
-				  RXDMA_MONITOR_DST, entries, 0)) {
-			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_dst_ring", soc);
-			goto fail1;
-		}
-		entries = wlan_cfg_get_dma_mon_desc_ring_size(pdev_cfg_ctx);
-		if (dp_srng_alloc(soc, &soc->rxdma_mon_desc_ring[lmac_id],
-				  RXDMA_MONITOR_DESC, entries, 0)) {
-			dp_mon_err("%pK: " RNG_ERR "rxdma_mon_desc_ring", soc);
-			goto fail1;
-		}
-	}
-	return QDF_STATUS_SUCCESS;
-
-fail1:
-	return QDF_STATUS_E_NOMEM;
-}
 #endif

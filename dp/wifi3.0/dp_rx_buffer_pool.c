@@ -49,10 +49,6 @@ bool dp_rx_buffer_pool_refill(struct dp_soc *soc, qdf_nbuf_t nbuf, u8 mac_id)
 	if (!bufpool->is_initialized || !pdev)
 		return consumed;
 
-	/* process only buffers of RXDMA ring */
-	if (soc->wlan_cfg_ctx->rxdma1_enable)
-		return consumed;
-
 	first_nbuf = nbuf;
 
 	while (nbuf) {

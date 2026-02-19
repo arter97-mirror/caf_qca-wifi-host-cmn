@@ -649,20 +649,6 @@ struct dp_rx_desc *dp_rx_cookie_2_va_rxdma_buf(struct dp_soc *soc,
 	return dp_get_rx_desc_from_cookie(soc, &soc->rx_desc_buf[0], cookie);
 }
 
-/**
- * dp_rx_cookie_2_va_mon_buf() - Converts cookie to a virtual address of
- *			 the Rx descriptor on monitor ring buffer
- * @soc: core txrx main context
- * @cookie: cookie used to lookup virtual address
- *
- * Return: Pointer to the Rx descriptor
- */
-static inline
-struct dp_rx_desc *dp_rx_cookie_2_va_mon_buf(struct dp_soc *soc,
-					     uint32_t cookie)
-{
-	return dp_get_rx_desc_from_cookie(soc, &soc->rx_desc_mon[0], cookie);
-}
 
 /**
  * dp_rx_cookie_2_va_mon_status() - Converts cookie to a virtual address of
@@ -710,24 +696,6 @@ void *dp_rx_cookie_2_va_rxdma_buf(struct dp_soc *soc, uint32_t cookie)
 		return NULL;
 
 	return &rx_desc_pool->array[index].rx_desc;
-}
-
-/**
- * dp_rx_cookie_2_va_mon_buf() - Converts cookie to a virtual address of
- *			 the Rx descriptor on monitor ring buffer
- * @soc: core txrx main context
- * @cookie: cookie used to lookup virtual address
- *
- * Return: void *: Virtual Address of the Rx descriptor
- */
-static inline
-void *dp_rx_cookie_2_va_mon_buf(struct dp_soc *soc, uint32_t cookie)
-{
-	uint8_t pool_id = DP_RX_DESC_COOKIE_POOL_ID_GET(cookie);
-	uint16_t index = DP_RX_DESC_COOKIE_INDEX_GET(cookie);
-	/* TODO */
-	/* Add sanity for pool_id & index */
-	return &(soc->rx_desc_mon[pool_id].array[index].rx_desc);
 }
 
 /**

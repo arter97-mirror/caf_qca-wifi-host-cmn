@@ -4440,7 +4440,6 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 
 	wlan_minidump_log(wlan_cfg_ctx, sizeof(*wlan_cfg_ctx), psoc,
 			  WLAN_MD_DP_CFG_SOC_CTXT, "wlan_cfg_dp_soc_ctxt");
-	wlan_cfg_ctx->rxdma1_enable = WLAN_CFG_RXDMA1_ENABLE;
 	wlan_cfg_ctx->num_int_ctxts = WLAN_CFG_INT_NUM_CONTEXTS;
 	wlan_cfg_ctx->max_clients = cfg_get(psoc, CFG_DP_MAX_CLIENTS);
 	wlan_cfg_ctx->max_alloc_size = cfg_get(psoc, CFG_DP_MAX_ALLOC_SIZE);
@@ -4667,7 +4666,6 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 
 	wlan_minidump_log(wlan_cfg_ctx, sizeof(*wlan_cfg_ctx), psoc,
 			  WLAN_MD_DP_CFG_SOC_CTXT, "wlan_cfg_dp_soc_ctxt");
-	wlan_cfg_ctx->rxdma1_enable = WLAN_CFG_RXDMA1_ENABLE;
 	wlan_cfg_ctx->num_int_ctxts = WLAN_CFG_INT_NUM_CONTEXTS;
 	wlan_cfg_ctx->max_clients = cfg_get(psoc, CFG_DP_MAX_CLIENTS);
 	wlan_cfg_ctx->max_alloc_size = cfg_get(psoc, CFG_DP_MAX_ALLOC_SIZE);
@@ -6312,11 +6310,6 @@ uint8_t wlan_cfg_radio1_default_reo_get(struct wlan_cfg_dp_soc_ctxt *cfg)
 uint8_t wlan_cfg_radio2_default_reo_get(struct wlan_cfg_dp_soc_ctxt *cfg)
 {
 	return cfg->radio2_rx_default_reo;
-}
-
-void wlan_cfg_set_rxdma1_enable(struct wlan_cfg_dp_soc_ctxt *cfg)
-{
-	cfg->rxdma1_enable = true;
 }
 
 void

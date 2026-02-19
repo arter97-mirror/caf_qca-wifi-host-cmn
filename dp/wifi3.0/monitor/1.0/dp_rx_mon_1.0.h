@@ -78,7 +78,6 @@ void dp_rx_pdev_mon_desc_pool_free(struct dp_pdev *pdev);
 void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 			    uint32_t mac_id, uint32_t quota);
 
-void dp_rx_pdev_mon_buf_buffers_free(struct dp_pdev *pdev, uint32_t mac_id);
 QDF_STATUS
 dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 				 bool delayed_replenish);
@@ -90,11 +89,6 @@ dp_rx_pdev_mon_buf_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_id);
 static inline
 void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 			    uint32_t mac_id, uint32_t quota)
-{
-}
-
-static inline
-void dp_rx_pdev_mon_buf_buffers_free(struct dp_pdev *pdev, uint32_t mac_id)
 {
 }
 
@@ -992,9 +986,6 @@ void *dp_rx_cookie_2_mon_link_desc(struct dp_pdev *pdev,
 				   struct hal_buf_info *buf_info,
 				   uint8_t mac_id)
 {
-	if (pdev->soc->wlan_cfg_ctx->rxdma1_enable)
-		return dp_rx_cookie_2_mon_link_desc_va(pdev, buf_info,
-						       mac_id);
 
 	return dp_rx_cookie_2_link_desc_va(pdev->soc, buf_info);
 }
@@ -1014,9 +1005,6 @@ QDF_STATUS dp_rx_monitor_link_desc_return(struct dp_pdev *pdev,
 					  p_last_buf_addr_info,
 					  uint8_t mac_id, uint8_t bm_action)
 {
-	if (pdev->soc->wlan_cfg_ctx->rxdma1_enable)
-		return dp_rx_mon_link_desc_return(pdev, p_last_buf_addr_info,
-						  mac_id);
 
 	return dp_rx_link_desc_return_by_addr(pdev->soc, p_last_buf_addr_info,
 				      bm_action);
@@ -1060,9 +1048,6 @@ static inline
 void *dp_rxdma_get_mon_dst_ring(struct dp_pdev *pdev,
 				uint8_t mac_for_pdev)
 {
-	if (pdev->soc->wlan_cfg_ctx->rxdma1_enable)
-		return pdev->soc->rxdma_mon_dst_ring[mac_for_pdev].hal_srng;
-
 	/* For targets with 1 RXDMA DST ring for both mac */
 	if (dp_is_rxdma_dst_ring_common(pdev))
 		return pdev->soc->rxdma_err_dst_ring[0].hal_srng;
@@ -1082,8 +1067,6 @@ static inline
 struct dp_srng *dp_rxdma_get_mon_buf_ring(struct dp_pdev *pdev,
 					  uint8_t mac_for_pdev)
 {
-	if (pdev->soc->wlan_cfg_ctx->rxdma1_enable)
-		return &pdev->soc->rxdma_mon_buf_ring[mac_for_pdev];
 
 	/* For MCL there is only 1 rx refill ring */
 	return &pdev->soc->rx_refill_buf_ring[0];
@@ -1100,91 +1083,6 @@ static inline
 struct dp_rx_desc *dp_rx_get_mon_desc(struct dp_soc *soc,
 				      uint32_t cookie)
 {
-	if (soc->wlan_cfg_ctx->rxdma1_enable)
-		return dp_rx_cookie_2_va_mon_buf(soc, cookie);
-
 	return soc->arch_ops.dp_rx_desc_cookie_2_va(soc, cookie);
 }
-
-#ifdef QCA_MONITOR_PKT_SUPPORT
-/*
- * dp_mon_htt_dest_srng_setup(): monitor dest srng setup
- * @soc: DP SOC handle
- * @pdev: DP PDEV handle
- * @mac_id: MAC ID
- * @mac_for_pdev: PDEV mac
- *
- * Return: status: QDF_STATUS_SUCCESS - Success, non-zero: Failure
- */
-QDF_STATUS dp_mon_htt_dest_srng_setup(struct dp_soc *soc,
-				      struct dp_pdev *pdev,
-				      int mac_id,
-				      int mac_for_pdev);
-
-/*
- * dp_mon_dest_rings_deinit(): deinit monitor dest rings
- * @pdev: DP PDEV handle
- * @lmac_id: MAC ID
- *
- * Return: status: None
- */
-void dp_mon_dest_rings_deinit(struct dp_pdev *pdev, int lmac_id);
-
-/*
- * dp_mon_dest_rings_free(): free monitor dest rings
- * @pdev: DP PDEV handle
- * @lmac_id: MAC ID
- *
- * Return: status: None
- */
-void dp_mon_dest_rings_free(struct dp_pdev *pdev, int lmac_id);
-
-/*
- * dp_mon_dest_rings_init(): init monitor dest rings
- * @pdev: DP PDEV handle
- * @lmac_id: MAC ID
- *
- * Return: status: QDF_STATUS_SUCCESS - Success, non-zero: Failure
- */
-QDF_STATUS dp_mon_dest_rings_init(struct dp_pdev *pdev, int lmac_id);
-
-/*
- * dp_mon_dest_rings_allocate(): allocate monitor dest rings
- * @pdev: DP PDEV handle
- * @lmac_id: MAC ID
- *
- * Return: status: QDF_STATUS_SUCCESS - Success, non-zero: Failure
- */
-QDF_STATUS dp_mon_dest_rings_alloc(struct dp_pdev *pdev, int lmac_id);
-
-#else
-QDF_STATUS dp_mon_htt_dest_srng_setup(struct dp_soc *soc,
-				      struct dp_pdev *pdev,
-				      int mac_id,
-				      int mac_for_pdev)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static void dp_mon_dest_rings_deinit(struct dp_pdev *pdev, int lmac_id)
-{
-}
-
-static void dp_mon_dest_rings_free(struct dp_pdev *pdev, int lmac_id)
-{
-}
-
-static
-QDF_STATUS dp_mon_dest_rings_init(struct dp_pdev *pdev, int lmac_id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static
-QDF_STATUS dp_mon_dest_rings_alloc(struct dp_pdev *pdev, int lmac_id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif /* QCA_MONITOR_PKT_SUPPORT */
-
 #endif /* _DP_RX_MON_1_0_H_ */
