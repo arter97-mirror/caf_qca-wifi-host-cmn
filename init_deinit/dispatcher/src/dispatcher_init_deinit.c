@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1632,7 +1633,7 @@ QDF_STATUS dispatcher_pdev_open(struct wlan_objmgr_pdev *pdev)
 
 	status = dispatcher_cfr_pdev_open(pdev);
 	if (status != QDF_STATUS_SUCCESS && status != QDF_STATUS_COMP_DISABLED)
-		goto cfr_pdev_open_fail;
+		qdf_err("dispatcher_cfr_pdev_open failed");
 
 	status = dispatcher_wifi_radar_pdev_open(pdev);
 	if (status != QDF_STATUS_SUCCESS && status != QDF_STATUS_COMP_DISABLED)
@@ -1652,7 +1653,6 @@ mgmt_txrx_pdev_open_fail:
 	dispatcher_wifi_radar_pdev_close(pdev);
 wifi_radar_pdev_open_fail:
 	dispatcher_cfr_pdev_close(pdev);
-cfr_pdev_open_fail:
 	dispatcher_spectral_pdev_close(pdev);
 spectral_pdev_open_fail:
 	dispatcher_regulatory_pdev_close(pdev);
