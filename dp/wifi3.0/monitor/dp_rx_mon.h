@@ -144,17 +144,6 @@ dp_rx_mon_handle_status_buf_done(struct dp_pdev *pdev,
 void dp_full_mon_attach(struct dp_pdev *pdev);
 
 /**
- * dp_full_mon_detach() - Full monitor mode attach
- * This API deinitilises full monitor mode resources
- *
- * @pdev: dp pdev object
- *
- * Return: void
- *
- */
-void dp_full_mon_detach(struct dp_pdev *pdev);
-
-/**
  * dp_full_mon_partial_detach() - Full monitor mode detach with no locks
  * This API deinitilises full monitor mode resources but mon_desc not free
  *
@@ -189,16 +178,6 @@ static inline void dp_full_mon_attach(struct dp_pdev *pdev)
 {
 }
 
-/**
- * dp_full_mon_detach() - detach full monitor mode resources
- * @pdev: Datapath PDEV handle
- *
- * Return: void
- *
- */
-static inline void dp_full_mon_detach(struct dp_pdev *pdev)
-{
-}
 #endif
 
 /**
@@ -788,9 +767,6 @@ struct rx_desc_pool *dp_rx_get_mon_desc_pool(struct dp_soc *soc,
 					     uint8_t mac_id,
 					     uint8_t pdev_id)
 {
-	if (soc->wlan_cfg_ctx->rxdma1_enable)
-		return &soc->rx_desc_mon[mac_id];
-
 	return &soc->rx_desc_buf[pdev_id];
 }
 

@@ -36,7 +36,6 @@
 #define WLAN_CFG_INT_NUM_CONTEXTS 7
 #define WLAN_CFG_INT_NUM_CONTEXTS_MAX 14
 #endif
-#define WLAN_CFG_RXDMA1_ENABLE 1
 /*
  * This mask defines how many transmit frames account for 1 NAPI work unit
  * 0 means each tx completion is 1 unit

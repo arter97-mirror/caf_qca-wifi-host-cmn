@@ -2932,7 +2932,6 @@ static void
 dp_mon_filter_set_reset_rx_pkt_log_cbf_dest_2_0(struct dp_pdev_be *pdev_be,
 						struct dp_mon_filter_be *filter)
 {
-	struct dp_soc *soc = pdev_be->pdev.soc;
 	enum dp_mon_filter_mode mode = DP_MON_FILTER_PKT_LOG_CBF_MODE;
 	enum dp_mon_filter_srng_type srng_type;
 	struct dp_mon_pdev *mon_pdev = pdev_be->pdev.monitor_pdev;
@@ -2941,9 +2940,7 @@ dp_mon_filter_set_reset_rx_pkt_log_cbf_dest_2_0(struct dp_pdev_be *pdev_be,
 	struct htt_rx_ring_tlv_filter *rx_tlv_filter =
 		&filter->rx_tlv_filter.tlv_filter;
 
-	srng_type = ((soc->wlan_cfg_ctx->rxdma1_enable) ?
-		     DP_MON_FILTER_SRNG_TYPE_RXDMA_MON_BUF :
-		     DP_MON_FILTER_SRNG_TYPE_RXDMA_BUF);
+	srng_type = DP_MON_FILTER_SRNG_TYPE_RXDMA_BUF;
 
 	/*set the filter */
 	if (filter->rx_tlv_filter.valid) {

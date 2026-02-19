@@ -825,41 +825,6 @@ dp_mon_config_undecoded_metadata_capture(struct dp_pdev *pdev, int val)
 #endif
 
 /**
- * dp_monitor_mode_ring_config() - Send the tlv config to fw for monitor buffer
- *                                 ring based on target
- * @soc: soc handle
- * @mac_for_pdev: WIN- pdev_id, MCL- mac id
- * @pdev: physical device handle
- * @ring_num: mac id
- * @htt_tlv_filter: tlv filter
- *
- * Return: zero on success, non-zero on failure
- */
-static inline QDF_STATUS
-dp_monitor_mode_ring_config(struct dp_soc *soc, uint8_t mac_for_pdev,
-			    struct dp_pdev *pdev, uint8_t ring_num,
-			    struct htt_rx_ring_tlv_filter htt_tlv_filter)
-{
-	QDF_STATUS status;
-
-	if (soc->wlan_cfg_ctx->rxdma1_enable)
-		status = htt_h2t_rx_ring_cfg(soc->htt_handle, mac_for_pdev,
-					     soc->rxdma_mon_buf_ring[ring_num]
-					     .hal_srng,
-					     RXDMA_MONITOR_BUF,
-					     RX_MONITOR_BUFFER_SIZE,
-					     &htt_tlv_filter);
-	else
-		status = htt_h2t_rx_ring_cfg(soc->htt_handle, mac_for_pdev,
-					     pdev->rx_mac_buf_ring[ring_num]
-					     .hal_srng,
-					     RXDMA_BUF, RX_DATA_BUFFER_SIZE,
-					     &htt_tlv_filter);
-
-	return status;
-}
-
-/**
  * dp_get_mon_vdev_from_pdev_wifi3() - Get vdev id of monitor mode
  * @soc_hdl: datapath soc handle
  * @pdev_id: physical device instance id

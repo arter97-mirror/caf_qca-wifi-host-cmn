@@ -234,7 +234,6 @@ static void dp_soc_cfg_init_rh(struct dp_soc *soc)
 	case TARGET_TYPE_WCN6450:
 		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, true);
 		soc->ast_override_support = 1;
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	default:
 		qdf_print("%s: Unknown tgt type %d\n", __func__, target_type);
@@ -245,19 +244,6 @@ static void dp_soc_cfg_init_rh(struct dp_soc *soc)
 
 static void dp_soc_cfg_attach_rh(struct dp_soc *soc)
 {
-	int target_type;
-
-	target_type = hal_get_target_type(soc->hal_soc);
-	switch (target_type) {
-	case TARGET_TYPE_WCN6450:
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
-		break;
-	default:
-		qdf_print("%s: Unknown tgt type %d\n", __func__, target_type);
-		qdf_assert_always(0);
-		break;
-	}
-
 	/*
 	 * keeping TCL and completion rings number, this data
 	 * is equivalent number of TX interface rings.

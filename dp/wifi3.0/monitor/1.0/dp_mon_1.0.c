@@ -288,8 +288,6 @@ void dp_mon_rings_deinit_1_0(struct dp_pdev *pdev)
 			       RXDMA_MONITOR_STATUS, 0);
 		dp_srng_deinit(soc, &soc->sw2rxdma_link_ring[lmac_id],
 			       SW2RXDMA_LINK_RELEASE, 0);
-
-		dp_mon_dest_rings_deinit(pdev, lmac_id);
 	}
 }
 
@@ -307,8 +305,6 @@ void dp_mon_rings_free_1_0(struct dp_pdev *pdev)
 
 		dp_srng_free(soc, &soc->rxdma_mon_status_ring[lmac_id]);
 		dp_srng_free(soc, &soc->sw2rxdma_link_ring[lmac_id]);
-
-		dp_mon_dest_rings_free(pdev, lmac_id);
 	}
 }
 
@@ -368,9 +364,6 @@ QDF_STATUS dp_mon_rings_init_1_0(struct dp_pdev *pdev)
 			dp_mon_err("%pK: " RNG_ERR "sw2rxdma_link_ring", soc);
 			goto fail1;
 		}
-
-		if (dp_mon_dest_rings_init(pdev, lmac_id))
-			goto fail1;
 	}
 	return QDF_STATUS_SUCCESS;
 
@@ -405,9 +398,6 @@ QDF_STATUS dp_mon_rings_alloc_1_0(struct dp_pdev *pdev)
 			dp_mon_err("%pK: " RNG_ERR "sw2rxdma_link_ring", soc);
 			goto fail1;
 		}
-
-		if (dp_mon_dest_rings_alloc(pdev, lmac_id))
-			goto fail1;
 	}
 	return QDF_STATUS_SUCCESS;
 
@@ -868,10 +858,6 @@ QDF_STATUS dp_mon_htt_srng_setup_1_0(struct dp_soc *soc,
 {
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
-	status = dp_mon_htt_dest_srng_setup(soc, pdev, mac_id, mac_for_pdev);
-	if (status != QDF_STATUS_SUCCESS)
-		return status;
-
 	if (!soc->rxdma_mon_status_ring[mac_id].hal_srng)
 		return QDF_STATUS_SUCCESS;
 
@@ -917,13 +903,6 @@ QDF_STATUS dp_mon_htt_srng_setup_1_0(struct dp_soc *soc,
 
 	if (mon_soc->monitor_mode_v2)
 		return status;
-
-	if (wlan_cfg_is_delay_mon_replenish(soc->wlan_cfg_ctx)) {
-		status = dp_mon_htt_dest_srng_setup(soc, pdev,
-						    mac_id, mac_for_pdev);
-		if (status != QDF_STATUS_SUCCESS)
-			return status;
-	}
 
 	if (!soc->rxdma_mon_status_ring[mac_id].hal_srng)
 		return QDF_STATUS_SUCCESS;

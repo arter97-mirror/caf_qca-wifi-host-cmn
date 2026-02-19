@@ -3791,7 +3791,6 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 				soc->wlan_cfg_ctx->int_rxdma2host_ring_mask[int_ctx] = 0;
 			}
 		}
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	case TARGET_TYPE_KIWI:
 		dp_set_wds_ext_ast_override(soc);
@@ -3815,8 +3814,6 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 					soc->wlan_cfg_ctx->int_rxdma2host_ring_mask[int_ctx] = 0;
 			}
 		}
-
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		dp_set_num_rxdma_dst_ring(soc);
 		break;
 	case TARGET_TYPE_FIG:
@@ -3833,8 +3830,6 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 				soc->wlan_cfg_ctx->int_rx_ring_mask[int_ctx] = 0;
 			}
 		}
-
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		dp_set_num_rxdma_dst_ring(soc);
 		soc->rxdma2sw_rings_not_supported = 1;
 		soc->repurpose_to_rxdma2sw_supported =
@@ -4908,7 +4903,6 @@ void dp_soc_cfg_attach(struct dp_soc *soc)
 	case TARGET_TYPE_QCA6750:
 		wlan_cfg_set_reo_dst_ring_size(soc->wlan_cfg_ctx,
 					       REO_DST_RING_SIZE_QCA6290);
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	case TARGET_TYPE_KIWI:
 	case TARGET_TYPE_MANGO:
@@ -4916,7 +4910,6 @@ void dp_soc_cfg_attach(struct dp_soc *soc)
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	case TARGET_TYPE_QCA8074:
 		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
@@ -4927,22 +4920,18 @@ void dp_soc_cfg_attach(struct dp_soc *soc)
 	case TARGET_TYPE_QCN6122:
 	case TARGET_TYPE_QCA5018:
 		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		wlan_cfg_set_rxdma1_enable(soc->wlan_cfg_ctx);
 		break;
 	case TARGET_TYPE_QCN9160:
 		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		soc->wlan_cfg_ctx->rxdma1_enable = 0;
 		break;
 	case TARGET_TYPE_QCN9000:
 		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		wlan_cfg_set_rxdma1_enable(soc->wlan_cfg_ctx);
 		break;
 	case TARGET_TYPE_QCN9224:
 	case TARGET_TYPE_QCA5332:
 	case TARGET_TYPE_QCN6432:
 	case TARGET_TYPE_QCA5424:
 		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		wlan_cfg_set_rxdma1_enable(soc->wlan_cfg_ctx);
 		break;
 	default:
 		qdf_print("%s: Unknown tgt type %d\n", __func__, target_type);
