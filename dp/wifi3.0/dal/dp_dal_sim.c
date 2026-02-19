@@ -1589,6 +1589,56 @@ static int dp_dal_sim_sta_active(void *priv, struct sta_info *info, bool enable)
 	return 0;
 }
 
+#ifdef FEATURE_DP_DAL_D3_WOW
+/**
+ * dp_dal_sim_check_intf_pause() - Check interface pause with Offload Engine
+ * @sim_ctx: Pointer to simulator context
+ * @intf_pause: Interface pause flag
+ *
+ * This function handles D3 WOW specific logic for interface pause.
+ * If intf_pause is false, it allows D0 suspend without sending INTF_PAUSE.
+ * If intf_pause is true, it sends INTF_PAUSE to the Offload Engine and
+ * waits for acknowledgment.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int dp_dal_sim_check_intf_pause(struct dp_dal_sim_ctx *sim_ctx,
+				       bool intf_pause)
+{
+	int ret_val;
+	uint32_t type;
+
+	/* If intf_pause is false, allow D0 suspend */
+	if (!intf_pause) {
+		dp_info("D0 suspend: Not sending INTF_PAUSE to OE");
+		return 0;
+	}
+
+	dp_debug("All descriptor lists empty - checking with OE");
+
+	/* Send INTF_PAUSE to Offload Engine */
+	ret_val = dp_dal_offload_sim_handle_msg(sim_ctx,
+					OLE_WOW_MSG_MSG_OLE_INTF_PAUSE);
+	type = DAL_MSG_GET_TYPE(ret_val);
+
+	if (type == OLE_WOW_MSG_TYPE_ACK) {
+		dp_info("OE returned ACK for INTF_PAUSE - suspend allowed");
+		return 0;
+	} else {
+		dp_err("OE returned NACK/Error for INTF_PAUSE: 0x%x",
+		       ret_val);
+		return -EBUSY;
+	}
+}
+#else
+static inline int dp_dal_sim_check_intf_pause(struct dp_dal_sim_ctx *sim_ctx,
+					       bool intf_pause)
+{
+	dp_debug("All descriptor lists empty - suspend allowed");
+	return 0;
+}
+#endif /* FEATURE_DP_DAL_D3_WOW */
+
 /**
  * dp_dal_sim_notify_suspend() - Handle suspend notification
  * @priv: Pointer to private data (DAL context)
@@ -1650,11 +1700,9 @@ static int dp_dal_sim_notify_suspend(void *priv, bool intf_pause)
 			}
 		}
 
-		/* If all lists are empty, allow suspend */
-		if (rings_empty) {
-			dp_debug("All descriptor lists empty - suspend allowed");
-			return 0;
-		}
+		/* If all lists are empty, check with OE if needed */
+		if (rings_empty)
+			return dp_dal_sim_check_intf_pause(sim_ctx, intf_pause);
 
 		/* Wait 10ms before checking again */
 		qdf_sleep(DP_DAL_SIM_SUSPEND_WAIT_INTERVAL_MS);
