@@ -41,82 +41,82 @@ struct dp_dal_sim_sw2sw_ring {
 #ifdef FEATURE_DP_DAL_D3_WOW
 /* D3 WoW Message Format Definitions */
 /* Message format: Bits [31:28] - Tag, [27:12] - Type, [11:0] - Value/Payload */
-#define DAL_D3_WOW_MSG_TAG_SHIFT        28
-#define DAL_D3_WOW_MSG_TAG_MASK         0xF0000000
-#define DAL_D3_WOW_MSG_TYPE_SHIFT       12
-#define DAL_D3_WOW_MSG_TYPE_MASK        0x0FFFF000
-#define DAL_D3_WOW_MSG_VALUE_SHIFT      0
-#define DAL_D3_WOW_MSG_VALUE_MASK       0x00000FFF
+#define OLE_WOW_MSG_MSG_TAG_SHIFT        28
+#define OLE_WOW_MSG_MSG_TAG_MASK         0xF0000000
+#define OLE_WOW_MSG_MSG_TYPE_SHIFT       12
+#define OLE_WOW_MSG_MSG_TYPE_MASK        0x0FFFF000
+#define OLE_WOW_MSG_MSG_VALUE_SHIFT      0
+#define OLE_WOW_MSG_MSG_VALUE_MASK       0x00000FFF
 
 /* Message Tags */
-#define DAL_D3_WOW_TAG_OLE_TO_WLAN      0x1
-#define DAL_D3_WOW_TAG_WLAN_TO_OLE      0x2
+#define OLE_WOW_MSG_TAG_OLE_TO_WLAN      0x1
+#define OLE_WOW_MSG_TAG_WLAN_TO_OLE      0x2
 
 /* Message Types - OLE to WLAN */
-#define DAL_D3_WOW_TYPE_INTF_PAUSE      0x1
-#define DAL_D3_WOW_TYPE_INTF_RESUME     0x2
-#define DAL_D3_WOW_TYPE_OFFLOAD_CRASH   0x4
+#define OLE_WOW_MSG_TYPE_INTF_PAUSE      0x1
+#define OLE_WOW_MSG_TYPE_INTF_RESUME     0x2
+#define OLE_WOW_MSG_TYPE_OFFLOAD_CRASH   0x4
 
 /* Message Types - WLAN to OLE */
-#define DAL_D3_WOW_TYPE_ACK             0x1
-#define DAL_D3_WOW_TYPE_NACK            0x2
-#define DAL_D3_WOW_TYPE_WLAN_CRASH      0x4
+#define OLE_WOW_MSG_TYPE_ACK             0x1
+#define OLE_WOW_MSG_TYPE_NACK            0x2
+#define OLE_WOW_MSG_TYPE_WLAN_CRASH      0x4
 
 /* Complete Message Values */
-#define DAL_D3_WOW_MSG_OLE_INTF_PAUSE   0x10001000
-#define DAL_D3_WOW_MSG_OLE_INTF_RESUME  0x10002000
-#define DAL_D3_WOW_MSG_OLE_CRASH        0x10004000
-#define DAL_D3_WOW_MSG_WLAN_ACK         0x20001000
-#define DAL_D3_WOW_MSG_WLAN_NACK_BASE   0x20002000
-#define DAL_D3_WOW_MSG_WLAN_CRASH       0x20004000
+#define OLE_WOW_MSG_MSG_OLE_INTF_PAUSE   0x10001000
+#define OLE_WOW_MSG_MSG_OLE_INTF_RESUME  0x10002000
+#define OLE_WOW_MSG_MSG_OLE_CRASH        0x10004000
+#define OLE_WOW_MSG_MSG_WLAN_ACK         0x20001000
+#define OLE_WOW_MSG_MSG_WLAN_NACK_BASE   0x20002000
+#define OLE_WOW_MSG_MSG_WLAN_CRASH       0x20004000
 
 /* Helper Macros for Message Construction/Parsing */
-#define DAL_MSG_GET_TAG(msg)        (((msg) & DAL_D3_WOW_MSG_TAG_MASK) >> DAL_D3_WOW_MSG_TAG_SHIFT)
-#define DAL_MSG_GET_TYPE(msg)       (((msg) & DAL_D3_WOW_MSG_TYPE_MASK) >> DAL_D3_WOW_MSG_TYPE_SHIFT)
-#define DAL_MSG_GET_VAL(msg)        (((msg) & DAL_D3_WOW_MSG_VALUE_MASK) >> DAL_D3_WOW_MSG_VALUE_SHIFT)
+#define DAL_MSG_GET_TAG(msg)        (((msg) & OLE_WOW_MSG_MSG_TAG_MASK) >> OLE_WOW_MSG_MSG_TAG_SHIFT)
+#define DAL_MSG_GET_TYPE(msg)       (((msg) & OLE_WOW_MSG_MSG_TYPE_MASK) >> OLE_WOW_MSG_MSG_TYPE_SHIFT)
+#define DAL_MSG_GET_VAL(msg)        (((msg) & OLE_WOW_MSG_MSG_VALUE_MASK) >> OLE_WOW_MSG_MSG_VALUE_SHIFT)
 #define DAL_MSG_CONSTRUCT(tag, type, val) \
-    (((tag) << DAL_D3_WOW_MSG_TAG_SHIFT) | ((type) << DAL_D3_WOW_MSG_TYPE_SHIFT) | ((val) & DAL_D3_WOW_MSG_VALUE_MASK))
+    (((tag) << OLE_WOW_MSG_MSG_TAG_SHIFT) | ((type) << OLE_WOW_MSG_MSG_TYPE_SHIFT) | ((val) & OLE_WOW_MSG_MSG_VALUE_MASK))
 
 /**
  * enum dal_d3_wow_ack_status - WoW ACK/NACK status reasons
- * @DAL_D3_WOW_ACK_ACKED: ACK received
- * @DAL_D3_WOW_NACK_REASON_TX: TX in progress
- * @DAL_D3_WOW_NACK_REASON_IS_BLOCK: Interface is blocked
- * @DAL_D3_WOW_NACK_REASON_NOT_ALLOW: Operation not allowed
- * @DAL_D3_WOW_NACK_REASON_HW_FAIL: Hardware failure
- * @DAL_D3_WOW_NACK_REASON_TIMEOUT: Operation timeout
- * @DAL_D3_WOW_NACK_REASON_RTT_DMA: RTT DMA in progress
- * @DAL_D3_WOW_NACK_REASON_ROAM: Roaming in progress
- * @DAL_D3_WOW_NACK_REASON_PEER_ACTIVE: Peer is active
- * @DAL_D3_WOW_NACK_DEFER_FAILURE: Defer failure
- * @DAL_D3_WOW_NACK_DEFER_TIMEOUT: Defer timeout
- * @DAL_D3_WOW_NACK_FATAL_EVENT: Fatal event occurred
- * @DAL_D3_WOW_NACK_REASON_UNIT_TEST_CMD: Unit test command in progress
- * @DAL_D3_WOW_NACK_REASON_MCC_LITE: MCC lite in progress
- * @DAL_D3_WOW_NACK_RESUME_IN_PROCESS: Resume already in process
- * @DAL_D3_WOW_NACK_REASON_PLATFORM: Platform specific reason
- * @DAL_D3_WOW_NACK_REASON_USD: USD in progress
- * @DAL_D3_WOW_NACK_CLOSE_TO_TBTT: Close to TBTT
+ * @OLE_WOW_MSG_ACK_ACKED: ACK received
+ * @OLE_WOW_MSG_NACK_REASON_TX: TX in progress
+ * @OLE_WOW_MSG_NACK_REASON_IS_BLOCK: Interface is blocked
+ * @OLE_WOW_MSG_NACK_REASON_NOT_ALLOW: Operation not allowed
+ * @OLE_WOW_MSG_NACK_REASON_HW_FAIL: Hardware failure
+ * @OLE_WOW_MSG_NACK_REASON_TIMEOUT: Operation timeout
+ * @OLE_WOW_MSG_NACK_REASON_RTT_DMA: RTT DMA in progress
+ * @OLE_WOW_MSG_NACK_REASON_ROAM: Roaming in progress
+ * @OLE_WOW_MSG_NACK_REASON_PEER_ACTIVE: Peer is active
+ * @OLE_WOW_MSG_NACK_DEFER_FAILURE: Defer failure
+ * @OLE_WOW_MSG_NACK_DEFER_TIMEOUT: Defer timeout
+ * @OLE_WOW_MSG_NACK_FATAL_EVENT: Fatal event occurred
+ * @OLE_WOW_MSG_NACK_REASON_UNIT_TEST_CMD: Unit test command in progress
+ * @OLE_WOW_MSG_NACK_REASON_MCC_LITE: MCC lite in progress
+ * @OLE_WOW_MSG_NACK_RESUME_IN_PROCESS: Resume already in process
+ * @OLE_WOW_MSG_NACK_REASON_PLATFORM: Platform specific reason
+ * @OLE_WOW_MSG_NACK_REASON_USD: USD in progress
+ * @OLE_WOW_MSG_NACK_CLOSE_TO_TBTT: Close to TBTT
  */
 enum dal_d3_wow_ack_status {
-	DAL_D3_WOW_ACK_ACKED = 0,
-	DAL_D3_WOW_NACK_REASON_TX = 1,
-	DAL_D3_WOW_NACK_REASON_IS_BLOCK = 2,
-	DAL_D3_WOW_NACK_REASON_NOT_ALLOW = 3,
-	DAL_D3_WOW_NACK_REASON_HW_FAIL = 4,
-	DAL_D3_WOW_NACK_REASON_TIMEOUT = 5,
-	DAL_D3_WOW_NACK_REASON_RTT_DMA = 6,
-	DAL_D3_WOW_NACK_REASON_ROAM = 7,
-	DAL_D3_WOW_NACK_REASON_PEER_ACTIVE = 8,
-	DAL_D3_WOW_NACK_DEFER_FAILURE = 9,
-	DAL_D3_WOW_NACK_DEFER_TIMEOUT = 10,
-	DAL_D3_WOW_NACK_FATAL_EVENT = 11,
-	DAL_D3_WOW_NACK_REASON_UNIT_TEST_CMD = 12,
-	DAL_D3_WOW_NACK_REASON_MCC_LITE = 13,
-	DAL_D3_WOW_NACK_RESUME_IN_PROCESS = 14,
-	DAL_D3_WOW_NACK_REASON_PLATFORM = 15,
-	DAL_D3_WOW_NACK_REASON_USD = 16,
-	DAL_D3_WOW_NACK_CLOSE_TO_TBTT = 17,
+	OLE_WOW_MSG_ACK_ACKED = 0,
+	OLE_WOW_MSG_NACK_REASON_TX = 1,
+	OLE_WOW_MSG_NACK_REASON_IS_BLOCK = 2,
+	OLE_WOW_MSG_NACK_REASON_NOT_ALLOW = 3,
+	OLE_WOW_MSG_NACK_REASON_HW_FAIL = 4,
+	OLE_WOW_MSG_NACK_REASON_TIMEOUT = 5,
+	OLE_WOW_MSG_NACK_REASON_RTT_DMA = 6,
+	OLE_WOW_MSG_NACK_REASON_ROAM = 7,
+	OLE_WOW_MSG_NACK_REASON_PEER_ACTIVE = 8,
+	OLE_WOW_MSG_NACK_DEFER_FAILURE = 9,
+	OLE_WOW_MSG_NACK_DEFER_TIMEOUT = 10,
+	OLE_WOW_MSG_NACK_FATAL_EVENT = 11,
+	OLE_WOW_MSG_NACK_REASON_UNIT_TEST_CMD = 12,
+	OLE_WOW_MSG_NACK_REASON_MCC_LITE = 13,
+	OLE_WOW_MSG_NACK_RESUME_IN_PROCESS = 14,
+	OLE_WOW_MSG_NACK_REASON_PLATFORM = 15,
+	OLE_WOW_MSG_NACK_REASON_USD = 16,
+	OLE_WOW_MSG_NACK_CLOSE_TO_TBTT = 17,
 };
 #endif /* FEATURE_DP_DAL_D3_WOW */
 
@@ -304,6 +304,7 @@ struct dal_sim_srng {
  * @use_dal_vndr_hal: Use dal vendor hal for overwriitng tx desc
  * @suspend_msg_msi_addr: Derived MSI address for FW write
  * @suspend_msg_msi_data: Derived MSI data for FW write
+ * @suspend_msg_irq_num: IRQ number for suspend message
  * @suspend_msg_event: Event for FW write completion
  * @suspend_msg_data_vaddr: Coherent buffer virtual address for FW messages
  * @suspend_msg_data_paddr: Coherent buffer physical address for FW messages
