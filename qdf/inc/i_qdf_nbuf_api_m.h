@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2017,2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -366,5 +366,29 @@ static inline qdf_time_t qdf_nbuf_get_tx_ts(qdf_nbuf_t buf, bool clear)
 	if (clear)
 		__qdf_nbuf_clear_tx_ts(buf);
 	return ts;
+}
+
+/**
+ * qdf_nbuf_rx_pp_track_id_get() - get rx pool track id from nbuf
+ * @buf: Network buffer
+ *
+ * Return: RX page pool tracker index value (1-15)
+ */
+static inline uint8_t qdf_nbuf_rx_pp_track_id_get(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_rx_pp_track_id_get(buf);
+}
+
+/**
+ * qdf_nbuf_rx_pp_track_id_set() - set rx pool track id in nbuf
+ * @buf: Network buffer
+ * @rx_pp_track_id: RX page pool tracker index value to set (1-15)
+ *
+ * Return: None
+ */
+static inline void
+qdf_nbuf_rx_pp_track_id_set(qdf_nbuf_t buf, uint8_t rx_pp_track_id)
+{
+	__qdf_nbuf_rx_pp_track_id_set(buf, rx_pp_track_id);
 }
 #endif /* _QDF_NBUF_M_H */

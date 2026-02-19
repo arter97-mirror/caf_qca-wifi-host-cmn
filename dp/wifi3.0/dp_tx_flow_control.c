@@ -716,8 +716,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	if (soc->cdp_soc.ol_ops->dp_get_page_pool)
 		pool_t =
 		soc->cdp_soc.ol_ops->dp_get_page_pool(QDF_DP_PAGE_POOL_TX,
-						      pool_size);
-
+						      pool_size,
+						      NULL);
 	if (pool_t && pool_t->pp) {
 		pp_params->pp = pool_t->pp;
 		pp_params->pool_size = pool_t->pool_size;
