@@ -1740,15 +1740,51 @@ static int dp_dal_sim_notify_suspend(void *priv, bool intf_pause)
  * @priv: Pointer to private data (DAL context)
  *
  * This function handles system resume notifications for the DAL simulator.
- * Currently implemented as a stub function.
  *
  * Return: 0 on success
  */
+#ifdef FEATURE_DP_DAL_D3_WOW
+static int dp_dal_sim_notify_resume(void *priv)
+{
+	struct dp_dal_ctx *dp_dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_dal_sim_ctx *sim_ctx;
+	int ret_val;
+	uint32_t type;
+
+	if (!dp_dal_ctx) {
+		dp_err_rl("NULL DP DAL context in notify_resume");
+		return -EINVAL;
+	}
+
+	sim_ctx = (struct dp_dal_sim_ctx *)dp_dal_ctx->dal_sim_ctx;
+	if (!sim_ctx) {
+		dp_err_rl("NULL simulator context in notify_resume");
+		return -EINVAL;
+	}
+
+	dp_info("Resume notification received");
+
+	/* Send INTF_RESUME to Offload Engine */
+	ret_val = dp_dal_offload_sim_handle_msg(sim_ctx,
+					OLE_WOW_MSG_MSG_OLE_INTF_RESUME);
+	type = DAL_MSG_GET_TYPE(ret_val);
+
+	if (type == OLE_WOW_MSG_TYPE_ACK) {
+		dp_info("OE returned ACK for INTF_RESUME");
+		return 0;
+	} else {
+		dp_err("OE returned NACK/Error for INTF_RESUME: 0x%x",
+		       ret_val);
+		return -EBUSY;
+	}
+}
+#else
 static int dp_dal_sim_notify_resume(void *priv)
 {
 	dp_info("Resume notification (stub)");
 	return 0;
 }
+#endif /* FEATURE_DP_DAL_D3_WOW */
 
 /**
  * dp_dal_sim_ssr_dump() - Dump SSR (SubSystem Restart) information
