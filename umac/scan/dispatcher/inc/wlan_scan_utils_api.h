@@ -2165,4 +2165,26 @@ QDF_STATUS scm_validate_6ghz_security_and_policy(
 	struct wlan_objmgr_psoc *psoc,
 	struct scan_cache_entry *scan_entry,
 	bool is_connection_time);
+
+#ifdef WLAN_FEATURE_11BN
+/**
+ * util_scan_entry_uhrop() - function to read uhr ops vendor ie
+ * @scan_entry: scan entry
+ *
+ * API, function to read uhr ops vendor ie
+ *
+ * Return: uhr op vendorie or NULL if ie is not present
+ */
+static inline uint8_t*
+util_scan_entry_uhrop(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.uhrop;
+}
+#else
+static inline uint8_t*
+util_scan_entry_uhrop(struct scan_cache_entry *scan_entry)
+{
+	return NULL;
+}
+#endif
 #endif

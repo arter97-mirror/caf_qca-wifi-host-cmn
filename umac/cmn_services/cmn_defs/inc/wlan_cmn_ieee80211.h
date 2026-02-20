@@ -754,6 +754,7 @@ enum element_ie {
  * @WLAN_EXTN_ELEMID_BW_IND: Bandwidth Indication Element Sub IE
  * @WLAN_EXTN_ELEMID_UHRCAP: UHR Capabilities IE
  * @WLAN_EXTN_ELEMID_UHROP: UHR Operation IE
+ * @WLAN_EXTN_ELEMID_UHRCAP: UHR CAP IE
  */
 enum extn_element_ie {
 	WLAN_EXTN_ELEMID_ESP         = 11,

@@ -337,6 +337,60 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+static enum wlan_phymode
+util_scan_get_phymode_11bn(struct scan_cache_entry *scan_params,
+			   enum wlan_phymode phymode)
+{
+	if (!util_scan_entry_uhrop(scan_params))
+		return phymode;
+
+	switch (phymode) {
+	case WLAN_PHYMODE_11BEA_EHT20:
+		phymode = WLAN_PHYMODE_11BNA_UHR20;
+		break;
+	case WLAN_PHYMODE_11BEG_EHT20:
+		phymode = WLAN_PHYMODE_11BNG_UHR20;
+		break;
+	case WLAN_PHYMODE_11BEA_EHT40:
+		phymode = WLAN_PHYMODE_11BNA_UHR40;
+		break;
+	case WLAN_PHYMODE_11BEG_EHT40PLUS:
+		phymode = WLAN_PHYMODE_11BNG_UHR40PLUS;
+		break;
+	case WLAN_PHYMODE_11BEG_EHT40MINUS:
+		phymode = WLAN_PHYMODE_11BNG_UHR40MINUS;
+		break;
+	case WLAN_PHYMODE_11BEG_EHT40:
+		phymode = WLAN_PHYMODE_11BNG_UHR40;
+		break;
+	case WLAN_PHYMODE_11BEA_EHT80:
+		phymode = WLAN_PHYMODE_11BNA_UHR80;
+		break;
+	case WLAN_PHYMODE_11BEG_EHT80:
+		phymode = WLAN_PHYMODE_11BNG_UHR80;
+		break;
+	case WLAN_PHYMODE_11BEA_EHT160:
+		phymode = WLAN_PHYMODE_11BNA_UHR160;
+		break;
+	case WLAN_PHYMODE_11BEA_EHT320:
+		phymode = WLAN_PHYMODE_11BNA_UHR320;
+		break;
+	default:
+		break;
+	}
+
+	return phymode;
+}
+#else
+static enum wlan_phymode
+util_scan_get_phymode_11bn(struct scan_cache_entry *scan_params,
+			   enum wlan_phymode phymode)
+{
+	return phymode;
+}
+#endif
+
 #ifdef CONFIG_BAND_6GHZ
 struct he_oper_6g_param *util_scan_get_he_6g_params(uint8_t *he_ops)
 {
@@ -691,6 +745,8 @@ util_scan_get_phymode_6g(struct wlan_objmgr_pdev *pdev,
 	phymode = util_scan_get_phymode_11be(pdev, scan_params,
 					     phymode, band_mask);
 
+	phymode = util_scan_get_phymode_11bn(scan_params, phymode);
+
 	return phymode;
 }
 
@@ -843,6 +899,8 @@ util_scan_get_phymode_5g(struct wlan_objmgr_pdev *pdev,
 	phymode = util_scan_get_phymode_11be(pdev, scan_params,
 					     phymode, band_mask);
 
+	phymode = util_scan_get_phymode_11bn(scan_params, phymode);
+
 	return phymode;
 }
 
@@ -866,6 +924,32 @@ util_scan_get_phymode_2g_11be(struct scan_cache_entry *scan_params,
 #else
 static enum wlan_phymode
 util_scan_get_phymode_2g_11be(struct scan_cache_entry *scan_params,
+			      enum wlan_phymode  phymode)
+{
+	return phymode;
+}
+#endif
+
+#ifdef WLAN_FEATURE_11BN
+static enum wlan_phymode
+util_scan_get_phymode_2g_11bn(struct scan_cache_entry *scan_params,
+			      enum wlan_phymode  phymode)
+{
+	if (!util_scan_entry_uhrop(scan_params))
+		return phymode;
+
+	if (phymode == WLAN_PHYMODE_11BEG_EHT40PLUS)
+		phymode = WLAN_PHYMODE_11BNG_UHR40PLUS;
+	else if (phymode == WLAN_PHYMODE_11BEG_EHT40MINUS)
+		phymode = WLAN_PHYMODE_11BNG_UHR40MINUS;
+	else
+		phymode = WLAN_PHYMODE_11BNG_UHR20;
+
+	return phymode;
+}
+#else
+static enum wlan_phymode
+util_scan_get_phymode_2g_11bn(struct scan_cache_entry *scan_params,
 			      enum wlan_phymode  phymode)
 {
 	return phymode;
@@ -956,6 +1040,8 @@ util_scan_get_phymode_2g(struct scan_cache_entry *scan_params)
 		phymode = WLAN_PHYMODE_11AXG_HE20;
 
 	phymode = util_scan_get_phymode_2g_11be(scan_params, phymode);
+
+	phymode = util_scan_get_phymode_2g_11bn(scan_params, phymode);
 
 	return phymode;
 }

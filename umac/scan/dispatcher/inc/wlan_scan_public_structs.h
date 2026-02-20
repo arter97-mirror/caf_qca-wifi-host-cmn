@@ -229,6 +229,8 @@ struct channel_info {
  * @wifi6_rsno: pointer to Wifi-6 vendor RSNO IE
  * @rsnxo: pointer to vendor RSNX override IE
  * @wifi7_rsno: pointer to Wifi-7 vendor RSNO IE
+ * @uhrcap: pointer to UHR capability IE
+ * @uhrop: pointer to UHR operation IE
  */
 struct ie_list {
 	uint8_t *tim;
@@ -297,6 +299,10 @@ struct ie_list {
 	uint8_t *wifi6_rsno;
 	uint8_t *rsnxo;
 	uint8_t *wifi7_rsno;
+#ifdef WLAN_FEATURE_11BN
+	uint8_t *uhrcap;
+	uint8_t *uhrop;
+#endif
 
 /*
  * For any new IEs in this structure, add handling in
