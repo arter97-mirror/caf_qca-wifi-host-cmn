@@ -25,12 +25,17 @@
 
 /**
  * 21 bits cookie
- * 2 bits pool id 0 ~ 3,
+ * 3 bits pool id 0 ~ 5,
  * 10 bits page id 0 ~ 1023
  * 5 bits offset id 0 ~ 31 (Desc size = 128, Num descs per page = 4096/128 = 32)
  */
 /* ???Ring ID needed??? */
+#ifdef WLAN_FEATURE_SON
+#define DP_TX_DESC_ID_POOL_MASK    0x038000
+#else
 #define DP_TX_DESC_ID_POOL_MASK    0x018000
+#endif
+
 #define DP_TX_DESC_ID_POOL_OS      15
 #define DP_TX_DESC_ID_PAGE_MASK    0x007FE0
 #define DP_TX_DESC_ID_PAGE_OS      5

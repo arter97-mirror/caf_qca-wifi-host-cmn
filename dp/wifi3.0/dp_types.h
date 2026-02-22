@@ -93,7 +93,12 @@
 #define DP_PDEV_MAX_VDEVS 17
 #endif
 
+#ifdef WLAN_FEATURE_SON
+#define MAX_TXDESC_POOLS 6
+#else
 #define MAX_TXDESC_POOLS 4
+#endif
+
 #define MAX_RXDESC_POOLS 4
 
 #define EXCEPTION_DEST_RING_ID 0
