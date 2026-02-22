@@ -180,6 +180,37 @@ QDF_STATUS wlan_util_vdev_mgr_quiet_offload(
 				struct wlan_objmgr_psoc *psoc,
 				struct vdev_sta_quiet_event *quiet_event);
 #endif /* WLAN_FEATURE_11BE_MLO */
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * wlan_vdev_set_smd_enabled() - Set SMD enabled flag for vdev
+ * @vdev: VDEV object
+ * @smd_enabled: SMD enabled flag
+ *
+ * Return: None
+ */
+void wlan_vdev_set_smd_enabled(struct wlan_objmgr_vdev *vdev,
+			       bool smd_enabled);
+
+/**
+ * wlan_vdev_is_smd_enabled() - Check if SMD is enabled for vdev
+ * @vdev: VDEV object
+ *
+ * Return: true if SMD is enabled, false otherwise
+ */
+bool wlan_vdev_is_smd_enabled(struct wlan_objmgr_vdev *vdev);
+#else
+static inline
+void wlan_vdev_set_smd_enabled(struct wlan_objmgr_vdev *vdev,
+			       bool smd_enabled)
+{
+}
+
+static inline
+bool wlan_vdev_is_smd_enabled(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
 
 /**
  * wlan_util_vdev_peer_set_param_send() - send peer param

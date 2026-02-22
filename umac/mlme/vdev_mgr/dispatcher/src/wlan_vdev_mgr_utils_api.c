@@ -30,6 +30,7 @@
 #include <qdf_module.h>
 #include <wlan_vdev_mgr_tgt_if_tx_api.h>
 #include <wlan_dfs_mlme_api.h>
+#include "wlan_mlme_main.h"
 #ifndef MOBILE_DFS_SUPPORT
 #include <wlan_dfs_utils_api.h>
 #endif /* MOBILE_DFS_SUPPORT */
@@ -445,6 +446,40 @@ QDF_STATUS wlan_util_vdev_mgr_quiet_offload(
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* WLAN_FEATURE_11BE_MLO */
+
+#ifdef WLAN_FEATURE_11BN_SMD
+void wlan_vdev_set_smd_enabled(struct wlan_objmgr_vdev *vdev,
+			       bool smd_enabled)
+{
+	struct mlme_legacy_priv *mlme_priv;
+
+	if (!vdev)
+		return;
+
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv)
+		return;
+
+	mlme_priv->smd_enabled = smd_enabled;
+	mlme_debug("VDEV[%d]: SMD enabled = %s",
+		   wlan_vdev_get_id(vdev),
+		   smd_enabled ? "true" : "false");
+}
+
+bool wlan_vdev_is_smd_enabled(struct wlan_objmgr_vdev *vdev)
+{
+	struct mlme_legacy_priv *mlme_priv;
+
+	if (!vdev)
+		return false;
+
+	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
+	if (!mlme_priv)
+		return false;
+
+	return mlme_priv->smd_enabled;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
 
 QDF_STATUS wlan_util_vdev_peer_set_param_send(struct wlan_objmgr_vdev *vdev,
 					      uint8_t *peer_mac_addr,
