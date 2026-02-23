@@ -6741,7 +6741,8 @@ free_res:
 	for (i = 0; i < WLAN_IPA_UC_OPCODE_MAX; i++) {
 		qdf_cancel_work(&ipa_ctx->uc_op_work[i].work);
 		if (i == WLAN_IPA_CTRL_TX_REINJECT ||
-		    i == WLAN_IPA_CTRL_FILTER_DEL_NOTIFY) {
+		    i == WLAN_IPA_CTRL_FILTER_DEL_NOTIFY ||
+		    i == WLAN_IPA_CLASSIFY_INFO_IDX_NOTIFY) {
 			if (!ipa_ctx->uc_op_work[i].msg_list) {
 				ipa_err("msg list already freed for work %d",
 					i);
