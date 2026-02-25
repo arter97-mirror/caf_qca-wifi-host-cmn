@@ -278,8 +278,9 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 		hal_tx_desc_set_to_fw(hal_tx_desc_cached, 1);
 
 	/* verify checksum offload configuration*/
-	if ((qdf_nbuf_get_tx_cksum(tx_desc->nbuf) ==
-				   QDF_NBUF_TX_CKSUM_TCP_UDP) ||
+	if ((vdev->opmode != wlan_op_mode_passthru &&
+	     (qdf_nbuf_get_tx_cksum(tx_desc->nbuf) ==
+				    QDF_NBUF_TX_CKSUM_TCP_UDP)) ||
 	    qdf_nbuf_is_tso(tx_desc->nbuf) ||
 	    qdf_nbuf_is_uso(tx_desc->nbuf)) {
 		hal_tx_desc_set_l3_checksum_en(hal_tx_desc_cached, 1);
@@ -327,6 +328,15 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 
 	dp_tx_set_min_rates_for_critical_frames(soc, hal_tx_desc_cached,
 						tx_desc->nbuf);
+
+	if (msdu_info->is_custom_flow_sel_valid)
+		hal_tx_desc_txpt_ci_use_udp_flow_entry(hal_tx_desc_cached,
+						       msdu_info->custom_flow_sel);
+
+	if (msdu_info->is_custom_txpt_sel_valid)
+		hal_tx_desc_txpt_ci_sel(hal_tx_desc_cached,
+					msdu_info->custom_txpt_classify_info_sel);
+
 	if (!dp_tx_desc_set_ktimestamp(vdev, tx_desc))
 		dp_tx_desc_set_timestamp(tx_desc);
 

@@ -1293,6 +1293,16 @@ more_data:
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
 			int lmac_id;
 
+			if (HTT_RX_PEER_META_DATA_V2_PASSTHRU_PKT_GET(mpdu_desc_info.peer_meta_data)) {
+				lmac_id =
+					dp_rx_err_handle_passthru_msdu_buf(soc,
+									   ring_desc);
+				if (lmac_id >= 0 && lmac_id < MAX_PDEV_CNT) {
+					rx_bufs_reaped += 1;
+					goto next_entry;
+				}
+			}
+
 			/* Try to handle RXDMA error for MSDU buffer */
 			count = dp_rx_handle_rxdma_err_msdu_buf_bn(
 					soc, ring_desc, rxdma_err_status,

@@ -252,6 +252,10 @@ struct dp_tx_queue {
  * @l4_dport: destination port
  * @is_unicast: whether unicast frame or not
  * @frame_type: 802.11 frame type
+ * @is_custom_txpt_sel_valid: is custom_txpt_classif_info_sel valid
+ * @custom_txpt_classify_info_sel: Txpt classify info index override
+ * @is_custom_flow_sel_valid: is custom_flow_sel valid
+ * @custom_flow_sel: custom flow selection
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -302,10 +306,10 @@ struct dp_tx_msdu_info_s {
 	uint8_t is_s_vlan;
 	uint8_t is_c_vlan;
 	uint16_t l4_dport;
-#endif
-#ifdef DRIVER_PASSTHRU_MODE
-	bool is_unicast;
-	uint8_t frame_type;
+	bool is_custom_txpt_sel_valid;
+	uint8_t custom_txpt_classify_info_sel;
+	bool is_custom_flow_sel_valid;
+	uint8_t custom_flow_sel;
 #endif
 };
 

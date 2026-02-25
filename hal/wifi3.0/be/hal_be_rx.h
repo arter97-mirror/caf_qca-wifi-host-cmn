@@ -92,9 +92,8 @@
 
 #ifdef CONFIG_BORON
 #define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\
-	(HAL_RX_BUF_COOKIE_GET(&		\
 	(((struct reo_destination_ring *)	\
-		reo_desc)->buf_or_link_desc_virt_addr_or_addr_info)))
+		reo_desc)->sw_buffer_cookie)
 #else
 #ifdef FEATURE_DAL_DP_SUPPORT
 #define HAL_RX_REO_BUF_COOKIE_GET(reo_desc)	\

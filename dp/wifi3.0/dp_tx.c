@@ -11913,6 +11913,11 @@ void hal_tx_comp_get_status_wrapper(struct dp_soc *soc,
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
 
 #if defined(DRIVER_PASSTHRU_MODE)
+#define DP_PASSTHRU_TID_MAX 8
+
+#ifdef CONFIG_BORON
+#define DP_TXPT_CLASSIFY_INFO_SEL_MCBC_QUEUE 9
+
 /**
  * dp_tx_set_metadata_passthru() - Set TID for passthrough mode
  * @vdev: DP vdev handle
@@ -11937,22 +11942,67 @@ void dp_tx_set_metadata_passthru(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	qdf_nbuf_push_head(nbuf, sizeof(qdf_wonder_txd_t));
 
 	txd = (qdf_wonder_txd_t *)qdf_nbuf_data(nbuf);
-	msdu_info->is_unicast = txd->is_unicast;
-	msdu_info->frame_type = txd->frame_type;
+	if (txd->tid >= DP_PASSTHRU_TID_MAX)
+		txd->tid = 0;
+
+	/*
+	 * Override the flow to non-UDP for all the packets.
+	 */
+	msdu_info->custom_flow_sel = 0;
+	msdu_info->is_custom_flow_sel_valid = true;
+
+	msdu_info->tid = HTT_TX_EXT_TID_INVALID;
+	if (txd->frame_type == IEEE80211_FTYPE_MGMT ||
+	    txd->frame_type == IEEE80211_FTYPE_CTL) {
+		QDF_NBUF_CB_TX_EXTRA_IS_CRITICAL(nbuf) = 1;
+		if (!txd->is_unicast) {
+			msdu_info->custom_txpt_classify_info_sel =
+					DP_TXPT_CLASSIFY_INFO_SEL_MCBC_QUEUE;
+			msdu_info->is_custom_txpt_sel_valid = true;
+		}
+	} else {
+		if (txd->is_unicast) {
+			msdu_info->tid = txd->tid;
+		} else {
+			msdu_info->custom_txpt_classify_info_sel =
+					DP_TXPT_CLASSIFY_INFO_SEL_MCBC_QUEUE;
+			msdu_info->is_custom_txpt_sel_valid = true;
+		}
+	}
+
+	qdf_nbuf_pull_head(nbuf, sizeof(qdf_wonder_txd_t));
+}
+#else
+#define DP_UCAST_MGMT_CTRL_TID_OVERRIDE 6
+
+static inline
+void dp_tx_set_metadata_passthru(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				 struct dp_tx_msdu_info_s *msdu_info)
+{
+	qdf_wonder_txd_t *txd;
+
+	/*
+	 * nbuf data would start at the radiotap header so push size
+	 * is just the wonder txd size.
+	 */
+	qdf_nbuf_push_head(nbuf, sizeof(qdf_wonder_txd_t));
+
+	txd = (qdf_wonder_txd_t *)qdf_nbuf_data(nbuf);
 
 	/*
 	 * ToDo: Abstract the ieee enums for ftype
 	 */
-	if (!msdu_info->is_unicast || txd->tid >= 8)
+	if (!txd->is_unicast || txd->tid >= DP_PASSTHRU_TID_MAX)
 		msdu_info->tid = 0;
-	else if (msdu_info->frame_type == IEEE80211_FTYPE_MGMT ||
-		 msdu_info->frame_type == IEEE80211_FTYPE_CTL)
-		msdu_info->tid = 6;
+	else if (txd->frame_type == IEEE80211_FTYPE_MGMT ||
+		 txd->frame_type == IEEE80211_FTYPE_CTL)
+		msdu_info->tid = DP_UCAST_MGMT_CTRL_TID_OVERRIDE;
 	else
 		msdu_info->tid = txd->tid;
 
 	qdf_nbuf_pull_head(nbuf, sizeof(qdf_wonder_txd_t));
 }
+#endif
 
 qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			       qdf_nbuf_t nbuf)
