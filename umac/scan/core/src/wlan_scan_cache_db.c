@@ -1386,65 +1386,38 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 				continue;
 			}
 		}
+		/*
+		 * 6GHz Security Validation Logic:
+		 *
+		 * Two modes of operation controlled by INI configuration:
+		 *
+		 * Mode 1: Scan-time filtering (current/legacy behavior)
+		 * - check_6ghz_security=1 AND check_6ghz_security_on_connect=0
+		 * - Validate security at scan time
+		 * - Drop non-compliant APs (never added to scan cache)
+		 * - Users only see compliant 6GHz APs
+		 *
+		 * Mode 2: Connection-time filtering (new behavior for Samsung)
+		 * - check_6ghz_security=1 AND check_6ghz_security_on_connect=1
+		 * - Skip validation at scan time
+		 * - Add all 6GHz APs to scan cache
+		 * - Validate at connection time (in cm_get_valid_candidate)
+		 * - Users see all 6GHz APs but connections to non-compliant
+		 *   APs are blocked
+		 */
 		if (wlan_cm_get_check_6ghz_security(psoc) &&
-		    wlan_reg_is_6ghz_chan_freq(scan_entry->channel.chan_freq)) {
-			if (!util_scan_entry_rsn(scan_entry)) {
-				scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) with No RSN IE in 6GHz(%d)",
-					    QDF_MAC_ADDR_REF(
-					    scan_entry->bssid.bytes),
-					    bcn->frm_type,
-					    scan_entry->channel.chan_freq);
-				util_scan_free_cache_entry(scan_entry);
-				qdf_mem_free(scan_node);
-				continue;
-			}
-			status = util_scan_is_valid_rsn_present(scan_entry,
-								&sec_params);
+		    !wlan_cm_get_check_6ghz_security_on_connect(psoc)) {
+			/* Mode 1: Validate at scan time (legacy behavior) */
+			status = scm_validate_6ghz_security_and_policy(
+					psoc, scan_entry, false);
 			if (QDF_IS_STATUS_ERROR(status)) {
-				scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) with invalid RSN IE in 6GHz(%d), parse status %d",
-					    QDF_MAC_ADDR_REF(
-					    scan_entry->bssid.bytes),
-					    bcn->frm_type,
-					    scan_entry->channel.chan_freq,
-					    status);
-				util_scan_free_cache_entry(scan_entry);
-				qdf_mem_free(scan_node);
-				continue;
-			}
-			if ((QDF_HAS_PARAM(sec_params.ucastcipherset,
-					   WLAN_CRYPTO_CIPHER_NONE)) ||
-			    (QDF_HAS_PARAM(sec_params.ucastcipherset,
-					   WLAN_CRYPTO_CIPHER_TKIP)) ||
-			    (QDF_HAS_PARAM(sec_params.ucastcipherset,
-					   WLAN_CRYPTO_CIPHER_WEP_40)) ||
-			    (QDF_HAS_PARAM(sec_params.ucastcipherset,
-					   WLAN_CRYPTO_CIPHER_WEP_104))) {
-				scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) with Invalid sec type %0X for 6GHz(%d)",
-					    QDF_MAC_ADDR_REF(
-					    scan_entry->bssid.bytes),
-					    bcn->frm_type,
-					    sec_params.ucastcipherset,
-					    scan_entry->channel.chan_freq);
-				util_scan_free_cache_entry(scan_entry);
-				qdf_mem_free(scan_node);
-				continue;
-			}
-			if (!wlan_cm_6ghz_allowed_for_akm(psoc,
-					sec_params.key_mgmt,
-					sec_params.rsn_caps,
-					util_scan_entry_rsnxe(scan_entry),
-					0, false)) {
-				scm_info_rl(QDF_MAC_ADDR_FMT ": Drop frame(%d) with Invalid AKM suite %0X for 6GHz(%d)",
-					    QDF_MAC_ADDR_REF(
-					    scan_entry->bssid.bytes),
-					    bcn->frm_type,
-					    sec_params.key_mgmt,
-					    scan_entry->channel.chan_freq);
+				/* Drop non-compliant AP */
 				util_scan_free_cache_entry(scan_entry);
 				qdf_mem_free(scan_node);
 				continue;
 			}
 		}
+		/* Mode 2: Skip validation, validation at connection time */
 
 		mbssid_info = &scan_entry->mbssid_info;
 		if (!qdf_is_macaddr_zero(

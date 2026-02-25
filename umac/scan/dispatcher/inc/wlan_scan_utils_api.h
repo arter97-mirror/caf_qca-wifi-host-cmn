@@ -2139,4 +2139,30 @@ uint8_t util_get_rsnxe_len_by_gen(struct scan_cache_entry *scan_entry,
 QDF_STATUS
 util_scan_is_valid_rsn_present(struct scan_cache_entry *entry,
 			       struct wlan_crypto_params *params);
+
+/**
+ * scm_validate_6ghz_security_and_policy() - Wrapper api to Validate 6 GHz
+ *                                           security requirements
+ * @psoc: psoc object
+ * @scan_entry: scan cache entry to validate
+ * @is_connection_time: true if called during connection, false if during scan
+ *
+ * This function consolidates all 6 GHz security validation checks into a single
+ * reusable API. It validates:
+ * 1. HE Capability/Operation IE presence (mandatory for 6 GHz)
+ * 2. RSN IE presence
+ * 3. RSN IE validity
+ * 4. Cipher suite compliance (no TKIP/WEP/None)
+ * 5. AKM suite compliance (PMF, H2E requirements)
+ *
+ * The function can be called from two contexts:
+ * - Scan time: To filter APs before adding to scan cache
+ * - Connection time: To validate candidates before connection attempt
+ *
+ * Return: QDF_STATUS_SUCCESS if all checks pass, error status otherwise
+ */
+QDF_STATUS scm_validate_6ghz_security_and_policy(
+	struct wlan_objmgr_psoc *psoc,
+	struct scan_cache_entry *scan_entry,
+	bool is_connection_time);
 #endif

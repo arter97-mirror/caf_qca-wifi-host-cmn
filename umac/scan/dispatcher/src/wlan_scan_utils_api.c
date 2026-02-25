@@ -4433,3 +4433,84 @@ util_scan_is_valid_rsn_present(struct scan_cache_entry *entry,
 
 	return QDF_STATUS_E_INVAL;
 }
+
+QDF_STATUS scm_validate_6ghz_security_and_policy(
+	struct wlan_objmgr_psoc *psoc,
+	struct scan_cache_entry *scan_entry,
+	bool is_connection_time)
+{
+	struct wlan_crypto_params sec_params = {0};
+	QDF_STATUS status;
+	const char *context = is_connection_time ? "connection" : "scan";
+
+	/* Sanity check */
+	if (!psoc || !scan_entry) {
+		scm_err_rl("Invalid parameters: psoc %pK scan_entry %pK",
+			   psoc, scan_entry);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!wlan_reg_is_6ghz_chan_freq(scan_entry->channel.chan_freq))
+		return QDF_STATUS_SUCCESS;
+
+	/*
+	 * Check 1: HE Capability and Operation IEs (MANDATORY for 6GHz)
+	 * This check is always enforced regardless of configuration
+	 */
+	if (!scan_entry->ie_list.hecap || !scan_entry->ie_list.heop) {
+		scm_info_rl("6GHz AP " QDF_MAC_ADDR_FMT " at %s: missing HE cap/op IE",
+			    QDF_MAC_ADDR_REF(scan_entry->bssid.bytes), context);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Check 2: RSN IE presence */
+	if (!util_scan_entry_rsn(scan_entry)) {
+		scm_info_rl("6GHz AP " QDF_MAC_ADDR_FMT " at %s: no RSN IE",
+			    QDF_MAC_ADDR_REF(scan_entry->bssid.bytes), context);
+		return QDF_STATUS_E_PROTO;
+	}
+
+	/* Check 3: RSN IE validation */
+	status = util_scan_is_valid_rsn_present(scan_entry, &sec_params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		scm_info_rl("6GHz AP " QDF_MAC_ADDR_FMT " at %s: invalid RSN IE, status %d",
+			    QDF_MAC_ADDR_REF(scan_entry->bssid.bytes),
+			    context, status);
+		return status;
+	}
+
+	/*
+	 * Check 4: Cipher suite validation
+	 * 6GHz requires strong ciphers - no TKIP, WEP, or None
+	 */
+	if ((QDF_HAS_PARAM(sec_params.ucastcipherset,
+			   WLAN_CRYPTO_CIPHER_NONE)) ||
+	    (QDF_HAS_PARAM(sec_params.ucastcipherset,
+			   WLAN_CRYPTO_CIPHER_TKIP)) ||
+	    (QDF_HAS_PARAM(sec_params.ucastcipherset,
+			   WLAN_CRYPTO_CIPHER_WEP_40)) ||
+	    (QDF_HAS_PARAM(sec_params.ucastcipherset,
+			   WLAN_CRYPTO_CIPHER_WEP_104))) {
+		scm_info_rl("6GHz AP " QDF_MAC_ADDR_FMT " at %s: weak cipher (TKIP/WEP/None)",
+			    QDF_MAC_ADDR_REF(scan_entry->bssid.bytes), context);
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
+	/*
+	 * Check 5: AKM suite validation
+	 * Validates:
+	 * - AKM is in allowed mask
+	 * - PMF (Management Frame Protection) is enabled
+	 * - For SAE: H2E (Hash-to-Element) capability present
+	 */
+	if (!wlan_cm_6ghz_allowed_for_akm(psoc,
+					  sec_params.key_mgmt,
+					  sec_params.rsn_caps,
+					  util_scan_entry_rsnxe(scan_entry),
+					  0, false)) {
+		scm_info_rl("6GHz AP " QDF_MAC_ADDR_FMT " at %s: invalid AKM suite or missing PMF/H2E",
+			    QDF_MAC_ADDR_REF(scan_entry->bssid.bytes), context);
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+	return QDF_STATUS_SUCCESS;
+}
