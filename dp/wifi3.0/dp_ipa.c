@@ -4178,6 +4178,12 @@ void dp_ipa_wdi_opt_dpath_notify_flt_rsvd(bool is_success)
 	wlan_ipa_wdi_opt_dpath_notify_flt_rsvd(is_success);
 }
 
+int dp_ipa_tx_buf_alloc_map(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	return dp_tx_ipa_uc_attach(soc, soc->pdev_list[IPA_DEF_PDEV_ID]);
+}
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_tx_super_rule_setup()- pass tx super rule params to fw from ipa

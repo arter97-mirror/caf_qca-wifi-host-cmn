@@ -468,6 +468,15 @@ void dp_ipa_pcie_link_down(struct cdp_soc_t *soc_hdl);
  */
 void dp_ipa_dump_ring_hp_tp(struct cdp_soc_t *soc_hdl);
 
+/**
+ * dp_ipa_tx_buf_alloc_map() - Allocate and dma map tx buffer
+ * for opt_dp use case
+ * @soc_hdl: handle to the soc
+ *
+ * Return: 0 on success, negative on failure
+ */
+int dp_ipa_tx_buf_alloc_map(struct cdp_soc_t *soc_hdl);
+
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_wdi_opt_dpath_ctrl_notify_flt_install() - send tx super rule filter

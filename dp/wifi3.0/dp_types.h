@@ -3927,6 +3927,7 @@ struct dp_soc {
 	bool is_opt_dp_filter_active;
 
 #ifdef IPA_OPT_WIFI_DP
+	qdf_spinlock_t ipa_tx_res_alloc_lock;
 	struct dp_opt_dp_flt ipa_flt[DP_OPT_DP_NUM_FILTER];
 #endif
 

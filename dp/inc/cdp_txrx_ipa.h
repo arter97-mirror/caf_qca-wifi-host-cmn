@@ -996,7 +996,6 @@ struct wifi_dp_tx_flt_setup {
 	qdf_spinlock_t flt_rem_lock;
 };
 
-#ifdef IPA_OPT_WIFI_DP
 static inline void
 cdp_ipa_print_opt_dp_log(ol_txrx_soc_handle soc,
 			 bool is_opt_dp_filter_active,
@@ -1013,7 +1012,6 @@ cdp_ipa_print_opt_dp_log(ol_txrx_soc_handle soc,
 						is_opt_dp_filter_active,
 						dp_flt_param);
 }
-#endif
 
 static inline QDF_STATUS
 cdp_ipa_rx_cce_super_rule_setup(ol_txrx_soc_handle soc,
@@ -1030,6 +1028,20 @@ cdp_ipa_rx_cce_super_rule_setup(ol_txrx_soc_handle soc,
 								  flt_params);
 
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline int cdp_ipa_tx_buf_alloc_map(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return -EINVAL;
+	}
+
+	if (soc->ops->ipa_ops->ipa_tx_buf_alloc_map)
+		return soc->ops->ipa_ops->ipa_tx_buf_alloc_map(soc);
+
+	return 0;
 }
 
 #ifdef IPA_OPT_WIFI_DP_CTRL

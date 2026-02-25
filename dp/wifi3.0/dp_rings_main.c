@@ -2512,6 +2512,31 @@ void dp_ipa_rx_desc_freelist_destroy(struct dp_soc *soc)
 {
 }
 #endif
+#ifdef IPA_OPT_WIFI_DP
+static inline
+void dp_ipa_tx_rsrc_init(struct dp_soc *soc)
+{
+	qdf_spinlock_create(&soc->ipa_tx_res_alloc_lock);
+}
+
+static inline
+void dp_ipa_tx_rsrc_deinit(struct dp_soc *soc)
+{
+	qdf_spinlock_destroy(&soc->ipa_tx_res_alloc_lock);
+}
+
+#else
+static inline
+void dp_ipa_tx_rsrc_init(struct dp_soc *soc)
+{
+}
+
+static inline
+void dp_ipa_tx_rsrc_deinit(struct dp_soc *soc)
+{
+}
+#endif
+
 /**
  * dp_soc_deinit() - Deinitialize txrx SOC
  * @txrx_soc: Opaque DP SOC handle
@@ -2580,6 +2605,7 @@ void dp_soc_deinit(void *txrx_soc)
 	qdf_spinlock_destroy(&soc->inactive_vdev_list_lock);
 
 	dp_ipa_rx_desc_freelist_destroy(soc);
+	dp_ipa_tx_rsrc_deinit(soc);
 
 	htt_soc_htc_dealloc(soc->htt_handle);
 
@@ -4187,6 +4213,7 @@ void *dp_soc_init(struct dp_soc *soc, HTC_HANDLE htc_handle,
 
 	dp_reo_desc_deferred_freelist_create(soc);
 
+	dp_ipa_tx_rsrc_init(soc);
 	dp_ipa_rx_desc_freelist_create(soc);
 
 	dp_info("Mem stats: DMA = %u HEAP = %u SKB = %u",
