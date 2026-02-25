@@ -23107,6 +23107,324 @@ extract_pdev_power_boost_event_tlv(wmi_unified_t wmi_handle,
 }
 #endif
 
+static QDF_STATUS send_unified_vdev_connect_cmd_tlv(
+				wmi_unified_t wmi,
+				uint8_t bssid[QDF_MAC_ADDR_SIZE],
+				struct vdev_unified_connect_param *params)
+{
+	wmi_vdev_unified_connect_cmd_fixed_param *cmd;
+	wmi_peer_create_cmd_fixed_param *peer_create_cmd;
+	wmi_vdev_start_request_cmd_fixed_param *vdev_start_cmd;
+	wmi_peer_assoc_complete_cmd_fixed_param *peer_assoc_cmd;
+	wmi_peer_assoc_complete_cmd_fixed_param *peer_assoc_v2_cmd;
+	wmi_vdev_up_cmd_fixed_param *vdev_up_cmd;
+	wmi_channel *chan;
+	wmi_vht_rate_set *v2_vht;
+	wmi_peer_assoc_cfp_params *v2_cfp;
+	wmi_peer_assoc_smd_params *smd;
+	uint32_t len = sizeof(*cmd);
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	uint32_t peer_legacy_rates_align, peer_ht_rates_align;
+	QDF_STATUS status;
+
+	if (!params) {
+		wmi_err("Unified connect params is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Calculate length for peer_create_params */
+	len += sizeof(wmi_peer_create_cmd_fixed_param);
+	len += peer_create_mlo_params_size(&params->peer_create);
+
+	/* Calculate length for vdev_start_params */
+	len += sizeof(wmi_vdev_start_request_cmd_fixed_param) +
+		sizeof(wmi_channel) + WMI_TLV_HDR_SIZE +
+		(params->vdev_start.num_noa_descriptors *
+		 sizeof(wmi_p2p_noa_descriptor));
+
+	if (!params->vdev_start.is_restart) {
+		len += vdev_start_mlo_params_size(&params->vdev_start);
+	} else {
+		/* Empty MLO params and partner links array header */
+		len += WMI_TLV_HDR_SIZE + WMI_TLV_HDR_SIZE;
+	}
+
+	/* dbw_chan (ARRAY_STRUC of wmi_channel) */
+	len += WMI_TLV_HDR_SIZE;
+
+	/* dbw_chan_info (ARRAY_STRUC of wmi_dbw_chan_info) */
+	len += WMI_TLV_HDR_SIZE;
+
+	/* Calculate length for peer_assoc_param */
+	peer_legacy_rates_align = wmi_align(
+			params->peer_assoc.peer_legacy_rates.num_rates);
+	peer_ht_rates_align = wmi_align(
+			params->peer_assoc.peer_ht_rates.num_rates);
+
+	/* Fixed struct */
+	len += sizeof(wmi_peer_assoc_complete_cmd_fixed_param);
+
+	/* legacy + ht arrays (aligned) */
+	len += WMI_TLV_HDR_SIZE + (peer_legacy_rates_align * sizeof(uint8_t));
+	len += WMI_TLV_HDR_SIZE + (peer_ht_rates_align * sizeof(uint8_t));
+
+	/* vht struct */
+	len += sizeof(wmi_vht_rate_set);
+
+	/* he array (ARRAY_STRUC) */
+	len += WMI_TLV_HDR_SIZE +
+		params->peer_assoc.peer_he_mcs_count * sizeof(wmi_he_rate_set);
+
+	/* eht params (ARRAY_STRUC; helper returns header + payload) */
+	len += wmi_eht_peer_assoc_params_len(&params->peer_assoc);
+
+	/* mlo params + partner links */
+	len += peer_assoc_mlo_params_size(&params->peer_assoc);
+	/* t2lm array (ARRAY_STRUC; header+payload) */
+	len += peer_assoc_t2lm_params_size(&params->peer_assoc);
+
+	/* operating_mode_params */
+	len += WMI_TLV_HDR_SIZE;
+	/* mgmt_mpduq_params */
+	len += WMI_TLV_HDR_SIZE;
+	/* mgmt_msduq_params */
+	len += WMI_TLV_HDR_SIZE;
+	/* hol_msduq_params */
+	len += WMI_TLV_HDR_SIZE;
+
+	/* --- peer_assoc (v2) length --- */
+	len += sizeof(wmi_peer_assoc_complete_cmd_fixed_param); /* v2 fixed */
+
+	/* v2 legacy, ht: ARRAY_BYTE (empty for now) */
+	len += WMI_TLV_HDR_SIZE; /* v2 peer_legacy_rates (len=0) */
+	len += WMI_TLV_HDR_SIZE; /* v2 peer_ht_rates (len=0) */
+
+	/* v2 VHT struct */
+	len += sizeof(wmi_vht_rate_set);
+
+	len += WMI_TLV_HDR_SIZE; /* v2 he */
+	len += WMI_TLV_HDR_SIZE; /* v2 mlo */
+	len += WMI_TLV_HDR_SIZE; /* v2 eht */
+	len += WMI_TLV_HDR_SIZE; /* v2 partner_link_params */
+	len += WMI_TLV_HDR_SIZE; /* v2 tid_to_link_map */
+	len += WMI_TLV_HDR_SIZE; /* v2 operating_mode_params */
+	len += WMI_TLV_HDR_SIZE; /* v2 mgmt_mpduq_params */
+	len += WMI_TLV_HDR_SIZE; /* v2 mgmt_msduq_params */
+	len += WMI_TLV_HDR_SIZE; /* v2 hol_msduq_params */
+	len += WMI_TLV_HDR_SIZE; /* v2 npca_cap_params */
+	len += WMI_TLV_HDR_SIZE; /* v2 create_mlo_params */
+	/* v2 CFP struct */
+	len += sizeof(wmi_peer_assoc_cfp_params);
+
+	/* --- vdev_up (unified) length --- */
+	len += sizeof(wmi_vdev_up_cmd_fixed_param);
+
+	/* vdev_up_co_located_chan_info */
+	len += WMI_TLV_HDR_SIZE;
+
+	/* smd_params (STRUCT) — note: STRUCT, not array */
+	len += sizeof(wmi_peer_assoc_smd_params);
+
+	buf = wmi_buf_alloc(wmi, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+
+	/* Fill unified connect command header */
+	cmd = (wmi_vdev_unified_connect_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_unified_connect_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_vdev_unified_connect_cmd_fixed_param));
+	cmd->vdev_id = params->peer_create.vdev_id;
+	buf_ptr += sizeof(*cmd);
+
+	/* Fill peer create parameters */
+	peer_create_cmd = (wmi_peer_create_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&peer_create_cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_create_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_peer_create_cmd_fixed_param));
+	wmi_peer_create_cmd_fill_params(peer_create_cmd, &params->peer_create);
+	buf_ptr += sizeof(wmi_peer_create_cmd_fixed_param);
+
+	/* Setup buffer for MLO parameters */
+	buf_ptr = peer_create_add_mlo_params(buf_ptr, &params->peer_create);
+
+	/* Fill vdev start parameters */
+	vdev_start_cmd = (wmi_vdev_start_request_cmd_fixed_param *)buf_ptr;
+	chan = (wmi_channel *)(buf_ptr + sizeof(*vdev_start_cmd));
+	WMITLV_SET_HDR(&vdev_start_cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_start_request_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_vdev_start_request_cmd_fixed_param));
+	WMITLV_SET_HDR(&chan->tlv_header, WMITLV_TAG_STRUC_wmi_channel,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_channel));
+	wmi_vdev_start_cmd_fill_params(vdev_start_cmd, chan,
+				       &params->vdev_start);
+	buf_ptr += sizeof(wmi_vdev_start_request_cmd_fixed_param);
+	/* Setup TLV buffer for NOA descriptors and MLO parameters */
+	buf_ptr = wmi_vdev_start_setup_tlv_buffer(vdev_start_cmd,
+						  &params->vdev_start);
+
+	/* vdev_start_dbw_chan (ARRAY_STRUC of wmi_channel) — empty for now */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* vdev_start_dbw_chan_info */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* Fill peer_assoc v1 params */
+	/* Fixed */
+	peer_assoc_cmd = (wmi_peer_assoc_complete_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&peer_assoc_cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_complete_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_peer_assoc_complete_cmd_fixed_param));
+
+	wmi_peer_assoc_cmd_fill_params(peer_assoc_cmd, &params->peer_assoc);
+	buf_ptr += sizeof(*peer_assoc_cmd);
+
+	/* Fill peer assoc rate information */
+	buf_ptr = wmi_peer_assoc_cmd_fill_rates(buf_ptr, &params->peer_assoc,
+						peer_legacy_rates_align,
+						peer_ht_rates_align);
+
+	/* Fill peer assoc HE rate information and debug logging */
+	buf_ptr = wmi_peer_assoc_cmd_fill_he_rates(buf_ptr, peer_assoc_cmd,
+						   &params->peer_assoc);
+
+	/* Add MLO parameters for peer assoc */
+	buf_ptr = peer_assoc_add_mlo_params(buf_ptr, &params->peer_assoc);
+
+	/* Update peer flags with EHT info */
+	buf_ptr = update_peer_flags_tlv_ehtinfo(peer_assoc_cmd,
+						&params->peer_assoc, buf_ptr);
+
+	/* Add ML partner links */
+	buf_ptr = peer_assoc_add_ml_partner_links(buf_ptr, &params->peer_assoc);
+
+	/* Add TID to link mapping */
+	buf_ptr = peer_assoc_add_tid_to_link_map(buf_ptr, &params->peer_assoc);
+
+	/* operating_mode_params (empty) */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* mgmt_mpduq_params (empty) */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	/* mgmt_msduq_params (empty) */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* hol_msduq_params (empty) */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* --- begin peer_assoc (v2) --- */
+	/* v2 fixed */
+	peer_assoc_v2_cmd = (wmi_peer_assoc_complete_cmd_fixed_param *)buf_ptr;
+
+	WMITLV_SET_HDR(&peer_assoc_v2_cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_complete_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_peer_assoc_complete_cmd_fixed_param));
+
+	buf_ptr += sizeof(*peer_assoc_v2_cmd);
+
+	/* v2 legacy (empty) */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* v2 ht (empty) */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* v2 VHT struct */
+	v2_vht = (wmi_vht_rate_set *)buf_ptr;
+	WMITLV_SET_HDR(&v2_vht->tlv_header, WMITLV_TAG_STRUC_wmi_vht_rate_set,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vht_rate_set));
+	/* Optionally fill v2_vht if needed */
+	buf_ptr += sizeof(*v2_vht);
+
+	/* v2 arrays (all empty for now) */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* he */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* mlo */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* eht */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* partner_link */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* tid_to_link_map */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* operating_mode */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* mgmt_mpduq */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* mgmt_msduq */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* hol_msduq */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* npca_cap */
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE; /* create_mlo */
+
+	/* v2 CFP struct */
+	v2_cfp = (wmi_peer_assoc_cfp_params *)buf_ptr;
+	WMITLV_SET_HDR(&v2_cfp->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_cfp_params,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_cfp_params));
+	/* Optionally fill v2_cfp */
+	buf_ptr += sizeof(*v2_cfp);
+
+	/* Fill vdev_up tlvs */
+	vdev_up_cmd = (wmi_vdev_up_cmd_fixed_param *)buf_ptr;
+
+	WMITLV_SET_HDR(&vdev_up_cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_up_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_up_cmd_fixed_param));
+
+	wmi_vdev_up_cmd_fill_params(vdev_up_cmd, bssid, &params->vdev_up);
+	buf_ptr += sizeof(*vdev_up_cmd);
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	/* smd_params (STRUCT) */
+	smd = (wmi_peer_assoc_smd_params *)buf_ptr;
+	WMITLV_SET_HDR(&smd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_smd_params,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_smd_params));
+
+	/* If no fields to populate yet, zero/init is fine.
+	 * Otherwise set the required fields here.
+	 */
+	qdf_mem_zero(smd, sizeof(*smd));
+	WMITLV_SET_HDR(&smd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_assoc_smd_params,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_smd_params));
+	buf_ptr += sizeof(*smd);
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	wmi_mtrace(WMI_VDEV_UNIFIED_CONNECT_CMDID, cmd->vdev_id, 0);
+	status = wmi_unified_cmd_send(wmi, buf, len,
+				      WMI_VDEV_UNIFIED_CONNECT_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI_VDEV_UNIFIED_CONNECT_CMDID");
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 struct wmi_ops tlv_ops =  {
 	.send_vdev_create_cmd = send_vdev_create_cmd_tlv,
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
@@ -23116,6 +23434,7 @@ struct wmi_ops tlv_ops =  {
 	.send_peer_flush_tids_cmd = send_peer_flush_tids_cmd_tlv,
 	.send_peer_param_cmd = send_peer_param_cmd_tlv,
 	.send_vdev_up_cmd = send_vdev_up_cmd_tlv,
+	.send_unified_vdev_connect_cmd = send_unified_vdev_connect_cmd_tlv,
 	.send_vdev_stop_cmd = send_vdev_stop_cmd_tlv,
 	.send_peer_create_cmd = send_peer_create_cmd_tlv,
 	.send_peer_delete_cmd = send_peer_delete_cmd_tlv,

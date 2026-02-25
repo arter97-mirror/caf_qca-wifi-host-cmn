@@ -235,4 +235,20 @@ target_if_mlo_sap_link_removal_offload_support(struct wlan_objmgr_psoc *psoc);
  */
 bool
 target_if_is_unified_connect_disconnect_enabled(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * target_if_mlo_populate_unified_connect_params() - Populate unified connect
+ * parameters from cached MLO context
+ * @vdev: pointer to vdev object
+ * @unified_connect_param: pointer to unified connect parameters to populate
+ *
+ * This API populates unified connect parameters by getting cached parameters
+ * from MLO manager and copying them to the WMI unified connect structure.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+target_if_mlo_populate_unified_connect_params(
+		struct wlan_objmgr_vdev *vdev,
+		struct vdev_unified_connect_param *unified_connect_param);
 #endif /* __TARGET_IF_MLO_MGR_H__ */

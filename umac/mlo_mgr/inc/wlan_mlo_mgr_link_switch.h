@@ -963,6 +963,19 @@ mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
 				struct peer_assoc_params *peer_assoc_params);
 
 /**
+ * mlo_mgr_cache_vdev_up_params() - Cache vdev up parameters for link switch
+ * @vdev: VDEV object manager.
+ * @param: vdev up parameters to cache.
+ *
+ * This API caches the vdev up parameters in the MLO link switch context
+ * for use during unified connect operations.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_mgr_cache_vdev_up_params(struct wlan_objmgr_vdev *vdev,
+					struct vdev_up_params *param);
+
+/**
  * mlo_mgr_cleanup_cached_connect_params() - Cleanup all cached connect params
  * @vdev: Pointer to vdev object
  *
@@ -973,6 +986,19 @@ mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
  * Return: None
  */
 void mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev);
+
+/*
+ * mlo_mgr_get_cached_connect_params() - Get cached connect parameters
+ * @vdev: pointer to vdev object
+ *
+ * This API returns a pointer to the cached connect parameters from MLO context.
+ * The caller can use this to access cached peer create, vdev start, peer assoc,
+ * and vdev up parameters.
+ *
+ * Return: Pointer to cached connect parameters on success, NULL on failure
+ */
+struct mlo_vdev_connect_params_cache *
+mlo_mgr_get_cached_connect_params(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlo_mgr_set_unified_connect_in_progress() - Set unified connect in
@@ -1342,9 +1368,22 @@ mlo_mgr_cache_peer_assoc_params(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 
+static inline QDF_STATUS
+mlo_mgr_cache_vdev_up_params(struct wlan_objmgr_vdev *vdev,
+			     struct vdev_up_params *param)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
 static inline void
 mlo_mgr_cleanup_cached_connect_params(struct wlan_objmgr_vdev *vdev)
 {
+}
+
+static inline struct mlo_vdev_connect_params_cache *
+mlo_mgr_get_cached_connect_params(struct wlan_objmgr_vdev *vdev)
+{
+	return NULL;
 }
 
 static inline

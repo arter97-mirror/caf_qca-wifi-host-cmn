@@ -958,6 +958,19 @@ QDF_STATUS wmi_unified_vdev_up_send(wmi_unified_t wmi_handle,
 				    struct vdev_up_params *params);
 
 /**
+ * wmi_unified_vdev_connect_send() - send unified vdev connect command to fw
+ * @wmi_handle: wmi handle
+ * @bssid: bssid
+ * @params: pointer to hold vdev unified connect parameter
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_vdev_connect_send(
+				wmi_unified_t wmi_handle,
+				uint8_t bssid[QDF_MAC_ADDR_SIZE],
+				struct vdev_unified_connect_param *params);
+
+/**
  * wmi_unified_vdev_down_send() - send vdev down command to fw
  * @wmi_handle: wmi handle
  * @vdev_id: vdev id

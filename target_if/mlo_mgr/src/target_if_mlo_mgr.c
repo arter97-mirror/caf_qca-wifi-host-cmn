@@ -1375,3 +1375,40 @@ target_if_is_unified_connect_disconnect_enabled(struct wlan_objmgr_psoc *psoc)
 			wmi_handle,
 			wmi_service_vdev_unified_connect_disconnect_support);
 }
+
+QDF_STATUS
+target_if_mlo_populate_unified_connect_params(
+		struct wlan_objmgr_vdev *vdev,
+		struct vdev_unified_connect_param *unified_connect_param)
+{
+	struct mlo_vdev_connect_params_cache *cache_params;
+
+	cache_params = mlo_mgr_get_cached_connect_params(vdev);
+	if (!cache_params)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (cache_params->peer_create) {
+		qdf_mem_copy(&unified_connect_param->peer_create,
+			     cache_params->peer_create,
+			     sizeof(struct peer_create_params));
+	}
+	if (cache_params->vdev_start) {
+		qdf_mem_copy(&unified_connect_param->vdev_start,
+			     cache_params->vdev_start,
+			     sizeof(struct vdev_start_params));
+	}
+
+	if (cache_params->peer_assoc) {
+		qdf_mem_copy(&unified_connect_param->peer_assoc,
+			     cache_params->peer_assoc,
+			     sizeof(struct peer_assoc_params));
+	}
+
+	if (cache_params->vdev_up) {
+		qdf_mem_copy(&unified_connect_param->vdev_up,
+			     cache_params->vdev_up,
+			     sizeof(struct vdev_up_params));
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
