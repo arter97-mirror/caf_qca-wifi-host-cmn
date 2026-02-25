@@ -1046,6 +1046,29 @@ static inline int cdp_ipa_tx_buf_alloc_map(ol_txrx_soc_handle soc)
 	return 0;
 }
 
+static inline void cdp_ipa_opt_dp_set_tx_doorbell(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return;
+	}
+
+	if (soc->ops->ipa_ops->ipa_opt_dp_set_tx_doorbell)
+		return soc->ops->ipa_ops->ipa_opt_dp_set_tx_doorbell(soc);
+}
+
+static inline void cdp_ipa_opt_dp_reset_tx_doorbell(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return;
+	}
+
+	if (soc->ops->ipa_ops->ipa_opt_dp_reset_tx_doorbell)
+		return soc->ops->ipa_ops->ipa_opt_dp_reset_tx_doorbell(soc);
+}
 #ifdef IPA_OPT_WIFI_DP_CTRL
 static inline QDF_STATUS
 cdp_ipa_tx_super_rule_setup(ol_txrx_soc_handle soc,

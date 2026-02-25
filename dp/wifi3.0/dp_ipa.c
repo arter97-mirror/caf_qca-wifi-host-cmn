@@ -4243,6 +4243,40 @@ int dp_ipa_tx_buf_alloc_map(struct cdp_soc_t *soc_hdl)
 
 	return status;
 }
+
+void dp_ipa_opt_dp_set_tx_doorbell(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_ipa_resources *ipa_res;
+
+	if (!soc) {
+		dp_ipa_err("invalid soc");
+		return;
+	}
+
+	ipa_res = &soc->ipa_resource;
+	dp_ipa_set_tx_doorbell_paddr(soc, ipa_res);
+	if (soc->ipa_first_tx_db_access) {
+		dp_ipa_tx_comp_ring_init_hp(soc, ipa_res);
+		soc->ipa_first_tx_db_access = false;
+	} else {
+		dp_ipa_tx_comp_ring_update_hp_addr(soc, ipa_res);
+	}
+}
+
+void dp_ipa_opt_dp_reset_tx_doorbell(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_ipa_resources *ipa_res;
+
+	if (!soc) {
+		dp_ipa_err("invalid soc");
+		return;
+	}
+
+	ipa_res = &soc->ipa_resource;
+	dp_ipa_reset_tx_doorbell_pa(soc, ipa_res);
+}
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_tx_super_rule_setup()- pass tx super rule params to fw from ipa

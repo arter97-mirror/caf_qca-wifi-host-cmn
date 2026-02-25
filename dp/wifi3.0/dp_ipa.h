@@ -477,6 +477,19 @@ void dp_ipa_dump_ring_hp_tp(struct cdp_soc_t *soc_hdl);
  */
 int dp_ipa_tx_buf_alloc_map(struct cdp_soc_t *soc_hdl);
 
+/**
+ * dp_ipa_opt_dp_set_tx_doorbell() - Set tx doorbell address
+ * for opt_dp usecase
+ * @soc_hdl: handle to the soc
+ */
+void dp_ipa_opt_dp_set_tx_doorbell(struct cdp_soc_t *soc_hdl);
+
+/**
+ * dp_ipa_opt_dp_reset_tx_doorbell() - reset hp paddr with ddr
+ * address
+ * @soc_hdl: handle to the soc
+ */
+void dp_ipa_opt_dp_reset_tx_doorbell(struct cdp_soc_t *soc_hdl);
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_wdi_opt_dpath_ctrl_notify_flt_install() - send tx super rule filter
