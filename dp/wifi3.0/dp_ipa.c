@@ -1708,7 +1708,7 @@ static QDF_STATUS dp_ipa_reset_tx_doorbell_pa(struct dp_soc *soc,
 #endif /* IPA_WDI3_TX_TWO_PIPES */
 
 /**
- * dp_tx_ipa_uc_detach() - Free autonomy TX resources
+ * __dp_tx_ipa_uc_detach() - Free autonomy TX resources
  * @soc: data path instance
  * @pdev: core txrx pdev context
  *
@@ -1716,7 +1716,7 @@ static QDF_STATUS dp_ipa_reset_tx_doorbell_pa(struct dp_soc *soc,
  *
  * Return: none
  */
-static void dp_tx_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
+static void __dp_tx_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
 	int idx;
 	qdf_nbuf_t nbuf;
@@ -1744,6 +1744,25 @@ static void dp_tx_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
 	qdf_mem_free_sgtable(&ipa_res->tx_comp_ring.sgtable);
 }
 
+#ifdef IPA_OPT_WIFI_DP
+static void dp_tx_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
+{
+	qdf_spin_lock_bh(&soc->ipa_tx_res_alloc_lock);
+	if (!soc->ipa_uc_tx_rsc.tx_buf_pool_vaddr_unaligned) {
+		dp_ipa_debug("TX buffer not allocated");
+		qdf_spin_unlock_bh(&soc->ipa_tx_res_alloc_lock);
+		return;
+	}
+
+	__dp_tx_ipa_uc_detach(soc, pdev);
+	qdf_spin_unlock_bh(&soc->ipa_tx_res_alloc_lock);
+}
+#else
+static void dp_tx_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
+{
+	__dp_tx_ipa_uc_detach(soc, pdev);
+}
+#endif
 /**
  * dp_rx_ipa_uc_detach() - free autonomy RX resources
  * @soc: data path instance
@@ -1859,7 +1878,7 @@ int dp_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
 }
 
 /**
- * dp_tx_ipa_uc_attach() - Allocate autonomy TX resources
+ * __dp_tx_ipa_uc_attach() - Allocate autonomy TX resources
  * @soc: data path instance
  * @pdev: Physical device handle
  *
@@ -1868,7 +1887,7 @@ int dp_ipa_uc_detach(struct dp_soc *soc, struct dp_pdev *pdev)
  *
  * Return: int
  */
-static int dp_tx_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
+static int __dp_tx_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 {
 	uint32_t tx_buffer_count;
 	uint32_t ring_base_align = 8;
@@ -1983,6 +2002,28 @@ static int dp_tx_ipa_uc_attach(struct dp_soc *soc, struct dp_pdev *pdev)
 
 	return retval;
 }
+
+#ifdef IPA_OPT_WIFI_DP
+/**
+ * dp_tx_ipa_uc_attach() - attach tx buffer to tx completion
+ * ring. For OPT_DP attach tx and map tx buffers on filter reservation
+ * @soc: soc
+ * @pdev: pdev
+ */
+static inline
+int dp_tx_ipa_uc_attach(struct dp_soc *soc,
+			struct dp_pdev *pdev)
+{
+	return 0;
+}
+#else
+static inline
+int dp_tx_ipa_uc_attach(struct dp_soc *soc,
+			struct dp_pdev *pdev)
+{
+	return __dp_tx_ipa_uc_attach(soc, pdev);
+}
+#endif
 
 /**
  * dp_rx_ipa_uc_attach() - Allocate autonomy RX resources
@@ -4181,8 +4222,26 @@ void dp_ipa_wdi_opt_dpath_notify_flt_rsvd(bool is_success)
 int dp_ipa_tx_buf_alloc_map(struct cdp_soc_t *soc_hdl)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	int status;
 
-	return dp_tx_ipa_uc_attach(soc, soc->pdev_list[IPA_DEF_PDEV_ID]);
+	if (!soc) {
+		dp_ipa_err("invalid soc");
+		return -EINVAL;
+	}
+
+	qdf_spin_lock_bh(&soc->ipa_tx_res_alloc_lock);
+	if (soc->ipa_uc_tx_rsc.tx_buf_pool_vaddr_unaligned) {
+		dp_ipa_debug("TX buffer already allocated");
+		qdf_spin_unlock_bh(&soc->ipa_tx_res_alloc_lock);
+		return 0;
+	}
+
+	status = __dp_tx_ipa_uc_attach(soc, soc->pdev_list[IPA_DEF_PDEV_ID]);
+	qdf_spin_unlock_bh(&soc->ipa_tx_res_alloc_lock);
+	if (status)
+		dp_ipa_err("TX buffer allocation failed");
+
+	return status;
 }
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**

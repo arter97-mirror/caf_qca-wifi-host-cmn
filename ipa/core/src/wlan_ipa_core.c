@@ -6217,9 +6217,28 @@ static inline void wlan_ipa_enable_powersave(struct wlan_ipa_priv *ipa_obj)
 			      WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP);
 	ipa_debug("opt_dp: Wakelock released");
 }
+
+static inline
+int wlan_ipa_tx_buff_alloc_smmu_map(struct wlan_ipa_priv *ipa_obj)
+{
+	int status;
+
+	status = cdp_ipa_tx_buf_alloc_map(ipa_obj->dp_soc);
+	if (status)
+		ipa_log_err("Failure to allocate TX buffers for IPA, status - %d",
+			    status);
+
+	return status;
+}
 #else /* !IPA_OPT_WIFI_DP */
 static inline void wlan_ipa_enable_powersave(struct wlan_ipa_priv *ipa_obj)
 {
+}
+
+static inline
+int wlan_ipa_tx_buff_alloc_smmu_map(struct wlan_ipa_priv *ipa_obj)
+{
+	return 0;
 }
 #endif /* IPA_OPT_WIFI_DP */
 
@@ -7094,6 +7113,7 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(
 	int wait_cnt = 0;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	qdf_runtime_lock_t *opt_dp_runtime_lock;
+	int error;
 
 	if (ipa_obj->ipa_pipes_down || ipa_obj->pipes_down_in_progress) {
 		ipa_log_err("Pipes are going down. Reject flt rsrv request");
@@ -7111,6 +7131,12 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(
 	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
 	if (!wmi_handle) {
 		ipa_log_err("Unable to get wmi handle");
+		return QDF_STATUS_FILT_REQ_ERROR;
+	}
+
+	error = wlan_ipa_tx_buff_alloc_smmu_map(ipa_ctx);
+	if (error) {
+		ipa_log_info("opt_dp: TX buffer alloc or smmu map failed");
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
