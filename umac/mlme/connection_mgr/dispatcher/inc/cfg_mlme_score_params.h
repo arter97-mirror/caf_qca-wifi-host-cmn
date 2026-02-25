@@ -1248,6 +1248,40 @@
 #define CFG_CHECK_6GHZ_SECURITY CFG_INI_BOOL(\
 				"check_6ghz_security", PLATFORM_VALUE(1, 0), \
 				"Enable check for 6Ghz allowed security")
+
+/*
+ * <ini>
+ * check_6ghz_security_on_connect - Defer 6GHz security check to connection time
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This ini controls when 6GHz security validation is performed:
+ * 0 - Validate at scan time (current behavior, drop non-compliant APs)
+ * 1 - Validate at connection time (show all APs, block connection to
+ *                                  non-compliant)
+ *
+ * When enabled, all 6GHz APs appear in scan results but connection attempts
+ * to non-compliant APs are rejected, with automatic fallback to 2.4/5GHz.
+ *
+ * This works in conjunction with check_6ghz_security:
+ * - If check_6ghz_security=0: No validation (permissive mode)
+ * - If check_6ghz_security=1 AND check_6ghz_security_on_connect=0:
+ *   Validate at scan time (current strict behavior)
+ * - If check_6ghz_security=1 AND check_6ghz_security_on_connect=1:
+ *   Validate at connection time (new behavior for Samsung requirement)
+ *
+ * Related: check_6ghz_security
+ *
+ * Supported Feature: STA 6GHz Connection
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_CHECK_6GHZ_SECURITY_ON_CONNECT CFG_INI_BOOL(\
+				"check_6ghz_security_on_connect", 0, \
+				"Validate 6GHz security on connection")
 /*
  * <ini>
  * key_mgmt_mask_6ghz - AKM bit mask (@wlan_crypto_key_mgmt) allowed in 6Ghz
@@ -1276,6 +1310,7 @@
 
 #define CFG_6GHZ_CONFIG \
 	CFG(CFG_CHECK_6GHZ_SECURITY) \
+	CFG(CFG_CHECK_6GHZ_SECURITY_ON_CONNECT) \
 	CFG(CFG_6GHZ_ALLOWED_AKM_MASK)
 #else
 #define CFG_6GHZ_CONFIG
