@@ -258,13 +258,19 @@ flush_rings:
 	/* reap full ring */
 	budget = wlan_cfg_get_dma_mon_stat_ring_size(pdev->wlan_cfg_ctx);
 
-	hal_get_sw_hptp(hal_soc, mon_dst_srng, &tp, &hp);
-	dp_info("Before flush: Mon DST ring %u HP %u TP %u", lmac_id, hp, tp);
+	if (mon_dst_srng) {
+		hal_get_sw_hptp(hal_soc, mon_dst_srng, &tp, &hp);
+		dp_info("Before flush: Mon DST ring %u HP %u TP %u",
+			lmac_id, hp, tp);
+	}
 
 	dp_mon_drop_packets_for_mac(pdev, lmac_id, budget, true);
 
-	hal_get_sw_hptp(hal_soc, mon_dst_srng, &tp, &hp);
-	dp_info("After flush: Mon DST ring %u HP %u TP %u", lmac_id, hp, tp);
+	if (mon_dst_srng) {
+		hal_get_sw_hptp(hal_soc, mon_dst_srng, &tp, &hp);
+		dp_info("After flush: Mon DST ring %u HP %u TP %u",
+			lmac_id, hp, tp);
+	}
 }
 
 void dp_mon_rings_deinit_1_0(struct dp_pdev *pdev)
