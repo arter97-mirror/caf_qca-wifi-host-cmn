@@ -135,16 +135,6 @@ dp_dal_offload_sim_free_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
 	}
 }
 
-static inline void
-dp_dal_offload_sim_disable_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
-					struct dp_dal_offload_sim_ctx *offload_ctx)
-{
-	if (offload_ctx->suspend_msg_irq_num > 0) {
-		pfrm_disable_irq(dal_sim_ctx->dev,
-				 offload_ctx->suspend_msg_irq_num);
-		dp_debug("Disabled suspend msg IRQ %d", offload_ctx->suspend_msg_irq_num);
-	}
-}
 #else
 static inline void
 dp_dal_offload_sim_init_d3_wow(struct dp_dal_offload_sim_ctx *offload_ctx,
@@ -165,11 +155,6 @@ dp_dal_offload_sim_free_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
 {
 }
 
-static inline void
-dp_dal_offload_sim_disable_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
-					struct dp_dal_offload_sim_ctx *offload_ctx)
-{
-}
 #endif
 
 #ifdef DAL_OFFLOAD_SIM
@@ -701,7 +686,6 @@ void dp_dal_offload_sim_disable_irq(struct dp_dal_sim_ctx *dal_sim_ctx)
 		}
 	}
 
-	dp_dal_offload_sim_disable_suspend_msg_irq(dal_sim_ctx, offload_ctx);
 }
 
 /**
