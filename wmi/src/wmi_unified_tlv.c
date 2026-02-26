@@ -1270,6 +1270,11 @@ send_vdev_nss_chain_params_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->fast_chain_selection = user_cfg->fast_chain_selection;
 	cmd->better_chain_rssi_threshold =
 				user_cfg->better_chain_rssi_threshold;
+	cmd->force_mode = user_cfg->force_nss_chains ?
+			  WMI_FORCE_CHM_MODE_USER_FORCE :
+			  WMI_FORCE_CHM_MODE_DEFAULT_CONFIG;
+
+	wmi_debug("vdev_id %d, force_mode %d", cmd->vdev_id, cmd->force_mode);
 
 	wmi_mtrace(WMI_VDEV_CHAINMASK_CONFIG_CMDID, cmd->vdev_id, 0);
 	ret = wmi_unified_cmd_send(wmi_handle, buf,
@@ -1279,7 +1284,6 @@ send_vdev_nss_chain_params_cmd_tlv(wmi_unified_t wmi_handle,
 		wmi_err("Failed to send WMI_VDEV_CHAINMASK_CONFIG_CMDID");
 		wmi_buf_free(buf);
 	}
-	wmi_debug("vdev_id %d", vdev_id);
 
 	return ret;
 }
@@ -23099,6 +23103,61 @@ mem_free:
 }
 #endif
 
+static QDF_STATUS
+extract_vdev_current_operating_param_event_tlv(wmi_unified_t wmi_handle,
+					       void *evt_buf,
+					       struct wlan_vdev_bss_op_res_params *params)
+{
+	WMI_VDEV_CURRENT_OPERATING_PARAM_EVENTID_param_tlvs *ev_tlvs = evt_buf;
+	wmi_vdev_current_operating_param_event_fixed_param *ev_vdev_op_params;
+
+	ev_vdev_op_params =
+		(wmi_vdev_current_operating_param_event_fixed_param *)ev_tlvs->fixed_param;
+
+	params->vdev_id = ev_vdev_op_params->vdev_id;
+
+	params->bss_op_res.ch_width = CH_WIDTH_INVALID;
+	params->bss_op_res.ch_width_valid = false;
+
+	params->bss_op_res.tx_nss = 0xFF;
+	params->bss_op_res.rx_nss = 0xFF;
+	params->bss_op_res.nss_valid = false;
+
+	params->bss_op_res.tx_chains = 0xFF;
+	params->bss_op_res.rx_chains = 0xFF;
+	params->bss_op_res.chains_valid = false;
+
+	if (ev_vdev_op_params->operating_param_flags &
+	    WMI_VDEV_OPERATING_PARAM_SET_UPDATED_BW) {
+		params->bss_op_res.ch_width =
+			wmi_map_ch_width(ev_vdev_op_params->bw);
+		params->bss_op_res.ch_width_valid = true;
+	}
+
+	if (ev_vdev_op_params->operating_param_flags &
+	    WMI_VDEV_OPERATING_PARAM_SET_UPDATED_NSS) {
+		params->bss_op_res.tx_nss = ev_vdev_op_params->tx_nss;
+		params->bss_op_res.rx_nss = ev_vdev_op_params->rx_nss;
+		params->bss_op_res.nss_valid = true;
+	}
+
+	if (ev_vdev_op_params->operating_param_flags &
+	    WMI_VDEV_OPERATING_PARAM_SET_UPDATED_CHAINS) {
+		params->bss_op_res.tx_chains = ev_vdev_op_params->tx_chains;
+		params->bss_op_res.rx_chains = ev_vdev_op_params->rx_chains;
+		params->bss_op_res.chains_valid = true;
+	}
+
+	wmi_debug("VDEV-%d, Flags 0x%x, Tx/Rx NSS: %dx%d, Tx/Rx Chains: %dx%d, BW: %d",
+		  ev_vdev_op_params->vdev_id,
+		  ev_vdev_op_params->operating_param_flags,
+		  ev_vdev_op_params->tx_nss, ev_vdev_op_params->rx_nss,
+		  ev_vdev_op_params->tx_chains, ev_vdev_op_params->rx_chains,
+		  ev_vdev_op_params->bw);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 static QDF_STATUS
 extract_power_boost_cap_tlv(wmi_unified_t wmi_handle,
@@ -24166,6 +24225,8 @@ struct wmi_ops tlv_ops =  {
 	.extract_mgmt_rx_ext_params = extract_mgmt_rx_ext_params_tlv,
 	.extract_bcn_stats = extract_bcn_stats_tlv,
 #endif
+	.extract_vdev_current_operating_param_event =
+			extract_vdev_current_operating_param_event_tlv,
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -24763,6 +24824,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_get_scan_stats_resp_event_id] =
 				WMI_GET_SCAN_STATS_RESP_EVENTID;
 #endif
+	event_ids[wmi_vdev_current_operating_param_eventid] =
+				WMI_VDEV_CURRENT_OPERATING_PARAM_EVENTID;
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -25510,6 +25573,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_populate_service_11bn(wmi_service);
 	wmi_service[wmi_service_delete_all_peer_bitmap_support] =
 				WMI_SERVICE_DELETE_ALL_PEER_BITMAP_SUPPORT;
+	wmi_service[wmi_service_vdev_operating_params_event_support] =
+				WMI_SERVICE_VDEV_OPERATING_PARAMS_EVENT_SUPPORT;
 	wmi_service[wmi_service_support_wow_ole_dal] =
 				WMI_SERVICE_SUPPORT_WOW_OLE_DAL;
 }

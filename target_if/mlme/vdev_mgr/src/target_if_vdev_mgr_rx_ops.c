@@ -1336,6 +1336,65 @@ target_if_unregister_set_mac_addr_evt_cbk(struct wmi_unified *wmi_handle)
 }
 #endif
 
+static int target_if_vdev_operating_params_event_handler(ol_scn_t scn,
+							 uint8_t *event_buff,
+							 uint32_t len)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct wlan_objmgr_psoc *psoc;
+	struct wmi_unified *wmi_handle;
+	QDF_STATUS status;
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	struct wlan_vdev_bss_op_res_params params = {0};
+
+	if (!event_buff) {
+		mlme_err("Received NULL event ptr from FW");
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		mlme_err("PSOC is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		mlme_err("wmi_handle is null");
+		return -EINVAL;
+	}
+
+	status = wmi_extract_vdev_current_operating_param_event(wmi_handle,
+								event_buff,
+								&params);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("Failed to extract VDEV current operating params");
+		return -EINVAL;
+	}
+
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->vdev_mgr_oper_res_change_event) {
+		mlme_err("No Rx Ops");
+		return -EINVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, params.vdev_id,
+						    WLAN_VDEV_TARGET_IF_ID);
+	if (!vdev) {
+		mlme_err("Failed to get VDEV %d", params.vdev_id);
+		return -EINVAL;
+	}
+
+	status = rx_ops->vdev_mgr_oper_res_change_event(vdev,
+							&params.bss_op_res);
+	if (QDF_IS_STATUS_ERROR(status))
+		mlme_err("Failed to save vdev oper resource change %d", status);
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
+
+	return 0;
+}
+
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
  * target_if_quiet_offload_event_handler() - Quiet IE offload mlo
@@ -1565,6 +1624,16 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_register(
 
 	target_if_register_unified_disconnect_event(wmi_handle);
 
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_vdev_operating_params_event_support)) {
+		retval = wmi_unified_register_event_handler(wmi_handle,
+							    wmi_vdev_current_operating_param_eventid,
+							    target_if_vdev_operating_params_event_handler,
+							    WMI_RX_WORK_CTX);
+		if (QDF_IS_STATUS_ERROR(retval))
+			mlme_err("Failed to register vdev oper params event");
+	}
+
 	return retval;
 }
 
@@ -1583,6 +1652,11 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_unregister(
 		mlme_err("wmi_handle is null");
 		return QDF_STATUS_E_INVAL;
 	}
+
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_vdev_operating_params_event_support))
+		wmi_unified_unregister_event_handler(wmi_handle,
+						     wmi_vdev_current_operating_param_eventid);
 
 	target_if_unregister_quiet_offload_event(wmi_handle);
 

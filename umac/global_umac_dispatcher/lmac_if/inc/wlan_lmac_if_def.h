@@ -2978,6 +2978,8 @@ struct wlan_lmac_if_dfs_rx_ops {
 #endif
 };
 
+struct wlan_bss_op_res;
+
 /**
  * struct wlan_lmac_if_mlme_rx_ops: Function pointer to call MLME functions
  * @vdev_mgr_start_response: function to handle start response
@@ -3000,6 +3002,9 @@ struct wlan_lmac_if_dfs_rx_ops {
  * mld addr and link id.
  * @vdev_mgr_csa_received: function to handle csa ie received event
  * @vdev_mgr_unified_disconnect_rsp: function to handle unified disconnect rsp
+ * @vdev_mgr_unified_connect_response: Function to handle unified connect resp
+ * @vdev_mgr_oper_res_change_event: Function to deliver extracted VDEV operating
+ * parameters from FW event.
  */
 struct wlan_lmac_if_mlme_rx_ops {
 	QDF_STATUS (*vdev_mgr_start_response)(
@@ -3052,6 +3057,9 @@ struct wlan_lmac_if_mlme_rx_ops {
 	QDF_STATUS (*vdev_mgr_unified_connect_response)(
 				struct wlan_objmgr_psoc *psoc,
 				struct vdev_unified_connect_response *rsp);
+	QDF_STATUS (*vdev_mgr_oper_res_change_event)
+				(struct wlan_objmgr_vdev *vdev,
+				 struct wlan_bss_op_res *params);
 };
 
 #ifdef WLAN_SUPPORT_GREEN_AP

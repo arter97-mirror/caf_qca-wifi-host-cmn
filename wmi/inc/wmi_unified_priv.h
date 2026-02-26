@@ -3658,6 +3658,10 @@ QDF_STATUS
 (*extract_unified_disconnect_response)(struct wmi_unified *wmi_handle,
 				       void *evt_buf,
 				       struct vdev_unified_disconnect_response *rsp);
+QDF_STATUS
+(*extract_vdev_current_operating_param_event)(struct wmi_unified *wmi_handle,
+					      void *evt_buf,
+					      struct wlan_vdev_bss_op_res_params *params);
 };
 
 /* Forward declaration for psoc*/

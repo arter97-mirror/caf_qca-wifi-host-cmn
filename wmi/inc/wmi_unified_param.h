@@ -818,6 +818,7 @@ enum nss_chains_band_info {
  * @disable_tx_mrc:                  disable 2 tx chains, in tx nss 1 mode
  * @fast_chain_selection:	     enable fast chain selection config to FW
  * @better_chain_rssi_threshold:     rssi threshold for better chain selection
+ * @force_nss_chains:                %true if nss/chains config is forced
  */
 struct vdev_nss_chains {
 	uint32_t num_tx_chains[NSS_CHAINS_BAND_MAX];
@@ -831,6 +832,7 @@ struct vdev_nss_chains {
 	bool disable_tx_mrc[NSS_CHAINS_BAND_MAX];
 	uint32_t fast_chain_selection;
 	uint32_t better_chain_rssi_threshold;
+	bool force_nss_chains;
 };
 
 /**
@@ -5858,6 +5860,7 @@ typedef enum {
 #ifdef WLAN_FEATURE_QSH_SCAN
 	wmi_get_scan_stats_resp_event_id,
 #endif
+	wmi_vdev_current_operating_param_eventid,
 	wmi_events_max,
 } wmi_conv_event_id;
 
@@ -7097,6 +7100,7 @@ typedef enum {
 	wmi_service_11bn,
 #endif
 	wmi_service_delete_all_peer_bitmap_support,
+	wmi_service_vdev_operating_params_event_support,
 	wmi_service_support_wow_ole_dal,
 	wmi_services_max,
 } wmi_conv_service_ids;

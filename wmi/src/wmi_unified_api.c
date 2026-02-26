@@ -3341,6 +3341,19 @@ QDF_STATUS wmi_extract_update_mac_address_event(wmi_unified_t wmi_handle,
 }
 #endif
 
+QDF_STATUS
+wmi_extract_vdev_current_operating_param_event(wmi_unified_t wmi_handle,
+					       void *evt_buf,
+					       struct wlan_vdev_bss_op_res_params *params)
+{
+	if (wmi_handle->ops->extract_vdev_current_operating_param_event)
+		return wmi_handle->ops->extract_vdev_current_operating_param_event(wmi_handle,
+										   evt_buf,
+										   params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
 #ifdef WLAN_FEATURE_11BE_MLO
 QDF_STATUS wmi_extract_quiet_offload_event(
 				struct wmi_unified *wmi_handle, void *evt_buf,

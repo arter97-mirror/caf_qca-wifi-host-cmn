@@ -4417,6 +4417,20 @@ QDF_STATUS wmi_extract_update_mac_address_event(wmi_unified_t wmi_handle,
 						uint8_t *status);
 #endif
 
+/**
+ * wmi_extract_vdev_current_operating_param_event() - Wrapper to extract
+ * VDEV operating mode parameters event.
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer
+ * @params: Extracted parameters
+ *
+ * Return: QDF_STATUS_SUCCCESS on success or error code.
+ */
+QDF_STATUS
+wmi_extract_vdev_current_operating_param_event(wmi_unified_t wmi_handle,
+					       void *evt_buf,
+					       struct wlan_vdev_bss_op_res_params *params);
+
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
  * wmi_extract_quiet_offload_event() - Extra mlo sta quiet IE offload event

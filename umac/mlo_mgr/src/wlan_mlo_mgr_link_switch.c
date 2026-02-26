@@ -2190,11 +2190,14 @@ mlo_mgr_update_links_current_active_state(struct wlan_objmgr_psoc *psoc,
 		 * manager table, this can happen if disconnect is ongoing when
 		 * host receives event from FW.
 		 */
-		if (wlan_cm_is_vdev_connected(vdev))
+		if (wlan_cm_is_vdev_connected(vdev)) {
 			mlo_mgr_update_policy_mgr_disabled_links_info(psoc,
 								      vdev_id,
 								      link_info->link_id,
 								      link_info->is_link_active);
+			if (!link_info->is_link_active)
+				wlan_vdev_mlme_init_bss_oper_res_params(vdev);
+		}
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 	}
 

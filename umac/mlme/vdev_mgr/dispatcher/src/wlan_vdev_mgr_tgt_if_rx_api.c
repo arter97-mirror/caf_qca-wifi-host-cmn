@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -483,6 +483,26 @@ tgt_vdev_mgr_unified_disconnect_response(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+static inline QDF_STATUS
+tgt_vdev_mgr_oper_res_change_evt_handler(struct wlan_objmgr_vdev *vdev,
+					 struct wlan_bss_op_res *params)
+{
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme) {
+		mlme_err("VDEV_%d: VDEV_MLME is NULL", wlan_vdev_get_id(vdev));
+		return status;
+	}
+
+	if (vdev_mlme->ops && vdev_mlme->ops->mlme_vdev_op_res_chg_evt)
+		status = vdev_mlme->ops->mlme_vdev_op_res_chg_evt(vdev_mlme,
+								  params);
+
+	return status;
+}
+
 void tgt_vdev_mgr_register_rx_ops(struct wlan_lmac_if_rx_ops *rx_ops)
 {
 	struct wlan_lmac_if_mlme_rx_ops *mlme_rx_ops = &rx_ops->mops;
@@ -514,4 +534,6 @@ void tgt_vdev_mgr_register_rx_ops(struct wlan_lmac_if_rx_ops *rx_ops)
 	tgt_vdev_mgr_reg_quiet_offload(mlme_rx_ops);
 	mlme_rx_ops->vdev_mgr_unified_disconnect_rsp =
 		tgt_vdev_mgr_unified_disconnect_response;
+	mlme_rx_ops->vdev_mgr_oper_res_change_event =
+		tgt_vdev_mgr_oper_res_change_evt_handler;
 }

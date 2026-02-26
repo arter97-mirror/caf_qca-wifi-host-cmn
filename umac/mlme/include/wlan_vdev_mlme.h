@@ -64,6 +64,38 @@ struct peer_oper_mode_event;
 #define WLAN_VDEV_MLME_FLAGS_MBSS_CMN_PARAM     0x00000010
 
 /**
+ * struct wlan_bss_op_res - BSS operating resource params container struct
+ * @nss_valid: NSS fields are valid if true
+ * @chains_valid: Chains fields are valid if true
+ * @ch_width_valid: Channel width fields are valid if true
+ * @tx_nss: Tx NSS, only valid if @nss_valid is %true
+ * @rx_nss: Rx NSS, only valid if @nss_valid is %true
+ * @tx_chains: Tx chains, only valid if @chains_valid is %true
+ * @rx_chains: Rx chains, only valid if @chains_valid is %true
+ * @ch_width: channel width, only valid if @ch_width_valid is %true
+ */
+struct wlan_bss_op_res {
+	bool nss_valid;
+	bool chains_valid;
+	bool ch_width_valid;
+	uint8_t tx_nss;
+	uint8_t rx_nss;
+	uint8_t tx_chains;
+	uint8_t rx_chains;
+	enum phy_ch_width ch_width;
+};
+
+/**
+ * struct wlan_vdev_bss_op_res_params - VDEV BSS operating resource params
+ * @vdev_id: VDEV identifier
+ * @bss_op_res: BSS operating params of the VDEV
+ */
+struct wlan_vdev_bss_op_res_params {
+	uint8_t vdev_id;
+	struct wlan_bss_op_res bss_op_res;
+};
+
+/**
  * struct vdev_mlme_proto_generic - generic mlme proto structure
  * sent in frames
  * @dtim_period: frequency of data transmissions per beacon 1-255
@@ -79,6 +111,7 @@ struct peer_oper_mode_event;
  * @nss_2g: 2.4GHz number of spatial stream
  * @nss_5g: 5GHz number of spatial stream
  * @tsfadjust: adjusted timer sync value
+ * @bss_op_res: BSS operating params of the containing object
  */
 struct vdev_mlme_proto_generic {
 	uint8_t dtim_period;
@@ -94,6 +127,7 @@ struct vdev_mlme_proto_generic {
 	uint8_t nss_2g;
 	uint8_t nss_5g;
 	uint64_t tsfadjust;
+	struct wlan_bss_op_res bss_op_res;
 };
 
 /**
@@ -719,6 +753,7 @@ enum vdev_start_resp_type {
  * @mlme_vdev_notify_down_complete:
  * @mlme_vdev_ext_stop_rsp:
  * @mlme_vdev_ext_start_rsp:
+ * @mlme_vdev_ext_unified_connect_rsp:  Callback to handle unified connect resp
  * @mlme_vdev_notify_start_state_exit:  callback to notify on vdev start
  *                                      start state exit
  * @mlme_vdev_is_newchan_no_cac:        callback to check CAC is required
@@ -739,13 +774,15 @@ enum vdev_start_resp_type {
  *                                           disable event
  * @mlme_vdev_init_down:                callback to process event down in init
  *                                      state
- *@mlme_vdev_link_reconfig_remove:      callback to send link removal in up
+ * @mlme_vdev_link_reconfig_remove:     callback to send link removal in up
  *                                      remove state
- *@mlme_vdev_set_link_remove_delay:     callback to set link removal delay
+ * @mlme_vdev_set_link_remove_delay:    callback to set link removal delay
  *                                      work flag
- *@mlme_vdev_peer_oper_mode_notify: Callback to handle peer oper mode notify
- *@mlme_vdev_ext_unified_disconnect_rsp: callback to handle unified disconnect rsp
- *
+ * @mlme_vdev_peer_oper_mode_notify: Callback to handle peer oper mode notify
+ * @mlme_vdev_ext_unified_disconnect_rsp: callback to handle unified
+ * disconnect rsp
+ * @mlme_vdev_op_res_chg_evt:           Callback to handle vdev operating
+ *                                      resources change event
  */
 struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_validate_basic_params)(
@@ -855,6 +892,9 @@ struct vdev_mlme_ops {
 	QDF_STATUS (*mlme_vdev_ext_unified_disconnect_rsp)(
 				struct vdev_mlme_obj *vdev_mlme,
 				struct vdev_unified_disconnect_response *rsp);
+	QDF_STATUS (*mlme_vdev_op_res_chg_evt)
+				(struct vdev_mlme_obj *vdev_mlme,
+				 struct wlan_bss_op_res *params);
 };
 
 /**
@@ -1049,6 +1089,78 @@ QDF_STATUS wlan_vdev_mlme_get_bss_nss_params(struct wlan_objmgr_vdev *vdev,
 	*op_rx_nss = vdev_mlme->proto.generic.op_rx_nss;
 
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+wlan_vdev_mlme_get_bss_oper_res_params(struct wlan_objmgr_vdev *vdev,
+				       struct wlan_bss_op_res *params)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	qdf_mem_copy(params, &vdev_mlme->proto.generic.bss_op_res,
+		     sizeof(*params));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+wlan_vdev_mlme_set_bss_oper_res_params(struct wlan_objmgr_vdev *vdev,
+				       struct wlan_bss_op_res *params)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	qdf_mem_copy(&vdev_mlme->proto.generic.bss_op_res, params,
+		     sizeof(*params));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+wlan_vdev_mlme_init_bss_oper_res_params(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_bss_op_res params = {0};
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	params.tx_nss = 0xFF;
+	params.rx_nss = 0xFF;
+	params.tx_chains = 0xFF;
+	params.rx_chains = 0xFF;
+	params.ch_width = CH_WIDTH_INVALID;
+
+	qdf_mem_copy(&vdev_mlme->proto.generic.bss_op_res, &params,
+		     sizeof(params));
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+wlan_vdev_mlme_reset_bss_oper_res_ch_width_params(struct wlan_objmgr_vdev *vdev)
+{
+	QDF_STATUS status;
+	struct wlan_bss_op_res params;
+
+	status = wlan_vdev_mlme_get_bss_oper_res_params(vdev, &params);
+	if (QDF_IS_STATUS_ERROR(status))
+		return status;
+
+	params.ch_width_valid = false;
+	params.ch_width = CH_WIDTH_INVALID;
+
+	status = wlan_vdev_mlme_set_bss_oper_res_params(vdev, &params);
+
+	return status;
 }
 
 /**
