@@ -117,6 +117,125 @@ dp_dal_sim_free_suspend_msg_buffer(struct dp_dal_sim_ctx *sim_ctx)
 	}
 }
 
+/**
+ * dp_dal_sim_derive_suspend_msg_msi_config() - Derive MSI configuration
+ * @sim_ctx: DAL sim context
+ * @msi_addr: Pointer to store MSI address
+ * @msi_data: Pointer to store MSI data
+ * @irq_num: Pointer to store IRQ number
+ *
+ * This function derives the MSI configuration for suspend message interrupt
+ * by querying platform MSI assignment and calculating the appropriate
+ * MSI address, data, and IRQ number.
+ *
+ * Return: 0 on success, error code on failure
+ */
+static int
+dp_dal_sim_derive_suspend_msg_msi_config(struct dp_dal_sim_ctx *sim_ctx,
+					 qdf_dma_addr_t *msi_addr,
+					 uint32_t *msi_data,
+					 int *irq_num)
+{
+	int ret, msi_vector_count;
+	uint32_t msi_base_data, msi_vector_start;
+	uint32_t addr_low, addr_high;
+	unsigned int vector;
+
+	ret = pld_get_user_msi_assignment(sim_ctx->dev, "DP",
+					  &msi_vector_count,
+					  &msi_base_data,
+					  &msi_vector_start);
+	if (ret) {
+		dp_err("Failed to get user MSI assignment, ret=%d", ret);
+		return ret;
+	}
+
+	/* Use a dedicated vector for FW write interrupt */
+	vector = (msi_vector_count - 1) + msi_vector_start;
+
+	/* Get MSI address from platform */
+	pld_get_msi_address(sim_ctx->dev, &addr_low, &addr_high);
+
+	/* Construct 64-bit MSI address */
+	*msi_addr = addr_low;
+	*msi_addr |= (qdf_dma_addr_t)(((uint64_t)addr_high) << 32);
+
+	/* Calculate MSI data for this vector */
+	*msi_data = (msi_vector_count - 1) + msi_base_data;
+
+	/* Get IRQ number for this vector */
+	*irq_num = pld_get_msi_irq(sim_ctx->dev, vector);
+
+	return 0;
+}
+
+/**
+ * dp_dal_sim_init_suspend_msg_msi() - Initialize suspend message MSI config
+ * @dal_ctx: DAL context
+ *
+ * This function initializes the suspend message MSI configuration by:
+ * 1. Deriving MSI configuration (address, data, IRQ)
+ * 2. Configuring the MSI via vendor callback
+ *
+ * Return: 0 on success, error code on failure
+ */
+static int dp_dal_sim_init_suspend_msg_msi(struct dp_dal_ctx *dal_ctx)
+{
+	struct dp_dal_sim_ctx *sim_ctx;
+	int ret;
+	qdf_dma_addr_t msi_addr;
+	uint32_t msi_data;
+	int irq_num;
+	void *suspend_msg_data_vaddr;
+	qdf_dma_addr_t suspend_msg_data_paddr;
+
+	if (!dal_ctx || !dal_ctx->dal_sim_ctx)
+		return -EINVAL;
+
+	sim_ctx = dal_ctx->dal_sim_ctx;
+
+	if (!vendor_cb.set_suspend_msi_config) {
+		dp_warn("set_suspend_msi_config callback not registered");
+		return -EINVAL;
+	}
+
+	if (!sim_ctx->dev) {
+		dp_err("Device pointer not initialized");
+		return -EINVAL;
+	}
+
+	/* Buffer is already allocated in dp_dal_sim_suspend_msg_buffer_init */
+	suspend_msg_data_vaddr = sim_ctx->suspend_msg_data_vaddr;
+	suspend_msg_data_paddr = sim_ctx->suspend_msg_data_paddr;
+
+	if (!suspend_msg_data_vaddr) {
+		dp_err("Suspend message buffer not allocated");
+		return -EINVAL;
+	}
+
+	/* Derive MSI configuration for suspend message interrupt */
+	ret = dp_dal_sim_derive_suspend_msg_msi_config(sim_ctx, &msi_addr,
+						     &msi_data, &irq_num);
+	if (ret)
+		return ret;
+
+	/* Store MSI configuration in sim_ctx */
+	sim_ctx->suspend_msg_msi_addr = msi_addr;
+	sim_ctx->suspend_msg_msi_data = msi_data;
+	sim_ctx->suspend_msg_irq_num = irq_num;
+
+	/* Configure MSI via vendor callback */
+	ret = vendor_cb.set_suspend_msi_config(dal_ctx, msi_addr, msi_data,
+						suspend_msg_data_vaddr,
+						suspend_msg_data_paddr);
+	if (ret) {
+		dp_err("Failed to set suspend message MSI config, ret=%d", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static inline int
 dp_dal_sim_suspend_msg_buffer_init(struct dp_dal_ctx *dal_ctx)
 {
@@ -154,6 +273,12 @@ dp_dal_sim_free_suspend_msg_buffer(struct dp_dal_sim_ctx *sim_ctx)
 
 static inline int
 dp_dal_sim_suspend_msg_buffer_init(struct dp_dal_ctx *dal_ctx)
+{
+	return 0;
+}
+
+static inline int
+dp_dal_sim_init_suspend_msg_msi(struct dp_dal_ctx *dal_ctx)
 {
 	return 0;
 }
@@ -1034,6 +1159,10 @@ static int dp_dal_sim_request_irq(void *priv)
 		return status;
 
 	status = dp_dal_sim_suspend_msg_buffer_init(dp_dal_ctx);
+	if (status)
+		return status;
+
+	status = dp_dal_sim_init_suspend_msg_msi(dp_dal_ctx);
 	if (status)
 		return status;
 
