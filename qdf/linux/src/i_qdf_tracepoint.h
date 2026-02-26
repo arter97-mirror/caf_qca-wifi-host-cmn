@@ -38,6 +38,126 @@ bool __qdf_trace_dp_rx_tcp_pkt_enabled(void)
 	return trace_dp_rx_tcp_pkt_enabled();
 }
 
+static inline
+bool __qdf_trace_dp_fisa_trace_rdi_invalid_enabled(void)
+{
+	return trace_dp_fisa_trace_rdi_invalid_enabled();
+}
+
+static inline
+void __qdf_trace_dp_fisa_trace_rdi_invalid(uint8_t reo_dest_ind)
+{
+	trace_dp_fisa_trace_rdi_invalid(reo_dest_ind);
+}
+
+static inline
+bool __qdf_trace_dp_fisa_flush_vdev_fail_enabled(void)
+{
+	return trace_dp_fisa_flush_vdev_fail_enabled();
+}
+
+static inline
+void __qdf_trace_dp_fisa_flush_vdev_fail(uint8_t head_vdev_id,
+					 uint8_t flow_vdev_id, uint8_t reason,
+					 uint32_t flow_id,
+					 const void *head_vdev_ptr,
+					 const void *flow_vdev_ptr,
+					 uint32_t flush_head_vdev_ref_fail,
+					 uint32_t flush_flow_vdev_ref_fail,
+					 uint32_t flush_vdev_ptr_mismatch,
+					 uint32_t flush_mld_mismatch_drop)
+{
+	trace_dp_fisa_flush_vdev_fail(head_vdev_id, flow_vdev_id, reason,
+				      flow_id, head_vdev_ptr, flow_vdev_ptr,
+				      flush_head_vdev_ref_fail,
+				      flush_flow_vdev_ref_fail,
+				      flush_vdev_ptr_mismatch,
+				      flush_mld_mismatch_drop);
+}
+
+static inline
+bool __qdf_trace_dp_fisa_hex_dump_skb_data_enabled(void)
+{
+	return trace_dp_fisa_hex_dump_skb_data_enabled();
+}
+
+static inline
+void __qdf_trace_dp_fisa_hex_dump_skb_data(uint8_t reason, const void *ip,
+					   uint32_t index, const void *skb,
+					   const void *next,
+					   const void *frag_list,
+					   const void *data, uint32_t len,
+					   uint32_t data_len)
+{
+	trace_dp_fisa_hex_dump_skb_data(reason, ip, index, skb, next,
+					frag_list, data, len, data_len);
+}
+
+static inline
+bool __qdf_trace_dp_fisa_udp_aggr_append_fail_enabled(void)
+{
+	return trace_dp_fisa_udp_aggr_append_fail_enabled();
+}
+
+static inline
+void __qdf_trace_dp_fisa_udp_aggr_append_fail(uint32_t flow_id,
+					      const void *nbuf, uint32_t len,
+					      const void *head_skb,
+					      uint32_t udp_aggr_append_fail)
+{
+	trace_dp_fisa_udp_aggr_append_fail(flow_id, nbuf, len, head_skb,
+					   udp_aggr_append_fail);
+}
+
+static inline
+bool __qdf_trace_dp_fisa_udp_flush_fail_summary_enabled(void)
+{
+	return trace_dp_fisa_udp_flush_fail_summary_enabled();
+}
+
+static inline
+void __qdf_trace_dp_fisa_udp_flush_fail_summary(uint32_t linear_fail,
+						uint32_t sanity_drop,
+						uint32_t nonlinear_fail)
+{
+	trace_dp_fisa_udp_flush_fail_summary(linear_fail, sanity_drop,
+					     nonlinear_fail);
+}
+
+static inline
+bool __qdf_trace_dp_fisa_udp_flush_stats_enabled(void)
+{
+	return trace_dp_fisa_udp_flush_stats_enabled();
+}
+
+static inline
+void __qdf_trace_dp_fisa_udp_flush_stats(uint32_t flow_id, uint8_t reason_code,
+					 uint32_t flush_vdev_ref_fail,
+					 uint32_t udp_flush_linear_osif_rx_fail,
+					 uint32_t udp_flush_sanity_len_mismatch_drop,
+					 uint32_t udp_flush_nonlinear_osif_rx_fail)
+{
+	trace_dp_fisa_udp_flush_stats(flow_id, reason_code, flush_vdev_ref_fail,
+				      udp_flush_linear_osif_rx_fail,
+				      udp_flush_sanity_len_mismatch_drop,
+				      udp_flush_nonlinear_osif_rx_fail);
+}
+
+static inline
+bool __qdf_trace_dp_fisa_osif_rx_fail_enabled(void)
+{
+	return trace_dp_fisa_osif_rx_fail_enabled();
+}
+
+static inline
+void __qdf_trace_dp_fisa_osif_rx_fail(uint32_t flow_id, uint8_t vdev_id,
+				      uint8_t rx_ctx_id, const void *nbuf,
+				      uint32_t osif_rx_fail)
+{
+	trace_dp_fisa_osif_rx_fail(flow_id, vdev_id, rx_ctx_id, nbuf,
+				   osif_rx_fail);
+}
+
 /**
  * __qdf_trace_dp_band_link_id_enabled() - Check if dp_band_link_id tracepoint
  * is enabled

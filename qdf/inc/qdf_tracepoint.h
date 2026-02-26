@@ -52,6 +52,275 @@ void qdf_trace_dp_packet(qdf_nbuf_t nbuf, enum qdf_proto_dir dir,
 #endif
 
 /**
+ * qdf_trace_dp_fisa_trace_rdi_invalid_enabled() - Check if
+ * dp_fisa_trace_rdi_invalid tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_fisa_trace_rdi_invalid_enabled(void)
+{
+	return __qdf_trace_dp_fisa_trace_rdi_invalid_enabled();
+}
+
+/**
+ * qdf_trace_dp_fisa_trace_rdi_invalid() - Trace invalid REO destination
+ * indicator
+ * @reo_dest_ind: REO destination indicator value that resulted in a drop
+ * or error
+ *
+ * This function triggers the dp_fisa_trace_rdi_invalid tracepoint, which
+ * logs the REO destination indicator when it is invalid or maps to TCL,
+ * aiding diagnosis of improper REO remap decisions.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_fisa_trace_rdi_invalid(uint8_t reo_dest_ind)
+{
+	__qdf_trace_dp_fisa_trace_rdi_invalid(reo_dest_ind);
+}
+
+/**
+ * qdf_trace_dp_fisa_flush_vdev_fail_enabled() - Check if
+ * dp_fisa_flush_vdev_fail tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_fisa_flush_vdev_fail_enabled(void)
+{
+	return __qdf_trace_dp_fisa_flush_vdev_fail_enabled();
+}
+
+/**
+ * qdf_trace_dp_fisa_flush_vdev_fail() - Trace FISA flush failure details
+ * @head_vdev_id: VDEV ID associated with the head skb
+ * @flow_vdev_id: VDEV ID associated with the flow
+ * @reason: Reason code for the failure
+ * @flow_id: Flow identifier
+ * @head_vdev_ptr: Pointer to the head vdev object
+ * @flow_vdev_ptr: Pointer to the flow vdev object
+ *
+ * This function triggers the dp_fisa_flush_vdev_fail tracepoint, which logs
+ * the details of a FISA flush failure including mismatch conditions and
+ * reference errors between the head vdev and the flow vdev.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_fisa_flush_vdev_fail(uint8_t head_vdev_id,
+				       uint8_t flow_vdev_id, uint8_t reason,
+				       uint32_t flow_id,
+				       const void *head_vdev_ptr,
+				       const void *flow_vdev_ptr,
+				       uint32_t flush_head_vdev_ref_fail,
+				       uint32_t flush_flow_vdev_ref_fail,
+				       uint32_t flush_vdev_ptr_mismatch,
+				       uint32_t flush_mld_mismatch_drop)
+{
+	__qdf_trace_dp_fisa_flush_vdev_fail(head_vdev_id, flow_vdev_id,
+					    reason, flow_id, head_vdev_ptr,
+					    flow_vdev_ptr,
+					    flush_head_vdev_ref_fail,
+					    flush_flow_vdev_ref_fail,
+					    flush_vdev_ptr_mismatch,
+					    flush_mld_mismatch_drop);
+}
+
+/**
+ * qdf_trace_dp_fisa_hex_dump_skb_data_enabled() - Check if
+ * dp_fisa_hex_dump_skb_data tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_fisa_hex_dump_skb_data_enabled(void)
+{
+	return __qdf_trace_dp_fisa_hex_dump_skb_data_enabled();
+}
+
+/**
+ * qdf_trace_dp_fisa_hex_dump_skb_data() - Trace context for skb data dump
+ * @reason: Reason code indicating the context (e.g., head or frag)
+ * @ip: Pointer to IP header or related structure
+ * @index: Index or offset associated with the dump
+ * @skb: Pointer to the skb
+ * @next: Pointer to the next skb (if any)
+ * @frag_list: Pointer to the fragment list (if any)
+ * @data: Pointer to the data to be dumped
+ * @len: Total length mapped for the dump
+ * @data_len: Actual data length in the region of interest
+ *
+ * This function triggers the dp_fisa_hex_dump_skb_data tracepoint, which
+ * logs pointers and metadata useful for correlating hex dumps of skb data
+ * regions during FISA processing.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_fisa_hex_dump_skb_data(uint8_t reason, const void *ip,
+					 uint32_t index, const void *skb,
+					 const void *next,
+					 const void *frag_list,
+					 const void *data, uint32_t len,
+					 uint32_t data_len)
+{
+	__qdf_trace_dp_fisa_hex_dump_skb_data(reason, ip, index, skb, next,
+					      frag_list, data, len, data_len);
+}
+
+/**
+ * qdf_trace_dp_fisa_udp_aggr_append_fail_enabled() - Check if
+ * dp_fisa_udp_aggr_append_fail tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_fisa_udp_aggr_append_fail_enabled(void)
+{
+	return __qdf_trace_dp_fisa_udp_aggr_append_fail_enabled();
+}
+
+/**
+ * qdf_trace_dp_fisa_udp_aggr_append_fail() - Trace UDP aggregation append
+ * failure
+ * @flow_id: Flow identifier
+ * @nbuf: Pointer to the buffer (nbuf) that failed to append
+ * @len: Length of the buffer
+ * @head_skb: Pointer to the head skb of the aggregation
+ * @udp_aggr_append_fail: UDP aggregation append failure count
+ *
+ * This function triggers the dp_fisa_udp_aggr_append_fail tracepoint,
+ * which logs failures encountered while appending buffers to an ongoing
+ * UDP aggregation flow.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_fisa_udp_aggr_append_fail(uint32_t flow_id, const void *nbuf,
+					    uint32_t len, const void *head_skb,
+					    uint32_t udp_aggr_append_fail)
+{
+	__qdf_trace_dp_fisa_udp_aggr_append_fail(flow_id, nbuf, len, head_skb,
+						 udp_aggr_append_fail);
+}
+
+/**
+ * qdf_trace_dp_fisa_udp_flush_fail_summary_enabled() - Check if
+ * dp_fisa_udp_flush_fail_summary tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_fisa_udp_flush_fail_summary_enabled(void)
+{
+	return __qdf_trace_dp_fisa_udp_flush_fail_summary_enabled();
+}
+
+/**
+ * qdf_trace_dp_fisa_udp_flush_fail_summary() - Trace summary of UDP
+ * flush failures
+ * @linear_fail: Count of linear skb flush failures to OSIF RX
+ * @sanity_drop: Count of sanity check drops (e.g., length mismatch)
+ * @nonlinear_fail: Count of non-linear skb flush failures to OSIF RX
+ *
+ * This function triggers the dp_fisa_udp_flush_fail_summary tracepoint,
+ * which logs aggregated counters summarizing different categories of
+ * UDP flush failures.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_fisa_udp_flush_fail_summary(uint32_t linear_fail,
+					      uint32_t sanity_drop,
+					      uint32_t nonlinear_fail)
+{
+	__qdf_trace_dp_fisa_udp_flush_fail_summary(linear_fail, sanity_drop,
+						   nonlinear_fail);
+}
+
+/**
+ * qdf_trace_dp_fisa_udp_flush_stats_enabled() - Check if
+ * dp_fisa_udp_flush_stats tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_fisa_udp_flush_stats_enabled(void)
+{
+	return __qdf_trace_dp_fisa_udp_flush_stats_enabled();
+}
+
+/**
+ * qdf_trace_dp_fisa_udp_flush_stats() - Trace FISA UDP flush statistics
+ * @flow_id: Flow identifier
+ * @reason_code: Reason code indicating which stat was updated
+ *               1 - flush_vdev_ref_fail
+ *               2 - udp_flush_linear_osif_rx_fail
+ *               3 - udp_flush_sanity_len_mismatch_drop
+ *               4 - udp_flush_nonlinear_osif_rx_fail
+ * @flush_vdev_ref_fail: Count of vdev reference failures
+ * @udp_flush_linear_osif_rx_fail: Count of linear skb OSIF RX failures
+ * @udp_flush_sanity_len_mismatch_drop: Count of sanity check drops
+ * @udp_flush_nonlinear_osif_rx_fail: Count of non-linear skb OSIF RX failures
+ *
+ * This function triggers the dp_fisa_udp_flush_stats tracepoint, which logs
+ * all FISA UDP flush statistics in a single trace point with a reason code
+ * to identify which specific stat was updated.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_fisa_udp_flush_stats(uint32_t flow_id, uint8_t reason_code,
+				       uint32_t flush_vdev_ref_fail,
+				       uint32_t udp_flush_linear_osif_rx_fail,
+				       uint32_t udp_flush_sanity_len_mismatch_drop,
+				       uint32_t udp_flush_nonlinear_osif_rx_fail)
+{
+	__qdf_trace_dp_fisa_udp_flush_stats(flow_id, reason_code,
+					    flush_vdev_ref_fail,
+					    udp_flush_linear_osif_rx_fail,
+					    udp_flush_sanity_len_mismatch_drop,
+					    udp_flush_nonlinear_osif_rx_fail);
+}
+
+/**
+ * qdf_trace_dp_fisa_osif_rx_fail_enabled() - Check if dp_fisa_osif_rx_fail
+ * tracepoint is enabled
+ *
+ * Return: true if enabled, false otherwise
+ */
+static inline
+bool qdf_trace_dp_fisa_osif_rx_fail_enabled(void)
+{
+	return __qdf_trace_dp_fisa_osif_rx_fail_enabled();
+}
+
+/**
+ * qdf_trace_dp_fisa_osif_rx_fail() - Trace osif_rx failure in FISA RX path
+ * @flow_id: Flow identifier (fisa_flow->flow_id)
+ * @vdev_id: VDEV ID (vdev->vdev_id)
+ * @rx_ctx_id: REO/NAPI context id (QDF_NBUF_CB_RX_CTX_ID(nbuf))
+ * @nbuf: nbuf pointer that failed delivery
+ * @osif_rx_fail: current osif_rx_fail counter (after increment)
+ *
+ * This function triggers the dp_fisa_osif_rx_fail tracepoint, providing a
+ * dedicated trace hook whenever dp_fisa_rx encounters osif_rx failure and
+ * increments fisa_flow->osif_rx_fail.
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_fisa_osif_rx_fail(uint32_t flow_id, uint8_t vdev_id,
+				    uint8_t rx_ctx_id, const void *nbuf,
+				    uint32_t osif_rx_fail)
+{
+	__qdf_trace_dp_fisa_osif_rx_fail(flow_id, vdev_id, rx_ctx_id, nbuf,
+					 osif_rx_fail);
+}
+
+/**
  * qdf_trace_dp_band_link_id_enabled() - Check if dp_band_link_id
  * tracepoint is enabled
  *
