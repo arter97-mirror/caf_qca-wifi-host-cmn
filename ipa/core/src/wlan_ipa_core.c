@@ -2337,6 +2337,7 @@ void wlan_ipa_release_cce_flt_ssr_shutdown(struct wlan_ipa_priv *ipa_ctx)
 						 __func__, __LINE__);
 	}
 
+	cdp_ipa_opt_dp_reset_tx_doorbell(ipa_ctx->dp_soc);
 	qdf_wake_lock_release(&ipa_ctx->opt_dp_wake_lock,
 			      WIFI_POWER_EVENT_WAKELOCK_OPT_WIFI_DP);
 }
@@ -6258,6 +6259,18 @@ int wlan_ipa_tx_buff_alloc_smmu_map(struct wlan_ipa_priv *ipa_obj)
 			    status);
 	return status;
 }
+
+static inline
+void wlan_ipa_opt_dp_set_tx_doorbell(struct wlan_ipa_priv *ipa_obj)
+{
+	cdp_ipa_opt_dp_set_tx_doorbell(ipa_obj->dp_soc);
+}
+
+static inline
+void wlan_ipa_opt_dp_reset_tx_doorbell(struct wlan_ipa_priv *ipa_obj)
+{
+	cdp_ipa_opt_dp_reset_tx_doorbell(ipa_obj->dp_soc);
+}
 #else /* !IPA_OPT_WIFI_DP */
 static inline void wlan_ipa_enable_powersave(struct wlan_ipa_priv *ipa_obj)
 {
@@ -6267,6 +6280,16 @@ static inline
 int wlan_ipa_tx_buff_alloc_smmu_map(struct wlan_ipa_priv *ipa_obj)
 {
 	return 0;
+}
+
+static inline
+void wlan_ipa_opt_dp_set_tx_doorbell(struct wlan_ipa_priv *ipa_obj)
+{
+}
+
+static inline
+void wlan_ipa_opt_dp_reset_tx_doorbell(struct wlan_ipa_priv *ipa_obj)
+{
 }
 #endif /* IPA_OPT_WIFI_DP */
 
@@ -6413,6 +6436,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 		ipa_log_info("opt_dp: IPA notify filter resrv response: %d",
 			     msg->rsvd);
 		qdf_mutex_acquire(&ipa_ctx->ipa_lock);
+		wlan_ipa_opt_dp_set_tx_doorbell(ipa_ctx);
 		wlan_ipa_smmu_map_rx_buf(ipa_ctx);
 		qdf_ipa_wdi_opt_dpath_notify_flt_rsvd_per_inst(ipa_ctx->hdl,
 							       msg->rsvd);
@@ -6439,6 +6463,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 			wlan_ipa_smmu_unmap_rx_buf(ipa_ctx);
 			ipa_ctx->opt_dp_flt_rel_state =
 				WLAN_IPA_OPT_DP_FLT_REL_DONE;
+			wlan_ipa_opt_dp_reset_tx_doorbell(ipa_ctx);
 		} else {
 			ipa_ctx->opt_dp_flt_rel_state =
 				WLAN_IPA_OPT_DP_FLT_REL_INIT;

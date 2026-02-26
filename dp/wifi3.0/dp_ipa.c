@@ -3881,13 +3881,39 @@ QDF_STATUS dp_ipa_cleanup_iface(char *ifname, bool is_ipv6_enabled,
 }
 
 #ifdef IPA_SET_RESET_TX_DB_PA
+#ifdef IPA_OPT_WIFI_DP
+#define DP_IPA_EP_SET_TX_DB_PA(soc, ipa_res)
+#define DP_IPA_RESET_TX_DB_PA(soc, ipa_res)
+#else
 #define DP_IPA_EP_SET_TX_DB_PA(soc, ipa_res) \
 				dp_ipa_set_tx_doorbell_paddr((soc), (ipa_res))
 #define DP_IPA_RESET_TX_DB_PA(soc, ipa_res) \
 				dp_ipa_reset_tx_doorbell_pa((soc), (ipa_res))
+#endif
 #else
 #define DP_IPA_EP_SET_TX_DB_PA(soc, ipa_res)
 #define DP_IPA_RESET_TX_DB_PA(soc, ipa_res)
+#endif
+
+#ifndef IPA_OPT_WIFI_DP
+static inline
+void dp_ipa_tx_comp_hp_update(struct dp_soc *soc)
+{
+	struct dp_ipa_resources *ipa_res;
+
+	ipa_res = &soc->ipa_resource;
+	if (soc->ipa_first_tx_db_access) {
+		dp_ipa_tx_comp_ring_init_hp(soc, ipa_res);
+		soc->ipa_first_tx_db_access = false;
+	} else {
+		dp_ipa_tx_comp_ring_update_hp_addr(soc, ipa_res);
+	}
+}
+#else
+static inline
+void dp_ipa_tx_comp_hp_update(struct dp_soc *soc)
+{
+}
 #endif
 
 QDF_STATUS dp_ipa_enable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
@@ -3925,12 +3951,7 @@ QDF_STATUS dp_ipa_enable_pipes(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (soc->ipa_first_tx_db_access) {
-		dp_ipa_tx_comp_ring_init_hp(soc, ipa_res);
-		soc->ipa_first_tx_db_access = false;
-	} else {
-		dp_ipa_tx_comp_ring_update_hp_addr(soc, ipa_res);
-	}
+	dp_ipa_tx_comp_hp_update(soc);
 
 	return QDF_STATUS_SUCCESS;
 }
