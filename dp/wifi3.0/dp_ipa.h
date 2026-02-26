@@ -622,12 +622,13 @@ dp_rx_add_to_ipa_desc_free_list(struct dp_soc *soc,
  * @pdev_id: pdev id number, to get the handle
  * @func: caller function
  * @line: line number
+ * @is_opt_dp: smmu map called from opt_dp
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS dp_ipa_tx_buf_smmu_mapping(struct cdp_soc_t *soc_hdl,
 				      uint8_t pdev_id, const char *func,
-				      uint32_t line);
+				      uint32_t line, bool is_opt_dp);
 
 /**
  * dp_ipa_tx_buf_smmu_unmapping() - Release SMMU mappings for IPA
@@ -876,7 +877,8 @@ static inline qdf_nbuf_t dp_ipa_handle_rx_reo_reinject(struct dp_soc *soc,
 static inline QDF_STATUS dp_ipa_tx_buf_smmu_mapping(struct cdp_soc_t *soc_hdl,
 						    uint8_t pdev_id,
 						    const char *func,
-						    uint32_t line)
+						    uint32_t line,
+						    bool is_opt_dp)
 {
 	return QDF_STATUS_SUCCESS;
 }

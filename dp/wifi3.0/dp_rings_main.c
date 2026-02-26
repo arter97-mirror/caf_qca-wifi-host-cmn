@@ -2517,6 +2517,7 @@ static inline
 void dp_ipa_tx_rsrc_init(struct dp_soc *soc)
 {
 	qdf_spinlock_create(&soc->ipa_tx_res_alloc_lock);
+	soc->is_opt_dp_tx_smmu_mapped = false;
 }
 
 static inline

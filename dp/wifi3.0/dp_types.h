@@ -3929,6 +3929,7 @@ struct dp_soc {
 #ifdef IPA_OPT_WIFI_DP
 	qdf_spinlock_t ipa_tx_res_alloc_lock;
 	struct dp_opt_dp_flt ipa_flt[DP_OPT_DP_NUM_FILTER];
+	bool is_opt_dp_tx_smmu_mapped;
 #endif
 
 #if defined(IPA_OFFLOAD) || defined(FEATURE_DIRECT_LINK)

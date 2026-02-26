@@ -2487,7 +2487,8 @@ struct cdp_ipa_ops {
 	QDF_STATUS (*ipa_tx_buf_smmu_mapping)(struct cdp_soc_t *soc_hdl,
 					      uint8_t pdev_id,
 					      const char *func,
-					      uint32_t line);
+					      uint32_t line,
+					      bool is_opt_dp);
 	QDF_STATUS (*ipa_tx_buf_smmu_unmapping)(struct cdp_soc_t *soc_hdl,
 						uint8_t pdev_id,
 						const char *func,

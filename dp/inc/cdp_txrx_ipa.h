@@ -716,6 +716,7 @@ cdp_ipa_rx_intrabss_fwd(ol_txrx_soc_handle soc, uint8_t vdev_id,
  * @pdev_id: device instance id
  * @line: line number
  * @func: function name
+ * @is_opt_dp: smmu map called from opt_dp
  *
  * Create SMMU mappings for Tx buffers allocated to IPA
  *
@@ -723,7 +724,7 @@ cdp_ipa_rx_intrabss_fwd(ol_txrx_soc_handle soc, uint8_t vdev_id,
  */
 static inline QDF_STATUS
 cdp_ipa_tx_buf_smmu_mapping(ol_txrx_soc_handle soc, uint8_t pdev_id,
-			    const char *func, uint32_t line)
+			    const char *func, uint32_t line, bool is_opt_dp)
 {
 	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
 		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
@@ -734,7 +735,8 @@ cdp_ipa_tx_buf_smmu_mapping(ol_txrx_soc_handle soc, uint8_t pdev_id,
 	if (soc->ops->ipa_ops->ipa_tx_buf_smmu_mapping)
 		return soc->ops->ipa_ops->ipa_tx_buf_smmu_mapping(soc, pdev_id,
 								  func,
-								  line);
+								  line,
+								  is_opt_dp);
 
 	return QDF_STATUS_SUCCESS;
 }

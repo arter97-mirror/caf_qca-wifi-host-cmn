@@ -5055,9 +5055,34 @@ qdf_nbuf_t dp_ipa_handle_rx_reo_reinject(struct dp_soc *soc, qdf_nbuf_t nbuf)
 	return dp_ipa_frag_nbuf_linearize(soc, nbuf);
 }
 
+#ifdef IPA_OPT_WIFI_DP
+static inline
+void dp_ipa_opt_dp_set_tx_smmu_map(struct dp_soc *soc, bool is_opt_dp)
+{
+	soc->is_opt_dp_tx_smmu_mapped = is_opt_dp;
+}
+
+static inline
+bool dp_ipa_opt_dp_get_tx_smmu_map(struct dp_soc *soc)
+{
+	return soc->is_opt_dp_tx_smmu_mapped;
+}
+#else
+static inline
+void dp_ipa_opt_dp_set_tx_smmu_map(struct dp_soc *soc, bool is_opt_dp)
+{
+}
+
+static inline
+bool dp_ipa_opt_dp_get_tx_smmu_map(struct dp_soc *soc)
+{
+	return false;
+}
+#endif
+
 QDF_STATUS dp_ipa_tx_buf_smmu_mapping(
 	struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
-	const char *func, uint32_t line)
+	const char *func, uint32_t line, bool is_opt_dp)
 {
 	QDF_STATUS ret;
 
@@ -5071,10 +5096,17 @@ QDF_STATUS dp_ipa_tx_buf_smmu_mapping(
 	if (wlan_ipa_is_shared_smmu_enabled())
 		return QDF_STATUS_SUCCESS;
 
+	if (dp_ipa_opt_dp_get_tx_smmu_map(soc)) {
+		dp_ipa_debug("TX buffers already smmmu mapped");
+		return QDF_STATUS_SUCCESS;
+	}
+
 	ret = __dp_ipa_tx_buf_smmu_mapping(soc, true, func, line);
 	if (ret)
 		return ret;
 
+	dp_ipa_debug("TX buffers mapped successfully!");
+	dp_ipa_opt_dp_set_tx_smmu_map(soc, is_opt_dp);
 	if (dp_ipa_is_alt_tx_required(soc)) {
 		ret = dp_ipa_tx_alt_buf_smmu_mapping(soc, true, func,
 						     line);
@@ -5100,9 +5132,16 @@ QDF_STATUS dp_ipa_tx_buf_smmu_unmapping(
 	if (wlan_ipa_is_shared_smmu_enabled())
 		return QDF_STATUS_SUCCESS;
 
+	if (!dp_ipa_opt_dp_get_tx_smmu_map(soc)) {
+		dp_ipa_debug("Skip unmapping, TX buffers are not mapped");
+		return QDF_STATUS_SUCCESS;
+	}
+
 	if (__dp_ipa_tx_buf_smmu_mapping(soc, false, func, line))
 		return QDF_STATUS_E_FAILURE;
 
+	dp_ipa_debug("TX buffers unmapped successfully!");
+	dp_ipa_opt_dp_set_tx_smmu_map(soc, false);
 	if (dp_ipa_is_alt_tx_required(soc))
 		if (dp_ipa_tx_alt_buf_smmu_mapping(soc, false, func,
 						   line))

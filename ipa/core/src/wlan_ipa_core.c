@@ -5545,6 +5545,19 @@ QDF_STATUS wlan_ipa_opt_dp_init(struct wlan_ipa_priv *ipa_ctx)
 	return status;
 }
 
+/**
+ * wlan_ipa_tx_buf_smmu_mapping() - SMMU map tx buffers for IPA
+ * skip smmu mapping during init for OPT_DP case since it will be allocated
+ * during flt reservation.
+ *
+ * @ipa_obj: ipa object
+ */
+static inline
+QDF_STATUS wlan_ipa_tx_buf_smmu_mapping(struct wlan_ipa_priv *ipa_obj)
+{
+		return QDF_STATUS_SUCCESS;
+}
+
 #ifdef IPA_OPT_WIFI_DP_CTRL
 
 /**
@@ -5716,6 +5729,15 @@ void wlan_ipa_opt_dp_deinit(struct wlan_ipa_priv *ipa_ctx)
 static inline void
 wlan_ipa_opt_dp_wait_for_completion(struct wlan_ipa_priv *ipa_ctx)
 {
+}
+
+static inline
+QDF_STATUS  wlan_ipa_tx_buf_smmu_mapping(struct wlan_ipa_priv *ipa_obj)
+{
+	ipa_debug("TX buffers map from IPA");
+	return cdp_ipa_tx_buf_smmu_mapping(ipa_obj->dp_soc,
+					   IPA_DEF_PDEV_ID,
+					   __func__, __LINE__, false);
 }
 #endif
 
@@ -6078,14 +6100,12 @@ static void wlan_ipa_uc_loaded_handler(struct wlan_ipa_priv *ipa_ctx)
 		goto connect_pipe_fail;
 	}
 	/* Setup the Tx buffer SMMU mappings */
-	status = cdp_ipa_tx_buf_smmu_mapping(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID,
-					     __func__, __LINE__);
+	status = wlan_ipa_tx_buf_smmu_mapping(ipa_ctx);
 	if (status) {
 		ipa_err("Failure to map Tx buffers for IPA(status=%d)",
 			status);
 		goto smmu_map_fail;
 	}
-	ipa_info("TX buffers mapped to IPA");
 
 	cdp_ipa_set_doorbell_paddr(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID);
 
@@ -6224,10 +6244,18 @@ int wlan_ipa_tx_buff_alloc_smmu_map(struct wlan_ipa_priv *ipa_obj)
 	int status;
 
 	status = cdp_ipa_tx_buf_alloc_map(ipa_obj->dp_soc);
-	if (status)
+	if (status) {
 		ipa_log_err("Failure to allocate TX buffers for IPA, status - %d",
 			    status);
+		return status;
+	}
 
+	status = cdp_ipa_tx_buf_smmu_mapping(ipa_obj->dp_soc,
+					     IPA_DEF_PDEV_ID,
+					     __func__, __LINE__, true);
+	if (status != QDF_STATUS_SUCCESS)
+		ipa_log_err("Failure to map Tx buffers for IPA(status=%d)",
+			    status);
 	return status;
 }
 #else /* !IPA_OPT_WIFI_DP */
@@ -6751,15 +6779,12 @@ QDF_STATUS wlan_ipa_uc_ol_init(struct wlan_ipa_priv *ipa_ctx,
 		}
 
 		/* Setup the Tx buffer SMMU mappings */
-		status = cdp_ipa_tx_buf_smmu_mapping(ipa_ctx->dp_soc,
-						     IPA_DEF_PDEV_ID,
-						     __func__, __LINE__);
+		status = wlan_ipa_tx_buf_smmu_mapping(ipa_ctx);
 		if (status) {
 			ipa_log_err("Failure to map Tx buffers for IPA(status=%d)",
 				    status);
 			goto free_res;
 		}
-		ipa_log_info("TX buffers mapped to IPA");
 
 		cdp_ipa_set_doorbell_paddr(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID);
 
@@ -6851,6 +6876,7 @@ QDF_STATUS wlan_ipa_uc_ol_deinit(struct wlan_ipa_priv *ipa_ctx)
 				    status);
 		else
 			ipa_log_info("TX buffers unmapped from IPA");
+
 		status = cdp_ipa_cleanup(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID,
 					 ipa_ctx->tx_pipe_handle,
 					 ipa_ctx->rx_pipe_handle, ipa_ctx->hdl);
