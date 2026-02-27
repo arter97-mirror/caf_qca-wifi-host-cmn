@@ -11648,8 +11648,11 @@ dp_fw_stats_process(struct dp_vdev *vdev,
 
 		HTT_DBG_EXT_STATS_PEER_INFO_IS_MAC_ADDR_SET(req->param0, 1);
 
-		for (i = 0; i < HTT_PEER_STATS_MAX_TLV; i++)
-			req->param1 |= (1 << i);
+		for (i = 0; i < HTT_PEER_STATS_MAX_TLV; i++) {
+			if (i != HTT_PEER_RX_REO_STATS_TLV)
+				req->param1 |= (1 << i);
+		}
+
 		req->param2 |= (req->peer_addr[0] & 0x000000ff);
 		req->param2 |= ((req->peer_addr[1] << 8) & 0x0000ff00);
 		req->param2 |= ((req->peer_addr[2] << 16) & 0x00ff0000);
