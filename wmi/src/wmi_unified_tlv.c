@@ -10806,6 +10806,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	if (tgt_res_cfg->conc_2vdev_dcs_stats_support)
 		WMI_RSRC_CFG_DCS_STATS_FOR_2VDEVS_ENABLE_SET(
 				resource_cfg->host_service_flags, 1);
+
+	if (tgt_res_cfg->smd_bss_transition_support)
+		WMI_RSRC_CFG_HOST_SERVICE_FLAG_SMD_BSS_TRANSITION_SET(
+				resource_cfg->host_service_flags, 1);
 }
 
 #ifdef FEATURE_SET
@@ -26114,6 +26118,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_idle_power_indicate_support] =
 				WMI_SERVICE_IDLE_POWER_INDICATE_SUPPORT;
 #endif /* FEATURE_SNR_STATS */
+	wmi_service[wmi_service_smd_bss_transition_support] =
+				WMI_SERVICE_SMD_BSS_TRANSITION_SUPPORT;
 }
 
 /**

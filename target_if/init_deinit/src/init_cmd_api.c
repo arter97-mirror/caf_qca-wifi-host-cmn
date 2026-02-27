@@ -626,6 +626,12 @@ void init_deinit_prepare_send_init_cmd(
 		target_if_debug("Two vdev DCS stats enabled");
 	}
 
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_smd_bss_transition_support)) {
+		info->wlan_res_cfg.smd_bss_transition_support = true;
+		target_if_debug("SMD BSS transition is supported");
+	}
+
 	wmi_unified_init_cmd_send(wmi_handle, &init_param);
 
 	/* Set Max scans allowed */

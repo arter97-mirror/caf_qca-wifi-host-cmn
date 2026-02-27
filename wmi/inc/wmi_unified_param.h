@@ -7151,6 +7151,7 @@ typedef enum {
 #ifdef FEATURE_SNR_STATS
 	wmi_service_idle_power_indicate_support,
 #endif /* FEATURE_SNR_STATS */
+	wmi_service_smd_bss_transition_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -7559,6 +7560,7 @@ struct target_feature_set {
  * @enable_snr_stats_report: Enable IPI SNR distribution statistics report
  * @haps_feature_flags: HAPS flags setting for power save config
  * @conc_2vdev_dcs_stats_support: Support 2 vdev concurrency DCS
+ * @smd_bss_transition_support: Support SMD BSS transition
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7717,6 +7719,7 @@ typedef struct {
 #endif /* FEATURE_SNR_STATS */
 	uint32_t haps_feature_flags;
 	bool conc_2vdev_dcs_stats_support;
+	bool smd_bss_transition_support;
 } target_resource_config;
 
 /**
