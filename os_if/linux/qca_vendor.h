@@ -5457,7 +5457,16 @@ enum qca_wlan_vendor_attr_nd_offload {
  * @QCA_WLAN_VENDOR_FEATURE_SUPPORT_STA_DFS_CH_SCC_P2P: Flag indicates driver
  *	support for SCC (Single Channel Concurrency) with a STA connected
  *	DFS channel for P2P.
-
+ *
+ *
+ * @QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_ASSISTED_DFS: Flag indicates that the
+ *	driver supports AP assisted DFS channel operation for P2P.
+ *	When this feature is advertised, the driver stops transmitting Data
+ *	frames on DFS channel and initiates Channel Switch Announcement on any
+ *	P2P GO interface to connected P2P Clients present in the P2P Group
+ *	immediately after receiving a Channel Switch Announcement from the
+ *	connected DFS AP on its STA interface.
+ *
  * @QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_GO_CANCEL_ONE_SHOT_NOA: Flag indicates
  * that the device supports cancellation of firmware-initiated one-shot NoA
  * schedules on a P2P GO interface. This capability allows the P2P GO to cancel
@@ -5507,6 +5516,7 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_USER_SCENARIO_TO_DSI_MAPPING = 31,
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_STA_INDOOR_CH_SCC = 32,
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_STA_DFS_CH_SCC_P2P = 33,
+	QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_ASSISTED_DFS = 34,
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_GO_CANCEL_ONE_SHOT_NOA = 35,
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_GC_KEEP_AWAKE_DURING_ONE_SHOT_NOA = 36,
 	NUM_QCA_WLAN_VENDOR_FEATURES /* keep last */
