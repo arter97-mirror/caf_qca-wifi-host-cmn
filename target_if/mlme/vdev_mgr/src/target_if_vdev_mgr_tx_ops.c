@@ -1063,14 +1063,13 @@ target_if_vdev_mgr_handle_link_switch_up(struct wlan_objmgr_vdev *vdev,
 		goto cleanup;
 	}
 
-	/* Set flag to indicate unified connect command is in progress */
-	mlo_mgr_set_unified_connect_in_progress(vdev, true);
-
 	status = wmi_unified_vdev_connect_send(
 					wmi_handle, bssid,
 					&unified_connect_param);
 
-	if (QDF_IS_STATUS_ERROR(status)) {
+	if (QDF_IS_STATUS_SUCCESS(status)) {
+		mlo_mgr_set_unified_connect_in_progress(vdev, true);
+	} else {
 		vdev_rsp->timer_status = QDF_STATUS_E_CANCELED;
 		vdev_rsp->expire_time = 0;
 		target_if_vdev_mgr_rsp_timer_stop(
