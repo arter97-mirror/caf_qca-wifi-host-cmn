@@ -78,7 +78,10 @@ bool __qdf_page_pool_full_bh(__qdf_page_pool_t pp);
  *
  * Return: true/false
  */
-bool __qdf_page_pool_empty(__qdf_page_pool_t pp);
+static inline bool __qdf_page_pool_empty(__qdf_page_pool_t pp)
+{
+	return !pp->alloc.count && ptr_ring_empty(&pp->ring);
+}
 
 /**
  * __qdf_page_pool_alloc_frag() - Allocate frag buffer from page pool

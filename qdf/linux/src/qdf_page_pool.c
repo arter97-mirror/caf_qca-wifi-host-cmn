@@ -151,10 +151,6 @@ bool __qdf_page_pool_full_bh(__qdf_page_pool_t pp)
 	return (pp->ring.size - count == pp->alloc.count);
 }
 
-bool __qdf_page_pool_empty(__qdf_page_pool_t pp)
-{
-	return !pp->alloc.count && ptr_ring_empty(&pp->ring);
-}
 
 struct page *__qdf_page_pool_alloc_frag(__qdf_page_pool_t pp, uint32_t *offset,
 					size_t size)
