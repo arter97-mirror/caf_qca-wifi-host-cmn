@@ -1921,7 +1921,11 @@ struct dp_page_pool_t {
 #endif
 
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+#ifdef DP_FEATURE_DIRECT_REFILL
 #define DP_PAGE_POOL_MAX 5
+#else
+#define DP_PAGE_POOL_MAX 4
+#endif
 
 #define DP_RX_PP_POOL_SIZE_THRES	 4096
 #define DP_RX_PP_AUX_POOL_SIZE           2048
