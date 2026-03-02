@@ -1181,7 +1181,8 @@
  *     enum qca_wlan_vendor_attr_feature_config.
  *
  * @QCA_NL80211_VENDOR_SUBCMD_GET_COEX_STATS: Vendor subcommand used to retrieve
- *     Wi-Fi and Bluetooth coexistence statistics from the driver.
+ *     Wi-Fi and other technologies (e.g., Bluetooth, UWB (Ultra-Wideband), MWS
+ *     (Modem Wireless System) coexistence statistics from the driver.
  *
  *     The attributes used with this command are defined in
  *     enum qca_wlan_vendor_attr_coex_stats.
@@ -14109,13 +14110,35 @@ enum qca_vendor_attr_btc_chain_mode {
  * coexistence mechanisms are enforced to manage interference between Bluetooth
  * and WLAN.
  *
+ * @QCA_BTC_POLICY_NO_COEX: "No Coex" mode. No active coexistence conflict
+ * between WLAN and Bluetooth (e.g., when operating in different bands).
+ *
  * @QCA_BTC_POLICY_INVALID: Invalid policy value. Used for error handling or
  * uninitialized state.
  */
 enum qca_btc_policy {
 	QCA_BTC_POLICY_FREE_FRUN = 0,
 	QCA_BTC_POLICY_OCS = 1,
+	QCA_BTC_POLICY_NO_COEX = 2,
 	QCA_BTC_POLICY_INVALID = 255
+};
+
+/**
+ * enum qca_coex_policy_type: Specifies coexistence policy for non-BT
+ * technologies like MWS and UWB.
+ *
+ * @QCA_COEX_POLICY_NO_COEX: No active coexistence conflict between WLAN and
+ * other technologies (e.g., when operating in different bands).
+ *
+ * @QCA_COEX_POLICY_COEX: Coexistence mechanisms are enforced to manage
+ * interference between WLAN and other technologies (e.g., UWB, MWS).
+ *
+ * @QCA_COEX_POLICY_INVALID: Invalid policy value. Used for error handling.
+ */
+enum qca_coex_policy_type {
+	QCA_COEX_POLICY_NO_COEX = 0,
+	QCA_COEX_POLICY_COEX = 1,
+	QCA_COEX_POLICY_INVALID = 255
 };
 
 /**
@@ -14125,15 +14148,42 @@ enum qca_btc_policy {
  *      %QCA_WLAN_VENDOR_ATTR_COEX_PDEV_ID
  *      %QCA_WLAN_VENDOR_ATTR_COEX_BTC_POLICY
  *      %QCA_VENDOR_ATTR_BTC_CHAIN_MODE
+ *      %QCA_WLAN_VENDOR_ATTR_COEX_MWS_POLICY
+ *      %QCA_WLAN_VENDOR_ATTR_COEX_UWB_POLICY
+ *      %QCA_WLAN_VENDOR_ATTR_COEX_MONITORING_PERIOD
+ *      %QCA_WLAN_VENDOR_ATTR_COEX_OCS_ACTIVE_PERCENT
+ *      %QCA_WLAN_VENDOR_ATTR_COEX_OCS_NON_WLAN_PERCENT
  * @QCA_WLAN_VENDOR_ATTR_COEX_PDEV_ID: 8-bit unsigned value to indicate PDEV ID.
  * @QCA_WLAN_VENDOR_ATTR_COEX_BTC_POLICY: 8-bit unsigned value to current BTC
  * policy. The policies are defined in enum qca_btc_policy.
+ * @QCA_WLAN_VENDOR_ATTR_COEX_MWS_POLICY: 8-bit unsigned value to current MWS
+ * (Modem Wireless System) policy. MWS refers to modem coexistence where modem
+ * and WLAN may share frequency bands. The policies are defined in
+ * enum qca_coex_policy_type.
+ * @QCA_WLAN_VENDOR_ATTR_COEX_UWB_POLICY: 8-bit unsigned value to current UWB
+ * (Ultra-Wideband) policy. UWB is a ranging technology that may conflict with
+ * WLAN if operating in the same band. The policies are defined in
+ * enum qca_coex_policy_type.
+ * @QCA_WLAN_VENDOR_ATTR_COEX_MONITORING_PERIOD: A 32-bit unsigned value
+ * specifying the monitoring interval in milliseconds. This defines the time
+ * window over which statistics are collected.
+ * @QCA_WLAN_VENDOR_ATTR_COEX_OCS_ACTIVE_PERCENT: 8-bit unsigned value to
+ * indicate the percentage of OCS (Off Channel Scheduling) policy active period
+ * in %QCA_WLAN_VENDOR_ATTR_COEX_MONITORING_PERIOD.
+ * @QCA_WLAN_VENDOR_ATTR_COEX_OCS_NON_WLAN_PERCENT: 8-bit unsigned value to
+ * indicate the percentage OCS policy active period given to non-WLAN
+ * technology.
  */
 enum qca_wlan_vendor_attr_coex_stats {
 	QCA_WLAN_VENDOR_ATTR_COEX_STATS_INVALID = 0,
 	QCA_WLAN_VENDOR_ATTR_COEX_STATS_ARRAY_INDEX = 1,
 	QCA_WLAN_VENDOR_ATTR_COEX_PDEV_ID = 2,
 	QCA_WLAN_VENDOR_ATTR_COEX_BTC_POLICY = 3,
+	QCA_WLAN_VENDOR_ATTR_COEX_MWS_POLICY = 4,
+	QCA_WLAN_VENDOR_ATTR_COEX_UWB_POLICY = 5,
+	QCA_WLAN_VENDOR_ATTR_COEX_MONITORING_PERIOD = 6,
+	QCA_WLAN_VENDOR_ATTR_COEX_OCS_ACTIVE_PERCENT = 7,
+	QCA_WLAN_VENDOR_ATTR_COEX_OCS_NON_WLAN_PERCENT = 8,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_COEX_STATS_AFTER_LAST,
