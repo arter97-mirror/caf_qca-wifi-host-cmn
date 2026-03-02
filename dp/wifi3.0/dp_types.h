@@ -1608,6 +1608,8 @@ struct dp_soc_stats {
 			uint32_t invalid_sa_da_idx;
 			/* MSDU DONE failures */
 			uint32_t msdu_done_fail;
+			/* RX MSDUs with retry attempts */
+			uint32_t msdu_done_retry;
 			/* Invalid PEER Error count */
 			struct cdp_pkt_info rx_invalid_peer;
 			/* Invalid PEER ID count */
@@ -3358,6 +3360,7 @@ struct dp_msdu_done_fail_history {
 
 #ifdef DP_RX_PEEK_MSDU_DONE_WAR
 #define DP_MSDU_DONE_FAIL_DESCS_MAX 64
+#define DP_RX_MSDU_DONE_WAR_MAX_RETRIES 3
 
 struct dp_rx_msdu_done_fail_desc_list {
 	qdf_atomic_t index;
@@ -4167,6 +4170,7 @@ struct dp_soc {
 #endif
 #ifdef DP_RX_PEEK_MSDU_DONE_WAR
 	struct dp_rx_msdu_done_fail_desc_list msdu_done_fail_desc_list;
+	uint8_t dp_rx_msdu_done_retry_cnt[MAX_REO_DEST_RINGS];
 #endif
 #ifdef FEATURE_DIRECT_LINK
 	qdf_atomic_t direct_link_active;

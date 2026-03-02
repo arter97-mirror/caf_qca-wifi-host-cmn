@@ -143,6 +143,64 @@ dp_rx_handle_nbuf_rxdma_err_bn(struct dp_pdev *pdev, qdf_nbuf_t nbuf,
 					  DP_MOD_ID_RX_ERR);
 }
 
+#ifdef DP_RX_PEEK_MSDU_DONE_WAR
+/**
+ * dp_rx_war_peek_msdu_done_bn() - Check MSDU done WAR for BN
+ * @soc: DP SOC handle
+ * @rx_desc: RX descriptor
+ * @reo_ring_num: REO ring number
+ *
+ * This function checks if MSDU done WAR is needed and implements a retry
+ * mechanism. If dp_rx_war_peek_msdu_done check fails, it allows retry up to
+ * max retries before returning failure.
+ *
+ * Return: QDF_STATUS_SUCCESS if MSDU done check succeeds
+ *         QDF_STATUS_E_AGAIN if MSDU done check fails and should retry
+ *         QDF_STATUS_E_FAILURE if MSDU done check fails after max retries
+ */
+static QDF_STATUS
+dp_rx_war_peek_msdu_done_bn(struct dp_soc *soc,
+			    struct dp_rx_desc *rx_desc,
+			    uint8_t reo_ring_num)
+{
+	if (qdf_likely(dp_rx_war_peek_msdu_done(soc, rx_desc))) {
+		/* Reset retry count on success */
+		soc->dp_rx_msdu_done_retry_cnt[reo_ring_num] = 0;
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* Increase the count of RX MSDUs with retry attempts */
+	DP_STATS_INCC(soc, rx.err.msdu_done_retry, 1,
+		      (!soc->dp_rx_msdu_done_retry_cnt[reo_ring_num]));
+
+	/* MSDU done check failed */
+	if (++soc->dp_rx_msdu_done_retry_cnt[reo_ring_num] <=
+	    DP_RX_MSDU_DONE_WAR_MAX_RETRIES) {
+		dp_info_rl("MSDU DONE check failed, retry count: %u/%u",
+			   soc->dp_rx_msdu_done_retry_cnt[reo_ring_num],
+			   DP_RX_MSDU_DONE_WAR_MAX_RETRIES);
+		return QDF_STATUS_E_AGAIN;
+	}
+
+	/* Max retries reached, proceed with failure handling */
+	dp_info_rl("MSDU DONE check failed after %u retries",
+		   DP_RX_MSDU_DONE_WAR_MAX_RETRIES);
+
+	/* Reset retry count for next failure sequence */
+	soc->dp_rx_msdu_done_retry_cnt[reo_ring_num] = 0;
+
+	return QDF_STATUS_E_FAILURE;
+}
+#else
+static inline QDF_STATUS
+dp_rx_war_peek_msdu_done_bn(struct dp_soc *soc,
+			    struct dp_rx_desc *rx_desc,
+			    uint8_t reo_ring_num)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* DP_RX_PEEK_MSDU_DONE_WAR */
+
 uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
 			  uint32_t quota)
@@ -374,6 +432,50 @@ more_data:
 					break;
 				}
 				is_prev_msdu_last = false;
+			}
+		} else {
+			QDF_STATUS msdu_done_status;
+			struct dp_rx_desc *old_rx_desc;
+
+			msdu_done_status = dp_rx_war_peek_msdu_done_bn(
+						soc, rx_desc, reo_ring_num);
+
+			if (qdf_unlikely(msdu_done_status ==
+					 QDF_STATUS_E_AGAIN)) {
+				/* Reset TP and break for next NAPI poll */
+				dp_rx_cookie_reset_invalid_bit(ring_desc);
+				hal_srng_dst_dec_tp(hal_soc, hal_ring_hdl);
+				break;
+			}
+
+			if (qdf_unlikely(msdu_done_status ==
+					 QDF_STATUS_E_FAILURE)) {
+				/* Handle MSDU done failure */
+				old_rx_desc =
+					dp_rx_war_store_msdu_done_fail_desc(
+						soc, rx_desc, reo_ring_num);
+				if (qdf_likely(old_rx_desc)) {
+					if (dp_rx_add_to_ipa_desc_free_list(
+							soc, old_rx_desc,
+							is_ctrl_refill) !=
+					    QDF_STATUS_SUCCESS) {
+						rx_bufs_reaped[old_rx_desc->pool_id]++;
+						dp_rx_add_to_free_desc_list(
+							&head[old_rx_desc->pool_id],
+							&tail[old_rx_desc->pool_id],
+							old_rx_desc);
+					}
+					quota--;
+					num_pending--;
+					num_rx_bufs_reaped++;
+				}
+				rx_desc->msdu_done_fail = 1;
+				DP_STATS_INC(soc, rx.err.msdu_done_fail, 1);
+				dp_err("MSDU DONE failure %d",
+				       soc->stats.rx.err.msdu_done_fail);
+				dp_rx_msdu_done_fail_event_record(
+						soc, rx_desc, rx_desc->nbuf);
+				continue;
 			}
 		}
 
