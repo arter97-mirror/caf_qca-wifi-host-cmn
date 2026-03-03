@@ -401,6 +401,7 @@ struct wlan_srng_cfg {
  * @dp_eapol_stats: flag to enable/disable eapol drop stats
  * @is_ndp_bw_flow_ctrl_enabled: NDP bw flow control enabled/disabled flag
  * @dp_tx_page_pool: DP TX page pool enable/disable
+ * @dp_aux_refill_ring: DP aux refill ring config
  */
 struct wlan_cfg_dp_soc_ctxt {
 	int num_int_ctxts;
@@ -684,6 +685,7 @@ struct wlan_cfg_dp_soc_ctxt {
  * @nss_enabled: 1 - NSS enabled, 0 - NSS disabled
  * @dma_tx_mon_buf_ring_size: Tx monitor BUF Ring size
  * @sw2rxdma_link_ring_size: SW2RXDMA link ring size
+ * @dp_direct_refill_ring: DP direct refill ring config
  */
 struct wlan_cfg_dp_pdev_ctxt {
 	int rx_dma_buf_ring_size;
@@ -2647,11 +2649,11 @@ wlan_cfg_get_dp_soc_ppeds_tx_desc_borrow_limit(struct wlan_cfg_dp_soc_ctxt *cfg)
 
 #ifdef DP_FEATURE_TX_PAGE_POOL
 void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-			    bool *tx_pp_enabled);
+			    bool *tx_pp_enabled, bool *tx_pp_prealloc_en);
 #else
 static inline void
 wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-		       bool *tx_pp_enabled)
+		       bool *tx_pp_enabled, bool *tx_pp_prealloc_en)
 {
 }
 #endif
@@ -2659,12 +2661,12 @@ wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			    bool *rx_pp_enabled, size_t *rx_buf_size,
-			    uint32_t *rx_pool_size);
+			    uint32_t *rx_pool_size, bool *rx_pp_prealloc_en);
 #else
 static inline void
 wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 		       bool *rx_pp_enabled, size_t *rx_buf_size,
-		       uint32_t *rx_pool_size)
+		       uint32_t *rx_pool_size, bool *rx_pp_prealloc_en)
 {
 }
 #endif
