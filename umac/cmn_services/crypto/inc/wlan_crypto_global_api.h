@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -880,4 +881,22 @@ QDF_STATUS wlan_crypto_set_del_pmksa(struct wlan_objmgr_vdev *vdev,
 				     struct wlan_crypto_pmksa *pmksa,
 				     bool set);
 
+/**
+ * wlan_crypto_rsn_suite_to_cipher - This API converts a RSN cipher selector OUI
+ * to an internal cipher algorithm. Where appropriate we also record any key
+ * length.
+ * @sel: input RSN suite
+ *
+ * Return: cipher suite value
+ */
+int32_t wlan_crypto_rsn_suite_to_cipher(const uint8_t *sel);
+
+/**
+ * wlan_crypto_rsn_suite_to_keymgmt() - This API converts an RSN key management/
+ * authentication algorithm to an internal code.
+ * @sel: input RSN suite
+ *
+ * Return: keymgmt value
+ */
+int32_t wlan_crypto_rsn_suite_to_keymgmt(const uint8_t *sel);
 #endif /* end of _WLAN_CRYPTO_GLOBAL_API_H_ */
