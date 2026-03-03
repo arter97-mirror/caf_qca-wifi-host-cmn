@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -674,6 +675,77 @@ static uint32_t scm_get_sta_nss(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+static int32_t scm_calculate_security_score(struct scoring_config *score_config,
+					    struct security_info neg_sec_info)
+{
+	enum wlan_auth_type authmode;
+	uint8_t score_pct = 0;
+
+	authmode = neg_sec_info.auth_type;
+
+	switch (authmode) {
+	/*
+	 * WPA3 / OWE / FILS / SUITE-B Group
+	 * score_pct = 100%
+	 */
+	case WLAN_AUTH_TYPE_SAE:
+	case WLAN_AUTH_TYPE_FT_SAE:
+	case WLAN_AUTH_TYPE_OWE:
+	case WLAN_AUTH_TYPE_DPP_RSN:
+	case WLAN_AUTH_TYPE_FILS_SHA256:
+	case WLAN_AUTH_TYPE_FILS_SHA384:
+	case WLAN_AUTH_TYPE_FT_FILS_SHA256:
+	case WLAN_AUTH_TYPE_FT_FILS_SHA384:
+	case WLAN_AUTH_TYPE_SUITEB_EAP_SHA256:
+	case WLAN_AUTH_TYPE_SUITEB_EAP_SHA384:
+	case WLAN_AUTH_TYPE_FT_SUITEB_EAP_SHA384:
+		score_pct = WLAN_GET_SCORE_PERCENTAGE(
+				score_config->security_weight_per_index,
+				CM_SECURITY_WPA3_INDEX);
+		break;
+
+	/*
+	 * WPA2 / RSN Group
+	 * score_pct = 50%
+	 */
+	case WLAN_AUTH_TYPE_RSN:
+	case WLAN_AUTH_TYPE_RSN_PSK:
+	case WLAN_AUTH_TYPE_FT_RSN:
+	case WLAN_AUTH_TYPE_FT_RSN_PSK:
+	case WLAN_AUTH_TYPE_RSN_PSK_SHA256:
+	case WLAN_AUTH_TYPE_RSN_8021X_SHA256:
+	case WLAN_AUTH_TYPE_CCKM_RSN:
+		score_pct = WLAN_GET_SCORE_PERCENTAGE(
+				score_config->security_weight_per_index,
+				CM_SECURITY_WPA2_INDEX);
+		break;
+
+	/*
+	 * WPA / WAPI / Legacy Group
+	 * score_pct = 25%
+	 */
+	case WLAN_AUTH_TYPE_WPA:
+	case WLAN_AUTH_TYPE_WPA_PSK:
+	case WLAN_AUTH_TYPE_WPA_NONE:
+	case WLAN_AUTH_TYPE_SHARED_KEY:
+	case WLAN_AUTH_TYPE_WAPI_WAI_CERTIFICATE:
+	case WLAN_AUTH_TYPE_WAPI_WAI_PSK:
+	case WLAN_AUTH_TYPE_CCKM_WPA:
+		score_pct = WLAN_GET_SCORE_PERCENTAGE(
+				score_config->security_weight_per_index,
+				CM_SECURITY_WPA_INDEX);
+		break;
+
+	case WLAN_AUTH_TYPE_OPEN_SYSTEM:
+	default:
+		score_pct = 0;
+		break;
+	}
+
+	return (score_config->weight_cfg.security_weightage * score_pct) /
+		MAX_INDEX_SCORE;
+}
+
 int scm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 		struct scan_default_params *params,
 		struct scan_cache_entry *entry,
@@ -689,6 +761,7 @@ int scm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	int32_t beamformee_score = 0;
 	int32_t band_score = 0;
 	int32_t nss_score = 0;
+	int32_t security_score = 0;
 	int32_t congestion_score = 0;
 	int32_t congestion_pct = 0;
 	int32_t oce_wan_score = 0;
@@ -819,25 +892,34 @@ int scm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 					    prorated_pcnt, sta_nss);
 	score += nss_score;
 
+	/*
+	 * Since older FW will stick to the single AKM for roaming,
+	 * no need to check the fw capability.
+	 */
+	security_score = scm_calculate_security_score(score_config,
+						      entry->neg_sec_info);
+	score += security_score;
+
 	scm_nofl_debug("Self: HT %d VHT %d HE %d VHT_24Ghz %d BF cap %d cb_mode_24g %d cb_mode_5G %d NSS %d",
 		       score_config->ht_cap, score_config->vht_cap,
 		       score_config->he_cap,  score_config->vht_24G_cap,
 		       score_config->beamformee_cap, score_config->cb_mode_24G,
 		       score_config->cb_mode_5G, sta_nss);
 
-	scm_nofl_debug("Candidate(%pM chan %d): rssi %d HT %d VHT %d HE %d su bfer %d phy %d  air time frac %d qbss %d cong_pct %d NSS %d",
+	scm_nofl_debug("Candidate(%pM chan %d): rssi %d HT %d VHT %d HE %d su bfer %d phy %d  air time frac %d qbss %d cong_pct %d NSS %d auth_type %d",
 		       entry->bssid.bytes, entry->channel.chan_idx,
 		       entry->rssi_raw, util_scan_entry_htcap(entry) ? 1 : 0,
 		       util_scan_entry_vhtcap(entry) ? 1 : 0,
 		       util_scan_entry_hecap(entry) ? 1 : 0, ap_su_beam_former,
 		       entry->phy_mode, entry->air_time_fraction,
-		       entry->qbss_chan_load, congestion_pct, entry->nss);
+		       entry->qbss_chan_load, congestion_pct, entry->nss,
+		       entry->neg_sec_info.auth_type);
 
-	scm_nofl_debug("Scores: prorated_pcnt %d rssi %d pcl %d ht %d vht %d he %d bfee %d bw %d band %d congestion %d nss %d oce wan %d TOTAL %d",
+	scm_nofl_debug("Scores: prorated_pcnt %d rssi %d pcl %d ht %d vht %d he %d bfee %d bw %d band %d congestion %d nss %d oce wan %d security %d TOTAL %d",
 		       prorated_pcnt, rssi_score, pcl_score, ht_score,
 		       vht_score, he_score, beamformee_score, bandwidth_score,
 		       band_score, congestion_score, nss_score, oce_wan_score,
-		       score);
+		       security_score, score);
 
 	entry->bss_score = score;
 	return score;
