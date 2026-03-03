@@ -2458,6 +2458,53 @@
 #define CFG_DP_RX_BUFFER_RECYCLE
 #endif
 
+#if defined(DP_FEATURE_RX_BUFFER_RECYCLE) || defined(DP_FEATURE_TX_PAGE_POOL)
+#define WLAN_CFG_PP_PREALLOC_MIN 0
+#define WLAN_CFG_PP_PREALLOC_MAX 3
+#define WLAN_CFG_PP_PREALLOC_DEFAULT 0
+
+/* Bit definitions for page pool preallocation control */
+#define DP_RX_PP_PREALLOC_BIT BIT(0)
+#define DP_TX_PP_PREALLOC_BIT BIT(1)
+
+/*
+ * <ini>
+ * dp_pp_prealloc_en - Page pool preallocation control (bit-encoded)
+ * @Min: 0
+ * @Max: 3
+ * @Default: 0
+ *
+ * This ini is used to control page pool preallocation for RX and TX
+ * page pools during initialization using bit encoding:
+ * - Bit 0: Enable/Disable RX page pool preallocation
+ * - Bit 1: Enable/Disable TX page pool preallocation
+ *
+ * Value 0 (0b00): Both RX and TX preallocation disabled
+ * Value 1 (0b01): RX preallocation enabled, TX disabled
+ * Value 2 (0b10): RX preallocation disabled, TX enabled
+ * Value 3 (0b11): Both RX and TX preallocation enabled
+ *
+ * Related: dp_rx_buffer_recycle, dp_tx_page_pool
+ *
+ * Supported Feature: All modes
+ *
+ * Usage: Internal
+ *
+ * </ini>
+ */
+#define CFG_DP_PP_PREALLOC_ENABLE \
+	CFG_INI_UINT("dp_pp_prealloc_en", \
+		     WLAN_CFG_PP_PREALLOC_MIN, \
+		     WLAN_CFG_PP_PREALLOC_MAX, \
+		     WLAN_CFG_PP_PREALLOC_DEFAULT, \
+		     CFG_VALUE_OR_DEFAULT, \
+		     "Page pool preallocation control (bit-encoded)")
+
+#define CFG_DP_PP_PREALLOC CFG(CFG_DP_PP_PREALLOC_ENABLE)
+#else
+#define CFG_DP_PP_PREALLOC
+#endif
+
 #ifdef NDP_TX_BW_FLOW_CTRL
 /*
  * <ini>
@@ -2796,6 +2843,7 @@
 		CFG_DP_SAWF_MSDUQ_TID_SKID \
 		CFG(CFG_DP_RXMON_MGMT_LINEARIZATION) \
 		CFG_DP_RX_BUFFER_RECYCLE \
+		CFG_DP_PP_PREALLOC \
 		CFG_DP_NDP_BW_FLOW_CTRL \
 		CFG_DP_TX_PAGE_POOL \
 		CFG_DP_DAL_SIM \

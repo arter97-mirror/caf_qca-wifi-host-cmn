@@ -6566,10 +6566,15 @@ int wlan_cfg_get_rxdma_buf_ring_size(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
 
 #ifdef DP_FEATURE_TX_PAGE_POOL
 void wlan_cfg_get_tx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
-			    bool *tx_pp_enabled)
+			    bool *tx_pp_enabled, bool *tx_pp_prealloc_en)
 {
+	uint32_t pp_prealloc_cfg;
+
 	*tx_pp_enabled = cfg_get(ctrl_psoc,
 				 CFG_DP_TX_PAGE_POOL_ENABLE);
+
+	pp_prealloc_cfg = cfg_get(ctrl_psoc, CFG_DP_PP_PREALLOC_ENABLE);
+	*tx_pp_prealloc_en = !!(pp_prealloc_cfg & DP_TX_PP_PREALLOC_BIT);
 }
 
 bool wlan_cfg_get_tx_dynamic_pp_enabled(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
@@ -6589,13 +6594,21 @@ wlan_cfg_get_tx_dynamic_pp_prealloc_buf(struct cdp_ctrl_objmgr_psoc *ctrl_psoc)
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 void wlan_cfg_get_rx_pp_cfg(struct cdp_ctrl_objmgr_psoc *ctrl_psoc,
 			    bool *rx_pp_enabled, size_t *rx_buf_size,
-			    uint32_t *rx_pool_size)
+			    uint32_t *rx_pool_size, bool *rx_pp_prealloc_en)
 {
+	uint32_t pp_prealloc_cfg;
+
 	*rx_pp_enabled = cfg_get(ctrl_psoc,
 				 CFG_DP_RX_BUFFER_RECYCLE_ENABLE);
 	*rx_buf_size = cfg_get(ctrl_psoc, CFG_DP_RX_BUFFER_SIZE);
 	*rx_pool_size = cfg_get(ctrl_psoc, CFG_DP_RX_SW_DESC_NUM);
+
+	pp_prealloc_cfg = cfg_get(ctrl_psoc, CFG_DP_PP_PREALLOC_ENABLE);
+	*rx_pp_prealloc_en = !!(pp_prealloc_cfg & DP_RX_PP_PREALLOC_BIT);
 }
+#endif
+
+#if defined(DP_FEATURE_RX_BUFFER_RECYCLE) || defined(DP_FEATURE_TX_PAGE_POOL)
 #endif
 
 void
