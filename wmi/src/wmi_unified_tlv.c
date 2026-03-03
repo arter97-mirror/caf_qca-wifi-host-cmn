@@ -25917,6 +25917,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
 	wmi_service[wmi_service_skip_pmk_match_delete_support] =
 				WMI_SERVICE_SKIP_PMK_MATCH_DELETE_SUPPORT;
+	wmi_service[wmi_service_delete_all_peer_bitmap_support] =
+				WMI_SERVICE_DELETE_ALL_PEER_BITMAP_SUPPORT;
 }
 
 /**
