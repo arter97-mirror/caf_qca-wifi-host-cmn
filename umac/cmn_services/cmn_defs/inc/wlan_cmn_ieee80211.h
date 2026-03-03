@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -619,6 +620,7 @@ enum wlan_status_code {
 #define WLAN_ASE_SHA256_PSK              0x100
 #define WLAN_ASE_WPS                     0x200
 
+#define RSN_CAP_MFP_DISABLED 0x00
 #define RSN_CAP_MFP_CAPABLE 0x80
 #define RSN_CAP_MFP_REQUIRED 0x40
 
