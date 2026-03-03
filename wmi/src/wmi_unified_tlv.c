@@ -25508,6 +25508,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable] =
 				WMI_SERVICE_HANDLE_ROAMING_WITHOUT_RSO_STOP_FOR_4WAY_HS_OFFLOAD_DISABLE;
 	wmi_populate_service_11bn(wmi_service);
+	wmi_service[wmi_service_delete_all_peer_bitmap_support] =
+				WMI_SERVICE_DELETE_ALL_PEER_BITMAP_SUPPORT;
 }
 
 /**

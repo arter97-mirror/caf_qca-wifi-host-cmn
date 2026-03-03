@@ -7096,6 +7096,7 @@ typedef enum {
 #ifdef WLAN_FEATURE_11BN
 	wmi_service_11bn,
 #endif
+	wmi_service_delete_all_peer_bitmap_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
