@@ -6459,6 +6459,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_dsmps_control, VDEV_PARAM_DSMPS_CONTROL),
 	VDEV_PARAM(vdev_param_su_txop_burst_limit_us,
 		   VDEV_PARAM_SU_TXOP_BURST_LIMIT_US),
+	VDEV_PARAM(vdev_param_set_go_cancel_noa,
+		   VDEV_PARAM_SET_GO_CANCEL_NOA),
 
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
@@ -6923,6 +6925,7 @@ typedef enum {
 	wmi_service_cck_tx_support_5g,
 	wmi_service_cfr_unassoc_rx_capture_support,
 	wmi_service_cfr_assoc_tx_capture_support,
+	wmi_service_p2p_cancel_one_shot_noa_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
