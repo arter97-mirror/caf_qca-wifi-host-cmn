@@ -778,12 +778,15 @@ static QDF_STATUS target_if_vdev_mgr_stop_send(
 	struct wlan_objmgr_psoc *psoc;
 	uint8_t vdev_id;
 	struct vdev_response_timer *vdev_rsp;
-
+	bool is_link_switch_in_progress = false;
 
 	if (!vdev || !param) {
 		mlme_err("Invalid input");
 		return QDF_STATUS_E_INVAL;
 	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	psoc = wlan_vdev_get_psoc(vdev);
 
 	wmi_handle = target_if_vdev_mgr_wmi_handle_get(vdev);
 	if (!wmi_handle) {
@@ -805,6 +808,29 @@ static QDF_STATUS target_if_vdev_mgr_stop_send(
 		return QDF_STATUS_E_INVAL;
 	}
 
+	/* Check if link switch is in progress */
+	is_link_switch_in_progress =
+		wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev) &&
+		mlo_mgr_is_sta_mlo_unified_connect_disconnect_enabled(psoc);
+
+	/* Skip sending WMI command if link switch is in progress */
+	if (is_link_switch_in_progress) {
+		struct vdev_stop_response rsp = {0};
+
+		mlme_debug("vdev:%d Link switch in progress, skip WMI stop send",
+			   vdev_id);
+
+		rsp.vdev_id = vdev_id;
+		status = rx_ops->vdev_mgr_stop_response(psoc, &rsp);
+
+		if (QDF_IS_STATUS_ERROR(status))
+			mlme_err("vdev:%d Failed to process stop response",
+				 vdev_id);
+
+		return status;
+	}
+
+	/* Normal path - send WMI command */
 	vdev_rsp->expire_time = STOP_RESPONSE_TIMER;
 	target_if_vdev_mgr_rsp_timer_start(psoc, vdev_rsp, STOP_RESPONSE_BIT);
 	/*
