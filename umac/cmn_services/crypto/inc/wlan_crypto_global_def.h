@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -235,6 +236,9 @@ struct wlan_crypto_pmksa {
  * @key_mgmt:           key mgmt
  * @pmksa:              pmksa
  * @rsn_caps:           rsn_capability
+ * @orig_ucastcipher:   connection request unicast ciphers
+ * @orig_mcastcipher:   connection request multicast cipher
+ * @orig_key_mgmt:      connection request key mgmt
  *
  * This structure holds crypto params for peer or vdev
  */
@@ -247,6 +251,9 @@ struct wlan_crypto_params {
 	uint32_t key_mgmt;
 	struct   wlan_crypto_pmksa *pmksa[WLAN_CRYPTO_MAX_PMKID];
 	uint16_t rsn_caps;
+	uint32_t orig_ucastcipher;
+	uint32_t orig_mcastcipher;
+	uint32_t orig_key_mgmt;
 };
 
 typedef enum wlan_crypto_param_type {
@@ -258,6 +265,9 @@ typedef enum wlan_crypto_param_type {
 	WLAN_CRYPTO_PARAM_RSN_CAP,
 	WLAN_CRYPTO_PARAM_KEY_MGMT,
 	WLAN_CRYPTO_PARAM_PMKSA,
+	WLAN_CRYPTO_PARAM_ORIG_UCAST_CIPHER,
+	WLAN_CRYPTO_PARAM_ORIG_MCAST_CIPHER,
+	WLAN_CRYPTO_PARAM_ORIG_KEY_MGMT,
 } wlan_crypto_param_type;
 
 /**
