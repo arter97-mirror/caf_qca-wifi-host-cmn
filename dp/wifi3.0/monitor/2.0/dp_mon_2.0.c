@@ -512,6 +512,7 @@ QDF_STATUS dp_mon_pdev_htt_srng_setup_2_0(struct dp_soc *soc,
 }
 #endif
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 static
 QDF_STATUS dp_rx_mon_refill_buf_ring_2_0(struct dp_intr *int_ctx)
 {
@@ -554,6 +555,7 @@ QDF_STATUS dp_rx_mon_refill_buf_ring_2_0(struct dp_intr *int_ctx)
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 QDF_STATUS dp_mon_soc_detach_2_0(struct dp_soc *soc)
 {
@@ -1106,6 +1108,7 @@ void dp_mon_ppdu_stats_handler_register(struct dp_mon_soc *mon_soc)
 }
 #endif
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 static void dp_mon_register_intr_ops_2_0(struct dp_soc *soc)
 {
 	struct dp_mon_soc *mon_soc = soc->monitor_soc;
@@ -1117,6 +1120,7 @@ static void dp_mon_register_intr_ops_2_0(struct dp_soc *soc)
 	mon_soc->mon_rx_process = dp_rx_mon_process_2_0;
 	dp_mon_ppdu_stats_handler_register(mon_soc);
 }
+#endif
 
 #ifdef MONITOR_TLV_RECORDING_ENABLE
 /**
@@ -1406,11 +1410,13 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 	mon_ops->mon_pktlogmod_exit = dp_pktlogmod_exit;
 #endif
 	mon_ops->rx_hdr_length_set = dp_rx_mon_hdr_length_set;
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->rx_packet_length_set = dp_rx_mon_packet_length_set;
 	mon_ops->rx_mon_enable = dp_rx_mon_enable_set;
 	mon_ops->rx_wmask_subscribe = dp_rx_mon_word_mask_subscribe;
 	mon_ops->rx_pkt_tlv_offset = dp_rx_mon_pkt_tlv_offset_subscribe;
 	mon_ops->rx_enable_mpdu_logging = dp_rx_mon_enable_mpdu_logging;
+#endif
 	mon_ops->mon_neighbour_peers_detach = NULL;
 #ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->mon_vdev_set_monitor_mode_buf_rings =
@@ -1431,9 +1437,11 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 	mon_ops->mon_filter_reset_undecoded_metadata_capture =
 		dp_mon_filter_reset_undecoded_metadata_capture_2_0;
 #endif
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->rx_enable_fpmo = dp_rx_mon_enable_fpmo;
 	mon_ops->rx_config_packet_type_subtype =
 		dp_rx_mon_config_packet_type_subtype;
+#endif
 	mon_ops->mon_rx_print_advanced_stats =
 		dp_mon_rx_print_advanced_stats_2_0;
 	mon_ops->mon_mac_filter_set = NULL;
@@ -1509,7 +1517,7 @@ struct dp_mon_ops monitor_ops_2_0 = {
 	.tx_mon_desc_pool_deinit = NULL,
 	.tx_mon_desc_pool_alloc = NULL,
 	.tx_mon_desc_pool_free = NULL,
-#ifndef DISABLE_MON_CONFIG
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	.mon_register_intr_ops = dp_mon_register_intr_ops_2_0,
 #endif
 	.mon_register_feature_ops = dp_mon_register_feature_ops_2_0,

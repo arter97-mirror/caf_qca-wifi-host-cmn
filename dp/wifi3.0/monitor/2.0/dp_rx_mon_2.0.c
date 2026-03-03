@@ -2748,6 +2748,7 @@ dp_rx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 	return work_done;
 }
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 uint32_t
 dp_rx_mon_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 		      uint32_t mac_id, uint32_t quota)
@@ -2758,7 +2759,7 @@ dp_rx_mon_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 	return work_done;
 }
-
+#endif
 /**
  * dp_mon_pdev_ext_init_2_0() - Init pdev ext param
  *

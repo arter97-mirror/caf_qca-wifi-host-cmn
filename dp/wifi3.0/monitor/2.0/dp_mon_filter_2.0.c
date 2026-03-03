@@ -119,6 +119,7 @@ fail:
 	return QDF_STATUS_E_FAILURE;
 }
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 void dp_rx_mon_packet_length_set(uint32_t *msg_word,
 				 struct htt_rx_ring_tlv_filter *tlv_filter)
 {
@@ -1095,6 +1096,7 @@ dp_rx_mon_enable_fpmo(uint32_t *msg_word,
 		*msg_word = 0;
 	}
 }
+#endif
 
 #ifdef WLAN_PKT_CAPTURE_TX_2_0
 static void
@@ -2279,6 +2281,7 @@ void dp_mon_filter_reset_tx_mon_mode_2_0(struct dp_pdev *pdev)
 }
 #endif
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 static void dp_mon_filter_set_mon_2_0(struct dp_mon_pdev *mon_pdev,
 				      struct dp_mon_filter *filter)
 {
@@ -2420,6 +2423,7 @@ void dp_mon_filter_reset_rx_mon_mode_2_0(struct dp_pdev *pdev)
 	srng_type = DP_MON_FILTER_SRNG_TYPE_RXMON_DEST;
 	mon_pdev_be->filter_be[mode][srng_type] = filter;
 }
+#endif
 
 static void dp_rx_mon_filter_show_filter(struct dp_mon_filter_be *filter)
 {
@@ -3873,6 +3877,7 @@ QDF_STATUS dp_tx_mon_filter_update_2_0(struct dp_pdev *pdev)
 }
 #endif
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 QDF_STATUS dp_rx_mon_filter_update_2_0(struct dp_pdev *pdev)
 {
 	struct dp_soc *soc;
@@ -3898,6 +3903,7 @@ QDF_STATUS dp_rx_mon_filter_update_2_0(struct dp_pdev *pdev)
 			       &filter.rx_tlv_filter.tlv_filter);
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 #ifdef QCA_SUPPORT_LITE_MONITOR
 void

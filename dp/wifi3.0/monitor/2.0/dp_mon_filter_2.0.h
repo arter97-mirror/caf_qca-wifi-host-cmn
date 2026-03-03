@@ -45,6 +45,7 @@ enum dp_tx_mon_dma_length {
 /* fwd declarations */
 struct dp_mon_pdev_be;
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_rx_mon_enable_set() - Setup rx monitor feature
  * @msg_word: msg word
@@ -113,6 +114,7 @@ void
 dp_rx_mon_config_packet_type_subtype(uint32_t *msg_word,
 				     struct htt_rx_ring_tlv_filter *tlv_filter,
 				     uint32_t htt_ring_id);
+#endif
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 /**
  * dp_mon_filter_setup_enhanced_stats_2_0() - Setup the enhanced stats filter
@@ -163,6 +165,7 @@ dp_mon_filter_reset_undecoded_metadata_capture_2_0(struct dp_pdev *pdev)
 }
 #endif
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_mon_filter_setup_rx_mon_mode_2_0() - Setup the Rx monitor mode filter
  * @pdev: DP pdev handle
@@ -174,6 +177,7 @@ void dp_mon_filter_setup_rx_mon_mode_2_0(struct dp_pdev *pdev);
  * @pdev: DP pdev handle
  */
 void dp_mon_filter_reset_rx_mon_mode_2_0(struct dp_pdev *pdev);
+#endif
 
 #ifdef WLAN_PKT_CAPTURE_TX_2_0
 /**
@@ -274,6 +278,7 @@ dp_mon_filter_reset_pktlog_hybrid_2_0(struct dp_pdev *pdev)
  */
 QDF_STATUS dp_tx_mon_filter_update_2_0(struct dp_pdev *pdev);
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_rx_mon_filter_update_2_0() - Update monitor filter configuration
  * @pdev: physical device handle
@@ -281,6 +286,7 @@ QDF_STATUS dp_tx_mon_filter_update_2_0(struct dp_pdev *pdev);
  * Return: non-zero for failure, zero for success
  */
 QDF_STATUS dp_rx_mon_filter_update_2_0(struct dp_pdev *pdev);
+#endif
 
 /**
  * dp_mon_filter_dealloc_2_0() - free tx monitor filter memory

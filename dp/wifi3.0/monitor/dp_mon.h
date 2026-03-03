@@ -936,8 +936,12 @@ struct dp_mon_ops {
 	void (*mon_rx_populate_ppdu_info)(struct hal_rx_ppdu_info *hal_ppdu_info,
 					  struct cdp_rx_indication_ppdu *ppdu);
 #endif
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	QDF_STATUS (*rx_mon_refill_buf_ring)(struct dp_intr *int_ctx);
+#endif
+#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
 	QDF_STATUS (*tx_mon_refill_buf_ring)(struct dp_intr *int_ctx);
+#endif
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	QDF_STATUS (*mon_config_undecoded_metadata_capture)
 	    (struct dp_pdev *pdev, int val);
@@ -2908,6 +2912,7 @@ void dp_print_lpc_coc_stats(struct dp_pdev *pdev)
 	return monitor_ops->print_lpc_coc_stats(pdev);
 }
 
+#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
 static inline
 uint32_t dp_tx_mon_buf_refill(struct dp_intr *int_ctx)
 {
@@ -2928,7 +2933,15 @@ uint32_t dp_tx_mon_buf_refill(struct dp_intr *int_ctx)
 
 	return monitor_ops->tx_mon_refill_buf_ring(int_ctx);
 }
+#else
+static inline
+uint32_t dp_tx_mon_buf_refill(struct dp_intr *int_ctx)
+{
+	return 0;
+}
+#endif
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 static inline
 uint32_t dp_rx_mon_buf_refill(struct dp_intr *int_ctx)
 {
@@ -2949,6 +2962,13 @@ uint32_t dp_rx_mon_buf_refill(struct dp_intr *int_ctx)
 
 	return monitor_ops->rx_mon_refill_buf_ring(int_ctx);
 }
+#else
+static inline
+uint32_t dp_rx_mon_buf_refill(struct dp_intr *int_ctx)
+{
+	return 0;
+}
+#endif
 
 static inline
 void dp_print_txmon_ring_stat_from_hal(struct dp_pdev *pdev)
@@ -2991,18 +3011,6 @@ hal_ring_handle_t dp_tx_mon_get_hal_ring(struct dp_soc *soc, uint32_t mac_id,
 					 enum hal_ring_type ring_type)
 {
 	return NULL;
-}
-
-static inline
-uint32_t dp_tx_mon_buf_refill(struct dp_intr *int_ctx)
-{
-	return 0;
-}
-
-static inline
-uint32_t dp_rx_mon_buf_refill(struct dp_intr *int_ctx)
-{
-	return 0;
 }
 
 static inline
