@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -402,6 +403,14 @@ struct param_slot_scoring {
  * @rssi_scoring: RSSI scoring information.
  * @esp_qbss_scoring: ESP/QBSS scoring percentage information
  * @oce_wan_scoring: OCE WAN metrics percentage information
+ * @security_weightage: Security(WPA/WPA2/WPA3) weightage out of
+ * total score in %
+ * @security_index_score: Security scoring percentage information.
+ *                BITS 0-7 :- It contains scoring percentage of WPA security
+ *                BITS 8-15  :- It contains scoring percentage of WPA2 security
+ *                BITS 16-23 :- It contains scoring percentage of WPA3 security
+ *                BITS 24-31 :- reserved
+ *                The value of each index must be 0-100
  */
 struct scoring_param {
 	uint32_t disable_bitmap;
@@ -426,6 +435,8 @@ struct scoring_param {
 	struct rssi_scoring rssi_scoring;
 	struct param_slot_scoring esp_qbss_scoring;
 	struct param_slot_scoring oce_wan_scoring;
+	int32_t security_weightage;
+	uint32_t security_index_score;
 };
 
 /*

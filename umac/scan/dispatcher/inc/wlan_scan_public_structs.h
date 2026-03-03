@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -70,6 +70,22 @@ typedef uint32_t wlan_scan_id;
 #define BEST_CANDIDATE_MAX_WEIGHT 100
 #define MAX_INDEX_SCORE 100
 #define MAX_INDEX_PER_INI 4
+
+#define CM_SECURITY_WEIGHTAGE 4
+/**
+ * This macro give percentage value of security_weightage to be used as per
+ * security Eg if AP security is WPA 10% will be given for AP.
+ *
+ * Indexes are defined in this way.
+ *     0 Index (BITS 0-7): WPA - Def 25%
+ *     1 Index (BITS 8-15): WPA2- Def 50%
+ *     2 Index (BITS 16-23): WPA3- Def 100%
+ *     3 Index (BITS 24-31): reserved
+ *
+ * if AP security is Open/WEP 0% will be given for AP
+ * These percentage values are stored in HEX. For any index max value, can be 64
+ */
+#define CM_SECURITY_INDEX_WEIGHTAGE 0x00643219
 
 #ifdef CONFIG_MCL
 #define MAX_BCN_PROBE_IN_SCAN_QUEUE 150
@@ -389,6 +405,7 @@ struct scan_cache_entry {
  * @pcl_weightage: PCL weightage
  * @channel_congestion_weightage: channel congestion weightage
  * @oce_wan_weightage: OCE WAN metrics weightage
+ * @security_weightage: Security weightage
  */
 struct  weight_config {
 	uint8_t rssi_weightage;
@@ -402,6 +419,7 @@ struct  weight_config {
 	uint8_t pcl_weightage;
 	uint8_t channel_congestion_weightage;
 	uint8_t oce_wan_weightage;
+	uint8_t security_weightage;
 };
 
 /**
@@ -479,6 +497,7 @@ struct per_slot_scoring {
  * @he_cap: If dev is configured as HE capable
  * @vht_24G_cap:If dev is configured as VHT capable for 2.4Ghz
  * @beamformee_cap:If dev is configured as BF capable
+ * @security_weight_per_index: security weight per index
  */
 struct scoring_config {
 	struct weight_config weight_cfg;
@@ -497,6 +516,7 @@ struct scoring_config {
 		he_cap:1,
 		vht_24G_cap:1,
 		beamformee_cap:1;
+	uint32_t security_weight_per_index;
 };
 
 #define WLAN_SCAN_FILTER_NUM_SSID 5
@@ -758,6 +778,14 @@ struct probe_req_whitelist_attr {
 	uint32_t ie_bitmap[PROBE_REQ_BITMAP_LEN];
 	uint32_t num_vendor_oui;
 	uint32_t voui[MAX_PROBE_REQ_OUIS];
+};
+
+enum cm_security_idx {
+	CM_SECURITY_WPA_INDEX,
+	CM_SECURITY_WPA2_INDEX,
+	CM_SECURITY_WPA3_INDEX,
+	CM_SECURITY_WPA_OPEN_WEP_INDEX,
+	CM_MAX_SECURITY_INDEX
 };
 
 /**
