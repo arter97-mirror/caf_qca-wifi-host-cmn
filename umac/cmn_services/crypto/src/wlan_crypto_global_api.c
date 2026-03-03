@@ -2223,12 +2223,7 @@ static int32_t wlan_crypto_wpa_suite_to_keymgmt(uint8_t *sel)
 	return status;
 }
 
-/*
- * Convert a RSN cipher selector OUI to an internal
- * cipher algorithm.  Where appropriate we also
- * record any key length.
- */
-static int32_t wlan_crypto_rsn_suite_to_cipher(uint8_t *sel)
+int32_t wlan_crypto_rsn_suite_to_cipher(const uint8_t *sel)
 {
 	uint32_t w = LE_READ_4(sel);
 	int32_t status = -1;
@@ -2258,11 +2253,8 @@ static int32_t wlan_crypto_rsn_suite_to_cipher(uint8_t *sel)
 
 	return status;
 }
-/*
- * Convert an RSN key management/authentication algorithm
- * to an internal code.
- */
-static int32_t wlan_crypto_rsn_suite_to_keymgmt(uint8_t *sel)
+
+int32_t wlan_crypto_rsn_suite_to_keymgmt(const uint8_t *sel)
 {
 	uint32_t w = LE_READ_4(sel);
 	int32_t status = -1;
