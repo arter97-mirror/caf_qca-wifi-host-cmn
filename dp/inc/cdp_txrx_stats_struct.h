@@ -3684,6 +3684,7 @@ struct cdp_peer_hmwds_ast_add_status {
  * @DP_SOC_PARAM_UMAC_HW_RESET_SUPPORT: Whether target supports UMAC HW reset
  * @DP_SOC_PARAM_MULTI_RX_REORDER_SETUP_SUPPORT: Whether setting up a group of
  *						 TIDs at a time is supported
+ * @DP_SOC_PARAM_DAL_D3_WOW_SUPPORT: Support for DAL D3 WoW
  * @DP_SOC_PARAM_MAX:
  */
 enum cdp_soc_param_t {
@@ -3695,6 +3696,7 @@ enum cdp_soc_param_t {
 	DP_SOC_PARAM_RSSI_DBM_CONV_SUPPORT,
 	DP_SOC_PARAM_UMAC_HW_RESET_SUPPORT,
 	DP_SOC_PARAM_MULTI_RX_REORDER_SETUP_SUPPORT,
+	DP_SOC_PARAM_DAL_D3_WOW_SUPPORT,
 	DP_SOC_PARAM_MAX,
 };
 

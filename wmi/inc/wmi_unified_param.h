@@ -7097,6 +7097,7 @@ typedef enum {
 	wmi_service_11bn,
 #endif
 	wmi_service_delete_all_peer_bitmap_support,
+	wmi_service_support_wow_ole_dal,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

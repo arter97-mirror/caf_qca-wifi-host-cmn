@@ -25510,6 +25510,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_populate_service_11bn(wmi_service);
 	wmi_service[wmi_service_delete_all_peer_bitmap_support] =
 				WMI_SERVICE_DELETE_ALL_PEER_BITMAP_SUPPORT;
+	wmi_service[wmi_service_support_wow_ole_dal] =
+				WMI_SERVICE_SUPPORT_WOW_OLE_DAL;
 }
 
 /**

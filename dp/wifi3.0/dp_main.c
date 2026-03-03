@@ -13098,6 +13098,11 @@ static QDF_STATUS dp_soc_set_param(struct cdp_soc_t  *soc_hdl,
 		dp_info("Multi rx reorder queue setup support: %u",
 			soc->features.multi_rx_reorder_q_setup_support);
 		break;
+	case DP_SOC_PARAM_DAL_D3_WOW_SUPPORT:
+		soc->features.dal_d3_wow_support = value;
+		dp_info("dal_d3_wow_support: %u",
+			soc->features.dal_d3_wow_support);
+		break;
 	default:
 		dp_info("not handled param %d ", param);
 		break;

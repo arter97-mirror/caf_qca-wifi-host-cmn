@@ -705,6 +705,12 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 		info->wlan_res_cfg.is_action_oui_v2_enabled = true;
 	}
 
+	if (wmi_service_enabled(wmi_handle, wmi_service_support_wow_ole_dal)) {
+		target_if_debug("FW supports DAL D3 WoW");
+		cdp_soc_set_param(wlan_psoc_get_dp_handle(psoc),
+				  DP_SOC_PARAM_DAL_D3_WOW_SUPPORT, 1);
+	}
+
 	target_if_wifi_radar_support_enable(psoc, tgt_hdl, event);
 
 	val.cdp_fw_support_ml_mon = info->service_ext2_param.fw_support_ml_mon;

@@ -1591,14 +1591,46 @@ static int dp_dal_sim_sta_active(void *priv, struct sta_info *info, bool enable)
 
 #ifdef FEATURE_DP_DAL_D3_WOW
 /**
+ * dp_dal_sim_is_d3_wow_supported() - Check if D3 WOW is supported by FW
+ * @sim_ctx: Pointer to DAL sim context
+ *
+ * This function checks if the firmware supports D3 WOW capability by
+ * querying the DP SOC features flags set during service ready event
+ * processing via cdp_soc_set_param.
+ *
+ * Return: true if D3 WOW is supported, false otherwise
+ */
+static bool dp_dal_sim_is_d3_wow_supported(struct dp_dal_sim_ctx *sim_ctx)
+{
+	struct dp_dal_ctx *dal_ctx;
+	struct dp_soc *soc;
+
+	if (!sim_ctx || !sim_ctx->dp_dal_ctx) {
+		dp_err("NULL sim_ctx or dal_ctx");
+		return false;
+	}
+
+	dal_ctx = (struct dp_dal_ctx *)sim_ctx->dp_dal_ctx;
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("NULL soc");
+		return false;
+	}
+
+	return soc->features.dal_d3_wow_support;
+}
+
+/**
  * dp_dal_sim_check_intf_pause() - Check interface pause with Offload Engine
  * @sim_ctx: Pointer to simulator context
  * @intf_pause: Interface pause flag
  *
  * This function handles D3 WOW specific logic for interface pause.
  * If intf_pause is false, it allows D0 suspend without sending INTF_PAUSE.
- * If intf_pause is true, it sends INTF_PAUSE to the Offload Engine and
- * waits for acknowledgment.
+ * If D3 WOW is not supported by FW, skips sending INTF_PAUSE.
+ * If intf_pause is true and D3 WOW is supported, it sends INTF_PAUSE to
+ * the Offload Engine and waits for acknowledgment.
  *
  * Return: 0 on success, negative error code on failure
  */
@@ -1611,6 +1643,12 @@ static int dp_dal_sim_check_intf_pause(struct dp_dal_sim_ctx *sim_ctx,
 	/* If intf_pause is false, allow D0 suspend */
 	if (!intf_pause) {
 		dp_info("D0 suspend: Not sending INTF_PAUSE to OE");
+		return 0;
+	}
+
+	/* Check if D3 WOW is supported by FW */
+	if (!dp_dal_sim_is_d3_wow_supported(sim_ctx)) {
+		dp_info("D3 WOW not supported by FW - skipping INTF_PAUSE");
 		return 0;
 	}
 
@@ -1768,6 +1806,12 @@ static int dp_dal_sim_notify_resume(void *priv)
 	}
 
 	dp_info("Resume notification received");
+
+	/* Check if D3 WOW is supported by FW */
+	if (!dp_dal_sim_is_d3_wow_supported(sim_ctx)) {
+		dp_info("D3 WOW not supported by FW - skipping INTF_RESUME");
+		return 0;
+	}
 
 	/* Send INTF_RESUME to Offload Engine */
 	ret_val = dp_dal_offload_sim_handle_msg(sim_ctx,

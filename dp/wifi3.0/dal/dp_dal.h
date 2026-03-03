@@ -358,6 +358,7 @@ struct dp_dal_rx_desc_node {
  * @suspend_msg_msi_data: Suspend message MSI data
  * @suspend_msg_data_vaddr: Suspend message data virtual address
  * @suspend_msg_data_paddr: Suspend message data physical address
+ * @suspend_htt_msg_sent: Flag indicating if D3 WoW HTT suspend message was sent
  * @stats: DAL statistics
  *
  * This structure maintains all necessary context for DAL operations,
@@ -406,6 +407,7 @@ struct dp_dal_ctx {
 	uint32_t suspend_msg_msi_data;
 	void *suspend_msg_data_vaddr;
 	qdf_dma_addr_t suspend_msg_data_paddr;
+	bool suspend_htt_msg_sent;
 #endif
 	struct dp_dal_stats stats;
 };

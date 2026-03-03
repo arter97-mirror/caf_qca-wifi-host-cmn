@@ -3238,6 +3238,7 @@ struct dp_arch_ops {
  * @vdev_tx_nss_support: FW supports vdev Tx NSS report.
  * @dyn_resource_mgr_support: Dynamic RX buffer allocation support
  * @direct_refill_support: direct refill support
+ * @dal_d3_wow_support: DAL D3 WOW support
  */
 struct dp_soc_features {
 	uint8_t pn_in_reo_dest:1,
@@ -3253,6 +3254,7 @@ struct dp_soc_features {
 	bool vdev_tx_nss_support;
 	bool dyn_resource_mgr_support;
 	bool direct_refill_support;
+	bool dal_d3_wow_support;
 };
 
 enum sysfs_printing_mode {

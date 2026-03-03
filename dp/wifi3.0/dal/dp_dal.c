@@ -386,6 +386,26 @@ static int dp_dal_bus_start(struct dp_soc *soc)
 }
 
 #if defined(FEATURE_DP_DAL_D3_WOW)
+/**
+ * dp_dal_is_d3_wow_supported() - Check if D3 WOW is supported by FW
+ * @soc: Pointer to DP soc
+ *
+ * This function checks if the firmware supports D3 WOW capability by
+ * querying the DP SOC features flags set during service ready event
+ * processing via cdp_soc_set_param.
+ *
+ * Return: true if D3 WOW is supported, false otherwise
+ */
+static bool dp_dal_is_d3_wow_supported(struct dp_soc *soc)
+{
+	if (!soc) {
+		dp_err("NULL soc");
+		return false;
+	}
+
+	return soc->features.dal_d3_wow_support;
+}
+
 static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
 				     uint32_t msi_data,
 				     void *suspend_msg_data_vaddr,
@@ -413,7 +433,8 @@ static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
  * @soc: Pointer to DP soc
  *
  * This function sends the DAL mode and FW write configuration to firmware
- * via HTT message.
+ * via HTT message. It first checks if D3 WoW is supported by FW before
+ * sending the message. On success, sets the suspend_htt_msg_sent flag.
  *
  * Return: QDF_STATUS
  */
@@ -423,6 +444,12 @@ static QDF_STATUS dp_dal_d3_wow_htt_send(struct dp_soc *soc)
 	struct htt_h2t_msg_dal_suspend_info dal_suspend_info;
 	struct dp_pdev *pdev;
 	QDF_STATUS status;
+
+	/* Check if D3 WOW is supported by FW */
+	if (!dp_dal_is_d3_wow_supported(soc)) {
+		dp_info("D3 WOW not supported by FW - skipping HTT message");
+		return QDF_STATUS_SUCCESS;
+	}
 
 	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, 0);
 	if (!pdev)
@@ -455,6 +482,36 @@ static QDF_STATUS dp_dal_d3_wow_htt_send(struct dp_soc *soc)
 		return status;
 	}
 
+	/* Set flag to indicate HTT message was sent successfully */
+	dal_ctx->suspend_htt_msg_sent = true;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_dal_d3_wow_htt_send_on_suspend() - Send HTT message during suspend if
+ * not sent during init
+ * @soc: Pointer to DP soc
+ *
+ * This function is called during suspend to send the HTT message if it was
+ * not sent during init (e.g., due to late WMI capability arrival). This
+ * ensures the message is sent before the first suspend.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS dp_dal_d3_wow_htt_send_on_suspend(struct dp_soc *soc)
+{
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	if (!dal_ctx)
+		return QDF_STATUS_E_INVAL;
+
+	/* If HTT message was not sent during init, send it now */
+	if (!dal_ctx->suspend_htt_msg_sent) {
+		dp_info("HTT message not sent during init, sending on suspend");
+		return dp_dal_d3_wow_htt_send(soc);
+	}
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -466,7 +523,13 @@ static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
 {
 	return 0;
 }
+
 static inline QDF_STATUS dp_dal_d3_wow_htt_send(struct dp_soc *soc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS dp_dal_d3_wow_htt_send_on_suspend(struct dp_soc *soc)
 {
 	return QDF_STATUS_SUCCESS;
 }
@@ -2015,6 +2078,15 @@ QDF_STATUS dp_dal_notify_suspend(struct dp_soc *soc, bool intf_pause)
 	/* Reject suspend when mode switch is in progress */
 	if (soc->dal_mode_switch_in_progress) {
 		dp_warn("Mode switch in progress, reject suspend");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* If HTT message was not sent during init (due to late WMI capability
+	 * arrival), send it now during first suspend
+	 */
+	status = dp_dal_d3_wow_htt_send_on_suspend(soc);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		dp_err("Failed to send DAL mode info to FW during suspend");
 		return QDF_STATUS_E_FAILURE;
 	}
 
