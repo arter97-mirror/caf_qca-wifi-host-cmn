@@ -4188,6 +4188,31 @@ bool wlan_cm_get_check_6ghz_security(struct wlan_objmgr_psoc *psoc)
 }
 #endif
 
+void wlan_cm_set_check_6ghz_security_on_connect(struct wlan_objmgr_psoc *psoc,
+						bool value)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return;
+
+	mlme_psoc_obj->psoc_cfg.score_config.check_6ghz_security_on_connect = value;
+
+	mlme_debug("Set check_6ghz_security_on_connect to %d", value);
+}
+
+bool wlan_cm_get_check_6ghz_security_on_connect(struct wlan_objmgr_psoc *psoc)
+{
+	struct psoc_mlme_obj *mlme_psoc_obj;
+
+	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
+	if (!mlme_psoc_obj)
+		return false;
+
+	return mlme_psoc_obj->psoc_cfg.score_config.check_6ghz_security_on_connect;
+}
+
 void wlan_cm_set_standard_6ghz_conn_policy(struct wlan_objmgr_psoc *psoc,
 					   bool value)
 {
@@ -4265,6 +4290,8 @@ static void cm_fill_6ghz_params(struct wlan_objmgr_psoc *psoc,
 {
 	/* Allow all security in 6Ghz by default */
 	score_cfg->check_6ghz_security = cfg_get(psoc, CFG_CHECK_6GHZ_SECURITY);
+	score_cfg->check_6ghz_security_on_connect =
+			cfg_get(psoc, CFG_CHECK_6GHZ_SECURITY_ON_CONNECT);
 	score_cfg->key_mgmt_mask_6ghz =
 				cfg_get(psoc, CFG_6GHZ_ALLOWED_AKM_MASK);
 }

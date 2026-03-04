@@ -234,6 +234,7 @@ enum cm_security_idx {
  * @check_assoc_disallowed: Should assoc be disallowed if MBO OCE IE indicate so
  * @vendor_roam_score_algorithm: Preferred ETP vendor roam score algorithm
  * @check_6ghz_security: check security for 6 GHz candidate
+ * @check_6ghz_security_on_connect: validate 6 GHz check on connect
  * @standard_6ghz_conn_policy: check for 6 GHz standard connection policy
  * @key_mgmt_mask_6ghz: user configurable mask for 6 GHz AKM
  * @mlsr_link_selection: MLSR link selection config
@@ -256,6 +257,7 @@ struct scoring_cfg {
 		 check_assoc_disallowed:1,
 		 vendor_roam_score_algorithm:1,
 		 check_6ghz_security:1,
+		 check_6ghz_security_on_connect:1,
 		 standard_6ghz_conn_policy:1,
 		 relaxed_lpi_conn_policy:1;
 	uint32_t key_mgmt_mask_6ghz;
@@ -534,6 +536,28 @@ void wlan_cm_reset_check_6ghz_security(struct wlan_objmgr_psoc *psoc);
 bool wlan_cm_get_check_6ghz_security(struct wlan_objmgr_psoc *psoc);
 
 /**
+ * wlan_cm_set_check_6ghz_security_on_connect() - Set 6GHz security check mode
+ * @psoc: pointer to psoc object
+ * @value: true to defer validation to connection time, false for scan time
+ *
+ * This function controls when 6GHz security validation is performed.
+ * When true, validation is deferred to connection time allowing all 6GHz APs
+ * to appear in scan results.
+ *
+ * Return: void
+ */
+void wlan_cm_set_check_6ghz_security_on_connect(struct wlan_objmgr_psoc *psoc,
+						bool value);
+
+/**
+ * wlan_cm_get_check_6ghz_security_on_connect() - Get 6GHz security check mode
+ * @psoc: pointer to psoc object
+ *
+ * Return: true if validation deferred to connection time, false otherwise
+ */
+bool wlan_cm_get_check_6ghz_security_on_connect(struct wlan_objmgr_psoc *psoc);
+
+/**
  * wlan_cm_set_6ghz_key_mgmt_mask() - Set 6 GHz allowed AKM mask
  * @psoc: pointer to psoc object
  * @value: value to be set
@@ -646,6 +670,17 @@ bool wlan_cm_get_relaxed_lpi_conn_policy(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }
+
+static inline
+bool wlan_cm_get_check_6ghz_security_on_connect(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
+static inline
+void wlan_cm_set_check_6ghz_security_on_connect(struct wlan_objmgr_psoc *psoc,
+						bool value)
+{}
 #endif
 
 /**
