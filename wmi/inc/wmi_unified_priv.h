@@ -3735,6 +3735,17 @@ QDF_STATUS
 QDF_STATUS (*send_ocb_get_tsf_timer_cmd)(wmi_unified_t wmi_handle,
 					 uint8_t vdev_id);
 #endif
+
+#ifdef WLAN_FEATURE_11BN_SMD
+QDF_STATUS (*send_smd_roam_config)(wmi_unified_t wmi_handle,
+				   struct wlan_roam_smd_config *params);
+
+QDF_STATUS (*send_vdev_repurpose_resp_cmd)(
+				wmi_unified_t wmi_handle,
+				uint8_t vdev_id,
+				struct vdev_repurpose_params *repurpose_resp,
+				uint8_t num_repurpose_resp);
+#endif
 };
 
 /* Forward declaration for psoc*/
