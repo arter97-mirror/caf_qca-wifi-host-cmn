@@ -115,6 +115,7 @@ dcs_init_core_priv_obj(struct wlan_objmgr_psoc *psoc,
 	dcs_init_params_by_mode(psoc, dcs_core, dcs_mode);
 
 	dcs_core->dcs_host_params.dcs_algorithm_process = false;
+	dcs_core->dcs_host_params.dcs_enable_timestamp = 0;
 	dcs_core->dcs_freq_ctrl_params.dcs_happened_count = 0;
 	dcs_core->dcs_freq_ctrl_params.disable_delay_process = false;
 

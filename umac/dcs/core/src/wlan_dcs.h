@@ -34,6 +34,8 @@
 		QDF_TRACE_ERROR(QDF_MODULE_ID_DCS, ## args)
 #define dcs_debug_rl(args ...) \
 		QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_DCS, ## args)
+#define dcs_err_rl(args ...) \
+		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_DCS, ## args)
 
 #define WLAN_DCS_MAX_PDEVS 3
 
@@ -43,6 +45,12 @@
 #define DCS_TX_MAX_CU  30
 #define MAX_DCS_TIME_RECORD 10
 #define DCS_FREQ_CONTROL_TIME (5 * 60 * 1000)
+
+/*
+ * The user‑triggered DCS enable/disable interval should be greater
+ * than 200 ms
+ */
+#define WLAN_DCS_ENABLE_DISABLE_EXPIRY_TIME 200
 
 /**
  * enum wlan_dcs_mode - vdev operating mode for DCS
@@ -207,6 +215,7 @@ struct dcs_im_stats {
  * struct core_dcs_params - define dcs configuration parameters
  * @dcs_enable_cfg: dcs enable from ini config
  * @dcs_enable: dcs enable from ucfg config
+ * @dcs_enable_timestamp: dcs enable timestamp
  * @dcs_algorithm_process: do dcs algorithm process or not
  * @force_disable_algorithm: disable dcs algorithm forcely
  * @dcs_debug: dcs debug trace level
@@ -225,6 +234,7 @@ struct dcs_im_stats {
 struct core_dcs_params {
 	uint8_t dcs_enable_cfg;
 	uint8_t dcs_enable;
+	uint32_t dcs_enable_timestamp;
 	bool dcs_algorithm_process;
 	bool force_disable_algorithm;
 	enum wlan_dcs_debug_level dcs_debug;
