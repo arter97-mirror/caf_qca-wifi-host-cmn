@@ -593,7 +593,15 @@ dp_single_rx_tid_setup(struct dp_peer *peer, int tid,
 	void *hw_qdesc_vaddr;
 	uint32_t alloc_tries = 0, ret;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct dp_txrx_peer *txrx_peer;
+	struct dp_txrx_peer *txrx_peer = dp_get_txrx_peer(peer);
+
+	if (!txrx_peer) {
+		dp_peer_err("peer %u txrx peer NULL " QDF_MAC_ADDR_FMT,
+			    peer->peer_id,
+			    QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+
+		return QDF_STATUS_E_INVAL;
+	}
 
 	rx_tid->delba_tx_status = 0;
 	rx_tid->ppdu_id_2k = 0;
@@ -662,8 +670,6 @@ try_desc_alloc:
 		hw_qdesc_vaddr = rx_tid->hw_qdesc_vaddr_unaligned;
 	}
 	rx_tid->hw_qdesc_vaddr_aligned = hw_qdesc_vaddr;
-
-	txrx_peer = dp_get_txrx_peer(peer);
 
 	/* TODO: Ensure that sec_type is set before ADDBA is received.
 	 * Currently this is set based on htt indication
