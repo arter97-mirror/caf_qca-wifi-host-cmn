@@ -1354,7 +1354,6 @@ static QDF_STATUS dp_rx_defrag_reo_reinject(struct dp_txrx_peer *txrx_peer,
 					  rx_desc_pool->buf_size, true,
 					  __func__, __LINE__,
 					  DP_RX_IPA_SMMU_MAP_REO_REINJECT);
-	dp_audio_smmu_map(soc, head, rx_desc_pool->buf_size);
 
 	/*
 	 * As part of rx frag handler buffer was unmapped and rx desc

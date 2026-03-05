@@ -3123,8 +3123,6 @@ void dp_rx_nbuf_unmap(struct dp_soc *soc,
 	rx_desc_pool = &soc->rx_desc_buf[rx_desc->pool_id];
 	dp_reo_ctx_buf_mapping_lock(soc, reo_ring_num);
 
-	dp_audio_smmu_unmap(soc, rx_desc->nbuf, rx_desc_pool->buf_size);
-
 	dp_ipa_handle_rx_buf_smmu_mapping(soc, rx_desc->nbuf,
 					  rx_desc_pool->buf_size,
 					  false, __func__,
@@ -3145,7 +3143,6 @@ void dp_rx_nbuf_unmap_pool(struct dp_soc *soc,
 			   struct rx_desc_pool *rx_desc_pool,
 			   qdf_nbuf_t nbuf)
 {
-	dp_audio_smmu_unmap(soc, nbuf, rx_desc_pool->buf_size);
 	dp_ipa_handle_rx_buf_smmu_mapping(soc, nbuf,
 					  rx_desc_pool->buf_size,
 					  false, __func__, __LINE__, 0);

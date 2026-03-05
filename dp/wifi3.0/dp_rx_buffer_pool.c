@@ -574,7 +574,6 @@ nbuf_alloc:
 						  true, __func__, __LINE__,
 						  DP_RX_IPA_SMMU_MAP_REPLENISH);
 
-	dp_audio_smmu_map(soc, nbuf, rx_desc_pool->buf_size);
 	qdf_spin_unlock_bh(&rx_pp->pp_lock);
 
 	rx_pp->alloc_success++;

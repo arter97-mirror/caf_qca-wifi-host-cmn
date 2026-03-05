@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -188,8 +188,6 @@ static void dp_rx_desc_nbuf_cleanup(struct dp_soc *soc,
 	while (nbuf) {
 		next = nbuf->next;
 
-		if (!is_mon_pool)
-			dp_audio_smmu_unmap(soc, nbuf, buf_size);
 		if (dp_ipa_handle_rx_buf_smmu_mapping(
 						soc, nbuf, buf_size,
 						false, __func__,

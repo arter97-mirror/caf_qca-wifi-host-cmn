@@ -399,9 +399,6 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 					  true, __func__, __LINE__,
 					  DP_RX_IPA_SMMU_MAP_REPLENISH);
 
-	dp_audio_smmu_map(dp_soc, (nbuf_frag_info_t->virt_addr).nbuf,
-			  rx_desc_pool->buf_size);
-
 	ret = dp_check_paddr(dp_soc, &((nbuf_frag_info_t->virt_addr).nbuf),
 			     &nbuf_frag_info_t->paddr,
 			     rx_desc_pool);
