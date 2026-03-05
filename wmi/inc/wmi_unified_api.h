@@ -2125,6 +2125,18 @@ QDF_STATUS
 wmi_unified_send_coex_multi_config_cmd(wmi_unified_t wmi_handle,
 				       struct coex_multi_config *param);
 
+/**
+ * wmi_unified_coex_get_policy_stats_cmd_send() - Send coex policy stats command
+ * @wmi_handle: WMI handle
+ *
+ * This function sends WMI_COEX_GET_POLICY_STATS_CMDID to firmware to request
+ * coexistence policy statistics.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_coex_get_policy_stats_cmd_send(wmi_unified_t wmi_handle);
+
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 /**
  * wmi_unified_send_dbam_config_cmd() - send dbam config command

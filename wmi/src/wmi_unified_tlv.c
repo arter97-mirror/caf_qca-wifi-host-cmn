@@ -10178,6 +10178,46 @@ send_coex_multi_config_cmd_tlv(wmi_unified_t wmi_handle,
 	return ret;
 }
 
+/**
+ * send_coex_get_policy_stats_cmd_tlv() - Send coex policy stats command
+ * @wmi_handle: WMI handle
+ *
+ * This function sends WMI_COEX_GET_POLICY_STATS_CMDID to firmware to request
+ * coexistence policy statistics..
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+send_coex_get_policy_stats_cmd_tlv(wmi_unified_t wmi_handle)
+{
+	wmi_buf_t buf;
+	wmi_coex_policy_stats_cmd_fixed_param *param;
+	uint32_t len = sizeof(wmi_coex_policy_stats_cmd_fixed_param);
+	QDF_STATUS ret;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("Failed to allocate WMI buffer");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	param = (wmi_coex_policy_stats_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&param->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_coex_policy_stats_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+					wmi_coex_policy_stats_cmd_fixed_param));
+
+	wmi_mtrace(WMI_COEX_GET_POLICY_STATS_CMDID, 0, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_COEX_GET_POLICY_STATS_CMDID);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send coex policy stats command");
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 
 static enum wmi_coex_dbam_mode_type
@@ -24512,6 +24552,7 @@ struct wmi_ops tlv_ops =  {
 		send_bss_color_change_enable_cmd_tlv,
 	.send_coex_config_cmd = send_coex_config_cmd_tlv,
 	.send_coex_multi_config_cmd = send_coex_multi_config_cmd_tlv,
+	.send_coex_get_policy_stats_cmd = send_coex_get_policy_stats_cmd_tlv,
 	.send_set_country_cmd = send_set_country_cmd_tlv,
 	.send_addba_send_cmd = send_addba_send_cmd_tlv,
 	.send_delba_send_cmd = send_delba_send_cmd_tlv,

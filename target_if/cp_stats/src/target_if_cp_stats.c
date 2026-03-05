@@ -352,6 +352,20 @@ end:
 	target_if_infra_cp_stats_event_free(&ev);
 	return qdf_status_to_os_return(status);
 }
+
+QDF_STATUS
+target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		target_if_err("Invalid WMI handle");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return wmi_unified_coex_get_policy_stats_cmd_send(wmi_handle);
+}
 #else
 static
 int target_if_infra_cp_stats_event_handler(ol_scn_t scn, uint8_t *data,
@@ -899,6 +913,8 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cp_stats_register_legacy_event_handler;
 	cp_stats_tx_ops->cp_stats_legacy_detach =
 		target_if_cp_stats_unregister_legacy_event_handler;
+	cp_stats_tx_ops->send_req_coex_stats =
+		target_if_cp_stats_send_coex_stats_req;
 	return QDF_STATUS_SUCCESS;
 }
 

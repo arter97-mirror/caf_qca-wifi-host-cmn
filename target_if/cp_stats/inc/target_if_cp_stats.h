@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -72,6 +72,19 @@ target_if_cp_stats_get_tx_ops(struct wlan_objmgr_psoc *psoc)
 
 	return &tx_ops->cp_stats_tx_ops;
 }
+
+/**
+ * target_if_cp_stats_send_coex_stats_req() - Send coex stats request to
+ *                                            firmware
+ * @psoc: PSOC object
+ *
+ * This function sends a request to firmware to retrieve coexistence policy
+ * statistics using WMI_COEX_GET_POLICY_STATS_CMDID.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc);
 
 /**
  * target_if_cp_stats_register_tx_ops() - define cp_stats lmac tx ops functions
