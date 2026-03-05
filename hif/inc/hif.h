@@ -3120,4 +3120,6 @@ void hif_check_and_apply_irq_affinity(struct hif_opaque_softc *hif_ctx,
 #endif
 QDF_STATUS hif_bus_get_device_handle(struct hif_opaque_softc *hif_ctx,
 				     void **handle);
+
+void hif_set_target_access_allowed(bool access_allowed);
 #endif /* _HIF_H_ */
