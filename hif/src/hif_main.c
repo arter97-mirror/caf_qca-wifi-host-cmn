@@ -58,6 +58,8 @@
 #include <qdf_tracepoint.h>
 #include "qdf_ssr_driver_dump.h"
 
+bool g_target_access_allowed = true;
+
 /**
  * hif_get_target_id(): hif_get_target_id
  * @scn: scn
@@ -1410,6 +1412,7 @@ struct hif_opaque_softc *hif_open(qdf_device_t qdf_ctx,
 	hif_ce_desc_history_log_reg(scn);
 	hif_desc_history_log_register();
 	qdf_ssr_driver_dump_register_region("hif", scn, sizeof(*scn));
+	hif_set_target_access_allowed(true);
 
 out:
 	return GET_HIF_OPAQUE_HDL(scn);
@@ -3614,3 +3617,16 @@ void hif_set_affn_override_enabled(struct hif_opaque_softc *hif_ctx, bool value)
 	scn->is_affinity_override_enabled = value;
 }
 #endif
+
+/**
+ * hif_set_target_access_allowed() - Set target access value
+ * @access_allowed: True if access to target is allowed false otherwise
+ *
+ * Return: None
+ */
+void hif_set_target_access_allowed(bool access_allowed)
+{
+	g_target_access_allowed = access_allowed;
+
+	hif_info("Target access allowed: %u", access_allowed);
+}
