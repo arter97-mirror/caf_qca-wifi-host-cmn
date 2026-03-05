@@ -4205,14 +4205,14 @@ static void dbglog_debugfs_remove(wmi_unified_t wmi_handle)
 #endif /* WLAN_DBGLOG_DEBUGFS */
 
 /**
- * cnss_diag_handle_crash_inject() - API to handle crash inject command
+ * cnss_diag_handle_cnss_cmd() - API to handle diag commands from cnss_diag
  * @slot: pointer to struct dbglog_slot
  *
- * API to handle CNSS diag crash inject command
+ * API to handle CNSS diag command
  *
  * Return: None
  */
-static void cnss_diag_handle_crash_inject(struct dbglog_slot *slot)
+static void cnss_diag_handle_cnss_cmd(struct dbglog_slot *slot)
 {
 	switch (slot->diag_type) {
 	case DIAG_TYPE_CRASH_INJECT:
@@ -4235,6 +4235,18 @@ static void cnss_diag_handle_crash_inject(struct dbglog_slot *slot)
 		wma_cli_set2_command(0, (int)GEN_PARAM_CRASH_INJECT,
 					slot->payload[0],
 					slot->payload[1], GEN_CMD);
+		break;
+	case DIAG_TYPE_DBG_LEVEL:
+		if (slot->length < 1) {
+			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+					("Invalid payload length\n"));
+			return;
+		}
+		AR_DEBUG_PRINTF(ATH_DEBUG_INFO,
+				("%s : DIAG_TYPE_DBG_LEVEL: %u\n",
+				 __func__, slot->payload[0]));
+		wma_cli_set2_command(0, (int)WMI_DBGLOG_LOG_LEVEL,
+				     slot->payload[0], 0, DBG_CMD);
 		break;
 	default:
 		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Unknown cmd[%d] error\n",
@@ -4293,7 +4305,7 @@ static void cnss_diag_cmd_handler(const void *data, int data_len,
 		return;
 	}
 
-	cnss_diag_handle_crash_inject(slot);
+	cnss_diag_handle_cnss_cmd(slot);
 	return;
 }
 
@@ -4333,7 +4345,7 @@ static int cnss_diag_msg_callback(struct sk_buff *skb)
 	}
 
 	msg = NLMSG_DATA(nlh);
-	cnss_diag_handle_crash_inject((struct dbglog_slot *)msg);
+	cnss_diag_handle_cnss_cmd((struct dbglog_slot *)msg);
 
 	return 0;
 }
