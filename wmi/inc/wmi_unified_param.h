@@ -5894,6 +5894,7 @@ typedef enum {
 	wmi_cfr_capture_filter_resp_eventid,
 	wmi_qos_null_frame_tx_completion_event_id,
 	wmi_vdev_unified_disconnect_eventid,
+	wmi_coex_get_policy_stats_event_id,
 #ifdef WLAN_FEATURE_POWER_STATISTICS
 	wmi_pdev_power_datapath_stats_eventid,
 #endif
@@ -11066,6 +11067,28 @@ struct wmi_vendor_pdev_event {
 	union wmi_host_pdev_vendor_event_val val;
 };
 #endif /* WLAN_VENDOR_EXTN */
+
+/**
+ * struct wmi_coex_policy_stats_event_param - Coex policy stats event params
+ * @vdev_id: VDEV ID
+ * @btc_policy: Current BTC policy
+ * @mws_policy: Current MWS policy
+ * @uwb_policy: Current UWB policy
+ * @monitoring_period: Monitoring period in seconds
+ * @ocs_active_percent: OCS active percentage
+ * @ocs_non_wlan_percent: OCS non-WLAN percentage
+ *
+ * This structure holds the coexistence policy statistics event parameters
+ * received from firmware via WMI_COEX_POLICY_STATS_EVENTID.
+ */
+struct wmi_coex_policy_stats_event_param {
+	uint8_t btc_policy;
+	uint8_t mws_policy;
+	uint8_t uwb_policy;
+	uint32_t monitoring_period;
+	uint8_t ocs_active_percent;
+	uint8_t ocs_non_wlan_percent;
+};
 
 /**
  * struct wmi_host_mu_on_off_params - mu on off params

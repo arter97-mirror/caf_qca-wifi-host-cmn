@@ -410,4 +410,24 @@ struct infra_cp_stats_cmd_info {
 				       void *cookie);
 	uint32_t stat_periodicity;
 };
+
+/**
+ * struct wlan_coex_policy_stats - Coexistence policy statistics
+ * @btc_policy: Current BTC policy
+ * @mws_policy: Current MWS policy
+ * @uwb_policy: Current UWB policy
+ * @monitoring_period: Monitoring period in seconds
+ * @ocs_active_percent: OCS active percentage
+ * @ocs_non_wlan_percent: OCS non-WLAN percentage
+ *
+ * This structure holds coexistence policy statistics retrieved from firmware.
+ */
+struct wlan_coex_policy_stats {
+	uint8_t btc_policy;
+	uint8_t mws_policy;
+	uint8_t uwb_policy;
+	uint8_t ocs_active_percent;
+	uint8_t ocs_non_wlan_percent;
+	uint32_t monitoring_period;
+};
 #endif

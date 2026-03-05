@@ -2419,6 +2419,20 @@ wmi_unified_coex_get_policy_stats_cmd_send(wmi_unified_t wmi_handle)
 	return QDF_STATUS_E_FAILURE;
 }
 
+QDF_STATUS
+wmi_extract_coex_policy_stats_event(wmi_unified_t wmi_handle,
+				    void *evt_buf,
+				struct wmi_coex_policy_stats_event_param *param)
+{
+	if (wmi_handle->ops->extract_coex_policy_stats_event)
+		return wmi_handle->ops->extract_coex_policy_stats_event(
+							wmi_handle,
+							evt_buf,
+							param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 QDF_STATUS
 wmi_unified_send_dbam_config_cmd(wmi_unified_t wmi_handle,

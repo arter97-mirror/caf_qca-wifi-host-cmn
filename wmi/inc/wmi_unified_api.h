@@ -2137,6 +2137,23 @@ wmi_unified_send_coex_multi_config_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_coex_get_policy_stats_cmd_send(wmi_unified_t wmi_handle);
 
+/**
+ * wmi_extract_coex_policy_stats_event() - Extract coex policy stats
+ * @wmi_handle: WMI handle
+ * @evt_buf: event buffer
+ * @param: pointer to output event parameters
+ *
+ * This function extracts coexistence policy statistics from the
+ * WMI_COEX_GET_POLICY_STATS_EVENTID event buffer.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_extract_coex_policy_stats_event(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			struct wmi_coex_policy_stats_event_param *param);
+
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 /**
  * wmi_unified_send_dbam_config_cmd() - send dbam config command

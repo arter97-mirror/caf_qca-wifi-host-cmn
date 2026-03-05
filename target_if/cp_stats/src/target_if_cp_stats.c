@@ -33,6 +33,7 @@
 #include <wmi_unified_api.h>
 #include <wlan_osif_priv.h>
 #include <wlan_cp_stats_utils_api.h>
+#include <wlan_cp_stats_mc_ucfg_api.h>
 #include <wlan_objmgr_peer_obj.h>
 #ifdef WLAN_FEATURE_MIB_STATS
 #include <wlan_cp_stats_mc_defs.h>
@@ -366,6 +367,21 @@ target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
 
 	return wmi_unified_coex_get_policy_stats_cmd_send(wmi_handle);
 }
+
+QDF_STATUS
+target_if_cp_stats_get_coex_stats(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_objmgr_psoc *psoc;
+
+	if (!vdev)
+		return QDF_STATUS_E_INVAL;
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc)
+		return QDF_STATUS_E_INVAL;
+
+	return target_if_cp_stats_send_coex_stats_req(psoc);
+}
 #else
 static
 int target_if_infra_cp_stats_event_handler(ol_scn_t scn, uint8_t *data,
@@ -479,6 +495,84 @@ target_if_ll_sap_twt_session_params(
 }
 #endif
 
+/**
+ * target_if_coex_policy_stats_event_handler() - Coex policy stats event handler
+ * @scn: scn handle
+ * @evt_buf: event buffer
+ * @evt_data_len: event data length
+ *
+ * This function handles the coexistence policy statistics event from firmware
+ * and forwards it to the CP stats layer for further processing.
+ *
+ * Return: 0 on success, error code otherwise
+ */
+static int
+target_if_coex_policy_stats_event_handler(ol_scn_t scn,
+					  uint8_t *evt_buf,
+					  uint32_t evt_data_len)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wmi_unified *wmi_hdl;
+	struct wmi_coex_policy_stats_event_param event_param = {0};
+	struct request_info last_req = {0};
+	bool pending = false;
+	struct wlan_coex_policy_stats stats = {0};
+	QDF_STATUS status;
+
+	TARGET_IF_ENTER();
+
+	if (!scn || !evt_buf) {
+		target_if_err("scn: 0x%pK, evt_buf: 0x%pK", scn, evt_buf);
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		target_if_err("psoc object is null!");
+		return -EINVAL;
+	}
+
+	wmi_hdl = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_hdl) {
+		target_if_err("wmi_handle is null!");
+		return -EINVAL;
+	}
+
+	status = wmi_extract_coex_policy_stats_event(wmi_hdl, evt_buf,
+						     &event_param);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("Failed to extract coex policy stats event. status = %d",
+			      status);
+		return qdf_status_to_os_return(status);
+	}
+
+	/* Get pending request info */
+	status = ucfg_mc_cp_stats_get_pending_req(psoc, TYPE_COEX_STATS,
+						  &last_req);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("Failed to get pending coex stats request. status = %d",
+			      status);
+		return qdf_status_to_os_return(status);
+	}
+
+	/* Copy WMI event params into the public coex stats struct */
+	stats.btc_policy           = event_param.btc_policy;
+	stats.mws_policy           = event_param.mws_policy;
+	stats.uwb_policy           = event_param.uwb_policy;
+	stats.monitoring_period    = event_param.monitoring_period;
+	stats.ocs_active_percent   = event_param.ocs_active_percent;
+	stats.ocs_non_wlan_percent = event_param.ocs_non_wlan_percent;
+
+	/* Reset pending request (coex stats is single-event) */
+	ucfg_mc_cp_stats_reset_pending_req(psoc, TYPE_COEX_STATS,
+					   &last_req, &pending);
+	/* Invoke callback if pending */
+	if (pending && last_req.u.get_coex_stats_cb)
+		last_req.u.get_coex_stats_cb(&stats, last_req.cookie);
+
+	TARGET_IF_EXIT();
+	return 0;
+}
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 static int
 target_if_twt_session_params_event_handler(ol_scn_t scn,
@@ -651,12 +745,45 @@ target_if_cp_stats_infra_register_event_handler(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+static QDF_STATUS
+target_if_cp_stats_register_coex_stats_event(struct wmi_unified *wmi_handle)
+{
+	QDF_STATUS ret_val;
+
+	ret_val = wmi_unified_register_event_handler(
+				wmi_handle,
+				wmi_coex_get_policy_stats_event_id,
+				target_if_coex_policy_stats_event_handler,
+				WMI_RX_WORK_CTX);
+
+	return ret_val;
+}
+
+static void
+target_if_cp_stats_unregister_coex_stats_event(struct wmi_unified *wmi_handle)
+{
+	wmi_unified_unregister_event_handler(
+					wmi_handle,
+					wmi_coex_get_policy_stats_event_id);
+}
 #else
 static QDF_STATUS
 target_if_cp_stats_infra_register_event_handler(struct wlan_objmgr_psoc *psoc,
 						struct wmi_unified *wmi_handle)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+target_if_cp_stats_register_coex_stats_event(struct wmi_unified *wmi_handle)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+target_if_cp_stats_unregister_coex_stats_event(struct wmi_unified *wmi_handle)
+{
 }
 #endif /* WLAN_SUPPORT_INFRA_CTRL_PATH_STATS */
 
@@ -714,6 +841,12 @@ target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 		return ret_val;
 	}
 
+	ret_val = target_if_cp_stats_register_coex_stats_event(wmi_handle);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register coex stats event");
+		return ret_val;
+	}
+
 	ret_val = target_if_cp_stats_register_twt_session_event(wmi_handle);
 	if (QDF_IS_STATUS_ERROR(ret_val)) {
 		cp_stats_err("Failed to register twt session stats event");
@@ -747,6 +880,7 @@ target_if_cp_stats_unregister_event_handler(struct wlan_objmgr_psoc *psoc)
 
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_pdev_cp_fwstats_eventid);
+	target_if_cp_stats_unregister_coex_stats_event(wmi_handle);
 	target_if_cp_stats_unregister_twt_session_event(wmi_handle);
 
 	target_if_cp_stats_unregister_qsh_event_handler(wmi_handle);

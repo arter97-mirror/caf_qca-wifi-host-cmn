@@ -10218,6 +10218,53 @@ send_coex_get_policy_stats_cmd_tlv(wmi_unified_t wmi_handle)
 
 	return ret;
 }
+
+/**
+ * extract_coex_policy_stats_tlv() - Extract coex policy stats event
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer
+ * @param: Pointer to hold extracted event parameters
+ *
+ * This function extracts coexistence policy statistics from the WMI event
+ * received from firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+static QDF_STATUS
+extract_coex_policy_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+			      struct wmi_coex_policy_stats_event_param *param)
+{
+	WMI_COEX_GET_POLICY_STATS_EVENTID_param_tlvs *param_buf;
+	wmi_coex_policy_stats_event_fixed_param *ev;
+
+	param_buf = (WMI_COEX_GET_POLICY_STATS_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid coex policy stats event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	ev = param_buf->fixed_param;
+	if (!ev) {
+		wmi_err("Invalid fixed param in coex policy stats event");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Extract event parameters from firmware event */
+	param->btc_policy = ev->btc_state;
+	param->mws_policy = ev->mws_state;
+	param->uwb_policy = ev->uwb_state;
+	param->monitoring_period = ev->mon_period;
+	param->ocs_active_percent = ev->ocs_algo_dc;
+	param->ocs_non_wlan_percent = ev->ocs_non_wlan_dc;
+
+	wmi_debug("Coex stats: btc=%u mws=%u uwb=%u period=%u ocs_active=%u ocs_non_wlan=%u",
+		  param->btc_policy, param->mws_policy,
+		  param->uwb_policy, param->monitoring_period,
+		  param->ocs_active_percent, param->ocs_non_wlan_percent);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 
 static enum wmi_coex_dbam_mode_type
@@ -24553,6 +24600,7 @@ struct wmi_ops tlv_ops =  {
 	.send_coex_config_cmd = send_coex_config_cmd_tlv,
 	.send_coex_multi_config_cmd = send_coex_multi_config_cmd_tlv,
 	.send_coex_get_policy_stats_cmd = send_coex_get_policy_stats_cmd_tlv,
+	.extract_coex_policy_stats_event = extract_coex_policy_stats_tlv,
 	.send_set_country_cmd = send_set_country_cmd_tlv,
 	.send_addba_send_cmd = send_addba_send_cmd_tlv,
 	.send_delba_send_cmd = send_delba_send_cmd_tlv,
@@ -25537,6 +25585,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 				WMI_QOS_NULL_FRAME_TX_COMPLETION_EVENTID;
 	event_ids[wmi_vdev_unified_disconnect_eventid] =
 				WMI_VDEV_UNIFIED_DISCONNECT_EVENTID;
+	event_ids[wmi_coex_get_policy_stats_event_id] =
+				WMI_COEX_GET_POLICY_STATS_EVENTID;
+
 #ifdef WLAN_FEATURE_QSH_SCAN
 	event_ids[wmi_get_scan_stats_resp_event_id] =
 				WMI_GET_SCAN_STATS_RESP_EVENTID;

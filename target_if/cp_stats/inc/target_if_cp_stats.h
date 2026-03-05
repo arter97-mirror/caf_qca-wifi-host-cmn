@@ -87,6 +87,18 @@ QDF_STATUS
 target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc);
 
 /**
+ * target_if_cp_stats_get_coex_stats() - Get coexistence statistics
+ * @vdev: VDEV object
+ *
+ * This function sends a request to firmware to retrieve coexistence policy
+ * statistics using WMI_COEX_GET_POLICY_STATS_CMDID.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+target_if_cp_stats_get_coex_stats(struct wlan_objmgr_vdev *vdev);
+
+/**
  * target_if_cp_stats_register_tx_ops() - define cp_stats lmac tx ops functions
  * @tx_ops: pointer to lmac tx ops
  *

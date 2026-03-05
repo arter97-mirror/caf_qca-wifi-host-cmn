@@ -1935,6 +1935,10 @@ QDF_STATUS
 QDF_STATUS
 (*send_coex_get_policy_stats_cmd)(wmi_unified_t wmi_handle);
 
+QDF_STATUS
+(*extract_coex_policy_stats_event)(wmi_unified_t wmi_handle, void *evt_buf,
+			      struct wmi_coex_policy_stats_event_param *param);
+
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 QDF_STATUS
 (*send_dbam_config_cmd)(wmi_unified_t wmi_handle,
