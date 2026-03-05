@@ -162,8 +162,7 @@ void ucfg_cp_stats_enable_direct_log_dispatch(struct wlan_objmgr_psoc *psoc,
 }
 
 static inline void
-ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc,
-					   bool dump_in_progress)
+ucfg_cp_stats_flush_host_buffer_if_pending(struct wlan_objmgr_psoc *psoc)
 {
 }
 #endif
