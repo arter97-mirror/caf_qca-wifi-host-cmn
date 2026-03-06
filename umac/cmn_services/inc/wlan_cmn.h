@@ -597,9 +597,9 @@ enum wlan_phymode {
  * @CH_WIDTH_80MHZ: 80 MHz width
  * @CH_WIDTH_160MHZ: 160 MHz width
  * @CH_WIDTH_80P80MHZ: 80+80 MHz width
- * @CH_WIDTH_320MHZ: 320 MHz width
  * @CH_WIDTH_5MHZ: 5 MHz width
  * @CH_WIDTH_10MHZ: 10 MHz width
+ * @CH_WIDTH_320MHZ: 320 MHz width
  * @CH_WIDTH_INVALID: invalid width
  * @CH_WIDTH_MAX: max possible width
  */
@@ -609,9 +609,9 @@ enum phy_ch_width {
 	CH_WIDTH_80MHZ,
 	CH_WIDTH_160MHZ,
 	CH_WIDTH_80P80MHZ,
-	CH_WIDTH_320MHZ,
 	CH_WIDTH_5MHZ,
 	CH_WIDTH_10MHZ,
+	CH_WIDTH_320MHZ,
 	CH_WIDTH_INVALID,
 	CH_WIDTH_MAX
 };
