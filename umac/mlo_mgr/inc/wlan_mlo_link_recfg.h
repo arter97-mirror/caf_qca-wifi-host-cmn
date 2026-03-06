@@ -28,6 +28,7 @@
 #define WLAN_MAX_ML_RECFG_LINK_COUNT 16
 #define WLAN_MIN_DIALOG_TOKEN         1
 #define WLAN_MAX_DIALOG_TOKEN         0xFF
+#define LINK_RECFG_RSP_TIMEOUT 5000
 
 struct mlo_link_recfg_context;
 struct link_recfg_rx_rsp;
@@ -126,8 +127,8 @@ enum wlan_link_recfg_sm_state {
  * @WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM: Update TTLM due to link reconfig
  * @WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START: Link Reconfiguration event for SMD
  * roam start
- * @WLAN_LINK_RECFG_SM_EV_WAIT_FOR_EXEC: Link Reconfiguration event for wait
- * for execution
+ * @WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC: Link Reconfiguration event for wait
+ * for SMD execution
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -152,7 +153,7 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT,
 	WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM,
 	WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START,
-	WLAN_LINK_RECFG_SM_EV_WAIT_FOR_EXEC,
+	WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
@@ -203,6 +204,9 @@ enum link_recfg_failure_reason {
  * common link present
  * @link_recfg_two_frm_del_add_common_link: del and add by 2 action
  * frame with common link present
+ * @link_recfg_st_prep_add_link: SMD roaming ST preparation add
+ * target links
+ * @link_recfg_st_exec: SMD roaming ST execution for link reconfiguration
  */
 enum link_recfg_type {
 	link_recfg_undefined,
@@ -211,24 +215,50 @@ enum link_recfg_type {
 	link_recfg_del_add_common_link,
 	link_recfg_del_add_no_common_link,
 	link_recfg_two_frm_del_add_common_link,
+	link_recfg_st_prep_add_link,
+	link_recfg_st_exec,
 };
 
 /**
- * struct wlan_mlo_link_recfg_req - Data Structure because of link
+ * struct wlan_mlo_link_recfg_req - Data Structure for link
  *  reconfiguration request
- * @vdev_id: Hold information regarding all the links of ml connection
- * @add_link_info: Add link info struct
- * @del_link_info: Delete link info struct
- * @is_user_req: Request received from user/framework
- * @is_curr_req: Is current link reconfig request active
- * @is_fw_ind_received: if fw link recfg evt is received or not
- * @recfg_type: link recfg type
- * @join_pending_vdev_id: used on for no-common link recfg,
- * use vdev with join_pending_vdev_id to trigger peer assoc after
- * receive recfg response.
- * @fw_ind_param: received fw link recfg evt params
- * @mld_addr: mld address
- * @send_two_link_recfg_frms: Split 1 Link Recfg request in 2 frames
+ * @vdev_id: VDEV ID of the primary link in the MLO connection. This field
+ *           holds information regarding all the links of the ML connection
+ * @add_link_info: Information about links to be added during reconfiguration.
+ *                 Contains link IDs, addresses, and other parameters for
+ *                 links being added to the MLO connection
+ * @del_link_info: Information about links to be deleted during reconfiguration.
+ *                 Contains link IDs and parameters for links being removed
+ *                 from the MLO connection
+ * @is_user_req: Flag indicating if the request originated from user space or
+ *               framework (true) or from firmware indication (false)
+ * @is_curr_req: Flag indicating if this is the current active link
+ *               reconfiguration request being processed
+ * @is_fw_ind_received: Flag indicating whether a firmware link reconfiguration
+ *                      event/indication has been received
+ * @recfg_type: Type of link reconfiguration operation being performed.
+ *              See enum link_recfg_type for possible values (delete only,
+ *              add only, delete and add with/without common link, etc.)
+ * @join_pending_vdev_id: VDEV ID used for no-common link reconfiguration
+ *                        scenarios. This vdev is used to trigger peer
+ *                        association after receiving the reconfiguration
+ *                        response from the AP
+ * @fw_ind_param: Parameters received from firmware link reconfiguration
+ *                event/indication. Contains firmware-provided information
+ *                about the requested link changes
+ * @mld_addr: Multi-Link Device (MLD) MAC address. This is the MLD-level
+ *            address for the MLO connection
+ * @send_two_link_recfg_frms: Flag to split a single Link Reconfiguration
+ *                            request into 2 separate action frames. Used when
+ *                            the reconfiguration cannot be completed in a
+ *                            single frame
+ * @st_prep_link_recfg: Flag indicating SMD (Seamless Multi-link Device) roaming
+ *                      state preparation for link reconfiguration. Set to true
+ *                      when preparing target links during SMD roaming ST
+ *                      (State Transition) preparation phase
+ * @st_exec_link_recfg: Flag indicating SMD roaming state execution for link
+ *                      reconfiguration. Set to true when executing link
+ *                      reconfiguration during SMD roaming ST execution phase
  */
 struct wlan_mlo_link_recfg_req {
 	uint8_t vdev_id;
@@ -242,6 +272,8 @@ struct wlan_mlo_link_recfg_req {
 	struct wlan_mlo_link_recfg_ind_param fw_ind_param;
 	uint8_t mld_addr[QDF_MAC_ADDR_SIZE];
 	bool send_two_link_recfg_frms;
+	bool st_prep_link_recfg;
+	bool st_exec_link_recfg;
 };
 
 /**
@@ -251,12 +283,16 @@ struct wlan_mlo_link_recfg_req {
  * @del_link_info: del link info
  * @dialog_token: Dialog token
  * @peer_mac: peer mac address to indicate on which link to send recfg frame
+ * @recfg_type: Type of link reconfiguration operation being performed.
+ *              See enum link_recfg_type for possible values (delete only,
+ *              add only, delete and add with/without common link, etc.)
  */
 struct mlo_link_recfg_state_req {
 	struct wlan_mlo_link_recfg_info add_link_info;
 	struct wlan_mlo_link_recfg_info del_link_info;
 	uint8_t dialog_token;
 	struct qdf_mac_addr peer_mac;
+	enum link_recfg_type recfg_type;
 };
 
 /**
@@ -482,6 +518,14 @@ struct wlan_mlo_link_recfg_bitmap {
  * @copied_recfg_req: Copied recfg req
  * @recfg_indication_work: recfg done work queue
  * @recfg_done_list: recfg done data struct list
+ * @num_vdev_repurpose_req: Number of vdev repurpose TLVs (priority ordered)
+ * @vdev_repurpose_req: Array to handle up to MAX BSS links TLVs
+ * @smd_transition_ie: SMD Transition IE from FW
+ * @tgt_ap_link_bitmap: Target AP requested setup IEEE links bitmap
+ *                      (from notif_params1). This bitmap indicates which
+ *                      links of the target AP MLD are requested to be set
+ *                      up during SMD roaming.
+ * @smd_roam_in_progress: bool smd roam in progress
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -503,6 +547,13 @@ struct mlo_link_recfg_context {
 	struct wlan_mlo_link_recfg_req copied_recfg_req;
 	qdf_work_t recfg_indication_work;
 	qdf_list_t recfg_done_list;
+#ifdef WLAN_FEATURE_11BN_SMD
+	uint8_t num_vdev_repurpose_req;
+	struct smd_vdev_repurpose_req vdev_repurpose_req[WLAN_MAX_ML_BSS_LINKS];
+	struct smd_transition_ie_info smd_transition_ie;
+	uint16_t tgt_ap_link_bitmap;
+	bool smd_roam_in_progress;
+#endif
 };
 
 static inline void
@@ -990,6 +1041,33 @@ mlo_link_recfg_save_unicast_key(struct mlo_link_recfg_context *ctx,
 void
 mlo_link_recfg_install_unicast_keys(struct wlan_objmgr_vdev *vdev);
 
+/**
+ * mlo_link_recfg_get_mlo_ctx() - Get ML dev context
+ * @recfg_ctx: ptr to recfg ctx
+ *
+ * Return: poeintr to mlo dev context
+ */
+struct wlan_mlo_dev_context *
+mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx);
+
+/**
+ * mlo_link_recfg_get_psoc() - Get link recfg ctx psoc
+ * @recfg_ctx: ptr to recfg ctx
+ *
+ * Return: psoc pointer
+ */
+struct wlan_objmgr_psoc *
+mlo_link_recfg_get_psoc(struct mlo_link_recfg_context *recfg_ctx);
+
+/**
+ * mlo_link_recfg_get_curr_tran_req() - Get link recfg ctx curr tran req
+ * @recfg_ctx: ptr to recfg ctx
+ *
+ * Return: mlo_link_recfg_state_tran pointer
+ */
+ struct mlo_link_recfg_state_tran *
+mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx);
+
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * mlo_mgr_link_recfg_req_cmd_handler() - Handle link recfg req
@@ -1015,7 +1093,120 @@ mlo_mgr_link_recfg_req_cmd_handler(
 void
 mlo_link_recfg_abort_if_in_progress(struct wlan_objmgr_vdev *vdev,
 				    bool is_link_switch_discon);
+
+/**
+ * mlo_link_recfg_get_link_bitmap() - Build bitmaps and counts for link-recfg
+ * @recfg_ctx: Link reconfiguration context. Must contain a valid @ml_dev.
+ * @recfg_req: Link reconfiguration request containing add/del link info.
+ * @add_link_set: (out) Bitmap of IEEE link IDs requested to be added
+ *	(from @recfg_req->add_link_info). Bit N set => link_id N is in add list.
+ * @add_link_num: (out) Number of links requested to be added
+ *	(same as @recfg_req->add_link_info.num_links).
+ * @del_link_set: (out) Bitmap of IEEE link IDs requested to be deleted
+ *	(from @recfg_req->del_link_info). Bit N set => link_id N is in del list.
+ * @del_link_num: (out) Number of links requested to be deleted
+ *	(same as @recfg_req->del_link_info.num_links).
+ * @curr_link_set: (out) Bitmap of currently tracked (non-deleted) IEEE link IDs
+ *	for this MLO connection, derived from @recfg_ctx->ml_dev->link_ctx.
+ *	Links are included only if:
+ *	 - ap_link_addr is non-zero
+ *	 - link_id != WLAN_INVALID_LINK_ID
+ *	 - LS_F_AP_REMOVAL_BIT is not set in link_status_flags
+ * @curr_link_num: (out) Count of links contributing to @curr_link_set.
+ * @curr_standby_set: (out) Bitmap of currently tracked standby links (subset of
+ *	@curr_link_set) where vdev_id == WLAN_INVALID_VDEV_ID.
+ * @curr_standby_num: (out) Count of links contributing to @curr_standby_set.
+ *
+ * Note: This API updates output bitmaps via '|=' and increments counts via '++'.
+ * Callers must initialize *add_link_set, *del_link_set, *curr_link_set,
+ * *curr_standby_set and the corresponding counters to 0 before calling.
+ *
+ * Return: QDF_STATUS_SUCCESS on success,
+ *	   QDF_STATUS_E_INVAL if @recfg_ctx does not contain a valid ml_dev.
+ */
+QDF_STATUS
+mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
+			       struct wlan_mlo_link_recfg_req *recfg_req,
+			       uint32_t *add_link_set,
+			       uint8_t *add_link_num,
+			       uint32_t *del_link_set,
+			       uint8_t *del_link_num,
+			       uint32_t *curr_link_set,
+			       uint8_t *curr_link_num,
+			       uint32_t *curr_standby_set,
+			       uint8_t *curr_standby_num);
+
+/**
+ * mlo_link_recfg_set_tx_link_addr() - Select peer (AP link) MAC address for
+ * Link Reconfiguration request frame transmission
+ * @recfg_ctx: Link reconfiguration context. Must contain a valid MLO dev ctx.
+ * @recfg_req: Link reconfiguration request being processed (unused for now but
+ *             kept for symmetry with other helpers / future use).
+ * @req: State-machine request structure to be used for TX. On success, this
+ *       function fills @req->peer_mac with the selected AP link address.
+ * @candidate_link_set: Bitmap of candidate IEEE link IDs that are allowed for
+ *                      transmitting the Link Reconfiguration request action
+ *                      frame. Bit N set => link_id N is eligible.
+ *
+ * This helper chooses which AP link address (BSSID) should be used as the peer
+ * address for sending the Link Reconfiguration request action frame. It prefers
+ * a candidate link that has a valid vdev and is currently connected. If no such
+ * connected candidate is found, it falls back to a candidate standby link (vdev
+ * id is invalid) if available.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, otherwise QDF_STATUS_E_INVAL if no
+ * suitable candidate link is found or required objects are missing.
+ */
+QDF_STATUS
+mlo_link_recfg_set_tx_link_addr(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct wlan_mlo_link_recfg_req *recfg_req,
+			struct mlo_link_recfg_state_req *req,
+			uint32_t candidate_link_set);
+
+/**
+ * mlo_link_recfg_tranistion_to_next_state() - API to transition to next state
+ * @recfg_ctx: Link reconfiguration context. Must contain a valid MLO dev ctx.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, otherwise QDF_STATUS_E_FAILURE
+ *
+ */
+QDF_STATUS
+mlo_link_recfg_tranistion_to_next_state(
+			struct mlo_link_recfg_context *recfg_ctx);
 #else
+static inline QDF_STATUS
+mlo_link_recfg_tranistion_to_next_state(
+			struct mlo_link_recfg_context *recfg_ctx)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_set_tx_link_addr(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct wlan_mlo_link_recfg_req *recfg_req,
+			struct mlo_link_recfg_state_req *req,
+			uint32_t candidate_link_set)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
+			       struct wlan_mlo_link_recfg_req *recfg_req,
+			       uint32_t *add_link_set,
+			       uint8_t *add_link_num,
+			       uint32_t *del_link_set,
+			       uint8_t *del_link_num,
+			       uint32_t *curr_link_set,
+			       uint8_t *curr_link_num,
+			       uint32_t *curr_standby_set,
+			       uint8_t *curr_standby_num)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
 static inline QDF_STATUS
 mlo_link_recfg_validate_roam_invoke(
 		struct wlan_objmgr_psoc *psoc,
@@ -1225,6 +1416,24 @@ mlo_link_recfg_create_transition_list(
 			struct wlan_mlo_link_recfg_req *recfg_req)
 {
 	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline struct wlan_mlo_dev_context *
+mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
+{
+	return NULL;
+}
+
+static inline struct wlan_objmgr_psoc *
+mlo_link_recfg_get_psoc(struct mlo_link_recfg_context *recfg_ctx)
+{
+	return NULL;
+}
+
+static inline struct mlo_link_recfg_state_tran *
+mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx)
+{
+	return NULL;
 }
 #endif
 #endif

@@ -27,6 +27,7 @@
 #include <wlan_scan_public_structs.h>
 #include "wlan_crypto_global_def.h"
 #include "qdf_status.h"
+
 #ifdef WLAN_FEATURE_11BE_MLO
 #include <wlan_mlo_mgr_public_structs.h>
 #endif
@@ -728,4 +729,40 @@ enum MLO_TYPE {
 	MLMR,
 	MLO_TYPE_MAX
 };
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * struct smd_vdev_repurpose_req - SMD VDEV repurpose request
+ * @vdev_id: Target vdev_id for BSS repurpose
+ * @inactive_link_pre_stop: B0 - inactive link pre-vdev_stop
+ * @cleanup_vdev: B1 - cleanup vdev
+ * @bringup_vdev: B2 - bringup vdev
+ * @bssid: Repurposed AP's BSSID
+ * @mld_addr: Repurposed AP's MLD address
+ * @smd_addr: Repurposed AP's SMD address
+ * @is_valid: Flag indicating if this structure contains valid data
+ */
+struct smd_vdev_repurpose_req {
+	uint32_t vdev_id;
+	bool inactive_link_pre_stop;
+	bool cleanup_vdev;
+	bool bringup_vdev;
+	struct qdf_mac_addr bssid;
+	struct qdf_mac_addr mld_addr;
+	struct qdf_mac_addr smd_addr;
+	bool is_valid;
+};
+
+/**
+ * struct smd_transition_ie_info - SMD Transition IE information
+ * @ie_len: Length of SMD transition IE
+ * @ie_data: SMD transition IE data
+ *           FW populates its capabilities (B0 and B1 set to '0')
+ *           Host appends its capabilities (Listen Interval, SCS List)
+ */
+struct smd_transition_ie_info {
+	uint32_t ie_len;
+	uint8_t ie_data[256];  /* Max IE size */
+};
+#endif
 #endif /* __WLAN_CM_PUBLIC_STRUCT_H__ */

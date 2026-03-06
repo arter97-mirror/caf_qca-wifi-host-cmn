@@ -139,6 +139,7 @@ enum mgmt_subtype {
  * @ACTION_CATEGORY_CMMG: CMMG Action frame
  * @ACTION_CATEGORY_GLK: GLK Action frame
  * @ACTION_CATEGORY_PROTECTED_EHT: Protected EHT Action frame
+ * @ACTION_CATEGORY_PROTECTED_UHR: Protected UHR Action Frame
  * @ACTION_CATEGORY_VENDOR_SPECIFIC_PROTECTED: vendor specific protected
  *                                             action category
  * @ACTION_CATEGORY_VENDOR_SPECIFIC: vendor specific action category
@@ -175,6 +176,7 @@ enum mgmt_action_category {
 	ACTION_CATEGORY_CMMG = 28,
 	ACTION_CATEGORY_GLK = 29,
 	ACTION_CATEGORY_PROTECTED_EHT = 37,
+	ACTION_CATEGORY_PROTECTED_UHR = 43,
 	ACTION_CATEGORY_VENDOR_SPECIFIC_PROTECTED = 126,
 	ACTION_CATEGORY_VENDOR_SPECIFIC = 127,
 };
@@ -594,6 +596,7 @@ enum uhr_typecode {
 	UHR_TYPECODE_OMP_REQUEST    = 3,
 };
 #endif
+
 /**
  * struct action_frm_hdr - action frame header
  * @action_category: action category

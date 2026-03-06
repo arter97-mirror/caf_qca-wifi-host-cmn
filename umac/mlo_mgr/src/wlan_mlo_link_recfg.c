@@ -38,11 +38,7 @@
 #endif
 #include "host_diag_core_event.h"
 #include "lim_types.h"
-
-#define LINK_RECFG_RSP_TIMEOUT 5000
-
-static struct mlo_link_recfg_state_tran *
-mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx);
+#include "wlan_smd_roam.h"
 
 static enum wlan_status_code
 mlo_link_recfg_find_link_status(uint8_t link_id,
@@ -53,7 +49,7 @@ mlo_link_recfg_response_received(struct mlo_link_recfg_context *recfg_ctx,
 				 struct link_recfg_rx_rsp *recfg_resp_data,
 				 uint16_t event_data_len);
 
-static QDF_STATUS
+QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx);
 
@@ -62,13 +58,13 @@ mlo_link_recfg_update_state_req_from_rsp(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct mlo_link_recfg_state_tran *tran);
 
-static struct wlan_mlo_dev_context *
+struct wlan_mlo_dev_context *
 mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
 {
 	return recfg_ctx->ml_dev;
 }
 
-static struct wlan_objmgr_psoc *
+struct wlan_objmgr_psoc *
 mlo_link_recfg_get_psoc(struct mlo_link_recfg_context *recfg_ctx)
 {
 	return recfg_ctx->psoc;
@@ -449,6 +445,29 @@ mlo_ser_link_recfg_cb(struct wlan_serialization_command *cmd,
 
 #define MLO_LINK_RECFG_MAX_TIMEOUT 35000
 
+static QDF_STATUS
+mlo_copy_recfg_req(struct mlo_link_recfg_context *recfg_ctx,
+		   struct wlan_mlo_link_recfg_req *recfg_req)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+
+	if (!recfg_ctx || !recfg_req)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	mlo_dev_ctx = mlo_link_recfg_get_mlo_ctx(recfg_ctx);
+	if (!mlo_dev_ctx) {
+		mlo_err("mlo_ctx null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	qdf_mem_copy(&recfg_ctx->curr_recfg_req, recfg_req,
+		     sizeof(*recfg_req));
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * mlo_ser_link_recfg_cmd() - The API will serialize link reconfig
  * command in serialization queue.
@@ -823,7 +842,7 @@ QDF_STATUS mlo_link_recfg_request_params(struct wlan_objmgr_psoc *psoc,
 	return status;
 }
 
-static QDF_STATUS
+QDF_STATUS
 mlo_link_recfg_get_link_bitmap(struct mlo_link_recfg_context *recfg_ctx,
 			       struct wlan_mlo_link_recfg_req *recfg_req,
 			       uint32_t *add_link_set,
@@ -3135,7 +3154,7 @@ mlo_link_recfg_assign_self_link_addr(
 	return status;
 }
 
-static QDF_STATUS
+QDF_STATUS
 mlo_link_recfg_set_tx_link_addr(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct wlan_mlo_link_recfg_req *recfg_req,
@@ -3469,7 +3488,7 @@ static bool mlo_link_recfg_xmit_req_first(
 	return xmit_first;
 }
 
-static QDF_STATUS
+QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx)
 {
@@ -3577,6 +3596,13 @@ mlo_link_recfg_create_transition_list(
 		recfg_ctx->link_recfg_bm.num_frames > 1;
 	/* reset num to 0, the num should be configured for each run */
 	recfg_ctx->link_recfg_bm.num_frames = 0;
+
+	if (smd_roam_in_progress(recfg_ctx)) {
+		status = smd_create_link_recfg_transition_list(recfg_ctx,
+							       recfg_req);
+		mlo_debug("SMD create link recfg status %d", status);
+		return status;
+	}
 
 	mlo_link_recfg_get_link_bitmap(recfg_ctx,
 				       recfg_req,
@@ -3997,7 +4023,7 @@ mlo_link_recfg_create_transition_list(
 	return status;
 }
 
-static struct mlo_link_recfg_state_tran *
+struct mlo_link_recfg_state_tran *
 mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx)
 {
 	if (recfg_ctx->sm.curr_state_idx >= 0 &&
@@ -4754,6 +4780,7 @@ mlo_link_recfg_state_init_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_FW_IND:
 	case WLAN_LINK_RECFG_SM_EV_USER_REQ:
+	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
 		/* validate request */
 
 		/* transition to start */
@@ -4797,10 +4824,10 @@ mlo_link_recfg_state_start_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_FW_IND:
 	case WLAN_LINK_RECFG_SM_EV_USER_REQ:
+	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
 		mlo_link_recfg_sm_transition_to(
 			ctx,
 			WLAN_LINK_RECFG_SS_START_PENDING);
-
 		status = mlo_link_recfg_sm_deliver_event_sync(
 				recfg_ctx->ml_dev, WLAN_LINK_RECFG_SM_EV_START,
 				event_data_len, event_data);
@@ -4850,11 +4877,24 @@ mlo_link_recfg_subst_start_pending_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_START:
 		recfg_req = (struct wlan_mlo_link_recfg_req *)event_data;
-		status = mlo_ser_link_recfg_cmd(recfg_ctx, recfg_req);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			event_handled = false;
-			/* todo: handle error if link recfg ser is failed */
-			break;
+		if (smd_roam_in_progress(recfg_ctx)) {
+			status = mlo_copy_recfg_req(recfg_ctx, recfg_req);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				mlo_err("Copy for Link recfg failed");
+				event_handled = false;
+				break;
+			}
+			mlo_link_recfg_sm_deliver_event_sync(
+				recfg_ctx->ml_dev,
+				WLAN_LINK_RECFG_SM_EV_ACTIVE,
+				0, NULL);
+		} else {
+			status = mlo_ser_link_recfg_cmd(recfg_ctx, recfg_req);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				event_handled = false;
+				/* todo: handle error if link recfg ser is failed */
+				break;
+			}
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_ACTIVE:
@@ -5797,7 +5837,10 @@ mlo_link_recfg_state_xmit_req_event(void *ctx,
 				break;
 			}
 		}
-		mlo_link_recfg_send_request_frame(recfg_ctx, req);
+		if (req->recfg_type == link_recfg_st_prep_add_link)
+			smd_uhr_link_recfg_send_request_frame(recfg_ctx, req);
+		else
+			mlo_link_recfg_send_request_frame(recfg_ctx, req);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
 		/* Handle tx failure		*/

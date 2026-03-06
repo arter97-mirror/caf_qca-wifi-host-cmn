@@ -26,6 +26,7 @@
 
 #include "wlan_cm_main.h"
 #include "wlan_cm_sm.h"
+#include "wlan_cm_roam_public_struct.h"
 
 #ifdef WLAN_FEATURE_HOST_ROAM
 /**
@@ -466,6 +467,7 @@ struct cm_roam_req *cm_get_first_roam_command(struct wlan_objmgr_vdev *vdev);
  * @cm_ctx: connection mgr context
  * @roam_req: connection mgr req
  * @source: connection mgr req source
+ * @roam_event: roam offload event ptr
  *
  * This function prepares roam request when roam start ind is received
  * when CM SM is in connected state.
@@ -474,7 +476,8 @@ struct cm_roam_req *cm_get_first_roam_command(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS cm_prepare_roam_cmd(struct cnx_mgr *cm_ctx,
 			       struct cm_req **roam_req,
-			       enum wlan_cm_source source);
+			       enum wlan_cm_source source,
+			       struct roam_offload_roam_event *roam_event);
 
 /**
  * cm_add_fw_roam_cmd_to_list_n_ser() - Add roam req to list and serialize req
@@ -535,7 +538,8 @@ static inline bool cm_roam_offload_enabled(struct wlan_objmgr_psoc *psoc)
 
 static inline QDF_STATUS cm_prepare_roam_cmd(struct cnx_mgr *cm_ctx,
 			       struct cm_req **roam_req,
-			       enum wlan_cm_source source)
+			       enum wlan_cm_source source,
+			       struct roam_offload_roam_event *roam_event)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

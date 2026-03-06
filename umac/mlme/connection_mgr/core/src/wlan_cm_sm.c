@@ -163,7 +163,7 @@ static bool cm_state_init_event(void *ctx, uint16_t event,
 		 * and FW decides to roam using vdev-1).
 		 */
 		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
-					     CM_ROAMING_FW);
+					     CM_ROAMING_FW, data);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlme_err("CM vdev %d: Failed to prepare roam cmd in INIT state",
 				 wlan_vdev_get_id(cm_ctx->vdev));
@@ -316,7 +316,8 @@ bool cm_handle_fw_roam_connected_event(struct cnx_mgr *cm_ctx, uint16_t event,
 		break;
 	case WLAN_CM_SM_EV_ROAM_START:
 		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
-					     CM_ROAMING_FW);
+					     CM_ROAMING_FW,
+					     data);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			event_handled = false;
 			break;
@@ -327,7 +328,7 @@ bool cm_handle_fw_roam_connected_event(struct cnx_mgr *cm_ctx, uint16_t event,
 		break;
 	case WLAN_CM_SM_EV_ROAM_SYNC:
 		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
-					     CM_ROAMING_FW);
+					     CM_ROAMING_FW, NULL);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			event_handled = false;
 			break;
