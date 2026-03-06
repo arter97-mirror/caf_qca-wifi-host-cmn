@@ -42,6 +42,85 @@
 #include "hal_internal.h"
 #include "dp_rx_defrag.h"
 
+#ifdef WLAN_FEATURE_DP_RX_RING_HISTORY
+/**
+ * dp_rx_ring_record_entry_bn() - Record RX ring entry for BN
+ * @soc: DP SOC handle
+ * @ring_num: Ring number
+ * @ring_desc: Ring descriptor
+ * @cc_status: Cookie conversion status
+ * @rx_desc: RX descriptor
+ *
+ * When cc_status is 1, gets paddr and sw_cookie from rx_desc.
+ * Otherwise uses standard dp_rx_ring_record_entry logic.
+ *
+ * Return: None
+ */
+static void
+dp_rx_ring_record_entry_bn(struct dp_soc *soc, uint8_t ring_num,
+			   hal_ring_desc_t ring_desc, uint8_t cc_status,
+			   struct dp_rx_desc *rx_desc)
+{
+	struct dp_buf_info_record *record;
+	uint32_t idx;
+
+	if (qdf_unlikely(!soc->rx_ring_history[ring_num]))
+		return;
+
+	if (qdf_likely(cc_status)) {
+		if (qdf_unlikely(!rx_desc || !rx_desc->nbuf))
+			return;
+
+		idx = dp_history_get_next_index(
+				&soc->rx_ring_history[ring_num]->index,
+				DP_RX_HIST_MAX);
+
+		record = &soc->rx_ring_history[ring_num]->entry[idx];
+
+		record->timestamp = qdf_get_log_timestamp();
+		record->hbi.paddr = QDF_NBUF_CB_PADDR(rx_desc->nbuf);
+		record->hbi.sw_cookie = rx_desc->cookie;
+		record->hbi.rbm = 0;
+	} else {
+		dp_rx_ring_record_entry(soc, ring_num, ring_desc);
+	}
+}
+
+/**
+ * dp_rx_msdu_done_failure_debug_bn() - Debug MSDU DONE failure for BN
+ * @soc: DP SOC handle
+ * @nbuf: network buffer
+ *
+ * Debug MSDU DONE failure and trigger crash dump.
+ *
+ * Return: None
+ */
+static void
+dp_rx_msdu_done_failure_debug_bn(struct dp_soc *soc, qdf_nbuf_t nbuf)
+{
+	dp_err("MSDU DONE failure %d nbuf=%px reo_ring_id=%d",
+	       soc->stats.rx.err.msdu_done_fail,
+	       (void *)nbuf,
+	       QDF_NBUF_CB_RX_CTX_ID(nbuf));
+	qdf_assert_always(0);
+}
+#else
+static inline void
+dp_rx_ring_record_entry_bn(struct dp_soc *soc, uint8_t ring_num,
+			   hal_ring_desc_t ring_desc, uint8_t cc_status,
+			   struct dp_rx_desc *rx_desc)
+{
+}
+
+static inline void
+dp_rx_msdu_done_failure_debug_bn(struct dp_soc *soc, qdf_nbuf_t nbuf)
+{
+	dp_err("MSDU DONE failure %d reo_ring_id=%d",
+	       soc->stats.rx.err.msdu_done_fail,
+	       QDF_NBUF_CB_RX_CTX_ID(nbuf));
+}
+#endif /* WLAN_FEATURE_DP_RX_RING_HISTORY */
+
 /**
  * dp_rx_handle_nbuf_rxdma_err_bn() - Handle RXDMA error processing
  * @pdev: DP pdev
@@ -356,7 +435,8 @@ more_data:
 			dp_rx_desc_sw_cc_check(soc, rx_buf_cookie, &rx_desc);
 		}
 
-		dp_rx_ring_record_entry(soc, reo_ring_num, ring_desc);
+		dp_rx_ring_record_entry_bn(soc, reo_ring_num, ring_desc,
+					   cc_status, rx_desc);
 
 		status = dp_rx_desc_sanity(soc, hal_soc, hal_ring_hdl,
 					   ring_desc, rx_desc);
@@ -651,13 +731,11 @@ refill_opt_dp_ctrl:
 		if (qdf_unlikely(!qdf_nbuf_is_rx_chfrag_cont(nbuf) &&
 				 !hal_rx_attn_msdu_done_get(hal_soc, rx_tlv_hdr))) {
 			DP_STATS_INC(soc, rx.err.msdu_done_fail, 1);
-			dp_err("MSDU DONE failure %d",
-			       soc->stats.rx.err.msdu_done_fail);
+			dp_rx_msdu_done_failure_debug_bn(soc, nbuf);
 			hal_rx_dump_pkt_tlvs(hal_soc, rx_tlv_hdr,
 					     QDF_TRACE_LEVEL_INFO);
 			tid_stats->fail_cnt[MSDU_DONE_FAILURE]++;
 			dp_rx_nbuf_free(nbuf);
-			qdf_assert(0);
 			nbuf = next;
 			continue;
 		}
