@@ -1894,6 +1894,13 @@ struct peer_assoc_params {
 	uint32_t peer_uhr_tx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];
 	struct wmi_host_ppe_threshold peer_uhr_ppet;
 #endif
+#ifdef WLAN_FEATURE_11BN_SMD
+	uint8_t smd_id[QDF_MAC_ADDR_SIZE];
+	uint32_t smd_capabilities;
+	bool roam_enabled;
+	bool dl_data_forwarding;
+	bool ul_data_forwarding;
+#endif
 };
 
 /**

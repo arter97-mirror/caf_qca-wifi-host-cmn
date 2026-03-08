@@ -4186,6 +4186,42 @@ static uint8_t *update_peer_flags_tlv_uhrinfo(
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * update_peer_assoc_smd_params() - Update SMD parameters in peer assoc command
+ * @smd: Pointer to wmi_peer_assoc_smd_params structure
+ * @param: Pointer to peer_assoc_params containing SMD information
+ *
+ * Return: None
+ */
+static void update_peer_assoc_smd_params(wmi_peer_assoc_smd_params *smd,
+					 struct peer_assoc_params *param)
+{
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(param->smd_id, &smd->smd_identifier);
+	smd->smd_capabilities = param->smd_capabilities;
+
+	smd->smd_flags = 0;
+	if (param->roam_enabled)
+		WMI_PEER_ASSOC_SMD_FLAGS_SET_ROAM_ENABLED(smd->smd_flags, 1);
+	if (param->dl_data_forwarding)
+		WMI_PEER_ASSOC_SMD_FLAGS_SET_DL_DATA_FORWARDING(
+				smd->smd_flags, 1);
+	if (param->ul_data_forwarding)
+		WMI_PEER_ASSOC_SMD_FLAGS_SET_UL_DATA_FORWARDING(
+				smd->smd_flags, 1);
+
+	wmi_debug("SMD ID: " QDF_MAC_ADDR_FMT " caps: 0x%x flags: %d",
+		  QDF_MAC_ADDR_REF(param->smd_id),
+		  smd->smd_capabilities,
+		  smd->smd_flags);
+}
+#else
+static void update_peer_assoc_smd_params(wmi_peer_assoc_smd_params *smd,
+					 struct peer_assoc_params *param)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE
 static
 uint32_t wmi_eht_peer_assoc_params_len(struct peer_assoc_params *param)
@@ -4646,6 +4682,7 @@ static QDF_STATUS send_peer_assoc_v2_cmd_tlv(wmi_unified_t wmi_handle,
 	WMITLV_SET_HDR(&smd->tlv_header,
 		       WMITLV_TAG_STRUC_wmi_peer_assoc_smd_params,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_smd_params));
+	update_peer_assoc_smd_params(smd, param);
 	buf_ptr += sizeof(*smd);
 
 	buf_ptr = update_peer_flags_tlv_uhrinfo(cmd, param, buf_ptr);
