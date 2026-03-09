@@ -24147,6 +24147,8 @@ static void populate_tlv_service_mlo(uint32_t *wmi_service)
 {
 	wmi_service[wmi_service_mlo_sta_nan_ndi_support] =
 			WMI_SERVICE_MLO_STA_NAN_NDI_SUPPORT;
+	wmi_service[wmi_service_p2p_cancel_one_shot_noa_support] =
+			WMI_SERVICE_P2P_CANCEL_ONE_SHOT_NOA_SUPPORT;
 }
 #else /* WLAN_FEATURE_11BE_MLO */
 static inline void populate_tlv_service_mlo(uint32_t *wmi_service)
