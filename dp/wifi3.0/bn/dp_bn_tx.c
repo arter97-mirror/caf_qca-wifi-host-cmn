@@ -37,6 +37,15 @@ static inline uint8_t dp_tx_get_rbm_id_bn(struct dp_soc *soc,
 	return rbm;
 }
 
+#ifdef WLAN_MCAST_MLO_SAP
+static inline void
+dp_tx_vdev_id_set_hal_tx_desc(uint32_t *hal_tx_desc_cached,
+			      struct dp_vdev *vdev,
+			      struct dp_tx_msdu_info_s *msdu_info)
+{
+	hal_tx_desc_set_vdev_id(hal_tx_desc_cached, msdu_info->vdev_id);
+}
+#else
 static inline void
 dp_tx_vdev_id_set_hal_tx_desc(uint32_t *hal_tx_desc_cached,
 			      struct dp_vdev *vdev,
@@ -44,6 +53,7 @@ dp_tx_vdev_id_set_hal_tx_desc(uint32_t *hal_tx_desc_cached,
 {
 	hal_tx_desc_set_vdev_id(hal_tx_desc_cached, vdev->vdev_id);
 }
+#endif
 
 #ifdef QCA_SUPPORT_TX_MIN_RATES_FOR_SPECIAL_FRAMES
 
