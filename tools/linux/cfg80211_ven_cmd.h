@@ -971,6 +971,7 @@ enum {
 	OL_SPECIAL_PARAM_SET_V3_TID,
 	OL_SPECIAL_PARAM_SET_TX_DROP_THRESHOLD,
 	OL_SPECIAL_PARAM_MLO_OPER_MODE,
+	OL_SPECIAL_PARAM_ENABLE_PDEV_EXTD_STATS,
 };
 
 enum _ol_ath_param_t {
@@ -4201,6 +4202,10 @@ struct vendor_commands radio_vendor_cmds[] = {
 		SET_PARAM, 1},
 	{"g_cck_rx_support", OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_CCK_RX_5G,
 		GET_PARAM, 0},
+	{"enable_pdev_extd_stats",
+		OL_SPECIAL_PARAM_SHIFT | OL_SPECIAL_PARAM_ENABLE_PDEV_EXTD_STATS, SET_PARAM, 1},
+	{"g_enable_pdev_extd_stats",
+		OL_SPECIAL_PARAM_SHIFT | OL_SPECIAL_PARAM_ENABLE_PDEV_EXTD_STATS, GET_PARAM, 0},
 };
 #endif
 
