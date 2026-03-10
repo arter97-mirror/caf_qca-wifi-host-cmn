@@ -12,9 +12,7 @@
 #include "dp_peer.h"
 #include "qdf_module.h"
 #include "dp_dal_sim.h"
-#ifdef FEATURE_DP_DAL_D3_WOW
 #include "dp_htt.h"
-#endif /* FEATURE_DP_DAL_D3_WOW */
 #include "qdf_platform.h"
 #ifdef FEATURE_DP_DAL_OE_SUPPORT
 /* Include the required dal headers to access DAL
@@ -385,7 +383,6 @@ static int dp_dal_bus_start(struct dp_soc *soc)
 	return 0;
 }
 
-#if defined(FEATURE_DP_DAL_D3_WOW)
 /**
  * dp_dal_is_d3_wow_supported() - Check if D3 WOW is supported by FW
  * @soc: Pointer to DP soc
@@ -514,26 +511,6 @@ static QDF_STATUS dp_dal_d3_wow_htt_send_on_suspend(struct dp_soc *soc)
 
 	return QDF_STATUS_SUCCESS;
 }
-
-#else
-static int dp_dal_set_suspend_config(void *priv, uint64_t msi_addr,
-				     uint32_t msi_data,
-				     void *suspend_msg_data_vaddr,
-				     qdf_dma_addr_t suspend_msg_data_paddr)
-{
-	return 0;
-}
-
-static inline QDF_STATUS dp_dal_d3_wow_htt_send(struct dp_soc *soc)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS dp_dal_d3_wow_htt_send_on_suspend(struct dp_soc *soc)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 /**
  * dp_dal_bus_request_irq() - DAL IRQ registration function

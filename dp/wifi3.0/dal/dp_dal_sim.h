@@ -38,7 +38,6 @@ struct dp_dal_sim_sw2sw_ring {
 #define DP_DAL_SIM_TX_CPL_DESC_SIZE HAL_TX_COMPLETION_DESC_LEN_BYTES
 #define DP_DAL_SIM_RX_CPL_DESC_SIZE 32
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 /* D3 WoW Message Format Definitions */
 /* Message format: Bits [31:28] - Tag, [27:12] - Type, [11:0] - Value/Payload */
 #define OLE_WOW_MSG_MSG_TAG_SHIFT        28
@@ -118,7 +117,6 @@ enum dal_d3_wow_ack_status {
 	OLE_WOW_MSG_NACK_REASON_USD = 16,
 	OLE_WOW_MSG_NACK_CLOSE_TO_TBTT = 17,
 };
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 #ifdef FEATURE_DP_DAL_SIM
 /**
@@ -361,7 +359,6 @@ struct dp_dal_sim_ctx {
 	/* Use dal vendor hal for overwriitng tx desc*/
 	bool use_dal_vndr_hal;
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 	/* Derived MSI config for FW write */
 	qdf_dma_addr_t suspend_msg_msi_addr;
 	uint32_t suspend_msg_msi_data;
@@ -371,7 +368,6 @@ struct dp_dal_sim_ctx {
 	/* Coherent buffer for FW to write messages to Host */
 	void *suspend_msg_data_vaddr;
 	qdf_dma_addr_t suspend_msg_data_paddr;
-#endif /* FEATURE_DP_DAL_D3_WOW */
 };
 
 /**

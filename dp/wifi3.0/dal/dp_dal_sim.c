@@ -32,7 +32,6 @@ struct platform_bus_ops *global_plat_ops;
 extern struct vendor_cb_ops vendor_cb;
 extern struct platform_bus_ops plat_ops_bypass_mode;
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 static inline void
 dp_dal_sim_d3_wow_event_create(struct dp_dal_sim_ctx *sim_ctx)
 {
@@ -255,34 +254,6 @@ dp_dal_sim_suspend_msg_buffer_init(struct dp_dal_ctx *dal_ctx)
 
 	return 0;
 }
-#else
-static inline void
-dp_dal_sim_d3_wow_event_create(struct dp_dal_sim_ctx *sim_ctx)
-{
-}
-
-static inline void
-dp_dal_sim_d3_wow_event_destroy(struct dp_dal_sim_ctx *sim_ctx)
-{
-}
-
-static inline void
-dp_dal_sim_free_suspend_msg_buffer(struct dp_dal_sim_ctx *sim_ctx)
-{
-}
-
-static inline int
-dp_dal_sim_suspend_msg_buffer_init(struct dp_dal_ctx *dal_ctx)
-{
-	return 0;
-}
-
-static inline int
-dp_dal_sim_init_suspend_msg_msi(struct dp_dal_ctx *dal_ctx)
-{
-	return 0;
-}
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 /* ========================================================================
  * Descriptor List Management Functions
@@ -1589,7 +1560,6 @@ static int dp_dal_sim_sta_active(void *priv, struct sta_info *info, bool enable)
 	return 0;
 }
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 /**
  * dp_dal_sim_is_d3_wow_supported() - Check if D3 WOW is supported by FW
  * @sim_ctx: Pointer to DAL sim context
@@ -1668,14 +1638,6 @@ static int dp_dal_sim_check_intf_pause(struct dp_dal_sim_ctx *sim_ctx,
 		return -EBUSY;
 	}
 }
-#else
-static inline int dp_dal_sim_check_intf_pause(struct dp_dal_sim_ctx *sim_ctx,
-					       bool intf_pause)
-{
-	dp_debug("All descriptor lists empty - suspend allowed");
-	return 0;
-}
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 /**
  * dp_dal_sim_notify_suspend() - Handle suspend notification
@@ -1781,7 +1743,6 @@ static int dp_dal_sim_notify_suspend(void *priv, bool intf_pause)
  *
  * Return: 0 on success
  */
-#ifdef FEATURE_DP_DAL_D3_WOW
 static int dp_dal_sim_notify_resume(void *priv)
 {
 	struct dp_dal_ctx *dp_dal_ctx = (struct dp_dal_ctx *)priv;
@@ -1827,13 +1788,6 @@ static int dp_dal_sim_notify_resume(void *priv)
 		return -EBUSY;
 	}
 }
-#else
-static int dp_dal_sim_notify_resume(void *priv)
-{
-	dp_info("Resume notification (stub)");
-	return 0;
-}
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 /**
  * dp_dal_sim_ssr_dump() - Dump SSR (SubSystem Restart) information

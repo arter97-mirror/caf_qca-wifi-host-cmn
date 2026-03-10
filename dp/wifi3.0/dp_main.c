@@ -15441,17 +15441,10 @@ static QDF_STATUS dp_bus_resume(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 }
 
 #ifdef FEATURE_DAL_DP_SUPPORT
-#ifdef FEATURE_DP_DAL_D3_WOW
 static inline bool dp_dal_get_intf_pause(struct dp_soc *soc)
 {
 	return hif_can_suspend_link(soc->hif_handle);
 }
-#else
-static inline bool dp_dal_get_intf_pause(struct dp_soc *soc)
-{
-	return false;
-}
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 /**
  * dp_dal_send_suspend_notify() - CDP wrapper for DAL notify suspend

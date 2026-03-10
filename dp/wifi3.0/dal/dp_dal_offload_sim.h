@@ -10,7 +10,6 @@
 #include "dal_vndr_hal_api.h"
 #ifdef FEATURE_DP_DAL_SIM
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 /* PCIE Doorbell registers for FW communication */
 /* Message register - write message value here before triggering interrupt */
 #define PCIE_PCIE_LOCAL_REG_APPS_TO_Q6 0x3224
@@ -20,7 +19,6 @@
 #define PCIE_PCIE_LOCAL_REG_WCSS_IE_IRQ 0x3228
 #define PCIE_DOORBELL_IRQ_ADDR PCIE_PCIE_LOCAL_REG_WCSS_IE_IRQ
 #define PCIE_DOORBELL_IRQ_TRIGGER 0x1
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 /**
  * enum offload_sim_ring_type - Ring type for interrupt handling
@@ -75,9 +73,7 @@ struct dp_dal_offload_sim_ctx {
 	struct dal_vndr_hal_srng rx_refill_ring_hal_srng;
 	struct offload_sim_irq_ctx rx_irq_ctx[DAL_RX_RINGS_MAX];
 	struct offload_sim_irq_ctx tx_cpl_irq_ctx[DAL_TX_RINGS_MAX];
-#ifdef FEATURE_DP_DAL_D3_WOW
 	int suspend_msg_irq_num;
-#endif /* FEATURE_DP_DAL_D3_WOW */
 	bool offload_sim_ctx_initialized;
 	void *dev_base_addr;
 };
@@ -316,7 +312,6 @@ void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx);
 void
 dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(struct dp_dal_sim_ctx *sim_ctx);
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 /**
  * dp_dal_offload_sim_handle_msg() - Handle message from DAL simulator
  * @dal_sim_ctx: Pointer to DAL simulation context
@@ -330,7 +325,6 @@ dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(struct dp_dal_sim_ctx *sim_ctx);
  */
 int dp_dal_offload_sim_handle_msg(struct dp_dal_sim_ctx *dal_sim_ctx,
 				  uint32_t msg_type);
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 #endif /* FEATURE_DAL_DP_SUPPORT */
 #endif /* DP_DAL_OFFLOAD_SIM_H */

@@ -61,7 +61,6 @@ dp_dal_offload_sim_ring_access_end(struct dp_dal_offload_sim_ctx *offload_ctx,
 	DAL_VNDR_SRNG_UNLOCK(&ring->lock);
 }
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 static irqreturn_t dp_dal_offload_sim_suspend_msg_handler(int irq, void *arg)
 {
 	struct dp_dal_sim_ctx *sim_ctx = (struct dp_dal_sim_ctx *)arg;
@@ -134,28 +133,6 @@ dp_dal_offload_sim_free_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
 		dp_debug("Freed suspend msg IRQ");
 	}
 }
-
-#else
-static inline void
-dp_dal_offload_sim_init_d3_wow(struct dp_dal_offload_sim_ctx *offload_ctx,
-			       struct dp_dal_sim_ctx *dal_sim_ctx)
-{
-}
-
-static inline int
-dp_dal_offload_sim_request_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
-					struct dp_dal_offload_sim_ctx *offload_ctx)
-{
-	return 0;
-}
-
-static inline void
-dp_dal_offload_sim_free_suspend_msg_irq(struct dp_dal_sim_ctx *dal_sim_ctx,
-				     struct dp_dal_offload_sim_ctx *offload_ctx)
-{
-}
-
-#endif
 
 #ifdef DAL_OFFLOAD_SIM
 /**
@@ -1125,7 +1102,6 @@ int dp_dal_offload_sim_fetch_current_hp_tp(struct dp_dal_sim_ctx *dal_sim_ctx,
 	return 0;
 }
 
-#ifdef FEATURE_DP_DAL_D3_WOW
 static int dp_dal_offload_sim_send_msg_to_fw(struct dp_dal_sim_ctx *dal_sim_ctx,
 					      uint32_t msg_type, uint32_t val)
 {
@@ -1299,6 +1275,5 @@ int dp_dal_offload_sim_handle_msg(struct dp_dal_sim_ctx *dal_sim_ctx,
 
 	return ret_val;
 }
-#endif /* FEATURE_DP_DAL_D3_WOW */
 
 #endif /* FEATURE_DP_DAL_SIM */
