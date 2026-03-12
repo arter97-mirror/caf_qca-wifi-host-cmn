@@ -2085,7 +2085,7 @@ cm_connect_req_update_ml_partner_info(struct cnx_mgr *cm_ctx,
 		return;
 
 	mlo_support_link_num = wlan_mlme_get_sta_mlo_conn_max_num(psoc);
-	cm_get_ml_partner_info(conn_req, mlo_support_link_num);
+	cm_get_ml_partner_info(psoc, conn_req, mlo_support_link_num);
 	cm_modify_partner_info_based_on_dbs_or_sbs_mode(psoc, cm_req->cm_id,
 							scan_entry,
 							partner_info);
