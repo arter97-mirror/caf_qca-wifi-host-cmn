@@ -495,7 +495,7 @@ dp_rx_page_pool_nbuf_alloc_and_map(struct dp_soc *soc,
 	struct rx_desc_pool *rx_desc_pool = &soc->rx_desc_buf[mac_id];
 	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[mac_id];
 	struct dp_rx_pp_params *pp_params;
-	qdf_page_t page;
+	qdf_page_t page = NULL;
 	qdf_nbuf_t nbuf;
 	uint32_t offset;
 	QDF_STATUS ret;
@@ -545,7 +545,7 @@ nbuf_alloc:
 	nbuf = qdf_nbuf_page_pool_alloc(soc->osdev, rx_pp->buf_size,
 					RX_BUFFER_RESERVATION,
 					rx_pp->buf_align,
-					pp_params->pp, &offset);
+					pp_params->pp, &offset, &page);
 	if (!nbuf) {
 		ret = QDF_STATUS_E_FAILURE;
 		goto out_fail;
@@ -553,7 +553,6 @@ nbuf_alloc:
 
 	qdf_nbuf_rx_pp_track_id_set(nbuf, pp_params->pp_track_id);
 
-	page = qdf_virt_to_head_page(nbuf->data);
 	nbuf_frag_info->paddr = QDF_NBUF_CB_PADDR(nbuf) =
 		qdf_page_pool_get_dma_addr(page) + offset +
 		qdf_nbuf_headroom(nbuf);

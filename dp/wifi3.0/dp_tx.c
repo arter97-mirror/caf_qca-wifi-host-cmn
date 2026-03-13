@@ -1194,6 +1194,7 @@ static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
  * @osdev: OS device handle
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
+ * @page: pointer to store page start address (output parameter)
  *
  * Helper function to allocate nbuf from a specific page pool.
  * Extracted to eliminate goto and improve code clarity.
@@ -1202,12 +1203,11 @@ static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
-				qdf_device_t osdev,
-				size_t size,
-				uint32_t *offset)
+				qdf_device_t osdev, size_t size,
+				uint32_t *offset, qdf_page_t *page)
 {
 	return qdf_nbuf_page_pool_alloc(osdev, size, 0, TX_BUF_ALIGN,
-					pp_params->pp, offset);
+					pp_params->pp, offset, page);
 }
 
 /**
@@ -1281,6 +1281,7 @@ dp_tx_page_pool_update_cache(struct dp_tx_page_pool *tx_pp,
  * @osdev: OS device handle
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
+ * @page: pointer to store the start address of the page (output parameter)
  *
  * Helper function to attach an idle pool from idle lists to active list.
  * Tries higher-order pools first, then falls back to lower-order pools.
@@ -1290,7 +1291,7 @@ dp_tx_page_pool_update_cache(struct dp_tx_page_pool *tx_pp,
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
-			    size_t size, uint32_t *offset)
+			    size_t size, uint32_t *offset, qdf_page_t *page)
 {
 	struct dp_tx_pp_params *idle_pp = NULL;
 	struct dp_tx_pp_params *new_active_pp, *next;
@@ -1305,7 +1306,7 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 			continue;
 
 		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp, osdev, size,
-						       offset);
+						       offset, page);
 		if (qdf_likely(nbuf)) {
 			qdf_list_remove_node(&tx_pp->inactive_list,
 					     &idle_pp->node);
@@ -1318,7 +1319,7 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 	if (qdf_likely(tx_pp->idle_pool_ho_cnt > 0)) {
 		idle_pp = &tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt - 1];
 		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp, osdev, size,
-						       offset);
+						       offset, page);
 		if (qdf_likely(nbuf)) {
 			tx_pp->idle_pool_ho_cnt--;
 			goto attach_pool;
@@ -1329,7 +1330,7 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 	if (qdf_likely(tx_pp->idle_pool_lo_cnt > 0)) {
 		idle_pp = &tx_pp->idle_pool_lo[tx_pp->idle_pool_lo_cnt - 1];
 		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp, osdev, size,
-						       offset);
+						       offset, page);
 		if (qdf_likely(nbuf)) {
 			tx_pp->idle_pool_lo_cnt--;
 			goto attach_pool;
@@ -1358,6 +1359,7 @@ attach_pool:
  * @osdev: OS device handle
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
+ * @page: pointer to store the page start address (output parameter)
  *
  * Helper function to attempt growing the last pool in the active list.
  * Allocates the requested buffer directly instead of just a page.
@@ -1367,7 +1369,8 @@ attach_pool:
 static inline qdf_nbuf_t
 dp_tx_page_pool_try_grow_last(struct dp_tx_page_pool *tx_pp,
 			      struct dp_tx_pp_params *pp_params,
-			      qdf_device_t osdev, size_t size, uint32_t *offset)
+			      qdf_device_t osdev, size_t size,
+			      uint32_t *offset, qdf_page_t *page)
 {
 	qdf_nbuf_t nbuf;
 
@@ -1384,7 +1387,8 @@ dp_tx_page_pool_try_grow_last(struct dp_tx_page_pool *tx_pp,
 	tx_pp->grow_attempts++;
 
 	/* Try to allocate the requested buffer */
-	nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev, size, offset);
+	nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev, size,
+					       offset, page);
 	if (qdf_likely(nbuf)) {
 		tx_pp->grow_successes++;
 		return nbuf;
@@ -1469,6 +1473,7 @@ dp_tx_trace_attach_idle(struct dp_tx_page_pool *tx_pp,
  * @soc: SOC handle
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
+ * @page: pointer to store page start address (output parameter)
  *
  * Helper function to select and allocated from page pool
  *
@@ -1476,7 +1481,7 @@ dp_tx_trace_attach_idle(struct dp_tx_page_pool *tx_pp,
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
-			   size_t size, uint32_t *offset)
+			   size_t size, uint32_t *offset, qdf_page_t *page)
 {
 	struct dp_tx_pp_params *pp_params;
 	qdf_device_t osdev = soc->osdev;
@@ -1495,7 +1500,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 	pp_params = tx_pp->last_used_pool;
 	if (qdf_likely(pp_params && !qdf_page_pool_empty(pp_params->pp))) {
 		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev, size,
-						       offset);
+						       offset, page);
 		if (qdf_likely(nbuf)) {
 			dp_tx_trace_alloc(pp_params, *offset, true,
 					  start_time, 0, trace_enabled);
@@ -1515,7 +1520,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 
 		if (qdf_likely(!qdf_page_pool_empty(pp_params->pp))) {
 			nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
-							       size, offset);
+							       size, offset, page);
 			if (qdf_likely(nbuf)) {
 				dp_tx_trace_alloc(pp_params, *offset, false,
 						  start_time, i, trace_enabled);
@@ -1530,7 +1535,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 	if (qdf_likely(tx_pp->active_pool_count)) {
 		pp_params = &tx_pp->active_pool[tx_pp->active_pool_count - 1];
 		nbuf = dp_tx_page_pool_try_grow_last(tx_pp, pp_params, osdev,
-						     size, offset);
+						     size, offset, page);
 		if (qdf_likely(nbuf)) {
 			dp_tx_trace_grow(pp_params, start_time, trace_enabled);
 			/* Update cache with the pool that was used */
@@ -1540,7 +1545,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 	}
 
 	/* Last resort: Attach idle pool */
-	nbuf = dp_tx_page_pool_attach_idle(tx_pp, osdev, size, offset);
+	nbuf = dp_tx_page_pool_attach_idle(tx_pp, osdev, size, offset, page);
 
 	dp_tx_trace_attach_idle(tx_pp, start_time, trace_enabled);
 
@@ -1563,17 +1568,16 @@ dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
 			       struct dp_soc *soc, size_t size)
 {
 	qdf_nbuf_t nbuf;
-	qdf_page_t page;
+	qdf_page_t page = NULL;
 	uint32_t offset;
 
 	if (qdf_unlikely(!tx_pp))
 		return NULL;
 
-	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset);
+	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset, &page);
 	if (!nbuf)
 		return NULL;
 
-	page = qdf_virt_to_head_page(qdf_nbuf_data(nbuf));
 	QDF_NBUF_CB_PADDR(nbuf) = qdf_page_pool_get_dma_addr(page) + offset +
 				 qdf_nbuf_headroom(nbuf);
 
@@ -1598,7 +1602,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	struct dp_soc *soc = vdev->pdev->soc;
 	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
 	qdf_nbuf_t pp_nbuf;
-	qdf_page_t page;
+	qdf_page_t page = NULL;
 	uint32_t offset;
 	size_t size = qdf_nbuf_get_end_offset(nbuf);
 	bool is_sw_tso;
@@ -1655,7 +1659,7 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset);
+	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset, &page);
 	if (qdf_likely(pp_nbuf)) {
 		tx_pp->alloc_success++;
 		dp_tx_page_pool_inc_usage(tx_pp);
@@ -1679,12 +1683,10 @@ copy_data:
 	qdf_nbuf_set_pktlen(pp_nbuf, nbuf->len);
 	qdf_nbuf_copy_header(pp_nbuf, nbuf);
 
-	if (qdf_is_pp_nbuf(pp_nbuf)) {
-		page = qdf_virt_to_head_page(pp_nbuf->data);
+	if (qdf_is_pp_nbuf(pp_nbuf))
 		QDF_NBUF_CB_PADDR(pp_nbuf) = qdf_page_pool_get_dma_addr(page) +
 					      offset +
 					      qdf_nbuf_headroom(pp_nbuf);
-	}
 
 	tx_desc->nbuf = pp_nbuf;
 	tx_desc->orig_nbuf = nbuf;
