@@ -517,6 +517,7 @@ __qdf_nbuf_page_frag_alloc(__qdf_device_t osdev, size_t size, int reserve,
  * @align: Align
  * @pp: Page pool reference
  * @offset: Offset within the page pool page where buffer is allocated
+ * @page: start address of the page in which buffer is allocated
  * @func: Function name of the call site
  * @line: line number of the call site
  *
@@ -533,7 +534,7 @@ __qdf_nbuf_page_frag_alloc(__qdf_device_t osdev, size_t size, int reserve,
 __qdf_nbuf_t
 __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 			   int align, __qdf_page_pool_t pp, uint32_t *offset,
-			   const char *func, uint32_t line);
+			   struct page **page, const char *func, uint32_t line);
 /**
  * __qdf_nbuf_clone() - clone the nbuf (copy is readonly)
  * @nbuf: Pointer to network buffer

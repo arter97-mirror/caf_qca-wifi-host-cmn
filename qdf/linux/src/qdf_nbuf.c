@@ -856,10 +856,9 @@ qdf_export_symbol(__qdf_nbuf_page_frag_alloc);
 struct sk_buff *
 __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 			   int align, __qdf_page_pool_t pp, uint32_t *offset,
-			   const char *func, uint32_t line)
+			   struct page **page, const char *func, uint32_t line)
 {
 	struct sk_buff *skb;
-	struct page *page;
 
 	if (align)
 		size += (align - 1);
@@ -869,16 +868,16 @@ __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 
 	*offset = 0;
 
-	page = qdf_page_pool_alloc_frag(pp, offset, size);
-	if (!page) {
+	*page = qdf_page_pool_alloc_frag(pp, offset, size);
+	if (!(*page)) {
 		qdf_rl_nofl_err("failed to alloc page pool buffer %zuB @ %s:%d",
 				size, func, line);
 		return NULL;
 	}
 
-	skb = napi_build_skb(page_address(page) + *offset, size);
+	skb = napi_build_skb(page_address(*page) + *offset, size);
 	if (!skb) {
-		qdf_page_pool_put_page(pp, page, false);
+		qdf_page_pool_put_page(pp, *page, false);
 		qdf_rl_nofl_err("failed to build skb %zuB @ %s:%d",
 				size, func, line);
 		return NULL;
@@ -893,7 +892,7 @@ __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 struct sk_buff *
 __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 			   int align, __qdf_page_pool_t pp, uint32_t *offset,
-			   const char *func, uint32_t line)
+			   struct page **page, const char *func, uint32_t line)
 {
 	return NULL;
 }
@@ -4511,16 +4510,16 @@ qdf_export_symbol(qdf_nbuf_dev_kfree_list_debug);
 qdf_nbuf_t
 qdf_nbuf_page_pool_alloc_debug(qdf_device_t osdev, qdf_size_t size, int reserve,
 			       int align, qdf_page_pool_t pp, uint32_t *offset,
-			       const char *func, uint32_t line)
+			       qdf_page_t *page, const char *func, uint32_t line)
 {
 	qdf_nbuf_t nbuf;
 
 	if (is_initial_mem_debug_disabled)
 		return __qdf_nbuf_page_pool_alloc(osdev, size, reserve, align,
-						  pp, offset, func, line);
+						  pp, offset, page, func, line);
 
 	nbuf = __qdf_nbuf_page_pool_alloc(osdev, size, reserve, align,
-					  pp, offset, func, line);
+					  pp, offset, page, func, line);
 
 	/* Store SKB in internal QDF tracking table */
 	if (qdf_likely(nbuf)) {
@@ -4885,18 +4884,17 @@ qdf_tx_page_pool_nbuf_alloc_map(qdf_device_t osdev, qdf_page_pool_t tx_pp,
 				qdf_size_t size)
 {
 	struct sk_buff *skb;
-	qdf_page_t page;
+	qdf_page_t page = NULL;
 	uint32_t offset;
 
 	if (!(tx_pp && !qdf_page_pool_empty(tx_pp)))
 		return NULL;
 
 	skb = qdf_nbuf_page_pool_alloc(osdev, size,
-				       0, 0, tx_pp, &offset);
+				       0, 0, tx_pp, &offset, &page);
 	if (!skb)
 		return skb;
 
-	page = qdf_virt_to_head_page(skb->data);
 	QDF_NBUF_CB_PADDR(skb) = qdf_page_pool_get_dma_addr(page) + offset +
 				 qdf_nbuf_headroom(skb);
 
