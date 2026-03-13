@@ -2219,8 +2219,10 @@ dp_sawf_reinject_handler(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	qdf_nbuf_set_len(nbuf, data_length);
 
 	qdf_nbuf_set_fast_xmit(nbuf, 0);
+#ifndef IOT_DRONE_WIFI
 	nbuf->fast_recycled = 0;
 	nbuf->recycled_for_ds = 0;
+#endif
 
 	qdf_mem_zero(&msdu_info, sizeof(msdu_info));
 
