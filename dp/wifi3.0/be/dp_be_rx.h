@@ -1007,6 +1007,15 @@ dp_rx_set_link_id_be(qdf_nbuf_t nbuf, uint32_t peer_mdata)
 }
 
 #ifdef IPA_OPT_WIFI_DP_CTRL
+#ifdef CONFIG_BORON
+static inline void
+dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
+			     uint32_t peer_mdata)
+{
+	*is_ctrl_refill =
+		HTT_RX_PEER_META_DATA_V2_QDATA_REFILL_GET(peer_mdata);
+}
+#else
 static inline void
 dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
 			     uint32_t peer_mdata)
@@ -1014,6 +1023,7 @@ dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
 	*is_ctrl_refill =
 		HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_GET(peer_mdata);
 }
+#endif
 #else
 static inline void
 dp_rx_set_refill_opt_dp_ctrl(uint8_t *is_ctrl_refill,
