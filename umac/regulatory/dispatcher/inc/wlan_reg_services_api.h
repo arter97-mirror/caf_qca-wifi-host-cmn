@@ -3166,3 +3166,12 @@ bool wlan_reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
 }
 #endif
 #endif
+
+/**
+ * wlan_reg_get_behav_limit_from_phymode() - Get behav_limit from wlan_phymode
+ * @phymode: wlan_phymode
+ *
+ * Return: enum behav_limit
+ */
+enum behav_limit
+wlan_reg_get_behav_limit_from_phymode(enum wlan_phymode phymode);

@@ -442,6 +442,27 @@ scm_get_mld_addr_by_link_addr(struct wlan_objmgr_pdev *pdev,
 bool scm_scan_entries_contain_cmn_akm(struct scan_cache_entry *entry1,
 				      struct scan_cache_entry *entry2);
 
+/**
+ * scm_fetch_entry_chan_linkid_params_for_rnr() - API to fetch basic RNR fields
+ * related to BSSID
+ * @pdev: Pointer to PDEV
+ * @bssid: BSSID of the corresponding RNR values
+ * @entry_chan_num: Pointer to hold chan num
+ * @entry_op_class: Pointer to hold op_class
+ * @entry_link_id: Pointer to hold link id
+ *
+ * Filters scan entry with @bssid and fills the entry's chan_num, op_class
+ * and link_id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+scm_fetch_entry_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
+					   struct qdf_mac_addr *bssid,
+					   uint8_t *entry_chan_num,
+					   uint8_t *entry_op_class,
+					   uint8_t *entry_link_id);
+
 #ifdef CONFIG_BAND_6GHZ
 /**
  * util_scan_get_he_6g_params() - Function provides HE 6GHz params from HE ops

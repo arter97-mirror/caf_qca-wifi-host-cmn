@@ -713,4 +713,13 @@ QDF_STATUS reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
  * Return: disable_unii_1_2a
  */
 bool reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * reg_get_behav_limit_from_phymode() - Get behav_limit from wlan_phymode
+ * @phymode: wlan_phymode
+ *
+ * Return: enum behav_limit
+ */
+enum behav_limit
+reg_get_behav_limit_from_phymode(enum wlan_phymode phymode);
 #endif

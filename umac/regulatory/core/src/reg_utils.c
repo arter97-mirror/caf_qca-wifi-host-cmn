@@ -1639,3 +1639,42 @@ bool reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev)
 
 	return pdev_priv_obj->disable_unii_1_2a;
 }
+
+#ifdef WLAN_FEATURE_11BE
+static enum behav_limit
+reg_get_behav_limit_from_11be_phymode(enum wlan_phymode phymode)
+{
+	switch (phymode) {
+	case WLAN_PHYMODE_11BEG_EHT40PLUS:
+		return BEHAV_BW40_LOW_PRIMARY;
+	case WLAN_PHYMODE_11BEG_EHT40MINUS:
+		return BEHAV_BW40_HIGH_PRIMARY;
+	default:
+		return BEHAV_NONE;
+	}
+}
+#else
+static enum behav_limit
+reg_get_behav_limit_from_11be_phymode(enum wlan_phymode phymode)
+{
+	return BEHAV_NONE;
+}
+#endif
+
+enum behav_limit
+reg_get_behav_limit_from_phymode(enum wlan_phymode phymode)
+{
+	switch (phymode) {
+	case WLAN_PHYMODE_11NG_HT40PLUS:
+	case WLAN_PHYMODE_11AC_VHT40PLUS_2G:
+	case WLAN_PHYMODE_11AXG_HE40PLUS:
+		return BEHAV_BW40_LOW_PRIMARY;
+	case WLAN_PHYMODE_11NG_HT40MINUS:
+	case WLAN_PHYMODE_11AC_VHT40MINUS_2G:
+	case WLAN_PHYMODE_11AC_VHT80_80:
+	case WLAN_PHYMODE_11AXA_HE80_80:
+		return BEHAV_BW80_PLUS;
+	default:
+		return reg_get_behav_limit_from_11be_phymode(phymode);
+	}
+}

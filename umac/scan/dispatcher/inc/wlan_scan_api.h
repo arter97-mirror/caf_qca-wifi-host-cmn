@@ -693,6 +693,27 @@ wlan_scan_deregister_cached_scan_ev_handler(struct wlan_objmgr_pdev *pdev)
 void wlan_scan_set_obss_scan_enable(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * wlan_scan_fetch_chan_linkid_params_for_rnr() - Wrapper API to fetch basic
+ * fields related to RNR
+ * @pdev: Pointer to PDEV
+ * @bssid: BSSID to of the entry
+ * @entry_chan_num: Pointer to hold entry chan_num
+ * @entry_op_class: Pointer to hold entry op_class
+ * @entry_link_id: Pointer to hold entry's MLO (IEEE 802.11be) link ID
+ *
+ * Filters scan entry with @bssid and fills the entry's chan_num, op_class
+ * and link_id
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_scan_fetch_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
+					   struct qdf_mac_addr *bssid,
+					   uint8_t *entry_chan_num,
+					   uint8_t *entry_op_class,
+					   uint8_t *entry_link_id);
+
+/**
  * wlan_scan_flush_results() - Flush scan results from the scan cache
  * @pdev: pointer to pdev object
  * @filter: filter to apply for flushing results

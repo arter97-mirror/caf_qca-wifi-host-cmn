@@ -921,6 +921,19 @@ wlan_scan_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 							ch_freq);
 }
 
+QDF_STATUS
+wlan_scan_fetch_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
+					   struct qdf_mac_addr *bssid,
+					   uint8_t *entry_chan_num,
+					   uint8_t *entry_op_class,
+					   uint8_t *entry_link_id)
+{
+	return scm_fetch_entry_chan_linkid_params_for_rnr(pdev, bssid,
+							  entry_chan_num,
+							  entry_op_class,
+							  entry_link_id);
+}
+
 #ifdef WLAN_AUX_SUPPORT
 bool wlan_scan_get_aux_support(struct wlan_objmgr_psoc *psoc)
 

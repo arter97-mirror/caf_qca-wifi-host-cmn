@@ -29,6 +29,7 @@
 #include "wlan_reg_services_api.h"
 #include "wlan_cm_bss_score_param.h"
 #include "wlan_psoc_mlme.h"
+#include "wlan_mlme_api.h"
 
 /**
  * scm_check_open() - Check if scan entry support open authmode
@@ -894,6 +895,39 @@ static inline bool scm_mlo_filter_match(struct wlan_objmgr_pdev *pdev,
 	return true;
 }
 #endif
+
+QDF_STATUS
+scm_fetch_entry_chan_linkid_params_for_rnr(struct wlan_objmgr_pdev *pdev,
+					   struct qdf_mac_addr *bssid,
+					   uint8_t *entry_chan_num,
+					   uint8_t *entry_op_class,
+					   uint8_t *entry_link_id)
+{
+	enum wlan_phymode phymode;
+	enum phy_ch_width ch_width;
+	enum behav_limit behav_limit;
+	uint8_t op_class, chan_num;
+	struct scan_cache_entry *entry;
+
+	entry = scm_scan_get_entry_by_bssid(pdev, bssid);
+	if (!entry)
+		return QDF_STATUS_E_NOENT;
+
+	phymode = util_scan_entry_phymode(entry);
+	ch_width = wlan_mlme_get_ch_width_from_phymode(phymode);
+	behav_limit = wlan_reg_get_behav_limit_from_phymode(phymode);
+	wlan_reg_freq_width_to_chan_op_class(pdev, entry->channel.chan_freq,
+					     wlan_reg_get_bw_value(ch_width),
+					     true, BIT(behav_limit), &op_class,
+					     &chan_num);
+	*entry_chan_num = chan_num;
+	*entry_op_class = op_class;
+	*entry_link_id = util_scan_entry_self_linkid(entry);
+
+	util_scan_free_cache_entry(entry);
+
+	return QDF_STATUS_SUCCESS;
+}
 
 #ifdef WLAN_FEATURE_11BE
 

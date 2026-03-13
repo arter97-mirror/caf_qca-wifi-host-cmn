@@ -2212,3 +2212,11 @@ bool wlan_reg_is_indoor_ap_detected(struct wlan_objmgr_pdev *pdev)
 	return reg_is_indoor_ap_detected(pdev);
 }
 #endif
+
+enum behav_limit
+wlan_reg_get_behav_limit_from_phymode(enum wlan_phymode phymode)
+{
+	return reg_get_behav_limit_from_phymode(phymode);
+}
+
+qdf_export_symbol(wlan_reg_get_behav_limit_from_phymode);
