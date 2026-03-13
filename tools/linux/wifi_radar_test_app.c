@@ -122,7 +122,7 @@ int initialize_wr_dump_file(char *iface)
 	if (tm_val) {
 		strftime(time, 50, "%Y_%m_%d_%T", tm_val);
 		snprintf(filename, sizeof(filename), WR_DUMP_FILE, iface, time);
-		fd = open(filename, O_WRONLY | O_CREAT);
+		fd = open(filename, O_WRONLY | O_CREAT, 0666);
 	} else {
 		perror("Unable to get time value to generate filename\n");
 	}
