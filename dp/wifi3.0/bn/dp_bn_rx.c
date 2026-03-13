@@ -85,7 +85,16 @@ dp_rx_ring_record_entry_bn(struct dp_soc *soc, uint8_t ring_num,
 		dp_rx_ring_record_entry(soc, ring_num, ring_desc);
 	}
 }
+#else
+static inline void
+dp_rx_ring_record_entry_bn(struct dp_soc *soc, uint8_t ring_num,
+			   hal_ring_desc_t ring_desc, uint8_t cc_status,
+			   struct dp_rx_desc *rx_desc)
+{
+}
+#endif /* WLAN_FEATURE_DP_RX_RING_HISTORY */
 
+#ifdef DP_RX_MSDU_DONE_FAILURE_DEBUG
 /**
  * dp_rx_msdu_done_failure_debug_bn() - Debug MSDU DONE failure for BN
  * @soc: DP SOC handle
@@ -106,20 +115,13 @@ dp_rx_msdu_done_failure_debug_bn(struct dp_soc *soc, qdf_nbuf_t nbuf)
 }
 #else
 static inline void
-dp_rx_ring_record_entry_bn(struct dp_soc *soc, uint8_t ring_num,
-			   hal_ring_desc_t ring_desc, uint8_t cc_status,
-			   struct dp_rx_desc *rx_desc)
-{
-}
-
-static inline void
 dp_rx_msdu_done_failure_debug_bn(struct dp_soc *soc, qdf_nbuf_t nbuf)
 {
 	dp_err("MSDU DONE failure %d reo_ring_id=%d",
 	       soc->stats.rx.err.msdu_done_fail,
 	       QDF_NBUF_CB_RX_CTX_ID(nbuf));
 }
-#endif /* WLAN_FEATURE_DP_RX_RING_HISTORY */
+#endif /* DP_RX_MSDU_DONE_FAILURE_DEBUG */
 
 /**
  * dp_rx_handle_nbuf_rxdma_err_bn() - Handle RXDMA error processing
