@@ -278,6 +278,27 @@ QDF_STATUS qdf_crypto_ecdh_generate_public_key(const uint8_t *private_key,
 					       size_t private_key_size,
 					       uint8_t *public_key,
 					       size_t *public_key_size);
+
+/**
+ * qdf_crypto_ecdh_compute_shared_secret() - Compute ECDH shared secret
+ * @private_key: Local private key buffer
+ * @private_key_size: Size of private key
+ * @peer_public_key: Peer's public key buffer
+ * @peer_public_key_size: Size of peer's public key
+ * @shared_secret: Buffer to store shared secret
+ * @shared_secret_size: Size of shared secret buffer
+ *
+ * Computes the ECDH shared secret using local private key and peer's
+ * public key. Uses heap-allocated scatterlists to avoid CONFIG_VMAP_STACK.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS qdf_crypto_ecdh_compute_shared_secret(const uint8_t *private_key,
+						 size_t private_key_size,
+						 const uint8_t *peer_public_key,
+						 size_t peer_public_key_size,
+						 uint8_t *shared_secret,
+						 size_t *shared_secret_size);
 #endif /* WLAN_FEATURE_11BN_SMD */
 
 #ifdef __cplusplus

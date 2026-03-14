@@ -1020,4 +1020,146 @@ out:
 }
 
 qdf_export_symbol(qdf_crypto_ecdh_generate_public_key);
+
+QDF_STATUS qdf_crypto_ecdh_compute_shared_secret(const uint8_t *private_key,
+						 size_t private_key_size,
+						 const uint8_t *peer_public_key,
+						 size_t peer_public_key_size,
+						 uint8_t *shared_secret,
+						 size_t *shared_secret_size)
+{
+	struct crypto_kpp *tfm = NULL;
+	struct kpp_request *req = NULL;
+	struct scatterlist *sg_in = NULL;
+	struct scatterlist *sg_out = NULL;
+	uint8_t *input_buf = NULL;
+	uint8_t *output_buf = NULL;
+	unsigned int output_buf_size;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	int ret;
+
+	if (!private_key || !peer_public_key || !shared_secret ||
+	    !shared_secret_size ||
+	    private_key_size != QDF_ECDH_PRIVATE_KEY_SIZE) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Invalid parameters for shared secret computation");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Allocate transform */
+	tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
+	if (IS_ERR(tfm)) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to allocate KPP transform");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* Set private key */
+	status = qdf_crypto_ecdh_set_secret(tfm, private_key, private_key_size);
+	if (status != QDF_STATUS_SUCCESS) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to set private key");
+		goto out;
+	}
+
+	/* Get required output buffer size */
+	output_buf_size = crypto_kpp_maxsize(tfm);
+	if (output_buf_size == 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Invalid output buffer size");
+		status = QDF_STATUS_E_FAILURE;
+		goto out;
+	}
+
+	/* Allocate input buffer on heap (CONFIG_VMAP_STACK) */
+	input_buf = qdf_mem_malloc(peer_public_key_size);
+	if (!input_buf) {
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+	qdf_mem_copy(input_buf, peer_public_key, peer_public_key_size);
+
+	/* Allocate output buffer on heap (CONFIG_VMAP_STACK) */
+	output_buf = qdf_mem_malloc(output_buf_size);
+	if (!output_buf) {
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	/* Allocate scatterlists on heap (CONFIG_VMAP_STACK) */
+	sg_in = qdf_mem_malloc(sizeof(*sg_in));
+	if (!sg_in) {
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	sg_out = qdf_mem_malloc(sizeof(*sg_out));
+	if (!sg_out) {
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	sg_init_one(sg_in, input_buf, peer_public_key_size);
+	sg_init_one(sg_out, output_buf, output_buf_size);
+
+	/* Allocate request */
+	req = kpp_request_alloc(tfm, GFP_KERNEL);
+	if (!req) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to allocate KPP request");
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	kpp_request_set_input(req, sg_in, peer_public_key_size);
+	kpp_request_set_output(req, sg_out, output_buf_size);
+
+	/* Compute shared secret */
+	ret = crypto_kpp_compute_shared_secret(req);
+	if (ret < 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to compute shared secret: %d", ret);
+		status = QDF_STATUS_E_FAILURE;
+		goto out;
+	}
+
+	/* Copy shared secret to output buffer */
+	if (output_buf_size > *shared_secret_size) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Output buffer too small: need %u, have %zu",
+			  output_buf_size, *shared_secret_size);
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	qdf_mem_copy(shared_secret, output_buf, output_buf_size);
+	*shared_secret_size = output_buf_size;
+
+	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
+		  "Computed ECDH shared secret (%zu bytes)",
+		  *shared_secret_size);
+	status = QDF_STATUS_SUCCESS;
+
+out:
+	if (req)
+		kpp_request_free(req);
+	if (sg_out)
+		qdf_mem_free(sg_out);
+	if (sg_in)
+		qdf_mem_free(sg_in);
+	if (output_buf) {
+		qdf_mem_zero(output_buf, output_buf_size);
+		qdf_mem_free(output_buf);
+	}
+	if (input_buf) {
+		qdf_mem_zero(input_buf, peer_public_key_size);
+		qdf_mem_free(input_buf);
+	}
+	if (tfm)
+		crypto_free_kpp(tfm);
+
+	return status;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_compute_shared_secret);
 #endif /* WLAN_FEATURE_11BN_SMD */
