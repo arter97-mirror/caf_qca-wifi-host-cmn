@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2018, 2020 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -200,6 +201,37 @@ int qdf_crypto_aes_gmac(const uint8_t *key, uint16_t key_length,
  */
 int qdf_crypto_aes_128_cmac(const uint8_t *key, const uint8_t *data,
 			    uint16_t len, uint8_t *mic);
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/* ECDH key sizes for NIST P-256 curve */
+#define QDF_ECDH_PRIVATE_KEY_SIZE    32  /* 256 bits */
+#define QDF_ECDH_PUBLIC_KEY_SIZE     64  /* Uncompressed: 0x04 + X + Y */
+#define QDF_ECDH_SHARED_SECRET_SIZE  32  /* 256 bits */
+
+/**
+ * struct qdf_ecdh_key_pair - ECDH key pair structure
+ * @private_key: Private key buffer
+ * @private_key_len: Length of private key
+ * @public_key: Public key buffer (uncompressed format)
+ * @public_key_len: Length of public key
+ */
+struct qdf_ecdh_key_pair {
+	uint8_t private_key[QDF_ECDH_PRIVATE_KEY_SIZE];
+	size_t private_key_len;
+	uint8_t public_key[QDF_ECDH_PUBLIC_KEY_SIZE];
+	size_t public_key_len;
+};
+
+/**
+ * struct qdf_ecdh_shared_secret - ECDH shared secret structure
+ * @secret: Shared secret buffer
+ * @secret_len: Length of shared secret
+ */
+struct qdf_ecdh_shared_secret {
+	uint8_t secret[QDF_ECDH_SHARED_SECRET_SIZE];
+	size_t secret_len;
+};
+#endif /* WLAN_FEATURE_11BN_SMD */
 
 #ifdef __cplusplus
 }
