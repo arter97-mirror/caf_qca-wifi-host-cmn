@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -30,6 +31,10 @@
 #include <crypto/aes.h>
 #include <crypto/skcipher.h>
 #include <crypto/aead.h>
+#ifdef WLAN_FEATURE_11BN_SMD
+#include <crypto/kpp.h>
+#include <crypto/ecdh.h>
+#endif /* WLAN_FEATURE_11BN_SMD */
 #include <linux/ieee80211.h>
 #include <qdf_module.h>
 
@@ -742,3 +747,33 @@ int qdf_crypto_aes_gmac(uint8_t *key, uint16_t key_length,
 	return -EINVAL;
 }
 #endif
+
+#ifdef WLAN_FEATURE_11BN_SMD
+QDF_STATUS qdf_crypto_ecdh_init(void)
+{
+	struct crypto_kpp *test_tfm;
+
+	/* Verify ECDH support is available */
+	test_tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
+	if (IS_ERR(test_tfm)) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "ECDH not supported: %ld", PTR_ERR(test_tfm));
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	crypto_free_kpp(test_tfm);
+	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
+		  "ECDH crypto initialized successfully");
+	return QDF_STATUS_SUCCESS;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_init);
+
+void qdf_crypto_ecdh_deinit(void)
+{
+	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
+		  "ECDH crypto deinitialized");
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_deinit);
+#endif /* WLAN_FEATURE_11BN_SMD */

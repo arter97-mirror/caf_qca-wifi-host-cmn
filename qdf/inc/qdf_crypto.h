@@ -231,6 +231,23 @@ struct qdf_ecdh_shared_secret {
 	uint8_t secret[QDF_ECDH_SHARED_SECRET_SIZE];
 	size_t secret_len;
 };
+
+/**
+ * qdf_crypto_ecdh_init() - Initialize ECDH crypto subsystem
+ *
+ * Initializes the kernel crypto transform for ECDH operations.
+ * Must be called before any ECDH operations.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS qdf_crypto_ecdh_init(void);
+
+/**
+ * qdf_crypto_ecdh_deinit() - Deinitialize ECDH crypto subsystem
+ *
+ * Frees resources allocated by qdf_crypto_ecdh_init().
+ */
+void qdf_crypto_ecdh_deinit(void);
 #endif /* WLAN_FEATURE_11BN_SMD */
 
 #ifdef __cplusplus
