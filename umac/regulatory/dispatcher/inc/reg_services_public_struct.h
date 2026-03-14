@@ -632,22 +632,35 @@ typedef enum {
 	REGDOMAIN_COUNT
 } v_REGDOMAIN_t;
 
-/**
+/*
+ * NB: not using kernel-doc comment marker since kernel-doc doesn't
+ *     properly handle the conditional compilation
  * enum ctl_value - CTL value
  * @CTL_FCC: CTL FCC
  * @CTL_MKK: CTL MKK
  * @CTL_ETSI: CTL ETSI
- * @CTL_KOR: CTL KOR
- * @CTL_CHN: CTL CHINA
+ * @CTL_KOR: CTL KOR (0x50; on WLAN_REG_AUTO platforms remapped to CTL_FCC)
+ * @CTL_CHN: CTL CHINA (0x60; on WLAN_REG_AUTO platforms remapped to CTL_ETSI)
  * @CTL_USER_DEF: CTL USER_DEF
  * @CTL_NONE: CTL NONE
+ *
+ * On WLAN_REG_AUTO platforms, Korea (KOR) follows FCC regulations and
+ * China (CHN) follows ETSI regulations for simplified compliance.
+ * CTL_KOR and CTL_CHN are aliased to CTL_FCC and CTL_ETSI respectively.
+ * Code using switch statements or direct comparisons should account for
+ * this aliasing.
  */
 enum ctl_value {
 	CTL_FCC = 0x10,
 	CTL_ETSI = 0x30,
 	CTL_MKK = 0x40,
+#if defined(WLAN_REG_AUTO)
+	CTL_KOR = CTL_FCC,
+	CTL_CHN = CTL_ETSI,
+#else
 	CTL_KOR = 0x50,
 	CTL_CHN = 0x60,
+#endif
 	CTL_USER_DEF = 0x70,
 	CTL_NONE = 0xff
 };
