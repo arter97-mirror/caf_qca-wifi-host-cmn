@@ -905,4 +905,119 @@ QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
 }
 
 qdf_export_symbol(qdf_crypto_ecdh_generate_private_key);
+
+QDF_STATUS qdf_crypto_ecdh_generate_public_key(const uint8_t *private_key,
+					       size_t private_key_size,
+					       uint8_t *public_key,
+					       size_t *public_key_size)
+{
+	struct crypto_kpp *tfm = NULL;
+	struct kpp_request *req = NULL;
+	struct scatterlist *sg_out = NULL;
+	uint8_t *output_buf = NULL;
+	unsigned int output_buf_size;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	int ret;
+
+	if (!private_key || !public_key || !public_key_size ||
+	    private_key_size != QDF_ECDH_PRIVATE_KEY_SIZE) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Invalid parameters for public key generation");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Allocate transform */
+	tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
+	if (IS_ERR(tfm)) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to allocate KPP transform");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	/* Set private key */
+	status = qdf_crypto_ecdh_set_secret(tfm, private_key, private_key_size);
+	if (status != QDF_STATUS_SUCCESS) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to set private key");
+		goto out;
+	}
+
+	/* Get required output buffer size */
+	output_buf_size = crypto_kpp_maxsize(tfm);
+	if (output_buf_size == 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Invalid output buffer size");
+		status = QDF_STATUS_E_FAILURE;
+		goto out;
+	}
+
+	/* Allocate output buffer on heap (CONFIG_VMAP_STACK) */
+	output_buf = qdf_mem_malloc(output_buf_size);
+	if (!output_buf) {
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	/* Allocate scatterlist on heap (CONFIG_VMAP_STACK) */
+	sg_out = qdf_mem_malloc(sizeof(*sg_out));
+	if (!sg_out) {
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	sg_init_one(sg_out, output_buf, output_buf_size);
+
+	/* Allocate request */
+	req = kpp_request_alloc(tfm, GFP_KERNEL);
+	if (!req) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to allocate KPP request");
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	kpp_request_set_input(req, NULL, 0);
+	kpp_request_set_output(req, sg_out, output_buf_size);
+
+	/* Generate public key */
+	ret = crypto_kpp_generate_public_key(req);
+	if (ret < 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to generate public key: %d", ret);
+		status = QDF_STATUS_E_FAILURE;
+		goto out;
+	}
+
+	/* Copy public key to output buffer */
+	if (output_buf_size > *public_key_size) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Output buffer too small: need %u, have %zu",
+			  output_buf_size, *public_key_size);
+		status = QDF_STATUS_E_NOMEM;
+		goto out;
+	}
+
+	qdf_mem_copy(public_key, output_buf, output_buf_size);
+	*public_key_size = output_buf_size;
+
+	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
+		  "Generated ECDH public key (%zu bytes)", *public_key_size);
+	status = QDF_STATUS_SUCCESS;
+
+out:
+	if (req)
+		kpp_request_free(req);
+	if (sg_out)
+		qdf_mem_free(sg_out);
+	if (output_buf) {
+		qdf_mem_zero(output_buf, output_buf_size);
+		qdf_mem_free(output_buf);
+	}
+	if (tfm)
+		crypto_free_kpp(tfm);
+
+	return status;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_generate_public_key);
 #endif /* WLAN_FEATURE_11BN_SMD */

@@ -261,6 +261,23 @@ void qdf_crypto_ecdh_deinit(void);
  */
 QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
 						size_t key_size);
+
+/**
+ * qdf_crypto_ecdh_generate_public_key() - Generate ECDH public key
+ * @private_key: Private key buffer
+ * @private_key_size: Size of private key
+ * @public_key: Buffer to store public key
+ * @public_key_size: Size of public key buffer
+ *
+ * Generates the public key corresponding to the given private key.
+ * Uses heap-allocated scatterlists to avoid CONFIG_VMAP_STACK issues.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS qdf_crypto_ecdh_generate_public_key(const uint8_t *private_key,
+					       size_t private_key_size,
+					       uint8_t *public_key,
+					       size_t *public_key_size);
 #endif /* WLAN_FEATURE_11BN_SMD */
 
 #ifdef __cplusplus
