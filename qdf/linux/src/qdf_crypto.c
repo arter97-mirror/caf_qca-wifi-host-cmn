@@ -34,6 +34,7 @@
 #ifdef WLAN_FEATURE_11BN_SMD
 #include <crypto/kpp.h>
 #include <crypto/ecdh.h>
+#include <linux/random.h>
 #endif /* WLAN_FEATURE_11BN_SMD */
 #include <linux/ieee80211.h>
 #include <qdf_module.h>
@@ -776,4 +777,132 @@ void qdf_crypto_ecdh_deinit(void)
 }
 
 qdf_export_symbol(qdf_crypto_ecdh_deinit);
+
+/**
+ * qdf_crypto_ecdh_set_secret() - Set private key in transform
+ * @tfm: KPP transform
+ * @private_key: Private key buffer
+ * @key_size: Size of private key
+ *
+ * Internal helper to encode and set private key in crypto transform.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+static QDF_STATUS qdf_crypto_ecdh_set_secret(struct crypto_kpp *tfm,
+					     const uint8_t *private_key,
+					     size_t key_size)
+{
+	char *key_buf = NULL;
+	unsigned int buf_size;
+	int ret;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+	struct ecdh params = {0};
+
+	params.key = (char *)private_key;
+	params.key_size = key_size;
+
+	buf_size = crypto_ecdh_key_len(&params);
+	if (buf_size == 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Invalid ECDH key buffer size");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	key_buf = qdf_mem_malloc(buf_size);
+	if (!key_buf)
+		return QDF_STATUS_E_NOMEM;
+
+	ret = crypto_ecdh_encode_key(key_buf, buf_size, &params);
+	if (ret < 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to encode ECDH key: %d", ret);
+		goto out;
+	}
+
+	ret = crypto_kpp_set_secret(tfm, key_buf, buf_size);
+	if (ret < 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to set ECDH secret: %d", ret);
+		goto out;
+	}
+
+	status = QDF_STATUS_SUCCESS;
+
+out:
+	if (key_buf) {
+		qdf_mem_zero(key_buf, buf_size);
+		qdf_mem_free(key_buf);
+	}
+	return status;
+}
+
+QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
+						size_t key_size)
+{
+	int attempts = 0;
+	int ret;
+	char *key_buf = NULL;
+	unsigned int buf_size;
+	struct ecdh params = {0};
+	struct crypto_kpp *test_tfm = NULL;
+	const int MAX_ATTEMPTS = 10;
+
+	if (!private_key || key_size != QDF_ECDH_PRIVATE_KEY_SIZE) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Invalid parameters for private key generation");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	test_tfm = crypto_alloc_kpp("ecdh-nist-p256", 0, 0);
+	if (IS_ERR(test_tfm)) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to allocate test transform");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	params.key_size = key_size;
+	buf_size = crypto_ecdh_key_len(&params);
+
+	key_buf = qdf_mem_malloc(buf_size);
+	if (!key_buf) {
+		crypto_free_kpp(test_tfm);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	/* Generate and validate private key */
+	do {
+		get_random_bytes(private_key, key_size);
+		attempts++;
+
+		params.key = (char *)private_key;
+		params.key_size = key_size;
+
+		ret = crypto_ecdh_encode_key(key_buf, buf_size, &params);
+		if (ret < 0)
+			continue;
+
+		ret = crypto_kpp_set_secret(test_tfm, key_buf, buf_size);
+		if (ret == 0)
+			break;  /* Valid key found */
+
+	} while (attempts < MAX_ATTEMPTS);
+
+	qdf_mem_zero(key_buf, buf_size);
+	qdf_mem_free(key_buf);
+	crypto_free_kpp(test_tfm);
+
+	if (ret < 0) {
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+			  "Failed to generate valid private key after %d attempts",
+			  attempts);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_INFO,
+		  "Generated ECDH private key (%zu bytes) in %d attempt(s)",
+		  key_size, attempts);
+	return QDF_STATUS_SUCCESS;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_generate_private_key);
 #endif /* WLAN_FEATURE_11BN_SMD */

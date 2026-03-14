@@ -248,6 +248,19 @@ QDF_STATUS qdf_crypto_ecdh_init(void);
  * Frees resources allocated by qdf_crypto_ecdh_init().
  */
 void qdf_crypto_ecdh_deinit(void);
+
+/**
+ * qdf_crypto_ecdh_generate_private_key() - Generate ECDH private key
+ * @private_key: Buffer to store private key
+ * @key_size: Size of private key buffer
+ *
+ * Generates a cryptographically secure random private key for ECDH.
+ * The key is validated before returning.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
+						size_t key_size);
 #endif /* WLAN_FEATURE_11BN_SMD */
 
 #ifdef __cplusplus
