@@ -164,7 +164,7 @@ void __qdf_page_pool_put_page(__qdf_page_pool_t pp, struct page *page,
 	return page_pool_put_full_page(pp, page, direct_recycle);
 }
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 9, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0))
 static void set_page_param_frag_flag(struct page_pool_params *pp_params)
 {
 	pp_params->flags |= PP_FLAG_PAGE_FRAG;
