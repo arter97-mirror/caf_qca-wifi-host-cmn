@@ -1056,6 +1056,20 @@ mlo_mgr_copy_peer_delete_param_for_link_switch(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS
 mlo_mgr_get_link_switch_peer_mac_addr(struct wlan_objmgr_vdev *vdev,
 				      struct qdf_mac_addr *peer_mac);
+
+/**
+ * mlo_mgr_optimized_link_switch_in_progress() - Check if optimized linkswitch
+ * inprogress
+ * @psoc: pointer to psoc object
+ * @vdev: pointer to vdev object
+ *
+ * This API checks if linkswitch is inprogress and optimized link switch is
+ * supported.
+ *
+ * Return: true if supported, false otherwise
+ */
+bool mlo_mgr_optimized_link_switch_in_progress(struct wlan_objmgr_psoc *psoc,
+					       struct wlan_objmgr_vdev *vdev);
 #else
 static inline QDF_STATUS
 mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1394,6 +1408,13 @@ void mlo_mgr_set_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev,
 
 static inline
 bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+
+static inline
+bool mlo_mgr_optimized_link_switch_in_progress(struct wlan_objmgr_psoc *psoc,
+					       struct wlan_objmgr_vdev *vdev)
 {
 	return false;
 }

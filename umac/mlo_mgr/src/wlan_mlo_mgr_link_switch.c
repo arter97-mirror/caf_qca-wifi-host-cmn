@@ -2744,3 +2744,10 @@ mlo_mgr_get_link_switch_peer_mac_addr(struct wlan_objmgr_vdev *vdev,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+bool mlo_mgr_optimized_link_switch_in_progress(struct wlan_objmgr_psoc *psoc,
+					       struct wlan_objmgr_vdev *vdev)
+{
+	return wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev) &&
+		mlo_mgr_is_unified_connect_disconnect_supported(psoc);
+}
