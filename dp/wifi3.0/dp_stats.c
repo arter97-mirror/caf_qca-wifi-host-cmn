@@ -8689,16 +8689,10 @@ static inline void dp_print_dal_rx_stats(struct dp_soc *soc)
 		return;
 
 	DP_PRINT_STATS("DAL Rx stats:");
-	DP_PRINT_STATS("Failed drop count on ring %d: %llu",
-		       DAL_DP_DEFAULT_REO_STA - 1,
-		       dal_ctx->stats.rx.rx_dropped[DAL_DP_DEFAULT_REO_STA - 1]);
 	DP_PRINT_STATS("No support drop count on ring %d: %llu",
 		       DAL_DP_DEFAULT_REO_STA - 1,
 		       dal_ctx->stats.rx.rx_dropped_nosupport[DAL_DP_DEFAULT_REO_STA - 1]);
 
-	DP_PRINT_STATS("Failed drop count on ring %d: %llu",
-		       DAL_DP_DEFAULT_REO_SAP - 1,
-		       dal_ctx->stats.rx.rx_dropped[DAL_DP_DEFAULT_REO_SAP - 1]);
 	DP_PRINT_STATS("No support drop count on ring %d: %llu",
 		       DAL_DP_DEFAULT_REO_SAP - 1,
 		       dal_ctx->stats.rx.rx_dropped_nosupport[DAL_DP_DEFAULT_REO_SAP - 1]);

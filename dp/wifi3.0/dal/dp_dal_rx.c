@@ -704,8 +704,6 @@ more_data:
 		if (global_plat_ops && global_plat_ops->rx) {
 			ret = global_plat_ops->rx(dal_ctx, &cnt, ring_id);
 			if (qdf_unlikely(!ret)) {
-				DP_STATS_INC(dal_ctx,
-					     rx.rx_dropped[ring_id], 1);
 				dp_debug("No RX packets available for ring %u",
 					 ring_id);
 				goto done;
