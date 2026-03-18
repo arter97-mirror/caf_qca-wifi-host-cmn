@@ -3220,18 +3220,30 @@ uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
 	struct wlan_crypto_comp_priv *crypto_priv;
 	struct wlan_crypto_params *crypto_params;
 	uint8_t *rsn_pmkid = NULL, pmkid_cnt = 0;
+	struct wlan_crypto_pmksa *pmksa_ptr = pmksa;
+	int32_t akm;
 
-	if (!frm) {
+	if (!frm)
 		return NULL;
-	}
 
 	crypto_params = wlan_crypto_vdev_get_comp_params(vdev, &crypto_priv);
 
-	if (!crypto_params) {
+	if (!crypto_params)
 		return NULL;
+
+	akm = wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_KEY_MGMT);
+
+	/* Set pmksa_ptr to NULL if no valid pmksa or no lifetime configured */
+	if ((akm > 0 && WLAN_CRYPTO_IS_AKM_ENTERPRISE(akm)) &&
+	    (!pmksa || pmksa->pmk_lifetime == 0 ||
+	     pmksa->pmk_lifetime_threshold == 0)) {
+		pmksa_ptr = NULL;
+		crypto_debug("No valid PMKSA or lifetime not configured, using NULL");
 	}
 
-	rsn_pmkid = generate_pmkid(vdev, pmksa, &pmkid_cnt);
+	/* Call generate_pmkid only once with the determined pointer */
+	rsn_pmkid = generate_pmkid(vdev, pmksa_ptr, &pmkid_cnt);
+
 
 	*frm++ = WLAN_ELEMID_RSN;
 	*frm++ = 0;
