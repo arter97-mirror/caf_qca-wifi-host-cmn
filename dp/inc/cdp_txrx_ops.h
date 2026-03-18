@@ -2395,6 +2395,8 @@ struct cdp_throttle_ops {
  * @ipa_tx_buf_alloc_map: allocate tx buffer and dma map it for opt_dp
  * @ipa_opt_dp_set_tx_doorbell: set tx doorbell for opt_dp
  * @ipa_opt_dp_reset_tx_doorbell: reset tx doorbell for opt_dp
+ * @ipa_rx_pp_cntrs_init: Initialize rx page pool IPA counters
+ * @ipa_rx_pp_cntrs_deinit: Deinitialize rx page pool IPA counters
  * @ipa_opt_dp_ctrl_debug_enable: get opt_dp_ctrl debug ini value
  * @ipa_ast_create: Create/Update ast entry
  * @ipa_get_wdi_version: Get WDI version
@@ -2524,6 +2526,8 @@ struct cdp_ipa_ops {
 	int (*ipa_tx_buf_alloc_map)(struct cdp_soc_t *soc_hdl);
 	void (*ipa_opt_dp_set_tx_doorbell)(struct cdp_soc_t *soc_hdl);
 	void (*ipa_opt_dp_reset_tx_doorbell)(struct cdp_soc_t *soc_hdl);
+	QDF_STATUS (*ipa_rx_pp_cntrs_init)(struct cdp_soc_t *soc_hdl);
+	QDF_STATUS (*ipa_rx_pp_cntrs_deinit)(struct cdp_soc_t *soc_hdl);
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	bool (*ipa_opt_dp_ctrl_debug_enable)(struct cdp_soc_t *soc_hdl);
 #endif

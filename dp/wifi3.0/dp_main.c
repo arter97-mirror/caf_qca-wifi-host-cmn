@@ -15372,6 +15372,8 @@ static struct cdp_ipa_ops dp_ops_ipa = {
 	.ipa_tx_buf_alloc_map = dp_ipa_tx_buf_alloc_map,
 	.ipa_opt_dp_set_tx_doorbell = dp_ipa_opt_dp_set_tx_doorbell,
 	.ipa_opt_dp_reset_tx_doorbell = dp_ipa_opt_dp_reset_tx_doorbell,
+	.ipa_rx_pp_cntrs_init = dp_ipa_rx_pp_cntrs_init,
+	.ipa_rx_pp_cntrs_deinit = dp_ipa_rx_pp_cntrs_deinit,
 #ifdef IPA_OPT_WIFI_DP_CTRL
 	.ipa_opt_dp_ctrl_debug_enable = dp_ipa_opt_dp_ctrl_debug_enable,
 #endif

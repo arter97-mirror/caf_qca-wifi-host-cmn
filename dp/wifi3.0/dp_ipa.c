@@ -4298,6 +4298,131 @@ void dp_ipa_opt_dp_reset_tx_doorbell(struct cdp_soc_t *soc_hdl)
 	ipa_res = &soc->ipa_resource;
 	dp_ipa_reset_tx_doorbell_pa(soc, ipa_res);
 }
+
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+static QDF_STATUS dp_rx_pp_ipa_ref_cntrs_init(struct dp_soc *soc,
+					      struct dp_rx_page_pool *rx_pp)
+{
+	struct qdf_mem_multi_page_t *cntr_pages;
+	struct dp_rx_pp_ipa_map_cntr *cntr;
+	uint64_t iova_base;
+	uint64_t iova_size;
+	uint32_t num_ref_cntrs;
+	int page_idx;
+	int offset;
+
+	if (pld_get_iova_info(soc->osdev->dev, &iova_base, &iova_size))
+		return QDF_STATUS_E_INVAL;
+
+	cntr_pages = &rx_pp->iova_cntr_pages;
+	num_ref_cntrs = iova_size / PAGE_SIZE;
+
+	dp_desc_multi_pages_mem_alloc(soc, QDF_DP_RX_IPA_MAP_REFCNT_TYPE,
+				      cntr_pages, sizeof(*cntr), num_ref_cntrs,
+				      0, true);
+	if (!cntr_pages->num_pages) {
+		dp_err("Failed to allocate memory for ipa map counters");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	for (page_idx = 0; page_idx < cntr_pages->num_pages; page_idx++) {
+		for (offset = 0; offset < PAGE_SIZE; offset += sizeof(*cntr)) {
+			cntr = cntr_pages->cacheable_pages[page_idx] + offset;
+			qdf_atomic_init(&cntr->ref_cnt);
+		}
+	}
+
+	rx_pp->iova_base_addr = iova_base;
+	rx_pp->iova_size = iova_size;
+	rx_pp->idx_shift =
+		dp_log2_ceil(cntr_pages->num_element_per_page);
+	rx_pp->offset_mask =  (1 << rx_pp->idx_shift) - 1;
+	rx_pp->ipa_cntrs_init = true;
+
+	dp_info("num_ref_cntrs %u idx_shift %d offset mask 0x%x", num_ref_cntrs,
+		rx_pp->idx_shift, rx_pp->offset_mask);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+void dp_rx_pp_ipa_ref_cntrs_deinit(struct dp_soc *soc,
+				   struct dp_rx_page_pool *rx_pp)
+{
+	struct qdf_mem_multi_page_t *cntr_pages;
+	struct dp_rx_pp_ipa_map_cntr *cntr;
+	int page_idx = 0;
+	int offset;
+
+	cntr_pages = &rx_pp->iova_cntr_pages;
+	if (!cntr_pages->cacheable_pages)
+		return;
+
+	for (page_idx = 0; page_idx < cntr_pages->num_pages; page_idx++) {
+		for (offset = 0; offset < PAGE_SIZE; offset += sizeof(*cntr)) {
+			cntr = cntr_pages->cacheable_pages[page_idx] + offset;
+
+			if (!qdf_atomic_read(&cntr->ref_cnt))
+				continue;
+
+			dp_err_rl("Unexpected refcount, page_idx %d ref_cnt %d",
+				  page_idx, qdf_atomic_read(&cntr->ref_cnt));
+			qdf_assert_always(0);
+		}
+	}
+
+	dp_desc_multi_pages_mem_free(soc, QDF_DP_RX_IPA_MAP_REFCNT_TYPE,
+				     cntr_pages, 0, true);
+}
+
+QDF_STATUS dp_ipa_rx_pp_cntrs_init(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[0];
+
+	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx))
+		return QDF_STATUS_SUCCESS;
+
+	if (!rx_pp->page_pool_init) {
+		dp_err("Page pool not initialized for pool_id 0");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (rx_pp->ipa_cntrs_init) {
+		dp_info("IPA counters already initialized for pool 0");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	return dp_rx_pp_ipa_ref_cntrs_init(soc, rx_pp);
+}
+
+QDF_STATUS dp_ipa_rx_pp_cntrs_deinit(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[0];
+
+	if (!wlan_cfg_get_dp_rx_buffer_recycle(soc->wlan_cfg_ctx))
+		return QDF_STATUS_SUCCESS;
+
+	if (!rx_pp->page_pool_init || !rx_pp->ipa_cntrs_init)
+		return QDF_STATUS_SUCCESS;
+
+	rx_pp->ipa_cntrs_init = false;
+	dp_rx_pp_ipa_ref_cntrs_deinit(soc, rx_pp);
+	dp_info("IPA counters DISABLED, iova_cntr_pages freed for pool 0");
+	return QDF_STATUS_SUCCESS;
+}
+#else
+QDF_STATUS dp_ipa_rx_pp_cntrs_init(struct cdp_soc_t *soc_hdl)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS dp_ipa_rx_pp_cntrs_deinit(struct cdp_soc_t *soc_hdl)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
+
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_tx_super_rule_setup()- pass tx super rule params to fw from ipa

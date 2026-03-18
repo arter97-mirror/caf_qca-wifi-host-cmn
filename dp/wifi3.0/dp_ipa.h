@@ -490,6 +490,23 @@ void dp_ipa_opt_dp_set_tx_doorbell(struct cdp_soc_t *soc_hdl);
  * @soc_hdl: handle to the soc
  */
 void dp_ipa_opt_dp_reset_tx_doorbell(struct cdp_soc_t *soc_hdl);
+
+/**
+ * dp_ipa_rx_pp_cntrs_init() - Init IPA RX page pool counters
+ * @soc_hdl: handle to the soc
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_ipa_rx_pp_cntrs_init(struct cdp_soc_t *soc_hdl);
+
+/**
+ * dp_ipa_rx_pp_cntrs_deinit() - Deinit IPA RX page pool counters
+ * @soc_hdl: handle to the soc
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_ipa_rx_pp_cntrs_deinit(struct cdp_soc_t *soc_hdl);
+
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_wdi_opt_dpath_ctrl_notify_flt_install() - send tx super rule filter

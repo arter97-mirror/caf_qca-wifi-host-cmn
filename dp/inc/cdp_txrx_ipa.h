@@ -1069,6 +1069,55 @@ static inline void cdp_ipa_opt_dp_reset_tx_doorbell(ol_txrx_soc_handle soc)
 	if (soc->ops->ipa_ops->ipa_opt_dp_reset_tx_doorbell)
 		return soc->ops->ipa_ops->ipa_opt_dp_reset_tx_doorbell(soc);
 }
+
+/**
+ * cdp_ipa_rx_pp_cntrs_init() - Init IPA RX page pool counters
+ * @soc: data path soc handle
+ *
+ * Allocate iova_cntr_pages for pool 0 when IPA opt datapath
+ * filter is reserved (active).
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_ipa_rx_pp_cntrs_init(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (soc->ops->ipa_ops->ipa_rx_pp_cntrs_init)
+		return soc->ops->ipa_ops->ipa_rx_pp_cntrs_init(soc);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * cdp_ipa_rx_pp_cntrs_deinit() - Deinit IPA RX page pool counters
+ * @soc: data path soc handle
+ *
+ * Free iova_cntr_pages for pool 0 when IPA opt datapath
+ * filter is released.
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_ipa_rx_pp_cntrs_deinit(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops || !soc->ops->ipa_ops) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
+			  "%s invalid instance", __func__);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (soc->ops->ipa_ops->ipa_rx_pp_cntrs_deinit)
+		return soc->ops->ipa_ops->ipa_rx_pp_cntrs_deinit(soc);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #ifdef IPA_OPT_WIFI_DP_CTRL
 static inline QDF_STATUS
 cdp_ipa_tx_super_rule_setup(ol_txrx_soc_handle soc,

@@ -2335,6 +2335,7 @@ void wlan_ipa_release_cce_flt_ssr_shutdown(struct wlan_ipa_priv *ipa_ctx)
 						 IPA_DEF_PDEV_ID,
 						 false, false,
 						 __func__, __LINE__);
+		cdp_ipa_rx_pp_cntrs_deinit(ipa_ctx->dp_soc);
 	}
 
 	cdp_ipa_opt_dp_reset_tx_doorbell(ipa_ctx->dp_soc);
@@ -6463,6 +6464,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 			wlan_ipa_smmu_unmap_rx_buf(ipa_ctx);
 			ipa_ctx->opt_dp_flt_rel_state =
 				WLAN_IPA_OPT_DP_FLT_REL_DONE;
+			cdp_ipa_rx_pp_cntrs_deinit(ipa_ctx->dp_soc);
 			wlan_ipa_opt_dp_reset_tx_doorbell(ipa_ctx);
 		} else {
 			ipa_ctx->opt_dp_flt_rel_state =
@@ -7188,6 +7190,13 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(
 	error = wlan_ipa_tx_buff_alloc_smmu_map(ipa_ctx);
 	if (error) {
 		ipa_log_info("opt_dp: TX buffer alloc or smmu map failed");
+		return QDF_STATUS_FILT_REQ_ERROR;
+	}
+
+	status = cdp_ipa_rx_pp_cntrs_init(ipa_obj->dp_soc);
+
+	if (status != QDF_STATUS_SUCCESS) {
+		ipa_log_err("Failed to init rx pp counters");
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
