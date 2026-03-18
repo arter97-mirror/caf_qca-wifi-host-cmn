@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -181,6 +182,7 @@ typedef QDF_STATUS (*wlan_ser_umac_cmd_cb)(void *umac_cmd);
  * @WLAN_SER_CMD_NDP_DATA_END_INIT_REQ: NDP data end init request
  * @WLAN_SER_CMD_NDP_END_ALL_REQ: NDP close all request
  * @WLAN_SER_CMD_NDP_UPDATE_CONFIG_REQ: NDP update config request
+ * @WLAN_SER_CMD_NAN_ENABLE_REQ: NAN Enable request
  * @WLAN_SER_CMD_ADDTS: ADD Ts cmd
  * @WLAN_SER_CMD_DELTS: Del Ts cmd
  * @WLAN_SER_CMD_TDLS_SEND_MGMT: TDLS mgmt send cmd
@@ -221,6 +223,7 @@ enum wlan_serialization_cmd_type {
 	WLAN_SER_CMD_NDP_DATA_END_INIT_REQ,
 	WLAN_SER_CMD_NDP_END_ALL_REQ,
 	WLAN_SER_CMD_NDP_UPDATE_CONFIG_REQ,
+	WLAN_SER_CMD_NAN_ENABLE_REQ,
 	WLAN_SER_CMD_ADDTS,
 	WLAN_SER_CMD_DELTS,
 	WLAN_SER_CMD_TDLS_SEND_MGMT,
