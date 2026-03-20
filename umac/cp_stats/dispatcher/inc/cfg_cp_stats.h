@@ -82,9 +82,44 @@
 		"enable_bcn_rssi_history_report", false, \
 		"enable bcn rssi history report")
 
+#ifdef FEATURE_SNR_STATS
+/*
+ * <ini>
+ * enable_snr_stats_report - Enable/Disable IPI SNR distribution statistics
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This ini is used to enable/disable IPI (Idle Power Indicate) SNR
+ * distribution statistics in Link Layer Statistics. When enabled, the driver
+ * reports SNR histograms and on-channel duration for each interface's
+ * operating channel.
+ * Configurations are as follows:
+ * 0 - Disable IPI SNR distribution statistics
+ * 1 - Enable IPI SNR distribution statistics
+ *
+ * Requires firmware support (WMI_SERVICE_IDLE_POWER_INDICATE_SUPPORT).
+ * Feature is disabled if firmware does not advertise the service bit,
+ * regardless of this INI setting.
+ *
+ * Related: None
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_ENABLE_SNR_STATS_REPORT CFG_INI_BOOL(\
+		"enable_snr_stats_report", false, \
+		"enable IPI SNR distribution statistics")
+#define CFG_CP_STATS_SNR_STATS CFG(CFG_ENABLE_SNR_STATS_REPORT)
+#else
+#define CFG_CP_STATS_SNR_STATS
+#endif /* FEATURE_SNR_STATS */
+
 #define CFG_CP_STATS_ALL \
 	CFG_CP_STATS_CSTATS \
 	CFG_CP_STATS_DEBUG_LOGGING \
-	CFG(CFG_ENABLE_BCN_RSSI_HISTORY_REPORT)
+	CFG(CFG_ENABLE_BCN_RSSI_HISTORY_REPORT) \
+	CFG_CP_STATS_SNR_STATS
 
 #endif /* __CONFIG_CP_STATS_H */

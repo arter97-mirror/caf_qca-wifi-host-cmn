@@ -115,7 +115,14 @@ int ucfg_cp_stats_cstats_send_buffer_to_user(enum cstats_types type)
 }
 
 bool ucfg_cp_stats_is_bcn_rssi_history_report_cfg_enable(
-					struct wlan_objmgr_psoc *psoc)
+				struct wlan_objmgr_psoc *psoc)
 {
 	return wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(psoc);
 }
+
+#ifdef FEATURE_SNR_STATS
+bool ucfg_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc)
+{
+	return wlan_cp_stats_is_snr_stats_report_cfg_enable(psoc);
+}
+#endif /* FEATURE_SNR_STATS */

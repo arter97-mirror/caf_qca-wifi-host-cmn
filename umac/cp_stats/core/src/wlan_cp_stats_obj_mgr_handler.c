@@ -210,6 +210,29 @@ void wlan_cp_stats_enable_init_cstats(struct wlan_objmgr_pdev *pdev)
 }
 #endif /* WLAN_CHIPSET_STATS */
 
+#ifdef FEATURE_SNR_STATS
+/**
+ * wlan_cp_stats_init_snr_stats_cfg() - Initialize SNR stats report config
+ * @psoc: pointer to psoc object
+ * @csc: pointer to cp_stats_context structure
+ *
+ * Return: None
+ */
+static void wlan_cp_stats_init_snr_stats_cfg(
+				struct wlan_objmgr_psoc *psoc,
+				struct cp_stats_context *csc)
+{
+	csc->host_params.snr_stats_report_enable =
+			cfg_get(psoc, CFG_ENABLE_SNR_STATS_REPORT);
+}
+#else
+static void wlan_cp_stats_init_snr_stats_cfg(
+				struct wlan_objmgr_psoc *psoc,
+				struct cp_stats_context *csc)
+{
+}
+#endif /* FEATURE_SNR_STATS */
+
 /**
  * wlan_cp_stats_init_bcn_histroy_report_cfg() - Beacon history report
  * cfg
@@ -229,6 +252,8 @@ static void wlan_cp_stats_init_bcn_histroy_report_cfg(
 
 	csc->host_params.bcn_rssi_history_report_enable =
 			cfg_get(psoc, CFG_ENABLE_BCN_RSSI_HISTORY_REPORT);
+
+	wlan_cp_stats_init_snr_stats_cfg(psoc, csc);
 }
 
 QDF_STATUS

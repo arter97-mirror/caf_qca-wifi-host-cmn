@@ -7553,6 +7553,7 @@ struct target_feature_set {
  * @apfv6_offload_disabled: APFv6 offload disabled bitmap
  * @is_action_oui_v2_enabled: Is action oui v2 enabled
  * @enable_bcn_rssi_history_report: Enable beacon rssi history report
+ * @enable_snr_stats_report: Enable IPI SNR distribution statistics report
  * @haps_feature_flags: HAPS flags setting for power save config
  * @conc_2vdev_dcs_stats_support: Support 2 vdev concurrency DCS
  */
@@ -7708,6 +7709,9 @@ typedef struct {
 	uint32_t apfv6_offload_disabled;
 	bool is_action_oui_v2_enabled;
 	bool enable_bcn_rssi_history_report;
+#ifdef FEATURE_SNR_STATS
+	bool enable_snr_stats_report;
+#endif /* FEATURE_SNR_STATS */
 	uint32_t haps_feature_flags;
 	bool conc_2vdev_dcs_stats_support;
 } target_resource_config;

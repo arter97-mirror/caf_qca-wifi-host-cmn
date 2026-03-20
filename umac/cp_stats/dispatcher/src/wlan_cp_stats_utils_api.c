@@ -395,3 +395,20 @@ bool wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(
 
 	return cp_stats->host_params.bcn_rssi_history_report_enable;
 }
+
+#ifdef FEATURE_SNR_STATS
+bool wlan_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc)
+{
+	struct cp_stats_context *cp_stats;
+
+	cp_stats = wlan_objmgr_psoc_get_comp_private_obj(
+						psoc,
+						WLAN_UMAC_COMP_CP_STATS);
+	if (!cp_stats) {
+		cp_stats_err("CP Stats Context is NULL");
+		return false;
+	}
+
+	return cp_stats->host_params.snr_stats_report_enable;
+}
+#endif /* FEATURE_SNR_STATS */

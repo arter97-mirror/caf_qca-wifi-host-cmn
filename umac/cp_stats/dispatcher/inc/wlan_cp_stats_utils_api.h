@@ -207,4 +207,22 @@ void wlan_cp_stats_peer_rx_pnerr(struct wlan_objmgr_peer *peer)
  */
 bool wlan_cp_stats_is_bcn_rssi_history_report_cfg_enable(
 					struct wlan_objmgr_psoc *psoc);
+
+#ifdef FEATURE_SNR_STATS
+/**
+ * wlan_cp_stats_is_snr_stats_report_cfg_enable() - Check if IPI SNR stats
+ * report is enabled in configuration
+ * @psoc: pointer to psoc
+ *
+ * Return: true if enabled, false otherwise
+ */
+bool
+wlan_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc);
+#else
+static inline bool
+wlan_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+#endif /* FEATURE_SNR_STATS */
 #endif /* __WLAN_CP_STATS_UTILS_API_H__ */

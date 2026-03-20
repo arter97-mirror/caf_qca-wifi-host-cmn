@@ -194,4 +194,22 @@ int ucfg_cp_stats_cstats_send_buffer_to_user(enum cstats_types type);
  */
 bool ucfg_cp_stats_is_bcn_rssi_history_report_cfg_enable(
 					struct wlan_objmgr_psoc *psoc);
+
+#ifdef FEATURE_SNR_STATS
+/**
+ * ucfg_cp_stats_is_snr_stats_report_cfg_enable() - Check if IPI SNR stats
+ * report is enabled in configuration
+ * @psoc: pointer to psoc
+ *
+ * Return: true if enabled, false otherwise
+ */
+bool
+ucfg_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc);
+#else
+static inline bool
+ucfg_cp_stats_is_snr_stats_report_cfg_enable(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+#endif /* FEATURE_SNR_STATS */
 #endif /* __WLAN_CP_STATS_UCFG_API_H__ */

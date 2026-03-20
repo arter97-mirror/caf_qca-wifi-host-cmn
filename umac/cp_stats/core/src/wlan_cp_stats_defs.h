@@ -135,6 +135,7 @@ struct peer_cp_stats {
  * @chipset_stats_push_rbs_delay_interval : Represent after how many RB node
  *					    User delay is applicable
  * @bcn_rssi_history_report_enable: Enable/disable beacon rssi history report
+ * @snr_stats_report_enable: Enable/disable IPI SNR distribution stats report
  * @is_enhanced_stats_support: enhanced_stats_support is supported or not
  */
 struct cp_stats_cfg_params {
@@ -143,6 +144,9 @@ struct cp_stats_cfg_params {
 	size_t chipset_stats_push_rbs_delay_val_ms;
 	size_t chipset_stats_push_rbs_delay_interval;
 	bool bcn_rssi_history_report_enable;
+#ifdef FEATURE_SNR_STATS
+	bool snr_stats_report_enable;
+#endif /* FEATURE_SNR_STATS */
 	bool is_enhanced_stats_support;
 };
 
