@@ -10419,6 +10419,36 @@ void wmi_copy_mgmt_rx_srng_support(wmi_resource_config *resource_cfg,
 }
 #endif
 
+#ifdef FEATURE_SNR_STATS
+/**
+ * wmi_copy_snr_stats_resource_config() - enable IPI stats in resource config
+ * @wmi_handle: WMI handle
+ * @resource_cfg: WMI resource config to update
+ * @tgt_res_cfg: target resource config with INI settings
+ *
+ * Sets WMI_RSRC_CFG_FLAGS2_IPI_STATS_ENABLED if the INI is enabled and
+ * the firmware advertises wmi_service_idle_power_indicate_support.
+ */
+static void wmi_copy_snr_stats_resource_config(
+		wmi_unified_t wmi_handle,
+		wmi_resource_config *resource_cfg,
+		target_resource_config *tgt_res_cfg)
+{
+	if (tgt_res_cfg->enable_snr_stats_report &&
+	    wmi_service_enabled(wmi_handle,
+				wmi_service_idle_power_indicate_support))
+		WMI_RSRC_CFG_FLAGS2_IPI_STATS_ENABLED_SET(
+						resource_cfg->flags2, 1);
+}
+#else
+static inline void wmi_copy_snr_stats_resource_config(
+		wmi_unified_t wmi_handle,
+		wmi_resource_config *resource_cfg,
+		target_resource_config *tgt_res_cfg)
+{
+}
+#endif /* FEATURE_SNR_STATS */
+
 static
 void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 			      wmi_resource_config *resource_cfg,
@@ -10769,6 +10799,9 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	if (tgt_res_cfg->enable_bcn_rssi_history_report)
 		WMI_RSRC_CFG_FLAGS2_RECV_BCN_STATS_ENABLED_SET(
 						resource_cfg->flags2, 1);
+
+	wmi_copy_snr_stats_resource_config(wmi_handle, resource_cfg,
+					   tgt_res_cfg);
 
 	if (tgt_res_cfg->conc_2vdev_dcs_stats_support)
 		WMI_RSRC_CFG_DCS_STATS_FOR_2VDEVS_ENABLE_SET(
@@ -26005,6 +26038,10 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_support_wow_ole_dal] =
 				WMI_SERVICE_SUPPORT_WOW_OLE_DAL;
 	wmi_populate_service_nan_standard_mode(wmi_service);
+#ifdef FEATURE_SNR_STATS
+	wmi_service[wmi_service_idle_power_indicate_support] =
+				WMI_SERVICE_IDLE_POWER_INDICATE_SUPPORT;
+#endif /* FEATURE_SNR_STATS */
 }
 
 /**

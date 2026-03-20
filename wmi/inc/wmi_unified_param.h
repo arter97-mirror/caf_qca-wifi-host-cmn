@@ -7148,6 +7148,9 @@ typedef enum {
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
 	wmi_service_nan_standard_mode_support,
 #endif
+#ifdef FEATURE_SNR_STATS
+	wmi_service_idle_power_indicate_support,
+#endif /* FEATURE_SNR_STATS */
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
