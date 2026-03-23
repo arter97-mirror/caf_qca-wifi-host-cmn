@@ -1363,6 +1363,15 @@ void DP_PRINT_STATS(const char *fmt, ...);
 		_handle->stats._field += _delta; \
 }
 
+#define DP_STATS_SEL_INCC(_handle, _field_0, _field_1, _delta, _cond) \
+{\
+	if (_cond) { \
+		DP_STATS_INC(_handle, _field_0, _delta); \
+	} else { \
+		DP_STATS_INC(_handle, _field_1, _delta); \
+	} \
+}
+
 #ifdef QCA_DP_PROTOCOL_STATS
 #define DP_TX_PROTO_STATS_INC(_handle, _proto, _ring, _level, _field, _delta) \
 { \
@@ -1471,6 +1480,7 @@ void DP_PRINT_STATS(const char *fmt, ...);
 }
 
 #else
+#define DP_STATS_SEL_INCC(_handle, _field_0, _field_1, _delta, _cond)
 #define DP_STATS_INC(_handle, _field, _delta)
 #define DP_PEER_LINK_STATS_INC(_handle, _field, _delta, _link)
 #define DP_PEER_STATS_FLAT_INC(_handle, _field, _delta)

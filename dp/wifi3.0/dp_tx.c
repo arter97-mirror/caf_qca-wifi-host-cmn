@@ -6719,6 +6719,7 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 	uint8_t pack_more_data = 0;
 	qdf_dma_addr_t paddr;
 	uint32_t seg_idx = 0;
+	bool is_udp_gso = false;
 
 	*head_nbuf = NULL;
 
@@ -6727,8 +6728,16 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	eit_hdr_len = (qdf_nbuf_transport_header(nbuf) -
-		       qdf_nbuf_get_mac_header(nbuf)) + qdf_nbuf_get_tcp_hdr_len(nbuf);
+	if (qdf_nbuf_is_uso(nbuf)) {
+		eit_hdr_len = (qdf_nbuf_transport_header(nbuf) -
+			       qdf_nbuf_get_mac_header(nbuf)) +
+				qdf_nbuf_udp_hdr_len();
+		is_udp_gso = true;
+	} else {
+		eit_hdr_len = (qdf_nbuf_transport_header(nbuf) -
+			       qdf_nbuf_get_mac_header(nbuf)) +
+				qdf_nbuf_get_tcp_hdr_len(nbuf);
+	}
 
 	nbuf_frag_len = qdf_nbuf_headlen(nbuf);
 	nbuf_frag_len -= eit_hdr_len;
@@ -6740,7 +6749,10 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 	if (ethproto == qdf_htons(QDF_ETH_P_IP))
 		ip_id = qdf_ntohs(qdf_nbuf_get_ip_id(nbuf));
 
-	tcp_seq_num = qdf_ntohl(qdf_nbuf_get_tcp_seq(nbuf));
+	if (!is_udp_gso)
+		tcp_seq_num = qdf_ntohl(qdf_nbuf_get_tcp_seq(nbuf));
+	else
+		qdf_nbuf_update_uso_ip_id(nbuf, &ip_id, num_seg);
 
 	if (qdf_likely(tx_pp)) {
 		qdf_spin_lock_bh(&tx_pp->pp_lock);
@@ -6837,12 +6849,21 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 					     qdf_nbuf_get_mac_header(nbuf)));
 		qdf_nbuf_set_mac_header(new_nbuf, 0);
 
-		qdf_nbuf_set_tcp_seq(new_nbuf, qdf_htonl(tcp_seq_num));
-		tcp_seq_num += frag_len;
+		if (!is_udp_gso) {
+			qdf_nbuf_set_tcp_seq(new_nbuf, qdf_htonl(tcp_seq_num));
+			tcp_seq_num += frag_len;
+			qdf_nbuf_set_tcp_psh(new_nbuf, 0);
+			qdf_nbuf_set_tcp_fin(new_nbuf, 0);
+		} else {
+			/*
+			 * copied_len includes EIT header, so exluce mac header
+			 * and network header while updating the UDP len.
+			 */
+			qdf_nbuf_set_udp_datagram_len(new_nbuf, copied_len);
+		}
+
 		qdf_nbuf_set_protocol(new_nbuf, qdf_nbuf_get_protocol(nbuf));
 		qdf_nbuf_set_ip_summed(new_nbuf, QDF_NBUF_TX_CSUM_PARTIAL);
-		qdf_nbuf_set_tcp_psh(new_nbuf, 0);
-		qdf_nbuf_set_tcp_fin(new_nbuf, 0);
 
 		if (ethproto == qdf_htons(QDF_ETH_P_IP)) {
 			qdf_nbuf_set_ip_id(new_nbuf, qdf_htons(ip_id));
@@ -6858,7 +6879,7 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 		/* if PSH and FIN flags are set in jumbo packet,
 		 * set them for the last segment.
 		 */
-		if (!curr_nbuf) {
+		if (!curr_nbuf && !is_udp_gso) {
 			qdf_nbuf_set_tcp_psh(new_nbuf,
 					     qdf_nbuf_get_tcp_psh(nbuf));
 			qdf_nbuf_set_tcp_fin(new_nbuf,
@@ -6922,6 +6943,14 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 								      qdf_htons(copied_len -
 					      (qdf_nbuf_get_mac_header_len(new_nbuf) +
 					       qdf_nbuf_get_network_header_len(new_nbuf))));
+
+				/*
+				 * copied_len includes EIT header, so exluce mac
+				 * header and network header while updating the
+				 * UDP len.
+				 */
+				if (is_udp_gso)
+					qdf_nbuf_set_udp_datagram_len(new_nbuf, copied_len);
 			}
 		}
 	}
@@ -6947,12 +6976,13 @@ static inline bool dp_tx_is_sw_tso_enable(struct dp_soc *soc)
  * @vdev: DP VDEV reference
  * @nbuf: TCP jumbo buffer
  * @msdu_info: meta data associated with the msdu
+ * @is_tso: flag indicates whether the packet is TSO or USO packet
  *
  * Return: QDF STATUS
  */
 static QDF_STATUS
 dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
-		     struct dp_tx_msdu_info_s *msdu_info)
+		     struct dp_tx_msdu_info_s *msdu_info, bool is_tso)
 {
 	struct dp_soc *soc = vdev->pdev->soc;
 	qdf_nbuf_t buff = NULL;
@@ -6987,7 +7017,8 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		count++;
 	}
 
-	DP_STATS_INC(soc, tx.sw_tso_pkts, count);
+	DP_STATS_SEL_INCC(soc, tx.sw_tso_pkts, tx.sw_uso_pkts, count, is_tso);
+
 	return QDF_STATUS_SUCCESS;
 }
 #else
@@ -6998,7 +7029,7 @@ static inline bool dp_tx_is_sw_tso_enable(struct dp_soc *soc)
 
 static inline QDF_STATUS
 dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
-		     struct dp_tx_msdu_info_s *msdu_info)
+		     struct dp_tx_msdu_info_s *msdu_info, bool is_tso)
 {
 	/* return failure so that it will go to default TSO path */
 	return QDF_STATUS_E_FAILURE;
@@ -7010,6 +7041,9 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	uint16_t peer_id = HTT_INVALID_PEER;
+	bool is_tso;
+	bool is_uso;
+
 	/*
 	 * doing a memzero is causing additional function call overhead
 	 * so doing static stack clearing
@@ -7096,18 +7130,22 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	 * into MSDU_INFO structure which is later used to fill
 	 * SW and HW descriptors.
 	 */
-	if (qdf_nbuf_is_tso(nbuf)) {
+	is_tso = qdf_nbuf_is_tso(nbuf);
+	is_uso = qdf_nbuf_is_uso(nbuf);
+	if (is_tso || is_uso) {
 		dp_verbose_debug("TSO frame %pK", vdev);
 		DP_STATS_INC_PKT(vdev->pdev, tso_stats.num_tso_pkts, 1,
 				 qdf_nbuf_len(nbuf));
 
 		if (dp_tx_is_sw_tso_enable(soc)) {
-			status = dp_tx_sw_tso_handler(vdev, nbuf, &msdu_info);
+			status = dp_tx_sw_tso_handler(vdev, nbuf,
+						      &msdu_info, is_tso);
 			if (status == QDF_STATUS_SUCCESS) {
 				qdf_nbuf_free(nbuf);
 				return NULL;
 			} else if (status != QDF_STATUS_E_NOMEM) {
-				DP_STATS_INC(soc, tx.sw_tso_fail, 1);
+				DP_STATS_SEL_INCC(soc, tx.sw_tso_fail,
+						  tx.sw_uso_fail, 1, is_tso);
 				return nbuf;
 			}
 			/* Go further and transmit the jumbo packet in the
@@ -7119,26 +7157,15 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		if (dp_tx_prepare_tso(vdev, nbuf, &msdu_info)) {
 			DP_STATS_INC_PKT(vdev->pdev, tso_stats.dropped_host, 1,
 					 qdf_nbuf_len(nbuf));
+			DP_STATS_SEL_INCC(soc, tx.tso_pkts_fail,
+					  tx.uso_pkts_fail, 1, is_tso);
 			return nbuf;
 		}
 
 		DP_STATS_INC(vdev, tx_i[xmit_type].rcvd.num,
 			     msdu_info.num_seg - 1);
+		DP_STATS_SEL_INCC(soc, tx.tso_pkts, tx.uso_pkts, 1, is_tso);
 
-		goto send_multiple;
-	}
-
-	if (qdf_nbuf_is_uso(nbuf)) {
-		if (dp_tx_prepare_tso(vdev, nbuf, &msdu_info)) {
-			DP_STATS_INC_PKT(vdev->pdev, tso_stats.dropped_host, 1,
-					 qdf_nbuf_len(nbuf));
-			DP_STATS_INC(soc, tx.uso_pkts_fail, 1);
-			return nbuf;
-		}
-
-		DP_STATS_INC(vdev, tx_i[xmit_type].rcvd.num,
-			     msdu_info.num_seg - 1);
-		DP_STATS_INC(soc, tx.uso_pkts, 1);
 		goto send_multiple;
 	}
 
