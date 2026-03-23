@@ -5784,6 +5784,31 @@ void qdf_nbuf_data_attr_set(qdf_nbuf_t buf, uint32_t data_attr)
 }
 
 /**
+ * qdf_nbuf_set_tx_page_pool_id() - Set TX page pool ID in nbuf CB
+ * @buf: Network buffer (skb on linux)
+ * @pool_id: Page pool ID (6 bits, 0-63)
+ *
+ * Return: void
+ */
+static inline
+void qdf_nbuf_set_tx_page_pool_id(qdf_nbuf_t buf, uint8_t pool_id)
+{
+	__qdf_nbuf_set_tx_page_pool_id(buf, pool_id);
+}
+
+/**
+ * qdf_nbuf_get_tx_page_pool_id() - Get TX page pool ID from nbuf CB
+ * @buf: Network buffer (skb on linux)
+ *
+ * Return: Page pool ID (6 bits, 0-63)
+ */
+static inline
+uint8_t qdf_nbuf_get_tx_page_pool_id(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_tx_page_pool_id(buf);
+}
+
+/**
  * qdf_nbuf_tx_info_get() - Parse skb and get Tx metadata
  * @nbuf:		Network buffer
  * @pkt_type:		Pkt type (from enum htt_pkt_type)

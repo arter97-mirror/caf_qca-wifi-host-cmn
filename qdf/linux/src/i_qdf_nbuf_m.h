@@ -160,7 +160,8 @@
  * @peer_bw: peer bandwidth
  * @txpt_idx_value: Tx msdu flow pointer start idx
  * @txpt_idx_valid: Is txpt_idx_value is valid
- * @u.tx.dev.priv_cb_m.reserved: reserved
+ * @u.tx.dev.priv_cb_m.tx_page_pool_id: TX page pool ID (6 bits, 0-63)
+ * @u.tx.dev.priv_cb_m.reserved: reserved bit
  *
  * @u.tx.ftype: mcast2ucast, TSO, SG, MESH
  * @u.tx.vdev_id: vdev (for protocol trace)
@@ -323,7 +324,8 @@ struct qdf_nbuf_cb {
 						peer_bw:3;
 					uint8_t txpt_idx_value;
 					uint8_t	txpt_idx_valid:1,
-						reserved:7;
+						tx_page_pool_id:6,
+						reserved:1;
 				} priv_cb_m;
 			} dev;
 			uint8_t ftype;
@@ -618,6 +620,11 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 #define QDF_NBUF_CB_TX_DMA_BI_MAP(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	dma_option.bi_map)
+
+#define QDF_NBUF_CB_TX_PAGE_POOL_ID(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
+	 tx_page_pool_id)
+
 #define QDF_NBUF_CB_TX_EXTRA_FRAG_FLAGS_NOTIFY_COMP(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	flag_notify_comp)
@@ -732,6 +739,12 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	QDF_NBUF_CB_TX_DATA_ATTR(skb)
 #define __qdf_nbuf_data_attr_set(skb, data_attr) \
 	(QDF_NBUF_CB_TX_DATA_ATTR(skb) = (data_attr))
+
+#define __qdf_nbuf_set_tx_page_pool_id(skb, pool_id) \
+	(QDF_NBUF_CB_TX_PAGE_POOL_ID(skb) = (pool_id))
+
+#define __qdf_nbuf_get_tx_page_pool_id(skb) \
+	QDF_NBUF_CB_TX_PAGE_POOL_ID(skb)
 
 #define __qdf_nbuf_set_tx_ts(skb, ts) \
 	do { \
