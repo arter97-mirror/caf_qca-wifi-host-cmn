@@ -139,8 +139,6 @@ static void dp_rx_return_head_frag_desc(struct dp_txrx_peer *txrx_peer,
 
 		dp_rx_add_to_free_desc_list(&head, &tail,
 					    txrx_peer->rx_tid[tid].head_frag_desc);
-		dp_rx_buffers_replenish(soc, 0, dp_rxdma_srng, rx_desc_pool,
-					1, &head, &tail, false);
 		dp_rx_buffers_replenish_wrapper(soc, pool_id, 1,
 						&head, &tail, false);
 	}
