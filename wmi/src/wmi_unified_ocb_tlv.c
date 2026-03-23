@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -169,50 +170,6 @@ static QDF_STATUS send_ocb_stop_timing_advert_cmd_tlv(wmi_unified_t wmi_handle,
 				   WMI_OCB_STOP_TIMING_ADVERT_CMDID);
 	if (QDF_IS_STATUS_ERROR(ret)) {
 		wmi_err("Failed to stop OCB timing advert");
-		wmi_buf_free(buf);
-	}
-
-	return ret;
-}
-
-/**
- * send_ocb_get_tsf_timer_cmd_tlv() - get ocb tsf timer val
- * @wmi_handle: pointer to the wmi handle
- * @vdev_id: vdev identifier
- *
- * Return: 0 on success
- */
-static QDF_STATUS send_ocb_get_tsf_timer_cmd_tlv(wmi_unified_t wmi_handle,
-			  uint8_t vdev_id)
-{
-	QDF_STATUS ret;
-	wmi_ocb_get_tsf_timer_cmd_fixed_param *cmd;
-	uint8_t *buf_ptr;
-	wmi_buf_t buf;
-	int32_t len;
-
-	len = sizeof(*cmd);
-	buf = wmi_buf_alloc(wmi_handle, len);
-	if (!buf) {
-		return QDF_STATUS_E_NOMEM;
-	}
-	buf_ptr = (uint8_t *)wmi_buf_data(buf);
-
-	cmd = (wmi_ocb_get_tsf_timer_cmd_fixed_param *)buf_ptr;
-	qdf_mem_zero(cmd, len);
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		WMITLV_TAG_STRUC_wmi_ocb_get_tsf_timer_cmd_fixed_param,
-		WMITLV_GET_STRUCT_TLVLEN(
-			wmi_ocb_get_tsf_timer_cmd_fixed_param));
-	cmd->vdev_id = vdev_id;
-
-	/* Send the WMI command */
-	wmi_mtrace(WMI_OCB_GET_TSF_TIMER_CMDID, cmd->vdev_id, 0);
-	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
-				   WMI_OCB_GET_TSF_TIMER_CMDID);
-	/* If there is an error, set the completion event */
-	if (QDF_IS_STATUS_ERROR(ret)) {
-		wmi_err("Failed to send WMI message: %d", ret);
 		wmi_buf_free(buf);
 	}
 
@@ -776,7 +733,6 @@ void wmi_ocb_attach_tlv(wmi_unified_t wmi_handle)
 	struct wmi_ops *ops = wmi_handle->ops;
 
 	ops->send_ocb_set_utc_time_cmd = send_ocb_set_utc_time_cmd_tlv;
-	ops->send_ocb_get_tsf_timer_cmd = send_ocb_get_tsf_timer_cmd_tlv;
 	ops->send_dcc_clear_stats_cmd = send_dcc_clear_stats_cmd_tlv;
 	ops->send_dcc_get_stats_cmd = send_dcc_get_stats_cmd_tlv;
 	ops->send_dcc_update_ndl_cmd = send_dcc_update_ndl_cmd_tlv;
