@@ -3395,6 +3395,66 @@ static inline size_t __qdf_nbuf_get_tcp_hdr_len(struct sk_buff *skb)
 }
 
 /**
+ * __qdf_nbuf_udp_hdr_len() - return UDP header length of the skb
+ *
+ * Return: size of UDP header length
+ */
+static inline size_t __qdf_nbuf_udp_hdr_len(void)
+{
+	return sizeof(struct udphdr);
+}
+
+/**
+ * __qdf_nbuf_set_udp_datagram_len() - set the udp datagram length in udp header
+ * @skb: sk buff
+ * @tot_len: total length including EIT header
+ *
+ * Return: none
+ */
+static inline void
+__qdf_nbuf_set_udp_datagram_len(struct sk_buff *skb, uint16_t tot_len)
+{
+	udp_hdr(skb)->len = htons(tot_len -
+				  (skb_mac_header_len(skb) +
+				   skb_network_header_len(skb)));
+}
+
+/**
+ * __qdf_nbuf_update_uso_ip_id() - Update IP ID for UDP IPv4 GSO packets
+ * @skb: skb buffer
+ * @ip_id: pointer to IP ID to be updated
+ * @num_segs: number of segments
+ *
+ * Update the IP ID for UDP IPv4 GSO packets using ip_select_ident_segs
+ *
+ * Return: None
+ */
+static inline void __qdf_nbuf_update_uso_ip_id(struct sk_buff *skb,
+					       uint16_t *ip_id,
+					       uint32_t num_segs)
+{
+	struct iphdr *iph;
+	uint16_t ethproto;
+
+	/* Get ethernet protocol using vlan_get_protocol */
+	ethproto = vlan_get_protocol(skb);
+
+	/* Only update for UDP IPv4 packets */
+	if (ethproto != htons(ETH_P_IP))
+		return;
+
+	iph = ip_hdr(skb);
+	if (!iph)
+		return;
+
+	/* Use ip_select_ident_segs to update IP ID */
+	ip_select_ident_segs(dev_net(skb->dev), skb, NULL, num_segs);
+
+	/* Update the IP ID via pointer */
+	*ip_id = ntohs(iph->id);
+}
+
+/**
  * __qdf_vlan_get_protocol() - get protocol from VLAN header
  * @skb: Network buffer
  *

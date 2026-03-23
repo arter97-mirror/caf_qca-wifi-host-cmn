@@ -4752,41 +4752,6 @@ static inline void qdf_nbuf_tso_unmap_frag(
 }
 
 /**
- * __qdf_nbuf_update_uso_ip_id() - Update IP ID for UDP IPv4 GSO packets
- * @skb: skb buffer
- * @ip_id: pointer to IP ID to be updated
- * @num_segs: number of segments
- *
- * Update the IP ID for UDP IPv4 GSO packets using ip_select_ident_segs
- *
- * Return: None
- */
-static void __qdf_nbuf_update_uso_ip_id(struct sk_buff *skb,
-					uint16_t *ip_id,
-					uint32_t num_segs)
-{
-	struct iphdr *iph;
-	uint16_t ethproto;
-
-	/* Get ethernet protocol using vlan_get_protocol */
-	ethproto = vlan_get_protocol(skb);
-
-	/* Only update for UDP IPv4 packets */
-	if (ethproto != htons(ETH_P_IP))
-		return;
-
-	iph = ip_hdr(skb);
-	if (!iph)
-		return;
-
-	/* Use ip_select_ident_segs to update IP ID */
-	ip_select_ident_segs(dev_net(skb->dev), skb, NULL, num_segs);
-
-	/* Update the IP ID via pointer */
-	*ip_id = ntohs(iph->id);
-}
-
-/**
  * __qdf_nbuf_get_tso_cmn_seg_info() - get TSO common
  * information
  * @osdev: qdf device handle
