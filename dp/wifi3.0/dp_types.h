@@ -2052,6 +2052,8 @@ struct dp_tx_pp_params {
  * @shrink_ref_cnt: Track shrink operation in progress
  * @pending_deinit: Track pending deinit
  * @inactive_list: Inactive page pool list
+ * @pool_id_next_seq: Next sequential pool ID to allocate (0-63)
+ * @pool_id_free_mask: Bitmask of freed pool IDs available for reuse
  */
 struct dp_tx_page_pool {
 	/* Node for destroy list */
@@ -2088,6 +2090,8 @@ struct dp_tx_page_pool {
 	qdf_atomic_t pending_deinit;
 	/* List to hold page pools with pages still in use during removal */
 	qdf_list_t inactive_list;
+	uint8_t  pool_id_next_seq;
+	uint64_t pool_id_free_mask;
 };
 #endif
 

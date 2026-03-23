@@ -179,6 +179,7 @@ uint16_t cdp_latency_perc_bucket[] = {50, 75, 90, 95, 99};
  * @pool_size: Pool size
  * @page_size: Page size
  * @is_prealloc: Is preallocated
+ * @pool_id: pool_id
  */
 /* Pool snapshot for lock-free analysis */
 struct dp_tx_pool_snapshot {
@@ -189,6 +190,7 @@ struct dp_tx_pool_snapshot {
 	size_t pool_size;
 	size_t page_size;
 	bool is_prealloc;
+	uint8_t pool_id;
 };
 
 /**
@@ -355,6 +357,7 @@ dp_tx_page_pool_copy_pools_locked(struct dp_tx_page_pool *tx_pp,
 				 DP_TX_PAGE_POOL_BUFSIZE) : 1;
 			pool_data[i].capacity = pool_data[i].total_pages *
 						pool_data[i].buffers_per_page;
+			pool_data[i].pool_id = pp_params->pool_id;
 			if (pp_params->is_prealloc)
 				(*active_prealloc)++;
 		}
@@ -553,6 +556,70 @@ dp_tx_page_pool_safe_to_free_locked(struct dp_tx_pp_params *pp_params)
 }
 
 /**
+ * TX_PP_ID_MAX - Maximum pool ID value
+ *
+ * Pool IDs range from 0 to 63, allowing up to 64 concurrent page pools.
+ * This limit is chosen to fit within a 64-bit bitmask for efficient
+ * ID recycling via pool_id_free_mask.
+ */
+#define TX_PP_ID_MAX      63u
+
+/**
+ * TX_PP_ID_COUNT - Total number of available pool IDs
+ */
+#define TX_PP_ID_COUNT    (TX_PP_ID_MAX + 1u)
+
+/**
+ * dp_tx_page_pool_get_pool_id() - Allocate a unique pool ID
+ * @tx_pp: TX page pool handle
+ *
+ * Return: Allocated pool ID (0-63).
+ */
+
+static inline uint8_t
+dp_tx_page_pool_get_pool_id(struct dp_tx_page_pool *tx_pp)
+{
+	uint64_t bit;
+	uint8_t i, id;
+	uint8_t start = tx_pp->pool_id_next_seq;
+
+	for (i = 0; i < TX_PP_ID_COUNT; i++) {
+		id = (uint8_t)((start + i) & TX_PP_ID_MAX);
+		bit = (1ULL << id);
+
+		if (tx_pp->pool_id_free_mask & bit) {
+			tx_pp->pool_id_free_mask &= ~bit;
+			tx_pp->pool_id_next_seq =
+				(uint8_t)((id + 1) & TX_PP_ID_MAX);
+			return id;
+		}
+	}
+
+	return TX_PP_ID_MAX;
+}
+
+/**
+ * dp_tx_page_pool_put_pool_id() - Free a pool ID for reuse
+ * @tx_pp: TX page pool handle
+ * @id: Pool ID to free (0-63)
+ *
+ * Returns a pool ID to the free pool for reuse. The ID becomes available
+ * for allocation by dp_tx_page_pool_get_pool_id().
+ *
+ * Context: Must be called with tx_pp->pp_lock held
+ * Return: None
+ */
+static inline void
+dp_tx_page_pool_put_pool_id(struct dp_tx_page_pool *tx_pp, uint8_t id)
+{
+	/* Check for double-free */
+	if (tx_pp->pool_id_free_mask & (1ULL << id))
+		dp_warn("Pool ID %u already freed", id);
+
+	tx_pp->pool_id_free_mask |= (1ULL << id);
+}
+
+/**
  * dp_tx_page_pool_create_idle() - Create replacement idle pool
  * @soc: DP SoC handle
  * @tx_pp: TX page pool handle
@@ -577,8 +644,12 @@ dp_tx_page_pool_create_idle(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp,
 				      params_copy->page_size,
 				      QDF_DMA_BIDIRECTIONAL,
 				      NULL);
-	if (!new_pp)
+	if (!new_pp) {
+		qdf_spin_lock_bh(&tx_pp->pp_lock);
+		dp_tx_page_pool_put_pool_id(tx_pp, params_copy->pool_id);
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
 		return QDF_STATUS_E_NOMEM;
+	}
 
 	/* Initialize new pool params */
 	qdf_mem_zero(&new_pool_params, sizeof(new_pool_params));
@@ -590,6 +661,7 @@ dp_tx_page_pool_create_idle(struct dp_soc *soc, struct dp_tx_page_pool *tx_pp,
 
 	/* CRITICAL SECTION: Add to idle list */
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	dp_tx_page_pool_put_pool_id(tx_pp, params_copy->pool_id);
 	if (new_pool_params.page_size > qdf_page_size) {
 		if (tx_pp->idle_pool_ho_cnt < tx_pp->max_idle_pools) {
 			tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt] =
@@ -914,7 +986,8 @@ dp_tx_page_pool_log_decision(uint8_t vdev_id,
 		pool_bytes += qdf_snprint(pool_buf + pool_bytes,
 				      (PP_LOG_POOL_LEN *
 				       tx_pp->max_active_pools) - pool_bytes,
-				      "[%d](%c%c) %u/%u | ", i,
+				      "[%d][%d](%c%c) %u/%u | ",
+				      i, snap->pools[i].pool_id,
 				      snap->pools[i].is_prealloc ? 'P' : 'D',
 				      snap->pools[i].page_size > qdf_page_size ?
 							'H' : 'L',
@@ -1338,7 +1411,7 @@ attach_pool:
 	*new_active_pp = *idle_pp;
 	/* Update cache with the pool that was used */
 	dp_tx_page_pool_update_cache(tx_pp, new_active_pp);
-	new_active_pp->pool_id = tx_pp->active_pool_count;
+	new_active_pp->pool_id = dp_tx_page_pool_get_pool_id(tx_pp);
 	tx_pp->active_pool_count++;
 	qdf_nbuf_set_tx_page_pool_id(nbuf, new_active_pp->pool_id);
 	if (free_idle_params)

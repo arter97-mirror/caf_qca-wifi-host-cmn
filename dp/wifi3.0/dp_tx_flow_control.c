@@ -1118,6 +1118,7 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 	if (!tx_pp->active_pool)
 		return QDF_STATUS_E_NOMEM;
 
+	tx_pp->pool_id_free_mask = ~0ULL;
 	pp_params = &tx_pp->active_pool[TX_PRE_ALLOC_POOL_IDX];
 
 	if (soc->cdp_soc.ol_ops->dp_get_page_pool)
@@ -1132,6 +1133,8 @@ static QDF_STATUS dp_tx_page_pool_init(struct dp_soc *soc,
 		pp_params->pp_size = pool_t->pp_size;
 		pp_params->page_size = pool_t->page_size;
 		pp_params->is_prealloc = true;
+		pp_params->pool_id = tx_pp->pool_id_next_seq++;
+		tx_pp->pool_id_free_mask &= ~(1ULL << pp_params->pool_id);
 		tx_pp->last_used_pool = pp_params;
 		tx_pp->active_pool_count = 1;
 	} else if (!dynamic_pp_enabled) {
