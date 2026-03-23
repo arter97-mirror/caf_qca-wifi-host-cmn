@@ -871,8 +871,7 @@ dp_tx_flush_active_pool_list(struct dp_tx_page_pool *tx_pp, bool can_destroy)
 		}
 
 		/* Destroy pool if conditions met */
-		if (pp_params->pp &&
-		    (can_destroy || qdf_page_pool_full_bh(pp_params->pp))) {
+		if (pp_params->pp && can_destroy) {
 			qdf_page_pool_destroy(pp_params->pp);
 			destroyed++;
 			compacted++;
@@ -917,7 +916,7 @@ dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp,
 
 		if (curr->pp) {
 			/* Check if pool should be destroyed */
-			if (can_destroy || qdf_page_pool_full_bh(curr->pp)) {
+			if (can_destroy) {
 				qdf_page_pool_destroy(curr->pp);
 				qdf_mem_free(curr);
 				destroyed++;

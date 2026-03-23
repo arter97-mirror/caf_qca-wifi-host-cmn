@@ -506,7 +506,8 @@ const struct dp_tx_pp_shrink_snapshot *snapshot,
 		qdf_mem_free(marked);
 	}
 
-	if (decision->pools_to_remove_count > 0) {
+	if (decision->pools_to_remove_count > 0 &&
+	    snapshot->active_count != 1) {
 		decision->action = DP_TX_PP_SHRINK_ACTION_REMOVE_POOLS;
 		decision->new_capacity = total_capacity -
 					 decision->capacity_removed;
@@ -518,7 +519,9 @@ const struct dp_tx_pp_shrink_snapshot *snapshot,
 		uint32_t usage_threshold = (total_capacity *
 			DP_TX_PP_LAST_POOL_USAGE_THRESHOLD_PERCENT) / 100;
 
-		if (decision->effective_usage < usage_threshold) {
+		if (decision->effective_usage < usage_threshold &&
+		    snapshot->pools[0].total_pages >
+		    DP_TX_PP_LAST_POOL_USAGE_THRESHOLD_PERCENT) {
 			decision->action = DP_TX_PP_SHRINK_ACTION_REMOVE_LAST;
 			decision->new_capacity = 0;
 			return QDF_STATUS_SUCCESS;
@@ -674,28 +677,22 @@ dp_tx_page_pool_apply_pool_removal(
 			tx_pp->last_used_pool = &tx_pp->active_pool[j];
 	}
 	tx_pp->active_pool_count--;
-	/* Clear stale last entry to prevent duplicate pool pointers */
-	qdf_mem_zero(&tx_pp->active_pool[tx_pp->active_pool_count],
-		     sizeof(struct dp_tx_pp_params));
-
-	qdf_spin_unlock_bh(&tx_pp->pp_lock);
-	/* END CRITICAL SECTION 1 */
 
 	/* Check if page pool has pages in use */
-	if (!qdf_page_pool_full_bh(old_pp) && tx_pp->current_buffers_in_use) {
-		struct dp_tx_pp_params *inactive_params;
-
-		/* Allocate persistent memory for inactive list entry */
-		inactive_params =
+	if (tx_pp->current_buffers_in_use) {
+		struct dp_tx_pp_params *inactive_params =
 			qdf_mem_malloc(sizeof(struct dp_tx_pp_params));
 		if (!inactive_params) {
 			dp_err("Failed to allocate memory for inactive pool params");
-			goto destroy_pp;
+			tx_pp->active_pool[tx_pp->active_pool_count] =
+				params_copy;
+			tx_pp->active_pool_count++;
+			qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+			return QDF_STATUS_E_NOMEM;
 		}
 		/* Copy params to persistent memory */
 		*inactive_params = params_copy;
-
-		qdf_spin_lock_bh(&tx_pp->pp_lock);
 		/* Add to inactive list for later cleanup */
 		qdf_list_insert_back(&tx_pp->inactive_list,
 				     &inactive_params->node);
@@ -703,8 +700,7 @@ dp_tx_page_pool_apply_pool_removal(
 
 		return QDF_STATUS_SUCCESS;
 	}
-
-destroy_pp:
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 	/* No pages in use, safe to destroy */
 	qdf_page_pool_destroy(old_pp);
 
@@ -1001,20 +997,18 @@ dp_tx_page_pool_flush_inactive(struct dp_soc *soc,
 
 	qdf_list_create(&destroy_list, 0);
 	qdf_spin_lock_bh(&tx_pp->pp_lock);
+	if (tx_pp->current_buffers_in_use) {
+		qdf_spin_unlock_bh(&tx_pp->pp_lock);
+		goto destroy_list;
+	}
+
 	qdf_list_for_each_del(&tx_pp->inactive_list, curr, next, node) {
+		qdf_list_remove_node(&tx_pp->inactive_list, &curr->node);
 		if (!curr->pp) {
-			qdf_list_remove_node(&tx_pp->inactive_list,
-					     &curr->node);
 			qdf_mem_free(curr);
 			continue;
 		}
-
-		if (qdf_page_pool_full_bh(curr->pp) ||
-		    !tx_pp->current_buffers_in_use) {
-			qdf_list_remove_node(&tx_pp->inactive_list,
-					     &curr->node);
-			qdf_list_insert_back(&destroy_list, &curr->node);
-		}
+		qdf_list_insert_back(&destroy_list, &curr->node);
 	}
 	qdf_spin_unlock_bh(&tx_pp->pp_lock);
 
@@ -1029,7 +1023,7 @@ dp_tx_page_pool_flush_inactive(struct dp_soc *soc,
 	if (flush_count)
 		dp_nofl_info("TX_PP_MONITOR flushed %u inactive pools",
 			     flush_count);
-
+destroy_list:
 	qdf_list_destroy(&destroy_list);
 }
 
