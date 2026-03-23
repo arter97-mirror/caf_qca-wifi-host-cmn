@@ -24199,6 +24199,125 @@ static QDF_STATUS send_unified_vdev_connect_cmd_tlv(
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * send_vdev_ch_hop_sched_cmd_tlv() - send channel hopping schedule request on
+ *  a given vdev
+ * @wmi_handle: pointer to the wmi handle
+ * @params: channel hopping schedule params
+ *
+ * Return: QDF status
+ */
+static QDF_STATUS
+send_vdev_ch_hop_sched_cmd_tlv(wmi_unified_t wmi_handle,
+			       struct vdev_ch_hop_sched_params *params)
+{
+	wmi_vdev_channel_hopping_schedule_fixed_param *cmd;
+	wmi_channel_hopping_channel_params *ch_params;
+	QDF_STATUS ret;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	uint16_t len;
+	uint8_t i;
+
+	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE + WMI_TLV_HDR_SIZE +
+		(sizeof(wmi_channel_hopping_channel_params) *
+		 params->chan_list_len);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	buf_ptr = wmi_buf_data(buf);
+	cmd = (wmi_vdev_channel_hopping_schedule_fixed_param *)buf_ptr;
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_channel_hopping_schedule_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_channel_hopping_schedule_fixed_param));
+	cmd->vdev_id = params->vdev_id;
+	cmd->next_channel_index = params->next_channel_idx;
+	cmd->dwell_time_tu = params->dwell_time_tu;
+	cmd->target_switch_time_tsf = params->target_switch_time_tsf;
+
+	buf_ptr += sizeof(*cmd);
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_UINT32, 0);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       params->chan_list_len *
+		       sizeof(wmi_channel_hopping_channel_params));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	ch_params = (wmi_channel_hopping_channel_params *)buf_ptr;
+	for (i = 0; i < params->chan_list_len; i++) {
+		WMITLV_SET_HDR(&ch_params[i].tlv_header,
+			       WMITLV_TAG_STRUC_wmi_channel_hopping_channel_params,
+			       WMITLV_GET_STRUCT_TLVLEN(wmi_channel_hopping_channel_params));
+		ch_params[i].chan_mhz = params->chan_list[i].freq;
+		ch_params[i].bandwidth = params->chan_list[i].bandwidth;
+		ch_params[i].role = params->chan_list[i].role;
+	}
+
+	wmi_mtrace(WMI_VDEV_CHANNEL_HOPPING_SCHEDULE_CMDID, params->vdev_id, 0);
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_VDEV_CHANNEL_HOPPING_SCHEDULE_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send WMI_VDEV_CHANNEL_HOPPING_SCHEDULE_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+#endif
+
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
+/**
+ * send_ocb_get_tsf_timer_cmd_tlv() - get ocb tsf timer val
+ * @wmi_handle: pointer to the wmi handle
+ * @vdev_id: vdev identifier
+ *
+ * Return: 0 on success
+ */
+static
+QDF_STATUS send_ocb_get_tsf_timer_cmd_tlv(wmi_unified_t wmi_handle,
+					  uint8_t vdev_id)
+{
+	QDF_STATUS ret;
+	wmi_ocb_get_tsf_timer_cmd_fixed_param *cmd;
+	uint8_t *buf_ptr;
+	wmi_buf_t buf;
+	int32_t len;
+
+	len = sizeof(*cmd);
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		return QDF_STATUS_E_NOMEM;
+	}
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+
+	cmd = (wmi_ocb_get_tsf_timer_cmd_fixed_param *)buf_ptr;
+	qdf_mem_zero(cmd, len);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_ocb_get_tsf_timer_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+			wmi_ocb_get_tsf_timer_cmd_fixed_param));
+	cmd->vdev_id = vdev_id;
+
+	/* Send the WMI command */
+	wmi_mtrace(WMI_OCB_GET_TSF_TIMER_CMDID, cmd->vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_OCB_GET_TSF_TIMER_CMDID);
+	/* If there is an error, set the completion event */
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send WMI message: %d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+#endif
+
 struct wmi_ops tlv_ops =  {
 	.send_vdev_create_cmd = send_vdev_create_cmd_tlv,
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
@@ -24763,6 +24882,12 @@ struct wmi_ops tlv_ops =  {
 	.extract_vdev_current_operating_param_event =
 			extract_vdev_current_operating_param_event_tlv,
 	.send_peer_assoc_v2_cmd = send_peer_assoc_v2_cmd_tlv,
+#ifdef DRIVER_PASSTHRU_MODE
+	.send_vdev_ch_hop_sched_cmd = send_vdev_ch_hop_sched_cmd_tlv,
+#endif
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
+	.send_ocb_get_tsf_timer_cmd = send_ocb_get_tsf_timer_cmd_tlv,
+#endif
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO
@@ -26120,6 +26245,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif /* FEATURE_SNR_STATS */
 	wmi_service[wmi_service_smd_bss_transition_support] =
 				WMI_SERVICE_SMD_BSS_TRANSITION_SUPPORT;
+	wmi_service[wmi_service_passthru_vdev_chan_hop_schedule_support] =
+				WMI_SERVICE_PASSTHRU_VDEV_CHAN_HOP_SCHEDULE_SUPPORT;
 }
 
 /**

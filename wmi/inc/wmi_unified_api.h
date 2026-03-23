@@ -47,7 +47,7 @@
 #ifdef WLAN_SUPPORT_GREEN_AP
 #include "wlan_green_ap_api.h"
 #endif
-#ifdef WLAN_FEATURE_DSRC
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
 #include "wlan_ocb_public_structs.h"
 #endif
 #ifdef WLAN_SUPPORT_TWT
@@ -5339,5 +5339,36 @@ QDF_STATUS
 wmi_unified_power_datapath_stats_request_send(
 			wmi_unified_t wmi_handle,
 			struct wmi_power_datapath_stats_cmd_param *param);
+#endif
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * wmi_unified_send_vdev_ch_hop_sched_cmd() - send channel hopping schedule req
+ * @wmi_handle: pointer to the wmi handle
+ * @params: request parameters
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
+				       struct vdev_ch_hop_sched_params *params);
+#else
+static inline QDF_STATUS
+wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
+				       struct vdev_ch_hop_sched_params *params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
+/**
+ * wmi_unified_ocb_get_tsf_timer() - get ocb tsf timer val
+ * @wmi_handle: pointer to the wmi handle
+ * @req: request for tsf timer
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_ocb_get_tsf_timer(struct wmi_unified *wmi_handle,
+					 struct ocb_get_tsf_timer_param *req);
 #endif
 #endif /* _WMI_UNIFIED_API_H_ */
