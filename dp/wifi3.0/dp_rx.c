@@ -981,8 +981,20 @@ static inline uint32_t dp_rx_get_max_repl_opp(struct rx_desc_pool *rx_desc_pool,
 	required_count = qdf_atomic_read(&rx_desc_pool->required_count);
 	in_use_count = qdf_atomic_read(&rx_desc_pool->in_use_count);
 
+	/*
+	 * This API is supposed to be used along with
+	 * dp_rx_buffers_is_skip_replenish(), which decides the refill
+	 * srngs that are allowed to be replenished.
+	 * The upscale/downscale limits should be applied only to the
+	 * primary refill ring.
+	 * For non-primary refill ring, dp_rx_buffers_is_skip_replenish() allows
+	 * the refill and hence, we can fully refill the non-primary
+	 * refill ring.
+	 */
 	if (in_use_count >= required_count)
-		return 0;
+		return dp_rxdma_srng->primary_refill ?
+						0 :
+						dp_rxdma_srng->num_entries;
 
 	num_descs = required_count - in_use_count;
 
@@ -1047,7 +1059,13 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	dp_verbose_debug("%pK: requested %d buffers for replenish",
 			 dp_soc, num_req_buffers);
 
-	if (dp_rx_buffers_is_skip_replenish(dp_soc, rx_desc_pool, desc_list,
+	/*
+	 * The skip logic is not required for non-primary replenish ring, since
+	 * the non-primary replenish ring should always be filled with buffers
+	 * (which are used for offloads cases)
+	 */
+	if (dp_rxdma_srng->primary_refill &&
+	    dp_rx_buffers_is_skip_replenish(dp_soc, rx_desc_pool, desc_list,
 					    tail, &num_req_buffers, mac_id))
 		return 0;
 
