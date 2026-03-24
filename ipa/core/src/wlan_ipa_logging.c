@@ -305,7 +305,7 @@ void wlan_ipa_logging_sock_deinit(void)
 static inline
 const char *current_process_name(void)
 {
-	if (in_irq())
+	if (qdf_in_irq())
 		return "irq";
 
 	if (in_softirq())
