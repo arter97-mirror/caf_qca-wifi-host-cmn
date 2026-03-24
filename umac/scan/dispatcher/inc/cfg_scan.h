@@ -1230,6 +1230,17 @@ enum scan_mode_6ghz {
 			0, \
 			CFG_VALUE_OR_DEFAULT, \
 			"p2p scan burst duration")
+
+/*
+ * <ini>
+ * p2p_scan_dwell_time_en_on_single_chan - Enable/Disable Enhance
+ * dwell times for Single channel P2P scan.
+ */
+#define CFG_P2P_SCAN_EN_DWELL_TIME CFG_INI_BOOL( \
+		"p2p_scan_dwell_time_en_on_single_chan", \
+		0, \
+		"P2P scan dwell time enhanced for Single channel")
+
 /*
  * <ini>
  * go_scan_burst_duration - Burst duration in case of split scan when GO is
@@ -1555,5 +1566,6 @@ enum scan_mode_6ghz {
 	CFG(CFG_SKIP_6GHZ_AND_INDOOR_FREQ_SCAN) \
 	CFG_SCAN_PNO \
 	CFG(CFG_LAST_SCAN_AGEOUT_TIME) \
-	CFG(CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC)
+	CFG(CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC) \
+	CFG(CFG_P2P_SCAN_EN_DWELL_TIME)
 #endif /* __CONFIG_SCAN_H */

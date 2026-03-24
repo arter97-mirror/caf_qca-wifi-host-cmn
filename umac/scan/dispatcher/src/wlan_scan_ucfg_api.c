@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -830,6 +830,8 @@ wlan_scan_global_init(struct wlan_objmgr_psoc *psoc,
 	scan_obj->aux_mac_support = false;
 	scan_obj->scan_def.scan_cache_report_max_time_in_sec =
 		cfg_get(psoc, CFG_SCAN_CACHE_REPORT_MAX_TIME_IN_SEC);
+	scan_obj->scan_def.p2p_scan_dwell_time_en_on_single_chan =
+		cfg_get(psoc, CFG_P2P_SCAN_EN_DWELL_TIME);
 
 	/* init scan id seed */
 	qdf_atomic_init(&scan_obj->scan_ids);

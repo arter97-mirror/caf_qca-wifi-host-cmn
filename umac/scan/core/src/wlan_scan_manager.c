@@ -1377,24 +1377,27 @@ scm_scan_req_update_params(struct wlan_objmgr_vdev *vdev,
 
 	if ((wlan_vdev_mlme_get_opmode(vdev) == QDF_P2P_DEVICE_MODE ||
 	     wlan_vdev_mlme_get_opmode(vdev) == QDF_P2P_CLIENT_MODE) &&
-	    !qdf_is_macaddr_zero(&req->scan_req.bssid_list[0]) &&
-	    !qdf_is_macaddr_broadcast(&req->scan_req.bssid_list[0])) {
-		req->scan_req.scan_ctrl_flags_ext |=
-			SCAN_FLAG_EXT_STOP_IF_BSSID_FOUND;
+	   ((!qdf_is_macaddr_zero(&req->scan_req.bssid_list[0]) &&
+	     !qdf_is_macaddr_broadcast(&req->scan_req.bssid_list[0])) ||
+	    scan_obj->scan_def.p2p_scan_dwell_time_en_on_single_chan)) {
+		if (!qdf_is_macaddr_zero(&req->scan_req.bssid_list[0]) &&
+		    !qdf_is_macaddr_broadcast(&req->scan_req.bssid_list[0]))
+			req->scan_req.scan_ctrl_flags_ext |=
+				SCAN_FLAG_EXT_STOP_IF_BSSID_FOUND;
 		if (req->scan_req.chan_list.num_chan == 1) {
 			req->scan_req.dwell_time_active =
-					P2P_ACTIVE_DWELL_TIME_WITH_BSSID;
+					P2P_ACTIVE_DWELL_TIME_SINGLE_CHAN;
 			req->scan_req.dwell_time_active_2g =
-					P2P_ACTIVE_DWELL_TIME_WITH_BSSID;
+					P2P_ACTIVE_DWELL_TIME_SINGLE_CHAN;
 			req->scan_req.dwell_time_active_6g =
-					P2P_ACTIVE_DWELL_TIME_WITH_BSSID;
+					P2P_ACTIVE_DWELL_TIME_SINGLE_CHAN;
 			req->scan_req.burst_duration =
-					P2P_ACTIVE_DWELL_TIME_WITH_BSSID;
+					P2P_ACTIVE_DWELL_TIME_SINGLE_CHAN;
 			req->scan_req.repeat_probe_time =
-					P2P_REPEAT_PROBE_TIME_WITH_BSSID;
+					P2P_REPEAT_PROBE_TIME_SINGLE_CHAN;
 			req->scan_req.n_probes =
 				req->scan_req.dwell_time_active /
-				P2P_REPEAT_PROBE_TIME_WITH_BSSID;
+				P2P_REPEAT_PROBE_TIME_SINGLE_CHAN;
 
 			scm_debug("p2p scan with bssid dwell and busrt time %d, probe time %d",
 				  req->scan_req.adaptive_dwell_time_mode,

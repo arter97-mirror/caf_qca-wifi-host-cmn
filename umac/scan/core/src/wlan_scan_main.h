@@ -434,6 +434,9 @@ enum scan_dfs_mode {
  *               can be used to dump all scan_ev_* flags for debug
  * @scan_cache_report_max_time_in_sec: Max value for scan cache report
  *                                     in seconds
+ * @p2p_scan_dwell_time_en_on_single_chan: enable indicate Enhance
+ *                                         dwell times for Single
+ *                                         channel P2P scan
  */
 struct scan_default_params {
 	uint32_t active_dwell;
@@ -534,6 +537,7 @@ struct scan_default_params {
 		uint32_t scan_events;
 	};
 	uint64_t scan_cache_report_max_time_in_sec;
+	bool p2p_scan_dwell_time_en_on_single_chan;
 };
 
 /**
