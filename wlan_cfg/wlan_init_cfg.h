@@ -46,7 +46,8 @@
 #define DP_PPDU_TXLITE_STATS_BITMASK_CFG 0x3FFF
 
 #if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN6450) || \
-    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072)
+    defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCC2072) || \
+    defined(QCA_WIFI_WCN8750)
 #define NUM_RXDMA_STATUS_RINGS_PER_PDEV 1
 #else
 #define NUM_RXDMA_STATUS_RINGS_PER_PDEV 2

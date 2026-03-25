@@ -3843,6 +3843,7 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 		}
 		dp_set_num_rxdma_dst_ring(soc);
 		break;
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_FIG:
 		soc->ast_override_support = 1;
 		soc->per_tid_basize_max_tid = 8;
@@ -4936,6 +4937,7 @@ void dp_soc_cfg_attach(struct dp_soc *soc)
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		break;

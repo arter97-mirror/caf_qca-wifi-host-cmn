@@ -5835,6 +5835,7 @@ QDF_STATUS dp_mon_soc_cfg_init(struct dp_soc *soc)
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		/* do nothing */
@@ -5907,6 +5908,7 @@ static void dp_mon_pdev_per_target_config(struct dp_pdev *pdev)
 	case TARGET_TYPE_QCN6432:
 	case TARGET_TYPE_QCA5424:
 	case TARGET_TYPE_MANGO:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_FIG:
 		mon_pdev->is_tlv_hdr_64_bit = true;
 		mon_pdev->tlv_hdr_size = HAL_RX_TLV64_HDR_SIZE;
@@ -6271,6 +6273,7 @@ dp_ch_band_lmac_id_mapping_init(struct dp_pdev *pdev)
 	case TARGET_TYPE_QCA6750:
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 		pdev->ch_band_lmac_id_mapping[REG_BAND_2G] = DP_MAC0_LMAC_ID;
 		pdev->ch_band_lmac_id_mapping[REG_BAND_5G] = DP_MAC0_LMAC_ID;
@@ -6888,6 +6891,7 @@ void dp_mon_ops_register(struct dp_soc *soc)
 	case TARGET_TYPE_QCN6122:
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		dp_mon_ops_register_1_0(mon_soc);
@@ -6958,6 +6962,7 @@ void dp_mon_cdp_ops_register(struct dp_soc *soc)
 	case TARGET_TYPE_QCN6122:
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		dp_mon_cdp_ops_register_1_0(ops);

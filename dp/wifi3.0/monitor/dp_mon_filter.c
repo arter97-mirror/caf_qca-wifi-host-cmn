@@ -733,6 +733,7 @@ void dp_mon_filter_adjust(struct dp_pdev *pdev, struct dp_mon_filter *filter)
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		filter->tlv_filter.msdu_start = 0;
