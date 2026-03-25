@@ -832,6 +832,7 @@ static bool hif_is_pld_based_target(struct hif_ipci_softc *sc,
 	case QCA6750_DEVICE_ID:
 #endif
 	case WCN6450_DEVICE_ID:
+	case WCN8750_DEVICE_ID:
 	case WCN7750_DEVICE_ID:
 		return true;
 	}

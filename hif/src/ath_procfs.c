@@ -130,9 +130,10 @@ static ssize_t ath_procfs_diag_read_legacy(struct file *file,
 	     (tgt_info->target_type == TARGET_TYPE_PEACH) ||
 	     (tgt_info->target_type == TARGET_TYPE_QCC2072) ||
 	     (tgt_info->target_type == TARGET_TYPE_FIG))) ||
-	    (scn->bus_type ==  QDF_BUS_TYPE_IPCI &&
-	     (tgt_info->target_type == TARGET_TYPE_QCA6750 ||
-	      tgt_info->target_type == TARGET_TYPE_WCN7750)) ||
+	   (scn->bus_type ==  QDF_BUS_TYPE_IPCI &&
+	    ((tgt_info->target_type == TARGET_TYPE_QCA6750) ||
+	     (tgt_info->target_type == TARGET_TYPE_WCN8750) ||
+	     (tgt_info->target_type == TARGET_TYPE_WCN7750))) ||
 	    ((scn->bus_type ==  QDF_BUS_TYPE_USB) &&
 	     (tgt_info->target_type == TARGET_TYPE_QCN7605))) {
 		memtype = ((uint32_t)(*pos) & 0xff000000) >> 24;
@@ -223,7 +224,8 @@ static ssize_t ath_procfs_diag_write_legacy(struct file *file,
 	      (tgt_info->target_type == TARGET_TYPE_FIG))) ||
 	    (scn->bus_type ==  QDF_BUS_TYPE_IPCI &&
 	     ((tgt_info->target_type == TARGET_TYPE_QCA6750) ||
-	     (tgt_info->target_type == TARGET_TYPE_WCN7750))) ||
+	      (tgt_info->target_type == TARGET_TYPE_WCN8750) ||
+	      (tgt_info->target_type == TARGET_TYPE_WCN7750))) ||
 	    ((scn->bus_type ==  QDF_BUS_TYPE_USB) &&
 	     (tgt_info->target_type == TARGET_TYPE_QCN7605))) {
 		memtype = ((uint32_t)(*pos) & 0xff000000) >> 24;
@@ -372,6 +374,7 @@ static ssize_t ath_procfs_diag_read_ext(struct file *file, char __user *buf,
 		case TARGET_TYPE_PEACH:
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_WCN7750:
+		case TARGET_TYPE_WCN8750:
 		case TARGET_TYPE_WCN6450:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:
@@ -455,6 +458,7 @@ static ssize_t ath_procfs_diag_write_ext(struct file *file,
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_PEACH:
 		case TARGET_TYPE_WCN7750:
+		case TARGET_TYPE_WCN8750:
 		case TARGET_TYPE_WCN6450:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -86,6 +86,8 @@ struct hif_ipci_stats {
 #define HIF_IPCI_DEVICE_ID QCA6750_DEVICE_ID
 #elif defined(QCA_WIFI_WCN7750)
 #define HIF_IPCI_DEVICE_ID WCN7750_DEVICE_ID
+#elif defined(QCA_WIFI_WCN8750)
+#define HIF_IPCI_DEVICE_ID WCN8750_DEVICE_ID
 #else
 #define HIF_IPCI_DEVICE_ID 0
 #endif

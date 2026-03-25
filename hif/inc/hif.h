@@ -95,6 +95,8 @@ typedef void *hif_handle_t;
 #define HIF_TYPE_QCA5424 36
 #define HIF_TYPE_QCC2072 37
 #define HIF_TYPE_FIG 38
+#define HIF_TYPE_WCN8750 39
+
 
 #define DMA_COHERENT_MASK_DEFAULT   37
 

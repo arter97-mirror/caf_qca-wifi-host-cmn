@@ -2167,7 +2167,7 @@ static QDF_STATUS hif_hal_detach(struct hif_softc *scn)
 	defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_QCN9224) || \
 	defined(QCA_WIFI_QCA9574)) || defined(QCA_WIFI_QCA5332) || \
 	defined(QCA_WIFI_WCN7750) || defined(QCA_WIFI_QCA5424) || \
-	defined(QCA_WIFI_QCC2072)
+	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_WCN8750)
 static QDF_STATUS hif_hal_attach(struct hif_softc *scn)
 {
 	if (ce_srng_based(scn)) {
@@ -2605,6 +2605,12 @@ int hif_get_device_type(uint32_t device_id,
 		*hif_type = HIF_TYPE_WCN7750;
 		*target_type = TARGET_TYPE_WCN7750;
 		hif_info(" *********** WCN7750 *************");
+		break;
+
+	case WCN8750_DEVICE_ID:
+		*hif_type = HIF_TYPE_WCN8750;
+		*target_type = TARGET_TYPE_WCN8750;
+		hif_info(" *********** WCN8750 *************");
 		break;
 
 	case QCC2072_DEVICE_ID:

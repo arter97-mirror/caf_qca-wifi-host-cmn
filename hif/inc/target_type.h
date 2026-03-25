@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -131,6 +131,11 @@ extern "C" {
 
 #ifndef TARGET_TYPE_FIG
 #define TARGET_TYPE_FIG    43
+#endif
+
+/* Kasai */
+#ifndef TARGET_TYPE_WCN8750
+#define TARGET_TYPE_WCN8750    44
 #endif
 
 #ifdef __cplusplus

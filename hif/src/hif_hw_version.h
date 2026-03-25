@@ -42,7 +42,7 @@
 #define MANGO_V1                        0xDEADBEEF	// TODO Define this
 #define FIG_V1				0x402B0100
 #define FIG_V2                          0x402B0200
-#define WCN8750_V1                      0x40331100
+#define WCN8750_V1                      0x40330100
 #define PEACH_V1                        0x40210100
 #define PEACH_V2                        0x40210200
 #define KIWI_V1                         0x40170100

@@ -3470,6 +3470,7 @@ target_if_spectral_len_adj_swar_init(struct spectral_fft_bin_len_adj_swar *swar,
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_FIG ||
 	    target_type == TARGET_TYPE_WCN7750 ||
+	    target_type == TARGET_TYPE_WCN8750 ||
 	    target_type == TARGET_TYPE_QCC2072) {
 		swar->fftbin_size_war = SPECTRAL_FFTBIN_SIZE_WAR_2BYTE_TO_1BYTE;
 		rparams->hw_fft_bin_width = 2;
@@ -3550,6 +3551,7 @@ target_if_spectral_report_params_init(
 	    target_type == TARGET_TYPE_MANGO ||
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN7750 ||
+	    target_type == TARGET_TYPE_WCN8750 ||
 	    target_type == TARGET_TYPE_QCC2072 ||
 	    target_type == TARGET_TYPE_FIG) {
 		rparams->version = SPECTRAL_REPORT_FORMAT_VERSION_2;
@@ -4024,6 +4026,7 @@ target_if_pdev_spectral_init(struct wlan_objmgr_pdev *pdev)
 	    target_type == TARGET_TYPE_MANGO ||
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN7750 ||
+	    target_type == TARGET_TYPE_WCN8750 ||
 	    target_type == TARGET_TYPE_QCC2072 ||
 	    target_type == TARGET_TYPE_FIG)
 		spectral->direct_dma_support = true;
@@ -4054,6 +4057,7 @@ target_if_pdev_spectral_init(struct wlan_objmgr_pdev *pdev)
 	    (target_type == TARGET_TYPE_MANGO) ||
 	    (target_type == TARGET_TYPE_PEACH) ||
 	    (target_type == TARGET_TYPE_WCN7750) ||
+	    (target_type == TARGET_TYPE_WCN8750) ||
 	    (target_type == TARGET_TYPE_QCC2072) ||
 	    (target_type == TARGET_TYPE_FIG)) {
 		spectral->spectral_gen = SPECTRAL_GEN3;

@@ -1266,6 +1266,64 @@ static struct service_to_pipe target_service_to_ce_map_wcn7750[] = {
 };
 #endif
 
+#if (defined(QCA_WIFI_WCN8750))
+#ifdef FEATURE_DIRECT_LINK
+static struct service_to_pipe target_service_to_ce_map_wcn8750_direct_link[] = {
+	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
+	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
+	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 4, },
+	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 2, },
+	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
+	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
+#ifdef WLAN_FEATURE_WMI_DIAG_OVER_CE7
+	{ WMI_CONTROL_DIAG_SVC, PIPEDIR_IN, 7, },
+#endif
+	{ LPASS_DATA_MSG_SVC, PIPEDIR_OUT, 0, },
+	{ LPASS_DATA_MSG_SVC, PIPEDIR_IN, 5, },
+	/* (Additions here) */
+	{ 0, 0, 0, },
+};
+#endif
+
+static struct service_to_pipe target_service_to_ce_map_wcn8750[] = {
+	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
+	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
+	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
+	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
+	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
+	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 2, },
+	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
+	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
+#ifdef WLAN_FEATURE_WMI_DIAG_OVER_CE7
+	{ WMI_CONTROL_DIAG_SVC, PIPEDIR_IN, 7, },
+#endif
+	/* (Additions here) */
+	{ 0, 0, 0, },
+};
+#else
+#ifdef FEATURE_DIRECT_LINK
+static struct service_to_pipe target_service_to_ce_map_wcn8750_direct_link[] = {
+};
+#endif
+
+static struct service_to_pipe target_service_to_ce_map_wcn8750[] = {
+};
+#endif
+
 #if (defined(QCA_WIFI_QCC2072))
 static struct service_to_pipe target_service_to_ce_map_qcc2072[] = {
 	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
@@ -1529,6 +1587,32 @@ hif_select_service_to_pipe_map_wcn7750(struct hif_softc *scn,
 			sizeof(target_service_to_ce_map_wcn7750);
 	}
 }
+
+/**
+ * hif_select_service_to_pipe_map_wcn8750() - Select service to CE map
+ *  configuration for WCN8750
+ * @scn: HIF context
+ * @tgt_svc_map_to_use: returned service map
+ * @sz_tgt_svc_map_to_use: returned length of the service map
+ *
+ * Return: None
+ */
+static inline void
+hif_select_service_to_pipe_map_wcn8750(struct hif_softc *scn,
+				       struct service_to_pipe **tgt_svc_map_to_use,
+				       uint32_t *sz_tgt_svc_map_to_use)
+{
+	if (pld_is_direct_link_supported(scn->qdf_dev->dev)) {
+		*tgt_svc_map_to_use =
+			target_service_to_ce_map_wcn8750_direct_link;
+		*sz_tgt_svc_map_to_use =
+			sizeof(target_service_to_ce_map_wcn8750_direct_link);
+	} else {
+		*tgt_svc_map_to_use = target_service_to_ce_map_wcn8750;
+		*sz_tgt_svc_map_to_use =
+			sizeof(target_service_to_ce_map_wcn8750);
+	}
+}
 #else
 static inline void
 hif_select_service_to_pipe_map_kiwi(struct hif_softc *scn,
@@ -1546,6 +1630,15 @@ hif_select_service_to_pipe_map_wcn7750(struct hif_softc *scn,
 {
 	*tgt_svc_map_to_use = target_service_to_ce_map_wcn7750;
 	*sz_tgt_svc_map_to_use = sizeof(target_service_to_ce_map_wcn7750);
+}
+
+static inline void
+hif_select_service_to_pipe_map_wcn8750(struct hif_softc *scn,
+				       struct service_to_pipe **tgt_svc_map_to_use,
+				       uint32_t *sz_tgt_svc_map_to_use)
+{
+	*tgt_svc_map_to_use = target_service_to_ce_map_wcn8750;
+	*sz_tgt_svc_map_to_use = sizeof(target_service_to_ce_map_wcn8750);
 }
 #endif
 
@@ -1602,6 +1695,11 @@ static void hif_select_service_to_pipe_map(struct hif_softc *scn,
 			break;
 		case TARGET_TYPE_WCN7750:
 			hif_select_service_to_pipe_map_wcn7750(scn,
+							       tgt_svc_map_to_use,
+							       sz_tgt_svc_map_to_use);
+			break;
+		case TARGET_TYPE_WCN8750:
+			hif_select_service_to_pipe_map_wcn8750(scn,
 							       tgt_svc_map_to_use,
 							       sz_tgt_svc_map_to_use);
 			break;
@@ -2060,6 +2158,7 @@ bool ce_srng_based(struct hif_softc *scn)
 	case TARGET_TYPE_QCA5332:
 	case TARGET_TYPE_QCN6432:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCA5424:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
@@ -5106,6 +5205,7 @@ int hif_wlan_enable(struct hif_softc *scn)
 	case TARGET_TYPE_PEACH:
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
+	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		hif_prepare_hal_shadow_reg_cfg_v3(scn, &cfg);
@@ -5259,6 +5359,33 @@ void hif_ce_select_config_wcn7750(struct HIF_CE_state *hif_state)
 				sizeof(target_ce_config_wlan_wcn7750);
 	}
 }
+
+/**
+ * hif_ce_select_config_wcn8750() - Select the host and target CE
+ *  configuration for WCN8750
+ * @hif_state: HIF CE context
+ *
+ * Return: None
+ */
+static inline
+void hif_ce_select_config_wcn8750(struct HIF_CE_state *hif_state)
+{
+	struct hif_softc *hif_ctx = HIF_GET_SOFTC(hif_state);
+
+	if (pld_is_direct_link_supported(hif_ctx->qdf_dev->dev)) {
+		hif_state->host_ce_config =
+			host_ce_config_wlan_wcn8750_direct_link;
+		hif_state->target_ce_config =
+			target_ce_config_wlan_wcn8750_direct_link;
+		hif_state->target_ce_config_sz =
+			sizeof(target_ce_config_wlan_wcn8750_direct_link);
+	} else {
+		hif_state->host_ce_config = host_ce_config_wlan_wcn8750;
+		hif_state->target_ce_config = target_ce_config_wlan_wcn8750;
+		hif_state->target_ce_config_sz =
+				sizeof(target_ce_config_wlan_wcn8750);
+	}
+}
 #else
 static inline
 void hif_ce_select_config_kiwi(struct HIF_CE_state *hif_state)
@@ -5274,6 +5401,14 @@ void hif_ce_select_config_wcn7750(struct HIF_CE_state *hif_state)
 	hif_state->host_ce_config = host_ce_config_wlan_wcn7750;
 	hif_state->target_ce_config = target_ce_config_wlan_wcn7750;
 	hif_state->target_ce_config_sz = sizeof(target_ce_config_wlan_wcn7750);
+}
+
+static inline
+void hif_ce_select_config_wcn8750(struct HIF_CE_state *hif_state)
+{
+	hif_state->host_ce_config = host_ce_config_wlan_wcn8750;
+	hif_state->target_ce_config = target_ce_config_wlan_wcn8750;
+	hif_state->target_ce_config_sz = sizeof(target_ce_config_wlan_wcn8750);
 }
 #endif
 
@@ -5468,6 +5603,10 @@ void hif_ce_prepare_config(struct hif_softc *scn)
 	case TARGET_TYPE_WCN7750:
 		hif_ce_select_config_wcn7750(hif_state);
 		scn->ce_count = WCN_7750_CE_COUNT;
+		break;
+	case TARGET_TYPE_WCN8750:
+		hif_ce_select_config_wcn8750(hif_state);
+		scn->ce_count = WCN_8750_CE_COUNT;
 		break;
 	case TARGET_TYPE_QCC2072:
 		hif_state->host_ce_config = host_ce_config_wlan_qcc2072;

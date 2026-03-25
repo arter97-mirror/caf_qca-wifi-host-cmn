@@ -505,6 +505,7 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			 target_type == TARGET_TYPE_PEACH ||
 			 target_type == TARGET_TYPE_WCN6450 ||
 			 target_type == TARGET_TYPE_WCN7750 ||
+			 target_type == TARGET_TYPE_WCN8750 ||
 			 target_type == TARGET_TYPE_QCC2072 ||
 			 target_type == TARGET_TYPE_FIG)
 			hdr->cmn.cfr_metadata_version = CFR_META_VERSION_7;
@@ -546,6 +547,8 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_COLOGNE;
 		else if (target_type == TARGET_TYPE_FIG)
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_FIG;
+		else if (target_type == TARGET_TYPE_WCN8750)
+			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_KASAI;
 		else
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_CYP;
 	}
@@ -628,6 +631,8 @@ static QDF_STATUS target_if_cfr_init_target(struct wlan_objmgr_psoc *psoc,
 		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_COLOGNE;
 	else if (target == TARGET_TYPE_FIG)
 		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_FIG;
+	else if (target == TARGET_TYPE_WCN8750)
+		cfr_pdev->chip_type = CFR_CAPTURE_RADIO_KASAI;
 	return status;
 }
 
@@ -672,6 +677,7 @@ target_if_cfr_init_pdev(struct wlan_objmgr_psoc *psoc,
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN6450 ||
 	    target_type == TARGET_TYPE_WCN7750 ||
+	    target_type == TARGET_TYPE_WCN8750 ||
 	    target_type == TARGET_TYPE_QCC2072 ||
 	    target_type == TARGET_TYPE_FIG) {
 		status = target_if_cfr_init_target(psoc,
@@ -702,6 +708,7 @@ target_if_cfr_deinit_pdev(struct wlan_objmgr_psoc *psoc,
 	    target_type == TARGET_TYPE_PEACH ||
 	    target_type == TARGET_TYPE_WCN6450 ||
 	    target_type == TARGET_TYPE_WCN7750 ||
+	    target_type == TARGET_TYPE_WCN8750 ||
 	    target_type == TARGET_TYPE_QCC2072 ||
 	    target_type == TARGET_TYPE_FIG) {
 		status = target_if_cfr_deinit_target(psoc, pdev);
