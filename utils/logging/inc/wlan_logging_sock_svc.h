@@ -30,9 +30,12 @@
 #include <qdf_trace.h>
 #include <wlan_nlink_common.h>
 
+#define ANI_NL_MSG_APF_LOG_TYPE 112
+
 int wlan_logging_sock_init_svc(void);
 int wlan_logging_sock_deinit_svc(void);
 int wlan_log_to_user(QDF_TRACE_LEVEL log_level, char *to_be_sent, int length);
+int wlan_log_apf_to_user(void *data, uint16_t len);
 
 /**
  * wlan_logging_set_flush_timer() - Sets the time period for log flush timer

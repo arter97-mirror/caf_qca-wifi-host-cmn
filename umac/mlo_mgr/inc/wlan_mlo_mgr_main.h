@@ -1061,6 +1061,17 @@ void mlo_t2lm_reset_established_and_upcoming_mapping(
  * Return: VDEV ID
  */
 uint8_t ucfg_mlo_get_active_vdev_id(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * ucfg_mlo_is_mlo_vdev_active() - This API wrapper for
+ * "mlo_mgr_is_mlo_vdev_active"
+ *
+ * @vdev: VDEV object
+ *
+ * Return: true for active vdev
+ */
+
+bool ucfg_mlo_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev);
 #else
 static inline QDF_STATUS wlan_mlo_mgr_init(void)
 {
@@ -1123,6 +1134,12 @@ static inline
 uint8_t ucfg_mlo_get_active_vdev_id(struct wlan_objmgr_vdev *vdev)
 {
 	return WLAN_UMAC_VDEV_ID_MAX;
+}
+
+static inline bool
+ucfg_mlo_is_mlo_vdev_active(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
 }
 
 static inline struct wlan_mlo_dev_context *

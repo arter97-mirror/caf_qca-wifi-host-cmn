@@ -754,6 +754,7 @@ typedef enum {
  * @QDF_AHDEMO_MODE: AHDEMO mode
  * @QDF_TDLS_MODE: TDLS device mode
  * @QDF_NAN_DISC_MODE: NAN Discovery device mode
+ * @QDF_PASSTHRU_MODE: Passthrough mode
  * @QDF_MAX_NO_OF_MODE: Max place holder
  *
  * These are generic IDs that identify the various roles
@@ -777,6 +778,7 @@ enum QDF_OPMODE {
 	QDF_AHDEMO_MODE,
 	QDF_TDLS_MODE,
 	QDF_NAN_DISC_MODE,
+	QDF_PASSTHRU_MODE,
 
 	/* Add new OP Modes to qdf_opmode_str as well */
 
@@ -1697,6 +1699,7 @@ enum qdf_suspend_type {
  * @QDF_ENABLE_IRQ_FAILURE: Failed to enable IRQs
  * @QDF_VDEV_LINK_MISMATCH: Vdev link info mismatch
  * @QDF_DP_PEER_ID_DUPLICATE_USE: DP peer ID duplicate used
+ * @QDF_DP_INVALID_PEER_MAP: DP Invalid peer map
  */
 enum qdf_hang_reason {
 	QDF_REASON_UNSPECIFIED,
@@ -1745,6 +1748,7 @@ enum qdf_hang_reason {
 	QDF_ENABLE_IRQ_FAILURE,
 	QDF_VDEV_LINK_MISMATCH,
 	QDF_DP_PEER_ID_DUPLICATE_USE,
+	QDF_DP_INVALID_PEER_MAP,
 };
 
 /**

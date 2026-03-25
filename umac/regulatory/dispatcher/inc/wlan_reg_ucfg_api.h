@@ -955,4 +955,35 @@ void ucfg_reg_txpb_unregister_callback(struct wlan_objmgr_psoc *psoc)
 {
 }
 #endif
+
+/**
+ * ucfg_reg_disable_unii_1_2a_for_current_cc() - Check if disable of UNII 1 and
+ * 2A bands  applicable to current country
+ *
+ * @pdev: Pointer to pdev
+ *
+ * Return: True if current country is CA else false
+ */
+bool ucfg_reg_disable_unii_1_2a_for_current_cc(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * ucfg_reg_set_disable_unii_1_2a() - apply disable unii 1 and 2A
+ * @pdev: The physical pdev to reduce tx power for
+ * @disable_unii_1_2a: true to disable UNII 1/2A band, false to enable
+ *
+ * This function sets disable_unii_1_2a flag to enable/disable
+ * UNII 1/2A band.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS ucfg_reg_set_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev,
+					  bool disable_unii_1_2a);
+
+/**
+ * ucfg_reg_get_disable_unii_1_2a() - Get disable unii 1 and 2A
+ * @pdev: Pointer to pdev
+ *
+ * Return: disable_unii_1_2a
+ */
+bool ucfg_reg_get_disable_unii_1_2a(struct wlan_objmgr_pdev *pdev);
 #endif

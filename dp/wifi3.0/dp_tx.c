@@ -59,6 +59,9 @@
 #ifdef DP_FEATURE_TX_PAGE_POOL
 #include "qdf_page_pool.h"
 #endif
+#ifdef DRIVER_PASSTHRU_MODE
+#include "qdf_wondertap.h"
+#endif
 
 /* Flag to skip CCE classify when mesh or tid override enabled */
 #define DP_TX_SKIP_CCE_CLASSIFY \
@@ -1544,7 +1547,8 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 
 	/* Initialize the SW tx descriptor */
 	tx_desc->nbuf = nbuf;
-	tx_desc->frm_type = dp_tx_frm_std;
+	tx_desc->frm_type = (wlan_op_mode_passthru == vdev->opmode) ?
+				dp_tx_frm_raw : dp_tx_frm_std;
 	tx_desc->tx_encap_type = ((tx_exc_metadata &&
 		(tx_exc_metadata->tx_encap_type != CDP_INVALID_TX_ENCAP_TYPE)) ?
 		tx_exc_metadata->tx_encap_type : vdev->tx_encap_type);
@@ -6771,7 +6775,7 @@ void dp_tx_update_connectivity_stats(struct dp_soc *soc,
 	qdf_assert(tx_desc);
 
 	if (!vdev || vdev->delete.pending || !vdev->osif_vdev ||
-	    !vdev->stats_cb)
+	    !vdev->stats_cb || (vdev->opmode == wlan_op_mode_passthru))
 		return;
 
 	osif_dev = vdev->osif_vdev;
@@ -8280,10 +8284,10 @@ dp_tx_comp_process_desc_list(struct dp_soc *soc,
 					       &ts, comp_index);
 		comp_index++;
 
-		dp_tx_comp_process_tx_status(soc, desc, &ts, txrx_peer,
-					     ring_id);
-
-		dp_tx_comp_process_desc(soc, desc, &ts, txrx_peer);
+		dp_tx_comp_process_tx_status_n_desc_wrapper(soc,
+							    txrx_peer ? txrx_peer->vdev : NULL,
+							    desc, &ts,
+							    txrx_peer, ring_id);
 
 		if (qdf_likely(desc->flags & DP_TX_DESC_FLAG_FAST)) {
 			dp_tx_nbuf_dev_queue_free(&h, desc);
@@ -8877,6 +8881,8 @@ void dp_tx_vdev_update_search_flags(struct dp_vdev *vdev)
 
 	if (vdev->opmode == wlan_op_mode_sta && !vdev->tdls_link_connected)
 		vdev->search_type = soc->sta_mode_search_policy;
+	else if (vdev->opmode == wlan_op_mode_passthru)
+		vdev->search_type = HAL_TX_ADDR_INDEX_SEARCH;
 	else
 		vdev->search_type = HAL_TX_ADDR_SEARCH_DEFAULT;
 }
@@ -9912,3 +9918,210 @@ void hal_tx_comp_get_status_wrapper(struct dp_soc *soc,
 	hal_tx_comp_get_status(&desc->comp, ts, soc->hal_soc);
 }
 #endif /* QCA_DP_OPTIMIZED_TX_DESC */
+
+#if defined(DRIVER_PASSTHRU_MODE)
+/**
+ * dp_tx_set_metadata_passthru() - Set TID for passthrough mode
+ * @vdev: DP vdev handle
+ * @nbuf: Network buffer
+ * @msdu_info: MSDU info structure
+ *
+ * Empty stub function replacing dp_tx_classify_tid() for passthrough mode.
+ * TID classification is not performed in passthrough mode.
+ *
+ * Return: void
+ */
+static inline
+void dp_tx_set_metadata_passthru(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+				 struct dp_tx_msdu_info_s *msdu_info)
+{
+	qdf_wonder_txd_t *txd;
+
+	/*
+	 * nbuf data would start at the radiotap header so push size
+	 * is just the wonder txd size.
+	 */
+	qdf_nbuf_push_head(nbuf, sizeof(qdf_wonder_txd_t));
+
+	txd = (qdf_wonder_txd_t *)qdf_nbuf_data(nbuf);
+	msdu_info->is_unicast = txd->is_unicast;
+	msdu_info->frame_type = txd->frame_type;
+
+	/*
+	 * ToDo: Abstract the ieee enums for ftype
+	 */
+	if (!msdu_info->is_unicast || txd->tid >= 8)
+		msdu_info->tid = 0;
+	else if (msdu_info->frame_type == IEEE80211_FTYPE_MGMT ||
+		 msdu_info->frame_type == IEEE80211_FTYPE_CTL)
+		msdu_info->tid = 6;
+	else
+		msdu_info->tid = txd->tid;
+
+	qdf_nbuf_pull_head(nbuf, sizeof(qdf_wonder_txd_t));
+}
+
+qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			       qdf_nbuf_t nbuf)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	uint16_t peer_id = HTT_INVALID_PEER;
+	struct dp_tx_msdu_info_s msdu_info = {0};
+	struct dp_vdev *vdev = NULL;
+
+	if (qdf_unlikely(vdev_id >= MAX_VDEV_CNT))
+		return nbuf;
+
+	/*
+	 * dp_vdev_get_ref_by_id does does a atomic operation avoid using
+	 * this in per packet path.
+	 *
+	 * As in this path vdev memory is already protected with netdev
+	 * tx lock
+	 */
+	vdev = soc->vdev_id_map[vdev_id];
+	if (qdf_unlikely(!vdev))
+		return nbuf;
+
+	dp_tx_set_metadata_passthru(vdev, nbuf, &msdu_info);
+	dp_tx_get_queue(vdev, nbuf, &msdu_info.tx_queue);
+
+	/* Update protocol stats */
+	dp_tx_update_proto_stats(vdev, nbuf, msdu_info.tx_queue.desc_pool_id,
+				 TX_RECV_FROM_STACK);
+
+	/* Get driver ingress timestamp */
+	dp_tx_get_driver_ingress_ts(vdev, &msdu_info, nbuf);
+
+	/*
+	 * Pull the radiotap header before enqueueing the frame to TCL.
+	 */
+	qdf_nbuf_pull_head(nbuf, qdf_nbuf_get_radiotap_len(nbuf));
+
+	nbuf = dp_tx_send_msdu_single(vdev, nbuf, &msdu_info, peer_id, NULL);
+
+	return nbuf;
+}
+
+void
+dp_tx_comp_process_desc_passthru(struct dp_soc *soc,
+				 struct dp_tx_desc_s *desc,
+				 struct hal_tx_completion_status *ts,
+				 struct dp_txrx_peer *txrx_peer)
+{
+	uint64_t time_latency = 0;
+
+	if (qdf_unlikely(!!desc->pdev->latency_capture_enable)) {
+		time_latency = (qdf_ktime_to_ms(qdf_ktime_real_get()) -
+				qdf_ktime_to_ms(desc->timestamp));
+	}
+
+	if (dp_tx_pkt_tracepoints_enabled())
+		qdf_trace_dp_packet(desc->nbuf, QDF_TX,
+				    desc->msdu_ext_desc ?
+				    desc->msdu_ext_desc->tso_desc : NULL,
+				    qdf_ktime_to_us(desc->timestamp),
+				    desc->tx_status);
+
+
+	desc->flags |= DP_TX_DESC_FLAG_COMPLETED_TX;
+}
+
+void dp_tx_comp_process_tx_status_passthru(struct dp_soc *soc,
+					   struct dp_tx_desc_s *tx_desc,
+					   struct hal_tx_completion_status *ts,
+					   struct dp_txrx_peer *txrx_peer,
+					   uint8_t ring_id)
+{
+	uint32_t length;
+	struct dp_vdev *vdev = NULL;
+	qdf_nbuf_t nbuf = tx_desc->nbuf;
+	enum qdf_dp_tx_rx_status dp_status;
+	uint8_t link_id = 0;
+	enum QDF_OPMODE op_mode = QDF_MAX_NO_OF_MODE;
+
+	if (!nbuf) {
+		dp_info_rl("invalid tx descriptor. nbuf NULL");
+		goto out;
+	}
+
+	length = dp_tx_get_pkt_len(tx_desc);
+
+	dp_status = dp_tx_hw_to_qdf(ts->status);
+	if (soc->dp_debug_log_en) {
+		dp_tx_comp_debug("--------------------\n"
+				 "Tx Completion Stats:\n"
+				 "--------------------\n"
+				 "ack_frame_rssi = %d\n"
+				 "first_msdu = %d\n"
+				 "last_msdu = %d\n"
+				 "msdu_part_of_amsdu = %d\n"
+				 "rate_stats valid = %d\n"
+				 "bw = %d\n"
+				 "pkt_type = %d\n"
+				 "stbc = %d\n"
+				 "ldpc = %d\n"
+				 "sgi = %d\n"
+				 "mcs = %d\n"
+				 "ofdma = %d\n"
+				 "tones_in_ru = %d\n"
+				 "tsf = %d\n"
+				 "ppdu_id = %d\n"
+				 "transmit_cnt = %d\n"
+				 "tid = %d\n"
+				 "peer_id = %d\n"
+				 "tx_status = %d\n"
+				 "tx_release_source = %d\n",
+				 ts->ack_frame_rssi, ts->first_msdu,
+				 ts->last_msdu, ts->msdu_part_of_amsdu,
+				 ts->valid, ts->bw, ts->pkt_type, ts->stbc,
+				 ts->ldpc, ts->sgi, ts->mcs, ts->ofdma,
+				 ts->tones_in_ru, ts->tsf, ts->ppdu_id,
+				 ts->transmit_cnt, ts->tid, ts->peer_id,
+				 ts->status, ts->release_src);
+	}
+
+	/* Update SoC level stats */
+	DP_STATS_INCC(soc, tx.dropped_fw_removed, 1,
+		      (ts->status == HAL_TX_TQM_RR_REM_CMD_REM));
+
+	if (!txrx_peer) {
+		/* PASSTHRU: Skip dp_tx_comp_set_nbuf_band() */
+		dp_info_rl("peer is null or deletion in progress");
+		DP_STATS_INC_PKT(soc, tx.tx_invalid_peer, 1, length);
+
+		vdev = dp_vdev_get_ref_by_id(soc, tx_desc->vdev_id,
+					     DP_MOD_ID_CDP);
+		if (qdf_likely(vdev)) {
+			op_mode = vdev->qdf_opmode;
+			dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+		}
+
+		goto out_log;
+	}
+	vdev = txrx_peer->vdev;
+
+	link_id = dp_tx_get_link_id_from_ppdu_id(soc, ts, txrx_peer, vdev);
+
+	dp_tx_set_nbuf_band(nbuf, txrx_peer, link_id);
+
+	op_mode = vdev->qdf_opmode;
+
+	/* check tx complete notification */
+	if (qdf_nbuf_tx_notify_comp_get(nbuf))
+		dp_tx_notify_completion(soc, vdev, tx_desc,
+					nbuf, ts->status);
+
+	dp_tx_update_peer_stats(tx_desc, ts, txrx_peer, ring_id, link_id);
+
+out_log:
+	DPTRACE(qdf_dp_trace_ptr(tx_desc->nbuf,
+		QDF_DP_TRACE_LI_DP_FREE_PACKET_PTR_RECORD,
+		QDF_TRACE_DEFAULT_PDEV_ID,
+		qdf_nbuf_data_addr(nbuf),
+		sizeof(qdf_nbuf_data(nbuf)),
+		tx_desc->id, ts->status, dp_status, op_mode));
+out:
+	return;
+}
+#endif /* DRIVER_PASSTHRU_MODE */

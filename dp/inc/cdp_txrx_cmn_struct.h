@@ -786,6 +786,7 @@ struct cdp_tx_exception_metadata {
  * @wlan_op_mode_monitor: Monitor mode
  * @wlan_op_mode_ocb: OCB mode
  * @wlan_op_mode_ndi: NDI mode
+ * @wlan_op_mode_passthru: Passthrough mode
  */
 enum wlan_op_mode {
 	wlan_op_mode_unknown,
@@ -795,6 +796,7 @@ enum wlan_op_mode {
 	wlan_op_mode_monitor,
 	wlan_op_mode_ocb,
 	wlan_op_mode_ndi,
+	wlan_op_mode_passthru,
 };
 
 /**
@@ -1526,6 +1528,7 @@ enum cdp_pdev_param_type {
  * @cdp_vdev_param_mon_freq: set monitor frequency
  * @cdp_vdev_param_monitor_chan: monitor channel
  * @cdp_vdev_paran_wds_ext_ap_bridge: enable/disable ap_bridge for wds_ext peers
+ * @cdp_passthru_vdev_freq: passthru vdev frequency
  *
  * @cdp_pdev_param_dbg_snf: Enable debug sniffer feature
  * @cdp_pdev_param_bpr_enable: Enable bcast probe feature
@@ -1642,6 +1645,7 @@ typedef union cdp_config_param_t {
 	qdf_freq_t cdp_vdev_param_mon_freq;
 	int cdp_vdev_param_monitor_chan;
 	bool cdp_vdev_paran_wds_ext_ap_bridge;
+	qdf_freq_t cdp_passthru_vdev_freq;
 
 	/* pdev params */
 	bool cdp_pdev_param_cptr_latcy;
@@ -1829,6 +1833,7 @@ enum cdp_pdev_bpr_param {
  * @CDP_MONITOR_CHANNEL: monitor channel
  * @CDP_MONITOR_FREQUENCY: monitor frequency
  * @CDP_EAPOL_OVER_CONTROL_PORT_DISABLE: Disable eapol over control port
+ * @CDP_VDEV_SET_PASSTHRU_FREQ: set passthru vdev frequency
  */
 enum cdp_vdev_param_type {
 	CDP_ENABLE_NAWDS,
@@ -1884,6 +1889,7 @@ enum cdp_vdev_param_type {
 	CDP_MONITOR_CHANNEL,
 	CDP_MONITOR_FREQUENCY,
 	CDP_EAPOL_OVER_CONTROL_PORT_DISABLE,
+	CDP_VDEV_SET_PASSTHRU_FREQ,
 };
 
 /**

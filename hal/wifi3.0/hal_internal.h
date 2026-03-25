@@ -1247,6 +1247,8 @@ struct hal_hw_txrx_ops {
 	uint8_t (*hal_rx_msdu_end_sa_is_valid_get)(uint8_t *buf);
 	uint16_t (*hal_rx_msdu_end_sa_idx_get)(uint8_t *buf);
 	uint32_t (*hal_rx_desc_is_first_msdu)(void *hw_desc_addr);
+	void (*hal_rx_msdu_end_l3_hdr_padding_set)(uint8_t *buf,
+						   uint32_t l3_hdr_pad);
 	uint32_t (*hal_rx_msdu_end_l3_hdr_padding_get)(uint8_t *buf);
 	uint32_t (*hal_rx_encryption_info_valid)(uint8_t *buf);
 	void (*hal_rx_print_pn)(uint8_t *buf);
@@ -1558,6 +1560,9 @@ struct hal_hw_txrx_ops {
 						    uint8_t reo_dest_ind);
 	uint16_t (*hal_srng_dst_get_num_avail_words)(
 			hal_ring_handle_t hal_ring_hdl);
+#ifdef DRIVER_PASSTHRU_MODE
+	uint32_t (*hal_rx_tlv_get_rssi)(uint8_t *buf);
+#endif
 };
 
 /**

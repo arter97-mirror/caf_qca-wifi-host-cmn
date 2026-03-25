@@ -25505,6 +25505,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_CFR_UNASSOC_RX_CAPTURE_SUPPORT;
 	wmi_service[wmi_service_cfr_assoc_tx_capture_support] =
 				WMI_SERVICE_CFR_ASSOC_TX_CAPTURE_SUPPORT;
+	wmi_service[wmi_service_p2p_cancel_one_shot_noa_support] =
+			WMI_SERVICE_P2P_CANCEL_ONE_SHOT_NOA_SUPPORT;
 }
 
 /**

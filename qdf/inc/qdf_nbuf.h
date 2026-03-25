@@ -1568,11 +1568,14 @@ qdf_nbuf_unmap_nbytes_single_paddr(qdf_device_t osdev, qdf_nbuf_t buf,
 {
 	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
 
-	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir)) {
 		dma_sync_single_for_cpu(osdev->dev, phy_addr,
 					nbytes, __qdf_dma_dir_to_os(dir));
-	else
+		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
+			qdf_page_pool_dec_buf_count(buf);
+	} else {
 		__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
+	}
 }
 
 static inline QDF_STATUS
@@ -5948,6 +5951,29 @@ static inline size_t qdf_nbuf_get_tcp_hdr_len(qdf_nbuf_t nbuf)
 	return __qdf_nbuf_get_tcp_hdr_len(nbuf);
 }
 
+/**
+ * qdf_nbuf_get_mac_header() - get MAC header pointer
+ * @nbuf: Network buffer
+ *
+ * Return: MAC header pointer
+ */
+static inline void *qdf_nbuf_get_mac_header(qdf_nbuf_t nbuf)
+{
+	return __qdf_nbuf_get_mac_header(nbuf);
+}
+
+/**
+ * qdf_nbuf_set_mac_header() - set MAC header
+ * @nbuf: Network buffer
+ * @offset: offset from data
+ *
+ * Return: None
+ */
+static inline void qdf_nbuf_set_mac_header(qdf_nbuf_t nbuf, int offset)
+{
+	__qdf_nbuf_set_mac_header(nbuf, offset);
+}
+
 static inline bool qdf_nbuf_is_nonlinear(qdf_nbuf_t buf)
 {
 	return __qdf_nbuf_is_nonlinear(buf);
@@ -6027,6 +6053,14 @@ qdf_nbuf_get_last_frag_list_nbuf(qdf_nbuf_t nbuf)
  */
 unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 				      qdf_nbuf_t nbuf, uint32_t headroom_sz);
+
+/**
+ * qdf_nbuf_get_radiotap_len() - get radiotap header length
+ * @nbuf: Pointer to nbuf
+ *
+ * Return: radiotap length.
+ */
+uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf);
 
 /**
  * qdf_nbuf_mark_wakeup_frame() - mark wakeup frame.

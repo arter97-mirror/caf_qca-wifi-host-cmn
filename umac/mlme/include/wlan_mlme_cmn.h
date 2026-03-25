@@ -93,6 +93,9 @@
  * @mlme_cm_roam_connect_complete_cb: Roam complete cb
  * @vdev: vdev object
  *
+ * @mlme_cm_reset_scan_reject_params_cb: Reset scan reject params cb
+ * @vdev: vdev pointer
+ *
  * @mlme_cm_ft_preauth_cmpl_cb: Roam ft preauth complete cb
  * @vdev: vdev pointer
  * @rsp: preauth response pointer
@@ -158,6 +161,7 @@ struct mlme_cm_ops {
 					 uint8_t idx);
 	QDF_STATUS (*mlme_cm_roam_connect_complete_cb)
 					(struct wlan_objmgr_vdev *vdev);
+	QDF_STATUS (*mlme_cm_reset_scan_reject_params_cb)(struct wlan_objmgr_vdev *vdev);
 #endif
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE
 	QDF_STATUS (*mlme_cm_ft_preauth_cmpl_cb)(
@@ -1043,6 +1047,14 @@ QDF_STATUS
 mlme_cm_osif_roam_get_scan_params(struct wlan_objmgr_vdev *vdev,
 				  struct element_info *scan_ie,
 				  enum dot11_mode_filter *dot11mode_filter);
+
+/**
+ * mlme_cm_osif_reset_scan_reject_params - osif reset scan reject params
+ * @vdev: vdev pointer
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlme_cm_osif_reset_scan_reject_params(struct wlan_objmgr_vdev *vdev);
 #endif
 
 #ifdef WLAN_FEATURE_PREAUTH_ENABLE

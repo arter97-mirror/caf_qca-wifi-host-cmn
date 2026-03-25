@@ -64,8 +64,7 @@ static QDF_STATUS wlan_objmgr_vdev_object_status(
 		 * If component failed to allocate its object, treat it as
 		 * failure, complete object need to be cleaned up
 		 */
-		} else if ((vdev->obj_status[id] == QDF_STATUS_E_NOMEM) ||
-			(vdev->obj_status[id] == QDF_STATUS_E_FAILURE)) {
+		} else if (QDF_IS_STATUS_ERROR(vdev->obj_status[id])) {
 			status = QDF_STATUS_E_FAILURE;
 			break;
 		}
@@ -337,20 +336,31 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 			WLAN_MAX_PDEV_TEMP_PEERS);
 	/* TODO init other parameters */
 
+	/**
+	 * Initialize vdev->obj_status[] to QDF_STATUS_COMP_DISABLED
+	 * and abort the handler iteration on first error
+	 * except QDF_STATUS_COMP_ASYNC to prevent subsequent
+	 * components from executing after a failure.
+	 */
+	for (id = 0; id < WLAN_UMAC_MAX_COMPONENTS; id++)
+		vdev->obj_status[id] = QDF_STATUS_COMP_DISABLED;
+
 	/* Invoke registered create handlers */
 	for (id = 0; id < WLAN_UMAC_MAX_COMPONENTS; id++) {
 		handler = g_umac_glb_obj->vdev_create_handler[id];
 		arg = g_umac_glb_obj->vdev_create_handler_arg[id];
-		if (handler)
+		if (handler) {
 			vdev->obj_status[id] = handler(vdev, arg);
-		else
-			vdev->obj_status[id] = QDF_STATUS_COMP_DISABLED;
+			if (QDF_IS_STATUS_ERROR(vdev->obj_status[id]) &&
+			    vdev->obj_status[id] != QDF_STATUS_COMP_ASYNC)
+				break;
+		}
 	}
 
 	/* Derive object status */
 	obj_status = wlan_objmgr_vdev_object_status(vdev);
 
-	if (obj_status == QDF_STATUS_SUCCESS) {
+	if (QDF_IS_STATUS_SUCCESS(obj_status)) {
 		/* Object status is SUCCESS, Object is created */
 		vdev->obj_state = WLAN_OBJ_STATE_CREATED;
 		/* Invoke component registered status handlers */
@@ -369,7 +379,7 @@ struct wlan_objmgr_vdev *wlan_objmgr_vdev_obj_create(
 	} else if (obj_status == QDF_STATUS_COMP_ASYNC) {
 		vdev->obj_state = WLAN_OBJ_STATE_PARTIALLY_CREATED;
 	/* Component object failed to be created, clean up the object */
-	} else if (obj_status == QDF_STATUS_E_FAILURE) {
+	} else if (QDF_IS_STATUS_ERROR(obj_status)) {
 		/* Clean up the psoc */
 		obj_mgr_err("VDEV comp objects creation failed for vdev-id:%d",
 			vdev->vdev_objmgr.vdev_id);
@@ -1083,7 +1093,8 @@ QDF_STATUS wlan_objmgr_vdev_peer_attach(struct wlan_objmgr_vdev *vdev,
 		/* For AP mode, self peer and BSS peer are same */
 		if ((opmode == QDF_SAP_MODE) ||
 		    (opmode == QDF_P2P_GO_MODE) ||
-		    (opmode == QDF_NDI_MODE))
+		    (opmode == QDF_NDI_MODE) ||
+		    (opmode == QDF_PASSTHRU_MODE))
 			wlan_vdev_set_bsspeer(vdev, peer);
 	}
 	/* set BSS peer for sta */

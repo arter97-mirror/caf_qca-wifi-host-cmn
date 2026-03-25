@@ -1387,12 +1387,14 @@ void qdf_nbuf_unmap_nbytes_single_paddr_debug(qdf_device_t osdev,
 	qdf_nbuf_untrack_map(buf, func, line);
 	__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf), dir, false);
 
-	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir)) {
 		dma_sync_single_for_cpu(osdev->dev, phy_addr,
 					nbytes, __qdf_dma_dir_to_os(dir));
-	else
+		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
+			qdf_page_pool_dec_buf_count(buf);
+	} else {
 		__qdf_mem_unmap_nbytes_single(osdev, phy_addr, dir, nbytes);
-
+	}
 	qdf_net_buf_debug_update_unmap_node(buf, func, line);
 }
 
@@ -1497,6 +1499,9 @@ __qdf_nbuf_map_single(qdf_device_t osdev, qdf_nbuf_t buf, qdf_dma_dir_t dir)
 		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
 					   skb_end_pointer(buf) - buf->data,
 					   __qdf_dma_dir_to_os(dir));
+
+		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
+			qdf_page_pool_inc_buf_count(buf);
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -1526,11 +1531,15 @@ void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 void __qdf_nbuf_unmap_single(qdf_device_t osdev, qdf_nbuf_t buf,
 					qdf_dma_dir_t dir)
 {
-	if (qdf_skip_dma_map_unmap(osdev, buf, dir))
-		return dma_sync_single_for_cpu(osdev->dev,
-					       QDF_NBUF_CB_PADDR(buf),
-					       skb_end_pointer(buf) - buf->data,
-					       __qdf_dma_dir_to_os(dir));
+	if (qdf_skip_dma_map_unmap(osdev, buf, dir)) {
+		dma_sync_single_for_cpu(osdev->dev,
+					QDF_NBUF_CB_PADDR(buf),
+					skb_end_pointer(buf) - buf->data,
+					__qdf_dma_dir_to_os(dir));
+		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
+			qdf_page_pool_dec_buf_count(buf);
+		return;
+	}
 
 	if (QDF_NBUF_CB_PADDR(buf)) {
 		__qdf_record_nbuf_nbytes(
@@ -1660,7 +1669,7 @@ qdf_export_symbol(__qdf_nbuf_data_get_dhcp_subtype);
  * @data: Pointer to EAPOL packet data buffer
  *
  * We can distinguish M1/M3 from M2/M4 by the ack bit in the keyinfo field
- * The ralationship between the ack bit and EAPOL type is as follows:
+ * The relationship between the ack bit and EAPOL type is as follows:
  *
  *  EAPOL type  |   M1    M2   M3  M4
  * --------------------------------------
@@ -6428,7 +6437,8 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 
 	/* IEEE80211_RADIOTAP_RATE  u8           500kb/s */
 	if (!rx_status->ht_flags && !rx_status->vht_flags &&
-	    !rx_status->he_flags && !rx_status->eht_flags) {
+	    !rx_status->he_flags && !rx_status->eht_flags &&
+	    rx_status->rate) {
 		it_present_val |= (1 << IEEE80211_RADIOTAP_RATE);
 		rtap_buf[rtap_len] = rx_status->rate;
 	} else
@@ -6692,6 +6702,11 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 	qdf_nbuf_push_head(nbuf, rtap_len);
 	qdf_mem_copy(qdf_nbuf_data(nbuf), rtap_buf, rtap_len);
 	return rtap_len;
+}
+
+uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf)
+{
+	return ieee80211_get_radiotap_len(qdf_nbuf_data(nbuf));
 }
 #else
 static unsigned int qdf_nbuf_update_radiotap_vht_flags(

@@ -1176,13 +1176,15 @@ dp_rx_process(struct dp_intr *int_ctx, hal_ring_handle_t hal_ring_hdl,
  *		     multiple nbufs.
  * @soc: core txrx main context
  * @nbuf: pointer to the first msdu of an amsdu.
+ * @skip_tlvs: Flag indicating if the rx_pkt_tlvs are to be stripped from the
+ *	       head nbuf
  *
  * This function implements the creation of RX frag_list for cases
  * where an MSDU is spread across multiple nbufs.
  *
  * Return: returns the head nbuf which contains complete frag_list.
  */
-qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf);
+qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs);
 
 /**
  * dp_rx_is_sg_supported() - SG packets processing supported or not.
@@ -4160,6 +4162,9 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 	*align = 0;
 }
 #else
+/* This is the final size of the RX buffer after adding metadata sizes */
+#define RX_DATA_BUFFER_SIZE_MAX	2048
+
 static inline void
 dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 {
@@ -4169,6 +4174,19 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 	*buf_size = QDF_NBUF_ALIGN(*buf_size);
 
 	*align = RX_DATA_BUFFER_OPT_ALIGNMENT;
+
+	/* Size of SKB shared info when added to the buffer size
+	 * is not matching to RX_DATA_BUFFER_SIZE_MAX (2048) on
+	 * certain host machines, this will result in the buffer
+	 * address not matching with the alignment requirement
+	 * of the hardware resulting in degraded performance.
+	 * Therefore do the below math to match the alignment
+	 * requirement of the hardware.
+	 */
+	if (*buf_size < RX_DATA_BUFFER_SIZE_MAX &&
+	    *buf_size % RX_DATA_BUFFER_ALIGNMENT) {
+		*buf_size += (RX_DATA_BUFFER_SIZE_MAX - *buf_size);
+	}
 }
 #endif
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE */

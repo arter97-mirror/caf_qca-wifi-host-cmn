@@ -1277,6 +1277,22 @@ static inline uint32_t hal_rx_desc_is_first_msdu_be(void *hw_desc_addr)
 }
 
 /**
+ * hal_rx_tlv_l3_hdr_padding_set_be() - API to set the l3_header padding
+ *					from rx_msdu_end TLV
+ * @buf: pointer to the start of RX PKT TLV headers
+ * @l3_hdr_pad: L3 header padding value to set in tlvs
+ *
+ * Return: number of l3 header padding bytes
+ */
+static inline void hal_rx_tlv_l3_hdr_padding_set_be(uint8_t *buf,
+						    uint32_t l3_hdr_pad)
+{
+	struct rx_pkt_tlvs *rx_pkt_tlvs = (struct rx_pkt_tlvs *)buf;
+
+	HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_pkt_tlvs) = l3_hdr_pad;
+}
+
+/**
  * hal_rx_tlv_l3_hdr_padding_get_be() - API to get the l3_header padding
  *					from rx_msdu_end TLV
  * @buf: pointer to the start of RX PKT TLV headers

@@ -208,7 +208,6 @@ os_timer_func(lut_ageout_timer_task)
 	struct wlan_objmgr_pdev *pdev = NULL;
 	struct look_up_table *lut = NULL;
 	uint64_t diff, cur_tstamp;
-	uint8_t srng_id = 0;
 
 	OS_GET_TIMER_ARG(pcfr, struct pdev_cfr*);
 
@@ -240,9 +239,11 @@ os_timer_func(lut_ageout_timer_task)
 		if (lut->dbr_recv && !lut->tx_recv) {
 			diff = cur_tstamp - lut->dbr_tstamp;
 			if (diff > LUT_AGE_THRESHOLD) {
-				target_if_dbr_buf_release(pdev, DBR_MODULE_CFR,
-							  lut->dbr_address,
-							  i, srng_id);
+				target_if_dbr_buf_release(
+						pdev, DBR_MODULE_CFR,
+						lut->dbr_address,
+						i,
+						pcfr->rcc_param.srng_id);
 				pcfr->flush_timeout_dbr_cnt++;
 				release_lut_entry(pdev, lut);
 			}
@@ -371,7 +372,7 @@ void cfr_free_pending_dbr_events(struct wlan_objmgr_pdev *pdev)
 		    (lut->dbr_tstamp < pcfr->last_success_tstamp)) {
 			target_if_dbr_buf_release(pdev, DBR_MODULE_CFR,
 						  lut->dbr_address,
-						  i, 0);
+						  i, pcfr->rcc_param.srng_id);
 			pcfr->flush_dbr_cnt++;
 			release_lut_entry(pdev, lut);
 		}
@@ -895,11 +896,32 @@ static uint8_t target_if_cfr_get_pdev_id(struct wlan_objmgr_pdev *pdev)
 }
 #endif /* QCA_WIFI_QCA6490 || QCA_WIFI_KIWI */
 
+static enum
+wlan_phymode target_if_cfr_get_rx_phy_mode(int32_t freq)
+{
+	enum reg_wifi_band cur_band;
+
+	cur_band = wlan_reg_freq_to_band(freq);
+
+	switch (cur_band) {
+	case REG_BAND_2G:
+		return WLAN_PHYMODE_11NG_HT20;
+	case REG_BAND_5G:
+		return WLAN_PHYMODE_11NA_HT20;
+	case REG_BAND_6G:
+		return WLAN_PHYMODE_11AXA_HE20;
+	default:
+		cfr_err("Invalid band %d", cur_band);
+		return WLAN_PHYMODE_11NA_HT20;
+	}
+}
+
 QDF_STATUS target_if_cfr_config_rcc(struct wlan_objmgr_pdev *pdev,
 				    struct cfr_rcc_param *rcc_info)
 {
 	QDF_STATUS status;
 	struct wmi_unified *pdev_wmi_handle = NULL;
+	int32_t chan_freq;
 
 	pdev_wmi_handle = lmac_get_pdev_wmi_handle(pdev);
 	if (!pdev_wmi_handle) {
@@ -910,6 +932,12 @@ QDF_STATUS target_if_cfr_config_rcc(struct wlan_objmgr_pdev *pdev,
 	rcc_info->pdev_id = target_if_cfr_get_pdev_id(pdev);
 	rcc_info->num_grp_tlvs =
 		count_set_bits(&rcc_info->modified_in_curr_session[0]);
+
+	chan_freq = rcc_info->unassoc_channel_mhz;
+	if (chan_freq) {
+		rcc_info->unassoc_phy_mode =
+			target_if_cfr_get_rx_phy_mode(chan_freq);
+	}
 
 	status = wmi_unified_send_cfr_rcc_cmd(pdev_wmi_handle, rcc_info);
 	return status;
