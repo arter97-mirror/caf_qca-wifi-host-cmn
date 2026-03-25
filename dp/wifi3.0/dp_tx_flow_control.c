@@ -940,10 +940,12 @@ dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp,
 }
 
 /**
- * dp_tx_page_pool_destroy_list_work_handler() - Destroy TX page pools
+ * dp_tx_page_pool_process_destroy_list() - Destroy TX page pools
  * @soc: Pointer to dp_soc structure
  *
- *
+ * This function processes the deferred destruction queue for TX page pools.
+ * It safely destroys page pools outside of atomic/spinlock contexts where
+ * sleeping operations are not allowed.
  *
  * Return: None
  */
