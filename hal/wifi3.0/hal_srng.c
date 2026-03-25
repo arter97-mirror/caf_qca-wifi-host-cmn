@@ -84,6 +84,9 @@ void hal_fig_attach(struct hal_soc *hal);
 #ifdef QCA_WIFI_WCN7750
 void hal_wcn7750_attach(struct hal_soc *hal);
 #endif
+#ifdef QCA_WIFI_WCN8750
+void hal_wcn8750_attach(struct hal_soc *hal);
+#endif
 #ifdef QCA_WIFI_QCC2072
 void hal_qcc2072_attach(struct hal_soc *hal);
 #endif
@@ -554,6 +557,13 @@ static void hal_target_based_configure(struct hal_soc *hal)
 			hal->use_register_windowing = true;
 			hal->static_window_map = true;
 			hal_wcn7750_attach(hal);
+		break;
+#endif
+#ifdef QCA_WIFI_WCN8750
+		case TARGET_TYPE_WCN8750:
+			hal->use_register_windowing = true;
+			hal->static_window_map = true;
+			hal_wcn8750_attach(hal);
 		break;
 #endif
 #ifdef QCA_WIFI_QCC2072
@@ -1291,7 +1301,8 @@ void hal_record_suspend_write(uint8_t ring_id, uint32_t value, uint32_t count)
 }
 #endif
 
-#if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN7750)
+#if defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN7750) || \
+	defined(QCA_WIFI_WCN8750)
 void hal_delayed_reg_write(struct hal_soc *hal_soc,
 			   struct hal_srng *srng,
 			   void __iomem *addr,

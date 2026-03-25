@@ -79,7 +79,8 @@ struct ring_util_stats {
 #define SHADOW_REGISTER_END_ADDRESS_OFFSET \
 	((SHADOW_REGISTER_START_ADDRESS_OFFSET) + (4 * (MAX_SHADOW_REGISTERS)))
 #define SHADOW_REGISTER(x) ((SHADOW_REGISTER_START_ADDRESS_OFFSET) + (4 * (x)))
-#elif defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN7750)
+#elif defined(QCA_WIFI_QCA6750) || defined(QCA_WIFI_WCN7750) || \
+	  defined(QCA_WIFI_WCN8750)
 #define SHADOW_REGISTER_START_ADDRESS_OFFSET 0x00000504
 #define SHADOW_REGISTER_END_ADDRESS_OFFSET \
 	((SHADOW_REGISTER_START_ADDRESS_OFFSET) + (4 * (MAX_SHADOW_REGISTERS)))
@@ -276,7 +277,7 @@ static inline void hal_tx_init_cmd_credit_ring(hal_soc_handle_t hal_soc_hdl,
 #if !defined(QCA_WIFI_QCA6390) && !defined(QCA_WIFI_QCA6490) && \
     !defined(QCA_WIFI_QCA6750) && !defined(QCA_WIFI_KIWI) && \
     !defined(QCA_WIFI_WCN6450) && !defined(QCA_WIFI_WCN7750) && \
-    !defined(QCA_WIFI_QCC2072)
+    !defined(QCA_WIFI_QCC2072) && !defined(QCA_WIFI_WCN8750)
 static inline void hal_write32_mb(struct hal_soc *hal_soc, uint32_t offset,
 				  uint32_t value)
 {
@@ -533,7 +534,7 @@ static inline void hal_srng_write_address_32_mb(struct hal_soc *hal_soc,
 #if !defined(QCA_WIFI_QCA6390) && !defined(QCA_WIFI_QCA6490) && \
     !defined(QCA_WIFI_QCA6750) && !defined(QCA_WIFI_KIWI) && \
     !defined(QCA_WIFI_WCN6450) && !defined(QCA_WIFI_WCN7750) && \
-    !defined(QCA_WIFI_QCC2072)
+    !defined(QCA_WIFI_QCC2072) && !defined(QCA_WIFI_WCN8750)
 /**
  * hal_read32_mb() - Access registers to read configuration
  * @hal_soc: hal soc handle

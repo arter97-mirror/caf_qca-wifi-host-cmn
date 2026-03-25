@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -61,7 +61,7 @@ static inline void hal_rx_dump_fse_ext(struct rx_flow_search_entry *fse)
 		fse->aggregation_count,
 		fse->lro_eligible,
 #if defined(QCA_WIFI_KIWI_V2) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_QCC2072)
+	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_WCN8750)
 		fse->cumulative_ip_length_pmac1,
 #else
 		fse->cumulative_l4_checksum,

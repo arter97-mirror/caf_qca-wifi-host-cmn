@@ -35,7 +35,8 @@
 #include "wbm2sw_completion_ring_rx.h"
 
 #if defined(QCA_WIFI_KIWI) || defined(QCA_WIFI_WCN7750) || \
-	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_FIG)
+	defined(QCA_WIFI_QCC2072) || defined(QCA_WIFI_FIG) || \
+	defined(QCA_WIFI_WCN8750)
 #include "msmhwioreg.h"
 #endif
 #include "phyrx_common_user_info.h"

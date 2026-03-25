@@ -1791,6 +1791,7 @@ void hal_fig_attach(struct hal_soc *hal_soc);
 void hal_qcn9224v2_attach(struct hal_soc *hal_soc);
 void hal_wcn6450_attach(struct hal_soc *hal_soc);
 void hal_wcn7750_attach(struct hal_soc *hal_soc);
+void hal_wcn8750_attach(struct hal_soc *hal_soc);
 void hal_qcc2072_attach(struct hal_soc *hal_soc);
 
 /**

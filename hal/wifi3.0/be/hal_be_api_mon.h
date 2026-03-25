@@ -3473,6 +3473,7 @@ hal_rx_status_get_tlv_info_generic_be(void *rx_tlv_hdr, void *ppduinfo,
 		case TARGET_TYPE_MANGO:
 		case TARGET_TYPE_PEACH:
 		case TARGET_TYPE_WCN7750:
+		case TARGET_TYPE_WCN8750:
 		case TARGET_TYPE_QCC2072:
 		case TARGET_TYPE_FIG:
 			ppdu_info->rx_status.is_stbc =
