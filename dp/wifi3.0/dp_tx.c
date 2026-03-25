@@ -1346,6 +1346,7 @@ attach_pool:
 	dp_tx_page_pool_update_cache(tx_pp, new_active_pp);
 	new_active_pp->pool_id = tx_pp->active_pool_count;
 	tx_pp->active_pool_count++;
+	qdf_nbuf_set_tx_page_pool_id(nbuf, new_active_pp->pool_id);
 	if (free_idle_params)
 		qdf_mem_free(idle_pp);
 
@@ -1502,6 +1503,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev, size,
 						       offset, page);
 		if (qdf_likely(nbuf)) {
+			qdf_nbuf_set_tx_page_pool_id(nbuf, pp_params->pool_id);
 			dp_tx_trace_alloc(pp_params, *offset, true,
 					  start_time, 0, trace_enabled);
 
@@ -1522,6 +1524,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 			nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
 							       size, offset, page);
 			if (qdf_likely(nbuf)) {
+				qdf_nbuf_set_tx_page_pool_id(nbuf, pp_params->pool_id);
 				dp_tx_trace_alloc(pp_params, *offset, false,
 						  start_time, i, trace_enabled);
 				/* Update cache with the pool that was used */
@@ -1537,6 +1540,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 		nbuf = dp_tx_page_pool_try_grow_last(tx_pp, pp_params, osdev,
 						     size, offset, page);
 		if (qdf_likely(nbuf)) {
+			qdf_nbuf_set_tx_page_pool_id(nbuf, pp_params->pool_id);
 			dp_tx_trace_grow(pp_params, start_time, trace_enabled);
 			/* Update cache with the pool that was used */
 			dp_tx_page_pool_update_cache(tx_pp, pp_params);
