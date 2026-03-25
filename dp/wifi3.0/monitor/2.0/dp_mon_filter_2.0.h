@@ -201,6 +201,8 @@ dp_mon_filter_reset_tx_mon_mode_2_0(struct dp_pdev *pdev)
 #endif
 
 #ifdef WDI_EVENT_ENABLE
+
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_mon_filter_setup_rx_pkt_log_full_2_0() - Setup the Rx pktlog full mode
  *                                             filter
@@ -240,7 +242,7 @@ void dp_mon_filter_setup_rx_pkt_log_cbf_2_0(struct dp_pdev *pdev);
  * @pdev: DP pdev handle
  */
 void dp_mon_filter_reset_rx_pktlog_cbf_2_0(struct dp_pdev *pdev);
-
+#endif
 /**
  * dp_mon_filter_setup_pktlog_hybrid_2_0() - Setup the pktlog hybrid mode filter
  * @pdev: DP pdev handle
@@ -253,36 +255,6 @@ void dp_mon_filter_setup_pktlog_hybrid_2_0(struct dp_pdev *pdev);
  */
 void dp_mon_filter_reset_pktlog_hybrid_2_0(struct dp_pdev *pdev);
 #else
-static inline void
-dp_mon_filter_setup_rx_pkt_log_full_2_0(struct dp_pdev *pdev)
-{
-}
-
-static inline void
-dp_mon_filter_reset_rx_pkt_log_full_2_0(struct dp_pdev *pdev)
-{
-}
-
-static inline void
-dp_mon_filter_setup_rx_pkt_log_lite_2_0(struct dp_pdev *pdev)
-{
-}
-
-static inline void
-dp_mon_filter_reset_rx_pkt_log_lite_2_0(struct dp_pdev *pdev)
-{
-}
-
-static inline void
-dp_mon_filter_setup_rx_pkt_log_cbf_2_0(struct dp_pdev *pdev)
-{
-}
-
-static inline void
-dp_mon_filter_reset_rx_pktlog_cbf_2_0(struct dp_pdev *pdev)
-{
-}
-
 static inline void
 dp_mon_filter_setup_pktlog_hybrid_2_0(struct dp_pdev *pdev)
 {

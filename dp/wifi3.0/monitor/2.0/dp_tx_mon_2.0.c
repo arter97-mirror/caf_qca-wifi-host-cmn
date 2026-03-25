@@ -695,6 +695,7 @@ struct dp_tx_ppdu_info *dp_tx_mon_get_ppdu_info(struct dp_pdev *pdev,
 	return tx_ppdu_info;
 }
 
+#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
 /*
  * dp_print_pdev_tx_monitor_stats_2_0: print tx capture stats
  * @pdev: DP PDEV handle
@@ -956,6 +957,7 @@ QDF_STATUS dp_peer_set_tx_capture_enabled_2_0(struct dp_pdev *pdev_handle,
 {
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 #ifdef QCA_SUPPORT_LITE_MONITOR
 static void dp_fill_lite_mon_vdev(struct cdp_tx_indication_info *tx_cap_info,

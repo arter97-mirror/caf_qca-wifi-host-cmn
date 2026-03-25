@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -717,7 +717,8 @@ struct dp_tx_ppdu_info *dp_tx_mon_get_ppdu_info(struct dp_pdev *pdev,
 
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
 
-#if (defined(WIFI_MONITOR_SUPPORT) && defined(WLAN_TX_PKT_CAPTURE_ENH_BE))
+#if defined(WLAN_PKT_CAPTURE_TX_2_0_DISABLE) && \
+(defined(WIFI_MONITOR_SUPPORT) && defined(WLAN_TX_PKT_CAPTURE_ENH_BE))
 /**
  * dp_config_enh_tx_monitor_2_0()- API to validate tx monitor feature
  * @pdev: DP_PDEV handle
@@ -760,17 +761,8 @@ QDF_STATUS dp_tx_mon_soc_init_2_0(struct dp_soc *soc);
 QDF_STATUS dp_tx_mon_soc_attach_2_0(struct dp_soc *soc, uint32_t lmac_id);
 QDF_STATUS dp_tx_mon_soc_detach_2_0(struct dp_soc *soc, uint32_t lmac_id);
 void dp_tx_mon_soc_deinit_2_0(struct dp_soc *soc, uint32_t lmac_id);
+#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
 void dp_print_pdev_tx_monitor_stats_2_0(struct dp_pdev *pdev);
-QDF_STATUS
-dp_get_pdev_tx_capture_stats_2_0(struct dp_pdev *pdev,
-				 struct cdp_pdev_tx_capture_stats *stats);
-QDF_STATUS
-dp_tx_mon_buffers_alloc(struct dp_soc *soc, uint32_t size);
-void
-dp_tx_mon_buffers_free(struct dp_soc *soc);
-QDF_STATUS
-dp_tx_mon_buf_desc_pool_alloc(struct dp_soc *soc);
-void dp_tx_ppdu_stats_attach_2_0(struct dp_pdev *pdev);
 QDF_STATUS dp_config_enh_tx_monitor_2_0(struct dp_pdev *pdev,
 					uint8_t val,
 					uint8_t mac_id);
@@ -778,6 +770,17 @@ QDF_STATUS dp_peer_set_tx_capture_enabled_2_0(struct dp_pdev *pdev_handle,
 					      struct dp_peer *peer_handle,
 					      uint8_t is_tx_pkt_cap_enable,
 					      uint8_t *peer_mac);
+QDF_STATUS
+dp_get_pdev_tx_capture_stats_2_0(struct dp_pdev *pdev,
+				 struct cdp_pdev_tx_capture_stats *stats);
+#endif
+QDF_STATUS
+dp_tx_mon_buffers_alloc(struct dp_soc *soc, uint32_t size);
+void
+dp_tx_mon_buffers_free(struct dp_soc *soc);
+QDF_STATUS
+dp_tx_mon_buf_desc_pool_alloc(struct dp_soc *soc);
+void dp_tx_ppdu_stats_attach_2_0(struct dp_pdev *pdev);
 void dp_tx_ppdu_stats_detach_2_0(struct dp_pdev *pdev);
 #else
 static inline
@@ -841,18 +844,6 @@ void dp_tx_mon_soc_deinit_2_0(struct dp_soc *soc, uint32_t lmac_id)
 {
 }
 
-static inline void
-dp_print_pdev_tx_monitor_stats_2_0(struct dp_pdev *pdev)
-{
-}
-
-static inline QDF_STATUS
-dp_get_pdev_tx_capture_stats_2_0(struct dp_pdev *pdev,
-				 struct cdp_pdev_tx_capture_stats *stats)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
 static inline QDF_STATUS
 dp_tx_mon_buffers_alloc(struct dp_soc *soc, uint32_t size)
 {
@@ -873,21 +864,6 @@ dp_tx_mon_buf_desc_pool_alloc(struct dp_soc *soc)
 static inline void
 dp_tx_ppdu_stats_attach_2_0(struct dp_pdev *pdev)
 {
-}
-
-static inline QDF_STATUS
-dp_config_enh_tx_monitor_2_0(struct dp_pdev *pdev, uint8_t val)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-dp_peer_set_tx_capture_enabled_2_0(struct dp_pdev *pdev_handle,
-				   struct dp_peer *peer_handle,
-				   uint8_t is_tx_pkt_cap_enable,
-				   uint8_t *peer_mac)
-{
-	return QDF_STATUS_SUCCESS;
 }
 
 static inline void

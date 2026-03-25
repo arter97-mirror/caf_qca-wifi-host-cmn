@@ -2807,6 +2807,7 @@ void dp_mon_filter_show_rx_filter_be(enum dp_mon_filter_mode mode,
 }
 
 #ifdef WDI_EVENT_ENABLE
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 void dp_mon_filter_setup_rx_pkt_log_full_2_0(struct dp_pdev *pdev)
 {
 	struct dp_mon_filter_be filter = {0};
@@ -3036,6 +3037,7 @@ void dp_mon_filter_reset_rx_pktlog_cbf_2_0(struct dp_pdev *pdev)
 	srng_type = DP_MON_FILTER_SRNG_TYPE_RXMON_DEST;
 	mon_pdev_be->filter_be[mode][srng_type] = filter;
 }
+#endif
 
 #if defined(BE_PKTLOG_SUPPORT) && \
 defined(WLAN_PKT_CAPTURE_TX_2_0)
