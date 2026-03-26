@@ -4465,10 +4465,39 @@ dp_ipa_rx_buf_alloc_opt_dp_ctrl(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	QDF_STATUS ret, status = QDF_STATUS_SUCCESS;
 	uint8_t *dst_addr;
 
-	ret = dp_pdev_nbuf_alloc_and_map(soc, &nbuf_frag_info, pdev,
-					 rx_desc_pool, false, 0);
-	if (QDF_IS_STATUS_ERROR(ret)) {
+	/*
+	 * Normal allocation path - bypass page pool (rx_page_pool) path.
+	 * directly allocate via qdf_nbuf_alloc to always use normal alloc.
+	 */
+	(nbuf_frag_info.virt_addr).nbuf =
+		qdf_nbuf_alloc(soc->osdev, rx_desc_pool->buf_size,
+			       RX_BUFFER_RESERVATION,
+			       rx_desc_pool->buf_alignment, FALSE);
+	if (!(nbuf_frag_info.virt_addr.nbuf)) {
 		dp_ipa_err("opt_dp_ctrl: nbuf allocation failed");
+		DP_STATS_INC(pdev, replenish.nbuf_alloc_fail, 1);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	ret = qdf_nbuf_map_nbytes_single(soc->osdev,
+					 (nbuf_frag_info.virt_addr).nbuf,
+					 QDF_DMA_FROM_DEVICE,
+					 rx_desc_pool->buf_size);
+	if (qdf_unlikely(QDF_IS_STATUS_ERROR(ret))) {
+		qdf_nbuf_free((nbuf_frag_info.virt_addr).nbuf);
+		dp_ipa_err("opt_dp_ctrl: nbuf map failed");
+		DP_STATS_INC(pdev, replenish.map_err, 1);
+		return ret;
+	}
+
+	nbuf_frag_info.paddr =
+		qdf_nbuf_get_frag_paddr((nbuf_frag_info.virt_addr).nbuf, 0);
+
+	ret = dp_check_paddr(soc, &((nbuf_frag_info.virt_addr).nbuf),
+			     &nbuf_frag_info.paddr, rx_desc_pool);
+	if (ret == QDF_STATUS_E_FAILURE) {
+		dp_ipa_err("opt_dp_ctrl: x86 paddr check failed");
+		DP_STATS_INC(pdev, replenish.x86_fail, 1);
 		return ret;
 	}
 
