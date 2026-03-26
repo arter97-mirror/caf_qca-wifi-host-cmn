@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1167,6 +1167,9 @@ QDF_STATUS (*send_get_link_speed_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_wlm_latency_level_cmd)(wmi_unified_t wmi_handle,
 				struct wlm_latency_level_param *param);
 
+QDF_STATUS (*send_tx_power_per_mcs_cmd)(wmi_unified_t wmi_handle,
+					struct tx_power_per_mcs_rate *params);
+
 QDF_STATUS (*send_sar_limit_cmd)(wmi_unified_t wmi_handle,
 				struct sar_limit_cmd_params *params);
 
@@ -1259,6 +1262,10 @@ QDF_STATUS (*send_apf_read_work_memory_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*extract_apf_read_memory_resp_event)(wmi_unified_t wmi_handle,
 			void *evt_buf,
 			struct wmi_apf_read_memory_resp_event_params *resp);
+QDF_STATUS
+(*send_set_apf_supported_offload_bitmap_cmd)(wmi_unified_t wmi_handle,
+					     uint8_t vdev_id,
+					     uint32_t offload_bitmap);
 #endif /* FEATURE_WLAN_APF */
 
 QDF_STATUS (*send_pdev_get_tpc_config_cmd)(wmi_unified_t wmi_handle,
