@@ -1463,8 +1463,10 @@ static inline void dp_tx_desc_update_fast_flag(struct dp_soc *soc,
 					       struct dp_tx_desc_s *desc,
 					       uint8_t allow_fast_comp)
 {
-	if (qdf_likely(!(desc->flags & DP_TX_DESC_FLAG_TO_FW)) &&
-	    qdf_likely(allow_fast_comp))
+	if (qdf_unlikely(desc->flags & DP_TX_DESC_FLAG_TO_FW))
+		return;
+
+	if (qdf_likely(allow_fast_comp))
 		desc->flags |= DP_TX_DESC_FLAG_SIMPLE;
 
 	if (qdf_likely(desc->nbuf->is_from_recycler) &&
