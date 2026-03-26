@@ -1403,6 +1403,17 @@ dp_tx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
 		return dp_mon_is_ctrl_filter_en(pdev, dot11hdr,
 						IEEE80211_FC1_DIR_TODS);
 	case QDF_IEEE80211_FC0_TYPE_DATA:
+
+		/**
+		 * Drop DPD training frames to prevent battery drain from
+		 * post-processing. These frames are identified by their
+		 * null Transmit Address.
+		 */
+
+		if (DP_FRAME_IS_MAC_ZERO((dot11hdr)->i_addr2) &&
+		    !(dot11hdr->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_MASK))
+			return false;
+
 		return dp_mon_is_data_filter_en(pdev, dot11hdr, buf,
 						IEEE80211_FC1_DIR_TODS);
 	default:
