@@ -21179,6 +21179,43 @@ send_rtt_pasn_deauth_cmd_tlv(wmi_unified_t wmi_handle,
 }
 #endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+static QDF_STATUS
+send_rtt_peer_meas_cancel_cmd_tlv(wmi_unified_t wmi_handle, uint32_t req_id)
+{
+	QDF_STATUS status;
+	wmi_buf_t buf;
+	wmi_rtt_peer_meas_cancel_meas_cmd_fix_param *fixed_param;
+	size_t len = sizeof(*fixed_param);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("wmi_buf_alloc failed");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	fixed_param =
+		(wmi_rtt_peer_meas_cancel_meas_cmd_fix_param *)
+		wmi_buf_data(buf);
+	WMITLV_SET_HDR(&fixed_param->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_rtt_peer_meas_cancel_meas_cmd_fix_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+		       wmi_rtt_peer_meas_cancel_meas_cmd_fix_param));
+	fixed_param->req_id = req_id;
+
+	wmi_mtrace(WMI_RTT_PEER_MEAS_CANCEL_CMDID, 0, req_id);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_RTT_PEER_MEAS_CANCEL_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send RTT peer measurement cancel command ret = %d",
+			status);
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+#endif
+
 static QDF_STATUS
 send_vdev_set_ltf_key_seed_cmd_tlv(wmi_unified_t wmi_handle,
 				   struct wlan_crypto_ltf_keyseed_data *data)
@@ -24898,6 +24935,10 @@ struct wmi_ops tlv_ops =  {
 		send_rtt_pasn_auth_status_cmd_tlv,
 	.send_rtt_pasn_deauth_cmd =
 		send_rtt_pasn_deauth_cmd_tlv,
+#endif
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+	.send_rtt_peer_meas_cancel_cmd =
+		send_rtt_peer_meas_cancel_cmd_tlv,
 #endif
 #ifdef WLAN_MWS_INFO_DEBUGFS
 	.send_mws_coex_status_req_cmd = send_mws_coex_status_req_cmd_tlv,

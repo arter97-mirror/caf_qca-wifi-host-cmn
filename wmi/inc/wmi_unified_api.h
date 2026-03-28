@@ -4171,6 +4171,18 @@ QDF_STATUS
 wmi_send_rtt_pasn_deauth_cmd(wmi_unified_t wmi, struct qdf_mac_addr *peer_mac);
 #endif
 
+#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+/**
+ * wmi_send_rtt_peer_meas_cancel_cmd - Send RTT peer measurement cancel command
+ * @wmi: WMI handle
+ * @req_id: request identifier to cancel
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_send_rtt_peer_meas_cancel_cmd(wmi_unified_t wmi, uint32_t req_id);
+#endif
+
 /**
  * wmi_critical_events_in_flight() - get the number of critical events in flight
  *

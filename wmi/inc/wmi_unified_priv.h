@@ -3013,6 +3013,11 @@ QDF_STATUS (*send_rtt_pasn_deauth_cmd)(wmi_unified_t wmi_handle,
 				       struct qdf_mac_addr *peer_mac);
 #endif
 
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+QDF_STATUS (*send_rtt_peer_meas_cancel_cmd)(wmi_unified_t wmi_handle,
+					    uint32_t req_id);
+#endif
+
 QDF_STATUS (*extract_hw_mode_resp_event)(wmi_unified_t wmi_handle,
 					 void *evt_buf, uint32_t *cmd_status);
 
