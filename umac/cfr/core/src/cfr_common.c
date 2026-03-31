@@ -33,13 +33,7 @@
 #include "host_diag_core_event.h"
 #endif
 
-/**
- * wlan_cfr_is_ini_disabled() - Check if cfr feature is disabled
- * @pdev: the physical device object.
- *
- * Return : true if cfr is disabled, else false.
- */
-static bool
+bool
 wlan_cfr_is_ini_disabled(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_objmgr_psoc *psoc;

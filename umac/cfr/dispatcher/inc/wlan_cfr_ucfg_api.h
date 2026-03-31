@@ -43,6 +43,15 @@ ucfg_cfr_send_stop(struct wlan_objmgr_vdev *vdev, uint32_t reason)
 #endif
 
 /**
+ * ucfg_cfr_is_ini_disabled() - Check if CFR is disabled for a given pdev
+ * via the cfr_disable INI bitmap.
+ * @pdev: pointer to pdev object
+ *
+ * Return: true if CFR is disabled for this pdev, false otherwise.
+ */
+bool ucfg_cfr_is_ini_disabled(struct wlan_objmgr_pdev *pdev);
+
+/**
  * ucfg_cfr_start_capture() - function to start cfr capture for connected client
  * @pdev: pointer to pdev object
  * @peer: pointer to peer object
