@@ -24,6 +24,8 @@
 #include <wlan_objmgr_peer_obj.h>
 #include <wlan_objmgr_pdev_obj.h>
 #include <qdf_module.h>
+#include <cfg_ucfg_api.h>
+#include "cfr_cfg.h"
 #ifdef WLAN_ENH_CFR_ENABLE
 #include "cdp_txrx_ctrl.h"
 #endif
@@ -1658,3 +1660,8 @@ QDF_STATUS ucfg_cfr_subscribe_ppdu_desc(struct wlan_objmgr_pdev *pdev,
 }
 #endif
 #endif
+
+bool ucfg_cfr_is_ini_disabled(struct wlan_objmgr_pdev *pdev)
+{
+	return wlan_cfr_is_ini_disabled(pdev);
+}
