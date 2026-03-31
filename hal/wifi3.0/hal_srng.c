@@ -346,8 +346,9 @@ static inline bool hal_srng_is_direct_refill(struct hal_soc *hal_soc,
 	return false;
 }
 
-QDF_STATUS hal_set_one_lmac_shadow_config(void *hal_soc_hdl, int ring_type,
-					  int ring_num, uint8_t lmac_id)
+static QDF_STATUS
+hal_set_one_lmac_shadow_config(void *hal_soc_hdl, int ring_type,
+			       int ring_num, uint8_t lmac_id)
 {
 	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
 	struct hal_hw_srng_config *srng_config;
