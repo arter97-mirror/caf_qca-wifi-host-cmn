@@ -232,8 +232,10 @@ struct rx_pkt_tlvs {
 #define HAL_RX_TLV_GET_FLOW_ID_TOEPLITZ(_rx_pkt_tlv) \
 	HAL_RX_MSDU_END(_rx_pkt_tlv).flow_id_toeplitz
 
+#ifdef DRIVER_PASSTHRU_MODE
 #define HAL_RX_TLV_GET_PPDU_START_TS_31_0(_rx_pkt_tlv) \
 	HAL_RX_MSDU_END(_rx_pkt_tlv).ppdu_start_timestamp_31_0
+#endif
 
 #define HAL_RX_TLV_MSDU_LEN_GET(_rx_pkt_tlv)		\
 	HAL_RX_MSDU_END(_rx_pkt_tlv).msdu_length
@@ -951,6 +953,7 @@ static inline uint32_t hal_rx_tlv_get_rssi_be(uint8_t *buf)
 	return rssi;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
 /**
  * hal_rx_tlv_get_ppdu_start_ts_be() - API to get ppdu start timestamp from
  *  msdu end tlv
@@ -965,6 +968,7 @@ static inline uint32_t hal_rx_tlv_get_ppdu_start_ts_be(uint8_t *rx_tlv_hdr)
 
 	return HAL_RX_TLV_GET_PPDU_START_TS_31_0(rx_pkt_tlvs);
 }
+#endif
 
 /**
  * hal_rx_tlv_get_pkt_type_be() - API to get the pkt type from
