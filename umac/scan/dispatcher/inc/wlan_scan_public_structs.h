@@ -575,16 +575,12 @@ struct partner_link_info {
  * @num_links: Number of links supported by ML AP
  * @self_link_id: Link id of the scan entry
  * @link_info: Array containing partner links information
- * @ml_bss_score: Multi link BSS score
- * @link_score: MLO link score
  */
 struct ml_info {
 	struct qdf_mac_addr mld_mac_addr;
 	uint8_t num_links;
 	uint8_t self_link_id;
 	struct partner_link_info link_info[MLD_MAX_LINKS - 1];
-	uint16_t ml_bss_score;
-	uint16_t link_score;
 };
 
 /**
@@ -601,6 +597,20 @@ enum number_of_partner_link {
 	THREE_LINK,
 };
 #endif
+
+/**
+ * struct scan_bss_scores: scoring calculation results for a BSS
+ * @bss_score: BSS score calculated on basis of RSSI/caps etc.
+ * @ml_bss_score: Multi link BSS score
+ * @link_score: MLO link score
+ */
+struct scan_bss_scores {
+	uint32_t bss_score;
+#ifdef WLAN_FEATURE_11BE_MLO
+	uint16_t ml_bss_score;
+	uint16_t link_score;
+#endif
+};
 
 /**
  * struct scan_cache_entry: structure containing scan entry
@@ -639,7 +649,6 @@ enum number_of_partner_link {
  *                    doesn't match the one in beacon
  * @mlme_info: Mlme info, this will be updated by MLME for the scan entry
  * @tsf_delta: TSF delta
- * @bss_score: bss score calculated on basis of RSSI/caps etc.
  * @neg_sec_info: negotiated security info
  * @per_chain_rssi: per chain RSSI value received.
  * @boottime_ns: boottime in ns.
@@ -653,6 +662,7 @@ enum number_of_partner_link {
  * @non_intersected_phymode: Non intersected phy mode of the AP
  * @recv_freq: Frequency on which the frame is received
  * @ap_pwr_type_6g: 6GHz AP power type
+ * @entry_scores: scoring related calculation results
  */
 struct scan_cache_entry {
 	uint8_t frm_subtype;
@@ -691,7 +701,6 @@ struct scan_cache_entry {
 	bool channel_mismatch;
 	struct mlme_info mlme_info;
 	uint32_t tsf_delta;
-	uint32_t bss_score;
 	struct security_info neg_sec_info;
 	uint8_t per_chain_rssi[WLAN_MGMT_TXRX_HOST_MAX_ANTENNA];
 	uint64_t boottime_ns;
@@ -712,6 +721,7 @@ struct scan_cache_entry {
 	enum wlan_phymode non_intersected_phymode;
 	uint32_t recv_freq;
 	uint8_t ap_pwr_type_6g;
+	struct scan_bss_scores entry_scores;
 };
 
 #define MAX_FAVORED_BSSID 16
