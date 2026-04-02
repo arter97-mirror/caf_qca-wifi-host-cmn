@@ -26,6 +26,7 @@
 #include <wlan_scan_tgt_api.h>
 #include "wlan_scan_main.h"
 #include "wlan_scan_manager.h"
+#include "wlan_scan_manager_6ghz.h"
 #include "wlan_utility.h"
 #include "wlan_pmo_ucfg_api.h"
 #include <wlan_reg_services_api.h>
@@ -1147,8 +1148,19 @@ scm_update_channel_list(struct scan_start_request *req,
 	 */
 	first_freq = req->scan_req.chan_list.chan[0].freq;
 	if ((req->scan_req.chan_list.num_chan == 1) &&
-	    (!utils_dfs_is_freq_in_nol(pdev, first_freq)))
+	    (!utils_dfs_is_freq_in_nol(pdev, first_freq))) {
+		/*
+		 * Exception: For single-channel 6 GHz connect scans,
+		 * attach cached RNR hints so FW gets S_SSID/H_BSSID.
+		 */
+		if (wlan_reg_is_6ghz_chan_freq(first_freq) &&
+		    wlan_reg_is_6ghz_band_set(pdev) &&
+		    (req->scan_req.scan_type == SCAN_TYPE_SCAN_FOR_CONNECT ||
+		     req->scan_req.scan_type == SCAN_TYPE_DEFAULT)) {
+			scm_add_rnr_info(pdev, req);
+		}
 		return;
+	}
 
 	/* do this only for STA and P2P-CLI mode */
 	if ((!(wlan_vdev_mlme_get_opmode(req->vdev) == QDF_STA_MODE) &&
