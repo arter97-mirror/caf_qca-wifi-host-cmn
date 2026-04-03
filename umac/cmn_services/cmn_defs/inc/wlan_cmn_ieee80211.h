@@ -4891,6 +4891,7 @@ struct csa_offload_params {
 #define WLAN_UHR_CAP_MAC_FIXED_FIELD_LEN         5
 #define WLAN_UHR_CAP_PHY_FIXED_FIELD_LEN         1
 
+#define WLAN_UHR_OP_PARAM_LEN                    2
 #define WLAN_UHR_BASIC_MCS_NSS_SET_LEN           4
 #define WLAN_UHR_UHR_OP_INFO_MAX_LEN             5
 #define WLAN_UHR_DPS_OP_PARAM_LEN                4

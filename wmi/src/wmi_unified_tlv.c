@@ -16685,6 +16685,34 @@ static void extract_mac_phy_cap_uhrcaps(
 }
 #endif
 
+static QDF_STATUS extract_mac_phy_caps_ext2_tlv(
+			uint8_t *event, uint8_t hw_mode_id, uint8_t phy_id,
+			uint8_t phy_idx,
+			struct wlan_psoc_host_mac_phy_caps_ext2 *param)
+{
+	WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf;
+	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2 = NULL;
+
+	if (!event) {
+		wmi_err("null evt_buf");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	param_buf = (WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *)event;
+
+	if (param_buf->num_mac_phy_caps2)
+		mac_phy_caps2 = &param_buf->mac_phy_caps2[phy_idx];
+
+	if (qdf_unlikely(!mac_phy_caps2) ||
+	    hw_mode_id != mac_phy_caps2->hw_mode_id ||
+	    phy_id != mac_phy_caps2->phy_id)
+		return QDF_STATUS_SUCCESS;
+
+	extract_mac_phy_cap_uhrcaps(param, mac_phy_caps2);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 			wmi_unified_t wmi_handle,
 			uint8_t *event, uint8_t hw_mode_id, uint8_t phy_id,
@@ -16693,7 +16721,6 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 {
 	WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf;
 	WMI_MAC_PHY_CAPABILITIES_EXT *mac_phy_caps;
-	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2 = NULL;
 
 	if (!event) {
 		wmi_err("null evt_buf");
@@ -16709,8 +16736,6 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 		return QDF_STATUS_E_INVAL;
 
 	mac_phy_caps = &param_buf->mac_phy_caps[phy_idx];
-	if (param_buf->num_mac_phy_caps2)
-		mac_phy_caps2 = &param_buf->mac_phy_caps2[phy_idx];
 
 	if ((hw_mode_id != mac_phy_caps->hw_mode_id) ||
 	    (phy_id != mac_phy_caps->phy_id))
@@ -16729,12 +16754,8 @@ static QDF_STATUS extract_mac_phy_cap_service_ready_ext2_tlv(
 	extract_mac_phy_msdcap(param, mac_phy_caps);
 	extract_mac_phy_ext_mldcap(param, mac_phy_caps);
 
-	if (qdf_unlikely(!mac_phy_caps2) ||
-	    hw_mode_id != mac_phy_caps2->hw_mode_id ||
-	    phy_id != mac_phy_caps2->phy_id)
-		return QDF_STATUS_SUCCESS;
-
-	extract_mac_phy_cap_uhrcaps(param, mac_phy_caps2);
+	extract_mac_phy_caps_ext2_tlv(event, hw_mode_id, phy_id, phy_idx,
+				      param);
 
 	return QDF_STATUS_SUCCESS;
 }
