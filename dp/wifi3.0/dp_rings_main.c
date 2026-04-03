@@ -3524,7 +3524,7 @@ int dp_flush_tcl_ring(struct dp_pdev *pdev, int ring_id)
 
 #ifdef WLAN_FEATURE_STATS_EXT
 /* rx hw stats event wait timeout in ms */
-#define DP_REO_STATUS_STATS_TIMEOUT 100
+#define DP_REO_STATUS_STATS_TIMEOUT 500
 
 /**
  * dp_rx_hw_stats_cb() - request rx hw stats response callback

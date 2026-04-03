@@ -1430,6 +1430,7 @@ enum hif_ep_vote_access {
  * @HIF_RTPM_ID_WIPHY_SUSPEND:
  * @HIF_RTPM_ID_DP_STC: Datapath ML STC module
  * @HIF_RTPM_ID_OPT_DP: optional datapath
+ * @HIF_RTPM_ID_OSIF: OSIF commands
  * @HIF_RTPM_ID_MAX: Max id
  */
 enum  hif_rtpm_client_id {
@@ -1445,6 +1446,7 @@ enum  hif_rtpm_client_id {
 	HIF_RTPM_ID_WIPHY_SUSPEND,
 	HIF_RTPM_ID_DP_STC,
 	HIF_RTPM_ID_OPT_DP,
+	HIF_RTPM_ID_OSIF,
 	HIF_RTPM_ID_MAX
 };
 
