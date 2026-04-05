@@ -2338,11 +2338,17 @@ enum wlan_ml_variant {
  *  enum wlan_ml_linfo_subelementid - IDs for subelements in Multi-Link element
  *  Link Info field.
  *  @WLAN_ML_LINFO_SUBELEMID_PERSTAPROFILE: Per-STA Profile
+ *  @WLAN_ML_BV_LINFO_RECONFIG_ELEMID: Reconfiguration Link Info subelement ID
+ *  (WLAN_FEATURE_11BN_SMD)
  *  @WLAN_ML_LINFO_SUBELEMID_VENDOR: Vendor specific
  *  @WLAN_ML_LINFO_SUBELEMID_FRAGMENT: Fragment
  */
 enum wlan_ml_linfo_subelementid {
 	WLAN_ML_LINFO_SUBELEMID_PERSTAPROFILE  = 0,
+#ifdef WLAN_FEATURE_11BN_SMD
+	/* Reconfiguration Link Info subelement ID (UHR link reconfig) */
+	WLAN_ML_BV_LINFO_RECONFIG_ELEMID = 5,
+#endif
 	WLAN_ML_LINFO_SUBELEMID_VENDOR = 221,
 	WLAN_ML_LINFO_SUBELEMID_FRAGMENT = 254,
 };
@@ -3173,6 +3179,22 @@ struct wlan_ml_pav_linfo_perstaprof {
 
 #endif /* WLAN_FEATURE_11BE_MLO */
 #endif /* WLAN_FEATURE_11BE */
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * struct wlan_smd_ie - SMD IE structure
+ * @present: SMD IE present
+ * @smd_identifier: SMD identifier
+ * @smd_cap: SMD capability
+ * @smd_timeout: SMD timeout
+ */
+struct wlan_smd_ie {
+	bool present;
+	uint8_t smd_identifier;
+	uint8_t smd_cap;
+	uint8_t smd_timeout;
+} qdf_packed;
+#endif /* WLAN_FEATURE_11BN_SMD */
 
 /**
  * struct wlan_ie_tid_to_link_mapping - TID-to-link mapping IE

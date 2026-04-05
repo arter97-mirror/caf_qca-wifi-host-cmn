@@ -30,6 +30,10 @@
 #define WLAN_MAX_DIALOG_TOKEN         0xFF
 #define LINK_RECFG_RSP_TIMEOUT 5000
 
+#ifdef WLAN_FEATURE_11BN_SMD
+#define MLO_LINK_RECFG_MAX_SCS_IDS 8
+#endif
+
 struct mlo_link_recfg_context;
 struct link_recfg_rx_rsp;
 
@@ -294,6 +298,10 @@ struct wlan_mlo_link_recfg_req {
  * @recfg_type: Type of link reconfiguration operation being performed.
  *              See enum link_recfg_type for possible values (delete only,
  *              add only, delete and add with/without common link, etc.)
+ * @ctx_notransfer_flags: SMD BSS Transition context no-transfer flags
+ * @scs_list_present: Whether SCS list is present in SMD BSS Transition
+ * @num_scs_ids: Number of valid SCS IDs in scs_ids array
+ * @scs_ids: Array of SCS IDs for SMD BSS Transition
  */
 struct mlo_link_recfg_state_req {
 	struct wlan_mlo_link_recfg_info add_link_info;
@@ -301,6 +309,12 @@ struct mlo_link_recfg_state_req {
 	uint8_t dialog_token;
 	struct qdf_mac_addr peer_mac;
 	enum link_recfg_type recfg_type;
+#ifdef WLAN_FEATURE_11BN_SMD
+	uint8_t ctx_notransfer_flags;
+	bool scs_list_present;
+	uint8_t num_scs_ids;
+	uint8_t scs_ids[MLO_LINK_RECFG_MAX_SCS_IDS];
+#endif
 };
 
 /**
