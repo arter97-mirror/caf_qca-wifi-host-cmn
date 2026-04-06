@@ -542,6 +542,50 @@ struct twt_wake_dur_and_wake_intvl {
 	uint16_t max_wake_intvl;
 };
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * struct device_nan_capabilities - NAN capabilities from firmware
+ * @vht_phy_mode: Support for VHT PHY mode
+ * @he_phy_mode: Support for HE PHY mode
+ * @he_vht_80_80: Support for 80+80 MHz HE/VHT
+ * @he_vht_160: Support for 160 MHz HE/VHT
+ * @num_tx_ant: Number of TX antennas
+ * @num_rx_ant: Number of RX antennas
+ * @s3_support: Support for S3 power save
+ * @max_ndi_interfaces: Max number of NDI interfaces
+ * @ndp_supported_band: Supported bands for NDP (see WMI_NDP_BAND_CAP)
+ * @reserved: 8 bits reserve for padding
+ * @device_caps_word0: device capabilities structure
+ * @max_chan_switch_time: Max channel switch time in microseconds
+ * @reserved2: 16 bits reserve for padding
+ * @device_caps_word1: device capabilities structure
+ */
+struct device_nan_capabilities {
+	union {
+		struct {
+			uint32_t vht_phy_mode:1,
+				he_phy_mode:1,
+				he_vht_80_80:1,
+				he_vht_160:1,
+				num_tx_ant:4,
+				num_rx_ant:4,
+				s3_support:1,
+				max_ndi_interfaces:3,
+				ndp_supported_band:8,
+				reserved:8;
+		};
+		uint32_t device_caps_word0;
+	};
+	union {
+		struct {
+			uint32_t max_chan_switch_time:16,
+				reserved2:16;
+		};
+		uint32_t device_caps_word1;
+	};
+};
+#endif
+
 /**
  * struct wlan_psoc_host_service_ext2_param - EXT service base params in event
  * @reg_db_version_major: REG DB version major number
@@ -599,6 +643,7 @@ struct twt_wake_dur_and_wake_intvl {
  * @max_ml_sta_num_bss: Max sta bss
  * @max_ml_bss_num: Max ML bss
  * @tx_powerboost: Tx power boost
+ * @nan_caps: NAN standard mode capbilities for the device
  */
 struct wlan_psoc_host_service_ext2_param {
 	uint8_t reg_db_version_major;
@@ -654,6 +699,9 @@ struct wlan_psoc_host_service_ext2_param {
 	uint8_t	max_ml_bss_num;
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	bool tx_powerboost;
+#endif
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+	struct device_nan_capabilities nan_caps;
 #endif
 };
 
