@@ -4174,30 +4174,33 @@ fail0:
 static void dp_pdev_flush_pending_vdevs(struct dp_pdev *pdev)
 {
 	struct dp_soc *soc = pdev->soc;
-	struct dp_vdev *vdev_arr[MAX_VDEV_CNT] = {0};
-	uint32_t i = 0;
-	uint32_t num_vdevs = 0;
-	struct dp_vdev *vdev = NULL;
+	struct dp_vdev *vdev, *tmp_vdev;
+	TAILQ_HEAD(, dp_vdev) local_list;
 
 	if (TAILQ_EMPTY(&soc->inactive_vdev_list))
 		return;
 
+	TAILQ_INIT(&local_list);
+
 	qdf_spin_lock_bh(&soc->inactive_vdev_list_lock);
-	TAILQ_FOREACH(vdev, &soc->inactive_vdev_list,
-		      inactive_list_elem) {
+	TAILQ_FOREACH_SAFE(vdev, &soc->inactive_vdev_list,
+			   inactive_list_elem, tmp_vdev) {
 		if (vdev->pdev != pdev)
 			continue;
 
-		vdev_arr[num_vdevs] = vdev;
-		num_vdevs++;
-		/* take reference to free */
-		dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CDP);
+		if (dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CDP) !=
+				QDF_STATUS_SUCCESS)
+			continue;
+
+		TAILQ_REMOVE(&soc->inactive_vdev_list, vdev,
+			     inactive_list_elem);
+		TAILQ_INSERT_TAIL(&local_list, vdev, inactive_list_elem);
 	}
 	qdf_spin_unlock_bh(&soc->inactive_vdev_list_lock);
 
-	for (i = 0; i < num_vdevs; i++) {
-		dp_vdev_flush_peers((struct cdp_vdev *)vdev_arr[i], 0, 0);
-		dp_vdev_unref_delete(soc, vdev_arr[i], DP_MOD_ID_CDP);
+	TAILQ_FOREACH_SAFE(vdev, &local_list, inactive_list_elem, tmp_vdev) {
+		dp_vdev_flush_peers((struct cdp_vdev *)vdev, 0, 0);
+		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 	}
 }
 
