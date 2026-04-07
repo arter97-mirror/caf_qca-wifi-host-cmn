@@ -7014,6 +7014,72 @@ mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+#ifdef WLAN_FEATURE_11BN_SMD
+QDF_STATUS
+mlo_uhr_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
+		      enum wlan_link_recfg_sm_evt event,
+		      uint8_t *rx_pkt_info)
+{
+	struct mlo_link_recfg_context *ctx;
+	struct wlan_action_frame_args *action_frm;
+	struct link_recfg_rx_rsp rx_rsp = {0};
+	void *event_data = WMA_GET_RX_MPDU_DATA(rx_pkt_info);
+	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
+	QDF_STATUS status;
+	uint16_t ie_offset = 0;
+
+	if (!vdev || !vdev->mlo_dev_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!vdev->mlo_dev_ctx->link_recfg_ctx)
+		return QDF_STATUS_E_NULL_VALUE;
+
+	if (!event_data || !frame_len) {
+		mlo_err("event data or frame_len is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	if (!mlo_is_link_recfg_in_progress(vdev)) {
+		mlo_err("UHR Link Recfg response received in invalid state, drop it");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	action_frm = (struct wlan_action_frame_args *)event_data;
+	ctx = vdev->mlo_dev_ctx->link_recfg_ctx;
+	/* Parse UHR ST Preparation Response */
+	status = mlo_uhr_link_recfg_parse_st_prep_rsp(ctx,
+						      &ctx->curr_recfg_rsp,
+						      rx_pkt_info,
+						      event_data,
+						      &ie_offset);
+
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_err("UHR Link Recfg Response Parsing failed");
+	else
+		mlo_link_recfg_gen_link_assoc_rsp(vdev, ctx,
+						  &ctx->curr_recfg_req,
+						  rx_pkt_info,
+						  action_frm,
+						  &ie_offset);
+
+	rx_rsp.status = status;
+	status = mlo_link_recfg_sm_deliver_event(vdev->mlo_dev_ctx, event,
+						 sizeof(struct link_recfg_rx_rsp),
+						 &rx_rsp);
+
+	if (QDF_IS_STATUS_ERROR(status))
+		mlo_err("Posting UHR Link Recfg Response event failed");
+
+	/* In case of common link case, no-op in below API.
+	 * In no-common link case, it will continue link assoc rsp process
+	 * and peer assoc for the pending vdev.
+	 */
+	mlo_link_recfg_link_add_join_continue(vdev, status);
+
+	return status;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 static void
 mlo_link_recfg_zero_and_free_memory(uint8_t *ptr, uint32_t len)
 {

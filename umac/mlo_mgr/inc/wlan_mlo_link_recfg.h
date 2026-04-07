@@ -1001,6 +1001,25 @@ QDF_STATUS mlo_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
 				 enum wlan_link_recfg_sm_evt event,
 				 uint8_t *rx_pkt_info);
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * mlo_uhr_link_recfg_rx_rsp() - Handle UHR Link Reconfiguration Response
+ * @vdev: vdev object
+ * @event: Link reconfiguration state machine event
+ * @rx_pkt_info: RX packet info
+ *
+ * This function handles UHR Link Reconfiguration Response frames received
+ * during SMD roaming. It parses the response and delivers events to the
+ * link reconfiguration state machine.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_uhr_link_recfg_rx_rsp(struct wlan_objmgr_vdev *vdev,
+			  enum wlan_link_recfg_sm_evt event,
+			  uint8_t *rx_pkt_info);
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 /**
  * mlo_link_recfg_link_add_join_req() - handle add link join request
  * @vdev: vdev pointer
