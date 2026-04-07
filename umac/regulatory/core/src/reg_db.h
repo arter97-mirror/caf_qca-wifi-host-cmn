@@ -129,6 +129,8 @@ enum reg_domain {
 	ETSI27_WORLD = 0xDB,
 	ETSI28_WORLD = 0X9C,
 	ETSI29_WORLD = 0X9D,
+	ETSI30_WORLD = 0x9E,
+	ETSI31_WORLD = 0x11A,
 	ETSI50_WORLD = 0x1F,
 
 	APL1_WORLD = 0x52,
@@ -170,6 +172,8 @@ enum reg_domain {
 	APL29_ETSIC = 0x77,
 	APL30_CHNA = 0x78,
 	APL31_WORLD = 0x84,
+	APL32_WORLD = 0x85,
+	APL33_ETSIC = 0x86,
 
 	WOR0_WORLD = 0x60,
 	WOR1_WORLD = 0x61,
@@ -222,6 +226,7 @@ enum reg_domain {
 	MKK17_MKKC = 0xE1,
 	MKK18_MKKC = 0xEE,
 	MKK50_MKKD = 0x2F,
+	MKK51_MKKD = 0x6F,
 
 	WORLD_60 = 0x60,
 	WORLD_61 = 0x61,
@@ -297,6 +302,8 @@ enum reg_domains_5g {
 	ETSI27,
 	ETSI28,
 	ETSI29,
+	ETSI30,
+	ETSI31,
 	ETSI50,
 
 	APL1,
@@ -327,6 +334,8 @@ enum reg_domains_5g {
 	APL29,
 	APL30,
 	APL31,
+	APL32,
+	APL33,
 
 	MKK3,
 	MKK5,
@@ -338,6 +347,7 @@ enum reg_domains_5g {
 	MKK9,
 	MKK10,
 	MKK50,
+	MKK51,
 
 	WORLD_5G_1,
 	WORLD_5G_2,
@@ -374,7 +384,7 @@ enum country_code {
 	CTRY_ANDORRA = 20,
 	CTRY_ANGOLA = 24,
 	CTRY_ANGUILLA = 660,
-	CTRY_ANTARCTIA = 10,
+	CTRY_ANTARCTICA = 10,
 	CTRY_ANTIGUA_AND_BARBUDA = 28,
 	CTRY_ARGENTINA = 32,
 	CTRY_ARMENIA = 51,
@@ -759,6 +769,7 @@ struct reg_domain_pair {
  * @ETSI4_6G_26: Super domain ETSI4_6G_26 for AUSTRALIA LPI and VLP
  * @APL10_6G_27: Super domain APL10_6G_27 for INDIA LPI
  * @FCC2_6G_90: Super domain FCC2_6G_90 for MCC WW mode
+ * @APL11_6G_28: Super domain APL11_6G_28 for KOREA LPI (updated) and VLP
  */
 enum reg_super_domain_6g {
 	FCC1_6G_01 = 0x01,
@@ -792,6 +803,7 @@ enum reg_super_domain_6g {
 	ETSI3_6G_25 = 0x25,
 	ETSI4_6G_26 = 0x26,
 	APL10_6G_27 = 0x27,
+	APL11_6G_28 = 0x28,
 	FCC2_6G_90 = 0x90,
 };
 
