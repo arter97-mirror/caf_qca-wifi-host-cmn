@@ -233,7 +233,60 @@ enum link_recfg_type {
 };
 
 /**
- * struct wlan_mlo_link_recfg_req - Data Structure for link
+ * struct mlo_link_recfg_status_list - Data Structure for link
+ * reconfiguration response status list
+ * @link_id: IEEE Link id
+ * @status_code: wlan protocol status code
+ */
+struct mlo_link_recfg_status_list {
+	uint8_t link_id;
+	enum wlan_status_code status_code;
+};
+
+/**
+ * struct wlan_mlo_link_recfg_rsp - Data Structure for link
+ * reconfiguration response
+ * @is_valid: Set to true if link reconfig resp is valid
+ * @dialog_token: dialog token received in Link Recfg response frame.
+ * @count: number of reconfig status duple in the mlo_link_recfg_status_list
+ * @recfg_status_list: Reconfiguration status duple list
+ * @grp_key_data: Group key data len and ptr
+ * @oci_ie: OCI IE
+ * @mlo_ie: Basic Multi link IE
+ * @type: Type field (0=ST prep, 1=ST exec) (SMD only)
+ * @status_code: Overall wlan protocol status code (SMD only)
+ * @smd_bss_trans_params: SMD BSS Transition Parameters element (SMD only)
+ * @assigned_aid: AID assigned by target AP MLD (SMD only)
+ * @key_delivery: Key Delivery element (SMD per-PTK mode only)
+ * @mscs_descriptor: MSCS Descriptor element (SMD per-PTK mode only)
+ * @diffie_hellman_param: Diffie-Hellman Parameter element (SMD per-PTK mode only)
+ * @nonce: Nonce element (SMD per-PTK mode only)
+ * @mic: MIC element (SMD per-PTK mode only)
+ */
+struct wlan_mlo_link_recfg_rsp {
+	bool is_valid;
+	uint8_t dialog_token;
+	uint8_t count;
+	struct mlo_link_recfg_status_list recfg_status_list[WLAN_MAX_ML_RECFG_LINK_COUNT];
+	struct element_info grp_key_data;
+	struct element_info oci_ie;
+	struct element_info mlo_ie;
+#ifdef WLAN_FEATURE_11BN_SMD
+	uint8_t type;
+	enum wlan_status_code status_code;
+	struct element_info smd_bss_trans_params;
+	uint16_t assigned_aid;
+	/* Per-PTK mode optional elements */
+	struct element_info key_delivery;
+	struct element_info mscs_descriptor;
+	struct element_info diffie_hellman_param;
+	struct element_info nonce;
+	struct element_info mic;
+#endif /* WLAN_FEATURE_11BN_SMD */
+};
+
+/**
+ * struct wlan_mlo_link_recfg_req - Data Structure because of link
  *  reconfiguration request
  * @vdev_id: VDEV ID of the primary link in the MLO connection. This field
  *           holds information regarding all the links of the ML connection
@@ -467,37 +520,6 @@ struct mlo_link_recfg_state_sm {
 	qdf_mc_timer_t sm_timer;
 };
 
-/**
- * struct mlo_link_recfg_status_list - Data Structure for link
- * reconfiguration response status list
- * @link_id: IEEE Link id
- * @status_code: wlan protocol status code
- */
-struct mlo_link_recfg_status_list {
-	uint8_t link_id;
-	enum wlan_status_code status_code;
-};
-
-/**
- * struct wlan_mlo_link_recfg_rsp - Data Structure for link
- * reconfiguration response
- * @is_valid: Set to true if link reconfig resp is valid
- * @dialog_token: dialog token received in Link Recfg response frame.
- * @count: number of reconfig status duple in the mlo_link_recfg_status_list
- * @recfg_status_list: Reconfiguration status duple list
- * @grp_key_data: Group key data len and ptr
- * @oci_ie: OCI IE
- * @mlo_ie: Basic Multi link IE
- */
-struct wlan_mlo_link_recfg_rsp {
-	bool is_valid;
-	uint8_t dialog_token;
-	uint8_t count;
-	struct mlo_link_recfg_status_list recfg_status_list[WLAN_MAX_ML_RECFG_LINK_COUNT];
-	struct element_info grp_key_data;
-	struct element_info oci_ie;
-	struct element_info mlo_ie;
-};
 
 /**
  * struct recfg_done_data_hdr - recfg done ctx header
@@ -1094,7 +1116,7 @@ mlo_link_recfg_get_psoc(struct mlo_link_recfg_context *recfg_ctx);
  *
  * Return: mlo_link_recfg_state_tran pointer
  */
- struct mlo_link_recfg_state_tran *
+struct mlo_link_recfg_state_tran *
 mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx);
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
@@ -1524,4 +1546,147 @@ mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx)
 	return NULL;
 }
 #endif
-#endif
+
+/* =====================================================================
+ * Target AP Capability Structures (used with WLAN_FEATURE_11BN_SMD)
+ * ===================================================================== */
+
+/**
+ * struct smd_target_ap_link_caps - Target AP link capabilities for SMD roaming
+ * @link_id: Link ID
+ * @capability_info: Capability Information field (2 octets)
+ * @capability_info_present: Whether capability info was extracted
+ * @supported_rates: Supported Rates element
+ * @ext_supported_rates: Extended Supported Rates element
+ * @ht_cap: HT Capabilities element
+ * @ht_cap_present: Whether HT capabilities were extracted
+ * @vht_cap: VHT Capabilities element
+ * @vht_cap_present: Whether VHT capabilities were extracted
+ * @he_cap: HE Capabilities element
+ * @he_cap_present: Whether HE capabilities were extracted
+ * @eht_cap: EHT Capabilities element
+ * @eht_cap_present: Whether EHT capabilities were extracted
+ * @ext_cap: Extended Capabilities element
+ * @ext_cap_present: Whether extended capabilities were extracted
+ */
+struct smd_target_ap_link_caps {
+	uint8_t link_id;
+	uint16_t capability_info;
+	bool capability_info_present;
+	struct element_info supported_rates;
+	struct element_info ext_supported_rates;
+	struct element_info ht_cap;
+	bool ht_cap_present;
+	struct element_info vht_cap;
+	bool vht_cap_present;
+	struct element_info he_cap;
+	bool he_cap_present;
+	struct element_info eht_cap;
+	bool eht_cap_present;
+	struct element_info ext_cap;
+	bool ext_cap_present;
+};
+
+/**
+ * struct smd_target_ap_caps - Complete target AP capabilities for SMD roaming
+ * @num_links: Number of links with extracted capabilities
+ * @link_caps: Array of per-link capabilities
+ * @mld_capabilities: MLD-level capabilities (EMLSR, max links, etc.)
+ * @mld_cap_present: Whether MLD capabilities were extracted
+ */
+struct smd_target_ap_caps {
+	uint8_t num_links;
+	struct smd_target_ap_link_caps link_caps[WLAN_MAX_ML_BSS_LINKS];
+	/* MLD-level capabilities from Common Info */
+	struct {
+		bool emlsr_support;
+		uint8_t max_simultaneous_links;
+	} mld_capabilities;
+	bool mld_cap_present;
+};
+
+#ifdef WLAN_FEATURE_11BN_SMD
+
+static inline void
+wlan_mlo_init_smd_target_ap_caps(struct smd_target_ap_caps *caps)
+{
+	if (!caps)
+		return;
+	qdf_mem_zero(caps, sizeof(*caps));
+}
+
+static inline void
+wlan_mlo_cleanup_smd_target_ap_caps(struct smd_target_ap_caps *caps)
+{
+	uint8_t i;
+
+	if (!caps)
+		return;
+
+	for (i = 0; i < caps->num_links; i++) {
+		struct smd_target_ap_link_caps *link_cap = &caps->link_caps[i];
+
+		qdf_mem_free(link_cap->supported_rates.ptr);
+		link_cap->supported_rates.ptr = NULL;
+		qdf_mem_free(link_cap->ext_supported_rates.ptr);
+		link_cap->ext_supported_rates.ptr = NULL;
+		qdf_mem_free(link_cap->ht_cap.ptr);
+		link_cap->ht_cap.ptr = NULL;
+		qdf_mem_free(link_cap->vht_cap.ptr);
+		link_cap->vht_cap.ptr = NULL;
+		qdf_mem_free(link_cap->he_cap.ptr);
+		link_cap->he_cap.ptr = NULL;
+		qdf_mem_free(link_cap->eht_cap.ptr);
+		link_cap->eht_cap.ptr = NULL;
+		qdf_mem_free(link_cap->ext_cap.ptr);
+		link_cap->ext_cap.ptr = NULL;
+	}
+
+	qdf_mem_zero(caps, sizeof(*caps));
+}
+
+/**
+ * extract_target_ap_capabilities() - Extract target AP capabilities from scan cache
+ * @mlo_ie: Pointer to ML IE data
+ * @mlo_ie_len: Length of ML IE
+ * @target_caps: Output structure to store extracted capabilities
+ * @ctx: Link reconfiguration context
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+extract_target_ap_capabilities(uint8_t *mlo_ie,
+                               qdf_size_t mlo_ie_len,
+                               struct smd_target_ap_caps *target_caps,
+                               struct mlo_link_recfg_context *ctx);
+
+QDF_STATUS
+mlo_uhr_link_recfg_parse_st_prep_rsp(
+	struct mlo_link_recfg_context *ctx,
+	struct wlan_mlo_link_recfg_rsp *link_recfg_rsp,
+	uint8_t *rx_pkt_info,
+	struct wlan_action_frame *action_frm,
+	uint16_t *ie_offset);
+
+#else
+static inline QDF_STATUS
+extract_target_ap_capabilities(uint8_t *mlo_ie,
+                               qdf_size_t mlo_ie_len,
+                               struct smd_target_ap_caps *target_caps,
+                               struct mlo_link_recfg_context *ctx)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_uhr_link_recfg_parse_st_prep_rsp(
+	struct mlo_link_recfg_context *ctx,
+	struct wlan_mlo_link_recfg_rsp *link_recfg_rsp,
+	uint8_t *rx_pkt_info,
+	struct wlan_action_frame *action_frm,
+	uint16_t *ie_offset)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+#endif /* _WLAN_MLO_LINK_RECFG_H_ */

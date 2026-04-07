@@ -762,9 +762,22 @@ enum element_ie {
  * @WLAN_EXTN_ELEMID_UHROP: UHR Operation IE
  * @WLAN_EXTN_ELEMID_UHRCAP: UHR CAP IE
  * @WLAN_EXTN_ELEMID_SMD_INFO: SMD Info IE
+ * @WLAN_EXTN_ELEMID_KEY_DELIVERY: Key Delivery IE (IEEE 802.11, 9.4.2.184)
+ * @WLAN_EXTN_ELEMID_DH_PARAM: Diffie-Hellman Parameter IE (IEEE 802.11bn, 9.4.2.312)
+ * @WLAN_EXTN_ELEMID_NONCE: Nonce IE (IEEE 802.11bn, 9.4.2.188)
+ * @WLAN_EXTN_ELEMID_MSCS_DESCRIPTOR: MSCS Descriptor IE (IEEE 802.11-2020, 9.4.2.242)
+ * @WLAN_EXTN_ELEMID_SMD_BSS_TRANS_PARAMS: SMD BSS Transition Parameters IE (IEEE 802.11bn, 9.4.2.359)
+ * @WLAN_EXTN_ELEMID_MIC: MIC IE (IEEE 802.11bn, 9.4.2.314)
  */
 enum extn_element_ie {
+#ifdef WLAN_FEATURE_11BN_SMD
+	WLAN_EXTN_ELEMID_KEY_DELIVERY = 7,    /* IEEE 802.11-2020 Table 9-92 */
+#endif
 	WLAN_EXTN_ELEMID_ESP         = 11,
+#ifdef WLAN_FEATURE_11BN_SMD
+	WLAN_EXTN_ELEMID_DH_PARAM    = 29,    /* IEEE 802.11bn, 9.4.2.312 */
+	WLAN_EXTN_ELEMID_NONCE       = 30,    /* IEEE 802.11bn, 9.4.2.188 */
+#endif
 	WLAN_EXTN_ELEMID_HECAP       = 35,
 	WLAN_EXTN_ELEMID_HEOP        = 36,
 	WLAN_EXTN_ELEMID_UORA        = 37,
@@ -775,6 +788,10 @@ enum extn_element_ie {
 	WLAN_EXTN_ELEMID_OCI         = 54,
 	WLAN_EXTN_ELEMID_NONINHERITANCE = 56,
 	WLAN_EXTN_ELEMID_HE_6G_CAP   = 59,
+#ifdef WLAN_FEATURE_11BN_SMD
+	WLAN_EXTN_ELEMID_MIC         = 76,    /* IEEE 802.11bn, 9.4.2.314 */
+	WLAN_EXTN_ELEMID_MSCS_DESCRIPTOR = 88, /* IEEE 802.11-2020, 9.4.2.242 */
+#endif
 #ifdef WLAN_FEATURE_11BE
 	WLAN_EXTN_ELEMID_EHTOP       = 106,
 #endif
@@ -794,7 +811,8 @@ enum extn_element_ie {
 	WLAN_EXTN_ELEMID_UHRCAP      = 152,
 #endif
 #ifdef WLAN_FEATURE_11BN_SMD
-	WLAN_EXTN_ELEMID_SMD_INFO    = 154,
+	WLAN_EXTN_ELEMID_SMD_INFO    = 154,   /* IEEE 802.11bn, 9.4.2.xxx */
+	WLAN_EXTN_ELEMID_SMD_BSS_TRANS_PARAMS = 159, /* IEEE 802.11bn, 9.4.2.359 */
 #endif
 };
 
@@ -5253,6 +5271,28 @@ struct wlan_uhr_op_ie {
 #endif
 
 #ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * enum uhr_link_reconfig_type - UHR Link Reconfiguration Type field values
+ * @UHR_LINK_RECONFIG_TYPE_ST_PREP: ST (State Transition) preparation
+ * @UHR_LINK_RECONFIG_TYPE_ST_EXEC: ST (State Transition) execution
+ *
+ * IEEE 802.11bn Draft P802.11bn_D1.3 Table 9-658bc
+ */
+enum uhr_link_reconfig_type {
+	UHR_LINK_RECONFIG_TYPE_ST_PREP = 0,
+	UHR_LINK_RECONFIG_TYPE_ST_EXEC = 1,
+};
+
+/* SMD BSS Transition Parameters Presence Bitmap */
+#define SMD_BSS_TRANS_PARAMS_AID_PRESENT        BIT(0)
+#define SMD_BSS_TRANS_PARAMS_DL_BA_INFO_PRESENT BIT(1)
+#define SMD_BSS_TRANS_PARAMS_UL_BA_INFO_PRESENT BIT(2)
+#define SMD_BSS_TRANS_PARAMS_SCS_LIST_PRESENT   BIT(3)
+
+/* SMD BSS Transition Parameters field lengths */
+#define SMD_BSS_TRANS_PARAMS_AID_LEN    2
+#define SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN 6
+
 /**
  * struct smd_capabilities - SMD Capabilities bitfield structure
  * @dl_data_forwarding: DL Data Forwarding support

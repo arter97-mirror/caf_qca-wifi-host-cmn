@@ -39,6 +39,7 @@
 #include "host_diag_core_event.h"
 #include "lim_types.h"
 #include "wlan_smd_roam.h"
+#include "parser_api.h"
 
 static enum wlan_status_code
 mlo_link_recfg_find_link_status(uint8_t link_id,
@@ -6823,6 +6824,11 @@ mlo_link_recfg_parse_action_rsp(struct mlo_link_recfg_context *ctx,
 	link_recfg_rsp->count = *(link_recfg_action_frm + sizeof(uint8_t));
 	mlo_debug("Link Recfg rsp count %d ",
 		  link_recfg_rsp->count);
+	if (link_recfg_rsp->count > WLAN_MAX_ML_RECFG_LINK_COUNT) {
+		mlo_err("Recfg rsp count %d exceeds max %d",
+			link_recfg_rsp->count, WLAN_MAX_ML_RECFG_LINK_COUNT);
+		return QDF_STATUS_E_INVAL;
+	}
 
 	link_recfg_action_frm += sizeof(uint8_t) + sizeof(uint8_t);
 	for (i = 0; i < link_recfg_rsp->count; i++) {
@@ -7368,3 +7374,535 @@ mlo_mgr_link_recfg_req_cmd_handler(
 	return QDF_STATUS_SUCCESS;
 }
 #endif
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * mlo_uhr_link_recfg_parse_st_prep_rsp() - Parse UHR Link Reconfig ST prep response
+ * @ctx: Link reconfiguration context
+ * @link_recfg_rsp: Response structure to populate
+ * @rx_pkt_info: RX packet information
+ * @action_frm: Action frame pointer
+ * @ie_offset: IE offset output
+ *
+ * Parse UHR Link Reconfiguration Response frame with Type=0 (ST preparation)
+ * received from the target AP MLD during SMD roaming.
+ *
+ * Frame Format (UHR Link Reconfiguration Response frame Action field format):
+ *
+ * Order | Field Name                              | Size      | Notes
+ * ------+-----------------------------------------+-----------+---------------------------
+ *   1   | Category                                | 1 byte    | Protected UHR (43)
+ *   2   | Protected UHR Action                    | 1 byte    | UHR Link Reconfig Rsp
+ *   3   | Dialog Token                            | 1 byte    | Matches request
+ *   4   | Type                                    | 1 byte    | 0=ST prep, 1=ST exec
+ *   5   | Status Code                             | 2 bytes   | Overall status (#5998)
+ *   6   | Count                                   | 1 byte    | Number of status entries
+ *   7   | Reconfiguration Status List             | variable  | 3*Count bytes
+ *   8   | Key Delivery element                    | variable  | Optional (#6363)
+ *   9   | OCI element                             | variable  | Optional (9.4.2.235)
+ *  10   | Basic Multi-Link element                | variable  | Optional (9.4.2.322.2)
+ *  11   | SMD BSS Transition Parameters element   | variable  | Optional (9.4.2.359)
+ *  12   | MSCS Descriptor element                 | variable  | Optional (9.4.2.242)
+ *  13   | Diffie-Hellman Parameter element        | variable  | Optional (#7195, #6372)
+ *  14   | Nonce element                           | variable  | Optional (9.4.2.188)
+ *  15   | MIC element                             | variable  | Optional (#10409)
+ *
+ * Reconfiguration Status List format (per entry):
+ * +----------+-------------+
+ * | Link ID  | Status Code |
+ * | (1 byte) | (2 bytes)   |
+ * +----------+-------------+
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+mlo_uhr_link_recfg_parse_st_prep_rsp(
+	struct mlo_link_recfg_context *ctx,
+	struct wlan_mlo_link_recfg_rsp *link_recfg_rsp,
+	uint8_t *rx_pkt_info,
+	struct wlan_action_frame *action_frm,
+	uint16_t *ie_offset)
+{
+	uint8_t *link_recfg_action_frm = NULL, *frame = NULL;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	QDF_STATUS link_status;
+	uint16_t ie_len_parsed;
+	uint8_t i, type_field;
+	struct element_info oci_ie = {0};
+	struct element_info smd_bss_trans_params = {0};
+	uint8_t *mlieseq;
+	uint32_t total_frame_len = WMA_GET_RX_MPDU_LEN(rx_pkt_info);
+	uint32_t frame_len = WMA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
+	qdf_size_t mlieseqlen;
+	struct wlan_mlo_link_recfg_req *link_recfg_req;
+
+	if (!ctx || !link_recfg_rsp || !action_frm || !frame_len ||
+	    !total_frame_len) {
+		mlo_err("Invalid parameters: ctx=%pK rsp=%pK action_frm=%pK frame_len=%u total_len=%u",
+			ctx, link_recfg_rsp, action_frm, frame_len,
+			total_frame_len);
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	link_recfg_req = &ctx->curr_recfg_req;
+
+	ie_len_parsed = sizeof(*action_frm) + sizeof(uint8_t) +
+			sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint8_t);
+
+	mlo_debug("UHR Link Recfg ST Prep rsp frame len %d", frame_len);
+	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO, QDF_TRACE_LEVEL_DEBUG,
+			   WMA_GET_RX_MAC_HEADER(rx_pkt_info), total_frame_len);
+
+	if (frame_len < ie_len_parsed) {
+		mlo_err("Action frame length %d too short (min %d)",
+			frame_len, ie_len_parsed);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	frame = (uint8_t *)action_frm;
+	link_recfg_action_frm = (uint8_t *)action_frm + sizeof(*action_frm);
+
+	/* Extract Dialog Token */
+	link_recfg_rsp->dialog_token = *link_recfg_action_frm;
+	mlo_debug("Dialog token %d", link_recfg_rsp->dialog_token);
+	link_recfg_action_frm++;
+
+	/* Extract Type field — must be 0 (ST prep) */
+	type_field = *link_recfg_action_frm;
+	link_recfg_rsp->type = type_field;
+	mlo_debug("Type field %d (0=ST prep, 1=ST exec)", type_field);
+	if (type_field != UHR_LINK_RECONFIG_TYPE_ST_PREP) {
+		mlo_err("Unexpected type field %d, expected ST prep (0)",
+			type_field);
+		return QDF_STATUS_E_FAILURE;
+	}
+	link_recfg_action_frm++;
+
+	/* Extract Status Code */
+	link_recfg_rsp->status_code =
+		(enum wlan_status_code)qdf_le16_to_cpu(*(uint16_t *)link_recfg_action_frm);
+	mlo_debug("Overall Status Code %d", link_recfg_rsp->status_code);
+	link_recfg_action_frm += 2;
+
+	/* Extract Count */
+	link_recfg_rsp->count = *link_recfg_action_frm;
+	mlo_debug("Count %d", link_recfg_rsp->count);
+	if (link_recfg_rsp->count > WLAN_MAX_ML_BSS_LINKS) {
+		mlo_err("Count %d exceeds max %d",
+			link_recfg_rsp->count, WLAN_MAX_ML_BSS_LINKS);
+		return QDF_STATUS_E_FAILURE;
+	}
+	link_recfg_action_frm++;
+
+	/* Verify buffer has complete status list */
+	if ((link_recfg_action_frm - frame) +
+	    (link_recfg_rsp->count * 3) > frame_len) {
+		mlo_err("Buffer overflow parsing status list");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	for (i = 0; i < link_recfg_rsp->count; i++) {
+		link_recfg_rsp->recfg_status_list[i].link_id =
+			*link_recfg_action_frm;
+		link_recfg_rsp->recfg_status_list[i].status_code =
+			qdf_le16_to_cpu(*(uint16_t *)(link_recfg_action_frm + 1));
+		mlo_info("Link %d: link_id=%d status_code=%d (%s)",
+			 i,
+			 link_recfg_rsp->recfg_status_list[i].link_id,
+			 link_recfg_rsp->recfg_status_list[i].status_code,
+			 (link_recfg_rsp->recfg_status_list[i].status_code ==
+			  STATUS_SUCCESS) ? "ACCEPTED" : "REJECTED");
+		link_recfg_action_frm += 3;
+	}
+
+	mlo_link_recfg_update_result(ctx, link_recfg_rsp);
+
+	link_status = mlo_link_recfg_if_add_link_accepted(link_recfg_req);
+	if (QDF_IS_STATUS_SUCCESS(link_status) &&
+	    link_recfg_req->add_link_info.num_links) {
+		mlo_info("At least one link accepted, parsing IEs");
+
+		/*
+		 * Key Delivery element (EID=255 ExtID=7) MUST NOT be present
+		 * in a Type=0 (ST prep) response — only ST exec carries it.
+		 */
+		if ((link_recfg_action_frm - frame) + MIN_IE_LEN + 1 <=
+		    frame_len &&
+		    *link_recfg_action_frm == WLAN_ELEMID_EXTN_ELEM &&
+		    *(link_recfg_action_frm + 2) ==
+		    WLAN_EXTN_ELEMID_KEY_DELIVERY) {
+			mlo_err("Key Delivery IE unexpectedly present in ST prep");
+			status = QDF_STATUS_E_FAILURE;
+			goto end;
+		}
+
+		/* Parse OCI IE (optional) */
+		if ((link_recfg_action_frm - frame) + MIN_IE_LEN + 1 <=
+		    frame_len &&
+		    *link_recfg_action_frm == WLAN_ELEMID_EXTN_ELEM &&
+		    *(link_recfg_action_frm + 2) == WLAN_EXTN_ELEMID_OCI) {
+			oci_ie.len = *(link_recfg_action_frm + 1);
+			mlo_debug("OCI IE len %d", oci_ie.len);
+			if ((link_recfg_action_frm - frame) + 2 +
+			    oci_ie.len > frame_len) {
+				mlo_err("Buffer overflow parsing OCI IE");
+				status = QDF_STATUS_E_FAILURE;
+				goto end;
+			}
+			oci_ie.ptr = link_recfg_action_frm + MIN_IE_LEN + 1;
+			if (link_recfg_rsp->oci_ie.ptr) {
+				qdf_mem_free(link_recfg_rsp->oci_ie.ptr);
+				link_recfg_rsp->oci_ie.ptr = NULL;
+				link_recfg_rsp->oci_ie.len = 0;
+			}
+			link_recfg_rsp->oci_ie.ptr =
+				qdf_mem_malloc(oci_ie.len);
+			if (!link_recfg_rsp->oci_ie.ptr) {
+				mlo_err("Malloc failed for OCI IE");
+				status = QDF_STATUS_E_NOMEM;
+				goto end;
+			}
+			link_recfg_rsp->oci_ie.len = oci_ie.len - 1;
+			qdf_mem_copy(link_recfg_rsp->oci_ie.ptr, oci_ie.ptr,
+				     link_recfg_rsp->oci_ie.len);
+			oci_ie.len += MIN_IE_LEN;
+			link_recfg_action_frm += oci_ie.len;
+		}
+
+		/* Parse Basic ML IE */
+		status = util_find_mlie(link_recfg_action_frm,
+					(frame_len - (uint16_t)(link_recfg_action_frm - frame)),
+					&mlieseq, &mlieseqlen);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("ML IE parsing failed %d", status);
+			goto end;
+		}
+
+		if (!mlieseq) {
+			*ie_offset = 0;
+			mlo_err("ML IE not found, ie_offset %d", *ie_offset);
+		} else {
+			*ie_offset = (uint16_t)(link_recfg_action_frm - frame);
+			mlo_debug("ML IE found len=%zu, ie_offset=%d",
+				  mlieseqlen, *ie_offset);
+			if (mlieseqlen > 0) {
+				link_recfg_rsp->mlo_ie.len = mlieseqlen;
+				if (link_recfg_rsp->mlo_ie.ptr) {
+					qdf_mem_free(link_recfg_rsp->mlo_ie.ptr);
+					link_recfg_rsp->mlo_ie.ptr = NULL;
+				}
+				link_recfg_rsp->mlo_ie.ptr =
+					qdf_mem_malloc(mlieseqlen);
+				if (!link_recfg_rsp->mlo_ie.ptr) {
+					mlo_err("Malloc failed for ML IE");
+					status = QDF_STATUS_E_NOMEM;
+					goto end;
+				}
+				qdf_mem_copy(link_recfg_rsp->mlo_ie.ptr,
+					     mlieseq, mlieseqlen);
+				mlo_debug("ML IE stored, len %d",
+					  link_recfg_rsp->mlo_ie.len);
+			}
+			link_recfg_action_frm += mlieseqlen;
+
+			/* Parse SMD BSS Transition Parameters element */
+			status = parse_smd_bss_transition_params(
+				link_recfg_action_frm,
+				(frame_len - (uint16_t)(link_recfg_action_frm - frame)),
+				&smd_bss_trans_params,
+				&link_recfg_rsp->assigned_aid);
+			if (QDF_IS_STATUS_SUCCESS(status) &&
+			    smd_bss_trans_params.len > 0) {
+				mlo_info("SMD BSS Transition Params found, len %d AID %d",
+					 smd_bss_trans_params.len,
+					 link_recfg_rsp->assigned_aid);
+				link_recfg_rsp->smd_bss_trans_params.ptr =
+					qdf_mem_malloc(smd_bss_trans_params.len);
+				if (!link_recfg_rsp->smd_bss_trans_params.ptr) {
+					mlo_err("Malloc failed for SMD BSS Trans Params");
+					status = QDF_STATUS_E_NOMEM;
+					goto end;
+				}
+				qdf_mem_copy(link_recfg_rsp->smd_bss_trans_params.ptr,
+					     smd_bss_trans_params.ptr,
+					     smd_bss_trans_params.len);
+				link_recfg_rsp->smd_bss_trans_params.len =
+					smd_bss_trans_params.len;
+			} else if (QDF_IS_STATUS_ERROR(status)) {
+				mlo_warn("SMD BSS Transition Params not present");
+				status = QDF_STATUS_SUCCESS;
+			}
+		} /* end if (mlieseq) */
+	} else {
+		mlo_info("No links accepted or all links rejected");
+	}
+
+	if (frame_len > 0) {
+		if (ctx->rsp_frame.ptr) {
+			qdf_mem_free(ctx->rsp_frame.ptr);
+			ctx->rsp_frame.ptr = NULL;
+			ctx->rsp_frame.len = 0;
+		}
+		if (ctx->rsp_rx_frame.ptr) {
+			qdf_mem_free(ctx->rsp_rx_frame.ptr);
+			ctx->rsp_rx_frame.ptr = NULL;
+			ctx->rsp_rx_frame.len = 0;
+		}
+		ctx->rsp_frame.ptr = qdf_mem_malloc(frame_len);
+		if (!ctx->rsp_frame.ptr) {
+			mlo_err("rsp frame malloc failed");
+			status = QDF_STATUS_E_NOMEM;
+			goto end;
+		}
+		ctx->rsp_rx_frame.ptr = qdf_mem_malloc(total_frame_len);
+		if (!ctx->rsp_rx_frame.ptr) {
+			qdf_mem_free(ctx->rsp_frame.ptr);
+			ctx->rsp_frame.ptr = NULL;
+			mlo_err("rsp rx frame malloc failed");
+			status = QDF_STATUS_E_NOMEM;
+			goto end;
+		}
+		qdf_mem_copy(ctx->rsp_frame.ptr, frame, frame_len);
+		ctx->rsp_frame.len = frame_len;
+		qdf_mem_copy(ctx->rsp_rx_frame.ptr,
+			     WMA_GET_RX_MAC_HEADER(rx_pkt_info),
+			     total_frame_len);
+		ctx->rsp_rx_frame.len = total_frame_len;
+		mlo_debug("UHR Link Reconfig ST Prep rsp stored");
+		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_MLO, QDF_TRACE_LEVEL_DEBUG,
+				   frame, frame_len);
+	}
+
+	mlo_info("UHR ST Prep rsp parsed: dialog=%d type=%d count=%d aid=%d",
+		 link_recfg_rsp->dialog_token, link_recfg_rsp->type,
+		 link_recfg_rsp->count, link_recfg_rsp->assigned_aid);
+
+end:
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("ST prep rsp parsing failed, cleaning up");
+		smd_link_recfg_cleanup_rsp(ctx, link_recfg_rsp);
+	}
+	return status;
+}
+
+/**
+ * extract_target_ap_capabilities() - Extract target AP capabilities from scan cache
+ * @mlo_ie: Pointer to ML IE data (not used in this implementation)
+ * @mlo_ie_len: Length of ML IE (not used in this implementation)
+ * @target_caps: Output structure to store extracted capabilities
+ * @ctx: Link reconfiguration context (to access scan cache)
+ *
+ * This function extracts capabilities from the target AP's beacon/probe response
+ * stored in the scan cache, rather than from per-STA profiles in ML IE.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+extract_target_ap_capabilities(uint8_t *mlo_ie,
+                               qdf_size_t mlo_ie_len,
+                               struct smd_target_ap_caps *target_caps,
+                               struct mlo_link_recfg_context *ctx)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_objmgr_pdev *pdev;
+	struct wlan_mlo_link_recfg_req *recfg_req;
+	struct wlan_mlo_link_recfg_info *add_link_info;
+	struct scan_cache_entry *scan_entry;
+	uint8_t i;
+	const uint8_t *ie_ptr;
+	uint8_t ie_len;
+
+	/* Validate inputs */
+	if (!target_caps || !ctx) {
+		mlo_err("Invalid parameters: caps=%pK ctx=%pK", target_caps, ctx);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	psoc = mlo_link_recfg_get_psoc(ctx);
+	if (!psoc) {
+		mlo_err("psoc is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	pdev = wlan_objmgr_get_pdev_by_id(psoc, 0, WLAN_LINK_RECFG_ID);
+	if (!pdev) {
+		mlo_err("pdev is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Initialize output structure */
+	qdf_mem_zero(target_caps, sizeof(*target_caps));
+
+	recfg_req = &ctx->curr_recfg_req;
+	add_link_info = &recfg_req->add_link_info;
+
+	if (!add_link_info->num_links) {
+		mlo_debug("No links to add");
+		wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	target_caps->num_links = add_link_info->num_links;
+
+	mlo_info("Extracting capabilities for %d links from scan cache",
+		 target_caps->num_links);
+
+	/* Extract capabilities for each link from scan cache */
+	for (i = 0; i < add_link_info->num_links && i < WLAN_MAX_ML_BSS_LINKS; i++) {
+		struct smd_target_ap_link_caps *link_cap = &target_caps->link_caps[i];
+		struct qdf_mac_addr *ap_link_addr = &add_link_info->link[i].ap_link_addr;
+		uint8_t *frame_body;
+		qdf_size_t frame_len;
+
+		/* Store link ID */
+		link_cap->link_id = add_link_info->link[i].link_id;
+
+		/* Get scan entry for this link */
+		scan_entry = wlan_scan_get_entry_by_bssid(pdev, ap_link_addr);
+		if (!scan_entry) {
+			mlo_err("Scan entry not found for link %d " QDF_MAC_ADDR_FMT,
+				link_cap->link_id, QDF_MAC_ADDR_REF(ap_link_addr->bytes));
+			/* pdev ref held until after the loop; safe to continue */
+			continue;
+		}
+
+		/* Get frame body (IEs start after beacon header) */
+		frame_body = util_scan_entry_ie_data(scan_entry);
+		frame_len = util_scan_entry_ie_len(scan_entry);
+
+		if (!frame_body || !frame_len) {
+			mlo_err("No IE data in scan entry for link %d", link_cap->link_id);
+			util_scan_free_cache_entry(scan_entry);
+			/* pdev ref held until after the loop; safe to continue */
+			continue;
+		}
+
+		/* Extract Capability Info from fixed fields (before IEs) */
+		link_cap->capability_info = scan_entry->cap_info.value;
+		link_cap->capability_info_present = true;
+
+		/* Extract Supported Rates IE (Element ID 1) */
+		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RATES, frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1];
+			link_cap->supported_rates.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->supported_rates.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->supported_rates.ptr, ie_ptr + 2, ie_len);
+			link_cap->supported_rates.len = ie_len;
+		}
+
+		/* Extract Extended Supported Rates IE (Element ID 50) */
+		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XRATES, frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1];
+			link_cap->ext_supported_rates.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->ext_supported_rates.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->ext_supported_rates.ptr, ie_ptr + 2, ie_len);
+			link_cap->ext_supported_rates.len = ie_len;
+		}
+
+		/* Extract HT Capabilities IE (Element ID 45) */
+		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_HTCAP_ANA, frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1];
+			link_cap->ht_cap.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->ht_cap.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->ht_cap.ptr, ie_ptr + 2, ie_len);
+			link_cap->ht_cap.len = ie_len;
+			link_cap->ht_cap_present = true;
+		}
+
+		/* Extract VHT Capabilities IE (Element ID 191) */
+		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_VHTCAP, frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1];
+			link_cap->vht_cap.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->vht_cap.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->vht_cap.ptr, ie_ptr + 2, ie_len);
+			link_cap->vht_cap.len = ie_len;
+			link_cap->vht_cap_present = true;
+		}
+
+		/* Extract HE Capabilities IE (Extension Element ID 35) */
+		ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_HECAP}, 1,
+							 frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
+			link_cap->he_cap.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->he_cap.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->he_cap.ptr, ie_ptr + 3, ie_len);
+			link_cap->he_cap.len = ie_len;
+			link_cap->he_cap_present = true;
+		}
+
+		/* Extract EHT Capabilities IE (Extension Element ID 106) */
+		ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_EHTCAP}, 1,
+							 frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
+			link_cap->eht_cap.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->eht_cap.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->eht_cap.ptr, ie_ptr + 3, ie_len);
+			link_cap->eht_cap.len = ie_len;
+			link_cap->eht_cap_present = true;
+		}
+
+		/* Extract Extended Capabilities IE (Element ID 127) */
+		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XCAPS, frame_body, frame_len);
+		if (ie_ptr) {
+			ie_len = ie_ptr[1];
+			link_cap->ext_cap.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->ext_cap.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->ext_cap.ptr, ie_ptr + 2, ie_len);
+			link_cap->ext_cap.len = ie_len;
+			link_cap->ext_cap_present = true;
+		}
+
+		util_scan_free_cache_entry(scan_entry);
+
+		mlo_info("Extracted capabilities for link_id=%d: cap=0x%x rates=%d/%d ht=%d vht=%d he=%d eht=%d ext=%d",
+			link_cap->link_id,
+			link_cap->capability_info,
+			link_cap->supported_rates.len,
+			link_cap->ext_supported_rates.len,
+			link_cap->ht_cap_present,
+			link_cap->vht_cap_present,
+			link_cap->he_cap_present,
+			link_cap->eht_cap_present,
+			link_cap->ext_cap_present);
+	}
+
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
+
+	mlo_info("Successfully extracted capabilities for %d links from scan cache",
+		 target_caps->num_links);
+
+	return QDF_STATUS_SUCCESS;
+
+err_release_pdev:
+	mlo_err("Memory allocation failed; cleaning up partial capabilities");
+	wlan_mlo_cleanup_smd_target_ap_caps(target_caps);
+	wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
+	return QDF_STATUS_E_NOMEM;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
