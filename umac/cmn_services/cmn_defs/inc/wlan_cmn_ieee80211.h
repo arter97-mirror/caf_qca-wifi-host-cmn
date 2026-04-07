@@ -3198,22 +3198,6 @@ struct wlan_ml_pav_linfo_perstaprof {
 #endif /* WLAN_FEATURE_11BE_MLO */
 #endif /* WLAN_FEATURE_11BE */
 
-#ifdef WLAN_FEATURE_11BN_SMD
-/**
- * struct wlan_smd_ie - SMD IE structure
- * @present: SMD IE present
- * @smd_identifier: SMD identifier
- * @smd_cap: SMD capability
- * @smd_timeout: SMD timeout
- */
-struct wlan_smd_ie {
-	bool present;
-	uint8_t smd_identifier;
-	uint8_t smd_cap;
-	uint8_t smd_timeout;
-} qdf_packed;
-#endif /* WLAN_FEATURE_11BN_SMD */
-
 /**
  * struct wlan_ie_tid_to_link_mapping - TID-to-link mapping IE
  * @elem_id: T2LM IE
@@ -5283,15 +5267,39 @@ enum uhr_link_reconfig_type {
 	UHR_LINK_RECONFIG_TYPE_ST_EXEC = 1,
 };
 
+/* SMD BSS Transition Parameters Element ID */
+#define WLAN_ELEMID_EXTN_ELEM_SMD_BSS_TRANSITION  0x9b
+
 /* SMD BSS Transition Parameters Presence Bitmap */
 #define SMD_BSS_TRANS_PARAMS_AID_PRESENT        BIT(0)
 #define SMD_BSS_TRANS_PARAMS_DL_BA_INFO_PRESENT BIT(1)
 #define SMD_BSS_TRANS_PARAMS_UL_BA_INFO_PRESENT BIT(2)
 #define SMD_BSS_TRANS_PARAMS_SCS_LIST_PRESENT   BIT(3)
 
-/* SMD BSS Transition Parameters field lengths */
-#define SMD_BSS_TRANS_PARAMS_AID_LEN    2
-#define SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN 6
+/* SMD BSS Transition Parameters Presence Bitmap - Response (Type=0) */
+#define SMD_BSS_TRANS_PARAMS_SCS_LIST_PRESENT_RSP   BIT(3)
+
+/* Status codes for ST Preparation */
+#define STATUS_SUCCESS_ST_PREP                      0
+#define STATUS_REJECTED_ST_PREP                     1
+
+/* Maximum BA TIDs */
+#define MAX_BA_TIDS                                 8
+
+/* BA Parameter Set field structure (2 octets) */
+#define BA_PARAM_SET_TID_MASK                       0x003C  /* Bits 2-5 */
+#define BA_PARAM_SET_TID_SHIFT                      2
+
+/* Minimum IE length (Element ID + Length) */
+#ifndef MIN_IE_LEN
+#define MIN_IE_LEN                                  2
+#endif
+
+/* SMD BSS Transition Parameters minimum lengths */
+#define SMD_BSS_TRANS_PARAMS_MIN_LEN                2  /* Ext ID + ST Control */
+#define SMD_BSS_TRANS_PARAMS_AID_LEN                2
+/* Param Set + Timeout + SSC */
+#define SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN           6
 
 /**
  * struct smd_capabilities - SMD Capabilities bitfield structure

@@ -41,6 +41,223 @@
 #include "wlan_smd_roam.h"
 #include "parser_api.h"
 
+#define LINK_RECFG_RSP_TIMEOUT 5000
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * parse_smd_bss_transition_params() - Parse SMD BSS Transition Parameters IE
+ * @ie_buf: IE buffer
+ * @ie_buf_len: IE buffer length
+ * @smd_params: Output structure for element info
+ * @out_aid: Output parameter for extracted AID
+ *
+ * Parse SMD BSS Transition Parameters element for ST Preparation Response
+ * as defined in IEEE 802.11bn Section 9.4.2.357.
+ * Format for ST Prep Response per IEEE 802.11bn Section 9.4.2.359.3:
+ * Extension IE Header:
+ * +-------------+--------+---------------+
+ * | Element ID  | Length | Extension ID  |
+ * | (1 octet)   |(1 oct) | (1 octet)     |
+ * +-------------+--------+---------------+
+ * | 0xFF (255)  | varies | 0x6b (107)    |
+ * +-------------+--------+---------------+
+ *
+ * ST Info Field:
+ * +-------------+------------------+
+ * | ST Control  | Optional Fields  |
+ * | (1 octet)   | (variable)       |
+ * +-------------+------------------+
+ *
+ * ST Control Field (2 octets):
+ * - Bit 0: AID Present
+ * - Bit 1: DL BA Info Present
+ * - Bit 2: UL BA Info Present
+ * - Bit 3: SCS List Present
+ * - Bits 4-15: Reserved
+ *
+ * Optional Fields (based on ST Control bits):
+ * - AID (2 octets) if bit 0 set - CRITICAL for Work Item 3
+ * - DL BA Info (variable) if bit 1 set
+ * - UL BA Info (variable) if bit 2 set
+ * - SCS List (variable) if bit 3 set
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+static QDF_STATUS
+parse_smd_bss_transition_params(
+	uint8_t *ie_buf,
+	uint32_t ie_buf_len,
+	struct element_info *smd_params,
+	uint16_t *out_aid)
+{
+	uint8_t *ptr = ie_buf;
+	uint8_t elem_id, elem_len, ext_id;
+	uint8_t smd_info;
+	bool aid_present;
+	uint16_t aid = 0;
+	uint8_t tid_bitmap;
+	uint8_t tid;
+	uint8_t num_scs_ids;
+	uint8_t i;
+	bool dl_ba_present, ul_ba_present, scs_list_present;
+
+	if (!ie_buf || !smd_params || ie_buf_len < MIN_IE_LEN) {
+		mlo_err("Invalid parameters: ie_buf=%pK smd_params=%pK len=%u",
+			ie_buf, smd_params, ie_buf_len);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Bug 3 fix: extended elements always have EID=0xff;
+	 * identity is in the Extension ID byte, not EID itself.
+	 */
+	elem_id = *ptr++;
+	if (elem_id != WLAN_ELEMID_EXTN_ELEM) {
+		mlo_debug("Not an extended element, ID=%d", elem_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	elem_len = *ptr++;
+	if (elem_len < SMD_BSS_TRANS_PARAMS_MIN_LEN) {
+		mlo_err("SMD BSS Transition Params too short: %d (min %d)",
+			elem_len, SMD_BSS_TRANS_PARAMS_MIN_LEN);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (ie_buf_len < (uint32_t)(elem_len + 2)) {
+		mlo_err("Buffer too small: have %u need %u",
+			ie_buf_len, elem_len + 2);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	smd_params->ptr = ie_buf;
+	smd_params->len = elem_len + 2;
+
+	ext_id = *ptr++;
+	if (ext_id != WLAN_ELEMID_EXTN_ELEM_SMD_BSS_TRANSITION) {
+		mlo_debug("Not SMD BSS Trans Params elem, ext_id=0x%02x",
+			  ext_id);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Bug 2 fix: SMD BSS Transition Info is 1 octet (D1.4 §9.4.2.359),
+	 * not 2.  Reading 2 bytes consumed an AID byte, leaving the bounds
+	 * check short and returning before AID was extracted.
+	 */
+	smd_info = *ptr++;
+	aid_present      = (smd_info >> 0) & 1;
+	dl_ba_present    = (smd_info >> 1) & 1;
+	ul_ba_present    = (smd_info >> 2) & 1;
+	scs_list_present = (smd_info >> 3) & 1;
+
+	mlo_debug("SMD BSS Trans Info: 0x%02x (AID:%d DL:%d UL:%d SCS:%d)",
+		  smd_info, aid_present, dl_ba_present, ul_ba_present,
+		  scs_list_present);
+
+	/* ================================================================
+	 * Parse Optional Fields
+	 * ================================================================
+	 */
+
+	if (aid_present) {
+		if ((ptr - ie_buf) + SMD_BSS_TRANS_PARAMS_AID_LEN >
+		    ie_buf_len) {
+			mlo_err("Buffer overflow parsing AID");
+			return QDF_STATUS_E_FAILURE;
+		}
+		aid = (ptr[0] | (ptr[1] << 8)) & 0x3FFF;
+		ptr += SMD_BSS_TRANS_PARAMS_AID_LEN;
+		mlo_info("AID assigned by target AP MLD: %d", aid);
+		if (out_aid)
+			*out_aid = aid;
+	} else {
+		mlo_debug("AID not present in response");
+		if (out_aid)
+			*out_aid = 0;
+	}
+
+	if (dl_ba_present) {
+		if ((ptr - ie_buf) + 1 > ie_buf_len) {
+			mlo_err("Buffer overflow parsing DL BA TID bitmap");
+			return QDF_STATUS_E_FAILURE;
+		}
+		tid_bitmap = *ptr++;
+		mlo_debug("DL BA TID Bitmap: 0x%02x", tid_bitmap);
+		for (tid = 0; tid < MAX_BA_TIDS; tid++) {
+			if (!(tid_bitmap & BIT(tid)))
+				continue;
+			if ((ptr - ie_buf) + SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN >
+			    ie_buf_len) {
+				mlo_err("Buf ovfl parsing DL BA param TID %d",
+					tid);
+				return QDF_STATUS_E_FAILURE;
+			}
+			mlo_debug("DL BA TID %d: param=0x%04x to=%u ssc=0x%04x",
+				  tid,
+				  ptr[0] | (ptr[1] << 8),
+				  ptr[2] | (ptr[3] << 8),
+				  ptr[4] | (ptr[5] << 8));
+			ptr += SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN;
+		}
+	}
+
+	if (ul_ba_present) {
+		if ((ptr - ie_buf) + 1 > ie_buf_len) {
+			mlo_err("Buffer overflow parsing UL BA TID bitmap");
+			return QDF_STATUS_E_FAILURE;
+		}
+		tid_bitmap = *ptr++;
+		mlo_debug("UL BA TID Bitmap: 0x%02x", tid_bitmap);
+		for (tid = 0; tid < MAX_BA_TIDS; tid++) {
+			if (!(tid_bitmap & BIT(tid)))
+				continue;
+			if ((ptr - ie_buf) + SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN >
+			    ie_buf_len) {
+				mlo_err("Buf ovfl parsing UL BA param TID %d",
+					tid);
+				return QDF_STATUS_E_FAILURE;
+			}
+			mlo_debug("UL BA TID %d: param=0x%04x to=%u ssc=0x%04x",
+				  tid,
+				  ptr[0] | (ptr[1] << 8),
+				  ptr[2] | (ptr[3] << 8),
+				  ptr[4] | (ptr[5] << 8));
+			ptr += SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN;
+		}
+	}
+
+	if (scs_list_present) {
+		if ((ptr - ie_buf) + 1 > ie_buf_len) {
+			mlo_err("Buffer overflow parsing SCS List count");
+			return QDF_STATUS_E_FAILURE;
+		}
+		num_scs_ids = *ptr++;
+		mlo_debug("SCS List count: %d", num_scs_ids);
+		if ((ptr - ie_buf) + num_scs_ids > ie_buf_len) {
+			mlo_err("Buffer overflow parsing SCS IDs");
+			return QDF_STATUS_E_FAILURE;
+		}
+		for (i = 0; i < num_scs_ids && i < MLO_LINK_RECFG_MAX_SCS_IDS;
+		     i++)
+			mlo_debug("SCS ID[%d]: %d", i, *ptr++);
+		if (num_scs_ids > MLO_LINK_RECFG_MAX_SCS_IDS) {
+			mlo_warn("Skipping %d SCS IDs beyond max %d",
+				 num_scs_ids - MLO_LINK_RECFG_MAX_SCS_IDS,
+				 MLO_LINK_RECFG_MAX_SCS_IDS);
+			ptr += (num_scs_ids - MLO_LINK_RECFG_MAX_SCS_IDS);
+		}
+	}
+
+	if ((ptr - ie_buf) != (elem_len + 2))
+		mlo_warn("Consumed %ld bytes, expected %d",
+			 (long)(ptr - ie_buf), elem_len + 2);
+
+	mlo_info("SMD BSS Transition Params parsed: smd_info=0x%02x aid=%d",
+		 smd_info, aid);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 static enum wlan_status_code
 mlo_link_recfg_find_link_status(uint8_t link_id,
 				struct wlan_mlo_link_recfg_rsp *link_recfg_rsp);
