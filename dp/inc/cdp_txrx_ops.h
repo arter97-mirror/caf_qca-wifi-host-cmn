@@ -1114,7 +1114,6 @@ struct cdp_me_ops {
  * @txrx_update_pdev_mon_telemetry_airtime_stats: update telemetry airtime
  *                                                stats in monitor pdev
  * @txrx_cfr_filter: Handler to configure host rx monitor status ring
- * @txrx_update_mon_mac_filter: Handler to configure mon mac filter
  * @start_local_pkt_capture: start local packet capture
  * @stop_local_pkt_capture: stop local packet capture
  * @is_local_pkt_capture_running: is local packet capture running
@@ -1224,9 +1223,6 @@ struct cdp_mon_ops {
 				bool cfr_enable_monitor_mode);
 #endif
 
-	QDF_STATUS (*txrx_update_mon_mac_filter)(struct cdp_soc_t *soc,
-						 uint8_t vdev_id,
-						 uint32_t cmd);
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 	QDF_STATUS (*start_local_pkt_capture)
 			(struct cdp_soc_t *soc, uint8_t pdev_id,

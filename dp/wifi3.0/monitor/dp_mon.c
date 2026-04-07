@@ -1769,55 +1769,6 @@ QDF_STATUS dp_filter_neighbour_peer(struct dp_pdev *pdev,
 }
 #endif
 
-/**
- * dp_update_mon_mac_filter() - Set/reset monitor mac filter
- * @soc_hdl: cdp soc handle
- * @vdev_id: id of virtual device object
- * @cmd: Add/Del command
- *
- * Return: 0 for success. nonzero for failure.
- */
-static QDF_STATUS dp_update_mon_mac_filter(struct cdp_soc_t *soc_hdl,
-					   uint8_t vdev_id, uint32_t cmd)
-{
-	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
-	struct dp_pdev *pdev;
-	struct dp_vdev *vdev = dp_vdev_get_ref_by_id(soc, vdev_id,
-						     DP_MOD_ID_CDP);
-	struct dp_mon_pdev *mon_pdev;
-	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-
-	if (!vdev)
-		return status;
-
-	pdev = vdev->pdev;
-	if (!pdev) {
-		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
-		return status;
-	}
-
-	mon_pdev = pdev->monitor_pdev;
-	if (cmd == DP_NAC_PARAM_ADD) {
-		/* first neighbour added */
-		dp_mon_filter_set_reset_mon_mac_filter(pdev, true);
-		status = dp_mon_filter_update(pdev);
-		if (status != QDF_STATUS_SUCCESS) {
-			dp_cdp_err("%pK: Mon mac filter set failed", soc);
-			dp_mon_filter_set_reset_mon_mac_filter(pdev, false);
-		}
-	} else if (cmd == DP_NAC_PARAM_DEL) {
-		/* last neighbour deleted */
-		dp_mon_filter_set_reset_mon_mac_filter(pdev, false);
-		status = dp_mon_filter_update(pdev);
-		if (status != QDF_STATUS_SUCCESS)
-			dp_cdp_err("%pK: Mon mac filter reset failed", soc);
-	}
-
-	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
-	return status;
-}
-
-
 bool
 dp_enable_mon_reap_timer(struct cdp_soc_t *soc_hdl,
 			 enum cdp_mon_reap_source source,
@@ -6969,10 +6920,6 @@ void dp_mon_cdp_ops_register(struct dp_soc *soc)
 #if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
 		dp_cfr_filter_register_1_0(ops);
 #endif
-		if (target_type == TARGET_TYPE_QCN9000 ||
-		    target_type == TARGET_TYPE_QCN9160)
-			ops->mon_ops->txrx_update_mon_mac_filter =
-					dp_update_mon_mac_filter;
 		break;
 	case TARGET_TYPE_QCN9224:
 	case TARGET_TYPE_QCA5332:
@@ -7277,7 +7224,6 @@ void dp_mon_feature_ops_deregister(struct dp_soc *soc)
 #if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
 	mon_ops->mon_filter_setup_smart_monitor = NULL;
 #endif
-	mon_ops->mon_filter_set_reset_mon_mac_filter = NULL;
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 	mon_ops->mon_filter_setup_rx_enh_capture = NULL;
 #endif

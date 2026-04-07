@@ -97,34 +97,6 @@ cdp_update_filter_neighbour_peers(ol_txrx_soc_handle soc,
 }
 #endif /* ATH_SUPPORT_NAC || ATH_SUPPORT_NAC_RSSI*/
 
-/**
- * cdp_update_mon_mac_filter() - update the monitor buffer and status filter
- * @soc: the pointer to soc object
- * @vdev_id: id of the pointer to vdev
- * @cmd: add/del entry into peer table
- *
- * This defines interface function to set/reset monitor filter
- * in case of special vap (scan radio)
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS
-cdp_update_mon_mac_filter(ol_txrx_soc_handle soc,
-			  uint8_t vdev_id, uint32_t cmd)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance:");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->mon_ops ||
-	    !soc->ops->mon_ops->txrx_update_mon_mac_filter)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->mon_ops->txrx_update_mon_mac_filter
-			(soc, vdev_id, cmd);
-}
-
 #ifdef WLAN_SUPPORT_MSCS
 /**
  * cdp_record_vdev_mscs_params() - record the MSCS data and send it to the

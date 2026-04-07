@@ -1444,7 +1444,6 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 #endif
 	mon_ops->mon_rx_print_advanced_stats =
 		dp_mon_rx_print_advanced_stats_2_0;
-	mon_ops->mon_mac_filter_set = NULL;
 	mon_ops->mon_config_mon_fcs_cap = dp_rx_mon_config_fcs_cap;
 }
 
@@ -1584,7 +1583,6 @@ struct cdp_mon_ops dp_ops_mon_2_0 = {
 	.txrx_update_pdev_mon_telemetry_airtime_stats =
 			dp_pdev_update_telemetry_airtime_stats,
 #endif
-	.txrx_update_mon_mac_filter = NULL,
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 	.start_local_pkt_capture = NULL,
 	.stop_local_pkt_capture = NULL,

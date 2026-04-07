@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -108,13 +108,6 @@ static inline void dp_mon_filter_reset_smart_monitor_1_0(struct dp_pdev *pdev)
 {
 }
 #endif
-
-/**
- * dp_mon_set_reset_mon_mac_filter_1_0() - Set/Reset the monitor mode filter
- * @pdev: DP pdev handle
- * @val: Indicate set/reset filter
- */
-void dp_mon_set_reset_mon_mac_filter_1_0(struct dp_pdev *pdev, bool val);
 
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 /**
