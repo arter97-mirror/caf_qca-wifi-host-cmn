@@ -822,6 +822,10 @@ util_scan_copy_beacon_data(struct scan_cache_entry *new_entry,
 	ie_lst->wifi6_rsno = conv_ptr(ie_lst->wifi6_rsno, old_ptr, new_ptr);
 	ie_lst->rsnxo = conv_ptr(ie_lst->rsnxo, old_ptr, new_ptr);
 	ie_lst->wifi7_rsno = conv_ptr(ie_lst->wifi7_rsno, old_ptr, new_ptr);
+#ifdef WLAN_FEATURE_11BN
+	ie_lst->uhrcap = conv_ptr(ie_lst->uhrcap, old_ptr, new_ptr);
+	ie_lst->uhrop = conv_ptr(ie_lst->uhrop, old_ptr, new_ptr);
+#endif
 
 	return QDF_STATUS_SUCCESS;
 }

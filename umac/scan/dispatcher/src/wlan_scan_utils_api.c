@@ -1357,6 +1357,28 @@ static void util_scan_parse_eht_ie(struct scan_cache_entry *scan_params,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+static void util_scan_parse_uhr_ie(struct scan_cache_entry *scan_params,
+				   struct extn_ie_header *extn_ie)
+{
+	switch (extn_ie->ie_extn_id) {
+	case WLAN_EXTN_ELEMID_UHRCAP:
+		scan_params->ie_list.uhrcap = (uint8_t *)extn_ie;
+		break;
+	case WLAN_EXTN_ELEMID_UHROP:
+		scan_params->ie_list.uhrop = (uint8_t *)extn_ie;
+		break;
+	default:
+		break;
+	}
+}
+#else
+static void util_scan_parse_uhr_ie(struct scan_cache_entry *scan_params,
+				   struct extn_ie_header *extn_ie)
+{
+}
+#endif
+
 static QDF_STATUS
 util_scan_parse_extn_ie(struct scan_cache_entry *scan_params,
 			struct ie_header *ie)
@@ -1402,6 +1424,7 @@ util_scan_parse_extn_ie(struct scan_cache_entry *scan_params,
 		break;
 	}
 	util_scan_parse_eht_ie(scan_params, extn_ie);
+	util_scan_parse_uhr_ie(scan_params, extn_ie);
 
 	return QDF_STATUS_SUCCESS;
 }
