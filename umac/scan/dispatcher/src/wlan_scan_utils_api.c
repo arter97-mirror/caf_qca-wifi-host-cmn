@@ -1548,7 +1548,7 @@ util_scan_override_rsnxo_ie(struct scan_cache_entry *scan_params)
 		scan_params->ie_list.rsnxo = NULL;
 }
 
-static QDF_STATUS
+QDF_STATUS
 util_scan_populate_bcn_ie_list(struct wlan_objmgr_pdev *pdev,
 			       struct scan_cache_entry *scan_params,
 			       qdf_freq_t *chan_freq, uint8_t band_mask)
