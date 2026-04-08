@@ -3140,6 +3140,7 @@ void dp_mon_filter_reset_pktlog_hybrid_2_0(struct dp_pdev *pdev)
 #endif
 #endif /* WDI_EVENT_ENABLE */
 
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 /**
  * dp_rx_mon_filter_h2t_setup() - Setup the filter for the Target setup
  * @soc: DP soc handle
@@ -3485,6 +3486,7 @@ dp_rx_mon_filter_h2t_setup(struct dp_soc *soc, struct dp_pdev *pdev,
 		dp_mon_filter_show_rx_filter_be(current_mode, mon_filter);
 	}
 }
+#endif
 
 #ifdef WLAN_PKT_CAPTURE_TX_2_0
 static
@@ -4291,97 +4293,6 @@ dp_mon_filter_setup_tx_lite_mon(struct dp_pdev *pdev)
 #endif /* QCA_SUPPORT_LITE_MONITOR */
 
 #if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
-/**
- * dp_cfr_filter_2_0() - Configure HOST monitor destination ring for CFR
- *
- * @soc_hdl: Datapath soc handle
- * @pdev_id: id of data path pdev handle
- * @enable: Enable/Disable CFR
- * @filter_val: Flag to select Filter for monitor mode
- * @cfr_enable_monitor_mode: Flag to be enabled when scan radio is brought up
- * in special vap mode
- *
- * Return: void
- */
-static void dp_cfr_filter_2_0(struct cdp_soc_t *soc_hdl,
-			      uint8_t pdev_id,
-			      bool enable,
-			      struct cdp_monitor_filter *filter_val,
-			      bool cfr_enable_monitor_mode)
-{
-	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
-	struct dp_pdev *pdev = NULL;
-	struct htt_rx_ring_tlv_filter *htt_tlv_filter;
-	struct dp_mon_pdev *mon_pdev;
-	struct dp_mon_mac *mon_mac;
-	struct dp_mon_filter_be filter = {0};
-	enum dp_mon_filter_srng_type srng_type =
-		DP_MON_FILTER_SRNG_TYPE_RXMON_DEST;
-	uint8_t mac_id = 0;
-
-	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
-	if (!pdev) {
-		dp_mon_err("pdev is NULL");
-		return;
-	}
-
-	mon_pdev = pdev->monitor_pdev;
-	mon_mac = dp_get_mon_mac(pdev, mac_id);
-
-	if (mon_mac->mvdev) {
-		if (enable && cfr_enable_monitor_mode)
-			pdev->cfr_rcc_mode = true;
-		else
-			pdev->cfr_rcc_mode = false;
-		return;
-	}
-
-	soc = pdev->soc;
-	pdev->cfr_rcc_mode = false;
-
-	/* Get default tlv settings */
-	htt_tlv_filter = &filter.rx_tlv_filter.tlv_filter;
-	dp_rx_mon_filter_h2t_setup(soc, pdev, srng_type, &filter.rx_tlv_filter);
-
-	if (filter.rx_tlv_filter.valid)
-		htt_tlv_filter->enable = 1;
-	else
-		htt_tlv_filter->enable = 0;
-
-	dp_mon_info("enable : %d, mode: 0x%x", enable, filter_val->mode);
-
-	if (enable) {
-		pdev->cfr_rcc_mode = true;
-		htt_tlv_filter->ppdu_start = 1;
-		htt_tlv_filter->ppdu_end = 1;
-		htt_tlv_filter->ppdu_end_user_stats = 1;
-		htt_tlv_filter->ppdu_end_user_stats_ext = 1;
-		htt_tlv_filter->ppdu_end_status_done = 1;
-		htt_tlv_filter->mpdu_start = 1;
-		htt_tlv_filter->offset_valid = false;
-
-		htt_tlv_filter->enable_fp =
-			(filter_val->mode & MON_FILTER_PASS) ? 1 : 0;
-		htt_tlv_filter->enable_md = 0;
-		htt_tlv_filter->enable_mo =
-			(filter_val->mode & MON_FILTER_OTHER) ? 1 : 0;
-		htt_tlv_filter->fp_mgmt_filter = filter_val->fp_mgmt;
-		htt_tlv_filter->fp_ctrl_filter = filter_val->fp_ctrl;
-		htt_tlv_filter->fp_data_filter = filter_val->fp_data;
-		htt_tlv_filter->mo_mgmt_filter = filter_val->mo_mgmt;
-		htt_tlv_filter->mo_ctrl_filter = filter_val->mo_ctrl;
-		htt_tlv_filter->mo_data_filter = filter_val->mo_data;
-	}
-
-	dp_mon_ht2_rx_ring_cfg(soc, pdev, srng_type,
-			       &filter.rx_tlv_filter.tlv_filter);
-}
-
-void dp_cfr_filter_register_2_0(struct cdp_ops *ops)
-{
-	ops->mon_ops->txrx_cfr_filter = dp_cfr_filter_2_0;
-}
-
 #ifdef FEATURE_ML_LOCAL_PKT_CAPTURE
 /**
  * dp_tx_mon_be_mode_set() - Set TX monitor mode

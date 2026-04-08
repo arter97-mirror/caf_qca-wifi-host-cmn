@@ -6927,9 +6927,6 @@ void dp_mon_cdp_ops_register(struct dp_soc *soc)
 	case TARGET_TYPE_QCA5424:
 #if defined(WLAN_PKT_CAPTURE_TX_2_0) || defined(WLAN_PKT_CAPTURE_RX_2_0)
 		dp_mon_cdp_ops_register_2_0(ops);
-#if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
-		dp_cfr_filter_register_2_0(ops);
-#endif
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 && WLAN_PKT_CAPTURE_RX_2_0 */
 		break;
 	default:
