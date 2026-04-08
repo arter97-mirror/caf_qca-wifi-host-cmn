@@ -252,7 +252,6 @@ struct dp_tx_queue {
  * @l4_dport: destination port
  * @is_unicast: whether unicast frame or not
  * @frame_type: 802.11 frame type
- * @orig_nbuf: Original nbuf
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -307,9 +306,6 @@ struct dp_tx_msdu_info_s {
 #ifdef DRIVER_PASSTHRU_MODE
 	bool is_unicast;
 	uint8_t frame_type;
-#endif
-#ifdef DP_FEATURE_TX_PAGE_POOL
-	qdf_nbuf_t orig_nbuf;
 #endif
 };
 
