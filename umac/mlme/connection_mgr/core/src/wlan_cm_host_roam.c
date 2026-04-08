@@ -283,6 +283,12 @@ cm_update_per_peer_crypto_params_for_roam(struct wlan_objmgr_vdev *vdev,
 		rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED;
 	}
 
+	if (WLAN_CRYPTO_IS_AKM_SAE(neg_sec_info->key_mgmt) &&
+	    (neg_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED)) {
+		rsn_caps |= WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED;
+		rsn_caps |= WLAN_CRYPTO_RSN_CAP_MFP_ENABLED;
+	}
+
 	/* Update the new rsn caps */
 	wlan_crypto_set_vdev_param(vdev, WLAN_CRYPTO_PARAM_RSN_CAP,
 				   rsn_caps);
