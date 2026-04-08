@@ -151,6 +151,9 @@ static QDF_STATUS wlan_crypto_set_param(struct wlan_crypto_params *crypto_params
 	case WLAN_CRYPTO_PARAM_ORIG_KEY_MGMT:
 		status = wlan_crypto_set_orig_key_mgmt(crypto_params, value);
 		break;
+	case WLAN_CRYPTO_PARAM_ORIG_RSN_CAP:
+		status = wlan_crypto_set_orig_rsn_cap(crypto_params, value);
+		break;
 	default:
 		status = QDF_STATUS_E_INVAL;
 	}
@@ -266,6 +269,9 @@ static int32_t wlan_crypto_get_param_value(wlan_crypto_param_type param,
 		break;
 	case WLAN_CRYPTO_PARAM_ORIG_KEY_MGMT:
 		value = wlan_crypto_get_orig_key_mgmt(crypto_params);
+		break;
+	case WLAN_CRYPTO_PARAM_ORIG_RSN_CAP:
+		value = wlan_crypto_get_orig_rsn_cap(crypto_params);
 		break;
 	default:
 		value = QDF_STATUS_E_INVAL;
@@ -3962,7 +3968,6 @@ wlan_crypto_reset_prarams(struct wlan_crypto_params *params)
 	params->ucastcipherset = 0;
 	params->mcastcipherset = 0;
 	params->mgmtcipherset = 0;
-	params->cipher_caps = 0;
 	params->key_mgmt = 0;
 	params->rsn_caps = 0;
 }
