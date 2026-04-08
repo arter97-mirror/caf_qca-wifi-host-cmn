@@ -2870,6 +2870,15 @@ dp_rx_null_q_desc_handle_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		goto drop_nbuf;
 	}
 
+	if (vdev->opmode == wlan_op_mode_passthru) {
+		dp_rx_skip_tlvs(soc, nbuf,
+				hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
+								   rx_tlv_hdr));
+		dp_rx_deliver_raw_passthru(soc, vdev, nbuf);
+
+		return QDF_STATUS_SUCCESS;
+	}
+
 	/*
 	 * Advance the packet start pointer by total size of
 	 * pre-header TLV's
