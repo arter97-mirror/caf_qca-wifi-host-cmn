@@ -648,6 +648,14 @@ QDF_STATUS wlan_dcs_cmd_send(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
 				      uint32_t mac_id,
 				      uint8_t vdev_id);
+#else
+static inline
+QDF_STATUS wlan_send_dcs_cmd_for_vdev(struct wlan_objmgr_psoc *psoc,
+				      uint32_t mac_id,
+				      uint8_t vdev_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 /**
