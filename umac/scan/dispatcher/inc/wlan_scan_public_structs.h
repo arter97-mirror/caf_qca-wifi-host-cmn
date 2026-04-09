@@ -612,6 +612,18 @@ struct scan_bss_scores {
 #endif
 };
 
+#define WLAN_BSS_SCORE_ARBITRATOR_NSS_BITPOS 0
+
+/**
+ * struct bss_score_arbitrators: arbitrator inputs used for scoring
+ * @valid_flag: bitmask to indicate which arbitrator values are valid
+ * @nss: supported NSS information
+ */
+struct bss_score_arbitrators {
+	uint32_t valid_flag;
+	uint8_t nss;
+};
+
 /**
  * struct scan_cache_entry: structure containing scan entry
  * @frm_subtype: updated from beacon/probe
@@ -663,6 +675,7 @@ struct scan_bss_scores {
  * @recv_freq: Frequency on which the frame is received
  * @ap_pwr_type_6g: 6GHz AP power type
  * @entry_scores: scoring related calculation results
+ * @score_arbitrators: arbitrator inputs used for scoring
  */
 struct scan_cache_entry {
 	uint8_t frm_subtype;
@@ -722,6 +735,7 @@ struct scan_cache_entry {
 	uint32_t recv_freq;
 	uint8_t ap_pwr_type_6g;
 	struct scan_bss_scores entry_scores;
+	struct bss_score_arbitrators score_arbitrators;
 };
 
 #define MAX_FAVORED_BSSID 16
