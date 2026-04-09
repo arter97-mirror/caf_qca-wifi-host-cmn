@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -597,7 +597,7 @@ QDF_STATUS mlo_peer_free_aid(struct wlan_mlo_dev_context *ml_dev,
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	if (!ml_dev->ap_ctx) {
-		mlo_err("ml_dev->ap_ctx is null");
+		mlo_debug("ml_dev->ap_ctx is null");
 		return QDF_STATUS_E_INVAL;
 	}
 
