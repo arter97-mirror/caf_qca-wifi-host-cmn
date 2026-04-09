@@ -236,6 +236,7 @@ target_if_mlo_sap_link_removal_offload_support(struct wlan_objmgr_psoc *psoc);
 bool
 target_if_is_unified_connect_disconnect_enabled(struct wlan_objmgr_psoc *psoc);
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**
  * target_if_mlo_populate_unified_connect_params() - Populate unified connect
  * parameters from cached MLO context
@@ -251,4 +252,14 @@ QDF_STATUS
 target_if_mlo_populate_unified_connect_params(
 		struct wlan_objmgr_vdev *vdev,
 		struct vdev_unified_connect_param *unified_connect_param);
+#else
+static inline QDF_STATUS
+target_if_mlo_populate_unified_connect_params(
+		struct wlan_objmgr_vdev *vdev,
+		struct vdev_unified_connect_param *unified_connect_param)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 #endif /* __TARGET_IF_MLO_MGR_H__ */
