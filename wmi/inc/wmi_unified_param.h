@@ -7562,6 +7562,7 @@ struct target_feature_set {
  * @haps_feature_flags: HAPS flags setting for power save config
  * @conc_2vdev_dcs_stats_support: Support 2 vdev concurrency DCS
  * @smd_bss_transition_support: Support SMD BSS transition
+ * @dw_lead_time: NAN DW lead tme
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7721,6 +7722,9 @@ typedef struct {
 	uint32_t haps_feature_flags;
 	bool conc_2vdev_dcs_stats_support;
 	bool smd_bss_transition_support;
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+	uint8_t dw_lead_time;
+#endif
 } target_resource_config;
 
 /**

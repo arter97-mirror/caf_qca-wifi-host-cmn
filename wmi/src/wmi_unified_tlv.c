@@ -10449,6 +10449,20 @@ static inline void wmi_copy_snr_stats_resource_config(
 }
 #endif /* FEATURE_SNR_STATS */
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+static void wmi_copy_nan_resource_config(wmi_resource_config *resource_cfg,
+					 target_resource_config *tgt_res_cfg)
+{
+	resource_cfg->dw_notif_lead_time = tgt_res_cfg->dw_lead_time;
+}
+#else
+static inline
+void wmi_copy_nan_resource_config(wmi_resource_config *resource_cfg,
+				  target_resource_config *tgt_res_cfg)
+{
+}
+#endif
+
 static
 void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 			      wmi_resource_config *resource_cfg,
@@ -10810,6 +10824,7 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	if (tgt_res_cfg->smd_bss_transition_support)
 		WMI_RSRC_CFG_HOST_SERVICE_FLAG_SMD_BSS_TRANSITION_SET(
 				resource_cfg->host_service_flags, 1);
+	wmi_copy_nan_resource_config(resource_cfg, tgt_res_cfg);
 }
 
 #ifdef FEATURE_SET
@@ -13086,11 +13101,12 @@ static QDF_STATUS init_cmd_send_tlv(wmi_unified_t wmi_handle,
 			(sizeof(wlan_host_memory_chunk) *
 			 param->num_mem_chunks));
 
-	wmi_debug("num peers: %d , num offload peers: %d, num vdevs: %d, num tids: %d, num tdls conn tb entries: %d, num tdls vdevs: %d",
-		 resource_cfg->num_peers, resource_cfg->num_offload_peers,
-		 resource_cfg->num_vdevs, resource_cfg->num_tids,
-		 resource_cfg->num_tdls_conn_table_entries,
-		 resource_cfg->num_tdls_vdevs);
+	wmi_debug("num peers: %d , num offload peers: %d, num vdevs: %d, num tids: %d, num tdls conn tb entries: %d, num tdls vdevs: %d nan_dw_time: %d",
+		  resource_cfg->num_peers, resource_cfg->num_offload_peers,
+		  resource_cfg->num_vdevs, resource_cfg->num_tids,
+		  resource_cfg->num_tdls_conn_table_entries,
+		  resource_cfg->num_tdls_vdevs,
+		  resource_cfg->dw_notif_lead_time);
 
 	/* Fill hw mode id config */
 	buf_ptr = copy_hw_mode_in_init_cmd(wmi_handle, buf_ptr, &len, param);

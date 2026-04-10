@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -35,6 +36,7 @@
 #include <target_if_reg.h>
 #include <target_if_twt.h>
 #include <cdp_txrx_ctrl.h>
+#include <wlan_nan_api.h>
 
 /**
  *  init_deinit_alloc_host_mem_chunk() - allocates chunk of memory requested
@@ -478,6 +480,28 @@ init_deinit_set_tdls_mlo_vdev(struct wmi_init_cmd_param *init_param,
 {}
 #endif
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * init_deinit_nan_config() - Derive NAN init config
+ *
+ * @psoc: PSOC object
+ * @init_param: Pointer to init param
+ *
+ * Return: void
+ */
+static void
+init_deinit_nan_config(struct wlan_objmgr_psoc *psoc,
+		       struct wmi_init_cmd_param *init_param)
+{
+	init_param->res_cfg->dw_lead_time = wlan_get_nan_init_dw_time(psoc);
+}
+#else
+static inline void
+init_deinit_nan_config(struct wlan_objmgr_psoc *psoc,
+		       struct wmi_init_cmd_param *init_param)
+{}
+#endif
+
 /**
  * init_deinit_set_dp_rx_peer_metadata_ver() - update RX peer metadata
  *                                             version to DP
@@ -611,6 +635,8 @@ void init_deinit_prepare_send_init_cmd(
 	/* notify DP rx peer metadata version */
 	init_deinit_set_dp_rx_peer_metadata_ver(
 				psoc, peer_metadata_ver);
+
+	init_deinit_nan_config(psoc, &init_param);
 
 	init_deinit_set_tdls_mlo_vdev(&init_param, wmi_handle);
 
