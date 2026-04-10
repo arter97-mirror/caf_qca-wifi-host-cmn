@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
  * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -201,3 +202,16 @@ QDF_STATUS wmi_extract_ndp_host_event(wmi_unified_t wmi_handle, uint8_t *data,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+QDF_STATUS wmi_extract_nan_next_dw_info(wmi_unified_t wmi_handle,
+					uint8_t *data,
+					struct nan_next_dw_info_event *event)
+{
+	if (wmi_handle->ops->extract_nan_next_dw_info)
+		return wmi_handle->ops->extract_nan_next_dw_info(wmi_handle,
+								 data, event);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif

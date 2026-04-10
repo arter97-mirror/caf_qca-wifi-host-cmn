@@ -1382,6 +1382,57 @@ static QDF_STATUS extract_ndp_sch_update_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+static QDF_STATUS
+extract_nan_next_dw_info_event_tlv(wmi_unified_t wmi_handle,
+				   uint8_t *evt_buf,
+				   struct nan_next_dw_info_event *event)
+{
+	WMI_NAN_NEXT_DW_INFO_EVENTID_param_tlvs *param_buf;
+	wmi_nan_next_dw_info_fixed_param *fixed_param;
+
+	if (!wmi_handle || !evt_buf || !event) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	param_buf = (WMI_NAN_NEXT_DW_INFO_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid param_buf");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid fixed_param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Extract parameters from WMI structure */
+	event->vdev_id = fixed_param->vdev_id;
+	event->channel_freq = fixed_param->dw_chan_freq;
+
+	wmi_debug("NAN Next DW Info: vdev_id=%u, freq=%u",
+		  event->vdev_id, event->channel_freq);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+static
+void wmi_nan_attach_dw_info_tlv(wmi_unified_t wmi_handle)
+{
+	struct wmi_ops *ops = wmi_handle->ops;
+
+	ops->extract_nan_next_dw_info = extract_nan_next_dw_info_event_tlv;
+}
+#else
+static inline
+void wmi_nan_attach_dw_info_tlv(wmi_unified_t wmi_handle)
+{}
+#endif
+
 void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
@@ -1403,4 +1454,5 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	ops->extract_ndp_end_ind = extract_ndp_end_ind_tlv;
 	ops->extract_ndp_sch_update = extract_ndp_sch_update_tlv;
 	ops->extract_ndp_host_event = extract_ndp_host_event_tlv;
+	wmi_nan_attach_dw_info_tlv(wmi_handle);
 }

@@ -5902,6 +5902,7 @@ typedef enum {
 	wmi_get_scan_stats_resp_event_id,
 #endif
 	wmi_vdev_current_operating_param_eventid,
+	wmi_nan_next_dw_info_event_id,
 	wmi_events_max,
 } wmi_conv_event_id;
 

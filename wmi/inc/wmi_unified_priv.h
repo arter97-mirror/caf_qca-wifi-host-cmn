@@ -2608,6 +2608,10 @@ QDF_STATUS (*extract_ndp_sch_update)(wmi_unified_t wmi_handle,
 		uint8_t *data, struct nan_datapath_sch_update_event *ind);
 QDF_STATUS (*extract_ndp_host_event)(wmi_unified_t wmi_handle, uint8_t *data,
 		struct nan_datapath_host_event *evt);
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+QDF_STATUS (*extract_nan_next_dw_info)(wmi_unified_t wmi_handle, uint8_t *data,
+				       struct nan_next_dw_info_event *evt);
+#endif
 #endif /* WLAN_FEATURE_NAN */
 
 QDF_STATUS (*send_obss_detection_cfg_cmd)(wmi_unified_t wmi_handle,

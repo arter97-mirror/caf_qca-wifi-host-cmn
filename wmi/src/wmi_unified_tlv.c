@@ -25503,6 +25503,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 #endif
 	event_ids[wmi_vdev_current_operating_param_eventid] =
 				WMI_VDEV_CURRENT_OPERATING_PARAM_EVENTID;
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+	event_ids[wmi_nan_next_dw_info_event_id] = WMI_NAN_NEXT_DW_INFO_EVENTID;
+#endif
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS

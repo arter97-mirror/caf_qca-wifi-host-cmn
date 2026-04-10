@@ -217,4 +217,18 @@ QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
  */
 QDF_STATUS wmi_extract_ndp_host_event(wmi_unified_t wmi_handle, uint8_t *data,
 				      struct nan_datapath_host_event *evt);
+
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * wmi_extract_nan_next_dw_info() - Extract NAN next DW info event
+ * @wmi_handle: WMI handle
+ * @data: Event data buffer
+ * @event: Output event structure
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS wmi_extract_nan_next_dw_info(wmi_unified_t wmi_handle,
+					uint8_t *data,
+					struct nan_next_dw_info_event *event);
+#endif
 #endif /* _WMI_UNIFIED_NAN_API_H_ */
