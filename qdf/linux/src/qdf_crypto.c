@@ -1191,4 +1191,48 @@ out:
 }
 
 qdf_export_symbol(qdf_crypto_ecdh_compute_shared_secret);
+
+#elif defined(WLAN_FEATURE_11BN_SMD)
+QDF_STATUS qdf_crypto_ecdh_init(void)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_init);
+
+void qdf_crypto_ecdh_deinit(void)
+{
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_deinit);
+
+QDF_STATUS qdf_crypto_ecdh_generate_private_key(uint8_t *private_key,
+						size_t key_size)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_generate_private_key);
+
+QDF_STATUS qdf_crypto_ecdh_generate_public_key(const uint8_t *private_key,
+					       size_t private_key_size,
+					       uint8_t *public_key,
+					       size_t *public_key_size)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_generate_public_key);
+
+QDF_STATUS qdf_crypto_ecdh_compute_shared_secret(const uint8_t *private_key,
+						 size_t private_key_size,
+						 const uint8_t *peer_public_key,
+						 size_t peer_public_key_size,
+						 uint8_t *shared_secret,
+						 size_t *shared_secret_size)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+qdf_export_symbol(qdf_crypto_ecdh_compute_shared_secret);
 #endif /* WLAN_FEATURE_11BN_SMD */

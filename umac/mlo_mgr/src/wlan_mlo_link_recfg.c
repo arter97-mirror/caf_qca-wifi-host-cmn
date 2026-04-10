@@ -8155,6 +8155,21 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->eht_cap_present = true;
 		}
 
+		/* Extract UHR Capabilities IE (Extension Element ID 152) */
+		ie_ptr = wlan_get_ext_ie_ptr_from_ext_id((uint8_t[]){WLAN_EXTN_ELEMID_UHRCAP}, 1,
+							 frame_body, frame_len);
+		if (ie_ptr && ie_ptr[1] >= 1) {
+			ie_len = ie_ptr[1] - 1; /* Subtract extension ID byte */
+			link_cap->uhr_cap.ptr = qdf_mem_malloc(ie_len);
+			if (!link_cap->uhr_cap.ptr) {
+				util_scan_free_cache_entry(scan_entry);
+				goto err_release_pdev;
+			}
+			qdf_mem_copy(link_cap->uhr_cap.ptr, ie_ptr + 3, ie_len);
+			link_cap->uhr_cap.len = ie_len;
+			link_cap->uhr_cap_present = true;
+		}
+
 		/* Extract Extended Capabilities IE (Element ID 127) */
 		ie_ptr = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_XCAPS, frame_body, frame_len);
 		if (ie_ptr) {
@@ -8171,7 +8186,7 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 
 		util_scan_free_cache_entry(scan_entry);
 
-		mlo_info("Extracted capabilities for link_id=%d: cap=0x%x rates=%d/%d ht=%d vht=%d he=%d eht=%d ext=%d",
+		mlo_info("Extracted capabilities for link_id=%d: cap=0x%x rates=%d/%d ht=%d vht=%d he=%d eht=%d uhr=%d ext=%d",
 			link_cap->link_id,
 			link_cap->capability_info,
 			link_cap->supported_rates.len,
@@ -8180,6 +8195,7 @@ extract_target_ap_capabilities(uint8_t *mlo_ie,
 			link_cap->vht_cap_present,
 			link_cap->he_cap_present,
 			link_cap->eht_cap_present,
+			link_cap->uhr_cap_present,
 			link_cap->ext_cap_present);
 	}
 
@@ -8196,4 +8212,186 @@ err_release_pdev:
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_LINK_RECFG_ID);
 	return QDF_STATUS_E_NOMEM;
 }
+
+/**
+ * mlo_uhr_link_recfg_gen_link_assoc_rsp() - Generate link assoc responses
+ * @vdev: VDEV object
+ * @ctx: Link reconfiguration context
+ * @link_recfg_req: Link reconfiguration request
+ *
+ * Generate link-specific association response frames for links accepted
+ * by the target AP MLD during UHR ST preparation phase.
+ *
+ * This function:
+ * 1. Extracts target AP capabilities from Basic ML IE
+ * 2. For each accepted link:
+ *    - Finds corresponding capability info
+ *    - Generates complete association response frame
+ *    - Caches response for firmware use
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+mlo_uhr_link_recfg_gen_link_assoc_rsp(
+	struct wlan_objmgr_vdev *vdev,
+	struct mlo_link_recfg_context *ctx,
+	struct wlan_mlo_link_recfg_req *link_recfg_req)
+{
+	struct wlan_mlo_link_recfg_rsp *rsp;
+	struct wlan_mlo_link_recfg_info *add_link_info;
+	struct smd_target_ap_caps *target_caps;
+	QDF_STATUS status;
+	uint8_t i, j;
+	uint16_t assigned_aid;
+	uint8_t num_responses_generated = 0;
+	uint8_t *assoc_rsp_buf;
+
+	/* Validate input parameters */
+	if (!vdev || !ctx || !link_recfg_req) {
+		mlo_err("Invalid parameters: vdev=%pK ctx=%pK req=%pK",
+			vdev, ctx, link_recfg_req);
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	rsp = &ctx->curr_recfg_rsp;
+	add_link_info = &link_recfg_req->add_link_info;
+
+	/* Verify we have links to add */
+	if (!add_link_info->num_links) {
+		mlo_debug("No links to add");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* Get AID assigned by target AP MLD */
+	assigned_aid = rsp->assigned_aid;
+	if (assigned_aid == 0) {
+		mlo_err("No AID assigned by target AP MLD");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	mlo_info("Generating link assoc responses for %d links, AID %d",
+		 add_link_info->num_links, assigned_aid);
+
+	if (!rsp->mlo_ie.ptr || !rsp->mlo_ie.len) {
+		mlo_err("ML IE not present in response");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	target_caps = qdf_mem_malloc(sizeof(*target_caps));
+	if (!target_caps)
+		return QDF_STATUS_E_NOMEM;
+
+	status = extract_target_ap_capabilities(rsp->mlo_ie.ptr,
+						rsp->mlo_ie.len,
+						target_caps, ctx);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("Failed to extract target AP capabilities, status=%d",
+			status);
+		qdf_mem_free(target_caps);
+		return status;
+	}
+
+	mlo_info("Extracted capabilities for %d links from target AP",
+		 target_caps->num_links);
+
+	assoc_rsp_buf = qdf_mem_malloc(2048); /* MAX_ASSOC_RSP_SIZE */
+	if (!assoc_rsp_buf) {
+		wlan_mlo_cleanup_smd_target_ap_caps(target_caps);
+		qdf_mem_free(target_caps);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	for (i = 0; i < add_link_info->num_links; i++) {
+		uint8_t link_id;
+		struct smd_target_ap_link_caps *link_cap = NULL;
+		qdf_size_t assoc_rsp_len = 0;
+		enum wlan_status_code link_status;
+
+		link_id = add_link_info->link[i].link_id;
+
+		/* Get link status from response */
+		link_status = STATUS_UNSPECIFIED_FAILURE;
+		for (j = 0; j < rsp->count; j++) {
+			if (rsp->recfg_status_list[j].link_id == link_id) {
+				link_status =
+					rsp->recfg_status_list[j].status_code;
+				break;
+			}
+		}
+
+		/* Check if link was accepted */
+		if (link_status != STATUS_SUCCESS) {
+			mlo_debug("Link %d rejected (status %d), skip assoc rsp",
+				  link_id, link_status);
+			continue;
+		}
+
+		mlo_debug("Generating assoc response for link %d", link_id);
+
+		/* Find capability info for this link */
+		for (j = 0; j < target_caps->num_links; j++) {
+			if (target_caps->link_caps[j].link_id == link_id) {
+				link_cap = &target_caps->link_caps[j];
+				break;
+			}
+		}
+
+		if (!link_cap) {
+			mlo_err("No capability info found for link %d", link_id);
+			continue;
+		}
+
+		mlo_debug("Found capability info for link %d", link_id);
+
+		/* Generate association response frame */
+		status = smd_construct_link_assoc_rsp(
+				link_cap,
+				add_link_info->link[i].self_link_addr,
+				add_link_info->link[i].ap_link_addr,
+				assigned_aid,
+				assoc_rsp_buf,
+				2048,
+				&assoc_rsp_len);
+
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("Failed to gen assoc rsp for link %d, status=%d",
+				link_id, status);
+			continue;
+		}
+
+		mlo_info("Generated assoc response for link %d: %zu bytes",
+			 link_id, assoc_rsp_len);
+
+		/* Cache the generated response for firmware use */
+		assoc_rsp_elem.ptr = assoc_rsp_buf;
+		assoc_rsp_elem.len = assoc_rsp_len;
+		status = mlo_update_cache_link_assoc_rsp(
+			vdev, link_id, &assoc_rsp_elem);
+
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("Failed to cache assoc rsp for link %d, st=%d",
+				link_id, status);
+			continue;
+		}
+
+		num_responses_generated++;
+		mlo_debug("Cached assoc response for link %d", link_id);
+	}
+
+	/* Cleanup target AP capabilities */
+	wlan_mlo_cleanup_smd_target_ap_caps(target_caps);
+	qdf_mem_free(target_caps);
+	qdf_mem_free(assoc_rsp_buf);
+
+	if (num_responses_generated == 0) {
+		mlo_err("No association responses generated for any link");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	mlo_info("Successfully generated and cached %d association responses",
+		 num_responses_generated);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 #endif /* WLAN_FEATURE_11BN_SMD */

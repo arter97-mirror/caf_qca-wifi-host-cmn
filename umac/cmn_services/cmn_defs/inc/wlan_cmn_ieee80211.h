@@ -2870,6 +2870,8 @@ struct wlan_ml_prv_linfo_perstaprof {
 #define WLAN_ML_RV_CTRL_PBM_MLDCAPANDOP_P              ((uint16_t)BIT(2))
 /* Extended MLD Capabilities And Operations Present */
 #define WLAN_ML_RV_CTRL_PBM_EXT_MLDCAPANDOP_P          ((uint16_t)BIT(3))
+/* Target MLD MAC Address Present */
+#define WLAN_ML_RV_CTRL_PBM_TARGET_MLDMACADDR_P        ((uint16_t)BIT(4))
 
 /* Definitions related to Reconfiguration variant Multi-Link element Common Info
  * field.
@@ -5300,6 +5302,12 @@ enum uhr_link_reconfig_type {
 #define SMD_BSS_TRANS_PARAMS_AID_LEN                2
 /* Param Set + Timeout + SSC */
 #define SMD_BSS_TRANS_PARAMS_BA_PARAM_LEN           6
+
+/* Buffer size constants */
+#define MAX_SMD_BSS_TRANS_IE_SIZE  256  /* Max SMD BSS Transition Params IE */
+#define MAX_ASSOC_RSP_SIZE         2048 /* Max association response frame */
+#define MAX_SCS_IDS                8    /* Max SCS IDs in SCS List */
+
 
 /**
  * struct smd_capabilities - SMD Capabilities bitfield structure

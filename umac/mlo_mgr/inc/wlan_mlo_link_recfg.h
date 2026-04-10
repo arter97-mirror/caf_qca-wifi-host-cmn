@@ -543,22 +543,37 @@ struct wlan_mlo_link_recfg_bitmap {
 };
 
 /**
+ * struct cached_link_assoc_rsp - Cached link association response
+ * @link_id: Link ID
+ * @assoc_rsp: Association response frame
+ * @valid: Whether this cache entry is valid
+ *
+ * Structure to cache generated link-specific association responses
+ * for firmware use during ST execution phase.
+ */
+struct cached_link_assoc_rsp {
+	uint8_t link_id;
+	struct element_info assoc_rsp;
+	bool valid;
+};
+
+/**
  * struct mlo_link_recfg_context - Link reconfiguration data structure.
  * @psoc: psoc object
  * @ml_dev: ml dev context
  * @curr_recfg_req: Last link recfg request received from FW or user
  * @curr_recfg_rsp: Last link recfg response received from AP
  * @sm: link reconfig sm context
- * @set_link_req: set link req for link recfg
- * @macaddr_updating_vdev_id: mac addr updating vdev for link add
- * @old_macaddr_updating_vdev: old mac addr of updating vdev
- * @req_frame: Link Reconfiguration request frame
- * @rsp_frame: Link Reconfiguration response frame
- * @link_recfg_bm: User configured Link Reconfiguration bitmap
- * @rsp_rx_frame: Link reconfig response with mac header
- * @link_recfg_rsp_timer: Link Reconfiguration rsp timed out
- * @link_recfg_status: Link Reconfiguration status
- * @last_dialog_token: Last used dialog token
+ * @set_link_req: set link request
+ * @macaddr_updating_vdev_id: vdev id for which mac address is being updated
+ * @old_macaddr_updating_vdev: old mac address of the vdev
+ * @req_frame: link recfg request frame
+ * @rsp_frame: link recfg response frame
+ * @link_recfg_bm: link recfg bitmap
+ * @rsp_rx_frame: link recfg response rx frame
+ * @link_recfg_rsp_timer: link recfg response timer
+ * @link_recfg_status: link recfg status
+ * @last_dialog_token: last dialog token
  * @internal_reason_code: Internal failure reason code
  * @copied_recfg_req: Copied recfg req
  * @recfg_indication_work: recfg done work queue
@@ -573,7 +588,8 @@ struct wlan_mlo_link_recfg_bitmap {
  * @smd_roam_in_progress: bool smd roam in progress
  * @current_link_index: Index of the current link being processed in SMD roaming
  * @st_exec_in_progress: Flag indicating SMD ST execution is in progress
- * @cached_sync_ind: Cached roam sycnc indication
+ * @cached_sync_ind: Cached roam sync indication
+ * @cached_assoc_rsp: Cached per-link association responses for ST execution
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -604,6 +620,7 @@ struct mlo_link_recfg_context {
 	uint8_t current_link_index;
 	bool st_exec_in_progress;
 	struct roam_offload_synch_ind *cached_sync_ind;
+	struct cached_link_assoc_rsp cached_assoc_rsp[WLAN_MAX_ML_BSS_LINKS];
 #endif
 };
 
@@ -1585,8 +1602,13 @@ mlo_link_recfg_get_curr_tran_req(struct mlo_link_recfg_context *recfg_ctx)
  * @he_cap_present: Whether HE capabilities were extracted
  * @eht_cap: EHT Capabilities element
  * @eht_cap_present: Whether EHT capabilities were extracted
+ * @uhr_cap: UHR Capabilities element
+ * @uhr_cap_present: Whether UHR capabilities were extracted
  * @ext_cap: Extended Capabilities element
  * @ext_cap_present: Whether extended capabilities were extracted
+ *
+ * Structure to hold extracted capabilities for a single link from
+ * target AP's per-STA profile in Basic ML IE.
  */
 struct smd_target_ap_link_caps {
 	uint8_t link_id;
@@ -1602,6 +1624,8 @@ struct smd_target_ap_link_caps {
 	bool he_cap_present;
 	struct element_info eht_cap;
 	bool eht_cap_present;
+	struct element_info uhr_cap;
+	bool uhr_cap_present;
 	struct element_info ext_cap;
 	bool ext_cap_present;
 };
@@ -1657,6 +1681,8 @@ wlan_mlo_cleanup_smd_target_ap_caps(struct smd_target_ap_caps *caps)
 		link_cap->he_cap.ptr = NULL;
 		qdf_mem_free(link_cap->eht_cap.ptr);
 		link_cap->eht_cap.ptr = NULL;
+		qdf_mem_free(link_cap->uhr_cap.ptr);
+		link_cap->uhr_cap.ptr = NULL;
 		qdf_mem_free(link_cap->ext_cap.ptr);
 		link_cap->ext_cap.ptr = NULL;
 	}

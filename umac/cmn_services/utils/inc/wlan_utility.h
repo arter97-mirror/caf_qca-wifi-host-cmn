@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1184,4 +1185,44 @@ uint8_t wlan_is_rsn_override_present(const uint8_t *ie, int len);
  * Return: RSN selector IE if present
  */
 const uint8_t *wlan_get_rsn_sel_ie_from_ie_ptr(const uint8_t *ie, int len);
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * smd_construct_link_assoc_rsp() - Generate link-specific association response
+ * @link_cap: Target AP link capabilities
+ * @sta_link_addr: STA's link address
+ * @ap_link_addr: AP's link address
+ * @assigned_aid: AID assigned by target AP MLD
+ * @out_buf: Output buffer
+ * @out_buf_len: Output buffer length
+ * @out_len: Actual output length
+ *
+ * Generate a complete 802.11 association response frame for a specific link
+ * using capabilities extracted from target AP's per-STA profile.
+ *
+ * Generated Frame Structure:
+ * +------------------+------------------+------------------+
+ * | MAC Header       | Fixed Fields     | IEs              |
+ * | (24 bytes)       | (6 bytes)        | (variable)       |
+ * +------------------+------------------+------------------+
+ * | - DA: STA link   | - Capability     | - Supported Rates|
+ * |   address        | - Status: SUCCESS| - Ext Supp Rates |
+ * | - SA: AP link    | - AID: assigned  | - HT Caps        |
+ * |   address        |   by target AP   | - VHT Caps       |
+ * | - BSSID: AP link |                  | - HE Caps        |
+ * |   address        |                  | - EHT Caps       |
+ * |                  |                  | - UHR Caps       |
+ * +------------------+------------------+------------------+
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+smd_construct_link_assoc_rsp(struct smd_target_ap_link_caps *link_cap,
+			     struct qdf_mac_addr sta_link_addr,
+			     struct qdf_mac_addr ap_link_addr,
+			     uint16_t assigned_aid,
+			     uint8_t *out_buf,
+			     qdf_size_t out_buf_len,
+			     qdf_size_t *out_len);
+#endif /* WLAN_FEATURE_11BN_SMD */
 #endif /* _WLAN_UTILITY_H_ */
