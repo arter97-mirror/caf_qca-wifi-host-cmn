@@ -6106,6 +6106,8 @@ typedef enum {
 		   PDEV_PARAM_MGMT_SRNG_REAP_EVENT_THRESHOLD),
 	PDEV_PARAM(pdev_param_adaptive_early_rx_extra_sleep_slop,
 		   PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP),
+	PDEV_PARAM(pdev_param_set_tas_mode,
+		   PDEV_PARAM_SET_TAS_MODE),
 	pdev_param_max,
 } wmi_conv_pdev_params_id;
 
@@ -6926,6 +6928,7 @@ typedef enum {
 	wmi_service_cfr_unassoc_rx_capture_support,
 	wmi_service_cfr_assoc_tx_capture_support,
 	wmi_service_p2p_cancel_one_shot_noa_support,
+	wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
