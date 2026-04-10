@@ -214,4 +214,15 @@ QDF_STATUS wmi_extract_nan_next_dw_info(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS wmi_extract_nan_cluster_event(wmi_unified_t wmi_handle,
+					 uint8_t *data,
+					 struct nan_cluster_event *event)
+{
+	if (wmi_handle->ops->extract_nan_cluster_event)
+		return wmi_handle->ops->extract_nan_cluster_event(wmi_handle,
+                                                                  data, event);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif

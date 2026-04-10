@@ -230,5 +230,17 @@ QDF_STATUS wmi_extract_ndp_host_event(wmi_unified_t wmi_handle, uint8_t *data,
 QDF_STATUS wmi_extract_nan_next_dw_info(wmi_unified_t wmi_handle,
 					uint8_t *data,
 					struct nan_next_dw_info_event *event);
+
+/**
+ * wmi_extract_nan_cluster_event() - Extract NAN cluster event from WMI
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer from firmware
+ * @cluster_event: Output structure to fill
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS wmi_extract_nan_cluster_event(wmi_unified_t wmi_handle,
+					 uint8_t *evt_buf,
+					 struct nan_cluster_event *cluster_event);
 #endif
 #endif /* _WMI_UNIFIED_NAN_API_H_ */

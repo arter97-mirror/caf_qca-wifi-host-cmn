@@ -2611,6 +2611,8 @@ QDF_STATUS (*extract_ndp_host_event)(wmi_unified_t wmi_handle, uint8_t *data,
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
 QDF_STATUS (*extract_nan_next_dw_info)(wmi_unified_t wmi_handle, uint8_t *data,
 				       struct nan_next_dw_info_event *evt);
+QDF_STATUS (*extract_nan_cluster_event)(wmi_unified_t wmi_handle, uint8_t *data,
+					struct nan_cluster_event *evt);
 #endif
 #endif /* WLAN_FEATURE_NAN */
 

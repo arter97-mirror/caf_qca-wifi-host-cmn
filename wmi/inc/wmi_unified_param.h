@@ -5903,6 +5903,9 @@ typedef enum {
 #endif
 	wmi_vdev_current_operating_param_eventid,
 	wmi_nan_next_dw_info_event_id,
+	wmi_nan_joined_cluster_event_id,
+	wmi_nan_started_cluster_event_id,
+
 	wmi_events_max,
 } wmi_conv_event_id;
 

@@ -25,6 +25,8 @@
 #include <wlan_nan_msg_common_v2.h>
 #include <wlan_nan_msg.h>
 
+uint8_t cluster_id[NAN_CLUSTER_MATCH_SIZE] = {0x50, 0x6F, 0x9A, 0x01};
+
 /**
  * wmi_nan_get_tlv_type() - get TLV type from NAN DE event
  * @ptlv: pointer to TLV header
@@ -1383,6 +1385,105 @@ static QDF_STATUS extract_ndp_sch_update_tlv(wmi_unified_t wmi_handle,
 }
 
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * extract_nan_join_cluster_event_tlv() - Extract NAN cluster event (TLV format)
+ * @evt_buf: Event buffer from firmware
+ * @cluster_event: Output structure to fill
+ *
+ * This function extracts cluster event information from the WMI TLV buffer
+ * sent by firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+static QDF_STATUS
+extract_nan_join_cluster_event_tlv(uint8_t *evt_buf,
+				   struct nan_cluster_event *cluster_event)
+{
+	WMI_NAN_JOINED_CLUSTER_EVENTID_param_tlvs *param_buf;
+	wmi_nan_joined_cluster_event_fixed_param *fixed_param;
+
+	param_buf = (WMI_NAN_JOINED_CLUSTER_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid cluster event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid cluster event fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	cluster_event->vdev_id = fixed_param->vdev_id;
+	/* Copy 4-byte cluster ID (MAC address format) */
+	qdf_mem_copy(&cluster_event->cluster_id, &cluster_id,
+		     NAN_CLUSTER_MATCH_SIZE);
+
+	qdf_mem_copy(&cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE],
+		     &fixed_param->nan_cluster_id, 2);
+
+	wmi_debug("Extracted join cluster event: vdev_id=%d, event_type=%d",
+		  cluster_event->vdev_id, cluster_event->event_type);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * extract_nan_cluster_event_tlv() - Extract NAN cluster event (TLV format)
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer from firmware
+ * @cluster_event: Output structure to fill
+ *
+ * This function extracts cluster event information from the WMI TLV buffer
+ * sent by firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+static QDF_STATUS extract_nan_cluster_event_tlv(
+				wmi_unified_t wmi_handle,
+				uint8_t *evt_buf,
+				struct nan_cluster_event *cluster_event)
+{
+	QDF_STATUS status;
+	WMI_NAN_STARTED_CLUSTER_EVENTID_param_tlvs *param_buf;
+	wmi_nan_started_cluster_event_fixed_param *fixed_param;
+
+	if (cluster_event->event_type == NAN_CLUSTER_EVENT_JOINED) {
+		status =
+			extract_nan_join_cluster_event_tlv(evt_buf,
+							   cluster_event);
+		return status;
+	}
+
+	param_buf = (WMI_NAN_STARTED_CLUSTER_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid cluster event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid cluster event fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	cluster_event->vdev_id = fixed_param->vdev_id;
+
+	/* Copy 4-byte cluster ID (MAC address format) */
+	qdf_mem_copy(&cluster_event->cluster_id, &cluster_id,
+		     NAN_CLUSTER_MATCH_SIZE);
+
+	qdf_mem_copy(&cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE],
+		     &fixed_param->nan_cluster_id, 2);
+
+	cluster_event->event_type = NAN_CLUSTER_EVENT_STARTED;
+
+	wmi_debug("Extracted start cluster event: vdev_id=%d, event_type=%d",
+		  cluster_event->vdev_id, cluster_event->event_type);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static QDF_STATUS
 extract_nan_next_dw_info_event_tlv(wmi_unified_t wmi_handle,
 				   uint8_t *evt_buf,
@@ -1412,8 +1513,8 @@ extract_nan_next_dw_info_event_tlv(wmi_unified_t wmi_handle,
 	event->vdev_id = fixed_param->vdev_id;
 	event->channel_freq = fixed_param->dw_chan_freq;
 
-	wmi_debug("NAN Next DW Info: vdev_id=%u, freq=%u",
-		  event->vdev_id, event->channel_freq);
+	wmi_err("NAN Next DW Info: vdev_id=%u, freq=%u",
+		event->vdev_id, event->channel_freq);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -1427,9 +1528,21 @@ void wmi_nan_attach_dw_info_tlv(wmi_unified_t wmi_handle)
 
 	ops->extract_nan_next_dw_info = extract_nan_next_dw_info_event_tlv;
 }
+
+static
+void wmi_nan_attach_cluster_info_tlv(wmi_unified_t wmi_handle)
+{
+	struct wmi_ops *ops = wmi_handle->ops;
+
+	ops->extract_nan_cluster_event = extract_nan_cluster_event_tlv;
+}
 #else
 static inline
 void wmi_nan_attach_dw_info_tlv(wmi_unified_t wmi_handle)
+{}
+
+static inline
+void wmi_nan_attach_cluster_info_tlv(wmi_unified_t wmi_handle)
 {}
 #endif
 
@@ -1455,4 +1568,5 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	ops->extract_ndp_sch_update = extract_ndp_sch_update_tlv;
 	ops->extract_ndp_host_event = extract_ndp_host_event_tlv;
 	wmi_nan_attach_dw_info_tlv(wmi_handle);
+	wmi_nan_attach_cluster_info_tlv(wmi_handle);
 }

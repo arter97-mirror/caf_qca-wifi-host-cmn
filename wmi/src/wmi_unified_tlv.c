@@ -10560,7 +10560,6 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 			tgt_res_cfg->ema_max_profile_period;
 	resource_cfg->ema_init_config = tgt_res_cfg->ema_init_config;
 	resource_cfg->carrier_config = tgt_res_cfg->carrier_profile_config;
-
 	if (tgt_res_cfg->max_ndp_sessions)
 		resource_cfg->max_ndp_sessions =
 				tgt_res_cfg->max_ndp_sessions;
@@ -25505,6 +25504,10 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 				WMI_VDEV_CURRENT_OPERATING_PARAM_EVENTID;
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
 	event_ids[wmi_nan_next_dw_info_event_id] = WMI_NAN_NEXT_DW_INFO_EVENTID;
+	event_ids[wmi_nan_joined_cluster_event_id] =
+				WMI_NAN_JOINED_CLUSTER_EVENTID;
+	event_ids[wmi_nan_started_cluster_event_id] =
+				WMI_NAN_STARTED_CLUSTER_EVENTID;
 #endif
 }
 
