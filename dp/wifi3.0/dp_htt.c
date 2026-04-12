@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4120,6 +4120,78 @@ static inline void dp_htt_rx_nbuf_free(qdf_nbuf_t nbuf)
 }
 #endif
 
+#ifdef WLAN_HAPS_ENABLE
+static void dp_haps_indication(struct dp_soc *soc, uint32_t *msg_word)
+{
+	uint8_t vdev_id;
+	uint64_t time_rcvd;
+	uint32_t timer_high, timer_low;
+	struct dp_vdev *vdev;
+	struct cdp_haps_ops *haps_ops;
+	HTT_T2H_HAPS_ACTION_CODE action_code;
+	HTT_T2H_HAPS_TIME_TYPE timeout_type;
+
+	action_code = HTT_T2H_POWER_STATE_INFO_HTT_ACTION_CODE_GET(*msg_word);
+	vdev_id = HTT_T2H_POWER_STATE_INFO_HTT_VDEV_ID_GET(*msg_word);
+
+	if (vdev_id >= MAX_VDEV_CNT) {
+		dp_err("HAPS: invalid vdev_id");
+		return;
+	}
+
+	vdev = soc->vdev_id_map[vdev_id];
+	if (qdf_unlikely(!vdev)) {
+		dp_err("HAPS: vdev is NULL");
+		return;
+	}
+
+	timeout_type = HTT_T2H_POWER_STATE_INFO_HTT_TIME_TYPE_GET(*msg_word);
+
+	if (timeout_type != HTT_T2H_HAPS_TIME_TYPE_HOST_QTIME) {
+		dp_err("HAPS: Only Qtime is supported");
+		return;
+	}
+
+	timer_high = HTT_T2H_POWER_STATE_INFO_HTT_TIME_HIGH_GET(*(msg_word + 2));
+	timer_low = HTT_T2H_POWER_STATE_INFO_HTT_TIME_LOW_GET(*(msg_word + 1));
+
+	time_rcvd = ((uint64_t)timer_high << 32) | timer_low;
+
+	if (!soc->cdp_soc.ops ||
+	    !soc->cdp_soc.ops->haps_ops ||
+	    !soc->cdp_soc.ops->haps_ops->haps_handle_ind) {
+		dp_err_rl("HAPS: ops is NULL");
+		return;
+	}
+
+	haps_ops = soc->cdp_soc.ops->haps_ops;
+
+	switch (action_code) {
+	case HTT_T2H_HAPS_ACTION_PAUSE:
+		haps_ops->haps_handle_ind(vdev->osif_vdev, 1, time_rcvd,
+					  false, false);
+		break;
+
+	case HTT_T2H_HAPS_ACTION_PAUSE_WITH_ONESHOT_UNPAUSE:
+		haps_ops->haps_handle_ind(vdev->osif_vdev, 1, time_rcvd,
+					  true, false);
+		break;
+
+	case HTT_T2H_HAPS_ACTION_UNPAUSE:
+		haps_ops->haps_handle_ind(vdev->osif_vdev, 0, time_rcvd,
+					  false, false);
+		break;
+
+	default:
+		qdf_rl_debug("HAPS: Unknown cmd received");
+	}
+}
+#else
+static void dp_haps_indication(struct dp_soc *soc, uint32_t *msg_word)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_TX_LATENCY_STATS
 #define TX_LATENCY_STATS_PERIOD_MAX_MS \
 	(HTT_H2T_TX_LATENCY_STATS_CFG_PERIODIC_INTERVAL_M >> \
@@ -4810,6 +4882,11 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 	case HTT_T2H_MSG_TYPE_SDWF_MSDUQ_CFG_IND:
 	{
 		dp_sawf_msduq_recfg_ind(soc, msg_word);
+		break;
+	}
+	case HTT_T2H_MSG_TYPE_HAPS:
+	{
+		dp_haps_indication(soc->dp_soc, msg_word);
 		break;
 	}
 	default:

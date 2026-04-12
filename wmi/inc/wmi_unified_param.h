@@ -6382,6 +6382,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_twt_unavail_mode, VDEV_PARAM_TWT_UNAVAIL_MODE),
 	VDEV_PARAM(vdev_param_connect_ext_features,
 		   VDEV_PARAM_CONNECT_EXT_FEATURES),
+	VDEV_PARAM(vdev_param_set_go_cancel_noa,
+		   VDEV_PARAM_SET_GO_CANCEL_NOA),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
@@ -6817,6 +6819,7 @@ typedef enum {
 	wmi_service_mrsno_support,
 	wmi_service_twt_p2p_go_concurrency_support,
 	wmi_service_sta_twt_stats_ext,
+	wmi_service_p2p_cancel_one_shot_noa_support,
 
 	wmi_services_max,
 } wmi_conv_service_ids;
@@ -7209,6 +7212,7 @@ struct target_feature_set {
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
  * @enable_optimize_power: Enable power optimization
  * @enable_bcn_rssi_history_report: Enable beacon rssi history report
+ * @haps_feature_flags: HAPS flags setting for power save config
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7356,6 +7360,7 @@ typedef struct {
 #endif
 	bool enable_optimize_power;
 	bool enable_bcn_rssi_history_report;
+	uint32_t haps_feature_flags;
 } target_resource_config;
 
 /**

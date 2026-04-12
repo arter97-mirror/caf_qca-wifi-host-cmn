@@ -10577,6 +10577,8 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	else
 		WMI_RSRC_CFG_FLAGS2_OPTIMIZE_POWER_SET(resource_cfg->flags2, 1);
 
+	resource_cfg->dp_haps_config = tgt_res_cfg->haps_feature_flags;
+
 	wmi_copy_latency_flowq_support(resource_cfg, tgt_res_cfg);
 	wmi_copy_full_bw_nol_cfg(resource_cfg, tgt_res_cfg);
 	wmi_copy_mgmt_rx_srng_support(resource_cfg, tgt_res_cfg);
@@ -24147,6 +24149,8 @@ static void populate_tlv_service_mlo(uint32_t *wmi_service)
 {
 	wmi_service[wmi_service_mlo_sta_nan_ndi_support] =
 			WMI_SERVICE_MLO_STA_NAN_NDI_SUPPORT;
+	wmi_service[wmi_service_p2p_cancel_one_shot_noa_support] =
+			WMI_SERVICE_P2P_CANCEL_ONE_SHOT_NOA_SUPPORT;
 }
 #else /* WLAN_FEATURE_11BE_MLO */
 static inline void populate_tlv_service_mlo(uint32_t *wmi_service)
