@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017, 2019-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -25,6 +25,8 @@
 
 #ifndef _WIFI_POS_MAIN_H_
 #define _WIFI_POS_MAIN_H_
+
+#include "scheduler_api.h"
 
 #ifdef CNSS_GENL
 #define ENHNC_FLAGS_LEN 4
@@ -125,7 +127,7 @@ wifi_pos_peer_object_destroyed_notification(struct wlan_objmgr_peer *peer,
 					    void *arg);
 
 /**
- * wifi_pos_oem_rsp_handler: lmac rx ops registered
+ * wifi_pos_oem_rsp_handler() - lmac rx ops registered
  * @psoc: pointer to psoc object
  * @oem_rsp: response from firmware
  *
@@ -133,4 +135,22 @@ wifi_pos_peer_object_destroyed_notification(struct wlan_objmgr_peer *peer,
  */
 int wifi_pos_oem_rsp_handler(struct wlan_objmgr_psoc *psoc,
 			     struct oem_data_rsp *oem_rsp);
+
+/**
+ * wifi_pos_pasn_flush_callback() - Callback to cleanup the Wi-Fi Pos module
+ * scheduler message
+ * @msg: Pointer to the message
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wifi_pos_pasn_flush_callback(struct scheduler_msg *msg);
+
+/**
+ * wifi_pos_process_msg() - Callback to handle the Wi-Fi Pos module scheduler
+ * message
+ * @msg: Pointer to the message
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wifi_pos_process_msg(struct scheduler_msg *msg);
 #endif

@@ -317,7 +317,6 @@ QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 					     struct wlan_pasn_request *pasn_peer,
 					     uint8_t num_pasn_peers,
 					     bool is_initiate_pasn);
-
 #else
 static inline
 QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
@@ -342,10 +341,31 @@ QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS
 os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 					 struct wifi_pos_peer_meas_report *report);
+
+/**
+ * os_if_wifi_pos_peer_create_indication() - PASN peer create indication
+ * @vdev: Pointer to vdev object
+ * @cookie: Pointer to cookie
+ * @peer_create_status: Flag to indicate if peer creation was successful or
+ * failed
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
+						 void *cookie,
+						 uint8_t peer_create_status);
 #else
 static inline QDF_STATUS
 os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 					 struct wifi_pos_peer_meas_report *report)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline
+QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
+						 void *cookie,
+						 uint8_t peer_create_status)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

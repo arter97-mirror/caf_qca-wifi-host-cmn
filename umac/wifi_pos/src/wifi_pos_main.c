@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1344,4 +1344,84 @@ QDF_STATUS wifi_pos_populate_caps(struct wlan_objmgr_psoc *psoc,
 	caps->num_channels = count;
 	qdf_mem_free(ch_list);
 	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS wifi_pos_pasn_flush_callback(struct scheduler_msg *msg)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (!msg || !msg->bodyptr) {
+		wifi_pos_err("PASN msg is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (msg->type >= WIFI_POS_PASN_MSG_MAX) {
+		wifi_pos_err("Unsupported msg type: %d", msg->type);
+		status = QDF_STATUS_E_INVAL;
+	}
+	qdf_mem_free(msg->bodyptr);
+
+	return status;
+}
+
+QDF_STATUS wifi_pos_process_msg(struct scheduler_msg *msg)
+{
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct wlan_pasn_request *req;
+	struct wlan_objmgr_vdev *vdev;
+	struct wifi_pos_legacy_ops *legacy_cb;
+
+	if (!msg || !msg->bodyptr) {
+		wifi_pos_err("msg or bodyptr is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	switch (msg->type) {
+	case WIFI_POS_NB_PASN_PEER_CREATE_REQ:
+		req = msg->bodyptr;
+
+		wifi_pos_err("vdev:%d PASN NB Peer create req received",
+			     req->vdev_id);
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+						req->psoc, req->vdev_id,
+						WLAN_WIFI_POS_CORE_ID);
+		if (!vdev) {
+			wifi_pos_err("Vdev:%d is null", req->vdev_id);
+			break;
+		}
+
+		legacy_cb = wifi_pos_get_legacy_ops();
+		if (!legacy_cb || !legacy_cb->pasn_peer_create_cb) {
+			wifi_pos_err("legacy callbacks is not registered");
+			wlan_objmgr_vdev_release_ref(vdev,
+						     WLAN_WIFI_POS_CORE_ID);
+			break;
+		}
+		status = legacy_cb->pasn_peer_create_cb(req->psoc,
+							&req->peer_mac,
+							req->vdev_id);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			wifi_pos_err("Creating PASN peer failed");
+			wlan_objmgr_vdev_release_ref(vdev,
+						     WLAN_WIFI_POS_CORE_ID);
+			break;
+		}
+
+		/*
+		 * Add peer to secure peer list, this will help to track and
+		 * cleanup the peer.
+		 */
+		wifi_pos_add_peer_to_list(vdev, req, false);
+
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+		break;
+	default:
+		wifi_pos_debug("Invalid Wifi Pos msg type:%d", msg->type);
+		break;
+	}
+
+	/* Always invoke the flush callback to free the msg */
+	wifi_pos_pasn_flush_callback(msg);
+
+	return QDF_STATUS_E_FAILURE;
 }

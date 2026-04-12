@@ -318,6 +318,42 @@ wifi_pos_request_flush_pasn_keys(struct wlan_objmgr_psoc *psoc,
 	return status;
 }
 
+static
+QDF_STATUS wifi_pos_continue_nb_peer_create(struct wlan_objmgr_vdev *vdev,
+					    struct wlan_pasn_request *req,
+					    uint8_t peer_create_status)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wifi_pos_psoc_priv_obj *pasn_priv;
+	struct wifi_pos_osif_ops *osif_cb;
+	QDF_STATUS status;
+	void *cookie;
+
+	osif_cb = wifi_pos_get_osif_callbacks();
+	if (!osif_cb || !osif_cb->osif_pasn_peer_create_complete_cb) {
+		wifi_pos_err("OSIF %s cb is NULL",
+			     !osif_cb ? "" : "PASN");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc)
+		return QDF_STATUS_E_INVAL;
+
+	pasn_priv = wifi_pos_get_psoc_priv_obj(psoc);
+	if (!pasn_priv)
+		return QDF_STATUS_E_INVAL;
+
+	cookie = pasn_priv->pasn_keys_ctx;
+	status = osif_cb->osif_pasn_peer_create_complete_cb(vdev, cookie,
+							    peer_create_status);
+	if (QDF_IS_STATUS_ERROR(status))
+		wifi_pos_err("vdev:%d PASN Peer create completion failed",
+			     wlan_vdev_get_id(vdev));
+
+	return status;
+}
+
 static QDF_STATUS
 wifi_pos_check_and_initiate_pasn_authentication(struct wlan_objmgr_psoc *psoc,
 						struct wlan_objmgr_vdev *vdev,
@@ -466,6 +502,45 @@ end:
 	return status;
 }
 
+static struct wlan_pasn_request *
+wifi_post_get_peer_request(struct wlan_objmgr_psoc *psoc,
+			   struct wlan_objmgr_vdev *vdev,
+			   struct qdf_mac_addr *peer_mac)
+{
+	struct wifi_pos_11az_context *pasn_context;
+	struct wlan_pasn_request *sec_entry, *unsec_entry;
+	struct wlan_pasn_request *secure_list, *unsecure_list;
+	struct wifi_pos_vdev_priv_obj *vdev_pos_obj;
+	int i;
+
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
+		return NULL;
+
+	vdev_pos_obj = wifi_pos_get_vdev_priv_obj(vdev);
+	if (!vdev_pos_obj) {
+		wifi_pos_err("Wifi pos vdev priv obj is null");
+		return NULL;
+	}
+
+	pasn_context = &vdev_pos_obj->pasn_context;
+	secure_list = pasn_context->secure_peer_list;
+	unsecure_list = pasn_context->unsecure_peer_list;
+	for (i = 0; i < WLAN_MAX_11AZ_PEERS; i++) {
+		sec_entry = &secure_list[i];
+		unsec_entry = &unsecure_list[i];
+
+		if (!qdf_is_macaddr_broadcast(&sec_entry->peer_mac) &&
+		    qdf_is_macaddr_equal(&sec_entry->peer_mac, peer_mac))
+			return sec_entry;
+
+		if (!qdf_is_macaddr_broadcast(&unsec_entry->peer_mac) &&
+		    qdf_is_macaddr_equal(&unsec_entry->peer_mac, peer_mac))
+			return unsec_entry;
+	}
+
+	return NULL;
+}
+
 QDF_STATUS
 wifi_pos_handle_ranging_peer_create_rsp(struct wlan_objmgr_psoc *psoc,
 					uint8_t vdev_id,
@@ -475,6 +550,7 @@ wifi_pos_handle_ranging_peer_create_rsp(struct wlan_objmgr_psoc *psoc,
 	struct wlan_objmgr_vdev *vdev;
 	struct wifi_pos_vdev_priv_obj *vdev_pos_obj;
 	struct wifi_pos_11az_context *pasn_context;
+	struct wlan_pasn_request *peer_info;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
@@ -489,6 +565,14 @@ wifi_pos_handle_ranging_peer_create_rsp(struct wlan_objmgr_psoc *psoc,
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 		wifi_pos_err("Wifi pos vdev priv obj is null");
 		return QDF_STATUS_E_FAILURE;
+	}
+
+	peer_info = wifi_post_get_peer_request(psoc, vdev, peer_mac);
+	if (peer_info->is_userspace_peer_create) {
+		status = wifi_pos_continue_nb_peer_create(vdev, peer_info,
+							  peer_create_status);
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+		return status;
 	}
 
 	pasn_context = &vdev_pos_obj->pasn_context;
@@ -703,8 +787,8 @@ wifi_pos_set_peer_ltf_keyseed_required(struct wlan_objmgr_peer *peer,
 	}
 
 	peer_priv->is_ltf_keyseed_required = value;
-	wifi_pos_debug("peer_mac:" QDF_MAC_ADDR_FMT " value:%d",
-		       QDF_MAC_ADDR_REF(wlan_peer_get_macaddr(peer)), value);
+	wifi_pos_err("peer_mac:" QDF_MAC_ADDR_FMT " value:%d",
+		     QDF_MAC_ADDR_REF(wlan_peer_get_macaddr(peer)), value);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -907,4 +991,14 @@ wifi_pos_rtt_peer_meas_report(struct wlan_objmgr_psoc *psoc,
 	}
 
 	return osif_cb->osif_rtt_peer_meas_report_cb(psoc, report);
+}
+
+QDF_STATUS wlan_wifi_pos_pasn_flush_callback(struct scheduler_msg *msg)
+{
+	return wifi_pos_pasn_flush_callback(msg);
+}
+
+QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg)
+{
+	return wifi_pos_process_msg(msg);
 }

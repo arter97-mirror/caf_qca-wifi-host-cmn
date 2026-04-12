@@ -48,6 +48,7 @@
 #include "linux/genetlink.h"
 #include "wifi_pos_utils_pub.h"
 #endif
+#include "wlan_osif_request_manager.h"
 
 #ifdef CNSS_GENL
 #define WLAN_CLD80211_MAX_SIZE SKB_WITH_OVERHEAD(8192UL)
@@ -1544,6 +1545,31 @@ nla_put_failure:
 	return status;
 }
 #endif
+
+QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
+						 void *cookie,
+						 uint8_t peer_create_status)
+{
+	struct osif_request *request;
+	uint8_t *priv;
+
+	request = osif_request_get(cookie);
+	if (!request) {
+		osif_debug("Obsolete PASN peer create request (cookie:0x%pK)",
+			   cookie);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	priv = osif_request_priv(request);
+	*priv = peer_create_status;
+	osif_debug("PASN NB Peer create completed! status:%d",
+		   peer_create_status);
+
+	osif_request_complete(request);
+	osif_request_put(request);
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
 #if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \

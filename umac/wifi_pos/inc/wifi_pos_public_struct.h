@@ -31,6 +31,7 @@
 #define WLAN_MAX_11AZ_PEERS 16
 #define WLAN_11AZ_MAX_PASSPHRASE_LEN 64
 #define WLAN_PASN_MAX_COOKIE_LEN 255
+#define PASN_PEER_CREATE_TIMEOUT_MS 4000
 
 /**
  * enum wifi_pos_pasn_peer_type  - PASN peer type
@@ -69,6 +70,16 @@ enum wlan_responder_mode {
 	RESPONDER_RTT_11AZ_TB_RANGING_SUPPORTED = 2
 };
 
+/**
+ * enum wifi_pos_pasn_msg_type - Wifi Pos PASN msg type
+ * @WIFI_POS_NB_PASN_PEER_CREATE_REQ: Request type for creating PASN peer
+ * @WIFI_POS_PASN_MSG_MAX: Placeholder for maximum value
+ */
+enum wifi_pos_pasn_msg_type {
+	WIFI_POS_NB_PASN_PEER_CREATE_REQ = 0,
+	WIFI_POS_PASN_MSG_MAX
+};
+
 #define WIFI_POS_IS_PEER_ALREADY_DELETED(flag) \
 			((flag) & WIFI_POS_PEER_DELETE_ACTION_ALREADY_DELETED)
 #define WIFI_POS_IS_FLUSH_KEYS_REQUIRED(flag) \
@@ -78,8 +89,11 @@ enum wlan_responder_mode {
 #define CFG_RESPONDER_11AZ_TB_SUPPORT 0x2
 #define CFG_RESPONDER_11AZ_MAX_SUPPORT (CFG_RESPONDER_11AZ_NTB_SUPPORT | \
 		CFG_RESPONDER_11AZ_TB_SUPPORT)
+
 /**
- * struct wlan_pasn_request  - PASN peer create request data
+ * struct wlan_pasn_request - PASN peer create request data
+ * @vdev_id: Vdev identifier
+ * @psoc: Pointer to PSOC object
  * @peer_mac: Peer mac address
  * @peer_type: Peer type of enum wifi_pos_pasn_peer_type
  * @self_mac: Self mac address to be used for frame exchange & key
@@ -100,8 +114,12 @@ enum wlan_responder_mode {
  * the keys
  * @akm: used - should be either PASN or PASN + SAE
  * @cipher: Indicates the key cipher suite
+ * @is_userspace_peer_create: flag to indicate if the peer create is initiated
+ * by userspace.
  */
 struct wlan_pasn_request {
+	uint8_t vdev_id;
+	struct wlan_objmgr_psoc *psoc;
 	struct qdf_mac_addr peer_mac;
 	enum wifi_pos_pasn_peer_type peer_type;
 	struct qdf_mac_addr self_mac;
@@ -116,6 +134,7 @@ struct wlan_pasn_request {
 	uint16_t control_flags;
 	uint32_t akm;
 	uint32_t cipher;
+	bool is_userspace_peer_create;
 };
 
 /**

@@ -30,6 +30,8 @@ static struct wifi_pos_osif_ops osif_ops = {
 	.osif_initiate_pasn_cb = os_if_wifi_pos_initiate_pasn_auth,
 #ifdef WLAN_FEATURE_USD_RANGING
 	.osif_rtt_peer_meas_report_cb = os_if_wifi_pos_send_rtt_peer_meas_result,
+	.osif_pasn_peer_create_complete_cb =
+				os_if_wifi_pos_peer_create_indication,
 #endif
 };
 

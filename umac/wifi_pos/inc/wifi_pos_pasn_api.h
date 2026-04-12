@@ -26,6 +26,7 @@
 #include "wlan_objmgr_cmn.h"
 #include "wifi_pos_utils_pub.h"
 #include "wifi_pos_public_struct.h"
+#include "scheduler_api.h"
 
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /**
@@ -227,6 +228,23 @@ wifi_pos_get_pasn_peer_max_num_per_vdev(void)
 	return WLAN_MAX_11AZ_PEERS;
 }
 
+/**
+ * wlan_wifi_pos_pasn_flush_callback() - Callback to flush the Wi-Fi POS
+ * scheduler message.
+ * @msg: Pointer to the scheduler message
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wlan_wifi_pos_pasn_flush_callback(struct scheduler_msg *msg);
+
+/**
+ * wlan_wifi_pos_process_msg() - Callback to process the Wi-Fi POS
+ * scheduler message.
+ * @msg: Pointer to the scheduler message
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg);
 #else
 static inline
 QDF_STATUS wifi_pos_handle_ranging_peer_create(struct wlan_objmgr_psoc *psoc,
@@ -312,6 +330,18 @@ static inline uint8_t
 wifi_pos_get_pasn_peer_max_num_per_vdev(void)
 {
 	return 0;
+}
+
+static inline
+QDF_STATUS wlan_wifi_pos_pasn_flush_callback(struct scheduler_msg *msg)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WIFI_POS_PASN_API_H_ */
