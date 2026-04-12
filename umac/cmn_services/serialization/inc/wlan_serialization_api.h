@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -207,6 +206,10 @@ typedef QDF_STATUS (*wlan_ser_umac_cmd_cb)(void *umac_cmd);
  * @WLAN_SER_CMD_HIGH_AP_AVAILABILITY: Cmd to serialize high ap availability
  * operation
  * @WLAN_SER_CMD_LINK_RECFG: Cmd to serialize Link recfg operation
+ * @WLAN_SER_CMD_RANGING_PEER_CREATE: Cmd to serialize RTT peer create
+ * operation
+ * @WLAN_SER_CMD_RANGING_PEER_DELETE: Cmd to serialize RTT peer delete
+ * operation
  * @WLAN_SER_CMD_MAX: Max enumeration
  */
 enum wlan_serialization_cmd_type {
@@ -247,6 +250,8 @@ enum wlan_serialization_cmd_type {
 	WLAN_SER_CMD_SAP_BW_UPDATE,
 	WLAN_SER_CMD_HIGH_AP_AVAILABILITY,
 	WLAN_SER_CMD_LINK_RECFG,
+	WLAN_SER_CMD_RANGING_PEER_CREATE,
+	WLAN_SER_CMD_RANGING_PEER_DELETE,
 	WLAN_SER_CMD_MAX
 };
 
