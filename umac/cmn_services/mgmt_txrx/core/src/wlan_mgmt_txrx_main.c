@@ -382,6 +382,9 @@ uint8_t *mgmt_txrx_get_frm_type_string(enum mgmt_frame_type frm_type)
 	CASE_RETURN_STRING(MGMT_ACTION_EHT_LINK_RECONFIG_NOTIFY);
 	CASE_RETURN_STRING(MGMT_ACTION_EHT_LINK_RECONFIG_REQUEST);
 	CASE_RETURN_STRING(MGMT_ACTION_EHT_LINK_RECONFIG_RESPONSE);
+	CASE_RETURN_STRING(MGMT_ACTION_UHR_LINK_RECONFIG_REQUEST);
+	CASE_RETURN_STRING(MGMT_ACTION_UHR_LINK_RECONFIG_RESPONSE);
+	CASE_RETURN_STRING(MGMT_ACTION_UHR_LINK_RECONFIG_NOTIFY);
 	default:
 		break;
 	}
@@ -1222,6 +1225,45 @@ mgmt_get_protected_eht_action_subtype(uint8_t action_code)
 }
 #endif /* WLAN_FEATURE_11BE */
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * mgmt_get_protected_uhr_action_subtype() - gets protected UHR action subtype
+ * @action_code: action code
+ *
+ * This function returns the subtype for protected UHR action category.
+ *
+ * Return: mgmt frame type
+ */
+static enum mgmt_frame_type
+mgmt_get_protected_uhr_action_subtype(uint8_t action_code)
+{
+	enum mgmt_frame_type frm_type;
+
+	switch (action_code) {
+	case UHR_LINK_RECONFIG_REQUEST:
+		frm_type = MGMT_ACTION_UHR_LINK_RECONFIG_REQUEST;
+		break;
+	case UHR_LINK_RECONFIG_RESPONSE:
+		frm_type = MGMT_ACTION_UHR_LINK_RECONFIG_RESPONSE;
+		break;
+	case UHR_LINK_RECONFIG_NOTIFY:
+		frm_type = MGMT_ACTION_UHR_LINK_RECONFIG_NOTIFY;
+		break;
+	default:
+		frm_type = MGMT_FRM_UNSPECIFIED;
+		break;
+	}
+
+	return frm_type;
+}
+#else
+static enum mgmt_frame_type
+mgmt_get_protected_uhr_action_subtype(uint8_t action_code)
+{
+	return MGMT_FRM_UNSPECIFIED;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 /**
  * mgmt_txrx_get_action_frm_subtype() - gets action frm subtype
  * @mpdu_data_ptr: pointer to mpdu data
@@ -1314,6 +1356,10 @@ mgmt_txrx_get_action_frm_subtype(uint8_t *mpdu_data_ptr)
 		break;
 	case ACTION_CATEGORY_PROTECTED_EHT:
 		frm_type = mgmt_get_protected_eht_action_subtype(
+				action_hdr->action_code);
+		break;
+	case ACTION_CATEGORY_PROTECTED_UHR:
+		frm_type = mgmt_get_protected_uhr_action_subtype(
 				action_hdr->action_code);
 		break;
 	default:

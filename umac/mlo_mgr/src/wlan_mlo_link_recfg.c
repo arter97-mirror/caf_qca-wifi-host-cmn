@@ -271,6 +271,14 @@ QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx);
 
+#ifdef WLAN_FEATURE_11BN_SMD
+static QDF_STATUS
+mlo_uhr_link_recfg_gen_link_assoc_rsp(
+	struct wlan_objmgr_vdev *vdev,
+	struct mlo_link_recfg_context *ctx,
+	struct wlan_mlo_link_recfg_req *link_recfg_req);
+#endif
+
 struct wlan_mlo_dev_context *
 mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
 {
@@ -4379,6 +4387,76 @@ mlo_link_recfg_handle_rsp(struct mlo_link_recfg_context *recfg_ctx,
 	return status;
 }
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * mlo_link_recfg_smd_gen_link_assoc_rsp() - Generate SMD link assoc responses
+ * @recfg_ctx: Link reconfiguration context
+ *
+ * Check if the received response is a UHR ST prep response (Type=0) with
+ * accepted links during SMD roaming, and if so, generate link-specific
+ * association response frames for the accepted links.
+ *
+ * Return: None
+ */
+static void
+mlo_link_recfg_smd_gen_link_assoc_rsp(struct mlo_link_recfg_context *recfg_ctx)
+{
+	struct wlan_objmgr_vdev *vdev = NULL;
+	struct wlan_objmgr_psoc *psoc;
+	QDF_STATUS status;
+	uint8_t i;
+
+	/* Get vdev for response generation */
+	psoc = mlo_link_recfg_get_psoc(recfg_ctx);
+	if (psoc) {
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+				psoc, 1,
+				WLAN_MLO_MGR_ID);
+	}
+
+	/* Check if this is UHR ST prep response (Type=0) with accepted links */
+	if (vdev && recfg_ctx->curr_recfg_rsp.type == UHR_LINK_RECONFIG_TYPE_ST_PREP &&
+	    recfg_ctx->curr_recfg_req.add_link_info.num_links > 0) {
+
+		mlo_info("UHR ST prep response: dialog=%d type=%d count=%d aid=%d",
+			 recfg_ctx->curr_recfg_rsp.dialog_token,
+			 recfg_ctx->curr_recfg_rsp.type,
+			 recfg_ctx->curr_recfg_rsp.count,
+			 recfg_ctx->curr_recfg_rsp.assigned_aid);
+
+		/* Log status for each link */
+		for (i = 0; i < recfg_ctx->curr_recfg_rsp.count; i++) {
+			mlo_info("  Link %d: link_id=%d status=%d (%s)",
+				 i,
+				 recfg_ctx->curr_recfg_rsp.recfg_status_list[i].link_id,
+				 recfg_ctx->curr_recfg_rsp.recfg_status_list[i].status_code,
+				 (recfg_ctx->curr_recfg_rsp.recfg_status_list[i].status_code == STATUS_SUCCESS) ?
+				 "ACCEPTED" : "REJECTED");
+		}
+
+		mlo_info("Generating link-specific association responses for accepted links");
+
+		/* Generate link-specific association responses */
+		status = mlo_uhr_link_recfg_gen_link_assoc_rsp(vdev, recfg_ctx,
+							       &recfg_ctx->curr_recfg_req);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("Failed to generate link assoc responses, status=%d", status);
+			/* Continue with normal flow - not fatal for backward compatibility */
+		} else {
+			mlo_info("Link-specific association responses generated successfully");
+		}
+	}
+
+	if (vdev)
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+}
+#else
+static void
+mlo_link_recfg_smd_gen_link_assoc_rsp(struct mlo_link_recfg_context *recfg_ctx)
+{
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 static QDF_STATUS
 mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 				struct link_recfg_rx_rsp *recfg_resp_data,
@@ -4412,10 +4490,12 @@ mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 
 	mlo_debug("RX response success");
 
-	if (smd_roam_in_progress(recfg_ctx))
+	if (smd_roam_in_progress(recfg_ctx)) {
 		status = smd_st_prep_response_received(recfg_ctx, tran);
-	else
+		mlo_link_recfg_smd_gen_link_assoc_rsp(recfg_ctx);
+	} else {
 		status = mlo_link_recfg_handle_rsp(recfg_ctx, tran);
+	}
 
 	return status;
 }
@@ -5894,6 +5974,20 @@ mlo_smd_handle_add_link_event(void *ctx,
 		 * add standby C, trigger link switch from B -> C.
 		 *
 		 */
+		mlo_link_recfg_sm_transition_to(
+			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
+		mlo_link_recfg_sm_deliver_event_sync(
+			recfg_ctx->ml_dev, event,
+			sizeof(link_sw_req), &link_sw_req);
+		return true;
+	} else if (smd_link_recfg_has_idle_vdev_for_add_link(
+				recfg_ctx, req, &link_sw_req)) {
+		/* SMD current AP links = A , Target AP links: AB:
+		 * A (idle vdev 1) -> AB:
+		 * add link B on idle vdev, trigger link switch with
+		 * MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK to skip disconnect.
+		 */
+		mlo_info("Idle vdev found for link addition, skipping disconnect");
 		mlo_link_recfg_sm_transition_to(
 			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
 		mlo_link_recfg_sm_deliver_event_sync(
