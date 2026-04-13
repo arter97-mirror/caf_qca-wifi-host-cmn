@@ -1130,7 +1130,7 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 				     replenish.free_list,
 				     num_alloc_desc);
 		} else
-			dp_err_rl("%pK:  no free rx_descs in freelist", dp_soc);
+			dp_info_rl("%pK: no free rx_descs in freelist", dp_soc);
 	}
 
 	if (qdf_unlikely(!num_req_buffers)) {
@@ -1150,7 +1150,7 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 							  tail);
 
 		if (!num_alloc_desc) {
-			dp_rx_err("%pK: no free rx_descs in freelist", dp_soc);
+			dp_rx_info("%pK: no free rx_descs in freelist", dp_soc);
 			DP_STATS_INC(dp_pdev, err.desc_alloc_fail,
 					num_req_buffers);
 			hal_srng_access_end(dp_soc->hal_soc, rxdma_srng);
