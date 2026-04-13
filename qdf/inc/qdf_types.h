@@ -53,11 +53,21 @@
 /*
  * Add more levels here based on the number of perf clusters in SoC
  * Also modify hif_get_perf_cluster_bitmap
+ *
+ * SOC_PERF_CLUSTER_FIRST: define when hypervisor/platform assigns lower
+ * cluster IDs to perf cores.
+ * Only effective when NUM_SOC_PERF_CLUSTER <= 1 (single perf cluster).
  */
-#define CPU_CLUSTER_TYPE_LITTLE 0
-#define CPU_CLUSTER_TYPE_PERF 1
 #if defined(NUM_SOC_PERF_CLUSTER) && (NUM_SOC_PERF_CLUSTER > 1)
-#define CPU_CLUSTER_TYPE_PERF2 2
+#define CPU_CLUSTER_TYPE_LITTLE 0
+#define CPU_CLUSTER_TYPE_PERF   1
+#define CPU_CLUSTER_TYPE_PERF2  2
+#elif defined(SOC_PERF_CLUSTER_FIRST)
+#define CPU_CLUSTER_TYPE_LITTLE 1
+#define CPU_CLUSTER_TYPE_PERF   0
+#else
+#define CPU_CLUSTER_TYPE_LITTLE 0
+#define CPU_CLUSTER_TYPE_PERF   1
 #endif
 
 #define qdf_get_current() __qdf_get_current()
