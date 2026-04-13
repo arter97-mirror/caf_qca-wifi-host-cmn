@@ -10,6 +10,18 @@
 #include "dp_types.h"
 #include <wlan_cfg.h>
 
+/**
+ * dp_dal_refill_ring_type - Refill ring type
+ * DP_DAL_REFILL_RING: Host refill ring
+ * DP_DAL_DIRECT_REFILL_RING: Direct refill ring
+ * DP_DAL_MAX_REFILL_RING: MAX refill ring
+ */
+enum dp_dal_refill_ring_type {
+	DP_DAL_REFILL_RING,
+	DP_DAL_DIRECT_REFILL_RING,
+	DP_DAL_MAX_REFILL_RING
+};
+
 #ifdef FEATURE_DP_DAL_SIM
 struct dp_dal_sim_ctx;
 #endif
@@ -324,6 +336,7 @@ struct dp_dal_rx_desc_node {
  * @tx_cmpl_ring: Array of HAL SRNG structures for TX completion rings.
  * @tx_ring: Array of HAL SRNG structures for TX rings.
  * @rx_refill_ring: HAL SRNG structure for RX refill ring.
+ * @direct_refill_ring: HAL SRNG structure for Direct refill ring
  * @num_tx_ring_info: number of tx ring info saved
  * @num_rx_ring_info: number of rx ring info saved
  * @num_tx_cmpl_ring_info: number of tx completion ring info saved
@@ -370,6 +383,7 @@ struct dp_dal_ctx {
 	struct dal_srng tx_cmpl_ring[DAL_TX_RINGS_MAX];
 	struct dal_srng tx_ring[DAL_TX_RINGS_MAX];
 	struct dal_srng rx_refill_ring;
+	struct dal_srng direct_refill_ring;
 	int num_tx_ring_info;
 	int num_rx_ring_info;
 	int num_tx_cmpl_ring_info;

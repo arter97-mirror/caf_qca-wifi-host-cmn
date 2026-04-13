@@ -290,6 +290,7 @@ struct dal_sim_srng {
  * @tx_cmpl_ring: Array of HAL SRNG structures for TX completion rings
  * @tx_ring: Array of HAL SRNG structures for TX rings
  * @rx_refill_ring: HAL SRNG structure for RX refill ring
+ * @direct_refill_ring: HAL SRNG structure for RX replenish ring (SW2RXDMA)
  * @rx_sw2sw_ring: SW2SW rings for RX rings (per ring ID)
  * @tx_cpl_sw2sw_ring: SW2SW rings for TX completion rings (per ring ID)
  * @stats: Statistics for the simulator
@@ -335,6 +336,7 @@ struct dp_dal_sim_ctx {
 	struct dal_sim_srng tx_cmpl_ring[DAL_SIM_NUM_TX_RINGS];
 	struct dal_sim_srng tx_ring[DAL_SIM_NUM_TX_RINGS];
 	struct dal_sim_srng rx_refill_ring;
+	struct dal_sim_srng direct_refill_ring;
 
 	/* SW2SW rings for maintaining descriptors per ring ID */
 	struct dp_dal_sim_sw2sw_ring rx_sw2sw_ring[DAL_SIM_NUM_RX_RINGS];

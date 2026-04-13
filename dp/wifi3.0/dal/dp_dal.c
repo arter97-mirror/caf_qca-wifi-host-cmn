@@ -2276,6 +2276,50 @@ dp_dal_update_ring_params(struct dp_soc *soc, struct hal_srng *srng,
 	dp_dal_update_ring_hp_tp_addr(soc, srng, dal_ring);
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline
+void dp_dal_save_refill_ring_info(struct dp_soc *soc, struct dp_srng *srng,
+				  int refill_ring_num)
+{
+	struct dal_srng *dal_ring;
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	switch (refill_ring_num) {
+	case DP_DAL_REFILL_RING:
+		dal_ring = &dal_ctx->rx_refill_ring;
+		dp_dal_update_ring_params(soc,
+					  (struct hal_srng *)srng->hal_srng,
+					  dal_ring);
+		dal_ring->initialized = true;
+		break;
+	case DP_DAL_DIRECT_REFILL_RING:
+
+		dal_ring = &dal_ctx->direct_refill_ring;
+		dp_dal_update_ring_params(soc,
+					  (struct hal_srng *)srng->hal_srng,
+					  dal_ring);
+		dal_ring->initialized = true;
+		break;
+	default:
+		dp_err("invalid refill ring num - %d", refill_ring_num);
+	}
+}
+#else
+static inline
+void dp_dal_save_refill_ring_info(struct dp_soc *soc, struct dp_srng *srng,
+				  int refill_ring_num)
+{
+	struct dal_srng *dal_ring;
+	struct dp_dal_ctx *dal_ctx = soc->dal_ctx;
+
+	dal_ring = &dal_ctx->rx_refill_ring;
+	dp_dal_update_ring_params(soc,
+				  (struct hal_srng *)srng->hal_srng,
+				  dal_ring);
+	dal_ring->initialized = true;
+}
+#endif
+
 void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 			   enum hal_ring_type type, int ring_num)
 {
@@ -2342,11 +2386,7 @@ void dp_dal_save_srng_info(struct dp_soc *soc, struct dp_srng *srng,
 		dal_ctx->num_tx_cmpl_ring_info++;
 		break;
 	case RXDMA_BUF:
-		dal_ring = &dal_ctx->rx_refill_ring;
-		dp_dal_update_ring_params(soc,
-					  (struct hal_srng *)srng->hal_srng,
-					  dal_ring);
-		dal_ring->initialized = true;
+		dp_dal_save_refill_ring_info(soc, srng, ring_num);
 		break;
 	default:
 		dp_err("Invalid ring info rcvd srng %pK type %d ring_num %d",

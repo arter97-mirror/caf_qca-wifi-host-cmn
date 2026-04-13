@@ -56,6 +56,8 @@ struct offload_sim_irq_ctx {
  * TX completion rings
  * @tx_ring_hal_srng: Array of vendor HAL SRNG structures for TX rings
  * @rx_refill_ring_hal_srng: Vendor HAL SRNG structure for RX refill ring
+ * @direct_refill_ring_hal_srng: Vendor HAL SRNG structure for direct refill
+ * ring
  * @rx_irq_ctx: IRQ context for RX rings
  * @tx_cpl_irq_ctx: IRQ context for TX completion rings
  * @suspend_msg_irq_num: IRQ number for suspend message
@@ -71,6 +73,7 @@ struct dp_dal_offload_sim_ctx {
 	struct dal_vndr_hal_srng tx_cmpl_ring_hal_srng[DAL_TX_RINGS_MAX];
 	struct dal_vndr_hal_srng tx_ring_hal_srng[DAL_TX_RINGS_MAX];
 	struct dal_vndr_hal_srng rx_refill_ring_hal_srng;
+	struct dal_vndr_hal_srng direct_refill_ring_hal_srng;
 	struct offload_sim_irq_ctx rx_irq_ctx[DAL_RX_RINGS_MAX];
 	struct offload_sim_irq_ctx tx_cpl_irq_ctx[DAL_TX_RINGS_MAX];
 	int suspend_msg_irq_num;

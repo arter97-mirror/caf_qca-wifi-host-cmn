@@ -3232,6 +3232,17 @@ dp_direct_refill_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 	}
 }
 
+static inline void
+dp_dal_save_replenish_ring_info(struct dp_soc *soc,
+				struct dp_srng *direct_refill_ring,
+				uint8_t lmac_id)
+{
+	if (!direct_refill_ring->direct_refill)
+		return;
+
+	dp_dal_save_srng_info(soc, direct_refill_ring, RXDMA_BUF,
+			      DP_DAL_DIRECT_REFILL_RING);
+}
 /**
  * dp_rxdma_ring_alloc() - allocate the RXDMA rings
  * @soc: data path SoC handle
@@ -3289,6 +3300,11 @@ static int dp_rxdma_ring_setup(struct dp_soc *soc, struct dp_pdev *pdev)
 				return QDF_STATUS_E_FAILURE;
 			}
 		}
+
+		dp_dal_save_replenish_ring_info(
+				soc,
+				&pdev->rx_mac_buf_ring[DP_DIR_REFILL_RING_NUM],
+				pdev->lmac_id);
 	}
 	return QDF_STATUS_SUCCESS;
 }
@@ -16602,7 +16618,7 @@ static QDF_STATUS dp_pdev_srng_init(struct dp_pdev *pdev)
 
 		dp_dal_save_srng_info(soc,
 				      &soc->rx_refill_buf_ring[pdev->lmac_id],
-				      RXDMA_BUF, pdev->lmac_id);
+				      RXDMA_BUF, DP_DAL_REFILL_RING);
 
 	}
 

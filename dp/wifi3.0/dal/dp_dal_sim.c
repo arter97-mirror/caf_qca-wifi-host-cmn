@@ -580,6 +580,34 @@ static int dp_dal_sim_ring_init(struct dp_dal_sim_ctx *sim_ctx,
 	return dp_dal_sim_calc_msi(sim_ctx, sim_ring);
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline
+int dp_dal_sim_parse_replenish_ring_info(struct dp_dal_ctx *dal_ctx,
+					 struct dp_dal_sim_ctx *sim_ctx)
+{
+	int ret;
+
+	if (dal_ctx->direct_refill_ring.initialized) {
+		ret = dp_dal_sim_ring_init(sim_ctx,
+					   &dal_ctx->direct_refill_ring,
+					   &sim_ctx->direct_refill_ring);
+		if (ret)
+			return ret;
+	} else {
+		dp_err("Invalid ring info for RX replenish ring");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#else
+static inline
+int dp_dal_sim_parse_replenish_ring_info(struct dp_dal_ctx *dal_ctx,
+					 struct dp_dal_sim_ctx *sim_ctx)
+{
+	return 0;
+}
+#endif
 /**
  * dp_dal_sim_parse_ring_info() - Parse ring information from driver
  * @sim_ctx: Pointer to simulator context
@@ -654,7 +682,9 @@ static int dp_dal_sim_parse_ring_info(struct dp_dal_sim_ctx *sim_ctx,
 		return -EINVAL;
 	}
 
-	return 0;
+	/* Parse RX replenish ring information */
+	ret = dp_dal_sim_parse_replenish_ring_info(dal_ctx, sim_ctx);
+	return ret;
 }
 
 /**

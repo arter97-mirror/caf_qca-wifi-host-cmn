@@ -359,6 +359,26 @@ dp_dal_offload_sim_hal_ring_init(struct dp_dal_offload_sim_ctx *offload_sim_ctx,
 	DAL_VNDR_SRNG_LOCK_INIT(&hal_srng->lock);
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline
+void dp_dal_offload_replenish_ring_init(
+		struct dp_dal_sim_ctx *dal_sim_ctx,
+		struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+	dp_dal_offload_sim_hal_ring_init(
+			offload_ctx,
+			&offload_ctx->direct_refill_ring_hal_srng,
+			&dal_sim_ctx->direct_refill_ring);
+}
+#else
+static inline
+void dp_dal_offload_replenish_ring_init(
+		struct dp_dal_sim_ctx *dal_sim_ctx,
+		struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+}
+#endif
+
 int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
@@ -421,6 +441,7 @@ int dp_dal_offload_sim_init(struct dp_dal_sim_ctx *dal_sim_ctx)
 					 &offload_ctx->rx_refill_ring_hal_srng,
 					 &dal_sim_ctx->rx_refill_ring);
 
+	dp_dal_offload_replenish_ring_init(dal_sim_ctx, offload_ctx);
 	/* Vendor HAL ops can be overridden here if needed with target_type*/
 	dal_vndr_hal_ops_attach(&offload_ctx->hal_soc);
 
