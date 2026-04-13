@@ -59,6 +59,9 @@
 #include "wlan_mlme_api.h"
 #include <wlan_action_oui_main.h>
 #include <wlan_mlo_mgr_sta.h>
+#include "wlan_serialization_api.h"
+#include <wlan_cm_api.h>
+#include <wlan_mlo_mgr_link_switch.h>
 
 #ifdef FEATURE_6G_SCAN_CHAN_SORT_ALGO
 
@@ -1241,6 +1244,153 @@ static bool scm_is_p2p_wildcard_ssid(struct scan_cache_entry *scan_entry)
 	return false;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
+/**
+ * struct scm_assoc_state_update_arg - Argument for targeted assoc_state update
+ * @bssid: BSSID of the new beacon/probe response to match
+ * @freq: channel frequency of the new beacon to match
+ * @found: set to true once a matching link is found and updated
+ */
+struct scm_assoc_state_update_arg {
+	struct qdf_mac_addr bssid;
+	qdf_freq_t freq;
+	bool found;
+};
+
+/**
+ * scm_check_and_update_non_mlo_assoc_state() - Update assoc_state for
+ *                                               non-MLO connected STA
+ * @pdev: pdev pointer
+ * @vdev: vdev pointer
+ * @update_arg: BSSID/freq to match against connected BSSID
+ *
+ * For non-MLO STA vdevs, checks if the connected BSSID/freq matches the
+ * beacon's BSSID/freq in @update_arg. If matched, updates the scan entry
+ * assoc_state to SCAN_ENTRY_CON_STATE_ASSOC.
+ */
+static void
+scm_check_and_update_non_mlo_assoc_state(
+				struct wlan_objmgr_pdev *pdev,
+				struct wlan_objmgr_vdev *vdev,
+				struct scm_assoc_state_update_arg *update_arg)
+{
+	struct qdf_mac_addr connected_bssid;
+	struct wlan_channel *chan;
+	struct wlan_ssid ssid;
+
+	if (!ucfg_cm_is_vdev_active(vdev))
+		return;
+
+	if (QDF_IS_STATUS_ERROR(wlan_vdev_get_bss_peer_mac(vdev,
+							   &connected_bssid)))
+		return;
+
+	if (!qdf_is_macaddr_equal(&connected_bssid, &update_arg->bssid))
+		return;
+
+	chan = wlan_vdev_get_active_channel(vdev);
+	if (!chan || chan->ch_freq != update_arg->freq)
+		return;
+
+	wlan_vdev_mlme_get_ssid(vdev, ssid.ssid, &ssid.length);
+	/* update the scan entry assoc_state */
+	scm_update_assoc_state_con_for_bss(pdev, &update_arg->bssid,
+					   &ssid, update_arg->freq);
+	update_arg->found = true;
+}
+
+/**
+ * scm_check_and_update_assoc_state() - pdev vdev-iterate handler for targeted
+ *                                       assoc_state update
+ * @pdev: pdev pointer
+ * @obj: vdev object
+ * @arg: pointer to scm_assoc_state_update_arg
+ *
+ * For each vdev, checks if the BSSID/freq in @arg matches any MLO link.
+ * If matched, updates only that link's scan entry assoc_state to
+ * SCAN_ENTRY_CON_STATE_ASSOC and sets found = true to stop further iteration.
+ * For non-MLO vdevs, delegates to scm_check_and_update_non_mlo_assoc_state().
+ */
+static void
+scm_check_and_update_assoc_state(struct wlan_objmgr_pdev *pdev,
+				 void *obj, void *arg)
+{
+	struct wlan_objmgr_vdev *vdev = (struct wlan_objmgr_vdev *)obj;
+	struct scm_assoc_state_update_arg *update_arg =
+		(struct scm_assoc_state_update_arg *)arg;
+	struct mlo_link_info *link_info;
+	uint8_t link_info_iter;
+	struct wlan_ssid ssid;
+
+	/* if vdev is not STA/CLI return */
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE &&
+	    wlan_vdev_mlme_get_opmode(vdev) != QDF_P2P_CLIENT_MODE)
+		return;
+
+	/* Stop once a match has been found and updated */
+	if (update_arg->found)
+		return;
+
+	/* mlo_mgr_get_ap_link returns NULL for non-MLO vdevs */
+	link_info = mlo_mgr_get_ap_link(vdev);
+	if (!link_info) {
+		scm_check_and_update_non_mlo_assoc_state(pdev, vdev,
+							 update_arg);
+		return;
+	}
+
+	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+			link_info_iter++, link_info++) {
+		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+			continue;
+		if (qdf_is_macaddr_equal(&link_info->ap_link_addr,
+					 &update_arg->bssid) &&
+					 link_info->link_chan_info->ch_freq ==
+					 update_arg->freq) {
+			wlan_vdev_mlme_get_ssid(vdev, ssid.ssid, &ssid.length);
+			/* update the scan entry assoc_state */
+			scm_update_assoc_state_con_for_bss(pdev,
+							   &update_arg->bssid,
+							   &ssid,
+							   update_arg->freq);
+			update_arg->found = true;
+			break;
+		}
+	}
+}
+
+/**
+ * scm_update_assoc_state_for_new_beacon() - Update assoc_state for the
+ *                                            specific new beacon's BSSID
+ * @pdev: pdev pointer
+ * @scan_entry: newly added scan entry
+ *
+ * Loop vdev to check if this bssid is present in connected/link or not.
+ * If yes then update the scan entry assoc_state to
+ * SCAN_ENTRY_CON_STATE_ASSOC.
+ */
+static void
+scm_update_assoc_state_for_new_beacon(struct wlan_objmgr_pdev *pdev,
+				      struct scan_cache_entry *scan_entry)
+{
+	struct scm_assoc_state_update_arg update_arg;
+
+	qdf_copy_macaddr(&update_arg.bssid, &scan_entry->bssid);
+	update_arg.freq = scan_entry->channel.chan_freq;
+	update_arg.found = false;
+
+	wlan_objmgr_pdev_iterate_obj_list(pdev, WLAN_VDEV_OP,
+					  scm_check_and_update_assoc_state,
+					  &update_arg, 0, WLAN_SCAN_ID);
+}
+#else
+static inline void
+scm_update_assoc_state_for_new_beacon(struct wlan_objmgr_pdev *pdev,
+				      struct scan_cache_entry *scan_entry)
+{
+}
+#endif
+
 QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 {
 	struct wlan_objmgr_psoc *psoc;
@@ -1460,6 +1610,21 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 			qdf_mem_free(scan_node);
 			continue;
 		}
+
+		/*
+		 * If scan is not in progress, check if this new beacon's
+		 * BSSID belongs to a connected/standby MLO link and update
+		 * only that specific scan entry's assoc_state. This handles
+		 * the case where a scan entry was flushed due to CSA and a
+		 * new beacon/probe response is received outside scan.
+		 * Only the new beacon's BSSID is updated (not all links),
+		 * making this efficient for the per-beacon path.
+		 * The scan complete handler (wlan_cm_update_all_sta_links_
+		 * assoc_state) handles the bulk update for all links at scan
+		 * completion.
+		 */
+		if (wlan_get_pdev_status(pdev) == SCAN_NOT_IN_PROGRESS)
+			scm_update_assoc_state_for_new_beacon(pdev, scan_entry);
 
 		if (bcn->save_rnr_info)
 			scm_add_rnr_channel_db(pdev, scan_entry);
@@ -2147,6 +2312,38 @@ void scm_update_rnr_from_scan_cache(struct wlan_objmgr_pdev *pdev)
 }
 #endif
 
+/**
+ * scm_update_assoc_state_con_for_bss() - Update assoc_state to
+ *                                         SCAN_ENTRY_CON_STATE_ASSOC for
+ *                                         the given BSS
+ * @pdev: pdev object
+ * @bssid: BSSID of the BSS
+ * @ssid: SSID of the BSS
+ * @freq: operating frequency of the BSS
+ *
+ * Helper to mark a specific scan entry as connected by setting its
+ * assoc_state to SCAN_ENTRY_CON_STATE_ASSOC.
+ *
+ * Return: void
+ */
+void scm_update_assoc_state_con_for_bss(struct wlan_objmgr_pdev *pdev,
+					struct qdf_mac_addr *bssid,
+					struct wlan_ssid *ssid,
+					uint32_t freq)
+{
+	struct bss_info bss_info;
+	struct mlme_info mlme_info;
+
+	qdf_mem_zero(&bss_info, sizeof(bss_info));
+	qdf_copy_macaddr(&bss_info.bssid, bssid);
+	bss_info.freq = freq;
+	bss_info.ssid.length = ssid->length;
+	qdf_mem_copy(&bss_info.ssid.ssid, ssid->ssid, ssid->length);
+	mlme_info.assoc_state = SCAN_ENTRY_CON_STATE_ASSOC;
+	/* update the scan entry assoc_state */
+	scm_scan_update_mlme_by_bssinfo(pdev, &bss_info, &mlme_info);
+}
+
 QDF_STATUS scm_scan_update_mlme_by_bssinfo(struct wlan_objmgr_pdev *pdev,
 		struct bss_info *bss_info, struct mlme_info *mlme)
 {
@@ -2156,6 +2353,7 @@ QDF_STATUS scm_scan_update_mlme_by_bssinfo(struct wlan_objmgr_pdev *pdev,
 	struct scan_cache_node *next_node = NULL;
 	struct wlan_objmgr_psoc *psoc;
 	struct scan_cache_entry *entry;
+	uint32_t prev_assoc_state;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
@@ -2178,12 +2376,15 @@ QDF_STATUS scm_scan_update_mlme_by_bssinfo(struct wlan_objmgr_pdev *pdev,
 			(bss_info->freq == entry->channel.chan_freq)) {
 			/* Acquire db lock to prevent simultaneous update */
 			qdf_spin_lock_bh(&scan_db->scan_db_lock);
+			prev_assoc_state = entry->mlme_info.assoc_state;
 			qdf_mem_copy(&entry->mlme_info, mlme,
 					sizeof(struct mlme_info));
-			scm_debug("BSSID: "QDF_MAC_ADDR_FMT" set assoc_state to %d with age %lu ms",
-				  QDF_MAC_ADDR_REF(entry->bssid.bytes),
-				  mlme->assoc_state,
-				  util_scan_entry_age(entry));
+			if (prev_assoc_state != mlme->assoc_state)
+				scm_debug("BSSID: "QDF_MAC_ADDR_FMT" assoc_state %d -> %d age %lu ms",
+					  QDF_MAC_ADDR_REF(entry->bssid.bytes),
+					  prev_assoc_state,
+					  mlme->assoc_state,
+					  util_scan_entry_age(entry));
 			scm_scan_entry_put_ref(scan_db,
 					cur_node, false);
 			qdf_spin_unlock_bh(&scan_db->scan_db_lock);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -309,6 +309,25 @@ scm_filter_rnr_flag_pno(struct wlan_objmgr_vdev *vdev,
 {
 }
 #endif
+
+/**
+ * scm_update_assoc_state_con_for_bss() - Update assoc_state to
+ *                                         SCAN_ENTRY_CON_STATE_ASSOC for
+ *                                         the given BSS
+ * @pdev: pdev object
+ * @bssid: BSSID of the BSS
+ * @ssid: SSID of the BSS
+ * @freq: operating frequency of the BSS
+ *
+ * Helper to mark a specific scan entry as connected by setting its
+ * assoc_state to SCAN_ENTRY_CON_STATE_ASSOC.
+ *
+ * Return: void
+ */
+void scm_update_assoc_state_con_for_bss(struct wlan_objmgr_pdev *pdev,
+					struct qdf_mac_addr *bssid,
+					struct wlan_ssid *ssid,
+					uint32_t freq);
 
 /**
  * scm_scan_update_mlme_by_bssinfo() - updates scan entry with mlme data

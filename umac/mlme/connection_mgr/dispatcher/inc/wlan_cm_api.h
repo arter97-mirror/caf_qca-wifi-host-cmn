@@ -741,4 +741,18 @@ void wlan_cm_bearer_switch_resp(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
  * Return: True/False
  */
 bool wlan_cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wlan_cm_update_all_sta_links_assoc_state() - Update assoc_state for all
+ *                                              connected STA links
+ * @pdev: pdev pointer
+ *
+ * Iterates all STA vdevs on the pdev and updates assoc_state to
+ * SCAN_ENTRY_CON_STATE_ASSOC for connected entries. For MLO connections,
+ * updates all links (active + standby). For non-MLO connections, updates
+ * the connected BSSID entry. Called on scan completion to prevent scan
+ * entries from aging out after CSA events.
+ */
+void wlan_cm_update_all_sta_links_assoc_state(struct wlan_objmgr_pdev *pdev);
+
 #endif /* __WLAN_CM_UCFG_API_H */
