@@ -1111,14 +1111,6 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 				continue;
 
 			pool_size -= pp_params->pool_size;
-			/* Immediately destroy the page pool if there
-			 * are no inflight pages.
-			 */
-			if (qdf_page_pool_full_bh(pp_params->pp)) {
-				qdf_list_insert_back(&destroy_list,
-						     &pp_params->node);
-				continue;
-			}
 
 			/* Immediately destroy the page pool if there
 			 * are no inflight buffers.
