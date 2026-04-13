@@ -908,6 +908,31 @@ int dp_dal_offload_sim_get_tx_compl_desc(struct dp_dal_sim_ctx *dal_sim_ctx,
 	return retrieved;
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline
+uint32_t dp_dal_offload_sim_get_rx_replenish_avail_entries(
+				struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+	struct dal_vndr_hal_srng *direct_refill_ring;
+	uint32_t num_entries_avail = 0;
+
+	direct_refill_ring = &offload_ctx->direct_refill_ring_hal_srng;
+	DAL_VNDR_SRNG_LOCK(&direct_refill_ring->lock);
+	num_entries_avail = dal_vndr_hal_srng_src_num_avail(
+					&offload_ctx->hal_soc,
+					direct_refill_ring, 1);
+	DAL_VNDR_SRNG_UNLOCK(&direct_refill_ring->lock);
+	return num_entries_avail;
+}
+#else
+static inline
+uint32_t dp_dal_offload_sim_get_rx_replenish_avail_entries(
+				struct dp_dal_offload_sim_ctx *offload_ctx)
+{
+	return 0;
+}
+#endif
+
 uint32_t
 dp_dal_offload_sim_get_rx_refill_avail_entries(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
@@ -938,9 +963,12 @@ dp_dal_offload_sim_get_rx_refill_avail_entries(struct dp_dal_sim_ctx *dal_sim_ct
 							&offload_ctx->hal_soc,
 							rx_refill_ring,
 							1);
+
 	/* Release the ring lock */
 	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
 
+	num_entries_avail +=
+		dp_dal_offload_sim_get_rx_replenish_avail_entries(offload_ctx);
 	dp_debug("RX refill ring available entries: %u", num_entries_avail);
 
 	return num_entries_avail;
@@ -994,6 +1022,50 @@ void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx)
 	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline int
+dp_dal_offload_sim_replenish_rxdma_ring(
+		struct dp_dal_offload_sim_ctx *offload_ctx,
+		struct dp_dal_sim_ctx *dal_sim_ctx,
+		u32 cnt, struct dal_buffer_addr_info *buf_addr_info,
+		u32 start)
+{
+	struct dal_vndr_hal_srng *direct_refill_ring;
+	u32 i;
+	void *replenish_desc;
+
+	direct_refill_ring = &offload_ctx->direct_refill_ring_hal_srng;
+	dp_dal_offload_sim_ring_access_start(offload_ctx, direct_refill_ring);
+	for (i = start; i < cnt; i++) {
+		replenish_desc = dal_vndr_hal_srng_src_get_next(
+						&offload_ctx->hal_soc,
+						direct_refill_ring);
+		if (!replenish_desc) {
+			dp_err_rl("replenish ring full synced %u/%u descriptors",
+				  i, cnt);
+			break;
+		}
+
+		dal_vndr_hal_rxbm_sync(&offload_ctx->hal_soc,
+				       replenish_desc,
+				       &buf_addr_info[i]);
+	}
+
+	dp_dal_offload_sim_ring_access_end(offload_ctx, direct_refill_ring);
+	return i;
+}
+#else
+static inline int
+dp_dal_offload_sim_replenish_rxdma_ring(
+		struct dp_dal_offload_sim_ctx *offload_ctx,
+		struct dp_dal_sim_ctx *dal_sim_ctx,
+		u32 cnt, struct dal_buffer_addr_info *buf_addr_info,
+		u32 start)
+{
+	return start;
+}
+#endif
+
 int dp_dal_offload_sim_rxbm_sync(struct dp_dal_sim_ctx *dal_sim_ctx,
 				 u32 cnt, void **rx_buff)
 {
@@ -1034,11 +1106,8 @@ int dp_dal_offload_sim_rxbm_sync(struct dp_dal_sim_ctx *dal_sim_ctx,
 		refill_desc = dal_vndr_hal_srng_src_get_next(
 							&offload_ctx->hal_soc,
 							rx_refill_ring);
-		if (!refill_desc) {
-			dp_err_rl("refill ring full synced %u/%u descriptors",
-				  i, cnt);
+		if (!refill_desc)
 			break;
-		}
 
 		/* Copy descriptor from rx_buff array to refill ring entry */
 		dal_vndr_hal_rxbm_sync(&offload_ctx->hal_soc,
@@ -1049,8 +1118,10 @@ int dp_dal_offload_sim_rxbm_sync(struct dp_dal_sim_ctx *dal_sim_ctx,
 	/* End ring access and release lock */
 	dp_dal_offload_sim_ring_access_end(offload_ctx, rx_refill_ring);
 
-	dp_debug("synced %u RX buffer descriptors to refill ring",
-		 i);
+	i = dp_dal_offload_sim_replenish_rxdma_ring(offload_ctx, dal_sim_ctx,
+						    cnt, buf_addr_info, i);
+	dp_debug("synced %u/%u RX buffer descriptors to refill ring",
+		 i, cnt);
 
 	return i;
 }
