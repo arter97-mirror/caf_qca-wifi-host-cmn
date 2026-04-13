@@ -49,6 +49,7 @@
 #include "wlan_p2p_ucfg_api.h"
 #endif
 #include "wlan_pmo_ucfg_api.h"
+#include <wlan_cm_api.h>
 
 #define INVALID_LINK_ID 255
 
@@ -1209,6 +1210,15 @@ static void wlan_cfg80211_scan_done_callback(
 		       util_scan_get_ev_type_name(event->type), event->type,
 		       util_scan_get_ev_reason_name(event->reason),
 		       event->reason, unique_bss_count);
+
+	/*
+	 * Update assoc_state for all connected STA links (MLO and non-MLO)
+	 * to prevent scan entries from aging out after CSA events. Only
+	 * needed when scan found at least one BSS entry.
+	 */
+	if (unique_bss_count)
+		wlan_cm_update_all_sta_links_assoc_state(pdev);
+
 allow_suspend:
 	qdf_mutex_acquire(&osif_priv->osif_scan->scan_req_q_lock);
 	if (qdf_list_empty(&osif_priv->osif_scan->scan_req_q)) {
