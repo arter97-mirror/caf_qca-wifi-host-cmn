@@ -309,19 +309,17 @@ bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt, u16 ring_id)
  *
  * Return: 0 on success
  */
-int dp_dal_rx_replenish_bypass_mode(void *priv, u32 cnt, bool use_rsv_pktid)
+static
+int dp_dal_rx_replenish_bypass_mode(struct dp_dal_ctx *dal_ctx, u32 cnt,
+				    bool use_rsv_pktid,
+				    struct dp_srng *dp_rxdma_srng,
+				    uint32_t *rx_bufs_refilled)
 {
-	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
 	struct dp_soc *soc;
 	struct rx_desc_pool *rx_desc_pool;
 	union dp_rx_desc_list_elem_t *desc_list_head = NULL;
 	union dp_rx_desc_list_elem_t *desc_list_tail = NULL;
 	int mac_id = 0;
-
-	if (!dal_ctx) {
-		dp_err("DAL context is NULL");
-		return -EINVAL;
-	}
 
 	soc = dal_ctx->soc;
 	if (!soc) {
@@ -336,16 +334,82 @@ int dp_dal_rx_replenish_bypass_mode(void *priv, u32 cnt, bool use_rsv_pktid)
 	}
 
 	rx_desc_pool = &soc->rx_desc_buf[mac_id];
-	__dp_rx_buffers_replenish(soc, mac_id,
-				  &soc->rx_refill_buf_ring[mac_id],
-				  rx_desc_pool, cnt,
-				  &desc_list_head, &desc_list_tail, true,
-				  false, __func__);
+	*rx_bufs_refilled = __dp_rx_buffers_replenish(soc, mac_id,
+						      dp_rxdma_srng,
+						      rx_desc_pool, cnt,
+						      &desc_list_head,
+						      &desc_list_tail, true,
+						      false, __func__);
 	qdf_spin_unlock_bh(&dal_ctx->dal_replenish_lock);
 
 	return 0;
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+int dp_dal_rx_replenish_bypass_mode_wrapper(void *priv, u32 cnt,
+					    bool use_rsv_pktid)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	int i;
+	uint32_t rx_bufs_used = 0, rx_bufs_refilled = 0;
+	uint32_t total_rx_bufs_refilled = 0;
+	struct dp_srng *dp_rxdma_srng;
+	int mac_id = 0;
+	int ret;
+	struct dp_soc *soc;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC is NULL in DAL context");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < soc->num_replenish_rings[mac_id]; i++) {
+		dp_rxdma_srng = soc->replenish_rings[mac_id][i];
+		ret = dp_dal_rx_replenish_bypass_mode(dal_ctx, cnt,
+						      use_rsv_pktid,
+						      dp_rxdma_srng,
+						      &rx_bufs_refilled);
+		total_rx_bufs_refilled += rx_bufs_refilled;
+		rx_bufs_used += rx_bufs_refilled;
+		cnt -= rx_bufs_refilled;
+		if (cnt == 0)
+			break;
+	}
+
+	return ret;
+}
+
+#else
+int dp_dal_rx_replenish_bypass_mode_wrapper(void *priv, u32 cnt,
+					    bool use_rsv_pktid)
+{
+	struct dp_dal_ctx *dal_ctx = (struct dp_dal_ctx *)priv;
+	struct dp_soc *soc;
+	uint32_t rx_bufs_refilled = 0;
+
+	if (!dal_ctx) {
+		dp_err("DAL context is NULL");
+		return -EINVAL;
+	}
+
+	soc = dal_ctx->soc;
+	if (!soc) {
+		dp_err("SOC is NULL in DAL context");
+		return -EINVAL;
+	}
+
+	return dp_dal_rx_replenish_bypass_mode(dal_ctx, cnt,
+					       use_rsv_pktid,
+					       &soc->rx_refill_buf_ring[0],
+					       &rx_bufs_refilled);
+}
+#endif
 /**
  * dp_dal_rx_rxbm_sync_bypass_mode() - Skeleton for platform bus rxbm sync
  * in bypass mode
@@ -820,7 +884,7 @@ more_data:
 						    false);
 		if (qdf_unlikely(ret)) {
 			if (soc->dal_mode_switch_in_progress) {
-				ret = dp_dal_rx_replenish_bypass_mode(
+				ret = dp_dal_rx_replenish_bypass_mode_wrapper(
 						dal_ctx, loop_processed, false);
 				if (ret)
 					qdf_atomic_add(loop_processed,

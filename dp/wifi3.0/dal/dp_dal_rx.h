@@ -22,8 +22,8 @@
 bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt, u16 ring_id);
 
 /**
- * dp_dal_rx_replenish_bypass_mode() - Skeleton for platform bus rx replenish
- * in bypass mode
+ * dp_dal_rx_replenish_bypass_mode_wrapper() - Skeleton for platform bus
+ * rx replenish in bypass mode
  *
  * @priv: private data
  * @cnt: count
@@ -31,7 +31,8 @@ bool dp_dal_rx_bypass_mode(void *priv, u32 *cnt, u16 ring_id);
  *
  * Return: 0 on success
  */
-int dp_dal_rx_replenish_bypass_mode(void *priv, u32 cnt, bool use_rsv_pktid);
+int dp_dal_rx_replenish_bypass_mode_wrapper(void *priv, u32 cnt,
+					    bool use_rsv_pktid);
 
 /**
  * dp_dal_rx_rxbm_sync_bypass_mode() - Skeleton for platform bus rxbm sync

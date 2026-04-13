@@ -956,7 +956,7 @@ struct platform_bus_ops plat_ops_bypass_mode = {
 	.stop = dp_dal_bus_stop_bypass_mode,
 	.request_irq = dp_dal_request_irq_bypass_mode,
 	.rx = dp_dal_rx_bypass_mode,
-	.rx_replenish = dp_dal_rx_replenish_bypass_mode,
+	.rx_replenish = dp_dal_rx_replenish_bypass_mode_wrapper,
 	.rxbm_sync = dp_dal_rx_rxbm_sync_bypass_mode,
 	.tx = dp_dal_tx_bypass_mode,
 	.tx_cpl = dp_dal_tx_cpl_bypass_mode,
@@ -1553,7 +1553,7 @@ static void dp_dal_rx_replenish_retry_handler(void *arg)
 	if (global_plat_ops->rx_replenish(dal_ctx, failures, false)) {
 		/* replenish via bypass path if mode switch in progress */
 		if (soc->dal_mode_switch_in_progress) {
-			ret = dp_dal_rx_replenish_bypass_mode(
+			ret = dp_dal_rx_replenish_bypass_mode_wrapper(
 						dal_ctx, failures, false);
 			if (!ret) {
 				qdf_atomic_sub(failures,
@@ -1806,8 +1806,9 @@ int dp_dal_rx_buffers_replenish(struct dp_soc *soc, uint32_t mac_id,
 	ret = global_plat_ops->rx_replenish(dal_ctx, num_req_buffers, false);
 	if (ret) {
 		if (soc->dal_mode_switch_in_progress)
-			dp_dal_rx_replenish_bypass_mode(dal_ctx,
-							num_req_buffers, false);
+			dp_dal_rx_replenish_bypass_mode_wrapper(dal_ctx,
+								num_req_buffers,
+								false);
 		else
 			qdf_atomic_add(num_req_buffers,
 				       &dal_ctx->rx_replenish_failures);
