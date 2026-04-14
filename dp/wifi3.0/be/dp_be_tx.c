@@ -143,7 +143,7 @@ QDF_STATUS dp_tx_comp_desc_invalidate(void *tx_comp_hal_desc,
 	} else {
 		/* Compare PA between ring desc and current TX desc stored */
 		desc_dma_addr = hal_tx_comp_get_paddr(tx_comp_hal_desc);
-
+		desc_dma_addr -= (*r_tx_desc)->pkt_offset;
 		if (desc_dma_addr != (*r_tx_desc)->dma_addr) {
 			*r_tx_desc = NULL;
 			status = QDF_STATUS_E_INVAL;
