@@ -1302,7 +1302,11 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 	else
 		rx_status.cck_flag = 1;
 
-	qdf_nbuf_update_radiotap(&rx_status, nbuf, qdf_nbuf_headroom(nbuf));
+	if (!qdf_nbuf_update_radiotap(&rx_status, nbuf,
+				      qdf_nbuf_headroom(nbuf))) {
+		DP_STATS_INC(vdev->pdev, dropped.mon_radiotap_update_err, 1);
+		return -EINVAL;
+	}
 
 	if (vdev->osif_rx)
 		vdev->osif_rx(vdev->osif_vdev, nbuf);
