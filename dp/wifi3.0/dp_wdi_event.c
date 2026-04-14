@@ -110,7 +110,7 @@ dp_wdi_event_handler(
 	struct dp_soc *soc_t = (struct dp_soc *)soc;
 	txrx_pdev = dp_get_pdev_for_mac_id(soc_t, pdev_id);
 
-	if (!event) {
+	if (!event || event >= WDI_EVENT_LAST || event < WDI_EVENT_BASE) {
 		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
 			"Invalid WDI event in %s", __func__);
 		return;
@@ -207,7 +207,7 @@ dp_wdi_event_unsub(
 	wdi_event_subscribe *event_cb_sub_handle,
 	uint32_t event)
 {
-	uint32_t event_index = event - WDI_EVENT_BASE;
+	uint32_t event_index;
 	struct dp_pdev *txrx_pdev =
 		dp_get_pdev_from_soc_pdev_id_wifi3((struct dp_soc *)soc,
 						   pdev_id);
@@ -219,6 +219,14 @@ dp_wdi_event_unsub(
 			"Invalid callback or pdev in %s", __func__);
 		return -EINVAL;
 	}
+
+	if (!event || event >= WDI_EVENT_LAST || event < WDI_EVENT_BASE) {
+		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
+			  "Invalid event in %s", __func__);
+		return -EINVAL;
+	}
+
+	event_index = event - WDI_EVENT_BASE;
 
 	dp_monitor_set_pktlog_wifi3(txrx_pdev, event, false);
 
