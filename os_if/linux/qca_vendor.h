@@ -1203,8 +1203,36 @@
  *     the sensor (currently only scan count may be extended to include
  *     additional statistics in the future), enabling analysis of power usage
  *     related to QSH-driven scans.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH: This vendor subcommand is used to
+ *	offload only the authentication process to wpa_supplicant in scenarios
+ *	where the SME is implemented in the driver.
+ *
+ *	Authentication frames are exchanged between the driver and
+ *	wpa_supplicant using %NL80211_CMD_FRAME, and the transmission status
+ *	of each frame is reported through %NL80211_CMD_FRAME_TX_STATUS. If the
+ *	authentication process results in establishing a PTKSA (e.g., EPPKE
+ *	authentication), wpa_supplicant stores the PTKSA in its internal cache.
+ *	After the final Authentication frame is successfully transmitted
+ *	(confirmed via %NL80211_CMD_FRAME_TX_STATUS), wpa_supplicant installs
+ *	the required temporal keys into the driver using %NL80211_CMD_NEW_KEY.
+ *	After completing the authentication process, wpa_supplicant will
+ *	indicate the success/failure status with the same command to the driver.
+ *
+ *	Upon successful authentication, the driver proceeds with association
+ *	phase and reports the connection result via %NL80211_CMD_CONNECT. If
+ *	association completes successfully, wpa_supplicant retrieves the KCK
+ *	and KEK from the PTKSA cache for use in PTK/GTK rekeying operations. If
+ *	the association fails, wpa_supplicant clears the PTKSA cache for this
+ *	session to avoid using stale key material.
+ *
+ *	wpa_supplicant advertises the authentication algorithms it supports for
+ *	this subcommand using %QCA_WLAN_VENDOR_ATTR_CONNECT_EXT_FEATURES via
+ *	%QCA_NL80211_VENDOR_SUBCMD_CONNECT_EXT.
+ *
+ *	The attributes used with this command are defined in
+ *	enum qca_wlan_vendor_attr_external_auth.
  */
-
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
 	QCA_NL80211_VENDOR_SUBCMD_TEST = 1,
@@ -1496,6 +1524,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_DCS_CONFIG = 269,
 	QCA_NL80211_VENDOR_SUBCMD_WLAN_HOST_TXRX_STATS = 271,
 	QCA_NL80211_VENDOR_SUBCMD_QSH_GET_STATS = 270,
+	QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH = 273,
 };
 
 enum qca_wlan_vendor_tos {
@@ -21219,10 +21248,16 @@ enum qca_wlan_vendor_attr_chan_usage_req {
  * support for RSN Overriding. Driver shall enable RSN Overriding in the
  * (re)association attempts only if this flag is indicated.
  *
+ * @QCA_CONNECT_EXT_FEATURE_EXT_AUTH_EPPKE: Flag attribute. This indicates
+ * supplicant support for external authentication with EPPKE authentication
+ * algorithm. The driver can offload EPPKE authentication to supplicant via
+ * QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH only if this flag is enabled.
+ *
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits.
  */
 enum qca_wlan_connect_ext_features {
 	QCA_CONNECT_EXT_FEATURE_RSNO	= 0,
+	QCA_CONNECT_EXT_FEATURE_EXT_AUTH_EPPKE = 1,
 	NUM_QCA_CONNECT_EXT_FEATURES /* keep last */
 };
 
@@ -22013,4 +22048,120 @@ enum qca_wlan_vendor_attr_qsh_stats {
 	QCA_WLAN_VENDOR_ATTR_QSH_STATS_AFTER_LAST - 1
 };
 
-#endif
+/**
+ * enum qca_wlan_vendor_external_auth_action - Action to perform with
+ *	external authentication request. Used by
+ *	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_ACTION.
+ *
+ * @QCA_WLAN_VENDOR_EXTERNAL_AUTH_START: Start the authentication.
+ * @QCA_WLAN_VENDOR_EXTERNAL_AUTH_ABORT: Abort the ongoing authentication.
+ *
+ */
+enum qca_wlan_vendor_external_auth_action {
+	QCA_WLAN_VENDOR_EXTERNAL_AUTH_START = 0,
+	QCA_WLAN_VENDOR_EXTERNAL_AUTH_ABORT = 1,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_external_auth - This enum is used by
+ * %QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_SSID: Mandatory binary attribute,
+ *	1..32 octets. This indicates the SSID of the AP and is used by both the
+ *	authentication request event and authentication response commands.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_BSSID: Mandatory 6-byte MAC address
+ *	attribute. It specifies the BSSID of the AP with which the
+ *	authentication has to happen. Used by both the authentication request
+ *	event and authentication response command.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_AP_MLD_ADDR: Optional 6-byte attribute
+ *	for the authentication request event interface. This specifies the MLD
+ *	MAC address of the AP MLD. The driver indicates this to enable MLO
+ *	during the authentication offload to supplicant. The driver shall look
+ *	at %NL80211_ATTR_MLO_SUPPORT flag capability in NL80211_CMD_CONNECT to
+ *	know whether the supplicant supports enabling MLO during the
+ *	authentication offload. Supplicant should use the address of the
+ *	interface (on which the authentication request event is reported) as
+ *	own MLD MAC address.
+ *
+ *	User space should enable MLO during the authentication only when it
+ *	receives the AP MLD MAC address in authentication offload request. User
+ *	space shouldn't enable MLO when the authentication offload request
+ *	doesn't indicate the AP MLD MAC address even if the AP is MLO capable.
+ *	The supplicant and driver should use MLD MAC addresses in the RA, TA,
+ *	and BSSID fields of Authentication frames sent or received via nl80211.
+ *	The driver translates the MLD MAC addresses to/from link addresses based
+ *	on the link chosen for the authentication.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_ACTION: Mandatory u32 attribute for
+ *	authentication request event. This indicates the operation to be
+ *	performed with external authentication request event. Possible values
+ *	for this attribute are defined in
+ *	enum qca_wlan_vendor_external_auth_action.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_ALGO: Mandatory u32 attribute for
+ *	authentication request event. This indicates the authentication
+ *	algorithm to be used. Possible values are defined in
+ *	enum nl80211_auth_type.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_AKM: Mandatory u32 attribute for the
+ *	authentication request event. This specifies AKM suite selector for the
+ *	respective authentication, selected by the driver. Possible values are
+ *	defined in IEEE Std 802.11-2024, 9.4.2.23.3 (AKM suites) (e.g.,
+ *	0x000FAC04).
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_PAIRWISE_CIPHER: Optional u32 attribute
+ *	for the authentication request event. This specifies the pairwise cipher
+ *	suite for the respective authentication, selected by the driver.
+ *	Possible values are defined in IEEE Std 802.11-2024, 9.4.2.23.2 (Cipher
+ *	suites) (e.g., 0x000FAC04).
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_GROUP_CIPHER: Optional u32 attribute for
+ *	the authentication request event. This specifes the group cipher suite
+ *	of the respective authentication, selected by the driver. Possible
+ *	values are defined in IEEE Std 802.11-2024, 9.4.2.23.2 (Cipher suites)
+ *	(e.g., 0x000FAC04).
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_GROUP_MGMT_CIPHER: Optional u32
+ *	attribute for the authentication request event. This specifies
+ *	the group management cipher suite of the respective authentication,
+ *	selected by the driver. Possible values are defined in
+ *	IEEE Std 802.11-2024, 9.4.2.23.2 (Cipher suites) (e.g., 0x000FAC04).
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_STATUS_CODE: Mandatory u16 attribute for
+ *	the authentication response command. The supplicant indicates the
+ *	status of the external authentication operation with this attribute to
+ *	the driver. Use %WLAN_STATUS_SUCCESS for successful authentication, use
+ *	%WLAN_STATUS_UNSPECIFIED_FAILURE if the supplicant cannot give the real
+ *	status code for failures.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_PMKID: Optional byte array attribute with
+ *	a size of 16 bytes for the authentication response command. The
+ *	supplicant indicates the PMKID generated during the external
+ *	authentication operation with this attribute to the driver, which needs
+ *	to be included in the RSNE of (Re)Association Request frame by the
+ *	driver.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_RSN_CAPAB: Optional u16 attribute
+ *	for the authentication request event interface. This specifies the
+ *	RSN Capabilities field (IEEE Std 802.11-2024, 9.4.2.23.4) that is to
+ *	be included in the RSNE of the Authentication frames.
+ * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_RSNXE_DATA: Optional binary attribute
+ *	for the authentication request event interface. This specifies the
+ *	entire element data to be included in the RSNXE of the Authentication
+ *	frames.
+ */
+enum qca_wlan_vendor_attr_external_auth {
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_SSID = 1,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_BSSID = 2,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_AP_MLD_ADDR = 3,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_ACTION = 4,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_ALGO = 5,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_AKM = 6,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_PAIRWISE_CIPHER = 7,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_GROUP_CIPHER = 8,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_GROUP_MGMT_CIPHER = 9,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_STATUS_CODE = 10,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_PMKID = 11,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_RSN_CAPAB = 12,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_RSNXE_DATA = 13,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_MAX =
+	QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_AFTER_LAST - 1,
+};
+
+#endif /* _WLAN_QCA_VENDOR_H_ */
+
