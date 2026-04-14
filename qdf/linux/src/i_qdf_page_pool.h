@@ -63,15 +63,6 @@ struct page *__qdf_page_pool_alloc_page(__qdf_page_pool_t pp);
 dma_addr_t __qdf_page_pool_get_dma_addr(struct page *page);
 
 /**
- * __qdf_page_pool_full_bh() - Check page pool full condition
- *
- * @pp: Page Pool Reference
- *
- * Return: true/false
- */
-bool __qdf_page_pool_full_bh(__qdf_page_pool_t pp);
-
-/**
  * __qdf_page_pool_empty() - Check page pool empty condition
  *
  * @pp: Page Pool Reference
@@ -193,18 +184,6 @@ static inline struct page *__qdf_page_pool_alloc_page(__qdf_page_pool_t pp)
 static inline dma_addr_t __qdf_page_pool_get_dma_addr(struct page *page)
 {
 	return 0;
-}
-
-/**
- * __qdf_page_pool_full_bh() - Check page pool full condition
- *
- * @pp: Page Pool Reference
- *
- * Return: true/false
- */
-static inline bool __qdf_page_pool_full_bh(__qdf_page_pool_t pp)
-{
-	return false;
 }
 
 /**
