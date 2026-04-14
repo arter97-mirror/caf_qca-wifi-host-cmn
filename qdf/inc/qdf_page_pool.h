@@ -49,18 +49,6 @@ static inline dma_addr_t qdf_page_pool_get_dma_addr(qdf_page_t page)
 }
 
 /**
- * qdf_page_pool_full_bh() - Check page pool full condition
- *
- * @pp: Page Pool Reference
- *
- * Return: true/false
- */
-static inline bool qdf_page_pool_full_bh(qdf_page_pool_t pp)
-{
-	return __qdf_page_pool_full_bh(pp);
-}
-
-/**
  * qdf_page_pool_empty() - Check page pool empty condition
  *
  * @pp: Page Pool Reference
@@ -174,7 +162,7 @@ qdf_page_pool_dec_buf_count(struct sk_buff *nbuf)
 
 /**
  * qdf_page_pool_check_inflight_buffers() - Check if page pool has in-flight
-					    buffers
+ *					    buffers
  *
  * @pp: Page pool pointer
  * @rx_pp_idx: Page pool tracker index for rx page pool
