@@ -584,6 +584,7 @@ enum channel_state {
  * @REG_STANDARD_POWER_AP: Standard Power AP
  * @REG_VERY_LOW_POWER_AP: Very low power AP
  * @REG_INDOOR_ENABLED_AP: Indoor Enabled AP
+ * @REG_GEO_FENCED_VARIABLE_POWER_AP: Geo-fenced Variable Power AP
  * @REG_CURRENT_MAX_AP_TYPE: current maximum, used to determine array size
  * @REG_MAX_SUPP_AP_TYPE: Current maximum AP power typer supported in the IEEE
  * standard.
@@ -597,6 +598,7 @@ enum reg_6g_ap_type {
 	REG_VERY_LOW_POWER_AP = 2,
 #ifdef CONFIG_REG_CLIENT
 	REG_INDOOR_ENABLED_AP = 3,
+	REG_GEO_FENCED_VARIABLE_POWER_AP = 4,
 #endif
 	REG_CURRENT_MAX_AP_TYPE,
 	REG_MAX_SUPP_AP_TYPE = REG_CURRENT_MAX_AP_TYPE - 1,

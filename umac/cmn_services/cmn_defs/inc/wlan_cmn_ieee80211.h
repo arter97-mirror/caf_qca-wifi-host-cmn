@@ -319,6 +319,12 @@ enum rsn_element_identifier {
 	RSNO_GEN_MAX = RSNO_GEN_WIFI7
 };
 
+/* GVP Tx power macros */
+#define WLAN_DEF_GVP_PSD_TX_POWER 11
+#define WLAN_DEF_GVP_EIRP_TX_POWER 24
+#define WLAN_DEF_GVP_STA_PSD_TPE_TX_POWER 5
+#define WLAN_DEF_GVP_STA_EIRP_TPE_TX_POWER 18
+
 /* EPR information element flags */
 #define ERP_NON_ERP_PRESENT   0x01
 #define ERP_USE_PROTECTION    0x02

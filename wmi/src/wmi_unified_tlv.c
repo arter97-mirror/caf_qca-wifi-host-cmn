@@ -17753,6 +17753,9 @@ static void reg_print_ap_power_type_6ghz(enum reg_6g_ap_type ap_type)
 	case REG_VERY_LOW_POWER_AP:
 		wmi_nofl_debug("AP Power type %s", "VERY LOW POWER INDOOR");
 		break;
+	case REG_GEO_FENCED_VARIABLE_POWER_AP:
+		wmi_nofl_debug("AP Power type %s", "GEO-FENCED VARIABLE POWER");
+		break;
 	default:
 		wmi_nofl_debug("Invalid AP Power type %u", ap_type);
 	}
@@ -23338,6 +23341,9 @@ static uint32_t get_wmi_6ghz_power_mode(uint32_t power_type_6ghz)
 {
 	if (power_type_6ghz == REG_INDOOR_ENABLED_AP)
 		return 4;
+
+	if (power_type_6ghz == REG_GEO_FENCED_VARIABLE_POWER_AP)
+		return WMI_6GHZ_REG_PWRMODE_GVP;
 
 	return power_type_6ghz;
 }
