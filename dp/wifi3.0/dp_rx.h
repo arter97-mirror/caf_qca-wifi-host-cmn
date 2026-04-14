@@ -1011,6 +1011,59 @@ dp_rx_get_num_buffers_required(struct rx_desc_pool *rx_desc_pool,
 #endif
 
 /**
+ * dp_rx_is_refill_srng_below_critical_threshold() - Check if refill
+ *   srng(s) are below critical threshold
+ *
+ * When IPA is enabled, checks if the sum of used entries across the
+ * host rxdma refill srng and the IPA refill srng is below
+ * CRITICAL_BUFFER_THRESHOLD. When IPA is disabled, checks only the
+ * rxdma refill srng.
+ *
+ * @soc: DP soc reference
+ * @dp_rxdma_srng: rxdma srng pointer
+ * @num_entries_avail: available entries in rxdma srng
+ *
+ * Return: True if below critical threshold
+ */
+#if defined(IPA_OFFLOAD) && defined(AUTO_PLATFORM)
+static inline bool
+dp_rx_is_refill_srng_below_critical_threshold(struct dp_soc *soc,
+					      struct dp_srng *dp_rxdma_srng,
+					      uint32_t num_entries_avail)
+{
+	uint32_t rxdma_entries_filled;
+	uint32_t ipa_entries_filled;
+	void *ipa_refill_srng;
+
+	rxdma_entries_filled = dp_rxdma_srng->num_entries - num_entries_avail;
+	if (!wlan_cfg_is_ipa_enabled(soc->wlan_cfg_ctx))
+		return rxdma_entries_filled < CRITICAL_BUFFER_THRESHOLD;
+
+	ipa_refill_srng = soc->rx_refill_buf_ring2.hal_srng;
+	if (!ipa_refill_srng)
+		return rxdma_entries_filled < CRITICAL_BUFFER_THRESHOLD;
+
+	hal_srng_access_start(soc->hal_soc, ipa_refill_srng);
+	ipa_entries_filled = soc->rx_refill_buf_ring2.num_entries -
+			     hal_srng_src_num_avail(soc->hal_soc,
+						    ipa_refill_srng, 1);
+	hal_srng_access_end(soc->hal_soc, ipa_refill_srng);
+
+	return (rxdma_entries_filled + ipa_entries_filled) <
+		CRITICAL_BUFFER_THRESHOLD;
+}
+#else
+static inline bool
+dp_rx_is_refill_srng_below_critical_threshold(struct dp_soc *soc,
+					      struct dp_srng *dp_rxdma_srng,
+					      uint32_t num_entries_avail)
+{
+	return (dp_rxdma_srng->num_entries - num_entries_avail) <
+		CRITICAL_BUFFER_THRESHOLD;
+}
+#endif
+
+/**
  * dp_rx_desc_pool_is_allocated() - check if memory is allocated for the
  *					rx descriptor pool
  * @rx_desc_pool: rx descriptor pool pointer
