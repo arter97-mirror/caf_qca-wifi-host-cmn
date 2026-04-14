@@ -4669,6 +4669,10 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	QCA_ATTR_ROAM_CONTROL_CONNECTED_RSSI_THRESHOLD where the configured
  *	threshold is used only when the connected AP asks the STA to roam
  *	through a BTM request.
+ *	This attribute should not be used together with
+ *	QCA_ATTR_ROAM_CONTROL_PER_BAND_LOW_RSSI_THRESHOLDS in the same command.
+ *	When both have been configured across separate commands, the most recent
+ *	configuration takes effect and overwrites the previous one.
  *
  * @QCA_ATTR_ROAM_CONTROL_CANDIDATE_ROAM_RSSI_DIFF: Unsigned 8-bit value.
  *	This attribute signifies the RSSI difference threshold between the
@@ -4774,6 +4778,27 @@ enum qca_vendor_attr_roam_candidate_selection_criteria {
  *	specified duration from the last successful connection time when a
  *	Deauthentication or Disassociation frame is received from the connected
  *	BSS.
+ *
+ * @QCA_ATTR_ROAM_CONTROL_PER_BAND_LOW_RSSI_THRESHOLDS: Nested attribute to
+ *	configure low RSSI thresholds per band. The nl80211_band enum value of
+ *	the respective band is used as the attribute type, and the data in each
+ *	such attribute is a signed 32-bit RSSI value in dBm, signifying the low
+ *	RSSI threshold applicable when the STA is connected on the corresponding
+ *	band. The STA keeps monitoring the connected AP's RSSI and will start
+ *	scanning for neighboring APs once the RSSI falls below the threshold
+ *	configured for the current band, triggering the roam eventually.
+ *	When QCA_ATTR_ROAM_CONTROL_CONNECTED_HIGH_RSSI_OFFSET and
+ *	QCA_ATTR_ROAM_CONTROL_CONNECTED_LOW_RSSI_THRESHOLD_DECREMENT are
+ *	configured together with this attribute, the per-band threshold
+ *	configured here serves as the low RSSI threshold for the respective
+ *	band, and those attributes apply to the per-band threshold accordingly.
+ *	The configured per-band thresholds are obtained with the same attribute
+ *	for get. Clears the per-band thresholds in the driver when specified
+ *	with the clear command.
+ *	This attribute should not be used together with
+ *	QCA_ATTR_ROAM_CONTROL_CONNECTED_LOW_RSSI_THRESHOLD in the same command.
+ *	When both have been configured across separate commands, the most recent
+ *	configuration takes effect and overwrites the previous one.
  */
 enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_ENABLE = 1,
@@ -4809,6 +4834,7 @@ enum qca_vendor_attr_roam_control {
 	QCA_ATTR_ROAM_CONTROL_PERIODIC_ROAM_SCAN_INTERVAL = 37,
 	QCA_ATTR_ROAM_CONTROL_CANDIDATE_SCORE_MIN_DELTA_THRESHOLD = 38,
 	QCA_ATTR_ROAM_CONTROL_CONNECTED_BSS_RECONNECT_DISALLOW_PERIOD = 39,
+	QCA_ATTR_ROAM_CONTROL_PER_BAND_LOW_RSSI_THRESHOLDS = 40,
 
 	/* keep last */
 	QCA_ATTR_ROAM_CONTROL_AFTER_LAST,
