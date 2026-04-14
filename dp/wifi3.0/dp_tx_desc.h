@@ -822,6 +822,7 @@ dp_tx_desc_alloc(struct dp_soc *soc, uint8_t desc_pool_id,
 			tx_desc = dp_tx_get_desc_flow_pool(pool);
 			tx_desc->pool_id = desc_pool_id;
 			tx_desc->flags = DP_TX_DESC_FLAG_ALLOCATED;
+			tx_desc->tx_info = QDF_TRACE_DEFAULT_TX_INFO;
 			dp_tx_desc_set_magic(tx_desc,
 					     DP_TX_MAGIC_PATTERN_INUSE);
 			is_pause = dp_tx_is_threshold_reached(pool,
@@ -1069,6 +1070,7 @@ dp_tx_desc_alloc(struct dp_soc *soc, uint8_t desc_pool_id,
 			tx_desc = dp_tx_get_desc_flow_pool(pool);
 			tx_desc->pool_id = desc_pool_id;
 			tx_desc->flags = DP_TX_DESC_FLAG_ALLOCATED;
+			tx_desc->tx_info = QDF_TRACE_DEFAULT_TX_INFO;
 			dp_tx_desc_set_magic(tx_desc,
 					     DP_TX_MAGIC_PATTERN_INUSE);
 			if (qdf_unlikely(pool->avail_desc < pool->stop_th)) {
@@ -1240,6 +1242,7 @@ static inline struct dp_tx_desc_s *dp_tx_desc_alloc(struct dp_soc *soc,
 	dp_tx_prefetch_desc(pool->freelist);
 
 	tx_desc->flags = DP_TX_DESC_FLAG_ALLOCATED;
+	tx_desc->tx_info = QDF_TRACE_DEFAULT_TX_INFO;
 
 	TX_DESC_LOCK_UNLOCK(&pool->lock);
 
@@ -1270,6 +1273,7 @@ static inline struct dp_tx_desc_s *dp_tx_spcl_desc_alloc(struct dp_soc *soc,
 	dp_tx_prefetch_desc(pool->freelist);
 
 	tx_desc->flags = DP_TX_DESC_FLAG_ALLOCATED;
+	tx_desc->tx_info = QDF_TRACE_DEFAULT_TX_INFO;
 	tx_desc->flags |= DP_TX_DESC_FLAG_SPECIAL;
 
 	TX_DESC_LOCK_UNLOCK(&pool->lock);

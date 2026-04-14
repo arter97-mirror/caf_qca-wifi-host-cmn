@@ -115,6 +115,7 @@ typedef int (qdf_abstract_print)(void *priv, const char *fmt, ...);
 #endif
 
 #define QDF_TRACE_DEFAULT_PDEV_ID 0xff
+#define QDF_TRACE_DEFAULT_TX_INFO 0xff
 #define INVALID_QDF_TRACE_ADDR 0xffffffff
 #define DEFAULT_QDF_TRACE_DUMP_COUNT 0
 #define QDF_TRACE_DEFAULT_MSDU_ID 0

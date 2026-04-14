@@ -2692,23 +2692,27 @@ static void dp_tx_trace_pkt(struct dp_soc *soc,
 			    qdf_nbuf_t skb, uint16_t msdu_id,
 			    uint8_t vdev_id, enum QDF_OPMODE op_mode)
 {
+	uint8_t tx_info = QDF_TRACE_DEFAULT_TX_INFO;
 	if (dp_is_tput_high(soc))
 		return;
+
+	if (QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(skb))
+		tx_info = QDF_NBUF_CB_TXPT_IDX_VALUE(skb);
 
 	QDF_NBUF_CB_TX_PACKET_TRACK(skb) = QDF_NBUF_TX_PKT_DATA_TRACK;
 	QDF_NBUF_CB_TX_DP_TRACE(skb) = 1;
 	DPTRACE(qdf_dp_trace_ptr(skb,
 				 QDF_DP_TRACE_LI_DP_TX_PACKET_PTR_RECORD,
-				 QDF_TRACE_DEFAULT_PDEV_ID,
+				 tx_info,
 				 qdf_nbuf_data_addr(skb),
 				 sizeof(qdf_nbuf_data(skb)),
 				 msdu_id, vdev_id, 0,
 				 op_mode));
 
-	qdf_dp_trace_log_pkt(vdev_id, skb, QDF_TX, QDF_TRACE_DEFAULT_PDEV_ID,
+	qdf_dp_trace_log_pkt(vdev_id, skb, QDF_TX, tx_info,
 			     op_mode, 0);
 
-	DPTRACE(qdf_dp_trace_data_pkt(skb, QDF_TRACE_DEFAULT_PDEV_ID,
+	DPTRACE(qdf_dp_trace_data_pkt(skb, tx_info,
 				      QDF_DP_TRACE_LI_DP_TX_PACKET_RECORD,
 				      msdu_id, QDF_TX));
 }
@@ -10049,7 +10053,7 @@ void dp_tx_comp_process_tx_status(struct dp_soc *soc,
 out_log:
 	DPTRACE(qdf_dp_trace_ptr(tx_desc->nbuf,
 			 QDF_DP_TRACE_LI_DP_FREE_PACKET_PTR_RECORD,
-			 QDF_TRACE_DEFAULT_PDEV_ID,
+			 tx_desc->tx_info,
 			 qdf_nbuf_data_addr(nbuf),
 			 sizeof(qdf_nbuf_data(nbuf)),
 			 tx_desc->id, ts->status, dp_status, op_mode));

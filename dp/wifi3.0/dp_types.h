@@ -774,6 +774,7 @@ struct dp_tx_ext_desc_pool_s {
  * struct dp_tx_desc_s - Tx Descriptor
  * @next: Next in the chain of descriptors in freelist or in the completion list
  * @nbuf: Buffer Address
+ * @tx_info: Tx classification index value
  * @length:
  * @magic:
  * @timestamp_tick:
@@ -807,6 +808,7 @@ struct dp_tx_ext_desc_pool_s {
 struct dp_tx_desc_s {
 	struct dp_tx_desc_s *next;
 	qdf_nbuf_t nbuf;
+	uint8_t tx_info;
 	uint16_t length;
 #ifdef DP_TX_TRACKING
 	uint32_t magic;
@@ -846,6 +848,7 @@ struct dp_tx_desc_s {
 struct dp_tx_desc_s {
 	struct dp_tx_desc_s *next;
 	qdf_nbuf_t nbuf;
+	uint8_t tx_info;
 	uint16_t length;
 #ifdef DP_TX_TRACKING
 	uint32_t magic;
