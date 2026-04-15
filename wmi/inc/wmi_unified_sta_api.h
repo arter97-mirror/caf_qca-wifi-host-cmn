@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -216,6 +216,24 @@ QDF_STATUS wmi_unified_update_tdls_peer_state_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_extract_vdev_tdls_ev_param(wmi_unified_t wmi_handle,
 					  void *evt_buf,
 					  struct tdls_event_info *param);
+
+/**
+ * wmi_unified_tdls_request_stats_info_cmd() - send WMI_REQUEST_STATS_INFO_CMDID
+ * @wmi_handle: wmi handle
+ * @vdev_id: ID of the STA vdev for which TDLS stats collection is requested
+ * @enable: 1 = enable FW TDLS per-peer data stats collection;
+ *          host never sends 0 — FW handles disable automatically on
+ *          disconnect/MCC transitions.
+ *
+ * Sends WMI_REQUEST_STATS_INFO_CMDID to firmware to start TDLS per-peer
+ * data stats collection on the specified vdev.  Called once per STA
+ * connection when a single-STA SCC condition is detected.
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_tdls_request_stats_info_cmd(wmi_unified_t wmi_handle,
+						   uint8_t vdev_id,
+						   uint32_t enable);
 #endif /* FEATURE_WLAN_TDLS */
 
 /**

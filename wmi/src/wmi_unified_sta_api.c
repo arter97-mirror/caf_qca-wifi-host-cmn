@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -177,6 +177,17 @@ QDF_STATUS wmi_extract_vdev_tdls_ev_param(wmi_unified_t wmi_handle,
 	if (wmi_handle->ops->extract_vdev_tdls_ev_param)
 		return wmi_handle->ops->extract_vdev_tdls_ev_param(wmi_handle,
 				evt_buf, param);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS wmi_unified_tdls_request_stats_info_cmd(wmi_unified_t wmi_handle,
+						   uint8_t vdev_id,
+						   uint32_t enable)
+{
+	if (wmi_handle->ops->send_tdls_request_stats_info_cmd)
+		return wmi_handle->ops->send_tdls_request_stats_info_cmd(
+						wmi_handle, vdev_id, enable);
 
 	return QDF_STATUS_E_FAILURE;
 }
@@ -424,4 +435,3 @@ QDF_STATUS wmi_unified_peer_unmap_conf_send(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
-

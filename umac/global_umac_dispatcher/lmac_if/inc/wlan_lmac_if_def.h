@@ -1194,6 +1194,10 @@ struct sta_uapsd_trig_params;
  * @set_offchan_mode: function to set tdls offchannel mode
  * @tdls_reg_ev_handler: function to register for tdls events
  * @tdls_unreg_ev_handler: function to unregister for tdls events
+ * @request_stats_info: function to send WMI_REQUEST_STATS_INFO_CMDID to FW;
+ *                      @vdev_id identifies the STA vdev; @enable=1 starts FW
+ *                      TDLS stats collection (SCC only). FW handles disable
+ *                      automatically on disconnect/MCC.
  *
  * tdls module uses these functions to avail ol/da lmac services
  */
@@ -1208,6 +1212,8 @@ struct wlan_lmac_if_tdls_tx_ops {
 					 void *arg);
 	QDF_STATUS (*tdls_unreg_ev_handler) (struct wlan_objmgr_psoc *psoc,
 					    void *arg);
+	QDF_STATUS (*request_stats_info)(struct wlan_objmgr_psoc *psoc,
+					 uint8_t vdev_id, uint32_t enable);
 };
 
 /* fwd declarations for tdls rx ops */

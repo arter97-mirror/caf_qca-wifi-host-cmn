@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1048,6 +1048,56 @@ static QDF_STATUS extract_vdev_tdls_ev_param_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+/**
+ * send_tdls_request_stats_info_cmd_tlv() - send WMI_REQUEST_STATS_INFO_CMDID
+ * @wmi_handle: wmi handle
+ * @vdev_id: ID of the STA vdev for which TDLS stats collection is requested
+ * @enable: 1 = enable FW TDLS per-peer data stats collection;
+ *          host never sends 0 — FW handles disable automatically on
+ *          disconnect/MCC transitions.
+ *
+ * Sends WMI_REQUEST_STATS_INFO_CMDID to firmware to start TDLS per-peer
+ * data stats collection on the specified vdev.  Called once per STA
+ * connection when a single-STA SCC condition is detected.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise.
+ */
+static QDF_STATUS
+send_tdls_request_stats_info_cmd_tlv(wmi_unified_t wmi_handle,
+				     uint8_t vdev_id, uint32_t enable)
+{
+	wmi_request_tdls_stats_cmd_fixed_param *cmd;
+	wmi_buf_t wmi_buf;
+	uint32_t len = sizeof(*cmd);
+
+	wmi_buf = wmi_buf_alloc(wmi_handle, len);
+	if (!wmi_buf) {
+		wmi_err("TDLS stats: wmi_buf_alloc failed");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	cmd = (wmi_request_tdls_stats_cmd_fixed_param *)wmi_buf_data(wmi_buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_request_tdls_stats_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+			wmi_request_tdls_stats_cmd_fixed_param));
+
+	cmd->vdev_id = vdev_id;
+	cmd->enable = enable;
+
+	wmi_debug("TDLS stats: vdev_id=%u enable=%u", vdev_id, enable);
+
+	wmi_mtrace(WMI_REQUEST_TDLS_STATS_CMDID, vdev_id, 0);
+	if (wmi_unified_cmd_send(wmi_handle, wmi_buf, len,
+				 WMI_REQUEST_TDLS_STATS_CMDID)) {
+		wmi_err("TDLS stats: Failed to send WMI_REQUEST_TDLS_STATS_CMDID");
+		wmi_buf_free(wmi_buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void wmi_tdls_attach_tlv(struct wmi_unified *wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
@@ -1059,6 +1109,8 @@ void wmi_tdls_attach_tlv(struct wmi_unified *wmi_handle)
 	ops->send_update_tdls_peer_state_cmd =
 		send_update_tdls_peer_state_cmd_tlv;
 	ops->extract_vdev_tdls_ev_param = extract_vdev_tdls_ev_param_tlv;
+	ops->send_tdls_request_stats_info_cmd =
+		send_tdls_request_stats_info_cmd_tlv;
 }
 #endif /* FEATURE_WLAN_TDLS */
 
@@ -2628,4 +2680,3 @@ void wmi_sta_attach_tlv(wmi_unified_t wmi_handle)
 	wmi_policy_mgr_attach_tlv(wmi_handle);
 	wmi_denylist_mgr_attach_tlv(wmi_handle);
 }
-
