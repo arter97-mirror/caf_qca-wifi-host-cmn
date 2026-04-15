@@ -26642,6 +26642,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_SUPPORT_WHITELIST_BLACKLIST_AP_CONFIG;
 	wmi_service[wmi_service_passthru_vdev_ampdu_ra_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
+	wmi_service[wmi_service_tdls_stats_info] =
+				WMI_SERVICE_TDLS_STATS_SUPPORT;
 }
 
 /**

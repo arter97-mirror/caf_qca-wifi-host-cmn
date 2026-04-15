@@ -7167,6 +7167,7 @@ typedef enum {
 	wmi_service_supported_ext_oui_action_ids,
 	wmi_service_support_whitelist_blacklist_ap_config,
 	wmi_service_passthru_vdev_ampdu_ra_support,
+	wmi_service_tdls_stats_info,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
