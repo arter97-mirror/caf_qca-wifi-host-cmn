@@ -6312,6 +6312,8 @@ typedef enum {
 		   PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP),
 	PDEV_PARAM(pdev_param_set_tas_mode,
 		   PDEV_PARAM_SET_TAS_MODE),
+	PDEV_PARAM(pdev_param_beacon_lio_update_on_screen_on_off,
+		   PDEV_PARAM_BEACON_LIO_UPDATE_ON_SCREEN_ON_OFF),
 	pdev_param_max,
 } wmi_conv_pdev_params_id;
 

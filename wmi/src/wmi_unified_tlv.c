@@ -490,6 +490,8 @@ static const uint32_t pdev_param_tlv[] = {
 		  PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP),
 	PARAM_MAP(pdev_param_set_tas_mode,
 		  PDEV_PARAM_SET_TAS_MODE),
+	PARAM_MAP(pdev_param_beacon_lio_update_on_screen_on_off,
+		  PDEV_PARAM_BEACON_LIO_UPDATE_ON_SCREEN_ON_OFF),
 };
 
 /* Populate vdev_param array whose index is host param, value is target param */
