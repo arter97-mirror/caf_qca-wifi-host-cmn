@@ -49,6 +49,7 @@
 #include "cdp_txrx_ctrl.h"
 #include "wlan_ipa_obj_mgmt_api.h"
 #include "wlan_action_oui_main.h"
+#include "wlan_mlme_api.h"
 
 static void init_deinit_set_send_init_cmd(struct wlan_objmgr_psoc *psoc,
 					  struct target_psoc_info *tgt_hdl)
@@ -260,6 +261,7 @@ static int init_deinit_service_ready_event_handler(ol_scn_t scn_handle,
 	wmi_legacy_service_ready_callback legacy_callback;
 	struct wmi_unified *wmi_handle;
 	QDF_STATUS ret_val;
+	uint32_t disable_4way_hs_offload;
 
 	if (!scn_handle) {
 		target_if_err("scn handle NULL in service ready handler");
@@ -412,10 +414,13 @@ static int init_deinit_service_ready_event_handler(ol_scn_t scn_handle,
 
 	init_deinit_update_roam_stats_cap(wmi_handle, psoc);
 
-	if (wmi_service_enabled(wmi_handle,
-				wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable))
+	wlan_mlme_get_4way_hs_offload(psoc, &disable_4way_hs_offload);
+	if (disable_4way_hs_offload == 1 &&
+	    wmi_service_enabled(wmi_handle,
+				wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable)) {
 		wlan_psoc_nif_fw_ext2_cap_set(psoc,
 					      WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE);
+	}
 
 	init_deinit_update_wifi_pos_caps(wmi_handle, psoc);
 	init_deinit_update_tdls_caps(wmi_handle, psoc);
