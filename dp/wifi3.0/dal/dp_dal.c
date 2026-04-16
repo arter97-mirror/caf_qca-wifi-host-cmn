@@ -1043,6 +1043,46 @@ dp_dal_set_msi_config(void *priv, uint8_t ring_num, uint8_t ring_type,
 	}
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline void
+dp_dal_store_refill_ring_info(struct dp_soc *soc, uint32_t hp, uint32_t tp,
+			      uint8_t refill_ring_type)
+{
+	struct hal_srng *hal_srng;
+	int mac_id = 0;
+
+	hal_srng =
+		(struct hal_srng *)soc->replenish_rings[mac_id][refill_ring_type]->hal_srng;
+	if (hal_srng) {
+		hal_srng->u.src_ring.hp = hp;
+		hal_srng->u.src_ring.cached_tp = tp;
+		dp_info("Updated rx refill ring  HP=0x%x TP=0x%x",
+			hp, tp);
+	} else {
+		dp_err("SRNG is null for rx refill ring %d", refill_ring_type);
+	}
+}
+#else
+static inline void
+dp_dal_store_refill_ring_info(struct dp_soc *soc, uint32_t hp, uint32_t tp,
+			      uint8_t refill_ring_type)
+{
+	struct hal_srng *hal_srng;
+	int mac_id = 0;
+
+	hal_srng =
+		(struct hal_srng *)soc->rx_refill_buf_ring[mac_id].hal_srng;
+	if (hal_srng) {
+		hal_srng->u.src_ring.hp = hp;
+		hal_srng->u.src_ring.cached_tp = tp;
+		dp_info("Updated rx refill ring  HP=0x%x TP=0x%x",
+			hp, tp);
+	} else {
+		dp_err("SRNG is null for rx refill ring");
+	}
+}
+#endif
+
 static inline void
 dp_dal_store_ring_info(struct dp_soc *soc, uint8_t ring_type,
 		       uint8_t ring_num, uint32_t hp, uint32_t tp)
@@ -1107,23 +1147,7 @@ dp_dal_store_ring_info(struct dp_soc *soc, uint8_t ring_type,
 		}
 		break;
 	case RXDMA_BUF:
-		if (ring_num != 0) {
-			dp_err("Invalid Rx refill ring num %d rcvd", ring_num);
-			return;
-		}
-
-		hal_srng =
-			(struct hal_srng *)soc->rx_refill_buf_ring[ring_num].hal_srng;
-		if (hal_srng) {
-			hal_srng->u.src_ring.hp = hp;
-			hal_srng->u.src_ring.cached_tp = tp;
-			dp_info("Updated rx refill ring  HP=0x%x TP=0x%x",
-				hp, tp);
-		} else {
-			dp_err("SRNG is null for rx refill ring");
-			return;
-		}
-
+		dp_dal_store_refill_ring_info(soc, hp, tp, ring_num);
 		break;
 	default:
 		dp_err("invalid ring type %d received", ring_type);

@@ -2236,6 +2236,35 @@ dp_dal_sim_fill_current_hp_tp(struct dal_ring_hp_tp_info *ring_info,
 	ring_info->tp = tp;
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+static inline void
+dp_dal_sim_store_replenish_ring_hp_tp(struct dp_dal_sim_ctx *sim_ctx,
+				      uint8_t *num_info,
+				      struct dal_ring_hp_tp_info *ring_info)
+{
+	uint32_t hp;
+	uint32_t tp;
+
+	if (!dp_dal_offload_sim_fetch_current_hp_tp(
+				sim_ctx, &hp, &tp,
+				OFFLOAD_SIM_RING_TYPE_DIRECT_REFILL, 0)) {
+		dp_info("Replenish ring  hp:0x%x tp:0x%x", hp, tp);
+		dp_dal_sim_fill_current_hp_tp(&ring_info[*num_info], RXDMA_BUF,
+					      1, hp, tp);
+		(*num_info)++;
+	} else {
+		dp_err("failed to fetch cur hp/tp rx replenish ring");
+	}
+}
+#else
+static inline void
+dp_dal_sim_store_replenish_ring_hp_tp(struct dp_dal_sim_ctx *sim_ctx,
+				      uint8_t *num_info,
+				      struct dal_ring_hp_tp_info *ring_info)
+{
+}
+#endif
+
 static uint8_t
 dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx,
 			       void *info)
@@ -2316,6 +2345,7 @@ dp_dal_sim_store_current_hp_tp(struct dp_dal_sim_ctx *sim_ctx,
 		dp_err("failed to fetch cur hp/tp rx refill ring");
 	}
 
+	dp_dal_sim_store_replenish_ring_hp_tp(sim_ctx, &num_info, ring_info);
 	return num_info;
 }
 

@@ -1178,6 +1178,9 @@ int dp_dal_offload_sim_fetch_current_hp_tp(struct dp_dal_sim_ctx *dal_sim_ctx,
 	case OFFLOAD_SIM_RING_TYPE_RX_REFILL:
 		hal_srng = &offload_ctx->rx_refill_ring_hal_srng;
 		break;
+	case OFFLOAD_SIM_RING_TYPE_DIRECT_REFILL:
+		hal_srng = &offload_ctx->direct_refill_ring_hal_srng;
+		break;
 	default:
 		dp_err("Invalid ring_type %d", ring_type);
 		return -EINVAL;
