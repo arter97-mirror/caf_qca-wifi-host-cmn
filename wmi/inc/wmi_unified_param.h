@@ -846,6 +846,111 @@ struct vdev_nss_chains {
 	bool force_nss_chains;
 };
 
+#ifdef FEATURE_WLAN_TDLS
+/**
+ * WMI_HOST_TDLS_STATS_MAX_MCS_COUNTERS - Size of per-direction MCS histogram.
+ *
+ * Matches the firmware constant WMI_ENHANCE_STATS_MAX_MCS_COUNTERS (16).
+ * Used in struct wmi_host_tdls_data_stats.
+ */
+#define WMI_HOST_TDLS_STATS_MAX_MCS_COUNTERS 16
+
+/**
+ * struct wmi_host_tdls_connect_info_stats - Per-peer TDLS connect info stats.
+ * @peer_mac:          MAC address of the TDLS peer (6 bytes).
+ * @timestamp:         FW timestamp (ms) when the event was generated.
+ * @type:              Frame type (e.g., setup, teardown, channel-switch, etc.).
+ * @subtype:           Frame subtype: 0 = request, 1 = response.
+ * @reason_code:       Reason code for the event (e.g., BT coex indication).
+ * @is_sender:         1 = local STA is the sender (Tx), 0 = receiver (Rx).
+ * @op_freq_mhz:       Current operating channel frequency in MHz.
+ * @rssi:              Last known peer RSSI in dBm.
+ * @peer_dialog_token: Peer dialog token for the frame exchange.
+ * @status:            Completion status of this frame, required only for
+ *                     Tx frames to know if frame is sent out successfully
+ *     0 - status is success
+ *     1 - status is failure
+ *
+ * Host-side mirror of wmi_tdls_connect_info_stats from the fw-api.
+ * Carries control-path TDLS events (setup, teardown, channel-switch, etc.).
+ */
+struct wmi_host_tdls_connect_info_stats {
+	uint8_t  peer_mac[QDF_MAC_ADDR_SIZE];
+	uint32_t timestamp;
+	uint32_t type;
+	uint32_t subtype;
+	uint32_t reason_code;
+	uint32_t is_sender;
+	uint32_t op_freq_mhz;
+	int32_t  rssi;
+	uint32_t peer_dialog_token;
+	uint32_t status;
+};
+
+/**
+ * struct wmi_host_tdls_data_stats - per-peer TDLS data stats from FW.
+ * @peer_mac:             MAC address of the TDLS peer (6 bytes).
+ * @timestamp:            FW timestamp (ms) when the event was generated.
+ * @op_freq_mhz:          Current operating channel frequency in MHz.
+ * @rssi:                 Last known peer RSSI in dBm.
+ * @data_rate:            Last Tx Data rate
+ * @tx_ppdus_cumulative:  Cumulative TX PPDUs over the TDLS link.
+ * @tx_mcs_data_ppdu:     TX PPDU counts per MCS index
+ *                        (%WMI_HOST_TDLS_STATS_MAX_MCS_COUNTERS entries).
+ * @tx_ppdu_failures:     TX PPDU failure count.
+ * @rx_ppdus_cumulative:  Cumulative RX PPDUs over the TDLS link.
+ * @rx_mcs_data_ppdu:     RX PPDU counts per MCS index
+ *                        (%WMI_HOST_TDLS_STATS_MAX_MCS_COUNTERS entries).
+ * @rx_ppdu_failures:     RX PPDU failure count.
+ *
+ * Host-side mirror of wmi_tdls_data_stats from the fw-api.
+ * Field names are aligned with the WMI wmi_tdls_data_stats structure.
+ */
+struct wmi_host_tdls_data_stats {
+	uint8_t  peer_mac[QDF_MAC_ADDR_SIZE];
+	uint32_t timestamp;
+	uint32_t op_freq_mhz;
+	int32_t  rssi;
+	uint32_t data_rate;
+	uint32_t tx_ppdus_cumulative;
+	uint32_t tx_mcs_data_ppdu[WMI_HOST_TDLS_STATS_MAX_MCS_COUNTERS];
+	uint32_t tx_ppdu_failures;
+	uint32_t rx_ppdus_cumulative;
+	uint32_t rx_mcs_data_ppdu[WMI_HOST_TDLS_STATS_MAX_MCS_COUNTERS];
+	uint32_t rx_ppdu_failures;
+};
+
+/**
+ * struct wmi_host_tdls_stats_event - TDLS stats event from FW.
+ * @vdev_id: vdev_id
+ * @peer_cnt:                    Number of peers reported in this event.
+ * @num_tdls_connect_info_stats: Number of connect info stats
+ * @tdls_connect_info_stats:   Pointer to array of per-peer connect info stats
+ *                             (@peer_cnt entries, may be NULL if none present).
+ *                             Allocated by the extract function; the caller
+ *                             must free with qdf_mem_free() after use.
+ * @num_tdls_data_stats:       Number of data stats
+ * @tdls_data_stats:           Pointer to array of per-peer data stats
+ *                             (@peer_cnt entries, may be NULL if none present).
+ *                             Allocated by the extract function; the caller
+ *                             must free with qdf_mem_free() after use.
+ *
+ * Host-side representation of WMI_TDLS_STATS_EVENTID.
+ * The event carries two independent TLV arrays from FW:
+ *   - wmi_tdls_connect_info_stats[]: control-path events (setup/teardown/etc.)
+ *   - wmi_tdls_data_stats[]:         periodic per-peer data stats
+ * Either array may be absent (NULL pointer, zero count) in a given event.
+ */
+struct wmi_host_tdls_stats_event {
+	uint32_t vdev_id;
+	uint32_t peer_cnt;
+	uint32_t num_tdls_connect_info_stats;
+	struct wmi_host_tdls_connect_info_stats *tdls_connect_info_stats;
+	uint32_t num_tdls_data_stats;
+	struct wmi_host_tdls_data_stats *tdls_data_stats;
+};
+#endif /* FEATURE_WLAN_TDLS */
+
 /**
  * enum peer_tid_ack_policy - Peer tid ack policy values
  * @PEER_TID_CONFIG_ACK_POLICY_IGNORE: Ignore Ack policy
@@ -5629,6 +5734,7 @@ typedef enum {
 	wmi_captureh_event_id,
 	wmi_rfkill_state_change_event_id,
 	wmi_tdls_peer_event_id,
+	wmi_tdls_stats_event_id,
 	wmi_batch_scan_enabled_event_id,
 	wmi_batch_scan_result_event_id,
 	wmi_lpi_result_event_id,

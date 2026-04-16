@@ -234,6 +234,23 @@ QDF_STATUS wmi_extract_vdev_tdls_ev_param(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_tdls_request_stats_info_cmd(wmi_unified_t wmi_handle,
 						   uint8_t vdev_id,
 						   uint32_t enable);
+
+/**
+ * wmi_extract_tdls_stats_event() - extract TDLS stats event from WMI buffer
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @stats_event: pointer to host-side stats event structure to be populated
+ *
+ * Extracts the WMI_TDLS_STATS_EVENTID payload into a host-side structure.
+ * The caller is responsible for freeing stats_event->tdls_data_stats with
+ * qdf_mem_free() after use.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS wmi_extract_tdls_stats_event(wmi_unified_t wmi_handle,
+					void *evt_buf,
+					struct wmi_host_tdls_stats_event
+					*stats_event);
 #endif /* FEATURE_WLAN_TDLS */
 
 /**

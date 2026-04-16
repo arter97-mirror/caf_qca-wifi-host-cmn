@@ -191,6 +191,19 @@ QDF_STATUS wmi_unified_tdls_request_stats_info_cmd(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS wmi_extract_tdls_stats_event(wmi_unified_t wmi_handle,
+					void *evt_buf,
+					struct wmi_host_tdls_stats_event
+					*stats_event)
+{
+	if (wmi_handle->ops->extract_tdls_stats_event)
+		return wmi_handle->ops->extract_tdls_stats_event(
+						wmi_handle, evt_buf,
+						stats_event);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif /* FEATURE_WLAN_TDLS */
 
 #if defined(WLAN_FEATURE_ROAM_OFFLOAD) && defined(FEATURE_DENYLIST_MGR)

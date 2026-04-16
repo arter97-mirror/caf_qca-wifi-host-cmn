@@ -1308,6 +1308,9 @@ QDF_STATUS (*extract_vdev_tdls_ev_param)(wmi_unified_t wmi_handle,
 		void *evt_buf, struct tdls_event_info *param);
 QDF_STATUS (*send_tdls_request_stats_info_cmd)(wmi_unified_t wmi_handle,
 		uint8_t vdev_id, uint32_t enable);
+QDF_STATUS (*extract_tdls_stats_event)(wmi_unified_t wmi_handle,
+		void *evt_buf,
+		struct wmi_host_tdls_stats_event *stats_event);
 #endif /* FEATURE_WLAN_TDLS */
 #endif /* WMI_STA_SUPPORT */
 

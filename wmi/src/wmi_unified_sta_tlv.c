@@ -25,6 +25,7 @@
 #include "wmi_unified_sta_api.h"
 #ifdef FEATURE_WLAN_TDLS
 #include <wlan_tdls_public_structs.h>
+#include <wlan_tdls_stats_public_structs.h>
 #endif
 
 /**
@@ -1098,6 +1099,175 @@ send_tdls_request_stats_info_cmd_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+/**
+ * wmi_tdls_fw_subtype_to_host() - Convert FW TDLS frame subtype to host enum
+ * @fw_subtype: subtype value from wmi_tdls_connect_info_stats_subtype
+ *
+ * Return: Corresponding host enum tdls_stats_subtype value
+ */
+static enum tdls_stats_subtype
+wmi_tdls_fw_subtype_to_host(uint32_t fw_subtype)
+{
+	switch (fw_subtype) {
+	case WMI_TDLS_FRAME_SUBTYPE_REQUEST:
+		return TDLS_STATS_SUBTYPE_REQ;
+	case WMI_TDLS_FRAME_SUBTYPE_RESPONSE:
+		return TDLS_STATS_SUBTYPE_RESP;
+	default:
+		wmi_debug("TDLS stats: unknown FW subtype %u, using GENERAL",
+			  fw_subtype);
+		return TDLS_STATS_SUBTYPE_GENERAL;
+	}
+}
+
+/**
+ * wmi_tdls_fw_reason_to_host() - Convert FW TDLS reason code to host enum
+ * @fw_reason: reason code from wmi_tdls_connect_info_stats_reason_code
+ *
+ * Return: Corresponding host enum tdls_stats_reason_code value
+ */
+static enum tdls_stats_reason_code
+wmi_tdls_fw_reason_to_host(uint32_t fw_reason)
+{
+	switch (fw_reason) {
+	case WMI_TDLS_CHANNEL_SWITCH_FRAME_TX_RX:
+		return TDLS_STATS_REASON_BSS_CHANNEL_SWITCH;
+	case WMI_TDLS_BT_COEX_INDICATION:
+		return TDLS_STATS_REASON_BT_COEX;
+	default:
+		wmi_debug("TDLS stats: unknown FW reason %u, using UNKNOWN",
+			  fw_reason);
+		return TDLS_STATS_REASON_UNKNOWN;
+	}
+}
+
+/**
+ * extract_tdls_stats_event_tlv() - extract TDLS stats event from WMI buffer
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @stats_event: pointer to host-side stats event structure to be populated
+ *
+ * Extracts the WMI_TDLS_STATS_EVENTID payload into a host-side structure.
+ * The event carries two independent TLV arrays:
+ *   - wmi_tdls_connect_info_stats[]: control-path events (setup/teardown/etc.)
+ *   - wmi_tdls_data_stats[]:         periodic per-peer data stats
+ *
+ * The caller is responsible for freeing both
+ * stats_event->tdls_connect_info_stats and stats_event->tdls_data_stats
+ * with qdf_mem_free() after use.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+static QDF_STATUS
+extract_tdls_stats_event_tlv(wmi_unified_t wmi_handle,
+			     void *evt_buf,
+			     struct wmi_host_tdls_stats_event *stats_event)
+{
+	WMI_TDLS_STATS_EVENTID_param_tlvs *param_buf;
+	wmi_tdls_stats_event_fixed_param *fixed_param;
+	uint32_t i;
+
+	param_buf = (WMI_TDLS_STATS_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("TDLS stats: NULL param_buf");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("TDLS stats: NULL fixed_param");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	stats_event->vdev_id = fixed_param->vdev_id;
+	stats_event->peer_cnt = fixed_param->peer_cnt;
+	stats_event->tdls_connect_info_stats = NULL;
+	stats_event->tdls_data_stats = NULL;
+
+	/* Extract wmi_tdls_connect_info_stats[] (control-path events) */
+	if (param_buf->tdls_connect_info_stats &&
+	    param_buf->num_tdls_connect_info_stats) {
+		uint32_t cnt = param_buf->num_tdls_connect_info_stats;
+		wmi_tdls_connect_info_stats *fw_ci =
+				param_buf->tdls_connect_info_stats;
+		struct wmi_host_tdls_connect_info_stats *host_ci;
+
+		host_ci = qdf_mem_malloc(cnt * sizeof(*host_ci));
+		if (!host_ci) {
+			wmi_err("TDLS stats: failed to alloc connect_info_stats");
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		for (i = 0; i < cnt; i++) {
+			WMI_MAC_ADDR_TO_CHAR_ARRAY(&fw_ci[i].peer_mac_addr,
+						   host_ci[i].peer_mac);
+			host_ci[i].timestamp = fw_ci[i].timestamp;
+			host_ci[i].type = fw_ci[i].type;
+			host_ci[i].subtype =
+				wmi_tdls_fw_subtype_to_host(
+						fw_ci[i].subtype);
+			host_ci[i].reason_code =
+				wmi_tdls_fw_reason_to_host(
+						fw_ci[i].reason_code);
+			host_ci[i].status = fw_ci[i].status;
+			host_ci[i].is_sender = fw_ci[i].tx_rx;
+			host_ci[i].op_freq_mhz = fw_ci[i].op_freq_mhz;
+			host_ci[i].rssi = fw_ci[i].rssi;
+			host_ci[i].peer_dialog_token =
+					fw_ci[i].peer_dialog_token;
+		}
+
+		stats_event->tdls_connect_info_stats = host_ci;
+		stats_event->num_tdls_connect_info_stats = cnt;
+		wmi_debug("TDLS stats: extracted %u connect_info entries", cnt);
+	}
+
+	/* Extract wmi_tdls_data_stats[] (periodic data stats) */
+	if (param_buf->tdls_data_stats && param_buf->num_tdls_data_stats) {
+		uint32_t cnt = param_buf->num_tdls_data_stats;
+		wmi_tdls_data_stats *fw_ds = param_buf->tdls_data_stats;
+		struct wmi_host_tdls_data_stats *host_ds;
+
+		host_ds = qdf_mem_malloc(cnt * sizeof(*host_ds));
+		if (!host_ds) {
+			wmi_err("TDLS stats: failed to alloc data_stats");
+			if (stats_event->tdls_connect_info_stats) {
+				qdf_mem_free(
+					stats_event->tdls_connect_info_stats);
+				stats_event->tdls_connect_info_stats = NULL;
+			}
+			return QDF_STATUS_E_NOMEM;
+		}
+
+		for (i = 0; i < cnt; i++) {
+			WMI_MAC_ADDR_TO_CHAR_ARRAY(&fw_ds[i].peer_mac_addr,
+						   host_ds[i].peer_mac);
+			host_ds[i].timestamp = fw_ds[i].timestamp;
+			host_ds[i].op_freq_mhz = fw_ds[i].op_freq_mhz;
+			host_ds[i].rssi = fw_ds[i].rssi;
+			host_ds[i].data_rate = fw_ds[i].data_rate;
+			host_ds[i].tx_ppdus_cumulative =
+					fw_ds[i].tx_ppdus_cumulative;
+			qdf_mem_copy(host_ds[i].tx_mcs_data_ppdu,
+				     fw_ds[i].tx_mcs_data_ppdu,
+				     sizeof(host_ds[i].tx_mcs_data_ppdu));
+			host_ds[i].tx_ppdu_failures = fw_ds[i].tx_ppdu_failures;
+			host_ds[i].rx_ppdus_cumulative =
+						fw_ds[i].rx_ppdus_cumulative;
+			qdf_mem_copy(host_ds[i].rx_mcs_data_ppdu,
+				     fw_ds[i].rx_mcs_data_ppdu,
+				     sizeof(host_ds[i].rx_mcs_data_ppdu));
+			host_ds[i].rx_ppdu_failures = fw_ds[i].rx_ppdu_failures;
+		}
+
+		stats_event->tdls_data_stats = host_ds;
+		stats_event->num_tdls_data_stats = cnt;
+		wmi_debug("TDLS stats: extracted %u data_stats entries", cnt);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void wmi_tdls_attach_tlv(struct wmi_unified *wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
@@ -1111,6 +1281,7 @@ void wmi_tdls_attach_tlv(struct wmi_unified *wmi_handle)
 	ops->extract_vdev_tdls_ev_param = extract_vdev_tdls_ev_param_tlv;
 	ops->send_tdls_request_stats_info_cmd =
 		send_tdls_request_stats_info_cmd_tlv;
+	ops->extract_tdls_stats_event = extract_tdls_stats_event_tlv;
 }
 #endif /* FEATURE_WLAN_TDLS */
 

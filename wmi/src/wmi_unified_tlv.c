@@ -25677,6 +25677,7 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 
 	/* TDLS Event */
 	event_ids[wmi_tdls_peer_event_id] = WMI_TDLS_PEER_EVENTID;
+	event_ids[wmi_tdls_stats_event_id] = WMI_TDLS_STATS_EVENTID;
 
 	event_ids[wmi_batch_scan_enabled_event_id] =
 				WMI_BATCH_SCAN_ENABLED_EVENTID;
