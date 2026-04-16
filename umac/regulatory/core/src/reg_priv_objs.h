@@ -202,8 +202,6 @@ struct wlan_regulatory_psoc_priv_obj {
  * domain.
  * @reg_unspecified_ap_usable: Indicates if the AP type mentioned is not part of
  * 802.11 standard.
- * @reg_6g_thresh_priority_freq: All frequencies greater or equal will be given
- * priority during channel selection by upper layer
  * @max_phymode: The maximum phymode supported by the device and regulatory.
  * @max_chwidth: The maximum bandwidth corresponding to the maximum phymode.
  * @avoid_chan_ext_list: the extended avoid frequency list.
@@ -273,7 +271,6 @@ struct wlan_regulatory_pdev_priv_obj {
 	enum reg_6g_client_type reg_cur_6g_client_mobility_type;
 	bool reg_rnr_tpe_usable;
 	bool reg_unspecified_ap_usable;
-	qdf_freq_t reg_6g_thresh_priority_freq;
 #endif
 #ifdef CONFIG_HOST_FIND_CHAN
 	enum reg_phymode max_phymode;

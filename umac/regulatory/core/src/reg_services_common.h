@@ -1688,24 +1688,6 @@ enum channel_state reg_combine_channel_states(enum channel_state chan_state1,
 
 #if defined(CONFIG_BAND_6GHZ)
 /**
- * reg_get_num_rules_of_ap_pwr_type() - Get the number of reg rules present
- * for a given ap power type
- * @pdev: Pointer to pdev
- * @ap_pwr_type: AP power type
- *
- * Return: Return the number of reg rules for a given ap power type
- */
-uint8_t
-reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
-                                 enum reg_6g_ap_type ap_pwr_type);
-
-/**
- * reg_get_thresh_priority_freq() - Get the prioritized frequency value
- * @pdev: pdev pointer
- */
-qdf_freq_t reg_get_thresh_priority_freq(struct wlan_objmgr_pdev *pdev);
-
-/**
  * reg_set_lower_6g_edge_ch_supp() - Set if lower 6ghz edge channel is
  * supported by FW
  *
@@ -1743,16 +1725,6 @@ bool reg_is_lower_6g_edge_ch_supp(struct wlan_objmgr_psoc *psoc);
  * Return: true if edge channels are supported, else false
  */
 bool reg_is_upper_6g_edge_ch_disabled(struct wlan_objmgr_psoc *psoc);
-
-/**
- * reg_convert_enum_to_6g_idx() - Convert a channel enum between
- * MIN_6GHZ_CHANNEL and MAX_6GHZ_CHANNEL, to an index between 0 and
- * NUM_6GHZ_CHANNELS
- * @ch_idx: Channel index
- *
- * Return: enum channel_enum
- */
-uint16_t reg_convert_enum_to_6g_idx(enum channel_enum ch_idx);
 #endif
 
 #ifdef FEATURE_WLAN_CH_AVOID_EXT
@@ -1851,42 +1823,4 @@ void reg_dmn_set_afc_req_id(struct wlan_afc_host_partial_request *afc_req,
 QDF_STATUS reg_is_chwidth_supported(struct wlan_objmgr_pdev *pdev,
 				    enum phy_ch_width ch_width,
 				    bool *is_supported);
-/**
- * reg_find_non_punctured_bw() - Given the input puncture pattern and the
- * total BW of the channel, find the non-punctured bandwidth.
- * @bw: Total bandwidth of the channel
- * @in_punc_pattern: Input puncture pattern
- *
- * Return: non-punctured bw in MHz
- */
-#ifdef WLAN_FEATURE_11BE
-uint16_t
-reg_find_non_punctured_bw(uint16_t bw,  uint16_t in_punc_pattern);
-#else
-static inline uint16_t
-reg_find_non_punctured_bw(uint16_t bw,  uint16_t in_punc_pattern)
-{
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
-/**
- * reg_is_vlp_depriority_freq() - Check if the frequency is VLP deprority freq.
- *
- * @pdev: Pdev object.
- * @freq: Frequency in MHz.
- *
- * Return: True if freq is VLP deprority frequency, else false.
- */
-bool reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
-				qdf_freq_t freq);
-#else
-static inline bool
-reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
-			   qdf_freq_t freq)
-{
-	return false;
-}
-#endif
 #endif

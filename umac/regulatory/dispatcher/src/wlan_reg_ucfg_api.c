@@ -411,22 +411,3 @@ ucfg_reg_afc_start(struct wlan_objmgr_pdev *pdev, uint64_t req_id)
 	return reg_afc_start(pdev, req_id);
 }
 #endif
-
-#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
-bool ucfg_reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
-				     qdf_freq_t freq)
-{
-	return reg_is_vlp_depriority_freq(pdev, freq);
-}
-
-qdf_export_symbol(ucfg_reg_is_vlp_depriority_freq);
-
-uint8_t
-ucfg_reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
-				      enum reg_6g_ap_type ap_pwr_type)
-{
-	return reg_get_num_rules_of_ap_pwr_type(pdev, ap_pwr_type);
-}
-
-qdf_export_symbol(ucfg_reg_get_num_rules_of_ap_pwr_type);
-#endif

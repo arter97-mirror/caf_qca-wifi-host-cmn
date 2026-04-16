@@ -222,12 +222,6 @@ util_scan_get_phymode_11be(struct wlan_objmgr_pdev *pdev,
 		wlan_reg_chan_band_to_freq(pdev,
 					   eht_ops->chan_freq_seg1,
 					   band_mask);
-
-	if (eht_ops->elem_len < sizeof(struct wlan_ie_ehtops)) {
-		scm_err("Invalid EHT OP IE len with dis_sc_bitmap");
-		return phymode;
-	}
-
 	scan_params->channel.puncture_bitmap = eht_ops->puncture_pattern;
 	return phymode;
 }
@@ -2479,7 +2473,7 @@ static uint32_t util_gen_new_ie(uint8_t *ie, uint32_t ielen,
 		if (!(tmp_new[0] == WLAN_ELEMID_NONTX_BSSID_CAP ||
 		      tmp_new[0] == WLAN_ELEMID_SSID ||
 		      tmp_new[0] == WLAN_ELEMID_MULTI_BSSID_IDX ||
-		      ((tmp_new[0] == WLAN_ELEMID_EXTN_ELEM) && tmp_new[1] &&
+		      ((tmp_new[0] == WLAN_ELEMID_EXTN_ELEM) &&
 		       (tmp_new[2] == WLAN_EXTN_ELEMID_NONINHERITANCE)))) {
 			if ((pos + tmp_new[1] + MIN_IE_LEN) <=
 			    (new_ie + ielen)) {

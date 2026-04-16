@@ -958,7 +958,6 @@ struct regulatory_channel {
 #ifdef CONFIG_BAND_6GHZ
 	bool psd_flag;
 	uint16_t psd_eirp;
-	enum reg_6g_ap_type power_type;
 #endif
 };
 
@@ -1123,7 +1122,6 @@ struct cur_regulatory_info {
 	uint32_t num_5g_reg_rules;
 	struct cur_reg_rule *reg_rules_2g_ptr;
 	struct cur_reg_rule *reg_rules_5g_ptr;
-	qdf_freq_t reg_6g_thresh_priority_freq;
 	enum reg_6g_client_type client_type;
 	bool rnr_tpe_usable;
 	bool unspecified_ap_usable;
@@ -1478,7 +1476,6 @@ struct mas_chan_params {
 	enum reg_6g_client_type client_type;
 	bool rnr_tpe_usable;
 	bool unspecified_ap_usable;
-	qdf_freq_t reg_6g_thresh_priority_freq;
 #endif
 };
 

@@ -2032,20 +2032,6 @@ bool reg_is_6ghz_chan_freq(uint16_t freq)
 	return REG_IS_6GHZ_FREQ(freq);
 }
 
-qdf_freq_t reg_get_thresh_priority_freq(struct wlan_objmgr_pdev *pdev)
-{
-        struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
-
-        pdev_priv_obj = reg_get_pdev_obj(pdev);
-
-        if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {
-                reg_err("reg pdev private obj is NULL");
-                return 0;
-        }
-
-        return pdev_priv_obj->reg_6g_thresh_priority_freq;
-}
-
 #ifdef CONFIG_6G_FREQ_OVERLAP
 bool reg_is_range_overlap_6g(qdf_freq_t low_freq, qdf_freq_t high_freq)
 {
@@ -4669,7 +4655,7 @@ bool reg_is_fcc_regdmn(struct wlan_objmgr_pdev *pdev)
 
 	status = reg_get_curr_regdomain(pdev, &cur_reg_dmn);
 	if (status != QDF_STATUS_SUCCESS) {
-		reg_debug_rl("Failed to get reg domain");
+		reg_err_rl("Failed to get reg domain");
 		return false;
 	}
 
@@ -5807,7 +5793,7 @@ QDF_STATUS reg_get_client_power_for_connecting_ap(struct wlan_objmgr_pdev *pdev,
 						  uint16_t *eirp_psd_power)
 {
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
-	enum reg_6g_client_type client_type = REG_DEFAULT_CLIENT;
+	enum reg_6g_client_type client_type;
 	struct regulatory_channel *master_chan_list;
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 
@@ -5878,7 +5864,7 @@ QDF_STATUS reg_get_client_power_for_6ghz_ap(struct wlan_objmgr_pdev *pdev,
  *
  * Return: Return the number of reg rules for a given ap power type
  */
-uint8_t
+static uint8_t
 reg_get_num_rules_of_ap_pwr_type(struct wlan_objmgr_pdev *pdev,
 				 enum reg_6g_ap_type ap_pwr_type)
 {
@@ -6376,21 +6362,4 @@ QDF_STATUS reg_is_chwidth_supported(struct wlan_objmgr_pdev *pdev,
 	}
 
 	return QDF_STATUS_SUCCESS;
-}
-
-static inline bool reg_is_within_range_inclusive(enum channel_enum left,
-						 enum channel_enum right,
-						 enum channel_enum idx)
-{
-	return (idx >= left) && (idx <= right);
-}
-
-uint16_t reg_convert_enum_to_6g_idx(enum channel_enum ch_idx)
-{
-	if (!reg_is_within_range_inclusive(MIN_6GHZ_CHANNEL,
-					   MAX_6GHZ_CHANNEL,
-					   ch_idx))
-		return INVALID_CHANNEL;
-
-	return (ch_idx - MIN_6GHZ_CHANNEL);
 }

@@ -264,10 +264,7 @@ void target_if_cfr_fill_header(struct csi_cfr_header *hdr,
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_MAPLE;
 		else if (target_type == TARGET_TYPE_QCN6122)
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_SPRUCE;
-		else if (target_type == TARGET_TYPE_QCA6490) {
-			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_HSP;
-			hdr->cmn.cfr_metadata_version = CFR_META_VERSION_7;
-		} else
+		else
 			hdr->cmn.chip_type = CFR_CAPTURE_RADIO_CYP;
 	}
 }

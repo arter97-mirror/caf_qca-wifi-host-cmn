@@ -352,87 +352,6 @@ reg_get_6g_power_type_for_ctry(uint8_t *ap_ctry, uint8_t *sta_ctry,
 
 	return QDF_STATUS_SUCCESS;
 }
-
-QDF_STATUS
-reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
-			   struct wlan_objmgr_pdev *pdev,
-			   enum reg_6g_ap_type *pwr_type_6g,
-			   enum reg_6g_ap_type ap_pwr_type,
-			   uint32_t chan_freq)
-{
-	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
-	enum channel_enum chan_idx = reg_get_chan_enum_for_freq(chan_freq);
-	int has_vlp, has_lpi, has_sp;
-	struct regulatory_channel *master_chan_list_6g_client;
-	struct regulatory_channel chan;
-	uint16_t sup_idx;
-
-	pdev_priv_obj = reg_get_pdev_obj(pdev);
-	if (!pdev_priv_obj) {
-		reg_err("pdev priv obj null");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	sup_idx = reg_convert_enum_to_6g_idx(chan_idx);
-	if (sup_idx >= NUM_6GHZ_CHANNELS) {
-		reg_err("Invalid channel chan_freq %d chan_idx %d", chan_freq,
-								    chan_idx);
-		return QDF_STATUS_E_NOSUPPORT;
-	}
-
-	has_vlp = pdev_priv_obj->reg_rules.num_of_6g_client_reg_rules[
-							REG_VERY_LOW_POWER_AP];
-	has_lpi = pdev_priv_obj->reg_rules.num_of_6g_client_reg_rules[
-								REG_INDOOR_AP];
-	has_sp = pdev_priv_obj->reg_rules.num_of_6g_client_reg_rules
-						       [REG_STANDARD_POWER_AP];
-
-	if (!has_vlp && !has_lpi && !has_sp) {
-		reg_err("fatal! No reg rule for 6G");
-		return QDF_STATUS_E_NOSUPPORT;
-	}
-
-	reg_debug("freq %d num vlp: %d num lpi: %d num sp: %d", chan_freq,
-						     has_vlp, has_lpi, has_sp);
-	/* 1. negative case
-	 * AP anounce bad pwr_type
-	 * reg priority:
-	 *	VLP->LPI
-	 *
-	 * 2. AP anounce correct pwr_type
-	 * Follow AP's rule if we also have it
-	 */
-	if (ap_pwr_type < REG_INDOOR_AP ||
-	    ap_pwr_type >= REG_CURRENT_MAX_AP_TYPE) {
-		if (has_vlp)
-			*pwr_type_6g = REG_VERY_LOW_POWER_AP;
-		else if (has_lpi)
-			*pwr_type_6g = REG_INDOOR_AP;
-		else {
-			reg_err("Invalid AP power type: %d, couldn't find"
-				 "suitable power type", ap_pwr_type);
-			return QDF_STATUS_E_NOSUPPORT;
-		}
-		reg_err("Invalid AP power type: %d, selected pwr_type_6g %d",
-			ap_pwr_type,  *pwr_type_6g);
-	} else {
-		*pwr_type_6g = ap_pwr_type;
-		reg_debug("follow ap's 6G power type %d", *pwr_type_6g);
-	}
-
-	/*sanity*/
-	qdf_assert(pdev_priv_obj->reg_rules.num_of_6g_client_reg_rules[
-								*pwr_type_6g]);
-
-	master_chan_list_6g_client =
-		pdev_priv_obj->mas_chan_list_6g_client[*pwr_type_6g]
-			[pdev_priv_obj->reg_cur_6g_client_mobility_type];
-
-	chan = master_chan_list_6g_client[sup_idx];
-	reg_debug("chan flg 0x%x center %d", chan.chan_flags, chan.center_freq);
-
-	return QDF_STATUS_SUCCESS;
-}
 #endif
 
 #ifdef CONFIG_CHAN_FREQ_API
@@ -1062,18 +981,3 @@ bool reg_ignore_default_country(struct wlan_regulatory_psoc_priv_obj *soc_reg,
 
 	return true;
 }
-
-#if defined(CONFIG_BAND_6GHZ) && defined(CONFIG_REG_CLIENT)
-bool reg_is_vlp_depriority_freq(struct wlan_objmgr_pdev *pdev,
-				qdf_freq_t freq)
-{
-	qdf_freq_t vlp_cutoff_freq;
-
-	vlp_cutoff_freq = wlan_reg_get_thresh_priority_freq(pdev);
-
-	if (wlan_reg_is_6ghz_chan_freq(freq) && freq <= vlp_cutoff_freq)
-		return true;
-
-	return false;
-}
-#endif
