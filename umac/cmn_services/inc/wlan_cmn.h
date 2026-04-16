@@ -739,6 +739,7 @@ enum wifi_traffic_ac {
  * @WLAN_PEER_RTT_PASN: Ranging PASN peer
  * @WLAN_PEER_MLO_BRIDGE: MLO Bridge peer
  * @WLAN_PEER_NAN_PASN: NAN PASN peer
+ * @WLAN_PEER_PASSTHRU: Passthru peer
  */
 enum wlan_peer_type {
 	WLAN_PEER_SELF     = 1,
@@ -755,6 +756,7 @@ enum wlan_peer_type {
 	WLAN_PEER_RTT_PASN = 12,
 	WLAN_PEER_MLO_BRIDGE = 13,
 	WLAN_PEER_NAN_PASN = 14,
+	WLAN_PEER_PASSTHRU = 15,
 };
 
 /**
