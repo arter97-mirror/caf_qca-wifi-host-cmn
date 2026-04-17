@@ -2680,6 +2680,15 @@ void dp_vdev_get_default_reo_hash(struct dp_vdev *vdev,
 
 	pdev = vdev->pdev;
 	soc = pdev->soc;
+
+	if (vdev->opmode == wlan_op_mode_passthru &&
+	    dp_get_passthru_ampdu_support(soc)) {
+		*hash_based = false;
+		/* Route the PASSTHRU frames to REO2SW0 */
+		*reo_dest = cdp_host_reo_dest_ring_unknown;
+		return;
+	}
+
 	/*
 	 * hash based steering is disabled for Radios which are offloaded
 	 * to NSS
@@ -2744,6 +2753,14 @@ static void dp_peer_setup_get_reo_hash(struct dp_vdev *vdev,
 	 */
 	if (dp_is_vdev_subtype_p2p(vdev))
 		return;
+
+	if (vdev->opmode == wlan_op_mode_passthru &&
+	    dp_get_passthru_ampdu_support(soc)) {
+		*hash_based = false;
+		/* Route the PASSTHRU frames to REO2SW0 */
+		*reo_dest = cdp_host_reo_dest_ring_unknown;
+		return;
+	}
 
 	/*
 	 * If IPA is enabled, disable hash-based flow steering and set
