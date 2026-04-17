@@ -11787,7 +11787,8 @@ QDF_STATUS dp_get_avg_ul_jitter(struct cdp_soc_t *soc_handle,
 	jitter_accum = qdf_atomic_read(&vdev->ul_jitter_accum) * 1000;
 	pkts_accum = qdf_atomic_read(&vdev->ul_jitter_pkts_accum) * 1000;
 
-	*val = jitter_accum / pkts_accum; /* jitter is in microsecs */
+	/* jitter is in microsecs */
+	*val = pkts_accum ? jitter_accum / pkts_accum : 0;
 	dp_debug("uplink_jitter %u delay_accum %u pkts_accum %u", *val,
 		 jitter_accum, pkts_accum);
 
