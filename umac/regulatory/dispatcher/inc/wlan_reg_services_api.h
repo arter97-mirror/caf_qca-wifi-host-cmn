@@ -464,6 +464,24 @@ QDF_STATUS
 wlan_reg_get_6g_power_type_for_ctry(uint8_t *ap_ctry, uint8_t *sta_ctry,
 				    enum reg_6g_ap_type *pwr_type_6g,
 				    bool *ctry_code_match);
+
+/**
+ * wlan_reg_get_best_6g_power_type() - Return best power type for 6GHz
+ * connection
+ * @psoc: pointer to psoc
+ * @pdev: pointer to pdev
+ * @pwr_type_6g: pointer to 6G power type
+ * @ap_pwr_type: AP's power type for 6G as advertised in HE ops IE
+ * @chan_freq: Connection channel frequency
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_reg_get_best_6g_power_type(struct wlan_objmgr_psoc *psoc,
+				struct wlan_objmgr_pdev *pdev,
+				enum reg_6g_ap_type *pwr_type_6g,
+				enum reg_6g_ap_type ap_pwr_type,
+				uint32_t chan_freq);
 #endif
 
 #ifdef CONFIG_CHAN_FREQ_API
