@@ -517,9 +517,10 @@ reg_get_active_6ghz_freq_range_with_fcc_set(
 		struct bonded_channel_freq *bonded_chan)
 {
 	struct wlan_channel *conn_chan, *conn_chan_sta, *conn_chan_cli;
-	enum phy_ch_width max_width = CH_WIDTH_INVALID;
-	uint16_t start_freq_6g, end_freq_6g, conn_freq = 0;
+	uint16_t start_freq_6g, end_freq_6g;
 	const struct bonded_channel_freq *cur_bonded_chans;
+	qdf_freq_t cen_freq = 0;
+	struct wlan_channel *max_chan;
 
 	start_freq_6g = pdev_priv_obj->cur_chan_list[MIN_6GHZ_CHANNEL].center_freq;
 	end_freq_6g = pdev_priv_obj->cur_chan_list[MAX_6GHZ_CHANNEL].center_freq;
@@ -534,42 +535,48 @@ reg_get_active_6ghz_freq_range_with_fcc_set(
 							start_freq_6g,
 							end_freq_6g);
 
-	if (conn_chan_sta && conn_chan_cli)
-		max_width = QDF_MAX(conn_chan_sta->ch_width,
-				    conn_chan_cli->ch_width);
-	else if (conn_chan_sta)
-		max_width = conn_chan_sta->ch_width;
-	else if (conn_chan_cli)
-		max_width = conn_chan_cli->ch_width;
+	if (conn_chan_sta && conn_chan_cli) {
+		if (conn_chan_sta->ch_width >= conn_chan_cli->ch_width)
+			max_chan = conn_chan_sta;
+		else
+			max_chan = conn_chan_cli;
+	} else if (conn_chan_sta) {
+		max_chan = conn_chan_sta;
+	} else if (conn_chan_cli) {
+		max_chan = conn_chan_cli;
+	} else {
+		return;
+	}
 
-	if (max_width < CH_WIDTH_INVALID) {
+	if (max_chan->ch_width < CH_WIDTH_INVALID) {
 		conn_chan = reg_get_connected_chan_for_mode(pdev_priv_obj,
 							    QDF_SAP_MODE,
 							    start_freq_6g,
 							    end_freq_6g);
-		if (conn_chan && max_width < conn_chan->ch_width)
-			max_width = conn_chan->ch_width;
+		if (conn_chan && conn_chan->ch_width > max_chan->ch_width)
+			max_chan = conn_chan;
 
 		conn_chan = reg_get_connected_chan_for_mode(pdev_priv_obj,
 							    QDF_P2P_GO_MODE,
 							    start_freq_6g,
 							    end_freq_6g);
 
-		if (conn_chan && max_width < conn_chan->ch_width)
-			max_width = conn_chan->ch_width;
+		if (conn_chan && conn_chan->ch_width > max_chan->ch_width)
+			max_chan = conn_chan;
 
-		if (conn_chan_sta)
-			conn_freq = conn_chan_sta->ch_freq;
-		else if (conn_chan_cli)
-			conn_freq = conn_chan_cli->ch_freq;
+		if (max_chan->ch_width == CH_WIDTH_320MHZ)
+			cen_freq = max_chan->ch_cfreq2;
 
-		if (max_width == CH_WIDTH_20MHZ) {
-			bonded_chan->start_freq = conn_freq;
-			bonded_chan->end_freq = conn_freq;
+		if (!cen_freq)
+			cen_freq =  max_chan->ch_cfreq1;
+
+		if (max_chan->ch_width == CH_WIDTH_20MHZ) {
+			bonded_chan->start_freq = cen_freq;
+			bonded_chan->end_freq = cen_freq;
 		} else {
 			cur_bonded_chans =  reg_get_bonded_chan_entry(
-								conn_freq,
-								max_width, 0);
+							cen_freq,
+							max_chan->ch_width, 0);
 			if (cur_bonded_chans)
 				qdf_mem_copy(bonded_chan, cur_bonded_chans,
 					sizeof(struct bonded_channel_freq));
