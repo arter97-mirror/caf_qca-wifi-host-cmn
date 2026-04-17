@@ -569,6 +569,33 @@ static inline uintptr_t hal_rx_get_reo_desc_va(void *reo_desc)
 				       BUFFER_VIRT_ADDR_63_32)) << 32));
 	return (uintptr_t)va_from_desc;
 }
+
+/**
+ * hal_rx_get_reo_desc_va_63_32() - Get bits 63~32 of buffer VA
+ *  address from REO destination ring descriptor
+ * @reo_desc: REO2SW ring descriptor pointer
+ *
+ * Return: 32-63 buffer VA
+ */
+static inline uint32_t hal_rx_get_reo_desc_va_63_32(void *reo_desc)
+{
+	return HAL_RX_GET(reo_desc, REO_DESTINATION_RING,
+			  BUFFER_VIRT_ADDR_63_32);
+}
+
+/**
+ * hal_rx_set_reo_desc_va_63_32() - Set bits 63~32 of buffer VA
+ *  in REO destination ring descriptor
+ * @reo_desc: REO2SW ring descriptor pointer
+ * @val: value to be set
+ *
+ * Return: None
+ */
+static inline void hal_rx_set_reo_desc_va_63_32(void *reo_desc, uint32_t val)
+{
+	HAL_SET_FLD(reo_desc, REO_DESTINATION_RING,
+		    BUFFER_VIRT_ADDR_63_32) = val;
+}
 #endif
 
 /**

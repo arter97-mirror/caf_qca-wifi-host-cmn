@@ -4818,6 +4818,26 @@ QDF_STATUS dp_srng_alloc_non_bn_rings(struct dp_soc *soc)
 #endif
 
 /**
+ * dp_srng_rx_ring_desc_mark_invalid() - Poison all REO dest ring descriptors
+ *  via the arch-specific callback
+ * @soc: DP SoC handle
+ * @srng: pointer to the REO destination srng
+ *
+ * Wrapper that dispatches to the arch-ops implementation.
+ * Called once per REO destination ring during ring allocation so that
+ * any descriptor not yet written by hardware is recognizable as stale
+ * when first reaped.
+ *
+ * Return: None
+ */
+static inline void
+dp_srng_rx_ring_desc_mark_invalid(struct dp_soc *soc, struct dp_srng *srng)
+{
+	if (soc->arch_ops.dp_srng_rx_ring_desc_mark_invalid)
+		soc->arch_ops.dp_srng_rx_ring_desc_mark_invalid(soc, srng);
+}
+
+/**
  * dp_soc_srng_alloc() - Allocate memory for soc level srng rings
  * @soc: Datapath soc handle
  *
@@ -4892,6 +4912,7 @@ QDF_STATUS dp_soc_srng_alloc(struct dp_soc *soc)
 			goto fail1;
 		}
 
+		dp_srng_rx_ring_desc_mark_invalid(soc, &soc->reo_dest_ring[i]);
 		dp_srng_mark_dal_owned_ring(soc, &soc->reo_dest_ring[i],
 					    i, REO_DST);
 	}

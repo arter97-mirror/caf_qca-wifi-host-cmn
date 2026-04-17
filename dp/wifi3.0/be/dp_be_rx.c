@@ -279,6 +279,152 @@ static inline void dp_rx_vdev_flush(struct dp_soc *soc, uint8_t rx_pkt_vdev_map,
 }
 
 #ifndef CONFIG_BORON
+#ifdef DP_RX_RING_DESC_SANITY_CHECK
+/* Increasing this value, runs the risk of srng backpressure */
+#define DP_STALE_RX_WAIT_TIMEOUT_US 1000
+/*
+ * Value to mark ring desc is invalidated by buffer_virt_addr_63_32 field
+ * of REO2SW ring Desc.
+ */
+#define DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE 0x12121212
+
+void dp_srng_rx_ring_desc_mark_invalid_be(struct dp_soc *soc,
+					  struct dp_srng *srng)
+{
+	uint8_t *desc = srng->base_vaddr_aligned;
+	uint32_t num_entries = srng->num_entries;
+	uint32_t entry_size;
+	int i;
+
+	if (!num_entries) {
+		dp_err("srng num_entries is 0");
+		return;
+	}
+
+	entry_size = srng->alloc_size / num_entries;
+
+	for (i = 0; i < num_entries; i++) {
+		hal_rx_set_reo_desc_va_63_32(desc, DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE);
+		desc += entry_size;
+	}
+}
+
+/**
+ * dp_rx_ring_desc_validate() - Validate a reaped REO ring descriptor
+ * @ring_desc: REO2SW ring descriptor pointer
+ *
+ * Check whether the BUFFER_VIRT_ADDR_63_32 field still holds the magic
+ * invalidation value written during ring initialization or after the
+ * previous reap. If so, the hardware has not yet updated this entry and
+ * the descriptor is stale.
+ *
+ * Return: QDF_STATUS_SUCCESS if the descriptor is valid and ready to
+ *         process, QDF_STATUS_E_PENDING if it is stale.
+ */
+static inline QDF_STATUS
+dp_rx_ring_desc_validate(hal_ring_desc_t ring_desc)
+{
+	if (qdf_unlikely(DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE ==
+			(hal_rx_get_reo_desc_va_63_32(ring_desc))))
+		return QDF_STATUS_E_PENDING;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_rx_ring_desc_invalidate() - Re-poison a consumed REO ring descriptor
+ * @ring_desc: REO2SW ring descriptor pointer
+ *
+ * Write the magic invalidation value back into BUFFER_VIRT_ADDR_63_32 so
+ * that the next reap of the same slot can detect whether hardware has
+ * written a new descriptor.
+ *
+ * Return: None
+ */
+static inline void
+dp_rx_ring_desc_invalidate(hal_ring_desc_t ring_desc)
+{
+	hal_rx_set_reo_desc_va_63_32(ring_desc,
+				     DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE);
+}
+
+/**
+ * dp_rx_reset_stale_entry_detection() - Clear the stale-entry detection
+ *  state for a given REO ring after a valid descriptor is processed
+ * @soc: DP SoC handle
+ * @ring_num: REO destination ring index
+ *
+ * Return: None
+ */
+static inline void
+dp_rx_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
+{
+	soc->rx_stale_entry[ring_num].detected = 0;
+}
+
+/**
+ * dp_rx_stale_entry_handle() - Handle a stale REO ring descriptor
+ * @soc: DP SoC handle
+ * @ring_num: REO destination ring index
+ *
+ * Called when dp_rx_ring_desc_validate() returns QDF_STATUS_E_PENDING.
+ * Tracks how long the host has been waiting for hardware to update the
+ * descriptor.  Returns QDF_STATUS_SUCCESS while within the timeout window
+ * (caller should rewind the tail pointer and retry), or
+ * QDF_STATUS_E_FAILURE once the timeout expires (caller should drop the
+ * entry and move on).
+ *
+ * Return: QDF_STATUS_SUCCESS while within timeout,
+ *         QDF_STATUS_E_FAILURE on timeout expiry.
+ */
+static inline QDF_STATUS
+dp_rx_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num)
+{
+	uint64_t curr_timestamp = qdf_get_log_timestamp_usecs();
+	uint64_t delta_us;
+
+	if (soc->rx_stale_entry[ring_num].detected) {
+		/* stale entry process continuation */
+		delta_us = curr_timestamp -
+				soc->rx_stale_entry[ring_num].start_time;
+		if (delta_us > DP_STALE_RX_WAIT_TIMEOUT_US) {
+			dp_err_rl("Stale rx desc on ring %d, waited %llu us",
+				  ring_num, delta_us);
+			return QDF_STATUS_E_FAILURE;
+		}
+	} else {
+		/* This is the start of stale entry detection */
+		soc->rx_stale_entry[ring_num].detected = 1;
+		soc->rx_stale_entry[ring_num].start_time = curr_timestamp;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+#else
+static inline
+QDF_STATUS dp_rx_ring_desc_validate(hal_ring_desc_t ring_desc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+dp_rx_ring_desc_invalidate(hal_ring_desc_t ring_desc)
+{
+}
+
+static inline void
+dp_rx_reset_stale_entry_detection(struct dp_soc *soc, uint32_t ring_num)
+{
+}
+
+static inline QDF_STATUS
+dp_rx_stale_entry_handle(struct dp_soc *soc, uint32_t ring_num)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
 			  uint32_t quota)
@@ -441,9 +587,22 @@ more_data:
 			break;
 		}
 
+		status = dp_rx_ring_desc_validate(ring_desc);
+		if (qdf_unlikely(QDF_IS_STATUS_ERROR(status))) {
+			if (QDF_IS_STATUS_SUCCESS(dp_rx_stale_entry_handle(soc, reo_ring_num))) {
+				hal_srng_dst_dec_tp(hal_soc, hal_ring_hdl);
+				break;
+			}
+			DP_STATS_INC(soc, rx.err.stale_rx_desc, 1);
+			continue;
+		}
+
 		rx_desc = (struct dp_rx_desc *)
 				hal_rx_get_reo_desc_va(ring_desc);
 		dp_rx_desc_sw_cc_check(soc, rx_buf_cookie, &rx_desc);
+
+		dp_rx_ring_desc_invalidate(ring_desc);
+		dp_rx_reset_stale_entry_detection(soc, reo_ring_num);
 
 		status = dp_rx_desc_sanity(soc, hal_soc, hal_ring_hdl,
 					   ring_desc, rx_desc);

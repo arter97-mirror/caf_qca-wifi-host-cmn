@@ -1672,6 +1672,8 @@ struct dp_soc_stats {
 			uint32_t invalid_cookie;
 			/* Count of stale cookie read in RX path */
 			uint32_t stale_cookie;
+			/* Count of stale REO descriptor detected in RX path */
+			uint32_t stale_rx_desc;
 			/* Delba sent count due to RX 2k jump */
 			uint32_t rx_2k_jump_delba_sent;
 			/* RX 2k jump msdu indicated to stack count */
@@ -2919,6 +2921,7 @@ enum dp_context_type {
  * @dp_dal_rx_process_nbuf_list: Function for RX NBUF list processing (DP DAL)
  * @dp_rx_validate_and_fetch_rx_desc: Validate and fetch RX desc (DP DAL)
  * @dp_dal_tx_comp_check_reserved_cookie: Check DAL reserved bit in cookie (DP DAL)
+ * @dp_srng_rx_ring_desc_mark_invalid: Poison REO dest ring descriptors on init
  */
 struct dp_arch_ops {
 	/* INIT/DEINIT Arch Ops */
@@ -3252,6 +3255,9 @@ struct dp_arch_ops {
 	bool (*dp_dal_tx_comp_check_reserved_cookie)(struct dp_soc *soc,
 						     void *tx_comp_hal_desc);
 #endif
+	void (*dp_srng_rx_ring_desc_mark_invalid)(struct dp_soc *soc,
+						  struct dp_srng *srng);
+
 };
 
 /**
@@ -4180,6 +4186,9 @@ struct dp_soc {
 
 #ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
 	struct dp_stale_entry tx_comp_stale_entry[MAX_TCL_DATA_RINGS];
+#endif
+#ifdef DP_RX_RING_DESC_SANITY_CHECK
+	struct dp_stale_entry rx_stale_entry[MAX_REO_DEST_RINGS];
 #endif
 	/* TX Monitor stale entry tracking - one per MAC ID */
 	struct dp_stale_entry tx_mon_stale_entry[MAX_NUM_LMAC_HW];
