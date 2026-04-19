@@ -998,6 +998,38 @@ dp_dal_offload_sim_sync_refill_ring_hp_to_ddr(struct dp_dal_sim_ctx *sim_ctx)
 	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
 }
 
+#ifdef DP_FEATURE_DIRECT_REFILL
+void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx)
+{
+	struct dp_dal_offload_sim_ctx *offload_ctx;
+	struct dal_vndr_hal_srng *rx_refill_ring;
+	struct dal_vndr_hal_srng *direct_refill_ring;
+
+	if (!dal_sim_ctx) {
+		dp_err("NULL simulator context, can't sync refill ring");
+		return;
+	}
+
+	offload_ctx =
+		(struct dp_dal_offload_sim_ctx *)dal_sim_ctx->offload_sim_ctx;
+	if (!offload_ctx) {
+		dp_err("NULL offload context");
+		return;
+	}
+
+	rx_refill_ring = &offload_ctx->rx_refill_ring_hal_srng;
+
+	DAL_VNDR_SRNG_LOCK(&rx_refill_ring->lock);
+	dal_vndr_hal_srng_sync_hp(&offload_ctx->hal_soc, rx_refill_ring);
+	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
+
+	direct_refill_ring = &offload_ctx->direct_refill_ring_hal_srng;
+	DAL_VNDR_SRNG_LOCK(&direct_refill_ring->lock);
+	dal_vndr_hal_srng_sync_hp(&offload_ctx->hal_soc, direct_refill_ring);
+	DAL_VNDR_SRNG_UNLOCK(&direct_refill_ring->lock);
+}
+
+#else
 void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx)
 {
 	struct dp_dal_offload_sim_ctx *offload_ctx;
@@ -1021,7 +1053,7 @@ void dp_dal_offload_sim_sync_refill_ring_hp(struct dp_dal_sim_ctx *dal_sim_ctx)
 	dal_vndr_hal_srng_sync_hp(&offload_ctx->hal_soc, rx_refill_ring);
 	DAL_VNDR_SRNG_UNLOCK(&rx_refill_ring->lock);
 }
-
+#endif
 #ifdef DP_FEATURE_DIRECT_REFILL
 static inline int
 dp_dal_offload_sim_replenish_rxdma_ring(
