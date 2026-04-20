@@ -3505,6 +3505,7 @@ void wlan_ipa_intrabss_enable_disable(struct wlan_ipa_priv *ipa_ctx,
 {}
 #endif
 
+#ifdef MDM_PLATFORM
 /**
  * wlan_ipa_uc_offload_enable_disable() - wdi enable/disable notify to fw
  * @ipa_ctx: global IPA context
@@ -3552,7 +3553,14 @@ static void wlan_ipa_uc_offload_enable_disable(struct wlan_ipa_priv *ipa_ctx,
 
 	wlan_ipa_intrabss_enable_disable(ipa_ctx, session_id, enable);
 }
-
+#else
+static void wlan_ipa_uc_offload_enable_disable(struct wlan_ipa_priv *ipa_ctx,
+					       uint32_t offload_type,
+					       uint8_t session_id,
+					       bool enable)
+{
+}
+#endif
 #ifdef WDI3_STATS_BW_MONITOR
 static void wlan_ipa_uc_bw_monitor(struct wlan_ipa_priv *ipa_ctx, bool stop)
 {
