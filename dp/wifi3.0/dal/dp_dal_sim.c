@@ -243,6 +243,11 @@ dp_dal_sim_suspend_msg_buffer_init(struct dp_dal_ctx *dal_ctx)
 	qdf_dma_addr_t paddr;
 	int status;
 
+	if (sim_ctx->suspend_msg_data_vaddr) {
+		dp_info("suspend msg already allocated");
+		return 0;
+	}
+
 	/* Allocate DMA buffer for suspend message data */
 	status = dp_dal_sim_alloc_suspend_msg_buffer(dal_ctx, sim_ctx,
 						     &vaddr, &paddr);
