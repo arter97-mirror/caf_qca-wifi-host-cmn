@@ -161,6 +161,10 @@ static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
 	[2] = WLAN_CFG_TX_RING_MASK_2, [3] = WLAN_CFG_TX_RING_MASK_3,
 	[4] = WLAN_CFG_TX_RING_MASK_4 | WLAN_CFG_TX_RING_MASK_5};
 #endif /* IPA_WDI3_TX_TWO_PIPES*/
+#elif defined(FEATURE_DAL_DP_SUPPORT)
+static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
+	[2] = WLAN_CFG_TX_RING_MASK_2, [3] = WLAN_CFG_TX_RING_MASK_3,
+	[4] = WLAN_CFG_TX_RING_MASK_4 | WLAN_CFG_TX_RING_MASK_5};
 #else /* !IPA_OFFLOAD */
 static const uint8_t tx_ring_mask_msi[WLAN_CFG_INT_NUM_CONTEXTS] = {
 	[0] = WLAN_CFG_TX_RING_MASK_0, [1] = WLAN_CFG_TX_RING_MASK_1,
