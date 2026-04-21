@@ -1661,6 +1661,7 @@ dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
  * @nbuf: skb
  * @tx_desc: SW TX descriptor
  * @new_nbuf: Newly allocated buffer
+ * @msdu_info: msdu information
  *
  * This function allocates an nbuf from page pool memory, copies the
  * network layer generated TX packet into the page pool nbuf.
@@ -1668,7 +1669,8 @@ dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
 static QDF_STATUS
 dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 				   struct dp_tx_desc_s *tx_desc,
-				   qdf_nbuf_t *new_nbuf)
+				   qdf_nbuf_t *new_nbuf,
+				   struct dp_tx_msdu_info_s *msdu_info)
 {
 	struct dp_soc *soc = vdev->pdev->soc;
 	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
@@ -1720,6 +1722,10 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		 * SW TSO segments.
 		 */
 		*new_nbuf = nbuf;
+
+		if (msdu_info->orig_nbuf)
+			tx_desc->orig_nbuf = msdu_info->orig_nbuf;
+
 		return QDF_STATUS_SUCCESS;
 	}
 
@@ -1783,11 +1789,21 @@ dp_tx_release_pp_nbuf(struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf)
 		return nbuf;
 
 	pp_buf = qdf_is_pp_nbuf(nbuf);
-	qdf_nbuf_free(nbuf);
-
 	if (pp_buf && tx_desc->pdev)
 		dp_tx_page_pool_dec_usage(tx_desc->pdev->soc, tx_desc->vdev_id);
 
+	/* If the nbuf originates from the software TSO path, return nbuf itself
+	 * instead of orig_nbuf, since the caller is responsible for freeing the
+	 * nbuf returned here. Returning orig_nbuf could lead to the orig_nbuf
+	 * being freed twice: once by dp_tx_sw_tso_handler and again by
+	 * dp_start_xmit.
+	 */
+	if (qdf_nbuf_get_dev_scratch(nbuf) == QDF_NBUF_SW_TSO_DEV_SCRATCH_VAL) {
+		tx_desc->orig_nbuf = NULL;
+		return nbuf;
+	}
+
+	qdf_nbuf_free(nbuf);
 	orig_nbuf = tx_desc->orig_nbuf;
 	tx_desc->nbuf = orig_nbuf;
 	tx_desc->orig_nbuf = NULL;
@@ -1807,7 +1823,8 @@ static inline void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
 static inline QDF_STATUS
 dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 				   struct dp_tx_desc_s *tx_desc,
-				   qdf_nbuf_t *new_nbuf)
+				   qdf_nbuf_t *new_nbuf,
+				   struct dp_tx_msdu_info_s *msdu_info)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }
@@ -5384,7 +5401,8 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	dp_tx_update_tdls_flags(soc, vdev, tx_desc);
 
 	status = dp_tx_page_pool_handle_nbuf_single(vdev, nbuf,
-						    tx_desc, &pp_nbuf);
+						    tx_desc, &pp_nbuf,
+						    msdu_info);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
 		nbuf = pp_nbuf;
 	} else if (qdf_is_pp_nbuf(nbuf) && status == QDF_STATUS_E_NOMEM) {
@@ -6684,7 +6702,7 @@ static inline void dp_vdev_tx_mark_to_fw(qdf_nbuf_t nbuf, struct dp_vdev *vdev)
  * @soc: soc handle
  * @nbuf: TCP jumbo packet
  * @head_nbuf: formed skb list
- * @vdev_id: VDEV ID
+ * @tx_pp: Page pool pointer
  *
  * Return: QDF_STATUS
  */
@@ -6692,9 +6710,8 @@ static QDF_STATUS
 dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 			       qdf_nbuf_t nbuf,
 			       qdf_nbuf_t *head_nbuf,
-			       uint8_t vdev_id)
+			       struct dp_tx_page_pool *tx_pp)
 {
-	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev_id];
 	qdf_nbuf_t alloc_list_head = NULL;
 	qdf_nbuf_t alloc_list_tail = NULL;
 	qdf_nbuf_t tail_nbuf = NULL;
@@ -6985,13 +7002,16 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		     struct dp_tx_msdu_info_s *msdu_info, bool is_tso)
 {
 	struct dp_soc *soc = vdev->pdev->soc;
+	struct dp_tx_page_pool *tx_pp = soc->tx_pp[vdev->vdev_id];
 	qdf_nbuf_t buff = NULL;
 	qdf_nbuf_t next;
 	QDF_STATUS status;
 	int count = 0;
 
-	status = dp_tx_sw_tso_prepare_nbuf_list(soc, nbuf, &buff,
-						vdev->vdev_id);
+	if (!tx_pp || !tx_pp->page_pool_init)
+		return QDF_STATUS_E_NOSUPPORT;
+
+	status = dp_tx_sw_tso_prepare_nbuf_list(soc, nbuf, &buff, tx_pp);
 
 	if (status != QDF_STATUS_SUCCESS) {
 		dp_err_rl("sw tso: failed to prepare sw tso nbuf list status %d",
@@ -7002,6 +7022,9 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	while (buff) {
 		next = qdf_nbuf_next(buff);
 		qdf_nbuf_set_next(buff, NULL);
+
+		if (!next && !qdf_nbuf_is_cloned(nbuf))
+			msdu_info->orig_nbuf = nbuf;
 
 		buff = dp_tx_send_msdu_single(vdev, buff, msdu_info,
 					      HTT_INVALID_PEER, NULL);
@@ -7141,9 +7164,12 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			status = dp_tx_sw_tso_handler(vdev, nbuf,
 						      &msdu_info, is_tso);
 			if (status == QDF_STATUS_SUCCESS) {
-				qdf_nbuf_free(nbuf);
+				if (qdf_nbuf_is_cloned(nbuf))
+					qdf_nbuf_free(nbuf);
+
 				return NULL;
-			} else if (status != QDF_STATUS_E_NOMEM) {
+			} else if (status != QDF_STATUS_E_NOMEM &&
+				   status != QDF_STATUS_E_NOSUPPORT) {
 				DP_STATS_SEL_INCC(soc, tx.sw_tso_fail,
 						  tx.sw_uso_fail, 1, is_tso);
 				return nbuf;

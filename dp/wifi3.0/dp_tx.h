@@ -256,6 +256,7 @@ struct dp_tx_queue {
  * @custom_txpt_classify_info_sel: Txpt classify info index override
  * @is_custom_flow_sel_valid: is custom_flow_sel valid
  * @custom_flow_sel: custom flow selection
+ * @orig_nbuf: Original nbuf
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -310,6 +311,9 @@ struct dp_tx_msdu_info_s {
 	uint8_t custom_txpt_classify_info_sel;
 	bool is_custom_flow_sel_valid;
 	uint8_t custom_flow_sel;
+#endif
+#ifdef DP_FEATURE_TX_PAGE_POOL
+	qdf_nbuf_t orig_nbuf;
 #endif
 };
 
