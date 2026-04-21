@@ -1370,7 +1370,7 @@ cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 		       enum MLO_TYPE bss_mlo_type, uint8_t ml_flag)
 {
 	enum phy_ch_width ch_width;
-	uint8_t nss, vdev_2g_nss, vdev_5g_nss;
+	uint8_t nss, vdev_2g_nss, vdev_5g_nss, ap_nss;
 	bool is_he_intersect = false;
 	bool is_vht_intersect = false;
 	bool is_ht_intersect = false;
@@ -1398,7 +1398,11 @@ cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 
 	nss = cm_get_sta_nss(psoc, entry->channel.chan_freq,
 			     vdev_2g_nss, vdev_5g_nss);
-	nss = QDF_MIN(nss, entry->nss);
+	ap_nss = QDF_MIN(nss, entry->nss);
+
+	if (entry->score_arbitrators.valid_flag &
+	    BIT(WLAN_BSS_SCORE_ARBITRATOR_NSS_BITPOS))
+		ap_nss = QDF_MIN(ap_nss, entry->score_arbitrators.nss);
 	ch_width = cm_calculate_bandwidth(entry, phy_config);
 
 	/* Initialize default ETP params */
@@ -1433,7 +1437,7 @@ cm_calculate_etp_score(struct wlan_objmgr_psoc *psoc,
 	 */
 	score = cm_calculate_etp(psoc, entry,
 				 &etp_param,
-				 nss,
+				 ap_nss,
 				 ch_width,
 				 is_ht_intersect,
 				 is_vht_intersect,
@@ -2702,6 +2706,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	struct scoring_cfg *score_config;
 	struct weight_cfg *weight_config;
 	uint8_t sta_nss, vdev_2g_nss, vdev_5g_nss;
+	uint8_t ap_nss;
 	struct psoc_mlme_obj *mlme_psoc_obj;
 	struct psoc_phy_config *phy_config;
 	uint32_t eht_score;
@@ -2898,7 +2903,12 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	 * this AP will be given half weight compare to AP which are having
 	 * NSS as 2*2.
 	 */
-	nss_score = cm_calculate_nss_score(psoc, score_config, entry->nss,
+	ap_nss = entry->nss;
+	if (entry->score_arbitrators.valid_flag &
+	    BIT(WLAN_BSS_SCORE_ARBITRATOR_NSS_BITPOS))
+		ap_nss = entry->score_arbitrators.nss;
+
+	nss_score = cm_calculate_nss_score(psoc, score_config, ap_nss,
 					   prorated_pcnt, sta_nss);
 	score += nss_score;
 
@@ -3620,6 +3630,8 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 
 			tmp_scan_entry->ml_info.num_links = gen_link_cnt;
 			tmp_scan_node->entry = tmp_scan_entry;
+			tmp_scan_entry->score_arbitrators =
+				scan_entry->score_arbitrators;
 			qdf_list_insert_after(candidate_list,
 					      &tmp_scan_node->node,
 					      &scan_node->node);
