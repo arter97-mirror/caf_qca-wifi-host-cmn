@@ -53,11 +53,6 @@ QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx);
 
-static void
-mlo_link_recfg_update_state_req_from_rsp(
-			struct mlo_link_recfg_context *recfg_ctx,
-			struct mlo_link_recfg_state_tran *tran);
-
 struct wlan_mlo_dev_context *
 mlo_link_recfg_get_mlo_ctx(struct mlo_link_recfg_context *recfg_ctx)
 {
@@ -4059,7 +4054,7 @@ mlo_link_recfg_del_link_completed(struct mlo_link_recfg_context *recfg_ctx)
 	mlo_link_recfg_tranistion_to_next_state(recfg_ctx);
 }
 
-static void
+void
 mlo_link_recfg_update_state_req_from_rsp(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct mlo_link_recfg_state_tran *tran)
@@ -4122,13 +4117,49 @@ mlo_link_recfg_send_status(struct mlo_link_recfg_context *recfg_ctx)
 }
 
 static QDF_STATUS
+mlo_link_recfg_handle_rsp(struct mlo_link_recfg_context *recfg_ctx,
+			  struct mlo_link_recfg_state_tran *tran)
+{
+	QDF_STATUS status;
+
+	if (!recfg_ctx || !tran)
+		return QDF_STATUS_E_INVAL;
+
+	/* Handle link recfg link del.
+	 * If deleted link is standby, remove link info from mlo mgr.
+	 * For example:
+	 * L1 L2 L3, del L2, link switch to L3. remove standby L2.
+	 * or L1 L2 L3, del standby L3, then remove standby L3.
+	 */
+	mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(recfg_ctx, &tran->req);
+
+	/* propagate link add status code from ap to "add link" state
+	 * request.
+	 */
+	mlo_link_recfg_update_state_req_from_rsp(recfg_ctx, tran);
+
+	status = mlo_link_recfg_update_added_link_in_mlo_mgr(
+							recfg_ctx, &tran->req);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlo_err("RX response failure");
+		return status;
+	}
+
+	mlo_link_recfg_update_partner_info(recfg_ctx);
+	mlo_link_recfg_store_key(recfg_ctx, &tran->req);
+	mlo_link_recfg_send_status(recfg_ctx);
+	/* handle link recfg link add rejected case */
+
+	return status;
+}
+
+static QDF_STATUS
 mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 				struct link_recfg_rx_rsp *recfg_resp_data,
 				uint16_t event_data_len)
 {
 	struct mlo_link_recfg_state_tran *tran;
 	QDF_STATUS status;
-
 
 	if (!recfg_ctx || !recfg_resp_data || !event_data_len)
 		return QDF_STATUS_E_INVAL;
@@ -4155,30 +4186,10 @@ mlo_link_recfg_response_handler(struct mlo_link_recfg_context *recfg_ctx,
 
 	mlo_debug("RX response success");
 
-	/* Handle link recfg link del.
-	 * If deleted link is standby, remove link info from mlo mgr.
-	 * For example:
-	 * L1 L2 L3, del L2, link switch to L3. remove standby L2.
-	 * or L1 L2 L3, del standby L3, then remove standby L3.
-	 */
-	mlo_link_recfg_remove_deleted_standby_in_mlo_mgr(recfg_ctx, &tran->req);
-
-	/* propagate link add status code from ap to "add link" state
-	 * request.
-	 */
-	mlo_link_recfg_update_state_req_from_rsp(recfg_ctx, tran);
-
-	status = mlo_link_recfg_update_added_link_in_mlo_mgr(
-							recfg_ctx, &tran->req);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		mlo_err("RX response failure");
-		return status;
-	}
-
-	mlo_link_recfg_update_partner_info(recfg_ctx);
-	mlo_link_recfg_store_key(recfg_ctx, &tran->req);
-	mlo_link_recfg_send_status(recfg_ctx);
-	/* handle link recfg link add rejected case */
+	if (smd_roam_in_progress(recfg_ctx))
+		status = smd_st_prep_response_received(recfg_ctx, tran);
+	else
+		status = mlo_link_recfg_handle_rsp(recfg_ctx, tran);
 
 	return status;
 }
@@ -5083,6 +5094,55 @@ mlo_link_recfg_update_ttlm_done(struct mlo_link_recfg_context *recfg_ctx,
 	}
 }
 
+#ifdef WLAN_FEATURE_11BN_SMD
+static void
+mlo_link_recfg_state_wait_entry(void *ctx)
+{
+	mlo_link_recfg_sm_state_update(ctx, WLAN_LINK_RECFG_S_WAIT,
+				       WLAN_LINK_RECFG_SS_IDLE);
+}
+
+static bool
+mlo_link_recfg_state_wait_event(void *ctx,
+				uint16_t event,
+				uint16_t event_data_len,
+				void *event_data)
+{
+	struct mlo_link_recfg_context *recfg_ctx = ctx;
+	bool event_handled = true;
+	struct mlo_link_recfg_state_req *req;
+	bool status;
+
+	switch (event) {
+	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
+		req = (struct mlo_link_recfg_state_req *)event_data;
+		status = smd_roam_prep_complete(recfg_ctx, req);
+		break;
+	default:
+		event_handled = false;
+		break;
+	}
+
+	return event_handled;
+}
+
+static void
+mlo_link_recfg_state_wait_exit(void *ctx)
+{
+}
+#else
+static inline void mlo_link_recfg_state_wait_entry(void *ctx) {}
+
+static inline void mlo_link_recfg_state_wait_exit(void *ctx) {}
+
+static inline bool
+mlo_link_recfg_state_wait_event(void *ctx, uint16_t event,
+				uint16_t event_data_len, void *event_data)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 /* WLAN_LINK_RECFG_S_TTLM */
 static void
 mlo_link_recfg_state_update_ttlm_entry(void *ctx)
@@ -5227,7 +5287,9 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 			break;
 		}
 
-		if (mlo_link_recfg_is_standby_link_present_for_link_switch(
+		if (smd_roam_in_progress(recfg_ctx)) {
+			smd_link_recfg_del_link_completed(recfg_ctx);
+		} else if (mlo_link_recfg_is_standby_link_present_for_link_switch(
 							recfg_ctx)) {
 			/* ABC -> AC: B is set inactive for delete,
 			 * link switch is expected. fw should link
@@ -5242,7 +5304,6 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 			 * by set link inactive
 			 */
 			mlo_link_recfg_del_link_completed(recfg_ctx);
-
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
@@ -5474,6 +5535,43 @@ mlo_link_recfg_state_add_link_entry(void *ctx)
 				       WLAN_LINK_RECFG_SS_IDLE);
 }
 
+#ifdef WLAN_FEATURE_11BN_SMD
+static bool
+mlo_smd_handle_add_link_event(void *ctx,
+			      struct mlo_link_recfg_context *recfg_ctx,
+			      uint16_t event,
+			      struct mlo_link_recfg_state_req *req)
+{
+	struct wlan_mlo_link_switch_req link_sw_req = {0};
+
+	if (smd_link_recfg_has_active_vdev_for_add_link(
+					recfg_ctx, req, &link_sw_req)) {
+		/* SMD current AP links = AB , Target AP links: CD
+		 * AB(B was deleted on vdev 1 by force inactive) -> AC:
+		 * add standby C, trigger link switch from B -> C.
+		 *
+		 */
+		mlo_link_recfg_sm_transition_to(
+			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
+		mlo_link_recfg_sm_deliver_event_sync(
+			recfg_ctx->ml_dev, event,
+			sizeof(link_sw_req), &link_sw_req);
+		return true;
+	}
+
+	return false;
+}
+#else
+static inline bool
+mlo_smd_handle_add_link_event(void *ctx,
+			      struct mlo_link_recfg_context *recfg_ctx,
+			      uint16_t event,
+			      struct mlo_link_recfg_state_req *req)
+{
+	return true;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 static bool
 mlo_link_recfg_state_add_link_event(void *ctx,
 				    uint16_t event,
@@ -5526,6 +5624,11 @@ mlo_link_recfg_state_add_link_event(void *ctx,
 			}
 			mlo_link_recfg_add_link_completed(recfg_ctx);
 		}
+		break;
+	case WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK:
+		req = (struct mlo_link_recfg_state_req *)event_data;
+		event_handled = mlo_smd_handle_add_link_event(ctx, recfg_ctx,
+							      event, req);
 		break;
 	default:
 		event_handled = false;
@@ -5927,7 +6030,10 @@ mlo_link_recfg_state_abort_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_COMPLETED:
-		mlo_link_recfg_complete(recfg_ctx, false);
+		if (smd_roam_in_progress(recfg_ctx))
+			smd_link_recfg_complete(recfg_ctx, false);
+		else
+			mlo_link_recfg_complete(recfg_ctx, false);
 		break;
 	default:
 		event_handled = false;
@@ -5961,7 +6067,10 @@ mlo_link_recfg_state_completed_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_COMPLETED:
-		mlo_link_recfg_complete(recfg_ctx, true);
+		if (smd_roam_in_progress(recfg_ctx))
+			smd_link_recfg_complete(recfg_ctx, true);
+		else
+			mlo_link_recfg_complete(recfg_ctx, true);
 		break;
 	default:
 		event_handled = false;
@@ -6063,9 +6172,9 @@ static struct wlan_sm_state_info mlo_link_recfg_sm_info[] = {
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		true,
 		"SMD_WAIT",
-		NULL,
-		NULL,
-		NULL,
+		mlo_link_recfg_state_wait_entry,
+		mlo_link_recfg_state_wait_exit,
+		mlo_link_recfg_state_wait_event,
 	},
 	{
 		(uint8_t)WLAN_LINK_RECFG_S_MAX,

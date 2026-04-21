@@ -340,6 +340,7 @@ typedef QDF_STATUS
  * @self_link_addr: self link address for add link only
  * @status_code: status code updated after link reconfig response is received.
  * @link_assoc_rsp: Link specific association response for add link only
+ * @priority_index: Priority index from vdev repurpose request (0 = highest)
  */
 struct wlan_mlo_link_recfg_bss_info {
 	uint8_t vdev_id;
@@ -351,6 +352,9 @@ struct wlan_mlo_link_recfg_bss_info {
 	struct qdf_mac_addr self_link_addr;
 	enum wlan_status_code status_code;
 	struct element_info link_assoc_rsp;
+#ifdef WLAN_FEATURE_11BN_SMD
+	uint8_t priority_index;
+#endif
 };
 
 /**

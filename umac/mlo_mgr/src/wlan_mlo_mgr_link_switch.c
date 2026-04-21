@@ -33,6 +33,7 @@
 #include "host_diag_core_event.h"
 #include <wlan_t2lm_api.h>
 #include <wlan_mlme_api.h>
+#include <wlan_smd_roam.h>
 
 static QDF_STATUS
 mlo_mgr_update_link_rej_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
@@ -1271,9 +1272,16 @@ QDF_STATUS mlo_mgr_link_switch_disconnect_done(struct wlan_objmgr_vdev *vdev,
 	mlo_debug("VDEV %d link switch disconnect complete",
 		  wlan_vdev_get_id(vdev));
 
-	new_link_info =
-		mlo_mgr_get_ap_link_by_link_id(vdev->mlo_dev_ctx,
-					       req->new_ieee_link_id);
+	if (req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK &&
+	    smd_is_roaming_in_progress(vdev)) {
+		new_link_info =
+			smd_get_prep_ap_link_info(vdev,
+						  req);
+	} else {
+		new_link_info =
+			mlo_mgr_get_ap_link_by_link_id(vdev->mlo_dev_ctx,
+						       req->new_ieee_link_id);
+	}
 	if (!new_link_info) {
 		mlo_err("New link not found in mlo dev ctx");
 		mlo_mgr_remove_link_switch_cmd(vdev);
@@ -1889,10 +1897,18 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
 	bool notify_link_recfg = false;
 
 	if (req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) {
-		status = mlo_mgr_host_link_switch_validate_request(vdev, req);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			mlo_err("link switch status %d for add link", status);
-			return status;
+		if (smd_is_roaming_in_progress(vdev)) {
+			status = smd_host_link_switch_validate_request(vdev, req);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				mlo_err("link switch status %d for add link", status);
+				return status;
+			}
+		} else {
+			status = mlo_mgr_host_link_switch_validate_request(vdev, req);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				mlo_err("link switch status %d for add link", status);
+				return status;
+			}
 		}
 		goto validated;
 	}

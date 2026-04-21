@@ -140,6 +140,8 @@ enum mlo_link_switch_req_state {
  * @reason: Link switch reason
  * @restore_vdev_flag: VDEV Flag to be restored post link switch.
  * @link_switch_ts: Link switch timestamp
+ * @smd_lnk_sw_trigger: SMD link switch trigger
+ * @tgt_ap_link_addr: SMD roaming Target AP link address
  */
 struct wlan_mlo_link_switch_req {
 	uint8_t vdev_id;
@@ -152,6 +154,10 @@ struct wlan_mlo_link_switch_req {
 	enum wlan_mlo_link_switch_reason reason;
 	bool restore_vdev_flag;
 	qdf_time_t link_switch_ts;
+#ifdef WLAN_FEATURE_11BN_SMD
+	bool smd_lnk_sw_trigger;
+	struct qdf_mac_addr tgt_ap_link_addr;
+#endif
 };
 
 /**
@@ -190,7 +196,7 @@ struct mlo_vdev_connect_params_cache {
 };
 
 /**
- * struct mlo_link_switch_disconnect_params - Disconnect params for link switch
+ * struct unified_disconnect_params - Disconnect params for link switch
  * @vdev_id: VDEV ID
  * @peer_macaddr: Peer MAC address
  */
@@ -1029,7 +1035,7 @@ bool mlo_mgr_is_unified_connect_in_progress(struct wlan_objmgr_vdev *vdev);
  * mlo_mgr_copy_peer_delete_param_for_link_switch() - Copy peer delete
  * params when link switch is in progress
  * @vdev: VDEV object manager
- * @peer: peer mac address
+ * @peer_mac: peer mac address
  *
  * This API copies peer delete parameters to MLO link context when link switch
  * is in progress. The parameters will be used later during link switch

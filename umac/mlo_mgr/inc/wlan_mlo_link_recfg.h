@@ -129,6 +129,7 @@ enum wlan_link_recfg_sm_state {
  * roam start
  * @WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC: Link Reconfiguration event for wait
  * for SMD execution
+ * @WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK: Link recfg evt for SMD add link.
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -154,6 +155,7 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_UPDATE_TTLM,
 	WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START,
 	WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC,
+	WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
@@ -206,6 +208,8 @@ enum link_recfg_failure_reason {
  * frame with common link present
  * @link_recfg_st_prep_add_link: SMD roaming ST preparation add
  * target links
+ * @link_recfg_st_exec_add_link: SMD roaming ST execution add
+ * target link
  * @link_recfg_st_exec: SMD roaming ST execution for link reconfiguration
  */
 enum link_recfg_type {
@@ -216,6 +220,7 @@ enum link_recfg_type {
 	link_recfg_del_add_no_common_link,
 	link_recfg_two_frm_del_add_common_link,
 	link_recfg_st_prep_add_link,
+	link_recfg_st_exec_add_link,
 	link_recfg_st_exec,
 };
 
@@ -526,6 +531,9 @@ struct wlan_mlo_link_recfg_bitmap {
  *                      links of the target AP MLD are requested to be set
  *                      up during SMD roaming.
  * @smd_roam_in_progress: bool smd roam in progress
+ * @current_link_index: Current link index being processed during SMD transition
+ * @st_exec_in_progress: Flag indicating SMD state transition
+ * execution in progress
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -553,6 +561,8 @@ struct mlo_link_recfg_context {
 	struct smd_transition_ie_info smd_transition_ie;
 	uint16_t tgt_ap_link_bitmap;
 	bool smd_roam_in_progress;
+	uint8_t current_link_index;
+	bool st_exec_in_progress;
 #endif
 };
 
@@ -1174,7 +1184,28 @@ mlo_link_recfg_set_tx_link_addr(
 QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx);
+
+/**
+ * mlo_link_recfg_update_state_req_from_rsp() - API to update state req from rsp
+ * @recfg_ctx: Link reconfiguration context. Must contain a valid MLO dev ctx.
+ * @tran: Link reconfiguration state tran ptr.
+ *
+ * Return: void
+ *
+ */
+void
+mlo_link_recfg_update_state_req_from_rsp(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct mlo_link_recfg_state_tran *tran);
+
 #else
+static inline void
+mlo_link_recfg_update_state_req_from_rsp(
+			struct mlo_link_recfg_context *recfg_ctx,
+			struct mlo_link_recfg_state_tran *tran)
+{
+}
+
 static inline QDF_STATUS
 mlo_link_recfg_tranistion_to_next_state(
 			struct mlo_link_recfg_context *recfg_ctx)
