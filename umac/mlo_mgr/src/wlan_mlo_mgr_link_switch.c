@@ -351,50 +351,6 @@ struct mlo_link_info
 	return &vdev->mlo_dev_ctx->sta_ctx->links_info[0];
 }
 
-static
-void mlo_mgr_alloc_link_info_wmi_chan(struct wlan_mlo_dev_context *ml_dev)
-{
-	struct mlo_link_info *link_info;
-	uint8_t link_info_iter;
-
-	if (!ml_dev)
-		return;
-
-	if (!ml_dev->sta_ctx)
-		return;
-
-	link_info = &ml_dev->sta_ctx->links_info[0];
-	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
-	     link_info_iter++) {
-		link_info->link_chan_info =
-			qdf_mem_malloc(sizeof(*link_info->link_chan_info));
-		if (!link_info->link_chan_info)
-			return;
-		link_info++;
-	}
-}
-
-static
-void mlo_mgr_free_link_info_wmi_chan(struct wlan_mlo_dev_context *ml_dev)
-{
-	struct mlo_link_info *link_info;
-	uint8_t link_info_iter;
-
-	if (!ml_dev)
-		return;
-
-	if (!ml_dev->sta_ctx)
-		return;
-
-	link_info = &ml_dev->sta_ctx->links_info[0];
-	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
-	     link_info_iter++) {
-		if (link_info->link_chan_info)
-			qdf_mem_free(link_info->link_chan_info);
-		link_info++;
-	}
-}
-
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 bool
 mlo_mgr_update_link_state_delete_flag(
@@ -1189,7 +1145,6 @@ QDF_STATUS mlo_mgr_link_switch_init(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_NOMEM;
 
 	mlo_mgr_link_switch_init_state(ml_dev);
-	mlo_mgr_alloc_link_info_wmi_chan(ml_dev);
 	mlo_mgr_update_link_info_reset(psoc, ml_dev);
 
 	return QDF_STATUS_SUCCESS;
@@ -1197,7 +1152,6 @@ QDF_STATUS mlo_mgr_link_switch_init(struct wlan_objmgr_psoc *psoc,
 
 QDF_STATUS mlo_mgr_link_switch_deinit(struct wlan_mlo_dev_context *ml_dev)
 {
-	mlo_mgr_free_link_info_wmi_chan(ml_dev);
 	qdf_mem_free(ml_dev->link_ctx);
 	ml_dev->link_ctx = NULL;
 	return QDF_STATUS_SUCCESS;

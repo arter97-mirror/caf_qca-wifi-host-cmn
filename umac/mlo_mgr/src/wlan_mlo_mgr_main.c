@@ -1126,6 +1126,57 @@ mld_delete_from_bridge_vdev_list(struct wlan_objmgr_vdev *vdev)
 	return QDF_STATUS_SUCCESS;
 }
 #endif
+static
+void mlo_mgr_free_link_info_wmi_chan(struct wlan_mlo_dev_context *ml_dev)
+{
+	struct mlo_link_info *link_info;
+	uint8_t link_info_iter;
+
+	if (!ml_dev)
+		return;
+
+	if (!ml_dev->sta_ctx)
+		return;
+
+	link_info = &ml_dev->sta_ctx->links_info[0];
+	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+	     link_info_iter++) {
+		if (link_info->link_chan_info) {
+			qdf_mem_free(link_info->link_chan_info);
+			link_info->link_chan_info = NULL;
+		}
+		link_info++;
+	}
+}
+
+static
+QDF_STATUS mlo_mgr_alloc_link_info_wmi_chan(struct wlan_mlo_dev_context *ml_dev)
+{
+	struct mlo_link_info *link_info;
+	uint8_t link_info_iter;
+
+	if (!ml_dev)
+		return QDF_STATUS_E_INVAL;
+
+	if (!ml_dev->sta_ctx)
+		return QDF_STATUS_E_INVAL;
+
+	link_info = &ml_dev->sta_ctx->links_info[0];
+	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+	     link_info_iter++) {
+		link_info->link_chan_info =
+			qdf_mem_malloc(sizeof(*link_info->link_chan_info));
+		if (!link_info->link_chan_info) {
+			mlo_err("link_chan_info alloc failed for link %d",
+				link_info_iter);
+			mlo_mgr_free_link_info_wmi_chan(ml_dev);
+			return QDF_STATUS_E_NOMEM;
+		}
+		link_info++;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
 
 static QDF_STATUS mlo_dev_ctx_init(struct wlan_objmgr_vdev *vdev)
 {
@@ -1209,11 +1260,26 @@ static QDF_STATUS mlo_dev_ctx_init(struct wlan_objmgr_vdev *vdev)
 		}
 		wlan_minidump_log(ml_dev->sta_ctx, sizeof(*ml_dev->sta_ctx),
 				  psoc, WLAN_MD_CP_MLO_STA, "wlan_mlo_sta");
+		status = mlo_mgr_alloc_link_info_wmi_chan(ml_dev);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("Failed to allocate link_info_wmi_chan");
+			wlan_minidump_remove(ml_dev->sta_ctx,
+					     sizeof(*ml_dev->sta_ctx),
+					     psoc, WLAN_MD_CP_MLO_STA,
+					     "wlan_mlo_sta");
+			qdf_mem_free(ml_dev->sta_ctx);
+			tsf_recalculation_lock_destroy(ml_dev);
+			mlo_dev_lock_destroy(ml_dev);
+			qdf_mem_free(ml_dev);
+			return status;
+		}
+
 		status = mlo_sta_allocate_shared_roam_objects(vdev, ml_dev);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlo_err("Failed to allocate shared roam objects");
 			tsf_recalculation_lock_destroy(ml_dev);
 			mlo_dev_lock_destroy(ml_dev);
+			mlo_mgr_free_link_info_wmi_chan(ml_dev);
 			qdf_mem_free(ml_dev->sta_ctx);
 			qdf_mem_free(ml_dev);
 			return status;
@@ -1230,6 +1296,7 @@ static QDF_STATUS mlo_dev_ctx_init(struct wlan_objmgr_vdev *vdev)
 					     sizeof(*ml_dev->sta_ctx), psoc,
 					     WLAN_MD_CP_MLO_STA,
 					     "wlan_mlo_sta");
+			mlo_mgr_free_link_info_wmi_chan(ml_dev);
 			qdf_mem_free(ml_dev->sta_ctx);
 			qdf_mem_free(ml_dev);
 			return QDF_STATUS_E_NOMEM;
@@ -1448,6 +1515,7 @@ static QDF_STATUS mlo_dev_ctx_deinit(struct wlan_objmgr_vdev *vdev)
 			if (ml_dev->sta_ctx->assoc_rsp.ptr)
 				qdf_mem_free(ml_dev->sta_ctx->assoc_rsp.ptr);
 
+			mlo_mgr_free_link_info_wmi_chan(ml_dev);
 			ml_free_copied_reassoc_rsp(ml_dev->sta_ctx);
 			mlo_reset_cache_link_assoc_rsp(ml_dev);
 			copied_conn_req_lock_destroy(ml_dev->sta_ctx);
