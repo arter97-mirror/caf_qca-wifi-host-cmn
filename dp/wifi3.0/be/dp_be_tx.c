@@ -2854,6 +2854,7 @@ bool dp_dal_tx_comp_check_reserved_cookie_be(struct dp_soc *soc,
 }
 #endif
 
+#ifndef CONFIG_BORON
 /**
  * dp_tx_hw_desc_sync_be() - BE specific hw desc sync function
  * @hal_tx_desc_cached: cached descriptor in host memory
@@ -2898,4 +2899,5 @@ void dp_tx_desc_update_buffer_info_be(struct dp_soc *soc,
 				    tx_desc->dma_addr, bm_id, tx_desc->id,
 				    (tx_desc->flags & DP_TX_DESC_FLAG_FRAG));
 }
+#endif
 #endif

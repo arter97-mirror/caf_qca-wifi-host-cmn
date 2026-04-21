@@ -1314,6 +1314,21 @@ static inline uint32_t hal_rx_desc_is_first_msdu_be(void *hw_desc_addr)
 
 #ifdef FEATURE_DAL_DP_SUPPORT
 /**
+ * hal_rx_tlv_l3_hdr_padding_set_be() - API to set the l3_header padding
+ *					from rx_msdu_end TLV
+ * @buf: pointer to the start of RX PKT TLV headers
+ * @l3_hdr_pad: L3 header padding value to set in tlvs
+ *
+ */
+static inline void hal_rx_tlv_l3_hdr_padding_set_be(uint8_t *buf,
+						    uint32_t l3_hdr_pad)
+{
+
+	dal_vndr_hal_rx_set_l3_pad_bytes_be(buf,
+					    l3_hdr_pad);
+}
+
+/**
  * hal_rx_tlv_l3_hdr_padding_get_be() - API to get the l3_header padding
  *					from rx_msdu_end TLV
  * @buf: pointer to the start of RX PKT TLV headers

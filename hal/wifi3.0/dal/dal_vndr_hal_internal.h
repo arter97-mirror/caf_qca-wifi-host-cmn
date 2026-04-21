@@ -121,6 +121,8 @@ struct dal_vndr_hal_hw_txrx_ops {
 						      uint32_t cookie,
 						      uint8_t manager);
 	void (*dal_vndr_hal_rxbm_sync)(void *ring_desc, void *buff_addr_info);
+	void (*dal_vndr_hal_rx_set_l3_pad_bytes)(uint8_t *buf,
+						 uint32_t l3_hdr_pad);
 
 	/* Optional/extended TX descriptor setters (may be NULL if unsupported) */
 	void (*dal_vndr_hal_tx_desc_set_fw_metadata)(void *desc, uint16_t metadata);

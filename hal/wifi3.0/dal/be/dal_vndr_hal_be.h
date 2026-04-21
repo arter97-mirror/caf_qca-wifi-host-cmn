@@ -518,6 +518,17 @@ static inline uint8_t dal_vndr_hal_rx_get_l3_pad_bytes_be(uint8_t *rx_tlv_hdr)
 }
 
 /**
+ * dal_vndr_hal_rx_set_l3_pad_bytes_be() - API to get l3 padding  bytes
+ * @rx_tlv_hdr: pointer to the start of RX PKT TLV headers
+ * @l3_hdr_pad: l3 padding bytes
+ */
+static inline void dal_vndr_hal_rx_set_l3_pad_bytes_be(uint8_t *rx_tlv_hdr,
+						       uint32_t l3_hdr_pad)
+{
+	DAL_VNDR_HAL_RX_TLV_L3_HEADER_PADDING_GET(rx_tlv_hdr) = l3_hdr_pad;
+}
+
+/**
  * dal_vndr_hal_rx_tlv_sgi_get_be() - API to get the Short Guard Interval from
  *                           rx_msdu_start TLV
  * @buf: pointer to the start of RX PKT TLV headers

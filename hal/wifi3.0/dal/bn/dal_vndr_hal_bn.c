@@ -558,4 +558,6 @@ void dal_vndr_hal_default_ops_attach_bn(struct dal_vndr_hal_soc *hal_soc)
 				dal_vndr_hal_rxdma_buff_addr_info_set_be;
 	hal_soc->ops->dal_vndr_hal_rxbm_sync =
 				dal_vndr_hal_rxbm_sync_be;
+	hal_soc->ops->dal_vndr_hal_rx_set_l3_pad_bytes =
+				dal_vndr_hal_rx_set_l3_pad_bytes_be;
 }
