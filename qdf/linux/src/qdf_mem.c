@@ -1745,7 +1745,7 @@ void qdf_mem_multi_pages_alloc_debug(qdf_device_t osdev,
 	if (cacheable) {
 		/* Pages information storage */
 		pages->cacheable_pages = qdf_mem_malloc_debug(
-			pages->num_pages * sizeof(pages->cacheable_pages),
+			pages->num_pages * sizeof(*pages->cacheable_pages),
 			func, line, caller, 0);
 		if (!pages->cacheable_pages)
 			goto out_fail;
@@ -1906,7 +1906,7 @@ void qdf_mem_multi_pages_alloc(qdf_device_t osdev,
 	if (cacheable) {
 		/* Pages information storage */
 		pages->cacheable_pages = qdf_mem_malloc(
-			pages->num_pages * sizeof(pages->cacheable_pages));
+			pages->num_pages * sizeof(*pages->cacheable_pages));
 		if (!pages->cacheable_pages)
 			goto out_fail;
 
@@ -1999,7 +1999,7 @@ void qdf_mem_multi_pages_alloc(qdf_device_t osdev,
 	if (cacheable) {
 		/* Pages information storage */
 		pages->cacheable_pages = qdf_mem_malloc(
-			pages->num_pages * sizeof(pages->cacheable_pages));
+			pages->num_pages * sizeof(*pages->cacheable_pages));
 		if (!pages->cacheable_pages)
 			goto out_fail;
 
