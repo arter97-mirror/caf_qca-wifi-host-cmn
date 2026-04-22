@@ -37,6 +37,23 @@ enum coex_dbam_config_mode {
 	COEX_DBAM_FORCE_ENABLE = 2,
 };
 
+
+/**
+ * enum coex_btc_chain_mode - btc chain mode definitions
+ * @WLAN_COEX_BTC_CHAIN_MODE_SHARED: chains of BT and WLAN 2.4 GHz are shared.
+ * @WLAN_COEX_BTC_CHAIN_MODE_FDD: chains of BT and WLAN 2.4 GHz are
+ * separated, FDD mode.
+ * @WLAN_COEX_BTC_CHAIN_MODE_HYBRID: chains of BT and WLAN 2.4 GHz are
+ * separated, hybrid mode.
+ * @WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED: chain mode is not set.
+ */
+enum coex_btc_chain_mode {
+	WLAN_COEX_BTC_CHAIN_MODE_SHARED = 0,
+	WLAN_COEX_BTC_CHAIN_MODE_FDD,
+	WLAN_COEX_BTC_CHAIN_MODE_HYBRID,
+	WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED = 0xFF,
+};
+
 /**
  * enum coex_dbam_comp_status - dbam config response
  * @COEX_DBAM_COMP_SUCCESS: FW enabled/disabled DBAM mode successfully
