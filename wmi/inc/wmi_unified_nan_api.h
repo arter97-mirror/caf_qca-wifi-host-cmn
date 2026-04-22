@@ -402,5 +402,20 @@ wmi_unified_nan_peer_params_cmd_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_extract_nan_peer_params_cnf(wmi_unified_t wmi_handle, uint8_t *data,
 				struct nan_peer_params_rsp *rsp);
+
+/**
+ * wmi_extract_nan_dfs_channel_availability_ind() - Extract NAN DFS channel
+ *     availability indication event
+ * @wmi_handle: WMI handle
+ * @data: Event data buffer
+ * @event: Output event structure
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+wmi_extract_nan_dfs_channel_availability_ind(
+	wmi_unified_t wmi_handle,
+	uint8_t *data,
+	struct nan_dfs_channel_availability_ind *event);
 #endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
 #endif /* _WMI_UNIFIED_NAN_API_H_ */

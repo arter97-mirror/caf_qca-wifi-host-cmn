@@ -284,7 +284,22 @@ QDF_STATUS wmi_extract_nan_cluster_event(wmi_unified_t wmi_handle,
 {
 	if (wmi_handle->ops->extract_nan_cluster_event)
 		return wmi_handle->ops->extract_nan_cluster_event(wmi_handle,
-                                                                  data, event);
+								  data, event);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_nan_dfs_channel_availability_ind(
+	wmi_unified_t wmi_handle,
+	uint8_t *data,
+	struct nan_dfs_channel_availability_ind *event)
+{
+	struct wmi_ops *ops = wmi_handle->ops;
+
+	if (ops->extract_nan_dfs_channel_availability_ind)
+		return ops->extract_nan_dfs_channel_availability_ind(
+					wmi_handle, data, event);
 
 	return QDF_STATUS_E_FAILURE;
 }

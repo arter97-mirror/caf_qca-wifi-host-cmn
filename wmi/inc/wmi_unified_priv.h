@@ -2727,6 +2727,9 @@ QDF_STATUS (*extract_nan_next_dw_info)(wmi_unified_t wmi_handle, uint8_t *data,
 				       struct nan_next_dw_info_event *evt);
 QDF_STATUS (*extract_nan_cluster_event)(wmi_unified_t wmi_handle, uint8_t *data,
 					struct nan_cluster_event *evt);
+QDF_STATUS (*extract_nan_dfs_channel_availability_ind)(
+		wmi_unified_t wmi_handle, uint8_t *data,
+		struct nan_dfs_channel_availability_ind *evt);
 #endif
 #endif /* WLAN_FEATURE_NAN */
 

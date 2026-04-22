@@ -6067,6 +6067,7 @@ typedef enum {
 	wmi_nan_next_dw_info_event_id,
 	wmi_nan_joined_cluster_event_id,
 	wmi_nan_started_cluster_event_id,
+	wmi_nan_dfs_channel_availability_ind_event_id,
 #endif
 #ifdef CONFIG_NO_QMI
 	wmi_athdiag_read_write_eventid,
@@ -11031,8 +11032,8 @@ struct wmi_install_key_comp_event {
  * @WMI_HOST_SET_HALPHY_CAL_STATUS_FAIL: set halphy cal failure
  */
 enum wmi_host_set_halphy_cal_status {
-        WMI_HOST_SET_HALPHY_CAL_STATUS_SUCCESS = 0,
-        WMI_HOST_SET_HALPHY_CAL_STATUS_FAIL = 1,
+	WMI_HOST_SET_HALPHY_CAL_STATUS_SUCCESS = 0,
+	WMI_HOST_SET_HALPHY_CAL_STATUS_FAIL = 1,
 };
 
 /**
