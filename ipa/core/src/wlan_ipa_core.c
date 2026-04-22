@@ -8249,6 +8249,10 @@ void wlan_ipa_wdi_opt_dpath_ctrl_notify_flt_install(struct filter_response
 	struct wlan_ipa_priv *ipa_obj = gp_ipa;
 	struct wifi_dp_tx_flt_setup *dp_flt_params = NULL;
 
+	if (!ipa_obj) {
+		ipa_log_err("opt_dp_ctrl: IPA context is NULL, dropping late FW response");
+		return;
+	}
 	dp_flt_params = &ipa_obj->dp_tx_super_rule_flt_param;
 
 	for (i = 0; i < TX_SUPER_RULE_SETUP_NUM; i++) {
