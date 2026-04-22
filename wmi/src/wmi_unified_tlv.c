@@ -488,6 +488,8 @@ static const uint32_t pdev_param_tlv[] = {
 		  PDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
 	PARAM_MAP(pdev_param_adaptive_early_rx_extra_sleep_slop,
 		  PDEV_PARAM_ADAPTIVE_EARLY_RX_EXTRA_SLEEP_SLOP),
+	PARAM_MAP(pdev_param_set_tas_mode,
+		  PDEV_PARAM_SET_TAS_MODE),
 };
 
 /* Populate vdev_param array whose index is host param, value is target param */
@@ -21290,13 +21292,16 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	trig->present = true;
 
-	if (param_buf->roam_scan_info)
+	if (param_buf->roam_scan_info &&
+	    idx < param_buf->num_roam_scan_info)
 		scan_info = &param_buf->roam_scan_info[idx];
 
-	if (param_buf->roam_trigger_reason_cmm)
+	if (param_buf->roam_trigger_reason_cmm &&
+	    idx < param_buf->num_roam_trigger_reason_cmm)
 		cmn_data = &param_buf->roam_trigger_reason_cmm[idx];
 
-	if (param_buf->roam_trigger_reason)
+	if (param_buf->roam_trigger_reason &&
+	    idx < param_buf->num_roam_trigger_reason)
 		src_data = &param_buf->roam_trigger_reason[idx];
 
 	if (cmn_data) {
@@ -25507,6 +25512,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_CFR_ASSOC_TX_CAPTURE_SUPPORT;
 	wmi_service[wmi_service_p2p_cancel_one_shot_noa_support] =
 			WMI_SERVICE_P2P_CANCEL_ONE_SHOT_NOA_SUPPORT;
+	wmi_service[wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable] =
+				WMI_SERVICE_HANDLE_ROAMING_WITHOUT_RSO_STOP_FOR_4WAY_HS_OFFLOAD_DISABLE;
 }
 
 /**

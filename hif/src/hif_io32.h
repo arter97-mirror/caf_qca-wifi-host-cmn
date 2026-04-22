@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -126,6 +126,8 @@ uint32_t hif_read32_mb_reg_window(void *sc,
 #include "hif_io32_ipci.h"
 #endif
 
+extern bool g_target_access_allowed;
+
 #ifdef HIF_IPCI
 /**
  * hif_target_access_allowed(): Check if target access is allowed
@@ -139,12 +141,16 @@ bool hif_target_access_allowed(struct hif_softc *scn)
 {
 	return !(scn->recovery);
 }
+#else
+static inline
+bool hif_target_access_allowed(struct hif_softc *scn)
+{
+	return g_target_access_allowed;
+}
+#endif
 
 #define TARGET_ACCESS_ALLOWED(scn) \
 	hif_target_access_allowed(scn)
-#else
-#define TARGET_ACCESS_ALLOWED(scn) (1)
-#endif
 
 #if defined(HIF_REG_WINDOW_SUPPORT) && defined(HIF_PCI)
 

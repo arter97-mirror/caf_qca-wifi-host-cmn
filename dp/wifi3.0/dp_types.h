@@ -1173,6 +1173,9 @@ struct dp_rx_tid {
 	/* Num of addba responses failed */
 	uint32_t num_addba_rsp_failed;
 
+	/* Num of addba requests rejected due to pending DELBA TX completion */
+	uint32_t num_addba_req_rejected;
+
 	/* pn size */
 	uint8_t pn_size;
 	/* REO TID queue descriptors */
