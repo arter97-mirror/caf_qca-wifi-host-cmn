@@ -1436,6 +1436,20 @@ dp_rx_process_rxdma_err(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	if (err_code == HAL_RXDMA_ERR_WIFI_PARSE) {
 		uint8_t *pkt_type;
 
+		/* Ensure msdu_len is sufficient for VLAN parsing
+		 * Need to safely read uint16_t at offset
+		 * (2 * QDF_MAC_ADDR_SIZE) + DP_SKIP_VLAN
+		 */
+		if (msdu_len < ((2 * QDF_MAC_ADDR_SIZE) + DP_SKIP_VLAN +
+				sizeof(uint16_t))) {
+			dp_rx_err_info_rl("MSDU too short for VLAN parsing: %u bytes",
+					  msdu_len);
+			DP_STATS_INC_PKT(soc, rx.err.rx_invalid_pkt_len, 1,
+					 msdu_len);
+			dp_rx_nbuf_free(nbuf);
+			return;
+		}
+
 		pkt_type = qdf_nbuf_data(nbuf) + (2 * QDF_MAC_ADDR_SIZE);
 		if (*(uint16_t *)pkt_type == htons(QDF_ETH_TYPE_8021Q)) {
 			if (*(uint16_t *)(pkt_type + DP_SKIP_VLAN) ==
