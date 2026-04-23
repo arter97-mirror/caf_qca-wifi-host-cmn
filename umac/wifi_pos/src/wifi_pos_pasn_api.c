@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -369,6 +369,19 @@ QDF_STATUS wifi_pos_handle_ranging_peer_create(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
+	vdev_pos_obj = wifi_pos_get_vdev_priv_obj(vdev);
+	if (!vdev_pos_obj) {
+		wifi_pos_err("Wifi pos vdev priv obj is null");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (vdev_pos_obj->is_delete_all_pasn_peer_in_progress) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+		wifi_pos_err("Vdev remove in progress");
+		return QDF_STATUS_E_FAILURE;
+	}
+
 	wifi_pos_debug("vdev:%d PASN peer create request received. Num peers:%d",
 		       vdev_id, total_entries);
 	for (i = 0; i < total_entries; i++) {
@@ -436,13 +449,6 @@ QDF_STATUS wifi_pos_handle_ranging_peer_create(struct wlan_objmgr_psoc *psoc,
 
 	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
 		goto end;
-
-	vdev_pos_obj = wifi_pos_get_vdev_priv_obj(vdev);
-	if (!vdev_pos_obj) {
-		wifi_pos_err("Wifi pos vdev priv obj is null");
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
-		return QDF_STATUS_E_FAILURE;
-	}
 
 	/*
 	 * If peer already exists for all the entries provided in the request,
