@@ -7253,6 +7253,7 @@ typedef enum {
  * @WMI_HOST_VENDOR1_REQ1_VERSION_4_20: Major version 4, minor version 20
  * @WMI_HOST_VENDOR1_REQ1_VERSION_4_40: Major version 4, minor version 40
  * @WMI_HOST_VENDOR1_REQ1_VERSION_4_50: Major version 4, minor version 50
+ * @WMI_HOST_VENDOR1_REQ1_VERSION_4_60: Major version 4, minor version 60
  */
 typedef enum {
 	WMI_HOST_VENDOR1_REQ1_VERSION_3_00 = 0,
@@ -7265,6 +7266,7 @@ typedef enum {
 	WMI_HOST_VENDOR1_REQ1_VERSION_4_20 = 7,
 	WMI_HOST_VENDOR1_REQ1_VERSION_4_40 = 8,
 	WMI_HOST_VENDOR1_REQ1_VERSION_4_50 = 9,
+	WMI_HOST_VENDOR1_REQ1_VERSION_4_60 = 10,
 } WMI_HOST_VENDOR1_REQ1_VERSION;
 
 /**
