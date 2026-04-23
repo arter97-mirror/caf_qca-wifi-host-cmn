@@ -1327,7 +1327,8 @@ util_scan_parse_extn_ie(struct scan_cache_entry *scan_params,
 		scan_params->ie_list.muedca = (uint8_t *)ie;
 		break;
 	case WLAN_EXTN_ELEMID_HE_6G_CAP:
-		if (extn_ie->ie_len > WLAN_MAX_HE_6G_CAP_IE_LEN)
+		if (extn_ie->ie_len < WLAN_MIN_HE_6G_CAP_IE_LEN ||
+		    extn_ie->ie_len > WLAN_MAX_HE_6G_CAP_IE_LEN)
 			return QDF_STATUS_E_INVAL;
 		scan_params->ie_list.hecap_6g = (uint8_t *)ie;
 		break;
