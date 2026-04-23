@@ -46,6 +46,35 @@
 #define MAX_PWR_FCC_CHAN_13 2
 #define CHAN_144_CENT_FREQ 5720
 
+/* Social channel frequencies for 2.4GHz band (channels 1, 6, 11) */
+#define REG_MAX_SOCIAL_CHANNELS 3
+static const uint32_t reg_social_channel_freqs[REG_MAX_SOCIAL_CHANNELS] = {
+	2412, 2437, 2462
+};
+
+/**
+ * reg_is_social_channel() - Check if the given channel frequency
+ * is a social channel.
+ *
+ * @chan_freq: Channel center frequency to check
+ *
+ * Social channels are 2.4GHz channels 1, 6, and 11
+ * (frequencies 2412, 2437, 2462 MHz) which are commonly used for P2P discovery
+ * and initial connection establishment.
+ *
+ * Return: true if channel is a social channel, false otherwise
+ */
+static bool reg_is_social_channel(uint32_t chan_freq)
+{
+	uint8_t i;
+
+	for (i = 0; i < REG_MAX_SOCIAL_CHANNELS; i++) {
+		if (chan_freq == reg_social_channel_freqs[i])
+			return true;
+	}
+	return false;
+}
+
 /**
  * reg_init_chan() - Initialize the channel list from the channel_map global
  *	list
@@ -1008,6 +1037,38 @@ static inline void reg_modify_chan_list_for_band_6G(
 }
 #endif
 
+#ifdef WLAN_ENABLE_SOCIAL_CHANNELS_5G_ONLY
+/**
+ * reg_enable_social_channel() - Enable the social channel
+ * @chan_list: Pointer to regulatory channel list
+ * @chan_enum: Channel enum to enable
+ *
+ * This function enables the given social channel for P2P operation when
+ * the device operates in band configurations that exclude 2.4 GHz
+ * (e.g. 5G-only or 5G+6G).
+ *
+ * Return: true if channel was enabled, false otherwise
+ */
+static inline
+bool reg_enable_social_channel(struct regulatory_channel *chan_list,
+			       enum channel_enum chan_enum)
+{
+	/* Enable social channels (1, 6, 11) for P2P */
+	chan_list[chan_enum].state =
+			CHANNEL_STATE_ENABLE;
+	chan_list[chan_enum].chan_flags &=
+			~REGULATORY_CHAN_DISABLED;
+	return true;
+}
+#else
+static inline
+bool reg_enable_social_channel(struct regulatory_channel *chan_list,
+			       enum channel_enum chan_enum)
+{
+	return false;
+}
+#endif
+
 /**
  * reg_modify_chan_list_for_band() - Based on the input band bitmap, either
  * disable 2GHz, 5GHz, or 6GHz channels.
@@ -1042,6 +1103,11 @@ static void reg_modify_chan_list_for_band(
 		reg_debug("disabling 2G");
 		for (chan_enum = MIN_24GHZ_CHANNEL;
 		     chan_enum <= MAX_24GHZ_CHANNEL; chan_enum++) {
+			if (reg_is_social_channel(
+				chan_list[chan_enum].center_freq) &&
+			    reg_enable_social_channel(chan_list, chan_enum))
+				continue;
+
 			chan_list[chan_enum].chan_flags |=
 				REGULATORY_CHAN_DISABLED;
 			chan_list[chan_enum].state = CHANNEL_STATE_DISABLE;
