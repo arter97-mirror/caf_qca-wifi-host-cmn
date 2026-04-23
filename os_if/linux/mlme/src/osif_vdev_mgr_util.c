@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -46,6 +47,15 @@ static void osif_vdev_mgr_send_scan_done_complete_cb(uint8_t vdev_id)
 								vdev_id);
 }
 
+static void osif_vdev_mgr_sta_csa_received(uint8_t vdev_id,
+					   struct csa_offload_params *csa_event)
+{
+	if (osif_vdev_mgr_legacy_ops &&
+	    osif_vdev_mgr_legacy_ops->osif_vdev_mgr_sta_csa_received)
+		osif_vdev_mgr_legacy_ops->osif_vdev_mgr_sta_csa_received(
+							vdev_id, csa_event);
+}
+
 struct wireless_dev *osif_vdev_mgr_get_p2p_wdev(void)
 {
 	if (!osif_vdev_mgr_legacy_ops ||
@@ -62,6 +72,7 @@ static struct mlme_vdev_mgr_ops vdev_mgr_ops = {
 #endif
 	.mlme_vdev_mgr_send_scan_done_complete_cb =
 				osif_vdev_mgr_send_scan_done_complete_cb,
+	.mlme_vdev_mgr_sta_csa_received = osif_vdev_mgr_sta_csa_received,
 };
 
 /**

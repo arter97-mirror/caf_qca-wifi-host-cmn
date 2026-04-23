@@ -209,6 +209,8 @@ struct mlme_cm_ops {
  *                                       response to osif
  * @mlme_vdev_mgr_send_scan_done_complete_cb: Callback to indicate scan done
  *                                            complete to osif
+ * @mlme_vdev_mgr_sta_csa_received: Callback to indicate STA CSA IE received
+ *                                  event to osif
  */
 struct mlme_vdev_mgr_ops {
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
@@ -216,6 +218,9 @@ struct mlme_vdev_mgr_ops {
 							  uint8_t resp_status);
 #endif
 	void (*mlme_vdev_mgr_send_scan_done_complete_cb)(uint8_t vdev_id);
+	void (*mlme_vdev_mgr_sta_csa_received)(uint8_t vdev_id,
+					       struct csa_offload_params
+					       *csa_event);
 };
 
 /**
@@ -1203,6 +1208,17 @@ bool mlme_max_chan_switch_is_set(struct wlan_objmgr_psoc *psoc);
  * Return: none
  */
 void mlme_send_scan_done_complete_cb(uint8_t vdev_id);
+
+/**
+ * mlme_sta_csa_received() - send STA CSA IE received indication to
+ * upper layer
+ * @vdev_id: vdev id
+ * @csa_event: CSA offload parameters
+ *
+ * Return: none
+ */
+void mlme_sta_csa_received(uint8_t vdev_id,
+			   struct csa_offload_params *csa_event);
 
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
 /**

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -30,6 +31,8 @@
  * @osif_vdev_mgr_send_scan_done_complete_cb: send scan done indication to
  * upper layer
  * @osif_vdev_mgr_get_p2p_wdev_cb: Get p2p wdev ptr
+ * @osif_vdev_mgr_sta_csa_received: send STA CSA IE received indication to
+ * upper layer
  */
 struct osif_vdev_mgr_ops {
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
@@ -38,6 +41,9 @@ struct osif_vdev_mgr_ops {
 #endif
 	void (*osif_vdev_mgr_send_scan_done_complete_cb)(uint8_t vdev_id);
 	struct wireless_dev *(*osif_vdev_mgr_get_p2p_wdev_cb)(void);
+	void (*osif_vdev_mgr_sta_csa_received)(uint8_t vdev_id,
+					       struct csa_offload_params
+					       *csa_event);
 };
 
 /**

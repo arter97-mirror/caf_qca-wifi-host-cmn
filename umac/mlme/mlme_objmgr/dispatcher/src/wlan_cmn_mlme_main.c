@@ -770,6 +770,15 @@ void mlme_send_scan_done_complete_cb(uint8_t vdev_id)
 							vdev_id);
 }
 
+void mlme_sta_csa_received(uint8_t vdev_id,
+			   struct csa_offload_params *csa_event)
+{
+	if (glbl_vdev_mgr_ops &&
+	    glbl_vdev_mgr_ops->mlme_vdev_mgr_sta_csa_received)
+		glbl_vdev_mgr_ops->mlme_vdev_mgr_sta_csa_received(vdev_id,
+								  csa_event);
+}
+
 bool mlme_max_chan_switch_is_set(struct wlan_objmgr_psoc *psoc)
 {
 	struct psoc_mlme_obj *mlme_psoc_obj;

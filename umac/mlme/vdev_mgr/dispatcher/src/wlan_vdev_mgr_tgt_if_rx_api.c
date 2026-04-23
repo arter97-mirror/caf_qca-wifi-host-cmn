@@ -400,6 +400,9 @@ tgt_vdev_mgr_csa_received_handler(struct wlan_objmgr_psoc *psoc,
 				  uint8_t vdev_id,
 				  struct csa_offload_params *csa_event)
 {
+	struct wlan_objmgr_vdev *vdev;
+	enum QDF_OPMODE opmode;
+
 	if (!psoc) {
 		mlme_err("PSOC is NULL");
 		return QDF_STATUS_E_INVAL;
@@ -407,6 +410,17 @@ tgt_vdev_mgr_csa_received_handler(struct wlan_objmgr_psoc *psoc,
 	if (!csa_event) {
 		mlme_err("CSA IE Received Event is NULL");
 		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
+						    WLAN_VDEV_TARGET_IF_ID);
+	if (vdev) {
+		opmode = wlan_vdev_mlme_get_opmode(vdev);
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_VDEV_TARGET_IF_ID);
+		if (opmode == QDF_STA_MODE) {
+			mlme_sta_csa_received(vdev_id, csa_event);
+			return QDF_STATUS_SUCCESS;
+		}
 	}
 
 	/* If received CSA is with no-TX mode, then only move SAP / GO */
