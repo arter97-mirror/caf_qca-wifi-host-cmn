@@ -6618,7 +6618,13 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	TAILQ_INIT(&peer->ast_entry_list);
 
 	/* get the vdev reference for new peer */
-	dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CHILD);
+	if (dp_vdev_get_ref(soc, vdev, DP_MOD_ID_CHILD) !=
+	    QDF_STATUS_SUCCESS) {
+		dp_err("%pK: unable to get vdev reference for new peer "
+			QDF_MAC_ADDR_FMT " vdev_id %d",
+			soc, QDF_MAC_ADDR_REF(peer_mac_addr), vdev_id);
+		goto fail_vdev_ref;
+	}
 
 	if ((vdev->opmode == wlan_op_mode_sta) &&
 	    !qdf_mem_cmp(peer_mac_addr, &vdev->mac_addr.raw[0],
@@ -6695,6 +6701,12 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
 
 	return QDF_STATUS_SUCCESS;
+fail_vdev_ref:
+	dp_monitor_peer_detach(soc, peer);
+	if (IS_MLO_DP_MLD_PEER(peer)) {
+		dp_mld_peer_deinit_link_peers_info(peer);
+		dp_txrx_peer_detach(soc, peer);
+	}
 fail:
 	qdf_mem_free(peer);
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
