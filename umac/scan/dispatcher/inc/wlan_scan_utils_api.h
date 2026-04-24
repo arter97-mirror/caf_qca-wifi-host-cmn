@@ -830,6 +830,11 @@ util_scan_copy_beacon_data(struct scan_cache_entry *new_entry,
 	ie_lst->smd_info = conv_ptr(ie_lst->smd_info, old_ptr, new_ptr);
 #endif
 
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+	ie_lst->security_profile =
+		conv_ptr(ie_lst->security_profile, old_ptr, new_ptr);
+#endif
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -2331,4 +2336,26 @@ util_scan_update_nontx_entry_uhr_ies(struct wlan_objmgr_pdev *pdev,
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* WLAN_FEATURE_11BN */
+
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+/**
+ * util_scan_entry_security_profile() - function to read Security Profile IE
+ * @scan_entry: scan entry
+ *
+ * API, function to read Security Profile IE from scan entry
+ *
+ * Return: pointer to Security Profile IE or NULL if not present
+ */
+static inline uint8_t *
+util_scan_entry_security_profile(struct scan_cache_entry *scan_entry)
+{
+	return scan_entry->ie_list.security_profile;
+}
+#else
+static inline uint8_t *
+util_scan_entry_security_profile(struct scan_cache_entry *scan_entry)
+{
+	return NULL;
+}
+#endif
 #endif

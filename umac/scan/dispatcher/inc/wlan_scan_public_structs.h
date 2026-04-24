@@ -232,6 +232,7 @@ struct channel_info {
  * @uhrcap: pointer to UHR capability IE
  * @uhrop: pointer to UHR operation IE
  * @smd_info: pointer to SMD information IE
+ * @security_profile: pointer to Security Profile IE
  */
 struct ie_list {
 	uint8_t *tim;
@@ -306,6 +307,9 @@ struct ie_list {
 #endif
 #ifdef WLAN_FEATURE_11BN_SMD
 	uint8_t *smd_info;
+#endif
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+	uint8_t *security_profile;
 #endif
 
 /*

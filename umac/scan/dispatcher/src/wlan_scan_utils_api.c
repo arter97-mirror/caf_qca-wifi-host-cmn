@@ -1461,6 +1461,26 @@ static void util_scan_parse_uhr_ie(struct scan_cache_entry *scan_params,
 {
 }
 #endif
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+static void
+util_scan_set_security_profile_ie(struct scan_cache_entry *scan_params,
+				  struct extn_ie_header *extn_ie)
+{
+	switch (extn_ie->ie_extn_id) {
+	case WLAN_EXTN_ELEMID_SECURITY_PROFILE:
+		scan_params->ie_list.security_profile = (uint8_t *)extn_ie;
+		break;
+	default:
+		break;
+	}
+}
+#else
+static void
+util_scan_set_security_profile_ie(struct scan_cache_entry *scan_params,
+				  struct extn_ie_header *extn_ie)
+{
+}
+#endif
 
 #ifdef WLAN_FEATURE_11BN_SMD
 /**
@@ -1529,6 +1549,7 @@ util_scan_parse_extn_ie(struct scan_cache_entry *scan_params,
 	default:
 		break;
 	}
+	util_scan_set_security_profile_ie(scan_params, extn_ie);
 	util_scan_parse_eht_ie(scan_params, extn_ie);
 	util_scan_parse_uhr_ie(scan_params, extn_ie);
 	util_scan_parse_smd_ie(scan_params, extn_ie);
