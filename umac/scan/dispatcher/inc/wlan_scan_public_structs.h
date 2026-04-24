@@ -380,6 +380,7 @@ struct scan_cache_node {
  * @mgmtcipherset: mgmt cipher set
  * @rsn_caps: rsn caps of scan entry
  * @rsn_gen_selected: rsn gen for the security match
+ * @sec_profile_num: selected security profile number (-1 if not used)
  */
 struct security_info {
 	uint32_t authmodeset;
@@ -389,6 +390,7 @@ struct security_info {
 	uint32_t mgmtcipherset;
 	uint16_t rsn_caps;
 	uint8_t rsn_gen_selected;
+	int8_t sec_profile_num;
 };
 
 /**
@@ -844,6 +846,7 @@ enum dot11_mode_filter {
  * @link_id: IEEE link ID to match if @match_link_id is set to %true
  * @mld_addr: MLD addr to match if @match_mld_addr is set to true.
  * @mrsno_gen: MRSNO generation supported
+ * @security_profile: Security Profile element handling enabled
  */
 struct scan_filter {
 	uint16_t enable_adaptive_11r:1,
@@ -889,6 +892,7 @@ struct scan_filter {
 	struct qdf_mac_addr mld_addr;
 #endif
 	uint8_t mrsno_gen;
+	bool security_profile;
 };
 
 /**

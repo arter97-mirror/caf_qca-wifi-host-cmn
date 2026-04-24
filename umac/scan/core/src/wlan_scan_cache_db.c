@@ -2902,6 +2902,8 @@ scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 		wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_MGMT_CIPHER);
 	filter->ignore_pmf_cap = true;
 	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(vdev);
+	filter->security_profile =
+		wlan_vdev_get_security_profile_enabled(vdev);
 
 	list = scm_get_scan_result(pdev, filter);
 

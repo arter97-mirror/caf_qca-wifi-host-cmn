@@ -1187,6 +1187,8 @@ static inline void cm_update_advance_filter(struct wlan_objmgr_pdev *pdev,
 	filter->enable_adaptive_11r =
 		wlan_mlme_adaptive_11r_enabled(psoc);
 	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(cm_ctx->vdev);
+	filter->security_profile =
+		wlan_vdev_get_security_profile_enabled(cm_ctx->vdev);
 	if (wlan_vdev_mlme_get_opmode(cm_ctx->vdev) != QDF_STA_MODE)
 		return;
 	/* For link vdev, we don't filter any channels.

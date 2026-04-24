@@ -152,6 +152,8 @@ static QDF_STATUS cm_connect_prepare_scan_filter_for_roam(
 		wlan_crypto_get_param(vdev, WLAN_CRYPTO_PARAM_MGMT_CIPHER);
 
 	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(vdev);
+	filter->security_profile =
+		wlan_vdev_get_security_profile_enabled(vdev);
 
 	return cm_update_roam_scan_filter(vdev, cm_req, filter,
 					  security_valid_for_6ghz);

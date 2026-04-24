@@ -281,6 +281,143 @@ static inline void scm_check_and_update_adaptive_11r_key_mgmt_support(
 }
 #endif
 
+/* Number of Security Profiles defined per IEEE P802.11bn D1.4 Table 9-bb14 */
+#define WLAN_SP_MAX 16
+
+/*
+ * Security Profile Number to AKM mapping per IEEE P802.11bn D1.4 Table 9-bb14.
+ * All profiles use GCMP-256 pairwise cipher.
+ */
+static const uint32_t sec_profile_akm_map[] = {
+	/* Profile 0: EPPKE without mutual auth */
+	BIT(WLAN_CRYPTO_KEY_MGMT_EPPKE),
+	/* Profile 1: EPPKE + SAE-EXT-KEY (AKM suite 24) */
+	BIT(WLAN_CRYPTO_KEY_MGMT_EPPKE) | BIT(WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY),
+	/* Profile 2: EPPKE + FT-SAE-EXT-KEY (AKM suite 25) */
+	BIT(WLAN_CRYPTO_KEY_MGMT_EPPKE) | BIT(WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY),
+	/* Profile 3: 802.1X */
+	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X),
+	/* Profile 4: 802.1X + FT */
+	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X),
+	/* Profile 5: 802.1X SHA384 (AKM suite 23) */
+	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SHA384),
+	/* Profile 6: 802.1X + FT SHA384 */
+	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X_SHA384),
+	/* Profile 7: 802.1X SUITE-B-192 */
+	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B_192),
+	/* Profile 8: OWE (AKM suite 18) */
+	BIT(WLAN_CRYPTO_KEY_MGMT_OWE),
+	/* Profile 9: SAE-EXT-KEY (AKM suite 24) */
+	BIT(WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY),
+	/* Profile 10: FT-SAE-EXT-KEY (AKM suite 25) */
+	BIT(WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY),
+	/* Profile 11: 802.1X */
+	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X),
+	/* Profile 12: 802.1X + FT */
+	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X),
+	/* Profile 13: 802.1X SHA384 (AKM suite 23) */
+	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SHA384),
+	/* Profile 14: 802.1X + FT SHA384 */
+	BIT(WLAN_CRYPTO_KEY_MGMT_FT_IEEE8021X_SHA384),
+	/* Profile 15: 802.1X SUITE-B-192 */
+	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B_192),
+};
+
+/**
+ * scm_check_security_profile() - Check if AP Security Profile IE matches
+ * the filter's key management suite
+ * @filter: scan filter
+ * @db_entry: scan cache entry
+ * @security: matched security info to update
+ *
+ * Parse the AP's Security Profile element bitmap and check whether any
+ * advertised profile's AKM matches the filter's key_mgmt. On match,
+ * record the selected profile number in security->sec_profile_num.
+ * All Security Profile element profiles mandate GCMP-256 as the pairwise
+ * cipher; if the filter does not include GCMP-256 the check fails.
+ *
+ * Return: true if a matching profile is found, false otherwise
+ */
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+static bool
+scm_check_security_profile(struct scan_filter *filter,
+			   struct scan_cache_entry *db_entry,
+			   struct security_info *security)
+{
+	const uint8_t *ie;
+	uint8_t num_bitmap_octets;
+	uint16_t sp_bitmap;
+	uint8_t profile_num;
+
+	ie = util_scan_entry_security_profile(db_entry);
+	if (!ie)
+		return false;
+
+	/* Sanity: ie[1] covers EID-Ext + ReducedRSNCap + SecProfileIndication
+	 * + bitmap, so minimum meaningful length is 4.
+	 */
+	if (ie[1] < 4)
+		return false;
+
+	/* An empty ucastcipherset means "no cipher restriction"; only reject
+	 * if the filter explicitly specifies ciphers that exclude GCMP-256.
+	 */
+	if (filter->ucastcipherset &&
+	    !QDF_HAS_PARAM(filter->ucastcipherset,
+			   WLAN_CRYPTO_CIPHER_AES_GCM_256))
+		return false;
+
+	/* ie[4] = Security Profile Indication: bits[3:0] = num bitmap octets */
+	num_bitmap_octets = ie[4] & 0x0f;
+	if (!num_bitmap_octets || ie[1] < (3 + num_bitmap_octets))
+		return false;
+
+	security->sec_profile_num = -1;
+
+	/*
+	 * Build a 16-bit profile bitmap from the IE (little-endian, profiles
+	 * 0-7 in byte[5], profiles 8-15 in byte[6] if present).
+	 * Test each set bit: if the corresponding AKM mask is fully covered by
+	 * filter->key_mgmt, it is a match.
+	 */
+	sp_bitmap = ie[5];
+	if (num_bitmap_octets > 1)
+		sp_bitmap |= (uint16_t)ie[6] << 8;
+
+	for (profile_num = 0; profile_num < WLAN_SP_MAX; profile_num++) {
+		if (!QDF_HAS_PARAM(sp_bitmap, profile_num))
+			continue;
+		if ((filter->key_mgmt &
+		     sec_profile_akm_map[profile_num]) !=
+		    sec_profile_akm_map[profile_num])
+			continue;
+
+		security->sec_profile_num = profile_num;
+		security->ucastcipherset = 0;
+		security->key_mgmt = sec_profile_akm_map[profile_num];
+		QDF_SET_PARAM(security->ucastcipherset,
+			      WLAN_CRYPTO_CIPHER_AES_GCM_256);
+		scm_debug(QDF_MAC_ADDR_FMT
+			  " Security Profile match: profile %d",
+			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
+			  profile_num);
+		return true;
+	}
+
+	scm_debug(QDF_MAC_ADDR_FMT " no matching Security Profile found",
+		  QDF_MAC_ADDR_REF(db_entry->bssid.bytes));
+	return false;
+}
+#else
+static inline bool
+scm_check_security_profile(struct scan_filter *filter,
+			   struct scan_cache_entry *db_entry,
+			   struct security_info *security)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_SECURITY_PROFILE */
+
 /**
  * scm_check_rsn() - Check if scan entry support RSN security
  * @filter: scan filter
@@ -602,6 +739,18 @@ static bool scm_is_security_match(struct scan_filter *filter,
 		case WLAN_CRYPTO_AUTH_FILS_SK:
 			/* First check if there is a RSN match */
 			match = scm_check_rsn(filter, db_entry, security);
+			/*
+			 * If Security Profile element handling is enabled
+			 * and the AP advertises a Security Profile IE, verify
+			 * that a matching profile exists. This overrides the
+			 * plain RSN match result when the AP mandates Security
+			 * Profile element usage.
+			 */
+			if (filter->security_profile &&
+			    util_scan_entry_security_profile(db_entry))
+				match = scm_check_security_profile(filter,
+								   db_entry,
+								   security);
 			break;
 		case WLAN_CRYPTO_AUTH_WPA:
 			match = scm_check_wpa(filter, db_entry, security);

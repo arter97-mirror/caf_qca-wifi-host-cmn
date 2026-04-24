@@ -410,6 +410,8 @@ typedef enum wlan_crypto_key_mgmt {
 	WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY        = 28,
 	WLAN_CRYPTO_KEY_MGMT_PASN                  = 29,
 	WLAN_CRYPTO_KEY_MGMT_EPPKE                 = 30,
+	/* 802.1X with SHA-384 key derivation (AKM suite 23, 00-0F-AC:23) */
+	WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SHA384      = 31,
 	/** Keep WLAN_CRYPTO_KEY_MGMT_MAX at the end. */
 	WLAN_CRYPTO_KEY_MGMT_MAX,
 } wlan_crypto_key_mgmt;
