@@ -113,7 +113,7 @@ struct hif_exec_context {
 	uint64_t tstamp;
 
 	uint8_t cpu;
-	struct qca_napi_stat stats[NR_CPUS];
+	struct qca_napi_stat stats[QDF_MAX_AVAILABLE_CPU];
 	bool inited;
 	bool configured;
 	bool irq_requested;
@@ -136,8 +136,8 @@ struct hif_exec_context {
 	unsigned long long irq_disabled_start_time;
 #ifdef WLAN_DP_LOAD_BALANCE_SUPPORT
 	uint64_t irq_start_time;
-	uint64_t total_irq_time[NR_CPUS];
-	uint64_t ksoftirqd_time[NR_CPUS];
+	uint64_t total_irq_time[QDF_MAX_AVAILABLE_CPU];
+	uint64_t ksoftirqd_time[QDF_MAX_AVAILABLE_CPU];
 #endif
 #ifdef FEATURE_DAL_DP_SUPPORT
 	unsigned long dal_napi_scheduled;
