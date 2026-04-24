@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
@@ -266,6 +266,9 @@
 
 /* Firmware capability to use STA vdev for P2P device */
 #define WLAN_SOC_USE_STA_VDEV_FOR_P2P_DEVICE   0x00001000
+
+/* Firmware capability to support delete all peer */
+#define WLAN_VDEV_DELETE_ALL_PEER_SUPPORT_BITMAP  0x00004000
 
 /* PSOC op flags */
 
