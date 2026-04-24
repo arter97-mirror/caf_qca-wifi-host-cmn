@@ -27461,6 +27461,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_SKIP_PMK_MATCH_DELETE_SUPPORT;
 	wmi_service[wmi_service_sta_dar_stats_support] =
 				WMI_SERVICE_CTRL_PATH_STA_DAR_STATS_SUPPORT;
+	wmi_service[wmi_service_security_profile] =
+			WMI_SERVICE_SECURITY_PROFILE_SUPPORT;
 }
 
 /**

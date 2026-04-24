@@ -7343,6 +7343,7 @@ typedef enum {
 	wmi_service_l3_header_padding_enable,
 	wmi_service_skip_pmk_match_delete_support,
 	wmi_service_sta_dar_stats_support,
+	wmi_service_security_profile,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
