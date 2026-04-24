@@ -1160,6 +1160,8 @@ enum wlan_reason_code {
  * temporarily denied because the receiving AP MLD is unable to verify that the
  * non-AP MLD is authorized for an unspecified reason.
  * @STATUS_DENIED_OPERATION_PARAMETER_UPDATE: Operation parameter update denied
+ * @STATUS_REJECTED_INVALID_SECURITY_PROFILE: The RSNE or RSNXE do not match
+ *   with any Security Profile advertised by the AP.
  * because the requested operation parameters or capabilities are not
  * acceptable.
  *
@@ -1232,6 +1234,7 @@ enum wlan_status_code {
 	STATUS_DENIED_LINK_ON_WHICH_THE_ASSOC_FRAME_IS_TXED_NOT_ACCEPTED = 139,
 	STATUS_EPCS_DENIED_VERIFICATION_FAILURE = 140,
 	STATUS_DENIED_OPERATION_PARAMETER_UPDATE = 141,
+	STATUS_REJECTED_INVALID_SECURITY_PROFILE = 159,
 
 	/* Error STATUS code for internal usage*/
 	STATUS_PROP_START = 65528,
