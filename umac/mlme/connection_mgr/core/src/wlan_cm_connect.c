@@ -61,6 +61,16 @@ cm_fill_failure_resp_from_cm_id(struct cnx_mgr *cm_ctx,
 	resp->cm_id = cm_id;
 	resp->vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 	resp->reason = reason;
+	/*
+	 * If no candidate found in scan cache, set status code to
+	 * STATUS_NO_NETWORK_FOUND (65528, maps to framework vendor status
+	 * 1025) so that framework handles it as a temporary failure
+	 * (AP not found) rather than permanently disabling the network.
+	 * This aligns the behavior with the CM_JOIN_TIMEOUT path which
+	 * already reports STATUS_NO_NETWORK_FOUND correctly.
+	 */
+	if (reason == CM_NO_CANDIDATE_FOUND)
+		resp->status_code = STATUS_NO_NETWORK_FOUND;
 	/* Get bssid and ssid and freq for the cm id from the req list */
 	cm_fill_bss_info_in_connect_rsp_by_cm_id(cm_ctx, cm_id, resp);
 }
