@@ -565,6 +565,39 @@ drop_pkt:
 	return ret;
 }
 
+/**
+ * wlan_ipa_l3_hdr_padding_cfg() - wdi l3 header padding disable notify to fw
+ *
+ * @ipa_ctx: global IPA context
+ *
+ * Return: return SUCCESS if cmd is successfully sent to fw, else failure code.
+ */
+static QDF_STATUS wlan_ipa_l3_hdr_padding_cfg(struct wlan_ipa_priv *ipa_ctx)
+{
+	QDF_STATUS ret;
+	bool l3_hdr_padding_cfg = ipa_ctx->config->l3_hdr_padding_support;
+
+	ipa_ctx->l3_hdr_padding_len = L3_HEADER_PADDING_LEN;
+
+	/* FW default is padding=2; WMI only needed when INI disables it */
+	if (l3_hdr_padding_cfg)
+		return QDF_STATUS_SUCCESS;
+
+	ret = ipa_send_l3_hdr_padding_cfg(ipa_ctx->psoc, l3_hdr_padding_cfg);
+	if (QDF_IS_STATUS_SUCCESS(ret))
+		ipa_ctx->l3_hdr_padding_len = 0;
+	else if (ret == QDF_STATUS_E_NOSUPPORT)
+		/**
+		 * Return SUCCESS if fw does not support l3 header
+		 * padding enable/disable feature.
+		 */
+		ret = QDF_STATUS_SUCCESS;
+	else
+		ipa_err("l3 hdr padding set to fw failed");
+
+	return ret;
+}
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)) || \
 	defined(CONFIG_IPA_WDI_UNIFIED_API)
 /*
@@ -682,6 +715,9 @@ wlan_ipa_wdi_setup(struct wlan_ipa_priv *ipa_ctx,
 		return QDF_STATUS_E_NOMEM;
 
 	wlan_ipa_setup_sys_params(sys_in, ipa_ctx);
+
+	if (QDF_STATUS_SUCCESS != wlan_ipa_l3_hdr_padding_cfg(ipa_ctx))
+		ipa_err("l3 hdr padding set to fw failed");
 
 	qdf_status = cdp_ipa_setup(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID,
 				   wlan_ipa_i2w_cb, wlan_ipa_w2i_cb,
@@ -1150,6 +1186,9 @@ static inline int wlan_ipa_wdi_is_smmu_enabled(struct wlan_ipa_priv *ipa_ctx,
 static inline QDF_STATUS wlan_ipa_wdi_setup(struct wlan_ipa_priv *ipa_ctx,
 					    qdf_device_t osdev)
 {
+	if (QDF_STATUS_SUCCESS != wlan_ipa_l3_hdr_padding_cfg(ipa_ctx))
+		ipa_err("l3 hdr padding set to fw failed");
+
 	return cdp_ipa_setup(ipa_ctx->dp_soc, IPA_DEF_PDEV_ID,
 			     wlan_ipa_i2w_cb, wlan_ipa_w2i_cb,
 			     wlan_ipa_wdi_meter_notifier_cb,

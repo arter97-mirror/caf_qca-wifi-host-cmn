@@ -3978,6 +3978,7 @@ struct dp_soc {
 	struct dp_ipa_resources ipa_resource;
 	ipa_uc_op_cb_type ipa_uc_op_cb;
 	void *usr_ctxt;
+	uint32_t l3_header_padding_len;
 #endif /* IPA_OFFLOAD */
 	bool is_opt_dp_filter_active;
 

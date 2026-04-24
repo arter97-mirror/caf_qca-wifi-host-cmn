@@ -1049,6 +1049,7 @@ struct wlan_ipa_priv {
 	wlan_ipa_is_mlo_vdev is_mlo_vdev;
 #endif
 	qdf_atomic_t ipa_suspend_state;
+	uint32_t l3_hdr_padding_len;
 };
 
 #define WLAN_IPA_WLAN_FRAG_HEADER        sizeof(struct frag_header)

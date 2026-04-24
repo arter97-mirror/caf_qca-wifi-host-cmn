@@ -6439,6 +6439,8 @@ typedef enum {
 		   PDEV_PARAM_SET_TAS_MODE),
 	PDEV_PARAM(pdev_param_beacon_lio_update_on_screen_on_off,
 		   PDEV_PARAM_BEACON_LIO_UPDATE_ON_SCREEN_ON_OFF),
+	PDEV_PARAM(pdev_param_l3_header_padding_enable,
+		   PDEV_PARAM_L3_HEADER_PADDING_ENABLE),
 	pdev_param_max,
 } wmi_conv_pdev_params_id;
 
@@ -7295,6 +7297,7 @@ typedef enum {
 	wmi_service_support_ul_tx_beamformer_ap_config,
 	wmi_service_predictive_roaming,
 	wmi_service_ctas_plim_indication_support,
+	wmi_service_l3_header_padding_enable,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
