@@ -2351,11 +2351,67 @@ util_scan_entry_security_profile(struct scan_cache_entry *scan_entry)
 {
 	return scan_entry->ie_list.security_profile;
 }
+
+/**
+ * util_scan_get_security_profile_rsn_caps() - Get effective RSN capabilities
+ * with Security Profile element overrides applied
+ * @scan_entry: scan entry
+ * @rsn_caps: base RSN capabilities from RSNE (will be overridden in-place)
+ *
+ * Per IEEE P802.11bn sec. 37.32, when a Security Profile element is present
+ * the Reduced RSN Capabilities field overrides the corresponding bits in the
+ * RSNE RSN Capabilities field:
+ *   B0 -> Extended Key ID (RSN Caps bit 13)
+ *   B1 -> OCVC           (RSN Caps bit 14)
+ *
+ * Return: void
+ */
+static inline void
+util_scan_get_security_profile_rsn_caps(struct scan_cache_entry *scan_entry,
+					uint16_t *rsn_caps)
+{
+	const uint8_t *ie;
+	uint8_t reduced_rsn_caps;
+
+	ie = util_scan_entry_security_profile(scan_entry);
+	if (!ie || ie[1] < 2)
+		return;
+
+	/*
+	 * Security Profile element (Draft 802.11bn 1.4 Figure 9-aa70):
+	 * +-----+-----+-----+------+-----+--------+----------+------+
+	 * | EID | Len | Ext | Rdc  | SP  |   SP   |  Vendor  | Ext  |
+	 * |     |     |     | RSN  | Ind | Bitmap | SP List  | RSN  |
+	 * |     |     |     | Caps |     |        |          | Caps |
+	 * +-----+-----+-----+------+-----+--------+----------+------+
+	 *  ie[0] ie[1] ie[2] ie[3]  ie[4] variable  variable  variable
+	 */
+	reduced_rsn_caps = ie[3];
+
+	/* Override Extended Key ID bit */
+	if (reduced_rsn_caps & BIT(0))
+		*rsn_caps |= WLAN_CRYPTO_RSN_CAP_EXTENDED_KEY_ID;
+	else
+		*rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_EXTENDED_KEY_ID;
+
+	/* Override OCVC bit */
+	if (reduced_rsn_caps & BIT(1))
+		*rsn_caps |= WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED;
+	else
+		*rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED;
+}
 #else
 static inline uint8_t *
 util_scan_entry_security_profile(struct scan_cache_entry *scan_entry)
 {
 	return NULL;
 }
-#endif
+
+static inline void
+util_scan_get_security_profile_rsn_caps(struct scan_cache_entry *scan_entry,
+					uint16_t *rsn_caps)
+{
+}
+#endif /* WLAN_FEATURE_SECURITY_PROFILE */
+
 #endif

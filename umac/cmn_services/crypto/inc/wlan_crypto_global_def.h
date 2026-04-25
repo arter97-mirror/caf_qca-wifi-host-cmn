@@ -191,6 +191,7 @@ typedef enum wlan_crypto_rsn_cap {
 	WLAN_CRYPTO_RSN_CAP_MFP_ENABLED   = 0x80,
 	WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED  = 0x40,
 	WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED  = 0x4000,
+	WLAN_CRYPTO_RSN_CAP_EXTENDED_KEY_ID = 0x2000,
 } wlan_crypto_rsn_cap;
 
 /**

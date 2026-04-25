@@ -500,6 +500,17 @@ static bool scm_check_rsn(struct scan_filter *filter,
 		if (is_adaptive_11r)
 			scm_check_and_update_adaptive_11r_key_mgmt_support(ap_crypto);
 
+		/*
+		 * Per IEEE P802.11bn sec. 37.32, when a Security Profile
+		 * element is present, override the Extended Key ID and OCVC
+		 * bits in ap_crypto->rsn_caps before matching so that
+		 * scm_chk_crypto_params() and security->rsn_caps both
+		 * reflect the Security Profile values for those bits.
+		 * All other RSN cap bits remain from the RSNE.
+		 */
+		util_scan_get_security_profile_rsn_caps(db_entry,
+							&ap_crypto->rsn_caps);
+
 		match = scm_chk_crypto_params(filter, ap_crypto,
 					      is_adaptive_11r, db_entry,
 					      security);
