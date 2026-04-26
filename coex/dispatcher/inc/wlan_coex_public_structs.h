@@ -20,7 +20,6 @@
 
 #ifndef _WLAN_COEX_PUBLIC_STRUCTS_H_
 #define _WLAN_COEX_PUBLIC_STRUCTS_H_
-
 #ifdef WLAN_FEATURE_DBAM_CONFIG
 #define WLAN_SET_DBAM_CONFIG_TIMEOUT 5000
 
@@ -35,23 +34,6 @@ enum coex_dbam_config_mode {
 	COEX_DBAM_DISABLE = 0,
 	COEX_DBAM_ENABLE = 1,
 	COEX_DBAM_FORCE_ENABLE = 2,
-};
-
-
-/**
- * enum coex_btc_chain_mode - btc chain mode definitions
- * @WLAN_COEX_BTC_CHAIN_MODE_SHARED: chains of BT and WLAN 2.4 GHz are shared.
- * @WLAN_COEX_BTC_CHAIN_MODE_FDD: chains of BT and WLAN 2.4 GHz are
- * separated, FDD mode.
- * @WLAN_COEX_BTC_CHAIN_MODE_HYBRID: chains of BT and WLAN 2.4 GHz are
- * separated, hybrid mode.
- * @WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED: chain mode is not set.
- */
-enum coex_btc_chain_mode {
-	WLAN_COEX_BTC_CHAIN_MODE_SHARED = 0,
-	WLAN_COEX_BTC_CHAIN_MODE_FDD,
-	WLAN_COEX_BTC_CHAIN_MODE_HYBRID,
-	WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED = 0xFF,
 };
 
 /**
@@ -85,4 +67,20 @@ struct coex_dbam_config_resp {
 };
 
 #endif
+
+/**
+ * enum coex_btc_chain_mode - btc chain mode definitions
+ * @WLAN_COEX_BTC_CHAIN_MODE_SHARED: chains of BT and WLAN 2.4 GHz are shared.
+ * @WLAN_COEX_BTC_CHAIN_MODE_FDD: chains of BT and WLAN 2.4 GHz are
+ * separated, FDD mode.
+ * @WLAN_COEX_BTC_CHAIN_MODE_HYBRID: chains of BT and WLAN 2.4 GHz are
+ * separated, hybrid mode.
+ * @WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED: chain mode is not set.
+ */
+enum coex_btc_chain_mode {
+	WLAN_COEX_BTC_CHAIN_MODE_SHARED = 0,
+	WLAN_COEX_BTC_CHAIN_MODE_FDD,
+	WLAN_COEX_BTC_CHAIN_MODE_HYBRID,
+	WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED = 0xFF,
+};
 #endif
