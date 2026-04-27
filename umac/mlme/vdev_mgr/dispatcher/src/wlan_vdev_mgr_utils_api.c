@@ -790,7 +790,7 @@ uint32_t
 wlan_utils_get_vdev_remaining_channel_switch_time(struct wlan_objmgr_vdev *vdev)
 {
 	struct vdev_mlme_obj *vdev_mlme = NULL;
-	int32_t remaining_chan_switch_time;
+	int64_t remaining_chan_switch_time;
 
 	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
 	if (!vdev_mlme)
@@ -804,12 +804,12 @@ wlan_utils_get_vdev_remaining_channel_switch_time(struct wlan_objmgr_vdev *vdev)
 	 * current time.
 	 */
 	remaining_chan_switch_time =
-	    ((vdev_mlme->mgmt.ap.last_bcn_ts_ms +
+	    ((int64_t)(vdev_mlme->mgmt.ap.last_bcn_ts_ms +
 	      vdev_mlme->mgmt.ap.max_chan_switch_time) -
-	     qdf_mc_timer_get_system_time());
+	     (int64_t)qdf_mc_timer_get_system_time());
 
 	return (remaining_chan_switch_time > 0) ?
-		remaining_chan_switch_time : 0;
+		(uint32_t)remaining_chan_switch_time : 0;
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO

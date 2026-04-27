@@ -265,7 +265,7 @@ unsigned long qdf_mc_timer_get_system_ticks(void);
  * Return:
  * The current system time in milliseconds
  */
-unsigned long qdf_mc_timer_get_system_time(void);
+uint64_t qdf_mc_timer_get_system_time(void);
 
 /**
  * qdf_get_monotonic_boottime_ns() - Get kernel boottime in ns

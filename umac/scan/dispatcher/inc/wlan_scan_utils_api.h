@@ -1267,7 +1267,7 @@ util_scan_entry_wmeparam(struct scan_cache_entry *scan_entry)
 static inline qdf_time_t
 util_scan_entry_age(struct scan_cache_entry *scan_entry)
 {
-	qdf_time_t ts = scan_entry->scan_entry_time;
+	uint64_t ts = scan_entry->scan_entry_time;
 
 	return qdf_mc_timer_get_system_time() - ts;
 }

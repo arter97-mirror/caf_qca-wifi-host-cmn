@@ -626,9 +626,9 @@ struct scan_cache_entry {
 	uint8_t nss;
 	bool is_p2p;
 	bool adaptive_11r_ap;
-	qdf_time_t scan_entry_time;
-	qdf_time_t rssi_timestamp;
-	qdf_time_t hidden_ssid_timestamp;
+	uint64_t scan_entry_time;
+	uint64_t rssi_timestamp;
+	uint64_t hidden_ssid_timestamp;
 	struct scan_mbssid_info mbssid_info;
 	struct reduced_neighbor_report rnr;
 	struct channel_info channel;
@@ -1557,7 +1557,7 @@ enum ext_cap_bit_field {
  * @bssid: BSSID
  */
 struct scan_rnr_info {
-	qdf_time_t timestamp;
+	uint64_t timestamp;
 	uint32_t short_ssid;
 	struct qdf_mac_addr bssid;
 };
@@ -1584,7 +1584,7 @@ struct meta_rnr_channel {
 	uint32_t chan_freq;
 	uint32_t bss_beacon_probe_count;
 	uint32_t saved_profile_count;
-	qdf_time_t beacon_probe_last_time_found;
+	uint64_t beacon_probe_last_time_found;
 	qdf_list_t rnr_list;
 };
 
