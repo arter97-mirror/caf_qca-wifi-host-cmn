@@ -3319,6 +3319,11 @@ void dp_vdev_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
 		dp_err("invalid vdev, id - %d", vdev_id);
 		return;
 	}
+
+	dp_info("MAC=" QDF_MAC_ADDR_FMT " vdev:%pK vdev_id:%d CI_idx:%u",
+		QDF_MAC_ADDR_REF(vdev->mac_addr.raw), vdev, vdev_id,
+		peer_classify_info_idx);
+
 	vdev->txpt_classify_idx = peer_classify_info_idx;
 	dp_ipa_set_tx_classify_idx(soc, vdev_id,
 				   peer_classify_info_idx);
