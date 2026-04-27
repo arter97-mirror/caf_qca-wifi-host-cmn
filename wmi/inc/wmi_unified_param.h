@@ -7162,6 +7162,8 @@ typedef enum {
 #endif /* FEATURE_SNR_STATS */
 	wmi_service_smd_bss_transition_support,
 	wmi_service_passthru_vdev_chan_hop_schedule_support,
+	wmi_service_support_known_action_ids,
+	wmi_service_support_whitelist_blacklist_ap_config,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
