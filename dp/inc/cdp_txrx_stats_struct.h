@@ -3545,6 +3545,9 @@ struct cdp_htt_stats_tx_vdev_nss_tlv {
  * @rx_refill_buff_pool:
  * @rx_refill_buff_pool.num_bufs_refilled:
  * @rx_refill_buff_pool.num_bufs_allocated:
+ * @rx_refill_buff_pool.num_batch_refill_fail: number of times all
+ *                      allocation attempts in a burst failed, causing an
+ *                      early exit from the refill loop
  * @peer_unauth_rx_pkt_drop: stats counter for drops due to unauthorized peer
  * @telemetry_stats: pdev telemetry stats
  * @deter_stats:
@@ -3643,6 +3646,7 @@ struct cdp_pdev_stats {
 	struct {
 		uint64_t num_bufs_refilled;
 		uint64_t num_bufs_allocated;
+		uint64_t num_batch_refill_fail;
 	} rx_refill_buff_pool;
 
 	uint32_t peer_unauth_rx_pkt_drop;

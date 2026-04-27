@@ -9524,6 +9524,14 @@ dp_print_pdev_rx_stats(struct dp_pdev *pdev)
 	DP_PRINT_STATS("\tAllocations from the pool during replenish = %llu",
 		       pdev->stats.rx_buffer_pool.num_pool_bufs_replenish);
 
+	DP_PRINT_STATS("RX Refill Buffer Pool Stats:\n");
+	DP_PRINT_STATS("\tBuffers refilled = %llu",
+		       pdev->stats.rx_refill_buff_pool.num_bufs_refilled);
+	DP_PRINT_STATS("\tBuffers allocated from refill pool = %llu",
+		       pdev->stats.rx_refill_buff_pool.num_bufs_allocated);
+	DP_PRINT_STATS("\tRefill alloc failure (all attempts failed) = %llu",
+		       pdev->stats.rx_refill_buff_pool.num_batch_refill_fail);
+
 	DP_PRINT_STATS("Invalid MSDU count = %u",
 		       pdev->stats.invalid_msdu_cnt);
 

@@ -187,6 +187,14 @@ void dp_rx_refill_buff_pool_enqueue(struct dp_soc *soc)
 			buff_pool->head = head;
 			total_num_refill -= count;
 			total_count += count;
+		} else {
+			/* All allocation attempts failed; bail out to avoid
+			 * spinning forever when memory pressure is sustained.
+			 */
+			DP_STATS_INC(buff_pool->dp_pdev,
+				     rx_refill_buff_pool.num_batch_refill_fail,
+				     1);
+			break;
 		}
 	}
 
