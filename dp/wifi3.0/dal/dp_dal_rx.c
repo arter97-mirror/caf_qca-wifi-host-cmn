@@ -747,6 +747,8 @@ uint32_t dp_dal_rx_handler(struct dp_soc *soc, u16 ring_id, uint32_t dp_budget)
 	buf_size = wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx);
 	max_reap_limit = dp_rx_get_loop_pkt_limit(soc);
 
+	dp_runtime_pm_mark_last_busy(soc);
+
 more_data:
 	nbuf_head = NULL;
 	nbuf_tail = NULL;
