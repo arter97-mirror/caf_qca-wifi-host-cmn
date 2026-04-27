@@ -698,6 +698,8 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 	rx_pp->aux_pool.pp_size = 0;
 	qdf_spin_unlock(&rx_pp->pp_lock);
 
+	qdf_spinlock_destroy(&rx_pp->pp_lock);
+
 	qdf_list_for_each_del(&rx_pp->inactive_list, curr, next, node) {
 		if (!curr->pp)
 			continue;
@@ -728,6 +730,7 @@ QDF_STATUS dp_rx_page_pool_init(struct dp_soc *soc, uint32_t pool_id)
 
 	qdf_list_create(&rx_pp->inactive_list, 0);
 
+	qdf_spinlock_create(&rx_pp->pp_lock);
 	rx_pp->page_pool_init = true;
 
 	return QDF_STATUS_SUCCESS;
@@ -759,7 +762,6 @@ void dp_rx_page_pool_free(struct dp_soc *soc, uint32_t pool_id)
 		rx_pp->aux_pool.pp = NULL;
 	}
 
-	qdf_spinlock_destroy(&rx_pp->pp_lock);
 }
 
 static qdf_page_pool_t
@@ -880,7 +882,6 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	qdf_spinlock_create(&rx_pp->pp_lock);
 	rx_pp->page_pool_init = false;
 	rx_pp->soc = soc;
 	rx_pp->curr_rsrc_level = 0;
