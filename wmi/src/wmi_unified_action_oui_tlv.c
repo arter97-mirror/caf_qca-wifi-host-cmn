@@ -90,6 +90,12 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
 	case ACTION_OUI_FORCE_TX_NULL_FRAME_ON_P2P:
 		*id = WMI_VENDOR_OUI_ACTION_FORCE_TX_NULL_FRAME_ON_P2P;
 		return true;
+	case ACTION_OUI_ALLOW_NSS_GREATER_THAN_2:
+		*id = WMI_VENDOR_OUI_ACTION_ALLOW_NSS_GREATER_THAN_2;
+		return true;
+	case ACTION_OUI_DISALLOW_NSS_GREATER_THAN_2:
+		*id = WMI_VENDOR_OUI_ACTION_DISALLOW_NSS_GREATER_THAN_2;
+		return true;
 	default:
 		return false;
 	}
@@ -315,12 +321,14 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 	uint8_t *buf_ptr;
 	uint32_t no_oui_extns;
 	uint32_t total_no_oui_extns;
-	uint32_t var_buf_len = 0;
+	uint32_t cmd_total_data_buf_len = 0;
 	wmi_vendor_oui_action_id action_id;
 	bool valid;
 	uint32_t rem_var_buf_len;
 	QDF_STATUS status;
 	bool is_mac_exclusion_enabled;
+	uint32_t ouis_sent = 0;
+	uint32_t ouis_to_send = 0;
 
 	if (!req) {
 		wmi_err("action oui is empty");
@@ -335,12 +343,10 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 		wmi_service_enabled(wmi_handle,
 				    wmi_service_vendor_oui_support_exclusive_mac_address);
 
-	len = sizeof(*cmd);
-	len += WMI_TLV_HDR_SIZE; /* Array of wmi_vendor_oui_ext structures */
-
-	if (no_oui_extns > WMI_MAX_VENDOR_OUI_ACTION_SUPPORTED_PER_ACTION ||
+	if (!req->is_action_oui_dynamic &&
+	    (no_oui_extns > WMI_MAX_VENDOR_OUI_ACTION_SUPPORTED_PER_ACTION ||
 	    (total_no_oui_extns > WMI_VENDOR_OUI_ACTION_MAX_ACTION_ID *
-	     WMI_MAX_VENDOR_OUI_ACTION_SUPPORTED_PER_ACTION)) {
+	     WMI_MAX_VENDOR_OUI_ACTION_SUPPORTED_PER_ACTION))) {
 		wmi_err("Invalid number of action oui extensions");
 		return QDF_STATUS_E_INVAL;
 	}
@@ -350,88 +356,157 @@ send_action_oui_cmd_tlv(wmi_unified_t wmi_handle,
 		wmi_err("Invalid action id");
 		return QDF_STATUS_E_INVAL;
 	}
-	wmi_debug("wmi action_id %d num %d v2 %d mac_exclusion %d",
-		  action_id, no_oui_extns,
+
+	wmi_debug("wmi action_id %d total_num %d num %d v2 %d mac_exclusion %d",
+		  action_id, total_no_oui_extns, no_oui_extns,
 		  req->is_action_oui_v2_enabled,
 		  is_mac_exclusion_enabled);
 
-	len += no_oui_extns * sizeof(*cmd_ext);
-	len += WMI_TLV_HDR_SIZE; /* Variable length buffer */
-
+	/* Send OUIs in multiple WMI commands if they don't fit in one */
 	extension = req->extension;
-	for (i = 0; i < no_oui_extns; i++) {
-		var_buf_len += extension->oui_length +
-		       extension->data_length +
-		       extension->data_mask_length +
-		       extension->mac_addr_length +
-		       extension->mac_mask_length +
-		       extension->capability_length;
-		if (req->is_action_oui_v2_enabled && !extension->and_oui_index)
-			var_buf_len += 1; /* to store and OUI num */
-		if (is_mac_exclusion_enabled)
-			var_buf_len += extension->mac_exclusion_length +
-				       extension->mac_exclusion_mask_length;
-		extension++;
-	}
+	do {
+		/* Calculate how many OUIs can fit in this command */
+		ouis_to_send = 0;
+		cmd_total_data_buf_len = 0;
+		len = sizeof(*cmd);
 
-	var_buf_len += no_oui_extns; /* to store indexes */
-	rem_var_buf_len = var_buf_len;
-	var_buf_len = (var_buf_len + 3) & ~0x3;
-	len += var_buf_len;
+		/* Array of wmi_vendor_oui_ext structures */
+		len += WMI_TLV_HDR_SIZE;
 
-	wmi_buf = wmi_buf_alloc(wmi_handle, len);
-	if (!wmi_buf) {
-		wmi_err("Failed to allocate wmi buffer");
-		return QDF_STATUS_E_FAILURE;
-	}
+		/* Calculate how many complete OUIs can fit in this message */
+		for (i = ouis_sent; i < no_oui_extns; i++) {
+			uint32_t cur_oui_data_buf_len = 0;
+			uint32_t test_len;
 
-	buf_ptr = (uint8_t *)wmi_buf_data(wmi_buf);
-	cmd = (wmi_pdev_config_vendor_oui_action_fixed_param *)buf_ptr;
+			/* Calculate variable buffer length for this OUI */
+			cur_oui_data_buf_len = extension[i].oui_length +
+					  extension[i].data_length +
+					  extension[i].data_mask_length +
+					  extension[i].mac_addr_length +
+					  extension[i].mac_mask_length +
+					  extension[i].capability_length;
 
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		WMITLV_TAG_STRUC_wmi_pdev_config_vendor_oui_action_fixed_param,
-		WMITLV_GET_STRUCT_TLVLEN(
-			wmi_pdev_config_vendor_oui_action_fixed_param));
+			/* to store and OUI num */
+			if (req->is_action_oui_v2_enabled &&
+			    !extension[i].and_oui_index)
+				cur_oui_data_buf_len += 1;
 
-	cmd->action_id = action_id;
-	cmd->total_num_vendor_oui = total_no_oui_extns;
-	cmd->num_vendor_oui_ext = no_oui_extns;
+			if (is_mac_exclusion_enabled)
+				cur_oui_data_buf_len +=
+					extension[i].mac_exclusion_length +
+					extension[i].mac_exclusion_mask_length;
 
-	buf_ptr += sizeof(*cmd);
-	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
-		       no_oui_extns * sizeof(*cmd_ext));
-	buf_ptr += WMI_TLV_HDR_SIZE;
-	cmd_ext = (wmi_vendor_oui_ext *)buf_ptr;
-	wmi_fill_oui_extensions(req->extension, no_oui_extns,
-				cmd_ext, req->is_action_oui_v2_enabled,
-				is_mac_exclusion_enabled);
+			cur_oui_data_buf_len += 1; /* to store index */
 
-	buf_ptr += no_oui_extns * sizeof(*cmd_ext);
-	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, var_buf_len);
-	buf_ptr += WMI_TLV_HDR_SIZE;
-	status = wmi_fill_oui_extensions_buffer(req->extension,
-						cmd_ext, no_oui_extns,
+			/* Test if adding this OUI would exceed message size */
+			test_len = len + sizeof(*cmd_ext) +
+				   WMI_TLV_HDR_SIZE +
+				   ((cmd_total_data_buf_len +
+				     cur_oui_data_buf_len + 3) & ~0x3);
+
+			if (test_len > wmi_get_max_msg_len(wmi_handle)) {
+				/* This OUI doesn't fit, stop here */
+				if (ouis_to_send == 0) {
+					wmi_err("Single OUI too large for WMI message");
+					return QDF_STATUS_E_INVAL;
+				}
+				break;
+			}
+
+			/* This OUI fits, include it */
+			len += sizeof(*cmd_ext);
+			cmd_total_data_buf_len += cur_oui_data_buf_len;
+			ouis_to_send++;
+		}
+
+		rem_var_buf_len = cmd_total_data_buf_len;
+		cmd_total_data_buf_len = (cmd_total_data_buf_len + 3) & ~0x3;
+		len += WMI_TLV_HDR_SIZE; /* Variable length buffer */
+		len += cmd_total_data_buf_len;
+
+		wmi_buf = wmi_buf_alloc(wmi_handle, len);
+		if (!wmi_buf) {
+			wmi_err("Failed to allocate wmi buffer");
+			return QDF_STATUS_E_FAILURE;
+		}
+
+		buf_ptr = (uint8_t *)wmi_buf_data(wmi_buf);
+		cmd = (wmi_pdev_config_vendor_oui_action_fixed_param *)buf_ptr;
+
+		WMITLV_SET_HDR(&cmd->tlv_header,
+			       WMITLV_TAG_STRUC_wmi_pdev_config_vendor_oui_action_fixed_param,
+			       WMITLV_GET_STRUCT_TLVLEN(
+					wmi_pdev_config_vendor_oui_action_fixed_param));
+
+		cmd->action_id = action_id;
+
+		/* For dynamic action oui ids, fill the extended fields */
+		if (req->is_action_oui_dynamic) {
+			cmd->total_num_vendor_oui = 0;
+			cmd->num_vendor_oui_ext = 0;
+			cmd->total_num_vendor_oui_ext =
+					req->total_no_oui_extensions;
+			cmd->num_vendor_oui_ext2 = ouis_to_send;
+			/* Set more_data flag if there are more OUIs to send */
+			cmd->more_data =
+			     (ouis_sent + ouis_to_send < no_oui_extns) ? 1 : 0;
+		} else {
+			cmd->total_num_vendor_oui =
+				 req->total_no_oui_extensions;
+			cmd->num_vendor_oui_ext = ouis_to_send;
+			cmd->total_num_vendor_oui_ext = 0;
+			cmd->num_vendor_oui_ext2 = 0;
+			cmd->more_data = 0;
+		}
+
+		buf_ptr += sizeof(*cmd);
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+			       ouis_to_send * sizeof(*cmd_ext));
+		buf_ptr += WMI_TLV_HDR_SIZE;
+		cmd_ext = (wmi_vendor_oui_ext *)buf_ptr;
+		wmi_fill_oui_extensions(&extension[ouis_sent], ouis_to_send,
+					cmd_ext, req->is_action_oui_v2_enabled,
+					is_mac_exclusion_enabled);
+
+		buf_ptr += ouis_to_send * sizeof(*cmd_ext);
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
+			       cmd_total_data_buf_len);
+		buf_ptr += WMI_TLV_HDR_SIZE;
+		status = wmi_fill_oui_extensions_buffer(
+						&extension[ouis_sent],
+						cmd_ext, ouis_to_send,
 						rem_var_buf_len, buf_ptr,
 						req->is_action_oui_v2_enabled,
 						is_mac_exclusion_enabled);
-	if (!QDF_IS_STATUS_SUCCESS(status)) {
-		wmi_buf_free(wmi_buf);
-		wmi_buf = NULL;
-		wmi_err("failed to fill oui ext status %d", status);
-		return QDF_STATUS_E_INVAL;
-	}
 
-	buf_ptr += var_buf_len;
+		if (!QDF_IS_STATUS_SUCCESS(status)) {
+			wmi_err("failed to fill oui ext status %d", status);
+			goto error;
+		}
 
-	wmi_debug("wmi len %d data:", len);
-	qdf_trace_hex_dump(QDF_MODULE_ID_WMI, QDF_TRACE_LEVEL_TRACE, wmi_buf_data(wmi_buf), len);
-	if (wmi_unified_cmd_send(wmi_handle, wmi_buf, len,
-				 WMI_PDEV_CONFIG_VENDOR_OUI_ACTION_CMDID)) {
-		wmi_err("WMI_PDEV_CONFIG_VENDOR_OUI_ACTION send fail");
-		wmi_buf_free(wmi_buf);
-		wmi_buf = NULL;
-		return QDF_STATUS_E_FAILURE;
-	}
+		buf_ptr += cmd_total_data_buf_len;
+
+		wmi_debug("Sending WMI cmd: ouis_sent=%d ouis_to_send=%d more_data=%d len=%d",
+			  ouis_sent, ouis_to_send, cmd->more_data, len);
+		qdf_trace_hex_dump(QDF_MODULE_ID_WMI, QDF_TRACE_LEVEL_TRACE,
+				   wmi_buf_data(wmi_buf), len);
+
+		if (wmi_unified_cmd_send(
+			   wmi_handle, wmi_buf, len,
+			   WMI_PDEV_CONFIG_VENDOR_OUI_ACTION_CMDID)) {
+			wmi_err("WMI_PDEV_CONFIG_VENDOR_OUI_ACTION send fail");
+			goto error;
+		}
+
+		ouis_sent += ouis_to_send;
+	} while (ouis_sent < no_oui_extns);
+
+	wmi_debug("Successfully sent all %d OUIs", no_oui_extns);
 
 	return QDF_STATUS_SUCCESS;
+
+error:
+	wmi_buf_free(wmi_buf);
+	wmi_buf = NULL;
+	return QDF_STATUS_E_FAILURE;
 }

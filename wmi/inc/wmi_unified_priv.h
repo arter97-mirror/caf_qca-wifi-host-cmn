@@ -134,6 +134,12 @@
 #include "wlan_mgmt_rx_srng_public_structs.h"
 #endif
 
+#ifdef WMI_MAX_EXT_ACTION_ID_OUI_COUNT_FOR_ALLOW_DISALLOW_NSS
+#define TOTAL_NO_OUI_EXT 30
+#else
+#define TOTAL_NO_OUI_EXT 0
+#endif
+
 #define WMI_UNIFIED_MAX_EVENT 0x100
 
 #ifdef WMI_EXT_DBG
