@@ -654,6 +654,8 @@ struct bss_score_arbitrators {
  * @rssi_timestamp: boottime in microsec when RSSI was updated
  * @hidden_ssid_timestamp: boottime in microsec when hidden
  *                         ssid was received
+ * @uhr_cap_timestamp: boottime in ms when UHR CAP IE was last seen in a
+ *                     probe response; used to age out cached UHR CAP IE
  * @mbssid_info: Multi bssid information
  * @rnr: Reduced neighbor report information
  * @channel: channel info on which AP is present
@@ -708,6 +710,9 @@ struct scan_cache_entry {
 	qdf_time_t scan_entry_time;
 	qdf_time_t rssi_timestamp;
 	qdf_time_t hidden_ssid_timestamp;
+#ifdef WLAN_FEATURE_11BN
+	qdf_time_t uhr_cap_timestamp;
+#endif
 	struct scan_mbssid_info mbssid_info;
 	struct reduced_neighbor_report rnr;
 	struct channel_info channel;
