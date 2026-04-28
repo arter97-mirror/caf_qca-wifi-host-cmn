@@ -6307,10 +6307,10 @@ void wlan_ipa_opt_dp_reset_tx_doorbell(struct wlan_ipa_priv *ipa_obj)
 static inline void wlan_ipa_smmu_unmap_rx_buf(struct wlan_ipa_priv *ipa_ctx)
 {
 	ipa_log_info("opt_dp: IPA smmu pool unmap");
+	cdp_ipa_set_smmu_mapped(ipa_ctx->dp_soc, 0);
 	cdp_ipa_rx_buf_smmu_pool_mapping(ipa_ctx->dp_soc,
 					 IPA_DEF_PDEV_ID, false,
 					 false, __func__, __LINE__);
-	cdp_ipa_set_smmu_mapped(ipa_ctx->dp_soc, 0);
 }
 
 static inline void wlan_ipa_smmu_map_rx_buf(struct wlan_ipa_priv *ipa_ctx)
