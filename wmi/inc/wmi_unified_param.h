@@ -6930,6 +6930,7 @@ typedef enum {
 	wmi_service_p2p_cancel_one_shot_noa_support,
 	wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable,
 	wmi_service_passthru_vdev_chan_hop_schedule_support,
+	wmi_service_passthru_vdev_ampdu_ra_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

@@ -25641,6 +25641,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_HANDLE_ROAMING_WITHOUT_RSO_STOP_FOR_4WAY_HS_OFFLOAD_DISABLE;
 	wmi_service[wmi_service_passthru_vdev_chan_hop_schedule_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_CHAN_HOP_SCHEDULE_SUPPORT;
+	wmi_service[wmi_service_passthru_vdev_ampdu_ra_support] =
+				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
 }
 
 /**
