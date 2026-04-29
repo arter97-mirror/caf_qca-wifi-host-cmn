@@ -26390,6 +26390,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_SUPPORTED_EXT_OUI_ACTION_IDS;
 	wmi_service[wmi_service_support_whitelist_blacklist_ap_config] =
 				WMI_SERVICE_SUPPORT_WHITELIST_BLACKLIST_AP_CONFIG;
+	wmi_service[wmi_service_passthru_vdev_ampdu_ra_support] =
+				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
 }
 
 /**
