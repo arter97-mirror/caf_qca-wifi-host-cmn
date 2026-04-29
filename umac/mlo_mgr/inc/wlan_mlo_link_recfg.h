@@ -130,6 +130,8 @@ enum wlan_link_recfg_sm_state {
  * @WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC: Link Reconfiguration event for wait
  * for SMD execution
  * @WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK: Link recfg evt for SMD add link.
+ * @WLAN_LINK_RECFG_SM_EV_SMD_ROAM_COMPLETED: Link recfg evt for SMD roaming
+ * completed
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -156,6 +158,7 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START,
 	WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC,
 	WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK,
+	WLAN_LINK_RECFG_SM_EV_SMD_ROAM_COMPLETED,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
@@ -531,9 +534,8 @@ struct wlan_mlo_link_recfg_bitmap {
  *                      links of the target AP MLD are requested to be set
  *                      up during SMD roaming.
  * @smd_roam_in_progress: bool smd roam in progress
- * @current_link_index: Current link index being processed during SMD transition
- * @st_exec_in_progress: Flag indicating SMD state transition
- * execution in progress
+ * @current_link_index: Index of the current link being processed in SMD roaming
+ * @st_exec_in_progress: Flag indicating SMD ST execution is in progress
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -1198,7 +1200,45 @@ mlo_link_recfg_update_state_req_from_rsp(
 			struct mlo_link_recfg_context *recfg_ctx,
 			struct mlo_link_recfg_state_tran *tran);
 
+/**
+ * mlo_link_recfg_update_scan_mlme() - Update scan entry connection state
+ * during link reconfiguration
+ * @vdev: Pointer to vdev object manager. This vdev is used to identify the
+ *        MLO connection and access the scan database for updating the
+ *        connection state of the corresponding AP link entry.
+ * @ap_link_addr: Pointer to the AP link MAC address (BSSID) for which the
+ *                scan entry connection state needs to be updated. This
+ *                identifies the specific link in the scan database.
+ * @assoc_state: New connection state to be set for the scan entry. This
+ *               indicates whether the link is being connected, disconnected,
+ *               or in another connection state as defined by enum
+ *               scan_entry_connection_state.
+ *
+ * This API updates the connection state of a scan entry in the scan database
+ * during link reconfiguration operations. It is typically called when links
+ * are being added or removed from an MLO connection to reflect the current
+ * association state of each link. The scan entry is identified by the AP link
+ * address (BSSID) and updated with the new connection state.
+ *
+ * Context: This function can be called during link reconfiguration state
+ * transitions, particularly when adding or deleting links in an MLO connection.
+ *
+ * Return: void
+ */
+void
+mlo_link_recfg_update_scan_mlme(struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *ap_link_addr,
+				enum scan_entry_connection_state
+				assoc_state);
 #else
+static inline void
+mlo_link_recfg_update_scan_mlme(struct wlan_objmgr_vdev *vdev,
+				struct qdf_mac_addr *ap_link_addr,
+				enum scan_entry_connection_state
+				assoc_state)
+{
+}
+
 static inline void
 mlo_link_recfg_update_state_req_from_rsp(
 			struct mlo_link_recfg_context *recfg_ctx,

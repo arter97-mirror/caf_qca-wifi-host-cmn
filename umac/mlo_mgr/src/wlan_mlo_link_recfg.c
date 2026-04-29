@@ -1408,7 +1408,7 @@ mlo_link_recfg_is_link_switch_in_progress(
 	return false;
 }
 
-static void
+void
 mlo_link_recfg_update_scan_mlme(struct wlan_objmgr_vdev *vdev,
 				struct qdf_mac_addr *ap_link_addr,
 				enum scan_entry_connection_state
@@ -5118,6 +5118,14 @@ mlo_link_recfg_state_wait_event(void *ctx,
 		req = (struct mlo_link_recfg_state_req *)event_data;
 		status = smd_roam_prep_complete(recfg_ctx, req);
 		break;
+	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
+		/* transition to init */
+		mlo_link_recfg_sm_transition_to(ctx,
+						WLAN_LINK_RECFG_S_INIT);
+		mlo_link_recfg_sm_deliver_event_sync(
+					recfg_ctx->ml_dev, event,
+					event_data_len, event_data);
+		break;
 	default:
 		event_handled = false;
 		break;
@@ -5784,6 +5792,7 @@ mlo_link_recfg_subst_add_link_wait_link_sw_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_ADD_LINK:
+	case WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK:
 		link_sw_req = (struct wlan_mlo_link_switch_req *)event_data;
 		status = mlo_link_recfg_host_trigger_link_switch(recfg_ctx,
 								 link_sw_req);
@@ -6340,7 +6349,9 @@ static const char *mlo_link_recfg_sm_event_names[] = {
 	"EV_RX_RSP_TIMEOUT",
 	"EV_UPDATE_TTLM",
 	"EV_SMD_ROAM_START",
-	"EV_WAIT_FOR_EXEC"
+	"EV_WAIT_SMD_EXEC",
+	"EV_SMD_ADD_LINK",
+	"EV_SMD_ROAM_COMPLETED"
 };
 
 static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)
