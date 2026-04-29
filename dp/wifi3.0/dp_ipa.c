@@ -4345,8 +4345,8 @@ static QDF_STATUS dp_rx_pp_ipa_ref_cntrs_init(struct dp_soc *soc,
 	return QDF_STATUS_SUCCESS;
 }
 
-void dp_rx_pp_ipa_ref_cntrs_deinit(struct dp_soc *soc,
-				   struct dp_rx_page_pool *rx_pp)
+static void dp_rx_pp_ipa_ref_cntrs_deinit(struct dp_soc *soc,
+					  struct dp_rx_page_pool *rx_pp)
 {
 	struct qdf_mem_multi_page_t *cntr_pages;
 	struct dp_rx_pp_ipa_map_cntr *cntr;
