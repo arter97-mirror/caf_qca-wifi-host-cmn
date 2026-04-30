@@ -1545,6 +1545,7 @@ void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data)
 	int total_stats_len = 0;
 	bool wake_up_thread = false;
 	unsigned long flags;
+	unsigned int drop_cnt;
 	struct sk_buff *ptr;
 	int hdr_size;
 
@@ -1560,6 +1561,16 @@ void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data)
 					pktlog_hdr->size;
 
 	spin_lock_irqsave(&gwlan_logging.pkt_stats_lock, flags);
+
+	/* Validate total packet size against MAX_PKTSTATS_LENGTH */
+	if (total_stats_len > MAX_PKTSTATS_LENGTH) {
+		drop_cnt = ++gwlan_logging.pkt_stat_drop_cnt;
+		spin_unlock_irqrestore(&gwlan_logging.pkt_stats_lock, flags);
+		qdf_rl_err("incoming stat size %d exceeds %zu, drop_count = %u",
+			   total_stats_len, MAX_PKTSTATS_LENGTH,
+			   drop_cnt);
+		return;
+	}
 
 	if (!gwlan_logging.pkt_stats_pcur_node) {
 		spin_unlock_irqrestore(&gwlan_logging.pkt_stats_lock, flags);
