@@ -3845,16 +3845,13 @@ void dp_tx_msdu_info_set_dport(struct dp_tx_msdu_info_s *msdu_info,
 static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 			  struct dp_tx_msdu_info_s *msdu_info)
 {
-	uint8_t tos = 0, dscp_tid_override = 0;
 	uint8_t *hdr_ptr, *L3datap;
 	uint8_t is_mcast = 0;
 	qdf_ether_header_t *eh = NULL;
 	qdf_ethervlan_header_t *evh = NULL;
 	uint16_t ether_type;
 	struct llc_snap_hdr_t *llc_hdr;
-	struct dp_pdev *pdev = (struct dp_pdev *)vdev->pdev;
 
-	DP_TX_TID_OVERRIDE(msdu_info, nbuf);
 	if (qdf_likely(vdev->tx_encap_type != htt_cmn_pkt_type_raw)) {
 		eh = (qdf_ether_header_t *)nbuf->data;
 		hdr_ptr = (uint8_t *)(eh->ether_dhost);
@@ -3908,22 +3905,7 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	 * Find priority from IP TOS DSCP field
 	 */
 	if (qdf_nbuf_is_ipv4_pkt(nbuf)) {
-		qdf_net_iphdr_t *ip = (qdf_net_iphdr_t *) L3datap;
-		if (qdf_nbuf_is_ipv4_dhcp_pkt(nbuf)) {
-			/* Only for unicast frames */
-			if (!is_mcast) {
-				/* send it on VO queue */
-				msdu_info->tid = DP_VO_TID;
-			}
-		} else {
-			/*
-			 * IP frame: exclude ECN bits 0-1 and map DSCP bits 2-7
-			 * from TOS byte.
-			 */
-			tos = ip->ip_tos;
-			dscp_tid_override = 1;
-
-		}
+		qdf_net_iphdr_t *ip __maybe_unused = (qdf_net_iphdr_t *)L3datap;
 		DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, ip->ip_proto);
 		dp_tx_msdu_info_set_dport(msdu_info, L3datap,
 					  QDF_NBUF_TRAC_IPV4_HEADER_SIZE);
@@ -3932,42 +3914,12 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		 * use flowlabel
 		 *igmpmld cases to be handled in phase 2
 		 */
-		unsigned long ver_pri_flowlabel;
-		unsigned long pri;
 		uint8_t ip_proto;
 
-		ver_pri_flowlabel = *(unsigned long *) L3datap;
-		pri = (ntohl(ver_pri_flowlabel) & IPV6_FLOWINFO_PRIORITY) >>
-			DP_IPV6_PRIORITY_SHIFT;
-		tos = pri;
-		dscp_tid_override = 1;
 		ip_proto = ((qdf_net_ipv6hdr_t *)L3datap)->ipv6_nexthdr;
 		DP_TX_MSDU_INFO_SET_L4_PROTO(msdu_info, ip_proto);
 		dp_tx_msdu_info_set_dport(msdu_info, L3datap,
 					  QDF_NBUF_TRAC_IPV6_HEADER_SIZE);
-	} else if (qdf_nbuf_is_ipv4_eapol_pkt(nbuf))
-		msdu_info->tid = DP_VO_TID;
-	else if (qdf_nbuf_is_ipv4_arp_pkt(nbuf)) {
-		/* Only for unicast frames */
-		if (!is_mcast) {
-			/* send ucast arp on VO queue */
-			msdu_info->tid = DP_VO_TID;
-		}
-	}
-
-	/*
-	 * Assign all MCAST packets to BE
-	 */
-	if (qdf_unlikely(vdev->tx_encap_type != htt_cmn_pkt_type_raw)) {
-		if (is_mcast) {
-			tos = 0;
-			dscp_tid_override = 1;
-		}
-	}
-
-	if (dscp_tid_override == 1) {
-		tos = (tos >> DP_IP_DSCP_SHIFT) & DP_IP_DSCP_MASK;
-		msdu_info->tid = pdev->dscp_tid_map[vdev->dscp_tid_map_id][tos];
 	}
 
 	/*
@@ -3982,8 +3934,6 @@ static void dp_tx_get_tid(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	if (msdu_info->tid >= CDP_MAX_DATA_TIDS)
 		msdu_info->tid = CDP_MAX_DATA_TIDS - 1;
-
-	DP_TX_MSDU_INFO_SET_DSCP(msdu_info, tos);
 
 	return;
 }
