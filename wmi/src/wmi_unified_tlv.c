@@ -26363,8 +26363,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_SMD_BSS_TRANSITION_SUPPORT;
 	wmi_service[wmi_service_passthru_vdev_chan_hop_schedule_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_CHAN_HOP_SCHEDULE_SUPPORT;
-	wmi_service[wmi_service_support_known_action_ids] =
-				WMI_SERVICE_SUPPORT_KNOWN_ACTION_IDS;
+	wmi_service[wmi_service_supported_ext_oui_action_ids] =
+				WMI_SERVICE_SUPPORTED_EXT_OUI_ACTION_IDS;
 	wmi_service[wmi_service_support_whitelist_blacklist_ap_config] =
 				WMI_SERVICE_SUPPORT_WHITELIST_BLACKLIST_AP_CONFIG;
 }
