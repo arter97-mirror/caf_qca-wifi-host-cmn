@@ -1031,6 +1031,17 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 			    void *ipa_ctx,
 			    struct ipa_wdi_opt_dpath_flt_add_cb_params *in_out);
 /**
+ * wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper - callback to add
+ * @ipa_ctx: IPA context
+ * @in_out: filter tuple info
+ *
+ * Return: 0 on success, negative on failure
+ */
+
+int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper(
+			    void *ipa_ctx,
+			    struct ipa_wdi_opt_dpath_flt_add_cb_params *in_out);
+/**
  * wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb_wrapper - callback to remove
  * filter tuple from lce filter
  * @ipa_ctx: IPA context

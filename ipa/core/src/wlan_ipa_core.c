@@ -5378,7 +5378,8 @@ static inline QDF_STATUS __wlan_ipa_reg_flt_cbs(
 		return QDF_STATUS_SUCCESS;
 	}
 	if (ipa_ctx->fw_cap_opt_dp_ctrl) {
-		ctrl_flt_add_cb	= &wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb;
+		ctrl_flt_add_cb =
+			&wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper;
 		ctrl_flt_rem_cb =
 			&wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb_wrapper;
 		clk_cb = &wlan_ipa_wdi_opt_dpath_clk_status_cb;
@@ -8040,6 +8041,25 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 clean_db:
 	dp_ipa_clean_tx_filter_db(ipa_ctx, indices);
 	return QDF_STATUS_FILT_REQ_ERROR;
+}
+
+int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper(
+			    void *ipa_ctx,
+			    struct ipa_wdi_opt_dpath_flt_add_cb_params *in_out)
+{
+	struct qdf_op_sync *op_sync;
+	int code;
+
+	if (qdf_op_protect(&op_sync)) {
+		ipa_log_debug("opt_dp_ctrl: driver operation inprogress!");
+		return QDF_STATUS_FILT_REQ_ERROR;
+	}
+
+	code = wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(ipa_ctx, in_out);
+	ipa_log_debug("opt_dp_ctrl: flt add requested from ipa, return code - %d",
+		      code);
+	qdf_op_unprotect(op_sync);
+	return code;
 }
 
 int wlan_ipa_wdi_opt_dpath_ctrl_flt_rem_cb_wrapper(

@@ -272,7 +272,7 @@ void ipa_set_opt_dp_ctrl_flt(struct wlan_objmgr_pdev *pdev,
 		wlan_ipa_wdi_opt_dpath_flt_add_cb(ipa_obj, flt);
 		break;
 	case IPA_OPT_DP_CTRL_ADD:
-		wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(ipa_obj, flt);
+		wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb_wrapper(ipa_obj, flt);
 		break;
 	default:
 		ipa_err("invalid operation %d", opr);
