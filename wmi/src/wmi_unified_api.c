@@ -2117,6 +2117,21 @@ QDF_STATUS wmi_extract_sar_cap_service_ready_ext2(
 	return QDF_STATUS_E_FAILURE;
 }
 
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+QDF_STATUS wmi_extract_rtt_peer_meas_caps_service_ready_ext2(
+		wmi_unified_t wmi_handle,
+		uint8_t *evt_buf,
+		struct wifi_pos_pmsr_fw_caps *caps)
+{
+	if (!wmi_handle ||
+	    !wmi_handle->ops->extract_rtt_peer_meas_caps_service_ready_ext2)
+		return QDF_STATUS_E_FAILURE;
+
+	return wmi_handle->ops->extract_rtt_peer_meas_caps_service_ready_ext2(
+				wmi_handle, evt_buf, caps);
+}
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
+
 QDF_STATUS wmi_extract_hw_mode_cap_service_ready_ext(
 			wmi_unified_t wmi_handle,
 			uint8_t *evt_buf, uint8_t hw_mode_idx,

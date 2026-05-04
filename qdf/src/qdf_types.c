@@ -59,6 +59,8 @@ const char *qdf_opmode_str(const enum QDF_OPMODE opmode)
 		return "AHDEMO";
 	case QDF_TDLS_MODE:
 		return "TDLS";
+	case QDF_PD_MODE:
+		return "PD";
 	case QDF_NAN_DISC_MODE:
 		return "NAN";
 	case QDF_PASSTHRU_MODE:

@@ -29,6 +29,7 @@
 #include "wlan_scan_ucfg_api.h"
 #include "qdf_atomic.h"
 #include <wbuff.h>
+#include "wifi_pos_utils_i.h"
 
 #ifdef WLAN_FW_OFFLOAD
 #include "wlan_fwol_public_structs.h"
@@ -2401,6 +2402,12 @@ QDF_STATUS (*extract_sar_cap_service_ready_ext2)(
 		wmi_unified_t wmi_handle,
 		uint8_t *evt_buf,
 		struct wlan_psoc_host_service_ext2_param *ext2_param);
+
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+QDF_STATUS (*extract_rtt_peer_meas_caps_service_ready_ext2)(
+		wmi_unified_t wmi_handle, uint8_t *evt_buf,
+		struct wifi_pos_pmsr_fw_caps *caps);
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
 #ifdef WLAN_SUPPORT_TWT
 QDF_STATUS (*extract_twt_cap_service_ready_ext2)(

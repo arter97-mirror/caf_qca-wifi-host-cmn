@@ -659,6 +659,11 @@ static int init_deinit_service_ext2_ready_event_handler(ol_scn_t scn_handle,
 	if (err_code)
 		target_if_debug("failed to populate sap_coex_capability ext2");
 
+	err_code = init_deinit_populate_rtt_measurement_caps(psoc, wmi_handle,
+							     event);
+	if (err_code)
+		target_if_debug("failed to populate RTT measurement caps");
+
 	if (info->service_ext2_param.num_aux_dev_caps) {
 		err_code = init_deinit_populate_aux_dev_cap_ext2(psoc,
 								 wmi_handle,

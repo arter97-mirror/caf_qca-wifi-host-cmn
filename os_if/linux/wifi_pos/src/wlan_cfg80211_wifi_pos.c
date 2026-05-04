@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -26,6 +26,9 @@
 #include "wlan_cfg80211_wifi_pos.h"
 #include "wlan_cmn_ieee80211.h"
 #include "wifi_pos_ucfg_i.h"
+#include "wifi_pos_utils_i.h"
+#include "wifi_pos_api.h"
+#include "wmi_unified_param.h"
 
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 
@@ -95,6 +98,360 @@ static uint32_t wlan_wifi_pos_get_rsta_11az_ranging_cap(
 }
 #endif
 
+#if defined(CFG80211_PD_SUPPORT) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+/*
+ * wifi_pos_pmsr_capa_cfg - Stable-lifetime storage for wiphy->pmsr_capa.
+ *
+ * This struct has module (process) lifetime and is safe to assign directly
+ * to wiphy->pmsr_capa.  It is populated once from firmware-advertised
+ * RTT/FTM capabilities (via wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa) and
+ * is never heap-allocated or freed.
+ *
+ * This mirrors the pattern used for vendor commands:
+ *   static const struct wiphy_vendor_command hdd_wiphy_vendor_commands[];
+ *   wiphy->vendor_commands = hdd_wiphy_vendor_commands;
+ *
+ * Lifetime: module load → module unload (outlives any wiphy or psoc).
+ * On deinit, wlan_wifi_pos_cfg80211_free_wiphy_pmsr_capa() simply clears
+ * wiphy->pmsr_capa to NULL; no free is performed.
+ */
+static struct cfg80211_pmsr_capabilities wifi_pos_pmsr_capa_cfg;
+
+/**
+ * wlan_wifi_pos_fw_bw_bitmap_to_nl() - Convert FW BW bitmap to nl80211 bitmap
+ * @fw_bw_bitmap: Firmware bandwidth bitmap
+ *
+ * Return: nl80211 bandwidth bitmap
+ */
+static u32 wlan_wifi_pos_fw_bw_bitmap_to_nl(u32 fw_bw_bitmap)
+{
+	u32 nl_bw_bitmap = 0;
+
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_20)) {
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_20_NOHT);
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_20);
+	}
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_40))
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_40);
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_80))
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_80);
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_160))
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_160);
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_320))
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_320);
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_80P80))
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_80P80);
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_5))
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_5);
+	if (fw_bw_bitmap & BIT(WMI_HOST_CHAN_WIDTH_10))
+		nl_bw_bitmap |= BIT(NL80211_CHAN_WIDTH_10);
+
+	return nl_bw_bitmap;
+}
+
+/**
+ * wlan_wifi_pos_fw_preamble_bitmap_to_nl() - Convert FW preamble bitmap to nl
+ * @fw_preamble_bitmap: Firmware preamble bitmap
+ *
+ * Return: nl80211 preamble bitmap
+ */
+static u32 wlan_wifi_pos_fw_preamble_bitmap_to_nl(u32 fw_preamble_bitmap)
+{
+	u32 nl_preamble_bitmap = 0;
+
+	if (fw_preamble_bitmap & (BIT(WMI_HOST_RATE_PREAMBLE_OFDM) |
+				  BIT(WMI_HOST_RATE_PREAMBLE_CCK)))
+		nl_preamble_bitmap |= BIT(NL80211_PREAMBLE_LEGACY);
+	if (fw_preamble_bitmap & BIT(WMI_HOST_RATE_PREAMBLE_HT))
+		nl_preamble_bitmap |= BIT(NL80211_PREAMBLE_HT);
+	if (fw_preamble_bitmap & BIT(WMI_HOST_RATE_PREAMBLE_VHT))
+		nl_preamble_bitmap |= BIT(NL80211_PREAMBLE_VHT);
+	if (fw_preamble_bitmap & BIT(WMI_HOST_RATE_PREAMBLE_HE))
+		nl_preamble_bitmap |= BIT(NL80211_PREAMBLE_HE);
+
+	return nl_preamble_bitmap;
+}
+
+/* Macros for fw->support_flag */
+#define WLAN_SUPPORT_FLAG_REPORT_AP_TSF             BIT(0)
+#define WLAN_SUPPORT_FLAG_RANDOMIZE_MAC_ADDR        BIT(1)
+#define WLAN_SUPPORT_FLAG_PD_SUPPORT                BIT(2)
+#define WLAN_SUPPORT_FLAG_PD_CONCURRENT_ISTA_RSTA   BIT(3)
+
+/* Macros for fw->pd_max_peers */
+#define WLAN_PD_MAX_PEERS_ISTA_ROLE_MASK            0xFFFF
+#define WLAN_PD_MAX_PEERS_RSTA_ROLE_SHIFT           16
+#define WLAN_PD_MAX_PEERS_RSTA_ROLE_MASK            0xFFFF
+
+/* Macros for fw->ftm_support_flag */
+#define WLAN_FTM_SUPPORT_FLAG_SUPPORTED             BIT(0)
+#define WLAN_FTM_SUPPORT_FLAG_ASAP                  BIT(1)
+#define WLAN_FTM_SUPPORT_FLAG_NON_ASAP              BIT(2)
+#define WLAN_FTM_SUPPORT_FLAG_REQUEST_LCI           BIT(3)
+#define WLAN_FTM_SUPPORT_FLAG_REQUEST_CIVICLOC      BIT(4)
+#define WLAN_FTM_SUPPORT_FLAG_TRIGGER_BASED         BIT(5)
+#define WLAN_FTM_SUPPORT_FLAG_NON_TRIGGER_BASED     BIT(6)
+#define WLAN_FTM_SUPPORT_FLAG_SUPPORT_6GHZ          BIT(7)
+#define WLAN_FTM_SUPPORT_FLAG_RSTA_NTB              BIT(8)
+#define WLAN_FTM_SUPPORT_FLAG_RSTA_EDCA             BIT(9)
+
+/* Macros for fw->ranging_11az_parameters */
+#define WLAN_11AZ_PARAMS_MAX_TX_LTF_REP_MASK        0x7
+#define WLAN_11AZ_PARAMS_MAX_RX_LTF_REP_SHIFT       3
+#define WLAN_11AZ_PARAMS_MAX_RX_LTF_REP_MASK        0x7
+#define WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_RX_SHIFT     6
+#define WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_RX_MASK      0x3
+#define WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_TX_SHIFT     8
+#define WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_TX_MASK      0x3
+#define WLAN_11AZ_PARAMS_RX_STS_LE80_SHIFT          10
+#define WLAN_11AZ_PARAMS_RX_STS_LE80_MASK           0x7
+#define WLAN_11AZ_PARAMS_RX_STS_GT80_SHIFT          13
+#define WLAN_11AZ_PARAMS_RX_STS_GT80_MASK           0x7
+#define WLAN_11AZ_PARAMS_TX_STS_LE80_SHIFT          16
+#define WLAN_11AZ_PARAMS_TX_STS_LE80_MASK           0x7
+#define WLAN_11AZ_PARAMS_TX_STS_GT80_SHIFT          19
+#define WLAN_11AZ_PARAMS_TX_STS_GT80_MASK           0x7
+
+/* Macros for fw->capabilities */
+#define WLAN_CAPABILITIES_BURST_EXP_MASK            0xFF
+#define WLAN_CAPABILITIES_BURST_EXP_UNLIMITED       0xFF
+#define WLAN_CAPABILITIES_MAX_FTMS_PER_BURST_SHIFT  8
+#define WLAN_CAPABILITIES_MAX_FTMS_PER_BURST_MASK   0xFF
+#define WLAN_CAPABILITIES_MAX_TX_ANTENNAS_SHIFT     16
+#define WLAN_CAPABILITIES_MAX_TX_ANTENNAS_MASK      0xFF
+#define WLAN_CAPABILITIES_MAX_RX_ANTENNAS_SHIFT     24
+#define WLAN_CAPABILITIES_MAX_RX_ANTENNAS_MASK      0xFF
+
+/**
+ * wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa() - Populate wiphy->pmsr_capa
+ *	from firmware-advertised RTT/FTM peer measurement capabilities.
+ * @wiphy: Pointer to wiphy
+ * @psoc: Pointer to psoc
+ *
+ * Fills the module-lifetime static struct wifi_pos_pmsr_capa_cfg from the
+ * wifi_pos_pmsr_fw_caps stored in the psoc private object, then assigns
+ * wiphy->pmsr_capa to point to it.  No heap allocation is performed.
+ * If firmware has not yet advertised capabilities (valid == false) the
+ * function is a no-op.
+ *
+ * Lifetime: wifi_pos_pmsr_capa_cfg has module (process) lifetime and
+ * outlives any wiphy or psoc.  This mirrors the vendor command pattern:
+ *   wiphy->vendor_commands = hdd_wiphy_vendor_commands  (static array).
+ *
+ * Caller: wlan_wifi_pos_cfg80211_set_wiphy_ext_feature() (post-FW-ready).
+ * Cleanup: wlan_wifi_pos_cfg80211_free_wiphy_pmsr_capa() clears the pointer.
+ */
+static void
+wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(struct wiphy *wiphy,
+					   struct wlan_objmgr_psoc *psoc)
+{
+	struct wifi_pos_pmsr_fw_caps *fw;
+	struct cfg80211_pmsr_capabilities *pmsr;
+	u8 burst_exp_raw;
+	QDF_STATUS status;
+
+	status = wifi_pos_get_pmsr_fw_caps(psoc, &fw);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wifi_pos_err("Failed to get PMSR FW caps");
+		return;
+	}
+
+	if (wlan_psoc_nif_fw_ext2_cap_get(psoc,
+					  WLAN_RTT_11AZ_MAC_PHY_SEC_SUPPORT)) {
+		wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_SECURE_RTT);
+		wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_SECURE_LTF);
+		wiphy_ext_feature_set(wiphy,
+				      NL80211_EXT_FEATURE_SET_KEY_LTF_SEED);
+	}
+
+	if (wlan_psoc_nif_fw_ext2_cap_get(psoc, WLAN_RTT_11AZ_MAC_SEC_SUPPORT))
+		wiphy_ext_feature_set(wiphy,
+				      NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE);
+
+	if (!fw->valid) {
+		wifi_pos_debug("FW RTT peer meas caps not yet available");
+		return;
+	}
+
+	/*
+	 * wiphy->pmsr_capa will point to wifi_pos_pmsr_capa_cfg
+	 * which has wlan module lifetime and outlives wiphy or psoc.
+	 */
+	pmsr = &wifi_pos_pmsr_capa_cfg;
+	qdf_mem_zero(pmsr, sizeof(*pmsr));
+
+	/* --- Top-level fields --- */
+	pmsr->max_peers  = fw->max_peers;
+	pmsr->report_ap_tsf =
+		!!(fw->support_flag & WLAN_SUPPORT_FLAG_REPORT_AP_TSF);
+	pmsr->randomize_mac_addr =
+		!!(fw->support_flag & WLAN_SUPPORT_FLAG_RANDOMIZE_MAC_ADDR);
+	pmsr->ftm.pd_support =
+		!!(fw->support_flag & WLAN_SUPPORT_FLAG_PD_SUPPORT);
+	pmsr->ftm.pd_concurrent_ista_rsta_support =
+		!!(fw->support_flag & WLAN_SUPPORT_FLAG_PD_CONCURRENT_ISTA_RSTA);
+
+	pmsr->pd_max_peer_ista_role =
+		fw->pd_max_peers & WLAN_PD_MAX_PEERS_ISTA_ROLE_MASK;
+	pmsr->pd_max_peer_rsta_role =
+		(fw->pd_max_peers >> WLAN_PD_MAX_PEERS_RSTA_ROLE_SHIFT) & WLAN_PD_MAX_PEERS_RSTA_ROLE_MASK;
+
+	/* --- FTM support flags --- */
+	pmsr->ftm.supported =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_SUPPORTED);
+	pmsr->ftm.asap =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_ASAP);
+	pmsr->ftm.non_asap =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_NON_ASAP);
+	pmsr->ftm.request_lci =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_REQUEST_LCI);
+	pmsr->ftm.request_civicloc =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_REQUEST_CIVICLOC);
+	pmsr->ftm.trigger_based =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_TRIGGER_BASED);
+	pmsr->ftm.non_trigger_based =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_NON_TRIGGER_BASED);
+	pmsr->ftm.support_6ghz =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_SUPPORT_6GHZ);
+
+	pmsr->ftm.max_tx_ltf_rep =
+		fw->ranging_11az_parameters & WLAN_11AZ_PARAMS_MAX_TX_LTF_REP_MASK;
+	pmsr->ftm.max_rx_ltf_rep =
+		(fw->ranging_11az_parameters >> WLAN_11AZ_PARAMS_MAX_RX_LTF_REP_SHIFT) & WLAN_11AZ_PARAMS_MAX_RX_LTF_REP_MASK;
+	pmsr->ftm.max_total_ltf_rx =
+		(fw->ranging_11az_parameters >> WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_RX_SHIFT) & WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_RX_MASK;
+	pmsr->ftm.max_total_ltf_tx =
+		(fw->ranging_11az_parameters >> WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_TX_SHIFT) & WLAN_11AZ_PARAMS_MAX_TOTAL_LTF_TX_MASK;
+
+	{
+		u8 rx_sts_le80 = (fw->ranging_11az_parameters >> WLAN_11AZ_PARAMS_RX_STS_LE80_SHIFT) & WLAN_11AZ_PARAMS_RX_STS_LE80_MASK;
+		u8 rx_sts_gt80 = (fw->ranging_11az_parameters >> WLAN_11AZ_PARAMS_RX_STS_GT80_SHIFT) & WLAN_11AZ_PARAMS_RX_STS_GT80_MASK;
+		u8 tx_sts_le80 = (fw->ranging_11az_parameters >> WLAN_11AZ_PARAMS_TX_STS_LE80_SHIFT) & WLAN_11AZ_PARAMS_TX_STS_LE80_MASK;
+		u8 tx_sts_gt80 = (fw->ranging_11az_parameters >> WLAN_11AZ_PARAMS_TX_STS_GT80_SHIFT) & WLAN_11AZ_PARAMS_TX_STS_GT80_MASK;
+
+		pmsr->ftm.max_rx_sts = max(rx_sts_le80, rx_sts_gt80);
+		pmsr->ftm.max_tx_sts = max(tx_sts_le80, tx_sts_gt80);
+	}
+
+	/* Read FTM supported capability to advertise EDCA */
+	pmsr->ftm.ista.support_edca =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_SUPPORTED);
+	pmsr->ftm.ista.support_tb =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_TRIGGER_BASED);
+	pmsr->ftm.ista.support_ntb =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_NON_TRIGGER_BASED);
+
+	pmsr->ftm.rsta.support_ntb =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_RSTA_NTB);
+	pmsr->ftm.rsta.support_edca =
+		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_RSTA_EDCA);
+	pmsr->ftm.rsta.support_tb   =
+		(wlan_psoc_nif_fw_ext2_cap_get(psoc,
+					       WLAN_RTT_11AZ_TB_SUPPORT) ||
+		 wlan_psoc_nif_fw_ext2_cap_get(psoc,
+					       WLAN_RTT_11AZ_TB_RSTA_SUPPORT));
+
+	/* --- BW / Preamble bitmaps --- */
+	pmsr->ftm.bandwidths =
+		wlan_wifi_pos_fw_bw_bitmap_to_nl(fw->supported_bw_bitmap);
+	pmsr->ftm.preambles  =
+		wlan_wifi_pos_fw_preamble_bitmap_to_nl(fw->supported_preamble_bitmap);
+
+	pmsr->ftm.pd_edca_bandwidths = pmsr->ftm.bandwidths;
+	pmsr->ftm.pd_ntb_bandwidths  = pmsr->ftm.bandwidths;
+	pmsr->ftm.pd_edca_preambles  = pmsr->ftm.preambles;
+	pmsr->ftm.pd_ntb_preambles   = pmsr->ftm.preambles;
+
+	/*
+	 * capabilities field layout:
+	 *   Bits  7-0  : max burst exponent (s8; 0xFF sentinel => -1 unlimited)
+	 *   Bits 15-8  : max FTMs per burst (u8; 0 = unlimited)
+	 *   Bits 23-16 : max Tx antennas
+	 *   Bits 31-24 : max Rx antennas
+	 */
+	burst_exp_raw =
+		(u8)(fw->capabilities & WLAN_CAPABILITIES_BURST_EXP_MASK);
+	/* Map 0xFF sentinel to -1 (unlimited) per cfg80211 convention */
+	pmsr->ftm.max_bursts_exponent =
+		(burst_exp_raw == WLAN_CAPABILITIES_BURST_EXP_UNLIMITED) ?
+					-1 : (s8)burst_exp_raw;
+	pmsr->ftm.max_ftms_per_burst =
+		(u8)((fw->capabilities >> WLAN_CAPABILITIES_MAX_FTMS_PER_BURST_SHIFT) & WLAN_CAPABILITIES_MAX_FTMS_PER_BURST_MASK);
+
+	pmsr->ftm.max_no_of_tx_antennas =
+		(fw->capabilities >> WLAN_CAPABILITIES_MAX_TX_ANTENNAS_SHIFT) & WLAN_CAPABILITIES_MAX_TX_ANTENNAS_MASK;
+	pmsr->ftm.max_no_of_rx_antennas =
+		(fw->capabilities >> WLAN_CAPABILITIES_MAX_RX_ANTENNAS_SHIFT) & WLAN_CAPABILITIES_MAX_RX_ANTENNAS_MASK;
+
+	pmsr->ftm.min_allowed_ranging_interval_edca = fw->min_interval_edca_ms;
+	pmsr->ftm.min_allowed_ranging_interval_ntb = fw->min_interval_ntb_ms;
+
+	wifi_pos_debug("pmsr: max_peers=%u ap_tsf=%u rand_mac=%u",
+		       pmsr->max_peers, pmsr->report_ap_tsf,
+		       pmsr->randomize_mac_addr);
+	wifi_pos_debug("pmsr: pd_supp=%u pd_concur=%u",
+		       pmsr->ftm.pd_support,
+		       pmsr->ftm.pd_concurrent_ista_rsta_support);
+	wifi_pos_debug("pmsr: pd_max_ista=%u pd_max_rsta=%u",
+		       pmsr->pd_max_peer_ista_role,
+		       pmsr->pd_max_peer_rsta_role);
+	wifi_pos_debug("ftm: supp=%u asap=%u non_asap=%u",
+		       pmsr->ftm.supported, pmsr->ftm.asap,
+		       pmsr->ftm.non_asap);
+	wifi_pos_debug("ftm: req_lci=%u req_civicloc=%u",
+		       pmsr->ftm.request_lci, pmsr->ftm.request_civicloc);
+	wifi_pos_debug("ftm: tb=%u ntb=%u supp_6g=%u",
+		       pmsr->ftm.trigger_based, pmsr->ftm.non_trigger_based,
+		       pmsr->ftm.support_6ghz);
+
+	wifi_pos_debug("ftm: tx_ltf_rep=%u rx_ltf_rep=%u",
+		       pmsr->ftm.max_tx_ltf_rep, pmsr->ftm.max_rx_ltf_rep);
+	wifi_pos_debug("ftm: max_ltf_rx=%u max_ltf_tx=%u",
+		       pmsr->ftm.max_total_ltf_rx,
+		       pmsr->ftm.max_total_ltf_tx);
+	wifi_pos_debug("ftm: max_rx_sts=%u max_tx_sts=%u",
+		       pmsr->ftm.max_rx_sts, pmsr->ftm.max_tx_sts);
+
+	wifi_pos_debug("ftm ista: edca=%u tb=%u ntb=%u",
+		       pmsr->ftm.ista.support_edca, pmsr->ftm.ista.support_tb,
+		       pmsr->ftm.ista.support_ntb);
+	wifi_pos_debug("ftm rsta: edca=%u tb=%u ntb=%u",
+		       pmsr->ftm.rsta.support_edca, pmsr->ftm.rsta.support_tb,
+		       pmsr->ftm.rsta.support_ntb);
+
+	wifi_pos_debug("ftm: bw=0x%x preambles=0x%x",
+		       pmsr->ftm.bandwidths, pmsr->ftm.preambles);
+	wifi_pos_debug("pd edca: bw=0x%x preambles=0x%x",
+		       pmsr->ftm.pd_edca_bandwidths,
+		       pmsr->ftm.pd_edca_preambles);
+	wifi_pos_debug("pd ntb: bw=0x%x preambles=0x%x",
+		       pmsr->ftm.pd_ntb_bandwidths,
+		       pmsr->ftm.pd_ntb_preambles);
+
+	wifi_pos_debug("ftm: burst_exp=%d max_ftms_burst=%u",
+		       pmsr->ftm.max_bursts_exponent,
+		       pmsr->ftm.max_ftms_per_burst);
+	wifi_pos_debug("ftm: min_int_edca=%u min_int_ntb=%u",
+		       pmsr->ftm.min_allowed_ranging_interval_edca,
+		       pmsr->ftm.min_allowed_ranging_interval_ntb);
+	wifi_pos_debug("ftm: max_tx_ant=%u max_rx_ant=%u",
+		       pmsr->ftm.max_no_of_tx_antennas,
+		       pmsr->ftm.max_no_of_rx_antennas);
+
+	/*
+	 * Assign wiphy->pmsr_capa to the module-lifetime static struct.
+	 * Lifetime guarantee: wifi_pos_pmsr_capa_cfg outlives any wiphy or
+	 * psoc — no paired free is needed.
+	 */
+	wiphy->pmsr_capa = &wifi_pos_pmsr_capa_cfg;
+}
+#else
+static inline void
+wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(struct wiphy *wiphy,
+					   struct wlan_objmgr_psoc *psoc)
+{}
+#endif /* CFG80211_PD_SUPPORT && WLAN_FEATURE_RTT_11AZ_SUPPORT */
+
 #define WLAN_EXT_RANGING_CAP_IDX  11
 void
 wlan_wifi_pos_cfg80211_set_wiphy_ext_feature(struct wiphy *wiphy,
@@ -138,6 +495,9 @@ wlan_wifi_pos_cfg80211_set_wiphy_ext_feature(struct wiphy *wiphy,
 	wiphy->num_iftype_ext_capab = 0;
 	wiphy->iftype_ext_capab = &iftype_ext_cap;
 	wiphy->num_iftype_ext_capab++;
+
+	/* Populate wiphy->pmsr_capa from firmware-advertised RTT/FTM caps */
+	wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(wiphy, psoc);
 }
 
 #define NUM_BITS_IN_BYTE       8

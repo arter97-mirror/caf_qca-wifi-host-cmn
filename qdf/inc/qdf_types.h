@@ -755,6 +755,7 @@ typedef enum {
  * @QDF_TDLS_MODE: TDLS device mode
  * @QDF_NAN_DISC_MODE: NAN Discovery device mode
  * @QDF_PASSTHRU_MODE: Passthrough mode
+ * @QDF_PD_MODE: Proximity Detection mode
  * @QDF_MAX_NO_OF_MODE: Max place holder
  *
  * These are generic IDs that identify the various roles
@@ -779,6 +780,7 @@ enum QDF_OPMODE {
 	QDF_TDLS_MODE,
 	QDF_NAN_DISC_MODE,
 	QDF_PASSTHRU_MODE,
+	QDF_PD_MODE,
 
 	/* Add new OP Modes to qdf_opmode_str as well */
 

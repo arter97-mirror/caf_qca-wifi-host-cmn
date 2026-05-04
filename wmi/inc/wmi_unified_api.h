@@ -3204,9 +3204,28 @@ QDF_STATUS wmi_extract_sar_cap_service_ready_ext(
  * Return: QDF_STATUS_SUCCESS for success or error code
  */
 QDF_STATUS wmi_extract_sar_cap_service_ready_ext2(
-			wmi_unified_t wmi_handle,
+wmi_unified_t wmi_handle,
 			uint8_t *evt_buf,
 			struct wlan_psoc_host_service_ext2_param *ext2_param);
+
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+/* Forward declaration: full definition in wifi_pos_utils_i.h */
+struct wifi_pos_pmsr_fw_caps;
+
+/**
+ * wmi_extract_rtt_peer_meas_caps_service_ready_ext2() - extract RTT/FTM
+ *   peer measurement capabilities from service_ready_ext2 event.
+ * @wmi_handle: wmi handle
+ * @evt_buf: event buffer
+ * @caps: destination structure to fill
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS wmi_extract_rtt_peer_meas_caps_service_ready_ext2(
+		wmi_unified_t wmi_handle,
+		uint8_t *evt_buf,
+		struct wifi_pos_pmsr_fw_caps *caps);
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
 
 /**
  * wmi_unified_fw_test_cmd() - send fw test command to fw.

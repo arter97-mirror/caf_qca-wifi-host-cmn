@@ -16221,6 +16221,60 @@ static QDF_STATUS extract_sar_cap_service_ready_ext2_tlv(
 	return QDF_STATUS_SUCCESS;
 }
 
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+/**
+ * extract_rtt_peer_meas_caps_service_ready_ext2_tlv() - extract RTT/FTM
+ *       peer measurement capabilities from service ready ext2 event
+ * @wmi_handle: wmi handle
+ * @event: pointer to event buffer
+ * @caps: pointer to wifi_pos_pmsr_fw_caps to fill
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+extract_rtt_peer_meas_caps_service_ready_ext2_tlv(
+				wmi_unified_t wmi_handle,
+				uint8_t *event,
+				struct wifi_pos_pmsr_fw_caps *caps)
+{
+	WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *param_buf;
+	wmi_rtt_peer_meas_capabilities *fw_caps;
+
+	param_buf = (WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *)event;
+	if (!param_buf) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fw_caps = param_buf->rtt_peer_meas_caps;
+	if (!fw_caps) {
+		wmi_err("peer meas caps TLV not present in service ready ext2");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	caps->support_flag              = fw_caps->support_flag;
+	caps->max_peers                 = fw_caps->max_peers;
+	caps->pd_max_peers              = fw_caps->pd_max_peers;
+	caps->ftm_support_flag          = fw_caps->ftm_support_flag;
+	caps->supported_bw_bitmap       = fw_caps->supported_bw_bitmap;
+	caps->supported_preamble_bitmap = fw_caps->supported_preamble_bitmap;
+	caps->capabilities              = fw_caps->capabilities;
+	caps->ranging_11az_parameters   = fw_caps->ranging_11az_parameters;
+	caps->min_interval_edca_ms      = fw_caps->min_interval_edca_ms;
+	caps->min_interval_ntb_ms       = fw_caps->min_interval_ntb_ms;
+	caps->valid                     = true;
+
+	wmi_debug("RTT peer meas caps: support_flag=0x%x max_peers=%u pd_max_peers=0x%x ftm_flag=0x%x bw=0x%x preamble=0x%x caps=0x%x az_params=0x%x edca_ms=%u ntb_ms=%u",
+		  caps->support_flag, caps->max_peers, caps->pd_max_peers,
+		  caps->ftm_support_flag, caps->supported_bw_bitmap,
+		  caps->supported_preamble_bitmap, caps->capabilities,
+		  caps->ranging_11az_parameters,
+		  caps->min_interval_edca_ms, caps->min_interval_ntb_ms);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
+
 /**
  * extract_hw_mode_cap_service_ready_ext_tlv() -
  *       extract HW mode cap from service ready event
@@ -24688,6 +24742,10 @@ struct wmi_ops tlv_ops =  {
 				extract_sar_cap_service_ready_ext_tlv,
 	.extract_sar_cap_service_ready_ext2 =
 				extract_sar_cap_service_ready_ext2_tlv,
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+	.extract_rtt_peer_meas_caps_service_ready_ext2 =
+			extract_rtt_peer_meas_caps_service_ready_ext2_tlv,
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
 	.extract_pdev_utf_event = extract_pdev_utf_event_tlv,
 	.wmi_set_htc_tx_tag = wmi_set_htc_tx_tag_tlv,
 	.extract_fips_event_data = extract_fips_event_data_tlv,

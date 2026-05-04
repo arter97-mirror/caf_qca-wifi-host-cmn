@@ -424,10 +424,34 @@ int init_deinit_populate_dbs_or_sbs_cap_ext2(struct wlan_objmgr_psoc *psoc,
  * API to populate aux dev capability from service ready ext2 event.
  * Return: zero on successful or failure
  */
-
 int init_deinit_populate_aux_dev_cap_ext2(struct wlan_objmgr_psoc *psoc,
 					  wmi_unified_t handle, uint8_t *event,
 					  struct tgt_info *info);
+
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+/**
+ * init_deinit_populate_rtt_measurement_caps() - Populate RTT measurement
+ * capabilities from service ready ext2 event
+ *
+ * @psoc: PSOC object
+ * @handle: WMI handle pointer
+ * @event: event buffer received from FW
+ *
+ * Return: zero on success or failure
+ */
+int init_deinit_populate_rtt_measurement_caps(struct wlan_objmgr_psoc *psoc,
+					      wmi_unified_t handle,
+					      uint8_t *event);
+#else
+static inline
+int init_deinit_populate_rtt_measurement_caps(struct wlan_objmgr_psoc *psoc,
+					      wmi_unified_t handle,
+					      uint8_t *event)
+{
+	return 0;
+}
+#endif
+
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 /*
  * init_deinit_populate_power_boost_cap_ext2 - Populate Power Boost cap
