@@ -916,6 +916,35 @@ void mlo_mgr_link_switch_init_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 	mlo_dev_lock_release(mlo_dev_ctx);
 }
 
+#ifdef WLAN_FEATURE_11BN_SMD
+static enum mlo_link_switch_req_state
+mlo_mgr_smd_roam_get_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx,
+				enum mlo_link_switch_req_state cur_state,
+				enum mlo_link_switch_req_state default_next)
+{
+	enum wlan_mlo_link_switch_reason reason =
+		mlo_dev_ctx->link_ctx->last_req.reason;
+
+	if (cur_state == MLO_LINK_SWITCH_STATE_INIT &&
+	    reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK)
+		return MLO_LINK_SWITCH_STATE_CONNECT_NEW_LINK;
+
+	if (cur_state == MLO_LINK_SWITCH_STATE_DISCONNECT_CURR_LINK &&
+	    reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK)
+		return MLO_LINK_SWITCH_STATE_COMPLETE_SUCCESS;
+
+	return default_next;
+}
+#else
+static enum mlo_link_switch_req_state
+mlo_mgr_smd_roam_get_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx,
+				enum mlo_link_switch_req_state cur_state,
+				enum mlo_link_switch_req_state default_next)
+{
+	return default_next;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 QDF_STATUS
 mlo_mgr_link_switch_trans_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 {
@@ -929,10 +958,20 @@ mlo_mgr_link_switch_trans_next_state(struct wlan_mlo_dev_context *mlo_dev_ctx)
 		next_state = MLO_LINK_SWITCH_STATE_INIT;
 		break;
 	case MLO_LINK_SWITCH_STATE_INIT:
-		next_state = MLO_LINK_SWITCH_STATE_DISCONNECT_CURR_LINK;
+		if (smd_roam_in_progress(mlo_dev_ctx->link_recfg_ctx))
+			next_state = mlo_mgr_smd_roam_get_next_state(
+				mlo_dev_ctx, cur_state,
+				MLO_LINK_SWITCH_STATE_DISCONNECT_CURR_LINK);
+		else
+			next_state = MLO_LINK_SWITCH_STATE_DISCONNECT_CURR_LINK;
 		break;
 	case MLO_LINK_SWITCH_STATE_DISCONNECT_CURR_LINK:
-		next_state = MLO_LINK_SWITCH_STATE_SET_MAC_ADDR;
+		if (smd_roam_in_progress(mlo_dev_ctx->link_recfg_ctx))
+			next_state = mlo_mgr_smd_roam_get_next_state(
+				mlo_dev_ctx, cur_state,
+				MLO_LINK_SWITCH_STATE_SET_MAC_ADDR);
+		else
+			next_state = MLO_LINK_SWITCH_STATE_SET_MAC_ADDR;
 		break;
 	case MLO_LINK_SWITCH_STATE_SET_MAC_ADDR:
 		next_state = MLO_LINK_SWITCH_STATE_CONNECT_NEW_LINK;
