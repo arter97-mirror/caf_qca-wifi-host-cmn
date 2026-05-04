@@ -591,11 +591,11 @@ int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_vdev *vdev,
 	if (ucfg_ie_allowlist_enabled(psoc, vdev))
 		ucfg_copy_ie_allowlist_attrs(psoc, &req->ie_allowlist);
 
-	osif_debug("Network count %d n_ssids %d fast_scan_period: %d msec slow_scan_period: %d msec, fast_scan_max_cycles: %d, relative_rssi %d band_pref %d, rssi_pref %d",
-		   req->networks_cnt, request->n_ssids, req->fast_scan_period,
-		   req->slow_scan_period, req->fast_scan_max_cycles,
-		   req->relative_rssi, req->band_rssi_pref.band,
-		   req->band_rssi_pref.rssi);
+	osif_debug("vdev %d Network count %d n_ssids %d fast_scan_period: %d msec slow_scan_period: %d msec, fast_scan_max_cycles: %d, relative_rssi %d band_pref %d, rssi_pref %d",
+		   req->vdev_id, req->networks_cnt, request->n_ssids,
+		   req->fast_scan_period, req->slow_scan_period,
+		   req->fast_scan_max_cycles, req->relative_rssi,
+		   req->band_rssi_pref.band, req->band_rssi_pref.rssi);
 
 	for (i = 0; i < req->networks_cnt; i++)
 		osif_debug("[%d] ssid: " QDF_SSID_FMT ", RSSI th %d bc NW type %u",
@@ -621,6 +621,7 @@ int wlan_cfg80211_sched_scan_stop(struct wlan_objmgr_vdev *vdev)
 {
 	QDF_STATUS status;
 
+	osif_debug("vdev %d", wlan_vdev_get_id(vdev));
 	status = ucfg_scan_pno_stop(vdev);
 	if (QDF_IS_STATUS_ERROR(status))
 		osif_debug("Failed to disable PNO");
