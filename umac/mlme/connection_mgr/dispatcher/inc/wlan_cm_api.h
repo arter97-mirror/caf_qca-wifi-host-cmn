@@ -26,7 +26,6 @@
 
 #include "wlan_cm_public_struct.h"
 #include "wlan_ext_mlme_obj_types.h"
-
 /**
  * wlan_cm_start_connect() - connect start request
  * @vdev: vdev pointer

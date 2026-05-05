@@ -30,6 +30,8 @@
 #include "wlan_mlme_api.h"
 #include "wlan_wfa_tgt_if_tx_api.h"
 #include "wlan_action_oui_main.h"
+#include "wlan_action_oui_api.h"
+#include "wlan_action_oui_ucfg_api.h"
 #include "wlan_t2lm_api.h"
 #include "wlan_cm_main_api.h"
 #include "wlan_cm_public_struct.h"
@@ -3737,6 +3739,76 @@ static void cm_dec_score_for_mcc(struct wlan_objmgr_psoc *psoc,
 			 entry->rssi_raw, entry->entry_scores.bss_score);
 }
 
+/**
+ * cm_fill_oui_based_nss_arbitrator() - Fill OUI-based NSS arbitrator info
+ * @psoc: psoc object
+ * @scan_list: candidate list
+ *
+ * This function populates the bss_scoring_arbitrators structure in each
+ * scan cache entry with OUI-based NSS control information from action_oui
+ * module. This allows BSS scoring to consider vendor-specific NSS restrictions.
+ *
+ * Return: void
+ */
+static void cm_fill_oui_based_nss_arbitrator(struct wlan_objmgr_psoc *psoc,
+					     qdf_list_t *scan_list)
+{
+	struct scan_cache_node *scan_node;
+	qdf_list_node_t *cur_node = NULL, *next_node = NULL;
+	struct scan_cache_entry *entry;
+	struct action_oui_search_attr attr = {0};
+	uint8_t tx_nss, rx_nss;
+
+	if (!scan_list || qdf_list_empty(scan_list))
+		return;
+
+	if (qdf_list_peek_front(scan_list, &cur_node) != QDF_STATUS_SUCCESS) {
+		mlme_err("Failed to get front of scan list");
+		return;
+	}
+
+	while (cur_node) {
+		qdf_list_peek_next(scan_list, cur_node, &next_node);
+		scan_node = qdf_container_of(cur_node, struct scan_cache_node,
+					     node);
+		entry = scan_node->entry;
+
+		if (!entry) {
+			cur_node = next_node;
+			next_node = NULL;
+			continue;
+		}
+
+		/* Initialize arbitrator structure */
+		qdf_mem_zero(&entry->score_arbitrators,
+			     sizeof(entry->score_arbitrators));
+
+		entry->score_arbitrators.valid_flag |=
+				(1 << WLAN_BSS_SCORE_ARBITRATOR_NSS_BITPOS);
+
+		/* Set up search attributes for action_oui lookup */
+		attr.ie_data = util_scan_entry_vendor(entry);
+		attr.ie_length = attr.ie_data ?
+			(util_scan_entry_ie_len(entry) -
+			 (attr.ie_data - util_scan_entry_ie_data(entry))) : 0;
+		attr.mac_addr = entry->bssid.bytes;
+
+		/* Initialize with AP's NSS */
+		tx_nss = entry->nss;
+		rx_nss = entry->nss;
+
+		wlan_mlme_determine_allowed_nss(psoc, &attr,
+						&tx_nss, &rx_nss);
+
+		/* Store the result */
+		entry->score_arbitrators.nss = QDF_MIN(entry->nss,
+						       tx_nss);
+
+		cur_node = next_node;
+		next_node = NULL;
+	}
+}
+
 void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 				 struct pcl_freq_weight_list *pcl_lst,
 				 qdf_list_t *scan_list,
@@ -3782,6 +3854,8 @@ void wlan_cm_calculate_bss_score(struct wlan_objmgr_pdev *pdev,
 			config->beamformee_cap, config->bw_above_20_24ghz,
 			config->bw_above_20_5ghz, config->vdev_nss_24g,
 			config->vdev_nss_5g);
+
+	cm_fill_oui_based_nss_arbitrator(psoc, scan_list);
 
 	cm_mlo_generate_candidate_list(pdev, scan_list, filter,
 				       QDF_HAS_PARAM(flag,
