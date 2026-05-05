@@ -716,8 +716,6 @@ void dp_print_pdev_tx_monitor_stats_2_0(struct dp_pdev *pdev)
 
 	/* TX monitor stats needed for beryllium */
 	DP_PRINT_STATS("\tTX Capture BE stats mode[%d]:", tx_mon_be->mode);
-	DP_PRINT_STATS("\tTx lite_mon enabled : %u",
-		       dp_lite_mon_is_tx_enabled(mon_pdev));
 	DP_PRINT_STATS("\tbuffer pending : %u", tx_mon_be->last_frag_q_idx);
 	DP_PRINT_STATS("\treplenish count: %llu",
 		       stats.totat_tx_mon_replenish_cnt);
@@ -960,19 +958,6 @@ QDF_STATUS dp_peer_set_tx_capture_enabled_2_0(struct dp_pdev *pdev_handle,
 #endif
 
 #ifdef QCA_SUPPORT_LITE_MONITOR
-static void dp_fill_lite_mon_vdev(struct cdp_tx_indication_info *tx_cap_info,
-				  struct dp_mon_pdev_be *mon_pdev_be)
-{
-	struct dp_lite_mon_config *config;
-	struct dp_vdev *lite_mon_vdev;
-
-	config = &mon_pdev_be->lite_mon_tx_config->tx_config;
-	lite_mon_vdev = config->lite_mon_vdev;
-
-	if (lite_mon_vdev)
-		tx_cap_info->osif_vdev = lite_mon_vdev->osif_vdev;
-}
-
 /**
  * dp_lite_mon_filter_ppdu() - Filter frames at ppdu level
  * @mpdu_count: mpdu count in the nbuf queue
@@ -1196,8 +1181,7 @@ dp_tx_lite_mon_filtering(struct dp_pdev *pdev,
 		mon_pdev_be->lite_mon_tx_config;
 	QDF_STATUS ret;
 
-	if (!dp_lite_mon_is_tx_enabled(mon_pdev) &&
-	    !config->tx_config.peer_count)
+	if (!config->tx_config.peer_count)
 		return QDF_STATUS_SUCCESS;
 
 	/* PPDU level filtering */
@@ -1225,83 +1209,7 @@ dp_tx_lite_mon_filtering(struct dp_pdev *pdev,
 	return QDF_STATUS_SUCCESS;
 }
 
-/**
- * dp_lite_mon_filter_rx_ctrl() - ctrl filter for litemon
- * @soc: dp soc
- * @mon_pdev_be: Pointer to be mon pdev
- * @ppdu_info: tx ppdu info
- * @subtype_filter: subtype filter mask
- * @wh: Pointer to header
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS
-dp_lite_mon_filter_rx_ctrl(struct dp_soc *soc,
-			   struct dp_mon_pdev_be *mon_pdev_be,
-			   struct dp_tx_ppdu_info *ppdu_info,
-			   uint16_t subtype_filter,
-			   struct ieee80211_frame *wh)
-{
-	struct dp_lite_mon_rx_config *config =
-			mon_pdev_be->lite_mon_rx_config;
-	struct dp_lite_mon_peer *peer;
-	struct dp_peer *self_peer = NULL;
-	uint16_t ctrl_filter;
-
-	ctrl_filter = config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_MO];
-	if (ctrl_filter & subtype_filter)
-		return QDF_STATUS_E_FAILURE;
-
-	if (ppdu_info->hal_txmon.ack_recvd) {
-		self_peer = dp_peer_find_hash_find(soc, &wh->i_addr2[0],
-						   false,
-						   DP_VDEV_ALL,
-						   DP_MOD_ID_TX_CAPTURE);
-		if (!self_peer)
-			return QDF_STATUS_E_FAILURE;
-
-		if (self_peer->peer_id ==
-				ppdu_info->hal_txmon.rx_user_status[0].sw_peer_id) {
-			/* Excluding ACK for Non connected clients*/
-			dp_peer_unref_delete(self_peer, DP_MOD_ID_TX_CAPTURE);
-			return QDF_STATUS_E_FAILURE;
-		}
-		dp_peer_unref_delete(self_peer, DP_MOD_ID_TX_CAPTURE);
-	}
-
-	ctrl_filter =
-		config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_FP_MO];
-	if (config->rx_config.peer_count) {
-		qdf_spin_lock_bh(&config->lite_mon_rx_lock);
-		TAILQ_FOREACH(peer,
-			      &config->rx_config.peer_list,
-			      peer_list_elem) {
-			if (!qdf_mem_cmp(&peer->peer_mac.raw[0],
-					 &wh->i_addr1[0],
-					 QDF_MAC_ADDR_SIZE)) {
-				qdf_spin_unlock_bh(&config->lite_mon_rx_lock);
-				if (ctrl_filter & subtype_filter)
-					return QDF_STATUS_SUCCESS;
-				else
-					return QDF_STATUS_E_FAILURE;
-			}
-		}
-		qdf_spin_unlock_bh(&config->lite_mon_rx_lock);
-	}
-
-	ctrl_filter = config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_FP];
-	if (ctrl_filter & subtype_filter)
-		return QDF_STATUS_SUCCESS;
-
-	return QDF_STATUS_E_FAILURE;
-}
-
 #else
-static void dp_fill_lite_mon_vdev(struct cdp_tx_indication_info *tx_cap_info,
-				  struct dp_mon_pdev_be *mon_pdev_be)
-{
-}
-
 /**
  * dp_tx_lite_mon_filtering() - Additional filtering for lite monitor
  * @pdev: Pointer to physical device
@@ -1319,15 +1227,6 @@ dp_tx_lite_mon_filtering(struct dp_pdev *pdev,
 	return QDF_STATUS_SUCCESS;
 }
 
-static inline QDF_STATUS
-dp_lite_mon_filter_rx_ctrl(struct dp_soc *soc,
-			   struct dp_mon_pdev_be *mon_pdev_be,
-			   struct dp_tx_ppdu_info *ppdu_info,
-			   uint16_t subtype_filter,
-			   struct ieee80211_frame *wh)
-{
-	return QDF_STATUS_E_FAILURE;
-}
 #endif
 
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
@@ -1540,358 +1439,6 @@ dp_tx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
 #endif
 
 /**
- * dp_tx_mon_set_rate_a - API to set 11a rate
- * @rx_status: pointer to mon_rx_status
- *
- * Return: void
- */
-static inline
-void dp_tx_mon_set_rate_a(struct mon_rx_status *rx_status)
-{
-	switch (rx_status->mcs) {
-	case CDP_LEGACY_MCS0:
-		rx_status->rate = CDP_11A_RATE_0MCS;
-		break;
-	case CDP_LEGACY_MCS1:
-		rx_status->rate = CDP_11A_RATE_1MCS;
-		break;
-	case CDP_LEGACY_MCS2:
-		rx_status->rate = CDP_11A_RATE_2MCS;
-		break;
-	case CDP_LEGACY_MCS3:
-		rx_status->rate = CDP_11A_RATE_3MCS;
-		break;
-	case CDP_LEGACY_MCS4:
-		rx_status->rate = CDP_11A_RATE_4MCS;
-		break;
-	case CDP_LEGACY_MCS5:
-		rx_status->rate = CDP_11A_RATE_5MCS;
-		break;
-	case CDP_LEGACY_MCS6:
-		rx_status->rate = CDP_11A_RATE_6MCS;
-		break;
-	case CDP_LEGACY_MCS7:
-		rx_status->rate = CDP_11A_RATE_7MCS;
-		break;
-	default:
-		break;
-	}
-}
-
-/**
- * dp_tx_mon_set_rate_b - API to set 11b rate
- * @rx_status: pointer to mon_rx_status
- *
- * Return: void
- */
-static inline
-void dp_tx_mon_set_rate_b(struct mon_rx_status *rx_status)
-{
-	switch (rx_status->mcs) {
-	case CDP_LEGACY_MCS0:
-		rx_status->rate = CDP_11B_RATE_0MCS;
-		break;
-	case CDP_LEGACY_MCS1:
-		rx_status->rate = CDP_11B_RATE_1MCS;
-		break;
-	case CDP_LEGACY_MCS2:
-		rx_status->rate = CDP_11B_RATE_2MCS;
-		break;
-	case CDP_LEGACY_MCS3:
-		rx_status->rate = CDP_11B_RATE_3MCS;
-		break;
-	case CDP_LEGACY_MCS4:
-		rx_status->rate = CDP_11B_RATE_4MCS;
-		break;
-	case CDP_LEGACY_MCS5:
-		rx_status->rate = CDP_11B_RATE_5MCS;
-		break;
-	case CDP_LEGACY_MCS6:
-		rx_status->rate = CDP_11B_RATE_6MCS;
-		break;
-	default:
-		break;
-	}
-}
-
-/**
- * dp_tx_mon_update_rx_status - API to update rx status for rtap
- * @rx_status: pointer to mon_rx_status
- * @ppdu_info: pointer to dp_tx_ppdu_info
- *
- * Return: void
- */
-static void
-dp_tx_mon_update_rx_status(struct mon_rx_status *rx_status,
-			   struct dp_tx_ppdu_info *ppdu_info)
-{
-	uint8_t preamble_type;
-
-	rx_status->rate = TXMON_PPDU_COM(ppdu_info, rate);
-	rx_status->chan_freq = TXMON_PPDU_COM(ppdu_info, chan_freq);
-	rx_status->ofdm_flag = 1;
-
-	preamble_type = TXMON_PPDU_COM(ppdu_info, preamble_type);
-	switch (preamble_type) {
-	case DOT11_B:
-		rx_status->ofdm_flag = 0;
-		rx_status->cck_flag = 1;
-		dp_tx_mon_set_rate_b(rx_status);
-		rx_status->preamble_type = DOT11_B;
-		break;
-	default:
-		dp_tx_mon_set_rate_a(rx_status);
-		rx_status->preamble_type = DOT11_A;
-		break;
-	}
-}
-
-/**
- * dp_tx_mon_generate_cts_rx_frm - API to gen cts rx frm
- * @pdev: pdev Handle
- * @ppdu_info: pointer to dp_tx_ppdu_info
- * @rx_ppdu_info: pointer to rx frame generated dp_tx_ppdu_info
- *
- * Return: NULL or nbuf
- */
-static qdf_nbuf_t
-dp_tx_mon_generate_cts_rx_frm(struct dp_pdev *pdev,
-			      struct dp_tx_ppdu_info *ppdu_info,
-			      struct dp_tx_ppdu_info *rx_ppdu_info)
-{
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-	struct dp_mon_pdev_be *mon_pdev_be =
-		dp_get_be_mon_pdev_from_dp_mon_pdev(mon_pdev);
-	qdf_nbuf_t nbuf = NULL;
-	qdf_nbuf_t rx_mpdu_nbuf = NULL;
-	qdf_nbuf_t rtap_nbuf = NULL;
-	qdf_nbuf_queue_t *usr_mpdu_q = NULL;
-	struct ieee80211_frame_min_one *wh_addr1 = NULL;
-	struct ieee80211_frame *wh = NULL;
-	uint16_t duration = 0;
-	uint8_t frm_ctl;
-	uint8_t sifs;
-
-	if (!dp_lite_mon_is_rx_enabled(mon_pdev))
-		return NULL;
-
-	usr_mpdu_q = &TXMON_PPDU_USR(ppdu_info, 0, mpdu_q);
-
-	nbuf = qdf_nbuf_queue_first(usr_mpdu_q);
-	if (qdf_unlikely(!nbuf))
-		return NULL;
-
-	if (dp_tx_mon_nbuf_get_num_frag(nbuf)) {
-		wh = (struct ieee80211_frame *)qdf_nbuf_get_frag_addr(nbuf, 0);
-	} else {
-		nbuf = qdf_nbuf_get_ext_list(nbuf);
-		if (nbuf)
-			wh = (struct ieee80211_frame *)qdf_nbuf_data(nbuf);
-		else
-			return NULL;
-	}
-
-	if (QDF_STATUS_SUCCESS ==
-	    dp_lite_mon_filter_rx_ctrl(pdev->soc, mon_pdev_be,
-				       ppdu_info, FILTER_CTRL_CTS, wh)) {
-		rx_mpdu_nbuf = qdf_nbuf_alloc(pdev->soc->osdev,
-					      MAX_DUMMY_FRM_BODY, 0, 4, FALSE);
-		if (!rx_mpdu_nbuf)
-			return NULL;
-
-		wh_addr1 = (struct ieee80211_frame_min_one *)
-					qdf_nbuf_data(rx_mpdu_nbuf);
-
-		frm_ctl = (QDF_IEEE80211_FC0_VERSION_0 |
-			   QDF_IEEE80211_FC0_TYPE_CTL |
-			   QDF_IEEE80211_FC0_SUBTYPE_CTS);
-
-		wh_addr1->i_fc[1] = 0;
-		wh_addr1->i_fc[0] = frm_ctl;
-
-		qdf_mem_copy(wh_addr1->i_addr1,
-			     wh->i_addr2,
-			     QDF_MAC_ADDR_SIZE);
-
-		/* set duration for cts frame */
-		*(u_int16_t *)(&wh_addr1->i_dur) = qdf_cpu_to_le16(0x0000);
-		duration = TXMON_PPDU_COM(ppdu_info, duration);
-		sifs = WLAN_REG_IS_24GHZ_CH_FREQ(TXMON_PPDU_COM(ppdu_info, chan_freq)) ? 10 : 16;
-		if (duration && (duration >= (CTS_INTERVAL + sifs))) {
-			duration = duration - CTS_INTERVAL - sifs;
-			*(u_int16_t *)(&wh_addr1->i_dur) =
-					qdf_cpu_to_le16(duration);
-		}
-
-		qdf_nbuf_set_pktlen(rx_mpdu_nbuf, sizeof(*wh_addr1));
-
-		rtap_nbuf = qdf_nbuf_alloc(pdev->soc->osdev,
-					   MAX_MONITOR_HEADER,
-					   MAX_MONITOR_HEADER,
-					   4, FALSE);
-		if (qdf_unlikely(!rtap_nbuf)) {
-			qdf_err("Unable to allocate radiotap buffer\n");
-			qdf_nbuf_free(rx_mpdu_nbuf);
-			return NULL;
-		}
-		/* append ext list */
-		qdf_nbuf_append_ext_list(rtap_nbuf,
-					 rx_mpdu_nbuf,
-					 qdf_nbuf_len(rx_mpdu_nbuf));
-
-		/* construct rx_status */
-		TXMON_PPDU_COM(rx_ppdu_info, tsft) =
-			TXMON_PPDU_COM(ppdu_info, tsft) + sifs + CTS_INTERVAL;
-		TXMON_PPDU_COM(rx_ppdu_info, mcs) =
-			TXMON_PPDU_COM(ppdu_info, mcs);
-		TXMON_PPDU_COM(rx_ppdu_info, chan_noise_floor) =
-			DEFAULT_NOISE_FLOOR;
-		TXMON_PPDU_COM(rx_ppdu_info, frame_control) = frm_ctl;
-		TXMON_PPDU_COM(rx_ppdu_info, bw) =
-			TXMON_PPDU_COM(ppdu_info, bw);
-		TXMON_PPDU_COM(rx_ppdu_info, sgi) =
-			TXMON_PPDU_COM(ppdu_info, sgi);
-		rx_ppdu_info->frame_type = CDP_PPDU_FTYPE_CTRL;
-		rx_ppdu_info->ppdu_id = 0xDEAD;
-
-		dp_tx_mon_update_rx_status(&rx_ppdu_info->hal_txmon.rx_status,
-					   ppdu_info);
-		if (!qdf_nbuf_update_radiotap
-				(&rx_ppdu_info->hal_txmon.rx_status,
-				 rtap_nbuf,
-				 qdf_nbuf_headroom(rtap_nbuf))) {
-			qdf_nbuf_free(rtap_nbuf);
-			return NULL;
-		}
-
-		return rtap_nbuf;
-	}
-
-	return NULL;
-}
-
-/**
- * dp_tx_mon_generate_ack_rx_frm - API to gen ack rx frm
- * @pdev: pdev Handle
- * @ppdu_info: pointer to dp_tx_ppdu_info
- * @rx_ppdu_info: pointer to rx frame generated dp_tx_ppdu_info
- *
- * Return: NULL or nbuf
- */
-static qdf_nbuf_t
-dp_tx_mon_generate_ack_rx_frm(struct dp_pdev *pdev,
-			      struct dp_tx_ppdu_info *ppdu_info,
-			      struct dp_tx_ppdu_info *rx_ppdu_info)
-{
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-	struct dp_mon_pdev_be *mon_pdev_be =
-		dp_get_be_mon_pdev_from_dp_mon_pdev(mon_pdev);
-	qdf_nbuf_t nbuf = NULL;
-	qdf_nbuf_t rx_mpdu_nbuf = NULL;
-	qdf_nbuf_t rtap_nbuf = NULL;
-	qdf_nbuf_queue_t *usr_mpdu_q = NULL;
-	struct ieee80211_frame_min_one *wh_addr1 = NULL;
-	struct ieee80211_frame *wh = NULL;
-	uint8_t frm_ctl;
-	uint8_t sifs;
-
-	if (!dp_lite_mon_is_rx_enabled(mon_pdev))
-		return NULL;
-
-	usr_mpdu_q = &TXMON_PPDU_USR(ppdu_info, 0, mpdu_q);
-
-	nbuf = qdf_nbuf_queue_first(usr_mpdu_q);
-	if (qdf_unlikely(!nbuf))
-		return NULL;
-
-	if (dp_tx_mon_nbuf_get_num_frag(nbuf)) {
-		wh = (struct ieee80211_frame *)qdf_nbuf_get_frag_addr(nbuf, 0);
-	} else {
-		nbuf = qdf_nbuf_get_ext_list(nbuf);
-		if (nbuf)
-			wh = (struct ieee80211_frame *)qdf_nbuf_data(nbuf);
-		else
-			return NULL;
-	}
-
-	if (QDF_STATUS_SUCCESS ==
-	    dp_lite_mon_filter_rx_ctrl(pdev->soc, mon_pdev_be,
-				       ppdu_info, FILTER_CTRL_ACK, wh)) {
-		rx_mpdu_nbuf = qdf_nbuf_alloc(pdev->soc->osdev,
-					      MAX_DUMMY_FRM_BODY,
-					      0, 4, FALSE);
-		if (!rx_mpdu_nbuf)
-			return NULL;
-
-		wh_addr1 = (struct ieee80211_frame_min_one *)
-					qdf_nbuf_data(rx_mpdu_nbuf);
-
-		frm_ctl = (QDF_IEEE80211_FC0_VERSION_0 |
-			   QDF_IEEE80211_FC0_TYPE_CTL |
-			   QDF_IEEE80211_FC0_SUBTYPE_ACK);
-
-		wh_addr1->i_fc[1] = 0;
-		wh_addr1->i_fc[0] = frm_ctl;
-
-		qdf_mem_copy(wh_addr1->i_addr1,
-			     wh->i_addr2,
-			     QDF_MAC_ADDR_SIZE);
-
-		/* set duration zero for ack frame */
-		*(u_int16_t *)(&wh_addr1->i_dur) = qdf_cpu_to_le16(0x0000);
-
-		qdf_nbuf_set_pktlen(rx_mpdu_nbuf, sizeof(*wh_addr1));
-
-		rtap_nbuf = qdf_nbuf_alloc(pdev->soc->osdev,
-					   MAX_MONITOR_HEADER,
-					   MAX_MONITOR_HEADER,
-					   4, FALSE);
-		if (qdf_unlikely(!rtap_nbuf)) {
-			qdf_err("Unable to allocate radiotap buffer\n");
-			qdf_nbuf_free(rx_mpdu_nbuf);
-			return NULL;
-		}
-		/* append ext list */
-		qdf_nbuf_append_ext_list(rtap_nbuf,
-					 rx_mpdu_nbuf,
-					 qdf_nbuf_len(rx_mpdu_nbuf));
-
-		/* construct rx_status */
-		sifs = WLAN_REG_IS_24GHZ_CH_FREQ(TXMON_PPDU_COM(ppdu_info, chan_freq)) ? 10 : 16;
-		TXMON_PPDU_COM(rx_ppdu_info, tsft) =
-			TXMON_PPDU_COM(ppdu_info, tsft) + sifs + ACK_INTERVAL;
-		TXMON_PPDU_COM(rx_ppdu_info, rssi_comb) =
-			TXMON_PPDU_HAL(ppdu_info, ack_rssi);
-		TXMON_PPDU_COM(rx_ppdu_info, chan_noise_floor) =
-			DEFAULT_NOISE_FLOOR;
-		TXMON_PPDU_COM(rx_ppdu_info, mcs) =
-			TXMON_PPDU_COM(ppdu_info, mcs);
-		TXMON_PPDU_COM(rx_ppdu_info, frame_control) = frm_ctl;
-		/* For ack frame, default bw 20MHz will be used */
-		TXMON_PPDU_COM(rx_ppdu_info, bw) = 0;
-		/* Default sgi is set as short for ack */
-		TXMON_PPDU_COM(rx_ppdu_info, sgi) = 1;
-		rx_ppdu_info->frame_type = CDP_PPDU_FTYPE_CTRL;
-		rx_ppdu_info->ppdu_id = 0xDEAD;
-
-		dp_tx_mon_update_rx_status(&rx_ppdu_info->hal_txmon.rx_status,
-					   ppdu_info);
-
-		if (!qdf_nbuf_update_radiotap
-				(&rx_ppdu_info->hal_txmon.rx_status,
-				 rtap_nbuf,
-				 qdf_nbuf_headroom(rtap_nbuf))) {
-			qdf_nbuf_free(rtap_nbuf);
-			return NULL;
-		}
-
-		return rtap_nbuf;
-	}
-
-	return NULL;
-}
-
-/**
  * dp_tx_mon_send_to_stack() - API to send to stack
  * @pdev: pdev Handle
  * @mpdu: pointer to mpdu
@@ -1931,22 +1478,14 @@ dp_tx_mon_send_to_stack(struct dp_pdev *pdev, qdf_nbuf_t mpdu,
 		if (QDF_IS_STATUS_ERROR(ret))
 			qdf_nbuf_free(mpdu);
 		return;
-	} else if (!dp_lite_mon_is_tx_enabled(mon_pdev)) {
-		dp_wdi_event_handler(WDI_EVENT_TX_PKT_CAPTURE,
-				     pdev->soc,
-				     &tx_capture_info,
-				     HTT_INVALID_PEER,
-				     WDI_NO_VAL,
-				     pdev->pdev_id);
-	} else {
-		dp_fill_lite_mon_vdev(&tx_capture_info, mon_pdev_be);
-		dp_wdi_event_handler(WDI_EVENT_LITE_MON_TX,
-				     pdev->soc,
-				     &tx_capture_info,
-				     HTT_INVALID_PEER,
-				     WDI_NO_VAL,
-				     pdev->pdev_id);
 	}
+
+	dp_wdi_event_handler(WDI_EVENT_TX_PKT_CAPTURE,
+			     pdev->soc,
+			     &tx_capture_info,
+			     HTT_INVALID_PEER,
+			     WDI_NO_VAL,
+			     pdev->pdev_id);
 	if (tx_capture_info.mpdu_nbuf)
 		qdf_nbuf_free(tx_capture_info.mpdu_nbuf);
 }
@@ -2067,9 +1606,7 @@ dp_tx_mon_send_per_usr_mpdu(struct dp_pdev *pdev,
 {
 	qdf_nbuf_queue_t *usr_mpdu_q = NULL;
 	qdf_nbuf_t buf = NULL;
-	qdf_nbuf_t rx_nbuf = NULL;
 	uint8_t mpdu_count = 0;
-	struct dp_tx_ppdu_info *rx_ppdu_info = NULL;
 	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
 	struct dp_mon_pdev_be *mon_pdev_be =
 			dp_get_be_mon_pdev_from_dp_mon_pdev(mon_pdev);
@@ -2078,28 +1615,6 @@ dp_tx_mon_send_per_usr_mpdu(struct dp_pdev *pdev,
 
 
 	usr_mpdu_q = &TXMON_PPDU_USR(ppdu_info, user_idx, mpdu_q);
-
-	if (user_idx == 0 &&
-	    (TXMON_PPDU_HAL(ppdu_info, ack_recvd) ||
-	     TXMON_PPDU_HAL(ppdu_info, cts_recvd))) {
-		uint32_t sz_ppdu_info = (sizeof(struct dp_tx_ppdu_info) +
-					 (sizeof(struct mon_rx_user_status)));
-
-		rx_ppdu_info =
-			(struct dp_tx_ppdu_info *)qdf_mem_malloc(sz_ppdu_info);
-
-		if (TXMON_PPDU_HAL(ppdu_info, ack_recvd))
-			rx_nbuf = dp_tx_mon_generate_ack_rx_frm(pdev,
-								ppdu_info,
-								rx_ppdu_info);
-		else if (TXMON_PPDU_HAL(ppdu_info, cts_recvd))
-			rx_nbuf = dp_tx_mon_generate_cts_rx_frm(pdev,
-								ppdu_info,
-								rx_ppdu_info);
-
-		if (!rx_nbuf && rx_ppdu_info)
-			qdf_mem_free(rx_ppdu_info);
-	}
 
 	while ((buf = qdf_nbuf_queue_remove(usr_mpdu_q)) != NULL) {
 		uint32_t num_frag = dp_tx_mon_nbuf_get_num_frag(buf);
@@ -2136,15 +1651,6 @@ dp_tx_mon_send_per_usr_mpdu(struct dp_pdev *pdev,
 		dp_tx_mon_send_to_stack(pdev, buf, num_frag,
 					TXMON_PPDU(ppdu_info, ppdu_id),
 					mac_id);
-	}
-
-	if ((user_idx == 0) && rx_nbuf) {
-		dp_tx_mon_send_to_stack(pdev, rx_nbuf,
-					0, 0, mac_id);
-		rx_nbuf = NULL;
-
-		if (rx_ppdu_info)
-			qdf_mem_free(rx_ppdu_info);
 	}
 }
 
@@ -2359,8 +1865,7 @@ static void dp_tx_mon_ppdu_process(void *context)
 	}
 
 	tx_mon_be = dp_mon_pdev_get_tx_mon(mon_pdev_be, mac_id);
-	if (qdf_unlikely(TX_MON_BE_DISABLE == tx_mon_be->mode &&
-			 !dp_lite_mon_is_tx_enabled(mon_pdev)))
+	if (qdf_unlikely(TX_MON_BE_DISABLE == tx_mon_be->mode))
 		return;
 
 	/* take lock here */

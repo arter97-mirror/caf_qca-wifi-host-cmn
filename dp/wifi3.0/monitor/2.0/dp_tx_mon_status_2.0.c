@@ -2224,8 +2224,7 @@ dp_tx_mon_process_status_tlv(struct dp_soc *soc,
 		goto drop_queue_free_buf;
 	}
 
-	if (tx_mon_be->mode == TX_MON_BE_DISABLE &&
-	    !dp_lite_mon_is_tx_enabled(mon_pdev))
+	if (tx_mon_be->mode == TX_MON_BE_DISABLE)
 		goto drop_queue_free_buf;
 
 	if (tx_mon_be->be_ppdu_id != mon_ring_desc->ppdu_id &&

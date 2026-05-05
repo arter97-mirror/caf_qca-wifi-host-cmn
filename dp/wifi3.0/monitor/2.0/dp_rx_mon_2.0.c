@@ -851,10 +851,8 @@ dp_rx_mon_handle_mon_buf_addr(struct dp_pdev *pdev,
 	uint8_t mac_id = 0;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
 
-	if (!mon_pdev->monitor_configured &&
-	    !dp_lite_mon_is_rx_enabled(mon_pdev)) {
+	if (!mon_pdev->monitor_configured)
 		return num_buf_reaped;
-	}
 
 	if (qdf_unlikely(user_id >= HAL_MAX_UL_MU_USERS ||
 			 ppdu_info->hdr_len > DP_RX_MON_MAX_RX_HEADER_LEN))
@@ -1100,10 +1098,6 @@ dp_rx_mon_handle_rx_hdr(struct dp_pdev *pdev,
 				HAL_HW_RX_DECAP_FORMAT_RAW) {
 			return;
 		}
-
-		if (dp_lite_mon_is_rx_enabled(mon_pdev) &&
-				!dp_lite_mon_is_level_msdu(mon_pdev))
-			return;
 
 		nbuf = qdf_nbuf_queue_last(&ppdu_info->mpdu_q[user_id]);
 		if (qdf_unlikely(!nbuf)) {
@@ -1374,62 +1368,57 @@ dp_rx_mon_process_ppdu_info(struct dp_pdev *pdev,
 			else
 				ppdu_info->rx_status.rs_flags &= ~IEEE80211_AMSDU_FLAG;
 
-			if (dp_lite_mon_is_rx_enabled(mon_pdev)) {
-				status = dp_lite_mon_rx_mpdu_process(pdev, ppdu_info,
-								     mpdu, mpdu_idx, user);
+			if (mpdu_meta->full_pkt) {
+				if (qdf_unlikely(mpdu_meta->truncated) &&
+				    PREVENT_MU_BYPASS(mon_pdev,
+						      ppdu_info)) {
+					dp_mon_free_parent_nbuf(pdev,
+								mpdu);
+					continue;
+				}
+
+				status = dp_rx_mon_handle_full_mon(pdev,
+								   ppdu_info,
+								   mpdu);
 				if (status != QDF_STATUS_SUCCESS) {
 					dp_mon_free_parent_nbuf(pdev, mpdu);
 					continue;
 				}
 			} else {
-				if (mpdu_meta->full_pkt) {
-					if (qdf_unlikely(mpdu_meta->
-							 truncated) &&
-					    PREVENT_MU_BYPASS(mon_pdev,
-							      ppdu_info)) {
-						dp_mon_free_parent_nbuf(pdev,
-									mpdu);
-						continue;
-					}
-
-					status = dp_rx_mon_handle_full_mon(pdev,
-									   ppdu_info, mpdu);
-					if (status != QDF_STATUS_SUCCESS) {
-						dp_mon_free_parent_nbuf(pdev, mpdu);
-						continue;
-					}
-				} else {
-					if (PREVENT_MU_BYPASS(mon_pdev,
-							      ppdu_info)) {
-						dp_mon_free_parent_nbuf(pdev,
-									mpdu);
-						continue;
-					}
+				if (PREVENT_MU_BYPASS(mon_pdev,
+						      ppdu_info)) {
+					dp_mon_free_parent_nbuf(pdev,
+								mpdu);
+					continue;
 				}
-
-				/* reset mpdu metadata and apply radiotap header over MPDU */
-				qdf_mem_zero(mpdu_meta, sizeof(struct hal_rx_mon_mpdu_info));
-				if (!qdf_nbuf_update_radiotap(&ppdu_info->rx_status,
-							      mpdu,
-							      qdf_nbuf_headroom(mpdu))) {
-					dp_mon_err("failed to update radiotap pdev: %pK",
-						   pdev);
-				}
-
-				dp_rx_mon_shift_pf_tag_in_headroom(mpdu,
-								   pdev->soc,
-								   ppdu_info);
-
-				dp_rx_mon_process_dest_pktlog(pdev->soc,
-							      pdev->pdev_id,
-							      mpdu);
-				/* Deliver MPDU to osif layer */
-				status = dp_rx_mon_deliver_mpdu(pdev,
-								mpdu,
-								&ppdu_info->rx_status);
-				if (status != QDF_STATUS_SUCCESS)
-					dp_mon_free_parent_nbuf(pdev, mpdu);
 			}
+
+			/* reset mpdu metadata and apply radiotap header
+			 * over MPDU
+			 */
+			qdf_mem_zero(mpdu_meta,
+				     sizeof(struct hal_rx_mon_mpdu_info));
+			if (!qdf_nbuf_update_radiotap(&ppdu_info->rx_status,
+						      mpdu,
+						      qdf_nbuf_headroom(
+							      mpdu))) {
+				dp_mon_err("failed to update radiotap pdev: %pK",
+					   pdev);
+			}
+
+			dp_rx_mon_shift_pf_tag_in_headroom(mpdu,
+							   pdev->soc,
+							   ppdu_info);
+
+			dp_rx_mon_process_dest_pktlog(pdev->soc,
+						      pdev->pdev_id,
+						      mpdu);
+			/* Deliver MPDU to osif layer */
+			status = dp_rx_mon_deliver_mpdu(pdev,
+							mpdu,
+							&ppdu_info->rx_status);
+			if (status != QDF_STATUS_SUCCESS)
+				dp_mon_free_parent_nbuf(pdev, mpdu);
 			ppdu_info->rx_status.rs_fcs_err = false;
 		}
 	}
@@ -1503,8 +1492,7 @@ dp_rx_mon_add_ppdu_info_to_wq(struct dp_pdev *pdev,
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
 
 	/* Full monitor or lite monitor mode is not enabled, return */
-	if (!mon_pdev->monitor_configured &&
-	    !dp_lite_mon_is_rx_enabled(mon_pdev))
+	if (!mon_pdev->monitor_configured)
 		return QDF_STATUS_E_FAILURE;
 
 	if (qdf_likely(ppdu_info)) {
@@ -2150,10 +2138,8 @@ uint8_t dp_rx_mon_process_tlv_status(struct dp_pdev *pdev,
 	uint8_t mac_id = 0;
 	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
 
-	if (!mon_pdev->monitor_configured &&
-	    !dp_lite_mon_is_rx_enabled(mon_pdev)) {
+	if (!mon_pdev->monitor_configured)
 		return num_buf_reaped;
-	}
 
 	/* if drop ppdu is set no need to process tlv except
 	 * buf addr tlv and drop tlv. buf addr tlv should be
