@@ -3683,7 +3683,13 @@ QDF_STATUS cm_connect_start_req(struct wlan_objmgr_vdev *vdev,
 	if (!cm_ctx)
 		return QDF_STATUS_E_INVAL;
 
-	cm_vdev_scan_cancel(wlan_vdev_get_pdev(cm_ctx->vdev), cm_ctx->vdev);
+	/*
+	 * Cancel all scans on the pdev (not just this vdev) before starting
+	 * connection. This prevents long-duration scans on other vdevs
+	 * (e.g., P2P-ROC) from blocking the VDEV_START critical channel
+	 * request, which can cause timeouts and crashes.
+	 */
+	cm_pdev_scan_cancel(wlan_vdev_get_pdev(cm_ctx->vdev), cm_ctx->vdev);
 
 	/*
 	 * This would be freed as part of removal from cm req list if adding

@@ -1004,6 +1004,23 @@ void cm_vdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
 			 struct wlan_objmgr_vdev *vdev);
 
 /**
+ * cm_pdev_scan_cancel() - Cancel all scans on the pdev
+ * @pdev: pdev object
+ * @vdev: vdev object of the connecting vdev
+ *
+ * Cancel all scans on the pdev (not just a single vdev) before starting
+ * connection. This prevents long-duration scans on other vdevs (e.g.,
+ * P2P-ROC) from blocking the VDEV_START critical channel request, which
+ * can cause timeouts and crashes.
+ *
+ * Uses async wlan_scan_cancel() (no wait) to avoid delaying connection.
+ *
+ * Return: void
+ */
+void cm_pdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
+			 struct wlan_objmgr_vdev *vdev);
+
+/**
  * cm_fill_disconnect_resp_from_cm_id() - Fill disconnect response
  * @cm_ctx: connection manager context
  * @cm_id: cm id of connect/disconnect req
