@@ -205,6 +205,30 @@ int32_t wlan_crypto_rsn_cipher_to_suite(uint32_t cipher);
 int32_t wlan_crypto_rsn_keymgmt_to_suite(uint32_t keymgmt);
 
 /**
+ * wlan_crypto_rsn_suite_to_keymgmt() - Convert an RSN AKM suite selector
+ * to the internal key management type code.
+ * @sel: 4-byte RSN AKM suite selector (little-endian OUI + type)
+ *
+ * Parses the 4-byte suite selector and returns the corresponding
+ * wlan_crypto_key_mgmt value, or -1 if the suite is not recognised.
+ *
+ * Return: internal key management type on success, -1 on failure
+ */
+int32_t wlan_crypto_rsn_suite_to_keymgmt(const uint8_t *sel);
+
+/**
+ * wlan_crypto_rsn_suite_to_cipher() - Convert an RSN cipher suite selector
+ * to the internal cipher type code.
+ * @sel: 4-byte RSN cipher suite selector (little-endian OUI + type)
+ *
+ * Parses the 4-byte suite selector and returns the corresponding
+ * wlan_crypto_cipher_type value, or -1 if the suite is not recognised.
+ *
+ * Return: internal cipher type on success, -1 on failure
+ */
+int32_t wlan_crypto_rsn_suite_to_cipher(const uint8_t *sel);
+
+/**
  * wlan_crypto_default_key() - called by ucfg to set default tx key
  * @vdev: vdev
  * @macaddr: mac address of the peer for unicast key

@@ -257,6 +257,14 @@ static inline void wlan_crypto_put_be64(u8 *a, u64 val)
 #define AUTH_IS_WAI(_param)    HAS_AUTHMODE((_param), WLAN_CRYPTO_AUTH_WAPI)
 #define AUTH_IS_WPA2(_param)   AUTH_IS_RSNA(_param)
 
+static inline bool is_sae_key_mgmt(uint32_t key_mgmt)
+{
+	return (key_mgmt == RSN_AUTH_KEY_MGMT_SAE ||
+		key_mgmt == RSN_AUTH_KEY_MGMT_SAE_EXT_KEY ||
+		key_mgmt == RSN_AUTH_KEY_MGMT_FT_SAE ||
+		key_mgmt == RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY);
+}
+
 #define AUTH_MATCH(_param1, _param2) \
 		(((_param1)->authmodeset & (_param2)->authmodeset) != 0)
 

@@ -193,6 +193,9 @@ static QDF_STATUS wlan_crypto_set_param(struct wlan_crypto_params *crypto_params
 	case WLAN_CRYPTO_PARAM_RANDOM_PMKID:
 		status = wlan_crypto_set_random_pmkid(crypto_params, value);
 		break;
+	case WLAN_CRYPTO_PARAM_AUTH_ALGO:
+		status = wlan_crypto_set_auth_algo(crypto_params, value);
+		break;
 	default:
 		status = QDF_STATUS_E_INVAL;
 	}
@@ -321,6 +324,9 @@ static int32_t wlan_crypto_get_param_value(wlan_crypto_param_type param,
 		break;
 	case WLAN_CRYPTO_PARAM_RANDOM_PMKID:
 		value = wlan_crypto_get_random_pmkid(crypto_params);
+		break;
+	case WLAN_CRYPTO_PARAM_AUTH_ALGO:
+		value = wlan_crypto_get_auth_algo(crypto_params);
 		break;
 	default:
 		value = -1;
@@ -2741,7 +2747,7 @@ static int32_t wlan_crypto_wpa_suite_to_keymgmt(const uint8_t *sel)
  * cipher algorithm.  Where appropriate we also
  * record any key length.
  */
-static int32_t wlan_crypto_rsn_suite_to_cipher(const uint8_t *sel)
+int32_t wlan_crypto_rsn_suite_to_cipher(const uint8_t *sel)
 {
 	uint32_t w = LE_READ_4(sel);
 	int32_t status = -1;
@@ -2775,7 +2781,7 @@ static int32_t wlan_crypto_rsn_suite_to_cipher(const uint8_t *sel)
  * Convert an RSN key management/authentication algorithm
  * to an internal code.
  */
-static int32_t wlan_crypto_rsn_suite_to_keymgmt(const uint8_t *sel)
+int32_t wlan_crypto_rsn_suite_to_keymgmt(const uint8_t *sel)
 {
 	uint32_t w = LE_READ_4(sel);
 	int32_t status = -1;

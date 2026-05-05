@@ -41,6 +41,7 @@
 #include <wlan_objmgr_peer_obj.h>
 #include "wlan_crypto_def_i.h"
 #include "wlan_crypto_obj_mgr_i.h"
+#include "wlan_cm_api.h"
 
 #ifdef FEATURE_WLAN_WAPI
 #ifdef FEATURE_WAPI_BIG_ENDIAN
@@ -214,7 +215,8 @@ QDF_STATUS target_if_crypto_set_key(struct wlan_objmgr_vdev *vdev,
 	target_if_debug("key_type %d, mac: " QDF_MAC_ADDR_FMT,
 			key_type, QDF_MAC_ADDR_REF(req->macaddr));
 
-	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_NAN_DISC_MODE) {
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_NAN_DISC_MODE &&
+	    !wlan_cm_is_vdev_roaming(vdev)) {
 		peer_exist = cdp_find_peer_exist(soc,
 						 pdev->pdev_objmgr.wlan_pdev_id,
 						 req->macaddr);
@@ -405,6 +407,12 @@ target_if_crypto_install_key_comp_evt_handler(void *handle, uint8_t *event,
 	if (!vdev) {
 		target_if_err("vdev %d is null", params.vdev_id);
 		return -EINVAL;
+	}
+
+	if (wlan_cm_is_vdev_roaming(vdev)) {
+		target_if_debug("Install key response received for roaming peer. Ignore it");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_CRYPTO_ID);
+		return 0;
 	}
 
 	priv_obj = wlan_get_vdev_crypto_obj(vdev);
