@@ -1202,6 +1202,29 @@ void cm_vdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
 			 wlan_vdev_get_id(vdev));
 }
 
+void cm_pdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
+			 struct wlan_objmgr_vdev *vdev)
+{
+	struct scan_cancel_request *req;
+	QDF_STATUS status;
+
+	req = qdf_mem_malloc(sizeof(*req));
+	if (!req)
+		return;
+
+	req->vdev = vdev;
+	req->cancel_req.scan_id = INVAL_SCAN_ID;
+	req->cancel_req.pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
+	req->cancel_req.vdev_id = INVAL_VDEV_ID;
+	req->cancel_req.req_type = WLAN_SCAN_CANCEL_PDEV_ALL;
+
+	status = wlan_scan_cancel(req);
+	/* In success/failure case wlan_scan_cancel free the req memory */
+	if (QDF_IS_STATUS_ERROR(status))
+		mlme_err("pdev %d cancel all scan request failed",
+			 wlan_objmgr_pdev_get_pdev_id(pdev));
+}
+
 void cm_set_max_connect_attempts(struct wlan_objmgr_vdev *vdev,
 				 uint8_t max_connect_attempts)
 {
