@@ -603,6 +603,31 @@ void ipa_flush(struct wlan_objmgr_pdev *pdev)
 	return wlan_ipa_flush(ipa_obj);
 }
 
+QDF_STATUS ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+			      qdf_netdev_t net_dev, uint8_t device_mode,
+			      uint8_t session_id, uint8_t *mac_addr, bool is_enable)
+{
+	struct wlan_ipa_priv *ipa_obj;
+	struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
+
+	if (!ipa_config_is_enabled()) {
+		ipa_debug("ipa is disabled");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	if (!ipa_cb_is_ready())
+		return QDF_STATUS_SUCCESS;
+
+	ipa_obj = ipa_psoc_get_priv_obj(psoc);
+	if (!ipa_obj) {
+		ipa_err("IPA object is NULL");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	return wlan_ipa_sw_routing_set(ipa_obj, net_dev, device_mode,
+				       session_id, mac_addr, is_enable);
+}
+
 QDF_STATUS ipa_suspend(struct wlan_objmgr_pdev *pdev)
 {
 	struct wlan_ipa_priv *ipa_obj;

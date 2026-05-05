@@ -284,6 +284,10 @@ void ucfg_ipa_uc_force_pipe_shutdown(struct wlan_objmgr_pdev *pdev);
  */
 void ucfg_ipa_flush(struct wlan_objmgr_pdev *pdev);
 
+QDF_STATUS ucfg_ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+				   qdf_netdev_t net_dev, uint8_t device_mode,
+				   uint8_t session_id, uint8_t *mac_addr, bool is_enable);
+
 /**
  * ucfg_ipa_suspend() - Suspend IPA
  * @pdev: pdev obj
@@ -748,6 +752,17 @@ QDF_STATUS ucfg_ipa_wlan_evt(struct wlan_objmgr_pdev *pdev,
 			     uint8_t session_id,
 			     enum wlan_ipa_wlan_event ipa_event_type,
 			     const uint8_t *mac_addr, bool is_2g_iface)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS ucfg_ipa_sw_routing_set(struct wlan_objmgr_pdev *pdev,
+				   qdf_netdev_t net_dev,
+				   uint8_t device_mode,
+				   uint8_t session_id,
+				   uint8_t *mac_addr,
+				   bool is_enable)
 {
 	return QDF_STATUS_SUCCESS;
 }
