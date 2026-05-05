@@ -2919,6 +2919,12 @@ void dp_peer_set_classify_idx(struct dp_soc *soc, struct dp_peer *peer,
 		return;
 	}
 
+	if (vdev->opmode == wlan_op_mode_passthru &&
+	    qdf_mem_cmp(peer->mac_addr.raw,
+			vdev->mac_addr.raw,
+			QDF_MAC_ADDR_SIZE))
+		return;
+
 	dp_vdev_set_tx_classify_idx(soc, vdev->vdev_id,
 				    peer->txpt_classify_idx);
 }

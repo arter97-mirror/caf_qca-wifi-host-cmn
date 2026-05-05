@@ -3339,12 +3339,26 @@ void dp_vdev_check_n_set_tx_classify_idx(struct dp_soc *soc, uint8_t vdev_id,
 	struct dp_peer *peer;
 	int i;
 	struct dp_peer_link_info *link_peer_info;
+	struct dp_vdev *vdev;
 
 	peer = __dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_HTT);
 	if (!peer) {
 		dp_err("invalid peer, id - %d", peer_id);
 		return;
 	}
+
+	/*
+	 * Update the vdev txpt classify idx only for the self peer
+	 * in passthru mode. This is required to handle UC traffic
+	 * from a peer whose instance cannot be added to FW due to
+	 * max supported peer limit.
+	 */
+	vdev = peer->vdev;
+	if (vdev->opmode == wlan_op_mode_passthru &&
+	    qdf_mem_cmp(peer->mac_addr.raw,
+			vdev->mac_addr.raw,
+			QDF_MAC_ADDR_SIZE))
+		goto exit;
 
 	if (!qdf_atomic_read(&peer->txpt_info_setup_done))
 		goto exit;
