@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -208,6 +208,7 @@ struct sar_limit_event {
 
 #define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM 4
 #define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_RATE_NUM 24
+#define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_RATE_NUM_EXT 4
 #define WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_TXPOWER_BITS \
 			WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_CHAIN_NUM * \
 			WMI_PDEV_SET_CUSTOM_TX_PWR_MAX_5G_6G_RATE_NUM
