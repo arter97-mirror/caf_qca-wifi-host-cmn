@@ -1151,6 +1151,7 @@ struct qdf_radiotap_ext2 {
 
 /**
  * enum qdf_proto_type - protocol type
+ * @QDF_PROTO_TYPE_INVALID: INVALID
  * @QDF_PROTO_TYPE_DHCP: DHCP
  * @QDF_PROTO_TYPE_EAPOL: EAPOL
  * @QDF_PROTO_TYPE_ARP: ARP
@@ -1162,6 +1163,7 @@ struct qdf_radiotap_ext2 {
  * @QDF_PROTO_TYPE_MAX: Max enumeration
  */
 enum qdf_proto_type {
+	QDF_PROTO_TYPE_INVALID,
 	QDF_PROTO_TYPE_DHCP,
 	QDF_PROTO_TYPE_EAPOL,
 	QDF_PROTO_TYPE_ARP,
