@@ -1101,12 +1101,13 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 	/* Base page pool at 0th index is always present,
 	 * so destroy page pools from 1st index.
 	 */
+	i = DP_PAGE_POOL_MAX - 1;
 	while (rx_pp->curr_rsrc_size > new_size) {
 		total_pool_size =
 			soc->cdp_soc.ol_ops->dp_get_dynamic_pool_size(
 					rx_pp->curr_rsrc_level - 1);
 		pool_size = total_pool_size;
-		for (i = DP_PAGE_POOL_MAX - 1; i > 0 && pool_size > 0; i--) {
+		for (; i > 0 && pool_size > 0; i--) {
 			pp_params = &rx_pp->main_pool[i];
 			if (!pp_params->pp)
 				continue;
@@ -1153,7 +1154,7 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 	qdf_list_for_each_del(&destroy_list, curr, next, node) {
 		dp_rx_pp_destroy(soc, curr);
 		qdf_list_remove_node(&destroy_list, &curr->node);
-		qdf_mem_set(pp_params, sizeof(*pp_params), 0);
+		qdf_mem_set(curr, sizeof(*curr), 0);
 	}
 
 resize_done:
