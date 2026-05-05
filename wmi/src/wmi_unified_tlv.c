@@ -4389,7 +4389,9 @@ uint8_t *peer_assoc_add_npca_params(uint8_t *buf_ptr,
 static void wmi_populate_service_nan_standard_mode(uint32_t *wmi_service)
 {
 	wmi_service[wmi_service_nan_standard_mode_support] =
-					WMI_SERVICE_NAN_STANDARD_MODE_SUPPORT;
+				WMI_SERVICE_NAN_STANDARD_MODE_SUPPORT;
+	wmi_service[wmi_service_nan_ap_assisted_dfs_operation_support] =
+			WMI_SERVICE_NAN_AP_ASSISTED_DFS_OPERATION_SUPPORT;
 }
 #else
 static inline void wmi_populate_service_nan_standard_mode(uint32_t *wmi_service)
