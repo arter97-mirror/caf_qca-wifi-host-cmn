@@ -3015,6 +3015,7 @@ void wlan_ipa_uc_bw_monitor(struct wlan_ipa_priv *ipa_ctx, bool stop)
 
 /**
  * wlan_ipa_send_msg() - Allocate and send message to IPA
+ * @iface: Interface context
  * @net_dev: Interface net device
  * @type: event enum of type ipa_wlan_event
  * @mac_addr: MAC address associated with the event
@@ -5331,7 +5332,7 @@ static void wlan_ipa_uc_loaded_handler(struct wlan_ipa_priv *ipa_ctx)
 		evt = iface->device_mode == QDF_STA_MODE ? QDF_IPA_STA_CONNECT :
 		      QDF_IPA_AP_CONNECT;
 
-		status = wlan_ipa_send_msg(iface->dev, evt, iface->mac_addr);
+		status = wlan_ipa_send_msg(iface, iface->dev, evt, iface->mac_addr);
 		if (QDF_IS_STATUS_SUCCESS(status))
 			ipa_ctx->stats.num_send_msg++;
 	}
@@ -5971,7 +5972,8 @@ QDF_STATUS wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
 			qdf_spin_lock_bh(&ipa_ctx->pm_lock);
 			ipa_ctx->roaming = true;
 			qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
-			status = wlan_ipa_send_msg(net_dev,
+			status = wlan_ipa_send_msg(iface,
+						   net_dev,
 						   QDF_IPA_SW_ROUTING_ENABLE,
 						   mac_addr);
 			if (status != QDF_STATUS_SUCCESS)
@@ -5980,7 +5982,8 @@ QDF_STATUS wlan_ipa_sw_routing_set(struct wlan_ipa_priv *ipa_ctx,
 				ipa_debug("Roaming Start: QDF_IPA_SW_ROUTING_ENABLE send successfully");
 
 		} else {
-			status = wlan_ipa_send_msg(net_dev,
+			status = wlan_ipa_send_msg(iface,
+						   net_dev,
 						   QDF_IPA_SW_ROUTING_DISABLE,
 						   mac_addr);
 			if (status != QDF_STATUS_SUCCESS)
