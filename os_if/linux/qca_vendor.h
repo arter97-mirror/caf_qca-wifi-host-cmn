@@ -13507,6 +13507,14 @@ enum qca_wlan_vendor_cfr_stop_reason {
  * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_FIXED_AGC: Optional (flag)
  * This attribute indicates that the Wi-Fi firmware should fix RX antenna gain
  * during CSI capturing. This is for CFR version 2 and version 3.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_REPORT_ONLY_LAST_FRAME: Optional (flag)
+ * Report only the last captured frame per MAC address in each reporting
+ * interval configured by %QCA_WLAN_VENDOR_ATTR_PEER_CFR_REPORT_INTERVAL,
+ * i.e., one report per interval per MAC address. When this flag is not
+ * included, all captured frames in the reporting interval are reported.
+ * Applicable only for CFR version 3.
+ *
  */
 enum qca_wlan_vendor_peer_cfr_capture_attr {
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_CAPTURE_INVALID = 0,
@@ -13559,6 +13567,7 @@ enum qca_wlan_vendor_peer_cfr_capture_attr {
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_NUM_SPATIAL_STREAMS = 47,
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_STOP_REASON = 48,
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_FIXED_AGC = 49,
+	QCA_WLAN_VENDOR_ATTR_PEER_CFR_REPORT_ONLY_LAST_FRAME = 50,
 
 	/* Keep last */
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_AFTER_LAST,
