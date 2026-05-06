@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -214,4 +214,89 @@ struct wlan_pasn_auth_status {
 struct wlan_wifi_pos_peer_priv_obj {
 	bool is_ltf_keyseed_required;
 };
+
+#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+/**
+ * struct wmi_rtt_peer_meas_req_peer_params - Per-peer RTT measurement request
+ * @dest_mac: Destination MAC address
+ * @ch_freq: Channel frequency in MHz
+ * @ch_freq_seg1: Channel center frequency segment 1
+ * @ch_freq_seg2: Channel center frequency segment 2
+ * @ch_width: Channel width
+ * @ch_phymode: PHY mode
+ * @report_ap_tsf: Report AP TSF flag
+ * @pd_request: Proximity Detection request flag
+ * @ftm_requested: FTM requested flag
+ * @asap_mode: ASAP mode flag
+ * @lci_req: LCI request flag
+ * @loc_civic_req: Location civic request flag
+ * @tb_ranging: TB ranging flag
+ * @ntb_ranging: NTB ranging flag
+ * @i2r_lmr_feedback: I2R LMR feedback flag
+ * @rsta_role: RSTA role flag
+ * @suppress_range_results: Suppress ranging results while reporting
+ * @preamble: Preamble type (WMI_HOST_RATE_PREAMBLE)
+ * @burst_period: Burst period
+ * @num_burst_exp: Number of burst exponent
+ * @burst_duration: Burst duration
+ * @ftms_per_burst: FTMs per burst
+ * @ftmr_retries: FTMR retries
+ * @min_time_between_measurements: Min time between measurements (100 us units)
+ * @max_time_between_measurements: Max time between measurements (10 ms units)
+ * @nominal_time: Nominal time for Availability Window
+ * @measurements_per_aw: Measurements per Availability Window
+ * @aw_duration: Availability Window duration
+ */
+struct wmi_rtt_peer_meas_req_peer_params {
+	uint8_t dest_mac[QDF_MAC_ADDR_SIZE];
+	uint32_t ch_freq;
+	uint32_t  ch_freq_seg1;
+	uint32_t  ch_freq_seg2;
+	enum phy_ch_width ch_width;
+	enum wlan_phymode ch_phymode;
+
+	uint8_t report_ap_tsf;
+	uint8_t pd_request;
+	uint8_t ftm_requested;
+	uint8_t asap_mode;
+	uint8_t lci_req;
+	uint8_t loc_civic_req;
+	uint8_t tb_ranging;
+	uint8_t ntb_ranging;
+	uint8_t i2r_lmr_feedback;
+	uint8_t rsta_role;
+	uint8_t suppress_range_results;
+	uint32_t preamble;
+	uint32_t burst_period;
+	uint8_t num_burst_exp;
+	uint8_t burst_duration;
+	uint8_t ftms_per_burst;
+	uint8_t ftmr_retries;
+	uint32_t min_time_between_measurements;
+	uint32_t max_time_between_measurements;
+	uint16_t nominal_time;
+	uint8_t measurements_per_aw;
+	uint8_t aw_duration;
+};
+
+/**
+ * struct wmi_rtt_peer_meas_req_cmd_params - RTT peer measurement request
+ * @req_id: Unique request ID
+ * @vdev_id: VDEV ID
+ * @timeout: Timeout in ms (0 = no timeout)
+ * @random_mac_addr: Randomized MAC address
+ * @mac_addr_randomization: Whether MAC address randomization is enabled
+ * @n_peers: Number of peers
+ * @peers: Per-peer measurement parameters array (n_peers entries)
+ */
+struct wmi_rtt_peer_meas_req_cmd_params {
+	uint32_t req_id;
+	uint32_t vdev_id;
+	uint32_t timeout;
+	uint8_t random_mac_addr[QDF_MAC_ADDR_SIZE];
+	bool mac_addr_randomization;
+	uint32_t n_peers;
+	struct wmi_rtt_peer_meas_req_peer_params *peers;
+};
+#endif /* WLAN_FEATURE_USD_RANGING & WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WIFI_POS_PUBLIC_STRUCT_H_ */

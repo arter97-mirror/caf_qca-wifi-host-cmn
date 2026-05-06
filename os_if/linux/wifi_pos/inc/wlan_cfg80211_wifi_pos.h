@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -52,4 +52,29 @@ wlan_wifi_pos_cfg80211_set_wiphy_ext_feature(struct wiphy *wiphy,
 					     struct wlan_objmgr_psoc *psoc)
 {}
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT*/
+
+#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
+	defined(CFG80211_PD_SUPPORT)
+/**
+ * wlan_hdd_cfg80211_start_pmsr() - Start peer measurement request
+ * @wiphy: Pointer to wiphy
+ * @wdev: Pointer to wireless device
+ * @req: PMSR request
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+int wlan_hdd_cfg80211_start_pmsr(struct wiphy *wiphy,
+				 struct wireless_dev *wdev,
+				 struct cfg80211_pmsr_request *req);
+
+/**
+ * wlan_hdd_cfg80211_abort_pmsr() - Abort peer measurement request
+ * @wiphy: Pointer to wiphy
+ * @wdev: Pointer to wireless device
+ * @req: PMSR request
+ */
+void wlan_hdd_cfg80211_abort_pmsr(struct wiphy *wiphy,
+				  struct wireless_dev *wdev,
+				  struct cfg80211_pmsr_request *req);
+#endif /* CFG80211_PD_SUPPORT & WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WLAN_CFG80211_WIFI_POS_H_ */
