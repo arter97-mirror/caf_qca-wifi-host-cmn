@@ -11882,6 +11882,7 @@ QDF_STATUS dp_txrx_stats_request(struct cdp_soc_t *soc_handle,
 	num_stats  = QDF_ARRAY_SIZE(dp_stats_mapping_table);
 
 	if (stats >= num_stats) {
+		dp_txrx_stats_help();
 		dp_cdp_err("%pK : Invalid stats option: %d", soc, stats);
 		status = QDF_STATUS_E_INVAL;
 		goto fail0;
