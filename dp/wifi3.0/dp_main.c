@@ -10458,6 +10458,19 @@ dp_rx_peer_metadata_ver_update(struct dp_soc *soc, uint8_t peer_md_ver)
 	soc->rx_peer_metadata_ver = peer_md_ver;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static void dp_set_passthru_ampdu_feature(struct dp_soc *soc,
+					  bool passthru_ampdu_support)
+{
+	soc->features.passthru_ampdu_support = passthru_ampdu_support;
+}
+#else
+static inline void dp_set_passthru_ampdu_feature(struct dp_soc *soc,
+						 bool passthru_ampdu_support)
+{
+}
+#endif
+
 /**
  * dp_set_psoc_param: function to set parameters in psoc
  * @cdp_soc: DP soc handle
@@ -10611,6 +10624,10 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 			val.cdp_dyn_resource_mgr_support;
 		dp_info("Dynamic resource manager support: %u",
 			soc->features.dyn_resource_mgr_support);
+		break;
+	case CDP_CFG_PASSTHRU_AMPDU_SUPPORT:
+		dp_set_passthru_ampdu_feature(soc,
+					      val.cdp_passthru_ampdu_support);
 		break;
 	default:
 		break;

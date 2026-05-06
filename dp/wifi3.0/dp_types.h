@@ -3298,6 +3298,7 @@ struct dp_arch_ops {
  * @dyn_resource_mgr_support: Dynamic RX buffer allocation support
  * @direct_refill_support: direct refill support
  * @dal_d3_wow_support: DAL D3 WOW support
+ * @passthru_ampdu_support: passthru_ampdu_support
  */
 struct dp_soc_features {
 	uint8_t pn_in_reo_dest:1,
@@ -3314,6 +3315,9 @@ struct dp_soc_features {
 	bool dyn_resource_mgr_support;
 	bool direct_refill_support;
 	bool dal_d3_wow_support;
+#ifdef DRIVER_PASSTHRU_MODE
+	bool passthru_ampdu_support;
+#endif
 };
 
 enum sysfs_printing_mode {
@@ -6660,4 +6664,16 @@ void dp_rx_err_update_protocol_stats(struct dp_soc *soc, struct dp_pdev *pdev,
 				     qdf_nbuf_t nbuf,
 				     union hal_wbm_err_info_u *wbm_err,
 				     uint8_t *rx_tlv_hdr);
+
+#ifdef DRIVER_PASSTHRU_MODE
+static inline bool dp_get_passthru_ampdu_support(struct dp_soc *soc)
+{
+	return soc->features.passthru_ampdu_support;
+}
+#else
+static inline bool dp_get_passthru_ampdu_support(struct dp_soc *soc)
+{
+	return false;
+}
+#endif
 #endif /* _DP_TYPES_H_ */
