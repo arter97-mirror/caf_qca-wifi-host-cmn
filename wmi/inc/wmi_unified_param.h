@@ -1375,6 +1375,7 @@ typedef struct {
 #ifdef WLAN_FEATURE_11BN
 #define WMI_HOST_MAX_UHRCAP_PHY_SIZE        8
 #define WMI_HOST_MAX_UHRCAP_MAC_SIZE        4
+#define WMI_HOST_MAX_UHRCAP_DBE_SIZE        2
 #define WMI_HOST_UHRCAP_MAC_WORD1           0
 #define WMI_HOST_UHRCAP_MAC_WORD2           1
 #define WMI_HOST_MAX_UHR_RATE_SET           4
@@ -1779,6 +1780,7 @@ struct peer_assoc_ml_partner_links {
  * @peer_uhr_cap_macinfo: Peer UHR Cap MAC info
  * @peer_uhr_ops: Peer UHR operation info
  * @peer_uhr_cap_phyinfo: Peer UHR Cap PHY info
+ * @peer_uhr_cap_dbeinfo: Peer UHR DBE Capability Parameters
  * @peer_uhr_mcs_count: Peer UHR MCS TX/RX MAP count
  * @peer_uhr_rx_mcs_set: Peer UHR RX MCS MAP
  * @peer_uhr_tx_mcs_set: Peer UHR TX MCS MAP
@@ -1886,6 +1888,7 @@ struct peer_assoc_params {
 	uint32_t peer_uhr_cap_macinfo[WMI_HOST_MAX_UHRCAP_MAC_SIZE];
 	uint32_t peer_uhr_ops;
 	uint32_t peer_uhr_cap_phyinfo[WMI_HOST_MAX_UHRCAP_PHY_SIZE];
+	uint32_t peer_uhr_cap_dbeinfo[WMI_HOST_MAX_UHRCAP_DBE_SIZE];
 	uint32_t peer_uhr_mcs_count;
 	uint32_t peer_uhr_rx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];
 	uint32_t peer_uhr_tx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];

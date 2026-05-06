@@ -3825,14 +3825,14 @@ struct wlan_eht_cap_info {
 } qdf_packed;
 
 #ifdef WLAN_FEATURE_11BN
-#define WLAN_UHR_CAP_IE_MAX_LEN 16
+#define WLAN_UHR_CAP_IE_MAX_LEN 21
 /**
  * struct wlan_uhr_cap_info - UHR (Ultra High Reliability) capability info
  * @present: UHR capability IE present
  * @dps_present: Dynamic Power Save (DPS) present
  * @dps_assist_support: Dynamic Power Save assist support
  * @ap_static_hcm_support: AP static HCM (Host Connection Manager) support
- * @ml_power_mgmt: Multi-link power management
+ * @reserved_mac_b3: Reserved MAC caps (B3)
  * @npca_support: NPCA (Network-based Power Control Algorithm) support
  * @bsr_support: BSR (Buffer Status Report) support
  * @addn_mapped_tid_support: Additional mapped TID support
@@ -3854,13 +3854,11 @@ struct wlan_eht_cap_info {
  * @uhr_op_mode_param_update_timeout: UHR operating mode parameter update
  *                                    timeout
  * @param_update_adv_notify: Parameter update advance notification
- * @unused: Unused bits
  * @update_ind_in_tim: Update indication in TIM (Traffic Indication Map)
  * @bounded_ess: Bounded ESS (Extended Service Set)
  * @btm_assurance: BTM (BSS Transition Management) assurance
  * @cobf_support: COBF (Coordinated beamforming) support
- * @reserved: Reserved bits
- * @dbe_param: DBE parameters array
+ * @reserved_mac_b37_b47: Reserved MAC caps bits (B37-B47)
  * @num_data: Length of data
  * @data: UHR capability IE data. Element ID + length + extension element ID +
  *        UHR capability information
@@ -3872,16 +3870,39 @@ struct wlan_eht_cap_info {
  * @max_nss_rx_ndp_sounding_320mhz: Maximum NSS for RX NDP sounding in 320MHz
  * @max_nss_total_rx_dl_mumimo_320mhz: Maximum total NSS for RX downlink
  *                                     MU-MIMO in 320MHz
- * @elr_rx_support: Extended Long Range RX support
  * @elr_tx_support: Extended Long Range TX support
- * @reserved2: Reserved bits
+ * @elr_rx_support: Extended Long Range RX support
+ * @partial_bw_dl_mumimo_support: Partial BW DL MU-MIMO support (B8)
+ * @partial_bw_ul_mumimo_support: Partial BW UL MU-MIMO support (B9)
+ * @mcs15_support: MCS 15 support (B10)
+ * @two_x_ldpc_tx_support: 2xLDPC Tx support (B11)
+ * @two_x_ldpc_rx_support: 2xLDPC Rx support (B12)
+ * @ueqm_tx_support_max_nss_tx: UEQM Tx support and max Nss Tx (B13-B14)
+ * @ueqm_rx_support_max_nss_rx: UEQM Rx support and max Nss Rx (B15-B16)
+ * @reserved_phy_b17: Reserved (B17)
+ * @cobf_joint_sounding_support: Co-BF joint sounding support (B18)
+ * @im_tx_support: Interference Mitigation Tx support (B19)
+ * @im_rx_support: Interference Mitigation Rx support (B20)
+ * @co_sr_mode1_support: Co-SR Mode 1 support (B21)
+ * @co_sr_mode2_support: Co-SR Mode 2 support (B22)
+ * @dru_dbw20_pbw20_support: DRU DBW=20 in PBW=20 MHz support (B23)
+ * @dru_dbw40_pbw40_support: DRU DBW=40 in PBW=40 MHz support (B24)
+ * @dru_dbw80_pbw80_support: DRU DBW=80 in PBW=80 MHz support (B25)
+ * @dru_dbw80_pbw160_support: DRU DBW=80 in PBW=160 MHz support (B26)
+ * @dru_dbw80_pbw320_support: DRU DBW=80 in PBW=320 MHz support (B27)
+ * @dru_dbw20_pbw_ge80_support: DRU DBW=20 in PBW>=80 MHz support (B28)
+ * @dru_dbw40_pbw_ge80_support: DRU DBW=40 in PBW>=80 MHz support (B29)
+ * @dru_dbw60_pbw_ge80_support: DRU DBW=60 in PBW>=80 MHz support (B30)
+ * @dru_rru_hybrid_support: DRU+RRU hybrid mode support (B31)
+ * @reserved_phy_b32_b39: Reserved PHY bits (B32-B39)
+ * @dbe_param: DBE Capability Parameters (0, 1, 4, or 7 bytes)
  */
 struct wlan_uhr_cap_info {
 	bool present;
 	uint16_t          dps_present:1;
 	uint16_t   dps_assist_support:1;
 	uint16_t ap_static_hcm_support:1;
-	uint16_t        ml_power_mgmt:1;
+	uint16_t      reserved_mac_b3:1;
 	uint16_t         npca_support:1;
 	uint16_t          bsr_support:1;
 	uint16_t addn_mapped_tid_support:1;
@@ -3902,23 +3923,43 @@ struct wlan_uhr_cap_info {
 	uint16_t txop_return_support_intxspg:1;
 	uint16_t uhr_op_mode_param_update_timeout:4;
 	uint16_t param_update_adv_notify:3;
-	uint16_t               unused:3;
-
 	uint16_t    update_ind_in_tim:5;
 	uint16_t          bounded_ess:1;
 	uint16_t        btm_assurance:1;
 	uint16_t         cobf_support:1;
-	uint8_t  dbe_param[8];
-
+	uint16_t reserved_mac_b37_b47:11;
 	uint16_t max_nss_rx_ndp_sounding_80mhz:1;
 	uint16_t max_nss_rx_dl_mumimo_80mhz:1;
 	uint16_t max_nss_rx_ndp_sounding_160mhz:1;
 	uint16_t max_nss_total_rx_dl_mumimo_160mhz:1;
 	uint16_t max_nss_rx_ndp_sounding_320mhz:1;
 	uint16_t max_nss_total_rx_dl_mumimo_320mhz:1;
-	uint16_t       elr_rx_support:1;
 	uint16_t       elr_tx_support:1;
-	uint16_t             reserved2:8;
+	uint16_t       elr_rx_support:1;
+	uint8_t  partial_bw_dl_mumimo_support:1;
+	uint8_t  partial_bw_ul_mumimo_support:1;
+	uint8_t  mcs15_support:1;
+	uint8_t  two_x_ldpc_tx_support:1;
+	uint8_t  two_x_ldpc_rx_support:1;
+	uint8_t  ueqm_tx_support_max_nss_tx:2;
+	uint8_t  ueqm_rx_support_max_nss_rx:2;
+	uint8_t  reserved_phy_b17:1;
+	uint8_t  cobf_joint_sounding_support:1;
+	uint8_t  im_tx_support:1;
+	uint8_t  im_rx_support:1;
+	uint8_t  co_sr_mode1_support:1;
+	uint8_t  co_sr_mode2_support:1;
+	uint8_t  dru_dbw20_pbw20_support:1;
+	uint8_t  dru_dbw40_pbw40_support:1;
+	uint8_t  dru_dbw80_pbw80_support:1;
+	uint8_t  dru_dbw80_pbw160_support:1;
+	uint8_t  dru_dbw80_pbw320_support:1;
+	uint8_t  dru_dbw20_pbw_ge80_support:1;
+	uint8_t  dru_dbw40_pbw_ge80_support:1;
+	uint8_t  dru_dbw60_pbw_ge80_support:1;
+	uint8_t  dru_rru_hybrid_support:1;
+	uint8_t  reserved_phy_b32_b39:8;
+	uint8_t  dbe_param[7];
 	uint16_t num_data;
 	uint8_t data[WLAN_UHR_CAP_IE_MAX_LEN];
 } qdf_packed;
@@ -3927,7 +3968,7 @@ struct wlan_uhr_cap_info {
 #define WLAN_UHR_CAPPARAM_DPS_SUPP_IDX					0
 #define WLAN_UHR_CAPPARAM_DPS_ASSIST_SUPP_IDX				1
 #define WLAN_UHR_CAPPARAM_AP_STATIC_HCM_SUPP_IDX			2
-#define WLAN_UHR_CAPPARAM_ML_POWER_MGMT_IDX				3
+#define WLAN_UHR_CAPPARAM_RESERVED_B3_IDX				3
 #define WLAN_UHR_CAPPARAM_NPCA_SUPP_IDX					4
 #define WLAN_UHR_CAPPARAM_BSR_SUPP_IDX					5
 #define WLAN_UHR_CAPPARAM_ADDN_MAPPED_TID_SUPP_IDX			6
@@ -3963,8 +4004,33 @@ struct wlan_uhr_cap_info {
 #define WLAN_UHR_PHY_MAX_NSS_TOT_RX_DL_MUMIMO_160MHZ_IDX                3
 #define WLAN_UHR_PHY_MAX_NSS_RX_NDP_320MHZ_IDX                          4
 #define WLAN_UHR_PHY_MAX_NSS_TOT_RX_DL_MUMIMO_320MHZ_IDX                5
-#define WLAN_UHR_PHY_ELR_RX_SUPP_IDX                                    6
-#define WLAN_UHR_PHY_ELR_TX_SUPP_IDX                                    7
+#define WLAN_UHR_PHY_ELR_TX_SUPP_IDX                                    6
+#define WLAN_UHR_PHY_ELR_RX_SUPP_IDX                                    7
+
+/* UHR PHY Capabilities extended bit positions (B8-B39) */
+#define WLAN_UHR_PHY_PARTIAL_BW_DL_MUMIMO_IDX                           8
+#define WLAN_UHR_PHY_PARTIAL_BW_UL_MUMIMO_IDX                           9
+#define WLAN_UHR_PHY_MCS15_SUPP_IDX                                    10
+#define WLAN_UHR_PHY_2XLDPC_TX_SUPP_IDX                                11
+#define WLAN_UHR_PHY_2XLDPC_RX_SUPP_IDX                                12
+#define WLAN_UHR_PHY_UEQM_TX_SUPP_IDX                                  13
+#define WLAN_UHR_PHY_UEQM_TX_SUPP_BITS                                  2
+#define WLAN_UHR_PHY_UEQM_RX_SUPP_IDX                                  15
+#define WLAN_UHR_PHY_UEQM_RX_SUPP_BITS                                  2
+#define WLAN_UHR_PHY_COBF_JOINT_SOUNDING_IDX                           18
+#define WLAN_UHR_PHY_IM_TX_SUPP_IDX                                    19
+#define WLAN_UHR_PHY_IM_RX_SUPP_IDX                                    20
+#define WLAN_UHR_PHY_CO_SR_MODE1_IDX                                   21
+#define WLAN_UHR_PHY_CO_SR_MODE2_IDX                                   22
+#define WLAN_UHR_PHY_DRU_DBW20_PBW20_IDX                               23
+#define WLAN_UHR_PHY_DRU_DBW40_PBW40_IDX                               24
+#define WLAN_UHR_PHY_DRU_DBW80_PBW80_IDX                               25
+#define WLAN_UHR_PHY_DRU_DBW80_PBW160_IDX                              26
+#define WLAN_UHR_PHY_DRU_DBW80_PBW320_IDX                              27
+#define WLAN_UHR_PHY_DRU_DBW20_PBW_GE80_IDX                            28
+#define WLAN_UHR_PHY_DRU_DBW40_PBW_GE80_IDX                            29
+#define WLAN_UHR_PHY_DRU_DBW60_PBW_GE80_IDX                            30
+#define WLAN_UHR_PHY_DRU_RRU_HYBRID_IDX                                31
 #endif
 
 /**
@@ -4887,24 +4953,25 @@ struct csa_offload_params {
 
 #ifdef WLAN_FEATURE_11BN
 
-/* Max IE size = 1(EID) + 1(Len) + 1(ExtID) + 13(payload) = 16 bytes */
-#define WLAN_UHR_CAP_IE_MAX_LEN 16
-#define WLAN_UHR_DBE_CAP_PARAM_LEN 1
+/*
+ * UHR Operation IE max size:
+ *   1(EID) + 1(Len) + 1(ExtID) + 2(ctrl) + 4(MCS/NSS) +
+ *   1(DUO) + 4(DPS) + 6(NPCA) + 3(P-EDCA) + 3(DBE) = 26 bytes
+ */
+#define WLAN_UHR_OP_IE_MAX_LEN 26
 
-/* Max IE size = 1(EID) + 1(Len) + 1(ExtID) + 27(payload) = 30 bytes */
-#define WLAN_UHR_OP_IE_MAX_LEN 30
-
-#define WLAN_UHR_CAP_MAC_FIXED_FIELD_LEN         5
-#define WLAN_UHR_CAP_PHY_FIXED_FIELD_LEN         1
+/* MAC caps fixed field = 6 octets (B0-B47); PHY caps fixed field = 5 octets (B0-B39) */
+#define WLAN_UHR_CAP_MAC_FIXED_FIELD_LEN         6
+#define WLAN_UHR_CAP_PHY_FIXED_FIELD_LEN         5
 
 #define WLAN_UHR_OP_PARAM_LEN                    2
 #define WLAN_UHR_BASIC_MCS_NSS_SET_LEN           4
-#define WLAN_UHR_UHR_OP_INFO_MAX_LEN             5
 #define WLAN_UHR_DPS_OP_PARAM_LEN                4
 #define WLAN_UHR_NPCA_OP_PARAM_LEN               6
 #define WLAN_UHR_PEDCA_OP_PARAM_LEN              3
 #define WLAN_UHR_DBE_OP_PARAM_LEN                3
-#define WLAN_UHR_UHR_OP_MAX_LEN                  26
+/* 2(ctrl)+4(MCS/NSS)+1(DUO)+4(DPS)+6(NPCA)+3(P-EDCA)+3(DBE) = 23 bytes */
+#define WLAN_UHR_UHR_OP_MAX_LEN                  23
 
 /**
  * struct wlan_uhr_dps_op_params - DPS Operation Parameters field (4 octets)
@@ -4935,7 +5002,7 @@ struct wlan_uhr_dps_op_params {
 	uint32_t lc_mode_mcs:4;
 	uint32_t mobile_ap_dps_static_hcm:1;
 	uint32_t reserved2:2;
-}; qdf_packed;
+} qdf_packed;
 
 /**
  * struct wlan_uhr_npca_op_params - NPCA Operation Parameters field (6 octets)
@@ -5011,24 +5078,38 @@ struct wlan_uhr_dbe_op_params {
 } qdf_packed;
 
 /**
+ * struct wlan_uhr_duo_op_params - DUO Operation Parameters field (1 octet)
+ * @present:                    Indicates DUO Operation Parameters are present
+ * @max_standalone_duo_bsrp:    Maximum Standalone DUO BSRP (B0..B4)
+ * @reserved:                   Reserved (B5..B7)
+ */
+struct wlan_uhr_duo_op_params {
+	bool present;
+	uint8_t max_standalone_duo_bsrp:5;
+	uint8_t reserved:3;
+} qdf_packed;
+
+/**
  * struct wlan_uhr_op_ie - Parsed UHR Operation element (host-side container)
  * @present:               Indicates UHR Operation element is present
  * UHR Operation Parameters (2 octets):
  * @dps_enabled:           DPS Enabled (B0)
  * @npca_enabled:          NPCA Enabled (B1)
- * @dbe_enabled:           DBE Enabled (B2)
- * @p_edca_enabled:        P-EDCA Enabled (B3)
+ * @p_edca_enabled:        P-EDCA Enabled (B2)
+ * @dbe_enabled:           DBE Enabled (B3)
  * @dbe_bandwidth:         DBE Bandwidth (B4..B6)
- * @reserved0:             Reserved (B7..B15)
+ * @duo_op_params_present: DUO Operation Parameters Present (B7)
+ * @dps_op_params_present: DPS Operation Parameters Present (B8)
+ * @npca_op_params_present: NPCA Operation Parameters Present (B9)
+ * @pedca_op_params_present: P-EDCA Operation Parameters Present (B10)
+ * @dbe_op_params_present: DBE Operation Parameters Present (B11)
+ * @reserved0:             Reserved (B12..B15)
  *
  * Fixed fields:
  * @basic_uhr_mcs_nss_set: Basic UHR-MCS And NSS Set (4 octets)
  *
  * Optional blocks:
- * @uhr_op_info_present:   Indicates UHR Operation Information is present
- * @uhr_op_info_len:       Length of UHR Operation Information (0, 3 or 5)
- * @uhr_op_info:           UHR Operation Information bytes (max 5)
- *
+ * @duo_params:            DUO Operation Parameters (present when B7 set)
  * @dps_params:            DPS Operation Parameters (present when DPS enabled)
  * @npca_params:           NPCA Operation Parameters (present when NPCA enabled)
  * @pedca_params:          P-EDCA Operation Parameters (present when P-EDCA
@@ -5043,20 +5124,21 @@ struct wlan_uhr_op_ie {
 	/* UHR Operation Parameters (2 octets) */
 	uint16_t dps_enabled:1;
 	uint16_t npca_enabled:1;
-	uint16_t dbe_enabled:1;
 	uint16_t p_edca_enabled:1;
+	uint16_t dbe_enabled:1;
 	uint16_t dbe_bandwidth:3;
-	uint16_t reserved0:9;
+	uint16_t duo_op_params_present:1;
+	uint16_t dps_op_params_present:1;
+	uint16_t npca_op_params_present:1;
+	uint16_t pedca_op_params_present:1;
+	uint16_t dbe_op_params_present:1;
+	uint16_t reserved0:4;
 
 	/* Basic UHR-MCS And NSS Set (4 octets) */
 	uint8_t basic_uhr_mcs_nss_set[WLAN_UHR_BASIC_MCS_NSS_SET_LEN];
 
-	/* UHR Operation Information (0/3/5 octets) */
-	bool uhr_op_info_present;
-	uint8_t uhr_op_info_len;
-	uint8_t uhr_op_info[WLAN_UHR_UHR_OP_INFO_MAX_LEN];
-
 	/* Optional parameter blocks */
+	struct wlan_uhr_duo_op_params   duo_params;
 	struct wlan_uhr_dps_op_params   dps_params;
 	struct wlan_uhr_npca_op_params  npca_params;
 	struct wlan_uhr_pedca_op_params pedca_params;
@@ -5068,10 +5150,22 @@ struct wlan_uhr_op_ie {
 /* Bit indices for UHR Operation Parameters (2 octets) */
 #define WLAN_UHR_OPPARAM_DPS_EN_IDX        0
 #define WLAN_UHR_OPPARAM_NPCA_EN_IDX       1
-#define WLAN_UHR_OPPARAM_DBE_EN_IDX        2
-#define WLAN_UHR_OPPARAM_PEDCA_EN_IDX      3
+#define WLAN_UHR_OPPARAM_PEDCA_EN_IDX      2
+#define WLAN_UHR_OPPARAM_DBE_EN_IDX        3
 #define WLAN_UHR_OPPARAM_DBE_BW_IDX        4
 #define WLAN_UHR_OPPARAM_DBE_BW_BITS       3
+
+/* UHR Operation Control field "Parameters Present" bits (B7-B11) */
+#define WLAN_UHR_OPPARAM_DUO_PARAMS_PRESENT_IDX    7
+#define WLAN_UHR_OPPARAM_DPS_PARAMS_PRESENT_IDX    8
+#define WLAN_UHR_OPPARAM_NPCA_PARAMS_PRESENT_IDX   9
+#define WLAN_UHR_OPPARAM_PEDCA_PARAMS_PRESENT_IDX  10
+#define WLAN_UHR_OPPARAM_DBE_PARAMS_PRESENT_IDX    11
+
+/* DUO Operation Parameters bit layout (1 octet) */
+#define WLAN_UHR_DUO_MAX_STANDALONE_BSRP_IDX       0
+#define WLAN_UHR_DUO_MAX_STANDALONE_BSRP_BITS      5
+#define WLAN_UHR_DUO_OP_PARAM_LEN                  1
 
 /* DPS Operation Parameters bit layout (4 octets) */
 #define WLAN_UHR_DPS_PADDING_DELAY_IDX     0

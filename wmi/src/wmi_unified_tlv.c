@@ -4120,6 +4120,8 @@ static uint8_t *update_peer_flags_tlv_uhrinfo(
 		     sizeof(param->peer_uhr_cap_macinfo));
 	qdf_mem_copy(&cmd->peer_uhr_cap_phy, &param->peer_uhr_cap_phyinfo,
 		     sizeof(param->peer_uhr_cap_phyinfo));
+	qdf_mem_copy(&cmd->peer_uhr_cap_dbe, &param->peer_uhr_cap_dbeinfo,
+		     sizeof(param->peer_uhr_cap_dbeinfo));
 	qdf_mem_copy(&cmd->peer_uhr_ppet, &param->peer_uhr_ppet,
 		     sizeof(param->peer_uhr_ppet));
 
@@ -16727,6 +16729,13 @@ static void extract_mac_phy_cap_uhrcaps(
 	qdf_mem_copy(&param->uhr_cap_phy_info_5G,
 		     &mac_phy_caps2->uhr_cap_phy_info_5G,
 		     sizeof(param->uhr_cap_phy_info_5G));
+
+	qdf_mem_copy(&param->uhr_cap_dbe_info_2G,
+		     &mac_phy_caps2->uhr_cap_dbe_info_2G,
+		     sizeof(param->uhr_cap_dbe_info_2G));
+	qdf_mem_copy(&param->uhr_cap_dbe_info_5G,
+		     &mac_phy_caps2->uhr_cap_dbe_info_5G,
+		     sizeof(param->uhr_cap_dbe_info_5G));
 
 	wmi_debug("uhr mac caps: mac cap_info_2G %x, mac cap_info_5G %x",
 		  mac_phy_caps2->uhr_cap_mac_info_2G[0],

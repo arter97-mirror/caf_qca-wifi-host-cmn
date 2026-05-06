@@ -843,6 +843,7 @@ struct wlan_ssid {
 #ifdef WLAN_FEATURE_11BN
 #define PSOC_HOST_MAX_UHR_MAC_SIZE 4
 #define PSOC_HOST_MAX_UHR_PHY_SIZE 8
+#define PSOC_HOST_MAX_UHR_DBE_SIZE 2
 #endif
 
 /**
