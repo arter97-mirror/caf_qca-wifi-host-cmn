@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -5607,6 +5607,14 @@ static bool is_service_enabled_tlv(wmi_unified_t wmi_handle,
 			return false;
 		}
 
+		if (service_id > WMI_MAX_EXT_SERVICE &&
+		    (service_id - WMI_MAX_EXT_SERVICE) / 32 >=
+		    soc->wmi_ext2_service_bitmap_len) {
+			wmi_err("WMI service ext2 bit = %d is not advertised by fw",
+				service_id);
+			return false;
+		}
+
 		return WMI_SERVICE_EXT2_IS_ENABLED(soc->wmi_service_bitmap,
 				soc->wmi_ext_service_bitmap,
 				soc->wmi_ext2_service_bitmap,
@@ -7983,6 +7991,11 @@ void wmi_copy_resource_config(wmi_resource_config *resource_cfg,
 
 	WMI_RSRC_CFG_FLAGS2_RX_PEER_METADATA_VERSION_SET(resource_cfg->flags2,
 						 tgt_res_cfg->target_cap_flags);
+
+	if (tgt_res_cfg->apfv6_offload_disabled != 0) {
+		WMI_RSRC_CFG_APF_DATA_OFLD_ENABLE_SET(
+				resource_cfg->apf_data_ofload_enable__word, 1);
+	}
 }
 
 /* copy_hw_mode_id_in_init_cmd() - Helper routine to copy hw_mode in init cmd
@@ -17344,6 +17357,8 @@ struct wmi_ops tlv_ops =  {
 				wmi_send_apf_read_work_memory_cmd_tlv,
 	.extract_apf_read_memory_resp_event =
 				wmi_extract_apf_read_memory_resp_event_tlv,
+	.send_set_apf_supported_offload_bitmap_cmd =
+			wmi_send_set_apf_supported_offload_bitmap_cmd_tlv,
 #endif /* FEATURE_WLAN_APF */
 	.init_cmd_send = init_cmd_send_tlv,
 	.send_vdev_set_custom_aggr_size_cmd =
@@ -18454,6 +18469,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 			WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL;
 	wmi_service[wmi_service_csa_beacon_template] =
 			WMI_SERVICE_CSA_BEACON_TEMPLATE;
+	wmi_service[wmi_service_apf_data_offload_support_enabled] =
+			WMI_SERVICE_APF_DATA_OFFLOAD_SUPPORT_ENABLED;
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 	wmi_service[wmi_service_rtt_11az_ntb_support] =
 			WMI_SERVICE_RTT_11AZ_NTB_SUPPORT;
