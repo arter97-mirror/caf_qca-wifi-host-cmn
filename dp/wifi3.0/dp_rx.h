@@ -873,17 +873,16 @@ dp_rx_desc_inc_in_use_count(struct rx_desc_pool *rx_desc_pool, uint32_t count)
  * dp_rx_desc_dec_in_use_count() - Decrement in use count descriptors
  *					from pool
  * @rx_desc_pool: rx descriptor pool pointer
- * @num_req: Requested buffers to allocate
- * @num_alloc: number of buffers allocated
+ * @num_desc_freed: Number of rx_desc released back to the pool
  *
  * Return: None
  */
 static inline void
 dp_rx_desc_dec_in_use_count(struct rx_desc_pool *rx_desc_pool,
-			    uint32_t num_req, uint32_t num_alloc)
+			    uint32_t num_desc_freed)
 {
 	if (qdf_atomic_read(&rx_desc_pool->required_count))
-		qdf_atomic_sub((num_req - num_alloc),
+		qdf_atomic_sub(num_desc_freed,
 			       &rx_desc_pool->in_use_count);
 }
 
@@ -985,7 +984,7 @@ dp_rx_desc_inc_in_use_count(struct rx_desc_pool *rx_desc_pool, uint32_t count)
 
 static inline void
 dp_rx_desc_dec_in_use_count(struct rx_desc_pool *rx_desc_pool,
-			    uint32_t num_req, uint32_t num_alloc)
+			    uint32_t num_desc_freed)
 {
 }
 
@@ -4284,12 +4283,12 @@ __dp_rx_buffers_replenish_wrapper(struct dp_soc *soc, uint8_t mac_id,
 
 	for (i = 0; i < soc->num_replenish_rings[mac_id]; i++) {
 		dp_rxdma_srng = soc->replenish_rings[mac_id][i];
-		rx_bufs_refilled += dp_rx_buffers_replenish(soc, mac_id,
-							    dp_rxdma_srng,
-							    rx_desc_pool,
-							    rx_bufs_reaped,
-							    desc_list, tail,
-							    req_only);
+		rx_bufs_refilled = dp_rx_buffers_replenish(soc, mac_id,
+							   dp_rxdma_srng,
+							   rx_desc_pool,
+							   rx_bufs_reaped,
+							   desc_list, tail,
+							   req_only);
 		rx_bufs_used += rx_bufs_refilled;
 		rx_bufs_reaped -= rx_bufs_refilled;
 		if (rx_bufs_reaped == 0)

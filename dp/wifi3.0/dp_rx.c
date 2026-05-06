@@ -1240,6 +1240,23 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 
 	dp_rx_schedule_refill_thread(dp_soc);
 
+	/*
+	 * Account for descriptors that could not be replenished during the
+	 * loop due to nbuf allocation / DMA-map failures.  num_desc_to_free
+	 * was already set to the ring-full portion (descriptors that could
+	 * not be posted because the ring had no available entries); add the
+	 * allocation-failure portion here so that dp_rx_desc_dec_in_use_count
+	 * decrements in_use_count by the *total* number of descriptors being
+	 * returned to the free-list.
+	 *
+	 * NOTE: this line is intentionally placed after the replenish loop
+	 * and before the goto targets (free_descs / exit) so that paths
+	 * which jump directly to free_descs (e.g. num_entries_avail == 0)
+	 * are not affected – in those cases num_desc_to_free already equals
+	 * the full original num_req_buffers and count is still 0.
+	 */
+	num_desc_to_free += (num_req_buffers - count);
+
 	dp_verbose_debug("replenished buffers %d, rx desc added back to free list %u",
 			 count, num_desc_to_free);
 
@@ -1247,10 +1264,33 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	 * Therefore set replenish.pkts.bytes as 0.
 	 */
 	DP_STATS_INC_PKT(dp_pdev, replenish.pkts, count, 0);
-	DP_STATS_INC(dp_pdev, replenish.free_list, num_req_buffers - count);
 
+	/*
+	 * aux_refill flag is set only when direct_refill feature is enabled.
+	 * With direct_refill feature enabled, there would be two replenish
+	 * ring to post buffers:
+	 *	1) aux ring
+	 *	2) direct refill ring
+	 *
+	 * Since the direct refill ring replenish will be attempted after the
+	 * aux ring replenish, releasing the unused descs to freelist and
+	 * then fetching them back for the direct refill ring replenish
+	 * is unnecessary cycles, Do not release the desc for aux refill ring.
+	 * The rx_descs will be released to the pool when attempting
+	 * for direct_refill ring.
+	 */
+	if (dp_rxdma_srng->aux_refill)
+		return count;
+
+	/*
+	 * Only count descriptors actually returned to the free-list here.
+	 * For the aux_refill ring the unused descriptors are kept in
+	 * desc_list for the subsequent direct-refill ring replenish, so
+	 * they must NOT be counted as freed.
+	 */
+	DP_STATS_INC(dp_pdev, replenish.free_list, num_req_buffers - count);
 free_descs:
-	dp_rx_desc_dec_in_use_count(rx_desc_pool, num_req_buffers, count);
+	dp_rx_desc_dec_in_use_count(rx_desc_pool, num_desc_to_free);
 	DP_STATS_INC(dp_pdev, buf_freelist, num_desc_to_free);
 	/*
 	 * add any available free desc back to the free list
