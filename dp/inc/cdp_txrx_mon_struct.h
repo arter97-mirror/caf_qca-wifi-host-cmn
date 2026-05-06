@@ -26,75 +26,6 @@
 #ifndef _CDP_TXRX_MON_STRUCT_H_
 #define _CDP_TXRX_MON_STRUCT_H_
 
-#ifdef QCA_SUPPORT_LITE_MONITOR
-
-#define CDP_LITE_MON_PEER_MAX 16
-
-#define CDP_MON_FRM_TYPE_MAX 3
-#define CDP_MON_FRM_FILTER_MODE_MAX 4
-
-#define CDP_LITE_MON_LEN_64B 0x40
-#define CDP_LITE_MON_LEN_128B 0x80
-#define CDP_LITE_MON_LEN_256B 0x100
-#define CDP_LITE_MON_LEN_FULL 0xFFFF
-
-#define CDP_LITE_MON_FILTER_ALL 0xFFFF
-
-/* This should align with nac mac type enumerations in ieee80211_ioctl.h */
-#define CDP_LITE_MON_PEER_MAC_TYPE_CLIENT 2
-
-/**
- * enum cdp_lite_mon_legacy_filter - legacy filters for tx/rx
- * @LEGACY_FILTER_DISABLED: No filter / filter disabled
- * @LEGACY_FILTER_MCOPY: M_Copy filter
- * @LEGACY_FILTER_TX_CAPTURE: Tx_Capture filter
- * @LEGACY_FILTER_RX_ENH_CAPTURE: Rx Enhance capture filter
- * @LEGACY_FILTER_ADV_MON_FILTER: Advance Monitor filter
- *
- * Use to identify which filter is currently enabled using lite mon
- */
-enum cdp_lite_mon_legacy_filter {
-	LEGACY_FILTER_DISABLED = 0,
-	LEGACY_FILTER_MCOPY = 1,
-	LEGACY_FILTER_TX_CAPTURE = 2,
-	LEGACY_FILTER_RX_ENH_CAPTURE = 3,
-	LEGACY_FILTER_ADV_MON_FILTER = 4,
-};
-
-/**
- * enum cdp_lite_mon_level- lite mon frame levels
- * @CDP_LITE_MON_LEVEL_INVALID: level invalid
- * @CDP_LITE_MON_LEVEL_MSDU: level msdu
- * @CDP_LITE_MON_LEVEL_MPDU: level mpdu
- * @CDP_LITE_MON_LEVEL_PPDU: level ppdu
- */
-enum cdp_lite_mon_level {
-	CDP_LITE_MON_LEVEL_INVALID = 0,
-	CDP_LITE_MON_LEVEL_MSDU = 1,
-	CDP_LITE_MON_LEVEL_MPDU = 2,
-	CDP_LITE_MON_LEVEL_PPDU = 3,
-};
-
-/**
- * enum cdp_lite_mon_peer_action- lite mon peer action
- * @CDP_LITE_MON_PEER_ADD: peer add
- * @CDP_LITE_MON_PEER_REMOVE: peer remove
- */
-enum cdp_lite_mon_peer_action {
-	CDP_LITE_MON_PEER_ADD = 0,
-	CDP_LITE_MON_PEER_REMOVE = 1,
-};
-
-/**
- * enum cdp_lite_mon_direction - lite mon config direction
- * @CDP_LITE_MON_DIRECTION_RX: lite mon config direction rx
- * @CDP_LITE_MON_DIRECTION_TX: lite mon config direction tx
- */
-enum cdp_lite_mon_direction {
-	CDP_LITE_MON_DIRECTION_RX = 1,
-	CDP_LITE_MON_DIRECTION_TX = 2,
-};
-#endif
 /* MU max user to sniff */
 #define CDP_MU_SNIF_USER_MAX 4
 /* EHT max type and compression mode */
@@ -544,61 +475,6 @@ struct cdp_pdev_mon_stats {
 	uint32_t nbuf_alloc_fail_cnt;
 };
 
-#ifdef QCA_SUPPORT_LITE_MONITOR
-/**
- * struct cdp_lite_mon_filter_config - lite mon set/get filter config
- * @direction: direction tx/rx
- * @disable: disables lite mon
- * @level: MSDU/MPDU/PPDU levels
- * @metadata: meta information to be added
- * @mgmt_filter: mgmt filter for modes fp,md,mo
- * @ctrl_filter: ctrl filter for modes fp,md,mo
- * @data_filter: data filter for modes fp,md,mo
- * @len: mgmt/ctrl/data frame lens
- * @debug: debug options
- * @vdev_id: output vdev id
- * @legacy_filter_enabled: legacy filter currently enabled
- */
-struct cdp_lite_mon_filter_config {
-	uint8_t direction;
-	uint8_t disable;
-	uint8_t level;
-	uint8_t metadata;
-	uint16_t mgmt_filter[CDP_MON_FRM_FILTER_MODE_MAX];
-	uint16_t ctrl_filter[CDP_MON_FRM_FILTER_MODE_MAX];
-	uint16_t data_filter[CDP_MON_FRM_FILTER_MODE_MAX];
-	uint16_t len[CDP_MON_FRM_TYPE_MAX];
-	uint8_t debug;
-	uint8_t vdev_id;
-	uint8_t legacy_filter_enabled;
-};
-
-/**
- * struct cdp_lite_mon_peer_config - lite mon set peer config
- * @direction: direction tx/rx
- * @action: add/del
- * @vdev_id: peer vdev id
- * @mac: peer mac
- */
-struct cdp_lite_mon_peer_config {
-	uint8_t direction;
-	uint8_t action;
-	uint8_t vdev_id;
-	uint8_t mac[QDF_MAC_ADDR_SIZE];
-};
-
-/**
- * struct cdp_lite_mon_peer_info - lite mon get peer config
- * @direction: direction tx/rx
- * @count: no of peers
- * @mac: peer macs
- */
-struct cdp_lite_mon_peer_info {
-	uint8_t direction;
-	uint8_t count;
-	uint8_t mac[CDP_LITE_MON_PEER_MAX][QDF_MAC_ADDR_SIZE];
-};
-#endif
 /* channel operating width */
 enum cdp_channel_width {
 	CHAN_WIDTH_20 = 0,

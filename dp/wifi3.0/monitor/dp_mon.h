@@ -29,10 +29,6 @@
 #include "dp_tx_capture.h"
 #endif
 
-#ifdef QCA_SUPPORT_LITE_MONITOR
-#include "dp_lite_mon.h"
-#endif
-
 #define DP_INTR_POLL_TIMER_MS	5
 #define DP_HIST_TRACK_SIZE 50
 
@@ -802,9 +798,6 @@ struct dp_mon_ops {
 	void (*mon_set_atf_stats_enable)(struct dp_pdev *pdev, bool value);
 #endif
 	void (*mon_set_bsscolor)(struct dp_pdev *pdev, uint8_t bsscolor);
-	bool (*mon_pdev_get_filter_ucast_data)(struct cdp_pdev *pdev_handle);
-	bool (*mon_pdev_get_filter_non_data)(struct cdp_pdev *pdev_handle);
-	bool (*mon_pdev_get_filter_mcast_data)(struct cdp_pdev *pdev_handle);
 #ifdef WDI_EVENT_ENABLE
 	int (*mon_set_pktlog_wifi3)(struct dp_pdev *pdev, uint32_t event,
 				    bool enable);
@@ -952,12 +945,7 @@ struct dp_mon_ops {
 	QDF_STATUS (*mon_pdev_ext_deinit)(struct dp_pdev *pdev);
 	QDF_STATUS (*mon_rx_pdev_tlv_logger_init)(struct dp_pdev *pdev);
 	QDF_STATUS (*mon_rx_pdev_tlv_logger_deinit)(struct dp_pdev *pdev);
-	QDF_STATUS (*mon_lite_mon_alloc)(struct dp_pdev *pdev);
-	void (*mon_lite_mon_dealloc)(struct dp_pdev *pdev);
-	void (*mon_lite_mon_vdev_delete)(struct dp_pdev *pdev,
-					 struct dp_vdev *vdev);
-	void (*mon_lite_mon_disable_rx)(struct dp_pdev *pdev);
-	bool (*mon_lite_mon_is_rx_adv_filter_enable)(struct dp_pdev *pdev);
+
 	/* Print advanced monitor stats */
 	void (*mon_rx_print_advanced_stats)
 		(struct dp_soc *soc, struct dp_pdev *pdev);
@@ -3762,69 +3750,6 @@ void dp_monitor_set_bsscolor(struct dp_pdev *pdev, uint8_t bsscolor)
 	return monitor_ops->mon_set_bsscolor(pdev, bsscolor);
 }
 
-static inline
-bool dp_monitor_pdev_get_filter_mcast_data(struct cdp_pdev *pdev_handle)
-{
-	struct dp_mon_ops *monitor_ops;
-	struct dp_pdev *pdev = (struct dp_pdev *)pdev_handle;
-	struct dp_mon_soc *mon_soc = pdev->soc->monitor_soc;
-
-	if (!mon_soc) {
-		dp_mon_debug("monitor soc is NULL");
-		return false;
-	}
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops || !monitor_ops->mon_pdev_get_filter_mcast_data) {
-		dp_mon_debug("callback not registered");
-		return false;
-	}
-
-	return monitor_ops->mon_pdev_get_filter_mcast_data(pdev_handle);
-}
-
-static inline
-bool dp_monitor_pdev_get_filter_non_data(struct cdp_pdev *pdev_handle)
-{
-	struct dp_mon_ops *monitor_ops;
-	struct dp_pdev *pdev = (struct dp_pdev *)pdev_handle;
-	struct dp_mon_soc *mon_soc = pdev->soc->monitor_soc;
-
-	if (!mon_soc) {
-		dp_mon_debug("monitor soc is NULL");
-		return false;
-	}
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops || !monitor_ops->mon_pdev_get_filter_non_data) {
-		dp_mon_debug("callback not registered");
-		return false;
-	}
-
-	return monitor_ops->mon_pdev_get_filter_non_data(pdev_handle);
-}
-
-static inline
-bool dp_monitor_pdev_get_filter_ucast_data(struct cdp_pdev *pdev_handle)
-{
-	struct dp_mon_ops *monitor_ops;
-	struct dp_pdev *pdev = (struct dp_pdev *)pdev_handle;
-	struct dp_mon_soc *mon_soc = pdev->soc->monitor_soc;
-
-	if (!mon_soc) {
-		dp_mon_debug("monitor soc is NULL");
-		return false;
-	}
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops || !monitor_ops->mon_pdev_get_filter_ucast_data) {
-		dp_mon_debug("callback not registered");
-		return false;
-	}
-
-	return monitor_ops->mon_pdev_get_filter_ucast_data(pdev_handle);
-}
-
 #ifdef WDI_EVENT_ENABLE
 static inline
 int dp_monitor_set_pktlog_wifi3(struct dp_pdev *pdev, uint32_t event,
@@ -4959,147 +4884,6 @@ dp_enable_enhanced_stats(struct cdp_soc_t *soc, uint8_t pdev_id);
 QDF_STATUS
 dp_disable_enhanced_stats(struct cdp_soc_t *soc, uint8_t pdev_id);
 #endif /* QCA_ENHANCED_STATS_SUPPORT */
-
-/*
- * dp_monitor_lite_mon_disable_rx() - disables rx lite mon
- * @pdev: dp pdev
- *
- * Return: void
- */
-static inline void
-dp_monitor_lite_mon_disable_rx(struct dp_pdev *pdev)
-{
-	struct dp_mon_ops *monitor_ops;
-	struct dp_mon_soc *mon_soc = pdev->soc->monitor_soc;
-
-	if (!mon_soc) {
-		dp_mon_debug("monitor soc is NULL");
-		return;
-}
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops ||
-	    !monitor_ops->mon_lite_mon_disable_rx) {
-		dp_mon_debug("callback not registered");
-		return;
-}
-
-	return monitor_ops->mon_lite_mon_disable_rx(pdev);
-}
-
-/*
- * dp_monitor_lite_mon_is_rx_adv_filter_enable()
- *   - check if advance mon filter is already applied
- * @pdev: dp pdev
- *
- * Return: bool
- */
-static inline bool
-dp_monitor_lite_mon_is_rx_adv_filter_enable(struct dp_pdev *pdev)
-{
-	struct dp_mon_ops *monitor_ops;
-	struct dp_mon_soc *mon_soc = pdev->soc->monitor_soc;
-
-	if (!mon_soc) {
-		dp_mon_debug("monitor soc is NULL");
-		return false;
-	}
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops ||
-	    !monitor_ops->mon_lite_mon_disable_rx) {
-		dp_mon_debug("callback not registered");
-		return false;
-	}
-
-	return monitor_ops->mon_lite_mon_is_rx_adv_filter_enable(pdev);
-}
-
-#ifndef QCA_SUPPORT_LITE_MONITOR
-static inline void
-dp_lite_mon_disable_rx(struct dp_pdev *pdev)
-{
-}
-
-static inline void
-dp_lite_mon_disable_tx(struct dp_pdev *pdev)
-{
-}
-
-static inline bool
-dp_lite_mon_is_rx_adv_filter_enable(struct dp_pdev *pdev)
-{
-	return false;
-}
-
-static inline bool
-dp_lite_mon_get_filter_ucast_data(struct cdp_pdev *pdev_handle)
-{
-	return false;
-}
-
-static inline bool
-dp_lite_mon_get_filter_mcast_data(struct cdp_pdev *pdev_handle)
-{
-	return false;
-}
-
-static inline bool
-dp_lite_mon_get_filter_non_data(struct cdp_pdev *pdev_handle)
-{
-	return false;
-}
-
-static inline QDF_STATUS
-dp_lite_mon_alloc(struct dp_pdev *pdev)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline void
-dp_lite_mon_dealloc(struct dp_pdev *pdev)
-{
-}
-
-static inline void
-dp_lite_mon_vdev_delete(struct dp_pdev *pdev, struct dp_vdev *vdev)
-{
-}
-
-static inline int
-dp_lite_mon_config_nac_peer(struct cdp_soc_t *soc_hdl,
-			    uint8_t vdev_id,
-			    uint32_t cmd, uint8_t *macaddr)
-{
-	return 0;
-}
-
-static inline QDF_STATUS
-dp_lite_mon_config_nac_rssi_peer(struct cdp_soc_t *soc_hdl,
-				 uint8_t vdev_id,
-				 enum cdp_nac_param_cmd cmd,
-				 char *bssid, char *macaddr,
-				 uint8_t chan_num)
-{
-	return QDF_STATUS_E_FAILURE;
-}
-
-static inline QDF_STATUS
-dp_lite_mon_get_nac_peer_rssi(struct cdp_soc_t *soc_hdl,
-			      uint8_t vdev_id, char *macaddr,
-			      uint8_t *rssi)
-{
-	return QDF_STATUS_E_FAILURE;
-}
-
-static inline int
-dp_lite_mon_get_legacy_feature_enabled(struct cdp_soc_t *soc,
-				       uint8_t pdev_id,
-				       uint8_t direction)
-{
-	return 0;
-}
-#endif
 
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
 static inline

@@ -1429,9 +1429,6 @@ enum cdp_peer_param_type {
  * @CDP_TIDMAP_PRTY: set/get tid map prty
  * @CDP_TX_PENDING: get tx pending
  * @CDP_FILTER_NEIGH_PEERS: filter neighbour peers
- * @CDP_FILTER_UCAST_DATA: filter unicast data
- * @CDP_FILTER_MCAST_DATA: filter multicast data
- * @CDP_FILTER_NO_DATA: filter no data
  * @CDP_CONFIG_BSS_COLOR: configure bss color
  * @CDP_SET_ATF_STATS_ENABLE: set ATF stats flag
  * @CDP_CONFIG_SPECIAL_VAP: Configure Special vap
@@ -1470,9 +1467,6 @@ enum cdp_pdev_param_type {
 	CDP_TIDMAP_PRTY,
 	CDP_TX_PENDING,
 	CDP_FILTER_NEIGH_PEERS,
-	CDP_FILTER_UCAST_DATA,
-	CDP_FILTER_MCAST_DATA,
-	CDP_FILTER_NO_DATA,
 	CDP_CONFIG_BSS_COLOR,
 	CDP_SET_ATF_STATS_ENABLE,
 	CDP_CONFIG_SPECIAL_VAP,
@@ -1556,9 +1550,6 @@ enum cdp_pdev_param_type {
  * @cdp_pdev_param_tidmap_prty: set/get tid map prty
  * @cdp_pdev_param_tx_pending: get tx pending
  * @cdp_pdev_param_fltr_neigh_peers: filter neighbour peers
- * @cdp_pdev_param_fltr_ucast: filter unicast data
- * @cdp_pdev_param_fltr_mcast: filter multicast data
- * @cdp_pdev_param_fltr_none: filter no data
  * @cdp_pdev_param_atf_stats_enable: ATF stats enable
  * @cdp_pdev_param_config_special_vap: Configure Special vap
  * @cdp_pdev_param_isolation : set isolation mode
@@ -1660,9 +1651,6 @@ typedef union cdp_config_param_t {
 	bool cdp_pdev_param_fltr_neigh_peers;
 	bool cdp_pdev_param_cfg_vow;
 	bool cdp_pdev_param_cfg_delay_stats;
-	bool cdp_pdev_param_fltr_mcast;
-	bool cdp_pdev_param_fltr_none;
-	bool cdp_pdev_param_fltr_ucast;
 	uint8_t cdp_pdev_param_primary_radio;
 	uint8_t cdp_pdev_param_en_rx_cap;
 	uint8_t cdp_pdev_param_en_tx_cap;
@@ -2575,9 +2563,6 @@ struct cdp_tx_indication_info {
 	struct cdp_tx_indication_mpdu_info mpdu_info;
 	qdf_nbuf_t mpdu_nbuf;
 	struct cdp_tx_completion_ppdu *ppdu_desc;
-#ifdef QCA_SUPPORT_LITE_MONITOR
-	ol_osif_vdev_handle osif_vdev;
-#endif
 };
 
 /**

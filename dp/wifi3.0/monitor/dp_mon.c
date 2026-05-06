@@ -37,9 +37,6 @@
 #ifdef FEATURE_PERPKT_INFO
 #include "dp_ratetable.h"
 #endif
-#ifdef QCA_SUPPORT_LITE_MONITOR
-#include "dp_lite_mon.h"
-#endif
 #include "dp_mon_1.0.h"
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 #include "dp_mon_2.0.h"
@@ -365,10 +362,6 @@ QDF_STATUS dp_reset_monitor_mode_unlock(struct cdp_soc_t *soc_hdl,
 #if defined(ATH_SUPPORT_NAC)
 		dp_mon_filter_reset_smart_monitor(pdev);
 #endif /* ATH_SUPPORT_NAC */
-		/* for mon 2.0 we make use of lite mon to
-		 * set filters for smart monitor use case.
-		 */
-		dp_monitor_lite_mon_disable_rx(pdev);
 	} else if (mon_pdev->undecoded_metadata_capture) {
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 		dp_reset_undecoded_metadata_capture(pdev);
@@ -672,20 +665,6 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 
 	mon_pdev->monitor_configured = true;
 	mon_pdev->phy_ppdu_id_size = hal_rx_get_phy_ppdu_id_size(soc->hal_soc);
-
-	/* If advance monitor filter is applied using lite_mon
-	 * via vap configuration, required filters are already applied
-	 * hence returning SUCCESS from here.
-	 */
-	if (dp_monitor_lite_mon_is_rx_adv_filter_enable(pdev)) {
-		status = QDF_STATUS_SUCCESS;
-		goto fail;
-	}
-	/* disable lite mon if configured, monitor vap takes
-	 * priority over lite mon when its created. Lite mon
-	 * can be configured later again.
-	 */
-	dp_monitor_lite_mon_disable_rx(pdev);
 
 	cdp_ops = dp_mon_cdp_ops_get(soc);
 	if (cdp_ops  && cdp_ops->soc_config_full_mon_mode)
@@ -6332,16 +6311,9 @@ QDF_STATUS dp_mon_pdev_init(struct dp_pdev *pdev)
 	if (dp_htt_ppdu_stats_attach(pdev) != QDF_STATUS_SUCCESS)
 		goto fail2;
 
-	if (mon_ops->mon_lite_mon_alloc) {
-		if (mon_ops->mon_lite_mon_alloc(pdev) != QDF_STATUS_SUCCESS) {
-			dp_mon_err("%pK: lite mon alloc failed", pdev);
-			goto fail3;
-		}
-	}
-
 	if (dp_mon_rings_init(pdev)) {
 		dp_mon_err("%pK: MONITOR rings setup failed", pdev);
-		goto fail4;
+		goto fail3;
 	}
 
 	/* initialize sw monitor rx descriptors */
@@ -6377,9 +6349,6 @@ fail5:
 		mon_ops->rx_mon_desc_pool_deinit(pdev);
 
 	dp_mon_rings_deinit(pdev);
-fail4:
-	if (mon_ops->mon_lite_mon_dealloc)
-		mon_ops->mon_lite_mon_dealloc(pdev);
 fail3:
 	dp_htt_ppdu_stats_detach(pdev);
 fail2:
@@ -6419,9 +6388,6 @@ QDF_STATUS dp_mon_pdev_deinit(struct dp_pdev *pdev)
 
 	/* detach monitor function */
 	dp_monitor_tx_ppdu_stats_detach(pdev);
-
-	if (mon_ops->mon_lite_mon_dealloc)
-		mon_ops->mon_lite_mon_dealloc(pdev);
 
 	if (mon_ops->rx_mon_buffers_free)
 		mon_ops->rx_mon_buffers_free(pdev);
@@ -6505,9 +6471,6 @@ QDF_STATUS dp_mon_vdev_detach(struct dp_vdev *vdev)
 			mon_mac->vdev_id = DP_INVALID_VDEV_ID;
 		}
 	}
-
-	if (mon_ops->mon_lite_mon_vdev_delete)
-		mon_ops->mon_lite_mon_vdev_delete(pdev, vdev);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -7173,9 +7136,6 @@ void dp_mon_feature_ops_deregister(struct dp_soc *soc)
 	mon_ops->mon_htt_ppdu_stats_detach = NULL;
 	mon_ops->mon_print_pdev_rx_mon_stats = NULL;
 	mon_ops->mon_set_bsscolor = NULL;
-	mon_ops->mon_pdev_get_filter_ucast_data = NULL;
-	mon_ops->mon_pdev_get_filter_mcast_data = NULL;
-	mon_ops->mon_pdev_get_filter_non_data = NULL;
 	mon_ops->mon_neighbour_peer_add_ast = NULL;
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 	mon_ops->mon_peer_tid_peer_id_update = NULL;

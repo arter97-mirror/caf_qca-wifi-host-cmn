@@ -219,7 +219,6 @@ uint16_t dp_convert_rx_hdr_dma_len_to_bytes(uint16_t htt_len)
  * @DP_MON_FILTER_PKT_LOG_CBF_MODE: Packet log cbf mode
  * @DP_MON_FILTER_PKT_LOG_HYBRID_MODE: Packet log hybrid mode
  * @DP_MON_FILTER_UNDECODED_METADATA_CAPTURE_MODE: Undecoded frame capture
- * @DP_MON_FILTER_LITE_MON_MODE:
  * @DP_MON_FILTER_MAX_MODE: max filter mode
  */
 enum dp_mon_filter_mode {
@@ -248,9 +247,6 @@ enum dp_mon_filter_mode {
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	DP_MON_FILTER_UNDECODED_METADATA_CAPTURE_MODE,
 #endif
-#ifdef QCA_SUPPORT_LITE_MONITOR
-	DP_MON_FILTER_LITE_MON_MODE,
-#endif /*QCA_SUPPORT_LITE_MONITOR*/
 	DP_MON_FILTER_MAX_MODE
 };
 

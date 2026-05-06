@@ -304,41 +304,6 @@ void dp_mon_filter_dealloc_2_0(struct dp_pdev *pdev);
  */
 QDF_STATUS dp_mon_filter_alloc_2_0(struct dp_pdev *pdev);
 
-#ifdef QCA_SUPPORT_LITE_MONITOR
-void dp_mon_filter_reset_rx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev);
-
-void dp_mon_filter_setup_rx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev);
-#endif
-
-#if defined(QCA_SUPPORT_LITE_MONITOR) && \
-defined(WLAN_PKT_CAPTURE_TX_2_0)
-/**
- * dp_mon_filter_reset_tx_lite_mon() - Reset tx lite monitor filter
- * @be_mon_pdev: physical mon device handle
- *
- * Return: Null
- */
-void dp_mon_filter_reset_tx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev);
-
-/**
- * dp_mon_filter_setup_tx_lite_mon() - Setup tx lite monitor filter
- * @pdev: physical device handle
- *
- * Return: Null
- */
-void dp_mon_filter_setup_tx_lite_mon(struct dp_pdev *pdev);
-#else
-static inline void
-dp_mon_filter_reset_tx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev)
-{
-}
-
-static inline void
-dp_mon_filter_setup_tx_lite_mon(struct dp_pdev *pdev)
-{
-}
-#endif
-
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE
 /**
  * dp_mon_filter_setup_local_pkt_capture_tx() - Setup local packet capture

@@ -34,9 +34,6 @@
 #include <dp_rx.h>
 #include <dp_be.h>
 #include <hal_be_api_mon.h>
-#ifdef QCA_SUPPORT_LITE_MONITOR
-#include "dp_lite_mon.h"
-#endif
 
 #define F_MASK 0xFFFF
 #define TEST_MASK 0xCBF

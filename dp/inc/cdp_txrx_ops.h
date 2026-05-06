@@ -1098,17 +1098,8 @@ struct cdp_me_ops {
  * @soc_config_full_mon_mode: pdev configure full monitor mode
  * @get_mon_pdev_rx_stats: Get monitor mode pdev stats
  * @txrx_enable_mon_reap_timer: Enable/Disable reap timer of monitor status ring
- * @txrx_update_filter_neighbour_peers: config nac peer
- * @txrx_vdev_config_for_nac_rssi: config nac rssi peer
- * @txrx_vdev_get_neighbour_rssi: get nac peer rssi
- * @txrx_set_lite_mon_config:  set lite monitor config
- * @txrx_get_lite_mon_config:  get lite monitor config
- * @txrx_set_lite_mon_peer_config: set lite monitor peer config
- * @txrx_get_lite_mon_peer_config: get lite monitor peer list
- * @txrx_is_lite_mon_enabled: get lite monitor enable/disable status
  * @txrx_enable_enhanced_stats: Enable enhanced stats
  * @txrx_disable_enhanced_stats: Disable enhanced stats
- * @txrx_get_lite_mon_legacy_feature_enabled: returns the legacy filter enabled
  * @txrx_set_mon_pdev_params_rssi_dbm_conv: To set RSSI dbm conversion params
  *                                           in monitor pdev
  * @txrx_update_pdev_mon_telemetry_airtime_stats: update telemetry airtime
@@ -1150,61 +1141,6 @@ struct cdp_mon_ops {
 	QDF_STATUS (*txrx_disable_enhanced_stats)(struct cdp_soc_t *soc,
 						  uint8_t pdev_id);
 
-	int
-		(*txrx_update_filter_neighbour_peers)(
-				struct cdp_soc_t *soc, uint8_t vdev_id,
-				uint32_t cmd, uint8_t *macaddr);
-
-#ifdef ATH_SUPPORT_NAC_RSSI
-	QDF_STATUS (*txrx_vdev_config_for_nac_rssi)(struct cdp_soc_t *cdp_soc,
-						    uint8_t vdev_id,
-						    enum cdp_nac_param_cmd cmd,
-						    char *bssid,
-						    char *client_macaddr,
-						    uint8_t chan_num);
-
-	QDF_STATUS (*txrx_vdev_get_neighbour_rssi)(struct cdp_soc_t *cdp_soc,
-						   uint8_t vdev_id,
-						   char *macaddr,
-						   uint8_t *rssi);
-#endif
-
-#ifdef QCA_SUPPORT_LITE_MONITOR
-	QDF_STATUS
-	(*txrx_set_lite_mon_config)(
-			struct cdp_soc_t *soc,
-			struct cdp_lite_mon_filter_config *mon_config,
-			uint8_t pdev_id);
-
-	QDF_STATUS
-	(*txrx_get_lite_mon_config)(
-			struct cdp_soc_t *soc,
-			struct cdp_lite_mon_filter_config *mon_config,
-			uint8_t pdev_id);
-
-	QDF_STATUS
-	(*txrx_set_lite_mon_peer_config)(
-			struct cdp_soc_t *soc,
-			struct cdp_lite_mon_peer_config *peer_config,
-			uint8_t pdev_id);
-
-	QDF_STATUS
-	(*txrx_get_lite_mon_peer_config)(
-			struct cdp_soc_t *soc,
-			struct cdp_lite_mon_peer_info *info,
-			uint8_t pdev_id);
-
-	int
-	(*txrx_is_lite_mon_enabled)(struct cdp_soc_t *soc,
-				    uint8_t pdev_id,
-				    uint8_t direction);
-
-	/* get the legacy feature enabled */
-	int
-	(*txrx_get_lite_mon_legacy_feature_enabled)(struct cdp_soc_t *soc,
-						    uint8_t pdev_id,
-						    uint8_t direction);
-#endif
 	QDF_STATUS (*txrx_set_mon_pdev_params_rssi_dbm_conv)
 		(struct cdp_soc_t *soc,
 		 struct cdp_rssi_db2dbm_param_dp *params);
@@ -1849,17 +1785,6 @@ struct ol_if_ops {
 					   uint32_t module_id,
 					   uint32_t arg_count, uint32_t *arg);
 
-#ifdef QCA_SUPPORT_LITE_MONITOR
-	int (*config_lite_mon_peer)(struct cdp_ctrl_objmgr_psoc *psoc,
-				    uint8_t pdev_id,
-				    uint8_t vdev_id,
-				    enum cdp_nac_param_cmd cmd,
-				    uint8_t *peer_mac);
-	int (*config_lite_mon_tx_peer)(struct cdp_ctrl_objmgr_psoc *psoc,
-				       uint8_t pdev_id, uint8_t vdev_id,
-				       enum cdp_tx_filter_action cmd,
-				       uint8_t *peer_mac);
-#endif
 #ifdef WLAN_SUPPORT_SCS
 	bool (*peer_scs_rule_match)(struct cdp_ctrl_objmgr_psoc *psoc,
 				    uint8_t vdev_id, uint32_t rule_id,

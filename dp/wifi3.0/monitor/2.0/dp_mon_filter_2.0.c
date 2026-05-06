@@ -30,9 +30,6 @@
 #include <dp_rx_mon_2.0.h>
 #include <dp_mon_filter_2.0.h>
 #include <dp_be.h>
-#ifdef QCA_SUPPORT_LITE_MONITOR
-#include "dp_lite_mon.h"
-#endif
 
 #define HTT_MSG_BUF_SIZE(msg_bytes) \
    ((msg_bytes) + HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING)
@@ -2425,6 +2422,7 @@ void dp_mon_filter_reset_rx_mon_mode_2_0(struct dp_pdev *pdev)
 }
 #endif
 
+#if defined(WLAN_PKT_CAPTURE_RX_2_0) || defined(QCA_ENHANCED_STATS_SUPPORT)
 static void dp_rx_mon_filter_show_filter(struct dp_mon_filter_be *filter)
 {
 	struct htt_rx_ring_tlv_filter *rx_tlv_filter =
@@ -2532,6 +2530,7 @@ static void dp_rx_mon_filter_show_filter(struct dp_mon_filter_be *filter)
 	DP_MON_FILTER_PRINT("fpmo_packet_ctrl_filter: 0x%x",
 			    rx_tlv_filter->fpmo_packet_ctrl_filter);
 }
+#endif
 
 #ifdef WLAN_PKT_CAPTURE_TX_2_0
 static void dp_tx_mon_filter_show_filter(struct dp_mon_filter_be *filter)
@@ -2799,6 +2798,7 @@ void dp_mon_filter_show_tx_filter_be(enum dp_mon_filter_mode mode,
 
 #endif
 
+#if defined(WLAN_PKT_CAPTURE_RX_2_0) || defined(QCA_ENHANCED_STATS_SUPPORT)
 void dp_mon_filter_show_rx_filter_be(enum dp_mon_filter_mode mode,
 				     struct dp_mon_filter_be *filter)
 {
@@ -2809,6 +2809,7 @@ void dp_mon_filter_show_rx_filter_be(enum dp_mon_filter_mode mode,
 	if (filter->rx_tlv_filter.valid)
 		dp_rx_mon_filter_show_filter(filter);
 }
+#endif
 
 #ifdef WDI_EVENT_ENABLE
 #ifdef WLAN_PKT_CAPTURE_RX_2_0
@@ -3906,391 +3907,6 @@ QDF_STATUS dp_rx_mon_filter_update_2_0(struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 #endif
-
-#ifdef QCA_SUPPORT_LITE_MONITOR
-void
-dp_mon_filter_reset_rx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev)
-{
-	struct dp_mon_filter_be filter = {0};
-	enum dp_mon_filter_mode filter_mode =
-				DP_MON_FILTER_LITE_MON_MODE;
-	enum dp_mon_filter_srng_type srng_type =
-				DP_MON_FILTER_SRNG_TYPE_RXMON_DEST;
-	struct dp_lite_mon_rx_config *config = NULL;
-
-	be_mon_pdev->filter_be[filter_mode][srng_type] = filter;
-	config = be_mon_pdev->lite_mon_rx_config;
-	if (config)
-		config->fp_type_subtype_filter_all = false;
-}
-
-void
-dp_mon_filter_setup_rx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev)
-{
-	struct dp_mon_filter_be filter = {0};
-	struct dp_mon_filter *rx_tlv_filter;
-	enum dp_mon_filter_mode filter_mode =
-				DP_MON_FILTER_LITE_MON_MODE;
-	enum dp_mon_filter_srng_type srng_type =
-				DP_MON_FILTER_SRNG_TYPE_RXMON_DEST;
-	struct dp_lite_mon_rx_config *config = NULL;
-	uint16_t max_custom_len = 0;
-	uint16_t mgmt_len = 0;
-	uint16_t ctrl_len = 0;
-	uint16_t data_len = 0;
-
-	config = be_mon_pdev->lite_mon_rx_config;
-	if (!config)
-		return;
-
-	mgmt_len = config->rx_config.len[WLAN_FC0_TYPE_MGMT];
-	ctrl_len = config->rx_config.len[WLAN_FC0_TYPE_CTRL];
-	data_len = config->rx_config.len[WLAN_FC0_TYPE_DATA];
-
-	rx_tlv_filter = &filter.rx_tlv_filter;
-	rx_tlv_filter->valid = true;
-	/* configure fp filters if enabled */
-	if (config->rx_config.fp_enabled) {
-		rx_tlv_filter->tlv_filter.enable_fp = 1;
-		rx_tlv_filter->tlv_filter.fp_mgmt_filter =
-			config->rx_config.mgmt_filter[DP_MON_FRM_FILTER_MODE_FP];
-		rx_tlv_filter->tlv_filter.fp_ctrl_filter =
-			config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_FP];
-		rx_tlv_filter->tlv_filter.fp_data_filter =
-			config->rx_config.data_filter[DP_MON_FRM_FILTER_MODE_FP];
-		if ((config->rx_config.mgmt_filter[DP_MON_FRM_FILTER_MODE_FP] ==
-		     CDP_LITE_MON_FILTER_ALL) &&
-		    (config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_FP] ==
-		     CDP_LITE_MON_FILTER_ALL) &&
-		    (config->rx_config.data_filter[DP_MON_FRM_FILTER_MODE_FP] ==
-		     CDP_LITE_MON_FILTER_ALL))
-			config->fp_type_subtype_filter_all = true;
-
-		if ((rx_tlv_filter->tlv_filter.fp_mgmt_filter) &&
-		    (mgmt_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.fp_packet_mgmt_filter =
-					rx_tlv_filter->tlv_filter.fp_mgmt_filter;
-
-		if ((rx_tlv_filter->tlv_filter.fp_ctrl_filter) &&
-		    (ctrl_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.fp_packet_ctrl_filter =
-					rx_tlv_filter->tlv_filter.fp_ctrl_filter;
-
-		if ((rx_tlv_filter->tlv_filter.fp_data_filter) &&
-		    (data_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.fp_packet_data_filter =
-					rx_tlv_filter->tlv_filter.fp_data_filter;
-
-		if (rx_tlv_filter->tlv_filter.fp_packet_mgmt_filter ||
-		    rx_tlv_filter->tlv_filter.fp_packet_ctrl_filter ||
-		    rx_tlv_filter->tlv_filter.fp_packet_data_filter)
-			rx_tlv_filter->tlv_filter.enable_fp_packet = 1;
-	}
-
-	/* configure md filters if enabled */
-	if (config->rx_config.md_enabled) {
-		rx_tlv_filter->tlv_filter.enable_md = 1;
-		rx_tlv_filter->tlv_filter.md_mgmt_filter =
-			config->rx_config.mgmt_filter[DP_MON_FRM_FILTER_MODE_MD];
-		rx_tlv_filter->tlv_filter.md_ctrl_filter =
-			config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_MD];
-		rx_tlv_filter->tlv_filter.md_data_filter =
-			config->rx_config.data_filter[DP_MON_FRM_FILTER_MODE_MD];
-
-		if ((rx_tlv_filter->tlv_filter.md_mgmt_filter) &&
-		    (mgmt_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.md_packet_mgmt_filter =
-					rx_tlv_filter->tlv_filter.md_mgmt_filter;
-
-		if ((rx_tlv_filter->tlv_filter.md_ctrl_filter) &&
-		    (ctrl_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.md_packet_ctrl_filter =
-					rx_tlv_filter->tlv_filter.md_ctrl_filter;
-
-		if ((rx_tlv_filter->tlv_filter.md_data_filter) &&
-		    (data_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.md_packet_data_filter =
-					rx_tlv_filter->tlv_filter.md_data_filter;
-
-		if (rx_tlv_filter->tlv_filter.md_packet_mgmt_filter ||
-		    rx_tlv_filter->tlv_filter.md_packet_ctrl_filter ||
-		    rx_tlv_filter->tlv_filter.md_packet_data_filter)
-			rx_tlv_filter->tlv_filter.enable_md_packet = 1;
-	}
-
-	/* configure mo filters if enabled */
-	if (config->rx_config.mo_enabled ||
-	    (config->rx_config.fp_enabled &&
-	     rx_tlv_filter->tlv_filter.fp_ctrl_filter)) {
-		rx_tlv_filter->tlv_filter.enable_mo = 1;
-		rx_tlv_filter->tlv_filter.mo_mgmt_filter =
-			config->rx_config.mgmt_filter[DP_MON_FRM_FILTER_MODE_MO];
-		rx_tlv_filter->tlv_filter.mo_ctrl_filter =
-			config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_MO];
-		rx_tlv_filter->tlv_filter.mo_data_filter =
-			config->rx_config.data_filter[DP_MON_FRM_FILTER_MODE_MO];
-
-		if (rx_tlv_filter->tlv_filter.fp_ctrl_filter)
-			rx_tlv_filter->tlv_filter.mo_ctrl_filter |=
-				rx_tlv_filter->tlv_filter.fp_ctrl_filter;
-
-		if ((rx_tlv_filter->tlv_filter.mo_mgmt_filter) &&
-		    (mgmt_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.mo_packet_mgmt_filter =
-					rx_tlv_filter->tlv_filter.mo_mgmt_filter;
-
-		if ((rx_tlv_filter->tlv_filter.mo_ctrl_filter) &&
-		    (ctrl_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.mo_packet_ctrl_filter =
-					rx_tlv_filter->tlv_filter.mo_ctrl_filter;
-
-		if ((rx_tlv_filter->tlv_filter.mo_data_filter) &&
-		    (data_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.mo_packet_data_filter =
-					rx_tlv_filter->tlv_filter.mo_data_filter;
-
-		if (rx_tlv_filter->tlv_filter.mo_packet_mgmt_filter ||
-		    rx_tlv_filter->tlv_filter.mo_packet_ctrl_filter ||
-		    rx_tlv_filter->tlv_filter.mo_packet_data_filter)
-			rx_tlv_filter->tlv_filter.enable_mo_packet = 1;
-	}
-
-	/* configure fpmo filters if enabled */
-	if (config->rx_config.fpmo_enabled) {
-		rx_tlv_filter->tlv_filter.enable_fpmo = 1;
-		rx_tlv_filter->tlv_filter.fpmo_mgmt_filter =
-			config->rx_config.mgmt_filter[DP_MON_FRM_FILTER_MODE_FP_MO];
-		rx_tlv_filter->tlv_filter.fpmo_ctrl_filter =
-			config->rx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_FP_MO];
-		rx_tlv_filter->tlv_filter.fpmo_data_filter =
-			config->rx_config.data_filter[DP_MON_FRM_FILTER_MODE_FP_MO];
-
-		if ((rx_tlv_filter->tlv_filter.fpmo_mgmt_filter) &&
-		    (mgmt_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.fpmo_packet_mgmt_filter =
-					rx_tlv_filter->tlv_filter.fpmo_mgmt_filter;
-
-		if ((rx_tlv_filter->tlv_filter.fpmo_ctrl_filter) &&
-		    (ctrl_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.fpmo_packet_ctrl_filter =
-					rx_tlv_filter->tlv_filter.fpmo_ctrl_filter;
-
-		if ((rx_tlv_filter->tlv_filter.fpmo_data_filter) &&
-		    (data_len == CDP_LITE_MON_LEN_FULL))
-			rx_tlv_filter->tlv_filter.fpmo_packet_data_filter =
-					rx_tlv_filter->tlv_filter.fpmo_data_filter;
-
-		if (rx_tlv_filter->tlv_filter.fpmo_packet_mgmt_filter ||
-		    rx_tlv_filter->tlv_filter.fpmo_packet_ctrl_filter ||
-		    rx_tlv_filter->tlv_filter.fpmo_packet_data_filter)
-			rx_tlv_filter->tlv_filter.enable_fpmo_packet = 1;
-	}
-
-	/* if full len is configured for any of the types, subscribe
-	 * for full dma length else set it to min dma length(fw sets
-	 * full length by default) to avoid unnecessary dma since we
-	 * do not have hw support to control rx pkt tlvs per type. To
-	 * get custom len pkt we make use of rx hdr tlv instead.
-	 */
-	if (dp_lite_mon_is_full_len_configured(mgmt_len,
-					       ctrl_len,
-					       data_len)) {
-		rx_tlv_filter->tlv_filter.packet = 1;
-		/* get offset size in QWORDS */
-		rx_tlv_filter->tlv_filter.rx_pkt_tlv_offset =
-				DP_GET_NUM_QWORDS(DP_RX_MON_PACKET_OFFSET);
-		if (mgmt_len == CDP_LITE_MON_LEN_FULL)
-			rx_tlv_filter->tlv_filter.mgmt_dma_length =
-							DEFAULT_DMA_LENGTH;
-		else
-			rx_tlv_filter->tlv_filter.mgmt_dma_length =
-							DMA_LENGTH_64B;
-
-		if (ctrl_len == CDP_LITE_MON_LEN_FULL)
-			rx_tlv_filter->tlv_filter.ctrl_dma_length =
-							DEFAULT_DMA_LENGTH;
-		else
-			rx_tlv_filter->tlv_filter.ctrl_dma_length =
-							DMA_LENGTH_64B;
-
-		if (data_len == CDP_LITE_MON_LEN_FULL)
-			rx_tlv_filter->tlv_filter.data_dma_length =
-							DEFAULT_DMA_LENGTH;
-		else
-			rx_tlv_filter->tlv_filter.data_dma_length =
-							DMA_LENGTH_64B;
-	} else  {
-		/* if full len not configured set to min len */
-		rx_tlv_filter->tlv_filter.mgmt_dma_length = DMA_LENGTH_64B;
-		rx_tlv_filter->tlv_filter.ctrl_dma_length = DMA_LENGTH_64B;
-		rx_tlv_filter->tlv_filter.data_dma_length = DMA_LENGTH_64B;
-	}
-
-	rx_tlv_filter->tlv_filter.packet_header = 1;
-	/* set rx hdr tlv len, default len is 64B */
-	max_custom_len = dp_lite_mon_get_max_custom_len(mgmt_len, ctrl_len,
-							data_len);
-	if (max_custom_len == CDP_LITE_MON_LEN_64B)
-		rx_tlv_filter->tlv_filter.rx_hdr_length =
-						RX_HDR_DMA_LENGTH_64B;
-	else if (max_custom_len == CDP_LITE_MON_LEN_128B)
-		rx_tlv_filter->tlv_filter.rx_hdr_length =
-						RX_HDR_DMA_LENGTH_128B;
-	else if (max_custom_len == CDP_LITE_MON_LEN_256B)
-		rx_tlv_filter->tlv_filter.rx_hdr_length =
-						RX_HDR_DMA_LENGTH_256B;
-	else
-		rx_tlv_filter->tlv_filter.rx_hdr_length =
-						RX_HDR_DMA_LENGTH_64B;
-
-	if ((config->rx_config.level == CDP_LITE_MON_LEVEL_MSDU) ||
-	    dp_lite_mon_is_full_len_configured(mgmt_len, ctrl_len, data_len)) {
-		rx_tlv_filter->tlv_filter.header_per_msdu = 1;
-		rx_tlv_filter->tlv_filter.msdu_end = 1;
-	}
-
-	rx_tlv_filter->tlv_filter.ppdu_start = 1;
-	rx_tlv_filter->tlv_filter.ppdu_end = 1;
-	rx_tlv_filter->tlv_filter.mpdu_start = 1;
-	rx_tlv_filter->tlv_filter.mpdu_end = 1;
-
-	rx_tlv_filter->tlv_filter.ppdu_end_user_stats = 1;
-	rx_tlv_filter->tlv_filter.ppdu_end_user_stats_ext = 1;
-	rx_tlv_filter->tlv_filter.ppdu_end_status_done = 1;
-	rx_tlv_filter->tlv_filter.ppdu_start_user_info = 1;
-
-	dp_mon_filter_show_rx_filter_be(filter_mode, &filter);
-	be_mon_pdev->filter_be[filter_mode][srng_type] = filter;
-}
-
-#ifdef WLAN_PKT_CAPTURE_TX_2_0
-uint8_t tx_lite_mon_set_len(uint16_t len)
-{
-	switch (len) {
-	case CDP_LITE_MON_LEN_64B:
-		return DMA_LENGTH_64B;
-	case CDP_LITE_MON_LEN_128B:
-		return DMA_LENGTH_128B;
-	case CDP_LITE_MON_LEN_256B:
-		return DMA_LENGTH_256B;
-	case CDP_LITE_MON_LEN_FULL:
-		return DEFAULT_DMA_LENGTH;
-	default:
-		dp_mon_filter_err("Invalid length %d, Using minimal length of 64B",
-				  len);
-		return DMA_LENGTH_64B;
-	}
-}
-
-void
-dp_mon_filter_reset_tx_lite_mon(struct dp_mon_pdev_be *be_mon_pdev)
-{
-	struct dp_mon_filter_be filter = {0};
-	enum dp_mon_filter_mode filter_mode =
-				DP_MON_FILTER_LITE_MON_MODE;
-	enum dp_mon_filter_srng_type srng_type =
-				DP_MON_FILTER_SRNG_TYPE_TXMON_DEST;
-	struct dp_lite_mon_tx_config *config = NULL;
-
-	be_mon_pdev->filter_be[filter_mode][srng_type] = filter;
-	config = be_mon_pdev->lite_mon_tx_config;
-	if (!config)
-		return;
-	config->subtype_filtering = false;
-	config->sw_peer_filtering = false;
-	config->disable_hw_filter = false;
-}
-
-void
-dp_mon_filter_setup_tx_lite_mon(struct dp_pdev *pdev)
-{
-	struct dp_mon_pdev *mon_pdev = NULL;
-	struct dp_mon_pdev_be *be_mon_pdev = NULL;
-	struct dp_mon_filter_be filter = {0};
-	enum dp_mon_filter_mode mode = DP_MON_FILTER_LITE_MON_MODE;
-	enum dp_mon_filter_srng_type srng_type =
-				DP_MON_FILTER_SRNG_TYPE_TXMON_DEST;
-	struct htt_tx_ring_tlv_filter *tx_tlv_filter = &filter.tx_tlv_filter;
-	struct dp_lite_mon_tx_config *config = NULL;
-
-	if (!pdev) {
-		dp_mon_filter_err("Pdev context is null");
-		return;
-	}
-
-	mon_pdev = pdev->monitor_pdev;
-	if (!mon_pdev) {
-		dp_mon_filter_err("Monitor pdev context is null");
-		return;
-	}
-
-	be_mon_pdev = dp_get_be_mon_pdev_from_dp_mon_pdev(mon_pdev);
-
-	config = be_mon_pdev->lite_mon_tx_config;
-	if (!config)
-		return;
-
-	/* tx monitor supports only filter pass mode */
-	if (config->tx_config.md_enabled || config->tx_config.mo_enabled ||
-	    config->tx_config.fpmo_enabled) {
-		dp_mon_filter_err("md mo and fpmo are invalid filter configuration for Tx");
-		return;
-	}
-
-	/* Enable tx monitor filter */
-	filter.tx_valid = true;
-	tx_tlv_filter->enable = 1;
-
-	dp_tx_mon_filter_set_downstream_tlvs(tx_tlv_filter);
-	dp_tx_mon_filter_set_upstream_tlvs(tx_tlv_filter);
-	dp_tx_mon_filter_set_word_mask(pdev, tx_tlv_filter);
-
-	/* configure mgmt filters */
-	if (config->tx_config.mgmt_filter[DP_MON_FRM_FILTER_MODE_FP]) {
-		tx_tlv_filter->mgmt_filter = 1;
-		tx_tlv_filter->mgmt_dma_length =
-			tx_lite_mon_set_len(config->tx_config.len[WLAN_FC0_TYPE_MGMT]);
-		if ((config->tx_config.level == CDP_LITE_MON_LEVEL_MPDU) ||
-		    (config->tx_config.level == CDP_LITE_MON_LEVEL_PPDU))
-			tx_tlv_filter->mgmt_mpdu_log = 1;
-		if (config->tx_config.mgmt_filter[DP_MON_FRM_FILTER_MODE_FP] !=
-		    CDP_LITE_MON_FILTER_ALL)
-			config->subtype_filtering = true;
-	}
-
-	/* configure ctrl filters */
-	if (config->tx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_FP]) {
-		tx_tlv_filter->ctrl_filter = 1;
-		tx_tlv_filter->ctrl_dma_length =
-			tx_lite_mon_set_len(config->tx_config.len[WLAN_FC0_TYPE_CTRL]);
-		if ((config->tx_config.level == CDP_LITE_MON_LEVEL_MPDU) ||
-		    (config->tx_config.level == CDP_LITE_MON_LEVEL_PPDU))
-			tx_tlv_filter->ctrl_mpdu_log = 1;
-	}
-	/* Since ctrl frames are generated in host, we need to do subtype
-	 * filtering even though ctrl filters are not enabled
-	 */
-	if (config->tx_config.ctrl_filter[DP_MON_FRM_FILTER_MODE_FP] !=
-	    CDP_LITE_MON_FILTER_ALL)
-		config->subtype_filtering = true;
-	/* configure data filters */
-	if (config->tx_config.data_filter[DP_MON_FRM_FILTER_MODE_FP]) {
-		tx_tlv_filter->data_filter = 1;
-		tx_tlv_filter->data_dma_length =
-			tx_lite_mon_set_len(config->tx_config.len[WLAN_FC0_TYPE_DATA]);
-		if ((config->tx_config.level == CDP_LITE_MON_LEVEL_MPDU) ||
-		    (config->tx_config.level == CDP_LITE_MON_LEVEL_PPDU))
-			tx_tlv_filter->data_mpdu_log = 1;
-		if (config->tx_config.data_filter[DP_MON_FRM_FILTER_MODE_FP] !=
-		    CDP_LITE_MON_FILTER_ALL)
-			config->subtype_filtering = true;
-	}
-
-	dp_mon_filter_show_tx_filter_be(mode, &filter);
-	be_mon_pdev->filter_be[mode][srng_type] = filter;
-}
-#endif /* WLAN_PKT_CAPTURE_TX_2_0 */
-#endif /* QCA_SUPPORT_LITE_MONITOR */
 
 #if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
 #ifdef FEATURE_ML_LOCAL_PKT_CAPTURE

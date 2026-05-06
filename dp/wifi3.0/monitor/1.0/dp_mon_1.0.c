@@ -1393,11 +1393,6 @@ dp_mon_register_feature_ops_1_0(struct dp_soc *soc)
 	mon_ops->mon_htt_ppdu_stats_detach = dp_htt_ppdu_stats_detach;
 	mon_ops->mon_print_pdev_rx_mon_stats = dp_print_pdev_rx_mon_stats;
 	mon_ops->mon_set_bsscolor = dp_mon_set_bsscolor;
-	mon_ops->mon_pdev_get_filter_ucast_data =
-				dp_pdev_get_filter_ucast_data;
-	mon_ops->mon_pdev_get_filter_mcast_data =
-				dp_pdev_get_filter_mcast_data;
-	mon_ops->mon_pdev_get_filter_non_data = dp_pdev_get_filter_non_data;
 	mon_ops->mon_neighbour_peer_add_ast = dp_mon_neighbour_peer_add_ast;
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 	mon_ops->mon_peer_tid_peer_id_update = dp_peer_tid_peer_id_update_1_0;
@@ -1579,11 +1574,6 @@ struct dp_mon_ops monitor_ops_1_0 = {
 	.mon_register_intr_ops = dp_mon_register_intr_ops_1_0,
 #endif
 	.mon_register_feature_ops = dp_mon_register_feature_ops_1_0,
-	.mon_lite_mon_alloc = NULL,
-	.mon_lite_mon_dealloc = NULL,
-	.mon_lite_mon_vdev_delete = NULL,
-	.mon_lite_mon_disable_rx = NULL,
-	.mon_lite_mon_is_rx_adv_filter_enable = NULL,
 };
 
 struct cdp_mon_ops dp_ops_mon_1_0 = {
@@ -1599,21 +1589,6 @@ struct cdp_mon_ops dp_ops_mon_1_0 = {
 	.txrx_enable_enhanced_stats = dp_enable_enhanced_stats,
 	.txrx_disable_enhanced_stats = dp_disable_enhanced_stats,
 #endif /* QCA_ENHANCED_STATS_SUPPORT */
-#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
-	.txrx_update_filter_neighbour_peers = dp_update_filter_neighbour_peers,
-#endif
-#ifdef ATH_SUPPORT_NAC_RSSI
-	.txrx_vdev_config_for_nac_rssi = dp_config_for_nac_rssi,
-	.txrx_vdev_get_neighbour_rssi = dp_vdev_get_neighbour_rssi,
-#endif
-#ifdef QCA_SUPPORT_LITE_MONITOR
-	.txrx_set_lite_mon_config = NULL,
-	.txrx_get_lite_mon_config = NULL,
-	.txrx_set_lite_mon_peer_config = NULL,
-	.txrx_get_lite_mon_peer_config = NULL,
-	.txrx_is_lite_mon_enabled = NULL,
-	.txrx_get_lite_mon_legacy_feature_enabled = NULL,
-#endif
 	.txrx_set_mon_pdev_params_rssi_dbm_conv =
 				dp_mon_pdev_params_rssi_dbm_conv,
 #ifdef WLAN_FEATURE_LOCAL_PKT_CAPTURE

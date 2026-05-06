@@ -9710,18 +9710,6 @@ static QDF_STATUS dp_get_pdev_param(struct cdp_soc_t *cdp_soc, uint8_t pdev_id,
 	case CDP_TX_PENDING:
 		val->cdp_pdev_param_tx_pending = dp_get_tx_pending(pdev);
 		break;
-	case CDP_FILTER_MCAST_DATA:
-		val->cdp_pdev_param_fltr_mcast =
-				dp_monitor_pdev_get_filter_mcast_data(pdev);
-		break;
-	case CDP_FILTER_NO_DATA:
-		val->cdp_pdev_param_fltr_none =
-				dp_monitor_pdev_get_filter_non_data(pdev);
-		break;
-	case CDP_FILTER_UCAST_DATA:
-		val->cdp_pdev_param_fltr_ucast =
-				dp_monitor_pdev_get_filter_ucast_data(pdev);
-		break;
 	case CDP_CONFIG_RXDMA_BUF_RING_SIZE:
 		val->cdp_rxdma_buf_ring_size =
 			wlan_cfg_get_rx_dma_buf_ring_size(((struct dp_pdev *)pdev)->wlan_cfg_ctx);

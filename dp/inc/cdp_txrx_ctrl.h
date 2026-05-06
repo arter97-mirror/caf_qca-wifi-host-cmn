@@ -64,39 +64,6 @@ cdp_mempools_attach(ol_txrx_soc_handle soc)
 	return soc->ops->ctrl_ops->txrx_mempools_attach(soc);
 }
 
-
-#if defined(ATH_SUPPORT_NAC) || defined(ATH_SUPPORT_NAC_RSSI)
-/**
- * cdp_update_filter_neighbour_peers() - update the neighbour peer addresses
- * @soc: the pointer to soc object
- * @vdev_id: id of the pointer to vdev
- * @cmd: add/del entry into peer table
- * @macaddr: the address of neighbour peer
- *
- *  This defines interface function to update neighbour peers addresses
- *  which needs to be filtered
- *
- * Return: int
- */
-static inline int
-cdp_update_filter_neighbour_peers(ol_txrx_soc_handle soc,
-	uint8_t vdev_id, uint32_t cmd, uint8_t *macaddr)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance:");
-		QDF_BUG(0);
-		return 0;
-	}
-
-	if (!soc->ops->mon_ops ||
-	    !soc->ops->mon_ops->txrx_update_filter_neighbour_peers)
-		return 0;
-
-	return soc->ops->mon_ops->txrx_update_filter_neighbour_peers
-			(soc, vdev_id, cmd, macaddr);
-}
-#endif /* ATH_SUPPORT_NAC || ATH_SUPPORT_NAC_RSSI*/
-
 #ifdef WLAN_SUPPORT_MSCS
 /**
  * cdp_record_vdev_mscs_params() - record the MSCS data and send it to the
@@ -1100,68 +1067,6 @@ cdp_dump_pdev_rx_protocol_tag_stats(ol_txrx_soc_handle soc,
 }
 #endif /* WLAN_SUPPORT_RX_TAG_STATISTICS */
 #endif /* WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG */
-
-#ifdef ATH_SUPPORT_NAC_RSSI
-/**
-  * cdp_vdev_config_for_nac_rssi() - To invoke dp callback for nac rssi config
-  * @soc: soc pointer
-  * @vdev_id: id of vdev
-  * @nac_cmd: specifies nac_rss config action add, del, list
-  * @bssid: Neighbour bssid
-  * @client_macaddr: Non-Associated client MAC
-  * @chan_num: channel number to scan
-  *
-  * Return: QDF_STATUS
-  */
-static inline QDF_STATUS cdp_vdev_config_for_nac_rssi(ol_txrx_soc_handle soc,
-		uint8_t vdev_id, enum cdp_nac_param_cmd nac_cmd,
-		char *bssid, char *client_macaddr, uint8_t chan_num)
-{
-	if (!soc || !soc->ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			"%s invalid instance", __func__);
-		QDF_BUG(0);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->mon_ops ||
-			!soc->ops->mon_ops->txrx_vdev_config_for_nac_rssi)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->mon_ops->txrx_vdev_config_for_nac_rssi(soc, vdev_id,
-			nac_cmd, bssid, client_macaddr, chan_num);
-}
-
-/**
- * cdp_vdev_get_neighbour_rssi() - invoke dp callback to get rssi value of nac
- * @soc: soc pointer
- * @vdev_id: id of vdev
- * @macaddr: Non-Associated client MAC
- * @rssi: rssi
- *
- * Return: QDF_STATUS
- */
-static inline QDF_STATUS cdp_vdev_get_neighbour_rssi(ol_txrx_soc_handle soc,
-						     uint8_t vdev_id,
-						     char *macaddr,
-						     uint8_t *rssi)
-{
-	if (!soc || !soc->ops) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_FATAL,
-			  "%s invalid instance", __func__);
-		QDF_BUG(0);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->mon_ops ||
-	    !soc->ops->mon_ops->txrx_vdev_get_neighbour_rssi)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->mon_ops->txrx_vdev_get_neighbour_rssi(soc, vdev_id,
-								macaddr,
-								rssi);
-}
-#endif
 
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
 /**

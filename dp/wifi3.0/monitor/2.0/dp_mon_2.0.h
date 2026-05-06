@@ -272,10 +272,6 @@ struct dp_mon_pdev_be {
 	uint16_t rx_mon_queue_depth;
 	uint16_t desc_count;
 	struct dp_mon_desc *status[DP_MON_MAX_STATUS_BUF];
-#ifdef QCA_SUPPORT_LITE_MONITOR
-	struct dp_lite_mon_rx_config *lite_mon_rx_config;
-	struct dp_lite_mon_tx_config *lite_mon_tx_config;
-#endif
 	void *prev_rxmon_desc;
 	uint32_t prev_rxmon_cookie;
 	void *prev_rxmon_pkt_desc;
