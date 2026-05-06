@@ -13360,11 +13360,10 @@ enum qca_wlan_vendor_cfr_stop_reason {
  *
  * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_GROUP_BW: Optional (u32)
  * Indicates packets with a specific BW will be filtered for CFR capture.
- * This is for CFR version 2 only. This is a bitmask. Bits 4:0, CFR capture
- * will be done for packets matching the bandwidths specified within this
- * bitmask. Bits 31:5 Reserved for future use. Bits 4:0 map to bandwidth
- * numerated in enum nl80211_band (although not all bands may be supported
- * by a given device).
+ * This is for CFR version 2 only. This is a bitmask where each bit N
+ * corresponds to BIT(N), with N being a value from enum nl80211_chan_width.
+ * Setting a bit requests CFR capture for frames matching that bandwidth
+ * (although not all bandwidths may be supported by a given device).
  *
  * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_GROUP_MGMT_FILTER: Optional (u32)
  * Management packets matching the subtype filter categories will be
