@@ -685,6 +685,35 @@ QDF_STATUS wifi_pos_register_send_action(
 	return QDF_STATUS_SUCCESS;
 }
 
+QDF_STATUS
+wifi_pos_send_rtt_peer_meas_req(struct wlan_objmgr_psoc *psoc,
+				struct wmi_rtt_peer_meas_req_cmd_params *params)
+{
+	struct wlan_lmac_if_wifi_pos_tx_ops *tx_ops;
+
+	tx_ops = wifi_pos_get_tx_ops(psoc);
+	if (!tx_ops || !tx_ops->send_rtt_peer_meas_req) {
+		wifi_pos_err("tx_ops is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	return tx_ops->send_rtt_peer_meas_req(psoc, params);
+}
+
+QDF_STATUS wifi_pos_send_rtt_peer_meas_cancel(struct wlan_objmgr_psoc *psoc,
+					      uint32_t req_id)
+{
+	struct wlan_lmac_if_wifi_pos_tx_ops *tx_ops;
+
+	tx_ops = wifi_pos_get_tx_ops(psoc);
+	if (!tx_ops || !tx_ops->send_rtt_peer_meas_cancel) {
+		wifi_pos_err("tx_ops is null");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	return tx_ops->send_rtt_peer_meas_cancel(psoc, req_id);
+}
+
 QDF_STATUS wifi_pos_register_osif_callbacks(struct wifi_pos_osif_ops *ops)
 {
 	struct wifi_pos_psoc_priv_obj *wifi_pos_obj =

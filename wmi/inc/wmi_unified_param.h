@@ -11163,4 +11163,5 @@ struct vdev_ch_hop_sched_params {
 	uint8_t chan_list_len;
 	struct vdev_ch_hop_ch_params *chan_list;
 };
+
 #endif /* _WMI_UNIFIED_PARAM_H_ */

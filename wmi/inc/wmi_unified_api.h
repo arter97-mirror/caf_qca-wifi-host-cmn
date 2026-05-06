@@ -4181,6 +4181,17 @@ wmi_send_rtt_pasn_deauth_cmd(wmi_unified_t wmi, struct qdf_mac_addr *peer_mac);
  */
 QDF_STATUS
 wmi_send_rtt_peer_meas_cancel_cmd(wmi_unified_t wmi, uint32_t req_id);
+
+/**
+ * wmi_send_rtt_peer_meas_req_cmd - Send RTT peer measurement request command
+ * @wmi: WMI handle
+ * @params: RTT peer measurement request parameters
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_send_rtt_peer_meas_req_cmd(wmi_unified_t wmi,
+			       struct wmi_rtt_peer_meas_req_cmd_params *params);
 #endif
 
 /**

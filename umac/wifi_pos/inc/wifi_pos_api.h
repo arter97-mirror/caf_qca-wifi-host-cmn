@@ -664,6 +664,28 @@ QDF_STATUS wifi_pos_register_osif_callbacks(struct wifi_pos_osif_ops *ops);
  * Return: struct wifi_pos_osif_ops pointer
  */
 struct wifi_pos_osif_ops *wifi_pos_get_osif_callbacks(void);
+
+/**
+ * wifi_pos_send_rtt_peer_meas_req() - wrapper for send rtt peer meas req cmd
+ * @psoc: psoc object
+ * @params: params to be sent in the cmd
+ *
+ * Return: QDF_STATUS_SUCCESS in case of success, else error codes
+ */
+QDF_STATUS
+wifi_pos_send_rtt_peer_meas_req(struct wlan_objmgr_psoc *psoc,
+				struct wmi_rtt_peer_meas_req_cmd_params *params);
+
+/**
+ * wifi_pos_send_rtt_peer_meas_cancel() - wrapper for send rtt peer meas cancel cmd
+ * @psoc: psoc object
+ * @req_id: rtt request id
+ *
+ * Return: QDF_STATUS_SUCCESS in case of success, else error codes
+ */
+QDF_STATUS wifi_pos_send_rtt_peer_meas_cancel(struct wlan_objmgr_psoc *psoc,
+					      uint32_t req_id);
+
 #endif /* WIFI_POS_CONVERGED */
 
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)

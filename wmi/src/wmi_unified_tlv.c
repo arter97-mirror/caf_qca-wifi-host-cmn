@@ -76,6 +76,7 @@
 #include "wlan_p2p_api.h"
 #endif
 #include <wlan_cp_stats_utils_api.h>
+#include "target_if.h"
 
 /*
  * If FW supports WMI_SERVICE_SCAN_CONFIG_PER_CHANNEL,
@@ -21214,7 +21215,152 @@ send_rtt_peer_meas_cancel_cmd_tlv(wmi_unified_t wmi_handle, uint32_t req_id)
 
 	return status;
 }
-#endif
+
+static QDF_STATUS
+send_rtt_peer_meas_req_cmd_tlv(wmi_unified_t wmi_handle,
+			       struct wmi_rtt_peer_meas_req_cmd_params *params)
+{
+	QDF_STATUS status;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	wmi_rtt_peer_meas_req_cmd_fixed_param *fixed_param;
+	wmi_rtt_peer_meas_req_peer_info *peer_info;
+	uint32_t n_peers = params->n_peers;
+	uint32_t i;
+	size_t len = sizeof(*fixed_param) +
+		     WMI_TLV_HDR_SIZE +
+		     n_peers * sizeof(*peer_info);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("wmi_buf_alloc failed");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	buf_ptr = wmi_buf_data(buf);
+	fixed_param = (wmi_rtt_peer_meas_req_cmd_fixed_param *)buf_ptr;
+	WMITLV_SET_HDR(&fixed_param->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_rtt_peer_meas_req_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+		       wmi_rtt_peer_meas_req_cmd_fixed_param));
+	fixed_param->req_id  = params->req_id;
+	fixed_param->vdev_id = params->vdev_id;
+	fixed_param->timeout = params->timeout;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(params->random_mac_addr,
+				   &fixed_param->random_mac_addr);
+	wmi_debug("rtt_peer_meas_req_cmd: req_id=%u vdev_id=%u timeout=%u random_mac=" QDF_MAC_ADDR_FMT " mac_addr_rand=%d n_peers=%u",
+		  params->req_id, params->vdev_id, params->timeout,
+		  QDF_MAC_ADDR_REF(params->random_mac_addr),
+		  params->mac_addr_randomization, params->n_peers);
+
+	buf_ptr += sizeof(*fixed_param);
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       n_peers * sizeof(*peer_info));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	peer_info = (wmi_rtt_peer_meas_req_peer_info *)buf_ptr;
+	for (i = 0; i < n_peers; i++) {
+		WMI_HOST_WLAN_PHY_MODE fw_phy_mode;
+
+		WMITLV_SET_HDR(&peer_info[i].tlv_header,
+			       WMITLV_TAG_STRUC_wmi_rtt_peer_meas_req_peer_info,
+			       WMITLV_GET_STRUCT_TLVLEN(
+			       wmi_rtt_peer_meas_req_peer_info));
+		WMI_CHAR_ARRAY_TO_MAC_ADDR(params->peers[i].dest_mac,
+					   &peer_info[i].dest_mac);
+
+		peer_info[i].channel.mhz = params->peers[i].ch_freq;
+		peer_info[i].channel.band_center_freq1 =
+				params->peers[i].ch_freq_seg1;
+		peer_info[i].channel.band_center_freq2 =
+				params->peers[i].ch_freq_seg2;
+		fw_phy_mode =
+			wmi_host_to_fw_phymode(params->peers[i].ch_phymode);
+		WMI_SET_CHANNEL_MODE(&peer_info[i].channel, fw_phy_mode);
+
+		/* Request Flags */
+		peer_info[i].request_flag = 0;
+		WMI_RTT_PEER_MEAS_REQ_FLAG_REPORT_AP_TSF_SET(peer_info[i].request_flag,
+							     params->peers[i].report_ap_tsf);
+		WMI_RTT_PEER_MEAS_REQ_FLAG_PD_REQUEST_SET(peer_info[i].request_flag,
+							  params->peers[i].pd_request);
+
+		peer_info[i].preamble = params->peers[i].preamble;
+
+		/* Control flags */
+		peer_info[i].control_flag = 0;
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_FTM_REQUESTED_SET(peer_info[i].control_flag,
+								  params->peers[i].ftm_requested);
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_ASAP_MODE_SET(peer_info[i].control_flag,
+							      params->peers[i].asap_mode);
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_LCI_REQ_SET(peer_info[i].control_flag,
+							    params->peers[i].lci_req);
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_LOC_CIVIC_REQ_SET(peer_info[i].control_flag,
+								  params->peers[i].loc_civic_req);
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_TB_RANGING_SET(peer_info[i].control_flag,
+							       params->peers[i].tb_ranging);
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_NTB_RANGING_SET(peer_info[i].control_flag,
+								params->peers[i].ntb_ranging);
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_I2R_LMR_FEEDBACK_SET(peer_info[i].control_flag,
+								     params->peers[i].i2r_lmr_feedback);
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_RSTA_ROLE_SET(peer_info[i].control_flag,
+							      params->peers[i].rsta_role);
+		/* TODO: Set range report once its supported */
+		WMI_RTT_PEER_MEAS_REQ_CTRL_FLAG_SUPPRESS_PD_RESULT_SET(peer_info[i].control_flag,
+								       params->peers[i].suppress_range_results);
+
+		peer_info[i].burst_period = params->peers[i].burst_period;
+
+		peer_info[i].burst_info = 0;
+		WMI_RTT_PEER_MEAS_REQ_BURST_INFO_FTMR_RETRIES_SET(peer_info[i].burst_info,
+								  params->peers[i].ftmr_retries);
+		WMI_RTT_PEER_MEAS_REQ_BURST_INFO_FTMS_PER_BURST_SET(peer_info[i].burst_info,
+								    params->peers[i].ftms_per_burst);
+		WMI_RTT_PEER_MEAS_REQ_BURST_INFO_BURST_DURATION_SET(peer_info[i].burst_info,
+								    params->peers[i].burst_duration);
+		WMI_RTT_PEER_MEAS_REQ_BURST_INFO_NUM_BURST_EXP_SET(peer_info[i].burst_info,
+								   params->peers[i].num_burst_exp);
+
+		peer_info[i].min_time_between_measurements =
+			params->peers[i].min_time_between_measurements;
+		peer_info[i].max_time_between_measurements =
+			params->peers[i].max_time_between_measurements;
+
+		peer_info[i].availibility_sub_elem = 0;
+		WMI_RTT_PEER_MEAS_REQ_AW_SUB_ELEM_NOMINAL_TIME_SET(peer_info[i].availibility_sub_elem,
+								   params->peers[i].nominal_time);
+		WMI_RTT_PEER_MEAS_REQ_AW_SUB_ELEM_MEAS_PER_AW_SET(peer_info[i].availibility_sub_elem,
+								  params->peers[i].measurements_per_aw);
+		WMI_RTT_PEER_MEAS_REQ_AW_SUB_ELEM_AW_DURATION_SET(peer_info[i].availibility_sub_elem,
+								  params->peers[i].aw_duration);
+		wmi_err("peer[%u]: dest_mac="QDF_MAC_ADDR_FMT" mhz=%u freq1=%u freq2=%u phymode:%d req_flag=0x%x preamble=0x%x ctrl_flag=0x%x burst_per=%u burst_info=0x%x min_time=%u max_time=%u avail_sub_elem=0x%x",
+			i, QDF_MAC_ADDR_REF(params->peers[i].dest_mac),
+			params->peers[i].ch_freq,
+			params->peers[i].ch_freq_seg1,
+			params->peers[i].ch_freq_seg2,
+			fw_phy_mode, peer_info[i].request_flag,
+			params->peers[i].preamble,
+			peer_info[i].control_flag,
+			params->peers[i].burst_period,
+			peer_info[i].burst_info,
+			params->peers[i].min_time_between_measurements,
+			params->peers[i].max_time_between_measurements,
+			peer_info[i].availibility_sub_elem);
+	}
+
+	wmi_mtrace(WMI_RTT_PEER_MEAS_REQ_CMDID, params->vdev_id,
+		   params->req_id);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_RTT_PEER_MEAS_REQ_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send RTT peer measurement request command ret = %d",
+			status);
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
 
 static QDF_STATUS
 send_vdev_set_ltf_key_seed_cmd_tlv(wmi_unified_t wmi_handle,
@@ -24939,6 +25085,8 @@ struct wmi_ops tlv_ops =  {
 #if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
 	.send_rtt_peer_meas_cancel_cmd =
 		send_rtt_peer_meas_cancel_cmd_tlv,
+	.send_rtt_peer_meas_req_cmd =
+		send_rtt_peer_meas_req_cmd_tlv,
 #endif
 #ifdef WLAN_MWS_INFO_DEBUGFS
 	.send_mws_coex_status_req_cmd = send_mws_coex_status_req_cmd_tlv,

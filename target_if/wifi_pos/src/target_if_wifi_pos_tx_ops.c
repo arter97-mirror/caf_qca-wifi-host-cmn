@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -196,6 +196,54 @@ void target_if_wifi_pos_register_11az_ops(
 {}
 #endif
 
+#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+static QDF_STATUS
+target_if_wifi_pos_send_rtt_peer_meas_req(
+		struct wlan_objmgr_psoc *psoc,
+		struct wmi_rtt_peer_meas_req_cmd_params *params)
+{
+	wmi_unified_t wmi = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi) {
+		target_if_err("WMI handle is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return wmi_send_rtt_peer_meas_req_cmd(wmi, params);
+}
+
+static QDF_STATUS
+target_if_wifi_pos_send_rtt_peer_meas_cancel(
+		struct wlan_objmgr_psoc *psoc,
+		uint32_t req_id)
+{
+	wmi_unified_t wmi = get_wmi_unified_hdl_from_psoc(psoc);
+
+	if (!wmi) {
+		target_if_err("WMI handle is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return wmi_send_rtt_peer_meas_cancel_cmd(wmi, req_id);
+}
+#else
+static inline QDF_STATUS
+target_if_wifi_pos_send_rtt_peer_meas_req(
+		struct wlan_objmgr_psoc *psoc,
+		struct wmi_rtt_peer_meas_req_cmd_params *params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+target_if_wifi_pos_send_rtt_peer_meas_cancel(
+		struct wlan_objmgr_psoc *psoc,
+		uint32_t req_id)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif
+
 #ifdef WIFI_POS_CONVERGED
 #ifdef WLAN_FEATURE_RTT_11AZ_SUPPORT
 static QDF_STATUS
@@ -352,6 +400,11 @@ void target_if_wifi_pos_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	wifi_pos_tx_ops->data_req_tx = target_if_wifi_pos_oem_data_req;
 	wifi_pos_tx_ops->wifi_pos_parse_measreq_chan_info =
 			target_if_wifi_pos_parse_measreq_chan_info;
+
+	wifi_pos_tx_ops->send_rtt_peer_meas_req =
+			target_if_wifi_pos_send_rtt_peer_meas_req;
+	wifi_pos_tx_ops->send_rtt_peer_meas_cancel =
+			target_if_wifi_pos_send_rtt_peer_meas_cancel;
 
 	target_if_wifi_pos_register_11az_ops(wifi_pos_tx_ops);
 }

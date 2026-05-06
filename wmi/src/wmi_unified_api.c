@@ -3078,6 +3078,16 @@ wmi_send_rtt_peer_meas_cancel_cmd(wmi_unified_t wmi, uint32_t req_id)
 
 	return wmi->ops->send_rtt_peer_meas_cancel_cmd(wmi, req_id);
 }
+
+QDF_STATUS
+wmi_send_rtt_peer_meas_req_cmd(wmi_unified_t wmi,
+			       struct wmi_rtt_peer_meas_req_cmd_params *params)
+{
+	if (wmi->ops->send_rtt_peer_meas_req_cmd)
+		return wmi->ops->send_rtt_peer_meas_req_cmd(wmi, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif
 
 QDF_STATUS wmi_unified_extract_hw_mode_resp(wmi_unified_t wmi,
