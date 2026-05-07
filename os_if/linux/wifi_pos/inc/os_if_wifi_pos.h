@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2017, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -317,6 +317,7 @@ QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 					     struct wlan_pasn_request *pasn_peer,
 					     uint8_t num_pasn_peers,
 					     bool is_initiate_pasn);
+
 #else
 static inline
 QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
@@ -327,4 +328,26 @@ QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
+
+#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
+	defined(CFG80211_PD_SUPPORT)
+/**
+ * os_if_wifi_pos_send_rtt_peer_meas_result() - Send RTT peer measurement
+ * results to userspace via cfg80211 PMSR/FTM result plumbing
+ * @psoc: Pointer to PSOC object
+ * @report: Pointer to RTT peer measurement report
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
+					 struct wifi_pos_peer_meas_report *report);
+#else
+static inline QDF_STATUS
+os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
+					 struct wifi_pos_peer_meas_report *report)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* WLAN_FEATURE_USD_RANGING && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _OS_IF_WIFI_POS_H_ */

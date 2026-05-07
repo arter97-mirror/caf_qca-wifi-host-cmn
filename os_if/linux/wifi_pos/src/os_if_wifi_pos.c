@@ -1545,3 +1545,222 @@ nla_put_failure:
 }
 #endif
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
+
+#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
+	defined(CFG80211_PD_SUPPORT)
+/**
+ * osif_pmsr_wmi_preamble_to_nl() - Map WMI preamble to NL80211 preamble
+ * @preamble: NL80211 preamble value
+ *
+ * Return: WMI_HOST_RATE_PREAMBLE value
+ */
+static enum nl80211_preamble
+osif_pmsr_wmi_preamble_to_nl(uint32_t preamble)
+{
+	switch (preamble) {
+	case WMI_HOST_RATE_PREAMBLE_HT:
+		return NL80211_PREAMBLE_HT;
+	case WMI_HOST_RATE_PREAMBLE_VHT:
+		return NL80211_PREAMBLE_VHT;
+	case WMI_HOST_RATE_PREAMBLE_HE:
+		return NL80211_PREAMBLE_HE;
+	default:
+		return NL80211_PREAMBLE_HE;
+	}
+}
+
+static void
+osif_rtt_populate_rate_info(struct rate_info *rate, uint32_t preamble,
+			    uint8_t mcs, uint8_t nss, uint8_t bw, uint8_t gi)
+{
+	switch (preamble) {
+	case WMI_HOST_RATE_PREAMBLE_HT:
+		rate->flags |= RATE_INFO_FLAGS_MCS;
+		break;
+	case WMI_HOST_RATE_PREAMBLE_VHT:
+		rate->flags |= RATE_INFO_FLAGS_VHT_MCS;
+		break;
+	case WMI_HOST_RATE_PREAMBLE_HE:
+		rate->flags |= RATE_INFO_FLAGS_HE_MCS;
+		if (gi == 1)
+			rate->he_gi = 0; /* 0.8 us */
+		else if (gi == 2)
+			rate->he_gi = 1; /* 1.6 us */
+		else if (gi == 3)
+			rate->he_gi = 2; /* 3.2 us */
+		break;
+	}
+
+	rate->mcs = mcs;
+	rate->nss = nss;
+
+	switch (bw) {
+	case 1:
+		rate->bw = RATE_INFO_BW_40;
+		break;
+	case 2:
+		rate->bw = RATE_INFO_BW_80;
+		break;
+	case 3:
+		rate->bw = RATE_INFO_BW_160;
+		break;
+	case 4:
+		rate->bw = RATE_INFO_BW_320;
+		break;
+	case 0:
+	default:
+		rate->bw = RATE_INFO_BW_20;
+		break;
+	}
+}
+
+QDF_STATUS
+os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
+					 struct wifi_pos_peer_meas_report *report)
+{
+	struct wlan_objmgr_vdev *vdev;
+	struct vdev_osif_priv *osif_priv;
+	struct wireless_dev *wdev;
+	struct cfg80211_pmsr_result pmsr_result;
+	struct hdd_adapter *pd_adapter;
+	struct hdd_context *hdd_ctx;
+	uint8_t i;
+
+	if (!psoc || !report) {
+		osif_err("psoc or report is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, report->vdev_id,
+						    WLAN_WIFI_POS_CORE_ID);
+	if (!vdev) {
+		osif_err("vdev %d not found", report->vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	osif_priv = wlan_vdev_get_ospriv(vdev);
+	if (!osif_priv || !osif_priv->wdev) {
+		osif_err("OSIF priv or wdev is NULL");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	hdd_ctx = wiphy_priv(osif_priv->wdev->wiphy);
+	if (!hdd_ctx) {
+		osif_err("hdd_ctx is NULL");
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+
+	pd_adapter = hdd_get_adapter(hdd_ctx, QDF_PD_MODE);
+	if (!pd_adapter) {
+		osif_err("NO PD adapter found");
+		return QDF_STATUS_E_FAILURE;
+	}
+	wdev = &pd_adapter->wdev;
+
+	for (i = 0; i < report->num_peers; i++) {
+		struct wifi_pos_peer_meas_result *res = &report->peer_result[i];
+		struct cfg80211_pmsr_request request = {0};
+
+		request.cookie = pd_adapter->pmsr_req.cookie;
+		request.nl_portid = pd_adapter->pmsr_req.nl_port_id;
+
+		qdf_mem_zero(&pmsr_result, sizeof(pmsr_result));
+
+		/* Populate host address */
+		qdf_mem_copy(pmsr_result.addr, res->peer_mac.bytes, ETH_ALEN);
+
+		pmsr_result.host_time = ktime_get_boottime_ns();
+		pmsr_result.ap_tsf_valid = res->ap_tsf_valid;
+		pmsr_result.final = res->final;
+
+		pmsr_result.type = NL80211_PMSR_TYPE_FTM;
+		if (res->status == WIFI_POS_RTT_PEER_MEAS_STATUS_OK)
+			pmsr_result.status = NL80211_PMSR_STATUS_SUCCESS;
+		else
+			pmsr_result.status = NL80211_PMSR_STATUS_FAILURE;
+
+		/* Populate FTM-specific fields */
+		pmsr_result.ftm.burst_index = res->burst_idx;
+		pmsr_result.ftm.num_bursts_exp = res->burst_count;
+		pmsr_result.ftm.burst_duration = res->burst_duration;
+		pmsr_result.ftm.burst_period = res->burst_period;
+		pmsr_result.ftm.ftms_per_burst = res->ftms_per_burst;
+
+		pmsr_result.ftm.preamble =
+			osif_pmsr_wmi_preamble_to_nl(res->preamble);
+		pmsr_result.ftm.preamble_valid = 1;
+		pmsr_result.ftm.chan_width =
+			wlan_cfg80211_get_nl80211_chwidth(res->channel_bw);
+		pmsr_result.ftm.chan_width_valid = 1;
+
+		pmsr_result.ftm.rssi_avg = res->rssi_avg;
+		pmsr_result.ftm.rssi_avg_valid = 1;
+		pmsr_result.ftm.rssi_spread = res->rssi_spread;
+		pmsr_result.ftm.rssi_spread_valid = 1;
+		pmsr_result.ftm.rtt_avg = res->rtt_avg;
+		pmsr_result.ftm.rtt_avg_valid = 1;
+		pmsr_result.ftm.rtt_variance = res->rtt_variance;
+		pmsr_result.ftm.rtt_variance_valid = 1;
+		pmsr_result.ftm.rtt_spread = res->rtt_spread;
+		pmsr_result.ftm.rtt_spread_valid = 1;
+		pmsr_result.ftm.dist_avg = res->dist_avg_mm;
+		pmsr_result.ftm.dist_avg_valid = 1;
+		pmsr_result.ftm.dist_variance = res->dist_variance_mm;
+		pmsr_result.ftm.dist_variance_valid = 1;
+		pmsr_result.ftm.dist_spread = res->dist_spread_mm;
+		pmsr_result.ftm.dist_spread_valid = 1;
+
+		pmsr_result.ftm.num_tx_spatial_streams = res->num_tx_sts;
+		pmsr_result.ftm.num_tx_spatial_streams_valid = 1;
+		pmsr_result.ftm.num_rx_spatial_streams = res->num_rx_sts;
+		pmsr_result.ftm.num_rx_spatial_streams_valid = 1;
+		pmsr_result.ftm.tx_ltf_repetition_count =
+					res->tx_ltf_repetition_count;
+		pmsr_result.ftm.tx_ltf_repetition_count_valid = 1;
+		pmsr_result.ftm.rx_ltf_repetition_count =
+					res->rx_ltf_repetition_count;
+		pmsr_result.ftm.rx_ltf_repetition_count_valid = 1;
+
+		pmsr_result.ftm.max_time_between_measurements =
+					res->max_time_between_meas;
+		pmsr_result.ftm.max_time_between_measurements_valid = 1;
+		pmsr_result.ftm.min_time_between_measurements =
+					res->min_time_between_meas;
+		pmsr_result.ftm.min_time_between_measurements_valid = 1;
+
+		pmsr_result.ftm.num_ftmr_successes = res->num_ftmr_successes;
+		pmsr_result.ftm.num_ftmr_successes_valid = 1;
+		pmsr_result.ftm.num_ftmr_attempts = res->num_ftmr_attempts;
+		pmsr_result.ftm.num_ftmr_attempts_valid = 1;
+
+		pmsr_result.ftm.nominal_time = res->nominal_time;
+		pmsr_result.ftm.nominal_time_valid = 1;
+		pmsr_result.ftm.availability_window =
+				res->availability_window_duration;
+		pmsr_result.ftm.availability_window_valid = 1;
+		pmsr_result.ftm.measurements_per_aw = res->meas_per_aw;
+		pmsr_result.ftm.measurements_per_aw_valid = 1;
+
+		pmsr_result.ftm.is_delayed_lmr = res->is_delayed_lmr;
+
+		osif_rtt_populate_rate_info(&pmsr_result.ftm.tx_rate,
+					    res->preamble, res->tx_mcs,
+					    res->tx_nss, res->tx_bw,
+					    res->tx_gi);
+
+		osif_rtt_populate_rate_info(&pmsr_result.ftm.rx_rate,
+					    res->preamble, res->rx_mcs,
+					    res->rx_nss, res->rx_bw,
+					    res->rx_gi);
+
+		cfg80211_pmsr_report(wdev, &request, &pmsr_result,
+				     qdf_mem_malloc_flags());
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_USD_RANGING && WLAN_FEATURE_RTT_11AZ_SUPPORT && CFG80211_PD_SUPPORT */

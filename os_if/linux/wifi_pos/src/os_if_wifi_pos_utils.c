@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,6 +28,9 @@
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 static struct wifi_pos_osif_ops osif_ops = {
 	.osif_initiate_pasn_cb = os_if_wifi_pos_initiate_pasn_auth,
+#ifdef WLAN_FEATURE_USD_RANGING
+	.osif_rtt_peer_meas_report_cb = os_if_wifi_pos_send_rtt_peer_meas_result,
+#endif
 };
 
 QDF_STATUS

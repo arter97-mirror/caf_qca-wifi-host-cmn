@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -30,12 +30,17 @@
 /**
  * struct wifi_pos_osif_ops - Wifi POS osif callbacks
  * @osif_initiate_pasn_cb: Callback to initiate PASN authentication
+ * @osif_rtt_peer_meas_report_cb: Callback to send RTT peer measurement
+ *                                results to userspace via cfg80211
  */
 struct wifi_pos_osif_ops {
 	QDF_STATUS (*osif_initiate_pasn_cb)(struct wlan_objmgr_vdev *vdev,
 					    struct wlan_pasn_request *pasn_peer,
 					    uint8_t num_pasn_peers,
 					    bool is_initiate_pasn);
+	QDF_STATUS (*osif_rtt_peer_meas_report_cb)(
+					struct wlan_objmgr_psoc *psoc,
+					struct wifi_pos_peer_meas_report *report);
 };
 #endif
 
