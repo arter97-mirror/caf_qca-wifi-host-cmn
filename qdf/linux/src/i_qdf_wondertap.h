@@ -166,4 +166,21 @@ typedef struct wondertap_ops __qdf_wondertap_ops_t;
  * operations table for vendor specific implementation.
  */
 typedef struct wondertap_priv __qdf_wondertap_priv_t;
+
+/**
+ * typedef __qdf_wondertap_channel_status_t - Channel status per slot
+ *
+ * Wondertap channel status structure and maps to the underlying
+ * wondertap_channel_status structure.
+ */
+typedef struct wondertap_channel_status __qdf_wondertap_channel_status_t;
+
+/**
+ * typedef __qdf_wondertap_channel_status_report_t - Channel status report
+ *
+ * Wondertap channel status report structure and maps to the underlying
+ * wondertap_channel_status_report structure.
+ */
+typedef struct wondertap_channel_status_report
+	__qdf_wondertap_channel_status_report_t;
 #endif /* _I_QDF_WONDERTAP_H */
