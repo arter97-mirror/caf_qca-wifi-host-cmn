@@ -3957,6 +3957,18 @@ qdf_nbuf_data_get_dhcp_subtype(uint8_t *data)
 }
 
 /**
+ * qdf_nbuf_get_dhcp_transaction_id() - get DHCP transaction ID from nbuf
+ * @buf: skb pointer
+ *
+ * Return: DHCP transaction ID
+ */
+static inline uint32_t
+qdf_nbuf_get_dhcp_transaction_id(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_dhcp_transaction_id(buf);
+}
+
+/**
  * qdf_nbuf_get_eapol_subtype() - get the subtype
  *            of EAPOL packet.
  * @buf: Pointer to EAPOL packet buffer

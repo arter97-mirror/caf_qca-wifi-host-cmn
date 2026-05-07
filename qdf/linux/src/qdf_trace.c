@@ -1766,6 +1766,7 @@ uint8_t qdf_eapol_get_key_type(uint8_t *data, enum qdf_proto_subtype subtype)
  * @subtype: Protocol subtype
  * @dir: Rx or Tx
  * @op_mode: Vdev Operation mode
+ * @skip_bcast: Skip broadcast packet logging
  *
  * Return: true or false
  */
@@ -1774,14 +1775,15 @@ bool qdf_skip_wlan_connectivity_log(qdf_nbuf_t nbuf,
 				    enum qdf_proto_type type,
 				    enum qdf_proto_subtype subtype,
 				    enum qdf_proto_dir dir,
-				    enum QDF_OPMODE op_mode)
+				    enum QDF_OPMODE op_mode,
+				    bool skip_bcast)
 {
 	if (op_mode != QDF_STA_MODE)
 		return true;
 
 	if (dir == QDF_RX && type == QDF_PROTO_TYPE_DHCP &&
 	    (subtype == QDF_PROTO_DHCP_DISCOVER ||
-	     subtype == QDF_PROTO_DHCP_REQUEST || qdf_nbuf_is_bcast_pkt(nbuf)))
+	     subtype == QDF_PROTO_DHCP_REQUEST || skip_bcast))
 		return true;
 	return false;
 }
@@ -1796,7 +1798,7 @@ bool qdf_skip_wlan_connectivity_log(qdf_nbuf_t nbuf,
  * @op_mode: Vdev Operation mode
  * @vdev_id: DP vdev ID
  * @nbuf: skb pointer
- * @band: band
+ * @skip_bcast: Skip broadcast packet logging
  *
  * Return: None
  */
@@ -1807,14 +1809,15 @@ void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
 				    enum qdf_dp_tx_rx_status qdf_tx_status,
 				    enum QDF_OPMODE op_mode,
 				    uint8_t vdev_id, qdf_nbuf_t nbuf,
-				    uint8_t band)
+				    bool skip_bcast)
 {
 	uint8_t pkt_type;
 	uint8_t *data;
 
 	WLAN_HOST_DIAG_EVENT_DEF(wlan_diag_event, struct wlan_diag_packet_info);
 
-	if (qdf_skip_wlan_connectivity_log(nbuf, type, subtype, dir, op_mode))
+	if (qdf_skip_wlan_connectivity_log(nbuf, type, subtype, dir, op_mode,
+					   skip_bcast))
 		return;
 
 	qdf_mem_zero(&wlan_diag_event, sizeof(wlan_diag_event));
@@ -1856,13 +1859,14 @@ void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
 		return;
 	}
 
-	wlan_diag_event.supported_links = band;
-
 	/*Tx completion status needs to be logged*/
 	if (dir == QDF_TX) {
+		wlan_diag_event.supported_links = qdf_nbuf_tx_get_band(nbuf);
 		wlan_diag_event.is_tx = 1;
 		wlan_diag_event.tx_status =
 					wlan_get_diag_tx_status(qdf_tx_status);
+	} else {
+		wlan_diag_event.supported_links = qdf_nbuf_rx_get_band(nbuf);
 	}
 
 	WLAN_HOST_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_CONN_DP);
@@ -1876,7 +1880,7 @@ void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
 				    enum qdf_dp_tx_rx_status qdf_tx_status,
 				    enum QDF_OPMODE op_mode,
 				    uint8_t vdev_id, qdf_nbuf_t nbuf,
-				    uint8_t band)
+				    bool skip_bcast)
 {
 }
 #endif
@@ -1922,8 +1926,7 @@ static bool qdf_log_eapol_pkt(uint8_t vdev_id, struct sk_buff *skb,
 					  QDF_TX_RX_STATUS_INVALID);
 		qdf_fill_wlan_connectivity_log(QDF_PROTO_TYPE_EAPOL, subtype,
 					       QDF_RX, 0, op_mode,
-					       vdev_id, skb,
-					       qdf_nbuf_rx_get_band(skb));
+					       vdev_id, skb, false);
 		qdf_log_pkt_cstats(skb->data + QDF_NBUF_SRC_MAC_OFFSET,
 				   skb->data + QDF_NBUF_DEST_MAC_OFFSET,
 				   QDF_PROTO_TYPE_EAPOL, subtype, dir,
@@ -1978,17 +1981,19 @@ static bool qdf_log_eapol_pkt(uint8_t vdev_id, struct sk_buff *skb,
  * @dir: direction
  * @pdev_id: ID of the pdev
  * @op_mode: Vdev Operation mode
+ * @dhcp_ltxid: DHCP transaction ID
  *
  * Return: true/false
  */
 static bool qdf_log_dhcp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			     enum qdf_proto_dir dir, uint8_t pdev_id,
-			     enum QDF_OPMODE op_mode)
+			     enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid)
 {
 	enum qdf_proto_subtype subtype = QDF_PROTO_INVALID;
 	uint32_t dp_dhcp_trace;
 	uint32_t dp_dhcp_event;
 	struct qdf_dp_trace_proto_cmn cmn_info;
+	bool skip_bcast = false;
 
 	dp_dhcp_trace = qdf_dp_get_proto_bitmap() & QDF_NBUF_PKT_TRAC_TYPE_DHCP;
 	dp_dhcp_event = qdf_dp_get_proto_event_bitmap() &
@@ -2005,6 +2010,9 @@ static bool qdf_log_dhcp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 	subtype = qdf_nbuf_get_dhcp_subtype(skb);
 
 	if (dp_dhcp_event && dir == QDF_RX) {
+		if (qdf_nbuf_is_bcast_pkt(skb))
+			skip_bcast = dhcp_ltxid !=
+					qdf_nbuf_get_dhcp_transaction_id(skb);
 		qdf_dp_log_proto_pkt_info(skb->data + QDF_NBUF_SRC_MAC_OFFSET,
 					  skb->data + QDF_NBUF_DEST_MAC_OFFSET,
 					  QDF_PROTO_TYPE_DHCP, subtype, dir,
@@ -2012,7 +2020,7 @@ static bool qdf_log_dhcp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 					  QDF_TX_RX_STATUS_INVALID);
 		qdf_fill_wlan_connectivity_log(QDF_PROTO_TYPE_DHCP, subtype,
 					       QDF_RX, 0, op_mode, vdev_id, skb,
-					       qdf_nbuf_rx_get_band(skb));
+					       skip_bcast);
 		qdf_log_pkt_cstats(skb->data + QDF_NBUF_SRC_MAC_OFFSET,
 				   skb->data + QDF_NBUF_DEST_MAC_OFFSET,
 				   QDF_PROTO_TYPE_DHCP, subtype, dir,
@@ -2116,13 +2124,13 @@ static bool qdf_log_arp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 
 bool qdf_dp_trace_log_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			  enum qdf_proto_dir dir, uint8_t pdev_id,
-			  enum QDF_OPMODE op_mode)
+			  enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid)
 {
 	if (!qdf_dp_get_proto_bitmap() && !qdf_dp_get_proto_event_bitmap())
 		return false;
 	if (qdf_log_arp_pkt(vdev_id, skb, dir, pdev_id))
 		return true;
-	if (qdf_log_dhcp_pkt(vdev_id, skb, dir, pdev_id, op_mode))
+	if (qdf_log_dhcp_pkt(vdev_id, skb, dir, pdev_id, op_mode, dhcp_ltxid))
 		return true;
 	if (qdf_log_eapol_pkt(vdev_id, skb, dir, pdev_id, op_mode))
 		return true;
@@ -2543,8 +2551,7 @@ void qdf_dp_trace_ptr(qdf_nbuf_t nbuf, enum QDF_DP_TRACE_ID code,
 		qdf_fill_wlan_connectivity_log(pkt_type, subtype,
 					       QDF_TX, qdf_tx_status, op_mode,
 					       QDF_NBUF_CB_TX_VDEV_CTX(nbuf),
-					       nbuf,
-					       qdf_nbuf_tx_get_band(nbuf));
+					       nbuf, false);
 		qdf_log_pkt_cstats(nbuf->data + QDF_NBUF_SRC_MAC_OFFSET,
 				   nbuf->data + QDF_NBUF_DEST_MAC_OFFSET,
 				   pkt_type, subtype, QDF_TX,

@@ -2706,7 +2706,7 @@ static void dp_tx_trace_pkt(struct dp_soc *soc,
 				 op_mode));
 
 	qdf_dp_trace_log_pkt(vdev_id, skb, QDF_TX, QDF_TRACE_DEFAULT_PDEV_ID,
-			     op_mode);
+			     op_mode, 0);
 
 	DPTRACE(qdf_dp_trace_data_pkt(skb, QDF_TRACE_DEFAULT_PDEV_ID,
 				      QDF_DP_TRACE_LI_DP_TX_PACKET_RECORD,
