@@ -1122,16 +1122,38 @@ wmi_tdls_fw_subtype_to_host(uint32_t fw_subtype)
 
 /**
  * wmi_tdls_fw_reason_to_host() - Convert FW TDLS reason code to host enum
- * @fw_reason: reason code from wmi_tdls_connect_info_stats_reason_code
+ * @fw_reason:  reason code from wmi_tdls_connect_info_stats_reason_code
+ * @fw_subtype: frame subtype from wmi_tdls_connect_info_stats_subtype;
+ *              used to distinguish channel-switch direction
+ * @tx_rx:      1 if the local STA transmitted the frame (sender),
+ *              0 if the local STA received it (responder)
+ *
+ * For WMI_TDLS_CHANNEL_SWITCH_FRAME_TX_RX the FW does not carry a separate
+ * user-vs-peer flag.  The direction is inferred from the subtype and tx_rx
+ * fields:
+ *
+ *   subtype == REQUEST, tx_rx == 1  ->  user-initiated
+ *     (local STA sent the channel-switch request to the peer)
+ *   subtype == REQUEST, tx_rx == 0  ->  peer-initiated
+ *     (local STA received the channel-switch request from the peer)
+ *   subtype == RESPONSE, tx_rx == 1  ->  peer-initiated
+ *     (local STA is sending the response, so peer sent the original request)
+ *   subtype == RESPONSE, tx_rx == 0  ->  user-initiated
+ *     (local STA received the response, so local STA sent the original request)
  *
  * Return: Corresponding host enum tdls_stats_reason_code value
  */
 static enum tdls_stats_reason_code
-wmi_tdls_fw_reason_to_host(uint32_t fw_reason)
+wmi_tdls_fw_reason_to_host(uint32_t fw_reason, uint32_t fw_subtype,
+			   uint32_t tx_rx)
 {
 	switch (fw_reason) {
 	case WMI_TDLS_CHANNEL_SWITCH_FRAME_TX_RX:
-		return TDLS_STATS_REASON_BSS_CHANNEL_SWITCH;
+		if ((fw_subtype == WMI_TDLS_FRAME_SUBTYPE_REQUEST && tx_rx) ||
+		    (fw_subtype == WMI_TDLS_FRAME_SUBTYPE_RESPONSE && !tx_rx))
+			return TDLS_STATS_REASON_USER_INITIATED_CH_SWITCH;
+		else
+			return TDLS_STATS_REASON_PEER_INITIATED_CH_SWITCH;
 	case WMI_TDLS_BT_COEX_INDICATION:
 		return TDLS_STATS_REASON_BT_COEX;
 	default:
@@ -1208,7 +1230,9 @@ extract_tdls_stats_event_tlv(wmi_unified_t wmi_handle,
 						fw_ci[i].subtype);
 			host_ci[i].reason_code =
 				wmi_tdls_fw_reason_to_host(
-						fw_ci[i].reason_code);
+						fw_ci[i].reason_code,
+						fw_ci[i].subtype,
+						fw_ci[i].tx_rx);
 			host_ci[i].status = fw_ci[i].status;
 			host_ci[i].is_sender = fw_ci[i].tx_rx;
 			host_ci[i].op_freq_mhz = fw_ci[i].op_freq_mhz;
