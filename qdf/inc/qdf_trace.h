@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -942,12 +942,13 @@ void qdf_dp_set_no_of_record(uint32_t val);
  * @dir: direction
  * @pdev_id: pdev_id
  * @op_mode: Vdev Operation mode
+ * @dhcp_ltxid: Last DHCP tx packet transaction ID
  *
  * Return: true: some protocol was logged, false: no protocol was logged.
  */
 bool qdf_dp_trace_log_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			  enum qdf_proto_dir dir, uint8_t pdev_id,
-			  enum QDF_OPMODE op_mode);
+			  enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid);
 
 /**
  * qdf_dp_trace_init() - enables the DP trace
@@ -1369,7 +1370,7 @@ void qdf_dp_track_noack_check(qdf_nbuf_t nbuf, enum qdf_proto_subtype *subtype);
 static inline
 bool qdf_dp_trace_log_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			  enum qdf_proto_dir dir, uint8_t pdev_id,
-			  enum QDF_OPMODE op_mode)
+			  enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid)
 {
 	return false;
 }
