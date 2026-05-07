@@ -585,8 +585,7 @@ void wlan_wifi_pos_cfg80211_set_features(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
-#if defined(WLAN_FEATURE_USD_RANGING) && \
-	defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(CFG80211_PD_SUPPORT)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(CFG80211_PD_SUPPORT)
 static enum mlme_dot11_mode
 hdd_pmsr_preamble_to_dot11_mode(enum nl80211_preamble preamble)
 {

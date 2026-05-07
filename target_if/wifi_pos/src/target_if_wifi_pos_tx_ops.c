@@ -196,7 +196,7 @@ void target_if_wifi_pos_register_11az_ops(
 {}
 #endif
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 static QDF_STATUS
 target_if_wifi_pos_send_rtt_peer_meas_req(
 		struct wlan_objmgr_psoc *psoc,

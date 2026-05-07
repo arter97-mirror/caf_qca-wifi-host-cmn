@@ -293,7 +293,7 @@ int target_if_wifi_pos_pasn_peer_delete_ev_handler(ol_scn_t scn,
 }
 #endif
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 int target_if_wifi_pos_rtt_peer_meas_report_ev_handler(ol_scn_t scn,
 						       uint8_t *buf,
 						       uint32_t len)

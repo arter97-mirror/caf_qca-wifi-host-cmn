@@ -53,7 +53,7 @@ wlan_wifi_pos_cfg80211_set_wiphy_ext_feature(struct wiphy *wiphy,
 {}
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT*/
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
 	defined(CFG80211_PD_SUPPORT)
 /**
  * wlan_hdd_cfg80211_start_pmsr() - Start peer measurement request

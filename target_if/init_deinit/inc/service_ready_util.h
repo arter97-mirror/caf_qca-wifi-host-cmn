@@ -428,7 +428,7 @@ int init_deinit_populate_aux_dev_cap_ext2(struct wlan_objmgr_psoc *psoc,
 					  wmi_unified_t handle, uint8_t *event,
 					  struct tgt_info *info);
 
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /**
  * init_deinit_populate_rtt_measurement_caps() - Populate RTT measurement
  * capabilities from service ready ext2 event

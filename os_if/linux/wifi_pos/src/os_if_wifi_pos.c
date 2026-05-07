@@ -1547,7 +1547,10 @@ nla_put_failure:
 	return status;
 }
 #endif
+#endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
+	defined(CFG80211_PD_SUPPORT)
 QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
 						 void *cookie,
 						 uint8_t peer_create_status)
@@ -1572,10 +1575,7 @@ QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
-	defined(CFG80211_PD_SUPPORT)
 /**
  * osif_pmsr_wmi_preamble_to_nl() - Map WMI preamble to NL80211 preamble
  * @preamble: NL80211 preamble value
@@ -1792,4 +1792,4 @@ os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif /* WLAN_FEATURE_USD_RANGING && WLAN_FEATURE_RTT_11AZ_SUPPORT && CFG80211_PD_SUPPORT */
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && CFG80211_PD_SUPPORT */

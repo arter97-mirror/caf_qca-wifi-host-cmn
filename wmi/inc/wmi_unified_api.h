@@ -3208,7 +3208,7 @@ wmi_unified_t wmi_handle,
 			uint8_t *evt_buf,
 			struct wlan_psoc_host_service_ext2_param *ext2_param);
 
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /* Forward declaration: full definition in wifi_pos_utils_i.h */
 struct wifi_pos_pmsr_fw_caps;
 
@@ -3225,7 +3225,7 @@ QDF_STATUS wmi_extract_rtt_peer_meas_caps_service_ready_ext2(
 		wmi_unified_t wmi_handle,
 		uint8_t *evt_buf,
 		struct wifi_pos_pmsr_fw_caps *caps);
-#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
 /**
  * wmi_unified_fw_test_cmd() - send fw test command to fw.
@@ -4171,7 +4171,7 @@ QDF_STATUS
 wmi_send_rtt_pasn_deauth_cmd(wmi_unified_t wmi, struct qdf_mac_addr *peer_mac);
 #endif
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /**
  * wmi_send_rtt_peer_meas_cancel_cmd - Send RTT peer measurement cancel command
  * @wmi: WMI handle

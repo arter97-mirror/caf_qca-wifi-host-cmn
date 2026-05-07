@@ -353,7 +353,7 @@ struct wlan_wifi_pos_peer_priv_obj {
 	bool is_ltf_keyseed_required;
 };
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /**
  * struct wmi_rtt_peer_meas_req_peer_params - Per-peer RTT measurement request
  * @dest_mac: Destination MAC address
@@ -436,5 +436,5 @@ struct wmi_rtt_peer_meas_req_cmd_params {
 	uint32_t n_peers;
 	struct wmi_rtt_peer_meas_req_peer_params *peers;
 };
-#endif /* WLAN_FEATURE_USD_RANGING & WLAN_FEATURE_RTT_11AZ_SUPPORT */
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WIFI_POS_PUBLIC_STRUCT_H_ */

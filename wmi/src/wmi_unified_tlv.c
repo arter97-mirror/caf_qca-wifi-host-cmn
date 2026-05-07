@@ -16225,7 +16225,7 @@ static QDF_STATUS extract_sar_cap_service_ready_ext2_tlv(
 	return QDF_STATUS_SUCCESS;
 }
 
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /**
  * extract_rtt_peer_meas_caps_service_ready_ext2_tlv() - extract RTT/FTM
  *       peer measurement capabilities from service ready ext2 event
@@ -16277,7 +16277,7 @@ extract_rtt_peer_meas_caps_service_ready_ext2_tlv(
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
 /**
  * extract_hw_mode_cap_service_ready_ext_tlv() -
@@ -21382,7 +21382,7 @@ send_rtt_pasn_deauth_cmd_tlv(wmi_unified_t wmi_handle,
 }
 #endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 static QDF_STATUS
 send_rtt_peer_meas_cancel_cmd_tlv(wmi_unified_t wmi_handle, uint32_t req_id)
 {
@@ -21562,7 +21562,7 @@ send_rtt_peer_meas_req_cmd_tlv(wmi_unified_t wmi_handle,
 
 	return status;
 }
-#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
 static QDF_STATUS
 send_vdev_set_ltf_key_seed_cmd_tlv(wmi_unified_t wmi_handle,
@@ -25127,10 +25127,10 @@ struct wmi_ops tlv_ops =  {
 				extract_sar_cap_service_ready_ext_tlv,
 	.extract_sar_cap_service_ready_ext2 =
 				extract_sar_cap_service_ready_ext2_tlv,
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 	.extract_rtt_peer_meas_caps_service_ready_ext2 =
 			extract_rtt_peer_meas_caps_service_ready_ext2_tlv,
-#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT && WLAN_FEATURE_USD_RANGING */
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 	.extract_pdev_utf_event = extract_pdev_utf_event_tlv,
 	.wmi_set_htc_tx_tag = wmi_set_htc_tx_tag_tlv,
 	.extract_fips_event_data = extract_fips_event_data_tlv,
@@ -25284,7 +25284,7 @@ struct wmi_ops tlv_ops =  {
 	.send_rtt_pasn_deauth_cmd =
 		send_rtt_pasn_deauth_cmd_tlv,
 #endif
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 	.send_rtt_peer_meas_cancel_cmd =
 		send_rtt_peer_meas_cancel_cmd_tlv,
 	.send_rtt_peer_meas_req_cmd =

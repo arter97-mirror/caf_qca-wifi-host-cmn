@@ -328,7 +328,7 @@ QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 }
 #endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
 	defined(CFG80211_PD_SUPPORT)
 /**
  * os_if_wifi_pos_send_rtt_peer_meas_result() - Send RTT peer measurement
@@ -369,5 +369,5 @@ QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }
-#endif /* WLAN_FEATURE_USD_RANGING && WLAN_FEATURE_RTT_11AZ_SUPPORT */
+#endif /* WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _OS_IF_WIFI_POS_H_ */

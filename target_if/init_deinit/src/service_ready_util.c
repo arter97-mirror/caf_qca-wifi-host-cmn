@@ -691,7 +691,7 @@ exit:
 	return qdf_status_to_os_return(status);
 }
 
-#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && defined(WLAN_FEATURE_USD_RANGING)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 int init_deinit_populate_rtt_measurement_caps(struct wlan_objmgr_psoc *psoc,
 					      wmi_unified_t handle,
 					      uint8_t *event)

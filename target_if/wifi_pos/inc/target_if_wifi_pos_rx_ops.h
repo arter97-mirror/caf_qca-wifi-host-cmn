@@ -121,7 +121,7 @@ int target_if_wifi_pos_pasn_peer_delete_ev_handler(ol_scn_t scn,
 }
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 
-#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+#if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /**
  * target_if_wifi_pos_rtt_peer_meas_report_ev_handler() - Handle
  * wmi_rtt_peer_meas_report_eventid event from firmware
