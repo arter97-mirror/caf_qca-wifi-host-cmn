@@ -24835,6 +24835,138 @@ send_vdev_ch_hop_sched_cmd_tlv(wmi_unified_t wmi_handle,
 
 	return ret;
 }
+
+/**
+ * send_vdev_get_chan_hop_status_cmd_tlv() - Send channel hop status command
+ * @wmi_handle: WMI handle
+ * @vdev_id: vdev identifier
+ *
+ * Builds and sends WMI command to request channel hopping status.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static QDF_STATUS
+send_vdev_get_chan_hop_status_cmd_tlv(wmi_unified_t wmi_handle,
+				      uint8_t vdev_id)
+{
+	wmi_vdev_get_chan_hop_status_report_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	int32_t len;
+	QDF_STATUS ret;
+
+	len = sizeof(*cmd);
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("Failed to allocate buffer");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_vdev_get_chan_hop_status_report_cmd_fixed_param *)buf_ptr;
+
+	qdf_mem_zero(cmd, len);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_get_chan_hop_status_report_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_get_chan_hop_status_report_cmd_fixed_param));
+
+	cmd->vdev_id = vdev_id;
+
+	wmi_mtrace(WMI_VDEV_GET_CHAN_HOP_STATUS_REPORT_CMDID, vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_VDEV_GET_CHAN_HOP_STATUS_REPORT_CMDID);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send channel hop status cmd: %d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * extract_vdev_chan_hop_status_tlv() - Extract channel hop status event
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer
+ * @resp: Response structure to fill
+ *
+ * Extracts channel hopping status data from WMI event.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static QDF_STATUS
+extract_vdev_chan_hop_status_tlv(wmi_unified_t wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *resp)
+{
+	WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID_param_tlvs *param_tlvs;
+	wmi_vdev_chan_hop_status_report_event_fixed_param *fixed_param;
+	wmi_vdev_chan_hop_slot_status *slot_status;
+	uint32_t i;
+
+	param_tlvs =
+	(WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID_param_tlvs *)evt_buf;
+
+	if (!param_tlvs) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_tlvs->fixed_param;
+	slot_status = param_tlvs->slot_status;
+
+	if (!fixed_param) {
+		wmi_err("Invalid fixed_param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Extract fixed parameters */
+	resp->vdev_id = fixed_param->vdev_id;
+	resp->hopping_request_tsf = fixed_param->hopping_request_tsf;
+	resp->current_channel_index = fixed_param->current_channel_index;
+	resp->num_slots = param_tlvs->num_slot_status;
+
+	wmi_debug("vdev_id: %d, num_slots: %d, current_idx: %d",
+		  resp->vdev_id, resp->num_slots,
+		  resp->current_channel_index);
+
+	/* Validate and truncate if necessary */
+	if (resp->num_slots > WLAN_MAX_CHAN_HOP_SLOTS) {
+		wmi_warn("Too many slots: %d, truncating to %d",
+			 resp->num_slots, WLAN_MAX_CHAN_HOP_SLOTS);
+		resp->num_slots = WLAN_MAX_CHAN_HOP_SLOTS;
+	}
+
+	/* Extract slot status array */
+	if (slot_status && resp->num_slots > 0) {
+		for (i = 0; i < resp->num_slots; i++) {
+			resp->slot_info[i].role = slot_status[i].role;
+			resp->slot_info[i].freq = slot_status[i].chan_mhz;
+			resp->slot_info[i].channel_switch_tsf =
+				slot_status[i].channel_switch_tsf;
+			resp->slot_info[i].channel_start_tsf =
+				slot_status[i].channel_start_tsf;
+			resp->slot_info[i].channel_end_tsf =
+				slot_status[i].channel_end_tsf;
+			resp->slot_info[i].tx_traffic_index =
+				slot_status[i].tx_traffic_index;
+			resp->slot_info[i].rx_traffic_index =
+				slot_status[i].rx_traffic_index;
+
+			wmi_debug("Slot %d: freq=%d, role=%d, tx_idx=%d, rx_idx=%d",
+				  i, resp->slot_info[i].freq,
+				  resp->slot_info[i].role,
+				  resp->slot_info[i].tx_traffic_index,
+				  resp->slot_info[i].rx_traffic_index);
+		}
+	} else if (resp->num_slots > 0) {
+		wmi_err("slot_status is NULL but num_slots=%d",
+			resp->num_slots);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 #if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
@@ -25464,6 +25596,9 @@ struct wmi_ops tlv_ops =  {
 	.send_peer_assoc_v2_cmd = send_peer_assoc_v2_cmd_tlv,
 #ifdef DRIVER_PASSTHRU_MODE
 	.send_vdev_ch_hop_sched_cmd = send_vdev_ch_hop_sched_cmd_tlv,
+	.send_vdev_get_chan_hop_status_cmd =
+		send_vdev_get_chan_hop_status_cmd_tlv,
+	.extract_vdev_chan_hop_status = extract_vdev_chan_hop_status_tlv,
 #endif
 #if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
 	.send_ocb_get_tsf_timer_cmd = send_ocb_get_tsf_timer_cmd_tlv,
@@ -25726,7 +25861,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_ocb_set_config_resp_event_id] =
 				WMI_OCB_SET_CONFIG_RESP_EVENTID;
 	event_ids[wmi_ocb_get_tsf_timer_resp_event_id] =
-				WMI_OCB_GET_TSF_TIMER_RESP_EVENTID;
+					WMI_OCB_GET_TSF_TIMER_RESP_EVENTID;
+	event_ids[wmi_vdev_chan_hop_status_report_event_id] =
+					WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID;
 	event_ids[wmi_dcc_get_stats_resp_event_id] =
 				WMI_DCC_GET_STATS_RESP_EVENTID;
 	event_ids[wmi_dcc_update_ndl_resp_event_id] =
@@ -26846,6 +26983,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_SUPPORT_WHITELIST_BLACKLIST_AP_CONFIG;
 	wmi_service[wmi_service_passthru_vdev_ampdu_ra_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
+	wmi_service[wmi_service_vdev_chan_hop_status_report] =
+				WMI_SERVICE_VDEV_CHAN_HOP_STATUS_REPORT;
 	wmi_service[wmi_service_tdls_stats_info] =
 				WMI_SERVICE_TDLS_STATS_SUPPORT;
 }

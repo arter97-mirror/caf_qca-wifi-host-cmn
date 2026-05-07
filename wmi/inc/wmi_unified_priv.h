@@ -3716,6 +3716,13 @@ QDF_STATUS
 QDF_STATUS
 	(*send_vdev_ch_hop_sched_cmd)(wmi_unified_t wmi_handle,
 				      struct vdev_ch_hop_sched_params *param);
+QDF_STATUS
+	(*send_vdev_get_chan_hop_status_cmd)(wmi_unified_t wmi_handle,
+					     uint8_t vdev_id);
+QDF_STATUS
+(*extract_vdev_chan_hop_status)(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct vdev_chan_hop_status_response *resp);
 #endif
 
 #if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)

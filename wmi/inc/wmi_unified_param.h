@@ -5753,6 +5753,7 @@ typedef enum {
 	wmi_sap_ofl_del_sta_event_id,
 	wmi_ocb_set_config_resp_event_id,
 	wmi_ocb_get_tsf_timer_resp_event_id,
+	wmi_vdev_chan_hop_status_report_event_id,
 	wmi_dcc_get_stats_resp_event_id,
 	wmi_dcc_update_ndl_resp_event_id,
 	wmi_dcc_stats_event_id,
@@ -7274,6 +7275,7 @@ typedef enum {
 	wmi_service_supported_ext_oui_action_ids,
 	wmi_service_support_whitelist_blacklist_ap_config,
 	wmi_service_passthru_vdev_ampdu_ra_support,
+	wmi_service_vdev_chan_hop_status_report,
 	wmi_service_tdls_stats_info,
 	wmi_services_max,
 } wmi_conv_service_ids;
@@ -11274,4 +11276,56 @@ struct vdev_ch_hop_sched_params {
 	struct vdev_ch_hop_ch_params *chan_list;
 };
 
+/* Maximum number of channel hop slots to report */
+#define WLAN_MAX_CHAN_HOP_SLOTS 32
+
+/**
+ * struct vdev_chan_hop_status_req - Channel hop status request
+ * @vdev_id: vdev identifier
+ *
+ * Request structure for getting channel hopping status from firmware.
+ */
+struct vdev_chan_hop_status_req {
+	uint8_t vdev_id;
+};
+
+/**
+ * struct vdev_chan_hop_slot_info - Per-slot channel hop information
+ * @role: Channel hopping role (PASSTHRU/NON_PASSTHRU)
+ * @freq: Channel frequency in MHz
+ * @channel_switch_tsf: TSF timestamp of frequency transition
+ * @channel_start_tsf: TSF when this slot's active period began
+ * @channel_end_tsf: TSF when this slot's active period ended
+ * @tx_traffic_index: TX utilization percentage (0-100)
+ * @rx_traffic_index: RX utilization percentage (0-100)
+ *
+ * Contains detailed statistics for a single channel hopping slot.
+ */
+struct vdev_chan_hop_slot_info {
+	uint32_t role;
+	uint32_t freq;
+	uint32_t channel_switch_tsf;
+	uint32_t channel_start_tsf;
+	uint32_t channel_end_tsf;
+	uint32_t tx_traffic_index;
+	uint32_t rx_traffic_index;
+};
+
+/**
+ * struct vdev_chan_hop_status_response - Channel hop status response
+ * @vdev_id: vdev identifier
+ * @hopping_request_tsf: TSF timestamp of the hopping request
+ * @current_channel_index: Current channel index in hopping list
+ * @num_slots: Number of slot entries in the array
+ * @slot_info: Array of per-slot information
+ *
+ * Response structure containing channel hopping statistics from firmware.
+ */
+struct vdev_chan_hop_status_response {
+	uint8_t vdev_id;
+	uint32_t hopping_request_tsf;
+	uint32_t current_channel_index;
+	uint32_t num_slots;
+	struct vdev_chan_hop_slot_info slot_info[WLAN_MAX_CHAN_HOP_SLOTS];
+};
 #endif /* _WMI_UNIFIED_PARAM_H_ */

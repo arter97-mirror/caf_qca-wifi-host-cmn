@@ -5434,10 +5434,51 @@ wmi_unified_power_datapath_stats_request_send(
 QDF_STATUS
 wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
 				       struct vdev_ch_hop_sched_params *params);
+
+/**
+ * wmi_unified_vdev_get_chan_hop_status() - Send channel hop status request
+ * @wmi_handle: wmi handle
+ * @req: Request parameters containing vdev_id
+ *
+ * Send WMI command to request channel hopping status from firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS
+wmi_unified_vdev_get_chan_hop_status(struct wmi_unified *wmi_handle,
+				     struct vdev_chan_hop_status_req *req);
+
+/**
+ * wmi_extract_vdev_chan_hop_status() - extract vdev channel hop status
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @response: pointer to hold channel hop status response
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_vdev_chan_hop_status(struct wmi_unified *wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *response);
 #else
 static inline QDF_STATUS
 wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
 				       struct vdev_ch_hop_sched_params *params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_unified_vdev_get_chan_hop_status(struct wmi_unified *wmi_handle,
+				     struct vdev_chan_hop_status_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_extract_vdev_chan_hop_status(struct wmi_unified *wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *response)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }
