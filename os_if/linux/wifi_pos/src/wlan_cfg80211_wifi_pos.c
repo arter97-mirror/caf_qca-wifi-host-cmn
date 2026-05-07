@@ -293,15 +293,11 @@ wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(struct wiphy *wiphy,
 		!!(fw->support_flag & WLAN_SUPPORT_FLAG_REPORT_AP_TSF);
 	pmsr->randomize_mac_addr =
 		!!(fw->support_flag & WLAN_SUPPORT_FLAG_RANDOMIZE_MAC_ADDR);
-	pmsr->ftm.pd_support =
+	pmsr->ftm.type.pd_support =
 		!!(fw->support_flag & WLAN_SUPPORT_FLAG_PD_SUPPORT);
-	pmsr->ftm.pd_concurrent_ista_rsta_support =
+	pmsr->ftm.type.infra_support = 1;
+	pmsr->ftm.concurrent_ista_rsta_support =
 		!!(fw->support_flag & WLAN_SUPPORT_FLAG_PD_CONCURRENT_ISTA_RSTA);
-
-	pmsr->pd_max_peer_ista_role =
-		fw->pd_max_peers & WLAN_PD_MAX_PEERS_ISTA_ROLE_MASK;
-	pmsr->pd_max_peer_rsta_role =
-		(fw->pd_max_peers >> WLAN_PD_MAX_PEERS_RSTA_ROLE_SHIFT) & WLAN_PD_MAX_PEERS_RSTA_ROLE_MASK;
 
 	/* --- FTM support flags --- */
 	pmsr->ftm.supported =
@@ -347,6 +343,8 @@ wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(struct wiphy *wiphy,
 		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_TRIGGER_BASED);
 	pmsr->ftm.ista.support_ntb =
 		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_NON_TRIGGER_BASED);
+	pmsr->ftm.ista.max_peers =
+		fw->pd_max_peers & WLAN_PD_MAX_PEERS_ISTA_ROLE_MASK;
 
 	pmsr->ftm.rsta.support_ntb =
 		!!(fw->ftm_support_flag & WLAN_FTM_SUPPORT_FLAG_RSTA_NTB);
@@ -358,16 +356,17 @@ wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(struct wiphy *wiphy,
 		 wlan_psoc_nif_fw_ext2_cap_get(psoc,
 					       WLAN_RTT_11AZ_TB_RSTA_SUPPORT));
 
+	pmsr->ftm.rsta.max_peers =
+		(fw->pd_max_peers >> WLAN_PD_MAX_PEERS_RSTA_ROLE_SHIFT) & WLAN_PD_MAX_PEERS_RSTA_ROLE_MASK;
+
 	/* --- BW / Preamble bitmaps --- */
 	pmsr->ftm.bandwidths =
 		wlan_wifi_pos_fw_bw_bitmap_to_nl(fw->supported_bw_bitmap);
 	pmsr->ftm.preambles  =
 		wlan_wifi_pos_fw_preamble_bitmap_to_nl(fw->supported_preamble_bitmap);
 
-	pmsr->ftm.pd_edca_bandwidths = pmsr->ftm.bandwidths;
-	pmsr->ftm.pd_ntb_bandwidths  = pmsr->ftm.bandwidths;
-	pmsr->ftm.pd_edca_preambles  = pmsr->ftm.preambles;
-	pmsr->ftm.pd_ntb_preambles   = pmsr->ftm.preambles;
+	pmsr->ftm.pd_bandwidths  = pmsr->ftm.bandwidths;
+	pmsr->ftm.pd_preambles   = pmsr->ftm.preambles;
 
 	/*
 	 * capabilities field layout:
@@ -396,12 +395,13 @@ wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(struct wiphy *wiphy,
 	wifi_pos_debug("pmsr: max_peers=%u ap_tsf=%u rand_mac=%u",
 		       pmsr->max_peers, pmsr->report_ap_tsf,
 		       pmsr->randomize_mac_addr);
-	wifi_pos_debug("pmsr: pd_supp=%u pd_concur=%u",
-		       pmsr->ftm.pd_support,
-		       pmsr->ftm.pd_concurrent_ista_rsta_support);
+	wifi_pos_debug("pmsr: pd_supp=%u infra_supp=%u pd_concur=%u",
+		       pmsr->ftm.type.pd_support,
+		       pmsr->ftm.type.infra_support,
+		       pmsr->ftm.concurrent_ista_rsta_support);
 	wifi_pos_debug("pmsr: pd_max_ista=%u pd_max_rsta=%u",
-		       pmsr->pd_max_peer_ista_role,
-		       pmsr->pd_max_peer_rsta_role);
+		       pmsr->ftm.ista.max_peers,
+		       pmsr->ftm.rsta.max_peers);
 	wifi_pos_debug("ftm: supp=%u asap=%u non_asap=%u",
 		       pmsr->ftm.supported, pmsr->ftm.asap,
 		       pmsr->ftm.non_asap);
@@ -428,12 +428,8 @@ wlan_wifi_pos_cfg80211_set_wiphy_pmsr_capa(struct wiphy *wiphy,
 
 	wifi_pos_debug("ftm: bw=0x%x preambles=0x%x",
 		       pmsr->ftm.bandwidths, pmsr->ftm.preambles);
-	wifi_pos_debug("pd edca: bw=0x%x preambles=0x%x",
-		       pmsr->ftm.pd_edca_bandwidths,
-		       pmsr->ftm.pd_edca_preambles);
-	wifi_pos_debug("pd ntb: bw=0x%x preambles=0x%x",
-		       pmsr->ftm.pd_ntb_bandwidths,
-		       pmsr->ftm.pd_ntb_preambles);
+	wifi_pos_debug("pd ntb/edca: bw=0x%x preambles=0x%x",
+		       pmsr->ftm.pd_bandwidths, pmsr->ftm.pd_preambles);
 
 	wifi_pos_debug("ftm: burst_exp=%d max_ftms_burst=%u",
 		       pmsr->ftm.max_bursts_exponent,
@@ -774,7 +770,7 @@ static int __wlan_hdd_cfg80211_start_pmsr(struct wiphy *wiphy,
 		p->ftmr_retries = ftm->ftmr_retries;
 
 		p->nominal_time = ftm->nominal_time;
-		p->measurements_per_aw = ftm->num_measurements;
+		p->measurements_per_aw = ftm->ftms_per_burst;
 		p->aw_duration = ftm->availability_window;
 		p->suppress_range_results = ftm->pd_suppress_range_results;
 

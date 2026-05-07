@@ -681,6 +681,8 @@ send_p2p_usd_req_cmd_tlv(wmi_unified_t wmi_handle,
 		cmd->service_specific_info_len = ssi_len;
 		cmd->default_freq = param->freq_config.default_freq;
 
+		WMI_CHAR_ARRAY_TO_MAC_ADDR(param->multicast_mac_addr.bytes,
+					   &cmd->multicast_addr);
 		WMI_CHAR_ARRAY_TO_MAC_ADDR(param->p2p_mac_addr.bytes,
 					   &cmd->device_mac_addr);
 

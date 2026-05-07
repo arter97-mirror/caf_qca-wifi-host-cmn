@@ -49,6 +49,8 @@
 #include "wifi_pos_utils_pub.h"
 #endif
 #include "wlan_osif_request_manager.h"
+#include "wmi_unified_param.h"
+#include "wlan_hdd_main.h"
 
 #ifdef CNSS_GENL
 #define WLAN_CLD80211_MAX_SIZE SKB_WITH_OVERHEAD(8192UL)
@@ -1714,7 +1716,10 @@ os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 		pmsr_result.ftm.num_bursts_exp = res->burst_count;
 		pmsr_result.ftm.burst_duration = res->burst_duration;
 		pmsr_result.ftm.burst_period = res->burst_period;
-		pmsr_result.ftm.ftms_per_burst = res->ftms_per_burst;
+		if (res->meas_per_aw)
+			pmsr_result.ftm.ftms_per_burst = res->meas_per_aw;
+		else
+			pmsr_result.ftm.ftms_per_burst = res->ftms_per_burst;
 
 		pmsr_result.ftm.preamble =
 			osif_pmsr_wmi_preamble_to_nl(res->preamble);
@@ -1768,8 +1773,6 @@ os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 		pmsr_result.ftm.availability_window =
 				res->availability_window_duration;
 		pmsr_result.ftm.availability_window_valid = 1;
-		pmsr_result.ftm.measurements_per_aw = res->meas_per_aw;
-		pmsr_result.ftm.measurements_per_aw_valid = 1;
 
 		pmsr_result.ftm.is_delayed_lmr = res->is_delayed_lmr;
 
