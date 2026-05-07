@@ -3019,6 +3019,11 @@ QDF_STATUS (*send_rtt_peer_meas_cancel_cmd)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_rtt_peer_meas_req_cmd)(wmi_unified_t wmi_handle,
 					 struct wmi_rtt_peer_meas_req_cmd_params *params);
+
+QDF_STATUS (*extract_rtt_peer_meas_report_ev)
+			(wmi_unified_t wmi_handle,
+			 void *evt_buf,
+			 struct wifi_pos_peer_meas_report *dst);
 #endif
 
 QDF_STATUS (*extract_hw_mode_resp_event)(wmi_unified_t wmi_handle,

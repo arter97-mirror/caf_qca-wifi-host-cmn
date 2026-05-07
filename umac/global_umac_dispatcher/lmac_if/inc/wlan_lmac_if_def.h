@@ -2703,6 +2703,8 @@ struct wlan_lmac_if_iot_sim_rx_ops {
  * confirm event for PASN Peer.
  * @wifi_pos_ranging_peer_delete_cb: Ranging peer delete handle function
  * pointer.
+ * @wifi_pos_rtt_peer_meas_report_cb: Callback to handle RTT peer measurement
+ * report event.
  * @wifi_pos_vdev_delete_all_ranging_peers_rsp_cb: Callback to handle vdev
  * delete all ranging peers response
  * @wifi_pos_vdev_delete_all_ranging_peers_cb: Delete all ranging peers for
@@ -2725,6 +2727,9 @@ struct wlan_lmac_if_wifi_pos_rx_ops {
 			(struct wlan_objmgr_psoc *psoc,
 			 struct wlan_pasn_request *info,
 			 uint8_t vdev_id, uint8_t num_peers);
+	QDF_STATUS (*wifi_pos_rtt_peer_meas_report_cb)
+			(struct wlan_objmgr_psoc *psoc,
+			 struct wifi_pos_peer_meas_report *report);
 	QDF_STATUS (*wifi_pos_vdev_delete_all_ranging_peers_rsp_cb)
 			(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
 	QDF_STATUS (*wifi_pos_vdev_delete_all_ranging_peers_cb)

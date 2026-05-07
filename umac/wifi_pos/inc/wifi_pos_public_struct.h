@@ -171,6 +171,125 @@ enum wlan_pasn_auth_status_code {
 	WLAN_PASN_AUTH_STATUS_PEER_COMEBACK = 5,
 };
 
+/**
+ * enum wifi_pos_peer_meas_status - RTT peer measurement status
+ * @WIFI_POS_RTT_PEER_MEAS_STATUS_OK: Measurement succeeded
+ * @WIFI_POS_RTT_PEER_MEAS_STATUS_FAIL: Measurement failed
+ */
+enum wifi_pos_peer_meas_status {
+	WIFI_POS_RTT_PEER_MEAS_STATUS_OK = 0,
+	WIFI_POS_RTT_PEER_MEAS_STATUS_FAIL = 1,
+};
+
+/**
+ * enum wifi_pos_peer_meas_type - RTT peer measurement type
+ * @WIFI_POS_RTT_PEER_MEAS_TYPE_11AZ_NTB: 11az non-trigger based ranging
+ * @WIFI_POS_RTT_PEER_MEAS_TYPE_11AZ_TB: 11az trigger based ranging
+ */
+enum wifi_pos_peer_meas_type {
+	WIFI_POS_RTT_PEER_MEAS_TYPE_11AZ_NTB = 0,
+	WIFI_POS_RTT_PEER_MEAS_TYPE_11AZ_TB = 1,
+};
+
+/**
+ * struct wifi_pos_peer_meas_result - Host representation of RTT peer
+ * measurement result received from firmware.
+ * @peer_mac: Peer MAC address
+ * @status: Measurement completion status
+ * @final: Final result indication
+ * @tb_ranging: TB ranging indication
+ * @ntb_ranging: NTB ranging indication
+ * @ap_tsf_valid: AP TSF validity indication
+ * @is_delayed_lmr: Delayed LMR indication
+ * @meas_type: Peer measurement type
+ * @burst_idx: Current burst index
+ * @burst_count: Total burst count
+ * @burst_duration: Negotiated burst duration
+ * @burst_period: Negotiated burst period
+ * @ftms_per_burst: FTMs per burst
+ * @rssi_avg: Average RSSI
+ * @rssi_spread: RSSI spread
+ * @rtt_avg: Average RTT
+ * @rtt_variance: RTT variance
+ * @rtt_spread: RTT spread
+ * @dist_avg_mm: Average distance in millimeters
+ * @dist_variance_mm: Distance variance in millimeters
+ * @dist_spread_mm: Distance spread in millimeters
+ * @min_time_between_meas: Negotiated minimum time between measurements
+ * @max_time_between_meas: Negotiated maximum time between measurements
+ * @num_tx_sts: Number of TX space-time streams
+ * @num_rx_sts: Number of RX space-time streams
+ * @tx_ltf_repetition_count: TX LTF repetition count
+ * @rx_ltf_repetition_count: RX LTF repetition count
+ * @availability_window_duration: Availability window duration
+ * @nominal_time: Nominal time
+ * @meas_per_aw: Number of measurements per availability window
+ * @channel_bw: Reported channel bandwidth
+ * @preamble: Reported preamble
+ * @tx_mcs: Reported TX MCS
+ * @tx_nss: Reported TX NSS
+ * @tx_bw: Reported TX rate bandwidth
+ * @tx_gi: Reported TX GI
+ * @rx_mcs: Reported RX MCS
+ * @rx_nss: Reported RX NSS
+ * @rx_bw: Reported RX rate bandwidth
+ * @rx_gi: Reported RX GI
+ * @num_ftmr_successes: Number of FTMR successes
+ * @num_ftmr_attempts: Number of FTMR attempts
+ */
+struct wifi_pos_peer_meas_result {
+	struct qdf_mac_addr peer_mac;
+	enum wifi_pos_peer_meas_status status;
+	bool final;
+	bool tb_ranging;
+	bool ntb_ranging;
+	bool ap_tsf_valid;
+	bool is_delayed_lmr;
+	enum wifi_pos_peer_meas_type meas_type;
+	uint32_t burst_idx;
+	uint32_t burst_count;
+	uint32_t burst_duration;
+	uint32_t burst_period;
+	uint8_t  ftms_per_burst;
+	uint32_t rssi_avg;
+	uint32_t rssi_spread;
+	uint64_t rtt_avg;
+	uint64_t rtt_variance;
+	uint64_t rtt_spread;
+	uint64_t dist_avg_mm;
+	uint64_t dist_variance_mm;
+	uint64_t dist_spread_mm;
+	uint32_t min_time_between_meas;
+	uint32_t max_time_between_meas;
+	uint8_t  num_tx_sts;
+	uint8_t  num_rx_sts;
+	uint32_t tx_ltf_repetition_count;
+	uint32_t rx_ltf_repetition_count;
+	uint32_t availability_window_duration;
+	uint32_t nominal_time;
+	uint32_t meas_per_aw;
+	uint32_t channel_bw;
+	uint32_t preamble;
+	uint8_t tx_mcs;
+	uint8_t tx_nss;
+	uint8_t tx_bw;
+	uint8_t tx_gi;
+	uint8_t rx_mcs;
+	uint8_t rx_nss;
+	uint8_t rx_bw;
+	uint8_t rx_gi;
+	uint32_t num_ftmr_successes;
+	uint32_t num_ftmr_attempts;
+};
+
+struct wifi_pos_peer_meas_report {
+	uint32_t req_id;
+	uint8_t vdev_id;
+	uint8_t num_peers;
+	struct wifi_pos_peer_meas_result
+	peer_result[WLAN_MAX_11AZ_PEERS];
+};
+
 #define WLAN_PASN_MAX_COOKIE_LEN 255
 /**
  * struct wlan_pasn_auth_status_peer_info - PASN authentication status peer

@@ -887,3 +887,24 @@ void wifi_pos_set_delete_all_peer_in_progress(struct wlan_objmgr_vdev *vdev,
 
 	vdev_pos_obj->is_delete_all_pasn_peer_in_progress = flag;
 }
+
+QDF_STATUS
+wifi_pos_rtt_peer_meas_report(struct wlan_objmgr_psoc *psoc,
+			      struct wifi_pos_peer_meas_report *report)
+{
+	struct wifi_pos_osif_ops *osif_cb;
+
+	if (!psoc || !report) {
+		wifi_pos_err("psoc: %pK, report: %pK", psoc, report);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	osif_cb = wifi_pos_get_osif_callbacks();
+	if (!osif_cb || !osif_cb->osif_rtt_peer_meas_report_cb) {
+		wifi_pos_err("OSIF %s cb is NULL",
+			     !osif_cb ? "" : "RTT meas report");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return osif_cb->osif_rtt_peer_meas_report_cb(psoc, report);
+}

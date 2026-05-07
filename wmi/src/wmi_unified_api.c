@@ -3088,6 +3088,18 @@ wmi_send_rtt_peer_meas_req_cmd(wmi_unified_t wmi,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_extract_rtt_peer_meas_report(wmi_unified_t wmi, void *evt_buf,
+				 struct wifi_pos_peer_meas_report *dst)
+{
+	if (wmi->ops->extract_rtt_peer_meas_report_ev)
+		return wmi->ops->extract_rtt_peer_meas_report_ev(wmi,
+								 evt_buf,
+								 dst);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif
 
 QDF_STATUS wmi_unified_extract_hw_mode_resp(wmi_unified_t wmi,

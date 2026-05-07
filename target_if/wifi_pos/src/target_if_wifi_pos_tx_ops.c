@@ -271,6 +271,16 @@ target_if_wifi_pos_register_11az_events(struct wlan_objmgr_psoc *psoc)
 		return status;
 	}
 
+	status = wmi_unified_register_event_handler(
+			get_wmi_unified_hdl_from_psoc(psoc),
+			wmi_rtt_peer_meas_report_eventid,
+			target_if_wifi_pos_rtt_peer_meas_report_ev_handler,
+			WMI_RX_EXECUTION_CTX);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		target_if_err("register rtt peer meas report event_handler failed");
+		return status;
+	}
+
 	return status;
 }
 
@@ -289,6 +299,10 @@ target_if_wifi_pos_unregister_11az_events(struct wlan_objmgr_psoc *psoc)
 	wmi_unified_unregister_event_handler(
 			get_wmi_unified_hdl_from_psoc(psoc),
 			wmi_rtt_pasn_peer_delete_eventid);
+
+	wmi_unified_unregister_event_handler(
+			get_wmi_unified_hdl_from_psoc(psoc),
+			wmi_rtt_peer_meas_report_eventid);
 }
 #else
 static QDF_STATUS

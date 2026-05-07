@@ -190,6 +190,17 @@ wifi_pos_vdev_delete_all_ranging_peers_rsp(struct wlan_objmgr_psoc *psoc,
 					   uint8_t vdev_id);
 
 /**
+ * wifi_pos_rtt_peer_meas_report() - Handle RTT peer measurement report
+ * @psoc: Psoc pointer
+ * @report: Pointer to RTT peer measurement report
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wifi_pos_rtt_peer_meas_report(struct wlan_objmgr_psoc *psoc,
+			      struct wifi_pos_peer_meas_report *report);
+
+/**
  * wifi_pos_is_delete_all_peer_in_progress() - Check if delete all pasn peers
  *                                             command is already in progress
  *                                             for a given vdev

@@ -4192,6 +4192,18 @@ wmi_send_rtt_peer_meas_cancel_cmd(wmi_unified_t wmi, uint32_t req_id);
 QDF_STATUS
 wmi_send_rtt_peer_meas_req_cmd(wmi_unified_t wmi,
 			       struct wmi_rtt_peer_meas_req_cmd_params *params);
+
+/**
+ * wmi_extract_rtt_peer_meas_report() - Extract RTT peer measurement report
+ * @wmi: WMI handle
+ * @evt_buf: Event buffer
+ * @dst: Destination buffer pointer
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_extract_rtt_peer_meas_report(wmi_unified_t wmi, void *evt_buf,
+				 struct wifi_pos_peer_meas_report *dst);
 #endif
 
 /**

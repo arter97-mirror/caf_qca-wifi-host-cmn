@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -288,6 +288,64 @@ int target_if_wifi_pos_pasn_peer_delete_ev_handler(ol_scn_t scn,
 
 	wlan_objmgr_psoc_release_ref(psoc, WLAN_WIFI_POS_TGT_IF_ID);
 	qdf_mem_free(data);
+
+	return 0;
+}
+#endif
+
+#if defined(WLAN_FEATURE_USD_RANGING) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+int target_if_wifi_pos_rtt_peer_meas_report_ev_handler(ol_scn_t scn,
+						       uint8_t *buf,
+						       uint32_t len)
+{
+	wmi_unified_t wmi_handle;
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_wifi_pos_rx_ops *rx_ops;
+	struct wifi_pos_peer_meas_report *report = NULL;
+	QDF_STATUS status;
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		target_if_err("psoc is null");
+		return -EINVAL;
+	}
+
+	wlan_objmgr_psoc_get_ref(psoc, WLAN_WIFI_POS_TGT_IF_ID);
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		wlan_objmgr_psoc_release_ref(psoc, WLAN_WIFI_POS_TGT_IF_ID);
+		target_if_err("wmi_handle is null");
+		return -EINVAL;
+	}
+
+	report = qdf_mem_malloc(sizeof(*report));
+	if (!report) {
+		wlan_objmgr_psoc_release_ref(psoc, WLAN_WIFI_POS_TGT_IF_ID);
+		return -ENOMEM;
+	}
+
+	status = wmi_extract_rtt_peer_meas_report(wmi_handle, buf, report);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wifi_pos_err("Extract RTT peer meas report failed");
+		wlan_objmgr_psoc_release_ref(psoc, WLAN_WIFI_POS_TGT_IF_ID);
+		qdf_mem_free(report);
+		return -EINVAL;
+	}
+
+	rx_ops = target_if_wifi_pos_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->wifi_pos_rtt_peer_meas_report_cb) {
+		wifi_pos_err("%s is null",
+			     !rx_ops ? "rx_ops" : "rx_ops_cb");
+		wlan_objmgr_psoc_release_ref(psoc, WLAN_WIFI_POS_TGT_IF_ID);
+		qdf_mem_free(report);
+		return -EINVAL;
+	}
+
+	rx_ops->wifi_pos_rtt_peer_meas_report_cb(psoc, report);
+
+	wlan_objmgr_psoc_release_ref(psoc, WLAN_WIFI_POS_TGT_IF_ID);
+	qdf_mem_free(report);
 
 	return 0;
 }
