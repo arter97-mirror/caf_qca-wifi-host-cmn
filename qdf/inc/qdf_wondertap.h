@@ -173,4 +173,21 @@ typedef __qdf_wondertap_ops_t qdf_wondertap_ops_t;
  * operations table for vendor specific implementation.
  */
 typedef __qdf_wondertap_priv_t qdf_wondertap_priv_t;
+
+/**
+ * typedef qdf_wondertap_channel_status_t - Channel status per slot
+ *
+ * Structure containing channel hopping status information for a single
+ * slot including role, frequency, TSF timestamps, and traffic indices.
+ */
+typedef __qdf_wondertap_channel_status_t qdf_wondertap_channel_status_t;
+
+/**
+ * typedef qdf_wondertap_channel_status_report_t - Channel status report
+ *
+ * Structure containing complete channel hopping status report including
+ * current channel index, hopping request TSF, and per-slot status information.
+ */
+typedef __qdf_wondertap_channel_status_report_t
+	qdf_wondertap_channel_status_report_t;
 #endif /* _QDF_WONDERTAP_H */
