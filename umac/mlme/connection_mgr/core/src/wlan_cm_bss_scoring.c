@@ -4616,6 +4616,24 @@ static void cm_init_nss_weight_per_index(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN_SMD
+static void cm_init_smd_score_config(struct wlan_objmgr_psoc *psoc,
+				     struct scoring_cfg *score_cfg,
+				     uint32_t *total_weight)
+{
+	score_cfg->weight_config.smd_weightage =
+		cfg_get(psoc, CFG_SCORING_SMD_WEIGHTAGE);
+
+	*total_weight += score_cfg->weight_config.smd_weightage;
+}
+#else
+static void cm_init_smd_score_config(struct wlan_objmgr_psoc *psoc,
+				     struct scoring_cfg *score_cfg,
+				     uint32_t *total_weight)
+{
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 #ifdef WLAN_FEATURE_11BE_MLO
 static inline void
 cm_fill_num_nontx_to_scan_from_top(struct scoring_cfg *score_cfg)
@@ -4686,6 +4704,7 @@ void wlan_cm_init_score_config(struct wlan_objmgr_psoc *psoc,
 
 	cm_init_mlo_score_config(psoc, score_cfg, &total_weight);
 	cm_init_uhr_score_config(psoc, score_cfg, &total_weight);
+	cm_init_smd_score_config(psoc, score_cfg, &total_weight);
 
 	/*
 	 * If configured weights are greater than max weight,

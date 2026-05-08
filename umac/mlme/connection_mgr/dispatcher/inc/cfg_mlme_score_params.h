@@ -1990,9 +1990,44 @@
 
 #define CFG_11BN_CONFIG \
 	CFG(CFG_SCORING_UHR_CAPS_WEIGHTAGE)
-#else
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/*
+ * <ini>
+ * smd_weightage - SMD support Weightage to calculate best candidate
+ * @Min: 0
+ * @Max: 100
+ * @Default: 2
+ *
+ * This ini is used to increase/decrease SMD weightage in best candidate
+ * selection. If AP belongs to the same SMD, AP will get additional weightage
+ * with this param.
+ *
+ * Related: None
+ *
+ * Supported Feature: STA Candidate selection
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_SCORING_SMD_WEIGHTAGE CFG_INI_UINT( \
+	"smd_weightage", \
+	0, \
+	100, \
+	2, \
+	CFG_VALUE_OR_DEFAULT, \
+	"SMD Weightage")
+
+#define CFG_SMD_SCORE_CONFIG \
+	CFG(CFG_SCORING_SMD_WEIGHTAGE)
+#else /* WLAN_FEATURE_11BN_SMD */
+#define CFG_SMD_SCORE_CONFIG
+#endif /* WLAN_FEATURE_11BN_SMD */
+#else /* WLAN_FEATURE_11BN */
 #define CFG_11BN_CONFIG
-#endif
+#define CFG_SMD_SCORE_CONFIG
+#endif /* WLAN_FEATURE_11BN */
 
 #define CFG_MLME_SCORE_ALL \
 	CFG(CFG_SCORING_RSSI_WEIGHTAGE) \
@@ -2037,6 +2072,7 @@
 	CFG_6GHZ_CONFIG \
 	CFG_11BE_CONFIG \
 	CFG_MLO_SCORE_CONFIG \
-	CFG_11BN_CONFIG
+	CFG_11BN_CONFIG \
+	CFG_SMD_SCORE_CONFIG
 
 #endif /* __CFG_MLME_SCORE_PARAMS_H */
