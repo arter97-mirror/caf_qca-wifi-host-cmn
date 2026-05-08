@@ -5110,13 +5110,16 @@ mlo_link_recfg_state_wait_event(void *ctx,
 {
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
-	struct mlo_link_recfg_state_req *req;
 	bool status;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
-		req = (struct mlo_link_recfg_state_req *)event_data;
-		status = smd_roam_prep_complete(recfg_ctx, req);
+		mlo_link_recfg_sm_transition_to(
+			ctx,
+			WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC);
+		status = mlo_link_recfg_sm_deliver_event_sync(
+				recfg_ctx->ml_dev, event,
+				event_data_len, event_data);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
 		/* transition to init */
@@ -5243,6 +5246,67 @@ static void
 mlo_link_recfg_state_del_link_exit(void *ctx)
 {
 }
+
+#ifdef WLAN_FEATURE_11BN_SMD
+static void
+mlo_link_recfg_subst_wait_smd_exec_entry(void *ctx)
+{
+	if (mlo_link_recfg_sm_get_state(ctx) != WLAN_LINK_RECFG_S_WAIT)
+		QDF_BUG(0);
+
+	mlo_link_recfg_sm_set_substate(
+			ctx, WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC);
+	// TODO: Start wait for execution timer
+}
+
+static void
+mlo_link_recfg_subst_wait_smd_exec_exit(void *ctx)
+{
+}
+
+static bool
+mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
+					 uint16_t event,
+					 uint16_t event_data_len,
+					 void *event_data)
+{
+	struct mlo_link_recfg_context *recfg_ctx = ctx;
+	bool event_handled = true;
+	struct mlo_link_recfg_state_req *req;
+	bool status;
+
+	switch (event) {
+	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
+		req = (struct mlo_link_recfg_state_req *)event_data;
+		status = smd_roam_prep_complete(recfg_ctx, req);
+		break;
+	default:
+		event_handled = false;
+		break;
+	}
+
+	return event_handled;
+}
+#else
+static void
+mlo_link_recfg_subst_wait_smd_exec_entry(void *ctx)
+{
+}
+
+static void
+mlo_link_recfg_subst_wait_smd_exec_exit(void *ctx)
+{
+}
+
+static bool
+mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
+					 uint16_t event,
+					 uint16_t event_data_len,
+					 void *event_data)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
 
 #define DEL_LINK_SET_LINK_TIMEOUT 14000
 
@@ -6311,9 +6375,9 @@ static struct wlan_sm_state_info mlo_link_recfg_sm_info[] = {
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		false,
 		"WAIT_SMD_EXEC",
-		NULL,
-		NULL,
-		NULL,
+		mlo_link_recfg_subst_wait_smd_exec_entry,
+		mlo_link_recfg_subst_wait_smd_exec_exit,
+		mlo_link_recfg_subst_wait_smd_exec_event,
 	},
 	{
 		(uint8_t)WLAN_LINK_RECFG_SS_MAX,

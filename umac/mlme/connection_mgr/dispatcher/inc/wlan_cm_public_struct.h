@@ -730,7 +730,6 @@ enum MLO_TYPE {
 	MLO_TYPE_MAX
 };
 
-#ifdef WLAN_FEATURE_11BN_SMD
 /**
  * struct smd_vdev_repurpose_req - SMD VDEV repurpose request
  * @vdev_id: Target vdev_id for BSS repurpose
@@ -764,5 +763,4 @@ struct smd_transition_ie_info {
 	uint32_t ie_len;
 	uint8_t ie_data[256];  /* Max IE size */
 };
-#endif
 #endif /* __WLAN_CM_PUBLIC_STRUCT_H__ */
