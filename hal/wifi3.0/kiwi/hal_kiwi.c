@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2326,12 +2326,14 @@ hal_srng_dst_get_num_avail_words_kiwi(hal_ring_handle_t hal_ring_hdl)
 }
 
 #ifdef DRIVER_PASSTHRU_MODE
-static inline void hal_hw_attach_get_rssi_op(struct hal_soc *hal_soc)
+static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
 {
 	hal_soc->ops->hal_rx_tlv_get_rssi = hal_rx_tlv_get_rssi_be;
+	hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts =
+					hal_rx_tlv_get_ppdu_start_ts_be;
 }
 #else
-static inline void hal_hw_attach_get_rssi_op(struct hal_soc *hal_soc)
+static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
 {
 }
 #endif
@@ -2622,7 +2624,7 @@ static void hal_hw_txrx_ops_attach_kiwi(struct hal_soc *hal_soc)
 				hal_rx_flow_cmem_update_reo_dst_ind_kiwi;
 	hal_soc->ops->hal_srng_dst_get_num_avail_words =
 				hal_srng_dst_get_num_avail_words_kiwi;
-	hal_hw_attach_get_rssi_op(hal_soc);
+	hal_hw_attach_passthru_ops(hal_soc);
 };
 
 struct hal_hw_srng_config hw_srng_table_kiwi[] = {

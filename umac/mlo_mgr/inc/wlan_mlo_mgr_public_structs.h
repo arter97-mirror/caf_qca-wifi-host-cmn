@@ -825,6 +825,7 @@ enum set_link_source {
  * @force_active_num_bitmap: force active num link bitmap
  * @force_inactive_num: force inactive link num
  * @force_inactive_num_bitmap: force inactive num link bitmap
+ * @link_ctrl_mode: link control mode
  */
 struct set_link_req {
 	enum mlo_link_force_mode mode;
@@ -835,6 +836,7 @@ struct set_link_req {
 	uint16_t force_active_num_bitmap;
 	uint8_t force_inactive_num;
 	uint16_t force_inactive_num_bitmap;
+	uint8_t link_ctrl_mode;
 };
 
 /**

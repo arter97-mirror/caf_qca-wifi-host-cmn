@@ -4190,4 +4190,26 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 }
 #endif
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
+
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * dp_rx_err_handle_passthru_msdu_buf() - Process passthru msdu buffers received
+ * on rx err ring
+ * @soc: DP SoC handle
+ * @ring_desc: error ring descriptor
+ *
+ * This function processes passthru msdu buffers received on rx err ring.
+ *
+ * Return: lmac id
+ */
+int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
+				       hal_ring_desc_t ring_desc);
+#else
+static inline
+int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
+				       hal_ring_desc_t ring_desc)
+{
+	return MAX_PDEV_CNT;
+}
+#endif
 #endif /* _DP_RX_H */

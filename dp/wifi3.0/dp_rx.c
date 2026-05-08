@@ -1199,6 +1199,8 @@ qdf_export_symbol(__dp_rx_buffers_replenish);
 
 #ifdef DRIVER_PASSTHRU_MODE
 #define DP_NORMALIZED_NOISE_FLOOR (-96)
+#define DP_PPDU_START_TS_LSHIFT_VAL 10
+#define DP_PPDU_START_TS_CLK_HZ 960
 
 static
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
@@ -1212,7 +1214,10 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 	rx_pkt_tlvs = qdf_nbuf_data(nbuf);
 	qdf_nbuf_pull_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
 
-	rx_status.tsft = qdf_get_log_timestamp();
+	rx_status.tsft = hal_rx_tlv_get_ppdu_start_ts(soc->hal_soc,
+						      rx_pkt_tlvs);
+	rx_status.tsft = (rx_status.tsft << DP_PPDU_START_TS_LSHIFT_VAL) /
+			 DP_PPDU_START_TS_CLK_HZ;
 	rx_status.rs_fcs_err = hal_rx_tlv_mpdu_fcs_err_get(soc->hal_soc,
 							   rx_pkt_tlvs);
 	rx_status.mon_fcs_cap = 1;

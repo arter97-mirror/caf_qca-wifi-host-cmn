@@ -3341,5 +3341,17 @@ uint32_t hal_rx_tlv_get_user_rssi(hal_soc_handle_t hal_soc_hdl,
 
 	return 0;
 }
+
+static inline
+uint32_t hal_rx_tlv_get_ppdu_start_ts(hal_soc_handle_t hal_soc_hdl,
+				      uint8_t *rx_tlv_hdr)
+{
+	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
+
+	if (hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts)
+		return hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts(rx_tlv_hdr);
+
+	return 0;
+}
 #endif
 #endif /* _HAL_RX_H */
