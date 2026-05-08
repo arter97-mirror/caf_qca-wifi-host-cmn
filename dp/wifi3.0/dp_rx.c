@@ -1270,7 +1270,6 @@ qdf_export_symbol(__dp_rx_buffers_replenish);
 #define DP_PPDU_START_TS_LSHIFT_VAL 10
 #define DP_PPDU_START_TS_CLK_HZ 960
 
-static
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 			       qdf_nbuf_t nbuf)
 {
@@ -1313,13 +1312,6 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 		vdev->osif_rx(vdev->osif_vdev, nbuf);
 
 	return 0;
-}
-#else
-static
-int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       qdf_nbuf_t nbuf)
-{
-	return -EINVAL;
 }
 #endif
 
