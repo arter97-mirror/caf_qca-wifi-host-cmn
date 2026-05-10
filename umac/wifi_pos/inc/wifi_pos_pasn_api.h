@@ -245,7 +245,24 @@ QDF_STATUS wlan_wifi_pos_pasn_flush_callback(struct scheduler_msg *msg);
  * Return: QDF_STATUS
  */
 QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg);
+
+/**
+ * wifi_pos_set_pasn_keys_ctx() - Set PASN keys context
+ * @psoc: pointer to psoc object
+ * @ctx: PASN keys context
+ *
+ * Return: none
+ */
+void wifi_pos_set_pasn_keys_ctx(struct wlan_objmgr_psoc *psoc, void *ctx);
+
 #else
+static inline QDF_STATUS
+wifi_pos_set_peer_ltf_keyseed_required(struct wlan_objmgr_peer *peer,
+				       bool value)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
 static inline
 QDF_STATUS wifi_pos_handle_ranging_peer_create(struct wlan_objmgr_psoc *psoc,
 					       struct wlan_pasn_request *req,
@@ -342,6 +359,11 @@ static inline
 QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+wifi_pos_set_pasn_keys_ctx(struct wlan_objmgr_psoc *psoc, void *ctx)
+{
 }
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WIFI_POS_PASN_API_H_ */

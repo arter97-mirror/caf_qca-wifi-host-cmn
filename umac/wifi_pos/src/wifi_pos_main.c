@@ -1412,6 +1412,21 @@ QDF_STATUS wifi_pos_process_msg(struct scheduler_msg *msg)
 		 * cleanup the peer.
 		 */
 		wifi_pos_add_peer_to_list(vdev, req, false);
+		wifi_pos_update_pasn_peer_count(vdev, true);
+
+		if (req->is_ltf_keyseed_required) {
+			struct wlan_objmgr_peer *peer;
+
+			peer = wlan_objmgr_get_peer_by_mac(req->psoc,
+							   req->peer_mac.bytes,
+							   WLAN_WIFI_POS_CORE_ID);
+			if (peer) {
+				wifi_pos_set_peer_ltf_keyseed_required(peer,
+								       true);
+				wlan_objmgr_peer_release_ref(peer,
+							     WLAN_WIFI_POS_CORE_ID);
+			}
+		}
 
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 		break;

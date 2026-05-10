@@ -571,6 +571,9 @@ wifi_pos_handle_ranging_peer_create_rsp(struct wlan_objmgr_psoc *psoc,
 	if (peer_info->is_userspace_peer_create) {
 		status = wifi_pos_continue_nb_peer_create(vdev, peer_info,
 							  peer_create_status);
+		if (peer_create_status)
+			wifi_pos_update_pasn_peer_count(vdev, false);
+
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 		return status;
 	}
@@ -1001,4 +1004,17 @@ QDF_STATUS wlan_wifi_pos_pasn_flush_callback(struct scheduler_msg *msg)
 QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg)
 {
 	return wifi_pos_process_msg(msg);
+}
+
+void wifi_pos_set_pasn_keys_ctx(struct wlan_objmgr_psoc *psoc, void *ctx)
+{
+	struct wifi_pos_psoc_priv_obj *pasn_priv;
+
+	pasn_priv = wifi_pos_get_psoc_priv_obj(psoc);
+	if (!pasn_priv) {
+		wifi_pos_err("PASN private object is NULL");
+		return;
+	}
+
+	pasn_priv->pasn_keys_ctx = ctx;
 }
