@@ -1153,6 +1153,8 @@ dp_print_pdev_rx_mon_stats(struct dp_pdev *pdev)
 			       rx_mon_stats->status_buf_done_war);
 		DP_PRINT_STATS("dest_mpdu_drop_cnt = %d",
 			       rx_mon_stats->dest_mpdu_drop);
+		DP_PRINT_STATS("dest_mpdu_deliver_fail_cnt = %d",
+			       rx_mon_stats->dest_mpdu_deliver_fail);
 		DP_PRINT_STATS("dup_mon_linkdesc_cnt = %d",
 			       rx_mon_stats->dup_mon_linkdesc_cnt);
 		DP_PRINT_STATS("dup_mon_buf_cnt = %d",

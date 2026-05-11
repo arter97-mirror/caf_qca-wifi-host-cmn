@@ -358,6 +358,7 @@ struct cdp_mon_lpc_coc_stats {
  * @dest_ppdu_done: destination ring PPDU count
  * @dest_mpdu_done: destination ring MPDU count
  * @dest_mpdu_drop:
+ * @dest_mpdu_deliver_fail: number of MPDUs failed to deliver
  * @dup_mon_linkdesc_cnt: duplicate link descriptor indications from HW
  * @dup_mon_buf_cnt: duplicate buffer indications from HW
  * @stat_ring_ppdu_id_hist:
@@ -427,6 +428,7 @@ struct cdp_pdev_mon_stats {
 	uint32_t dest_ppdu_done;
 	uint32_t dest_mpdu_done;
 	uint32_t dest_mpdu_drop;
+	uint32_t dest_mpdu_deliver_fail;
 	uint32_t dup_mon_linkdesc_cnt;
 	uint32_t dup_mon_buf_cnt;
 	uint32_t stat_ring_ppdu_id_hist[MAX_PPDU_ID_HIST];

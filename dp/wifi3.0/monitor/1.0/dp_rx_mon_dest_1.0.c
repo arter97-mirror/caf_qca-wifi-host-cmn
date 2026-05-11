@@ -926,7 +926,10 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 		if (qdf_likely((head_msdu) && (tail_msdu))) {
 			rx_mon_stats->dest_mpdu_done++;
-			dp_rx_mon_deliver(soc, mac_id, head_msdu, tail_msdu);
+			status = dp_rx_mon_deliver(soc, mac_id,
+						   head_msdu, tail_msdu);
+			if (status != QDF_STATUS_SUCCESS)
+				rx_mon_stats->dest_mpdu_deliver_fail++;
 		}
 
 		rxdma_dst_ring_desc =
