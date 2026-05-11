@@ -771,6 +771,7 @@ enum element_ie {
  * @WLAN_EXTN_ELEMID_SMD_BSS_TRANS_PARAMS: SMD BSS Transition Parameters IE (IEEE 802.11bn, 9.4.2.359)
  * @WLAN_EXTN_ELEMID_MIC: MIC IE (IEEE 802.11bn, 9.4.2.314)
  * @WLAN_EXTN_ELEMID_SECURITY_PROFILE: Security Profile IE
+ * @WLAN_EXTN_ELEMID_UHR_PARAM_UPDATE: UHR Param Update IE
  */
 enum extn_element_ie {
 #ifdef WLAN_FEATURE_11BN_SMD
@@ -819,6 +820,9 @@ enum extn_element_ie {
 #endif
 #ifdef WLAN_FEATURE_SECURITY_PROFILE
 	WLAN_EXTN_ELEMID_SECURITY_PROFILE = 162,
+#endif
+#ifdef WLAN_FEATURE_11BN_ECU
+	WLAN_EXTN_ELEMID_UHR_PARAM_UPDATE = 158,
 #endif
 };
 
@@ -2405,6 +2409,11 @@ enum wlan_ml_linfo_subelementid {
 #define WLAN_ML_BV_CTRL_PBM_MLDID_P                    ((uint16_t)BIT(5))
 /* Extended MLD Capabilities and Operations Present */
 #define WLAN_ML_BV_CTRL_PBM_EXT_MLDCAPANDOP_P          ((uint16_t)BIT(6))
+#ifdef WLAN_FEATURE_11BN_ECU
+/* Enhanced Critical Update Information present */
+#define WLAN_ML_BV_CTRL_PBM_ECUINFO_P                  ((uint16_t)BIT(7))
+#endif /* WLAN_FEATURE_11BN_ECU */
+
 
 /* Definitions related to Basic variant Multi-Link element Common Info field */
 
@@ -2652,6 +2661,21 @@ enum wlan_ml_bv_cinfo_emlcap_transtimeout {
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RESERVED_BIT_IDX                  8
 #define WLAN_ML_BV_CINFO_EXTMLDCAPINFO_RESERVED_BIT_BITS                 8
 
+#ifdef WLAN_FEATURE_11BN_ECU
+/* Size in octets of Enhanced Critical Update Information subfield in Basic
+ * variant Multi-Link element Common Info field as per IEEE P802.11bn/D1.3.
+ */
+#define WLAN_ML_BV_CINFO_ECUINFO_SIZE                                    2
+/* Enhanced BSS Parameter Change Count */
+#define WLAN_ML_BV_CINFO_ECUINFO_EBSSPARAMCHANGECNT_IDX                  0
+#define WLAN_ML_BV_CINFO_ECUINFO_EBSSPARAMCHANGECNT_BITS                 4
+/* Enhanced Critical Update Type */
+#define WLAN_ML_BV_CINFO_ECUINFO_TYPE_IDX                                4
+#define WLAN_ML_BV_CINFO_ECUINFO_TYPE_BITS                               3
+#else
+#define WLAN_ML_BV_CINFO_ECUINFO_SIZE                                    0
+#endif /* WLAN_FEATURE_11BN_ECU */
+
 /* Max value in octets of Common Info Length subfield of Common Info field in
  * Basic variant Multi-Link element
  */
@@ -2664,7 +2688,8 @@ enum wlan_ml_bv_cinfo_emlcap_transtimeout {
 	 WLAN_ML_BV_CINFO_EMLCAP_SIZE + \
 	 WLAN_ML_BV_CINFO_MLDCAPANDOP_SIZE + \
 	 WLAN_ML_BV_CINFO_MLDID_SIZE + \
-	 WLAN_ML_BV_CINFO_EXT_MLDCAPANDOP_SIZE)
+	 WLAN_ML_BV_CINFO_EXT_MLDCAPANDOP_SIZE + \
+	 WLAN_ML_BV_CINFO_ECUINFO_SIZE)
 
 /* End of definitions related to Basic variant Multi-Link element Common Info
  * field.
@@ -2730,9 +2755,22 @@ struct wlan_ml_bv_linfo_perstaprof {
 /* BSS Parameters Change Count Present */
 #define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_BSSPARAMCHNGCNTP_IDX    11
 #define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_BSSPARAMCHNGCNTP_BITS   1
-/* Reserved field */
+#ifdef WLAN_FEATURE_11BN_ECU
+/* In IEEE 802.11bn, bit 12 is repurposed as Enhanced BSS Parameters Change
+ * Count Present. The remaining reserved bits are bits 13-15 (3 bits).
+ */
+#define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_EBSSPARAMCHNGCNTP_IDX   12
+#define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_EBSSPARAMCHNGCNTP_BITS  1
+/* Reserved field in IEEE 802.11bn: bits 13-15 */
+#define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_IDX        13
+#define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_BITS       3
+/* Enhanced BSS Parameters Change Count size in STA Info field (1 octet) */
+#define WLAN_ML_BV_LINFO_PERSTAPROF_STAINFO_EBSSPARAMCHNGCNT_SIZE   1
+#else
+/* Reserved field (bits 12-15 in IEEE 802.11be) */
 #define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_IDX        12
 #define WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_RESERVED_BIT_BITS       4
+#endif /* WLAN_FEATURE_11BN_ECU */
 
 /* Definitions for subfields in STA Info field of Per-STA Profile subelement
  * in Basic variant Multi-Link element Link Info field.
@@ -5298,6 +5336,91 @@ struct wlan_uhr_op_ie {
 #define WLAN_UHR_DBE_DSBMP_PRESENT_BITS    1
 #define WLAN_UHR_DBE_DSBMP_IDX             8
 #define WLAN_UHR_DBE_DSBMP_BITS            16
+
+/* UHR mode IDs used in the UHR Parameter Update IE (IEEE P802.11bn) */
+#define WLAN_UHR_MODE_DPS            0
+#define WLAN_UHR_MODE_NPCA           1
+#define WLAN_UHR_MODE_DUO            2
+#define WLAN_UHR_MODE_P_EDCA         3
+#define WLAN_UHR_MODE_DBE            4
+#define WLAN_UHR_MODE_AP_PUO         5
+#define WLAN_UHR_MODE_ELR_RECEPTION  6
+
+#define WLAN_UHR_PARAM_UPDATE_MAX_TUPLES  8
+#define WLAN_UHR_MODE_PARAMS_MAX_LEN      32
+
+/* UHR Parameter Update IE field offsets (from IE byte 0 = EID) */
+/* EID + Len + ExtEID */
+#define WLAN_UHR_PARAM_UPDATE_COUNTDOWN_OFFSET  3
+/* + countdown byte */
+#define WLAN_UHR_PARAM_UPDATE_TUPLES_OFFSET     4
+/* ExtEID + countdown within Length */
+#define WLAN_UHR_PARAM_UPDATE_HDR_OVERHEAD      2
+/* min Length: ExtEID+countdown+tuple_hdr */
+#define WLAN_UHR_PARAM_UPDATE_MIN_LEN           4
+
+/* Mode Tuple Control byte bit layout in UHR Parameter Update IE */
+#define WLAN_UHR_MODE_TUPLE_CTRL_ID_IDX         0
+#define WLAN_UHR_MODE_TUPLE_CTRL_ID_BITS        6
+#define WLAN_UHR_MODE_TUPLE_CTRL_ENABLE_IDX     6
+#define WLAN_UHR_MODE_TUPLE_CTRL_ENABLE_BITS    1
+#define WLAN_UHR_MODE_TUPLE_CTRL_UPDATE_IDX     7
+#define WLAN_UHR_MODE_TUPLE_CTRL_UPDATE_BITS    1
+#define WLAN_UHR_MODE_TUPLE_HDR_SIZE            2  /* ctrl byte + length byte */
+
+/* NPCA base length in bytes (before optional disabled-subchannel bitmap) */
+#define WLAN_UHR_NPCA_OP_PARAM_BASE_LEN         4
+/* DUO minimum parameter length (obsrp byte is optional) */
+#define WLAN_UHR_DUO_OP_PARAM_MIN_LEN           1
+
+/**
+ * struct wlan_uhr_duo_mode_params - DUO (Dual Uplink/Downlink Operation) params
+ *                                   from UHR Parameter Update IE mode tuple
+ * @present:           indicates DUO Operation Parameters are present
+ * @max_standalone_du: maximum number of standalone DU transmissions
+ * @obsrp:             overlapping BSS receive prohibition flag
+ */
+struct wlan_uhr_duo_mode_params {
+	bool present;
+	uint8_t max_standalone_du;
+	uint8_t obsrp;
+} qdf_packed;
+
+/**
+ * struct wlan_uhr_param_update_mode_tuple - one mode tuple from
+ *                                           UHR Param Update IE
+ * @mode_id:         UHR mode identifier (WLAN_UHR_MODE_DPS .. ELR_RECEPTION)
+ * @mode_enable:     non-zero if this mode is being enabled
+ * @mode_update:     non-zero if mode parameters are being updated
+ * @mode_length:     byte length of the mode-specific parameter block
+ * @mode_params:     pointer into mode_params_buf for zero-copy access
+ * @mode_params_buf: raw mode-parameter bytes (max WLAN_UHR_MODE_PARAMS_MAX_LEN)
+ *                   cast to wlan_uhr_dps/npca/pedca/dbe/duo_op_params as needed
+ */
+struct wlan_uhr_param_update_mode_tuple {
+	uint8_t  mode_id;
+	uint8_t  mode_enable;
+	uint8_t  mode_update;
+	uint8_t  mode_length;
+	uint8_t *mode_params;
+	uint8_t  mode_params_buf[WLAN_UHR_MODE_PARAMS_MAX_LEN];
+};
+
+/**
+ * struct wlan_uhr_param_update_ie - parsed UHR Parameter Update IE
+ * @countdown_timer:  TBTTs remaining before the advertised parameter change
+ * @present:          true when a valid UHR Parameter Update IE was found
+ * @mode_tuple_count: number of valid entries in mode_tuples[]
+ * @mode_tuples:      array of parsed mode tuples
+ */
+struct wlan_uhr_param_update_ie {
+	uint8_t countdown_timer;
+	bool    present;
+	uint8_t mode_tuple_count;
+	struct wlan_uhr_param_update_mode_tuple
+		mode_tuples[WLAN_UHR_PARAM_UPDATE_MAX_TUPLES];
+};
+
 #endif
 
 #ifdef WLAN_FEATURE_11BN_SMD
