@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -439,6 +439,7 @@ static inline QDF_STATUS dp_tx_pdev_init(struct dp_pdev *pdev)
  * @hal_ring_hdl: ring pointer
  * @last_prefetched_hw_desc: pointer to the last prefetched HW descriptor
  * @last_prefetched_sw_desc: pointer to last prefetch SW desc
+ * @last_hw_desc: pointer to last HW desc
  *
  * Return: None
  */
@@ -450,12 +451,17 @@ void dp_tx_prefetch_hw_sw_nbuf_desc(struct dp_soc *soc,
 				    hal_ring_handle_t hal_ring_hdl,
 				    void **last_prefetched_hw_desc,
 				    struct dp_tx_desc_s
-				    **last_prefetched_sw_desc)
+				    **last_prefetched_sw_desc,
+				    void *last_hw_desc)
 {
 	if (*last_prefetched_sw_desc) {
 		qdf_prefetch((uint8_t *)(*last_prefetched_sw_desc)->nbuf);
 		qdf_prefetch((uint8_t *)(*last_prefetched_sw_desc)->nbuf + 64);
 	}
+
+	if (qdf_unlikely(last_hw_desc &&
+			 (*last_prefetched_hw_desc == last_hw_desc)))
+		return;
 
 	if (num_avail_for_reap && *last_prefetched_hw_desc) {
 		soc->arch_ops.tx_comp_get_params_from_hal_desc(soc,
@@ -483,7 +489,8 @@ void dp_tx_prefetch_hw_sw_nbuf_desc(struct dp_soc *soc,
 				    hal_ring_handle_t hal_ring_hdl,
 				    void **last_prefetched_hw_desc,
 				    struct dp_tx_desc_s
-				    **last_prefetched_sw_desc)
+				    **last_prefetched_sw_desc,
+				    void *last_hw_desc)
 {
 }
 #endif
