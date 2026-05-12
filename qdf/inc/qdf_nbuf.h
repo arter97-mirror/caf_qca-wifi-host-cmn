@@ -6382,6 +6382,15 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf);
 
 /**
+ * qdf_nbuf_ieee80211_get_dest_mac() - get pointer to destination mac
+ *  address
+ * @nbuf: Pointer to nbuf
+ *
+ * Return: pointer to destination mac address
+ */
+uint8_t *qdf_nbuf_ieee80211_get_dest_mac(qdf_nbuf_t nbuf);
+
+/**
  * qdf_nbuf_mark_wakeup_frame() - mark wakeup frame.
  * @buf: Pointer to nbuf
  *

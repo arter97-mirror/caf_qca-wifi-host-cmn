@@ -61,6 +61,7 @@
 #include <i_qdf_ipa_wdi3.h>
 #endif /* IPA_OFFLOAD */
 #include "qdf_ssr_driver_dump.h"
+#include "linux/ieee80211.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
 
@@ -6651,6 +6652,11 @@ unsigned int qdf_nbuf_update_radiotap(struct mon_rx_status *rx_status,
 uint16_t qdf_nbuf_get_radiotap_len(qdf_nbuf_t nbuf)
 {
 	return ieee80211_get_radiotap_len(qdf_nbuf_data(nbuf));
+}
+
+uint8_t *qdf_nbuf_ieee80211_get_dest_mac(qdf_nbuf_t nbuf)
+{
+	return ieee80211_get_DA((struct ieee80211_hdr *)qdf_nbuf_data(nbuf));
 }
 #else
 static unsigned int qdf_nbuf_update_radiotap_vht_flags(
