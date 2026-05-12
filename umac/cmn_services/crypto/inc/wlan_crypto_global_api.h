@@ -286,6 +286,21 @@ bool wlan_crypto_is_mmie_valid(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS wlan_crypto_wpaie_check(struct wlan_crypto_params *, uint8_t *frm);
 
 /**
+ * wlan_get_crypto_params_from_opaquersn - called by mlme to check the rsnie
+ * @crypto params: crypto params
+ * @frm: ie buffer
+ * @frm_len: ie buffer len
+ *
+ * This function gets called by mlme to check the contents of rsn is
+ * matching with given crypto params
+ *
+ * Return: QDF_STATUS_SUCCESS - in case of success
+ */
+QDF_STATUS wlan_get_crypto_params_from_opaquersn(struct wlan_crypto_params *,
+						 uint8_t *frm,
+						 uint8_t frm_len);
+
+/**
  * wlan_crypto_rsnie_check - called by mlme to check the rsnie
  * @crypto params: crypto params
  * @iebuf: ie buffer
