@@ -11759,6 +11759,7 @@ dp_fw_stats_process(struct dp_vdev *vdev,
 #define VENDOR_ATTR_NSS_PKT_TX_PACKET_COUNT 0
 #define VENDOR_ATTR_NSS_PKT_RX_PACKET_COUNT 1
 #define SS_COUNT_JITTER 4
+
 static inline QDF_STATUS
 dp_tx_get_fw_nss_stats(struct dp_soc *soc, uint8_t vdev_id, int **stats_req)
 {
@@ -11802,6 +11803,7 @@ end:
 	pdev->pending_tx_nss_response = false;
 	return status;
 }
+
 /**
  * dp_txrx_nss_request - function to get txrx nss stats
  * @soc_handle: soc handle
@@ -11891,6 +11893,54 @@ QDF_STATUS dp_get_avg_ul_jitter(struct cdp_soc_t *soc_handle,
 #endif
 
 #ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+/* Index into per-BW stats sub-array: 0 = TX count, 1 = RX count */
+#define VENDOR_ATTR_BW_PKT_TX_PACKET_COUNT 0
+#define VENDOR_ATTR_BW_PKT_RX_PACKET_COUNT 1
+
+/**
+ * dp_txrx_bw_request() - Get txrx BW stats for a given vdev
+ * @soc_handle: soc handle
+ * @vdev_id: virtual device ID
+ * @req: 2D array [CDP_PEER_BW_MAX][2] indexed by
+ *       [bw_index][VENDOR_ATTR_BW_PKT_TX/RX_PACKET_COUNT]
+ *
+ * Return: QDF_STATUS
+ */
+static
+QDF_STATUS dp_txrx_bw_request(struct cdp_soc_t *soc_handle,
+			      uint8_t vdev_id,
+			      uint32_t **req)
+{
+	QDF_STATUS status;
+	struct cdp_vdev_stats *vdev_stats;
+	int i;
+
+	if (!soc_handle || !req)
+		return QDF_STATUS_E_INVAL;
+
+	vdev_stats = qdf_mem_malloc(sizeof(*vdev_stats));
+	if (!vdev_stats)
+		return QDF_STATUS_E_NOMEM;
+
+	status = dp_txrx_get_vdev_stats(soc_handle, vdev_id, vdev_stats, true);
+	if (QDF_IS_STATUS_ERROR(status))
+		goto end;
+
+	for (i = 0; i < CDP_PEER_BW_MAX; i++) {
+		if (!req[i])
+			continue;
+		req[i][VENDOR_ATTR_BW_PKT_TX_PACKET_COUNT] =
+							  vdev_stats->tx.bw[i];
+		req[i][VENDOR_ATTR_BW_PKT_RX_PACKET_COUNT] =
+							  vdev_stats->rx.bw[i];
+	}
+
+end:
+	qdf_mem_free(vdev_stats);
+
+	return status;
+}
+
 /**
  * dp_get_tx_retries() - Get Tx retries for a given vdev's pdev
  * @soc_handle: soc handle
@@ -14464,6 +14514,7 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 	.avg_ul_delay_jitter_stats = dp_get_avg_ul_jitter,
 #endif
 #ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+	.txrx_bw_request = dp_txrx_bw_request,
 	.get_tx_retries = dp_get_tx_retries,
 #endif
 #ifdef QCA_UNDECODED_METADATA_SUPPORT

@@ -1003,6 +1003,9 @@ struct cdp_ctrl_ops {
 						uint32_t *val);
 #endif
 #ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+	QDF_STATUS (*txrx_bw_request)(struct cdp_soc_t *soc_handle,
+				      uint8_t vdev_id, uint32_t **req);
+
 	QDF_STATUS (*get_tx_retries)(struct cdp_soc_t *soc_handle,
 				     uint8_t vdev_id,
 				     uint32_t *val);

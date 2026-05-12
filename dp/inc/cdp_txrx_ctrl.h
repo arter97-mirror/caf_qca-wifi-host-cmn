@@ -1324,9 +1324,42 @@ static inline QDF_STATUS cdp_get_tx_retries(ol_txrx_soc_handle soc,
 
 	return soc->ops->ctrl_ops->get_tx_retries(soc, vdev_id, val);
 }
+
+/**
+ * cdp_get_txrx_bw() - Collect txrx bandwidth counters
+ * @soc: soc handle
+ * @vdev_id: virtual device ID
+ * @req: 2D array [CDP_PEER_BW_MAX][2] to store TX/RX BW packet counts
+ *
+ * Return: QDF_STATUS
+ */
+static inline
+QDF_STATUS cdp_get_txrx_bw(ol_txrx_soc_handle soc, uint8_t vdev_id,
+			   uint32_t **req)
+{
+	if (!soc || !soc->ops || !req) {
+		dp_cdp_debug("Invalid Instance:");
+		QDF_ASSERT(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->ctrl_ops ||
+	    !soc->ops->ctrl_ops->txrx_bw_request)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->ctrl_ops->txrx_bw_request(soc, vdev_id,
+							    req);
+}
 #else
 static inline QDF_STATUS cdp_get_tx_retries(ol_txrx_soc_handle soc,
 					    uint32_t vdev_id, uint32_t *val)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline
+QDF_STATUS cdp_get_txrx_bw(ol_txrx_soc_handle soc, uint8_t vdev_id,
+			   uint32_t **req)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }
