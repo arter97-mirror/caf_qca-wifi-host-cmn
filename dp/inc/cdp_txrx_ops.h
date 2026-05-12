@@ -1009,6 +1009,10 @@ struct cdp_ctrl_ops {
 	QDF_STATUS (*get_tx_retries)(struct cdp_soc_t *soc_handle,
 				     uint8_t vdev_id,
 				     uint32_t *val);
+	QDF_STATUS (*get_tx_phy_rate_stats)(struct cdp_soc_t *soc_handle,
+					    uint8_t vdev_id,
+					    uint64_t *sum,
+					    uint64_t *cnt);
 #endif /* FEATURE_WLAN_PREDICTIVE_ROAMING */
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	QDF_STATUS (*txrx_set_pdev_phyrx_error_mask)(struct cdp_soc_t *soc,

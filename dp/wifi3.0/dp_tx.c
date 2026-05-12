@@ -8353,10 +8353,14 @@ dp_tx_update_peer_extd_stats(struct hal_tx_completion_status *ts,
 		    hal_2_dp_pkt_type_map[pkt_type]);
 
 	dst_mcs_idx = dp_get_mcs_array_index_by_pkt_type_mcs(pkt_type, mcs);
-	if (MCS_INVALID_ARRAY_INDEX != dst_mcs_idx)
+	if (MCS_INVALID_ARRAY_INDEX != dst_mcs_idx) {
 		DP_PEER_EXTD_STATS_INC(txrx_peer,
 				       tx.pkt_type[pkt_type].mcs_count[dst_mcs_idx],
 				       1, link_id);
+		/* dst_mcs_idx is valid here; safe to use in rate lookup */
+		dp_tx_update_peer_phy_rate_stats(ts, txrx_peer,
+						 pkt_type, dst_mcs_idx);
+	}
 
 	DP_PEER_EXTD_STATS_INC(txrx_peer, tx.sgi_count[ts->sgi], 1, link_id);
 	DP_PEER_EXTD_STATS_INC(txrx_peer, tx.bw[ts->bw], 1, link_id);

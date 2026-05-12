@@ -24,6 +24,7 @@
 #include <qdf_nbuf.h>
 #include <qdf_lock.h>
 #include <qdf_atomic.h>
+#include <qdf_atomic64.h>
 #include <qdf_util.h>
 #include <qdf_list.h>
 #include <qdf_lro.h>
@@ -5636,6 +5637,16 @@ struct dp_peer_setup_info {
 typedef void *dp_txrx_ref_handle;
 
 /**
+ * struct dp_peer_per_cpu_tx_phy_rate - Per CPU tx phy rate stats
+ * @phy_rate_sum: accumulated tx phy rate sum per CPU
+ * @phy_rate_cnt: tx packet count per CPU
+ */
+struct dp_peer_per_cpu_tx_phy_rate {
+	qdf_atomic64_t  phy_rate_sum[NR_CPUS];
+	qdf_atomic64_t  phy_rate_cnt[NR_CPUS];
+};
+
+/**
  * struct dp_peer_per_pkt_tx_stats- Peer Tx stats updated in per pkt
  *				Tx completion path
  * @ucast: Unicast Packet Count
@@ -6218,6 +6229,7 @@ struct dp_txrx_peer {
 	uint8_t ll_band[DP_MAX_MLO_LINKS + 1];
 #endif
 	uint8_t stats_arr_size;
+	struct dp_peer_per_cpu_tx_phy_rate tx_phy_rate_stats;
 
 	/* dp_peer_stats should be the last member in the structure */
 	struct dp_peer_stats stats[];
