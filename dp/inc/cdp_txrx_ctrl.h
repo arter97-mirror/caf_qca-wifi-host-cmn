@@ -1295,6 +1295,43 @@ int cdp_get_txrx_nss(ol_txrx_soc_handle soc, uint8_t vdev_id, int **req)
 
 #endif /* WLAN_FEATURE_UL_JITTER */
 
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+/**
+ * cdp_get_tx_retries() - Get Tx retries
+ * @soc: SOC TXRX handle
+ * @vdev_id: vdev id
+ * @val: pointer to save tx retries
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS cdp_get_tx_retries(ol_txrx_soc_handle soc,
+					    uint32_t vdev_id, uint32_t *val)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_err("Invalid SOC instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!val) {
+		dp_cdp_err("Invalid params val");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc->ops->ctrl_ops ||
+	    !soc->ops->ctrl_ops->get_tx_retries)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->ctrl_ops->get_tx_retries(soc, vdev_id, val);
+}
+#else
+static inline QDF_STATUS cdp_get_tx_retries(ol_txrx_soc_handle soc,
+					    uint32_t vdev_id, uint32_t *val)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* FEATURE_WLAN_PREDICTIVE_ROAMING */
+
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 /**
  * cdp_txrx_set_pdev_phyrx_error_mask() - set phyrx error mask

@@ -11837,6 +11837,38 @@ QDF_STATUS dp_get_avg_ul_jitter(struct cdp_soc_t *soc_handle,
 }
 #endif
 
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+/**
+ * dp_get_tx_retries() - Get Tx retries for a given vdev's pdev
+ * @soc_handle: soc handle
+ * @vdev_id: virtual device ID
+ * @val: output pointer to store the Tx retry count
+ *
+ * Return: QDF_STATUS
+ */
+static
+QDF_STATUS dp_get_tx_retries(struct cdp_soc_t *soc_handle,
+				uint8_t vdev_id, uint32_t *val)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_handle);
+	struct dp_vdev *vdev;
+	struct dp_pdev *pdev;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev) {
+		dp_err_rl("vdev %d does not exist", vdev_id);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	pdev = vdev->pdev;
+	*val = pdev->stats.tx.retries;
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 /**
  * dp_txrx_stats_request - function to map to firmware and host stats
  * @soc_handle: soc handle
@@ -14543,6 +14575,9 @@ static struct cdp_ctrl_ops dp_ops_ctrl = {
 #ifdef WLAN_FEATURE_UL_JITTER
 	.txrx_nss_request = dp_txrx_nss_request,
 	.avg_ul_delay_jitter_stats = dp_get_avg_ul_jitter,
+#endif
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+	.get_tx_retries = dp_get_tx_retries,
 #endif
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	.txrx_set_pdev_phyrx_error_mask = dp_set_pdev_phyrx_error_mask,
