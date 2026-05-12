@@ -1740,6 +1740,224 @@ void dp_rx_msdus_set_payload(struct dp_soc *soc, qdf_nbuf_t msdu,
 	qdf_nbuf_pull_head(msdu, rx_pkt_offset + l2_hdr_offset);
 }
 
+#ifndef NO_RX_PKT_HDR_TLV
+/**
+ * dp_rx_mon_restitch_mpdu_from_non_raw() - Restitch MPDU from MSDUs
+ * in decap mode
+ * @soc: core txrx main context
+ * @mac_id: mac id
+ * @head_msdu: pointer to head msdu
+ * @last_msdu: pointer to last msdu
+ * @rx_status: pointer to rx status
+ * @buf_info: pointer to buffer info
+ *
+ * Return: pointer to stitched skb
+ */
+static inline qdf_nbuf_t
+dp_rx_mon_restitch_mpdu_from_non_raw(struct dp_soc *soc,
+				     uint32_t mac_id,
+				     qdf_nbuf_t head_msdu,
+				     qdf_nbuf_t last_msdu,
+				     struct cdp_mon_status *rx_status,
+				     struct hal_rx_mon_dest_buf_info
+				     *buf_info)
+{
+	qdf_nbuf_t msdu, mpdu_buf, prev_buf, msdu_orig, head_frag_list;
+	uint32_t wifi_hdr_len, sec_hdr_len, msdu_llc_len,
+		mpdu_buf_len, decap_hdr_pull_bytes, frag_list_sum_len, dir,
+		is_amsdu, is_first_frag, amsdu_pad;
+	void *rx_desc;
+	char *hdr_desc;
+	unsigned char *dest;
+	struct ieee80211_frame *wh;
+	struct ieee80211_qoscntl *qos;
+	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
+	uint8_t l2_hdr_offset;
+
+	mpdu_buf = NULL;
+
+	/* Decap mode:
+	 * Calculate the amount of header in decapped packet to knock off based
+	 * on the decap type and the corresponding number of raw bytes to copy
+	 * status header
+	 */
+	rx_desc = qdf_nbuf_data(head_msdu);
+
+	hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc, rx_desc);
+
+	if (!hdr_desc)
+		goto mpdu_stitch_fail;
+
+	dp_rx_mon_dest_debug("%pK: decap format not raw", soc);
+
+	/* Base size */
+	wifi_hdr_len = sizeof(struct ieee80211_frame);
+	wh = (struct ieee80211_frame *)hdr_desc;
+
+	dir = wh->i_fc[1] & IEEE80211_FC1_DIR_MASK;
+
+	if (dir == IEEE80211_FC1_DIR_DSTODS)
+		wifi_hdr_len += 6;
+
+	is_amsdu = 0;
+	if (wh->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_QOS) {
+		qos = (struct ieee80211_qoscntl *)
+			(hdr_desc + wifi_hdr_len);
+		wifi_hdr_len += 2;
+
+		is_amsdu = (qos->i_qos[0] & IEEE80211_QOS_AMSDU);
+	}
+
+	/* Calculate security header length based on 'Protected'
+	 * and 'EXT_IV' flag
+	 */
+	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
+		char *iv = (char *)wh + wifi_hdr_len;
+
+		if (iv[3] & KEY_EXTIV)
+			sec_hdr_len = 8;
+		else
+			sec_hdr_len = 4;
+	} else {
+		sec_hdr_len = 0;
+	}
+	wifi_hdr_len += sec_hdr_len;
+
+	/*Calculate +HTC/ORDER header length based on 'Order'
+	 */
+	if (wh->i_fc[1] & IEEE80211_FC1_ORDER)
+		wifi_hdr_len += 4;
+
+	/* MSDU related stuff LLC - AMSDU subframe header etc */
+	msdu_llc_len = is_amsdu ? (14 + 8) : 8;
+
+	mpdu_buf_len = wifi_hdr_len + msdu_llc_len;
+
+	/* "Decap" header to remove from MSDU buffer */
+	decap_hdr_pull_bytes = 14;
+
+	/* Allocate a new nbuf for holding the 802.11 header retrieved from the
+	 * status of the now decapped first msdu. Leave enough headroom for
+	 * accommodating any radio-tap /prism like PHY header
+	 */
+	mpdu_buf = qdf_nbuf_alloc(soc->osdev,
+				  MAX_MONITOR_HEADER + mpdu_buf_len,
+				  MAX_MONITOR_HEADER, 4, FALSE);
+
+	if (!mpdu_buf)
+		goto mpdu_stitch_done;
+
+	/* Copy the MPDU related header and enc headers into the first buffer
+	 * - Note that there can be a 2 byte pad between heaader and enc header
+	 */
+
+	prev_buf = mpdu_buf;
+	dest = qdf_nbuf_put_tail(prev_buf, wifi_hdr_len);
+	if (!dest)
+		goto mpdu_stitch_fail;
+
+	qdf_mem_copy(dest, hdr_desc, wifi_hdr_len);
+	hdr_desc += wifi_hdr_len;
+
+	/* The first LLC len is copied into the MPDU buffer */
+	frag_list_sum_len = 0;
+
+	msdu_orig = head_msdu;
+	is_first_frag = 1;
+	amsdu_pad = 0;
+
+	while (msdu_orig) {
+
+		/* TODO: intra AMSDU padding - do we need it ??? */
+
+		msdu = msdu_orig;
+
+		if (is_first_frag) {
+			head_frag_list  = msdu;
+		} else {
+			/* Reload the hdr ptr only on non-first MSDUs */
+			rx_desc = qdf_nbuf_data(msdu_orig);
+			hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc,
+							     rx_desc);
+		}
+
+		/* Copy this buffers MSDU related status into the prev buffer */
+
+		if (is_first_frag)
+			is_first_frag = 0;
+
+		/* Update protocol and flow tag for MSDU */
+		dp_rx_mon_update_protocol_flow_tag(soc, dp_pdev,
+						   msdu_orig, rx_desc);
+
+		dest = qdf_nbuf_put_tail(prev_buf,
+					 msdu_llc_len + amsdu_pad);
+
+		if (!dest)
+			goto mpdu_stitch_fail;
+
+		dest += amsdu_pad;
+		qdf_mem_copy(dest, hdr_desc, msdu_llc_len);
+
+		l2_hdr_offset = hal_rx_frag_msdu_get_l2_hdr_offset(soc,
+								   buf_info,
+								   rx_desc,
+								   true);
+		dp_rx_msdus_set_payload(soc, msdu, l2_hdr_offset);
+
+		/* Push the MSDU buffer beyond the decap header */
+		qdf_nbuf_pull_head(msdu, decap_hdr_pull_bytes);
+		frag_list_sum_len += msdu_llc_len + qdf_nbuf_len(msdu)
+			+ amsdu_pad;
+
+		/* Set up intra-AMSDU pad to be added to start of next buffer -
+		 * AMSDU pad is 4 byte pad on AMSDU subframe
+		 */
+		amsdu_pad = (msdu_llc_len + qdf_nbuf_len(msdu)) & 0x3;
+		amsdu_pad = amsdu_pad ? (4 - amsdu_pad) : 0;
+
+		/* TODO FIXME How do we handle MSDUs that have fraglist - Should
+		 * probably iterate all the frags cloning them along the way and
+		 * and also updating the prev_buf pointer
+		 */
+
+		/* Move to the next */
+		prev_buf = msdu;
+		msdu_orig = qdf_nbuf_next(msdu_orig);
+	}
+
+	frag_list_sum_len -= msdu_llc_len;
+
+	/* TODO: Convert this to suitable adf routines */
+	qdf_nbuf_append_ext_list(mpdu_buf, head_frag_list,
+				 frag_list_sum_len);
+
+	dp_rx_mon_dest_debug("%pK: mpdu_buf %pK mpdu_buf->len %u",
+			     soc, mpdu_buf, mpdu_buf->len);
+
+mpdu_stitch_done:
+	return mpdu_buf;
+
+mpdu_stitch_fail:
+	if (mpdu_buf)
+		qdf_nbuf_free(mpdu_buf);
+
+	return NULL;
+}
+#else
+static inline qdf_nbuf_t
+dp_rx_mon_restitch_mpdu_from_non_raw(struct dp_soc *soc,
+				     uint32_t mac_id,
+				     qdf_nbuf_t head_msdu,
+				     qdf_nbuf_t last_msdu,
+				     struct cdp_mon_status *rx_status,
+				     struct hal_rx_mon_dest_buf_info
+				     *buf_info)
+{
+	return NULL;
+}
+#endif /* NO_RX_PKT_HDR_TLV */
+
 static inline qdf_nbuf_t
 dp_rx_mon_restitch_mpdu_from_msdus(struct dp_soc *soc,
 				   uint32_t mac_id,
@@ -1749,14 +1967,8 @@ dp_rx_mon_restitch_mpdu_from_msdus(struct dp_soc *soc,
 {
 	qdf_nbuf_t msdu, mpdu_buf, prev_buf, msdu_orig, head_frag_list;
 	qdf_nbuf_t first_rx_msdu;
-	uint32_t wifi_hdr_len, sec_hdr_len, msdu_llc_len,
-		mpdu_buf_len, decap_hdr_pull_bytes, frag_list_sum_len, dir,
-		is_amsdu, is_first_frag, amsdu_pad;
+	uint32_t frag_list_sum_len, is_first_frag;
 	void *rx_desc;
-	char *hdr_desc;
-	unsigned char *dest;
-	struct ieee80211_frame *wh;
-	struct ieee80211_qoscntl *qos;
 	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
 	struct dp_mon_pdev *mon_pdev;
 	struct hal_rx_mon_dest_buf_info buf_info;
@@ -1858,191 +2070,13 @@ dp_rx_mon_restitch_mpdu_from_msdus(struct dp_soc *soc,
 		goto mpdu_stitch_done;
 	}
 
-	/* Decap mode:
-	 * Calculate the amount of header in decapped packet to knock off based
-	 * on the decap type and the corresponding number of raw bytes to copy
-	 * status header
-	 */
-	rx_desc = qdf_nbuf_data(head_msdu);
-
-	hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc, rx_desc);
-
-	if (!hdr_desc)
-		goto mpdu_stitch_fail;
-
-	dp_rx_mon_dest_debug("%pK: decap format not raw", soc);
-
-	/* Base size */
-	wifi_hdr_len = sizeof(struct ieee80211_frame);
-	wh = (struct ieee80211_frame *)hdr_desc;
-
-	dir = wh->i_fc[1] & IEEE80211_FC1_DIR_MASK;
-
-	if (dir == IEEE80211_FC1_DIR_DSTODS)
-		wifi_hdr_len += 6;
-
-	is_amsdu = 0;
-	if (wh->i_fc[0] & QDF_IEEE80211_FC0_SUBTYPE_QOS) {
-		qos = (struct ieee80211_qoscntl *)
-			(hdr_desc + wifi_hdr_len);
-		wifi_hdr_len += 2;
-
-		is_amsdu = (qos->i_qos[0] & IEEE80211_QOS_AMSDU);
-	}
-
-	/* Calculate security header length based on 'Protected'
-	 * and 'EXT_IV' flag
-	 */
-	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
-		char *iv = (char *)wh + wifi_hdr_len;
-
-		if (iv[3] & KEY_EXTIV)
-			sec_hdr_len = 8;
-		else
-			sec_hdr_len = 4;
-	} else {
-		sec_hdr_len = 0;
-	}
-	wifi_hdr_len += sec_hdr_len;
-
-	/*Calculate +HTC/ORDER header length based on 'Order'
-	 */
-	if (wh->i_fc[1] & IEEE80211_FC1_ORDER)
-		wifi_hdr_len += 4;
-
-	/* MSDU related stuff LLC - AMSDU subframe header etc */
-	msdu_llc_len = is_amsdu ? (14 + 8) : 8;
-
-	mpdu_buf_len = wifi_hdr_len + msdu_llc_len;
-
-	/* "Decap" header to remove from MSDU buffer */
-	decap_hdr_pull_bytes = 14;
-
-	/* Allocate a new nbuf for holding the 802.11 header retrieved from the
-	 * status of the now decapped first msdu. Leave enough headroom for
-	 * accommodating any radio-tap /prism like PHY header
-	 */
-	mpdu_buf = qdf_nbuf_alloc(soc->osdev,
-				  MAX_MONITOR_HEADER + mpdu_buf_len,
-				  MAX_MONITOR_HEADER, 4, FALSE);
-
+	mpdu_buf = dp_rx_mon_restitch_mpdu_from_non_raw(soc, mac_id, head_msdu,
+							last_msdu, rx_status,
+							&buf_info);
 	if (!mpdu_buf)
-		goto mpdu_stitch_done;
-
-	/* Copy the MPDU related header and enc headers into the first buffer
-	 * - Note that there can be a 2 byte pad between heaader and enc header
-	 */
-
-	prev_buf = mpdu_buf;
-	dest = qdf_nbuf_put_tail(prev_buf, wifi_hdr_len);
-	if (!dest)
 		goto mpdu_stitch_fail;
-
-	qdf_mem_copy(dest, hdr_desc, wifi_hdr_len);
-	hdr_desc += wifi_hdr_len;
-
-#if 0
-	dest = qdf_nbuf_put_tail(prev_buf, sec_hdr_len);
-	adf_os_mem_copy(dest, hdr_desc, sec_hdr_len);
-	hdr_desc += sec_hdr_len;
-#endif
-
-	/* The first LLC len is copied into the MPDU buffer */
-	frag_list_sum_len = 0;
-
-	msdu_orig = head_msdu;
-	is_first_frag = 1;
-	amsdu_pad = 0;
-
-	while (msdu_orig) {
-
-		/* TODO: intra AMSDU padding - do we need it ??? */
-
-		msdu = msdu_orig;
-
-		if (is_first_frag) {
-			head_frag_list  = msdu;
-		} else {
-			/* Reload the hdr ptr only on non-first MSDUs */
-			rx_desc = qdf_nbuf_data(msdu_orig);
-			hdr_desc = hal_rx_desc_get_80211_hdr(soc->hal_soc,
-							     rx_desc);
-		}
-
-		/* Copy this buffers MSDU related status into the prev buffer */
-
-		if (is_first_frag)
-			is_first_frag = 0;
-
-		/* Update protocol and flow tag for MSDU */
-		dp_rx_mon_update_protocol_flow_tag(soc, dp_pdev,
-						   msdu_orig, rx_desc);
-
-		dest = qdf_nbuf_put_tail(prev_buf,
-					 msdu_llc_len + amsdu_pad);
-
-		if (!dest)
-			goto mpdu_stitch_fail;
-
-		dest += amsdu_pad;
-		qdf_mem_copy(dest, hdr_desc, msdu_llc_len);
-
-		l2_hdr_offset = hal_rx_frag_msdu_get_l2_hdr_offset(soc,
-								   &buf_info,
-								   rx_desc,
-								   true);
-		dp_rx_msdus_set_payload(soc, msdu, l2_hdr_offset);
-
-		/* Push the MSDU buffer beyond the decap header */
-		qdf_nbuf_pull_head(msdu, decap_hdr_pull_bytes);
-		frag_list_sum_len += msdu_llc_len + qdf_nbuf_len(msdu)
-			+ amsdu_pad;
-
-		/* Set up intra-AMSDU pad to be added to start of next buffer -
-		 * AMSDU pad is 4 byte pad on AMSDU subframe
-		 */
-		amsdu_pad = (msdu_llc_len + qdf_nbuf_len(msdu)) & 0x3;
-		amsdu_pad = amsdu_pad ? (4 - amsdu_pad) : 0;
-
-		/* TODO FIXME How do we handle MSDUs that have fraglist - Should
-		 * probably iterate all the frags cloning them along the way and
-		 * and also updating the prev_buf pointer
-		 */
-
-		/* Move to the next */
-		prev_buf = msdu;
-		msdu_orig = qdf_nbuf_next(msdu_orig);
-	}
-
-#if 0
-	/* Add in the trailer section - encryption trailer + FCS */
-	qdf_nbuf_put_tail(prev_buf, HAL_RX_FCS_LEN);
-	frag_list_sum_len += HAL_RX_FCS_LEN;
-#endif
-
-	frag_list_sum_len -= msdu_llc_len;
-
-	/* TODO: Convert this to suitable adf routines */
-	qdf_nbuf_append_ext_list(mpdu_buf, head_frag_list,
-				 frag_list_sum_len);
-
-	dp_rx_mon_dest_debug("%pK: mpdu_buf %pK mpdu_buf->len %u",
-			     soc, mpdu_buf, mpdu_buf->len);
 
 mpdu_stitch_done:
-	/* Check if this buffer contains the PPDU end status for TSF */
-	/* Need revisit this code to see where we can get tsf timestamp */
-#if 0
-	/* PPDU end TLV will be retrieved from monitor status ring */
-	last_mpdu =
-		(*(((u_int32_t *)&rx_desc->attention)) &
-		RX_ATTENTION_0_LAST_MPDU_MASK) >>
-		RX_ATTENTION_0_LAST_MPDU_LSB;
-
-	if (last_mpdu)
-		rx_status->rs_tstamp.tsf = rx_desc->ppdu_end.tsf_timestamp;
-
-#endif
 	return mpdu_buf;
 
 mpdu_stitch_fail:
