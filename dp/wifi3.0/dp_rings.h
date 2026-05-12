@@ -133,16 +133,6 @@ int dp_process_lmac_rings(struct dp_intr *int_ctx, int total_budget);
 void dp_service_lmac_rings(void *arg);
 
 /**
- * dp_service_srngs() - Top level interrupt handler for DP Ring interrupts
- * @dp_ctx: DP SOC handle
- * @dp_budget: Number of frames/descriptors that can be processed in one shot
- * @cpu: CPU on which this instance is running
- *
- * Return: remaining budget/quota for the soc device
- */
-uint32_t dp_service_srngs(void *dp_ctx, uint32_t dp_budget, int cpu);
-
-/**
  * dp_soc_set_interrupt_mode() - Set the interrupt mode in soc
  * @soc: DP soc handle
  *
