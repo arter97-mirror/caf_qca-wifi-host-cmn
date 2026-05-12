@@ -5364,6 +5364,9 @@ static QDF_STATUS send_scan_chan_list_cmd_tlv(wmi_unified_t wmi_handle,
 			if (tchan_info->allow_ht)
 				WMI_SET_CHANNEL_FLAG(chan_info,
 						     WMI_CHAN_FLAG_ALLOW_HT);
+			if (tchan_info->allow_uhr)
+				WMI_SET_CHANNEL_FLAG(chan_info,
+						     WMI_CHAN_FLAG_ALLOW_UHR);
 			WMI_SET_CHANNEL_MODE(chan_info,
 					     tchan_info->phy_mode);
 
