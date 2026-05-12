@@ -107,6 +107,8 @@
 #define CM_DBS_SBS_ACTIVE_PERCENTAGE 10
 #define CM_EMLSR_ACTIVE_PERCENTAGE 5
 #define CM_MAX_ACTIVE_LINK_CONSIDER_IN_MLO_SCORE 6
+#define CM_UHR_CAP_WEIGHTAGE 2
+
 /*
  * This macro give percentage value of security_weightage to be used as per
  * security Eg if AP security is WPA 10% will be given for AP.
@@ -1724,6 +1726,59 @@ static bool cm_get_su_beam_former(struct scan_cache_entry *entry)
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+static void cm_set_default_uhr_weights(struct scoring_cfg *score_cfg)
+{
+	score_cfg->weight_config.uhr_caps_weightage = CM_UHR_CAP_WEIGHTAGE;
+}
+
+static void cm_init_uhr_score_config(struct wlan_objmgr_psoc *psoc,
+				     struct scoring_cfg *score_cfg,
+				     uint32_t *total_weight)
+{
+	score_cfg->weight_config.uhr_caps_weightage =
+				cfg_get(psoc, CFG_SCORING_UHR_CAPS_WEIGHTAGE);
+	*total_weight += score_cfg->weight_config.uhr_caps_weightage;
+}
+
+static int cm_calculate_uhr_score(struct wlan_objmgr_psoc *psoc,
+				  struct scan_cache_entry *entry,
+				  struct scoring_cfg *score_config,
+				  struct psoc_phy_config *phy_config,
+				  uint8_t prorated_pcnt)
+{
+	int32_t uhr_caps_score;
+	struct weight_cfg *weight_config;
+
+	if (!phy_config->uhr_cap || !entry->ie_list.uhrcap)
+		return 0;
+
+	weight_config = &score_config->weight_config;
+	uhr_caps_score = prorated_pcnt * weight_config->uhr_caps_weightage;
+
+	return uhr_caps_score;
+}
+#else
+static void cm_set_default_uhr_weights(struct scoring_cfg *score_cfg)
+{
+}
+
+static void cm_init_uhr_score_config(struct wlan_objmgr_psoc *psoc,
+				     struct scoring_cfg *score_cfg,
+				     uint32_t *total_weight)
+{}
+
+static inline
+int cm_calculate_uhr_score(struct wlan_objmgr_psoc *psoc,
+			   struct scan_cache_entry *entry,
+			   struct scoring_cfg *score_config,
+			   struct psoc_phy_config *phy_config,
+			   uint8_t prorated_pcnt)
+{
+	return 0;
+}
+#endif
+
 #define CM_BAND_WIDTH_NUM 16
 #define CM_BAND_WIDTH_UNIT 20
 uint16_t link_bw_score[CM_BAND_WIDTH_NUM] = {
@@ -2715,6 +2770,7 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 	bool rsno = false;
 	bool is_he_intersect = false, is_vht_intersect = false;
 	bool is_ht_intersect = false;
+	int32_t uhr_score;
 
 	mlme_psoc_obj = wlan_psoc_mlme_get_cmpt_obj(psoc);
 	if (!mlme_psoc_obj)
@@ -2924,6 +2980,11 @@ static int cm_calculate_bss_score(struct wlan_objmgr_psoc *psoc,
 					   phy_config,
 					   prorated_pcnt);
 	score += eht_score;
+
+	uhr_score = cm_calculate_uhr_score(psoc, entry, score_config,
+					   phy_config,
+					   prorated_pcnt);
+	score += uhr_score;
 
 	if (!(IS_LINK_SCORE(ml_flag))) {
 		entry->entry_scores.bss_score = score;
@@ -4624,6 +4685,7 @@ void wlan_cm_init_score_config(struct wlan_objmgr_psoc *psoc,
 			score_cfg->weight_config.sta_sap_mcc_weightage;
 
 	cm_init_mlo_score_config(psoc, score_cfg, &total_weight);
+	cm_init_uhr_score_config(psoc, score_cfg, &total_weight);
 
 	/*
 	 * If configured weights are greater than max weight,
@@ -4660,6 +4722,7 @@ void wlan_cm_init_score_config(struct wlan_objmgr_psoc *psoc,
 		score_cfg->weight_config.sta_sap_mcc_weightage =
 						CM_STA_SAP_MCC_WEIGHTAGE;
 		cm_set_default_mlo_weights(score_cfg);
+		cm_set_default_uhr_weights(score_cfg);
 	}
 
 	score_cfg->rssi_score.best_rssi_threshold =

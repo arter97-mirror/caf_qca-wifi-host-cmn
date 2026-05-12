@@ -53,6 +53,7 @@
  * @wlm_indication_weightage: WLM indication weightage
  * @security_weightage: Security weightage
  * @sta_sap_mcc_weightage: STA + SAP MCC weightage
+ * @uhr_caps_weightage: UHR caps weightage
  */
 struct weight_cfg {
 	uint8_t rssi_weightage;
@@ -83,6 +84,9 @@ struct weight_cfg {
 #endif
 	uint8_t security_weightage;
 	uint8_t sta_sap_mcc_weightage;
+#ifdef WLAN_FEATURE_11BN
+	uint8_t uhr_caps_weightage;
+#endif
 };
 
 /**

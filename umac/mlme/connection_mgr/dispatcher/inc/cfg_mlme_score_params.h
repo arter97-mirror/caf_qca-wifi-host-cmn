@@ -1960,6 +1960,40 @@
 #define CFG_MLO_SCORE_CONFIG
 #endif
 
+#ifdef WLAN_FEATURE_11BN
+/*
+ * <ini>
+ * uhr_caps_weightage - UHR caps Weightage to calculate best candidate
+ * @Min: 0
+ * @Max: 100
+ * @Default: 2
+ *
+ * This ini is used to increase/decrease UHR caps weightage in best candidate
+ * selection. If AP supports UHR caps, AP will get additional weightage with
+ * this param. Weightage will be given only if dot11mode is UHR capable.
+ *
+ * Related: None
+ *
+ * Supported Feature: STA Candidate selection
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+#define CFG_SCORING_UHR_CAPS_WEIGHTAGE CFG_INI_UINT( \
+	"uhr_caps_weightage", \
+	0, \
+	100, \
+	2, \
+	CFG_VALUE_OR_DEFAULT, \
+	"UHR Caps Weightage")
+
+#define CFG_11BN_CONFIG \
+	CFG(CFG_SCORING_UHR_CAPS_WEIGHTAGE)
+#else
+#define CFG_11BN_CONFIG
+#endif
+
 #define CFG_MLME_SCORE_ALL \
 	CFG(CFG_SCORING_RSSI_WEIGHTAGE) \
 	CFG(CFG_SCORING_HT_CAPS_WEIGHTAGE) \
@@ -2002,6 +2036,7 @@
 	CFG(CFG_VENDOR_ROAM_SCORE_ALGORITHM) \
 	CFG_6GHZ_CONFIG \
 	CFG_11BE_CONFIG \
-	CFG_MLO_SCORE_CONFIG
+	CFG_MLO_SCORE_CONFIG \
+	CFG_11BN_CONFIG
 
 #endif /* __CFG_MLME_SCORE_PARAMS_H */
