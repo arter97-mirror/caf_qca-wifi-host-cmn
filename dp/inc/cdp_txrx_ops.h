@@ -989,7 +989,9 @@ struct cdp_ctrl_ops {
 						   bool enable);
 	QDF_STATUS (*txrx_get_uplink_delay)(struct cdp_soc_t *soc,
 					    uint8_t vdev_id,
-					    uint32_t *val);
+					    uint8_t client,
+					    uint32_t *val,
+					    int *num_pkts);
 	QDF_STATUS (*txrx_enable_ul_delay)(struct cdp_soc_t *soc,
 					   uint8_t vdev_id,
 					   bool enable);

@@ -1197,12 +1197,17 @@ static inline QDF_STATUS cdp_set_tsf_ul_delay_report(ol_txrx_soc_handle soc,
  * cdp_get_uplink_delay() - Get uplink delay value
  * @soc: SOC TXRX handle
  * @vdev_id: vdev id
+ * @client: client
  * @val: pointer to save uplink delay value
+ * @num_pkts: Number of packets
  *
  * Return: QDF_STATUS
  */
 static inline QDF_STATUS cdp_get_uplink_delay(ol_txrx_soc_handle soc,
-					      uint32_t vdev_id, uint32_t *val)
+					      uint8_t vdev_id,
+					      uint8_t client,
+					      uint32_t *val,
+					      int *num_pkts)
 {
 	if (!soc || !soc->ops) {
 		dp_cdp_err("Invalid SOC instance");
@@ -1219,7 +1224,9 @@ static inline QDF_STATUS cdp_get_uplink_delay(ol_txrx_soc_handle soc,
 	    !soc->ops->ctrl_ops->txrx_get_uplink_delay)
 		return QDF_STATUS_E_FAILURE;
 
-	return soc->ops->ctrl_ops->txrx_get_uplink_delay(soc, vdev_id, val);
+	return soc->ops->ctrl_ops->txrx_get_uplink_delay(soc, vdev_id,
+							 client, val,
+							 num_pkts);
 }
 
 static inline QDF_STATUS
