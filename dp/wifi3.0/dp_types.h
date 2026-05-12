@@ -5374,6 +5374,9 @@ struct dp_vdev {
 #ifdef DRIVER_PASSTHRU_MODE
 	qdf_freq_t passthru_freq;
 #endif
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+	bool predictive_roam_stats_enabled;
+#endif
 };
 
 enum {

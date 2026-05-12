@@ -1240,6 +1240,10 @@ struct cdp_mon_ops {
  * @tx_latency_stats_register_cb: register tx latency stats callback
  * @txrx_process_ul_delay: Process UL delay
  * @txrx_dump_custom_stats: dump custom stats
+ * @set_vdev_predictive_roaming_stats: enable/disable predictive
+ *   roaming stats collection for a vdev
+ * @is_vdev_predictive_roaming_stats_enabled: query whether predictive roaming
+ *   stats collection is enabled for a vdev
  */
 struct cdp_host_stats_ops {
 	int (*txrx_host_stats_get)(struct cdp_soc_t *soc, uint8_t vdev_id,
@@ -1480,6 +1484,15 @@ struct cdp_host_stats_ops {
 					    uint8_t vdev_id);
 	QDF_STATUS (*txrx_dump_custom_stats)(struct cdp_soc_t *soc,
 					     uint8_t vdev_id);
+#endif
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+	void
+	(*set_vdev_predictive_roaming_stats)(struct cdp_soc_t *soc,
+						uint8_t vdev_id,
+						bool value);
+	bool
+	(*is_vdev_predictive_roaming_stats_enabled)(struct cdp_soc_t *soc,
+					      uint8_t vdev_id);
 #endif
 };
 

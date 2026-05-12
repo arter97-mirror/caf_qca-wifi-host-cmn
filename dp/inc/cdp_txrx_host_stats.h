@@ -1565,4 +1565,72 @@ cdp_process_ul_delay(ol_txrx_soc_handle soc, uint8_t vdev_id)
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* WLAN_FEATURE_TSF_UPLINK_DELAY */
+
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+/**
+ * cdp_set_vdev_predictive_roaming_stats() - Start/Stop predictive
+ *  roaming stats capture for the given vdev
+ * @soc: soc handle
+ * @vdev_id: vdev id
+ * @value: true to enable predictive roaming stats collection, false to disable
+ *
+ * Return: None
+ */
+static inline void
+cdp_set_vdev_predictive_roaming_stats(ol_txrx_soc_handle soc,
+				      uint8_t vdev_id,
+				      bool value)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		return;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->set_vdev_predictive_roaming_stats)
+		return;
+
+	soc->ops->host_stats_ops->set_vdev_predictive_roaming_stats(
+							soc, vdev_id, value);
+}
+
+/**
+ * cdp_is_vdev_predictive_roaming_stats_enabled() - Check if predictive
+ *  roaming stats collection is enabled for the given vdev
+ * @soc: SOC handle
+ * @vdev_id: vdev id
+ *
+ * Return: true if predictive roaming stats are enabled, false otherwise
+ */
+static inline bool
+cdp_is_vdev_predictive_roaming_stats_enabled(ol_txrx_soc_handle soc,
+					uint8_t vdev_id)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		return false;
+	}
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->is_vdev_predictive_roaming_stats_enabled)
+		return false;
+
+	return soc->ops->host_stats_ops->is_vdev_predictive_roaming_stats_enabled(
+								soc, vdev_id);
+}
+#else
+static inline void
+cdp_set_vdev_predictive_roaming_stats(ol_txrx_soc_handle soc,
+				      uint8_t vdev_id,
+				      bool value)
+{
+}
+
+static inline bool
+cdp_is_vdev_predictive_roaming_stats_enabled(ol_txrx_soc_handle soc,
+					uint8_t vdev_id)
+{
+	return false;
+}
+#endif
 #endif /* _CDP_TXRX_HOST_STATS_H_ */

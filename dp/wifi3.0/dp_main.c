@@ -14272,6 +14272,59 @@ static void dp_dal_send_ssr_notify(struct cdp_soc_t *soc_hdl)
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
 
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+/**
+ * dp_set_vdev_predictive_roaming_stats() - Start/Stop predictive roaming stats capture
+ * @soc_hdl: DP soc handle
+ * @vdev_id: vdev id
+ * @value: value
+ *
+ * Return: None
+ */
+static void
+dp_set_vdev_predictive_roaming_stats(struct cdp_soc_t *soc_hdl,
+					uint8_t vdev_id,
+					bool value)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev = NULL;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev)
+		return;
+
+	vdev->predictive_roam_stats_enabled = value;
+
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+}
+
+/**
+ * dp_is_vdev_predictive_roaming_stats_enabled() - Check if predictive
+ *     roaming stats collection is enabled on a given vdev
+ * @soc_hdl: CDP SoC handle
+ * @vdev_id: vdev ID to query
+ *
+ * Return: true if predictive roaming stats are enabled, false otherwise
+ */
+static inline bool
+dp_is_vdev_predictive_roaming_stats_enabled(struct cdp_soc_t *soc_hdl,
+					    uint8_t vdev_id)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev;
+	bool enabled;
+
+	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
+	if (!vdev)
+		return false;
+
+	enabled = vdev->predictive_roam_stats_enabled;
+	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+
+	return enabled;
+}
+#endif
+
 static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_soc_attach_target = dp_soc_attach_target_wifi3,
 	.txrx_vdev_attach = dp_vdev_attach_wifi3,
@@ -14595,6 +14648,12 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 #ifdef WLAN_FEATURE_TSF_UPLINK_DELAY
 	.txrx_process_ul_delay = dp_process_ul_delay,
 	.txrx_dump_custom_stats = dp_dump_custom_stats,
+#endif
+#ifdef FEATURE_WLAN_PREDICTIVE_ROAMING
+	.set_vdev_predictive_roaming_stats =
+				dp_set_vdev_predictive_roaming_stats,
+	.is_vdev_predictive_roaming_stats_enabled =
+				dp_is_vdev_predictive_roaming_stats_enabled,
 #endif
 	/* TODO */
 };
