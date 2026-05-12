@@ -1019,6 +1019,7 @@ static inline uint8_t wlan_sp_ie_ext_rsn_offset(const uint8_t *ie)
  * @REASON_CHANNEL_SWITCH_FAILED: as channel switch failed
  * @REASON_BEACON_MISSED: due to beacon miss
  * @REASON_USER_TRIGGERED_ROAM_FAILURE: Reason user triggered roam failed
+ * @REASON_PREDICTIVE_ROAM_FAILURE: Reason predictive roam triggered disconnect
  * @REASON_HOST_TRIGGERED_SILENT_DEAUTH: deauth without sending deauth frame
  */
 enum wlan_reason_code {
@@ -1115,6 +1116,7 @@ enum wlan_reason_code {
 	REASON_BEACON_MISSED = 65533,
 	REASON_USER_TRIGGERED_ROAM_FAILURE = 65534,
 	REASON_HOST_TRIGGERED_SILENT_DEAUTH = 65535,
+	REASON_PREDICTIVE_ROAM_FAILURE = 65536,
 	/* Do not add any reason code below this */
 };
 
