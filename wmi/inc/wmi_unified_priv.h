@@ -924,6 +924,10 @@ QDF_STATUS (*send_idle_roam_params)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_roam_mlo_config)(wmi_unified_t wmi_handle,
 				   struct wlan_roam_mlo_config *req);
 #endif
+#ifdef WLAN_FEATURE_11BN_SMD
+QDF_STATUS (*send_smd_roam_start_status_cmd)(wmi_unified_t wmi_handle,
+			struct wlan_roam_smd_start_status_params *params);
+#endif
 
 QDF_STATUS (*send_roam_preauth_status)(wmi_unified_t wmi_handle,
 				struct wmi_roam_auth_status_params *params);
