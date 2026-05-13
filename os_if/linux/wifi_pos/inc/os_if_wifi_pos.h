@@ -331,6 +331,46 @@ QDF_STATUS os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 #if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
 	defined(CFG80211_PD_SUPPORT)
 /**
+ * struct osif_wifi_pos_legacy_ops - OS IF wifi pos legacy callbacks
+ * @get_pmsr_req_legacy_cb: Callback to get PMSR request from HDD if the PD
+ *   adapter exists and its pmsr_req is valid. On success, fills @req with
+ *   the cookie and nl_portid and returns the wireless_dev of the PD adapter.
+ *   Returns NULL if no valid request is found.
+ * @pmsr_complete_cb: Callback to notify cfg80211 that any pending PMSR is
+ *   complete. Called on concurrency events (SAP start, NAN enable, STA/P2P
+ *   CLI connect) to abort and complete in-progress measurements.
+ * @pmsr_req_clear_cb: Callback to clear the cached PMSR request state in HDD.
+ *   Called after reporting the final measurement result to userspace, allowing
+ *   HDD to accept a new PMSR request immediately.
+ */
+struct osif_wifi_pos_legacy_ops {
+	struct wireless_dev *(*get_pmsr_req_legacy_cb)(
+					struct wiphy *wiphy,
+					struct cfg80211_pmsr_request *req);
+	void (*pmsr_complete_cb)(struct wlan_objmgr_psoc *psoc);
+	void (*pmsr_req_clear_cb)(struct wiphy *wiphy);
+};
+
+/**
+ * osif_wifi_pos_set_legacy_cb() - Register OS IF wifi pos legacy callbacks
+ * @legacy_ops: Pointer to legacy ops structure provided by HDD
+ */
+void osif_wifi_pos_set_legacy_cb(struct osif_wifi_pos_legacy_ops *legacy_ops);
+
+/**
+ * osif_wifi_pos_reset_legacy_cb() - Unregister OS IF wifi pos legacy callbacks
+ */
+void osif_wifi_pos_reset_legacy_cb(void);
+
+/**
+ * osif_wifi_pos_get_legacy_cb() - Retrieve registered OS IF wifi pos legacy
+ *   callbacks
+ *
+ * Return: Pointer to legacy ops, or NULL if not registered
+ */
+struct osif_wifi_pos_legacy_ops *osif_wifi_pos_get_legacy_cb(void);
+
+/**
  * os_if_wifi_pos_send_rtt_peer_meas_result() - Send RTT peer measurement
  * results to userspace via cfg80211 PMSR/FTM result plumbing
  * @psoc: Pointer to PSOC object

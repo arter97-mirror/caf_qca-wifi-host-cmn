@@ -50,7 +50,6 @@
 #endif
 #include "wlan_osif_request_manager.h"
 #include "wmi_unified_param.h"
-#include "wlan_hdd_main.h"
 
 #ifdef CNSS_GENL
 #define WLAN_CLD80211_MAX_SIZE SKB_WITH_OVERHEAD(8192UL)
@@ -1551,6 +1550,24 @@ nla_put_failure:
 
 #if defined(WLAN_FEATURE_RTT_11AZ_SUPPORT) && \
 	defined(CFG80211_PD_SUPPORT)
+
+static struct osif_wifi_pos_legacy_ops *osif_wifi_pos_legacy_cb;
+
+void osif_wifi_pos_set_legacy_cb(struct osif_wifi_pos_legacy_ops *legacy_ops)
+{
+	osif_wifi_pos_legacy_cb = legacy_ops;
+}
+
+void osif_wifi_pos_reset_legacy_cb(void)
+{
+	osif_wifi_pos_legacy_cb = NULL;
+}
+
+struct osif_wifi_pos_legacy_ops *osif_wifi_pos_get_legacy_cb(void)
+{
+	return osif_wifi_pos_legacy_cb;
+}
+
 QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
 						 void *cookie,
 						 uint8_t peer_create_status)
@@ -1650,8 +1667,10 @@ os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 	struct vdev_osif_priv *osif_priv;
 	struct wireless_dev *wdev;
 	struct cfg80211_pmsr_result pmsr_result;
-	struct hdd_adapter *pd_adapter;
-	struct hdd_context *hdd_ctx;
+	struct cfg80211_pmsr_request request = {0};
+	struct osif_wifi_pos_legacy_ops *legacy_cb;
+	struct wiphy *wiphy;
+	bool req_cleared = false;
 	uint8_t i;
 
 	if (!psoc || !report) {
@@ -1673,28 +1692,23 @@ os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	hdd_ctx = wiphy_priv(osif_priv->wdev->wiphy);
-	if (!hdd_ctx) {
-		osif_err("hdd_ctx is NULL");
-		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
-		return QDF_STATUS_E_FAILURE;
-	}
-
+	wiphy = osif_priv->wdev->wiphy;
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 
-	pd_adapter = hdd_get_adapter(hdd_ctx, QDF_PD_MODE);
-	if (!pd_adapter) {
-		osif_err("NO PD adapter found");
+	legacy_cb = osif_wifi_pos_get_legacy_cb();
+	if (!legacy_cb || !legacy_cb->get_pmsr_req_legacy_cb) {
+		osif_err("legacy callback is not registered");
 		return QDF_STATUS_E_FAILURE;
 	}
-	wdev = &pd_adapter->wdev;
+
+	wdev = legacy_cb->get_pmsr_req_legacy_cb(wiphy, &request);
+	if (!wdev) {
+		osif_debug("No active pmsr_req; result event arrived after session teardown");
+		return QDF_STATUS_E_FAILURE;
+	}
 
 	for (i = 0; i < report->num_peers; i++) {
 		struct wifi_pos_peer_meas_result *res = &report->peer_result[i];
-		struct cfg80211_pmsr_request request = {0};
-
-		request.cookie = pd_adapter->pmsr_req.cookie;
-		request.nl_portid = pd_adapter->pmsr_req.nl_port_id;
 
 		qdf_mem_zero(&pmsr_result, sizeof(pmsr_result));
 
@@ -1788,6 +1802,11 @@ os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 
 		cfg80211_pmsr_report(wdev, &request, &pmsr_result,
 				     qdf_mem_malloc_flags());
+
+		if (res->final && !req_cleared && legacy_cb->pmsr_req_clear_cb) {
+			legacy_cb->pmsr_req_clear_cb(wiphy);
+			req_cleared = true;
+		}
 	}
 
 	return QDF_STATUS_SUCCESS;
