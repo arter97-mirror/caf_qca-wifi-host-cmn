@@ -6863,6 +6863,7 @@ typedef enum {
 #ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
 	wmi_service_mlo_sap_link_removal_support,
 #endif
+	wmi_service_delete_all_peer_bitmap_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
