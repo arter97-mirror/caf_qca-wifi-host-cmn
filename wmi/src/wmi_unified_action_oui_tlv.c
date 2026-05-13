@@ -96,6 +96,9 @@ bool wmi_get_action_oui_id(enum action_oui_id action_id,
 	case ACTION_OUI_DISALLOW_NSS_GREATER_THAN_2:
 		*id = WMI_VENDOR_OUI_ACTION_DISALLOW_NSS_GREATER_THAN_2;
 		return true;
+	case ACTION_OUI_ALLOW_UL_TX_BEAMFORMER:
+		*id = WMI_VENDOR_OUI_ACTION_ENABLE_UL_TX_BEAMFORMER;
+		return true;
 	default:
 		return false;
 	}

@@ -26997,6 +26997,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_VDEV_CHAN_HOP_STATUS_REPORT;
 	wmi_service[wmi_service_tdls_stats_info] =
 				WMI_SERVICE_TDLS_STATS_SUPPORT;
+	wmi_service[wmi_service_support_ul_tx_beamformer_ap_config] =
+				WMI_SERVICE_SUPPORT_UL_TX_BEAMFORMER_AP_CONFIG;
 }
 
 /**
