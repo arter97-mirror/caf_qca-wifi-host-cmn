@@ -49,6 +49,9 @@
  * @min_wake_intvl: minimum twt wake_intvl supported by firmware in micro sec
  * @max_wake_intvl: maximum twt wake_intvl supported by firmware in micro sec
  * @twt_resp_disable_per_vdev: TWT responder disable per VDEV SVC
+ * @twt_req_en_dis_vdev_support: FW supports per-vdev TWT enable/disable
+ *                                command for TWT requestor role
+ *                                (STA/P2P-CLI etc.)
  */
 struct twt_tgt_caps {
 	bool twt_requestor;
@@ -67,6 +70,7 @@ struct twt_tgt_caps {
 	uint16_t min_wake_intvl;
 	uint16_t max_wake_intvl;
 	bool twt_resp_disable_per_vdev;
+	bool twt_req_en_dis_vdev_support;
 };
 
 /**
