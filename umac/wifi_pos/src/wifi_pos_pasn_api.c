@@ -568,7 +568,7 @@ wifi_pos_handle_ranging_peer_create_rsp(struct wlan_objmgr_psoc *psoc,
 	}
 
 	peer_info = wifi_post_get_peer_request(psoc, vdev, peer_mac);
-	if (peer_info->is_userspace_peer_create) {
+	if (peer_info && peer_info->is_userspace_peer_create) {
 		status = wifi_pos_continue_nb_peer_create(vdev, peer_info,
 							  peer_create_status);
 		if (peer_create_status)
@@ -790,8 +790,8 @@ wifi_pos_set_peer_ltf_keyseed_required(struct wlan_objmgr_peer *peer,
 	}
 
 	peer_priv->is_ltf_keyseed_required = value;
-	wifi_pos_err("peer_mac:" QDF_MAC_ADDR_FMT " value:%d",
-		     QDF_MAC_ADDR_REF(wlan_peer_get_macaddr(peer)), value);
+	wifi_pos_debug("peer_mac:" QDF_MAC_ADDR_FMT " value:%d",
+		       QDF_MAC_ADDR_REF(wlan_peer_get_macaddr(peer)), value);
 
 	return QDF_STATUS_SUCCESS;
 }
