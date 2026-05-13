@@ -567,6 +567,33 @@ enum eht_actioncode {
 	EHT_LINK_RECONFIG_RESPONSE = 12,
 };
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * enum uhr_actioncode - Protected UHR action frames
+ * @UHR_LINK_RECONFIG_REQUEST: Link Reconfiguration Request action Frame
+ * @UHR_LINK_RECONFIG_RESPONSE: Link Reconfiguration Response action Frame
+ * @UHR_LINK_RECONFIG_NOTIFY: Link Reconfiguration Notify action Frame
+ */
+enum uhr_actioncode {
+	UHR_LINK_RECONFIG_REQUEST = 0,
+	UHR_LINK_RECONFIG_RESPONSE = 1,
+	UHR_LINK_RECONFIG_NOTIFY = 2,
+};
+
+/**
+ * enum uhr_typecode - UHR type code values
+ * @UHR_TYPECODE_ST_PREPARATION: ST preparation (see 37.15.6)
+ * @UHR_TYPECODE_ST_EXECUTION: ST execution (see 37.15.7 and 37.15.8)
+ * @UHR_TYPECODE_RESERVED: Reserved
+ * @UHR_TYPECODE_OMP_REQUEST: UHR OMP request (see 37.29)
+ */
+enum uhr_typecode {
+	UHR_TYPECODE_ST_PREPARATION = 0,
+	UHR_TYPECODE_ST_EXECUTION   = 1,
+	UHR_TYPECODE_RESERVED       = 2,
+	UHR_TYPECODE_OMP_REQUEST    = 3,
+};
+#endif
 /**
  * struct action_frm_hdr - action frame header
  * @action_category: action category
