@@ -139,7 +139,7 @@ int ce_send_fast(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 			     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 			     QDF_TRACE_DEFAULT_PDEV_ID,
 			     qdf_nbuf_data_addr(msdu),
-			     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
+			     qdf_nbuf_len(msdu), QDF_TX));
 
 	qdf_spin_lock_bh(&ce_state->ce_index_lock);
 
@@ -264,7 +264,7 @@ int ce_send_fast(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 				     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 				     QDF_TRACE_DEFAULT_PDEV_ID,
 				     qdf_nbuf_data_addr(msdu),
-				     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
+				     qdf_nbuf_len(msdu), QDF_TX));
 	}
 
 	src_ring->write_index = write_index;
@@ -686,7 +686,7 @@ ce_sendlist_send_legacy(struct CE_handle *copyeng,
 			QDF_DP_TRACE_CE_PACKET_PTR_RECORD,
 			QDF_TRACE_DEFAULT_PDEV_ID,
 			(uint8_t *)&(((qdf_nbuf_t)per_transfer_context)->data),
-			sizeof(((qdf_nbuf_t)per_transfer_context)->data),
+			qdf_nbuf_len((qdf_nbuf_t)per_transfer_context),
 			QDF_TX));
 	} else {
 		/*
@@ -1151,7 +1151,7 @@ int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 			     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 			     QDF_TRACE_DEFAULT_PDEV_ID,
 			     qdf_nbuf_data_addr(msdu),
-			     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
+			     qdf_nbuf_len(msdu), QDF_TX));
 
 	DATA_CE_UPDATE_SWINDEX(src_ring->sw_index, scn, ctrl_addr);
 
@@ -1262,7 +1262,7 @@ int ce_enqueue_desc(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 				     QDF_DP_TRACE_CE_FAST_PACKET_PTR_RECORD,
 				     QDF_TRACE_DEFAULT_PDEV_ID,
 				     qdf_nbuf_data_addr(msdu),
-				     sizeof(qdf_nbuf_data(msdu)), QDF_TX));
+				     qdf_nbuf_len(msdu), QDF_TX));
 	}
 
 	src_ring->write_index = write_index;
