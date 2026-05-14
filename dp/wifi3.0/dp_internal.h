@@ -3743,6 +3743,7 @@ QDF_STATUS dp_h2t_3tuple_config_send(struct dp_pdev *pdev, uint32_t tuple_mask,
 #endif
 
 #ifdef IPA_OFFLOAD
+#if defined(ATH_SUPPORT_EXT_STAT)
 /**
  * dp_peer_update_tid_stats_from_reo() - update rx pkt and byte count from reo
  * @soc: soc handle
@@ -3756,6 +3757,7 @@ void dp_peer_update_tid_stats_from_reo(struct dp_soc *soc, void *cb_ctxt,
 
 int dp_peer_get_rxtid_stats_ipa(struct dp_peer *peer,
 				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb);
+#endif /* ATH_SUPPORT_EXT_STAT */
 #ifdef IPA_OPT_WIFI_DP
 void dp_ipa_wdi_opt_dpath_notify_flt_rlsd(int flt0_rslt,
 					  int flt1_rslt);

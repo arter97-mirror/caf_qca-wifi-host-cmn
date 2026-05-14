@@ -74,7 +74,7 @@ void dp_rx_tid_delete_cb(struct dp_soc *soc,
 			 void *cb_ctxt,
 			 union hal_reo_status *reo_status);
 
-#ifdef IPA_OFFLOAD
+#if defined(IPA_OFFLOAD) && defined(ATH_SUPPORT_EXT_STAT)
 void dp_peer_update_tid_stats_from_reo(struct dp_soc *soc, void *cb_ctxt,
 				       union hal_reo_status *reo_status);
 int dp_peer_get_rxtid_stats_ipa(struct dp_peer *peer,

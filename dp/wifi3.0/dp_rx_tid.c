@@ -128,7 +128,7 @@ dp_set_ssn_valid_flag(struct hal_reo_cmd_params *params,
 		      valid);
 }
 
-#ifdef IPA_OFFLOAD
+#if defined(IPA_OFFLOAD) && defined(ATH_SUPPORT_EXT_STAT)
 void dp_peer_update_tid_stats_from_reo(struct dp_soc *soc, void *cb_ctxt,
 				       union hal_reo_status *reo_status)
 {
@@ -1977,7 +1977,7 @@ dp_rx_delba_ind_handler(void *soc_handle, uint16_t peer_id,
 	return status;
 }
 
-#ifdef IPA_OFFLOAD
+#if defined(IPA_OFFLOAD) && defined(ATH_SUPPORT_EXT_STAT)
 int dp_peer_get_rxtid_stats_ipa(struct dp_peer *peer,
 				dp_rxtid_stats_cmd_cb dp_stats_cmd_cb)
 {
