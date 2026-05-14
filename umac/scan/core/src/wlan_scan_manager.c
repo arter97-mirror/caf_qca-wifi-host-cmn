@@ -794,6 +794,8 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 					req->scan_req.burst_duration =
 						scan_obj->
 						scan_def.go_scan_burst_duration;
+				else if (sta_active && scan_obj->miracast_enabled)
+					req->scan_req.burst_duration = 0;
 				else
 					req->scan_req.burst_duration =
 						scm_scan_get_burst_duration(
@@ -803,22 +805,17 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 							miracast_enabled);
 				break;
 			}
+
+			if (ndi_present || (p2p_cli_present && sta_active)) {
+				req->scan_req.burst_duration = 0;
+				break;
+			}
+
 			if ((sta_active || p2p_cli_present)) {
 				if (scan_obj->scan_def.sta_scan_burst_duration)
 					req->scan_req.burst_duration =
 						scan_obj->scan_def.
 						sta_scan_burst_duration;
-				break;
-			}
-
-			if (go_present && sta_active) {
-				req->scan_req.burst_duration =
-					req->scan_req.dwell_time_active;
-				break;
-			}
-
-			if (ndi_present || (p2p_cli_present && sta_active)) {
-				req->scan_req.burst_duration = 0;
 				break;
 			}
 		} while (0);
