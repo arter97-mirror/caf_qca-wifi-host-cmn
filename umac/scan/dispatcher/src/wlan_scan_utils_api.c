@@ -4742,3 +4742,87 @@ QDF_STATUS scm_validate_6ghz_security_and_policy(
 	}
 	return QDF_STATUS_SUCCESS;
 }
+
+#ifdef WLAN_FEATURE_11BN
+QDF_STATUS
+util_scan_update_nontx_entry_uhr_ies(struct wlan_objmgr_pdev *pdev,
+				     struct qdf_mac_addr *nontx_bssid,
+				     uint8_t *ie_start,
+				     uint32_t ie_len)
+{
+	struct scan_cache_entry *entry;
+	const uint8_t *uhrcap_ie = NULL;
+	const uint8_t *uhrop_ie = NULL;
+	uint16_t cap_len = 0, op_len = 0;
+	uint8_t *new_raw;
+	uint32_t old_len, new_len;
+
+	if (!pdev || !nontx_bssid || !ie_start || !ie_len)
+		return QDF_STATUS_E_INVAL;
+
+	entry = scm_scan_get_entry_by_bssid_and_security(pdev, nontx_bssid,
+							 0, 0);
+	if (!entry) {
+		scm_debug_rl("non-TX scan entry not found for "
+			     QDF_MAC_ADDR_FMT,
+			     QDF_MAC_ADDR_REF(nontx_bssid->bytes));
+		return QDF_STATUS_E_NOENT;
+	}
+
+	uhrcap_ie = wlan_get_ext_ie_ptr_from_ext_id(
+					UHR_CAP_OUI_TYPE,
+					UHR_CAP_OUI_SIZE,
+					ie_start, ie_len);
+	if (uhrcap_ie)
+		cap_len = uhrcap_ie[TAG_LEN_POS] + MIN_IE_LEN;
+
+	uhrop_ie = wlan_get_ext_ie_ptr_from_ext_id(
+					UHR_OP_OUI_TYPE,
+					UHR_OP_OUI_SIZE,
+					ie_start, ie_len);
+	if (uhrop_ie)
+		op_len = uhrop_ie[TAG_LEN_POS] + MIN_IE_LEN;
+
+	if (!cap_len && !op_len) {
+		util_scan_free_cache_entry(entry);
+		return QDF_STATUS_SUCCESS;
+	}
+
+	old_len  = entry->raw_frame.len;
+	new_len  = old_len + cap_len + op_len;
+	new_raw  = qdf_mem_malloc_atomic(new_len);
+	if (!new_raw) {
+		util_scan_free_cache_entry(entry);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	qdf_mem_copy(new_raw, entry->raw_frame.ptr, old_len);
+	if (cap_len)
+		qdf_mem_copy(new_raw + old_len, uhrcap_ie, cap_len);
+	if (op_len)
+		qdf_mem_copy(new_raw + old_len + cap_len, uhrop_ie, op_len);
+
+	/*
+	 * Update ie_list pointers before freeing the old buffer to avoid
+	 * a brief dangling-pointer window visible to concurrent readers
+	 * that hold their own refcount on this entry.
+	 * All other ie_list pointers remain valid because they point at the
+	 * same byte offsets within new_raw as they did in the old buffer.
+	 */
+	if (cap_len)
+		entry->ie_list.uhrcap = new_raw + old_len;
+	if (op_len)
+		entry->ie_list.uhrop  = new_raw + old_len + cap_len;
+
+	qdf_mem_free(entry->raw_frame.ptr);
+	entry->raw_frame.ptr = new_raw;
+	entry->raw_frame.len = new_len;
+
+	scm_debug("non-TX scan entry " QDF_MAC_ADDR_FMT
+		  " UHR IEs updated (uhrcap_len=%u uhrop_len=%u)",
+		  QDF_MAC_ADDR_REF(nontx_bssid->bytes), cap_len, op_len);
+
+	util_scan_free_cache_entry(entry);
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_11BN */

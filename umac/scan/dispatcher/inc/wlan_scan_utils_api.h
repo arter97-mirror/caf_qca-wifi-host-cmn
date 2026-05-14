@@ -2301,4 +2301,34 @@ util_scan_entry_reset_11bn_caps(struct scan_cache_entry *scan_entry)
 {
 }
 #endif
+
+#ifdef WLAN_FEATURE_11BN
+/**
+ * util_scan_update_nontx_entry_uhr_ies() - Update UHR IEs in non-TX scan entry
+ * @pdev:        pdev pointer
+ * @nontx_bssid: BSSID of the non-TX MBSSID AP scan entry to update
+ * @ie_start:    Pointer to the start of IE bytes (from TX AP probe response)
+ * @ie_len:      Length of the IE buffer
+ *
+ * Appends full UHR CAP and UHR OP IEs extracted from the TX AP's probe response
+ * to the non-TX BSSID's scan entry raw_frame and updates ie_list pointers.
+ * Called during UHR MBSSID non-TX AP join after receiving the TX AP probe rsp.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+util_scan_update_nontx_entry_uhr_ies(struct wlan_objmgr_pdev *pdev,
+				     struct qdf_mac_addr *nontx_bssid,
+				     uint8_t *ie_start,
+				     uint32_t ie_len);
+#else
+static inline QDF_STATUS
+util_scan_update_nontx_entry_uhr_ies(struct wlan_objmgr_pdev *pdev,
+				     struct qdf_mac_addr *nontx_bssid,
+				     uint8_t *ie_start,
+				     uint32_t ie_len)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_11BN */
 #endif
