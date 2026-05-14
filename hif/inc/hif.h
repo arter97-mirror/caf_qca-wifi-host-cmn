@@ -933,6 +933,7 @@ struct htc_callbacks {
  * @prealloc_put_consistent_mem_unaligned: put unaligned consistent mem to pool
  * @prealloc_get_multi_pages: get prealloc multi pages memory
  * @prealloc_put_multi_pages: put prealloc multi pages memory back to pool
+ * @athdiag_read_write: athdiag read/write register value via WMI.
  * This Structure provides callback pointer for HIF to query hdd for driver
  * states.
  */
@@ -955,6 +956,9 @@ struct hif_driver_state_callbacks {
 					 bool cacheable);
 	void (*prealloc_put_multi_pages)(uint32_t desc_type,
 					 struct qdf_mem_multi_page_t *pages);
+	int (*athdiag_read_write)(uint32_t offset, uint32_t memtype,
+				  uint32_t datalen, uint8_t *buf,
+				  bool is_write);
 };
 
 /* This API detaches the HTC layer from the HIF device */

@@ -4345,3 +4345,28 @@ QDF_STATUS wmi_extract_vdev_chan_hop_status(
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
+
+#ifdef CONFIG_NO_QMI
+QDF_STATUS
+wmi_unified_athdiag_read_write_cmd(
+			wmi_unified_t wmi_handle,
+			struct wmi_athdiag_read_write_cmd_params *param)
+{
+	if (wmi_handle->ops->send_athdiag_read_write_cmd)
+		return wmi_handle->ops->send_athdiag_read_write_cmd(
+						wmi_handle, param);
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_extract_athdiag_read_write_event(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			struct wmi_athdiag_read_write_event_params *param)
+{
+	if (wmi_handle->ops->extract_athdiag_read_write_event)
+		return wmi_handle->ops->extract_athdiag_read_write_event(
+						wmi_handle, evt_buf, param);
+	return QDF_STATUS_E_FAILURE;
+}
+#endif /* CONFIG_NO_QMI */

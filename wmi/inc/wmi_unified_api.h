@@ -5511,4 +5511,40 @@ wmi_extract_vdev_chan_hop_status(struct wmi_unified *wmi_handle,
 QDF_STATUS wmi_unified_ocb_get_tsf_timer(struct wmi_unified *wmi_handle,
 					 struct ocb_get_tsf_timer_param *req);
 #endif
+
+#ifdef CONFIG_NO_QMI
+/**
+ * wmi_unified_athdiag_read_write_cmd() - Send athdiag read/write command
+ * @wmi_handle: WMI handle
+ * @param: athdiag read/write command parameters
+ *
+ * Sends WMI_ATHDIAG_READ_WRITE_CMDID to firmware to perform a diagnostic
+ * register read or write operation.
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+QDF_STATUS
+wmi_unified_athdiag_read_write_cmd(
+			wmi_unified_t wmi_handle,
+			struct wmi_athdiag_read_write_cmd_params *param);
+
+/**
+ * wmi_unified_extract_athdiag_read_write_event() - Extract athdiag event
+ * @wmi_handle: WMI handle
+ * @evt_buf: event buffer
+ * @param: pointer to store extracted event parameters
+ *
+ * Extracts the result of a WMI_ATHDIAG_READ_WRITE_EVENTID from firmware.
+ * For a read response (param->is_write == 0 and param->status == 0),
+ * param->data points into the event buffer and is valid only for the
+ * lifetime of evt_buf.
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+QDF_STATUS
+wmi_unified_extract_athdiag_read_write_event(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			struct wmi_athdiag_read_write_event_params *param);
+#endif /* CONFIG_NO_QMI */
 #endif /* _WMI_UNIFIED_API_H_ */

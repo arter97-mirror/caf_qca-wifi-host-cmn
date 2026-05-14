@@ -25261,6 +25261,135 @@ QDF_STATUS send_ocb_get_tsf_timer_cmd_tlv(wmi_unified_t wmi_handle,
 }
 #endif
 
+#ifdef CONFIG_NO_QMI
+/**
+ * send_athdiag_read_write_cmd_tlv() - send athdiag read/write command to fw
+ * @wmi_handle: wmi handle
+ * @params: athdiag read/write command parameters
+ *
+ * Sends WMI_ATHDIAG_READ_WRITE_CMDID to firmware.
+ * For a write operation (params->is_write == 1), a WMITLV_TAG_ARRAY_BYTE TLV
+ * carrying the write payload is appended after the fixed param.
+ * For a read operation (params->is_write == 0), no data TLV is appended.
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+send_athdiag_read_write_cmd_tlv(
+		wmi_unified_t wmi_handle,
+		struct wmi_athdiag_read_write_cmd_params *params)
+{
+	wmi_athdiag_read_write_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	uint32_t len;
+	QDF_STATUS ret;
+
+	len = sizeof(*cmd);
+	if (params->is_write && params->data && params->data_length)
+		len += WMI_TLV_HDR_SIZE +
+		       qdf_roundup(params->data_length, sizeof(uint32_t));
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("wmi_buf_alloc failed for athdiag cmd");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_athdiag_read_write_cmd_fixed_param *)buf_ptr;
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_athdiag_read_write_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_athdiag_read_write_cmd_fixed_param));
+
+	cmd->offset      = params->offset;
+	cmd->data_length = params->data_length;
+	cmd->mem_type    = params->mem_type;
+	cmd->is_write    = params->is_write;
+
+	if (params->is_write && params->data && params->data_length) {
+		buf_ptr += sizeof(*cmd);
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
+			       qdf_roundup(params->data_length,
+					   sizeof(uint32_t)));
+		buf_ptr += WMI_TLV_HDR_SIZE;
+		qdf_mem_copy(buf_ptr, params->data, params->data_length);
+	}
+
+	wmi_debug("athdiag %s offset 0x%x data_len %u mem_type %u",
+		  params->is_write ? "write" : "read",
+		  params->offset, params->data_length, params->mem_type);
+
+	wmi_mtrace(WMI_ATHDIAG_READ_WRITE_CMDID, NO_SESSION, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_ATHDIAG_READ_WRITE_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send WMI_ATHDIAG_READ_WRITE_CMDID ret=%d",
+			ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * extract_athdiag_read_write_event_tlv() - extract athdiag read/write event
+ * @wmi_handle: wmi handle
+ * @evt_buf: event buffer
+ * @params: pointer to store extracted event parameters
+ *
+ * Extracts WMI_ATHDIAG_READ_WRITE_EVENTID from firmware.
+ * For a read response (params->is_write == 0 and params->status == 0),
+ * params->data points into the event buffer TLV payload.
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+extract_athdiag_read_write_event_tlv(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			struct wmi_athdiag_read_write_event_params *params)
+{
+	WMI_ATHDIAG_READ_WRITE_EVENTID_param_tlvs *param_buf;
+	wmi_athdiag_read_write_event_fixed_param *ev;
+
+	param_buf = (WMI_ATHDIAG_READ_WRITE_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid athdiag read/write event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	ev = param_buf->fixed_param;
+	if (!ev) {
+		wmi_err("Invalid athdiag read/write event fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	params->data_length = ev->data_length;
+	params->status      = ev->status;
+	params->is_write    = ev->is_write;
+
+	/*
+	 * For a read response with status == 0, point to the data TLV payload.
+	 * The data pointer is valid only for the lifetime of evt_buf.
+	 * Validate that the TLV payload is large enough for the reported length
+	 * to prevent the caller from reading beyond the buffer.
+	 */
+	if (!ev->is_write && ev->status == 0 && param_buf->data &&
+	    param_buf->num_data >= ev->data_length)
+		params->data = param_buf->data;
+	else
+		params->data = NULL;
+
+	wmi_debug("athdiag event: is_write %u status %u data_len %u",
+		  ev->is_write, ev->status, ev->data_length);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* CONFIG_NO_QMI */
+
 struct wmi_ops tlv_ops =  {
 	.send_vdev_create_cmd = send_vdev_create_cmd_tlv,
 	.send_vdev_delete_cmd = send_vdev_delete_cmd_tlv,
@@ -25847,6 +25976,11 @@ struct wmi_ops tlv_ops =  {
 #endif
 #if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
 	.send_ocb_get_tsf_timer_cmd = send_ocb_get_tsf_timer_cmd_tlv,
+#endif
+#ifdef CONFIG_NO_QMI
+	.send_athdiag_read_write_cmd = send_athdiag_read_write_cmd_tlv,
+	.extract_athdiag_read_write_event =
+				extract_athdiag_read_write_event_tlv,
 #endif
 };
 
@@ -26498,6 +26632,10 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 				WMI_NAN_JOINED_CLUSTER_EVENTID;
 	event_ids[wmi_nan_started_cluster_event_id] =
 				WMI_NAN_STARTED_CLUSTER_EVENTID;
+#endif
+#ifdef CONFIG_NO_QMI
+	event_ids[wmi_athdiag_read_write_eventid] =
+					WMI_ATHDIAG_READ_WRITE_EVENTID;
 #endif
 }
 

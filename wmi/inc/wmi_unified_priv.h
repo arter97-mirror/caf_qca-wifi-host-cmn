@@ -3808,6 +3808,17 @@ QDF_STATUS (*send_vdev_repurpose_resp_cmd)(
 				struct vdev_repurpose_params *repurpose_resp,
 				uint8_t num_repurpose_resp);
 #endif
+
+#ifdef CONFIG_NO_QMI
+QDF_STATUS
+(*send_athdiag_read_write_cmd)(wmi_unified_t wmi,
+			       struct wmi_athdiag_read_write_cmd_params *param);
+
+QDF_STATUS
+(*extract_athdiag_read_write_event)(
+		wmi_unified_t wmi, void *evt_buf,
+		struct wmi_athdiag_read_write_event_params *param);
+#endif /* CONFIG_NO_QMI */
 };
 
 /* Forward declaration for psoc*/

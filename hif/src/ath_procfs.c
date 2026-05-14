@@ -85,6 +85,80 @@ static void *get_hif_hdl_from_file(struct file *file)
 	return (void *)scn;
 }
 
+/**
+ * ath_procfs_wmi_diag_read() - Read FW registers via WMI
+ * @scn: HIF context
+ * @pos: encoded position (memtype in bits [59:52], offset in bits [31:0])
+ * @buf: output buffer
+ * @count: number of bytes to read
+ *
+ * Invokes hdd callback athdiag_read_write to read target registers
+ * over WMI
+ *
+ * Return: 0 or other error codes.
+ */
+static int ath_procfs_wmi_diag_read(struct hif_softc *scn, loff_t pos,
+				    uint8_t *buf, size_t count)
+{
+	struct hif_driver_state_callbacks *cbk =
+			hif_get_callbacks_handle(scn);
+	uint32_t memtype;
+	uint32_t offset;
+
+	if (!cbk || !cbk->athdiag_read_write)
+		return -EOPNOTSUPP;
+
+	if (hif_get_conparam(scn) != QDF_GLOBAL_FTM_MODE) {
+		hif_debug("ath diag read via WMI: not supported in this mode");
+		return 0;
+	}
+
+	memtype = (uint32_t)(((uint64_t)pos >> 52) & 0xff);
+	offset  = (uint32_t)((uint64_t)pos & 0xffffffff);
+
+	hif_debug("ath diag read via WMI: offset 0x%x memtype 0x%x datalen %zu",
+		  offset, memtype, count);
+
+	return cbk->athdiag_read_write(offset, memtype, count, buf, false);
+}
+
+/**
+ * ath_procfs_wmi_diag_write() - Write FW registers via WMI
+ * @scn: HIF context
+ * @pos: encoded position (memtype in bits [59:52], offset in bits [31:0])
+ * @buf: input buffer
+ * @count: number of bytes to write
+ *
+ * Invokes hdd callback athdiag_read_write to write target registers
+ * over WMI
+ *
+ * Return: 0 or other error codes.
+ */
+static int ath_procfs_wmi_diag_write(struct hif_softc *scn, loff_t pos,
+				     uint8_t *buf, size_t count)
+{
+	struct hif_driver_state_callbacks *cbk =
+			hif_get_callbacks_handle(scn);
+	uint32_t memtype;
+	uint32_t offset;
+
+	if (!cbk || !cbk->athdiag_read_write)
+		return -EOPNOTSUPP;
+
+	if (hif_get_conparam(scn) != QDF_GLOBAL_FTM_MODE) {
+		hif_debug("ath diag write via WMI: not supported in this mode");
+		return 0;
+	}
+
+	memtype = (uint32_t)(((uint64_t)pos >> 52) & 0xff);
+	offset  = (uint32_t)((uint64_t)pos & 0xffffffff);
+
+	hif_debug("ath diag write via WMI: offset 0x%x memtype 0x%x datalen %zu",
+		  offset, memtype, count);
+
+	return cbk->athdiag_read_write(offset, memtype, count, buf, true);
+}
+
 static ssize_t ath_procfs_diag_read_legacy(struct file *file,
 					   char __user *buf,
 					   size_t count, loff_t *pos)
@@ -145,6 +219,10 @@ static ssize_t ath_procfs_diag_read_legacy(struct file *file,
 				      (uint8_t *)read_buffer);
 		goto out;
 	}
+
+	rv = ath_procfs_wmi_diag_read(scn, *pos, read_buffer, count);
+	if (rv != -EOPNOTSUPP)
+		goto out;
 
 	if ((count == 4) && ((((uint32_t) (*pos)) & 3) == 0)) {
 		/* reading a word? */
@@ -237,6 +315,10 @@ static ssize_t ath_procfs_diag_write_legacy(struct file *file,
 				      (uint8_t *)write_buffer);
 		goto out;
 	}
+
+	rv = ath_procfs_wmi_diag_write(scn, *pos, write_buffer, count);
+	if (rv != -EOPNOTSUPP)
+		goto out;
 
 	if ((count == 4) && ((((uint32_t) (*pos)) & 3) == 0)) {
 		/* reading a word? */

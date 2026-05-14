@@ -6068,6 +6068,9 @@ typedef enum {
 	wmi_nan_joined_cluster_event_id,
 	wmi_nan_started_cluster_event_id,
 #endif
+#ifdef CONFIG_NO_QMI
+	wmi_athdiag_read_write_eventid,
+#endif
 
 	wmi_events_max,
 } wmi_conv_event_id;
@@ -11392,4 +11395,38 @@ struct vdev_chan_hop_status_response {
 	uint32_t num_slots;
 	struct vdev_chan_hop_slot_info slot_info[WLAN_MAX_CHAN_HOP_SLOTS];
 };
+
+#ifdef CONFIG_NO_QMI
+/**
+ * struct wmi_athdiag_read_write_cmd_params - params for athdiag read/write cmd
+ * @offset: register offset to read from or write to
+ * @data_length: number of bytes to read or write
+ * @mem_type: type of memory being accessed
+ * @is_write: 0 = read operation, 1 = write operation
+ * @data: pointer to write payload (only used when is_write == 1)
+ */
+struct wmi_athdiag_read_write_cmd_params {
+	uint32_t offset;
+	uint32_t data_length;
+	uint32_t mem_type;
+	uint32_t is_write;
+	uint8_t *data;
+};
+
+/**
+ * struct wmi_athdiag_read_write_event_params - params from athdiag
+ *                                              read/write event
+ * @data_length: number of bytes read or written
+ * @status: 0 = success, non-zero = FW-defined error code
+ * @is_write: 0 = read response, 1 = write response
+ * @data: pointer to read data TLV payload (valid only when is_write == 0
+ *        and status == 0); NULL otherwise
+ */
+struct wmi_athdiag_read_write_event_params {
+	uint32_t data_length;
+	uint32_t status;
+	uint32_t is_write;
+	uint8_t *data;
+};
+#endif /* CONFIG_NO_QMI */
 #endif /* _WMI_UNIFIED_PARAM_H_ */
