@@ -25,6 +25,7 @@
 #include <wlan_twt_tgt_if_tx_api.h>
 #include "twt/core/src/wlan_twt_cfg.h"
 #include "wlan_policy_mgr_public_struct.h"
+#include "wlan_policy_mgr_api.h"
 
 #define TWT_NUM_BIT 1
 #define TWT_ALL_MACS_ID 255
@@ -164,6 +165,7 @@ wlan_twt_requestor_disable(struct wlan_objmgr_psoc *psoc,
 			   void *context)
 {
 	struct twt_psoc_priv_obj *twt_psoc;
+	bool twt_req_en_dis_vdev_support = false;
 
 	twt_psoc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
 							 WLAN_UMAC_COMP_TWT);
@@ -177,9 +179,22 @@ wlan_twt_requestor_disable(struct wlan_objmgr_psoc *psoc,
 
 	req->twt_role = TWT_ROLE_REQUESTOR;
 
-	twt_debug("TWT req disable: pdev_id:%d role:%d ext:%d reason_code:%d",
-		  req->pdev_id, req->twt_role, req->ext_conf_present,
-		  req->dis_reason_code);
+	/*
+	 * If FW supports per-vdev TWT en/dis for requestor role and a valid
+	 * vdev_id was provided, keep it so the WMI layer can use vdev_id and
+	 * set the VDEV_SUPPORT flag. Otherwise reset vdev_id to
+	 * WLAN_INVALID_VDEV_ID to fall back to MAC-level TWT using pdev_id.
+	 */
+	wlan_twt_tgt_caps_get_req_en_dis_vdev_support(
+						psoc,
+						&twt_req_en_dis_vdev_support);
+	if (!twt_req_en_dis_vdev_support)
+		req->vdev_id = WLAN_INVALID_VDEV_ID;
+
+	twt_debug("TWT req disable: pdev_id:%d vdev_id:%d role:%d ext:%d reason_code:%d vdev_support:%d",
+		  req->pdev_id, req->vdev_id, req->twt_role,
+		  req->ext_conf_present, req->dis_reason_code,
+		  twt_req_en_dis_vdev_support);
 
 	return tgt_twt_disable_req_send(psoc, req);
 }
@@ -210,6 +225,41 @@ wlan_twt_responder_disable(struct wlan_objmgr_psoc *psoc,
 	return tgt_twt_disable_req_send(psoc, req);
 }
 
+/**
+ * wlan_twt_req_en_set_vdev_cong_timeout() - Set vdev_id and congestion
+ * timeout for TWT requestor enable based on FW capability.
+ * @psoc: Pointer to global psoc
+ * @req: Pointer to TWT enable request parameters
+ *
+ * If FW supports per-vdev TWT en/dis for requestor role and a valid vdev_id
+ * was provided, keep it so the WMI layer can use vdev_id and set the
+ * VDEV_SUPPORT flag, and fetch the per-vdev congestion timeout.
+ * Otherwise reset vdev_id to WLAN_INVALID_VDEV_ID to fall back to MAC-level
+ * TWT using pdev_id, and fetch the per-MAC congestion timeout.
+ */
+static void
+wlan_twt_req_en_set_vdev_cong_timeout(struct wlan_objmgr_psoc *psoc,
+				      struct twt_enable_param *req)
+{
+	bool twt_req_en_dis_vdev_support = false;
+
+	wlan_twt_tgt_caps_get_req_en_dis_vdev_support(
+					psoc,
+					&twt_req_en_dis_vdev_support);
+	if (!twt_req_en_dis_vdev_support)
+		req->vdev_id = WLAN_INVALID_VDEV_ID;
+
+	if (twt_req_en_dis_vdev_support &&
+	    req->vdev_id != WLAN_INVALID_VDEV_ID)
+		wlan_twt_cfg_get_vdev_congestion_timeout(
+						psoc, req->vdev_id,
+						&req->sta_cong_timer_ms);
+	else
+		wlan_twt_cfg_get_congestion_timeout_per_mac(
+						psoc, req->pdev_id,
+						&req->sta_cong_timer_ms);
+}
+
 QDF_STATUS
 wlan_twt_requestor_enable(struct wlan_objmgr_psoc *psoc,
 			  struct twt_enable_param *req,
@@ -235,8 +285,8 @@ wlan_twt_requestor_enable(struct wlan_objmgr_psoc *psoc,
 	twt_psoc->enable_context.twt_role = TWT_ROLE_REQUESTOR;
 	twt_psoc->enable_context.context = context;
 
-	wlan_twt_cfg_get_congestion_timeout_per_mac(psoc, req->pdev_id,
-						    &req->sta_cong_timer_ms);
+	wlan_twt_req_en_set_vdev_cong_timeout(psoc, req);
+
 	wlan_twt_cfg_get_bcast_requestor(psoc, &twt_bcast_requestor);
 	req->b_twt_enable = twt_bcast_requestor;
 	req->twt_role = TWT_ROLE_REQUESTOR;
@@ -250,9 +300,9 @@ wlan_twt_requestor_enable(struct wlan_objmgr_psoc *psoc,
 
 	req->r_twt_enable = QDF_MIN(restricted_support, rtwt_requestor);
 
-	twt_debug("TWT req enable: pdev_id:%d cong:%d bcast:%d rtwt:%d",
-		  req->pdev_id, req->sta_cong_timer_ms, req->b_twt_enable,
-		  req->r_twt_enable);
+	twt_debug("TWT req enable: pdev_id:%d vdev_id:%d cong:%d bcast:%d rtwt:%d",
+		  req->pdev_id, req->vdev_id, req->sta_cong_timer_ms,
+		  req->b_twt_enable, req->r_twt_enable);
 	twt_debug("TWT req enable: role:%d ext:%d oper:%d",
 		  req->twt_role, req->ext_conf_present, req->twt_oper);
 
@@ -454,20 +504,38 @@ wlan_twt_enable_event_handler(struct wlan_objmgr_psoc *psoc,
 
 	twt_context = &twt_psoc->enable_context;
 
-	twt_debug("mac_id:%d status:%d twt_role:%d",
-		  event->mac_id, event->status, twt_context->twt_role);
+	twt_debug("mac_id:%d vdev_id:%d status:%d twt_role:%d flags:0x%x",
+		  event->mac_id, event->vdev_id, event->status,
+		  twt_context->twt_role, event->flags);
 	switch (event->status) {
 	case HOST_TWT_ENABLE_STATUS_OK:
 	case HOST_TWT_ENABLE_STATUS_ALREADY_ENABLED:
-		if (twt_context->twt_role == TWT_ROLE_REQUESTOR)
-			wlan_twt_cfg_set_requestor_flag(psoc, true);
-		else if (twt_context->twt_role == TWT_ROLE_RESPONDER)
+		if (twt_context->twt_role == TWT_ROLE_REQUESTOR) {
+			if (TWT_EN_DIS_EVENT_IS_VDEV_LEVEL(event->flags)) {
+				/*
+				 * Vdev-level TWT requestor: set the per-vdev
+				 * requestor flag. Congestion timeout is set
+				 * to 0 before the enable command is sent
+				 * (in osif_twt_setup_req), not here.
+				 */
+				wlan_twt_cfg_set_vdev_requestor_flag(
+						psoc,
+						event->vdev_id,
+						true);
+			} else {
+				/*
+				 * Pdev-level TWT requestor (legacy): set the
+				 * psoc-level requestor flag.
+				 */
+				wlan_twt_cfg_set_requestor_flag(psoc, true);
+			}
+		} else if (twt_context->twt_role == TWT_ROLE_RESPONDER) {
 			wlan_twt_cfg_set_mac_responder_flag(psoc,
 							    event->mac_id,
 							    true);
-		else
+		} else {
 			twt_err("Invalid role:%d", twt_context->twt_role);
-
+		}
 		break;
 
 	default:
@@ -496,21 +564,41 @@ wlan_twt_disable_event_handler(struct wlan_objmgr_psoc *psoc,
 
 	twt_context = &twt_psoc->disable_context;
 
-	twt_debug("mac_id:%d status:%d twt_role:%d",
-		  event->mac_id, event->status, twt_context->twt_role);
+	twt_debug("mac_id:%d vdev_id:%d status:%d twt_role:%d flags:0x%x",
+		  event->mac_id, event->vdev_id, event->status,
+		  twt_context->twt_role, event->flags);
 	switch (event->status) {
 	case HOST_TWT_DISABLE_STATUS_OK:
 		if (twt_context->twt_role == TWT_ROLE_REQUESTOR) {
-			wlan_twt_cfg_set_requestor_flag(psoc, false);
-
-			/* Reset congestion timeout to INI for requestor */
-			status =
-			wlan_twt_cfg_reset_congestion_timeout_per_mac_to_ini(
-								psoc,
-								event->mac_id);
-			if (QDF_IS_STATUS_ERROR(status))
-				twt_err("Failed reset congestion_timeout MAC%d",
-					event->mac_id);
+			if (TWT_EN_DIS_EVENT_IS_VDEV_LEVEL(event->flags)) {
+				/*
+				 * Vdev-level TWT requestor: clear the per-vdev
+				 * requestor flag and reset per-vdev congestion
+				 * timeout to INI value.
+				 */
+				wlan_twt_cfg_set_vdev_requestor_flag(
+						psoc,
+						event->vdev_id,
+						false);
+				status = wlan_twt_cfg_reset_vdev_congestion_timeout_to_ini(
+						psoc,
+						event->vdev_id);
+				if (QDF_IS_STATUS_ERROR(status))
+					twt_err("Failed reset vdev congestion_timeout vdev_id:%d",
+						event->vdev_id);
+			} else {
+				/*
+				 * Pdev-level TWT requestor (legacy): clear the
+				 * psoc-level requestor flag and reset
+				 * congestion timeout to INI for the MAC.
+				 */
+				wlan_twt_cfg_set_requestor_flag(psoc, false);
+				status = wlan_twt_cfg_reset_congestion_timeout_per_mac_to_ini(
+						psoc, event->mac_id);
+				if (QDF_IS_STATUS_ERROR(status))
+					twt_err("Failed reset congestion_timeout MAC%d",
+						event->mac_id);
+			}
 		} else if (twt_context->twt_role == TWT_ROLE_RESPONDER) {
 			wlan_twt_cfg_set_mac_responder_flag(psoc,
 							    event->mac_id,
