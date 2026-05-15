@@ -463,6 +463,13 @@ bool cm_subst_roam_sync_event(void *ctx, uint16_t event,
 	case WLAN_CM_SM_EV_ROAM_SYNC:
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 		status = mlo_cm_roam_sync_cb(cm_ctx->vdev, data, data_len);
+		if (status == QDF_STATUS_E_PENDING) {
+			/* SMD async execution started. CM stays in ROAM_SYNC
+			 * substate; Link Recfg SM delivers ROAM_DONE when all
+			 * link switches complete.
+			 */
+			break;
+		}
 		if (QDF_IS_STATUS_ERROR(status)) {
 			event_handled = false;
 			break;

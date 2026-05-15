@@ -36,6 +36,7 @@
 
 struct mlo_link_recfg_context;
 struct link_recfg_rx_rsp;
+struct roam_offload_synch_ind; /* forward declaration for SMD cached copy */
 
 /**
  * enum wlan_link_recfg_sm_state - Link Reconfiguration states
@@ -550,6 +551,7 @@ struct wlan_mlo_link_recfg_bitmap {
  * @smd_roam_in_progress: bool smd roam in progress
  * @current_link_index: Index of the current link being processed in SMD roaming
  * @st_exec_in_progress: Flag indicating SMD ST execution is in progress
+ * @cached_sync_ind: Cached roam sycnc indication
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -579,6 +581,7 @@ struct mlo_link_recfg_context {
 	bool smd_roam_in_progress;
 	uint8_t current_link_index;
 	bool st_exec_in_progress;
+	struct roam_offload_synch_ind *cached_sync_ind;
 #endif
 };
 
