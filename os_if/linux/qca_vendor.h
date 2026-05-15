@@ -22135,7 +22135,7 @@ enum qca_wlan_vendor_external_auth_action {
  *	Possible values are defined in IEEE Std 802.11-2024, 9.4.2.23.2 (Cipher
  *	suites) (e.g., 0x000FAC04).
  * @QCA_WLAN_VENDOR_ATTR_EXTERNAL_AUTH_GROUP_CIPHER: Optional u32 attribute for
- *	the authentication request event. This specifes the group cipher suite
+ *	the authentication request event. This specifies the group cipher suite
  *	of the respective authentication, selected by the driver. Possible
  *	values are defined in IEEE Std 802.11-2024, 9.4.2.23.2 (Cipher suites)
  *	(e.g., 0x000FAC04).
