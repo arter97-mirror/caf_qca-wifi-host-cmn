@@ -22,6 +22,7 @@
 #include "wlan_cm_main.h"
 #include "wlan_cm_roam.h"
 #include "wlan_cm_main_api.h"
+#include "wlan_cm_api.h"
 #include "wlan_scan_api.h"
 #include "wlan_mlo_mgr_link_switch.h"
 #include "wlan_utility.h"
