@@ -1142,6 +1142,287 @@ nan_ndp_update_config_tlv(wmi_unified_t wmi_handle,
 	return status;
 }
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+/**
+ * wmi_nan_add_func_calculate_len() - Calculate total buffer length needed
+ * @params: Internal NAN function parameters
+ *
+ * Return: Total length in bytes, or 0 if any field exceeds its maximum.
+ */
+static
+uint32_t wmi_nan_add_func_calculate_len(struct nan_add_func_params *params)
+{
+	uint32_t len = sizeof(wmi_nan_disc_service_req_cmd_fixed_param);
+	uint32_t tlv_len = 0;
+
+	tlv_len += WMI_TLV_HDR_SIZE + qdf_roundup(NDP_SERVICE_ID_LEN,
+						  sizeof(uint32_t));
+	tlv_len += WMI_TLV_HDR_SIZE + qdf_roundup(params->serv_spec_info_len,
+						  sizeof(uint32_t));
+	tlv_len += WMI_TLV_HDR_SIZE + qdf_roundup(params->srf_bf_len,
+						  sizeof(uint32_t));
+	tlv_len += WMI_TLV_HDR_SIZE +
+		   (params->srf_num_macs * sizeof(wmi_mac_addr));
+	tlv_len += WMI_TLV_HDR_SIZE + qdf_roundup(params->rx_filters_len,
+						  sizeof(uint32_t));
+	tlv_len += WMI_TLV_HDR_SIZE + qdf_roundup(params->tx_filters_len,
+						  sizeof(uint32_t));
+	tlv_len += WMI_TLV_HDR_SIZE +
+		   (params->num_cipher_suites * sizeof(uint32_t));
+	tlv_len += WMI_TLV_HDR_SIZE +
+			(params->nd_pmk_set ?
+			 qdf_roundup(NDP_PMK_LEN, sizeof(uint32_t)) : 0);
+	tlv_len += WMI_TLV_HDR_SIZE +
+		   qdf_roundup(params->extra_nan_attrs_len, sizeof(uint32_t));
+
+	return len + tlv_len;
+}
+
+/**
+ * wmi_nan_add_func_populate_tlv() - Populate TLVs for NAN add function command
+ * @params: Internal NAN function parameters
+ * @cmd: WMI command fixed param structure (start of allocated WMI buffer)
+ * @buf_ptr: Same pointer as cmd, cast to uint8_t for byte arithmetic
+ *
+ * Return: QDF_STATUS_SUCCESS, or QDF_STATUS_E_INVAL for an unrecognised type.
+ */
+static QDF_STATUS
+wmi_nan_add_func_populate_tlv(struct nan_add_func_params *params,
+			      wmi_nan_disc_service_req_cmd_fixed_param *cmd,
+			      uint8_t *buf_ptr)
+{
+	uint32_t aligned_len;
+
+	if (!buf_ptr) {
+		wmi_err("Invalid buf_ptr");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_mem_zero(cmd, sizeof(*cmd));
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_disc_service_req_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_nan_disc_service_req_cmd_fixed_param));
+
+	cmd->vdev_id = params->vdev_id;
+	WMI_NAN_DISC_COOKIE_SET(cmd->cookie_low32, cmd->cookie_high32,
+				params->cookie);
+	cmd->ttl = params->ttl;
+
+	switch (params->type) {
+	case NAN_FUNC_TYPE_PUBLISH:
+		cmd->service_req_type = WMI_NAN_DISC_SERVICE_REQ_PUBLISH;
+		switch (params->publish_type) {
+		case NAN_FUNC_PUBLISH_TYPE_UNSOLICITED:
+			cmd->publish_type = WMI_NAN_DISC_PUBLISH_UNSOLICITED;
+			break;
+		case NAN_FUNC_PUBLISH_TYPE_SOLICITED:
+			cmd->publish_type = WMI_NAN_DISC_PUBLISH_SOLICITED;
+			break;
+		case NAN_FUNC_PUBLISH_TYPE_UNSOLICITED_SOLICITED:
+			cmd->publish_type =
+				WMI_NAN_DISC_PUBLISH_UNSOLICITED_SOLICITED;
+			break;
+		default:
+			cmd->publish_type = 0;
+			break;
+		}
+		break;
+	case NAN_FUNC_TYPE_SUBSCRIBE:
+		cmd->service_req_type = WMI_NAN_DISC_SERVICE_REQ_SUBSCRIBE;
+		cmd->publish_type = 0;
+		break;
+	case NAN_FUNC_TYPE_FOLLOW_UP:
+		cmd->service_req_type = WMI_NAN_DISC_SERVICE_REQ_FOLLOW_UP;
+		cmd->followup_instance_id = params->followup_id;
+		cmd->followup_requestor_id = params->followup_reqid;
+		WMI_CHAR_ARRAY_TO_MAC_ADDR(params->followup_dest.bytes,
+					   &cmd->followup_dest);
+		cmd->publish_type = 0;
+		break;
+	default:
+		wmi_err("Invalid NAN function type: %d", params->type);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	cmd->sdea_ctrl = params->sdea_ctrl;
+	cmd->pairing_bootstrap_methods = params->pairing_bootstrap_methods;
+
+	cmd->service_req_flags = 0;
+	WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_CLOSE_RANGE
+			(cmd->service_req_flags, params->close_range ? 1 : 0);
+	if (params->type == NAN_FUNC_TYPE_PUBLISH)
+		WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_PUBLISH_BCAST(
+				cmd->service_req_flags,
+				params->publish_bcast ? 1 : 0);
+	if (params->type == NAN_FUNC_TYPE_SUBSCRIBE)
+		WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_SUBSCRIBE_ACTIVE(
+				cmd->service_req_flags,
+				params->subscribe_active ? 1 : 0);
+	WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_GTK_REQUIRED
+			(cmd->service_req_flags, params->gtk_required ? 1 : 0);
+	WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_PAIRING_SETUP
+			(cmd->service_req_flags, params->pairing_setup ? 1 : 0);
+	WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_PAIRING_CACHE
+			(cmd->service_req_flags, params->pairing_cache ? 1 : 0);
+	WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_PAIRING_VERIFY
+					(cmd->service_req_flags,
+					 params->pairing_verify ? 1 : 0);
+	WMI_NAN_DISC_SERVICE_REQ_FLAGS_SET_ND_PMK_VALID
+			(cmd->service_req_flags, params->nd_pmk_set ? 1 : 0);
+
+	cmd->srf_include = params->srf_include;
+	cmd->srf_bf_idx = params->srf_bf_idx;
+
+	cmd->serv_spec_info_len = params->serv_spec_info_len;
+	cmd->srf_bf_len = params->srf_bf_len;
+	cmd->rx_match_filter_len = params->rx_filters_len;
+	cmd->tx_match_filter_len = params->tx_filters_len;
+	cmd->extra_nan_attrs_len = params->extra_nan_attrs_len;
+
+	buf_ptr += sizeof(wmi_nan_disc_service_req_cmd_fixed_param);
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
+		       qdf_roundup(NDP_SERVICE_ID_LEN, sizeof(uint32_t)));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	qdf_mem_copy(buf_ptr, params->service_id, NDP_SERVICE_ID_LEN);
+	buf_ptr += qdf_roundup(NDP_SERVICE_ID_LEN, sizeof(uint32_t));
+
+	aligned_len = qdf_roundup(params->serv_spec_info_len, sizeof(uint32_t));
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, aligned_len);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->serv_spec_info_len > 0)
+		qdf_mem_copy(buf_ptr, params->serv_spec_info,
+			     params->serv_spec_info_len);
+	buf_ptr += aligned_len;
+
+	aligned_len = qdf_roundup(params->srf_bf_len, sizeof(uint32_t));
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, aligned_len);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->srf_bf_len > 0)
+		qdf_mem_copy(buf_ptr, params->srf_bf, params->srf_bf_len);
+	buf_ptr += aligned_len;
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_FIXED_STRUC,
+		       params->srf_num_macs * sizeof(wmi_mac_addr));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->srf_num_macs > 0) {
+		wmi_mac_addr *wmi_macs = (wmi_mac_addr *)buf_ptr;
+		uint32_t i;
+
+		for (i = 0; i < params->srf_num_macs; i++)
+			WMI_CHAR_ARRAY_TO_MAC_ADDR(
+				params->srf_macs + i * ETH_ALEN, &wmi_macs[i]);
+	}
+	buf_ptr += params->srf_num_macs * sizeof(wmi_mac_addr);
+
+	aligned_len = qdf_roundup(params->rx_filters_len, sizeof(uint32_t));
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, aligned_len);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->rx_filters_len > 0)
+		qdf_mem_copy(buf_ptr, params->rx_filters,
+			     params->rx_filters_len);
+	buf_ptr += aligned_len;
+
+	aligned_len = qdf_roundup(params->tx_filters_len, sizeof(uint32_t));
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, aligned_len);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->tx_filters_len > 0)
+		qdf_mem_copy(buf_ptr, params->tx_filters,
+			     params->tx_filters_len);
+	buf_ptr += aligned_len;
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_UINT32,
+		       params->num_cipher_suites * sizeof(uint32_t));
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->num_cipher_suites > 0)
+		qdf_mem_copy(buf_ptr, params->cipher_suites,
+			     params->num_cipher_suites * sizeof(uint32_t));
+	buf_ptr += params->num_cipher_suites * sizeof(uint32_t);
+
+	aligned_len = params->nd_pmk_set ?
+		      qdf_roundup(NDP_PMK_LEN, sizeof(uint32_t)) : 0;
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, aligned_len);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->nd_pmk_set)
+		qdf_mem_copy(buf_ptr, params->nd_pmk, NDP_PMK_LEN);
+	buf_ptr += aligned_len;
+
+	aligned_len = qdf_roundup(params->extra_nan_attrs_len,
+				  sizeof(uint32_t));
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, aligned_len);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+	if (params->extra_nan_attrs_len > 0)
+		qdf_mem_copy(buf_ptr, params->extra_nan_attrs,
+			     params->extra_nan_attrs_len);
+	buf_ptr += aligned_len;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * send_add_nan_func_cmd_tlv() - Send NAN add function command (TLV format)
+ * @wmi_handle: WMI handle
+ * @params: Internal NAN function parameters
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+send_add_nan_func_cmd_tlv(wmi_unified_t wmi_handle,
+			  struct nan_add_func_params *params)
+{
+	wmi_nan_disc_service_req_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	uint32_t len;
+	QDF_STATUS status;
+
+	if (!wmi_handle || !params) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	len = wmi_nan_add_func_calculate_len(params);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("Failed to allocate WMI buffer");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_nan_disc_service_req_cmd_fixed_param *)buf_ptr;
+
+	status = wmi_nan_add_func_populate_tlv(params, cmd, buf_ptr);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_buf_free(buf);
+		return status;
+	}
+
+	wmi_mtrace(WMI_NAN_DISC_SERVICE_REQ_CMDID, cmd->vdev_id, 0);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_NAN_DISC_SERVICE_REQ_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send NAN disc service request: %d", status);
+		wmi_buf_free(buf);
+		return status;
+	}
+
+	wmi_debug("NAN disc request sent: vdev_id=%d, type=%d",
+		  cmd->vdev_id, cmd->service_req_type);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)
+{
+	wmi_handle->ops->send_add_nan_func_cmd = send_add_nan_func_cmd_tlv;
+}
+#else
+static inline void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)
+{}
+#endif
+
 static QDF_STATUS
 extract_ndp_host_event_tlv(wmi_unified_t wmi_handle, uint8_t *data,
 			   struct nan_datapath_host_event *evt)
@@ -2329,6 +2610,7 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_ndp_responder_req_cmd = nan_ndp_responder_req_tlv;
 	ops->send_ndp_end_req_cmd = nan_ndp_end_req_tlv;
 	ops->send_ndp_update_config_cmd = nan_ndp_update_config_tlv;
+	wmi_nan_attach_add_func_tlv(wmi_handle);
 	ops->extract_ndp_initiator_rsp = extract_ndp_initiator_rsp_tlv;
 	ops->extract_ndp_ind = extract_ndp_ind_tlv;
 	ops->extract_nan_msg = extract_nan_msg_tlv,

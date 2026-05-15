@@ -2731,6 +2731,10 @@ QDF_STATUS (*extract_nan_dfs_channel_availability_ind)(
 		wmi_unified_t wmi_handle, uint8_t *data,
 		struct nan_dfs_channel_availability_ind *evt);
 #endif
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+QDF_STATUS (*send_add_nan_func_cmd)(wmi_unified_t wmi_handle,
+				    struct nan_add_func_params *params);
+#endif
 #endif /* WLAN_FEATURE_NAN */
 
 QDF_STATUS (*send_obss_detection_cfg_cmd)(wmi_unified_t wmi_handle,

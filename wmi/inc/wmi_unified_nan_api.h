@@ -154,6 +154,20 @@ wmi_unified_ndp_update_config_cmd_send(wmi_unified_t wmi_handle,
 				       struct nan_datapath_update_config *req);
 
 /**
+ * wmi_unified_nan_add_func_cmd() - Send NAN add function command
+ * @wmi_handle: WMI handle
+ * @params: Internal NAN function parameters
+ *
+ * Unified API for sending NAN add function command.
+ *
+ * Return: QDF_STATUS
+ */
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+QDF_STATUS wmi_unified_nan_add_func_cmd(wmi_unified_t wmi_handle,
+					struct nan_add_func_params *params);
+#endif
+
+/**
  * wmi_extract_ndp_initiator_rsp - api to extract initiator rsp from even buffer
  * @wmi_handle: wmi handle
  * @data: event buffer

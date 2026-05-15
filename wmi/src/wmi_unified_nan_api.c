@@ -159,6 +159,17 @@ wmi_unified_ndp_update_config_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+QDF_STATUS wmi_unified_nan_add_func_cmd(wmi_unified_t wmi_handle,
+					struct nan_add_func_params *params)
+{
+	if (wmi_handle->ops->send_add_nan_func_cmd)
+		return wmi_handle->ops->send_add_nan_func_cmd(wmi_handle,
+							      params);
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
 QDF_STATUS wmi_extract_nan_msg(wmi_unified_t wmi_handle,
 			       uint8_t *data,
 			       struct nan_dump_msg *msg)
