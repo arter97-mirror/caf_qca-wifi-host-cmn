@@ -33,6 +33,7 @@
 /**
  * struct mlme_cm_ops: connection manager osif callbacks
  * @mlme_cm_connect_active_notify_cb: Connect active notify callback
+ * @mlme_cm_connect_start_notify_cb: Connect start notify callback
  * @mlme_cm_connect_complete_cb: Connect done callback
  * @vdev: vdev pointer
  * @rsp: connect response
@@ -124,6 +125,7 @@
  */
 struct mlme_cm_ops {
 	void (*mlme_cm_connect_active_notify_cb)(uint8_t vdev_id);
+	void (*mlme_cm_connect_start_notify_cb)(uint8_t vdev_id);
 	QDF_STATUS (*mlme_cm_connect_complete_cb)(
 					struct wlan_objmgr_vdev *vdev,
 					struct wlan_cm_connect_resp *rsp);
@@ -771,6 +773,15 @@ QDF_STATUS mlme_cm_connect_req(struct wlan_objmgr_vdev *vdev,
  * Return: void
  */
 void mlme_cm_osif_connect_active_notify(uint8_t vdev_id);
+
+/**
+ * mlme_cm_osif_connect_start_notify() - CNX manager ext connect start
+ * notification.
+ * @vdev_id: VDEV ID
+ *
+ * Return: void
+ */
+void mlme_cm_osif_connect_start_notify(uint8_t vdev_id);
 
 /**
  * mlme_cm_connect_complete_ind() - Connection manager ext connect complete

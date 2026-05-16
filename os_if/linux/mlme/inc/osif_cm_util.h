@@ -139,6 +139,7 @@ enum osif_cb_type {
 };
 
 typedef void (*osif_cm_connect_active_notify_cb)(uint8_t vdev_id);
+typedef void (*osif_cm_connect_start_notify_cb)(uint8_t vdev_id);
 
 typedef void (*osif_cm_roam_connect_complete_cb)(struct wlan_objmgr_vdev *vdev);
 
@@ -386,6 +387,7 @@ typedef struct net_device *
 /**
  * struct osif_cm_ops - connection manager legacy callbacks
  * @connect_active_notify_cb: callback for connect active to legacy modules
+ * @connect_start_notify_cb: callback for connect start to legacy modules
  * @connect_complete_cb: callback for connect complete to legacy
  * modules
  * @disconnect_complete_cb: callback for disconnect complete to
@@ -412,6 +414,7 @@ typedef struct net_device *
  */
 struct osif_cm_ops {
 	osif_cm_connect_active_notify_cb connect_active_notify_cb;
+	osif_cm_connect_start_notify_cb connect_start_notify_cb;
 	osif_cm_connect_comp_cb connect_complete_cb;
 	osif_cm_disconnect_comp_cb disconnect_complete_cb;
 	osif_cm_netif_queue_ctrl_cb netif_queue_control_cb;
@@ -451,6 +454,14 @@ struct osif_cm_ops {
  * This API notifies connect active to legacy module
  */
 void osif_cm_connect_active_notify(uint8_t vdev_id);
+
+/**
+ * osif_cm_connect_start_notify() - Function to notify connect start
+ * @vdev_id: VDEV ID on which connect req start
+ *
+ * This API notifies connect start to legacy module
+ */
+void osif_cm_connect_start_notify(uint8_t vdev_id);
 
 /**
  * osif_cm_connect_comp_ind() - Function to indicate connect

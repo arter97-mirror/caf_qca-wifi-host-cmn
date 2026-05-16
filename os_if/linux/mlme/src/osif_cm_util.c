@@ -738,6 +738,7 @@ static void osif_cm_perfd_reset_cpufreq_ctrl_cb(void)
 
 static struct mlme_cm_ops cm_ops = {
 	.mlme_cm_connect_active_notify_cb = osif_cm_connect_active_notify,
+	.mlme_cm_connect_start_notify_cb  = osif_cm_connect_start_notify,
 	.mlme_cm_connect_complete_cb = osif_cm_connect_complete_cb,
 	.mlme_cm_failed_candidate_cb = osif_cm_failed_candidate_cb,
 	.mlme_cm_update_id_and_src_cb = osif_cm_update_id_and_src_cb,
@@ -835,6 +836,12 @@ void osif_cm_connect_active_notify(uint8_t vdev_id)
 {
 	if (osif_cm_legacy_ops && osif_cm_legacy_ops->connect_active_notify_cb)
 		osif_cm_legacy_ops->connect_active_notify_cb(vdev_id);
+}
+
+void osif_cm_connect_start_notify(uint8_t vdev_id)
+{
+	if (osif_cm_legacy_ops && osif_cm_legacy_ops->connect_start_notify_cb)
+		osif_cm_legacy_ops->connect_start_notify_cb(vdev_id);
 }
 
 QDF_STATUS osif_cm_connect_comp_ind(struct wlan_objmgr_vdev *vdev,

@@ -415,6 +415,12 @@ void mlme_cm_osif_connect_active_notify(uint8_t vdev_id)
 		glbl_cm_ops->mlme_cm_connect_active_notify_cb(vdev_id);
 }
 
+void mlme_cm_osif_connect_start_notify(uint8_t vdev_id)
+{
+	if (glbl_cm_ops && glbl_cm_ops->mlme_cm_connect_start_notify_cb)
+		glbl_cm_ops->mlme_cm_connect_start_notify_cb(vdev_id);
+}
+
 QDF_STATUS mlme_cm_connect_complete_ind(struct wlan_objmgr_vdev *vdev,
 					struct wlan_cm_connect_resp *rsp)
 {

@@ -559,6 +559,14 @@ bool wlan_mlo_get_psoc_capable(struct wlan_objmgr_psoc *psoc)
 }
 #endif/*WLAN_MLO_MULTI_CHIP*/
 
+/**
+ * typedef mlo_vdev_ops_handler() - API to have operation on ml vdevs
+ * @vdev: vdev object
+ * @arg: operation-specific argument
+ */
+typedef void (*mlo_vdev_ops_handler)(struct wlan_objmgr_vdev *vdev,
+				     void *arg);
+
 #ifdef WLAN_FEATURE_11BE_MLO
 /**
  * mlo_process_link_set_active_resp() - handler for mlo link set active response
@@ -589,14 +597,6 @@ void
 mlo_link_recfg_set_link_resp_timeout(struct wlan_mlo_dev_context *mlo_dev_ctx);
 
 /**
- * typedef mlo_vdev_ops_handler() - API to have operation on ml vdevs
- * @vdev: vdev object
- * @arg: operation-specific argument
- */
-typedef void (*mlo_vdev_ops_handler)(struct wlan_objmgr_vdev *vdev,
-				     void *arg);
-
-/**
  * mlo_iterate_ml_vdev_list() - Iterate on ML vdevs of MLD
  * @vdev: vdev object
  * @handler: the handler will be called for each object in ML list
@@ -618,8 +618,17 @@ void mlo_iterate_ml_vdev_list(struct wlan_objmgr_vdev *vdev,
 		return;
 
 	mlo_dev_ctx = vdev->mlo_dev_ctx;
-	if (!mlo_dev_ctx || !(wlan_vdev_mlme_is_mlo_vdev(vdev)))
+	if (!mlo_dev_ctx) {
+		status = wlan_objmgr_vdev_try_get_ref(vdev, WLAN_MLO_MGR_ID);
+		if (QDF_IS_STATUS_ERROR(status))
+			return;
+
+		if (handler)
+			handler(vdev, arg);
+
+		mlo_release_vdev_ref(vdev);
 		return;
+	}
 
 	if (lock)
 		mlo_dev_lock_acquire(mlo_dev_ctx);
@@ -695,7 +704,25 @@ mlo_get_link_state_register_resp_cb(struct wlan_objmgr_vdev *vdev,
  * @vdev: vdev handler
  */
 QDF_STATUS ml_post_get_link_state_msg(struct wlan_objmgr_vdev *vdev);
-#endif
+#else
+static inline
+void mlo_iterate_ml_vdev_list(struct wlan_objmgr_vdev *vdev,
+			      mlo_vdev_ops_handler handler,
+			      void *arg, bool lock)
+{
+	QDF_STATUS status;
+
+	if (!vdev || !handler)
+		return;
+
+	status = wlan_objmgr_vdev_try_get_ref(vdev, WLAN_MLO_MGR_ID);
+	if (QDF_IS_STATUS_ERROR(status))
+		return;
+
+	handler(vdev, arg);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
+}
+#endif /* WLAN_FEATURE_11BE_MLO */
 
 #ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
 /**

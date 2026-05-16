@@ -1905,6 +1905,12 @@ QDF_STATUS cm_connect_start(struct cnx_mgr *cm_ctx,
 			reason = CM_NO_CANDIDATE_FOUND;
 			goto connect_err;
 		}
+
+		if (cm_req->req.source != CM_MLO_LINK_SWITCH_CONNECT &&
+		    cm_req->req.source != CM_MLO_LINK_ADD_CONNECT &&
+		    !wlan_vdev_mlme_is_mlo_link_vdev(cm_ctx->vdev) &&
+		    !wlan_cm_check_mlo_roam_auth_status(cm_ctx->vdev))
+			mlme_cm_osif_connect_start_notify(vdev_id);
 	}
 
 	if (mlo_is_sta_bridge_vdev(cm_ctx->vdev)) {
