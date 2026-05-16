@@ -778,7 +778,7 @@ int qdf_crypto_aes_gmac(uint8_t *key, uint16_t key_length,
 }
 #endif
 
-#ifdef WLAN_FEATURE_11BN_SMD
+#if defined(WLAN_FEATURE_11BN_SMD) && defined(FEATURE_WLAN_SUPPORT_CRYPTO)
 QDF_STATUS qdf_crypto_ecdh_init(void)
 {
 	struct crypto_kpp *test_tfm;
