@@ -88,6 +88,27 @@ osif_link_reconfig_status_cb(void *ctx)
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BE_MLO
+/**
+ * osif_standby_link_reconfig_notify() - notify cfg80211 of standby link removal
+ * @assoc_vdev: assoc vdev
+ * @link_id: IEEE link ID of the removed standby link
+ *
+ * For host-initiated standby link removal (e.g. regulatory country change):
+ * calls wlan_cfg80211_links_removed() under the wiphy lock.
+ *
+ * Return: none
+ */
+void osif_standby_link_reconfig_notify(struct wlan_objmgr_vdev *assoc_vdev,
+				       uint8_t link_id);
+#else
+static inline void
+osif_standby_link_reconfig_notify(struct wlan_objmgr_vdev *assoc_vdev,
+				  uint8_t link_id)
+{
+}
+#endif /* WLAN_FEATURE_11BE_MLO */
+
 #ifdef WLAN_FEATURE_MLO_SAP_LINK_REMOVAL
 /**
  * osif_mlo_sap_link_removal_evt_handler() - Handler for MLO link removal event

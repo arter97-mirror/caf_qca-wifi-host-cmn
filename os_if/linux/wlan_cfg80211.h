@@ -714,6 +714,20 @@ static inline void wlan_cfg80211_unregister_netdevice(struct net_device *dev)
 }
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)  || \
+	(defined CFG80211_SETUP_LINK_RECONFIG_SUPPORT))
+static inline void wlan_cfg80211_links_removed(struct net_device *dev,
+					       u16 link_mask)
+{
+	cfg80211_links_removed(dev, link_mask);
+}
+#else
+static inline void wlan_cfg80211_links_removed(struct net_device *dev,
+					       u16 link_mask)
+{
+}
+#endif
+
 #ifdef CFG80211_RU_PUNC_CHANDEF
 static inline
 void wlan_cfg80211_ch_switch_notify(struct net_device *dev,

@@ -345,6 +345,44 @@ osif_cm_send_keys_cb(struct wlan_objmgr_vdev *vdev, uint8_t key_index,
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO
+void
+osif_standby_link_reconfig_notify(struct wlan_objmgr_vdev *assoc_vdev,
+				  uint8_t link_id)
+{
+	struct vdev_osif_priv *osif_priv;
+	struct wireless_dev *wdev;
+	struct pdev_osif_priv *pdev_osif_priv;
+	struct wlan_objmgr_pdev *pdev;
+	uint16_t link_mask;
+
+	osif_priv = wlan_vdev_get_ospriv(assoc_vdev);
+	if (!osif_priv) {
+		osif_err("NULL osif priv");
+		return;
+	}
+
+	wdev = osif_priv->wdev;
+	if (!wdev || !wdev->netdev) {
+		osif_err("NULL wdev or netdev");
+		return;
+	}
+
+	pdev = wlan_vdev_get_pdev(assoc_vdev);
+	if (!pdev)
+		return;
+
+	pdev_osif_priv = wlan_pdev_get_ospriv(pdev);
+	if (!pdev_osif_priv || !pdev_osif_priv->wiphy)
+		return;
+
+	link_mask = 1 << link_id;
+	osif_debug("assoc_vdev %d: notify cfg80211 links_removed link_id %d mask 0x%x",
+		   wlan_vdev_get_id(assoc_vdev), link_id, link_mask);
+	osif_wiphy_lock(pdev_osif_priv->wiphy, NULL);
+	wlan_cfg80211_links_removed(wdev->netdev, link_mask);
+	osif_wiphy_unlock(pdev_osif_priv->wiphy, NULL);
+}
+
 /**
  * osif_link_reconfig_notify_cb() - Link reconfig notify callback
  * @vdev: vdev pointer
@@ -379,8 +417,8 @@ osif_link_reconfig_notify_cb(struct wlan_objmgr_vdev *vdev)
 	}
 
 	wdev = osif_priv->wdev;
-	if (!wdev) {
-		osif_err("wdev is null");
+	if (!wdev || !wdev->netdev) {
+		osif_err("NULL wdev or netdev");
 		return QDF_STATUS_E_INVAL;
 	}
 	pdev = wlan_vdev_get_pdev(assoc_vdev);
@@ -434,6 +472,10 @@ osif_link_reconfig_notify_cb(struct wlan_objmgr_vdev *vdev)
 	}
 
 	wlan_cfg80211_vendor_event(vendor_event, GFP_KERNEL);
+
+	osif_wiphy_lock(pdev_osif_priv->wiphy, NULL);
+	wlan_cfg80211_links_removed(wdev->netdev, link_mask);
+	osif_wiphy_unlock(pdev_osif_priv->wiphy, NULL);
 
 	return QDF_STATUS_SUCCESS;
 }
