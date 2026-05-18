@@ -2776,7 +2776,7 @@ dp_rx_null_q_desc_handle_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		dp_rx_skip_tlvs(soc, nbuf,
 				hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
 								   rx_tlv_hdr));
-		dp_rx_deliver_raw_passthru(soc, vdev, nbuf);
+		dp_rx_deliver_raw_passthru(soc, vdev, txrx_peer, nbuf);
 
 		return QDF_STATUS_SUCCESS;
 	}

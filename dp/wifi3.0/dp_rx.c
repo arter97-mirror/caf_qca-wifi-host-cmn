@@ -1311,11 +1311,12 @@ qdf_export_symbol(__dp_rx_buffers_replenish);
 #define DP_PPDU_START_TS_CLK_HZ 960
 
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       qdf_nbuf_t nbuf)
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf)
 {
 	uint8_t *rx_pkt_tlvs;
 	struct mon_rx_status rx_status = {0};
 	uint8_t l3_pad = QDF_NBUF_CB_RX_PACKET_L3_HDR_PAD(nbuf);
+	struct cdp_tid_rx_stats tid_stats;
 
 	qdf_nbuf_push_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
 	rx_pkt_tlvs = qdf_nbuf_data(nbuf);
@@ -1348,6 +1349,10 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 		return -EINVAL;
 	}
 
+	if (txrx_peer)
+		dp_rx_msdu_stats_update(soc, nbuf, rx_pkt_tlvs, txrx_peer, 0,
+					&tid_stats, 0);
+
 	if (vdev->osif_rx)
 		vdev->osif_rx(vdev->osif_vdev, nbuf);
 
@@ -1371,7 +1376,8 @@ dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 			if (next)
 				qdf_nbuf_set_next(nbuf, NULL);
 
-			dp_rx_deliver_raw_passthru(vdev->pdev->soc, vdev, nbuf);
+			dp_rx_deliver_raw_passthru(vdev->pdev->soc, vdev,
+						   txrx_peer, nbuf);
 
 			if (next)
 				goto next_nbuf;
@@ -1961,7 +1967,7 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 								   rx_tlv_hdr);
 
 			dp_rx_skip_tlvs(soc, mpdu, l3_hdr_pad);
-			if (dp_rx_deliver_raw_passthru(soc, vdev, mpdu))
+			if (dp_rx_deliver_raw_passthru(soc, vdev, NULL, mpdu))
 				goto free;
 			else
 				return 0;
