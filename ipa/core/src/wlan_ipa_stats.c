@@ -43,7 +43,7 @@ static void wlan_ipa_uc_rt_debug_host_fill(void *ctext)
 	dump_info = &ipa_ctx->rt_bug_buffer[
 		ipa_ctx->rt_buf_fill_index % WLAN_IPA_UC_RT_DEBUG_BUF_COUNT];
 
-	dump_info->time = (uint64_t)qdf_mc_timer_get_system_time();
+	dump_info->time = qdf_mc_timer_get_system_time();
 	dump_info->ipa_excep_count = ipa_ctx->stats.num_rx_excep;
 	dump_info->rx_drop_count = ipa_ctx->ipa_rx_internal_drop_count;
 	dump_info->net_sent_count = ipa_ctx->ipa_rx_net_send_count;

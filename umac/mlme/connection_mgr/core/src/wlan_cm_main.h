@@ -119,7 +119,7 @@ struct cm_connect_req {
 	struct scan_cache_node *cur_candidate;
 	uint8_t cur_candidate_retries;
 	uint8_t connect_attempts;
-	qdf_time_t connect_active_time;
+	uint64_t connect_active_time;
 };
 
 /**

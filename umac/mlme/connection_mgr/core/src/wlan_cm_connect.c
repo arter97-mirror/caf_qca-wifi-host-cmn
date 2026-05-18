@@ -900,13 +900,13 @@ use_same_candidate:
 static bool cm_is_time_allowed_for_connect_attempt(struct cnx_mgr *cm_ctx,
 						   struct cm_connect_req *req)
 {
-	qdf_time_t time_since_connect_active;
+	uint64_t time_since_connect_active;
 	uint8_t vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 
 	time_since_connect_active = qdf_mc_timer_get_system_time() -
 					req->connect_active_time;
 	if (time_since_connect_active >= CM_CONNECT_MAX_ACTIVE_TIME) {
-		mlme_info(CM_PREFIX_FMT "Max time allocated (%d ms) for connect completed, cur time %lu, active time %lu and diff %lu",
+		mlme_info(CM_PREFIX_FMT "Max time allocated (%d ms) for connect completed, cur time %llu, active time %llu and diff %llu",
 			  CM_PREFIX_REF(vdev_id, req->cm_id),
 			  CM_CONNECT_MAX_ACTIVE_TIME,
 			  qdf_mc_timer_get_system_time(),
