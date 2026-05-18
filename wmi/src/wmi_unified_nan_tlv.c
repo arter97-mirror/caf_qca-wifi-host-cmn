@@ -1463,10 +1463,214 @@ send_nan_del_func_cmd_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS
+extract_nan_disc_service_rsp_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+				       struct nan_disc_service_rsp_event *event)
+{
+	WMI_NAN_DISC_SERVICE_RSP_EVENTID_param_tlvs *param_buf;
+	wmi_nan_disc_service_rsp_event_fixed_param *wmi_event;
+
+	if (!evt_buf) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!event) {
+		wmi_err("Invalid output event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	param_buf = (WMI_NAN_DISC_SERVICE_RSP_EVENTID_param_tlvs *)evt_buf;
+
+	wmi_event = param_buf->fixed_param;
+	if (!wmi_event) {
+		wmi_err("Invalid fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	event->vdev_id = wmi_event->vdev_id;
+	event->instance_id = wmi_event->instance_id;
+	event->status = wmi_event->status;
+	event->cookie = WMI_NAN_DISC_COOKIE_GET(wmi_event->cookie_low32,
+						wmi_event->cookie_high32);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS
+extract_nan_disc_match_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+				 struct nan_disc_match_event *event)
+{
+	WMI_NAN_DISC_MATCH_EVENTID_param_tlvs *param_buf;
+	wmi_nan_disc_match_event_fixed_param *wmi_event;
+
+	if (!evt_buf) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!event) {
+		wmi_err("Invalid output event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	param_buf = (WMI_NAN_DISC_MATCH_EVENTID_param_tlvs *)evt_buf;
+
+	wmi_event = param_buf->fixed_param;
+	if (!wmi_event) {
+		wmi_err("Invalid fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	switch (wmi_event->type) {
+	case WMI_NAN_DISC_SERVICE_REQ_PUBLISH:
+		event->type = NAN_FUNC_TYPE_PUBLISH;
+		break;
+	case WMI_NAN_DISC_SERVICE_REQ_SUBSCRIBE:
+		event->type = NAN_FUNC_TYPE_SUBSCRIBE;
+		break;
+	case WMI_NAN_DISC_SERVICE_REQ_FOLLOW_UP:
+		event->type = NAN_FUNC_TYPE_FOLLOW_UP;
+		break;
+	default:
+		wmi_err("Invalid event type : %d", wmi_event->type);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	event->vdev_id = wmi_event->vdev_id;
+	event->cookie = WMI_NAN_DISC_COOKIE_GET(wmi_event->cookie_low32,
+						wmi_event->cookie_high32);
+	event->inst_id = wmi_event->inst_id;
+	event->peer_inst_id = wmi_event->peer_inst_id;
+	event->sdea_ctrl = wmi_event->sdea_ctrl;
+	event->bootstrap_methods = wmi_event->bootstrap_methods;
+	event->num_cipher_suites = param_buf->num_cipher_suites;
+	event->serv_spec_info = NULL;
+	event->cipher_suites = NULL;
+	event->scid = NULL;
+	event->extra_info = NULL;
+	event->ies = NULL;
+	event->data_path = wmi_event->data_path;
+	event->gtk_required = wmi_event->gtk_required;
+	event->pairing_setup = wmi_event->pairing_setup;
+	event->pairing_cache = wmi_event->pairing_cache;
+	event->pairing_verify = wmi_event->pairing_verify;
+	event->rssi = wmi_event->rssi;
+	event->rssi_valid = wmi_event->rssi_valid;
+	event->serv_spec_info_len = wmi_event->serv_spec_info_len;
+	event->scid_len = wmi_event->scid_len;
+	event->extra_info_len = wmi_event->extra_info_len;
+	event->ies_len = wmi_event->ies_len;
+
+	if (param_buf->peer_addr)
+		WLAN_ADDR_COPY(event->peer_addr.bytes, param_buf->peer_addr);
+
+
+	if (param_buf->service_id &&
+	    wmi_event->service_id_len == NDP_SERVICE_ID_LEN) {
+		qdf_mem_copy(event->service_id, param_buf->service_id,
+			     wmi_event->service_id_len);
+	}
+
+	if (param_buf->serv_spec_info && wmi_event->serv_spec_info_len > 0) {
+		if (wmi_event->serv_spec_info_len >
+		    param_buf->num_serv_spec_info) {
+			wmi_err("Invalid serv_spec_info_len %u > num %u",
+				wmi_event->serv_spec_info_len,
+				param_buf->num_serv_spec_info);
+			goto free_nan_match_params;
+		}
+		event->serv_spec_info =
+			qdf_mem_malloc(wmi_event->serv_spec_info_len);
+		if (!event->serv_spec_info) {
+			wmi_err("Failed to allocate service spec info");
+			goto free_nan_match_params;
+		}
+		qdf_mem_copy(event->serv_spec_info, param_buf->serv_spec_info,
+			     wmi_event->serv_spec_info_len);
+	}
+
+	if (param_buf->cipher_suites && event->num_cipher_suites > 0) {
+		event->cipher_suites = qdf_mem_malloc(
+			event->num_cipher_suites * sizeof(uint32_t));
+		if (!event->cipher_suites) {
+			wmi_err("Failed to allocate cipher suites");
+			goto free_nan_match_params;
+		}
+		qdf_mem_copy(event->cipher_suites, param_buf->cipher_suites,
+			     event->num_cipher_suites * sizeof(uint32_t));
+	}
+
+	if (param_buf->scid && wmi_event->scid_len > 0) {
+		if (wmi_event->scid_len > param_buf->num_scid) {
+			wmi_err("Invalid scid_len %u > num %u",
+				wmi_event->scid_len, param_buf->num_scid);
+			goto free_nan_match_params;
+		}
+		event->scid = qdf_mem_malloc(wmi_event->scid_len);
+		if (!event->scid) {
+			wmi_err("Failed to allocate scid");
+			goto free_nan_match_params;
+		}
+		qdf_mem_copy(event->scid, param_buf->scid,
+			     wmi_event->scid_len);
+	}
+
+	if (param_buf->extra_info && wmi_event->extra_info_len > 0) {
+		if (wmi_event->extra_info_len > param_buf->num_extra_info) {
+			wmi_err("Invalid extra_info_len %u > num %u",
+				wmi_event->extra_info_len,
+				param_buf->num_extra_info);
+			goto free_nan_match_params;
+		}
+		event->extra_info = qdf_mem_malloc(wmi_event->extra_info_len);
+		if (!event->extra_info) {
+			wmi_err("Failed to allocate extra_info");
+			goto free_nan_match_params;
+		}
+		qdf_mem_copy(event->extra_info, param_buf->extra_info,
+			     wmi_event->extra_info_len);
+	}
+
+	if (param_buf->ies && wmi_event->ies_len > 0) {
+		if (wmi_event->ies_len > param_buf->num_ies) {
+			wmi_err("Invalid ies_len %u > num %u",
+				wmi_event->ies_len, param_buf->num_ies);
+			goto free_nan_match_params;
+		}
+		event->ies = qdf_mem_malloc(wmi_event->ies_len);
+		if (!event->ies) {
+			wmi_err("Failed to allocate ies");
+			goto free_nan_match_params;
+		}
+		qdf_mem_copy(event->ies, param_buf->ies, wmi_event->ies_len);
+	}
+
+	return QDF_STATUS_SUCCESS;
+
+free_nan_match_params:
+	qdf_mem_free(event->serv_spec_info);
+	event->serv_spec_info = NULL;
+	qdf_mem_free(event->cipher_suites);
+	event->cipher_suites = NULL;
+	qdf_mem_free(event->scid);
+	event->scid = NULL;
+	qdf_mem_free(event->extra_info);
+	event->extra_info = NULL;
+	qdf_mem_free(event->ies);
+	event->ies = NULL;
+
+	return QDF_STATUS_E_INVAL;
+}
+
 static void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)
 {
 	wmi_handle->ops->send_add_nan_func_cmd = send_add_nan_func_cmd_tlv;
 	wmi_handle->ops->send_nan_del_func_cmd = send_nan_del_func_cmd_tlv;
+	wmi_handle->ops->extract_nan_disc_service_rsp_event =
+					extract_nan_disc_service_rsp_event_tlv;
+	wmi_handle->ops->extract_nan_disc_match_event =
+					extract_nan_disc_match_event_tlv;
 }
 #else
 static inline void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)

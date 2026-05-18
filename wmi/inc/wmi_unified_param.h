@@ -6078,6 +6078,10 @@ typedef enum {
 	wmi_nan_peer_schedule_cnf_event_id,
 	wmi_nan_peer_params_cnf_event_id,
 #endif
+#if defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE) && defined(WLAN_FEATURE_NAN)
+	wmi_nan_disc_service_rsp_event_id,
+	wmi_nan_disc_match_event_id,
+#endif
 	wmi_events_max,
 } wmi_conv_event_id;
 

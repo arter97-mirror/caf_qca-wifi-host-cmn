@@ -447,4 +447,32 @@ wmi_extract_nan_dfs_channel_availability_ind(
 	uint8_t *data,
 	struct nan_dfs_channel_availability_ind *event);
 #endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
+
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+/**
+ * wmi_extract_nan_disc_service_rsp_event() - Extract discovery service response
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer from firmware
+ * @params: Output structure to populate
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_extract_nan_disc_service_rsp_event(wmi_unified_t wmi_handle, void *evt_buf,
+				       struct nan_disc_service_rsp_event
+				       *params);
+
+/**
+ * wmi_extract_nan_disc_match_event() - Extract discovery match event
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer from firmware
+ * @params: Output structure to populate
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_extract_nan_disc_match_event(wmi_unified_t wmi_handle, void *evt_buf,
+				 struct nan_disc_match_event *params);
+#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE */
+
 #endif /* _WMI_UNIFIED_NAN_API_H_ */

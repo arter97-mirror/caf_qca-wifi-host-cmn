@@ -26722,6 +26722,12 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_athdiag_read_write_eventid] =
 					WMI_ATHDIAG_READ_WRITE_EVENTID;
 #endif
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+	event_ids[wmi_nan_disc_service_rsp_event_id] =
+				WMI_NAN_DISC_SERVICE_RSP_EVENTID;
+	event_ids[wmi_nan_disc_match_event_id] =
+				WMI_NAN_DISC_MATCH_EVENTID;
+#endif
 }
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS

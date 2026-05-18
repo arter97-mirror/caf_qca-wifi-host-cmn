@@ -2735,6 +2735,10 @@ QDF_STATUS (*send_add_nan_func_cmd)(wmi_unified_t wmi_handle,
 				    struct nan_add_func_params *params);
 QDF_STATUS (*send_nan_del_func_cmd)(wmi_unified_t wmi_handle,
 				    struct nan_del_func_params *params);
+QDF_STATUS (*extract_nan_disc_service_rsp_event)(wmi_unified_t wmi_handle,
+		void *evt_buf, struct nan_disc_service_rsp_event *event);
+QDF_STATUS (*extract_nan_disc_match_event)(wmi_unified_t wmi_handle,
+		void *evt_buf, struct nan_disc_match_event *event);
 #endif
 #endif /* WLAN_FEATURE_NAN */
 

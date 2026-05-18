@@ -417,3 +417,28 @@ wmi_extract_nan_peer_params_cnf(wmi_unified_t wmi_handle, uint8_t *data,
 	return QDF_STATUS_E_FAILURE;
 }
 #endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
+
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+QDF_STATUS
+wmi_extract_nan_disc_service_rsp_event(wmi_unified_t wmi_handle, void *evt_buf,
+				       struct nan_disc_service_rsp_event
+				       *params)
+{
+	if (wmi_handle->ops->extract_nan_disc_service_rsp_event)
+		return wmi_handle->ops->extract_nan_disc_service_rsp_event(
+					wmi_handle, evt_buf, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_nan_disc_match_event(wmi_unified_t wmi_handle, void *evt_buf,
+				 struct nan_disc_match_event *params)
+{
+	if (wmi_handle->ops->extract_nan_disc_match_event)
+		return wmi_handle->ops->extract_nan_disc_match_event(wmi_handle,
+							evt_buf, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE */
