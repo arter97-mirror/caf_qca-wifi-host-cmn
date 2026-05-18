@@ -929,6 +929,7 @@ enum {
 	IEEE80211_PARAM_LIST_REG_CHAN = 842,
 	IEEE80211_PARAM_PURE_11AX_ENABLE = 843,
 	IEEE80211_PARAM_HE_ULOFDMA_DCM =844,
+	IEEE80211_PARAM_PURE_11BE_ENABLE = 845,
 	/* Add QCA enums above */
 	IEEE80211_PARAM_CUST_BEGIN, /* Cust enum begin */
 	IEEE80211_PARAM_CUST_END, /* Cust enum end */
@@ -2787,6 +2788,7 @@ struct vendor_commands vap_vendor_cmds[] = {
 	{"pure_11ax", IEEE80211_PARAM_PURE_11AX_ENABLE, SET_PARAM, 1},
 	{"he_ulofdma_dcm",        IEEE80211_PARAM_HE_ULOFDMA_DCM, SET_PARAM, 1},
 	{"g_he_ulofdma_dcm",    IEEE80211_PARAM_HE_ULOFDMA_DCM, GET_PARAM, 0},
+	{"pure_11be", IEEE80211_PARAM_PURE_11BE_ENABLE, SET_PARAM, 1},
 };
 
 struct vendor_commands radio_vendor_cmds[] = {
