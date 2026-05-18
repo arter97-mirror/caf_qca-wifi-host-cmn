@@ -4209,6 +4209,7 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
  * dp_rx_deliver_raw_passthru() - Deliver raw passthru packets to stack
  * @soc: DP SoC handle
  * @vdev: dp vdev handle
+ * @txrx_peer: txrx peer handle
  * @nbuf: network buffer
  *
  * This function processes passthru msdu buffers and delivers them to stack
@@ -4216,7 +4217,7 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
  * Return: 0 on success else non-zero value on failure
  */
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       qdf_nbuf_t nbuf);
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf);
 
 /**
  * dp_rx_is_passthru_msdu_buf() - check whether the received msdu buffer is
@@ -4241,7 +4242,7 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
 
 static inline
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       qdf_nbuf_t nbuf)
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf)
 {
 	return -EINVAL;
 }
