@@ -370,7 +370,8 @@ int32_t wlan_crypto_get_peer_param(struct wlan_objmgr_peer *peer,
 qdf_export_symbol(wlan_crypto_get_peer_param);
 
 static
-QDF_STATUS wlan_crypto_del_pmksa(struct wlan_crypto_params *crypto_params,
+QDF_STATUS wlan_crypto_del_pmksa(struct wlan_objmgr_vdev *vdev,
+				 struct wlan_crypto_params *crypto_params,
 				 struct wlan_crypto_pmksa *pmksa);
 
 #if defined(WLAN_SAE_SINGLE_PMK) && defined(WLAN_FEATURE_ROAM_OFFLOAD)
@@ -441,14 +442,15 @@ wlan_crypto_dump_pmksa_table(struct wlan_crypto_params *crypto_params,
 #endif
 
 static
-QDF_STATUS wlan_crypto_set_pmksa(struct wlan_crypto_params *crypto_params,
+QDF_STATUS wlan_crypto_set_pmksa(struct wlan_objmgr_vdev *vdev,
+				 struct wlan_crypto_params *crypto_params,
 				 struct wlan_crypto_pmksa *pmksa)
 {
 	uint8_t i, first_available_slot = 0;
 	bool slot_found = false;
 
-	/* Delete the old entry and then Add new entry */
-	wlan_crypto_del_pmksa(crypto_params, pmksa);
+	/* Delete the old entry for same BSSID, then add new entry */
+	wlan_crypto_del_pmksa(vdev, crypto_params, pmksa);
 
 	/* find the empty slot as duplicate is already deleted */
 	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
@@ -472,14 +474,29 @@ QDF_STATUS wlan_crypto_set_pmksa(struct wlan_crypto_params *crypto_params,
 }
 
 static
-QDF_STATUS wlan_crypto_del_pmksa(struct wlan_crypto_params *crypto_params,
+QDF_STATUS wlan_crypto_del_pmksa(struct wlan_objmgr_vdev *vdev,
+				 struct wlan_crypto_params *crypto_params,
 				 struct wlan_crypto_pmksa *pmksa)
 {
 	uint8_t i, j, valid_entries_in_table = 0;
 	bool match_found = false;
 	u8 del_pmk[MAX_PMK_LEN] = {0};
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_crypto_pmksa *tmp;
+	bool is_host_4way_hs_supported;
 
 	/* find slot with same bssid */
+	psoc = wlan_vdev_get_psoc(vdev);
+	if (!psoc) {
+		crypto_err("psoc is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+	is_host_4way_hs_supported =
+		wlan_psoc_nif_fw_ext2_cap_get(
+				psoc, WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE);
+	crypto_debug("is_host_4way_hs_supported:%d",
+		     is_host_4way_hs_supported);
+
 	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
 		if (!crypto_params->pmksa[i])
 			continue;
@@ -512,17 +529,22 @@ QDF_STATUS wlan_crypto_del_pmksa(struct wlan_crypto_params *crypto_params,
 			crypto_debug("PMKSA: Deleted PMKSA entry at index=%d",
 				     i);
 
-			/* Find and remove the entries matching the pmk */
-			for (j = 0; j < WLAN_CRYPTO_MAX_PMKID; j++) {
-				if (!crypto_params->pmksa[j])
-					continue;
-				if (crypto_params->pmksa[j]->pmk_len &&
-				    (!qdf_mem_cmp(crypto_params->pmksa[j]->pmk,
-				     del_pmk,
-				     crypto_params->pmksa[j]->pmk_len))) {
-					qdf_mem_zero(crypto_params->pmksa[j],
-					sizeof(struct wlan_crypto_pmksa));
-					qdf_mem_free(crypto_params->pmksa[j]);
+			/*
+			 * When host handles 4-way HS, PMK may be shared
+			 * across APs (OKC). Skip matching-PMK sweep to
+			 * avoid collateral deletes of valid peer entries.
+			 */
+			if (!is_host_4way_hs_supported) {
+				/* Remove entries matching the pmk */
+				for (j = 0; j < WLAN_CRYPTO_MAX_PMKID; j++) {
+					tmp = crypto_params->pmksa[j];
+					if (!tmp || !tmp->pmk_len)
+						continue;
+					if (qdf_mem_cmp(tmp->pmk, del_pmk,
+							tmp->pmk_len))
+						continue;
+					qdf_mem_zero(tmp, sizeof(*tmp));
+					qdf_mem_free(tmp);
 					crypto_params->pmksa[j] = NULL;
 					crypto_debug("PMKSA: Deleted PMKSA at idx=%d",
 						     j);
@@ -590,6 +612,7 @@ QDF_STATUS wlan_crypto_set_del_pmksa(struct wlan_objmgr_vdev *vdev,
 	}
 
 	crypto_params = &crypto_priv->crypto_params;
+
 	if (set) {
 		pmkid_cache = wlan_crypto_get_pmksa(vdev, &pmksa->bssid);
 		if (pmkid_cache && (pmksa->pmk_len &&
@@ -601,14 +624,16 @@ QDF_STATUS wlan_crypto_set_del_pmksa(struct wlan_objmgr_vdev *vdev,
 			return QDF_STATUS_E_EXISTS;
 		}
 
-		status = wlan_crypto_set_pmksa(crypto_params, pmksa);
+		status = wlan_crypto_set_pmksa(vdev, crypto_params, pmksa);
 		/* Set pmksa */
 	} else {
 		/* del pmksa */
 		if (!pmksa)
 			status = wlan_crypto_pmksa_flush(crypto_params);
 		else
-			status = wlan_crypto_del_pmksa(crypto_params, pmksa);
+			status = wlan_crypto_del_pmksa(vdev,
+						       crypto_params,
+						       pmksa);
 	}
 
 	return status;
