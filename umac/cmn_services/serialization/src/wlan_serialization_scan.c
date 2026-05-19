@@ -48,6 +48,10 @@ wlan_serialization_active_scan_cmd_count_handler(struct wlan_objmgr_psoc *psoc,
 
 	ser_pdev_obj = wlan_objmgr_pdev_get_comp_private_obj(
 			pdev, WLAN_UMAC_COMP_SERIALIZATION);
+	if (!ser_pdev_obj) {
+		ser_err("invalid ser_pdev_obj");
+		return;
+	}
 
 	pdev_q = &ser_pdev_obj->pdev_q[SER_PDEV_QUEUE_COMP_SCAN];
 	*count += wlan_serialization_list_size(&pdev_q->active_list);
@@ -64,6 +68,10 @@ wlan_serialization_is_scan_pending_queue_empty(
 
 	pdev = wlan_serialization_get_pdev_from_cmd(cmd);
 	ser_pdev_obj = wlan_serialization_get_pdev_obj(pdev);
+	if (!ser_pdev_obj) {
+		ser_err("invalid ser_pdev_obj");
+		return false;
+	}
 
 	pdev_q = &ser_pdev_obj->pdev_q[SER_PDEV_QUEUE_COMP_SCAN];
 

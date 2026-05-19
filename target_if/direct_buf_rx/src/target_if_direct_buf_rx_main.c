@@ -2513,6 +2513,11 @@ QDF_STATUS target_if_direct_buf_rx_print_ring_stat(
 	psoc = wlan_pdev_get_psoc(pdev);
 	dbr_pdev_obj = wlan_objmgr_pdev_get_comp_private_obj(pdev,
 				WLAN_TARGET_IF_COMP_DIRECT_BUF_RX);
+	if (!dbr_pdev_obj) {
+		direct_buf_rx_err("dbr_pdev_obj is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	dbr_psoc_obj = wlan_objmgr_psoc_get_comp_private_obj(psoc,
 				WLAN_TARGET_IF_COMP_DIRECT_BUF_RX);
 	if (!dbr_psoc_obj) {

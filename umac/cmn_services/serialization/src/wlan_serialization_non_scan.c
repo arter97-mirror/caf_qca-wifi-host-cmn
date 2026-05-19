@@ -47,6 +47,11 @@ wlan_serialization_is_non_scan_pending_queue_empty(
 	}
 
 	ser_vdev_obj = wlan_serialization_get_vdev_obj(vdev);
+	if (!ser_vdev_obj) {
+		ser_err("ser_vdev_obj is NULL");
+		goto error;
+	}
+
 	vdev_q = &ser_vdev_obj->vdev_q[SER_VDEV_QUEUE_COMP_NON_SCAN];
 
 	if (qdf_list_empty(&vdev_q->pending_list))
@@ -70,9 +75,17 @@ wlan_serialization_is_active_non_scan_cmd_allowed(
 
 	ser_pdev_obj = wlan_serialization_get_pdev_obj(
 			wlan_serialization_get_pdev_from_cmd(cmd));
+	if (!ser_pdev_obj) {
+		ser_err("invalid ser_pdev_obj");
+		goto error;
+	}
 
 	pdev_queue = wlan_serialization_get_pdev_queue_obj(ser_pdev_obj,
 							   cmd->cmd_type);
+	if (!pdev_queue) {
+		ser_err("invalid pdev_queue");
+		goto error;
+	}
 
 	vdev_active_cmd_bitmap = pdev_queue->vdev_active_cmd_bitmap;
 
@@ -118,6 +131,7 @@ wlan_serialization_is_active_non_scan_cmd_allowed(
 
 		}
 	}
+error:
 	return status;
 }
 
@@ -654,6 +668,10 @@ wlan_ser_cancel_non_scan_cmd(
 
 		ser_vdev_obj = wlan_serialization_get_vdev_obj(
 					cmd_list->cmd.vdev);
+		if (!ser_vdev_obj) {
+			ser_err("invalid ser_vdev_obj");
+			break;
+		}
 
 		vdev_queue = wlan_serialization_get_list_from_vdev_queue(
 			ser_vdev_obj, cmd_type, is_active_queue);
@@ -754,6 +772,10 @@ wlan_serialization_is_blocking_non_scan_cmd_waiting(
 	uint8_t blocking_cmd_waiting = 0;
 
 	ser_pdev_obj = wlan_serialization_get_pdev_obj(pdev);
+	if (!ser_pdev_obj) {
+		ser_err("invalid ser_pdev_obj");
+		return false;
+	}
 
 	pdev_queue = wlan_serialization_get_pdev_queue_obj(
 					ser_pdev_obj,
