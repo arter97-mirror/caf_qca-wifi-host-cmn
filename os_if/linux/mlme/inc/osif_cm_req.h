@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,6 +29,7 @@
 #include "wlan_cm_public_struct.h"
 #include <net/cfg80211.h>
 #include "wlan_objmgr_vdev_obj.h"
+#include "wlan_osif_features.h"
 
 /**
  * struct osif_connect_params - extra connect params
@@ -52,6 +54,10 @@ struct osif_connect_params {
 	uint8_t sae_pwe;
 	struct qdf_mac_addr prev_bssid;
 };
+
+#ifdef CFG80211_MULTI_AKM_CONNECT_SUPPORT
+#define WLAN_CM_MAX_CONNECT_AKMS 5
+#endif
 
 #if defined(WLAN_FEATURE_FILS_SK) && \
 	(defined(CFG80211_FILS_SK_OFFLOAD_SUPPORT) || \
