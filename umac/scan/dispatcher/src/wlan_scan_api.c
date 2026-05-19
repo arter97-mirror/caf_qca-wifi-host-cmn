@@ -261,7 +261,7 @@ wlan_scan_cfg_get_dfs_chan_scan_allowed(struct wlan_objmgr_psoc *psoc,
 	if (!scan_obj)
 		return;
 
-	*enable_dfs_scan = scan_obj->scan_def.allow_dfs_chan_in_scan;
+	*enable_dfs_scan = !!scan_obj->scan_def.allow_dfs_chan_in_scan;
 }
 
 void

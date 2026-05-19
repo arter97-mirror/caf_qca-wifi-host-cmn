@@ -322,10 +322,22 @@ struct extscan_def_config {
 #endif
 
 /**
+ * enum scan_dfs_mode - DFS channel scan mode
+ * @SCAN_DFS_DISABLE: Do not scan DFS channels
+ * @SCAN_DFS_ENABLE: Scan DFS channels
+ * @SCAN_DFS_ENABLE_LOW_SPAN: Scan DFS channels including low-span scans
+ */
+enum scan_dfs_mode {
+	SCAN_DFS_DISABLE         = 0,
+	SCAN_DFS_ENABLE          = 1,
+	SCAN_DFS_ENABLE_LOW_SPAN = 2,
+};
+
+/**
  * struct scan_default_params - default scan parameters to be used
  * @active_dwell: default active dwell time
  * @allow_dfs_chan_in_first_scan: first scan should contain dfs channels or not.
- * @allow_dfs_chan_in_scan: Scan DFS channels or not.
+ * @allow_dfs_chan_in_scan: DFS channel scan mode, see enum scan_dfs_mode.
  * @skip_dfs_chan_in_p2p_search: Skip DFS channels in p2p search.
  * @use_wake_lock_in_user_scan: if wake lock will be acquired during user scan
  * @active_dwell_2g: default active dwell time for 2G channels, if it's not zero
@@ -426,7 +438,7 @@ struct extscan_def_config {
 struct scan_default_params {
 	uint32_t active_dwell;
 	bool allow_dfs_chan_in_first_scan;
-	bool allow_dfs_chan_in_scan;
+	uint8_t allow_dfs_chan_in_scan;
 	bool skip_dfs_chan_in_p2p_search;
 	bool use_wake_lock_in_user_scan;
 	uint32_t active_dwell_2g;

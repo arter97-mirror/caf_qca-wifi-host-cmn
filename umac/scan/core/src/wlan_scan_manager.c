@@ -1176,7 +1176,9 @@ scm_update_channel_list(struct scan_start_request *req,
 		skip_dfs_ch = false;
 
 	/* Skip DFS channels when LOW_SPAN scan flag is set */
-	if (req->scan_req.scan_policy_low_span)
+	if (req->scan_req.scan_policy_low_span &&
+	    scan_obj->scan_def.allow_dfs_chan_in_scan !=
+	    SCAN_DFS_ENABLE_LOW_SPAN)
 		skip_dfs_ch = true;
 
 	for (i = 0; i < req->scan_req.chan_list.num_chan; i++) {

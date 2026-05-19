@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -123,10 +123,13 @@ enum scan_mode_6ghz {
  * <ini>
  * gEnableDFSChnlScan - Enable/Disable scan on DFS channels
  * @Min: 0
- * @Max: 1
+ * @Max: 2
  * @Default: 1
  *
  * This ini is used to enable/disable scan on DFS channels.
+ * 0 - Disable DFS channel scan
+ * 1 - Enable DFS channel scan
+ * 2 - Enable DFS channel scan including low-span scans
  *
  * Related: Scan
  *
@@ -134,9 +137,10 @@ enum scan_mode_6ghz {
  *
  * </ini>
  */
-#define CFG_ENABLE_DFS_SCAN CFG_INI_BOOL( \
+#define CFG_ENABLE_DFS_SCAN CFG_INI_UINT( \
 				"gEnableDFSChnlScan", \
-				true, \
+				0, 2, 1, \
+				CFG_VALUE_OR_DEFAULT, \
 				"enable dfs scan")
 
 /*
