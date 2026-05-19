@@ -701,7 +701,8 @@ QDF_STATUS hif_rtpm_get(uint8_t type, uint32_t id)
 		} else if (ret == 0 || ret == -EINPROGRESS) {
 			qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 			pm_state = qdf_atomic_read(&gp_hif_rtpm_ctx->pm_state);
-			if (pm_state >= HIF_RTPM_STATE_RESUMING) {
+			if (pm_state >= HIF_RTPM_STATE_RESUMING ||
+			    pm_state == HIF_RTPM_STATE_ON) {
 				__hif_rtpm_put_noidle(gp_hif_rtpm_ctx->dev);
 				gp_hif_rtpm_ctx->stats.request_resume_ts =
 							qdf_get_log_timestamp();
