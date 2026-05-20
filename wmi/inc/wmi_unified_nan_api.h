@@ -180,6 +180,21 @@ wmi_extract_ndp_initiator_rsp(wmi_unified_t wmi_handle, uint8_t *data,
 			      struct nan_datapath_initiator_rsp *rsp);
 
 /**
+ * wmi_unified_nan_del_func_cmd() - Send NAN del function command
+ * @wmi_handle: WMI handle
+ * @params: del function parameters. @params->type must be
+ *          NAN_FUNC_TYPE_PUBLISH or NAN_FUNC_TYPE_SUBSCRIBE;
+ *          NAN_FUNC_TYPE_FOLLOW_UP is not cancellable per the firmware ABI.
+ *          @params->instance_id must be a valid firmware-assigned ID (1-255).
+ *
+ * Return: QDF_STATUS
+ */
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+QDF_STATUS wmi_unified_nan_del_func_cmd(wmi_unified_t wmi_handle,
+					struct nan_del_func_params *params);
+#endif
+
+/**
  * wmi_extract_ndp_ind - api to extract ndp indication struct from even buffer
  * @wmi_handle: wmi handle
  * @data: event buffer

@@ -2703,7 +2703,6 @@ QDF_STATUS (*send_terminate_all_ndps_req_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS
 (*send_ndp_update_config_cmd)(wmi_unified_t wmi_handle,
 			      struct nan_datapath_update_config *req);
-
 QDF_STATUS (*extract_ndp_initiator_rsp)(wmi_unified_t wmi_handle,
 		uint8_t *data, struct nan_datapath_initiator_rsp *rsp);
 QDF_STATUS (*extract_ndp_ind)(wmi_unified_t wmi_handle,
@@ -2734,6 +2733,8 @@ QDF_STATUS (*extract_nan_dfs_channel_availability_ind)(
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
 QDF_STATUS (*send_add_nan_func_cmd)(wmi_unified_t wmi_handle,
 				    struct nan_add_func_params *params);
+QDF_STATUS (*send_nan_del_func_cmd)(wmi_unified_t wmi_handle,
+				    struct nan_del_func_params *params);
 #endif
 #endif /* WLAN_FEATURE_NAN */
 

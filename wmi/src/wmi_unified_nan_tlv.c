@@ -1414,9 +1414,59 @@ send_add_nan_func_cmd_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS
+send_nan_del_func_cmd_tlv(wmi_unified_t wmi_handle,
+			  struct nan_del_func_params *params)
+{
+	wmi_nan_disc_cancel_service_req_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	QDF_STATUS status;
+	uint32_t len;
+
+	if (!wmi_handle || !params) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	len = sizeof(*cmd);
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("Failed to allocate NAN del func buf");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	cmd = (wmi_nan_disc_cancel_service_req_cmd_fixed_param *)
+		wmi_buf_data(buf);
+	qdf_mem_zero(cmd, sizeof(*cmd));
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_disc_cancel_service_req_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+		       (wmi_nan_disc_cancel_service_req_cmd_fixed_param));
+
+	cmd->vdev_id = params->vdev_id;
+	cmd->instance_id = params->instance_id;
+	WMI_NAN_DISC_COOKIE_SET(cmd->cookie_low32, cmd->cookie_high32,
+				params->cookie);
+
+	wmi_mtrace(WMI_NAN_DISC_CANCEL_SERVICE_REQ_CMDID, cmd->vdev_id, 0);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_NAN_DISC_CANCEL_SERVICE_REQ_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send NAN del func cmd: %d", status);
+		wmi_buf_free(buf);
+		return status;
+	}
+
+	wmi_debug("NAN disc cancel sent: vdev_id=%d, instance_id=%d",
+		  cmd->vdev_id, cmd->instance_id);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)
 {
 	wmi_handle->ops->send_add_nan_func_cmd = send_add_nan_func_cmd_tlv;
+	wmi_handle->ops->send_nan_del_func_cmd = send_nan_del_func_cmd_tlv;
 }
 #else
 static inline void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)
@@ -2610,7 +2660,6 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_ndp_responder_req_cmd = nan_ndp_responder_req_tlv;
 	ops->send_ndp_end_req_cmd = nan_ndp_end_req_tlv;
 	ops->send_ndp_update_config_cmd = nan_ndp_update_config_tlv;
-	wmi_nan_attach_add_func_tlv(wmi_handle);
 	ops->extract_ndp_initiator_rsp = extract_ndp_initiator_rsp_tlv;
 	ops->extract_ndp_ind = extract_ndp_ind_tlv;
 	ops->extract_nan_msg = extract_nan_msg_tlv,
@@ -2623,4 +2672,5 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	wmi_nan_attach_dw_info_tlv(wmi_handle);
 	wmi_nan_attach_cluster_info_tlv(wmi_handle);
 	wmi_nan_attach_schedule_ops_tlv(ops);
+	wmi_nan_attach_add_func_tlv(wmi_handle);
 }
