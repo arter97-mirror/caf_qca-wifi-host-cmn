@@ -119,14 +119,6 @@ HTC_PACKET *htc_alloc_control_tx_packet(HTC_TARGET *target)
 #endif
 }
 
-/* Set the target failure handling callback */
-void htc_set_target_failure_callback(HTC_HANDLE HTCHandle,
-				     HTC_TARGET_FAILURE Callback)
-{
-	HTC_TARGET *target = GET_HTC_TARGET_FROM_HANDLE(HTCHandle);
-
-	target->HTCInitInfo.TargetFailure = Callback;
-}
 
 void htc_ce_tasklet_debug_dump(HTC_HANDLE htc_handle)
 {
@@ -1068,89 +1060,7 @@ void htc_stop(HTC_HANDLE HTCHandle)
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC, ("-htc_stop\n"));
 }
 
-void htc_dump_credit_states(HTC_HANDLE HTCHandle)
-{
-	HTC_TARGET *target = GET_HTC_TARGET_FROM_HANDLE(HTCHandle);
-	HTC_ENDPOINT *pEndpoint;
-	int i;
 
-	for (i = 0; i < ENDPOINT_MAX; i++) {
-		pEndpoint = &target->endpoint[i];
-		if (0 == pEndpoint->service_id)
-			continue;
-
-		AR_DEBUG_PRINTF(ATH_DEBUG_ANY,
-			("--- EP : %d  service_id: 0x%X    --------------\n",
-				 pEndpoint->Id, pEndpoint->service_id));
-		AR_DEBUG_PRINTF(ATH_DEBUG_ANY,
-				(" TxCredits          : %d\n",
-				 pEndpoint->TxCredits));
-		AR_DEBUG_PRINTF(ATH_DEBUG_ANY,
-				(" TxCreditSize       : %d\n",
-				 pEndpoint->TxCreditSize));
-		AR_DEBUG_PRINTF(ATH_DEBUG_ANY,
-				(" TxCreditsPerMaxMsg : %d\n",
-				 pEndpoint->TxCreditsPerMaxMsg));
-		AR_DEBUG_PRINTF(ATH_DEBUG_ANY,
-				(" TxQueueDepth       : %d\n",
-				 HTC_PACKET_QUEUE_DEPTH(&pEndpoint->TxQueue)));
-		AR_DEBUG_PRINTF(ATH_DEBUG_ANY,
-				("----------------------------------------\n"));
-	}
-}
-
-bool htc_get_endpoint_statistics(HTC_HANDLE HTCHandle,
-				   HTC_ENDPOINT_ID Endpoint,
-				   enum htc_endpoint_stat_action Action,
-				   struct htc_endpoint_stats *pStats)
-{
-#ifdef HTC_EP_STAT_PROFILING
-	HTC_TARGET *target = GET_HTC_TARGET_FROM_HANDLE(HTCHandle);
-	bool clearStats = false;
-	bool sample = false;
-
-	switch (Action) {
-	case HTC_EP_STAT_SAMPLE:
-		sample = true;
-		break;
-	case HTC_EP_STAT_SAMPLE_AND_CLEAR:
-		sample = true;
-		clearStats = true;
-		break;
-	case HTC_EP_STAT_CLEAR:
-		clearStats = true;
-		break;
-	default:
-		break;
-	}
-
-	A_ASSERT(Endpoint < ENDPOINT_MAX);
-
-	/* lock out TX and RX while we sample and/or clear */
-	LOCK_HTC_TX(target);
-	LOCK_HTC_RX(target);
-
-	if (sample) {
-		A_ASSERT(pStats);
-		/* return the stats to the caller */
-		qdf_mem_copy(pStats, &target->endpoint[Endpoint].endpoint_stats,
-			 sizeof(struct htc_endpoint_stats));
-	}
-
-	if (clearStats) {
-		/* reset stats */
-		qdf_mem_zero(&target->endpoint[Endpoint].endpoint_stats,
-			  sizeof(struct htc_endpoint_stats));
-	}
-
-	UNLOCK_HTC_RX(target);
-	UNLOCK_HTC_TX(target);
-
-	return true;
-#else
-	return false;
-#endif
-}
 
 void *htc_get_targetdef(HTC_HANDLE htc_handle)
 {
@@ -1266,19 +1176,6 @@ int htc_pm_runtime_put(HTC_HANDLE htc_handle)
 }
 #endif
 
-/**
- * htc_set_wmi_endpoint_count: Set number of WMI endpoint
- * @htc_handle: HTC handle
- * @wmi_ep_count: WMI endpoint count
- *
- * return: None
- */
-void htc_set_wmi_endpoint_count(HTC_HANDLE htc_handle, uint8_t wmi_ep_count)
-{
-	HTC_TARGET *target = GET_HTC_TARGET_FROM_HANDLE(htc_handle);
-
-	target->wmi_ep_count = wmi_ep_count;
-}
 
 /**
  * htc_get_wmi_endpoint_count: Get number of WMI endpoint

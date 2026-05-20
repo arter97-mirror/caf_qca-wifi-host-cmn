@@ -433,31 +433,6 @@ HTC_HANDLE htc_create(void *HifDevice, struct htc_init_info *pInfo,
  */
 void *htc_get_hif_device(HTC_HANDLE HTCHandle);
 
-/**
- * htc_set_credit_distribution() - Set credit distribution parameters
- * @HTCHandle: HTC handle
- * @pCreditDistContext: caller supplied context to pass into distribution
- *                      functions
- * @CreditDistFunc: Distribution function callback
- * @CreditInitFunc: Credit Distribution initialization callback
- * @ServicePriorityOrder: Array containing list of service IDs, lowest index
- *                        is highestpriority
- * @ListLength: number of elements in ServicePriorityOrder
- *
- * The user can set a custom credit distribution function to handle
- * special requirementsfor each endpoint.  A default credit distribution
- * routine can be used by setting CreditInitFunc to NULL. The default
- * credit distribution is only provided for simple "fair" credit distribution
- * without regard to any prioritization.
- *
- * Return: None
- */
-void htc_set_credit_distribution(HTC_HANDLE HTCHandle,
-				 void *pCreditDistContext,
-				 HTC_CREDIT_DIST_CALLBACK CreditDistFunc,
-				 HTC_CREDIT_INIT_CALLBACK CreditInitFunc,
-				 HTC_SERVICE_ID ServicePriorityOrder[],
-				 int ListLength);
 
 /**
  * htc_wait_target() - Wait for the target to indicate the HTC layer is ready
@@ -702,14 +677,6 @@ void htc_destroy(HTC_HANDLE HTCHandle);
  */
 void htc_flush_endpoint(HTC_HANDLE HTCHandle, HTC_ENDPOINT_ID Endpoint,
 			HTC_TX_TAG Tag);
-/**
- * htc_dump_credit_states() - Dump credit distribution state
- * @HTCHandle: HTC handle
- *
- * This dumps all credit distribution information to the debugger
- * Return: None
- */
-void htc_dump_credit_states(HTC_HANDLE HTCHandle);
 
 /**
  * htc_indicate_activity_change() - Indicate a traffic activity change on an
@@ -725,44 +692,6 @@ void htc_dump_credit_states(HTC_HANDLE HTCHandle);
 void htc_indicate_activity_change(HTC_HANDLE HTCHandle,
 				  HTC_ENDPOINT_ID Endpoint, bool Active);
 
-/**
- * htc_get_endpoint_statistics() - Get endpoint statistics
- * @HTCHandle: HTC handle
- * @Endpoint: Endpoint identifier
- * @Action: action to take with statistics
- * @pStats: statistics that were sampled (can be NULL if Action is
- *           HTC_EP_STAT_CLEAR)
- *
- * Statistics is a compile-time option and this function may return
- * false if HTC is not compiled with profiling.
- * The caller can specify the statistic "action" to take when sampling
- * the statistics.  This includes :
- * HTC_EP_STAT_SAMPLE : The pStats structure is filled with the current
- *                      values.
- * HTC_EP_STAT_SAMPLE_AND_CLEAR : The structure is filled and the current
- *                                statisticsare cleared.
- * HTC_EP_STAT_CLEA : the statistics are cleared, the called can pass
- *                    a NULL value for pStats
- * Return: true if statistics profiling is enabled, otherwise false.
- */
-bool htc_get_endpoint_statistics(HTC_HANDLE HTCHandle,
-				   HTC_ENDPOINT_ID Endpoint,
-				   enum htc_endpoint_stat_action Action,
-				   struct htc_endpoint_stats *pStats);
-
-/**
- * htc_unblock_recv() - Unblock HTC message reception
- * @HTCHandle: HTC handle
- *
- * HTC will block the receiver if the EpRecvAlloc callback fails to provide a
- * packet. The caller can use this API to indicate to HTC when resources
- * (buffers) are available such that the  receiver can be unblocked and HTC
- * may re-attempt fetching the pending message.
- * This API is not required if the user uses the EpRecvRefill callback or uses
- * the HTCAddReceivePacket()API to recycle or provide receive packets to HTC.
- * Return: None
- */
-void htc_unblock_recv(HTC_HANDLE HTCHandle);
 
 /**
  * htc_add_receive_pkt_multiple() - Add multiple receive packets to HTC
@@ -835,20 +764,8 @@ htc_enable_hdr_length_check(HTC_HANDLE htc_handle, bool htc_hdr_length_check);
 int htc_get_num_recv_buffers(HTC_HANDLE HTCHandle,
 			     HTC_ENDPOINT_ID Endpoint);
 
-/**
- * htc_set_target_failure_callback() - Set the target failure handling callback
- *                                   in HTC layer
- * @HTCHandle: HTC handle
- * @Callback: target failure handling callback
- *
- * Return: None
- */
-void htc_set_target_failure_callback(HTC_HANDLE HTCHandle,
-				     HTC_TARGET_FAILURE Callback);
 
 /* internally used functions for testing... */
-void htc_enable_recv(HTC_HANDLE HTCHandle);
-void htc_disable_recv(HTC_HANDLE HTCHandle);
 A_STATUS HTCWaitForPendingRecv(HTC_HANDLE HTCHandle,
 			       uint32_t TimeoutInMs,
 			       bool *pbIsRecvPending);
@@ -889,8 +806,6 @@ void *htc_get_targetdef(HTC_HANDLE htc_handle);
 int htc_runtime_suspend(HTC_HANDLE htc_ctx);
 int htc_runtime_resume(HTC_HANDLE htc_ctx);
 #endif
-void htc_global_credit_flow_disable(void);
-void htc_global_credit_flow_enable(void);
 
 /* Disable ASPM : Disable PCIe low power */
 bool htc_can_suspend_link(HTC_HANDLE HTCHandle);
@@ -1008,14 +923,6 @@ void htc_vote_link_up(HTC_HANDLE htc_handle, enum htc_link_vote_user_id id)
 void htc_set_async_ep(HTC_HANDLE HTCHandle,
 			HTC_ENDPOINT_ID htc_ep_id, bool value);
 
-/**
- * htc_set_wmi_endpoint_count: Set number of WMI endpoint
- * @htc_handle: HTC handle
- * @wmi_ep_count: WMI endpoint count
- *
- * return: None
- */
-void htc_set_wmi_endpoint_count(HTC_HANDLE htc_handle, uint8_t wmi_ep_count);
 
 /**
  * htc_get_wmi_endpoint_count: Get number of WMI endpoint

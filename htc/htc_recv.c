@@ -129,22 +129,6 @@ void htc_control_rx_complete(void *Context, HTC_PACKET *pPacket)
 			("Invalid call to  htc_control_rx_complete\n"));
 }
 
-void htc_unblock_recv(HTC_HANDLE HTCHandle)
-{
-	/* TODO  find the Need in new model */
-}
-
-void htc_enable_recv(HTC_HANDLE HTCHandle)
-{
-
-	/* TODO  find the Need in new model */
-}
-
-void htc_disable_recv(HTC_HANDLE HTCHandle)
-{
-
-	/* TODO  find the Need in new model */
-}
 
 int htc_get_num_recv_buffers(HTC_HANDLE HTCHandle, HTC_ENDPOINT_ID Endpoint)
 {
