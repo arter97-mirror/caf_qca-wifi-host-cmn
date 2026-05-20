@@ -2157,14 +2157,6 @@ uint32_t hal_srng_max_entries(void *hal_soc, int ring_type)
 }
 qdf_export_symbol(hal_srng_max_entries);
 
-enum hal_srng_dir hal_srng_get_dir(void *hal_soc, int ring_type)
-{
-	struct hal_soc *hal = (struct hal_soc *)hal_soc;
-	struct hal_hw_srng_config *ring_config =
-		HAL_SRNG_CONFIG(hal, ring_type);
-
-	return ring_config->ring_dir;
-}
 
 void hal_srng_dump(struct hal_srng *srng)
 {

@@ -1098,14 +1098,6 @@ void hal_set_low_threshold(hal_ring_handle_t hal_ring_hdl,
  */
 void hal_srng_dump(struct hal_srng *srng);
 
-/**
- * hal_srng_get_dir() - Returns the direction of the ring
- * @hal_soc: Opaque HAL SOC handle
- * @ring_type: one of the types from hal_ring_type
- *
- * Return: Ring direction
- */
-enum hal_srng_dir hal_srng_get_dir(void *hal_soc, int ring_type);
 
 /* HAL memory information */
 struct hal_mem_info {
