@@ -1686,29 +1686,6 @@ fail:
 	return status;
 }
 
-QDF_STATUS
-dp_set_addba_response(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
-		      uint16_t vdev_id, uint8_t tid, uint16_t statuscode)
-{
-	struct dp_peer *peer = dp_peer_get_tgt_peer_hash_find(
-					(struct dp_soc *)cdp_soc,
-					peer_mac, 0, vdev_id,
-					DP_MOD_ID_CDP);
-	struct dp_rx_tid *rx_tid;
-
-	if (!peer) {
-		dp_peer_debug("%pK: Peer is NULL!", cdp_soc);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	rx_tid = &peer->rx_tid[tid];
-	qdf_spin_lock_bh(&rx_tid->tid_lock);
-	rx_tid->userstatuscode = statuscode;
-	qdf_spin_unlock_bh(&rx_tid->tid_lock);
-	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-
-	return QDF_STATUS_SUCCESS;
-}
 
 int dp_delba_process_wifi3(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
 			   uint16_t vdev_id, int tid, uint16_t reasoncode)

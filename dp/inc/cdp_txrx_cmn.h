@@ -1725,24 +1725,6 @@ static inline int cdp_delba_tx_completion(ol_txrx_soc_handle soc,
 							  tid, status);
 }
 
-static inline QDF_STATUS
-cdp_set_addbaresponse(ol_txrx_soc_handle soc,
-		      uint8_t *peer_mac, uint16_t vdev_id, int tid,
-		      uint16_t statuscode)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance:");
-		QDF_BUG(0);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->cmn_drv_ops ||
-	    !soc->ops->cmn_drv_ops->set_addba_response)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->cmn_drv_ops->set_addba_response(soc, peer_mac, vdev_id,
-						  tid, statuscode);
-}
 
 /**
  * cdp_set_vdev_dscp_tid_map(): function to set DSCP-tid map in the vap

@@ -152,17 +152,6 @@ int dp_addba_requestprocess_wifi3(struct cdp_soc_t *cdp_soc,
 				  uint16_t buffersize,
 				  uint16_t startseqnum);
 
-/**
- * dp_set_addba_response() - Set a user defined ADDBA response status code
- * @cdp_soc: Datapath soc handle
- * @peer_mac: Datapath peer mac address
- * @vdev_id: id of atapath vdev
- * @tid: TID number
- * @statuscode: response status code to be set
- */
-QDF_STATUS
-dp_set_addba_response(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
-		      uint16_t vdev_id, uint8_t tid, uint16_t statuscode);
 
 /**
  * dp_delba_process_wifi3() - Process DELBA from peer
@@ -345,12 +334,6 @@ dp_addba_requestprocess_wifi3(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
 	return QDF_STATUS_SUCCESS;
 }
 
-static inline QDF_STATUS
-dp_set_addba_response(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
-		      uint16_t vdev_id, uint8_t tid, uint16_t statuscode)
-{
-	return QDF_STATUS_SUCCESS;
-}
 
 static inline int
 dp_delba_process_wifi3(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,

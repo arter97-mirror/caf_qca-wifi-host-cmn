@@ -544,11 +544,6 @@ struct cdp_cmn_ops {
 				   uint8_t tid, int status);
 
 	QDF_STATUS
-	(*set_addba_response)(struct cdp_soc_t *cdp_soc, uint8_t *peer_mac,
-			      uint16_t vdev_id, uint8_t tid,
-			      uint16_t statuscode);
-
-	QDF_STATUS
 	(*set_vdev_dscp_tid_map)(struct cdp_soc_t *soc_handle,
 				 uint8_t vdev_id, uint8_t map_id);
 	int (*txrx_get_total_per)(struct cdp_soc_t *soc, uint8_t pdev_id);

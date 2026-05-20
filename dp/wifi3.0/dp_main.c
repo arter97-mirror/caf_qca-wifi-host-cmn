@@ -14361,7 +14361,6 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 	.addba_responsesetup = dp_addba_responsesetup_wifi3,
 	.addba_resp_tx_completion = dp_addba_resp_tx_completion_wifi3,
 	.delba_process = dp_delba_process_wifi3,
-	.set_addba_response = dp_set_addba_response,
 	.flush_cache_rx_queue = NULL,
 	.tid_update_ba_win_size = dp_rx_tid_update_ba_win_size,
 #endif
