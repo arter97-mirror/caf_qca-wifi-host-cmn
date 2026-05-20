@@ -26727,6 +26727,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 				WMI_NAN_DISC_SERVICE_RSP_EVENTID;
 	event_ids[wmi_nan_disc_match_event_id] =
 				WMI_NAN_DISC_MATCH_EVENTID;
+	event_ids[wmi_nan_disc_req_terminated_event_id] =
+				WMI_NAN_DISC_SERVICE_REQ_TERMINATED_EVENTID;
 #endif
 }
 

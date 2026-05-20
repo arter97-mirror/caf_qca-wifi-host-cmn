@@ -2739,6 +2739,8 @@ QDF_STATUS (*extract_nan_disc_service_rsp_event)(wmi_unified_t wmi_handle,
 		void *evt_buf, struct nan_disc_service_rsp_event *event);
 QDF_STATUS (*extract_nan_disc_match_event)(wmi_unified_t wmi_handle,
 		void *evt_buf, struct nan_disc_match_event *event);
+QDF_STATUS (*extract_nan_disc_terminated_evt)(wmi_unified_t wmi_handle,
+		void *evt_buf, struct nan_disc_req_terminated_event *event);
 #endif
 #endif /* WLAN_FEATURE_NAN */
 

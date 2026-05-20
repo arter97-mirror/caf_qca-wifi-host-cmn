@@ -473,6 +473,19 @@ wmi_extract_nan_disc_service_rsp_event(wmi_unified_t wmi_handle, void *evt_buf,
 QDF_STATUS
 wmi_extract_nan_disc_match_event(wmi_unified_t wmi_handle, void *evt_buf,
 				 struct nan_disc_match_event *params);
-#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE */
 
+/**
+ * wmi_extract_nan_disc_terminated_evt() - Extract service
+ * request terminated event
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer from firmware
+ * @params: Output structure to populate
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_extract_nan_disc_terminated_evt(wmi_unified_t wmi_handle, void *evt_buf,
+				    struct nan_disc_req_terminated_event
+				    *params);
+#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE */
 #endif /* _WMI_UNIFIED_NAN_API_H_ */

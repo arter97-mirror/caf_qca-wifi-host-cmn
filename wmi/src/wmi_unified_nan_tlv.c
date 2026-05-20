@@ -1663,6 +1663,42 @@ free_nan_match_params:
 	return QDF_STATUS_E_INVAL;
 }
 
+static QDF_STATUS
+extract_nan_disc_terminated_evt_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+				    struct nan_disc_req_terminated_event *event)
+{
+	WMI_NAN_DISC_SERVICE_REQ_TERMINATED_EVENTID_param_tlvs *param_buf;
+	wmi_nan_disc_service_req_terminated_event_fixed_param *wmi_event;
+
+	if (!evt_buf) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!event) {
+		wmi_err("Invalid output event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	param_buf = (WMI_NAN_DISC_SERVICE_REQ_TERMINATED_EVENTID_param_tlvs *)
+		     evt_buf;
+
+	wmi_event = param_buf->fixed_param;
+	if (!wmi_event) {
+		wmi_err("Invalid fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	event->vdev_id = wmi_event->vdev_id;
+	event->cookie = WMI_NAN_DISC_COOKIE_GET(wmi_event->cookie_low32,
+						wmi_event->cookie_high32);
+	event->instance_id = wmi_event->instance_id;
+	event->service_req_type = wmi_event->service_req_type;
+	event->reason = wmi_event->reason;
+
+	return QDF_STATUS_SUCCESS;
+}
+
 static void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)
 {
 	wmi_handle->ops->send_add_nan_func_cmd = send_add_nan_func_cmd_tlv;
@@ -1671,6 +1707,8 @@ static void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)
 					extract_nan_disc_service_rsp_event_tlv;
 	wmi_handle->ops->extract_nan_disc_match_event =
 					extract_nan_disc_match_event_tlv;
+	wmi_handle->ops->extract_nan_disc_terminated_evt =
+					extract_nan_disc_terminated_evt_tlv;
 }
 #else
 static inline void wmi_nan_attach_add_func_tlv(wmi_unified_t wmi_handle)

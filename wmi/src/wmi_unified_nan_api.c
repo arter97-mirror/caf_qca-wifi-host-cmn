@@ -441,4 +441,16 @@ wmi_extract_nan_disc_match_event(wmi_unified_t wmi_handle, void *evt_buf,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_extract_nan_disc_terminated_evt(wmi_unified_t wmi_handle, void *evt_buf,
+				    struct nan_disc_req_terminated_event
+				    *params)
+{
+	if (wmi_handle->ops->extract_nan_disc_terminated_evt)
+		return wmi_handle->ops->extract_nan_disc_terminated_evt
+						(wmi_handle, evt_buf, params);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE */
