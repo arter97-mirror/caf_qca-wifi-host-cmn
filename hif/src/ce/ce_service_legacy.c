@@ -71,7 +71,6 @@
  */
 
 /* NB: Modeled after ce_completed_send_next */
-/* Shift bits to convert IS_*_RING_*_WATERMARK_MASK to CE_WM_FLAG_*_* */
 #define CE_WM_SHFT 1
 
 #ifdef WLAN_FEATURE_FASTPATH
@@ -272,8 +271,8 @@ int ce_send_fast(struct CE_handle *copyeng, qdf_nbuf_t msdu,
 	if (ok_to_send) {
 		if (qdf_likely(ce_state->state == CE_RUNNING)) {
 			type = FAST_TX_WRITE_INDEX_UPDATE;
-			war_ce_src_ring_write_idx_set(scn, ctrl_addr,
-						      write_index);
+			CE_SRC_RING_WRITE_IDX_SET(scn, ctrl_addr,
+						  write_index);
 			Q_TARGET_ACCESS_END(scn);
 		} else {
 			ce_state->state = CE_PENDING;
@@ -605,8 +604,8 @@ ce_send_nolock_legacy(struct CE_handle *copyeng,
 			CE_state->state = CE_PENDING;
 		} else {
 			event_type = HIF_TX_DESC_POST;
-			war_ce_src_ring_write_idx_set(scn, ctrl_addr,
-						      write_index);
+			CE_SRC_RING_WRITE_IDX_SET(scn, ctrl_addr,
+						  write_index);
 		}
 
 		/* src_ring->write index hasn't been updated event though
@@ -1116,10 +1115,7 @@ ce_per_engine_handler_adjust_legacy(struct CE_state *CE_state,
 	else
 		CE_COPY_COMPLETE_INTR_DISABLE(scn, ctrl_addr);
 
-	if (CE_state->watermark_cb)
-		CE_WATERMARK_INTR_ENABLE(scn, ctrl_addr);
-	else
-		CE_WATERMARK_INTR_DISABLE(scn, ctrl_addr);
+	CE_WATERMARK_INTR_DISABLE(scn, ctrl_addr);
 	Q_TARGET_ACCESS_END(scn);
 }
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -86,28 +86,7 @@ typedef void (*CE_recv_cb)(struct CE_handle *copyeng,
 		   unsigned int transfer_id,
 		   unsigned int flags);
 
-/*
- * Copy Engine Watermark callback type.
- *
- * Allows upper layers to be notified when watermarks are reached:
- *   space is available and/or running short in a source ring
- *   buffers are exhausted and/or abundant in a destination ring
- *
- * The flags parameter indicates which condition triggered this
- * callback.  See CE_WM_FLAG_*.
- *
- * Watermark APIs are provided to allow upper layers "batch"
- * descriptor processing and to allow upper layers to
- * throttle/unthrottle.
- */
-typedef void (*CE_watermark_cb)(struct CE_handle *copyeng,
-				void *per_CE_wm_context, unsigned int flags);
 
-
-#define CE_WM_FLAG_SEND_HIGH   1
-#define CE_WM_FLAG_SEND_LOW    2
-#define CE_WM_FLAG_RECV_HIGH   4
-#define CE_WM_FLAG_RECV_LOW    8
 #define CE_HTT_TX_CE           4
 
 
@@ -263,58 +242,6 @@ void ce_recv_cb_register(struct CE_handle *copyeng,
 
 /*==================CE Watermark=============================================*/
 
-/*
- * Register a Watermark Callback function.
- * This function is called as soon as a watermark level
- * is crossed.  A Watermark Callback function is free to
- * handle received data "en masse"; but then some coordination
- * is required with a registered Receive Callback function.
- * [Suggestion: Either handle Receives in a Receive Callback
- * or en masse in a Watermark Callback; but not both.]
- */
-void ce_watermark_cb_register(struct CE_handle *copyeng,
-			  CE_watermark_cb fn_ptr,
-			  void *per_CE_wm_context);
-
-/*
- * Set low/high watermarks for the send/source side of a copy engine.
- *
- * Typically, the destination side CPU manages watermarks for
- * the receive side and the source side CPU manages watermarks
- * for the send side.
- *
- * A low watermark of 0 is never hit (so the watermark function
- * will never be called for a Low Watermark condition).
- *
- * A high watermark equal to nentries is never hit (so the
- * watermark function will never be called for a High Watermark
- * condition).
- */
-void ce_send_watermarks_set(struct CE_handle *copyeng,
-			    unsigned int low_alert_nentries,
-			    unsigned int high_alert_nentries);
-
-/* Set low/high watermarks for the receive/destination side of copy engine. */
-void ce_recv_watermarks_set(struct CE_handle *copyeng,
-			    unsigned int low_alert_nentries,
-			    unsigned int high_alert_nentries);
-
-/*
- * Return the number of entries that can be queued
- * to a ring at an instant in time.
- *
- * For source ring, does not imply that destination-side
- * buffers are available; merely indicates descriptor space
- * in the source ring.
- *
- * For destination ring, does not imply that previously
- * received buffers have been processed; merely indicates
- * descriptor space in destination ring.
- *
- * Mainly for use with CE Watermark callback.
- */
-unsigned int ce_send_entries_avail(struct CE_handle *copyeng);
-unsigned int ce_recv_entries_avail(struct CE_handle *copyeng);
 
 /* recv flags */
 /* Data is byte-swapped */
@@ -477,26 +404,6 @@ void hif_ce_desc_history_log_unregister(void);
 void ce_per_engine_service_any(int irq, struct hif_softc *scn);
 int ce_per_engine_service(struct hif_softc *scn, unsigned int CE_id);
 void ce_per_engine_servicereap(struct hif_softc *scn, unsigned int CE_id);
-
-/*===================CE cmpl interrupt Enable/Disable =======================*/
-void ce_disable_any_copy_compl_intr_nolock(struct hif_softc *scn);
-void ce_enable_any_copy_compl_intr_nolock(struct hif_softc *scn);
-
-/* API to check if any of the copy engine pipes has
- * pending frames for processing
- */
-bool ce_get_rx_pending(struct hif_softc *scn);
-
-/**
- * war_ce_src_ring_write_idx_set() - Set write index for CE source ring
- * @scn: HIF context
- * @ctrl_addr: address
- * @write_index: write index
- *
- * Return: None
- */
-void war_ce_src_ring_write_idx_set(struct hif_softc *scn,
-				   u32 ctrl_addr, unsigned int write_index);
 
 /* CE_attr.flags values */
 #define CE_ATTR_NO_SNOOP             0x01 /* Use NonSnooping PCIe accesses? */

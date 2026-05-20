@@ -63,25 +63,8 @@
 #endif /* QCA_WIFI_3_0 */
 #endif /* IPA_OFFLOAD */
 
-static int war1_allow_sleep;
-/* io32 write workaround */
-static int hif_ce_war1;
 
-/**
- * hif_ce_war_disable() - disable ce war globally
- */
-void hif_ce_war_disable(void)
-{
-	hif_ce_war1 = 0;
-}
 
-/**
- * hif_ce_war_enable() - enable ce war globally
- */
-void hif_ce_war_enable(void)
-{
-	hif_ce_war1 = 1;
-}
 
 /*
  * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
@@ -482,45 +465,6 @@ void ce_tx_ring_write_idx_update_wrapper(struct CE_handle *ce_tx_hdl,
  * The caller takes responsibility for any needed locking.
  */
 
-void war_ce_src_ring_write_idx_set(struct hif_softc *scn,
-				   u32 ctrl_addr, unsigned int write_index)
-{
-	if (hif_ce_war1) {
-		void __iomem *indicator_addr;
-
-		indicator_addr = scn->mem + ctrl_addr + DST_WATERMARK_ADDRESS;
-
-		if (!war1_allow_sleep
-		    && ctrl_addr == CE_BASE_ADDRESS(CDC_WAR_DATA_CE)) {
-			hif_write32_mb(scn, indicator_addr,
-				       (CDC_WAR_MAGIC_STR | write_index));
-		} else {
-			unsigned long irq_flags;
-
-			local_irq_save(irq_flags);
-			hif_write32_mb(scn, indicator_addr, 1);
-
-			/*
-			 * PCIE write waits for ACK in IPQ8K, there is no
-			 * need to read back value.
-			 */
-			(void)hif_read32_mb(scn, indicator_addr);
-			/* conservative */
-			(void)hif_read32_mb(scn, indicator_addr);
-
-			CE_SRC_RING_WRITE_IDX_SET(scn,
-						  ctrl_addr, write_index);
-
-			hif_write32_mb(scn, indicator_addr, 0);
-			local_irq_restore(irq_flags);
-		}
-	} else {
-		CE_SRC_RING_WRITE_IDX_SET(scn, ctrl_addr, write_index);
-	}
-}
-
-qdf_export_symbol(war_ce_src_ring_write_idx_set);
-
 QDF_STATUS
 ce_send(struct CE_handle *copyeng,
 		void *per_transfer_context,
@@ -651,65 +595,6 @@ ce_recv_buf_enqueue(struct CE_handle *copyeng,
 }
 qdf_export_symbol(ce_recv_buf_enqueue);
 
-void
-ce_send_watermarks_set(struct CE_handle *copyeng,
-		       unsigned int low_alert_nentries,
-		       unsigned int high_alert_nentries)
-{
-	struct CE_state *CE_state = (struct CE_state *)copyeng;
-	uint32_t ctrl_addr = CE_state->ctrl_addr;
-	struct hif_softc *scn = CE_state->scn;
-
-	CE_SRC_RING_LOWMARK_SET(scn, ctrl_addr, low_alert_nentries);
-	CE_SRC_RING_HIGHMARK_SET(scn, ctrl_addr, high_alert_nentries);
-}
-
-void
-ce_recv_watermarks_set(struct CE_handle *copyeng,
-		       unsigned int low_alert_nentries,
-		       unsigned int high_alert_nentries)
-{
-	struct CE_state *CE_state = (struct CE_state *)copyeng;
-	uint32_t ctrl_addr = CE_state->ctrl_addr;
-	struct hif_softc *scn = CE_state->scn;
-
-	CE_DEST_RING_LOWMARK_SET(scn, ctrl_addr,
-				low_alert_nentries);
-	CE_DEST_RING_HIGHMARK_SET(scn, ctrl_addr,
-				high_alert_nentries);
-}
-
-unsigned int ce_send_entries_avail(struct CE_handle *copyeng)
-{
-	struct CE_state *CE_state = (struct CE_state *)copyeng;
-	struct CE_ring_state *src_ring = CE_state->src_ring;
-	unsigned int nentries_mask = src_ring->nentries_mask;
-	unsigned int sw_index;
-	unsigned int write_index;
-
-	qdf_spin_lock(&CE_state->ce_index_lock);
-	sw_index = src_ring->sw_index;
-	write_index = src_ring->write_index;
-	qdf_spin_unlock(&CE_state->ce_index_lock);
-
-	return CE_RING_DELTA(nentries_mask, write_index, sw_index - 1);
-}
-
-unsigned int ce_recv_entries_avail(struct CE_handle *copyeng)
-{
-	struct CE_state *CE_state = (struct CE_state *)copyeng;
-	struct CE_ring_state *dest_ring = CE_state->dest_ring;
-	unsigned int nentries_mask = dest_ring->nentries_mask;
-	unsigned int sw_index;
-	unsigned int write_index;
-
-	qdf_spin_lock(&CE_state->ce_index_lock);
-	sw_index = dest_ring->sw_index;
-	write_index = dest_ring->write_index;
-	qdf_spin_unlock(&CE_state->ce_index_lock);
-
-	return CE_RING_DELTA(nentries_mask, write_index, sw_index - 1);
-}
 
 /*
  * Guts of ce_completed_recv_next.
@@ -1027,19 +912,6 @@ more_completions:
 #endif /*ATH_11AC_TXCOMPACT */
 	}
 
-more_watermarks:
-	if (CE_state->misc_cbs) {
-		if (CE_state->watermark_cb &&
-				hif_state->ce_services->watermark_int(CE_state,
-					&flags)) {
-			qdf_spin_unlock(&CE_state->ce_index_lock);
-			/* Convert HW IS bits to software flags */
-			CE_state->watermark_cb((struct CE_handle *)CE_state,
-					CE_state->wm_context, flags);
-			qdf_spin_lock(&CE_state->ce_index_lock);
-		}
-	}
-
 	/*
 	 * Clear the misc interrupts (watermark) that were handled above,
 	 * and that will be checked again below.
@@ -1107,11 +979,6 @@ more_watermarks:
 							 CE_state->ctrl_addr));
 			}
 		}
-	}
-
-	if (CE_state->misc_cbs && CE_state->watermark_cb) {
-		if (hif_state->ce_services->watermark_int(CE_state, &flags))
-			goto more_watermarks;
 	}
 
 	qdf_atomic_set(&CE_state->rx_pending, 0);
@@ -1224,56 +1091,6 @@ void ce_per_engine_service_any(int irq, struct hif_softc *scn)
 	Q_TARGET_ACCESS_END(scn);
 }
 
-/*Iterate the CE_state list and disable the compl interrupt
- * if it has been registered already.
- */
-void ce_disable_any_copy_compl_intr_nolock(struct hif_softc *scn)
-{
-	int CE_id;
-
-	if (Q_TARGET_ACCESS_BEGIN(scn) < 0)
-		return;
-
-	for (CE_id = 0; CE_id < scn->ce_count; CE_id++) {
-		struct CE_state *CE_state = scn->ce_id_to_state[CE_id];
-		uint32_t ctrl_addr = CE_state->ctrl_addr;
-
-		/* if the interrupt is currently enabled, disable it */
-		if (!CE_state->disable_copy_compl_intr
-		    && (CE_state->send_cb || CE_state->recv_cb))
-			CE_COPY_COMPLETE_INTR_DISABLE(scn, ctrl_addr);
-
-		if (CE_state->watermark_cb)
-			CE_WATERMARK_INTR_DISABLE(scn, ctrl_addr);
-	}
-	Q_TARGET_ACCESS_END(scn);
-}
-
-void ce_enable_any_copy_compl_intr_nolock(struct hif_softc *scn)
-{
-	int CE_id;
-
-	if (Q_TARGET_ACCESS_BEGIN(scn) < 0)
-		return;
-
-	for (CE_id = 0; CE_id < scn->ce_count; CE_id++) {
-		struct CE_state *CE_state = scn->ce_id_to_state[CE_id];
-		uint32_t ctrl_addr = CE_state->ctrl_addr;
-
-		/*
-		 * If the CE is supposed to have copy complete interrupts
-		 * enabled (i.e. there a callback registered, and the
-		 * "disable" flag is not set), then re-enable the interrupt.
-		 */
-		if (!CE_state->disable_copy_compl_intr
-		    && (CE_state->send_cb || CE_state->recv_cb))
-			CE_COPY_COMPLETE_INTR_ENABLE(scn, ctrl_addr);
-
-		if (CE_state->watermark_cb)
-			CE_WATERMARK_INTR_ENABLE(scn, ctrl_addr);
-	}
-	Q_TARGET_ACCESS_END(scn);
-}
 
 /**
  * ce_send_cb_register(): register completion handler
@@ -1355,30 +1172,6 @@ ce_recv_cb_register(struct CE_handle *copyeng,
 }
 qdf_export_symbol(ce_recv_cb_register);
 
-/**
- * ce_watermark_cb_register(): register completion handler
- * @copyeng: CE_state representing the ce we are adding the behavior to
- * @fn_ptr: callback that the ce should use when processing watermark events
- * @CE_wm_context: context to pass back in the callback
- *
- * Caller should guarantee that no watermark events are being processed before
- * switching the callback function.
- */
-void
-ce_watermark_cb_register(struct CE_handle *copyeng,
-			 CE_watermark_cb fn_ptr, void *CE_wm_context)
-{
-	struct CE_state *CE_state = (struct CE_state *)copyeng;
-	struct hif_softc *scn = CE_state->scn;
-	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
-
-	CE_state->watermark_cb = fn_ptr;
-	CE_state->wm_context = CE_wm_context;
-	hif_state->ce_services->ce_per_engine_handler_adjust(CE_state,
-							0);
-	if (fn_ptr)
-		CE_state->misc_cbs = 1;
-}
 
 #ifdef CUSTOM_CB_SCHEDULER_SUPPORT
 void
@@ -1427,19 +1220,6 @@ ce_disable_custom_cb(struct CE_handle *copyeng)
 }
 #endif /* CUSTOM_CB_SCHEDULER_SUPPORT */
 
-bool ce_get_rx_pending(struct hif_softc *scn)
-{
-	int CE_id;
-
-	for (CE_id = 0; CE_id < scn->ce_count; CE_id++) {
-		struct CE_state *CE_state = scn->ce_id_to_state[CE_id];
-
-		if (qdf_atomic_read(&CE_state->rx_pending))
-			return true;
-	}
-
-	return false;
-}
 
 /**
  * ce_check_rx_pending() - ce_check_rx_pending
@@ -1534,87 +1314,6 @@ void ce_ipa_get_resource(struct CE_handle *ce,
 
 #endif /* IPA_OFFLOAD */
 
-/*
- * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
- * for defined here
- */
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||\
-	defined(RECORD_DP_CE_EVTS)
-
-/*
- * hif_store_desc_trace_buf_index() -
- * API to get the CE id and CE debug storage buffer index
- *
- * @dev: network device
- * @attr: sysfs attribute
- * @buf: data got from the user
- *
- * Return total length
- */
-ssize_t hif_input_desc_trace_buf_index(struct hif_softc *scn,
-					const char *buf, size_t size)
-{
-	struct ce_desc_hist *ce_hist = NULL;
-
-	if (!scn)
-		return -EINVAL;
-
-	ce_hist = &scn->hif_ce_desc_hist;
-
-	if (!size) {
-		qdf_nofl_err("%s: Invalid input buffer.", __func__);
-		return -EINVAL;
-	}
-
-	if (sscanf(buf, "%u %u", (unsigned int *)&ce_hist->hist_id,
-		   (unsigned int *)&ce_hist->hist_index) != 2) {
-		qdf_nofl_err("%s: Invalid input value.", __func__);
-		return -EINVAL;
-	}
-	if ((ce_hist->hist_id >= CE_COUNT_MAX) ||
-	   (ce_hist->hist_index >= HIF_CE_HISTORY_MAX)) {
-		qdf_print("Invalid values");
-		return -EINVAL;
-	}
-
-	return size;
-}
-
-#endif /* defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||
-	* defined(RECORD_DP_CE_EVTS)
-	*/
-
-#ifdef HIF_CE_DEBUG_DATA_BUF
-
-/*
- * hif_disp_ce_enable_desc_data_hist() -
- * API to display value of data_enable
- *
- * @dev: network device
- * @attr: sysfs attribute
- * @buf: buffer to copy the data.
- *
- * Return total length copied
- */
-ssize_t hif_disp_ce_enable_desc_data_hist(struct hif_softc *scn, char *buf)
-{
-	ssize_t len = 0;
-	uint32_t ce_id = 0;
-	struct ce_desc_hist *ce_hist = NULL;
-
-	if (!scn)
-		return -EINVAL;
-
-	ce_hist = &scn->hif_ce_desc_hist;
-
-	for (ce_id = 0; ce_id < CE_COUNT_MAX; ce_id++) {
-		len += snprintf(buf + len, PAGE_SIZE - len, " CE%d: %d\n",
-				ce_id, ce_hist->data_enable[ce_id]);
-	}
-
-	return len;
-}
-#endif /* HIF_CE_DEBUG_DATA_BUF */
 
 #ifdef OL_ATH_SMART_LOGGING
 #define GUARD_SPACE 10

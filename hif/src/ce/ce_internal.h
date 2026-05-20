@@ -174,12 +174,6 @@ struct CE_state {
 	CE_recv_cb recv_cb;
 	void *recv_context;
 
-	/* misc_cbs - are any callbacks besides send and recv enabled? */
-	uint8_t misc_cbs;
-
-	CE_watermark_cb watermark_cb;
-	void *wm_context;
-
 #ifdef CUSTOM_CB_SCHEDULER_SUPPORT
 	qdf_atomic_t custom_cb_pending;
 	void (*custom_cb)(void *arg);

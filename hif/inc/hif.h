@@ -2094,8 +2094,6 @@ void hif_update_tx_ring(struct hif_opaque_softc *osc, u_int32_t num_htt_cmpls);
 int hif_send_fast(struct hif_opaque_softc *osc, qdf_nbuf_t nbuf,
 	uint32_t transfer_id, uint32_t download_len);
 void hif_pkt_dl_len_set(void *hif_sc, unsigned int pkt_download_len);
-void hif_ce_war_disable(void);
-void hif_ce_war_enable(void);
 void hif_disable_interrupt(struct hif_opaque_softc *osc, uint32_t pipe_num);
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
 struct hif_pipe_addl_info *hif_get_addl_pipe_info(struct hif_opaque_softc *osc,
@@ -2385,17 +2383,6 @@ uint32_t hif_get_soc_version(struct hif_opaque_softc *hif_handle);
 void hif_set_initial_wakeup_cb(struct hif_opaque_softc *hif_ctx,
 			       void (*callback)(void *),
 			       void *priv);
-/*
- * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
- * for defined here
- */
-#if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
-ssize_t hif_dump_desc_trace_buf(struct device *dev,
-				struct device_attribute *attr, char *buf);
-ssize_t hif_input_desc_trace_buf_index(struct hif_softc *scn,
-					const char *buf, size_t size);
-ssize_t hif_disp_ce_enable_desc_data_hist(struct hif_softc *scn, char *buf);
-#endif/*#if defined(HIF_CONFIG_SLUB_DEBUG_ON)||defined(HIF_CE_DEBUG_DATA_BUF)*/
 
 /**
  * hif_set_ce_service_max_yield_time() - sets CE service max yield time
