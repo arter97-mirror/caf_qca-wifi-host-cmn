@@ -574,6 +574,8 @@ dp_pdev_iterate_peer_lock_safe(struct dp_pdev *pdev,
 	qdf_spin_lock_bh(&pdev->vdev_list_lock);
 	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
 		num_peers[i] = vdev->num_peers;
+		if (!num_peers[i])
+			continue;
 		peer_array[i] = qdf_mem_malloc(num_peers[i] *
 					       sizeof(struct dp_peer *));
 		if (!peer_array[i])
