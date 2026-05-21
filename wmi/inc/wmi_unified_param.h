@@ -7490,6 +7490,7 @@ typedef struct {
 	bool is_action_oui_v2_enabled;
 	bool enable_bcn_rssi_history_report;
 	uint32_t haps_feature_flags;
+	bool iot_temporal_mode_enabled;
 } target_resource_config;
 
 /**

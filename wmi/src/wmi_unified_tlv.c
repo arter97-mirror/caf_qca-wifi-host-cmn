@@ -10667,6 +10667,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	if (tgt_res_cfg->enable_bcn_rssi_history_report)
 		WMI_RSRC_CFG_FLAGS2_RECV_BCN_STATS_ENABLED_SET(
 						resource_cfg->flags2, 1);
+
+	if (tgt_res_cfg->iot_temporal_mode_enabled)
+		WMI_RSRC_CFG_NAN_CONFIG_ENABLE_NAN_TEMPORAL_IOT_MODE_SET(
+				resource_cfg->nan_config_word, 1);
 }
 
 #ifdef FEATURE_SET
