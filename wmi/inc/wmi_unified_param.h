@@ -7855,6 +7855,7 @@ typedef struct {
 #if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
 	uint8_t dw_lead_time;
 #endif
+	bool iot_temporal_mode_enabled;
 } target_resource_config;
 
 /**

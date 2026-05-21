@@ -10917,6 +10917,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 		WMI_RSRC_CFG_HOST_SERVICE_FLAG_SMD_BSS_TRANSITION_SET(
 				resource_cfg->host_service_flags, 1);
 	wmi_copy_nan_resource_config(resource_cfg, tgt_res_cfg);
+
+	if (tgt_res_cfg->iot_temporal_mode_enabled)
+		WMI_RSRC_CFG_NAN_CONFIG_ENABLE_NAN_TEMPORAL_IOT_MODE_SET(
+				resource_cfg->nan_config_word, 1);
 }
 
 #ifdef FEATURE_SET
