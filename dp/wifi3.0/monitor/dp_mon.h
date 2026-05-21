@@ -540,7 +540,7 @@ bool dp_pdev_get_filter_non_data(struct cdp_pdev *pdev_handle);
  *
  * Return: Success, NULL on failure
  */
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 int dp_set_pktlog_wifi3(struct dp_pdev *pdev, uint32_t event,
 			bool enable);
 #endif
@@ -798,7 +798,7 @@ struct dp_mon_ops {
 	void (*mon_set_atf_stats_enable)(struct dp_pdev *pdev, bool value);
 #endif
 	void (*mon_set_bsscolor)(struct dp_pdev *pdev, uint8_t bsscolor);
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 	int (*mon_set_pktlog_wifi3)(struct dp_pdev *pdev, uint32_t event,
 				    bool enable);
 #endif
@@ -862,7 +862,7 @@ struct dp_mon_ops {
 	void (*mon_filter_reset_rx_mon_mode)(struct dp_pdev *pdev);
 	void (*mon_filter_setup_tx_mon_mode)(struct dp_pdev *pdev);
 	void (*mon_filter_reset_tx_mon_mode)(struct dp_pdev *pdev);
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 	void (*mon_filter_setup_rx_pkt_log_full)(struct dp_pdev *pdev);
 	void (*mon_filter_reset_rx_pkt_log_full)(struct dp_pdev *pdev);
 	void (*mon_filter_setup_rx_pkt_log_lite)(struct dp_pdev *pdev);
@@ -3750,7 +3750,7 @@ void dp_monitor_set_bsscolor(struct dp_pdev *pdev, uint8_t bsscolor)
 	return monitor_ops->mon_set_bsscolor(pdev, bsscolor);
 }
 
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 static inline
 int dp_monitor_set_pktlog_wifi3(struct dp_pdev *pdev, uint32_t event,
 				bool enable)

@@ -503,7 +503,7 @@ void dp_mon_filter_reset_tx_mon_mode(struct dp_pdev *pdev);
  */
 void dp_mon_filter_reset_mon_mode(struct dp_pdev *pdev);
 
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 /**
  * dp_mon_filter_setup_rx_pkt_log_full() - Setup the Rx pktlog full mode filter
  * @pdev: DP pdev handle

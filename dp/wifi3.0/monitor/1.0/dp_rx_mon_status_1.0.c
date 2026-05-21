@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -147,7 +147,9 @@ dp_send_ack_frame_to_stack(struct dp_soc *soc,
 }
 #endif
 
-#if defined(HTT_UL_OFDMA_USER_INFO_V0_W0_VALID_M)
+#if defined(RX_PPDU_END_USER_STATS_OFDMA_INFO_VALID_OFFSET) && \
+defined(RX_PPDU_END_USER_STATS_SW_RESPONSE_REFERENCE_PTR_EXT_OFFSET) && \
+defined(HTT_UL_OFDMA_USER_INFO_V0_W0_VALID_M)
 static inline void
 dp_rx_ul_ofdma_ru_size_to_width(
 	uint32_t ru_size,

@@ -573,7 +573,7 @@ void dp_rx_mon_hdr_length_set(uint32_t *msg_word,
 }
 #endif
 
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 void dp_mon_filter_setup_rx_pkt_log_full(struct dp_pdev *pdev)
 {
 	struct dp_mon_ops *mon_ops = NULL;

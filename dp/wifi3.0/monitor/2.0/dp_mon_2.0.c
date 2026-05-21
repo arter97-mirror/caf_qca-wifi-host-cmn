@@ -1374,7 +1374,7 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 	mon_ops->mon_filter_setup_rx_enh_capture = NULL;
 #endif
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 	mon_ops->mon_set_pktlog_wifi3 = dp_set_pktlog_wifi3;
 #ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->mon_filter_setup_rx_pkt_log_full =

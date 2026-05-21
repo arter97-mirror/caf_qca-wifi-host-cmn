@@ -1232,7 +1232,7 @@ dp_set_bpr_enable(struct dp_pdev *pdev, int val)
 }
 #endif
 
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 #ifdef BE_PKTLOG_SUPPORT
 static bool
 dp_set_hybrid_pktlog_enable(struct dp_pdev *pdev,
@@ -1302,6 +1302,8 @@ dp_set_hybrid_pktlog_enable(struct dp_pdev *pdev,
 	return true;
 }
 #endif
+
+#ifndef REMOVE_PKT_LOG
 int dp_set_pktlog_wifi3(struct dp_pdev *pdev, uint32_t event,
 		        bool enable)
 {
@@ -1511,6 +1513,7 @@ int dp_set_pktlog_wifi3(struct dp_pdev *pdev, uint32_t event,
 	}
 	return 0;
 }
+#endif
 #endif
 
 /* MCL specific functions */
@@ -7186,7 +7189,7 @@ void dp_mon_feature_ops_deregister(struct dp_soc *soc)
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 	mon_ops->mon_filter_setup_rx_enh_capture = NULL;
 #endif
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 	mon_ops->mon_set_pktlog_wifi3 = NULL;
 	mon_ops->mon_filter_setup_rx_pkt_log_full = NULL;
 	mon_ops->mon_filter_reset_rx_pkt_log_full = NULL;

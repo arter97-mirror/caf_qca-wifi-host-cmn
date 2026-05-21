@@ -649,7 +649,7 @@ void dp_mon_filter_reset_mon_mode_1_0(struct dp_pdev *pdev)
 	mon_pdev->filter[mode][srng_type] = filter;
 }
 
-#ifdef WDI_EVENT_ENABLE
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 void dp_mon_filter_setup_rx_pkt_log_full_1_0(struct dp_pdev *pdev)
 {
 	struct dp_mon_filter filter = {0};
@@ -828,7 +828,7 @@ void dp_mon_filter_reset_rx_pktlog_cbf_1_0(struct dp_pdev *pdev)
 	srng_type = DP_MON_FILTER_SRNG_TYPE_RXDMA_MONITOR_STATUS;
 	mon_pdev->filter[mode][srng_type] = filter;
 }
-#endif /* WDI_EVENT_ENABLE */
+#endif /* WDI_EVENT_ENABLE && !REMOVE_PKT_LOG */
 
 #ifdef WLAN_DP_RESET_MON_BUF_RING_FILTER
 /**
