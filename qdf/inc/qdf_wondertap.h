@@ -190,4 +190,27 @@ typedef __qdf_wondertap_channel_status_t qdf_wondertap_channel_status_t;
  */
 typedef __qdf_wondertap_channel_status_report_t
 	qdf_wondertap_channel_status_report_t;
+
+/**
+ * typedef qdf_wondertap_station_capability_t - Wondertap station capability
+ *
+ * Defines the supported PHY capabilities for a station, used to construct
+ * the capability_mask in wondertap_station_info.
+ */
+typedef __qdf_wondertap_station_capability_t qdf_wondertap_station_capability_t;
+
+/**
+ * typedef qdf_wondertap_station_action_t - Wondertap station action
+ *
+ * Defines the action to perform on a station (NEW, UPDATE, DEL, or QUERY).
+ */
+typedef __qdf_wondertap_station_action_t qdf_wondertap_station_action_t;
+
+/**
+ * typedef qdf_wondertap_station_info_t - Wondertap station information
+ *
+ * Contains the details of a station being added or updated in the vendor
+ * driver, including MAC address and PHY capability structures.
+ */
+typedef __qdf_wondertap_station_info_t qdf_wondertap_station_info_t;
 #endif /* _QDF_WONDERTAP_H */
