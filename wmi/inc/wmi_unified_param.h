@@ -7332,6 +7332,7 @@ struct wmi_host_fw_abi_ver {
  * @WMI_HOST_WIFI_STANDARD_6: Wifi standard 6
  * @WMI_HOST_WIFI_STANDARD_6E: Wifi standard 6E
  * @WMI_HOST_WIFI_STANDARD_7: Wifi standard 7
+ * @WMI_HOST_WIFI_STANDARD_8: Wifi standard 8
  */
 typedef enum {
 	WMI_HOST_WIFI_STANDARD_4 = 0,
@@ -7339,6 +7340,7 @@ typedef enum {
 	WMI_HOST_WIFI_STANDARD_6 = 2,
 	WMI_HOST_WIFI_STANDARD_6E = 3,
 	WMI_HOST_WIFI_STANDARD_7 = 4,
+	WMI_HOST_WIFI_STANDARD_8 = 5,
 } WMI_HOST_WIFI_STANDARD;
 
 #ifdef FEATURE_SET

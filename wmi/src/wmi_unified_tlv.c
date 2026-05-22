@@ -11005,7 +11005,11 @@ static WMI_WIFI_STANDARD convert_host_to_target_wifi_standard(
 		return WMI_WIFI_STANDARD_6E;
 	case WMI_HOST_WIFI_STANDARD_7:
 		return WMI_WIFI_STANDARD_7;
+	case WMI_HOST_WIFI_STANDARD_8:
+		return WMI_WIFI_STANDARD_8;
 	default:
+		wmi_err("Unknown wifi standard %d, defaulting to WiFi 4",
+			wifi_standard);
 		return WMI_WIFI_STANDARD_4;
 	}
 }
