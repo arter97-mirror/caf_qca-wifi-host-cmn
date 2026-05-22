@@ -3891,6 +3891,15 @@ QDF_STATUS dp_try_hp_update(struct dp_haps *haps_ctx, bool is_direct_reg_write)
 			if (delta > HP_UPDATE_TIME_LIMIT)
 				dp_err("HAPS: hp update time(%zu) is high for vdev(%u)",
 				       delta, haps_ctx->vdev_id);
+
+			if (qdf_trace_dp_del_reg_write_enabled())
+				qdf_trace_dp_del_reg_write(ring_id,
+							   hp,
+							   hp,
+							   0,
+							   0,
+							   delta);
+
 		} else {
 			dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, 0);
 		}
