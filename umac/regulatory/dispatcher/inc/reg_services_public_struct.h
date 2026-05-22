@@ -1835,6 +1835,16 @@ struct ch_avoid_ind_type {
 };
 
 /**
+ * struct gvp_op_ctrl
+ * @gvp_op_start: GVP operation start or stop
+ * @device_op_mode: device opmode that runs GVP operation
+ */
+struct gvp_op_ctrl {
+	bool gvp_op_start;
+	enum QDF_OPMODE device_op_mode;
+};
+
+/**
  * struct unsafe_ch_list
  * @chan_cnt: no.of channels
  * @chan_freq_list: channel frequency list
