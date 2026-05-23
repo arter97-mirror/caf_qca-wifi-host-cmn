@@ -4332,7 +4332,8 @@ qdf_dma_addr_t dp_tx_nbuf_map(struct dp_vdev *vdev,
 			      struct dp_tx_desc_s *tx_desc,
 			      qdf_nbuf_t nbuf)
 {
-	if (qdf_likely(tx_desc->flags & DP_TX_DESC_FLAG_FAST)) {
+	if (qdf_likely(tx_desc->flags &
+		       (DP_TX_DESC_FLAG_FAST | DP_TX_DESC_FLAG_RMNET))) {
 		qdf_nbuf_dma_clean_range((void *)nbuf->data,
 					 (void *)(nbuf->data + nbuf->len));
 		return (qdf_dma_addr_t)qdf_mem_virt_to_phys(nbuf->data);
@@ -4345,8 +4346,15 @@ static inline
 void dp_tx_nbuf_unmap(struct dp_soc *soc,
 		      struct dp_tx_desc_s *desc)
 {
+	/*
+	 * Skip DMA unmap only when dp_tx_nbuf_map() used virt_to_phys
+	 * (DP_TX_DESC_FLAG_FAST, set for recycler pages) or the buffer
+	 * is RMNET-managed.  DP_TX_DESC_FLAG_SIMPLE is a fast-completion
+	 * hint set for all normal packets via pdev->tx_fast_flag, so it
+	 * cannot be used to infer that no real DMA mapping was done.
+	 */
 	if (qdf_unlikely(!(desc->flags &
-			   (DP_TX_DESC_FLAG_SIMPLE | DP_TX_DESC_FLAG_RMNET))))
+			   (DP_TX_DESC_FLAG_FAST | DP_TX_DESC_FLAG_RMNET))))
 		return dp_tx_nbuf_unmap_regular(soc, desc);
 }
 #else
