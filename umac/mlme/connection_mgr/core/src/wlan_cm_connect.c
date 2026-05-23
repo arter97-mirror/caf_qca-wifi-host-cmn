@@ -3189,7 +3189,12 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	if (wlan_reg_is_24ghz_ch_freq(channel.ch_freq) &&
 	    channel.ch_width == CH_WIDTH_40MHZ) {
 		assoc_chan_info = &mlme_priv->connect_info.assoc_chan_info;
-		assoc_chan_info->sec_2g_freq = channel.ch_cfreq1;
+		if (channel.ch_cfreq1 == channel.ch_freq + BW_10_MHZ)
+			assoc_chan_info->sec_2g_freq =
+					channel.ch_freq + BW_20_MHZ;
+		if (channel.ch_cfreq1 == channel.ch_freq - BW_10_MHZ)
+			assoc_chan_info->sec_2g_freq =
+					channel.ch_freq - BW_20_MHZ;
 	}
 
 	util_scan_free_cache_entry(cache_entry);
