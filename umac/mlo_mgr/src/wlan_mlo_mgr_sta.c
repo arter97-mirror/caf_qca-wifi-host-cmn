@@ -888,7 +888,7 @@ QDF_STATUS mlo_get_cu_bpcc(struct wlan_objmgr_vdev *vdev,
 }
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
-static void mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
+void mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
 {
 	struct wlan_mlo_dev_context *mlo_dev_ctx = NULL;
 	struct wlan_mlo_sta *sta_ctx = NULL;
@@ -910,7 +910,7 @@ static void mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
 }
 
 #else
-static void mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
+void mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
 {
 }
 #endif

@@ -1603,6 +1603,17 @@ uint8_t mlo_get_sta_num_links(struct wlan_mlo_dev_context *mld_ctx);
  */
 int mlo_mgr_set_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
 				   enum phy_ch_width ch_width);
+
+/**
+ * mlo_clear_sta_key_mgmt() - Clear pending key mgmt context in MLO STA
+ * @vdev: vdev obj
+ *
+ * Zeros out the sta_key_mgmt array in the MLO STA context to discard
+ * any pending key management state, e.g. on roam synch from firmware.
+ *
+ * Return: void
+ */
+void mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev);
 #else
 static inline int
 mlo_mgr_get_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
@@ -1622,6 +1633,11 @@ mlo_mgr_set_per_link_chan_info(struct wlan_objmgr_vdev *vdev, int link_id,
 			       enum phy_ch_width ch_width)
 {
 	return -EINVAL;
+}
+
+static inline void
+mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
+{
 }
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
 #endif
