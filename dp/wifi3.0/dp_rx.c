@@ -1098,11 +1098,10 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	} else if (num_entries_avail < num_req_buffers) {
 		num_desc_to_free = num_req_buffers - num_entries_avail;
 		num_req_buffers = num_entries_avail;
-	}  else if ((*desc_list) && dp_rxdma_srng->primary_refill &&
-		dp_rx_is_refill_srng_below_critical_threshold(
-			dp_soc, dp_rxdma_srng,
-			num_entries_avail) &&
-		dp_rx_buffers_is_critical_threshold(rx_desc_pool)) {
+	} else if (((*desc_list) && dp_rxdma_srng->primary_refill &&
+		   dp_rxdma_srng->num_entries - num_entries_avail <
+		   CRITICAL_BUFFER_THRESHOLD) &&
+		   dp_rx_buffers_is_critical_threshold(rx_desc_pool)) {
 		/* set extra buffers to CRITICAL_BUFFER_THRESHOLD only if
 		 * total buff requested after adding extra buffers is less
 		 * than or equal to num entries available, else set it to max
