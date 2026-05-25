@@ -3265,6 +3265,7 @@ static uint8_t *util_copy_reporting_ap_vendor_ies(struct wlan_objmgr_psoc *psoc,
 
 	attr.ie_data = (uint8_t *)ie;
 	attr.ie_length = ie_len;
+	attr.ignore_wildcards = true;
 
 	if (wlan_action_oui_search(psoc, &attr, oui_id1) ||
 	    wlan_action_oui_search(psoc, &attr, oui_id2) ||
