@@ -640,8 +640,8 @@ static bool hif_rtpm_enabled(void)
 	if (qdf_unlikely(!gp_hif_rtpm_ctx))
 		return false;
 
-	if (gp_hif_rtpm_ctx->enable_rpm)
-		return true;
+	if (!gp_hif_rtpm_ctx->enable_rpm)
+		return false;
 
 	return __hif_rtpm_enabled(gp_hif_rtpm_ctx->dev);
 }
