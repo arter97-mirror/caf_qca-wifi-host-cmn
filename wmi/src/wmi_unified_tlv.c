@@ -25385,6 +25385,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_mlo_sap_link_removal_support] =
 				WMI_SERVICE_MLO_SAP_LINK_REMOVAL_SUPPORT;
 #endif
+	wmi_service[wmi_service_delete_all_peer_bitmap_support] =
+				WMI_SERVICE_DELETE_ALL_PEER_BITMAP_SUPPORT;
 }
 
 /**
