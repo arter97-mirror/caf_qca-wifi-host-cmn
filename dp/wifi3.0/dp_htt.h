@@ -1275,6 +1275,7 @@ QDF_STATUS htt_h2t_tx_super_rule_setup(struct htt_soc *htt_soc,
 #endif
 #endif
 
+#ifdef FEATURE_DAL_DP_SUPPORT
 /**
  * struct htt_h2t_msg_dal_suspend_info - HTT message for DAL suspend info
  * @pdev_id: Pdev ID
@@ -1299,6 +1300,7 @@ struct htt_h2t_msg_dal_suspend_info {
 
 QDF_STATUS dp_h2t_dal_mode_info_send(struct dp_soc *dp_soc,
 				     struct htt_h2t_msg_dal_suspend_info *info);
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef QCA_SUPPORT_PRIMARY_LINK_MIGRATE
 /**

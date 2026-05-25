@@ -504,6 +504,7 @@ static int htt_h2t_ver_req_msg(struct htt_soc *soc)
 	return status;
 }
 
+#ifdef FEATURE_DAL_DP_SUPPORT
 QDF_STATUS dp_h2t_dal_mode_info_send(struct dp_soc *dp_soc,
 				     struct htt_h2t_msg_dal_suspend_info *info)
 {
@@ -589,6 +590,7 @@ QDF_STATUS dp_h2t_dal_mode_info_send(struct dp_soc *dp_soc,
 }
 
 qdf_export_symbol(dp_h2t_dal_mode_info_send);
+#endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef IPA_OPT_WIFI_DP
 QDF_STATUS htt_h2t_rx_cce_super_rule_setup(struct htt_soc *soc, void *param)
