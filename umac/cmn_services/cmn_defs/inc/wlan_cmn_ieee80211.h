@@ -556,7 +556,7 @@ enum wlan_status_code {
 };
 
 #define WLAN_OUI_SIZE 4
-#define WLAN_MAX_CIPHER 32
+#define WLAN_MAX_CIPHER 64
 #define WLAN_RSN_SELECTOR_LEN 4
 #define WLAN_WPA_SELECTOR_LEN 4
 #define PMKID_LEN 16

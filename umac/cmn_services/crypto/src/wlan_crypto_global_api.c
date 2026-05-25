@@ -2474,9 +2474,8 @@ wlan_get_crypto_params_from_opaquersn(struct wlan_crypto_params *crypto_params,
 
 		for (; n > 0; n--) {
 			w = wlan_crypto_rsn_suite_to_cipher(frm);
-			if (w < 0)
-				return QDF_STATUS_E_INVAL;
-			SET_UCAST_CIPHER(crypto_params, w);
+			if (w >= 0)
+				SET_UCAST_CIPHER(crypto_params, w);
 			frm += 4, len -= 4;
 		}
 	} else {
@@ -2505,9 +2504,8 @@ wlan_get_crypto_params_from_opaquersn(struct wlan_crypto_params *crypto_params,
 
 		for (; n > 0; n--) {
 			w = wlan_crypto_rsn_suite_to_keymgmt(frm);
-			if (w < 0)
-				return QDF_STATUS_E_INVAL;
-			SET_KEY_MGMT(crypto_params, w);
+			if (w >= 0)
+				SET_KEY_MGMT(crypto_params, w);
 			frm += 4, len -= 4;
 		}
 	} else {
