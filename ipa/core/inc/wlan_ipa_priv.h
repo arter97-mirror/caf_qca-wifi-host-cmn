@@ -1035,6 +1035,7 @@ struct wlan_ipa_priv {
 	qdf_wake_lock_t opt_dp_wake_lock;
 	struct opt_dp_ctrl_stats ctrl_stats;
 	qdf_runtime_lock_t opt_dp_runtime_lock;
+	struct qdf_delayed_work ipa_tx_comp_delayed_work;
 #ifdef CONFIG_BORON
 	qdf_atomic_t tx_pkt_classify_info_set;
 #endif
@@ -1042,7 +1043,7 @@ struct wlan_ipa_priv {
 #if defined(QCA_IPA_LL_TX_FLOW_CONTROL)
 	struct wlan_ipa_evt_wq *ipa_evt_wq;
 #endif
-	bool ipa_tx_pending;
+	qdf_atomic_t ipa_tx_pending;
 #ifdef WLAN_FEATURE_MULTI_LINK_SAP
 	/* callback to get if vdev is mlo vdev by vdev id */
 	wlan_ipa_is_mlo_vdev is_mlo_vdev;

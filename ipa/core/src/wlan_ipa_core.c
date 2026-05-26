@@ -3329,6 +3329,11 @@ bool wlan_ipa_is_tx_pending(struct wlan_ipa_priv *ipa_ctx)
 		return false;
 	}
 
+	if (qdf_atomic_read(&ipa_ctx->ipa_tx_pending)) {
+		ipa_debug("IPA tx completion pending");
+		return true;
+	}
+
 	if (!qdf_atomic_read(&ipa_ctx->waiting_on_pending_tx)) {
 		ipa_debug("nothing pending");
 		return false;
@@ -5521,6 +5526,28 @@ static inline QDF_STATUS wlan_ipa_reg_flt_cbs(struct wlan_ipa_priv *ipa_ctx)
 	return status;
 }
 
+#define IPA_TX_COMP_DELAYED_WORK_MS	1000
+
+/**
+ * wlan_ipa_tx_comp_pending_check() - Delayed work to poll IPA tx completion
+ * @context: IPA context
+ *
+ * Return: None
+ */
+static void wlan_ipa_tx_comp_pending_check(void *context)
+{
+	struct wlan_ipa_priv *ipa_ctx = (struct wlan_ipa_priv *)context;
+	ol_txrx_soc_handle soc = (ol_txrx_soc_handle)ipa_ctx->dp_soc;
+
+	if (cdp_ipa_is_completion_pending(soc)) {
+		qdf_delayed_work_start(&ipa_ctx->ipa_tx_comp_delayed_work,
+				       IPA_TX_COMP_DELAYED_WORK_MS);
+		return;
+	}
+
+	qdf_atomic_set(&ipa_ctx->ipa_tx_pending, 0);
+}
+
 /**
  * wlan_ipa_opt_dp_init() - Check if OPT_WIFI_DP enabled from both IPA
  * and WLAN, and perform required init steps
@@ -5554,6 +5581,13 @@ QDF_STATUS wlan_ipa_opt_dp_init(struct wlan_ipa_priv *ipa_ctx)
 	} else {
 		ipa_log_debug("opt_dp: Disabled from IPA");
 	}
+
+	status = qdf_delayed_work_create(&ipa_ctx->ipa_tx_comp_delayed_work,
+					 wlan_ipa_tx_comp_pending_check,
+					 ipa_ctx);
+	if (QDF_IS_STATUS_ERROR(status))
+		ipa_err("Failed to create ipa_tx_comp_delayed_work: %d",
+			status);
 
 	return status;
 }
@@ -5677,6 +5711,9 @@ void wlan_ipa_ctrl_flt_db_deinit(struct wlan_ipa_priv *ipa_obj,
 static inline
 void wlan_ipa_opt_dp_deinit(struct wlan_ipa_priv *ipa_ctx)
 {
+	qdf_delayed_work_stop_sync(&ipa_ctx->ipa_tx_comp_delayed_work);
+	qdf_delayed_work_destroy(&ipa_ctx->ipa_tx_comp_delayed_work);
+
 	if (ipa_ctx->opt_wifi_datapath && wlan_ipa_config_is_opt_wifi_dp_enabled()) {
 		qdf_runtime_lock_deinit(&ipa_ctx->opt_dp_runtime_lock);
 		qdf_wake_lock_destroy(&ipa_ctx->opt_dp_wake_lock);
@@ -5718,7 +5755,9 @@ wlan_ipa_opt_dp_wait_for_completion(struct wlan_ipa_priv *ipa_ctx)
 
 	if (retry_count == IPA_TX_COMP_CHECK_CNT) {
 		dp_err("Tx completion pending");
-		ipa_ctx->ipa_tx_pending = true;
+		qdf_atomic_set(&ipa_ctx->ipa_tx_pending, 1);
+		qdf_delayed_work_start(&ipa_ctx->ipa_tx_comp_delayed_work,
+				       IPA_TX_COMP_DELAYED_WORK_MS);
 	}
 }
 
@@ -5853,7 +5892,7 @@ QDF_STATUS wlan_ipa_setup(struct wlan_ipa_priv *ipa_ctx,
 		qdf_atomic_set(&ipa_ctx->pipes_disabled, 1);
 		qdf_atomic_set(&ipa_ctx->autonomy_disabled, 1);
 		ipa_ctx->wdi_enabled = false;
-		ipa_ctx->ipa_tx_pending = false;
+		qdf_atomic_set(&ipa_ctx->ipa_tx_pending, 0);
 
 		status = wlan_ipa_wdi_init(ipa_ctx);
 
