@@ -385,16 +385,21 @@ mlo_mgr_update_link_state_delete_flag(
 
 bool mlo_mgr_is_link_add_link_switch(struct wlan_objmgr_vdev *vdev)
 {
-	struct wlan_mlo_dev_context *mlo_dev_ctx = vdev->mlo_dev_ctx;
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
 	struct wlan_mlo_link_switch_req *req;
 
+	if (!vdev)
+		return false;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
 	if (!mlo_dev_ctx || !mlo_dev_ctx->link_ctx ||
 	    !wlan_vdev_mlme_is_mlo_link_switch_in_progress(vdev))
 		return false;
 
 	req = &mlo_dev_ctx->link_ctx->last_req;
 
-	return req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK;
+	return req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK ||
+		req->reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK;
 }
 
 static void
@@ -1145,20 +1150,34 @@ mlo_mgr_link_switch_notification(struct wlan_objmgr_vdev *vdev,
 				 enum wlan_mlo_link_switch_notify_reason notify_reason)
 {
 	QDF_STATUS status;
+	bool is_idle_vdev;
 
 	switch (notify_reason) {
 	case MLO_LINK_SWITCH_NOTIFY_REASON_PRE_START_PRE_SER:
 	case MLO_LINK_SWITCH_NOTIFY_REASON_PRE_START_POST_SER:
-		if (!mlo_check_if_all_vdev_up(vdev)) {
-			mlo_debug("Not all VDEVs up");
-			return QDF_STATUS_E_AGAIN;
+		/* For idle vdev, skip vdev up check (vdev is in INIT state) */
+		is_idle_vdev = (lswitch_req->reason ==
+				MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK &&
+				lswitch_req->curr_ieee_link_id ==
+				WLAN_INVALID_LINK_ID);
+
+		if (!is_idle_vdev) {
+			if (!mlo_check_if_all_vdev_up(vdev)) {
+				mlo_debug("Not all VDEVs up");
+				return QDF_STATUS_E_AGAIN;
+			}
+		} else {
+			mlo_debug("Idle vdev - skipping vdev up check");
 		}
 
 		if (mlo_is_chan_switch_in_progress(vdev)) {
 			mlo_debug("CSA is in progress on one of ML vdevs, abort link switch");
 			return QDF_STATUS_E_AGAIN;
 		}
-
+		if (is_idle_vdev) {
+			mlo_debug("Idle vdev - skipping OSIF notification");
+			return QDF_STATUS_SUCCESS;
+		}
 		if (notify_reason ==
 		    MLO_LINK_SWITCH_NOTIFY_REASON_PRE_START_PRE_SER) {
 			return QDF_STATUS_SUCCESS;

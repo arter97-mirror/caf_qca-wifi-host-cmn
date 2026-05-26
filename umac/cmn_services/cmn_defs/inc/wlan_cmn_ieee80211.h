@@ -5394,5 +5394,25 @@ struct wlan_smd_ie {
 	uint8_t data[WLAN_SMD_IE_MAX_LEN];
 	uint16_t num_data;
 } qdf_packed;
+
+/**
+ * struct wlan_uhr_link_reconfig_req - Parsed UHR Link Reconfiguration Request
+ * @present: True if frame was successfully parsed
+ * @dialog_token: Dialog token for request/response matching
+ * @type: Type field - 0=ST preparation, 1=ST execution
+ * @smd_bss_trans_params_present: True if SMD BSS Transition Params IE present
+ * @smd_bss_trans_params: Raw SMD BSS Transition Parameters IE payload
+ * @smd_bss_trans_params_len: Length of smd_bss_trans_params payload
+ *
+ * IEEE 802.11bn D1.3 Section 9.6.43.3
+ */
+struct wlan_uhr_link_reconfig_req {
+	bool present;
+	uint8_t dialog_token;
+	uint8_t type;
+	bool smd_bss_trans_params_present;
+	uint8_t smd_bss_trans_params[256];
+	uint16_t smd_bss_trans_params_len;
+};
 #endif /* WLAN_FEATURE_11BN_SMD */
 #endif /* _WLAN_CMN_IEEE80211_DEFS_H_ */
