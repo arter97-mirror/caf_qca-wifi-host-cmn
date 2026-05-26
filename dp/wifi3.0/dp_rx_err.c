@@ -1891,7 +1891,7 @@ static int dp_rx_err_handle_msdu_buf(struct dp_soc *soc,
 {
 	int lmac_id = DP_INVALID_LMAC_ID;
 	struct dp_rx_desc *rx_desc;
-	struct hal_buf_info hbi;
+	struct hal_buf_info hbi = {0};
 	struct dp_pdev *pdev;
 	struct rx_desc_pool *rx_desc_pool;
 

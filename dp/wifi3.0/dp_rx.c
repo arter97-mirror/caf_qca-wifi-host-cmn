@@ -159,7 +159,7 @@ QDF_STATUS dp_rx_desc_nbuf_sanity_check(struct dp_soc *soc,
 					hal_ring_desc_t ring_desc,
 					struct dp_rx_desc *rx_desc)
 {
-	struct hal_buf_info hbi;
+	struct hal_buf_info hbi = {0};
 
 	hal_rx_reo_buf_paddr_get(soc->hal_soc, ring_desc, &hbi);
 	/* Sanity check for possible buffer paddr corruption */

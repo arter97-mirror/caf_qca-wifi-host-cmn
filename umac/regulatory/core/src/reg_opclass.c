@@ -1004,6 +1004,8 @@ uint16_t reg_dmn_get_chanwidth_from_opclass_auto(uint8_t *country,
 	ret = reg_dmn_get_chanwidth_from_opclass(country, channel, opclass);
 
 	if (!ret) {
+		global_country[0] = '0';
+		global_country[1] = '0';
 		global_country[2] = OP_CLASS_GLOBAL;
 		ret = reg_dmn_get_chanwidth_from_opclass(global_country,
 							 channel, opclass);
