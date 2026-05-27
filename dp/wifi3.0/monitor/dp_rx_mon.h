@@ -112,9 +112,11 @@ dp_rx_mon_status_process(struct dp_soc *soc, struct dp_intr *int_ctx,
  *
  * Return: QDF_STATUS
  */
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS dp_rx_populate_cbf_hdr(struct dp_soc *soc,
 				  uint32_t mac_id, uint32_t event,
 				  qdf_nbuf_t data, uint32_t msdu_timestamp);
+#endif
 
 /**
  * dp_rx_mon_handle_status_buf_done() - Handle DMA not done case for
@@ -211,18 +213,6 @@ uint32_t dp_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 	qdf_nbuf_t head_msdu, qdf_nbuf_t tail_msdu);
-
-/**
- * dp_rx_mon_deliver_non_std() - deliver frames for non standard path
- * @soc: core txrx main context
- * @mac_id: MAC ID
- *
- * This function delivers the radio tap and dummy MSDU
- * into user layer application for preamble only PPDU.
- *
- * Return: Operation status
- */
-QDF_STATUS dp_rx_mon_deliver_non_std(struct dp_soc *soc, uint32_t mac_id);
 
 #ifndef REMOVE_MON_DBG_STATS
 /**
@@ -487,21 +477,6 @@ dp_rx_process_mcopy_mode(struct dp_soc *soc, struct dp_pdev *pdev,
 #endif /* QCA_MCOPY_SUPPORT */
 
 /**
- * dp_rx_handle_smart_mesh_mode() - Deliver header for smart mesh
- * @soc: Datapath SOC handle
- * @pdev: Datapath PDEV handle
- * @ppdu_info: Structure for rx ppdu info
- * @nbuf: Qdf nbuf abstraction for linux skb
- * @mac_id: MAC ID
- *
- * Return: 0 on success, 1 on failure
- */
-int
-dp_rx_handle_smart_mesh_mode(struct dp_soc *soc, struct dp_pdev *pdev,
-			      struct hal_rx_ppdu_info *ppdu_info,
-			      qdf_nbuf_t nbuf, uint8_t mac_id);
-
-/**
  * dp_rx_nbuf_prepare() - prepare RX nbuf
  * @soc: core txrx main context
  * @pdev: core txrx pdev context
@@ -666,19 +641,6 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc,
 			     qdf_nbuf_t head_msdu,
 			     qdf_nbuf_t tail_msdu);
 
-/**
- * dp_rx_mon_deliver_non_std()
- * @soc: core txrx main context
- * @mac_id: MAC ID
- *
- * This function delivers the radio tap and dummy MSDU
- * into user layer application for preamble only PPDU.
- *
- * Return: QDF_STATUS
- */
-QDF_STATUS dp_rx_mon_deliver_non_std(struct dp_soc *soc,
-				     uint32_t mac_id);
-
 #ifdef DP_RX_MON_MEM_FRAG
 #if defined(WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG) ||\
 	defined(WLAN_SUPPORT_RX_FLOW_TAG)
@@ -737,9 +699,19 @@ qdf_frag_t dp_rx_mon_get_nbuf_80211_hdr(qdf_nbuf_t nbuf)
  * @mpdu: MPDU buf
  * Return: status: 0 - Success, non-zero: Failure
  */
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
 					 uint32_t mac_id,
 					 qdf_nbuf_t mpdu);
+#else
+static inline QDF_STATUS
+dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
+			      uint32_t mac_id,
+			      qdf_nbuf_t mpdu)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 void

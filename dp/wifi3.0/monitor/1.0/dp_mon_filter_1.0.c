@@ -369,68 +369,6 @@ void dp_mon_filter_reset_mcopy_mode_1_0(struct dp_pdev *pdev)
 }
 #endif
 
-#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
-void dp_mon_filter_setup_smart_monitor_1_0(struct dp_pdev *pdev)
-{
-	struct dp_mon_filter filter = {0};
-	struct dp_soc *soc = NULL;
-	struct dp_mon_soc *mon_soc;
-
-	enum dp_mon_filter_mode mode = DP_MON_FILTER_SMART_MONITOR_MODE;
-	enum dp_mon_filter_srng_type srng_type =
-				DP_MON_FILTER_SRNG_TYPE_RXDMA_MONITOR_STATUS;
-	struct dp_mon_pdev *mon_pdev;
-
-	if (!pdev) {
-		dp_mon_filter_err("pdev Context is null");
-		return;
-	}
-
-	soc = pdev->soc;
-	if (!soc) {
-		dp_mon_filter_err("Soc Context is null");
-		return;
-	}
-
-	mon_soc = soc->monitor_soc;
-	mon_pdev = pdev->monitor_pdev;
-
-	/* Enabled the filter */
-	filter.valid = true;
-	dp_mon_filter_set_status_cmn(mon_pdev, &filter);
-
-	filter.tlv_filter.enable_mo = 0;
-	filter.tlv_filter.mo_mgmt_filter = 0;
-	filter.tlv_filter.mo_ctrl_filter = 0;
-	filter.tlv_filter.mo_data_filter = 0;
-
-	if (mon_soc->hw_nac_monitor_support) {
-		filter.tlv_filter.enable_md = 1;
-		filter.tlv_filter.packet_header = 1;
-		filter.tlv_filter.md_data_filter = FILTER_DATA_ALL;
-	}
-
-	dp_mon_filter_show_filter(mon_pdev, mode, &filter);
-	mon_pdev->filter[mode][srng_type] = filter;
-}
-
-void dp_mon_filter_reset_smart_monitor_1_0(struct dp_pdev *pdev)
-{
-	struct dp_mon_filter filter = {0};
-	enum dp_mon_filter_mode mode = DP_MON_FILTER_SMART_MONITOR_MODE;
-	enum dp_mon_filter_srng_type srng_type =
-				DP_MON_FILTER_SRNG_TYPE_RXDMA_MONITOR_STATUS;
-	struct dp_mon_pdev *mon_pdev;
-
-	if (!pdev) {
-		dp_mon_filter_err("pdev Context is null");
-		return;
-	}
-
-	mon_pdev = pdev->monitor_pdev;
-	mon_pdev->filter[mode][srng_type] = filter;
-}
-#endif /* ATH_SUPPORT_NAC_RSSI || ATH_SUPPORT_NAC */
 
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 #ifdef QCA_MONITOR_PKT_SUPPORT

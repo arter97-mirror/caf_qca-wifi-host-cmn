@@ -359,9 +359,7 @@ QDF_STATUS dp_reset_monitor_mode_unlock(struct cdp_soc_t *soc_hdl,
 		dp_mon_filter_reset_mcopy_mode(pdev);
 #endif /* QCA_MCOPY_SUPPORT */
 	} else if (special_monitor) {
-#if defined(ATH_SUPPORT_NAC)
-		dp_mon_filter_reset_smart_monitor(pdev);
-#endif /* ATH_SUPPORT_NAC */
+		/* smart monitor reset is no-op as filters are not setup */
 	} else if (mon_pdev->undecoded_metadata_capture) {
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 		dp_reset_undecoded_metadata_capture(pdev);
@@ -2177,6 +2175,7 @@ static void *dp_get_pldev(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 #endif
 #endif
 
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS dp_rx_populate_cbf_hdr(struct dp_soc *soc,
 				  uint32_t mac_id,
 				  uint32_t event,
@@ -2244,6 +2243,7 @@ QDF_STATUS dp_rx_populate_cbf_hdr(struct dp_soc *soc,
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 #ifdef ATH_SUPPORT_EXT_STAT
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
@@ -7182,9 +7182,6 @@ void dp_mon_feature_ops_deregister(struct dp_soc *soc)
 #ifdef WLAN_FEATURE_11BE
 	mon_ops->mon_tx_stats_update = NULL;
 #endif
-#endif
-#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
-	mon_ops->mon_filter_setup_smart_monitor = NULL;
 #endif
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 	mon_ops->mon_filter_setup_rx_enh_capture = NULL;

@@ -444,7 +444,6 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 	uint8_t *rx_tlv_start;
 	uint32_t tlv_status = HAL_TLV_STATUS_BUF_DONE;
 	struct cdp_pdev_mon_stats *rx_mon_stats;
-	int smart_mesh_status;
 	enum WDI_EVENT pktlog_mode = WDI_NO_VAL;
 	bool nbuf_used;
 	uint32_t rx_enh_capture_mode;
@@ -544,19 +543,10 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 						     WDI_NO_VAL, pdev->pdev_id);
 		}
 
-		/* smart monitor vap and m_copy cannot co-exist */
-		if (qdf_unlikely(ppdu_info->rx_status.monitor_direct_used &&
-				 mon_pdev->neighbour_peers_added &&
-				 mon_mac->mvdev)) {
-			smart_mesh_status = dp_rx_handle_smart_mesh_mode(soc,
-						pdev, ppdu_info, status_nbuf,
-						mac_id);
-			if (smart_mesh_status)
-				qdf_nbuf_free(status_nbuf);
-		} else if (qdf_unlikely(IS_LOCAL_PKT_CAPTURE_RUNNING(mon_pdev,
-				is_local_pkt_capture_running))) {
+		if (qdf_unlikely(IS_LOCAL_PKT_CAPTURE_RUNNING(mon_pdev,
+							      is_local_pkt_capture_running)))
 			qdf_nbuf_free(status_nbuf);
-		} else if (qdf_unlikely(mon_pdev->mcopy_mode)) {
+		else if (qdf_unlikely(mon_pdev->mcopy_mode)) {
 			dp_rx_process_mcopy_mode(soc, pdev,
 						 ppdu_info, tlv_status,
 						 status_nbuf);
@@ -571,11 +561,8 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 			qdf_nbuf_free(status_nbuf);
 		}
 
-		if (qdf_unlikely(tlv_status == HAL_TLV_STATUS_PPDU_NON_STD_DONE)) {
-			dp_rx_mon_deliver_non_std(soc, mac_id);
-			dp_mon_rx_ppdu_status_reset(mon_mac);
-		} else if ((qdf_likely(tlv_status == HAL_TLV_STATUS_PPDU_DONE)) &&
-				(qdf_likely(!dp_rx_mon_check_phyrx_abort(pdev, ppdu_info)))) {
+		if ((qdf_likely(tlv_status == HAL_TLV_STATUS_PPDU_DONE)) &&
+		    (!dp_rx_mon_check_phyrx_abort(pdev, ppdu_info))) {
 			rx_mon_stats->status_ppdu_done++;
 			dp_rx_mon_handle_mu_ul_info(ppdu_info);
 

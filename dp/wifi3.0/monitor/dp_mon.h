@@ -850,10 +850,6 @@ struct dp_mon_ops {
 	void (*mon_filter_setup_mcopy_mode)(struct dp_pdev *pdev);
 	void (*mon_filter_reset_mcopy_mode)(struct dp_pdev *pdev);
 #endif
-#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
-	void (*mon_filter_setup_smart_monitor)(struct dp_pdev *pdev);
-	void (*mon_filter_reset_smart_monitor)(struct dp_pdev *pdev);
-#endif
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 	void (*mon_filter_setup_rx_enh_capture)(struct dp_pdev *pdev);
 	void (*mon_filter_reset_rx_enh_capture)(struct dp_pdev *pdev);

@@ -451,19 +451,6 @@ void dp_mon_filter_setup_undecoded_metadata_mode(struct dp_pdev *pdev);
 void dp_mon_filter_reset_undecoded_metadata_mode(struct dp_pdev *pdev);
 #endif /* QCA_UNDECODED_METADATA_SUPPORT */
 
-#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
-/**
- * dp_mon_filter_setup_smart_monitor() - Setup the smart monitor mode filter
- * @pdev: DP pdev handle
- */
-void dp_mon_filter_setup_smart_monitor(struct dp_pdev *pdev);
-
-/**
- * dp_mon_filter_reset_smart_monitor() - Reset the smart monitor mode filter
- * @pdev: DP pdev handle
- */
-void dp_mon_filter_reset_smart_monitor(struct dp_pdev *pdev);
-#endif /* ATH_SUPPORT_NAC_RSSI || ATH_SUPPORT_NAC */
 
 #ifdef  WLAN_RX_PKT_CAPTURE_ENH
 /**

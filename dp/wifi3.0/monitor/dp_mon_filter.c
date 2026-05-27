@@ -479,25 +479,6 @@ void dp_mon_filter_reset_mcopy_mode(struct dp_pdev *pdev)
 }
 #endif /* QCA_MCOPY_SUPPORT */
 
-#if defined(ATH_SUPPORT_NAC_RSSI) || defined(ATH_SUPPORT_NAC)
-void dp_mon_filter_setup_smart_monitor(struct dp_pdev *pdev)
-{
-	struct dp_mon_ops *mon_ops = NULL;
-
-	mon_ops = dp_mon_ops_get(pdev->soc);
-	if (mon_ops && mon_ops->mon_filter_setup_smart_monitor)
-		mon_ops->mon_filter_setup_smart_monitor(pdev);
-}
-
-void dp_mon_filter_reset_smart_monitor(struct dp_pdev *pdev)
-{
-	struct dp_mon_ops *mon_ops = NULL;
-
-	mon_ops = dp_mon_ops_get(pdev->soc);
-	if (mon_ops && mon_ops->mon_filter_reset_smart_monitor)
-		mon_ops->mon_filter_reset_smart_monitor(pdev);
-}
-#endif /* ATH_SUPPORT_NAC_RSSI || ATH_SUPPORT_NAC */
 
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 void dp_mon_filter_setup_rx_enh_capture(struct dp_pdev *pdev)

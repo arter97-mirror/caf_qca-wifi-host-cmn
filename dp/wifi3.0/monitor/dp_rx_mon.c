@@ -1699,58 +1699,6 @@ end:
 }
 #endif /* QCA_MCOPY_SUPPORT */
 
-int
-dp_rx_handle_smart_mesh_mode(struct dp_soc *soc, struct dp_pdev *pdev,
-			      struct hal_rx_ppdu_info *ppdu_info,
-			      qdf_nbuf_t nbuf, uint8_t mac_id)
-{
-	uint8_t size = 0;
-	struct dp_mon_vdev *mon_vdev;
-	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
-
-	if (!mon_mac->mvdev) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "[%s]:[%d] Monitor vdev is NULL !!",
-			  __func__, __LINE__);
-		return 1;
-	}
-
-	mon_vdev = mon_mac->mvdev->monitor_vdev;
-
-	if (!ppdu_info->msdu_info.first_msdu_payload) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "[%s]:[%d] First msdu payload not present",
-			  __func__, __LINE__);
-		return 1;
-	}
-
-	/* Adding 4 bytes to get to start of 802.11 frame after phy_ppdu_id */
-	size = (ppdu_info->msdu_info.first_msdu_payload -
-		qdf_nbuf_data(nbuf)) + 4;
-	ppdu_info->msdu_info.first_msdu_payload = NULL;
-
-	if (!qdf_nbuf_pull_head(nbuf, size)) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			  "[%s]:[%d] No header present",
-			  __func__, __LINE__);
-		return 1;
-	}
-
-	/* Only retain RX MSDU payload in the skb */
-	qdf_nbuf_trim_tail(nbuf, qdf_nbuf_len(nbuf) -
-			   ppdu_info->msdu_info.payload_len);
-	if (!qdf_nbuf_update_radiotap(&mon_mac->ppdu_info.rx_status, nbuf,
-				      qdf_nbuf_headroom(nbuf))) {
-		DP_STATS_INC(pdev, dropped.mon_radiotap_update_err, 1);
-		return 1;
-	}
-
-	mon_vdev->osif_rx_mon(mon_mac->mvdev->osif_vdev,
-			      nbuf, NULL);
-	mon_mac->ppdu_info.rx_status.monitor_direct_used = 0;
-	return 0;
-}
-
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 static bool
 dp_rx_mon_lpc_subfiltering(struct dp_pdev *pdev, qdf_nbuf_t buf)
@@ -2254,6 +2202,7 @@ dp_send_mgmt_packet_to_stack(struct dp_soc *soc,
 }
 #endif /* QCA_MCOPY_SUPPORT */
 
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
 					 uint32_t mac_id,
 					 qdf_nbuf_t mpdu)
@@ -2299,6 +2248,7 @@ QDF_STATUS dp_rx_mon_process_dest_pktlog(struct dp_soc *soc,
 	}
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 			     qdf_nbuf_t head_msdu, qdf_nbuf_t tail_msdu)
@@ -2379,63 +2329,6 @@ mon_deliver_fail:
 		qdf_nbuf_free(mon_skb);
 		mon_skb = skb_next;
 	}
-	return QDF_STATUS_E_INVAL;
-}
-
-QDF_STATUS dp_rx_mon_deliver_non_std(struct dp_soc *soc,
-				     uint32_t mac_id)
-{
-	struct dp_pdev *pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
-	ol_txrx_rx_mon_fp osif_rx_mon;
-	qdf_nbuf_t dummy_msdu;
-	struct dp_mon_pdev *mon_pdev;
-	struct dp_mon_vdev *mon_vdev;
-	struct dp_mon_mac *mon_mac;
-
-	/* Sanity checking */
-	if (!pdev || !pdev->monitor_pdev)
-		goto mon_deliver_non_std_fail;
-
-	mon_pdev = pdev->monitor_pdev;
-	mon_mac = dp_get_mon_mac(pdev, mac_id);
-	if (!mon_mac || !mon_mac->mvdev ||
-	    !mon_mac->mvdev->monitor_vdev ||
-	    !mon_mac->mvdev->monitor_vdev->osif_rx_mon)
-		goto mon_deliver_non_std_fail;
-
-	mon_vdev = mon_mac->mvdev->monitor_vdev;
-	/* Generate a dummy skb_buff */
-	osif_rx_mon = mon_vdev->osif_rx_mon;
-	dummy_msdu = qdf_nbuf_alloc(soc->osdev, MAX_MONITOR_HEADER,
-				    MAX_MONITOR_HEADER, 4, FALSE);
-	if (!dummy_msdu)
-		goto allocate_dummy_msdu_fail;
-
-	qdf_nbuf_set_pktlen(dummy_msdu, 0);
-	qdf_nbuf_set_next(dummy_msdu, NULL);
-
-	mon_mac->ppdu_info.rx_status.ppdu_id =
-		mon_mac->ppdu_info.com_info.ppdu_id;
-
-	/* Apply the radio header to this dummy skb */
-	if (!qdf_nbuf_update_radiotap(&mon_mac->ppdu_info.rx_status, dummy_msdu,
-				      qdf_nbuf_headroom(dummy_msdu))) {
-		DP_STATS_INC(pdev, dropped.mon_radiotap_update_err, 1);
-		qdf_nbuf_free(dummy_msdu);
-		goto mon_deliver_non_std_fail;
-	}
-
-	/* deliver to the user layer application */
-	osif_rx_mon(mon_mac->mvdev->osif_vdev,
-		    dummy_msdu, NULL);
-
-	return QDF_STATUS_SUCCESS;
-
-allocate_dummy_msdu_fail:
-		 dp_rx_mon_dest_debug("%pK: mon_skb=%pK ",
-				      soc, dummy_msdu);
-
-mon_deliver_non_std_fail:
 	return QDF_STATUS_E_INVAL;
 }
 
