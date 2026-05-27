@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1550,8 +1550,8 @@ void *qdf_mem_malloc_debug(size_t size, const char *func, uint32_t line,
 			 duration, size, func, line);
 
 	if (!header) {
-		qdf_warn("Failed to malloc %zuB flag:%#x(%pGg) @ %s:%d",
-			 size, flag, &flag, func, line);
+		qdf_rl_warn("Failed to malloc %zuB flag:%#x(%pGg) @ %s:%d",
+			    size, flag, &flag, func, line);
 		return NULL;
 	}
 
