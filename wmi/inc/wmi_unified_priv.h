@@ -956,7 +956,8 @@ QDF_STATUS (*send_set_ric_req_cmd)(wmi_unified_t wmi_handle, void *msg,
 			uint8_t is_add_ts);
 
 QDF_STATUS (*send_process_roam_synch_complete_cmd)(wmi_unified_t wmi_handle,
-		 uint8_t vdev_id);
+		 uint8_t vdev_id, uint8_t num_vdev_repurpose_resp,
+		 wmi_vdev_repurpose_response_tlv_param *vdev_repurpose_resp);
 
 #ifdef WLAN_VENDOR_HANDOFF_CONTROL
 QDF_STATUS (*send_process_roam_vendor_handoff_req_cmd)(wmi_unified_t wmi_handle,
