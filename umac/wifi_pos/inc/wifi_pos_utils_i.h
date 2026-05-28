@@ -305,6 +305,7 @@ struct wifi_pos_legacy_ops {
  * @enable_rsta_secure_ltf_support: Enable RSTA secure LTF support
  * @enable_rsta_11az_ranging: Enable RSTA 802.11 az secure ranging support
  * @pasn_keys_ctx: Context to hold the keys received from userspace
+ * @pasn_usd_delete_ctx: Context for stop_pd USD ranging peer delete completion
  * @wifi_pos_req_handler: function pointer to handle TLV or non-TLV
  * @wifi_pos_send_rsp: function pointer to send msg to userspace APP
  * @wifi_pos_get_phy_mode: function pointer to get wlan phymode for given
@@ -364,6 +365,7 @@ struct wifi_pos_psoc_priv_obj {
 	bool enable_rsta_secure_ltf_support;
 	uint32_t enable_rsta_11az_ranging;
 	void *pasn_keys_ctx;
+	void *pasn_usd_delete_ctx;
 	struct wifi_pos_legacy_ops *legacy_ops;
 	QDF_STATUS (*wifi_pos_req_handler)(struct wlan_objmgr_psoc *psoc,
 				    struct wifi_pos_req_msg *req);

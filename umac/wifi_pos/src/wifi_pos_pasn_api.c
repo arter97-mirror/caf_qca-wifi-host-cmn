@@ -1073,3 +1073,37 @@ void wifi_pos_set_pasn_keys_ctx(struct wlan_objmgr_psoc *psoc, void *ctx)
 
 	pasn_priv->pasn_keys_ctx = ctx;
 }
+
+void wifi_pos_set_usd_delete_ctx(struct wlan_objmgr_psoc *psoc, void *ctx)
+{
+	struct wifi_pos_psoc_priv_obj *pasn_priv;
+
+	pasn_priv = wifi_pos_get_psoc_priv_obj(psoc);
+	if (!pasn_priv) {
+		wifi_pos_err("PASN private object is NULL");
+		return;
+	}
+
+	pasn_priv->pasn_usd_delete_ctx = ctx;
+}
+
+QDF_STATUS
+wifi_pos_complete_usd_peer_delete(struct wlan_objmgr_psoc *psoc)
+{
+	struct wifi_pos_psoc_priv_obj *pasn_priv;
+	struct wifi_pos_osif_ops *osif_cb;
+	void *cookie;
+
+	osif_cb = wifi_pos_get_osif_callbacks();
+	if (!osif_cb || !osif_cb->osif_usd_peer_delete_complete_cb) {
+		wifi_pos_err("OSIF USD delete complete cb is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	pasn_priv = wifi_pos_get_psoc_priv_obj(psoc);
+	if (!pasn_priv)
+		return QDF_STATUS_E_INVAL;
+
+	cookie = pasn_priv->pasn_usd_delete_ctx;
+	return osif_cb->osif_usd_peer_delete_complete_cb(psoc, cookie);
+}

@@ -1593,6 +1593,26 @@ QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+QDF_STATUS
+os_if_wifi_pos_usd_peer_delete_complete(struct wlan_objmgr_psoc *psoc,
+					void *cookie)
+{
+	struct osif_request *request;
+
+	request = osif_request_get(cookie);
+	if (!request) {
+		osif_debug("Obsolete USD peer delete request (cookie:0x%pK)",
+			   cookie);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	osif_debug("USD peer delete completed");
+	osif_request_complete(request);
+	osif_request_put(request);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * osif_pmsr_wmi_preamble_to_nl() - Map WMI preamble to NL80211 preamble
  * @preamble: NL80211 preamble value

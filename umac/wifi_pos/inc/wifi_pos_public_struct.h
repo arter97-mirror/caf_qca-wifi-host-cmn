@@ -73,10 +73,13 @@ enum wlan_responder_mode {
 /**
  * enum wifi_pos_pasn_msg_type - Wifi Pos PASN msg type
  * @WIFI_POS_NB_PASN_PEER_CREATE_REQ: Request type for creating PASN peer
+ * @WIFI_POS_NB_PASN_PEER_DELETE_USD_REQ: Request to delete all
+ *   userspace-created USD ranging peers on stop_pd
  * @WIFI_POS_PASN_MSG_MAX: Placeholder for maximum value
  */
 enum wifi_pos_pasn_msg_type {
 	WIFI_POS_NB_PASN_PEER_CREATE_REQ = 0,
+	WIFI_POS_NB_PASN_PEER_DELETE_USD_REQ = 1,
 	WIFI_POS_PASN_MSG_MAX
 };
 

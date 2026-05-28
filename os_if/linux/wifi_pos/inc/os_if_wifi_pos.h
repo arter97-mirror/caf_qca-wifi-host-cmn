@@ -394,6 +394,20 @@ os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
 						 void *cookie,
 						 uint8_t peer_create_status);
+
+/**
+ * os_if_wifi_pos_usd_peer_delete_complete() - USD peer delete completion
+ * @psoc: Pointer to PSOC object
+ * @cookie: osif request cookie
+ *
+ * Signals the stop_pd caller that all userspace-created USD ranging peers
+ * have been deleted.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+os_if_wifi_pos_usd_peer_delete_complete(struct wlan_objmgr_psoc *psoc,
+					void *cookie);
 #else
 static inline QDF_STATUS
 os_if_wifi_pos_send_rtt_peer_meas_result(struct wlan_objmgr_psoc *psoc,
@@ -406,6 +420,13 @@ static inline
 QDF_STATUS os_if_wifi_pos_peer_create_indication(struct wlan_objmgr_vdev *vdev,
 						 void *cookie,
 						 uint8_t peer_create_status)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+os_if_wifi_pos_usd_peer_delete_complete(struct wlan_objmgr_psoc *psoc,
+					void *cookie)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

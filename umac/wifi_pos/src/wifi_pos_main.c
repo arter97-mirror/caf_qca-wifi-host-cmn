@@ -1436,6 +1436,84 @@ QDF_STATUS wifi_pos_process_msg(struct scheduler_msg *msg)
 
 		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 		break;
+	case WIFI_POS_NB_PASN_PEER_DELETE_USD_REQ: {
+		struct wifi_pos_vdev_priv_obj *vdev_pos_obj;
+		struct wifi_pos_11az_context *pasn_context;
+		struct wlan_objmgr_peer *peer;
+		uint8_t i;
+
+		req = msg->bodyptr;
+		wifi_pos_debug("vdev:%d USD NB peer delete req", req->vdev_id);
+
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+						req->psoc, req->vdev_id,
+						WLAN_WIFI_POS_CORE_ID);
+		if (!vdev) {
+			wifi_pos_err("Vdev:%d is null", req->vdev_id);
+			goto usd_delete_done;
+		}
+
+		vdev_pos_obj = wifi_pos_get_vdev_priv_obj(vdev);
+		if (!vdev_pos_obj) {
+			wifi_pos_err("wifi_pos vdev priv obj is null");
+			wlan_objmgr_vdev_release_ref(vdev,
+						     WLAN_WIFI_POS_CORE_ID);
+			goto usd_delete_done;
+		}
+
+		legacy_cb = wifi_pos_get_legacy_ops();
+		if (!legacy_cb || !legacy_cb->pasn_peer_delete_cb) {
+			wifi_pos_err("legacy delete cb not registered");
+			wlan_objmgr_vdev_release_ref(vdev,
+						     WLAN_WIFI_POS_CORE_ID);
+			goto usd_delete_done;
+		}
+
+		pasn_context = &vdev_pos_obj->pasn_context;
+
+		for (i = 0; i < pasn_context->num_secure_peers; i++) {
+			struct wlan_pasn_request *entry =
+					&pasn_context->secure_peer_list[i];
+
+			if (!entry->is_userspace_peer_create)
+				continue;
+			peer = wlan_objmgr_get_peer_by_mac(
+						req->psoc,
+						entry->peer_mac.bytes,
+						WLAN_WIFI_POS_CORE_ID);
+			if (!peer)
+				continue;
+			wlan_objmgr_peer_release_ref(peer,
+						     WLAN_WIFI_POS_CORE_ID);
+			legacy_cb->pasn_peer_delete_cb(req->psoc,
+						       &entry->peer_mac,
+						       req->vdev_id, false);
+		}
+
+		for (i = 0; i < pasn_context->num_unsecure_peers; i++) {
+			struct wlan_pasn_request *entry =
+					&pasn_context->unsecure_peer_list[i];
+
+			if (!entry->is_userspace_peer_create)
+				continue;
+			peer = wlan_objmgr_get_peer_by_mac(
+						req->psoc,
+						entry->peer_mac.bytes,
+						WLAN_WIFI_POS_CORE_ID);
+			if (!peer)
+				continue;
+			wlan_objmgr_peer_release_ref(peer,
+						     WLAN_WIFI_POS_CORE_ID);
+			legacy_cb->pasn_peer_delete_cb(req->psoc,
+						       &entry->peer_mac,
+						       req->vdev_id, false);
+		}
+
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
+usd_delete_done:
+		wifi_pos_complete_usd_peer_delete(req->psoc);
+		break;
+	}
 	default:
 		wifi_pos_debug("Invalid Wifi Pos msg type:%d", msg->type);
 		break;

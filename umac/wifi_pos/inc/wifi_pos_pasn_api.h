@@ -255,6 +255,25 @@ QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg);
  */
 void wifi_pos_set_pasn_keys_ctx(struct wlan_objmgr_psoc *psoc, void *ctx);
 
+/**
+ * wifi_pos_set_usd_delete_ctx() - Set USD peer delete context
+ * @psoc: pointer to psoc object
+ * @ctx: USD peer delete context (osif cookie)
+ *
+ * Return: none
+ */
+void wifi_pos_set_usd_delete_ctx(struct wlan_objmgr_psoc *psoc, void *ctx);
+
+/**
+ * wifi_pos_complete_usd_peer_delete() - Signal USD peer delete completion
+ * @psoc: Pointer to PSOC object
+ *
+ * Invokes the registered OSIF callback to unblock the stop_pd caller.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wifi_pos_complete_usd_peer_delete(struct wlan_objmgr_psoc *psoc);
+
 #else
 static inline QDF_STATUS
 wifi_pos_set_peer_ltf_keyseed_required(struct wlan_objmgr_peer *peer,
@@ -364,6 +383,17 @@ QDF_STATUS wlan_wifi_pos_process_msg(struct scheduler_msg *msg)
 static inline void
 wifi_pos_set_pasn_keys_ctx(struct wlan_objmgr_psoc *psoc, void *ctx)
 {
+}
+
+static inline void
+wifi_pos_set_usd_delete_ctx(struct wlan_objmgr_psoc *psoc, void *ctx)
+{
+}
+
+static inline QDF_STATUS
+wifi_pos_complete_usd_peer_delete(struct wlan_objmgr_psoc *psoc)
+{
+	return QDF_STATUS_SUCCESS;
 }
 #endif /* WIFI_POS_CONVERGED && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WIFI_POS_PASN_API_H_ */
