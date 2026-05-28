@@ -554,6 +554,31 @@ struct cached_link_assoc_rsp {
 	bool valid;
 };
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * enum smd_roam_topology_type - SMD roaming topology type.
+ *
+ * Determined after the UHR ST Prep Response (M2) is received and the number
+ * of accepted target AP links is known. Used by S_ADD_LINK to select the
+ * correct vdev path (idle direct-connect vs active link-switch).
+ *
+ * @SMD_ROAM_TOPO_UNKNOWN: Not yet determined (before M2 parsed).
+ * @SMD_ROAM_TOPO_SL_TO_SL: 1 active src link → 1 accepted dst link.
+ * @SMD_ROAM_TOPO_SL_TO_ML: 1 active src link → 2+ accepted dst links.
+ * @SMD_ROAM_TOPO_ML_TO_ML: 2+ active src links → 2+ accepted dst links.
+ * @SMD_ROAM_TOPO_ML_TO_SL: 2+ active src links → 1 accepted dst link.
+ * @SMD_ROAM_TOPO_MAX: Sentinel.
+ */
+enum smd_roam_topology_type {
+	SMD_ROAM_TOPO_UNKNOWN = 0,
+	SMD_ROAM_TOPO_SL_TO_SL,
+	SMD_ROAM_TOPO_SL_TO_ML,
+	SMD_ROAM_TOPO_ML_TO_ML,
+	SMD_ROAM_TOPO_ML_TO_SL,
+	SMD_ROAM_TOPO_MAX,
+};
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 /**
  * struct mlo_link_recfg_context - Link reconfiguration data structure.
  * @psoc: psoc object
@@ -587,6 +612,9 @@ struct cached_link_assoc_rsp {
  * @st_exec_in_progress: Flag indicating SMD ST execution is in progress
  * @cached_sync_ind: Cached roam sync indication
  * @cached_assoc_rsp: Cached per-link association responses for ST execution
+ * @roam_topology: SMD roaming topology type
+ * @num_src_active_links: Number of active source links in SMD roaming
+ * @num_dst_accepted_links: Number of accepted destination links in SMD roaming
  */
 struct mlo_link_recfg_context {
 	struct wlan_objmgr_psoc *psoc;
@@ -618,6 +646,9 @@ struct mlo_link_recfg_context {
 	bool st_exec_in_progress;
 	struct roam_offload_synch_ind *cached_sync_ind;
 	struct cached_link_assoc_rsp cached_assoc_rsp[WLAN_MAX_ML_BSS_LINKS];
+	enum smd_roam_topology_type roam_topology;
+	uint8_t num_src_active_links;
+	uint8_t num_dst_accepted_links;
 #endif
 };
 
