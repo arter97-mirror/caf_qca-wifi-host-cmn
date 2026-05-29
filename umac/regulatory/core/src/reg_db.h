@@ -91,6 +91,9 @@ enum reg_domain {
 	FCC23_FCCA = 0xD4,
 	FCC24_FCCA = 0X1B,
 	FCC25_FCCA = 0X2B,
+	FCC26_FCCA = 0xB1,
+	FCC27_FCCA = 0xB2,
+	FCC28_FCCA = 0xB3,
 
 	ETSI1_WORLD = 0x37,
 	ETSI2_WORLD = 0x35,
@@ -125,6 +128,9 @@ enum reg_domain {
 	ETSI26_WORLD = 0xD9,
 	ETSI27_WORLD = 0xDB,
 	ETSI28_WORLD = 0X9C,
+	ETSI29_WORLD = 0X9D,
+	ETSI30_WORLD = 0x9E,
+	ETSI31_WORLD = 0x11A,
 	ETSI50_WORLD = 0x1F,
 
 	APL1_WORLD = 0x52,
@@ -156,6 +162,7 @@ enum reg_domain {
 	APL23_WORLD = 0xE3,
 	APL23_ETSIC = 0x79,
 	APL24_ETSIC = 0xE2,
+	APL24_ETSIE = 0x83,
 	APL25_ETSIC = 0x75,
 	APL25_ETSIE = 0x80,
 	APL26_ETSIC = 0x72,
@@ -164,6 +171,9 @@ enum reg_domain {
 	APL28_ETSIC = 0x76,
 	APL29_ETSIC = 0x77,
 	APL30_CHNA = 0x78,
+	APL31_WORLD = 0x84,
+	APL32_WORLD = 0x85,
+	APL33_ETSIC = 0x86,
 
 	WOR0_WORLD = 0x60,
 	WOR1_WORLD = 0x61,
@@ -212,9 +222,11 @@ enum reg_domain {
 	MKK11_MKKC = 0xD7,
 	MKK11_MKKA2 = 0xD8,
 	MKK16_MKKC = 0xDF,
+	MKK17_MKKA = 0x2d,
 	MKK17_MKKC = 0xE1,
 	MKK18_MKKC = 0xEE,
 	MKK50_MKKD = 0x2F,
+	MKK51_MKKD = 0x6F,
 
 	WORLD_60 = 0x60,
 	WORLD_61 = 0x61,
@@ -258,6 +270,9 @@ enum reg_domains_5g {
 	FCC23,
 	FCC24,
 	FCC25,
+	FCC26,
+	FCC27,
+	FCC28,
 
 	ETSI1,
 	ETSI2,
@@ -286,6 +301,9 @@ enum reg_domains_5g {
 	ETSI26,
 	ETSI27,
 	ETSI28,
+	ETSI29,
+	ETSI30,
+	ETSI31,
 	ETSI50,
 
 	APL1,
@@ -306,8 +324,8 @@ enum reg_domains_5g {
 	APL16,
 	APL17,
 	APL19,
-	APL23,
 	APL20,
+	APL23,
 	APL24,
 	APL25,
 	APL26,
@@ -315,6 +333,9 @@ enum reg_domains_5g {
 	APL28,
 	APL29,
 	APL30,
+	APL31,
+	APL32,
+	APL33,
 
 	MKK3,
 	MKK5,
@@ -326,6 +347,7 @@ enum reg_domains_5g {
 	MKK9,
 	MKK10,
 	MKK50,
+	MKK51,
 
 	WORLD_5G_1,
 	WORLD_5G_2,
@@ -362,7 +384,7 @@ enum country_code {
 	CTRY_ANDORRA = 20,
 	CTRY_ANGOLA = 24,
 	CTRY_ANGUILLA = 660,
-	CTRY_ANTARCTIA = 10,
+	CTRY_ANTARCTICA = 10,
 	CTRY_ANTIGUA_AND_BARBUDA = 28,
 	CTRY_ARGENTINA = 32,
 	CTRY_ARMENIA = 51,
@@ -472,7 +494,9 @@ enum country_code {
 	CTRY_KAZAKHSTAN = 398,
 	CTRY_KENYA = 404,
 	CTRY_KOREA_ROC = 410,
+	CTRY_KOSOVO = 926,
 	CTRY_KUWAIT = 414,
+	CTRY_KYRGYZSTAN = 417,
 	CTRY_LAO_PEOPLES_DEMOCRATIC_REPUBLIC = 418,
 	CTRY_LATVIA = 428,
 	CTRY_LEBANON = 422,
@@ -553,6 +577,7 @@ enum country_code {
 	CTRY_SINT_MAARTEN = 534,
 	CTRY_SLOVAKIA = 703,
 	CTRY_SLOVENIA = 705,
+	CTRY_SOLOMON_ISLANDS = 90,
 	CTRY_SOUTH_AFRICA = 710,
 	CTRY_SOUTH_GEORGIA_AND_THE_SOUTH_SANDWICH_ISLANDS = 239,
 	CTRY_SPAIN = 724,
@@ -738,6 +763,13 @@ struct reg_domain_pair {
  * @FCC2_6G_20: Super domain FCC2_6G_20 for CANADA LPI AND VLP
  * @FCC2_6G_21: Super domain FCC2_6G_21 for FCC VLP,LPI & SP
  * @APL8_6G_22: Super domain APL8_6G_22 for HONDURAS
+ * @APL5_APL9_6G_23: Super domain APL5_APL9_6G_23 for PARAGUAY
+ * @FCC2_6G_24: Super domain FCC2_6G_24 for CANADA
+ * @ETSI3_6G_25: Super domain ETSI3_6G_25 for VIETNAM
+ * @ETSI4_6G_26: Super domain ETSI4_6G_26 for AUSTRALIA LPI and VLP
+ * @APL10_6G_27: Super domain APL10_6G_27 for INDIA LPI
+ * @FCC2_6G_90: Super domain FCC2_6G_90 for MCC WW mode
+ * @APL11_6G_28: Super domain APL11_6G_28 for KOREA LPI (updated) and VLP
  */
 enum reg_super_domain_6g {
 	FCC1_6G_01 = 0x01,
@@ -766,6 +798,13 @@ enum reg_super_domain_6g {
 	FCC2_6G_20 = 0x20,
 	FCC2_6G_21 = 0x21,
 	APL8_6G_22 = 0x22,
+	APL5_APL9_6G_23 = 0x23,
+	FCC2_6G_24 = 0x24,
+	ETSI3_6G_25 = 0x25,
+	ETSI4_6G_26 = 0x26,
+	APL10_6G_27 = 0x27,
+	APL11_6G_28 = 0x28,
+	FCC2_6G_90 = 0x90,
 };
 
 #if defined(COMPILE_REGDB_6G)
