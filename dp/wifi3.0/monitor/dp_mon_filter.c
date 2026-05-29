@@ -784,6 +784,7 @@ void dp_mon_filter_set_status_cmn(struct dp_mon_pdev *mon_pdev,
 	}
 }
 
+#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
 void dp_mon_filter_set_status_cbf(struct dp_pdev *pdev,
 				  struct dp_mon_filter *filter)
 {
@@ -808,6 +809,7 @@ void dp_mon_filter_set_status_cbf(struct dp_pdev *pdev,
 	filter->tlv_filter.enable_mo = 0;
 }
 
+#ifdef QCA_MONITOR_PKT_SUPPORT
 void dp_mon_filter_set_cbf_cmn(struct dp_pdev *pdev,
 			       struct dp_mon_filter *filter)
 {
@@ -829,7 +831,8 @@ void dp_mon_filter_set_cbf_cmn(struct dp_pdev *pdev,
 	filter->tlv_filter.offset_valid = false;
 	filter->tlv_filter.enable_mo = 0;
 }
-
+#endif
+#endif
 void dp_mon_filter_dealloc(struct dp_mon_pdev *mon_pdev)
 {
 	enum dp_mon_filter_mode mode;

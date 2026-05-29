@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -39,10 +39,8 @@ dp_rx_process_pktlog_be(struct dp_soc *soc, struct dp_pdev *pdev,
 	qdf_nbuf_t nbuf = NULL;
 	enum WDI_EVENT pktlog_mode = WDI_NO_VAL;
 
-	if (!mon_pdev->dp_peer_based_pktlog &&
-	    (mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_DISABLED)) {
+	if (mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_DISABLED)
 		return QDF_STATUS_E_INVAL;
-	}
 
 	nbuf = qdf_nbuf_alloc(soc->osdev, RX_MON_MIN_HEAD_ROOM,
 			      RX_BUFFER_RESERVATION, 0, FALSE);
@@ -53,20 +51,15 @@ dp_rx_process_pktlog_be(struct dp_soc *soc, struct dp_pdev *pdev,
 			     (end_offset + BUFFER_RESIDUE),
 			     RX_MON_MIN_HEAD_ROOM, true);
 
-	if (mon_pdev->dp_peer_based_pktlog && ppdu_info) {
-		dp_rx_process_peer_based_pktlog(soc, ppdu_info,
-						nbuf, pdev->pdev_id);
-	} else {
-		if (mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_FULL)
-			pktlog_mode = WDI_EVENT_RX_DESC;
-		else if (mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_LITE)
-			pktlog_mode = WDI_EVENT_LITE_RX;
+	if (mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_FULL)
+		pktlog_mode = WDI_EVENT_RX_DESC;
+	else if (mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_LITE)
+		pktlog_mode = WDI_EVENT_LITE_RX;
 
-		if (pktlog_mode != WDI_NO_VAL)
-			dp_wdi_event_handler(pktlog_mode, soc,
-					     nbuf, HTT_INVALID_PEER,
-					     WDI_NO_VAL, pdev->pdev_id);
-	}
+	if (pktlog_mode != WDI_NO_VAL)
+		dp_wdi_event_handler(pktlog_mode, soc,
+				     nbuf, HTT_INVALID_PEER,
+				     WDI_NO_VAL, pdev->pdev_id);
 	qdf_nbuf_free(nbuf);
 
 	return QDF_STATUS_SUCCESS;

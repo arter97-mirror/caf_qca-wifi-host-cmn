@@ -2332,53 +2332,9 @@ mon_deliver_fail:
 	return QDF_STATUS_E_INVAL;
 }
 
-/**
- * dp_rx_process_peer_based_pktlog() - Process Rx pktlog if peer based
- *                                     filtering enabled
- * @soc: core txrx main context
- * @ppdu_info: Structure for rx ppdu info
- * @status_nbuf: Qdf nbuf abstraction for linux skb
- * @pdev_id: mac_id/pdev_id correspondinggly for MCL and WIN
- *
- * Return: none
- */
-void
-dp_rx_process_peer_based_pktlog(struct dp_soc *soc,
-				struct hal_rx_ppdu_info *ppdu_info,
-				qdf_nbuf_t status_nbuf, uint32_t pdev_id)
-{
-	struct dp_peer *peer;
-	struct mon_rx_user_status *rx_user_status;
-	uint32_t num_users = ppdu_info->com_info.num_users;
-	uint16_t sw_peer_id;
-
-	/* Sanity check for num_users */
-	if (!num_users)
-		return;
-
-	qdf_assert_always(num_users <= CDP_MU_MAX_USERS);
-	rx_user_status = &ppdu_info->rx_user_status[num_users - 1];
-
-	sw_peer_id = rx_user_status->sw_peer_id;
-
-	peer = dp_peer_get_ref_by_id(soc, sw_peer_id,
-				     DP_MOD_ID_RX_PPDU_STATS);
-
-	if (!peer)
-		return;
-
-	if ((peer->peer_id != HTT_INVALID_PEER) && (peer->monitor_peer) &&
-	    (peer->monitor_peer->peer_based_pktlog_filter)) {
-		dp_wdi_event_handler(
-				     WDI_EVENT_RX_DESC, soc,
-				     status_nbuf,
-				     peer->peer_id,
-				     WDI_NO_VAL, pdev_id);
-	}
-	dp_peer_unref_delete(peer,
-			     DP_MOD_ID_RX_PPDU_STATS);
-}
-
+#if defined(QCA_MONITOR_2_0_PKT_SUPPORT) &&\
+defined(WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG) &&\
+defined(WLAN_SUPPORT_RX_TAG_STATISTICS)
 uint32_t
 dp_mon_rx_add_tlv(uint8_t id, uint16_t len, void *value, qdf_nbuf_t mpdu_nbuf)
 {
@@ -2408,6 +2364,7 @@ dp_mon_rx_add_tlv(uint8_t id, uint16_t len, void *value, qdf_nbuf_t mpdu_nbuf)
 
 	return num_bytes_pushed;
 }
+#endif
 
 void
 dp_mon_rx_stats_update_rssi_dbm_params(struct dp_mon_pdev *mon_pdev,

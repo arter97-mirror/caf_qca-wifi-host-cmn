@@ -2131,45 +2131,6 @@ dp_tx_mon_filter_set_upstream_tlvs(struct htt_tx_ring_tlv_filter *filter)
 	filter->utlvs.eht_sig_usr_ofdma = 1;
 }
 
-static void
-dp_tx_mon_filter_set_all(struct dp_mon_pdev_be *mon_pdev_be,
-			 struct htt_tx_ring_tlv_filter *filter)
-{
-	qdf_mem_zero(&filter->dtlvs,
-		     sizeof(filter->dtlvs));
-	qdf_mem_zero(&filter->utlvs,
-		     sizeof(filter->utlvs));
-	qdf_mem_zero(&filter->wmask,
-		     sizeof(filter->wmask));
-
-	dp_tx_mon_filter_set_downstream_tlvs(filter);
-	dp_tx_mon_filter_set_upstream_tlvs(filter);
-
-	filter->mgmt_filter = 0x1;
-	filter->data_filter = 0x1;
-	filter->ctrl_filter = 0x1;
-
-	filter->mgmt_mpdu_end = 1;
-	filter->mgmt_msdu_end = 1;
-	filter->mgmt_msdu_start = 1;
-	filter->mgmt_mpdu_start = 1;
-	filter->ctrl_mpdu_end = 1;
-	filter->ctrl_msdu_end = 1;
-	filter->ctrl_msdu_start = 1;
-	filter->ctrl_mpdu_start = 1;
-	filter->data_mpdu_end = 1;
-	filter->data_msdu_end = 1;
-	filter->data_msdu_start = 1;
-	filter->data_mpdu_start = 1;
-	filter->mgmt_mpdu_log = 1;
-	filter->ctrl_mpdu_log = 1;
-	filter->data_mpdu_log = 1;
-
-	filter->mgmt_dma_length = mon_pdev_be->tx_mon_filter_length;
-	filter->ctrl_dma_length = mon_pdev_be->tx_mon_filter_length;
-	filter->data_dma_length = mon_pdev_be->tx_mon_filter_length;
-}
-
 static
 void dp_tx_mon_filter_set_word_mask(struct dp_pdev *pdev,
 				    struct htt_tx_ring_tlv_filter *filter)
@@ -2209,6 +2170,46 @@ void dp_tx_mon_filter_set_word_mask(struct dp_pdev *pdev,
 		/* compaction is disable */
 		filter->compaction_enable = 0;
 	}
+}
+
+#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
+static void
+dp_tx_mon_filter_set_all(struct dp_mon_pdev_be *mon_pdev_be,
+			 struct htt_tx_ring_tlv_filter *filter)
+{
+	qdf_mem_zero(&filter->dtlvs,
+		     sizeof(filter->dtlvs));
+	qdf_mem_zero(&filter->utlvs,
+		     sizeof(filter->utlvs));
+	qdf_mem_zero(&filter->wmask,
+		     sizeof(filter->wmask));
+
+	dp_tx_mon_filter_set_downstream_tlvs(filter);
+	dp_tx_mon_filter_set_upstream_tlvs(filter);
+
+	filter->mgmt_filter = 0x1;
+	filter->data_filter = 0x1;
+	filter->ctrl_filter = 0x1;
+
+	filter->mgmt_mpdu_end = 1;
+	filter->mgmt_msdu_end = 1;
+	filter->mgmt_msdu_start = 1;
+	filter->mgmt_mpdu_start = 1;
+	filter->ctrl_mpdu_end = 1;
+	filter->ctrl_msdu_end = 1;
+	filter->ctrl_msdu_start = 1;
+	filter->ctrl_mpdu_start = 1;
+	filter->data_mpdu_end = 1;
+	filter->data_msdu_end = 1;
+	filter->data_msdu_start = 1;
+	filter->data_mpdu_start = 1;
+	filter->mgmt_mpdu_log = 1;
+	filter->ctrl_mpdu_log = 1;
+	filter->data_mpdu_log = 1;
+
+	filter->mgmt_dma_length = mon_pdev_be->tx_mon_filter_length;
+	filter->ctrl_dma_length = mon_pdev_be->tx_mon_filter_length;
+	filter->data_dma_length = mon_pdev_be->tx_mon_filter_length;
 }
 
 void dp_mon_filter_setup_tx_mon_mode_2_0(struct dp_pdev *pdev)
@@ -2276,6 +2277,7 @@ void dp_mon_filter_reset_tx_mon_mode_2_0(struct dp_pdev *pdev)
 	mon_soc_be = dp_get_be_mon_soc_from_dp_mon_soc(mon_soc);
 	mon_pdev_be->filter_be[mode][srng_type] = filter;
 }
+#endif
 #endif
 
 #ifdef WLAN_PKT_CAPTURE_RX_2_0

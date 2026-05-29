@@ -952,6 +952,7 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 	}
 }
 
+#if defined(QCA_MONITOR_PKT_SUPPORT) && !defined(REMOVE_PKT_LOG)
 QDF_STATUS
 dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 				 bool delayed_replenish)
@@ -1002,6 +1003,35 @@ dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 	return status;
 }
 
+QDF_STATUS
+dp_rx_pdev_mon_buf_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_id)
+{
+	uint8_t pdev_id = pdev->pdev_id;
+	struct dp_soc *soc = pdev->soc;
+	struct dp_srng *mon_buf_ring;
+	uint32_t num_entries;
+	struct rx_desc_pool *rx_desc_pool;
+	uint32_t rx_desc_pool_size;
+	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = soc->wlan_cfg_ctx;
+
+	mon_buf_ring = &soc->rxdma_mon_buf_ring[mac_id];
+
+	num_entries = mon_buf_ring->num_entries;
+
+	rx_desc_pool = &soc->rx_desc_mon[mac_id];
+
+	dp_debug("Mon RX Desc Pool[%d] entries=%u",
+		 pdev_id, num_entries);
+
+	rx_desc_pool_size = wlan_cfg_get_dp_soc_rx_sw_desc_weight(soc_cfg_ctx) *
+		num_entries;
+
+	if (dp_rx_desc_pool_is_allocated(rx_desc_pool) == QDF_STATUS_SUCCESS)
+		return QDF_STATUS_SUCCESS;
+
+	return dp_rx_desc_pool_alloc(soc, rx_desc_pool_size, rx_desc_pool);
+}
+
 void
 dp_rx_pdev_mon_buf_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_id)
 {
@@ -1045,6 +1075,7 @@ dp_rx_pdev_mon_buf_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_id)
 	/* Attach full monitor mode resources */
 	dp_full_mon_attach(pdev);
 }
+#endif
 
 static void
 dp_rx_pdev_mon_buf_desc_pool_free(struct dp_pdev *pdev, uint32_t mac_id)
@@ -1058,35 +1089,6 @@ dp_rx_pdev_mon_buf_desc_pool_free(struct dp_pdev *pdev, uint32_t mac_id)
 	dp_debug("Mon RX Buf Desc Pool Free pdev[%d]", pdev_id);
 
 	dp_rx_desc_pool_free(soc, rx_desc_pool);
-}
-
-QDF_STATUS
-dp_rx_pdev_mon_buf_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_id)
-{
-	uint8_t pdev_id = pdev->pdev_id;
-	struct dp_soc *soc = pdev->soc;
-	struct dp_srng *mon_buf_ring;
-	uint32_t num_entries;
-	struct rx_desc_pool *rx_desc_pool;
-	uint32_t rx_desc_pool_size;
-	struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx = soc->wlan_cfg_ctx;
-
-	mon_buf_ring = &soc->rxdma_mon_buf_ring[mac_id];
-
-	num_entries = mon_buf_ring->num_entries;
-
-	rx_desc_pool = &soc->rx_desc_mon[mac_id];
-
-	dp_debug("Mon RX Desc Pool[%d] entries=%u",
-		 pdev_id, num_entries);
-
-	rx_desc_pool_size = wlan_cfg_get_dp_soc_rx_sw_desc_weight(soc_cfg_ctx) *
-		num_entries;
-
-	if (dp_rx_desc_pool_is_allocated(rx_desc_pool) == QDF_STATUS_SUCCESS)
-		return QDF_STATUS_SUCCESS;
-
-	return dp_rx_desc_pool_alloc(soc, rx_desc_pool_size, rx_desc_pool);
 }
 
 #if !defined(DISABLE_MON_CONFIG) && defined(MON_ENABLE_DROP_FOR_MAC)

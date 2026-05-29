@@ -227,6 +227,7 @@ QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_rx_2_0(struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifndef REMOVE_PKT_LOG
 static
 QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_2_0(struct dp_pdev *pdev)
 {
@@ -242,7 +243,7 @@ QDF_STATUS dp_vdev_set_monitor_mode_buf_rings_2_0(struct dp_pdev *pdev)
 
 	return QDF_STATUS_SUCCESS;
 }
-
+#endif
 #endif
 
 #ifdef QCA_ENHANCED_STATS_SUPPORT
@@ -1288,6 +1289,7 @@ QDF_STATUS dp_mcopy_check_deliver_2_0(struct dp_pdev *pdev,
 }
 #endif
 
+#ifdef DISABLE_MON_CONFIG
 /**
  * dp_mon_register_feature_ops_2_0() - register feature ops
  *
@@ -1409,9 +1411,11 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 	mon_ops->rx_enable_mpdu_logging = dp_rx_mon_enable_mpdu_logging;
 #endif
 	mon_ops->mon_neighbour_peers_detach = NULL;
-#ifdef WLAN_PKT_CAPTURE_RX_2_0
+#if defined(WLAN_PKT_CAPTURE_RX_2_0) && !defined(REMOVE_PKT_LOG)
 	mon_ops->mon_vdev_set_monitor_mode_buf_rings =
 				dp_vdev_set_monitor_mode_buf_rings_2_0;
+#endif
+#ifdef WLAN_PKT_CAPTURE_RX_2_0
 	mon_ops->mon_vdev_set_monitor_mode_rings = NULL;
 #endif
 #ifdef QCA_ENHANCED_STATS_SUPPORT
@@ -1435,8 +1439,8 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 #endif
 	mon_ops->mon_rx_print_advanced_stats =
 		dp_mon_rx_print_advanced_stats_2_0;
-	mon_ops->mon_config_mon_fcs_cap = dp_rx_mon_config_fcs_cap;
 }
+#endif
 
 struct dp_mon_ops monitor_ops_2_0 = {
 	.mon_soc_cfg_init = dp_mon_soc_cfg_init,
@@ -1510,7 +1514,9 @@ struct dp_mon_ops monitor_ops_2_0 = {
 #ifdef WLAN_PKT_CAPTURE_RX_2_0
 	.mon_register_intr_ops = dp_mon_register_intr_ops_2_0,
 #endif
+#ifdef DISABLE_MON_CONFIG
 	.mon_register_feature_ops = dp_mon_register_feature_ops_2_0,
+#endif
 #ifdef WLAN_TX_PKT_CAPTURE_ENH_BE
 	.mon_tx_ppdu_stats_attach = dp_tx_ppdu_stats_attach_2_0,
 	.mon_tx_ppdu_stats_detach = dp_tx_ppdu_stats_detach_2_0,
