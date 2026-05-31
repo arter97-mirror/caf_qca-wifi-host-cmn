@@ -224,6 +224,28 @@ bool wlan_cm_is_vdev_idle_due_to_link_switch(struct wlan_objmgr_vdev *vdev);
  */
 bool wlan_cm_is_vdev_roaming(struct wlan_objmgr_vdev *vdev);
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * cm_is_vdev_smd_roam_sync_in_progress() - Check if vdev is in
+ *   CONNECTED+SMD_ROAM_SYNC sub-state.
+ * @vdev: vdev pointer
+ *
+ * Returns true when a link switch during SMD roaming has completed (vdev
+ * is connected on the new AP) but old-link cleanup is still pending.
+ * Used by guards G1/G2/G3 to block RSO state changes, link reconfig
+ * requests, and RSO stop while cleanup is in progress.
+ *
+ * Return: true if in SMD_ROAM_SYNC sub-state
+ */
+bool cm_is_vdev_smd_roam_sync_in_progress(struct wlan_objmgr_vdev *vdev);
+#else
+static inline bool
+cm_is_vdev_smd_roam_sync_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 /**
  * wlan_cm_free_connect_req() - free up connect request and its sub memory
  * @connect_req: Connect request

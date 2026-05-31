@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -274,4 +274,47 @@ bool cm_subst_roam_sync_event(void *ctx, uint16_t event, uint16_t data_len,
 	return true;
 }
 #endif /* WLAN_FEATURE_ROAM_OFFLOAD */
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * cm_subst_smd_roam_sync_entry() - Entry handler for SMD_ROAM_SYNC sub-state.
+ * @ctx: connection manager ctx
+ *
+ * Entered via T4 when a vdev completes a link switch during SMD roaming.
+ * The vdev is connected on the new AP but old-link cleanup is pending.
+ * Asserts: parent state must be CONNECTED; MLO vdev must be assoc (not link).
+ */
+void cm_subst_smd_roam_sync_entry(void *ctx);
+
+/**
+ * cm_subst_smd_roam_sync_exit() - Exit handler for SMD_ROAM_SYNC sub-state.
+ * @ctx: connection manager ctx
+ */
+void cm_subst_smd_roam_sync_exit(void *ctx);
+
+/**
+ * cm_subst_smd_roam_sync_event() - Event handler for SMD_ROAM_SYNC sub-state.
+ * @ctx: connection manager ctx
+ * @event: event to handle
+ * @data_len: event data length
+ * @data: event data
+ *
+ * Handles: EV_SMD_EXEC_COMPLETE (T9), EV_ROAM_SYNC (continuation/race),
+ *          EV_ROAM_START (T5 race), EV_DISCONNECT_REQ (T6),
+ *          EV_ROAM_ABORT (T7), EV_ROAM_HO_FAIL (T8).
+ *
+ * Return: true if event handled
+ */
+bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
+				  uint16_t data_len, void *data);
+#else
+static inline void cm_subst_smd_roam_sync_entry(void *ctx) {}
+static inline void cm_subst_smd_roam_sync_exit(void *ctx) {}
+static inline
+bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
+				  uint16_t data_len, void *data)
+{
+	return true;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
 #endif /* __WLAN_CM_ROAM_SM_H__ */

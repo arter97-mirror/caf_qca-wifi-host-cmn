@@ -821,6 +821,14 @@ QDF_STATUS
 mlo_link_recfg_validate_request(struct wlan_objmgr_vdev *vdev,
 				struct wlan_mlo_link_recfg_req *req)
 {
+#ifdef WLAN_FEATURE_11BN_SMD
+	/* [G2] Block AP-initiated link reconfig while SMD cleanup is pending */
+	if (cm_is_vdev_smd_roam_sync_in_progress(vdev)) {
+		mlo_warn("vdev %d: reject link reconfig — SMD_ROAM_SYNC in progress",
+			 wlan_vdev_get_id(vdev));
+		return QDF_STATUS_E_BUSY;
+	}
+#endif
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -5292,6 +5300,23 @@ mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
 							     WLAN_LINK_RECFG_SM_EV_COMPLETED,
 							     0, NULL);
 		}
+		break;
+	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
+	case WLAN_LINK_RECFG_SM_EV_ROAM_START_IND:
+		/*
+		 * Disconnect or new roam arrived while waiting for FW ST Exec.
+		 * ST Prep is complete and WMI_ROAM_SYNCH_START_CMD was already
+		 * sent. Clear SMD state so the host does not send a stale
+		 * WMI_ROAM_SYNCH_COMPLETE if the sync event still arrives.
+		 * Then move Link Recfg SM to ABORT → COMPLETED.
+		 */
+		smd_abort_link_recfg(recfg_ctx);
+		mlo_link_recfg_sm_transition_to(recfg_ctx,
+						WLAN_LINK_RECFG_S_ABORT);
+		mlo_link_recfg_sm_deliver_event_sync(
+				recfg_ctx->ml_dev,
+				WLAN_LINK_RECFG_SM_EV_COMPLETED,
+				0, NULL);
 		break;
 	case WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT:
 		mlo_debug("SMD WAIT_SMD_EXEC timeout, aborting link recfg");

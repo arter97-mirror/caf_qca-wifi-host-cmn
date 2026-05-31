@@ -72,6 +72,10 @@
  *                                        RSO stop response is received
  * @WLAN_CM_SM_EV_BEARER_SWITCH_COMPLETE: Event to continue connect after bearer
  *                                       switch complete
+ * @WLAN_CM_SM_EV_SMD_EXEC_COMPLETE:      SMD roaming execution complete. All
+ *                                        link switches done. Host-internal event
+ *                                        delivered to vdev in SMD_ROAM_SYNC to
+ *                                        trigger old-link cleanup.
  * @WLAN_CM_SM_EV_MAX:                    Max event
  */
 enum wlan_cm_sm_evt {
@@ -114,6 +118,7 @@ enum wlan_cm_sm_evt {
 	WLAN_CM_SM_EV_HO_ROAM_DISCONNECT_DONE = 36,
 	WLAN_CM_SM_EV_RSO_STOP_RSP = 37,
 	WLAN_CM_SM_EV_BEARER_SWITCH_COMPLETE = 38,
+	WLAN_CM_SM_EV_SMD_EXEC_COMPLETE = 39,
 	WLAN_CM_SM_EV_MAX,
 };
 

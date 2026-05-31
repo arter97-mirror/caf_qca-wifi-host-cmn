@@ -65,6 +65,12 @@
  * @WLAN_CM_SS_ROAM_SYNC:               Roam sync indication from FW
  * @WLAN_CM_SS_IDLE_DUE_TO_LINK_SWITCH: Substate when VDEV moves to INIT state
  *                                      due to link switch.
+ * @WLAN_CM_SS_SMD_ROAM_SYNC:           Substate of CONNECTED. Vdev completed
+ *                                      link switch during SMD roaming and is
+ *                                      awaiting EV_SMD_EXEC_COMPLETE to clean
+ *                                      up the old link. RSO state changes,
+ *                                      link reconfig, and new roam triggers
+ *                                      are all blocked in this sub-state.
  * @WLAN_CM_SS_MAX:                     Max Substate
  */
 enum wlan_cm_sm_state {
@@ -83,7 +89,8 @@ enum wlan_cm_sm_state {
 	WLAN_CM_SS_ROAM_STARTED = 12,
 	WLAN_CM_SS_ROAM_SYNC = 13,
 	WLAN_CM_SS_IDLE_DUE_TO_LINK_SWITCH = 14,
-	WLAN_CM_SS_MAX = 15,
+	WLAN_CM_SS_SMD_ROAM_SYNC = 15,
+	WLAN_CM_SS_MAX = 16,
 };
 
 /**

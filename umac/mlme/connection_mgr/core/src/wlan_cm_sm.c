@@ -22,6 +22,7 @@
 #include "wlan_cm_main_api.h"
 #include "wlan_cm_sm.h"
 #include "wlan_cm_roam_sm.h"
+#include "wlan_smd_roam.h"
 
 void cm_set_state(struct cnx_mgr *cm_ctx, enum wlan_cm_sm_state state)
 {
@@ -277,6 +278,17 @@ static void cm_state_connected_entry(void *ctx)
 	struct cnx_mgr *cm_ctx = ctx;
 
 	cm_sm_state_update(cm_ctx, WLAN_CM_S_CONNECTED, WLAN_CM_SS_IDLE);
+
+	/*
+	 * T4: If SMD roaming is active AND this vdev is the assoc vdev,
+	 * enter SMD_ROAM_SYNC instead of IDLE. The vdev is connected on the
+	 * new AP but old-link cleanup is still pending (EV_SMD_EXEC_COMPLETE
+	 * will drive it). Blocks RSO state changes, link reconfig, and new
+	 * roam triggers until cleanup completes.
+	 */
+	if (wlan_vdev_mlme_is_assoc_sta_vdev(cm_ctx->vdev) &&
+	    smd_is_roaming_in_progress(cm_ctx->vdev))
+		cm_sm_transition_to(cm_ctx, WLAN_CM_SS_SMD_ROAM_SYNC);
 }
 
 /**
@@ -1237,6 +1249,16 @@ struct wlan_sm_state_info cm_sm_info[] = {
 		cm_subst_idle_due_to_link_switch_event
 	},
 	{
+		(uint8_t)WLAN_CM_SS_SMD_ROAM_SYNC,
+		(uint8_t)WLAN_CM_S_CONNECTED,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		false,
+		"SMD_ROAM_SYNC",
+		cm_subst_smd_roam_sync_entry,
+		cm_subst_smd_roam_sync_exit,
+		cm_subst_smd_roam_sync_event
+	},
+	{
 		(uint8_t)WLAN_CM_SS_MAX,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
@@ -1288,6 +1310,7 @@ static const char *cm_sm_event_names[] = {
 	"EV_HO_ROAM_DISCONNECT_DONE",
 	"EV_RSO_STOP_RSP",
 	"EV_BEARER_SWITCH_COMPLETE",
+	"EV_SMD_EXEC_COMPLETE",
 };
 
 enum wlan_cm_sm_state cm_get_state(struct cnx_mgr *cm_ctx)

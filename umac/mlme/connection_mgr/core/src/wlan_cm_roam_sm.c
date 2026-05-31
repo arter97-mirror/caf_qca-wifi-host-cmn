@@ -28,6 +28,10 @@
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 #include "wlan_mlo_mgr_roam.h"
 #endif
+#ifdef WLAN_FEATURE_11BN_SMD
+#include "wlan_smd_roam.h"
+#endif
+#include "wlan_cm_tgt_if_tx_api.h"
 
 #if defined(WLAN_FEATURE_HOST_ROAM) || defined(WLAN_FEATURE_ROAM_OFFLOAD)
 void cm_state_roaming_entry(void *ctx)
@@ -498,3 +502,142 @@ bool cm_subst_roam_sync_event(void *ctx, uint16_t event,
 	return event_handled;
 }
 #endif /* WLAN_FEATURE_ROAM_OFFLOAD */
+
+#ifdef WLAN_FEATURE_11BN_SMD
+void cm_subst_smd_roam_sync_entry(void *ctx)
+{
+	struct cnx_mgr *cm_ctx = ctx;
+
+	if (cm_get_state(cm_ctx) != WLAN_CM_S_CONNECTED)
+		QDF_BUG(0);
+
+	/*
+	 * Only the assoc vdev enters this sub-state.
+	 * Link vdevs follow the IDLE_DUE_TO_LINK_SWITCH path.
+	 */
+	if (wlan_vdev_mlme_is_mlo_vdev(cm_ctx->vdev) &&
+	    !wlan_vdev_mlme_is_assoc_sta_vdev(cm_ctx->vdev))
+		QDF_BUG(0);
+
+	cm_set_substate(cm_ctx, WLAN_CM_SS_SMD_ROAM_SYNC);
+}
+
+void cm_subst_smd_roam_sync_exit(void *ctx)
+{
+}
+
+bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
+				  uint16_t data_len, void *data)
+{
+	struct cnx_mgr *cm_ctx = ctx;
+	bool event_handled = true;
+	QDF_STATUS status;
+
+	switch (event) {
+	case WLAN_CM_SM_EV_SMD_EXEC_COMPLETE:
+		/*
+		 * data = struct wlan_roam_synch_complete_params * built by
+		 * smd_exec_complete() with vdev_repurpose_resp[] populated.
+		 * Send WMI_ROAM_SYNCH_COMPLETE first, then run cleanup.
+		 * Delivery is synchronous — the stack pointer from
+		 * smd_exec_complete() is still valid here.
+		 */
+		status = wlan_cm_tgt_send_roam_sync_complete_cmd(
+					wlan_vdev_get_psoc(cm_ctx->vdev),
+					(struct wlan_roam_synch_complete_params *)data);
+
+		/* ALWAYS release PM, even on error */
+		wlan_cm_tgt_allow_pm_after_roam_sync(
+					wlan_vdev_get_psoc(cm_ctx->vdev),
+					wlan_vdev_get_id(cm_ctx->vdev));
+		smd_roam_update_standby_links(cm_ctx->vdev);
+		smd_roam_update_deflink(cm_ctx->vdev);
+
+		if (QDF_IS_STATUS_ERROR(status)) {
+			event_handled = false;
+			break;
+		}
+
+		/* Remove original roam command from serialization */
+		{
+			struct cm_roam_req *roam_req;
+			wlan_cm_id cm_id = CM_ID_INVALID;
+
+			roam_req = cm_get_first_roam_command(cm_ctx->vdev);
+			if (roam_req)
+				cm_id = roam_req->cm_id;
+			if (cm_id != CM_ID_INVALID)
+				cm_remove_cmd(cm_ctx, &cm_id);
+		}
+
+		/* Notify supplicant */
+		mlme_cm_osif_roam_complete(cm_ctx->vdev);
+
+		cm_sm_transition_to(cm_ctx, WLAN_CM_SS_IDLE);
+		break;
+
+	case WLAN_CM_SM_EV_ROAM_SYNC:
+		/*
+		 * Continuation ROAM_SYNC (vdev_repurpose_req > 0, ML→ML):
+		 * route through mlo_cm_roam_sync_cb() which returns E_PENDING
+		 * and triggers smd_trigger_link_recfg_sm() for next link.
+		 * Unexpected ROAM_SYNC with no vdev_repurpose (race) → warn.
+		 */
+		status = mlo_cm_roam_sync_cb(cm_ctx->vdev, data, data_len);
+		if (status == QDF_STATUS_E_PENDING)
+			break; /* Link Recfg SM handles next link */
+		if (QDF_IS_STATUS_ERROR(status)) {
+			event_handled = false;
+			break;
+		}
+		mlme_warn("vdev %d: unexpected ROAM_SYNC in SMD_ROAM_SYNC",
+			  wlan_vdev_get_id(cm_ctx->vdev));
+		break;
+
+	case WLAN_CM_SM_EV_ROAM_START:
+		/* Race: new roam while cleanup pending — reject */
+		mlme_warn("vdev %d: ROAM_START in SMD_ROAM_SYNC, RSO_STOP",
+			  wlan_vdev_get_id(cm_ctx->vdev));
+		mlme_cm_rso_stop_req(cm_ctx->vdev);
+		break;
+
+	case WLAN_CM_SM_EV_DISCONNECT_REQ:
+		/* Disconnect while waiting: abort, release PM, disconnect */
+		smd_abort_roam_sync(cm_ctx->vdev);
+		mlme_cm_rso_stop_req(cm_ctx->vdev);
+		wlan_cm_tgt_allow_pm_after_roam_sync(
+					wlan_vdev_get_psoc(cm_ctx->vdev),
+					wlan_vdev_get_id(cm_ctx->vdev));
+		status = cm_add_disconnect_req_to_list(cm_ctx, data);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			event_handled = false;
+			break;
+		}
+		cm_sm_transition_to(cm_ctx, WLAN_CM_S_DISCONNECTING);
+		cm_sm_deliver_event_sync(cm_ctx,
+					 WLAN_CM_SM_EV_DISCONNECT_START,
+					 data_len, data);
+		break;
+
+	case WLAN_CM_SM_EV_ROAM_ABORT:
+	case WLAN_CM_SM_EV_ROAM_HO_FAIL:
+		/*
+		 * FW aborted after link switch completed.
+		 * Cleanup without SYNCH_COMPLETE — FW already terminated.
+		 */
+		smd_roam_update_standby_links(cm_ctx->vdev);
+		smd_roam_update_deflink(cm_ctx->vdev);
+		wlan_cm_tgt_allow_pm_after_roam_sync(
+					wlan_vdev_get_psoc(cm_ctx->vdev),
+					wlan_vdev_get_id(cm_ctx->vdev));
+		cm_sm_transition_to(cm_ctx, WLAN_CM_SS_IDLE);
+		break;
+
+	default:
+		event_handled = false;
+		break;
+	}
+
+	return event_handled;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */

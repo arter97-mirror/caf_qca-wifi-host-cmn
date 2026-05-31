@@ -1459,6 +1459,20 @@ bool cm_is_vdev_roaming(struct wlan_objmgr_vdev *vdev)
 	return false;
 }
 
+#ifdef WLAN_FEATURE_11BN_SMD
+bool cm_is_vdev_smd_roam_sync_in_progress(struct wlan_objmgr_vdev *vdev)
+{
+	struct cnx_mgr *cm_ctx;
+
+	cm_ctx = cm_get_cm_ctx(vdev);
+	if (!cm_ctx)
+		return false;
+
+	return (cm_get_state(cm_ctx) == WLAN_CM_S_CONNECTED &&
+		cm_get_sub_state(cm_ctx) == WLAN_CM_SS_SMD_ROAM_SYNC);
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 bool cm_is_vdev_roam_started(struct wlan_objmgr_vdev *vdev)
 {

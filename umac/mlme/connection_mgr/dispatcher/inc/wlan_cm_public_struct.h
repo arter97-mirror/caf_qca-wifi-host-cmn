@@ -242,6 +242,10 @@ enum wlan_cm_source {
  * @mld_addr: MLD address of candidate
  *              -mandatory and only used for link VDEV connect
  * @ml_parnter_info: ml partner link info
+ * @is_new_assoc_vdev: if set, connect path calls set_mlo_vdev() (assoc flag)
+ *                     instead of set_mlo_link_vdev(). Used by SMD roaming for
+ *                     idle vdev direct-connect so T4 can fire (SMD_ROAM_SYNC
+ *                     entry requires is_assoc_sta_vdev() to be true).
  */
 struct wlan_cm_connect_req {
 	uint8_t vdev_id;
@@ -273,6 +277,9 @@ struct wlan_cm_connect_req {
 	uint8_t link_id;
 	struct qdf_mac_addr mld_addr;
 	struct mlo_partner_info ml_parnter_info;
+#endif
+#ifdef WLAN_FEATURE_11BN_SMD
+	bool is_new_assoc_vdev;
 #endif
 };
 
