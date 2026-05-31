@@ -328,6 +328,11 @@ wlan_serialization_cancel_request(
 	}
 
 	ser_pdev_obj = wlan_serialization_get_pdev_obj(pdev);
+	if (!ser_pdev_obj) {
+		ser_err("invalid ser_pdev_obj");
+		cmd_status = WLAN_SER_CMD_NOT_FOUND;
+		goto error;
+	}
 
 	pdev_queue = wlan_serialization_get_pdev_queue_obj(ser_pdev_obj,
 							   cmd.cmd_type);
@@ -508,7 +513,12 @@ wlan_serialization_pdev_scan_status(struct wlan_objmgr_pdev *pdev)
 	struct wlan_ser_pdev_obj *ser_pdev_obj =
 		wlan_serialization_get_pdev_obj(pdev);
 	struct wlan_serialization_pdev_queue *pdev_q;
-	enum wlan_serialization_cmd_status status;
+	enum wlan_serialization_cmd_status status = WLAN_SER_CMD_NOT_FOUND;
+
+	if (!ser_pdev_obj) {
+		ser_err("invalid serialization ser_pdev_obj");
+		goto error;
+	}
 
 	pdev_q = &ser_pdev_obj->pdev_q[SER_PDEV_QUEUE_COMP_SCAN];
 
@@ -522,6 +532,7 @@ wlan_serialization_pdev_scan_status(struct wlan_objmgr_pdev *pdev)
 
 	wlan_serialization_release_lock(&pdev_q->pdev_queue_lock);
 
+error:
 	return status;
 }
 
