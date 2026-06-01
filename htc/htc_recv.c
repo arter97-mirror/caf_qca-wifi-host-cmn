@@ -106,6 +106,7 @@ static void do_recv_completion_pkt(HTC_ENDPOINT *pEndpoint,
 	}
 }
 
+#ifdef HIF_SDIO
 static void do_recv_completion(HTC_ENDPOINT *pEndpoint,
 			       HTC_PACKET_QUEUE *pQueueToIndicate)
 {
@@ -121,6 +122,7 @@ static void do_recv_completion(HTC_ENDPOINT *pEndpoint,
 		do_recv_completion_pkt(pEndpoint, pPacket);
 	}
 }
+#endif /* HIF_SDIO */
 
 void htc_control_rx_complete(void *Context, HTC_PACKET *pPacket)
 {
@@ -130,6 +132,7 @@ void htc_control_rx_complete(void *Context, HTC_PACKET *pPacket)
 }
 
 
+#ifdef HIF_SDIO
 int htc_get_num_recv_buffers(HTC_HANDLE HTCHandle, HTC_ENDPOINT_ID Endpoint)
 {
 	HTC_TARGET *target = GET_HTC_TARGET_FROM_HANDLE(HTCHandle);
@@ -137,6 +140,7 @@ int htc_get_num_recv_buffers(HTC_HANDLE HTCHandle, HTC_ENDPOINT_ID Endpoint)
 	HTC_ENDPOINT *pEndpoint = &target->endpoint[Endpoint];
 	return HTC_PACKET_QUEUE_DEPTH(&pEndpoint->RxBufferHoldQueue);
 }
+#endif /* HIF_SDIO */
 
 HTC_PACKET *allocate_htc_packet_container(HTC_TARGET *target)
 {
@@ -522,6 +526,7 @@ _out:
 
 }
 
+#ifdef HIF_SDIO
 A_STATUS htc_add_receive_pkt_multiple(HTC_HANDLE HTCHandle,
 				      HTC_PACKET_QUEUE *pPktQueue)
 {
@@ -580,6 +585,7 @@ A_STATUS htc_add_receive_pkt_multiple(HTC_HANDLE HTCHandle,
 
 	return status;
 }
+#endif /* HIF_SDIO */
 
 void htc_flush_rx_hold_queue(HTC_TARGET *target, HTC_ENDPOINT *pEndpoint)
 {

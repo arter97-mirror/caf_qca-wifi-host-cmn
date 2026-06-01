@@ -692,7 +692,7 @@ void htc_flush_endpoint(HTC_HANDLE HTCHandle, HTC_ENDPOINT_ID Endpoint,
 void htc_indicate_activity_change(HTC_HANDLE HTCHandle,
 				  HTC_ENDPOINT_ID Endpoint, bool Active);
 
-
+#ifdef HIF_SDIO
 /**
  * htc_add_receive_pkt_multiple() - Add multiple receive packets to HTC
  * @HTCHandle: HTC handle
@@ -710,6 +710,7 @@ void htc_indicate_activity_change(HTC_HANDLE HTCHandle,
  */
 A_STATUS htc_add_receive_pkt_multiple(HTC_HANDLE HTCHandle,
 				      HTC_PACKET_QUEUE *pPktQueue);
+#endif /* HIF_SDIO */
 
 /**
  * htc_is_endpoint_active() - Check if an endpoint is marked active
@@ -751,7 +752,7 @@ void htc_set_nodrop_pkt(HTC_HANDLE HTCHandle, A_BOOL isNodropPkt);
  */
 void
 htc_enable_hdr_length_check(HTC_HANDLE htc_handle, bool htc_hdr_length_check);
-
+#ifdef HIF_SDIO
 /**
  * htc_get_num_recv_buffers() - Get the number of recv buffers currently queued
  *                            into an HTC endpoint
@@ -763,6 +764,7 @@ htc_enable_hdr_length_check(HTC_HANDLE htc_handle, bool htc_hdr_length_check);
  */
 int htc_get_num_recv_buffers(HTC_HANDLE HTCHandle,
 			     HTC_ENDPOINT_ID Endpoint);
+#endif /* HIF_SDIO */
 
 
 /* internally used functions for testing... */
