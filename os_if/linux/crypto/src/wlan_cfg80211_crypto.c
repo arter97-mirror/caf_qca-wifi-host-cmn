@@ -260,7 +260,7 @@ int wlan_cfg80211_store_key(struct wlan_objmgr_vdev *vdev, uint8_t key_index,
 	return 0;
 }
 
-#define WLAN_WAIT_TIME_ADD_KEY 100
+#define WLAN_WAIT_TIME_ADD_KEY 300
 
 static void
 wlan_cfg80211_crypto_add_key_cb(void *context,
