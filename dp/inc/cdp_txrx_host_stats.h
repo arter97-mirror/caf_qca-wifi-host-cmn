@@ -930,30 +930,6 @@ cdp_get_peer_jitter_stats(ol_txrx_soc_handle soc,
 								    tid_stats);
 }
 
-/**
- * cdp_mon_pdev_get_rx_stats() - Call to get monitor pdev rx stats
- * @soc: soc handle
- * @pdev_id: id of dp_pdev handle
- * @stats: user allocated buffer for dp pdev mon stats
- *
- * Return: status Success/Failure
- */
-static inline QDF_STATUS
-cdp_mon_pdev_get_rx_stats(ol_txrx_soc_handle soc, uint8_t pdev_id,
-			  struct cdp_pdev_mon_stats *stats)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->mon_ops ||
-	    !soc->ops->mon_ops->get_mon_pdev_rx_stats)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->mon_ops->get_mon_pdev_rx_stats(soc, pdev_id, stats);
-}
-
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 /**
  * cdp_get_peer_tx_capture_stats() - Call to get peer tx capture stats

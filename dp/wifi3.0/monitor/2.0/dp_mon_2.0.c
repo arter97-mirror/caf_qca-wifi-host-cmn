@@ -1307,13 +1307,11 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 		return;
 	}
 
-	mon_ops->mon_config_debug_sniffer = dp_config_debug_sniffer;
 	mon_ops->mon_peer_tx_init = NULL;
 	mon_ops->mon_peer_tx_cleanup = NULL;
 	mon_ops->mon_htt_ppdu_stats_attach = dp_htt_ppdu_stats_attach;
 	mon_ops->mon_htt_ppdu_stats_detach = dp_htt_ppdu_stats_detach;
 	mon_ops->mon_print_pdev_rx_mon_stats = dp_print_pdev_rx_mon_stats;
-	mon_ops->mon_set_bsscolor = dp_mon_set_bsscolor;
 	mon_ops->mon_neighbour_peer_add_ast = NULL;
 #ifdef WLAN_TX_PKT_CAPTURE_ENH_BE
 	mon_ops->mon_peer_tid_peer_id_update = NULL;
@@ -1544,10 +1542,8 @@ struct cdp_mon_ops dp_ops_mon_2_0 = {
 	.txrx_reset_monitor_mode = dp_reset_monitor_mode,
 	/* Added support for HK advance filter */
 	.txrx_set_advance_monitor_filter = NULL,
-	.txrx_deliver_tx_mgmt = dp_deliver_tx_mgmt,
 	.config_full_mon_mode = NULL,
 	.soc_config_full_mon_mode = NULL,
-	.get_mon_pdev_rx_stats = dp_pdev_get_rx_mon_stats,
 	.txrx_enable_mon_reap_timer = NULL,
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 	.txrx_enable_enhanced_stats = dp_enable_enhanced_stats,
@@ -1564,7 +1560,6 @@ struct cdp_mon_ops dp_ops_mon_2_0 = {
 	.stop_local_pkt_capture = NULL,
 	.is_local_pkt_capture_running = NULL,
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
-	.txrx_set_mu_sniffer = dp_pdev_set_mu_sniffer,
 };
 
 #if defined(WLAN_PKT_CAPTURE_TX_2_0) || \

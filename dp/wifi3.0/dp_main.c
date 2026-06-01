@@ -9746,12 +9746,6 @@ static QDF_STATUS dp_set_pdev_param(struct cdp_soc_t *cdp_soc, uint8_t pdev_id,
 		return QDF_STATUS_E_FAILURE;
 
 	switch (param) {
-	case CDP_CONFIG_TX_CAPTURE:
-		return dp_monitor_config_debug_sniffer(pdev,
-						val.cdp_pdev_param_tx_capture);
-	case CDP_CONFIG_DEBUG_SNIFFER:
-		return dp_monitor_config_debug_sniffer(pdev,
-						val.cdp_pdev_param_dbg_snf);
 	case CDP_CONFIG_BPR_ENABLE:
 		return dp_monitor_set_bpr_enable(pdev,
 						 val.cdp_pdev_param_bpr_enable);
@@ -9792,9 +9786,6 @@ static QDF_STATUS dp_set_pdev_param(struct cdp_soc_t *cdp_soc, uint8_t pdev_id,
 	case CDP_FILTER_NEIGH_PEERS:
 		dp_monitor_set_filter_neigh_peers(pdev,
 					val.cdp_pdev_param_fltr_neigh_peers);
-		break;
-	case CDP_CONFIG_BSS_COLOR:
-		dp_monitor_set_bsscolor(pdev, val.cdp_pdev_param_bss_color);
 		break;
 	case CDP_SET_ATF_STATS_ENABLE:
 		dp_monitor_set_atf_stats_enable(pdev,

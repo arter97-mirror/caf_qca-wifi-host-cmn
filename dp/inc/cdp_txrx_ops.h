@@ -1088,11 +1088,9 @@ struct cdp_me_ops {
 /**
  * struct cdp_mon_ops - host mon ops
  * @txrx_reset_monitor_mode: Handler to reset monitor mode
- * @txrx_deliver_tx_mgmt: deliver mgmt tx frame
  * @txrx_set_advance_monitor_filter: set advanced monitor mode
  * @config_full_mon_mode: configure full monitor mode
  * @soc_config_full_mon_mode: pdev configure full monitor mode
- * @get_mon_pdev_rx_stats: Get monitor mode pdev stats
  * @txrx_enable_mon_reap_timer: Enable/Disable reap timer of monitor status ring
  * @txrx_enable_enhanced_stats: Enable enhanced stats
  * @txrx_disable_enhanced_stats: Disable enhanced stats
@@ -1104,15 +1102,11 @@ struct cdp_me_ops {
  * @start_local_pkt_capture: start local packet capture
  * @stop_local_pkt_capture: stop local packet capture
  * @is_local_pkt_capture_running: is local packet capture running
- * @txrx_set_mu_sniffer: sets mu_sniffer flag in mon_pdev
  */
 struct cdp_mon_ops {
 
 	QDF_STATUS (*txrx_reset_monitor_mode)
 		(ol_txrx_soc_handle soc, uint8_t pdev_id, u_int8_t smart_monitor);
-
-	QDF_STATUS (*txrx_deliver_tx_mgmt)
-		(struct cdp_soc_t *cdp_soc, uint8_t pdev_id, qdf_nbuf_t nbuf);
 
 	QDF_STATUS (*txrx_set_advance_monitor_filter)
 		(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
@@ -1122,10 +1116,6 @@ struct cdp_mon_ops {
 		(*config_full_mon_mode)(struct cdp_soc_t *soc, uint8_t val);
 	QDF_STATUS (*soc_config_full_mon_mode)(struct cdp_pdev *cdp_pdev,
 					       uint8_t val);
-
-	QDF_STATUS
-		(*get_mon_pdev_rx_stats)(struct cdp_soc_t *soc, uint8_t pdev_id,
-					 struct cdp_pdev_mon_stats *stats);
 
 	bool (*txrx_enable_mon_reap_timer)(struct cdp_soc_t *soc_hdl,
 					   enum cdp_mon_reap_source source,
@@ -1165,9 +1155,6 @@ struct cdp_mon_ops {
 	bool (*is_local_pkt_capture_running)(struct cdp_soc_t *soc,
 					     uint8_t pdev_id);
 #endif
-	QDF_STATUS
-	(*txrx_set_mu_sniffer)(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
-			       uint32_t mode);
 };
 
 /**

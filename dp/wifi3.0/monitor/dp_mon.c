@@ -388,25 +388,6 @@ QDF_STATUS dp_reset_monitor_mode_unlock(struct cdp_soc_t *soc_hdl,
 	return QDF_STATUS_SUCCESS;
 }
 
-QDF_STATUS
-dp_pdev_set_mu_sniffer(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
-		       uint32_t mode)
-{
-	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
-	struct dp_pdev *pdev =
-		dp_get_pdev_from_soc_pdev_id_wifi3((struct dp_soc *)soc,
-						   pdev_id);
-	struct dp_mon_pdev *mon_pdev;
-
-	if (!pdev || !pdev->monitor_pdev)
-		return QDF_STATUS_E_FAILURE;
-
-	mon_pdev = pdev->monitor_pdev;
-	mon_pdev->mu_sniffer_enabled = mode;
-
-	return QDF_STATUS_SUCCESS;
-}
-
 #ifdef QCA_ADVANCE_MON_FILTER_SUPPORT
 QDF_STATUS
 dp_pdev_set_advance_monitor_filter(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
@@ -459,21 +440,6 @@ dp_pdev_set_advance_monitor_filter(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 	return status;
 }
 #endif
-
-QDF_STATUS
-dp_deliver_tx_mgmt(struct cdp_soc_t *cdp_soc, uint8_t pdev_id, qdf_nbuf_t nbuf)
-{
-	struct dp_pdev *pdev =
-		dp_get_pdev_from_soc_pdev_id_wifi3((struct dp_soc *)cdp_soc,
-						   pdev_id);
-
-	if (!pdev)
-		return QDF_STATUS_E_FAILURE;
-
-	dp_deliver_mgmt_frm(pdev, nbuf);
-
-	return QDF_STATUS_SUCCESS;
-}
 
 #ifdef QCA_SUPPORT_SCAN_SPCL_VAP_STATS
 /**
@@ -715,69 +681,6 @@ dp_config_tx_capture_mode(struct dp_pdev *pdev)
 #endif
 #endif
 
-#if defined(QCA_MCOPY_SUPPORT) || defined(QCA_TX_CAPTURE_SUPPORT)
-QDF_STATUS
-dp_config_debug_sniffer(struct dp_pdev *pdev, int val)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-
-	/*
-	 * Note: The mirror copy mode cannot co-exist with any other
-	 * monitor modes. Hence disabling the filter for this mode will
-	 * reset the monitor destination ring filters.
-	 */
-	dp_reset_mcopy_mode(pdev);
-	switch (val) {
-	case 0:
-		mon_pdev->tx_sniffer_enable = 0;
-		mon_pdev->monitor_configured = false;
-
-		/*
-		 * We don't need to reset the Rx monitor status ring  or call
-		 * the API dp_ppdu_ring_reset() if all debug sniffer mode is
-		 * disabled. The Rx monitor status ring will be disabled when
-		 * the last mode using the monitor status ring get disabled.
-		 */
-		if (!mon_pdev->pktlog_ppdu_stats &&
-		    !mon_pdev->enhanced_stats_en &&
-		    !mon_pdev->bpr_enable) {
-			dp_h2t_cfg_stats_msg_send(pdev, 0, pdev->pdev_id);
-		} else if (mon_pdev->enhanced_stats_en &&
-			   !mon_pdev->bpr_enable) {
-			dp_h2t_cfg_stats_msg_send(pdev,
-						  DP_PPDU_STATS_CFG_ENH_STATS,
-						  pdev->pdev_id);
-		} else if (!mon_pdev->enhanced_stats_en &&
-			   mon_pdev->bpr_enable) {
-			dp_h2t_cfg_stats_msg_send(pdev,
-						  DP_PPDU_STATS_CFG_BPR_ENH,
-						  pdev->pdev_id);
-		} else {
-			dp_h2t_cfg_stats_msg_send(pdev,
-						  DP_PPDU_STATS_CFG_BPR,
-						  pdev->pdev_id);
-		}
-		break;
-
-	case 1:
-		status = dp_config_tx_capture_mode(pdev);
-		break;
-	case 2:
-	case 4:
-		status = dp_config_mcopy_mode(pdev, val);
-		break;
-
-	default:
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  "Invalid value, mode: %d not supported", val);
-		status = QDF_STATUS_E_INVAL;
-		break;
-	}
-	return status;
-}
-#endif
-
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 QDF_STATUS
 dp_mon_config_undecoded_metadata_capture(struct dp_pdev *pdev, int val)
@@ -891,27 +794,6 @@ void dp_htt_ppdu_stats_detach(struct dp_pdev *pdev)
 
 	if (mon_pdev->ppdu_tlv_buf)
 		qdf_mem_free(mon_pdev->ppdu_tlv_buf);
-}
-
-QDF_STATUS dp_pdev_get_rx_mon_stats(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
-				    struct cdp_pdev_mon_stats *stats)
-{
-	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
-	struct dp_pdev *pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, pdev_id);
-	struct dp_mon_mac *mon_mac;
-	uint8_t mac_id = 0;
-
-	if (!pdev)
-		return QDF_STATUS_E_FAILURE;
-
-	if (!pdev->monitor_pdev)
-		return QDF_STATUS_E_FAILURE;
-
-	mon_mac = dp_get_mon_mac(pdev, mac_id);
-	qdf_mem_copy(stats, &mon_mac->rx_mon_stats,
-		     sizeof(struct cdp_pdev_mon_stats));
-
-	return QDF_STATUS_SUCCESS;
 }
 
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
@@ -5653,59 +5535,6 @@ dp_ppdu_stats_ind_handler(struct htt_soc *soc,
 	return free_buf;
 }
 #endif
-
-void
-dp_mon_set_bsscolor(struct dp_pdev *pdev, uint8_t bsscolor)
-{
-	/*
-	 * mac_id value is required where per MAC mon_mac handle
-	 * is needed in single pdev multiple MAC case.
-	 */
-	uint8_t mac_id = 0;
-	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
-
-	mon_mac->rx_mon_recv_status.bsscolor = bsscolor;
-}
-
-bool dp_pdev_get_filter_ucast_data(struct cdp_pdev *pdev_handle)
-{
-	struct dp_pdev *pdev = (struct dp_pdev *)pdev_handle;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-
-	if ((mon_pdev->fp_data_filter & FILTER_DATA_UCAST) ||
-	    (mon_pdev->mo_data_filter & FILTER_DATA_UCAST))
-		return true;
-
-	return false;
-}
-
-bool dp_pdev_get_filter_mcast_data(struct cdp_pdev *pdev_handle)
-{
-	struct dp_pdev *pdev = (struct dp_pdev *)pdev_handle;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-
-	if ((mon_pdev->fp_data_filter & FILTER_DATA_MCAST) ||
-	    (mon_pdev->mo_data_filter & FILTER_DATA_MCAST))
-		return true;
-
-	return false;
-}
-
-bool dp_pdev_get_filter_non_data(struct cdp_pdev *pdev_handle)
-{
-	struct dp_pdev *pdev = (struct dp_pdev *)pdev_handle;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-
-	if ((mon_pdev->fp_mgmt_filter & FILTER_MGMT_ALL) ||
-	    (mon_pdev->mo_mgmt_filter & FILTER_MGMT_ALL)) {
-		if ((mon_pdev->fp_ctrl_filter & FILTER_CTRL_ALL) ||
-		    (mon_pdev->mo_ctrl_filter & FILTER_CTRL_ALL)) {
-			return true;
-		}
-	}
-
-	return false;
-}
 
 QDF_STATUS dp_mon_soc_cfg_init(struct dp_soc *soc)
 {

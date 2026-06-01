@@ -619,12 +619,6 @@ static inline QDF_STATUS dp_monitor_soc_cfg_init(struct dp_soc *soc)
 	return QDF_STATUS_SUCCESS;
 }
 
-static inline QDF_STATUS dp_monitor_config_debug_sniffer(struct dp_pdev *pdev,
-							 int val)
-{
-	return QDF_STATUS_E_FAILURE;
-}
-
 static inline void
 dp_monitor_flush_rings(struct dp_soc *soc, struct dp_vdev *vdev)
 {
@@ -768,29 +762,6 @@ int dp_monitor_set_filter_neigh_peers(struct dp_pdev *pdev, bool val)
 static inline
 void dp_monitor_set_atf_stats_enable(struct dp_pdev *pdev, bool value)
 {
-}
-
-static inline
-void dp_monitor_set_bsscolor(struct dp_pdev *pdev, uint8_t bsscolor)
-{
-}
-
-static inline
-bool dp_monitor_pdev_get_filter_mcast_data(struct cdp_pdev *pdev_handle)
-{
-	return false;
-}
-
-static inline
-bool dp_monitor_pdev_get_filter_non_data(struct cdp_pdev *pdev_handle)
-{
-	return false;
-}
-
-static inline
-bool dp_monitor_pdev_get_filter_ucast_data(struct cdp_pdev *pdev_handle)
-{
-	return false;
 }
 
 static inline

@@ -1188,13 +1188,11 @@ dp_mon_register_feature_ops_1_0(struct dp_soc *soc)
 		return;
 	}
 
-	mon_ops->mon_config_debug_sniffer = dp_config_debug_sniffer;
 	mon_ops->mon_peer_tx_init = dp_mon_peer_tx_init;
 	mon_ops->mon_peer_tx_cleanup = dp_mon_peer_tx_cleanup;
 	mon_ops->mon_htt_ppdu_stats_attach = dp_htt_ppdu_stats_attach;
 	mon_ops->mon_htt_ppdu_stats_detach = dp_htt_ppdu_stats_detach;
 	mon_ops->mon_print_pdev_rx_mon_stats = dp_print_pdev_rx_mon_stats;
-	mon_ops->mon_set_bsscolor = dp_mon_set_bsscolor;
 	mon_ops->mon_neighbour_peer_add_ast = dp_mon_neighbour_peer_add_ast;
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 	mon_ops->mon_peer_tid_peer_id_update = dp_peer_tid_peer_id_update_1_0;
@@ -1377,10 +1375,8 @@ struct cdp_mon_ops dp_ops_mon_1_0 = {
 	.txrx_reset_monitor_mode = dp_reset_monitor_mode,
 	/* Added support for HK advance filter */
 	.txrx_set_advance_monitor_filter = dp_pdev_set_advance_monitor_filter,
-	.txrx_deliver_tx_mgmt = dp_deliver_tx_mgmt,
 	.config_full_mon_mode = dp_config_full_mon_mode,
 	.soc_config_full_mon_mode = dp_soc_config_full_mon_mode,
-	.get_mon_pdev_rx_stats = dp_pdev_get_rx_mon_stats,
 	.txrx_enable_mon_reap_timer = dp_enable_mon_reap_timer,
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 	.txrx_enable_enhanced_stats = dp_enable_enhanced_stats,
@@ -1393,7 +1389,6 @@ struct cdp_mon_ops dp_ops_mon_1_0 = {
 	.stop_local_pkt_capture = dp_mon_stop_local_pkt_capture,
 	.is_local_pkt_capture_running = dp_mon_get_is_local_pkt_capture_running,
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
-	.txrx_set_mu_sniffer = NULL,
 };
 
 #ifdef QCA_MONITOR_OPS_PER_SOC_SUPPORT

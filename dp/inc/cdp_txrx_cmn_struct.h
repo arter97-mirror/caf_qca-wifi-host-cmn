@@ -1408,7 +1408,6 @@ enum cdp_peer_param_type {
 /**
  * enum cdp_pdev_param_type - different types of parameters
  *			      to set values in pdev
- * @CDP_CONFIG_DEBUG_SNIFFER: Enable debug sniffer feature
  * @CDP_CONFIG_BPR_ENABLE: Enable bcast probe feature
  * @CDP_CONFIG_PRIMARY_RADIO: Configure radio as primary
  * @CDP_CONFIG_ENABLE_PERPKT_TXSTATS: Enable per packet statistics
@@ -1422,14 +1421,12 @@ enum cdp_peer_param_type {
  * @CDP_CONFIG_ENH_TX_CAPTURE: Enable enhanced TX capture
  * @CDP_CONFIG_HMMC_TID_OVERRIDE: Enable hmmc tid override
  * @CDP_CONFIG_HMMC_TID_VALUE: set hmmc tid value
- * @CDP_CONFIG_TX_CAPTURE: set tx capture
  * @CDP_CHAN_NOISE_FLOOR: set channel noise floor
  * @CDP_CONFIG_VOW: set/get vow config
  * @CDP_TIDQ_OVERRIDE: set/get tid queue override
  * @CDP_TIDMAP_PRTY: set/get tid map prty
  * @CDP_TX_PENDING: get tx pending
  * @CDP_FILTER_NEIGH_PEERS: filter neighbour peers
- * @CDP_CONFIG_BSS_COLOR: configure bss color
  * @CDP_SET_ATF_STATS_ENABLE: set ATF stats flag
  * @CDP_CONFIG_SPECIAL_VAP: Configure Special vap
  * @CDP_RESET_SCAN_SPCL_VAP_STATS_ENABLE: Enable scan spcl vap stats reset
@@ -1445,7 +1442,6 @@ enum cdp_peer_param_type {
  * @CDP_CONFIG_MAX: Max enum
  */
 enum cdp_pdev_param_type {
-	CDP_CONFIG_DEBUG_SNIFFER,
 	CDP_CONFIG_BPR_ENABLE,
 	CDP_CONFIG_PRIMARY_RADIO,
 	CDP_CONFIG_ENABLE_PERPKT_TXSTATS,
@@ -1459,14 +1455,12 @@ enum cdp_pdev_param_type {
 	CDP_CONFIG_ENH_TX_CAPTURE,
 	CDP_CONFIG_HMMC_TID_OVERRIDE,
 	CDP_CONFIG_HMMC_TID_VALUE,
-	CDP_CONFIG_TX_CAPTURE,
 	CDP_CHAN_NOISE_FLOOR,
 	CDP_CONFIG_VOW,
 	CDP_TIDQ_OVERRIDE,
 	CDP_TIDMAP_PRTY,
 	CDP_TX_PENDING,
 	CDP_FILTER_NEIGH_PEERS,
-	CDP_CONFIG_BSS_COLOR,
 	CDP_SET_ATF_STATS_ENABLE,
 	CDP_CONFIG_SPECIAL_VAP,
 	CDP_RESET_SCAN_SPCL_VAP_STATS_ENABLE,
@@ -1525,7 +1519,6 @@ enum cdp_pdev_param_type {
  * @cdp_vdev_paran_wds_ext_ap_bridge: enable/disable ap_bridge for wds_ext peers
  * @cdp_passthru_vdev_freq: passthru vdev frequency
  *
- * @cdp_pdev_param_dbg_snf: Enable debug sniffer feature
  * @cdp_pdev_param_bpr_enable: Enable bcast probe feature
  * @cdp_pdev_param_primary_radio: Configure radio as primary
  * @cdp_pdev_param_en_perpkt_txstats: Enable per packet statistics
@@ -1544,7 +1537,6 @@ enum cdp_pdev_param_type {
  * @cdp_pdev_param_cfg_vow: set/get vow config
  * @cdp_pdev_param_cfg_delay_stats: set/get delayed stats
  * @cdp_pdev_param_tidq_override: set/get tid queue override
- * @cdp_pdev_param_bss_color: configure bss color
  * @cdp_pdev_param_tidmap_prty: set/get tid map prty
  * @cdp_pdev_param_tx_pending: get tx pending
  * @cdp_pdev_param_fltr_neigh_peers: filter neighbour peers
@@ -1659,9 +1651,7 @@ typedef union cdp_config_param_t {
 	uint8_t cdp_pdev_param_igmpmld_tid;
 	uint8_t cdp_pdev_param_arp_dbg_conf;
 	uint8_t cdp_pdev_param_tidq_override;
-	uint8_t cdp_pdev_param_bss_color;
 	uint16_t cdp_pdev_param_chn_noise_flr;
-	int cdp_pdev_param_dbg_snf;
 	int cdp_pdev_param_bpr_enable;
 	uint32_t cdp_pdev_param_ingrs_stats;
 	uint32_t cdp_pdev_param_osif_drop;

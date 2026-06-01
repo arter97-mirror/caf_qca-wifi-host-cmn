@@ -45,28 +45,6 @@ static inline QDF_STATUS cdp_reset_monitor_mode(ol_txrx_soc_handle soc,
 							  smart_monitor);
 }
 
-/**
- * cdp_deliver_tx_mgmt() - Deliver mgmt frame for tx capture
- * @soc: Datapath SOC handle
- * @pdev_id: id of datapath PDEV handle
- * @nbuf: Management frame buffer
- */
-static inline QDF_STATUS
-cdp_deliver_tx_mgmt(ol_txrx_soc_handle soc, uint8_t pdev_id,
-		    qdf_nbuf_t nbuf)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->mon_ops ||
-	    !soc->ops->mon_ops->txrx_deliver_tx_mgmt)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->mon_ops->txrx_deliver_tx_mgmt(soc, pdev_id, nbuf);
-}
-
 #ifdef QCA_RSSI_DB2DBM
 /**
  * cdp_set_params_rssi_dbm_conversion - Set the rssi dbm conversion params
