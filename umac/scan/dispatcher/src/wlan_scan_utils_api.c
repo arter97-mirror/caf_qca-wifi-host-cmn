@@ -2834,10 +2834,10 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 		return QDF_STATUS_E_FAILURE;
 	}
 
-	if (!IS_WLAN_PHYMODE_EHT(scan_entry->phy_mode) &&
+	if (!IS_WLAN_PHYMODE_ALLOW_MLO(scan_entry->phy_mode) &&
 	    (util_scan_entry_ehtcap(scan_entry) ||
 	     util_scan_entry_bv_ml_ie(scan_entry))) {
-		scm_debug("EHT cap present but phymode %d not EHT, reset eht info",
+		scm_debug("MLO cap present but phymode %d does not allow MLO, reset eht info",
 			  scan_entry->phy_mode);
 		util_scan_entry_reset_11be_caps(scan_entry);
 	}

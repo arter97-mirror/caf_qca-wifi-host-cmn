@@ -467,7 +467,7 @@ bool cm_is_ml_connection(struct wlan_objmgr_vdev *vdev,
 	mld_mac = (struct qdf_mac_addr *)wlan_vdev_mlme_get_mldaddr(vdev);
 
 	if (eht_capab && !qdf_is_macaddr_zero(mld_mac) &&
-	    IS_WLAN_PHYMODE_EHT(req->cur_candidate->entry->phy_mode) &&
+	    IS_WLAN_PHYMODE_ALLOW_MLO(req->cur_candidate->entry->phy_mode) &&
 	    req->cur_candidate->entry->ie_list.ehtop &&
 	    req->cur_candidate->entry->ie_list.multi_link_bv &&
 	    wlan_cm_is_eht_allowed_for_current_security(wlan_vdev_get_psoc(vdev),

@@ -567,6 +567,9 @@ enum wlan_phymode {
 	((mode) == WLAN_PHYMODE_11BEA_EHT160)  || \
 	((mode) == WLAN_PHYMODE_11BEA_EHT320); })
 
+#define IS_WLAN_PHYMODE_ALLOW_MLO(_mode) \
+	({typeof(_mode) mode = (_mode); (mode) >= WLAN_PHYMODE_11BEA_EHT20; })
+
 #elif defined(WLAN_FEATURE_11BE)
 #define IS_WLAN_PHYMODE_320MHZ(_mode) ({typeof(_mode) mode = (_mode); \
 	((mode) == WLAN_PHYMODE_11BEA_EHT320); })
@@ -616,6 +619,8 @@ enum wlan_phymode {
 	((mode) == WLAN_PHYMODE_11BEA_EHT320); })
 
 #define IS_WLAN_PHYMODE_UHR(_mode) 0
+#define IS_WLAN_PHYMODE_ALLOW_MLO(_mode) \
+	({typeof(_mode) mode = (_mode); (mode) >= WLAN_PHYMODE_11BEA_EHT20; })
 #else
 #define IS_WLAN_PHYMODE_320MHZ(_mode) 0
 
@@ -647,6 +652,7 @@ enum wlan_phymode {
 
 #define IS_WLAN_PHYMODE_EHT(_mode) 0
 #define IS_WLAN_PHYMODE_UHR(_mode) 0
+#define IS_WLAN_PHYMODE_ALLOW_MLO(_mode) 0
 #endif
 
 #define IS_WLAN_PHYMODE_HT(_mode) ({typeof(_mode) mode = (_mode); \
