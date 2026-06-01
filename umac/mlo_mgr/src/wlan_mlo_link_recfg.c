@@ -6015,6 +6015,16 @@ static struct wlan_sm_state_info mlo_link_recfg_sm_info[] = {
 		mlo_link_recfg_state_update_ttlm_event,
 	},
 	{
+		(uint8_t)WLAN_LINK_RECFG_S_WAIT,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		true,
+		"SMD_WAIT",
+		NULL,
+		NULL,
+		NULL,
+	},
+	{
 		(uint8_t)WLAN_LINK_RECFG_S_MAX,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
@@ -6135,6 +6145,16 @@ static struct wlan_sm_state_info mlo_link_recfg_sm_info[] = {
 		mlo_link_recfg_subst_add_link_abort_wait_link_sw_event,
 	},
 	{
+		(uint8_t)WLAN_LINK_RECFG_SS_WAIT_SMD_EXEC,
+		(uint8_t)WLAN_LINK_RECFG_S_WAIT,
+		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
+		false,
+		"WAIT_SMD_EXEC",
+		NULL,
+		NULL,
+		NULL,
+	},
+	{
 		(uint8_t)WLAN_LINK_RECFG_SS_MAX,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
 		(uint8_t)WLAN_SM_ENGINE_STATE_NONE,
@@ -6166,7 +6186,9 @@ static const char *mlo_link_recfg_sm_event_names[] = {
 	"EV_SER_TIMEOUT",
 	"EV_SM_TIMEOUT",
 	"EV_RX_RSP_TIMEOUT",
-	"EV_UPDATE_TTLM"
+	"EV_UPDATE_TTLM",
+	"EV_SMD_ROAM_START",
+	"EV_WAIT_FOR_EXEC"
 };
 
 static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)
