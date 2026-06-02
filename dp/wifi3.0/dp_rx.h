@@ -3084,9 +3084,21 @@ static inline
 qdf_nbuf_t dp_rx_nbuf_alloc(struct dp_soc *soc,
 			    struct rx_desc_pool *rx_desc_pool)
 {
-	return qdf_nbuf_alloc_simple(soc->osdev, rx_desc_pool->buf_size,
-				     RX_BUFFER_RESERVATION,
-				     rx_desc_pool->buf_alignment, FALSE);
+	/*
+	 * Call __qdf_nbuf_alloc_simple() directly (the function, not the
+	 * qdf_nbuf_alloc_simple macro).  In non-NBUF_MEMORY_DEBUG builds the
+	 * macro expands to qdf_nbuf_alloc_fl -> __qdf_nbuf_alloc ->
+	 * __qdf_nbuf_frag_alloc -> __netdev_alloc_skb, which never sets
+	 * skb->fast_recycled.  The function routes through
+	 * __qdf_nbuf_netdev_alloc which maps to __netdev_alloc_skb_fast when
+	 * QCA_DP_NBUF_FAST_RECYCLE_CHECK is defined, correctly setting
+	 * fast_recycled and enabling the DMA cache-invalidate skip in
+	 * dp_rx_nbuf_sync_no_dsb().  RX_BUFFER_RESERVATION and buf_alignment
+	 * are both 0 under DP_RX_BUFFER_OPTIMIZATION so no reserve/align is
+	 * lost by bypassing the macro wrapper.
+	 */
+	return __qdf_nbuf_alloc_simple(soc->osdev, rx_desc_pool->buf_size,
+				       __func__, __LINE__);
 }
 
 static inline
