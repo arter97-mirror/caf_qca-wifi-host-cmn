@@ -1793,9 +1793,11 @@ static QDF_STATUS extract_nan_cluster_event_tlv(
 	qdf_mem_copy(&cluster_event->cluster_id, &cluster_id,
 		     NAN_CLUSTER_MATCH_SIZE);
 
-	qdf_mem_copy(&cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE],
-		     &fixed_param->nan_cluster_id, 2);
-
+	/* FW sent in big-endian order */
+	cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE] =
+		(fixed_param->nan_cluster_id >> 8) & 0xFF;
+	cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE + 1] =
+		fixed_param->nan_cluster_id & 0xFF;
 	cluster_event->event_type = NAN_CLUSTER_EVENT_STARTED;
 
 	wmi_debug("Extracted start cluster event: vdev_id=%d, event_type=%d",
