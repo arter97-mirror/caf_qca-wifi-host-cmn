@@ -520,7 +520,7 @@
 #else
 #define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MIN 1024
 #endif
-#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 16384
+#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 32768
 
 /*
  * For low memory AP cases using 1 will reduce the rx descriptors memory req
@@ -554,7 +554,7 @@
 #else
 #define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MIN 4096
 #endif
-#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 16384
+#define WLAN_CFG_RX_SW_DESC_NUM_SIZE_MAX 32768
 #endif
 
 #define WLAN_CFG_RX_FLOW_SEARCH_TABLE_SIZE 16384
