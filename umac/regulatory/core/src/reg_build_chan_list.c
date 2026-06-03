@@ -2756,7 +2756,7 @@ reg_modify_chan_list_for_avoid_chan_ext(struct wlan_regulatory_pdev_priv_obj
 	if (!psoc_priv_obj)
 		return;
 
-	if (!num_avoid_channels || !psoc_priv_obj->ch_avoid_ext_ind)
+	if (!num_avoid_channels)
 		return;
 
 	num_avoid_freq = psoc_priv_obj->avoid_freq_ext_list.ch_avoid_range_cnt;
