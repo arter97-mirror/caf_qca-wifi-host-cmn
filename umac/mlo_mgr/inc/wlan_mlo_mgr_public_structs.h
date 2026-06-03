@@ -362,6 +362,8 @@ struct wlan_mlo_link_recfg_bss_info {
  * reconfiguration add/del information.
  * @link: ap link info
  * @num_links: number of ap bss info in list
+ * @mld_addr: target AP MLD address (SMD only)
+ * @smd_addr: SMD address of the target AP (SMD only)
  * @kck_len: KCK length for per AP-MLD PTK mode (SMD only)
  * @kck: KCK buffer for per AP-MLD PTK mode (SMD only)
  */
@@ -369,6 +371,8 @@ struct wlan_mlo_link_recfg_info {
 	struct wlan_mlo_link_recfg_bss_info link[WLAN_MAX_ML_BSS_LINKS];
 	uint8_t num_links;
 #ifdef WLAN_FEATURE_11BN_SMD
+	struct qdf_mac_addr mld_addr;
+	struct qdf_mac_addr smd_addr;
 	uint32_t kck_len;
 	uint8_t *kck;
 #endif
