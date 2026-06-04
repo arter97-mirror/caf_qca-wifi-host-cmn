@@ -1812,6 +1812,7 @@ struct peer_assoc_ml_partner_links {
  * @peer_uhr_tx_mcs_set: Peer UHR TX MCS MAP
  * @peer_uhr_ppet: Peer UHR PPET info
  * @npca_param: Non Primary Channel Access (NPCA) parameters
+ * @two_x_ldpc_flag: 2xLDPC flag
  */
 struct peer_assoc_params {
 	uint32_t vdev_id;
@@ -1921,6 +1922,7 @@ struct peer_assoc_params {
 	uint32_t peer_uhr_tx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];
 	struct wmi_host_ppe_threshold peer_uhr_ppet;
 	struct wmi_host_npca_param npca_param;
+	bool two_x_ldpc_flag;
 #endif
 #ifdef WLAN_FEATURE_11BN_SMD
 	uint8_t smd_id[QDF_MAC_ADDR_SIZE];

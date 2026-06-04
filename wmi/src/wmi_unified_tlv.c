@@ -3863,8 +3863,24 @@ static inline void copy_peer_flags_tlv_11bn(
 
 	wmi_debug("UHR peer_flags_ext 0x%x", cmd->peer_flags_ext);
 }
+
+static inline void copy_peer_flags_tlv_2xldpc(
+			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
+			struct peer_assoc_params *param)
+{
+	if (param->two_x_ldpc_flag)
+		cmd->peer_flags_ext |= WMI_PEER_EXT_2XLDPC;
+
+	wmi_debug("2xLDPC peer_flags_ext 0x%x", cmd->peer_flags_ext);
+}
 #else
 static inline void copy_peer_flags_tlv_11bn(
+			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
+			struct peer_assoc_params *param)
+{
+}
+
+static inline void copy_peer_flags_tlv_2xldpc(
 			wmi_peer_assoc_complete_cmd_fixed_param * cmd,
 			struct peer_assoc_params *param)
 {
@@ -4011,6 +4027,8 @@ static inline void copy_peer_flags_tlv(
 
 	if (param->twt_responder)
 		cmd->peer_flags |= WMI_PEER_TWT_RESP;
+
+	copy_peer_flags_tlv_2xldpc(cmd, param);
 }
 
 static inline void copy_peer_mac_addr_tlv(
