@@ -2202,11 +2202,29 @@ util_scan_entry_uhrop(struct scan_cache_entry *scan_entry)
 {
 	return scan_entry->ie_list.uhrop;
 }
+
+/**
+ * util_scan_entry_reset_11bn_caps() - Clear UHR cap/op IE pointers
+ * @scan_entry: scan entry
+ *
+ * Nulls out ie_list.uhrcap and ie_list.uhrop
+ */
+static inline void
+util_scan_entry_reset_11bn_caps(struct scan_cache_entry *scan_entry)
+{
+	scan_entry->ie_list.uhrcap = NULL;
+	scan_entry->ie_list.uhrop = NULL;
+}
 #else
 static inline uint8_t*
 util_scan_entry_uhrop(struct scan_cache_entry *scan_entry)
 {
 	return NULL;
+}
+
+static inline void
+util_scan_entry_reset_11bn_caps(struct scan_cache_entry *scan_entry)
+{
 }
 #endif
 #endif

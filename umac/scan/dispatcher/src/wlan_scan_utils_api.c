@@ -2860,9 +2860,10 @@ util_scan_gen_scan_entry(struct wlan_objmgr_pdev *pdev,
 	if (!IS_WLAN_PHYMODE_ALLOW_MLO(scan_entry->phy_mode) &&
 	    (util_scan_entry_ehtcap(scan_entry) ||
 	     util_scan_entry_bv_ml_ie(scan_entry))) {
-		scm_debug("MLO cap present but phymode %d does not allow MLO, reset eht info",
+		scm_debug("MLO cap present but phymode %d does not allow MLO, reset eht/uhr info",
 			  scan_entry->phy_mode);
 		util_scan_entry_reset_11be_caps(scan_entry);
+		util_scan_entry_reset_11bn_caps(scan_entry);
 	}
 
 	util_scan_update_ml_info(pdev, scan_entry);
