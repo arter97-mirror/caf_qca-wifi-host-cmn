@@ -2039,11 +2039,9 @@ uint32_t hif_ce_history_max = HIF_CE_HISTORY_MAX;
 #define CE_DESC_HISTORY_BUFF_CNT  4
 #define IS_CE_DEBUG_ONLY_FOR_CRIT_CE (BIT(1) | BIT(2) | BIT(3) | BIT(7))
 #else
-#if defined(HIF_CE_DEBUG_DATA_BUF)
 /* CE2, CE3, CE7 */
 #define CE_DESC_HISTORY_BUFF_CNT  3 + CE_DP_HISTORY_BUFF_CNT
 #define IS_CE_DEBUG_ONLY_FOR_CRIT_CE (BIT(2) | BIT(3) | BIT(7) | IS_CE_DEBUG_FOR_DP_ENABLED)
-#endif
 #endif /* QCA_WIFI_SUPPORT_SRNG */
 #endif
 struct hif_ce_desc_event
