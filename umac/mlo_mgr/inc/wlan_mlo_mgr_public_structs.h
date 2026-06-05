@@ -1755,8 +1755,10 @@ struct mlo_mlme_ext_ops {
  * @mlo_mgr_osif_clear_link_info: Callback to clear existing link info.
  * @mlo_mgr_osif_update_mac_addr: Callback to notify MAC addr update complete
  *                                from old link id to new link id for the vdev.
- * @mlo_roam_osif_update_mac_addr: Callback to notify MAC addr update during
-				   roam sync for the vdev.
+ * @mlo_roam_osif_update_mac_addr: Callback invoked for every active link
+ *                                 during roam sync to sync FW-assigned per-link
+ *                                 MAC into vdev_mlme and HDD. Called even when
+ *                                 MAC is unchanged to ensure consistency.
  * @mlo_mgr_osif_link_rej_update_mac_addr: Callback to notify MAC addr update
  *                                for link rejection.
  * @mlo_link_recfg_osif_update_mac_addr: Callback to notify mac addr update for

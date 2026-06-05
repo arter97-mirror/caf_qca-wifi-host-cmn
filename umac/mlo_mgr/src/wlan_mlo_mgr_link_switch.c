@@ -1175,7 +1175,8 @@ mlo_mgr_osif_update_connect_info(struct wlan_objmgr_vdev *vdev, int32_t link_id)
 		return;
 
 	mlo_debug("Vdev %d: link id %d freq %d self MAC " QDF_MAC_ADDR_FMT " BSSID " QDF_MAC_ADDR_FMT,
-		  link_info->vdev_id, link_id, link_info->chan_freq,
+		  link_info->vdev_id, link_id,
+		  link_info->link_chan_info->ch_freq,
 		  QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
 		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
 	osif_bss_update_cb = g_mlo_ctx->osif_ops->mlo_mgr_osif_update_bss_info;
