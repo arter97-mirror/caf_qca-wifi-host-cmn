@@ -27075,6 +27075,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_ROAMING_PREDICTIVE;
 	wmi_service[wmi_service_sta_twt_en_dis_vdev_support] =
 				WMI_SERVICE_STA_TWT_EN_DIS_VDEV_SUPPORT;
+	wmi_service[wmi_service_ctas_plim_indication_support] =
+				WMI_SERVICE_CTAS_PLIM_INDICATION_SUPPORT;
 }
 
 /**

@@ -176,6 +176,7 @@ typedef struct cp_stats_power_datapath_info stats_cp_stats_power_datapath_info;
  * @send_req_power_datapath_stats: Sends power datapath stats request
  * @send_req_qsh_stats: Sends qsh scan stats request to FW
  * @send_req_coex_stats: Send coex stats request to FW
+ * @is_ctas_plim_indication_supported: Check FW support for C-TAS PLIM
  */
 struct wlan_lmac_if_cp_stats_tx_ops {
 	QDF_STATUS (*cp_stats_attach)(struct wlan_objmgr_psoc *psoc);
@@ -223,6 +224,8 @@ struct wlan_lmac_if_cp_stats_tx_ops {
 					struct request_info *req);
 #endif
 	QDF_STATUS (*send_req_coex_stats)(struct wlan_objmgr_psoc *psoc);
+	bool (*is_ctas_plim_indication_supported)(
+					struct wlan_objmgr_psoc *psoc);
 };
 
 /**

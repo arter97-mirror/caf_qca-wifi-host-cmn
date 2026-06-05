@@ -1049,6 +1049,23 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cp_stats_unregister_legacy_event_handler;
 	cp_stats_tx_ops->send_req_coex_stats =
 		target_if_cp_stats_send_coex_stats_req;
+	cp_stats_tx_ops->is_ctas_plim_indication_supported =
+		target_if_is_ctas_plim_indication_supported;
 	return QDF_STATUS_SUCCESS;
+}
+
+bool
+target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("wmi_handle is null");
+		return false;
+	}
+
+	return wmi_service_enabled(wmi_handle,
+				   wmi_service_ctas_plim_indication_support);
 }
 

@@ -177,4 +177,17 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 }
 #endif /* QCA_SUPPORT_CP_STATS */
 
+/**
+ * target_if_is_ctas_plim_indication_supported() - Check whether FW supports
+ * C-TAS power indication and power limit enquiring
+ * @psoc: pointer to psoc object
+ *
+ * API to check WMI_SERVICE_CTAS_PLIM_INDICATION_SUPPORT capability advertised
+ * by firmware via the service ready extended2 bitmap.
+ *
+ * Return: true if FW supports the capability, false otherwise
+ */
+bool
+target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc);
+
 #endif /* __TARGET_IF_CP_STATS_H__ */
