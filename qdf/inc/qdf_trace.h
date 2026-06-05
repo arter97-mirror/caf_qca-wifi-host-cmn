@@ -224,7 +224,15 @@ enum diag_tx_status {
  *
  * Returns TX status specified in enum diag_tx_status
  */
+#ifdef CONFIG_DP_TRACE
 enum diag_tx_status wlan_get_diag_tx_status(enum qdf_dp_tx_rx_status tx_status);
+#else
+static inline
+enum diag_tx_status wlan_get_diag_tx_status(enum qdf_dp_tx_rx_status tx_status)
+{
+	return DIAG_TX_STATUS_FAIL;
+}
+#endif
 #endif
 
 #define CASE_RETURN_STRING(str) case ((str)): return (uint8_t *)(# str);
