@@ -3285,6 +3285,7 @@ static uint8_t *util_copy_reporting_ap_vendor_ies(struct wlan_objmgr_psoc *psoc,
 	enum action_oui_id oui_id3 = ACTION_OUI_EXT_MLD_CAP_OP;
 	enum action_oui_id oui_id4 = ACTION_OUI_ALLOW_NSS_GREATER_THAN_2;
 	enum action_oui_id oui_id5 = ACTION_OUI_DISALLOW_NSS_GREATER_THAN_2;
+	enum action_oui_id oui_id6 = ACTION_OUI_ALLOW_UL_TX_BEAMFORMER;
 
 	attr.ie_data = (uint8_t *)ie;
 	attr.ie_length = ie_len;
@@ -3294,7 +3295,8 @@ static uint8_t *util_copy_reporting_ap_vendor_ies(struct wlan_objmgr_psoc *psoc,
 	    wlan_action_oui_search(psoc, &attr, oui_id2) ||
 	    wlan_action_oui_search(psoc, &attr, oui_id3) ||
 	    wlan_action_oui_search(psoc, &attr, oui_id4) ||
-	    wlan_action_oui_search(psoc, &attr, oui_id5)) {
+	    wlan_action_oui_search(psoc, &attr, oui_id5) ||
+	    wlan_action_oui_search(psoc, &attr, oui_id6)) {
 		qdf_mem_copy(buf_ie, ie, ie_len);
 		buf_ie += ie_len;
 	}
