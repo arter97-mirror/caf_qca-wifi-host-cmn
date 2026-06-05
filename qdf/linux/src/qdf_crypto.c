@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -179,9 +178,39 @@ static inline void leftshift_onebit(const uint8_t *input, uint8_t *output)
 	}
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(7, 0, 0))
+typedef struct aes_enckey qdf_aes_ctx_t;
+
+static inline int qdf_aes_preparekey(qdf_aes_ctx_t *ctx,
+				     const uint8_t *key, unsigned int len)
+{
+	return aes_prepareenckey(ctx, key, len);
+}
+
+static inline void qdf_aes_encrypt(qdf_aes_ctx_t *ctx,
+				   uint8_t *dst, const uint8_t *src)
+{
+	aes_encrypt(ctx, dst, src);
+}
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+typedef struct crypto_aes_ctx qdf_aes_ctx_t;
+
+static inline int qdf_aes_preparekey(qdf_aes_ctx_t *ctx,
+				     const uint8_t *key, unsigned int len)
+{
+	return aes_expandkey(ctx, key, len);
+}
+
+static inline void qdf_aes_encrypt(qdf_aes_ctx_t *ctx,
+				   uint8_t *dst, const uint8_t *src)
+{
+	aes_encrypt(ctx, dst, src);
+}
+#endif
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 static void
-generate_subkey(struct crypto_aes_ctx *aes_ctx, uint8_t *k1, uint8_t *k2)
+generate_subkey(qdf_aes_ctx_t *aes_ctx, uint8_t *k1, uint8_t *k2)
 {
 	uint8_t l[AES_BLOCK_SIZE] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -197,7 +226,7 @@ generate_subkey(struct crypto_aes_ctx *aes_ctx, uint8_t *k1, uint8_t *k2)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
 
-	aes_encrypt(aes_ctx, l, const_zero);
+	qdf_aes_encrypt(aes_ctx, l, const_zero);
 
 	if ((l[0] & 0x80) == 0) {       /* If MSB(l) = 0, then k1 = l << 1 */
 		leftshift_onebit(l, k1);
@@ -269,15 +298,15 @@ int qdf_crypto_aes_128_cmac(const uint8_t *key, const uint8_t *data,
 	uint8_t k1[AES_KEYSIZE_128], k2[AES_KEYSIZE_128];
 	int cmp_blk;
 	int i, num_block = (len + 15) / AES_BLOCK_SIZE;
-	struct crypto_aes_ctx aes_ctx;
+	qdf_aes_ctx_t aes_ctx;
 	int ret;
 
 	/*
 	 * Calculate MIC and then copy
 	 */
-	ret = aes_expandkey(&aes_ctx, key, AES_KEYSIZE_128);
+	ret = qdf_aes_preparekey(&aes_ctx, key, AES_KEYSIZE_128);
 	if (ret) {
-		qdf_err("aes_expandkey failed (%d)", ret);
+		qdf_err("qdf_aes_preparekey failed (%d)", ret);
 		return ret;
 	}
 
@@ -307,11 +336,11 @@ int qdf_crypto_aes_128_cmac(const uint8_t *key, const uint8_t *data,
 		/* y = Mi (+) x */
 		xor_128(x, &data[AES_BLOCK_SIZE * i], y);
 		/* x = AES-128(KEY, y) */
-		aes_encrypt(&aes_ctx, x, y);
+		qdf_aes_encrypt(&aes_ctx, x, y);
 	}
 
 	xor_128(x, m_last, y);
-	aes_encrypt(&aes_ctx, x, y);
+	qdf_aes_encrypt(&aes_ctx, x, y);
 	memzero_explicit(&aes_ctx, sizeof(aes_ctx));
 
 	memcpy(mic, x, CMAC_TLEN);

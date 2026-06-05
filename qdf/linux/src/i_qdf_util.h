@@ -37,7 +37,7 @@
 
 #include <qdf_types.h>
 #include <asm/byteorder.h>
-
+#include <linux/hex.h>
 #if LINUX_VERSION_CODE  <= KERNEL_VERSION(3, 3, 8)
 #include <asm/system.h>
 #else
