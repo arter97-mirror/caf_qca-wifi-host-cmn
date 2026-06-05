@@ -648,8 +648,6 @@ bool mlo_mgr_ml_peer_exist_on_diff_ml_ctx(uint8_t *peer_addr,
 				}
 			}
 			mlo_dev_lock_release(mld_cur);
-			mlo_err("MLD ID %d exists with mac " QDF_MAC_ADDR_FMT,
-				mld_cur->mld_id, QDF_MAC_ADDR_REF(peer_addr));
 			ret_status = true;
 			goto check_same_ml_ctx;
 		}
@@ -676,8 +674,6 @@ bool mlo_mgr_ml_peer_exist_on_diff_ml_ctx(uint8_t *peer_addr,
 			}
 			ml_peerlist_lock_release(mlo_peer_list);
 			mlo_dev_lock_release(mld_cur);
-			mlo_err("MLD ID %d ML Peer exists with mac " QDF_MAC_ADDR_FMT,
-				mld_cur->mld_id, QDF_MAC_ADDR_REF(peer_addr));
 			ret_status = true;
 			goto check_same_ml_ctx;
 		}
@@ -691,6 +687,15 @@ bool mlo_mgr_ml_peer_exist_on_diff_ml_ctx(uint8_t *peer_addr,
 check_same_ml_ctx:
 	if (same_ml_ctx)
 		ret_status = false;
+
+	if (ret_status)
+		mlo_err("MLD ID %d exists with mac " QDF_MAC_ADDR_FMT
+			" on different ML dev context",
+			mld_cur->mld_id, QDF_MAC_ADDR_REF(peer_addr));
+	else if (same_ml_ctx)
+		mlo_debug("MLD ID %d mac " QDF_MAC_ADDR_FMT
+			  " on same ML dev context, allow",
+			  mld_cur->mld_id, QDF_MAC_ADDR_REF(peer_addr));
 
 g_ml_ref:
 	ml_link_lock_release(g_mlo_ctx);
