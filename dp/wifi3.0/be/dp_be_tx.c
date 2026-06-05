@@ -1677,7 +1677,8 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 	/* verify checksum offload configuration*/
 	if ((qdf_nbuf_get_tx_cksum(tx_desc->nbuf) ==
 				   QDF_NBUF_TX_CKSUM_TCP_UDP) ||
-	      qdf_nbuf_is_tso(tx_desc->nbuf)) {
+	      qdf_nbuf_is_tso(tx_desc->nbuf) ||
+	      qdf_nbuf_is_uso(tx_desc->nbuf)) {
 		hal_tx_desc_set_l3_checksum_en(hal_tx_desc_cached, 1);
 		hal_tx_desc_set_l4_checksum_en(hal_tx_desc_cached, 1);
 	}
