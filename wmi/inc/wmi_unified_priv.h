@@ -711,6 +711,13 @@ QDF_STATUS (*send_stats_request_cmd)(wmi_unified_t wmi_handle,
 				uint8_t macaddr[QDF_MAC_ADDR_SIZE],
 				struct stats_request_params *param);
 
+QDF_STATUS (*send_modify_tx_plim_cmd)(wmi_unified_t wmi_handle,
+				      enum host_tas_direction direction);
+
+QDF_STATUS (*extract_modify_tx_plim_event)(wmi_unified_t wmi_handle,
+					   void *evt_buf,
+					   uint32_t *status);
+
 #ifdef QCA_SUPPORT_MC_CP_STATS
 QDF_STATUS (*send_request_peer_stats_info_cmd)(wmi_unified_t wmi_handle,
 				struct peer_stats_request_params *param);

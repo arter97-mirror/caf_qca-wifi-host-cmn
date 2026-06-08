@@ -31,6 +31,7 @@
 #include <target_if.h>
 #include <wlan_tgt_def_config.h>
 #include <wmi_unified_api.h>
+#include <wmi_unified_cp_stats_api.h>
 #include <wlan_osif_priv.h>
 #include <wlan_cp_stats_utils_api.h>
 #include <wlan_cp_stats_mc_ucfg_api.h>
@@ -366,6 +367,59 @@ target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
 	}
 
 	return wmi_unified_coex_get_policy_stats_cmd_send(wmi_handle);
+}
+
+QDF_STATUS
+target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
+				 enum host_tas_direction direction)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("Invalid WMI handle");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return wmi_unified_send_modify_tx_plim_cmd(wmi_handle, direction);
+}
+
+static int
+target_if_cp_stats_tas_event_handler(ol_scn_t scn, uint8_t *data,
+				     uint32_t datalen)
+{
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+	struct wlan_objmgr_psoc *psoc;
+	uint32_t fw_status;
+
+	if (!scn || !data) {
+		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		cp_stats_err("psoc is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("wmi_handle is NULL");
+		return -EINVAL;
+	}
+
+	status = wmi_unified_extract_modify_tx_plim_event(wmi_handle,
+							  data, &fw_status);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cp_stats_err("Failed to extract TAS mode event");
+		return -EINVAL;
+	}
+
+	cp_stats_debug("TAS mode set status from FW: %u", fw_status);
+
+	return 0;
 }
 
 QDF_STATUS
@@ -859,6 +913,16 @@ target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 		return ret_val;
 	}
 
+	ret_val = wmi_unified_register_event_handler(
+				wmi_handle,
+				wmi_modify_tx_plim_event_id,
+				target_if_cp_stats_tas_event_handler,
+				WMI_RX_WORK_CTX);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register TAS mode event handler");
+		return ret_val;
+	}
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -878,6 +942,8 @@ target_if_cp_stats_unregister_event_handler(struct wlan_objmgr_psoc *psoc)
 		return QDF_STATUS_E_INVAL;
 	}
 
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_modify_tx_plim_event_id);
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_pdev_cp_fwstats_eventid);
 	target_if_cp_stats_unregister_coex_stats_event(wmi_handle);
@@ -1051,6 +1117,8 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cp_stats_send_coex_stats_req;
 	cp_stats_tx_ops->is_ctas_plim_indication_supported =
 		target_if_is_ctas_plim_indication_supported;
+	cp_stats_tx_ops->send_tas_mode =
+		target_if_cp_stats_send_tas_mode;
 	return QDF_STATUS_SUCCESS;
 }
 

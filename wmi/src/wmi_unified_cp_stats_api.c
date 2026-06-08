@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2021,2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -160,3 +161,27 @@ wmi_extract_inst_rssi_stats_resp(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_E_FAILURE;
 }
 #endif
+
+QDF_STATUS
+wmi_unified_send_modify_tx_plim_cmd(wmi_unified_t wmi_handle,
+				    enum host_tas_direction direction)
+{
+	if (wmi_handle->ops->send_modify_tx_plim_cmd)
+		return wmi_handle->ops->send_modify_tx_plim_cmd(wmi_handle,
+								direction);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_extract_modify_tx_plim_event(wmi_unified_t wmi_handle,
+					 void *evt_buf,
+					 uint32_t *status)
+{
+	if (wmi_handle->ops->extract_modify_tx_plim_event)
+		return wmi_handle->ops->extract_modify_tx_plim_event(wmi_handle,
+								      evt_buf,
+								      status);
+
+	return QDF_STATUS_E_FAILURE;
+}

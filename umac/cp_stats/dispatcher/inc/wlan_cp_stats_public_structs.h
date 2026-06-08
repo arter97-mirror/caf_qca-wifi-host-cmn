@@ -430,4 +430,22 @@ struct wlan_coex_policy_stats {
 	uint8_t ocs_non_wlan_percent;
 	uint32_t monitoring_period;
 };
+
+/**
+ * enum host_tas_direction - Host-level TAS power limit direction
+ * @HOST_TAS_DIRECTION_NONE:     No change in TX power limit
+ * @HOST_TAS_DIRECTION_INCREASE: Increase TX power limit
+ * @HOST_TAS_DIRECTION_DECREASE: Decrease TX power limit
+ *
+ * Host abstraction of wmi_plim_direction_type. Defined in the cp_stats
+ * public structs so it is accessible to both the cp_stats module and the
+ * WMI layer without creating layer violations. The WMI TLV layer converts
+ * this to the corresponding WMI enum before sending to firmware.
+ * Analogous to HOST_TWT_DISABLE_REASON in wmi_unified_twt_param.h.
+ */
+enum host_tas_direction {
+	HOST_TAS_DIRECTION_NONE = 0,
+	HOST_TAS_DIRECTION_INCREASE,
+	HOST_TAS_DIRECTION_DECREASE,
+};
 #endif

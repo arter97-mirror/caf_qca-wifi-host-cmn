@@ -1544,11 +1544,112 @@ wmi_inst_rssi_stats_ops_attach_tlv(struct wmi_ops *ops)
 }
 #endif
 
+/**
+ * wmi_convert_tas_direction() - Convert host TAS direction to WMI direction
+ * @direction: host-level TAS direction (enum host_tas_direction)
+ *
+ * Converts the host abstraction of TAS direction to the corresponding
+ * WMI firmware enum (wmi_plim_direction_type). Analogous to
+ * wmi_convert_dis_reason_code() for TWT disable reason.
+ *
+ * Return: wmi_plim_direction_type value
+ */
+static wmi_plim_direction_type
+wmi_convert_tas_direction(enum host_tas_direction direction)
+{
+	switch (direction) {
+	case HOST_TAS_DIRECTION_NONE:
+		return WMI_PLIM_DIRECTION_NONE;
+	case HOST_TAS_DIRECTION_INCREASE:
+		return WMI_PLIM_DIRECTION_INCREASE;
+	case HOST_TAS_DIRECTION_DECREASE:
+		return WMI_PLIM_DIRECTION_DECREASE;
+	default:
+		return WMI_PLIM_DIRECTION_NONE;
+	}
+}
+
+/**
+ * send_modify_tx_plim_cmd_tlv() - Send WMI_SET_MODIFY_TX_PLIM_CMDID to FW
+ * @wmi_handle: WMI handle
+ * @direction: TAS direction as host_tas_direction; converted to
+ *             wmi_plim_direction_type before writing to cmd
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
+send_modify_tx_plim_cmd_tlv(wmi_unified_t wmi_handle,
+			    enum host_tas_direction direction)
+{
+	wmi_buf_t buf;
+	wmi_set_modify_tx_plim_cmd_fixed_param *cmd;
+	uint32_t len = sizeof(*cmd);
+	QDF_STATUS status;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_set_modify_tx_plim_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_set_modify_tx_plim_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+			wmi_set_modify_tx_plim_cmd_fixed_param));
+	cmd->multiplier = 1;
+	cmd->direction = wmi_convert_tas_direction(direction);
+
+	wmi_debug("TAS WMI_SET_MODIFY_TX_PLIM_CMDID: multiplier=%u direction=%u",
+		  cmd->multiplier, cmd->direction);
+	wmi_mtrace(WMI_SET_MODIFY_TX_PLIM_CMDID, NO_SESSION, 0);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_SET_MODIFY_TX_PLIM_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI_SET_MODIFY_TX_PLIM_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+
+/**
+ * extract_modify_tx_plim_event_tlv() - Extract WMI_MODIFY_TX_PLIM_EVENTID
+ * @wmi_handle: WMI handle
+ * @evt_buf: pointer to event buffer
+ * @status: output, 0 = success, 1 = failure (from firmware)
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
+extract_modify_tx_plim_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+				 uint32_t *status)
+{
+	WMI_MODIFY_TX_PLIM_EVENTID_param_tlvs *param_buf;
+	wmi_modify_tx_plim_event_fixed_param *fixed_param;
+
+	param_buf = (WMI_MODIFY_TX_PLIM_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid modify tx plim event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid modify tx plim event fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	*status = fixed_param->status;
+	return QDF_STATUS_SUCCESS;
+}
+
 void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
 
 	ops->send_stats_request_cmd = send_stats_request_cmd_tlv;
+	ops->send_modify_tx_plim_cmd = send_modify_tx_plim_cmd_tlv;
+	ops->extract_modify_tx_plim_event = extract_modify_tx_plim_event_tlv;
 #ifdef WLAN_FEATURE_BIG_DATA_STATS
 	ops->send_big_data_stats_request_cmd =
 				send_big_data_stats_request_cmd_tlv;

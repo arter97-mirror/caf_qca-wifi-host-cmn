@@ -99,6 +99,21 @@ QDF_STATUS
 target_if_cp_stats_get_coex_stats(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * target_if_cp_stats_send_tas_mode() - Send TAS mode to firmware
+ * @psoc: PSOC object
+ * @direction: TAS direction as enum host_tas_direction; WMI layer converts
+ *             to wmi_plim_direction_type before sending to firmware
+ *
+ * Sends WMI_SET_MODIFY_TX_PLIM_CMDID to firmware. Called via
+ * send_tas_mode tx_ops from ucfg_cp_stats_send_tas_mode().
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
+				 enum host_tas_direction direction);
+
+/**
  * target_if_cp_stats_register_tx_ops() - define cp_stats lmac tx ops functions
  * @tx_ops: pointer to lmac tx ops
  *

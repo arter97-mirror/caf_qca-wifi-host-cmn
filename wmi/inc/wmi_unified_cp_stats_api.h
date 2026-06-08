@@ -195,4 +195,32 @@ QDF_STATUS
 wmi_unified_extract_scan_stats_event(wmi_unified_t wmi_handle, void *evt_buf,
 				     struct wmi_scan_stats_event *scan_stats);
 #endif /* WLAN_FEATURE_QSH_SCAN*/
+
+/**
+ * wmi_unified_send_modify_tx_plim_cmd() - Send WMI_SET_MODIFY_TX_PLIM_CMDID
+ * @wmi_handle: WMI handle
+ * @direction: TAS direction as enum host_tas_direction (defined in
+ *             wlan_cp_stats_public_structs.h); WMI layer converts to
+ *             wmi_plim_direction_type before sending to firmware
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_send_modify_tx_plim_cmd(wmi_unified_t wmi_handle,
+				    enum host_tas_direction direction);
+
+/**
+ * wmi_unified_extract_modify_tx_plim_event() - Extract
+ * WMI_MODIFY_TX_PLIM_EVENTID
+ * @wmi_handle: WMI handle
+ * @evt_buf: pointer to event buffer
+ * @status: output, firmware status (0 = success, 1 = failure)
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_extract_modify_tx_plim_event(wmi_unified_t wmi_handle,
+					 void *evt_buf,
+					 uint32_t *status);
+
 #endif /* _WMI_UNIFIED_CP_STATS_API_H_ */
