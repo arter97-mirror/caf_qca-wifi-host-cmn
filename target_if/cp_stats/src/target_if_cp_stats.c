@@ -384,6 +384,24 @@ target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
 #define TAS_METRICS_LOG_BUF_LEN(n) \
 	(TAS_METRICS_LOG_HDR_LEN + (n) * TAS_METRICS_LOG_CHAIN_LEN)
 
+/*
+ * TAS GET_PLIMIT log buffer sizing:
+ *
+ * Header: "TAS GET_PLIMIT: dsi_id=%u num_chains=%u"
+ *   - literal: 40 chars, dsi_id: 10 digits, num_chains: 2 digits -> 52 -> 60
+ *
+ * Per-chain entry: " [%u: no=%u band=%u power=%d]"
+ *   - index: 2 digits, chain_no: 2 digits, band: 1 digit, power: 5 digits,
+ *     literal: 22 chars -> 32 per chain
+ *
+ * Total for max 24 chains: 60 + 24 * 32 = 828 -> capped at 512 via
+ * qdf_scnprintf truncation for large chain counts.
+ */
+#define TAS_PLIMIT_LOG_HDR_LEN   60
+#define TAS_PLIMIT_LOG_CHAIN_LEN 32
+#define TAS_PLIMIT_LOG_BUF_LEN(n) \
+	QDF_MIN(512, TAS_PLIMIT_LOG_HDR_LEN + (n) * TAS_PLIMIT_LOG_CHAIN_LEN)
+
 QDF_STATUS
 target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
 				 enum host_tas_direction direction)
@@ -414,6 +432,127 @@ target_if_cp_stats_send_get_avg_tx_power(struct wlan_objmgr_psoc *psoc,
 	return wmi_unified_send_get_avg_tx_power_cmd(wmi_handle, dsi_id);
 }
 
+QDF_STATUS
+target_if_cp_stats_send_get_tx_power_calling(struct wlan_objmgr_psoc *psoc,
+					     uint32_t dsi_id)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("Invalid WMI handle");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return wmi_unified_send_get_tx_power_calling_cmd(wmi_handle, dsi_id);
+}
+
+static int
+target_if_cp_stats_plimit_table_event_handler(ol_scn_t scn, uint8_t *data,
+					      uint32_t datalen)
+{
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+	struct wlan_objmgr_psoc *psoc;
+	struct request_info last_req = {0};
+	uint32_t fw_status, dsi_id, num_chains;
+	wmi_tx_power_per_antenna_chain *chain_data = NULL;
+	bool pending = false;
+	struct wlan_tas_plimit_event ev = {0};
+	char *buf;
+	uint32_t i;
+
+	if (!scn || !data) {
+		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		cp_stats_err("psoc is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("wmi_handle is NULL");
+		return -EINVAL;
+	}
+
+	status = wmi_unified_extract_plimit_table_event(wmi_handle, data,
+							&fw_status, &dsi_id,
+							&chain_data,
+							&num_chains);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cp_stats_err("Failed to extract plimit table event");
+		return -EINVAL;
+	}
+
+	status = ucfg_mc_cp_stats_get_pending_req(psoc,
+						  TYPE_TAS_CURRENT_PLIMIT,
+						  &last_req);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cp_stats_err("Failed to get pending TAS plimit request");
+		return -EINVAL;
+	}
+
+	ucfg_mc_cp_stats_reset_pending_req(psoc, TYPE_TAS_CURRENT_PLIMIT,
+					   &last_req, &pending);
+
+	if (pending && last_req.u.get_tas_current_plimit_cb) {
+		ev.fw_status = fw_status;
+		ev.dsi_id = dsi_id;
+		if (chain_data) {
+			ev.num_chains = QDF_MIN(num_chains,
+						WLAN_TAS_MAX_CHAINS);
+			buf = qdf_mem_malloc(TAS_PLIMIT_LOG_BUF_LEN(
+							ev.num_chains));
+			if (buf) {
+				int buf_pos;
+				int buf_len = TAS_PLIMIT_LOG_BUF_LEN(
+							ev.num_chains);
+
+				buf_pos = qdf_scnprintf(
+						buf, buf_len,
+						"TAS GET_PLIMIT: dsi_id=%u num_chains=%u",
+						ev.dsi_id, ev.num_chains);
+				for (i = 0; i < ev.num_chains; i++) {
+					ev.chains[i].chain_no =
+						chain_data[i].chain_no;
+					ev.chains[i].chain_operating_band =
+						chain_data[i].chain_operating_band;
+					ev.chains[i].power_limit_dbm =
+						chain_data[i].power;
+					if (buf_pos < buf_len)
+						buf_pos += qdf_scnprintf(
+							buf + buf_pos,
+							buf_len - buf_pos,
+							" [%u: no=%u band=%u power=%d]",
+							i,
+							ev.chains[i].chain_no,
+							ev.chains[i].chain_operating_band,
+							ev.chains[i].power_limit_dbm);
+				}
+				cp_stats_debug("%s", buf);
+				qdf_mem_free(buf);
+			} else {
+				for (i = 0; i < ev.num_chains; i++) {
+					ev.chains[i].chain_no =
+						chain_data[i].chain_no;
+					ev.chains[i].chain_operating_band =
+						chain_data[i].chain_operating_band;
+					ev.chains[i].power_limit_dbm =
+						chain_data[i].power;
+				}
+			}
+		}
+		last_req.u.get_tas_current_plimit_cb(&ev, last_req.cookie);
+	}
+
+	return 0;
+}
+
 static int
 target_if_cp_stats_avg_tx_power_event_handler(ol_scn_t scn, uint8_t *data,
 					      uint32_t datalen)
@@ -423,7 +562,7 @@ target_if_cp_stats_avg_tx_power_event_handler(ol_scn_t scn, uint8_t *data,
 	struct wlan_objmgr_psoc *psoc;
 	struct request_info last_req = {0};
 	uint32_t fw_status, time_window_in_sec, num_chains;
-	wmi_avg_tx_power_region_per_antenna_chain *chain_data;
+	wmi_avg_tx_power_region_per_antenna_chain *chain_data = NULL;
 	bool pending = false;
 	struct wlan_tas_metrics_event ev = {0};
 	char *buf;
@@ -1068,6 +1207,16 @@ target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 		return ret_val;
 	}
 
+	ret_val = wmi_unified_register_event_handler(
+				wmi_handle,
+				wmi_plimit_table_event_id,
+				target_if_cp_stats_plimit_table_event_handler,
+				WMI_RX_WORK_CTX);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register plimit table event handler");
+		return ret_val;
+	}
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -1087,6 +1236,8 @@ target_if_cp_stats_unregister_event_handler(struct wlan_objmgr_psoc *psoc)
 		return QDF_STATUS_E_INVAL;
 	}
 
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_plimit_table_event_id);
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_avg_tx_power_event_id);
 	wmi_unified_unregister_event_handler(wmi_handle,
@@ -1268,6 +1419,8 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cp_stats_send_tas_mode;
 	cp_stats_tx_ops->send_get_avg_tx_power =
 		target_if_cp_stats_send_get_avg_tx_power;
+	cp_stats_tx_ops->send_get_tx_power_calling =
+		target_if_cp_stats_send_get_tx_power_calling;
 	return QDF_STATUS_SUCCESS;
 }
 

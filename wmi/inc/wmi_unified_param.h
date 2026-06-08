@@ -5766,6 +5766,7 @@ typedef enum {
 	wmi_vdev_chan_hop_status_report_event_id,
 	wmi_modify_tx_plim_event_id,
 	wmi_avg_tx_power_event_id,
+	wmi_plimit_table_event_id,
 	wmi_dcc_get_stats_resp_event_id,
 	wmi_dcc_update_ndl_resp_event_id,
 	wmi_dcc_stats_event_id,

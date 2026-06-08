@@ -253,5 +253,36 @@ wmi_unified_extract_avg_tx_power_event(
 			uint32_t *time_window_in_sec,
 			wmi_avg_tx_power_region_per_antenna_chain **chain_data,
 			uint32_t *num_chains);
+/**
+ * wmi_unified_send_get_tx_power_calling_cmd() - Send
+ *                                               WMI_GET_TX_POWER_CALLING_CMDID
+ * @wmi_handle: WMI handle
+ * @dsi_id: DSI index for which effective per-chain power limits are requested
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_send_get_tx_power_calling_cmd(wmi_unified_t wmi_handle,
+					  uint32_t dsi_id);
+
+/**
+ * wmi_unified_extract_plimit_table_event() - Extract WMI_PLIMIT_TABLE_EVENTID
+ * @wmi_handle: WMI handle
+ * @evt_buf: event data buffer
+ * @fw_status: firmware status output (0=success, 1=failure)
+ * @dsi_id: DSI index output
+ * @chain_data: per-chain data output pointer
+ * @num_chains: number of chains output
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_extract_plimit_table_event(
+				wmi_unified_t wmi_handle,
+				void *evt_buf,
+				uint32_t *fw_status,
+				uint32_t *dsi_id,
+				wmi_tx_power_per_antenna_chain **chain_data,
+				uint32_t *num_chains);
 
 #endif /* _WMI_UNIFIED_CP_STATS_API_H_ */

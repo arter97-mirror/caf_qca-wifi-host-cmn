@@ -1726,6 +1726,84 @@ extract_avg_tx_power_event_tlv(
 	return QDF_STATUS_SUCCESS;
 }
 
+/**
+ * send_get_tx_power_calling_cmd_tlv() - Send WMI_GET_TX_POWER_CALLING_CMDID
+ * @wmi_handle: WMI handle
+ * @dsi_id: DSI index for which effective per-chain power limits are requested
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
+send_get_tx_power_calling_cmd_tlv(wmi_unified_t wmi_handle, uint32_t dsi_id)
+{
+	wmi_buf_t buf;
+	wmi_get_tx_power_calling_cmd_fixed_param *cmd;
+	uint32_t len = sizeof(*cmd);
+	QDF_STATUS status;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_get_tx_power_calling_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_get_tx_power_calling_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+			wmi_get_tx_power_calling_cmd_fixed_param));
+	cmd->dsi_id = dsi_id;
+
+	wmi_mtrace(WMI_GET_TX_POWER_CALLING_CMDID, NO_SESSION, 0);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_GET_TX_POWER_CALLING_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI_GET_TX_POWER_CALLING_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+
+/**
+ * extract_plimit_table_event_tlv() - Extract WMI_PLIMIT_TABLE_EVENTID
+ * @wmi_handle: WMI handle
+ * @evt_buf: event data buffer
+ * @fw_status: firmware status output
+ * @dsi_id: DSI index output
+ * @chain_data: per-chain data output pointer
+ * @num_chains: number of chains output
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_plimit_table_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
+			       uint32_t *fw_status, uint32_t *dsi_id,
+			       wmi_tx_power_per_antenna_chain **chain_data,
+			       uint32_t *num_chains)
+{
+	WMI_PLIMIT_TABLE_EVENTID_param_tlvs *param_buf;
+	wmi_plimit_table_event_fixed_param *fixed_param;
+
+	param_buf = (WMI_PLIMIT_TABLE_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid plimit table event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid plimit table event fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	*fw_status = fixed_param->status;
+	*dsi_id = fixed_param->dsi_id;
+	*chain_data = param_buf->tx_power_per_antenna_chain;
+	*num_chains = param_buf->num_tx_power_per_antenna_chain;
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
@@ -1735,6 +1813,8 @@ void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
 	ops->extract_modify_tx_plim_event = extract_modify_tx_plim_event_tlv;
 	ops->send_get_avg_tx_power_cmd = send_get_avg_tx_power_cmd_tlv;
 	ops->extract_avg_tx_power_event = extract_avg_tx_power_event_tlv;
+	ops->send_get_tx_power_calling_cmd = send_get_tx_power_calling_cmd_tlv;
+	ops->extract_plimit_table_event = extract_plimit_table_event_tlv;
 #ifdef WLAN_FEATURE_BIG_DATA_STATS
 	ops->send_big_data_stats_request_cmd =
 				send_big_data_stats_request_cmd_tlv;

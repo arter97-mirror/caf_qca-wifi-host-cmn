@@ -129,6 +129,22 @@ target_if_cp_stats_send_get_avg_tx_power(struct wlan_objmgr_psoc *psoc,
 					 uint32_t dsi_id);
 
 /**
+ * target_if_cp_stats_send_get_tx_power_calling() - Query effective per-chain
+ *                                                  TX power limits from FW
+ * @psoc: PSOC object
+ * @dsi_id: DSI index for which effective power limits are requested
+ *
+ * Sends WMI_GET_TX_POWER_CALLING_CMDID. The response arrives as
+ * WMI_PLIMIT_TABLE_EVENTID carrying per-chain TX power limits in
+ * units of 0.25 dBm for the specified scenario.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+target_if_cp_stats_send_get_tx_power_calling(struct wlan_objmgr_psoc *psoc,
+					     uint32_t dsi_id);
+
+/**
  * target_if_cp_stats_register_tx_ops() - define cp_stats lmac tx ops functions
  * @tx_ops: pointer to lmac tx ops
  *
