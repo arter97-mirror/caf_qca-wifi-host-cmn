@@ -369,6 +369,21 @@ target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
 	return wmi_unified_coex_get_policy_stats_cmd_send(wmi_handle);
 }
 
+/*
+ * TAS GET_METRICS log buffer sizing:
+ *
+ * Header: "TAS GET_METRICS: num_chains=%u time_window=%u"
+ *   - literal: 44 chars, num_chains: 2 digits, time_window: 10 digits -> 60
+ *
+ * Per-chain entry: " [%u: no=%u band=%u region=%u]"
+ *   - index: 2 digits, chain_no: 10 digits, band: 1 digit, region: 1 digit,
+ *     literal: 24 chars -> 40 per chain
+ */
+#define TAS_METRICS_LOG_HDR_LEN   60
+#define TAS_METRICS_LOG_CHAIN_LEN 40
+#define TAS_METRICS_LOG_BUF_LEN(n) \
+	(TAS_METRICS_LOG_HDR_LEN + (n) * TAS_METRICS_LOG_CHAIN_LEN)
+
 QDF_STATUS
 target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
 				 enum host_tas_direction direction)
@@ -382,6 +397,126 @@ target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
 	}
 
 	return wmi_unified_send_modify_tx_plim_cmd(wmi_handle, direction);
+}
+
+QDF_STATUS
+target_if_cp_stats_send_get_avg_tx_power(struct wlan_objmgr_psoc *psoc,
+					 uint32_t dsi_id)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("Invalid WMI handle");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return wmi_unified_send_get_avg_tx_power_cmd(wmi_handle, dsi_id);
+}
+
+static int
+target_if_cp_stats_avg_tx_power_event_handler(ol_scn_t scn, uint8_t *data,
+					      uint32_t datalen)
+{
+	QDF_STATUS status;
+	struct wmi_unified *wmi_handle;
+	struct wlan_objmgr_psoc *psoc;
+	struct request_info last_req = {0};
+	uint32_t fw_status, time_window_in_sec, num_chains;
+	wmi_avg_tx_power_region_per_antenna_chain *chain_data;
+	bool pending = false;
+	struct wlan_tas_metrics_event ev = {0};
+	char *buf;
+	uint32_t i;
+
+	if (!scn || !data) {
+		cp_stats_err("scn: 0x%pK, data: 0x%pK", scn, data);
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		cp_stats_err("psoc is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("wmi_handle is NULL");
+		return -EINVAL;
+	}
+
+	status = wmi_unified_extract_avg_tx_power_event(
+						wmi_handle, data,
+						&fw_status,
+						&time_window_in_sec,
+						&chain_data, &num_chains);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cp_stats_err("Failed to extract avg tx power event");
+		return -EINVAL;
+	}
+
+	status = ucfg_mc_cp_stats_get_pending_req(psoc, TYPE_TAS_METRICS,
+						  &last_req);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		cp_stats_err("Failed to get pending TAS metrics request");
+		return -EINVAL;
+	}
+
+	ucfg_mc_cp_stats_reset_pending_req(psoc, TYPE_TAS_METRICS,
+					   &last_req, &pending);
+
+	if (pending && last_req.u.get_tas_metrics_cb) {
+		ev.fw_status = fw_status;
+		ev.time_window_in_sec = time_window_in_sec;
+		if (chain_data) {
+			ev.num_chains =
+				QDF_MIN(num_chains, WLAN_TAS_MAX_CHAINS);
+			buf = qdf_mem_malloc(TAS_METRICS_LOG_BUF_LEN(
+								ev.num_chains));
+			if (buf) {
+				int buf_pos;
+				int buf_len = TAS_METRICS_LOG_BUF_LEN(
+								ev.num_chains);
+
+				buf_pos = qdf_scnprintf(buf, buf_len,
+							"TAS GET_METRICS: num_chains=%u time_window=%u",
+							ev.num_chains,
+							ev.time_window_in_sec);
+				for (i = 0; i < ev.num_chains; i++) {
+					ev.chains[i].chain_no =
+						chain_data[i].chain_no;
+					ev.chains[i].chain_operating_band =
+						chain_data[i].chain_operating_band;
+					ev.chains[i].chain_power_region =
+						chain_data[i].chain_power_region;
+					if (buf_pos < buf_len)
+						buf_pos += qdf_scnprintf(
+						buf + buf_pos,
+						buf_len - buf_pos,
+						" [%u: no=%u band=%u region=%u]",
+						i,
+						ev.chains[i].chain_no,
+						ev.chains[i].chain_operating_band,
+						ev.chains[i].chain_power_region);
+				}
+				cp_stats_debug("%s", buf);
+				qdf_mem_free(buf);
+			} else {
+				for (i = 0; i < ev.num_chains; i++) {
+					ev.chains[i].chain_no = chain_data[i].chain_no;
+					ev.chains[i].chain_operating_band =
+						chain_data[i].chain_operating_band;
+					ev.chains[i].chain_power_region =
+						chain_data[i].chain_power_region;
+				}
+			}
+		}
+		last_req.u.get_tas_metrics_cb(&ev, last_req.cookie);
+	}
+
+	return 0;
 }
 
 static int
@@ -923,6 +1058,16 @@ target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 		return ret_val;
 	}
 
+	ret_val = wmi_unified_register_event_handler(
+				wmi_handle,
+				wmi_avg_tx_power_event_id,
+				target_if_cp_stats_avg_tx_power_event_handler,
+				WMI_RX_WORK_CTX);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register avg tx power event handler");
+		return ret_val;
+	}
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -942,6 +1087,8 @@ target_if_cp_stats_unregister_event_handler(struct wlan_objmgr_psoc *psoc)
 		return QDF_STATUS_E_INVAL;
 	}
 
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_avg_tx_power_event_id);
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_modify_tx_plim_event_id);
 	wmi_unified_unregister_event_handler(wmi_handle,
@@ -1119,6 +1266,8 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_is_ctas_plim_indication_supported;
 	cp_stats_tx_ops->send_tas_mode =
 		target_if_cp_stats_send_tas_mode;
+	cp_stats_tx_ops->send_get_avg_tx_power =
+		target_if_cp_stats_send_get_avg_tx_power;
 	return QDF_STATUS_SUCCESS;
 }
 

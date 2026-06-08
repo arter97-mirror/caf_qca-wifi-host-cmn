@@ -1643,6 +1643,89 @@ extract_modify_tx_plim_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_SUCCESS;
 }
 
+/**
+ * send_get_avg_tx_power_cmd_tlv() - Send WMI_GET_AVG_TX_POWER_CMDID to FW
+ * @wmi_handle: WMI handle
+ * @dsi_id: active Device State Index for which avg TX power is requested
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+static QDF_STATUS
+send_get_avg_tx_power_cmd_tlv(wmi_unified_t wmi_handle, uint32_t dsi_id)
+{
+	wmi_buf_t buf;
+	wmi_get_avg_tx_power_cmd_fixed_param *cmd;
+	uint32_t len = sizeof(*cmd);
+	QDF_STATUS status;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_get_avg_tx_power_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(
+		&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_get_avg_tx_power_cmd_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+			wmi_get_avg_tx_power_cmd_fixed_param));
+	cmd->dsi_id = dsi_id;
+
+	wmi_mtrace(WMI_GET_AVG_TX_POWER_CMDID, NO_SESSION, 0);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_GET_AVG_TX_POWER_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("Failed to send WMI_GET_AVG_TX_POWER_CMDID");
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+
+/**
+ * extract_avg_tx_power_event_tlv() - Extract WMI_AVG_TX_POWER_EVENTID
+ * @wmi_handle: WMI handle
+ * @evt_buf: event data buffer
+ * @fw_status: firmware status output
+ * @time_window_in_sec: time window output
+ * @chain_data: per-chain data output pointer
+ * @num_chains: number of chains output
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+extract_avg_tx_power_event_tlv(
+			wmi_unified_t wmi_handle, void *evt_buf,
+			uint32_t *fw_status,
+			uint32_t *time_window_in_sec,
+			wmi_avg_tx_power_region_per_antenna_chain **chain_data,
+			uint32_t *num_chains)
+{
+	WMI_AVG_TX_POWER_EVENTID_param_tlvs *param_buf;
+	wmi_avg_tx_power_event_fixed_param *fixed_param;
+
+	param_buf = (WMI_AVG_TX_POWER_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid avg tx power event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_buf->fixed_param;
+	if (!fixed_param) {
+		wmi_err("Invalid avg tx power event fixed param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	*fw_status = fixed_param->status;
+	*time_window_in_sec = fixed_param->time_window_in_sec;
+	*chain_data = param_buf->avg_tx_power_region_per_antenna_chain;
+	*num_chains = param_buf->num_avg_tx_power_region_per_antenna_chain;
+
+	wmi_debug("TAS WMI_AVG_TX_POWER_EVENTID: fw_status=%u time_window=%u num_chains=%u",
+		  *fw_status, *time_window_in_sec, *num_chains);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
@@ -1650,6 +1733,8 @@ void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_stats_request_cmd = send_stats_request_cmd_tlv;
 	ops->send_modify_tx_plim_cmd = send_modify_tx_plim_cmd_tlv;
 	ops->extract_modify_tx_plim_event = extract_modify_tx_plim_event_tlv;
+	ops->send_get_avg_tx_power_cmd = send_get_avg_tx_power_cmd_tlv;
+	ops->extract_avg_tx_power_event = extract_avg_tx_power_event_tlv;
 #ifdef WLAN_FEATURE_BIG_DATA_STATS
 	ops->send_big_data_stats_request_cmd =
 				send_big_data_stats_request_cmd_tlv;

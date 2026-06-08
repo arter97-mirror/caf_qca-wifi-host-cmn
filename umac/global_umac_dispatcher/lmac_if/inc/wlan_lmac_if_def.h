@@ -178,6 +178,7 @@ typedef struct cp_stats_power_datapath_info stats_cp_stats_power_datapath_info;
  * @send_req_coex_stats: Send coex stats request to FW
  * @is_ctas_plim_indication_supported: Check FW support for C-TAS PLIM
  * @send_tas_mode: send tas mode to firmware
+ * @send_get_avg_tx_power: send get_avg_tx_power request to firmware
  */
 struct wlan_lmac_if_cp_stats_tx_ops {
 	QDF_STATUS (*cp_stats_attach)(struct wlan_objmgr_psoc *psoc);
@@ -229,6 +230,8 @@ struct wlan_lmac_if_cp_stats_tx_ops {
 					struct wlan_objmgr_psoc *psoc);
 	QDF_STATUS (*send_tas_mode)(struct wlan_objmgr_psoc *psoc,
 				    enum host_tas_direction direction);
+	QDF_STATUS (*send_get_avg_tx_power)(struct wlan_objmgr_psoc *psoc,
+					    uint32_t dsi_id);
 };
 
 /**

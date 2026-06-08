@@ -114,6 +114,21 @@ target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
 				 enum host_tas_direction direction);
 
 /**
+ * target_if_cp_stats_send_get_avg_tx_power() - Query avg TX power from FW
+ * @psoc: PSOC object
+ * @dsi_id: active Device State Index for which avg TX power is requested
+ *
+ * Sends WMI_GET_AVG_TX_POWER_CMDID. The response arrives as
+ * WMI_AVG_TX_POWER_EVENTID carrying per-chain power region classifications
+ * and the regulatory measurement time window.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+target_if_cp_stats_send_get_avg_tx_power(struct wlan_objmgr_psoc *psoc,
+					 uint32_t dsi_id);
+
+/**
  * target_if_cp_stats_register_tx_ops() - define cp_stats lmac tx ops functions
  * @tx_ops: pointer to lmac tx ops
  *

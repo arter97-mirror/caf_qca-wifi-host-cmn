@@ -25948,6 +25948,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 					WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID;
 	event_ids[wmi_modify_tx_plim_event_id] =
 					WMI_MODIFY_TX_PLIM_EVENTID;
+	event_ids[wmi_avg_tx_power_event_id] =
+					WMI_AVG_TX_POWER_EVENTID;
 	event_ids[wmi_dcc_get_stats_resp_event_id] =
 				WMI_DCC_GET_STATS_RESP_EVENTID;
 	event_ids[wmi_dcc_update_ndl_resp_event_id] =

@@ -431,6 +431,11 @@ struct wlan_coex_policy_stats {
 	uint32_t monitoring_period;
 };
 
+#define WLAN_TAS_NUM_BANDS            3
+#define WLAN_TAS_MAX_CHAINS_PER_BAND  8
+#define WLAN_TAS_MAX_CHAINS           (WLAN_TAS_MAX_CHAINS_PER_BAND * \
+					WLAN_TAS_NUM_BANDS)
+
 /**
  * enum host_tas_direction - Host-level TAS power limit direction
  * @HOST_TAS_DIRECTION_NONE:     No change in TX power limit

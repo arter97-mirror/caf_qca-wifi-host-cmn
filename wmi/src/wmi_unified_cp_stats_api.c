@@ -185,3 +185,32 @@ wmi_unified_extract_modify_tx_plim_event(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_unified_send_get_avg_tx_power_cmd(wmi_unified_t wmi_handle,
+				      uint32_t dsi_id)
+{
+	if (wmi_handle->ops->send_get_avg_tx_power_cmd)
+		return wmi_handle->ops->send_get_avg_tx_power_cmd(wmi_handle,
+								  dsi_id);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_unified_extract_avg_tx_power_event(
+		wmi_unified_t wmi_handle,
+		void *evt_buf,
+		uint32_t *fw_status,
+		uint32_t *time_window_in_sec,
+		wmi_avg_tx_power_region_per_antenna_chain **chain_data,
+		uint32_t *num_chains)
+{
+	if (wmi_handle->ops->extract_avg_tx_power_event)
+		return wmi_handle->ops->extract_avg_tx_power_event(
+					wmi_handle, evt_buf,
+					fw_status, time_window_in_sec,
+					chain_data, num_chains);
+
+	return QDF_STATUS_E_FAILURE;
+}

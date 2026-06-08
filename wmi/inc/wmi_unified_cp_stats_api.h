@@ -223,4 +223,35 @@ wmi_unified_extract_modify_tx_plim_event(wmi_unified_t wmi_handle,
 					 void *evt_buf,
 					 uint32_t *status);
 
+/**
+ * wmi_unified_send_get_avg_tx_power_cmd() - Send WMI_GET_AVG_TX_POWER_CMDID
+ * @wmi_handle: WMI handle
+ * @dsi_id: active Device State Index for which avg TX power is requested
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_send_get_avg_tx_power_cmd(wmi_unified_t wmi_handle,
+				      uint32_t dsi_id);
+
+/**
+ * wmi_unified_extract_avg_tx_power_event() - Extract WMI_AVG_TX_POWER_EVENTID
+ * @wmi_handle: WMI handle
+ * @evt_buf: event data buffer
+ * @fw_status: firmware status output (0=success, 1=failure)
+ * @time_window_in_sec: time window output
+ * @chain_data: per-chain data output pointer
+ * @num_chains: number of chains output
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_** on error
+ */
+QDF_STATUS
+wmi_unified_extract_avg_tx_power_event(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			uint32_t *fw_status,
+			uint32_t *time_window_in_sec,
+			wmi_avg_tx_power_region_per_antenna_chain **chain_data,
+			uint32_t *num_chains);
+
 #endif /* _WMI_UNIFIED_CP_STATS_API_H_ */

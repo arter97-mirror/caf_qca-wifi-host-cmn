@@ -718,6 +718,17 @@ QDF_STATUS (*extract_modify_tx_plim_event)(wmi_unified_t wmi_handle,
 					   void *evt_buf,
 					   uint32_t *status);
 
+QDF_STATUS (*send_get_avg_tx_power_cmd)(wmi_unified_t wmi_handle,
+					uint32_t dsi_id);
+
+QDF_STATUS (*extract_avg_tx_power_event)(
+			wmi_unified_t wmi_handle,
+			void *evt_buf,
+			uint32_t *fw_status,
+			uint32_t *time_window_in_sec,
+			wmi_avg_tx_power_region_per_antenna_chain **chain_data,
+			uint32_t *num_chains);
+
 #ifdef QCA_SUPPORT_MC_CP_STATS
 QDF_STATUS (*send_request_peer_stats_info_cmd)(wmi_unified_t wmi_handle,
 				struct peer_stats_request_params *param);
