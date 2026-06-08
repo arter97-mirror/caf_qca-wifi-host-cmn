@@ -3817,3 +3817,88 @@ mlo_get_standby_mlo_link_chan_in_freq_range(struct wlan_objmgr_psoc *psoc,
 }
 
 #endif
+
+#ifdef WLAN_FEATURE_11BN_ECU
+QDF_STATUS mlo_set_ecu_ebpcc(struct wlan_objmgr_vdev *vdev,
+			     uint8_t link_id, uint8_t ebpcc)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_link_info *link_info;
+	uint8_t idx;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_debug("ML dev ctx is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!mlo_dev_ctx->sta_ctx) {
+		mlo_debug("ML sta ctx is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (link_id >= WLAN_MAX_ML_BSS_LINKS) {
+		mlo_debug("Invalid link_id %u (max %u)", link_id,
+			  WLAN_MAX_ML_BSS_LINKS - 1);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	link_info = &mlo_dev_ctx->sta_ctx->links_info[0];
+	for (idx = 0; idx < WLAN_MAX_ML_BSS_LINKS; idx++) {
+		if (link_info[idx].link_id == link_id) {
+			link_info[idx].ebpcc = ebpcc;
+			status = QDF_STATUS_SUCCESS;
+			break;
+		}
+	}
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	return status;
+}
+
+QDF_STATUS mlo_get_ecu_ebpcc(struct wlan_objmgr_vdev *vdev,
+			     uint8_t link_id, uint8_t *ebpcc)
+{
+	struct wlan_mlo_dev_context *mlo_dev_ctx;
+	struct mlo_link_info *link_info;
+	uint8_t idx;
+	QDF_STATUS status = QDF_STATUS_E_INVAL;
+
+	if (!ebpcc) {
+		mlo_debug("ebpcc output pointer is NULL");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	mlo_dev_ctx = vdev->mlo_dev_ctx;
+	if (!mlo_dev_ctx) {
+		mlo_debug("ML dev ctx is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (!mlo_dev_ctx->sta_ctx) {
+		mlo_debug("ML sta ctx is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (link_id >= WLAN_MAX_ML_BSS_LINKS) {
+		mlo_debug("Invalid link_id %u (max %u)", link_id,
+			  WLAN_MAX_ML_BSS_LINKS - 1);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	mlo_dev_lock_acquire(mlo_dev_ctx);
+	link_info = &mlo_dev_ctx->sta_ctx->links_info[0];
+	for (idx = 0; idx < WLAN_MAX_ML_BSS_LINKS; idx++) {
+		if (link_info[idx].link_id == link_id) {
+			*ebpcc = link_info[idx].ebpcc;
+			status = QDF_STATUS_SUCCESS;
+			break;
+		}
+	}
+	mlo_dev_lock_release(mlo_dev_ctx);
+
+	return status;
+}
+#endif /* WLAN_FEATURE_11BN_ECU */

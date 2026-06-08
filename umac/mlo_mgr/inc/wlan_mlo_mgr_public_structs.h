@@ -1012,6 +1012,8 @@ struct mlnawds_config {
  * @vdev_id: VDEV ID
  * @link_id: link index
  * @bpcc: Value of BPCC from the beacon or probe response in RNR or ML IE.
+ * @ebpcc: Enhanced BSS Parameter Change Count (per-link)
+ * @ebpcc_present: Whether EBPCC was present in the last parsed Per-STA Profile
  * @cnx_tx_nss: Intersected Tx NSS value with peer Rx NSS
  * @cnx_rx_nss: Intersected Rx NSS value with peer Tx NSS
  * @chan_freq: Operating channel frequency
@@ -1029,6 +1031,10 @@ struct mlo_link_info {
 	uint8_t vdev_id;
 	uint8_t link_id;
 	uint8_t bpcc;
+#ifdef WLAN_FEATURE_11BN_ECU
+	uint8_t ebpcc;
+	bool ebpcc_present;
+#endif
 	uint8_t cnx_tx_nss;
 	uint8_t cnx_rx_nss;
 	uint16_t chan_freq;
@@ -2258,4 +2264,17 @@ struct wlan_mlo_sta_entry {
 	struct qdf_mac_addr peer_mld_addr;
 };
 
+#ifdef WLAN_FEATURE_11BN_ECU
+/**
+ * struct mlo_persta_ecu_info - Per-STA Profile ECU info from Basic variant MLE
+ * @link_id: Link ID of the affiliated AP
+ * @ebpcc: Enhanced BSS Parameter Change Count value from STA Info field
+ * @ebpcc_present: Whether EBPCC is present in this Per-STA Profile
+ */
+struct mlo_persta_ecu_info {
+	uint8_t link_id;
+	uint8_t ebpcc;
+	bool ebpcc_present;
+};
+#endif /* WLAN_FEATURE_11BN_ECU */
 #endif

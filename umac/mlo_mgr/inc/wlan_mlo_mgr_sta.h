@@ -1640,4 +1640,42 @@ mlo_clear_sta_key_mgmt(struct wlan_objmgr_vdev *vdev)
 {
 }
 #endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
+
+#ifdef WLAN_FEATURE_11BN_ECU
+/**
+ * mlo_set_ecu_ebpcc() - set the Enhanced BSS Parameter Change Count per link
+ * @vdev: vdev object
+ * @link_id: Link ID to set EBPCC for
+ * @ebpcc: Enhanced BSS Parameter Change Count value to store
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_set_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
+			     uint8_t ebpcc);
+
+/**
+ * mlo_get_ecu_ebpcc() - get the Enhanced BSS Parameter Change Count per link
+ * @vdev: vdev object
+ * @link_id: Link ID to get EBPCC for
+ * @ebpcc: pointer to store the Enhanced BSS Parameter Change Count
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_get_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
+			     uint8_t *ebpcc);
+#else
+static inline QDF_STATUS
+mlo_set_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
+		  uint8_t ebpcc)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+mlo_get_ecu_ebpcc(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
+		  uint8_t *ebpcc)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* WLAN_FEATURE_11BN_ECU */
 #endif
