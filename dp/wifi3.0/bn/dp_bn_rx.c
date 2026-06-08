@@ -429,6 +429,19 @@ more_data:
 			continue;
 		}
 
+		status = dp_rx_ring_desc_validate(ring_desc);
+		if (qdf_unlikely(QDF_IS_STATUS_ERROR(status))) {
+			status = dp_rx_stale_entry_handle(soc, reo_ring_num);
+			if (QDF_IS_STATUS_SUCCESS(status)) {
+				hal_srng_dst_dec_tp(hal_soc, hal_ring_hdl);
+				break;
+			}
+			DP_STATS_INC(soc, rx.err.stale_rx_desc, 1);
+			continue;
+		}
+
+		dp_rx_reset_stale_entry_detection(soc, reo_ring_num);
+
 		cc_status = HAL_RX_REO_CC_STATUS_GET_BN(ring_desc);
 		/* cookie conversion status 1, fetch VA directly */
 		if (qdf_likely(cc_status)) {
@@ -442,6 +455,8 @@ more_data:
 
 		dp_rx_ring_record_entry_bn(soc, reo_ring_num, ring_desc,
 					   cc_status, rx_desc);
+
+		dp_rx_ring_desc_invalidate(ring_desc);
 
 		status = dp_rx_desc_sanity(soc, hal_soc, hal_ring_hdl,
 					   ring_desc, rx_desc);

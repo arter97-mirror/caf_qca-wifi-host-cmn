@@ -535,6 +535,25 @@ hal_rx_msdu_desc_info_get_be(void *desc_addr,
 #endif /* FEATURE_DAL_DP_SUPPORT */
 
 #ifdef CONFIG_BORON
+/*
+ * The first two dwords of the BN REO destination ring descriptor carry
+ * different content depending on the cookie-conversion status bit:
+ *
+ *   cc_status == 1 (HW cookie conversion done):
+ *     dword[0] = virtual address bits 31:0
+ *     dword[1] = virtual address bits 63:32
+ *
+ *   cc_status == 0 (SW cookie conversion needed):
+ *     dword[0] = buffer physical address bits 31:0
+ *     dword[1] = SW buffer cookie / RBM / other buffer_addr_info fields
+ *
+ * In both cases dword[1] is poisoned with the invalidation magic after
+ * each reap so that a stale descriptor can be detected on the next poll.
+ */
+#define HAL_REO_DEST_VA_63_32_OFFSET   0x00000004
+#define HAL_REO_DEST_VA_63_32_LSB      0
+#define HAL_REO_DEST_VA_63_32_MASK     0xffffffff
+
 /**
  * hal_rx_get_reo_desc_va() - Get Desc virtual address within REO Desc
  * @reo_desc: REO2SW ring descriptor pointer
@@ -549,6 +568,31 @@ static inline uintptr_t hal_rx_get_reo_desc_va(void *reo_desc)
 	va_from_desc = qdf_le64_to_cpu(*(uint64_t *)reo_desc);
 
 	return (uintptr_t)va_from_desc;
+}
+
+/**
+ * hal_rx_get_reo_desc_va_63_32() - Get bits 63~32 of buffer VA
+ *  address from BN REO destination ring descriptor
+ * @reo_desc: REO2SW ring descriptor pointer
+ *
+ * Return: 32-63 buffer VA
+ */
+static inline uint32_t hal_rx_get_reo_desc_va_63_32(void *reo_desc)
+{
+	return HAL_RX_GET(reo_desc, HAL_REO_DEST, VA_63_32);
+}
+
+/**
+ * hal_rx_set_reo_desc_va_63_32() - Set bits 63~32 of buffer VA
+ *  in BN REO destination ring descriptor
+ * @reo_desc: REO2SW ring descriptor pointer
+ * @val: value to be set
+ *
+ * Return: None
+ */
+static inline void hal_rx_set_reo_desc_va_63_32(void *reo_desc, uint32_t val)
+{
+	HAL_SET_FLD(reo_desc, HAL_REO_DEST, VA_63_32) = val;
 }
 #else
 /**
