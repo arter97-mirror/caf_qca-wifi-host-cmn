@@ -761,6 +761,7 @@ enum element_ie {
  * @WLAN_EXTN_ELEMID_UHRCAP: UHR Capabilities IE
  * @WLAN_EXTN_ELEMID_UHROP: UHR Operation IE
  * @WLAN_EXTN_ELEMID_UHRCAP: UHR CAP IE
+ * @WLAN_EXTN_ELEMID_SMD_INFO: SMD Info IE
  */
 enum extn_element_ie {
 	WLAN_EXTN_ELEMID_ESP         = 11,
@@ -791,6 +792,9 @@ enum extn_element_ie {
 #ifdef WLAN_FEATURE_11BN
 	WLAN_EXTN_ELEMID_UHROP       = 151,
 	WLAN_EXTN_ELEMID_UHRCAP      = 152,
+#endif
+#ifdef WLAN_FEATURE_11BN_SMD
+	WLAN_EXTN_ELEMID_SMD_INFO    = 154,
 #endif
 };
 
@@ -5225,4 +5229,92 @@ struct wlan_uhr_op_ie {
 #define WLAN_UHR_DBE_DSBMP_IDX             8
 #define WLAN_UHR_DBE_DSBMP_BITS            16
 #endif
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * struct smd_capabilities - SMD Capabilities bitfield structure
+ * @dl_data_forwarding: DL Data Forwarding support
+ *                      0 = Not supported
+ *                      1 = Supported
+ * @max_num_prepared_target_ap_mlds: Maximum Number of Prepared Target AP MLDs
+ *                                   Values 0-7 (3 bits)
+ * @smd_type: SMD Type
+ *            0 = Infrastructure
+ *            1 = IBSS
+ * @ptk_mode: PTK Mode
+ *            0 = Per-SMD PTK
+ *            1 = Per-AP MLD PTK
+ * @neigh_ap_probe: Neighbouring AP probe support
+ * @reserved: Reserved bits (must be 0)
+ */
+struct smd_capabilities {
+	uint8_t dl_data_forwarding:1;
+	uint8_t max_num_prepared_target_ap_mlds:3;
+	uint8_t smd_type:1;
+	uint8_t ptk_mode:1;
+	uint8_t neigh_ap_probe:1;
+	uint8_t reserved:1;
+};
+
+#define WLAN_SMD_INFO_IE_MIN_LEN 9  /* 1 (EXTN_ID) + 6 (ID) + 1 (cap) + 1 (timeout) */
+#define WLAN_SMD_IE_MAX_LEN  11
+/* SMD Capabilities field bit positions and masks (per 802.11bn spec) */
+#define SMD_CAP_DL_DATA_FWD_MASK        0x01  /* Bit 0 */
+#define SMD_CAP_DL_DATA_FWD_SHIFT       0
+
+#define SMD_CAP_MAX_TARGET_MASK         0x0E  /* Bits 1-3 */
+#define SMD_CAP_MAX_TARGET_SHIFT        1
+
+#define SMD_CAP_TYPE_MASK               0x10  /* Bit 4 */
+#define SMD_CAP_TYPE_SHIFT              4
+
+#define SMD_CAP_PTK_MODE_MASK           0x20  /* Bit 5 */
+#define SMD_CAP_PTK_MODE_SHIFT          5
+
+#define SMD_CAP_NEIGH_AP_PROBE_MASK     0x40  /* Bit 6 */
+#define SMD_CAP_NEIGH_AP_PROBE_SHIFT    6
+
+#define SMD_CAP_RESERVED_MASK           0x80  /* Bit 7 */
+#define SMD_CAP_RESERVED_SHIFT          7
+
+/* Helper macros to extract capability fields */
+#define SMD_CAP_GET_DL_DATA_FWD(cap) \
+	(((cap) & SMD_CAP_DL_DATA_FWD_MASK) >> SMD_CAP_DL_DATA_FWD_SHIFT)
+
+#define SMD_CAP_GET_MAX_TARGET(cap) \
+	(((cap) & SMD_CAP_MAX_TARGET_MASK) >> SMD_CAP_MAX_TARGET_SHIFT)
+
+#define SMD_CAP_GET_TYPE(cap) \
+	(((cap) & SMD_CAP_TYPE_MASK) >> SMD_CAP_TYPE_SHIFT)
+
+#define SMD_CAP_GET_PTK_MODE(cap) \
+	(((cap) & SMD_CAP_PTK_MODE_MASK) >> SMD_CAP_PTK_MODE_SHIFT)
+
+#define SMD_CAP_GET_NEIGH_AP_PROBE(cap) \
+	(((cap) & SMD_CAP_NEIGH_AP_PROBE_MASK) >> SMD_CAP_NEIGH_AP_PROBE_SHIFT)
+
+#define SMD_CAP_GET_RESERVED(cap) \
+	(((cap) & SMD_CAP_RESERVED_MASK) >> SMD_CAP_RESERVED_SHIFT)
+
+/**
+ * struct wlan_smd_ie - SMD Information Element storage
+ * @present: True if SMD IE was found in the scan entry
+ * @smd_identifier: SMD Identifier in MAC address format
+ * @smd_cap: Parsed SMD capabilities bitfield
+ * @smd_timeout: SMD timeout value in TUs
+ * @data: Raw IE bytes including Element ID and Length
+ * @num_data: Total number of bytes in data array
+ *
+ * This structure stores the complete SMD Information Element
+ * in wire format, ready to be copied into management frames.
+ */
+struct wlan_smd_ie {
+	bool present;
+	uint8_t smd_identifier[QDF_MAC_ADDR_SIZE];
+	struct smd_capabilities smd_cap;
+	uint8_t smd_timeout;
+	uint8_t data[WLAN_SMD_IE_MAX_LEN];
+	uint16_t num_data;
+} qdf_packed;
+#endif /* WLAN_FEATURE_11BN_SMD */
 #endif /* _WLAN_CMN_IEEE80211_DEFS_H_ */
