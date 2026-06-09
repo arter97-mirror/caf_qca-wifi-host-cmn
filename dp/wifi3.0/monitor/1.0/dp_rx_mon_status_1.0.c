@@ -526,22 +526,15 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 					  ppdu_info->user_id, RX_SIDE);
 		dp_mon_rx_stats_update_rssi_dbm_params(mon_pdev, ppdu_info);
 
-		if (qdf_unlikely(mon_pdev->dp_peer_based_pktlog)) {
-			dp_rx_process_peer_based_pktlog(soc, ppdu_info,
-							status_nbuf,
-							pdev->pdev_id);
-		} else {
-			if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_FULL))
-				pktlog_mode = WDI_EVENT_RX_DESC;
-			else if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_LITE))
-				pktlog_mode = WDI_EVENT_LITE_RX;
+		if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_FULL))
+			pktlog_mode = WDI_EVENT_RX_DESC;
+		else if (qdf_unlikely(mon_pdev->rx_pktlog_mode == DP_RX_PKTLOG_LITE))
+			pktlog_mode = WDI_EVENT_LITE_RX;
 
-			if (qdf_unlikely(pktlog_mode != WDI_NO_VAL))
-				dp_wdi_event_handler(pktlog_mode, soc,
-						     status_nbuf,
-						     HTT_INVALID_PEER,
-						     WDI_NO_VAL, pdev->pdev_id);
-		}
+		if (qdf_unlikely(pktlog_mode != WDI_NO_VAL))
+			dp_wdi_event_handler(pktlog_mode, soc, status_nbuf,
+					     HTT_INVALID_PEER,
+					     WDI_NO_VAL, pdev->pdev_id);
 
 		if (qdf_unlikely(IS_LOCAL_PKT_CAPTURE_RUNNING(mon_pdev,
 							      is_local_pkt_capture_running)))

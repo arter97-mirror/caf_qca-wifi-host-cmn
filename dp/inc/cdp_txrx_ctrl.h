@@ -659,39 +659,6 @@ cdp_txrx_peer_protocol_cnt(ol_txrx_soc_handle soc,
 #endif
 
 /**
- * cdp_enable_peer_based_pktlog()- Set flag in peer structure
- * @soc: pointer to the soc
- * @pdev_id: id of the data physical device object
- * @enable: enable or disable peer based filter based pktlog
- * @peer_macaddr: Mac address of peer which needs to be
- * filtered
- *
- * This function will set flag in peer structure if peer based filtering
- * is enabled for pktlog
- *
- * Return: int
- */
-static inline int
-cdp_enable_peer_based_pktlog(ol_txrx_soc_handle soc, uint8_t pdev_id,
-			     char *peer_macaddr,
-			     uint8_t enable)
-{
-	if (!soc || !soc->ops) {
-		QDF_TRACE_ERROR(QDF_MODULE_ID_DP,
-				"%s invalid instance", __func__);
-		QDF_BUG(0);
-		return 0;
-	}
-
-	if (!soc->ops->ctrl_ops ||
-	    !soc->ops->ctrl_ops->enable_peer_based_pktlog)
-		return 0;
-
-	return soc->ops->ctrl_ops->enable_peer_based_pktlog
-			(soc, pdev_id, peer_macaddr, enable);
-}
-
-/**
  * cdp_calculate_delay_stats()- get rx delay stats
  * @soc: pointer to the soc
  * @vdev_id: id of vdev handle

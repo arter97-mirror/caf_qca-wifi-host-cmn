@@ -5513,7 +5513,7 @@ static QDF_STATUS dp_vdev_attach_wifi3(struct cdp_soc_t *cdp_soc,
 	if (wlan_op_mode_monitor == vdev->opmode) {
 		if (dp_monitor_vdev_attach(vdev) == QDF_STATUS_SUCCESS) {
 			dp_monitor_pdev_set_mon_vdev(vdev);
-			return dp_monitor_vdev_set_monitor_mode_buf_rings(pdev);
+			return QDF_STATUS_SUCCESS;
 		}
 		return QDF_STATUS_E_FAILURE;
 	}
@@ -9800,11 +9800,6 @@ static QDF_STATUS dp_set_pdev_param(struct cdp_soc_t *cdp_soc, uint8_t pdev_id,
 		dp_monitor_set_atf_stats_enable(pdev,
 					val.cdp_pdev_param_atf_stats_enable);
 		break;
-	case CDP_CONFIG_SPECIAL_VAP:
-		dp_monitor_pdev_config_scan_spcl_vap(pdev,
-					val.cdp_pdev_param_config_special_vap);
-		dp_monitor_vdev_set_monitor_mode_buf_rings(pdev);
-		break;
 	case CDP_RESET_SCAN_SPCL_VAP_STATS_ENABLE:
 		dp_monitor_pdev_reset_scan_spcl_vap_stats_enable(pdev,
 				val.cdp_pdev_param_reset_scan_spcl_vap_stats_enable);
@@ -9825,10 +9820,6 @@ static QDF_STATUS dp_set_pdev_param(struct cdp_soc_t *cdp_soc, uint8_t pdev_id,
 		break;
 	case CDP_CONFIG_VOW:
 		pdev->vow_stats = val.cdp_pdev_param_cfg_vow;
-		break;
-	case CDP_CONFIG_MON_FCS_CAP:
-		dp_mon_config_mon_fcs_cap(pdev->soc, pdev,
-					  val.cdp_pdev_param_mon_fcs_cap);
 		break;
 	case CDP_CONFIG_MON_VERSION:
 		dp_set_monitor_version(pdev, val.cdp_monitor_version);

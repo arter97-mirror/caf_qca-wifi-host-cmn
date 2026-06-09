@@ -805,12 +805,6 @@ static inline void dp_monitor_pktlogmod_exit(struct dp_pdev *pdev)
 }
 
 static inline
-QDF_STATUS dp_monitor_vdev_set_monitor_mode_buf_rings(struct dp_pdev *pdev)
-{
-	return QDF_STATUS_E_FAILURE;
-}
-
-static inline
 void dp_monitor_neighbour_peers_detach(struct dp_pdev *pdev)
 {
 }
@@ -1229,14 +1223,6 @@ static inline bool
 dp_mon_mode_local_pkt_capture(struct dp_soc *soc)
 {
 	return false;
-}
-
-static inline QDF_STATUS
-dp_mon_config_mon_fcs_cap(struct dp_soc *soc,
-			  struct dp_pdev *pdev,
-			  uint8_t value)
-{
-	return QDF_STATUS_E_FAILURE;
 }
 
 static inline void

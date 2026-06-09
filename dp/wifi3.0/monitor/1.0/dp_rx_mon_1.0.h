@@ -78,6 +78,7 @@ void dp_rx_pdev_mon_desc_pool_free(struct dp_pdev *pdev);
 void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 			    uint32_t mac_id, uint32_t quota);
 
+#ifndef REMOVE_PKT_LOG
 QDF_STATUS
 dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 				 bool delayed_replenish);
@@ -85,6 +86,8 @@ QDF_STATUS
 dp_rx_pdev_mon_buf_desc_pool_alloc(struct dp_pdev *pdev, uint32_t mac_id);
 void
 dp_rx_pdev_mon_buf_desc_pool_init(struct dp_pdev *pdev, uint32_t mac_id);
+#endif
+
 #else
 static inline
 void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,

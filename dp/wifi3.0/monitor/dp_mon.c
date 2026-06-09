@@ -2034,51 +2034,6 @@ dp_peer_qos_stats_notify(struct dp_pdev *dp_pdev,
 #endif /* QCA_ENHANCED_STATS_SUPPORT */
 
 /**
- * dp_enable_peer_based_pktlog() - Set Flag for peer based filtering
- * for pktlog
- * @soc: cdp_soc handle
- * @pdev_id: id of dp pdev handle
- * @mac_addr: Peer mac address
- * @enb_dsb: Enable or disable peer based filtering
- *
- * Return: QDF_STATUS
- */
-static int
-dp_enable_peer_based_pktlog(struct cdp_soc_t *soc, uint8_t pdev_id,
-			    uint8_t *mac_addr, uint8_t enb_dsb)
-{
-	struct dp_peer *peer;
-	QDF_STATUS status = QDF_STATUS_E_FAILURE;
-	struct dp_pdev *pdev =
-		dp_get_pdev_from_soc_pdev_id_wifi3((struct dp_soc *)soc,
-						   pdev_id);
-	struct dp_mon_pdev *mon_pdev;
-
-	if (!pdev)
-		return QDF_STATUS_E_FAILURE;
-
-	mon_pdev = pdev->monitor_pdev;
-
-	peer = dp_peer_find_hash_find((struct dp_soc *)soc, mac_addr,
-				      0, DP_VDEV_ALL, DP_MOD_ID_CDP);
-
-	if (!peer) {
-		dp_mon_err("Peer is NULL");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!IS_MLO_DP_MLD_PEER(peer) && peer->monitor_peer) {
-		peer->monitor_peer->peer_based_pktlog_filter = enb_dsb;
-		mon_pdev->dp_peer_based_pktlog = enb_dsb;
-		status = QDF_STATUS_SUCCESS;
-	}
-
-	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-
-	return status;
-}
-
-/**
  * dp_peer_update_pkt_capture_params() - Set Rx & Tx Capture flags for a peer
  * @soc: DP_SOC handle
  * @pdev_id: id of DP_PDEV handle
@@ -6911,8 +6866,6 @@ void dp_mon_cdp_ops_register(struct dp_soc *soc)
 	ops->misc_ops->pkt_log_con_service = dp_pkt_log_con_service;
 	ops->misc_ops->pkt_log_exit = dp_pkt_log_exit;
 #endif
-	ops->ctrl_ops->enable_peer_based_pktlog =
-				dp_enable_peer_based_pktlog;
 #if defined(WLAN_TX_PKT_CAPTURE_ENH) || defined(WLAN_RX_PKT_CAPTURE_ENH)
 	ops->ctrl_ops->txrx_update_peer_pkt_capture_params =
 				 dp_peer_update_pkt_capture_params;
@@ -6962,7 +6915,6 @@ void dp_mon_cdp_ops_deregister(struct dp_soc *soc)
 	ops->misc_ops->pkt_log_con_service = NULL;
 	ops->misc_ops->pkt_log_exit = NULL;
 #endif
-	ops->ctrl_ops->enable_peer_based_pktlog = NULL;
 #if defined(WLAN_TX_PKT_CAPTURE_ENH) || defined(WLAN_RX_PKT_CAPTURE_ENH)
 	ops->ctrl_ops->txrx_update_peer_pkt_capture_params = NULL;
 #endif /* WLAN_TX_PKT_CAPTURE_ENH || WLAN_RX_PKT_CAPTURE_ENH */
@@ -7125,100 +7077,6 @@ void dp_mon_intr_ops_deregister(struct dp_soc *soc)
 	dp_mon_ppdu_stats_handler_deregister(mon_soc);
 }
 
-void dp_mon_feature_ops_deregister(struct dp_soc *soc)
-{
-	struct dp_mon_ops *mon_ops = dp_mon_ops_get(soc);
-
-	if (!mon_ops) {
-		dp_err("mon_ops is NULL");
-		return;
-	}
-
-	mon_ops->mon_config_debug_sniffer = NULL;
-	mon_ops->mon_peer_tx_init = NULL;
-	mon_ops->mon_peer_tx_cleanup = NULL;
-	mon_ops->mon_htt_ppdu_stats_attach = NULL;
-	mon_ops->mon_htt_ppdu_stats_detach = NULL;
-	mon_ops->mon_print_pdev_rx_mon_stats = NULL;
-	mon_ops->mon_set_bsscolor = NULL;
-	mon_ops->mon_neighbour_peer_add_ast = NULL;
-#ifdef WLAN_TX_PKT_CAPTURE_ENH
-	mon_ops->mon_peer_tid_peer_id_update = NULL;
-	mon_ops->mon_tx_ppdu_stats_attach = NULL;
-	mon_ops->mon_tx_ppdu_stats_detach = NULL;
-	mon_ops->mon_tx_capture_debugfs_init = NULL;
-	mon_ops->mon_tx_add_to_comp_queue = NULL;
-	mon_ops->mon_peer_tx_capture_filter_check = NULL;
-	mon_ops->mon_print_pdev_tx_capture_stats = NULL;
-	mon_ops->mon_config_enh_tx_capture = NULL;
-#endif
-#ifdef WLAN_RX_PKT_CAPTURE_ENH
-	mon_ops->mon_config_enh_rx_capture = NULL;
-#endif
-#ifdef QCA_SUPPORT_BPR
-	mon_ops->mon_set_bpr_enable = NULL;
-#endif
-#ifdef ATH_SUPPORT_NAC
-	mon_ops->mon_set_filter_neigh_peers = NULL;
-#endif
-#ifdef WLAN_ATF_ENABLE
-	mon_ops->mon_set_atf_stats_enable = NULL;
-#endif
-#ifdef FEATURE_NAC_RSSI
-	mon_ops->mon_filter_neighbour_peer = NULL;
-#endif
-#ifdef QCA_MCOPY_SUPPORT
-	mon_ops->mon_filter_setup_mcopy_mode = NULL;
-	mon_ops->mon_filter_reset_mcopy_mode = NULL;
-	mon_ops->mon_mcopy_check_deliver = NULL;
-#endif
-#ifdef QCA_ENHANCED_STATS_SUPPORT
-	mon_ops->mon_filter_setup_enhanced_stats = NULL;
-	mon_ops->mon_tx_enable_enhanced_stats = NULL;
-	mon_ops->mon_tx_disable_enhanced_stats = NULL;
-	mon_ops->mon_ppdu_desc_deliver = NULL;
-	mon_ops->mon_ppdu_desc_notify = NULL;
-	mon_ops->mon_ppdu_stats_feat_enable_check = NULL;
-#ifdef WLAN_FEATURE_11BE
-	mon_ops->mon_tx_stats_update = NULL;
-#endif
-#endif
-#ifdef WLAN_RX_PKT_CAPTURE_ENH
-	mon_ops->mon_filter_setup_rx_enh_capture = NULL;
-#endif
-#if defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)
-	mon_ops->mon_set_pktlog_wifi3 = NULL;
-	mon_ops->mon_filter_setup_rx_pkt_log_full = NULL;
-	mon_ops->mon_filter_reset_rx_pkt_log_full = NULL;
-	mon_ops->mon_filter_setup_rx_pkt_log_lite = NULL;
-	mon_ops->mon_filter_reset_rx_pkt_log_lite = NULL;
-	mon_ops->mon_filter_setup_rx_pkt_log_cbf = NULL;
-	mon_ops->mon_filter_reset_rx_pkt_log_cbf = NULL;
-#ifdef BE_PKTLOG_SUPPORT
-	mon_ops->mon_filter_setup_pktlog_hybrid = NULL;
-	mon_ops->mon_filter_reset_pktlog_hybrid = NULL;
-#endif
-#endif
-#if defined(DP_CON_MON) && !defined(REMOVE_PKT_LOG)
-	mon_ops->mon_pktlogmod_exit = NULL;
-#endif
-	mon_ops->rx_hdr_length_set = NULL;
-	mon_ops->rx_packet_length_set = NULL;
-	mon_ops->rx_wmask_subscribe = NULL;
-	mon_ops->rx_pkt_tlv_offset = NULL;
-	mon_ops->rx_enable_mpdu_logging = NULL;
-	mon_ops->rx_enable_fpmo = NULL;
-	mon_ops->mon_neighbour_peers_detach = NULL;
-	mon_ops->rx_config_packet_type_subtype = NULL;
-	mon_ops->mon_vdev_set_monitor_mode_buf_rings = NULL;
-	mon_ops->mon_vdev_set_monitor_mode_rings = NULL;
-#ifdef QCA_ENHANCED_STATS_SUPPORT
-	mon_ops->mon_rx_stats_update = NULL;
-	mon_ops->mon_rx_populate_ppdu_usr_info = NULL;
-	mon_ops->mon_rx_populate_ppdu_info = NULL;
-#endif
-}
-
 QDF_STATUS dp_mon_soc_attach(struct dp_soc *soc)
 {
 	struct dp_mon_soc *mon_soc;
@@ -7268,19 +7126,3 @@ QDF_STATUS dp_mon_soc_detach(struct dp_soc *soc)
 	return QDF_STATUS_SUCCESS;
 }
 
-
-
-QDF_STATUS dp_rx_mon_config_fcs_cap(struct dp_pdev *pdev, uint8_t value)
-{
-	uint8_t mac_id = 0;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
-
-	if (!mon_mac->mvdev)
-		return QDF_STATUS_E_NOSUPPORT;
-
-	qdf_err("mon_fcs_cap: %d ", value);
-	mon_pdev->mon_fcs_cap = value;
-
-	return QDF_STATUS_SUCCESS;
-}

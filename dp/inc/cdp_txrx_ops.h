@@ -929,9 +929,6 @@ struct cdp_ctrl_ops {
 					  uint8_t vdev_id,
 					  enum cdp_vdev_param_type param,
 					  cdp_config_param_type *val);
-	int (*enable_peer_based_pktlog)(struct cdp_soc_t *cdp_soc,
-					uint8_t pdev_id,
-					uint8_t *macaddr, uint8_t enb_dsb);
 
 	QDF_STATUS
 	(*calculate_delay_stats)(struct cdp_soc_t *cdp_soc,

@@ -179,7 +179,7 @@ void dp_mon_filter_setup_rx_mon_mode_2_0(struct dp_pdev *pdev);
 void dp_mon_filter_reset_rx_mon_mode_2_0(struct dp_pdev *pdev);
 #endif
 
-#ifdef WLAN_PKT_CAPTURE_TX_2_0
+#ifdef WLAN_PKT_CAPTURE_TX_2_0_DISABLE
 /**
  * dp_mon_filter_setup_tx_mon_mode_2_0() - Setup the Tx monitor mode filter
  * @pdev: DP pdev handle

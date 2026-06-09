@@ -364,13 +364,6 @@ void dp_mon_peer_get_tx_ext_stats(struct dp_peer *peer,
 #endif
 
 /**
- * dp_mon_cdp_ops_register() - Register monitor cdp ops
- * @soc: Datapath soc handle
- *
- */
-void dp_mon_cdp_ops_register(struct dp_soc *soc);
-
-/**
  * dp_mon_cdp_ops_deregister() - deregister monitor cdp ops
  * @soc: Datapath soc handle
  *
@@ -383,13 +376,6 @@ void dp_mon_cdp_ops_deregister(struct dp_soc *soc);
  *
  */
 void dp_mon_intr_ops_deregister(struct dp_soc *soc);
-
-/**
- * dp_mon_feature_ops_deregister() - deregister monitor feature ops
- * @soc: Datapath soc handle
- *
- */
-void dp_mon_feature_ops_deregister(struct dp_soc *soc);
 
 /**
  * dp_mon_ops_free() - free monitor ops
@@ -561,7 +547,7 @@ void dp_pktlogmod_exit(struct dp_pdev *handle)
 }
 #endif
 
-#ifdef QCA_MONITOR_PKT_SUPPORT
+#if defined(QCA_MONITOR_PKT_SUPPORT) && !defined(REMOVE_PKT_LOG)
 /**
  * dp_vdev_set_monitor_mode_buf_rings() - set monitor mode buf rings
  * @pdev: DP pdev object
@@ -586,15 +572,6 @@ QDF_STATUS dp_vdev_set_monitor_mode_buf_rings(struct dp_pdev *pdev);
 QDF_STATUS dp_vdev_set_monitor_mode_rings(struct dp_pdev *pdev,
 					  uint8_t delayed_replenish);
 
-/**
- * dp_rx_mon_config_fcs_cap() - configure FCS capture
- * @pdev: DP pdev
- * @value: value
- *
- * Return: status
- */
-QDF_STATUS dp_rx_mon_config_fcs_cap(struct dp_pdev *pdev, uint8_t value);
-
 #else
 static inline QDF_STATUS
 dp_vdev_set_monitor_mode_buf_rings(struct dp_pdev *pdev)
@@ -605,12 +582,6 @@ dp_vdev_set_monitor_mode_buf_rings(struct dp_pdev *pdev)
 static inline QDF_STATUS
 dp_vdev_set_monitor_mode_rings(struct dp_pdev *pdev,
 			       uint8_t delayed_replenish)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-dp_rx_mon_config_fcs_cap(struct dp_pdev *pdev, uint8_t value)
 {
 	return QDF_STATUS_SUCCESS;
 }
@@ -805,7 +776,9 @@ struct dp_mon_ops {
 #if defined(DP_CON_MON) && !defined(REMOVE_PKT_LOG)
 	void (*mon_pktlogmod_exit)(struct dp_pdev *pdev);
 #endif
+#ifndef REMOVE_PKT_LOG
 	QDF_STATUS (*mon_vdev_set_monitor_mode_buf_rings)(struct dp_pdev *pdev);
+#endif
 	QDF_STATUS (*mon_vdev_set_monitor_mode_rings)(struct dp_pdev *pdev,
 						      uint8_t delayed_replenish);
 	void (*mon_neighbour_peers_detach)(struct dp_pdev *pdev);
@@ -954,7 +927,6 @@ struct dp_mon_ops {
 	QDF_STATUS (*stop_local_pkt_capture)(struct dp_pdev *pdev);
 	bool (*is_local_pkt_capture_running)(struct dp_pdev *pdev);
 #endif /* WLAN_FEATURE_LOCAL_PKT_CAPTURE */
-	QDF_STATUS (*mon_config_mon_fcs_cap)(struct dp_pdev *pdev, uint8_t val);
 #ifdef QCA_PEER_EXT_STATS
 	void (*mon_peer_get_tx_ext_stats)
 		(struct dp_peer *peer, struct cdp_telemetry_peer_tx_ext_stats *stats);
@@ -1081,11 +1053,6 @@ struct dp_mon_peer {
 #endif
 	uint8_t tx_cap_enabled:1, /* Peer's tx-capture is enabled */
 		rx_cap_enabled:1; /* Peer's rx-capture is enabled */
-
-	/* Peer level flag to check peer based pktlog enabled or
-	 * disabled
-	 */
-	uint8_t peer_based_pktlog_filter;
 
 	/* Monitor peer stats */
 	struct dp_mon_peer_stats stats;
@@ -1287,11 +1254,6 @@ struct  dp_mon_pdev {
 	/* mirror copy mode */
 	enum m_copy_mode mcopy_mode;
 	bool bpr_enable;
-	/* Pdev level flag to check peer based pktlog enabled or
-	 * disabled
-	 */
-	uint8_t dp_peer_based_pktlog;
-
 #ifdef WLAN_ATF_ENABLE
 	/* ATF stats enable */
 	bool dp_atf_stats_enable;
@@ -3800,26 +3762,6 @@ static inline void dp_monitor_pktlogmod_exit(struct dp_pdev *pdev) {}
 #endif
 
 static inline
-QDF_STATUS dp_monitor_vdev_set_monitor_mode_buf_rings(struct dp_pdev *pdev)
-{
-	struct dp_mon_ops *monitor_ops;
-	struct dp_mon_soc *mon_soc = pdev->soc->monitor_soc;
-
-	if (!mon_soc) {
-		dp_mon_debug("monitor soc is NULL");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops || !monitor_ops->mon_vdev_set_monitor_mode_buf_rings) {
-		dp_mon_debug("callback not registered");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	return monitor_ops->mon_vdev_set_monitor_mode_buf_rings(pdev);
-}
-
-static inline
 void dp_monitor_neighbour_peers_detach(struct dp_pdev *pdev)
 {
 	struct dp_mon_ops *monitor_ops;
@@ -4992,36 +4934,6 @@ dp_mon_rx_print_advanced_stats(struct dp_soc *soc,
 		return;
 	}
 	return monitor_ops->mon_rx_print_advanced_stats(soc, pdev);
-}
-
-/**
- * dp_mon_config_mon_fcs_cap() - configure monitor FCS capture
- * @soc: DP soc handle
- * @pdev: DP pdev handle
- * @value: value to configure
- *
- * Return: void
- */
-static inline QDF_STATUS
-dp_mon_config_mon_fcs_cap(struct dp_soc *soc,
-			  struct dp_pdev *pdev,
-			  uint8_t value)
-{
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
-	struct dp_mon_ops *monitor_ops;
-
-	if (!mon_soc) {
-		dp_mon_debug("mon soc is NULL");
-		return QDF_STATUS_E_FAULT;
-	}
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops ||
-	    !monitor_ops->mon_config_mon_fcs_cap) {
-		dp_mon_debug("callback not registered");
-		return QDF_STATUS_E_FAULT;
-	}
-	return monitor_ops->mon_config_mon_fcs_cap(pdev, value);
 }
 
 #ifdef WLAN_CONFIG_TELEMETRY_AGENT
