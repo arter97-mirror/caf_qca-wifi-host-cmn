@@ -1424,6 +1424,23 @@ static inline void mlo_epcs_ctx_deinit(struct wlan_mlo_dev_context *mlo_dev_ctx)
 {
 	epcs_dev_lock_destroy(&mlo_dev_ctx->epcs_ctx);
 }
+#ifdef WLAN_FEATURE_11BN_SMD
+static void wlan_smd_ctx_deinit(struct wlan_mlo_dev_context *ml_dev)
+{
+	if (!ml_dev->smd_ctx)
+		return;
+
+	qdf_mutex_destroy(&ml_dev->smd_ctx->smd_ctx_lock);
+	qdf_mem_free(ml_dev->smd_ctx);
+	ml_dev->smd_ctx = NULL;
+}
+#else
+static inline
+void wlan_smd_ctx_deinit(struct wlan_mlo_dev_context *ml_dev)
+{
+	return;
+}
+#endif
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 static void ml_free_copied_reassoc_rsp(struct wlan_mlo_sta *sta_ctx)
@@ -1547,6 +1564,7 @@ static QDF_STATUS mlo_dev_ctx_deinit(struct wlan_objmgr_vdev *vdev)
 		mlo_mgr_link_switch_deinit(ml_dev);
 		mlo_t2lm_ctx_deinit(vdev, ml_dev);
 		mlo_epcs_ctx_deinit(ml_dev);
+		wlan_smd_ctx_deinit(ml_dev);
 
 		/* Destroy DP MLO Device Context */
 		if (cdp_mlo_dev_ctxt_destroy(wlan_psoc_get_dp_handle(psoc),

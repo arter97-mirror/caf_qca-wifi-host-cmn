@@ -2124,6 +2124,88 @@ cm_connect_req_update_ml_partner_info(struct cnx_mgr *cm_ctx,
 {}
 #endif
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * cm_connect_req_update_smd_info() - Update SMD context from scan entry
+ * @cm_ctx: Connection manager context
+ * @cm_req: Connection request
+ * @scan_entry: Scan cache entry for selected candidate
+ *
+ * Reads the SMD IE cached by the scan module (scan_entry->ie_list.smd_info)
+ * and populates the MLO device SMD context. Called when a candidate is
+ * selected, before the association request is sent.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+cm_connect_req_update_smd_info(struct cnx_mgr *cm_ctx,
+			       struct cm_req *cm_req,
+			       struct scan_cache_entry *scan_entry)
+{
+	struct wlan_objmgr_vdev *vdev = cm_ctx->vdev;
+	struct wlan_mlo_dev_context *mlo_dev;
+	struct smd_context *smd_ctx;
+	const uint8_t *ie;
+	uint8_t cap_byte;
+
+	if (!vdev || !scan_entry)
+		return QDF_STATUS_E_INVAL;
+
+	mlo_dev = vdev->mlo_dev_ctx;
+	if (!mlo_dev)
+		return QDF_STATUS_E_NOENT;
+
+	/* ie[0]=EID, ie[1]=len, ie[2]=ext_id, ie[3..8]=identifier,
+	 * ie[9]=capabilities, ie[10]=timeout
+	 */
+	ie = scan_entry->ie_list.smd_info;
+	if (!ie) {
+		mlme_debug("No SMD IE in scan entry");
+		return QDF_STATUS_E_NOENT;
+	}
+
+	if (!mlo_dev->smd_ctx) {
+		mlo_dev->smd_ctx = qdf_mem_common_alloc(sizeof(struct smd_context));
+		if (!mlo_dev->smd_ctx)
+			return QDF_STATUS_E_NOMEM;
+
+		qdf_mutex_create(&mlo_dev->smd_ctx->smd_ctx_lock);
+	}
+
+	cap_byte = ie[9];
+	smd_ctx = mlo_dev->smd_ctx;
+	qdf_mutex_acquire(&smd_ctx->smd_ctx_lock);
+
+	qdf_mem_copy(smd_ctx->smd_identifier.bytes, &ie[3], QDF_MAC_ADDR_SIZE);
+	smd_ctx->smd_capabilities.smd_type =
+		SMD_CAP_GET_TYPE(cap_byte);
+	smd_ctx->smd_capabilities.ptk_mode =
+		SMD_CAP_GET_PTK_MODE(cap_byte);
+	smd_ctx->smd_capabilities.dl_data_forwarding =
+		SMD_CAP_GET_DL_DATA_FWD(cap_byte);
+	smd_ctx->smd_capabilities.max_prepared_targets =
+		SMD_CAP_GET_MAX_TARGET(cap_byte);
+	smd_ctx->smd_capabilities.neighbor_ap_probe_support =
+		SMD_CAP_GET_NEIGH_AP_PROBE(cap_byte);
+	smd_ctx->timeout_tu = ie[10];
+
+	qdf_mutex_release(&smd_ctx->smd_ctx_lock);
+
+	mlme_info("SMD context updated from scan entry: ID=" QDF_MAC_ADDR_FMT,
+		  QDF_MAC_ADDR_REF(smd_ctx->smd_identifier.bytes));
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static inline
+QDF_STATUS cm_connect_req_update_smd_info(struct cnx_mgr *cm_ctx,
+					  struct cm_req *cm_req,
+					  struct scan_cache_entry *scan_entry)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_11BN_SMD */
+
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(WLAN_FEATURE_11BE_MLO_ADV_FEATURE)
 static void
 cm_override_partner_link_akm(struct cnx_mgr *cm_ctx, struct cm_req *cm_req)
@@ -2193,6 +2275,7 @@ static QDF_STATUS cm_get_valid_candidate(struct cnx_mgr *cm_ctx,
 	struct qdf_mac_addr *pmksa_mac;
 	bool canidate_list_updated = false;
 	bool dlm_canidate_list_updated = false;
+	struct scan_cache_entry *scan_entry;
 
 	psoc = wlan_vdev_get_psoc(cm_ctx->vdev);
 	if (!psoc) {
@@ -2321,9 +2404,18 @@ try_same_candidate:
 
 	cm_connect_req_update_ml_partner_info(cm_ctx, cm_req,
 					      use_same_candidate);
+
 	if (!use_same_candidate &&
 	    wlan_vdev_mlme_is_mlo_link_vdev(cm_ctx->vdev)) {
 		cm_override_partner_link_akm(cm_ctx, cm_req);
+	}
+
+	if (cm_req->connect_req.cur_candidate) {
+		scan_entry = cm_req->connect_req.cur_candidate->entry;
+		if (QDF_IS_STATUS_ERROR(cm_connect_req_update_smd_info(
+						cm_ctx, cm_req, scan_entry)))
+			mlme_debug(CM_PREFIX_FMT "No SMD IE, proceeding without SMD",
+				   CM_PREFIX_REF(vdev_id, cm_req->cm_id));
 	}
 
 flush_single_pmk:
