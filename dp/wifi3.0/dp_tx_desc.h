@@ -1215,11 +1215,13 @@ void dp_tx_prefetch_desc(struct dp_tx_desc_s *tx_desc)
  * dp_tx_desc_alloc() - Allocate a Software Tx Descriptor from given pool
  * @soc: Handle to DP SoC structure
  * @desc_pool_id: pool id
+ * @nbuf: socket buffer
  *
  * Return: Tx Descriptor or NULL
  */
 static inline struct dp_tx_desc_s *dp_tx_desc_alloc(struct dp_soc *soc,
-						uint8_t desc_pool_id)
+						uint8_t desc_pool_id,
+						qdf_nbuf_t nbuf)
 {
 	struct dp_tx_desc_s *tx_desc = NULL;
 	struct dp_tx_desc_pool_s *pool = NULL;
