@@ -639,7 +639,7 @@ static void hif_ipci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 	struct hif_ipci_softc *ipci_sc = HIF_GET_IPCI_SOFTC(scn);
 	struct CE_attr *host_ce_conf;
 	int ce_id;
-	qdf_cpu_mask ce_cpu_mask, updated_mask;
+	qdf_cpu_mask ce_cpu_mask;
 	int perf_cpu_cluster = hif_get_perf_cluster_bitmap();
 	int package_id;
 
@@ -662,13 +662,13 @@ static void hif_ipci_ce_irq_set_affinity_hint(struct hif_softc *scn)
 		if ((host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR) ||
 		    hif_is_datapath_ce(scn->ce_id_to_state[ce_id]))
 			continue;
-		qdf_cpumask_copy(&updated_mask, &ce_cpu_mask);
+
+		qdf_cpumask_copy(&ipci_sc->ce_irq_cpu_mask[ce_id],
+				 &ce_cpu_mask);
+
 		ret = hif_affinity_mgr_set_ce_irq_affinity(scn, ipci_sc->ce_msi_irq_num[ce_id],
 							   ce_id,
-							   &updated_mask);
-		qdf_cpumask_clear(&ipci_sc->ce_irq_cpu_mask[ce_id]);
-		qdf_cpumask_copy(&ipci_sc->ce_irq_cpu_mask[ce_id],
-				 &updated_mask);
+							   &ipci_sc->ce_irq_cpu_mask[ce_id]);
 		if (ret)
 			hif_err_rl("Set affinity %*pbl fails for CE IRQ %d",
 				   qdf_cpumask_pr_args(
