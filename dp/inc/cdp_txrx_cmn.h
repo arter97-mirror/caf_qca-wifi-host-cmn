@@ -3660,4 +3660,31 @@ static inline void cdp_dal_ssr_notify(ol_txrx_soc_handle soc)
 		soc->ops->cmn_drv_ops->dal_ssr_notify(soc);
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
+
+#ifdef QCA_OL_TX_MULTIQ_SUPPORT
+/**
+ * cdp_get_max_txdesc_pools() - Get the maximum number of TX descriptor pools
+ * @soc: datapath soc handle
+ *
+ * Retrieve the compile-time maximum number of TX descriptor pools from the
+ * DP layer via the ops mechanism.  Falls back to 4 if the soc handle or
+ * the ops pointer is not yet available (e.g. during early init).
+ *
+ * Return: maximum number of TX descriptor pools
+ */
+static inline uint8_t cdp_get_max_txdesc_pools(ol_txrx_soc_handle soc)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		return 4;
+	}
+
+	if (!soc->ops->cmn_drv_ops ||
+	    !soc->ops->cmn_drv_ops->get_max_txdesc_pools)
+		return 4;
+
+	return soc->ops->cmn_drv_ops->get_max_txdesc_pools(soc);
+}
+#endif /* QCA_OL_TX_MULTIQ_SUPPORT */
+
 #endif /* _CDP_TXRX_CMN_H_ */

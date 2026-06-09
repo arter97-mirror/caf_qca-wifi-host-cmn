@@ -780,6 +780,9 @@ struct cdp_cmn_ops {
 #ifdef FEATURE_DAL_DP_SUPPORT
 	void (*dal_ssr_notify)(struct cdp_soc_t *soc_hdl);
 #endif
+#ifdef QCA_OL_TX_MULTIQ_SUPPORT
+	uint8_t (*get_max_txdesc_pools)(struct cdp_soc_t *soc);
+#endif
 };
 
 struct cdp_ctrl_ops {

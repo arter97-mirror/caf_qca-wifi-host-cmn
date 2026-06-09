@@ -14354,6 +14354,19 @@ dp_is_vdev_predictive_roaming_stats_enabled(struct cdp_soc_t *soc_hdl,
 }
 #endif
 
+#ifdef QCA_OL_TX_MULTIQ_SUPPORT
+/**
+ * dp_get_max_txdesc_pools() - Get the maximum number of TX descriptor pools
+ * @soc_hdl: CDP SoC handle (unused; value is compile-time constant)
+ *
+ * Return: MAX_TXDESC_POOLS for this build configuration
+ */
+static uint8_t dp_get_max_txdesc_pools(struct cdp_soc_t *soc_hdl)
+{
+	return MAX_TXDESC_POOLS;
+}
+#endif /* QCA_OL_TX_MULTIQ_SUPPORT */
+
 static struct cdp_cmn_ops dp_ops_cmn = {
 	.txrx_soc_attach_target = dp_soc_attach_target_wifi3,
 	.txrx_vdev_attach = dp_vdev_attach_wifi3,
@@ -14507,6 +14520,9 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 #endif
 #ifdef FEATURE_DAL_DP_SUPPORT
 	.dal_ssr_notify = dp_dal_send_ssr_notify,
+#endif
+#ifdef QCA_OL_TX_MULTIQ_SUPPORT
+	.get_max_txdesc_pools = dp_get_max_txdesc_pools,
 #endif
 };
 
