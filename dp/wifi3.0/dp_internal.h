@@ -2498,7 +2498,8 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 		_tgtobj->tx.pream_punct_cnt += _srcobj->tx.pream_punct_cnt; \
 		_tgtobj->tx.ru_start = _srcobj->tx.ru_start; \
 		_tgtobj->tx.ru_tones = _srcobj->tx.ru_tones; \
-		_tgtobj->tx.last_ack_rssi = _srcobj->tx.last_ack_rssi; \
+		if (_srcobj->tx.last_ack_rssi) \
+		    _tgtobj->tx.last_ack_rssi = _srcobj->tx.last_ack_rssi; \
 		_tgtobj->tx.avg_ack_rssi = _srcobj->tx.avg_ack_rssi; \
 		_tgtobj->tx.nss_info = _srcobj->tx.nss_info; \
 		_tgtobj->tx.mcs_info = _srcobj->tx.mcs_info; \

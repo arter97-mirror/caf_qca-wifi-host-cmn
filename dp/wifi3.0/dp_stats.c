@@ -7363,8 +7363,6 @@ void dp_print_tx_rates(struct dp_pdev *pdev)
 	DP_PRINT_STATS("LDPC = %d", pdev->stats.tx.ldpc);
 	DP_PRINT_STATS("Retries = %d", pdev->stats.tx.retries);
 	DP_PRINT_STATS("Last ack rssi = %d\n", pdev->stats.tx.last_ack_rssi);
-	DP_PRINT_STATS("Average ack rssi = %lu\n",
-		       CDP_SNR_OUT(pdev->stats.tx.avg_ack_rssi));
 	DP_PRINT_STATS("Number of PPDU's with Punctured Preamble = %d",
 			   pdev->stats.tx.pream_punct_cnt);
 
@@ -10338,7 +10336,8 @@ void dp_update_pdev_stats(struct dp_pdev *tgtobj,
 	tgtobj->stats.tx.tx_ratecode = srcobj->tx.tx_ratecode;
 	tgtobj->stats.tx.ru_start = srcobj->tx.ru_start;
 	tgtobj->stats.tx.ru_tones = srcobj->tx.ru_tones;
-	tgtobj->stats.tx.last_ack_rssi = srcobj->tx.last_ack_rssi;
+	if (srcobj->tx.avg_ack_rssi)
+		tgtobj->stats.tx.last_ack_rssi = srcobj->tx.last_ack_rssi;
 	tgtobj->stats.tx.avg_ack_rssi = srcobj->tx.avg_ack_rssi;
 	tgtobj->stats.tx.nss_info = srcobj->tx.nss_info;
 	tgtobj->stats.tx.mcs_info = srcobj->tx.mcs_info;
@@ -10493,9 +10492,8 @@ void dp_update_pdev_stats(struct dp_pdev *tgtobj,
 			srcobj->rx.intra_bss.fail.num;
 	tgtobj->stats.rx.intra_bss.fail.bytes +=
 			srcobj->rx.intra_bss.fail.bytes;
-
-	tgtobj->stats.tx.last_ack_rssi =
-		srcobj->tx.last_ack_rssi;
+	if (srcobj->tx.last_ack_rssi)
+		tgtobj->stats.tx.last_ack_rssi = srcobj->tx.last_ack_rssi;
 	tgtobj->stats.tx.avg_ack_rssi =
 		srcobj->tx.avg_ack_rssi;
 	tgtobj->stats.rx.mec_drop.num += srcobj->rx.mec_drop.num;
