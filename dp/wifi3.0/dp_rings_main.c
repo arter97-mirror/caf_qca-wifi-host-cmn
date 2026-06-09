@@ -4070,7 +4070,6 @@ void *dp_soc_init(struct dp_soc *soc, HTC_HANDLE htc_handle,
 
 	dp_soc_cfg_init(soc);
 
-	dp_monitor_soc_cfg_init(soc);
 	/* Reset/Initialize wbm sg list and flags */
 	dp_rx_wbm_sg_list_reset(soc);
 

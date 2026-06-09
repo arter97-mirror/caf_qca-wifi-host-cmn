@@ -379,8 +379,6 @@ static void *dp_soc_init_rh(struct dp_soc *soc, HTC_HANDLE htc_handle,
 
 	dp_soc_cfg_init_rh(soc);
 
-	dp_monitor_soc_cfg_init(soc);
-
 	/* Note: Any SRNG ring initialization should happen only after
 	 * Interrupt mode is set and followed by filling up the
 	 * interrupt mask. IT SHOULD ALWAYS BE IN THIS ORDER.

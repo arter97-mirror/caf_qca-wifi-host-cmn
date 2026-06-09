@@ -190,15 +190,6 @@ QDF_STATUS dp_mon_soc_attach(struct dp_soc *soc);
 QDF_STATUS dp_mon_soc_detach(struct dp_soc *soc);
 
 /**
- * dp_mon_soc_cfg_init() - DP monitor soc config init
- * @soc: Datapath SOC handle
- *
- * Return: QDF_STATUS_SUCCESS: Success
- *         QDF_STATUS_E_FAILURE: Error
- */
-QDF_STATUS dp_mon_soc_cfg_init(struct dp_soc *soc);
-
-/**
  * dp_mon_pdev_attach() - DP monitor pdev attach
  * @pdev: Datapath pdev handle
  *
@@ -612,7 +603,6 @@ typedef	QDF_STATUS (*mon_soc_init_fp)(struct dp_soc *soc);
 typedef	void (*mon_soc_deinit_fp)(struct dp_soc *soc);
 
 struct dp_mon_ops {
-	QDF_STATUS (*mon_soc_cfg_init)(struct dp_soc *soc);
 	mon_soc_attach_fp mon_soc_attach[2];
 	mon_soc_detach_fp mon_soc_detach[2];
 	mon_soc_init_fp mon_soc_init[2];
@@ -758,11 +748,13 @@ struct dp_mon_ops {
 					      uint32_t ppdu_id,
 					      uint8_t first_msdu);
 #endif
+#ifdef FEATURE_WDS
 	void (*mon_neighbour_peer_add_ast)(struct dp_pdev *pdev,
 					   struct dp_peer *ta_peer,
 					   uint8_t *mac_addr,
 					   qdf_nbuf_t nbuf,
 					   uint32_t flags);
+#endif
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 	void (*mon_filter_setup_enhanced_stats)(struct dp_pdev *pdev);
 	void (*mon_filter_reset_enhanced_stats)(struct dp_pdev *pdev);
@@ -914,11 +906,6 @@ struct dp_mon_soc {
 	struct link_desc_bank
 		mon_link_desc_banks[MAX_NUM_LMAC_HW][MAX_MON_LINK_DESC_BANKS];
 	uint32_t num_mon_link_desc_banks[MAX_NUM_LMAC_HW];
-	/* Smart monitor capability for HKv2 */
-	uint8_t hw_nac_monitor_support;
-
-	/* Full monitor mode support */
-	bool full_mon_mode;
 
 	/*interrupt timer*/
 	qdf_timer_t mon_reap_timer;
@@ -933,7 +920,6 @@ struct dp_mon_soc {
 	uint8_t mon_vdev_timer_state;
 
 	struct dp_mon_ops *mon_ops;
-	bool monitor_mode_v2;
 #ifndef DISABLE_MON_CONFIG
 	uint32_t (*mon_rx_process)(struct dp_soc *soc,
 				   struct dp_intr *int_ctx,
@@ -1290,7 +1276,6 @@ struct  dp_mon_pdev {
 	/* Monitor FCS capture */
 	bool mon_fcs_cap;
 	uint8_t mu_sniffer_enabled;
-	uint8_t mon_version;
 #ifdef WLAN_LOCAL_PKT_CAPTURE_SUBFILTER
 	struct dp_mon_mac_link_info link_info[DP_MAX_MLO_LINKS];
 	uint32_t num_links;
@@ -1570,17 +1555,6 @@ void *dp_rx_cookie_2_mon_link_desc_va(struct dp_pdev *pdev,
 	return link_desc_va;
 }
 
-/**
- * dp_soc_is_full_mon_enable() - Return if full monitor mode is enabled
- * @pdev: point to dp pdev
- *
- * Return: Full monitor mode status
- */
-static inline bool dp_soc_is_full_mon_enable(struct dp_pdev *pdev)
-{
-	return (pdev->soc->monitor_soc->full_mon_mode &&
-		pdev->monitor_pdev->monitor_configured) ? true : false;
-}
 
 /**
  * dp_monitor_is_enable_mcopy_mode() - check if mcopy mode is enabled
@@ -1904,8 +1878,7 @@ static inline QDF_STATUS dp_monitor_drop_inv_peer_pkts(struct dp_vdev *vdev)
 	if (!soc->monitor_soc)
 		return QDF_STATUS_E_FAILURE;
 
-	if (!soc->monitor_soc->hw_nac_monitor_support &&
-	    pdev->monitor_pdev->filter_neighbour_peers &&
+	if (pdev->monitor_pdev->filter_neighbour_peers &&
 	    vdev->opmode == wlan_op_mode_sta)
 		return QDF_STATUS_SUCCESS;
 
@@ -2430,35 +2403,6 @@ static inline QDF_STATUS dp_monitor_pdev_deinit(struct dp_pdev *pdev)
 	}
 
 	return monitor_ops->mon_pdev_deinit(pdev);
-}
-
-/**
- * dp_monitor_soc_cfg_init() - Monitor sco cfg init
- * @soc: point to soc
- *
- * Return: return QDF_STATUS
- */
-static inline QDF_STATUS dp_monitor_soc_cfg_init(struct dp_soc *soc)
-{
-	struct dp_mon_ops *monitor_ops;
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
-
-	/*
-	 * this API is getting call from dp_soc_init,
-	 * mon_soc will be uninitialized when monitor support enabled
-	 * So returning QDF_STATUS_SUCCESS.
-	 * soc cfg init will be done while monitor insmod.
-	 */
-	if (!mon_soc)
-		return QDF_STATUS_SUCCESS;
-
-	monitor_ops = mon_soc->mon_ops;
-	if (!monitor_ops || !monitor_ops->mon_soc_cfg_init) {
-		dp_mon_debug("callback not registered");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	return monitor_ops->mon_soc_cfg_init(soc);
 }
 
 /**
@@ -3929,6 +3873,7 @@ QDF_STATUS dp_monitor_mcopy_check_deliver(struct dp_pdev *pdev,
 }
 #endif
 
+#ifdef FEATURE_WDS
 /**
  * dp_monitor_neighbour_peer_add_ast() - Add ast entry
  * @pdev: point to dp pdev
@@ -3963,6 +3908,16 @@ dp_monitor_neighbour_peer_add_ast(struct dp_pdev *pdev,
 	return monitor_ops->mon_neighbour_peer_add_ast(pdev, ta_peer, mac_addr,
 						       nbuf, flags);
 }
+#else
+static inline void
+dp_monitor_neighbour_peer_add_ast(struct dp_pdev *pdev,
+				  struct dp_peer *ta_peer,
+				  uint8_t *mac_addr,
+				  qdf_nbuf_t nbuf,
+				  uint32_t flags)
+{
+}
+#endif
 
 /**
  * dp_monitor_vdev_delete() - delete monitor vdev
@@ -4016,29 +3971,16 @@ void dp_monitor_neighbour_peer_list_remove(struct dp_pdev *pdev,
 					   struct dp_neighbour_peer *peer)
 {
 	struct dp_mon_pdev *mon_pdev;
-	struct dp_neighbour_peer *temp_peer = NULL;
 
 	if (qdf_unlikely(!pdev || !pdev->monitor_pdev))
 		return;
 
 	mon_pdev = pdev->monitor_pdev;
 	qdf_spin_lock_bh(&mon_pdev->neighbour_peer_mutex);
-	if (!pdev->soc->monitor_soc->hw_nac_monitor_support) {
-		TAILQ_FOREACH(peer, &mon_pdev->neighbour_peers_list,
-			      neighbour_peer_list_elem) {
-				QDF_ASSERT(peer->vdev != vdev);
-			}
-	} else {
-		TAILQ_FOREACH_SAFE(peer, &mon_pdev->neighbour_peers_list,
-				   neighbour_peer_list_elem, temp_peer) {
-			if (peer->vdev == vdev) {
-				TAILQ_REMOVE(&mon_pdev->neighbour_peers_list,
-					     peer,
-					     neighbour_peer_list_elem);
-				qdf_mem_free(peer);
-			}
+	TAILQ_FOREACH(peer, &mon_pdev->neighbour_peers_list,
+		      neighbour_peer_list_elem) {
+			QDF_ASSERT(peer->vdev != vdev);
 		}
-	}
 	qdf_spin_unlock_bh(&mon_pdev->neighbour_peer_mutex);
 }
 
@@ -4953,20 +4895,6 @@ dp_mon_rx_ppdu_status_reset(struct dp_mon_mac *mon_mac)
 		     sizeof(mon_mac->ppdu_info.rx_status));
 }
 
-/**
- * dp_set_monitor_version() - Set monitor version
- * @pdev: pointer to dp pdev
- * @version: monitor version
- *
- * Return: none
- */
-static inline void
-dp_set_monitor_version(struct dp_pdev *pdev, uint8_t version) {
-	if (!pdev || !pdev->monitor_pdev)
-		return;
-
-	pdev->monitor_pdev->mon_version = version;
-}
 
 #else
 

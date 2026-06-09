@@ -614,11 +614,6 @@ static inline QDF_STATUS dp_monitor_pdev_deinit(struct dp_pdev *pdev)
 	return QDF_STATUS_SUCCESS;
 }
 
-static inline QDF_STATUS dp_monitor_soc_cfg_init(struct dp_soc *soc)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
 static inline void
 dp_monitor_flush_rings(struct dp_soc *soc, struct dp_vdev *vdev)
 {
@@ -1209,9 +1204,6 @@ dp_mon_rx_config_packet_type_subtype(struct dp_soc *soc,
 {
 }
 
-static inline void
-dp_set_monitor_version(struct dp_pdev *pdev, uint8_t version) {
-}
 
 static inline bool
 dp_is_local_pkt_capture_allowed(struct dp_soc *soc)

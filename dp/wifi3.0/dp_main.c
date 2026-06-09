@@ -9812,9 +9812,6 @@ static QDF_STATUS dp_set_pdev_param(struct cdp_soc_t *cdp_soc, uint8_t pdev_id,
 	case CDP_CONFIG_VOW:
 		pdev->vow_stats = val.cdp_pdev_param_cfg_vow;
 		break;
-	case CDP_CONFIG_MON_VERSION:
-		dp_set_monitor_version(pdev, val.cdp_monitor_version);
-		break;
 	default:
 		return QDF_STATUS_E_INVAL;
 	}

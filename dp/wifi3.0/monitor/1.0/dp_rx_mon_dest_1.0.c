@@ -981,7 +981,7 @@ dp_rx_pdev_mon_buf_buffers_alloc(struct dp_pdev *pdev, uint32_t mac_id,
 	 * the complete RXDMA monitor buffer ring.
 	 */
 	if (delayed_replenish) {
-		num_entries = soc_cfg_ctx->delayed_replenish_entries + 1;
+		num_entries = 1;
 		status = dp_pdev_rx_buffers_attach(soc, mac_id, mon_buf_ring,
 						   rx_desc_pool,
 						   num_entries - 1);

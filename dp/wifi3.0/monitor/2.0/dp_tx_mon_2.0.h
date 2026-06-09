@@ -667,18 +667,6 @@ struct dp_pdev_tx_monitor_be {
 struct dp_peer_tx_capture_be {
 };
 
-/**
- * dp_tx_mon_free_usr_mpduq() - API to free user mpduq
- * @tx_ppdu_info: pointer to tx_ppdu_info
- * @usr_idx: user index
- * @tx_mon_be: pointer to tx monitor be
- *
- * Return: void
- */
-void dp_tx_mon_free_usr_mpduq(struct dp_tx_ppdu_info *tx_ppdu_info,
-			      uint8_t usr_idx,
-			      struct dp_pdev_tx_monitor_be *tx_mon_be);
-
 #endif /* WLAN_TX_PKT_CAPTURE_ENH_BE */
 
 /**

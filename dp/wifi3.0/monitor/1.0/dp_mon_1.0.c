@@ -123,54 +123,6 @@ static void dp_mon_tx_disable_enhanced_stats_1_0(struct dp_pdev *pdev)
 }
 #endif
 
-#ifdef QCA_SUPPORT_FULL_MON
-static QDF_STATUS
-dp_config_full_mon_mode(struct cdp_soc_t *soc_handle,
-			uint8_t val)
-{
-	struct dp_soc *soc = (struct dp_soc *)soc_handle;
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
-
-	mon_soc->full_mon_mode = val;
-	dp_cdp_err("Configure full monitor mode val: %d ", val);
-
-	return QDF_STATUS_SUCCESS;
-}
-
-static QDF_STATUS
-dp_soc_config_full_mon_mode(struct cdp_pdev *cdp_pdev, uint8_t val)
-{
-	struct dp_pdev *pdev = (struct dp_pdev *)cdp_pdev;
-	struct dp_soc *soc = pdev->soc;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
-
-	if (!mon_soc->full_mon_mode)
-		return QDF_STATUS_SUCCESS;
-
-	if ((htt_h2t_full_mon_cfg(soc->htt_handle,
-				  pdev->pdev_id,
-				  val)) != QDF_STATUS_SUCCESS) {
-		status = QDF_STATUS_E_FAILURE;
-	}
-
-	return status;
-}
-#else
-static inline QDF_STATUS
-dp_config_full_mon_mode(struct cdp_soc_t *soc_handle,
-			uint8_t val)
-{
-	return 0;
-}
-
-static inline QDF_STATUS
-dp_soc_config_full_mon_mode(struct cdp_pdev *cdp_pdev,
-			    uint8_t val)
-{
-	return 0;
-}
-#endif
 
 #if !defined(DISABLE_MON_CONFIG)
 #ifdef FEATURE_ML_MONITOR_MODE_SUPPORT
@@ -210,7 +162,6 @@ void dp_flush_monitor_rings(struct dp_soc *soc, struct dp_vdev *vdev)
 	uint32_t hp, tp;
 	int budget;
 	void *mon_dst_srng;
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
 	struct dp_mon_mac *mon_mac;
 	uint8_t mac_id = 0;
 
@@ -222,9 +173,6 @@ void dp_flush_monitor_rings(struct dp_soc *soc, struct dp_vdev *vdev)
 	 * ring.
 	 */
 	if (qdf_unlikely(hif_target_recovery_in_progress(soc->hif_handle)))
-		return;
-
-	if (qdf_unlikely(mon_soc->full_mon_mode))
 		return;
 
 	if (vdev->monitor_vdev)
@@ -809,6 +757,7 @@ static bool dp_mon_vdev_timer_stop(struct dp_soc *soc)
 	return false;
 }
 
+#ifdef FEATURE_WDS
 static void dp_mon_neighbour_peer_add_ast(struct dp_pdev *pdev,
 					  struct dp_peer *ta_peer,
 					  uint8_t *mac_addr,
@@ -846,6 +795,7 @@ static void dp_mon_neighbour_peer_add_ast(struct dp_pdev *pdev,
 		qdf_spin_unlock_bh(&mon_pdev->neighbour_peer_mutex);
 	}
 }
+#endif
 
 #if !defined(DISABLE_MON_CONFIG)
 #if defined(DP_CON_MON)
@@ -898,9 +848,6 @@ QDF_STATUS dp_mon_htt_srng_setup_1_0(struct dp_soc *soc,
 		dp_mon_err("%pK: monitor SOC not initialized", soc);
 		return status;
 	}
-
-	if (mon_soc->monitor_mode_v2)
-		return status;
 
 	if (!soc->rxdma_mon_status_ring[mac_id].hal_srng)
 		return QDF_STATUS_SUCCESS;
@@ -1110,38 +1057,11 @@ dp_mon_tx_stats_update_1_0(struct dp_mon_peer *mon_peer,
 }
 #endif
 
-#ifndef QCA_SUPPORT_FULL_MON
-/**
- * dp_rx_mon_process() - Core brain processing for monitor mode
- *
- * This API processes monitor destination ring followed by monitor status ring
- * Called from bottom half (tasklet/NET_RX_SOFTIRQ)
- *
- * @soc: datapath soc context
- * @int_ctx: interrupt context
- * @mac_id: mac_id on which interrupt is received
- * @quota: Number of status ring entry that can be serviced in one shot.
- *
- * Return: Number of reaped status ring entries
- */
-static inline uint32_t
-dp_rx_mon_process(struct dp_soc *soc, struct dp_intr *int_ctx,
-		  uint32_t mac_id, uint32_t quota)
-{
-	return quota;
-}
-#endif
-
 #ifndef DISABLE_MON_CONFIG
 static uint32_t
 dp_rx_mon_process_1_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 	              uint32_t mac_id, uint32_t quota)
 {
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
-
-	if (qdf_unlikely(mon_soc->full_mon_mode))
-		return dp_rx_mon_process(soc, int_ctx, mac_id, quota);
-
 	return dp_rx_mon_status_process(soc, int_ctx, mac_id, quota);
 }
 
@@ -1193,7 +1113,9 @@ dp_mon_register_feature_ops_1_0(struct dp_soc *soc)
 	mon_ops->mon_htt_ppdu_stats_attach = dp_htt_ppdu_stats_attach;
 	mon_ops->mon_htt_ppdu_stats_detach = dp_htt_ppdu_stats_detach;
 	mon_ops->mon_print_pdev_rx_mon_stats = dp_print_pdev_rx_mon_stats;
+#ifdef FEATURE_WDS
 	mon_ops->mon_neighbour_peer_add_ast = dp_mon_neighbour_peer_add_ast;
+#endif
 #ifdef WLAN_TX_PKT_CAPTURE_ENH
 	mon_ops->mon_peer_tid_peer_id_update = dp_peer_tid_peer_id_update_1_0;
 	mon_ops->mon_tx_capture_debugfs_init = dp_tx_capture_debugfs_init_1_0;
@@ -1314,7 +1236,6 @@ dp_mon_register_feature_ops_1_0(struct dp_soc *soc)
 }
 
 struct dp_mon_ops monitor_ops_1_0 = {
-	.mon_soc_cfg_init = dp_mon_soc_cfg_init,
 
 	.mon_pdev_alloc = NULL,
 	.mon_pdev_free = NULL,
@@ -1375,8 +1296,6 @@ struct cdp_mon_ops dp_ops_mon_1_0 = {
 	.txrx_reset_monitor_mode = dp_reset_monitor_mode,
 	/* Added support for HK advance filter */
 	.txrx_set_advance_monitor_filter = dp_pdev_set_advance_monitor_filter,
-	.config_full_mon_mode = dp_config_full_mon_mode,
-	.soc_config_full_mon_mode = dp_soc_config_full_mon_mode,
 	.txrx_enable_mon_reap_timer = dp_enable_mon_reap_timer,
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 	.txrx_enable_enhanced_stats = dp_enable_enhanced_stats,

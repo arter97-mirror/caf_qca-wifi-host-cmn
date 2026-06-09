@@ -1435,7 +1435,6 @@ enum cdp_peer_param_type {
  * @CDP_CONFIG_UNDECODED_METADATA_CAPTURE_ENABLE: Undecoded metadata capture
  * @CDP_CONFIG_RXDMA_BUF_RING_SIZE: RXDMA buffer ring size configure
  * @CDP_CONFIG_DELAY_STATS: set/get delay stats
- * @CDP_CONFIG_MON_VERSION: SET monitor version
  * @CDP_CONFIG_CUST_BEGIN: Customer enum begin
  * @CDP_CONFIG_CUST_END: Customer enum end
  * @CDP_CONFIG_LAST: Last enum
@@ -1469,7 +1468,6 @@ enum cdp_pdev_param_type {
 	CDP_CONFIG_UNDECODED_METADATA_CAPTURE_ENABLE,
 	CDP_CONFIG_RXDMA_BUF_RING_SIZE,
 	CDP_CONFIG_DELAY_STATS,
-	CDP_CONFIG_MON_VERSION,
 
 	/* Add QCA enums above this */
 	CDP_CONFIG_CUST_BEGIN,

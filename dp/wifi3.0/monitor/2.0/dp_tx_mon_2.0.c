@@ -568,33 +568,6 @@ uint32_t dp_tx_mon_nbuf_get_num_frag(qdf_nbuf_t nbuf)
 	return num_frag;
 }
 
-/*
- * dp_tx_mon_free_usr_mpduq() - API to free user mpduq
- * @tx_ppdu_info - pointer to tx_ppdu_info
- * @usr_idx - user index
- * @tx_mon_be - pointer to tx capture be
- *
- * Return: void
- */
-void dp_tx_mon_free_usr_mpduq(struct dp_tx_ppdu_info *tx_ppdu_info,
-			      uint8_t usr_idx,
-			      struct dp_pdev_tx_monitor_be *tx_mon_be)
-{
-	qdf_nbuf_queue_t *mpdu_q;
-	uint32_t num_frag = 0;
-	qdf_nbuf_t buf = NULL;
-
-	if (qdf_unlikely(!tx_ppdu_info))
-		return;
-
-	mpdu_q = &TXMON_PPDU_USR(tx_ppdu_info, usr_idx, mpdu_q);
-
-	while ((buf = qdf_nbuf_queue_remove(mpdu_q)) != NULL) {
-		num_frag += dp_tx_mon_nbuf_get_num_frag(buf);
-		qdf_nbuf_free(buf);
-	}
-	tx_mon_be->stats.pkt_buf_free += num_frag;
-}
 
 /*
  * dp_tx_mon_free_ppdu_info() - API to free dp_tx_ppdu_info

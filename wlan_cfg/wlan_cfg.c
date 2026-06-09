@@ -5147,20 +5147,6 @@ wlan_cfg_pdev_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 	return wlan_cfg_ctx;
 }
 
-void wlan_cfg_set_mon_delayed_replenish_entries(
-					struct wlan_cfg_dp_soc_ctxt *cfg,
-					uint32_t val)
-{
-	cfg->delayed_replenish_entries = val;
-}
-
-qdf_export_symbol(wlan_cfg_set_mon_delayed_replenish_entries);
-
-int wlan_cfg_get_mon_delayed_replenish_entries(struct wlan_cfg_dp_soc_ctxt *cfg)
-{
-	return cfg->delayed_replenish_entries;
-}
-
 void wlan_cfg_pdev_detach(struct wlan_cfg_dp_pdev_ctxt *wlan_cfg_ctx)
 {
 	if (wlan_cfg_ctx)
@@ -6476,8 +6462,8 @@ void wlan_cfg_dp_soc_ctx_dump(struct wlan_cfg_dp_soc_ctxt *cfg)
 {
 	dp_info("DP CFG SoC ctx: delay_mon_replenish = %d",
 		cfg->delay_mon_replenish);
-	dp_info("reo_dst_ring_size = %d, delayed_replenish_entries = %d",
-		cfg->reo_dst_ring_size, cfg->delayed_replenish_entries);
+	dp_info("reo_dst_ring_size = %d",
+		cfg->reo_dst_ring_size);
 }
 #endif
 

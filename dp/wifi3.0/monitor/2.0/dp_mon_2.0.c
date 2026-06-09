@@ -1312,7 +1312,9 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 	mon_ops->mon_htt_ppdu_stats_attach = dp_htt_ppdu_stats_attach;
 	mon_ops->mon_htt_ppdu_stats_detach = dp_htt_ppdu_stats_detach;
 	mon_ops->mon_print_pdev_rx_mon_stats = dp_print_pdev_rx_mon_stats;
+#ifdef FEATURE_WDS
 	mon_ops->mon_neighbour_peer_add_ast = NULL;
+#endif
 #ifdef WLAN_TX_PKT_CAPTURE_ENH_BE
 	mon_ops->mon_peer_tid_peer_id_update = NULL;
 	mon_ops->mon_tx_capture_debugfs_init = NULL;
@@ -1441,7 +1443,6 @@ dp_mon_register_feature_ops_2_0(struct dp_soc *soc)
 #endif
 
 struct dp_mon_ops monitor_ops_2_0 = {
-	.mon_soc_cfg_init = dp_mon_soc_cfg_init,
 	.mon_soc_attach[0] = NULL,
 	.mon_soc_attach[1] = dp_mon_soc_attach_2_0,
 	.mon_soc_detach[0] = NULL,
@@ -1542,8 +1543,6 @@ struct cdp_mon_ops dp_ops_mon_2_0 = {
 	.txrx_reset_monitor_mode = dp_reset_monitor_mode,
 	/* Added support for HK advance filter */
 	.txrx_set_advance_monitor_filter = NULL,
-	.config_full_mon_mode = NULL,
-	.soc_config_full_mon_mode = NULL,
 	.txrx_enable_mon_reap_timer = NULL,
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 	.txrx_enable_enhanced_stats = dp_enable_enhanced_stats,

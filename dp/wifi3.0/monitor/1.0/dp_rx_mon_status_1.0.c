@@ -447,7 +447,6 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 	enum WDI_EVENT pktlog_mode = WDI_NO_VAL;
 	bool nbuf_used;
 	uint32_t rx_enh_capture_mode;
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
 	struct dp_mon_pdev *mon_pdev;
 	struct dp_mon_mac *mon_mac;
 
@@ -597,14 +596,9 @@ dp_rx_mon_status_process_tlv(struct dp_soc *soc, struct dp_intr *int_ctx,
 					mon_mac->mon_chan_freq;
 			}
 
-			if (!mon_soc->full_mon_mode) {
-				dp_rx_mon_dest_process(soc, int_ctx, mac_id,
-						       quota);
-				dp_mon_rx_ppdu_status_reset(mon_mac);
-			} else {
-				mon_mac->mon_ppdu_status =
-						DP_PPDU_STATUS_START;
-			}
+			dp_rx_mon_dest_process(soc, int_ctx, mac_id,
+					       quota);
+			dp_mon_rx_ppdu_status_reset(mon_mac);
 		} else {
 			dp_rx_mon_handle_ppdu_undecoded_metadata(soc, pdev,
 								 ppdu_info,

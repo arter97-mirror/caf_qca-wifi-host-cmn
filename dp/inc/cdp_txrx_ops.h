@@ -1089,8 +1089,6 @@ struct cdp_me_ops {
  * struct cdp_mon_ops - host mon ops
  * @txrx_reset_monitor_mode: Handler to reset monitor mode
  * @txrx_set_advance_monitor_filter: set advanced monitor mode
- * @config_full_mon_mode: configure full monitor mode
- * @soc_config_full_mon_mode: pdev configure full monitor mode
  * @txrx_enable_mon_reap_timer: Enable/Disable reap timer of monitor status ring
  * @txrx_enable_enhanced_stats: Enable enhanced stats
  * @txrx_disable_enhanced_stats: Disable enhanced stats
@@ -1111,11 +1109,6 @@ struct cdp_mon_ops {
 	QDF_STATUS (*txrx_set_advance_monitor_filter)
 		(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		 struct cdp_monitor_filter *filter_val);
-
-	QDF_STATUS
-		(*config_full_mon_mode)(struct cdp_soc_t *soc, uint8_t val);
-	QDF_STATUS (*soc_config_full_mon_mode)(struct cdp_pdev *cdp_pdev,
-					       uint8_t val);
 
 	bool (*txrx_enable_mon_reap_timer)(struct cdp_soc_t *soc_hdl,
 					   enum cdp_mon_reap_source source,

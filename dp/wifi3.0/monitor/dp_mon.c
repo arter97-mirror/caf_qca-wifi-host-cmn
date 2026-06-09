@@ -145,88 +145,6 @@ dp_pdev_disable_mcopy_code(struct dp_pdev *pdev)
 	mon_mac->mvdev = NULL;
 	mon_mac->vdev_id = DP_INVALID_VDEV_ID;
 }
-
-static inline void
-dp_reset_mcopy_mode(struct dp_pdev *pdev)
-{
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-	struct cdp_mon_ops *cdp_ops;
-
-	if (mon_pdev->mcopy_mode) {
-		cdp_ops = dp_mon_cdp_ops_get(pdev->soc);
-		if (cdp_ops  && cdp_ops->config_full_mon_mode)
-			cdp_ops->soc_config_full_mon_mode((struct cdp_pdev *)pdev,
-							  DP_FULL_MON_ENABLE);
-		dp_pdev_disable_mcopy_code(pdev);
-		dp_mon_filter_reset_mcopy_mode(pdev);
-		status = dp_mon_filter_update(pdev);
-		if (status != QDF_STATUS_SUCCESS) {
-			QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-				  FL("Failed to reset AM copy mode filters"));
-		}
-		mon_pdev->monitor_configured = false;
-	}
-}
-
-static QDF_STATUS
-dp_config_mcopy_mode(struct dp_pdev *pdev, int val)
-{
-	uint8_t mac_id = 0;
-	QDF_STATUS status = QDF_STATUS_SUCCESS;
-	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-	struct dp_mon_ops *mon_ops;
-	struct cdp_mon_ops *cdp_ops;
-	struct dp_mon_mac *mon_mac = dp_get_mon_mac(pdev, mac_id);
-
-	if (mon_mac->mvdev)
-		return QDF_STATUS_E_RESOURCES;
-
-	mon_pdev->mcopy_mode = val;
-	mon_pdev->tx_sniffer_enable = 0;
-	mon_pdev->monitor_configured = true;
-
-	mon_ops = dp_mon_ops_get(pdev->soc);
-	if (!wlan_cfg_is_delay_mon_replenish(pdev->soc->wlan_cfg_ctx)) {
-		if (mon_ops && mon_ops->mon_vdev_set_monitor_mode_rings)
-			mon_ops->mon_vdev_set_monitor_mode_rings(pdev, true);
-	}
-
-	/*
-	 * Setup the M copy mode filter.
-	 */
-	cdp_ops = dp_mon_cdp_ops_get(pdev->soc);
-	if (cdp_ops  && cdp_ops->config_full_mon_mode)
-		cdp_ops->soc_config_full_mon_mode((struct cdp_pdev *)pdev,
-						  DP_FULL_MON_ENABLE);
-	dp_mon_filter_setup_mcopy_mode(pdev);
-	status = dp_mon_filter_update(pdev);
-	if (status != QDF_STATUS_SUCCESS) {
-		QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
-			  FL("Failed to set M_copy mode filters"));
-		dp_mon_filter_reset_mcopy_mode(pdev);
-		dp_pdev_disable_mcopy_code(pdev);
-		return status;
-	}
-
-	if (!mon_pdev->pktlog_ppdu_stats)
-		dp_h2t_cfg_stats_msg_send(pdev,
-					  DP_PPDU_STATS_CFG_SNIFFER,
-					  pdev->pdev_id);
-
-	return status;
-}
-#else
-static inline void
-dp_reset_mcopy_mode(struct dp_pdev *pdev)
-{
-}
-
-static inline QDF_STATUS
-dp_config_mcopy_mode(struct dp_pdev *pdev, int val)
-{
-	return QDF_STATUS_E_INVAL;
-}
 #endif /* QCA_MCOPY_SUPPORT */
 
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
@@ -336,18 +254,6 @@ QDF_STATUS dp_reset_monitor_mode_unlock(struct cdp_soc_t *soc_hdl,
 	mon_pdev = pdev->monitor_pdev;
 
 	cdp_ops = dp_mon_cdp_ops_get(soc);
-	if (cdp_ops  && cdp_ops->soc_config_full_mon_mode) {
-		cdp_ops->soc_config_full_mon_mode((struct cdp_pdev *)pdev,
-						  DP_FULL_MON_DISABLE);
-		mon_pdev->hold_mon_dest_ring = false;
-		mon_pdev->is_bkpressure = false;
-		mon_pdev->set_reset_mon = false;
-#if defined(QCA_SUPPORT_FULL_MON)
-		if (mon_pdev->mon_desc)
-			qdf_mem_zero(mon_pdev->mon_desc,
-				     sizeof(struct hal_rx_mon_desc_info));
-#endif
-	}
 
 	/*
 	 * Lite monitor mode, smart monitor mode and monitor
@@ -631,9 +537,6 @@ QDF_STATUS dp_vdev_set_monitor_mode(struct cdp_soc_t *dp_soc,
 	mon_pdev->phy_ppdu_id_size = hal_rx_get_phy_ppdu_id_size(soc->hal_soc);
 
 	cdp_ops = dp_mon_cdp_ops_get(soc);
-	if (cdp_ops  && cdp_ops->soc_config_full_mon_mode)
-		cdp_ops->soc_config_full_mon_mode((struct cdp_pdev *)pdev,
-						  DP_FULL_MON_ENABLE);
 
 	if (!dp_mon_mode_local_pkt_capture(soc)) {
 		/* Setup the monitor destination ring */
@@ -5535,77 +5438,6 @@ dp_ppdu_stats_ind_handler(struct htt_soc *soc,
 	return free_buf;
 }
 #endif
-
-QDF_STATUS dp_mon_soc_cfg_init(struct dp_soc *soc)
-{
-	int target_type;
-	struct dp_mon_soc *mon_soc = soc->monitor_soc;
-	struct cdp_mon_ops *cdp_ops;
-
-	cdp_ops = dp_mon_cdp_ops_get(soc);
-	target_type = hal_get_target_type(soc->hal_soc);
-	switch (target_type) {
-	case TARGET_TYPE_QCA6290:
-	case TARGET_TYPE_QCA6390:
-	case TARGET_TYPE_QCA6490:
-	case TARGET_TYPE_QCA6750:
-	case TARGET_TYPE_KIWI:
-	case TARGET_TYPE_MANGO:
-	case TARGET_TYPE_PEACH:
-	case TARGET_TYPE_WCN6450:
-	case TARGET_TYPE_WCN7750:
-	case TARGET_TYPE_WCN8750:
-	case TARGET_TYPE_QCC2072:
-	case TARGET_TYPE_FIG:
-		/* do nothing */
-		break;
-	case TARGET_TYPE_QCA8074:
-		wlan_cfg_set_mon_delayed_replenish_entries(soc->wlan_cfg_ctx,
-							   MON_BUF_MIN_ENTRIES);
-		break;
-	case TARGET_TYPE_QCA8074V2:
-	case TARGET_TYPE_QCA6018:
-	case TARGET_TYPE_QCA9574:
-		wlan_cfg_set_mon_delayed_replenish_entries(soc->wlan_cfg_ctx,
-							   MON_BUF_MIN_ENTRIES);
-		mon_soc->hw_nac_monitor_support = 1;
-		break;
-	case TARGET_TYPE_QCN9000:
-		wlan_cfg_set_mon_delayed_replenish_entries(soc->wlan_cfg_ctx,
-							   MON_BUF_MIN_ENTRIES);
-		mon_soc->hw_nac_monitor_support = 1;
-		if (cfg_get(soc->ctrl_psoc, CFG_DP_FULL_MON_MODE)) {
-			if (cdp_ops  && cdp_ops->config_full_mon_mode)
-				cdp_ops->config_full_mon_mode((struct cdp_soc_t *)soc, 1);
-		}
-		break;
-	case TARGET_TYPE_QCA5018:
-	case TARGET_TYPE_QCN6122:
-	case TARGET_TYPE_QCN9160:
-		wlan_cfg_set_mon_delayed_replenish_entries(soc->wlan_cfg_ctx,
-							   MON_BUF_MIN_ENTRIES);
-		mon_soc->hw_nac_monitor_support = 1;
-		break;
-	case TARGET_TYPE_QCN9224:
-	case TARGET_TYPE_QCA5424:
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCN6432:
-		wlan_cfg_set_mon_delayed_replenish_entries(soc->wlan_cfg_ctx,
-							   MON_BUF_MIN_ENTRIES);
-		mon_soc->hw_nac_monitor_support = 1;
-		mon_soc->monitor_mode_v2 = 1;
-		break;
-	default:
-		dp_mon_info("%s: Unknown tgt type %d\n", __func__, target_type);
-		qdf_assert_always(0);
-		break;
-	}
-
-	dp_mon_info("hw_nac_monitor_support = %d",
-		    mon_soc->hw_nac_monitor_support);
-
-	return QDF_STATUS_SUCCESS;
-}
 
 /**
  * dp_mon_pdev_per_target_config() - Target specific monitor pdev configuration

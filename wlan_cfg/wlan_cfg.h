@@ -309,7 +309,6 @@ struct wlan_srng_cfg {
  * @is_rx_fisa_enabled: flag to enable/disable FISA Rx
  * @is_rx_fisa_lru_del_enabled:
  * @is_tso_desc_attach_defer:
- * @delayed_replenish_entries:
  * @reo_rings_mapping:
  * @num_rx_context: number of RX contexts
  * @rx_rings_mapping: DP RX rings mapping mask
@@ -553,7 +552,6 @@ struct wlan_cfg_dp_soc_ctxt {
 	uint8_t *rx_toeplitz_hash_key;
 	uint8_t pktlog_buffer_size;
 	bool is_tso_desc_attach_defer;
-	uint32_t delayed_replenish_entries;
 	uint32_t reo_rings_mapping;
 	uint32_t num_rx_context;
 	uint32_t rx_rings_mapping;
@@ -820,26 +818,6 @@ int wlan_cfg_set_rx_wbm_rel_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg,
 int wlan_cfg_set_reo_status_ring_mask(struct wlan_cfg_dp_soc_ctxt *cfg,
 					int context, int mask);
 
-/**
- * wlan_cfg_set_mon_delayed_replenish_entries() - number of buffers to replenish
- *				for monitor buffer ring at initialization
- * @wlan_cfg_ctx: Configuration Handle
- * @replenish_entries: number of entries to replenish at initialization
- *
- */
-void wlan_cfg_set_mon_delayed_replenish_entries(struct wlan_cfg_dp_soc_ctxt
-						*wlan_cfg_ctx,
-						uint32_t replenish_entries);
-
-/**
- * wlan_cfg_get_mon_delayed_replenish_entries() - get num of buffer to replenish
- *				for monitor buffer ring at initialization
- * @wlan_cfg_ctx: Configuration Handle
- *
- * Return: delayed_replenish_entries;
- */
-int wlan_cfg_get_mon_delayed_replenish_entries(struct wlan_cfg_dp_soc_ctxt
-					       *wlan_cfg_ctx);
 /**
  * wlan_cfg_get_num_contexts() - Number of interrupt contexts to be registered
  * @wlan_cfg_ctx: Configuration Handle
