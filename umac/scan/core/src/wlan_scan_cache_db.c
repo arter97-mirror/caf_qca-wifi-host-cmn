@@ -1057,9 +1057,9 @@ scm_find_duplicate(struct wlan_objmgr_pdev *pdev,
 /*
  * Buffer len size to add the dynamic scan frame debug info
  * 7 (pdev id) + 27 (security info) + 8 (hidden info) + 15 (chan mismatch) +
- * 8 (CSA IE info) + 31 (ML info) + 5 extra
+ * 8 (CSA IE info) + 31 (ML info) + 35(SMD info) + 5 extra
  */
-#define SCAN_DUMP_MAX_LEN 101
+#define SCAN_DUMP_MAX_LEN 136
 
 static void scm_dump_scan_entry(struct wlan_objmgr_pdev *pdev,
 				struct scan_cache_entry *scan_params)
@@ -1108,6 +1108,9 @@ static void scm_dump_scan_entry(struct wlan_objmgr_pdev *pdev,
 
 	/* Add ML info */
 	len += util_scan_get_ml_info(scan_params, log_str, str_len, len);
+
+	/* Add SMD info */
+	len += util_scan_get_smd_info(scan_params, log_str, str_len, len);
 
 	scm_nofl_debug("Rcvd %s(%d): " QDF_MAC_ADDR_FMT " \"" QDF_SSID_FMT "\" freq %d rssi %d tsf %u seq %d snr %d phy %d gen %d %s",
 		       (scan_params->frm_subtype == MGMT_SUBTYPE_PROBE_RESP) ?

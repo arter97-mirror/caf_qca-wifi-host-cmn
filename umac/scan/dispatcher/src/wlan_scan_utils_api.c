@@ -1379,6 +1379,29 @@ static void util_scan_parse_uhr_ie(struct scan_cache_entry *scan_params,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * util_scan_parse_smd_ie() - Parse SMD Information element
+ * @scan_params: Scan cache entry to populate
+ * @extn_ie: Extension IE header
+ *
+ * Return: void
+ */
+static void util_scan_parse_smd_ie(struct scan_cache_entry *scan_params,
+				   struct extn_ie_header *extn_ie)
+{
+	if (extn_ie->ie_extn_id == WLAN_EXTN_ELEMID_SMD_INFO &&
+	    extn_ie->ie_len >= WLAN_SMD_INFO_IE_MIN_LEN)
+		scan_params->ie_list.smd_info = (uint8_t *)extn_ie;
+}
+#else
+static void
+util_scan_parse_smd_ie(struct scan_cache_entry *scan_params,
+		       struct extn_ie_header *extn_ie)
+{
+}
+#endif
+
 static QDF_STATUS
 util_scan_parse_extn_ie(struct scan_cache_entry *scan_params,
 			struct ie_header *ie)
@@ -1425,6 +1448,7 @@ util_scan_parse_extn_ie(struct scan_cache_entry *scan_params,
 	}
 	util_scan_parse_eht_ie(scan_params, extn_ie);
 	util_scan_parse_uhr_ie(scan_params, extn_ie);
+	util_scan_parse_smd_ie(scan_params, extn_ie);
 
 	return QDF_STATUS_SUCCESS;
 }

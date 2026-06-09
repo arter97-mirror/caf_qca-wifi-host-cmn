@@ -826,6 +826,9 @@ util_scan_copy_beacon_data(struct scan_cache_entry *new_entry,
 	ie_lst->uhrcap = conv_ptr(ie_lst->uhrcap, old_ptr, new_ptr);
 	ie_lst->uhrop = conv_ptr(ie_lst->uhrop, old_ptr, new_ptr);
 #endif
+#ifdef WLAN_FEATURE_11BN_SMD
+	ie_lst->smd_info = conv_ptr(ie_lst->smd_info, old_ptr, new_ptr);
+#endif
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -2024,6 +2027,38 @@ util_scan_get_ml_info(struct scan_cache_entry *scan_params,
 static inline uint32_t
 util_scan_get_ml_info(struct scan_cache_entry *scan_params,
 		      char *log_str, uint32_t str_len, uint32_t len)
+{
+	return 0;
+}
+#endif
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * util_scan_get_smd_info(): Dump SMD scan info
+ * @scan_params: new received entry
+ * @log_str: Buffer pointer
+ * @str_len: max string length
+ * @len: already filled length in buffer
+ *
+ * Return: length filled in buffer
+ */
+static inline uint32_t
+util_scan_get_smd_info(struct scan_cache_entry *scan_params,
+		       char *log_str, uint32_t str_len, uint32_t len)
+{
+	const uint8_t *ie = scan_params->ie_list.smd_info;
+
+	if (!ie || ie[1] < WLAN_SMD_INFO_IE_MIN_LEN)
+		return 0;
+
+	return qdf_scnprintf(log_str + len, str_len - len,
+			     ", SMD " QDF_MAC_ADDR_FMT " timeout=%u",
+			     QDF_MAC_ADDR_REF(&ie[3]), ie[10]);
+}
+#else
+static inline uint32_t
+util_scan_get_smd_info(struct scan_cache_entry *scan_params,
+		       char *log_str, uint32_t str_len, uint32_t len)
 {
 	return 0;
 }

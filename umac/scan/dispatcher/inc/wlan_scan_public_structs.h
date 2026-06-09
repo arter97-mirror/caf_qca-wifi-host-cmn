@@ -231,6 +231,7 @@ struct channel_info {
  * @wifi7_rsno: pointer to Wifi-7 vendor RSNO IE
  * @uhrcap: pointer to UHR capability IE
  * @uhrop: pointer to UHR operation IE
+ * @smd_info: pointer to SMD information IE
  */
 struct ie_list {
 	uint8_t *tim;
@@ -302,6 +303,9 @@ struct ie_list {
 #ifdef WLAN_FEATURE_11BN
 	uint8_t *uhrcap;
 	uint8_t *uhrop;
+#endif
+#ifdef WLAN_FEATURE_11BN_SMD
+	uint8_t *smd_info;
 #endif
 
 /*
