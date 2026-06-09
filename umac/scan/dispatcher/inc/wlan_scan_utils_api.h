@@ -2170,6 +2170,25 @@ QDF_STATUS scm_validate_6ghz_security_and_policy(
 	struct scan_cache_entry *scan_entry,
 	bool is_connection_time);
 
+/**
+ * util_scan_populate_bcn_ie_list() - Parse beacon/probe response frame and
+ * populate IE list
+ * @pdev: pdev object
+ * @scan_params: scan entry to populate
+ * @chan_freq: output parameter for channel frequency
+ * @band_mask: band mask for frequency conversion
+ *
+ * API to parse beacon/probe response frame and populate the IE list in
+ * scan_params. This is used to re-parse frames after modifications.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+QDF_STATUS
+util_scan_populate_bcn_ie_list(struct wlan_objmgr_pdev *pdev,
+			       struct scan_cache_entry *scan_params,
+			       qdf_freq_t *chan_freq, uint8_t band_mask);
+
+
 #ifdef WLAN_FEATURE_11BN
 /**
  * util_scan_entry_uhrop() - function to read uhr ops vendor ie

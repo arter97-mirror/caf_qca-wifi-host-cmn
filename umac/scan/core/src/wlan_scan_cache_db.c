@@ -1092,6 +1092,213 @@ static void scm_dump_scan_entry(struct wlan_objmgr_pdev *pdev,
 		       scan_params->is_gen_entry, log_str);
 }
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * scm_is_uhr_candidate_updated() - Check if UHR capabilities are updated
+ * @old_entry: existing scan cache entry
+ * @new_entry: new scan entry to be added
+ *
+ * This function compares UHR capability and operation IEs between old and new
+ * scan entries to determine if the new entry has additional or updated UHR
+ * capabilities.
+ *
+ * Return: true if new entry has additional/updated UHR capabilities,
+ *         false otherwise
+ */
+static bool
+scm_is_uhr_candidate_updated(struct scan_cache_entry *old_entry,
+			     struct scan_cache_entry *new_entry)
+{
+	bool old_has_uhrcap, old_has_uhrop;
+	bool new_has_uhrcap, new_has_uhrop;
+
+	/* Check if old entry has UHR IEs */
+	old_has_uhrcap = (old_entry->ie_list.uhrcap != NULL);
+	old_has_uhrop = (old_entry->ie_list.uhrop != NULL);
+
+	/* Check if new entry has UHR IEs */
+	new_has_uhrcap = (new_entry->ie_list.uhrcap != NULL);
+	new_has_uhrop = (new_entry->ie_list.uhrop != NULL);
+
+	/*
+	 * Scenario 1: Old entry has no UHR IEs, new entry has UHR IEs
+	 * This is an upgrade (e.g., beacon -> probe response with UHR)
+	 */
+	if (!old_has_uhrcap && !old_has_uhrop) {
+		if (new_has_uhrcap || new_has_uhrop) {
+			scm_debug("UHR upgrade: old has no UHR IEs, new has UHR IEs");
+			return true;
+		}
+		/* Both have no UHR IEs - no UHR update */
+		return false;
+	}
+
+	/*
+	 * Scenario 2: Old entry has UHR IEs, new entry has no UHR IEs
+	 * This is a downgrade - need to append UHR IEs from old entry
+	 */
+	if ((old_has_uhrcap || old_has_uhrop) &&
+	    !new_has_uhrcap && !new_has_uhrop) {
+		scm_debug("UHR downgrade detected: will append UHR IEs from old entry");
+		return false;
+	}
+
+	/*
+	 * Scenario 3: Both entries have UHR IEs.
+	 *
+	 * If the new entry carries a UHR CAP IE it is a complete probe
+	 * response and should replace the old entry directly.  Returning
+	 * true skips scm_append_uhr_ies_to_scan_entry(), which is correct
+	 * because the new entry already has fresh UHR CAP and UHR OP IEs —
+	 * appending the old ones would produce duplicate IEs in the raw frame.
+	 *
+	 * If the new entry has only UHR OP IE (beacon) but the old entry
+	 * already has UHR CAP IE, continue to the append path so the
+	 * cached UHR CAP IE is preserved.
+	 */
+	if (new_has_uhrcap) {
+		scm_debug("UHR: new entry has UHR CAP IE, replace directly");
+		return true;
+	}
+
+	/* New entry has only UHR OP IE, old has UHR CAP IE — append path */
+	scm_debug("UHR: new entry missing UHR CAP IE, append from old entry");
+	return false;
+}
+
+/**
+ * scm_append_uhr_ies_to_scan_entry() - Append UHR IEs to scan entry
+ * @pdev: pdev object
+ * @old_entry: existing scan cache entry with UHR IEs
+ * @new_entry: new scan entry without UHR IEs (will be modified)
+ *
+ * This function appends UHR CAP and UHR OP IEs from the old entry to the
+ * new entry's raw_frame, then re-parses the frame to update ie_list pointers.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code otherwise
+ */
+static QDF_STATUS
+scm_append_uhr_ies_to_scan_entry(struct wlan_objmgr_pdev *pdev,
+				 struct scan_cache_entry *old_entry,
+				 struct scan_cache_entry *new_entry)
+{
+	uint8_t *new_frame_data;
+	uint8_t *orig_frame_data;
+	uint32_t new_frame_len;
+	uint32_t orig_frame_len;
+	uint32_t uhrcap_len = 0, uhrop_len = 0;
+	uint8_t *uhrcap_ie = NULL, *uhrop_ie = NULL;
+	struct wlan_objmgr_psoc *psoc;
+	QDF_STATUS status;
+	qdf_freq_t chan_freq = 0;
+	uint8_t band_mask;
+
+	psoc = wlan_pdev_get_psoc(pdev);
+	if (!psoc)
+		return QDF_STATUS_E_INVAL;
+
+	orig_frame_len = new_entry->raw_frame.len;
+	orig_frame_data = new_entry->raw_frame.ptr;
+
+	/* Extract UHR IEs from old entry */
+	if (old_entry->ie_list.uhrcap) {
+		uhrcap_ie = old_entry->ie_list.uhrcap;
+		/* IE format: [ID][Len][Data...], total length = 2 + Len */
+		uhrcap_len = 2 + uhrcap_ie[1];
+		if (uhrcap_len > old_entry->raw_frame.len) {
+			scm_err("UHR CAP IE length %d exceeds frame size %d",
+				uhrcap_len, old_entry->raw_frame.len);
+			return QDF_STATUS_E_INVAL;
+		}
+	}
+
+	if (old_entry->ie_list.uhrop) {
+		uhrop_ie = old_entry->ie_list.uhrop;
+		uhrop_len = 2 + uhrop_ie[1];
+		if (uhrop_len > old_entry->raw_frame.len) {
+			scm_err("UHR OP IE length %d exceeds frame size %d",
+				uhrop_len, old_entry->raw_frame.len);
+			return QDF_STATUS_E_INVAL;
+		}
+	}
+
+	if (!uhrcap_len && !uhrop_len) {
+		scm_debug("No UHR IEs to append");
+		return QDF_STATUS_SUCCESS;
+	}
+
+	/* Calculate new frame length */
+	new_frame_len = orig_frame_len + uhrcap_len + uhrop_len;
+
+	/* Allocate new buffer for extended frame */
+	new_frame_data = qdf_mem_malloc(new_frame_len);
+	if (!new_frame_data) {
+		scm_err("Failed to allocate memory for extended frame");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	/* Copy original frame */
+	qdf_mem_copy(new_frame_data, new_entry->raw_frame.ptr, orig_frame_len);
+
+	/* Append UHR CAP IE if present */
+	if (uhrcap_len) {
+		qdf_mem_copy(new_frame_data + orig_frame_len,
+			     uhrcap_ie, uhrcap_len);
+		scm_debug("Appended UHR CAP IE, len=%d", uhrcap_len);
+	}
+
+	/* Append UHR OP IE if present */
+	if (uhrop_len) {
+		qdf_mem_copy(new_frame_data + orig_frame_len + uhrcap_len,
+			     uhrop_ie, uhrop_len);
+		scm_debug("Appended UHR OP IE, len=%d", uhrop_len);
+	}
+
+	/* Update new entry with extended frame */
+	new_entry->raw_frame.ptr = new_frame_data;
+	new_entry->raw_frame.len = new_frame_len;
+
+	band_mask = BIT(wlan_reg_freq_to_band(new_entry->channel.chan_freq));
+
+	status = util_scan_populate_bcn_ie_list(pdev, new_entry,
+						&chan_freq, band_mask);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		scm_err("Failed to parse after appending UHR, restore legacy");
+		qdf_mem_free(new_frame_data);
+		new_entry->raw_frame.ptr = orig_frame_data;
+		new_entry->raw_frame.len = orig_frame_len;
+		util_scan_populate_bcn_ie_list(pdev, new_entry,
+					       &chan_freq, band_mask);
+		return status;
+	}
+
+	/* Free old frame buffer */
+	qdf_mem_free(orig_frame_data);
+
+	scm_debug("Successfully appended UHR IEs, new frame len=%d",
+		  new_frame_len);
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static inline bool
+scm_is_uhr_candidate_updated(struct scan_cache_entry *old_entry,
+			     struct scan_cache_entry *new_entry)
+{
+	/* UHR not supported, always allow update */
+	return true;
+}
+
+static inline QDF_STATUS
+scm_append_uhr_ies_to_scan_entry(struct wlan_objmgr_pdev *pdev,
+				 struct scan_cache_entry *old_entry,
+				 struct scan_cache_entry *new_entry)
+{
+	/* No-op when UHR not supported */
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_11BN */
+
 /**
  * scm_add_update_entry() - add or update scan entry
  * @psoc: psoc ptr
@@ -1108,6 +1315,7 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 	struct scan_cache_node *dup_node = NULL;
 	struct scan_cache_node *scan_node = NULL;
 	bool is_dup_found = false;
+	bool is_uhr_updated = false;
 	QDF_STATUS status;
 	struct scan_dbs *scan_db;
 	struct wlan_scan_obj *scan_obj;
@@ -1144,6 +1352,25 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 	 */
 	if (!is_gen_entry || !is_dup_found)
 		scan_params->is_gen_entry = is_gen_entry;
+
+	/* Check for UHR capability updates */
+	if (is_dup_found) {
+		is_uhr_updated = scm_is_uhr_candidate_updated(dup_node->entry,
+							       scan_params);
+
+		/*
+		 * If UHR capabilities are not updated (downgrade case),
+		 * append UHR IEs from old entry to new entry before
+		 * replacing. This preserves UHR caps while updating
+		 * all other IEs.
+		 */
+		if (!is_uhr_updated) {
+			status = scm_append_uhr_ies_to_scan_entry(pdev,
+								   dup_node->entry,
+								   scan_params);
+			/* Continue even if append fails */
+		}
+	}
 
 	scm_dump_scan_entry(pdev, scan_params);
 
