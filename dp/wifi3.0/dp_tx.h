@@ -1232,7 +1232,12 @@ static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
 {
-	queue->ring_id = qdf_get_cpu();
+	struct dp_soc *soc = vdev->pdev->soc;
+
+	if (qdf_unlikely(!soc->num_tcl_data_rings))
+		queue->ring_id = 0;
+	else
+		queue->ring_id = qdf_get_cpu() % soc->num_tcl_data_rings;
 	queue->desc_pool_id = queue->ring_id;
 }
 #endif
