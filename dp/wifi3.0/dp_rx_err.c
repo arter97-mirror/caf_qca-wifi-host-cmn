@@ -39,6 +39,9 @@
 #include <enet.h>	/* LLC_SNAP_HDR_LEN */
 #include "qdf_net_types.h"
 #include "dp_rx_buffer_pool.h"
+#if defined(CONFIG_BERYLLIUM) && !defined(CONFIG_BORON)
+#include "hal_be_rx.h"
+#endif
 
 #define dp_rx_err_alert(params...) QDF_TRACE_FATAL(QDF_MODULE_ID_DP_RX_ERROR, params)
 #define dp_rx_err_warn(params...) QDF_TRACE_WARN(QDF_MODULE_ID_DP_RX_ERROR, params)
@@ -55,6 +58,8 @@
 #define DP_MAX_REG_RX_ROUTING_ERRS_THRESHOLD 20
 #define DP_MAX_REG_RX_ROUTING_ERRS_IN_TIMEOUT 10
 #define DP_RX_ERR_ROUTE_TIMEOUT_US (5 * 1000 * 1000) /* micro seconds */
+#define DP_MAX_STALE_LINK_DESC_THRESHOLD 3
+#define DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE 0x12121212
 
 #ifdef FEATURE_MEC
 bool dp_rx_mcast_echo_check(struct dp_soc *soc,
@@ -2169,6 +2174,59 @@ bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
 }
 #endif
 
+#if defined(CONFIG_BERYLLIUM) && !defined(CONFIG_BORON)
+static inline
+QDF_STATUS dp_rx_ring_link_desc_validate(hal_ring_desc_t ring_desc)
+{
+	if (qdf_unlikely(DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE ==
+		(hal_rx_get_reo_desc_va_63_32(ring_desc))))
+		return QDF_STATUS_E_PENDING;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void dp_rx_ring_link_desc_invalidate(hal_ring_desc_t ring_desc)
+{
+	hal_rx_set_reo_desc_va_63_32(ring_desc,
+				     DP_RX_DESC_BUFF_VA_32BITS_HI_INVALIDATE);
+}
+
+static inline
+void dp_rx_dump_invalid_link_desc(hal_ring_desc_t ring_desc,
+				  struct dp_soc *soc,
+				  uint8_t error_code)
+{
+	uint32_t *buf_addr = NULL;
+
+	buf_addr = (uint32_t *)ring_desc;
+	dp_err("invalid link desc: error code - %u, buffer addr[0] - 0x%x, buffer addr[1] - 0x%x",
+	       error_code, buf_addr[0], buf_addr[1]);
+	DP_STATS_INC(soc, rx.err.invalid_link_cookie, 1);
+	soc->stale_link_desc++;
+	if (soc->stale_link_desc >= DP_MAX_STALE_LINK_DESC_THRESHOLD)
+		qdf_assert_always(0);
+}
+#else
+static inline
+QDF_STATUS dp_rx_ring_link_desc_validate(hal_ring_desc_t ring_desc)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void dp_rx_ring_link_desc_invalidate(hal_ring_desc_t ring_desc)
+{
+}
+
+static inline
+void dp_rx_dump_invalid_link_desc(hal_ring_desc_t ring_desc,
+				  struct dp_soc *soc,
+				  uint8_t error_code)
+{
+}
+#endif
+
 uint32_t
 dp_rx_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		  hal_ring_handle_t hal_ring_hdl, uint32_t quota)
@@ -2280,13 +2338,27 @@ more_data:
 			goto next_entry;
 		}
 
+		status = dp_rx_ring_link_desc_validate(ring_desc);
+		if (qdf_unlikely(QDF_IS_STATUS_ERROR(status))) {
+			dp_rx_dump_invalid_link_desc(
+					ring_desc, soc,
+					DP_RX_LINK_DESC_HW_WRITE_FAILURE);
+			goto next_entry;
+		}
+
 		hal_rx_buf_cookie_rbm_get(hal_soc, (uint32_t *)ring_desc,
 					  &hbi);
 		/*
 		 * check for the magic number in the sw cookie
 		 */
-		qdf_assert_always((hbi.sw_cookie >> LINK_DESC_ID_SHIFT) &
-					soc->link_desc_id_start);
+		if (!((hbi.sw_cookie >> LINK_DESC_ID_SHIFT) &
+					soc->link_desc_id_start)) {
+			dp_rx_dump_invalid_link_desc(
+				ring_desc, soc,
+				DP_RX_LINK_DESC_COOKIE_INVALID_MAGIC_NUM);
+			goto next_entry;
+		}
+
 
 		if (dp_idle_link_bm_id_check(soc, hbi.rbm, ring_desc)) {
 			DP_STATS_INC(soc, rx.err.invalid_link_cookie, 1);
@@ -2301,6 +2373,14 @@ more_data:
 
 		hal_rx_reo_buf_paddr_get(soc->hal_soc, ring_desc, &hbi);
 		link_desc_va = dp_rx_cookie_2_link_desc_va(soc, &hbi);
+		if (!link_desc_va) {
+			dp_rx_dump_invalid_link_desc(
+				ring_desc, soc,
+				DP_RX_LINK_DESC_COOKIE_INVALID_PAGE_IDX);
+			goto next_entry;
+		}
+
+		soc->stale_link_desc = 0;
 		hal_rx_msdu_list_get(soc->hal_soc, link_desc_va, &msdu_list,
 				     &num_msdus);
 		if (!num_msdus ||
@@ -2339,7 +2419,28 @@ more_data:
 		rx_desc = soc->arch_ops.dp_rx_desc_cookie_2_va(
 						soc,
 						msdu_list.sw_cookie[0]);
-		qdf_assert_always(rx_desc);
+		if (!rx_desc) {
+			for (i = 0; i + 1 < num_msdus; i += 2)
+				dp_err("MSDU[%d]: paddr=0x%llx cookie=0x%x rbm=%u "
+				       "MSDU[%d]: paddr=0x%llx cookie=0x%x rbm=%u",
+				       i, msdu_list.paddr[i],
+				       msdu_list.sw_cookie[i],
+				       msdu_list.rbm[i], i + 1,
+				       msdu_list.paddr[i + 1],
+				       msdu_list.sw_cookie[i + 1],
+				       msdu_list.rbm[i + 1]);
+
+			if (i < num_msdus)
+				dp_err("MSDU[%d]: paddr=0x%llx cookie=0x%x rbm=%u",
+				       i, msdu_list.paddr[i],
+				       msdu_list.sw_cookie[i],
+				       msdu_list.rbm[i]);
+
+			dp_rx_link_desc_return(soc, ring_desc,
+					       HAL_BM_ACTION_PUT_IN_IDLE_LIST);
+			qdf_assert_always(rx_desc);
+			goto next_entry;
+		}
 
 		mac_id = rx_desc->pool_id;
 
@@ -2485,6 +2586,7 @@ process_reo_error_code:
 			qdf_assert_always(0);
 		}
 next_entry:
+		dp_rx_ring_link_desc_invalidate(ring_desc);
 		dp_rx_link_cookie_invalidate(ring_desc);
 		hal_srng_dst_get_next(hal_soc, hal_ring_hdl);
 

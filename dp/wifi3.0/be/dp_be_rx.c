@@ -1578,7 +1578,7 @@ QDF_STATUS dp_wbm_get_rx_desc_from_hal_desc_be(struct dp_soc *soc,
 struct dp_rx_desc *dp_rx_desc_cookie_2_va_be(struct dp_soc *soc,
 					     uint32_t cookie)
 {
-	return (struct dp_rx_desc *)dp_cc_desc_find(soc, cookie);
+	return (struct dp_rx_desc *)dp_cc_desc_find_validate(soc, cookie);
 }
 
 #if defined(WLAN_FEATURE_11BE_MLO)

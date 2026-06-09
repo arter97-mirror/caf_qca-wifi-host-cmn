@@ -4061,6 +4061,7 @@ struct dp_soc {
 #ifdef DP_RX_MSDU_DONE_FAIL_HISTORY
 	struct dp_msdu_done_fail_history *msdu_done_fail_hist;
 #endif
+	uint8_t stale_link_desc;
 #ifdef DP_RX_PEEK_MSDU_DONE_WAR
 	struct dp_rx_msdu_done_fail_desc_list msdu_done_fail_desc_list;
 #endif
