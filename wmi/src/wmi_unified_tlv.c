@@ -16814,7 +16814,7 @@ static QDF_STATUS extract_mac_phy_caps_ext2_tlv(
 
 	param_buf = (WMI_SERVICE_READY_EXT2_EVENTID_param_tlvs *)event;
 
-	if (param_buf->num_mac_phy_caps2)
+	if (phy_idx < param_buf->num_mac_phy_caps2)
 		mac_phy_caps2 = &param_buf->mac_phy_caps2[phy_idx];
 
 	if (qdf_unlikely(!mac_phy_caps2) ||
