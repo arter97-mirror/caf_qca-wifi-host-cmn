@@ -1039,6 +1039,10 @@ static inline struct dp_tx_desc_s *dp_tx_spcl_desc_alloc(struct dp_soc *soc,
 }
 #else /* QCA_AC_BASED_FLOW_CONTROL */
 
+static inline void dp_tx_desc_init_peer_bw(struct dp_tx_desc_s *tx_desc)
+{
+}
+
 static inline bool
 dp_tx_is_threshold_reached(struct dp_tx_desc_pool_s *pool, uint16_t avail_desc)
 {
@@ -1176,6 +1180,10 @@ dp_tx_desc_thresh_reached(struct cdp_soc_t *soc_hdl, uint8_t vdev_id)
 	return status;
 }
 #else /* QCA_LL_TX_FLOW_CONTROL_V2 */
+
+static inline void dp_tx_desc_init_peer_bw(struct dp_tx_desc_s *tx_desc)
+{
+}
 
 static inline void dp_tx_flow_control_init(struct dp_soc *handle)
 {

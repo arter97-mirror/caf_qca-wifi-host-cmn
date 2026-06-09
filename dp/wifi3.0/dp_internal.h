@@ -4502,6 +4502,13 @@ void dp_tx_ndp_update_bw_thresholds(struct dp_txrx_peer *peer,
 static inline void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc)
 {
 }
+
+static inline
+void dp_tx_ndp_update_bw_thresholds(struct dp_txrx_peer *peer,
+				    enum cdp_peer_bw old_bw,
+				    enum cdp_peer_bw new_bw)
+{
+}
 #endif /* QCA_LL_TX_FLOW_CONTROL_V2 */
 
 #ifdef QCA_OL_DP_SRNG_LOCK_LESS_ACCESS
