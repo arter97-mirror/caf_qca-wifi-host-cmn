@@ -793,6 +793,33 @@ scm_update_mlme_info(struct scan_cache_entry *src,
 		sizeof(struct mlme_info));
 }
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * scm_inherit_uhr_cap_timestamp() - Carry UHR CAP timestamp to a new entry
+ * @src: existing scan cache entry (source of the timestamp)
+ * @dst: new scan cache entry being built
+ *
+ * Called from scm_copy_info_from_dup_entry() and
+ * scm_append_uhr_ies_to_scan_entry() to propagate the time at which the UHR
+ * CAP IE was last seen in a probe response.  Preserving the original timestamp
+ * (rather than resetting it) ensures scm_is_uhr_cap_stale() measures age from
+ * the actual probe response reception, not from the latest beacon cycle.
+ */
+static inline void
+scm_inherit_uhr_cap_timestamp(struct scan_cache_entry *src,
+			      struct scan_cache_entry *dst)
+{
+	if (src->uhr_cap_timestamp)
+		dst->uhr_cap_timestamp = src->uhr_cap_timestamp;
+}
+#else
+static inline void
+scm_inherit_uhr_cap_timestamp(struct scan_cache_entry *src,
+			      struct scan_cache_entry *dst)
+{
+}
+#endif /* WLAN_FEATURE_11BN */
+
 /**
  * scm_copy_info_from_dup_entry() - copy duplicate node info
  * to new scan entry
@@ -974,6 +1001,8 @@ scm_copy_info_from_dup_entry(struct wlan_objmgr_pdev *pdev,
 	 */
 	if (!scan_params->is_gen_entry)
 		scan_params->is_gen_entry = scan_entry->is_gen_entry;
+
+	scm_inherit_uhr_cap_timestamp(scan_entry, scan_params);
 }
 
 /**
@@ -1093,87 +1122,125 @@ static void scm_dump_scan_entry(struct wlan_objmgr_pdev *pdev,
 }
 
 #ifdef WLAN_FEATURE_11BN
+/* Age threshold (ms) for a cached UHR CAP IE; default matches gScanAgingTime */
+#define SCM_UHR_CAP_STALE_TIME_MS (30 * 1000)
+
 /**
- * scm_is_uhr_candidate_updated() - Check if UHR capabilities are updated
- * @old_entry: existing scan cache entry
- * @new_entry: new scan entry to be added
+ * scm_stamp_uhr_cap_timestamp() - Record when a UHR CAP IE was received
+ * @entry: scan cache entry that has just been populated from a probe response
  *
- * This function compares UHR capability and operation IEs between old and new
- * scan entries to determine if the new entry has additional or updated UHR
- * capabilities.
- *
- * Return: true if new entry has additional/updated UHR capabilities,
- *         false otherwise
+ * Called from scm_add_update_entry() after a probe response carrying a UHR
+ * CAP IE is stored.  Sets uhr_cap_timestamp to the frame reception time so
+ * that scm_is_uhr_cap_stale() can later determine whether the cached UHR CAP
+ * IE is still fresh.
  */
-static bool
-scm_is_uhr_candidate_updated(struct scan_cache_entry *old_entry,
-			     struct scan_cache_entry *new_entry)
+static inline void
+scm_stamp_uhr_cap_timestamp(struct scan_cache_entry *entry)
 {
-	bool old_has_uhrcap, old_has_uhrop;
-	bool new_has_uhrcap, new_has_uhrop;
-
-	/* Check if old entry has UHR IEs */
-	old_has_uhrcap = (old_entry->ie_list.uhrcap != NULL);
-	old_has_uhrop = (old_entry->ie_list.uhrop != NULL);
-
-	/* Check if new entry has UHR IEs */
-	new_has_uhrcap = (new_entry->ie_list.uhrcap != NULL);
-	new_has_uhrop = (new_entry->ie_list.uhrop != NULL);
-
-	/*
-	 * Scenario 1: Old entry has no UHR IEs, new entry has UHR IEs
-	 * This is an upgrade (e.g., beacon -> probe response with UHR)
-	 */
-	if (!old_has_uhrcap && !old_has_uhrop) {
-		if (new_has_uhrcap || new_has_uhrop) {
-			scm_debug("UHR upgrade: old has no UHR IEs, new has UHR IEs");
-			return true;
-		}
-		/* Both have no UHR IEs - no UHR update */
-		return false;
-	}
-
-	/*
-	 * Scenario 2: Old entry has UHR IEs, new entry has no UHR IEs
-	 * This is a downgrade - need to append UHR IEs from old entry
-	 */
-	if ((old_has_uhrcap || old_has_uhrop) &&
-	    !new_has_uhrcap && !new_has_uhrop) {
-		scm_debug("UHR downgrade detected: will append UHR IEs from old entry");
-		return false;
-	}
-
-	/*
-	 * Scenario 3: Both entries have UHR IEs.
-	 *
-	 * If the new entry carries a UHR CAP IE it is a complete probe
-	 * response and should replace the old entry directly.  Returning
-	 * true skips scm_append_uhr_ies_to_scan_entry(), which is correct
-	 * because the new entry already has fresh UHR CAP and UHR OP IEs —
-	 * appending the old ones would produce duplicate IEs in the raw frame.
-	 *
-	 * If the new entry has only UHR OP IE (beacon) but the old entry
-	 * already has UHR CAP IE, continue to the append path so the
-	 * cached UHR CAP IE is preserved.
-	 */
-	if (new_has_uhrcap) {
-		scm_debug("UHR: new entry has UHR CAP IE, replace directly");
-		return true;
-	}
-
-	/* New entry has only UHR OP IE, old has UHR CAP IE — append path */
-	scm_debug("UHR: new entry missing UHR CAP IE, append from old entry");
-	return false;
+	if (entry->ie_list.uhrcap)
+		entry->uhr_cap_timestamp = entry->scan_entry_time;
 }
 
 /**
- * scm_append_uhr_ies_to_scan_entry() - Append UHR IEs to scan entry
- * @pdev: pdev object
- * @old_entry: existing scan cache entry with UHR IEs
- * @new_entry: new scan entry without UHR IEs (will be modified)
+ * scm_is_uhr_cap_stale() - Check if the cached UHR CAP IE has aged out
+ * @entry: existing scan cache entry
  *
- * This function appends UHR CAP and UHR OP IEs from the old entry to the
- * new entry's raw_frame, then re-parses the frame to update ie_list pointers.
+ * The cached UHR CAP IE is considered stale when both of the following
+ * conditions are true:
+ *   1. The UHR CAP IE has not been refreshed by a probe response within
+ *      SCM_UHR_CAP_STALE_TIME_MS milliseconds.
+ *   2. The AP is not currently connected (the serving AP must never have
+ *      its UHR caps silently dropped regardless of age).
+ *
+ * When stale, scm_append_uhr_ies_to_scan_entry() skips appending the old
+ * UHR CAP IE so the new beacon-only entry enters the cache cleanly and a
+ * fresh probe response can repopulate the full UHR capabilities.
+ *
+ * Return: true if the UHR CAP IE is stale and should not be appended,
+ *         false otherwise
+ */
+static bool
+scm_is_uhr_cap_stale(struct scan_cache_entry *entry)
+{
+	qdf_time_t uhr_cap_age;
+
+	/* No UHR CAP ever seen — nothing to age out */
+	if (!entry->uhr_cap_timestamp)
+		return false;
+
+	/* Connected AP: never treat as stale */
+	if (scm_bss_is_connected(entry))
+		return false;
+
+	uhr_cap_age = qdf_mc_timer_get_system_time() -
+		      entry->uhr_cap_timestamp;
+
+	if (uhr_cap_age >= SCM_UHR_CAP_STALE_TIME_MS) {
+		scm_debug("UHR CAP IE age %lu ms >= %lu ms threshold",
+			  uhr_cap_age,
+			  (unsigned long)SCM_UHR_CAP_STALE_TIME_MS);
+		return true;
+	}
+
+	return false;
+}
+#else
+static inline void
+scm_stamp_uhr_cap_timestamp(struct scan_cache_entry *entry)
+{
+}
+
+static inline bool
+scm_is_uhr_cap_stale(struct scan_cache_entry *entry)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BN */
+
+#ifdef WLAN_FEATURE_11BN
+/**
+ * scm_uhr_cap_needs_append() - Check if cached UHR CAP IE must be appended
+ * @old_entry: existing scan cache entry
+ * @new_entry: new scan entry to be added
+ *
+ * A UHR AP always advertises the UHR Operation IE in both beacons and probe
+ * responses; only the UHR Capability IE is frame-type dependent (present in
+ * probe responses, absent in beacons). The cached UHR CAP IE needs to be
+ * appended to the new entry only when the new entry is a UHR beacon (UHR OP
+ * present, UHR CAP absent) and the old entry already holds a UHR CAP IE:
+ * - New has UHR CAP -> full probe response; replace directly, no append.
+ * - Old has no UHR OP -> old was never a real UHR entry; nothing to append.
+ * - New has no UHR OP -> AP no longer advertises UHR; drop cached CAP.
+ * - Else (UHR beacon) -> append the cached UHR CAP IE.
+ *
+ * Return: true if the cached UHR CAP IE must be appended, false otherwise
+ */
+static bool
+scm_uhr_cap_needs_append(struct scan_cache_entry *old_entry,
+			 struct scan_cache_entry *new_entry)
+{
+	if (new_entry->ie_list.uhrcap)
+		return false;
+
+	if (!old_entry->ie_list.uhrop)
+		return false;
+
+	if (!new_entry->ie_list.uhrop)
+		return false;
+
+	scm_debug("UHR: new beacon missing CAP IE, append cached CAP");
+	return true;
+}
+
+/**
+ * scm_append_uhr_ies_to_scan_entry() - Append UHR CAP IE to scan entry
+ * @pdev: pdev object
+ * @old_entry: existing scan cache entry with UHR CAP IE
+ * @new_entry: new UHR beacon entry without UHR CAP IE (will be modified)
+ *
+ * This function appends the UHR CAP IE from the old entry to the new entry's
+ * raw_frame, then re-parses the frame to update ie_list pointers. Only the CAP
+ * IE is appended; the new entry already carries its own fresh UHR OP IE.
  *
  * Return: QDF_STATUS_SUCCESS on success, error code otherwise
  */
@@ -1186,8 +1253,8 @@ scm_append_uhr_ies_to_scan_entry(struct wlan_objmgr_pdev *pdev,
 	uint8_t *orig_frame_data;
 	uint32_t new_frame_len;
 	uint32_t orig_frame_len;
-	uint32_t uhrcap_len = 0, uhrop_len = 0;
-	uint8_t *uhrcap_ie = NULL, *uhrop_ie = NULL;
+	uint32_t uhrcap_len = 0;
+	uint8_t *uhrcap_ie = NULL;
 	struct wlan_objmgr_psoc *psoc;
 	QDF_STATUS status;
 	qdf_freq_t chan_freq = 0;
@@ -1196,6 +1263,19 @@ scm_append_uhr_ies_to_scan_entry(struct wlan_objmgr_pdev *pdev,
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc)
 		return QDF_STATUS_E_INVAL;
+
+	if (scm_is_uhr_cap_stale(old_entry)) {
+		scm_debug("UHR CAP IE stale for " QDF_MAC_ADDR_FMT
+			  ", skip append",
+			  QDF_MAC_ADDR_REF(old_entry->bssid.bytes));
+		/*
+		 * Intentionally skip timestamp inheritance: the stale UHR CAP
+		 * IE is being dropped, so there is nothing valid to carry
+		 * forward.  The new entry enters the cache without a UHR CAP
+		 * timestamp; a fresh probe response will repopulate it.
+		 */
+		return QDF_STATUS_SUCCESS;
+	}
 
 	orig_frame_len = new_entry->raw_frame.len;
 	orig_frame_data = new_entry->raw_frame.ptr;
@@ -1212,23 +1292,19 @@ scm_append_uhr_ies_to_scan_entry(struct wlan_objmgr_pdev *pdev,
 		}
 	}
 
-	if (old_entry->ie_list.uhrop) {
-		uhrop_ie = old_entry->ie_list.uhrop;
-		uhrop_len = 2 + uhrop_ie[1];
-		if (uhrop_len > old_entry->raw_frame.len) {
-			scm_err("UHR OP IE length %d exceeds frame size %d",
-				uhrop_len, old_entry->raw_frame.len);
-			return QDF_STATUS_E_INVAL;
-		}
-	}
-
-	if (!uhrcap_len && !uhrop_len) {
-		scm_debug("No UHR IEs to append");
+	/*
+	 * Only the UHR CAP IE is ever appended here. This path is taken solely
+	 * for a UHR beacon (CAP absent, OP present): the new entry already
+	 * carries its own fresh UHR OP IE, so appending the cached OP would
+	 * duplicate it.
+	 */
+	if (!uhrcap_len) {
+		scm_debug("No UHR CAP IE to append");
 		return QDF_STATUS_SUCCESS;
 	}
 
 	/* Calculate new frame length */
-	new_frame_len = orig_frame_len + uhrcap_len + uhrop_len;
+	new_frame_len = orig_frame_len + uhrcap_len;
 
 	/* Allocate new buffer for extended frame */
 	new_frame_data = qdf_mem_malloc(new_frame_len);
@@ -1240,19 +1316,9 @@ scm_append_uhr_ies_to_scan_entry(struct wlan_objmgr_pdev *pdev,
 	/* Copy original frame */
 	qdf_mem_copy(new_frame_data, new_entry->raw_frame.ptr, orig_frame_len);
 
-	/* Append UHR CAP IE if present */
-	if (uhrcap_len) {
-		qdf_mem_copy(new_frame_data + orig_frame_len,
-			     uhrcap_ie, uhrcap_len);
-		scm_debug("Appended UHR CAP IE, len=%d", uhrcap_len);
-	}
-
-	/* Append UHR OP IE if present */
-	if (uhrop_len) {
-		qdf_mem_copy(new_frame_data + orig_frame_len + uhrcap_len,
-			     uhrop_ie, uhrop_len);
-		scm_debug("Appended UHR OP IE, len=%d", uhrop_len);
-	}
+	/* Append UHR CAP IE */
+	qdf_mem_copy(new_frame_data + orig_frame_len, uhrcap_ie, uhrcap_len);
+	scm_debug("Appended UHR CAP IE, len=%d", uhrcap_len);
 
 	/* Update new entry with extended frame */
 	new_entry->raw_frame.ptr = new_frame_data;
@@ -1282,11 +1348,11 @@ scm_append_uhr_ies_to_scan_entry(struct wlan_objmgr_pdev *pdev,
 }
 #else
 static inline bool
-scm_is_uhr_candidate_updated(struct scan_cache_entry *old_entry,
-			     struct scan_cache_entry *new_entry)
+scm_uhr_cap_needs_append(struct scan_cache_entry *old_entry,
+			 struct scan_cache_entry *new_entry)
 {
-	/* UHR not supported, always allow update */
-	return true;
+	/* UHR not supported, never need to append */
+	return false;
 }
 
 static inline QDF_STATUS
@@ -1315,7 +1381,7 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 	struct scan_cache_node *dup_node = NULL;
 	struct scan_cache_node *scan_node = NULL;
 	bool is_dup_found = false;
-	bool is_uhr_updated = false;
+	bool needs_uhr_append = false;
 	QDF_STATUS status;
 	struct scan_dbs *scan_db;
 	struct wlan_scan_obj *scan_obj;
@@ -1353,24 +1419,29 @@ static QDF_STATUS scm_add_update_entry(struct wlan_objmgr_psoc *psoc,
 	if (!is_gen_entry || !is_dup_found)
 		scan_params->is_gen_entry = is_gen_entry;
 
-	/* Check for UHR capability updates */
+	/* Check whether the cached UHR CAP IE must be preserved */
 	if (is_dup_found) {
-		is_uhr_updated = scm_is_uhr_candidate_updated(dup_node->entry,
-							       scan_params);
+		needs_uhr_append =
+			scm_uhr_cap_needs_append(dup_node->entry,
+						 scan_params);
 
 		/*
-		 * If UHR capabilities are not updated (downgrade case),
-		 * append UHR IEs from old entry to new entry before
-		 * replacing. This preserves UHR caps while updating
-		 * all other IEs.
+		 * Downgrade case (UHR beacon over a cached probe response):
+		 * append the cached UHR CAP IE to the new entry before
+		 * replacing. This preserves UHR caps while updating all
+		 * other IEs.
 		 */
-		if (!is_uhr_updated) {
-			status = scm_append_uhr_ies_to_scan_entry(pdev,
-								   dup_node->entry,
-								   scan_params);
+		if (needs_uhr_append) {
+			status =
+			    scm_append_uhr_ies_to_scan_entry(pdev,
+							     dup_node->entry,
+							     scan_params);
 			/* Continue even if append fails */
 		}
 	}
+
+	if (is_dup_found && !needs_uhr_append)
+		scm_stamp_uhr_cap_timestamp(scan_params);
 
 	scm_dump_scan_entry(pdev, scan_params);
 

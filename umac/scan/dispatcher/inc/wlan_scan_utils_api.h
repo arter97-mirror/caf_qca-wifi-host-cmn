@@ -2188,7 +2188,6 @@ util_scan_populate_bcn_ie_list(struct wlan_objmgr_pdev *pdev,
 			       struct scan_cache_entry *scan_params,
 			       qdf_freq_t *chan_freq, uint8_t band_mask);
 
-
 #ifdef WLAN_FEATURE_11BN
 /**
  * util_scan_entry_uhrop() - function to read uhr ops vendor ie
