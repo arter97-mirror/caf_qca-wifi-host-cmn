@@ -364,6 +364,13 @@ void dp_mon_peer_get_tx_ext_stats(struct dp_peer *peer,
 #endif
 
 /**
+ * dp_mon_cdp_ops_register() - register monitor cdp ops
+ * @soc: Datapath soc handle
+ *
+ */
+void dp_mon_cdp_ops_register(struct dp_soc *soc);
+
+/**
  * dp_mon_cdp_ops_deregister() - deregister monitor cdp ops
  * @soc: Datapath soc handle
  *
