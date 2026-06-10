@@ -167,6 +167,7 @@ struct wlan_srng_cfg {
  * @num_tx_comp_rings: Number of Tx comp rings supported by device
  * @num_tcl_data_rings: Number of TCL Data rings supported by device
  * @num_nss_tcl_data_rings:
+ * @num_embedded_tx_paths: Number of TX rings for embedded path
  * @per_pdev_rx_ring: 0: REO ring is not mapped per radio
  *		       1: Each REO ring is mapped to one radio/pdev
  * @per_pdev_lmac_ring:
@@ -408,6 +409,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	int num_tx_comp_rings;
 	int num_tcl_data_rings;
 	int num_nss_tcl_data_rings;
+	int num_embedded_tx_paths;
 	int per_pdev_rx_ring;
 	int per_pdev_lmac_ring;
 	int num_reo_dest_rings;
