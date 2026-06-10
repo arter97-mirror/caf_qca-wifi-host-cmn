@@ -4811,6 +4811,8 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 				cfg_get(psoc, CFG_DP_NSS_REO_DEST_RINGS);
 	wlan_cfg_ctx->num_nss_tcl_data_rings =
 				cfg_get(psoc, CFG_DP_NSS_TCL_DATA_RINGS);
+	wlan_cfg_ctx->num_embedded_tx_paths =
+				cfg_get(psoc, CFG_DP_EMBEDDED_PATHS);
 	wlan_cfg_ctx->per_pdev_rx_ring = cfg_get(psoc, CFG_DP_PDEV_RX_RING);
 	wlan_cfg_ctx->per_pdev_lmac_ring = cfg_get(psoc, CFG_DP_PDEV_LMAC_RING);
 	wlan_cfg_ctx->num_tx_desc_pool = MAX_TXDESC_POOLS;
@@ -5465,7 +5467,7 @@ int wlan_cfg_num_tcl_data_rings(struct wlan_cfg_dp_soc_ctxt *cfg)
 	if (!cfg->ipa_enabled || wlan_ipa_config_is_opt_wifi_dp_enabled())
 		return cfg->num_tcl_data_rings;
 
-	return 1;
+	return cfg->num_embedded_tx_paths;
 }
 
 int wlan_cfg_num_nss_tcl_data_rings(struct wlan_cfg_dp_soc_ctxt *cfg)

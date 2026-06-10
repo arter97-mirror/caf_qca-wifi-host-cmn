@@ -1278,6 +1278,21 @@ static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				  vdev->pdev->soc->num_tcl_data_rings);
 }
 #elif defined(IPA_OFFLOAD)
+#ifdef CONFIG_MDM_PLATFORM
+static inline void dp_tx_get_queue(struct dp_vdev *vdev,
+				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
+{
+	/* get flow id */
+	queue->desc_pool_id = DP_TX_GET_DESC_POOL_ID(vdev);
+	if (vdev->pdev->soc->wlan_cfg_ctx->ipa_enabled &&
+	    !wlan_ipa_config_is_opt_wifi_dp_enabled() &&
+	    vdev->pdev->soc->num_embedded_tx_paths == 1)
+		queue->ring_id = DP_TX_GET_RING_ID(vdev);
+	else
+		queue->ring_id = (qdf_nbuf_get_queue_mapping(nbuf) %
+					vdev->pdev->soc->num_embedded_tx_paths);
+}
+#else
 static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
 {
@@ -1290,6 +1305,7 @@ static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 		queue->ring_id = (qdf_nbuf_get_queue_mapping(nbuf) %
 					vdev->pdev->soc->num_tcl_data_rings);
 }
+#endif
 #elif defined(WLAN_SUPPORT_LAPB)
 static inline void dp_tx_get_queue(struct dp_vdev *vdev,
 				   qdf_nbuf_t nbuf, struct dp_tx_queue *queue)
