@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -42,7 +43,7 @@ wlan_pdevid_get_cc_db(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id)
 {
 	struct wlan_scan_obj *scan_obj;
 
-	if (pdev_id > WLAN_UMAC_MAX_PDEVS) {
+	if (pdev_id >= WLAN_UMAC_MAX_PDEVS) {
 		scm_err("invalid pdev_id %d", pdev_id);
 		return NULL;
 	}
