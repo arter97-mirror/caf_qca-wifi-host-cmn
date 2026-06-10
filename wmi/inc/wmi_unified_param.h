@@ -7212,6 +7212,7 @@ struct target_feature_set {
  * @mgmt_rx_srng_support: Is mgmt rx over srng supported
  * @enable_optimize_power: Enable power optimization
  * @enable_bcn_rssi_history_report: Enable beacon rssi history report
+ * @haps_feature_flags: HAPS flags setting for power save config
  */
 typedef struct {
 	uint32_t num_vdevs;
@@ -7359,6 +7360,7 @@ typedef struct {
 #endif
 	bool enable_optimize_power;
 	bool enable_bcn_rssi_history_report;
+	uint32_t haps_feature_flags;
 } target_resource_config;
 
 /**

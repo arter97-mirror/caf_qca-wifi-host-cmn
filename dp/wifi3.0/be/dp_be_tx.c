@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1778,8 +1778,8 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 	dp_tx_update_proto_stats(vdev, tx_desc->nbuf, ring_id,
 				 TX_ENQUEUE_HW);
 
-	coalesce = dp_tx_attempt_coalescing(soc, vdev, tx_desc, tid,
-					    msdu_info, ring_id);
+	coalesce = dp_tx_attempt_coalescing_wrapper(soc, vdev, tx_desc, tid,
+						    msdu_info, ring_id);
 
 	if (qdf_unlikely(dp_tx_pkt_tracepoints_enabled())) {
 		hp = hal_srng_src_get_hp(hal_ring_hdl);
