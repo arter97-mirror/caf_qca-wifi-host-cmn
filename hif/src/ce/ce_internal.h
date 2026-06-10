@@ -749,7 +749,7 @@ struct hif_ce_desc_event {
 	enum hif_ce_event_type type;
 	uint64_t time;
 	int cpu_id;
-#ifdef HELIUMPLUS
+#if defined(HELIUMPLUS) || defined(QCA_WIFI_WCN6450)
 	union ce_desc descriptor;
 #else
 	uint32_t current_hp;
