@@ -21375,7 +21375,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		trig->common_roam = false;
 	}
 
-	if (param_buf->roam_trigger_rssi)
+	if (param_buf->roam_trigger_rssi &&
+	    idx < param_buf->num_roam_trigger_rssi)
 		rssi_data = &param_buf->roam_trigger_rssi[idx];
 
 	if (param_buf->roam_result) {
@@ -21409,7 +21410,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	switch (trig_reason) {
 	case WMI_ROAM_TRIGGER_REASON_PER:
-		if (param_buf->roam_trigger_per)
+		if (param_buf->roam_trigger_per &&
+		    idx < param_buf->num_roam_trigger_per)
 			per_data = &param_buf->roam_trigger_per[idx];
 		if (per_data) {
 			trig->per_trig_data.tx_rate_thresh_percent =
@@ -21422,7 +21424,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_BMISS:
-		if (param_buf->roam_trigger_bmiss)
+		if (param_buf->roam_trigger_bmiss &&
+		    idx < param_buf->num_roam_trigger_bmiss)
 			bmiss_data = &param_buf->roam_trigger_bmiss[idx];
 		if (bmiss_data) {
 			trig->bmiss_trig_data.final_bmiss_cnt =
@@ -21439,7 +21442,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_HIGH_RSSI:
-		if (param_buf->roam_trigger_hi_rssi)
+		if (param_buf->roam_trigger_hi_rssi &&
+		    idx < param_buf->num_roam_trigger_hi_rssi)
 			hi_rssi_data = &param_buf->roam_trigger_hi_rssi[idx];
 
 		if (hi_rssi_data && cmn_data) {
@@ -21452,7 +21456,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	case WMI_ROAM_TRIGGER_REASON_MAWC:
 	case WMI_ROAM_TRIGGER_REASON_DENSE:
-		if (param_buf->roam_trigger_dense)
+		if (param_buf->roam_trigger_dense &&
+		    idx < param_buf->num_roam_trigger_dense)
 			dense_data = &param_buf->roam_trigger_dense[idx];
 		if (dense_data) {
 			trig->congestion_trig_data.rx_tput =
@@ -21479,7 +21484,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	case WMI_ROAM_TRIGGER_REASON_IDLE:
 	case WMI_ROAM_TRIGGER_REASON_FORCED:
-		if (param_buf->roam_trigger_force)
+		if (param_buf->roam_trigger_force &&
+		    idx < param_buf->num_roam_trigger_force)
 			force_data = &param_buf->roam_trigger_force[idx];
 		if (force_data) {
 			invoke = force_data->invoke_reason;
@@ -21493,7 +21499,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_BTM:
-		if (param_buf->roam_trigger_btm)
+		if (param_buf->roam_trigger_btm &&
+		    idx < param_buf->num_roam_trigger_btm)
 			btm_data = &param_buf->roam_trigger_btm[idx];
 		if (btm_data) {
 			trig->btm_trig_data.btm_request_mode =
@@ -21556,7 +21563,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_BSS_LOAD:
-		if (param_buf->roam_trigger_bss_load)
+		if (param_buf->roam_trigger_bss_load &&
+		    idx < param_buf->num_roam_trigger_bss_load)
 			bss_load_data = &param_buf->roam_trigger_bss_load[idx];
 		if (bss_load_data)
 			trig->cu_trig_data.cu_load = bss_load_data->cu_load;
@@ -21565,7 +21573,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_DEAUTH:
-		if (param_buf->roam_trigger_deauth)
+		if (param_buf->roam_trigger_deauth &&
+		    idx < param_buf->num_roam_trigger_deauth)
 			deauth_data = &param_buf->roam_trigger_deauth[idx];
 		if (deauth_data) {
 			trig->deauth_trig_data.type = deauth_data->deauth_type;
@@ -21578,7 +21587,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_PERIODIC:
-		if (param_buf->roam_trigger_periodic)
+		if (param_buf->roam_trigger_periodic &&
+		    idx < param_buf->num_roam_trigger_periodic)
 			periodic_data = &param_buf->roam_trigger_periodic[idx];
 		if (periodic_data) {
 			trig->periodic_trig_data.periodic_timer_ms =
@@ -21603,7 +21613,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_STA_KICKOUT:
-		if (param_buf->roam_trigger_kickout)
+		if (param_buf->roam_trigger_kickout &&
+		    idx < param_buf->num_roam_trigger_kickout)
 			kickout_data = &param_buf->roam_trigger_kickout[idx];
 		if (kickout_data) {
 			tx_fail = kickout_data->kickout_reason;
