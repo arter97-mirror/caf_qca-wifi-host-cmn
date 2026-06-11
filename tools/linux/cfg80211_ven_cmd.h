@@ -915,6 +915,9 @@ enum {
 	IEEE80211_PARAM_WDS_EXT_AP_BRIDGE  = 833,  /* Flag to enable/disable wds_ext specific ap bridge */
 #endif
 	IEEE80211_PARAM_4ADDR_EAPOL = 834,
+	IEEE80211_PARAM_RSNO1CAPS = 839,
+	IEEE80211_PARAM_RSNO2CAPS = 840,
+	IEEE80211_PARAM_RSNXOCAPS = 841,
 };
 
 enum {
@@ -1551,6 +1554,9 @@ enum _ol_ath_param_t {
 	OL_ATH_PARAM_ACS_ADJ_CHAN_INTERFERENCE_BLOCKING = 555,
 #endif /* UMAC_SUPPORT_ACS */
 	OL_ATH_PARAM_START_AID = 556,
+	OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN = 562,
+	OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN = 563,
+	OL_ATH_PARAM_OVERRIDE_MLSR_PTQM = 566,
 };
 
 #ifdef CONFIG_SUPPORT_VENCMDTABLE
@@ -3865,6 +3871,12 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_STRICT_PUNCTURING, GET_PARAM, 0},
 #endif /* WLAN_FEATURE_11BE */
 #ifdef WLAN_FEATURE_11BE_MLO
+	{"g_mlo_override_mlsr_ptqm",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_OVERRIDE_MLSR_PTQM,
+		GET_PARAM, 0},
+	{"mlo_override_mlsr_ptqm",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_OVERRIDE_MLSR_PTQM,
+		SET_PARAM, 1},
 	{"g_mlo_forced_umac_mode",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_FORCE_PRIMARY_UMAC,
 		GET_PARAM, 0},
@@ -4080,6 +4092,18 @@ struct vendor_commands radio_vendor_cmds[] = {
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_START_AID, SET_PARAM, 1},
 	{"get_start_aid",
 		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_START_AID, GET_PARAM, 0},
+	{"dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_cw_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_CW_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
+	{"dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		SET_PARAM, 1},
+	{"g_dcs_wlan_random_chan_en",
+		OL_ATH_PARAM_SHIFT | OL_ATH_PARAM_DCS_WLAN_RANDOM_CHAN_EN,
+		GET_PARAM, 0},
 };
 #endif
 
