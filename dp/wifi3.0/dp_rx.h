@@ -3649,8 +3649,10 @@ void dp_2k_jump_handle(struct dp_soc *soc, qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr,
  *
  * Return: uint32_t: No. of elements processed
  */
+#ifndef CONFIG_BORON
 uint32_t dp_rx_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 			   hal_ring_handle_t hal_ring_hdl, uint32_t quota);
+#endif /* CONFIG_BORON */
 
 /**
  * dp_rx_wbm_err_process() - Processes error frames routed to WBM release ring

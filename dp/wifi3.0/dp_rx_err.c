@@ -394,6 +394,7 @@ more_msdu_link_desc:
 	return rx_bufs_used;
 }
 
+#ifndef CONFIG_BORON
 /**
  * dp_rx_pn_error_handle() - Handles PN check errors
  *
@@ -448,6 +449,7 @@ dp_rx_pn_error_handle(struct dp_soc *soc, hal_ring_desc_t ring_desc,
 
 	return rx_bufs_used;
 }
+#endif /* CONFIG_BORON */
 
 #ifdef DP_RX_DELIVER_ALL_OOR_FRAMES
 /**
@@ -2008,6 +2010,7 @@ int dp_rx_err_exception(struct dp_soc *soc, hal_ring_desc_t ring_desc)
 #endif /* REO_EXCEPTION_MSDU_WAR */
 #endif /* HANDLE_RX_REROUTE_ERR */
 
+#ifndef CONFIG_BORON
 #ifdef WLAN_MLO_MULTI_CHIP
 /**
  * dp_idle_link_bm_id_check() - war for HW issue
@@ -2098,6 +2101,7 @@ static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
 {
 }
 #endif
+#endif /* CONFIG_BORON */
 
 #ifdef DRIVER_PASSTHRU_MODE
 int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
@@ -2247,7 +2251,7 @@ void dp_rx_dump_invalid_link_desc(hal_ring_desc_t ring_desc,
 {
 }
 #endif
-
+#ifndef CONFIG_BORON
 uint32_t
 dp_rx_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		  hal_ring_handle_t hal_ring_hdl, uint32_t quota)
@@ -2675,6 +2679,7 @@ done:
 
 	return rx_bufs_used; /* Assume no scale factor for now */
 }
+#endif /* CONFIG_BORON */
 
 #ifdef DROP_RXDMA_DECRYPT_ERR
 /**
