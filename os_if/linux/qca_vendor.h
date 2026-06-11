@@ -4038,28 +4038,6 @@ enum qca_wlan_vendor_attr_mlo_links {
 };
 
 /**
- * enum qca_wlan_vendor_attr_wifi_config - wifi config
- *
- * @QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_INVALID: Invalid initial value
- * @QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_DYNAMIC_DTIM: dynamic DTIM
- * @QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_STATS_AVG_FACTOR: avg factor
- * @QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_GUARD_TIME: guard time
- * @QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_AFTER_LAST: after last
- * @QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_MAX: max value
- */
-enum qca_wlan_vendor_attr_wifi_config {
-	QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_INVALID = 0,
-	QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_DYNAMIC_DTIM = 1,
-	QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_STATS_AVG_FACTOR = 2,
-	QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_GUARD_TIME = 3,
-
-	/* keep last */
-	QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_AFTER_LAST,
-	QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_MAX =
-		QCA_WLAN_VENDOR_ATTR_WIFI_CONFIG_AFTER_LAST - 1,
-};
-
-/**
  * enum qca_wlan_epno_type - the type of request to the EPNO command
  * @QCA_WLAN_EPNO: epno type request
  * @QCA_WLAN_PNO: pno type request
