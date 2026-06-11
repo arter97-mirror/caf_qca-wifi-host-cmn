@@ -3412,6 +3412,7 @@ bool dp_rx_is_sg_formation_required(struct hal_wbm_err_desc_info *info);
 void dp_rx_err_tlv_invalidate(struct dp_soc *soc,
 			      qdf_nbuf_t nbuf);
 
+#ifndef CONFIG_BORON
 /**
  * dp_rx_wbm_sg_list_last_msdu_war() - war for HW issue
  * @soc: DP SOC handle
@@ -3421,6 +3422,7 @@ void dp_rx_err_tlv_invalidate(struct dp_soc *soc,
  * Return: NONE
  */
 void dp_rx_wbm_sg_list_last_msdu_war(struct dp_soc *soc);
+#endif /* CONFIG_BORON */
 
 /**
  * dp_rx_check_pkt_len() - Check for pktlen validity

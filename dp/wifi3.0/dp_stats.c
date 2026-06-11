@@ -6589,16 +6589,13 @@ dp_fill_tx_interrupt_ctx_stats(struct dp_intr *intr_ctx,
 	return pos;
 }
 
-static inline void dp_print_umac_ring_stats(struct dp_pdev *pdev)
+#ifdef CONFIG_BORON
+static inline void dp_print_non_bn_ring_stats(struct dp_pdev *pdev)
 {
-	uint8_t i;
-
-	dp_print_ring_stat_from_hal(pdev->soc,
-				    &pdev->soc->wbm_idle_link_ring,
-				    WBM_IDLE_LINK);
-	dp_print_ring_stat_from_hal(pdev->soc,
-				    &pdev->soc->reo_exception_ring,
-				    REO_EXCEPTION);
+}
+#else
+static inline void dp_print_non_bn_ring_stats(struct dp_pdev *pdev)
+{
 	dp_print_ring_stat_from_hal(pdev->soc,
 				    &pdev->soc->reo_reinject_ring,
 				    REO_REINJECT);
@@ -6611,6 +6608,20 @@ static inline void dp_print_umac_ring_stats(struct dp_pdev *pdev)
 	dp_print_ring_stat_from_hal(pdev->soc,
 				    &pdev->soc->rx_rel_ring,
 				    WBM2SW_RELEASE);
+}
+#endif /* CONFIG_BORON */
+
+static inline void dp_print_umac_ring_stats(struct dp_pdev *pdev)
+{
+	uint8_t i;
+
+	dp_print_ring_stat_from_hal(pdev->soc,
+				    &pdev->soc->wbm_idle_link_ring,
+				    WBM_IDLE_LINK);
+	dp_print_ring_stat_from_hal(pdev->soc,
+				    &pdev->soc->reo_exception_ring,
+				    REO_EXCEPTION);
+	dp_print_non_bn_ring_stats(pdev);
 	dp_print_ring_stat_from_hal(pdev->soc,
 				    &pdev->soc->tcl_cmd_credit_ring,
 				    TCL_CMD_CREDIT);

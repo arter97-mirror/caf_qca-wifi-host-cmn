@@ -2495,6 +2495,57 @@ static void dp_soc_interrupt_detach_be(struct cdp_soc_t *txrx_soc)
 	return dp_soc_interrupt_detach(txrx_soc);
 }
 
+#ifdef CONFIG_BORON
+static inline bool
+dp_service_srngs_be_wbm_rel(struct dp_intr *int_ctx, struct dp_soc *soc,
+			    uint8_t rx_wbm_rel_mask, int *budget,
+			    uint32_t *remaining_quota)
+{
+	return false;
+}
+
+static inline void
+dp_service_srngs_be_reo_status(struct dp_intr *int_ctx, struct dp_soc *soc,
+			       uint8_t reo_status_mask)
+{
+}
+#else
+static inline bool
+dp_service_srngs_be_wbm_rel(struct dp_intr *int_ctx, struct dp_soc *soc,
+			    uint8_t rx_wbm_rel_mask, int *budget,
+			    uint32_t *remaining_quota)
+{
+	uint32_t work_done;
+
+	if (!rx_wbm_rel_mask)
+		return false;
+
+	work_done = dp_rx_wbm_err_process(int_ctx, soc,
+					  soc->rx_rel_ring.hal_srng,
+					  *remaining_quota);
+	if (work_done) {
+		int_ctx->intr_stats.num_rx_wbm_rel_ring_masks++;
+		dp_verbose_debug("WBM Release Ring: work_done %d budget %d",
+				 work_done, *budget);
+	}
+	*budget -= work_done;
+	if (*budget <= 0)
+		return true;
+	*remaining_quota = *budget;
+	return false;
+}
+
+static inline void
+dp_service_srngs_be_reo_status(struct dp_intr *int_ctx, struct dp_soc *soc,
+			       uint8_t reo_status_mask)
+{
+	if (reo_status_mask) {
+		if (dp_reo_status_ring_handler(int_ctx, soc))
+			int_ctx->intr_stats.num_reo_status_ring_masks++;
+	}
+}
+#endif /* CONFIG_BORON */
+
 static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 {
 	struct dp_intr *int_ctx = (struct dp_intr *)dp_ctx;
@@ -2568,22 +2619,9 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 	}
 
 	/* Process Rx WBM release ring interrupt */
-	if (rx_wbm_rel_mask) {
-		work_done = dp_rx_wbm_err_process(int_ctx, soc,
-						  soc->rx_rel_ring.hal_srng,
-						  remaining_quota);
-
-		if (work_done) {
-			intr_stats->num_rx_wbm_rel_ring_masks++;
-			dp_verbose_debug("WBM Release Ring: work_done %d budget %d",
-					 work_done, budget);
-		}
-
-		budget -=  work_done;
-		if (budget <= 0)
-			goto budget_done;
-		remaining_quota = budget;
-	}
+	if (dp_service_srngs_be_wbm_rel(int_ctx, soc, rx_wbm_rel_mask,
+					&budget, &remaining_quota))
+		goto budget_done;
 
 	/* Process Rx interrupts */
 	if (rx_mask) {
@@ -2608,10 +2646,7 @@ static uint32_t dp_service_srngs_be(void *dp_ctx, uint32_t dp_budget, int cpu)
 		}
 	}
 
-	if (reo_status_mask) {
-		if (dp_reo_status_ring_handler(int_ctx, soc))
-			int_ctx->intr_stats.num_reo_status_ring_masks++;
-	}
+	dp_service_srngs_be_reo_status(int_ctx, soc, reo_status_mask);
 
 	if (qdf_unlikely(!dp_monitor_is_vdev_timer_running(soc))) {
 		work_done = dp_process_lmac_rings(int_ctx, remaining_quota);

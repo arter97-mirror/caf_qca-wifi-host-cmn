@@ -1313,6 +1313,7 @@ process_next_msdu:
 
 #endif /* QCA_HOST_MODE_WIFI_DISABLED */
 
+#ifndef CONFIG_BORON
 #ifdef WLAN_MLO_MULTI_CHIP
 /**
  * dp_rx_amsdu_adr_mismatch_hdl() - Function to handle rxdma address mismatch
@@ -1372,6 +1373,7 @@ dp_rx_amsdu_adr_mismatch_hdl(struct dp_soc *soc, qdf_nbuf_t nbuf,
 }
 
 #endif /* WLAN_MLO_MULTI_CHIP */
+#endif /* CONFIG_BORON */
 
 void
 dp_rx_process_rxdma_err(struct dp_soc *soc, qdf_nbuf_t nbuf,
@@ -1631,6 +1633,7 @@ fail:
 	return;
 }
 
+#ifndef CONFIG_BORON
 #ifdef WLAN_SUPPORT_RX_FLOW_TAG
 static void dp_rx_peek_trapped_packet(struct dp_soc *soc,
 				      struct dp_vdev *vdev)
@@ -1849,6 +1852,7 @@ drop_nbuf:
 
 	dp_rx_nbuf_free(nbuf);
 }
+#endif /* CONFIG_BORON */
 
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 
@@ -2679,7 +2683,6 @@ done:
 
 	return rx_bufs_used; /* Assume no scale factor for now */
 }
-#endif /* CONFIG_BORON */
 
 #ifdef DROP_RXDMA_DECRYPT_ERR
 /**
@@ -2713,6 +2716,7 @@ void dp_rx_wbm_sg_list_last_msdu_war(struct dp_soc *soc)
 		}
 	}
 }
+#endif /* CONFIG_BORON */
 
 #ifdef RX_DESC_DEBUG_CHECK
 QDF_STATUS dp_rx_wbm_desc_nbuf_sanity_check(struct dp_soc *soc,
@@ -2864,6 +2868,7 @@ dp_rx_err_update_protocol_stats_wrapper(struct dp_soc *soc,
 }
 #endif /* QCA_DP_PROTOCOL_STATS */
 
+#ifndef CONFIG_BORON
 #ifdef RX_WBM_ERR_SRC_REO
 /**
  * dp_rx_wbm_err_src_reo() - Handle REO error source packets
@@ -3274,6 +3279,7 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 	return rx_bufs_used; /* Assume no scale factor for now */
 }
 
+#endif /* CONFIG_BORON */
 #endif /* QCA_HOST_MODE_WIFI_DISABLED */
 
 /**
@@ -3285,6 +3291,14 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
  *
  * Return: void
  */
+#ifdef CONFIG_BORON
+static void dup_desc_dbg(struct dp_soc *soc,
+			 hal_rxdma_desc_t rxdma_dst_ring_desc,
+			 void *rx_desc)
+{
+	DP_STATS_INC(soc, rx.err.hal_rxdma_err_dup, 1);
+}
+#else
 static void dup_desc_dbg(struct dp_soc *soc,
 			 hal_rxdma_desc_t rxdma_dst_ring_desc,
 			 void *rx_desc)
@@ -3296,6 +3310,7 @@ static void dup_desc_dbg(struct dp_soc *soc,
 			hal_rxdma_desc_to_hal_ring_desc(rxdma_dst_ring_desc),
 			rx_desc);
 }
+#endif /* CONFIG_BORON */
 
 /**
  * dp_rx_err_mpdu_pop() - extract the MSDU's from link descs

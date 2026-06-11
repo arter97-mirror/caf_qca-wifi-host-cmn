@@ -2283,6 +2283,7 @@ static bool dp_rx_chain_msdus_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 }
 #endif
 
+#ifndef CONFIG_BORON
 qdf_nbuf_t
 dp_rx_wbm_err_reap_desc_be(struct dp_intr *int_ctx, struct dp_soc *soc,
 			   hal_ring_handle_t hal_ring_hdl, uint32_t quota,
@@ -2508,6 +2509,7 @@ done:
 	}
 	return nbuf_head;
 }
+#endif /* CONFIG_BORON */
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**

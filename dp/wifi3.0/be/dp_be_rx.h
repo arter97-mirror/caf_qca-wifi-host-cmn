@@ -1001,6 +1001,7 @@ uint64_t dp_rx_get_reo_qdesc_addr_be(hal_soc_handle_t hal_soc,
 }
 #endif
 
+#ifndef CONFIG_BORON
 /**
  * dp_rx_wbm_err_reap_desc_be() - Function to reap and replenish
  *                                WBM RX Error descriptors
@@ -1022,6 +1023,15 @@ qdf_nbuf_t
 dp_rx_wbm_err_reap_desc_be(struct dp_intr *int_ctx, struct dp_soc *soc,
 			   hal_ring_handle_t hal_ring_hdl, uint32_t quota,
 			   uint32_t *rx_bufs_used);
+#else
+static inline qdf_nbuf_t
+dp_rx_wbm_err_reap_desc_be(struct dp_intr *int_ctx, struct dp_soc *soc,
+			   hal_ring_handle_t hal_ring_hdl, uint32_t quota,
+			   uint32_t *rx_bufs_used)
+{
+	return NULL;
+}
+#endif /* CONFIG_BORON */
 
 /**
  * dp_rx_intrabss_get_params_be() - Function to get destination soc and vdev id

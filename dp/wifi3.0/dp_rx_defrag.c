@@ -1254,6 +1254,7 @@ dp_rx_reinject_ring_record_entry(struct dp_soc *soc, uint64_t paddr,
 }
 #endif
 
+#ifndef CONFIG_BORON
 /**
  * dp_rx_defrag_reo_reinject() - Reinject the fragment chain back into REO
  * @txrx_peer: Pointer to the txrx_peer
@@ -1441,6 +1442,7 @@ static QDF_STATUS dp_rx_defrag_reo_reinject(struct dp_txrx_peer *txrx_peer,
 	dp_debug("reinjection done !");
 	return QDF_STATUS_SUCCESS;
 }
+#endif /* CONFIG_BORON */
 #endif
 
 /**

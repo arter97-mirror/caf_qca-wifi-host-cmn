@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -186,6 +186,30 @@ static QDF_STATUS dp_partner_soc_rx_hw_cc_init(struct dp_mlo_ctxt *mlo_ctxt,
 	return qdf_status;
 }
 
+#ifdef CONFIG_BORON
+static inline void
+dp_mlo_drain_wbm_rel_ring(struct dp_soc *soc, uint8_t rx_wbm_rel_mask,
+			  uint8_t i)
+{
+}
+#else
+static inline void
+dp_mlo_drain_wbm_rel_ring(struct dp_soc *soc, uint8_t rx_wbm_rel_mask,
+			  uint8_t i)
+{
+	hal_ring_handle_t hal_ring_hdl;
+	uint32_t num_entries;
+
+	if (rx_wbm_rel_mask) {
+		hal_ring_hdl = soc->rx_rel_ring.hal_srng;
+		num_entries = hal_srng_get_num_entries(soc->hal_soc,
+						       hal_ring_hdl);
+		dp_rx_wbm_err_process(&soc->intr_ctx[i], soc,
+				      hal_ring_hdl, num_entries);
+	}
+}
+#endif /* CONFIG_BORON */
+
 static void dp_mlo_soc_drain_rx_buf(struct dp_soc *soc, void *arg, int chip_id)
 {
 	uint8_t i = 0;
@@ -256,15 +280,7 @@ static void dp_mlo_soc_drain_rx_buf(struct dp_soc *soc, void *arg, int chip_id)
 		}
 
 		/* Process Rx WBM release ring */
-		if (rx_wbm_rel_mask) {
-			hal_ring_hdl = soc->rx_rel_ring.hal_srng;
-			num_entries = hal_srng_get_num_entries(
-						soc->hal_soc,
-						hal_ring_hdl);
-
-			dp_rx_wbm_err_process(&soc->intr_ctx[i], soc,
-					      hal_ring_hdl, num_entries);
-		}
+		dp_mlo_drain_wbm_rel_ring(soc, rx_wbm_rel_mask, i);
 	}
 
 	/* restore the interrupt mask */
