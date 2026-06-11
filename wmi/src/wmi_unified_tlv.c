@@ -24349,6 +24349,12 @@ extract_power_boost_cap_tlv(wmi_unified_t wmi_handle,
 		return QDF_STATUS_SUCCESS;
 	}
 
+	if (phy_idx >= param_buf->num_power_boost_capabilities) {
+		wmi_err("TPB: phy_idx: %d >= num_power_boost_capabilities: %d",
+			phy_idx, param_buf->num_power_boost_capabilities);
+		return QDF_STATUS_E_INVAL;
+	}
+
 	ev_pb_cap = &param_buf->power_boost_capabilities[phy_idx];
 
 	*pb_cap =
