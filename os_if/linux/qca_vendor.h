@@ -11791,6 +11791,13 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_UHR_MCS = 84,
 
+	/* 8-bit unsigned value to configure UHR testbed defaults.
+	 * This attribute is used to configure the testbed device.
+	 * 1 - Set the device UHR capabilities to testbed defaults.
+	 * 0 - Reset the device UHR capabilities to supported config.
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_SET_UHR_TESTBED_DEFAULTS = 85,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_MAX =
