@@ -167,11 +167,15 @@ struct wifi_pos_11az_context {
  * @num_pasn_peers: Total number of PASN peers
  * @is_delete_all_pasn_peer_in_progress: Delete all the VDEV PASN peers in
  * progress
+ * @pd_wdev_mac: MAC address of the associated PD (Precision Distance) wdev
+ * @pd_wdev_seq_num: Sequence number for frames transmitted from the PD wdev
  */
 struct wifi_pos_vdev_priv_obj {
 	struct wifi_pos_11az_context pasn_context;
 	uint8_t num_pasn_peers;
 	bool is_delete_all_pasn_peer_in_progress;
+	struct qdf_mac_addr pd_wdev_mac;
+	uint16_t pd_wdev_seq_num;
 };
 
 /**

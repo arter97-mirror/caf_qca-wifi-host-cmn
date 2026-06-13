@@ -743,4 +743,75 @@ QDF_STATUS wifi_pos_get_pmsr_fw_caps(struct wlan_objmgr_psoc *psoc,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif /* CFG80211_PD_SUPPORT && WLAN_FEATURE_RTT_11AZ_SUPPORT */
+
+#if defined(CFG80211_PD_SUPPORT) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
+/**
+ * wifi_pos_set_pd_wdev_mac() - Store the PD wdev MAC on the STA vdev
+ * @vdev: STA vdev pointer used for PD frame transmission
+ * @mac_addr: MAC address of the PD wdev interface
+ *
+ * Store the PD (Precision Distance) wdev MAC address in the wifi_pos vdev
+ * private object so that p2p_populate_mac_header() can identify frames
+ * sourced from the PD wdev and fill a proper sequence number.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wifi_pos_set_pd_wdev_mac(struct wlan_objmgr_vdev *vdev,
+				    const uint8_t *mac_addr);
+
+/**
+ * wifi_pos_is_pd_wdev_mac() - Check if a MAC address matches the PD wdev MAC
+ * @vdev: STA vdev pointer
+ * @mac_addr: MAC address to compare
+ *
+ * Return: true if the mac_addr matches the stored PD wdev MAC
+ */
+bool wifi_pos_is_pd_wdev_mac(struct wlan_objmgr_vdev *vdev,
+			     const uint8_t *mac_addr);
+
+/**
+ * wifi_pos_get_pd_wdev_seq_num() - Get sequence number for PD wdev frames
+ * @vdev: STA vdev pointer used for PD frame transmission
+ *
+ * Return: Current sequence number stored for the PD wdev
+ */
+uint16_t wifi_pos_get_pd_wdev_seq_num(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wifi_pos_set_pd_wdev_seq_num() - Store updated sequence number for PD wdev
+ * @vdev: STA vdev pointer used for PD frame transmission
+ * @seq_num: New sequence number to store
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wifi_pos_set_pd_wdev_seq_num(struct wlan_objmgr_vdev *vdev,
+					uint16_t seq_num);
+#else
+static inline
+QDF_STATUS wifi_pos_set_pd_wdev_mac(struct wlan_objmgr_vdev *vdev,
+				    const uint8_t *mac_addr)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline
+bool wifi_pos_is_pd_wdev_mac(struct wlan_objmgr_vdev *vdev,
+			     const uint8_t *mac_addr)
+{
+	return false;
+}
+
+static inline
+uint16_t wifi_pos_get_pd_wdev_seq_num(struct wlan_objmgr_vdev *vdev)
+{
+	return 0;
+}
+
+static inline
+QDF_STATUS wifi_pos_set_pd_wdev_seq_num(struct wlan_objmgr_vdev *vdev,
+					uint16_t seq_num)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+#endif /* CFG80211_PD_SUPPORT && WLAN_FEATURE_RTT_11AZ_SUPPORT */
 #endif /* _WIFI_POS_API_H_ */

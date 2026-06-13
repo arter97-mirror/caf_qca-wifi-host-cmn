@@ -825,4 +825,78 @@ wifi_pos_get_pmsr_fw_caps(struct wlan_objmgr_psoc *psoc,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+/* Mirrors WLAN_HOST_SEQ_NUM_MIN/MAX in core/mac/inc/ani_global.h */
+#define WIFI_POS_HOST_SEQ_NUM_MIN 2048
+#define WIFI_POS_HOST_SEQ_NUM_MAX 4095
+
+QDF_STATUS wifi_pos_set_pd_wdev_mac(struct wlan_objmgr_vdev *vdev,
+				    const uint8_t *mac_addr)
+{
+	struct wifi_pos_vdev_priv_obj *vdev_priv;
+
+	vdev_priv = wifi_pos_get_vdev_priv_obj(vdev);
+	if (!vdev_priv)
+		return QDF_STATUS_E_FAILURE;
+
+	if (mac_addr) {
+		qdf_mem_copy(vdev_priv->pd_wdev_mac.bytes, mac_addr,
+			     QDF_MAC_ADDR_SIZE);
+		if (!vdev_priv->pd_wdev_seq_num)
+			vdev_priv->pd_wdev_seq_num =
+				WIFI_POS_HOST_SEQ_NUM_MIN - 1;
+	} else {
+		qdf_mem_zero(vdev_priv->pd_wdev_mac.bytes, QDF_MAC_ADDR_SIZE);
+		vdev_priv->pd_wdev_seq_num = 0;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+bool wifi_pos_is_pd_wdev_mac(struct wlan_objmgr_vdev *vdev,
+			     const uint8_t *mac_addr)
+{
+	struct wifi_pos_vdev_priv_obj *vdev_priv;
+
+	if (!mac_addr)
+		return false;
+
+	vdev_priv = wifi_pos_get_vdev_priv_obj(vdev);
+	if (!vdev_priv)
+		return false;
+
+	if (qdf_is_macaddr_zero(&vdev_priv->pd_wdev_mac))
+		return false;
+
+	return !qdf_mem_cmp(vdev_priv->pd_wdev_mac.bytes, mac_addr,
+			    QDF_MAC_ADDR_SIZE);
+}
+
+uint16_t wifi_pos_get_pd_wdev_seq_num(struct wlan_objmgr_vdev *vdev)
+{
+	struct wifi_pos_vdev_priv_obj *vdev_priv;
+
+	vdev_priv = wifi_pos_get_vdev_priv_obj(vdev);
+	if (!vdev_priv)
+		return 0;
+
+	return vdev_priv->pd_wdev_seq_num;
+}
+
+QDF_STATUS wifi_pos_set_pd_wdev_seq_num(struct wlan_objmgr_vdev *vdev,
+					uint16_t seq_num)
+{
+	struct wifi_pos_vdev_priv_obj *vdev_priv;
+
+	vdev_priv = wifi_pos_get_vdev_priv_obj(vdev);
+	if (!vdev_priv)
+		return QDF_STATUS_E_FAILURE;
+
+	if (seq_num >= WIFI_POS_HOST_SEQ_NUM_MAX || !seq_num)
+		vdev_priv->pd_wdev_seq_num = WIFI_POS_HOST_SEQ_NUM_MIN - 1;
+	else
+		vdev_priv->pd_wdev_seq_num = seq_num;
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
