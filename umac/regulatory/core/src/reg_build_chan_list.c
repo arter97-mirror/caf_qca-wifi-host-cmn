@@ -3823,6 +3823,13 @@ static void reg_append_6g_reg_rules_in_pdev(
 	else
 		return;
 
+	if (num_reg_rules + num_6ghz_reg_rules[cur_pwr_type] > MAX_REG_RULES) {
+		reg_err("6G client reg rules overflow: %d + %d > %d",
+			num_reg_rules, num_6ghz_reg_rules[cur_pwr_type],
+			MAX_REG_RULES);
+		return;
+	}
+
 	pdev_reg_rules->num_of_reg_rules +=
 		pdev_reg_rules->num_of_6g_client_reg_rules[cur_pwr_type];
 
@@ -3857,6 +3864,17 @@ static void reg_append_6g_reg_rules_in_pdev(
 	pdev_reg_rules = &pdev_priv_obj->reg_rules;
 
 	num_reg_rules = pdev_reg_rules->num_of_reg_rules;
+
+	if (num_reg_rules +
+	    pdev_reg_rules->num_of_6g_ap_reg_rules[cur_pwr_type] >
+	    MAX_REG_RULES) {
+		reg_err("6G AP reg rules overflow: %d + %d > %d",
+			num_reg_rules,
+			pdev_reg_rules->num_of_6g_ap_reg_rules[cur_pwr_type],
+			MAX_REG_RULES);
+		return;
+	}
+
 	pdev_reg_rules->num_of_reg_rules +=
 		pdev_reg_rules->num_of_6g_ap_reg_rules[cur_pwr_type];
 
