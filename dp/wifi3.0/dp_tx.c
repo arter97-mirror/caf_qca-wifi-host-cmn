@@ -7131,6 +7131,9 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	vdev = soc->vdev_id_map[vdev_id];
 	if (qdf_unlikely(!vdev))
 		return nbuf;
+
+	QDF_NBUF_CB_TX_VDEV_CTX(nbuf) = vdev_id;
+
 	/*
 	 * Get HW Queue to use for this frame.
 	 * TCL supports upto 4 DMA rings, out of which 3 rings are
