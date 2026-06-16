@@ -135,22 +135,6 @@ dma_addr_t __qdf_page_pool_get_dma_addr(struct page *page)
 	return page_pool_get_dma_addr(page);
 }
 
-bool __qdf_page_pool_full_bh(__qdf_page_pool_t pp)
-{
-	int i;
-	int count = 0;
-
-	if (!pp->alloc.count)
-		return ptr_ring_full_bh(&pp->ring);
-
-	for (i = 0; i < pp->ring.size; i++) {
-		if (pp->ring.queue[i])
-			count++;
-	}
-
-	return (pp->ring.size - count == pp->alloc.count);
-}
-
 bool __qdf_page_pool_empty(__qdf_page_pool_t pp)
 {
 	return !pp->alloc.count && ptr_ring_empty(&pp->ring);

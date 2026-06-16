@@ -49,6 +49,7 @@
 #include "wlan_p2p_ucfg_api.h"
 #endif
 #include "wlan_pmo_ucfg_api.h"
+#include <wlan_cm_api.h>
 
 #define INVALID_LINK_ID 255
 
@@ -590,8 +591,8 @@ int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_vdev *vdev,
 	if (ucfg_ie_allowlist_enabled(psoc, vdev))
 		ucfg_copy_ie_allowlist_attrs(psoc, &req->ie_allowlist);
 
-	osif_debug("Network count %d n_ssids %d fast_scan_period: %d msec slow_scan_period: %d msec, fast_scan_max_cycles: %d, relative_rssi %d band_pref %d, rssi_pref %d",
-		   req->networks_cnt, request->n_ssids, req->fast_scan_period,
+	osif_debug("vdev %d Network count %d n_ssids %d fast_scan_period: %d msec slow_scan_period: %d msec, fast_scan_max_cycles: %d, relative_rssi %d band_pref %d, rssi_pref %d",
+		   req->vdev_id, req->networks_cnt, request->n_ssids, req->fast_scan_period,
 		   req->slow_scan_period, req->fast_scan_max_cycles,
 		   req->relative_rssi, req->band_rssi_pref.band,
 		   req->band_rssi_pref.rssi);
@@ -620,6 +621,7 @@ int wlan_cfg80211_sched_scan_stop(struct wlan_objmgr_vdev *vdev)
 {
 	QDF_STATUS status;
 
+	osif_debug("vdev %d", wlan_vdev_get_id(vdev));
 	status = ucfg_scan_pno_stop(vdev);
 	if (QDF_IS_STATUS_ERROR(status))
 		osif_debug("Failed to disable PNO");
@@ -1209,6 +1211,15 @@ static void wlan_cfg80211_scan_done_callback(
 		       util_scan_get_ev_type_name(event->type), event->type,
 		       util_scan_get_ev_reason_name(event->reason),
 		       event->reason, unique_bss_count);
+
+	/*
+	 * Update assoc_state for all connected STA links (MLO and non-MLO)
+	 * to prevent scan entries from aging out after CSA events. Only
+	 * needed when scan found at least one BSS entry.
+	 */
+	if (unique_bss_count)
+		wlan_cm_update_all_sta_links_assoc_state(pdev);
+
 allow_suspend:
 	qdf_mutex_acquire(&osif_priv->osif_scan->scan_req_q_lock);
 	if (qdf_list_empty(&osif_priv->osif_scan->scan_req_q)) {
@@ -1948,6 +1959,8 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 	enum QDF_OPMODE opmode;
 	uint32_t extra_ie_len = 0;
 	struct scan_filter *filter = NULL;
+	bool is_passthru_present;
+	uint8_t num_6g_chan = 0;
 
 	psoc = wlan_pdev_get_psoc(pdev);
 	if (!psoc) {
@@ -2091,6 +2104,11 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 		req->scan_req.scan_f_5ghz = true;
 	}
 
+	is_passthru_present =
+		policy_mgr_mode_specific_connection_count(psoc,
+							  PM_PASSTHRU_MODE,
+							  NULL);
+
 	if (request->n_channels) {
 		bool ap_or_go_present;
 
@@ -2102,7 +2120,7 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 			if (wlan_reg_is_dsrc_freq(c_freq))
 				continue;
 
-			if (ap_or_go_present) {
+			if (ap_or_go_present || is_passthru_present) {
 				bool ok;
 
 				qdf_status = policy_mgr_is_chan_ok_for_dnbs(
@@ -2132,6 +2150,10 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 				else
 					req->scan_req.chan_list.chan[num_chan].phymode =
 						SCAN_PHY_MODE_11A;
+
+				if (WLAN_REG_IS_6GHZ_CHAN_FREQ(c_freq))
+					num_6g_chan++;
+
 				num_chan++;
 				if (num_chan >= NUM_CHANNELS)
 					break;
@@ -2144,6 +2166,9 @@ int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
 		goto err;
 	}
 	req->scan_req.chan_list.num_chan = num_chan;
+
+	if (is_passthru_present && !num_6g_chan)
+		req->scan_req.scan_f_skip_6ghz = 1;
 
 	/* P2P increase the scan priority */
 	if (is_p2p_scan)

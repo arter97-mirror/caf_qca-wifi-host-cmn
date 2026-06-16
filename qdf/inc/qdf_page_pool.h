@@ -49,18 +49,6 @@ static inline dma_addr_t qdf_page_pool_get_dma_addr(qdf_page_t page)
 }
 
 /**
- * qdf_page_pool_full_bh() - Check page pool full condition
- *
- * @pp: Page Pool Reference
- *
- * Return: true/false
- */
-static inline bool qdf_page_pool_full_bh(qdf_page_pool_t pp)
-{
-	return __qdf_page_pool_full_bh(pp);
-}
-
-/**
  * qdf_page_pool_empty() - Check page pool empty condition
  *
  * @pp: Page Pool Reference

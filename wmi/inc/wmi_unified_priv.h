@@ -777,9 +777,6 @@ QDF_STATUS (*send_set_sta_uapsd_auto_trig_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_ocb_set_utc_time_cmd)(wmi_unified_t wmi_handle,
 				struct ocb_utc_param *utc);
 
-QDF_STATUS (*send_ocb_get_tsf_timer_cmd)(wmi_unified_t wmi_handle,
-			  uint8_t vdev_id);
-
 QDF_STATUS (*send_ocb_start_timing_advert_cmd)(wmi_unified_t wmi_handle,
 	struct ocb_timing_advert_param *timing_advert);
 
@@ -3678,6 +3675,17 @@ QDF_STATUS
 QDF_STATUS
 (*pdev_pb_send_inference_cmd)(wmi_unified_t wmi_handle,
 				 struct reg_txpb_cmd_params *params);
+#endif
+
+#ifdef DRIVER_PASSTHRU_MODE
+QDF_STATUS
+	(*send_vdev_ch_hop_sched_cmd)(wmi_unified_t wmi_handle,
+				      struct vdev_ch_hop_sched_params *param);
+#endif
+
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
+QDF_STATUS (*send_ocb_get_tsf_timer_cmd)(wmi_unified_t wmi_handle,
+					 uint8_t vdev_id);
 #endif
 };
 

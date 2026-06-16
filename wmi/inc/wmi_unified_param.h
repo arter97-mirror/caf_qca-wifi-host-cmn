@@ -6929,6 +6929,8 @@ typedef enum {
 	wmi_service_cfr_assoc_tx_capture_support,
 	wmi_service_p2p_cancel_one_shot_noa_support,
 	wmi_service_handle_roaming_without_rso_stop_for_4way_hs_offload_disable,
+	wmi_service_passthru_vdev_chan_hop_schedule_support,
+	wmi_service_passthru_vdev_ampdu_ra_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF
@@ -10789,4 +10791,33 @@ struct wmi_sta_vdev_report_ap_oper_bw_params {
 	enum wlan_phymode ap_phymode;
 };
 
+/* struct vdev_ch_hop_ch_params - channel hopping channel parameters.
+ * @freq: frequency
+ * @bandwidth: channel width
+ * @role: operating role
+ */
+struct vdev_ch_hop_ch_params {
+	uint32_t freq;
+	wmi_channel_width bandwidth;
+	wmi_channel_hopping_role role;
+};
+
+/* struct vdev_ch_hop_sched_params - channel hopping schedule parameters for a
+ *  vdev
+ * request configurations
+ * @vdev_id: vdev id
+ * @next_channel_idx: start channel index within chan_list
+ * @dwell_time_tu: dwell time in terms of TU
+ * @target_switch_time_tsf: target switch time in terms of tsf
+ * @chan_list_len: channel list length
+ * @chan_list: channel list array
+ */
+struct vdev_ch_hop_sched_params {
+	uint32_t vdev_id;
+	uint32_t next_channel_idx;
+	uint32_t dwell_time_tu;
+	uint64_t target_switch_time_tsf;
+	uint8_t chan_list_len;
+	struct vdev_ch_hop_ch_params *chan_list;
+};
 #endif /* _WMI_UNIFIED_PARAM_H_ */

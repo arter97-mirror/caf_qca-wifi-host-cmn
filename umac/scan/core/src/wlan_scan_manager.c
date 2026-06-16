@@ -26,6 +26,7 @@
 #include <wlan_scan_tgt_api.h>
 #include "wlan_scan_main.h"
 #include "wlan_scan_manager.h"
+#include "wlan_scan_manager_6ghz.h"
 #include "wlan_utility.h"
 #include <wlan_reg_services_api.h>
 #ifdef FEATURE_WLAN_SCAN_PNO
@@ -793,6 +794,8 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 					req->scan_req.burst_duration =
 						scan_obj->
 						scan_def.go_scan_burst_duration;
+				else if (sta_active && scan_obj->miracast_enabled)
+					req->scan_req.burst_duration = 0;
 				else
 					req->scan_req.burst_duration =
 						scm_scan_get_burst_duration(
@@ -802,22 +805,17 @@ static void scm_req_update_concurrency_params(struct wlan_objmgr_vdev *vdev,
 							miracast_enabled);
 				break;
 			}
+
+			if (ndi_present || (p2p_cli_present && sta_active)) {
+				req->scan_req.burst_duration = 0;
+				break;
+			}
+
 			if ((sta_active || p2p_cli_present)) {
 				if (scan_obj->scan_def.sta_scan_burst_duration)
 					req->scan_req.burst_duration =
 						scan_obj->scan_def.
 						sta_scan_burst_duration;
-				break;
-			}
-
-			if (go_present && sta_active) {
-				req->scan_req.burst_duration =
-					req->scan_req.dwell_time_active;
-				break;
-			}
-
-			if (ndi_present || (p2p_cli_present && sta_active)) {
-				req->scan_req.burst_duration = 0;
 				break;
 			}
 		} while (0);
@@ -1107,8 +1105,19 @@ scm_update_channel_list(struct scan_start_request *req,
 	 */
 	first_freq = req->scan_req.chan_list.chan[0].freq;
 	if ((req->scan_req.chan_list.num_chan == 1) &&
-	    (!utils_dfs_is_freq_in_nol(pdev, first_freq)))
+	    (!utils_dfs_is_freq_in_nol(pdev, first_freq))) {
+		/*
+		 * Exception: For single-channel 6 GHz connect scans,
+		 * attach cached RNR hints so FW gets S_SSID/H_BSSID.
+		 */
+		if (wlan_reg_is_6ghz_chan_freq(first_freq) &&
+		    wlan_reg_is_6ghz_band_set(pdev) &&
+		    (req->scan_req.scan_type == SCAN_TYPE_SCAN_FOR_CONNECT ||
+		     req->scan_req.scan_type == SCAN_TYPE_DEFAULT)) {
+			scm_add_rnr_info(pdev, req);
+		}
 		return;
+	}
 
 	/* do this only for STA and P2P-CLI mode */
 	if ((!(wlan_vdev_mlme_get_opmode(req->vdev) == QDF_STA_MODE) &&
@@ -1148,7 +1157,9 @@ scm_update_channel_list(struct scan_start_request *req,
 
 	req->scan_req.chan_list.num_chan = num_scan_channels;
 
-	scm_update_6ghz_channel_list(req, scan_obj);
+	if (!req->scan_req.scan_f_skip_6ghz)
+		scm_update_6ghz_channel_list(req, scan_obj);
+
 	scm_scan_chlist_concurrency_modify(req->vdev, req);
 }
 

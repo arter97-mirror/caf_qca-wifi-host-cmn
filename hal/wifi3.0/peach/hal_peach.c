@@ -2302,7 +2302,8 @@ hal_get_tsf_time_peach(hal_soc_handle_t hal_soc_hdl, uint32_t tsf_id,
 	*tsf = global_time + (tsf_offset_low | (tsf_offset_hi << 32));
 	*tsf_sync_soc_time = qdf_log_timestamp_to_usecs(sync_time);
 
-	hif_force_wake_release(soc->hif_handle);
+	if (hif_force_wake_release(soc->hif_handle))
+		hal_err("Wake up release failed");
 }
 #else
 static inline void

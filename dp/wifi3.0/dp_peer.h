@@ -1749,8 +1749,13 @@ void dp_link_peer_add_mld_peer(struct dp_peer *link_peer,
 			       struct dp_peer *mld_peer)
 {
 	/* increase mld_peer ref_cnt */
-	dp_peer_get_ref(NULL, mld_peer, DP_MOD_ID_CDP);
-	link_peer->mld_peer = mld_peer;
+	if (QDF_STATUS_SUCCESS ==
+	    dp_peer_get_ref(NULL, mld_peer, DP_MOD_ID_CDP)) {
+		link_peer->mld_peer = mld_peer;
+		return;
+	}
+
+	link_peer->mld_peer = NULL;
 }
 
 /**

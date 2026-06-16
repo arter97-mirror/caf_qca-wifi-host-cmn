@@ -45,6 +45,59 @@
 #define DEFAULT_NOISE_FLOOR (-95)
 #define LPC_TX_HDR_DMA_LENGTH 256
 
+/* Timeout for stale TX monitor descriptor wait */
+#define DP_STALE_TX_MON_WAIT_TIMEOUT_US 1000
+
+/**
+ * dp_tx_mon_stale_entry_handle() - Detect stale entry condition in tx monitor
+ *                                  destination srng.
+ * @soc: DP SoC handle
+ * @mac_id: LMAC ID
+ *
+ * Return: QDF_STATUS_SUCCESS if stale entry is detected and handled
+ *         QDF_STATUS_E_FAILURE if timeout exceeded (should crash)
+ */
+static QDF_STATUS
+dp_tx_mon_stale_entry_handle(struct dp_soc *soc, uint32_t mac_id)
+{
+	uint64_t curr_timestamp = qdf_get_log_timestamp_usecs();
+	uint64_t delta_us;
+
+	if (soc->tx_mon_stale_entry[mac_id].detected) {
+		/* stale entry process continuation */
+		delta_us = curr_timestamp -
+				soc->tx_mon_stale_entry[mac_id].start_time;
+		if (delta_us > DP_STALE_TX_MON_WAIT_TIMEOUT_US) {
+			dp_mon_err("Stale tx mon desc, waited %llu us, mac_id %d",
+				   delta_us, mac_id);
+			return QDF_STATUS_E_FAILURE;
+		}
+	} else {
+		/* This is the start of stale entry detection */
+		soc->tx_mon_stale_entry[mac_id].detected = 1;
+		soc->tx_mon_stale_entry[mac_id].start_time =
+						curr_timestamp;
+		dp_mon_debug("Started stale entry detection for mac_id %d",
+			     mac_id);
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_tx_mon_reset_stale_entry_detection() - Reset stale entry detection
+ * @soc: DP SoC handle
+ * @mac_id: LMAC ID
+ *
+ * Return: void
+ */
+static inline void
+dp_tx_mon_reset_stale_entry_detection(struct dp_soc *soc, uint32_t mac_id)
+{
+	if (qdf_unlikely(soc->tx_mon_stale_entry[mac_id].detected))
+		soc->tx_mon_stale_entry[mac_id].detected = 0;
+}
+
 #ifdef TXMON_DEBUG
 /*
  * dp_tx_mon_debug_statu() - API to display tx monitor status
@@ -122,6 +175,7 @@ dp_tx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 	struct dp_tx_mon_desc_list mon_desc_list;
 	uint32_t replenish_cnt = 0;
 	struct dp_mon_mac *mon_mac;
+	QDF_STATUS stale_status;
 
 	if (!pdev) {
 		dp_mon_err("%pK: pdev is null for mac_id = %d", soc, mac_id);
@@ -167,7 +221,6 @@ dp_tx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 		struct dp_mon_desc *mon_desc = NULL;
 		qdf_frag_t status_frag = NULL;
 		uint32_t end_offset = 0;
-		uint32_t cookie_2;
 
 		hal_be_get_mon_dest_status(soc->hal_soc,
 					   tx_mon_dst_ring_desc,
@@ -207,14 +260,25 @@ dp_tx_mon_srng_process_2_0(struct dp_soc *soc, struct dp_intr *int_ctx,
 			    hal_mon_tx_desc.end_offset,
 			    hal_mon_tx_desc.end_reason);
 
-		cookie_2 = DP_MON_GET_COOKIE(hal_mon_tx_desc.buf_addr);
-		mon_desc = dp_mon_get_desc_addr(hal_mon_tx_desc.buf_addr);
-		qdf_assert_always(mon_desc);
+		/* Check for stale entry condition - buf_addr is 0 (empty) */
+		if (qdf_unlikely(!hal_mon_tx_desc.buf_addr)) {
+			stale_status = dp_tx_mon_stale_entry_handle(
+								soc, mac_id);
+			/* Waiting for next time reaping */
+			if (QDF_IS_STATUS_SUCCESS(stale_status))
+				break;
 
-		if (mon_desc->cookie_2 != cookie_2) {
-			qdf_err("duplicate cookie found mon_desc:%pK", mon_desc);
+			dp_mon_err("Stale TX MON Desc, mac_id %d",
+				   mac_id);
 			qdf_assert_always(0);
+			hal_srng_dst_get_next(hal_soc, mon_dst_srng);
+			continue;
 		}
+
+		/* Reset stale entry detection if we have a valid buf_addr */
+		dp_tx_mon_reset_stale_entry_detection(soc, mac_id);
+		mon_desc = (struct dp_mon_desc *)(uintptr_t)(hal_mon_tx_desc.buf_addr);
+		qdf_assert_always(mon_desc);
 
 		if (!mon_desc->unmapped) {
 			qdf_mem_unmap_page(soc->osdev, mon_desc->paddr,

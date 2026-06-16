@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -466,6 +466,32 @@ struct qdf_dp_trace_event_buf {
 	uint8_t subtype;
 };
 
+#define QDF_DP_PKT_TYPE_INVALID        0xFF
+
+/**
+ * enum qdf_dp_conn_log_status - reason code for connectivity log status
+ * @QDF_DP_CONN_LOG_SUBMITTED: submitted via WLAN_HOST_DIAG_EVENT_REPORT
+ * @QDF_DP_CONN_LOG_SKIP_PKT_TYPE:        CB packet type not set / unknown
+ * @QDF_DP_CONN_LOG_SKIP_PROTO_BITMAP: protocol not enabled in
+ *   proto_event_bitmap
+ * @QDF_DP_CONN_LOG_SKIP_WLAN_CONN_FILTER:
+ *   qdf_skip_wlan_connectivity_log() returned true
+ * @QDF_DP_CONN_LOG_SKIP_UNKNOWN_EAPOL: EAPOL with unrecognised packet type byte
+ * @QDF_DP_CONN_LOG_SKIP_NOT_DHCP_EAPOL:  proto type is neither DHCP nor EAPOL
+ * @QDF_DP_CONN_LOG_SKIP_DIAG_DISABLED: Connectivity logging disabled
+ * @QDF_DP_CONN_LOG_SKIP_INVALID:       not applicable for this trace record
+ */
+enum qdf_dp_conn_log_status {
+	QDF_DP_CONN_LOG_SUBMITTED = 0,
+	QDF_DP_CONN_LOG_SKIP_PKT_TYPE,
+	QDF_DP_CONN_LOG_SKIP_PROTO_BITMAP,
+	QDF_DP_CONN_LOG_SKIP_WLAN_CONN_FILTER,
+	QDF_DP_CONN_LOG_SKIP_UNKNOWN_EAPOL,
+	QDF_DP_CONN_LOG_SKIP_NOT_DHCP_EAPOL,
+	QDF_DP_CONN_LOG_SKIP_DIAG_DISABLED,
+	QDF_DP_CONN_LOG_SKIP_INVALID = 0xFF,
+};
+
 /**
  * struct qdf_dp_trace_data_buf - nbuf data buffer
  * @msdu_id: msdu id
@@ -482,6 +508,9 @@ struct qdf_dp_trace_data_buf {
  * @size: Length of the valid data stored in this record
  * @pid: process id which stored the data in this record
  * @pdev_id: pdev associated with the event
+ * @pkt_type: Packet type (enum qdf_proto_type, or
+ *   QDF_DP_PKT_TYPE_INVALID if N/A)
+ * @conn_log_status: Packet logging status for connectivity logging
  */
 struct qdf_dp_trace_record_s {
 	uint64_t time;
@@ -490,6 +519,8 @@ struct qdf_dp_trace_record_s {
 	uint8_t size;
 	uint32_t pid;
 	uint8_t pdev_id;
+	uint8_t pkt_type;
+	uint8_t conn_log_status;
 };
 
 /**
@@ -942,12 +973,13 @@ void qdf_dp_set_no_of_record(uint32_t val);
  * @dir: direction
  * @pdev_id: pdev_id
  * @op_mode: Vdev Operation mode
+ * @dhcp_ltxid: Last DHCP tx packet transaction ID
  *
  * Return: true: some protocol was logged, false: no protocol was logged.
  */
 bool qdf_dp_trace_log_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			  enum qdf_proto_dir dir, uint8_t pdev_id,
-			  enum QDF_OPMODE op_mode);
+			  enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid);
 
 /**
  * qdf_dp_trace_init() - enables the DP trace
@@ -1219,6 +1251,9 @@ uint8_t qdf_dp_get_no_of_record(void);
  * @pdev_id: pdev id
  * @print: to print this proto pkt or not
  * @cmn_info: common info for proto pkt
+ * @pkt_type:  Packet type (enum qdf_proto_type,
+ *	or QDF_DP_PKT_TYPE_INVALID if N/A)
+ * @conn_log_status: Packet logging status for connectivity logging
  *
  * Return: none
  */
@@ -1227,7 +1262,8 @@ qdf_dp_trace_proto_pkt(enum QDF_DP_TRACE_ID code,
 		       uint8_t *sa, uint8_t *da,
 		       enum qdf_proto_dir dir,
 		       uint8_t pdev_id, bool print,
-		       struct qdf_dp_trace_proto_cmn *cmn_info);
+		       struct qdf_dp_trace_proto_cmn *cmn_info,
+		       uint8_t pkt_type, uint8_t conn_log_status);
 
 /**
  * qdf_dp_trace_disable_live_mode() - disable live mode for dptrace
@@ -1369,7 +1405,7 @@ void qdf_dp_track_noack_check(qdf_nbuf_t nbuf, enum qdf_proto_subtype *subtype);
 static inline
 bool qdf_dp_trace_log_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			  enum qdf_proto_dir dir, uint8_t pdev_id,
-			  enum QDF_OPMODE op_mode)
+			  enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid)
 {
 	return false;
 }

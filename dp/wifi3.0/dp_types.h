@@ -1638,6 +1638,8 @@ struct dp_soc_stats {
 			uint32_t invalid_cookie;
 			/* Count of stale cookie read in RX path */
 			uint32_t stale_cookie;
+			/* Count of stale REO descriptor detected in RX path */
+			uint32_t stale_rx_desc;
 			/* Delba sent count due to RX 2k jump */
 			uint32_t rx_2k_jump_delba_sent;
 			/* RX 2k jump msdu indicated to stack count */
@@ -2801,6 +2803,7 @@ enum dp_context_type {
  * @dp_mlo_tx_pool_map: TX desc pool map
  * @dp_mlo_tx_pool_unmap: TX desc pool unmap
  * @dp_tx_override_flow_pool_id: flow pool id override
+ * @dp_srng_rx_ring_desc_mark_invalid: Poison REO dest ring descriptors on init
  */
 struct dp_arch_ops {
 	/* INIT/DEINIT Arch Ops */
@@ -3110,6 +3113,8 @@ struct dp_arch_ops {
 				     enum dp_mod_id mod_id);
 	void (*dp_tx_override_flow_pool_id)(struct dp_vdev *vdev,
 					    struct dp_tx_queue *queue);
+	void (*dp_srng_rx_ring_desc_mark_invalid)(struct dp_soc *soc,
+						  struct dp_srng *srng);
 };
 
 /**
@@ -3125,6 +3130,7 @@ struct dp_arch_ops {
  * @dp_ipa_opt_dp_ctrl_refill: opt_dp_ctrl refill support
  * @vdev_tx_nss_support: FW supports vdev Tx NSS report.
  * @dyn_resource_mgr_support: Dynamic RX buffer allocation support
+ * @passthru_ampdu_support: passthru_ampdu_support
  */
 struct dp_soc_features {
 	uint8_t pn_in_reo_dest:1,
@@ -3139,6 +3145,9 @@ struct dp_soc_features {
 #endif
 	bool vdev_tx_nss_support;
 	bool dyn_resource_mgr_support;
+#ifdef DRIVER_PASSTHRU_MODE
+	bool passthru_ampdu_support;
+#endif
 };
 
 enum sysfs_printing_mode {
@@ -3354,6 +3363,16 @@ struct dp_opt_dp_flt {
 	uint16_t l3_type;
 };
 #endif
+
+/**
+ * struct dp_stale_entry - Stale entry detection structure
+ * @detected: Flag to indicate stale entry detection is in progress
+ * @start_time: Timestamp when stale entry detection started
+ */
+struct dp_stale_entry {
+	uint32_t detected;
+	uint64_t start_time;
+};
 
 #ifdef WLAN_FEATURE_DP_MON_DEST_RING_HISTORY
 /**
@@ -4009,11 +4028,13 @@ struct dp_soc {
 #endif
 
 #ifdef DP_TX_COMP_RING_DESC_SANITY_CHECK
-	struct {
-		uint32_t detected;
-		uint64_t start_time;
-	} stale_entry[MAX_TCL_DATA_RINGS];
+	struct dp_stale_entry tx_comp_stale_entry[MAX_TCL_DATA_RINGS];
 #endif
+#ifdef DP_RX_RING_DESC_SANITY_CHECK
+	struct dp_stale_entry rx_stale_entry[MAX_REO_DEST_RINGS];
+#endif
+	/* TX Monitor stale entry tracking - one per MAC ID */
+	struct dp_stale_entry tx_mon_stale_entry[MAX_NUM_LMAC_HW];
 #ifdef DP_RX_MSDU_DONE_FAIL_HISTORY
 	struct dp_msdu_done_fail_history *msdu_done_fail_hist;
 #endif
@@ -6432,4 +6453,16 @@ void dp_rx_err_update_protocol_stats(struct dp_soc *soc, struct dp_pdev *pdev,
 				     qdf_nbuf_t nbuf,
 				     union hal_wbm_err_info_u *wbm_err,
 				     uint8_t *rx_tlv_hdr);
+
+#ifdef DRIVER_PASSTHRU_MODE
+static inline bool dp_get_passthru_ampdu_support(struct dp_soc *soc)
+{
+	return soc->features.passthru_ampdu_support;
+}
+#else
+static inline bool dp_get_passthru_ampdu_support(struct dp_soc *soc)
+{
+	return false;
+}
+#endif
 #endif /* _DP_TYPES_H_ */

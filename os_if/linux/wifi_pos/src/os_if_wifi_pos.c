@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1154,6 +1154,12 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	 */
 	record_size = nla_total_size(2 * nla_total_size(ETH_ALEN));
 
+	if (num_pasn_peers > WLAN_MAX_11AZ_PEERS) {
+		osif_err("Invalid num_pasn_peers: %d, max: %d)", num_pasn_peers,
+			 WLAN_MAX_11AZ_PEERS);
+		return QDF_STATUS_E_INVAL;
+	}
+
 	/* QCA_WLAN_VENDOR_ATTR_PASN_PEERS nest */
 	len += nla_total_size(num_pasn_peers * record_size);
 
@@ -1342,6 +1348,12 @@ os_if_wifi_pos_initiate_pasn_auth(struct wlan_objmgr_vdev *vdev,
 	 * QCA_WLAN_VENDOR_ATTR_PASN_PEER_SRC_ADDR
 	 */
 	record_size = nla_total_size(2 * nla_total_size(ETH_ALEN));
+
+	if (num_pasn_peers > WLAN_MAX_11AZ_PEERS) {
+		osif_err("Invalid num_pasn_peers: %d, max: %d)", num_pasn_peers,
+			 WLAN_MAX_11AZ_PEERS);
+		return QDF_STATUS_E_INVAL;
+	}
 
 	/* QCA_WLAN_VENDOR_ATTR_PASN_PEERS nest */
 	len += nla_total_size(num_pasn_peers * record_size);

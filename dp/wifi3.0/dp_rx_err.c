@@ -2137,6 +2137,36 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
 
 	return rx_desc->pool_id;
 }
+
+bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
+				struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+{
+	struct dp_txrx_peer *txrx_peer;
+	dp_txrx_ref_handle txrx_ref_handle = NULL;
+	uint16_t peer_id;
+
+	peer_id = dp_rx_peer_metadata_peer_id_get(soc,
+						mpdu_desc_info->peer_meta_data);
+
+	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(
+			soc, peer_id,
+			&txrx_ref_handle,
+			DP_MOD_ID_RX_ERR);
+	if (!txrx_peer) {
+		dp_info_rl("txrx_peer is null peer_id %u",
+			   peer_id);
+		return false;
+	}
+
+	if (txrx_peer->vdev->opmode == wlan_op_mode_passthru) {
+		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
+		return true;
+	}
+
+	dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
+
+	return false;
+}
 #endif
 
 uint32_t
@@ -2233,7 +2263,8 @@ more_data:
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
 			int lmac_id;
 
-			if (HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_GET(mpdu_desc_info.peer_meta_data)) {
+			if (HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_GET(mpdu_desc_info.peer_meta_data) ||
+			    dp_rx_is_passthru_msdu_buf(soc, &mpdu_desc_info)) {
 				lmac_id =
 					dp_rx_err_handle_passthru_msdu_buf(soc,
 									   ring_desc);

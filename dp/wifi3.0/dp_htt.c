@@ -5477,6 +5477,7 @@ QDF_STATUS dp_h2t_3tuple_config_send(struct dp_pdev *pdev,
 	uint8_t *htt_logger_bufp;
 	int mac_for_pdev;
 	int target_pdev_id;
+	QDF_STATUS status;
 
 	msg = dp_htt_htc_msg_alloc(
 			soc->osdev,
@@ -5537,8 +5538,12 @@ QDF_STATUS dp_h2t_3tuple_config_send(struct dp_pdev *pdev,
 			HTC_TX_PACKET_TAG_RUNTIME_PUT);
 
 	SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
-	DP_HTT_SEND_HTC_PKT(soc, pkt, HTT_H2T_MSG_TYPE_3_TUPLE_HASH_CFG,
-			    htt_logger_bufp);
+	status = DP_HTT_SEND_HTC_PKT(soc, pkt,
+				     HTT_H2T_MSG_TYPE_3_TUPLE_HASH_CFG,
+				     htt_logger_bufp);
+
+	if (status != QDF_STATUS_SUCCESS)
+		return status;
 
 	return QDF_STATUS_SUCCESS;
 }

@@ -20110,6 +20110,11 @@ enum qca_wlan_vendor_attr_usd_status {
  *	%QCA_WLAN_VENDOR_ATTR_USD_OP_TYPE and
  *	%QCA_WLAN_VENDOR_ATTR_USD_INSTANCE_ID.
  *	enum qca_wlan_vendor_attr_usd_status indicates status values.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_USD_NETWORK_ID: 6-byte MAC address that has to be
+ *	used in publish/subscribe multicast frames. It is an optional attribute
+ *	used with the types %QCA_WLAN_VENDOR_USD_OP_TYPE_PUBLISH and
+ *	%QCA_WLAN_VENDOR_USD_OP_TYPE_SUBSCRIBE.
  */
 enum qca_wlan_vendor_attr_usd {
 	QCA_WLAN_VENDOR_ATTR_USD_INVALID = 0,
@@ -20123,6 +20128,7 @@ enum qca_wlan_vendor_attr_usd {
 	QCA_WLAN_VENDOR_ATTR_USD_ELEMENT_CONTAINER = 8,
 	QCA_WLAN_VENDOR_ATTR_USD_TTL = 9,
 	QCA_WLAN_VENDOR_ATTR_USD_STATUS = 10,
+	QCA_WLAN_VENDOR_ATTR_USD_NETWORK_ID = 11,
 
 	QCA_WLAN_VENDOR_ATTR_USD_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_USD_MAX =

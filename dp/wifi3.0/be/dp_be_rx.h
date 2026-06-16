@@ -202,6 +202,27 @@ dp_rx_err_process_be_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
 }
 #endif
 
+#if defined(DP_RX_RING_DESC_SANITY_CHECK) && !defined(CONFIG_BORON)
+/**
+ * dp_srng_rx_ring_desc_mark_invalid_be() - Poison all REO dest ring
+ *  descriptors with a magic value in the BUFFER_VIRT_ADDR_63_32 field
+ * @soc: DP SoC handle
+ * @srng: pointer to the REO destination srng
+ *
+ * Called once during ring initialization so that any descriptor not yet
+ * written by hardware is recognizable as stale when first reaped.
+ *
+ * Return: None
+ */
+void dp_srng_rx_ring_desc_mark_invalid_be(struct dp_soc *soc,
+					  struct dp_srng *srng);
+#else
+static inline void
+dp_srng_rx_ring_desc_mark_invalid_be(struct dp_soc *soc, struct dp_srng *srng)
+{
+}
+#endif
+
 /**
  * dp_rx_desc_pool_init_be() - Initialize Rx Descriptor pool(s)
  * @soc: Handle to DP Soc structure

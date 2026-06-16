@@ -2587,6 +2587,15 @@ void dp_vdev_get_default_reo_hash(struct dp_vdev *vdev,
 
 	pdev = vdev->pdev;
 	soc = pdev->soc;
+
+	if (vdev->opmode == wlan_op_mode_passthru &&
+	    dp_get_passthru_ampdu_support(soc)) {
+		*hash_based = false;
+		/* Route the PASSTHRU frames to REO2SW0 */
+		*reo_dest = cdp_host_reo_dest_ring_unknown;
+		return;
+	}
+
 	/*
 	 * hash based steering is disabled for Radios which are offloaded
 	 * to NSS
@@ -2651,6 +2660,14 @@ static void dp_peer_setup_get_reo_hash(struct dp_vdev *vdev,
 	 */
 	if (dp_is_vdev_subtype_p2p(vdev))
 		return;
+
+	if (vdev->opmode == wlan_op_mode_passthru &&
+	    dp_get_passthru_ampdu_support(soc)) {
+		*hash_based = false;
+		/* Route the PASSTHRU frames to REO2SW0 */
+		*reo_dest = cdp_host_reo_dest_ring_unknown;
+		return;
+	}
 
 	/*
 	 * If IPA is enabled, disable hash-based flow steering and set
@@ -4568,6 +4585,26 @@ QDF_STATUS dp_srng_alloc_non_bn_rings(struct dp_soc *soc)
 #endif
 
 /**
+ * dp_srng_rx_ring_desc_mark_invalid() - Poison all REO dest ring descriptors
+ *  via the arch-specific callback
+ * @soc: DP SoC handle
+ * @srng: pointer to the REO destination srng
+ *
+ * Wrapper that dispatches to the arch-ops implementation.
+ * Called once per REO destination ring during ring allocation so that
+ * any descriptor not yet written by hardware is recognizable as stale
+ * when first reaped.
+ *
+ * Return: None
+ */
+static inline void
+dp_srng_rx_ring_desc_mark_invalid(struct dp_soc *soc, struct dp_srng *srng)
+{
+	if (soc->arch_ops.dp_srng_rx_ring_desc_mark_invalid)
+		soc->arch_ops.dp_srng_rx_ring_desc_mark_invalid(soc, srng);
+}
+
+/**
  * dp_soc_srng_alloc() - Allocate memory for soc level srng rings
  * @soc: Datapath soc handle
  *
@@ -4641,6 +4678,8 @@ QDF_STATUS dp_soc_srng_alloc(struct dp_soc *soc)
 			dp_init_err("%pK: dp_srng_alloc failed for reo_dest_ring", soc);
 			goto fail1;
 		}
+
+		dp_srng_rx_ring_desc_mark_invalid(soc, &soc->reo_dest_ring[i]);
 	}
 
 	if (soc->arch_ops.txrx_soc_srng_alloc) {
