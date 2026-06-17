@@ -464,10 +464,15 @@ QDF_STATUS target_if_vdev_mgr_start_response_common(
 	if (vdev_start_resp->resp_type == WMI_HOST_VDEV_RESTART_RESP_EVENT) {
 		timer_running = qdf_atomic_test_bit(RESTART_RESPONSE_BIT,
 						    &vdev_rsp->rsp_status);
-		if (timer_running)
+		if (timer_running) {
 			status = target_if_vdev_mgr_rsp_timer_stop(
 							psoc, vdev_rsp,
 							RESTART_RESPONSE_BIT);
+		} else {
+			mlme_debug("VDEV %d: RESTART response dropped (timer not running)",
+				   vdev_id);
+			return QDF_STATUS_SUCCESS;
+		}
 	} else {
 		timer_running = qdf_atomic_test_bit(START_RESPONSE_BIT,
 						    &vdev_rsp->rsp_status);
@@ -486,10 +491,15 @@ QDF_STATUS target_if_vdev_mgr_start_response_common(
 			target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
 		}
 
-		if (timer_running)
+		if (timer_running) {
 			status = target_if_vdev_mgr_rsp_timer_stop(
 							psoc, vdev_rsp,
 							START_RESPONSE_BIT);
+		} else {
+			mlme_debug("VDEV %d: START response dropped (timer not running)",
+				   vdev_id);
+			return QDF_STATUS_SUCCESS;
+		}
 	}
 
 	if (QDF_IS_STATUS_ERROR(status)) {
