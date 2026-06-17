@@ -2867,6 +2867,28 @@ void hif_set_grp_intr_affinity(struct hif_opaque_softc *scn,
 {
 }
 #endif
+
+#ifdef WLAN_DP_NAPI_IPI_REDIRECT
+/**
+ * hif_set_napi_redirect_cpu() - Enable/disable IPI-based NAPI poll redirect.
+ * @hif_ctx:     HIF handle
+ * @tx_grp_bmap: TX completion groups bitmap (cdp_get_tx_rings_grp_bitmap).
+ *               Pass 0 to skip TX groups.
+ * @rx_grp_bmap: RX groups bitmap (cdp_get_rx_rings_grp_bitmap).
+ *               Pass 0 to skip RX groups.
+ * @enable:      true = redirect to perf CPU; false = disable (local schedule)
+ */
+void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
+			       uint32_t tx_grp_bmap,
+			       uint32_t rx_grp_bmap,
+			       bool enable);
+#else
+static inline void
+hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
+			  uint32_t tx_grp_bmap,
+			  uint32_t rx_grp_bmap,
+			  bool enable) {}
+#endif
 /**
  * hif_get_max_wmi_ep() - Get max WMI EPs configured in target svc map
  * @scn: hif opaque handle

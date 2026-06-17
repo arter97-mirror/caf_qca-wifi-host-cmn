@@ -91,6 +91,7 @@ struct hif_execution_ops {
  *			in nanoseconds
  * @ksoftirqd_time: total time this group spent in ksoftirqd processing in ns
  * @dal_napi_scheduled: A bit mask indicating NAPI on DAL rings is scheduled
+ * @napi_redirect_cpu: redirect target cpu
  */
 struct hif_exec_context {
 	struct hif_execution_ops *sched_ops;
@@ -142,6 +143,9 @@ struct hif_exec_context {
 #ifdef FEATURE_DAL_DP_SUPPORT
 	unsigned long dal_napi_scheduled;
 #endif
+#ifdef WLAN_DP_NAPI_IPI_REDIRECT
+	int napi_redirect_cpu;
+#endif
 };
 
 /**
@@ -159,6 +163,12 @@ struct hif_tasklet_exec_context {
  * @exec_ctx: inherited data type
  * @netdev: dummy net device associated with the napi context
  * @napi: napi structure used in scheduling
+ * @napi_redirect_csd: csd used to redirect a NAPI poll to napi_redirect_cpu
+ *	via smp_call_function_single_async()
+ * @napi_redirect_ipi_scheduled: conservative hint for drain_redirect_cpu()
+ *	that a redirect IPI may be in flight; 0 = idle, 1 = maybe in flight.
+ *	Not a correctness gate for hif_exec_napi_schedule() itself — that is
+ *	handled by smp_call_function_single_async()'s own de-dup.
  */
 struct hif_napi_exec_context {
 	struct hif_exec_context exec_ctx;
@@ -168,6 +178,10 @@ struct hif_napi_exec_context {
 	struct net_device netdev; /* dummy net_dev */
 #endif
 	struct napi_struct napi;
+#ifdef WLAN_DP_NAPI_IPI_REDIRECT
+	call_single_data_t   napi_redirect_csd;
+	int                  napi_redirect_ipi_scheduled;
+#endif
 };
 
 static inline struct hif_napi_exec_context*

@@ -320,6 +320,32 @@ void hif_event_history_deinit(struct hif_opaque_softc *hif_ctx, uint8_t id)
 }
 #endif /* WLAN_FEATURE_DP_EVENT_HISTORY */
 
+#ifdef WLAN_DP_NAPI_IPI_REDIRECT
+static void hif_print_napi_redirect_stats(struct HIF_CE_state *hif_state)
+{
+	char buf[HIF_MAX_GROUP * 5 + 1];
+	int i, len = 0;
+	int cpu;
+
+	for (i = 0;
+	     (i < hif_state->hif_num_extgroup && hif_state->hif_ext_group[i]);
+	     i++) {
+		cpu = READ_ONCE(
+			hif_state->hif_ext_group[i]->napi_redirect_cpu);
+
+		len += scnprintf(buf + len, sizeof(buf) - len,
+				 i == 0 ? "%d" : ",%d", cpu);
+	}
+	QDF_TRACE(QDF_MODULE_ID_HIF, QDF_TRACE_LEVEL_INFO_HIGH,
+		  "NAPI redirect_cpu: %s", buf);
+}
+#else
+static inline void
+hif_print_napi_redirect_stats(struct HIF_CE_state *hif_state)
+{
+}
+#endif /* WLAN_DP_NAPI_IPI_REDIRECT */
+
 #if !defined(QCA_WIFI_WCN6450) && !defined(HELIUMPLUS)
 /**
  * hif_print_napi_latency_stats() - print NAPI scheduling latency stats
@@ -470,6 +496,7 @@ void hif_print_napi_stats(struct hif_opaque_softc *hif_ctx)
 	}
 
 	hif_print_napi_latency_stats(hif_state);
+	hif_print_napi_redirect_stats(hif_state);
 }
 
 qdf_export_symbol(hif_print_napi_stats);
@@ -510,6 +537,7 @@ void hif_print_napi_stats(struct hif_opaque_softc *hif_ctx)
 	}
 
 	hif_print_napi_latency_stats(hif_state);
+	hif_print_napi_redirect_stats(hif_state);
 }
 qdf_export_symbol(hif_print_napi_stats);
 #endif /* WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT */
@@ -1139,6 +1167,183 @@ static int hif_exec_poll(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
+#ifdef WLAN_DP_NAPI_IPI_REDIRECT
+static void hif_exec_ipi_napi_schedule_cb(void *info);
+
+#define HIF_NAPI_REDIRECT_DRAIN_TIMEOUT_US  10000
+
+static inline void init_redirect_cpu(struct hif_napi_exec_context *ctx)
+{
+	ctx->exec_ctx.napi_redirect_cpu = -1;
+	INIT_CSD(&ctx->napi_redirect_csd, hif_exec_ipi_napi_schedule_cb, ctx);
+	ctx->napi_redirect_ipi_scheduled = 0;
+}
+
+/**
+ * drain_redirect_cpu() - stop new NAPI-redirect IPIs and wait for any
+ *                        already-in-flight one to finish
+ * @ctx: napi exec context about to be disabled/freed
+ *
+ * Return: void
+ */
+static void drain_redirect_cpu(struct hif_napi_exec_context *ctx)
+{
+	int wait_us = 0;
+
+	WRITE_ONCE(ctx->exec_ctx.napi_redirect_cpu, -1);
+
+	/* Pairs with smp_store_release() in hif_exec_ipi_napi_schedule_cb()
+	 * to observe the IPI callback's writes before returning.
+	 */
+	while (smp_load_acquire(&ctx->napi_redirect_ipi_scheduled)) {
+		if (wait_us >= HIF_NAPI_REDIRECT_DRAIN_TIMEOUT_US) {
+			hif_err("grp_id=%d: napi_redirect IPI still pending after %dus",
+				ctx->exec_ctx.grp_id, wait_us);
+			break;
+		}
+		qdf_udelay(10);
+		wait_us += 10;
+	}
+}
+
+/**
+ * hif_exec_ipi_napi_schedule_cb() - IPI callback to schedule a NAPI poll on
+ *                                   the target CPU
+ * @info: pointer to the &struct hif_napi_exec_context for the interrupt group
+ *
+ * Return: void
+ */
+static void hif_exec_ipi_napi_schedule_cb(void *info)
+{
+	struct hif_napi_exec_context *n_ctx = info;
+	struct hif_exec_context *ctx = &n_ctx->exec_ctx;
+
+	ctx->stats[smp_processor_id()].napi_schedules++;
+	napi_schedule(&n_ctx->napi);
+
+	/* Pairs with smp_load_acquire() in drain_redirect_cpu() so it sees
+	 * the napi_schedule() above as complete before proceeding.
+	 */
+	smp_store_release(&n_ctx->napi_redirect_ipi_scheduled, 0);
+}
+
+/**
+ * hif_exec_napi_schedule() - schedule the napi exec instance
+ * @ctx: a hif_exec_context known to be of napi type
+ *
+ * smp_call_function_single_async() return values and how they are
+ * handled here:
+ *   0       - queued for target (or ran synchronously if target is this
+ *             CPU); nothing further to do.
+ *   -EBUSY  - a previous redirect to this target is still in flight. It
+ *             WILL run, and NAPI's own SCHED/MISSED bits guarantee that
+ *             run picks up anything that accumulated meanwhile, so this
+ *             is treated the same as success. Falling back to a local
+ *             napi_schedule() here would win the NAPI_STATE_SCHED race
+ *             on this CPU instead of target, silently defeating the
+ *             redirect for this round.
+ *   -ENXIO  - target is offline/invalid; this call was dropped and will
+ *             never run. This is the only case that must fall back to
+ *             local scheduling, or the NAPI schedule is lost.
+ */
+static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
+{
+	struct hif_napi_exec_context *n_ctx = hif_exec_get_napi(ctx);
+	int target = READ_ONCE(ctx->napi_redirect_cpu);
+	int ret;
+
+	if (target >= 0 &&
+	    smp_processor_id() != target &&
+	    cpu_online(target)) {
+		WRITE_ONCE(n_ctx->napi_redirect_ipi_scheduled, 1);
+
+		ret = smp_call_function_single_async(target,
+						     &n_ctx->napi_redirect_csd);
+		if (!ret || ret == -EBUSY)
+			return;
+
+		WRITE_ONCE(n_ctx->napi_redirect_ipi_scheduled, 0);
+	}
+	/* Local schedule: same CPU as target, target not currently valid,
+	 * or the async queue attempt hit -ENXIO above.
+	 */
+	ctx->stats[smp_processor_id()].napi_schedules++;
+	napi_schedule(&n_ctx->napi);
+}
+
+/**
+ * hif_set_napi_redirect_cpu() - Enable/disable IPI-based NAPI poll redirect
+ *   for groups specified by TX and/or RX bitmap.
+ *
+ * When enabled, each group in the combined bitmap is assigned a unique CPU
+ * from the perf cluster as IPI target, distributing NAPI poll load across
+ * cores (round-robin by assignment order).  Groups NOT in the bitmap are
+ * left unchanged.  When disabled, all groups in the bitmap are reset to
+ * local scheduling (napi_redirect_cpu = -1).
+ *
+ * Designed to be called from dp_set_tx_irq_affinity() and
+ * dp_set_rx_irq_affinity() immediately after hif_set_grp_intr_affinity().
+ *
+ * @hif_ctx:     HIF handle
+ * @tx_grp_bmap: Bitmap of TX completion groups (cdp_get_tx_rings_grp_bitmap).
+ *               Pass 0 to skip TX groups.
+ * @rx_grp_bmap: Bitmap of RX groups (cdp_get_rx_rings_grp_bitmap).
+ *               Pass 0 to skip RX groups.
+ * @enable:      true = assign perf CPUs; false = clear redirect (set to -1)
+ */
+void hif_set_napi_redirect_cpu(struct hif_opaque_softc *hif_ctx,
+			       uint32_t tx_grp_bmap,
+			       uint32_t rx_grp_bmap,
+			       bool enable)
+{
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(hif_ctx);
+	uint32_t target_bmap = tx_grp_bmap | rx_grp_bmap;
+	int perf_cpu_list[QDF_MAX_AVAILABLE_CPU], n_perf = 0;
+	int i, cpu, assign_idx = 0;
+
+	if (!target_bmap)
+		return;
+
+	if (enable) {
+		int perf_cluster = hif_get_perf_cluster_bitmap();
+
+		for_each_online_cpu(cpu) {
+			if (n_perf >= QDF_MAX_AVAILABLE_CPU)
+				break;
+			if (BIT(qdf_topology_physical_package_id(cpu)) &
+			    perf_cluster)
+				perf_cpu_list[n_perf++] = cpu;
+		}
+		if (!n_perf) {
+			hif_warn("%s: no perf cluster CPUs online", __func__);
+			return;
+		}
+	}
+
+	for (i = 0; i < hif_state->hif_num_extgroup; i++) {
+		struct hif_exec_context *grp = hif_state->hif_ext_group[i];
+		int target;
+
+		if (!grp || !(target_bmap & BIT(grp->grp_id)))
+			continue;
+
+		/* Round-robin: successive groups get different perf CPUs */
+		target = enable ? perf_cpu_list[assign_idx++ % n_perf] : -1;
+		WRITE_ONCE(grp->napi_redirect_cpu, target);
+		hif_debug("NAPI grp_id=%d napi_redirect_cpu=%d (tx=%d rx=%d)",
+			  grp->grp_id, target,
+			  !!(tx_grp_bmap & BIT(grp->grp_id)),
+			  !!(rx_grp_bmap & BIT(grp->grp_id)));
+	}
+}
+
+qdf_export_symbol(hif_set_napi_redirect_cpu);
+
+#else  /* !WLAN_DP_NAPI_IPI_REDIRECT */
+
+static inline void init_redirect_cpu(struct hif_napi_exec_context *ctx) {}
+static inline void drain_redirect_cpu(struct hif_napi_exec_context *ctx) {}
+
 /**
  * hif_exec_napi_schedule() - schedule the napi exec instance
  * @ctx: a hif_exec_context known to be of napi type
@@ -1150,6 +1355,8 @@ static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
 
 	napi_schedule(&n_ctx->napi);
 }
+
+#endif /* WLAN_DP_NAPI_IPI_REDIRECT */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
 /**
@@ -1193,6 +1400,8 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 	struct hif_napi_exec_context *n_ctx = hif_exec_get_napi(ctx);
 	int irq_ind;
 	struct net_device *dummy_nd = qdf_napi_get_dummy_nd_ptr(n_ctx);
+
+	drain_redirect_cpu(n_ctx);
 
 	hif_info("ctx=%pk napi=%pk napi_id=%u state=0x%lx inited=%d",
 		 ctx, &n_ctx->napi, n_ctx->napi.napi_id,
@@ -1239,6 +1448,7 @@ static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 	ctx->exec_ctx.sched_ops = &napi_sched_ops;
 	qdf_atomic_set(&ctx->exec_ctx.inited, 1);
 	ctx->exec_ctx.scale_bin_shift = scale;
+	init_redirect_cpu(ctx);
 	dummy_nd = qdf_napi_get_dummy_nd_ptr(ctx);
 	qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_nd);
 	if (!dummy_nd) {
