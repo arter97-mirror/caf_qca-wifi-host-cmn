@@ -6830,6 +6830,7 @@ typedef enum {
 	VDEV_PARAM(vdev_param_set_go_cancel_noa,
 		   VDEV_PARAM_SET_GO_CANCEL_NOA),
 	VDEV_PARAM(vdev_param_aux_l_disable, VDEV_PARAM_AUX_L_DISABLE),
+	VDEV_PARAM(vdev_param_2x_ldpc, VDEV_PARAM_2xLDPC),
 
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
