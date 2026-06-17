@@ -154,6 +154,8 @@ enum TWT_OPERATION {
  * @b_twt_legacy_mbss_enable: Enable or disable legacy MBSSID TWT.
  * @b_twt_ax_mbss_enable: Enable or disable 11AX MBSSID TWT.
  * @r_twt_enable: Restricted TWT enable or disable.
+ * @voip_pkt_ul_delay_ms: UPO - delay (ms) from VOIP RTP packet queued until
+ * received by the WLAN target (STA only).
  */
 struct twt_enable_param {
 	uint32_t pdev_id;
@@ -181,6 +183,7 @@ struct twt_enable_param {
 		 b_twt_legacy_mbss_enable:1,
 		 b_twt_ax_mbss_enable:1;
 	bool r_twt_enable;
+	uint32_t voip_pkt_ul_delay_ms;
 };
 
 /**

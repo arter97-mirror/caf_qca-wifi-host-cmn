@@ -83,6 +83,7 @@ static QDF_STATUS send_twt_enable_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->mode_check_interval =          params->mode_check_interval;
 	cmd->add_sta_slot_interval =        params->add_sta_slot_interval;
 	cmd->remove_sta_slot_interval =     params->remove_sta_slot_interval;
+	cmd->voip_pkt_ul_delay_ms =         params->voip_pkt_ul_delay_ms;
 
 	TWT_EN_DIS_FLAGS_SET_BTWT(cmd->flags, params->b_twt_enable);
 	TWT_EN_DIS_FLAGS_SET_B_R_TWT(cmd->flags, params->r_twt_enable);
