@@ -11781,6 +11781,16 @@ enum qca_wlan_vendor_attr_wifi_test_config {
 	 * 1-set the 20 MHz only mode, 0-default behavior
 	 */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_20MHZ_ONLY_STA = 83,
+
+	/* 8-bit unsigned value to configure the UHR MCS capability.
+	 * UHR (802.11bn) does not introduce new MCS rates in management frames;
+	 * the MCS capability is derived from the EHT MCS fields. This attribute
+	 * allows testbed devices to downgrade the advertised UHR/EHT MCS
+	 * support using the same enum eht_mcs_config values:
+	 *   EHT_MCS0_7 = 0, EHT_MCS0_9 = 1, EHT_MCS0_11 = 2, EHT_MCS0_13 = 3
+	 */
+	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_UHR_MCS = 84,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_WIFI_TEST_CONFIG_MAX =
