@@ -83,4 +83,22 @@ enum coex_btc_chain_mode {
 	WLAN_COEX_BTC_CHAIN_MODE_HYBRID,
 	WLAN_COEX_BTC_CHAIN_MODE_UNSETTLED = 0xFF,
 };
+
+/**
+ * enum wlan_coex_n79_event - N79 vdev lifecycle events
+ * @WLAN_COEX_N79_STA_CONNECT: 5GHz STA connected (initial, roam, post-CSA)
+ * @WLAN_COEX_N79_STA_DISCONNECT: STA disconnected
+ * @WLAN_COEX_N79_SAP_START: 5GHz SAP/P2P-GO BSS started
+ * @WLAN_COEX_N79_SAP_STOP: SAP/P2P-GO BSS stopped
+ * @WLAN_COEX_N79_NAN_START: NAN discovery/data vdev enabled on 5GHz
+ * @WLAN_COEX_N79_NAN_STOP: NAN vdev disabled
+ */
+enum wlan_coex_n79_event {
+	WLAN_COEX_N79_STA_CONNECT,
+	WLAN_COEX_N79_STA_DISCONNECT,
+	WLAN_COEX_N79_SAP_START,
+	WLAN_COEX_N79_SAP_STOP,
+	WLAN_COEX_N79_NAN_START,
+	WLAN_COEX_N79_NAN_STOP,
+};
 #endif
