@@ -33,6 +33,7 @@
 #include <wlan_mlo_mgr_link_switch.h>
 #include <wlan_mlo_link_recfg.h>
 #include "wlan_mlo_mgr_roam.h"
+#include <wlan_smd_roam.h>
 
 void cm_send_disconnect_resp(struct cnx_mgr *cm_ctx, wlan_cm_id cm_id)
 {
@@ -597,10 +598,11 @@ cm_handle_discon_req_in_non_connected_state(struct cnx_mgr *cm_ctx,
 	/* Reject any link switch disconnect request
 	 * while in disconnecting state
 	 */
-	if (cm_is_link_switch_disconnect_req(cm_req)) {
-		mlme_info(CM_PREFIX_FMT "Ignore disconnect req from source %d state %d",
-			  CM_PREFIX_REF(vdev_id, cm_req->cm_id),
-			  cm_req->req.source, cm_state_substate);
+	if (cm_is_link_switch_disconnect_req(cm_req) &&
+	    !smd_is_roaming_in_progress(cm_ctx->vdev)) {
+		mlme_err(CM_PREFIX_FMT "Ignore disconnect req from source %d state %d",
+			 CM_PREFIX_REF(vdev_id, cm_req->cm_id),
+			 cm_req->req.source, cm_state_substate);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -632,6 +634,13 @@ cm_handle_discon_req_in_non_connected_state(struct cnx_mgr *cm_ctx,
 						 true);
 		break;
 	case WLAN_CM_S_ROAMING:
+		if (cm_is_link_switch_disconnect_req(cm_req) &&
+		    smd_is_roaming_in_progress(cm_ctx->vdev)) {
+			mlme_debug(CM_PREFIX_FMT "SMD link switch disconnect req from source %d state %d",
+				   CM_PREFIX_REF(vdev_id, cm_req->cm_id),
+				   cm_req->req.source, cm_state_substate);
+			break;
+		}
 		/* for FW roam/LFR3 remove the req from the list */
 		if (cm_roam_offload_enabled(wlan_vdev_get_psoc(cm_ctx->vdev)))
 			cm_flush_pending_request(cm_ctx, ROAM_REQ_PREFIX,

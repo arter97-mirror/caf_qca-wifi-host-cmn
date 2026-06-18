@@ -28,9 +28,7 @@
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 #include "wlan_mlo_mgr_roam.h"
 #endif
-#ifdef WLAN_FEATURE_11BN_SMD
 #include "wlan_smd_roam.h"
-#endif
 #include "wlan_cm_tgt_if_tx_api.h"
 
 #if defined(WLAN_FEATURE_HOST_ROAM) || defined(WLAN_FEATURE_ROAM_OFFLOAD)
@@ -130,6 +128,17 @@ bool cm_state_roaming_event(void *ctx, uint16_t event,
 						 data_len, data);
 		}
 		break;
+	case WLAN_CM_SM_EV_ROAM_START:
+		/*
+		 * FW sent a new ROAM_START while already in ROAMING/SS_IDLE
+		 * (e.g. SMD prep completed but FW roamed to legacy instead of
+		 * sending ROAM_SYNC). An SMD roam command may already be
+		 * serialized from the earlier ROAM_START — remove it before
+		 * serializing the new one, otherwise two commands coexist and
+		 * cm_fw_roam_start() picks the stale one.
+		 */
+		smd_remove_roam_cmd(cm_ctx);
+		fallthrough;
 	default:
 		event_handled = cm_handle_fw_roaming_event(cm_ctx, event,
 							   data_len, data);
@@ -531,6 +540,7 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 {
 	struct cnx_mgr *cm_ctx = ctx;
 	bool event_handled = true;
+	struct cm_req *roam_cm_req;
 	QDF_STATUS status;
 
 	switch (event) {
@@ -550,7 +560,9 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 		wlan_cm_tgt_allow_pm_after_roam_sync(
 					wlan_vdev_get_psoc(cm_ctx->vdev),
 					wlan_vdev_get_id(cm_ctx->vdev));
-		smd_roam_update_standby_links(cm_ctx->vdev);
+		/* smd_roam_update_sta_ctx_links() was already called in
+		 * smd_exec_complete() before target_bss_ctx was freed.
+		 */
 		smd_roam_update_deflink(cm_ctx->vdev);
 
 		if (QDF_IS_STATUS_ERROR(status)) {
@@ -558,17 +570,7 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 			break;
 		}
 
-		/* Remove original roam command from serialization */
-		{
-			struct cm_roam_req *roam_req;
-			wlan_cm_id cm_id = CM_ID_INVALID;
-
-			roam_req = cm_get_first_roam_command(cm_ctx->vdev);
-			if (roam_req)
-				cm_id = roam_req->cm_id;
-			if (cm_id != CM_ID_INVALID)
-				cm_remove_cmd(cm_ctx, &cm_id);
-		}
+		smd_remove_roam_cmd(cm_ctx);
 
 		/* Notify supplicant */
 		mlme_cm_osif_roam_complete(cm_ctx->vdev);
@@ -595,10 +597,36 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 		break;
 
 	case WLAN_CM_SM_EV_ROAM_START:
-		/* Race: new roam while cleanup pending — reject */
-		mlme_warn("vdev %d: ROAM_START in SMD_ROAM_SYNC, RSO_STOP",
-			  wlan_vdev_get_id(cm_ctx->vdev));
-		mlme_cm_rso_stop_req(cm_ctx->vdev);
+		/*
+		 * FW triggered a legacy ROAM after the SMD prep phase.
+		 * Remove the current SMD roam request from serialization,
+		 * prepare a new roam cmd, then hand off to the normal
+		 * FW-roam path via cm_handle_fw_roaming_event() which
+		 * serializes it and transitions to WLAN_CM_SS_ROAM_STARTED.
+		 */
+		{
+			struct cm_roam_req *old_roam_req;
+			wlan_cm_id cm_id = CM_ID_INVALID;
+
+			old_roam_req = cm_get_first_roam_command(cm_ctx->vdev);
+			if (old_roam_req)
+				cm_id = old_roam_req->cm_id;
+			if (cm_id != CM_ID_INVALID)
+				cm_remove_cmd(cm_ctx, &cm_id);
+		}
+
+		status = cm_prepare_roam_cmd(cm_ctx, &roam_cm_req,
+					     CM_ROAMING_FW, data);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlme_err("CM vdev %d: failed to prepare roam cmd",
+				 wlan_vdev_get_id(cm_ctx->vdev));
+			event_handled = false;
+			break;
+		}
+
+		cm_sm_transition_to(cm_ctx, WLAN_CM_S_ROAMING);
+		cm_sm_deliver_event_sync(cm_ctx, event,
+					 sizeof(*roam_cm_req), roam_cm_req);
 		break;
 
 	case WLAN_CM_SM_EV_DISCONNECT_REQ:
@@ -624,8 +652,12 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 		/*
 		 * FW aborted after link switch completed.
 		 * Cleanup without SYNCH_COMPLETE — FW already terminated.
+		 * Update sta_ctx links from the partial target context before
+		 * freeing it, so any completed link state is reflected.
+		 * Free the prepared target context that
+		 * will never be activated.
 		 */
-		smd_roam_update_standby_links(cm_ctx->vdev);
+		smd_roam_update_sta_ctx_links(cm_ctx->vdev);
 		smd_roam_update_deflink(cm_ctx->vdev);
 		wlan_cm_tgt_allow_pm_after_roam_sync(
 					wlan_vdev_get_psoc(cm_ctx->vdev),

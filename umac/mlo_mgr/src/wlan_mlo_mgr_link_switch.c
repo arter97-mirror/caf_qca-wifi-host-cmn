@@ -1463,6 +1463,12 @@ QDF_STATUS mlo_mgr_link_switch_start_connect(struct wlan_objmgr_vdev *vdev)
 		goto out;
 	}
 
+	if (smd_is_roaming_in_progress(vdev)) {
+		mlo_debug("SMD roam link sw connect start");
+		status = smd_roam_link_switch_start_connect(vdev);
+		return status;
+	}
+
 	mlo_link_info = mlo_mgr_get_ap_link_by_link_id(mlo_dev_ctx,
 						       req->new_ieee_link_id);
 
