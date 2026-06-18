@@ -7332,6 +7332,7 @@ typedef enum {
 	wmi_service_predictive_roaming,
 	wmi_service_ctas_plim_indication_support,
 	wmi_service_l3_header_padding_enable,
+	wmi_service_skip_pmk_match_delete_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

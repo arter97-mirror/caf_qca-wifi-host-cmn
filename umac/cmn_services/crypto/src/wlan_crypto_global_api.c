@@ -493,7 +493,9 @@ QDF_STATUS wlan_crypto_del_pmksa(struct wlan_objmgr_vdev *vdev,
 	}
 	is_host_4way_hs_supported =
 		wlan_psoc_nif_fw_ext2_cap_get(
-				psoc, WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE);
+				psoc, WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE) ||
+		wlan_psoc_nif_fw_ext2_cap_get(
+				psoc, WLAN_ROAM_SKIP_PMK_MATCH_DELETE_SUPPORT);
 	crypto_debug("is_host_4way_hs_supported:%d",
 		     is_host_4way_hs_supported);
 

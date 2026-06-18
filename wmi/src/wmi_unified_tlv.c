@@ -27258,6 +27258,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_CTAS_PLIM_INDICATION_SUPPORT;
 	wmi_service[wmi_service_l3_header_padding_enable] =
 				WMI_SERVICE_L3_HEADER_PADDING_ENABLE;
+	wmi_service[wmi_service_skip_pmk_match_delete_support] =
+				WMI_SERVICE_SKIP_PMK_MATCH_DELETE_SUPPORT;
 }
 
 /**

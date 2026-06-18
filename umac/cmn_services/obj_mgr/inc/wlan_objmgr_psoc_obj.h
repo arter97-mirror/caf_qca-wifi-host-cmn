@@ -272,6 +272,9 @@
  */
 #define WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE   0x00002000
 
+/* Firmware capability to skip PMK match-based delete during OKC roam */
+#define WLAN_ROAM_SKIP_PMK_MATCH_DELETE_SUPPORT   0x00008000
+
 /* Firmware capability to support delete all peer */
 #define WLAN_VDEV_DELETE_ALL_PEER_SUPPORT_BITMAP  0x00004000
 

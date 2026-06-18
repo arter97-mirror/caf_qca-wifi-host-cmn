@@ -360,6 +360,7 @@ struct wlan_channel {
  * @dot11_mode: Negotiated 802.11 standard (11n/ac/ax/be),
  *              see enum mlme_dot11_mode
  * @phymode: Physical layer mode (derived from dot11_mode + op_bw)
+ * @puncture_bitmap: Puncture bitmap
  */
 struct vdev_op_info {
 	enum phy_ch_width    op_bw;
@@ -401,6 +402,7 @@ struct vdev_op_info {
  * WLAN_VDEV_FEXT2_MLO feature flag in vdev MLME
  * @mlo_sap_sync_disable: flag to disable mlo sap vdev sync
  * @rsno_gen_supported: RSNO generation supported for connection
+ * @okc_pmkid_in_assoc: OKC PMKID-in-AssocReq enabled for this connection
  * @wfd_mode: WFD mode
  */
 struct wlan_objmgr_vdev_mlme {
@@ -437,6 +439,7 @@ struct wlan_objmgr_vdev_mlme {
 #endif
 #endif
 	uint8_t rsno_gen_supported;
+	bool okc_pmkid_in_assoc;
 #if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
 	uint32_t wfd_mode;
 #endif
@@ -1204,6 +1207,35 @@ static inline uint8_t
 wlan_vdev_get_rsno_gen_supported(struct wlan_objmgr_vdev *vdev)
 {
 	return vdev->vdev_mlme.rsno_gen_supported;
+}
+
+/**
+ * wlan_vdev_set_okc_pmkid_in_assoc() - set OKC PMKID-in-AssocReq for connection
+ * @vdev: VDEV object
+ * @val: true if OKC PMKID-in-AssocReq is enabled for this connection
+ *
+ * API to set per-connect OKC PMKID-in-AssocReq flag on the vdev
+ *
+ * Return: void
+ */
+static inline void
+wlan_vdev_set_okc_pmkid_in_assoc(struct wlan_objmgr_vdev *vdev, bool val)
+{
+	vdev->vdev_mlme.okc_pmkid_in_assoc = val;
+}
+
+/**
+ * wlan_vdev_get_okc_pmkid_in_assoc() - get OKC PMKID-in-AssocReq flag
+ * @vdev: VDEV object
+ *
+ * API to get per-connect OKC PMKID-in-AssocReq flag from the vdev
+ *
+ * Return: true if OKC PMKID-in-AssocReq is enabled for this connection
+ */
+static inline bool
+wlan_vdev_get_okc_pmkid_in_assoc(struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.okc_pmkid_in_assoc;
 }
 
 /**
