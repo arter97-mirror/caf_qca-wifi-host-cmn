@@ -1273,7 +1273,6 @@ static QDF_STATUS target_if_vdev_mgr_sta_ps_param_send(
 	return status;
 }
 
-#if defined(SAP_PERF_TUNING)
 /**
  * target_if_vdev_mgr_sap_tm_param_send() - API to send traffic monitoring
  * commands on VDEV UP.
@@ -1303,14 +1302,6 @@ static QDF_STATUS target_if_vdev_mgr_sap_tm_param_send(
 
 	return status;
 }
-#else
-static inline QDF_STATUS target_if_vdev_mgr_sap_tm_param_send(
-					struct wlan_objmgr_vdev *vdev,
-					struct sap_tm_params *param)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 static QDF_STATUS target_if_vdev_mgr_peer_delete_all_send(
 					struct wlan_objmgr_vdev *vdev,

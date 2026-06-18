@@ -485,7 +485,6 @@ QDF_STATUS wmi_unified_sta_ps_cmd_send(wmi_unified_t wmi_handle,
 	return QDF_STATUS_E_FAILURE;
 }
 
-#if defined(SAP_PERF_TUNING)
 QDF_STATUS wmi_unified_sap_tm_cmd_send(wmi_unified_t wmi_handle,
 				       struct sap_tm_params *param)
 {
@@ -495,7 +494,6 @@ QDF_STATUS wmi_unified_sap_tm_cmd_send(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
-#endif
 
 QDF_STATUS wmi_crash_inject(wmi_unified_t wmi_handle,
 			    struct crash_inject *param)
