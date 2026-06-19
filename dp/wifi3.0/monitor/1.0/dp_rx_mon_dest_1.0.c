@@ -96,6 +96,7 @@ dp_tx_capture_get_user_id(struct dp_pdev *dp_pdev, void *rx_desc_tlv)
 #endif
 
 #ifdef QCA_MONITOR_PKT_SUPPORT
+#ifdef WLAN_SOFTUMAC_SUPPORT
 /**
  * dp_rx_mon_link_desc_return() - Return a MPDU link descriptor to HW
  *			      (WBM), following error handling
@@ -151,6 +152,7 @@ done:
 	hal_srng_access_end(hal_soc, hal_ring_hdl);
 	return status;
 }
+#endif
 
 /**
  * dp_rx_mon_mpdu_pop() - Return a MPDU link descriptor to HW

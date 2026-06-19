@@ -1630,7 +1630,6 @@ void dp_rx_fill_mesh_stats(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	uint32_t rate_mcs;
 	uint32_t bw;
 	uint8_t primary_chan_num;
-	uint32_t center_chan_freq;
 	struct dp_soc *soc = vdev->pdev->soc;
 	struct dp_peer *peer;
 	struct dp_peer *primary_link_peer;
@@ -1689,14 +1688,7 @@ void dp_rx_fill_mesh_stats(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 
 	soc = vdev->pdev->soc;
 	primary_chan_num = hal_rx_tlv_get_freq(soc->hal_soc, rx_tlv_hdr);
-	center_chan_freq = hal_rx_tlv_get_freq(soc->hal_soc, rx_tlv_hdr) >> 16;
 
-	if (soc->cdp_soc.ol_ops && soc->cdp_soc.ol_ops->freq_to_band) {
-		rx_info->rs_band = soc->cdp_soc.ol_ops->freq_to_band(
-							soc->ctrl_psoc,
-							vdev->pdev->pdev_id,
-							center_chan_freq);
-	}
 	rx_info->rs_channel = primary_chan_num;
 	pkt_type = hal_rx_tlv_get_pkt_type(soc->hal_soc, rx_tlv_hdr);
 	rate_mcs = hal_rx_tlv_rate_mcs_get(soc->hal_soc, rx_tlv_hdr);

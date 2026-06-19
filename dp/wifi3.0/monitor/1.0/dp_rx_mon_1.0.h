@@ -162,7 +162,7 @@ uint32_t dp_rxdma_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
  */
 void dp_mon_buf_delayed_replenish(struct dp_pdev *pdev);
 
-#ifdef QCA_MONITOR_PKT_SUPPORT
+#if defined(QCA_MONITOR_PKT_SUPPORT) && defined(WLAN_SOFTUMAC_SUPPORT)
 /**
  * dp_rx_mon_link_desc_return() - Return a MPDU link descriptor to HW
  *			      (WBM), following error handling
