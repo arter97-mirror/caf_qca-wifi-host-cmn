@@ -25,7 +25,14 @@
  * or platform configuration
  */
 #if defined(WLAN_MAX_PDEVS) && (WLAN_MAX_PDEVS == 1)
+/* Cached ring desc disabled by default for single-pdev;
+ * enable via QCA_CACHED_RING_DESC
+ */
+#ifdef QCA_CACHED_RING_DESC
+#define WLAN_CFG_DST_RING_CACHED_DESC 1
+#else
 #define WLAN_CFG_DST_RING_CACHED_DESC 0
+#endif
 #define MAX_PDEV_CNT 1
 
 #ifdef CONFIG_BERYLLIUM
