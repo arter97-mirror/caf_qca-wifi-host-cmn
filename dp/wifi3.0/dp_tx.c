@@ -1156,7 +1156,7 @@ static void dp_tx_trace_pkt(struct dp_soc *soc,
 				 QDF_DP_TRACE_LI_DP_TX_PACKET_PTR_RECORD,
 				 QDF_TRACE_DEFAULT_PDEV_ID,
 				 qdf_nbuf_data_addr(skb),
-				 sizeof(qdf_nbuf_data(skb)),
+				 sizeof(uint8_t *),
 				 msdu_id, vdev_id, 0,
 				 op_mode));
 
@@ -7276,7 +7276,7 @@ out_log:
 			 QDF_DP_TRACE_LI_DP_FREE_PACKET_PTR_RECORD,
 			 QDF_TRACE_DEFAULT_PDEV_ID,
 			 qdf_nbuf_data_addr(nbuf),
-			 sizeof(qdf_nbuf_data(nbuf)),
+			 sizeof(uint8_t *),
 			 tx_desc->id, ts->status, dp_status, op_mode));
 out:
 	return;
