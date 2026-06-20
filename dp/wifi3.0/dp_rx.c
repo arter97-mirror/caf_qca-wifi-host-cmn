@@ -1473,8 +1473,9 @@ dp_classify_txpt_idx(struct dp_soc *soc,
 		     struct dp_peer *da_peer, qdf_nbuf_t nbuf)
 {
 	if (da_peer && da_peer->txpt_classify_idx_valid) {
-		QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(nbuf) = 1;
-		QDF_NBUF_CB_TXPT_IDX_VALUE(nbuf) = da_peer->txpt_classify_idx;
+		QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(nbuf) = 1;
+		QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(nbuf) =
+						da_peer->txpt_classify_idx;
 	}
 }
 #else

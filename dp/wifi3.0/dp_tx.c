@@ -2696,8 +2696,8 @@ static void dp_tx_trace_pkt(struct dp_soc *soc,
 	if (dp_is_tput_high(soc))
 		return;
 
-	if (QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(skb))
-		tx_info = QDF_NBUF_CB_TXPT_IDX_VALUE(skb);
+	if (QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(skb))
+		tx_info = QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(skb);
 
 	QDF_NBUF_CB_TX_PACKET_TRACK(skb) = QDF_NBUF_TX_PKT_DATA_TRACK;
 	QDF_NBUF_CB_TX_DP_TRACE(skb) = 1;
@@ -10926,8 +10926,7 @@ void dp_tx_vdev_update_search_flags(struct dp_vdev *vdev)
 
 	if (vdev->opmode == wlan_op_mode_sta && !vdev->tdls_link_connected)
 		vdev->search_type = soc->sta_mode_search_policy;
-	else if (vdev->opmode == wlan_op_mode_passthru &&
-		 !dp_get_passthru_ampdu_support(soc))
+	else if (vdev->opmode == wlan_op_mode_passthru)
 		vdev->search_type = HAL_TX_ADDR_INDEX_SEARCH;
 	else
 		vdev->search_type = HAL_TX_ADDR_SEARCH_DEFAULT;

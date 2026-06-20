@@ -322,8 +322,8 @@ struct qdf_nbuf_cb {
 						band:3,
 						flag_ts_valid:1,
 						peer_bw:3;
-					uint8_t txpt_idx_value;
-					uint8_t	txpt_idx_valid:1,
+					uint8_t peer_search_idx_value;
+					uint8_t peer_search_idx_valid:1,
 						tx_page_pool_id:6,
 						reserved:1;
 				} priv_cb_m;
@@ -637,10 +637,10 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	 peer_bw)
 
-#define QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.txpt_idx_valid)
-#define QDF_NBUF_CB_TXPT_IDX_VALUE(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.txpt_idx_value)
+#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_valid)
+#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_value)
 
 #define QDF_NBUF_CB_RX_PEER_ID(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m.dp. \

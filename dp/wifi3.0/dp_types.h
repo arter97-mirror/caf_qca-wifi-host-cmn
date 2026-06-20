@@ -6348,6 +6348,9 @@ struct dp_peer {
 	uint8_t txpt_classify_idx;
 	qdf_atomic_t txpt_info_setup_done;
 #endif
+#ifdef DRIVER_PASSTHRU_MODE
+	uint8_t is_peer_assoc_done;
+#endif
 };
 
 /**

@@ -6599,6 +6599,7 @@ dp_peer_create_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 
 	/* initialize the peer_id */
 	peer->peer_id = HTT_INVALID_PEER;
+	peer->ast_idx = CDP_INVALID_PEER_AST_IDX;
 
 	qdf_mem_copy(
 		&peer->mac_addr.raw[0], peer_mac_addr, QDF_MAC_ADDR_SIZE);
@@ -9510,6 +9511,19 @@ dp_set_peer_freq(struct cdp_soc_t *cdp_soc,  uint8_t vdev_id,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline
+void dp_peer_set_assoc_state(struct dp_peer *peer, bool peer_param_assoc_done)
+{
+	peer->is_peer_assoc_done = peer_param_assoc_done;
+}
+#else
+static inline
+void dp_peer_set_assoc_state(struct dp_peer *peer, bool peer_param_assoc_done)
+{
+}
+#endif
+
 /**
  * dp_set_peer_param: function to set parameters in peer
  * @cdp_soc: DP soc handle
@@ -9564,6 +9578,9 @@ static QDF_STATUS dp_set_peer_param(struct cdp_soc_t *cdp_soc,  uint8_t vdev_id,
 		break;
 	case CDP_CONFIG_PEER_BW:
 		dp_peer_set_bw(soc, txrx_peer, val.cdp_peer_param_bw);
+		break;
+	case CDP_CONFIG_PEER_ASSOC_STATE:
+		dp_peer_set_assoc_state(peer, val.cdp_peer_param_assoc_done);
 		break;
 	default:
 		break;
