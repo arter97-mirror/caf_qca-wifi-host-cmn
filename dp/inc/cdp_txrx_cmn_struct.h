@@ -75,6 +75,8 @@
 /* METADATA used for wakeup triggers, specifically for Standby modes */
 #define CDP_STANDBY_METADATA 5588
 
+#define CDP_INVALID_PEER_AST_IDX 0xFFFF
+
 /* Options for Dump Statistics */
 #define CDP_HDD_STATS               0
 #define CDP_TXRX_PATH_STATS         1
@@ -542,12 +544,18 @@ enum ol_txrx_peer_state {
  * @peer_id: Peer ID
  * @state: peer state
  * @mld_peer: whether is mld peer
+ * @is_peer_assoc_done: peer assoc state
+ * @ast_idx: peer ast index
  */
 struct cdp_peer_output_param {
 	uint8_t vdev_id;
 	uint16_t peer_id;
 	enum ol_txrx_peer_state state;
 	bool mld_peer;
+#ifdef DRIVER_PASSTHRU_MODE
+	uint8_t is_peer_assoc_done;
+	uint16_t ast_idx;
+#endif
 };
 
 /**
@@ -1372,6 +1380,7 @@ struct cdp_soc_t {
  * @CDP_CONFIG_PEER_DMS: Dms capability of peer
  * @CDP_CONFIG_TX_PKT_INFO: TX packet count
  * @CDP_CONFIG_RX_PKT_INFO: RX packet count
+ * @CDP_CONFIG_PEER_ASSOC_STATE: set peer assoc state
  */
 enum cdp_peer_param_type {
 	CDP_CONFIG_NAWDS,
@@ -1383,6 +1392,7 @@ enum cdp_peer_param_type {
 	CDP_CONFIG_PEER_DMS,
 	CDP_CONFIG_TX_PKT_INFO,
 	CDP_CONFIG_RX_PKT_INFO,
+	CDP_CONFIG_PEER_ASSOC_STATE,
 };
 
 /**
@@ -1470,6 +1480,7 @@ enum cdp_pdev_param_type {
  * @cdp_peer_param_in_twt: in TWT session or not
  * @cdp_peer_param_nac: Enable nac
  * @cdp_peer_param_freq: Peer frequency
+ * @cdp_peer_param_assoc_done: peer assoc param
  *
  * @cdp_vdev_param_nawds: set nawds enable/disable
  * @cdp_vdev_param_mcast_en: enable/disable multicast enhancement
@@ -1581,6 +1592,7 @@ typedef union cdp_config_param_t {
 	uint8_t cdp_peer_param_nac;
 	bool cdp_peer_param_in_twt;
 	uint32_t cdp_peer_param_freq;
+	uint8_t cdp_peer_param_assoc_done;
 
 	/* vdev params */
 	bool cdp_vdev_param_wds;

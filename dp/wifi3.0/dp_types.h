@@ -5732,6 +5732,10 @@ struct dp_peer {
 
 	/* peer setup info */
 	struct dp_peer_setup_info setup_info;
+
+#ifdef DRIVER_PASSTHRU_MODE
+	uint8_t is_peer_assoc_done;
+#endif
 };
 
 /**
