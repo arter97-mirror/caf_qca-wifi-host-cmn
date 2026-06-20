@@ -91,11 +91,12 @@ osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
 	return osif_cm_update_wep_seq_info(connect_req, req);
 }
 
-static void osif_cm_set_auth_type(struct wlan_cm_connect_req *connect_req,
+static void osif_cm_set_auth_type(struct wlan_objmgr_vdev *vdev,
+				  struct wlan_cm_connect_req *connect_req,
 				  const struct cfg80211_connect_params *req)
 {
 	wlan_crypto_auth_mode crypto_auth_type =
-			osif_nl_to_crypto_auth_type(req->auth_type);
+			osif_nl_to_crypto_auth_type(vdev, req->auth_type);
 
 	/* For auto check wpa version to decide WPA or RSNA */
 	if (crypto_auth_type == WLAN_CRYPTO_AUTH_AUTO &&
@@ -190,7 +191,8 @@ osif_cm_populate_user_crypto_param(struct wlan_cm_connect_req *connect_req,
 #endif
 
 static
-QDF_STATUS osif_cm_set_crypto_params(struct wlan_cm_connect_req *connect_req,
+QDF_STATUS osif_cm_set_crypto_params(struct wlan_objmgr_vdev *vdev,
+				     struct wlan_cm_connect_req *connect_req,
 				     const struct cfg80211_connect_params *req)
 {
 	uint32_t i;
@@ -199,7 +201,7 @@ QDF_STATUS osif_cm_set_crypto_params(struct wlan_cm_connect_req *connect_req,
 
 	connect_req->crypto.wpa_versions = req->crypto.wpa_versions;
 
-	osif_cm_set_auth_type(connect_req, req);
+	osif_cm_set_auth_type(vdev, connect_req, req);
 
 	if (req->crypto.cipher_group)
 		cipher =
@@ -823,7 +825,7 @@ int osif_cm_connect(struct net_device *dev, struct wlan_objmgr_vdev *vdev,
 	if (req->channel_hint)
 		connect_req->chan_freq_hint = req->channel_hint->center_freq;
 
-	status = osif_cm_set_crypto_params(connect_req, req);
+	status = osif_cm_set_crypto_params(vdev, connect_req, req);
 	if (QDF_IS_STATUS_ERROR(status))
 		goto connect_start_fail;
 

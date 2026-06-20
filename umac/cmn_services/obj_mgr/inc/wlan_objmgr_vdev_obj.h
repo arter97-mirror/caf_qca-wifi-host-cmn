@@ -405,6 +405,8 @@ struct vdev_op_info {
  * @rsno_gen_supported: RSNO generation supported for connection
  * @okc_pmkid_in_assoc: OKC PMKID-in-AssocReq enabled for this connection
  * @wfd_mode: WFD mode
+ * @is_eppke_allowed: flag indicating userspace has requested EPPKE
+ *                    authentication for this connection
  */
 struct wlan_objmgr_vdev_mlme {
 	enum QDF_OPMODE vdev_opmode;
@@ -443,6 +445,9 @@ struct wlan_objmgr_vdev_mlme {
 	bool okc_pmkid_in_assoc;
 #if defined(FEATURE_WLAN_SUPPORT_P2P_R2) || defined(FEATURE_WLAN_SUPPORT_PCC)
 	uint32_t wfd_mode;
+#endif
+#ifdef WLAN_FEATURE_11BI_SECURITY
+	bool is_eppke_allowed;
 #endif
 };
 
@@ -1238,6 +1243,49 @@ wlan_vdev_get_okc_pmkid_in_assoc(struct wlan_objmgr_vdev *vdev)
 {
 	return vdev->vdev_mlme.okc_pmkid_in_assoc;
 }
+
+/**
+ * wlan_vdev_set_eppke_allowed() - set EPPKE authentication is allowed for the
+ * connection
+ * @vdev: VDEV object
+ * @val: EPPKE allowed flag
+ *
+ * API to set whether EPPKE authentication is allowed for connection
+ *
+ * Return: void
+ */
+#ifdef WLAN_FEATURE_11BI_SECURITY
+static inline void
+wlan_vdev_set_eppke_allowed(struct wlan_objmgr_vdev *vdev, uint8_t val)
+{
+	vdev->vdev_mlme.is_eppke_allowed = val;
+}
+
+/**
+ * wlan_vdev_is_eppke_allowed() - check if EPPKE authentication is allowed
+ * @vdev: VDEV object
+ *
+ * API to get whether EPPKE authentication is allowed for connection
+ *
+ * Return: true if EPPKE authentication is allowed, false otherwise
+ */
+static inline bool
+wlan_vdev_is_eppke_allowed(struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.is_eppke_allowed;
+}
+#else
+static inline void
+wlan_vdev_set_eppke_allowed(struct wlan_objmgr_vdev *vdev, uint8_t val)
+{
+}
+
+static inline bool
+wlan_vdev_is_eppke_allowed(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BI_SECURITY */
 
 /**
  * wlan_vdev_mlme_set_macaddr() - set vdev macaddr

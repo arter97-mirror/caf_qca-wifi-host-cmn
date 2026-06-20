@@ -73,7 +73,7 @@ struct osif_cipher_crypto_mapping {
 #ifdef WLAN_FEATURE_11BI_SECURITY
 #define OSIF_AUTH_TYPE_11BI_SECURITY_MAPPING \
 	[NL80211_AUTHTYPE_EPPKE] = WLAN_CRYPTO_AUTH_EPPKE, \
-	[NL80211_AUTHTYPE_IEEE8021X] = WLAN_CRYPTO_AUTH_1X_IN_AUTH,
+	[NL80211_AUTHTYPE_IEEE8021X] = WLAN_CRYPTO_AUTH_8021X_IN_AUTH,
 #else
 #define OSIF_AUTH_TYPE_11BI_SECURITY_MAPPING
 #endif
@@ -316,7 +316,8 @@ static const struct osif_cipher_crypto_mapping
 };
 
 wlan_crypto_auth_mode
-osif_nl_to_crypto_auth_type(enum nl80211_auth_type auth_type)
+osif_nl_to_crypto_auth_type(struct wlan_objmgr_vdev *vdev,
+			    enum nl80211_auth_type auth_type)
 {
 	wlan_crypto_auth_mode crypto_auth_type = WLAN_CRYPTO_AUTH_NONE;
 
@@ -328,8 +329,15 @@ osif_nl_to_crypto_auth_type(enum nl80211_auth_type auth_type)
 	}
 
 	crypto_auth_type = osif_auth_type_crypto_mapping[auth_type];
-	QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF, "Auth type, NL: %d, crypto: %d",
-			auth_type, crypto_auth_type);
+	if (vdev)
+		QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF,
+				"Auth type, is_eppke:%d NL: %d, crypto: %d",
+				wlan_vdev_is_eppke_allowed(vdev),
+				auth_type, crypto_auth_type);
+	else
+		QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF,
+				"Auth type NL: %d, crypto: %d",
+				auth_type, crypto_auth_type);
 
 	return crypto_auth_type;
 }
