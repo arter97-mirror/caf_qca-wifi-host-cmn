@@ -434,6 +434,10 @@ struct mlo_link_info*
 mlo_mgr_get_ap_link_by_link_id(struct wlan_mlo_dev_context *mlo_dev_ctx,
 			       int link_id);
 
+struct mlo_link_info*
+mlo_mgr_get_ap_link_by_vdev_id(struct wlan_mlo_dev_context *mlo_dev_ctx,
+			       int vdev_id);
+
 /**
  * mlo_mgr_if_freq_n_inactive_links_freq_same() - API to check if the given
  * freq and ML connection inactive/standby link are on same.

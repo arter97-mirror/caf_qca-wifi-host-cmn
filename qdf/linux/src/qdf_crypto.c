@@ -56,17 +56,16 @@ static void xor(uint8_t *a, const uint8_t *b, size_t len)
 }
 
 int qdf_get_hash(uint8_t *type,
-		uint8_t element_cnt, uint8_t *addr[], uint32_t *addr_len,
-		int8_t *hash)
+		 uint8_t element_cnt, uint8_t *addr[], uint32_t *addr_len,
+		 int8_t *hash)
 {
 	return qdf_get_hmac_hash(type, NULL, 0, element_cnt,
 				 addr, addr_len, hash);
 }
 
-int qdf_get_hmac_hash(uint8_t *type, uint8_t *key,
-		uint32_t keylen,
-		uint8_t element_cnt, uint8_t *addr[], uint32_t *addr_len,
-		int8_t *hash)
+int qdf_get_hmac_hash(const uint8_t *type, uint8_t *key,
+		      uint32_t keylen, uint8_t element_cnt, uint8_t *addr[],
+		      uint32_t *addr_len, int8_t *hash)
 {
 	int i;
 	size_t src_len[MAX_HMAC_ELEMENT_CNT];

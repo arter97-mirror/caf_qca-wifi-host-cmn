@@ -682,6 +682,28 @@ struct mlo_link_info
 	return NULL;
 }
 
+struct mlo_link_info
+*mlo_mgr_get_ap_link_by_vdev_id(struct wlan_mlo_dev_context *mlo_dev_ctx,
+				int vdev_id)
+{
+	struct mlo_link_info *link_info;
+	uint8_t link_info_iter;
+
+	if (!mlo_dev_ctx)
+		return NULL;
+
+	link_info = &mlo_dev_ctx->sta_ctx->links_info[0];
+	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+	     link_info_iter++) {
+		if (link_info->vdev_id == vdev_id)
+			return link_info;
+
+		link_info++;
+	}
+
+	return NULL;
+}
+
 bool mlo_mgr_if_freq_n_inactive_links_freq_same(struct wlan_objmgr_vdev *vdev,
 						uint32_t freq)
 {

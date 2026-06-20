@@ -597,6 +597,8 @@ static bool scm_is_security_match(struct scan_filter *filter,
 		case WLAN_CRYPTO_AUTH_RSNA:
 		case WLAN_CRYPTO_AUTH_CCKM:
 		case WLAN_CRYPTO_AUTH_SAE:
+		case WLAN_CRYPTO_AUTH_EPPKE:
+		case WLAN_CRYPTO_AUTH_8021X_IN_AUTH:
 		case WLAN_CRYPTO_AUTH_FILS_SK:
 			/* First check if there is a RSN match */
 			match = scm_check_rsn(filter, db_entry, security);

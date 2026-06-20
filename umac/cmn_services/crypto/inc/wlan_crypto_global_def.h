@@ -289,6 +289,9 @@ typedef enum wlan_crypto_rsn_cap {
  *   Beamforming/CSI/CQI Frame Non-TB Tx Support.
  *   Set if Non-TB Tx is supported for individually addressed BF/CSI/CQI frames.
  *
+ * @WLAN_CRYPTO_RSNX_CAP_SAE_PASSWORD_ID_CHANGE: SAE Password Identifier Change
+ *   Support per IEEE 802.11bi.
+ *
  * Definition: (IEEE Std 802.11-2024, 9.4.2.240, Table 9-373)
  */
 enum wlan_crypto_rsnx_cap {
@@ -330,6 +333,7 @@ enum wlan_crypto_rsnx_cap {
 
 	/* bit 32 requires 64-bit backing if stored in u32 */
 	WLAN_CRYPTO_RSNX_CAP_EDP_BF_CSI_NTB_TX = BIT_ULL(32),
+	WLAN_CRYPTO_RSNX_CAP_SAE_PASSWORD_ID_CHANGE = BIT_ULL(34),
 };
 
 /*

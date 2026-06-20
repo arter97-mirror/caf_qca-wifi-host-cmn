@@ -73,6 +73,9 @@ osif_crypto_to_nl_suites(wlan_crypto_key_mgmt crypto_akm_type);
  */
 enum wlan_crypto_cipher_type osif_nl_to_crypto_cipher_type(u32 cipher);
 
+uint32_t
+osif_crypto_cipher_to_nl_suites(enum wlan_crypto_cipher_type cipher);
+
 /**
  * osif_nl_to_crypto_cipher_len() - return the cipher length
  * @cipher: NL cipher type

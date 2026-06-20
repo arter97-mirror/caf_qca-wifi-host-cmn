@@ -188,6 +188,14 @@ QDF_STATUS wlan_crypto_getkey(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS wlan_crypto_delkey(struct wlan_objmgr_vdev *vdev,
 					uint8_t *macaddr,
 					uint8_t key_idx);
+/**
+ * wlan_crypto_rsn_cipher_to_suite() - Convert a given RSN cipher
+ * to suite value.
+ * @cipher: internal crypto cipher suite
+ *
+ * Return: Cipher suite selector
+ */
+int32_t wlan_crypto_rsn_cipher_to_suite(uint32_t cipher);
 
 /**
  * wlan_crypto_rsn_keymgmt_to_suite() - Convert an RSN key
@@ -1006,6 +1014,9 @@ wlan_crypto_get_cipher(struct wlan_objmgr_vdev *vdev, const uint8_t *peer_mac,
  * Return: enum wlan_crypto_key_mgmt
  */
 wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm);
+
+enum wlan_crypto_cipher_type
+wlan_crypto_get_cipher_from_bitmap(uint32_t ciphers);
 
 /**
  * wlan_crypto_update_set_key_peer() - Update the peer for set key

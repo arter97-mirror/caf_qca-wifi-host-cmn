@@ -87,9 +87,9 @@ int qdf_get_hash(uint8_t *type, uint8_t element_cnt,
  *
  * Return: 0 if success else error code
  */
-int qdf_get_hmac_hash(uint8_t *type, uint8_t *key,
-		uint32_t keylen, uint8_t element_cnt,
-		uint8_t *addr[], uint32_t *addr_len, int8_t *hash);
+int qdf_get_hmac_hash(const uint8_t *type, uint8_t *key,
+		      uint32_t keylen, uint8_t element_cnt,
+		      uint8_t *addr[], uint32_t *addr_len, int8_t *hash);
 
 /**
  * qdf_default_hmac_sha256_kdf()- This API calculates key data using default kdf

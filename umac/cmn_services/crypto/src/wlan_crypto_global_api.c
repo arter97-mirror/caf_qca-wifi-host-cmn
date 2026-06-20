@@ -2578,7 +2578,7 @@ static int32_t wlan_crypto_wpa_cipher_to_suite(uint32_t cipher)
 	return status;
 }
 
-static int32_t wlan_crypto_rsn_cipher_to_suite(uint32_t cipher)
+int32_t wlan_crypto_rsn_cipher_to_suite(uint32_t cipher)
 {
 	int32_t status = -1;
 
@@ -2662,6 +2662,8 @@ wlan_crypto_rsn_keymgmt_to_suite(uint32_t keymgmt)
 		return RSN_AUTH_KEY_MGMT_SAE_EXT_KEY;
 	case WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY:
 		return RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY;
+	case WLAN_CRYPTO_KEY_MGMT_EPPKE:
+		return RSN_AUTH_KEY_MGMT_EPPKE;
 	}
 
 	return status;
@@ -2825,6 +2827,8 @@ static int32_t wlan_crypto_rsn_suite_to_keymgmt(const uint8_t *sel)
 		return WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY;
 	case RSN_AUTH_KEY_MGMT_FT_SAE_EXT_KEY:
 		return WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY;
+	case RSN_AUTH_KEY_MGMT_EPPKE:
+		return WLAN_CRYPTO_KEY_MGMT_EPPKE;
 	}
 
 	return status;
@@ -4813,6 +4817,63 @@ wlan_crypto_get_cipher(struct wlan_objmgr_vdev *vdev, const uint8_t *peer_mac,
 		return crypto_key->cipher_type;
 	else
 		return WLAN_CRYPTO_CIPHER_INVALID;
+}
+
+enum wlan_crypto_cipher_type
+wlan_crypto_get_cipher_from_bitmap(uint32_t ciphers)
+{
+	if (!ciphers)
+		return WLAN_CRYPTO_CIPHER_INVALID;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_OCB))
+		return WLAN_CRYPTO_CIPHER_AES_OCB;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_CCM))
+		return WLAN_CRYPTO_CIPHER_AES_CCM;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_WAPI_SMS4))
+		return WLAN_CRYPTO_CIPHER_WAPI_SMS4;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_CMAC))
+		return WLAN_CRYPTO_CIPHER_AES_CMAC;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_CCM_256))
+		return WLAN_CRYPTO_CIPHER_AES_CCM_256;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_CMAC_256))
+		return WLAN_CRYPTO_CIPHER_AES_CMAC_256;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_GCM))
+		return WLAN_CRYPTO_CIPHER_AES_GCM;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_GCM_256))
+		return WLAN_CRYPTO_CIPHER_AES_GCM_256;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_GMAC))
+		return WLAN_CRYPTO_CIPHER_AES_GMAC;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_AES_GMAC_256))
+		return WLAN_CRYPTO_CIPHER_AES_GMAC_256;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_WAPI_GCM4))
+		return WLAN_CRYPTO_CIPHER_WAPI_GCM4;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_FILS_AEAD))
+		return WLAN_CRYPTO_CIPHER_FILS_AEAD;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_WEP_40))
+		return WLAN_CRYPTO_CIPHER_WEP_40;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_WEP_104))
+		return WLAN_CRYPTO_CIPHER_WEP_104;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_WEP))
+		return WLAN_CRYPTO_CIPHER_WEP;
+
+	if (QDF_HAS_PARAM(ciphers, WLAN_CRYPTO_CIPHER_TKIP))
+		return WLAN_CRYPTO_CIPHER_TKIP;
+
+	return WLAN_CRYPTO_CIPHER_INVALID;
 }
 
 wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm)

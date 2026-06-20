@@ -390,6 +390,29 @@ osif_crypto_to_nl_suites(enum wlan_crypto_key_mgmt crypto_akm_type)
 	return akm_suite;
 }
 
+uint32_t
+osif_crypto_cipher_to_nl_suites(enum wlan_crypto_cipher_type cipher)
+{
+	uint8_t index;
+	uint32_t cipher_suite = 0;
+
+	for (index = 0; index < QDF_ARRAY_SIZE(osif_cipher_crypto_mapping);
+	     index++) {
+		if (osif_cipher_crypto_mapping[index].cipher_crypto != cipher)
+			continue;
+
+		cipher_suite = osif_cipher_crypto_mapping[index].cipher_suite;
+		QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF, "cipher suite, crypto: %d -> NL: 0x%x",
+				cipher, cipher_suite);
+		return cipher_suite;
+	}
+
+	QDF_TRACE_DEBUG(QDF_MODULE_ID_OS_IF, "Unknown cipher type: %d",
+			cipher);
+
+	return cipher_suite;
+}
+
 enum wlan_crypto_cipher_type osif_nl_to_crypto_cipher_type(u32 cipher)
 {
 	uint8_t index;
