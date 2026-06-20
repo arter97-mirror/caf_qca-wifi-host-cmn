@@ -6150,6 +6150,9 @@ struct dp_peer {
 	bool txpt_classify_idx_valid;
 	uint8_t txpt_classify_idx;
 #endif
+#ifdef DRIVER_PASSTHRU_MODE
+	uint8_t is_peer_assoc_done;
+#endif
 };
 
 /**
