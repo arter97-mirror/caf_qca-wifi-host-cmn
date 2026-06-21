@@ -466,7 +466,12 @@ bool cm_is_ml_connection(struct wlan_objmgr_vdev *vdev,
 	wlan_psoc_mlme_get_11be_capab(wlan_vdev_get_psoc(vdev), &eht_capab);
 	mld_mac = (struct qdf_mac_addr *)wlan_vdev_mlme_get_mldaddr(vdev);
 
+	mlme_debug("eht_cap:%d mac_zero:%d user_flag:%d phy_mode_allow_mlo:%d",
+		   eht_capab, !qdf_is_macaddr_zero(mld_mac),
+		   !wlan_vdev_mlme_get_user_dis_eht_flag(vdev),
+		   IS_WLAN_PHYMODE_ALLOW_MLO(req->cur_candidate->entry->phy_mode));
 	if (eht_capab && !qdf_is_macaddr_zero(mld_mac) &&
+	    !wlan_vdev_mlme_get_user_dis_eht_flag(vdev) &&
 	    IS_WLAN_PHYMODE_ALLOW_MLO(req->cur_candidate->entry->phy_mode) &&
 	    req->cur_candidate->entry->ie_list.ehtop &&
 	    req->cur_candidate->entry->ie_list.multi_link_bv &&
@@ -656,6 +661,7 @@ static void cm_create_bss_peer(struct cnx_mgr *cm_ctx,
 
 	wlan_psoc_mlme_get_11be_capab(wlan_vdev_get_psoc(vdev), &eht_capab);
 	if (eht_capab && wlan_vdev_mlme_is_mlo_vdev(vdev) &&
+	    !wlan_vdev_mlme_get_user_dis_eht_flag(vdev) &&
 	    wlan_cm_is_eht_allowed_for_current_security(wlan_vdev_get_psoc(vdev),
 							req->cur_candidate->entry,
 							true)) {
