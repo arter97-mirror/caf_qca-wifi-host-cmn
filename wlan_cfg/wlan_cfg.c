@@ -4389,6 +4389,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 
 	wlan_cfg_ctx->rx_hash = cfg_get(psoc, CFG_DP_RX_HASH);
 	wlan_cfg_ctx->tso_enabled = cfg_get(psoc, CFG_DP_TSO);
+	wlan_cfg_ctx->uso_enabled = cfg_get(psoc, CFG_DP_USO);
 	wlan_cfg_ctx->lro_enabled = cfg_get(psoc, CFG_DP_LRO);
 	wlan_cfg_ctx->sg_enabled = cfg_get(psoc, CFG_DP_SG);
 	gro_bit_set = cfg_get(psoc, CFG_DP_GRO);
@@ -4663,6 +4664,7 @@ wlan_cfg_soc_attach(struct cdp_ctrl_objmgr_psoc *psoc)
 
 	wlan_cfg_ctx->rx_hash = cfg_get(psoc, CFG_DP_RX_HASH);
 	wlan_cfg_ctx->tso_enabled = cfg_get(psoc, CFG_DP_TSO);
+	wlan_cfg_ctx->uso_enabled = cfg_get(psoc, CFG_DP_USO);
 	wlan_cfg_ctx->lro_enabled = cfg_get(psoc, CFG_DP_LRO);
 	wlan_cfg_ctx->sg_enabled = cfg_get(psoc, CFG_DP_SG);
 	gro_bit_set = cfg_get(psoc, CFG_DP_GRO);

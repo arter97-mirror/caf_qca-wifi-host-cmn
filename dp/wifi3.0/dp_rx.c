@@ -1032,7 +1032,7 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 				     replenish.free_list,
 				     num_alloc_desc);
 		} else
-			dp_err_rl("%pK:  no free rx_descs in freelist", dp_soc);
+			dp_info_rl("%pK: no free rx_descs in freelist", dp_soc);
 	}
 
 	if (qdf_unlikely(!num_req_buffers)) {
@@ -1052,7 +1052,7 @@ QDF_STATUS __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 							  tail);
 
 		if (!num_alloc_desc) {
-			dp_rx_err("%pK: no free rx_descs in freelist", dp_soc);
+			dp_rx_info("%pK: no free rx_descs in freelist", dp_soc);
 			DP_STATS_INC(dp_pdev, err.desc_alloc_fail,
 					num_req_buffers);
 			hal_srng_access_end(dp_soc->hal_soc, rxdma_srng);
@@ -2114,6 +2114,10 @@ dp_rx_deliver_to_stack_ext(struct dp_soc *soc, struct dp_vdev *vdev,
 	 */
 	if (!txrx_peer->wds_ext.init)
 		return false;
+
+	dp_verbose_debug("vdev_id %u peer_id %u dest_mac " QDF_MAC_ADDR_FMT,
+			 vdev->vdev_id, txrx_peer->peer_id,
+			 QDF_MAC_ADDR_REF(nbuf_head->data));
 
 	if (txrx_peer->osif_rx)
 		txrx_peer->osif_rx(txrx_peer->wds_ext.osif_peer, nbuf_head);

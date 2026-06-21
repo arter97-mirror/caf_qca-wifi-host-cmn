@@ -186,6 +186,9 @@ static inline void dp_wds_ext_peer_learn(struct dp_soc *soc,
 					 &ta_peer->txrx_peer->wds_ext.init)) {
 		qdf_mem_copy(wds_ext_src_mac, &ta_peer->mac_addr.raw[0],
 			     QDF_MAC_ADDR_SIZE);
+		dp_info("wds_ext: peer_learn vdev_id %u peer_id %u init %lu",
+			ta_peer->vdev->vdev_id, ta_peer->peer_id,
+			ta_peer->txrx_peer->wds_ext.init);
 		soc->cdp_soc.ol_ops->rx_wds_ext_peer_learn(
 						soc->ctrl_psoc,
 						ta_peer->peer_id,

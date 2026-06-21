@@ -1567,6 +1567,9 @@ dp_get_peer_from_tx_exc_meta(struct dp_soc *soc, uint32_t *hal_tx_desc_cached,
 		peer = dp_peer_get_ref_by_id(soc, tx_exc_metadata->peer_id,
 					     DP_MOD_ID_TX);
 		if (peer) {
+			dp_verbose_debug("peer_id %u ast_idx %u ast_hash %u",
+					 peer->peer_id, peer->ast_idx,
+					 peer->ast_hash);
 			*ast_idx = peer->ast_idx;
 			*ast_hash = peer->ast_hash;
 			hal_tx_desc_set_index_lookup_override
@@ -1674,7 +1677,8 @@ dp_tx_hw_enqueue_be(struct dp_soc *soc, struct dp_vdev *vdev,
 	/* verify checksum offload configuration*/
 	if ((qdf_nbuf_get_tx_cksum(tx_desc->nbuf) ==
 				   QDF_NBUF_TX_CKSUM_TCP_UDP) ||
-	      qdf_nbuf_is_tso(tx_desc->nbuf)) {
+	      qdf_nbuf_is_tso(tx_desc->nbuf) ||
+	      qdf_nbuf_is_uso(tx_desc->nbuf)) {
 		hal_tx_desc_set_l3_checksum_en(hal_tx_desc_cached, 1);
 		hal_tx_desc_set_l4_checksum_en(hal_tx_desc_cached, 1);
 	}

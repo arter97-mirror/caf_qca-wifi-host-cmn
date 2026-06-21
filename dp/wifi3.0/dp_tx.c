@@ -632,6 +632,12 @@ static void dp_tx_prepare_tso_ext_desc(struct dp_soc *soc,
 
 	hal_tx_ext_desc_set_tcp_seq(ext_desc, tso_seg->tso_flags.tcp_seq_num);
 	hal_tx_ext_desc_set_ip_id(ext_desc, tso_seg->tso_flags.ip_id);
+	/* Add length for UDP header */
+	if (tso_seg->tso_flags.is_udp)
+		hal_tx_ext_desc_set_udp_len(
+			ext_desc,
+			(tso_seg->total_len - tso_seg->tso_flags.eit_hdr_len +
+			 sizeof(struct udphdr)));
 
 	for (num_frag = 0; num_frag < tso_seg->num_frags; num_frag++) {
 		uint32_t lo = 0;
@@ -1327,11 +1333,14 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 	if (dp_tx_is_nbuf_marked_exception(soc, nbuf))
 		is_exception = 1;
 
-	/* for BE chipsets if wds extension was enbled will not mark FW
+	/* for BE chipsets if wds extension was enabled will not mark FW
 	 * in desc will mark ast index based search for ast index.
 	 */
-	if (dp_tx_is_wds_ast_override_en(soc, tx_exc_metadata))
+	if (dp_tx_is_wds_ast_override_en(soc, tx_exc_metadata)) {
+		dp_verbose_debug("vdev_id %u msdu_id %u", vdev->vdev_id,
+				 tx_desc->id);
 		return tx_desc;
+	}
 
 	/*
 	 * For special modes (vdev_type == ocb or mesh), data frames should be
@@ -3253,8 +3262,9 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		DP_TX_TCL_METADATA_PEER_ID_SET(htt_tcl_metadata,
 					       peer_id);
 		dp_tx_bypass_reinjection(soc, tx_desc, tx_exc_metadata);
-	} else
+	} else {
 		htt_tcl_metadata = vdev->htt_tcl_metadata;
+	}
 
 	dp_tx_opt_dp_wifi_ctrl_process(msdu_info, &htt_tcl_metadata);
 
@@ -3271,7 +3281,7 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	if (qdf_unlikely(msdu_info->frm_type == dp_tx_frm_rmnet))
 		paddr = dp_tx_rmnet_nbuf_map(msdu_info, tx_desc);
 	else
-		paddr =  dp_tx_nbuf_map(vdev, tx_desc, nbuf);
+		paddr = dp_tx_nbuf_map(vdev, tx_desc, nbuf);
 
 	if (!paddr) {
 		/* Handle failure */
@@ -4218,13 +4228,15 @@ dp_tx_send_exception(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	if (tx_exc_metadata->peer_id != CDP_INVALID_PEER) {
 		struct dp_peer *peer = NULL;
 
-		 peer = dp_peer_get_ref_by_id(vdev->pdev->soc,
-					      tx_exc_metadata->peer_id,
-					      DP_MOD_ID_TX_EXCEPTION);
+		peer = dp_peer_get_ref_by_id(vdev->pdev->soc,
+					     tx_exc_metadata->peer_id,
+					     DP_MOD_ID_TX_EXCEPTION);
 		if (qdf_unlikely(!peer)) {
 			DP_STATS_INC(vdev,
 			     tx_i[xmit_type].dropped.invalid_peer_id_in_exc_path,
 			     1);
+			dp_tx_err_rl("peer_id %u invalid",
+				     tx_exc_metadata->peer_id);
 			goto fail;
 		}
 		dp_peer_unref_delete(peer, DP_MOD_ID_TX_EXCEPTION);
@@ -4609,6 +4621,20 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		DP_STATS_INC(vdev, tx_i[xmit_type].rcvd.num,
 			     msdu_info.num_seg - 1);
 
+		goto send_multiple;
+	}
+
+	if (qdf_nbuf_is_uso(nbuf)) {
+		if (dp_tx_prepare_tso(vdev, nbuf, &msdu_info)) {
+			DP_STATS_INC_PKT(vdev->pdev, tso_stats.dropped_host, 1,
+					 qdf_nbuf_len(nbuf));
+			DP_STATS_INC(soc, tx.uso_pkts_fail, 1);
+			return nbuf;
+		}
+
+		DP_STATS_INC(vdev, tx_i[xmit_type].rcvd.num,
+			     msdu_info.num_seg - 1);
+		DP_STATS_INC(soc, tx.uso_pkts, 1);
 		goto send_multiple;
 	}
 

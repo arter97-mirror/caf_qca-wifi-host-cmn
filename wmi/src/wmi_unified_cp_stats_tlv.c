@@ -477,6 +477,12 @@ QDF_STATUS wmi_stats_handler(wmi_unified_t wmi_handle, void *buff, int32_t len,
 		curr_tlv_tag = WMITLV_GET_TLVTAG(WMITLV_GET_HDR(buf_ptr));
 		curr_tlv_len = WMITLV_GET_TLVLEN(WMITLV_GET_HDR(buf_ptr));
 
+		if (curr_tlv_len > len) {
+			wmi_debug("Invalid TLV len %d exceeds buf len %d",
+				  curr_tlv_len, len);
+			break;
+		}
+
 		wmi_debug("curr_tlv_len %d curr_tlv_tag %d rem_len %d",
 			  len, curr_tlv_len, curr_tlv_tag);
 		if (curr_tlv_len) {
@@ -1260,10 +1266,17 @@ extract_inst_rssi_stats_resp_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	param_buf = (WMI_INST_RSSI_STATS_EVENTID_param_tlvs *)evt_buf;
 	event = (wmi_inst_rssi_stats_resp_fixed_param *)param_buf->fixed_param;
 
-	inst_rssi_resp->inst_rssi = event->iRSSI;
-	WMI_CHAR_ARRAY_TO_MAC_ADDR(inst_rssi_resp->peer_macaddr.bytes,
-				   &event->peer_macaddr);
+	/* SON expect SNR instead of RSSI */
+	inst_rssi_resp->inst_rssi = event->iRSSI - WMI_NOISE_FLOOR_DBM_DEFAULT;
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(&event->peer_macaddr,
+				   inst_rssi_resp->peer_macaddr.bytes);
 	inst_rssi_resp->vdev_id = event->vdev_id;
+
+	wmi_debug("vdev id %d peer " QDF_MAC_ADDR_FMT " snr %d rssi %d",
+		  inst_rssi_resp->vdev_id,
+		  QDF_MAC_ADDR_REF(inst_rssi_resp->peer_macaddr.bytes),
+		  inst_rssi_resp->inst_rssi,
+		  event->iRSSI);
 
 	return QDF_STATUS_SUCCESS;
 }
