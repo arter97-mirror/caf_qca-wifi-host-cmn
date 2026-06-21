@@ -5629,8 +5629,22 @@ mlo_smd_handle_add_link_event(void *ctx,
 			recfg_ctx->ml_dev, event,
 			sizeof(link_sw_req), &link_sw_req);
 		return true;
+	} else if (smd_cleanup_curr_ap_link(recfg_ctx, req, &link_sw_req)) {
+		/* cleanup_vdev scenario: add_link_info is empty, del_link_info
+		 * carries the current AP link to bring down (multi-to-single roam).
+		 * Trigger a disconnect-only link switch.
+		 */
+		mlo_debug("SMD cleanup vdev: triggering disconnect-only link switch");
+		mlo_link_recfg_sm_transition_to(
+			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
+		mlo_link_recfg_sm_deliver_event_sync(
+			recfg_ctx->ml_dev, event,
+			sizeof(link_sw_req), &link_sw_req);
+		return true;
+	} else {
+		mlo_debug("No vdev (active or idle) available for link addition");
+		mlo_link_recfg_add_link_completed(recfg_ctx);
 	}
-
 	return false;
 }
 #else

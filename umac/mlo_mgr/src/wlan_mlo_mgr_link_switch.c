@@ -1225,7 +1225,7 @@ mlo_mgr_osif_update_connect_info(struct wlan_objmgr_vdev *vdev, int32_t link_id)
 			   link_id);
 }
 
-static QDF_STATUS
+QDF_STATUS
 mlo_mgr_link_switch_decide_mac_addr_change(
 			struct wlan_objmgr_vdev *vdev,
 			struct wlan_mlo_link_switch_req *req,
@@ -1311,16 +1311,13 @@ QDF_STATUS mlo_mgr_link_switch_disconnect_done(struct wlan_objmgr_vdev *vdev,
 	mlo_debug("VDEV %d link switch disconnect complete",
 		  wlan_vdev_get_id(vdev));
 
-	if (req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK &&
-	    smd_is_roaming_in_progress(vdev)) {
-		new_link_info =
-			smd_get_prep_ap_link_info(vdev,
-						  req);
-	} else {
-		new_link_info =
-			mlo_mgr_get_ap_link_by_link_id(vdev->mlo_dev_ctx,
-						       req->new_ieee_link_id);
-	}
+	if (smd_is_roaming_in_progress(vdev))
+		return smd_roam_link_switch_disconnect_done(vdev, mlo_dev_ctx);
+
+	new_link_info =
+		mlo_mgr_get_ap_link_by_link_id(vdev->mlo_dev_ctx,
+					       req->new_ieee_link_id);
+
 	if (!new_link_info) {
 		mlo_err("New link not found in mlo dev ctx");
 		mlo_mgr_remove_link_switch_cmd(vdev);
@@ -1629,6 +1626,14 @@ mlo_mgr_start_link_switch(struct wlan_objmgr_vdev *vdev,
 	new_link_id = req->new_ieee_link_id;
 
 	mlo_debug("VDEV %d start link switch", vdev_id);
+
+	if ((smd_is_roaming_in_progress(vdev) &&
+	     req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) ||
+	     req->reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK ||
+	     req->reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK) {
+		smd_roam_start_link_switch(vdev, cmd);
+		return status;
+	}
 	mlo_mgr_link_switch_trans_next_state(mlo_dev_ctx);
 
 	if (!wlan_cm_is_vdev_connected(vdev)) {
@@ -1935,19 +1940,18 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
 	struct mlo_link_info *new_link_info;
 	bool notify_link_recfg = false;
 
-	if (req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) {
-		if (smd_is_roaming_in_progress(vdev)) {
-			status = smd_host_link_switch_validate_request(vdev, req);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				mlo_err("link switch status %d for add link", status);
-				return status;
-			}
-		} else {
-			status = mlo_mgr_host_link_switch_validate_request(vdev, req);
-			if (QDF_IS_STATUS_ERROR(status)) {
-				mlo_err("link switch status %d for add link", status);
-				return status;
-			}
+	if (smd_is_roaming_in_progress(vdev)) {
+		status = smd_host_link_switch_validate_request(vdev, req);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("link switch status %d for add link", status);
+			return status;
+		}
+		goto validated;
+	} else if (req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) {
+		status = mlo_mgr_host_link_switch_validate_request(vdev, req);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			mlo_err("link switch status %d for add link", status);
+			return status;
 		}
 		goto validated;
 	}
@@ -2004,7 +2008,8 @@ validated:
 	/* If link recfg in progress, link switch is only allowed for host
 	 * force reason code.
 	 */
-	if (mlo_is_link_recfg_in_progress(vdev)) {
+	if (mlo_is_link_recfg_in_progress(vdev) ||
+	    smd_is_roaming_in_progress(vdev)) {
 		if (req->reason == MLO_LINK_SWITCH_REASON_HOST_FORCE ||
 		    req->reason ==
 		    MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP ||

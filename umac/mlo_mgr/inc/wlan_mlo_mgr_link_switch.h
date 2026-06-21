@@ -826,6 +826,25 @@ mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
 					struct wlan_cm_connect_resp *resp);
 
 /**
+ * mlo_mgr_link_switch_decide_mac_addr_change() - Decide MAC address change
+ *                                                 after link switch disconnect
+ * @vdev: vdev object
+ * @req: link switch request
+ * @new_link_info: link info for the target new link
+ *
+ * After disconnect completes during a link switch, determines whether a MAC
+ * address change is needed before connecting to the new link and proceeds
+ * accordingly.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+mlo_mgr_link_switch_decide_mac_addr_change(
+				struct wlan_objmgr_vdev *vdev,
+				struct wlan_mlo_link_switch_req *req,
+				struct mlo_link_info *new_link_info);
+
+/**
  * mlo_mgr_link_switch_init() - API to initialize link switch
  * @psoc: PSOC object manager
  * @ml_dev: MLO dev context
@@ -1256,6 +1275,15 @@ static inline void
 mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
 					struct wlan_cm_connect_resp *resp)
 {
+}
+
+static inline QDF_STATUS
+mlo_mgr_link_switch_decide_mac_addr_change(
+				struct wlan_objmgr_vdev *vdev,
+				struct wlan_mlo_link_switch_req *req,
+				struct mlo_link_info *new_link_info)
+{
+	return QDF_STATUS_E_NOSUPPORT;
 }
 
 static inline QDF_STATUS
