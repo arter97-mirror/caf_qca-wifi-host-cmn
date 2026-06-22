@@ -7208,6 +7208,20 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AUX_LISTEN = 146,
 
+	/* 8-bit unsigned value to enable or disable the transmission of
+	 * 2x1944 LDPC codewords (2xLDPC Tx). This is applicable for UHR
+	 * devices only.
+	 * 1 - Enable, 0 - Disable.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_2X_LDPC_TX = 147,
+
+	/* 8-bit unsigned value to enable or disable the reception of
+	 * 2x1944 LDPC codewords (2xLDPC Rx). This is applicable for UHR
+	 * devices only.
+	 * 1 - Enable, 0 - Disable.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_2X_LDPC_RX = 148,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
