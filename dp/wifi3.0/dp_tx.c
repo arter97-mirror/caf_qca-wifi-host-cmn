@@ -11198,6 +11198,7 @@ static void dp_tx_spcl_delete_static_pools(struct dp_soc *soc, int num_pool)
 {
 }
 #else /* QCA_LL_TX_FLOW_CONTROL_V2! */
+#ifdef QCA_SUPPORT_DP_GLOBAL_CTX
 static QDF_STATUS dp_tx_alloc_static_pools(struct dp_soc *soc, int num_pool)
 {
 	uint8_t i, count;
@@ -11375,6 +11376,107 @@ static void dp_tx_spcl_delete_static_pools(struct dp_soc *soc, int num_pool)
 			dp_tx_desc_pool_free(soc, i, true);
 	}
 }
+
+#else /* QCA_SUPPORT_DP_GLOBAL_CTX */
+
+static QDF_STATUS dp_tx_alloc_static_pools(struct dp_soc *soc, int num_pool)
+{
+	uint8_t i, count;
+	uint32_t num_desc = 0;
+
+	for (i = 0; i < num_pool; i++) {
+		num_desc = wlan_cfg_get_num_tx_desc(soc->wlan_cfg_ctx, i);
+		if (num_desc > WLAN_CFG_NUM_TX_DESC_MAX)
+			goto fail;
+
+		if (dp_tx_desc_pool_alloc(soc, i, num_desc, false)) {
+			QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
+				  FL("Tx Desc Pool alloc %d failed %pK"),
+				  i, soc);
+			goto fail;
+		}
+	}
+	return QDF_STATUS_SUCCESS;
+
+fail:
+	for (count = 0; count < i; count++)
+		dp_tx_desc_pool_free(soc, count, false);
+	return QDF_STATUS_E_NOMEM;
+}
+
+static QDF_STATUS dp_tx_spcl_alloc_static_pools(struct dp_soc *soc,
+						int num_pool,
+						uint32_t num_spcl_desc)
+{
+	/* spcl pool not used when QCA_SUPPORT_DP_GLOBAL_CTX is not defined */
+	return QDF_STATUS_SUCCESS;
+}
+
+static QDF_STATUS dp_tx_init_static_pools(struct dp_soc *soc, int num_pool)
+{
+	uint8_t i;
+	uint32_t num_desc;
+
+	for (i = 0; i < num_pool; i++) {
+		num_desc = wlan_cfg_get_num_tx_desc(soc->wlan_cfg_ctx, i);
+		if (num_desc > WLAN_CFG_NUM_TX_DESC_MAX)
+			goto fail;
+
+		if (dp_tx_desc_pool_init(soc, i, num_desc, false)) {
+			QDF_TRACE(QDF_MODULE_ID_DP, QDF_TRACE_LEVEL_ERROR,
+				  FL("Tx Desc Pool init %d failed %pK"),
+				  i, soc);
+			goto fail;
+		}
+	}
+	return QDF_STATUS_SUCCESS;
+
+fail:
+	while (i--)
+		dp_tx_desc_pool_deinit(soc, i, false);
+	return QDF_STATUS_E_NOMEM;
+}
+
+static QDF_STATUS dp_tx_spcl_init_static_pools(struct dp_soc *soc,
+					       int num_pool,
+					       uint32_t num_spcl_desc)
+{
+	/* spcl pool not used when QCA_SUPPORT_DP_GLOBAL_CTX is not defined */
+	return QDF_STATUS_SUCCESS;
+}
+
+static void dp_tx_deinit_static_pools(struct dp_soc *soc, int num_pool)
+{
+	uint8_t i;
+	struct dp_tx_desc_pool_s *tx_desc_pool;
+
+	for (i = 0; i < num_pool; i++) {
+		tx_desc_pool = dp_get_tx_desc_pool(soc, i);
+		if (!tx_desc_pool->elem_count)
+			continue;
+		dp_tx_desc_pool_deinit(soc, i, false);
+	}
+}
+
+static void dp_tx_spcl_deinit_static_pools(struct dp_soc *soc, int num_pool)
+{
+	/* spcl pool not used when QCA_SUPPORT_DP_GLOBAL_CTX is not defined */
+}
+
+static void dp_tx_delete_static_pools(struct dp_soc *soc, int num_pool)
+{
+	uint8_t i;
+
+	for (i = 0; i < num_pool; i++)
+		dp_tx_desc_pool_free(soc, i, false);
+}
+
+static void dp_tx_spcl_delete_static_pools(struct dp_soc *soc, int num_pool)
+{
+	/* spcl pool not used when QCA_SUPPORT_DP_GLOBAL_CTX is not defined */
+}
+
+#endif /* QCA_SUPPORT_DP_GLOBAL_CTX */
 #endif /* !QCA_LL_TX_FLOW_CONTROL_V2 */
 
 /**
