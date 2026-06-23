@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1078,7 +1078,7 @@ static inline void wlan_peer_mlme_flag_ext_clear(struct wlan_objmgr_peer *peer,
 static inline uint8_t wlan_peer_mlme_flag_ext_get(struct wlan_objmgr_peer *peer,
 						  uint32_t flag)
 {
-	return (peer->peer_mlme.peer_ext_flags & flag) ? 1 : 0;
+	return (peer && (peer->peer_mlme.peer_ext_flags & flag)) ? 1 : 0;
 }
 
 /**
