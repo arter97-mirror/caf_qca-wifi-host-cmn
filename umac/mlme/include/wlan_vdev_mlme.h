@@ -613,11 +613,37 @@ struct vdev_mlme_mgmt_ap {
 };
 
 /**
+ * enum vdev_mlme_bss_param_flags - flag bits for vdev_mlme_bss_params::flags
+ * @VDEV_MLME_BSS_PARAM_CTS_PROT: CTS protection enabled (ERP use_protection)
+ * @VDEV_MLME_BSS_PARAM_SHORT_PREAMBLE: short preamble enabled (cap info bit)
+ * @VDEV_MLME_BSS_PARAM_SHORT_SLOT_TIME: short slot time enabled (cap info bit)
+ */
+enum vdev_mlme_bss_param_flags {
+	VDEV_MLME_BSS_PARAM_CTS_PROT        = BIT(0),
+	VDEV_MLME_BSS_PARAM_SHORT_PREAMBLE  = BIT(1),
+	VDEV_MLME_BSS_PARAM_SHORT_SLOT_TIME = BIT(2),
+};
+
+/**
+ * struct vdev_mlme_bss_params - BSS parameters learnt from beacon/assoc resp
+ * @flags: bitmask of enum vdev_mlme_bss_param_flags
+ * @dtim_period: DTIM period advertised by the BSS
+ * @beacon_interval: beacon interval of the BSS
+ */
+struct vdev_mlme_bss_params {
+	uint8_t flags;
+	uint8_t dtim_period;
+	uint16_t beacon_interval;
+};
+
+/**
  * struct vdev_mlme_mgmt_sta - sta specific vdev mlme mgmt cfg
  * @he_mcs_12_13_map: map to indicate mcs12/13 caps of peer&dut
+ * @bss_params: BSS parameters learnt from beacon/assoc response
  */
 struct vdev_mlme_mgmt_sta {
 	uint16_t he_mcs_12_13_map;
+	struct vdev_mlme_bss_params bss_params;
 };
 
 /**
@@ -2286,4 +2312,26 @@ QDF_STATUS vdev_mgr_cdp_vdev_attach(struct vdev_mlme_obj *mlme_obj);
  */
 QDF_STATUS vdev_mgr_cdp_vdev_detach(struct vdev_mlme_obj *mlme_obj);
 #endif
+
+/**
+ * wlan_vdev_mlme_get_bss_params() - get BSS parameters for a STA vdev
+ * @vdev: VDEV object
+ * @bss_params: output; caller-allocated struct to receive a copy of the
+ *              BSS parameters cached from the beacon/assoc response
+ *
+ * Return: QDF_STATUS_SUCCESS on success, QDF_STATUS_E_FAILURE otherwise
+ */
+static inline QDF_STATUS
+wlan_vdev_mlme_get_bss_params(struct wlan_objmgr_vdev *vdev,
+			      struct vdev_mlme_bss_params *bss_params)
+{
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme)
+		return QDF_STATUS_E_FAILURE;
+
+	*bss_params = vdev_mlme->mgmt.sta.bss_params;
+	return QDF_STATUS_SUCCESS;
+}
 #endif
