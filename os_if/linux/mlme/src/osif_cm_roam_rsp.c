@@ -527,6 +527,31 @@ osif_send_roam_auth_mlo_links_event(struct sk_buff *skb,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BI_SECURITY
+static int osif_put_assoc_encrypted_attr(struct sk_buff *skb,
+					 struct wlan_cm_connect_resp *rsp)
+{
+	osif_debug("vdev %d: assoc_encrypted=%d", rsp->vdev_id,
+		   rsp->is_assoc_encrypted);
+
+	if (!rsp->is_assoc_encrypted)
+		return 0;
+
+	if (nla_put_flag(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_ASSOC_ENCRYPTED)) {
+		osif_err("assoc_encrypted flag put fail");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#else
+static inline int osif_put_assoc_encrypted_attr(struct sk_buff *skb,
+						struct wlan_cm_connect_resp *rsp)
+{
+	return 0;
+}
+#endif
+
 /**
  * osif_send_roam_auth_event() - API to send roam auth event response to kernel
  * @vdev: vdev pointer
@@ -604,7 +629,7 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 				sizeof(uint8_t) + REPLAY_CTR_LEN +
 				roaming_info->kck_len + roaming_info->kek_len +
 				sizeof(uint16_t) + sizeof(uint8_t) +
-				(9 * NLMSG_HDRLEN) + fils_params_len,
+				(10 * NLMSG_HDRLEN) + fils_params_len,
 				QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH_INDEX,
 				qdf_mem_malloc_flags());
 	} else {
@@ -615,7 +640,7 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 				sizeof(uint8_t) + REPLAY_CTR_LEN +
 				roaming_info->kck_len + roaming_info->kek_len +
 				sizeof(uint16_t) + sizeof(uint8_t) +
-				(9 * NLMSG_HDRLEN) + fils_params_len,
+				(10 * NLMSG_HDRLEN) + fils_params_len,
 				QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH_INDEX,
 				qdf_mem_malloc_flags());
 	}
@@ -739,6 +764,8 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 			goto nla_put_failure;
 		}
 	}
+	if (osif_put_assoc_encrypted_attr(skb, rsp))
+		goto nla_put_failure;
 	cfg80211_vendor_event(skb, qdf_mem_malloc_flags());
 	return 0;
 

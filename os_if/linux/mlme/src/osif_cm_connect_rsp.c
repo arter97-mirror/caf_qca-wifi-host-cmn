@@ -1093,6 +1093,23 @@ void osif_copy_connected_info(struct cfg80211_connect_resp_params *conn_rsp,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BI_SECURITY
+static void
+osif_set_assoc_encrypted(struct cfg80211_connect_resp_params *conn_rsp_params,
+			 struct wlan_cm_connect_resp *rsp)
+{
+	conn_rsp_params->assoc_encrypted = rsp->is_assoc_encrypted;
+	osif_debug("vdev %d: assoc_encrypted=%d", rsp->vdev_id,
+		   conn_rsp_params->assoc_encrypted);
+}
+#else
+static inline void
+osif_set_assoc_encrypted(struct cfg80211_connect_resp_params *conn_rsp_params,
+			 struct wlan_cm_connect_resp *rsp)
+{
+}
+#endif
+
 /**
  * osif_connect_done() - Wrapper API to call cfg80211_connect_done
  * @dev: network device
@@ -1131,9 +1148,11 @@ static int osif_connect_done(struct net_device *dev, struct cfg80211_bss *bss,
 	osif_populate_fils_params(&conn_rsp_params, &rsp->connect_ies);
 	osif_cm_save_gtk(vdev, rsp);
 
-	if (status == WLAN_STATUS_SUCCESS)
+	if (status == WLAN_STATUS_SUCCESS) {
 		osif_fill_connect_resp_mlo_params(vdev, rsp, bss,
 						  &conn_rsp_params);
+		osif_set_assoc_encrypted(&conn_rsp_params, rsp);
+	}
 
 	osif_debug("%svdev %d: status  %d",
 		   wlan_vdev_mlme_is_mlo_vdev(vdev) ? "ML " : "",

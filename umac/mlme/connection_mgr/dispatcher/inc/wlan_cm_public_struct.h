@@ -567,6 +567,8 @@ struct wlan_roam_sync_info {
  * @is_fils_connection: is fils connection
  * @mld_addr: MLD address of the ML AP
  * @ml_parnter_info: ml partner link info
+ * @is_assoc_encrypted: flag to indicate if the association response frame is
+ * encrypted.
  */
 struct wlan_cm_connect_resp {
 	uint8_t vdev_id;
@@ -594,6 +596,9 @@ struct wlan_cm_connect_resp {
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct qdf_mac_addr mld_addr;
 	struct mlo_partner_info ml_parnter_info;
+#endif
+#ifdef WLAN_FEATURE_11BI_SECURITY
+	bool is_assoc_encrypted;
 #endif
 };
 
