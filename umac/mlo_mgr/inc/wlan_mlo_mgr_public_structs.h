@@ -1154,6 +1154,7 @@ struct link_assoc_rsp_info {
  * @ml_link_control_mode: link control mode configured via user space
  * @ml_chan_switch_in_progress: Flag to track CSA at MLD level
  * @ttlm_send_info: TTLM send command into
+ * @npca_cap: NPCA capability info
  */
 struct wlan_mlo_sta {
 	qdf_bitmap(wlan_connect_req_links, WLAN_UMAC_MLO_MAX_VDEVS);
@@ -1192,6 +1193,9 @@ struct wlan_mlo_sta {
 	bool ml_chan_switch_in_progress;
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM
 	struct ttlm_send_cmd_info ttlm_send_info;
+#endif
+#ifdef WLAN_FEATURE_11BN
+	struct wlan_npca_caps npca_cap;
 #endif
 };
 

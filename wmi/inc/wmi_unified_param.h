@@ -1407,6 +1407,32 @@ typedef struct {
 	uint32_t mac_addr47to32;
 } wmi_host_mac_addr;
 
+#ifdef WLAN_FEATURE_11BN
+/**
+ * struct wmi_host_npca_param - NPCA capabilities
+ *@npca_enabled: NPCA Support
+ *@npca_pri_channel: NPCA primary channel
+ *@npca_min_dur_threshold: NPCA minimum duration threshold
+ *@npca_switch_delay: NPCA switch delay
+ *@npca_switch_back_delay: NPCA switch back delay
+ *@npca_qsrc: NPCA QSRC
+ *@npca_moplen: NPCA MOPLEN
+ *@npca_disabled_subchan_bm_present: NPCA disabled subchannel bitmap present
+ *@npca_disabled_subchan_bm: NPCA disabled subchannel bitmap, one bit per subchannel
+ */
+struct wmi_host_npca_param {
+	uint8_t npca_enabled;
+	uint8_t npca_pri_channel;
+	uint8_t npca_min_dur_threshold;
+	uint16_t npca_switch_delay;
+	uint16_t npca_switch_back_delay;
+	uint8_t npca_qsrc;
+	uint8_t npca_moplen;
+	uint8_t npca_disabled_subchan_bm_present;
+	uint16_t npca_disabled_subchan_bm;
+};
+#endif
+
 #ifdef WLAN_FEATURE_11BE
 #ifdef WMI_AP_SUPPORT
 /**
@@ -1785,6 +1811,7 @@ struct peer_assoc_ml_partner_links {
  * @peer_uhr_rx_mcs_set: Peer UHR RX MCS MAP
  * @peer_uhr_tx_mcs_set: Peer UHR TX MCS MAP
  * @peer_uhr_ppet: Peer UHR PPET info
+ * @npca_param: Non Primary Channel Access (NPCA) parameters
  */
 struct peer_assoc_params {
 	uint32_t vdev_id;
@@ -1893,6 +1920,7 @@ struct peer_assoc_params {
 	uint32_t peer_uhr_rx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];
 	uint32_t peer_uhr_tx_mcs_set[WMI_HOST_MAX_UHR_RATE_SET];
 	struct wmi_host_ppe_threshold peer_uhr_ppet;
+	struct wmi_host_npca_param npca_param;
 #endif
 #ifdef WLAN_FEATURE_11BN_SMD
 	uint8_t smd_id[QDF_MAC_ADDR_SIZE];

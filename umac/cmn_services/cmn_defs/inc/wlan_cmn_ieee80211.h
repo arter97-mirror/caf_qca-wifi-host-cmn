@@ -5064,6 +5064,30 @@ struct wlan_uhr_npca_op_params {
 } qdf_packed;
 
 /**
+ * struct wlan_npca_caps - NPCA (Non-Primary Channel Access) capability params
+ * @npca_supp: NPCA support enabled
+ * @npca_pri_channel: NPCA primary channel
+ * @npca_min_dur_threshold: NPCA minimum duration threshold
+ * @npca_switch_delay: NPCA switch delay
+ * @npca_switch_back_delay: NPCA switch back delay
+ * @npca_qsrc: NPCA QSRC
+ * @npca_moplen: NPCA MOPLEN
+ * @npca_disabled_subchan_bm_present: disabled subchannel bitmap present
+ * @npca_disabled_subchan_bm: disabled subchannel bitmap, one bit per subchannel
+ */
+struct wlan_npca_caps {
+	bool npca_supp;
+	uint8_t npca_pri_channel;
+	uint8_t npca_min_dur_threshold;
+	uint16_t npca_switch_delay;
+	uint16_t npca_switch_back_delay;
+	uint8_t npca_qsrc;
+	uint8_t npca_moplen;
+	uint8_t npca_disabled_subchan_bm_present;
+	uint16_t npca_disabled_subchan_bm;
+};
+
+/**
  * struct wlan_uhr_pedca_op_params - P-EDCA Operation Parameters field
  *                                   (3 octets)
  * @present:                         Indicates P-EDCA Operation Parameters

@@ -4263,6 +4263,81 @@ uint32_t wmi_uhr_peer_assoc_params_len(struct peer_assoc_params *param)
 	return (sizeof(wmi_uhr_rate_set) * param->peer_eht_mcs_count
 		+ WMI_TLV_HDR_SIZE);
 }
+
+/**
+ * peer_assoc_npca_params_size() - Get NPCA param size in peer assoc
+ * @req: pointer to peer create request param
+ *
+ *  Return: size of NPCA params in peer assoc command
+ */
+static
+uint32_t peer_assoc_npca_params_size(struct peer_assoc_params *req)
+{
+	uint32_t peer_assoc_npca_size = WMI_TLV_HDR_SIZE +
+					sizeof(wmi_peer_uhr_npca_op_params);
+
+	wmi_debug("peer_assoc_npca_size %u", peer_assoc_npca_size);
+	return peer_assoc_npca_size;
+}
+
+/**
+ *  peer_assoc_add_npca_params() - Add NPCA params in peer assoc cmd
+ *  @buf_ptr: pointer to peer assoc cmd buffer.
+ *  @req: pointer to peer assoc request param
+ *
+ *  Return: pointer to new offset of cmd buffer
+ */
+static
+uint8_t *peer_assoc_add_npca_params(uint8_t *buf_ptr,
+				    struct peer_assoc_params *req)
+{
+	struct wmi_host_npca_param *npca_param = &req->npca_param;
+
+	wmi_peer_uhr_npca_op_params *cmd;
+
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC,
+		       sizeof(wmi_peer_uhr_npca_op_params));
+
+	buf_ptr += sizeof(uint32_t);
+
+	cmd = (wmi_peer_uhr_npca_op_params *)buf_ptr;
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_peer_uhr_npca_op_params,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_uhr_npca_op_params));
+
+	WMI_PEER_UHR_NPCA_OP_PARAM_PRIMARY_CHANNEL_SET(
+						cmd->npca_op_param,
+						npca_param->npca_pri_channel);
+	WMI_PEER_UHR_NPCA_OP_PARAM_MIN_DURATION_THRESHOLD_SET(
+					cmd->npca_op_param,
+					npca_param->npca_min_dur_threshold);
+	WMI_PEER_UHR_NPCA_OP_PARAM_SWITCH_DELAY_SET(
+						cmd->npca_op_param,
+						npca_param->npca_switch_delay);
+	WMI_PEER_UHR_NPCA_OP_PARAM_SWITCH_BACK_DELAY_SET(
+					cmd->npca_op_param,
+					npca_param->npca_switch_back_delay);
+	WMI_PEER_UHR_NPCA_OP_PARAM_INITIAL_QSRC_SET(cmd->npca_op_param,
+						    npca_param->npca_qsrc);
+	WMI_PEER_UHR_NPCA_OP_PARAM_MOPLEN_NPCA_SET(cmd->npca_op_param,
+						   npca_param->npca_moplen);
+	WMI_PEER_UHR_NPCA_OP_PARAM_DIS_SUBCHAN_BMAP_PRESENT_SET(
+				cmd->npca_op_param,
+				npca_param->npca_disabled_subchan_bm_present);
+	if (WMI_PEER_UHR_NPCA_OP_PARAM_DIS_SUBCHAN_BMAP_PRESENT_GET(
+							cmd->npca_op_param)) {
+		wmi_debug("Set NPCA disable subchannel bitmap");
+		WMI_PEER_UHR_NPCA_OP_PARAM1_DISABLED_SUBCHAN_BITMAP_SET(
+				cmd->npca_op_param1,
+				npca_param->npca_disabled_subchan_bm);
+	}
+	wmi_debug("Add NPCA TLV: NPCA param:%x", cmd->npca_op_param);
+
+	buf_ptr += sizeof(wmi_peer_uhr_npca_op_params);
+
+	return buf_ptr;
+}
+
 #else
 static inline void wmi_populate_service_11bn(uint32_t *wmi_service)
 {
@@ -4272,6 +4347,20 @@ static
 uint32_t wmi_uhr_peer_assoc_params_len(struct peer_assoc_params *param)
 {
 	return 0;
+}
+
+static
+uint32_t peer_assoc_npca_params_size(struct peer_assoc_params *req)
+{
+	return 0;
+}
+
+static
+uint8_t *peer_assoc_add_npca_params(uint8_t *buf_ptr,
+				    struct peer_assoc_params *req)
+{
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_STRUC, 0);
+	return buf_ptr + WMI_TLV_HDR_SIZE;
 }
 #endif
 
@@ -4617,7 +4706,8 @@ static QDF_STATUS send_peer_assoc_v2_cmd_tlv(wmi_unified_t wmi_handle,
 		sizeof(wmi_peer_assoc_cfp_params) +
 		/* wmi_peer_assoc_smd_params */
 		sizeof(wmi_peer_assoc_smd_params) +
-		wmi_uhr_peer_assoc_params_len(param);
+		wmi_uhr_peer_assoc_params_len(param) +
+		peer_assoc_npca_params_size(param);
 
 	buf = wmi_buf_alloc(wmi_handle, len);
 	if (!buf)
@@ -4689,6 +4779,7 @@ static QDF_STATUS send_peer_assoc_v2_cmd_tlv(wmi_unified_t wmi_handle,
 	buf_ptr += sizeof(*smd);
 
 	buf_ptr = update_peer_flags_tlv_uhrinfo(cmd, param, buf_ptr);
+	buf_ptr = peer_assoc_add_npca_params(buf_ptr, param);
 	wmi_mtrace(WMI_PEER_ASSOC_V2_CMDID, cmd->vdev_id, 0);
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 				   WMI_PEER_ASSOC_V2_CMDID);
@@ -16805,12 +16896,37 @@ static void extract_mac_phy_cap_uhrcaps(
 			       i, param->uhr_cap_phy_info_5G[i]);
 	}
 }
+
+/**
+ * extract_mac_phy_npca_cap - api to extract NPCA capabilities
+ * @param: host ext2 mac phy capabilities
+ * @mac_phy_caps2: ext2 mac phy capabilities
+ *
+ * Return: void
+ */
+static
+void extract_mac_phy_npca_cap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+			      WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2)
+{
+	if (!param || !mac_phy_caps2)
+		return;
+
+	param->npca_support =
+		WMI_UHRCAP_MAC_NPCA_GET(mac_phy_caps2->uhr_cap_mac_info_2G) ||
+		WMI_UHRCAP_MAC_NPCA_GET(mac_phy_caps2->uhr_cap_mac_info_5G);
+	wmi_nofl_debug("NPCA target support: %d", param->npca_support);
+}
 #else
 static void extract_mac_phy_cap_uhrcaps(
 	struct wlan_psoc_host_mac_phy_caps_ext2 *param,
 	WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2)
 {
 }
+
+static
+void extract_mac_phy_npca_cap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
+			      WMI_MAC_PHY_CAPABILITIES_EXT2 *mac_phy_caps2)
+{}
 #endif
 
 static QDF_STATUS extract_mac_phy_caps_ext2_tlv(
@@ -16837,6 +16953,7 @@ static QDF_STATUS extract_mac_phy_caps_ext2_tlv(
 		return QDF_STATUS_SUCCESS;
 
 	extract_mac_phy_cap_uhrcaps(param, mac_phy_caps2);
+	extract_mac_phy_npca_cap(param, mac_phy_caps2);
 
 	return QDF_STATUS_SUCCESS;
 }

@@ -288,6 +288,7 @@ struct wlan_psoc_host_hw_mode_caps {
  * @uhr_cap_phy_info_5G: UHR capability phy info 5G
  * @uhr_cap_dbe_info_2G: UHR DBE capability params 2G
  * @uhr_cap_dbe_info_5G: UHR DBE capability params 5G
+ * @npca_support: NPCA (Non-Primary Channel Access) support
  */
 struct wlan_psoc_host_mac_phy_caps_ext2 {
 	uint32_t hw_mode_id;
@@ -320,6 +321,7 @@ struct wlan_psoc_host_mac_phy_caps_ext2 {
 	uint32_t uhr_cap_phy_info_5G[PSOC_HOST_MAX_UHR_PHY_SIZE];
 	uint32_t uhr_cap_dbe_info_2G[PSOC_HOST_MAX_UHR_DBE_SIZE];
 	uint32_t uhr_cap_dbe_info_5G[PSOC_HOST_MAX_UHR_DBE_SIZE];
+	bool npca_support;
 #endif
 };
 
