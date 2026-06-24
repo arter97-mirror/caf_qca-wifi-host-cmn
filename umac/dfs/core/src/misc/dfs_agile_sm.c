@@ -2178,10 +2178,21 @@ dfs_puncturing_cac_wait_state_add_chan_to_nol(struct dfs_punc_obj *dfs_punc)
 	dfs_radar_add_channel_list_to_nol_for_freq(dfs, punc_freq_list,
 						   nol_freq_list,
 						   &n_punc_channels);
-	dfs_mark_precac_nol_for_freq(dfs,
-				     dfs->is_radar_found_on_secondary_seg,
-				     DETECTOR_ID_0, nol_freq_list,
-				     n_punc_channels);
+	if (n_punc_channels) {
+		struct dfs_freq_range nol_ranges[N_MAX_PUNC_SM];
+		uint8_t ri;
+
+		for (ri = 0; ri < n_punc_channels; ri++)
+			nol_ranges[ri] =
+				dfs_create_range_from_freq_bw(nol_freq_list[ri],
+							      DFS_CHWIDTH_20_VAL);
+		dfs_mark_precac_nol_for_freq(dfs,
+					     dfs->is_radar_found_on_secondary_seg,
+					     DETECTOR_ID_0, nol_freq_list,
+					     n_punc_channels,
+					     nol_ranges,
+					     n_punc_channels);
+	}
 }
 
 /**

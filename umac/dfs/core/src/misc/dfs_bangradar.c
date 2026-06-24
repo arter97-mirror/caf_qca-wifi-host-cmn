@@ -72,6 +72,8 @@ bool dfs_is_offset_invalid_for_bw(int32_t freq_offset, uint16_t ch_width)
 	case BW_80:
 	case BW_40:
 	case BW_20:
+	case BW_10:
+	case BW_5:
 		return dfs_is_below320mhz_offset_invalid(freq_offset, ch_width);
 	default:
 		dfs_debug(NULL, WLAN_DEBUG_DFS_ALWAYS,

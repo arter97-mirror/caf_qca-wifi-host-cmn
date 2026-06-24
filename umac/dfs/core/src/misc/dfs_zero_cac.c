@@ -451,6 +451,7 @@ void dfs_zero_cac_attach(struct wlan_dfs *dfs)
 void dfs_zero_cac_detach(struct wlan_dfs *dfs)
 {
 	dfs_deinit_precac_list(dfs);
+	dfs_delete_5_and_10m_precac_lists(dfs);
 	PRECAC_LIST_LOCK_DESTROY(dfs);
 }
 
@@ -545,7 +546,12 @@ dfs_find_curchwidth_and_center_chan_for_freq(struct wlan_dfs *dfs,
 
 	if (primary_chan_freq)
 		*primary_chan_freq = curchan->dfs_ch_mhz_freq_seg1;
-	if (WLAN_IS_CHAN_MODE_20(curchan)) {
+
+	if (WLAN_IS_CHAN_MODE_5(curchan)) {
+		*chwidth = CH_WIDTH_5MHZ;
+	} else if (WLAN_IS_CHAN_MODE_10(curchan)) {
+		*chwidth = CH_WIDTH_10MHZ;
+	} else if (WLAN_IS_CHAN_MODE_20(curchan)) {
 		*chwidth = CH_WIDTH_20MHZ;
 	} else if (WLAN_IS_CHAN_MODE_40(curchan)) {
 		*chwidth = CH_WIDTH_40MHZ;
@@ -741,6 +747,8 @@ uint8_t dfs_find_subchannels_for_center_freq(qdf_freq_t pri_center_freq,
 	uint8_t nchannels = 0;
 
 	switch (ch_width) {
+	case CH_WIDTH_5MHZ:
+	case CH_WIDTH_10MHZ:
 	case CH_WIDTH_20MHZ:
 		nchannels = 1;
 		channels[0] = pri_center_freq;
@@ -893,9 +901,9 @@ void dfs_process_ocac_complete(struct wlan_objmgr_pdev *pdev,
 			  "PreCAC timer abort, agile precac stopped");
 	} else if (ocac_status == OCAC_SUCCESS) {
 		dfs_debug(NULL, WLAN_DEBUG_DFS_ALWAYS,
-			  "PreCAC timer Completed for agile freq: %d %d",
+			  "PreCAC timer Completed for agile freq: %d %d,chwidth: %d ",
 			  center_freq_mhz1,
-			  center_freq_mhz2);
+			  center_freq_mhz2,chwidth);
 	} else {
 		dfs_debug(NULL, WLAN_DEBUG_DFS_ALWAYS, "Error Unknown");
 	}
@@ -1535,6 +1543,8 @@ bool dfs_is_pcac_on_weather_channel_for_freq(struct wlan_dfs *dfs,
 	uint16_t first_subch, last_subch;
 
 	switch (chwidth) {
+	case CH_WIDTH_5MHZ:
+	case CH_WIDTH_10MHZ:
 	case CH_WIDTH_20MHZ:
 		first_subch = precac_freq;
 		last_subch = precac_freq;
@@ -1967,6 +1977,10 @@ dfs_translate_chwidth_enum2val(struct wlan_dfs *dfs,
 			       enum phy_ch_width chwidth)
 {
 	switch (chwidth) {
+	case CH_WIDTH_5MHZ:
+		return DFS_CHWIDTH_5_VAL;
+	case CH_WIDTH_10MHZ:
+		return DFS_CHWIDTH_10_VAL;
 	case CH_WIDTH_20MHZ:
 		return DFS_CHWIDTH_20_VAL;
 	case CH_WIDTH_40MHZ:
@@ -1997,6 +2011,10 @@ static enum phy_ch_width
 dfs_map_to_agile_width(struct wlan_dfs *dfs, enum phy_ch_width chwidth)
 {
 	switch (chwidth) {
+	case CH_WIDTH_5MHZ:
+		return CH_WIDTH_5MHZ;
+	case CH_WIDTH_10MHZ:
+		return CH_WIDTH_10MHZ;
 	case CH_WIDTH_20MHZ:
 		return CH_WIDTH_20MHZ;
 	case CH_WIDTH_40MHZ:
@@ -2097,6 +2115,8 @@ static enum wlan_phymode
 dfs_convert_chwidth_to_wlan_phymode(enum phy_ch_width chwidth)
 {
 	switch (chwidth) {
+	case CH_WIDTH_5MHZ:
+	case CH_WIDTH_10MHZ:
 	case CH_WIDTH_20MHZ:
 		return WLAN_PHYMODE_11AXA_HE20;
 	case CH_WIDTH_40MHZ:
@@ -2172,28 +2192,18 @@ dfs_compute_agile_and_curchan_width(struct wlan_dfs *dfs,
 				    enum phy_ch_width *agile_ch_width,
 				    enum phy_ch_width *cur_ch_width)
 {
-	if (dfs->dfs_curchan->dfs_ch_flags & WLAN_CHAN_HALF ||
-	    dfs->dfs_curchan->dfs_ch_flags & WLAN_CHAN_QUARTER) {
-		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,
-				"aDFS during 5/10MHz operation not supported");
-	    return;
-	}
 	/*
 	 * Agile detector's band of operation depends on current pdev.
 	 * Find the current channel's width and apply the translate rules
 	 * to find the Agile detector bandwidth.
 	 * Translate rules (all numbers are in MHz) from current pdev's width
 	 * to Agile detector's width:
-	 * 20 - 20, 40 - 40, 80 - 80, 160 - 80, 160 (non contiguous) - 80.
+	 * 5 - 5, 10 - 10, 20 - 20, 40 - 40, 80 - 80, 160 - 80,
+	 * 160 (non contiguous) - 80.
 	 */
 	dfs_find_curchwidth_and_center_chan_for_freq(dfs, cur_ch_width,
 						     NULL, NULL);
 
-	if (*cur_ch_width == CH_WIDTH_5MHZ || *cur_ch_width == CH_WIDTH_10MHZ) {
-		dfs_err(dfs, WLAN_DEBUG_DFS_ALWAYS,
-			"aDFS during 5/10MHz operation not supported");
-	    return;
-	}
 	/* Check if the FW supports agile DFS when the pdev is operating on
 	 * 160 or 80P80MHz bandwidth. This information is stored in the flag
 	 * "dfs_fw_adfs_support_160" when the current chainmask is configured.
@@ -2430,15 +2440,26 @@ static qdf_freq_t dfs_find_rcac_chan(struct wlan_dfs *dfs,
 		nxt_chan_params.center_freq_seg1 =
 			dfs_chan.dfs_ch_vhtop_ch_freq_seg2;
 
-		/* Get the ch_params from regulatory. ch_width and rcac_freq
-		 * are the input given to fetch other params of struct
-		 * ch_params.
-		 */
-
-		wlan_reg_set_channel_params_for_pwrmode(dfs->dfs_pdev_obj,
-							rcac_freq, 0,
-							&nxt_chan_params,
-							REG_CURRENT_PWR_MODE);
+		if (agile_chwidth == CH_WIDTH_10MHZ ||
+		    agile_chwidth == CH_WIDTH_5MHZ) {
+			/* For 5/10MHz, advertise as 20MHz to regulatory but
+			 * use the actual frequency directly.
+			 */
+			nxt_chan_params.ch_width = CH_WIDTH_20MHZ;
+			nxt_chan_params.mhz_freq_seg0 = rcac_freq;
+			nxt_chan_params.center_freq_seg0 =
+				wlan_reg_freq_to_chan(dfs->dfs_pdev_obj,
+						      rcac_freq);
+		} else {
+			/* Get the ch_params from regulatory. ch_width and rcac_freq
+			 * are the input given to fetch other params of struct
+			 * ch_params.
+			 */
+			wlan_reg_set_channel_params_for_pwrmode(dfs->dfs_pdev_obj,
+								rcac_freq, 0,
+								&nxt_chan_params,
+								REG_CURRENT_PWR_MODE);
+		}
 	} else {
 		/* Invoke Random channel selection and select only
 		 * DFS channels.
@@ -2477,6 +2498,10 @@ static qdf_freq_t dfs_find_rcac_chan(struct wlan_dfs *dfs,
 				&nxt_chan_params, NULL,
 				&rcac_freq, NULL);
 
+		if (agile_chwidth == CH_WIDTH_5MHZ ||
+		    agile_chwidth == CH_WIDTH_10MHZ)
+			nxt_chan_params.ch_width = CH_WIDTH_20MHZ;
+
 		if (dfs_find_dfschan_for_freq(dfs, rcac_freq,
 					      nxt_chan_params.mhz_freq_seg1,
 					      nxt_chan_params.ch_width,
@@ -2498,7 +2523,9 @@ static qdf_freq_t dfs_find_rcac_chan(struct wlan_dfs *dfs,
 		return 0;
 	}
 
-	if (nxt_chan_params.ch_width != dfs->dfs_precac_chwidth) {
+	if (nxt_chan_params.ch_width != dfs->dfs_precac_chwidth &&
+	    !(dfs->dfs_precac_chwidth == CH_WIDTH_5MHZ ||
+	      dfs->dfs_precac_chwidth == CH_WIDTH_10MHZ)) {
 		dfs_debug(dfs, WLAN_DEBUG_DFS_AGILE,
 			  "Not picking an RCAC channel as next channel"
 			  "width: %d is not an agile supported width: %d",
@@ -2812,11 +2839,24 @@ dfs_process_radar_ind_on_agile_chan(struct wlan_dfs *dfs,
 	 dfs_debug(dfs, WLAN_DEBUG_DFS,
 			 "%s: %d Radar found on dfs detector:%d",
 			 __func__, __LINE__, radar_found->detector_id);
-	 dfs_mark_precac_nol_for_freq(dfs,
-			 dfs->is_radar_found_on_secondary_seg,
-			 radar_found->detector_id,
-			 nol_freq_list,
-			 num_channels);
+	 {
+		 struct dfs_freq_range nol_ranges[MAX_20MHZ_SUBCHANS];
+		 uint8_t ri;
+		 uint16_t agile_bw =
+			 dfs_translate_chwidth_enum2val(dfs, dfs->dfs_precac_chwidth);
+
+		 for (ri = 0; ri < num_channels; ri++)
+			 nol_ranges[ri] =
+				 dfs_create_range_from_freq_bw(nol_freq_list[ri],
+							       agile_bw);
+		 dfs_mark_precac_nol_for_freq(dfs,
+				 dfs->is_radar_found_on_secondary_seg,
+				 radar_found->detector_id,
+				 nol_freq_list,
+				 num_channels,
+				 nol_ranges,
+				 num_channels);
+	 }
 	 /*
 	  * EV 129487 : We have detected radar in the channel,
 	  * stop processing PHY error data as this can cause

@@ -301,10 +301,20 @@ bool dfs_process_nol_ie_bitmap(struct wlan_dfs *dfs, uint8_t nol_ie_bandwidth,
 		return should_nol_ie_be_sent;
 	}
 
-	if (num_subchans)
+	if (num_subchans) {
+		struct dfs_freq_range nol_ranges[MAX_20MHZ_SUBCHANS];
+		uint8_t i;
+
+		for (i = 0; i < num_subchans; i++)
+			nol_ranges[i] =
+				dfs_create_range_from_freq_bw(nol_freq_list[i],
+							      nol_ie_bandwidth);
 		dfs_mark_precac_nol_for_freq(dfs, 0, 0,
 					     nol_freq_list,
+					     num_subchans,
+					     nol_ranges,
 					     num_subchans);
+	}
 
 	return should_nol_ie_be_sent;
 }
