@@ -404,6 +404,7 @@ struct vdev_op_info {
  * @mlo_sap_sync_disable: flag to disable mlo sap vdev sync
  * @rsno_gen_supported: RSNO generation supported for connection
  * @okc_pmkid_in_assoc: OKC PMKID-in-AssocReq enabled for this connection
+ * @security_profile_enabled: Security Profile element enabled for connection
  * @wfd_mode: WFD mode
  * @is_eppke_allowed: flag indicating userspace has requested EPPKE
  *                    authentication for this connection
@@ -448,6 +449,9 @@ struct wlan_objmgr_vdev_mlme {
 #endif
 #ifdef WLAN_FEATURE_11BI_SECURITY
 	bool is_eppke_allowed;
+#endif
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+	bool security_profile_enabled;
 #endif
 };
 
@@ -3304,4 +3308,46 @@ wlan_vdev_p2p_is_pcc_mode(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id)
 }
 
 #endif /* FEATURE_WLAN_SUPPORT_PCC */
+
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+/**
+ * wlan_vdev_set_security_profile_enabled() - set Security Profile
+ * element enabled for connection
+ * @vdev: VDEV object
+ * @val: true if Security Profile element handling is enabled
+ *
+ * Return: void
+ */
+static inline void
+wlan_vdev_set_security_profile_enabled(struct wlan_objmgr_vdev *vdev,
+				       bool val)
+{
+	vdev->vdev_mlme.security_profile_enabled = val;
+}
+
+/**
+ * wlan_vdev_get_security_profile_enabled() - get Security Profile
+ * element enabled for connection
+ * @vdev: VDEV object
+ *
+ * Return: true if Security Profile element handling is enabled
+ */
+static inline bool
+wlan_vdev_get_security_profile_enabled(struct wlan_objmgr_vdev *vdev)
+{
+	return vdev->vdev_mlme.security_profile_enabled;
+}
+#else
+static inline void
+wlan_vdev_set_security_profile_enabled(struct wlan_objmgr_vdev *vdev,
+				       bool val)
+{
+}
+
+static inline bool
+wlan_vdev_get_security_profile_enabled(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_SECURITY_PROFILE */
 #endif /* _WLAN_OBJMGR_VDEV_OBJ_H_*/
