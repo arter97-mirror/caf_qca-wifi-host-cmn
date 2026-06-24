@@ -1232,6 +1232,11 @@
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_external_auth.
  *
+ * @QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION: This vendor subcommand is used to
+ *	configure the device with Geofenced Variable Power (GVP) operation
+ *	parameters.
+ *	Uses the attributes defined in enum qca_wlan_vendor_attr_gvp_info.
+ *
  * @QCA_NL80211_VENDOR_SUBCMD_N79_COEX: Vendor subcommand to control
  *	WLAN host behavior based on N79 band activity.
  *	The WLAN host manages NSS/chain reduction, AP coordination, and
@@ -1539,6 +1544,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_WLAN_HOST_TXRX_STATS = 271,
 	QCA_NL80211_VENDOR_SUBCMD_QSH_GET_STATS = 270,
 	QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH = 273,
+	QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION = 274,
 	QCA_NL80211_VENDOR_SUBCMD_N79_COEX = 275,
 	QCA_NL80211_VENDOR_SUBCMD_TAS = 279,
 };
@@ -1659,6 +1665,50 @@ enum qca_wlan_vendor_hang_reason {
 	QCA_WLAN_HANG_FLUSH_LOGS = 35,
 	/* Host wakeup because of page fault */
 	QCA_WLAN_HANG_HOST_WAKEUP_REASON_PAGE_FAULT = 36,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_gvp_info - Represent attributes to configure the
+ * device (all modes) with Geofenced Variable Power (GVP) power limits.
+ * These attributes are used inside vendor subcommand
+ * %QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_GVP_EZ_ENTER: u8 attribute. This indicates whether the
+ * device entered Exclusion Zone or exited. This is an optional attribute and
+ * used in command path.
+ * 0 - Exit, 1 - Enter
+ *
+ * @QCA_WLAN_VENDOR_ATTR_GVP_AVOID_FREQ_START: u32 attribute. This indicates the
+ * start frequency of channel range in MHz that needs to be avoided within a
+ * particular area (Exclusion Zone). This attribute is required if EZ enter is
+ * set to 1 and is used in command path.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_GVP_AVOID_FREQ_END: u32 attribute. This indicates the
+ * end frequency of channel range in MHz that needs to be avoided within a
+ * particular area (Exclusion Zone). This attribute is required if EZ enter is
+ * set to 1 and is used in command path.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_GVP_POWER_LIMIT: u8 attribute. This indicates the
+ * absolute EIRP TX power limit that the device should operate on in a given
+ * area. This is an optional attribute and used in command path.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_GVP_OPER_START: u8 attribute. This indicates whether to
+ * start or stop GVP operation based on device state such as device up or down.
+ * This is an optional attribute and used in event path.
+ * 0 - GVP operation stop, 1 - GVP operation start
+ */
+enum qca_wlan_vendor_attr_gvp_info {
+	QCA_WLAN_VENDOR_ATTR_GVP_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_GVP_EZ_ENTER = 1,
+	QCA_WLAN_VENDOR_ATTR_GVP_AVOID_FREQ_START = 2,
+	QCA_WLAN_VENDOR_ATTR_GVP_AVOID_FREQ_END = 3,
+	QCA_WLAN_VENDOR_ATTR_GVP_POWER_LIMIT = 4,
+	QCA_WLAN_VENDOR_ATTR_GVP_OPER_START = 5,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_GVP_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_GVP_MAX =
+	QCA_WLAN_VENDOR_ATTR_GVP_AFTER_LAST - 1,
 };
 
 /**

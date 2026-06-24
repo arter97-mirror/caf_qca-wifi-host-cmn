@@ -213,8 +213,8 @@
  * @QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH_INDEX: Event index for external
  * authentication event.
  * @QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS_INDEX: TDLS stats event index
- * @QCA_NL80211_VENDOR_SUBCMD_GVP_OP_CTRL_INDEX: Event index for GVP op control
- * event.
+ * @QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION_INDEX: Event index for GVP
+ * operation event.
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -373,7 +373,7 @@ enum qca_nl80211_vendor_subcmds_index {
 #ifdef FEATURE_TDLS_STATS_VENDOR_EVENTS
 	QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS_INDEX,
 #endif /* FEATURE_TDLS_STATS_VENDOR_EVENTS */
-	QCA_NL80211_VENDOR_SUBCMD_GVP_OP_CTRL_INDEX,
+	QCA_NL80211_VENDOR_SUBCMD_GVP_OPERATION_INDEX,
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \
