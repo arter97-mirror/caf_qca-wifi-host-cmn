@@ -225,6 +225,7 @@ enum wlan_cm_source {
  * @is_wps_connection: if its wps connection
  * @is_osen_connection: if its osen connection
  * @is_reassoc_connect: if reassoc received
+ * @eppke_allowed: Is connection allowed to be attempted with EPPKE AKM
  * @dot11mode_filter: dot11mode filter used to restrict connection to
  * 11n/11ac/11ax.
  * @sae_pwe: SAE mechanism for PWE derivation
@@ -262,7 +263,8 @@ struct wlan_cm_connect_req {
 	uint8_t force_rsne_override:1,
 		is_wps_connection:1,
 		is_osen_connection:1,
-		is_reassoc_connect:1;
+		is_reassoc_connect:1,
+		eppke_allowed:1;
 	enum dot11_mode_filter dot11mode_filter;
 	uint8_t sae_pwe;
 	uint16_t ht_caps;

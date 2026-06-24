@@ -91,6 +91,46 @@ osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
 	return osif_cm_update_wep_seq_info(connect_req, req);
 }
 
+#ifdef WLAN_FEATURE_11BI_SECURITY
+/**
+ * osif_cm_expand_auth_for_eppke() - Expand auth bitmask with EPPKE when
+ * supplicant chose SAE/SAE-EXT-KEY and eppke_allowed is set on the vdev.
+ * @vdev: vdev object
+ * @connect_req: connect request with auth_type already set
+ *
+ * When eppke_allowed is set, the scan filter must also match EPPKE-capable
+ * APs (which advertise the EPPKE AKM). Adding WLAN_CRYPTO_AUTH_EPPKE to the
+ * auth bitmask alongside SAE lets scm_chk_if_cipher_n_akm_match() accept
+ * both SAE-only and EPPKE APs as candidates.
+ */
+static void
+osif_cm_expand_auth_for_eppke(struct wlan_objmgr_vdev *vdev,
+			      struct wlan_cm_connect_req *connect_req)
+{
+	if (!wlan_vdev_is_eppke_allowed(vdev)) {
+		osif_debug("vdev:%d eppke_allowed not set, skip auth expansion",
+			   wlan_vdev_get_id(vdev));
+		return;
+	}
+	if (!QDF_HAS_PARAM(connect_req->crypto.auth_type,
+			   WLAN_CRYPTO_AUTH_SAE)) {
+		osif_debug("vdev:%d auth_type:0x%x has no SAE, skip EPPKE auth expansion",
+			   wlan_vdev_get_id(vdev),
+			   connect_req->crypto.auth_type);
+		return;
+	}
+	QDF_SET_PARAM(connect_req->crypto.auth_type, WLAN_CRYPTO_AUTH_EPPKE);
+	osif_debug("vdev:%d eppke_allowed+SAE: auth_type expanded to 0x%x (EPPKE added)",
+		   wlan_vdev_get_id(vdev), connect_req->crypto.auth_type);
+}
+#else
+static inline void
+osif_cm_expand_auth_for_eppke(struct wlan_objmgr_vdev *vdev,
+			      struct wlan_cm_connect_req *connect_req)
+{
+}
+#endif /* WLAN_FEATURE_11BI_SECURITY */
+
 static void osif_cm_set_auth_type(struct wlan_objmgr_vdev *vdev,
 				  struct wlan_cm_connect_req *connect_req,
 				  const struct cfg80211_connect_params *req)
@@ -110,6 +150,7 @@ static void osif_cm_set_auth_type(struct wlan_objmgr_vdev *vdev,
 	}
 
 	QDF_SET_PARAM(connect_req->crypto.auth_type, crypto_auth_type);
+	osif_cm_expand_auth_for_eppke(vdev, connect_req);
 }
 
 static int

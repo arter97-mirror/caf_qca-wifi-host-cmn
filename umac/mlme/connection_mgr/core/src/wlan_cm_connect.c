@@ -2813,6 +2813,45 @@ void cm_update_per_peer_ucastcipher_crypto_params(struct wlan_objmgr_vdev *vdev,
 	neg_sec_info->ucastcipherset = ucastcipherset;
 }
 
+#ifdef WLAN_FEATURE_11BI_SECURITY
+/**
+ * cm_strip_injected_eppke() - Remove EPPKE bits injected for candidate
+ * expansion if the negotiated AP does not advertise EPPKE.
+ * @req: connect request carrying eppke_allowed flag and crypto info
+ * @ap_key_mgmt: key_mgmt bitmask parsed from the AP's RSN IE
+ *
+ * EPPKE AKM and auth bits are added pre-connect so the scan filter can match
+ * EPPKE-capable APs alongside SAE APs. Once the AP is selected and its RSN IE
+ * is parsed, any injected bits that are not supported by the AP must be
+ * removed so that WMA/WMI receive the actual negotiated security parameters.
+ */
+static void cm_strip_injected_eppke(struct wlan_cm_connect_req *req,
+				    uint32_t ap_key_mgmt)
+{
+	if (!req->eppke_allowed)
+		return;
+
+	if (QDF_HAS_PARAM(ap_key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE)) {
+		mlme_debug("vdev:%d EPPKE in AP RSN IE (ap_akm:0x%x): keeping EPPKE bits auth_type:0x%x akm:0x%x",
+			   req->vdev_id, ap_key_mgmt,
+			   req->crypto.auth_type, req->crypto.akm_suites);
+		return;
+	}
+	mlme_debug("vdev:%d EPPKE absent from AP RSN IE (ap_akm:0x%x): stripping injected bits auth_type:0x%x akm:0x%x",
+		   req->vdev_id, ap_key_mgmt,
+		   req->crypto.auth_type, req->crypto.akm_suites);
+	QDF_CLEAR_PARAM(req->crypto.auth_type, WLAN_CRYPTO_AUTH_EPPKE);
+	QDF_CLEAR_PARAM(req->crypto.akm_suites, WLAN_CRYPTO_KEY_MGMT_EPPKE);
+	mlme_debug("vdev:%d after strip: auth_type:0x%x akm_suites:0x%x",
+		   req->vdev_id, req->crypto.auth_type, req->crypto.akm_suites);
+}
+#else
+static inline void cm_strip_injected_eppke(struct wlan_cm_connect_req *req,
+					   uint32_t ap_key_mgmt)
+{
+}
+#endif /* WLAN_FEATURE_11BI_SECURITY */
+
 static
 void cm_update_per_peer_crypto_params(struct wlan_objmgr_vdev *vdev,
 				      struct cm_connect_req *connect_req)
@@ -2845,6 +2884,32 @@ void cm_update_per_peer_crypto_params(struct wlan_objmgr_vdev *vdev,
 
 	cm_update_per_peer_key_mgmt_crypto_params(vdev, neg_sec_info);
 	cm_update_per_peer_ucastcipher_crypto_params(vdev, neg_sec_info);
+	/*
+	 * Strip EPPKE bits that were injected pre-connect for candidate
+	 * expansion if the selected AP does not advertise EPPKE in its RSN IE.
+	 * Parse the AP's raw RSN IE from the scan cache to get all AKMs it
+	 * advertises. neg_sec_info->key_mgmt is the negotiated AKM (filtered
+	 * intersection with the supplicant's list) and will not contain EPPKE
+	 * when the supplicant chose SAE-EXT-KEY as its base AKM, even if the
+	 * AP supports EPPKE.
+	 */
+	if (connect_req->req.eppke_allowed) {
+		struct wlan_crypto_params ap_crypto = {0};
+		const uint8_t *rsn_ie =
+			util_scan_entry_rsn(connect_req->cur_candidate->entry);
+		uint32_t ap_akm = 0;
+
+		if (rsn_ie &&
+		    QDF_IS_STATUS_SUCCESS(
+			wlan_get_crypto_params_from_rsn_ie(&ap_crypto, rsn_ie,
+							   rsn_ie[1] + 2,
+							   NULL)))
+			ap_akm = ap_crypto.key_mgmt;
+
+		mlme_debug("vdev:%d eppke_allowed: AP raw RSN akm:0x%x",
+			   connect_req->req.vdev_id, ap_akm);
+		cm_strip_injected_eppke(&connect_req->req, ap_akm);
+	}
 }
 
 /*
@@ -3625,9 +3690,11 @@ post_err:
 }
 
 static void
-cm_copy_crypto_prarams(struct wlan_cm_connect_crypto_info *dst_params,
+cm_copy_crypto_prarams(struct wlan_cm_connect_req *req,
 		       struct wlan_crypto_params  *src_params)
 {
+	struct wlan_cm_connect_crypto_info *dst_params = &req->crypto;
+
 	/*
 	 * As akm suites and ucast ciphers can be multiple. So, do ORing to
 	 * keep it along with newly added one's (newly added one will anyway
@@ -3682,7 +3749,7 @@ cm_set_crypto_params_from_ie(struct wlan_cm_connect_req *req)
 						    req->assoc_ie.len,
 						    NULL);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
-		cm_copy_crypto_prarams(&req->crypto, &crypto_params);
+		cm_copy_crypto_prarams(req, &crypto_params);
 		return;
 	}
 
@@ -3691,7 +3758,7 @@ cm_set_crypto_params_from_ie(struct wlan_cm_connect_req *req)
 						    req->assoc_ie.len,
 						    NULL);
 	if (QDF_IS_STATUS_SUCCESS(status)) {
-		cm_copy_crypto_prarams(&req->crypto, &crypto_params);
+		cm_copy_crypto_prarams(req, &crypto_params);
 		return;
 	}
 
@@ -3699,7 +3766,7 @@ cm_set_crypto_params_from_ie(struct wlan_cm_connect_req *req)
 						     req->assoc_ie.ptr,
 						     req->assoc_ie.len);
 	if (QDF_IS_STATUS_SUCCESS(status))
-		cm_copy_crypto_prarams(&req->crypto, &crypto_params);
+		cm_copy_crypto_prarams(req, &crypto_params);
 }
 
 static QDF_STATUS
