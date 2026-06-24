@@ -14872,6 +14872,30 @@ static bool dp_tx_comp_delay_check(struct dp_tx_desc_s *tx_desc)
 	return false;
 }
 
+#ifdef QCA_OL_TX_MULTIQ_SUPPORT
+/**
+ * dp_tx_desc_pool_num_desc() - Get number of TX descriptors to scan in a pool
+ * @tx_desc_pool: TX descriptor pool pointer
+ *
+ * Under QCA_OL_TX_MULTIQ_SUPPORT only elem_count descriptors are initialized
+ * per pool; pool_size may reflect a larger allocation. Use elem_count to
+ * avoid iterating over uninitialized entries.
+ *
+ * Return: elem_count if QCA_OL_TX_MULTIQ_SUPPORT, pool_size otherwise
+ */
+static inline uint32_t
+dp_tx_desc_pool_num_desc(struct dp_tx_desc_pool_s *tx_desc_pool)
+{
+	return tx_desc_pool->elem_count;
+}
+#else
+static inline uint32_t
+dp_tx_desc_pool_num_desc(struct dp_tx_desc_pool_s *tx_desc_pool)
+{
+	return tx_desc_pool->pool_size;
+}
+#endif
+
 void dp_find_missing_tx_comp(struct dp_soc *soc)
 {
 	uint8_t i;
@@ -14886,12 +14910,12 @@ void dp_find_missing_tx_comp(struct dp_soc *soc)
 
 	for (i = 0; i < MAX_TXDESC_POOLS; i++) {
 		tx_desc_pool = &soc->tx_desc[i];
-		if (!(tx_desc_pool->pool_size) ||
+		if (!dp_tx_desc_pool_num_desc(tx_desc_pool) ||
 		    IS_TX_DESC_POOL_STATUS_INACTIVE(tx_desc_pool) ||
 		    !(tx_desc_pool->desc_pages.cacheable_pages))
 			continue;
 
-		num_desc = tx_desc_pool->pool_size;
+		num_desc = dp_tx_desc_pool_num_desc(tx_desc_pool);
 		num_desc_per_page =
 			tx_desc_pool->desc_pages.num_element_per_page;
 		for (j = 0; j < num_desc; j++) {
