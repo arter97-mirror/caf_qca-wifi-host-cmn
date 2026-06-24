@@ -1179,7 +1179,7 @@
 	"DP Rx Hash")
 
 #define CFG_DP_RX_RR \
-	CFG_INI_BOOL("dp_rx_rr", true, \
+	CFG_INI_BOOL("dp_rx_rr", false, \
 	"DP Rx Round Robin")
 
 #define CFG_DP_TSO \

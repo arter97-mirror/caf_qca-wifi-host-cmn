@@ -647,7 +647,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	bool local_pkt_capture;
 #endif
 	uint32_t special_frame_msk;
-#ifdef WLAN_SUPPORT_RX_FLOW_TAG
+#ifdef WLAN_SUPPORT_RX_FISA
 	bool rx_rr;
 #endif
 #ifdef DP_UMAC_HW_RESET_SUPPORT

@@ -5853,7 +5853,7 @@ bool wlan_cfg_is_rx_hash_enabled(struct wlan_cfg_dp_soc_ctxt *cfg)
 	return  cfg->rx_hash;
 }
 
-#ifdef WLAN_SUPPORT_RX_FLOW_TAG
+#ifdef WLAN_SUPPORT_RX_FISA
 void wlan_cfg_set_rx_rr(struct wlan_cfg_dp_soc_ctxt *cfg, bool val)
 {
 	cfg->rx_rr = val;
