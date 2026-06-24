@@ -1101,7 +1101,7 @@ extract_twt_session_stats_event_data(wmi_unified_t wmi_handle,
 	 * even if twt session is not present using event_type as
 	 * WMI_TWT_SESSION_QUERY_RSP
 	 */
-	if (idx > param_buf->num_twt_sessions) {
+	if (idx >= param_buf->num_twt_sessions) {
 		wmi_err("wrong idx, idx=%d, num_sessions=%d",
 			 idx, param_buf->num_twt_sessions);
 		return QDF_STATUS_E_INVAL;
