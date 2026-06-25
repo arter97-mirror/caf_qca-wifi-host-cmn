@@ -5129,6 +5129,13 @@ mlo_link_recfg_state_wait_event(void *ctx,
 					recfg_ctx->ml_dev, event,
 					event_data_len, event_data);
 		break;
+	case WLAN_LINK_RECFG_SM_EV_DISCONNECT_IND:
+		mlo_debug("WAIT state disconnect, aborting SMD link recfg");
+		mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
+		mlo_link_recfg_sm_deliver_event_sync(recfg_ctx->ml_dev,
+						     WLAN_LINK_RECFG_SM_EV_COMPLETED,
+						     0, NULL);
+		break;
 	default:
 		event_handled = false;
 		break;
@@ -5278,7 +5285,20 @@ mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
 		req = (struct mlo_link_recfg_state_req *)event_data;
-		status = smd_roam_prep_complete(recfg_ctx, req);
+		if (!smd_roam_prep_complete(recfg_ctx, req)) {
+			mlo_debug("smd_roam_prep_complete failed, aborting");
+			mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
+			mlo_link_recfg_sm_deliver_event_sync(recfg_ctx->ml_dev,
+							     WLAN_LINK_RECFG_SM_EV_COMPLETED,
+							     0, NULL);
+		}
+		break;
+	case WLAN_LINK_RECFG_SM_EV_SM_TIMEOUT:
+		mlo_debug("SMD WAIT_SMD_EXEC timeout, aborting link recfg");
+		mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
+		mlo_link_recfg_sm_deliver_event_sync(recfg_ctx->ml_dev,
+						     WLAN_LINK_RECFG_SM_EV_COMPLETED,
+						     0, NULL);
 		break;
 	default:
 		event_handled = false;
