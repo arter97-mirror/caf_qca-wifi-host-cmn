@@ -4469,6 +4469,8 @@ void dp_mon_ops_register_1_0(struct dp_mon_soc *mon_soc);
  */
 void dp_mon_cdp_ops_register_1_0(struct cdp_ops *ops);
 
+void dp_mon_cdp_ops_register(struct dp_soc *soc);
+
 #if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
 /**
  * dp_cfr_filter_register_1_0(): register cfr filter setting API
