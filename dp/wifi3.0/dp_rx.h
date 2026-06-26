@@ -260,6 +260,9 @@ enum dp_rx_link_desc_validation {
 #define dp_rx_add_to_free_desc_list_reuse(head, tail, new) \
 	__dp_rx_add_to_free_desc_list_reuse(head, tail, new, __func__)
 
+/* Max allowable replenish retries for DMA map failures */
+#define DP_RX_MAX_MAP_FAIL_CNT 10
+
 #ifdef FEATURE_DAL_DP_SUPPORT
 #define dp_rx_buffers_replenish(soc, mac_id, rxdma_srng, rx_desc_pool, \
 				num_buffers, desc_list, tail, req_only) \

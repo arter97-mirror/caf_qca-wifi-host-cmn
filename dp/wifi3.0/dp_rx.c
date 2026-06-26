@@ -1029,7 +1029,7 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 	uint16_t num_desc_to_free = 0;
 	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(dp_soc, mac_id);
 	uint32_t num_entries_avail, num_entries_used;
-	uint32_t count = 0;
+	uint32_t count = 0, map_fail_count = 0;
 	uint32_t extra_buffers;
 	int sync_hw_ptr = 1;
 	struct dp_rx_nbuf_frag_info nbuf_frag_info = {0};
@@ -1188,11 +1188,17 @@ uint32_t __dp_rx_buffers_replenish(struct dp_soc *dp_soc, uint32_t mac_id,
 					dp_pdev, rx_desc_pool);
 
 		if (qdf_unlikely(QDF_IS_STATUS_ERROR(ret))) {
-			if (qdf_unlikely(ret  == QDF_STATUS_E_FAULT))
+			if (qdf_unlikely(ret  == QDF_STATUS_E_FAULT)) {
+				map_fail_count++;
+				if (map_fail_count >= DP_RX_MAX_MAP_FAIL_CNT) {
+					dp_err_rl("DMA map fail limit reached");
+					break;
+				}
 				continue;
+			}
 			break;
 		}
-
+		map_fail_count = 0;
 		count++;
 
 		rxdma_ring_entry = hal_srng_src_get_next(dp_soc->hal_soc,
