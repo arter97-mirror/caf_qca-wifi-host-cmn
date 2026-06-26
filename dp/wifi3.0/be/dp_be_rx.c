@@ -2874,7 +2874,8 @@ dp_rx_null_q_desc_handle_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		dp_rx_skip_tlvs(soc, nbuf,
 				hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
 								   rx_tlv_hdr));
-		dp_rx_deliver_raw_passthru(soc, vdev, txrx_peer, nbuf);
+		dp_rx_deliver_raw_passthru(soc, vdev, txrx_peer, nbuf,
+					   rx_tlv_hdr);
 
 		return QDF_STATUS_SUCCESS;
 	}
@@ -3029,7 +3030,7 @@ dp_rx_null_q_desc_handle_be(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	if (qdf_unlikely(vdev->rx_decap_type == htt_cmn_pkt_type_raw)) {
 		qdf_nbuf_set_raw_frame(nbuf, 1);
 		qdf_nbuf_set_next(nbuf, NULL);
-		dp_rx_deliver_raw(vdev, nbuf, txrx_peer, link_id);
+		dp_rx_deliver_raw(vdev, nbuf, txrx_peer, link_id, rx_tlv_hdr);
 	} else {
 		enh_flag = vdev->pdev->enhanced_stats_en;
 		qdf_nbuf_set_next(nbuf, NULL);
