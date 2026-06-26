@@ -1528,7 +1528,7 @@ process_rx:
 	}
 
 	if (qdf_unlikely(vdev->rx_decap_type == htt_cmn_pkt_type_raw)) {
-		dp_rx_deliver_raw(vdev, nbuf, txrx_peer, link_id);
+		dp_rx_deliver_raw(vdev, nbuf, txrx_peer, link_id, rx_tlv_hdr);
 	} else {
 		/* Update the protocol tag in SKB based on CCE metadata */
 		dp_rx_update_protocol_tag(soc, vdev, nbuf, rx_tlv_hdr,
@@ -2152,7 +2152,8 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
 			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 
 			dp_rx_skip_tlvs(soc, nbuf, l3_hdr_pad);
-			dp_rx_deliver_raw(vdev, nbuf, NULL, 0);
+			dp_rx_deliver_raw_passthru(soc, vdev, NULL, nbuf,
+						   rx_tlv_hdr);
 
 			return rx_desc->pool_id;
 		}

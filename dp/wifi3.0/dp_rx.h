@@ -1254,11 +1254,13 @@ void dp_rx_desc_pool_free(struct dp_soc *soc,
  * @nbuf_list: list of RAW pkts to process
  * @peer: peer object from which the pkt is rx
  * @link_id: link Id on which the packet is received
+ * @rx_pkt_tlvs: rx packet tlvs
  *
  * Return: void
  */
 void dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
-		       struct dp_txrx_peer *peer, uint8_t link_id);
+		       struct dp_txrx_peer *peer, uint8_t link_id,
+		       uint8_t *rx_pkt_tlvs);
 
 #ifdef RX_DESC_LOGGING
 /**
@@ -4462,13 +4464,15 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
  * @vdev: dp vdev handle
  * @txrx_peer: txrx peer handle
  * @nbuf: network buffer
+ * @rx_pkt_tlvs: rx packet tlvs containing valid msdu end tlvs
  *
  * This function processes passthru msdu buffers and delivers them to stack
  *
  * Return: 0 on success else non-zero value on failure
  */
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf);
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
+			       uint8_t *rx_pkt_tlvs);
 
 /**
  * dp_rx_is_passthru_msdu_buf() - check whether the received msdu buffer is
@@ -4493,7 +4497,8 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
 
 static inline
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf)
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
+			       uint8_t *rx_pkt_tlvs)
 {
 	return -EINVAL;
 }
