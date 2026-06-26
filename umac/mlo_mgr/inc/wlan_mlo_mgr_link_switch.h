@@ -85,6 +85,8 @@ struct wlan_mlo_link_switch_cnf {
  * @MLO_LINK_SWITCH_REASON_WLM: Link switch reason is because of WLM
  * @MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP: follow up link switch after
  * host force active/inactive
+ * @MLO_LINK_SWITCH_REASON_AUX_MLO_QUICK_SWITCH: Link switch reason is because
+ * of MLOPS link assessment using AUX for QUICK_SWITCH
  * @MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK: SMD roaming link addition
  * (skip disconnect, connect only)
  * @MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK: SMD roaming link removal
@@ -101,6 +103,7 @@ enum wlan_mlo_link_switch_reason {
 	MLO_LINK_SWITCH_REASON_T2LM        = 5,
 	MLO_LINK_SWITCH_REASON_WLM         = 6,
 	MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP = 7,
+	MLO_LINK_SWITCH_REASON_AUX_MLO_QUICK_SWITCH = 8,
 	MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK = 100,
 	MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK = 101,
 	MLO_LINK_SWITCH_REASON_HOST_ADD_LINK = 65534,
