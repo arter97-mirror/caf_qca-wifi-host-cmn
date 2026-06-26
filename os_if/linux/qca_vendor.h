@@ -20929,6 +20929,12 @@ enum qca_wlan_vendor_iq_inference_status {
  * to BT status.
  * @QCA_WLAN_VENDOR_STATE_CHANGE_REASON_UNKNOWN: The link state change is due
  * to unknown reason.
+ * @QCA_WLAN_VENDOR_STATE_CHANGE_REASON_USER_LINK_SWITCH: The link state
+ * change is the outcome of a user-initiated link switch assessment procedure.
+ * Unlike %QCA_WLAN_VENDOR_STATE_CHANGE_REASON_FORCED which represents a direct
+ * user space override of specific link states, this reason reflects a link
+ * state change resulting from the driver executing a user-requested link switch
+ * evaluation.
  */
 enum qca_wlan_vendor_link_state_change_reason {
 	QCA_WLAN_VENDOR_STATE_CHANGE_REASON_VDEV_UP = 0,
@@ -20941,6 +20947,7 @@ enum qca_wlan_vendor_link_state_change_reason {
 	QCA_WLAN_VENDOR_STATE_CHANGE_REASON_FORCED = 7,
 	QCA_WLAN_VENDOR_STATE_CHANGE_REASON_BT_STATUS = 8,
 	QCA_WLAN_VENDOR_STATE_CHANGE_REASON_UNKNOWN = 9,
+	QCA_WLAN_VENDOR_STATE_CHANGE_REASON_USER_LINK_SWITCH = 10,
 };
 
 /**
