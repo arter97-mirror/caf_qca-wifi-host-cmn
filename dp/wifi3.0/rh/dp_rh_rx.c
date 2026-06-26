@@ -483,7 +483,7 @@ dp_rx_decrypt_unecrypt_err_handler_rh(struct dp_soc *soc, qdf_nbuf_t nbuf,
 		}
 
 		if (qdf_unlikely(vdev->rx_decap_type == htt_cmn_pkt_type_raw)) {
-			dp_rx_deliver_raw(vdev, nbuf, txrx_peer, 0);
+			dp_rx_deliver_raw(vdev, nbuf, txrx_peer, 0, rx_tlv_hdr);
 		} else {
 			/* Update the protocol tag in SKB based on CCE metadata */
 			dp_rx_update_protocol_tag(soc, vdev, nbuf, rx_tlv_hdr,
