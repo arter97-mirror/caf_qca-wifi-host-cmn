@@ -6488,6 +6488,7 @@ static void wlan_ipa_uc_op_cb(struct op_msg_type *op_msg,
 			     msg->rsvd);
 		qdf_mutex_acquire(&ipa_ctx->ipa_lock);
 		wlan_ipa_opt_dp_set_tx_doorbell(ipa_ctx);
+		cdp_ipa_rx_pp_cntrs_init(ipa_ctx->dp_soc);
 		wlan_ipa_smmu_map_rx_buf(ipa_ctx);
 		qdf_ipa_wdi_opt_dpath_notify_flt_rsvd_per_inst(ipa_ctx->hdl,
 							       msg->rsvd);
@@ -7270,13 +7271,6 @@ int wlan_ipa_wdi_opt_dpath_flt_rsrv_cb(
 	error = wlan_ipa_tx_buff_alloc_smmu_map(ipa_ctx);
 	if (error) {
 		ipa_log_info("opt_dp: TX buffer alloc or smmu map failed");
-		return QDF_STATUS_FILT_REQ_ERROR;
-	}
-
-	status = cdp_ipa_rx_pp_cntrs_init(ipa_obj->dp_soc);
-
-	if (status != QDF_STATUS_SUCCESS) {
-		ipa_log_err("Failed to init rx pp counters");
 		return QDF_STATUS_FILT_REQ_ERROR;
 	}
 
