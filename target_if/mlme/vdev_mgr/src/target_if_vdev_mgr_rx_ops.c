@@ -453,7 +453,34 @@ QDF_STATUS target_if_vdev_mgr_start_response_common(
 	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
 						    WLAN_VDEV_TARGET_IF_ID);
 	if (!vdev) {
-		mlme_err("vdev is NULL");
+		mlme_err("vdev is NULL, stop outstanding rsp timer for vdev:%d",
+			 vdev_id);
+		/*
+		 * Vdev was destroyed while VDEV_START was in flight.
+		 * Stop the outstanding response timer to prevent a spurious
+		 * host recovery 10 seconds later.  Also release the wakelock
+		 * and rt-lock that were paired with the timer start, since no
+		 * VDEV_UP command will follow a destroyed vdev.
+		 */
+		if (vdev_start_resp->resp_type ==
+					WMI_HOST_VDEV_RESTART_RESP_EVENT) {
+			if (qdf_atomic_test_bit(RESTART_RESPONSE_BIT,
+						&vdev_rsp->rsp_status))
+				target_if_vdev_mgr_rsp_timer_stop(
+						psoc, vdev_rsp,
+						RESTART_RESPONSE_BIT);
+		} else {
+			if (qdf_atomic_test_bit(START_RESPONSE_BIT,
+						&vdev_rsp->rsp_status)) {
+				target_if_wake_lock_timeout_release(
+						psoc, START_WAKELOCK);
+				target_if_release_vdev_cmd_rt_lock(psoc,
+								   vdev_id);
+				target_if_vdev_mgr_rsp_timer_stop(
+						psoc, vdev_rsp,
+						START_RESPONSE_BIT);
+			}
+		}
 		return QDF_STATUS_E_INVAL;
 	}
 
