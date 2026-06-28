@@ -227,6 +227,7 @@ struct wlan_lmac_if_cp_stats_tx_ops {
 					struct request_info *req);
 #endif
 	QDF_STATUS (*send_req_coex_stats)(struct wlan_objmgr_psoc *psoc);
+#ifdef WLAN_FEATURE_CTAS
 	bool (*is_ctas_plim_indication_supported)(
 					struct wlan_objmgr_psoc *psoc);
 	QDF_STATUS (*send_tas_mode)(struct wlan_objmgr_psoc *psoc,
@@ -235,6 +236,7 @@ struct wlan_lmac_if_cp_stats_tx_ops {
 					    uint32_t dsi_id);
 	QDF_STATUS (*send_get_tx_power_calling)(struct wlan_objmgr_psoc *psoc,
 						uint32_t dsi_id);
+#endif /* WLAN_FEATURE_CTAS */
 };
 
 /**

@@ -1544,6 +1544,7 @@ wmi_inst_rssi_stats_ops_attach_tlv(struct wmi_ops *ops)
 }
 #endif
 
+#ifdef WLAN_FEATURE_CTAS
 /**
  * wmi_convert_tas_direction() - Convert host TAS direction to WMI direction
  * @direction: host-level TAS direction (enum host_tas_direction)
@@ -1804,17 +1805,27 @@ extract_plimit_table_event_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	return QDF_STATUS_SUCCESS;
 }
 
-void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
+static void wmi_cp_stats_attach_ctas_tlv(struct wmi_ops *ops)
 {
-	struct wmi_ops *ops = wmi_handle->ops;
-
-	ops->send_stats_request_cmd = send_stats_request_cmd_tlv;
 	ops->send_modify_tx_plim_cmd = send_modify_tx_plim_cmd_tlv;
 	ops->extract_modify_tx_plim_event = extract_modify_tx_plim_event_tlv;
 	ops->send_get_avg_tx_power_cmd = send_get_avg_tx_power_cmd_tlv;
 	ops->extract_avg_tx_power_event = extract_avg_tx_power_event_tlv;
 	ops->send_get_tx_power_calling_cmd = send_get_tx_power_calling_cmd_tlv;
 	ops->extract_plimit_table_event = extract_plimit_table_event_tlv;
+}
+#else
+static inline void wmi_cp_stats_attach_ctas_tlv(struct wmi_ops *ops)
+{
+}
+#endif /* WLAN_FEATURE_CTAS */
+
+void wmi_cp_stats_attach_tlv(wmi_unified_t wmi_handle)
+{
+	struct wmi_ops *ops = wmi_handle->ops;
+
+	ops->send_stats_request_cmd = send_stats_request_cmd_tlv;
+	wmi_cp_stats_attach_ctas_tlv(ops);
 #ifdef WLAN_FEATURE_BIG_DATA_STATS
 	ops->send_big_data_stats_request_cmd =
 				send_big_data_stats_request_cmd_tlv;

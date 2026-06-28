@@ -196,6 +196,7 @@ wmi_unified_extract_scan_stats_event(wmi_unified_t wmi_handle, void *evt_buf,
 				     struct wmi_scan_stats_event *scan_stats);
 #endif /* WLAN_FEATURE_QSH_SCAN*/
 
+#ifdef WLAN_FEATURE_CTAS
 /**
  * wmi_unified_send_modify_tx_plim_cmd() - Send WMI_SET_MODIFY_TX_PLIM_CMDID
  * @wmi_handle: WMI handle
@@ -284,5 +285,7 @@ wmi_unified_extract_plimit_table_event(
 				uint32_t *dsi_id,
 				wmi_tx_power_per_antenna_chain **chain_data,
 				uint32_t *num_chains);
+
+#endif /* WLAN_FEATURE_CTAS */
 
 #endif /* _WMI_UNIFIED_CP_STATS_API_H_ */

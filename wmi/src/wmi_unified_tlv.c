@@ -25728,6 +25728,25 @@ static inline void populate_tlv_events_id_mlo(WMI_EVT_ID *event_ids)
 #endif /* WLAN_FEATURE_11BE_MLO */
 
 /**
+ * populate_tlv_ctas_events_id() - populates CTAS WMI event ids
+ * @event_ids: Pointer to hold event ids
+ *
+ * Return: None
+ */
+#ifdef WLAN_FEATURE_CTAS
+static void populate_tlv_ctas_events_id(WMI_EVT_ID *event_ids)
+{
+	event_ids[wmi_modify_tx_plim_event_id] = WMI_MODIFY_TX_PLIM_EVENTID;
+	event_ids[wmi_avg_tx_power_event_id] = WMI_AVG_TX_POWER_EVENTID;
+	event_ids[wmi_plimit_table_event_id] = WMI_PLIMIT_TABLE_EVENTID;
+}
+#else
+static inline void populate_tlv_ctas_events_id(WMI_EVT_ID *event_ids)
+{
+}
+#endif /* WLAN_FEATURE_CTAS */
+
+/**
  * populate_tlv_events_id() - populates wmi event ids
  * @event_ids: Pointer to hold event ids
  *
@@ -25946,12 +25965,7 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 					WMI_OCB_GET_TSF_TIMER_RESP_EVENTID;
 	event_ids[wmi_vdev_chan_hop_status_report_event_id] =
 					WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID;
-	event_ids[wmi_modify_tx_plim_event_id] =
-					WMI_MODIFY_TX_PLIM_EVENTID;
-	event_ids[wmi_avg_tx_power_event_id] =
-					WMI_AVG_TX_POWER_EVENTID;
-	event_ids[wmi_plimit_table_event_id] =
-					WMI_PLIMIT_TABLE_EVENTID;
+	populate_tlv_ctas_events_id(event_ids);
 	event_ids[wmi_dcc_get_stats_resp_event_id] =
 				WMI_DCC_GET_STATS_RESP_EVENTID;
 	event_ids[wmi_dcc_update_ndl_resp_event_id] =

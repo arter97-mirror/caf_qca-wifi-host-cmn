@@ -369,6 +369,7 @@ target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
 	return wmi_unified_coex_get_policy_stats_cmd_send(wmi_handle);
 }
 
+#ifdef WLAN_FEATURE_CTAS
 /*
  * TAS GET_METRICS log buffer sizing:
  *
@@ -401,6 +402,21 @@ target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc)
 #define TAS_PLIMIT_LOG_CHAIN_LEN 32
 #define TAS_PLIMIT_LOG_BUF_LEN(n) \
 	QDF_MIN(512, TAS_PLIMIT_LOG_HDR_LEN + (n) * TAS_PLIMIT_LOG_CHAIN_LEN)
+
+bool
+target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc)
+{
+	struct wmi_unified *wmi_handle;
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		cp_stats_err("wmi_handle is null");
+		return false;
+	}
+
+	return wmi_service_enabled(wmi_handle,
+				   wmi_service_ctas_plim_indication_support);
+}
 
 QDF_STATUS
 target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
@@ -695,6 +711,87 @@ target_if_cp_stats_tas_event_handler(ol_scn_t scn, uint8_t *data,
 
 	return 0;
 }
+
+static QDF_STATUS
+target_if_cp_stats_register_ctas_event_handlers(struct wmi_unified *wmi_handle)
+{
+	QDF_STATUS ret_val;
+
+	ret_val = wmi_unified_register_event_handler(
+				wmi_handle,
+				wmi_modify_tx_plim_event_id,
+				target_if_cp_stats_tas_event_handler,
+				WMI_RX_WORK_CTX);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register TAS mode event handler");
+		return ret_val;
+	}
+
+	ret_val = wmi_unified_register_event_handler(
+				wmi_handle,
+				wmi_avg_tx_power_event_id,
+				target_if_cp_stats_avg_tx_power_event_handler,
+				WMI_RX_WORK_CTX);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register avg tx power event handler");
+		return ret_val;
+	}
+
+	ret_val = wmi_unified_register_event_handler(
+				wmi_handle,
+				wmi_plimit_table_event_id,
+				target_if_cp_stats_plimit_table_event_handler,
+				WMI_RX_WORK_CTX);
+	if (QDF_IS_STATUS_ERROR(ret_val)) {
+		cp_stats_err("Failed to register plimit table event handler");
+		return ret_val;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static void
+target_if_cp_stats_unregister_ctas_event_handlers(
+				struct wmi_unified *wmi_handle)
+{
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_plimit_table_event_id);
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_avg_tx_power_event_id);
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_modify_tx_plim_event_id);
+}
+
+static void
+target_if_register_ctas_txops(struct wlan_lmac_if_cp_stats_tx_ops *tx_ops)
+{
+	tx_ops->is_ctas_plim_indication_supported =
+		target_if_is_ctas_plim_indication_supported;
+	tx_ops->send_tas_mode =
+		target_if_cp_stats_send_tas_mode;
+	tx_ops->send_get_avg_tx_power =
+		target_if_cp_stats_send_get_avg_tx_power;
+	tx_ops->send_get_tx_power_calling =
+		target_if_cp_stats_send_get_tx_power_calling;
+}
+#else /* WLAN_FEATURE_CTAS */
+static inline void
+target_if_register_ctas_txops(struct wlan_lmac_if_cp_stats_tx_ops *tx_ops)
+{
+}
+
+static inline QDF_STATUS
+target_if_cp_stats_register_ctas_event_handlers(struct wmi_unified *wmi_handle)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+target_if_cp_stats_unregister_ctas_event_handlers(
+				struct wmi_unified *wmi_handle)
+{
+}
+#endif /* WLAN_FEATURE_CTAS */
 
 QDF_STATUS
 target_if_cp_stats_get_coex_stats(struct wlan_objmgr_vdev *vdev)
@@ -1187,33 +1284,9 @@ target_if_cp_stats_register_event_handler(struct wlan_objmgr_psoc *psoc)
 		return ret_val;
 	}
 
-	ret_val = wmi_unified_register_event_handler(
-				wmi_handle,
-				wmi_modify_tx_plim_event_id,
-				target_if_cp_stats_tas_event_handler,
-				WMI_RX_WORK_CTX);
+	ret_val = target_if_cp_stats_register_ctas_event_handlers(wmi_handle);
 	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register TAS mode event handler");
-		return ret_val;
-	}
-
-	ret_val = wmi_unified_register_event_handler(
-				wmi_handle,
-				wmi_avg_tx_power_event_id,
-				target_if_cp_stats_avg_tx_power_event_handler,
-				WMI_RX_WORK_CTX);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register avg tx power event handler");
-		return ret_val;
-	}
-
-	ret_val = wmi_unified_register_event_handler(
-				wmi_handle,
-				wmi_plimit_table_event_id,
-				target_if_cp_stats_plimit_table_event_handler,
-				WMI_RX_WORK_CTX);
-	if (QDF_IS_STATUS_ERROR(ret_val)) {
-		cp_stats_err("Failed to register plimit table event handler");
+		cp_stats_err("Failed to register CTAS event handlers");
 		return ret_val;
 	}
 
@@ -1236,12 +1309,7 @@ target_if_cp_stats_unregister_event_handler(struct wlan_objmgr_psoc *psoc)
 		return QDF_STATUS_E_INVAL;
 	}
 
-	wmi_unified_unregister_event_handler(wmi_handle,
-					     wmi_plimit_table_event_id);
-	wmi_unified_unregister_event_handler(wmi_handle,
-					     wmi_avg_tx_power_event_id);
-	wmi_unified_unregister_event_handler(wmi_handle,
-					     wmi_modify_tx_plim_event_id);
+	target_if_cp_stats_unregister_ctas_event_handlers(wmi_handle);
 	wmi_unified_unregister_event_handler(wmi_handle,
 					     wmi_pdev_cp_fwstats_eventid);
 	target_if_cp_stats_unregister_coex_stats_event(wmi_handle);
@@ -1413,29 +1481,7 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 		target_if_cp_stats_unregister_legacy_event_handler;
 	cp_stats_tx_ops->send_req_coex_stats =
 		target_if_cp_stats_send_coex_stats_req;
-	cp_stats_tx_ops->is_ctas_plim_indication_supported =
-		target_if_is_ctas_plim_indication_supported;
-	cp_stats_tx_ops->send_tas_mode =
-		target_if_cp_stats_send_tas_mode;
-	cp_stats_tx_ops->send_get_avg_tx_power =
-		target_if_cp_stats_send_get_avg_tx_power;
-	cp_stats_tx_ops->send_get_tx_power_calling =
-		target_if_cp_stats_send_get_tx_power_calling;
+	target_if_register_ctas_txops(cp_stats_tx_ops);
 	return QDF_STATUS_SUCCESS;
-}
-
-bool
-target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc)
-{
-	struct wmi_unified *wmi_handle;
-
-	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
-	if (!wmi_handle) {
-		cp_stats_err("wmi_handle is null");
-		return false;
-	}
-
-	return wmi_service_enabled(wmi_handle,
-				   wmi_service_ctas_plim_indication_support);
 }
 

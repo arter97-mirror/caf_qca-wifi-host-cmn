@@ -98,6 +98,20 @@ target_if_cp_stats_send_coex_stats_req(struct wlan_objmgr_psoc *psoc);
 QDF_STATUS
 target_if_cp_stats_get_coex_stats(struct wlan_objmgr_vdev *vdev);
 
+#ifdef WLAN_FEATURE_CTAS
+/**
+ * target_if_is_ctas_plim_indication_supported() - Check whether FW supports
+ * C-TAS power indication and power limit enquiring
+ * @psoc: pointer to psoc object
+ *
+ * API to check WMI_SERVICE_CTAS_PLIM_INDICATION_SUPPORT capability advertised
+ * by firmware via the service ready extended2 bitmap.
+ *
+ * Return: true if FW supports the capability, false otherwise
+ */
+bool
+target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc);
+
 /**
  * target_if_cp_stats_send_tas_mode() - Send TAS mode to firmware
  * @psoc: PSOC object
@@ -143,6 +157,34 @@ target_if_cp_stats_send_get_avg_tx_power(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 target_if_cp_stats_send_get_tx_power_calling(struct wlan_objmgr_psoc *psoc,
 					     uint32_t dsi_id);
+#else /* WLAN_FEATURE_CTAS */
+static inline bool
+target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
+static inline QDF_STATUS
+target_if_cp_stats_send_tas_mode(struct wlan_objmgr_psoc *psoc,
+				 enum host_tas_direction direction)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+target_if_cp_stats_send_get_avg_tx_power(struct wlan_objmgr_psoc *psoc,
+					 uint32_t dsi_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+target_if_cp_stats_send_get_tx_power_calling(struct wlan_objmgr_psoc *psoc,
+					     uint32_t dsi_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_CTAS */
 
 /**
  * target_if_cp_stats_register_tx_ops() - define cp_stats lmac tx ops functions
@@ -222,18 +264,5 @@ target_if_cp_stats_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* QCA_SUPPORT_CP_STATS */
-
-/**
- * target_if_is_ctas_plim_indication_supported() - Check whether FW supports
- * C-TAS power indication and power limit enquiring
- * @psoc: pointer to psoc object
- *
- * API to check WMI_SERVICE_CTAS_PLIM_INDICATION_SUPPORT capability advertised
- * by firmware via the service ready extended2 bitmap.
- *
- * Return: true if FW supports the capability, false otherwise
- */
-bool
-target_if_is_ctas_plim_indication_supported(struct wlan_objmgr_psoc *psoc);
 
 #endif /* __TARGET_IF_CP_STATS_H__ */

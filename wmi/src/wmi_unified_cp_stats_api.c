@@ -162,6 +162,7 @@ wmi_extract_inst_rssi_stats_resp(wmi_unified_t wmi_handle, void *evt_buf,
 }
 #endif
 
+#ifdef WLAN_FEATURE_CTAS
 QDF_STATUS
 wmi_unified_send_modify_tx_plim_cmd(wmi_unified_t wmi_handle,
 				    enum host_tas_direction direction)
@@ -243,3 +244,4 @@ wmi_unified_extract_plimit_table_event(
 
 	return QDF_STATUS_E_FAILURE;
 }
+#endif /* WLAN_FEATURE_CTAS */
