@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021, 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -466,28 +466,30 @@ qdf_nbuf_t wbuff_buff_put(qdf_nbuf_t buf)
 	struct wbuff_pool *wbuff_pool;
 
 	if (qdf_nbuf_get_users(buffer) > 1)
-		return buffer;
+		goto reset_shinfo;
 
 	if (!wbuff.initialized)
-		return buffer;
+		goto reset_shinfo;
 
 	pool_info = qdf_nbuf_get_dev_scratch(buf);
 	if (!pool_info)
-		return buffer;
+		goto reset_shinfo;
 
 	module_id = (pool_info & WBUFF_MODULE_ID_BITMASK) >>
 			WBUFF_MODULE_ID_SHIFT;
 	pool_id = (pool_info & WBUFF_POOL_ID_BITMASK) >> WBUFF_POOL_ID_SHIFT;
 
 	if (module_id >= WBUFF_MAX_MODULES || pool_id >= WBUFF_MAX_POOLS)
-		return buffer;
+		goto reset_shinfo;
 
 	wbuff_pool = &wbuff.mod[module_id].wbuff_pool[pool_id];
 	if (!wbuff_pool->initialized)
-		return buffer;
+		goto reset_shinfo;
 
 	qdf_nbuf_reset(buffer, wbuff.mod[module_id].reserve,
 		       wbuff.mod[module_id].align);
+	qdf_mem_set(qdf_nbuf_get_shinfo(buffer),
+		    offsetof(struct skb_shared_info, dataref), 0);
 
 	qdf_spin_lock_bh(&wbuff.mod[module_id].lock);
 	if (wbuff.mod[module_id].registered) {
@@ -497,6 +499,12 @@ qdf_nbuf_t wbuff_buff_put(qdf_nbuf_t buf)
 		buffer = NULL;
 	}
 	qdf_spin_unlock_bh(&wbuff.mod[module_id].lock);
+
+	return buffer;
+
+reset_shinfo:
+	qdf_mem_set(qdf_nbuf_get_shinfo(buffer),
+		    offsetof(struct skb_shared_info, dataref), 0);
 
 	return buffer;
 }
