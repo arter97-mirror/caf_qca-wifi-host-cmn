@@ -798,8 +798,8 @@ void wlan_report_log_completion(uint32_t is_fatal,
  */
 static void send_flush_completion_to_user(uint8_t ring_id)
 {
-	uint32_t is_fatal, indicator, reason_code;
-	bool recovery_needed;
+	uint32_t is_fatal = 0, indicator = 0, reason_code = 0;
+	bool recovery_needed = false;
 
 	cds_get_and_reset_log_completion(&is_fatal,
 		&indicator, &reason_code, &recovery_needed);

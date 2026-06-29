@@ -14819,6 +14819,7 @@ static struct cdp_misc_ops dp_ops_misc = {
 	.display_txrx_hw_info = dp_display_srng_info,
 #ifndef WLAN_SOFTUMAC_SUPPORT
 	.get_tx_rings_grp_bitmap = dp_get_tx_rings_grp_bitmap,
+	.get_rx_rings_grp_bitmap = dp_get_rx_rings_grp_bitmap,
 #endif
 #ifdef WLAN_FEATURE_MARK_FIRST_WAKEUP_PACKET
 	.mark_first_wakeup_packet = dp_mark_first_wakeup_packet,
