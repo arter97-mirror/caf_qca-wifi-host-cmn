@@ -189,6 +189,13 @@ void wlan_cp_stats_fw_log_event_direct_flush(enum cstats_types type,
 		return;
 	}
 
+	/* reject oversized payloads that would overflow logbuf */
+	if ((sizeof(tAniNlHdr) + (2 * CSTATS_MARKER_SZ) + plen) >
+	    MAX_CSTATS_NODE_LENGTH) {
+		qdf_err("FW log event too large: plen %u", plen);
+		return;
+	}
+
 	/*
 	 * If debug logging is enabled, extract timestamp from payload and
 	 * log it.
