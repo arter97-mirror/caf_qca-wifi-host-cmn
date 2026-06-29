@@ -224,20 +224,6 @@ wlan_twt_tgt_caps_get_resp_disable_per_vdev(struct wlan_objmgr_psoc *psoc,
 					    bool *val);
 
 /**
- * wlan_twt_tgt_caps_get_req_en_dis_vdev_support() - Get TGT capability for
- * per-vdev TWT enable/disable command support for TWT requestor role
- * (STA/P2P-CLI etc.)
- *
- * @psoc: PSOC handle
- * @val: pointer to get caps enabled/disabled
- *
- * return: QDF_STATUS
- */
-QDF_STATUS
-wlan_twt_tgt_caps_get_req_en_dis_vdev_support(struct wlan_objmgr_psoc *psoc,
-					      bool *val);
-
-/**
  * wlan_twt_tgt_caps_get_p2p_go_concurrency_support() - Get TGT capability for
  * P2P GO concurrency support
  *

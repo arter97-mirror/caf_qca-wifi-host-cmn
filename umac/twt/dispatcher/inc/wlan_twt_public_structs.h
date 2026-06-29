@@ -109,7 +109,6 @@ enum TWT_OPERATION {
 /**
  * struct twt_enable_param:
  * @pdev_id: pdev_id for identifying the MAC.
- * @vdev_id: vdev_id of TWT enabled command
  * @sta_cong_timer_ms: STA TWT congestion timer TO value in terms of ms
  * @mbss_support: Flag indicating if AP TWT feature supported in
  *                MBSS mode or not.
@@ -154,12 +153,9 @@ enum TWT_OPERATION {
  * @b_twt_legacy_mbss_enable: Enable or disable legacy MBSSID TWT.
  * @b_twt_ax_mbss_enable: Enable or disable 11AX MBSSID TWT.
  * @r_twt_enable: Restricted TWT enable or disable.
- * @voip_pkt_ul_delay_ms: UPO - delay (ms) from VOIP RTP packet queued until
- * received by the WLAN target (STA only).
  */
 struct twt_enable_param {
 	uint32_t pdev_id;
-	uint32_t vdev_id;
 	uint32_t sta_cong_timer_ms;
 	uint32_t mbss_support;
 	uint32_t default_slot_size;
@@ -183,7 +179,6 @@ struct twt_enable_param {
 		 b_twt_legacy_mbss_enable:1,
 		 b_twt_ax_mbss_enable:1;
 	bool r_twt_enable;
-	uint32_t voip_pkt_ul_delay_ms;
 };
 
 /**
@@ -210,7 +205,6 @@ enum HOST_TWT_DISABLE_REASON {
 /**
  * struct twt_disable_param:
  * @pdev_id: pdev_id for identifying the MAC.
- * @vdev_id: vdev_id of TWT disabled command
  * @ext_conf_present: If requestor/responder extend config is present.
  * @twt_role: values from enum TWT_ROLE.
  * @twt_oper: values from enum TWT_OPERATION.
@@ -218,7 +212,6 @@ enum HOST_TWT_DISABLE_REASON {
  */
 struct twt_disable_param {
 	uint32_t pdev_id;
-	uint32_t vdev_id;
 	bool ext_conf_present;
 	enum TWT_ROLE twt_role;
 	enum TWT_OPERATION twt_oper;
@@ -287,30 +280,13 @@ enum HOST_ADD_TWT_STATUS {
 };
 
 /**
- * TWT_EN_DIS_EVENT_IS_VDEV_LEVEL - Check if vdev_id is valid in event params
- * @flags: flags field from twt_enable/disable_complete_event_param
- *
- * Returns 1 if vdev_id is valid (vdev-level TWT), 0 if mac_id is valid.
- * Bit 8 of flags mirrors TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT from the command.
- */
-#define TWT_EN_DIS_EVENT_IS_VDEV_LEVEL(flags) (((flags) >> 8) & 1)
-
-/**
  * struct twt_enable_complete_event_param:
  * @mac_id: mac_id for identifying the MAC.
- *          Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 0.
  * @status: From enum TWT_ENABLE_STATUS
- * @vdev_id: vdev id for STA vdev-level TWT enable.
- *           Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 1.
- * @flags: mirrors TWT_EN_DIS_FLAGS_* from the enable command;
- *         if TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT is set then vdev_id is valid,
- *         otherwise mac_id is valid.
  */
 struct twt_enable_complete_event_param {
 	uint32_t mac_id;
 	uint32_t status;
-	uint32_t vdev_id;
-	uint32_t flags;
 };
 
 /**
@@ -332,19 +308,11 @@ enum HOST_TWT_DISABLE_STATUS {
 /**
  * struct twt_disable_complete_event_param:
  * @mac_id: mac_id for identifying the MAC.
- *          Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 0.
  * @status: From enum HOST_TWT_DISABLE_STATUS
- * @vdev_id: vdev id for STA vdev-level TWT disable.
- *           Valid when TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(flags) == 1.
- * @flags: mirrors TWT_EN_DIS_FLAGS_* from the disable command;
- *         if TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT is set then vdev_id is valid,
- *         otherwise mac_id is valid.
  */
 struct twt_disable_complete_event_param {
 	uint32_t mac_id;
 	uint32_t status;
-	uint32_t vdev_id;
-	uint32_t flags;
 };
 
 /**

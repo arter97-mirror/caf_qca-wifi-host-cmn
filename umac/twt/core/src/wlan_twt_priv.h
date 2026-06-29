@@ -49,9 +49,6 @@
  * @min_wake_intvl: minimum twt wake_intvl supported by firmware in micro sec
  * @max_wake_intvl: maximum twt wake_intvl supported by firmware in micro sec
  * @twt_resp_disable_per_vdev: TWT responder disable per VDEV SVC
- * @twt_req_en_dis_vdev_support: FW supports per-vdev TWT enable/disable
- *                                command for TWT requestor role
- *                                (STA/P2P-CLI etc.)
  */
 struct twt_tgt_caps {
 	bool twt_requestor;
@@ -70,7 +67,6 @@ struct twt_tgt_caps {
 	uint16_t min_wake_intvl;
 	uint16_t max_wake_intvl;
 	bool twt_resp_disable_per_vdev;
-	bool twt_req_en_dis_vdev_support;
 };
 
 /**
@@ -83,12 +79,8 @@ struct twt_tgt_caps {
  * @twt_requestor_enable_pending: If TWT requestor enable command is pending
  * @twt_resp_flag: flag to check the TWT responder enable/disable per MAC
  * BIT0: MAC0 and BIT1: MAC1
- * @twt_req_flag_vdev: flag to check the TWT requestor enable/disable per vdev;
- * indexed by vdev_id (supports up to WLAN_UMAC_PSOC_MAX_VDEVS vdevs)
  * @twt_congestion_timeout: congestion timeout per MAC (index0: MAC0,
  *                                                      index1: MAC1)
- * @twt_congestion_timeout_vdev: congestion timeout per vdev for vdev-level
- * TWT requestor path; indexed by vdev_id
  */
 struct twt_psoc_priv_obj {
 	psoc_twt_ext_cfg_params_t cfg_params;
@@ -98,9 +90,7 @@ struct twt_psoc_priv_obj {
 	uint32_t twt_pmo_disabled;
 	qdf_atomic_t twt_requestor_enable_pending;
 	uint8_t twt_resp_flag;
-	bool twt_req_flag_vdev[WLAN_UMAC_PSOC_MAX_VDEVS];
 	uint32_t twt_congestion_timeout[MAX_MAC];
-	uint32_t twt_congestion_timeout_vdev[WLAN_UMAC_PSOC_MAX_VDEVS];
 };
 
 /**

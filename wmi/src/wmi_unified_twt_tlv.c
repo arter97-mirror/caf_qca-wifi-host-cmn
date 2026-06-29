@@ -43,29 +43,10 @@ static QDF_STATUS send_twt_enable_cmd_tlv(wmi_unified_t wmi_handle,
 			WMITLV_GET_STRUCT_TLVLEN
 			(wmi_twt_enable_cmd_fixed_param));
 
-	/*
-	 * For requestor (STA/P2P_CLI) mode with a valid vdev_id, use
-	 * vdev-level TWT enable: set vdev_id and the VDEV_ID flag so FW
-	 * interprets the union field as vdev_id instead of pdev_id.
-	 * The twt_role check ensures this is only applied for requestor
-	 * mode and not for responder mode (SAP/P2P GO).
-	 * The vdev_id check implicitly covers the FW service cap since
-	 * wlan_twt_requestor_enable() resets vdev_id to WLAN_INVALID_VDEV_ID
-	 * when FW does not support vdev-level TWT.
-	 * Otherwise fall back to MAC-level TWT using pdev_id.
-	 */
-	if (params->twt_role == TWT_ROLE_REQUESTOR &&
-	    params->vdev_id != WLAN_INVALID_VDEV_ID) {
-		cmd->vdev_id = params->vdev_id;
-		TWT_EN_DIS_FLAGS_SET_VDEV_SUPPORT(cmd->flags, 1);
-		wmi_debug("TWT requestor enable: vdev_id %d flags 0x%x",
-			  cmd->vdev_id, cmd->flags);
-	} else {
-		cmd->pdev_id =
-			wmi_handle->ops->convert_host_pdev_id_to_target(
-							wmi_handle,
+	cmd->pdev_id =
+		wmi_handle->ops->convert_host_pdev_id_to_target(
+						wmi_handle,
 						params->pdev_id);
-	}
 	cmd->sta_cong_timer_ms =            params->sta_cong_timer_ms;
 	cmd->mbss_support =                 params->mbss_support;
 	cmd->default_slot_size =            params->default_slot_size;
@@ -83,7 +64,6 @@ static QDF_STATUS send_twt_enable_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->mode_check_interval =          params->mode_check_interval;
 	cmd->add_sta_slot_interval =        params->add_sta_slot_interval;
 	cmd->remove_sta_slot_interval =     params->remove_sta_slot_interval;
-	cmd->voip_pkt_ul_delay_ms =         params->voip_pkt_ul_delay_ms;
 
 	TWT_EN_DIS_FLAGS_SET_BTWT(cmd->flags, params->b_twt_enable);
 	TWT_EN_DIS_FLAGS_SET_B_R_TWT(cmd->flags, params->r_twt_enable);
@@ -145,29 +125,10 @@ static QDF_STATUS send_twt_disable_cmd_tlv(wmi_unified_t wmi_handle,
 			WMITLV_GET_STRUCT_TLVLEN
 			(wmi_twt_disable_cmd_fixed_param));
 
-	/*
-	 * For requestor (STA/P2P_CLI) mode with a valid vdev_id, use
-	 * vdev-level TWT disable: set vdev_id and the VDEV_ID flag so FW
-	 * interprets the union field as vdev_id instead of pdev_id.
-	 * The twt_role check ensures this is only applied for requestor
-	 * mode and not for responder mode (SAP/P2P GO).
-	 * The vdev_id check implicitly covers the FW service cap since
-	 * wlan_twt_requestor_disable() resets vdev_id to WLAN_INVALID_VDEV_ID
-	 * when FW does not support vdev-level TWT.
-	 * Otherwise fall back to MAC-level TWT using pdev_id.
-	 */
-	if (params->twt_role == TWT_ROLE_REQUESTOR &&
-	    params->vdev_id != WLAN_INVALID_VDEV_ID) {
-		cmd->vdev_id = params->vdev_id;
-		TWT_EN_DIS_FLAGS_SET_VDEV_SUPPORT(cmd->flags, 1);
-		wmi_debug("TWT requestor disable: vdev_id %d flags 0x%x",
-			  cmd->vdev_id, cmd->flags);
-	} else {
-		cmd->pdev_id =
-			wmi_handle->ops->convert_host_pdev_id_to_target(
-							wmi_handle,
-							params->pdev_id);
-	}
+	cmd->pdev_id =
+		wmi_handle->ops->convert_host_pdev_id_to_target(
+						wmi_handle,
+						params->pdev_id);
 
 	if (params->ext_conf_present) {
 		TWT_EN_DIS_FLAGS_SET_SPLIT_CONFIG(cmd->flags, 1);
@@ -178,12 +139,8 @@ static QDF_STATUS send_twt_disable_cmd_tlv(wmi_unified_t wmi_handle,
 	cmd->reason_code = wmi_convert_dis_reason_code(
 					params->dis_reason_code);
 
-	if (TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(cmd->flags))
-		wmi_debug("TWT disable vdev_id %d flags %d reason code %d",
-			  cmd->vdev_id, cmd->flags, cmd->reason_code);
-	else
-		wmi_debug("TWT disable pdev_id %d flags %d reason code %d",
-			  cmd->pdev_id, cmd->flags, cmd->reason_code);
+	wmi_debug("pdev id %d, flags %d reason code %d", cmd->pdev_id, cmd->flags,
+		cmd->reason_code);
 	status = wmi_unified_cmd_send(wmi_handle, buf, sizeof(*cmd),
 				      WMI_TWT_DISABLE_CMDID);
 	if (QDF_IS_STATUS_ERROR(status)) {
@@ -596,24 +553,8 @@ static QDF_STATUS extract_twt_enable_comp_event_tlv(wmi_unified_t wmi_handle,
 
 	ev = param_buf->fixed_param;
 
-	params->vdev_id = WLAN_INVALID_VDEV_ID;
-	params->flags = ev->flags;
-	if (TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(ev->flags)) {
-		/* vdev-level TWT (requestor only): vdev_id is valid,
-		 * mac_id is not used by upper layer in this path.
-		 */
-		params->vdev_id = ev->vdev_id;
-		params->mac_id = 0;
-	} else {
-		/* pdev-level TWT: covers all responder cases and
-		 * pdev-level requestor. mac_id is needed by upper layer
-		 * for wlan_twt_cfg_set_mac_responder_flag and
-		 * wlan_twt_cfg_reset_congestion_timeout_per_mac_to_ini.
-		 */
-		params->mac_id =
-			wmi_handle->ops->convert_target_pdev_id_to_host(
+	params->mac_id = wmi_handle->ops->convert_target_pdev_id_to_host(
 						wmi_handle, ev->pdev_id);
-	}
 	params->status = wmi_twt_enable_status_to_host_twt_status(ev->status);
 
 	return QDF_STATUS_SUCCESS;
@@ -651,24 +592,8 @@ static QDF_STATUS extract_twt_disable_comp_event_tlv(wmi_unified_t wmi_handle,
 
 	ev = param_buf->fixed_param;
 
-	params->vdev_id = WLAN_INVALID_VDEV_ID;
-	params->flags = ev->flags;
-	if (TWT_EN_DIS_FLAGS_GET_VDEV_SUPPORT(ev->flags)) {
-		/* vdev-level TWT (requestor only): vdev_id is valid,
-		 * mac_id is not used by upper layer in this path.
-		 */
-		params->vdev_id = ev->vdev_id;
-		params->mac_id = 0;
-	} else {
-		/* pdev-level TWT: covers all responder cases and
-		 * pdev-level requestor. mac_id is needed by upper layer
-		 * for wlan_twt_cfg_set_mac_responder_flag and
-		 * wlan_twt_cfg_reset_congestion_timeout_per_mac_to_ini.
-		 */
-		params->mac_id =
-			wmi_handle->ops->convert_target_pdev_id_to_host(
+	params->mac_id = wmi_handle->ops->convert_target_pdev_id_to_host(
 						wmi_handle, ev->pdev_id);
-	}
 	params->status = wmi_twt_disable_status_to_host_twt_status(ev->status);
 
 	return QDF_STATUS_SUCCESS;

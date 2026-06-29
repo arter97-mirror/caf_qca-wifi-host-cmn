@@ -258,12 +258,6 @@ target_if_twt_fill_tgt_caps(struct wlan_objmgr_psoc *psoc,
 	else
 		caps->twt_resp_disable_per_vdev =  false;
 
-	if (wmi_service_enabled(wmi_handle,
-				wmi_service_sta_twt_en_dis_vdev_support))
-		caps->twt_req_en_dis_vdev_support = true;
-	else
-		caps->twt_req_en_dis_vdev_support = false;
-
 	target_if_debug("req:%d res:%d legacy_bcast_twt_support:%d",
 		caps->twt_requestor,
 		caps->twt_responder,
@@ -275,11 +269,10 @@ target_if_twt_fill_tgt_caps(struct wlan_objmgr_psoc *psoc,
 		caps->twt_nudge_enabled,
 		caps->all_twt_enabled,
 		caps->twt_stats_enabled);
-	target_if_debug("restricted_twt_support:%d p2p_go_concurrency_support %d twt_resp_disable_per_vdev %d twt_req_en_dis_vdev_support %d",
+	target_if_debug("restricted_twt_support:%d p2p_go_concurrency_support %d twt_resp_disable_per_vdev %d",
 			caps->restricted_twt_support,
 			caps->p2p_go_concurrency_support,
-			caps->twt_resp_disable_per_vdev,
-			caps->twt_req_en_dis_vdev_support);
+			caps->twt_resp_disable_per_vdev);
 
 	return QDF_STATUS_SUCCESS;
 }
