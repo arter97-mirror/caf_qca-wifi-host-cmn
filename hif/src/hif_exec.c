@@ -320,7 +320,7 @@ void hif_event_history_deinit(struct hif_opaque_softc *hif_ctx, uint8_t id)
 }
 #endif /* WLAN_FEATURE_DP_EVENT_HISTORY */
 
-#ifndef QCA_WIFI_WCN6450
+#if !defined(QCA_WIFI_WCN6450) && !defined(HELIUMPLUS)
 /**
  * hif_print_napi_latency_stats() - print NAPI scheduling latency stats
  * @hif_state: hif context
@@ -513,7 +513,7 @@ void hif_print_napi_stats(struct hif_opaque_softc *hif_ctx)
 }
 qdf_export_symbol(hif_print_napi_stats);
 #endif /* WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT */
-#endif /* QCA_WIFI_WCN6450 */
+#endif /* !defined(QCA_WIFI_WCN6450) && !defined(HELIUMPLUS) */
 
 #if defined(WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT)
 /**

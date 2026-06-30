@@ -852,7 +852,8 @@ inline void hif_napi_enable_irq(struct hif_opaque_softc *hif, int id)
 	hif_irq_enable(scn, NAPI_ID2PIPE(id));
 }
 
-#if defined(QCA_WIFI_WCN6450) && defined(HIF_LATENCY_PROFILE_ENABLE)
+#if (defined(QCA_WIFI_WCN6450) || defined(HELIUMPLUS)) && \
+	defined(HIF_LATENCY_PROFILE_ENABLE)
 /*
  * hif_napi_latency_profile_start() - update the schedule start timestamp
  *
@@ -963,7 +964,7 @@ hif_print_napi_latency_stats(struct qca_napi_info *napii, int ce_id)
 }
 #endif
 
-#ifdef QCA_WIFI_WCN6450
+#if defined(QCA_WIFI_WCN6450) || defined(HELIUMPLUS)
 #ifdef WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
 /**
  * hif_napi_update_service_start_time() - Update NAPI poll start time
@@ -1162,7 +1163,7 @@ static inline void
 hif_napi_fill_poll_time_histogram(struct qca_napi_info *napi_info)
 {
 }
-#endif
+#endif /* defined(QCA_WIFI_WCN6450) || defined(HELIUMPLUS) */
 
 /**
  * hif_napi_schedule() - schedules napi, updates stats
