@@ -1613,6 +1613,7 @@ struct wlan_lmac_if_green_ap_tx_ops {
 #ifdef FEATURE_COEX
 struct coex_config_params;
 struct coex_multi_config;
+struct wlan_mlme_nss_chains;
 
 /**
  * struct wlan_lmac_if_coex_tx_ops - south bound tx function pointers for coex
@@ -1620,6 +1621,8 @@ struct coex_multi_config;
  * @coex_multi_config_send: function pointer to send multiple coex config to fw
  * @coex_get_multi_config_support: function pointer to get multiple coex config
  * support or not
+ * @vdev_nss_chains_params_send: function pointer to send N79 vdev nss/chains
+ * config to fw
  */
 struct wlan_lmac_if_coex_tx_ops {
 	QDF_STATUS (*coex_config_send)(struct wlan_objmgr_pdev *pdev,
@@ -1627,6 +1630,10 @@ struct wlan_lmac_if_coex_tx_ops {
 	QDF_STATUS (*coex_multi_config_send)(struct wlan_objmgr_pdev *pdev,
 					     struct coex_multi_config *param);
 	bool (*coex_get_multi_config_support)(struct wlan_objmgr_psoc *psoc);
+	QDF_STATUS (*vdev_nss_chains_params_send)(
+				struct wlan_objmgr_psoc *psoc,
+				uint8_t vdev_id,
+				struct wlan_mlme_nss_chains *params);
 };
 #endif
 
