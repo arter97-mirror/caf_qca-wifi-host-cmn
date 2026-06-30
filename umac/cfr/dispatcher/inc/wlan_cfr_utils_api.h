@@ -634,6 +634,27 @@ struct cfr_enhanced_event_data {
 };
 
 /**
+ * struct cfr_last_frame_cache - cached latest CFR frame for one peer MAC
+ * Used only when REPORT_ONLY_LAST_FRAME is enabled for CFR v3. Each entry
+ * holds the most recent frame seen for @peer_mac_addr during the current
+ * reporting interval; older frames for the same MAC are overwritten and
+ * discarded. The entry is flushed to userspace when the report interval
+ * timer expires.
+ * @valid: entry holds a cached frame pending flush
+ * @peer_mac_addr: MAC address this entry caches frames for
+ * @event_data: cached metadata for the latest frame
+ * @data: heap copy of the latest CFR payload (owned by this entry)
+ * @data_len: length of @data in bytes
+ */
+struct cfr_last_frame_cache {
+	bool valid;
+	uint8_t peer_mac_addr[QDF_MAC_ADDR_SIZE];
+	struct cfr_enhanced_event_data event_data;
+	void *data;
+	uint32_t data_len;
+};
+
+/**
  * struct nl_event_cb - nl event cb for cfr data
  * @vdev_id: vdev id
  * @pid: PID to which data is sent via unicast nl event
@@ -737,8 +758,12 @@ struct nl_event_cb {
  * @is_cfr_data_present: cfr data present
  * @report_interval_timer:  report interval timer
  * @report_interval_timer_init: report interval timer init
+ * @report_only_last_frame: when set (CFR v3), cache frames and report only the
+ *                          latest per MAC when the report interval timer fires
  * @report_interval_lock: report interval lock
  * @report_interval_lock_initialised: report interval lock init
+ * @last_frame_cache: per-MAC cache of the latest frame for
+ *		      REPORT_ONLY_LAST_FRAME
  * @format_version: format version
  * @is_enh_aoa_data: flag to indicate the pdev supports enhanced AoA.
  * @max_agc_gain_tbls: Max rx AGC gain tables supported & advertised by target.
@@ -835,6 +860,10 @@ struct pdev_cfr {
 	void (*cfr_stop_cb)(uint8_t vdev_id, uint32_t reason);
 	qdf_timer_t report_interval_timer;
 	uint8_t report_interval_timer_init;
+	bool report_only_last_frame;
+	qdf_spinlock_t report_interval_lock;
+	bool report_interval_lock_initialised;
+	struct cfr_last_frame_cache last_frame_cache[MAX_TA_RA_ENTRIES];
 #ifdef WLAN_RCC_ENHANCED_AOA_SUPPORT
 	bool is_enh_aoa_data;
 	uint32_t max_agc_gain_tbls;
