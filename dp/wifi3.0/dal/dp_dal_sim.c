@@ -978,7 +978,7 @@ free_offload_ctx:
  * dp_dal_sim_deinit - Deinitialize DP DAL simulation context.
  * @sim_ctx: Pointer to simulation context to clean up.
  */
-void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
+static void dp_dal_sim_deinit(struct dp_dal_sim_ctx *sim_ctx)
 {
 	if (!sim_ctx)
 		return;

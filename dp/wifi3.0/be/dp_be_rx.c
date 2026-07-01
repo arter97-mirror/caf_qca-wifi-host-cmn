@@ -3226,6 +3226,7 @@ dp_dal_rx_process_nbuf_list_be(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifndef CONFIG_BORON
 /**
  * dp_rx_validate_and_fetch_rx_desc_be() - BE-specific RX descriptor validation
  * @soc: DP SOC context
@@ -3324,4 +3325,5 @@ err_free_desc:
 					 rx_desc->pool_id, rx_desc_pool);
 	return NULL;
 }
+#endif /* !CONFIG_BORON */
 #endif /* FEATURE_DAL_DP_SUPPORT */
