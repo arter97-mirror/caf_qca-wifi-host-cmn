@@ -5326,6 +5326,14 @@ mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
 						     WLAN_LINK_RECFG_SM_EV_COMPLETED,
 						     0, NULL);
 		break;
+	case WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START:
+		/* transition to init */
+		mlo_link_recfg_sm_transition_to(ctx,
+						WLAN_LINK_RECFG_S_INIT);
+		mlo_link_recfg_sm_deliver_event_sync(
+					recfg_ctx->ml_dev, event,
+					event_data_len, event_data);
+		break;
 	default:
 		event_handled = false;
 		break;
