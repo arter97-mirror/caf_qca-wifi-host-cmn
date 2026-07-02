@@ -1587,6 +1587,21 @@ bool wlan_cm_is_eht_allowed_for_current_security(struct wlan_objmgr_psoc *psoc,
 
 	neg_sec_info = &entry->neg_sec_info;
 
+	/*
+	 * If the connection was negotiated via a Security Profile element,
+	 * the RSNE AKM (key_mgmt) may reflect a legacy suite (e.g. PSK)
+	 * even though the effective security is stronger.  All Security
+	 * Profile element profiles mandate PMF and GCMP-256, so EHT is
+	 * unconditionally allowed when a profile has been selected.
+	 */
+	if (neg_sec_info->sec_profile_num >= 0) {
+		mlme_debug(QDF_MAC_ADDR_FMT
+			   ": Security Profile %d selected, allow EHT",
+			   QDF_MAC_ADDR_REF(entry->bssid.bytes),
+			   neg_sec_info->sec_profile_num);
+		return true;
+	}
+
 	if (neg_sec_info->rsn_gen_selected == RSNO_GEN_WIFI6) {
 		mlme_debug(QDF_MAC_ADDR_FMT ":MLO is not allowed for RSNO1 connection",
 			   QDF_MAC_ADDR_REF(entry->bssid.bytes));
