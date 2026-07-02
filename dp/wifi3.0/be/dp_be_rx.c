@@ -301,6 +301,91 @@ void dp_srng_rx_ring_desc_mark_invalid_be(struct dp_soc *soc,
 }
 #endif /* DP_RX_RING_DESC_SANITY_CHECK */
 
+/*
+ * dp_rx_mark_nbuf_for_trace() / dp_rx_set_nbuf_band_be() /
+ * dp_rx_update_proto_stats_recv() / dp_rx_update_rx_success_stats() /
+ * dp_rx_update_proto_stats_sent() — fast-comp wrappers.
+ *
+ * When WLAN_FAST_L2L_RX is defined these compile to
+ * empty inlines so the hot loop stays #ifdef-free.
+ */
+#ifdef WLAN_FAST_L2L_RX
+static inline void
+dp_rx_mark_nbuf_for_trace(qdf_nbuf_t nbuf)
+{
+}
+
+static inline void
+dp_rx_set_nbuf_band_be(qdf_nbuf_t nbuf,
+		       struct dp_txrx_peer *txrx_peer, uint8_t link_id)
+{
+}
+
+static inline void
+dp_rx_update_proto_stats_recv(struct dp_soc *soc,
+			      struct dp_txrx_peer *txrx_peer, uint8_t link_id,
+			      qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr)
+{
+}
+
+static inline void
+dp_rx_update_rx_success_stats(struct dp_txrx_peer *txrx_peer,
+			      qdf_nbuf_t nbuf, uint8_t link_id)
+{
+}
+
+static inline void
+dp_rx_update_proto_stats_sent(struct dp_soc *soc,
+			      struct dp_txrx_peer *txrx_peer, uint8_t link_id,
+			      qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr)
+{
+}
+#else /* WLAN_FAST_L2L_RX */
+static inline void
+dp_rx_mark_nbuf_for_trace(qdf_nbuf_t nbuf)
+{
+	QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) = false;
+	qdf_dp_trace_set_track(nbuf, QDF_RX);
+	QDF_NBUF_CB_RX_DP_TRACE(nbuf) = 1;
+	QDF_NBUF_CB_RX_PACKET_TRACK(nbuf) = QDF_NBUF_RX_PKT_DATA_TRACK;
+}
+
+static inline void
+dp_rx_set_nbuf_band_be(qdf_nbuf_t nbuf,
+		       struct dp_txrx_peer *txrx_peer, uint8_t link_id)
+{
+	dp_rx_set_nbuf_band(nbuf, txrx_peer, link_id);
+}
+
+static inline void
+dp_rx_update_proto_stats_recv(struct dp_soc *soc,
+			      struct dp_txrx_peer *txrx_peer, uint8_t link_id,
+			      qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr)
+{
+	dp_rx_update_protocol_stats_wrapper(soc, txrx_peer, link_id,
+					    nbuf, rx_tlv_hdr,
+					    RX_RECV_FROM_HW);
+}
+
+static inline void
+dp_rx_update_rx_success_stats(struct dp_txrx_peer *txrx_peer,
+			      qdf_nbuf_t nbuf, uint8_t link_id)
+{
+	DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer, rx.rx_success, 1,
+				      QDF_NBUF_CB_RX_PKT_LEN(nbuf), link_id);
+}
+
+static inline void
+dp_rx_update_proto_stats_sent(struct dp_soc *soc,
+			      struct dp_txrx_peer *txrx_peer, uint8_t link_id,
+			      qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr)
+{
+	dp_rx_update_protocol_stats_wrapper(soc, txrx_peer, link_id,
+					    nbuf, rx_tlv_hdr,
+					    RX_SENT_TO_STACK);
+}
+#endif /* WLAN_FAST_L2L_RX */
+
 #ifndef CONFIG_BORON
 uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 			  hal_ring_handle_t hal_ring_hdl, uint8_t reo_ring_num,
@@ -777,11 +862,7 @@ done:
 		rx_pkt_vdev_map |= BIT(vdev->vdev_id);
 
 		if (txrx_peer) {
-			QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) = false;
-			qdf_dp_trace_set_track(nbuf, QDF_RX);
-			QDF_NBUF_CB_RX_DP_TRACE(nbuf) = 1;
-			QDF_NBUF_CB_RX_PACKET_TRACK(nbuf) =
-				QDF_NBUF_RX_PKT_DATA_TRACK;
+			dp_rx_mark_nbuf_for_trace(nbuf);
 		}
 
 		rx_bufs_used++;
@@ -795,7 +876,7 @@ done:
 			link_id = 0;
 		}
 
-		dp_rx_set_nbuf_band(nbuf, txrx_peer, link_id);
+		dp_rx_set_nbuf_band_be(nbuf, txrx_peer, link_id);
 
 		/* when hlos tid override is enabled, save tid in
 		 * skb->priority
@@ -908,10 +989,8 @@ done:
 			qdf_nbuf_set_pktlen(nbuf, pkt_len);
 			dp_rx_skip_tlvs(soc, nbuf, l3_pad);
 
-			dp_rx_update_protocol_stats_wrapper(soc, txrx_peer,
-							    link_id, nbuf,
-							    rx_tlv_hdr,
-							    RX_RECV_FROM_HW);
+			dp_rx_update_proto_stats_recv(soc, txrx_peer, link_id,
+						      nbuf, rx_tlv_hdr);
 		}
 
 		if (vdev->opmode == wlan_op_mode_passthru) {
@@ -1065,10 +1144,7 @@ done:
 		DP_PEER_TO_STACK_INCC_PKT(txrx_peer, 1,
 					  QDF_NBUF_CB_RX_PKT_LEN(nbuf),
 					  enh_flag);
-		DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer,
-					      rx.rx_success, 1,
-					      QDF_NBUF_CB_RX_PKT_LEN(nbuf),
-					      link_id);
+		dp_rx_update_rx_success_stats(txrx_peer, nbuf, link_id);
 
 		if (qdf_unlikely(txrx_peer->in_twt))
 			DP_PEER_PER_PKT_STATS_INC_PKT(txrx_peer,
@@ -1077,9 +1153,8 @@ done:
 						      link_id);
 
 		tid_stats->delivered_to_stack++;
-		dp_rx_update_protocol_stats_wrapper(soc, txrx_peer,
-						    link_id, nbuf, rx_tlv_hdr,
-						    RX_SENT_TO_STACK);
+		dp_rx_update_proto_stats_sent(soc, txrx_peer, link_id,
+					      nbuf, rx_tlv_hdr);
 		nbuf = next;
 	}
 

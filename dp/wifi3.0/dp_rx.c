@@ -3147,6 +3147,7 @@ dp_peer_update_rx_pkt_per_lmac(struct dp_txrx_peer *txrx_peer,
 }
 #endif
 
+#ifndef WLAN_FAST_L2L_RX
 void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			     uint8_t *rx_tlv_hdr,
 			     struct dp_txrx_peer *txrx_peer,
@@ -3214,6 +3215,18 @@ void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	dp_rx_msdu_extd_stats_update(soc, nbuf, rx_tlv_hdr, stats_tlv_hdr,
 				     txrx_peer, link_id);
 }
+#else
+/* Fast-comp: skip all heavy per-pkt stats; keep only tid msdu count. */
+void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
+			     uint8_t *rx_tlv_hdr,
+			     struct dp_txrx_peer *txrx_peer,
+			     uint8_t ring_id,
+			     struct cdp_tid_rx_stats *tid_stats,
+			     uint8_t link_id)
+{
+	tid_stats->msdu_cnt++;
+}
+#endif /* WLAN_FAST_L2L_RX */
 
 #ifndef WDS_VENDOR_EXTENSION
 int dp_wds_rx_policy_check(uint8_t *rx_tlv_hdr,
