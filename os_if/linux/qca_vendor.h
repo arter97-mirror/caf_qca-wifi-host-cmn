@@ -7196,6 +7196,18 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_ALLOW_PEER_PROTOCOL_INDOOR_CH_STA_SCC = 142,
 
+	/* 8-bit unsigned value to enable or disable the AUX listen feature.
+	 * The AUX radio is a dedicated low-power Receive (Rx) chain available
+	 * on WCN chipsets. During the Idle Timeout (ITO) period the driver
+	 * can offload listen duty to the AUX MAC instead of the main MAC,
+	 * reducing overall listen power consumption. The feature is governed
+	 * by an internal learning algorithm that monitors RTS/CTS usage and
+	 * RSSI thresholds; this attribute allows userspace to override the
+	 * default state. Applicable in both STA and SAP modes.
+	 * 1 - Enable AUX listen, 0 - Disable AUX listen.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_AUX_LISTEN = 146,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
