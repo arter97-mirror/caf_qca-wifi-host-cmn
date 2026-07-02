@@ -2878,11 +2878,23 @@ void cm_update_per_peer_crypto_params(struct wlan_objmgr_vdev *vdev,
 	 */
 	neg_sec_info = &connect_req->cur_candidate->entry->neg_sec_info;
 	rsn_caps = connect_req->req.crypto.rsn_caps;
+
 	if (!(neg_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED &&
 	     rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED)) {
 		rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_MFP_ENABLED;
 		rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED;
 		rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED;
+	}
+
+	/*
+	 * All Security Profile element profiles mandate PMF.
+	 * Force MFPC and MFPR in the outgoing RSNE RSN Capabilities so the
+	 * AP accepts the association even when the RSNE alone says PSK/no-PMF.
+	 */
+	if (neg_sec_info->sec_profile_valid &&
+	    neg_sec_info->sec_profile_num >= 0) {
+		rsn_caps |= WLAN_CRYPTO_RSN_CAP_MFP_ENABLED;
+		rsn_caps |= WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED;
 	}
 
 	/* Update the new rsn caps */

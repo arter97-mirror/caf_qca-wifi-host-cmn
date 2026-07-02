@@ -278,6 +278,7 @@ cm_update_per_peer_crypto_params_for_roam(struct wlan_objmgr_vdev *vdev,
 	 */
 	neg_sec_info = &roam_req->cur_candidate->entry->neg_sec_info;
 	rsn_caps = roam_req->req.crypto.rsn_caps;
+
 	if (!(neg_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED &&
 	     rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_ENABLED)) {
 		rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_MFP_ENABLED;
@@ -285,8 +286,10 @@ cm_update_per_peer_crypto_params_for_roam(struct wlan_objmgr_vdev *vdev,
 		rsn_caps &= ~WLAN_CRYPTO_RSN_CAP_OCV_SUPPORTED;
 	}
 
-	if (WLAN_CRYPTO_IS_AKM_SAE(neg_sec_info->key_mgmt) &&
-	    (neg_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED)) {
+	if ((WLAN_CRYPTO_IS_AKM_SAE(neg_sec_info->key_mgmt) &&
+	     (neg_sec_info->rsn_caps & WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED)) ||
+	    (neg_sec_info->sec_profile_num >= 0 &&
+	     neg_sec_info->sec_profile_valid)) {
 		rsn_caps |= WLAN_CRYPTO_RSN_CAP_MFP_REQUIRED;
 		rsn_caps |= WLAN_CRYPTO_RSN_CAP_MFP_ENABLED;
 	}
