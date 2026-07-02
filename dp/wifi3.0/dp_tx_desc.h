@@ -100,10 +100,47 @@ do {                                                   \
 } while (0)
 #endif /* QCA_AC_BASED_FLOW_CONTROL */
 #else /* !QCA_LL_TX_FLOW_CONTROL_V2 */
+/*
+ * CONFIG_WLAN_TX_DESC_PER_CPU_LOCKLESS: eliminate TX desc pool spinlock when
+ * QCA_OL_TX_MULTIQ_SUPPORT is enabled.
+ *
+ * Why safe:
+ *   - MULTIQ assigns one desc pool per CPU (pool_id = qdf_get_cpu()).
+ *   - dp_tx_desc_alloc() is called from the transmit softirq; softirq on a
+ *     given CPU is non-preemptible relative to other softirqs on the same CPU.
+ *   - dp_tx_desc_free() / dp_tx_desc_free_list() run in the TX-completion
+ *     NAPI context, which is also pinned to a specific CPU by IRQ affinity
+ *     (dp_irq_affinity_mask).  Because each pool belongs to exactly one CPU
+ *     and both producer (alloc) and consumer (free) run on that CPU, there is
+ *     no concurrent access — the spinlock is redundant.
+ *   - dp_tx_spcl_desc_alloc() / dp_tx_spcl_desc_free() use the same lock
+ *     macros.  The special pool must also be per-CPU (or unused) when this
+ *     option is enabled; verify before enabling.
+ *
+ * NOT safe if:
+ *   - QCA_LL_TX_FLOW_CONTROL_V2 is enabled (pools are per-vdev, not per-CPU).
+ *   - MULTIQ is disabled (single shared pool).
+ *   - TX completion IRQ affinity is not pinned (irq can migrate between CPUs).
+ *     Ensure dp_irq_affinity_mask is configured correctly before enabling this.
+ *   - The special descriptor pool is shared across CPUs.
+ */
+#ifdef WLAN_TX_DESC_PER_CPU_LOCKLESS
+#ifndef QCA_OL_TX_MULTIQ_SUPPORT
+#error "WLAN_TX_DESC_PER_CPU_LOCKLESS requires QCA_OL_TX_MULTIQ_SUPPORT"
+#endif
+#endif
+#if defined(WLAN_TX_DESC_PER_CPU_LOCKLESS) && \
+	defined(QCA_OL_TX_MULTIQ_SUPPORT)
+#define TX_DESC_LOCK_CREATE(lock)    ((void)(lock))
+#define TX_DESC_LOCK_DESTROY(lock)   ((void)(lock))
+#define TX_DESC_LOCK_LOCK(lock)      ((void)(lock))
+#define TX_DESC_LOCK_UNLOCK(lock)    ((void)(lock))
+#else
 #define TX_DESC_LOCK_CREATE(lock)  qdf_spinlock_create(lock)
 #define TX_DESC_LOCK_DESTROY(lock) qdf_spinlock_destroy(lock)
 #define TX_DESC_LOCK_LOCK(lock)    qdf_spin_lock_bh(lock)
 #define TX_DESC_LOCK_UNLOCK(lock)  qdf_spin_unlock_bh(lock)
+#endif
 #define IS_TX_DESC_POOL_STATUS_INACTIVE(pool) (false)
 #define TX_DESC_POOL_MEMBER_CLEAN(_tx_desc_pool)       \
 do {                                                   \
