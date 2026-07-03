@@ -3315,6 +3315,22 @@ static void dp_print_sring_cmn_tlv(uint32_t *tag_buf)
 }
 
 /**
+ * dp_print_tx_pdev_bn_rate_stats_tlv() - display htt_stats_tx_pdev_bn_rate_tlv
+ * @tag_buf: buffer containing the tlv htt_stats_tx_pdev_bn_rate_tlv
+ *
+ * Return: void
+ */
+static void dp_print_tx_pdev_bn_rate_stats_tlv(uint32_t *tag_buf)
+{
+	htt_stats_tx_pdev_bn_rate_tlv *dp_stats_buf =
+		(htt_stats_tx_pdev_bn_rate_tlv *)tag_buf;
+
+	DP_PRINT_STATS("HTT_TX_PDEV_BN_RATE_STATS_TLV:");
+	DP_PRINT_STATS("tx_11bn_su_elr = %u\n",
+		       dp_stats_buf->tx_11bn_su_elr);
+}
+
+/**
  * dp_print_tx_pdev_rate_stats_tlv() - display htt_tx_pdev_rate_stats_tlv
  * @tag_buf: buffer containing the tlv htt_tx_pdev_rate_stats_tlv
  *
@@ -4184,6 +4200,9 @@ static void dp_print_rx_pdev_rate_stats_tlv(struct dp_pdev *pdev,
 	}
 	DP_PRINT_STATS("rx_11ax_mu_txbf_mcs = %s", str_buf);
 
+	DP_PRINT_STATS("rx_11bn_su_elr = %u",
+		       dp_stats_buf->rx_11bn_su_elr);
+
 	for (i = 0; i < HTT_TX_PDEV_STATS_NUM_GI_COUNTERS; i++)
 		qdf_mem_free(ul_ofdma_rx_gi[i]);
 
@@ -4801,6 +4820,10 @@ void dp_htt_stats_print_tag(struct dp_pdev *pdev,
 
 	case HTT_STATS_TX_PDEV_RATE_STATS_TAG:
 		dp_print_tx_pdev_rate_stats_tlv(tag_buf);
+		break;
+
+	case HTT_STATS_TX_PDEV_BN_RATE_TAG:
+		dp_print_tx_pdev_bn_rate_stats_tlv(tag_buf);
 		break;
 
 	case HTT_STATS_RX_PDEV_RATE_STATS_TAG:
