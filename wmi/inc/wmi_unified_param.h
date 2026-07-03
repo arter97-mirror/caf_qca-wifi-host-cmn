@@ -6801,6 +6801,7 @@ typedef enum {
 		   VDEV_PARAM_SU_TXOP_BURST_LIMIT_US),
 	VDEV_PARAM(vdev_param_set_go_cancel_noa,
 		   VDEV_PARAM_SET_GO_CANCEL_NOA),
+	VDEV_PARAM(vdev_param_aux_l_disable, VDEV_PARAM_AUX_L_DISABLE),
 
 	vdev_param_max,
 } wmi_conv_vdev_param_id;

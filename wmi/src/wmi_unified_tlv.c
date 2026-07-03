@@ -795,6 +795,7 @@ static const uint32_t vdev_param_tlv[] = {
 	PARAM_MAP(vdev_param_cck_support, VDEV_PARAM_CCK_SUPPORT),
 	PARAM_MAP(vdev_param_su_txop_burst_limit_us,
 		  VDEV_PARAM_SU_TXOP_BURST_LIMIT_US),
+	PARAM_MAP(vdev_param_aux_l_disable, VDEV_PARAM_AUX_L_DISABLE),
 
 };
 #endif
