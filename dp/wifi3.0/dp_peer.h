@@ -2706,6 +2706,37 @@ void dp_peer_rx_bufq_resources_deinit(struct dp_txrx_peer *txrx_peer)
 #endif
 
 /**
+ * dp_peer_assert_inactive_state() - assert valid peer state for INACTIVE
+ *                                   transition based on FEATURE_AST
+ * @peer: DP peer
+ * @state: new state (DP_PEER_STATE_INACTIVE)
+ * @peer_state: current peer state
+ *
+ * Return: None
+ */
+#ifdef FEATURE_AST
+static inline void
+dp_peer_assert_inactive_state(struct dp_peer *peer,
+			      enum dp_peer_state state,
+			      uint8_t peer_state)
+{
+	DP_PEER_STATE_ASSERT
+		(peer, state,
+		 (peer_state == DP_PEER_STATE_LOGICAL_DELETE));
+}
+#else
+static inline void
+dp_peer_assert_inactive_state(struct dp_peer *peer,
+			      enum dp_peer_state state,
+			      uint8_t peer_state)
+{
+	DP_PEER_STATE_ASSERT
+		(peer, state,
+		 (peer_state == DP_PEER_STATE_ACTIVE));
+}
+#endif /* FEATURE_AST */
+
+/**
  * dp_peer_update_state() - update dp peer state
  *
  * @soc: core DP soc context
@@ -2748,9 +2779,7 @@ dp_peer_update_state(struct dp_soc *soc,
 				(peer, state,
 				 (peer_state == DP_PEER_STATE_ACTIVE));
 		else
-			DP_PEER_STATE_ASSERT
-				(peer, state,
-				 (peer_state == DP_PEER_STATE_LOGICAL_DELETE));
+			dp_peer_assert_inactive_state(peer, state, peer_state);
 		break;
 
 	case DP_PEER_STATE_FREED:
