@@ -1199,20 +1199,25 @@ qdf_export_symbol(__dp_rx_buffers_replenish);
 
 #ifdef DRIVER_PASSTHRU_MODE
 #define DP_NORMALIZED_NOISE_FLOOR (-96)
+#define DP_PPDU_START_TS_LSHIFT_VAL 10
+#define DP_PPDU_START_TS_CLK_HZ 960
 
-static
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       qdf_nbuf_t nbuf)
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf)
 {
 	uint8_t *rx_pkt_tlvs;
 	struct mon_rx_status rx_status = {0};
 	uint8_t l3_pad = QDF_NBUF_CB_RX_PACKET_L3_HDR_PAD(nbuf);
+	struct cdp_tid_rx_stats tid_stats;
 
 	qdf_nbuf_push_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
 	rx_pkt_tlvs = qdf_nbuf_data(nbuf);
 	qdf_nbuf_pull_head(nbuf, l3_pad + soc->rx_pkt_tlv_size);
 
-	rx_status.tsft = qdf_get_log_timestamp();
+	rx_status.tsft = hal_rx_tlv_get_ppdu_start_ts(soc->hal_soc,
+						      rx_pkt_tlvs);
+	rx_status.tsft = (rx_status.tsft << DP_PPDU_START_TS_LSHIFT_VAL) /
+			 DP_PPDU_START_TS_CLK_HZ;
 	rx_status.rs_fcs_err = hal_rx_tlv_mpdu_fcs_err_get(soc->hal_soc,
 							   rx_pkt_tlvs);
 	rx_status.mon_fcs_cap = 1;
@@ -1230,19 +1235,20 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 	else
 		rx_status.cck_flag = 1;
 
-	qdf_nbuf_update_radiotap(&rx_status, nbuf, qdf_nbuf_headroom(nbuf));
+	if (!qdf_nbuf_update_radiotap(&rx_status, nbuf,
+				      qdf_nbuf_headroom(nbuf))) {
+		DP_STATS_INC(vdev->pdev, dropped.mon_radiotap_update_err, 1);
+		return -EINVAL;
+	}
+
+	if (txrx_peer)
+		dp_rx_msdu_stats_update(soc, nbuf, rx_pkt_tlvs, txrx_peer, 0,
+					&tid_stats, 0);
 
 	if (vdev->osif_rx)
 		vdev->osif_rx(vdev->osif_vdev, nbuf);
 
 	return 0;
-}
-#else
-static
-int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       qdf_nbuf_t nbuf)
-{
-	return -EINVAL;
 }
 #endif
 
@@ -1262,7 +1268,8 @@ dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 			if (next)
 				qdf_nbuf_set_next(nbuf, NULL);
 
-			dp_rx_deliver_raw_passthru(vdev->pdev->soc, vdev, nbuf);
+			dp_rx_deliver_raw_passthru(vdev->pdev->soc, vdev,
+						   txrx_peer, nbuf);
 
 			if (next)
 				goto next_nbuf;
@@ -1815,7 +1822,7 @@ uint8_t dp_rx_process_invalid_peer(struct dp_soc *soc, qdf_nbuf_t mpdu,
 								   rx_tlv_hdr);
 
 			dp_rx_skip_tlvs(soc, mpdu, l3_hdr_pad);
-			if (dp_rx_deliver_raw_passthru(soc, vdev, mpdu))
+			if (dp_rx_deliver_raw_passthru(soc, vdev, NULL, mpdu))
 				goto free;
 			else
 				return 0;

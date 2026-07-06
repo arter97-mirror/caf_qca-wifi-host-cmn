@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -24,6 +24,7 @@
 #include "wlan_cm_main_api.h"
 #include "wlan_scan_api.h"
 #include "wlan_mlo_mgr_link_switch.h"
+#include "wlan_utility.h"
 
 #ifdef WLAN_CM_USE_SPINLOCK
 /**
@@ -226,4 +227,135 @@ void cm_standby_link_update_mlme_by_bssid(struct wlan_objmgr_vdev *vdev,
 		link_info++;
 	}
 }
-#endif
+
+static void
+cm_update_all_links_assoc_state(struct wlan_objmgr_vdev *vdev)
+{
+	struct mlo_link_info *link_info;
+	uint8_t link_info_iter;
+	struct wlan_ssid ssid;
+	QDF_STATUS status;
+
+	/* Only update if the assoc vdev is in a valid state.
+	 * Standby links have no vdev; their scan entries are updated here
+	 * via the assoc vdev's mlo_link_info[] which contains all links.
+	 * cm_is_vdev_active() covers WLAN_CM_S_CONNECTED and
+	 * WLAN_CM_S_ROAMING. cm_is_vdev_idle_due_to_link_switch() covers
+	 * link switch on the assoc vdev itself (WLAN_CM_S_INIT +
+	 * WLAN_CM_SS_IDLE_DUE_TO_LINK_SWITCH).
+	 */
+	if (!cm_is_vdev_active(vdev) &&
+	    !cm_is_vdev_idle_due_to_link_switch(vdev))
+		return;
+
+	status = wlan_vdev_mlme_get_ssid(vdev, ssid.ssid, &ssid.length);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("failed to get ssid");
+		return;
+	}
+
+	link_info = mlo_mgr_get_ap_link(vdev);
+	if (!link_info)
+		return;
+
+	for (link_info_iter = 0; link_info_iter < WLAN_MAX_ML_BSS_LINKS;
+			link_info_iter++) {
+		if (qdf_is_macaddr_zero(&link_info->ap_link_addr))
+			break;
+
+		scm_update_assoc_state_con_for_bss(
+					wlan_vdev_get_pdev(vdev),
+					&link_info->ap_link_addr,
+					&ssid,
+					link_info->link_chan_info->ch_freq);
+		link_info++;
+	}
+}
+
+/**
+ * cm_update_mlo_assoc_state() - Update assoc_state for MLO STA vdev
+ * @vdev: vdev pointer
+ *
+ * Returns true if the vdev is an MLO vdev (handled), false otherwise.
+ * For MLO: only processes the assoc STA vdev; partner (link) vdevs share
+ * the same mlo_link_info[] and would redundantly update the same entries.
+ */
+static bool
+cm_update_mlo_assoc_state(struct wlan_objmgr_vdev *vdev)
+{
+	if (!wlan_vdev_mlme_is_mlo_vdev(vdev))
+		return false;
+
+	if (wlan_vdev_mlme_is_assoc_sta_vdev(vdev))
+		cm_update_all_links_assoc_state(vdev);
+
+	return true;
+}
+#else
+static inline bool
+cm_update_mlo_assoc_state(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BE_MLO_ADV_FEATURE */
+
+/**
+ * cm_update_non_mlo_assoc_state() - Update assoc_state for non-MLO STA
+ * @vdev: STA vdev pointer
+ * @pdev: pdev pointer
+ *
+ * For non-MLO connections, updates the scan entry assoc_state to
+ * SCAN_ENTRY_CON_STATE_ASSOC for the connected BSSID to prevent the
+ * scan entry from aging out after CSA events.
+ */
+static void
+cm_update_non_mlo_assoc_state(struct wlan_objmgr_vdev *vdev,
+			      struct wlan_objmgr_pdev *pdev)
+{
+	struct qdf_mac_addr bssid;
+	struct wlan_channel *chan;
+	struct wlan_ssid ssid;
+	QDF_STATUS status;
+
+	if (!cm_is_vdev_active(vdev))
+		return;
+
+	chan = wlan_vdev_get_active_channel(vdev);
+	if (!chan)
+		return;
+
+	status = wlan_vdev_get_bss_peer_mac(vdev, &bssid);
+	if (QDF_IS_STATUS_ERROR(status))
+		return;
+
+	status = wlan_vdev_mlme_get_ssid(vdev, ssid.ssid, &ssid.length);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("failed to get ssid");
+		return;
+	}
+
+	scm_update_assoc_state_con_for_bss(pdev, &bssid, &ssid, chan->ch_freq);
+}
+
+static void
+cm_update_assoc_state_vdev_handler(struct wlan_objmgr_pdev *pdev,
+				   void *obj, void *arg)
+{
+	struct wlan_objmgr_vdev *vdev = (struct wlan_objmgr_vdev *)obj;
+
+	if (wlan_vdev_mlme_get_opmode(vdev) != QDF_STA_MODE)
+		return;
+
+	/* cm_update_mlo_assoc_state returns true if vdev is MLO (handled) */
+	if (cm_update_mlo_assoc_state(vdev))
+		return;
+
+	cm_update_non_mlo_assoc_state(vdev, pdev);
+}
+
+void wlan_cm_update_all_sta_links_assoc_state(struct wlan_objmgr_pdev *pdev)
+{
+	wlan_objmgr_pdev_iterate_obj_list(pdev, WLAN_VDEV_OP,
+					  cm_update_assoc_state_vdev_handler,
+					  NULL, 0, WLAN_MLME_CM_ID);
+}

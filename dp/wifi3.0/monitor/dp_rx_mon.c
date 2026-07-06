@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2302,17 +2302,14 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 	qdf_nbuf_t mon_skb, skb_next;
 	qdf_nbuf_t mon_mpdu = NULL;
 	struct dp_mon_vdev *mon_vdev;
-	struct dp_mon_pdev *mon_pdev;
 	struct dp_mon_mac *mon_mac;
 
 	if (!pdev)
 		goto mon_deliver_fail;
 
 	mon_mac = dp_get_mon_mac(pdev, mac_id);
-	mon_pdev = pdev->monitor_pdev;
 
-	if (!mon_mac && !mon_mac->mvdev && !mon_pdev->mcopy_mode &&
-	    !mon_pdev->rx_pktlog_cbf &&
+	if (!mon_mac || !mon_mac->mvdev ||
 	    mon_mac->mon_chan_num == INVALID_MON_CHAN_NUM)
 		goto mon_deliver_fail;
 
@@ -2328,13 +2325,6 @@ QDF_STATUS dp_rx_mon_deliver(struct dp_soc *soc, uint32_t mac_id,
 	}
 
 	dp_rx_mon_process_dest_pktlog(soc, mac_id, mon_mpdu);
-
-	/* monitor vap cannot be present when mcopy is enabled
-	 * hence same skb can be consumed
-	 */
-	if (mon_pdev->mcopy_mode)
-		return dp_send_mgmt_packet_to_stack(soc, mon_mpdu,
-						    pdev, mon_mac);
 
 	if (mon_mac->mvdev &&
 	    mon_mac->mvdev->osif_vdev &&

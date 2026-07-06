@@ -2074,6 +2074,101 @@ static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
 }
 #endif
 
+#ifdef DRIVER_PASSTHRU_MODE
+int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
+				       hal_ring_desc_t ring_desc)
+{
+	struct dp_pdev *pdev;
+	struct dp_vdev *vdev = NULL;
+	struct hal_buf_info hbi;
+	struct dp_rx_desc *rx_desc;
+	qdf_nbuf_t nbuf;
+	struct rx_desc_pool *rx_desc_pool;
+	uint8_t *rx_tlv_hdr;
+	uint8_t *rx_pkt_hdr;
+	uint32_t l3_hdr_pad;
+	uint16_t pkt_len;
+	uint16_t msdu_len;
+
+	hal_rx_reo_buf_paddr_get(soc->hal_soc, ring_desc, &hbi);
+
+	rx_desc = soc->arch_ops.dp_rx_desc_cookie_2_va(soc, hbi.sw_cookie);
+	if (!rx_desc || !rx_desc->nbuf) {
+		dp_info_rl("Invalid MSDU buf received");
+		return MAX_PDEV_CNT;
+	}
+
+	rx_desc_pool = &soc->rx_desc_buf[rx_desc->pool_id];
+	nbuf = rx_desc->nbuf;
+	dp_rx_buf_smmu_mapping_lock(soc);
+	qdf_assert_always(!rx_desc->unmapped);
+	dp_rx_nbuf_unmap_pool(soc, rx_desc_pool, nbuf);
+	rx_desc->unmapped = 1;
+	dp_rx_buf_smmu_mapping_unlock(soc);
+
+	rx_tlv_hdr = qdf_nbuf_data(nbuf);
+	rx_pkt_hdr = hal_rx_pkt_hdr_get(soc->hal_soc, rx_tlv_hdr);
+
+	msdu_len = hal_rx_msdu_start_msdu_len_get(soc->hal_soc, rx_tlv_hdr);
+	l3_hdr_pad = hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
+							rx_tlv_hdr);
+	pkt_len = msdu_len + l3_hdr_pad + soc->rx_pkt_tlv_size;
+	qdf_nbuf_set_pktlen(nbuf, pkt_len);
+
+	pdev = dp_get_pdev_for_lmac_id(soc, rx_desc->pool_id);
+
+	dp_rx_add_to_free_desc_list(&pdev->free_list_head,
+				    &pdev->free_list_tail,
+				    rx_desc);
+
+	qdf_spin_lock_bh(&pdev->vdev_list_lock);
+	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+
+			dp_rx_skip_tlvs(soc, nbuf, l3_hdr_pad);
+			dp_rx_deliver_raw(vdev, nbuf, NULL, 0);
+
+			return rx_desc->pool_id;
+		}
+	}
+	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
+	dp_rx_nbuf_free(nbuf);
+
+	return rx_desc->pool_id;
+}
+
+bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
+				struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+{
+	struct dp_txrx_peer *txrx_peer;
+	dp_txrx_ref_handle txrx_ref_handle = NULL;
+	uint16_t peer_id;
+
+	peer_id = dp_rx_peer_metadata_peer_id_get(soc,
+						mpdu_desc_info->peer_meta_data);
+
+	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(
+			soc, peer_id,
+			&txrx_ref_handle,
+			DP_MOD_ID_RX_ERR);
+	if (!txrx_peer) {
+		dp_info_rl("txrx_peer is null peer_id %u",
+			   peer_id);
+		return false;
+	}
+
+	if (txrx_peer->vdev->opmode == wlan_op_mode_passthru) {
+		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
+		return true;
+	}
+
+	dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
+
+	return false;
+}
+#endif
+
 uint32_t
 dp_rx_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 		  hal_ring_handle_t hal_ring_hdl, uint32_t quota)
@@ -2167,6 +2262,17 @@ more_data:
 		 */
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
 			int lmac_id;
+
+			if (HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_GET(mpdu_desc_info.peer_meta_data) ||
+			    dp_rx_is_passthru_msdu_buf(soc, &mpdu_desc_info)) {
+				lmac_id =
+					dp_rx_err_handle_passthru_msdu_buf(soc,
+									   ring_desc);
+				if (lmac_id >= 0 && lmac_id < MAX_PDEV_CNT) {
+					rx_bufs_reaped[lmac_id] += 1;
+					goto next_entry;
+				}
+			}
 
 			lmac_id = dp_rx_err_exception(soc, ring_desc);
 			if (lmac_id >= 0)

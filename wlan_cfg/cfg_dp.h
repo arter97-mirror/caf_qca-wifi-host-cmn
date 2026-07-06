@@ -2427,9 +2427,10 @@
 #endif
 
 #if defined(DP_FEATURE_RX_BUFFER_RECYCLE) || defined(DP_FEATURE_TX_PAGE_POOL)
+#define WLAN_CFG_PP_PREALLOC_TX_ONLY   2
 #define WLAN_CFG_PP_PREALLOC_MIN 0
 #define WLAN_CFG_PP_PREALLOC_MAX 3
-#define WLAN_CFG_PP_PREALLOC_DEFAULT 0
+#define WLAN_CFG_PP_PREALLOC_DEFAULT WLAN_CFG_PP_PREALLOC_TX_ONLY
 
 /* Bit definitions for page pool preallocation control */
 #define DP_RX_PP_PREALLOC_BIT BIT(0)

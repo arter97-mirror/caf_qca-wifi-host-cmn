@@ -126,6 +126,9 @@ typedef struct flow_keys __qdf_flow_keys_t;
 #define QDF_NBUF_PKT_TCPOP_RST			0x04
 
 #define QDF_NBUF_TRAC_IPV4_OFFSET		14
+
+#define QDF_DHCP_TRANSACTION_ID_OFFSET         (0x2E)
+
 /* Structures to support USIG and EHT in TLV format */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0))
 /* TLV format:
@@ -1445,6 +1448,19 @@ uint32_t __qdf_nbuf_get_icmpv4_tgt_ip(uint8_t *data);
  * Return: subtype of the DHCP packet.
  */
 enum qdf_proto_subtype  __qdf_nbuf_data_get_dhcp_subtype(uint8_t *data);
+
+/**
+ * __qdf_nbuf_get_dhcp_transaction_id() - get DHCP transaction ID from skb
+ * @skb: skb pointer
+ *
+ * Return: DHCP transaction ID
+ */
+static inline uint32_t
+__qdf_nbuf_get_dhcp_transaction_id(struct sk_buff *skb)
+{
+	return (uint32_t)(*(uint32_t *)(skb->data +
+					QDF_DHCP_TRANSACTION_ID_OFFSET));
+}
 
 /**
  * __qdf_nbuf_data_get_eapol_subtype() - get the subtype of EAPOL packet.

@@ -1117,6 +1117,8 @@ dp_print_pdev_rx_mon_stats(struct dp_pdev *pdev)
 			       rx_mon_stats->status_buf_done_war);
 		DP_PRINT_STATS("dest_mpdu_drop_cnt = %d",
 			       rx_mon_stats->dest_mpdu_drop);
+		DP_PRINT_STATS("dest_mpdu_deliver_fail_cnt = %d",
+			       rx_mon_stats->dest_mpdu_deliver_fail);
 		DP_PRINT_STATS("dup_mon_linkdesc_cnt = %d",
 			       rx_mon_stats->dup_mon_linkdesc_cnt);
 		DP_PRINT_STATS("dup_mon_buf_cnt = %d",
@@ -1891,7 +1893,7 @@ static void dp_mon_tx_enable_enhanced_stats(struct dp_pdev *pdev)
 }
 
 /**
- * dp_enable_enhanced_stats()- API to enable enhanced statistcs
+ * dp_enable_enhanced_stats()- API to enable enhanced statistics
  * @soc: DP_SOC handle
  * @pdev_id: id of DP_PDEV handle
  *
@@ -1963,7 +1965,7 @@ static void dp_mon_tx_disable_enhanced_stats(struct dp_pdev *pdev)
 }
 
 /**
- * dp_disable_enhanced_stats()- API to disable enhanced statistcs
+ * dp_disable_enhanced_stats()- API to disable enhanced statistics
  *
  * @soc: the soc handle
  * @pdev_id: pdev_id of pdev
@@ -3853,7 +3855,7 @@ static void dp_process_ppdu_stats_user_common_tlv(
 		ppdu_user_desc->is_ppdu_cookie_valid = 1;
 	}
 
-	/* returning earlier causes other feilds unpopulated */
+	/* returning earlier causes other fields unpopulated */
 	if (peer_id == DP_SCAN_PEER_ID) {
 		vdev = dp_vdev_get_ref_by_id(pdev->soc, ppdu_desc->vdev_id,
 					     DP_MOD_ID_TX_PPDU_STATS);

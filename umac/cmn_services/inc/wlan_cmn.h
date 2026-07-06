@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -648,6 +648,7 @@ enum wifi_traffic_ac {
  * @WLAN_PEER_RTT_PASN: Ranging PASN peer
  * @WLAN_PEER_MLO_BRIDGE: MLO Bridge peer
  * @WLAN_PEER_NAN_PASN: NAN PASN peer
+ * @WLAN_PEER_PASSTHRU: Passthru peer
  */
 enum wlan_peer_type {
 	WLAN_PEER_SELF     = 1,
@@ -664,6 +665,7 @@ enum wlan_peer_type {
 	WLAN_PEER_RTT_PASN = 12,
 	WLAN_PEER_MLO_BRIDGE = 13,
 	WLAN_PEER_NAN_PASN = 14,
+	WLAN_PEER_PASSTHRU = 15,
 };
 
 /**

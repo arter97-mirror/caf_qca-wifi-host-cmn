@@ -1157,10 +1157,9 @@ int qdf_dp_trace_fill_meta_str(char *prepend_str, int size,
 
 	scnprintf(buffer, sizeof(buffer), "%llu", record->time);
 	ret = scnprintf(prepend_str, size,
-			"%s DPT: %04d:%02d%s %s",
-			throttled ? "*" : "",
-			rec_index,
-			record->pdev_id,
+			"%s DPT: %04d:%02d:%u:%u%s %s",
+			throttled ? "*" : "", rec_index, record->pdev_id,
+			record->pkt_type, record->conn_log_status,
 			live ? "" : buffer,
 			qdf_dp_code_to_string(record->code));
 
@@ -1220,20 +1219,21 @@ end:
  * qdf_dp_add_record() - add dp trace record
  * @code: dptrace code
  * @pdev_id: pdev_id
- * @print: true to print it in kmsg
  * @data: data pointer
  * @data_size: size of data to be copied
  * @meta_data: meta data to be prepended to data
  * @metadata_size: sizeof meta data
  * @print: whether to print record
+ * @pkt_type: Packet type
+ * @conn_log_status: connectivity logging status
  *
  * Return: none
  */
 static void qdf_dp_add_record(enum QDF_DP_TRACE_ID code, uint8_t pdev_id,
 			      uint8_t *data, uint8_t data_size,
 			      uint8_t *meta_data, uint8_t metadata_size,
-			      bool print)
-
+			      bool print, uint8_t pkt_type,
+			      uint8_t conn_log_status)
 {
 	struct qdf_dp_trace_record_s *rec = NULL;
 	int index;
@@ -1292,6 +1292,8 @@ static void qdf_dp_add_record(enum QDF_DP_TRACE_ID code, uint8_t pdev_id,
 	rec->code = code;
 	rec->pdev_id = pdev_id;
 	rec->size = 0;
+	rec->pkt_type = pkt_type;
+	rec->conn_log_status = conn_log_status;
 	qdf_dp_fill_record_data(rec, data, data_size,
 				meta_data, metadata_size);
 	rec->time = qdf_get_log_timestamp();
@@ -1543,7 +1545,8 @@ static bool qdf_log_icmpv6_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			QDF_DP_TRACE_ICMPv6_PACKET_RECORD,
 			(skb->data + QDF_NBUF_SRC_MAC_OFFSET),
 			(skb->data + QDF_NBUF_DEST_MAC_OFFSET),
-			dir, pdev_id, false, &cmn_info));
+			dir, pdev_id, false, &cmn_info, QDF_DP_PKT_TYPE_INVALID,
+			QDF_DP_CONN_LOG_SKIP_INVALID));
 
 		switch (subtype) {
 		case QDF_PROTO_ICMPV6_REQ:
@@ -1620,7 +1623,9 @@ static bool qdf_log_icmp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 					       skb->data +
 					       QDF_NBUF_DEST_MAC_OFFSET,
 					       dir, pdev_id,
-					       false, &cmn_info));
+					       false, &cmn_info,
+					       QDF_DP_PKT_TYPE_INVALID,
+					       QDF_DP_CONN_LOG_SKIP_INVALID));
 
 		if (cmn_info.subtype == QDF_PROTO_ICMP_REQ)
 			g_qdf_dp_trace_data.icmp_req++;
@@ -1766,6 +1771,7 @@ uint8_t qdf_eapol_get_key_type(uint8_t *data, enum qdf_proto_subtype subtype)
  * @subtype: Protocol subtype
  * @dir: Rx or Tx
  * @op_mode: Vdev Operation mode
+ * @skip_bcast: Skip broadcast packet logging
  *
  * Return: true or false
  */
@@ -1774,14 +1780,15 @@ bool qdf_skip_wlan_connectivity_log(qdf_nbuf_t nbuf,
 				    enum qdf_proto_type type,
 				    enum qdf_proto_subtype subtype,
 				    enum qdf_proto_dir dir,
-				    enum QDF_OPMODE op_mode)
+				    enum QDF_OPMODE op_mode,
+				    bool skip_bcast)
 {
 	if (op_mode != QDF_STA_MODE)
 		return true;
 
 	if (dir == QDF_RX && type == QDF_PROTO_TYPE_DHCP &&
 	    (subtype == QDF_PROTO_DHCP_DISCOVER ||
-	     subtype == QDF_PROTO_DHCP_REQUEST || qdf_nbuf_is_bcast_pkt(nbuf)))
+	     subtype == QDF_PROTO_DHCP_REQUEST || skip_bcast))
 		return true;
 	return false;
 }
@@ -1796,26 +1803,27 @@ bool qdf_skip_wlan_connectivity_log(qdf_nbuf_t nbuf,
  * @op_mode: Vdev Operation mode
  * @vdev_id: DP vdev ID
  * @nbuf: skb pointer
- * @band: band
+ * @skip_bcast: Skip broadcast packet logging
  *
- * Return: None
+ * Return: enum qdf_dp_conn_log_status - reason code for connectivity log status
  */
-static
-void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
-				    enum qdf_proto_subtype subtype,
-				    enum qdf_proto_dir dir,
-				    enum qdf_dp_tx_rx_status qdf_tx_status,
-				    enum QDF_OPMODE op_mode,
-				    uint8_t vdev_id, qdf_nbuf_t nbuf,
-				    uint8_t band)
+static enum qdf_dp_conn_log_status
+qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
+			       enum qdf_proto_subtype subtype,
+			       enum qdf_proto_dir dir,
+			       enum qdf_dp_tx_rx_status qdf_tx_status,
+			       enum QDF_OPMODE op_mode,
+			       uint8_t vdev_id, qdf_nbuf_t nbuf,
+			       bool skip_bcast)
 {
 	uint8_t pkt_type;
 	uint8_t *data;
 
 	WLAN_HOST_DIAG_EVENT_DEF(wlan_diag_event, struct wlan_diag_packet_info);
 
-	if (qdf_skip_wlan_connectivity_log(nbuf, type, subtype, dir, op_mode))
-		return;
+	if (qdf_skip_wlan_connectivity_log(nbuf, type, subtype, dir, op_mode,
+					   skip_bcast))
+		return QDF_DP_CONN_LOG_SKIP_WLAN_CONN_FILTER;
 
 	qdf_mem_zero(&wlan_diag_event, sizeof(wlan_diag_event));
 
@@ -1850,34 +1858,38 @@ void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
 			wlan_diag_event.eap_len =
 			    qdf_ntohs(*(uint16_t *)(data + EAPOL_PKT_LEN_OFFSET));
 		} else {
-			return;
+			return QDF_DP_CONN_LOG_SKIP_UNKNOWN_EAPOL;
 		}
 	} else {
-		return;
+		return QDF_DP_CONN_LOG_SKIP_NOT_DHCP_EAPOL;
 	}
-
-	wlan_diag_event.supported_links = band;
 
 	/*Tx completion status needs to be logged*/
 	if (dir == QDF_TX) {
+		wlan_diag_event.supported_links = qdf_nbuf_tx_get_band(nbuf);
 		wlan_diag_event.is_tx = 1;
 		wlan_diag_event.tx_status =
 					wlan_get_diag_tx_status(qdf_tx_status);
+	} else {
+		wlan_diag_event.supported_links = qdf_nbuf_rx_get_band(nbuf);
 	}
 
 	WLAN_HOST_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_CONN_DP);
+
+	return QDF_DP_CONN_LOG_SUBMITTED;
 }
 
 #else
-static inline
-void qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
-				    enum qdf_proto_subtype subtype,
-				    enum qdf_proto_dir dir,
-				    enum qdf_dp_tx_rx_status qdf_tx_status,
-				    enum QDF_OPMODE op_mode,
-				    uint8_t vdev_id, qdf_nbuf_t nbuf,
-				    uint8_t band)
+static inline enum qdf_dp_conn_log_status
+qdf_fill_wlan_connectivity_log(enum qdf_proto_type type,
+			       enum qdf_proto_subtype subtype,
+			       enum qdf_proto_dir dir,
+			       enum qdf_dp_tx_rx_status qdf_tx_status,
+			       enum QDF_OPMODE op_mode,
+			       uint8_t vdev_id, qdf_nbuf_t nbuf,
+			       bool skip_bcast)
 {
+	return QDF_DP_CONN_LOG_SKIP_DIAG_DISABLED;
 }
 #endif
 
@@ -1899,6 +1911,8 @@ static bool qdf_log_eapol_pkt(uint8_t vdev_id, struct sk_buff *skb,
 	uint32_t dp_eap_trace;
 	uint32_t dp_eap_event;
 	struct qdf_dp_trace_proto_cmn cmn_info;
+	enum qdf_dp_conn_log_status conn_log_status =
+					QDF_DP_CONN_LOG_SKIP_INVALID;
 
 	dp_eap_trace = qdf_dp_get_proto_bitmap() & QDF_NBUF_PKT_TRAC_TYPE_EAPOL;
 	dp_eap_event = qdf_dp_get_proto_event_bitmap() &
@@ -1920,10 +1934,11 @@ static bool qdf_log_eapol_pkt(uint8_t vdev_id, struct sk_buff *skb,
 					  QDF_PROTO_TYPE_EAPOL, subtype, dir,
 					  QDF_TRACE_DEFAULT_MSDU_ID,
 					  QDF_TX_RX_STATUS_INVALID);
-		qdf_fill_wlan_connectivity_log(QDF_PROTO_TYPE_EAPOL, subtype,
-					       QDF_RX, 0, op_mode,
-					       vdev_id, skb,
-					       qdf_nbuf_rx_get_band(skb));
+		conn_log_status =
+			qdf_fill_wlan_connectivity_log(QDF_PROTO_TYPE_EAPOL,
+						       subtype, QDF_RX, 0,
+						       op_mode, vdev_id, skb,
+						       false);
 		qdf_log_pkt_cstats(skb->data + QDF_NBUF_SRC_MAC_OFFSET,
 				   skb->data + QDF_NBUF_DEST_MAC_OFFSET,
 				   QDF_PROTO_TYPE_EAPOL, subtype, dir,
@@ -1947,7 +1962,9 @@ static bool qdf_log_eapol_pkt(uint8_t vdev_id, struct sk_buff *skb,
 					       QDF_NBUF_SRC_MAC_OFFSET,
 					       skb->data +
 					       QDF_NBUF_DEST_MAC_OFFSET,
-					       dir, pdev_id, true, &cmn_info));
+					       dir, pdev_id, true, &cmn_info,
+					       QDF_PROTO_TYPE_EAPOL,
+					       conn_log_status));
 
 		switch (subtype) {
 		case QDF_PROTO_EAPOL_M1:
@@ -1978,17 +1995,21 @@ static bool qdf_log_eapol_pkt(uint8_t vdev_id, struct sk_buff *skb,
  * @dir: direction
  * @pdev_id: ID of the pdev
  * @op_mode: Vdev Operation mode
+ * @dhcp_ltxid: DHCP transaction ID
  *
  * Return: true/false
  */
 static bool qdf_log_dhcp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			     enum qdf_proto_dir dir, uint8_t pdev_id,
-			     enum QDF_OPMODE op_mode)
+			     enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid)
 {
 	enum qdf_proto_subtype subtype = QDF_PROTO_INVALID;
 	uint32_t dp_dhcp_trace;
 	uint32_t dp_dhcp_event;
 	struct qdf_dp_trace_proto_cmn cmn_info;
+	bool skip_bcast = false;
+	enum qdf_dp_conn_log_status conn_log_status =
+					QDF_DP_CONN_LOG_SKIP_INVALID;
 
 	dp_dhcp_trace = qdf_dp_get_proto_bitmap() & QDF_NBUF_PKT_TRAC_TYPE_DHCP;
 	dp_dhcp_event = qdf_dp_get_proto_event_bitmap() &
@@ -2005,14 +2026,19 @@ static bool qdf_log_dhcp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 	subtype = qdf_nbuf_get_dhcp_subtype(skb);
 
 	if (dp_dhcp_event && dir == QDF_RX) {
+		if (qdf_nbuf_is_bcast_pkt(skb))
+			skip_bcast = dhcp_ltxid !=
+					qdf_nbuf_get_dhcp_transaction_id(skb);
 		qdf_dp_log_proto_pkt_info(skb->data + QDF_NBUF_SRC_MAC_OFFSET,
 					  skb->data + QDF_NBUF_DEST_MAC_OFFSET,
 					  QDF_PROTO_TYPE_DHCP, subtype, dir,
 					  QDF_TRACE_DEFAULT_MSDU_ID,
 					  QDF_TX_RX_STATUS_INVALID);
-		qdf_fill_wlan_connectivity_log(QDF_PROTO_TYPE_DHCP, subtype,
-					       QDF_RX, 0, op_mode, vdev_id, skb,
-					       qdf_nbuf_rx_get_band(skb));
+		conn_log_status =
+			qdf_fill_wlan_connectivity_log(QDF_PROTO_TYPE_DHCP,
+						       subtype, QDF_RX, 0,
+						       op_mode, vdev_id, skb,
+						       skip_bcast);
 		qdf_log_pkt_cstats(skb->data + QDF_NBUF_SRC_MAC_OFFSET,
 				   skb->data + QDF_NBUF_DEST_MAC_OFFSET,
 				   QDF_PROTO_TYPE_DHCP, subtype, dir,
@@ -2036,7 +2062,9 @@ static bool qdf_log_dhcp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 					       QDF_NBUF_SRC_MAC_OFFSET,
 					       skb->data +
 					       QDF_NBUF_DEST_MAC_OFFSET,
-					       dir, pdev_id, true, &cmn_info));
+					       dir, pdev_id, true, &cmn_info,
+					       QDF_PROTO_TYPE_DHCP,
+					       conn_log_status));
 
 		switch (subtype) {
 		case QDF_PROTO_DHCP_DISCOVER:
@@ -2101,7 +2129,9 @@ static bool qdf_log_arp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 					       skb->data +
 					       QDF_NBUF_DEST_MAC_OFFSET,
 					       dir, pdev_id, true,
-					       &cmn_info));
+					       &cmn_info,
+					       QDF_DP_PKT_TYPE_INVALID,
+					       QDF_DP_CONN_LOG_SKIP_INVALID));
 
 		if (QDF_PROTO_ARP_REQ == proto_subtype)
 			g_qdf_dp_trace_data.arp_req++;
@@ -2116,13 +2146,13 @@ static bool qdf_log_arp_pkt(uint8_t vdev_id, struct sk_buff *skb,
 
 bool qdf_dp_trace_log_pkt(uint8_t vdev_id, struct sk_buff *skb,
 			  enum qdf_proto_dir dir, uint8_t pdev_id,
-			  enum QDF_OPMODE op_mode)
+			  enum QDF_OPMODE op_mode, uint32_t dhcp_ltxid)
 {
 	if (!qdf_dp_get_proto_bitmap() && !qdf_dp_get_proto_event_bitmap())
 		return false;
 	if (qdf_log_arp_pkt(vdev_id, skb, dir, pdev_id))
 		return true;
-	if (qdf_log_dhcp_pkt(vdev_id, skb, dir, pdev_id, op_mode))
+	if (qdf_log_dhcp_pkt(vdev_id, skb, dir, pdev_id, op_mode, dhcp_ltxid))
 		return true;
 	if (qdf_log_eapol_pkt(vdev_id, skb, dir, pdev_id, op_mode))
 		return true;
@@ -2171,8 +2201,9 @@ void qdf_dp_trace_mgmt_pkt(enum QDF_DP_TRACE_ID code, uint8_t vdev_id,
 	buf.type = type;
 	buf.subtype = subtype;
 	buf.vdev_id = vdev_id;
-	qdf_dp_add_record(code, pdev_id, (uint8_t *)&buf, buf_size,
-			  NULL, 0, true);
+	qdf_dp_add_record(code, pdev_id, (uint8_t *)&buf, buf_size, NULL, 0,
+			  true, QDF_DP_PKT_TYPE_INVALID,
+			  QDF_DP_CONN_LOG_SKIP_INVALID);
 }
 qdf_export_symbol(qdf_dp_trace_mgmt_pkt);
 
@@ -2257,7 +2288,8 @@ void qdf_dp_trace_credit_record(enum QDF_CREDIT_UPDATE_SOURCE source,
 	buf.g1_credit = g1_credit;
 
 	qdf_dp_add_record(code, QDF_TRACE_DEFAULT_PDEV_ID, (uint8_t *)&buf,
-			  buf_size, NULL, 0, false);
+			  buf_size, NULL, 0, false, QDF_DP_PKT_TYPE_INVALID,
+			  QDF_DP_CONN_LOG_SKIP_INVALID);
 }
 qdf_export_symbol(qdf_dp_trace_credit_record);
 
@@ -2296,8 +2328,9 @@ void qdf_dp_trace_record_event(enum QDF_DP_TRACE_ID code, uint8_t vdev_id,
 	buf.type = type;
 	buf.subtype = subtype;
 	buf.vdev_id = vdev_id;
-	qdf_dp_add_record(code, pdev_id,
-			  (uint8_t *)&buf, buf_size, NULL, 0, true);
+	qdf_dp_add_record(code, pdev_id, (uint8_t *)&buf, buf_size, NULL, 0,
+			  true, QDF_DP_PKT_TYPE_INVALID,
+			  QDF_DP_CONN_LOG_SKIP_INVALID);
 }
 qdf_export_symbol(qdf_dp_trace_record_event);
 
@@ -2344,7 +2377,8 @@ void qdf_dp_trace_proto_pkt(enum QDF_DP_TRACE_ID code,
 			    uint8_t *sa, uint8_t *da,
 			    enum qdf_proto_dir dir,
 			    uint8_t pdev_id, bool print,
-			    struct qdf_dp_trace_proto_cmn *cmn_info)
+			    struct qdf_dp_trace_proto_cmn *cmn_info,
+			    uint8_t pkt_type, uint8_t conn_log_status)
 {
 	struct qdf_dp_trace_proto_buf buf;
 	int buf_size = sizeof(struct qdf_dp_trace_proto_buf);
@@ -2359,8 +2393,8 @@ void qdf_dp_trace_proto_pkt(enum QDF_DP_TRACE_ID code,
 	memcpy(&buf.da, da, QDF_NET_ETH_LEN);
 	memcpy(&buf.cmn_info, cmn_info, sizeof(*cmn_info));
 	buf.dir = dir;
-	qdf_dp_add_record(code, pdev_id,
-			  (uint8_t *)&buf, buf_size, NULL, 0, print);
+	qdf_dp_add_record(code, pdev_id, (uint8_t *)&buf, buf_size, NULL, 0,
+			  print, pkt_type, conn_log_status);
 }
 qdf_export_symbol(qdf_dp_trace_proto_pkt);
 
@@ -2530,8 +2564,12 @@ void qdf_dp_trace_ptr(qdf_nbuf_t nbuf, enum QDF_DP_TRACE_ID code,
 	int buf_size = sizeof(struct qdf_dp_trace_ptr_buf);
 	enum qdf_proto_type pkt_type;
 	enum qdf_proto_subtype subtype;
+	enum qdf_dp_conn_log_status conn_log_status;
 
 	pkt_type = qdf_dp_get_pkt_proto_type(nbuf);
+	conn_log_status = (pkt_type == QDF_PROTO_TYPE_MAX) ?
+			  QDF_DP_CONN_LOG_SKIP_PKT_TYPE :
+			  QDF_DP_CONN_LOG_SKIP_PROTO_BITMAP;
 	if ((code == QDF_DP_TRACE_FREE_PACKET_PTR_RECORD ||
 	     code == QDF_DP_TRACE_LI_DP_FREE_PACKET_PTR_RECORD) &&
 	    qdf_dp_proto_log_enable_check(pkt_type, qdf_tx_status)) {
@@ -2540,11 +2578,12 @@ void qdf_dp_trace_ptr(qdf_nbuf_t nbuf, enum QDF_DP_TRACE_ID code,
 					 nbuf->data + QDF_NBUF_DEST_MAC_OFFSET,
 					 pkt_type, subtype,
 					 QDF_TX, msdu_id, qdf_tx_status);
-		qdf_fill_wlan_connectivity_log(pkt_type, subtype,
-					       QDF_TX, qdf_tx_status, op_mode,
-					       QDF_NBUF_CB_TX_VDEV_CTX(nbuf),
-					       nbuf,
-					       qdf_nbuf_tx_get_band(nbuf));
+		conn_log_status =
+			qdf_fill_wlan_connectivity_log(pkt_type, subtype,
+						       QDF_TX, qdf_tx_status,
+						       op_mode,
+						       QDF_NBUF_CB_TX_VDEV_CTX(nbuf),
+						       nbuf, false);
 		qdf_log_pkt_cstats(nbuf->data + QDF_NBUF_SRC_MAC_OFFSET,
 				   nbuf->data + QDF_NBUF_DEST_MAC_OFFSET,
 				   pkt_type, subtype, QDF_TX,
@@ -2562,7 +2601,8 @@ void qdf_dp_trace_ptr(qdf_nbuf_t nbuf, enum QDF_DP_TRACE_ID code,
 	buf.msdu_id = msdu_id;
 	buf.status = buf_arg_status;
 	qdf_dp_add_record(code, pdev_id, (uint8_t *)&buf, buf_size, NULL, 0,
-			  QDF_NBUF_CB_DP_TRACE_PRINT(nbuf));
+			  QDF_NBUF_CB_DP_TRACE_PRINT(nbuf), pkt_type,
+			  conn_log_status);
 }
 qdf_export_symbol(qdf_dp_trace_ptr);
 
@@ -2591,7 +2631,9 @@ void qdf_dp_trace_data_pkt(qdf_nbuf_t nbuf, uint8_t pdev_id,
 			  nbuf ? qdf_nbuf_data(nbuf) : NULL,
 			  nbuf ? nbuf->len - nbuf->data_len : 0,
 			  (uint8_t *)&buf, sizeof(struct qdf_dp_trace_data_buf),
-			  (nbuf) ? QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) : false);
+			  (nbuf) ? QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) : false,
+			  QDF_DP_PKT_TYPE_INVALID,
+			  QDF_DP_CONN_LOG_SKIP_INVALID);
 }
 
 qdf_export_symbol(qdf_dp_trace_data_pkt);
@@ -2659,7 +2701,9 @@ void qdf_dp_trace(qdf_nbuf_t nbuf, enum QDF_DP_TRACE_ID code, uint8_t pdev_id,
 
 	qdf_dp_add_record(code, pdev_id, nbuf ? qdf_nbuf_data(nbuf) : NULL,
 			  size, NULL, 0,
-			  (nbuf) ? QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) : false);
+			  (nbuf) ? QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) : false,
+			  QDF_DP_PKT_TYPE_INVALID,
+			  QDF_DP_CONN_LOG_SKIP_INVALID);
 }
 qdf_export_symbol(qdf_dp_trace);
 

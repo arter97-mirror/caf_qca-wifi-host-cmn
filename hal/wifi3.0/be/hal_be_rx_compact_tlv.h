@@ -24,8 +24,14 @@
 #ifdef BE_NON_AP_COMPACT_TLV
 /* 7 qwords for rx_mpdu_start without tag */
 #define MPDU_START_WMASK 0x07B8
+
+#ifdef DRIVER_PASSTHRU_MODE
+/* 9 qwords for rx_msdu_end without tag */
+#define MSDU_END_WMASK 0x155CA
+#else
 /* 8 qwords for rx_msdu_end without tag */
 #define MSDU_END_WMASK 0x115CA
+#endif
 
 #ifndef WIFI_BIT_ORDER_BIG_ENDIAN
 struct rx_msdu_end_compact {
@@ -128,6 +134,11 @@ struct rx_msdu_end_compact {
                       msdu_done_copy                                          :  1;
 #endif
              uint32_t flow_id_toeplitz                                        : 32;
+#ifdef DRIVER_PASSTHRU_MODE
+	/* qword-13 */
+             uint32_t ppdu_start_timestamp_31_0                               : 32;
+             uint32_t toeplitz_hash_2_or_4                                    : 32;
+#endif
 	/* qword-15 */
              uint32_t first_mpdu                                              :  1,
                       reserved_30a                                            :  1,
@@ -342,6 +353,11 @@ struct rx_msdu_end_compact {
                       user_rssi                                               :  8;
 #endif
              uint32_t flow_id_toeplitz                                        : 32;
+#ifdef DRIVER_PASSTHRU_MODE
+        /* qword-13 */
+             uint32_t toeplitz_hash_2_or_4                                    : 32;
+             uint32_t ppdu_start_timestamp_31_0                               : 32;
+#endif
 	/* qword-15 */
              uint32_t fcs_err                                                 :  1,
                       unencrypted_frame_err                                   :  1,

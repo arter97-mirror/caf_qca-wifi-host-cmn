@@ -4158,4 +4158,68 @@ dp_rx_page_pool_get_buf_params(size_t *buf_size, int *align)
 }
 #endif
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
+
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * dp_rx_err_handle_passthru_msdu_buf() - Process passthru msdu buffers received
+ * on rx err ring
+ * @soc: DP SoC handle
+ * @ring_desc: error ring descriptor
+ *
+ * This function processes passthru msdu buffers received on rx err ring.
+ *
+ * Return: lmac id
+ */
+int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
+				       hal_ring_desc_t ring_desc);
+
+/**
+ * dp_rx_deliver_raw_passthru() - Deliver raw passthru packets to stack
+ * @soc: DP SoC handle
+ * @vdev: dp vdev handle
+ * @txrx_peer: txrx peer handle
+ * @nbuf: network buffer
+ *
+ * This function processes passthru msdu buffers and delivers them to stack
+ *
+ * Return: 0 on success else non-zero value on failure
+ */
+int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf);
+
+/**
+ * dp_rx_is_passthru_msdu_buf() - check whether the received msdu buffer is
+ *  from a passthru peer or not.
+ * @soc: DP SoC handle
+ * @mpdu_desc_info: mpdu descriptor information
+ *
+ * This function checks whether the received msdu buffer is from a passthru
+ * peer or not.
+ *
+ * Return: true for success else false.
+ */
+bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
+				struct hal_rx_mpdu_desc_info *mpdu_desc_info);
+#else
+static inline
+int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
+				       hal_ring_desc_t ring_desc)
+{
+	return MAX_PDEV_CNT;
+}
+
+static inline
+int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf)
+{
+	return -EINVAL;
+}
+
+static inline
+bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
+				struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+{
+	return false;
+}
+#endif
 #endif /* _DP_RX_H */

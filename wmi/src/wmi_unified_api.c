@@ -38,7 +38,7 @@ static const wmi_host_channel_width mode_to_width[WMI_HOST_MODE_MAX] = {
 	[WMI_HOST_MODE_11AC_VHT40_2G] = WMI_HOST_CHAN_WIDTH_40,
 	[WMI_HOST_MODE_11AC_VHT80]    = WMI_HOST_CHAN_WIDTH_80,
 	[WMI_HOST_MODE_11AC_VHT80_2G] = WMI_HOST_CHAN_WIDTH_80,
-#if CONFIG_160MHZ_SUPPORT
+#ifdef CONFIG_160MHZ_SUPPORT
 	[WMI_HOST_MODE_11AC_VHT80_80] = WMI_HOST_CHAN_WIDTH_80P80,
 	[WMI_HOST_MODE_11AC_VHT160]   = WMI_HOST_CHAN_WIDTH_160,
 #endif
@@ -4360,5 +4360,30 @@ void *wmi_extract_cached_scan_report_ev_params(wmi_unified_t wmi_handle,
 									     ev_data,
 									     data_len);
 	return NULL;
+}
+#endif
+
+#ifdef DRIVER_PASSTHRU_MODE
+QDF_STATUS
+wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
+				       struct vdev_ch_hop_sched_params *params)
+{
+	if (wmi_handle->ops->send_vdev_ch_hop_sched_cmd)
+		return wmi_handle->ops->send_vdev_ch_hop_sched_cmd(wmi_handle,
+								   params);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif
+
+#if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
+QDF_STATUS wmi_unified_ocb_get_tsf_timer(struct wmi_unified *wmi_hdl,
+					 struct ocb_get_tsf_timer_param *req)
+{
+	if (wmi_hdl->ops->send_ocb_get_tsf_timer_cmd)
+		return wmi_hdl->ops->send_ocb_get_tsf_timer_cmd(wmi_hdl,
+								req->vdev_id);
+
+	return QDF_STATUS_E_FAILURE;
 }
 #endif

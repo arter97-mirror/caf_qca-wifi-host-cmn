@@ -1601,6 +1601,7 @@ enum cdp_pdev_param_type {
  * @cdp_tx_vdev_nss_support: Vdev Tx NSS report support
  * @pkt_info.peer_id: ID of the peer
  * @pkt_info.pkts: packet count
+ * @cdp_passthru_ampdu_support: passthru ampdu support
  */
 typedef union cdp_config_param_t {
 	/* peer params */
@@ -1736,6 +1737,7 @@ typedef union cdp_config_param_t {
 		struct cdp_pkt_info pkts;
 	} pkt_info;
 	bool cdp_dyn_resource_mgr_support;
+	bool cdp_passthru_ampdu_support;
 } cdp_config_param_type;
 
 /**
@@ -1928,6 +1930,7 @@ enum cdp_vdev_param_type {
  * @CDP_SAWF_MSDUQ_RECLAIM_SUPPORT: To initiate msduq reclaim related functions
  * @CDP_VDEV_TX_NSS_SUPPORT: FW Support vdev Tx NSS command
  * @CDP_DYN_RESOURCE_MGR_SUPPORT: Dynamic RX buffer allocation support
+ * @CDP_CFG_PASSTHRU_AMPDU_SUPPORT: Passthru ampdu support
  */
 enum cdp_psoc_param_type {
 	CDP_ENABLE_RATE_STATS,
@@ -1967,6 +1970,7 @@ enum cdp_psoc_param_type {
 #endif
 	CDP_VDEV_TX_NSS_SUPPORT,
 	CDP_DYN_RESOURCE_MGR_SUPPORT,
+	CDP_CFG_PASSTHRU_AMPDU_SUPPORT,
 };
 
 #ifdef CONFIG_AP_PLATFORM
