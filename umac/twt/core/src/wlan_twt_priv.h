@@ -110,6 +110,10 @@ struct twt_psoc_priv_obj {
  * @peer_macaddr: Peer mac address
  * @is_ps_disabled: Whether power save is disabled or not
  * @next_action: next action of TWT worker queue
+ * @retry_count: number of times the deferred TWT work has been rescheduled
+ * @setup_params: cached TWT add dialog params for a deferred setup retry
+ *                scheduled on the TWT worker queue when the setup request
+ *                arrived while a scan/ROC/roam was in progress
  */
 struct twt_vdev_priv_obj {
 	bool twt_wait_for_notify;
@@ -117,6 +121,8 @@ struct twt_vdev_priv_obj {
 	struct qdf_mac_addr peer_macaddr;
 	bool is_ps_disabled;
 	enum HOST_TWT_NEXT_WORK_ACTION next_action;
+	uint32_t retry_count;
+	struct twt_add_dialog_param setup_params;
 };
 
 /**

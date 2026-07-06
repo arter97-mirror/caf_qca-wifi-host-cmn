@@ -960,9 +960,11 @@ struct twt_notify_event_param {
 /**
  * enum HOST_TWT_NEXT_WORK_ACTION - next action of TWT worker thread
  * @HOST_TWT_SEND_DELETE_CMD: Send TWT delete command request
+ * @HOST_TWT_SEND_ADD_CMD: Send TWT add (setup) command request
  */
 enum HOST_TWT_NEXT_WORK_ACTION {
 	HOST_TWT_SEND_DELETE_CMD = 1,
+	HOST_TWT_SEND_ADD_CMD = 2,
 };
 
 /**

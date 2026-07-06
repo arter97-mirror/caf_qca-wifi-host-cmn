@@ -25,6 +25,7 @@
 #define _WLAN_OBJMGR_VDEV_OBJ_H_
 
 #include "qdf_atomic.h"
+#include "qdf_delayed_work.h"
 #include "qdf_list.h"
 #include "qdf_lock.h"
 #include "qdf_types.h"
@@ -506,7 +507,7 @@ struct wlan_objmgr_vdev_objmgr {
  * @obj_state:      VDEV object state
  * @vdev_lock:      VDEV lock
  * @mlo_dev_ctx:    MLO device context
- * @twt_work:	    TWT work
+ * @twt_work:	    TWT delayed work
  * @is_ap_suspend:	AP suspend state
  */
 struct wlan_objmgr_vdev {
@@ -522,7 +523,7 @@ struct wlan_objmgr_vdev {
 	struct wlan_mlo_dev_context *mlo_dev_ctx;
 #endif
 #ifdef WLAN_SUPPORT_TWT
-	qdf_work_t twt_work;
+	struct qdf_delayed_work twt_work;
 #endif
 	qdf_atomic_t is_ap_suspend;
 };
