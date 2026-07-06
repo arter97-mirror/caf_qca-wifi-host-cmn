@@ -2053,10 +2053,6 @@ void qdf_mem_multi_pages_alloc(qdf_device_t osdev,
 				(pages->page_size * page_idx);
 			dma_pages->page_v_addr_end =
 				dma_pages->page_v_addr_start + pages->page_size;
-			qdf_err("\n[page_v_addr_start][0x%pK] [page_v_addr_end][0x%pK] [page_p_addr][0x%x]\n",
-					dma_pages->page_v_addr_start,
-					dma_pages->page_v_addr_end,
-					dma_pages->page_p_addr);
 			dma_pages++;
 		}
 		pages->cacheable_pages = NULL;
