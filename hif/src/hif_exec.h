@@ -99,7 +99,7 @@ struct hif_exec_context {
 	uint64_t tstamp;
 
 	uint8_t cpu;
-	struct qca_napi_stat stats[NR_CPUS];
+	struct qca_napi_stat stats[QDF_MAX_AVAILABLE_CPU];
 	bool inited;
 	bool configured;
 	bool irq_requested;

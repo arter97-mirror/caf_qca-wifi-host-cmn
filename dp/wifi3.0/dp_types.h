@@ -1403,7 +1403,7 @@ struct dp_soc_stats {
 		} err;
 
 		/* packet count per core - per ring */
-		uint64_t ring_packets[NR_CPUS][MAX_REO_DEST_RINGS];
+		uint64_t ring_packets[QDF_MAX_AVAILABLE_CPU][MAX_REO_DEST_RINGS];
 	} rx;
 
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
