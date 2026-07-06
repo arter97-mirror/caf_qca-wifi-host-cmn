@@ -3885,6 +3885,7 @@ struct wmi_unified {
 
 	qdf_atomic_t is_target_suspended;
 	qdf_atomic_t is_target_suspend_acked;
+	qdf_atomic_t is_init_cmd_sent;
 #ifdef WLAN_FEATURE_WMI_SEND_RECV_QMI
 	bool is_qmi_stats_enabled;
 #endif
