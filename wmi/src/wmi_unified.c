@@ -3269,6 +3269,8 @@ void *wmi_unified_get_pdev_handle(struct wmi_soc *soc, uint32_t pdev_idx)
 		wmi_handle->evt_phy_id_map = soc->evt_phy_id_map;
 		wmi_interface_logging_init(wmi_handle, pdev_idx);
 		qdf_atomic_init(&wmi_handle->is_target_suspended);
+		qdf_atomic_init(&wmi_handle->is_target_suspend_acked);
+		qdf_atomic_init(&wmi_handle->is_init_cmd_sent);
 		qdf_atomic_init(&wmi_handle->is_wow_enable_ack_failed);
 		wmi_handle->target_type = soc->target_type;
 		wmi_handle->wmi_max_cmds = soc->wmi_max_cmds;
@@ -3408,6 +3410,7 @@ void *wmi_unified_attach(void *scn_handle,
 	qdf_atomic_init(&wmi_handle->pending_cmds);
 	qdf_atomic_init(&wmi_handle->is_target_suspended);
 	qdf_atomic_init(&wmi_handle->is_target_suspend_acked);
+	qdf_atomic_init(&wmi_handle->is_init_cmd_sent);
 	qdf_atomic_init(&wmi_handle->num_stats_over_qmi);
 	qdf_atomic_init(&wmi_handle->is_wow_enable_ack_failed);
 	wmi_runtime_pm_init(wmi_handle);
@@ -3844,6 +3847,18 @@ bool wmi_is_target_suspend_acked(struct wmi_unified *wmi_handle)
 	return qdf_atomic_read(&wmi_handle->is_target_suspend_acked);
 }
 qdf_export_symbol(wmi_is_target_suspend_acked);
+
+void wmi_set_init_cmd_sent(struct wmi_unified *wmi_handle)
+{
+	qdf_atomic_set(&wmi_handle->is_init_cmd_sent, 1);
+}
+qdf_export_symbol(wmi_set_init_cmd_sent);
+
+bool wmi_is_init_cmd_sent(struct wmi_unified *wmi_handle)
+{
+	return !!qdf_atomic_read(&wmi_handle->is_init_cmd_sent);
+}
+qdf_export_symbol(wmi_is_init_cmd_sent);
 
 #ifdef WLAN_FEATURE_WMI_SEND_RECV_QMI
 void wmi_set_qmi_stats(wmi_unified_t wmi_handle, bool val)

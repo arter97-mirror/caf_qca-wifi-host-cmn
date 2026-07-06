@@ -574,6 +574,22 @@ void wmi_set_target_suspend_acked(wmi_unified_t wmi_handle, bool val);
 bool wmi_is_target_suspended(struct wmi_unified *wmi_handle);
 
 /**
+ * wmi_set_init_cmd_sent() - mark WMI init command as sent
+ * @wmi_handle: handle to WMI.
+ *
+ * Set the init command sent flag on the WMI handle.
+ */
+void wmi_set_init_cmd_sent(struct wmi_unified *wmi_handle);
+
+/**
+ * wmi_is_init_cmd_sent() - check if WMI init command has been sent
+ * @wmi_handle: handle to WMI.
+ *
+ * Return: true if WMI init command was sent successfully, else false.
+ */
+bool wmi_is_init_cmd_sent(struct wmi_unified *wmi_handle);
+
+/**
  * wmi_is_target_suspend_acked() - WMI API to check target suspend command is
  *                                 acked or not
  * @wmi_handle: handle to WMI.
