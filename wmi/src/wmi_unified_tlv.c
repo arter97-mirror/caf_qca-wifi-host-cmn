@@ -798,6 +798,8 @@ static const uint32_t vdev_param_tlv[] = {
 	PARAM_MAP(vdev_param_aux_l_disable, VDEV_PARAM_AUX_L_DISABLE),
 	PARAM_MAP(vdev_param_2x_ldpc, VDEV_PARAM_2xLDPC),
 	PARAM_MAP(vdev_param_reject_addba, VDEV_PARAM_REJECT_ADDBA),
+	PARAM_MAP(vdev_param_disable_oui_bpcc_wow_wake,
+		  VDEV_PARAM_DISABLE_OUI_BPCC_WOW_WAKE),
 };
 #endif
 

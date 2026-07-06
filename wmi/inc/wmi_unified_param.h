@@ -6837,7 +6837,8 @@ typedef enum {
 	VDEV_PARAM(vdev_param_aux_l_disable, VDEV_PARAM_AUX_L_DISABLE),
 	VDEV_PARAM(vdev_param_2x_ldpc, VDEV_PARAM_2xLDPC),
 	VDEV_PARAM(vdev_param_reject_addba, VDEV_PARAM_REJECT_ADDBA),
-
+	VDEV_PARAM(vdev_param_disable_oui_bpcc_wow_wake,
+		   VDEV_PARAM_DISABLE_OUI_BPCC_WOW_WAKE),
 	vdev_param_max,
 } wmi_conv_vdev_param_id;
 
