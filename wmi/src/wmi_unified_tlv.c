@@ -25689,6 +25689,22 @@ struct wmi_ops tlv_ops =  {
 #endif
 };
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+static void populate_tlv_events_id_nan_standard(WMI_EVT_ID *event_ids)
+{
+	event_ids[wmi_nan_disable_rsp_event_id] =
+		WMI_NAN_DISABLE_CNF_EVENTID;
+	event_ids[wmi_nan_disable_ind_event_id] =
+		WMI_NAN_DISABLE_IND_EVENTID;
+	event_ids[wmi_nan_enable_rsp_event_id] =
+		WMI_NAN_ENABLE_RSP_EVENTID;
+}
+#else
+static inline void populate_tlv_events_id_nan_standard(WMI_EVT_ID *event_ids)
+{
+}
+#endif
+
 #ifdef WLAN_FEATURE_11BE_MLO
 static void populate_tlv_events_id_mlo(WMI_EVT_ID *event_ids)
 {
@@ -25929,6 +25945,7 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 
 	/* NAN Event */
 	event_ids[wmi_nan_event_id] = WMI_NAN_EVENTID;
+	populate_tlv_events_id_nan_standard(event_ids);
 
 	/* LPI Event */
 	event_ids[wmi_lpi_result_event_id] = WMI_LPI_RESULT_EVENTID;

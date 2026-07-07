@@ -5661,6 +5661,11 @@ typedef enum {
 	wmi_oem_meas_report_event_id,
 	wmi_oem_report_event_id,
 	wmi_nan_event_id,
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+	wmi_nan_disable_rsp_event_id,
+	wmi_nan_disable_ind_event_id,
+	wmi_nan_enable_rsp_event_id,
+#endif
 	wmi_wow_wakeup_host_event_id,
 	wmi_gtk_offload_status_event_id,
 	wmi_gtk_rekey_fail_event_id,

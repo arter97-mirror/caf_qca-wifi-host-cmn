@@ -45,6 +45,59 @@ QDF_STATUS wmi_unified_nan_req_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_nan_disable_req_cmd(wmi_unified_t wmi_handle,
 					   struct nan_disable_req *nan_req);
 
+#if defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * wmi_unified_nan_stop_req_cmd() - to send nan stop request to target
+ * @wmi_handle: wmi handle
+ * @nan_req: pointer to NAN stop request structure
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
+					struct nan_disable_req *nan_req);
+
+/**
+ * wmi_unified_nan_start_req() - Request to start NAN
+ * @wmi_handle: wmi handle
+ * @nan_req: Pointer to NAN enable request structure
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
+				     struct nan_enable_req *nan_req);
+
+/**
+ * wmi_unified_nan_change_conf_req() - Request to change NAN configuration
+ * @wmi_handle: wmi handle
+ * @nan_req: Pointer to NAN change config request structure
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wmi_unified_nan_change_conf_req(wmi_unified_t wmi_handle,
+					   struct nan_change_conf_req *nan_req);
+#else
+static inline QDF_STATUS
+wmi_unified_nan_stop_req_cmd(wmi_unified_t wmi_handle,
+			     struct nan_disable_req *nan_req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_unified_nan_start_req(wmi_unified_t wmi_handle,
+			  struct nan_enable_req *nan_req)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline QDF_STATUS
+wmi_unified_nan_change_conf_req(wmi_unified_t wmi_handle,
+				struct nan_change_conf_req *nan_req)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 /**
  * wmi_unified_ndp_initiator_req_cmd_send - api to send initiator request to FW
  * @wmi_handle: wmi handle
@@ -206,6 +259,45 @@ QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
 				     struct nan_event_params *temp_evt_params,
 				     uint8_t **nan_msg_buf,
 				     uint32_t nan_config);
+
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE)
+/**
+ * wmi_extract_nan_disable_rsp_event - extract nan disable rsp event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to the event buffer
+ * @temp_evt_params: Pointer to a temporary parameters structure to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS wmi_extract_nan_disable_rsp_event(wmi_unified_t wmi_handle,
+				     void *evt_buf,
+				     struct nan_event_params *temp_evt_params);
+
+/**
+ * wmi_extract_nan_disable_ind_event - extract nan disable ind event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to the event buffer
+ * @temp_evt_params: Pointer to a temporary parameters structure to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS
+wmi_extract_nan_disable_ind_event(wmi_unified_t wmi_handle, void *evt_buf,
+				  struct nan_event_params *temp_evt_params);
+
+/**
+ * wmi_extract_nan_enable_rsp_event - api to extract nan enable rsp event
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to the event buffer
+ * @evt_params: Pointer to a event parameters to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS wmi_extract_nan_enable_rsp_event(
+				wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct nan_enable_rsp_params *evt_params);
+#endif
 
 /**
  * wmi_extract_ndp_host_event - api to extract ndp event from event buffer
