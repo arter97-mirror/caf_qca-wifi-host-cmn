@@ -913,6 +913,32 @@ void hif_ce_desc_record_rx_paddr(struct hif_softc *scn,
 }
 #endif /* HIF_RECORD_PADDR */
 
+#if defined(HIF_CE_TX_DESC_DATA_DEBUG)
+/**
+ * hif_ce_tx_desc_data_record() - record CE3 tx completion debug data
+ * @scn: hif_softc
+ * @dma_addr: dma address reaped from the CE3 source descriptor
+ * @nbuf: skb posted to CE3 for tx
+ *
+ * Records the dma address, the physical address it resolves to, the
+ * first 8 bytes of skb->data, and separately the first 8 bytes read
+ * from the VA derived from that physical address, into a dedicated
+ * circular history independent of hif_ce_desc_event.
+ *
+ * Return: none
+ */
+void hif_ce_tx_desc_data_record(struct hif_softc *scn,
+				qdf_dma_addr_t dma_addr,
+				qdf_nbuf_t nbuf);
+#else
+static inline
+void hif_ce_tx_desc_data_record(struct hif_softc *scn,
+				qdf_dma_addr_t dma_addr,
+				qdf_nbuf_t nbuf)
+{
+}
+#endif /* HIF_CE_TX_DESC_DATA_DEBUG */
+
 static inline int ce_ring_try_aquire_lock(struct CE_handle *handle)
 {
 	struct CE_state *ce_state = (struct CE_state *)handle;
