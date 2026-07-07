@@ -169,6 +169,61 @@ void hif_ce_desc_record_rx_paddr(struct hif_softc *scn,
 }
 #endif /* HIF_RECORD_RX_PADDR */
 
+#if defined(HIF_CE_TX_DESC_DATA_DEBUG)
+/**
+ * hif_ce_tx_desc_data_next_record_index() - get the next record index into
+ *  the CE tx desc data debug history
+ * @table_index: atomic index variable to increment
+ *
+ * HIF_CE_TX_DESC_DATA_HIST_MAX is a power of 2, so masking the
+ * incremented value with (HIF_CE_TX_DESC_DATA_HIST_MAX - 1) always
+ * yields a result in [0, HIF_CE_TX_DESC_DATA_HIST_MAX), regardless of
+ * how large table_index grows or wraps around.
+ *
+ * Return: next record index in [0, HIF_CE_TX_DESC_DATA_HIST_MAX)
+ */
+static int hif_ce_tx_desc_data_next_record_index(qdf_atomic_t *table_index)
+{
+	return (((uint32_t)qdf_atomic_inc_return(table_index) - 1) &
+		(HIF_CE_TX_DESC_DATA_HIST_MAX - 1));
+}
+
+void hif_ce_tx_desc_data_record(struct hif_softc *scn,
+				qdf_dma_addr_t dma_addr,
+				qdf_nbuf_t nbuf)
+{
+	struct ce_tx_desc_data_hist *hist = &scn->ce_tx_desc_data_hist;
+	struct ce_tx_desc_data_event *event;
+	int record_index = hif_ce_tx_desc_data_next_record_index(&hist->index);
+	qdf_dma_addr_t pa;
+	void *va;
+
+	event = &hist->event[record_index];
+
+	qdf_mem_zero(event, sizeof(*event));
+
+	event->dma_addr = dma_addr;
+	pa = qdf_mem_paddr_from_dmaaddr(scn->qdf_dev, dma_addr);
+	event->pa = pa;
+
+	if (nbuf && qdf_nbuf_len(nbuf) >= sizeof(event->skb_data8))
+		qdf_mem_copy(event->skb_data8, qdf_nbuf_data(nbuf),
+			     sizeof(event->skb_data8));
+
+	/*
+	 * qdf_mem_paddr_from_dmaaddr() falls back to returning the dma_addr
+	 * as-is if it fails to resolve the smmu domain, so pa == dma_addr
+	 * indicates the lookup did not actually resolve a physical
+	 * address. Skip the VA derivation/read in that case.
+	 */
+	if (pa != dma_addr) {
+		va = phys_to_virt(pa);
+
+		qdf_mem_copy(event->va_data8, va, sizeof(event->va_data8));
+	}
+}
+#endif /* HIF_CE_TX_DESC_DATA_DEBUG */
+
 void hif_display_latest_desc_hist(struct hif_opaque_softc *hif_ctx)
 {
 	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);

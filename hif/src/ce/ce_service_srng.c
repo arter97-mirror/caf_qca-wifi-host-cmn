@@ -604,6 +604,7 @@ ce_completed_send_next_nolock_srng(struct CE_state *CE_state,
 	unsigned int swi = src_ring->sw_index;
 	struct hif_softc *scn = CE_state->scn;
 	struct ce_srng_src_desc *src_desc;
+	void *ctx = NULL;
 
 	if (hal_srng_access_start(scn->hal_soc, src_ring->srng_ctx)) {
 		status = QDF_STATUS_E_FAILURE;
@@ -628,6 +629,12 @@ ce_completed_send_next_nolock_srng(struct CE_state *CE_state,
 		*nbytesp = src_desc->nbytes;
 		*transfer_idp = src_desc->meta_data;
 		*toeplitz_hash_result = 0; /*src_desc->toeplitz_hash_result;*/
+
+		if (CE_state->id == CE_ID_3) {
+			ctx = src_ring->per_transfer_context[swi];
+			hif_ce_tx_desc_data_record(scn, *bufferp,
+						   (qdf_nbuf_t)ctx);
+		}
 
 		if (per_CE_contextp)
 			*per_CE_contextp = CE_state->send_context;
