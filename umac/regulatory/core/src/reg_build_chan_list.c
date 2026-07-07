@@ -1089,6 +1089,7 @@ static void reg_modify_chan_list_for_band(
 	enum channel_enum chan_enum;
 	struct regulatory_channel *chan_list;
 	uint32_t band_bitmap;
+	bool enable_social_channels;
 
 	band_bitmap = pdev_priv_obj->band_capability;
 	if (!band_bitmap)
@@ -1107,10 +1108,15 @@ static void reg_modify_chan_list_for_band(
 	}
 
 	if (!(band_bitmap & BIT(REG_BAND_2G))) {
-		reg_debug("disabling 2G");
+		enable_social_channels =
+			pdev_priv_obj->enable_social_channels_on_2g_disable;
+
+		reg_debug("disabling 2G, social channels enabled: %d",
+			  enable_social_channels);
 		for (chan_enum = MIN_24GHZ_CHANNEL;
 		     chan_enum <= MAX_24GHZ_CHANNEL; chan_enum++) {
-			if (reg_is_social_channel(
+			if (enable_social_channels &&
+			    reg_is_social_channel(
 				chan_list[chan_enum].center_freq) &&
 			    reg_enable_social_channel(chan_list, chan_enum))
 				continue;

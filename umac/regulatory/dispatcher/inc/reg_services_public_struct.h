@@ -1647,6 +1647,8 @@ enum restart_beaconing_on_ch_avoid_rule {
  * @is_afc_reg_noaction: Whether no action to AFC power event
  * @sta_sap_scc_on_indoor_channel: Value of sap+sta scc on indoor support
  * @p2p_indoor_ch_support: Allow P2P GO in indoor channels
+ * @enable_social_channels_on_2g_disable: Enable 2.4 GHz social channels
+ * (2412/2437/2462) for P2P/NAN discovery when 2.4 GHz band is disabled
  */
 struct reg_config_vars {
 	uint32_t enable_11d_support;
@@ -1673,6 +1675,7 @@ struct reg_config_vars {
 #endif
 	bool sta_sap_scc_on_indoor_channel;
 	bool p2p_indoor_ch_support;
+	bool enable_social_channels_on_2g_disable;
 };
 
 /**

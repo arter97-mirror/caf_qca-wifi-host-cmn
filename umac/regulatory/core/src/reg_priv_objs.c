@@ -129,6 +129,7 @@ QDF_STATUS wlan_regulatory_psoc_obj_created_notification(
 	soc_reg_obj->set_fcc_channel = false;
 	soc_reg_obj->p2p_indoor_ch_support = false;
 	soc_reg_obj->disable_unii_1_2a = false;
+	soc_reg_obj->enable_social_channels_on_2g_disable = false;
 
 	for (i = 0; i < MAX_STA_VDEV_CNT; i++)
 		soc_reg_obj->vdev_ids_11d[i] = INVALID_VDEV_ID;
@@ -406,6 +407,8 @@ QDF_STATUS wlan_regulatory_pdev_obj_created_notification(
 		psoc_priv_obj->chan_list_recvd[phy_id];
 	pdev_priv_obj->disable_unii_1_2a =
 		psoc_priv_obj->disable_unii_1_2a;
+	pdev_priv_obj->enable_social_channels_on_2g_disable =
+		psoc_priv_obj->enable_social_channels_on_2g_disable;
 
 	status = wlan_objmgr_pdev_component_obj_attach(
 			pdev, WLAN_UMAC_COMP_REGULATORY, pdev_priv_obj,

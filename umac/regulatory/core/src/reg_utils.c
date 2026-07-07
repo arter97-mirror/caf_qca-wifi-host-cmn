@@ -1256,6 +1256,8 @@ static void reg_change_pdev_for_config(struct wlan_objmgr_psoc *psoc,
 		psoc_priv_obj->sta_sap_scc_on_indoor_channel;
 	pdev_priv_obj->p2p_indoor_ch_support =
 		psoc_priv_obj->p2p_indoor_ch_support;
+	pdev_priv_obj->enable_social_channels_on_2g_disable =
+		psoc_priv_obj->enable_social_channels_on_2g_disable;
 
 	reg_compute_pdev_current_chan_list(pdev_priv_obj);
 
@@ -1320,6 +1322,8 @@ QDF_STATUS reg_set_config_vars(struct wlan_objmgr_psoc *psoc,
 		config_vars.sta_sap_scc_on_indoor_channel;
 	psoc_priv_obj->p2p_indoor_ch_support =
 		config_vars.p2p_indoor_ch_support;
+	psoc_priv_obj->enable_social_channels_on_2g_disable =
+		config_vars.enable_social_channels_on_2g_disable;
 
 	reg_set_afc_vars(psoc_priv_obj, &config_vars);
 
