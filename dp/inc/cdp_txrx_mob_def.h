@@ -387,6 +387,8 @@ struct ol_tx_sched_wrr_ac_specs_t {
  * @del_ack_pkt_count: the maximum number of replaced tcp ack frames
  * @ac_specs:
  * @gro_enable:
+ * @tc_based_dyn_gro_enable: enable TC rule based dynamic control of GRO
+ * @tc_ingress_prio: ingress tc filter priority to match for dynamic GRO
  * @tso_enable:
  * @lro_enable:
  * @sg_enable:
@@ -423,6 +425,10 @@ struct txrx_pdev_cfg_param_t {
 
 	struct ol_tx_sched_wrr_ac_specs_t ac_specs[TX_WMM_AC_NUM];
 	bool gro_enable;
+#ifdef WLAN_FEATURE_DYNAMIC_RX_AGGREGATION
+	bool tc_based_dyn_gro_enable;
+	uint32_t tc_ingress_prio;
+#endif
 	bool tso_enable;
 	bool lro_enable;
 	bool sg_enable;
