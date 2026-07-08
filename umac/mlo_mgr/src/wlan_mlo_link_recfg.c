@@ -4993,12 +4993,15 @@ mlo_link_recfg_no_common_link_event(void *ctx,
 		break;
 	case WLAN_LINK_RECFG_SM_EV_XMIT_STATUS:
 		/* Handle tx failure */
+		req = (struct mlo_link_recfg_state_req *)event_data;
 		tx_status = (struct link_recfg_tx_result *)event_data;
 		status = tx_status->status;
 		if (QDF_IS_STATUS_ERROR(status)) {
 			mlo_err("error to send frame status %d", status);
 			recfg_ctx->internal_reason_code =
 				link_recfg_tx_failed;
+			if (smd_roam_in_progress(recfg_ctx))
+				smd_roam_prep_fail(recfg_ctx, req);
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_RX_RSP:
@@ -5012,9 +5015,12 @@ mlo_link_recfg_no_common_link_event(void *ctx,
 		}
 		break;
 	case WLAN_LINK_RECFG_SM_EV_RX_RSP_TIMEOUT:
+		req = (struct mlo_link_recfg_state_req *)event_data;
 		status = QDF_STATUS_E_TIMEOUT;
 		recfg_ctx->internal_reason_code =
 			link_recfg_rsp_timeout;
+		if (smd_roam_in_progress(recfg_ctx))
+			smd_roam_prep_fail(recfg_ctx, req);
 		mlo_link_recfg_abort_link_add_no_comm(recfg_ctx);
 		break;
 	default:
