@@ -3035,7 +3035,9 @@ mlo_link_recfg_del_link_by_inact(
 				force_active_bitmap,
 				force_inactive_bitmap,
 				link_ctrl_f_dont_reschedule_workqueue |
-				link_ctrl_f_link_recfg |
+				(smd_roam_in_progress(recfg_ctx) ?
+				 link_ctrl_f_smd_link_recfg :
+				 link_ctrl_f_link_recfg) |
 				link_ctrl_f_overwrite_active_bitmap |
 				link_ctrl_f_overwrite_inactive_bitmap);
 	else
@@ -3048,7 +3050,9 @@ mlo_link_recfg_del_link_by_inact(
 				force_inactive_bitmap,
 				0,
 				link_ctrl_f_dont_reschedule_workqueue |
-				link_ctrl_f_link_recfg);
+				(smd_roam_in_progress(recfg_ctx) ?
+				 link_ctrl_f_smd_link_recfg :
+				 link_ctrl_f_link_recfg));
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLO_MGR_ID);
 

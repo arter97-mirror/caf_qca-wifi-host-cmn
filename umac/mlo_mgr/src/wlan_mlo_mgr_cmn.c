@@ -30,6 +30,7 @@
 #include <wlan_cfg.h>
 #include "wlan_utility.h"
 #include "wlan_mlo_link_recfg.h"
+#include "wlan_smd_roam.h"
 
 void mlo_get_link_information(struct qdf_mac_addr *mld_addr,
 			      struct mlo_link_info *info)
@@ -708,15 +709,23 @@ mlo_link_set_active(struct wlan_objmgr_psoc *psoc,
 	}
 
 	if (req->ctx.validate_set_mlo_link_cb) {
-		status = req->ctx.validate_set_mlo_link_cb(psoc, param);
-		if (QDF_IS_STATUS_ERROR(status)) {
-			qdf_mem_zero(&rsp_evt, sizeof(rsp_evt));
-			rsp_evt.status = status;
-			if (req->ctx.set_mlo_link_cb)
-				req->ctx.set_mlo_link_cb(req->ctx.vdev,
-							 req->ctx.cb_arg,
-							 &rsp_evt);
-			return status;
+		/*
+		 * Skip the connectivity validator for the SMD roam DEL_LINK
+		 * path. Vdevs are intentionally disconnected/repurposed at
+		 * this point; blocking on "not connected" state would cause
+		 * a spurious abort of the whole roam sequence.
+		 */
+		if (!param->control_flags.set_link_for_smd_recfg) {
+			status = req->ctx.validate_set_mlo_link_cb(psoc, param);
+			if (QDF_IS_STATUS_ERROR(status)) {
+				qdf_mem_zero(&rsp_evt, sizeof(rsp_evt));
+				rsp_evt.status = status;
+				if (req->ctx.set_mlo_link_cb)
+					req->ctx.set_mlo_link_cb(req->ctx.vdev,
+								 req->ctx.cb_arg,
+								 &rsp_evt);
+				return status;
+			}
 		}
 	}
 
@@ -800,7 +809,8 @@ mlo_link_set_resp_link_recfg_handler(struct wlan_objmgr_psoc *psoc,
 
 	if (!wlan_serialization_get_active_cmd(psoc,
 					       wlan_vdev_get_id(vdev),
-					       WLAN_SER_CMD_LINK_RECFG))
+					       WLAN_SER_CMD_LINK_RECFG) &&
+	    !smd_roam_in_progress(recfg_ctx))
 		return;
 
 	mlo_dev_lock_acquire(mlo_dev_ctx);
@@ -1011,7 +1021,8 @@ QDF_STATUS mlo_ser_set_link_req(struct mlo_link_set_active_req *req)
 
 	vdev = req->ctx.vdev;
 	if (req->param.control_flags.set_link_for_recfg) {
-		if (!wlan_serialization_get_active_cmd(
+		if (!req->param.control_flags.set_link_for_smd_recfg &&
+		    !wlan_serialization_get_active_cmd(
 				wlan_vdev_get_psoc(vdev),
 				wlan_vdev_get_id(vdev),
 				WLAN_SER_CMD_LINK_RECFG)) {

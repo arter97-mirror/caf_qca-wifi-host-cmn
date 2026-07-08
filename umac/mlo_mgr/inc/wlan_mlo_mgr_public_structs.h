@@ -1899,6 +1899,9 @@ struct mlo_link_num_param {
  * @dont_reschedule_workqueue: don't reschedule force scc workqueue
  * after set link response
  * @set_link_for_recfg: set link command for link recfg
+ * @set_link_for_smd_recfg: set link command issued from SMD roam path;
+ * WLAN_SER_CMD_LINK_RECFG is not queued in this path so the active-cmd
+ * guard in mlo_ser_set_link_req must be skipped
  */
 struct mlo_control_flags {
 	bool overwrite_force_active_bitmap;
@@ -1908,6 +1911,7 @@ struct mlo_control_flags {
 	uint8_t post_re_evaluate_loops;
 	bool dont_reschedule_workqueue;
 	bool set_link_for_recfg;
+	bool set_link_for_smd_recfg;
 };
 
 /* struct ml_link_force_cmd - force command for links
