@@ -41,6 +41,21 @@
 #define cfr_debug(format, args...) \
 		QDF_TRACE_DEBUG(QDF_MODULE_ID_CFR, format, ## args)
 
+#define cfr_alert_rl(format, args...) \
+		QDF_TRACE_FATAL_RL(QDF_MODULE_ID_CFR, format, ## args)
+
+#define cfr_err_rl(format, args...) \
+		QDF_TRACE_ERROR_RL(QDF_MODULE_ID_CFR, format, ## args)
+
+#define cfr_warn_rl(format, args...) \
+		QDF_TRACE_WARN_RL(QDF_MODULE_ID_CFR, format, ## args)
+
+#define cfr_info_rl(format, args...) \
+		QDF_TRACE_INFO_RL(QDF_MODULE_ID_CFR, format, ## args)
+
+#define cfr_debug_rl(format, args...) \
+		QDF_TRACE_DEBUG_RL(QDF_MODULE_ID_CFR, format, ## args)
+
 #define DBR_EVENT_TIMEOUT_IN_MS_CFR 1
 #define DBR_NUM_RESP_PER_EVENT_CFR 1
 #define MAX_CFR_ENABLED_CLIENTS 10
