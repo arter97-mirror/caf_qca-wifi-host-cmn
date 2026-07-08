@@ -3160,21 +3160,93 @@ void cm_print_candidate_list(qdf_list_t *candidate_list, bool print_updated)
 					     QDF_MAC_ADDR_REF(link[i].link_addr.bytes),
 					     link[i].freq, link[i].link_id,
 					     link[i].is_valid_link);
-		mlme_nofl_debug("Candidate(" QDF_MAC_ADDR_FMT " %s freq %d phy %d rssi %d self_link_id %d): %s bss_score %d ",
-			       QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
-			       scan_entry->entry->ie_list.multi_link_bv ? "MLO" :
-			       "NON MLO",
-			       scan_entry->entry->channel.chan_freq,
-			       scan_entry->entry->phy_mode,
-			       scan_entry->entry->rssi_raw,
-			       scan_entry->entry->ml_info.self_link_id,
-			       log_str,
-			       scan_entry->entry->entry_scores.bss_score);
+		mlme_nofl_debug("Candidate(" QDF_MAC_ADDR_FMT " %s freq %d phy %d rssi %d self_link_id %d num_links %u): %s bss_score %d ",
+				QDF_MAC_ADDR_REF(scan_entry->entry->bssid.bytes),
+				scan_entry->entry->ie_list.multi_link_bv ? "MLO" :
+				"NON MLO",
+				scan_entry->entry->channel.chan_freq,
+				scan_entry->entry->phy_mode,
+				scan_entry->entry->rssi_raw,
+				scan_entry->entry->ml_info.self_link_id,
+				scan_entry->entry->ml_info.num_links,
+				log_str,
+				scan_entry->entry->entry_scores.bss_score);
 		cur_node = next_node;
 		next_node = NULL;
 		memset(log_str, 0, sizeof(*log_str));
 		len = 0;
 	}
+}
+
+/**
+ * cm_build_bssid_link_map() - collect the BSSID set and link-id bitmap of an
+ * MLO candidate entry
+ * @entry:     scan cache entry of the candidate
+ * @bssid_set: output pointer array, must have room for MLD_MAX_LINKS entries
+ * @max_links: maximum number of links (including self) that may be added
+ * @link_map:  output link-id bitmap
+ *
+ * Populates @bssid_set with pointers to the entry's own BSSID followed by
+ * up to (max_links - 1) valid partner BSSIDs, and @link_map with a bitmap
+ * where each bit position represents a link-id covered by this entry (self
+ * + valid partners, capped at max_links). Returns the number of pointers
+ * written to @bssid_set.
+ */
+static uint8_t cm_build_bssid_link_map(struct scan_cache_entry *entry,
+				       const struct qdf_mac_addr *bssid_set[],
+				       uint8_t max_links,
+				       uint16_t *link_map)
+{
+	struct partner_link_info *link_info;
+	uint8_t cnt = 0, i;
+
+	bssid_set[cnt++] = &entry->bssid;
+	*link_map = BIT(util_scan_entry_self_linkid(entry));
+
+	for (i = 0; i < entry->ml_info.num_links && cnt < max_links; i++) {
+		link_info = &entry->ml_info.link_info[i];
+		if (!link_info->is_valid_link)
+			continue;
+
+		bssid_set[cnt++] = &link_info->link_addr;
+		*link_map |= BIT(link_info->link_id);
+	}
+
+	return cnt;
+}
+
+/**
+ * cm_bssid_sets_equal() - check whether two BSSID sets are identical
+ * @a: first pointer array
+ * @a_cnt: size of first array
+ * @b: second pointer array
+ * @b_cnt: size of second array
+ *
+ * Returns true iff the two sets contain exactly the same MAC addresses
+ * (order-independent).
+ */
+static bool cm_bssid_sets_equal(const struct qdf_mac_addr *a[], uint8_t a_cnt,
+				const struct qdf_mac_addr *b[], uint8_t b_cnt)
+{
+	uint8_t i, j;
+
+	if (a_cnt != b_cnt)
+		return false;
+
+	for (i = 0; i < a_cnt; i++) {
+		bool found = false;
+
+		for (j = 0; j < b_cnt; j++) {
+			if (qdf_is_macaddr_equal(a[i], b[j])) {
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+			return false;
+	}
+
+	return true;
 }
 
 /**
@@ -3220,33 +3292,19 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 				 qdf_list_t *candidate_list,
 				 uint8_t max_links)
 {
-	uint8_t i, num_links, link_cnt;
-	struct partner_link_info *link_info;
 	struct scan_cache_node *tmp_scan_node;
-	uint16_t cur_entry_link_map, next_entry_link_map;
 	qdf_list_node_t *cur_node = input_node, *next_node = NULL;
+	const struct qdf_mac_addr *cur_bssid_set[MLD_MAX_LINKS];
+	const struct qdf_mac_addr *tmp_bssid_set[MLD_MAX_LINKS];
+	uint16_t cur_link_map, tmp_link_map;
+	uint8_t cur_bssid_cnt, tmp_bssid_cnt;
 
 	if (qdf_is_macaddr_zero(&cur_scan_node->entry->ml_info.mld_mac_addr))
 		return;
 
-	/**
-	 * Create linkId bitmap of current candidate valid links.
-	 * If any link is beyond the supported link num count, mark it as
-	 * invalid.
-	 */
-	link_cnt = 1;
-	cur_entry_link_map =
-		BIT(util_scan_entry_self_linkid(cur_scan_node->entry));
-	num_links = cur_scan_node->entry->ml_info.num_links;
-	for (i = 0; i < num_links; i++) {
-		link_info = &cur_scan_node->entry->ml_info.link_info[i];
-		if (!link_info->is_valid_link)
-			continue;
-
-		link_cnt++;
-		if (link_cnt <= max_links)
-			cur_entry_link_map |= BIT(link_info->link_id);
-	}
+	cur_bssid_cnt = cm_build_bssid_link_map(cur_scan_node->entry,
+						cur_bssid_set, max_links,
+						&cur_link_map);
 
 	while (cur_node) {
 		qdf_list_peek_next(candidate_list, cur_node, &next_node);
@@ -3254,34 +3312,48 @@ cm_find_and_remove_dup_candidate(struct scan_cache_node *cur_scan_node,
 		tmp_scan_node = qdf_container_of(cur_node,
 						 struct scan_cache_node, node);
 
-		/**
-		 * Create similart link_id bitmap for each candidate which are
-		 * from same MLD to identify the duplicate combination of
-		 * similar links.
-		 */
+		/* Only compare entries from the same MLD */
 		if (!qdf_is_macaddr_equal(&tmp_scan_node->entry->ml_info.mld_mac_addr,
 					  &cur_scan_node->entry->ml_info.mld_mac_addr))
 			goto next;
 
-		link_cnt = 1;
-		next_entry_link_map =
-			BIT(util_scan_entry_self_linkid(tmp_scan_node->entry));
-		num_links = tmp_scan_node->entry->ml_info.num_links;
-		for (i = 0; i < num_links; i++) {
-			link_info = &tmp_scan_node->entry->ml_info.link_info[i];
-			if (!link_info->is_valid_link)
-				continue;
+		tmp_bssid_cnt = cm_build_bssid_link_map(tmp_scan_node->entry,
+							tmp_bssid_set,
+							max_links,
+							&tmp_link_map);
 
-			link_cnt++;
-			if (link_cnt <= max_links)
-				next_entry_link_map |= BIT(link_info->link_id);
+		/* Step 1: link-id bitmaps must match */
+		if (tmp_link_map != cur_link_map)
+			goto next;
+
+		/*
+		 * Step 2: BSSID sets must also match.
+		 * Two entries that share the same link-id bitmap but
+		 * cover different AP radios (e.g. after an AP restart)
+		 * are NOT duplicates and must both be kept.
+		 */
+		if (!cm_bssid_sets_equal(cur_bssid_set, cur_bssid_cnt,
+					 tmp_bssid_set, tmp_bssid_cnt)) {
+			mlme_debug("Skip: " QDF_MAC_ADDR_FMT
+				   " same link_map 0x%x but different BSSID set",
+				   QDF_MAC_ADDR_REF(tmp_scan_node->entry->bssid.bytes),
+				   tmp_link_map);
+			goto next;
 		}
 
-		if (next_entry_link_map == cur_entry_link_map) {
-			qdf_list_remove_node(candidate_list, cur_node);
-			util_scan_free_cache_entry(tmp_scan_node->entry);
-			qdf_mem_free(cur_node);
-		}
+		/* Both pass: genuine duplicate — remove lower-ranked one */
+		mlme_debug("removing dup "
+			   QDF_MAC_ADDR_FMT " ml_bv %s num_links %u"
+			   " (same link_map 0x%x same BSSID set as cur "
+			   QDF_MAC_ADDR_FMT ")",
+			   QDF_MAC_ADDR_REF(tmp_scan_node->entry->bssid.bytes),
+			   tmp_scan_node->entry->ie_list.multi_link_bv ? "yes" : "no",
+			   tmp_scan_node->entry->ml_info.num_links,
+			   tmp_link_map,
+			   QDF_MAC_ADDR_REF(cur_scan_node->entry->bssid.bytes));
+		qdf_list_remove_node(candidate_list, cur_node);
+		util_scan_free_cache_entry(tmp_scan_node->entry);
+		qdf_mem_free(cur_node);
 
 next:
 		cur_node = next_node;
