@@ -891,13 +891,14 @@ qdf_list_t *wlan_objmgr_vdev_get_log_del_peer_list(
 	qdf_list_t *peer_list;
 	qdf_list_t *log_del_peer_list = NULL;
 
+	wlan_vdev_obj_lock(vdev);
 	if (vdev->obj_state != WLAN_OBJ_STATE_CREATED) {
+		wlan_vdev_obj_unlock(vdev);
 		obj_mgr_err("Invalid state vdev:%d state:%d",
 			    wlan_vdev_get_id(vdev), vdev->obj_state);
 		return NULL;
 	}
 
-	wlan_vdev_obj_lock(vdev);
 	if (vdev->vdev_objmgr.wlan_peer_count == 0) {
 		wlan_vdev_obj_unlock(vdev);
 		return NULL;
