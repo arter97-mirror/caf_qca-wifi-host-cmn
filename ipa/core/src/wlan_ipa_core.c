@@ -1308,6 +1308,7 @@ wlan_ipa_rx_intrabss_fwd(struct wlan_ipa_priv *ipa_ctx,
  * wlan_ipa_send_sta_eapol_to_nw() - Send Rx EAPOL pkt for STA to Kernel
  * @skb: network buffer
  * @ipa_ctx: IPA_CTX object
+ * @session_id: session id
  *
  * Called when a EAPOL packet is received via IPA Exception path
  * before wlan_ipa_setup_iface is done for STA.
@@ -1315,7 +1316,8 @@ wlan_ipa_rx_intrabss_fwd(struct wlan_ipa_priv *ipa_ctx,
  * Return: 0 on success, err_code for failure.
  */
 static int wlan_ipa_send_sta_eapol_to_nw(qdf_nbuf_t skb,
-					 struct wlan_ipa_priv *ipa_ctx)
+					 struct wlan_ipa_priv *ipa_ctx,
+					 uint8_t session_id)
 {
 	struct ethhdr *eh;
 	struct wlan_objmgr_vdev *vdev = NULL;
@@ -1336,8 +1338,18 @@ static int wlan_ipa_send_sta_eapol_to_nw(qdf_nbuf_t skb,
 			break;
 	}
 
+	if (!vdev && session_id < WLAN_IPA_MAX_SESSION) {
+		vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, session_id,
+							    WLAN_IPA_ID);
+		if (vdev)
+			ipa_debug_rl("EAPOL: found vdev by session_id %u",
+				     session_id);
+	}
+
 	if (!vdev) {
-		ipa_err_rl("Invalid vdev");
+		ipa_err_rl("Invalid vdev for EAPOL, DA: " QDF_MAC_ADDR_FMT
+			   " session_id: %u",
+			   QDF_MAC_ADDR_REF(eh->h_dest), session_id);
 		return -EINVAL;
 	}
 
@@ -1928,7 +1940,7 @@ static void __wlan_ipa_w2i_cb(void *priv, qdf_ipa_dp_evt_type_t evt,
 			if (qdf_nbuf_is_ipv4_eapol_pkt(skb)) {
 				ipa_err_rl("EAPOL pkt. Sending to NW!");
 				if (!wlan_ipa_send_sta_eapol_to_nw(
-						skb, ipa_ctx))
+						skb, ipa_ctx, session_id))
 					break;
 			}
 			ipa_err_rl("Pkt Dropped!");
