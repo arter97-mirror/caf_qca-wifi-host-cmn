@@ -3989,14 +3989,15 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		 * This is Roaming scenario, so do not need to reset ipa for
 		 * roaming scenario.
 		 */
-		if (ipa_ctx->sta_connected) {
+		if (ipa_ctx->sta_connected &&
+		    ipa_ctx->vdev_to_iface[session_id] != WLAN_IPA_MAX_SESSION) {
+			ipa_ctx->vdev_to_iface[session_id] =
+					wlan_ipa_get_ifaceid(ipa_ctx, session_id);
 			ipa_info("IPA Roaming event detected from BSSID: "QDF_MAC_ADDR_FMT
 				 " -> BSSID: "QDF_MAC_ADDR_FMT,
 				 QDF_MAC_ADDR_REF(ipa_ctx->iface_context[wlan_ipa_get_ifaceid(
 						  ipa_ctx, session_id)].bssid.bytes),
 				 QDF_MAC_ADDR_REF(mac_addr));
-			ipa_ctx->vdev_to_iface[session_id] =
-				 wlan_ipa_get_ifaceid(ipa_ctx, session_id);
 			wlan_ipa_save_bssid_iface_ctx(ipa_ctx,
 						      ipa_ctx->vdev_to_iface[session_id],
 						      mac_addr);
