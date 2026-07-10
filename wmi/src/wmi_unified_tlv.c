@@ -485,6 +485,8 @@ static const uint32_t pdev_param_tlv[] = {
 		  PDEV_PARAM_DSTALL_CONSECUTIVE_TX_NO_ACK_THRESHOLD),
 	PARAM_MAP(pdev_param_disable_lpi_ant_optimization,
 		  PDEV_PARAM_DISABLE_LPI_ANT_OPTIMIZATION),
+	PARAM_MAP(pdev_param_l3_header_padding_enable,
+		  PDEV_PARAM_L3_HEADER_PADDING_ENABLE),
 };
 
 /* Populate vdev_param array whose index is host param, value is target param */
@@ -25392,6 +25394,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 #endif
 	wmi_service[wmi_service_delete_all_peer_bitmap_support] =
 				WMI_SERVICE_DELETE_ALL_PEER_BITMAP_SUPPORT;
+	wmi_service[wmi_service_l3_header_padding_enable] =
+				WMI_SERVICE_L3_HEADER_PADDING_ENABLE;
 }
 
 /**
