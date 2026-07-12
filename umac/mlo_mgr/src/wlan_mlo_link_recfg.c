@@ -5601,7 +5601,7 @@ mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
 		req = (struct mlo_link_recfg_state_req *)event_data;
-		if (!smd_roam_prep_complete(recfg_ctx, req)) {
+		if (QDF_IS_STATUS_ERROR(smd_roam_prep_complete(recfg_ctx, req))) {
 			mlo_debug("smd_roam_prep_complete failed, aborting");
 			mlo_link_recfg_sm_transition_to(ctx, WLAN_LINK_RECFG_S_ABORT);
 			mlo_link_recfg_sm_deliver_event_sync(recfg_ctx->ml_dev,
@@ -6017,8 +6017,8 @@ mlo_smd_handle_add_link_event(void *ctx,
 			sizeof(link_sw_req), &link_sw_req);
 		return true;
 	} else {
-		mlo_debug("No vdev (active or idle) available for link addition");
-		mlo_link_recfg_add_link_completed(recfg_ctx);
+		mlo_debug("No vdev (active or idle) available for link addition, aborting");
+		mlo_link_recfg_add_link_aborted(recfg_ctx);
 	}
 	return false;
 }
@@ -6803,8 +6803,7 @@ static const char *mlo_link_recfg_sm_event_names[] = {
 	"EV_UPDATE_TTLM",
 	"EV_SMD_ROAM_START",
 	"EV_WAIT_SMD_EXEC",
-	"EV_SMD_ADD_LINK",
-	"EV_SMD_ROAM_COMPLETED"
+	"EV_SMD_ADD_LINK"
 };
 
 static QDF_STATUS mlo_link_recfg_sm_create(struct mlo_link_recfg_context *ctx)

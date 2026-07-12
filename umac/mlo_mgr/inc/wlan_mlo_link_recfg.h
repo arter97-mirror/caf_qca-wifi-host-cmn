@@ -135,8 +135,6 @@ enum wlan_link_recfg_sm_state {
  * @WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC: Link Reconfiguration event for wait
  * for SMD execution
  * @WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK: Link recfg evt for SMD add link.
- * @WLAN_LINK_RECFG_SM_EV_SMD_ROAM_COMPLETED: Link recfg evt for SMD roaming
- * completed
  * @WLAN_LINK_RECFG_SM_EV_MAX: Max event
  */
 enum wlan_link_recfg_sm_evt {
@@ -163,7 +161,6 @@ enum wlan_link_recfg_sm_evt {
 	WLAN_LINK_RECFG_SM_EV_SMD_ROAM_START,
 	WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC,
 	WLAN_LINK_RECFG_SM_EV_SMD_ADD_LINK,
-	WLAN_LINK_RECFG_SM_EV_SMD_ROAM_COMPLETED,
 	WLAN_LINK_RECFG_SM_EV_MAX,
 };
 
