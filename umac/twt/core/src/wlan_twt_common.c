@@ -237,6 +237,7 @@ wlan_twt_requestor_enable(struct wlan_objmgr_psoc *psoc,
 
 	wlan_twt_cfg_get_congestion_timeout_per_mac(psoc, req->pdev_id,
 						    &req->sta_cong_timer_ms);
+	wlan_twt_cfg_get_voip_pkt_ul_delay(psoc, &req->voip_pkt_ul_delay_ms);
 	wlan_twt_cfg_get_bcast_requestor(psoc, &twt_bcast_requestor);
 	req->b_twt_enable = twt_bcast_requestor;
 	req->twt_role = TWT_ROLE_REQUESTOR;
@@ -250,9 +251,9 @@ wlan_twt_requestor_enable(struct wlan_objmgr_psoc *psoc,
 
 	req->r_twt_enable = QDF_MIN(restricted_support, rtwt_requestor);
 
-	twt_debug("TWT req enable: pdev_id:%d cong:%d bcast:%d rtwt:%d",
+	twt_debug("TWT req enable: pdev_id:%d cong:%d bcast:%d rtwt:%d upo:%d",
 		  req->pdev_id, req->sta_cong_timer_ms, req->b_twt_enable,
-		  req->r_twt_enable);
+		  req->r_twt_enable, req->voip_pkt_ul_delay_ms);
 	twt_debug("TWT req enable: role:%d ext:%d oper:%d",
 		  req->twt_role, req->ext_conf_present, req->twt_oper);
 
