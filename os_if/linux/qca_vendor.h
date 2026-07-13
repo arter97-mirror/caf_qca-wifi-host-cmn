@@ -16824,41 +16824,6 @@ enum qca_vendor_attr_diag_event_type {
 };
 
 /**
- * enum qca_roam_sub_reason - Used by attribute
- * QCA_WLAN_VENDOR_ATTR_DIAG_ROAM_TRIGGER_SUB_REASON
- * @QCA_ROAM_SUB_REASON_PERIODIC_TIMER: Roam scan triggered due to periodic
- * timer expiry
- * @QCA_ROAM_SUB_REASON_INACTIVITY_TIMER_LOW_RSSI: Roam scan trigger due
- * to no candidate found during LOW RSSI trigger.
- * @QCA_ROAM_SUB_REASON_BTM_DI_TIMER: Roam scan triggered due to BTM Disassoc
- * Imminent timeout
- * @QCA_ROAM_SUB_REASON_FULL_SCAN: Roam scan triggered due to partial scan
- * failure
- * @QCA_ROAM_SUB_REASON_LOW_RSSI_PERIODIC: Roam trigger due to
- * emergency like deauth/disassoc.
- * @QCA_ROAM_SUB_REASON_CU_PERIODIC: Roam trigger due to
- * BSS transition management request.
- * @QCA_ROAM_SUB_REASON_PERIODIC_TIMER_AFTER_INACTIVITY_LOW_RSSI:
- * Roam scan triggered due to Low RSSI periodic timer
- * @QCA_ROAM_SUB_REASON_PERIODIC_TIMER_AFTER_INACTIVITY_CU:
- * Roam trigger due to periodic timer after no candidate found during CU
- * inactivity timer scan.
- * @QCA_ROAM_SUB_REASON_INACTIVITY_TIMER_CU: Roam trigger due to no candidate
- * found in high CU roam trigger.
- */
-enum qca_roam_sub_reason {
-	QCA_ROAM_SUB_REASON_PERIODIC_TIMER = 1,
-	QCA_ROAM_SUB_REASON_INACTIVITY_TIMER_LOW_RSSI = 2,
-	QCA_ROAM_SUB_REASON_BTM_DI_TIMER = 3,
-	QCA_ROAM_SUB_REASON_FULL_SCAN = 4,
-	QCA_ROAM_SUB_REASON_LOW_RSSI_PERIODIC = 5,
-	QCA_ROAM_SUB_REASON_CU_PERIODIC = 6,
-	QCA_ROAM_SUB_REASON_PERIODIC_TIMER_AFTER_INACTIVITY_LOW_RSSI = 7,
-	QCA_ROAM_SUB_REASON_PERIODIC_TIMER_AFTER_INACTIVITY_CU = 8,
-	QCA_ROAM_SUB_REASON_INACTIVITY_TIMER_CU = 9,
-};
-
-/**
  * qca_wlan_vendor_monitor_data_frame_type - Represent the various
  * data types to be sent over the monitor interface.
  */
