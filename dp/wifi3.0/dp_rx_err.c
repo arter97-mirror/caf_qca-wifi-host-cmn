@@ -2528,7 +2528,10 @@ process_reo_error_code:
 		 */
 		qdf_assert_always(err_status == HAL_REO_ERROR_DETECTED);
 
-		dp_info_rl("Got pkt with REO ERROR: %d", error_code);
+		if (!sw_pn_check_needed &&
+		    !dp_vdev_is_passthru_mode(soc,
+					      mpdu_desc_info.peer_meta_data))
+			dp_info("Got pkt with REO ERROR: %d", error_code);
 
 		dp_ipa_rx_err_opt_dp_pkt(soc,
 					 ring_desc,

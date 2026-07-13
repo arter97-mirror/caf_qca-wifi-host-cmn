@@ -1274,12 +1274,16 @@ more_data:
 		 */
 
 		if (reo_err_status == HAL_REO_ERROR_DETECTED) {
-			dp_info("Got pkt with REO ERROR: %d",
-				reo_error_code);
+			if (!dp_vdev_is_passthru_mode(soc,
+						      mpdu_desc_info.peer_meta_data))
+				dp_info_rl("Got pkt with REO ERROR: %d",
+					   reo_error_code);
 			goto process_reo_err;
 		} else if (rxdma_err_status == HAL_RXDMA_ERROR_DETECTED) {
-			dp_info("Got pkt with RXDMA ERROR: %d",
-				rxdma_error_code);
+			if (!dp_vdev_is_passthru_mode(soc,
+						      mpdu_desc_info.peer_meta_data))
+				dp_info_rl("Got pkt with RXDMA ERROR: %d",
+					   rxdma_error_code);
 			goto process_rxdma_err;
 		} else {
 			dp_err("Non of REO or RXDMA error is detected");

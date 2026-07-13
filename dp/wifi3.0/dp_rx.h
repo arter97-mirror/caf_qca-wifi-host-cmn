@@ -4255,6 +4255,22 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
  */
 bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
 				struct hal_rx_mpdu_desc_info *mpdu_desc_info);
+
+static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
+					    uint32_t peer_metadata)
+{
+	uint16_t peer_id = dp_rx_peer_metadata_peer_id_get(soc, peer_metadata);
+	enum wlan_op_mode opmode;
+	struct dp_peer *peer;
+
+	peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_RX_ERR);
+	if (!peer)
+		return false;
+
+	opmode = peer->vdev->opmode;
+	dp_peer_unref_delete(peer, DP_MOD_ID_RX_ERR);
+	return (opmode == wlan_op_mode_passthru) ? true : false;
+}
 #else
 static inline
 int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
@@ -4274,6 +4290,12 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 static inline
 bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
 				struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+{
+	return false;
+}
+
+static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
+					    uint32_t peer_metadata)
 {
 	return false;
 }
