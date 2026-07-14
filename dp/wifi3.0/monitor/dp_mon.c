@@ -6113,17 +6113,6 @@ void dp_mon_peer_attach_notify(struct dp_peer *peer)
 			     (void *)&peer_cookie,
 			     peer->peer_id, WDI_NO_VAL, pdev->pdev_id);
 
-	if (soc->peerstats_enabled) {
-		if (!peer_cookie.ctx) {
-			pdev->next_peer_cookie--;
-			qdf_err("Failed to initialize peer rate stats");
-			mon_peer->peerstats_ctx = NULL;
-		} else {
-			mon_peer->peerstats_ctx =
-				(struct cdp_peer_rate_stats_ctx *)
-				 peer_cookie.ctx;
-		}
-	}
 }
 
 /**
@@ -6238,17 +6227,6 @@ void dp_mon_register_intr_ops(struct dp_soc *soc)
 		mon_ops->mon_register_intr_ops(soc);
 }
 #endif
-
-struct cdp_peer_rate_stats_ctx *dp_mon_peer_get_peerstats_ctx(struct
-							      dp_peer *peer)
-{
-	struct dp_mon_peer *mon_peer = peer->monitor_peer;
-
-	if (mon_peer)
-		return mon_peer->peerstats_ctx;
-	else
-		return NULL;
-}
 
 #ifdef QCA_ENHANCED_STATS_SUPPORT
 void dp_mon_peer_reset_stats(struct dp_peer *peer)

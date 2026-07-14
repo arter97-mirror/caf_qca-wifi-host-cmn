@@ -450,8 +450,7 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-	htt_tlv_filter.enable_md = 0;
-	htt_tlv_filter.enable_md = 0;
+
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -462,7 +461,6 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
-	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 
@@ -545,8 +543,7 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.ppdu_end_user_stats_ext = 0;
 	htt_tlv_filter.ppdu_end_status_done = 0;
 	htt_tlv_filter.enable_fp = 1;
-	htt_tlv_filter.enable_md = 0;
-	htt_tlv_filter.enable_md = 0;
+
 	htt_tlv_filter.enable_mo = 0;
 
 	htt_tlv_filter.fp_mgmt_filter = 0;
@@ -557,7 +554,6 @@ dp_rxdma_ring_sel_cfg_li(struct dp_soc *soc)
 	htt_tlv_filter.mo_mgmt_filter = 0;
 	htt_tlv_filter.mo_ctrl_filter = 0;
 	htt_tlv_filter.mo_data_filter = 0;
-	htt_tlv_filter.md_data_filter = 0;
 
 	htt_tlv_filter.offset_valid = true;
 

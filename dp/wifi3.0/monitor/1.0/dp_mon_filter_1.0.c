@@ -1018,7 +1018,6 @@ static void dp_cfr_filter_1_0(struct cdp_soc_t *soc_hdl,
 
 		htt_tlv_filter.enable_fp =
 			(filter_val->mode & MON_FILTER_PASS) ? 1 : 0;
-		htt_tlv_filter.enable_md = 0;
 		htt_tlv_filter.enable_mo =
 			(filter_val->mode & MON_FILTER_OTHER) ? 1 : 0;
 		htt_tlv_filter.fp_mgmt_filter = filter_val->fp_mgmt;

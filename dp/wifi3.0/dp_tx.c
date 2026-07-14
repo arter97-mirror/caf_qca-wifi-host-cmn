@@ -8702,82 +8702,6 @@ static inline void dp_tx_notify_completion(struct dp_soc *soc,
 		tx_compl_cbk(netbuf, osif_dev, flag);
 }
 
-/**
- * dp_tx_sojourn_stats_process() - Collect sojourn stats
- * @pdev: pdev handle
- * @txrx_peer: DP peer context
- * @tid: tid value
- * @txdesc_ts: timestamp from txdesc
- * @ppdu_id: ppdu id
- * @link_id: link id
- *
- * Return: none
- */
-#ifdef FEATURE_PERPKT_INFO
-static inline void dp_tx_sojourn_stats_process(struct dp_pdev *pdev,
-					       struct dp_txrx_peer *txrx_peer,
-					       uint8_t tid,
-					       uint64_t txdesc_ts,
-					       uint32_t ppdu_id,
-					       uint8_t link_id)
-{
-	uint64_t delta_ms;
-	struct cdp_tx_sojourn_stats *sojourn_stats;
-	struct dp_peer *primary_link_peer = NULL;
-	struct dp_soc *link_peer_soc = NULL;
-
-	if (qdf_unlikely(!pdev->enhanced_stats_en))
-		return;
-
-	if (qdf_unlikely(tid == HTT_INVALID_TID ||
-			 tid >= CDP_DATA_TID_MAX))
-		return;
-
-	if (qdf_unlikely(!pdev->sojourn_buf))
-		return;
-
-	primary_link_peer = dp_get_primary_link_peer_by_id(pdev->soc,
-							   txrx_peer->peer_id,
-							   DP_MOD_ID_TX_COMP);
-
-	if (qdf_unlikely(!primary_link_peer))
-		return;
-
-	sojourn_stats = (struct cdp_tx_sojourn_stats *)
-		qdf_nbuf_data(pdev->sojourn_buf);
-
-	link_peer_soc = primary_link_peer->vdev->pdev->soc;
-	sojourn_stats->cookie = (void *)
-			dp_monitor_peer_get_peerstats_ctx(link_peer_soc,
-							  primary_link_peer);
-
-	delta_ms = qdf_ktime_to_ms(qdf_ktime_real_get()) -
-				txdesc_ts;
-	qdf_ewma_tx_lag_add(&txrx_peer->stats[link_id].per_pkt_stats.tx.avg_sojourn_msdu[tid],
-			    delta_ms);
-	sojourn_stats->sum_sojourn_msdu[tid] = delta_ms;
-	sojourn_stats->num_msdus[tid] = 1;
-	sojourn_stats->avg_sojourn_msdu[tid].internal =
-		txrx_peer->stats[link_id].
-			per_pkt_stats.tx.avg_sojourn_msdu[tid].internal;
-	dp_wdi_event_handler(WDI_EVENT_TX_SOJOURN_STAT, pdev->soc,
-			     pdev->sojourn_buf, HTT_INVALID_PEER,
-			     WDI_NO_VAL, pdev->pdev_id);
-	sojourn_stats->sum_sojourn_msdu[tid] = 0;
-	sojourn_stats->num_msdus[tid] = 0;
-	sojourn_stats->avg_sojourn_msdu[tid].internal = 0;
-
-	dp_peer_unref_delete(primary_link_peer, DP_MOD_ID_TX_COMP);
-}
-#else
-static inline void dp_tx_sojourn_stats_process(struct dp_pdev *pdev,
-					       struct dp_txrx_peer *txrx_peer,
-					       uint8_t tid,
-					       uint64_t txdesc_ts,
-					       uint32_t ppdu_id)
-{
-}
-#endif
 
 #ifdef WLAN_FEATURE_PKT_CAPTURE_V2
 void dp_send_completion_to_pkt_capture(struct dp_soc *soc,
@@ -10140,13 +10064,6 @@ void dp_tx_comp_process_tx_status(struct dp_soc *soc,
 				     ts, ts->tid);
 	dp_tx_send_pktlog(soc, vdev->pdev, tx_desc, nbuf, dp_status);
 	dp_tx_latency_stats_update(soc, txrx_peer, tx_desc, ts, link_id);
-
-#ifdef QCA_SUPPORT_RDK_STATS
-	if (soc->peerstats_enabled)
-		dp_tx_sojourn_stats_process(vdev->pdev, txrx_peer, ts->tid,
-					    qdf_ktime_to_ms(tx_desc->timestamp),
-					    ts->ppdu_id, link_id);
-#endif
 
 out_log:
 	DPTRACE(qdf_dp_trace_ptr(tx_desc->nbuf,

@@ -104,7 +104,6 @@ void dp_mon_filter_show_filter(struct dp_mon_pdev *mon_pdev,
 			    tlv_filter->ppdu_start_user_info);
 	DP_MON_FILTER_PRINT("header_per_msdu: %d", tlv_filter->header_per_msdu);
 	DP_MON_FILTER_PRINT("enable_fp: %d", tlv_filter->enable_fp);
-	DP_MON_FILTER_PRINT("enable_md: %d", tlv_filter->enable_md);
 	DP_MON_FILTER_PRINT("enable_mo: %d", tlv_filter->enable_mo);
 	DP_MON_FILTER_PRINT("fp_mgmt_filter: 0x%x", tlv_filter->fp_mgmt_filter);
 	DP_MON_FILTER_PRINT("mo_mgmt_filter: 0x%x", tlv_filter->mo_mgmt_filter);
@@ -112,9 +111,6 @@ void dp_mon_filter_show_filter(struct dp_mon_pdev *mon_pdev,
 	DP_MON_FILTER_PRINT("mo_ctrl_filter: 0x%x", tlv_filter->mo_ctrl_filter);
 	DP_MON_FILTER_PRINT("fp_data_filter: 0x%x", tlv_filter->fp_data_filter);
 	DP_MON_FILTER_PRINT("mo_data_filter: 0x%x", tlv_filter->mo_data_filter);
-	DP_MON_FILTER_PRINT("md_data_filter: 0x%x", tlv_filter->md_data_filter);
-	DP_MON_FILTER_PRINT("md_mgmt_filter: 0x%x", tlv_filter->md_mgmt_filter);
-	DP_MON_FILTER_PRINT("md_ctrl_filter: 0x%x", tlv_filter->md_ctrl_filter);
 #ifdef QCA_UNDECODED_METADATA_SUPPORT
 	DP_MON_FILTER_PRINT("fp_phy_err: %d", tlv_filter->fp_phy_err);
 	DP_MON_FILTER_PRINT("fp_phy_err_buf_src: %d",
@@ -768,7 +764,7 @@ void dp_mon_filter_set_status_cmn(struct dp_mon_pdev *mon_pdev,
 	filter->tlv_filter.ppdu_end_status_done = 1;
 	filter->tlv_filter.ppdu_start_user_info = 1;
 	filter->tlv_filter.enable_fp = 1;
-	filter->tlv_filter.enable_md = 0;
+
 	filter->tlv_filter.fp_mgmt_filter = FILTER_MGMT_ALL;
 	filter->tlv_filter.fp_ctrl_filter = FILTER_CTRL_ALL;
 	filter->tlv_filter.fp_data_filter = FILTER_DATA_ALL;
@@ -801,7 +797,7 @@ void dp_mon_filter_set_status_cbf(struct dp_pdev *pdev,
 	filter->tlv_filter.ppdu_end_status_done = 1;
 	filter->tlv_filter.ppdu_start_user_info = 1;
 	filter->tlv_filter.enable_fp = 1;
-	filter->tlv_filter.enable_md = 0;
+
 	filter->tlv_filter.fp_mgmt_filter = FILTER_MGMT_ACT_NO_ACK;
 	filter->tlv_filter.fp_ctrl_filter = 0;
 	filter->tlv_filter.fp_data_filter = 0;
@@ -826,7 +822,7 @@ void dp_mon_filter_set_cbf_cmn(struct dp_pdev *pdev,
 	filter->tlv_filter.ppdu_end_status_done = 0;
 	filter->tlv_filter.ppdu_start_user_info = 0;
 	filter->tlv_filter.enable_fp = 1;
-	filter->tlv_filter.enable_md = 0;
+
 	filter->tlv_filter.fp_mgmt_filter = FILTER_MGMT_ACT_NO_ACK;
 	filter->tlv_filter.offset_valid = false;
 	filter->tlv_filter.enable_mo = 0;
@@ -997,7 +993,6 @@ dp_mon_set_local_pkt_capture_rx_filter(struct dp_pdev *pdev,
 		dst_filter.tlv_filter.mo_data_filter = src_filter->mo_data;
 		dst_filter.tlv_filter.enable_mo = 1;
 	}
-	dst_filter.tlv_filter.enable_md = 0;
 
 	dp_mon_filter_show_filter(mon_pdev, mode, &dst_filter);
 

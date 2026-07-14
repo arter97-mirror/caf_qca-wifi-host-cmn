@@ -621,7 +621,6 @@ struct htt_tx_ring_tlv_filter {
  * @ppdu_start_user_info:
  * @header_per_msdu:
  * @enable_fp: enable/disable FP packet
- * @enable_md: enable/disable MD packet
  * @enable_mo: enable/disable MO packet
  * @enable_fp_packet: enable/disable FP packet config
  * @enable_md_packet: enable/disable MD packet config
@@ -634,9 +633,6 @@ struct htt_tx_ring_tlv_filter {
  * @mo_ctrl_filter:
  * @fp_data_filter:
  * @mo_data_filter:
- * @md_data_filter:
- * @md_mgmt_filter:
- * @md_ctrl_filter:
  * @fp_packet_mgmt_filter:
  * @mo_packet_mgmt_filter:
  * @fp_packet_ctrl_filter:
@@ -700,7 +696,6 @@ struct htt_rx_ring_tlv_filter {
 		ppdu_start_user_info:1,
 		header_per_msdu:1,
 		enable_fp:1,
-		enable_md:1,
 		enable_mo:1,
 		enable_fp_packet:1,
 		enable_md_packet:1,
@@ -713,10 +708,7 @@ struct htt_rx_ring_tlv_filter {
 		mo_ctrl_filter:16;
 	u_int32_t fp_data_filter:16,
 		mo_data_filter:16;
-	u_int16_t md_data_filter;
-	u_int16_t md_mgmt_filter;
 
-	u_int16_t md_ctrl_filter;
 	u_int16_t fp_packet_mgmt_filter;
 
 	u_int16_t mo_packet_mgmt_filter;

@@ -4024,8 +4024,6 @@ struct dp_soc {
 	uint32_t num_wds_ast_entries;
 	/* peer extended rate statistics context at soc level*/
 	struct cdp_soc_rate_stats_ctx *rate_stats_ctx;
-	/* peer extended rate statistics control flag */
-	bool peerstats_enabled;
 
 	/* 8021p PCP-TID map values */
 	uint8_t pcp_tid_map[PCP_TID_MAP_MAX];

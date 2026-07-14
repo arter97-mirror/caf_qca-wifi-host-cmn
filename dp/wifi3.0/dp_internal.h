@@ -610,12 +610,6 @@ static inline QDF_STATUS dp_monitor_peer_detach(struct dp_soc *soc,
 	return QDF_STATUS_E_FAILURE;
 }
 
-static inline struct cdp_peer_rate_stats_ctx*
-dp_monitor_peer_get_peerstats_ctx(struct dp_soc *soc, struct dp_peer *peer)
-{
-	return NULL;
-}
-
 static inline
 void dp_monitor_peer_reset_stats(struct dp_soc *soc, struct dp_peer *peer)
 {

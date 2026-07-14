@@ -2818,53 +2818,6 @@ cdp_peer_flush_rate_stats(ol_txrx_soc_handle soc, uint8_t pdev_id,
 }
 
 /**
- * cdp_peer_get_peerstats_ctx() - get peer stats context
- * @soc: opaque soc handle
- * @vdev_id: id of vdev handle
- * @mac_addr: peer mac address
- */
-static inline void
-*cdp_peer_get_peerstats_ctx(ol_txrx_soc_handle soc, uint8_t vdev_id,
-			    uint8_t *mac_addr)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance:");
-		QDF_BUG(0);
-		return NULL;
-	}
-
-	if (!soc->ops->cmn_drv_ops ||
-	    !soc->ops->cmn_drv_ops->txrx_peer_get_peerstats_ctx)
-		return NULL;
-
-	return soc->ops->cmn_drv_ops->txrx_peer_get_peerstats_ctx(soc,
-								  vdev_id,
-								  mac_addr);
-}
-
-/**
- * cdp_flush_rate_stats_request() - request flush rate statistics
- * @soc: opaque soc handle
- * @pdev_id: id of pdev handle
- */
-static inline QDF_STATUS
-cdp_flush_rate_stats_request(struct cdp_soc_t *soc, uint8_t pdev_id)
-{
-	if (!soc || !soc->ops) {
-		dp_cdp_debug("Invalid Instance:");
-		QDF_BUG(0);
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (!soc->ops->cmn_drv_ops ||
-	    !soc->ops->cmn_drv_ops->txrx_flush_rate_stats_request)
-		return QDF_STATUS_E_FAILURE;
-
-	return soc->ops->cmn_drv_ops->txrx_flush_rate_stats_request(soc,
-								    pdev_id);
-}
-
-/**
  * cdp_set_vdev_pcp_tid_map() - set vdev pcp-tid-map
  * @soc: opaque soc handle
  * @vdev_id: id of data path vdev handle

@@ -2309,7 +2309,6 @@ static void dp_mon_filter_set_mon_2_0(struct dp_mon_pdev *mon_pdev,
 	filter->tlv_filter.mo_mgmt_filter = mon_pdev->mo_mgmt_filter;
 	filter->tlv_filter.mo_ctrl_filter = mon_pdev->mo_ctrl_filter;
 	filter->tlv_filter.mo_data_filter = mon_pdev->mo_data_filter;
-	filter->tlv_filter.enable_md = 0;
 	filter->tlv_filter.enable_fpmo = 0;
 	filter->tlv_filter.enable_fp_packet =
 		(mon_pdev->mon_filter_mode & MON_FILTER_PASS) ? 1 : 0;
@@ -2452,7 +2451,6 @@ static void dp_rx_mon_filter_show_filter(struct dp_mon_filter_be *filter)
 	DP_MON_FILTER_PRINT("header_per_msdu: %d",
 			    rx_tlv_filter->header_per_msdu);
 	DP_MON_FILTER_PRINT("enable_fp: %d", rx_tlv_filter->enable_fp);
-	DP_MON_FILTER_PRINT("enable_md: %d", rx_tlv_filter->enable_md);
 	DP_MON_FILTER_PRINT("enable_mo: %d", rx_tlv_filter->enable_mo);
 	DP_MON_FILTER_PRINT("enable_fpmo: %d", rx_tlv_filter->enable_fpmo);
 	DP_MON_FILTER_PRINT("fp_mgmt_filter: 0x%x",
@@ -2467,12 +2465,6 @@ static void dp_rx_mon_filter_show_filter(struct dp_mon_filter_be *filter)
 			    rx_tlv_filter->fp_data_filter);
 	DP_MON_FILTER_PRINT("mo_data_filter: 0x%x",
 			    rx_tlv_filter->mo_data_filter);
-	DP_MON_FILTER_PRINT("md_data_filter: 0x%x",
-			    rx_tlv_filter->md_data_filter);
-	DP_MON_FILTER_PRINT("md_mgmt_filter: 0x%x",
-			    rx_tlv_filter->md_mgmt_filter);
-	DP_MON_FILTER_PRINT("md_ctrl_filter: 0x%x",
-			    rx_tlv_filter->md_ctrl_filter);
 	DP_MON_FILTER_PRINT("fpmo_data_filter: 0x%x",
 			    rx_tlv_filter->fpmo_data_filter);
 	DP_MON_FILTER_PRINT("fpmo_mgmt_filter: 0x%x",

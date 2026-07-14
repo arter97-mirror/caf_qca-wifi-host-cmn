@@ -10487,9 +10487,6 @@ dp_set_psoc_param(struct cdp_soc_t *cdp_soc,
 	struct wlan_cfg_dp_soc_ctxt *wlan_cfg_ctx = soc->wlan_cfg_ctx;
 
 	switch (param) {
-	case CDP_ENABLE_RATE_STATS:
-		soc->peerstats_enabled = val.cdp_psoc_param_en_rate_stats;
-		break;
 	case CDP_SET_NSS_CFG:
 		wlan_cfg_set_dp_soc_nss_cfg(wlan_cfg_ctx,
 					    val.cdp_psoc_param_en_nss_cfg);
@@ -10675,9 +10672,6 @@ static QDF_STATUS dp_get_psoc_param(struct cdp_soc_t *cdp_soc,
 	wlan_cfg_ctx = soc->wlan_cfg_ctx;
 
 	switch (param) {
-	case CDP_ENABLE_RATE_STATS:
-		val->cdp_psoc_param_en_rate_stats = soc->peerstats_enabled;
-		break;
 	case CDP_CFG_PEER_EXT_STATS:
 		val->cdp_psoc_param_pext_stats =
 			wlan_cfg_is_peer_ext_stats_enabled(wlan_cfg_ctx);
@@ -13235,186 +13229,6 @@ static void dp_soc_set_rate_stats_ctx(struct cdp_soc_t *soc_handle,
 }
 
 #if defined(FEATURE_PERPKT_INFO) && WDI_EVENT_ENABLE
-/**
- * dp_peer_flush_rate_stats_req() - Flush peer rate stats
- * @soc: Datapath SOC handle
- * @peer: Datapath peer
- * @arg: argument to iter function
- *
- * Return: QDF_STATUS
- */
-static void
-dp_peer_flush_rate_stats_req(struct dp_soc *soc, struct dp_peer *peer,
-			     void *arg)
-{
-	/* Skip self peer */
-	if (!qdf_mem_cmp(peer->mac_addr.raw, peer->vdev->mac_addr.raw,
-			 QDF_MAC_ADDR_SIZE))
-		return;
-
-	dp_wdi_event_handler(
-		WDI_EVENT_FLUSH_RATE_STATS_REQ,
-		soc, dp_monitor_peer_get_peerstats_ctx(soc, peer),
-		peer->peer_id,
-		WDI_NO_VAL, peer->vdev->pdev->pdev_id);
-}
-
-/**
- * dp_flush_rate_stats_req() - Flush peer rate stats in pdev
- * @soc_hdl: Datapath SOC handle
- * @pdev_id: pdev_id
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS dp_flush_rate_stats_req(struct cdp_soc_t *soc_hdl,
-					  uint8_t pdev_id)
-{
-	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
-	struct dp_pdev *pdev =
-		dp_get_pdev_from_soc_pdev_id_wifi3((struct dp_soc *)soc,
-						   pdev_id);
-	if (!pdev)
-		return QDF_STATUS_E_FAILURE;
-
-	dp_pdev_iterate_peer(pdev, dp_peer_flush_rate_stats_req, NULL,
-			     DP_MOD_ID_CDP);
-
-	return QDF_STATUS_SUCCESS;
-}
-#else
-static inline QDF_STATUS
-dp_flush_rate_stats_req(struct cdp_soc_t *soc_hdl,
-			uint8_t pdev_id)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
-#if defined(FEATURE_PERPKT_INFO) && WDI_EVENT_ENABLE
-#ifdef WLAN_FEATURE_11BE_MLO
-/**
- * dp_get_peer_extd_rate_link_stats() - function to get peer
- *				extended rate and link stats
- * @soc_hdl: dp soc handler
- * @mac_addr: mac address of peer
- *
- * Return: QDF_STATUS
- */
-static QDF_STATUS
-dp_get_peer_extd_rate_link_stats(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr)
-{
-	uint8_t i;
-	struct dp_peer *link_peer;
-	struct dp_soc *link_peer_soc;
-	struct dp_mld_link_peers link_peers_info;
-	struct dp_peer *peer = NULL;
-	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
-	struct cdp_peer_info peer_info = { 0 };
-
-	if (!mac_addr) {
-		dp_err("NULL peer mac addr");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	DP_PEER_INFO_PARAMS_INIT(&peer_info, DP_VDEV_ALL, mac_addr, false,
-				 CDP_WILD_PEER_TYPE);
-
-	peer = dp_peer_hash_find_wrapper(soc, &peer_info, DP_MOD_ID_CDP);
-	if (!peer) {
-		dp_err("Peer is NULL");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	if (IS_MLO_DP_MLD_PEER(peer)) {
-		dp_get_link_peers_ref_from_mld_peer(soc, peer,
-						    &link_peers_info,
-						    DP_MOD_ID_CDP);
-		for (i = 0; i < link_peers_info.num_links; i++) {
-			link_peer = link_peers_info.link_peers[i];
-			link_peer_soc = link_peer->vdev->pdev->soc;
-			dp_wdi_event_handler(WDI_EVENT_FLUSH_RATE_STATS_REQ,
-					     link_peer_soc,
-					     dp_monitor_peer_get_peerstats_ctx
-					     (link_peer_soc, link_peer),
-					     link_peer->peer_id,
-					     WDI_NO_VAL,
-					     link_peer->vdev->pdev->pdev_id);
-		}
-		dp_release_link_peers_ref(&link_peers_info, DP_MOD_ID_CDP);
-	} else {
-		dp_wdi_event_handler(
-				WDI_EVENT_FLUSH_RATE_STATS_REQ, soc,
-				dp_monitor_peer_get_peerstats_ctx(soc, peer),
-				peer->peer_id,
-				WDI_NO_VAL, peer->vdev->pdev->pdev_id);
-	}
-
-	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-	return QDF_STATUS_SUCCESS;
-}
-#else
-static QDF_STATUS
-dp_get_peer_extd_rate_link_stats(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr)
-{
-	struct dp_peer *peer = NULL;
-	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
-
-	if (!mac_addr) {
-		dp_err("NULL peer mac addr");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	peer = dp_peer_find_hash_find(soc, mac_addr, 0,
-				      DP_VDEV_ALL, DP_MOD_ID_CDP);
-	if (!peer) {
-		dp_err("Peer is NULL");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-	dp_wdi_event_handler(
-			WDI_EVENT_FLUSH_RATE_STATS_REQ, soc,
-			dp_monitor_peer_get_peerstats_ctx(soc, peer),
-			peer->peer_id,
-			WDI_NO_VAL, peer->vdev->pdev->pdev_id);
-
-	dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-#else
-static inline QDF_STATUS
-dp_get_peer_extd_rate_link_stats(struct cdp_soc_t *soc_hdl, uint8_t *mac_addr)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
-static void *dp_peer_get_peerstats_ctx(struct cdp_soc_t *soc_hdl,
-				       uint8_t vdev_id,
-				       uint8_t *mac_addr)
-{
-	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
-	struct dp_peer *peer;
-	void *peerstats_ctx = NULL;
-
-	if (mac_addr) {
-		peer = dp_peer_find_hash_find(soc, mac_addr,
-					      0, vdev_id,
-					      DP_MOD_ID_CDP);
-		if (!peer)
-			return NULL;
-
-		if (!IS_MLO_DP_MLD_PEER(peer))
-			peerstats_ctx = dp_monitor_peer_get_peerstats_ctx(soc,
-									  peer);
-
-		dp_peer_unref_delete(peer, DP_MOD_ID_CDP);
-	}
-
-	return peerstats_ctx;
-}
-
-#if defined(FEATURE_PERPKT_INFO) && WDI_EVENT_ENABLE
 static QDF_STATUS dp_peer_flush_rate_stats(struct cdp_soc_t *soc,
 					   uint8_t pdev_id,
 					   void *buf)
@@ -14508,8 +14322,6 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 	.set_rate_stats_ctx = dp_soc_set_rate_stats_ctx,
 	.get_rate_stats_ctx = dp_soc_get_rate_stats_ctx,
 	.txrx_peer_flush_rate_stats = dp_peer_flush_rate_stats,
-	.txrx_flush_rate_stats_request = dp_flush_rate_stats_req,
-	.txrx_peer_get_peerstats_ctx = dp_peer_get_peerstats_ctx,
 
 	.txrx_cp_peer_del_response = dp_cp_peer_del_resp_handler,
 #ifdef QCA_MULTIPASS_SUPPORT
@@ -14729,8 +14541,6 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 	.txrx_get_peer_tx_ext_stats = dp_get_peer_tx_ext_stats,
 #endif
 #endif
-	.txrx_get_peer_extd_rate_link_stats =
-					dp_get_peer_extd_rate_link_stats,
 	.get_pdev_obss_stats = dp_get_obss_stats,
 	.clear_pdev_obss_pd_stats = dp_clear_pdev_obss_pd_stats,
 	.txrx_get_interface_stats  = dp_txrx_get_interface_stats,
