@@ -1993,6 +1993,10 @@ wlan_rptr_s_ssid_vdev_connection_up(struct wlan_objmgr_vdev *vdev,
 
 	RPTR_GLOBAL_LOCK(&g_priv->rptr_global_lock);
 	ss_info = &g_priv->ss_info;
+#if !DBDC_REPEATER_SUPPORT
+	g_priv->num_stavaps_up++;
+	RPTR_LOGI("Number of STA VAPs connected:%d", g_priv->num_stavaps_up);
+#endif
 
 	if (g_priv->num_stavaps_up == 1) {
 		ss_info->extender_info |= STAVAP_CONNECTION_MASK;
@@ -2018,6 +2022,16 @@ wlan_rptr_s_ssid_vdev_connection_up(struct wlan_objmgr_vdev *vdev,
 		wlan_objmgr_iterate_psoc_list(wlan_rptr_psoc_iterate_list,
 					      &iterate_msg, WLAN_MLME_NB_ID);
 	}
+#if !DBDC_REPEATER_SUPPORT
+	if (*disconnect_rptr_clients) {
+		iterate_msg.obj_type = WLAN_PEER_OP;
+		iterate_msg.iterate_arg = NULL;
+		iterate_msg.cb_func = wlan_rptr_peer_disconnect_cb;
+
+		wlan_objmgr_iterate_psoc_list(wlan_rptr_psoc_iterate_list,
+					      &iterate_msg, WLAN_MLME_NB_ID);
+	}
+#endif
 	RPTR_LOGI("AP preference:%d Extender connection:%d Extender info:0x%x",
 		 ss_info->ap_preference, pdev_priv->extender_connection,
 		 ss_info->extender_info);
@@ -2060,6 +2074,11 @@ wlan_rptr_s_ssid_vdev_connection_down(struct wlan_objmgr_vdev *vdev)
 
 	RPTR_GLOBAL_LOCK(&g_priv->rptr_global_lock);
 	ss_info = &g_priv->ss_info;
+#if !DBDC_REPEATER_SUPPORT
+	if (g_priv->num_stavaps_up)
+		g_priv->num_stavaps_up--;
+	RPTR_LOGI("Number of STA VAPs connected:%d", g_priv->num_stavaps_up);
+#endif
 	if (g_priv->num_stavaps_up == 0) {
 		ss_info->ap_preference = ap_preference_type_init;
 		ss_info->extender_info = 0;
@@ -2536,4 +2555,3 @@ wlan_rptr_move_set_bssid(struct wlan_objmgr_pdev *pdev,
 exit:
 	return status;
 }
-
