@@ -825,6 +825,62 @@ dp_soc *dp_get_soc_by_chip_id_li(struct dp_soc *soc,
 	return soc;
 }
 
+/**
+ * dp_print_peer_txrx_stats_li() - Print LI specific peer stats
+ * @peer_stats: cdp peer stats
+ * @stats_type: stats type tx or rx
+ *
+ * Return: void
+ */
+static void dp_print_peer_txrx_stats_li(struct cdp_peer_stats *peer_stats,
+					enum peer_stats_type stats_type)
+{
+	if (stats_type == PEER_TX_STATS) {
+		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d\n",
+			       peer_stats->tx.bw[CMN_BW_20MHZ],
+			       peer_stats->tx.bw[CMN_BW_40MHZ],
+			       peer_stats->tx.bw[CMN_BW_80MHZ],
+			       peer_stats->tx.bw[CMN_BW_160MHZ]);
+		DP_PRINT_STATS("RU Locations");
+		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
+			       cdp_ru_string[RU_26_INDEX].ru_type,
+			       peer_stats->tx.ru_loc[RU_26_INDEX].num_msdu,
+			       peer_stats->tx.ru_loc[RU_26_INDEX].num_mpdu,
+			       peer_stats->tx.ru_loc[RU_26_INDEX].mpdu_tried);
+		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
+			       cdp_ru_string[RU_52_INDEX].ru_type,
+			       peer_stats->tx.ru_loc[RU_52_INDEX].num_msdu,
+			       peer_stats->tx.ru_loc[RU_52_INDEX].num_mpdu,
+			       peer_stats->tx.ru_loc[RU_52_INDEX].mpdu_tried);
+		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
+			       cdp_ru_string[RU_106_INDEX].ru_type,
+			       peer_stats->tx.ru_loc[RU_106_INDEX].num_msdu,
+			       peer_stats->tx.ru_loc[RU_106_INDEX].num_mpdu,
+			       peer_stats->tx.ru_loc[RU_106_INDEX].mpdu_tried);
+		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
+			       cdp_ru_string[RU_242_INDEX].ru_type,
+			       peer_stats->tx.ru_loc[RU_242_INDEX].num_msdu,
+			       peer_stats->tx.ru_loc[RU_242_INDEX].num_mpdu,
+			       peer_stats->tx.ru_loc[RU_242_INDEX].mpdu_tried);
+		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
+			       cdp_ru_string[RU_484_INDEX].ru_type,
+			       peer_stats->tx.ru_loc[RU_484_INDEX].num_msdu,
+			       peer_stats->tx.ru_loc[RU_484_INDEX].num_mpdu,
+			       peer_stats->tx.ru_loc[RU_484_INDEX].mpdu_tried);
+		DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
+			       cdp_ru_string[RU_996_INDEX].ru_type,
+			       peer_stats->tx.ru_loc[RU_996_INDEX].num_msdu,
+			       peer_stats->tx.ru_loc[RU_996_INDEX].num_mpdu,
+			       peer_stats->tx.ru_loc[RU_996_INDEX].mpdu_tried);
+	} else {
+		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d",
+			       peer_stats->rx.bw[CMN_BW_20MHZ],
+			       peer_stats->rx.bw[CMN_BW_40MHZ],
+			       peer_stats->rx.bw[CMN_BW_80MHZ],
+			       peer_stats->rx.bw[CMN_BW_160MHZ]);
+	}
+}
+
 void dp_initialize_arch_ops_li(struct dp_arch_ops *arch_ops)
 {
 #ifndef QCA_HOST_MODE_WIFI_DISABLED

@@ -4237,6 +4237,136 @@ void dp_initialize_arch_ops_be_dal(struct dp_arch_ops *arch_ops)
 
 #endif
 
+#ifdef WLAN_FEATURE_11BE
+static const struct cdp_rate_debug
+dp_mu_be_rate_string[TXRX_TYPE_MU_MAX][MAX_MCS] = {
+	{
+		{"EHT MU-MIMO MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"EHT MU-MIMO MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"EHT MU-MIMO MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"EHT MU-MIMO MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"EHT MU-MIMO MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"EHT MU-MIMO MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"EHT MU-MIMO MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"EHT MU-MIMO MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"EHT MU-MIMO MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"EHT MU-MIMO MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"EHT MU-MIMO MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"EHT MU-MIMO MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"EHT MU-MIMO MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"EHT MU-MIMO MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"EHT MU-MIMO MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
+		{"EHT MU-MIMO MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"EHT OFDMA MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"EHT OFDMA MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"EHT OFDMA MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"EHT OFDMA MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"EHT OFDMA MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"EHT OFDMA MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"EHT OFDMA MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"EHT OFDMA MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"EHT OFDMA MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"EHT OFDMA MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"EHT OFDMA MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"EHT OFDMA MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"EHT OFDMA MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"EHT OFDMA MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"EHT OFDMA MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
+		{"EHT OFDMA MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+	}
+};
+
+/**
+ * dp_print_mu_be_ppdu_rates_info(): Print mu be rate for tx or rx
+ * @pkt_type_array: rate type array contains rate info
+ *
+ * Return: void
+ */
+static void
+dp_print_mu_be_ppdu_rates_info(struct cdp_pkt_type *pkt_type_array)
+{
+	uint8_t mcs, pkt_type;
+
+	DP_PRINT_STATS("PPDU Count");
+	for (pkt_type = 0; pkt_type < TXRX_TYPE_MU_MAX; pkt_type++) {
+		for (mcs = 0; mcs < MAX_MCS; mcs++) {
+			if (!dp_mu_be_rate_string[pkt_type][mcs].valid)
+				continue;
+
+			DP_PRINT_STATS("	%s = %d",
+				       dp_mu_be_rate_string[pkt_type][mcs].mcs_type,
+				       pkt_type_array[pkt_type].mcs_count[mcs]);
+		}
+
+		DP_PRINT_STATS("\n");
+	}
+}
+
+/**
+ * dp_print_peer_txrx_stats_be() - Print BE specific peer stats
+ * @peer_stats: cdp peer stats
+ * @stats_type: stats type tx or rx
+ *
+ * Return: void
+ */
+static void dp_print_peer_txrx_stats_be(struct cdp_peer_stats *peer_stats,
+					enum peer_stats_type stats_type)
+{
+	uint8_t i;
+
+	if (stats_type == PEER_TX_STATS) {
+		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d 320MHZ %d\n",
+			       peer_stats->tx.bw[CMN_BW_20MHZ],
+			       peer_stats->tx.bw[CMN_BW_40MHZ],
+			       peer_stats->tx.bw[CMN_BW_80MHZ],
+			       peer_stats->tx.bw[CMN_BW_160MHZ],
+			       peer_stats->tx.bw[CMN_BW_320MHZ]);
+		DP_PRINT_STATS("Punctured BW Counts = NO_PUNC %d 20MHz %d 40MHz %d 80MHz %d 120MHz %d\n",
+			       peer_stats->tx.punc_bw[NO_PUNCTURE],
+			       peer_stats->tx.punc_bw[PUNCTURED_20MHZ],
+			       peer_stats->tx.punc_bw[PUNCTURED_40MHZ],
+			       peer_stats->tx.punc_bw[PUNCTURED_80MHZ],
+			       peer_stats->tx.punc_bw[PUNCTURED_120MHZ]);
+		DP_PRINT_STATS("RU Locations");
+		for (i = 0; i < RU_INDEX_MAX; i++)
+			DP_PRINT_STATS("%s: MSDUs Success = %d MPDUs Success = %d MPDUs Tried = %d",
+				       cdp_ru_string[i].ru_type,
+				       peer_stats->tx.ru_loc[i].num_msdu,
+				       peer_stats->tx.ru_loc[i].num_mpdu,
+				       peer_stats->tx.ru_loc[i].mpdu_tried);
+		dp_print_common_ppdu_rates_info(&peer_stats->tx.su_be_ppdu_cnt,
+						DOT11_BE);
+		dp_print_mu_be_ppdu_rates_info(&peer_stats->tx.mu_be_ppdu_cnt[0]);
+
+	} else {
+		DP_PRINT_STATS("BW Counts = 20MHZ %d 40MHZ %d 80MHZ %d 160MHZ %d 320MHZ %d",
+			       peer_stats->rx.bw[CMN_BW_20MHZ],
+			       peer_stats->rx.bw[CMN_BW_40MHZ],
+			       peer_stats->rx.bw[CMN_BW_80MHZ],
+			       peer_stats->rx.bw[CMN_BW_160MHZ],
+			       peer_stats->rx.bw[CMN_BW_320MHZ]);
+		DP_PRINT_STATS("Punctured BW Counts = NO_PUNC %d 20MHz %d 40MHz %d 80MHz %d 120MHz %d\n",
+			       peer_stats->rx.punc_bw[NO_PUNCTURE],
+			       peer_stats->rx.punc_bw[PUNCTURED_20MHZ],
+			       peer_stats->rx.punc_bw[PUNCTURED_40MHZ],
+			       peer_stats->rx.punc_bw[PUNCTURED_80MHZ],
+			       peer_stats->rx.punc_bw[PUNCTURED_120MHZ]);
+		dp_print_common_ppdu_rates_info(&peer_stats->rx.su_be_ppdu_cnt,
+						DOT11_BE);
+		dp_print_mu_be_ppdu_rates_info(&peer_stats->rx.mu_be_ppdu_cnt[0]);
+	}
+}
+#else
+static void dp_print_peer_txrx_stats_be(struct cdp_peer_stats *peer_stats,
+					enum peer_stats_type stats_type)
+{
+}
+#endif
+
 void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 {
 #ifndef QCA_HOST_MODE_WIFI_DISABLED

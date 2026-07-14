@@ -3914,6 +3914,16 @@ void dp_print_peer_stats(struct dp_peer *peer,
 			 struct cdp_peer_stats *peer_stats);
 
 /**
+ * dp_print_common_ppdu_rates_info(): Print ppdu rate for tx or rx
+ * @pkt_type_array: rate type array contains rate info
+ * @pkt_type: packet type
+ *
+ * Return: void
+ */
+void dp_print_common_ppdu_rates_info(struct cdp_pkt_type *pkt_type_array,
+				     enum cdp_packet_type pkt_type);
+
+/**
  * dp_print_pdev_tx_stats(): Print Pdev level TX stats
  * @pdev: DP_PDEV Handle
  *
