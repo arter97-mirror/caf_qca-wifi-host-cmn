@@ -52,6 +52,7 @@
 #include "wlan_cm_api.h"
 #include "wlan_mlo_mgr_link_switch.h"
 #include "wlan_mlme_api.h"
+#include "wlan_smd_roam.h"
 
 #ifdef QCA_VDEV_STATS_HW_OFFLOAD_SUPPORT
 /**
@@ -313,7 +314,18 @@ vdev_mgr_start_param_update_linkid(struct wlan_objmgr_vdev *vdev,
 	param->link_id = wlan_vdev_get_link_id(vdev);
 }
 #else
-#define vdev_mgr_start_param_update_linkid(vdev, param)
+static inline void
+vdev_mgr_start_param_update_linkid(struct wlan_objmgr_vdev *vdev,
+				   struct vdev_start_params *param)
+{
+	if (smd_is_roaming_in_progress(vdev)) {
+		param->mlo_flags.mlo_ieee_link_id_valid = 1;
+		param->link_id = wlan_vdev_get_link_id(vdev);
+	} else {
+		param->mlo_flags.mlo_ieee_link_id_valid = 0;
+		param->link_id = 0x0F;
+	}
+}
 #endif
 
 #ifdef WLAN_MCAST_MLO
@@ -482,6 +494,9 @@ vdev_mgr_start_param_update_mlo(struct vdev_mlme_obj *mlme_obj,
 		param->mlo_flags.emlsr_support  = 1;
 		mlme_debug("eMLSR support=%d", param->mlo_flags.emlsr_support);
 	}
+
+	if (smd_is_roaming_in_progress(vdev))
+		vdev_mgr_start_param_update_linkid(vdev, param);
 
 	if (wlan_vdev_mlme_get_opmode(vdev) == QDF_SAP_MODE) {
 		if (wlan_vdev_mlme_op_flags_get(

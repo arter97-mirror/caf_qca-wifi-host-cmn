@@ -102,7 +102,12 @@ static void
 vdev_start_add_link_id_params(wmi_vdev_start_mlo_params *mlo_params,
 			      struct vdev_start_params *req)
 {
-	mlo_params->ieee_link_id = WLAN_LINK_ID_INVALID;
+	if (mlo_params->mlo_flags.mlo_ieee_link_id_valid) {
+		mlo_params->ieee_link_id = req->link_id;
+		wmi_err("SMD: IEEE link id %d", req->link_id);
+	} else {
+		mlo_params->ieee_link_id = WLAN_LINK_ID_INVALID;
+	}
 }
 #endif
 

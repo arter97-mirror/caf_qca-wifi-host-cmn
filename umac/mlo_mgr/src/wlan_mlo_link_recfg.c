@@ -5596,7 +5596,6 @@ mlo_link_recfg_subst_wait_smd_exec_event(void *ctx,
 	struct mlo_link_recfg_context *recfg_ctx = ctx;
 	bool event_handled = true;
 	struct mlo_link_recfg_state_req *req;
-	bool status;
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_WAIT_SMD_EXEC:
@@ -5697,6 +5696,19 @@ mlo_link_recfg_subst_del_link_wait_set_link_event(void *ctx,
 
 	switch (event) {
 	case WLAN_LINK_RECFG_SM_EV_DEL_LINK:
+		/*
+		 * WAR: In SMD roaming the FW already knows which links to
+		 * deactivate (it drove the roam via repurpose TLVs) and does
+		 * not respond to WMI_MLO_LINK_SET_ACTIVE_CMDID, causing the SM
+		 * to stall until serialization timeout (~10-21 s).  Skip the
+		 * force-inactive WMI entirely and proceed directly.
+		 */
+		if (smd_roam_in_progress(recfg_ctx)) {
+			mlo_debug("SMD roam WAR: skip force-inactive WMI, proceed directly");
+			smd_link_recfg_del_link_completed(recfg_ctx);
+			break;
+		}
+
 		req = (struct mlo_link_recfg_state_req *)event_data;
 		status =
 		mlo_link_recfg_del_link_by_inact(recfg_ctx, req);
@@ -7454,6 +7466,9 @@ mlo_link_recfg_ctx_free_ies(struct mlo_link_recfg_context *ctx)
 	ctx->curr_recfg_rsp.mlo_ie.len = 0;
 	ctx->curr_recfg_rsp.mlo_ie.ptr = NULL;
 
+	smd_link_recfg_free_bss_trans_params_ie(&ctx->curr_recfg_rsp);
+	smd_link_recfg_free_perptk_ies(&ctx->curr_recfg_rsp);
+
 	ctx->curr_recfg_rsp.count = 0;
 }
 
@@ -8409,6 +8424,7 @@ mlo_uhr_link_recfg_gen_link_assoc_rsp(
 		struct smd_target_ap_link_caps *link_cap = NULL;
 		qdf_size_t assoc_rsp_len = 0;
 		enum wlan_status_code link_status;
+		struct element_info assoc_rsp_elem;
 
 		link_id = add_link_info->link[i].link_id;
 

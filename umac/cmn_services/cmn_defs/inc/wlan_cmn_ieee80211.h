@@ -812,7 +812,7 @@ enum extn_element_ie {
 #endif
 #ifdef WLAN_FEATURE_11BN_SMD
 	WLAN_EXTN_ELEMID_SMD_INFO    = 154,   /* IEEE 802.11bn, 9.4.2.xxx */
-	WLAN_EXTN_ELEMID_SMD_BSS_TRANS_PARAMS = 159, /* IEEE 802.11bn, 9.4.2.359 */
+	WLAN_EXTN_ELEMID_SMD_BSS_TRANS_PARAMS = 155, /* IEEE 802.11bn, 9.4.2.359 */
 #endif
 };
 

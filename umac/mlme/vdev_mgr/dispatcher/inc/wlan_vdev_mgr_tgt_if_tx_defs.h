@@ -761,9 +761,7 @@ struct vdev_start_params {
 	uint8_t vdevid_trans;
 #ifdef WLAN_FEATURE_11BE_MLO
 	struct mlo_vdev_start_flags mlo_flags;
-#ifdef WLAN_FEATURE_MULTI_LINK_SAP
 	uint32_t link_id;
-#endif
 	struct mlo_vdev_start_partner_links mlo_partner;
 #endif
 	uint8_t mbssid_multi_group_flag;

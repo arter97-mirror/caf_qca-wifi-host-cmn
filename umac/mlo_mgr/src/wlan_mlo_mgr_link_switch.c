@@ -1656,7 +1656,7 @@ mlo_mgr_start_link_switch(struct wlan_objmgr_vdev *vdev,
 	     req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) ||
 	     req->reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK ||
 	     req->reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK) {
-		smd_roam_start_link_switch(vdev, cmd);
+		status = smd_roam_start_link_switch(vdev, cmd);
 		return status;
 	}
 	mlo_mgr_link_switch_trans_next_state(mlo_dev_ctx);
@@ -1836,8 +1836,10 @@ QDF_STATUS mlo_mgr_ser_link_switch_cmd(struct wlan_objmgr_vdev *vdev,
 	cmd.is_blocking = true;
 
 	is_link_recfg_in_prog = mlo_is_link_recfg_in_progress(vdev);
+	mlo_debug("DBG: is_link_recfg_in_prog %d", is_link_recfg_in_prog);
 	if (req->reason == MLO_LINK_SWITCH_REASON_HOST_FORCE ||
-	    is_link_recfg_in_prog) {
+	    is_link_recfg_in_prog ||
+	    smd_is_roaming_in_progress(vdev)) {
 		mlo_debug("Do not serialize link switch for reason %d link_recfg_in_prog %d",
 			  req->reason, is_link_recfg_in_prog);
 		status = mlo_mgr_start_link_switch(vdev, &cmd);
@@ -1971,7 +1973,7 @@ mlo_mgr_link_switch_validate_request(struct wlan_objmgr_vdev *vdev,
 			mlo_err("link switch status %d for add link", status);
 			return status;
 		}
-		goto validated;
+		return status;
 	} else if (req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) {
 		status = mlo_mgr_host_link_switch_validate_request(vdev, req);
 		if (QDF_IS_STATUS_ERROR(status)) {
@@ -2038,7 +2040,9 @@ validated:
 		if (req->reason == MLO_LINK_SWITCH_REASON_HOST_FORCE ||
 		    req->reason ==
 		    MLO_LINK_SWITCH_REASON_HOST_FORCE_FOLLOWUP ||
-		    req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK) {
+		    req->reason == MLO_LINK_SWITCH_REASON_HOST_ADD_LINK ||
+		    req->reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK ||
+		    req->reason == MLO_LINK_SWITCH_REASON_SMD_ROAM_REMOVE_LINK) {
 			/* notify link recfg link switch start */
 			notify_link_recfg = true;
 		} else {

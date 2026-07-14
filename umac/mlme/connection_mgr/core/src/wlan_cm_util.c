@@ -33,6 +33,7 @@
 #endif
 #include <wlan_psoc_mlme_api.h>
 #include <wlan_mlme_main.h>
+#include "wlan_cm_api.h"
 
 static uint32_t cm_get_prefix_for_cm_id(enum wlan_cm_source source) {
 	switch (source) {
