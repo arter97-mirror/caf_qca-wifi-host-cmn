@@ -1436,7 +1436,7 @@ static void wlan_smd_ctx_deinit(struct wlan_mlo_dev_context *ml_dev)
 		return;
 
 	qdf_mutex_destroy(&ml_dev->smd_ctx->smd_ctx_lock);
-	qdf_mem_free(ml_dev->smd_ctx);
+	qdf_mem_common_free(ml_dev->smd_ctx);
 	ml_dev->smd_ctx = NULL;
 }
 #else

@@ -232,7 +232,7 @@ mlo_sta_allocate_shared_roam_objects(struct wlan_objmgr_vdev *vdev,
 	if (!sta_ctx->shared_mlme_roam) {
 		mlo_err("Failed to allocate shared_mlme_roam");
 		wlan_cm_rso_config_deinit(&sta_ctx->roam_ext_obj->rso_cfg);
-		qdf_mem_free(sta_ctx->roam_ext_obj);
+		qdf_mem_common_free(sta_ctx->roam_ext_obj);
 		sta_ctx->roam_ext_obj = NULL;
 		return QDF_STATUS_E_NOMEM;
 	}
@@ -301,14 +301,14 @@ mlo_sta_free_shared_roam_objects(struct wlan_mlo_dev_context *ml_dev)
 		mlo_debug("Freeing roam_ext_obj=%pK",
 			  sta_ctx->roam_ext_obj);
 		wlan_cm_rso_config_deinit(&sta_ctx->roam_ext_obj->rso_cfg);
-		qdf_mem_free(sta_ctx->roam_ext_obj);
+		qdf_mem_common_free(sta_ctx->roam_ext_obj);
 		sta_ctx->roam_ext_obj = NULL;
 	}
 
 	if (sta_ctx->shared_mlme_roam) {
 		mlo_debug("Freeing shared_mlme_roam=%pK",
 			  sta_ctx->shared_mlme_roam);
-		qdf_mem_free(sta_ctx->shared_mlme_roam);
+		qdf_mem_common_free(sta_ctx->shared_mlme_roam);
 		sta_ctx->shared_mlme_roam = NULL;
 	}
 	mlo_debug("Freed all shared roaming objects");
