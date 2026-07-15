@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -24,6 +25,7 @@
 #include "wlan_twt_objmgr_handler.h"
 #include "wlan_objmgr_peer_obj.h"
 #include "include/wlan_mlme_cmn.h"
+#include "twt/core/src/wlan_twt_cfg.h"
 
 QDF_STATUS
 wlan_twt_psoc_obj_create_handler(struct wlan_objmgr_psoc *psoc, void *arg)
@@ -80,6 +82,34 @@ wlan_twt_psoc_obj_destroy_handler(struct wlan_objmgr_psoc *psoc, void *arg)
 	return status;
 }
 
+/**
+ * wlan_twt_vdev_init_requestor_flag() - Initialize the per-vdev TWT
+ * requestor flag with the requestor ini/config default at vdev create time
+ * @vdev: Pointer to vdev object
+ *
+ * The per-vdev requestor flag is otherwise only written when FW acks a
+ * vdev-scoped TWT enable command, which only happens after connect
+ * completes on STA/P2P-CLI. IE population (HE cap, ext cap) for the
+ * assoc/probe req happens before that ack, so without this init the
+ * first connection on a vdev always advertises TWT requestor as
+ * disabled. Initializing it here mirrors how the legacy psoc-level
+ * requestor flag was set once at driver init, independent of any FW
+ * round trip.
+ */
+static void wlan_twt_vdev_init_requestor_flag(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
+	enum QDF_OPMODE opmode = wlan_vdev_mlme_get_opmode(vdev);
+	bool requestor_en = false;
+
+	if (opmode != QDF_STA_MODE && opmode != QDF_P2P_CLIENT_MODE)
+		return;
+
+	wlan_twt_cfg_get_requestor(psoc, &requestor_en);
+	wlan_twt_cfg_set_vdev_requestor_flag(psoc, wlan_vdev_get_id(vdev),
+					     requestor_en);
+}
+
 QDF_STATUS
 wlan_twt_vdev_obj_create_handler(struct wlan_objmgr_vdev *vdev, void *arg)
 {
@@ -104,6 +134,8 @@ wlan_twt_vdev_obj_create_handler(struct wlan_objmgr_vdev *vdev, void *arg)
 	}
 
 	twt_debug("twt vdev priv obj attach successful");
+
+	wlan_twt_vdev_init_requestor_flag(vdev);
 
 	status = mlme_twt_vdev_create_notification(vdev);
 
