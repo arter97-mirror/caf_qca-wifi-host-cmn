@@ -5741,7 +5741,10 @@ QDF_STATUS dp_h2t_3tuple_config_send(struct dp_pdev *pdev,
 /* This macro will revert once proper HTT header will define for
  * HTT_H2T_MSG_TYPE_PPDU_STATS_CFG in htt.h file
  * */
-#if defined(WDI_EVENT_ENABLE)
+#if (defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)) || \
+	defined(QCA_ENHANCED_STATS_SUPPORT) || \
+	defined(QCA_TX_CAPTURE_SUPPORT) || \
+	defined(QCA_SUPPORT_BPR)
 QDF_STATUS dp_h2t_cfg_stats_msg_send(struct dp_pdev *pdev,
 		uint32_t stats_type_upload_mask, uint8_t mac_id)
 {

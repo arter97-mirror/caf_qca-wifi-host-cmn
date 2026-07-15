@@ -4279,7 +4279,10 @@ static inline bool dp_is_subtype_data(uint16_t frame_ctrl)
 	return false;
 }
 
-#ifdef WDI_EVENT_ENABLE
+#if (defined(WDI_EVENT_ENABLE) && !defined(REMOVE_PKT_LOG)) || \
+	defined(QCA_ENHANCED_STATS_SUPPORT) || \
+	defined(QCA_TX_CAPTURE_SUPPORT) || \
+	defined(QCA_SUPPORT_BPR)
 /**
  * dp_h2t_cfg_stats_msg_send(): function to construct HTT message to pass to FW
  * @pdev: DP PDEV handle
@@ -4291,7 +4294,17 @@ static inline bool dp_is_subtype_data(uint16_t frame_ctrl)
 QDF_STATUS dp_h2t_cfg_stats_msg_send(struct dp_pdev *pdev,
 				uint32_t stats_type_upload_mask,
 				uint8_t mac_id);
+#else
+static inline
+QDF_STATUS dp_h2t_cfg_stats_msg_send(struct dp_pdev *pdev,
+				     uint32_t stats_type_upload_mask,
+				     uint8_t mac_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
+#ifdef WDI_EVENT_ENABLE
 /**
  * dp_wdi_event_unsub() - WDI event unsubscribe
  * @soc: soc handle
@@ -4398,12 +4411,6 @@ static inline int dp_wdi_event_attach(struct dp_pdev *txrx_pdev)
 }
 
 static inline int dp_wdi_event_detach(struct dp_pdev *txrx_pdev)
-{
-	return 0;
-}
-
-static inline QDF_STATUS dp_h2t_cfg_stats_msg_send(struct dp_pdev *pdev,
-		uint32_t stats_type_upload_mask, uint8_t mac_id)
 {
 	return 0;
 }
