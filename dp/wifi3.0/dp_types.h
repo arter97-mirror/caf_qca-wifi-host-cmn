@@ -1927,6 +1927,7 @@ struct rx_refill_buff_pool {
  * @pp_size: Size of the page pool
  * @page_size: Size of the page used in page pool
  * @in_use: Where page pool is in use or not
+ * @pp_track_id: Tracking ID assigned to the page pool
  */
 struct dp_page_pool_t {
 	enum qdf_dp_tx_pp_type type;
@@ -2040,7 +2041,7 @@ struct dp_tx_pp_params {
  * @idle_pool_lo: Lower order idle page pool list
  * @last_used_pool: Fast path optimization: Cache last successfully used pool
  * @max_active_pools: Maximum number of active pools allocated
- * @'max_idle_pools: Maximum number of idle pools allowed
+ * @max_idle_pools: Maximum number of idle pools allowed
  * @active_pool_count: active pool list count
  * @idle_pool_ho_cnt: Higher order idle page pool list count
  * @idle_pool_lo_cnt: Lower order idle page pool list count
