@@ -52,6 +52,7 @@
 #define IPV6BYTES 16 /* IPV6 addr: 128bits/8 = 16bytes */
 #define IPV4BYTES 4 /* IPV4 addr: 32bits/8 = 4bytes */
 #define DP_MAX_SLEEP_TIME 100
+#define DP_CTRL_FLT_ADD_SLEEP_TIME 300
 #define IPV4 0x0008
 #define IPV6 0xdd86
 #define IPV6ARRAY 4
@@ -8086,7 +8087,7 @@ int wlan_ipa_wdi_opt_dpath_ctrl_flt_add_cb(
 	}
 
 	status = qdf_wait_single_event(&ipa_obj->ipa_ctrl_flt_evnt,
-				       DP_MAX_SLEEP_TIME);
+				       DP_CTRL_FLT_ADD_SLEEP_TIME);
 
 	for (i = 0; i < IPA_WDI_MAX_TX_FILTER; i++)
 		dp_flt_param->flt_addr_params[i].ipa_flt_evnt_required = 0;
