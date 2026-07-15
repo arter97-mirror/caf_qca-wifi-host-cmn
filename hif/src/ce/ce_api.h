@@ -401,7 +401,6 @@ void ce_fini(struct CE_handle *copyeng);
 void hif_ce_desc_history_log_unregister(void);
 
 /*==================CE Interrupt Handlers====================================*/
-void ce_per_engine_service_any(int irq, struct hif_softc *scn);
 int ce_per_engine_service(struct hif_softc *scn, unsigned int CE_id);
 void ce_per_engine_servicereap(struct hif_softc *scn, unsigned int CE_id);
 

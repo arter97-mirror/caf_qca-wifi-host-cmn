@@ -1104,49 +1104,6 @@ int ce_per_engine_service(struct hif_softc *scn, unsigned int CE_id)
 }
 qdf_export_symbol(ce_per_engine_service);
 
-/*
- * Handler for per-engine interrupts on ALL active CEs.
- * This is used in cases where the system is sharing a
- * single interrupt for all CEs
- */
-
-void ce_per_engine_service_any(int irq, struct hif_softc *scn)
-{
-	int CE_id;
-	uint32_t intr_summary;
-
-	if (Q_TARGET_ACCESS_BEGIN(scn) < 0)
-		return;
-
-	if (!qdf_atomic_read(&scn->tasklet_from_intr)) {
-		for (CE_id = 0; CE_id < scn->ce_count; CE_id++) {
-			struct CE_state *CE_state = scn->ce_id_to_state[CE_id];
-
-			if (qdf_atomic_read(&CE_state->rx_pending)) {
-				qdf_atomic_set(&CE_state->rx_pending, 0);
-				ce_per_engine_service(scn, CE_id);
-			}
-		}
-
-		Q_TARGET_ACCESS_END(scn);
-		return;
-	}
-
-	intr_summary = CE_INTERRUPT_SUMMARY(scn);
-
-	for (CE_id = 0; intr_summary && (CE_id < scn->ce_count); CE_id++) {
-		if (intr_summary & (1 << CE_id))
-			intr_summary &= ~(1 << CE_id);
-		else
-			continue;       /* no intr pending on this CE */
-
-		ce_per_engine_service(scn, CE_id);
-	}
-
-	Q_TARGET_ACCESS_END(scn);
-}
-
-
 /**
  * ce_send_cb_register(): register completion handler
  * @copyeng: CE_state representing the ce we are adding the behavior to
