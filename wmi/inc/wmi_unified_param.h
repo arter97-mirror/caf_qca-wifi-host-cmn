@@ -7333,6 +7333,7 @@ typedef enum {
 	wmi_service_tdls_stats_info,
 	wmi_service_support_ul_tx_beamformer_ap_config,
 	wmi_service_predictive_roaming,
+	wmi_service_sta_twt_en_dis_vdev_support,
 	wmi_service_ctas_plim_indication_support,
 	wmi_service_l3_header_padding_enable,
 	wmi_service_skip_pmk_match_delete_support,
