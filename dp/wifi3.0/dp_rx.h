@@ -2652,7 +2652,7 @@ dp_rx_nbuf_set_link_id_from_tlv(struct dp_soc *soc, uint8_t *tlv_hdr,
 								tlv_hdr);
 
 	if (soc->arch_ops.dp_rx_peer_set_link_id)
-		soc->arch_ops.dp_rx_peer_set_link_id(nbuf, peer_metadata);
+		soc->arch_ops.dp_rx_peer_set_link_id(soc, nbuf, peer_metadata);
 }
 
 /**

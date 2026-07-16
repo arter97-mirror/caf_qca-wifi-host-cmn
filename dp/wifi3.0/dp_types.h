@@ -3119,7 +3119,8 @@ struct dp_arch_ops {
 #endif
 #endif
 	uint8_t (*get_hw_link_id)(struct dp_pdev *pdev);
-	void (*dp_rx_peer_set_link_id)(qdf_nbuf_t nbuf, uint32_t peer_mdata);
+	void (*dp_rx_peer_set_link_id)(struct dp_soc *soc, qdf_nbuf_t nbuf,
+				       uint32_t peer_mdata);
 	uint64_t (*get_reo_qdesc_addr)(hal_soc_handle_t hal_soc_hdl,
 				       uint8_t *dst_ring_desc,
 				       uint8_t *buf,
@@ -3869,6 +3870,10 @@ struct dp_soc {
 	uint32_t htt_vdev_id_m;
 	uint8_t htt_mld_peer_valid_s;
 	uint32_t htt_mld_peer_valid_m;
+	uint8_t htt_logical_link_id_s;
+	uint32_t htt_logical_link_id_m;
+	uint8_t htt_opt_dp_ctrl_refill_s;
+	uint32_t htt_opt_dp_ctrl_refill_m;
 	/* rx peer metadata version */
 	uint8_t rx_peer_metadata_ver;
 

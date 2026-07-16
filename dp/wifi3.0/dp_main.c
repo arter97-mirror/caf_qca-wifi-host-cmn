@@ -10413,6 +10413,14 @@ dp_rx_peer_metadata_ver_update(struct dp_soc *soc, uint8_t peer_md_ver)
 				HTT_RX_PEER_META_DATA_V1A_ML_PEER_VALID_S;
 		soc->htt_mld_peer_valid_m =
 				HTT_RX_PEER_META_DATA_V1A_ML_PEER_VALID_M;
+		soc->htt_logical_link_id_s =
+				HTT_RX_PEER_META_DATA_V1A_LOGICAL_LINK_ID_S;
+		soc->htt_logical_link_id_m =
+				HTT_RX_PEER_META_DATA_V1A_LOGICAL_LINK_ID_M;
+		soc->htt_opt_dp_ctrl_refill_s =
+				HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_S;
+		soc->htt_opt_dp_ctrl_refill_m =
+				HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_M;
 		break;
 	case 3: /* htt_rx_peer_metadata_v1b */
 		soc->htt_peer_id_s = HTT_RX_PEER_META_DATA_V1B_PEER_ID_S;
@@ -10433,6 +10441,14 @@ dp_rx_peer_metadata_ver_update(struct dp_soc *soc, uint8_t peer_md_ver)
 				HTT_RX_PEER_META_DATA_V2_ML_PEER_VALID_S;
 		soc->htt_mld_peer_valid_m =
 				HTT_RX_PEER_META_DATA_V2_ML_PEER_VALID_M;
+		soc->htt_logical_link_id_s =
+				HTT_RX_PEER_META_DATA_V2_LOGICAL_LINK_ID_S;
+		soc->htt_logical_link_id_m =
+				HTT_RX_PEER_META_DATA_V2_LOGICAL_LINK_ID_M;
+		soc->htt_opt_dp_ctrl_refill_s =
+				HTT_RX_PEER_META_DATA_V2_QDATA_REFILL_S;
+		soc->htt_opt_dp_ctrl_refill_m =
+				HTT_RX_PEER_META_DATA_V2_QDATA_REFILL_M;
 		break;
 	default:
 		dp_err("invliad rx_peer_metadata version %d", peer_md_ver);
