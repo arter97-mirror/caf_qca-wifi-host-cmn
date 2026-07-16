@@ -854,6 +854,8 @@ ce_completed_recv_next_nolock_legacy(struct CE_state *CE_state,
 	*transfer_idp = dest_desc_info.meta_data;
 	*flagsp = (dest_desc_info.byte_swap) ? CE_RECV_FLAG_SWAPPED : 0;
 
+	qdf_mem_zero(dest_desc, sizeof(struct CE_dest_desc));
+
 	if (per_CE_contextp)
 		*per_CE_contextp = CE_state->recv_context;
 
