@@ -542,9 +542,23 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 	bool event_handled = true;
 	struct cm_req *roam_cm_req;
 	QDF_STATUS status;
+	struct cnx_mgr *cm_ctx_t = NULL;
+	struct wlan_roam_synch_complete_params *params = NULL;
+	struct wlan_objmgr_vdev *roamed_vdev = NULL;
 
 	switch (event) {
 	case WLAN_CM_SM_EV_SMD_EXEC_COMPLETE:
+		params = (struct wlan_roam_synch_complete_params *)data;
+		roamed_vdev = wlan_objmgr_get_vdev_by_id_from_psoc(
+								wlan_vdev_get_psoc(cm_ctx->vdev),
+								params->vdev_id,
+								WLAN_MLO_MGR_ID);
+		if (!roamed_vdev) {
+			mlme_err("Roamed vdev %d null", params->vdev_id);
+			event_handled = false;
+			break;
+		}
+		cm_ctx_t = cm_get_cm_ctx(roamed_vdev);
 		/*
 		 * data = struct wlan_roam_synch_complete_params * built by
 		 * smd_exec_complete() with vdev_repurpose_resp[] populated.
@@ -567,15 +581,17 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 
 		if (QDF_IS_STATUS_ERROR(status)) {
 			event_handled = false;
+			wlan_objmgr_vdev_release_ref(roamed_vdev, WLAN_MLO_MGR_ID);
 			break;
 		}
 
-		smd_remove_roam_cmd(cm_ctx);
+		smd_remove_roam_cmd(cm_ctx_t);
 
 		/* Notify supplicant */
 		mlme_cm_osif_roam_complete(cm_ctx->vdev);
 
-		cm_sm_transition_to(cm_ctx, WLAN_CM_SS_IDLE);
+		cm_sm_transition_to(cm_ctx, WLAN_CM_S_CONNECTED);
+		wlan_objmgr_vdev_release_ref(roamed_vdev, WLAN_MLO_MGR_ID);
 		break;
 
 	case WLAN_CM_SM_EV_ROAM_SYNC:

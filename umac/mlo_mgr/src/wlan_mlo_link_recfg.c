@@ -517,7 +517,7 @@ mlo_link_recfg_sm_deliver_event(struct wlan_mlo_dev_context *mlo_dev_ctx,
 	return status;
 }
 
-static void
+void
 mlo_link_recfg_sm_transition_to(struct mlo_link_recfg_context *recfg_ctx,
 				enum wlan_link_recfg_sm_state state)
 {

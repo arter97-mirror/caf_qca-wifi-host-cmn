@@ -872,6 +872,18 @@ void mlo_link_recfg_timer_deinit(struct mlo_link_recfg_context *recfg_ctx);
 void mlo_link_recfg_rx_rsp_timeout_cb(void *user_data);
 
 /**
+ * mlo_link_recfg_sm_transition_to() - Transition the link recfg SM to a
+ *  new state
+ * @recfg_ctx: Link reconfiguration context
+ * @state: State to transition to
+ *
+ * Return: void
+ */
+void
+mlo_link_recfg_sm_transition_to(struct mlo_link_recfg_context *recfg_ctx,
+				enum wlan_link_recfg_sm_state state);
+
+/**
  * mlo_link_recfg_get_state() - API to get SM link recfg state
  * @mlo_dev_ctx: MLO dev context
  *
