@@ -797,7 +797,7 @@ static const uint32_t vdev_param_tlv[] = {
 		  VDEV_PARAM_SU_TXOP_BURST_LIMIT_US),
 	PARAM_MAP(vdev_param_aux_l_disable, VDEV_PARAM_AUX_L_DISABLE),
 	PARAM_MAP(vdev_param_2x_ldpc, VDEV_PARAM_2xLDPC),
-
+	PARAM_MAP(vdev_param_reject_addba, VDEV_PARAM_REJECT_ADDBA),
 };
 #endif
 
