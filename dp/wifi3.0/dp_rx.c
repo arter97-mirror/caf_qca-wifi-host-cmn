@@ -342,13 +342,47 @@ dp_rx_refill_ring_record_entry(struct dp_soc *soc, uint8_t ring_num,
  *                                          map
  * @dp_soc: struct dp_soc *
  * @mac_id: Mac id
- * @num_entries_avail: num_entries_avail
+ * @num_entries_avail: number of available entries in the replenish ring
  * @nbuf_frag_info_t: nbuf frag info
- * @dp_pdev: struct dp_pdev *
+ * @dp_pdev: DP pdev handle for per-pdev statistics
  * @rx_desc_pool: Rx desc pool
  *
  * Return: QDF_STATUS
  */
+#if defined(QCA_DP_RX_NBUF_NO_MAP_UNMAP) && \
+	defined(QCA_DP_NBUF_FAST_RECYCLE_CHECK) && !defined(BUILD_X86)
+QDF_STATUS
+dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
+				     uint32_t mac_id,
+				     uint32_t num_entries_avail,
+				     struct dp_rx_nbuf_frag_info
+					*nbuf_frag_info_t,
+				     struct dp_pdev *dp_pdev,
+				     struct rx_desc_pool *rx_desc_pool)
+{
+	qdf_nbuf_t nbuf;
+
+	(void)mac_id;
+	(void)num_entries_avail;
+
+	nbuf = dp_rx_nbuf_alloc(dp_soc, rx_desc_pool);
+	if (qdf_unlikely(!nbuf)) {
+		DP_STATS_INC(dp_pdev, replenish.nbuf_alloc_fail, 1);
+		return QDF_STATUS_E_NOMEM;
+	}
+	nbuf_frag_info_t->virt_addr.nbuf = nbuf;
+	nbuf_frag_info_t->paddr =
+		dp_rx_nbuf_sync_no_dsb(dp_soc, nbuf, rx_desc_pool->buf_size);
+	if (qdf_unlikely(!nbuf_frag_info_t->paddr)) {
+		DP_STATS_INC(dp_pdev, replenish.map_err, 1);
+		dp_rx_nbuf_free(nbuf);
+		nbuf_frag_info_t->virt_addr.nbuf = NULL;
+		return QDF_STATUS_E_FAULT;
+	}
+	QDF_NBUF_CB_PADDR(nbuf) = nbuf_frag_info_t->paddr;
+	return QDF_STATUS_SUCCESS;
+}
+#else
 QDF_STATUS
 dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 				     uint32_t mac_id,
@@ -409,6 +443,7 @@ dp_pdev_nbuf_alloc_and_map_replenish(struct dp_soc *dp_soc,
 
 	return QDF_STATUS_SUCCESS;
 }
+#endif
 
 #if defined(QCA_DP_RX_NBUF_NO_MAP_UNMAP) && !defined(BUILD_X86)
 QDF_STATUS
