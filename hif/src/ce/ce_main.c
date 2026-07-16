@@ -6091,7 +6091,8 @@ err:
 	return QDF_STATUS_SUCCESS != QDF_STATUS_E_FAILURE;
 }
 
-#ifdef IPA_OFFLOAD
+#if defined(IPA_OFFLOAD) && !defined(CONFIG_LITHIUM) && \
+	!defined(CONFIG_BERYLLIUM) && !defined(CONFIG_RHINE)
 /**
  * hif_ce_ipa_get_ce_resource() - get uc resource on hif
  * @scn: bus context
@@ -6118,7 +6119,7 @@ void hif_ce_ipa_get_ce_resource(struct hif_softc *scn,
 	ce_ipa_get_resource(ce_hdl, ce_sr, ce_sr_ring_size,
 			    ce_reg_paddr);
 }
-#endif /* IPA_OFFLOAD */
+#endif /* IPA_OFFLOAD && !LITHIUM && !BERYLLIUM && !RHINE */
 
 
 #ifdef ADRASTEA_SHADOW_REGISTERS

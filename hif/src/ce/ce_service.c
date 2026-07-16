@@ -1249,7 +1249,8 @@ bool ce_check_rx_pending(struct CE_state *CE_state)
 }
 qdf_export_symbol(ce_check_rx_pending);
 
-#ifdef IPA_OFFLOAD
+#if defined(IPA_OFFLOAD) && !defined(CONFIG_LITHIUM) && \
+	!defined(CONFIG_BERYLLIUM) && !defined(CONFIG_RHINE)
 #ifdef QCN7605_SUPPORT
 static qdf_dma_addr_t ce_ipa_get_wr_index_addr(struct CE_state *CE_state)
 {
@@ -1324,7 +1325,7 @@ void ce_ipa_get_resource(struct CE_handle *ce,
 
 }
 
-#endif /* IPA_OFFLOAD */
+#endif /* IPA_OFFLOAD && !LITHIUM && !BERYLLIUM && !RHINE */
 
 
 #ifdef OL_ATH_SMART_LOGGING

@@ -332,7 +332,8 @@ void
 hif_ce_dump_target_memory(struct hif_softc *scn, void *ramdump_base,
 			  uint32_t address, uint32_t size);
 
-#ifdef IPA_OFFLOAD
+#if defined(IPA_OFFLOAD) && !defined(CONFIG_LITHIUM) && \
+	!defined(CONFIG_BERYLLIUM) && !defined(CONFIG_RHINE)
 void hif_ce_ipa_get_ce_resource(struct hif_softc *scn,
 			     qdf_shared_mem_t **ce_sr,
 			     uint32_t *ce_sr_ring_size,

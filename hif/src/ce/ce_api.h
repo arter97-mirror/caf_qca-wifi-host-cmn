@@ -469,7 +469,8 @@ struct ce_sendlist {
 #define ATH_ISR_SCHED    0x0001  /* Schedule the bottom half for execution */
 #define ATH_ISR_NOTMINE  0x0002  /* for shared IRQ's */
 
-#ifdef IPA_OFFLOAD
+#if defined(IPA_OFFLOAD) && !defined(CONFIG_LITHIUM) && \
+	!defined(CONFIG_BERYLLIUM) && !defined(CONFIG_RHINE)
 void ce_ipa_get_resource(struct CE_handle *ce,
 			 qdf_shared_mem_t **ce_sr,
 			 uint32_t *ce_sr_ring_size,
@@ -496,7 +497,7 @@ static inline void ce_ipa_get_resource(struct CE_handle *ce,
 			 qdf_dma_addr_t *ce_reg_paddr)
 {
 }
-#endif /* IPA_OFFLOAD */
+#endif /* IPA_OFFLOAD && !LITHIUM && !BERYLLIUM && !RHINE */
 
 static inline void ce_pkt_error_count_incr(
 	struct HIF_CE_state *_hif_state,
