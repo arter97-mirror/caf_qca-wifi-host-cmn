@@ -849,6 +849,7 @@ enum dot11_mode_filter {
  * @mld_addr: MLD addr to match if @match_mld_addr is set to true.
  * @mrsno_gen: MRSNO generation supported
  * @security_profile: Security Profile element handling enabled
+ * @eppke_allowed: whether EPPKE is allowed or not
  */
 struct scan_filter {
 	uint16_t enable_adaptive_11r:1,
@@ -895,6 +896,7 @@ struct scan_filter {
 #endif
 	uint8_t mrsno_gen;
 	bool security_profile;
+	bool eppke_allowed;
 };
 
 /**

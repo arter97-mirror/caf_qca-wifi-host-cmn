@@ -2917,6 +2917,7 @@ scm_scan_get_entry_by_bssid_and_security(struct wlan_objmgr_pdev *pdev,
 	filter->mrsno_gen = wlan_vdev_get_rsno_gen_supported(vdev);
 	filter->security_profile =
 		wlan_vdev_get_security_profile_enabled(vdev);
+	filter->eppke_allowed = wlan_vdev_is_eppke_allowed(vdev);
 
 	list = scm_get_scan_result(pdev, filter);
 

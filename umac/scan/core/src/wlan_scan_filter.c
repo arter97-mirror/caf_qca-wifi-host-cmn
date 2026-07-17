@@ -348,6 +348,7 @@ scm_check_security_profile(struct scan_filter *filter,
 	uint8_t num_bitmap_octets;
 	uint16_t sp_bitmap;
 	uint8_t profile_num;
+	uint32_t effective_key_mgmt;
 
 	ie = util_scan_entry_security_profile(db_entry);
 	if (!ie)
@@ -373,6 +374,27 @@ scm_check_security_profile(struct scan_filter *filter,
 		return false;
 
 	security->sec_profile_num = -1;
+	effective_key_mgmt = filter->key_mgmt;
+
+	/*
+	 * When eppke_allowed is set and userspace sent only SAE-EXT-KEY or
+	 * FT-SAE-EXT-KEY (without EPPKE), expand the effective key_mgmt to
+	 * also include EPPKE so that profiles 1 and 2 can match.
+	 * Profile 1: EPPKE | SAE-EXT-KEY
+	 * Profile 2: EPPKE | FT-SAE-EXT-KEY
+	 */
+
+	if (filter->eppke_allowed &&
+	    !QDF_HAS_PARAM(filter->key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
+	    (QDF_HAS_PARAM(filter->key_mgmt, WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY) ||
+	     QDF_HAS_PARAM(filter->key_mgmt,
+			   WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY))) {
+		QDF_SET_PARAM(effective_key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE);
+		scm_debug(QDF_MAC_ADDR_FMT
+			  "scm_check_security_profile: eppke_allowed, expanded key_mgmt 0x%x -> 0x%x",
+			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
+			  filter->key_mgmt, effective_key_mgmt);
+	}
 
 	/*
 	 * Build a 16-bit profile bitmap from the IE (little-endian, profiles
@@ -387,7 +409,7 @@ scm_check_security_profile(struct scan_filter *filter,
 	for (profile_num = 0; profile_num < WLAN_SP_MAX; profile_num++) {
 		if (!QDF_HAS_PARAM(sp_bitmap, profile_num))
 			continue;
-		if ((filter->key_mgmt &
+		if ((effective_key_mgmt &
 		     sec_profile_akm_map[profile_num]) !=
 		    sec_profile_akm_map[profile_num])
 			continue;
