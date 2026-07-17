@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3057,10 +3057,10 @@ uint32_t wlan_objmgr_psoc_check_for_peer_leaks(struct wlan_objmgr_psoc *psoc)
 	obj_mgr_alert("----------------------------------------------------");
 
 	wlan_objmgr_for_each_psoc_vdev(psoc, vdev_id, vdev) {
-		struct wlan_objmgr_peer *peer;
+		struct wlan_objmgr_peer *peer, *next;
 
 		wlan_vdev_obj_lock(vdev);
-		wlan_objmgr_for_each_vdev_peer(vdev, peer) {
+		wlan_objmgr_for_each_vdev_peer(vdev, peer, next) {
 			wlan_peer_obj_lock(peer);
 			leaks += qdf_atomic_read(&peer->peer_objmgr.ref_cnt);
 			wlan_objmgr_print_peer_ref_leaks(peer, vdev_id);
