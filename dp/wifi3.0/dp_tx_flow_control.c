@@ -872,6 +872,9 @@ dp_tx_flush_active_pool_list(struct dp_tx_page_pool *tx_pp, bool can_destroy)
 
 		/* Destroy pool if conditions met */
 		if (pp_params->pp && can_destroy) {
+			dp_info("TX_PP_ACTIVE_DESTROY: pp=%pK hold_cnt=%u",
+				pp_params->pp,
+				qdf_page_pool_get_page_hold_cnt(pp_params->pp));
 			qdf_page_pool_destroy(pp_params->pp);
 			destroyed++;
 			compacted++;
@@ -917,6 +920,10 @@ dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp,
 		if (curr->pp) {
 			/* Check if pool should be destroyed */
 			if (can_destroy) {
+				dp_info("TX_PP_INACTIVE_DESTROY: pp=%pK hold_cnt=%u",
+					curr->pp,
+					qdf_page_pool_get_page_hold_cnt(
+								curr->pp));
 				qdf_page_pool_destroy(curr->pp);
 				qdf_mem_free(curr);
 				destroyed++;
@@ -956,6 +963,9 @@ static void dp_tx_page_pool_process_destroy_list(struct dp_soc *soc)
 	bool force_destroy;
 	uint32_t processed = 0, freed = 0, requeued = 0;
 
+	dp_info("TX_PP_DEST_LIST: enter, list_size=%u",
+		qdf_list_size(&soc->tx_pp_destroy_list));
+
 	/* Check if there are pending TX descriptors */
 	pdev = dp_get_pdev_from_soc_pdev_id_wifi3(soc, OL_TXRX_PDEV_ID);
 	force_destroy = !pdev || !qdf_atomic_read(&pdev->num_tx_outstanding);
@@ -979,11 +989,11 @@ static void dp_tx_page_pool_process_destroy_list(struct dp_soc *soc)
 		qdf_list_remove_node(&process_list, &tx_pp->node);
 		processed++;
 
-		dp_nofl_info("TX_PP_DEST: %pK vdev:%u alloc:%llu/%llu ac:%u in:%d ho:%u lo:%u",
-			     tx_pp, tx_pp->vdev_id, tx_pp->alloc_success,
-			     tx_pp->alloc_fail, tx_pp->active_pool_count,
-			     qdf_list_size(&tx_pp->inactive_list),
-			     tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt);
+		dp_info("TX_PP_DEST: %pK vdev:%u alloc:%llu/%llu ac:%u in:%d ho:%u lo:%u",
+			tx_pp, tx_pp->vdev_id, tx_pp->alloc_success,
+			tx_pp->alloc_fail, tx_pp->active_pool_count,
+			qdf_list_size(&tx_pp->inactive_list),
+			tx_pp->idle_pool_ho_cnt, tx_pp->idle_pool_lo_cnt);
 
 		/* Compute destroy condition once for both flush functions */
 		can_destroy = force_destroy || !tx_pp->current_buffers_in_use;
@@ -1012,10 +1022,10 @@ static void dp_tx_page_pool_process_destroy_list(struct dp_soc *soc)
 			/* Still has pools - add to requeue list */
 			qdf_list_insert_back(&requeue_list, &tx_pp->node);
 			requeued++;
-			dp_nofl_info("TX_PP_DEST: %pK vdev:%u re-queued (ac:%u in:%d)",
-				     tx_pp, tx_pp->vdev_id,
-				     tx_pp->active_pool_count,
-				     qdf_list_size(&tx_pp->inactive_list));
+			dp_info("TX_PP_DEST: %pK vdev:%u re-queued (ac:%u in:%d)",
+				tx_pp, tx_pp->vdev_id,
+				tx_pp->active_pool_count,
+				qdf_list_size(&tx_pp->inactive_list));
 		}
 	}
 
@@ -1034,8 +1044,11 @@ static void dp_tx_page_pool_process_destroy_list(struct dp_soc *soc)
 	qdf_list_destroy(&requeue_list);
 
 	if (processed)
-		dp_nofl_info("TX_PP_DEST: processed=%u freed=%u requeued=%u",
-			     processed, freed, requeued);
+		dp_info("TX_PP_DEST: processed=%u freed=%u requeued=%u",
+			processed, freed, requeued);
+
+	dp_info("TX_PP_DEST_LIST: exit, list_size=%u",
+		qdf_list_size(&soc->tx_pp_destroy_list));
 }
 
 /**
@@ -1363,7 +1376,10 @@ dp_tx_page_pool_destroy_work_init(struct dp_soc *soc)
 static inline void
 dp_tx_page_pool_destroy_work_deinit(struct dp_soc *soc)
 {
+	dp_info("TX_PP_DEINIT: destroy_list count=%u, flushing work",
+		qdf_list_size(&soc->tx_pp_destroy_list));
 	qdf_flush_work(&soc->tx_pp_destroy_work);
+	dp_info("TX_PP_DEINIT: flush_work done");
 	qdf_destroy_work(0, &soc->tx_pp_destroy_work);
 	dp_tx_page_pool_process_destroy_list(soc);
 	qdf_list_destroy(&soc->tx_pp_destroy_list);
@@ -1614,6 +1630,74 @@ void dp_tx_flow_control_init(struct dp_soc *soc)
 }
 
 /**
+ * dp_tx_desc_pool_force_free() - Force-free TX nbufs held by descriptors
+ * @soc: Handle to struct dp_soc
+ *
+ * Walks every TX descriptor page and releases any descriptor whose nbuf field
+ * is non-NULL.  Called before page pool teardown so that page_pool_destroy()
+ * does not block waiting for DMA in-flight pages that will never be returned.
+ * On the normal idle-shutdown path all nbuf fields are already NULL and this
+ * function is a no-op.
+ */
+static void dp_tx_desc_pool_force_free(struct dp_soc *soc)
+{
+	struct dp_tx_desc_pool_s *tx_desc_pool;
+	uint32_t cleaned = 0;
+	uint8_t num_pool = wlan_cfg_get_num_tx_desc_pool(soc->wlan_cfg_ctx);
+	uint16_t page_idx, elem_idx;
+	int i;
+
+	dp_info("TX_DESC_DEALLOC: target_status=%d, draining in-flight TX nbufs",
+		hif_get_target_status(soc->hif_handle));
+
+	for (i = 0; i < num_pool; i++) {
+		tx_desc_pool = dp_get_tx_desc_pool(soc, i);
+		if (!tx_desc_pool || !tx_desc_pool->desc_pages.num_pages)
+			continue;
+
+		for (page_idx = 0;
+		     page_idx < tx_desc_pool->desc_pages.num_pages;
+		     page_idx++) {
+			struct dp_tx_desc_s *tx_desc;
+			void *page_addr;
+			uint32_t num_elem;
+
+			page_addr =
+				tx_desc_pool->desc_pages.cacheable_pages[
+								page_idx];
+			if (!page_addr)
+				continue;
+
+			num_elem = min_t(uint32_t,
+					 tx_desc_pool->desc_pages.num_element_per_page,
+					 dp_tx_desc_pool_num_elem(tx_desc_pool) -
+					 page_idx *
+					 tx_desc_pool->desc_pages.num_element_per_page);
+
+			for (elem_idx = 0; elem_idx < num_elem; elem_idx++) {
+				qdf_nbuf_t nbuf;
+
+				tx_desc = (struct dp_tx_desc_s *)
+					((char *)page_addr +
+					 elem_idx * tx_desc_pool->elem_size);
+
+				if (!tx_desc->nbuf)
+					continue;
+
+				nbuf = dp_tx_comp_free_buf(soc, tx_desc, true);
+				dp_tx_desc_release(soc, tx_desc, i);
+				if (nbuf)
+					qdf_nbuf_free(nbuf);
+				cleaned++;
+			}
+		}
+	}
+	if (cleaned)
+		dp_info("TX_DESC_DEALLOC: force-freed %u in-flight TX nbufs",
+			cleaned);
+}
+
+/**
  * dp_tx_desc_pool_dealloc() - De-allocate tx desc pool
  * @soc: Handle to struct dp_soc
  *
@@ -1623,6 +1707,8 @@ static inline void dp_tx_desc_pool_dealloc(struct dp_soc *soc)
 {
 	struct dp_tx_desc_pool_s *tx_desc_pool;
 	int i;
+
+	dp_tx_desc_pool_force_free(soc);
 
 	for (i = 0; i < MAX_TXDESC_POOLS; i++) {
 		tx_desc_pool = &((soc)->tx_desc[i]);

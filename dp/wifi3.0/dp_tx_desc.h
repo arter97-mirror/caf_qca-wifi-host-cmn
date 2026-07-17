@@ -114,6 +114,13 @@ do {                                                   \
 	(_tx_desc_pool)->num_free = 0;                 \
 } while (0)
 #endif /* !QCA_LL_TX_FLOW_CONTROL_V2 */
+
+#ifdef QCA_LL_TX_FLOW_CONTROL_V2
+#define dp_tx_desc_pool_num_elem(pool) ((pool)->pool_size)
+#else
+#define dp_tx_desc_pool_num_elem(pool) ((pool)->elem_count)
+#endif
+
 #define MAX_POOL_BUFF_COUNT 10000
 
 #ifdef DP_TX_TRACKING
