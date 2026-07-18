@@ -151,7 +151,68 @@ static const char fw_rel_status[HTT_TX_FW2WBM_TX_STATUS_MAX][MAX_FW_REL_STR] = {
 	"STATUS_VDEVID_MISMATCH"
 };
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BN)
+static const struct cdp_rate_debug dp_ppdu_rate_string[DOT11_MAX][MAX_MCS] = {
+	{
+		{"HE MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"HE MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"HE MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"HE MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"HE MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"HE MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"HE MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"HE MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"HE MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"HE MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"HE MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"HE MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"HE MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"HE MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"EHT MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"EHT MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"EHT MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"EHT MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"EHT MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"EHT MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"EHT MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"EHT MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"EHT MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"EHT MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"EHT MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"EHT MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"EHT MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"EHT MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"EHT MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
+		{"EHT MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"UHR MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"UHR MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"UHR MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"UHR MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"UHR MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"UHR MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"UHR MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"UHR MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"UHR MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"UHR MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"UHR MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"UHR MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"UHR MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"UHR MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"UHR MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
+		{"UHR MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+	}
+
+};
+#elif defined(WLAN_FEATURE_11BE)
 static const struct cdp_rate_debug dp_ppdu_rate_string[DOT11_MAX][MAX_MCS] = {
 	{
 		{"HE MCS 0 (BPSK 1/2)     ", MCS_VALID},
@@ -7114,7 +7175,7 @@ dp_print_common_rates_info(struct cdp_pkt_type *pkt_type_array)
  *
  * Return: void
  */
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 void
 dp_print_common_ppdu_rates_info(struct cdp_pkt_type *pkt_type_array,
 				enum cdp_packet_type pkt_type)

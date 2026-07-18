@@ -1860,6 +1860,7 @@ struct hal_srng *hal_ring_handle_to_hal_srng(hal_ring_handle_t hal_ring)
  * @HAL_DOT11BE: 802.11be PPDU type
  * @HAL_DOT11AZ: 802.11az (ranging) PPDU type
  * @HAL_DOT11N_GF: 802.11n Green Field PPDU type
+ * @HAL_DOT11BN: 802.11bn PPDU type
  * @HAL_DOT11_MAX: Maximum enumeration
  *
  * Enum indicating the packet type reported by HW in rx_pkt_tlvs (RX data)
@@ -1875,6 +1876,7 @@ enum hal_pkt_type {
 	HAL_DOT11BE = 6,
 	HAL_DOT11AZ = 7,
 	HAL_DOT11N_GF = 8,
+	HAL_DOT11BN = 9,
 	HAL_DOT11_MAX,
 };
 

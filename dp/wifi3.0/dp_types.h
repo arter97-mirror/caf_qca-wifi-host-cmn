@@ -5841,7 +5841,7 @@ struct dp_peer_extd_tx_stats {
 	uint32_t mpdu_success_with_retries;
 	struct cdp_pkt_info tx_ucast_total;
 	struct cdp_pkt_info tx_ucast_success;
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 	struct cdp_pkt_type su_be_ppdu_cnt;
 	struct cdp_pkt_type mu_be_ppdu_cnt[TXRX_TYPE_MU_MAX];
 	uint32_t punc_bw[MAX_PUNCTURED_MODE];
@@ -6041,7 +6041,7 @@ struct dp_peer_extd_rx_stats {
 		 preamble_info:4;
 
 	uint32_t mpdu_retry_cnt;
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 	struct cdp_pkt_type su_be_ppdu_cnt;
 	struct cdp_pkt_type mu_be_ppdu_cnt[TXRX_TYPE_MU_MAX];
 	uint32_t punc_bw[MAX_PUNCTURED_MODE];

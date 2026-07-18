@@ -46,7 +46,7 @@
 #define CDP_MU_MAX_USERS 37
 #define CDP_MU_MAX_MIMO_USERS 8
 /* 1 additional MCS is for invalid values */
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define MAX_MCS (16 + 1)
 #define MAX_MCS_11BE 16
 #define MAX_PUNCTURED_MODE 5
@@ -79,7 +79,7 @@
 #define MAX_USER_POS		8
 #define MAX_MU_GROUP_ID		64
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define MAX_RU_LOCATIONS	16
 #else
 #define MAX_RU_LOCATIONS	6
@@ -90,7 +90,7 @@
 #define RU_242			9
 #define RU_484			18
 #define RU_996			37
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define RU_2X996		74
 #define RU_3X996		111
 #define RU_4X996		148
@@ -222,7 +222,7 @@
 #define PKT_BW_GAIN_40MHZ 3
 #define PKT_BW_GAIN_80MHZ 6
 #define PKT_BW_GAIN_160MHZ 9
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define PKT_BW_GAIN_320MHZ 12
 #endif
 
@@ -439,7 +439,7 @@ enum cdp_ul_trigger_tids {
 		(((_tid) == CDP_UL_TRIG_VI_TID)) ? 5 : \
 		6)
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 /**
  * enum cdp_ru_index - Different RU index
  * @RU_26_INDEX : 26-tone Resource Unit index
@@ -495,7 +495,7 @@ struct cdp_ru_debug {
 	char *ru_type;
 };
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 static const struct cdp_ru_debug cdp_ru_string[RU_INDEX_MAX] = {
 	{ "RU_26" },
 	{ "RU_52" },
@@ -541,8 +541,9 @@ enum cdp_packet_type {
 	DOT11_N = 2,
 	DOT11_AC = 3,
 	DOT11_AX = 4,
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 	DOT11_BE = 5,
+	DOT11_BN = 6,
 #endif
 	DOT11_MAX,
 };
@@ -550,7 +551,12 @@ enum cdp_packet_type {
 #define MCS_VALID 1
 #define MCS_INVALID 0
 
-#ifdef WLAN_FEATURE_11BE
+#ifdef WLAN_FEATURE_11BN
+#define CDP_IS_PKT_TYPE_SUPPORT_NSS(_pkt_type) \
+		(DOT11_N == (_pkt_type) || DOT11_AC == (_pkt_type) || \
+		 DOT11_AX == (_pkt_type) || DOT11_BE == (_pkt_type) || \
+		 DOT11_BN == (_pkt_type))
+#elif defined(WLAN_FEATURE_11BE)
 #define CDP_IS_PKT_TYPE_SUPPORT_NSS(_pkt_type) \
 		(DOT11_N == (_pkt_type) || DOT11_AC == (_pkt_type) || \
 		 DOT11_AX == (_pkt_type) || DOT11_BE == (_pkt_type))
@@ -571,7 +577,143 @@ struct cdp_rate_debug {
 	uint8_t valid;
 };
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BN)
+static const struct cdp_rate_debug cdp_rate_string[DOT11_MAX][MAX_MCS] = {
+	{
+		{"OFDM 48 Mbps", MCS_VALID},
+		{"OFDM 24 Mbps", MCS_VALID},
+		{"OFDM 12 Mbps", MCS_VALID},
+		{"OFDM 6 Mbps ", MCS_VALID},
+		{"OFDM 54 Mbps", MCS_VALID},
+		{"OFDM 36 Mbps", MCS_VALID},
+		{"OFDM 18 Mbps", MCS_VALID},
+		{"OFDM 9 Mbps ", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"CCK 11 Mbps Long  ", MCS_VALID},
+		{"CCK 5.5 Mbps Long ", MCS_VALID},
+		{"CCK 2 Mbps Long   ", MCS_VALID},
+		{"CCK 1 Mbps Long   ", MCS_VALID},
+		{"CCK 11 Mbps Short ", MCS_VALID},
+		{"CCK 5.5 Mbps Short", MCS_VALID},
+		{"CCK 2 Mbps Short  ", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"HT MCS 0 (BPSK 1/2)  ", MCS_VALID},
+		{"HT MCS 1 (QPSK 1/2)  ", MCS_VALID},
+		{"HT MCS 2 (QPSK 3/4)  ", MCS_VALID},
+		{"HT MCS 3 (16-QAM 1/2)", MCS_VALID},
+		{"HT MCS 4 (16-QAM 3/4)", MCS_VALID},
+		{"HT MCS 5 (64-QAM 2/3)", MCS_VALID},
+		{"HT MCS 6 (64-QAM 3/4)", MCS_VALID},
+		{"HT MCS 7 (64-QAM 5/6)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"VHT MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"VHT MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"VHT MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"VHT MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"VHT MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"VHT MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"VHT MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"VHT MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"VHT MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"VHT MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"VHT MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"VHT MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"HE MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"HE MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"HE MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"HE MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"HE MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"HE MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"HE MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"HE MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"HE MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"HE MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"HE MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"HE MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"HE MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"HE MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"EHT MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"EHT MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"EHT MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"EHT MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"EHT MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"EHT MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"EHT MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"EHT MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"EHT MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"EHT MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"EHT MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"EHT MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"EHT MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"EHT MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"EHT MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
+		{"EHT MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+	},
+	{
+		{"UHR MCS 0 (BPSK 1/2)     ", MCS_VALID},
+		{"UHR MCS 1 (QPSK 1/2)     ", MCS_VALID},
+		{"UHR MCS 2 (QPSK 3/4)     ", MCS_VALID},
+		{"UHR MCS 3 (16-QAM 1/2)   ", MCS_VALID},
+		{"UHR MCS 4 (16-QAM 3/4)   ", MCS_VALID},
+		{"UHR MCS 5 (64-QAM 2/3)   ", MCS_VALID},
+		{"UHR MCS 6 (64-QAM 3/4)   ", MCS_VALID},
+		{"UHR MCS 7 (64-QAM 5/6)   ", MCS_VALID},
+		{"UHR MCS 8 (256-QAM 3/4)  ", MCS_VALID},
+		{"UHR MCS 9 (256-QAM 5/6)  ", MCS_VALID},
+		{"UHR MCS 10 (1024-QAM 3/4)", MCS_VALID},
+		{"UHR MCS 11 (1024-QAM 5/6)", MCS_VALID},
+		{"UHR MCS 12 (4096-QAM 3/4)", MCS_VALID},
+		{"UHR MCS 13 (4096-QAM 5/6)", MCS_VALID},
+		{"UHR MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
+		{"UHR MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+		{"INVALID ", MCS_INVALID},
+	}
+
+};
+#elif defined(WLAN_FEATURE_11BE)
 static const struct cdp_rate_debug cdp_rate_string[DOT11_MAX][MAX_MCS] = {
 	{
 		{"OFDM 48 Mbps", MCS_VALID},
@@ -1918,7 +2060,7 @@ struct cdp_tx_stats {
 		 preamble_info:4;
 	uint32_t mpdu_success_with_retries;
 	unsigned long last_tx_ts;
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 	struct cdp_pkt_type su_be_ppdu_cnt;
 	struct cdp_pkt_type mu_be_ppdu_cnt[TXRX_TYPE_MU_MAX];
 	uint32_t punc_bw[MAX_PUNCTURED_MODE];
@@ -2135,7 +2277,7 @@ struct cdp_rx_stats {
 	         preamble_info:4;
 	struct cdp_pkt_info to_stack_twt;
 	uint32_t mpdu_retry_cnt;
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 	struct cdp_pkt_type su_be_ppdu_cnt;
 	struct cdp_pkt_type mu_be_ppdu_cnt[TXRX_TYPE_MU_MAX];
 	uint32_t punc_bw[MAX_PUNCTURED_MODE];
@@ -2989,7 +3131,7 @@ struct cdp_htt_rx_pdev_stats {
 #define RX_PROTOCOL_TAG_ALL 0xff
 #endif /* WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG */
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define OFDMA_NUM_RU_SIZE 16
 #else
 #define OFDMA_NUM_RU_SIZE 7

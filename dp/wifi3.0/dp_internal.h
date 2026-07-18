@@ -361,6 +361,11 @@ static const enum cdp_packet_type hal_2_dp_pkt_type_map[HAL_DOT11_MAX] = {
 #endif
 	[HAL_DOT11AZ] = DOT11_MAX,
 	[HAL_DOT11N_GF] = DOT11_MAX,
+#ifdef WLAN_FEATURE_11BN
+	[HAL_DOT11BN] = DOT11_BN,
+#else
+	[HAL_DOT11BN] = DOT11_MAX,
+#endif
 };
 
 #ifdef GLOBAL_ASSERT_AVOIDANCE
@@ -391,7 +396,7 @@ static inline bool __dp_assert_always_internal(bool expr)
 				dp_assert_always_internal(_expr)
 #endif
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BN)
 /**
  * dp_get_mcs_array_index_by_pkt_type_mcs() - get the destination mcs index
  *					      in array
@@ -401,6 +406,44 @@ static inline bool __dp_assert_always_internal(bool expr)
  * Return: succeeded - valid index in mcs array
  *	   fail - same value as MCS_MAX
  */
+static inline uint8_t
+dp_get_mcs_array_index_by_pkt_type_mcs(uint32_t pkt_type, uint32_t mcs)
+{
+	uint8_t dst_mcs_idx = MCS_INVALID_ARRAY_INDEX;
+
+	switch (pkt_type) {
+	case DOT11_A:
+		dst_mcs_idx =
+			mcs >= MAX_MCS_11A ? (MAX_MCS - 1) : mcs;
+		break;
+	case DOT11_B:
+		dst_mcs_idx =
+			mcs >= MAX_MCS_11B ? (MAX_MCS - 1) : mcs;
+		break;
+	case DOT11_N:
+		dst_mcs_idx =
+			mcs >= MAX_MCS_11N ? (MAX_MCS - 1) : mcs;
+		break;
+	case DOT11_AC:
+		dst_mcs_idx =
+			mcs >= MAX_MCS_11AC ? (MAX_MCS - 1) : mcs;
+		break;
+	case DOT11_AX:
+		dst_mcs_idx =
+			mcs >= MAX_MCS_11AX ? (MAX_MCS - 1) : mcs;
+		break;
+	case DOT11_BE:
+	case DOT11_BN:
+		dst_mcs_idx =
+			mcs >= MAX_MCS_11BE ? (MAX_MCS - 1) : mcs;
+		break;
+	default:
+		break;
+	}
+
+	return dst_mcs_idx;
+}
+#elif defined(WLAN_FEATURE_11BE)
 static inline uint8_t
 dp_get_mcs_array_index_by_pkt_type_mcs(uint32_t pkt_type, uint32_t mcs)
 {
@@ -2196,7 +2239,7 @@ void dp_update_vdev_stats_on_peer_unmap(struct dp_vdev *vdev,
 #define DP_UPDATE_PROTOCOL_STATS(_tgtobj, _srcobj)
 #endif /* QCA_DP_PROTOCOL_STATS */
 
-#ifdef WLAN_FEATURE_11BE
+#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define DP_UPDATE_11BE_STATS(_tgtobj, _srcobj) \
 	do { \
 		uint8_t i, mu_type; \

@@ -4280,6 +4280,9 @@ dp_mu_be_rate_string[TXRX_TYPE_MU_MAX][MAX_MCS] = {
 	}
 };
 
+#else
+#endif
+
 /**
  * dp_print_mu_be_ppdu_rates_info(): Print mu be rate for tx or rx
  * @pkt_type_array: rate type array contains rate info
@@ -4360,12 +4363,6 @@ static void dp_print_peer_txrx_stats_be(struct cdp_peer_stats *peer_stats,
 		dp_print_mu_be_ppdu_rates_info(&peer_stats->rx.mu_be_ppdu_cnt[0]);
 	}
 }
-#else
-static void dp_print_peer_txrx_stats_be(struct cdp_peer_stats *peer_stats,
-					enum peer_stats_type stats_type)
-{
-}
-#endif
 
 void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 {
