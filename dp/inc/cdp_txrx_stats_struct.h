@@ -46,7 +46,52 @@
 #define CDP_MU_MAX_USERS 37
 #define CDP_MU_MAX_MIMO_USERS 8
 /* 1 additional MCS is for invalid values */
-#if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
+#if defined(WLAN_FEATURE_11BN)
+#define MAX_MCS (23 + 1)
+#define MAX_MCS_11BE 16
+#define MAX_MCS_11BN 23
+#define MAX_PUNCTURED_MODE 5
+/*
+ * Max wire MCS value for UHR (Intermediate MCS 23 is the highest).
+ * Used to size uhr_stats_mcs_to_idx[] below. Value matches UHR_MCS_MAX
+ * in dp_ratetable.h (kept as a separate macro since this header does
+ * not depend on dp_ratetable.h).
+ */
+#define UHR_STATS_MCS_MAX 24
+/*
+ * uhr_stats_mcs_to_idx[] maps a wire MCS index to its offset in the
+ * cdp_rate_string[DOT11_BN][] / mcs_count[] stats arrays, which are laid
+ * out sequentially as: MCS0..MCS15, then IMCS17, IMCS19, IMCS20, IMCS23.
+ * UHR_STATS_MCS_TBL_IDX_INVALID marks wire MCS values with no stats slot.
+ */
+#define UHR_STATS_MCS_TBL_IDX_INVALID (MAX_MCS - 1)
+static const uint8_t uhr_stats_mcs_to_idx[UHR_STATS_MCS_MAX] = {
+	0,  /* MCS  0 */
+	1,  /* MCS  1 */
+	2,  /* MCS  2 */
+	3,  /* MCS  3 */
+	4,  /* MCS  4 */
+	5,  /* MCS  5 */
+	6,  /* MCS  6 */
+	7,  /* MCS  7 */
+	8,  /* MCS  8 */
+	9,  /* MCS  9 */
+	10, /* MCS 10 */
+	11, /* MCS 11 */
+	12, /* MCS 12 */
+	13, /* MCS 13 */
+	14, /* MCS 14 */
+	15, /* MCS 15 */
+	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 16 - unused */
+	16, /* MCS 17 (IMCS) */
+	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 18 - unused */
+	17, /* MCS 19 (IMCS) */
+	18, /* MCS 20 (IMCS) */
+	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 21 - unused */
+	UHR_STATS_MCS_TBL_IDX_INVALID, /* MCS 22 - unused */
+	19, /* MCS 23 (IMCS) */
+};
+#elif defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define MAX_MCS (16 + 1)
 #define MAX_MCS_11BE 16
 #define MAX_PUNCTURED_MODE 5
@@ -709,6 +754,12 @@ static const struct cdp_rate_debug cdp_rate_string[DOT11_MAX][MAX_MCS] = {
 		{"UHR MCS 13 (4096-QAM 5/6)", MCS_VALID},
 		{"UHR MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
 		{"UHR MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+#ifdef WLAN_FEATURE_11BN
+		{"UHR MCS 17 (Intermediate) ", MCS_VALID},
+		{"UHR MCS 19 (Intermediate) ", MCS_VALID},
+		{"UHR MCS 20 (Intermediate) ", MCS_VALID},
+		{"UHR MCS 23 (Intermediate) ", MCS_VALID},
+#endif
 		{"INVALID ", MCS_INVALID},
 	}
 

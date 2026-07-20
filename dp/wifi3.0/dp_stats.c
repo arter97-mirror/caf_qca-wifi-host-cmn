@@ -208,6 +208,10 @@ static const struct cdp_rate_debug dp_ppdu_rate_string[DOT11_MAX][MAX_MCS] = {
 		{"UHR MCS 13 (4096-QAM 5/6)", MCS_VALID},
 		{"UHR MCS 14 (BPSK-DCM 1/2)", MCS_VALID},
 		{"UHR MCS 15 (BPSK-DCM 1/2)", MCS_VALID},
+		{"UHR MCS 17 (Intermediate) ", MCS_VALID},
+		{"UHR MCS 19 (Intermediate) ", MCS_VALID},
+		{"UHR MCS 20 (Intermediate) ", MCS_VALID},
+		{"UHR MCS 23 (Intermediate) ", MCS_VALID},
 		{"INVALID ", MCS_INVALID},
 	}
 

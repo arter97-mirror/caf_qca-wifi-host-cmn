@@ -55,11 +55,57 @@ enum CMN_MODE_TYPES {
 #define CONFIG_160MHZ_SUPPORT 1
 #define NUM_HT_MCS 8
 #define NUM_VHT_MCS 12
+#define RT_INVALID_INDEX (0xff)
 
 #define NUM_HE_MCS 14
 #if defined(WLAN_FEATURE_11BE) || defined(WLAN_FEATURE_11BN)
 #define NUM_EHT_MCS 16
+#ifdef WLAN_FEATURE_11BN
+#define NUM_UHR_MCS 20
+/*
+ * Max wire MCS value for UHR (Intermediate MCS 23 is the highest).
+ * Used to size the mcs-to-table-offset mapping array.
+ */
+#define UHR_MCS_MAX 24
+/*
+ * uhr_mcs_to_tbl_idx[] maps a wire MCS index to its offset within one
+ * NSS block of the UHR rate table.  The table is laid out as:
+ *   [0]=MCS14 [1]=MCS15 [2]=MCS0 [3]=MCS1 [4]=IMCS17 [5]=MCS2 [6]=MCS3
+ *   [7]=IMCS19 [8]=MCS4 [9]=IMCS20 [10]=MCS5 [11]=MCS6 [12]=MCS7
+ *   [13]=IMCS23 [14]=MCS8 [15]=MCS9 [16]=MCS10 [17]=MCS11 [18]=MCS12
+ *   [19]=MCS13
+ * RT_INVALID_INDEX (0xff) marks wire MCS values that have no table entry.
+ */
+#define UHR_MCS_TBL_IDX_INVALID RT_INVALID_INDEX
+static const uint8_t uhr_mcs_to_tbl_idx[UHR_MCS_MAX] = {
+	2,  /* MCS  0 */
+	3,  /* MCS  1 */
+	5,  /* MCS  2 */
+	6,  /* MCS  3 */
+	8,  /* MCS  4 */
+	10, /* MCS  5 */
+	11, /* MCS  6 */
+	12, /* MCS  7 */
+	14, /* MCS  8 */
+	15, /* MCS  9 */
+	16, /* MCS 10 */
+	17, /* MCS 11 */
+	18, /* MCS 12 */
+	19, /* MCS 13 */
+	0,  /* MCS 14 */
+	1,  /* MCS 15 */
+	UHR_MCS_TBL_IDX_INVALID, /* MCS 16 - unused */
+	4,  /* MCS 17 (IMCS) */
+	UHR_MCS_TBL_IDX_INVALID, /* MCS 18 - unused */
+	7,  /* MCS 19 (IMCS) */
+	9,  /* MCS 20 (IMCS) */
+	UHR_MCS_TBL_IDX_INVALID, /* MCS 21 - unused */
+	UHR_MCS_TBL_IDX_INVALID, /* MCS 22 - unused */
+	13, /* MCS 23 (IMCS) */
+};
+#else
 #define NUM_UHR_MCS 16
+#endif
 #endif
 
 #define NUM_SPATIAL_STREAM 4
@@ -74,7 +120,6 @@ enum CMN_MODE_TYPES {
 	(RT_GET_INFO(_rt, (_index)).ratekbpssgi)
 
 #define HW_RATECODE_CCK_SHORT_PREAM_MASK  0x4
-#define RT_INVALID_INDEX (0xff)
 /* pow2 to optimize out * and / */
 #define DP_ATH_RATE_EP_MULTIPLIER     BIT(7)
 #define DP_ATH_EP_MUL(a, b)	      ((a) * (b))

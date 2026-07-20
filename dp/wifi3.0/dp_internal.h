@@ -433,9 +433,12 @@ dp_get_mcs_array_index_by_pkt_type_mcs(uint32_t pkt_type, uint32_t mcs)
 			mcs >= MAX_MCS_11AX ? (MAX_MCS - 1) : mcs;
 		break;
 	case DOT11_BE:
-	case DOT11_BN:
 		dst_mcs_idx =
 			mcs >= MAX_MCS_11BE ? (MAX_MCS - 1) : mcs;
+		break;
+	case DOT11_BN:
+		dst_mcs_idx = (mcs >= UHR_STATS_MCS_MAX) ?
+				(MAX_MCS - 1) : uhr_stats_mcs_to_idx[mcs];
 		break;
 	default:
 		break;
