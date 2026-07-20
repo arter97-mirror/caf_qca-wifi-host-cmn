@@ -167,15 +167,16 @@ done:
  * @ppdu_id: ppdu id of processing ppdu
  * @head: head of descs list to be freed
  * @tail: tail of decs list to be freed
+ * @rx_bufs_used: number of msdu in MPDU to be popped
  *
- * Return: number of msdu in MPDU to be popped
+ * Return: QDF_STATUS;
  */
-static inline uint32_t
+static inline QDF_STATUS
 dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 	hal_rxdma_desc_t rxdma_dst_ring_desc, qdf_nbuf_t *head_msdu,
 	qdf_nbuf_t *tail_msdu, uint32_t *npackets, uint32_t *ppdu_id,
 	union dp_rx_desc_list_elem_t **head,
-	union dp_rx_desc_list_elem_t **tail)
+	union dp_rx_desc_list_elem_t **tail, uint32_t *rx_bufs_used)
 {
 	struct dp_pdev *dp_pdev = dp_get_pdev_for_lmac_id(soc, mac_id);
 	void *rx_desc_tlv, *first_rx_desc_tlv = NULL;
@@ -186,7 +187,6 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 	uint16_t num_msdus;
 	uint32_t rx_buf_size, rx_pkt_offset;
 	struct hal_buf_info buf_info;
-	uint32_t rx_bufs_used = 0;
 	uint32_t msdu_ppdu_id, msdu_cnt;
 	uint8_t *data = NULL;
 	uint32_t i;
@@ -200,9 +200,11 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 	struct dp_mon_pdev *mon_pdev;
 	struct dp_mon_mac *mon_mac;
 
+	*rx_bufs_used = 0;
+
 	if (qdf_unlikely(!dp_pdev)) {
 		dp_rx_mon_dest_debug("%pK: pdev is null for mac_id = %d", soc, mac_id);
-		return rx_bufs_used;
+		return QDF_STATUS_E_INVAL;
 	}
 
 	mon_pdev = dp_pdev->monitor_pdev;
@@ -246,7 +248,7 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 		if (qdf_unlikely(mon_mac->mon_last_linkdesc_paddr ==
 		    buf_info.paddr)) {
 			mon_mac->rx_mon_stats.dup_mon_linkdesc_cnt++;
-			return rx_bufs_used;
+			return QDF_STATUS_E_EXISTS;
 		}
 
 		rx_msdu_link_desc =
@@ -284,6 +286,7 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 				mon_mac->rx_mon_stats.dup_mon_buf_cnt++;
 				mon_mac->mon_last_linkdesc_paddr =
 					buf_info.paddr;
+				rx_desc->in_err_state = 1;
 				continue;
 			}
 
@@ -348,12 +351,12 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 					(msdu_ppdu_id - *ppdu_id) <
 						NOT_PPDU_ID_WRAP_AROUND)) {
 					*ppdu_id = msdu_ppdu_id;
-					return rx_bufs_used;
+					return QDF_STATUS_E_PENDING;
 				} else if ((*ppdu_id > msdu_ppdu_id) && (
 					(*ppdu_id - msdu_ppdu_id) >
 						NOT_PPDU_ID_WRAP_AROUND)) {
 					*ppdu_id = msdu_ppdu_id;
-					return rx_bufs_used;
+					return QDF_STATUS_E_PENDING;
 				}
 
 				dp_tx_capture_get_user_id(dp_pdev,
@@ -408,26 +411,6 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 					+ frag_len;
 
 			dp_rx_mon_buffer_set_pktlen(msdu, rx_buf_size);
-#if 0
-			/* Disable it.see packet on msdu done set to 0 */
-			/*
-			 * Check if DMA completed -- msdu_done is the
-			 * last bit to be written
-			 */
-			if (!hal_rx_attn_msdu_done_get(rx_desc_tlv)) {
-
-				QDF_TRACE(QDF_MODULE_ID_DP,
-					  QDF_TRACE_LEVEL_ERROR,
-					  "%s:%d: Pkt Desc",
-					  __func__, __LINE__);
-
-				QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_DP,
-					QDF_TRACE_LEVEL_ERROR,
-					rx_desc_tlv, 128);
-
-				qdf_assert_always(0);
-			}
-#endif
 			dp_rx_mon_dest_debug("%pK: rx_pkt_offset=%d, l2_hdr_offset=%d, msdu_len=%d, frag_len %u",
 					     soc, rx_pkt_offset, l2_hdr_offset,
 					     msdu_list.msdu_info[i].msdu_len,
@@ -446,7 +429,7 @@ dp_rx_mon_mpdu_pop(struct dp_soc *soc, uint32_t mac_id,
 
 next_msdu:
 			mon_mac->mon_last_buf_cookie = msdu_list.sw_cookie[i];
-			rx_bufs_used++;
+			(*rx_bufs_used)++;
 			dp_rx_add_to_free_desc_list(head,
 				tail, rx_desc);
 		}
@@ -476,7 +459,7 @@ next_msdu:
 					   &mon_mac->ppdu_info,
 					   head_msdu, tail_msdu);
 
-	return rx_bufs_used;
+	return QDF_STATUS_SUCCESS;
 }
 
 #if !defined(DISABLE_MON_CONFIG) && \
@@ -871,12 +854,13 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 			continue;
 		}
 
-		mpdu_rx_bufs_used =
+		status =
 			dp_rx_mon_mpdu_pop(soc, mac_id,
 					   rxdma_dst_ring_desc,
 					   &head_msdu, &tail_msdu,
 					   &npackets, &ppdu_id,
-					   &head, &tail);
+					   &head, &tail,
+					   &mpdu_rx_bufs_used);
 
 		rx_bufs_used += mpdu_rx_bufs_used;
 		if (mpdu_rx_bufs_used) {
@@ -892,11 +876,18 @@ void dp_rx_mon_dest_process(struct dp_soc *soc, struct dp_intr *int_ctx,
 
 		if (mon_mac->mon_dest_ring_stuck_cnt >
 		    MON_DEST_RING_STUCK_MAX_CNT) {
-			dp_info("destination ring stuck");
+			dp_info("destination ring stuck: %d", status);
 			dp_info("ppdu_id status=%d dest=%d",
 				mon_mac->ppdu_info.com_info.ppdu_id, ppdu_id);
 			rx_mon_stats->mon_rx_dest_stuck++;
 			mon_mac->ppdu_info.com_info.ppdu_id = ppdu_id;
+
+			if (status == QDF_STATUS_E_EXISTS) {
+				hal_srng_dst_get_next(hal_soc, mon_dst_srng);
+				mon_mac->mon_dest_ring_stuck_cnt = 0;
+				break;
+			}
+
 			status = dp_rx_mon_add_mismatch_entry(
 							soc, ppdu_id,
 							rxdma_dst_ring_desc,
