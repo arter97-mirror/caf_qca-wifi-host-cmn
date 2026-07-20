@@ -339,6 +339,7 @@ void init_deinit_derive_band_to_mac_param(
 		struct wmi_init_cmd_param *init_param)
 {
 	uint8_t i;
+	uint8_t num_radios;
 	struct wlan_psoc_host_mac_phy_caps *mac_phy_cap;
 	struct wlan_psoc_host_hal_reg_capabilities_ext *reg_cap;
 	struct wmi_host_pdev_band_to_mac *band_to_mac = init_param->band_to_mac;
@@ -359,11 +360,18 @@ void init_deinit_derive_band_to_mac_param(
 		target_if_err("mac_phy_cap is NULL");
 		return;
 	}
-	if (is_num_band_to_mac_required(tgt_hdl))
-		init_param->num_band_to_mac =
-			target_psoc_get_num_radios(tgt_hdl);
 
-	for (i = 0; i < target_psoc_get_num_radios(tgt_hdl); i++) {
+	num_radios = target_psoc_get_num_radios(tgt_hdl);
+	if (num_radios > WMI_HOST_MAX_PDEV) {
+		target_if_err("num_radios %u exceeds WMI_HOST_MAX_PDEV",
+			      num_radios);
+		num_radios = WMI_HOST_MAX_PDEV;
+	}
+
+	if (is_num_band_to_mac_required(tgt_hdl))
+		init_param->num_band_to_mac = num_radios;
+
+	for (i = 0; i < num_radios; i++) {
 		if (mac_phy_cap->supported_bands ==
 			(WMI_HOST_WLAN_5G_CAPABILITY |
 					WMI_HOST_WLAN_2G_CAPABILITY)) {
@@ -377,8 +385,13 @@ void init_deinit_derive_band_to_mac_param(
 
 		} else if (mac_phy_cap->supported_bands ==
 				WMI_HOST_WLAN_2G_CAPABILITY) {
-			reg_cap[mac_phy_cap->phy_id].low_5ghz_chan = 0;
-			reg_cap[mac_phy_cap->phy_id].high_5ghz_chan = 0;
+			if (mac_phy_cap->phy_id < PSOC_MAX_PHY_REG_CAP) {
+				reg_cap[mac_phy_cap->phy_id].low_5ghz_chan = 0;
+				reg_cap[mac_phy_cap->phy_id].high_5ghz_chan = 0;
+			} else {
+				target_if_err("Invalid phy_id %u",
+					      mac_phy_cap->phy_id);
+			}
 
 			if (!init_param->num_band_to_mac)
 				goto next_mac_phy_cap;
@@ -395,8 +408,13 @@ void init_deinit_derive_band_to_mac_param(
 
 		} else if (mac_phy_cap->supported_bands ==
 					WMI_HOST_WLAN_5G_CAPABILITY) {
-			reg_cap[mac_phy_cap->phy_id].low_2ghz_chan = 0;
-			reg_cap[mac_phy_cap->phy_id].high_2ghz_chan = 0;
+			if (mac_phy_cap->phy_id < PSOC_MAX_PHY_REG_CAP) {
+				reg_cap[mac_phy_cap->phy_id].low_2ghz_chan = 0;
+				reg_cap[mac_phy_cap->phy_id].high_2ghz_chan = 0;
+			} else {
+				target_if_err("Invalid phy_id %u",
+					      mac_phy_cap->phy_id);
+			}
 
 			if (!init_param->num_band_to_mac)
 				goto next_mac_phy_cap;
