@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -475,6 +475,8 @@ dp_peer_setup_wifi3(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		    struct cdp_peer_setup_info *setup_info);
 
 uint32_t dp_get_tx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl);
+
+uint32_t dp_get_rx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl);
 
 /*
  * dp_set_ba_aging_timeout() - set ba aging timeout per AC

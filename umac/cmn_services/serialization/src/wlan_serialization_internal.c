@@ -697,6 +697,10 @@ wlan_serialization_find_and_update_timer(
 	}
 
 	psoc_ser_obj = wlan_serialization_get_psoc_obj(psoc);
+	if (!psoc_ser_obj) {
+		ser_err("invalid serialization psoc_ser_obj");
+		goto exit;
+	}
 	/*
 	 * Here cmd_id and cmd_type are used to locate the timer being
 	 * associated with command.
@@ -753,6 +757,10 @@ wlan_serialization_find_and_stop_timer(struct wlan_objmgr_psoc *psoc,
 	}
 
 	psoc_ser_obj = wlan_serialization_get_psoc_obj(psoc);
+	if (!psoc_ser_obj) {
+		ser_err("invalid serialization psoc_ser_obj");
+		goto exit;
+	}
 	/*
 	 * Here cmd_id and cmd_type are used to locate the timer being
 	 * associated with command.
@@ -814,6 +822,10 @@ wlan_serialization_find_and_start_timer(struct wlan_objmgr_psoc *psoc,
 	}
 
 	psoc_ser_obj = wlan_serialization_get_psoc_obj(psoc);
+	if (!psoc_ser_obj) {
+		ser_err("invalid serialization psoc_ser_obj");
+		goto error;
+	}
 
 	wlan_serialization_acquire_lock(&psoc_ser_obj->timer_lock);
 

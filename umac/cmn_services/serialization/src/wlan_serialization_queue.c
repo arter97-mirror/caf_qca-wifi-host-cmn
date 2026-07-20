@@ -132,6 +132,11 @@ wlan_serialization_add_cmd_to_vdev_queue(
 
 	vdev_obj = wlan_serialization_get_vdev_obj(
 			wlan_serialization_get_vdev_from_cmd(cmd));
+	if (!vdev_obj) {
+		ser_err("invalid serialization vdev_obj");
+		status = WLAN_SER_CMD_DENIED_UNSPECIFIED;
+		goto error;
+	}
 
 	vdev_queue_obj =
 			wlan_serialization_get_vdev_queue_obj(
@@ -150,6 +155,7 @@ wlan_serialization_add_cmd_to_vdev_queue(
 	if (cmd->queue_disable)
 		vdev_queue_obj->queue_disable = true;
 
+error:
 	return status;
 }
 
@@ -192,6 +198,10 @@ wlan_serialization_remove_cmd_from_vdev_queue(
 
 	vdev_obj = wlan_serialization_get_vdev_obj(
 			wlan_serialization_get_vdev_from_cmd(cmd));
+	if (!vdev_obj) {
+		ser_err("invalid serialization vdev_obj");
+		goto error;
+	}
 
 	queue = wlan_serialization_get_list_from_vdev_queue(vdev_obj,
 							    cmd->cmd_type,
@@ -201,7 +211,7 @@ wlan_serialization_remove_cmd_from_vdev_queue(
 							  pcmd_list,
 							  pdev_obj,
 							  WLAN_SER_VDEV_NODE);
-
+error:
 	return status;
 }
 
