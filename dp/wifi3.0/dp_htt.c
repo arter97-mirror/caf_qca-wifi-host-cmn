@@ -2337,7 +2337,19 @@ static inline void dp_process_htt_stat_msg(struct htt_stats_context *htt_stats,
 
 		cookie_msb = *(msg_word + 2);
 		pdev_id = *(msg_word + 2) & HTT_PID_BIT_MASK;
+		if (pdev_id >= MAX_PDEV_CNT) {
+			dp_htt_err("Invalid pdev_id %d in HTT stats msg",
+				   pdev_id);
+			qdf_nbuf_free(htt_msg);
+			continue;
+		}
+
 		pdev = soc->pdev_list[pdev_id];
+		if (!pdev) {
+			dp_htt_err("pdev is NULL for pdev_id %d", pdev_id);
+			qdf_nbuf_free(htt_msg);
+			continue;
+		}
 
 		if (!cookie_val && (cookie_msb & DBG_STATS_COOKIE_HTT_DBGFS)) {
 			dp_htt_stats_dbgfs_send_msg(pdev, msg_word,
