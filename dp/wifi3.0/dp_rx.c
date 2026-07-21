@@ -2862,7 +2862,7 @@ QDF_STATUS dp_rx_eapol_deliver_to_stack(struct dp_soc *soc,
  * @rx_tlv_hdr: rx tlv header
  * @txrx_peer: datapath txrx_peer handle
  * @sgi: Short Guard Interval
- * @mcs: Modulation and Coding Set
+ * @mcs_per_stream: per-stream MCS index from the TLV (0-7 for HT)
  * @nss: Number of Spatial Streams
  * @bw: BandWidth
  * @pkt_type: Corresponds to preamble
@@ -2877,7 +2877,7 @@ QDF_STATUS dp_rx_eapol_deliver_to_stack(struct dp_soc *soc,
 static void
 dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			 uint8_t *rx_tlv_hdr, struct dp_txrx_peer *txrx_peer,
-			 uint32_t sgi, uint32_t mcs,
+			 uint32_t sgi, uint32_t mcs_per_stream,
 			 uint32_t nss, uint32_t bw, uint32_t pkt_type,
 			 uint8_t link_id)
 {
@@ -2885,20 +2885,29 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	uint16_t ratecode;
 	uint32_t avg_rx_rate;
 	uint32_t ratekbps;
+	uint32_t mcs_global;
 	enum cdp_punctured_modes punc_mode = NO_PUNCTURE;
 
 	if (qdf_unlikely(dp_rx_data_is_specific(
 				soc->hal_soc, rx_tlv_hdr, nbuf)))
 		return;
 
+	/*
+	 * For display fields, convert mcs_per_stream to the global 802.11n
+	 * MCS index. dp_getrateindex() handles the NSS offset internally.
+	 */
+	mcs_global = mcs_per_stream;
+	if ((pkt_type == DOT11_N) && (nss == 2))
+		mcs_global += 8;
+
 	/* For KPI case, bw mcs info should be updated when tput is high */
-	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.mcs_info, mcs, link_id);
+	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.mcs_info, mcs_global, link_id);
 	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.bw_info, bw, link_id);
 
 	if (soc->high_throughput)
 		return;
 
-	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.rx_rate, mcs, link_id);
+	DP_PEER_EXTD_STATS_UPD(txrx_peer, rx.rx_rate, mcs_global, link_id);
 
 	/* In 11b mode, the nss we get from tlv is 0, invalid and should be 1 */
 	if (qdf_unlikely(pkt_type == DOT11_B))
@@ -2906,7 +2915,7 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 
 	/* here pkt_type corresponds to preamble */
 	ratekbps = dp_getrateindex(sgi,
-				   mcs,
+				   mcs_per_stream,
 				   nss - 1,
 				   pkt_type,
 				   bw,
@@ -2927,7 +2936,7 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 static inline void
 dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 			 uint8_t *rx_tlv_hdr, struct dp_txrx_peer *txrx_peer,
-			 uint32_t sgi, uint32_t mcs,
+			 uint32_t sgi, uint32_t mcs_per_stream,
 			 uint32_t nss, uint32_t bw, uint32_t pkt_type,
 			 uint8_t link_id)
 {
@@ -2953,6 +2962,7 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 {
 	bool is_ampdu;
 	uint32_t sgi, mcs, tid, nss, bw, reception_type, pkt_type;
+	uint32_t mcs_per_stream;
 	uint8_t dst_mcs_idx;
 
 	/*
@@ -2965,7 +2975,7 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 				link_id);
 
 	sgi = hal_rx_tlv_sgi_get(soc->hal_soc, rx_tlv_hdr);
-	mcs = hal_rx_tlv_rate_mcs_get(soc->hal_soc, rx_tlv_hdr);
+	mcs_per_stream = hal_rx_tlv_rate_mcs_get(soc->hal_soc, rx_tlv_hdr);
 	tid = qdf_nbuf_get_tid_val(nbuf);
 	bw = hal_rx_tlv_bw_get(soc->hal_soc, rx_tlv_hdr);
 	reception_type = hal_rx_msdu_start_reception_type_get(soc->hal_soc,
@@ -2987,7 +2997,13 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	 * MCS index: HT40 | 0 ~ 7 | 8 ~ 15 | 16 ~ 23 | 24 ~ 31
 	 * ------------------------------------------------------
 	 * Currently, the MAX_NSS=2. If NSS>2, MCS index = 8 * (NSS-1)
+	 *
+	 * mcs_per_stream is the raw per-stream index from the TLV (0-7 for HT).
+	 * rx_mpdu_cnt[] requires the global 802.11n index, so derive mcs by
+	 * adding the NSS offset.
 	 */
+	mcs = mcs_per_stream;
+
 	if ((pkt_type == DOT11_N) && (nss == 2))
 		mcs += 8;
 
@@ -3018,14 +3034,15 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	DP_PEER_EXTD_STATS_INC(txrx_peer, rx.reception_type[reception_type], 1,
 			       link_id);
 
-	dst_mcs_idx = dp_get_mcs_array_index_by_pkt_type_mcs(pkt_type, mcs);
+	dst_mcs_idx = dp_get_mcs_array_index_by_pkt_type_mcs(pkt_type,
+							     mcs_per_stream);
 	if (MCS_INVALID_ARRAY_INDEX != dst_mcs_idx)
 		DP_PEER_EXTD_STATS_INC(txrx_peer,
 				       rx.pkt_type[pkt_type].mcs_count[dst_mcs_idx],
 				       1, link_id);
 
-	dp_rx_rates_stats_update(soc, nbuf, rx_tlv_hdr, txrx_peer,
-				 sgi, mcs, nss, bw, pkt_type, link_id);
+	dp_rx_rates_stats_update(soc, nbuf, rx_tlv_hdr, txrx_peer, sgi,
+				 mcs_per_stream, nss, bw, pkt_type, link_id);
 }
 #else
 static inline
