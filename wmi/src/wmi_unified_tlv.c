@@ -3280,6 +3280,54 @@ static QDF_STATUS send_set_sta_ps_param_cmd_tlv(wmi_unified_t wmi_handle,
 }
 
 /**
+ * send_set_tm_param_cmd_tlv() - set traffic monitoring parameters
+ * @wmi_handle: wmi handle
+ * @param: pointer to traffic_monitoring parameter structure
+ *
+ * Return: QDF_STATUS_SUCCESS for success or error code
+ */
+static QDF_STATUS
+send_set_tm_param_cmd_tlv(wmi_unified_t wmi_handle,
+			  struct traffic_monitoring_params *param)
+{
+	wmi_vdev_traffic_monitoring_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	int32_t len = sizeof(*cmd);
+	QDF_STATUS ret;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_vdev_traffic_monitoring_cmd_fixed_param *)
+			wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_traffic_monitoring_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN
+			       (wmi_vdev_traffic_monitoring_cmd_fixed_param));
+
+	cmd->vdev_id = param->vdev_id;
+	cmd->data_threshold = param->perf_data_threshold;
+	cmd->traffic_monitoring_time = param->traffic_monitoring_time;
+
+	wmi_debug("Set Tm param vdevId %d Threshold %u time %u",
+		  param->vdev_id, param->perf_data_threshold,
+		  param->traffic_monitoring_time);
+	wmi_mtrace(WMI_VDEV_TRAFFIC_MONITORING_CMDID, cmd->vdev_id, 0);
+
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_VDEV_TRAFFIC_MONITORING_CMDID);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send traffic monitoring command ret = %d",
+			ret);
+		wmi_buf_free(buf);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	return 0;
+}
+
+/**
  * send_crash_inject_cmd_tlv() - inject fw crash
  * @wmi_handle: wmi handle
  * @param: pointer to crash inject parameter structure
@@ -10619,6 +10667,10 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	if (tgt_res_cfg->enable_bcn_rssi_history_report)
 		WMI_RSRC_CFG_FLAGS2_RECV_BCN_STATS_ENABLED_SET(
 						resource_cfg->flags2, 1);
+
+	if (tgt_res_cfg->iot_temporal_mode_enabled)
+		WMI_RSRC_CFG_NAN_CONFIG_ENABLE_NAN_TEMPORAL_IOT_MODE_SET(
+				resource_cfg->nan_config_word, 1);
 }
 
 #ifdef FEATURE_SET
@@ -21318,12 +21370,18 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 			wmi_convert_fw_to_cm_trig_reason(trig_reason);
 		trig->trigger_sub_reason =
 			wmi_convert_roam_sub_reason(src_data->trigger_sub_reason);
-		trig->current_rssi = src_data->current_rssi;
+		if (!wmi_service_enabled(wmi_handle,
+					 wmi_service_hw_db2dbm_support))
+			trig->current_rssi = src_data->current_rssi +
+					     WMI_NOISE_FLOOR_DBM_DEFAULT;
+		else
+			trig->current_rssi = src_data->current_rssi;
 		trig->timestamp = src_data->timestamp;
 		trig->common_roam = false;
 	}
 
-	if (param_buf->roam_trigger_rssi)
+	if (param_buf->roam_trigger_rssi &&
+	    idx < param_buf->num_roam_trigger_rssi)
 		rssi_data = &param_buf->roam_trigger_rssi[idx];
 
 	if (param_buf->roam_result) {
@@ -21357,7 +21415,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	switch (trig_reason) {
 	case WMI_ROAM_TRIGGER_REASON_PER:
-		if (param_buf->roam_trigger_per)
+		if (param_buf->roam_trigger_per &&
+		    idx < param_buf->num_roam_trigger_per)
 			per_data = &param_buf->roam_trigger_per[idx];
 		if (per_data) {
 			trig->per_trig_data.tx_rate_thresh_percent =
@@ -21370,7 +21429,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_BMISS:
-		if (param_buf->roam_trigger_bmiss)
+		if (param_buf->roam_trigger_bmiss &&
+		    idx < param_buf->num_roam_trigger_bmiss)
 			bmiss_data = &param_buf->roam_trigger_bmiss[idx];
 		if (bmiss_data) {
 			trig->bmiss_trig_data.final_bmiss_cnt =
@@ -21387,7 +21447,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_HIGH_RSSI:
-		if (param_buf->roam_trigger_hi_rssi)
+		if (param_buf->roam_trigger_hi_rssi &&
+		    idx < param_buf->num_roam_trigger_hi_rssi)
 			hi_rssi_data = &param_buf->roam_trigger_hi_rssi[idx];
 
 		if (hi_rssi_data && cmn_data) {
@@ -21400,7 +21461,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	case WMI_ROAM_TRIGGER_REASON_MAWC:
 	case WMI_ROAM_TRIGGER_REASON_DENSE:
-		if (param_buf->roam_trigger_dense)
+		if (param_buf->roam_trigger_dense &&
+		    idx < param_buf->num_roam_trigger_dense)
 			dense_data = &param_buf->roam_trigger_dense[idx];
 		if (dense_data) {
 			trig->congestion_trig_data.rx_tput =
@@ -21427,7 +21489,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	case WMI_ROAM_TRIGGER_REASON_IDLE:
 	case WMI_ROAM_TRIGGER_REASON_FORCED:
-		if (param_buf->roam_trigger_force)
+		if (param_buf->roam_trigger_force &&
+		    idx < param_buf->num_roam_trigger_force)
 			force_data = &param_buf->roam_trigger_force[idx];
 		if (force_data) {
 			invoke = force_data->invoke_reason;
@@ -21441,7 +21504,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_BTM:
-		if (param_buf->roam_trigger_btm)
+		if (param_buf->roam_trigger_btm &&
+		    idx < param_buf->num_roam_trigger_btm)
 			btm_data = &param_buf->roam_trigger_btm[idx];
 		if (btm_data) {
 			trig->btm_trig_data.btm_request_mode =
@@ -21504,7 +21568,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_BSS_LOAD:
-		if (param_buf->roam_trigger_bss_load)
+		if (param_buf->roam_trigger_bss_load &&
+		    idx < param_buf->num_roam_trigger_bss_load)
 			bss_load_data = &param_buf->roam_trigger_bss_load[idx];
 		if (bss_load_data)
 			trig->cu_trig_data.cu_load = bss_load_data->cu_load;
@@ -21513,7 +21578,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_DEAUTH:
-		if (param_buf->roam_trigger_deauth)
+		if (param_buf->roam_trigger_deauth &&
+		    idx < param_buf->num_roam_trigger_deauth)
 			deauth_data = &param_buf->roam_trigger_deauth[idx];
 		if (deauth_data) {
 			trig->deauth_trig_data.type = deauth_data->deauth_type;
@@ -21526,7 +21592,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_PERIODIC:
-		if (param_buf->roam_trigger_periodic)
+		if (param_buf->roam_trigger_periodic &&
+		    idx < param_buf->num_roam_trigger_periodic)
 			periodic_data = &param_buf->roam_trigger_periodic[idx];
 		if (periodic_data) {
 			trig->periodic_trig_data.periodic_timer_ms =
@@ -21551,7 +21618,8 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_STA_KICKOUT:
-		if (param_buf->roam_trigger_kickout)
+		if (param_buf->roam_trigger_kickout &&
+		    idx < param_buf->num_roam_trigger_kickout)
 			kickout_data = &param_buf->roam_trigger_kickout[idx];
 		if (kickout_data) {
 			tx_fail = kickout_data->kickout_reason;
@@ -21691,7 +21759,15 @@ extract_roam_scan_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	dst->type = src_data->roam_scan_type;
 	dst->num_chan = src_data->roam_scan_channel_count;
 	dst->scan_complete_timestamp = src_data->scan_complete_timestamp;
-	dst->next_rssi_threshold = src_data->next_rssi_trigger_threshold;
+
+	if (!wmi_service_enabled(wmi_handle, wmi_service_hw_db2dbm_support))
+		dst->next_rssi_threshold =
+			src_data->next_rssi_trigger_threshold +
+			WMI_NOISE_FLOOR_DBM_DEFAULT;
+	else
+		dst->next_rssi_threshold =
+					src_data->next_rssi_trigger_threshold;
+
 	dst->is_btcoex_active = WMI_GET_BTCONNECT_STATUS(src_data->flags);
 	dst->frame_info_count = src_data->frame_info_count;
 	if (dst->frame_info_count >  WLAN_ROAM_MAX_FRAME_INFO)
@@ -23738,6 +23814,138 @@ send_vdev_ch_hop_sched_cmd_tlv(wmi_unified_t wmi_handle,
 
 	return ret;
 }
+
+/**
+ * send_vdev_get_chan_hop_status_cmd_tlv() - Send channel hop status command
+ * @wmi_handle: WMI handle
+ * @vdev_id: vdev identifier
+ *
+ * Builds and sends WMI command to request channel hopping status.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static QDF_STATUS
+send_vdev_get_chan_hop_status_cmd_tlv(wmi_unified_t wmi_handle,
+				      uint8_t vdev_id)
+{
+	wmi_vdev_get_chan_hop_status_report_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	int32_t len;
+	QDF_STATUS ret;
+
+	len = sizeof(*cmd);
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf) {
+		wmi_err("Failed to allocate buffer");
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	buf_ptr = (uint8_t *)wmi_buf_data(buf);
+	cmd = (wmi_vdev_get_chan_hop_status_report_cmd_fixed_param *)buf_ptr;
+
+	qdf_mem_zero(cmd, len);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_get_chan_hop_status_report_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(wmi_vdev_get_chan_hop_status_report_cmd_fixed_param));
+
+	cmd->vdev_id = vdev_id;
+
+	wmi_mtrace(WMI_VDEV_GET_CHAN_HOP_STATUS_REPORT_CMDID, vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
+				   WMI_VDEV_GET_CHAN_HOP_STATUS_REPORT_CMDID);
+
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send channel hop status cmd: %d", ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
+/**
+ * extract_vdev_chan_hop_status_tlv() - Extract channel hop status event
+ * @wmi_handle: WMI handle
+ * @evt_buf: Event buffer
+ * @resp: Response structure to fill
+ *
+ * Extracts channel hopping status data from WMI event.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+static QDF_STATUS
+extract_vdev_chan_hop_status_tlv(wmi_unified_t wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *resp)
+{
+	WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID_param_tlvs *param_tlvs;
+	wmi_vdev_chan_hop_status_report_event_fixed_param *fixed_param;
+	wmi_vdev_chan_hop_slot_status *slot_status;
+	uint32_t i;
+
+	param_tlvs =
+	(WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID_param_tlvs *)evt_buf;
+
+	if (!param_tlvs) {
+		wmi_err("Invalid event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	fixed_param = param_tlvs->fixed_param;
+	slot_status = param_tlvs->slot_status;
+
+	if (!fixed_param) {
+		wmi_err("Invalid fixed_param");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Extract fixed parameters */
+	resp->vdev_id = fixed_param->vdev_id;
+	resp->hopping_request_tsf = fixed_param->hopping_request_tsf;
+	resp->current_channel_index = fixed_param->current_channel_index;
+	resp->num_slots = param_tlvs->num_slot_status;
+
+	wmi_debug("vdev_id: %d, num_slots: %d, current_idx: %d",
+		  resp->vdev_id, resp->num_slots,
+		  resp->current_channel_index);
+
+	/* Validate and truncate if necessary */
+	if (resp->num_slots > WLAN_MAX_CHAN_HOP_SLOTS) {
+		wmi_warn("Too many slots: %d, truncating to %d",
+			 resp->num_slots, WLAN_MAX_CHAN_HOP_SLOTS);
+		resp->num_slots = WLAN_MAX_CHAN_HOP_SLOTS;
+	}
+
+	/* Extract slot status array */
+	if (slot_status && resp->num_slots > 0) {
+		for (i = 0; i < resp->num_slots; i++) {
+			resp->slot_info[i].role = slot_status[i].role;
+			resp->slot_info[i].freq = slot_status[i].chan_mhz;
+			resp->slot_info[i].channel_switch_tsf =
+				slot_status[i].channel_switch_tsf;
+			resp->slot_info[i].channel_start_tsf =
+				slot_status[i].channel_start_tsf;
+			resp->slot_info[i].channel_end_tsf =
+				slot_status[i].channel_end_tsf;
+			resp->slot_info[i].tx_traffic_index =
+				slot_status[i].tx_traffic_index;
+			resp->slot_info[i].rx_traffic_index =
+				slot_status[i].rx_traffic_index;
+
+			wmi_debug("Slot %d: freq=%d, role=%d, tx_idx=%d, rx_idx=%d",
+				  i, resp->slot_info[i].freq,
+				  resp->slot_info[i].role,
+				  resp->slot_info[i].tx_traffic_index,
+				  resp->slot_info[i].rx_traffic_index);
+		}
+	} else if (resp->num_slots > 0) {
+		wmi_err("slot_status is NULL but num_slots=%d",
+			resp->num_slots);
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
 #endif
 
 #if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
@@ -23836,6 +24044,7 @@ struct wmi_ops tlv_ops =  {
 	.send_offchan_data_tx_cmd = send_offchan_data_tx_cmd_tlv,
 	.send_modem_power_state_cmd = send_modem_power_state_cmd_tlv,
 	.send_set_sta_ps_mode_cmd = send_set_sta_ps_mode_cmd_tlv,
+	.send_set_tm_param_cmd = send_set_tm_param_cmd_tlv,
 	.send_idle_roam_monitor_cmd = send_idle_roam_monitor_cmd_tlv,
 	.send_set_sta_uapsd_auto_trig_cmd =
 		send_set_sta_uapsd_auto_trig_cmd_tlv,
@@ -24334,6 +24543,9 @@ struct wmi_ops tlv_ops =  {
 #endif
 #ifdef DRIVER_PASSTHRU_MODE
 	.send_vdev_ch_hop_sched_cmd = send_vdev_ch_hop_sched_cmd_tlv,
+	.send_vdev_get_chan_hop_status_cmd =
+		send_vdev_get_chan_hop_status_cmd_tlv,
+	.extract_vdev_chan_hop_status = extract_vdev_chan_hop_status_tlv,
 #endif
 #if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
 	.send_ocb_get_tsf_timer_cmd = send_ocb_get_tsf_timer_cmd_tlv,
@@ -24593,7 +24805,9 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_ocb_set_config_resp_event_id] =
 				WMI_OCB_SET_CONFIG_RESP_EVENTID;
 	event_ids[wmi_ocb_get_tsf_timer_resp_event_id] =
-				WMI_OCB_GET_TSF_TIMER_RESP_EVENTID;
+					WMI_OCB_GET_TSF_TIMER_RESP_EVENTID;
+	event_ids[wmi_vdev_chan_hop_status_report_event_id] =
+					WMI_VDEV_CHAN_HOP_STATUS_REPORT_EVENTID;
 	event_ids[wmi_dcc_get_stats_resp_event_id] =
 				WMI_DCC_GET_STATS_RESP_EVENTID;
 	event_ids[wmi_dcc_update_ndl_resp_event_id] =
@@ -25613,6 +25827,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_NDP_DFS_CHANNEL_SUPPORT;
 	wmi_service[wmi_service_tx_power_limit] =
 				WMI_SERVICE_TX_POWER_LIMIT;
+	wmi_service[wmi_service_vdev_traffic_monitoring] =
+				WMI_SERVICE_VDEV_TRAFFIC_MONITORING;
 #ifdef FEATURE_WLAN_SUPPORT_P2P_R2
 	wmi_service[wmi_service_wfd_r2] = WMI_SERVICE_WFD_R2;
 #endif
@@ -25641,6 +25857,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_HANDLE_ROAMING_WITHOUT_RSO_STOP_FOR_4WAY_HS_OFFLOAD_DISABLE;
 	wmi_service[wmi_service_passthru_vdev_chan_hop_schedule_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_CHAN_HOP_SCHEDULE_SUPPORT;
+	wmi_service[wmi_service_vdev_chan_hop_status_report] =
+				WMI_SERVICE_VDEV_CHAN_HOP_STATUS_REPORT;
 	wmi_service[wmi_service_passthru_vdev_ampdu_ra_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
 }

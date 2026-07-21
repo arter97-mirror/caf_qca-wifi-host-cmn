@@ -204,6 +204,18 @@ struct sta_ps_params {
 };
 
 /**
+ * struct traffic_monitoring_params - traffic monitoring cmd parameter
+ * @vdev_id: vdev id
+ * @perf_data_threshold: perf data threshold
+ * @traffic_monitoring_time: traffic monitoring time
+ */
+struct traffic_monitoring_params {
+	uint32_t vdev_id;
+	uint32_t perf_data_threshold;
+	uint32_t traffic_monitoring_time;
+};
+
+/**
  * struct rnr_bss_tbtt_info_param: Reported Vdev info
  * @bss_mac: Mac address
  * @beacon_intval: Beacon interval of reported AP

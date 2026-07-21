@@ -775,7 +775,7 @@ static QDF_STATUS dp_rx_defrag_tkip_demic(struct dp_soc *soc,
 	QDF_STATUS status;
 	uint32_t pktlen = 0, prev_data_len;
 	uint8_t mic[IEEE80211_WEP_MICLEN];
-	uint8_t mic0[IEEE80211_WEP_MICLEN];
+	uint8_t mic0[IEEE80211_WEP_MICLEN] = {0};
 	qdf_nbuf_t prev = NULL, prev0, next;
 	uint8_t len0 = 0;
 
@@ -805,15 +805,21 @@ static QDF_STATUS dp_rx_defrag_tkip_demic(struct dp_soc *soc,
 			return QDF_STATUS_E_DEFRAG_ERROR;
 		}
 		len0 = dp_f_tkip.ic_miclen - (uint8_t)prev_data_len;
-		qdf_nbuf_copy_bits(prev0, qdf_nbuf_len(prev0) - len0, len0,
-				   (caddr_t)mic0);
+		if (qdf_nbuf_copy_bits(prev0, qdf_nbuf_len(prev0) - len0, len0,
+				       (caddr_t)mic0) < 0) {
+			dp_err_rl("MIC copy (prev0) failed !");
+			return QDF_STATUS_E_DEFRAG_ERROR;
+		}
 		qdf_nbuf_trim_tail(prev0, len0);
 	}
 
-	qdf_nbuf_copy_bits(prev, (qdf_nbuf_len(prev) -
-			   (dp_f_tkip.ic_miclen - len0)),
-			   (dp_f_tkip.ic_miclen - len0),
-			   (caddr_t)(&mic0[len0]));
+	if (qdf_nbuf_copy_bits(prev, (qdf_nbuf_len(prev) -
+				(dp_f_tkip.ic_miclen - len0)),
+				(dp_f_tkip.ic_miclen - len0),
+				(caddr_t)(&mic0[len0])) < 0) {
+		dp_err_rl("MIC copy (prev) failed !");
+		return QDF_STATUS_E_DEFRAG_ERROR;
+	}
 	qdf_nbuf_trim_tail(prev, (dp_f_tkip.ic_miclen - len0));
 	pktlen -= dp_f_tkip.ic_miclen;
 

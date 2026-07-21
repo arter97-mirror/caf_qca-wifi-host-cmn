@@ -8881,8 +8881,7 @@ void dp_tx_vdev_update_search_flags(struct dp_vdev *vdev)
 
 	if (vdev->opmode == wlan_op_mode_sta && !vdev->tdls_link_connected)
 		vdev->search_type = soc->sta_mode_search_policy;
-	else if (vdev->opmode == wlan_op_mode_passthru &&
-		 !dp_get_passthru_ampdu_support(soc))
+	else if (vdev->opmode == wlan_op_mode_passthru)
 		vdev->search_type = HAL_TX_ADDR_INDEX_SEARCH;
 	else
 		vdev->search_type = HAL_TX_ADDR_SEARCH_DEFAULT;

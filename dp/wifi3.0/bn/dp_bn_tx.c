@@ -278,9 +278,9 @@ dp_tx_hw_enqueue_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 
 	dp_tx_vdev_id_set_hal_tx_desc(hal_tx_desc_cached, vdev, msdu_info);
 
-	if (qdf_likely(QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(nbuf))) {
+	if (qdf_likely(QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(tx_desc->nbuf))) {
 		hal_tx_desc_set_peer_txpt_ci_index(hal_tx_desc_cached,
-					     QDF_NBUF_CB_TXPT_IDX_VALUE(nbuf));
+					     QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(nbuf));
 	} else {
 		dp_err_rl("TXPT classify_info idx invalid");
 		DP_STATS_INC(soc, tx.inv_txpt_ci, 1);
