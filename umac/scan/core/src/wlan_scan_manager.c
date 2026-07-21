@@ -617,10 +617,7 @@ int scm_scan_get_burst_duration(int max_ch_time, bool miracast_enabled)
 		 * any stutter or glitch in miracast
 		 * during station scan
 		 */
-		if (max_ch_time <= SCAN_GO_MIN_ACTIVE_SCAN_BURST_DURATION)
-			burst_duration = max_ch_time;
-		else
-			burst_duration = SCAN_GO_MIN_ACTIVE_SCAN_BURST_DURATION;
+		burst_duration = SCAN_GO_MIN_ACTIVE_SCAN_BURST_DURATION;
 	} else {
 		/*
 		 * If miracast is not running, accommodate max
