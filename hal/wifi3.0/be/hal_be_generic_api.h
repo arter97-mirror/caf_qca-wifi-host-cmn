@@ -3500,10 +3500,22 @@ static void hal_reo_shared_qaddr_write_be(hal_soc_handle_t hal_soc_hdl,
 	if (HAL_PEER_ID_IS_MLO(peer_id)) {
 		peer_tid_idx = ((peer_id - HAL_ML_PEER_ID_START) *
 				DP_MAX_TIDS) + tid;
+		if (peer_tid_idx >= (REO_QUEUE_REF_ML_TABLE_SIZE /
+				     sizeof(*reo_qref))) {
+			hal_err_rl("peer_id %u tid %d: peer_tid_idx %u exceeds table size",
+				   peer_id, tid, peer_tid_idx);
+			return;
+		}
 		reo_qref = (struct rx_reo_queue_reference *)
 			&hal->reo_qref.mlo_reo_qref_table_vaddr[peer_tid_idx];
 	} else {
 		peer_tid_idx = (peer_id * DP_MAX_TIDS) + tid;
+		if (peer_tid_idx >= (REO_QUEUE_REF_NON_ML_TABLE_SIZE /
+				     sizeof(*reo_qref))) {
+			hal_err_rl("peer_id %u tid %d: peer_tid_idx %u exceeds table size",
+				   peer_id, tid, peer_tid_idx);
+			return;
+		}
 		reo_qref = (struct rx_reo_queue_reference *)
 			&hal->reo_qref.non_mlo_reo_qref_table_vaddr[peer_tid_idx];
 	}
