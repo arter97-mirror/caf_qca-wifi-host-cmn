@@ -493,6 +493,12 @@ util_parse_bvmlie_perstaprofile_stactrl(uint8_t *subelempayload,
 	link_id = QDF_GET_BITS(stacontrol,
 			       WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_LINKID_IDX,
 			       WLAN_ML_BV_LINFO_PERSTAPROF_STACTRL_LINKID_BITS);
+
+	if (link_id >= MAX_MLO_LINK_ID) {
+		mlo_err_rl("Invalid link ID %u in per-STA profile", link_id);
+		return QDF_STATUS_E_PROTO;
+	}
+
 	if (linkid)
 		*linkid = link_id;
 
@@ -3999,6 +4005,11 @@ util_get_bvmlie_primary_linkid(uint8_t *mlieseq, qdf_size_t mlieseqlen,
 		*linkid = QDF_GET_BITS(linkidinfo[0],
 				       WLAN_ML_BV_CINFO_LINKIDINFO_LINKID_IDX,
 				       WLAN_ML_BV_CINFO_LINKIDINFO_LINKID_BITS);
+
+		if (*linkid >= MAX_MLO_LINK_ID) {
+			mlo_err_rl("Invalid primary link ID %u", *linkid);
+			return QDF_STATUS_E_PROTO;
+		}
 	}
 
 	return QDF_STATUS_SUCCESS;

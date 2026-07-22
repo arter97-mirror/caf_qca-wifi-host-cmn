@@ -2747,7 +2747,8 @@ static void util_scan_update_ml_info(struct wlan_objmgr_pdev *pdev,
 	 * in the partner info list
 	 */
 	if (multi_link_ctrl & CMN_INFO_LINK_ID_PRESENT_BIT) {
-		if (&ml_ie[offset] < end_ptr)
+		if (&ml_ie[offset] < end_ptr &&
+		    (ml_ie[offset] & 0x0F) < MAX_MLO_LINK_ID)
 			scan_entry->ml_info.self_link_id = ml_ie[offset] & 0x0F;
 	}
 
