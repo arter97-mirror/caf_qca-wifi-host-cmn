@@ -381,6 +381,7 @@ struct scan_cache_node {
  * @rsn_caps: rsn caps of scan entry
  * @rsn_gen_selected: rsn gen for the security match
  * @sec_profile_num: selected security profile number (-1 if not used)
+ * @sec_profile_valid: true if sec_profile_num holds a valid selected profile
  */
 struct security_info {
 	uint32_t authmodeset;
@@ -391,6 +392,7 @@ struct security_info {
 	uint16_t rsn_caps;
 	uint8_t rsn_gen_selected;
 	int8_t sec_profile_num;
+	bool sec_profile_valid;
 };
 
 /**

@@ -393,6 +393,7 @@ scm_check_security_profile(struct scan_filter *filter,
 			continue;
 
 		security->sec_profile_num = profile_num;
+		security->sec_profile_valid = true;
 		security->ucastcipherset = 0;
 		security->key_mgmt = sec_profile_akm_map[profile_num];
 		QDF_SET_PARAM(security->ucastcipherset,

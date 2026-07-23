@@ -3035,6 +3035,18 @@ bool scm_scan_entries_contain_cmn_akm(struct scan_cache_entry *entry1,
 	entry2_sec_info = &entry2->neg_sec_info;
 
 	/*
+	 * sec_profile_valid is set only when a link actually matched an
+	 * 802.11bn Security Profile. When both links matched the same profile
+	 * they are guaranteed to share the same AKM and pairwise cipher
+	 * (GCMP-256), so short-circuit the detailed comparison in that case.
+	 */
+	if (entry1_sec_info->sec_profile_valid &&
+	    entry2_sec_info->sec_profile_valid &&
+	    entry1_sec_info->sec_profile_num ==
+	    entry2_sec_info->sec_profile_num)
+		return true;
+
+	/*
 	 * All the partners should use the same generation of
 	 * RSN(O) element.The secure AKM chosen should be same
 	 * across partners.
