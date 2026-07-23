@@ -1664,7 +1664,8 @@ scm_check_and_update_assoc_state(struct wlan_objmgr_pdev *pdev,
  * scm_update_assoc_state_for_new_beacon() - Update assoc_state for the
  *                                            specific new beacon's BSSID
  * @pdev: pdev pointer
- * @scan_entry: newly added scan entry
+ * @bssid: BSSID of the new beacon/probe response to match
+ * @freq: channel frequency of the new beacon to match
  *
  * Loop vdev to check if this bssid is present in connected/link or not.
  * If yes then update the scan entry assoc_state to
@@ -1672,12 +1673,13 @@ scm_check_and_update_assoc_state(struct wlan_objmgr_pdev *pdev,
  */
 static void
 scm_update_assoc_state_for_new_beacon(struct wlan_objmgr_pdev *pdev,
-				      struct scan_cache_entry *scan_entry)
+				      struct qdf_mac_addr *bssid,
+				      qdf_freq_t freq)
 {
 	struct scm_assoc_state_update_arg update_arg;
 
-	qdf_copy_macaddr(&update_arg.bssid, &scan_entry->bssid);
-	update_arg.freq = scan_entry->channel.chan_freq;
+	qdf_copy_macaddr(&update_arg.bssid, bssid);
+	update_arg.freq = freq;
 	update_arg.found = false;
 
 	wlan_objmgr_pdev_iterate_obj_list(pdev, WLAN_VDEV_OP,
@@ -1687,7 +1689,8 @@ scm_update_assoc_state_for_new_beacon(struct wlan_objmgr_pdev *pdev,
 #else
 static inline void
 scm_update_assoc_state_for_new_beacon(struct wlan_objmgr_pdev *pdev,
-				      struct scan_cache_entry *scan_entry)
+				      struct qdf_mac_addr *bssid,
+				      qdf_freq_t freq)
 {
 }
 #endif
@@ -1707,6 +1710,8 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 	struct wlan_crypto_params sec_params;
 	enum reg_6g_ap_type power_type_6g;
 	struct scan_mbssid_info *mbssid_info;
+	struct qdf_mac_addr bcn_bssid;
+	qdf_freq_t bcn_freq;
 
 	if (!bcn) {
 		scm_err("bcn is NULL");
@@ -1900,6 +1905,12 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 			}
 		}
 
+		if (bcn->save_rnr_info)
+			scm_add_rnr_channel_db(pdev, scan_entry);
+
+		qdf_copy_macaddr(&bcn_bssid, &scan_entry->bssid);
+		bcn_freq = scan_entry->channel.chan_freq;
+
 		status = scm_add_update_entry(psoc, pdev, scan_entry,
 					      bcn->is_gen_entry);
 		if (QDF_IS_STATUS_ERROR(status)) {
@@ -1914,6 +1925,10 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 		}
 
 		/*
+		 * Do not dereference scan_entry after insertion into the scan
+		 * cache. It may become visible to other threads and can be
+		 * freed concurrently during scan cache operations, leading to
+		 * a potential use-after-free.
 		 * If scan is not in progress, check if this new beacon's
 		 * BSSID belongs to a connected/standby MLO link and update
 		 * only that specific scan entry's assoc_state. This handles
@@ -1926,10 +1941,8 @@ QDF_STATUS __scm_handle_bcn_probe(struct scan_bcn_probe_event *bcn)
 		 * completion.
 		 */
 		if (wlan_get_pdev_status(pdev) == SCAN_NOT_IN_PROGRESS)
-			scm_update_assoc_state_for_new_beacon(pdev, scan_entry);
-
-		if (bcn->save_rnr_info)
-			scm_add_rnr_channel_db(pdev, scan_entry);
+			scm_update_assoc_state_for_new_beacon(pdev, &bcn_bssid,
+							      bcn_freq);
 
 		qdf_mem_free(scan_node);
 	}
