@@ -293,6 +293,7 @@ enum qcn_attribute_id {
 #define WLAN_EXT_SUPPORTED_RATES_IE_MAX_LEN      12
 
 #define WLAN_EXTCAP_IE_MAX_LEN                   15
+#define WLAN_EXTCAP_IE_MAX_PAYLOAD_LEN           255
 #define WLAN_FILS_INDICATION_IE_MIN_LEN          2
 #define WLAN_MOBILITY_DOMAIN_IE_MAX_LEN          3
 #define WLAN_OPMODE_IE_MAX_LEN                   1
