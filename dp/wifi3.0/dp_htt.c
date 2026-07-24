@@ -2851,17 +2851,20 @@ dp_h2t_ptqm_migration_msg_send(struct dp_soc *dp_soc, uint16_t vdev_id,
  * dp_vdev_txrx_hw_stats_handler - Handle vdev stats received from FW
  * @soc: htt soc handle
  * @msg_word: buffer containing stats
+ * @htt_t2h_msg: HTT message nbuf
  *
  * Return: void
  */
 static void dp_vdev_txrx_hw_stats_handler(struct htt_soc *soc,
-					  uint32_t *msg_word)
+					  uint32_t *msg_word,
+					  qdf_nbuf_t htt_t2h_msg)
 {
 	struct dp_soc *dpsoc = (struct dp_soc *)soc->dp_soc;
 	uint8_t pdev_id;
 	uint8_t vdev_id;
 	uint8_t target_pdev_id;
 	uint16_t payload_size;
+	uint32_t msg_len;
 	struct dp_pdev *pdev;
 	struct dp_vdev *vdev;
 	uint8_t *tlv_buf;
@@ -2874,6 +2877,12 @@ static void dp_vdev_txrx_hw_stats_handler(struct htt_soc *soc,
 	uint64_t soc_drop_cnt = 0;
 	struct cdp_pkt_info tx_comp = { 0 };
 	struct cdp_pkt_info tx_failed =  { 0 };
+
+	msg_len = qdf_nbuf_len(htt_t2h_msg);
+	if (msg_len < HTT_VDEV_TXRX_STATS_COMMON_HDR_SIZE) {
+		dp_htt_err("nbuf len %u less than fixed header size", msg_len);
+		return;
+	}
 
 	target_pdev_id =
 		HTT_T2H_VDEVS_TXRX_STATS_PERIODIC_IND_PDEV_ID_GET(*msg_word);
@@ -2892,8 +2901,14 @@ static void dp_vdev_txrx_hw_stats_handler(struct htt_soc *soc,
 	payload_size =
 	HTT_T2H_VDEVS_TXRX_STATS_PERIODIC_IND_PAYLOAD_SIZE_GET(*msg_word);
 
+	if (payload_size > msg_len - HTT_VDEV_TXRX_STATS_COMMON_HDR_SIZE) {
+		dp_htt_err("payload_size %u exceeds nbuf len %u",
+			   payload_size, msg_len);
+		payload_size = msg_len - HTT_VDEV_TXRX_STATS_COMMON_HDR_SIZE;
+	}
+
 	qdf_trace_hex_dump(QDF_MODULE_ID_DP_HTT, QDF_TRACE_LEVEL_INFO,
-			   (void *)msg_word, payload_size + 16);
+			   (void *)msg_word, msg_len);
 
 	/* Adjust msg_word to point to the first TLV in buffer */
 	msg_word = msg_word + 4;
@@ -2908,9 +2923,23 @@ static void dp_vdev_txrx_hw_stats_handler(struct htt_soc *soc,
 		/* Add header size to tlv length*/
 		tlv_length += 4;
 
+		if (tlv_length > payload_size) {
+			dp_htt_err("Invalid tlv_length %u exceeds payload_size %u",
+				   tlv_length, payload_size);
+			break;
+		}
+
 		switch (tlv_type) {
 		case HTT_STATS_SOC_TXRX_STATS_COMMON_TAG:
 		{
+			if (tlv_length < HTT_VDEV_TXRX_STATS_SOC_TLV_MIN_SIZE) {
+				dp_htt_err("SOC_COMMON tlv_length %u too short",
+					   tlv_length);
+				/* break skips processing and advances to
+				 * next TLV
+				 */
+				break;
+			}
 			tag_buf = tlv_buf_temp +
 					HTT_VDEV_STATS_GET_INDEX(SOC_DROP_CNT);
 			soc_drop_cnt = HTT_VDEV_GET_STATS_U64(tag_buf);
@@ -2919,6 +2948,14 @@ static void dp_vdev_txrx_hw_stats_handler(struct htt_soc *soc,
 		}
 		case HTT_STATS_VDEV_TXRX_STATS_HW_STATS_TAG:
 		{
+			if (tlv_length < HTT_VDEV_TXRX_STATS_HW_TLV_MIN_SIZE) {
+				dp_htt_err("HW_STATS tlv_length %u too short",
+					   tlv_length);
+				/* break skips processing and advances to
+				 * next TLV
+				 */
+				break;
+			}
 			tag_buf = tlv_buf_temp +
 					HTT_VDEV_STATS_GET_INDEX(VDEV_ID);
 			vdev_id = (uint8_t)(*tag_buf);
@@ -3024,7 +3061,8 @@ invalid_vdev:
 }
 #else
 static void dp_vdev_txrx_hw_stats_handler(struct htt_soc *soc,
-					  uint32_t *msg_word)
+					  uint32_t *msg_word,
+					  qdf_nbuf_t htt_t2h_msg)
 {}
 #endif
 
@@ -5028,7 +5066,7 @@ void dp_htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 	}
 	case HTT_T2H_MSG_TYPE_VDEVS_TXRX_STATS_PERIODIC_IND:
 	{
-		dp_vdev_txrx_hw_stats_handler(soc, msg_word);
+		dp_vdev_txrx_hw_stats_handler(soc, msg_word, htt_t2h_msg);
 		break;
 	}
 	case HTT_T2H_SAWF_DEF_QUEUES_MAP_REPORT_CONF:
