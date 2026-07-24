@@ -448,6 +448,19 @@ QDF_STATUS wlan_crypto_set_pmksa(struct wlan_objmgr_vdev *vdev,
 {
 	uint8_t i, first_available_slot = 0;
 	bool slot_found = false;
+	struct wlan_crypto_pmksa *existing;
+
+	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
+		existing = crypto_params->pmksa[i];
+		if (!existing)
+			continue;
+		if (qdf_is_macaddr_equal(&pmksa->bssid, &existing->bssid) &&
+		    pmksa->pmk_len && pmksa->pmk_len == existing->pmk_len &&
+		    !qdf_mem_cmp(existing->pmk, pmksa->pmk, pmksa->pmk_len)) {
+			crypto_debug("PMKSA entry found with same PMK");
+			return QDF_STATUS_E_EXISTS;
+		}
+	}
 
 	/* Delete the old entry for same BSSID, then add new entry */
 	wlan_crypto_del_pmksa(vdev, crypto_params, pmksa);
@@ -571,6 +584,8 @@ QDF_STATUS wlan_crypto_pmksa_flush(struct wlan_crypto_params *crypto_params)
 {
 	uint8_t i;
 
+	wlan_crypto_pmksa_aquire_lock();
+
 	wlan_crypto_dump_pmksa_table(crypto_params, "pre_flush_pmksa");
 
 	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
@@ -582,6 +597,8 @@ QDF_STATUS wlan_crypto_pmksa_flush(struct wlan_crypto_params *crypto_params)
 		crypto_params->pmksa[i] = NULL;
 	}
 
+	wlan_crypto_pmksa_release_lock();
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -592,7 +609,6 @@ QDF_STATUS wlan_crypto_set_del_pmksa(struct wlan_objmgr_vdev *vdev,
 	QDF_STATUS status = QDF_STATUS_E_INVAL;
 	struct wlan_crypto_comp_priv *crypto_priv;
 	struct wlan_crypto_params *crypto_params;
-	struct wlan_crypto_pmksa *pmkid_cache = NULL;
 	enum QDF_OPMODE op_mode;
 
 	op_mode = wlan_vdev_mlme_get_opmode(vdev);
@@ -615,28 +631,25 @@ QDF_STATUS wlan_crypto_set_del_pmksa(struct wlan_objmgr_vdev *vdev,
 
 	crypto_params = &crypto_priv->crypto_params;
 
-	if (set) {
-		pmkid_cache = wlan_crypto_get_pmksa(vdev, &pmksa->bssid);
-		if (pmkid_cache && (pmksa->pmk_len &&
-				    pmksa->pmk_len == pmkid_cache->pmk_len &&
-				    !qdf_mem_cmp(pmkid_cache->pmk, pmksa->pmk,
-						 pmksa->pmk_len))) {
-			crypto_debug("PMKSA entry found with same PMK");
-			pmkid_cache = NULL;
-			return QDF_STATUS_E_EXISTS;
-		}
+	/* pmksa_flush locks internally, so it must not be called with
+	 * pmksa_lock held.
+	 */
+	if (!set && !pmksa)
+		return wlan_crypto_pmksa_flush(crypto_params);
 
+	/*
+	 * pmksa_lock serializes set_pmksa/del_pmksa against concurrent
+	 * pmksa[] table access. Both helpers are lock-free by design and
+	 * rely on the caller already holding this lock.
+	 */
+	wlan_crypto_pmksa_aquire_lock();
+
+	if (set)
 		status = wlan_crypto_set_pmksa(vdev, crypto_params, pmksa);
-		/* Set pmksa */
-	} else {
-		/* del pmksa */
-		if (!pmksa)
-			status = wlan_crypto_pmksa_flush(crypto_params);
-		else
-			status = wlan_crypto_del_pmksa(vdev,
-						       crypto_params,
-						       pmksa);
-	}
+	else
+		status = wlan_crypto_del_pmksa(vdev, crypto_params, pmksa);
+
+	wlan_crypto_pmksa_release_lock();
 
 	return status;
 }
@@ -664,6 +677,8 @@ QDF_STATUS wlan_crypto_update_pmk_cache_ft(struct wlan_objmgr_vdev *vdev,
 	}
 
 	crypto_params = &crypto_priv->crypto_params;
+
+	wlan_crypto_pmksa_aquire_lock();
 
 	if (pmksa->mdid.mdie_present) {
 		for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
@@ -713,10 +728,12 @@ QDF_STATUS wlan_crypto_update_pmk_cache_ft(struct wlan_objmgr_vdev *vdev,
 			}
 		}
 	}
+	wlan_crypto_pmksa_release_lock();
+
 	return status;
 }
 
-struct wlan_crypto_pmksa *
+static struct wlan_crypto_pmksa *
 wlan_crypto_get_peer_pmksa(struct wlan_objmgr_vdev *vdev,
 			   struct wlan_crypto_pmksa *pmksa)
 {
@@ -761,7 +778,7 @@ wlan_crypto_get_peer_pmksa(struct wlan_objmgr_vdev *vdev,
 	return NULL;
 }
 
-struct wlan_crypto_pmksa *
+static struct wlan_crypto_pmksa *
 wlan_crypto_get_pmksa(struct wlan_objmgr_vdev *vdev, struct qdf_mac_addr *bssid)
 {
 	struct wlan_crypto_comp_priv *crypto_priv;
@@ -803,7 +820,7 @@ wlan_crypto_get_pmksa(struct wlan_objmgr_vdev *vdev, struct qdf_mac_addr *bssid)
 	return NULL;
 }
 
-struct wlan_crypto_pmksa *
+static struct wlan_crypto_pmksa *
 wlan_crypto_get_fils_pmksa(struct wlan_objmgr_vdev *vdev,
 			   uint8_t *cache_id, uint8_t *ssid,
 			   uint8_t ssid_len)
@@ -835,6 +852,79 @@ wlan_crypto_get_fils_pmksa(struct wlan_objmgr_vdev *vdev,
 	}
 
 	return NULL;
+}
+
+QDF_STATUS
+wlan_crypto_get_pmksa_copy(struct wlan_objmgr_vdev *vdev,
+			   struct qdf_mac_addr *bssid,
+			   struct wlan_crypto_pmksa *pmksa)
+{
+	struct wlan_crypto_pmksa *found;
+	QDF_STATUS status = QDF_STATUS_E_EMPTY;
+
+	if (!pmksa) {
+		crypto_err("pmksa is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wlan_crypto_pmksa_aquire_lock();
+	found = wlan_crypto_get_pmksa(vdev, bssid);
+	if (found) {
+		qdf_mem_copy(pmksa, found, sizeof(*pmksa));
+		status = QDF_STATUS_SUCCESS;
+	}
+	wlan_crypto_pmksa_release_lock();
+
+	return status;
+}
+
+QDF_STATUS
+wlan_crypto_get_fils_pmksa_copy(struct wlan_objmgr_vdev *vdev,
+				uint8_t *cache_id, uint8_t *ssid,
+				uint8_t ssid_len,
+				struct wlan_crypto_pmksa *pmksa)
+{
+	struct wlan_crypto_pmksa *found;
+	QDF_STATUS status = QDF_STATUS_E_EMPTY;
+
+	if (!pmksa) {
+		crypto_err("pmksa is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wlan_crypto_pmksa_aquire_lock();
+	found = wlan_crypto_get_fils_pmksa(vdev, cache_id, ssid, ssid_len);
+	if (found) {
+		qdf_mem_copy(pmksa, found, sizeof(*pmksa));
+		status = QDF_STATUS_SUCCESS;
+	}
+	wlan_crypto_pmksa_release_lock();
+
+	return status;
+}
+
+QDF_STATUS
+wlan_crypto_get_peer_pmksa_copy(struct wlan_objmgr_vdev *vdev,
+				struct wlan_crypto_pmksa *lookup,
+				struct wlan_crypto_pmksa *pmksa)
+{
+	struct wlan_crypto_pmksa *found;
+	QDF_STATUS status = QDF_STATUS_E_EMPTY;
+
+	if (!pmksa) {
+		crypto_err("pmksa is NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wlan_crypto_pmksa_aquire_lock();
+	found = wlan_crypto_get_peer_pmksa(vdev, lookup);
+	if (found) {
+		qdf_mem_copy(pmksa, found, sizeof(*pmksa));
+		status = QDF_STATUS_SUCCESS;
+	}
+	wlan_crypto_pmksa_release_lock();
+
+	return status;
 }
 
 uint8_t wlan_crypto_is_htallowed(struct wlan_objmgr_vdev *vdev,
@@ -3599,10 +3689,13 @@ uint8_t *wlan_crypto_build_rsnie(struct wlan_objmgr_vdev *vdev,
 				 uint8_t *iebuf,
 				 struct qdf_mac_addr *bssid)
 {
+	struct wlan_crypto_pmksa pmksa_buf;
 	struct wlan_crypto_pmksa *pmksa = NULL;
 
-	if (bssid)
-		pmksa = wlan_crypto_get_pmksa(vdev, bssid);
+	if (bssid &&
+	    QDF_IS_STATUS_SUCCESS(wlan_crypto_get_pmksa_copy(vdev, bssid,
+							     &pmksa_buf)))
+		pmksa = &pmksa_buf;
 
 	return wlan_crypto_build_rsnie_with_pmksa(vdev, iebuf, pmksa);
 }
@@ -5399,6 +5492,8 @@ void wlan_crypto_selective_clear_sae_single_pmk_entries(
 
 	crypto_params = &crypto_priv->crypto_params;
 
+	wlan_crypto_pmksa_aquire_lock();
+
 	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
 		if (!crypto_params->pmksa[i])
 			continue;
@@ -5412,6 +5507,7 @@ void wlan_crypto_selective_clear_sae_single_pmk_entries(
 			crypto_params->pmksa[i] = NULL;
 		}
 	}
+	wlan_crypto_pmksa_release_lock();
 }
 
 void wlan_crypto_set_sae_single_pmk_bss_cap(struct wlan_objmgr_vdev *vdev,
@@ -5432,6 +5528,7 @@ void wlan_crypto_set_sae_single_pmk_bss_cap(struct wlan_objmgr_vdev *vdev,
 
 	crypto_params = &crypto_priv->crypto_params;
 
+	wlan_crypto_pmksa_aquire_lock();
 	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
 		if (!crypto_params->pmksa[i])
 			continue;
@@ -5441,6 +5538,7 @@ void wlan_crypto_set_sae_single_pmk_bss_cap(struct wlan_objmgr_vdev *vdev,
 			crypto_params->pmksa[i]->single_pmk_supported =
 					single_pmk_capable_bss;
 	}
+	wlan_crypto_pmksa_release_lock();
 }
 
 void
@@ -5461,6 +5559,7 @@ wlan_crypto_set_sae_single_pmk_info(struct wlan_objmgr_vdev *vdev,
 
 	crypto_params = &crypto_priv->crypto_params;
 
+	wlan_crypto_pmksa_aquire_lock();
 	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
 		if (!crypto_params->pmksa[i])
 			continue;
@@ -5478,6 +5577,7 @@ wlan_crypto_set_sae_single_pmk_info(struct wlan_objmgr_vdev *vdev,
 		}
 	}
 	wlan_crypto_dump_pmksa_table(crypto_params, "set_sae_single_pmk_info");
+	wlan_crypto_pmksa_release_lock();
 }
 
 #endif

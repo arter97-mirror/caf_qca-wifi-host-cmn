@@ -44,6 +44,14 @@
 
 static qdf_mutex_t crypto_lock;
 
+/*
+ * Serializes all access to the per-vdev PMKSA cache
+ * (crypto_params->pmksa[]). Kept separate from crypto_lock, which
+ * protects the crypto key table, so the PMKSA lookup/free paths do not
+ * contend with key install/migration paths.
+ */
+static qdf_mutex_t pmksa_lock;
+
 extern const struct wlan_crypto_cipher
 				*wlan_crypto_cipher_ops[WLAN_CRYPTO_CIPHER_MAX];
 
@@ -758,6 +766,16 @@ void wlan_crypto_release_lock(void)
 	qdf_mutex_release(&crypto_lock);
 }
 
+void wlan_crypto_pmksa_aquire_lock(void)
+{
+	qdf_mutex_acquire(&pmksa_lock);
+}
+
+void wlan_crypto_pmksa_release_lock(void)
+{
+	qdf_mutex_release(&pmksa_lock);
+}
+
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
@@ -906,6 +924,9 @@ QDF_STATUS __wlan_crypto_init(void)
 	/* Initialize crypto global lock*/
 	qdf_mutex_create(&crypto_lock);
 
+	/* Initialize the PMKSA cache lock */
+	qdf_mutex_create(&pmksa_lock);
+
 	status = register_psoc_create_handler();
 	if (QDF_IS_STATUS_ERROR(status)) {
 		crypto_err("psoc creation failure");
@@ -998,6 +1019,9 @@ QDF_STATUS __wlan_crypto_deinit(void)
 
 	/* Destroy crypto global lock */
 	qdf_mutex_destroy(&crypto_lock);
+
+	/* Destroy the PMKSA cache lock */
+	qdf_mutex_destroy(&pmksa_lock);
 
 	return QDF_STATUS_SUCCESS;
 }
