@@ -2349,9 +2349,10 @@ more_data:
 		 * Handle HAL_RX_REO_MSDU_BUF_ADDR_TYPE exception case.
 		 */
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
+			uint32_t peer_mdata = mpdu_desc_info.peer_meta_data;
 			int lmac_id;
 
-			if (HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_GET(mpdu_desc_info.peer_meta_data) ||
+			if (dp_rx_peer_metadata_passthru_pkt_get(soc, peer_mdata) ||
 			    dp_rx_is_passthru_msdu_buf(soc, &mpdu_desc_info)) {
 				lmac_id =
 					dp_rx_err_handle_passthru_msdu_buf(soc,

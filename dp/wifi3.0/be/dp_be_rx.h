@@ -429,9 +429,6 @@ struct dp_rx_desc *dp_rx_desc_ppeds_cookie_2_va(struct dp_soc *soc,
 
 #define DP_PEER_METADATA_OFFLOAD_GET_BE(_peer_metadata)		(0)
 
-#define HTT_RX_PEER_META_DATA_FIELD_GET(_var, _field_s, _field_m) \
-	(((_var) & (_field_m)) >> (_field_s))
-
 #ifdef DP_USE_REDUCED_PEER_ID_FIELD_WIDTH
 static inline uint16_t
 dp_rx_peer_metadata_peer_id_get_be(struct dp_soc *soc, uint32_t peer_metadata)

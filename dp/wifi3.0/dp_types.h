@@ -3874,6 +3874,8 @@ struct dp_soc {
 	uint32_t htt_logical_link_id_m;
 	uint8_t htt_opt_dp_ctrl_refill_s;
 	uint32_t htt_opt_dp_ctrl_refill_m;
+	uint8_t htt_passthru_pkt_s;
+	uint32_t htt_passthru_pkt_m;
 	/* rx peer metadata version */
 	uint8_t rx_peer_metadata_ver;
 

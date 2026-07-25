@@ -2635,6 +2635,18 @@ dp_rx_peer_metadata_peer_id_get(struct dp_soc *soc, uint32_t peer_metadata)
 							     peer_metadata);
 }
 
+#define HTT_RX_PEER_META_DATA_FIELD_GET(_var, _field_s, _field_m) \
+	(((_var) & (_field_m)) >> (_field_s))
+
+static inline uint8_t
+dp_rx_peer_metadata_passthru_pkt_get(struct dp_soc *soc,
+				     uint32_t peer_metadata)
+{
+	return HTT_RX_PEER_META_DATA_FIELD_GET(peer_metadata,
+					       soc->htt_passthru_pkt_s,
+					       soc->htt_passthru_pkt_m);
+}
+
 #if defined(WLAN_FEATURE_11BE_MLO) && defined(DP_MLO_LINK_STATS_SUPPORT)
 /**
  * dp_rx_nbuf_set_link_id_from_tlv() - Set link id in nbuf cb

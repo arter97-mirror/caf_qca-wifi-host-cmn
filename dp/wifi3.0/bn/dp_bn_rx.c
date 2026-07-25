@@ -1309,9 +1309,10 @@ more_data:
 
 		/* For REO error ring, only MSDU LINK DESC is expected. */
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
+			uint32_t peer_mdata = mpdu_desc_info.peer_meta_data;
 			int lmac_id;
 
-			if (HTT_RX_PEER_META_DATA_V2_PASSTHRU_PKT_GET(mpdu_desc_info.peer_meta_data)) {
+			if (dp_rx_peer_metadata_passthru_pkt_get(soc, peer_mdata)) {
 				lmac_id =
 					dp_rx_err_handle_passthru_msdu_buf(soc,
 									   ring_desc);
