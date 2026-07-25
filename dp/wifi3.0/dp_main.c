@@ -9746,6 +9746,10 @@ dp_rx_peer_metadata_ver_update(struct dp_soc *soc, uint8_t peer_md_ver)
 				HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_S;
 		soc->htt_opt_dp_ctrl_refill_m =
 				HTT_RX_PEER_META_DATA_V1A_QDATA_REFILL_M;
+		soc->htt_passthru_pkt_s =
+				HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_S;
+		soc->htt_passthru_pkt_m =
+				HTT_RX_PEER_META_DATA_V1A_PASSTHRU_PKT_M;
 		break;
 	case 3: /* htt_rx_peer_metadata_v1b */
 		soc->htt_peer_id_s = HTT_RX_PEER_META_DATA_V1B_PEER_ID_S;
