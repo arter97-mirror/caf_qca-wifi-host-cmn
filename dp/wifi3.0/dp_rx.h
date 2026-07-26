@@ -4462,17 +4462,85 @@ dp_rx_msdu_done_fail_event_record(struct dp_soc *soc,
 
 #ifdef DRIVER_PASSTHRU_MODE
 /**
- * dp_rx_err_handle_passthru_msdu_buf() - Process passthru msdu buffers received
+ * dp_rx_err_process_passthru_msdu() - Process passthru msdu buffers received
  * on rx err ring
  * @soc: DP SoC handle
+ * @hal_ring_hdl: rx err ring handle, used to reap additional ring entries
+ *                belonging to the same scattered MSDU
  * @ring_desc: error ring descriptor
+ * @mpdu_desc_info: mpdu descriptor information
+ * @num_bufs_reaped: output param, number of ring buffers reaped by this call
  *
- * This function processes passthru msdu buffers received on rx err ring.
+ * This function checks whether the MSDU buffer is from a passthru peer, and
+ * if so, processes it. If the MSDU is spread across multiple ring entries
+ * (scatter/gather), it reaps all of them before reassembling and delivering
+ * the MSDU. This is the BE (non-BN) ring-traversal driver -- it owns
+ * advancing ring_desc via hal_srng_dst_get_next()/hal_srng_dst_peek(), while
+ * the per-buffer reap/deliver logic it calls is common across BE and BN.
  *
- * Return: lmac id
+ * Return: lmac id if the buffer was a passthru MSDU, MAX_PDEV_CNT otherwise
  */
-int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
-				       hal_ring_desc_t ring_desc);
+int
+dp_rx_err_process_passthru_msdu(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+			       hal_ring_desc_t ring_desc,
+			       struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+			       uint32_t *num_bufs_reaped);
+
+/**
+ * dp_rx_err_reap_one_passthru_buf() - reap a single ring buffer belonging to
+ *  a (possibly scattered) passthru MSDU
+ * @soc: DP SoC handle
+ * @cur_desc: ring descriptor for the buffer to reap
+ * @is_cont: output param, set to whether this buffer continues into the
+ *           next ring entry
+ * @head_nbuf: in/out param, head of the scatter/gather nbuf chain
+ * @tail_nbuf: in/out param, tail of the scatter/gather nbuf chain
+ * @lmac_id: output param, lmac id of the reaped buffer
+ * @num_bufs_reaped: in/out param, incremented on a successful reap
+ *
+ * This function does not touch the ring position -- callers own advancing
+ * to the next ring entry (via hal_srng_dst_get_next()/hal_srng_dst_peek())
+ * when is_cont is true. Common across BE and BN.
+ *
+ * Return: QDF_STATUS_SUCCESS if a buffer was reaped, QDF_STATUS_E_INVAL if
+ *         the ring/link-desc cookie did not resolve to a valid rx_desc.
+ */
+QDF_STATUS
+dp_rx_err_reap_one_passthru_buf(struct dp_soc *soc, hal_ring_desc_t cur_desc,
+				bool *is_cont, qdf_nbuf_t *head_nbuf,
+				qdf_nbuf_t *tail_nbuf, uint8_t *lmac_id,
+				uint32_t *num_bufs_reaped);
+
+/**
+ * dp_rx_err_passthru_sg_free() - free an incomplete passthru scatter/gather
+ *  nbuf chain
+ * @head_nbuf: head of the scatter/gather nbuf chain to free
+ *
+ * Common across BE and BN.
+ */
+void dp_rx_err_passthru_sg_free(qdf_nbuf_t head_nbuf);
+
+/**
+ * dp_rx_err_deliver_passthru_sg_buf() - reassemble and deliver a reaped
+ *  passthru MSDU
+ * @pdev: pdev the reaped buffers belong to, used to derive the DP SoC handle
+ *        and to search for a passthru vdev when txrx_peer is NULL
+ * @head_nbuf: head of the scatter/gather nbuf chain
+ * @tail_nbuf: tail of the scatter/gather nbuf chain
+ * @txrx_peer: passthru peer to deliver the reassembled MSDU to, may be NULL
+ *             if the peer could not be resolved (e.g. torn down) even
+ *             though the passthru bit was set on the MSDU
+ *
+ * This function does not touch the ring position. Common across BE and BN.
+ * Callers are expected to free the scatter/gather chain themselves (e.g. via
+ * dp_rx_err_passthru_sg_free()) instead of calling this function when the
+ * chain was left incomplete.
+ */
+void
+dp_rx_err_deliver_passthru_sg_buf(struct dp_pdev *pdev,
+				  qdf_nbuf_t head_nbuf, qdf_nbuf_t tail_nbuf,
+				  struct dp_txrx_peer *txrx_peer);
 
 /**
  * dp_rx_deliver_raw_passthru() - Deliver raw passthru packets to stack
@@ -4491,18 +4559,27 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 			       uint8_t *rx_pkt_tlvs);
 
 /**
- * dp_rx_is_passthru_msdu_buf() - check whether the received msdu buffer is
- *  from a passthru peer or not.
+ * dp_rx_peer_mdata_get_passthru_peer_ref() - get a ref to the passthru peer
+ *  for a received msdu buffer, if the msdu belongs to a passthru peer.
  * @soc: DP SoC handle
- * @mpdu_desc_info: mpdu descriptor information
+ * @txrx_ref_handle: output param, set to the ref handle for the returned
+ *                   peer, to be released via dp_txrx_peer_unref_delete()
+ * @peer_meta_data: peer metadata from the msdu/mpdu descriptor
+ * @mod_id: module ID to be used for taking/releasing the peer reference
  *
- * This function checks whether the received msdu buffer is from a passthru
- * peer or not.
+ * This function resolves the txrx_peer for the given peer metadata and
+ * returns it only if the peer's vdev is in passthru mode. The caller is
+ * responsible for releasing the returned reference via
+ * dp_txrx_peer_unref_delete() when non-NULL.
  *
- * Return: true for success else false.
+ * Return: txrx_peer handle if the buffer belongs to a passthru peer,
+ *         NULL otherwise.
  */
-bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
-				struct hal_rx_mpdu_desc_info *mpdu_desc_info);
+struct dp_txrx_peer *
+dp_rx_peer_mdata_get_passthru_peer_ref(struct dp_soc *soc,
+				       dp_txrx_ref_handle *txrx_ref_handle,
+				       uint32_t peer_meta_data,
+				       enum dp_mod_id mod_id);
 
 static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
 					    uint32_t peer_metadata)
@@ -4521,9 +4598,14 @@ static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
 }
 #else
 static inline
-int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
-				       hal_ring_desc_t ring_desc)
+int
+dp_rx_err_process_passthru_msdu(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+			       hal_ring_desc_t ring_desc,
+			       struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+			       uint32_t *num_bufs_reaped)
 {
+	*num_bufs_reaped = 0;
 	return MAX_PDEV_CNT;
 }
 
@@ -4535,11 +4617,13 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 	return -EINVAL;
 }
 
-static inline
-bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
-				struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+static inline struct dp_txrx_peer *
+dp_rx_peer_mdata_get_passthru_peer_ref(struct dp_soc *soc,
+				       dp_txrx_ref_handle *txrx_ref_handle,
+				       uint32_t peer_meta_data,
+				       enum dp_mod_id mod_id)
 {
-	return false;
+	return NULL;
 }
 
 static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,

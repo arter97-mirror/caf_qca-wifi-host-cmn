@@ -1242,6 +1242,134 @@ process_next_msdu:
 	return rx_bufs_used;
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+/**
+ * dp_rx_err_process_passthru_msdu_bn() - Process passthru msdu buffers
+ *  received on rx err ring, BN variant
+ * @soc: DP SoC handle
+ * @hal_ring_hdl: rx err ring handle, used to reap additional ring entries
+ *                belonging to the same scattered MSDU
+ * @ring_desc: error ring descriptor
+ * @mpdu_desc_info: mpdu descriptor information
+ * @num_bufs_reaped: output param, number of ring buffers reaped by this call
+ *
+ * This is the BN ring-traversal driver -- it owns advancing ring_desc via
+ * hal_srng_dst_get_next()/hal_srng_dst_peek(), while the per-buffer
+ * reap/deliver logic it calls (dp_rx_err_reap_one_passthru_buf(),
+ * dp_rx_err_deliver_passthru_sg_buf()) is common across BE and BN.
+ *
+ * Return: lmac id if the buffer was a passthru MSDU, MAX_PDEV_CNT otherwise
+ */
+static int
+dp_rx_err_process_passthru_msdu_bn(struct dp_soc *soc,
+				   hal_ring_handle_t hal_ring_hdl,
+				   hal_ring_desc_t ring_desc,
+				   struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+				   uint32_t *num_bufs_reaped)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	dp_txrx_ref_handle txrx_ref_handle = NULL;
+	uint32_t peer_meta_data = mpdu_desc_info->peer_meta_data;
+	struct dp_txrx_peer *txrx_peer = NULL;
+	qdf_nbuf_t head_nbuf = NULL;
+	qdf_nbuf_t tail_nbuf = NULL;
+	hal_ring_desc_t cur_desc = ring_desc;
+	bool is_cont = false;
+	uint8_t lmac_id = 0;
+	struct dp_pdev *pdev;
+
+	*num_bufs_reaped = 0;
+
+	/*
+	 * Process this buffer if either the passthru bit is set in
+	 * peer_meta_data, or a live passthru txrx_peer is found. The peer
+	 * may be unresolvable (e.g. already torn down) even though the
+	 * passthru bit is set -- dp_rx_err_deliver_passthru_sg_buf() falls
+	 * back to searching the pdev's vdev list by opmode in that case.
+	 */
+	txrx_peer = dp_rx_peer_mdata_get_passthru_peer_ref(soc,
+							   &txrx_ref_handle,
+							   peer_meta_data,
+							   DP_MOD_ID_RX_ERR);
+	if (!txrx_peer && !dp_rx_peer_metadata_passthru_pkt_get(soc,
+								peer_meta_data))
+		return MAX_PDEV_CNT;
+
+	do {
+		if (QDF_IS_STATUS_ERROR(
+			dp_rx_err_reap_one_passthru_buf(soc, cur_desc,
+							&is_cont, &head_nbuf,
+							&tail_nbuf, &lmac_id,
+							num_bufs_reaped))) {
+			if (!*num_bufs_reaped) {
+				lmac_id = MAX_PDEV_CNT;
+				goto exit;
+			}
+
+			break;
+		}
+
+		if (!is_cont)
+			break;
+
+		hal_srng_dst_get_next(hal_soc, hal_ring_hdl);
+		cur_desc = hal_srng_dst_peek(hal_soc, hal_ring_hdl);
+		if (!cur_desc) {
+			/*
+			 * Cheap peek (against the cached_hp latched once at
+			 * the top of this dp_rx_err_process_bn() pass) found
+			 * nothing, but we're still mid-chain. Before giving
+			 * up, pay for exactly one sync'd re-check (live HW
+			 * HP register read) -- if HW posted the rest of the
+			 * chain after that stale snapshot was taken, this
+			 * updates cached_hp and lets us finish the chain in
+			 * this same call instead of splitting it across two
+			 * passes (which today has no resume path and would
+			 * mis-deliver the terminal buffer as its own
+			 * standalone MSDU). Doing this only here -- not on
+			 * every iteration -- keeps the common case (chain
+			 * fully visible already) free of extra register
+			 * reads.
+			 */
+			if (hal_srng_dst_num_valid(hal_soc, hal_ring_hdl, 1))
+				cur_desc = hal_srng_dst_peek(hal_soc,
+							     hal_ring_hdl);
+		}
+	} while (cur_desc);
+
+	if (is_cont) {
+		/*
+		 * Either the ring was drained before the terminal buffer
+		 * arrived, or a later buffer in the chain was invalid.
+		 * Buffers already reaped above are already unmapped and
+		 * queued for replenish -- drop them and report what was
+		 * actually consumed instead of asking the caller to retry.
+		 */
+		dp_rx_err_passthru_sg_free(head_nbuf);
+	} else {
+		pdev = dp_get_pdev_for_lmac_id(soc, lmac_id);
+		dp_rx_err_deliver_passthru_sg_buf(pdev, head_nbuf, tail_nbuf,
+						  txrx_peer);
+	}
+
+exit:
+	if (txrx_ref_handle)
+		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
+	return lmac_id;
+}
+#else
+static inline int
+dp_rx_err_process_passthru_msdu_bn(struct dp_soc *soc,
+				   hal_ring_handle_t hal_ring_hdl,
+				   hal_ring_desc_t ring_desc,
+				   struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+				   uint32_t *num_bufs_reaped)
+{
+	*num_bufs_reaped = 0;
+	return MAX_PDEV_CNT;
+}
+#endif /* DRIVER_PASSTHRU_MODE */
+
 uint32_t
 dp_rx_err_process_bn(struct dp_intr *int_ctx, struct dp_soc *soc,
 		     hal_ring_handle_t hal_ring_hdl, uint32_t quota)
@@ -1309,17 +1437,15 @@ more_data:
 
 		/* For REO error ring, only MSDU LINK DESC is expected. */
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
-			uint32_t peer_mdata = mpdu_desc_info.peer_meta_data;
 			int lmac_id;
+			uint32_t num_bufs_reaped = 0;
 
-			if (dp_rx_peer_metadata_passthru_pkt_get(soc, peer_mdata)) {
-				lmac_id =
-					dp_rx_err_handle_passthru_msdu_buf(soc,
-									   ring_desc);
-				if (lmac_id >= 0 && lmac_id < MAX_PDEV_CNT) {
-					rx_bufs_reaped += 1;
-					goto next_entry;
-				}
+			lmac_id = dp_rx_err_process_passthru_msdu_bn(
+					soc, hal_ring_hdl, ring_desc,
+					&mpdu_desc_info, &num_bufs_reaped);
+			if (lmac_id >= 0 && lmac_id < MAX_PDEV_CNT) {
+				rx_bufs_reaped += num_bufs_reaped;
+				goto next_entry;
 			}
 
 			/* Try to handle RXDMA error for MSDU buffer */

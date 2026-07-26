@@ -39,7 +39,7 @@
 #include <enet.h>	/* LLC_SNAP_HDR_LEN */
 #include "qdf_net_types.h"
 #include "dp_rx_buffer_pool.h"
-#if defined(CONFIG_BERYLLIUM) && !defined(CONFIG_BORON)
+#if defined(CONFIG_BERYLLIUM) || defined(CONFIG_BORON)
 #include "hal_be_rx.h"
 #endif
 
@@ -2108,27 +2108,69 @@ static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
 #endif /* CONFIG_BORON */
 
 #ifdef DRIVER_PASSTHRU_MODE
-int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
-				       hal_ring_desc_t ring_desc)
+void dp_rx_err_passthru_sg_free(qdf_nbuf_t head_nbuf)
 {
+	qdf_nbuf_t nbuf = head_nbuf;
+	qdf_nbuf_t next_nbuf;
+
+	while (nbuf) {
+		next_nbuf = qdf_nbuf_next(nbuf);
+		dp_rx_nbuf_free(nbuf);
+		nbuf = next_nbuf;
+	}
+}
+
+/**
+ * dp_rx_err_reap_one_passthru_buf() - reap a single ring buffer belonging to
+ *  a (possibly scattered) passthru MSDU
+ * @soc: DP SoC handle
+ * @cur_desc: ring descriptor for the buffer to reap
+ * @is_cont: output param, set to whether this buffer continues into the
+ *           next ring entry
+ * @head_nbuf: in/out param, head of the scatter/gather nbuf chain
+ * @tail_nbuf: in/out param, tail of the scatter/gather nbuf chain
+ * @lmac_id: output param, lmac id of the reaped buffer
+ * @num_bufs_reaped: in/out param, incremented on a successful reap
+ *
+ * This function does not touch the ring position -- callers own advancing
+ * to the next ring entry (via hal_srng_dst_get_next()/hal_srng_dst_peek())
+ * when is_cont is true.
+ *
+ * Return: QDF_STATUS_SUCCESS if a buffer was reaped, QDF_STATUS_E_INVAL if
+ *         the ring/link-desc cookie did not resolve to a valid rx_desc.
+ */
+QDF_STATUS
+dp_rx_err_reap_one_passthru_buf(struct dp_soc *soc, hal_ring_desc_t cur_desc,
+				bool *is_cont, qdf_nbuf_t *head_nbuf,
+				qdf_nbuf_t *tail_nbuf, uint8_t *lmac_id,
+				uint32_t *num_bufs_reaped)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
 	struct dp_pdev *pdev;
-	struct dp_vdev *vdev = NULL;
 	struct hal_buf_info hbi;
 	struct dp_rx_desc *rx_desc;
 	qdf_nbuf_t nbuf;
 	struct rx_desc_pool *rx_desc_pool;
-	uint8_t *rx_tlv_hdr;
-	uint8_t *rx_pkt_hdr;
-	uint32_t l3_hdr_pad;
-	uint16_t pkt_len;
-	uint16_t msdu_len;
+	uint32_t mpdu_info;
+	uint32_t peer_mdata;
+	uint32_t msdu_info;
 
-	hal_rx_reo_buf_paddr_get(soc->hal_soc, ring_desc, &hbi);
+	hal_rx_reo_buf_paddr_get(hal_soc, cur_desc, &hbi);
 
 	rx_desc = soc->arch_ops.dp_rx_desc_cookie_2_va(soc, hbi.sw_cookie);
 	if (!rx_desc || !rx_desc->nbuf) {
-		dp_info_rl("Invalid MSDU buf received");
-		return MAX_PDEV_CNT;
+		/*
+		 * Nothing reaped yet -- ring_desc is still untouched,
+		 * safe for the caller to retry via the exception path.
+		 * If buffers were already reaped for this scattered
+		 * MSDU, they are already unmapped/queued for
+		 * replenish and the ring already advanced past them,
+		 * so leave it to the caller's is_cont handling instead
+		 * of asking it to reprocess anything.
+		 */
+		dp_info_rl("Invalid MSDU buf received, cookie 0x%x",
+			   hbi.sw_cookie);
+		return QDF_STATUS_E_INVAL;
 	}
 
 	rx_desc_pool = &soc->rx_desc_buf[rx_desc->pool_id];
@@ -2139,67 +2181,232 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
 	rx_desc->unmapped = 1;
 	dp_rx_buf_smmu_mapping_unlock(soc);
 
-	rx_tlv_hdr = qdf_nbuf_data(nbuf);
-	rx_pkt_hdr = hal_rx_pkt_hdr_get(soc->hal_soc, rx_tlv_hdr);
+	/*
+	 * Read the continuation bit and msdu length off the ring
+	 * descriptor itself, not the per-buffer TLV -- HW only
+	 * populates a full, valid TLV on the last buffer of a
+	 * scattered MSDU.
+	 */
+	hal_rx_get_mpdu_msdu_desc_info_be(cur_desc, &mpdu_info,
+					  &peer_mdata, &msdu_info);
+	*is_cont = !!(hal_rx_msdu_flags_get_be(
+			(rx_msdu_desc_info_t)&msdu_info) &
+		      HAL_MSDU_F_MSDU_CONTINUATION);
+	QDF_NBUF_CB_RX_PKT_LEN(nbuf) = HAL_RX_MSDU_PKT_LENGTH_GET(&msdu_info);
+	qdf_nbuf_set_rx_chfrag_cont(nbuf, *is_cont);
+	if (!*head_nbuf)
+		qdf_nbuf_set_rx_chfrag_start(nbuf, 1);
 
-	msdu_len = hal_rx_msdu_start_msdu_len_get(soc->hal_soc, rx_tlv_hdr);
-	l3_hdr_pad = hal_rx_msdu_end_l3_hdr_padding_get(soc->hal_soc,
-							rx_tlv_hdr);
-	pkt_len = msdu_len + l3_hdr_pad + soc->rx_pkt_tlv_size;
-	qdf_nbuf_set_pktlen(nbuf, pkt_len);
+	if (!*is_cont)
+		qdf_nbuf_set_rx_chfrag_end(nbuf, 1);
 
-	pdev = dp_get_pdev_for_lmac_id(soc, rx_desc->pool_id);
+	DP_RX_LIST_APPEND(*head_nbuf, *tail_nbuf, nbuf);
+
+	*lmac_id = rx_desc->pool_id;
+	pdev = dp_get_pdev_for_lmac_id(soc, *lmac_id);
 
 	dp_rx_add_to_free_desc_list(&pdev->free_list_head,
 				    &pdev->free_list_tail,
 				    rx_desc);
+	*num_bufs_reaped += 1;
 
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
+ * dp_rx_err_deliver_passthru_sg_buf() - reassemble and deliver a reaped
+ *  passthru MSDU
+ * @pdev: pdev the reaped buffers belong to, used to derive the DP SoC handle
+ *        and to search for a passthru vdev when txrx_peer is NULL
+ * @head_nbuf: head of the scatter/gather nbuf chain
+ * @tail_nbuf: tail of the scatter/gather nbuf chain
+ * @txrx_peer: passthru peer to deliver the reassembled MSDU to, may be NULL
+ *             if the peer could not be resolved (e.g. torn down) even
+ *             though the passthru bit was set on the MSDU
+ *
+ * This function does not touch the ring position. Callers are expected to
+ * free the scatter/gather chain themselves (e.g. via
+ * dp_rx_err_passthru_sg_free()) instead of calling this function when the
+ * chain was left incomplete.
+ */
+void
+dp_rx_err_deliver_passthru_sg_buf(struct dp_pdev *pdev,
+				  qdf_nbuf_t head_nbuf, qdf_nbuf_t tail_nbuf,
+				  struct dp_txrx_peer *txrx_peer)
+{
+	struct dp_soc *soc = pdev->soc;
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	struct dp_vdev *vdev = NULL;
+	qdf_nbuf_t nbuf;
+	uint8_t *rx_tlv_hdr;
+	uint32_t l3_hdr_pad;
+	uint16_t pkt_len;
+
+	rx_tlv_hdr = qdf_nbuf_data(tail_nbuf);
+	l3_hdr_pad = hal_rx_msdu_end_l3_hdr_padding_get(hal_soc, rx_tlv_hdr);
+
+	if (head_nbuf != tail_nbuf) {
+		QDF_NBUF_CB_RX_PKT_LEN(head_nbuf) =
+				QDF_NBUF_CB_RX_PKT_LEN(tail_nbuf);
+		nbuf = dp_rx_sg_create(soc, head_nbuf, false);
+		qdf_nbuf_set_is_frag(nbuf, 1);
+		pkt_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
+	} else {
+		nbuf = head_nbuf;
+		pkt_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf) + l3_hdr_pad +
+			  soc->rx_pkt_tlv_size;
+		qdf_nbuf_set_pktlen(nbuf, pkt_len);
+	}
+
+	dp_rx_skip_tlvs(soc, nbuf, l3_hdr_pad);
+
+	if (txrx_peer) {
+		dp_rx_deliver_raw_passthru(soc, txrx_peer->vdev, NULL, nbuf,
+					   rx_tlv_hdr);
+		return;
+	}
+
+	/*
+	 * The passthru bit was set on the MSDU but the peer could not be
+	 * resolved (e.g. it has since been torn down) -- fall back to
+	 * searching the pdev's vdev list for a passthru vdev to deliver to.
+	 */
 	qdf_spin_lock_bh(&pdev->vdev_list_lock);
 	DP_PDEV_ITERATE_VDEV_LIST(pdev, vdev) {
 		if (vdev->opmode == wlan_op_mode_passthru) {
 			qdf_spin_unlock_bh(&pdev->vdev_list_lock);
-
-			dp_rx_skip_tlvs(soc, nbuf, l3_hdr_pad);
 			dp_rx_deliver_raw_passthru(soc, vdev, NULL, nbuf,
 						   rx_tlv_hdr);
-
-			return rx_desc->pool_id;
+			return;
 		}
 	}
 	qdf_spin_unlock_bh(&pdev->vdev_list_lock);
 	dp_rx_nbuf_free(nbuf);
-
-	return rx_desc->pool_id;
 }
 
-bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
-				struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+int
+dp_rx_err_process_passthru_msdu(struct dp_soc *soc,
+				hal_ring_handle_t hal_ring_hdl,
+			       hal_ring_desc_t ring_desc,
+			       struct hal_rx_mpdu_desc_info *mpdu_desc_info,
+			       uint32_t *num_bufs_reaped)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	dp_txrx_ref_handle txrx_ref_handle = NULL;
+	uint32_t peer_meta_data = mpdu_desc_info->peer_meta_data;
+	struct dp_txrx_peer *txrx_peer = NULL;
+	qdf_nbuf_t head_nbuf = NULL;
+	qdf_nbuf_t tail_nbuf = NULL;
+	hal_ring_desc_t cur_desc = ring_desc;
+	bool is_cont = false;
+	uint8_t lmac_id = 0;
+	struct dp_pdev *pdev;
+
+	*num_bufs_reaped = 0;
+
+	/*
+	 * Process this buffer if either the passthru bit is set in
+	 * peer_meta_data, or a live passthru txrx_peer is found. The peer
+	 * may be unresolvable (e.g. already torn down) even though the
+	 * passthru bit is set -- dp_rx_err_deliver_passthru_sg_buf() falls
+	 * back to searching the pdev's vdev list by opmode in that case.
+	 */
+	txrx_peer = dp_rx_peer_mdata_get_passthru_peer_ref(soc,
+							   &txrx_ref_handle,
+							   peer_meta_data,
+							   DP_MOD_ID_RX_ERR);
+	if (!txrx_peer && !dp_rx_peer_metadata_passthru_pkt_get(soc,
+								peer_meta_data))
+		return MAX_PDEV_CNT;
+
+	do {
+		if (QDF_IS_STATUS_ERROR(
+			dp_rx_err_reap_one_passthru_buf(soc, cur_desc,
+							&is_cont, &head_nbuf,
+							&tail_nbuf, &lmac_id,
+							num_bufs_reaped))) {
+			if (!*num_bufs_reaped) {
+				lmac_id = MAX_PDEV_CNT;
+				goto exit;
+			}
+
+			break;
+		}
+
+		if (!is_cont)
+			break;
+
+		hal_srng_dst_get_next(hal_soc, hal_ring_hdl);
+		cur_desc = hal_srng_dst_peek(hal_soc, hal_ring_hdl);
+		if (!cur_desc) {
+			/*
+			 * Cheap peek (against the cached_hp latched once at
+			 * the top of this dp_rx_err_process() pass) found
+			 * nothing, but we're still mid-chain. Before giving
+			 * up, pay for exactly one sync'd re-check (live HW
+			 * HP register read) -- if HW posted the rest of the
+			 * chain after that stale snapshot was taken, this
+			 * updates cached_hp and lets us finish the chain in
+			 * this same call instead of splitting it across two
+			 * passes (which today has no resume path and would
+			 * mis-deliver the terminal buffer as its own
+			 * standalone MSDU). Doing this only here -- not on
+			 * every iteration -- keeps the common case (chain
+			 * fully visible already) free of extra register
+			 * reads.
+			 */
+			if (hal_srng_dst_num_valid(hal_soc, hal_ring_hdl, 1))
+				cur_desc = hal_srng_dst_peek(hal_soc,
+							     hal_ring_hdl);
+		}
+	} while (cur_desc);
+
+	if (is_cont) {
+		/*
+		 * Either the ring was drained before the terminal buffer
+		 * arrived, or a later buffer in the chain was invalid.
+		 * Buffers already reaped above are already unmapped and
+		 * queued for replenish -- drop them and report what was
+		 * actually consumed instead of asking the caller to retry.
+		 */
+		dp_rx_err_passthru_sg_free(head_nbuf);
+	} else {
+		pdev = dp_get_pdev_for_lmac_id(soc, lmac_id);
+		dp_rx_err_deliver_passthru_sg_buf(pdev, head_nbuf, tail_nbuf,
+						  txrx_peer);
+	}
+
+exit:
+	if (txrx_ref_handle)
+		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
+	return lmac_id;
+}
+
+struct dp_txrx_peer *
+dp_rx_peer_mdata_get_passthru_peer_ref(struct dp_soc *soc,
+				       dp_txrx_ref_handle *txrx_ref_handle,
+				       uint32_t peer_meta_data,
+				       enum dp_mod_id mod_id)
 {
 	struct dp_txrx_peer *txrx_peer;
-	dp_txrx_ref_handle txrx_ref_handle = NULL;
 	uint16_t peer_id;
 
-	peer_id = dp_rx_peer_metadata_peer_id_get(soc,
-						mpdu_desc_info->peer_meta_data);
+	peer_id = dp_rx_peer_metadata_peer_id_get(soc, peer_meta_data);
 
-	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(
-			soc, peer_id,
-			&txrx_ref_handle,
-			DP_MOD_ID_RX_ERR);
+	txrx_peer = dp_tgt_txrx_peer_get_ref_by_id(soc, peer_id,
+						   txrx_ref_handle,
+						   mod_id);
 	if (!txrx_peer) {
-		dp_info_rl("txrx_peer is null peer_id %u",
-			   peer_id);
-		return false;
+		dp_info_rl("txrx_peer is null peer_id %u", peer_id);
+		return NULL;
 	}
 
-	if (txrx_peer->vdev->opmode == wlan_op_mode_passthru) {
-		dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
-		return true;
-	}
+	if (txrx_peer->vdev->opmode == wlan_op_mode_passthru)
+		return txrx_peer;
 
-	dp_txrx_peer_unref_delete(txrx_ref_handle, DP_MOD_ID_RX_ERR);
-
-	return false;
+	dp_txrx_peer_unref_delete(*txrx_ref_handle, DP_MOD_ID_RX_ERR);
+	*txrx_ref_handle = NULL;
+	return NULL;
 }
 #endif
 
@@ -2349,18 +2556,15 @@ more_data:
 		 * Handle HAL_RX_REO_MSDU_BUF_ADDR_TYPE exception case.
 		 */
 		if (qdf_unlikely(buf_type != HAL_RX_REO_MSDU_LINK_DESC_TYPE)) {
-			uint32_t peer_mdata = mpdu_desc_info.peer_meta_data;
 			int lmac_id;
+			uint32_t num_bufs_reaped = 0;
 
-			if (dp_rx_peer_metadata_passthru_pkt_get(soc, peer_mdata) ||
-			    dp_rx_is_passthru_msdu_buf(soc, &mpdu_desc_info)) {
-				lmac_id =
-					dp_rx_err_handle_passthru_msdu_buf(soc,
-									   ring_desc);
-				if (lmac_id >= 0 && lmac_id < MAX_PDEV_CNT) {
-					rx_bufs_reaped[lmac_id] += 1;
-					goto next_entry;
-				}
+			lmac_id = dp_rx_err_process_passthru_msdu(
+					soc, hal_ring_hdl, ring_desc,
+					&mpdu_desc_info, &num_bufs_reaped);
+			if (lmac_id >= 0 && lmac_id < MAX_PDEV_CNT) {
+				rx_bufs_reaped[lmac_id] += num_bufs_reaped;
+				goto next_entry;
 			}
 
 			lmac_id = dp_rx_err_exception(soc, ring_desc);
