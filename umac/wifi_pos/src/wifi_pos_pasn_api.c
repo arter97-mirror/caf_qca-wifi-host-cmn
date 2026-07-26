@@ -112,6 +112,47 @@ add_failed_peer:
 	wifi_pos_debug("Not able to set failed peer");
 }
 
+/**
+ * wifi_pos_clear_peer_from_secure_list  - Clear the given peer's entry from
+ * the secure/unsecure peer list on peer delete
+ * @vdev: Vdev pointer
+ * @peer_mac: Peer mac address
+ *
+ * Return: None
+ */
+static
+void wifi_pos_clear_peer_from_secure_list(struct wlan_objmgr_vdev *vdev,
+					  struct qdf_mac_addr *peer_mac)
+{
+	uint8_t i;
+	struct wifi_pos_vdev_priv_obj *vdev_pos_obj;
+	struct wifi_pos_11az_context *pasn_context;
+	struct wlan_pasn_request *secure_list, *unsecure_list;
+
+	vdev_pos_obj = wifi_pos_get_vdev_priv_obj(vdev);
+	if (!vdev_pos_obj)
+		return;
+
+	pasn_context = &vdev_pos_obj->pasn_context;
+	secure_list = pasn_context->secure_peer_list;
+	unsecure_list = pasn_context->unsecure_peer_list;
+
+	for (i = 0; i < WLAN_MAX_11AZ_PEERS; i++) {
+		if (qdf_is_macaddr_equal(peer_mac, &secure_list[i].peer_mac)) {
+			qdf_set_macaddr_broadcast(&secure_list[i].peer_mac);
+			if (pasn_context->num_secure_peers)
+				pasn_context->num_secure_peers--;
+			return;
+		} else if (qdf_is_macaddr_equal(peer_mac,
+						 &unsecure_list[i].peer_mac)) {
+			qdf_set_macaddr_broadcast(&unsecure_list[i].peer_mac);
+			if (pasn_context->num_unsecure_peers)
+				pasn_context->num_unsecure_peers--;
+			return;
+		}
+	}
+}
+
 void wifi_pos_add_peer_to_list(struct wlan_objmgr_vdev *vdev,
 			       struct wlan_pasn_request *req,
 			       bool is_peer_create_required)
@@ -133,6 +174,13 @@ void wifi_pos_add_peer_to_list(struct wlan_objmgr_vdev *vdev,
 	pasn_context = &vdev_pos_obj->pasn_context;
 	secure_list = pasn_context->secure_peer_list;
 	unsecure_list = pasn_context->unsecure_peer_list;
+
+	/*
+	 * Clear any stale entry for this peer_mac first, so this create
+	 * request can never end up with a duplicate/leftover entry for
+	 * the same peer coexisting in either list.
+	 */
+	wifi_pos_clear_peer_from_secure_list(vdev, &req->peer_mac);
 
 	/* Find the 1st empty slot and copy the entry to peer list */
 	for (i = 0; i < WLAN_MAX_11AZ_PEERS; i++) {
@@ -632,17 +680,19 @@ QDF_STATUS wifi_pos_handle_ranging_peer_delete(struct wlan_objmgr_psoc *psoc,
 		wifi_pos_err("Vdev delete all peer in progress. Ignore individual peer delete");
 		return QDF_STATUS_SUCCESS;
 	}
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 
 	legacy_cb = wifi_pos_get_legacy_ops();
 	if (!legacy_cb || !legacy_cb->pasn_peer_delete_cb) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 		wifi_pos_err("legacy callback is not registered");
 		return QDF_STATUS_E_FAILURE;
 	}
 
 	del_peer_list = qdf_mem_malloc(sizeof(*del_peer_list) * total_entries);
-	if (!del_peer_list)
+	if (!del_peer_list) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 		return QDF_STATUS_E_NOMEM;
+	}
 
 	for (i = 0; i < total_entries; i++) {
 		peer = wlan_objmgr_get_peer_by_mac(psoc, req[i].peer_mac.bytes,
@@ -660,6 +710,9 @@ QDF_STATUS wifi_pos_handle_ranging_peer_delete(struct wlan_objmgr_psoc *psoc,
 			status = legacy_cb->pasn_peer_delete_cb(
 					psoc, &req[i].peer_mac,
 					vdev_id, no_fw_peer_delete);
+
+			wifi_pos_clear_peer_from_secure_list(
+					vdev, &req[i].peer_mac);
 
 			wlan_objmgr_peer_release_ref(peer,
 						     WLAN_WIFI_POS_CORE_ID);
@@ -680,23 +733,14 @@ QDF_STATUS wifi_pos_handle_ranging_peer_delete(struct wlan_objmgr_psoc *psoc,
 		goto no_peer;
 	}
 
-	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(psoc, vdev_id,
-						    WLAN_WIFI_POS_CORE_ID);
-	if (!vdev) {
-		wifi_pos_err("Vdev object is null");
-		qdf_mem_free(del_peer_list);
-		return QDF_STATUS_E_FAILURE;
-	}
-
 	status = wifi_pos_request_flush_pasn_keys(psoc, vdev,
 						  del_peer_list,
 						  peer_count);
 	if (QDF_IS_STATUS_ERROR(status))
 		wifi_pos_err("Failed to indicate peer deauth to userspace");
 
-	wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
-
 no_peer:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_WIFI_POS_CORE_ID);
 	qdf_mem_free(del_peer_list);
 
 	return status;
@@ -823,6 +867,7 @@ void wifi_pos_delete_objmgr_ranging_peer(struct wlan_objmgr_psoc *psoc,
 	struct wlan_objmgr_vdev *vdev = arg;
 	uint8_t vdev_id, peer_vdev_id;
 	enum wlan_peer_type peer_type;
+	struct qdf_mac_addr peer_mac;
 	QDF_STATUS status;
 
 	if (!peer) {
@@ -844,10 +889,14 @@ void wifi_pos_delete_objmgr_ranging_peer(struct wlan_objmgr_psoc *psoc,
 	if (vdev_id != peer_vdev_id)
 		return;
 
+	qdf_mem_copy(peer_mac.bytes, wlan_peer_get_macaddr(peer),
+		     QDF_MAC_ADDR_SIZE);
+
 	status = wlan_objmgr_peer_obj_delete(peer);
 	if (QDF_IS_STATUS_ERROR(status))
 		wifi_pos_err("Failed to delete peer");
 
+	wifi_pos_clear_peer_from_secure_list(vdev, &peer_mac);
 	wifi_pos_update_pasn_peer_count(vdev, false);
 }
 
