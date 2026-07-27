@@ -50,7 +50,7 @@ wlan_pdevid_get_scan_db(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id)
 {
 	struct wlan_scan_obj *scan_obj = NULL;
 
-	if (pdev_id > WLAN_UMAC_MAX_PDEVS) {
+	if (pdev_id >= WLAN_UMAC_MAX_PDEVS) {
 		scm_err("invalid pdev_id %d", pdev_id);
 		return NULL;
 	}
