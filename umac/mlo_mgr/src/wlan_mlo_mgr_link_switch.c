@@ -1367,6 +1367,9 @@ mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
 				vdev,
 				resp->connect_status);
 	}
+
+	if (QDF_IS_STATUS_SUCCESS(resp->connect_status))
+		smd_handle_connect_success(vdev);
 }
 
 QDF_STATUS mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,

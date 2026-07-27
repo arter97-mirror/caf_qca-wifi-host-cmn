@@ -278,17 +278,6 @@ static void cm_state_connected_entry(void *ctx)
 	struct cnx_mgr *cm_ctx = ctx;
 
 	cm_sm_state_update(cm_ctx, WLAN_CM_S_CONNECTED, WLAN_CM_SS_IDLE);
-
-	/*
-	 * T4: If SMD roaming is active AND this vdev is the assoc vdev,
-	 * enter SMD_ROAM_SYNC instead of IDLE. The vdev is connected on the
-	 * new AP but old-link cleanup is still pending (EV_SMD_EXEC_COMPLETE
-	 * will drive it). Blocks RSO state changes, link reconfig, and new
-	 * roam triggers until cleanup completes.
-	 */
-	if (wlan_vdev_mlme_is_assoc_sta_vdev(cm_ctx->vdev) &&
-	    smd_is_roaming_in_progress(cm_ctx->vdev))
-		cm_sm_transition_to(cm_ctx, WLAN_CM_SS_SMD_ROAM_SYNC);
 }
 
 /**
