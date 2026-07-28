@@ -16680,6 +16680,7 @@ enum qca_wlan_vendor_attr_roam_events {
  * @QCA_WLAN_RATEMASK_PARAMS_TYPE_VHT: VHT rate mask config
  * @QCA_WLAN_RATEMASK_PARAMS_TYPE_HE: HE rate mask config
  * @QCA_WLAN_RATEMASK_PARAMS_TYPE_EHT: EHT rate mask config
+ * @QCA_WLAN_RATEMASK_PARAMS_TYPE_UHR: UHR rate mask config
  */
 enum qca_wlan_ratemask_params_type {
 	QCA_WLAN_RATEMASK_PARAMS_TYPE_CCK_OFDM = 0,
@@ -16687,6 +16688,7 @@ enum qca_wlan_ratemask_params_type {
 	QCA_WLAN_RATEMASK_PARAMS_TYPE_VHT = 2,
 	QCA_WLAN_RATEMASK_PARAMS_TYPE_HE = 3,
 	QCA_WLAN_RATEMASK_PARAMS_TYPE_EHT = 4,
+	QCA_WLAN_RATEMASK_PARAMS_TYPE_UHR = 5,
 };
 
 /* enum qca_wlan_vendor_attr_ratemask_params - Used by the
@@ -16720,6 +16722,23 @@ enum qca_wlan_ratemask_params_type {
  * b0-7  => NSS1, MCS 0-7
  * b8-15 => NSS2, MCS 0-7 and so on for other NSS.
  * For OFDM/CCK targets, 8 bits correspond to one NSS setting.
+ * For UHR targets, 20 bits correspond to one NSS setting.
+ * The UHR MCS set includes MCS 0-15, 17, 19, 20, and 23 (24 MCS values total,
+ * encoded in 20 bits per NSS). The bit layout for each NSS group is:
+ * b0-1   => MCS 14-15
+ * b2-3   => MCS 0-1
+ * b4     => MCS 17
+ * b5-6   => MCS 2-3
+ * b7     => MCS 19
+ * b8     => MCS 4
+ * b9     => MCS 20
+ * b10-12 => MCS 5-7
+ * b13    => MCS 23
+ * b14-19 => MCS 8-13
+ * For NSS1, bits b0-19 carry the above layout.
+ * For NSS2, bits b20-39 carry the above layout.
+ * For NSS3, bits b40-59 carry the above layout.
+ * For NSS4, bits b60-79 carry the above layout.
  *
  * @QCA_WLAN_VENDOR_ATTR_RATEMASK_PARAMS_LINK_ID: u8, used to specify the
  * MLO link ID of a link to be configured. Optional attribute.
