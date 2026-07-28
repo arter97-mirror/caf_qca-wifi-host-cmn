@@ -512,10 +512,8 @@ more_data:
 				 * available and number of buffers needed to
 				 * reap this MPDU
 				 */
-				if ((QDF_NBUF_CB_RX_PKT_LEN(rx_desc->nbuf) /
-				     (buf_size -
-				      soc->rx_pkt_tlv_size) + 1) >
-				    num_pending) {
+				if (!dp_rx_can_reap_all_frags(soc, hal_ring_hdl,
+							      num_pending)) {
 					DP_STATS_INC(soc,
 						     rx.msdu_scatter_wait_break,
 						     1);
@@ -641,13 +639,6 @@ refill_opt_dp_ctrl:
 	nbuf = nbuf_head;
 	while (nbuf) {
 		next = nbuf->next;
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
-			nbuf = next;
-			dp_verbose_debug("drop raw frame");
-			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
-			continue;
-		}
-
 		rx_tlv_hdr = qdf_nbuf_data(nbuf);
 		vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
 		peer_id = dp_rx_get_peer_id_be(nbuf);
@@ -703,6 +694,13 @@ refill_opt_dp_ctrl:
 				continue;
 			}
 			enh_flag = rx_pdev->enhanced_stats_en;
+		}
+
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(vdev, nbuf))) {
+			nbuf = next;
+			dp_verbose_debug("drop raw frame");
+			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
+			continue;
 		}
 
 		if (txrx_peer) {
@@ -811,6 +809,15 @@ refill_opt_dp_ctrl:
 
 			qdf_nbuf_set_pktlen(nbuf, pkt_len);
 			dp_rx_skip_tlvs(soc, nbuf, l3_pad);
+		}
+
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			if (next)
+				qdf_nbuf_set_next(nbuf, NULL);
+			dp_rx_deliver_raw_passthru(soc, vdev, txrx_peer, nbuf,
+						   rx_tlv_hdr);
+			nbuf = next;
+			continue;
 		}
 
 		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
@@ -1908,13 +1915,6 @@ dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 	while (nbuf) {
 		next = qdf_nbuf_next(nbuf);
 
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
-			nbuf = next;
-			dp_verbose_debug("Raw frame dropped");
-			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
-			continue;
-		}
-
 		rx_tlv_hdr = qdf_nbuf_data(nbuf);
 		vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
 		peer_id = dp_rx_get_peer_id_be(nbuf);
@@ -1971,6 +1971,13 @@ dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 				continue;
 			}
 			enh_flag = rx_pdev->enhanced_stats_en;
+		}
+
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(vdev, nbuf))) {
+			nbuf = next;
+			dp_verbose_debug("Raw frame dropped");
+			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
+			continue;
 		}
 
 		/* Trace markings */
@@ -2061,6 +2068,15 @@ dp_dal_rx_process_nbuf_list_bn(struct dp_soc *soc, qdf_nbuf_t nbuf_list,
 
 			qdf_nbuf_set_pktlen(nbuf, pkt_len);
 			dp_rx_skip_tlvs(soc, nbuf, l3_pad);
+		}
+
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			if (next)
+				qdf_nbuf_set_next(nbuf, NULL);
+			dp_rx_deliver_raw_passthru(soc, vdev, txrx_peer, nbuf,
+						   rx_tlv_hdr);
+			nbuf = next;
+			continue;
 		}
 
 		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);

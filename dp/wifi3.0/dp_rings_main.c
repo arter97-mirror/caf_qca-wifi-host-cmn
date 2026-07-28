@@ -2509,8 +2509,8 @@ void dp_vdev_get_default_reo_hash(struct dp_vdev *vdev,
 	if (vdev->opmode == wlan_op_mode_passthru &&
 	    dp_get_passthru_ampdu_support(soc)) {
 		*hash_based = false;
-		/* Route the PASSTHRU frames to REO2SW0 */
-		*reo_dest = cdp_host_reo_dest_ring_unknown;
+		/* Route the PASSTHRU frames to REO2SW1 */
+		*reo_dest = cdp_host_reo_dest_ring_1;
 		return;
 	}
 
@@ -2582,8 +2582,8 @@ static void dp_peer_setup_get_reo_hash(struct dp_vdev *vdev,
 	if (vdev->opmode == wlan_op_mode_passthru &&
 	    dp_get_passthru_ampdu_support(soc)) {
 		*hash_based = false;
-		/* Route the PASSTHRU frames to REO2SW0 */
-		*reo_dest = cdp_host_reo_dest_ring_unknown;
+		/* Route the PASSTHRU frames to REO2SW1 */
+		*reo_dest = cdp_host_reo_dest_ring_1;
 		return;
 	}
 

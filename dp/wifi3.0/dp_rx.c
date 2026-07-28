@@ -2181,17 +2181,10 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs)
 	uint8_t *parent_tlvs;
 
 	/*
-	 * Use msdu len got from REO entry descriptor instead since
-	 * there is case the RX PKT TLV is corrupted while msdu_len
-	 * from REO descriptor is right for non-raw RX scatter msdu.
-	 */
-	mpdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
-
-	/*
 	 * If MSDU length of the first fragment is zero, need to
 	 * use the length of the last fragment to overwrite.
 	 */
-	if (!mpdu_len) {
+	if (!QDF_NBUF_CB_RX_PKT_LEN(nbuf)) {
 		frag_tail = nbuf;
 		while (frag_tail && qdf_nbuf_is_rx_chfrag_cont(frag_tail))
 			frag_tail = frag_tail->next;
@@ -2200,6 +2193,7 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs)
 			QDF_NBUF_CB_RX_PKT_LEN(nbuf) =
 			    QDF_NBUF_CB_RX_PKT_LEN(frag_tail);
 	}
+	mpdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
 	/*
 	 * this is a case where the complete msdu fits in one single nbuf.
 	 * in this case HW sets both start and end bit and we only need to
@@ -3395,9 +3389,11 @@ void dp_rx_skip_tlvs(struct dp_soc *soc, qdf_nbuf_t nbuf, uint32_t l3_padding)
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 
 #ifdef DP_RX_DROP_RAW_FRM
-bool dp_rx_is_raw_frame_dropped(qdf_nbuf_t nbuf)
+bool dp_rx_is_raw_frame_dropped(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
 {
 	if (qdf_nbuf_is_raw_frame(nbuf)) {
+		if (vdev && vdev->opmode == wlan_op_mode_passthru)
+			return false;
 		dp_rx_nbuf_free(nbuf);
 		return true;
 	}

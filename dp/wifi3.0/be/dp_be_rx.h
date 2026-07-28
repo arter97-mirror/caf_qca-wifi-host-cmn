@@ -1431,6 +1431,58 @@ dp_get_soc_by_chip_id_be(struct dp_soc *soc, uint8_t chip_id)
 }
 #endif
 
+/**
+ * dp_rx_can_reap_all_frags() - Peek the REO dest ring to check whether
+ *                               every fragment of the in-progress MSDU is
+ *                               already visible to the host, and fits
+ *                               within the current reap budget
+ * @soc: datapath soc handle
+ * @hal_ring_hdl: REO destination ring handle
+ * @num_pending: number of entries left to reap in this pass (includes the
+ *               fragment that was just reaped and triggered this check)
+ *
+ * Called right after the first fragment (continuation bit set) of a
+ * scattered MSDU has been reaped, i.e. tp already points past it. Walks
+ * the ring purely by peeking -- starting at the current tp -- without
+ * moving tp/hp, counting fragments (num_frags) until either a
+ * non-continuation entry (last fragment) is found, or the currently
+ * visible (cached_hp) entries are exhausted. Bails out early if num_frags
+ * (plus the already-reaped triggering fragment) would exceed num_pending,
+ * since there isn't enough budget left in this pass to dequeue the whole
+ * MSDU anyway.
+ *
+ * Return: true if the entry terminating this MSDU (continuation bit
+ *         clear) was found within budget before running out of visible
+ *         entries, i.e. all fragments are present and can be reaped now;
+ *         false if the ring ran dry mid-MSDU, or num_pending is not
+ *         enough to dequeue all of it, and the caller should wait/retry
+ */
+static inline bool
+dp_rx_can_reap_all_frags(struct dp_soc *soc,
+			 hal_ring_handle_t hal_ring_hdl,
+			 uint32_t num_pending)
+{
+	hal_soc_handle_t hal_soc = soc->hal_soc;
+	hal_ring_desc_t desc;
+	struct hal_rx_msdu_desc_info msdu_desc_info;
+	uint32_t num_frags = 0;
+
+	while ((desc = hal_srng_dst_peek_n(hal_soc, hal_ring_hdl, num_frags))) {
+		num_frags++;
+
+		/* +1 accounts for the triggering fragment already reaped */
+		if (num_frags + 1 > num_pending)
+			return false;
+
+		hal_rx_msdu_desc_info_get_be(desc, &msdu_desc_info);
+
+		if (!(msdu_desc_info.msdu_flags & HAL_MSDU_F_MSDU_CONTINUATION))
+			return true;
+	}
+
+	return false;
+}
+
 #ifdef FEATURE_DAL_DP_SUPPORT
 /**
  * dp_dal_rx_process_nbuf_list_be() - Process network buffer list in DAL RX

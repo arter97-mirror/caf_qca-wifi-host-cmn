@@ -2482,15 +2482,16 @@ void dp_rx_deliver_to_stack_no_peer(struct dp_soc *soc, qdf_nbuf_t nbuf);
 #ifdef DP_RX_DROP_RAW_FRM
 /**
  * dp_rx_is_raw_frame_dropped() - if raw frame nbuf, free and drop
+ * @vdev: vdev handle of the rx packet
  * @nbuf: pkt skb pointer
  *
  * Return: true - raw frame, dropped
  *	   false - not raw frame, do nothing
  */
-bool dp_rx_is_raw_frame_dropped(qdf_nbuf_t nbuf);
+bool dp_rx_is_raw_frame_dropped(struct dp_vdev *vdev, qdf_nbuf_t nbuf);
 #else
 static inline
-bool dp_rx_is_raw_frame_dropped(qdf_nbuf_t nbuf)
+bool dp_rx_is_raw_frame_dropped(struct dp_vdev *vdev, qdf_nbuf_t nbuf)
 {
 	return false;
 }

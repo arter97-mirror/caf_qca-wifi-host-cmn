@@ -1020,7 +1020,7 @@ dp_rx_data_indication_handler(struct dp_soc *soc, qdf_nbuf_t data_ind,
 	while (nbuf) {
 		next = nbuf->next;
 
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(NULL, nbuf))) {
 			nbuf = next;
 			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
 			continue;
