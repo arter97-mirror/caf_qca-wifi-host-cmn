@@ -10862,6 +10862,36 @@ dp_txrx_get_pdev_stats(struct cdp_soc_t *soc, uint8_t pdev_id,
 }
 
 /**
+ * dp_txrx_get_soc_stats() - Copy soc-level stats to caller buffer
+ * @soc_hdl: CDP soc handle
+ * @soc_stats: caller-allocated output buffer
+ *
+ * Copies dp_soc stats fields that map to cdp_soc_stats, including
+ * rx.err.reo_error[] per-error-code counters.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS
+dp_txrx_get_soc_stats(struct cdp_soc_t *soc_hdl,
+		      struct cdp_soc_stats *soc_stats)
+{
+	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
+	int i;
+
+	if (!soc)
+		return QDF_STATUS_E_FAILURE;
+
+	qdf_mem_zero(soc_stats, sizeof(*soc_stats));
+
+	/* CDP_REO_CODE_MAX must equal HAL_REO_ERR_MAX */
+	for (i = 0; i < CDP_REO_CODE_MAX; i++)
+		soc_stats->rx.err.reo_error[i] =
+				soc->stats.rx.err.reo_error[i];
+
+	return QDF_STATUS_SUCCESS;
+}
+
+/**
  * dp_txrx_update_vdev_me_stats() - Update vdev ME stats sent from CDP
  * @vdev: DP vdev handle
  * @buf: buffer containing specific stats structure
@@ -14660,6 +14690,7 @@ static struct cdp_host_stats_ops dp_ops_host_stats = {
 	.txrx_get_per_link_stats = dp_txrx_get_per_link_peer_stats,
 	.txrx_reset_peer_stats = dp_txrx_reset_peer_stats,
 	.txrx_get_pdev_stats = dp_txrx_get_pdev_stats,
+	.txrx_get_soc_stats = dp_txrx_get_soc_stats,
 #if defined(IPA_OFFLOAD) && defined(QCA_ENHANCED_STATS_SUPPORT)
 	.txrx_get_peer_stats = dp_ipa_txrx_get_peer_stats,
 	.txrx_get_vdev_stats  = dp_ipa_txrx_get_vdev_stats,

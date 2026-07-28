@@ -3456,6 +3456,7 @@ struct cdp_soc_stats {
 			uint32_t pn_in_dest_check_fail;
 			uint32_t msdu_len_err;
 			uint32_t rx_flush_count;
+			uint32_t reo_error[CDP_REO_CODE_MAX];
 		} err;
 	} rx;
 

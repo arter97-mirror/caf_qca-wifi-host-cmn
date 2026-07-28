@@ -1609,4 +1609,32 @@ cdp_is_vdev_predictive_roaming_stats_enabled(ol_txrx_soc_handle soc,
 	return false;
 }
 #endif
+
+/**
+ * cdp_host_get_soc_stats() - Get soc-level stats including reo_error[]
+ * @soc: opaque soc handle
+ * @soc_stats: caller-allocated output buffer
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+cdp_host_get_soc_stats(ol_txrx_soc_handle soc,
+		       struct cdp_soc_stats *soc_stats)
+{
+	if (!soc || !soc->ops) {
+		dp_cdp_debug("Invalid Instance");
+		QDF_BUG(0);
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (!soc_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	if (!soc->ops->host_stats_ops ||
+	    !soc->ops->host_stats_ops->txrx_get_soc_stats)
+		return QDF_STATUS_E_FAILURE;
+
+	return soc->ops->host_stats_ops->txrx_get_soc_stats(soc, soc_stats);
+}
+
 #endif /* _CDP_TXRX_HOST_STATS_H_ */

@@ -1224,6 +1224,7 @@ struct cdp_mon_ops {
  *   roaming stats collection for a vdev
  * @is_vdev_predictive_roaming_stats_enabled: query whether predictive roaming
  *   stats collection is enabled for a vdev
+ * @txrx_get_soc_stats: get soc stats
  */
 struct cdp_host_stats_ops {
 	int (*txrx_host_stats_get)(struct cdp_soc_t *soc, uint8_t vdev_id,
@@ -1474,6 +1475,9 @@ struct cdp_host_stats_ops {
 	(*is_vdev_predictive_roaming_stats_enabled)(struct cdp_soc_t *soc,
 					      uint8_t vdev_id);
 #endif
+	QDF_STATUS
+		(*txrx_get_soc_stats)(struct cdp_soc_t *soc,
+				      struct cdp_soc_stats *soc_stats);
 };
 
 /**
