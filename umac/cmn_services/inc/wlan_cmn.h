@@ -863,6 +863,7 @@ enum host_edca_param_type {
  * @RATEMASK_PARAMS_TYPE_VHT: type VHT
  * @RATEMASK_PARAMS_TYPE_HE: type HE
  * @RATEMASK_PARAMS_TYPE_EHT: type EHT
+ * @RATEMASK_PARAMS_TYPE_UHR: type UHR
  * @RATEMASK_PARAMS_TYPE_MAX: Max ratemask param type
  */
 enum ratemask_param_type {
@@ -871,6 +872,7 @@ enum ratemask_param_type {
 	RATEMASK_PARAMS_TYPE_VHT = 2,
 	RATEMASK_PARAMS_TYPE_HE = 3,
 	RATEMASK_PARAMS_TYPE_EHT = 4,
+	RATEMASK_PARAMS_TYPE_UHR = 5,
 	RATEMASK_PARAMS_TYPE_MAX,
 };
 #endif /* _WLAN_OBJMGR_CMN_H_*/
