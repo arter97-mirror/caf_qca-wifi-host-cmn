@@ -612,10 +612,8 @@ more_data:
 				 * available and number of buffers needed to
 				 * reap this MPDU
 				 */
-				if ((QDF_NBUF_CB_RX_PKT_LEN(rx_desc->nbuf) /
-				     (buf_size -
-				      soc->rx_pkt_tlv_size) + 1) >
-				    num_pending) {
+				if (!dp_rx_can_reap_all_frags(soc, hal_ring_hdl,
+							      num_pending)) {
 					DP_STATS_INC(soc,
 						     rx.msdu_scatter_wait_break,
 						     1);
@@ -755,13 +753,6 @@ done:
 	while (nbuf) {
 		next = nbuf->next;
 		dp_rx_prefetch_nbuf_data_be(nbuf, next);
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
-			nbuf = next;
-			dp_verbose_debug("drop raw frame");
-			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
-			continue;
-		}
-
 		rx_tlv_hdr = qdf_nbuf_data(nbuf);
 		vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
 		peer_id = dp_rx_get_peer_id_be(nbuf);
@@ -856,6 +847,13 @@ done:
 			tid_stats =
 		&rx_pdev->stats.tid_stats.tid_rx_stats[reo_ring_num][tid];
 			old_tid = tid;
+		}
+
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(vdev, nbuf))) {
+			nbuf = next;
+			dp_verbose_debug("drop raw frame");
+			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
+			continue;
 		}
 
 		/*
@@ -954,6 +952,15 @@ done:
 							    link_id, nbuf,
 							    rx_tlv_hdr,
 							    RX_RECV_FROM_HW);
+		}
+
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			if (next)
+				qdf_nbuf_set_next(nbuf, NULL);
+			dp_rx_deliver_raw_passthru(soc, vdev, txrx_peer, nbuf,
+						   rx_tlv_hdr);
+			nbuf = next;
+			continue;
 		}
 
 		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
