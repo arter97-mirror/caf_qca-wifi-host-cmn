@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -521,18 +521,15 @@ static inline uint64_t qdf_log_timestamp_to_usecs(uint64_t time)
 
 static inline uint64_t qdf_get_log_timestamp_lightweight(void)
 {
-	uint64_t timestamp_us;
-
-	/* explicitly change to uint64_t, otherwise it will assign
-	 * uint32_t to timestamp_us, which lose high 32bits.
-	 * on 64bit platform, it will only use low 32bits jiffies in
-	 * jiffies_to_msecs.
-	 * eg: HZ=250, it will overflow every (0xffff ffff<<2==0x3fff ffff)
-	 * ticks. it is 1193 hours.
+	/*
+	 * jiffies/HZ is too coarse (e.g. 4ms per tick at HZ=250) for
+	 * measuring microsecond-scale lock hold times, and can appear to
+	 * jump forward when a CPU that had been in tickless idle
+	 * (CONFIG_NO_HZ_IDLE) resyncs it. Use qdf_sched_clock() instead,
+	 * a free-running hardware counter unaffected by tick suppression.
+	 * It returns ns, so convert to us to match this function's unit.
 	 */
-	timestamp_us =
-	(uint64_t)__qdf_system_ticks_to_msecs(qdf_system_ticks()) * 1000;
-	return timestamp_us;
+	return qdf_sched_clock() / 1000;
 }
 #endif /* end of MSM_PLATFORM */
 
