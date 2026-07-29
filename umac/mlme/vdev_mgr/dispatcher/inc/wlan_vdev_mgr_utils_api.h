@@ -65,6 +65,16 @@ wlan_util_vdev_mlme_set_ratemask_config(struct vdev_mlme_obj *vdev_mlme,
 					uint8_t index);
 
 /**
+ * wlan_util_vdev_mlme_reset_ratemask_params() - reset ratemask configuration
+ * of vdev_mlme object to default (no mask) and push to FW if changed
+ * @vdev_mlme: pointer to vdev_mlme object
+ *
+ * Return: QDF_STATUS - Success or Failure
+ */
+QDF_STATUS
+wlan_util_vdev_mlme_reset_ratemask_params(struct vdev_mlme_obj *vdev_mlme);
+
+/**
  * wlan_util_vdev_mlme_get_param() - common MLME API to get common
  * parameters of vdev_mlme object
  * @vdev_mlme: pointer to vdev_mlme object

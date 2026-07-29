@@ -157,6 +157,39 @@ wlan_util_vdev_mlme_set_ratemask_config(struct vdev_mlme_obj *vdev_mlme,
 
 qdf_export_symbol(wlan_util_vdev_mlme_set_ratemask_config);
 
+QDF_STATUS
+wlan_util_vdev_mlme_reset_ratemask_params(struct vdev_mlme_obj *vdev_mlme)
+{
+	struct vdev_mlme_rate_info *rate_info;
+	struct vdev_ratemask_params *rate_params;
+	uint8_t index;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+
+	if (!vdev_mlme) {
+		mlme_err("VDEV MLME is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	rate_info = &vdev_mlme->mgmt.rate_info;
+
+	for (index = 0; index < WLAN_VDEV_RATEMASK_TYPE_MAX; index++) {
+		if (index != WLAN_VDEV_RATEMASK_TYPE_UHR)
+			continue;
+
+		rate_params = &rate_info->ratemask_params[index];
+		qdf_mem_set(rate_params, sizeof(*rate_params), 0xFF);
+
+		status = wlan_util_vdev_mlme_set_ratemask_config(vdev_mlme,
+								 index);
+		if (QDF_IS_STATUS_ERROR(status))
+			mlme_err("Failed to reset ratemask type %d", index);
+	}
+
+	return status;
+}
+
+qdf_export_symbol(wlan_util_vdev_mlme_reset_ratemask_params);
+
 void wlan_util_vdev_mlme_get_param(struct vdev_mlme_obj *vdev_mlme,
 				   enum wlan_mlme_cfg_id param_id,
 				   uint32_t *value)
