@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1098,6 +1098,23 @@ void hal_rx_proc_phyrx_all_sigb_tlv_li(void *rx_tlv_hdr, void *ppdu_info_hdl)
 {
 }
 
+/**
+ * hal_rx_msdu_stats_tlv_resolve_li() - resolve msdu stats TLV for li targets
+ * @first_msdu_tlv: rx_pkt_tlvs pointer of the first (head) fragment
+ * @last_msdu_tlv: rx_pkt_tlvs pointer of the last (tail) fragment
+ *
+ * msdu_start is a TLV distinct from msdu_end on li targets, and is valid
+ * on the first fragment of a scatter-gathered MSDU.
+ *
+ * Return: first_msdu_tlv
+ */
+static inline uint8_t *
+hal_rx_msdu_stats_tlv_resolve_li(uint8_t *first_msdu_tlv,
+				 uint8_t *last_msdu_tlv)
+{
+	return first_msdu_tlv;
+}
+
 void hal_hw_txrx_default_ops_attach_li(struct hal_soc *hal_soc)
 {
 	hal_soc->ops->hal_get_reo_qdesc_size = hal_get_reo_qdesc_size_li;
@@ -1165,6 +1182,8 @@ void hal_hw_txrx_default_ops_attach_li(struct hal_soc *hal_soc)
 	hal_soc->ops->hal_rx_tlv_get_freq = hal_rx_tlv_get_freq_li;
 	hal_soc->ops->hal_rx_tlv_sgi_get = hal_rx_tlv_sgi_get_li;
 	hal_soc->ops->hal_rx_tlv_rate_mcs_get = hal_rx_tlv_rate_mcs_get_li;
+	hal_soc->ops->hal_rx_msdu_stats_tlv_resolve =
+					hal_rx_msdu_stats_tlv_resolve_li;
 	hal_soc->ops->hal_rx_tlv_get_pkt_type = hal_rx_tlv_get_pkt_type_li;
 	hal_soc->ops->hal_rx_tlv_first_mpdu_get = hal_rx_tlv_first_mpdu_get_li;
 	hal_soc->ops->hal_rx_tlv_get_is_decrypted =
