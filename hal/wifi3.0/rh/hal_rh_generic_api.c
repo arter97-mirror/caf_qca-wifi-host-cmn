@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -541,6 +541,23 @@ hal_rx_mpdu_info_ampdu_flag_get_rh(uint8_t *buf)
 	return ampdu_flag;
 }
 
+/**
+ * hal_rx_msdu_stats_tlv_resolve_rh() - resolve msdu stats TLV for rh targets
+ * @first_msdu_tlv: rx_pkt_tlvs pointer of the first (head) fragment
+ * @last_msdu_tlv: rx_pkt_tlvs pointer of the last (tail) fragment
+ *
+ * msdu_start is a TLV distinct from msdu_end on rh targets, and is valid
+ * on the first fragment of a scatter-gathered MSDU.
+ *
+ * Return: first_msdu_tlv
+ */
+static inline uint8_t *
+hal_rx_msdu_stats_tlv_resolve_rh(uint8_t *first_msdu_tlv,
+				 uint8_t *last_msdu_tlv)
+{
+	return first_msdu_tlv;
+}
+
 static
 uint32_t hal_rx_tlv_mpdu_len_err_get_rh(void *hw_desc_addr)
 {
@@ -898,6 +915,8 @@ void hal_hw_txrx_default_ops_attach_rh(struct hal_soc *hal_soc)
 					hal_rx_priv_info_get_from_tlv_rh;
 	hal_soc->ops->hal_rx_mpdu_info_ampdu_flag_get =
 					hal_rx_mpdu_info_ampdu_flag_get_rh;
+	hal_soc->ops->hal_rx_msdu_stats_tlv_resolve =
+					hal_rx_msdu_stats_tlv_resolve_rh;
 	hal_soc->ops->hal_rx_tlv_mpdu_len_err_get =
 					hal_rx_tlv_mpdu_len_err_get_rh;
 	hal_soc->ops->hal_rx_tlv_mpdu_fcs_err_get =

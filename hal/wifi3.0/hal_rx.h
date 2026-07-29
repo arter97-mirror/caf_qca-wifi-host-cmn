@@ -3174,6 +3174,33 @@ hal_rx_mpdu_info_ampdu_flag_get(hal_soc_handle_t hal_soc_hdl, uint8_t *buf)
 	return hal_soc->ops->hal_rx_mpdu_info_ampdu_flag_get(buf);
 }
 
+/**
+ * hal_rx_msdu_stats_tlv_resolve() - resolve which fragment's TLV holds the
+ *                                   msdu_start/msdu_end derived stats fields
+ *                                   for a (possibly scatter-gathered) MSDU
+ * @hal_soc_hdl: hal soc handle
+ * @first_msdu_tlv: rx_pkt_tlvs pointer of the first (head) fragment
+ * @last_msdu_tlv: rx_pkt_tlvs pointer of the last (tail) fragment
+ *
+ * For targets where msdu_start is a TLV distinct from msdu_end (e.g. li/rh),
+ * the stats fields consumed by dp_rx_msdu_extd_stats_update() are valid on
+ * the first fragment. For targets where those fields live in the merged
+ * msdu_end TLV (e.g. be family), they are valid only on the last fragment.
+ * This lets callers fetch the correct TLV pointer without target-specific
+ * checks.
+ *
+ * Return: rx_pkt_tlvs pointer to use for msdu_start/msdu_end derived fields
+ */
+static inline uint8_t *
+hal_rx_msdu_stats_tlv_resolve(hal_soc_handle_t hal_soc_hdl,
+			      uint8_t *first_msdu_tlv, uint8_t *last_msdu_tlv)
+{
+	struct hal_soc *hal_soc = (struct hal_soc *)hal_soc_hdl;
+
+	return hal_soc->ops->hal_rx_msdu_stats_tlv_resolve(first_msdu_tlv,
+							   last_msdu_tlv);
+}
+
 #ifdef REO_SHARED_QREF_TABLE_EN
 /**
  * hal_reo_shared_qaddr_write() - Write REo tid queue addr

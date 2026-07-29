@@ -2292,6 +2292,38 @@ qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf, bool skip_tlvs)
 	return parent;
 }
 
+/**
+ * dp_rx_get_last_msdu_tlv() - get rx_pkt_tlvs pointer of the last fragment
+ *                             of a (possibly scatter-gathered) MSDU
+ * @soc: datapath soc handle
+ * @parent: head nbuf as returned by dp_rx_sg_create(), or a non-SG nbuf
+ * @first_tlv: rx_pkt_tlvs pointer of @parent (the first/head fragment)
+ *
+ * dp_rx_sg_create() pulls each inner fragment's TLV header off via
+ * qdf_nbuf_pull_head() while building the frag_list, so by the time it
+ * returns, qdf_nbuf_data() on those fragments no longer points at their
+ * TLVs. Reconstruct the last fragment's TLV pointer by walking the ext
+ * list and backing up over the pulled header -- the underlying buffer
+ * memory itself was not moved or freed.
+ *
+ * Return: rx_pkt_tlvs pointer of the last fragment, or @first_tlv if
+ *         @parent is not scatter-gathered
+ */
+static inline uint8_t *
+dp_rx_get_last_msdu_tlv(struct dp_soc *soc, qdf_nbuf_t parent,
+			uint8_t *first_tlv)
+{
+	qdf_nbuf_t last = qdf_nbuf_get_ext_list(parent);
+
+	if (!last)
+		return first_tlv;
+
+	while (qdf_nbuf_next(last))
+		last = qdf_nbuf_next(last);
+
+	return qdf_nbuf_data(last) - soc->rx_pkt_tlv_size;
+}
+
 #ifdef DP_RX_SG_FRAME_SUPPORT
 bool dp_rx_is_sg_supported(void)
 {
@@ -2942,7 +2974,10 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
  *
  * @soc: datapath soc handle
  * @nbuf: received msdu buffer
- * @rx_tlv_hdr: rx tlv header
+ * @mpdu_tlv_hdr: rx tlv header of the first (head) fragment -- always
+ *                valid for mpdu_start derived fields (e.g. ampdu_flag)
+ * @stats_tlv_hdr: rx tlv header resolved via hal_rx_msdu_stats_tlv_resolve()
+ *                 -- valid for msdu_start/msdu_end derived stats fields
  * @txrx_peer: datapath txrx_peer handle
  * @link_id: link id on which the packet is received
  *
@@ -2950,7 +2985,8 @@ dp_rx_rates_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
  */
 static inline
 void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
-				  uint8_t *rx_tlv_hdr,
+				  uint8_t *mpdu_tlv_hdr,
+				  uint8_t *stats_tlv_hdr,
 				  struct dp_txrx_peer *txrx_peer,
 				  uint8_t link_id)
 {
@@ -2963,19 +2999,19 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	 * TODO - For KIWI this field is present in ring_desc
 	 * Try to use ring desc instead of tlv.
 	 */
-	is_ampdu = hal_rx_mpdu_info_ampdu_flag_get(soc->hal_soc, rx_tlv_hdr);
+	is_ampdu = hal_rx_mpdu_info_ampdu_flag_get(soc->hal_soc, mpdu_tlv_hdr);
 	DP_PEER_EXTD_STATS_INCC(txrx_peer, rx.ampdu_cnt, 1, is_ampdu, link_id);
 	DP_PEER_EXTD_STATS_INCC(txrx_peer, rx.non_ampdu_cnt, 1, !(is_ampdu),
 				link_id);
 
-	sgi = hal_rx_tlv_sgi_get(soc->hal_soc, rx_tlv_hdr);
-	mcs_per_stream = hal_rx_tlv_rate_mcs_get(soc->hal_soc, rx_tlv_hdr);
+	sgi = hal_rx_tlv_sgi_get(soc->hal_soc, stats_tlv_hdr);
+	mcs_per_stream = hal_rx_tlv_rate_mcs_get(soc->hal_soc, stats_tlv_hdr);
 	tid = qdf_nbuf_get_tid_val(nbuf);
-	bw = hal_rx_tlv_bw_get(soc->hal_soc, rx_tlv_hdr);
+	bw = hal_rx_tlv_bw_get(soc->hal_soc, stats_tlv_hdr);
 	reception_type = hal_rx_msdu_start_reception_type_get(soc->hal_soc,
-							      rx_tlv_hdr);
-	nss = hal_rx_msdu_start_nss_get(soc->hal_soc, rx_tlv_hdr);
-	pkt_type = hal_rx_tlv_get_pkt_type(soc->hal_soc, rx_tlv_hdr);
+							      stats_tlv_hdr);
+	nss = hal_rx_msdu_start_nss_get(soc->hal_soc, stats_tlv_hdr);
+	pkt_type = hal_rx_tlv_get_pkt_type(soc->hal_soc, stats_tlv_hdr);
 	/* do HW to SW pkt type conversion */
 	pkt_type = (pkt_type >= HAL_DOT11_MAX ? DOT11_MAX :
 		    hal_2_dp_pkt_type_map[pkt_type]);
@@ -3018,10 +3054,10 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	DP_PEER_EXTD_STATS_INC(txrx_peer, rx.sgi_count[sgi], 1, link_id);
 	DP_PEER_PER_PKT_STATS_INCC(txrx_peer, rx.err.mic_err, 1,
 				   hal_rx_tlv_mic_err_get(soc->hal_soc,
-				   rx_tlv_hdr), link_id);
+				   stats_tlv_hdr), link_id);
 	DP_PEER_PER_PKT_STATS_INCC(txrx_peer, rx.err.decrypt_err, 1,
 				   hal_rx_tlv_decrypt_err_get(soc->hal_soc,
-				   rx_tlv_hdr), link_id);
+				   stats_tlv_hdr), link_id);
 
 	DP_PEER_EXTD_STATS_INC(txrx_peer, rx.wme_ac_type[TID_TO_WME_AC(tid)], 1,
 			       link_id);
@@ -3035,13 +3071,14 @@ void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 				       rx.pkt_type[pkt_type].mcs_count[dst_mcs_idx],
 				       1, link_id);
 
-	dp_rx_rates_stats_update(soc, nbuf, rx_tlv_hdr, txrx_peer, sgi,
+	dp_rx_rates_stats_update(soc, nbuf, stats_tlv_hdr, txrx_peer, sgi,
 				 mcs_per_stream, nss, bw, pkt_type, link_id);
 }
 #else
 static inline
 void dp_rx_msdu_extd_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
-				  uint8_t *rx_tlv_hdr,
+				  uint8_t *mpdu_tlv_hdr,
+				  uint8_t *stats_tlv_hdr,
 				  struct dp_txrx_peer *txrx_peer,
 				  uint8_t link_id)
 {
@@ -3090,6 +3127,7 @@ void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	uint8_t enh_flag;
 	qdf_ether_header_t *eh;
 	uint16_t msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
+	uint8_t *stats_tlv_hdr = rx_tlv_hdr;
 
 	dp_rx_msdu_stats_update_prot_cnts(vdev, nbuf, txrx_peer);
 	is_not_amsdu = qdf_nbuf_is_rx_chfrag_start(nbuf) &
@@ -3126,7 +3164,22 @@ void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	txrx_peer->stats[link_id].per_pkt_stats.rx.last_rx_ts =
 							qdf_system_ticks();
 
-	dp_rx_msdu_extd_stats_update(soc, nbuf, rx_tlv_hdr,
+	/*
+	 * For a scatter-gathered MSDU, msdu_start/msdu_end derived stats
+	 * fields may only be valid on a different fragment than rx_tlv_hdr
+	 * (which is always the head fragment). Resolve the correct TLV
+	 * pointer per target before reading those fields.
+	 */
+	if (qdf_unlikely(qdf_nbuf_get_ext_list(nbuf))) {
+		uint8_t *last_tlv = dp_rx_get_last_msdu_tlv(soc, nbuf,
+							    rx_tlv_hdr);
+
+		stats_tlv_hdr = hal_rx_msdu_stats_tlv_resolve(soc->hal_soc,
+							      rx_tlv_hdr,
+							      last_tlv);
+	}
+
+	dp_rx_msdu_extd_stats_update(soc, nbuf, rx_tlv_hdr, stats_tlv_hdr,
 				     txrx_peer, link_id);
 }
 

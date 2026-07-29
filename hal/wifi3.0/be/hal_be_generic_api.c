@@ -1061,6 +1061,25 @@ static inline uint8_t hal_rx_get_phy_ppdu_id_size_be(void)
 	return sizeof(uint64_t);
 }
 
+/**
+ * hal_rx_msdu_stats_tlv_resolve_be() - resolve msdu stats TLV for be targets
+ * @first_msdu_tlv: rx_pkt_tlvs pointer of the first (head) fragment
+ * @last_msdu_tlv: rx_pkt_tlvs pointer of the last (tail) fragment
+ *
+ * be-family targets do not have a separate msdu_start TLV -- the rate/bw/
+ * sgi/reception_type/nss/pkt_type/mic_err/decrypt_err fields consumed by
+ * dp_rx_msdu_extd_stats_update() all live in msdu_end, which HW only
+ * populates on the last fragment of a scatter-gathered MSDU.
+ *
+ * Return: last_msdu_tlv
+ */
+static inline uint8_t *
+hal_rx_msdu_stats_tlv_resolve_be(uint8_t *first_msdu_tlv,
+				 uint8_t *last_msdu_tlv)
+{
+	return last_msdu_tlv;
+}
+
 void hal_hw_txrx_default_ops_attach_be(struct hal_soc *hal_soc)
 {
 	hal_soc->ops->hal_get_reo_qdesc_size = hal_get_reo_qdesc_size_be;
@@ -1090,6 +1109,8 @@ void hal_hw_txrx_default_ops_attach_be(struct hal_soc *hal_soc)
 					hal_get_wbm_internal_error_generic_be;
 	hal_soc->ops->hal_rx_mpdu_desc_info_get =
 				hal_rx_mpdu_desc_info_get_be;
+	hal_soc->ops->hal_rx_msdu_stats_tlv_resolve =
+				hal_rx_msdu_stats_tlv_resolve_be;
 	hal_soc->ops->hal_rx_err_status_get = hal_rx_err_status_get_be;
 	hal_soc->ops->hal_rx_reo_buf_type_get = hal_rx_reo_buf_type_get_be;
 	hal_soc->ops->hal_rx_wbm_err_src_get = hal_rx_wbm_err_src_get_be;

@@ -1449,6 +1449,8 @@ struct hal_hw_txrx_ops {
 	uint8_t (*hal_rx_err_status_get)(hal_ring_desc_t rx_desc);
 	uint8_t (*hal_rx_reo_buf_type_get)(hal_ring_desc_t rx_desc);
 	bool (*hal_rx_mpdu_info_ampdu_flag_get)(uint8_t *buf);
+	uint8_t *(*hal_rx_msdu_stats_tlv_resolve)(uint8_t *first_msdu_tlv,
+						  uint8_t *last_msdu_tlv);
 	uint32_t (*hal_rx_tlv_mpdu_len_err_get)(void *hw_desc_addr);
 	uint32_t (*hal_rx_tlv_mpdu_fcs_err_get)(void *hw_desc_addr);
 	void (*hal_rx_tlv_get_pkt_capture_flags)(uint8_t *rx_tlv_hdr,
