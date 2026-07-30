@@ -10246,6 +10246,21 @@ void wmi_copy_mgmt_rx_srng_support(wmi_resource_config *resource_cfg,
 }
 #endif
 
+#ifdef DRIVER_PASSTHRU_MODE
+static void
+wmi_set_passthru_rx_reorder_support(wmi_resource_config *resource_cfg)
+{
+	WMI_RSRC_CFG_HOST_SERVICE_FLAG_PASSTHRU_RX_REORDER_SET(
+		resource_cfg->host_service_flags, 1);
+	wmi_info("Passthru re-order supported");
+}
+#else
+static inline void
+wmi_set_passthru_rx_reorder_support(wmi_resource_config *resource_cfg)
+{
+}
+#endif
+
 static
 void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 			      wmi_resource_config *resource_cfg,
@@ -10522,6 +10537,8 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	WMI_RSRC_CFG_HOST_SERVICE_FLAG_BANG_RADAR_320M_SUPPORT_SET(
 		resource_cfg->host_service_flags,
 		tgt_res_cfg->is_host_dfs_320mhz_bangradar_supported);
+
+	wmi_set_passthru_rx_reorder_support(resource_cfg);
 
 	WMI_RSRC_CFG_HOST_SERVICE_FLAG_LPI_SP_MODE_SUPPORT_SET(
 		resource_cfg->host_service_flags,
