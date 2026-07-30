@@ -159,6 +159,23 @@ hal_reo_remap_ix2_ix3_value_get_be(hal_soc_handle_t hal_soc_hdl,
 				   uint32_t *remap_ix2,
 				   uint32_t *remap_ix3);
 
+#ifdef CONFIG_BORON
+/**
+ * hal_reo_remap_ix1_value_get_be() - Calculate reo remap register value
+ *                                    for IX1 (dest_ring_mapping_8..15)
+ * @remap0: output pointer to store the REO remap value for IX1
+ *
+ * Return: None
+ */
+void
+hal_reo_remap_ix1_value_get_be(uint32_t *remap0);
+#else
+static inline void
+hal_reo_remap_ix1_value_get_be(uint32_t *remap0)
+{
+}
+#endif /* CONFIG_BORON */
+
 /**
  * hal_reo_ring_remap_value_get_be() - return REO remap value
  * @rx_ring_id: REO2SW ring mask

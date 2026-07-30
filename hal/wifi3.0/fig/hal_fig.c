@@ -1561,6 +1561,11 @@ void hal_reo_config_fig(struct hal_soc *soc,
 {
 	HAL_REO_R0_CONFIG(soc, reg_val, reo_params);
 	HAL_REO_RBM_DEST_RING_CTRL_IX_0_CONFIG(soc, reg_val, REO_REMAP_FW);
+
+	HAL_REG_WRITE(soc,
+		      HWIO_REO_R0_DESTINATION_RING_CTRL_IX_1_ADDR(
+		      REO_REG_REG_BASE),
+		      reo_params->remap0);
 }
 
 /**

@@ -828,6 +828,32 @@ hal_reo_remap_ix2_ix3_value_get_be(hal_soc_handle_t hal_soc_hdl,
 		     HAL_REO_REMAP_IX3(ix3_map[7], 31);
 }
 
+#ifdef CONFIG_BORON
+void
+hal_reo_remap_ix1_value_get_be(uint32_t *remap0)
+{
+	uint8_t ix1_map[8] = {0};
+
+	ix1_map[0] = 8;
+	ix1_map[1] = 9;
+	ix1_map[2] = 0xA;
+	ix1_map[3] = 0xB;
+	ix1_map[4] = 6;
+	ix1_map[5] = 6;
+	ix1_map[6] = 6;
+	ix1_map[7] = 6;
+
+	*remap0 = HAL_REO_REMAP_IX1(ix1_map[0], 8) |
+		  HAL_REO_REMAP_IX1(ix1_map[1], 9) |
+		  HAL_REO_REMAP_IX1(ix1_map[2], 10) |
+		  HAL_REO_REMAP_IX1(ix1_map[3], 11) |
+		  HAL_REO_REMAP_IX1(ix1_map[4], 12) |
+		  HAL_REO_REMAP_IX1(ix1_map[5], 13) |
+		  HAL_REO_REMAP_IX1(ix1_map[6], 14) |
+		  HAL_REO_REMAP_IX1(ix1_map[7], 15);
+}
+#endif /* CONFIG_BORON */
+
 uint32_t
 hal_reo_ix_remap_value_get_be(hal_soc_handle_t hal_soc_hdl,
 			      uint8_t rx_ring_mask)

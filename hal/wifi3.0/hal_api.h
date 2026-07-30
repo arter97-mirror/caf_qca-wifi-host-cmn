@@ -1351,6 +1351,15 @@ void *hal_srng_setup_idx(void *hal_soc, int ring_type, int ring_num,
  * Macro to access HWIO_REO_R0_DESTINATION_RING_CTRL_IX_1
  * to map destination to rings
  */
+#define HAL_REO_REMAP_IX1(_VALUE, _OFFSET) \
+	((_VALUE) << \
+	 (HWIO_REO_R0_DESTINATION_RING_CTRL_IX_1_DEST_RING_MAPPING_ ## \
+	  _OFFSET ## _SHFT))
+
+/*
+ * Macro to access HWIO_REO_R0_DESTINATION_RING_CTRL_IX_1
+ * to map destination to rings
+ */
 #define HAL_REO_REMAP_IX2(_VALUE, _OFFSET) \
 	((_VALUE) << \
 	 (HWIO_REO_R0_DESTINATION_RING_CTRL_IX_2_DEST_RING_MAPPING_ ## \

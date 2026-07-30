@@ -4118,11 +4118,13 @@ static bool dp_reo_remap_config_be(struct dp_soc *soc,
 		goto err_def;
 	}
 
+	hal_reo_remap_ix1_value_get_be(remap0);
+
 	hal_reo_remap_ix2_ix3_value_get_be(soc->hal_soc, reo_config,
 					   remap1, remap2);
 
-	dp_info("reo_config 0x%x, remap1 0x%x, remap2 0x%x",
-		reo_config, *remap1, *remap2);
+	dp_info("reo_config 0x%x, remap0 0x%x, remap1 0x%x, remap2 0x%x",
+		reo_config, *remap0, *remap1, *remap2);
 
 	return true;
 
