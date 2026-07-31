@@ -2304,6 +2304,7 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 	struct wlan_lmac_if_rx_ops *rx_ops;
 	uint32_t target_type;
 	struct cfr_info_v3 info_v3 = {0};
+	uint8_t srng_id = 0;
 
 	if (!sc || !data) {
 		cfr_err("sc or data is null");
@@ -2428,8 +2429,9 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 	buf_addr = (tx_evt_param.correlation_info_1 |
 		    ((uint64_t)buf_addr_temp << 32));
 
+	srng_id = pcfr->rcc_param.srng_id;
 	if (target_if_dbr_cookie_lookup(pdev, DBR_MODULE_CFR, buf_addr,
-					&cookie, 0)) {
+					&cookie, srng_id)) {
 		cfr_err("Cookie lookup failure for addr: 0x%pK status: 0x%x",
 			(void *)((uintptr_t)buf_addr), tx_evt_param.status);
 		pcfr->tx_dbr_cookie_lookup_fail++;
