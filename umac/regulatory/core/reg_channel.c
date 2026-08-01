@@ -567,8 +567,8 @@ bool reg_is_band_present(struct wlan_objmgr_pdev *pdev,
 		max_chan_idx = MAX_24GHZ_CHANNEL;
 		break;
 	case REG_BAND_5G:
-		min_chan_idx = MIN_49GHZ_CHANNEL;
-		max_chan_idx = MAX_5GHZ_CHANNEL;
+		min_chan_idx = BAND_5GHZ_START_CHANNEL;
+		max_chan_idx = BAND_5GHZ_END_CHANNEL;
 		break;
 	case REG_BAND_6G:
 		min_chan_idx = MIN_6GHZ_CHANNEL;
