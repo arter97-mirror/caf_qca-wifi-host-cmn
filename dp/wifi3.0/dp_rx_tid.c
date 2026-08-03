@@ -627,6 +627,7 @@ dp_single_rx_tid_setup(struct dp_peer *peer, int tid,
 	rx_tid->num_of_addba_resp = 0;
 	rx_tid->num_addba_rsp_failed = 0;
 	rx_tid->num_addba_rsp_success = 0;
+	rx_tid->num_addba_req_rejected = 0;
 	rx_tid->delba_tx_success_cnt = 0;
 	rx_tid->delba_tx_fail_cnt = 0;
 	rx_tid->statuscode = 0;
@@ -1626,6 +1627,24 @@ int dp_addba_requestprocess_wifi3(struct cdp_soc_t *cdp_soc,
 	rx_tid = &peer->rx_tid[tid];
 	qdf_spin_lock_bh(&rx_tid->tid_lock);
 	rx_tid->num_of_addba_req++;
+
+	/*
+	 * Reject ADDBA request if DELBA TX completion is pending.
+	 * This prevents race condition where ADDBA request arrives
+	 * before DELBA TX completion, which can cause incorrect
+	 * TID state transitions (INPROGRESS -> INACTIVE instead of
+	 * INPROGRESS -> ACTIVE).
+	 */
+	if (rx_tid->delba_tx_status) {
+		dp_info("%pK: Reject ADDBA req for tid %d, DELBA TX completion pending",
+			cdp_soc, tid);
+		rx_tid->statuscode = IEEE80211_STATUS_REFUSED;
+		rx_tid->num_addba_req_rejected++;
+		qdf_spin_unlock_bh(&rx_tid->tid_lock);
+		status = QDF_STATUS_E_FAILURE;
+		goto fail;
+	}
+
 	if ((rx_tid->ba_status == DP_RX_BA_ACTIVE &&
 	     rx_tid->hw_qdesc_vaddr_unaligned)) {
 		dp_rx_tid_update_wifi3(peer, tid, 1, IEEE80211_SEQ_MAX, false);
