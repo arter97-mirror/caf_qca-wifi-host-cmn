@@ -1155,6 +1155,36 @@ wlan_crypto_vdev_set_param(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id,
 			   uint32_t param_id, uint32_t param_value);
 
 /**
+ * wlan_crypto_set_peer_ucastcipher() - Set unicast cipher and cipher cap
+ *                                      of the peer
+ * @psoc: Pointer to PSOC object
+ * @mac_addr: peer mac address
+ * @cipher: peer cipher bits
+ * @cipher_cap: cipher cap
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
+				 uint8_t *mac_addr, int32_t cipher,
+				 int32_t cipher_cap);
+
+/**
+ * ucfg_crypto_set_peer_ucastcipher() - Set unicast cipher and cipher cap
+ *                                      of the peer, north bound wrapper
+ * @psoc: Pointer to PSOC object
+ * @mac_addr: peer mac address
+ * @cipher: peer cipher bits
+ * @cipher_cap: cipher cap
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+ucfg_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
+				 uint8_t *mac_addr, int32_t cipher,
+				 int32_t cipher_cap);
+
+/**
  * wlan_crypto_get_peer_pmksa() - called to get pmksa based on pmksa parameter
  * @vdev: vdev
  * @pmksa: bssid

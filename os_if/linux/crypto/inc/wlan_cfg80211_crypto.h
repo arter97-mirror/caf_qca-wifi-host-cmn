@@ -38,6 +38,20 @@ int wlan_cfg80211_set_default_key(struct wlan_objmgr_vdev *vdev,
 				  struct qdf_mac_addr *bssid);
 
 /**
+ * wlan_cfg80211_set_peer_ucastcipher() - Set unicast cipher and cipher
+ * cap of the peer
+ * @vdev: VDEV Object pointer
+ * @mac_addr: peer mac address
+ * @cipher: peer cipher bits
+ * @cipher_cap: cipher cap
+ *
+ * Return: Zero for success and negative for failure.
+ */
+int wlan_cfg80211_set_peer_ucastcipher(struct wlan_objmgr_vdev *vdev,
+				       uint8_t *mac_addr, int32_t cipher,
+				       int32_t cipher_cap);
+
+/**
  * wlan_cfg80211_translate_ml_sta_key - Translate the cfg80211 keys
  * to internal for ml sta key
  * @key_index: key index

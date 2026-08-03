@@ -414,3 +414,21 @@ int wlan_cfg80211_set_default_key(struct wlan_objmgr_vdev *vdev,
 	return wlan_crypto_default_key(vdev, (uint8_t *)bssid,
 				       key_index, true);
 }
+
+int wlan_cfg80211_set_peer_ucastcipher(struct wlan_objmgr_vdev *vdev,
+				       uint8_t *mac_addr, int32_t cipher,
+				       int32_t cipher_cap)
+{
+	struct wlan_objmgr_psoc *psoc = wlan_vdev_get_psoc(vdev);
+	QDF_STATUS status;
+
+	if (!psoc) {
+		osif_err("psoc is NULL");
+		return -EINVAL;
+	}
+
+	status = ucfg_crypto_set_peer_ucastcipher(psoc, mac_addr, cipher,
+						  cipher_cap);
+
+	return qdf_status_to_os_return(status);
+}

@@ -44,6 +44,15 @@ QDF_STATUS ucfg_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
 	return wlan_crypto_set_key_req(vdev, req, key_type);
 }
 
+QDF_STATUS
+ucfg_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
+				 uint8_t *mac_addr, int32_t cipher,
+				 int32_t cipher_cap)
+{
+	return wlan_crypto_set_peer_ucastcipher(psoc, mac_addr, cipher,
+						cipher_cap);
+}
+
 void ucfg_crypto_flush_entries(struct wlan_objmgr_psoc *psoc)
 {
 	crypto_flush_entries(psoc);

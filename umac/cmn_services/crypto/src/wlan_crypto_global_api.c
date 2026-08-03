@@ -5545,3 +5545,29 @@ wlan_crypto_vdev_set_param(struct wlan_objmgr_psoc *psoc, uint32_t vdev_id,
 
 	return status;
 }
+
+QDF_STATUS
+wlan_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
+				 uint8_t *mac_addr, int32_t cipher,
+				 int32_t cipher_cap)
+{
+	struct wlan_objmgr_peer *peer;
+
+	peer = wlan_objmgr_get_peer_by_mac(psoc, mac_addr, WLAN_CRYPTO_ID);
+	if (!peer) {
+		crypto_err("Peer of peer_mac " QDF_MAC_ADDR_FMT " not found",
+			   QDF_MAC_ADDR_REF(mac_addr));
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wlan_crypto_set_peer_param(peer, WLAN_CRYPTO_PARAM_CIPHER_CAP,
+				   cipher_cap);
+	wlan_crypto_set_peer_param(peer, WLAN_CRYPTO_PARAM_UCAST_CIPHER,
+				   cipher);
+	wlan_objmgr_peer_release_ref(peer, WLAN_CRYPTO_ID);
+
+	crypto_debug("Set unicast cipher %x and cap %x for " QDF_MAC_ADDR_FMT,
+		     cipher, cipher_cap, QDF_MAC_ADDR_REF(mac_addr));
+
+	return QDF_STATUS_SUCCESS;
+}
