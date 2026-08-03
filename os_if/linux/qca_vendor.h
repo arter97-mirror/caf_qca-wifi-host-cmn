@@ -5847,6 +5847,14 @@ enum qca_wlan_vendor_attr_nd_offload {
  *	%QCA_CONNECT_EXT_FEATURE_OKC_PMKID_IN_ASSOC to indicate mutual support
  *	between driver and supplicant.
  *
+ * @QCA_WLAN_VENDOR_FEATURE_LATENCY_BASED_OPM: Indicates that driver/firmware
+ *	supports QCA_WLAN_VENDOR_OPM_MODE_LATENCY_BASED which allows userspace
+ *	to configure a latency tolerance value (in milliseconds) via
+ *	QCA_WLAN_VENDOR_ATTR_CONFIG_OPM_LATENCY_TOLERANCE, carried in
+ *	QCA_NL80211_VENDOR_SUBCMD_SET_WIFI_CONFIGURATION, based on the
+ *	application's use case. OPM mode is configured through the
+ *	QCA_WLAN_VENDOR_ATTR_CONFIG_OPTIMIZED_POWER_MANAGEMENT attribute.
+ *
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits
  */
 enum qca_wlan_vendor_features {
@@ -5888,6 +5896,7 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_GC_KEEP_AWAKE_DURING_ONE_SHOT_NOA = 36,
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_PMKSA_CACHING_PRIVACY = 37,
 	QCA_WLAN_VENDOR_FEATURE_OKC_PMKID_IN_ASSOC = 38,
+	QCA_WLAN_VENDOR_FEATURE_LATENCY_BASED_OPM = 39,
 	NUM_QCA_WLAN_VENDOR_FEATURES /* keep last */
 };
 
