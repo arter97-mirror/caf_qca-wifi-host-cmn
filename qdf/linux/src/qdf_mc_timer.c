@@ -830,22 +830,22 @@ qdf_export_symbol(qdf_mc_timer_get_system_ticks);
  * The current system time in milliseconds
  */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
-unsigned long qdf_mc_timer_get_system_time(void)
+uint64_t qdf_mc_timer_get_system_time(void)
 {
 	struct timespec64 tv;
 
 	ktime_get_real_ts64(&tv);
-	return tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
+	return (uint64_t)tv.tv_sec * 1000ULL + (uint64_t)(tv.tv_nsec / 1000000);
 }
 qdf_export_symbol(qdf_mc_timer_get_system_time);
 
 #else
-unsigned long qdf_mc_timer_get_system_time(void)
+uint64_t qdf_mc_timer_get_system_time(void)
 {
 	struct timeval tv;
 
 	do_gettimeofday(&tv);
-	return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+	return (uint64_t)tv.tv_sec * 1000ULL + (uint64_t)(tv.tv_usec / 1000);
 }
 qdf_export_symbol(qdf_mc_timer_get_system_time);
 #endif

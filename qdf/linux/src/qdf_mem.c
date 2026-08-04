@@ -1606,7 +1606,7 @@ void *qdf_mem_malloc_debug(size_t size, const char *func, uint32_t line,
 	qdf_list_t *mem_list = qdf_mem_list_get(current_domain);
 	struct qdf_mem_header *header;
 	void *ptr;
-	unsigned long start, duration;
+	uint64_t start, duration;
 
 	if (is_initial_mem_debug_disabled)
 		return __qdf_mem_malloc(size, func, line);
@@ -1631,7 +1631,7 @@ void *qdf_mem_malloc_debug(size_t size, const char *func, uint32_t line,
 	duration = qdf_mc_timer_get_system_time() - start;
 
 	if (duration > QDF_MEM_WARN_THRESHOLD)
-		qdf_warn("Malloc slept; %lums, %zuB @ %s:%d",
+		qdf_warn("Malloc slept; %llums, %zuB @ %s:%d",
 			 duration, size, func, line);
 
 	if (!header) {
@@ -1666,7 +1666,7 @@ void *qdf_mem_malloc_atomic_debug(size_t size, const char *func,
 	qdf_list_t *mem_list = qdf_mem_list_get(current_domain);
 	struct qdf_mem_header *header;
 	void *ptr;
-	unsigned long start, duration;
+	uint64_t start, duration;
 
 	if (is_initial_mem_debug_disabled)
 		return qdf_mem_malloc_atomic_debug_fl(size, func, line);
@@ -1688,7 +1688,7 @@ void *qdf_mem_malloc_atomic_debug(size_t size, const char *func,
 	duration = qdf_mc_timer_get_system_time() - start;
 
 	if (duration > QDF_MEM_WARN_THRESHOLD)
-		qdf_warn("Malloc slept; %lums, %zuB @ %s:%d",
+		qdf_warn("Malloc slept; %llums, %zuB @ %s:%d",
 			 duration, size, func, line);
 
 	if (!header) {

@@ -49,7 +49,7 @@ __qdf_talloc_log_nomem(const size_t size, const char *func, const uint16_t line)
 static void *
 __qdf_zalloc_auto(const size_t size, const char *func, const uint16_t line)
 {
-	unsigned long start, duration;
+	uint64_t start, duration;
 	void *ptr;
 
 	start = qdf_mc_timer_get_system_time();
@@ -57,7 +57,7 @@ __qdf_zalloc_auto(const size_t size, const char *func, const uint16_t line)
 	duration = qdf_mc_timer_get_system_time() - start;
 
 	if (duration > QDF_TALLOC_SLEEP_TIMEOUT_MS)
-		qdf_nofl_info("Alloc slept; %lums, %zuB; via %s():%d",
+		qdf_nofl_info("Alloc slept; %llums, %zuB; via %s():%d",
 			      duration, size, func, line);
 
 	if (!ptr) {

@@ -379,7 +379,7 @@ struct vdev_mlme_mgmt_ap {
 	uint32_t cac_duration_ms;
 	struct wlan_vdev_aid_mgr *aid_mgr;
 	uint32_t max_chan_switch_time;
-	unsigned long last_bcn_ts_ms;
+	uint64_t last_bcn_ts_ms;
 };
 
 /**

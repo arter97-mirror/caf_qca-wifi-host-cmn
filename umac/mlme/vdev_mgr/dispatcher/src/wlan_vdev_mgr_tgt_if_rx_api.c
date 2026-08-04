@@ -285,7 +285,7 @@ static void tgt_vdev_mgr_set_max_channel_switch_time(
 {
 	struct wlan_objmgr_vdev *vdev = NULL;
 	struct vdev_mlme_obj *vdev_mlme = NULL;
-	unsigned long current_time = qdf_mc_timer_get_system_time();
+	uint64_t current_time = qdf_mc_timer_get_system_time();
 	uint32_t max_chan_switch_time = 0;
 	int i = 0;
 	QDF_STATUS status;
