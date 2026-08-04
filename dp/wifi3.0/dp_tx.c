@@ -72,6 +72,7 @@
 
 /* Added for HAPS usecase*/
 #define TRY_LOCK_TIMEOUT_NS    20000
+#define HP_UPDATE_TIME_LIMIT   1000
 
 #define DP_RETRY_COUNT 7
 #ifdef WLAN_PEER_JITTER
@@ -2082,6 +2083,7 @@ QDF_STATUS dp_try_hp_update(struct dp_haps *haps_ctx, bool is_direct_reg_write)
 	uint32_t hp, cached_tp;
 	uint8_t ring_id;
 	struct dp_soc *soc = haps_ctx->soc;
+	qdf_time_t start_time, delta;
 
 	for (ring_id = 0; ring_id < soc->num_tcl_data_rings; ring_id++) {
 		hal_ring_hdl = soc->tcl_data_ring[ring_id].hal_srng;
@@ -2107,10 +2109,21 @@ QDF_STATUS dp_try_hp_update(struct dp_haps *haps_ctx, bool is_direct_reg_write)
 			continue;
 		}
 
-		if (is_direct_reg_write)
+		if (is_direct_reg_write) {
+			start_time = qdf_get_log_timestamp_usecs();
+
 			hal_srng_update_hp_direct(soc->hal_soc, hal_ring_hdl);
-		else
-			dp_tx_ring_access_end(soc, hal_ring_hdl, 0);
+
+			delta = qdf_get_log_timestamp_usecs() - start_time;
+			/* The HP update time is not anticipated to exceed 1ms,
+			 * as the FW can only be in the L1SS state at most.
+			 */
+			if (delta > HP_UPDATE_TIME_LIMIT)
+				dp_err("HAPS: hp update time(%zu) is high for vdev(%u)",
+				       delta, haps_ctx->vdev_id);
+		} else {
+			dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, 0);
+		}
 
 		hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_DP);
 	}
@@ -7583,6 +7596,7 @@ more_data:
 				dp_tx_comp_info_rl("pdev in down state %d",
 						   tx_desc->id);
 				tx_desc->flags |= DP_TX_DESC_FLAG_TX_COMP_ERR;
+				DP_STATS_INC(soc, tx.tx_desc_pdev_down, 1);
 				dp_tx_comp_free_buf(soc, tx_desc, false);
 				dp_tx_desc_release(soc, tx_desc,
 						   tx_desc->pool_id);
@@ -7593,6 +7607,7 @@ more_data:
 				!(tx_desc->flags & DP_TX_DESC_FLAG_QUEUED_TX)) {
 				dp_tx_comp_alert("Txdesc invalid, flgs = %x,id = %d",
 						 tx_desc->flags, tx_desc->id);
+				DP_STATS_INC(soc, tx.tx_desc_unused, 1);
 				qdf_assert_always(0);
 			}
 
@@ -7600,7 +7615,9 @@ more_data:
 			    DP_TX_DESC_FLAG_REAPED)) {
 				dp_tx_comp_alert("Txdesc duplicate entry, flags = %x,id = %d",
 						 tx_desc->flags, tx_desc->id);
+				DP_STATS_INC(soc, tx.tx_desc_duplicate, 1);
 				qdf_assert_always(0);
+				goto next_desc;
 			}
 
 			tx_desc->flags |= DP_TX_DESC_FLAG_REAPED;
