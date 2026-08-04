@@ -349,6 +349,7 @@ void hif_rtpm_open(struct hif_softc *scn)
 	qdf_atomic_init(&gp_hif_rtpm_ctx->suspend_owner_pid);
 	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid, -1);
 	qdf_atomic_init(&gp_hif_rtpm_ctx->monitor_wake_intr);
+	qdf_atomic_init(&gp_hif_rtpm_ctx->tbtt_nack_delay_active);
 	INIT_LIST_HEAD(&gp_hif_rtpm_ctx->prevent_list);
 	gp_hif_rtpm_ctx->client_count = 0;
 	gp_hif_rtpm_ctx->pending_job = 0;
@@ -590,6 +591,51 @@ QDF_STATUS hif_rtpm_restore_autosuspend_delay(void)
 int hif_rtpm_get_autosuspend_delay(void)
 {
 	return gp_hif_rtpm_ctx->delay;
+}
+
+QDF_STATUS hif_rtpm_set_wow_tbtt_nack_delay(int delay)
+{
+	QDF_STATUS status;
+
+	if (qdf_unlikely(!gp_hif_rtpm_ctx)) {
+		hif_err("Runtime PM context NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (qdf_atomic_read(&gp_hif_rtpm_ctx->tbtt_nack_delay_active)) {
+		hif_info_high("TBTT nack delay already active, restoring default");
+		return hif_rtpm_reset_wow_tbtt_nack_delay();
+	}
+
+	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
+	qdf_atomic_set(&gp_hif_rtpm_ctx->tbtt_nack_delay_active, 1);
+	status = hif_rtpm_set_autosuspend_delay(delay);
+	if (QDF_IS_STATUS_ERROR(status))
+		qdf_atomic_set(&gp_hif_rtpm_ctx->tbtt_nack_delay_active, 0);
+	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
+
+	return status;
+}
+
+QDF_STATUS hif_rtpm_reset_wow_tbtt_nack_delay(void)
+{
+	QDF_STATUS status;
+
+	if (qdf_unlikely(!gp_hif_rtpm_ctx)) {
+		hif_err("Runtime PM context NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
+	if (!qdf_atomic_read(&gp_hif_rtpm_ctx->tbtt_nack_delay_active)) {
+		qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
+		return QDF_STATUS_E_ALREADY;
+	}
+	qdf_atomic_set(&gp_hif_rtpm_ctx->tbtt_nack_delay_active, 0);
+	status = hif_rtpm_restore_autosuspend_delay();
+	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
+
+	return status;
 }
 
 int hif_runtime_lock_init(qdf_runtime_lock_t *lock, const char *name)

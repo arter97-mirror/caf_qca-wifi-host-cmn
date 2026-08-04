@@ -142,6 +142,8 @@ struct hif_rtpm_client {
  * @pm_dentry: debug fs entry
  * @cfg_delay:
  * @delay:
+ * @tbtt_nack_delay_active: set while @delay holds the short TBTT-nack
+ *  retry override, so it can be dropped on the next WMI tx/rx
  * @busy_hist: busy histogram
  */
 struct hif_rtpm_ctx {
@@ -162,6 +164,7 @@ struct hif_rtpm_ctx {
 	struct dentry *pm_dentry;
 	int cfg_delay;
 	int delay;
+	qdf_atomic_t tbtt_nack_delay_active;
 	struct hif_rtpm_last_busy_hist *busy_hist[CE_COUNT_MAX];
 };
 

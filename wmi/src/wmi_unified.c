@@ -21,7 +21,7 @@
  * Host WMI unified implementation
  */
 #include "htc_api.h"
-#include "htc_api.h"
+#include "hif.h"
 #include "wmi_unified_priv.h"
 #include "wmi_unified_api.h"
 #include "qdf_module.h"
@@ -2127,6 +2127,8 @@ QDF_STATUS wmi_unified_cmd_send_fl(wmi_unified_t wmi_handle, wmi_buf_t buf,
 	uint16_t htc_tag = 0;
 	bool rtpm_inprogress;
 
+	hif_rtpm_reset_wow_tbtt_nack_delay();
+
 	rtpm_inprogress = wmi_get_runtime_pm_inprogress(wmi_handle);
 	if (rtpm_inprogress) {
 		htc_tag = wmi_handle->ops->wmi_set_htc_tx_tag(wmi_handle, buf,
@@ -2747,6 +2749,8 @@ static void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 	struct wmi_unified *wmi_handle;
 	wmi_buf_t evt_buf;
 
+	hif_rtpm_reset_wow_tbtt_nack_delay();
+
 	evt_buf = (wmi_buf_t)htc_packet->pPktContext;
 
 	wmi_handle = wmi_get_pdev_ep(soc, htc_packet->Endpoint);
@@ -2775,6 +2779,8 @@ static void wmi_control_diag_rx(void *ctx, HTC_PACKET *htc_packet)
 	struct wmi_unified *wmi_handle;
 	wmi_buf_t evt_buf;
 
+	hif_rtpm_reset_wow_tbtt_nack_delay();
+
 	evt_buf = (wmi_buf_t)htc_packet->pPktContext;
 
 	wmi_handle = soc->wmi_pdev[0];
@@ -2802,6 +2808,8 @@ static void wmi_control_dbr_rx(void *ctx, HTC_PACKET *htc_packet)
 	struct wmi_soc *soc = (struct wmi_soc *)ctx;
 	struct wmi_unified *wmi_handle;
 	wmi_buf_t evt_buf;
+
+	hif_rtpm_reset_wow_tbtt_nack_delay();
 
 	evt_buf = (wmi_buf_t)htc_packet->pPktContext;
 	wmi_handle = soc->wmi_pdev[0];

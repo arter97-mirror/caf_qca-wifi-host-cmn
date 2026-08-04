@@ -1530,6 +1530,30 @@ QDF_STATUS hif_rtpm_restore_autosuspend_delay(void);
 int hif_rtpm_get_autosuspend_delay(void);
 
 /**
+ * hif_rtpm_set_wow_tbtt_nack_delay() - Set the short RTPM autosuspend
+ *  delay used to retry RTPM suspend after a TBTT-collision WOW nack, and
+ *  mark it as the active override so it can be dropped on the next WMI
+ *  tx/rx or suspend failure.
+ * @delay: delay in ms to be set
+ *
+ * Return: QDF_STATUS_SUCCESS if delay is set successfully,
+ *         QDF_STATUS_E_INVAL if the RTPM context is not initialized or
+ *         the delay value is out of range.
+ */
+QDF_STATUS hif_rtpm_set_wow_tbtt_nack_delay(int delay);
+
+/**
+ * hif_rtpm_reset_wow_tbtt_nack_delay() - Drop the TBTT-nack short RTPM
+ *  autosuspend delay override, if currently active, and restore the
+ *  configured default delay.
+ *
+ * Return: QDF_STATUS_SUCCESS if the override was active and has been
+ *         reset, QDF_STATUS_E_ALREADY if the override wasn't active,
+ *         QDF_STATUS_E_INVAL if the RTPM context is not initialized.
+ */
+QDF_STATUS hif_rtpm_reset_wow_tbtt_nack_delay(void);
+
+/**
  * hif_runtime_lock_init() - API to initialize Runtime PM context
  * @lock: QDF lock context
  * @name: Context name
@@ -1873,6 +1897,18 @@ static inline QDF_STATUS hif_rtpm_restore_autosuspend_delay(void)
 
 static inline int hif_rtpm_get_autosuspend_delay(void)
 { return 0; }
+
+static inline
+QDF_STATUS hif_rtpm_set_wow_tbtt_nack_delay(int delay)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS hif_rtpm_reset_wow_tbtt_nack_delay(void)
+{
+	return QDF_STATUS_SUCCESS;
+}
 
 static inline
 int hif_runtime_lock_init(qdf_runtime_lock_t *lock, const char *name)
