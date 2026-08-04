@@ -960,6 +960,19 @@ QDF_STATUS ucfg_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
 				   enum wlan_crypto_key_type key_type);
 
 /**
+ * ucfg_crypto_del_ndi_key_req() - Del NDI key request to UCFG
+ * @vdev: vdev object
+ * @key_index: Key index used in 802.11 frames
+ * @pairwise: true if it is pairwise key
+ * @mac_addr: Peer address
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS ucfg_crypto_del_ndi_key_req(struct wlan_objmgr_vdev *vdev,
+				       uint8_t key_index, bool pairwise,
+				       const uint8_t *mac_addr);
+
+/**
  * wlan_crypto_get_default_key_idx() - Get the default key index
  * @vdev: vdev object
  * @igtk: denotes if the request is for igtk key type or not
@@ -1084,6 +1097,19 @@ struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
 QDF_STATUS wlan_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
 				   struct wlan_crypto_key *req,
 				   enum wlan_crypto_key_type key_type);
+
+/**
+ * wlan_crypto_del_ndi_key_req() - Del NDI key request
+ * @vdev: vdev object
+ * @key_index: Key index used in 802.11 frames
+ * @pairwise: true if it is pairwise key
+ * @mac_addr: Peer address
+ *
+ * Return: QDF status
+ */
+QDF_STATUS wlan_crypto_del_ndi_key_req(struct wlan_objmgr_vdev *vdev,
+				       uint8_t key_index, bool pairwise,
+				       const uint8_t *mac_addr);
 
 /**
  * wlan_crypto_free_key() - Free the given key

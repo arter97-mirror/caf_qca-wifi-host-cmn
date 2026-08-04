@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -102,6 +102,20 @@ int wlan_cfg80211_crypto_add_key(struct wlan_objmgr_vdev *vdev,
 				 const uint8_t *peer_mac,
 				 enum wlan_crypto_key_type key_type,
 				 uint8_t key_index, bool sync);
+
+/**
+ * wlan_cfg80211_crypto_del_ndi_key() - Delete an NDI key for the specified
+ *  vdev, waiting for firmware to confirm the key removal.
+ * @vdev: vdev object
+ * @key_index: Key index used in 802.11 frames
+ * @pairwise: true if it is pairwise key
+ * @mac_addr: Peer address
+ *
+ * Return: Zero on Success, negative value on failure
+ */
+int wlan_cfg80211_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
+				     uint8_t key_index, bool pairwise,
+				     const uint8_t *mac_addr);
 
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 /**

@@ -762,6 +762,7 @@ struct wlan_crypto_req_key {
  * @delkey: function pointer to delkey in hw
  * @defaultkey: function pointer to set default key
  * @set_key: converged function pointer to set key in hw
+ * @del_ndi_key: function pointer to delete an NDI key in hw
  * @getpn: function pointer to get current pn value of peer
  * @set_ltf_keyseed: Set LTF keyseed
  * @set_vdev_param: Set the vdev crypto parameter
@@ -783,6 +784,9 @@ struct wlan_lmac_if_crypto_tx_ops {
 	QDF_STATUS (*set_key)(struct wlan_objmgr_vdev *vdev,
 			      struct wlan_crypto_key *key,
 			      enum wlan_crypto_key_type key_type);
+	QDF_STATUS (*del_ndi_key)(struct wlan_objmgr_vdev *vdev,
+				  uint8_t key_index, bool pairwise,
+				  const uint8_t *macaddr);
 	QDF_STATUS(*getpn)(struct wlan_objmgr_vdev *vdev,
 			   uint8_t *macaddr, uint8_t keyix, uint32_t key_type);
 	QDF_STATUS (*set_ltf_keyseed)(struct wlan_objmgr_psoc *psoc,

@@ -293,6 +293,62 @@ send_install_key:
 }
 
 /**
+ * target_if_crypto_del_ndi_key() - lmac handler to delete an NDI key
+ * @vdev: VDEV object pointer
+ * @key_index: Key index used in 802.11 frames
+ * @pairwise: true if it is pairwise key
+ * @macaddr: Peer address
+ *
+ * Sends WMI_VDEV_INSTALL_KEY_CMDID with cipher_type=WMI_CIPHER_NONE to
+ * signal firmware to remove the key for the given NDI vdev/peer.
+ *
+ * Return: QDF_STATUS
+ */
+static QDF_STATUS target_if_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
+					       uint8_t key_index, bool pairwise,
+					       const uint8_t *macaddr)
+{
+	struct set_key_params params = {0};
+	struct wlan_objmgr_pdev *pdev;
+	wmi_unified_t pdev_wmi_handle;
+	uint8_t vdev_id;
+	QDF_STATUS status;
+
+	pdev = wlan_vdev_get_pdev(vdev);
+	if (!pdev) {
+		target_if_err("Invalid PDEV");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	pdev_wmi_handle = GET_WMI_HDL_FROM_PDEV(pdev);
+	if (!pdev_wmi_handle) {
+		target_if_err("Invalid PDEV WMI handle");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	vdev_id = wlan_vdev_get_id(vdev);
+	params.vdev_id = vdev_id;
+	params.key_idx = key_index;
+	params.key_cipher = WMI_CIPHER_NONE;
+	params.key_flags = pairwise ? PAIRWISE_USAGE : GROUP_USAGE;
+	if (macaddr)
+		qdf_mem_copy(params.peer_mac, macaddr, QDF_MAC_ADDR_SIZE);
+
+	target_if_debug("NDI del key: vdev %d idx %d pairwise %d peer "
+			QDF_MAC_ADDR_FMT, vdev_id, key_index, pairwise,
+			QDF_MAC_ADDR_REF(macaddr));
+
+	status = wmi_unified_setup_install_key_cmd(pdev_wmi_handle, &params);
+	qdf_mem_zero(&params, sizeof(params));
+
+	if (QDF_IS_STATUS_ERROR(status))
+		target_if_err("NDI del key: WMI cmd failed vdev %d idx %d",
+			      vdev_id, key_index);
+
+	return status;
+}
+
+/**
  * target_if_crypto_install_key_comp_evt_handler() - install key complete
  *   handler
  * @handle: wma handle
@@ -379,6 +435,9 @@ target_if_crypto_install_key_comp_evt_handler(void *handle, uint8_t *event,
 	if (priv_obj->add_key_cb)
 		priv_obj->add_key_cb(priv_obj->add_key_ctx, &result);
 
+	if (priv_obj->del_key_cb)
+		priv_obj->del_key_cb(priv_obj->del_key_ctx, &result);
+
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_CRYPTO_ID);
 
 	return 0;
@@ -452,6 +511,7 @@ QDF_STATUS target_if_crypto_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 	crypto = &tx_ops->crypto_tx_ops;
 
 	crypto->set_key = target_if_crypto_set_key;
+	crypto->del_ndi_key = target_if_crypto_del_ndi_key;
 	crypto->set_ltf_keyseed = target_if_crypto_set_ltf_keyseed;
 	crypto->set_vdev_param  = target_if_crypto_vdev_set_param;
 	crypto->register_events = target_if_crypto_register_events;

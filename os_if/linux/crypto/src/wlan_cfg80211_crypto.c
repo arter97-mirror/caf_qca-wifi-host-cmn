@@ -347,6 +347,67 @@ int wlan_cfg80211_crypto_add_key(struct wlan_objmgr_vdev *vdev,
 	return qdf_status_to_os_return(status);
 }
 
+#define WLAN_WAIT_TIME_DEL_NDI_KEY 300
+
+static void
+wlan_cfg80211_crypto_del_ndi_key_cb(void *context,
+				    struct crypto_add_key_result *result)
+{
+	struct osif_request *request;
+
+	request = osif_request_get(context);
+	if (!request) {
+		osif_err("Obsolete request");
+		return;
+	}
+
+	osif_request_complete(request);
+	osif_request_put(request);
+}
+
+int wlan_cfg80211_crypto_del_ndi_key(struct wlan_objmgr_vdev *vdev,
+				     uint8_t key_index, bool pairwise,
+				     const uint8_t *mac_addr)
+{
+	QDF_STATUS status;
+	struct osif_request *request;
+	struct wlan_crypto_comp_priv *priv;
+	int ret;
+	static const struct osif_request_params params = {
+		.priv_size = 0,
+		.timeout_ms = WLAN_WAIT_TIME_DEL_NDI_KEY,
+	};
+
+	priv = wlan_get_vdev_crypto_obj(vdev);
+	if (!priv) {
+		osif_err("Invalid crypto_priv");
+		return -EINVAL;
+	}
+
+	request = osif_request_alloc(&params);
+	if (!request) {
+		osif_err("Request allocation failure");
+		return -ENOMEM;
+	}
+
+	priv->del_key_ctx = osif_request_cookie(request);
+	priv->del_key_cb = wlan_cfg80211_crypto_del_ndi_key_cb;
+
+	status = ucfg_crypto_del_ndi_key_req(vdev, key_index, pairwise,
+					     mac_addr);
+	if (QDF_IS_STATUS_SUCCESS(status)) {
+		ret = osif_request_wait_for_response(request);
+		if (ret)
+			osif_err("Target response timed out");
+	}
+
+	priv->del_key_ctx = NULL;
+	priv->del_key_cb = NULL;
+	osif_request_put(request);
+
+	return qdf_status_to_os_return(status);
+}
+
 int wlan_cfg80211_set_default_key(struct wlan_objmgr_vdev *vdev,
 				  uint8_t key_index, struct qdf_mac_addr *bssid)
 {

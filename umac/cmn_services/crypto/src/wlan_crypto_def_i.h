@@ -107,6 +107,8 @@ static inline void wlan_crypto_put_be64(u8 *a, u64 val)
 	((tx_ops)->crypto_tx_ops.defaultkey)
 #define WLAN_CRYPTO_TX_OPS_SET_KEY(tx_ops) \
 	((tx_ops)->crypto_tx_ops.set_key)
+#define WLAN_CRYPTO_TX_OPS_DEL_NDI_KEY(tx_ops) \
+	((tx_ops)->crypto_tx_ops.del_ndi_key)
 #define WLAN_CRYPTO_TX_OPS_SET_VDEV_PARAM(tx_ops) \
 	((tx_ops)->crypto_tx_ops.set_vdev_param)
 #define WLAN_CRYPTO_TX_OPS_GETPN(tx_ops) \
@@ -398,6 +400,15 @@ typedef void (*crypto_add_key_callback)(void *context,
 					struct crypto_add_key_result *result);
 
 /**
+ * typedef crypto_del_key_callback - del key callback
+ * @context: opaque context that the client can use to associate the
+ *  callback with the request
+ * @result: result of del key
+ */
+typedef void (*crypto_del_key_callback)(void *context,
+					struct crypto_add_key_result *result);
+
+/**
  * struct wlan_crypto_comp_priv - crypto component private structure
  * @crypto_params:    crypto params for the peer
  * @crypto_key: crypto keys structure for the peer
@@ -406,6 +417,9 @@ typedef void (*crypto_add_key_callback)(void *context,
  * @add_key_ctx: Opaque context to be used by the caller to associate the
  *  add key request with the response
  * @add_key_cb: Callback function to be called with the add key result
+ * @del_key_ctx: Opaque context to be used by the caller to associate the
+ *  del key request with the response
+ * @del_key_cb: Callback function to be called with the del key result
  * @rsno_crypto: crypto params of the RSNO IEs
  *
  */
@@ -416,6 +430,8 @@ struct wlan_crypto_comp_priv {
 	uint32_t akms_roam;
 	void *add_key_ctx;
 	crypto_add_key_callback add_key_cb;
+	void *del_key_ctx;
+	crypto_del_key_callback del_key_cb;
 	struct wlan_crypto_params rsno_crypto[RSNO_GEN_WIFI7 - 1];
 };
 

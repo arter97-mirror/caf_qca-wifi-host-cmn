@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -54,4 +54,17 @@ void ucfg_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     uint8_t link_id)
 {
 	wlan_crypto_free_key_by_link_id(psoc, link_addr, link_id);
+}
+
+QDF_STATUS ucfg_crypto_del_ndi_key_req(struct wlan_objmgr_vdev *vdev,
+				       uint8_t key_index, bool pairwise,
+				       const uint8_t *mac_addr)
+{
+	/*
+	 * Current requirement is to process del NDI key request
+	 * as run to completion without posting any messages.
+	 * Hence the request handler is directly called from here.
+	 */
+	return wlan_crypto_del_ndi_key_req(vdev, key_index, pairwise,
+					   mac_addr);
 }

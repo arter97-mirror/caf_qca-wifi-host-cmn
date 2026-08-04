@@ -5278,6 +5278,30 @@ QDF_STATUS wlan_crypto_set_key_req(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+QDF_STATUS wlan_crypto_del_ndi_key_req(struct wlan_objmgr_vdev *vdev,
+				       uint8_t key_index, bool pairwise,
+				       const uint8_t *mac_addr)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wlan_lmac_if_tx_ops *tx_ops;
+	QDF_STATUS status = QDF_STATUS_E_FAILURE;
+
+	psoc = wlan_vdev_get_psoc(vdev);
+
+	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
+	if (!tx_ops) {
+		crypto_err("tx_ops is NULL");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	if (psoc && WLAN_CRYPTO_TX_OPS_DEL_NDI_KEY(tx_ops))
+		status = WLAN_CRYPTO_TX_OPS_DEL_NDI_KEY(tx_ops)(vdev, key_index,
+								pairwise,
+								mac_addr);
+
+	return status;
+}
+
 void wlan_crypto_update_set_key_peer(struct wlan_objmgr_vdev *vdev,
 				     bool pairwise, uint8_t key_index,
 				     struct qdf_mac_addr *peer_mac)
