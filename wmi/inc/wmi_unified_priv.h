@@ -667,6 +667,10 @@ QDF_STATUS (*send_set_ap_ps_param_cmd)(wmi_unified_t wmi_handle,
 QDF_STATUS (*send_set_sta_ps_param_cmd)(wmi_unified_t wmi_handle,
 					   struct sta_ps_params *param);
 
+QDF_STATUS
+(*send_set_tm_param_cmd)(wmi_unified_t wmi_handle,
+			 struct traffic_monitoring_params *param);
+
 QDF_STATUS (*send_crash_inject_cmd)(wmi_unified_t wmi_handle,
 			 struct crash_inject *param);
 
@@ -3681,6 +3685,13 @@ QDF_STATUS
 QDF_STATUS
 	(*send_vdev_ch_hop_sched_cmd)(wmi_unified_t wmi_handle,
 				      struct vdev_ch_hop_sched_params *param);
+QDF_STATUS
+	(*send_vdev_get_chan_hop_status_cmd)(wmi_unified_t wmi_handle,
+					     uint8_t vdev_id);
+QDF_STATUS
+(*extract_vdev_chan_hop_status)(wmi_unified_t wmi_handle,
+				void *evt_buf,
+				struct vdev_chan_hop_status_response *resp);
 #endif
 
 #if defined(DRIVER_PASSTHRU_MODE) || defined(WLAN_FEATURE_DSRC)
@@ -3764,6 +3775,7 @@ struct wmi_unified {
 
 	qdf_atomic_t is_target_suspended;
 	qdf_atomic_t is_target_suspend_acked;
+	qdf_atomic_t is_init_cmd_sent;
 #ifdef WLAN_FEATURE_WMI_SEND_RECV_QMI
 	bool is_qmi_stats_enabled;
 #endif

@@ -851,6 +851,18 @@ static inline uint32_t dp_cc_desc_id_generate(uint32_t ppt_index,
 		spt_index);
 }
 
+static inline void dp_cc_desc_find_page_id(struct dp_soc_be *be_soc,
+					   uint32_t desc_id,
+					   uint16_t *ppt_page_id,
+					   uint16_t *spt_va_id)
+{
+	*ppt_page_id = (desc_id & DP_CC_DESC_ID_PPT_PAGE_OS_MASK) >>
+			DP_CC_DESC_ID_PPT_PAGE_OS_SHIFT;
+
+	*spt_va_id = (desc_id & DP_CC_DESC_ID_SPT_VA_OS_MASK) >>
+			DP_CC_DESC_ID_SPT_VA_OS_SHIFT;
+}
+
 /**
  * dp_cc_desc_find() - find TX/RX Descs virtual address by ID
  * @soc: be soc handle
@@ -866,12 +878,8 @@ static inline uintptr_t dp_cc_desc_find(struct dp_soc *soc,
 	uint8_t *spt_page_va;
 
 	be_soc = dp_get_be_soc_from_dp_soc(soc);
-	ppt_page_id = (desc_id & DP_CC_DESC_ID_PPT_PAGE_OS_MASK) >>
-			DP_CC_DESC_ID_PPT_PAGE_OS_SHIFT;
-
-	spt_va_id = (desc_id & DP_CC_DESC_ID_SPT_VA_OS_MASK) >>
-			DP_CC_DESC_ID_SPT_VA_OS_SHIFT;
-
+	dp_cc_desc_find_page_id(be_soc, desc_id, &ppt_page_id,
+				&spt_va_id);
 	/*
 	 * ppt index in cmem is same order where the page in the
 	 * page desc array during initialization.
@@ -882,6 +890,34 @@ static inline uintptr_t dp_cc_desc_find(struct dp_soc *soc,
 
 	return (*((uintptr_t *)(spt_page_va  +
 				spt_va_id * DP_CC_HW_READ_BYTES)));
+}
+
+static inline uintptr_t dp_cc_desc_find_validate(struct dp_soc *soc,
+						 uint32_t desc_id)
+{
+	struct dp_soc_be *be_soc;
+	uint16_t ppt_page_id, spt_va_id;
+	uint8_t *spt_page_va;
+
+	be_soc = dp_get_be_soc_from_dp_soc(soc);
+	dp_cc_desc_find_page_id(be_soc, desc_id, &ppt_page_id,
+				&spt_va_id);
+
+	if (ppt_page_id >= DP_CC_PPT_MAX_ENTRIES) {
+		dp_err("invalid primary page id, ppt_page_id %u, desc_id - %u",
+		       ppt_page_id, desc_id);
+		return 0;
+	}
+
+	spt_page_va = be_soc->page_desc_base[ppt_page_id].page_v_addr;
+	if (!spt_page_va) {
+		dp_err("invalid secondary page vadd, ppt_page_id - %u, desc_id - %u",
+		       ppt_page_id, desc_id);
+		return 0;
+	}
+
+	return (*((uintptr_t *)(spt_page_va  +
+					spt_va_id * DP_CC_HW_READ_BYTES)));
 }
 
 /**

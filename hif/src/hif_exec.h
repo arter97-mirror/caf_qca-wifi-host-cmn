@@ -113,7 +113,7 @@ struct hif_exec_context {
 
 	uint8_t cpu;
 	struct qca_napi_stat stats[NR_CPUS];
-	bool inited;
+	qdf_atomic_t inited;
 	bool configured;
 	bool irq_requested;
 	bool irq_enabled;

@@ -574,6 +574,22 @@ void wmi_set_target_suspend_acked(wmi_unified_t wmi_handle, bool val);
 bool wmi_is_target_suspended(struct wmi_unified *wmi_handle);
 
 /**
+ * wmi_set_init_cmd_sent() - mark WMI init command as sent
+ * @wmi_handle: handle to WMI.
+ *
+ * Set the init command sent flag on the WMI handle.
+ */
+void wmi_set_init_cmd_sent(struct wmi_unified *wmi_handle);
+
+/**
+ * wmi_is_init_cmd_sent() - check if WMI init command has been sent
+ * @wmi_handle: handle to WMI.
+ *
+ * Return: true if WMI init command was sent successfully, else false.
+ */
+bool wmi_is_init_cmd_sent(struct wmi_unified *wmi_handle);
+
+/**
  * wmi_is_target_suspend_acked() - WMI API to check target suspend command is
  *                                 acked or not
  * @wmi_handle: handle to WMI.
@@ -1400,6 +1416,17 @@ QDF_STATUS wmi_unified_peer_assoc_send(wmi_unified_t wmi_handle,
  */
 QDF_STATUS wmi_unified_sta_ps_cmd_send(wmi_unified_t wmi_handle,
 				       struct sta_ps_params *param);
+
+/**
+ * wmi_unified_tm_cmd_send() - set traffic monitoring parameters
+ * @wmi_handle: wmi handle
+ * @param: pointer to traffic_monitoring_params parameter structure
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_tm_cmd_send(wmi_unified_t wmi_handle,
+			struct traffic_monitoring_params *param);
 
 /**
  * wmi_unified_ap_ps_cmd_send() - set ap powersave parameters
@@ -5475,10 +5502,51 @@ wmi_extract_pdev_power_boost_ev_params(wmi_unified_t wmi_handle, uint8_t *buf,
 QDF_STATUS
 wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
 				       struct vdev_ch_hop_sched_params *params);
+
+/**
+ * wmi_unified_vdev_get_chan_hop_status() - Send channel hop status request
+ * @wmi_handle: wmi handle
+ * @req: Request parameters containing vdev_id
+ *
+ * Send WMI command to request channel hopping status from firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success, error code on failure
+ */
+QDF_STATUS
+wmi_unified_vdev_get_chan_hop_status(struct wmi_unified *wmi_handle,
+				     struct vdev_chan_hop_status_req *req);
+
+/**
+ * wmi_extract_vdev_chan_hop_status() - extract vdev channel hop status
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to event buffer
+ * @response: pointer to hold channel hop status response
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_extract_vdev_chan_hop_status(struct wmi_unified *wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *response);
 #else
 static inline QDF_STATUS
 wmi_unified_send_vdev_ch_hop_sched_cmd(wmi_unified_t wmi_handle,
 				       struct vdev_ch_hop_sched_params *params)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_unified_vdev_get_chan_hop_status(struct wmi_unified *wmi_handle,
+				     struct vdev_chan_hop_status_req *req)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS
+wmi_extract_vdev_chan_hop_status(struct wmi_unified *wmi_handle,
+				 void *evt_buf,
+				 struct vdev_chan_hop_status_response *response)
 {
 	return QDF_STATUS_E_NOSUPPORT;
 }

@@ -139,6 +139,9 @@ dp_rx_mon_populate_cfr_ppdu_info(struct dp_pdev *pdev,
 	}
 
 	qdf_assert_always(num_users <= CDP_MU_MAX_USERS);
+	if (num_users == 0)
+		return;
+
 	dp_rx_mon_handle_cfr_mu_info(pdev, ppdu_info, cdp_rx_ppdu);
 	rx_user_status = &ppdu_info->rx_user_status[num_users - 1];
 	sw_peer_id = rx_user_status->sw_peer_id;

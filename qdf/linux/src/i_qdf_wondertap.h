@@ -166,4 +166,45 @@ typedef struct wondertap_ops __qdf_wondertap_ops_t;
  * operations table for vendor specific implementation.
  */
 typedef struct wondertap_priv __qdf_wondertap_priv_t;
+
+/**
+ * typedef __qdf_wondertap_channel_status_t - Channel status per slot
+ *
+ * Wondertap channel status structure and maps to the underlying
+ * wondertap_channel_status structure.
+ */
+typedef struct wondertap_channel_status __qdf_wondertap_channel_status_t;
+
+/**
+ * typedef __qdf_wondertap_channel_status_report_t - Channel status report
+ *
+ * Wondertap channel status report structure and maps to the underlying
+ * wondertap_channel_status_report structure.
+ */
+typedef struct wondertap_channel_status_report
+	__qdf_wondertap_channel_status_report_t;
+
+/**
+ * typedef __qdf_wondertap_station_capability_t - wondertap station capability
+ *
+ * Wondertap station capability enumeration and maps to the underlying
+ * wondertap_station_capability enum.
+ */
+typedef enum wondertap_station_capability __qdf_wondertap_station_capability_t;
+
+/**
+ * typedef __qdf_wondertap_station_action_t - wondertap station action
+ *
+ * Wondertap station action enumeration and maps to the underlying
+ * wondertap_station_action enum.
+ */
+typedef enum wondertap_station_action __qdf_wondertap_station_action_t;
+
+/**
+ * typedef __qdf_wondertap_station_info_t - wondertap station information
+ *
+ * Wondertap station information structure and maps to the underlying
+ * wondertap_station_info struct.
+ */
+typedef struct wondertap_station_info __qdf_wondertap_station_info_t;
 #endif /* _I_QDF_WONDERTAP_H */

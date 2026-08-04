@@ -854,6 +854,8 @@ ce_completed_recv_next_nolock_legacy(struct CE_state *CE_state,
 	*transfer_idp = dest_desc_info.meta_data;
 	*flagsp = (dest_desc_info.byte_swap) ? CE_RECV_FLAG_SWAPPED : 0;
 
+	qdf_mem_zero(dest_desc, sizeof(struct CE_dest_desc));
+
 	if (per_CE_contextp)
 		*per_CE_contextp = CE_state->recv_context;
 
@@ -950,6 +952,7 @@ ce_completed_send_next_nolock_legacy(struct CE_state *CE_state,
 	unsigned int sw_index = src_ring->sw_index;
 	unsigned int read_index;
 	struct hif_softc *scn = CE_state->scn;
+	void *ctx = NULL;
 
 	if (src_ring->hw_index == sw_index) {
 		/*
@@ -995,6 +998,12 @@ ce_completed_send_next_nolock_legacy(struct CE_state *CE_state,
 		*bufferp = HIF_CE_DESC_ADDR_TO_DMA(shadow_src_desc);
 		*nbytesp = shadow_src_desc->nbytes;
 		*transfer_idp = shadow_src_desc->meta_data;
+
+		if (CE_state->id == CE_ID_3) {
+			ctx = src_ring->per_transfer_context[sw_index];
+			hif_ce_tx_desc_data_record(scn, *bufferp,
+						   (qdf_nbuf_t)ctx);
+		}
 #ifdef QCA_WIFI_3_0
 		*toeplitz_hash_result = src_desc->toeplitz_hash_result;
 #else

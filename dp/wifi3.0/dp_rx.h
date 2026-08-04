@@ -187,6 +187,19 @@ struct dp_rx_desc {
 		is_ctrl_pkt:1;
 };
 
+/**
+ * enum dp_rx_link_desc_validation: link desc validation failure code
+ * @DP_RX_LINK_DESC_HW_WRITE_FAILURE: HW write failed for ring desc
+ * @DP_RX_LINK_DESC_COOKIE_INVALID_MAGIC_NUM: invalid magic no in sw cookie
+ * @DP_RX_LINK_DESC_COOKIE_INVALID_PAGE_IDX: invalid page inx found from sw
+ * cookie
+ */
+enum dp_rx_link_desc_validation {
+	DP_RX_LINK_DESC_HW_WRITE_FAILURE,
+	DP_RX_LINK_DESC_COOKIE_INVALID_MAGIC_NUM,
+	DP_RX_LINK_DESC_COOKIE_INVALID_PAGE_IDX
+};
+
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 #ifdef ATH_RX_PRI_SAVE
 #define DP_RX_TID_SAVE(_nbuf, _tid) \
@@ -1229,11 +1242,13 @@ void dp_rx_desc_pool_free(struct dp_soc *soc,
  * @nbuf_list: list of RAW pkts to process
  * @peer: peer object from which the pkt is rx
  * @link_id: link Id on which the packet is received
+ * @rx_pkt_tlvs: rx packet tlvs
  *
  * Return: void
  */
 void dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
-		       struct dp_txrx_peer *peer, uint8_t link_id);
+		       struct dp_txrx_peer *peer, uint8_t link_id,
+		       uint8_t *rx_pkt_tlvs);
 
 #ifdef RX_DESC_LOGGING
 /**
@@ -1538,10 +1553,16 @@ void *dp_rx_cookie_2_link_desc_va(struct dp_soc *soc,
 	uint16_t page_id = LINK_DESC_COOKIE_PAGE_ID(buf_info->sw_cookie);
 
 	pages = &soc->link_desc_pages;
-	if (!pages)
+	if (!pages) {
+		dp_err("invalid link desc page");
 		return NULL;
-	if (qdf_unlikely(page_id >= pages->num_pages))
+	}
+
+	if (qdf_unlikely(page_id >= pages->num_pages)) {
+		dp_err("invalid page index, page_id - %u", page_id);
 		return NULL;
+	}
+
 	link_desc_va = pages->dma_pages[page_id].page_v_addr_start +
 		(buf_info->paddr - pages->dma_pages[page_id].page_p_addr);
 	return link_desc_va;
@@ -4179,13 +4200,15 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
  * @vdev: dp vdev handle
  * @txrx_peer: txrx peer handle
  * @nbuf: network buffer
+ * @rx_pkt_tlvs: rx packet tlvs containing valid msdu end tlvs
  *
  * This function processes passthru msdu buffers and delivers them to stack
  *
  * Return: 0 on success else non-zero value on failure
  */
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf);
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
+			       uint8_t *rx_pkt_tlvs);
 
 /**
  * dp_rx_is_passthru_msdu_buf() - check whether the received msdu buffer is
@@ -4200,6 +4223,22 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
  */
 bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
 				struct hal_rx_mpdu_desc_info *mpdu_desc_info);
+
+static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
+					    uint32_t peer_metadata)
+{
+	uint16_t peer_id = dp_rx_peer_metadata_peer_id_get(soc, peer_metadata);
+	enum wlan_op_mode opmode;
+	struct dp_peer *peer;
+
+	peer = dp_peer_get_ref_by_id(soc, peer_id, DP_MOD_ID_RX_ERR);
+	if (!peer)
+		return false;
+
+	opmode = peer->vdev->opmode;
+	dp_peer_unref_delete(peer, DP_MOD_ID_RX_ERR);
+	return (opmode == wlan_op_mode_passthru) ? true : false;
+}
 #else
 static inline
 int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
@@ -4210,7 +4249,8 @@ int dp_rx_err_handle_passthru_msdu_buf(struct dp_soc *soc,
 
 static inline
 int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
-			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf)
+			       struct dp_txrx_peer *txrx_peer, qdf_nbuf_t nbuf,
+			       uint8_t *rx_pkt_tlvs)
 {
 	return -EINVAL;
 }
@@ -4218,6 +4258,12 @@ int dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
 static inline
 bool dp_rx_is_passthru_msdu_buf(struct dp_soc *soc,
 				struct hal_rx_mpdu_desc_info *mpdu_desc_info)
+{
+	return false;
+}
+
+static inline bool dp_vdev_is_passthru_mode(struct dp_soc *soc,
+					    uint32_t peer_metadata)
 {
 	return false;
 }

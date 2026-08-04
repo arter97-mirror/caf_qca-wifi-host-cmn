@@ -1147,6 +1147,13 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	}
 
 	/*
+	 * Try again for AUTH reject in SAE connection where transient auth
+	 * failures can occur during SAE commit/confirm exchange.
+	 */
+	if (resp->reason == CM_AUTH_FAILED && sae_connection)
+		goto use_same_candidate;
+
+	/*
 	 * Try again for the ASSOC timeout in SAE connection or
 	 * AP has reconnect on assoc timeout OUI.
 	 */

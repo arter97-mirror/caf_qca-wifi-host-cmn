@@ -78,7 +78,7 @@
  * @u.rx.dev.priv_cb_m.to_ds: to DS bit in RX packet
  * @u.rx.dev.priv_cb_m.logical_link_id: link id of RX packet
  * @u.rx.dev.priv_cb_m.audio_smmu_map: audio smmu map
- * @u.rx.dev.priv_cb_m.pp_track_id: RX page pool track id for tracking buffers
+ * @u.rx.dev.priv_cb_m.ipa_smmu_map_caller: ipa smmu map caller
  * @u.rx.dev.priv_cb_m.reserved1: reserved bits
  * @u.rx.dev.priv_cb_m.dp_ext: Union of tcp and ext structs
  * @u.rx.dev.priv_cb_m.dp_ext.tcp: TCP structs
@@ -86,6 +86,8 @@
  * @u.rx.dev.priv_cb_m.dp_ext.tcp.tcp_ack_num: TCP ACK number
  * @u.rx.dev.priv_cb_m.dp_ext.ext: Extension struct for other usage
  * @u.rx.dev.priv_cb_m.dp_ext.ext.mpdu_seq: wifi MPDU sequence number
+ * @u.rx.dev.priv_cb_m.dp_ext.ext.pp_track_id: RX page pool track id for
+ *                                             tracking buffers
  * @u.rx.dev.priv_cb_m.dp: Union of wifi3 and wifi2 structs
  * @u.rx.dev.priv_cb_m.dp.wifi3: wifi3 data
  * @u.rx.dev.priv_cb_m.dp.wifi3.msdu_len: length of RX packet
@@ -235,8 +237,8 @@ struct qdf_nbuf_cb {
 						 logical_link_id:4,
 						 band:3,
 						 audio_smmu_map:1,
-						 pp_track_id:4,
-						 reserved1:2;
+						 ipa_smmu_map_caller:3,
+						 reserved1:3;
 					union {
 						struct {
 							uint32_t tcp_seq_num;
@@ -246,7 +248,8 @@ struct qdf_nbuf_cb {
 							uint32_t mpdu_seq:12,
 								 rx_flow_id:8,
 								 track_flow:1,
-								 reserved:11;
+								 pp_track_id:4,
+								 reserved:7;
 							uint32_t rx_flow_mdata;
 						} ext;
 					} dp_ext;
@@ -321,8 +324,8 @@ struct qdf_nbuf_cb {
 						band:3,
 						flag_ts_valid:1,
 						peer_bw:3;
-					uint8_t txpt_idx_value;
-					uint8_t	txpt_idx_valid:1,
+					uint8_t peer_search_idx_value;
+					uint8_t peer_search_idx_valid:1,
 						reserved:7;
 				} priv_cb_m;
 			} dev;
@@ -626,10 +629,10 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m. \
 	 peer_bw)
 
-#define QDF_NBUF_CB_TXPT_CLASSIFY_INFO_VALID(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.txpt_idx_valid)
-#define QDF_NBUF_CB_TXPT_IDX_VALUE(skb) \
-	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.txpt_idx_value)
+#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_valid)
+#define QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.tx.dev.priv_cb_m.peer_search_idx_value)
 
 #define QDF_NBUF_CB_RX_PEER_ID(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m.dp. \
@@ -684,7 +687,7 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 
 #define  QDF_NBUF_CB_RX_PACKET_IPA_SMMU_MAP_CALLER(skb) \
 	 (((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
-	reserved1)
+	ipa_smmu_map_caller)
 
 #define QDF_NBUF_CB_RX_AUDIO_SMMU_MAP(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
@@ -692,7 +695,7 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 
 #define QDF_NBUF_CB_RX_PP_TRACK_ID(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.dev.priv_cb_m. \
-	pp_track_id)
+	dp_ext.ext.pp_track_id)
 
 #define __qdf_nbuf_rx_pp_track_id_get(skb) \
 	QDF_NBUF_CB_RX_PP_TRACK_ID(skb)

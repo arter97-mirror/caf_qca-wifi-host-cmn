@@ -983,10 +983,19 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 	int irq_ind;
 	struct net_device *dummy_nd = qdf_napi_get_dummy_nd_ptr(n_ctx);
 
-	if (ctx->inited) {
+	hif_info("ctx=%pk napi=%pk napi_id=%u state=0x%lx inited=%d",
+		 ctx, &n_ctx->napi, n_ctx->napi.napi_id,
+		 n_ctx->napi.state, qdf_atomic_read(&ctx->inited));
+	if (qdf_atomic_test_and_clear_bit(0, (unsigned long *)&ctx->inited)) {
+		hif_info("calling napi_disable ctx=%pk napi_id=%u",
+			 ctx, n_ctx->napi.napi_id);
 		qdf_napi_disable(&n_ctx->napi);
+		hif_info("calling napi_del ctx=%pk napi_id=%u state=0x%lx",
+			 ctx, n_ctx->napi.napi_id, n_ctx->napi.state);
 		qdf_netif_napi_del(&n_ctx->napi);
-		ctx->inited = 0;
+	} else {
+		hif_info("skipping napi_disable/napi_del ctx=%pk napi_id=%u (inited=0)",
+			 ctx, n_ctx->napi.napi_id);
 	}
 
 	for (irq_ind = 0; irq_ind < ctx->numirq; irq_ind++)
@@ -1017,14 +1026,21 @@ static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 		return NULL;
 
 	ctx->exec_ctx.sched_ops = &napi_sched_ops;
-	ctx->exec_ctx.inited = true;
+	qdf_atomic_set(&ctx->exec_ctx.inited, 1);
 	ctx->exec_ctx.scale_bin_shift = scale;
 	dummy_nd = qdf_napi_get_dummy_nd_ptr(ctx);
 	qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_nd);
+	if (!dummy_nd) {
+		hif_err("Failed to create dummy netdev for NAPI");
+		qdf_mem_free(ctx);
+		return NULL;
+	}
 	qdf_napi_set_dummy_nd_ptr(ctx, dummy_nd);
 	qdf_netif_napi_add(dummy_nd, &ctx->napi,
 			   hif_exec_poll, QCA_NAPI_BUDGET);
 	qdf_napi_enable(&ctx->napi);
+	hif_info("ctx=%pk napi=%pk napi_id=%u state=0x%lx",
+		 ctx, &ctx->napi, ctx->napi.napi_id, ctx->napi.state);
 
 	return &ctx->exec_ctx;
 }
@@ -1046,11 +1062,10 @@ static void hif_exec_tasklet_kill(struct hif_exec_context *ctx)
 	struct hif_tasklet_exec_context *t_ctx = hif_exec_get_tasklet(ctx);
 	int irq_ind;
 
-	if (ctx->inited) {
+	if (qdf_atomic_test_and_clear_bit(0, (unsigned long *)&ctx->inited)) {
 		tasklet_disable(&t_ctx->tasklet);
 		tasklet_kill(&t_ctx->tasklet);
 	}
-	ctx->inited = false;
 
 	for (irq_ind = 0; irq_ind < ctx->numirq; irq_ind++)
 		hif_irq_affinity_remove(ctx->os_irq[irq_ind]);
@@ -1076,7 +1091,7 @@ static struct hif_exec_context *hif_exec_tasklet_create(void)
 	tasklet_init(&ctx->tasklet, hif_exec_tasklet_fn,
 		     (unsigned long)ctx);
 
-	ctx->exec_ctx.inited = true;
+	qdf_atomic_set(&ctx->exec_ctx.inited, 1);
 
 	return &ctx->exec_ctx;
 }
@@ -1265,6 +1280,7 @@ void hif_exec_kill(struct hif_opaque_softc *hif_ctx)
 	int i;
 	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(hif_ctx);
 
+	hif_info("num_extgroup=%d", hif_state->hif_num_extgroup);
 	for (i = 0; i < hif_state->hif_num_extgroup; i++)
 		hif_state->hif_ext_group[i]->sched_ops->kill(
 			hif_state->hif_ext_group[i]);
@@ -1379,6 +1395,8 @@ void hif_exec_destroy(struct hif_exec_context *ctx)
 {
 	struct hif_softc *scn = HIF_GET_SOFTC(ctx->hif);
 
+	hif_info("ctx=%pk inited=%d", ctx, qdf_atomic_read(&ctx->inited));
+
 	if (scn->ext_grp_irq_configured)
 		qdf_spinlock_destroy(&ctx->irq_lock);
 	qdf_mem_free(ctx);
@@ -1401,6 +1419,8 @@ void hif_deregister_exec_group(struct hif_opaque_softc *hif_ctx,
 	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
 	struct hif_exec_context *hif_ext_group;
 	int i;
+
+	hif_info("name=%s", context_name);
 
 	for (i = 0; i < HIF_MAX_GROUP; i++) {
 		hif_ext_group = hif_state->hif_ext_group[i];
