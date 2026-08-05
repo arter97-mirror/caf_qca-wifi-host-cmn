@@ -34,6 +34,7 @@
 #include <linux/seq_file.h>
 #include "qdf_status.h"
 #include "qdf_atomic.h"
+#include "qdf_threads.h"
 #include "pld_common.h"
 #include "hif_debug.h"
 
@@ -345,6 +346,8 @@ void hif_rtpm_open(struct hif_softc *scn)
 	qdf_spinlock_create(&gp_hif_rtpm_ctx->prevent_list_lock);
 	qdf_atomic_init(&gp_hif_rtpm_ctx->pm_state);
 	qdf_atomic_set(&gp_hif_rtpm_ctx->pm_state, HIF_RTPM_STATE_NONE);
+	qdf_atomic_init(&gp_hif_rtpm_ctx->suspend_owner_pid);
+	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid, -1);
 	qdf_atomic_init(&gp_hif_rtpm_ctx->monitor_wake_intr);
 	INIT_LIST_HEAD(&gp_hif_rtpm_ctx->prevent_list);
 	gp_hif_rtpm_ctx->client_count = 0;
@@ -1221,6 +1224,16 @@ int hif_rtpm_get_state(void)
 	return qdf_atomic_read(&gp_hif_rtpm_ctx->pm_state);
 }
 
+bool hif_rtpm_is_suspend_owner_thread(void)
+{
+	if (qdf_atomic_read(&gp_hif_rtpm_ctx->pm_state) !=
+	    HIF_RTPM_STATE_SUSPENDING)
+		return false;
+
+	return qdf_atomic_read(&gp_hif_rtpm_ctx->suspend_owner_pid) ==
+		qdf_get_current_pid();
+}
+
 int hif_pre_runtime_suspend(struct hif_opaque_softc *hif_ctx)
 {
 	if (!hif_can_suspend_link(hif_ctx)) {
@@ -1230,6 +1243,8 @@ int hif_pre_runtime_suspend(struct hif_opaque_softc *hif_ctx)
 
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 	hif_rtpm_set_state(HIF_RTPM_STATE_SUSPENDING);
+	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid,
+		       qdf_get_current_pid());
 
 	/* keep this after set suspending */
 	if (!hif_rtpm_is_suspend_allowed()) {
@@ -1249,6 +1264,7 @@ int hif_pre_runtime_suspend(struct hif_opaque_softc *hif_ctx)
 void hif_process_runtime_suspend_success(void)
 {
 	hif_rtpm_set_state(HIF_RTPM_STATE_SUSPENDED);
+	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid, -1);
 	gp_hif_rtpm_ctx->stats.suspend_count++;
 	gp_hif_rtpm_ctx->stats.suspend_ts = qdf_get_log_timestamp();
 }
@@ -1257,6 +1273,7 @@ void hif_process_runtime_suspend_failure(void)
 {
 	qdf_spin_lock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 	hif_rtpm_set_state(HIF_RTPM_STATE_ON);
+	qdf_atomic_set(&gp_hif_rtpm_ctx->suspend_owner_pid, -1);
 	hif_rtpm_pending_job();
 	qdf_spin_unlock_bh(&gp_hif_rtpm_ctx->runtime_lock);
 

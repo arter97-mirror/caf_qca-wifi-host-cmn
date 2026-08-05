@@ -134,6 +134,8 @@ struct hif_rtpm_client {
  * @prevent_list:
  * @prevent_cnt:
  * @pm_state: Current runtime pm state
+ * @suspend_owner_pid: pid of the thread that drove pm_state into
+ *                      HIF_RTPM_STATE_SUSPENDING, -1 if none
  * @pending_job: bitmap to set the client job to be called at resume
  * @monitor_wake_intr: Monitor waking MSI for runtime PM
  * @stats: Runtime PM stats
@@ -153,6 +155,7 @@ struct hif_rtpm_ctx {
 	struct list_head prevent_list;
 	uint32_t prevent_cnt;
 	qdf_atomic_t pm_state;
+	qdf_atomic_t suspend_owner_pid;
 	unsigned long pending_job;
 	qdf_atomic_t monitor_wake_intr;
 	struct hif_rtpm_state_stats stats;

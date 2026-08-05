@@ -3024,6 +3024,22 @@ uint32_t hal_srng_get_num_entries(hal_soc_handle_t hal_soc_hdl,
 }
 
 /**
+ * hal_srng_get_ring_size() - Get ring size (in bytes) of the HAL Srng
+ * @hal_soc_hdl: Opaque HAL SOC handle
+ * @hal_ring_hdl: Ring pointer (Source or Destination ring)
+ *
+ * Return: ring size in bytes
+ */
+static inline
+uint32_t hal_srng_get_ring_size(hal_soc_handle_t hal_soc_hdl,
+				hal_ring_handle_t hal_ring_hdl)
+{
+	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
+
+	return srng->ring_size;
+}
+
+/**
  * hal_get_srng_params() - Retrieve SRNG parameters for a given ring from HAL
  * @hal_soc_hdl: Opaque HAL SOC handle
  * @hal_ring_hdl: Ring pointer (Source or Destination ring)

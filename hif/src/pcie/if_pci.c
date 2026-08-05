@@ -4140,9 +4140,14 @@ int hif_force_wake_request(struct hif_opaque_softc *hif_handle)
 	struct hif_softc *scn = (struct hif_softc *)hif_handle;
 	struct hif_pci_softc *pci_scn = HIF_GET_PCI_SOFTC(scn);
 	int ret, status = 0;
+	bool skip_rtpm_ref = false;
+
+	if (hif_rtpm_is_suspend_owner_thread())
+		skip_rtpm_ref = true;
 
 	/* Prevent runtime PM or trigger resume firstly */
-	if (hif_rtpm_get(HIF_RTPM_GET_SYNC, HIF_RTPM_ID_FORCE_WAKE)) {
+	if (!skip_rtpm_ref &&
+	    hif_rtpm_get(HIF_RTPM_GET_SYNC, HIF_RTPM_ID_FORCE_WAKE)) {
 		hif_err("runtime pm get failed");
 		return -EINVAL;
 	}
@@ -4191,6 +4196,9 @@ release_mhi_wake:
 	}
 
 release_rtpm_ref:
+	if (skip_rtpm_ref)
+		return status;
+
 	/* Release runtime PM force wake */
 	ret = hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_FORCE_WAKE);
 	if (ret) {
@@ -4206,6 +4214,10 @@ int hif_force_wake_release(struct hif_opaque_softc *hif_handle)
 	int ret, status;
 	struct hif_softc *scn = (struct hif_softc *)hif_handle;
 	struct hif_pci_softc *pci_scn = HIF_GET_PCI_SOFTC(scn);
+	bool skip_rtpm_ref = false;
+
+	if (hif_rtpm_is_suspend_owner_thread())
+		skip_rtpm_ref = true;
 
 	hif_soc_wake_release(hif_handle);
 
@@ -4220,6 +4232,9 @@ int hif_force_wake_release(struct hif_opaque_softc *hif_handle)
 	HIF_STATS_INC(pci_scn, soc_force_wake_release_success, 1);
 
 release_rtpm_ref:
+	if (skip_rtpm_ref)
+		return ret;
+
 	/* Release runtime PM force wake */
 	status = hif_rtpm_put(HIF_RTPM_PUT_ASYNC, HIF_RTPM_ID_FORCE_WAKE);
 	if (status) {

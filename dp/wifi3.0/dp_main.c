@@ -14661,6 +14661,9 @@ static struct cdp_sawf_ops dp_ops_sawf = {
 #define DP_TX_COMP_MAX_LATENCY_2ND_STAGE 60
 #define DP_TX_COMP_MAX_DEFERRED_TIMESTAMP_SEC 255
 
+/* Max ring pointer value that can fit in 16 bits */
+#define DP_SRNG_16BIT_MAX_PTR 0xFFFF
+
 static bool dp_check_pending_tx(struct dp_soc *soc)
 {
 	hal_soc_handle_t hal_soc = soc->hal_soc;
@@ -14670,8 +14673,20 @@ static bool dp_check_pending_tx(struct dp_soc *soc)
 		if (dp_ipa_is_ring_ipa_tx(soc, i))
 			continue;
 
-		hal_get_sw_hptp(hal_soc, soc->tcl_data_ring[i].hal_srng,
-				&tp, &hp);
+		/*
+		 * For a SW2TCL source ring whose ring_size exceeds
+		 * DP_SRNG_16BIT_MAX_PTR, the DDR-shadowed TP read by
+		 * hal_get_sw_hptp() is truncated to 16 bits by HW, so read
+		 * hp/tp directly from the HW registers instead.
+		 */
+		if (hal_srng_get_ring_size(hal_soc,
+					   soc->tcl_data_ring[i].hal_srng) >
+		    DP_SRNG_16BIT_MAX_PTR)
+			hal_get_hw_hptp(hal_soc, soc->tcl_data_ring[i].hal_srng,
+					&hp, &tp, TCL_DATA);
+		else
+			hal_get_sw_hptp(hal_soc, soc->tcl_data_ring[i].hal_srng,
+					&tp, &hp);
 
 		if (hp != tp) {
 			dp_info_rl("Pending transactions in TCL DATA Ring[%d] hp=0x%x, tp=0x%x",

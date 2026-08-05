@@ -1793,6 +1793,21 @@ void hif_fastpath_resume(struct hif_opaque_softc *hif_ctx);
 int hif_rtpm_get_state(void);
 
 /**
+ * hif_rtpm_is_suspend_owner_thread() - check if the caller is the
+ *                                      thread currently driving the
+ *                                      runtime suspend
+ *
+ * A runtime suspend is only ever driven by one thread at a time, so
+ * comparing the caller's pid to the recorded suspend owner tells
+ * apart that thread from any other thread that happens to run while
+ * pm_state is HIF_RTPM_STATE_SUSPENDING.
+ *
+ * Return: true if pm_state is HIF_RTPM_STATE_SUSPENDING and the
+ *         caller is the thread that set it.
+ */
+bool hif_rtpm_is_suspend_owner_thread(void);
+
+/**
  * hif_rtpm_display_last_busy_hist() - Display runtimepm last busy history
  * @hif_ctx: HIF context
  *
@@ -1874,6 +1889,10 @@ int hif_rtpm_get(uint8_t type, uint32_t id)
 static inline
 QDF_STATUS hif_rtpm_put(uint8_t type, uint32_t id)
 { return QDF_STATUS_SUCCESS; }
+
+static inline
+bool hif_rtpm_is_suspend_owner_thread(void)
+{ return false; }
 
 static inline
 int hif_pm_runtime_allow_suspend(struct hif_pm_runtime_lock *data)
