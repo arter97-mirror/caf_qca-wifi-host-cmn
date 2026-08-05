@@ -120,6 +120,7 @@ osif_cm_expand_auth_for_eppke(struct wlan_objmgr_vdev *vdev,
 		return;
 	}
 	QDF_SET_PARAM(connect_req->crypto.auth_type, WLAN_CRYPTO_AUTH_EPPKE);
+	connect_req->eppke_allowed = 1;
 	osif_debug("vdev:%d eppke_allowed+SAE: auth_type expanded to 0x%x (EPPKE added)",
 		   wlan_vdev_get_id(vdev), connect_req->crypto.auth_type);
 }

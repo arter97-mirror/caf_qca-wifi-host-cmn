@@ -2821,6 +2821,40 @@ void cm_update_per_peer_ucastcipher_crypto_params(struct wlan_objmgr_vdev *vdev,
 	neg_sec_info->ucastcipherset = ucastcipherset;
 }
 
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+/**
+ * cm_sp_ie_implies_eppke() - Check if AP Security Profile IE implies EPPKE.
+ * @entry: scan cache entry for the selected AP candidate
+ * @vdev: vdev object
+ *
+ * If the AP advertises a Security Profile IE with profile 1
+ * (EPPKE|SAE-EXT-KEY) or profile 2 (EPPKE|FT-SAE-EXT-KEY), treat the AP as
+ * EPPKE-capable even when EPPKE is absent from its RSN IE.
+ * Profiles 1 and 2 are bits 1 and 2 of the SP IE bitmap byte (offset 5).
+ *
+ * Return: true if the SP IE implies EPPKE support, false otherwise.
+ */
+static bool
+cm_sp_ie_implies_eppke(struct scan_cache_entry *entry,
+		       struct wlan_objmgr_vdev *vdev)
+{
+	const uint8_t *sp_ie;
+
+	if (!wlan_vdev_get_security_profile_enabled(vdev))
+		return false;
+
+	sp_ie = util_scan_entry_security_profile(entry);
+	return sp_ie && sp_ie[1] >= 4 && (sp_ie[5] & (BIT(1) | BIT(2)));
+}
+#else
+static inline bool
+cm_sp_ie_implies_eppke(struct scan_cache_entry *entry,
+		       struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_SECURITY_PROFILE */
+
 #ifdef WLAN_FEATURE_11BI_SECURITY
 /**
  * cm_strip_injected_eppke() - Remove EPPKE bits injected for candidate
@@ -2853,9 +2887,64 @@ static void cm_strip_injected_eppke(struct wlan_cm_connect_req *req,
 	mlme_debug("vdev:%d after strip: auth_type:0x%x akm_suites:0x%x",
 		   req->vdev_id, req->crypto.auth_type, req->crypto.akm_suites);
 }
+
+/**
+ * cm_update_per_peer_eppke_crypto_params() - Strip injected EPPKE bits and
+ * re-sync AUTH_MODE after candidate selection.
+ * @vdev: vdev object
+ * @connect_req: connection request carrying eppke_allowed flag
+ *
+ * Parse the selected AP's RSN IE to get its raw AKM set. If the AP's
+ * Security Profile IE implies EPPKE (profile 1 or 2) but the RSN IE omits
+ * the EPPKE AKM, synthesise the EPPKE AKM bit before calling
+ * cm_strip_injected_eppke(). Then re-sync WLAN_CRYPTO_PARAM_AUTH_MODE so
+ * lim_is_11bi_auth_mode() and lim_set_privacy() see the final auth type.
+ */
+static void
+cm_update_per_peer_eppke_crypto_params(struct wlan_objmgr_vdev *vdev,
+				       struct cm_connect_req *connect_req)
+{
+	struct wlan_crypto_params ap_crypto = {0};
+	const uint8_t *rsn_ie =
+		util_scan_entry_rsn(connect_req->cur_candidate->entry);
+	uint32_t ap_akm = 0;
+
+	if (!connect_req->req.eppke_allowed)
+		return;
+
+	if (rsn_ie &&
+	    QDF_IS_STATUS_SUCCESS(
+		wlan_get_crypto_params_from_rsn_ie(&ap_crypto, rsn_ie,
+						   rsn_ie[1] + 2,
+						   NULL)))
+		ap_akm = ap_crypto.key_mgmt;
+
+	if (!QDF_HAS_PARAM(ap_akm, WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
+	    cm_sp_ie_implies_eppke(connect_req->cur_candidate->entry, vdev))
+		QDF_SET_PARAM(ap_akm, WLAN_CRYPTO_KEY_MGMT_EPPKE);
+
+	mlme_debug("vdev:%d eppke_allowed: AP raw RSN akm:0x%x",
+		   connect_req->req.vdev_id, ap_akm);
+	cm_strip_injected_eppke(&connect_req->req, ap_akm);
+	/*
+	 * Re-sync AUTH_MODE in the vdev crypto params after stripping.
+	 * cm_fill_vdev_crypto_params() set AUTH_MODE earlier with EPPKE
+	 * injected; if cm_strip_injected_eppke() removed it, AUTH_MODE
+	 * must be updated so lim_is_11bi_auth_mode() and
+	 * lim_set_privacy() see the correct (stripped) auth type.
+	 */
+	wlan_crypto_set_vdev_param(vdev, WLAN_CRYPTO_PARAM_AUTH_MODE,
+				   connect_req->req.crypto.auth_type);
+}
 #else
 static inline void cm_strip_injected_eppke(struct wlan_cm_connect_req *req,
 					   uint32_t ap_key_mgmt)
+{
+}
+
+static inline void
+cm_update_per_peer_eppke_crypto_params(struct wlan_objmgr_vdev *vdev,
+				       struct cm_connect_req *connect_req)
 {
 }
 #endif /* WLAN_FEATURE_11BI_SECURITY */
@@ -2904,32 +2993,7 @@ void cm_update_per_peer_crypto_params(struct wlan_objmgr_vdev *vdev,
 
 	cm_update_per_peer_key_mgmt_crypto_params(vdev, neg_sec_info);
 	cm_update_per_peer_ucastcipher_crypto_params(vdev, neg_sec_info);
-	/*
-	 * Strip EPPKE bits that were injected pre-connect for candidate
-	 * expansion if the selected AP does not advertise EPPKE in its RSN IE.
-	 * Parse the AP's raw RSN IE from the scan cache to get all AKMs it
-	 * advertises. neg_sec_info->key_mgmt is the negotiated AKM (filtered
-	 * intersection with the supplicant's list) and will not contain EPPKE
-	 * when the supplicant chose SAE-EXT-KEY as its base AKM, even if the
-	 * AP supports EPPKE.
-	 */
-	if (connect_req->req.eppke_allowed) {
-		struct wlan_crypto_params ap_crypto = {0};
-		const uint8_t *rsn_ie =
-			util_scan_entry_rsn(connect_req->cur_candidate->entry);
-		uint32_t ap_akm = 0;
-
-		if (rsn_ie &&
-		    QDF_IS_STATUS_SUCCESS(
-			wlan_get_crypto_params_from_rsn_ie(&ap_crypto, rsn_ie,
-							   rsn_ie[1] + 2,
-							   NULL)))
-			ap_akm = ap_crypto.key_mgmt;
-
-		mlme_debug("vdev:%d eppke_allowed: AP raw RSN akm:0x%x",
-			   connect_req->req.vdev_id, ap_akm);
-		cm_strip_injected_eppke(&connect_req->req, ap_akm);
-	}
+	cm_update_per_peer_eppke_crypto_params(vdev, connect_req);
 }
 
 /*
