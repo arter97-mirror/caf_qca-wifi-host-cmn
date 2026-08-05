@@ -1222,12 +1222,11 @@ static void util_scan_update_rnr_mld(struct rnr_bss_info *rnr, uint8_t *data,
 {
 	bool mld_info_present = false;
 
-	switch (tbtt_info_length) {
-	case TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM:
+	if (tbtt_info_length >=
+	    TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM) {
 		qdf_mem_copy(&rnr->mld_info, &data[13],
 			     sizeof(struct rnr_mld_info));
 		mld_info_present = true;
-		break;
 	};
 
 	rnr->mld_info_valid = mld_info_present;
@@ -1255,10 +1254,10 @@ util_scan_update_rnr(struct rnr_bss_info *rnr,
 	 * shall be treated as reserved.
 	 *
 	 * Limit the TBTT sub-element read operation to current supported
-	 * length i.e TBTT_NEIGHBOR_AP_PARAM_MAX
+	 * length i.e TBTT_NEIGHBOR_AP_WIFI7_MAX
 	 */
-	if (tbtt_info_length > TBTT_NEIGHBOR_AP_PARAM_MAX)
-		tbtt_info_length = TBTT_NEIGHBOR_AP_PARAM_MAX;
+	if (tbtt_info_length > TBTT_NEIGHBOR_AP_WIFI7_MAX)
+		tbtt_info_length = TBTT_NEIGHBOR_AP_WIFI7_MAX;
 
 	switch (tbtt_info_length) {
 	case TBTT_NEIGHBOR_AP_OFFSET_ONLY:

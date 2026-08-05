@@ -507,6 +507,7 @@ struct neighbor_ap_info_field {
  * short ssid, bss params and 20MHz PSD
  * bssid, short ssid, bss params, 20MHz PSD and MLD param
  * @TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM:
+ * @TBTT_NEIGHBOR_AP_WIFI7_MAX: Max bytes for WiFi7 generation TBTT info.
  * @TBTT_NEIGHBOR_AP_PARAM_AFTER_LAST: This is to calculate the max supported
  * param length and maintain it in TBTT_NEIGHBOR_AP_PARAM_MAX
  * @TBTT_NEIGHBOR_AP_PARAM_MAX: This is to track the max supported param length
@@ -523,6 +524,8 @@ enum tbtt_information_field {
 	TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM = 12,
 	TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD = 13,
 	TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM = 16,
+	TBTT_NEIGHBOR_AP_WIFI7_MAX =
+		TBTT_NEIGHBOR_AP_BSSID_S_SSID_BSS_PARAM_20MHZ_PSD_MLD_PARAM,
 
 	/* keep last */
 	TBTT_NEIGHBOR_AP_PARAM_AFTER_LAST,
