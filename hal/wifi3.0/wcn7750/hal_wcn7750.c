@@ -2409,6 +2409,19 @@ hal_rx_flow_cmem_update_reo_dst_ind_wcn7750(struct hal_soc *hal_soc,
 							L4_PROTOCOL), value);
 }
 
+#ifdef DRIVER_PASSTHRU_MODE
+static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
+{
+	hal_soc->ops->hal_rx_tlv_get_rssi = hal_rx_tlv_get_rssi_be;
+	hal_soc->ops->hal_rx_tlv_get_ppdu_start_ts =
+					hal_rx_tlv_get_ppdu_start_ts_be;
+}
+#else
+static inline void hal_hw_attach_passthru_ops(struct hal_soc *hal_soc)
+{
+}
+#endif
+
 static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 {
 	/* init and setup */
@@ -2501,6 +2514,8 @@ static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 					hal_rx_desc_is_first_msdu_be;
 	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_get =
 		hal_rx_tlv_l3_hdr_padding_get_be;
+	hal_soc->ops->hal_rx_msdu_end_l3_hdr_padding_set =
+		hal_rx_tlv_l3_hdr_padding_set_be;
 	hal_soc->ops->hal_rx_encryption_info_valid =
 					hal_rx_encryption_info_valid_be;
 	hal_soc->ops->hal_rx_print_pn = hal_rx_print_pn_be;
@@ -2694,6 +2709,7 @@ static void hal_hw_txrx_ops_attach_7750(struct hal_soc *hal_soc)
 #endif /* WLAN_PKT_CAPTURE_TX_2_0 */
 	hal_soc->ops->hal_rx_flow_cmem_update_reo_dst_ind =
 				hal_rx_flow_cmem_update_reo_dst_ind_wcn7750;
+	hal_hw_attach_passthru_ops(hal_soc);
 };
 
 struct hal_hw_srng_config hw_srng_table_7750[] = {
