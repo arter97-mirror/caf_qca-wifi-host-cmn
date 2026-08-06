@@ -114,6 +114,8 @@ struct twt_psoc_priv_obj {
  * @setup_params: cached TWT add dialog params for a deferred setup retry
  *                scheduled on the TWT worker queue when the setup request
  *                arrived while a scan/ROC/roam was in progress
+ * @allow_btwt_id0: allow broadcast TWT ID 0
+ * @twt_concurrency_enable: TWT concurrency enable or not
  */
 struct twt_vdev_priv_obj {
 	bool twt_wait_for_notify;
@@ -123,6 +125,13 @@ struct twt_vdev_priv_obj {
 	enum HOST_TWT_NEXT_WORK_ACTION next_action;
 	uint32_t retry_count;
 	struct twt_add_dialog_param setup_params;
+#if defined(WLAN_FEATURE_NAN) && \
+    (defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE) || \
+     defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE))
+	bool allow_btwt_id0;
+	bool twt_concurrency_enable;
+#endif
+
 };
 
 /**
