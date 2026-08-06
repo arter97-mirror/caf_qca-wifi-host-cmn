@@ -1739,8 +1739,11 @@ extract_nan_join_cluster_event_tlv(uint8_t *evt_buf,
 	qdf_mem_copy(&cluster_event->cluster_id, &cluster_id,
 		     NAN_CLUSTER_MATCH_SIZE);
 
-	qdf_mem_copy(&cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE],
-		     &fixed_param->nan_cluster_id, 2);
+	/* FW sent in big-endian order */
+	cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE] =
+		(fixed_param->nan_cluster_id >> 8) & 0xFF;
+	cluster_event->cluster_id[NAN_CLUSTER_MATCH_SIZE + 1] =
+		fixed_param->nan_cluster_id & 0xFF;
 
 	wmi_debug("Extracted join cluster event: vdev_id=%d, event_type=%d",
 		  cluster_event->vdev_id, cluster_event->event_type);
