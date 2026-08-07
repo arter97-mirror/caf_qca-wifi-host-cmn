@@ -560,7 +560,9 @@ more_data:
 				 * reap this MPDU
 				 */
 				if (!dp_rx_can_reap_all_frags(soc, hal_ring_hdl,
-							      num_pending)) {
+							      num_pending,
+							      num_entries_avail
+							      )) {
 					DP_STATS_INC(soc,
 						     rx.msdu_scatter_wait_break,
 						     1);

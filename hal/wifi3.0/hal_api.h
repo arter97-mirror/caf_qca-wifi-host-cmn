@@ -1958,33 +1958,31 @@ uint32_t hal_srng_dst_num_valid(void *hal_soc,
  * @hal_ring_hdl: Destination ring pointer
  * @offset: number of entries beyond the current tp to peek at (0 = entry
  *          at tp itself)
+ * @num_valid: number of valid entries currently available from tp,
+ *             e.g. as returned by hal_srng_dst_num_valid(). Callers that
+ *             peek repeatedly with an unchanged tp/cached_hp (as in a
+ *             loop) should compute this once and pass it in, instead of
+ *             recomputing it on every call.
  *
  * Uses the cached head pointer already synced by the caller; does not
  * touch any HW registers or advance tp/cached_hp. Caller takes
  * responsibility for any locking needs.
  *
  * Return: Opaque pointer to the requested ring entry; NULL if @offset is
- *         beyond the currently valid (cached) entries in the ring
+ *         beyond @num_valid
  */
 static inline
 void *hal_srng_dst_peek_n(void *hal_soc, hal_ring_handle_t hal_ring_hdl,
-			  uint32_t offset)
+			  uint32_t offset, uint32_t num_valid)
 {
 	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
-	uint32_t tp = srng->u.dst_ring.tp;
-	uint32_t hp = srng->u.dst_ring.cached_hp;
-	uint32_t num_valid;
 	uint32_t idx;
-
-	if (hp >= tp)
-		num_valid = (hp - tp) / srng->entry_size;
-	else
-		num_valid = (srng->ring_size - tp + hp) / srng->entry_size;
 
 	if (offset >= num_valid)
 		return NULL;
 
-	idx = (tp + offset * srng->entry_size) % srng->ring_size;
+	idx = (srng->u.dst_ring.tp + offset * srng->entry_size) %
+		srng->ring_size;
 
 	return (void *)(&srng->ring_base_vaddr[idx]);
 }

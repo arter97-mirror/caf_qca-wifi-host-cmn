@@ -1440,16 +1440,19 @@ dp_get_soc_by_chip_id_be(struct dp_soc *soc, uint8_t chip_id)
  * @hal_ring_hdl: REO destination ring handle
  * @num_pending: number of entries left to reap in this pass (includes the
  *               fragment that was just reaped and triggered this check)
+ * @num_valid: number of valid entries currently available from the ring's
+ *             tp, e.g. as returned by hal_srng_dst_num_valid(). tp/hp are
+ *             not touched by this function, so the caller must have
+ *             computed this against the same (unmoved) tp/cached_hp.
  *
  * Called right after the first fragment (continuation bit set) of a
  * scattered MSDU has been reaped, i.e. tp already points past it. Walks
  * the ring purely by peeking -- starting at the current tp -- without
  * moving tp/hp, counting fragments (num_frags) until either a
- * non-continuation entry (last fragment) is found, or the currently
- * visible (cached_hp) entries are exhausted. Bails out early if num_frags
- * (plus the already-reaped triggering fragment) would exceed num_pending,
- * since there isn't enough budget left in this pass to dequeue the whole
- * MSDU anyway.
+ * non-continuation entry (last fragment) is found, @num_valid entries are
+ * exhausted, or num_pending budget (minus the already-reaped triggering
+ * fragment) runs out -- checked before each peek so a peek is never
+ * wasted on an offset the caller couldn't afford to use anyway.
  *
  * Return: true if the entry terminating this MSDU (continuation bit
  *         clear) was found within budget before running out of visible
@@ -1460,19 +1463,21 @@ dp_get_soc_by_chip_id_be(struct dp_soc *soc, uint8_t chip_id)
 static inline bool
 dp_rx_can_reap_all_frags(struct dp_soc *soc,
 			 hal_ring_handle_t hal_ring_hdl,
-			 uint32_t num_pending)
+			 uint32_t num_pending,
+			 uint32_t num_valid)
 {
 	hal_soc_handle_t hal_soc = soc->hal_soc;
 	hal_ring_desc_t desc;
 	struct hal_rx_msdu_desc_info msdu_desc_info;
 	uint32_t num_frags = 0;
 
-	while ((desc = hal_srng_dst_peek_n(hal_soc, hal_ring_hdl, num_frags))) {
+	/* --num_pending accounts for the triggering fragment already
+	 * reaped; short-circuits before peeking once budget runs out.
+	 */
+	while (--num_pending &&
+	       (desc = hal_srng_dst_peek_n(hal_soc, hal_ring_hdl, num_frags,
+					   num_valid))) {
 		num_frags++;
-
-		/* +1 accounts for the triggering fragment already reaped */
-		if (num_frags + 1 > num_pending)
-			return false;
 
 		hal_rx_msdu_desc_info_get_be(desc, &msdu_desc_info);
 

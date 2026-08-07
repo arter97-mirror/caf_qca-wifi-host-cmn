@@ -2315,9 +2315,6 @@ dp_rx_get_last_msdu_tlv(struct dp_soc *soc, qdf_nbuf_t parent,
 {
 	qdf_nbuf_t last = qdf_nbuf_get_ext_list(parent);
 
-	if (!last)
-		return first_tlv;
-
 	while (qdf_nbuf_next(last))
 		last = qdf_nbuf_next(last);
 
