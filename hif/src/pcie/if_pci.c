@@ -4090,6 +4090,14 @@ static inline int hif_soc_wake_request(struct hif_opaque_softc *hif_handle)
 	 */
 	timeout = 0;
 	do {
+		if (!TARGET_ACCESS_ALLOWED(scn)) {
+			HIF_STATS_INC(pci_scn, soc_force_wake_failure, 1);
+			qdf_atomic_dec(&scn->active_wake_req_cnt);
+			qdf_spin_unlock_bh(&pci_scn->force_wake_lock);
+			hif_err_rl("target access is not allowed");
+			return -EPERM;
+		}
+
 		value = hif_read32_mb(
 				scn, scn->mem +
 				PCIE_SOC_PCIE_REG_PCIE_SCRATCH_0_SOC_PCIE_REG);
