@@ -478,6 +478,25 @@ bool cm_is_ml_connection(struct wlan_objmgr_vdev *vdev,
 	return false;
 }
 
+#ifdef WLAN_FEATURE_11BN_SMD
+static void cm_clear_smd_identifier(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_mlo_dev_context *mlo_dev = vdev->mlo_dev_ctx;
+
+	if (!mlo_dev || !mlo_dev->smd_ctx)
+		return;
+
+	qdf_mutex_acquire(&mlo_dev->smd_ctx->smd_ctx_lock);
+	qdf_mem_zero(&mlo_dev->smd_ctx->smd_identifier,
+		     sizeof(mlo_dev->smd_ctx->smd_identifier));
+	qdf_mutex_release(&mlo_dev->smd_ctx->smd_ctx_lock);
+}
+#else
+static inline void cm_clear_smd_identifier(struct wlan_objmgr_vdev *vdev)
+{
+}
+#endif
+
 static QDF_STATUS cm_update_vdev_mlme_macaddr(struct cnx_mgr *cm_ctx,
 					      struct cm_connect_req *req)
 {
@@ -517,6 +536,7 @@ static QDF_STATUS cm_update_vdev_mlme_macaddr(struct cnx_mgr *cm_ctx,
 				   QDF_MAC_ADDR_REF(mac->bytes));
 		}
 		wlan_vdev_mlme_clear_mlo_vdev(vdev);
+		cm_clear_smd_identifier(vdev);
 	}
 
 	return QDF_STATUS_SUCCESS;
