@@ -1730,4 +1730,30 @@ static inline bool cm_is_nontx_scan_params_valid(struct cm_connect_req *cm_req)
  */
 bool cm_is_link_switch_connection(struct wlan_objmgr_vdev *vdev);
 
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+/**
+ * cm_get_sp_ie_rsnxe() - Extract RSNXE capability bytes from a Security
+ * Profile IE and build a synthetic RSNXE IE in the caller-supplied buffer.
+ * @entry: scan cache entry for the selected AP candidate
+ * @buf: caller-supplied buffer (must be at least 6 bytes)
+ * @buf_len: size of @buf
+ * @rsnxe_cap_out: set to the parsed capability bytes on success
+ * @cap_len_out: set to the (n-1) encoded cap length on success
+ *
+ * Return: true if SP IE was present and ext_rsn_caps were extracted.
+ */
+bool cm_get_sp_ie_rsnxe(struct scan_cache_entry *entry,
+			uint8_t *buf, uint8_t buf_len,
+			const uint8_t **rsnxe_cap_out,
+			uint8_t *cap_len_out);
+#else
+static inline bool cm_get_sp_ie_rsnxe(struct scan_cache_entry *entry,
+				      uint8_t *buf, uint8_t buf_len,
+				      const uint8_t **rsnxe_cap_out,
+				      uint8_t *cap_len_out)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_SECURITY_PROFILE */
+
 #endif /* __WLAN_CM_MAIN_API_H__ */

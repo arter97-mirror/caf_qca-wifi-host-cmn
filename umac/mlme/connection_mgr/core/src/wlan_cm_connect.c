@@ -2824,6 +2824,56 @@ void cm_update_per_peer_ucastcipher_crypto_params(struct wlan_objmgr_vdev *vdev,
 #ifdef WLAN_FEATURE_11BI_SECURITY
 #ifdef WLAN_FEATURE_SECURITY_PROFILE
 /**
+ * cm_get_sp_ie_rsnxe() - Extract RSNXE capability bytes from a Security
+ * Profile IE and build a synthetic RSNXE IE in the caller-supplied buffer.
+ * @entry: scan cache entry for the selected AP candidate
+ * @buf: caller-supplied buffer
+ * @buf_len: size of @buf
+ * @rsnxe_cap_out: set to the parsed capability bytes on success
+ * @cap_len_out: set to the (n-1) encoded cap length on success
+ *
+ * When a Security Profile IE is present and matched, its Extended RSN
+ * Capabilities field overrides the RSNXE IE per IEEE P802.11bn §37.32.
+ * The SP ext_rsn_caps are raw capability bytes (no EID/Len header); this
+ * function wraps them in a synthetic RSNXE IE so that
+ * wlan_crypto_parse_rsnxe_ie() can parse them uniformly.
+ *
+ * Return: true if SP IE was present and ext_rsn_caps were extracted.
+ */
+bool cm_get_sp_ie_rsnxe(struct scan_cache_entry *entry,
+			uint8_t *buf, uint8_t buf_len,
+			const uint8_t **rsnxe_cap_out,
+			uint8_t *cap_len_out)
+{
+	const uint8_t *sp_ie;
+	uint8_t ext_rsn_offset, ext_len, copy_len;
+
+	if (buf_len < 2 /* IE EID + LEN */)
+		return false;
+
+	if (!entry->neg_sec_info.sec_profile_valid)
+		return false;
+
+	sp_ie = util_scan_entry_security_profile(entry);
+	if (!sp_ie || sp_ie[1] < 4)
+		return false;
+
+	ext_rsn_offset = WLAN_SP_IE_EXT_RSN_OFFSET(sp_ie);
+	ext_len = (sp_ie[1] > ext_rsn_offset) ? sp_ie[1] - ext_rsn_offset : 0;
+	if (!ext_len)
+		return false;
+
+	copy_len = ext_len < buf_len - 2 ? ext_len : buf_len - 2;
+	buf[0] = WLAN_ELEMID_RSNXE;
+	buf[1] = copy_len;
+	qdf_mem_copy(buf + 2, sp_ie + WLAN_SP_IE_DATA_OFFSET + ext_rsn_offset,
+		     copy_len);
+
+	*rsnxe_cap_out = wlan_crypto_parse_rsnxe_ie(buf, cap_len_out);
+	return true;
+}
+
+/**
  * cm_sp_ie_implies_eppke() - Check if AP Security Profile IE implies EPPKE.
  * @entry: scan cache entry for the selected AP candidate
  * @vdev: vdev object
@@ -2858,34 +2908,79 @@ cm_sp_ie_implies_eppke(struct scan_cache_entry *entry,
 
 /**
  * cm_strip_injected_eppke() - Remove EPPKE bits injected for candidate
- * expansion if the negotiated AP does not advertise EPPKE.
+ * expansion if the AP does not fully support EPPKE.
  * @req: connect request carrying eppke_allowed flag and crypto info
  * @ap_key_mgmt: key_mgmt bitmask parsed from the AP's RSN IE
+ * @entry: scan cache entry for the selected AP candidate
  *
- * EPPKE AKM and auth bits are added pre-connect so the scan filter can match
- * EPPKE-capable APs alongside SAE APs. Once the AP is selected and its RSN IE
- * is parsed, any injected bits that are not supported by the AP must be
- * removed so that WMA/WMI receive the actual negotiated security parameters.
+ * EPPKE AKM and auth bits are injected pre-connect by
+ * osif_cm_expand_auth_for_eppke() so the scan filter can match EPPKE-capable
+ * APs alongside SAE APs.  Once the AP is selected, strip the injected bits
+ * if the AP does not truly support EPPKE:
+ *   1. AP does not advertise EPPKE AKM in its RSN IE.
+ *   2. AP advertises EPPKE AKM but the effective RSNXE (from the Security
+ *      Profile IE if present and matched, otherwise from the RSNXE IE
+ *      selected by the negotiated RSN generation) is missing any of the four
+ *      capabilities required for EPPKE per IEEE 802.11bi:
+ *        KEK_IN_PASN / ASSOC_FRM_ENCRYPTION / PMKSA_PRIVACY
+ * In both cases strip both WLAN_CRYPTO_AUTH_EPPKE and
+ * WLAN_CRYPTO_KEY_MGMT_EPPKE so lim_get_11bi_auth_type() and the WMI
+ * path see the correct (non-EPPKE) security parameters.
  */
 static void cm_strip_injected_eppke(struct wlan_cm_connect_req *req,
-				    uint32_t ap_key_mgmt)
+				    uint32_t ap_key_mgmt,
+				    struct scan_cache_entry *entry)
 {
+	/* synthetic RSNXE IE buf: EID(1) + Len(1) + 4 cap bytes (through byte 3) */
+	uint8_t sp_rsnxe_buf[2 + WLAN_SP_IE_EPPKE_MIN_EXT_RSN_LEN];
+	const uint8_t *rsnxe_ie = NULL;
+	const uint8_t *rsnxe_cap = NULL;
+	uint8_t cap_len = 0;
+	bool eppke_caps_ok = false;
+	bool via_sp = false;
+
 	if (!req->eppke_allowed)
 		return;
 
-	if (QDF_HAS_PARAM(ap_key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE)) {
-		mlme_debug("vdev:%d EPPKE in AP RSN IE (ap_akm:0x%x): keeping EPPKE bits auth_type:0x%x akm:0x%x",
+	if (!QDF_HAS_PARAM(ap_key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE)) {
+		mlme_debug("vdev:%d EPPKE absent from AP RSN IE (ap_akm:0x%x): stripping auth:0x%x akm:0x%x",
 			   req->vdev_id, ap_key_mgmt,
 			   req->crypto.auth_type, req->crypto.akm_suites);
-		return;
+		goto strip;
 	}
-	mlme_debug("vdev:%d EPPKE absent from AP RSN IE (ap_akm:0x%x): stripping injected bits auth_type:0x%x akm:0x%x",
-		   req->vdev_id, ap_key_mgmt,
+
+	/*
+	 * AP has EPPKE in its RSN IE.  Use the Security Profile IE's Extended
+	 * RSN Capabilities if present and matched (overrides RSNXE per
+	 * IEEE P802.11bn §37.32), otherwise fall back to the RSNXE IE for
+	 * the negotiated RSN generation.
+	 */
+	via_sp = cm_get_sp_ie_rsnxe(entry, sp_rsnxe_buf,
+				    sizeof(sp_rsnxe_buf),
+				    &rsnxe_cap, &cap_len);
+	if (!via_sp) {
+		rsnxe_ie = util_scan_entry_rsnxe_by_gen(
+				entry, entry->neg_sec_info.rsn_gen_selected);
+		rsnxe_cap = wlan_crypto_parse_rsnxe_ie(rsnxe_ie, &cap_len);
+	}
+	eppke_caps_ok = wlan_crypto_eppke_rsnxe_caps_valid(rsnxe_cap,
+							   cap_len, via_sp);
+	mlme_debug("vdev:%d EPPKE RSNXE check via %s: caps_ok=%d",
+		   req->vdev_id, via_sp ? "SP IE" : "RSNXE IE", eppke_caps_ok);
+
+	if (!eppke_caps_ok)
+		goto strip;
+
+	mlme_debug("vdev:%d EPPKE caps valid: keeping bits auth:0x%x akm:0x%x",
+		   req->vdev_id,
 		   req->crypto.auth_type, req->crypto.akm_suites);
+	return;
+
+strip:
+	mlme_debug("vdev:%d stripping EPPKE bits auth_type:0x%x akm:0x%x",
+		   req->vdev_id, req->crypto.auth_type, req->crypto.akm_suites);
 	QDF_CLEAR_PARAM(req->crypto.auth_type, WLAN_CRYPTO_AUTH_EPPKE);
 	QDF_CLEAR_PARAM(req->crypto.akm_suites, WLAN_CRYPTO_KEY_MGMT_EPPKE);
-	mlme_debug("vdev:%d after strip: auth_type:0x%x akm_suites:0x%x",
-		   req->vdev_id, req->crypto.auth_type, req->crypto.akm_suites);
 }
 
 /**
@@ -2925,7 +3020,8 @@ cm_update_per_peer_eppke_crypto_params(struct wlan_objmgr_vdev *vdev,
 
 	mlme_debug("vdev:%d eppke_allowed: AP raw RSN akm:0x%x",
 		   connect_req->req.vdev_id, ap_akm);
-	cm_strip_injected_eppke(&connect_req->req, ap_akm);
+	cm_strip_injected_eppke(&connect_req->req, ap_akm,
+				connect_req->cur_candidate->entry);
 	/*
 	 * Re-sync AUTH_MODE in the vdev crypto params after stripping.
 	 * cm_fill_vdev_crypto_params() set AUTH_MODE earlier with EPPKE
@@ -2938,7 +3034,8 @@ cm_update_per_peer_eppke_crypto_params(struct wlan_objmgr_vdev *vdev,
 }
 #else
 static inline void cm_strip_injected_eppke(struct wlan_cm_connect_req *req,
-					   uint32_t ap_key_mgmt)
+					   uint32_t ap_key_mgmt,
+					   struct scan_cache_entry *entry)
 {
 }
 

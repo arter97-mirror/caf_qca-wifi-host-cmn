@@ -4882,6 +4882,34 @@ wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len)
 	return ie;
 }
 
+bool wlan_crypto_eppke_rsnxe_caps_valid(const uint8_t *rsnxe_cap,
+					uint8_t cap_len, bool from_sp)
+{
+	if (!rsnxe_cap || cap_len < WLAN_CRYPTO_RSNX_CAP_MIN_LEN_BYTE3) {
+		crypto_debug("EPPKE RSNXE: absent or too short (cap_len=%d)",
+			     cap_len);
+		return false;
+	}
+	if (!(rsnxe_cap[2] & (WLAN_CRYPTO_RSNX_CAP_KEK_IN_PASN >> 16))) {
+		crypto_debug("EPPKE RSNXE: KEK_IN_PASN absent (byte2=0x%02x)",
+			     rsnxe_cap[2]);
+		return false;
+	}
+	if (!(rsnxe_cap[3] &
+	      (WLAN_CRYPTO_RSNX_CAP_ASSOC_FRM_ENCRYPTION >> 24))) {
+		crypto_debug("EPPKE RSNXE: ASSOC_FRM_ENCRYPTION absent (byte3=0x%02x)",
+			     rsnxe_cap[3]);
+		return false;
+	}
+	if (from_sp &&
+	    !(rsnxe_cap[3] & (WLAN_CRYPTO_RSNX_CAP_PMKSA_PRIVACY >> 24))) {
+		crypto_debug("EPPKE RSNXE: PMKSA_PRIVACY absent for SP1 (byte3=0x%02x)",
+			     rsnxe_cap[3]);
+		return false;
+	}
+	return true;
+}
+
 QDF_STATUS wlan_set_crypto_params_from_mrsno(struct wlan_objmgr_vdev *vdev,
 					     uint8_t *ie_ptr, uint16_t ie_len)
 {

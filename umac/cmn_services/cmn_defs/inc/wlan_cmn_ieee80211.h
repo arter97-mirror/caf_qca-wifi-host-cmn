@@ -826,6 +826,58 @@ enum extn_element_ie {
 #endif
 };
 
+#ifdef WLAN_FEATURE_SECURITY_PROFILE
+/*
+ * Security Profile IE field offsets (relative to start of full IE,
+ * i.e. ie[0]=EID=255, ie[1]=Len, ie[2]=ExtID=162):
+ *
+ *   ie[3]  Reduced RSN Capabilities (1 byte)
+ *   ie[4]  Security Profile Indicator:
+ *            bits[3:0] = number of bitmap octets (N)
+ *            bits[7:4] = number of vendor entries (M)
+ *   ie[5 .. 4+N]           bitmap (N bytes)
+ *   ie[5+N .. 4+N+M*4]     vendor entries (M * 4 bytes)
+ *   ie[5+N+M*4 ..]         Extended RSN Capabilities (optional)
+ *
+ * WLAN_SP_IE_DATA_OFFSET: byte offset of ie[2] (ExtID) from ie[0]
+ * WLAN_SP_IE_RED_RSN_OFFSET: offset of Reduced RSN Caps from ie[2]
+ * WLAN_SP_IE_IND_OFFSET: offset of Security Profile Indicator from ie[2]
+ * WLAN_SP_IE_BITMAP_OFFSET: offset of first bitmap byte from ie[2]
+ */
+#define WLAN_SP_IE_DATA_OFFSET    2  /* EID(1) + Len(1) */
+#define WLAN_SP_IE_RED_RSN_OFFSET 1  /* ExtID(1) */
+#define WLAN_SP_IE_IND_OFFSET     2  /* ExtID(1) + ReducedRSNCap(1) */
+#define WLAN_SP_IE_BITMAP_OFFSET  3  /* ExtID(1) + ReducedRSNCap(1) + Ind(1) */
+
+/* Number of bitmap octets encoded in bits[3:0] of the SP indicator byte */
+#define WLAN_SP_IE_NUM_BITMAP_OCTETS(ie) ((ie)[WLAN_SP_IE_DATA_OFFSET + \
+					   WLAN_SP_IE_IND_OFFSET] & 0x0f)
+/* Number of vendor entries encoded in bits[7:4] of the SP indicator byte */
+#define WLAN_SP_IE_NUM_VENDOR(ie)        (((ie)[WLAN_SP_IE_DATA_OFFSET + \
+					    WLAN_SP_IE_IND_OFFSET] >> 4) & 0x0f)
+/*
+ * Byte offset of the Extended RSN Capabilities field from ie[2] (ExtID).
+ * Equals WLAN_SP_IE_BITMAP_OFFSET + N + M*4.
+ * Implemented as a static inline to avoid macro argument-reuse side-effects.
+ */
+static inline uint8_t wlan_sp_ie_ext_rsn_offset(const uint8_t *ie)
+{
+	uint8_t ind = ie[WLAN_SP_IE_DATA_OFFSET + WLAN_SP_IE_IND_OFFSET];
+
+	return WLAN_SP_IE_BITMAP_OFFSET + (ind & 0x0f) + ((ind >> 4) & 0x0f) * 4;
+}
+
+#define WLAN_SP_IE_EXT_RSN_OFFSET(ie) wlan_sp_ie_ext_rsn_offset(ie)
+#endif /* WLAN_FEATURE_SECURITY_PROFILE */
+
+/*
+ * Minimum byte count of Extended RSN Capabilities required in an SP IE for
+ * EPPKE validation.  EPPKE checks bits in byte 3 (KEK_IN_PASN, bit 18;
+ * ASSOC_FRM_ENCRYPTION, bit 27; PMKSA_PRIVACY, bit 29), so at least 4 bytes
+ * must be present.
+ */
+#define WLAN_SP_IE_EPPKE_MIN_EXT_RSN_LEN  4
+
 /**
  * enum wlan_reason_code - wlan reason codes Reason codes
  * (IEEE Std 802.11-2016, 9.4.1.7, Table 9-45)

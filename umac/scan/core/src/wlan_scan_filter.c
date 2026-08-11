@@ -232,6 +232,56 @@ static const uint32_t sec_profile_akm_map[] = {
 	BIT(WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B_192),
 };
 
+#if defined(WLAN_FEATURE_11BI_SECURITY) && \
+	defined(WLAN_FEATURE_SECURITY_PROFILE)
+/**
+ * scm_sp_eppke_rsnxe_valid() - Check RSNXE caps in SP IE for an EPPKE profile
+ * @ie: raw SP IE (ie[0]=EID=255, ie[1]=Len, ie[2]=ExtID=162, ...)
+ * @db_entry: scan entry (for debug MAC address)
+ * @profile_num: profile index (for debug log)
+ *
+ * Per IEEE 802.11bi, EPPKE profiles mandate KEK_IN_PASN (bit 18),
+ * ASSOC_FRM_ENCRYPTION (bit 27), and PMKSA_PRIVACY (bit 29) in the
+ * SP IE's Extended RSN Capabilities field.
+ *
+ * Return: true if all required caps are present, false otherwise.
+ */
+static bool
+scm_sp_eppke_rsnxe_valid(const uint8_t *ie,
+			 struct scan_cache_entry *db_entry,
+			 uint8_t profile_num)
+{
+	/*
+	 * ext_rsn_offset: byte offset of Extended RSN Caps from ie[2] (ExtID).
+	 * ie[1] is the IE body length (from ie[2] onward), so the caps exist
+	 * only when ie[1] >= ext_rsn_offset + WLAN_SP_IE_EPPKE_MIN_EXT_RSN_LEN.
+	 */
+	uint8_t ext_rsn_offset = WLAN_SP_IE_EXT_RSN_OFFSET(ie);
+	const uint8_t *ext_caps =
+		(ie[1] >= ext_rsn_offset + WLAN_SP_IE_EPPKE_MIN_EXT_RSN_LEN) ?
+		ie + WLAN_SP_IE_DATA_OFFSET + ext_rsn_offset : NULL;
+
+	if (!wlan_crypto_eppke_rsnxe_caps_valid(ext_caps,
+						ext_caps ? ext_caps[0] & 0xf : 0,
+						true)) {
+		scm_debug(QDF_MAC_ADDR_FMT
+			  " SP%d: EPPKE RSNXE caps absent",
+			  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
+			  profile_num);
+		return false;
+	}
+	return true;
+}
+#else
+static inline bool
+scm_sp_eppke_rsnxe_valid(const uint8_t *ie,
+			 struct scan_cache_entry *db_entry,
+			 uint8_t profile_num)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BI_SECURITY && WLAN_FEATURE_SECURITY_PROFILE */
+
 /**
  * scm_check_security_profile() - Check if AP Security Profile IE matches
  * the filter's key management suite
@@ -321,6 +371,11 @@ scm_check_security_profile(struct scan_filter *filter,
 		if ((effective_key_mgmt &
 		     sec_profile_akm_map[profile_num]) !=
 		    sec_profile_akm_map[profile_num])
+			continue;
+
+		if (QDF_HAS_PARAM(sec_profile_akm_map[profile_num],
+				  WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
+		    !scm_sp_eppke_rsnxe_valid(ie, db_entry, profile_num))
 			continue;
 
 		security->sec_profile_num = profile_num;

@@ -858,6 +858,23 @@ const uint8_t *
 wlan_crypto_parse_rsnxe_ie(const uint8_t *rsnxe_ie, uint8_t *cap_len);
 
 /**
+ * wlan_crypto_eppke_rsnxe_caps_valid() - Check if RSNXE capability bytes
+ * satisfy the capabilities required for EPPKE per IEEE 802.11bi.
+ * @rsnxe_cap: capability bytes returned by wlan_crypto_parse_rsnxe_ie()
+ * @cap_len: (n-1) encoded length from the RSNXE capability field
+ * @from_sp: true for Security Profile 1/2 path — PMKSA_PRIVACY is also
+ *           mandatory; false for plain EPPKE via RSNE — optional.
+ *
+ * Mandatory caps for both paths:
+ *   KEK_IN_PASN          (bit 18, byte 2)
+ *   ASSOC_FRM_ENCRYPTION (bit 27, byte 3)
+ *
+ * Return: true if all required caps are present.
+ */
+bool wlan_crypto_eppke_rsnxe_caps_valid(const uint8_t *rsnxe_cap,
+					uint8_t cap_len, bool from_sp);
+
+/**
  * wlan_get_crypto_params_from_wapi_ie() - Function to get crypto params
  * from wapi ie
  * @crypto_params: return crypto parameters
