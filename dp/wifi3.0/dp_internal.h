@@ -26,6 +26,12 @@
 
 #define RX_BUFFER_SIZE_PKTLOG_LITE 1024
 
+#ifdef CONFIG_IO_COHERENCY
+#define DP_DSB
+#else
+#define DP_DSB qdf_dsb()
+#endif
+
 #define DP_PEER_WDS_COUNT_INVALID UINT_MAX
 
 #define DP_BLOCKMEM_SIZE 4096

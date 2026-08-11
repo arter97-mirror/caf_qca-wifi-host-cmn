@@ -45,6 +45,24 @@
 #include "dp_dal_rx.h"
 #endif
 
+#ifndef CONFIG_DP_TRACE
+static inline void
+dp_rx_trace_pkt(struct dp_txrx_peer *txrx_peer, qdf_nbuf_t skb)
+{
+}
+#else
+static inline void
+dp_rx_trace_pkt(struct dp_txrx_peer *txrx_peer, qdf_nbuf_t skb)
+{
+	if (txrx_peer) {
+		QDF_NBUF_CB_DP_TRACE_PRINT(skb) = false;
+		qdf_dp_trace_set_track(skb, QDF_RX);
+		QDF_NBUF_CB_RX_DP_TRACE(skb) = 1;
+		QDF_NBUF_CB_RX_PACKET_TRACK(skb) = QDF_NBUF_RX_PKT_DATA_TRACK;
+	}
+}
+#endif
+
 #ifdef WLAN_FEATURE_DP_RX_RING_HISTORY
 /**
  * dp_rx_ring_record_entry_bn() - Record RX ring entry for BN
@@ -341,6 +359,8 @@ uint32_t dp_rx_process_bn(struct dp_intr *int_ctx,
 	uint8_t is_ctrl_refill = 0;
 	uint8_t buf_type;
 	uint8_t cc_status;
+	hal_ring_desc_t last_prefetched_hw_desc;
+	struct dp_rx_desc *last_sw_desc = NULL;
 
 	DP_HIST_INIT();
 
@@ -398,6 +418,12 @@ more_data:
 
 	if (num_pending > quota)
 		num_pending = quota;
+
+	dp_srng_dst_inv_cached_descs(soc, hal_ring_hdl, num_pending);
+	last_prefetched_hw_desc =
+		dp_srng_dst_prefetch_32_byte_desc(hal_soc,
+						  hal_ring_hdl,
+						  num_pending);
 
 	/*
 	 * start reaping the buffers from reo ring and queue
@@ -609,6 +635,12 @@ refill_opt_dp_ctrl:
 		}
 		num_rx_bufs_reaped++;
 
+		dp_rx_prefetch_hw_sw_nbuf_32_byte_desc(soc, hal_soc,
+						       num_pending,
+						       hal_ring_hdl,
+						       &last_prefetched_hw_desc,
+						       &last_sw_desc);
+
 		/*
 		 * only if complete msdu is received for scatter case,
 		 * then allow break.
@@ -620,7 +652,7 @@ refill_opt_dp_ctrl:
 	}
 
 	dp_rx_srng_access_end(int_ctx, soc, hal_ring_hdl);
-	qdf_dsb();
+	DP_DSB;
 
 	dp_rx_per_core_stats_update(soc, reo_ring_num, num_rx_bufs_reaped);
 
@@ -644,6 +676,7 @@ refill_opt_dp_ctrl:
 	nbuf = nbuf_head;
 	while (nbuf) {
 		next = nbuf->next;
+		dp_rx_prefetch_nbuf_data_be(nbuf, next);
 		rx_tlv_hdr = qdf_nbuf_data(nbuf);
 		vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
 		peer_id = dp_rx_get_peer_id_be(nbuf);
@@ -708,13 +741,7 @@ refill_opt_dp_ctrl:
 			continue;
 		}
 
-		if (txrx_peer) {
-			QDF_NBUF_CB_DP_TRACE_PRINT(nbuf) = false;
-			qdf_dp_trace_set_track(nbuf, QDF_RX);
-			QDF_NBUF_CB_RX_DP_TRACE(nbuf) = 1;
-			QDF_NBUF_CB_RX_PACKET_TRACK(nbuf) =
-				QDF_NBUF_RX_PKT_DATA_TRACK;
-		}
+		dp_rx_trace_pkt(txrx_peer, nbuf);
 
 		rx_bufs_used++;
 
