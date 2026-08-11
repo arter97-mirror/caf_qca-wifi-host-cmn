@@ -124,7 +124,13 @@ struct wlan_objmgr_vdev *mlo_get_vdev_by_link_id(
  *
  * Return: void
  */
+#ifdef WLAN_FEATURE_11BE_MLO
 void mlo_release_vdev_ref(struct wlan_objmgr_vdev *vdev);
+#else
+static inline void mlo_release_vdev_ref(struct wlan_objmgr_vdev *vdev)
+{
+}
+#endif
 
 /**
  * mlo_reg_mlme_ext_cb() - Function to register mlme extended callbacks
