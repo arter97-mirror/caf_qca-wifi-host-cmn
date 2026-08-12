@@ -291,7 +291,8 @@ struct qdf_nbuf_cb {
 				uint8_t packet_state;
 				uint8_t dp_trace:1,
 					packet_track:3,
-					rsrvd:4;
+					flow_idx_valid:1,
+					rsrvd:3;
 			} trace;
 			uint16_t vdev_id:8,
 				 tid_val:4,
@@ -418,6 +419,17 @@ QDF_COMPILE_TIME_ASSERT(qdf_nbuf_cb_size,
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.trace.packet_state)
 #define QDF_NBUF_CB_RX_DP_TRACE(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.trace.dp_trace)
+
+#define QDF_NBUF_CB_RX_FLOW_IDX_VALID(skb) \
+	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.trace.flow_idx_valid)
+
+#if defined(WLAN_SUPPORT_RX_FISA) && defined(WLAN_FAST_L2L_RX)
+#define __qdf_nbuf_set_rx_flow_idx_valid(skb, val) \
+		((QDF_NBUF_CB_RX_FLOW_IDX_VALID((skb))) = (val))
+
+#define __qdf_nbuf_get_rx_flow_idx_valid(skb) \
+		(QDF_NBUF_CB_RX_FLOW_IDX_VALID((skb)))
+#endif
 
 #define QDF_NBUF_CB_RX_FTYPE(skb) \
 	(((struct qdf_nbuf_cb *)((skb)->cb))->u.rx.ftype)

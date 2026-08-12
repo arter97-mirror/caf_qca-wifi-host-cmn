@@ -905,6 +905,8 @@ refill_opt_dp_ctrl:
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
 				     qtime, nbuf);
 
+		qdf_nbuf_set_rx_flow_idx_valid(nbuf,
+				!hal_rx_msdu_flow_idx_invalid_be(rx_tlv_hdr));
 		DP_RX_LIST_APPEND(deliver_list_head,
 				  deliver_list_tail,
 				  nbuf);

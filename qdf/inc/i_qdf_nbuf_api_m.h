@@ -401,4 +401,38 @@ qdf_nbuf_rx_pp_track_id_set(qdf_nbuf_t buf, uint8_t rx_pp_track_id)
 {
 	__qdf_nbuf_rx_pp_track_id_set(buf, rx_pp_track_id);
 }
+
+#if defined(WLAN_SUPPORT_RX_FISA) && defined(WLAN_FAST_L2L_RX)
+/**
+ * qdf_nbuf_set_rx_flow_idx_valid() - set flow_idx_valid in skb->cb
+ * @buf: Network buffer
+ * @val: value to set
+ * Return: None
+ */
+static inline void
+qdf_nbuf_set_rx_flow_idx_valid(qdf_nbuf_t buf, uint8_t val)
+{
+	__qdf_nbuf_set_rx_flow_idx_valid(buf, val);
+}
+
+/**
+ * qdf_nbuf_get_rx_flow_idx_valid() - get flow_idx_valid from skb->cb
+ * @buf: Network buffer
+ * Return: flow_idx_valid value
+ */
+static inline uint8_t qdf_nbuf_get_rx_flow_idx_valid(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_rx_flow_idx_valid(buf);
+}
+#else
+static inline void
+qdf_nbuf_set_rx_flow_idx_valid(qdf_nbuf_t buf, uint8_t val)
+{}
+
+static inline uint8_t qdf_nbuf_get_rx_flow_idx_valid(qdf_nbuf_t buf)
+{
+	return 0;
+}
+#endif
+
 #endif /* _QDF_NBUF_M_H */
