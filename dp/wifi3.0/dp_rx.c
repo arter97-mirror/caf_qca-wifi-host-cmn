@@ -4089,6 +4089,36 @@ dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev)
 }
 #endif /* FEATURE_DAL_DP_SUPPORT */
 
+#ifdef DP_FEATURE_RX_BUFFER_RECYCLE
+void
+dp_rx_pdev_buffers_free(struct dp_pdev *pdev)
+{
+	int mac_for_pdev = pdev->lmac_id;
+	struct dp_soc *soc = pdev->soc;
+	struct rx_desc_pool *rx_desc_pool;
+	uint32_t target_type = hal_get_target_type(soc->hal_soc);
+	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[mac_for_pdev];
+	struct dp_rx_pp_params *pp = &rx_pp->main_pool[0];
+
+	if (pp->pp) {
+		int bc = qdf_page_pool_get_buf_count(pp->pp, pp->pp_track_id);
+		uint32_t ac = qdf_page_pool_get_alloc_cache_count(pp->pp);
+
+		dp_info("pp deinit pre-free: pp=%pK track_id=%d"
+			" pool_size=%zu buff_count=%d alloc_cache=%u",
+			pp->pp, pp->pp_track_id, pp->pool_size, bc, ac);
+	}
+
+	rx_desc_pool = &soc->rx_desc_buf[mac_for_pdev];
+
+	if (target_type == TARGET_TYPE_QCN9160)
+		dp_rx_desc_frag_free(soc, rx_desc_pool);
+	else
+		dp_rx_desc_nbuf_free(soc, rx_desc_pool, false);
+
+	dp_rx_buffer_pool_deinit(soc, mac_for_pdev);
+}
+#else
 void
 dp_rx_pdev_buffers_free(struct dp_pdev *pdev)
 {
@@ -4106,6 +4136,7 @@ dp_rx_pdev_buffers_free(struct dp_pdev *pdev)
 
 	dp_rx_buffer_pool_deinit(soc, mac_for_pdev);
 }
+#endif
 
 #ifdef DP_RX_SPECIAL_FRAME_NEED
 bool dp_rx_deliver_special_frame(struct dp_soc *soc,

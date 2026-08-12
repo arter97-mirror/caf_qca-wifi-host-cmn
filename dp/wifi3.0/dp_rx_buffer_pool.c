@@ -584,6 +584,11 @@ nbuf_alloc:
 	qdf_spin_unlock_bh(&rx_pp->pp_lock);
 
 	rx_pp->alloc_success++;
+	if (rx_pp->alloc_success == 1)
+		dp_info("pp pool_id=%u first buf alloc: pp=%pK iova=0x%llx buf_size=%zu",
+			mac_id, pp_params->pp,
+			(unsigned long long)nbuf_frag_info->paddr,
+			rx_pp->buf_size);
 
 	return QDF_STATUS_SUCCESS;
 
@@ -627,6 +632,16 @@ dp_rx_pp_prealloc_get(struct dp_soc *soc, size_t *pp_size,
 static void dp_rx_pp_destroy(struct dp_soc *soc,
 			     struct dp_rx_pp_params *pp_params)
 {
+	uint32_t inflight = 0;
+
+	if (pp_params->pp)
+		inflight = qdf_page_pool_get_inflight_cnt(pp_params->pp);
+
+	dp_info("pp destroy: pp=%pK track_id=%d pool_size=%zu pp_size=%zu inflight=%u prealloc=%u",
+		pp_params->pp, pp_params->pp_track_id,
+		pp_params->pool_size, pp_params->pp_size,
+		inflight, pp_params->prealloc);
+
 	if (pp_params->pp && pp_params->prealloc &&
 	    soc->cdp_soc.ol_ops->dp_put_page_pool) {
 		soc->cdp_soc.ol_ops->dp_put_page_pool(pp_params->pp,
@@ -669,6 +684,15 @@ static void dp_rx_page_pool_inactive_work(void *arg)
 				       DP_RX_PP_INACTIVE_WORK_DELAY_MS);
 
 	qdf_list_for_each_del(&destroy_list, curr, next, node) {
+		int bc = curr->pp ?
+			 qdf_page_pool_get_buf_count(curr->pp,
+						     curr->pp_track_id) : -1;
+		u32 ac = curr->pp ?
+			 qdf_page_pool_get_alloc_cache_count(curr->pp) : 0;
+
+		dp_info("pp inactive work destroy: pp=%pK track_id=%d pool_size=%zu buff_count=%d alloc_cache=%u",
+			curr->pp, curr->pp_track_id,
+			curr->pool_size, bc, ac);
 		dp_rx_pp_destroy(soc, curr);
 		qdf_list_remove_node(&destroy_list, &curr->node);
 		qdf_mem_free(curr);
@@ -685,6 +709,11 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 
 	if (!rx_pp->page_pool_init)
 		return;
+
+	dp_info("pp pool_id=%u deinit: alloc_success=%llu alloc_fail=%llu buf_size=%zu curr_pool_size=%zu curr_rsrc_level=%u",
+		pool_id, rx_pp->alloc_success, rx_pp->alloc_fail,
+		rx_pp->buf_size, rx_pp->curr_pool_size,
+		rx_pp->curr_rsrc_level);
 
 	rx_pp->active_pp_idx = 0;
 	rx_pp->page_pool_init = false;
@@ -712,6 +741,9 @@ void dp_rx_page_pool_deinit(struct dp_soc *soc, uint32_t pool_id)
 		if (!curr->pp)
 			continue;
 
+		dp_info("pp pool_id=%u deinit inactive: pp=%pK track_id=%d inflight=%u",
+			pool_id, curr->pp, curr->pp_track_id,
+			qdf_page_pool_get_inflight_cnt(curr->pp));
 		dp_rx_pp_destroy(soc, curr);
 		qdf_list_remove_node(&rx_pp->inactive_list, &curr->node);
 		qdf_mem_free(curr);
@@ -741,6 +773,8 @@ QDF_STATUS dp_rx_page_pool_init(struct dp_soc *soc, uint32_t pool_id)
 	qdf_spinlock_create(&rx_pp->pp_lock);
 	rx_pp->page_pool_init = true;
 
+	dp_info("pp pool_id=%u init done", pool_id);
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -761,12 +795,26 @@ void dp_rx_page_pool_free(struct dp_soc *soc, uint32_t pool_id)
 		if (!pp_params->pp)
 			continue;
 
+		dp_info("pp free destroy: pp=%pK track_id=%d pool_size=%zu buff_count=%d alloc_cache=%u",
+			pp_params->pp, pp_params->pp_track_id,
+			pp_params->pool_size,
+			qdf_page_pool_get_buf_count(pp_params->pp,
+						    pp_params->pp_track_id),
+			qdf_page_pool_get_alloc_cache_count(pp_params->pp));
 		dp_rx_pp_destroy(soc, pp_params);
 		pp_params->pp = NULL;
 	}
 
 	if (rx_pp->aux_pool.pp) {
-		dp_rx_pp_destroy(soc, &rx_pp->aux_pool);
+		struct dp_rx_pp_params *ap = &rx_pp->aux_pool;
+		int bc = qdf_page_pool_get_buf_count(ap->pp, ap->pp_track_id);
+		uint32_t ac = qdf_page_pool_get_alloc_cache_count(ap->pp);
+
+		dp_info("pp free destroy aux: pp=%pK track_id=%d"
+			" pool_size=%zu buff_count=%d alloc_cache=%u",
+			ap->pp, ap->pp_track_id,
+			ap->pool_size, bc, ac);
+		dp_rx_pp_destroy(soc, ap);
 		rx_pp->aux_pool.pp = NULL;
 	}
 
@@ -919,8 +967,8 @@ QDF_STATUS dp_rx_page_pool_alloc(struct dp_soc *soc, uint32_t pool_id,
 		rx_pp->curr_rsrc_size += pool_size;
 		rx_pp->curr_rsrc_level++;
 
-		dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
-			pool_size, pp_size);
+		dp_info("Page pool idx %d pool_size %d pp_size %zu pp=%pK track_id=%d",
+			i, pool_size, pp_size, pp, pp_params->pp_track_id);
 	}
 
 	rx_pp->aux_pool.pool_size = DP_RX_PP_AUX_POOL_SIZE;
@@ -993,9 +1041,24 @@ dp_rx_pp_retire_locked(struct dp_rx_page_pool *rx_pp,
 		       qdf_list_t *destroy_list)
 {
 	struct dp_rx_pp_params *inactive_pp;
+	bool has_inflight;
+	int buff_count;
+	u32 alloc_cache;
 
-	if (!qdf_page_pool_check_inflight_buffers(pp_params->pp,
-						  pp_params->pp_track_id)) {
+	has_inflight = qdf_page_pool_check_inflight_buffers(
+					pp_params->pp,
+					pp_params->pp_track_id);
+	buff_count = qdf_page_pool_get_buf_count(pp_params->pp,
+						 pp_params->pp_track_id);
+	alloc_cache = qdf_page_pool_get_alloc_cache_count(pp_params->pp);
+
+	dp_info("pp retire: pp=%pK track_id=%d pool_size=%zu buff_count=%d alloc_cache=%u inflight=%u -> %s",
+		pp_params->pp, pp_params->pp_track_id,
+		pp_params->pool_size, buff_count, alloc_cache,
+		qdf_page_pool_get_inflight_cnt(pp_params->pp),
+		has_inflight ? "inactive_list" : "destroy_list");
+
+	if (!has_inflight) {
 		qdf_list_insert_back(destroy_list, &pp_params->node);
 		return;
 	}
@@ -1083,8 +1146,9 @@ dp_rx_page_pool_upsize(struct dp_soc *soc, struct dp_rx_page_pool *rx_pp,
 			if (j < 0)
 				j = i;
 			upscale_cnt++;
-			dp_info("Page pool idx %d pool_size %d pp_size %zu", i,
-				pool_size, pp_size);
+			dp_info("Page pool idx %d pool_size %d pp_size %zu pp=%pK track_id=%d",
+				i, pool_size, pp_size, pp,
+				pp_params->pp_track_id);
 			pool_size = total_pool_size - pool_size;
 			total_pool_size -= pp_params->pool_size;
 		}
@@ -1167,6 +1231,10 @@ QDF_STATUS dp_rx_page_pool_resize(struct dp_soc *soc, uint32_t pool_id,
 	}
 
 	qdf_list_create(&destroy_list, 0);
+
+	dp_info("pp pool_id=%u resize downsize: curr=%zu new=%zu curr_rsrc_level=%u",
+		pool_id, rx_pp->curr_pool_size, new_size,
+		rx_pp->curr_rsrc_level);
 
 	qdf_spin_lock_bh(&rx_pp->pp_lock);
 	/* Base page pool at 0th index is always present,

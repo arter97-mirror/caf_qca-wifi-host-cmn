@@ -123,13 +123,26 @@ __qdf_page_pool_create(qdf_device_t osdev, size_t pool_size,
 void __qdf_page_pool_destroy(__qdf_page_pool_t pp);
 
 /**
- * __qdf_page_pool_get_page_hold_cnt() - Get number of page held by page pool
+ * __qdf_page_pool_get_page_hold_cnt() - Get total pages ever allocated
  *
  * @pp: Page Pool reference
  *
- * Return: Number of page held by page pool
+ * Return: pages_state_hold_cnt (monotonically increasing)
  */
 uint32_t __qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp);
+
+/**
+ * __qdf_page_pool_get_inflight_cnt() - Get number of inflight pages
+ *
+ * @pp: Page Pool reference
+ *
+ * Returns the number of pages currently held by consumers
+ * (pages_state_hold_cnt - pages_state_release_cnt).  This matches the
+ * value printed by the kernel's page_pool_release_retry() warning.
+ *
+ * Return: Number of inflight pages
+ */
+uint32_t __qdf_page_pool_get_inflight_cnt(__qdf_page_pool_t pp);
 
 /**
  * __qdf_page_pool_inc_buf_count() - Increment page count for a pool
@@ -157,6 +170,29 @@ void __qdf_page_pool_dec_buf_count(struct sk_buff *nbuf);
  */
 bool __qdf_page_pool_check_inflight_buffers(__qdf_page_pool_t pp,
 					    int rx_pp_idx);
+
+/**
+ * __qdf_page_pool_get_buf_count() - Read raw in-flight buffer counter
+ * @pp: Page pool pointer
+ * @rx_pp_idx: Page pool tracker index
+ *
+ * Return: buff_count value, or -1 if pp/idx invalid or mismatched
+ */
+int __qdf_page_pool_get_buf_count(__qdf_page_pool_t pp, int rx_pp_idx);
+
+/**
+ * __qdf_page_pool_get_alloc_cache_count() - Get per-CPU alloc cache count
+ * @pp: Page pool pointer
+ *
+ * Returns pp->alloc.count: number of pages currently sitting in the
+ * per-CPU lockless alloc cache (i.e. already recycled back to the pool
+ * but not yet re-handed to a consumer).  When buff_count==0 and this
+ * value is less than pool_size, pages are still in transit between
+ * kfree_skb and the cache — the pool must not be destroyed yet.
+ *
+ * Return: alloc cache count
+ */
+u32 __qdf_page_pool_get_alloc_cache_count(__qdf_page_pool_t pp);
 
 #else
 
@@ -270,14 +306,27 @@ static inline void __qdf_page_pool_destroy(__qdf_page_pool_t pp)
 }
 
 /**
- * __qdf_page_pool_get_page_hold_cnt() - Get number of page held by page pool
+ * __qdf_page_pool_get_page_hold_cnt() - Get total pages ever allocated
  *
  * @pp: Page Pool reference
  *
- * Return: Number of page held by page pool
+ * Return: 0 (stub)
  */
 static inline uint32_t
 __qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp)
+{
+	return 0;
+}
+
+/**
+ * __qdf_page_pool_get_inflight_cnt() - Get number of inflight pages
+ *
+ * @pp: Page Pool reference
+ *
+ * Return: 0 (stub)
+ */
+static inline uint32_t
+__qdf_page_pool_get_inflight_cnt(__qdf_page_pool_t pp)
 {
 	return 0;
 }
@@ -314,6 +363,30 @@ static inline bool
 __qdf_page_pool_check_inflight_buffers(__qdf_page_pool_t pp, int rx_pp_idx)
 {
 	return false;
+}
+
+/**
+ * __qdf_page_pool_get_buf_count() - Read raw in-flight buffer counter
+ * @pp: Page pool pointer
+ * @rx_pp_idx: Page pool tracker index
+ *
+ * Return: buff_count value, or -1 if pp/idx invalid or mismatched
+ */
+static inline int
+__qdf_page_pool_get_buf_count(__qdf_page_pool_t pp, int rx_pp_idx)
+{
+	return -QDF_STATUS_E_FAILURE;
+}
+
+/**
+ * __qdf_page_pool_get_alloc_cache_count() - Get per-CPU alloc cache count
+ * @pp: Page pool pointer
+ *
+ * Return: 0 (stub)
+ */
+static inline u32 __qdf_page_pool_get_alloc_cache_count(__qdf_page_pool_t pp)
+{
+	return 0;
 }
 
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE  || DP_FEATURE_TX_PAGE_POOL */

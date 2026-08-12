@@ -205,6 +205,12 @@ uint32_t __qdf_page_pool_get_page_hold_cnt(__qdf_page_pool_t pp)
 	return pp->pages_state_hold_cnt;
 }
 
+uint32_t __qdf_page_pool_get_inflight_cnt(__qdf_page_pool_t pp)
+{
+	return pp->pages_state_hold_cnt -
+	       (u32)atomic_read(&pp->pages_state_release_cnt);
+}
+
 void __qdf_page_pool_inc_buf_count(__qdf_nbuf_t nbuf)
 {
 	int track_id;
@@ -236,4 +242,23 @@ bool __qdf_page_pool_check_inflight_buffers(__qdf_page_pool_t pp, int rx_pp_idx)
 
 	count = __qdf_atomic_read(&g_qdf_pp_tracker[rx_pp_idx].buff_count);
 	return (count != 0);
+}
+
+int __qdf_page_pool_get_buf_count(__qdf_page_pool_t pp, int rx_pp_idx)
+{
+	if (qdf_unlikely(!pp || rx_pp_idx >= QDF_PP_MAX_POOL))
+		return -QDF_STATUS_E_INVAL;
+
+	if (qdf_unlikely(g_qdf_pp_tracker[rx_pp_idx].pp != pp))
+		return -QDF_STATUS_E_FAILURE;
+
+	return __qdf_atomic_read(&g_qdf_pp_tracker[rx_pp_idx].buff_count);
+}
+
+u32 __qdf_page_pool_get_alloc_cache_count(__qdf_page_pool_t pp)
+{
+	if (qdf_unlikely(!pp))
+		return 0;
+
+	return READ_ONCE(pp->alloc.count);
 }
