@@ -1167,32 +1167,6 @@ QDF_STATUS hif_pci_open(struct hif_softc *hif_ctx, enum qdf_bus_type bus_type)
 }
 
 /**
- * hif_wake_target_cpu() - wake the target's cpu
- * @scn: hif context
- *
- * Send an interrupt to the device to wake up the Target CPU
- * so it has an opportunity to notice any changed state.
- */
-static void hif_wake_target_cpu(struct hif_softc *scn)
-{
-	QDF_STATUS rv;
-	uint32_t core_ctrl;
-	struct hif_opaque_softc *hif_hdl = GET_HIF_OPAQUE_HDL(scn);
-
-	rv = hif_diag_read_access(hif_hdl,
-				  SOC_CORE_BASE_ADDRESS | CORE_CTRL_ADDRESS,
-				  &core_ctrl);
-	QDF_ASSERT(rv == QDF_STATUS_SUCCESS);
-	/* A_INUM_FIRMWARE interrupt to Target CPU */
-	core_ctrl |= CORE_CTRL_CPU_INTR_MASK;
-
-	rv = hif_diag_write_access(hif_hdl,
-				   SOC_CORE_BASE_ADDRESS | CORE_CTRL_ADDRESS,
-				   core_ctrl);
-	QDF_ASSERT(rv == QDF_STATUS_SUCCESS);
-}
-
-/**
  * soc_wake_reset() - allow the target to go to sleep
  * @scn: hif_softc
  *
@@ -1248,11 +1222,37 @@ static void hif_sleep_entry(void *arg)
 	qdf_spin_unlock_irqrestore(&hif_state->keep_awake_lock);
 }
 
+#ifdef WLAN_FEATURE_BMI
 #define HIF_HIA_MAX_POLL_LOOP    1000000
 #define HIF_HIA_POLLING_DELAY_MS 10
 
-#ifdef QCA_HIF_HIA_EXTND
+/**
+ * hif_wake_target_cpu() - wake the target's cpu
+ * @scn: hif context
+ *
+ * Send an interrupt to the device to wake up the Target CPU
+ * so it has an opportunity to notice any changed state.
+ */
+static void hif_wake_target_cpu(struct hif_softc *scn)
+{
+	QDF_STATUS rv;
+	uint32_t core_ctrl;
+	struct hif_opaque_softc *hif_hdl = GET_HIF_OPAQUE_HDL(scn);
 
+	rv = hif_diag_read_access(hif_hdl,
+				  SOC_CORE_BASE_ADDRESS | CORE_CTRL_ADDRESS,
+				  &core_ctrl);
+	QDF_ASSERT(rv == QDF_STATUS_SUCCESS);
+	/* A_INUM_FIRMWARE interrupt to Target CPU */
+	core_ctrl |= CORE_CTRL_CPU_INTR_MASK;
+
+	rv = hif_diag_write_access(hif_hdl,
+				   SOC_CORE_BASE_ADDRESS | CORE_CTRL_ADDRESS,
+				   core_ctrl);
+	QDF_ASSERT(rv == QDF_STATUS_SUCCESS);
+}
+
+#ifdef QCA_HIF_HIA_EXTND
 static void hif_set_hia_extnd(struct hif_softc *scn)
 {
 	struct hif_opaque_softc *hif_hdl = GET_HIF_OPAQUE_HDL(scn);
@@ -1678,6 +1678,12 @@ done:
 
 	return qdf_status_to_os_return(rv);
 }
+#else
+static int hif_set_hia(struct hif_softc *scn)
+{
+	return 0;
+}
+#endif
 
 /**
  * hif_pci_bus_configure() - configure the pcie bus
