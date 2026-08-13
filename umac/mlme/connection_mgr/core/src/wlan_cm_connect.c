@@ -2177,6 +2177,11 @@ cm_connect_req_update_smd_info(struct cnx_mgr *cm_ctx,
 	if (!mlo_dev)
 		return QDF_STATUS_E_NOENT;
 
+	if (!wlan_vdev_is_smd_enabled(vdev)) {
+		mlme_debug("Supplicant did not advertise SMD support, skip SMD ctx update");
+		return QDF_STATUS_E_NOSUPPORT;
+	}
+
 	/* ie[0]=EID, ie[1]=len, ie[2]=ext_id, ie[3..8]=identifier,
 	 * ie[9]=capabilities, ie[10]=timeout
 	 */
