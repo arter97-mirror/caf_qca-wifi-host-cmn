@@ -358,12 +358,11 @@ static void mlme_vdev_rt_lock_release(struct vdev_mlme_obj *vdev_mlme)
 	struct  wlan_lmac_if_tx_ops *tx_ops;
 	struct wlan_objmgr_psoc *psoc;
 
-	if (!vdev_mlme)
-		mlme_err("vdev is NULL");
-
 	psoc = wlan_vdev_get_psoc(vdev_mlme->vdev);
-	if (!psoc)
+	if (!psoc) {
 		mlme_err("psoc is NULL");
+		return;
+	}
 
 	tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
 	if (tx_ops && tx_ops->mops.mlme_vdev_rt_lock_release)
@@ -390,6 +389,11 @@ static bool mlme_vdev_state_dfs_cac_wait_event(void *ctx, uint16_t event,
 	enum QDF_OPMODE mode;
 	struct wlan_objmgr_vdev *vdev;
 	bool status;
+
+	if (!vdev_mlme) {
+		mlme_err("vdev_mlme is NULL");
+		return false;
+	}
 
 	vdev = vdev_mlme->vdev;
 
