@@ -844,7 +844,7 @@ static inline void hal_dump_comp_desc(void *hw_desc)
 
 	for (i = 0; i < HAL_TX_COMPLETION_DESC_LEN_DWORDS; i++) {
 		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_FATAL,
-			  "DWORD[i] = 0x%x", comp->desc[i]);
+			  "DWORD[%u] = 0x%x", i, comp->desc[i]);
 	}
 }
 
