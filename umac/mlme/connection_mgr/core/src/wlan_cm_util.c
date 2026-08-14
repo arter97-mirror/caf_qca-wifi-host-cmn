@@ -21,6 +21,7 @@
 
 #include "wlan_cm_main_api.h"
 #include "wlan_scan_api.h"
+#include <wlan_scan_ucfg_api.h>
 #include "wlan_cm_public_struct.h"
 #include "wlan_serialization_api.h"
 #include "wlan_cm_bss_score_param.h"
@@ -34,6 +35,9 @@
 #include <wlan_psoc_mlme_api.h>
 #include <wlan_mlme_main.h>
 #include "wlan_cm_api.h"
+
+#define CM_CONNECT_SCAN_CANCEL_MAX_WAIT_MS 200
+#define CM_CONNECT_SCAN_CANCEL_POLL_MS 25
 
 static uint32_t cm_get_prefix_for_cm_id(enum wlan_cm_source source) {
 	switch (source) {
@@ -1218,9 +1222,11 @@ void cm_pdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
 	req->cancel_req.pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
 	req->cancel_req.vdev_id = INVAL_VDEV_ID;
 	req->cancel_req.req_type = WLAN_SCAN_CANCEL_PDEV_ALL;
+	req->max_wait_time_ms = CM_CONNECT_SCAN_CANCEL_MAX_WAIT_MS;
+	req->wait_poll_interval_ms = CM_CONNECT_SCAN_CANCEL_POLL_MS;
 
-	status = wlan_scan_cancel(req);
-	/* In success/failure case wlan_scan_cancel free the req memory */
+	status = ucfg_scan_cancel_sync(req);
+	/* In success/failure case ucfg_scan_cancel_sync frees the req memory */
 	if (QDF_IS_STATUS_ERROR(status))
 		mlme_err("pdev %d cancel all scan request failed",
 			 wlan_objmgr_pdev_get_pdev_id(pdev));

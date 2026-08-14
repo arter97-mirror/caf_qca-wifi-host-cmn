@@ -1017,7 +1017,9 @@ void cm_vdev_scan_cancel(struct wlan_objmgr_pdev *pdev,
  * P2P-ROC) from blocking the VDEV_START critical channel request, which
  * can cause timeouts and crashes.
  *
- * Uses async wlan_scan_cancel() (no wait) to avoid delaying connection.
+ * Synchronously cancels and waits, bounded to 200ms, so a connect
+ * attempt does not race with an in-progress scan. Must only be called
+ * from the connect request's calling thread (dispatcher entry point).
  *
  * Return: void
  */

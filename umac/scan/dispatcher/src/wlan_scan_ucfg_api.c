@@ -572,13 +572,25 @@ ucfg_scan_cancel_sync(struct scan_cancel_request *req)
 	bool cancel_vdev = false, cancel_pdev = false;
 	struct wlan_objmgr_vdev *vdev;
 	struct wlan_objmgr_pdev *pdev;
-	uint32_t max_wait_iterations = SCM_CANCEL_SCAN_WAIT_ITERATION;
+	uint32_t poll_interval_ms;
+	uint32_t max_wait_iterations;
 
 	if (!req || !req->vdev) {
 		scm_err("req or vdev within req is NULL");
 		if (req)
 			qdf_mem_free(req);
 		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	poll_interval_ms = req->wait_poll_interval_ms ?
+			   req->wait_poll_interval_ms :
+			   SCM_CANCEL_SCAN_WAIT_TIME;
+	if (req->max_wait_time_ms) {
+		max_wait_iterations = req->max_wait_time_ms / poll_interval_ms;
+		if (!max_wait_iterations)
+			max_wait_iterations = 1;
+	} else {
+		max_wait_iterations = SCM_CANCEL_SCAN_WAIT_ITERATION;
 	}
 
 	if (req->cancel_req.req_type == WLAN_SCAN_CANCEL_PDEV_ALL)
@@ -597,14 +609,14 @@ ucfg_scan_cancel_sync(struct scan_cancel_request *req)
 		while ((wlan_get_pdev_status(pdev) !=
 		     SCAN_NOT_IN_PROGRESS) && max_wait_iterations) {
 			scm_debug("wait for all pdev scan to get complete");
-			qdf_sleep(SCM_CANCEL_SCAN_WAIT_TIME);
+			qdf_sleep(poll_interval_ms);
 			max_wait_iterations--;
 		}
 	} else if (cancel_vdev) {
 		while ((wlan_get_vdev_status(vdev) !=
 		     SCAN_NOT_IN_PROGRESS) && max_wait_iterations) {
 			scm_debug("wait for all vdev scan to get complete");
-			qdf_sleep(SCM_CANCEL_SCAN_WAIT_TIME);
+			qdf_sleep(poll_interval_ms);
 			max_wait_iterations--;
 		}
 	}

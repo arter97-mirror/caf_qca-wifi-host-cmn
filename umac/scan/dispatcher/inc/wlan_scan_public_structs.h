@@ -1397,6 +1397,9 @@ struct suppress_scan_param {
  * @vdev: vdev object
  * @wait_tgt_cancel: wait for target to cancel scan
  * @cancel_req: stop scan cmd parameter
+ * @max_wait_time_ms: max time to block in scan cancel sync waiting for the
+ *                    scan to be confirmed cancelled, 0 to use the default
+ * @wait_poll_interval_ms: poll interval used while waiting, 0 to use default
  */
 struct scan_cancel_request {
 	/* Extra parameters consumed by scan module or serialization */
@@ -1404,6 +1407,8 @@ struct scan_cancel_request {
 	bool wait_tgt_cancel;
 	/* Actual scan cancel request parameters */
 	struct scan_cancel_param cancel_req;
+	uint32_t max_wait_time_ms;
+	uint32_t wait_poll_interval_ms;
 };
 
 /**
