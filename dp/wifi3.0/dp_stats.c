@@ -8670,6 +8670,8 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 			       pdev->soc->stats.tx.tx_desc_pdev_down);
 		DP_PRINT_STATS("Tx desc force freed: %u",
 			       pdev->soc->stats.tx.tx_comp_force_freed);
+		DP_PRINT_STATS("Tx desc double free detected: %u",
+			       pdev->soc->stats.tx.tx_comp_desc_double_free);
 		DP_PRINT_STATS("SW tso pkt cnt: %u",
 			       pdev->soc->stats.tx.sw_tso_pkts);
 		DP_PRINT_STATS("SW tso fail cnt: %u",
@@ -8852,6 +8854,8 @@ void dp_print_txrx_soc_stats(struct dp_soc *soc)
 			       pdev->soc->stats.tx.tx_desc_pdev_down);
 		DP_PRINT_STATS("Tx desc force freed: %u",
 			       pdev->soc->stats.tx.tx_comp_force_freed);
+		DP_PRINT_STATS("Tx desc double free detected: %u",
+			       pdev->soc->stats.tx.tx_comp_desc_double_free);
 		DP_PRINT_STATS("Rx path statistics:");
 		dp_print_rx_err_stats(soc, pdev);
 		for (error_code = 0; error_code < HAL_RXDMA_ERR_MAX;

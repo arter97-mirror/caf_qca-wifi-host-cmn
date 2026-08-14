@@ -129,10 +129,22 @@ static inline void dp_tx_desc_set_magic(struct dp_tx_desc_s *tx_desc,
 {
 	tx_desc->magic = magic_pattern;
 }
+
+static inline bool dp_tx_desc_check_desc_free(
+					struct dp_tx_desc_s *tx_desc)
+{
+	return tx_desc->magic == DP_TX_MAGIC_PATTERN_FREE;
+}
 #else
 static inline void dp_tx_desc_set_magic(struct dp_tx_desc_s *tx_desc,
 					uint32_t magic_pattern)
 {
+}
+
+static inline bool dp_tx_desc_check_desc_free(
+					struct dp_tx_desc_s *tx_desc)
+{
+	return false;
 }
 #endif
 
@@ -935,6 +947,14 @@ dp_tx_desc_free(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc,
 	is_ndp_bw_flow_ctrl = dp_tx_is_flow_pool_ndi_vdev_mapped(pool);
 
 	qdf_spin_lock_bh(&pool->flow_pool_lock);
+	if (dp_tx_desc_check_desc_free(tx_desc)) {
+		dp_err_rl("Double free detected: tx_desc id %d",
+			  tx_desc->id);
+		DP_STATS_INC(soc, tx.tx_comp_desc_double_free, 1);
+		qdf_spin_unlock_bh(&pool->flow_pool_lock);
+		return;
+	}
+
 	tx_desc->vdev_id = DP_INVALID_VDEV_ID;
 	tx_desc->nbuf = NULL;
 	tx_desc->flags = 0;
@@ -1125,6 +1145,14 @@ dp_tx_desc_free(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc,
 	struct dp_tx_desc_pool_s *pool = &soc->tx_desc[desc_pool_id];
 
 	qdf_spin_lock_bh(&pool->flow_pool_lock);
+	if (dp_tx_desc_check_desc_free(tx_desc)) {
+		dp_err_rl("Double free detected: tx_desc id %d",
+			  tx_desc->id);
+		DP_STATS_INC(soc, tx.tx_comp_desc_double_free, 1);
+		qdf_spin_unlock_bh(&pool->flow_pool_lock);
+		return;
+	}
+
 	tx_desc->vdev_id = DP_INVALID_VDEV_ID;
 	tx_desc->nbuf = NULL;
 	tx_desc->flags = 0;

@@ -1516,6 +1516,8 @@ struct dp_soc_stats {
 		uint32_t tx_comp[MAX_TCL_DATA_RINGS];
 		/* Number of tx completions force freed */
 		uint32_t tx_comp_force_freed;
+		/* Number of tx desc double free attempts detected */
+		uint32_t tx_comp_desc_double_free;
 		/* Tx completion ring near full */
 		uint32_t near_full;
 		/* Tx drops with buffer src as HAL_TX_COMP_RELEASE_SOURCE_FW */
