@@ -4677,6 +4677,14 @@ static inline void *dp_srng_dst_get_next(struct dp_soc *dp_soc,
 	return hal_srng_dst_get_next_cached(hal_soc, hal_ring_hdl);
 }
 
+#ifdef CONFIG_IO_COHERENCY
+static inline void *dp_srng_dst_inv_cached_descs(struct dp_soc *dp_soc,
+						 hal_ring_handle_t hal_ring_hdl,
+						 uint32_t num_entries)
+{
+	return NULL;
+}
+#else
 /**
  * dp_srng_dst_inv_cached_descs() - Wrapper function to invalidate cached
  * descriptors
@@ -4695,6 +4703,7 @@ static inline void *dp_srng_dst_inv_cached_descs(struct dp_soc *dp_soc,
 	return hal_srng_dst_inv_cached_descs(hal_soc, hal_ring_hdl,
 					     num_entries);
 }
+#endif
 #else
 static inline void *dp_srng_dst_get_next(struct dp_soc *dp_soc,
 					 hal_ring_handle_t hal_ring_hdl)
