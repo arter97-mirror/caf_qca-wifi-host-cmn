@@ -301,6 +301,17 @@ wmi_extract_nan_disable_ind_event(wmi_unified_t wmi_handle, void *evt_buf,
 }
 
 QDF_STATUS
+wmi_unified_nan_local_schedule_cmd_send(wmi_unified_t wmi_handle,
+					struct nan_local_sched_params *req)
+{
+	if (wmi_handle->ops->send_nan_local_schedule_cmd)
+		return wmi_handle->ops->send_nan_local_schedule_cmd(wmi_handle,
+								    req);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
 wmi_extract_nan_enable_rsp_event(wmi_unified_t wmi_handle,
 				 void *evt_buf,
 				 struct nan_enable_rsp_params *evt_params)
@@ -311,4 +322,4 @@ wmi_extract_nan_enable_rsp_event(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
-#endif
+#endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */

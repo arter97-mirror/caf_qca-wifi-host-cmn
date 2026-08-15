@@ -334,5 +334,15 @@ QDF_STATUS wmi_extract_nan_next_dw_info(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_extract_nan_cluster_event(wmi_unified_t wmi_handle,
 					 uint8_t *evt_buf,
 					 struct nan_cluster_event *cluster_event);
-#endif
+/**
+ * wmi_unified_nan_local_schedule_cmd_send - api to send local schedule to FW
+ * @wmi_handle: wmi handle
+ * @req: pointer to local schedule parameters
+ *
+ * Return: status of operation
+ */
+QDF_STATUS
+wmi_unified_nan_local_schedule_cmd_send(wmi_unified_t wmi_handle,
+					struct nan_local_sched_params *req);
+#endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE  & WLAN_FEATURE_NAN */
 #endif /* _WMI_UNIFIED_NAN_API_H_ */
