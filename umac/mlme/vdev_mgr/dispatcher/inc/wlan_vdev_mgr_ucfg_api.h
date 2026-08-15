@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -194,6 +194,7 @@ void ucfg_wlan_vdev_mgr_get_param_bssid(
 				uint8_t *bssid);
 
 /**
+<<<<<<< HEAD   (7334c6 qcacmn: Fix out of bounds read in extract_roam_scan_ap_stats)
  * ucfg_wlan_vdev_mgr_get_beacon_buffer() – ucfg MLME API to
  * get beacon buffer from mlme vdev mgr component
  * @vdev: pointer to vdev object
@@ -206,6 +207,9 @@ void ucfg_wlan_vdev_mgr_get_beacon_buffer(struct wlan_objmgr_vdev *vdev,
 
 /**
  * ucfg_wlan_vdev_mgr_get_trans_bssid() – ucfg MLME API to
+=======
+ * ucfg_wlan_vdev_mgr_get_trans_bssid() - ucfg MLME API to
+>>>>>>> CHANGE (ee9cb4 qcacmn: Fix compilation errors for 6.11 kernel)
  * get transmission bssid from mlme vdev mgr component
  * @vdev: pointer to vdev object
  * @addr: pointer to store the transmission bssid
