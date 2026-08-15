@@ -1936,6 +1936,32 @@ static QDF_STATUS nan_local_schedule_cmd_tlv(wmi_unified_t wmi_handle,
 	return status;
 }
 
+static QDF_STATUS
+extract_nan_local_schedule_cnf_tlv(wmi_unified_t wmi_handle,
+				   uint8_t *data,
+				   struct nan_local_sched_rsp *rsp)
+{
+	WMI_NAN_LOCAL_SCHEDULE_CNF_EVENTID_param_tlvs *event;
+	wmi_nan_local_schedule_cnf_event_fixed_param *fixed_params;
+
+	event = (WMI_NAN_LOCAL_SCHEDULE_CNF_EVENTID_param_tlvs *)data;
+	fixed_params = event->fixed_param;
+
+	if (!fixed_params) {
+		wmi_err("fixed_params is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	rsp->vdev_id = fixed_params->vdev_id;
+	rsp->status = fixed_params->status;
+	rsp->reason = fixed_params->reason;
+
+	wmi_debug("WMI_NAN_LOCAL_SCHEDULE_CNF_EVENTID: vdev_id=%d, status=%d, reason=%d",
+		  fixed_params->vdev_id, rsp->status, rsp->reason);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * wmi_nan_attach_local_schedule_ops_tlv() - Attach NAN local schedule ops
  * @ops: pointer to wmi_ops structure
@@ -1948,6 +1974,8 @@ static QDF_STATUS nan_local_schedule_cmd_tlv(wmi_unified_t wmi_handle,
 static void wmi_nan_attach_local_schedule_ops_tlv(struct wmi_ops *ops)
 {
 	ops->send_nan_local_schedule_cmd = nan_local_schedule_cmd_tlv;
+	ops->extract_nan_local_schedule_cnf =
+					extract_nan_local_schedule_cnf_tlv;
 }
 #else
 /**

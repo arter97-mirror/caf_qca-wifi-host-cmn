@@ -26674,6 +26674,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 				WMI_NAN_JOINED_CLUSTER_EVENTID;
 	event_ids[wmi_nan_started_cluster_event_id] =
 				WMI_NAN_STARTED_CLUSTER_EVENTID;
+	event_ids[wmi_nan_local_schedule_cnf_event_id] =
+			WMI_NAN_LOCAL_SCHEDULE_CNF_EVENTID;
 #endif
 #ifdef CONFIG_NO_QMI
 	event_ids[wmi_athdiag_read_write_eventid] =

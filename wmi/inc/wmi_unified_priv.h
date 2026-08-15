@@ -1278,6 +1278,10 @@ QDF_STATUS (*extract_nan_enable_rsp_event)(
 
 QDF_STATUS (*send_nan_local_schedule_cmd)(wmi_unified_t wmi_handle,
 					  struct nan_local_sched_params *req);
+
+QDF_STATUS (*extract_nan_local_schedule_cnf)(wmi_unified_t wmi_handle,
+					     uint8_t *data,
+					     struct nan_local_sched_rsp *rsp);
 #endif
 #endif
 

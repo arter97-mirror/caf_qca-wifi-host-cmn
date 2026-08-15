@@ -6072,6 +6072,9 @@ typedef enum {
 	wmi_athdiag_read_write_eventid,
 #endif
 
+#if defined(FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE) && defined(WLAN_FEATURE_NAN)
+	wmi_nan_local_schedule_cnf_event_id,
+#endif
 	wmi_events_max,
 } wmi_conv_event_id;
 
