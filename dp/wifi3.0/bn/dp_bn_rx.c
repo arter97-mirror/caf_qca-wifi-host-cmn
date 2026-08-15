@@ -456,12 +456,12 @@ more_data:
 		dp_rx_ring_record_entry_bn(soc, reo_ring_num, ring_desc,
 					   cc_status, rx_desc);
 
-		dp_rx_ring_desc_invalidate(ring_desc);
-
 		status = dp_rx_desc_sanity(soc, hal_soc, hal_ring_hdl,
 					   ring_desc, rx_desc);
-		if (QDF_IS_STATUS_ERROR(status))
+		if (QDF_IS_STATUS_ERROR(status)) {
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
+		}
 
 		/*
 		 * this is a unlikely scenario where the host is reaping
@@ -474,6 +474,7 @@ more_data:
 		if (qdf_unlikely(!rx_desc->in_use)) {
 			DP_RX_ERR_HANDLE_DESC_DUP(soc, hal_ring_hdl,
 						  ring_desc, rx_desc);
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
@@ -575,10 +576,12 @@ more_data:
 				       soc->stats.rx.err.msdu_done_fail);
 				dp_rx_msdu_done_fail_event_record(
 						soc, rx_desc, rx_desc->nbuf);
+				dp_rx_ring_desc_invalidate(ring_desc);
 				continue;
 			}
 		}
 
+		dp_rx_ring_desc_invalidate(ring_desc);
 		if (!is_prev_msdu_last &&
 		    !(qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf)))
 			is_prev_msdu_last = true;
