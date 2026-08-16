@@ -3151,8 +3151,13 @@ void wlan_crypto_rsnxie_check(struct wlan_crypto_params *crypto_params,
 			      const uint8_t *rsnxe)
 {
 	uint8_t i = 0, len = rsnxe[1];
+	uint8_t copy_len;
 
-	for (; len > 0 ; len--) {
+	copy_len = QDF_MIN(len,
+			   (uint8_t)sizeof(crypto_params->rsnx_caps));
+
+	crypto_params->rsnx_caps = 0;
+	for (; copy_len > 0 ; copy_len--) {
 		((uint8_t *)(&crypto_params->rsnx_caps))[i] = rsnxe[2 + i];
 		i++;
 	}
