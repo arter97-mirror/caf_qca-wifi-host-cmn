@@ -911,9 +911,13 @@ dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp,
 				    bool can_destroy)
 {
 	struct dp_tx_pp_params *curr, *next;
+	qdf_list_t defer_list;
 	uint32_t destroyed = 0;
 	uint32_t removed = 0;
 
+	qdf_list_create(&defer_list, 0);
+
+	qdf_spin_lock_bh(&tx_pp->pp_lock);
 	qdf_list_for_each_del(&tx_pp->inactive_list, curr, next, node) {
 		qdf_list_remove_node(&tx_pp->inactive_list, &curr->node);
 
@@ -924,13 +928,16 @@ dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp,
 					curr->pp,
 					qdf_page_pool_get_page_hold_cnt(
 								curr->pp));
+				/* drop lock: qdf_page_pool_destroy() may sleep */
+				qdf_spin_unlock_bh(&tx_pp->pp_lock);
 				qdf_page_pool_destroy(curr->pp);
 				qdf_mem_free(curr);
+				qdf_spin_lock_bh(&tx_pp->pp_lock);
 				destroyed++;
 			} else {
-				/* Can't destroy yet - put back */
-				qdf_list_insert_back(&tx_pp->inactive_list,
-						     &curr->node);
+				/* defer: avoid re-inserting into live iterator
+				 */
+				qdf_list_insert_back(&defer_list, &curr->node);
 			}
 		} else {
 			/* NULL entry - just free the wrapper */
@@ -938,6 +945,15 @@ dp_tx_page_pool_flush_inactive_pool(struct dp_tx_page_pool *tx_pp,
 			removed++;
 		}
 	}
+
+	/* Splice deferred entries back after iteration is complete */
+	qdf_list_for_each_del(&defer_list, curr, next, node) {
+		qdf_list_remove_node(&defer_list, &curr->node);
+		qdf_list_insert_back(&tx_pp->inactive_list, &curr->node);
+	}
+	qdf_spin_unlock_bh(&tx_pp->pp_lock);
+
+	qdf_list_destroy(&defer_list);
 
 	if (destroyed || removed)
 		dp_nofl_info("TX_PP_FLUSH inactive: destroyed=%u removed=%u remaining=%d",
