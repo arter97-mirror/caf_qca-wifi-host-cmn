@@ -1962,31 +1962,126 @@ extract_nan_local_schedule_cnf_tlv(wmi_unified_t wmi_handle,
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS nan_peer_schedule_cmd_tlv(wmi_unified_t wmi_handle,
+					    struct nan_peer_sched_params *req)
+{
+	uint16_t len;
+	wmi_buf_t buf;
+	uint8_t *tlv_ptr;
+	QDF_STATUS status;
+	wmi_nan_peer_schedule_cmd_fixed_param *cmd;
+	uint32_t schedule_len, channels_len;
+	uint32_t vdev_id;
+	wmi_nan_channel *ch_tlv;
+	int i;
+
+	if (!req) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	vdev_id = req->vdev_id;
+
+	/* Calculate lengths (4-byte aligned) */
+	/* Schedule is uint8_t[512] = 512 bytes */
+	schedule_len = qdf_roundup(NAN_MAX_SCHEDULE_SLOTS * sizeof(uint8_t), 4);
+	channels_len = req->num_channels * sizeof(wmi_nan_channel);
+
+	/* Total length */
+	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE + schedule_len +
+	      WMI_TLV_HDR_SIZE + channels_len;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_nan_peer_schedule_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_peer_schedule_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_nan_peer_schedule_cmd_fixed_param));
+
+	cmd->vdev_id = vdev_id;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(req->peer_addr.bytes,
+				   &cmd->peer_nmi_addr);
+	cmd->schedule_chan_bitmap_len = NAN_MAX_SCHEDULE_SLOTS;
+	cmd->peer_committed_dw = req->committed_dw;
+	cmd->peer_max_chan_switch = req->max_chan_switch;
+
+	tlv_ptr = (uint8_t *)&cmd[1];
+
+	/* Pack schedule bitmap */
+	WMITLV_SET_HDR(tlv_ptr, WMITLV_TAG_ARRAY_BYTE, schedule_len);
+	qdf_mem_copy(&tlv_ptr[WMI_TLV_HDR_SIZE], req->maps[0].schedule,
+		     NAN_MAX_SCHEDULE_SLOTS * sizeof(uint8_t));
+	tlv_ptr += WMI_TLV_HDR_SIZE + schedule_len;
+
+	/* Pack channel list */
+	WMITLV_SET_HDR(tlv_ptr, WMITLV_TAG_ARRAY_STRUC, channels_len);
+	ch_tlv = (wmi_nan_channel *)&tlv_ptr[WMI_TLV_HDR_SIZE];
+	for (i = 0; i < req->num_channels; i++) {
+		WMITLV_SET_HDR(&ch_tlv[i], WMITLV_TAG_STRUC_wmi_nan_channel,
+			       WMITLV_GET_STRUCT_TLVLEN(wmi_nan_channel));
+		ch_tlv[i].chan_freq = req->nan_channels[i].freq;
+		ch_tlv[i].center_freq1 = req->nan_channels[i].center_freq1;
+		ch_tlv[i].center_freq2 = req->nan_channels[i].center_freq2;
+		ch_tlv[i].chan_width = req->nan_channels[i].ch_width;
+		ch_tlv[i].rx_nss = req->nan_channels[i].rx_nss;
+
+		qdf_mem_copy(ch_tlv[i].chan_entry_fields,
+			     req->nan_channels[i].channel_entry,
+			     NAN_CHANNEL_ENTRY_LEN);
+
+		wmi_debug("channel_entry:");
+		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_WMI, QDF_TRACE_LEVEL_DEBUG,
+				   ch_tlv[i].chan_entry_fields, 6);
+		wmi_debug("Channel[%d]: freq=%d, ch_width=%d, cf1=%d, cf2=%d rx_nss %d",
+			  i, ch_tlv[i].chan_freq, ch_tlv[i].chan_width,
+			  ch_tlv[i].center_freq1,
+			  ch_tlv[i].center_freq2, ch_tlv[i].rx_nss);
+	}
+
+	wmi_debug("vdev_id=%d, peer_addr= " QDF_MAC_ADDR_FMT,
+		  vdev_id, QDF_MAC_ADDR_REF(req->peer_addr.bytes));
+
+	wmi_mtrace(WMI_NAN_PEER_SCHEDULE_CMDID, vdev_id, 0);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_NAN_PEER_SCHEDULE_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("WMI_NAN_PEER_SCHEDULE_CMDID failed, ret: %d",
+			status);
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+
 /**
- * wmi_nan_attach_local_schedule_ops_tlv() - Attach NAN local schedule ops
+ * wmi_nan_attach_schedule_ops_tlv() - Attach NAN schedule ops
  * @ops: pointer to wmi_ops structure
  *
- * This function attaches NAN local schedule specific operations to wmi_ops.
+ * This function attaches NAN schedule specific operations to wmi_ops.
  * It is guarded by feature flags and called from wmi_nan_attach_tlv.
  *
  * Return: void
  */
-static void wmi_nan_attach_local_schedule_ops_tlv(struct wmi_ops *ops)
+static void wmi_nan_attach_schedule_ops_tlv(struct wmi_ops *ops)
 {
 	ops->send_nan_local_schedule_cmd = nan_local_schedule_cmd_tlv;
 	ops->extract_nan_local_schedule_cnf =
 					extract_nan_local_schedule_cnf_tlv;
+	ops->send_nan_peer_schedule_cmd = nan_peer_schedule_cmd_tlv;
 }
 #else
 /**
- * wmi_nan_attach_local_schedule_ops_tlv() - Stub for NAN local schedule ops
+ * wmi_nan_attach_schedule_ops_tlv() - Stub for NAN schedule ops
  * @ops: pointer to wmi_ops structure
  *
- * This is a stub function when NAN local schedule feature is not enabled.
+ * This is a stub function when NAN schedule feature is not enabled.
  *
  * Return: void
  */
-static void wmi_nan_attach_local_schedule_ops_tlv(struct wmi_ops *ops)
+static void wmi_nan_attach_schedule_ops_tlv(struct wmi_ops *ops)
 {
 }
 #endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
@@ -2055,5 +2150,5 @@ void wmi_nan_attach_tlv(wmi_unified_t wmi_handle)
 	ops->extract_ndp_host_event = extract_ndp_host_event_tlv;
 	wmi_nan_attach_dw_info_tlv(wmi_handle);
 	wmi_nan_attach_cluster_info_tlv(wmi_handle);
-	wmi_nan_attach_local_schedule_ops_tlv(ops);
+	wmi_nan_attach_schedule_ops_tlv(ops);
 }

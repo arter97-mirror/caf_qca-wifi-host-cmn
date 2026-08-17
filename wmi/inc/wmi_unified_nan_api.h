@@ -356,5 +356,16 @@ wmi_unified_nan_local_schedule_cmd_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_extract_nan_local_schedule_cnf(wmi_unified_t wmi_handle, uint8_t *data,
 				   struct nan_local_sched_rsp *rsp);
-#endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE  & WLAN_FEATURE_NAN */
+
+/**
+ * wmi_unified_nan_peer_schedule_cmd_send - api to send peer schedule to FW
+ * @wmi_handle: wmi handle
+ * @req: pointer to peer schedule parameters
+ *
+ * Return: status of operation
+ */
+QDF_STATUS
+wmi_unified_nan_peer_schedule_cmd_send(wmi_unified_t wmi_handle,
+				       struct nan_peer_sched_params *req);
+#endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
 #endif /* _WMI_UNIFIED_NAN_API_H_ */

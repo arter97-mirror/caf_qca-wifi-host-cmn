@@ -334,4 +334,15 @@ wmi_extract_nan_local_schedule_cnf(wmi_unified_t wmi_handle, uint8_t *data,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_unified_nan_peer_schedule_cmd_send(wmi_unified_t wmi_handle,
+				       struct nan_peer_sched_params *req)
+{
+	if (wmi_handle->ops->send_nan_peer_schedule_cmd)
+		return wmi_handle->ops->send_nan_peer_schedule_cmd(wmi_handle,
+								   req);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
