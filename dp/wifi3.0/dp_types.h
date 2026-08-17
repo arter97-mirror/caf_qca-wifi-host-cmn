@@ -3245,6 +3245,9 @@ struct dp_soc {
 	/* Number of TCL data rings */
 	uint8_t num_tcl_data_rings;
 
+	/* Number of TX rings for embedded (non-IPA) path */
+	uint8_t num_embedded_tx_paths;
+
 	/* TCL CMD_CREDIT ring */
 	bool init_tcl_cmd_cred_ring;
 
