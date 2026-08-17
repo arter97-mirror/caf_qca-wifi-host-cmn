@@ -35,6 +35,7 @@
 #include <wlan_mlme_api.h>
 #include <wlan_smd_roam.h>
 
+#define WLAN_MLO_SINGLE_LINK 1
 static QDF_STATUS
 mlo_mgr_update_link_rej_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
 				      struct wlan_mlo_link_reject_req *link_rej_info)
@@ -189,6 +190,10 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 	link_info->link_id = data->link_id;
 	link_info->cnx_tx_nss = data->cnx_tx_nss;
 	link_info->cnx_rx_nss = data->cnx_rx_nss;
+
+	/* Mark link as active link in case of SLO */
+	if (link_info_iter == WLAN_MLO_SINGLE_LINK)
+		link_info->is_link_active = true;
 
 	mlo_debug("VDEV %d link id %d cnx info - BSSID: " QDF_MAC_ADDR_FMT ", freq: %d, Tx/Rx nss %dx%d",
 		  link_info->vdev_id, link_info->link_id,
