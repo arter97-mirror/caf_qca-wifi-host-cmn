@@ -2317,6 +2317,7 @@ static void dp_soc_interrupt_map_calculate_wifi3_pci_legacy(struct dp_soc *soc,
 }
 #endif
 
+#ifdef QCA_SUPPORT_INTEGRATED_INTERRUPTS
 static void
 dp_soc_interrupt_map_calculate_integrated(struct dp_soc *soc, int intr_ctx_num,
 					  int *irq_id_map, int *num_irq_r)
@@ -2403,6 +2404,13 @@ dp_soc_interrupt_map_calculate_integrated(struct dp_soc *soc, int intr_ctx_num,
 	}
 	*num_irq_r = num_irq;
 }
+#else
+static inline void
+dp_soc_interrupt_map_calculate_integrated(struct dp_soc *soc, int intr_ctx_num,
+					  int *irq_id_map, int *num_irq_r)
+{
+}
+#endif /* QCA_SUPPORT_INTEGRATED_INTERRUPTS */
 
 static void
 dp_soc_interrupt_map_calculate_msi(struct dp_soc *soc, int intr_ctx_num,
