@@ -43,6 +43,7 @@
 #endif
 #include <pld_common.h>
 #include "wlan_dp_ucfg_api.h"
+#include "wlan_dp_priv.h"
 #define IPV4 0x0008
 #define IPV6 0xdd86
 #define IPV4BYTES 4
@@ -4968,6 +4969,14 @@ static qdf_nbuf_t dp_ipa_intrabss_send(struct dp_pdev *pdev,
 	uint8_t tid = 0;
 	uint8_t ring_id = 0;
 	uint8_t link_id = 0;
+
+	/* IPA-allocated skbs may have NULL skb->dev; fill from tx vdev */
+	if (likely(!nbuf->dev && vdev->osif_vdev)) {
+		struct wlan_dp_link *dp_link =
+			(struct wlan_dp_link *)vdev->osif_vdev;
+		if (dp_link->dp_intf && dp_link->dp_intf->dev)
+			qdf_nbuf_set_dev(nbuf, dp_link->dp_intf->dev);
+	}
 
 	vdev_peer = dp_vdev_bss_peer_ref_n_get(pdev->soc, vdev, DP_MOD_ID_IPA);
 	if (qdf_unlikely(!vdev_peer)) {
