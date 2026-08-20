@@ -50,6 +50,7 @@
 #endif
 #include "wlan_scan_utils_api.h"
 #include "wlan_mlme_vdev_mgr_interface.h"
+#include "wlan_vdev_mgr_utils_api.h"
 
 void
 cm_fill_failure_resp_from_cm_id(struct cnx_mgr *cm_ctx,
