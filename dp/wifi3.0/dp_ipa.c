@@ -104,40 +104,6 @@ static bool dp_ipa_is_alt_tx_required(struct dp_soc *soc)
 }
 #endif
 
-struct dp_ipa_reo_remap_record dp_ipa_reo_remap_history[REO_REMAP_HISTORY_SIZE];
-
-static qdf_atomic_t dp_ipa_reo_remap_history_index;
-static int dp_ipa_reo_remap_record_index_next(qdf_atomic_t *index)
-{
-	int next = qdf_atomic_inc_return(index);
-
-	if (next == REO_REMAP_HISTORY_SIZE)
-		qdf_atomic_sub(REO_REMAP_HISTORY_SIZE, index);
-
-	return next % REO_REMAP_HISTORY_SIZE;
-}
-
-/**
- * dp_ipa_reo_remap_history_add() - Record dp ipa reo remap values
- * @ix0_val: reo destination ring IX0 value
- * @ix2_val: reo destination ring IX2 value
- * @ix3_val: reo destination ring IX3 value
- *
- * Return: None
- */
-static void dp_ipa_reo_remap_history_add(uint32_t ix0_val, uint32_t ix2_val,
-					 uint32_t ix3_val)
-{
-	int idx = dp_ipa_reo_remap_record_index_next(
-				&dp_ipa_reo_remap_history_index);
-	struct dp_ipa_reo_remap_record *record = &dp_ipa_reo_remap_history[idx];
-
-	record->timestamp = qdf_get_log_timestamp();
-	record->ix0_reg = ix0_val;
-	record->ix2_reg = ix2_val;
-	record->ix3_reg = ix3_val;
-}
-
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 static bool dp_ipa_skip_pp_nbuf_smmu_map(struct dp_soc *soc, qdf_nbuf_t nbuf,
 					 bool create)
@@ -2626,6 +2592,41 @@ bool dp_ipa_is_target_ready(struct dp_soc *soc)
 }
 #endif
 
+#ifndef IPA_OPT_WIFI_DP
+struct dp_ipa_reo_remap_record dp_ipa_reo_remap_history[REO_REMAP_HISTORY_SIZE];
+
+static qdf_atomic_t dp_ipa_reo_remap_history_index;
+static int dp_ipa_reo_remap_record_index_next(qdf_atomic_t *index)
+{
+	int next = qdf_atomic_inc_return(index);
+
+	if (next == REO_REMAP_HISTORY_SIZE)
+		qdf_atomic_sub(REO_REMAP_HISTORY_SIZE, index);
+
+	return next % REO_REMAP_HISTORY_SIZE;
+}
+
+/**
+ * dp_ipa_reo_remap_history_add() - Record dp ipa reo remap values
+ * @ix0_val: reo destination ring IX0 value
+ * @ix2_val: reo destination ring IX2 value
+ * @ix3_val: reo destination ring IX3 value
+ *
+ * Return: None
+ */
+static void dp_ipa_reo_remap_history_add(uint32_t ix0_val, uint32_t ix2_val,
+					 uint32_t ix3_val)
+{
+	int idx = dp_ipa_reo_remap_record_index_next(
+				&dp_ipa_reo_remap_history_index);
+	struct dp_ipa_reo_remap_record *record = &dp_ipa_reo_remap_history[idx];
+
+	record->timestamp = qdf_get_log_timestamp();
+	record->ix0_reg = ix0_val;
+	record->ix2_reg = ix2_val;
+	record->ix3_reg = ix3_val;
+}
+
 QDF_STATUS dp_ipa_enable_autonomy(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
@@ -2728,6 +2729,17 @@ QDF_STATUS dp_ipa_disable_autonomy(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 
 	return QDF_STATUS_SUCCESS;
 }
+#else
+QDF_STATUS dp_ipa_enable_autonomy(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS dp_ipa_disable_autonomy(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)) || \
 	defined(CONFIG_IPA_WDI_UNIFIED_API)
