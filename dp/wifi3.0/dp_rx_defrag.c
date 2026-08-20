@@ -775,7 +775,7 @@ static QDF_STATUS dp_rx_defrag_tkip_demic(struct dp_soc *soc,
 	QDF_STATUS status;
 	uint32_t pktlen = 0, prev_data_len;
 	uint8_t mic[IEEE80211_WEP_MICLEN];
-	uint8_t mic0[IEEE80211_WEP_MICLEN];
+	uint8_t mic0[IEEE80211_WEP_MICLEN] = {0};
 	qdf_nbuf_t prev = NULL, prev0, next;
 	uint8_t len0 = 0;
 
@@ -805,15 +805,21 @@ static QDF_STATUS dp_rx_defrag_tkip_demic(struct dp_soc *soc,
 			return QDF_STATUS_E_DEFRAG_ERROR;
 		}
 		len0 = dp_f_tkip.ic_miclen - (uint8_t)prev_data_len;
-		qdf_nbuf_copy_bits(prev0, qdf_nbuf_len(prev0) - len0, len0,
-				   (caddr_t)mic0);
+		if (qdf_nbuf_copy_bits(prev0, qdf_nbuf_len(prev0) - len0, len0,
+				       (caddr_t)mic0) < 0) {
+			dp_err_rl("MIC copy (prev0) failed !");
+			return QDF_STATUS_E_DEFRAG_ERROR;
+		}
 		qdf_nbuf_trim_tail(prev0, len0);
 	}
 
-	qdf_nbuf_copy_bits(prev, (qdf_nbuf_len(prev) -
-			   (dp_f_tkip.ic_miclen - len0)),
-			   (dp_f_tkip.ic_miclen - len0),
-			   (caddr_t)(&mic0[len0]));
+	if (qdf_nbuf_copy_bits(prev, (qdf_nbuf_len(prev) -
+				(dp_f_tkip.ic_miclen - len0)),
+				(dp_f_tkip.ic_miclen - len0),
+				(caddr_t)(&mic0[len0])) < 0) {
+		dp_err_rl("MIC copy (prev) failed !");
+		return QDF_STATUS_E_DEFRAG_ERROR;
+	}
 	qdf_nbuf_trim_tail(prev, (dp_f_tkip.ic_miclen - len0));
 	pktlen -= dp_f_tkip.ic_miclen;
 
@@ -941,6 +947,15 @@ dp_rx_construct_fraglist(struct dp_txrx_peer *txrx_peer, int tid,
 		if (hal_rx_msdu_is_wlan_mcast(soc->hal_soc, msdu)) {
 			QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
 				  "Dropping multicast/broadcast fragments");
+			return QDF_STATUS_E_FAILURE;
+		}
+
+		/* Validate buffer has enough data before pulling header */
+		if (soc->rx_pkt_tlv_size + hdrsize > qdf_nbuf_len(msdu)) {
+			QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+				  "%s: hdrsize %u exceeds frag len %u",
+				  __func__, hdrsize,
+				  (uint32_t)qdf_nbuf_len(msdu));
 			return QDF_STATUS_E_FAILURE;
 		}
 
@@ -1571,6 +1586,16 @@ QDF_STATUS dp_rx_defrag(struct dp_txrx_peer *txrx_peer, unsigned int tid,
 
 			return QDF_STATUS_E_DEFRAG_ERROR;
 		}
+	}
+
+	/* Validate hdr_space doesn't exceed first fragment's data */
+	if (soc->rx_pkt_tlv_size + hdr_space + sizeof(struct llc_snap_hdr_t) >
+	    qdf_nbuf_len(frag_list_head)) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "%s: hdr_space %u exceeds frag data len %u",
+			  __func__, hdr_space,
+			  (uint32_t)qdf_nbuf_len(frag_list_head));
+		return QDF_STATUS_E_DEFRAG_ERROR;
 	}
 
 	/* Convert the header to 802.3 header */
