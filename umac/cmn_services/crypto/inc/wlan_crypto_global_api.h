@@ -1175,6 +1175,26 @@ struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
 					    uint8_t key_index);
 
 /**
+ * wlan_crypto_get_key_allow_roam_bypass() - Get the stored key information,
+ * with an option to bypass the ML link key lookup for a roaming 11bi vdev
+ * @vdev: vdev object
+ * @peer_mac: MAC address of crypto key entity
+ * @key_index: the index of the key that needs to be retrieved
+ * @is_roam_eppke: true if this is an EPPKE / 802.1X-in-auth (11bi) roam
+ *
+ * When @is_roam_eppke is true, the AP's link address (@peer_mac) is used as
+ * the ML key hash-table lookup key instead of the vdev's own link address,
+ * to match the link_addr used when the key was stored via
+ * wlan_crypto_save_ml_sta_key().
+ *
+ * Return: Key material
+ */
+struct wlan_crypto_key *
+wlan_crypto_get_key_allow_roam_bypass(struct wlan_objmgr_vdev *vdev,
+				      const uint8_t *peer_mac,
+				      uint8_t key_index, bool is_roam_eppke);
+
+/**
  * wlan_crypto_set_key_req() - Set key request
  * @vdev: vdev object
  * @req: key request information

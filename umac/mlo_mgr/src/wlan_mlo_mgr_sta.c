@@ -1046,10 +1046,14 @@ mlo_prepare_and_send_connect(struct wlan_objmgr_vdev *vdev,
 	if (!req.scan_ie.ptr)
 		mlo_err("Failed to allocate scan IEs");
 
-	/* Reset crypto auth type for partner link.
-	 * It will be set based on partner scan cache entry
+	/* Reset crypto auth type for partner link; it will be set based on
+	 * partner scan cache entry. Retain 11bi auth bits, which come from
+	 * userspace on the assoc link and cannot be re-derived from the
+	 * partner's scan entry.
 	 */
-	req.crypto.auth_type = 0;
+	req.crypto.auth_type &=
+		(BIT(WLAN_CRYPTO_AUTH_EPPKE) |
+		 BIT(WLAN_CRYPTO_AUTH_8021X_IN_AUTH));
 
 	wlan_cm_start_connect(vdev, &req);
 	wlan_cm_free_connect_req_param(&req);
