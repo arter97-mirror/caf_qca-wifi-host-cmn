@@ -1594,7 +1594,8 @@ bool wlan_cm_is_eht_allowed_for_current_security(struct wlan_objmgr_psoc *psoc,
 	 * Profile element profiles mandate PMF and GCMP-256, so EHT is
 	 * unconditionally allowed when a profile has been selected.
 	 */
-	if (neg_sec_info->sec_profile_num >= 0) {
+	if (neg_sec_info->sec_profile_valid &&
+	    neg_sec_info->sec_profile_num >= 0) {
 		mlme_debug(QDF_MAC_ADDR_FMT
 			   ": Security Profile %d selected, allow EHT",
 			   QDF_MAC_ADDR_REF(entry->bssid.bytes),
