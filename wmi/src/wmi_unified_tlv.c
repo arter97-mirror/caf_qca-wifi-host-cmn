@@ -26678,6 +26678,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 			WMI_NAN_LOCAL_SCHEDULE_CNF_EVENTID;
 	event_ids[wmi_nan_peer_schedule_cnf_event_id] =
 			WMI_NAN_PEER_SCHEDULE_CNF_EVENTID;
+	event_ids[wmi_nan_peer_params_cnf_event_id] =
+			WMI_NAN_PEER_PARAMS_CNF_EVENTID;
 #endif
 #ifdef CONFIG_NO_QMI
 	event_ids[wmi_athdiag_read_write_eventid] =

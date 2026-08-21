@@ -1292,6 +1292,10 @@ QDF_STATUS (*extract_nan_peer_schedule_cnf)(wmi_unified_t wmi_handle,
 
 QDF_STATUS (*send_nan_peer_params_cmd)(wmi_unified_t wmi_handle,
 				       struct nan_peer_params_req *req);
+
+QDF_STATUS (*extract_nan_peer_params_cnf)(wmi_unified_t wmi_handle,
+					  uint8_t *data,
+					  struct nan_peer_params_rsp *rsp);
 #endif
 #endif
 

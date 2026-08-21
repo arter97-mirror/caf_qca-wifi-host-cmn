@@ -390,5 +390,17 @@ wmi_extract_nan_peer_schedule_cnf(wmi_unified_t wmi_handle, uint8_t *data,
 QDF_STATUS
 wmi_unified_nan_peer_params_cmd_send(wmi_unified_t wmi_handle,
 				     struct nan_peer_params_req *req);
+
+/**
+ * wmi_extract_nan_peer_params_cnf - api to extract peer params response
+ * @wmi_handle: wmi handle
+ * @data: event buffer
+ * @rsp: buffer to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS
+wmi_extract_nan_peer_params_cnf(wmi_unified_t wmi_handle, uint8_t *data,
+				struct nan_peer_params_rsp *rsp);
 #endif /* WLAN_FEATURE_NAN && FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
 #endif /* _WMI_UNIFIED_NAN_API_H_ */

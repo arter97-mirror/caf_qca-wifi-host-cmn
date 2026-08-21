@@ -2151,6 +2151,31 @@ static QDF_STATUS nan_peer_params_cmd_tlv(wmi_unified_t wmi_handle,
 	return status;
 }
 
+static QDF_STATUS extract_nan_peer_params_cnf_tlv(
+						wmi_unified_t wmi_handle,
+						uint8_t *data,
+						struct nan_peer_params_rsp *rsp)
+{
+	WMI_NAN_PEER_PARAMS_CNF_EVENTID_param_tlvs *event;
+	wmi_nan_peer_params_cnf_event_fixed_param *fixed_params;
+
+	event = (WMI_NAN_PEER_PARAMS_CNF_EVENTID_param_tlvs *)data;
+	fixed_params = event->fixed_param;
+
+	if (!fixed_params) {
+		wmi_err("fixed_params is null");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	rsp->vdev_id = fixed_params->vdev_id;
+	rsp->status = fixed_params->status;
+
+	wmi_debug("WMI_NAN_PEER_PARAMS_CNF_EVENTID: vdev_id=%d, status=%d",
+		  fixed_params->vdev_id, rsp->status);
+
+	return QDF_STATUS_SUCCESS;
+}
+
 /**
  * wmi_nan_attach_schedule_ops_tlv() - Attach NAN schedule ops
  * @ops: pointer to wmi_ops structure
@@ -2168,6 +2193,7 @@ static void wmi_nan_attach_schedule_ops_tlv(struct wmi_ops *ops)
 	ops->send_nan_peer_schedule_cmd = nan_peer_schedule_cmd_tlv;
 	ops->extract_nan_peer_schedule_cnf = extract_nan_peer_schedule_cnf_tlv;
 	ops->send_nan_peer_params_cmd = nan_peer_params_cmd_tlv;
+	ops->extract_nan_peer_params_cnf = extract_nan_peer_params_cnf_tlv;
 }
 #else
 /**

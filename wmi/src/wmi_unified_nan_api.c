@@ -368,4 +368,15 @@ wmi_unified_nan_peer_params_cmd_send(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+QDF_STATUS
+wmi_extract_nan_peer_params_cnf(wmi_unified_t wmi_handle, uint8_t *data,
+				struct nan_peer_params_rsp *rsp)
+{
+	if (wmi_handle->ops->extract_nan_peer_params_cnf)
+		return wmi_handle->ops->extract_nan_peer_params_cnf(wmi_handle,
+								    data, rsp);
+
+	return QDF_STATUS_E_FAILURE;
+}
 #endif /* FEATURE_WLAN_SUPPORT_NAN_STANDARD_MODE */
