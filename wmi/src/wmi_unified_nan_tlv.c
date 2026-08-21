@@ -2084,6 +2084,73 @@ static QDF_STATUS extract_nan_peer_schedule_cnf_tlv(
 	return QDF_STATUS_SUCCESS;
 }
 
+static QDF_STATUS nan_peer_params_cmd_tlv(wmi_unified_t wmi_handle,
+					  struct nan_peer_params_req *req)
+{
+	uint16_t len;
+	wmi_buf_t buf;
+	uint8_t *tlv_ptr;
+	QDF_STATUS status;
+	wmi_nan_peer_params_cmd_fixed_param *cmd;
+	uint32_t peer_caps_ie_len_aligned;
+
+	if (!req) {
+		wmi_err("Invalid parameters");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	/* Calculate aligned length for capability IEs */
+	peer_caps_ie_len_aligned = qdf_roundup(req->peer_cap_len, 4);
+
+	/* Total length */
+	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE + peer_caps_ie_len_aligned;
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_nan_peer_params_cmd_fixed_param *)wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_nan_peer_params_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+				wmi_nan_peer_params_cmd_fixed_param));
+
+	cmd->vdev_id = req->vdev_id;
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(req->peer_nmi_addr.bytes,
+				   &cmd->peer_nmi_addr);
+	WMI_CHAR_ARRAY_TO_MAC_ADDR(req->peer_ndi_mac_addr.bytes,
+				   &cmd->peer_ndi_macaddr);
+	cmd->peer_flags = req->peer_flags;
+	cmd->peer_caps_ie_len = req->peer_cap_len;
+
+	tlv_ptr = (uint8_t *)&cmd[1];
+
+	/* Pack capability IEs data */
+	WMITLV_SET_HDR(tlv_ptr, WMITLV_TAG_ARRAY_BYTE,
+		       peer_caps_ie_len_aligned);
+	if (req->peer_cap_len && req->peer_cap) {
+		qdf_mem_copy(&tlv_ptr[WMI_TLV_HDR_SIZE], req->peer_cap,
+			     req->peer_cap_len);
+	}
+
+	wmi_debug("vdev_id=%d, peer_nmi_addr=" QDF_MAC_ADDR_FMT
+		  ", peer_ndi_mac_addr=" QDF_MAC_ADDR_FMT
+		  ", peer_flags=0x%x, peer_caps_ie_len=%d",
+		  req->vdev_id, QDF_MAC_ADDR_REF(req->peer_nmi_addr.bytes),
+		  QDF_MAC_ADDR_REF(req->peer_ndi_mac_addr.bytes),
+		  cmd->peer_flags, cmd->peer_caps_ie_len);
+
+	wmi_mtrace(WMI_NAN_PEER_PARAMS_CMDID, req->vdev_id, 0);
+	status = wmi_unified_cmd_send(wmi_handle, buf, len,
+				      WMI_NAN_PEER_PARAMS_CMDID);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		wmi_err("WMI_NAN_PEER_PARAMS_CMDID failed, ret: %d", status);
+		wmi_buf_free(buf);
+	}
+
+	return status;
+}
+
 /**
  * wmi_nan_attach_schedule_ops_tlv() - Attach NAN schedule ops
  * @ops: pointer to wmi_ops structure
@@ -2100,6 +2167,7 @@ static void wmi_nan_attach_schedule_ops_tlv(struct wmi_ops *ops)
 					extract_nan_local_schedule_cnf_tlv;
 	ops->send_nan_peer_schedule_cmd = nan_peer_schedule_cmd_tlv;
 	ops->extract_nan_peer_schedule_cnf = extract_nan_peer_schedule_cnf_tlv;
+	ops->send_nan_peer_params_cmd = nan_peer_params_cmd_tlv;
 }
 #else
 /**
