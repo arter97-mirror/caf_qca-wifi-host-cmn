@@ -34,6 +34,25 @@
 /* Subcommands */
 #define ANDROID_NL80211_SUBCMD_GET_PWRSTATS 1
 
+#ifdef WLAN_FEATURE_STA_BEACON_LOSS_CONFIG
+#define ANDROID_NL80211_SUBCMD_SET_STA_BEACON_CONFIG 2
+#define ANDROID_NL80211_SUBCMD_GET_STA_BEACON_CONFIG 3
+
+/**
+ * @enum WIFI_STA_BEACON_CONFIG_ATTRIBUTE - Attributes used in the nested
+ * NL80211_ATTR_VENDOR_DATA for beacon configuration commands.
+ */
+typedef enum {
+	WIFI_STA_BEACON_CONFIG_ATTR_INVALID = 0,
+	/* Data Type: u32 (4 bytes).
+	 * Description: The duration (in seconds) of continuous beacons loss
+	 * before triggering disconnection.
+	 */
+	WIFI_STA_BEACON_CONFIG_ATTR_MISS_TIMEOUT_SEC = 1,
+	WIFI_STA_BEACON_CONFIG_ATTR_MAX = 2
+} WIFI_STA_BEACON_CONFIG_ATTRIBUTE;
+#endif
+
 /*
  * Maximum number of Wi-Fi cores for which power statistics can be reported.
  */
