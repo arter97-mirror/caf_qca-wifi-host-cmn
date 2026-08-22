@@ -1613,6 +1613,22 @@ bool wlan_cm_is_eht_allowed_for_current_security(struct wlan_objmgr_psoc *psoc,
 		if (WLAN_CRYPTO_IS_AKM_ENTERPRISE(neg_sec_info->key_mgmt))
 			return true;
 
+		/* Allow EPPKE and 802.1x auth modes (e.g. OSEN/WPA2-Enterprise
+		 * in auth mode) similar to enterprise AKM.
+		 */
+		mlme_debug("akm_suites:0x%x rsn_caps:0x%x auth_type:0x%x", neg_sec_info->key_mgmt,
+			   neg_sec_info->rsn_caps,
+			   neg_sec_info->authmodeset);
+		if (QDF_HAS_PARAM(neg_sec_info->authmodeset,
+				  WLAN_CRYPTO_AUTH_EPPKE) ||
+		    QDF_HAS_PARAM(neg_sec_info->authmodeset,
+				  WLAN_CRYPTO_AUTH_8021X_IN_AUTH) ||
+		    QDF_HAS_PARAM(neg_sec_info->key_mgmt, WLAN_CRYPTO_KEY_MGMT_EPPKE)) {
+			mlme_debug("auth_mode:0x%x EPPKE or 8021X over auth",
+				   neg_sec_info->authmodeset);
+			return true;
+		}
+
 		/* For APs which are both WPA3 and WPA2, only check WPA3 as it
 		 * is the more secure AKM.
 		 */
