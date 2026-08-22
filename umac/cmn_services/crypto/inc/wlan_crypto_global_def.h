@@ -241,7 +241,7 @@ typedef enum wlan_crypto_rsn_cap {
  *
  * @WLAN_CRYPTO_RSNX_CAP_RSVD_16: Reserved (bit 16).
  * @WLAN_CRYPTO_RSNX_CAP_RSVD_17: Reserved (bit 17).
- * @WLAN_CRYPTO_RSNX_CAP_RSVD_18: Reserved (bit 18).
+ * @WLAN_CRYPTO_RSNX_CAP_KEK_IN_PASN: KEK in PASN support (bit 18).
  * @WLAN_CRYPTO_RSNX_CAP_RSVD_19: Reserved (bit 19).
  * @WLAN_CRYPTO_RSNX_CAP_RSVD_20: Reserved (bit 20).
  *
@@ -315,7 +315,7 @@ enum wlan_crypto_rsnx_cap {
 
 	WLAN_CRYPTO_RSNX_CAP_RSVD_16         = BIT(16),
 	WLAN_CRYPTO_RSNX_CAP_RSVD_17         = BIT(17),
-	WLAN_CRYPTO_RSNX_CAP_RSVD_18         = BIT(18),
+	WLAN_CRYPTO_RSNX_CAP_KEK_IN_PASN     = BIT(18),
 	WLAN_CRYPTO_RSNX_CAP_RSVD_19         = BIT(19),
 	WLAN_CRYPTO_RSNX_CAP_RSVD_20         = BIT(20),
 
@@ -568,6 +568,7 @@ struct key_mgmt_list {
  * @rsnx_caps:          rsnx capability
  * @akm_list:           order of AKM present in RSN IE of Beacon/Probe response
  * @random_pmkid_cnt:   count of random PMKIDs to be added in assoc request
+ * @auth_algo:          Authentication algorithm
  *
  * This structure holds crypto params for peer or vdev
  */
@@ -585,6 +586,7 @@ struct wlan_crypto_params {
 	struct key_mgmt_list akm_list[WLAN_CRYPTO_KEY_MGMT_MAX];
 #endif
 	uint8_t random_pmkid_cnt;
+	uint32_t auth_algo;
 };
 
 /**
@@ -616,6 +618,7 @@ typedef enum wlan_crypto_param_type {
 	WLAN_CRYPTO_PARAM_KEY_MGMT,
 	WLAN_CRYPTO_PARAM_PMKSA,
 	WLAN_CRYPTO_PARAM_RANDOM_PMKID,
+	WLAN_CRYPTO_PARAM_AUTH_ALGO,
 } wlan_crypto_param_type;
 
 /**

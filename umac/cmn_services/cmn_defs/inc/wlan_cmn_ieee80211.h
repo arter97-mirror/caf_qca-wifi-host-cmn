@@ -635,6 +635,7 @@ enum ext_chan_offset {
  * @WLAN_ELEMID_INTERWORKING: Interworking IE
  * @WLAN_ELEMID_QOS_MAP: QOS MAP IE
  * @WLAN_ELEMID_XCAPS: Extended capability IE
+ * @WLAN_ELEMID_MIC: MIC IE
  * @WLAN_ELEMID_TPC: TPC IE
  * @WLAN_ELEMID_CCKM: CCKM IE
  * @WLAN_ELEMID_VHTCAP: VHT Capabilities
@@ -719,6 +720,7 @@ enum element_ie {
 	WLAN_ELEMID_INTERWORKING     = 107,
 	WLAN_ELEMID_QOS_MAP          = 110,
 	WLAN_ELEMID_XCAPS            = 127,
+	WLAN_ELEMID_MIC              = 140,
 	WLAN_ELEMID_TPC              = 150,
 	WLAN_ELEMID_CCKM             = 156,
 	WLAN_ELEMID_VHTCAP           = 191,

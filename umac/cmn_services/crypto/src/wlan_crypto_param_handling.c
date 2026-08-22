@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -209,4 +209,18 @@ QDF_STATUS wlan_crypto_set_random_pmkid(
 int32_t wlan_crypto_get_random_pmkid(struct wlan_crypto_params *crypto_params)
 {
 	return crypto_params->random_pmkid_cnt;
+}
+
+QDF_STATUS
+wlan_crypto_set_auth_algo(struct wlan_crypto_params *crypto_params,
+			  uint32_t value)
+{
+	crypto_params->auth_algo = value;
+
+	return QDF_STATUS_SUCCESS;
+}
+
+int32_t wlan_crypto_get_auth_algo(struct wlan_crypto_params *crypto_params)
+{
+	return crypto_params->auth_algo;
 }
