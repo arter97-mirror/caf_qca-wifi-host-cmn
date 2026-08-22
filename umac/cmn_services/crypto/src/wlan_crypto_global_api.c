@@ -4657,6 +4657,7 @@ wlan_crypto_reset_prarams(struct wlan_crypto_params *params)
 	params->mgmtcipherset = 0;
 	params->key_mgmt = 0;
 	params->rsn_caps = 0;
+	params->auth_algo = 0;
 }
 
 const uint8_t *
@@ -4900,8 +4901,6 @@ wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm)
 		return WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B_192;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B))
 		return WLAN_CRYPTO_KEY_MGMT_IEEE8021X_SUITE_B;
-	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_EPPKE))
-		return WLAN_CRYPTO_KEY_MGMT_EPPKE;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY))
 		return WLAN_CRYPTO_KEY_MGMT_FT_SAE_EXT_KEY;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY))
@@ -4910,6 +4909,8 @@ wlan_crypto_key_mgmt wlan_crypto_get_secure_akm_available(uint32_t akm)
 		return WLAN_CRYPTO_KEY_MGMT_FT_SAE;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_SAE))
 		return WLAN_CRYPTO_KEY_MGMT_SAE;
+	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_EPPKE))
+		return WLAN_CRYPTO_KEY_MGMT_EPPKE;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_OWE))
 		return WLAN_CRYPTO_KEY_MGMT_OWE;
 	else if (QDF_HAS_PARAM(akm, WLAN_CRYPTO_KEY_MGMT_DPP))
