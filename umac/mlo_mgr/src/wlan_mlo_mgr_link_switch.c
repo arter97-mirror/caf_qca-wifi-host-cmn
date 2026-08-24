@@ -1128,6 +1128,21 @@ mlo_mgr_link_switch_osif_notification(struct wlan_objmgr_vdev *vdev,
 			wlan_vdev_mlme_clear_mlo_link_vdev(vdev);
 			wlan_vdev_mlme_set_mlo_link_vdev(assoc_vdev);
 			lswitch_req->restore_vdev_flag = false;
+
+			/*
+			 * smd_handle_connect_success() moves this vdev's CM
+			 * into WLAN_CM_SS_SMD_ROAM_SYNC when it is the assoc
+			 * STA vdev and an SMD roam is in progress. During an
+			 * SMD add-link switch this vdev is flagged as a link
+			 * vdev for the switch's duration (see the pre-start
+			 * notify above), so its own connect-success fires
+			 * while it is still a link vdev and cannot be
+			 * redirected there. Now that the assoc/link flag has
+			 * just been restored to its correct value, invoke it
+			 * here instead so the redirect can still happen.
+			 */
+			if (wlan_cm_is_vdev_connected(vdev))
+				smd_handle_connect_success(vdev);
 		} else {
 			mlo_debug("OSIF deflink restore failed");
 		}
@@ -1389,9 +1404,6 @@ mlo_mgr_link_switch_connect_done_notify(struct wlan_objmgr_vdev *vdev,
 				vdev,
 				resp->connect_status);
 	}
-
-	if (QDF_IS_STATUS_SUCCESS(resp->connect_status))
-		smd_handle_connect_success(vdev);
 }
 
 QDF_STATUS mlo_mgr_link_reject_set_mac_addr_resp(struct wlan_objmgr_vdev *vdev,
