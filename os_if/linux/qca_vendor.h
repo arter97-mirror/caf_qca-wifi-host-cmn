@@ -1293,6 +1293,11 @@
  *
  *	The attributes used with this command are defined in
  *	enum qca_wlan_vendor_attr_tas.
+ *
+ * @QCA_NL80211_VENDOR_SUBCMD_PREDICTIVE_ROAMING: Vendor subcommand to
+ *	control and manage the predictive roaming feature. The attributes
+ *	used with this subcommand are defined in
+ *	&enum qca_wlan_vendor_attr_predictive_roaming.
  */
 enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
@@ -1593,6 +1598,7 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_TDLS_STATS = 277,
 	QCA_NL80211_VENDOR_SUBCMD_TDLS_REPORTING_CONFIG = 278,
 	QCA_NL80211_VENDOR_SUBCMD_TAS = 279,
+	QCA_NL80211_VENDOR_SUBCMD_PREDICTIVE_ROAMING = 284,
 };
 
 enum qca_wlan_vendor_tos {
@@ -14790,6 +14796,92 @@ enum qca_wlan_vendor_attr_get_sta_info {
 };
 
 /**
+ * enum qca_predictive_roam_operation - Operations for the predictive
+ * roaming vendor subcommand (%QCA_NL80211_VENDOR_SUBCMD_PREDICTIVE_ROAMING).
+ * The values of this enum are used in
+ * %QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_OPERATION_TYPE.
+ *
+ * @QCA_PREDICTIVE_ROAM_ENABLE: Enable the predictive roaming feature.
+ *	This is a simple on/off toggle; no additional attributes are required.
+ *	When enabled, the driver starts collecting predictive roaming stats.
+ *
+ * @QCA_PREDICTIVE_ROAM_DISABLE: Disable the predictive roaming feature.
+ *	This is a simple on/off toggle; no additional attributes are required.
+ *	The driver stops collecting predictive roaming metrics.
+ *
+ * @QCA_PREDICTIVE_ROAM_GET_STATS: Retrieve the predictive roaming
+ *	statistics. Valid only after %QCA_PREDICTIVE_ROAM_ENABLE has been
+ *	invoked. If invoked before %QCA_PREDICTIVE_ROAM_ENABLE or after
+ *	%QCA_PREDICTIVE_ROAM_DISABLE, the operation fails. The driver
+ *	returns cumulative metric counters since the STA associated, using
+ *	the attributes defined in &enum qca_wlan_vendor_attr_predictive_roaming.
+ */
+enum qca_predictive_roam_operation {
+	QCA_PREDICTIVE_ROAM_ENABLE = 0,
+	QCA_PREDICTIVE_ROAM_DISABLE = 1,
+	QCA_PREDICTIVE_ROAM_GET_STATS = 2,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_predictive_roaming - Attributes used with
+ * %QCA_NL80211_VENDOR_SUBCMD_PREDICTIVE_ROAMING.
+ *
+ * These attributes are used to control the predictive roaming feature and
+ * to retrieve the traffic metrics collected by the driver.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_OPERATION_TYPE: u8 attribute.
+ *	Specifies the operation to perform. The value must be one of the
+ *	values defined in &enum qca_predictive_roam_operation.
+ *	Mandatory for all %QCA_NL80211_VENDOR_SUBCMD_PREDICTIVE_ROAMING
+ *	requests.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_BW_PKT_COUNT: Array of nested
+ *	attributes. Each element reports per-bandwidth traffic statistics
+ *	collected since the STA associated. The bandwidth index follows
+ *	the values defined in enum nl80211_chan_width.
+ *	See &enum qca_wlan_vendor_attr_bw_pkt.
+ *	Only present in the response to %QCA_PREDICTIVE_ROAM_GET_STATS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_MAX_AVG_UL_DELAY: u32 attribute.
+ *	Maximum uplink packet delay in milliseconds. The driver periodically
+ *	samples the average uplink delay across all TX frames in each sampling
+ *	interval and maintains a rolling window of the most recent 10 such
+ *	samples. This attribute reports the maximum value across that window at
+ *	the time of the %QCA_PREDICTIVE_ROAM_GET_STATS request. An increasing
+ *	UL delay is used as a signal of link degradation by the predictive
+ *	roaming engine. Reports zero if no samples have been collected yet.
+ *	Only present in the response to %QCA_PREDICTIVE_ROAM_GET_STATS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_TX_RETRIES: u32 attribute.
+ *	Cumulative number of TX retries since the STA associated. A high
+ *	retry count indicates poor link quality and may trigger a predictive
+ *	roam.
+ *	Only present in the response to %QCA_PREDICTIVE_ROAM_GET_STATS.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_TX_PHY_RATE_AVERAGE: u32 attribute.
+ *	Average TX PHY rate in kbps. The driver periodically computes the
+ *	average TX PHY rate over each sampling interval and maintains a
+ *	rolling window of the most recent 10 such interval averages. This
+ *	attribute reports the mean of that window at the time of the
+ *	%QCA_PREDICTIVE_ROAM_GET_STATS request.
+ *	Reports zero if no samples have been collected yet.
+ *	Only present in the response to %QCA_PREDICTIVE_ROAM_GET_STATS.
+ */
+enum qca_wlan_vendor_attr_predictive_roaming {
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_OPERATION_TYPE = 1,
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_BW_PKT_COUNT = 2,
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_MAX_AVG_UL_DELAY = 3,
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_TX_RETRIES = 4,
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_TX_PHY_RATE_AVERAGE = 5,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_MAX =
+	QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_AFTER_LAST - 1,
+};
+
+/**
  * enum qca_disconnect_reason_codes - Specifies driver disconnect reason codes.
  * Used when the driver triggers the STA to disconnect from the AP.
  *
@@ -15616,12 +15708,14 @@ enum qca_wlan_vendor_attr_mcc_quota {
  * @QCA_WLAN_ROAM_STATS_INVOKE_REASON_NUD_FAILURE: Neighbor unreachable
  *  detection failed when the roam trigger.
  * @QCA_WLAN_ROAM_STATS_INVOKE_REASON_USER_SPACE: Invoke from user space.
+ * @QCA_WLAN_ROAM_STATS_INVOKE_REASON_PREDICTIVE: Invoke from the predictive
+ *  roaming engine.
  */
-
 enum qca_wlan_roam_stats_invoke_reason {
 	QCA_WLAN_ROAM_STATS_INVOKE_REASON_UNDEFINED = 0,
 	QCA_WLAN_ROAM_STATS_INVOKE_REASON_NUD_FAILURE = 1,
 	QCA_WLAN_ROAM_STATS_INVOKE_REASON_USER_SPACE = 2,
+	QCA_WLAN_ROAM_STATS_INVOKE_REASON_PREDICTIVE = 3,
 };
 
 /**
@@ -20230,7 +20324,8 @@ enum qca_wlan_vendor_attr_mcs_pkt {
 
 /**
  * enum qca_wlan_vendor_attr_bw_pkt - Attributes used by
- * %QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_BW_PKT_COUNT.
+ * %QCA_WLAN_VENDOR_ATTR_GET_STA_INFO_BW_PKT_COUNT and
+ * %QCA_WLAN_VENDOR_ATTR_PREDICTIVE_ROAM_BW_PKT_COUNT.
  *
  * @QCA_WLAN_VENDOR_ATTR_BW_PKT_BW_CHAN_WIDTH: u8 attribute. This
  * represents the value of bandwidth. This attribute uses values defined in
@@ -20246,6 +20341,10 @@ enum qca_wlan_vendor_attr_mcs_pkt {
  *
  * @QCA_WLAN_VENDOR_ATTR_BW_PKT_PAD: Attribute used for padding for 64-bit
  * alignment.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_BW_PKT_TX_MSDU_COUNT: u64 attribute. This represents
+ * the number of MSDUs transmitted with the bandwidth specified in
+ * %QCA_WLAN_VENDOR_ATTR_BW_PKT_BW_CHAN_WIDTH.
  */
 enum qca_wlan_vendor_attr_bw_pkt {
 	QCA_WLAN_VENDOR_ATTR_BW_PKT_INVALID = 0,
@@ -20253,6 +20352,7 @@ enum qca_wlan_vendor_attr_bw_pkt {
 	QCA_WLAN_VENDOR_ATTR_BW_PKT_TX_PACKET_COUNT = 2,
 	QCA_WLAN_VENDOR_ATTR_BW_PKT_RX_PACKET_COUNT = 3,
 	QCA_WLAN_VENDOR_ATTR_BW_PKT_PAD = 4,
+	QCA_WLAN_VENDOR_ATTR_BW_PKT_TX_MSDU_COUNT = 5,
 
 	QCA_WLAN_VENDOR_ATTR_BW_PKT_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_BW_PKT_MAX =
