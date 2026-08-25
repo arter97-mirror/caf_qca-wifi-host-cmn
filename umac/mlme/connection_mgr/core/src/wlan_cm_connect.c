@@ -2821,6 +2821,7 @@ void cm_update_per_peer_ucastcipher_crypto_params(struct wlan_objmgr_vdev *vdev,
 	neg_sec_info->ucastcipherset = ucastcipherset;
 }
 
+#ifdef WLAN_FEATURE_11BI_SECURITY
 #ifdef WLAN_FEATURE_SECURITY_PROFILE
 /**
  * cm_sp_ie_implies_eppke() - Check if AP Security Profile IE implies EPPKE.
@@ -2855,7 +2856,6 @@ cm_sp_ie_implies_eppke(struct scan_cache_entry *entry,
 }
 #endif /* WLAN_FEATURE_SECURITY_PROFILE */
 
-#ifdef WLAN_FEATURE_11BI_SECURITY
 /**
  * cm_strip_injected_eppke() - Remove EPPKE bits injected for candidate
  * expansion if the negotiated AP does not advertise EPPKE.
