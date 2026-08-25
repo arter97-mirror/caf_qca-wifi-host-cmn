@@ -5053,29 +5053,32 @@ struct wlan_uhr_dps_op_params {
 /**
  * struct wlan_uhr_npca_op_params - NPCA Operation Parameters field (6 octets)
  * @present:                        Indicates NPCA Operation Parameters present
- * @npca_primary_channel:           NPCA Primary Channel (B0..B3)
- * @npca_min_duration_threshold:    NPCA Minimum Duration Threshold (B4..B7)
- * @npca_switch_delay:              NPCA Switch Delay (B8..B13)
- * @npca_switch_back_delay:         NPCA Switch Back Delay (B14..B19)
- * @initial_npca_qsrc:              Initial NPCA QSRC (B20..B21)
- * @moplen_npca:                    MOPLEN NPCA (B22)
+ * @npca_primary_channel:           NPCA Primary Channel (B0..B7)
+ * @npca_min_duration_threshold:    NPCA Minimum Duration Threshold (B8..B11)
+ * @npca_switch_delay:              NPCA Switch Delay (B12..B17)
+ * @npca_switch_back_delay:         NPCA Switch Back Delay (B18..B23)
+ * @initial_npca_qsrc:              Initial NPCA QSRC (B24..B25)
+ * @moplen_npca:                    MOPLEN NPCA (B26)
  * @disabled_subchan_bmap_present:  NPCA Disabled Subchannel Bitmap
- *                                  Present (B23)
- * @reserved0:                      Reserved (B24..B31)
+ *                                  Present (B27)
+ * @reserved0:                      Reserved (B28..B31)
  * @disabled_subchannel_bitmap:     NPCA Disabled Subchannel Bitmap (B32..B47)
  *                                  (0 or 16 bits meaningful based on
  *                                  @disabled_subchan_bmap_present)
+ *
+ * Per 11bn D1.5: NPCA Primary Channel widened from 4 to 8 bits, shifting
+ * all subsequent subfields by 4 bits.
  */
 struct wlan_uhr_npca_op_params {
 	bool present;
-	uint64_t npca_primary_channel:4;
+	uint64_t npca_primary_channel:8;
 	uint64_t npca_min_duration_threshold:4;
 	uint64_t npca_switch_delay:6;
 	uint64_t npca_switch_back_delay:6;
 	uint64_t initial_npca_qsrc:2;
 	uint64_t moplen_npca:1;
 	uint64_t disabled_subchan_bmap_present:1;
-	uint64_t reserved0:8;
+	uint64_t reserved0:4;
 	uint64_t disabled_subchannel_bitmap:16;
 } qdf_packed;
 
@@ -5252,20 +5255,24 @@ struct wlan_uhr_op_ie {
 #define WLAN_UHR_DPS_MOBILE_AP_HCM_IDX     29
 #define WLAN_UHR_DPS_MOBILE_AP_HCM_BITS    1
 
+/*
+ * Per 11bn D1.5: NPCA Primary Channel widened from 4 to 8 bits, shifting
+ * all subsequent NPCA Operation Parameters subfields by 4 bits.
+ */
 /* NPCA Operation Parameters bit layout (6 octets) */
 #define WLAN_UHR_NPCA_PRIMARY_CH_IDX       0
-#define WLAN_UHR_NPCA_PRIMARY_CH_BITS      4
-#define WLAN_UHR_NPCA_MIN_DUR_TH_IDX       4
+#define WLAN_UHR_NPCA_PRIMARY_CH_BITS      8
+#define WLAN_UHR_NPCA_MIN_DUR_TH_IDX       8
 #define WLAN_UHR_NPCA_MIN_DUR_TH_BITS      4
-#define WLAN_UHR_NPCA_SWITCH_DELAY_IDX     8
+#define WLAN_UHR_NPCA_SWITCH_DELAY_IDX     12
 #define WLAN_UHR_NPCA_SWITCH_DELAY_BITS    6
-#define WLAN_UHR_NPCA_SWITCHBACK_DELAY_IDX 14
+#define WLAN_UHR_NPCA_SWITCHBACK_DELAY_IDX 18
 #define WLAN_UHR_NPCA_SWITCHBACK_DELAY_BITS 6
-#define WLAN_UHR_NPCA_INIT_QSRC_IDX        20
+#define WLAN_UHR_NPCA_INIT_QSRC_IDX        24
 #define WLAN_UHR_NPCA_INIT_QSRC_BITS       2
-#define WLAN_UHR_NPCA_MOPLEN_IDX           22
+#define WLAN_UHR_NPCA_MOPLEN_IDX           26
 #define WLAN_UHR_NPCA_MOPLEN_BITS          1
-#define WLAN_UHR_NPCA_DSBMP_PRESENT_IDX    23
+#define WLAN_UHR_NPCA_DSBMP_PRESENT_IDX    27
 #define WLAN_UHR_NPCA_DSBMP_PRESENT_BITS   1
 #define WLAN_UHR_NPCA_DSBMP_IDX            32
 #define WLAN_UHR_NPCA_DSBMP_BITS           16
