@@ -672,6 +672,80 @@ TRACE_EVENT(dp_tx_pp_attach_idle,
 		      __entry->pp, __entry->pool_id, __entry->from_ho,
 		      __entry->active_count, __entry->latency_ns)
 );
+#ifdef FEATURE_WIFI_TRANSPORT
+TRACE_EVENT(wifi_transport_tx_submit,
+	    TP_PROTO(uint16_t cookie, uint32_t skb_len, uint64_t ttp,
+		     uint32_t flush),
+	    TP_ARGS(cookie, skb_len, ttp, flush),
+	    TP_STRUCT__entry(
+		__field(uint16_t, cookie)
+		__field(uint32_t, skb_len)
+		__field(uint64_t, ttp)
+		__field(uint32_t, flush)
+	    ),
+	    TP_fast_assign(
+		__entry->cookie  = cookie;
+		__entry->skb_len = skb_len;
+		__entry->ttp     = ttp;
+		__entry->flush   = flush;
+	    ),
+	    TP_printk("cookie=%u skb_len=%u ttp=%llu flush=%u",
+		      __entry->cookie, __entry->skb_len, __entry->ttp,
+		      __entry->flush)
+);
+
+TRACE_EVENT(wifi_transport_tx_flush,
+	    TP_PROTO(uint32_t num_msgs, uint32_t num_bufs),
+	    TP_ARGS(num_msgs, num_bufs),
+	    TP_STRUCT__entry(
+		__field(uint32_t, num_msgs)
+		__field(uint32_t, num_bufs)
+	    ),
+	    TP_fast_assign(
+		__entry->num_msgs = num_msgs;
+		__entry->num_bufs = num_bufs;
+	    ),
+	    TP_printk("num_msgs=%u num_bufs=%u",
+		      __entry->num_msgs, __entry->num_bufs)
+);
+
+TRACE_EVENT(wifi_transport_tx_completion,
+	    TP_PROTO(uint16_t cookie, uint64_t ppdu_tx_tsf, uint8_t tx_status,
+		     uint8_t mcs),
+	    TP_ARGS(cookie, ppdu_tx_tsf, tx_status, mcs),
+	    TP_STRUCT__entry(
+		__field(uint16_t, cookie)
+		__field(uint64_t, ppdu_tx_tsf)
+		__field(uint8_t,  tx_status)
+		__field(uint8_t,  mcs)
+	    ),
+	    TP_fast_assign(
+		__entry->cookie      = cookie;
+		__entry->ppdu_tx_tsf = ppdu_tx_tsf;
+		__entry->tx_status   = tx_status;
+		__entry->mcs         = mcs;
+	    ),
+	    TP_printk("cookie=%u ppdu_tx_tsf=%llu tx_status=%u mcs=%u",
+		      __entry->cookie, __entry->ppdu_tx_tsf,
+		      __entry->tx_status, __entry->mcs)
+);
+
+TRACE_EVENT(wifi_transport_rx_indication,
+	    TP_PROTO(uint32_t num_bufs, uint32_t buf_len),
+	    TP_ARGS(num_bufs, buf_len),
+	    TP_STRUCT__entry(
+		__field(uint32_t, num_bufs)
+		__field(uint32_t, buf_len)
+	    ),
+	    TP_fast_assign(
+		__entry->num_bufs = num_bufs;
+		__entry->buf_len  = buf_len;
+	    ),
+	    TP_printk("num_bufs=%u buf_len=%u",
+		      __entry->num_bufs, __entry->buf_len)
+);
+#endif /* FEATURE_WIFI_TRANSPORT */
+
 #endif /* _QDF_TRACEPOINT_DEFS_H */
 
 /* Below should be outside the protection */

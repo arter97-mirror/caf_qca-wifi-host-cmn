@@ -890,4 +890,117 @@ void qdf_trace_dp_tdls_mac_selection(uint8_t vdev_active, int tdls_link_up)
 {
 	__qdf_trace_dp_tdls_mac_selection(vdev_active, tdls_link_up);
 }
+
+#ifdef FEATURE_WIFI_TRANSPORT
+/**
+ * qdf_trace_wifi_transport_tx_submit_enabled() - Check if
+ *  wifi_transport_tx_submit tracepoint is enabled
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_wifi_transport_tx_submit_enabled(void)
+{
+	return __qdf_trace_wifi_transport_tx_submit_enabled();
+}
+
+/**
+ * qdf_trace_wifi_transport_tx_submit() - Trace WiFi transport TX submit
+ * @cookie: HOST-assigned TX cookie from cookie_array[TP]
+ * @skb_len: Length of the skb payload copied into the TX CE buffer
+ * @ttp: Time-to-play TSF from TX metadata
+ * @flush: Non-zero if the caller requested an immediate CE0 flush
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_wifi_transport_tx_submit(uint16_t cookie, uint32_t skb_len,
+					uint64_t ttp, uint32_t flush)
+{
+	__qdf_trace_wifi_transport_tx_submit(cookie, skb_len, ttp, flush);
+}
+
+/**
+ * qdf_trace_wifi_transport_tx_flush_enabled() - Check if
+ *  wifi_transport_tx_flush tracepoint is enabled
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_wifi_transport_tx_flush_enabled(void)
+{
+	return __qdf_trace_wifi_transport_tx_flush_enabled();
+}
+
+/**
+ * qdf_trace_wifi_transport_tx_flush() - Trace WiFi transport TX flush burst
+ * @num_msgs: Number of CE0 framing messages sent
+ * @num_bufs: Total TX audio buffers across all messages
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_wifi_transport_tx_flush(uint32_t num_msgs, uint32_t num_bufs)
+{
+	__qdf_trace_wifi_transport_tx_flush(num_msgs, num_bufs);
+}
+
+/**
+ * qdf_trace_wifi_transport_tx_completion_enabled() - Check if
+ *  wifi_transport_tx_completion tracepoint is enabled
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_wifi_transport_tx_completion_enabled(void)
+{
+	return __qdf_trace_wifi_transport_tx_completion_enabled();
+}
+
+/**
+ * qdf_trace_wifi_transport_tx_completion() - Trace WiFi transport TX
+ *  completion from FW
+ * @cookie: TX descriptor cookie echoed by FW
+ * @ppdu_tx_tsf: PPDU TX start TSF from FW
+ * @tx_status: Transmission status (XPAN_TX_STATUS: success/failure/drop)
+ * @mcs: MCS rate at which the packet was transmitted
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_wifi_transport_tx_completion(uint16_t cookie,
+					    uint64_t ppdu_tx_tsf,
+					    uint8_t tx_status, uint8_t mcs)
+{
+	__qdf_trace_wifi_transport_tx_completion(cookie, ppdu_tx_tsf,
+						 tx_status, mcs);
+}
+
+/**
+ * qdf_trace_wifi_transport_rx_indication_enabled() - Check if
+ *  wifi_transport_rx_indication tracepoint is enabled
+ *
+ * Return: True if the tracepoint is enabled else false
+ */
+static inline
+bool qdf_trace_wifi_transport_rx_indication_enabled(void)
+{
+	return __qdf_trace_wifi_transport_rx_indication_enabled();
+}
+
+/**
+ * qdf_trace_wifi_transport_rx_indication() - Trace WiFi transport RX
+ *  audio payload delivery to .ko
+ * @num_bufs: Number of RX buffer entries in this indication
+ * @buf_len: Buffer length of the first RX entry; 0 if num_bufs is zero
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_wifi_transport_rx_indication(uint32_t num_bufs,
+					    uint32_t buf_len)
+{
+	__qdf_trace_wifi_transport_rx_indication(num_bufs, buf_len);
+}
+#endif /* FEATURE_WIFI_TRANSPORT */
 #endif /* _QDF_TRACEPOINT_H */
