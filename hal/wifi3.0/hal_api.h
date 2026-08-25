@@ -3959,4 +3959,22 @@ hal_srng_dst_get_num_avail_words(hal_soc_handle_t hal_soc_hdl,
 
 	return QDF_STATUS_SUCCESS;
 }
+
+/**
+ * hal_get_fw_qtime() - Read the FW QTimer hardware timestamp counter
+ * @hal_soc_hdl: HAL SoC handle
+ *
+ * Calls the chip-specific hal_get_fw_qtime ops registered at hal_attach.
+ *
+ * Return: 64-bit QTimer value, 0 if not supported
+ */
+static inline uint64_t hal_get_fw_qtime(hal_soc_handle_t hal_soc_hdl)
+{
+	struct hal_soc *hal = (struct hal_soc *)hal_soc_hdl;
+
+	if (!hal->ops->hal_get_fw_qtime)
+		return 0;
+	return hal->ops->hal_get_fw_qtime(hal);
+}
+
 #endif /* _HAL_APIH_ */
