@@ -5044,6 +5044,28 @@ uint16_t qdf_nbuf_get_ether_type(qdf_nbuf_t buf)
 }
 #endif
 
+/**
+ * qdf_nbuf_get_ether_dest_addr() - get pointer to Ethernet destination address
+ * @buf: Network buffer whose data starts at the Ethernet header
+ *
+ * Return: pointer to the 6-byte destination MAC field in the Ethernet header
+ */
+static inline const uint8_t *qdf_nbuf_get_ether_dest_addr(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_ether_dest_addr(qdf_nbuf_data(buf));
+}
+
+/**
+ * qdf_nbuf_get_ether_src_addr() - get pointer to Ethernet source address
+ * @buf: Network buffer whose data starts at the Ethernet header
+ *
+ * Return: pointer to the 6-byte source MAC field in the Ethernet header
+ */
+static inline const uint8_t *qdf_nbuf_get_ether_src_addr(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_get_ether_src_addr(qdf_nbuf_data(buf));
+}
+
 #ifdef BIG_ENDIAN_HOST
 static inline
 uint16_t qdf_nbuf_get_dot11_type(qdf_nbuf_t buf)
