@@ -517,6 +517,22 @@ ce_completed_recv_next_nolock_srng(struct CE_state *CE_state,
 		*per_transfer_contextp =
 			dest_ring->per_transfer_context[sw_index];
 
+	/* Populate bufferp from the dest ring descriptor.
+	 * The descriptor retains the DMA address written at enqueue time;
+	 * FW does not clear it after consuming the buffer.  This mirrors the
+	 * legacy path (ce_completed_recv_next_nolock) which reads buffer_addr
+	 * from dest_desc directly.  Without this, bufferp is uninitialised
+	 * stack garbage in callers that rely on it for repost (e.g. WiFi
+	 * Transport CE5 recv callback).
+	 */
+	if (bufferp) {
+		struct ce_srng_dest_desc *desc =
+			&((struct ce_srng_dest_desc *)
+			  dest_ring->base_addr_owner_space)[sw_index];
+		*bufferp = (qdf_dma_addr_t)desc->buffer_addr_lo |
+			  ((qdf_dma_addr_t)(desc->buffer_addr_hi & 0xFF) << 32);
+	}
+
 	dest_ring->per_transfer_context[sw_index] = 0;  /* sanity */
 
 	/* Update sw_index */

@@ -556,6 +556,12 @@ struct hif_softc {
 	struct qdf_mem_multi_page_t dl_recv_pages;
 	int dl_recv_pipe_num;
 #endif
+#ifdef FEATURE_WIFI_TRANSPORT
+	struct CE_handle  *wt_tx_ce; /* PIPEDIR_OUT set by register_callbacks */
+	struct CE_handle  *wt_rx_ce; /* PIPEDIR_IN  set by register_callbacks */
+	hif_wt_tx_done_cb  wt_tx_done_cb;
+	hif_wt_rx_ready_cb wt_rx_ready_cb;
+#endif
 #ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
 	struct wbuff_mod_handle *wbuff_handle;
 #endif
