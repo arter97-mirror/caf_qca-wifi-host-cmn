@@ -1455,6 +1455,12 @@ struct wlan_mlo_mld_cap {
  * @nstr_status_update_support: NSTR Status Update Support
  * @emlsr_one_link_support: EMLSR Enablement On One Link Support
  * @btm_recommended_for_multi_ap: BTM MLD Recommendation For Multiple APs Supp
+ * @multi_link_power_mgmt_support: Multi Link Power Management Support
+ * @enhanced_group_key_delivery_support: Enhanced Group Key Delivery Support
+ * @max_supported_dl_ba_bitmap_length: Max Supported DL BA Bitmap Length
+ * @dl_dual_ba_support: DL Dual BA Support
+ * @negotiated_ttlm_discard_exception_support: Negotiated TTLM Discard
+ *  Exception Support
  * @reserved: Reserved
  */
 struct wlan_mlo_ext_mld_cap {
@@ -1463,7 +1469,12 @@ struct wlan_mlo_ext_mld_cap {
 		 nstr_status_update_support:1,
 		 emlsr_one_link_support:1,
 		 btm_recommended_for_multi_ap:1,
-		 reserved:24;
+		 multi_link_power_mgmt_support:1,
+		 enhanced_group_key_delivery_support:1,
+		 max_supported_dl_ba_bitmap_length:3,
+		 dl_dual_ba_support:1,
+		 negotiated_ttlm_discard_exception_support:1,
+		 reserved:17;
 };
 
 #ifdef WLAN_FEATURE_11BE_MLO_TTLM

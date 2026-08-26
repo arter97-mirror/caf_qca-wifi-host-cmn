@@ -16761,6 +16761,21 @@ extract_mac_phy_ext_mldcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
 	param->ext_mldcap.btm_recommended_for_multi_ap =
 			WMI_EXT_MLD_BTM_MLD_RECOMMEND_FOR_MULTI_AP_SUPPORT_GET(
 					mac_phy_caps->ext_mld_capability);
+	param->ext_mldcap.multi_link_power_mgmt_support =
+			WMI_EXT_MLD_MULTI_LINK_POWER_MGMT_SUPPORT_GET(
+					mac_phy_caps->ext_mld_capability);
+	param->ext_mldcap.enhanced_group_key_delivery_support =
+			WMI_EXT_MLD_ENHANCED_GROUP_KEY_DELIVERY_SUPPORT_GET(
+					mac_phy_caps->ext_mld_capability);
+	param->ext_mldcap.max_supported_dl_ba_bitmap_length =
+			WMI_EXT_MLD_MAX_SUPPORTED_DL_BA_BITMAP_LENGTH_GET(
+					mac_phy_caps->ext_mld_capability);
+	param->ext_mldcap.dl_dual_ba_support =
+			WMI_EXT_MLD_DL_DUAL_BA_SUPPORT_GET(
+					mac_phy_caps->ext_mld_capability);
+	param->ext_mldcap.negotiated_ttlm_discard_exception_support =
+			WMI_EXT_MLD_NEGOTIATED_TTLM_DISCARD_EXCEPTION_SUPPORT_GET(
+					mac_phy_caps->ext_mld_capability);
 }
 #else
 static void extract_mac_phy_emlcap(struct wlan_psoc_host_mac_phy_caps_ext2 *param,
