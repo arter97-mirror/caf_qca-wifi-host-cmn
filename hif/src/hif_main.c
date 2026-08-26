@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1214,6 +1214,7 @@ struct hif_opaque_softc *hif_open(qdf_device_t qdf_ctx,
 	scn->qdf_dev = qdf_ctx;
 	scn->hif_con_param = mode;
 	qdf_atomic_init(&scn->active_tasklet_cnt);
+	qdf_atomic_init(&scn->active_oom_work_cnt);
 
 	qdf_atomic_init(&scn->active_grp_tasklet_cnt);
 	qdf_atomic_init(&scn->link_suspended);
@@ -1347,18 +1348,19 @@ static inline int hif_get_num_pending_work(struct hif_softc *scn)
 QDF_STATUS hif_try_complete_tasks(struct hif_softc *scn)
 {
 	uint32_t task_drain_wait_cnt = 0;
-	int tasklet = 0, grp_tasklet = 0, work = 0;
+	int tasklet = 0, grp_tasklet = 0, work = 0, oom_work = 0;
 
 	while ((tasklet = hif_get_num_active_tasklets(scn)) ||
 	       (grp_tasklet = hif_get_num_active_grp_tasklets(scn)) ||
-	       (work = hif_get_num_pending_work(scn))) {
+	       (work = hif_get_num_pending_work(scn)) ||
+		(oom_work = hif_get_num_active_oom_work(scn))) {
 		if (++task_drain_wait_cnt > HIF_TASK_DRAIN_WAIT_CNT) {
-			hif_err("pending tasklets %d grp tasklets %d work %d",
-				tasklet, grp_tasklet, work);
+			hif_err("pending tasklets %d grp tasklets %d work %d oom work %d",
+				tasklet, grp_tasklet, work, oom_work);
 			return QDF_STATUS_E_FAULT;
 		}
-		hif_info("waiting for tasklets %d grp tasklets %d work %d",
-			 tasklet, grp_tasklet, work);
+		hif_info("waiting for tasklets %d grp tasklets %d work %d oom_work %d",
+			 tasklet, grp_tasklet, work, oom_work);
 		msleep(10);
 	}
 
