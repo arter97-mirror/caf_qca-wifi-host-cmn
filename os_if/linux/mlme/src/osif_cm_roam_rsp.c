@@ -629,7 +629,8 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 				sizeof(uint8_t) + REPLAY_CTR_LEN +
 				roaming_info->kck_len + roaming_info->kek_len +
 				sizeof(uint16_t) + sizeof(uint8_t) +
-				(10 * NLMSG_HDRLEN) + fils_params_len,
+				(10 * NLMSG_HDRLEN) + fils_params_len +
+				nla_total_size(roaming_info->kde_data_len),
 				QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH_INDEX,
 				qdf_mem_malloc_flags());
 	} else {
@@ -640,7 +641,8 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 				sizeof(uint8_t) + REPLAY_CTR_LEN +
 				roaming_info->kck_len + roaming_info->kek_len +
 				sizeof(uint16_t) + sizeof(uint8_t) +
-				(10 * NLMSG_HDRLEN) + fils_params_len,
+				(10 * NLMSG_HDRLEN) + fils_params_len +
+				nla_total_size(roaming_info->kde_data_len),
 				QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH_INDEX,
 				qdf_mem_malloc_flags());
 	}
@@ -753,6 +755,22 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 			osif_err("nla put fail");
 			goto nla_put_failure;
 		}
+	}
+
+	/* Send KDE data if present */
+	if (roaming_info->kde_data_len) {
+		if (nla_put(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_AP_KDE_INFO,
+			    roaming_info->kde_data_len,
+			    roaming_info->kde_data)) {
+			osif_err("KDE data send fail, len: %d",
+				 roaming_info->kde_data_len);
+			goto nla_put_failure;
+		}
+		osif_debug("KDE data sent to userspace, len: %d",
+			   roaming_info->kde_data_len);
+		QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_HDD, QDF_TRACE_LEVEL_DEBUG,
+				   roaming_info->kde_data,
+				   roaming_info->kde_data_len);
 	}
 
 	if (wlan_vdev_mlme_is_mlo_vdev(vdev)) {
