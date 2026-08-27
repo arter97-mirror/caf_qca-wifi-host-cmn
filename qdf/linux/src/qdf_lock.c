@@ -525,6 +525,7 @@ qdf_export_symbol(__qdf_runtime_lock_init);
 void qdf_runtime_lock_deinit(qdf_runtime_lock_t *lock)
 {
 	hif_runtime_lock_deinit(lock->lock);
+	lock->lock = NULL;
 }
 qdf_export_symbol(qdf_runtime_lock_deinit);
 
