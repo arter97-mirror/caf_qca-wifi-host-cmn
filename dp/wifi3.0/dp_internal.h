@@ -6968,4 +6968,22 @@ dp_is_rxdma2sw_rings_enabled(struct dp_soc *soc)
 		(soc->repurpose_to_rxdma2sw_supported &&
 		 soc->repurpose_to_rxdma2sw_done);
 }
+
+/**
+ * dp_rx_sw_cookie_2_rx_desc() - Get RX descriptor from SW cookie
+ * @soc_hdl: CDP SoC handle
+ * @sw_cookie: software cookie returned by FW
+ *
+ * Return: pointer to dp_rx_desc, or NULL
+ */
+static inline struct dp_rx_desc *
+dp_rx_sw_cookie_2_rx_desc(struct cdp_soc_t *soc_hdl, uint32_t sw_cookie)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	if (qdf_unlikely(!soc->arch_ops.dp_rx_desc_cookie_2_va))
+		return NULL;
+	return soc->arch_ops.dp_rx_desc_cookie_2_va(soc, sw_cookie);
+}
+
 #endif /* #ifndef _DP_INTERNAL_H_ */
