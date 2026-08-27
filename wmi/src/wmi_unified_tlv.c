@@ -17978,9 +17978,11 @@ static void reg_print_ap_power_type_6ghz(enum reg_6g_ap_type ap_type)
 	case REG_VERY_LOW_POWER_AP:
 		wmi_nofl_debug("AP Power type %s", "VERY LOW POWER INDOOR");
 		break;
+#ifdef WLAN_FEATURE_GVP
 	case REG_GEO_FENCED_VARIABLE_POWER_AP:
 		wmi_nofl_debug("AP Power type %s", "GEO-FENCED VARIABLE POWER");
 		break;
+#endif
 	default:
 		wmi_nofl_debug("Invalid AP Power type %u", ap_type);
 	}
@@ -23611,16 +23613,35 @@ bool is_both_psd_eirp_support_present_for_sp(wmi_unified_t wmi_handle,
 		param->num_psd_pwr_levels && param->num_eirp_pwr_levels);
 }
 
+#ifdef WLAN_FEATURE_GVP
+/**
+ * get_wmi_gvp_power_mode() - Get WMI 6 GHz power mode for a GVP override
+ * @power_type_6ghz: current 6 GHz AP power type
+ *
+ * Return: WMI_6GHZ_REG_PWRMODE_GVP when @power_type_6ghz is
+ * REG_GEO_FENCED_VARIABLE_POWER_AP, else @power_type_6ghz unchanged
+ */
+static inline uint32_t get_wmi_gvp_power_mode(uint32_t power_type_6ghz)
+{
+	if (power_type_6ghz == REG_GEO_FENCED_VARIABLE_POWER_AP)
+		return WMI_6GHZ_REG_PWRMODE_GVP;
+
+	return power_type_6ghz;
+}
+#else
+static inline uint32_t get_wmi_gvp_power_mode(uint32_t power_type_6ghz)
+{
+	return power_type_6ghz;
+}
+#endif
+
 #if defined(CONFIG_REG_CLIENT) && defined(CONFIG_BAND_6GHZ)
 static uint32_t get_wmi_6ghz_power_mode(uint32_t power_type_6ghz)
 {
 	if (power_type_6ghz == REG_INDOOR_ENABLED_AP)
 		return 4;
 
-	if (power_type_6ghz == REG_GEO_FENCED_VARIABLE_POWER_AP)
-		return WMI_6GHZ_REG_PWRMODE_GVP;
-
-	return power_type_6ghz;
+	return get_wmi_gvp_power_mode(power_type_6ghz);
 }
 #else
 static inline uint32_t get_wmi_6ghz_power_mode(uint32_t power_type_6ghz)
