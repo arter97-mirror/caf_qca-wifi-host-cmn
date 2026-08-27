@@ -860,12 +860,16 @@ __qdf_nbuf_page_pool_alloc(qdf_device_t osdev, size_t size, int reserve,
 			   struct page **page, const char *func, uint32_t line)
 {
 	struct sk_buff *skb;
+	size_t max_size = PAGE_SIZE << pp->p.order;
 
 	if (align)
 		size += (align - 1);
 
 	size = SKB_DATA_ALIGN(size) +
 		SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
+
+	if (size > max_size)
+		return NULL;
 
 	*offset = 0;
 
