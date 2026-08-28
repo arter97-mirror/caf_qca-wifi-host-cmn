@@ -1255,6 +1255,32 @@ static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
 }
 
 #define TX_BUF_ALIGN 256
+
+#if defined(IPA_OFFLOAD) && !defined(DP_RX_BUFFER_OPTIMIZATION)
+/**
+ * dp_tx_get_pp_align() - Return TX page pool buffer alignment
+ * @is_intrabss: true if the packet is an intrabss forwarded packet
+ *
+ * RX page pool buffers (4K PAGE_SIZE) are always placed at a page
+ * boundary, so their DMA addresses are inherently 256-byte aligned.
+ * For intrabss forwarded packets skip the TX_BUF_ALIGN padding to avoid
+ * wasting headroom. For all other packets return TX_BUF_ALIGN (256).
+ *
+ * Return: 0 for intrabss packets, TX_BUF_ALIGN otherwise
+ */
+static inline int dp_tx_get_pp_align(bool is_intrabss)
+{
+	if (is_intrabss)
+		return 0;
+	return TX_BUF_ALIGN;
+}
+#else
+static inline int dp_tx_get_pp_align(bool is_intrabss)
+{
+	return TX_BUF_ALIGN;
+}
+#endif
+
 /**
  * dp_tx_page_pool_alloc_from_pool() - Allocate nbuf from specific pool
  * @pp_params: Pool parameters
@@ -1262,18 +1288,21 @@ static void dp_tx_pp_orig_nbuf_free(struct dp_tx_desc_s *tx_desc)
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
  * @page: pointer to store page start address (output parameter)
+ * @is_intrabss: true if packet is an intrabss forwarded packet
  *
  * Helper function to allocate nbuf from a specific page pool.
- * Extracted to eliminate goto and improve code clarity.
+ * Alignment is determined internally via dp_tx_get_pp_align().
  *
  * Return: Allocated nbuf on success, NULL on failure
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_alloc_from_pool(struct dp_tx_pp_params *pp_params,
 				qdf_device_t osdev, size_t size,
-				uint32_t *offset, qdf_page_t *page)
+				uint32_t *offset, qdf_page_t *page,
+				bool is_intrabss)
 {
-	return qdf_nbuf_page_pool_alloc(osdev, size, 0, TX_BUF_ALIGN,
+	return qdf_nbuf_page_pool_alloc(osdev, size, 0,
+					dp_tx_get_pp_align(is_intrabss),
 					pp_params->pp, offset, page);
 }
 
@@ -1349,6 +1378,7 @@ dp_tx_page_pool_update_cache(struct dp_tx_page_pool *tx_pp,
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
  * @page: pointer to store the start address of the page (output parameter)
+ * @is_intrabss: is the source nbuf from intrabss
  *
  * Helper function to attach an idle pool from idle lists to active list.
  * Tries higher-order pools first, then falls back to lower-order pools.
@@ -1358,7 +1388,8 @@ dp_tx_page_pool_update_cache(struct dp_tx_page_pool *tx_pp,
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
-			    size_t size, uint32_t *offset, qdf_page_t *page)
+			    size_t size, uint32_t *offset, qdf_page_t *page,
+			    bool is_intrabss)
 {
 	struct dp_tx_pp_params *idle_pp = NULL;
 	struct dp_tx_pp_params *new_active_pp, *next;
@@ -1373,7 +1404,8 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 			continue;
 
 		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp, osdev, size,
-						       offset, page);
+						       offset, page,
+						       is_intrabss);
 		if (qdf_likely(nbuf)) {
 			qdf_list_remove_node(&tx_pp->inactive_list,
 					     &idle_pp->node);
@@ -1386,7 +1418,8 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 	if (qdf_likely(tx_pp->idle_pool_ho_cnt > 0)) {
 		idle_pp = &tx_pp->idle_pool_ho[tx_pp->idle_pool_ho_cnt - 1];
 		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp, osdev, size,
-						       offset, page);
+						       offset, page,
+						       is_intrabss);
 		if (qdf_likely(nbuf)) {
 			tx_pp->idle_pool_ho_cnt--;
 			goto attach_pool;
@@ -1397,7 +1430,8 @@ dp_tx_page_pool_attach_idle(struct dp_tx_page_pool *tx_pp, qdf_device_t osdev,
 	if (qdf_likely(tx_pp->idle_pool_lo_cnt > 0)) {
 		idle_pp = &tx_pp->idle_pool_lo[tx_pp->idle_pool_lo_cnt - 1];
 		nbuf = dp_tx_page_pool_alloc_from_pool(idle_pp, osdev, size,
-						       offset, page);
+						       offset, page,
+						       is_intrabss);
 		if (qdf_likely(nbuf)) {
 			tx_pp->idle_pool_lo_cnt--;
 			goto attach_pool;
@@ -1428,6 +1462,7 @@ attach_pool:
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
  * @page: pointer to store the page start address (output parameter)
+ * @is_intrabss: true if packet is an intrabss forwarded packet
  *
  * Helper function to attempt growing the last pool in the active list.
  * Allocates the requested buffer directly instead of just a page.
@@ -1438,7 +1473,8 @@ static inline qdf_nbuf_t
 dp_tx_page_pool_try_grow_last(struct dp_tx_page_pool *tx_pp,
 			      struct dp_tx_pp_params *pp_params,
 			      qdf_device_t osdev, size_t size,
-			      uint32_t *offset, qdf_page_t *page)
+			      uint32_t *offset, qdf_page_t *page,
+			      bool is_intrabss)
 {
 	qdf_nbuf_t nbuf;
 
@@ -1456,7 +1492,7 @@ dp_tx_page_pool_try_grow_last(struct dp_tx_page_pool *tx_pp,
 
 	/* Try to allocate the requested buffer */
 	nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev, size,
-					       offset, page);
+					       offset, page, is_intrabss);
 	if (qdf_likely(nbuf)) {
 		tx_pp->grow_successes++;
 		return nbuf;
@@ -1542,6 +1578,7 @@ dp_tx_trace_attach_idle(struct dp_tx_page_pool *tx_pp,
  * @size: Size of buffer to allocate
  * @offset: Pointer to store offset (output parameter)
  * @page: pointer to store page start address (output parameter)
+ * @is_intrabss: true if packet is an intrabss forwarded packet
  *
  * Helper function to select and allocated from page pool
  *
@@ -1549,7 +1586,8 @@ dp_tx_trace_attach_idle(struct dp_tx_page_pool *tx_pp,
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
-			   size_t size, uint32_t *offset, qdf_page_t *page)
+			   size_t size, uint32_t *offset, qdf_page_t *page,
+			   bool is_intrabss)
 {
 	struct dp_tx_pp_params *pp_params;
 	qdf_device_t osdev = soc->osdev;
@@ -1567,8 +1605,9 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 	/* FAST PATH: cache check (most common case ~90%) */
 	pp_params = tx_pp->last_used_pool;
 	if (qdf_likely(pp_params && !qdf_page_pool_empty(pp_params->pp))) {
-		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev, size,
-						       offset, page);
+		nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
+						       size, offset,
+						       page, is_intrabss);
 		if (qdf_likely(nbuf)) {
 			qdf_nbuf_set_tx_page_pool_id(nbuf, pp_params->pool_id);
 			dp_tx_trace_alloc(pp_params, *offset, true,
@@ -1589,7 +1628,9 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 
 		if (qdf_likely(!qdf_page_pool_empty(pp_params->pp))) {
 			nbuf = dp_tx_page_pool_alloc_from_pool(pp_params, osdev,
-							       size, offset, page);
+							       size, offset,
+							       page,
+							       is_intrabss);
 			if (qdf_likely(nbuf)) {
 				qdf_nbuf_set_tx_page_pool_id(nbuf, pp_params->pool_id);
 				dp_tx_trace_alloc(pp_params, *offset, false,
@@ -1604,8 +1645,9 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 	/* All active pools empty. Try to grow last pool. */
 	if (qdf_likely(tx_pp->active_pool_count)) {
 		pp_params = &tx_pp->active_pool[tx_pp->active_pool_count - 1];
-		nbuf = dp_tx_page_pool_try_grow_last(tx_pp, pp_params, osdev,
-						     size, offset, page);
+		nbuf = dp_tx_page_pool_try_grow_last(tx_pp, pp_params,
+						     osdev, size, offset,
+						     page, is_intrabss);
 		if (qdf_likely(nbuf)) {
 			qdf_nbuf_set_tx_page_pool_id(nbuf, pp_params->pool_id);
 			dp_tx_trace_grow(pp_params, start_time, trace_enabled);
@@ -1616,7 +1658,8 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
 	}
 
 	/* Last resort: Attach idle pool */
-	nbuf = dp_tx_page_pool_attach_idle(tx_pp, osdev, size, offset, page);
+	nbuf = dp_tx_page_pool_attach_idle(tx_pp, osdev, size, offset,
+					   page, is_intrabss);
 
 	dp_tx_trace_attach_idle(tx_pp, start_time, trace_enabled);
 
@@ -1628,6 +1671,7 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
  * @tx_pp: TX page pool handle
  * @soc: SOC handle
  * @size: Size of buffer to allocate
+ * @is_intrabss: true if packet is an intrabss forwarded packet
  *
  * Allocates nbuf from page pool and sets nbuff CB paddr.
  *
@@ -1636,7 +1680,8 @@ dp_tx_page_pool_alloc_nbuf(struct dp_tx_page_pool *tx_pp, struct dp_soc *soc,
  */
 static inline qdf_nbuf_t
 dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
-			       struct dp_soc *soc, size_t size)
+			       struct dp_soc *soc, size_t size,
+			       bool is_intrabss)
 {
 	qdf_nbuf_t nbuf;
 	qdf_page_t page = NULL;
@@ -1645,7 +1690,8 @@ dp_tx_page_pool_nbuf_alloc_map(struct dp_tx_page_pool *tx_pp,
 	if (qdf_unlikely(!tx_pp))
 		return NULL;
 
-	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset, &page);
+	nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset,
+					  &page, is_intrabss);
 	if (!nbuf)
 		return NULL;
 
@@ -1736,7 +1782,8 @@ dp_tx_page_pool_handle_nbuf_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset, &page);
+	pp_nbuf = dp_tx_page_pool_alloc_nbuf(tx_pp, soc, size, &offset, &page,
+					     msdu_info->is_intrabss);
 	if (qdf_likely(pp_nbuf)) {
 		tx_pp->alloc_success++;
 		dp_tx_page_pool_inc_usage(tx_pp);
@@ -6835,7 +6882,8 @@ dp_tx_sw_tso_prepare_nbuf_list(struct dp_soc *soc,
 			new_nbuf =
 				dp_tx_page_pool_nbuf_alloc_map(tx_pp, soc,
 							       ori_gso_size +
-							       eit_hdr_len);
+							       eit_hdr_len,
+							       false);
 			if (qdf_unlikely(!new_nbuf))
 				break;
 
@@ -7117,8 +7165,8 @@ dp_tx_sw_tso_handler(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 }
 #endif
 
-qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-		      qdf_nbuf_t nbuf)
+qdf_nbuf_t __dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			qdf_nbuf_t nbuf, bool is_intrabss)
 {
 	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	uint16_t peer_id = HTT_INVALID_PEER;
@@ -7148,6 +7196,10 @@ qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	vdev = soc->vdev_id_map[vdev_id];
 	if (qdf_unlikely(!vdev))
 		return nbuf;
+
+#ifdef DP_FEATURE_TX_PAGE_POOL
+	msdu_info.is_intrabss = is_intrabss;
+#endif
 
 	QDF_NBUF_CB_TX_VDEV_CTX(nbuf) = vdev_id;
 
@@ -7348,6 +7400,12 @@ send_multiple:
 		dp_tx_raw_prepare_unset(vdev->pdev->soc, nbuf);
 
 	return nbuf;
+}
+
+qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+		      qdf_nbuf_t nbuf)
+{
+	return __dp_tx_send(soc_hdl, vdev_id, nbuf, false);
 }
 
 qdf_nbuf_t dp_tx_send_vdev_id_check(struct cdp_soc_t *soc_hdl,

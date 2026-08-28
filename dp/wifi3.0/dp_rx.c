@@ -1570,8 +1570,8 @@ bool dp_rx_intrabss_mcbc_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 	if (QDF_IS_ADDR_BROADCAST(eh->ether_dhost))
 		nbuf_copy->pkt_type = PACKET_BROADCAST;
 	if (!soc->is_tx_pause &&
-	    !dp_tx_send((struct cdp_soc_t *)soc,
-			ta_peer->vdev->vdev_id, nbuf_copy)) {
+	    !__dp_tx_send((struct cdp_soc_t *)soc,
+			  ta_peer->vdev->vdev_id, nbuf_copy, true)) {
 		DP_PEER_PER_PKT_STATS_INC_PKT(ta_peer, rx.intra_bss.pkts, 1,
 					      len, link_id);
 		tid_stats->intrabss_cnt++;
@@ -1631,8 +1631,8 @@ bool dp_rx_intrabss_ucast_fwd(struct dp_soc *soc, struct dp_txrx_peer *ta_peer,
 	dp_classify_txpt_idx(soc, da_peer, nbuf);
 
 	/* Don't send packets if tx is paused */
-	if (!soc->is_tx_pause && !dp_tx_send((struct cdp_soc_t *)soc,
-					     tx_vdev_id, nbuf)) {
+	if (!soc->is_tx_pause && !__dp_tx_send((struct cdp_soc_t *)soc,
+					       tx_vdev_id, nbuf, true)) {
 		DP_PEER_PER_PKT_STATS_INC_PKT(ta_peer, rx.intra_bss.pkts, 1,
 					      len, link_id);
 	} else {

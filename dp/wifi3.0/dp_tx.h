@@ -257,6 +257,7 @@ struct dp_tx_queue {
  * @is_custom_flow_sel_valid: is custom_flow_sel valid
  * @custom_flow_sel: custom flow selection
  * @orig_nbuf: Original nbuf
+ * @is_intrabss: true if packet is an intrabss forwarded page-pool buffer
  *
  * This structure holds the complete MSDU information needed to program the
  * Hardware TCL and MSDU extension descriptors for different frame types
@@ -314,6 +315,7 @@ struct dp_tx_msdu_info_s {
 #endif
 #ifdef DP_FEATURE_TX_PAGE_POOL
 	qdf_nbuf_t orig_nbuf;
+	bool is_intrabss;
 #endif
 };
 
@@ -672,6 +674,22 @@ QDF_STATUS dp_tso_soc_detach(struct cdp_soc_t *txrx_soc);
  */
 qdf_nbuf_t dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		      qdf_nbuf_t nbuf);
+
+/**
+ * __dp_tx_send() - Internal transmit path with explicit intrabss flag
+ * @soc_hdl: CDP SOC handle
+ * @vdev_id: VDEV ID to transmit on
+ * @nbuf: Network buffer to transmit
+ * @is_intrabss: true if @nbuf is an intrabss forwarded packet
+ *
+ * Core transmit implementation. All callers that know the intrabss
+ * context should use this instead of dp_tx_send() to avoid redundant
+ * pp_recycle lookups. dp_tx_send() wraps this with is_intrabss=false.
+ *
+ * Return: NULL on success, @nbuf on failure (caller must free)
+ */
+qdf_nbuf_t __dp_tx_send(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			qdf_nbuf_t nbuf, bool is_intrabss);
 
 #ifdef DRIVER_PASSTHRU_MODE
 /**
