@@ -26,6 +26,14 @@
 #ifndef __QDF_STATUS_H
 #define __QDF_STATUS_H
 
+#include <linux/version.h>
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0))
+#define qdf_in_irq() in_hardirq()
+#else
+#define qdf_in_irq() in_irq()
+#endif
+
 /**
  * typedef QDF_STATUS - QDF error codes
  * @QDF_STATUS_SUCCESS: success

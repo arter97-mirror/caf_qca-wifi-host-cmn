@@ -1935,6 +1935,11 @@ QDF_STATUS hif_enable_func(struct hif_softc *ol_sc, struct hif_sdio_dev *device,
 {
 	struct sched_param param = {.sched_priority = 99};
 	QDF_STATUS ret = QDF_STATUS_SUCCESS;
+	struct sched_attr attr = {
+		.size			= sizeof(struct sched_attr),
+		.sched_policy	= SCHED_FIFO,
+		.sched_priority = 1,
+	};
 
 	HIF_ENTER();
 
@@ -1956,7 +1961,9 @@ QDF_STATUS hif_enable_func(struct hif_softc *ol_sc, struct hif_sdio_dev *device,
 			hif_err("Error creating async task");
 			return QDF_STATUS_E_FAILURE;
 		}
-		sched_setscheduler(device->async_task, SCHED_FIFO, &param);
+		//sched_setscheduler(device->async_task, SCHED_FIFO, &param);		
+
+		sched_setattr_nocheck(current, &attr);
 		device->is_disabled = false;
 		wake_up_process(device->async_task);
 	}

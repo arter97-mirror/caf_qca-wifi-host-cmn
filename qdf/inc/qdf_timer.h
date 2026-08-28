@@ -137,4 +137,30 @@ static inline void qdf_timer_free(qdf_timer_t *timer)
 	__qdf_timer_free(timer);
 }
 
+/**
+ * qdf_timer_delete() - Deactivate a timer
+ * @timer: timer to be deactivated
+ *
+ * The function only deactivates a pending timer.
+ *
+ * Return: 0 if timer is not pending, 1 if timer is not pending and deactivated
+ */
+static inline int qdf_timer_delete(struct timer_list *timer)
+{
+	return	__qdf_timer_delete(timer);
+}
+
+/**
+ * qdf_timer_delete_sync() - Deactivate a timer and wait for handler to finish
+ * @timer: timer to be deactivated
+ *
+ * The function deactivates timer and waits for any running handler to complete.
+ *
+ * Return: 0 if timer is not pending, 1 if timer is not pending and deactivated
+ */
+static inline int qdf_timer_delete_sync(struct timer_list *timer)
+{
+	return	__qdf_timer_delete_sync(timer);
+}
+
 #endif /* _QDF_TIMER_H */

@@ -902,6 +902,39 @@ static void hif_exec_napi_schedule(struct hif_exec_context *ctx)
 	napi_schedule(&n_ctx->napi);
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+/**
+ * qdf_napi_get_dummy_nd_ptr() - Get dummy netdev pointer
+ * @ctx: hif_napi_exec_context pointer
+ *
+ * Return: dummy netdev pointer
+ */
+static inline struct net_device *
+qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
+{
+	return ctx->netdev;
+}
+
+static inline void
+qdf_napi_set_dummy_nd_ptr(struct hif_napi_exec_context *ctx,
+			  struct net_device *nd)
+{
+	ctx->netdev = nd;
+}
+#else
+static inline struct net_device *
+qdf_napi_get_dummy_nd_ptr(struct hif_napi_exec_context *ctx)
+{
+	return &ctx->netdev;
+}
+
+static inline void
+qdf_napi_set_dummy_nd_ptr(struct hif_napi_exec_context *ctx,
+			  struct net_device *nd)
+{
+}
+#endif
+
 /**
  * hif_exec_napi_kill() - stop a napi exec context from being rescheduled
  * @ctx: a hif_exec_context known to be of napi type
@@ -910,17 +943,29 @@ static void hif_exec_napi_kill(struct hif_exec_context *ctx)
 {
 	struct hif_napi_exec_context *n_ctx = hif_exec_get_napi(ctx);
 	int irq_ind;
+	struct net_device *dummy_nd = qdf_napi_get_dummy_nd_ptr(n_ctx);
 
-	if (ctx->inited) {
+	hif_info("ctx=%pk napi=%pk napi_id=%u state=0x%lx inited=%d",
+		 ctx, &n_ctx->napi, n_ctx->napi.napi_id,
+		 n_ctx->napi.state, qdf_atomic_read(&ctx->inited));
+	if (qdf_atomic_test_and_clear_bit(0, (unsigned long *)&ctx->inited)) {
+		hif_info("calling napi_disable ctx=%pk napi_id=%u",
+			 ctx, n_ctx->napi.napi_id);
 		qdf_napi_disable(&n_ctx->napi);
-		ctx->inited = 0;
+		hif_info("calling napi_del ctx=%pk napi_id=%u state=0x%lx",
+			 ctx, n_ctx->napi.napi_id, n_ctx->napi.state);
+		qdf_netif_napi_del(&n_ctx->napi);
+	} else {
+		hif_info("skipping napi_disable/napi_del ctx=%pk napi_id=%u (inited=0)",
+			 ctx, n_ctx->napi.napi_id);
 	}
 
 	for (irq_ind = 0; irq_ind < ctx->numirq; irq_ind++)
 		hif_irq_affinity_remove(ctx->os_irq[irq_ind]);
 
 	hif_core_ctl_set_boost(false);
-	qdf_netif_napi_del(&(n_ctx->napi));
+	qdf_net_if_destroy_dummy_if((struct qdf_net_if *)dummy_nd);
+	qdf_napi_set_dummy_nd_ptr(n_ctx, NULL);
 }
 
 struct hif_execution_ops napi_sched_ops = {
@@ -936,18 +981,28 @@ struct hif_execution_ops napi_sched_ops = {
 static struct hif_exec_context *hif_exec_napi_create(uint32_t scale)
 {
 	struct hif_napi_exec_context *ctx;
+	struct net_device *dummy_nd;
 
 	ctx = qdf_mem_malloc(sizeof(struct hif_napi_exec_context));
 	if (!ctx)
 		return NULL;
 
 	ctx->exec_ctx.sched_ops = &napi_sched_ops;
-	ctx->exec_ctx.inited = true;
+	qdf_atomic_set(&ctx->exec_ctx.inited, 1);
 	ctx->exec_ctx.scale_bin_shift = scale;
-	qdf_net_if_create_dummy_if((struct qdf_net_if *)&ctx->netdev);
-	qdf_netif_napi_add(&(ctx->netdev), &(ctx->napi), hif_exec_poll,
-			   QCA_NAPI_BUDGET);
+	dummy_nd = qdf_napi_get_dummy_nd_ptr(ctx);
+	qdf_net_if_create_dummy_if((struct qdf_net_if **)&dummy_nd);
+	if (!dummy_nd) {
+		hif_err("Failed to create dummy netdev for NAPI");
+		qdf_mem_free(ctx);
+		return NULL;
+	}
+	qdf_napi_set_dummy_nd_ptr(ctx, dummy_nd);
+	qdf_netif_napi_add(dummy_nd, &ctx->napi,
+			   hif_exec_poll, QCA_NAPI_BUDGET);
 	qdf_napi_enable(&ctx->napi);
+	hif_info("ctx=%pk napi=%pk napi_id=%u state=0x%lx",
+		 ctx, &ctx->napi, ctx->napi.napi_id, ctx->napi.state);
 
 	return &ctx->exec_ctx;
 }
@@ -969,11 +1024,10 @@ static void hif_exec_tasklet_kill(struct hif_exec_context *ctx)
 	struct hif_tasklet_exec_context *t_ctx = hif_exec_get_tasklet(ctx);
 	int irq_ind;
 
-	if (ctx->inited) {
+	if (qdf_atomic_test_and_clear_bit(0, (unsigned long *)&ctx->inited)) {
 		tasklet_disable(&t_ctx->tasklet);
 		tasklet_kill(&t_ctx->tasklet);
 	}
-	ctx->inited = false;
 
 	for (irq_ind = 0; irq_ind < ctx->numirq; irq_ind++)
 		hif_irq_affinity_remove(ctx->os_irq[irq_ind]);
@@ -999,7 +1053,7 @@ static struct hif_exec_context *hif_exec_tasklet_create(void)
 	tasklet_init(&ctx->tasklet, hif_exec_tasklet_fn,
 		     (unsigned long)ctx);
 
-	ctx->exec_ctx.inited = true;
+	qdf_atomic_set(&ctx->exec_ctx.inited, 1);
 
 	return &ctx->exec_ctx;
 }

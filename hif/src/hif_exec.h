@@ -113,7 +113,7 @@ struct hif_exec_context {
 
 	uint8_t cpu;
 	struct qca_napi_stat stats[NR_CPUS];
-	bool inited;
+	qdf_atomic_t inited;
 	bool configured;
 	bool irq_requested;
 	bool irq_enabled;
@@ -156,7 +156,11 @@ struct hif_tasklet_exec_context {
  */
 struct hif_napi_exec_context {
 	struct hif_exec_context exec_ctx;
-	struct net_device    netdev; /* dummy net_dev */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	struct net_device *netdev; /* dummy net_dev ptr */
+#else
+	struct net_device netdev; /* dummy net_dev */
+#endif
 	struct napi_struct   napi;
 };
 
