@@ -61,6 +61,28 @@ QDF_STATUS dp_tx_gen_hw_desc_bn(struct dp_soc *soc,
 				struct dp_tx_msdu_info_s *msdu_info,
 				void *tcl_desc);
 
+#if defined(CONFIG_BORON) && defined(QCA_DP_TX_NBUF_LIST_FREE)
+/**
+ * dp_tx_fast_send_bn() - BN/FIG-specific fast TX for fast_xmit=1 L2L frames
+ * @soc_hdl: DP soc handle
+ * @vdev_id: id of DP vdev handle
+ * @nbuf: skb (guaranteed: linear, IPv4/IPv6 unicast, fast_xmit=1)
+ *
+ * Uses TCL_ASSIST_CMD HAL interface (BN/Boron architecture).
+ * Bypasses dp_tx_send, dp_tx_gen_hw_desc_bn, and all slow-path processing.
+ *
+ * Return: NULL on success, nbuf on failure
+ */
+qdf_nbuf_t dp_tx_fast_send_bn(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			      qdf_nbuf_t nbuf);
+#else
+static inline qdf_nbuf_t dp_tx_fast_send_bn(struct cdp_soc_t *soc_hdl,
+					    uint8_t vdev_id, qdf_nbuf_t nbuf)
+{
+	return nbuf;
+}
+#endif
+
 #ifdef FEATURE_DAL_DP_SUPPORT
 /**
  * dp_tx_hw_desc_sync_bn() - BN specific hw desc sync function

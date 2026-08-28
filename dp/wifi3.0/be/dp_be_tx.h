@@ -287,6 +287,47 @@ QDF_STATUS dp_tx_hw_enqueue_be_bn(struct dp_soc *soc, struct dp_vdev *vdev,
 }
 #endif /* !CONFIG_BORON */
 
+#ifdef CONFIG_IO_COHERENCY
+static inline
+qdf_dma_addr_t dp_tx_nbuf_map_be(struct dp_vdev *vdev,
+				 struct dp_tx_desc_s *tx_desc,
+				 qdf_nbuf_t nbuf)
+{
+	/* IO coherency: hardware snoops CPU caches, no manual flush needed */
+	return (qdf_dma_addr_t)qdf_mem_virt_to_phys(nbuf->data);
+}
+
+static inline
+void dp_tx_nbuf_unmap_be(struct dp_soc *soc,
+			 struct dp_tx_desc_s *desc)
+{
+	/* virt_to_phys used for map - no DMA API mapping to release */
+}
+#else
+static inline
+qdf_dma_addr_t dp_tx_nbuf_map_be(struct dp_vdev *vdev,
+				 struct dp_tx_desc_s *tx_desc,
+				 qdf_nbuf_t nbuf)
+{
+	/* Only clean headers: L2L payload arrived via DMA RX and was never
+	 * touched by the CPU, so it is already coherent in main memory.
+	 * 256B (4 x 64B ARM64 cache lines) covers the worst-case header
+	 * stack: ETH(14) + VLAN*2(8) + IPv4-max(60) + TCP-max(60) = 142B.
+	 */
+	qdf_nbuf_dma_clean_range_no_dsb((void *)nbuf->data,
+					(void *)(nbuf->data + 256));
+
+	return (qdf_dma_addr_t)qdf_mem_virt_to_phys(nbuf->data);
+}
+
+static inline
+void dp_tx_nbuf_unmap_be(struct dp_soc *soc,
+			 struct dp_tx_desc_s *desc)
+{
+	/* virt_to_phys used for map - no DMA API mapping to release */
+}
+#endif
+
 #ifdef QCA_DP_TX_NBUF_LIST_FREE
 /**
  * dp_tx_fast_send_be() - Transmit a frame on a given VAP

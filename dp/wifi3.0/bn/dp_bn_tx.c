@@ -466,3 +466,277 @@ void dp_tx_desc_update_buffer_info_bn(struct dp_soc *soc,
 				    (tx_desc->flags & DP_TX_DESC_FLAG_FRAG));
 }
 #endif
+
+#ifdef QCA_DP_TX_NBUF_LIST_FREE
+#ifdef CONFIG_IO_COHERENCY
+static inline void
+dp_tx_populate_bn_hal_desc(struct dp_soc *soc, struct dp_vdev *vdev,
+			   struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf,
+			   uint32_t *hal_tx_desc, uint8_t tid,
+			   uint8_t desc_pool_id,
+			   uint16_t ether_type, uint8_t l4_proto,
+			   uint16_t dport)
+{
+	uint8_t bm_id = dp_tx_get_rbm_id_bn(soc, desc_pool_id);
+
+	qdf_mem_zero(hal_tx_desc, HAL_TX_DESC_LEN_BYTES);
+	hal_tx_desc_set_buf_addr_bn(soc->hal_soc, hal_tx_desc,
+				    tx_desc->dma_addr, bm_id, tx_desc->id, 0);
+	hal_tx_desc_set_fw_metadata(hal_tx_desc, vdev->htt_tcl_metadata);
+	hal_tx_desc_set_buf_length(hal_tx_desc, tx_desc->length);
+
+	if (qdf_unlikely(nbuf->ip_summed == CHECKSUM_PARTIAL)) {
+		hal_tx_desc_set_l3_checksum_en(hal_tx_desc, 1);
+		hal_tx_desc_set_l4_checksum_en(hal_tx_desc, 1);
+	}
+
+	hal_tx_desc_set_bank_id(hal_tx_desc, vdev->bank_id);
+	hal_tx_desc_set_vdev_id(hal_tx_desc, vdev->vdev_id);
+	hal_tx_desc_set_peer_txpt_ci_index(hal_tx_desc, tx_desc->tx_info);
+
+	if (qdf_unlikely(tid != HTT_TX_EXT_TID_INVALID))
+		hal_tx_desc_set_hlos_tid(hal_tx_desc, tid);
+
+	hal_tx_desc_set_l3_type(hal_tx_desc, ether_type);
+	hal_tx_desc_set_type_or_length(hal_tx_desc, ether_type > 0x600 ? 1 : 0);
+	if (qdf_likely(l4_proto)) {
+		hal_tx_desc_set_l4_protocol(hal_tx_desc, l4_proto);
+		hal_tx_desc_set_dport(hal_tx_desc, dport);
+	}
+}
+#else /* !CONFIG_IO_COHERENCY */
+static inline void
+dp_tx_populate_bn_hal_desc(struct dp_soc *soc, struct dp_vdev *vdev,
+			   struct dp_tx_desc_s *tx_desc, qdf_nbuf_t nbuf,
+			   uint32_t *hal_tx_desc, uint8_t tid,
+			   uint8_t desc_pool_id,
+			   uint16_t ether_type, uint8_t l4_proto,
+			   uint16_t dport)
+{
+	uint8_t cached_desc[HAL_TX_DESC_LEN_BYTES] = { 0 };
+	uint32_t *hal_tx_desc_cached = (uint32_t *)cached_desc;
+	uint8_t bm_id = dp_tx_get_rbm_id_bn(soc, desc_pool_id);
+
+	hal_tx_desc_set_buf_addr_bn(soc->hal_soc, hal_tx_desc_cached,
+				    tx_desc->dma_addr, bm_id, tx_desc->id, 0);
+	hal_tx_desc_set_fw_metadata(hal_tx_desc_cached, vdev->htt_tcl_metadata);
+	hal_tx_desc_set_buf_length(hal_tx_desc_cached, tx_desc->length);
+
+	if (qdf_unlikely(nbuf->ip_summed == CHECKSUM_PARTIAL)) {
+		hal_tx_desc_set_l3_checksum_en(hal_tx_desc_cached, 1);
+		hal_tx_desc_set_l4_checksum_en(hal_tx_desc_cached, 1);
+	}
+
+	hal_tx_desc_set_bank_id(hal_tx_desc_cached, vdev->bank_id);
+	hal_tx_desc_set_vdev_id(hal_tx_desc_cached, vdev->vdev_id);
+	hal_tx_desc_set_peer_txpt_ci_index(hal_tx_desc_cached,
+					   tx_desc->tx_info);
+
+	if (qdf_unlikely(tid != HTT_TX_EXT_TID_INVALID))
+		hal_tx_desc_set_hlos_tid(hal_tx_desc_cached, tid);
+
+	hal_tx_desc_set_l3_type(hal_tx_desc_cached, ether_type);
+	hal_tx_desc_set_type_or_length(hal_tx_desc_cached,
+				       ether_type > 0x600 ? 1 : 0);
+	if (qdf_likely(l4_proto)) {
+		hal_tx_desc_set_l4_protocol(hal_tx_desc_cached, l4_proto);
+		hal_tx_desc_set_dport(hal_tx_desc_cached, dport);
+	}
+
+	hal_tx_desc_sync(hal_tx_desc_cached, hal_tx_desc,
+			 HAL_TX_DESC_LEN_BYTES);
+	qdf_dsb();
+}
+#endif /* CONFIG_IO_COHERENCY */
+
+qdf_nbuf_t dp_tx_fast_send_bn(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			      qdf_nbuf_t nbuf)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	struct dp_vdev *vdev;
+	struct dp_pdev *pdev;
+	struct dp_tx_desc_s *tx_desc;
+	uint8_t desc_pool_id;
+	uint32_t pkt_len;
+	qdf_dma_addr_t paddr;
+	QDF_STATUS status = QDF_STATUS_E_RESOURCES;
+	hal_ring_handle_t hal_ring_hdl;
+	void *hal_tx_desc;
+	uint8_t tid = HTT_TX_EXT_TID_INVALID;
+	uint8_t xmit_type __maybe_unused = 0;
+	uint16_t ether_type;
+	uint8_t l4_proto = 0;
+	uint16_t dport = 0;
+	uint8_t *l3hdr;
+
+	if (qdf_unlikely(vdev_id >= MAX_VDEV_CNT))
+		return nbuf;
+
+	vdev = soc->vdev_id_map[vdev_id];
+	if (qdf_unlikely(!vdev))
+		return nbuf;
+
+	desc_pool_id = qdf_nbuf_get_queue_mapping(nbuf) & DP_TX_QUEUE_MASK;
+	pkt_len = qdf_nbuf_headlen(nbuf);
+
+	DP_STATS_INC(vdev, tx_i[xmit_type].rcvd_in_fast_xmit_flow, 1);
+	DP_STATS_INC(vdev, tx_i[xmit_type].rcvd_per_core[desc_pool_id], 1);
+
+	if (qdf_unlikely(vdev->skip_sw_tid_classification
+			 & DP_TXRX_HLOS_TID_OVERRIDE_ENABLED)) {
+		tid = qdf_nbuf_get_priority(nbuf);
+		if (tid >= DP_TX_INVALID_QOS_TAG)
+			tid = HTT_TX_EXT_TID_INVALID;
+	}
+
+	pdev = vdev->pdev;
+
+	tx_desc = dp_tx_desc_alloc(soc, desc_pool_id, nbuf);
+	if (qdf_unlikely(!tx_desc)) {
+		DP_STATS_INC(vdev, tx_i[xmit_type].dropped.desc_na.num, 1);
+		DP_STATS_INC(vdev,
+			     tx_i[xmit_type].dropped.desc_na_exc_alloc_fail.num,
+			     1);
+		return nbuf;
+	}
+
+	dp_tx_outstanding_inc(pdev);
+
+	tx_desc->nbuf = nbuf;
+	tx_desc->frm_type = dp_tx_frm_std;
+	tx_desc->tx_encap_type = vdev->tx_encap_type;
+	tx_desc->vdev_id = vdev_id;
+	tx_desc->pdev = pdev;
+	tx_desc->pkt_offset = 0;
+	tx_desc->length = pkt_len;
+	tx_desc->flags |= pdev->tx_fast_flag;
+	tx_desc->tx_info = QDF_TRACE_DEFAULT_TX_INFO;
+
+	/* DP_TX_DESC_FLAG_FAST only for recycler frames (fast TX comp path) */
+	if (qdf_likely(nbuf->is_from_recycler && nbuf->fast_xmit)) {
+		tx_desc->flags |= DP_TX_DESC_FLAG_FAST;
+		tx_desc->nbuf->fast_recycled = 1;
+	}
+
+	paddr = dp_tx_nbuf_map_be(vdev, tx_desc, nbuf);
+	if (qdf_unlikely(!paddr)) {
+		dp_err("dp_tx_nbuf_map_be failed");
+		DP_STATS_INC(vdev, tx_i[xmit_type].dropped.dma_error, 1);
+		goto release_desc;
+	}
+	tx_desc->dma_addr = paddr;
+
+	/*
+	 * BN uses TXPT classify info index instead of search/AST index.
+	 * Per-packet CI (set by dp_rx.c for recycler frames) takes priority
+	 * over the vdev-level index, matching dp_bn_tx.c slow path.
+	 * Resolve before ring access to avoid consuming a ring slot on failure.
+	 */
+	if (qdf_unlikely(QDF_NBUF_CB_PEER_SEARCH_IDX_VALID(nbuf))) {
+		tx_desc->tx_info = QDF_NBUF_CB_PEER_SEARCH_IDX_VALUE(nbuf);
+	} else if (qdf_likely(qdf_atomic_read(
+				&vdev->txpt_classify_idx_valid))) {
+		tx_desc->tx_info = vdev->txpt_classify_idx;
+	} else {
+		DP_STATS_INC(soc, tx.inv_txpt_ci, 1);
+		dp_tx_nbuf_unmap_be(soc, tx_desc);
+		goto release_desc;
+	}
+
+	/*
+	 * BN FW uses L3_TYPE / L4_PROTOCOL / DPORT from the TCL_ASSIST_CMD
+	 * descriptor to index the TXPT classify table.  Without these fields
+	 * the FW hits an assert (cmnos_assert_patched.c:470).  fast_xmit=1
+	 * frames are always linear IPv4/IPv6 unicast (set by SFE), so parse
+	 * the header inline.  Pre-parse before ring access so invalid frames
+	 * bail without consuming a ring slot.
+	 */
+	ether_type = qdf_ntohs(nbuf->protocol);
+	l3hdr = (uint8_t *)qdf_nbuf_data(nbuf) + sizeof(qdf_ether_header_t);
+
+	if (qdf_likely(ether_type == QDF_NBUF_TRAC_IPV4_ETH_TYPE)) {
+		qdf_net_iphdr_t *ip;
+
+		if (qdf_unlikely(pkt_len < sizeof(qdf_ether_header_t) +
+					   sizeof(qdf_net_iphdr_t))) {
+			dp_tx_nbuf_unmap_be(soc, tx_desc);
+			goto release_desc;
+		}
+		ip = (qdf_net_iphdr_t *)l3hdr;
+		l4_proto = ip->ip_proto;
+		if (qdf_likely(ip->ip_proto == QDF_NBUF_TRAC_UDP_TYPE ||
+			       ip->ip_proto == QDF_NBUF_TRAC_TCP_TYPE)) {
+			if (qdf_likely(ip->ip_hl == 5))
+				dport = qdf_ntohs(*(uint16_t *)(l3hdr + 22));
+			else
+				dport = qdf_ntohs(*(uint16_t *)(l3hdr +
+						   (ip->ip_hl << 2) + 2));
+		}
+	} else if (qdf_unlikely(ether_type == QDF_NBUF_TRAC_IPV6_ETH_TYPE)) {
+		qdf_net_ipv6hdr_t *ip6;
+
+		if (qdf_unlikely(pkt_len < sizeof(qdf_ether_header_t) +
+					   sizeof(qdf_net_ipv6hdr_t))) {
+			dp_tx_nbuf_unmap_be(soc, tx_desc);
+			goto release_desc;
+		}
+		ip6 = (qdf_net_ipv6hdr_t *)l3hdr;
+		if (qdf_unlikely(ip6->ipv6_nexthdr != QDF_NBUF_TRAC_UDP_TYPE &&
+				 ip6->ipv6_nexthdr != QDF_NBUF_TRAC_TCP_TYPE)) {
+			dp_tx_nbuf_unmap_be(soc, tx_desc);
+			goto release_desc;
+		}
+
+		l4_proto = ip6->ipv6_nexthdr;
+		dport = qdf_ntohs(*(uint16_t *)(l3hdr + sizeof(*ip6) + 2));
+	} else {
+		/* Non-IP frame: BN FW requires L3_TYPE; drop to avoid assert */
+		dp_tx_nbuf_unmap_be(soc, tx_desc);
+		goto release_desc;
+	}
+
+	hal_ring_hdl = dp_tx_get_hal_ring_hdl(soc, desc_pool_id);
+
+	if (qdf_unlikely(dp_tx_hal_ring_access_start(soc, hal_ring_hdl))) {
+		dp_err_rl("HAL RING Access Failed -- %pK", hal_ring_hdl);
+		DP_STATS_INC(soc, tx.tcl_ring_full[desc_pool_id], 1);
+		DP_STATS_INC(vdev, tx_i[xmit_type].dropped.enqueue_fail, 1);
+		goto ring_access_fail2;
+	}
+
+	hal_tx_desc = hal_srng_src_get_next(soc->hal_soc, hal_ring_hdl);
+	if (qdf_unlikely(!hal_tx_desc)) {
+		DP_STATS_INC(soc, tx.tcl_ring_full[desc_pool_id], 1);
+		DP_STATS_INC(vdev, tx_i[xmit_type].dropped.enqueue_fail, 1);
+		goto ring_access_fail;
+	}
+
+	tx_desc->flags |= DP_TX_DESC_FLAG_QUEUED_TX;
+	dp_tx_populate_bn_hal_desc(soc, vdev, tx_desc, nbuf,
+				   (uint32_t *)hal_tx_desc, tid, desc_pool_id,
+				   ether_type, l4_proto, dport);
+
+	DP_STATS_INC(soc, tx.tcl_enq[desc_pool_id], 1);
+	status = QDF_STATUS_SUCCESS;
+
+ring_access_fail:
+	dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, 0);
+
+ring_access_fail2:
+	if (qdf_unlikely(status != QDF_STATUS_SUCCESS)) {
+		dp_tx_nbuf_unmap_be(soc, tx_desc);
+		goto release_desc;
+	}
+
+	return NULL;
+
+release_desc:
+	/* Clear fast_recycled so dp_rx_nbuf_nosync doesn't skip
+	 * DMA cache-invalidation when this SKB is next used for RX.
+	 */
+	nbuf->fast_recycled = 0;
+	dp_tx_desc_release(soc, tx_desc, desc_pool_id);
+
+	return nbuf;
+}
+#endif /* QCA_DP_TX_NBUF_LIST_FREE */

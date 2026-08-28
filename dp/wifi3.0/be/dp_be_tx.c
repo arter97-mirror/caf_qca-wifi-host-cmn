@@ -2342,23 +2342,6 @@ QDF_STATUS dp_tx_compute_tx_delay_be(struct dp_soc *soc,
 	return dp_mlo_compute_hw_delay_us(soc, vdev, ts, delay_us);
 }
 
-static inline
-qdf_dma_addr_t dp_tx_nbuf_map_be(struct dp_vdev *vdev,
-				 struct dp_tx_desc_s *tx_desc,
-				 qdf_nbuf_t nbuf)
-{
-	qdf_nbuf_dma_clean_range_no_dsb((void *)nbuf->data,
-					(void *)(nbuf->data + 256));
-
-	return (qdf_dma_addr_t)qdf_mem_virt_to_phys(nbuf->data);
-}
-
-static inline
-void dp_tx_nbuf_unmap_be(struct dp_soc *soc,
-			 struct dp_tx_desc_s *desc)
-{
-}
-
 #ifdef QCA_DP_TX_NBUF_LIST_FREE
 qdf_nbuf_t dp_tx_fast_send_be(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			      qdf_nbuf_t nbuf)
@@ -2376,7 +2359,7 @@ qdf_nbuf_t dp_tx_fast_send_be(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	uint32_t *hal_tx_desc_cached;
 	void *hal_tx_desc;
 	uint8_t tid = HTT_TX_EXT_TID_INVALID;
-	uint8_t xmit_type = qdf_nbuf_get_vdev_xmit_type(nbuf);
+	uint8_t xmit_type __maybe_unused = qdf_nbuf_get_vdev_xmit_type(nbuf);
 	uint8_t sawf_tid = HTT_TX_EXT_TID_INVALID;
 
 	if (qdf_unlikely(vdev_id >= MAX_VDEV_CNT))

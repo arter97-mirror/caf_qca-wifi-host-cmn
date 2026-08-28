@@ -4382,7 +4382,23 @@ qdf_dma_addr_t dp_tx_rmnet_nbuf_map(struct dp_tx_msdu_info_s *msdu_info,
 }
 #endif
 
-#if defined(QCA_DP_TX_NBUF_NO_MAP_UNMAP) && !defined(BUILD_X86)
+#if defined(CONFIG_IO_COHERENCY)
+static inline
+qdf_dma_addr_t dp_tx_nbuf_map(struct dp_vdev *vdev,
+			      struct dp_tx_desc_s *tx_desc,
+			      qdf_nbuf_t nbuf)
+{
+	/* IO coherency: hardware snoops CPU caches, no manual flush needed */
+	return (qdf_dma_addr_t)qdf_mem_virt_to_phys(nbuf->data);
+}
+
+static inline
+void dp_tx_nbuf_unmap(struct dp_soc *soc,
+		      struct dp_tx_desc_s *desc)
+{
+	/* IO coherency: no DMA unmap needed */
+}
+#elif defined(QCA_DP_TX_NBUF_NO_MAP_UNMAP) && !defined(BUILD_X86)
 static inline
 qdf_dma_addr_t dp_tx_nbuf_map(struct dp_vdev *vdev,
 			      struct dp_tx_desc_s *tx_desc,
@@ -10378,6 +10394,7 @@ dp_tx_comp_process_desc_list(struct dp_soc *soc,
 		if (qdf_likely(desc->flags & DP_TX_DESC_FLAG_FAST)) {
 			vdev_id = desc->vdev_id;
 			pp_buf = qdf_is_pp_nbuf(desc->nbuf);
+			dp_tx_outstanding_dec(desc->pdev);
 			dp_tx_nbuf_dev_queue_free(&h, desc);
 			dp_tx_desc_free(soc, desc, desc->pool_id);
 			if (pp_buf)
@@ -11073,8 +11090,8 @@ dp_tx_desc_reset_vdev(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc,
 	TX_DESC_LOCK_UNLOCK(&pool->lock);
 }
 
-void __dp_tx_desc_flush(struct dp_pdev *pdev, struct dp_vdev *vdev,
-			bool force_free, bool spcl_pool)
+static void __dp_tx_desc_flush(struct dp_pdev *pdev, struct dp_vdev *vdev,
+			       bool force_free, bool spcl_pool)
 {
 	uint8_t i, num_pool;
 	uint32_t j;

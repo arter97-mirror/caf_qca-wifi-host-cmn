@@ -26,6 +26,7 @@
 #include "dp_be_rx.h"
 #include "dp_tx_desc.h"
 #include "dp_be_tx.h"
+#include "bn/dp_bn_tx.h"
 #ifdef WIFI_MONITOR_SUPPORT
 #if !defined(DISABLE_MON_CONFIG) && (defined(WLAN_PKT_CAPTURE_TX_2_0) || \
 	defined(WLAN_PKT_CAPTURE_RX_2_0))
@@ -4367,7 +4368,11 @@ void dp_initialize_arch_ops_be(struct dp_arch_ops *arch_ops)
 #ifndef QCA_HOST_MODE_WIFI_DISABLED
 	arch_ops->tx_hw_enqueue = dp_tx_hw_enqueue_be_bn;
 	arch_ops->dp_rx_process = dp_rx_process_be_bn;
-	arch_ops->dp_tx_send_fast = dp_tx_fast_send_be;
+#if defined(CONFIG_BORON) && defined(QCA_DP_TX_NBUF_LIST_FREE)
+	arch_ops->dp_tx_send_fast = dp_tx_fast_send_bn;
+#else
+	arch_ops->dp_tx_send_fast = dp_tx_send;
+#endif
 	arch_ops->tx_comp_get_params_from_hal_desc =
 		dp_tx_comp_get_params_from_hal_desc_be;
 	arch_ops->tx_comp_ring_desc_mark_invalid =
