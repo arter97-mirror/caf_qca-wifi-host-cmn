@@ -7337,6 +7337,9 @@ typedef enum {
 	wmi_service_nan_standard_mode_support,
 	wmi_service_nan_ap_assisted_dfs_operation_support,
 #endif
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+	wmi_service_nan_offload_mode_support,
+#endif
 #ifdef FEATURE_SNR_STATS
 	wmi_service_idle_power_indicate_support,
 #endif /* FEATURE_SNR_STATS */

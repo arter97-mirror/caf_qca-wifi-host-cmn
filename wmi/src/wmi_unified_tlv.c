@@ -4403,6 +4403,18 @@ static inline void wmi_populate_service_nan_standard_mode(uint32_t *wmi_service)
 }
 #endif
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+static void wmi_populate_service_nan_offload_mode(uint32_t *wmi_service)
+{
+	wmi_service[wmi_service_nan_offload_mode_support] =
+				WMI_SERVICE_NAN_OFFLOAD_MODE_SUPPORT;
+}
+#else
+static inline void wmi_populate_service_nan_offload_mode(uint32_t *wmi_service)
+{
+}
+#endif
+
 /**
  * wmi_peer_assoc_cmd_fill_params() - Fill peer assoc command parameters
  * @cmd: wmi peer assoc command structure
@@ -27445,6 +27457,7 @@ static void populate_tlv_service(uint32_t *wmi_service)
 	wmi_service[wmi_service_support_wow_ole_dal] =
 				WMI_SERVICE_SUPPORT_WOW_OLE_DAL;
 	wmi_populate_service_nan_standard_mode(wmi_service);
+	wmi_populate_service_nan_offload_mode(wmi_service);
 #ifdef FEATURE_SNR_STATS
 	wmi_service[wmi_service_idle_power_indicate_support] =
 				WMI_SERVICE_IDLE_POWER_INDICATE_SUPPORT;
