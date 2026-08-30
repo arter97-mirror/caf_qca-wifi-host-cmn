@@ -521,6 +521,29 @@ init_deinit_nan_config(struct wlan_objmgr_psoc *psoc,
 {}
 #endif
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+/**
+ * init_deinit_nan_offload_config() - Derive NAN offload mode init config
+ *
+ * @psoc: PSOC object
+ * @init_param: Pointer to init param
+ *
+ * Return: void
+ */
+static void
+init_deinit_nan_offload_config(struct wlan_objmgr_psoc *psoc,
+			       struct wmi_init_cmd_param *init_param)
+{
+	init_param->res_cfg->nan_offload_mode_enable =
+					wlan_nan_is_offload_enabled(psoc);
+}
+#else
+static inline void
+init_deinit_nan_offload_config(struct wlan_objmgr_psoc *psoc,
+			       struct wmi_init_cmd_param *init_param)
+{}
+#endif
+
 /**
  * init_deinit_set_dp_rx_peer_metadata_ver() - update RX peer metadata
  *                                             version to DP
@@ -656,6 +679,7 @@ void init_deinit_prepare_send_init_cmd(
 				psoc, peer_metadata_ver);
 
 	init_deinit_nan_config(psoc, &init_param);
+	init_deinit_nan_offload_config(psoc, &init_param);
 
 	init_deinit_set_tdls_mlo_vdev(&init_param, wmi_handle);
 

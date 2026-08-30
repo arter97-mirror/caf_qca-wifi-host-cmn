@@ -10728,6 +10728,22 @@ void wmi_copy_nan_resource_config(wmi_resource_config *resource_cfg,
 }
 #endif
 
+#if defined(WLAN_FEATURE_NAN) && defined(FEATURE_WLAN_SUPPORT_NAN_OFFLOAD_MODE)
+static void
+wmi_copy_nan_offload_resource_config(wmi_resource_config *resource_cfg,
+				     target_resource_config *tgt_res_cfg)
+{
+	resource_cfg->enable_nan_ofld_mode =
+				tgt_res_cfg->nan_offload_mode_enable ? 1 : 0;
+}
+#else
+static inline void
+wmi_copy_nan_offload_resource_config(wmi_resource_config *resource_cfg,
+				     target_resource_config *tgt_res_cfg)
+{
+}
+#endif
+
 #ifdef DRIVER_PASSTHRU_MODE
 static void
 wmi_set_passthru_rx_reorder_support(wmi_resource_config *resource_cfg)
@@ -11106,6 +11122,7 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 		WMI_RSRC_CFG_HOST_SERVICE_FLAG_SMD_BSS_TRANSITION_SET(
 				resource_cfg->host_service_flags, 1);
 	wmi_copy_nan_resource_config(resource_cfg, tgt_res_cfg);
+	wmi_copy_nan_offload_resource_config(resource_cfg, tgt_res_cfg);
 
 	if (tgt_res_cfg->iot_temporal_mode_enabled)
 		WMI_RSRC_CFG_NAN_CONFIG_ENABLE_NAN_TEMPORAL_IOT_MODE_SET(
