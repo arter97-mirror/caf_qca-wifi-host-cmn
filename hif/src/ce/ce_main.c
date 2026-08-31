@@ -695,217 +695,6 @@ static struct service_to_pipe target_service_to_ce_map_wlan[] = {
 
 /* PIPEDIR_OUT = HOST to Target */
 /* PIPEDIR_IN  = TARGET to HOST */
-#if (defined(QCA_WIFI_QCA8074))
-static struct service_to_pipe target_service_to_ce_map_qca8074[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_OUT, 7},
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_IN, 2},
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qca8074[] = {
-};
-#endif
-
-#if (defined(QCA_WIFI_QCA9574))
-static struct service_to_pipe target_service_to_ce_map_qca9574[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_OUT, 7},
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_IN, 2},
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qca9574[] = {
-};
-#endif
-
-#if (defined(QCA_WIFI_QCA8074V2))
-static struct service_to_pipe target_service_to_ce_map_qca8074_v2[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_OUT, 7},
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_IN, 2},
-	{ WMI_CONTROL_SVC_WMAC2, PIPEDIR_OUT, 9},
-	{ WMI_CONTROL_SVC_WMAC2, PIPEDIR_IN, 2},
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qca8074_v2[] = {
-};
-#endif
-
-#if (defined(QCA_WIFI_QCA6018))
-static struct service_to_pipe target_service_to_ce_map_qca6018[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_OUT, 7},
-	{ WMI_CONTROL_SVC_WMAC1, PIPEDIR_IN, 2},
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qca6018[] = {
-};
-#endif
-
-#if (defined(QCA_WIFI_QCN9000))
-static struct service_to_pipe target_service_to_ce_map_qcn9000[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qcn9000[] = {
-};
-#endif
-#if defined(QCA_WIFI_QCA5424)
-static struct service_to_pipe target_service_to_ce_map_qca5424[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-#ifdef WLAN_DIAG_AND_DBR_OVER_SEPARATE_CE
-	{ WMI_CONTROL_DIAG_SVC, PIPEDIR_IN, 9, },
-	{ WMI_CONTROL_DBR_SVC, PIPEDIR_IN, 9, },
-#else
-	{ WMI_CONTROL_DIAG_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_DBR_SVC, PIPEDIR_IN, 2, },
-#endif
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qca5424[] = {
-};
-#endif
-
-#if (defined(QCA_WIFI_QCA5332) || defined(QCA_WIFI_QCN6432))
-static struct service_to_pipe target_service_to_ce_map_qca5332[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-#ifdef WLAN_DIAG_AND_DBR_OVER_SEPARATE_CE
-	{ WMI_CONTROL_DIAG_SVC, PIPEDIR_IN, 9, },
-	{ WMI_CONTROL_DBR_SVC, PIPEDIR_IN, 9, },
-#else
-	{ WMI_CONTROL_DIAG_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_DBR_SVC, PIPEDIR_IN, 2, },
-#endif
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qca5332[] = {
-};
-#endif
 
 #if (defined(QCA_WIFI_QCN9224))
 static struct service_to_pipe target_service_to_ce_map_qcn9224[] = {
@@ -937,33 +726,6 @@ static struct service_to_pipe target_service_to_ce_map_qcn9224[] = {
 #endif
 	/* (Additions here) */
 	{ 0, 0, 0, },
-};
-#endif
-
-#if defined(QCA_WIFI_QCA5018) || defined(QCA_WIFI_QCN9160)
-static struct service_to_pipe target_service_to_ce_map_qca5018[] = {
-	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BK_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_BE_SVC, PIPEDIR_IN, 2, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_DATA_VI_SVC, PIPEDIR_IN, 2, },
-	{ WMI_CONTROL_SVC, PIPEDIR_OUT, 3, },
-	{ WMI_CONTROL_SVC, PIPEDIR_IN, 2, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_OUT, 0, },
-	{ HTC_CTRL_RSVD_SVC, PIPEDIR_IN, 1, },
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_OUT, 0},
-	{ HTC_RAW_STREAMS_SVC, PIPEDIR_IN, 1 },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_OUT, 4, },
-	{ HTT_DATA_MSG_SVC, PIPEDIR_IN, 1, },
-	{ PACKET_LOG_SVC, PIPEDIR_IN, 5, },
-	/* (Additions here) */
-	{ 0, 0, 0, },
-};
-#else
-static struct service_to_pipe target_service_to_ce_map_qca5018[] = {
 };
 #endif
 
@@ -1351,105 +1113,6 @@ static struct service_to_pipe target_service_to_ce_map_qcc2072[] = {
 };
 #endif
 
-static struct service_to_pipe target_service_to_ce_map_ar900b[] = {
-	{
-		WMI_DATA_VO_SVC,
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		3,
-	},
-	{
-		WMI_DATA_VO_SVC,
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		2,
-	},
-	{
-		WMI_DATA_BK_SVC,
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		3,
-	},
-	{
-		WMI_DATA_BK_SVC,
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		2,
-	},
-	{
-		WMI_DATA_BE_SVC,
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		3,
-	},
-	{
-		WMI_DATA_BE_SVC,
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		2,
-	},
-	{
-		WMI_DATA_VI_SVC,
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		3,
-	},
-	{
-		WMI_DATA_VI_SVC,
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		2,
-	},
-	{
-		WMI_CONTROL_SVC,
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		3,
-	},
-	{
-		WMI_CONTROL_SVC,
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		2,
-	},
-	{
-		HTC_CTRL_RSVD_SVC,
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		0,              /* could be moved to 3 (share with WMI) */
-	},
-	{
-		HTC_CTRL_RSVD_SVC,
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		1,
-	},
-	{
-		HTC_RAW_STREAMS_SVC, /* not currently used */
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		0,
-	},
-	{
-		HTC_RAW_STREAMS_SVC, /* not currently used */
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		1,
-	},
-	{
-		HTT_DATA_MSG_SVC,
-		PIPEDIR_OUT,    /* out = UL = host -> target */
-		4,
-	},
-#ifdef WLAN_FEATURE_FASTPATH
-	{
-		HTT_DATA_MSG_SVC,
-		PIPEDIR_IN,     /* in = DL = target -> host */
-		5,
-	},
-#else /* WLAN_FEATURE_FASTPATH */
-	{
-		HTT_DATA_MSG_SVC,
-		PIPEDIR_IN,  /* in = DL = target -> host */
-		1,
-	},
-#endif /* WLAN_FEATURE_FASTPATH */
-
-	/* (Additions here) */
-
-	{                       /* Must be last */
-		0,
-		0,
-		0,
-	},
-};
-
 static struct shadow_reg_cfg *target_shadow_reg_cfg = target_shadow_reg_cfg_map;
 static int shadow_cfg_sz = sizeof(target_shadow_reg_cfg_map);
 
@@ -1664,15 +1327,6 @@ static void hif_select_service_to_pipe_map(struct hif_softc *scn,
 			hif_select_ce_map_qcn7605(tgt_svc_map_to_use,
 						  sz_tgt_svc_map_to_use);
 			break;
-		case TARGET_TYPE_AR900B:
-		case TARGET_TYPE_QCA9984:
-		case TARGET_TYPE_QCA9888:
-		case TARGET_TYPE_AR9888:
-		case TARGET_TYPE_AR9888V2:
-			*tgt_svc_map_to_use = target_service_to_ce_map_ar900b;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_ar900b);
-			break;
 		case TARGET_TYPE_QCA6290:
 			*tgt_svc_map_to_use = target_service_to_ce_map_qca6290;
 			*sz_tgt_svc_map_to_use =
@@ -1720,58 +1374,6 @@ static void hif_select_service_to_pipe_map(struct hif_softc *scn,
 			*tgt_svc_map_to_use = target_service_to_ce_map_wcn6450;
 			*sz_tgt_svc_map_to_use =
 				 sizeof(target_service_to_ce_map_wcn6450);
-			break;
-		case TARGET_TYPE_QCA8074:
-			*tgt_svc_map_to_use = target_service_to_ce_map_qca8074;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qca8074);
-			break;
-		case TARGET_TYPE_QCA8074V2:
-			*tgt_svc_map_to_use =
-				target_service_to_ce_map_qca8074_v2;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qca8074_v2);
-			break;
-		case TARGET_TYPE_QCA9574:
-			*tgt_svc_map_to_use =
-				target_service_to_ce_map_qca9574;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qca9574);
-			break;
-		case TARGET_TYPE_QCA6018:
-			*tgt_svc_map_to_use =
-				target_service_to_ce_map_qca6018;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qca6018);
-			break;
-		case TARGET_TYPE_QCN9000:
-			*tgt_svc_map_to_use =
-				target_service_to_ce_map_qcn9000;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qcn9000);
-			break;
-		case TARGET_TYPE_QCN9224:
-			hif_select_ce_map_qcn9224(tgt_svc_map_to_use,
-						  sz_tgt_svc_map_to_use);
-			break;
-		case TARGET_TYPE_QCA5332:
-		case TARGET_TYPE_QCN6432:
-			*tgt_svc_map_to_use = target_service_to_ce_map_qca5332;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qca5332);
-			break;
-		case TARGET_TYPE_QCA5424:
-			*tgt_svc_map_to_use = target_service_to_ce_map_qca5424;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qca5424);
-			break;
-		case TARGET_TYPE_QCA5018:
-		case TARGET_TYPE_QCN6122:
-		case TARGET_TYPE_QCN9160:
-			*tgt_svc_map_to_use =
-				target_service_to_ce_map_qca5018;
-			*sz_tgt_svc_map_to_use =
-				sizeof(target_service_to_ce_map_qca5018);
 			break;
 		}
 	}
@@ -2139,27 +1741,15 @@ bool ce_srng_based(struct hif_softc *scn)
 	struct hif_target_info *tgt_info = hif_get_target_info_handle(hif_hdl);
 
 	switch (tgt_info->target_type) {
-	case TARGET_TYPE_QCA8074:
-	case TARGET_TYPE_QCA8074V2:
 	case TARGET_TYPE_QCA6290:
 	case TARGET_TYPE_QCA6390:
 	case TARGET_TYPE_QCA6490:
 	case TARGET_TYPE_QCA6750:
-	case TARGET_TYPE_QCA6018:
-	case TARGET_TYPE_QCN9000:
-	case TARGET_TYPE_QCN6122:
-	case TARGET_TYPE_QCN9160:
-	case TARGET_TYPE_QCA5018:
 	case TARGET_TYPE_KIWI:
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
-	case TARGET_TYPE_QCN9224:
-	case TARGET_TYPE_QCA9574:
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCN6432:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_WCN8750:
-	case TARGET_TYPE_QCA5424:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
 		return true;
@@ -2184,7 +1774,6 @@ static struct ce_ops *ce_services_attach(struct hif_softc *scn)
 
 	return ops;
 }
-
 
 #else	/* QCA_LITHIUM */
 static struct ce_ops *ce_services_attach(struct hif_softc *scn)
@@ -4112,7 +3701,6 @@ static int hif_completion_thread_startup(struct HIF_CE_state *hif_state)
 		return -EINVAL;
 	}
 
-
 	A_TARGET_ACCESS_LIKELY(scn);
 	for (pipe_num = 0; pipe_num < scn->ce_count; pipe_num++) {
 		struct HIF_CE_pipe_info *pipe_info;
@@ -4511,7 +4099,6 @@ static void hif_recv_buffer_cleanup_on_pipe(struct HIF_CE_pipe_info *pipe_info)
 	/* Unused Copy Engine */
 	if (buf_sz == 0)
 		return;
-
 
 	hif_state = pipe_info->HIF_CE_state;
 	if (!hif_state->started)
@@ -5458,57 +5045,6 @@ void hif_ce_prepare_config(struct hif_softc *scn)
 	case TARGET_TYPE_QCN7605:
 		hif_set_ce_config_qcn7605(scn, hif_state);
 		break;
-	case TARGET_TYPE_AR900B:
-	case TARGET_TYPE_QCA9984:
-	case TARGET_TYPE_QCA9888:
-		if (hif_is_attribute_set(scn, HIF_LOWDESC_CE_NO_PKTLOG_CFG)) {
-			hif_state->host_ce_config =
-				host_lowdesc_ce_cfg_wlan_ar900b_nopktlog;
-		} else if (hif_is_attribute_set(scn, HIF_LOWDESC_CE_CFG)) {
-			hif_state->host_ce_config =
-				host_lowdesc_ce_cfg_wlan_ar900b;
-		} else {
-			hif_state->host_ce_config = host_ce_config_wlan_ar900b;
-		}
-
-		hif_state->target_ce_config = target_ce_config_wlan_ar900b;
-		hif_state->target_ce_config_sz =
-				sizeof(target_ce_config_wlan_ar900b);
-
-		break;
-
-	case TARGET_TYPE_AR9888:
-	case TARGET_TYPE_AR9888V2:
-		if (hif_is_attribute_set(scn, HIF_LOWDESC_CE_CFG)) {
-			hif_state->host_ce_config = host_lowdesc_ce_cfg_wlan_ar9888;
-		} else {
-			hif_state->host_ce_config = host_ce_config_wlan_ar9888;
-		}
-
-		hif_state->target_ce_config = target_ce_config_wlan_ar9888;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_ar9888);
-
-		break;
-
-	case TARGET_TYPE_QCA8074:
-	case TARGET_TYPE_QCA8074V2:
-	case TARGET_TYPE_QCA6018:
-		if (scn->bus_type == QDF_BUS_TYPE_PCI) {
-			hif_state->host_ce_config =
-					host_ce_config_wlan_qca8074_pci;
-			hif_state->target_ce_config =
-				target_ce_config_wlan_qca8074_pci;
-			hif_state->target_ce_config_sz =
-				sizeof(target_ce_config_wlan_qca8074_pci);
-		} else {
-			hif_state->host_ce_config = host_ce_config_wlan_qca8074;
-			hif_state->target_ce_config =
-					target_ce_config_wlan_qca8074;
-			hif_state->target_ce_config_sz =
-				sizeof(target_ce_config_wlan_qca8074);
-		}
-		break;
 	case TARGET_TYPE_QCA6290:
 		hif_state->host_ce_config = host_ce_config_wlan_qca6290;
 		hif_state->target_ce_config = target_ce_config_wlan_qca6290;
@@ -5516,69 +5052,6 @@ void hif_ce_prepare_config(struct hif_softc *scn)
 					sizeof(target_ce_config_wlan_qca6290);
 
 		scn->ce_count = QCA_6290_CE_COUNT;
-		break;
-	case TARGET_TYPE_QCN9000:
-		hif_state->host_ce_config = host_ce_config_wlan_qcn9000;
-		hif_state->target_ce_config = target_ce_config_wlan_qcn9000;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_qcn9000);
-		scn->ce_count = QCN_9000_CE_COUNT;
-		scn->ini_cfg.disable_wake_irq = 1;
-		break;
-	case TARGET_TYPE_QCN9224:
-		hif_set_ce_config_qcn9224(scn, hif_state);
-		break;
-	case TARGET_TYPE_QCA5332:
-		hif_state->host_ce_config = host_ce_config_wlan_qca5332;
-		hif_state->target_ce_config = target_ce_config_wlan_qca5332;
-		hif_state->target_ce_config_sz =
-					 sizeof(target_ce_config_wlan_qca5332);
-		scn->ce_count = QCA_5332_CE_COUNT;
-		break;
-	case TARGET_TYPE_QCN6122:
-		hif_state->host_ce_config = host_ce_config_wlan_qcn6122;
-		hif_state->target_ce_config = target_ce_config_wlan_qcn6122;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_qcn6122);
-		scn->ce_count = QCN_6122_CE_COUNT;
-		scn->ini_cfg.disable_wake_irq = 1;
-		break;
-	case TARGET_TYPE_QCN9160:
-		hif_state->host_ce_config = host_ce_config_wlan_qcn9160;
-		hif_state->target_ce_config = target_ce_config_wlan_qcn9160;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_qcn9160);
-		scn->ce_count = QCN_9160_CE_COUNT;
-		scn->ini_cfg.disable_wake_irq = 1;
-		break;
-	case TARGET_TYPE_QCN6432:
-		hif_state->host_ce_config = host_ce_config_wlan_qcn6432;
-		hif_state->target_ce_config = target_ce_config_wlan_qcn6432;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_qcn6432);
-		scn->ce_count = QCN_6432_CE_COUNT;
-		scn->ini_cfg.disable_wake_irq = 1;
-		break;
-	case TARGET_TYPE_QCA5424:
-		hif_state->host_ce_config = host_ce_config_wlan_qca5424;
-		hif_state->target_ce_config = target_ce_config_wlan_qca5424;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_qca5424);
-		scn->ce_count = QCN_5424_CE_COUNT;
-		scn->ini_cfg.disable_wake_irq = 1;
-		break;
-	case TARGET_TYPE_QCA5018:
-		hif_state->host_ce_config = host_ce_config_wlan_qca5018;
-		hif_state->target_ce_config = target_ce_config_wlan_qca5018;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_qca5018);
-		scn->ce_count = QCA_5018_CE_COUNT;
-		break;
-	case TARGET_TYPE_QCA9574:
-		hif_state->host_ce_config = host_ce_config_wlan_qca9574;
-		hif_state->target_ce_config = target_ce_config_wlan_qca9574;
-		hif_state->target_ce_config_sz =
-					sizeof(target_ce_config_wlan_qca9574);
 		break;
 	case TARGET_TYPE_QCA6390:
 		hif_state->host_ce_config = host_ce_config_wlan_qca6390;
@@ -6125,7 +5598,6 @@ void hif_ce_ipa_get_ce_resource(struct hif_softc *scn,
 }
 #endif /* IPA_OFFLOAD && !LITHIUM && !BERYLLIUM && !RHINE */
 
-
 #ifdef ADRASTEA_SHADOW_REGISTERS
 
 /*
@@ -6426,7 +5898,6 @@ inline uint32_t DEBUG_CE_SRC_RING_READ_IDX_GET(struct hif_softc *scn,
 	return srri_from_ddr;
 }
 
-
 inline uint32_t DEBUG_CE_DEST_RING_READ_IDX_GET(struct hif_softc *scn,
 		uint32_t CE_ctrl_addr)
 {
@@ -6524,7 +5995,6 @@ struct hif_pipe_addl_info *hif_get_addl_pipe_info(struct hif_opaque_softc *osc,
 			src_ring->base_addr_owner_space;
 	}
 
-
 	if (dest_ring) {
 		hif_info->dl_pipe.nentries = dest_ring->nentries;
 		hif_info->dl_pipe.nentries_mask = dest_ring->nentries_mask;
@@ -6559,7 +6029,6 @@ void hif_set_attribute(struct hif_opaque_softc *osc, uint8_t hif_attrib)
 	struct hif_softc *scn = HIF_GET_SOFTC(osc);
 	scn->hif_attribute = hif_attrib;
 }
-
 
 /* disable interrupts (only applicable for legacy copy engine currently */
 void hif_disable_interrupt(struct hif_opaque_softc *osc, uint32_t pipe_num)
@@ -6655,7 +6124,6 @@ irqreturn_t hif_fw_interrupt_handler(int irq, void *arg)
 	return ATH_ISR_SCHED;
 }
 #endif /* #ifdef QCA_WIFI_3_0 */
-
 
 /**
  * hif_wlan_disable(): call the platform driver to disable wlan
