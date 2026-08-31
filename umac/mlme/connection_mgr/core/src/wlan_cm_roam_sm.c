@@ -417,6 +417,27 @@ bool cm_subst_roam_start_event(void *ctx, uint16_t event,
 							     data_len, data);
 		break;
 	case WLAN_CM_SM_EV_ROAM_START:
+		/*
+		 * CM can already be in ROAM_STARTED here because a manual
+		 * EV_ROAM_INVOKE raced ahead of the FW's own ROAM_START
+		 * event. In that case this delivery is the fresh
+		 * roam_offload_roam_event straight from the WMI callback
+		 * (data_len == sizeof(*roam_event)) and must be captured
+		 * here, or the VDEV repurpose TLV(s)/SMD transition IE are
+		 * silently dropped and smd_fw_roam_start() later finds an
+		 * empty link recfg context.
+		 *
+		 * On the normal path this case is instead re-entered as an
+		 * internal re-post from cm_handle_fw_roam_connected_event()/
+		 * cm_state_roaming_event(), where "data" has already been
+		 * converted to a struct cm_req * and the SMD context was
+		 * already populated upstream from the real roam_event. Do
+		 * NOT re-run cm_prepare_smd_roam() in that case -- it would
+		 * misinterpret the cm_req as a roam_event and clobber the
+		 * correct data back to zero.
+		 */
+		if (data_len == sizeof(struct roam_offload_roam_event))
+			cm_prepare_smd_roam(cm_ctx, data);
 		cm_fw_roam_start(ctx);
 		break;
 	case WLAN_CM_SM_EV_ROAM_INVOKE:

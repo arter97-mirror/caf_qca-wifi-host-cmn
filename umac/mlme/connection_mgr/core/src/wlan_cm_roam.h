@@ -480,6 +480,25 @@ QDF_STATUS cm_prepare_roam_cmd(struct cnx_mgr *cm_ctx,
 			       struct roam_offload_roam_event *roam_event);
 
 /**
+ * cm_prepare_smd_roam() - Update SMD link recfg context from a roam event
+ * @cm_ctx: connection mgr context
+ * @roam_event: roam offload event ptr, may be NULL
+ *
+ * This function copies the VDEV repurpose request TLV(s) and SMD
+ * transition IE carried in @roam_event into the vdev's MLO link
+ * reconfiguration context, so the SMD link-recfg state machine can
+ * consume them later. Must be called for every ROAM_START-carrying
+ * event that reaches the CM SM, not just the initial CONNECTED->ROAMING
+ * transition, since a manual EV_ROAM_INVOKE can advance the SM into
+ * ROAM_STARTED before the FW's own ROAM_START event with the real
+ * TLVs arrives.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS cm_prepare_smd_roam(struct cnx_mgr *cm_ctx,
+			       struct roam_offload_roam_event *roam_event);
+
+/**
  * cm_add_fw_roam_cmd_to_list_n_ser() - Add roam req to list and serialize req
  * @cm_ctx: connection mgr context
  * @cm_req: connection mgr req
@@ -539,6 +558,12 @@ static inline bool cm_roam_offload_enabled(struct wlan_objmgr_psoc *psoc)
 static inline QDF_STATUS cm_prepare_roam_cmd(struct cnx_mgr *cm_ctx,
 			       struct cm_req **roam_req,
 			       enum wlan_cm_source source,
+			       struct roam_offload_roam_event *roam_event)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline QDF_STATUS cm_prepare_smd_roam(struct cnx_mgr *cm_ctx,
 			       struct roam_offload_roam_event *roam_event)
 {
 	return QDF_STATUS_E_NOSUPPORT;
