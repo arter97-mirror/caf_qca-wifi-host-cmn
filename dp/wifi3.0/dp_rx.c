@@ -3886,7 +3886,6 @@ QDF_STATUS dp_rx_pdev_desc_pool_init(struct dp_pdev *pdev)
 	uint32_t rx_sw_desc_num;
 	struct dp_srng *dp_rxdma_srng;
 	struct rx_desc_pool *rx_desc_pool;
-	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 	uint16_t buf_size;
 	QDF_STATUS ret;
 
@@ -3919,14 +3918,7 @@ QDF_STATUS dp_rx_pdev_desc_pool_init(struct dp_pdev *pdev)
 	rx_desc_pool->owner = dp_rx_get_rx_bm_id(soc);
 	rx_desc_pool->buf_size = buf_size;
 	rx_desc_pool->buf_alignment = RX_DATA_BUFFER_OPT_ALIGNMENT;
-	/* Disable monitor dest processing via frag */
-	if (target_type == TARGET_TYPE_QCN9160) {
-		rx_desc_pool->buf_size = RX_MONITOR_BUFFER_SIZE;
-		rx_desc_pool->buf_alignment = RX_MONITOR_BUFFER_ALIGNMENT;
-		dp_rx_enable_mon_dest_frag(rx_desc_pool, true);
-	} else {
-		dp_rx_enable_mon_dest_frag(rx_desc_pool, false);
-	}
+	dp_rx_enable_mon_dest_frag(rx_desc_pool, false);
 
 	dp_rx_desc_pool_init(soc, mac_for_pdev,
 			     rx_sw_desc_num, rx_desc_pool);
@@ -4036,7 +4028,6 @@ static inline QDF_STATUS
 __dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev, struct dp_srng *dp_rxdma_srng)
 {
 	struct dp_soc *soc = pdev->soc;
-	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 	struct rx_desc_pool *rx_desc_pool;
 	uint32_t rxdma_entries;
 	uint32_t num_rx_buffers;
@@ -4049,16 +4040,10 @@ __dp_rx_pdev_buffers_alloc(struct dp_pdev *pdev, struct dp_srng *dp_rxdma_srng)
 	num_rx_buffers = dp_rx_get_num_buffers_required(rx_desc_pool,
 							rxdma_entries);
 
-	if (target_type == TARGET_TYPE_QCN9160)
-		return dp_pdev_rx_buffers_attach(soc, mac_for_pdev,
-						 dp_rxdma_srng,
-						 rx_desc_pool,
-						 num_rx_buffers);
-	else
-		return dp_pdev_rx_buffers_attach_simple(soc, mac_for_pdev,
-							dp_rxdma_srng,
-							rx_desc_pool,
-							num_rx_buffers);
+	return dp_pdev_rx_buffers_attach_simple(soc, mac_for_pdev,
+						dp_rxdma_srng,
+						rx_desc_pool,
+						num_rx_buffers);
 }
 
 #ifdef DP_FEATURE_DIRECT_REFILL
@@ -4131,7 +4116,6 @@ dp_rx_pdev_buffers_free(struct dp_pdev *pdev)
 	int mac_for_pdev = pdev->lmac_id;
 	struct dp_soc *soc = pdev->soc;
 	struct rx_desc_pool *rx_desc_pool;
-	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 	struct dp_rx_page_pool *rx_pp = &soc->rx_pp[mac_for_pdev];
 	struct dp_rx_pp_params *pp = &rx_pp->main_pool[0];
 
@@ -4146,10 +4130,7 @@ dp_rx_pdev_buffers_free(struct dp_pdev *pdev)
 
 	rx_desc_pool = &soc->rx_desc_buf[mac_for_pdev];
 
-	if (target_type == TARGET_TYPE_QCN9160)
-		dp_rx_desc_frag_free(soc, rx_desc_pool);
-	else
-		dp_rx_desc_nbuf_free(soc, rx_desc_pool, false);
+	dp_rx_desc_nbuf_free(soc, rx_desc_pool, false);
 
 	dp_rx_buffer_pool_deinit(soc, mac_for_pdev);
 }
@@ -4160,14 +4141,10 @@ dp_rx_pdev_buffers_free(struct dp_pdev *pdev)
 	int mac_for_pdev = pdev->lmac_id;
 	struct dp_soc *soc = pdev->soc;
 	struct rx_desc_pool *rx_desc_pool;
-	uint32_t target_type = hal_get_target_type(soc->hal_soc);
 
 	rx_desc_pool = &soc->rx_desc_buf[mac_for_pdev];
 
-	if (target_type == TARGET_TYPE_QCN9160)
-		dp_rx_desc_frag_free(soc, rx_desc_pool);
-	else
-		dp_rx_desc_nbuf_free(soc, rx_desc_pool, false);
+	dp_rx_desc_nbuf_free(soc, rx_desc_pool, false);
 
 	dp_rx_buffer_pool_deinit(soc, mac_for_pdev);
 }

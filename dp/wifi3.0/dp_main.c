@@ -2121,11 +2121,7 @@ static int dp_process_rxdma_dst_ring(struct dp_soc *soc,
 	uint32_t target_type;
 
 	target_type = hal_get_target_type(soc->hal_soc);
-	if (target_type == TARGET_TYPE_QCN9160)
-		return dp_monitor_process(soc, int_ctx,
-					  mac_for_pdev, total_budget);
-	else
-		return dp_rxdma_err_process(int_ctx, soc, mac_for_pdev,
+	return dp_rxdma_err_process(int_ctx, soc, mac_for_pdev,
 					    total_budget);
 }
 
