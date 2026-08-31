@@ -2474,11 +2474,6 @@ int hif_get_device_type(uint32_t device_id,
 		*target_type = TARGET_TYPE_ADRASTEA;
 		break;
 
-	case AR9888_DEVICE_ID:
-		*hif_type = HIF_TYPE_AR9888;
-		*target_type = TARGET_TYPE_AR9888;
-		break;
-
 	case AR6320_DEVICE_ID:
 		switch (revision_id) {
 		case AR6320_FW_1_1:
@@ -2502,77 +2497,11 @@ int hif_get_device_type(uint32_t device_id,
 		}
 		break;
 
-	case AR9887_DEVICE_ID:
-		*hif_type = HIF_TYPE_AR9888;
-		*target_type = TARGET_TYPE_AR9888;
-		hif_info(" *********** AR9887 **************");
-		break;
-
-	case QCA9984_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA9984;
-		*target_type = TARGET_TYPE_QCA9984;
-		hif_info(" *********** QCA9984 *************");
-		break;
-
-	case QCA9888_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA9888;
-		*target_type = TARGET_TYPE_QCA9888;
-		hif_info(" *********** QCA9888 *************");
-		break;
-
-	case AR900B_DEVICE_ID:
-		*hif_type = HIF_TYPE_AR900B;
-		*target_type = TARGET_TYPE_AR900B;
-		hif_info(" *********** AR900B *************");
-		break;
-
-	case QCA8074_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA8074;
-		*target_type = TARGET_TYPE_QCA8074;
-		hif_info(" *********** QCA8074  *************");
-		break;
-
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
 		*hif_type = HIF_TYPE_QCA6290;
 		*target_type = TARGET_TYPE_QCA6290;
 		hif_info(" *********** QCA6290EMU *************");
-		break;
-
-	case QCN9000_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCN9000;
-		*target_type = TARGET_TYPE_QCN9000;
-		hif_info(" *********** QCN9000 *************");
-		break;
-
-	case QCN9224_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCN9224;
-		*target_type = TARGET_TYPE_QCN9224;
-		hif_info(" *********** QCN9224 *************");
-		break;
-
-	case QCN6122_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCN6122;
-		*target_type = TARGET_TYPE_QCN6122;
-		hif_info(" *********** QCN6122 *************");
-		break;
-
-	case QCN9160_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCN9160;
-		*target_type = TARGET_TYPE_QCN9160;
-		hif_info(" *********** QCN9160 *************");
-		break;
-
-	case QCN6432_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCN6432;
-		*target_type = TARGET_TYPE_QCN6432;
-		hif_info(" *********** QCN6432 *************");
-		break;
-
-	case QCA5424_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA5424;
-		*target_type = TARGET_TYPE_QCA5424;
-		hif_info(" *********** QCA5424 *************");
 		break;
 
 	case QCN7605_DEVICE_ID:
@@ -2646,42 +2575,6 @@ int hif_get_device_type(uint32_t device_id,
 		*hif_type = HIF_TYPE_FIG;
 		*target_type = TARGET_TYPE_FIG;
 		hif_info(" *********** FIG *************");
-		break;
-
-	case QCA8074V2_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA8074V2;
-		*target_type = TARGET_TYPE_QCA8074V2;
-		hif_info(" *********** QCA8074V2 *************");
-		break;
-
-	case QCA6018_DEVICE_ID:
-	case RUMIM2M_DEVICE_ID_NODE0:
-	case RUMIM2M_DEVICE_ID_NODE1:
-	case RUMIM2M_DEVICE_ID_NODE2:
-	case RUMIM2M_DEVICE_ID_NODE3:
-	case RUMIM2M_DEVICE_ID_NODE4:
-	case RUMIM2M_DEVICE_ID_NODE5:
-		*hif_type = HIF_TYPE_QCA6018;
-		*target_type = TARGET_TYPE_QCA6018;
-		hif_info(" *********** QCA6018 *************");
-		break;
-
-	case QCA5018_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA5018;
-		*target_type = TARGET_TYPE_QCA5018;
-		hif_info(" *********** qca5018 *************");
-		break;
-
-	case QCA5332_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA5332;
-		*target_type = TARGET_TYPE_QCA5332;
-		hif_info(" *********** QCA5332 *************");
-		break;
-
-	case QCA9574_DEVICE_ID:
-		*hif_type = HIF_TYPE_QCA9574;
-		*target_type = TARGET_TYPE_QCA9574;
-		hif_info(" *********** QCA9574 *************");
 		break;
 
 	case WCN6450_DEVICE_ID:
@@ -3088,7 +2981,6 @@ void hif_prealloc_put_multi_pages(struct hif_softc *scn, uint32_t desc_type,
 }
 #endif
 
-
 /**
  * hif_update_tx_ring() - API to access hif specific function
  * ce_update_tx_ring.
@@ -3104,7 +2996,6 @@ void hif_update_tx_ring(struct hif_opaque_softc *osc, u_int32_t num_htt_cmpls)
 	ce_update_tx_ring(ce_tx_hdl, num_htt_cmpls);
 }
 qdf_export_symbol(hif_update_tx_ring);
-
 
 #endif
 
