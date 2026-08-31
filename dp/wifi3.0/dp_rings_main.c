@@ -1186,13 +1186,6 @@ void dp_hw_link_desc_ring_deinit(struct dp_soc *soc)
 #define USE_1_IPA_RX_REO_RING 1
 #define USE_2_IPA_RX_REO_RINGS 2
 #define REO_DST_RING_SIZE_QCA6290 1023
-#ifndef CONFIG_WIFI_EMULATION_WIFI_3_0
-#define REO_DST_RING_SIZE_QCA8074 1023
-#define REO_DST_RING_SIZE_QCN9000 2048
-#else
-#define REO_DST_RING_SIZE_QCA8074 8
-#define REO_DST_RING_SIZE_QCN9000 8
-#endif /* CONFIG_WIFI_EMULATION_WIFI_3_0 */
 
 #ifdef IPA_WDI3_TX_TWO_PIPES
 #ifdef DP_MEMORY_OPT
@@ -3711,79 +3704,6 @@ static void dp_soc_cfg_init(struct dp_soc *soc)
 		soc->repurpose_to_rxdma2sw_supported =
 					REPURPOSE_TO_RXDMA2SW_SUPPORTED;
 		break;
-	case TARGET_TYPE_QCA8074:
-		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, true);
-		soc->da_war_enabled = true;
-		soc->is_rx_fse_full_cache_invalidate_war_enabled = true;
-		break;
-	case TARGET_TYPE_QCA8074V2:
-	case TARGET_TYPE_QCA6018:
-	case TARGET_TYPE_QCA9574:
-		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, false);
-		soc->ast_override_support = 1;
-		soc->per_tid_basize_max_tid = 8;
-		soc->num_hw_dscp_tid_map = HAL_MAX_HW_DSCP_TID_V2_MAPS;
-		soc->da_war_enabled = false;
-		soc->is_rx_fse_full_cache_invalidate_war_enabled = true;
-		break;
-	case TARGET_TYPE_QCN9000:
-		soc->ast_override_support = 1;
-		soc->da_war_enabled = false;
-		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, false);
-		soc->per_tid_basize_max_tid = 8;
-		soc->num_hw_dscp_tid_map = HAL_MAX_HW_DSCP_TID_V2_MAPS;
-		soc->lmac_polled_mode = 0;
-		soc->wbm_release_desc_rx_sg_support = 1;
-		soc->is_rx_fse_full_cache_invalidate_war_enabled = true;
-		break;
-	case TARGET_TYPE_QCA5018:
-	case TARGET_TYPE_QCN6122:
-	case TARGET_TYPE_QCN9160:
-		soc->ast_override_support = 1;
-		soc->da_war_enabled = false;
-		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, false);
-		soc->per_tid_basize_max_tid = 8;
-		soc->num_hw_dscp_tid_map = HAL_MAX_HW_DSCP_TID_MAPS_11AX;
-		soc->disable_mac1_intr = 1;
-		soc->disable_mac2_intr = 1;
-		soc->wbm_release_desc_rx_sg_support = 1;
-		break;
-	case TARGET_TYPE_QCN9224:
-		soc->umac_reset_supported = true;
-		soc->ast_override_support = 1;
-		soc->da_war_enabled = false;
-		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, false);
-		soc->per_tid_basize_max_tid = 8;
-		soc->wbm_release_desc_rx_sg_support = 1;
-		soc->rxdma2sw_rings_not_supported = 1;
-		soc->wbm_sg_last_msdu_war = 1;
-		soc->ast_offload_support = AST_OFFLOAD_ENABLE_STATUS;
-		soc->mec_fw_offload = FW_MEC_FW_OFFLOAD_ENABLED;
-		soc->num_hw_dscp_tid_map = HAL_MAX_HW_DSCP_TID_V2_MAPS;
-		wlan_cfg_set_txmon_hw_support(soc->wlan_cfg_ctx, true);
-		soc->host_ast_db_enable = cfg_get(soc->ctrl_psoc,
-						  CFG_DP_HOST_AST_DB_ENABLE);
-		soc->features.wds_ext_ast_override_enable = true;
-		break;
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCA5424:
-	case TARGET_TYPE_QCN6432:
-		soc->umac_reset_supported = true;
-		soc->ast_override_support = 1;
-		soc->da_war_enabled = false;
-		wlan_cfg_set_raw_mode_war(soc->wlan_cfg_ctx, false);
-		soc->per_tid_basize_max_tid = 8;
-		soc->wbm_release_desc_rx_sg_support = 1;
-		soc->rxdma2sw_rings_not_supported = 1;
-		soc->wbm_sg_last_msdu_war = 1;
-		soc->ast_offload_support = AST_OFFLOAD_ENABLE_STATUS;
-		soc->mec_fw_offload = FW_MEC_FW_OFFLOAD_ENABLED;
-		soc->num_hw_dscp_tid_map = HAL_MAX_HW_DSCP_TID_V2_MAPS_5332;
-		wlan_cfg_set_txmon_hw_support(soc->wlan_cfg_ctx, true);
-		soc->host_ast_db_enable = cfg_get(soc->ctrl_psoc,
-						  CFG_DP_HOST_AST_DB_ENABLE);
-		soc->features.wds_ext_ast_override_enable = true;
-		break;
 	default:
 		qdf_print("%s: Unknown tgt type %d\n", __func__, target_type);
 		qdf_assert_always(0);
@@ -4008,14 +3928,6 @@ void *dp_soc_init(struct dp_soc *soc, HTC_HANDLE htc_handle,
 		if (ret == 1)
 			soc->cce_disable = true;
 	}
-
-	/*
-	 * Skip registering hw ring interrupts for WMAC2 on IPQ6018
-	 * and IPQ5018 WMAC2 is not there in these platforms.
-	 */
-	if (hal_get_target_type(soc->hal_soc) == TARGET_TYPE_QCA6018 ||
-	    soc->disable_mac2_intr)
-		dp_soc_disable_unused_mac_intr_mask(soc, 0x2);
 
 	/*
 	 * Skip registering hw ring interrupts for WMAC1 on IPQ5018
@@ -4808,28 +4720,6 @@ void dp_soc_cfg_attach(struct dp_soc *soc)
 	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_QCC2072:
 	case TARGET_TYPE_FIG:
-		break;
-	case TARGET_TYPE_QCA8074:
-		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		break;
-	case TARGET_TYPE_QCA8074V2:
-	case TARGET_TYPE_QCA6018:
-	case TARGET_TYPE_QCA9574:
-	case TARGET_TYPE_QCN6122:
-	case TARGET_TYPE_QCA5018:
-		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		break;
-	case TARGET_TYPE_QCN9160:
-		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		break;
-	case TARGET_TYPE_QCN9000:
-		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
-		break;
-	case TARGET_TYPE_QCN9224:
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCN6432:
-	case TARGET_TYPE_QCA5424:
-		wlan_cfg_set_tso_desc_attach_defer(soc->wlan_cfg_ctx, 1);
 		break;
 	default:
 		qdf_print("%s: Unknown tgt type %d\n", __func__, target_type);
