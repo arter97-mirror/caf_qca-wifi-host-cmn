@@ -182,7 +182,6 @@ dp_enable_undecoded_metadata_capture(struct dp_pdev *pdev, int val)
 	mon_pdev->undecoded_metadata_capture = val;
 	mon_pdev->monitor_configured = true;
 
-
 	/* Setup the undecoded metadata capture mode filter. */
 	dp_mon_filter_setup_undecoded_metadata_mode(pdev);
 	status = dp_mon_filter_update(pdev);
@@ -669,7 +668,6 @@ void dp_htt_ppdu_stats_detach(struct dp_pdev *pdev)
 {
 	struct ppdu_info *ppdu_info, *ppdu_info_next;
 	struct dp_mon_pdev *mon_pdev = pdev->monitor_pdev;
-
 
 	TAILQ_FOREACH_SAFE(ppdu_info, &mon_pdev->ppdu_info_list,
 			   ppdu_info_list_elem, ppdu_info_next) {
@@ -5442,10 +5440,6 @@ static void dp_mon_pdev_per_target_config(struct dp_pdev *pdev)
 	target_type = hal_get_target_type(soc->hal_soc);
 	switch (target_type) {
 	case TARGET_TYPE_KIWI:
-	case TARGET_TYPE_QCN9224:
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCN6432:
-	case TARGET_TYPE_QCA5424:
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_WCN8750:
 	case TARGET_TYPE_FIG:
@@ -6382,14 +6376,6 @@ void dp_mon_ops_register(struct dp_soc *soc)
 	case TARGET_TYPE_KIWI:
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
-	case TARGET_TYPE_QCA8074:
-	case TARGET_TYPE_QCA8074V2:
-	case TARGET_TYPE_QCA6018:
-	case TARGET_TYPE_QCA9574:
-	case TARGET_TYPE_QCN9160:
-	case TARGET_TYPE_QCN9000:
-	case TARGET_TYPE_QCA5018:
-	case TARGET_TYPE_QCN6122:
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_WCN8750:
@@ -6398,14 +6384,6 @@ void dp_mon_ops_register(struct dp_soc *soc)
 		dp_mon_ops_register_1_0(mon_soc);
 		dp_mon_ops_register_cmn_2_0(mon_soc);
 		dp_mon_ops_register_tx_2_0(mon_soc);
-		break;
-	case TARGET_TYPE_QCN9224:
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCN6432:
-	case TARGET_TYPE_QCA5424:
-#if defined(WLAN_PKT_CAPTURE_TX_2_0) || defined(WLAN_PKT_CAPTURE_RX_2_0)
-		dp_mon_ops_register_2_0(mon_soc);
-#endif
 		break;
 	default:
 		dp_mon_err("%s: Unknown tgt type %d", __func__, target_type);
@@ -6453,14 +6431,6 @@ void dp_mon_cdp_ops_register(struct dp_soc *soc)
 	case TARGET_TYPE_KIWI:
 	case TARGET_TYPE_MANGO:
 	case TARGET_TYPE_PEACH:
-	case TARGET_TYPE_QCA8074:
-	case TARGET_TYPE_QCA8074V2:
-	case TARGET_TYPE_QCA6018:
-	case TARGET_TYPE_QCA9574:
-	case TARGET_TYPE_QCN9160:
-	case TARGET_TYPE_QCN9000:
-	case TARGET_TYPE_QCA5018:
-	case TARGET_TYPE_QCN6122:
 	case TARGET_TYPE_WCN6450:
 	case TARGET_TYPE_WCN7750:
 	case TARGET_TYPE_WCN8750:
@@ -6470,14 +6440,6 @@ void dp_mon_cdp_ops_register(struct dp_soc *soc)
 #if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
 		dp_cfr_filter_register_1_0(ops);
 #endif
-		break;
-	case TARGET_TYPE_QCN9224:
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCN6432:
-	case TARGET_TYPE_QCA5424:
-#if defined(WLAN_PKT_CAPTURE_TX_2_0) || defined(WLAN_PKT_CAPTURE_RX_2_0)
-		dp_mon_cdp_ops_register_2_0(ops);
-#endif /* WLAN_PKT_CAPTURE_TX_2_0 && WLAN_PKT_CAPTURE_RX_2_0 */
 		break;
 	default:
 		dp_mon_err("%s: Unknown tgt type %d", __func__, target_type);
