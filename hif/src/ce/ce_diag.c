@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -73,9 +73,6 @@ hif_ce_dump_target_memory(struct hif_softc *scn, void *ramdump_base,
 	 | 0x100000 | ((addr) & 0xfffff))
 #endif
 
-#define TARG_CPU_SPACE_TO_CE_SPACE_AR900B(scn, pci_addr, addr) \
-	(hif_read32_mb(scn, (pci_addr) + (WIFICMN_PCIE_BAR_REG_ADDRESS)) \
-	| 0x100000 | ((addr) & 0xfffff))
 
 #define SRAM_BASE_ADDRESS 0xc0000
 #define SRAM_END_ADDRESS 0x100000
@@ -97,15 +94,8 @@ static qdf_dma_addr_t get_ce_phy_addr(struct hif_softc *sc, uint32_t  address,
 	qdf_dma_addr_t ce_phy_addr;
 	struct hif_softc *scn = sc;
 
-	if ((target_type == TARGET_TYPE_AR900B) ||
-	    (target_type == TARGET_TYPE_QCA9984) ||
-	    (target_type == TARGET_TYPE_QCA9888)) {
-		ce_phy_addr =
-		    TARG_CPU_SPACE_TO_CE_SPACE_AR900B(sc, sc->mem, address);
-	} else {
-		ce_phy_addr =
-		    TARG_CPU_SPACE_TO_CE_SPACE(sc, sc->mem, address);
-	}
+	ce_phy_addr =
+	    TARG_CPU_SPACE_TO_CE_SPACE(sc, sc->mem, address);
 
 	return ce_phy_addr;
 }
@@ -115,8 +105,6 @@ static qdf_dma_addr_t get_ce_phy_addr(struct hif_softc *sc, uint32_t  address,
  * Caller must guarantee proper alignment, when applicable, and single user
  * at any moment.
  */
-
-#define FW_SRAM_ADDRESS     0x000C0000
 
 QDF_STATUS hif_diag_read_mem(struct hif_opaque_softc *hif_ctx,
 			     uint32_t address, uint8_t *data, int nbytes)
@@ -161,13 +149,7 @@ QDF_STATUS hif_diag_read_mem(struct hif_opaque_softc *hif_ctx,
 	 * register read fn but preserve the multi word read capability of
 	 * this fn
 	 */
-	if ((target_type == TARGET_TYPE_AR900B)  ||
-	    (target_type == TARGET_TYPE_QCA9984) ||
-	    (target_type == TARGET_TYPE_AR9888) ||
-	    (target_type == TARGET_TYPE_QCA9888))
-		boundary_addr = FW_SRAM_ADDRESS;
-	else
-		boundary_addr = DRAM_BASE_ADDRESS;
+	boundary_addr = DRAM_BASE_ADDRESS;
 
 	if (address < boundary_addr) {
 
