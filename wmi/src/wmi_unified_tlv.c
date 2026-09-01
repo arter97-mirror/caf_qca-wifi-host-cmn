@@ -15140,9 +15140,20 @@ static QDF_STATUS extract_profile_data_tlv(wmi_unified_t wmi_handle,
 	WMI_WLAN_PROFILE_DATA_EVENTID_param_tlvs *param_buf;
 	wmi_wlan_profile_t *ev;
 
+	if (!profile_data) {
+		wmi_err("Null profile_data");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	param_buf = (WMI_WLAN_PROFILE_DATA_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
 		wmi_err("Invalid profile data event buf");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (idx >= param_buf->num_profile_data) {
+		wmi_err("Invalid profile data index: %u, max: %u",
+			idx, param_buf->num_profile_data);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -17962,6 +17973,11 @@ static QDF_STATUS extract_reg_chan_list_ext_update_event_tlv(
 	reg_info->phybitmap = convert_phybitmap_tlv(
 			ext_chan_list_event_hdr->phybitmap);
 	reg_info->offload_enabled = true;
+	if (ext_chan_list_event_hdr->num_phy > PSOC_MAX_PHY_REG_CAP) {
+		wmi_err_rl("Invalid num_phy: %u",
+			   ext_chan_list_event_hdr->num_phy);
+		return QDF_STATUS_E_FAILURE;
+	}
 	reg_info->num_phy = ext_chan_list_event_hdr->num_phy;
 	reg_info->phy_id = wmi_handle->ops->convert_phy_id_target_to_host(
 				wmi_handle, ext_chan_list_event_hdr->phy_id);
