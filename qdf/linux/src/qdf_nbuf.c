@@ -5122,9 +5122,13 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 			__qdf_nbuf_fill_tso_cmn_seg_info(curr_seg,
 							 &tso_cmn_info);
 
-		/* If TCP PSH flag is set, set it in the last or only segment */
-		if (!is_uso && num_seg == 1)
+		/* If TCP PSH/FIN flag is set, set it in the last
+		 * or only segment
+		 */
+		if (!is_uso && num_seg == 1) {
 			curr_seg->seg.tso_flags.psh = tso_cmn_info.tcphdr->psh;
+			curr_seg->seg.tso_flags.fin = tso_cmn_info.tcphdr->fin;
+		}
 
 		if (unlikely(skb_proc == 0))
 			return tso_info->num_segs;
@@ -5242,9 +5246,6 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 		TSO_DEBUG("%s tcp_seq_num: %u", __func__,
 				curr_seg->seg.tso_flags.tcp_seq_num);
 		num_seg--;
-		/* if TCP FIN flag was set, set it in the last segment */
-		if (!is_uso && !num_seg)
-			curr_seg->seg.tso_flags.fin = tso_cmn_info.tcphdr->fin;
 
 		qdf_tso_seg_dbg_record(curr_seg, TSOSEG_LOC_GETINFO);
 		curr_seg = curr_seg->next;
