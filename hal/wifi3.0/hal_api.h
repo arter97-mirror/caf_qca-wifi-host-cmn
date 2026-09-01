@@ -1520,7 +1520,10 @@ void hal_srng_dst_reset_sw_hp_tp(hal_ring_handle_t hal_ring_hdl)
  *
  * Return: void
  */
-#if defined(__LINUX_MIPS32_ARCH__) || defined(__LINUX_MIPS64_ARCH__)
+#ifdef CONFIG_IO_COHERENCY
+static inline void hal_mem_dma_cache_sync(struct hal_soc *soc, uint32_t *desc,
+					  uint32_t entry_size) {}
+#elif defined(__LINUX_MIPS32_ARCH__) || defined(__LINUX_MIPS64_ARCH__)
 static inline void hal_mem_dma_cache_sync(struct hal_soc *soc, uint32_t *desc,
 					  uint32_t entry_size)
 {

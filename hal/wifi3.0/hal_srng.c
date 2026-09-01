@@ -1409,6 +1409,119 @@ inline bool hal_alloc_srng_history(struct hal_soc *hal)
 }
 #endif
 
+#ifdef CONFIG_IO_COHERENCY
+static inline
+QDF_STATUS hal_alloc_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	uint32_t sz = sizeof(*hal->shadow_rdptr_mem_vaddr) * HAL_SRNG_ID_MAX;
+
+	hal->shadow_rdptr_mem_vaddr = (uint32_t *)qdf_mem_malloc(sz);
+
+	if (!hal->shadow_rdptr_mem_vaddr) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "%s: hal->shadow_rdptr_mem_vaddr allocation failed",
+			  __func__);
+		return QDF_STATUS_E_NOMEM;
+	}
+	hal->shadow_rdptr_mem_paddr =
+			qdf_mem_virt_to_phys(hal->shadow_rdptr_mem_vaddr);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS hal_alloc_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	uint32_t sz = sizeof(*hal->shadow_wrptr_mem_vaddr) * HAL_MAX_LMAC_RINGS;
+
+	hal->shadow_wrptr_mem_vaddr = (uint32_t *)qdf_mem_malloc(sz);
+
+	if (!hal->shadow_wrptr_mem_vaddr) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "%s: hal->shadow_wrptr_mem_vaddr allocation failed",
+			  __func__);
+		return QDF_STATUS_E_NOMEM;
+	}
+	hal->shadow_wrptr_mem_paddr =
+		qdf_mem_virt_to_phys(hal->shadow_wrptr_mem_vaddr);
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void hal_free_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	if (hal->shadow_rdptr_mem_vaddr)
+		qdf_mem_free(hal->shadow_rdptr_mem_vaddr);
+}
+
+static inline
+void hal_free_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	if (hal->shadow_wrptr_mem_vaddr)
+		qdf_mem_free(hal->shadow_wrptr_mem_vaddr);
+}
+
+#else
+static inline
+QDF_STATUS hal_alloc_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	hal->shadow_rdptr_mem_vaddr =
+		(uint32_t *)qdf_mem_alloc_consistent(qdf_dev, qdf_dev->dev,
+			sizeof(*hal->shadow_rdptr_mem_vaddr) * HAL_SRNG_ID_MAX,
+			&hal->shadow_rdptr_mem_paddr);
+
+	if (!hal->shadow_rdptr_mem_vaddr) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "%s: hal->shadow_rdptr_mem_vaddr allocation failed",
+			  __func__);
+		return QDF_STATUS_E_NOMEM;
+	}
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+QDF_STATUS hal_alloc_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	hal->shadow_wrptr_mem_vaddr =
+		(uint32_t *)qdf_mem_alloc_consistent(qdf_dev, qdf_dev->dev,
+			sizeof(*hal->shadow_wrptr_mem_vaddr) *
+			HAL_MAX_LMAC_RINGS,
+			&hal->shadow_wrptr_mem_paddr);
+
+	if (!hal->shadow_wrptr_mem_vaddr) {
+		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
+			  "%s: hal->shadow_wrptr_mem_vaddr allocation failed",
+			  __func__);
+		return QDF_STATUS_E_NOMEM;
+	}
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline
+void hal_free_shadow_rd_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	if (hal->shadow_rdptr_mem_vaddr) {
+		qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
+					sizeof(*hal->shadow_rdptr_mem_vaddr) *
+					HAL_SRNG_ID_MAX,
+					hal->shadow_rdptr_mem_vaddr,
+					hal->shadow_rdptr_mem_paddr, 0);
+	}
+}
+
+static inline
+void hal_free_shadow_wr_ptr(struct hal_soc *hal, qdf_device_t qdf_dev)
+{
+	if (hal->shadow_wrptr_mem_vaddr) {
+		qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
+					sizeof(*hal->shadow_wrptr_mem_vaddr) *
+					HAL_MAX_LMAC_RINGS,
+					hal->shadow_wrptr_mem_vaddr,
+					hal->shadow_wrptr_mem_paddr, 0);
+	}
+}
+#endif /* CONFIG_IO_COHERENCY */
+
 void *hal_attach(struct hif_opaque_softc *hif_handle, qdf_device_t qdf_dev)
 {
 	struct hal_soc *hal;
@@ -1427,28 +1540,16 @@ void *hal_attach(struct hif_opaque_softc *hif_handle, qdf_device_t qdf_dev)
 	hal->dev_base_addr_cmem = hif_get_dev_ba_cmem(hif_handle); /* CMEM */
 	hal->dev_base_addr_pmm = hif_get_dev_ba_pmm(hif_handle); /* PMM */
 	hal->qdf_dev = qdf_dev;
-	hal->shadow_rdptr_mem_vaddr = (uint32_t *)qdf_mem_alloc_consistent(
-		qdf_dev, qdf_dev->dev, sizeof(*(hal->shadow_rdptr_mem_vaddr)) *
-		HAL_SRNG_ID_MAX, &(hal->shadow_rdptr_mem_paddr));
-	if (!hal->shadow_rdptr_mem_paddr) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			"%s: hal->shadow_rdptr_mem_paddr allocation failed",
-			__func__);
+
+	if (QDF_STATUS_SUCCESS != hal_alloc_shadow_rd_ptr(hal, qdf_dev))
 		goto fail1;
-	}
+
 	qdf_mem_zero(hal->shadow_rdptr_mem_vaddr,
 		     sizeof(*(hal->shadow_rdptr_mem_vaddr)) * HAL_SRNG_ID_MAX);
 
-	hal->shadow_wrptr_mem_vaddr =
-		(uint32_t *)qdf_mem_alloc_consistent(qdf_dev, qdf_dev->dev,
-		sizeof(*(hal->shadow_wrptr_mem_vaddr)) * HAL_MAX_LMAC_RINGS,
-		&(hal->shadow_wrptr_mem_paddr));
-	if (!hal->shadow_wrptr_mem_vaddr) {
-		QDF_TRACE(QDF_MODULE_ID_TXRX, QDF_TRACE_LEVEL_ERROR,
-			"%s: hal->shadow_wrptr_mem_vaddr allocation failed",
-			__func__);
+	if (QDF_STATUS_SUCCESS != hal_alloc_shadow_wr_ptr(hal, qdf_dev))
 		goto fail2;
-	}
+
 	qdf_mem_zero(hal->shadow_wrptr_mem_vaddr,
 		sizeof(*(hal->shadow_wrptr_mem_vaddr)) * HAL_MAX_LMAC_RINGS);
 
@@ -1493,15 +1594,9 @@ fail4:
 	qdf_minidump_remove(hal, sizeof(*hal), "hal_soc");
 	qdf_mem_free(hal->ops);
 fail3:
-	qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
-				sizeof(*hal->shadow_wrptr_mem_vaddr) *
-				HAL_MAX_LMAC_RINGS,
-				hal->shadow_wrptr_mem_vaddr,
-				hal->shadow_wrptr_mem_paddr, 0);
+	hal_free_shadow_wr_ptr(hal, qdf_dev);
 fail2:
-	qdf_mem_free_consistent(qdf_dev, qdf_dev->dev,
-		sizeof(*(hal->shadow_rdptr_mem_vaddr)) * HAL_SRNG_ID_MAX,
-		hal->shadow_rdptr_mem_vaddr, hal->shadow_rdptr_mem_paddr, 0);
+	hal_free_shadow_rd_ptr(hal, qdf_dev);
 fail1:
 	qdf_mem_common_free(hal);
 fail0:
@@ -1536,12 +1631,8 @@ void hal_detach(void *hal_soc)
 	qdf_mem_free(hal->ops);
 
 	hal_free_srng_history(hal);
-	qdf_mem_free_consistent(hal->qdf_dev, hal->qdf_dev->dev,
-		sizeof(*(hal->shadow_rdptr_mem_vaddr)) * HAL_SRNG_ID_MAX,
-		hal->shadow_rdptr_mem_vaddr, hal->shadow_rdptr_mem_paddr, 0);
-	qdf_mem_free_consistent(hal->qdf_dev, hal->qdf_dev->dev,
-		sizeof(*(hal->shadow_wrptr_mem_vaddr)) * HAL_MAX_LMAC_RINGS,
-		hal->shadow_wrptr_mem_vaddr, hal->shadow_wrptr_mem_paddr, 0);
+	hal_free_shadow_wr_ptr(hal, hal->qdf_dev);
+	hal_free_shadow_rd_ptr(hal, hal->qdf_dev);
 	qdf_mem_common_free(hal);
 
 	return;

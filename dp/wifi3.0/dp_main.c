@@ -2537,6 +2537,7 @@ QDF_STATUS dp_srng_alloc(struct dp_soc *soc, struct dp_srng *srng,
 	srng->hal_srng = NULL;
 	srng->alloc_size = num_entries * entry_size;
 	srng->num_entries = num_entries;
+	cached = DP_SRNG_ALLOC_CACHED ? 1 : cached;
 	srng->cached = cached;
 
 	if (!cached) {

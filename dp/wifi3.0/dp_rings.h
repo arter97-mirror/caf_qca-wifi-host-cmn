@@ -20,6 +20,12 @@
 #ifndef _DP_RINGS_H_
 #define _DP_RINGS_H_
 
+#ifdef CONFIG_IO_COHERENCY
+#define DP_SRNG_ALLOC_CACHED 1
+#else
+#define DP_SRNG_ALLOC_CACHED 0
+#endif
+
 #include <dp_types.h>
 #include <dp_internal.h>
 #ifdef WIFI_MONITOR_SUPPORT
