@@ -4833,6 +4833,47 @@ QDF_STATUS wlan_set_crypto_params_from_mrsno(struct wlan_objmgr_vdev *vdev,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_11BI_SECURITY
+static void
+wlan_crypto_set_sae_ext_eppke_auth(struct wlan_objmgr_vdev *vdev,
+				   bool rsn_has_sae_ext_key,
+				   const uint8_t *ie_ptr, uint16_t ie_len,
+				   struct wlan_crypto_params *vdev_crypto_params)
+{
+	const uint8_t *rsnxe;
+	const uint8_t *rsnxe_cap;
+	uint8_t rsnxe_cap_len = 0;
+
+	/*
+	 * SAE-EXT-KEY uses EPPKE when the vdev allows it and the AP advertises
+	 * both KEK-in-PASN and encrypted association frames in its RSNXE.
+	 */
+	if (!rsn_has_sae_ext_key || !wlan_vdev_is_eppke_allowed(vdev))
+		return;
+
+	rsnxe = wlan_get_ie_ptr_from_eid(WLAN_ELEMID_RSNXE, ie_ptr, ie_len);
+	rsnxe_cap = wlan_crypto_parse_rsnxe_ie(rsnxe, &rsnxe_cap_len);
+	if (rsnxe_cap &&
+	    rsnxe_cap_len >= WLAN_CRYPTO_RSNX_CAP_MIN_LEN_BYTE3 &&
+	    (rsnxe_cap[2] & (WLAN_CRYPTO_RSNX_CAP_KEK_IN_PASN >> 16)) &&
+	    (rsnxe_cap[3] &
+	     (WLAN_CRYPTO_RSNX_CAP_ASSOC_FRM_ENCRYPTION >> 24))) {
+		crypto_debug("vdev:%d set EPPKE auth for SAE-EXT-KEY",
+			     wlan_vdev_get_id(vdev));
+		wlan_crypto_set_authmode(vdev_crypto_params,
+					 BIT(WLAN_CRYPTO_AUTH_EPPKE));
+	}
+}
+#else
+static inline void
+wlan_crypto_set_sae_ext_eppke_auth(struct wlan_objmgr_vdev *vdev,
+				   bool rsn_has_sae_ext_key,
+				   const uint8_t *ie_ptr, uint16_t ie_len,
+				   struct wlan_crypto_params *vdev_crypto_params)
+{
+}
+#endif
+
 QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,
 					       uint8_t *ie_ptr,
 					       uint16_t ie_len)
@@ -4842,6 +4883,7 @@ QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,
 	struct wlan_crypto_params *vdev_crypto_params;
 	struct wlan_crypto_comp_priv *crypto_priv;
 	bool send_fail = false;
+	bool rsn_has_sae_ext_key = false;
 
 	if (!vdev) {
 		crypto_err("VDEV is NULL");
@@ -4866,10 +4908,14 @@ QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,
 	wlan_crypto_reset_prarams(vdev_crypto_params);
 	status = wlan_get_crypto_params_from_rsn_ie(&crypto_params,
 						    ie_ptr, ie_len, NULL);
-	if (QDF_IS_STATUS_SUCCESS(status))
+	if (QDF_IS_STATUS_SUCCESS(status)) {
 		wlan_crypto_merge_prarams(vdev_crypto_params, &crypto_params);
-	else
+		rsn_has_sae_ext_key = QDF_HAS_PARAM(
+			crypto_params.key_mgmt,
+			WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY);
+	} else {
 		send_fail = true;
+	}
 
 	status = wlan_get_crypto_params_from_wpa_ie(&crypto_params,
 						    ie_ptr, ie_len,
@@ -4878,6 +4924,9 @@ QDF_STATUS wlan_set_vdev_crypto_params_from_ie(struct wlan_objmgr_vdev *vdev,
 		wlan_crypto_merge_prarams(vdev_crypto_params, &crypto_params);
 		send_fail = false;
 	}
+
+	wlan_crypto_set_sae_ext_eppke_auth(vdev, rsn_has_sae_ext_key, ie_ptr,
+					   ie_len, vdev_crypto_params);
 
 	status = wlan_get_crypto_params_from_wapi_ie(&crypto_params,
 						     ie_ptr, ie_len);
