@@ -452,6 +452,11 @@ uint8_t *wlan_crypto_build_wpaie(struct wlan_objmgr_vdev *vdev,
  *
  * This function gets called by mlme to build rsnie from given vdev
  *
+ * @pmksa must be an entry the caller owns (e.g. a struct populated via
+ * wlan_crypto_get_pmksa_copy() and friends, or a local/stack instance) -
+ * never a raw pointer into the shared per-vdev pmksa[] table. This API is
+ * lock-free and simply reads the fields of @pmksa.
+ *
  * Return: end of buffer
  */
 uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
@@ -465,6 +470,10 @@ uint8_t *wlan_crypto_build_rsnie_with_pmksa(struct wlan_objmgr_vdev *vdev,
  * @bssid: bssid mac address to add pmkid in rsnie
  *
  * This function gets called by mlme to build rsnie from given vdev
+ *
+ * This API looks up the PMKSA for @bssid via wlan_crypto_get_pmksa_copy(),
+ * which locks internally, so the caller must NOT hold
+ * wlan_crypto_pmksa_aquire_lock() across this call.
  *
  * Return: end of buffer
  */
@@ -1220,51 +1229,71 @@ ucfg_crypto_set_peer_ucastcipher(struct wlan_objmgr_psoc *psoc,
 				 int32_t cipher_cap);
 
 /**
- * wlan_crypto_get_peer_pmksa() - called to get pmksa based on pmksa parameter
+ * wlan_crypto_get_peer_pmksa_copy() - get pmksa based on pmksa lookup key
  * @vdev: vdev
- * @pmksa: bssid
+ * @lookup: lookup key - ssid_len/ssid/cache_id (FILS) or bssid
+ * @pmksa: output buffer the matched entry is copied into
  *
- * This function is to get pmksa based on pmksa parameter
+ * Looks up the per-vdev PMKSA cache using @lookup and, on a match, copies
+ * the entry into @pmksa under the crypto module's internal pmksa lock.
+ * The caller never touches the lock or a pointer into the shared table.
  *
- * Return: wlan_crypto_pmksa when match found else NULL.
+ * Return: QDF_STATUS_SUCCESS if found and copied, QDF_STATUS_E_EMPTY if
+ * not found, QDF_STATUS_E_INVAL if @pmksa is NULL.
  */
-struct wlan_crypto_pmksa *
-wlan_crypto_get_peer_pmksa(struct wlan_objmgr_vdev *vdev,
+QDF_STATUS
+wlan_crypto_get_peer_pmksa_copy(struct wlan_objmgr_vdev *vdev,
+				struct wlan_crypto_pmksa *lookup,
+				struct wlan_crypto_pmksa *pmksa);
+
+/**
+ * wlan_crypto_get_pmksa_copy() - get pmksa of bssid passed, copied out
+ * @vdev: vdev
+ * @bssid: bssid
+ * @pmksa: output buffer the matched entry is copied into
+ *
+ * Looks up the per-vdev PMKSA cache for @bssid and, on a match, copies the
+ * entry into @pmksa under the crypto module's internal pmksa lock. The
+ * caller never touches the lock or a pointer into the shared table.
+ *
+ * Return: QDF_STATUS_SUCCESS if found and copied, QDF_STATUS_E_EMPTY if
+ * not found, QDF_STATUS_E_INVAL if @pmksa is NULL.
+ */
+QDF_STATUS
+wlan_crypto_get_pmksa_copy(struct wlan_objmgr_vdev *vdev,
+			   struct qdf_mac_addr *bssid,
 			   struct wlan_crypto_pmksa *pmksa);
 
 /**
- * wlan_crypto_get_pmksa() - called to get pmksa of bssid passed.
- * @vdev: vdev
- * @bssid: bssid
- *
- * This function gets called from to get pmksa for the bssid.
- *
- * Return: wlan_crypto_pmksa when match found else NULL.
- */
-struct wlan_crypto_pmksa *
-wlan_crypto_get_pmksa(struct wlan_objmgr_vdev *vdev,
-		      struct qdf_mac_addr *bssid);
-
-/**
- * wlan_crypto_get_fils_pmksa() - Get the PMKSA for FILS
- * SSID, if the SSID and cache id matches
+ * wlan_crypto_get_fils_pmksa_copy() - get the PMKSA for FILS SSID, copied out
  * @vdev:     Pointer with VDEV object
  * @cache_id: Cache id
  * @ssid:     Pointer to ssid
  * @ssid_len: SSID length
+ * @pmksa: output buffer the matched entry is copied into
  *
- * Return: PMKSA entry if the cache id and SSID matches
+ * Looks up the per-vdev PMKSA cache by cache id + SSID and, on a match,
+ * copies the entry into @pmksa under the crypto module's internal pmksa
+ * lock. The caller never touches the lock or a pointer into the shared
+ * table.
+ *
+ * Return: QDF_STATUS_SUCCESS if found and copied, QDF_STATUS_E_EMPTY if
+ * not found, QDF_STATUS_E_INVAL if @pmksa is NULL.
  */
-struct wlan_crypto_pmksa *
-wlan_crypto_get_fils_pmksa(struct wlan_objmgr_vdev *vdev,
-			   uint8_t *cache_id, uint8_t *ssid,
-			   uint8_t ssid_len);
+QDF_STATUS
+wlan_crypto_get_fils_pmksa_copy(struct wlan_objmgr_vdev *vdev,
+				uint8_t *cache_id, uint8_t *ssid,
+				uint8_t ssid_len,
+				struct wlan_crypto_pmksa *pmksa);
 
 /**
  * wlan_crypto_pmksa_flush() - called to flush saved pmksa
  * @crypto_params: crypto_params
  *
  * This function flush saved pmksa from crypto params.
+ *
+ * This API locks internally, so the caller must NOT hold
+ * wlan_crypto_pmksa_aquire_lock() across this call.
  *
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
@@ -1278,6 +1307,9 @@ QDF_STATUS wlan_crypto_pmksa_flush(struct wlan_crypto_params *crypto_params);
  *
  * This function gets called from ucfg to set or del pmksa.
  * when given pmksa is NULL and set is 0, it is for flush all entries.
+ *
+ * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
+ * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  *
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
@@ -1294,6 +1326,9 @@ QDF_STATUS wlan_crypto_set_del_pmksa(struct wlan_objmgr_vdev *vdev,
  * This function gets called from ucfg to update pmksa with mdid.
  * And flush the matching mdid entries.
  *
+ * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
+ * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
+ *
  * Return: QDF_STATUS_SUCCESS - in case of success
  */
 QDF_STATUS wlan_crypto_update_pmk_cache_ft(struct wlan_objmgr_vdev *vdev,
@@ -1306,6 +1341,9 @@ QDF_STATUS wlan_crypto_update_pmk_cache_ft(struct wlan_objmgr_vdev *vdev,
  * AP
  * @vdev:       Vdev
  * @conn_bssid: Connected bssid
+ *
+ * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
+ * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  */
 void
 wlan_crypto_selective_clear_sae_single_pmk_entries(
@@ -1318,6 +1356,9 @@ wlan_crypto_selective_clear_sae_single_pmk_entries(
  * @bssid: BSSID for which the flag is to be set
  * @single_pmk_capable_bss: Flag to indicate Sae single pmk supported BSSID or
  * not
+ *
+ * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
+ * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  */
 void wlan_crypto_set_sae_single_pmk_bss_cap(struct wlan_objmgr_vdev *vdev,
 					    struct qdf_mac_addr *bssid,
@@ -1327,6 +1368,9 @@ void wlan_crypto_set_sae_single_pmk_bss_cap(struct wlan_objmgr_vdev *vdev,
  * wlan_crypto_set_sae_single_pmk_info() - Set the peer SAE single pmk info
  * @vdev: Vdev
  * @roam_sync_pmksa: pmk info for roamed AP
+ *
+ * This API takes wlan_crypto_pmksa_aquire_lock() internally. The caller must
+ * NOT already hold the PMKSA lock, since it is a non-recursive mutex.
  */
 void
 wlan_crypto_set_sae_single_pmk_info(struct wlan_objmgr_vdev *vdev,

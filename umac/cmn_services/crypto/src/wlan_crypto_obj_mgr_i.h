@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -116,4 +117,24 @@ static inline void *wlan_get_peer_crypto_obj(struct wlan_objmgr_peer *peer)
 
 	return crypto_priv;
 }
+
+/**
+ * wlan_crypto_pmksa_aquire_lock() - Acquire the PMKSA cache lock
+ *
+ * Serializes all access to the per-vdev PMKSA cache
+ * (crypto_params->pmksa[]) within the crypto module. Not to be used
+ * outside wlan_crypto_global_api.c / wlan_crypto_obj_mgr.c - external
+ * modules must use the wlan_crypto_get_*_pmksa_copy() APIs instead of
+ * taking this lock themselves.
+ *
+ * Separate from the crypto key lock (wlan_crypto_aquire_lock()) and not
+ * gated by any feature flag - used by SAE, roam-offload and FILS paths.
+ */
+void wlan_crypto_pmksa_aquire_lock(void);
+
+/**
+ * wlan_crypto_pmksa_release_lock() - Release the PMKSA cache lock
+ */
+void wlan_crypto_pmksa_release_lock(void);
+
 #endif /* end of __WLAN_CRYPTO_OBJ_MGR_I_*/
