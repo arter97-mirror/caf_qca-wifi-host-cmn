@@ -1555,6 +1555,7 @@ QDF_STATUS ucfg_cfr_committed_rcc_config(struct wlan_objmgr_vdev *vdev)
 	pcfr->rcc_param.num_grp_tlvs = 0;
 	pcfr->rcc_param.modified_in_curr_session[0] = 0;
 	pcfr->rcc_param.agc_gain_fixed = 0;
+	pcfr->rcc_param.unassoc_channel_mhz = 0;
 	wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
 
 	return status;
