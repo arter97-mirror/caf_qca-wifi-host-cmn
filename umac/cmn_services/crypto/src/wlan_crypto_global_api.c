@@ -447,6 +447,94 @@ wlan_crypto_dump_pmksa_table(struct wlan_crypto_params *crypto_params,
 }
 #endif
 
+/**
+ * wlan_crypto_pmksa_find_evict_slot() - Find a PMKSA slot to evict when cache
+ * is full.
+ * @crypto_params: vdev crypto params containing the PMKSA table
+ *
+ * Eviction priority:
+ *  1. First expired entry (pmk_lifetime > 0, pmk_entry_ts > 0, elapsed >=
+ *     lifetime)
+ *  2. Oldest no-lifetime entry (pmk_lifetime == 0, i.e. roam-added).
+ *     pmk_entry_ts == 0 (legacy/pre-fix entries) sorts as age infinity —
+ *     evicted first among no-lifetime entries; entries stamped at roam time
+ *     are ordered by age.
+ *  3. Oldest supplicant-added entry by pmk_entry_ts
+ *
+ * Return: slot index to evict (always valid, table is known to be full)
+ */
+static uint8_t
+wlan_crypto_pmksa_find_evict_slot(struct wlan_crypto_params *crypto_params)
+{
+	uint8_t i, oldest_slot = 0, no_lifetime_slot = WLAN_CRYPTO_MAX_PMKID;
+	qdf_time_t now = qdf_get_system_timestamp();
+	qdf_time_t oldest_ts = (qdf_time_t)-1;
+	qdf_time_t no_lifetime_oldest_ts = (qdf_time_t)-1;
+	struct wlan_crypto_pmksa *entry;
+
+	for (i = 0; i < WLAN_CRYPTO_MAX_PMKID; i++) {
+		entry = crypto_params->pmksa[i];
+		if (!entry) {
+			crypto_debug("PMKSA: free slot found at %d!!", i);
+			return i;
+		}
+
+		/* Priority 1: expired entry */
+		if (entry->pmk_lifetime && entry->pmk_entry_ts &&
+		    (now - entry->pmk_entry_ts) >=
+		    (qdf_time_t)entry->pmk_lifetime * 1000) {
+			crypto_debug("PMKSA: evicting expired entry at slot %d "
+				     QDF_MAC_ADDR_FMT
+				     " age_ms %lu lifetime_ms %lu",
+				     i,
+				     QDF_MAC_ADDR_REF(entry->bssid.bytes),
+				     (unsigned long)(now - entry->pmk_entry_ts),
+				     (unsigned long)entry->pmk_lifetime * 1000);
+			return i;
+		}
+
+		/*
+		 * Priority 2: no-lifetime entry (roam-added).
+		 * pmk_entry_ts == 0 sorts as oldest (pre-fix legacy entries).
+		 * Among entries with pmk_entry_ts > 0 pick the smallest ts.
+		 */
+		if (!entry->pmk_lifetime) {
+			qdf_time_t ts = entry->pmk_entry_ts;
+
+			if (no_lifetime_slot == WLAN_CRYPTO_MAX_PMKID ||
+			    ts < no_lifetime_oldest_ts) {
+				no_lifetime_oldest_ts = ts;
+				no_lifetime_slot = i;
+			}
+		}
+
+		/* Priority 3: oldest supplicant-added entry */
+		if (entry->pmk_lifetime && entry->pmk_entry_ts &&
+		    entry->pmk_entry_ts < oldest_ts) {
+			oldest_ts = entry->pmk_entry_ts;
+			oldest_slot = i;
+		}
+	}
+
+	/* Priority 2: oldest no-lifetime entry (roam-added) */
+	if (no_lifetime_slot != WLAN_CRYPTO_MAX_PMKID) {
+		crypto_debug("PMKSA: evicting no-lifetime entry at slot %d "
+			     QDF_MAC_ADDR_FMT " age_ms %lu",
+			     no_lifetime_slot,
+			     QDF_MAC_ADDR_REF(crypto_params->pmksa[no_lifetime_slot]->bssid.bytes),
+			     (unsigned long)(now - no_lifetime_oldest_ts));
+		return no_lifetime_slot;
+	}
+
+	/* Priority 3: oldest supplicant-added entry by creation time */
+	crypto_debug("PMKSA: evicting oldest entry at slot %d " QDF_MAC_ADDR_FMT
+		     " age_ms %lu",
+		     oldest_slot,
+		     QDF_MAC_ADDR_REF(crypto_params->pmksa[oldest_slot]->bssid.bytes),
+		     (unsigned long)(now - oldest_ts));
+	return oldest_slot;
+}
+
 static
 QDF_STATUS wlan_crypto_set_pmksa(struct wlan_objmgr_vdev *vdev,
 				 struct wlan_crypto_params *crypto_params,
@@ -481,8 +569,15 @@ QDF_STATUS wlan_crypto_set_pmksa(struct wlan_objmgr_vdev *vdev,
 	}
 
 	if (i == WLAN_CRYPTO_MAX_PMKID && !slot_found) {
-		crypto_err("no entry available for pmksa");
-		return QDF_STATUS_E_INVAL;
+		first_available_slot =
+			wlan_crypto_pmksa_find_evict_slot(crypto_params);
+		if (crypto_params->pmksa[first_available_slot]) {
+			qdf_mem_zero(crypto_params->pmksa[first_available_slot],
+				     sizeof(struct wlan_crypto_pmksa));
+			qdf_mem_free(crypto_params->pmksa[first_available_slot]);
+			crypto_params->pmksa[first_available_slot] = NULL;
+		}
+		slot_found = true;
 	}
 	crypto_params->pmksa[first_available_slot] = pmksa;
 	crypto_debug("PMKSA: Added the PMKSA entry at index=%d",
