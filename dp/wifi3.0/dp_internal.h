@@ -5180,6 +5180,40 @@ void dp_ipa_rx_print_opt_dp_pkt(struct dp_soc *soc, qdf_nbuf_t nbuf,
 }
 #endif
 
+#ifdef IPA_OPT_WIFI_DP
+/**
+ * __dp_ipa_rx_err_opt_dp_pkt() - Print packets in an RX error link
+ *				  descriptor if they match a filter
+ * @soc: DP soc
+ * @ring_desc: RX error ring descriptor (points to a link descriptor)
+ * @link_desc_va: virtual address of the msdu link descriptor
+ * @rx_path_tag: TAG indicating which RX error path the packet arrived via
+ *
+ * Return: None
+ */
+void __dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc, void *ring_desc,
+				void *link_desc_va,
+				enum dp_rx_path_tag rx_path_tag);
+
+static inline
+void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc, void *ring_desc,
+			      void *link_desc_va,
+			      enum dp_rx_path_tag rx_path_tag)
+{
+	if (qdf_likely(!soc->is_opt_dp_filter_active))
+		return;
+
+	__dp_ipa_rx_err_opt_dp_pkt(soc, ring_desc, link_desc_va, rx_path_tag);
+}
+#else
+static inline
+void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc, void *ring_desc,
+			      void *link_desc_va,
+			      enum dp_rx_path_tag rx_path_tag)
+{
+}
+#endif
+
 #ifndef FEATURE_WDS
 static inline void
 dp_hmwds_ast_add_notify(struct dp_peer *peer,

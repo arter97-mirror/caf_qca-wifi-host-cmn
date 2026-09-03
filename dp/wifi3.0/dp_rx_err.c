@@ -2064,11 +2064,13 @@ static bool dp_idle_link_bm_id_check(struct dp_soc *soc, uint8_t rbm,
 	return false;
 }
 #endif
+#endif /* CONFIG_BORON */
 
 #ifdef IPA_OPT_WIFI_DP
-static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
-					    void *ring_desc,
-					    void *link_desc_va)
+void __dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
+				void *ring_desc,
+				void *link_desc_va,
+				enum dp_rx_path_tag rx_path_tag)
 {
 	uint16_t num_msdus;
 	struct hal_rx_msdu_list msdu_list;
@@ -2095,17 +2097,10 @@ static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
 			continue;
 		}
 
-		dp_ipa_rx_print_opt_dp_pkt(soc, nbuf, DP_RX_PATH_REO_ERR);
+		dp_ipa_rx_print_opt_dp_pkt(soc, nbuf, rx_path_tag);
 	}
 }
-#else
-static inline void dp_ipa_rx_err_opt_dp_pkt(struct dp_soc *soc,
-					    void *ring_desc,
-					    void *link_desc_va)
-{
-}
 #endif
-#endif /* CONFIG_BORON */
 
 #ifdef DRIVER_PASSTHRU_MODE
 void dp_rx_err_passthru_sg_free(qdf_nbuf_t head_nbuf)
@@ -2769,7 +2764,8 @@ process_reo_error_code:
 
 		dp_ipa_rx_err_opt_dp_pkt(soc,
 					 ring_desc,
-					 link_desc_va);
+					 link_desc_va,
+					 DP_RX_PATH_REO_ERR);
 
 		switch (error_code) {
 		case HAL_REO_ERR_PN_CHECK_FAILED:
