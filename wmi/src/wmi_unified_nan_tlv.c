@@ -571,6 +571,7 @@ send_nan_change_conf_req_cmd_tlv(wmi_unified_t wmi_handle,
 	wmi_nan_ctrl_config_param *ctrl_cfg;
 	uint32_t vdev_id;
 	uint32_t band_len = 0;
+	uint16_t nan_avail_attr_len = 0;
 
 	vdev_id = nan_req->vdev_id;
 	for (i = 0; i < NUM_NL80211_BANDS; i++) {
@@ -581,6 +582,13 @@ send_nan_change_conf_req_cmd_tlv(wmi_unified_t wmi_handle,
 		sizeof(wmi_nan_ctrl_config_param) + WMI_TLV_HDR_SIZE +
 		WMI_TLV_HDR_SIZE +
 		(sizeof(wmi_nan_disc_band_config_param) * band_len);
+
+	if (nan_req->nan_conf.extra_nan_attrs_len) {
+		nan_avail_attr_len =
+			roundup(nan_req->nan_conf.extra_nan_attrs_len,
+				sizeof(uint32_t));
+		len += WMI_TLV_HDR_SIZE + nan_avail_attr_len;
+	}
 
 	buf = wmi_buf_alloc(wmi_handle, len);
 	if (!buf)
@@ -594,6 +602,8 @@ send_nan_change_conf_req_cmd_tlv(wmi_unified_t wmi_handle,
 					wmi_nan_config_cmd_fixed_param));
 	cmd->vdev_id = vdev_id;
 	cmd->nan_conf_change_bitmap = nan_req->param_bit_map;
+	cmd->nan_availability_attributes_len =
+					nan_req->nan_conf.extra_nan_attrs_len;
 
 	buf_ptr += sizeof(wmi_nan_config_cmd_fixed_param);
 
@@ -618,6 +628,16 @@ send_nan_change_conf_req_cmd_tlv(wmi_unified_t wmi_handle,
 	buf_ptr += WMI_TLV_HDR_SIZE;
 
 	wmi_nan_populate_band_cfg(&buf_ptr, &nan_req->nan_conf);
+
+	if (cmd->nan_availability_attributes_len) {
+		wmi_debug("NAN availability attribute");
+		WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE,
+			       nan_avail_attr_len);
+		buf_ptr += WMI_TLV_HDR_SIZE;
+		qdf_mem_copy(buf_ptr, nan_req->nan_conf.extra_nan_attrs,
+			     cmd->nan_availability_attributes_len);
+		buf_ptr += nan_avail_attr_len;
+	}
 
 	wmi_mtrace(WMI_NAN_CONFIG_CMDID, NO_SESSION, 0);
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
