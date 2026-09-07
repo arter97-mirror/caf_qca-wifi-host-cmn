@@ -1618,6 +1618,7 @@ struct wlan_mlo_bridge_sta {
  * @mlo_mlme_ext_set_ieee_link_id: Callback to update ieee_link_id in vap
  * @mlo_mlme_ext_teardown_tdls: Callback to teardown TDLS
  * @mlo_mlme_ext_link_add_join_continue: Callback to continue link add connecting
+ * @mlo_mlme_ext_get_cb_mode_for_freq: Callback to get cb_mode for freq
  */
 struct mlo_mlme_ext_ops {
 	QDF_STATUS (*mlo_mlme_ext_validate_conn_req)(
@@ -1670,6 +1671,10 @@ struct mlo_mlme_ext_ops {
 					struct wlan_objmgr_psoc *psoc,
 					uint8_t vdev_id,
 					QDF_STATUS recfg_rsp_status);
+	QDF_STATUS (*mlo_mlme_ext_get_cb_mode_for_freq)
+				(uint8_t vdev_id,
+				 qdf_freq_t freq,
+				 uint8_t *cb_mode);
 };
 
 /*

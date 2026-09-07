@@ -109,7 +109,8 @@ void mlo_mgr_update_link_info_mac_addr(struct wlan_objmgr_vdev *vdev,
 
 void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 				 uint8_t *ap_link_addr,
-				 struct wlan_channel channel)
+				 struct wlan_channel channel,
+				 uint8_t cb_mode)
 {
 	struct mlo_link_info *link_info;
 	uint8_t link_info_iter;
@@ -145,6 +146,16 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 	if (link_info_iter == WLAN_MAX_ML_BSS_LINKS)
 		return;
 
+	if (link_info->vdev_id == WLAN_INVALID_VDEV_ID && !cb_mode)
+		channel.ch_width = CH_WIDTH_20MHZ;
+	/*
+	 * Supplicant needs non zero center_freq1 in case of 20 MHz connection
+	 * also as a response of get_channel request. In case of 20 MHz channel
+	 * width central frequency is same as channel frequency
+	 */
+	if (channel.ch_width == CH_WIDTH_20MHZ)
+		channel.ch_cfreq1 = channel.ch_freq;
+
 	qdf_mem_copy(&link_info->ap_link_addr, ap_link_addr, QDF_MAC_ADDR_SIZE);
 
 	qdf_mem_copy(link_info->link_chan_info, &channel, sizeof(channel));
@@ -152,9 +163,11 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev, uint8_t link_id,
 	link_info->link_status_flags = 0;
 	link_info->link_id = link_id;
 
-	mlo_debug("Update AP Link info for link_id: %d, freq: %d vdev_id:%d, link_addr:" QDF_MAC_ADDR_FMT,
+	mlo_debug("Update AP Link info for link_id: %d, freq: %d vdev_id:%d ch_width %d, cb_mode %d, link_addr:" QDF_MAC_ADDR_FMT,
 		  link_info->link_id, link_info->link_chan_info->ch_freq,
 		  link_info->vdev_id,
+		  link_info->link_chan_info->ch_width,
+		  cb_mode,
 		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes));
 }
 
