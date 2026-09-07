@@ -3432,6 +3432,8 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	struct wlan_channel channel = {0};
 	struct mlme_legacy_priv *mlme_priv;
 	struct assoc_channel_info *assoc_chan_info;
+	uint8_t cb_mode;
+	QDF_STATUS status;
 
 	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
 	if (!mlme_priv) {
@@ -3459,6 +3461,12 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	channel.ch_cfreq1 = cache_entry->channel.cfreq0;
 	channel.ch_cfreq2 = cache_entry->channel.cfreq1;
 	channel.ch_width = cm_get_ch_width_from_phymode(cache_entry->phy_mode);
+
+	status = mlo_mlme_get_cb_mode_for_freq(vdev->vdev_objmgr.vdev_id,
+					       freq, &cb_mode);
+
+	if (QDF_IS_STATUS_SUCCESS(status) && !cb_mode)
+		channel.ch_width = CH_WIDTH_20MHZ;
 	/*
 	 * Supplicant needs non zero center_freq1 in case of 20 MHz connection
 	 * also as a response of get_channel request. In case of 20 MHz channel

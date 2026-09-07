@@ -142,7 +142,8 @@ QDF_STATUS mlo_mgr_fetch_cnx_nss_by_bssid(struct wlan_objmgr_vdev *vdev,
 }
 
 void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
-				 struct mlo_link_info *data)
+				 struct mlo_link_info *data,
+				 uint8_t cb_mode)
 {
 	struct mlo_link_info *link_info;
 	uint8_t link_info_iter;
@@ -181,6 +182,16 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 			return;
 	}
 
+	if (link_info->vdev_id == WLAN_INVALID_VDEV_ID && !cb_mode)
+		data->link_chan_info->ch_width = CH_WIDTH_20MHZ;
+	/*
+	 * Supplicant needs non zero center_freq1 in case of 20 MHz connection
+	 * also as a response of get_channel request. In case of 20 MHz channel
+	 * width central frequency is same as channel frequency
+	 */
+	if (data->link_chan_info->ch_width == CH_WIDTH_20MHZ)
+		data->link_chan_info->ch_cfreq1 = data->link_chan_info->ch_freq;
+
 	qdf_copy_macaddr(&link_info->ap_link_addr, &data->ap_link_addr);
 
 	qdf_mem_copy(link_info->link_chan_info, data->link_chan_info,
@@ -195,11 +206,13 @@ void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
 	if (link_info_iter == WLAN_MLO_SINGLE_LINK)
 		link_info->is_link_active = true;
 
-	mlo_debug("VDEV %d link id %d cnx info - BSSID: " QDF_MAC_ADDR_FMT ", freq: %d, Tx/Rx nss %dx%d",
+	mlo_debug("VDEV %d link id %d cnx info - BSSID: " QDF_MAC_ADDR_FMT ", freq: %d, Tx/Rx nss %dx%d ch_width %d, cb_mode %d",
 		  link_info->vdev_id, link_info->link_id,
 		  QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes),
 		  link_info->link_chan_info->ch_freq,
-		  link_info->cnx_tx_nss, link_info->cnx_rx_nss);
+		  link_info->cnx_tx_nss, link_info->cnx_rx_nss,
+		  link_info->link_chan_info->ch_width,
+		  cb_mode);
 }
 
 struct mlo_link_info *

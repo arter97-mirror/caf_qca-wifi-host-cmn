@@ -275,6 +275,20 @@ void mlo_mlme_peer_delete(struct wlan_objmgr_peer *peer)
 	mlo_ctx->mlme_ops->mlo_mlme_ext_peer_delete(peer);
 }
 
+QDF_STATUS mlo_mlme_get_cb_mode_for_freq(uint8_t vdev_id, qdf_freq_t freq,
+					 uint8_t *cb_mode)
+{
+	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
+
+	if (!mlo_ctx || !mlo_ctx->mlme_ops ||
+	    !mlo_ctx->mlme_ops->mlo_mlme_ext_get_cb_mode_for_freq)
+		return QDF_STATUS_E_FAILURE;
+
+	return mlo_ctx->mlme_ops->mlo_mlme_ext_get_cb_mode_for_freq(vdev_id,
+								    freq,
+								    cb_mode);
+}
+
 void mlo_mlme_peer_assoc_resp(struct wlan_objmgr_peer *peer)
 {
 	struct mlo_mgr_context *mlo_ctx = wlan_objmgr_get_mlo_ctx();
