@@ -8716,6 +8716,8 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 		pos += qdf_scnprintf(buf + pos, buf_len - pos, "%s", "]");
 		DP_PRINT_STATS("%s", dp_stats_str);
 
+		dp_print_pdev_tx_stats(pdev);
+
 		DP_PRINT_STATS("Rx path statistics:");
 
 		DP_PRINT_STATS("delivered %llu msdus ( %llu bytes)",
@@ -8814,6 +8816,8 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 			dp_vdev_unref_delete(soc, vdev,
 					     DP_MOD_ID_GENERIC_STATS);
 		}
+
+		dp_print_pdev_rx_stats(pdev);
 	}
 }
 

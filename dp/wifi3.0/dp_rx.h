@@ -2547,6 +2547,9 @@ void dp_rx_cksum_offload(struct dp_pdev *pdev,
 
 	if (qdf_unlikely(ip_csum_err)) {
 		DP_STATS_INC(pdev, err.ip_csum_err, 1);
+		dp_info_rl("IP checksum error: ip_csum_err %u tcp_udp_csum_err %u "
+			   "ip_csum_err_counter %u", ip_csum_err,
+			   tcp_udp_csum_er, pdev->stats.err.ip_csum_err);
 		goto bypass_tcp_udp;
 	}
 
@@ -2556,14 +2559,23 @@ void dp_rx_cksum_offload(struct dp_pdev *pdev,
 			cksum.l4_result = QDF_NBUF_RX_CKSUM_TCP_UDP_UNNECESSARY;
 			cksum.csum_level = 1;
 		} else {
-		    DP_STATS_INC(pdev, err.tcp_udp_csum_err, 1);
+			DP_STATS_INC(pdev, err.tcp_udp_csum_err, 1);
+			dp_info_rl("TCP/UDP checksum error: ip_csum_err %u "
+				   "tcp_udp_csum_err %u tcp_udp_csum_err_counter %u",
+				   ip_csum_err, tcp_udp_csum_er,
+				   pdev->stats.err.tcp_udp_csum_err);
 		}
 	} else if (qdf_nbuf_is_ipv6_udp_pkt(nbuf) ||
 		   qdf_nbuf_is_ipv6_tcp_pkt(nbuf)) {
 		if (qdf_likely(!tcp_udp_csum_er))
 			cksum.l4_result = QDF_NBUF_RX_CKSUM_TCP_UDP_UNNECESSARY;
-		else
+		else {
 			DP_STATS_INC(pdev, err.tcp_udp_csum_err, 1);
+			dp_info_rl("TCP/UDP checksum error: ip_csum_err %u "
+				   "tcp_udp_csum_err %u tcp_udp_csum_err_counter %u",
+				   ip_csum_err, tcp_udp_csum_er,
+				   pdev->stats.err.tcp_udp_csum_err);
+		}
 	}
 
 bypass_tcp_udp:
