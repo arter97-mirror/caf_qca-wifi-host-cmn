@@ -31,6 +31,9 @@
 #include <wlan_objmgr_vdev_obj.h>
 #include <wlan_vdev_mgr_tgt_if_tx_defs.h>
 #include <include/wlan_vdev_mlme.h>
+#ifdef FEATURE_CQM_RSSI
+struct cqm_rssi_config_param;
+#endif
 
 /**
  * tgt_vdev_mgr_create_send() - API to send create command
@@ -379,4 +382,18 @@ bool tgt_sap_is_suspend_supported(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS tgt_sap_suspend_param_send(struct wlan_objmgr_psoc *psoc,
 				      struct vdev_suspend_params *param);
+
+#ifdef FEATURE_CQM_RSSI
+/*
+ * tgt_cqm_rssi_config_send() - API to send adaptive-hysteresis RSSI CQM
+ * config
+ * @psoc: Pointer to psoc
+ * @param: CQM RSSI configuration request structure
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS tgt_cqm_rssi_config_send(struct wlan_objmgr_psoc *psoc,
+				    struct cqm_rssi_config_param *param);
+#endif /* FEATURE_CQM_RSSI */
+
 #endif /* __WLAN_VDEV_MGR_TX_OPS_API_H__ */

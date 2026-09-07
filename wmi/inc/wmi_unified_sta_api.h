@@ -498,4 +498,36 @@ QDF_STATUS wmi_unified_peer_unmap_conf_send(wmi_unified_t wmi_handle,
 					    uint32_t peer_id_cnt,
 					    uint16_t *peer_id_list);
 
+#ifdef FEATURE_CQM_RSSI
+/**
+ * wmi_unified_set_cqm_rssi_config_cmd() - set adaptive-hysteresis RSSI CQM
+ *					   config
+ * @wmi_handle: wmi handle
+ * @req: CQM RSSI configuration request structure
+ *
+ * This function reads the incoming @req and fills in the adaptive breach
+ * monitor WMI structure and sends the CQM RSSI config down to the firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success; QDF_STATUS error code on failure
+ */
+QDF_STATUS
+wmi_unified_set_cqm_rssi_config_cmd(wmi_unified_t wmi_handle,
+				    struct cqm_rssi_config_param *req);
+
+/**
+ * wmi_extract_rssi_adaptive_breach_event() - extract adaptive-hysteresis
+ *					      RSSI CQM breach event
+ * @wmi_handle: wmi handle
+ * @evt_buf: event buffer
+ * @event: pointer to struct vdev_cqm_rssi_breach_event
+ *
+ * Return: QDF_STATUS_SUCCESS on success; QDF_STATUS error code on failure
+ */
+QDF_STATUS
+wmi_extract_rssi_adaptive_breach_event(wmi_unified_t wmi_handle,
+				       void *evt_buf,
+				       struct vdev_cqm_rssi_breach_event
+				       *event);
+#endif /* FEATURE_CQM_RSSI */
+
 #endif /* _WMI_UNIFIED_STA_API_H_ */

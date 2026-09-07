@@ -39,6 +39,9 @@
 #include <cdp_txrx_ctrl.h>
 #include <target_if_psoc_timer_tx_ops.h>
 #include <target_if_psoc_wake_lock.h>
+#ifdef FEATURE_CQM_RSSI
+#include <wmi_unified_sta_api.h>
+#endif
 #include <wlan_psoc_mlme_api.h>
 #include <wlan_mlo_mgr_link_switch.h>
 #include <target_if_mlo_mgr.h>
@@ -524,6 +527,28 @@ target_if_sap_suspend_param_send(struct wlan_objmgr_vdev *vdev,
 
 	return status;
 }
+
+#ifdef FEATURE_CQM_RSSI
+static QDF_STATUS
+target_if_cqm_rssi_config_send(struct wlan_objmgr_vdev *vdev,
+			       struct cqm_rssi_config_param *param)
+{
+	struct wmi_unified *wmi_handle;
+
+	if (!vdev || !param) {
+		mlme_err("Vdev/param NULL");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	wmi_handle = target_if_vdev_mgr_wmi_handle_get(vdev);
+	if (!wmi_handle) {
+		mlme_err("Failed to get WMI handle!");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	return wmi_unified_set_cqm_rssi_config_cmd(wmi_handle, param);
+}
+#endif
 
 static QDF_STATUS target_if_vdev_mgr_create_send(
 					struct wlan_objmgr_vdev *vdev,
@@ -2081,5 +2106,9 @@ target_if_vdev_mgr_register_tx_ops(struct wlan_lmac_if_tx_ops *tx_ops)
 			target_if_vdev_mgr_tm_param_send;
 	mlme_tx_ops->mlme_vdev_rt_lock_release =
 			target_if_vdev_mgr_rt_lock_release;
+#ifdef FEATURE_CQM_RSSI
+	mlme_tx_ops->cqm_rssi_config_send =
+			target_if_cqm_rssi_config_send;
+#endif
 	return QDF_STATUS_SUCCESS;
 }

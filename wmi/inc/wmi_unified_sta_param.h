@@ -415,4 +415,34 @@ struct get_arp_stats {
 	uint32_t vdev_id;
 };
 
+#ifdef FEATURE_CQM_RSSI
+/* Maximum RSSI thresholds supported by the adaptive breach monitor.
+ * Kept in sync with WMI_MAX_RSSI_THRESHOLD_SUPPORTED in the fw-api, which
+ * sizes the wmi_rssi_adaptive_breach_monitor_config_fixed_param wire struct.
+ */
+#define CQM_MAX_RSSI_THRESHOLD_SUPPORTED 3
+
+/**
+ * struct cqm_rssi_config_param - adaptive-hysteresis RSSI CQM configuration
+ * @request_id: request id, echoed back by firmware in the breach event
+ * @vdev_id: vdev id
+ * @enabled_bitmap: bit i set => rssi_threshold[i] is enabled (0 disables
+ *		    all). Only bit 0 is currently used (single-threshold
+ *		    scope, see @rssi_threshold); bits 1-2 are reserved for
+ *		    rssi_threshold[1]/[2] and bits 3-31 are reserved and
+ *		    unused, for potential future multi-threshold support.
+ * @rssi_threshold: RSSI thresholds in dBm. Only index 0 is currently used
+ *		    (single-threshold scope); indices 1-2 are reserved and
+ *		    unused, for potential future multi-threshold support.
+ * @rssi_hysteresis: recovery margin in dBm applied around the threshold
+ */
+struct cqm_rssi_config_param {
+	uint32_t request_id;
+	uint32_t vdev_id;
+	uint32_t enabled_bitmap;
+	int32_t  rssi_threshold[CQM_MAX_RSSI_THRESHOLD_SUPPORTED];
+	uint32_t rssi_hysteresis;
+};
+#endif /* FEATURE_CQM_RSSI */
+
 #endif /* _WMI_UNIFIED_STA_PARAM_H_ */

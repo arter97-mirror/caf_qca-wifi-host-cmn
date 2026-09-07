@@ -30,6 +30,10 @@
 #endif
 #include "wlan_twt_public_structs.h"
 
+#ifdef FEATURE_CQM_RSSI
+struct vdev_cqm_rssi_breach_event;
+#endif
+
 /**
  * struct mlme_cm_ops: connection manager osif callbacks
  * @mlme_cm_connect_active_notify_cb: Connect active notify callback
@@ -211,6 +215,8 @@ struct mlme_cm_ops {
  *                                            complete to osif
  * @mlme_vdev_mgr_sta_csa_received: Callback to indicate STA CSA IE received
  *                                  event to osif
+ * @mlme_vdev_mgr_cqm_rssi_breach_cb: Callback to indicate adaptive-hysteresis
+ *                                    RSSI CQM breach event to osif
  */
 struct mlme_vdev_mgr_ops {
 #ifdef WLAN_FEATURE_DYNAMIC_MAC_ADDR_UPDATE
@@ -221,6 +227,11 @@ struct mlme_vdev_mgr_ops {
 	void (*mlme_vdev_mgr_sta_csa_received)(uint8_t vdev_id,
 					       struct csa_offload_params
 					       *csa_event);
+#ifdef FEATURE_CQM_RSSI
+	QDF_STATUS
+	(*mlme_vdev_mgr_cqm_rssi_breach_cb)(struct vdev_cqm_rssi_breach_event
+					     *event);
+#endif
 };
 
 /**
@@ -1247,6 +1258,20 @@ QDF_STATUS mlme_vdev_ops_send_set_mac_address(struct qdf_mac_addr mac_addr,
  */
 void mlme_vdev_mgr_notify_set_mac_addr_response(uint8_t vdev_id,
 						uint8_t resp_status);
+#endif
+
+#ifdef FEATURE_CQM_RSSI
+/**
+ * mlme_vdev_mgr_notify_cqm_rssi_breach() - Notify adaptive-hysteresis RSSI
+ *                                          CQM breach event
+ * @event: CQM RSSI breach event
+ *
+ * API to notify a CQM RSSI breach event to osif
+ *
+ * Return: None
+ */
+void mlme_vdev_mgr_notify_cqm_rssi_breach(struct vdev_cqm_rssi_breach_event
+					*event);
 #endif
 
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)

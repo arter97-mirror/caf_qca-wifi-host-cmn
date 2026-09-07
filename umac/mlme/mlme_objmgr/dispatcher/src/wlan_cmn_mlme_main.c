@@ -826,6 +826,16 @@ void mlme_vdev_mgr_notify_set_mac_addr_response(uint8_t vdev_id,
 }
 #endif
 
+#ifdef FEATURE_CQM_RSSI
+void mlme_vdev_mgr_notify_cqm_rssi_breach(struct vdev_cqm_rssi_breach_event
+					*event)
+{
+	if (glbl_vdev_mgr_ops &&
+	    glbl_vdev_mgr_ops->mlme_vdev_mgr_cqm_rssi_breach_cb)
+		glbl_vdev_mgr_ops->mlme_vdev_mgr_cqm_rssi_breach_cb(event);
+}
+#endif
+
 #if defined(WLAN_SUPPORT_TWT) && defined(WLAN_TWT_CONV_SUPPORTED)
 QDF_STATUS
 mlme_twt_osif_enable_complete_ind(struct wlan_objmgr_psoc *psoc,

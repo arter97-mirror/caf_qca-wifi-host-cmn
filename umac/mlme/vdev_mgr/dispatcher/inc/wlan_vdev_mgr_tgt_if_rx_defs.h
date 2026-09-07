@@ -297,4 +297,22 @@ struct vdev_unified_disconnect_response {
 	uint8_t vdev_id;
 	int status;
 };
+
+/**
+ * struct vdev_cqm_rssi_breach_event - adaptive-hysteresis RSSI CQM breach
+ * event, as extracted from the WMI_RSSI_ADAPTIVE_BREACH_EVENTID event
+ * @request_id: request id echoed back from the config command
+ * @vdev_id: vdev id where the breach/recovery occurred
+ * @event_type: WLAN_RSSI_LOW_RSSI_THRESHOLD_CQM_MET /
+ *		WLAN_RSSI_HIGH_RSSI_THRESHOLD_CQM_MET
+ * @curr_rssi: current rssi in dBm at the time of the breach/recovery
+ * @curr_bssid: bssid of the monitored AP
+ */
+struct vdev_cqm_rssi_breach_event {
+	uint32_t request_id;
+	uint32_t vdev_id;
+	uint32_t event_type;
+	int8_t curr_rssi;
+	struct qdf_mac_addr curr_bssid;
+};
 #endif /* __WLAN_VDEV_MGR_TGT_IF_RX_DEFS_H__ */
