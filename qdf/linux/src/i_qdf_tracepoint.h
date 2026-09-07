@@ -758,4 +758,29 @@ void __qdf_trace_dp_tx_pp_attach_idle(void *pp, uint32_t pool_id,
 	trace_dp_tx_pp_attach_idle(pp, pool_id, from_ho, active_count,
 				   latency_ns);
 }
+
+/**
+ * __qdf_trace_dp_tdls_mac_selection_enabled() - Check TDLS MAC trace state
+ *
+ * Return: True if the tracepoint is enabled, otherwise false
+ */
+static inline
+bool __qdf_trace_dp_tdls_mac_selection_enabled(void)
+{
+	return trace_dp_tdls_mac_selection_enabled();
+}
+
+/**
+ * __qdf_trace_dp_tdls_mac_selection() - Trace TDLS MAC selection state
+ * @vdev_active: Whether the vdev is active
+ * @tdls_link_up: Number of active TDLS links
+ *
+ * Return: None
+ */
+static inline
+void __qdf_trace_dp_tdls_mac_selection(uint8_t vdev_active,
+				       int tdls_link_up)
+{
+	trace_dp_tdls_mac_selection(vdev_active, tdls_link_up);
+}
 #endif /* _I_QDF_TRACEPOINT_H */

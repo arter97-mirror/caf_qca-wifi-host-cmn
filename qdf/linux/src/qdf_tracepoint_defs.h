@@ -213,6 +213,21 @@ DEFINE_EVENT(dp_trace_pkt_class, dp_tx_comp_pkt,
 	     TP_ARGS(skb, ether_type, tdelta)
 );
 
+TRACE_EVENT(dp_tdls_mac_selection,
+	    TP_PROTO(uint8_t vdev_active, int tdls_link_up),
+	    TP_ARGS(vdev_active, tdls_link_up),
+	    TP_STRUCT__entry(
+		__field(uint8_t, vdev_active)
+		__field(int, tdls_link_up)
+	    ),
+	    TP_fast_assign(
+		__entry->vdev_active = vdev_active;
+		__entry->tdls_link_up = tdls_link_up;
+	    ),
+	    TP_printk("vdev_active=%u tdls_link_up=%d",
+		      __entry->vdev_active, __entry->tdls_link_up)
+);
+
 TRACE_EVENT(dp_peer_link_info,
 	    TP_PROTO(uint8_t link_id, uint32_t freq, uint8_t link_id_valid,
 		     const uint8_t *peer_mac),

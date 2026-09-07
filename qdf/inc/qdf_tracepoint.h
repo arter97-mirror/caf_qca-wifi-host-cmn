@@ -101,6 +101,10 @@ bool qdf_trace_dp_fisa_flush_vdev_fail_enabled(void)
  * @flow_id: Flow identifier
  * @head_vdev_ptr: Pointer to the head vdev object
  * @flow_vdev_ptr: Pointer to the flow vdev object
+ * @flush_head_vdev_ref_fail: Head vdev reference failure indicator
+ * @flush_flow_vdev_ref_fail: Flow vdev reference failure indicator
+ * @flush_vdev_ptr_mismatch: Vdev pointer mismatch indicator
+ * @flush_mld_mismatch_drop: MLD mismatch drop indicator
  *
  * This function triggers the dp_fisa_flush_vdev_fail tracepoint, which logs
  * the details of a FISA flush failure including mismatch conditions and
@@ -861,5 +865,29 @@ qdf_trace_hif_hist_event(bool ce, uint8_t hal_ring_id, uint32_t hp,
 {
 	__qdf_trace_hif_hist_event(ce, hal_ring_id, hp, tp, cpu_id,
 				   timestamp, type);
+}
+
+/**
+ * qdf_trace_dp_tdls_mac_selection_enabled() - Check TDLS MAC trace state
+ *
+ * Return: True if the tracepoint is enabled, otherwise false
+ */
+static inline
+bool qdf_trace_dp_tdls_mac_selection_enabled(void)
+{
+	return __qdf_trace_dp_tdls_mac_selection_enabled();
+}
+
+/**
+ * qdf_trace_dp_tdls_mac_selection() - Trace TDLS MAC selection state
+ * @vdev_active: Whether the vdev is active
+ * @tdls_link_up: Number of active TDLS links
+ *
+ * Return: None
+ */
+static inline
+void qdf_trace_dp_tdls_mac_selection(uint8_t vdev_active, int tdls_link_up)
+{
+	__qdf_trace_dp_tdls_mac_selection(vdev_active, tdls_link_up);
 }
 #endif /* _QDF_TRACEPOINT_H */
