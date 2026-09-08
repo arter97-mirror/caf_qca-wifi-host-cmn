@@ -1793,13 +1793,15 @@ wmi_buf_alloc_debug(wmi_unified_t wmi_handle, uint32_t len,
 }
 qdf_export_symbol(wmi_buf_alloc_debug);
 
-void wmi_buf_free(wmi_buf_t net_buf)
+void wmi_buf_free_dbg(wmi_buf_t net_buf, const char *func_name,
+		      uint32_t line_num)
 {
-	net_buf = wbuff_buff_put(net_buf);
+	net_buf = wbuff_buff_put(net_buf, func_name, line_num);
 	if (net_buf)
 		qdf_nbuf_free(net_buf);
 }
-qdf_export_symbol(wmi_buf_free);
+
+qdf_export_symbol(wmi_buf_free_dbg);
 #else
 wmi_buf_t wmi_buf_alloc_fl(wmi_unified_t wmi_handle, uint32_t len,
 			   const char *func, uint32_t line)
@@ -1813,7 +1815,7 @@ wmi_buf_t wmi_buf_alloc_fl(wmi_unified_t wmi_handle, uint32_t len,
 	}
 
 	wmi_buf = wbuff_buff_get(wmi_handle->wbuff_handle, WBUFF_MAX_POOL_ID,
-				 len, __func__, __LINE__);
+				 len, func, line);
 	if (!wmi_buf)
 		wmi_buf = qdf_nbuf_alloc_fl(NULL, roundup(len +
 				WMI_MIN_HEAD_ROOM, 4), WMI_MIN_HEAD_ROOM, 4,
@@ -1836,13 +1838,15 @@ wmi_buf_t wmi_buf_alloc_fl(wmi_unified_t wmi_handle, uint32_t len,
 }
 qdf_export_symbol(wmi_buf_alloc_fl);
 
-void wmi_buf_free(wmi_buf_t net_buf)
+void wmi_buf_free_dbg(wmi_buf_t net_buf, const char *func_name,
+		      uint32_t line_num)
 {
-	net_buf = wbuff_buff_put(net_buf);
+	net_buf = wbuff_buff_put(net_buf, func_name, line_num);
 	if (net_buf)
 		qdf_nbuf_free(net_buf);
 }
-qdf_export_symbol(wmi_buf_free);
+
+qdf_export_symbol(wmi_buf_free_dbg);
 #endif
 
 uint16_t wmi_get_max_msg_len(wmi_unified_t wmi_handle)
@@ -2468,7 +2472,7 @@ qdf_export_symbol(wmi_unified_unregister_event_handler);
 #ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
 static void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
 {
-	nbuf = wbuff_buff_put(nbuf);
+	nbuf = wbuff_buff_put(nbuf, __func__, __LINE__);
 	if (nbuf)
 		qdf_nbuf_free(nbuf);
 }

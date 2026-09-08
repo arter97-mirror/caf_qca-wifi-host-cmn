@@ -4268,7 +4268,7 @@ dp_htt_peer_ext_evt(struct htt_soc *soc, uint32_t *msg_word)
 #ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
 static void dp_htt_rx_nbuf_free(qdf_nbuf_t nbuf)
 {
-	nbuf = wbuff_buff_put(nbuf);
+	nbuf = wbuff_buff_put(nbuf, __func__, __LINE__);
 	if (nbuf)
 		qdf_nbuf_free(nbuf);
 }

@@ -148,6 +148,22 @@
 #define EAP_EXP_MSG_OPCODE_OFFSET 0x1E
 #define EAP_EXP_MSG_TYPE_OFFSET 0x29
 
+#define WBUFF_MODULE_ID_SHIFT 4
+#define WBUFF_MODULE_ID_BITMASK 0xF0
+
+#define WBUFF_POOL_ID_SHIFT 1
+#define WBUFF_POOL_ID_BITMASK 0xE
+
+/* Number of pools supported per module */
+#define WBUFF_MAX_POOLS 16
+#define WBUFF_MAX_POOL_ID WBUFF_MAX_POOLS
+
+enum wbuff_module_id {
+	WBUFF_MODULE_WMI_TX,
+	WBUFF_MODULE_CE_RX,
+	WBUFF_MAX_MODULES,
+};
+
 enum wsc_op_code {
 	WSC_UPNP = 0, /* No OP Code in UPnP transport */
 	WSC_START = 0x01,
@@ -2350,6 +2366,34 @@ QDF_STATUS qdf_nbuf_smmu_unmap_debug(qdf_nbuf_t nbuf,
 				     uint32_t line);
 
 #endif /* IPA_OFFLOAD */
+
+/**
+ * typedef qdf_nbuf_direct_free_cb_t - callback invoked by
+ * qdf_nbuf_free_debug() when the nbuf being freed still carries wbuff
+ * dev_scratch metadata (i.e. it is being freed directly instead of via
+ * wbuff_buff_put(), bypassing wbuff's pool bookkeeping entirely).
+ * @nbuf: the buffer being freed
+ * @func: caller of qdf_nbuf_free()
+ * @line: caller's line number
+ *
+ * DEBUG: this indirection exists because qdf/ has no dependency on
+ * wbuff/ (wbuff depends on qdf, never the reverse) -- wbuff registers
+ * this callback at init time via qdf_nbuf_register_direct_free_cb() so
+ * qdf_nbuf_free_debug() can record the bypass into wbuff's own trace
+ * table without qdf_nbuf.c needing to know wbuff exists.
+ */
+typedef void (*qdf_nbuf_direct_free_cb_t)(qdf_nbuf_t nbuf, const char *func,
+					  uint32_t line);
+
+/**
+ * qdf_nbuf_register_direct_free_cb() - DEBUG: register the callback
+ * invoked by qdf_nbuf_free_debug() for wbuff-owned buffers being freed
+ * directly (bypassing wbuff_buff_put()).
+ * @cb: callback to register, or NULL to unregister
+ *
+ * Return: None
+ */
+void qdf_nbuf_register_direct_free_cb(qdf_nbuf_direct_free_cb_t cb);
 
 #ifdef NBUF_MEMORY_DEBUG
 

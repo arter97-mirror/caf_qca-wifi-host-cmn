@@ -308,7 +308,12 @@ wmi_buf_t wmi_buf_alloc_fl(wmi_unified_t wmi_handle, uint32_t len,
  *
  *  @net_buf : Pointer to net_buf to be freed
  */
-void wmi_buf_free(wmi_buf_t net_buf);
+#define wmi_buf_free(net_buf) \
+	wmi_buf_free_dbg(net_buf, __func__, __LINE__)
+
+void wmi_buf_free_dbg(wmi_buf_t net_buf, const char *func_name,
+		      uint32_t line_num);
+
 
 /**
  * wmi_unified_cmd_send() -  generic function to send unified WMI command

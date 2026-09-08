@@ -146,6 +146,21 @@ static qdf_atomic_t nbuf_count;
 static bool is_initial_mem_debug_disabled;
 #endif
 
+/*
+ * DEBUG: callback registered by wbuff (see qdf_nbuf_register_direct_free_cb())
+ * so qdf_nbuf_free_debug() can report wbuff-owned buffers being freed
+ * directly, bypassing wbuff_buff_put(), without qdf/ taking a
+ * dependency on wbuff/.
+ */
+static qdf_nbuf_direct_free_cb_t qdf_nbuf_direct_free_cb;
+
+void qdf_nbuf_register_direct_free_cb(qdf_nbuf_direct_free_cb_t cb)
+{
+	qdf_nbuf_direct_free_cb = cb;
+}
+
+qdf_export_symbol(qdf_nbuf_register_direct_free_cb);
+
 /**
  *  __qdf_nbuf_get_ip_offset() - Get IPV4/V6 header offset
  * @data: Pointer to network data buffer
@@ -4178,6 +4193,27 @@ qdf_nbuf_t qdf_nbuf_alloc_no_recycler_debug(size_t size, int reserve, int align,
 
 qdf_export_symbol(qdf_nbuf_alloc_no_recycler_debug);
 
+static inline bool qdf_nbuf_is_wbuff_wmi_tx_buffer(qdf_nbuf_t nbuf)
+{
+	unsigned long pool_info;
+	uint8_t module_id;
+
+	pool_info = qdf_nbuf_get_dev_scratch(nbuf);
+	module_id = pool_info ?
+	      (pool_info & WBUFF_MODULE_ID_BITMASK) >> WBUFF_MODULE_ID_SHIFT :
+	      WBUFF_MAX_MODULES;
+
+	/* Currently we are capturing only WMI Module functions, please add
+	 * corresponding checks in future if we want to enable logging for
+	 * other modules.
+	 */
+
+	if (module_id == WBUFF_MODULE_WMI_TX)
+		return true;
+
+	return false;
+}
+
 void qdf_nbuf_free_debug(qdf_nbuf_t nbuf, const char *func, uint32_t line)
 {
 	qdf_nbuf_t ext_list;
@@ -4187,6 +4223,9 @@ void qdf_nbuf_free_debug(qdf_nbuf_t nbuf, const char *func, uint32_t line)
 
 	if (qdf_unlikely(!nbuf))
 		return;
+
+	if (qdf_nbuf_is_wbuff_wmi_tx_buffer(nbuf) && qdf_nbuf_direct_free_cb)
+		qdf_nbuf_direct_free_cb(nbuf, func, line);
 
 	if (is_initial_mem_debug_disabled)
 		goto free_buf;

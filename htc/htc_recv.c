@@ -76,7 +76,7 @@ static A_STATUS htc_process_trailer(HTC_TARGET *target,
 #ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
 static void htc_rx_nbuf_free(qdf_nbuf_t nbuf)
 {
-	nbuf = wbuff_buff_put(nbuf);
+	nbuf = wbuff_buff_put(nbuf, __func__, __LINE__);
 	if (nbuf)
 		qdf_nbuf_free(nbuf);
 }
