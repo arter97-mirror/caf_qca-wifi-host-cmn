@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -229,9 +230,11 @@ wlan_serialization_enqueue_cmd(struct wlan_serialization_command *cmd,
 		goto error;
 	}
 
-	ser_debug("Type %d id %d vdev %d high_priority %d blocking %d timeout %d allowed %d",
+	ser_debug("Type %d id %d vdev %d high_priority %d blocking %d timeout %d allowed %d cmd waiting %d, active %d",
 		  cmd->cmd_type, cmd->cmd_id, vdev_id, cmd->is_high_priority,
-		  cmd->is_blocking, cmd->cmd_timeout_duration, active_queue);
+		  cmd->is_blocking, cmd->cmd_timeout_duration, active_queue,
+		  pdev_queue->blocking_cmd_waiting,
+		  pdev_queue->blocking_cmd_active);
 
 	cmd_list =
 		qdf_container_of(nnode,
