@@ -174,6 +174,9 @@ void dp_del_wds_entry_wrapper(struct dp_soc *soc,
 			      uint8_t type,
 			      uint8_t delete_in_fw)
 {
+	if (!soc->cdp_soc.ol_ops->peer_del_wds_entry)
+		return;
+
 	soc->cdp_soc.ol_ops->peer_del_wds_entry(soc->ctrl_psoc,
 						vdev_id,
 						wds_macaddr,
