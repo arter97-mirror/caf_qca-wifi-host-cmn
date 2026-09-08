@@ -51,13 +51,25 @@
 #define WLAN_CRYPTO_MAXKEYIDX        (4)
 #define WLAN_CRYPTO_MAXIGTKKEYIDX    (2)
 #define WLAN_CRYPTO_MAXBIGTKKEYIDX   (2)
-#ifndef WLAN_CRYPTO_MAX_VLANKEYIX
-#define WLAN_CRYPTO_MAX_VLANKEYIX    WLAN_CRYPTO_MAXKEYIDX
+#ifdef QCA_MULTIPASS_SUPPORT
+/* First VLAN key slot = 4(GTK) + 2(IGTK) + 2(BIGTK) = 8 */
+#define WLAN_CRYPTO_VLAN_MIN_KEY_IDX (WLAN_CRYPTO_MAXKEYIDX + \
+				      WLAN_CRYPTO_MAXIGTKKEYIDX + \
+				      WLAN_CRYPTO_MAXBIGTKKEYIDX)
+/* 4 VLAN groups x 2 key positions each */
+#define WLAN_CRYPTO_MAXVLANKEYIDX    (4 * 2)
+#define WLAN_CRYPTO_MAX_VLANKEYIX    (WLAN_CRYPTO_VLAN_MIN_KEY_IDX + \
+				      WLAN_CRYPTO_MAXVLANKEYIDX)
+#else
+#define WLAN_CRYPTO_MAXVLANKEYIDX     0
+#define WLAN_CRYPTO_VLAN_MIN_KEY_IDX  0
+#define WLAN_CRYPTO_MAX_VLANKEYIX     0
 #endif
 #define WLAN_CRYPTO_MAX_PMKID        (16)
 #define WLAN_CRYPTO_TOTAL_KEYIDX     (WLAN_CRYPTO_MAXKEYIDX + \
 					WLAN_CRYPTO_MAXIGTKKEYIDX + \
-					WLAN_CRYPTO_MAXBIGTKKEYIDX)
+					WLAN_CRYPTO_MAXBIGTKKEYIDX + \
+					WLAN_CRYPTO_MAXVLANKEYIDX)
 /* 40 bit wep key len */
 #define WLAN_CRYPTO_KEY_WEP40_LEN    (5)
 /* 104 bit wep key len */
@@ -547,6 +559,7 @@ struct wlan_crypto_key {
  * @key:              key buffers for this peer
  * @igtk_key:         igtk key buffer for this peer
  * @bigtk_key:        bigtk key buffer for this peer
+ * @vlan_key:         vlan gtk key buffers for multipass SAP
  * @ltf_key_seed:     LTF Key Seed buffer
  * @igtk_key_type:    igtk key type
  * @def_tx_keyid:     default key used for this peer
@@ -554,9 +567,12 @@ struct wlan_crypto_key {
  * @def_bigtk_tx_keyid: default bigtk key used for this peer
  */
 struct wlan_crypto_keys {
-	struct wlan_crypto_key *key[WLAN_CRYPTO_MAX_VLANKEYIX];
+	struct wlan_crypto_key *key[WLAN_CRYPTO_MAXKEYIDX];
 	struct wlan_crypto_key *igtk_key[WLAN_CRYPTO_MAXIGTKKEYIDX];
 	struct wlan_crypto_key *bigtk_key[WLAN_CRYPTO_MAXBIGTKKEYIDX];
+#ifdef QCA_MULTIPASS_SUPPORT
+	struct wlan_crypto_key *vlan_key[WLAN_CRYPTO_MAXVLANKEYIDX];
+#endif
 	struct wlan_crypto_ltf_keyseed_data ltf_key_seed;
 	enum wlan_crypto_cipher_type igtk_key_type;
 	uint8_t def_tx_keyid;

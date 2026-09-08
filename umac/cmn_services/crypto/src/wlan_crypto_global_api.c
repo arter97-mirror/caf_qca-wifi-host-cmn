@@ -60,8 +60,7 @@ const struct wlan_crypto_cipher *wlan_crypto_cipher_ops[WLAN_CRYPTO_CIPHER_MAX];
 
 bool is_valid_keyix(uint16_t keyix)
 {
-	if (keyix >= (WLAN_CRYPTO_MAXKEYIDX + WLAN_CRYPTO_MAXIGTKKEYIDX
-			+ WLAN_CRYPTO_MAXBIGTKKEYIDX))
+	if (keyix >= WLAN_CRYPTO_TOTAL_KEYIDX)
 		return 0;
 	else
 		return 1;
@@ -87,6 +86,58 @@ bool is_bigtk(uint16_t keyix)
 	else
 		return 1;
 }
+
+#ifdef QCA_MULTIPASS_SUPPORT
+bool is_vgtk(uint16_t keyix)
+{
+	if (keyix < WLAN_CRYPTO_VLAN_MIN_KEY_IDX)
+		return false;
+	if (keyix >= WLAN_CRYPTO_MAX_VLANKEYIX)
+		return false;
+	return true;
+}
+
+void
+wlan_crypto_save_vlan_key(struct wlan_crypto_keys *priv_key,
+			  uint8_t key_index,
+			  struct wlan_crypto_key *crypto_key)
+{
+	priv_key->vlan_key[key_index - WLAN_CRYPTO_VLAN_MIN_KEY_IDX] =
+		crypto_key;
+}
+
+struct wlan_crypto_key *
+wlan_crypto_get_vlan_key(struct wlan_crypto_keys *priv_key, uint8_t key_index)
+{
+	return priv_key->vlan_key[key_index - WLAN_CRYPTO_VLAN_MIN_KEY_IDX];
+}
+
+static struct wlan_crypto_key *
+wlan_crypto_del_vlan_key(struct wlan_crypto_keys *priv_key, uint8_t key_index)
+{
+	uint8_t idx = key_index - WLAN_CRYPTO_VLAN_MIN_KEY_IDX;
+	struct wlan_crypto_key *key = priv_key->vlan_key[idx];
+
+	priv_key->vlan_key[idx] = NULL;
+	return key;
+}
+
+void wlan_crypto_free_vlan_keys(struct wlan_crypto_keys *priv_key)
+{
+	uint8_t i;
+
+	for (i = 0; i < WLAN_CRYPTO_MAXVLANKEYIDX; i++) {
+		if (priv_key->vlan_key[i]) {
+			qdf_mem_free(priv_key->vlan_key[i]);
+			priv_key->vlan_key[i] = NULL;
+		}
+	}
+}
+#else
+static inline struct wlan_crypto_key *
+wlan_crypto_del_vlan_key(struct wlan_crypto_keys *priv_key,
+			 uint8_t key_index) { return NULL; }
+#endif /* QCA_MULTIPASS_SUPPORT */
 
 bool is_gtk(uint16_t keyix)
 {
@@ -908,10 +959,9 @@ QDF_STATUS wlan_crypto_setkey(struct wlan_objmgr_vdev *vdev,
 						| WLAN_CRYPTO_KEY_RECV);
 		}
 	} else {
-		if ((req_key->keyix >= WLAN_CRYPTO_MAX_VLANKEYIX)
-			&& (!IS_MGMT_CIPHER(req_key->type))) {
+		if (req_key->keyix >= WLAN_CRYPTO_MAXKEYIDX &&
+		    !IS_MGMT_CIPHER(req_key->type))
 			return QDF_STATUS_CRYPTO_INVALID_KEYID;
-		}
 
 		req_key->flags |= (WLAN_CRYPTO_KEY_XMIT
 					| WLAN_CRYPTO_KEY_RECV);
@@ -1094,7 +1144,7 @@ QDF_STATUS wlan_crypto_setkey(struct wlan_objmgr_vdev *vdev,
 			uint16_t kid = req_key->keyix;
 			if (kid == WLAN_CRYPTO_KEYIX_NONE)
 				kid = 0;
-			if (kid >= WLAN_CRYPTO_MAX_VLANKEYIX) {
+			if (kid >= WLAN_CRYPTO_MAXKEYIDX) {
 				crypto_err("invalid keyid %d", kid);
 				status = QDF_STATUS_CRYPTO_INVALID_KEYID;
 				goto err;
@@ -1268,6 +1318,8 @@ struct wlan_crypto_key *wlan_crypto_vdev_getkey(struct wlan_objmgr_vdev *vdev,
 						- WLAN_CRYPTO_MAXIGTKKEYIDX];
 	else if (is_igtk(keyix))
 		key = priv_key->igtk_key[keyix - WLAN_CRYPTO_MAXKEYIDX];
+	else if (is_vgtk(keyix))
+		key = wlan_crypto_get_vlan_key(priv_key, keyix);
 	else
 		key = priv_key->key[keyix];
 
@@ -1307,6 +1359,8 @@ struct wlan_crypto_key *wlan_crypto_peer_getkey(struct wlan_objmgr_peer *peer,
 						- WLAN_CRYPTO_MAXIGTKKEYIDX];
 	else if (is_igtk(keyix))
 		key = priv_key->igtk_key[keyix - WLAN_CRYPTO_MAXKEYIDX];
+	else if (is_vgtk(keyix))
+		key = wlan_crypto_get_vlan_key(priv_key, keyix);
 	else
 		key = priv_key->key[keyix];
 
@@ -1519,17 +1573,22 @@ QDF_STATUS wlan_crypto_delkey(struct wlan_objmgr_vdev *vdev,
 		uint8_t igtk_idx = key_idx - WLAN_CRYPTO_MAXKEYIDX;
 		uint8_t bigtk_idx = igtk_idx - WLAN_CRYPTO_MAXIGTKKEYIDX;
 
-		if (!is_igtk(key_idx) && !(is_bigtk(key_idx))) {
-			crypto_err("igtk/bigtk key invalid keyid %d", key_idx);
+		if (!is_igtk(key_idx) && !(is_bigtk(key_idx)) &&
+		    !is_vgtk(key_idx)) {
+			crypto_err("igtk/bigtk/vgtk key invalid keyid %d",
+				   key_idx);
 			ret = QDF_STATUS_E_INVAL;
 			goto ret_rel_ref;
 		}
 		if (is_igtk(key_idx)) {
 			key = crypto_priv->crypto_key.igtk_key[igtk_idx];
 			crypto_priv->crypto_key.igtk_key[igtk_idx] = NULL;
-		} else {
+		} else if (is_bigtk(key_idx)) {
 			key = crypto_priv->crypto_key.bigtk_key[bigtk_idx];
 			crypto_priv->crypto_key.bigtk_key[bigtk_idx] = NULL;
+		} else {
+			key = wlan_crypto_del_vlan_key(&crypto_priv->crypto_key,
+						       key_idx);
 		}
 		if (key)
 			key->valid = 0;
@@ -4837,11 +4896,25 @@ QDF_STATUS wlan_crypto_validate_key_params(enum wlan_crypto_cipher_type cipher,
 		crypto_err("Invalid Cipher %d", cipher);
 		return QDF_STATUS_E_INVAL;
 	}
-	if ((!(cipher == WLAN_CRYPTO_CIPHER_AES_CMAC ||
-	       cipher == WLAN_CRYPTO_CIPHER_AES_CMAC_256 ||
-	       cipher == WLAN_CRYPTO_CIPHER_AES_GMAC ||
-	       cipher == WLAN_CRYPTO_CIPHER_AES_GMAC_256)) &&
-	    (key_index >= WLAN_CRYPTO_MAXKEYIDX)) {
+	if (is_vgtk(key_index)) {
+		/*
+		 * Slots WLAN_CRYPTO_VLAN_MIN_KEY_IDX(8) to
+		 * WLAN_CRYPTO_MAX_VLANKEYIX(16) - 1 hold the per-VLAN group
+		 * keys of a multipass SAP; is_vgtk() bounds the index to that
+		 * range. These are data keys, so a BIP cipher here would be
+		 * routed into vlan_key[] by wlan_crypto_save_key().
+		 */
+		if (IS_MGMT_CIPHER(cipher)) {
+			crypto_err("MGMT cipher %d invalid at VLAN key idx %d",
+				   cipher, key_index);
+			return QDF_STATUS_E_INVAL;
+		}
+	} else if (!IS_MGMT_CIPHER(cipher) &&
+		   key_index >= WLAN_CRYPTO_MAXKEYIDX) {
+		/*
+		 * The remaining slots at or above WLAN_CRYPTO_MAXKEYIDX are
+		 * IGTK(4-5)/BIGTK(6-7) and accept only a BIP cipher.
+		 */
 		crypto_err("Invalid key index %d for cipher %d",
 			   key_index, cipher);
 		return QDF_STATUS_E_INVAL;
@@ -5004,8 +5077,8 @@ QDF_STATUS wlan_crypto_save_key(struct wlan_objmgr_vdev *vdev,
 	}
 
 	if (wlan_crypto_is_store_in_psoc(vdev)) {
-		wlan_crypto_save_key_at_psoc(vdev, peer_mac,
-					     key_index, crypto_key);
+		return wlan_crypto_save_key_at_psoc(vdev, peer_mac,
+						    key_index, crypto_key);
 	} else {
 		priv_key = &crypto_priv->crypto_key;
 		if (key_index < WLAN_CRYPTO_MAXKEYIDX) {
@@ -5016,12 +5089,24 @@ QDF_STATUS wlan_crypto_save_key(struct wlan_objmgr_vdev *vdev,
 			priv_key->def_igtk_tx_keyid =
 				key_index - WLAN_CRYPTO_MAXKEYIDX;
 			priv_key->igtk_key_type = crypto_key->cipher_type;
-		} else {
+		} else if (is_bigtk(key_index)) {
 			priv_key->bigtk_key[key_index - WLAN_CRYPTO_MAXKEYIDX
 				- WLAN_CRYPTO_MAXIGTKKEYIDX] = crypto_key;
 			priv_key->def_bigtk_tx_keyid =
 				key_index - WLAN_CRYPTO_MAXKEYIDX
 				- WLAN_CRYPTO_MAXIGTKKEYIDX;
+		} else if (is_vgtk(key_index)) {
+			wlan_crypto_save_vlan_key(priv_key, key_index,
+						  crypto_key);
+		} else {
+			/*
+			 * is_valid_keyix() admits every index below
+			 * WLAN_CRYPTO_TOTAL_KEYIDX. A key class added to that
+			 * total without a matching branch above would be
+			 * dropped.
+			 */
+			crypto_err("No slot class for key index %d", key_index);
+			return QDF_STATUS_E_INVAL;
 		}
 		crypto_key->valid = true;
 	}
@@ -5067,10 +5152,13 @@ struct wlan_crypto_key *wlan_crypto_get_ml_sta_link_key(
 		else if (is_igtk(key_index))
 			return key_entry->keys.igtk_key[key_index
 						- WLAN_CRYPTO_MAXKEYIDX];
-		else
+		else if (is_bigtk(key_index))
 			return key_entry->keys.bigtk_key[key_index
 						- WLAN_CRYPTO_MAXKEYIDX
 						- WLAN_CRYPTO_MAXIGTKKEYIDX];
+		else if (is_vgtk(key_index))
+			return wlan_crypto_get_vlan_key(&key_entry->keys,
+							key_index);
 	}
 	return NULL;
 }
@@ -5154,10 +5242,13 @@ wlan_crypto_get_ml_keys_from_index(struct wlan_objmgr_vdev *vdev,
 		else if (is_igtk(key_index))
 			return key_entry->keys.igtk_key[key_index
 						- WLAN_CRYPTO_MAXKEYIDX];
-		else
+		else if (is_bigtk(key_index))
 			return key_entry->keys.bigtk_key[key_index
 						- WLAN_CRYPTO_MAXKEYIDX
 						- WLAN_CRYPTO_MAXIGTKKEYIDX];
+		else if (is_vgtk(key_index))
+			return wlan_crypto_get_vlan_key(&key_entry->keys,
+							key_index);
 	}
 
 	return NULL;
@@ -5191,10 +5282,16 @@ struct wlan_crypto_key *wlan_crypto_get_key(struct wlan_objmgr_vdev *vdev,
 		else if (is_igtk(key_index))
 			return priv_key->igtk_key[key_index
 					- WLAN_CRYPTO_MAXKEYIDX];
-		else
+		else if (is_bigtk(key_index))
 			return priv_key->bigtk_key[key_index
 					- WLAN_CRYPTO_MAXKEYIDX
 						- WLAN_CRYPTO_MAXIGTKKEYIDX];
+		else if (is_vgtk(key_index)) {
+			crypto_debug("get_key: vgtk key_idx %d vlan_min %d max %d",
+				     key_index, WLAN_CRYPTO_VLAN_MIN_KEY_IDX,
+				     WLAN_CRYPTO_MAX_VLANKEYIX);
+			return wlan_crypto_get_vlan_key(priv_key, key_index);
+		}
 	}
 	return NULL;
 }
