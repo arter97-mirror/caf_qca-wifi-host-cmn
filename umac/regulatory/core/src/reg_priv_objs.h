@@ -208,6 +208,7 @@ struct indoor_concurrency_list {
  * @scan_req_id:
  * @scan_id:
  * @timer:
+ * @runtime_pm_lock: Runtime suspend lock
  * @vdev_ids_11d:
  * @user_ctry_priority:
  * @user_ctry_set:
@@ -296,6 +297,7 @@ struct wlan_regulatory_psoc_priv_obj {
 	wlan_scan_requester scan_req_id;
 	uint32_t scan_id;
 	qdf_mc_timer_t timer;
+	qdf_runtime_lock_t runtime_pm_lock;
 #endif
 	uint8_t vdev_ids_11d[MAX_STA_VDEV_CNT];
 	bool user_ctry_priority;

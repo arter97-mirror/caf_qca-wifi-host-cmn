@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -22,6 +23,7 @@
 
 #include <wlan_scan_public_structs.h>
 #include <wlan_scan_ucfg_api.h>
+#include <wlan_scan_utils_api.h>
 
 #include "reg_priv_objs.h"
 
@@ -65,15 +67,19 @@ static QDF_STATUS reg_11d_scan_trigger_handler(
 	req->scan_req.scan_priority = SCAN_PRIORITY_LOW;
 	req->scan_req.scan_f_passive = false;
 
+	qdf_runtime_pm_prevent_suspend(&soc_reg->runtime_pm_lock);
+
 	status = ucfg_scan_start(req);
 	reg_nofl_debug("11d scan trigger vdev %d scan_id %d req_id %d status %d",
 		       soc_reg->vdev_id_for_11d_scan, soc_reg->scan_id,
 		       soc_reg->scan_req_id, status);
 
-	if (status != QDF_STATUS_SUCCESS)
+	if (status != QDF_STATUS_SUCCESS) {
 		/* Don't free req here, ucfg_scan_start will do free */
 		reg_err("11d scan req failed vdev %d",
 			soc_reg->vdev_id_for_11d_scan);
+		qdf_runtime_pm_allow_suspend(&soc_reg->runtime_pm_lock);
+	}
 
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_REGULATORY_SB_ID);
 
@@ -84,6 +90,13 @@ static void reg_11d_scan_event_cb(
 	struct wlan_objmgr_vdev *vdev,
 	struct scan_event *event, void *arg)
 {
+	struct wlan_regulatory_psoc_priv_obj *soc_reg = arg;
+	bool success = false;
+
+	if (!util_is_scan_completed(event, &success))
+		return;
+
+	qdf_runtime_pm_allow_suspend(&soc_reg->runtime_pm_lock);
 };
 
 QDF_STATUS reg_11d_host_scan(
@@ -141,6 +154,7 @@ QDF_STATUS reg_11d_host_scan_init(struct wlan_objmgr_psoc *psoc)
 					     soc_reg);
 	qdf_mc_timer_init(&soc_reg->timer, QDF_TIMER_TYPE_SW,
 			  reg_11d_scan_timer, soc_reg);
+	qdf_runtime_lock_init(&soc_reg->runtime_pm_lock);
 
 	soc_reg->is_host_11d_inited = true;
 	reg_debug("reg 11d scan inited");
@@ -164,6 +178,7 @@ QDF_STATUS reg_11d_host_scan_deinit(struct wlan_objmgr_psoc *psoc)
 	}
 	qdf_mc_timer_stop(&soc_reg->timer);
 	qdf_mc_timer_destroy(&soc_reg->timer);
+	qdf_runtime_lock_deinit(&soc_reg->runtime_pm_lock);
 	ucfg_scan_unregister_requester(psoc, soc_reg->scan_req_id);
 	soc_reg->is_host_11d_inited = false;
 	reg_debug("reg 11d scan deinit");
