@@ -791,10 +791,10 @@ QDF_STATUS __qdf_mem_map_page(qdf_device_t osdev, __qdf_frag_t buf,
 
 	page = virt_to_head_page(buf);
 	offset = buf - page_address(page);
-	*phy_addr = dma_map_page(osdev->dev, page, offset, nbytes,
+	*phy_addr = dma_map_page(QDF_DMA_DEV(osdev), page, offset, nbytes,
 				 __qdf_dma_dir_to_os(dir));
 
-	return dma_mapping_error(osdev->dev, *phy_addr) ?
+	return dma_mapping_error(QDF_DMA_DEV(osdev), *phy_addr) ?
 		QDF_STATUS_E_FAILURE : QDF_STATUS_SUCCESS;
 }
 #else
@@ -812,7 +812,7 @@ qdf_export_symbol(__qdf_mem_map_page);
 void __qdf_mem_unmap_page(qdf_device_t osdev, qdf_dma_addr_t paddr,
 			  size_t nbytes, qdf_dma_dir_t dir)
 {
-	dma_unmap_page(osdev->dev, paddr, nbytes,
+	dma_unmap_page(QDF_DMA_DEV(osdev), paddr, nbytes,
 		       __qdf_dma_dir_to_os(dir));
 }
 #else

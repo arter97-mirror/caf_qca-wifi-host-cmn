@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -679,9 +679,9 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =
-		dma_map_single(osdev->dev, buf->data,
+		dma_map_single(QDF_DMA_DEV(osdev), buf->data,
 			       nbytes, __qdf_dma_dir_to_os(dir));
-	ret =  dma_mapping_error(osdev->dev, paddr) ?
+	ret =  dma_mapping_error(QDF_DMA_DEV(osdev), paddr) ?
 		QDF_STATUS_E_FAULT : QDF_STATUS_SUCCESS;
 	if (QDF_IS_STATUS_SUCCESS(ret))
 		__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf),
@@ -714,7 +714,7 @@ __qdf_nbuf_unmap_nbytes_single(qdf_device_t osdev, struct sk_buff *buf,
 	if (qdf_likely(paddr)) {
 		__qdf_record_nbuf_nbytes(
 			__qdf_nbuf_get_end_offset(buf), dir, false);
-		dma_unmap_single(osdev->dev, paddr, nbytes,
+		dma_unmap_single(QDF_DMA_DEV(osdev), paddr, nbytes,
 				 __qdf_dma_dir_to_os(dir));
 		return;
 	}
@@ -842,7 +842,9 @@ static inline void qdf_nbuf_deinit_replenish_timer(void) {}
  *
  * Return: none
  */
-#if (defined(__LINUX_ARM_ARCH__) && !defined(DP_NO_CACHE_DESC_SUPPORT))
+#if (defined(__LINUX_ARM_ARCH__) && \
+	!defined(DP_NO_CACHE_DESC_SUPPORT) && \
+	!defined(WLAN_ASSUME_DMA_COHERENT))
 static inline void
 __qdf_nbuf_dma_inv_range(const void *buf_start, const void *buf_end)
 {

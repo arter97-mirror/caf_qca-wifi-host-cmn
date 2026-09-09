@@ -291,6 +291,7 @@ enum qdf_bus_type {
  * @domain: domain type
  * @iommu_mapping: DMA iommu mapping pointer
  * @no_dma_map: Flag to check whether DMA mapping for TX buffers is needed
+ * @dma_dev: struct device used for DMA alloc/map/sync on hot paths
  */
 struct __qdf_device {
 	void *drv;
@@ -299,6 +300,79 @@ struct __qdf_device {
 	void *cnss_pdev;
 	int irq;
 	struct device *dev;
+#ifdef CONFIG_CNSS_IO_COHERENCY
+	/*
+	 * dma_dev: struct device used for DMA alloc/map/sync inside QDF
+	 * hot paths on IO-coherency-capable targets (see
+	 * QDF_DMA_DEV()). Set once at qdf_dev init, see
+	 * hdd_init_qdf_ctx().
+	 *
+	 * Acronyms used below:
+	 *   NoC   - Network-on-Chip; the on-die interconnect fabric that
+	 *           carries transactions between CPU, DDR, PCIe, etc.
+	 *   aggr-NoC - the aggregation NoC block that sits between the
+	 *           pcie root complexes and the rest of the fabric on IPQ;
+	 *           its per-pcie-leg attribute registers control whether
+	 *           pcie DMA transactions are marked coherent and LLC-
+	 *           cacheable.
+	 *   LLC   - Last Level Cache; system-level cache upstream of DDR.
+	 *           Enabling LLC-cacheable attribute lets pcie DMA hit
+	 *           the LLC before reaching DDR.
+	 *   TME-L - Trusted Management Engine - Lite; the secure co-
+	 *           processor that owns secure-world MMIO. Linux reaches
+	 *           it via tmelcom IPC (tmelcom_secure_io_write) to poke
+	 *           secure aggr-NoC registers.
+	 *
+	 * Why dma_dev exists (IPQ5424 fig_v2 IO-coherency specifics):
+	 *
+	 * On IPQ5424, fig_v2 can NOT declare "dma-coherent" directly on
+	 * the pcie root complex device tree node. Two reasons:
+	 *
+	 *   1. The pcie<->fabric path is non-coherent by hardware default.
+	 *      Enabling coherent + LLC-cacheable transactions requires
+	 *      writing a set of aggr-NoC attribute registers per pcie
+	 *      leg (Main Ctl / TrType LUT / dynattr Alloc /
+	 *      CacheIndexVal, secure 0x00610xxx window - see wlan_fig
+	 *      DTS "secure-reg", which was renamed from the earlier
+	 *      "aggr_noc" property to make it more generic). Those
+	 *      registers are in secure address space and can only be
+	 *      written through TME-L IPC (tmelcom_secure_io_write),
+	 *      which is not usable at PCI enumeration time.
+	 *
+	 *   2. If dma-coherent were on the pcie3 node, kernel PCI
+	 *      enumeration would mark fig_v2 endpoint pci_dev coherent
+	 *      immediately, and MHI early-init DMA would already be
+	 *      walking cacheable pages while the aggr-NoC coherent bit
+	 *      is still off - producing cache-vs-DRAM inconsistency
+	 *      (kernel stack canary corruption during boot).
+	 *
+	 * So dma-coherent is placed on the wlan_fig (cnss-fig) platform
+	 * node instead, and cnss2 opens the aggr-NoC bit through TME-L
+	 * only when wlan_enable runs, in one atomic step with flipping
+	 * the fig_v2 pci_dev->dma_coherent flag.
+	 *
+	 * As a side effect, fig_v2's pci_dev has a shared-dma-pool
+	 * (reserved-memory with no-map) attached, because the firmware
+	 * requires fixed physical addresses for QMI/M3/AUX regions. Every
+	 * dma_alloc_coherent(pci_dev, ...) - including dp_prealloc / CE
+	 * ring descriptors that do NOT need fixed PAs - is forced into
+	 * this pool and comes back write-combine uncached (memremap WC),
+	 * costing ~1 Gbps RX throughput because CE descriptor rings are
+	 * hot-path CPU reads.
+	 *
+	 * dma_dev is retargeted to the wlan_fig platform_device, which
+	 * carries the DTS "dma-coherent" and has NO reserved-memory pool.
+	 * QDF/DP hot-path allocs go through dma-direct-coherent and get
+	 * cacheable pages; the aggr-NoC coherent + LLC-cacheable bits +
+	 * fig_v2 pci_dev flip (all done by cnss2 through TME-L) then
+	 * keep CPU cache and fig_v2 DMA in sync.
+	 *
+	 * Non-DMA users of qdf_dev->dev (pld_*, to_pci_dev, power ctl,
+	 * SMMU, QMI, etc.) MUST keep using dev - they need pci_dev
+	 * semantics and are unaffected by this override.
+	 */
+	struct device *dma_dev;
+#endif
 	__qdf_resource_t res;
 	__qdf_os_intr func;
 	struct __qdf_mempool_ctxt *mem_pool[MAX_MEM_POOLS];
@@ -315,6 +389,21 @@ struct __qdf_device {
 	bool no_dma_map;
 };
 typedef struct __qdf_device *__qdf_device_t;
+
+/*
+ * QDF_DMA_DEV() - Device to use for DMA alloc/map/sync
+ * @osdev: qdf device handle (qdf_device_t)
+ *
+ * On IO-coherency-capable targets this is osdev->dma_dev, which cnss
+ * retargets to the coherent wlan_fig platform device once IO coherency
+ * is opened (see cnss_pci_config_io_coherency() and
+ * hdd_update_dma_dev()); it is osdev->dev otherwise.
+ */
+#ifdef CONFIG_CNSS_IO_COHERENCY
+#define QDF_DMA_DEV(osdev) ((osdev)->dma_dev)
+#else
+#define QDF_DMA_DEV(osdev) ((osdev)->dev)
+#endif
 
 typedef size_t __qdf_size_t;
 typedef off_t __qdf_off_t;
