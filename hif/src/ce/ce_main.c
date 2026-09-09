@@ -2118,8 +2118,15 @@ uint32_t hif_ce_count_max = CE_COUNT_MAX;
 #else
 #ifdef QCA_WIFI_SUPPORT_SRNG
 /* Enable CE-1 history only on targets not using CE-1 for datapath */
+#ifdef FEATURE_WIFI_TRANSPORT
+/* CE0 (WiFi-Transport TX), CE5 (WiFi-Transport RX) added to critical set */
+#define CE_DESC_HISTORY_BUFF_CNT  6
+#define IS_CE_DEBUG_ONLY_FOR_CRIT_CE \
+	(BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(5) | BIT(7))
+#else
 #define CE_DESC_HISTORY_BUFF_CNT  4
 #define IS_CE_DEBUG_ONLY_FOR_CRIT_CE (BIT(1) | BIT(2) | BIT(3) | BIT(7))
+#endif /* FEATURE_WIFI_TRANSPORT */
 #else
 /* CE2, CE3, CE7 */
 #define CE_DESC_HISTORY_BUFF_CNT  3 + CE_DP_HISTORY_BUFF_CNT
