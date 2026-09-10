@@ -326,6 +326,18 @@ QDF_STATUS wmi_extract_nan_enable_rsp_event(
 				wmi_unified_t wmi_handle,
 				void *evt_buf,
 				struct nan_enable_rsp_params *evt_params);
+
+/**
+ * wmi_extract_ndp_channel_info - api to extract ndp channel info from event buffer
+ * @wmi_handle: wmi handle
+ * @data: event buffer
+ * @ev: buffer to populate
+ *
+ * Return: status of operation
+ */
+QDF_STATUS wmi_extract_ndp_channel_info(wmi_unified_t wmi_handle,
+				uint8_t *data,
+				struct nan_ndp_channel_info_event *ev);
 #endif
 
 /**

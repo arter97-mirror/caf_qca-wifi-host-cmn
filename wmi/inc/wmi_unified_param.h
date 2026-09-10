@@ -6067,6 +6067,7 @@ typedef enum {
 	wmi_nan_next_dw_info_event_id,
 	wmi_nan_joined_cluster_event_id,
 	wmi_nan_started_cluster_event_id,
+	wmi_ndp_channel_info_event_id,
 	wmi_nan_dfs_channel_availability_ind_event_id,
 #endif
 #ifdef CONFIG_NO_QMI
