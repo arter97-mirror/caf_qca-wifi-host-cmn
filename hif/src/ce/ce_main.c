@@ -2881,7 +2881,7 @@ static qdf_nbuf_t hif_ce_rx_nbuf_alloc(struct hif_softc *scn, uint8_t ce_id)
 
 static void hif_ce_rx_nbuf_free(qdf_nbuf_t nbuf)
 {
-	nbuf = wbuff_buff_put(nbuf);
+	nbuf = wbuff_buff_put(nbuf, __func__, __LINE__);
 	if (nbuf)
 		qdf_nbuf_free(nbuf);
 }

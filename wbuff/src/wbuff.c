@@ -26,7 +26,107 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <qdf_debugfs.h>
+#include <qdf_trace.h>
+#include <qdf_atomic.h>
 #include "i_wbuff.h"
+
+enum wbuff_trace_op {
+	WBUFF_TRACE_GET,
+	WBUFF_TRACE_PUT,
+	WBUFF_TRACE_FREE,
+	WBUFF_TRACE_DIRECT_FREE_BYPASS,
+};
+
+struct wbuff_trace_entry {
+	enum wbuff_trace_op op;
+	qdf_nbuf_t buf;
+	uint8_t module_id;
+	const char *func_name;
+	uint32_t line_num;
+	uint64_t timestamp;
+};
+
+#ifdef CONFIG_SLUB_DEBUG_ON
+#define WBUFF_TRACE_TABLE_SIZE 2048
+
+static struct wbuff_trace_entry wbuff_trace_table[WBUFF_TRACE_TABLE_SIZE];
+static qdf_atomic_t wbuff_trace_idx;
+
+/**
+ * wbuff_trace_record() - DEBUG: record one get/put/free event into the
+ * global wbuff_trace_table ring buffer. Only WBUFF_MODULE_WMI_TX events
+ * are recorded -- the table exists to reconstruct WMI command buffer
+ * history, so other modules (e.g. CE_RX) would just waste ring slots.
+ * @op: the operation being recorded (get/put/free)
+ * @module_id: the wbuff module the buffer belongs to
+ * @buf: the buffer the operation was performed on
+ * @func_name: caller function name
+ * @line_num: caller line number
+ *
+ * Lock-free: each caller gets a unique slot via qdf_atomic_inc_return(),
+ * wrapped modulo table size, so concurrent callers never contend on a
+ * lock, at the cost of very old entries being overwritten once the
+ * table wraps (by design, for a fixed-size ring buffer).
+ *
+ * Return: None
+ */
+static void wbuff_trace_record(enum wbuff_trace_op op, uint8_t module_id,
+			       qdf_nbuf_t buf, const char *func_name,
+			       uint32_t line_num)
+{
+	uint32_t idx;
+	struct wbuff_trace_entry *entry;
+
+	if (module_id != WBUFF_MODULE_WMI_TX)
+		return;
+
+	idx = ((uint32_t)qdf_atomic_inc_return(&wbuff_trace_idx) - 1) %
+	      WBUFF_TRACE_TABLE_SIZE;
+	entry = &wbuff_trace_table[idx];
+
+	entry->op = op;
+	entry->buf = buf;
+	entry->module_id = module_id;
+	entry->func_name = func_name;
+	entry->line_num = line_num;
+	entry->timestamp = qdf_get_log_timestamp();
+}
+
+/**
+ * wbuff_direct_free_cb() - DEBUG: callback registered with
+ * qdf_nbuf_register_direct_free_cb(). Invoked by qdf_nbuf_free_debug()
+ * whenever a buffer still carrying wbuff dev_scratch metadata is being
+ * freed directly, bypassing wbuff_buff_put() entirely -- e.g. from a
+ * teardown/SSR cleanup path that calls qdf_nbuf_free() straight on an
+ * HTC packet's netbuf. wbuff's own pending_returns/pool free-list never
+ * finds out this buffer left circulation.
+ * @nbuf: the buffer being freed
+ * @func: caller of qdf_nbuf_free()
+ * @line: caller's line number
+ *
+ * Return: None
+ */
+static void wbuff_direct_free_cb(qdf_nbuf_t nbuf, const char *func,
+				 uint32_t line)
+{
+	unsigned long pool_info = qdf_nbuf_get_dev_scratch(nbuf);
+	uint8_t module_id = pool_info ?
+		(pool_info & WBUFF_MODULE_ID_BITMASK) >> WBUFF_MODULE_ID_SHIFT :
+		WBUFF_MAX_MODULES;
+
+	wbuff_trace_record(WBUFF_TRACE_DIRECT_FREE_BYPASS, module_id, nbuf,
+			   func, line);
+}
+#else
+static void wbuff_trace_record(enum wbuff_trace_op op, uint8_t module_id,
+			       qdf_nbuf_t buf, const char *func_name,
+			       uint32_t line_num)
+{}
+
+static void wbuff_direct_free_cb(qdf_nbuf_t nbuf, const char *func,
+				 uint32_t line)
+{}
+#endif
 
 /*
  * Allocation holder array for all wbuff registered modules
@@ -263,6 +363,8 @@ QDF_STATUS wbuff_module_init(void)
 
 	wbuff.initialized = true;
 
+	qdf_nbuf_register_direct_free_cb(wbuff_direct_free_cb);
+
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -276,6 +378,8 @@ QDF_STATUS wbuff_module_deinit(void)
 
 	wbuff.initialized = false;
 	wbuff_debugfs_exit();
+
+	qdf_nbuf_register_direct_free_cb(NULL);
 
 	for (module_id = 0; module_id < WBUFF_MAX_MODULES; module_id++) {
 		mod = &wbuff.mod[module_id];
@@ -451,6 +555,8 @@ wbuff_buff_get(struct wbuff_mod_handle *hdl, uint8_t pool_id, uint32_t len,
 		qdf_nbuf_set_next(buf, NULL);
 		qdf_net_buf_debug_update_node(buf, func_name, line_num);
 		wbuff_pool->alloc_success++;
+		wbuff_trace_record(WBUFF_TRACE_GET, module_id, buf, func_name,
+				   line_num);
 	} else {
 		wbuff_pool->alloc_fail++;
 	}
@@ -458,7 +564,8 @@ wbuff_buff_get(struct wbuff_mod_handle *hdl, uint8_t pool_id, uint32_t len,
 	return buf;
 }
 
-qdf_nbuf_t wbuff_buff_put(qdf_nbuf_t buf)
+qdf_nbuf_t wbuff_buff_put(qdf_nbuf_t buf, const char *func_name,
+			  uint32_t line_num)
 {
 	qdf_nbuf_t buffer = buf;
 	unsigned long pool_info = 0;
@@ -486,6 +593,8 @@ qdf_nbuf_t wbuff_buff_put(qdf_nbuf_t buf)
 	if (!wbuff_pool->initialized)
 		goto reset_shinfo;
 
+	wbuff_trace_record(WBUFF_TRACE_PUT, module_id, buf, func_name,
+			   line_num);
 	qdf_nbuf_reset(buffer, wbuff.mod[module_id].reserve,
 		       wbuff.mod[module_id].align);
 	qdf_mem_set(qdf_nbuf_get_shinfo(buffer),
