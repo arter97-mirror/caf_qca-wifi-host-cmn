@@ -311,6 +311,17 @@ void mlo_mlme_peer_delete(struct wlan_objmgr_peer *peer);
 void mlo_mlme_peer_assoc_resp(struct wlan_objmgr_peer *peer);
 
 /**
+ * mlo_mlme_get_cb_mode_for_freq() - fetch cb_mode from freq
+ * @vdev_id: objmgr vdev id
+ * @freq: freq for which cb_mode is required
+ * @cb_mode: callback mode to fetch
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS mlo_mlme_get_cb_mode_for_freq(uint8_t vdev_id, qdf_freq_t freq,
+					 uint8_t *cb_mode);
+
+/**
  * mlo_mlme_get_link_assoc_req() - API to get link assoc req buffer
  * @peer: Object manager peer
  * @link_ix: link id of vdev

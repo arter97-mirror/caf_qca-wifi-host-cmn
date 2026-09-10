@@ -260,12 +260,14 @@ void mlo_mgr_update_link_info_reset(struct wlan_objmgr_psoc *psoc,
  * mlo_mgr_update_ap_link_info() - Update AP links information
  * @vdev: Object Manager vdev
  * @data: Container of data to save
+ * @cb_mode: callback mode based on freq
  *
  * Update AP link information for each link of AP MLD
  * Return: void
  */
 void mlo_mgr_update_ap_link_info(struct wlan_objmgr_vdev *vdev,
-				 struct mlo_link_info *data);
+				 struct mlo_link_info *data,
+				 uint8_t cb_mode);
 
 /**
  * mlo_mgr_get_ap_link_info() - Get the pointer of link info matching
