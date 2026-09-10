@@ -1261,19 +1261,6 @@ static void hif_set_hia_extnd(struct hif_softc *scn)
 
 	hif_info("E");
 
-	if ((target_type == TARGET_TYPE_AR900B) ||
-			target_type == TARGET_TYPE_QCA9984 ||
-			target_type == TARGET_TYPE_QCA9888) {
-		/* CHIP revision is 8-11 bits of the CHIP_ID register 0xec
-		 * in RTC space
-		 */
-		tgt_info->target_revision
-			= CHIP_ID_REVISION_GET(hif_read32_mb(scn, scn->mem
-					+ CHIP_ID_ADDRESS));
-		qdf_print("chip_id 0x%x chip_revision 0x%x",
-			  target_type, tgt_info->target_revision);
-	}
-
 	{
 		uint32_t flag2_value = 0;
 		uint32_t flag2_targ_addr =
@@ -1295,98 +1282,20 @@ static void hif_set_hia_extnd(struct hif_softc *scn)
 		}
 	}
 
-	if (target_type == TARGET_TYPE_AR900B
-			|| target_type == TARGET_TYPE_QCA9984
-			|| target_type == TARGET_TYPE_QCA9888) {
-
-		/* for AR9980_2.0, 300 mhz clock is used, right now we assume
-		 * this would be supplied through module parameters,
-		 * if not supplied assumed default or same behavior as 1.0.
-		 * Assume 1.0 clock can't be tuned, reset to defaults
-		 */
-
-		qdf_print(KERN_INFO
-			  "%s: setting the target pll frac %x intval %x",
-			  __func__, frac, intval);
-
-		/* do not touch frac, and int val, let them be default -1,
-		 * if desired, host can supply these through module params
-		 */
-		if (frac != -1 || intval != -1) {
-			uint32_t flag2_value = 0;
-			uint32_t flag2_targ_addr;
-
-			flag2_targ_addr =
-				host_interest_item_address(target_type,
+	if (frac != -1 || intval != -1) {
+		uint32_t flag2_value = 0;
+		uint32_t flag2_targ_addr =
+			host_interest_item_address(target_type,
 				offsetof(struct host_interest_s,
-					hi_clock_info));
-			hif_diag_read_access(hif_hdl,
-				flag2_targ_addr, &flag2_value);
-			qdf_print("\n ====> FRAC Val %x Address %x", frac,
-				  flag2_value);
-			hif_diag_write_access(hif_hdl, flag2_value, frac);
-			qdf_print("\n INT Val %x  Address %x",
-				  intval, flag2_value + 4);
-			hif_diag_write_access(hif_hdl,
-					flag2_value + 4, intval);
-		} else {
-			qdf_print(KERN_INFO
-				  "%s: no frac provided, skipping pre-configuring PLL",
-				  __func__);
-		}
-
-		/* for 2.0 write 300 mhz into hi_desired_cpu_speed_hz */
-		if ((target_type == TARGET_TYPE_AR900B)
-			&& (tgt_info->target_revision == AR900B_REV_2)
-			&& ar900b_20_targ_clk != -1) {
-			uint32_t flag2_value = 0;
-			uint32_t flag2_targ_addr;
-
-			flag2_targ_addr
-				= host_interest_item_address(target_type,
-					offsetof(struct host_interest_s,
-					hi_desired_cpu_speed_hz));
-			hif_diag_read_access(hif_hdl, flag2_targ_addr,
-							&flag2_value);
-			qdf_print("\n ==> hi_desired_cpu_speed_hz Address %x",
-				  flag2_value);
-			hif_diag_write_access(hif_hdl, flag2_value,
-				ar900b_20_targ_clk/*300000000u*/);
-		} else if (target_type == TARGET_TYPE_QCA9888) {
-			uint32_t flag2_targ_addr;
-
-			if (200000000u != qca9888_20_targ_clk) {
-				qca9888_20_targ_clk = 300000000u;
-				/* Setting the target clock speed to 300 mhz */
-			}
-
-			flag2_targ_addr
-				= host_interest_item_address(target_type,
-					offsetof(struct host_interest_s,
-					hi_desired_cpu_speed_hz));
-			hif_diag_write_access(hif_hdl, flag2_targ_addr,
-				qca9888_20_targ_clk);
-		} else {
-			qdf_print("%s: targ_clk is not provided, skipping pre-configuring PLL",
-				  __func__);
-		}
-	} else {
-		if (frac != -1 || intval != -1) {
-			uint32_t flag2_value = 0;
-			uint32_t flag2_targ_addr =
-				host_interest_item_address(target_type,
-					offsetof(struct host_interest_s,
-							hi_clock_info));
-			hif_diag_read_access(hif_hdl, flag2_targ_addr,
-						&flag2_value);
-			qdf_print("\n ====> FRAC Val %x Address %x", frac,
-				  flag2_value);
-			hif_diag_write_access(hif_hdl, flag2_value, frac);
-			qdf_print("\n INT Val %x  Address %x", intval,
-				  flag2_value + 4);
-			hif_diag_write_access(hif_hdl, flag2_value + 4,
-					      intval);
-		}
+						hi_clock_info));
+		hif_diag_read_access(hif_hdl, flag2_targ_addr, &flag2_value);
+		qdf_print("\n ====> FRAC Val %x Address %x", frac,
+			  flag2_value);
+		hif_diag_write_access(hif_hdl, flag2_value, frac);
+		qdf_print("\n INT Val %x  Address %x", intval,
+			  flag2_value + 4);
+		hif_diag_write_access(hif_hdl, flag2_value + 4,
+				      intval);
 	}
 }
 
@@ -1644,12 +1553,6 @@ static int hif_set_hia(struct hif_softc *scn)
 		goto done;
 	}
 #endif
-	if ((target_type == TARGET_TYPE_AR900B)
-			|| (target_type == TARGET_TYPE_QCA9984)
-			|| (target_type == TARGET_TYPE_QCA9888)
-			|| (target_type == TARGET_TYPE_AR9888)) {
-		hif_set_hia_extnd(scn);
-	}
 
 	/* Tell Target to proceed with initialization */
 	flag2_targ_addr = hif_hia_item_address(target_type,
@@ -1740,21 +1643,6 @@ int hif_pci_bus_configure(struct hif_softc *hif_sc)
 		}
 	}
 
-	/* todo: consider replacing this with an srng field */
-	if (((hif_sc->target_info.target_type == TARGET_TYPE_QCA8074) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA8074V2) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA9574) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA5332) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA5018) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCN6122) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCN9160) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA6018) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA5424) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCN6432)) &&
-	    (hif_sc->bus_type == QDF_BUS_TYPE_AHB)) {
-		hif_sc->per_ce_irq = true;
-	}
-
 	status = hif_config_ce(hif_sc);
 	if (status)
 		goto disable_wlan;
@@ -1768,23 +1656,9 @@ int hif_pci_bus_configure(struct hif_softc *hif_sc)
 
 	}
 
-	if (((hif_sc->target_info.target_type == TARGET_TYPE_QCA8074) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA8074V2) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA9574) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA5332) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA5424) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA5018) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCN6122) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCN9160) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCA6018) ||
-	     (hif_sc->target_info.target_type == TARGET_TYPE_QCN6432)) &&
-	    (hif_sc->bus_type == QDF_BUS_TYPE_PCI))
-		hif_debug("Skip irq config for PCI based 8074 target");
-	else {
-		status = hif_configure_irq(hif_sc);
-		if (status < 0)
-			goto unconfig_ce;
-	}
+	status = hif_configure_irq(hif_sc);
+	if (status < 0)
+		goto unconfig_ce;
 
 	A_TARGET_ACCESS_UNLIKELY(hif_sc);
 
@@ -1927,18 +1801,6 @@ static int hif_enable_pci_nopld(struct hif_pci_softc *sc,
 	hif_info("*****BAR is %pK", (void *)mem);
 
 	sc->mem = mem;
-
-	/* Hawkeye emulation specific change */
-	if ((device_id == RUMIM2M_DEVICE_ID_NODE0) ||
-		(device_id == RUMIM2M_DEVICE_ID_NODE1) ||
-		(device_id == RUMIM2M_DEVICE_ID_NODE2) ||
-		(device_id == RUMIM2M_DEVICE_ID_NODE3) ||
-		(device_id == RUMIM2M_DEVICE_ID_NODE4) ||
-		(device_id == RUMIM2M_DEVICE_ID_NODE5)) {
-		mem = mem + 0x0c000000;
-		sc->mem = mem;
-		hif_info("Changing PCI mem base to %pK", sc->mem);
-	}
 
 	sc->mem_len = pci_resource_len(pdev, BAR_NUM);
 	ol_sc->mem = mem;
@@ -2096,13 +1958,9 @@ static int hif_pci_configure_legacy_irq(struct hif_pci_softc *sc)
 	hif_write32_mb(sc, sc->mem + PCIE_LOCAL_BASE_ADDRESS +
 		      PCIE_SOC_WAKE_ADDRESS, PCIE_SOC_WAKE_RESET);
 
-	if ((target_type == TARGET_TYPE_AR900B)  ||
-			(target_type == TARGET_TYPE_QCA9984) ||
-			(target_type == TARGET_TYPE_AR9888) ||
-			(target_type == TARGET_TYPE_QCA9888) ||
-			(target_type == TARGET_TYPE_AR6320V1) ||
-			(target_type == TARGET_TYPE_AR6320V2) ||
-			(target_type == TARGET_TYPE_AR6320V3)) {
+	if (target_type == TARGET_TYPE_AR6320V1 ||
+	    target_type == TARGET_TYPE_AR6320V2 ||
+	    target_type == TARGET_TYPE_AR6320V3) {
 		hif_write32_mb(scn, scn->mem + PCIE_LOCAL_BASE_ADDRESS +
 				PCIE_SOC_WAKE_ADDRESS, PCIE_SOC_WAKE_V_MASK);
 	}
@@ -2960,82 +2818,6 @@ static void hif_ce_legacy_msi_irq_enable(struct hif_softc *hif_sc, int ce_id)
 	enable_irq(hif_ce_msi_map_ce_to_irq(hif_sc, ce_id));
 }
 
-#ifdef QCA_SUPPORT_LEGACY_INTERRUPTS
-/**
- * hif_ce_configure_legacyirq() - Configure CE interrupts
- * @scn: hif_softc pointer
- *
- * Configure CE legacy interrupts
- *
- * Return: int
- */
-static int hif_ce_configure_legacyirq(struct hif_softc *scn)
-{
-	int ret = 0;
-	int irq, ce_id;
-	struct HIF_CE_state *ce_sc = HIF_GET_CE_STATE(scn);
-	struct CE_attr *host_ce_conf = ce_sc->host_ce_config;
-	struct hif_pci_softc *pci_sc = HIF_GET_PCI_SOFTC(scn);
-	int pci_slot;
-	qdf_device_t qdf_dev = scn->qdf_dev;
-
-	if (!pld_get_enable_intx(scn->qdf_dev->dev))
-		return -EINVAL;
-
-	scn->bus_ops.hif_irq_disable = &hif_ce_srng_msi_irq_disable;
-	scn->bus_ops.hif_irq_enable = &hif_ce_srng_msi_irq_enable;
-	scn->bus_ops.hif_map_ce_to_irq = &hif_ce_msi_map_ce_to_irq;
-
-	for (ce_id = 0; ce_id < scn->ce_count; ce_id++) {
-		if (host_ce_conf[ce_id].flags & CE_ATTR_DISABLE_INTR)
-			continue;
-
-		if (host_ce_conf[ce_id].flags & CE_ATTR_INIT_ON_DEMAND)
-			continue;
-
-		ret = pfrm_get_irq(scn->qdf_dev->dev,
-				   (struct qdf_pfm_hndl *)qdf_dev->cnss_pdev,
-				   legacy_ic_irqname[ce_id], ce_id, &irq);
-		if (ret) {
-			dev_err(scn->qdf_dev->dev, "get irq failed\n");
-			ret = -EFAULT;
-			goto skip;
-		}
-
-		pci_slot = hif_get_pci_slot(scn);
-		qdf_scnprintf(ce_irqname[pci_slot][ce_id],
-			      DP_IRQ_NAME_LEN, "pci%d_ce_%u", pci_slot, ce_id);
-		pci_sc->ce_irq_num[ce_id] = irq;
-
-		ret = pfrm_request_irq(scn->qdf_dev->dev, irq,
-				       hif_ce_interrupt_handler,
-				       IRQF_SHARED,
-				       ce_irqname[pci_slot][ce_id],
-				       &ce_sc->tasklets[ce_id]);
-		if (ret) {
-			hif_err("error = %d", ret);
-			return -EINVAL;
-		}
-	}
-
-skip:
-	return ret;
-}
-#else
-/**
- * hif_ce_configure_legacyirq() - Configure CE interrupts
- * @scn: hif_softc pointer
- *
- * Configure CE legacy interrupts
- *
- * Return: int
- */
-static int hif_ce_configure_legacyirq(struct hif_softc *scn)
-{
-	return 0;
-}
-#endif
-
 int hif_ce_msi_configure_irq_by_ceid(struct hif_softc *scn, int ce_id)
 {
 	int ret = 0;
@@ -3602,19 +3384,6 @@ int hif_configure_irq(struct hif_softc *scn)
 	}
 
 	switch (scn->target_info.target_type) {
-	case TARGET_TYPE_QCA8074:
-	case TARGET_TYPE_QCA8074V2:
-	case TARGET_TYPE_QCA6018:
-	case TARGET_TYPE_QCA5018:
-	case TARGET_TYPE_QCA5332:
-	case TARGET_TYPE_QCA9574:
-	case TARGET_TYPE_QCA5424:
-	case TARGET_TYPE_QCN9160:
-		ret = hif_ahb_configure_irq(sc);
-		break;
-	case TARGET_TYPE_QCN9224:
-		ret = hif_ce_configure_legacyirq(scn);
-		break;
 	default:
 		ret = hif_pci_configure_legacy_irq(sc);
 		break;
@@ -3626,30 +3395,6 @@ int hif_configure_irq(struct hif_softc *scn)
 end:
 	scn->request_irq_done = true;
 	return 0;
-}
-
-/**
- * hif_trigger_timer_irq() : Triggers interrupt on LF_Timer 0
- * @scn: hif control structure
- *
- * Sets IRQ bit in LF Timer Status Address to awake peregrine/swift
- * stuck at a polling loop in pcie_address_config in FW
- *
- * Return: none
- */
-static void hif_trigger_timer_irq(struct hif_softc *scn)
-{
-	int tmp;
-	/* Trigger IRQ on Peregrine/Swift by setting
-	 * IRQ Bit of LF_TIMER 0
-	 */
-	tmp = hif_read32_mb(scn, scn->mem + (RTC_SOC_BASE_ADDRESS +
-						SOC_LF_TIMER_STATUS0_ADDRESS));
-	/* Set Raw IRQ Bit */
-	tmp |= 1;
-	/* SOC_LF_TIMER_STATUS0 */
-	hif_write32_mb(scn, scn->mem + (RTC_SOC_BASE_ADDRESS +
-		       SOC_LF_TIMER_STATUS0_ADDRESS), tmp);
 }
 
 /**
@@ -3681,9 +3426,7 @@ static void hif_target_sync(struct hif_softc *scn)
 	if (HAS_FW_INDICATOR) {
 		int wait_limit = 500;
 		int fw_ind = 0;
-		int retry_count = 0;
-		uint32_t target_type = scn->target_info.target_type;
-fw_retry:
+
 		hif_info("Loop checking FW signal");
 		while (1) {
 			fw_ind = hif_read32_mb(scn, scn->mem +
@@ -3702,12 +3445,6 @@ fw_retry:
 			qdf_mdelay(10);
 		}
 		if (wait_limit < 0) {
-			if (target_type == TARGET_TYPE_AR9888 &&
-			    retry_count++ < 2) {
-				hif_trigger_timer_irq(scn);
-				wait_limit = 500;
-				goto fw_retry;
-			}
 			hif_info("FW signal timed out");
 			qdf_assert_always(0);
 		} else {
@@ -3896,13 +3633,6 @@ again:
 
 	tgt_info->target_type = target_type;
 
-	/*
-	 * Disable unlzay interrupt registration for QCN9000
-	 */
-	if (target_type == TARGET_TYPE_QCN9000 ||
-	    target_type == TARGET_TYPE_QCN9224)
-		ol_sc->irq_unlazy_disable = 1;
-
 	if (ce_srng_based(ol_sc)) {
 		hif_info("Skip tgt_wake up for srng devices");
 	} else {
@@ -4023,7 +3753,6 @@ int hif_pci_addr_in_boundary(struct hif_softc *scn, uint32_t offset)
 	    tgt_info->target_type == TARGET_TYPE_QCA6390 ||
 	    tgt_info->target_type == TARGET_TYPE_QCA6490 ||
 	    tgt_info->target_type == TARGET_TYPE_QCN7605 ||
-	    tgt_info->target_type == TARGET_TYPE_QCA8074 ||
 	    tgt_info->target_type == TARGET_TYPE_AR6320 ||
 	    tgt_info->target_type == TARGET_TYPE_KIWI ||
 	    tgt_info->target_type == TARGET_TYPE_MANGO ||
