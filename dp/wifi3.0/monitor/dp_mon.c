@@ -46,6 +46,45 @@
 #define DP_INTR_POLL_TIMER_MS	5
 #define INVALID_FREE_BUFF 0xffffffff
 
+#if defined(WLAN_PKT_CAPTURE_TX_2_0) && \
+	defined(WLAN_FEATURE_LOCAL_PKT_CAPTURE)
+static void
+dp_tx_mon_flush_ppdu_wq(struct dp_pdev *pdev, struct dp_vdev *vdev)
+{
+	struct dp_mon_pdev_be *mon_pdev_be;
+	struct dp_pdev_tx_monitor_be *tx_mon_be;
+	struct dp_pdev_tx_monitor_be *last_tx_mon_be = NULL;
+	struct dp_mon_mac *mon_mac;
+	uint8_t mac_id;
+
+	mon_pdev_be = dp_get_be_mon_pdev_from_dp_mon_pdev(pdev->monitor_pdev);
+	if (!mon_pdev_be)
+		return;
+
+	for (mac_id = 0; mac_id < MAX_NUM_LMAC_HW; mac_id++) {
+		mon_mac = dp_get_mon_mac(pdev, mac_id);
+		if (mon_mac->mvdev != vdev)
+			continue;
+
+		tx_mon_be = dp_mon_pdev_get_tx_mon(mon_pdev_be, mac_id);
+		if (tx_mon_be == last_tx_mon_be)
+			continue;
+
+		last_tx_mon_be = tx_mon_be;
+		if (!tx_mon_be->post_ppdu_workqueue)
+			continue;
+
+		qdf_cancel_work(&tx_mon_be->post_ppdu_work);
+		qdf_flush_workqueue(0, tx_mon_be->post_ppdu_workqueue);
+	}
+}
+#else
+static void
+dp_tx_mon_flush_ppdu_wq(struct dp_pdev *pdev, struct dp_vdev *vdev)
+{
+}
+#endif
+
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
 #include "dp_rx_mon_feature.h"
 #endif /* WLAN_RX_PKT_CAPTURE_ENH */
@@ -6054,6 +6093,8 @@ QDF_STATUS dp_mon_vdev_detach(struct dp_vdev *vdev)
 	if (!mon_vdev)
 		return QDF_STATUS_E_FAILURE;
 
+	dp_tx_mon_flush_ppdu_wq(pdev, vdev);
+
 	if (pdev->monitor_pdev->scan_spcl_vap_configured)
 		dp_scan_spcl_vap_stats_detach(mon_vdev);
 
@@ -6714,4 +6755,3 @@ QDF_STATUS dp_mon_soc_detach(struct dp_soc *soc)
 	dp_context_free_mem(soc, DP_MON_SOC_TYPE, mon_soc);
 	return QDF_STATUS_SUCCESS;
 }
-
