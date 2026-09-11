@@ -554,6 +554,8 @@ struct hif_softc {
 #endif
 #ifdef FEATURE_DIRECT_LINK
 	struct qdf_mem_multi_page_t dl_recv_pages;
+#endif
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 	int dl_recv_pipe_num;
 #endif
 #ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
