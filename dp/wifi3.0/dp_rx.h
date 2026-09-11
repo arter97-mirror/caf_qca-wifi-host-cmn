@@ -2590,7 +2590,7 @@ bool dp_rx_reap_loop_pkt_limit_hit(struct dp_soc *soc, int num_reaped,
 		(num_reaped >= max_reap_limit) ? true : false;
 
 	if (limit_hit)
-		DP_STATS_INC(soc, rx.reap_loop_pkt_limit_hit, 1)
+		DP_STATS_INC(soc, rx.reap_loop_pkt_limit_hit, 1);
 
 	return limit_hit;
 }
@@ -3078,6 +3078,9 @@ static inline
 void dp_rx_per_core_stats_update(struct dp_soc *soc, uint8_t ring_id,
 				 uint32_t bufs_reaped)
 {
+	int cpu_id __maybe_unused = qdf_get_cpu();
+
+	DP_STATS_INC(soc, rx.ring_packets[cpu_id][ring_id], bufs_reaped);
 }
 
 static inline
@@ -3202,7 +3205,7 @@ static inline
 void dp_rx_per_core_stats_update(struct dp_soc *soc, uint8_t ring_id,
 				 uint32_t bufs_reaped)
 {
-	int cpu_id = qdf_get_cpu();
+	int cpu_id __maybe_unused = qdf_get_cpu();
 
 	DP_STATS_INC(soc, rx.ring_packets[cpu_id][ring_id], bufs_reaped);
 }
