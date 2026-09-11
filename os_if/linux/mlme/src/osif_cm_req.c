@@ -94,7 +94,7 @@ osif_cm_set_wep_key_params(struct wlan_cm_connect_req *connect_req,
 #ifdef WLAN_FEATURE_11BI_SECURITY
 /**
  * osif_cm_expand_auth_for_eppke() - Expand auth bitmask with EPPKE when
- * supplicant chose SAE/SAE-EXT-KEY and eppke_allowed is set on the vdev.
+ * supplicant chose SAE-EXT-KEY and eppke_allowed is set on the vdev.
  * @vdev: vdev object
  * @connect_req: connect request with auth_type already set
  *
@@ -107,22 +107,25 @@ static void
 osif_cm_expand_auth_for_eppke(struct wlan_objmgr_vdev *vdev,
 			      struct wlan_cm_connect_req *connect_req)
 {
+	uint8_t vdev_id = wlan_vdev_get_id(vdev);
+
 	if (!wlan_vdev_is_eppke_allowed(vdev)) {
 		osif_debug("vdev:%d eppke_allowed not set, skip auth expansion",
-			   wlan_vdev_get_id(vdev));
+			   vdev_id);
 		return;
 	}
-	if (!QDF_HAS_PARAM(connect_req->crypto.auth_type,
-			   WLAN_CRYPTO_AUTH_SAE)) {
-		osif_debug("vdev:%d auth_type:0x%x has no SAE, skip EPPKE auth expansion",
-			   wlan_vdev_get_id(vdev),
-			   connect_req->crypto.auth_type);
-		return;
+
+	if (QDF_HAS_PARAM(connect_req->crypto.akm_suites,
+			  WLAN_CRYPTO_KEY_MGMT_SAE_EXT_KEY)) {
+		QDF_SET_PARAM(connect_req->crypto.auth_type,
+			      WLAN_CRYPTO_AUTH_EPPKE);
+		connect_req->eppke_allowed = 1;
+		osif_debug("vdev:%d SAE-EXT-KEY AKM: auth_type expanded to 0x%x (EPPKE added)",
+			   vdev_id, connect_req->crypto.auth_type);
+	} else {
+		osif_debug("vdev:%d no SAE-EXT-KEY in akm=0x%x, skip EPPKE expansion",
+			   vdev_id, connect_req->crypto.akm_suites);
 	}
-	QDF_SET_PARAM(connect_req->crypto.auth_type, WLAN_CRYPTO_AUTH_EPPKE);
-	connect_req->eppke_allowed = 1;
-	osif_debug("vdev:%d eppke_allowed+SAE: auth_type expanded to 0x%x (EPPKE added)",
-		   wlan_vdev_get_id(vdev), connect_req->crypto.auth_type);
 }
 #else
 static inline void
@@ -151,7 +154,6 @@ static void osif_cm_set_auth_type(struct wlan_objmgr_vdev *vdev,
 	}
 
 	QDF_SET_PARAM(connect_req->crypto.auth_type, crypto_auth_type);
-	osif_cm_expand_auth_for_eppke(vdev, connect_req);
 }
 
 static int
@@ -267,6 +269,9 @@ QDF_STATUS osif_cm_set_crypto_params(struct wlan_objmgr_vdev *vdev,
 
 	/* Fill AKM suites */
 	osif_cm_set_akm_params(connect_req, req);
+
+	/* Expand auth bitmask for EPPKE after AKMs are populated */
+	osif_cm_expand_auth_for_eppke(vdev, connect_req);
 
 	/* Fill WEP Key information */
 	status = osif_cm_set_wep_key_params(connect_req, req);
