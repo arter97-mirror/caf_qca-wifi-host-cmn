@@ -137,6 +137,14 @@ struct wlan_host_dcs_im_user_stats {
 };
 
 /**
+ * struct wlan_host_dcs_cw_int - DCS CW interference info
+ * @chan_freq: either channel number or freq in mhz where interference detected
+ */
+struct wlan_host_dcs_cw_int {
+	uint32_t chan_freq;
+};
+
+/**
  * struct wlan_host_dcs_awgn_info - DCS AWGN info
  * @channel_width: Channel width, enum phy_ch_width
  * @center_freq: Center frequency of primary channel
@@ -160,11 +168,13 @@ struct wlan_host_dcs_awgn_info {
  * @wlan_stat: wlan interference target statistics
  * @dcs_param: dcs event param
  * @awgn_info: awgn info
+ * @cw_int: cw interference info
  */
 struct wlan_host_dcs_event {
 	struct wlan_host_dcs_im_tgt_stats wlan_stat;
 	struct wlan_host_dcs_interference_param dcs_param;
 	struct wlan_host_dcs_awgn_info awgn_info;
+	struct wlan_host_dcs_cw_int cw_int;
 };
 
 /**
