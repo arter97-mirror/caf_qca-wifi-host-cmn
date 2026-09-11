@@ -315,6 +315,19 @@ QDF_STATUS ucfg_dcs_get_config(struct wlan_objmgr_vdev *vdev,
  */
 QDF_STATUS ucfg_dcs_set_config(struct wlan_objmgr_vdev *vdev,
 			       struct wlan_dcs_user_config *config);
+
+/**
+ * ucfg_dcs_get_cw_interference_freq() - get the last FW-reported CW
+ * interference channel/freq
+ * @psoc: psoc pointer
+ * @pdev_id: pdev id
+ * @vdev_id: vdev id
+ *
+ * Return: channel/freq FW last reported CW interference on, or 0 if none
+ */
+qdf_freq_t
+ucfg_dcs_get_cw_interference_freq(struct wlan_objmgr_psoc *psoc,
+				  uint8_t pdev_id, uint8_t vdev_id);
 #else
 static inline void
 ucfg_dcs_register_cb(struct wlan_objmgr_psoc *psoc, dcs_callback cbk, void *arg)
@@ -403,6 +416,13 @@ static inline void
 ucfg_dcs_trigger_dcs(struct wlan_objmgr_psoc *psoc, uint8_t pdev_id,
 		     uint8_t vdev_id, enum wlan_host_dcs_type dcs_type)
 {
+}
+
+static inline qdf_freq_t
+ucfg_dcs_get_cw_interference_freq(struct wlan_objmgr_psoc *psoc,
+				  uint8_t pdev_id, uint8_t vdev_id)
+{
+	return 0;
 }
 
 static inline

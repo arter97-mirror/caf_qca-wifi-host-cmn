@@ -2082,6 +2082,9 @@ QDF_STATUS (*extract_dcs_im_tgt_stats_idx)(
 
 QDF_STATUS (*extract_dcs_awgn_info)(wmi_unified_t wmi_handle, void *evt_buf,
 				    struct wlan_host_dcs_awgn_info *awgn_info);
+
+QDF_STATUS (*extract_dcs_cw_int)(wmi_unified_t wmi_handle, void *evt_buf,
+				 struct wlan_host_dcs_cw_int *cw_int);
 #else
 QDF_STATUS (*extract_dcs_interference_type)(wmi_unified_t wmi_handle,
 	void *evt_buf, struct wmi_host_dcs_interference_param *param);

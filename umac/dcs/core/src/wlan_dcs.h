@@ -348,6 +348,7 @@ struct dcs_afc_select_chan_cbk {
  * @lock: lock to protect dcs pdev priv
  * @requestor_vdev_id: user request vdev id
  * @user_cb: user request callback
+ * @cw_int: last FW-reported CW interference info for this pdev
  */
 struct dcs_core_priv_obj {
 	struct core_dcs_params dcs_host_params;
@@ -360,6 +361,7 @@ struct dcs_core_priv_obj {
 	void (*user_cb)(uint8_t vdev_id,
 			struct wlan_host_dcs_im_user_stats *stats,
 			int status);
+	struct wlan_host_dcs_cw_int cw_int;
 };
 
 /**
@@ -727,6 +729,18 @@ void wlan_dcs_clear(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id);
 void wlan_dcs_set_algorithm_process(struct wlan_objmgr_psoc *psoc,
 				    uint8_t pdev_id, uint8_t vdev_id,
 				    bool dcs_algorithm_process);
+
+/**
+ * wlan_dcs_get_cw_interference_freq() - get the last FW-reported CW
+ * interference channel/freq
+ * @psoc: psoc pointer
+ * @pdev_id: pdev id
+ * @vdev_id: vdev id
+ *
+ * Return: channel/freq FW last reported CW interference on, or 0 if none
+ */
+qdf_freq_t wlan_dcs_get_cw_interference_freq(struct wlan_objmgr_psoc *psoc,
+					     uint8_t pdev_id, uint8_t vdev_id);
 
 /**
  * wlan_dcs_core_obj_lock() - private API to acquire spinlock for core object

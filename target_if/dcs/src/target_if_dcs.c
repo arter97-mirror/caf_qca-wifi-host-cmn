@@ -141,6 +141,13 @@ static int target_if_dcs_interference_event_handler(ol_scn_t scn,
 		return -EINVAL;
 	}
 
+	if (ev.dcs_param.interference_type == WLAN_HOST_DCS_CWIM &&
+	    wmi_extract_dcs_cw_int(wmi_handle, data, &ev.cw_int) !=
+	    QDF_STATUS_SUCCESS) {
+		target_if_err("Unable to extract CW interference info");
+		return -EINVAL;
+	}
+
 	if (ev.dcs_param.interference_type == WLAN_HOST_DCS_WLANIM) {
 		if (target_if_two_vdev_dcs_is_supported(psoc)) {
 			/* Handle two WLAN stats in a single event */
