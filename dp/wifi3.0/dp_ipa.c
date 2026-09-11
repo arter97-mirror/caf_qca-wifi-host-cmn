@@ -3267,8 +3267,9 @@ QDF_STATUS dp_ipa_cleanup(struct cdp_soc_t *soc_hdl, uint8_t pdev_id,
 		goto exit;
 	}
 
-	dp_ipa_unmap_ring_doorbell_paddr(pdev);
+	/* Unmap must be in the reverse order of map */
 	dp_ipa_unmap_rx_alt_ring_doorbell_paddr(pdev);
+	dp_ipa_unmap_ring_doorbell_paddr(pdev);
 exit:
 	return status;
 }
