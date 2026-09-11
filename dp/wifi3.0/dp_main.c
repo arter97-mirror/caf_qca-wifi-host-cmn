@@ -17052,7 +17052,7 @@ static QDF_STATUS dp_pdev_init_wifi3(struct cdp_soc_t *txrx_soc,
 	return dp_pdev_init(txrx_soc, htc_handle, qdf_osdev, pdev_id);
 }
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 struct dp_srng *dp_setup_direct_link_refill_ring(struct cdp_soc_t *soc_hdl,
 						 uint8_t pdev_id)
 {
