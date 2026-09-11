@@ -174,7 +174,6 @@ static void reg_fill_channel_info(enum channel_enum chan_enum,
 
 	reg_fill_psd_info(chan_enum, reg_rule, master_list);
 	master_list[chan_enum].tx_power = reg_rule->reg_power;
-	master_list[chan_enum].ant_gain = reg_rule->ant_gain;
 	master_list[chan_enum].state = CHANNEL_STATE_ENABLE;
 
 	if (reg_rule->flags & REGULATORY_CHAN_NO_IR) {

@@ -1007,55 +1007,48 @@ struct get_usable_chan_req_params {
 
 /**
  * struct regulatory_channel
- * @center_freq: center frequency
- * @chan_num: channel number
- * @state: channel state
- * @chan_flags: channel flags
- * @tx_power: TX powers
- * @min_bw: min bandwidth
- * @max_bw: max bandwidth
- * @ant_gain: antenna gain
  * @nol_chan: whether channel is nol
  * @nol_history: Set NOL-History when STA vap detects RADAR.
- * @is_chan_hop_blocked: Whether channel is blocked for ACS hopping.
- * @ht40intol_flags: Contains Flags to indicate whether the 40PLUS/40MINUS
- *                   version of the channel is blocked by ACS due to
- *                   intolerance.
- * @psd_flag: is PSD channel or not
- * @psd_eirp: PSD power level
  * @is_static_punctured: is static punctured
  * @opclass_chan_disable: Whether the channel is disabled/enabled by a user
  *                        command. The command provides an opclass and a
  *                        subset of the channels belonging to that opclass
  *                        as inputs and expects the driver to disable/enable
  *                        the channels in the subset.
+ * @psd_flag: is PSD channel or not
+ * @chan_num: channel number
+ * @min_bw: min bandwidth
+ * @max_bw: max bandwidth
+ * @psd_eirp: PSD power level
+ * @tx_power: TX powers
+ * @chan_flags: channel flags
+ * @center_freq: center frequency
+ * @state: channel state
  * @power_type: channel power type
  */
 struct regulatory_channel {
-	qdf_freq_t center_freq;
-	uint8_t chan_num;
-	enum channel_state state;
-	uint32_t chan_flags;
-	int32_t tx_power;
-	uint16_t min_bw;
-	uint16_t max_bw;
-	uint8_t ant_gain;
 	bool nol_chan;
 	bool nol_history;
-#ifdef CONFIG_HOST_FIND_CHAN
-	bool is_chan_hop_blocked;
-	uint8_t ht40intol_flags;
+#ifdef CONFIG_REG_CLIENT
+	bool is_static_punctured;
+#else
+	bool opclass_chan_disable;
 #endif
 #ifdef CONFIG_BAND_6GHZ
 	bool psd_flag;
+#endif
+	uint8_t chan_num;
+	uint16_t min_bw;
+	uint16_t max_bw;
+#ifdef CONFIG_BAND_6GHZ
 	uint16_t psd_eirp;
 #endif
+	int32_t tx_power;
+	uint32_t chan_flags;
+	qdf_freq_t center_freq;
+	enum channel_state state;
 #ifdef CONFIG_REG_CLIENT
-	uint8_t is_static_punctured;
 	enum reg_6g_ap_type power_type;
-#endif
-#ifndef CONFIG_REG_CLIENT
-	bool opclass_chan_disable;
 #endif
 };
 
