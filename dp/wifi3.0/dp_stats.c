@@ -5233,19 +5233,18 @@ static inline const char *dp_pdev_vow_str_fw_to_hw_delay(uint8_t index)
 }
 #endif
 
-#if defined(HW_TX_DELAY_STATS_ENABLE)
-/**
- * dp_str_fw_to_hw_delay_bkt() - Return string for concise logging of delay
- * @index: Index of delay
- *
- * Return: char const pointer
- */
+#ifdef HW_TX_DELAY_STATS_ENABLE
 static inline const char *dp_str_fw_to_hw_delay_bkt(uint8_t index)
 {
 	if (index > CDP_DELAY_BUCKET_MAX)
 		return "Invalid";
 
 	return fw_to_hw_delay_bkt_str[index];
+}
+#else
+static inline const char *dp_str_fw_to_hw_delay_bkt(uint8_t index)
+{
+	return "";
 }
 #endif
 

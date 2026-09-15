@@ -2342,7 +2342,7 @@ QDF_STATUS dp_tx_compute_tx_delay_be(struct dp_soc *soc,
 	return dp_mlo_compute_hw_delay_us(soc, vdev, ts, delay_us);
 }
 
-#ifdef QCA_DP_TX_NBUF_LIST_FREE
+#if defined(QCA_DP_TX_NBUF_LIST_FREE) && !defined(CONFIG_BORON)
 qdf_nbuf_t dp_tx_fast_send_be(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			      qdf_nbuf_t nbuf)
 {
@@ -2510,7 +2510,7 @@ release_desc:
 
 	return nbuf;
 }
-#endif
+#endif /* QCA_DP_TX_NBUF_LIST_FREE && !CONFIG_BORON */
 
 QDF_STATUS dp_tx_desc_pool_alloc_be(struct dp_soc *soc, uint32_t num_elem,
 				    uint8_t pool_id)

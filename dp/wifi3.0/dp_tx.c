@@ -8117,7 +8117,7 @@ void dp_update_tx_delay_stats(struct dp_vdev *vdev, uint32_t delay, uint8_t tid,
 }
 #endif
 
-#ifdef WLAN_FEATURE_UL_JITTER
+#if defined(WLAN_FEATURE_UL_JITTER) && defined(HW_TX_DELAY_STATS_ENABLE)
 /**
  * dp_update_tx_delay_jitter_stats() - update the delay jitter stats
  * @vdev: vdev handle

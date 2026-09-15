@@ -328,7 +328,7 @@ void dp_tx_nbuf_unmap_be(struct dp_soc *soc,
 }
 #endif
 
-#ifdef QCA_DP_TX_NBUF_LIST_FREE
+#if defined(QCA_DP_TX_NBUF_LIST_FREE) && !defined(CONFIG_BORON)
 /**
  * dp_tx_fast_send_be() - Transmit a frame on a given VAP
  * @soc_hdl: DP soc handle
