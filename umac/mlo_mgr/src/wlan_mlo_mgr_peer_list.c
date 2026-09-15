@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -84,6 +84,9 @@ struct wlan_mlo_peer_context *mlo_get_mlpeer(
 	struct wlan_mlo_peer_context *ml_peer;
 	struct wlan_mlo_peer_context *next_ml_peer;
 	qdf_list_t *peer_hash_list;
+
+	if (!ml_dev || !ml_addr)
+		return NULL;
 
 	mlo_peer_list = &ml_dev->mlo_peer_list;
 	hash_index = WLAN_PEER_HASH(ml_addr->bytes);
