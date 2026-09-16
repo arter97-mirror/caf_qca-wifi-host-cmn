@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -228,8 +228,8 @@ peek_next:
  *
  * Return: None
  */
-static void scm_add_rnr_info(struct wlan_objmgr_pdev *pdev,
-			     struct scan_start_request *req)
+void scm_add_rnr_info(struct wlan_objmgr_pdev *pdev,
+		      struct scan_start_request *req)
 {
 	struct wlan_objmgr_psoc *psoc;
 	struct channel_list_db *rnr_db;
@@ -256,11 +256,6 @@ static void scm_add_rnr_info(struct wlan_objmgr_pdev *pdev,
 static void
 scm_sort_6ghz_channel_list(struct wlan_objmgr_vdev *vdev,
 			   struct chan_list *chan_list)
-{
-}
-
-static void scm_add_rnr_info(struct wlan_objmgr_pdev *pdev,
-			     struct scan_start_request *req)
 {
 }
 #endif

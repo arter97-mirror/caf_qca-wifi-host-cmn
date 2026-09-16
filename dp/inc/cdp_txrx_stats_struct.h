@@ -3087,6 +3087,9 @@ struct cdp_per_cpu_packets {
  * @tx.tx_comp_loop_pkt_limit_hit: TX Comp loop packet limit hit
  * @tx.hp_oos2: Head pointer Out of sync at the end of dp_tx_comp_handler
  * @tx.tx_comp_exception: tx desc freed as part of vdev detach
+ * @tx.tx_desc_duplicate: no of duplicate tx desc(already reaped)
+ * @tx.tx_desc_unused: no of unused tx desc
+ * @tx.tx_desc_pdev_down: no of tx desc when pdev is down
  * @rx:
  * @rx.ingress: Total rx packets count
  * @rx.err_ring_pkts: Total Packets in Rx Error ring
@@ -3174,6 +3177,9 @@ struct cdp_soc_stats {
 		uint32_t tx_comp_loop_pkt_limit_hit;
 		uint32_t hp_oos2;
 		uint32_t tx_comp_exception;
+		uint32_t tx_desc_duplicate;
+		uint32_t tx_desc_unused;
+		uint32_t tx_desc_pdev_down;
 	} tx;
 
 	struct {

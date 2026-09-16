@@ -5234,22 +5234,12 @@ bool dp_ipa_is_ring_ipa_tx(struct dp_soc *soc, uint8_t ring_id)
  */
 bool dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id)
 {
-	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
-
-	if (!soc->wlan_cfg_ctx->ipa_enabled)
-		return false;
-
 	return (ring_id == IPA_REO_DEST_RING_IDX ||
 		ring_id == IPA_REO_DEST_RING_IDX_2);
 }
 #else
 bool dp_ipa_is_ring_ipa_rx(struct cdp_soc_t *soc_hdl, uint8_t ring_id)
 {
-	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
-
-	if (!soc->wlan_cfg_ctx->ipa_enabled)
-		return false;
-
 	return (ring_id == IPA_REO_DEST_RING_IDX);
 }
 #endif

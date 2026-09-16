@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1398,7 +1399,8 @@ static QDF_STATUS target_if_dbr_replenish_ring(struct wlan_objmgr_pdev *pdev,
 }
 
 static QDF_STATUS target_if_dbr_fill_ring(struct wlan_objmgr_pdev *pdev,
-			  struct direct_buf_rx_module_param *mod_param)
+			  struct direct_buf_rx_module_param *mod_param,
+			  struct direct_buf_rx_psoc_obj *dbr_psoc_obj)
 {
 	uint32_t idx;
 	struct direct_buf_rx_ring_cfg *dbr_ring_cfg;
@@ -1422,7 +1424,8 @@ static QDF_STATUS target_if_dbr_fill_ring(struct wlan_objmgr_pdev *pdev,
 					      mod_param->mod_id);
 		if (!buf_vaddr_unaligned) {
 			direct_buf_rx_err("dir buf rx ring alloc failed");
-			return QDF_STATUS_E_NOMEM;
+			status = QDF_STATUS_E_NOMEM;
+			goto cleanup;
 		}
 
 		dbr_buf_pool[idx].vaddr = buf_vaddr_unaligned;
@@ -1438,13 +1441,32 @@ static QDF_STATUS target_if_dbr_fill_ring(struct wlan_objmgr_pdev *pdev,
 					      buf_vaddr_unaligned, offset,
 					      dbr_ring_cap->min_buf_align,
 					      mod_param->mod_id);
-			return QDF_STATUS_E_FAILURE;
+			goto cleanup;
 		}
 	}
 
 	direct_buf_rx_exit();
 
 	return QDF_STATUS_SUCCESS;
+
+cleanup:
+	while (idx > 0) {
+		idx--;
+		if (dbr_buf_pool[idx].paddr) {
+			qdf_mem_unmap_nbytes_single(
+				dbr_psoc_obj->osdev,
+				(qdf_dma_addr_t)dbr_buf_pool[idx].paddr,
+				QDF_DMA_FROM_DEVICE,
+				dbr_ring_cap->min_buf_size);
+		}
+		target_if_dbr_mem_put(pdev, dbr_ring_cap->min_buf_size,
+				      dbr_buf_pool[idx].vaddr,
+				      dbr_buf_pool[idx].offset,
+				      dbr_ring_cap->min_buf_align,
+				      mod_param->mod_id);
+	}
+
+	return status;
 }
 
 static QDF_STATUS target_if_dbr_init_ring(struct wlan_objmgr_pdev *pdev,
@@ -1553,7 +1575,7 @@ static QDF_STATUS target_if_dbr_init_ring(struct wlan_objmgr_pdev *pdev,
 		hal_srng_get_hp_addr(dbr_psoc_obj->hal_soc, srng);
 	dbr_ring_cfg->buf_size = dbr_ring_cap->min_buf_size;
 
-	status  = target_if_dbr_fill_ring(pdev, mod_param);
+	status  = target_if_dbr_fill_ring(pdev, mod_param, dbr_psoc_obj);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		direct_buf_rx_err("target if dbr fill ring failed");
 		qdf_mem_free(mod_param->dbr_buf_pool);

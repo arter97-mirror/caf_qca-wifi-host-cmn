@@ -2104,6 +2104,22 @@ bool util_is_bssid_non_tx(struct wlan_objmgr_psoc *psoc,
 			  struct qdf_mac_addr *bssid, qdf_freq_t freq);
 
 /**
+ * util_is_scan_entry_non_tx_bssid - Check if a scan entry corresponds to a
+ * non-transmitting BSSID
+ *
+ * @scan_entry: Pointer to the scan cache entry to be checked
+ *
+ * This function determines whether a given scan cache entry represents a
+ * non-transmitting BSSID (NTB) based on the BSSID index information stored
+ * within the entry. A non-transmitting BSSID is typically part of a MBSSID
+ * setup where the BSSID is advertised but does not actively transmit frames.
+ *
+ * Return: true if the scan entry represents a non-transmitting BSSID,
+ * false otherwise
+ */
+bool util_is_scan_entry_non_tx_bssid(struct scan_cache_entry *scan_entry);
+
+/**
  * util_scan_entry_renew_timestamp() - function to renew timestamp of scan entry
  * @pdev: pdev
  * @scan_entry: scan entry
