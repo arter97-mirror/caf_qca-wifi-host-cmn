@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -244,7 +244,7 @@ uint32_t dp_rx_process_li(struct dp_intr *int_ctx,
 	uint32_t peer_ext_stats;
 	uint32_t dsf;
 	uint32_t max_ast;
-	uint64_t current_time = 0;
+	uint64_t qtime = 0;
 	uint16_t buf_size;
 
 	DP_HIST_INIT();
@@ -288,7 +288,7 @@ more_data:
 	rx_pdev = NULL;
 	tid_stats = NULL;
 
-	dp_pkt_get_timestamp(&current_time);
+	dp_pkt_get_timestamp(&qtime);
 
 	if (qdf_unlikely(dp_rx_srng_access_start(int_ctx, soc, hal_ring_hdl))) {
 		/*
@@ -564,7 +564,7 @@ done:
 		next = nbuf->next;
 		dp_rx_prefetch_nbuf_data(nbuf, next);
 
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(NULL, nbuf))) {
 			nbuf = next;
 			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
 			continue;
@@ -906,7 +906,7 @@ done:
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
-				     current_time, nbuf);
+				     qtime, nbuf);
 
 		DP_RX_LIST_APPEND(deliver_list_head,
 				  deliver_list_tail,

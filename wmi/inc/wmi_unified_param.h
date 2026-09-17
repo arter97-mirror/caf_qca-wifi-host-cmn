@@ -6934,6 +6934,7 @@ typedef enum {
 	wmi_service_passthru_vdev_chan_hop_schedule_support,
 	wmi_service_vdev_chan_hop_status_report,
 	wmi_service_passthru_vdev_ampdu_ra_support,
+	wmi_service_skip_pmk_match_delete_support,
 	wmi_services_max,
 } wmi_conv_service_ids;
 #define WMI_SERVICE_UNAVAILABLE 0xFFFF

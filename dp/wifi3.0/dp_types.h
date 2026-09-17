@@ -3704,6 +3704,8 @@ struct dp_soc {
 	uint32_t htt_vdev_id_m;
 	uint8_t htt_mld_peer_valid_s;
 	uint32_t htt_mld_peer_valid_m;
+	uint8_t htt_passthru_pkt_s;
+	uint32_t htt_passthru_pkt_m;
 	/* rx peer metadata version */
 	uint8_t rx_peer_metadata_ver;
 

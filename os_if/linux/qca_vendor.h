@@ -5378,6 +5378,25 @@ enum qca_wlan_vendor_attr_nd_offload {
  * early (using QCA_WLAN_VENDOR_ATTR_P2P_SET_GO_CANCEL_ONE_SHOT_NOA), without
  * waiting for the originally configured NoA duration to expire.
  *
+ * @QCA_WLAN_VENDOR_FEATURE_OKC_PMKID_IN_ASSOC: Indicates that the driver
+ *	supports generating an Opportunistic Key Caching (OKC) PMKSA entry for
+ *	the target AP and including the corresponding OKC-derived PMKID in
+ *	(Re)Association Request frames.
+ *
+ *	When enabled, the driver derives an OKC PMKSA entry for the target AP
+ *	by cloning the PMKSA of the previously connected AP (reusing the same
+ *	PMK with the new AP BSSID) if no PMKSA entry already exists for the
+ *	target AP. The derived PMKID is then added to the (Re)Association
+ *	Request.
+ *
+ *	The supplicant can infer this behavior by validating that the PMKID in
+ *	the (Re)Association Request corresponds to an OKC-derived PMKID in the
+ *	absence of an existing PMKSA cache entry for the target AP.
+ *
+ *	This feature is used together with
+ *	%QCA_CONNECT_EXT_FEATURE_OKC_PMKID_IN_ASSOC to indicate mutual support
+ *	between driver and supplicant.
+ *
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits
  */
 enum qca_wlan_vendor_features {
@@ -5413,6 +5432,7 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_TX_POWER_LIMIT = 30,
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_GO_CANCEL_ONE_SHOT_NOA = 35,
 	QCA_WLAN_VENDOR_FEATURE_SUPPORT_P2P_GC_KEEP_AWAKE_DURING_ONE_SHOT_NOA = 36,
+	QCA_WLAN_VENDOR_FEATURE_OKC_PMKID_IN_ASSOC = 38,
 
 	NUM_QCA_WLAN_VENDOR_FEATURES /* keep last */
 };
@@ -12666,11 +12686,10 @@ enum qca_wlan_vendor_cfr_stop_reason {
  *
  * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_GROUP_BW: Optional (u32)
  * Indicates packets with a specific BW will be filtered for CFR capture.
- * This is for CFR version 2 only. This is a bitmask. Bits 4:0, CFR capture
- * will be done for packets matching the bandwidths specified within this
- * bitmask. Bits 31:5 Reserved for future use. Bits 4:0 map to bandwidth
- * numerated in enum nl80211_band (although not all bands may be supported
- * by a given device).
+ * This is for CFR version 2 only. This is a bitmask where each bit N
+ * corresponds to BIT(N), with N being a value from enum nl80211_chan_width.
+ * Setting a bit requests CFR capture for frames matching that bandwidth
+ * (although not all bandwidths may be supported by a given device).
  *
  * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_GROUP_MGMT_FILTER: Optional (u32)
  * Management packets matching the subtype filter categories will be
@@ -12818,6 +12837,31 @@ enum qca_wlan_vendor_cfr_stop_reason {
  * in enum qca_wlan_vendor_cfr_stop_reason.
  * Applicable for peer CFR events when CFR data format version is 3.
  *
+ * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_FIXED_AGC: Optional (flag)
+ * This attribute indicates that the Wi-Fi firmware should fix RX antenna gain
+ * during CSI capturing. This is for CFR version 2 and version 3.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_REPORT_ONLY_LAST_FRAME: Optional (flag)
+ * Report only the last captured frame per MAC address in each reporting
+ * interval configured by %QCA_WLAN_VENDOR_ATTR_PEER_CFR_REPORT_INTERVAL,
+ * i.e., one report per interval per MAC address. When this flag is not
+ * included, all captured frames in the reporting interval are reported.
+ * Applicable only for CFR version 3.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA_TOTAL_LEN: Optional (u32)
+ * Total length (in bytes) of the full CFR data being delivered across
+ * multiple fragmented vendor events. Present in every fragment when
+ * QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA is bifurcated.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA_OFFSET: Optional (u32)
+ * Byte offset of the QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA payload
+ * within the full CFR data buffer. Present in every fragment when
+ * QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA is bifurcated.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA_IS_LAST_FRAG: Optional (flag)
+ * When present, indicates that this vendor event carries the final fragment
+ * of a bifurcated QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA payload.
+ *
  */
 enum qca_wlan_vendor_peer_cfr_capture_attr {
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_CAPTURE_INVALID = 0,
@@ -12869,6 +12913,11 @@ enum qca_wlan_vendor_peer_cfr_capture_attr {
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_CSI_LTF_TYPE = 46,
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_NUM_SPATIAL_STREAMS = 47,
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_STOP_REASON = 48,
+	QCA_WLAN_VENDOR_ATTR_PEER_CFR_FIXED_AGC = 49,
+	QCA_WLAN_VENDOR_ATTR_PEER_CFR_REPORT_ONLY_LAST_FRAME = 50,
+	QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA_TOTAL_LEN = 51,
+	QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA_OFFSET = 52,
+	QCA_WLAN_VENDOR_ATTR_PEER_CFR_RESP_DATA_IS_LAST_FRAG = 53,
 
 	/* Keep last */
 	QCA_WLAN_VENDOR_ATTR_PEER_CFR_AFTER_LAST,
@@ -20256,10 +20305,27 @@ enum qca_wlan_vendor_attr_chan_usage_req {
  * support for RSN Overriding. Driver shall enable RSN Overriding in the
  * (re)association attempts only if this flag is indicated.
  *
+ * @QCA_CONNECT_EXT_FEATURE_EXT_AUTH_8021X: Flag attribute. This indicates
+ * supplicant support for external authentication with IEEE 802.1X
+ * Authentication algorithm (EAP over Authentication frames) as specified
+ * in IEEE P802.11bi/D4.0, 12.16.5. The driver can offload authentication to
+ * supplicant via QCA_NL80211_VENDOR_SUBCMD_EXTERNAL_AUTH only if this flag is
+ * enabled.
+ *
+ * @QCA_CONNECT_EXT_FEATURE_OKC_PMKID_IN_ASSOC: Indicates that the supplicant
+ * supports handling driver-generated OKC-derived PMKIDs in (Re)Association
+ * Request frames. When set, the supplicant can detect an OKC-derived PMKID
+ * inserted by the driver and update the current PMKSA to the corresponding OKC
+ * PMKSA. This flag shall be set only if the driver advertises
+ * %QCA_WLAN_VENDOR_FEATURE_OKC_PMKID_IN_ASSOC and OKC is enabled in the
+ * supplicant configuration.
+ *
  * @NUM_QCA_WLAN_VENDOR_FEATURES: Number of assigned feature bits.
  */
 enum qca_wlan_connect_ext_features {
 	QCA_CONNECT_EXT_FEATURE_RSNO	= 0,
+	QCA_CONNECT_EXT_FEATURE_EXT_AUTH_8021X = 2,
+	QCA_CONNECT_EXT_FEATURE_OKC_PMKID_IN_ASSOC = 3,
 	NUM_QCA_CONNECT_EXT_FEATURES /* keep last */
 };
 

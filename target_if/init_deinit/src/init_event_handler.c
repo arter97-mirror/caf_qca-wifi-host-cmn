@@ -422,6 +422,13 @@ static int init_deinit_service_ready_event_handler(ol_scn_t scn_handle,
 					      WLAN_ROAM_4WAY_HS_OFFLOAD_DISABLE);
 	}
 
+	if (wmi_service_enabled(wmi_handle,
+				wmi_service_skip_pmk_match_delete_support)) {
+		wlan_psoc_nif_fw_ext2_cap_set(psoc,
+					      WLAN_ROAM_SKIP_PMK_MATCH_DELETE_SUPPORT);
+		target_if_debug("FW supports skip PMK match-delete for OKC roam");
+	}
+
 	init_deinit_update_wifi_pos_caps(wmi_handle, psoc);
 	init_deinit_update_tdls_caps(wmi_handle, psoc);
 

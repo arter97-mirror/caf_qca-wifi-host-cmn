@@ -10321,6 +10321,21 @@ void wmi_copy_mgmt_rx_srng_support(wmi_resource_config *resource_cfg,
 }
 #endif
 
+#ifdef DRIVER_PASSTHRU_MODE
+static void
+wmi_set_passthru_rx_reorder_support(wmi_resource_config *resource_cfg)
+{
+	WMI_RSRC_CFG_HOST_SERVICE_FLAG_PASSTHRU_RX_REORDER_SET(
+		resource_cfg->host_service_flags, 1);
+	wmi_info("Passthru re-order supported");
+}
+#else
+static inline void
+wmi_set_passthru_rx_reorder_support(wmi_resource_config *resource_cfg)
+{
+}
+#endif
+
 static
 void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 			      wmi_resource_config *resource_cfg,
@@ -10597,6 +10612,8 @@ void wmi_copy_resource_config(wmi_unified_t wmi_handle,
 	WMI_RSRC_CFG_HOST_SERVICE_FLAG_BANG_RADAR_320M_SUPPORT_SET(
 		resource_cfg->host_service_flags,
 		tgt_res_cfg->is_host_dfs_320mhz_bangradar_supported);
+
+	wmi_set_passthru_rx_reorder_support(resource_cfg);
 
 	WMI_RSRC_CFG_HOST_SERVICE_FLAG_LPI_SP_MODE_SUPPORT_SET(
 		resource_cfg->host_service_flags,
@@ -15261,9 +15278,20 @@ static QDF_STATUS extract_profile_data_tlv(wmi_unified_t wmi_handle,
 	WMI_WLAN_PROFILE_DATA_EVENTID_param_tlvs *param_buf;
 	wmi_wlan_profile_t *ev;
 
+	if (!profile_data) {
+		wmi_err("Null profile_data");
+		return QDF_STATUS_E_INVAL;
+	}
+
 	param_buf = (WMI_WLAN_PROFILE_DATA_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
 		wmi_err("Invalid profile data event buf");
+		return QDF_STATUS_E_INVAL;
+	}
+
+	if (idx >= param_buf->num_profile_data) {
+		wmi_err("Invalid profile data index: %u, max: %u",
+			idx, param_buf->num_profile_data);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -18089,6 +18117,11 @@ static QDF_STATUS extract_reg_chan_list_ext_update_event_tlv(
 	reg_info->phybitmap = convert_phybitmap_tlv(
 			ext_chan_list_event_hdr->phybitmap);
 	reg_info->offload_enabled = true;
+	if (ext_chan_list_event_hdr->num_phy > PSOC_MAX_PHY_REG_CAP) {
+		wmi_err_rl("Invalid num_phy: %u",
+			   ext_chan_list_event_hdr->num_phy);
+		return QDF_STATUS_E_FAILURE;
+	}
 	reg_info->num_phy = ext_chan_list_event_hdr->num_phy;
 	reg_info->phy_id = wmi_handle->ops->convert_phy_id_target_to_host(
 				wmi_handle, ext_chan_list_event_hdr->phy_id);
@@ -21324,6 +21357,7 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	wmi_roam_trigger_kickout    *kickout_data = NULL;
 	wmi_roam_result             *roam_result = NULL;
 	wmi_roam_scan_info          *scan_info = NULL;
+	bool db2dbm_enable;
 
 	param_buf = (WMI_ROAM_STATS_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
@@ -21343,6 +21377,9 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	}
 
 	trig->present = true;
+
+	db2dbm_enable = wmi_service_enabled(wmi_handle,
+					    wmi_service_hw_db2dbm_support);
 
 	if (param_buf->roam_scan_info &&
 	    idx < param_buf->num_roam_scan_info)
@@ -21370,10 +21407,10 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 			wmi_convert_fw_to_cm_trig_reason(trig_reason);
 		trig->trigger_sub_reason =
 			wmi_convert_roam_sub_reason(src_data->trigger_sub_reason);
-		if (!wmi_service_enabled(wmi_handle,
-					 wmi_service_hw_db2dbm_support))
-			trig->current_rssi = src_data->current_rssi +
-					     WMI_NOISE_FLOOR_DBM_DEFAULT;
+		if (!db2dbm_enable)
+			trig->current_rssi = qdf_abs(
+						src_data->current_rssi +
+						WMI_NOISE_FLOOR_DBM_DEFAULT);
 		else
 			trig->current_rssi = src_data->current_rssi;
 		trig->timestamp = src_data->timestamp;
@@ -21598,9 +21635,14 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 		if (periodic_data) {
 			trig->periodic_trig_data.periodic_timer_ms =
 				periodic_data->periodic_timer_ms;
-		} else if (src_data)
-			trig->rssi_trig_data.threshold =
-				src_data->roam_rssi_threshold;
+		} else if (src_data) {
+			if (!db2dbm_enable)
+				trig->rssi_trig_data.threshold =
+					qdf_abs(src_data->roam_rssi_threshold);
+			else
+				trig->rssi_trig_data.threshold =
+					src_data->roam_rssi_threshold;
+		}
 		return QDF_STATUS_SUCCESS;
 
 	case WMI_ROAM_TRIGGER_REASON_LOW_RSSI:
@@ -21611,9 +21653,14 @@ extract_roam_trigger_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 				(uint8_t)rssi_data->roam_rssi_threshold;
 			trig->low_rssi_trig_data.rx_linkspeed_status =
 				(uint8_t)rssi_data->rx_linkspeed_status;
-		} else if (src_data)
-			trig->rssi_trig_data.threshold =
-				src_data->roam_rssi_threshold;
+		} else if (src_data) {
+			if (!db2dbm_enable)
+				trig->rssi_trig_data.threshold =
+					qdf_abs(src_data->roam_rssi_threshold);
+			else
+				trig->rssi_trig_data.threshold =
+					src_data->roam_rssi_threshold;
+		}
 
 		return QDF_STATUS_SUCCESS;
 
@@ -21681,6 +21728,7 @@ extract_roam_scan_ap_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	WMI_ROAM_STATS_EVENTID_param_tlvs *param_buf;
 	wmi_roam_ap_info *src = NULL;
 	uint8_t i;
+	bool db2dbm_enable;
 
 	param_buf = (WMI_ROAM_STATS_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
@@ -21700,13 +21748,19 @@ extract_roam_scan_ap_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 	}
 
 	src = &param_buf->roam_ap_info[ap_idx];
+	db2dbm_enable = wmi_service_enabled(wmi_handle,
+					    wmi_service_hw_db2dbm_support);
 
 	for (i = 0; i < num_cand; i++) {
 		WMI_MAC_ADDR_TO_CHAR_ARRAY(&src->bssid, dst->bssid.bytes);
 		dst->type = src->candidate_type;
 		dst->freq = src->channel;
 		dst->etp = src->etp;
-		dst->rssi = src->rssi;
+		if (!db2dbm_enable)
+			dst->rssi = qdf_abs(src->rssi +
+					    WMI_NOISE_FLOOR_DBM_DEFAULT);
+		else
+			dst->rssi = src->rssi;
 		dst->rssi_score = src->rssi_score;
 		dst->cu_load = src->cu_load;
 		dst->cu_score = src->cu_score;
@@ -21762,8 +21816,8 @@ extract_roam_scan_stats_tlv(wmi_unified_t wmi_handle, void *evt_buf,
 
 	if (!wmi_service_enabled(wmi_handle, wmi_service_hw_db2dbm_support))
 		dst->next_rssi_threshold =
-			src_data->next_rssi_trigger_threshold +
-			WMI_NOISE_FLOOR_DBM_DEFAULT;
+			qdf_abs(src_data->next_rssi_trigger_threshold +
+				WMI_NOISE_FLOOR_DBM_DEFAULT);
 	else
 		dst->next_rssi_threshold =
 					src_data->next_rssi_trigger_threshold;
@@ -25861,6 +25915,8 @@ static void populate_tlv_service(uint32_t *wmi_service)
 				WMI_SERVICE_VDEV_CHAN_HOP_STATUS_REPORT;
 	wmi_service[wmi_service_passthru_vdev_ampdu_ra_support] =
 				WMI_SERVICE_PASSTHRU_VDEV_AMPDU_RA_SUPPORT;
+	wmi_service[wmi_service_skip_pmk_match_delete_support] =
+				WMI_SERVICE_SKIP_PMK_MATCH_DELETE_SUPPORT;
 }
 
 /**

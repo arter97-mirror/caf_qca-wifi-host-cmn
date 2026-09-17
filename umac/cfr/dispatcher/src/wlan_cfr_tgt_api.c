@@ -105,6 +105,8 @@ static enum
 qca_wlan_vendor_chip_id convert_chip_type_to_chip_id(uint8_t chip_type)
 {
 	switch (chip_type) {
+	case CFR_CAPTURE_RADIO_KIWI:
+		return QCA_WLAN_VENDOR_CHIP_ID_WCN785x;
 	case CFR_CAPTURE_RADIO_PEACH:
 		return QCA_WLAN_VENDOR_CHIP_ID_WCN7881;
 	case CFR_CAPTURE_RADIO_FIG:
