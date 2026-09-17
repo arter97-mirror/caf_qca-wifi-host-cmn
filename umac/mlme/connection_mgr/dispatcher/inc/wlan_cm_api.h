@@ -650,6 +650,18 @@ wlan_cm_get_curr_candidate_entry(struct wlan_objmgr_vdev *vdev,
 				 wlan_cm_id cm_id);
 
 /**
+ * wlan_cm_is_connect_ap_eppke_capable() - Check if the active connect
+ * candidate AP is EPPKE capable
+ * @vdev: VDEV object manager
+ *
+ * Determine whether the currently selected AP candidate advertises EPPKE
+ * (via its RSN IE or Security Profile IE). Used to gate 11bi peer creation.
+ *
+ * Return: true if the selected AP is EPPKE capable, false otherwise
+ */
+bool wlan_cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev);
+
+/**
  * wlan_cm_disc_cont_after_rso_stop() - Continue disconnect after RSO stop
  * @vdev: Objmgr vdev
  * @req: pointer to cm vdev disconnect req

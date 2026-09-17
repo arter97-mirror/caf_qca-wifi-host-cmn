@@ -1218,6 +1218,28 @@ bool cm_get_active_connect_req(struct wlan_objmgr_vdev *vdev,
 			       struct wlan_cm_vdev_connect_req *req);
 
 /**
+ * cm_is_connect_ap_eppke_capable() - Check if the active connect candidate AP
+ * is EPPKE capable
+ * @vdev: vdev pointer
+ *
+ * Parse the currently selected AP candidate's RSN IE (and Security Profile IE)
+ * to determine whether the AP actually advertises EPPKE. Used to gate 11bi
+ * peer creation, since EPPKE auth bits injected pre-connect for candidate
+ * expansion are stripped only after peer create.
+ *
+ * Return: true if the selected AP is EPPKE capable, false otherwise
+ */
+#ifdef WLAN_FEATURE_11BI_SECURITY
+bool cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev);
+#else
+static inline bool
+cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev)
+{
+	return false;
+}
+#endif /* WLAN_FEATURE_11BI_SECURITY */
+
+/**
  * cm_get_active_disconnect_req() - Get copy of active disconnect request
  * @vdev: vdev pointer
  * @req: pointer to the copy of the active disconnect request
