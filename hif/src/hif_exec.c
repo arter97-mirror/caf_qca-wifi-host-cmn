@@ -987,7 +987,8 @@ hif_update_irq_handle_time(struct hif_exec_context *hif_ext_group)
 }
 #endif /* WLAN_DP_LOAD_BALANCE_SUPPORT */
 
-#ifdef WLAN_DP_AFFINITY_OVERRIDE_FEATURE
+#if defined(WLAN_DP_AFFINITY_OVERRIDE_FEATURE) || \
+	defined(FEATURE_STATIC_IRQ_AFFINITY)
 
 /**
  * hif_set_grp_affinity() - HIF API  to set IRQ affinity

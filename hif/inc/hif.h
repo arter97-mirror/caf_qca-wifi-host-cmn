@@ -3224,6 +3224,11 @@ void hif_set_grp_affinity_cpumaskwise(struct hif_opaque_softc *hif_ctx,
 					  uint32_t napi_thread_cpumask);
 void hif_set_affn_override_enabled(struct hif_opaque_softc *hif_ctx,
 				   bool value);
+#elif defined(FEATURE_STATIC_IRQ_AFFINITY)
+void hif_set_grp_affinity_cpumaskwise(struct hif_opaque_softc *hif_ctx,
+				      uint32_t grp_irq_mask,
+				      uint32_t irq_cpumask,
+				      uint32_t napi_thread_cpumask);
 #endif
 QDF_STATUS hif_bus_get_device_handle(struct hif_opaque_softc *hif_ctx,
 				     void **handle);
