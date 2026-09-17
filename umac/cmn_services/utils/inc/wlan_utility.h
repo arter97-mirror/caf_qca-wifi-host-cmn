@@ -31,7 +31,7 @@
 #define TGT_INVALID_SNR         (0)
 #define TGT_MAX_SNR             (TGT_NOISE_FLOOR_DBM * (-1))
 #define TGT_NOISE_FLOOR_DBM     (-96)
-#define TGT_IS_VALID_SNR(x)     ((x) >= 0 && (x) < TGT_MAX_SNR)
+#define TGT_IS_VALID_SNR(x)     ((x) > 0 && (x) < TGT_MAX_SNR)
 #define TGT_IS_VALID_RSSI(x)    ((x) != 0xFF)
 
 /**

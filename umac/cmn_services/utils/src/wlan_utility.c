@@ -2175,7 +2175,7 @@ void
 wlan_util_stats_get_rssi(bool db2dbm_enabled, int32_t bcn_snr, int32_t dat_snr,
 			 int8_t *rssi)
 {
-	uint32_t snr;
+	int16_t snr;
 
 	if (db2dbm_enabled) {
 		if (TGT_IS_VALID_RSSI(bcn_snr))
@@ -2190,7 +2190,7 @@ wlan_util_stats_get_rssi(bool db2dbm_enabled, int32_t bcn_snr, int32_t dat_snr,
 		else if (TGT_IS_VALID_SNR(dat_snr))
 			snr = dat_snr;
 		else
-			snr = TGT_INVALID_SNR;
+			snr = -TGT_NOISE_FLOOR_DBM;
 
 		/* Get the absolute rssi value from the current rssi value */
 		*rssi = snr + TGT_NOISE_FLOOR_DBM;
