@@ -74,6 +74,18 @@ void osif_copy_roamed_info(struct cfg80211_roam_info *info,
 }
 #endif
 
+#ifdef WLAN_FEATURE_11BN_SMD
+static inline bool osif_is_smd_roam(struct wlan_cm_connect_resp *rsp)
+{
+	return rsp->roaming_info && rsp->roaming_info->smd_transition;
+}
+#else
+static inline bool osif_is_smd_roam(struct wlan_cm_connect_resp *rsp)
+{
+	return false;
+}
+#endif
+
 #if defined(CFG80211_SINGLE_NETDEV_MULTI_LINK_SUPPORT) && defined(WLAN_FEATURE_11BE_MLO)
 static void
 osif_roam_populate_mlo_info_for_link(struct wlan_objmgr_vdev *roamed_vdev,
@@ -101,26 +113,47 @@ osif_populate_partner_links_roam_mlo_params(struct wlan_objmgr_vdev *roamed_vdev
 	struct cfg80211_bss *bss = NULL;
 	QDF_STATUS qdf_status;
 	uint8_t link_id = 0, num_links;
+	bool is_smd_roam = osif_is_smd_roam(rsp);
 	int i;
 
 	pdev = wlan_vdev_get_pdev(roamed_vdev);
 	if (!pdev)
 		return;
 
-	qdf_status = osif_get_partner_info_from_mlie(rsp, &assoc_partner_info);
-	if (QDF_IS_STATUS_ERROR(qdf_status))
-		return;
+	if (!is_smd_roam) {
+		qdf_status = osif_get_partner_info_from_mlie(rsp,
+							     &assoc_partner_info);
+		if (QDF_IS_STATUS_ERROR(qdf_status))
+			return;
+	}
 
 	num_links = rsp->ml_parnter_info.num_partner_links;
+	osif_debug("vdev %d: is_smd_roam:%d num_partner_links:%d",
+		   wlan_vdev_get_id(roamed_vdev), is_smd_roam, num_links);
 	for (i = 0 ; i < num_links; i++) {
 		struct mlo_link_info *link_info;
 		rsp_partner_info = &rsp->ml_parnter_info.partner_link_info[i];
 
-		qdf_status = osif_get_link_id_from_assoc_ml_ie(rsp_partner_info,
-							       &assoc_partner_info,
-							       &link_id);
-		if (QDF_IS_STATUS_ERROR(qdf_status))
-			continue;
+		if (is_smd_roam) {
+			/*
+			 * SMD roam sync has no reassoc-response frame to
+			 * parse an ML IE out of (connect_ies.assoc_rsp is
+			 * never populated for SMD roams), so there is
+			 * nothing for osif_get_link_id_from_assoc_ml_ie() to
+			 * match against. rsp->ml_parnter_info is built
+			 * directly from the already-synced link state in
+			 * smd_roam_build_connect_rsp(), so its link_id is
+			 * already authoritative.
+			 */
+			link_id = rsp_partner_info->link_id;
+		} else {
+			qdf_status = osif_get_link_id_from_assoc_ml_ie(
+							rsp_partner_info,
+							&assoc_partner_info,
+							&link_id);
+			if (QDF_IS_STATUS_ERROR(qdf_status))
+				continue;
+		}
 
 		link_info = mlo_mgr_get_ap_link_by_link_id(
 					roamed_vdev->mlo_dev_ctx,
@@ -133,6 +166,12 @@ osif_populate_partner_links_roam_mlo_params(struct wlan_objmgr_vdev *roamed_vdev
 
 		bss = osif_get_chan_bss_from_kernel(roamed_vdev,
 						    rsp_partner_info, rsp);
+		osif_debug("partner link_id:%d self:" QDF_MAC_ADDR_FMT
+			   " ap_bssid:" QDF_MAC_ADDR_FMT " bss %s",
+			   link_id,
+			   QDF_MAC_ADDR_REF(link_info->link_addr.bytes),
+			   QDF_MAC_ADDR_REF(link_info->ap_link_addr.bytes),
+			   bss ? "found" : "NOT found");
 
 		osif_roam_populate_mlo_info_for_link(roamed_vdev,
 						     roam_info_params,
@@ -238,6 +277,8 @@ static void osif_fill_mlo_roam_params(struct wlan_objmgr_vdev *vdev,
 		   info->valid_links, assoc_link_id);
 
 	osif_populate_partner_links_roam_mlo_params(vdev, rsp, info);
+	osif_debug("Vdev %d: final valid_links mask 0x%x after partner link fill",
+		   rsp->vdev_id, info->valid_links);
 
 	osif_debug_mlo_roam_duplicate_bss(rsp, bss, assoc_link_id, info);
 }
@@ -291,6 +332,110 @@ static inline void osif_roamed_ind(struct net_device *dev,
 {
 	cfg80211_roamed_bss(dev, bss, req_ie, req_ie_len, resp_ie, resp_ie_len,
 			    qdf_mem_malloc_flags());
+}
+#endif
+
+#ifdef WLAN_FEATURE_11BN_SMD
+/**
+ * osif_get_smd_roam_auth_params_len() - Get SMD transition NL params length
+ * @roaming_info: roam sync info
+ *
+ * SMD_TRANSITION (flag) + SMD_PTK_MODE (u8) + TARGET_AP_BSSID
+ * (ETH_ALEN) + 4 binary ST Prep/Exec Request/Response frames,
+ * each with its own NL header.
+ *
+ * Return: SMD params length to reserve in the NL skb, 0 if not an
+ * SMD transition
+ */
+static uint32_t
+osif_get_smd_roam_auth_params_len(struct wlan_roam_sync_info *roaming_info)
+{
+	if (!roaming_info->smd_transition)
+		return 0;
+
+	return sizeof(uint8_t) + ETH_ALEN +
+	       roaming_info->st_prep_req.len +
+	       roaming_info->st_prep_rsp.len +
+	       roaming_info->st_exec_req.len +
+	       roaming_info->st_exec_rsp.len +
+	       (7 * NLMSG_HDRLEN);
+}
+
+/**
+ * osif_add_smd_params_roam_auth_event() - Adds SMD transition params in roam
+ * auth event
+ * @skb: SK buffer
+ * @roaming_info: roam sync info
+ *
+ * API adds SMD transition flag, PTK mode, target AP BSSID and the binary
+ * ST Prep/Exec Request/Response frames to the roam auth event, when the
+ * roam is an SMD transition.
+ *
+ * Return: zero on success, error code on failure
+ */
+static int
+osif_add_smd_params_roam_auth_event(struct sk_buff *skb,
+				    struct wlan_roam_sync_info *roaming_info)
+{
+	if (!roaming_info->smd_transition)
+		return 0;
+
+	if (nla_put_flag(skb,
+			 QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_SMD_TRANSITION) ||
+	    nla_put_u8(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_SMD_PTK_MODE,
+		       roaming_info->smd_ptk_mode) ||
+	    nla_put(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_TARGET_AP_BSSID,
+		    ETH_ALEN, roaming_info->target_ap_bssid.bytes)) {
+		osif_err("nla put fail for SMD transition params");
+		return -EINVAL;
+	}
+
+	if (roaming_info->st_prep_req.len &&
+	    nla_put(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_ST_PREP_REQ,
+		    roaming_info->st_prep_req.len,
+		    roaming_info->st_prep_req.ptr)) {
+		osif_err("nla put fail for ST prep req");
+		return -EINVAL;
+	}
+
+	if (roaming_info->st_prep_rsp.len &&
+	    nla_put(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_ST_PREP_RESP,
+		    roaming_info->st_prep_rsp.len,
+		    roaming_info->st_prep_rsp.ptr)) {
+		osif_err("nla put fail for ST prep resp");
+		return -EINVAL;
+	}
+
+	if (roaming_info->st_exec_req.len &&
+	    nla_put(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_ST_EXEC_REQ,
+		    roaming_info->st_exec_req.len,
+		    roaming_info->st_exec_req.ptr)) {
+		osif_err("nla put fail for ST exec req");
+		return -EINVAL;
+	}
+
+	if (roaming_info->st_exec_rsp.len &&
+	    nla_put(skb, QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_ST_EXEC_RESP,
+		    roaming_info->st_exec_rsp.len,
+		    roaming_info->st_exec_rsp.ptr)) {
+		osif_err("nla put fail for ST exec resp");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#else
+static inline uint32_t
+osif_get_smd_roam_auth_params_len(struct wlan_roam_sync_info *roaming_info)
+{
+	return 0;
+}
+
+static inline int
+osif_add_smd_params_roam_auth_event(struct sk_buff *skb,
+				    struct wlan_roam_sync_info *roaming_info)
+{
+	return 0;
 }
 #endif
 
@@ -445,8 +590,10 @@ osif_send_roam_auth_mlo_links_event(struct sk_buff *skb,
 			return -EINVAL;
 		}
 
-		osif_debug("send roam auth for partner link:%d",
-			   rsp->ml_parnter_info.partner_link_info[i].link_id);
+		osif_debug("send roam auth for partner link:%d bssid:"
+			   QDF_MAC_ADDR_FMT,
+			   rsp->ml_parnter_info.partner_link_info[i].link_id,
+			   QDF_MAC_ADDR_REF(rsp->ml_parnter_info.partner_link_info[i].link_addr.bytes));
 		if (nla_put_u8(skb,
 			       QCA_WLAN_VENDOR_ATTR_MLO_LINK_ID,
 			       rsp->ml_parnter_info.partner_link_info[i].link_id)) {
@@ -498,6 +645,8 @@ osif_send_roam_auth_mlo_links_event(struct sk_buff *skb,
 			osif_err("nla put fail");
 			return -EINVAL;
 		}
+		osif_debug("mlo link event link_id:%d own_mac:" QDF_MAC_ADDR_FMT,
+			   link_id, QDF_MAC_ADDR_REF(link_addr.bytes));
 		nla_nest_end(skb, mlo_links_info);
 	}
 
@@ -597,6 +746,7 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 	bool roam_offload_enable;
 	uint8_t *bss_mac_addr;
 	uint8_t num_of_links = 0;
+	uint32_t smd_params_len = 0;
 
 	psoc = wlan_vdev_get_psoc(vdev);
 	ucfg_mlme_get_roaming_offload(psoc, &roam_offload_enable);
@@ -616,6 +766,8 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 	fils_params_len = roaming_info->pmk_len + PMKID_LEN +
 			  sizeof(uint16_t) + (3 * NLMSG_HDRLEN);
 
+	smd_params_len = osif_get_smd_roam_auth_params_len(roaming_info);
+
 	if (wlan_vdev_mlme_is_mlo_vdev(vdev)) {
 #ifdef WLAN_FEATURE_11BE_MLO
 		num_of_links = rsp->ml_parnter_info.num_partner_links;
@@ -630,7 +782,8 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 				roaming_info->kck_len + roaming_info->kek_len +
 				sizeof(uint16_t) + sizeof(uint8_t) +
 				(10 * NLMSG_HDRLEN) + fils_params_len +
-				nla_total_size(roaming_info->kde_data_len),
+				nla_total_size(roaming_info->kde_data_len) +
+				smd_params_len,
 				QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH_INDEX,
 				qdf_mem_malloc_flags());
 	} else {
@@ -642,7 +795,8 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 				roaming_info->kck_len + roaming_info->kek_len +
 				sizeof(uint16_t) + sizeof(uint8_t) +
 				(10 * NLMSG_HDRLEN) + fils_params_len +
-				nla_total_size(roaming_info->kde_data_len),
+				nla_total_size(roaming_info->kde_data_len) +
+				smd_params_len,
 				QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH_INDEX,
 				qdf_mem_malloc_flags());
 	}
@@ -665,6 +819,9 @@ static int osif_send_roam_auth_event(struct wlan_objmgr_vdev *vdev,
 		osif_err("nla put fail");
 		goto nla_put_failure;
 	}
+
+	if (osif_add_smd_params_roam_auth_event(skb, roaming_info))
+		goto nla_put_failure;
 
 	if (roaming_info->auth_status == ROAM_AUTH_STATUS_AUTHENTICATED) {
 		osif_debug("Include Auth Params TLV's");

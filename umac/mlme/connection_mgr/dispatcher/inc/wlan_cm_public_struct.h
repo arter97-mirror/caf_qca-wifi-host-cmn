@@ -520,6 +520,15 @@ struct wlan_connect_rsp_ies {
  * @kde_data: KDE data buffer
  * @smd_kdk_len: SMD KDK length derived during SMD-ME initial association
  * @smd_kdk: SMD KDK buffer derived during SMD-ME initial association
+ * @smd_transition: true if this roam completion is an SMD BSS transition
+ * @smd_ptk_mode: 0 = Per-SMD PTK, 1 = Per-AP MLD PTK (valid when
+ *                smd_transition is true)
+ * @target_ap_bssid: link-level BSSID of the target AP affiliated with the
+ *                    roamed AP MLD
+ * @st_prep_req: deep copy of the ST Preparation Request action frame body
+ * @st_prep_rsp: deep copy of the ST Preparation Response action frame body
+ * @st_exec_req: deep copy of the ST Execution Request action frame body
+ * @st_exec_rsp: deep copy of the ST Execution Response action frame body
  */
 struct wlan_roam_sync_info {
 	uint8_t auth_status;
@@ -543,6 +552,13 @@ struct wlan_roam_sync_info {
 #ifdef WLAN_FEATURE_11BN_SMD
 	uint32_t smd_kdk_len;
 	uint8_t smd_kdk[MAX_PMK_LEN];
+	bool smd_transition;
+	uint8_t smd_ptk_mode;
+	struct qdf_mac_addr target_ap_bssid;
+	struct element_info st_prep_req;
+	struct element_info st_prep_rsp;
+	struct element_info st_exec_req;
+	struct element_info st_exec_rsp;
 #endif /* WLAN_FEATURE_11BN_SMD */
 };
 #endif

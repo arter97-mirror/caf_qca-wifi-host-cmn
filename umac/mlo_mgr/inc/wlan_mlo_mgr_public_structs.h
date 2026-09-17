@@ -99,6 +99,7 @@ struct smd_prepared_target {
 /**
  * struct smd_context - SMD roaming context at device level
  * @smd_identifier: SMD ID (MAC address format, SMD-wide)
+ * @mld_addr: Peer MLD address
  * @smd_capabilities: SMD capabilities from SMD Information Element
  * @timeout_tu: Timeout in TU for ST prep->exec transition
  * @prepared_targets: Array of prepared target contexts
@@ -112,6 +113,7 @@ struct smd_prepared_target {
  */
 struct smd_context {
 	struct qdf_mac_addr smd_identifier;
+	struct qdf_mac_addr mld_addr;
 	struct {
 		uint8_t dl_data_forwarding:1;
 		uint8_t max_prepared_targets:3;
