@@ -5962,10 +5962,9 @@ more_data:
 							       tx_comp_hal_desc,
 							       &tx_desc);
 		if (qdf_unlikely(!tx_desc)) {
-			dp_err("unable to retrieve tx_desc!");
+			dp_err_rl("invalid tx comp cookie, dropping entry");
 			hal_dump_comp_desc(tx_comp_hal_desc);
 			DP_STATS_INC(soc, tx.invalid_tx_comp_desc, 1);
-			QDF_BUG(0);
 			continue;
 		}
 		tx_desc->buffer_src = buffer_src;
