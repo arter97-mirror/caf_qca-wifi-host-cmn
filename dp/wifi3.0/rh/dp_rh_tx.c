@@ -95,23 +95,37 @@ static struct dp_tx_desc_s *
 dp_tx_comp_find_tx_desc_rh(struct dp_soc *soc, uint32_t sw_cookie)
 {
 	uint8_t pool_id;
+	uint16_t page_id, offset;
 	struct dp_tx_desc_s *tx_desc;
+	struct dp_tx_desc_pool_s *pool;
 
 	pool_id = (sw_cookie & DP_TX_DESC_ID_POOL_MASK) >>
 			DP_TX_DESC_ID_POOL_OS;
+	page_id = (sw_cookie & DP_TX_DESC_ID_PAGE_MASK) >>
+			DP_TX_DESC_ID_PAGE_OS;
+	offset = (sw_cookie & DP_TX_DESC_ID_OFFSET_MASK) >>
+			DP_TX_DESC_ID_OFFSET_OS;
+
+	pool = dp_get_tx_desc_pool(soc, pool_id);
+
+	/* FW-echoed cookie: bounds-check page_id/offset before dereferencing */
+	if (qdf_unlikely(!pool || !pool->desc_pages.cacheable_pages ||
+			 page_id >= pool->desc_pages.num_pages ||
+			 offset >= pool->desc_pages.num_element_per_page)) {
+		dp_tx_comp_alert(
+			"Invalid tx comp cookie 0x%x: pool %u page %u off %u",
+			sw_cookie, pool_id, page_id, offset);
+		return NULL;
+	}
 
 	/* Find Tx descriptor */
-	tx_desc = dp_tx_desc_find(soc, pool_id,
-				  (sw_cookie & DP_TX_DESC_ID_PAGE_MASK) >>
-						DP_TX_DESC_ID_PAGE_OS,
-				  (sw_cookie & DP_TX_DESC_ID_OFFSET_MASK) >>
-						DP_TX_DESC_ID_OFFSET_OS, false);
+	tx_desc = dp_tx_desc_find(soc, pool_id, page_id, offset, false);
 	/* pool id is not matching. Error */
 	if (tx_desc && tx_desc->pool_id != pool_id) {
 		dp_tx_comp_alert("Tx Comp pool id %d not matched %d",
 				 pool_id, tx_desc->pool_id);
 
-		qdf_assert_always(0);
+		return NULL;
 	}
 
 	return tx_desc;
@@ -718,8 +732,9 @@ void dp_tx_compl_handler_rh(struct dp_soc *soc, qdf_nbuf_t htt_msg)
 
 		tx_desc = dp_tx_comp_find_tx_desc_rh(soc, sw_cookie);
 		if (!tx_desc) {
-			dp_err("failed to find tx desc");
-			qdf_assert_always(0);
+			dp_err_rl("invalid tx comp cookie, dropping entry");
+			DP_STATS_INC(soc, tx.invalid_tx_comp_desc, 1);
+			goto next_msdu;
 		}
 
 		/*
