@@ -55,11 +55,19 @@ tgt_vdev_mgr_reset_response_timer_info(struct wlan_objmgr_psoc *psoc)
 	for (i = 0; i < WLAN_UMAC_PSOC_MAX_VDEVS; i++) {
 		vdev_rsp = &psoc_mlme->psoc_vdev_rt[i];
 		qdf_atomic_set(&vdev_rsp->rsp_timer_inuse, 0);
-		if (vdev_rsp->rt_lock.is_lock_acquired) {
+		if (!vdev_rsp->rt_lock.lock_initialized) {
+			vdev_rsp->psoc = NULL;
+			continue;
+		}
+
+		qdf_mutex_acquire(&vdev_rsp->rt_lock.lock);
+		if (!vdev_rsp->rt_lock.is_deinitialized &&
+		    vdev_rsp->rt_lock.is_lock_acquired) {
 			vdev_rsp->rt_lock.is_lock_acquired = false;
 			qdf_runtime_pm_allow_suspend(
 					&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
 		}
+		qdf_mutex_release(&vdev_rsp->rt_lock.lock);
 		vdev_rsp->psoc = NULL;
 	}
 }

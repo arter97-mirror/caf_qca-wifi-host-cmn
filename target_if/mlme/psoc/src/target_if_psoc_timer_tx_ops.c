@@ -91,6 +91,11 @@ QDF_STATUS target_if_psoc_vdev_rsp_timer_init(struct wlan_objmgr_psoc *psoc,
 
 	vdev_rsp->psoc = psoc;
 	vdev_rsp->vdev_id = vdev_id;
+	if (!vdev_rsp->rt_lock.lock_initialized) {
+		qdf_mutex_create(&vdev_rsp->rt_lock.lock);
+		vdev_rsp->rt_lock.lock_initialized = true;
+	}
+
 	qdf_timer_init(NULL, &vdev_rsp->rsp_timer,
 		       target_if_vdev_mgr_rsp_timer_mgmt_cb,
 		       vdev_rsp, QDF_TIMER_TYPE_WAKE_APPS);
@@ -98,7 +103,10 @@ QDF_STATUS target_if_psoc_vdev_rsp_timer_init(struct wlan_objmgr_psoc *psoc,
 	qdf_atomic_inc(&vdev_rsp->rsp_timer_inuse);
 
 	qdf_runtime_lock_init(&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+	qdf_mutex_acquire(&vdev_rsp->rt_lock.lock);
 	vdev_rsp->rt_lock.is_lock_acquired = false;
+	vdev_rsp->rt_lock.is_deinitialized = false;
+	qdf_mutex_release(&vdev_rsp->rt_lock.lock);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -132,8 +140,24 @@ void target_if_psoc_vdev_rsp_timer_deinit(struct wlan_objmgr_psoc *psoc,
 	qdf_timer_free(&vdev_rsp->rsp_timer);
 	qdf_atomic_set(&vdev_rsp->rsp_timer_inuse, 0);
 
-	vdev_rsp->rt_lock.is_lock_acquired = false;
-	qdf_runtime_lock_deinit(&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+	if (!vdev_rsp->rt_lock.lock_initialized) {
+		vdev_rsp->psoc = NULL;
+		return;
+	}
+
+	qdf_mutex_acquire(&vdev_rsp->rt_lock.lock);
+	if (!vdev_rsp->rt_lock.is_deinitialized) {
+		vdev_rsp->rt_lock.is_deinitialized = true;
+		if (vdev_rsp->rt_lock.is_lock_acquired) {
+			vdev_rsp->rt_lock.is_lock_acquired = false;
+			qdf_runtime_pm_allow_suspend(
+				&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+		}
+		qdf_runtime_lock_deinit(&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
+	}
+	qdf_mutex_release(&vdev_rsp->rt_lock.lock);
+	if (QDF_IS_STATUS_SUCCESS(qdf_mutex_destroy(&vdev_rsp->rt_lock.lock)))
+		vdev_rsp->rt_lock.lock_initialized = false;
 
 	vdev_rsp->psoc = NULL;
 }
@@ -216,11 +240,17 @@ target_if_release_vdev_cmd_rt_lock(struct wlan_objmgr_psoc *psoc,
 		return;
 	}
 
-	if (vdev_rsp->rt_lock.is_lock_acquired) {
+	if (!vdev_rsp->rt_lock.lock_initialized)
+		return;
+
+	qdf_mutex_acquire(&vdev_rsp->rt_lock.lock);
+	if (!vdev_rsp->rt_lock.is_deinitialized &&
+	    vdev_rsp->rt_lock.is_lock_acquired) {
 		qdf_runtime_pm_allow_suspend(
 					&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
 		vdev_rsp->rt_lock.is_lock_acquired = false;
 	}
+	qdf_mutex_release(&vdev_rsp->rt_lock.lock);
 }
 
 void
@@ -228,13 +258,27 @@ target_if_acquire_vdev_cmd_rt_lock(struct vdev_response_timer *vdev_rsp)
 {
 	QDF_STATUS status;
 
+	if (!vdev_rsp->rt_lock.lock_initialized)
+		return;
+
+	qdf_mutex_acquire(&vdev_rsp->rt_lock.lock);
+	if (vdev_rsp->rt_lock.is_deinitialized) {
+		qdf_mutex_release(&vdev_rsp->rt_lock.lock);
+		mlme_debug("Runtime lock is deinitialized for VDEV_%d",
+			   vdev_rsp->vdev_id);
+		return;
+	}
+
 	if (vdev_rsp->rt_lock.is_lock_acquired) {
+		qdf_mutex_release(&vdev_rsp->rt_lock.lock);
 		mlme_err("Lock has already been acquired");
 		QDF_ASSERT(0);
+		return;
 	}
 
 	status = qdf_runtime_pm_prevent_suspend(
 					&vdev_rsp->rt_lock.vdev_cmd_rt_lock);
 	if (QDF_IS_STATUS_SUCCESS(status))
 		vdev_rsp->rt_lock.is_lock_acquired = true;
+	qdf_mutex_release(&vdev_rsp->rt_lock.lock);
 }
