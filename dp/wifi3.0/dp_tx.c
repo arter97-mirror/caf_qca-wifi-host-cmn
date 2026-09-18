@@ -7520,10 +7520,9 @@ more_data:
 				break;
 			}
 
-			dp_err("unable to retrieve tx_desc!");
+			dp_err_rl("invalid tx comp cookie, dropping entry");
 			hal_dump_comp_desc(tx_comp_hal_desc);
 			DP_STATS_INC(soc, tx.invalid_tx_comp_desc, 1);
-			QDF_BUG(0);
 			continue;
 		}
 
