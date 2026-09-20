@@ -4313,6 +4313,8 @@ void dp_ipa_opt_dp_reset_tx_doorbell(struct cdp_soc_t *soc_hdl)
 	dp_ipa_reset_tx_doorbell_pa(soc, ipa_res);
 }
 
+#endif /* IPA_OPT_WIFI_DP */
+
 #ifdef DP_FEATURE_RX_BUFFER_RECYCLE
 static QDF_STATUS dp_rx_pp_ipa_ref_cntrs_init(struct dp_soc *soc,
 					      struct dp_rx_page_pool *rx_pp)
@@ -4437,6 +4439,7 @@ QDF_STATUS dp_ipa_rx_pp_cntrs_deinit(struct cdp_soc_t *soc_hdl)
 }
 #endif /* DP_FEATURE_RX_BUFFER_RECYCLE */
 
+#ifdef IPA_OPT_WIFI_DP
 #ifdef IPA_OPT_WIFI_DP_CTRL
 /**
  * dp_ipa_tx_super_rule_setup()- pass tx super rule params to fw from ipa
