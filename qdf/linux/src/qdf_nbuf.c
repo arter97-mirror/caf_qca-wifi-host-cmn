@@ -4506,6 +4506,81 @@ qdf_nbuf_dev_kfree_list_debug(__qdf_nbuf_queue_head_t *nbuf_queue_head,
 
 qdf_export_symbol(qdf_nbuf_dev_kfree_list_debug);
 
+/**
+ * qdf_nbuf_update_frag_list_tracker() - update ext-list tracker entries
+ * @buf: buffer being linearized
+ * @func: caller function name
+ * @line: caller line number
+ * @remove: remove entries when true, restore entries otherwise
+ *
+ * skb_linearize() consumes uniquely owned SKBs attached through frag_list
+ * after successful linearization. Remove their QDF tracker entries before
+ * entering the kernel to prevent stale-address double-allocation reports.
+ *
+ * If linearization fails, the kernel leaves the frag_list unchanged, so the
+ * tracker entries can be added back. Shared SKBs are intentionally skipped.
+ */
+static void
+qdf_nbuf_update_frag_list_tracker(qdf_nbuf_t buf, const char *func,
+				  uint32_t line, bool remove)
+{
+	qdf_nbuf_t ext_list;
+
+	ext_list = qdf_nbuf_get_ext_list(buf);
+	while (ext_list) {
+		if (qdf_nbuf_get_users(ext_list) == 1) {
+			if (remove)
+				qdf_net_buf_debug_delete_node(ext_list);
+			else
+				qdf_net_buf_debug_add_node(ext_list, 0, func,
+							   line);
+		}
+
+		ext_list = qdf_nbuf_queue_next(ext_list);
+	}
+}
+
+/**
+ * qdf_nbuf_linearize_debug() - linearize an nbuf with tracker handling
+ * @buf: network buffer
+ * @func: caller function name
+ * @line: caller line number
+ *
+ * Return: 0 on success, negative errno on failure.
+ */
+int qdf_nbuf_linearize_debug(qdf_nbuf_t buf, const char *func,
+			     uint32_t line)
+{
+	int ret;
+
+	if (is_initial_mem_debug_disabled)
+		return __qdf_nbuf_linearize(buf);
+
+	if (qdf_nbuf_get_users(buf) > 1)
+		return -ENOMEM;
+
+	/*
+	 * Uniquely owned ext-list SKBs are consumed after successful
+	 * linearization. Remove their tracker entries before entering
+	 * the kernel.
+	 */
+	qdf_nbuf_update_frag_list_tracker(buf, func, line, true);
+
+	ret = __qdf_nbuf_linearize(buf);
+	if (!ret)
+		return 0;
+
+	/*
+	 * skb_linearize() failed without consuming the frag_list.
+	 * Restore tracker entries for uniquely owned ext-list SKBs.
+	 */
+	qdf_nbuf_update_frag_list_tracker(buf, func, line, false);
+
+	return ret;
+}
+
+qdf_export_symbol(qdf_nbuf_linearize_debug);
+
 qdf_nbuf_t
 qdf_nbuf_page_pool_alloc_debug(qdf_device_t osdev, qdf_size_t size, int reserve,
 			       int align, qdf_page_pool_t pp, uint32_t *offset,

@@ -2711,6 +2711,18 @@ qdf_nbuf_dev_kfree_list_debug(qdf_nbuf_queue_head_t *nbuf_queue_head,
 			      const char *func_name,
 			      uint32_t line_num);
 
+/**
+ * qdf_nbuf_linearize() - linearize nbuf with debug bookkeeping
+ * @buf: Network buf instance
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+#define qdf_nbuf_linearize(buf) \
+	qdf_nbuf_linearize_debug(buf, __func__, __LINE__)
+
+int qdf_nbuf_linearize_debug(qdf_nbuf_t buf, const char *func_name,
+			     uint32_t line_num);
+
 #define qdf_nbuf_page_frag_alloc(d, s, r, a, p) \
 	qdf_nbuf_page_frag_alloc_debug(d, s, r, a, p, __func__, __LINE__)
 
@@ -2930,6 +2942,18 @@ static inline void
 qdf_nbuf_dev_kfree_list(qdf_nbuf_queue_head_t *nbuf_queue_head)
 {
 	__qdf_nbuf_dev_kfree_list(nbuf_queue_head);
+}
+
+/**
+ * qdf_nbuf_linearize() - linearize nbuf
+ * @buf: Network buf instance
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static inline int
+qdf_nbuf_linearize(qdf_nbuf_t buf)
+{
+	return __qdf_nbuf_linearize(buf);
 }
 
 #define qdf_nbuf_page_frag_alloc(osdev, size, reserve, align, pf_cache) \
@@ -5936,12 +5960,6 @@ static inline qdf_nbuf_t
 qdf_nbuf_expand(qdf_nbuf_t buf, uint32_t headroom, uint32_t tailroom)
 {
 	return __qdf_nbuf_expand(buf, headroom, tailroom);
-}
-
-static inline int
-qdf_nbuf_linearize(qdf_nbuf_t buf)
-{
-	return __qdf_nbuf_linearize(buf);
 }
 
 static inline bool
