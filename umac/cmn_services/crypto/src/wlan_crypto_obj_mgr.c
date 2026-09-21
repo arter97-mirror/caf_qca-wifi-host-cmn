@@ -763,7 +763,6 @@ void wlan_crypto_release_lock(void)
 	qdf_mutex_release(&crypto_lock);
 }
 
-#ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 				     struct qdf_mac_addr *link_addr,
 				     uint8_t link_id)
@@ -803,7 +802,6 @@ void wlan_crypto_free_key_by_link_id(struct wlan_objmgr_psoc *psoc,
 	qdf_mutex_release(&crypto_psoc_obj->crypto_key_lock);
 }
 
-#endif
 static QDF_STATUS wlan_crypto_vdev_obj_destroy_handler(
 						struct wlan_objmgr_vdev *vdev,
 						void *arg)
