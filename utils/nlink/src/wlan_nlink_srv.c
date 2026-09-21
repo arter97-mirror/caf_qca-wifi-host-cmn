@@ -473,16 +473,14 @@ int nl_srv_bcast(struct sk_buff *skb, int mcgroup_id, int app_id)
 	int status;
 
 	status = send_msg_to_cld80211(mcgroup_id, 0, app_id, msg, msg_len);
-	if (status) {
+	if (status && (status != -ESRCH))
 		QDF_TRACE_ERROR_RL(
 			QDF_MODULE_ID_HDD,
-			"send msg to cld80211 fails for app id %d", app_id);
-		dev_kfree_skb(skb);
-		return status;
-	}
+			"send msg to cld80211 fails for app id %d, status %d",
+			app_id, status);
 
 	dev_kfree_skb(skb);
-	return 0;
+	return status;
 }
 qdf_export_symbol(nl_srv_bcast);
 
