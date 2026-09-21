@@ -819,6 +819,28 @@ bool __qdf_nbuf_dot11_data_is_ipv6_pkt(uint8_t *data);
 uint16_t __qdf_nbuf_get_ether_type(uint8_t *data);
 
 /**
+ * __qdf_nbuf_get_ether_dest_addr() - get pointer to Ethernet destination address
+ * @data: Pointer to network data buffer
+ *
+ * Return: pointer to the 6-byte destination MAC field in the Ethernet header
+ */
+static inline const uint8_t *__qdf_nbuf_get_ether_dest_addr(uint8_t *data)
+{
+	return ((qdf_ether_header_t *)data)->ether_dhost;
+}
+
+/**
+ * __qdf_nbuf_get_ether_src_addr() - get pointer to Ethernet source address
+ * @data: Pointer to network data buffer
+ *
+ * Return: pointer to the 6-byte source MAC field in the Ethernet header
+ */
+static inline const uint8_t *__qdf_nbuf_get_ether_src_addr(uint8_t *data)
+{
+	return ((qdf_ether_header_t *)data)->ether_shost;
+}
+
+/**
  *  __qdf_nbuf_get_dot11_type() - Get the ether type
  * @data: Pointer to network data buffer
  *
