@@ -4629,7 +4629,7 @@ struct dp_pdev {
 	/* Flag to indicate fast RX */
 	bool rx_fast_flag;
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 	/* Fourth ring used to replenish rx buffers */
 	struct dp_srng rx_refill_buf_ring4;
 #endif

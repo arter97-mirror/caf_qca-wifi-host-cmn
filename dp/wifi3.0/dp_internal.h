@@ -60,7 +60,7 @@
 #define HOST_PDEV_ID_1ST_MAC 0
 #define HOST_PDEV_ID_2ND_MAC 1
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 #define DIRECT_LINK_REFILL_RING_ENTRIES 640
 #ifdef IPA_OFFLOAD
 #ifdef IPA_WDI3_VLAN_SUPPORT
@@ -6113,7 +6113,7 @@ void dp_rx_err_send_pktlog(struct dp_soc *soc, struct dp_pdev *pdev,
  */
 void dp_pdev_update_fast_rx_flag(struct dp_soc *soc, struct dp_pdev *pdev);
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 /**
  * dp_setup_direct_link_refill_ring(): Setup direct link refill ring for pdev
  * @soc_hdl: DP SOC handle
