@@ -1566,6 +1566,8 @@ struct hal_hw_txrx_ops {
 	uint32_t (*hal_rx_tlv_get_rssi)(uint8_t *buf);
 	uint32_t (*hal_rx_tlv_get_ppdu_start_ts)(uint8_t *rx_tlv_hdr);
 #endif
+	/* Returns the FW QTimer (hardware timestamp counter) value */
+	uint64_t (*hal_get_fw_qtime)(struct hal_soc *soc);
 };
 
 /**

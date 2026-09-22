@@ -2629,6 +2629,7 @@ static void hal_hw_txrx_ops_attach_fig(struct hal_soc *hal_soc)
 				hal_rx_flow_cmem_update_reo_dst_ind;
 	hal_soc->ops->hal_srng_dst_get_num_avail_words =
 				hal_srng_dst_get_num_avail_words_fig;
+	hal_soc->ops->hal_get_fw_qtime = hal_tsf_get_fw_time;
 	hal_hw_attach_passthru_ops(hal_soc);
 };
 
