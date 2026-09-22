@@ -1723,7 +1723,7 @@ static struct CE_pipe_config target_ce_config_wlan_qca6750[] = {
 };
 
 #define KIWI_CE_COUNT 9
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_attr host_ce_config_wlan_kiwi_direct_link[] = {
 	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
@@ -1791,7 +1791,7 @@ static struct CE_attr host_ce_config_wlan_kiwi[] = {
 	/* CE 9, 10, 11 belong to CoreBsp & MHI driver */
 };
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_pipe_config target_ce_config_wlan_kiwi_direct_link[] = {
 	{ /* CE0 */ 0, PIPEDIR_OUT, 8, 2048, CE_ATTR_FLAGS, 0,},
 	/* target->host HTT */
@@ -2013,7 +2013,7 @@ static struct CE_pipe_config target_ce_config_wlan_wcn6450[] = {
 };
 
 #define WCN_7750_CE_COUNT 9
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_attr host_ce_config_wlan_wcn7750_direct_link[] = {
 	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
@@ -2081,7 +2081,7 @@ static struct CE_attr host_ce_config_wlan_wcn7750[] = {
 	/* CE 9, 10, 11 belong to CoreBsp & MHI driver */
 };
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_pipe_config target_ce_config_wlan_wcn7750_direct_link[] = {
 	{ /* CE0 */ 0, PIPEDIR_OUT, 8, 2048, CE_ATTR_FLAGS, 0,},
 	/* target->host HTT */
@@ -2149,7 +2149,7 @@ static struct CE_pipe_config target_ce_config_wlan_wcn7750[] = {
 };
 
 #define WCN_8750_CE_COUNT 9
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_attr host_ce_config_wlan_wcn8750_direct_link[] = {
 	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
@@ -2217,7 +2217,7 @@ static struct CE_attr host_ce_config_wlan_wcn8750[] = {
 	/* CE 9, 10, 11 belong to CoreBsp & MHI driver */
 };
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_pipe_config target_ce_config_wlan_wcn8750_direct_link[] = {
 	{ /* CE0 */ 0, PIPEDIR_OUT, 8, 2048, CE_ATTR_FLAGS, 0,},
 	/* target->host HTT */

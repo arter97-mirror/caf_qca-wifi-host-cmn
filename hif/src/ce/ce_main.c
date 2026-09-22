@@ -883,7 +883,7 @@ static struct service_to_pipe target_service_to_ce_map_qca6750[] = {
 #endif
 
 #if (defined(QCA_WIFI_KIWI))
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct service_to_pipe target_service_to_ce_map_kiwi_direct_link[] = {
 	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
 	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
@@ -931,7 +931,7 @@ static struct service_to_pipe target_service_to_ce_map_kiwi[] = {
 	{ 0, 0, 0, },
 };
 #else
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct service_to_pipe target_service_to_ce_map_kiwi_direct_link[] = {
 };
 #endif
@@ -971,7 +971,7 @@ static struct service_to_pipe target_service_to_ce_map_wcn6450[] = {
 #endif
 
 #if (defined(QCA_WIFI_WCN7750))
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct service_to_pipe target_service_to_ce_map_wcn7750_direct_link[] = {
 	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
 	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
@@ -1019,7 +1019,7 @@ static struct service_to_pipe target_service_to_ce_map_wcn7750[] = {
 	{ 0, 0, 0, },
 };
 #else
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct service_to_pipe target_service_to_ce_map_wcn7750_direct_link[] = {
 };
 #endif
@@ -1029,7 +1029,7 @@ static struct service_to_pipe target_service_to_ce_map_wcn7750[] = {
 #endif
 
 #if (defined(QCA_WIFI_WCN8750))
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct service_to_pipe target_service_to_ce_map_wcn8750_direct_link[] = {
 	{ WMI_DATA_VO_SVC, PIPEDIR_OUT, 3, },
 	{ WMI_DATA_VO_SVC, PIPEDIR_IN, 2, },
@@ -1077,7 +1077,7 @@ static struct service_to_pipe target_service_to_ce_map_wcn8750[] = {
 	{ 0, 0, 0, },
 };
 #else
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct service_to_pipe target_service_to_ce_map_wcn8750_direct_link[] = {
 };
 #endif
@@ -1200,7 +1200,7 @@ void hif_select_ce_map_qcn9224(struct service_to_pipe **tgt_svc_map_to_use,
 }
 #endif
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 /**
  * hif_select_service_to_pipe_map_kiwi() - Select service to CE map
  *  configuration for Kiwi
@@ -4896,7 +4896,7 @@ static inline void hif_ce_service_init(void)
 }
 #endif
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 /**
  * hif_ce_select_config_kiwi() - Select the host and target CE
  *  configuration for Kiwi

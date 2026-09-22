@@ -1319,7 +1319,7 @@ hif_affinity_mgr_init(struct hif_softc *scn, struct wlan_objmgr_psoc *psoc)
 }
 #endif
 
-#ifdef FEATURE_DIRECT_LINK
+#if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 /**
  * hif_init_direct_link_rcv_pipe_num(): Initialize the direct link receive
  *  pipe number
