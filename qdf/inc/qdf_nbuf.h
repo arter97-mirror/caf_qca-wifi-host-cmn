@@ -1590,7 +1590,7 @@ qdf_nbuf_unmap_nbytes_single_paddr(qdf_device_t osdev, qdf_nbuf_t buf,
 				   int nbytes)
 {
 	if (qdf_skip_dma_map_unmap(osdev, buf, dir)) {
-		dma_sync_single_for_cpu(osdev->dev, phy_addr,
+		dma_sync_single_for_cpu(QDF_DMA_DEV(osdev), phy_addr,
 					nbytes, __qdf_dma_dir_to_os(dir));
 		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
 			qdf_page_pool_dec_buf_count(buf);

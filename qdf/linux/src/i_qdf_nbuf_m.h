@@ -807,8 +807,10 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 	if (((dir == QDF_DMA_TO_DEVICE && osdev->no_dma_map) ||
 	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
 	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
-		dma_sync_single_for_device(osdev->dev, QDF_NBUF_CB_PADDR(buf),
-					   nbytes, __qdf_dma_dir_to_os(dir));
+		dma_sync_single_for_device(QDF_DMA_DEV(osdev),
+					   QDF_NBUF_CB_PADDR(buf),
+					   nbytes,
+					   __qdf_dma_dir_to_os(dir));
 
 		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
 			qdf_page_pool_inc_buf_count(buf);
@@ -817,9 +819,9 @@ static inline QDF_STATUS __qdf_nbuf_map_nbytes_single(
 
 	/* assume that the OS only provides a single fragment */
 	QDF_NBUF_CB_PADDR(buf) = paddr =
-		dma_map_single(osdev->dev, buf->data,
+		dma_map_single(QDF_DMA_DEV(osdev), buf->data,
 			       nbytes, __qdf_dma_dir_to_os(dir));
-	ret =  dma_mapping_error(osdev->dev, paddr) ?
+	ret =  dma_mapping_error(QDF_DMA_DEV(osdev), paddr) ?
 		QDF_STATUS_E_FAULT : QDF_STATUS_SUCCESS;
 	if (QDF_IS_STATUS_SUCCESS(ret))
 		__qdf_record_nbuf_nbytes(__qdf_nbuf_get_end_offset(buf),
@@ -857,7 +859,7 @@ __qdf_nbuf_unmap_nbytes_single(qdf_device_t osdev, struct sk_buff *buf,
 	     dir == QDF_DMA_FROM_DEVICE || dir == QDF_DMA_BIDIRECTIONAL) &&
 	    __qdf_is_pp_nbuf(buf) && QDF_NBUF_CB_PADDR(buf)) {
 
-		dma_sync_single_for_cpu(osdev->dev, paddr, nbytes,
+		dma_sync_single_for_cpu(QDF_DMA_DEV(osdev), paddr, nbytes,
 					__qdf_dma_dir_to_os(dir));
 		if (QDF_DMA_FROM_DEVICE == dir || QDF_DMA_BIDIRECTIONAL == dir)
 			qdf_page_pool_dec_buf_count(buf);
@@ -866,7 +868,7 @@ __qdf_nbuf_unmap_nbytes_single(qdf_device_t osdev, struct sk_buff *buf,
 	if (qdf_likely(paddr)) {
 		__qdf_record_nbuf_nbytes(
 			__qdf_nbuf_get_end_offset(buf), dir, false);
-		dma_unmap_single(osdev->dev, paddr, nbytes,
+		dma_unmap_single(QDF_DMA_DEV(osdev), paddr, nbytes,
 				 __qdf_dma_dir_to_os(dir));
 		return;
 	}

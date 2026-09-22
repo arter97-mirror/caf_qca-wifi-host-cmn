@@ -166,9 +166,9 @@ static inline uint32_t __qdf_mem_map_nbytes_single(qdf_device_t osdev,
 						  qdf_dma_addr_t *phy_addr)
 {
 	/* assume that the OS only provides a single fragment */
-	*phy_addr = dma_map_single(osdev->dev, buf, nbytes,
+	*phy_addr = dma_map_single(QDF_DMA_DEV(osdev), buf, nbytes,
 					__qdf_dma_dir_to_os(dir));
-	return dma_mapping_error(osdev->dev, *phy_addr) ?
+	return dma_mapping_error(QDF_DMA_DEV(osdev), *phy_addr) ?
 	QDF_STATUS_E_FAILURE : QDF_STATUS_SUCCESS;
 }
 
@@ -178,7 +178,8 @@ static inline void __qdf_mem_dma_cache_sync(qdf_device_t osdev,
 					    qdf_dma_dir_t dir,
 					    int nbytes)
 {
-	dma_cache_sync(osdev->dev, buf, nbytes, __qdf_dma_dir_to_os(dir));
+	dma_cache_sync(QDF_DMA_DEV(osdev), buf, nbytes,
+		       __qdf_dma_dir_to_os(dir));
 }
 #else
 static inline void __qdf_mem_dma_cache_sync(qdf_device_t osdev,
@@ -186,7 +187,7 @@ static inline void __qdf_mem_dma_cache_sync(qdf_device_t osdev,
 					    qdf_dma_dir_t dir,
 					    int nbytes)
 {
-	dma_sync_single_for_cpu(osdev->dev, buf, nbytes,
+	dma_sync_single_for_cpu(QDF_DMA_DEV(osdev), buf, nbytes,
 				__qdf_dma_dir_to_os(dir));
 }
 #endif
@@ -205,8 +206,8 @@ static inline void __qdf_mem_unmap_nbytes_single(qdf_device_t osdev,
 						 qdf_dma_addr_t phy_addr,
 						 qdf_dma_dir_t dir, int nbytes)
 {
-	dma_unmap_single(osdev->dev, phy_addr, nbytes,
-				__qdf_dma_dir_to_os(dir));
+	dma_unmap_single(QDF_DMA_DEV(osdev), phy_addr, nbytes,
+			 __qdf_dma_dir_to_os(dir));
 }
 #ifdef __KERNEL__
 
