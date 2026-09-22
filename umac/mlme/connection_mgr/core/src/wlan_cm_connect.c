@@ -2987,6 +2987,56 @@ strip:
 }
 
 /**
+ * cm_ap_entry_eppke_akm() - Get the AP's EPPKE-inclusive AKM set for a
+ * scan candidate.
+ * @vdev: vdev object
+ * @entry: scan cache entry for the selected AP candidate
+ *
+ * Parse the AP's RSN IE to get its raw AKM set. If the AP's Security Profile
+ * IE implies EPPKE (profile 1 or 2) but the RSN IE omits the EPPKE AKM,
+ * synthesise the EPPKE AKM bit.
+ *
+ * Return: AKM bitmask with the EPPKE bit set iff the AP is EPPKE-capable.
+ */
+static uint32_t
+cm_ap_entry_eppke_akm(struct wlan_objmgr_vdev *vdev,
+		      struct scan_cache_entry *entry)
+{
+	struct wlan_crypto_params ap_crypto = {0};
+	const uint8_t *rsn_ie = util_scan_entry_rsn(entry);
+	uint32_t ap_akm = 0;
+
+	if (rsn_ie &&
+	    QDF_IS_STATUS_SUCCESS(
+		wlan_get_crypto_params_from_rsn_ie(&ap_crypto, rsn_ie,
+						   rsn_ie[1] + 2,
+						   NULL)))
+		ap_akm = ap_crypto.key_mgmt;
+
+	if (!QDF_HAS_PARAM(ap_akm, WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
+	    cm_sp_ie_implies_eppke(entry, vdev))
+		QDF_SET_PARAM(ap_akm, WLAN_CRYPTO_KEY_MGMT_EPPKE);
+
+	return ap_akm;
+}
+
+bool cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev)
+{
+	struct wlan_cm_vdev_connect_req req = {0};
+	uint32_t ap_akm;
+
+	if (!cm_get_active_connect_req(vdev, &req))
+		return false;
+
+	if (!req.bss || !req.bss->entry)
+		return false;
+
+	ap_akm = cm_ap_entry_eppke_akm(vdev, req.bss->entry);
+
+	return QDF_HAS_PARAM(ap_akm, WLAN_CRYPTO_KEY_MGMT_EPPKE);
+}
+
+/**
  * cm_update_per_peer_eppke_crypto_params() - Strip injected EPPKE bits and
  * re-sync AUTH_MODE after candidate selection.
  * @vdev: vdev object
@@ -3002,24 +3052,12 @@ static void
 cm_update_per_peer_eppke_crypto_params(struct wlan_objmgr_vdev *vdev,
 				       struct cm_connect_req *connect_req)
 {
-	struct wlan_crypto_params ap_crypto = {0};
-	const uint8_t *rsn_ie =
-		util_scan_entry_rsn(connect_req->cur_candidate->entry);
-	uint32_t ap_akm = 0;
+	uint32_t ap_akm;
 
 	if (!connect_req->req.eppke_allowed)
 		return;
 
-	if (rsn_ie &&
-	    QDF_IS_STATUS_SUCCESS(
-		wlan_get_crypto_params_from_rsn_ie(&ap_crypto, rsn_ie,
-						   rsn_ie[1] + 2,
-						   NULL)))
-		ap_akm = ap_crypto.key_mgmt;
-
-	if (!QDF_HAS_PARAM(ap_akm, WLAN_CRYPTO_KEY_MGMT_EPPKE) &&
-	    cm_sp_ie_implies_eppke(connect_req->cur_candidate->entry, vdev))
-		QDF_SET_PARAM(ap_akm, WLAN_CRYPTO_KEY_MGMT_EPPKE);
+	ap_akm = cm_ap_entry_eppke_akm(vdev, connect_req->cur_candidate->entry);
 
 	mlme_debug("vdev:%d eppke_allowed: AP raw RSN akm:0x%x",
 		   connect_req->req.vdev_id, ap_akm);

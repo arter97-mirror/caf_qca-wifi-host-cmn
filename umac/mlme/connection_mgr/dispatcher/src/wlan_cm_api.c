@@ -444,6 +444,11 @@ wlan_cm_get_curr_candidate_entry(struct wlan_objmgr_vdev *vdev,
 	return cm_get_curr_candidate_entry(vdev, cm_id);
 }
 
+bool wlan_cm_is_connect_ap_eppke_capable(struct wlan_objmgr_vdev *vdev)
+{
+	return cm_is_connect_ap_eppke_capable(vdev);
+}
+
 void
 wlan_cm_connect_resp_fill_mld_addr_from_cm_id(struct wlan_objmgr_vdev *vdev,
 					     wlan_cm_id cm_id,
