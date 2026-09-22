@@ -369,6 +369,8 @@ uint8_t *peer_assoc_add_mlo_params(uint8_t *buf_ptr,
 		req->mlo_params.nstr_indication_bitmap;
 	mlo_params->recommended_max_num_simultaneous_links =
 		req->mlo_params.rec_max_simultaneous_links;
+	mlo_params->link_tx_nss = req->mlo_params.link_tx_nss;
+	mlo_params->link_rx_nss = req->mlo_params.link_rx_nss;
 
 	if (req->mlo_params.ext_mld_cap_and_op_support)
 		WMI_MLO_FLAGS_SET_SINGLE_LINK_EMLSR_EN(
@@ -380,7 +382,7 @@ uint8_t *peer_assoc_add_mlo_params(uint8_t *buf_ptr,
 		  "emlsr_padding_delay_us %d msd_dur_subfield %d msd_ofdm_ed_thr %d msd_max_num_txops %d "
 		  "max_num_simultaneous_links %d nstr_bitmap_present %d nstr_bitmap_size %d "
 		  "mlo_link_switch %d mlo_link_add %d "
-		  "nstr_indication_bitmap 0x%x single link emlsr %d MLD addr " QDF_MAC_ADDR_FMT,
+		  "nstr_indication_bitmap 0x%x single link emlsr %d link_tx_nss %d link_rx_nss %d MLD addr " QDF_MAC_ADDR_FMT,
 		  mlo_params->mlo_flags.emlsr_support,
 		  mlo_params->mlo_flags.mlo_flags,
 		  mlo_params->logical_link_index,
@@ -396,6 +398,7 @@ uint8_t *peer_assoc_add_mlo_params(uint8_t *buf_ptr,
 		  mlo_params->mlo_flags.mlo_link_add,
 		  mlo_params->nstr_indication_bitmap,
 		  mlo_params->mlo_flags.single_link_emlsr_en,
+		  mlo_params->link_tx_nss, mlo_params->link_rx_nss,
 		  QDF_MAC_ADDR_REF(req->mlo_params.mld_mac));
 
 	return buf_ptr + sizeof(wmi_peer_assoc_mlo_params);
@@ -430,15 +433,18 @@ peer_assoc_update_assoc_link_info(uint8_t **buf_ptr,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_mlo_partner_link_params));
 	ml_partner_link->vdev_id = req->mlo_params.vdev_id;
 	ml_partner_link->ieee_link_id = req->mlo_params.ieee_link_id;
+	ml_partner_link->link_tx_nss = req->mlo_params.link_tx_nss;
+	ml_partner_link->link_rx_nss = req->mlo_params.link_rx_nss;
 	WMI_CHAR_ARRAY_TO_MAC_ADDR(req->mlo_params.bssid.bytes,
 				   &ml_partner_link->bss_id);
 	WMI_CHAR_ARRAY_TO_MAC_ADDR(req->mlo_params.mac_addr.bytes,
 				   &ml_partner_link->self_mac);
 	wmi_copy_chan_info(&ml_partner_link->wmi_chan, &req->mlo_params.chan);
 
-	wmi_debug("Send Link info with link_id: %d vdev_id: %d freq %d AP link addr: "QDF_MAC_ADDR_FMT ", STA addr: "QDF_MAC_ADDR_FMT,
+	wmi_debug("Send Link info with link_id: %d vdev_id: %d freq %d tx_nss %d rx_nss %d AP link addr: "QDF_MAC_ADDR_FMT ", STA addr: "QDF_MAC_ADDR_FMT,
 		  ml_partner_link->ieee_link_id, ml_partner_link->vdev_id,
 		  req->mlo_params.chan.ch_freq,
+		  ml_partner_link->link_tx_nss, ml_partner_link->link_rx_nss,
 		  QDF_MAC_ADDR_REF(req->mlo_params.bssid.bytes),
 		  QDF_MAC_ADDR_REF(req->mlo_params.mac_addr.bytes));
 
@@ -482,16 +488,20 @@ uint8_t *peer_assoc_add_ml_partner_links(uint8_t *buf_ptr,
 		ml_partner_link->mlo_flags.emlsr_support = partner_info[i].emlsr_support;
 		ml_partner_link->logical_link_index = partner_info[i].logical_link_index;
 		ml_partner_link->ieee_link_id = partner_info[i].link_id;
+		ml_partner_link->link_tx_nss = partner_info[i].link_tx_nss;
+		ml_partner_link->link_rx_nss = partner_info[i].link_rx_nss;
 		WMI_CHAR_ARRAY_TO_MAC_ADDR(partner_info[i].bssid.bytes,
 					   &ml_partner_link->bss_id);
 		WMI_CHAR_ARRAY_TO_MAC_ADDR(partner_info[i].mac_addr.bytes,
 					   &ml_partner_link->self_mac);
 
-		wmi_debug("Send Link info with link_id: %d vdev_id: %d freq %d phymode %d AP link addr: "QDF_MAC_ADDR_FMT ", STA addr: "QDF_MAC_ADDR_FMT " mlo_link_add %d",
+		wmi_debug("Send Link info with link_id: %d vdev_id: %d freq %d phymode %d tx_nss %d rx_nss %d AP link addr: "QDF_MAC_ADDR_FMT ", STA addr: "QDF_MAC_ADDR_FMT " mlo_link_add %d",
 			  ml_partner_link->ieee_link_id,
 			  ml_partner_link->vdev_id,
 			  partner_info[i].chan.ch_freq,
 			  partner_info[i].chan.ch_phymode,
+			  ml_partner_link->link_tx_nss,
+			  ml_partner_link->link_rx_nss,
 			  QDF_MAC_ADDR_REF(partner_info[i].bssid.bytes),
 			  QDF_MAC_ADDR_REF(partner_info[i].mac_addr.bytes),
 			  ml_partner_link->mlo_flags.mlo_link_add);

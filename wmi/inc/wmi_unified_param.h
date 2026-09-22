@@ -1625,6 +1625,8 @@ struct wmi_link_reconfig_req_params {
  * @bssid: AP link address
  * @chan: Wlan channel information
  * @mac_addr: Self mac addresses
+ * @link_tx_nss: negotiated Tx NSS for the local link
+ * @link_rx_nss: negotiated Rx NSS for the local link
  * @rec_max_simultaneous_links: Max recommended simultaneous links
  */
 struct peer_assoc_mlo_params {
@@ -1662,6 +1664,8 @@ struct peer_assoc_mlo_params {
 	struct qdf_mac_addr bssid;
 	struct wlan_channel chan;
 	struct qdf_mac_addr mac_addr;
+	uint8_t link_tx_nss;
+	uint8_t link_rx_nss;
 	uint8_t rec_max_simultaneous_links;
 };
 
@@ -1686,6 +1690,8 @@ struct peer_assoc_mlo_params {
  * @bssid: AP link address
  * @chan: Wlan channel information
  * @mac_addr: Self mac addresses
+ * @link_tx_nss: negotiated Tx NSS for the partner link
+ * @link_rx_nss: negotiated Rx NSS for the partner link
  */
 struct ml_partner_info {
 	uint32_t vdev_id;
@@ -1706,6 +1712,8 @@ struct ml_partner_info {
 	struct qdf_mac_addr bssid;
 	struct wlan_channel chan;
 	struct qdf_mac_addr mac_addr;
+	uint8_t link_tx_nss;
+	uint8_t link_rx_nss;
 };
 
 /**
