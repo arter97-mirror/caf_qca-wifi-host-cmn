@@ -3313,7 +3313,7 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 	struct scan_cache_node *tmp_scan_node, *scan_node;
 	struct scan_cache_entry *tmp_scan_entry, *scan_entry;
 	uint8_t max_link_cnt, num_link, cur_valid_partners, cur_valid_bitmap;
-	bool allow_slo_candidate, remove_curr_candidate;
+	bool allow_slo_candidate, remove_curr_candidate, restrict_to_sl;
 	uint8_t gen_bmap, i, gen_link_cnt;
 
 	psoc = wlan_pdev_get_psoc(pdev);
@@ -3329,6 +3329,8 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 	score_config = &mlme_psoc_obj->psoc_cfg.score_config;
 
 	max_link_cnt = wlan_mlme_get_sta_mlo_conn_max_num(psoc);
+	restrict_to_sl = wlan_mlme_get_sta_sl_with_mlo_sap(psoc) &&
+			 policy_mgr_is_ml_sap_present(psoc);
 
 	qdf_list_peek_front(candidate_list, &cur_node);
 	while (cur_node) {
@@ -3342,13 +3344,15 @@ static void cm_mlo_generate_candidate_list(struct wlan_objmgr_pdev *pdev,
 		allow_slo_candidate = cm_is_slo_candidate_allowed(psoc,
 								  scan_entry);
 		/**
-		 * If max connection links is only 1 or if current candidate
-		 * doesn't support MLO mark all the partner links as invalid.
+		 * If max connection links is only 1, or the STA MLO<->MLO SAP
+		 * concurrency restriction INI is enabled and a multi-link MLO
+		 * SAP is concurrently up, or if current candidate doesn't
+		 * support MLO mark all the partner links as invalid.
 		 *
 		 * The connection will effectively become non-MLO EHT only if
 		 * driver allows or else 11ax.
 		 */
-		if (max_link_cnt == 1 ||
+		if (max_link_cnt == 1 || restrict_to_sl ||
 		    !wlan_cm_is_eht_allowed_for_current_security(psoc,
 								 scan_entry,
 								 true)) {
