@@ -1162,6 +1162,28 @@ struct wlan_crypto_key *wlan_crypto_get_ml_sta_link_key(
 				uint8_t key_index,
 				struct qdf_mac_addr *link_addr,
 				uint8_t link_id);
+
+/**
+ * wlan_crypto_copy_ml_sta_link_key() - Copy a stored ml sta link key of the
+ *					given type to another link
+ * @psoc: psoc handler
+ * @params: key copy parameters, @params->copied_key_index is filled with the
+ *	    key index that was copied on success
+ *
+ * Scans the key indices stored under (@params->src_link_addr,
+ * @params->src_link_id) for the first key matching @params->key_type and
+ * stores a copy of it under (@params->dst_link_addr, @params->dst_link_id) at
+ * the same key index, allocating the destination key when the link has none.
+ * The whole lookup-copy-store sequence is performed while holding the crypto
+ * lock, so callers must not take the crypto lock themselves.
+ *
+ * Return: QDF_STATUS_SUCCESS on copy, QDF_STATUS_E_NOENT when the source link
+ *	   has no key of @params->key_type, QDF_STATUS_E_* otherwise
+ */
+QDF_STATUS
+wlan_crypto_copy_ml_sta_link_key(struct wlan_objmgr_psoc *psoc,
+				 struct wlan_crypto_ml_key_copy_params *params);
+
 /**
  * wlan_crypto_get_key() - Get the stored key information
  * @vdev: vdev object
