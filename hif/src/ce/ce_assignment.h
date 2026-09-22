@@ -1725,8 +1725,12 @@ static struct CE_pipe_config target_ce_config_wlan_qca6750[] = {
 #define KIWI_CE_COUNT 9
 #if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_attr host_ce_config_wlan_kiwi_direct_link[] = {
+#ifdef FEATURE_WIFI_TRANSPORT
+	{ /* CE0 */ CE_ATTR_FLAGS, 0, 32, 2048, 0, NULL,},
+#else
 	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
+#endif
 	/* target->host HTT + HTC control */
 	{ /* CE1 */ CE_ATTR_FLAGS, 0, 0,  2048, 512, NULL,},
 	/* target->host WMI */
@@ -1739,8 +1743,12 @@ static struct CE_attr host_ce_config_wlan_kiwi_direct_link[] = {
 	/* target -> host PKTLOG */
 	{ /* CE5 */ CE_ATTR_FLAGS, 0, 0, 2048, 512, NULL,},
 #else
+#ifdef FEATURE_WIFI_TRANSPORT
+	{ /* CE5 */ CE_ATTR_FLAGS, 0, 0, 256, 32, NULL,},
+#else
 	{ /* CE5 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 0, 256, 32,
 	 NULL,},
+#endif
 #endif
 	/* Target autonomous HIF_memcpy */
 	{ /* CE6 */ CE_ATTR_FLAGS, 0, 0, 0, 0, NULL,},
@@ -2015,8 +2023,12 @@ static struct CE_pipe_config target_ce_config_wlan_wcn6450[] = {
 #define WCN_7750_CE_COUNT 9
 #if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_attr host_ce_config_wlan_wcn7750_direct_link[] = {
+#ifdef FEATURE_WIFI_TRANSPORT
+	{ /* CE0 */ CE_ATTR_FLAGS, 0, 32, 2048, 0, NULL,},
+#else
 	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
+#endif
 	/* target->host HTT + HTC control */
 	{ /* CE1 */ CE_ATTR_FLAGS, 0, 0,  2048, 512, NULL,},
 	/* target->host WMI */
@@ -2029,8 +2041,12 @@ static struct CE_attr host_ce_config_wlan_wcn7750_direct_link[] = {
 	/* target -> host PKTLOG */
 	{ /* CE5 */ CE_ATTR_FLAGS, 0, 0, 2048, 512, NULL,},
 #else
+#ifdef FEATURE_WIFI_TRANSPORT
+	{ /* CE5 */ CE_ATTR_FLAGS, 0, 0, 256, 32, NULL,},
+#else
 	{ /* CE5 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 0, 256, 32,
 	 NULL,},
+#endif
 #endif
 	/* Target autonomous HIF_memcpy */
 	{ /* CE6 */ CE_ATTR_FLAGS, 0, 0, 0, 0, NULL,},
@@ -2151,8 +2167,12 @@ static struct CE_pipe_config target_ce_config_wlan_wcn7750[] = {
 #define WCN_8750_CE_COUNT 9
 #if defined(FEATURE_DIRECT_LINK) || defined(FEATURE_WIFI_TRANSPORT)
 static struct CE_attr host_ce_config_wlan_wcn8750_direct_link[] = {
+#ifdef FEATURE_WIFI_TRANSPORT
+	{ /* CE0 */ CE_ATTR_FLAGS, 0, 32, 2048, 0, NULL,},
+#else
 	{ /* CE0 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 32, 2048, 0,
 	 NULL,},
+#endif
 	/* target->host HTT + HTC control */
 	{ /* CE1 */ CE_ATTR_FLAGS, 0, 0,  2048, 512, NULL,},
 	/* target->host WMI */
@@ -2165,8 +2185,12 @@ static struct CE_attr host_ce_config_wlan_wcn8750_direct_link[] = {
 	/* target -> host PKTLOG */
 	{ /* CE5 */ CE_ATTR_FLAGS, 0, 0, 2048, 512, NULL,},
 #else
+#ifdef FEATURE_WIFI_TRANSPORT
+	{ /* CE5 */ CE_ATTR_FLAGS, 0, 0, 256, 32, NULL,},
+#else
 	{ /* CE5 */ (CE_ATTR_FLAGS | CE_ATTR_DISABLE_INTR), 0, 0, 256, 32,
 	 NULL,},
+#endif
 #endif
 	/* Target autonomous HIF_memcpy */
 	{ /* CE6 */ CE_ATTR_FLAGS, 0, 0, 0, 0, NULL,},
