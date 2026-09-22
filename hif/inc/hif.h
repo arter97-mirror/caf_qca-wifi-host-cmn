@@ -3078,6 +3078,69 @@ hif_get_direct_link_ce_srng_info(struct hif_opaque_softc *scn,
  */
 struct CE_handle *
 hif_get_lpass_data_msg_ce_handle(struct hif_opaque_softc *scn, uint8_t pipedir);
+
+/**
+ * typedef hif_wt_tx_done_cb - TX CE completion callback for WiFi Transport
+ * @transfer_ctx: per-transfer context passed to hif_wt_tx_send()
+ * @nbytes:       bytes sent
+ */
+typedef void (*hif_wt_tx_done_cb)(void *transfer_ctx, unsigned int nbytes);
+
+/**
+ * typedef hif_wt_rx_ready_cb - RX CE completion callback for WiFi Transport
+ * @transfer_ctx: per-transfer context (nbuf) enqueued via ce_recv_buf_enqueue
+ * @buf:          DMA address of the received buffer
+ * @nbytes:       bytes received
+ */
+typedef void (*hif_wt_rx_ready_cb)(void *transfer_ctx,
+				   qdf_dma_addr_t buf, unsigned int nbytes);
+
+/**
+ * hif_wifi_transport_register_callbacks() - Register TX/RX CE callbacks
+ * @hif_ctx:      HIF opaque context
+ * @tx_done_cb:   TX completion callback; DP context via dp_get_context()
+ * @rx_ready_cb:  RX ready callback; DP context via dp_get_context()
+ *
+ * Looks up the TX (PIPEDIR_OUT) and RX (PIPEDIR_IN) CE handles for
+ * LPASS_DATA_MSG_SVC via the service map, caches them in hif_softc, and
+ * registers internal CE shims that adapt the CE callback signature to
+ * hif_wt_tx_done_cb / hif_wt_rx_ready_cb so Core DP never touches
+ * CE-internal types directly.
+ *
+ * Return: QDF_STATUS_SUCCESS or QDF_STATUS_E_FAILURE if CE handles not found
+ */
+QDF_STATUS
+hif_wifi_transport_register_callbacks(struct hif_opaque_softc *hif_ctx,
+				      hif_wt_tx_done_cb  tx_done_cb,
+				      hif_wt_rx_ready_cb rx_ready_cb);
+
+/**
+ * hif_wt_tx_send() - Submit one pre-formatted message over the TX CE pipe
+ * @hif_ctx:          HIF opaque context
+ * @transfer_ctx: passed back in tx_done_cb at completion
+ * @dma_addr:         DMA address of the pre-formatted buffer; layout:
+ *                    [HTC_FRAME_HDR (8B)][xpan payload]
+ *                    Caller must have written the HTC header and called
+ *                    dma_sync_for_device before invoking this function.
+ * @total_nbytes:     total bytes to send (HTC_HDR_LENGTH + xpan payload)
+ *
+ * Pure CE ring wrapper — no header filling, no DMA sync.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS hif_wt_tx_send(struct hif_opaque_softc *hif_ctx, void *transfer_ctx,
+			  qdf_dma_addr_t dma_addr, uint32_t total_nbytes);
+
+/**
+ * hif_wt_rx_requeue() - Re-post an RX CE buffer to FW after processing
+ * @hif_ctx:          HIF opaque context
+ * @transfer_ctx:     buffer to re-post (transfer_ctx from rx_ready_cb)
+ * @dma_addr:         DMA address of the buffer (buf from rx_ready_cb)
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS hif_wt_rx_requeue(struct hif_opaque_softc *hif_ctx,
+			     void *transfer_ctx, qdf_dma_addr_t dma_addr);
 #endif
 
 static inline QDF_STATUS

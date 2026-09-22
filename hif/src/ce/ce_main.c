@@ -6343,4 +6343,124 @@ hif_get_lpass_data_msg_ce_handle(struct hif_opaque_softc *scn,
 		pipedir);
 	return NULL;
 }
+
+/**
+ * hif_wt_tx_send_shim() - CE0 TX completion shim for WiFi Transport
+ * @copyeng: CE handle for the TX pipe
+ * @per_ce_send_context: HIF opaque context registered via ce_send_cb_register
+ * @per_transfer_send_context: per-transfer context (transfer_ctx from caller)
+ * @buffer: DMA address of the completed buffer (unused; caller tracks via ctx)
+ * @nbytes: bytes transferred
+ * @transfer_id: CE transfer identifier (unused)
+ * @sw_index: SW ring index at completion
+ * @hw_index: HW ring index at completion (unused)
+ * @toeplitz_hash_result: Toeplitz hash (unused)
+ *
+ * Return: None
+ */
+static void
+hif_wt_tx_send_shim(struct CE_handle *copyeng,
+		    void *per_ce_send_context,
+		    void *per_transfer_send_context,
+		    qdf_dma_addr_t buffer,
+		    unsigned int nbytes,
+		    unsigned int transfer_id,
+		    unsigned int sw_index,
+		    unsigned int hw_index,
+		    uint32_t toeplitz_hash_result)
+{
+	struct hif_softc *scn =
+		HIF_GET_SOFTC((struct hif_opaque_softc *)per_ce_send_context);
+
+	if (scn->wt_tx_done_cb)
+		scn->wt_tx_done_cb(
+				   per_transfer_send_context,
+				   nbytes);
+
+	hif_record_ce_desc_event(scn, ((struct CE_state *)copyeng)->id,
+				 HIF_TX_DESC_COMPLETION,
+				 NULL, per_transfer_send_context,
+				 sw_index, nbytes);
+}
+
+/**
+ * hif_wt_rx_recv_shim() - CE5 RX completion shim for WiFi Transport
+ * @copyeng: CE handle for the RX pipe
+ * @per_ce_recv_context: HIF opaque context registered via ce_recv_cb_register
+ * @per_transfer_recv_context: per-transfer context (nbuf enqueued at refill)
+ * @buffer: DMA address of the received buffer
+ * @nbytes: bytes received
+ * @transfer_id: CE transfer identifier (unused)
+ * @flags: CE completion flags (unused)
+ *
+ * Return: None
+ */
+static void
+hif_wt_rx_recv_shim(struct CE_handle *copyeng,
+		    void *per_ce_recv_context,
+		    void *per_transfer_recv_context,
+		    qdf_dma_addr_t buffer,
+		    unsigned int nbytes,
+		    unsigned int transfer_id,
+		    unsigned int flags)
+{
+	struct hif_softc *scn =
+		HIF_GET_SOFTC((struct hif_opaque_softc *)per_ce_recv_context);
+
+	if (scn->wt_rx_ready_cb)
+		scn->wt_rx_ready_cb(
+				    per_transfer_recv_context,
+				    buffer, nbytes);
+
+	hif_record_ce_desc_event(scn, ((struct CE_state *)copyeng)->id,
+				 HIF_RX_DESC_COMPLETION,
+				 NULL, per_transfer_recv_context,
+				 0, nbytes);
+}
+
+QDF_STATUS
+hif_wifi_transport_register_callbacks(struct hif_opaque_softc *hif_ctx,
+				      hif_wt_tx_done_cb  tx_done_cb,
+				      hif_wt_rx_ready_cb rx_ready_cb)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+
+	scn->wt_tx_ce = hif_get_lpass_data_msg_ce_handle(hif_ctx, PIPEDIR_OUT);
+	scn->wt_rx_ce = hif_get_lpass_data_msg_ce_handle(hif_ctx, PIPEDIR_IN);
+	if (!scn->wt_tx_ce || !scn->wt_rx_ce) {
+		hif_err("wifi_transport: TX/RX CE handles not found");
+		return QDF_STATUS_E_FAILURE;
+	}
+
+	scn->wt_tx_done_cb  = tx_done_cb;
+	scn->wt_rx_ready_cb = rx_ready_cb;
+
+	ce_send_cb_register(scn->wt_tx_ce, hif_wt_tx_send_shim, hif_ctx, 0);
+	ce_recv_cb_register(scn->wt_rx_ce, hif_wt_rx_recv_shim, hif_ctx, 0);
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS hif_wt_tx_send(struct hif_opaque_softc *hif_ctx, void *transfer_ctx,
+			  qdf_dma_addr_t dma_addr, uint32_t total_nbytes)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+
+	if (qdf_unlikely(!scn->wt_tx_ce))
+		return QDF_STATUS_E_INVAL;
+
+	return ce_send(scn->wt_tx_ce, transfer_ctx, dma_addr,
+		       total_nbytes, 0, 0, 0);
+}
+
+QDF_STATUS hif_wt_rx_requeue(struct hif_opaque_softc *hif_ctx,
+			     void *transfer_ctx, qdf_dma_addr_t dma_addr)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+
+	if (qdf_unlikely(!scn->wt_rx_ce))
+		return QDF_STATUS_E_INVAL;
+
+	return ce_recv_buf_enqueue(scn->wt_rx_ce, transfer_ctx, dma_addr);
+}
+
 #endif
