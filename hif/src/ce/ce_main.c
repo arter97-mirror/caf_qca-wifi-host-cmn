@@ -6303,3 +6303,44 @@ hif_get_direct_link_ce_srng_info(struct hif_opaque_softc *scn,
 	return QDF_STATUS_E_NOSUPPORT;
 }
 #endif
+
+#if defined(FEATURE_WIFI_TRANSPORT)
+/**
+ * hif_get_lpass_data_msg_ce_handle() - Get CE handle for LPASS_DATA_MSG_SVC
+ * @scn: HIF opaque context
+ * @pipedir: PIPEDIR_OUT (CE0, host-to-target) or PIPEDIR_IN (CE5,
+ *           target-to-host)
+ *
+ * Walks the active service-to-CE map to find the pipe assigned to
+ * LPASS_DATA_MSG_SVC for the requested direction and returns its CE handle.
+ * Does not require CONFIG_WLAN_FASTPATH.
+ *
+ * Return: CE handle pointer or NULL if not found
+ */
+struct CE_handle *
+hif_get_lpass_data_msg_ce_handle(struct hif_opaque_softc *scn,
+				 uint8_t pipedir)
+{
+	struct HIF_CE_state *hif_state = HIF_GET_CE_STATE(scn);
+	struct service_to_pipe *tgt_svc_cfg = hif_state->tgt_svc_map;
+	uint32_t i;
+
+	hif_debug("wifi_transport: lpass_ce_handle pipedir=%u map=%pK sz=%u",
+		  pipedir, tgt_svc_cfg, hif_state->sz_tgt_svc_map);
+
+	for (i = 0; i < hif_state->sz_tgt_svc_map; i++) {
+		if (tgt_svc_cfg[i].service_id != LPASS_DATA_MSG_SVC ||
+		    tgt_svc_cfg[i].pipedir != pipedir)
+			continue;
+
+		hif_debug("wifi_transport: found pipe %u ce_hdl=%pK",
+			  tgt_svc_cfg[i].pipenum,
+			  hif_state->pipe_info[tgt_svc_cfg[i].pipenum].ce_hdl);
+		return hif_state->pipe_info[tgt_svc_cfg[i].pipenum].ce_hdl;
+	}
+
+	hif_err("wifi_transport: LPASS_DATA_MSG_SVC pipedir=%u not in map",
+		pipedir);
+	return NULL;
+}
+#endif

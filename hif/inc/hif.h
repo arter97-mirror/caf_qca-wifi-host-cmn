@@ -3068,6 +3068,18 @@ hif_get_direct_link_ce_srng_info(struct hif_opaque_softc *scn,
 }
 #endif
 
+#if defined(FEATURE_WIFI_TRANSPORT)
+/**
+ * hif_get_lpass_data_msg_ce_handle() - Get CE handle for LPASS_DATA_MSG_SVC
+ * @scn: HIF opaque context
+ * @pipedir: PIPEDIR_OUT (host-to-target) or PIPEDIR_IN (target-to-host)
+ *
+ * Return: CE handle pointer or NULL if not found
+ */
+struct CE_handle *
+hif_get_lpass_data_msg_ce_handle(struct hif_opaque_softc *scn, uint8_t pipedir);
+#endif
+
 static inline QDF_STATUS
 hif_irq_set_affinity_hint(int irq_num, qdf_cpu_mask *cpu_mask)
 {
