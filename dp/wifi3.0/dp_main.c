@@ -17152,6 +17152,28 @@ void dp_destroy_direct_link_refill_ring(struct cdp_soc_t *soc_hdl,
 }
 #endif
 
+#if defined(FEATURE_WIFI_TRANSPORT)
+QDF_STATUS dp_replenish_direct_link_refill_ring(struct cdp_soc_t *soc_hdl,
+						struct dp_srng *srng,
+						qdf_dma_addr_t paddr,
+						uint32_t sw_cookie)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+	void *ring_entry;
+
+	ring_entry = hal_srng_src_get_next(soc->hal_soc, srng->hal_srng);
+	if (qdf_unlikely(!ring_entry)) {
+		dp_err_rl("Direct link refill ring full, dropping buffer");
+		return QDF_STATUS_E_RESOURCES;
+	}
+
+	hal_rxdma_buff_addr_info_set(soc->hal_soc, ring_entry, paddr, sw_cookie,
+				     dp_rx_get_rx_bm_id(soc));
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif
+
 #ifdef QCA_MULTIPASS_SUPPORT
 QDF_STATUS dp_set_vlan_groupkey(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 				uint16_t vlan_id, uint16_t group_key)

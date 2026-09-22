@@ -6149,6 +6149,58 @@ void dp_destroy_direct_link_refill_ring(struct cdp_soc_t *soc_hdl,
 }
 #endif
 
+#if defined(FEATURE_WIFI_TRANSPORT)
+/**
+ * dp_direct_link_refill_ring_start() - Start a batch of refill ring posts
+ * @soc_hdl: CDP SoC handle
+ * @srng: refill ring
+ *
+ * Return: 0 on success; error on failure
+ */
+static inline int
+dp_direct_link_refill_ring_start(struct cdp_soc_t *soc_hdl,
+				 struct dp_srng *srng)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	return dp_srng_access_start(NULL, soc, srng->hal_srng);
+}
+
+/**
+ * dp_direct_link_refill_ring_end() - End a batch of refill ring posts
+ * @soc_hdl: CDP SoC handle
+ * @srng: refill ring
+ *
+ * Return: None
+ */
+static inline void
+dp_direct_link_refill_ring_end(struct cdp_soc_t *soc_hdl, struct dp_srng *srng)
+{
+	struct dp_soc *soc = cdp_soc_t_to_dp_soc(soc_hdl);
+
+	dp_srng_access_end(NULL, soc, srng->hal_srng);
+}
+
+/**
+ * dp_replenish_direct_link_refill_ring() - Post one buffer to the
+ *   direct link / WiFi Transport RXDMA refill ring
+ * @soc_hdl: CDP SoC handle
+ * @srng: refill ring
+ * @paddr: DMA address of the buffer
+ * @sw_cookie: software cookie for the buffer
+ *
+ * Must be called between dp_direct_link_refill_ring_start() and
+ * dp_direct_link_refill_ring_end(). No intermediate buffer — posts
+ * directly to the next available ring slot.
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS dp_replenish_direct_link_refill_ring(struct cdp_soc_t *soc_hdl,
+					  struct dp_srng *srng,
+					  qdf_dma_addr_t paddr,
+					  uint32_t sw_cookie);
+#endif
+
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 QDF_STATUS
 dp_send_htt_mgmt_rx_buf_refil_srng_setup(struct cdp_soc_t *soc_hdl, void *srng);
