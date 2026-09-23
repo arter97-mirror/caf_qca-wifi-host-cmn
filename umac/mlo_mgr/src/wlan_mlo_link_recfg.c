@@ -1967,6 +1967,9 @@ mlo_link_recfg_get_add_partner_links(
 		link_info = mlo_mgr_get_ap_link_by_link_id(
 				mlo_dev_ctx,
 				link_add->link_id);
+		if (!link_info && smd_roam_in_progress(recfg_ctx))
+			link_info = smd_get_prepared_ap_link_info(
+					vdev, &link_add->ap_link_addr);
 		if (!link_info) {
 			mlo_debug("unexpected link info null for link id %d",
 				  link_add->link_id);
@@ -5989,27 +5992,17 @@ mlo_smd_handle_add_link_event(void *ctx,
 {
 	struct wlan_mlo_link_switch_req link_sw_req = {0};
 
-	if (smd_link_recfg_has_active_vdev_for_add_link(
-					recfg_ctx, req, &link_sw_req)) {
-		/* SMD current AP links = AB , Target AP links: CD
-		 * AB(B was deleted on vdev 1 by force inactive) -> AC:
-		 * add standby C, trigger link switch from B -> C.
-		 *
-		 */
+	if (smd_link_recfg_has_idle_vdev_for_add_link(
+				recfg_ctx, req, &link_sw_req)) {
+		mlo_info("Idle vdev found for link addition, skipping disconnect");
 		mlo_link_recfg_sm_transition_to(
 			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
 		mlo_link_recfg_sm_deliver_event_sync(
 			recfg_ctx->ml_dev, event,
 			sizeof(link_sw_req), &link_sw_req);
 		return true;
-	} else if (smd_link_recfg_has_idle_vdev_for_add_link(
-				recfg_ctx, req, &link_sw_req)) {
-		/* SMD current AP links = A , Target AP links: AB:
-		 * A (idle vdev 1) -> AB:
-		 * add link B on idle vdev, trigger link switch with
-		 * MLO_LINK_SWITCH_REASON_SMD_ROAM_ADD_LINK to skip disconnect.
-		 */
-		mlo_info("Idle vdev found for link addition, skipping disconnect");
+	} else if (smd_link_recfg_has_active_vdev_for_add_link(
+					recfg_ctx, req, &link_sw_req)) {
 		mlo_link_recfg_sm_transition_to(
 			ctx, WLAN_LINK_RECFG_SS_ADD_LINK_WAIT_LINK_SW);
 		mlo_link_recfg_sm_deliver_event_sync(
