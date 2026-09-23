@@ -8948,6 +8948,8 @@ dp_print_pdev_rx_stats(struct dp_pdev *pdev)
 		       pdev->stats.buf_freelist);
 	DP_PRINT_STATS("	Low threshold intr = %d",
 		       pdev->stats.replenish.low_thresh_intrs);
+	DP_PRINT_STATS("	Number of times descriptors are unavailable in free-list = %u",
+		       pdev->stats.replenish.critical_desc_unavail);
 	DP_PRINT_STATS("Dropped:");
 	DP_PRINT_STATS("	msdu_not_done = %u",
 		       pdev->stats.dropped.msdu_not_done);
