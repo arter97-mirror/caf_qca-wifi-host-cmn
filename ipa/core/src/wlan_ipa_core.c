@@ -3990,7 +3990,107 @@ void wlan_ipa_init_tx_pkt_classify_info(struct wlan_ipa_priv *ipa_ctx)
 {
 }
 #endif
+#ifndef IPA_OPT_WIFI_DP
+static QDF_STATUS wlan_ipa_store_evt(qdf_netdev_t net_dev, uint8_t device_mode,
+				     uint8_t session_id,
+				      qdf_ipa_wlan_event type,
+				      const uint8_t *mac_addr, bool is_2g_iface,
+				      struct wlan_ipa_priv *ipa_ctx,
+				      uint8_t sta_session_id)
+{
+	unsigned int pending_event_count;
+	struct wlan_ipa_uc_pending_event *pending_event = NULL;
+	struct wlan_ipa_iface_context *iface_ctx;
+	int i;
 
+	if (!ipa_ctx)
+		return QDF_STATUS_E_INVAL;
+
+	if (type == QDF_IPA_AP_DISCONNECT) {
+		wlan_ipa_uc_offload_enable_disable(ipa_ctx,
+						   WMI_AP_RX_DATA_OFFLOAD,
+				session_id, false);
+	} else if (type == QDF_IPA_CLIENT_CONNECT_EX &&
+			wlan_sap_no_client_connected(ipa_ctx)) {
+		if (wlan_sta_is_connected(ipa_ctx) &&
+		    wlan_ipa_uc_is_loaded(ipa_ctx) &&
+				wlan_ipa_uc_sta_is_enabled(ipa_ctx->config) &&
+				!wlan_ipa_is_sta_only_offload_enabled()) {
+			wlan_ipa_uc_offload_enable_disable(
+					ipa_ctx,
+					WMI_STA_RX_DATA_OFFLOAD,
+					sta_session_id, true);
+		}
+	}
+
+	qdf_mutex_acquire(&ipa_ctx->ipa_lock);
+
+	pending_event_count =
+		qdf_list_size(&ipa_ctx->pending_event);
+	if (pending_event_count >=
+			WLAN_IPA_MAX_PENDING_EVENT_COUNT) {
+		ipa_info("Reached max pending evt count");
+		qdf_list_remove_front(
+				&ipa_ctx->pending_event,
+				(qdf_list_node_t **)&pending_event);
+	} else {
+		pending_event =
+			qdf_mem_malloc(sizeof(*pending_event));
+	}
+
+	if (!pending_event) {
+		qdf_mutex_release(&ipa_ctx->ipa_lock);
+		return QDF_STATUS_E_NOMEM;
+	}
+
+	pending_event->net_dev = net_dev;
+	pending_event->device_mode = device_mode;
+	pending_event->session_id = session_id;
+	pending_event->type = type;
+	pending_event->is_loading = ipa_ctx->resource_loading;
+	qdf_mem_copy(pending_event->mac_addr,
+		     mac_addr, QDF_MAC_ADDR_SIZE);
+	pending_event->is_2g_iface = is_2g_iface;
+	qdf_list_insert_back(&ipa_ctx->pending_event,
+			     &pending_event->node);
+
+	qdf_mutex_release(&ipa_ctx->ipa_lock);
+
+	/* Cleanup interface */
+	if (type == QDF_IPA_STA_DISCONNECT ||
+	    type == QDF_IPA_AP_DISCONNECT) {
+		for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
+			iface_ctx = &ipa_ctx->iface_context[i];
+			if (wlan_ipa_check_iface_netdev_sessid(
+						iface_ctx, net_dev,
+						session_id)) {
+				wlan_ipa_cleanup_iface(
+						iface_ctx,
+						mac_addr);
+				break;
+			}
+		}
+
+		if (qdf_ipa_get_lan_rx_napi() &&
+		    ipa_ctx->num_sap_connected == 1) {
+			wlan_ipa_handle_multiple_sap_evt(ipa_ctx,
+							 type, session_id);
+		}
+	}
+
+	return QDF_STATUS_SUCCESS;
+}
+#else
+static QDF_STATUS wlan_ipa_store_evt(qdf_netdev_t net_dev, uint8_t device_mode,
+				     uint8_t session_id,
+				      qdf_ipa_wlan_event type,
+				      const uint8_t *mac_addr, bool is_2g_iface,
+				      struct wlan_ipa_priv *ipa_ctx,
+				      uint8_t sta_session_id)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 /**
  * __wlan_ipa_wlan_evt() - IPA event handler
  * @net_dev: Interface net device
@@ -4069,8 +4169,6 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 	 */
 	if (wlan_ipa_uc_is_enabled(ipa_ctx->config) &&
 	    (ipa_ctx->resource_loading || ipa_ctx->resource_unloading)) {
-		unsigned int pending_event_count;
-		struct wlan_ipa_uc_pending_event *pending_event = NULL;
 
 		ipa_info("Event:%d IPA resource %s inprogress", type,
 			 ipa_ctx->resource_loading ?
@@ -4082,90 +4180,21 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 				IPA_RESOURCE_COMP_WAIT_TIME);
 		if (status != QDF_STATUS_SUCCESS) {
 			/*
-			 * If timed out, store the events separately and
+			 * If timed out, store the
+			 * events separately and
 			 * handle them later.
 			 */
 			ipa_info("IPA resource %s timed out",
-				  ipa_ctx->resource_loading ?
-				  "load" : "unload");
+				 ipa_ctx->resource_loading ?
+				 "load" : "unload");
 
-			if (type == QDF_IPA_AP_DISCONNECT) {
-				wlan_ipa_uc_offload_enable_disable(ipa_ctx,
-						WMI_AP_RX_DATA_OFFLOAD,
-						session_id, false);
-			} else if (type == QDF_IPA_CLIENT_CONNECT_EX &&
-				   wlan_sap_no_client_connected(ipa_ctx)) {
-				if (wlan_sta_is_connected(ipa_ctx) &&
-				    wlan_ipa_uc_is_loaded(ipa_ctx) &&
-				    wlan_ipa_uc_sta_is_enabled(ipa_ctx->
-							       config) &&
-				    !wlan_ipa_is_sta_only_offload_enabled()) {
-					wlan_ipa_uc_offload_enable_disable(
-							ipa_ctx,
-							WMI_STA_RX_DATA_OFFLOAD,
-							sta_session_id, true);
-				}
-			}
-
-			qdf_mutex_acquire(&ipa_ctx->ipa_lock);
-
-			pending_event_count =
-				qdf_list_size(&ipa_ctx->pending_event);
-			if (pending_event_count >=
-			    WLAN_IPA_MAX_PENDING_EVENT_COUNT) {
-				ipa_info("Reached max pending evt count");
-				qdf_list_remove_front(
-					&ipa_ctx->pending_event,
-					(qdf_list_node_t **)&pending_event);
-			} else {
-				pending_event =
-					(struct wlan_ipa_uc_pending_event *)
-					qdf_mem_malloc(sizeof(
-					struct wlan_ipa_uc_pending_event));
-			}
-
-			if (!pending_event) {
-				qdf_mutex_release(&ipa_ctx->ipa_lock);
-				return QDF_STATUS_E_NOMEM;
-			}
-
-			pending_event->net_dev = net_dev;
-			pending_event->device_mode = device_mode;
-			pending_event->session_id = session_id;
-			pending_event->type = type;
-			pending_event->is_loading = ipa_ctx->resource_loading;
-			qdf_mem_copy(pending_event->mac_addr,
-				     mac_addr, QDF_MAC_ADDR_SIZE);
-			pending_event->is_2g_iface = is_2g_iface;
-			qdf_list_insert_back(&ipa_ctx->pending_event,
-					     &pending_event->node);
-
-			qdf_mutex_release(&ipa_ctx->ipa_lock);
-
-			/* Cleanup interface */
-			if (type == QDF_IPA_STA_DISCONNECT ||
-			    type == QDF_IPA_AP_DISCONNECT) {
-				for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
-					iface_ctx = &ipa_ctx->iface_context[i];
-					if (wlan_ipa_check_iface_netdev_sessid(
-							     iface_ctx, net_dev,
-							     session_id)) {
-						wlan_ipa_cleanup_iface(
-								iface_ctx,
-								mac_addr);
-						break;
-					}
-				}
-
-				if (qdf_ipa_get_lan_rx_napi() &&
-				    ipa_ctx->num_sap_connected == 1) {
-					wlan_ipa_handle_multiple_sap_evt(ipa_ctx,
-							type, session_id);
-				}
-			}
-
-			return QDF_STATUS_SUCCESS;
+			return wlan_ipa_store_evt(
+					net_dev, device_mode,
+					session_id, type, mac_addr,
+					is_2g_iface,
+					ipa_obj, sta_session_id);
 		}
+
 		ipa_info("IPA resource %s completed",
 			 ipa_ctx->resource_loading ?
 			 "load" : "unload");
