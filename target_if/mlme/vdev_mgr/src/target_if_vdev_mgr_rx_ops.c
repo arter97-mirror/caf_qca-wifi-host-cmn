@@ -512,7 +512,7 @@ QDF_STATUS target_if_vdev_mgr_start_response_common(
 		 */
 		if (timer_running &&
 		    (mode == QDF_MONITOR_MODE || mode == QDF_SAP_MODE ||
-		    mode == QDF_P2P_GO_MODE)) {
+		    mode == QDF_P2P_GO_MODE || mode == QDF_NDI_MODE)) {
 			target_if_wake_lock_timeout_release(psoc,
 							    START_WAKELOCK);
 			target_if_release_vdev_cmd_rt_lock(psoc, vdev_id);
