@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -87,6 +86,35 @@ error:
 	return status;
 }
 
+/**
+ * wlan_serialization_restore_blocking_cmd_waiting() - Restore
+ *     blocking_cmd_waiting count if it was incremented for a duplicate cmd
+ * @cmd: serialization command being enqueued
+ * @pdev_queue: pdev queue on which the command was attempted
+ * @active_queue: true if the command targets the active queue
+ * @blocking_cmd_waiting: snapshot of blocking_cmd_waiting taken before
+ *     the duplicate check; used as the value to restore to
+ *
+ * When a duplicate blocking command is detected and rejected during enqueue,
+ * the pending-queue walk may have already incremented blocking_cmd_waiting.
+ * This function detects that overshoot and restores the counter to the
+ * pre-enqueue snapshot so the pdev queue state stays consistent.
+ */
+static void
+wlan_serialization_restore_blocking_cmd_waiting(
+		struct wlan_serialization_command *cmd,
+		struct wlan_serialization_pdev_queue *pdev_queue,
+		bool active_queue, uint16_t blocking_cmd_waiting)
+{
+	if (cmd->is_blocking && !active_queue &&
+	    (pdev_queue->blocking_cmd_waiting > blocking_cmd_waiting)) {
+		ser_debug("set blocking_cmd_waiting from %d to %d",
+			  pdev_queue->blocking_cmd_waiting,
+			  blocking_cmd_waiting);
+		pdev_queue->blocking_cmd_waiting = blocking_cmd_waiting;
+	}
+}
+
 enum wlan_serialization_status
 wlan_serialization_enqueue_cmd(struct wlan_serialization_command *cmd,
 			       enum ser_queue_reason ser_reason)
@@ -101,6 +129,7 @@ wlan_serialization_enqueue_cmd(struct wlan_serialization_command *cmd,
 	struct wlan_serialization_vdev_queue *vdev_queue;
 	bool active_queue;
 	uint8_t vdev_id;
+	uint16_t blocking_cmd_waiting;
 
 	/* Enqueue process
 	 * 1) peek through command structure and see what is the command type
@@ -211,9 +240,13 @@ wlan_serialization_enqueue_cmd(struct wlan_serialization_command *cmd,
 		}
 	}
 
+	blocking_cmd_waiting = pdev_queue->blocking_cmd_waiting;
 	active_queue = wlan_serialization_is_active_cmd_allowed(cmd);
 
 	if (wlan_serialization_is_cmd_present_queue(cmd, active_queue)) {
+		wlan_serialization_restore_blocking_cmd_waiting(
+						cmd, pdev_queue, active_queue,
+						blocking_cmd_waiting);
 		wlan_serialization_release_lock(&pdev_queue->pdev_queue_lock);
 		ser_err("duplicate command, reject cmd id %d type %d vdev %d",
 			cmd->cmd_id, cmd->cmd_type, vdev_id);
@@ -223,6 +256,9 @@ wlan_serialization_enqueue_cmd(struct wlan_serialization_command *cmd,
 	if (wlan_serialization_remove_front(
 				&pdev_queue->cmd_pool_list,
 				&nnode) != QDF_STATUS_SUCCESS) {
+		wlan_serialization_restore_blocking_cmd_waiting(
+						cmd, pdev_queue, active_queue,
+						blocking_cmd_waiting);
 		wlan_serialization_release_lock(&pdev_queue->pdev_queue_lock);
 		ser_err("Failed to get cmd buffer from global pool cmd id %d type %d vdev %d",
 			cmd->cmd_id, cmd->cmd_type, vdev_id);
