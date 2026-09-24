@@ -610,7 +610,17 @@ enum smd_roam_topology_type {
  * @smd_roam_in_progress: bool smd roam in progress
  * @current_link_index: Index of the current link being processed in SMD roaming
  * @st_exec_in_progress: Flag indicating SMD ST execution is in progress
- * @cached_sync_ind: Cached roam sync indication
+ * @cached_sync_ind: Cached roam sycnc indication
+ * @st_exec_req_frame: Deep copy of the ST Exec Request frame trailing the
+ *                     roam sync WMI event (reassoc_req_frame slot when
+ *                     roam_reason indicates ST Transition)
+ * @st_exec_rsp_frame: Deep copy of the ST Exec Response frame trailing the
+ *                     roam sync WMI event (reassoc_rsp_frame slot when
+ *                     roam_reason indicates ST Transition)
+ * @st_prep_req_frame: Deep copy of the ST Prep Request action frame sent by
+ *                     lim_send_uhr_link_recfg_st_prep_req_frame(), stored the
+ *                     same way lim_store_link_recfg_req_frame() stores the
+ *                     EHT link reconfiguration request frame
  * @cached_assoc_rsp: Cached per-link association responses for ST execution
  * @roam_topology: SMD roaming topology type
  * @num_src_active_links: Number of active source links in SMD roaming
@@ -645,6 +655,9 @@ struct mlo_link_recfg_context {
 	uint8_t current_link_index;
 	bool st_exec_in_progress;
 	struct roam_offload_synch_ind *cached_sync_ind;
+	struct element_info st_exec_req_frame;
+	struct element_info st_exec_rsp_frame;
+	struct element_info st_prep_req_frame;
 	struct cached_link_assoc_rsp cached_assoc_rsp[WLAN_MAX_ML_BSS_LINKS];
 	enum smd_roam_topology_type roam_topology;
 	uint8_t num_src_active_links;

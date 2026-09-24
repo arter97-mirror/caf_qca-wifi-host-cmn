@@ -25,6 +25,7 @@
 #include "wlan_cm_sm.h"
 #include "wlan_cm_main_api.h"
 #include "wlan_cm_roam.h"
+#include "wlan_cm_api.h"
 #ifdef WLAN_FEATURE_11BE_MLO_ADV_FEATURE
 #include "wlan_mlo_mgr_roam.h"
 #endif
@@ -563,6 +564,7 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 	bool event_handled = true;
 	struct cm_req *roam_cm_req;
 	QDF_STATUS status;
+	struct wlan_cm_connect_resp *rsp;
 	struct cnx_mgr *cm_ctx_t = NULL;
 	struct wlan_roam_synch_complete_params *params = NULL;
 	struct wlan_objmgr_vdev *roamed_vdev = NULL;
@@ -606,7 +608,43 @@ bool cm_subst_smd_roam_sync_event(void *ctx, uint16_t event,
 			break;
 		}
 
+		/*
+		 * Fetch the original roam command's cm_id before removing it
+		 * from the CM req list — osif_validate_connect_and_reset_src_id()
+		 * requires rsp->cm_id to match osif_priv->cm_info.last_id
+		 * (set when this command was first queued), otherwise
+		 * osif_connect_handler() drops the indication silently.
+		 */
+		{
+			struct cm_roam_req *roam_req;
+			wlan_cm_id cm_id = CM_ID_INVALID;
+
+			roam_req = cm_get_first_roam_command(cm_ctx_t->vdev);
+			if (roam_req)
+				cm_id = roam_req->cm_id;
+
+			/*
+			 * Build and deliver the SMD roam connect rsp so the
+			 * existing osif_indicate_reassoc_results() chain sends
+			 * cfg80211_roamed() and
+			 * QCA_NL80211_VENDOR_SUBCMD_KEY_MGMT_ROAM_AUTH to
+			 * userspace. Must run before smd_roam_cleanup_ies()
+			 * (called by smd_exec_complete() right after this
+			 * event delivery returns) frees the source frame
+			 * buffers.
+			 */
+			rsp = smd_roam_build_connect_rsp(cm_ctx->vdev);
+			if (rsp) {
+				rsp->cm_id = cm_id;
+				if (roam_req && cm_id != CM_ID_INVALID)
+					mlme_cm_osif_update_id_and_src(cm_ctx->vdev,
+								       roam_req->req.source, cm_id);
+				mlme_cm_osif_connect_complete(cm_ctx->vdev, rsp);
+				wlan_cm_free_connect_resp(rsp);
+			}
+		}
 		smd_remove_roam_cmd(cm_ctx_t);
+		cm_sm_transition_to(cm_ctx, WLAN_CM_SS_IDLE);
 
 		/* Notify supplicant */
 		mlme_cm_osif_roam_complete(cm_ctx->vdev);

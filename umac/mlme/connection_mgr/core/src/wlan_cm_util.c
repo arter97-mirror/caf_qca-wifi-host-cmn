@@ -931,6 +931,18 @@ static void cm_zero_and_free_memory(uint8_t *ptr, uint32_t len)
 static
 void cm_free_roaming_info(struct wlan_cm_connect_resp *connect_rsp)
 {
+#ifdef WLAN_FEATURE_11BN_SMD
+	if (connect_rsp->roaming_info) {
+		cm_zero_and_free_memory(connect_rsp->roaming_info->st_prep_req.ptr,
+					connect_rsp->roaming_info->st_prep_req.len);
+		cm_zero_and_free_memory(connect_rsp->roaming_info->st_prep_rsp.ptr,
+					connect_rsp->roaming_info->st_prep_rsp.len);
+		cm_zero_and_free_memory(connect_rsp->roaming_info->st_exec_req.ptr,
+					connect_rsp->roaming_info->st_exec_req.len);
+		cm_zero_and_free_memory(connect_rsp->roaming_info->st_exec_rsp.ptr,
+					connect_rsp->roaming_info->st_exec_rsp.len);
+	}
+#endif
 	cm_zero_and_free_memory((uint8_t *)connect_rsp->roaming_info,
 				sizeof(*connect_rsp->roaming_info));
 }
