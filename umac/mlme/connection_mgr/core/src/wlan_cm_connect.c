@@ -3929,7 +3929,6 @@ cm_copy_crypto_prarams(struct wlan_cm_connect_req *req,
 	 * As akm suites and ucast ciphers can be multiple. So, do ORing to
 	 * keep it along with newly added one's (newly added one will anyway
 	 * be part of it)
-	 * Don't overwrite the authmode here for 11bi security
 	 */
 	dst_params->akm_suites |= src_params->key_mgmt;
 	dst_params->ciphers_pairwise |= src_params->ucastcipherset;
@@ -3937,10 +3936,20 @@ cm_copy_crypto_prarams(struct wlan_cm_connect_req *req,
 	dst_params->mgmt_ciphers = src_params->mgmtcipherset;
 	dst_params->rsn_caps = src_params->rsn_caps;
 
-	if (!QDF_HAS_PARAM(dst_params->auth_type, WLAN_CRYPTO_AUTH_EPPKE) &&
-	    !QDF_HAS_PARAM(dst_params->auth_type,
-			   WLAN_CRYPTO_AUTH_8021X_IN_AUTH))
-		dst_params->auth_type = src_params->authmodeset;
+	/*
+	 * Take the IE-derived authmode (RSNA for any RSNE-based security). This
+	 * also drops the stale OPEN/NONE bit a PMKSA / open-auth request arrives
+	 * with - csr_fill_auth_type() maps OPEN ahead of RSNA, so a leftover
+	 * OPEN bit would clear is_auth_required and authorize the peer before
+	 * keys are installed (FW then drops EAPOL M4). Preserve any injected
+	 * EPPKE / 802.1X-in-auth marker used for 11bi candidate matching; the
+	 * real EPPKE-vs-RSNA decision is made post candidate selection in
+	 * cm_strip_injected_eppke().
+	 */
+	dst_params->auth_type = src_params->authmodeset |
+				(dst_params->auth_type &
+				 (BIT(WLAN_CRYPTO_AUTH_EPPKE) |
+				  BIT(WLAN_CRYPTO_AUTH_8021X_IN_AUTH)));
 
 	mlme_debug("akm_suites:0x%x pwise:0x%x grp_cipher:0x%x mgmt_cipher:0x%x rsn_caps:0x%x auth_type:0x%x",
 		   dst_params->akm_suites, dst_params->ciphers_pairwise,
