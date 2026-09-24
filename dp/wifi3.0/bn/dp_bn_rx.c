@@ -791,6 +791,7 @@ refill_opt_dp_ctrl:
 		}
 
 		DP_HIST_PACKET_COUNT_INC(vdev->pdev->pdev_id);
+		dp_ipa_rx_print_opt_dp_pkt(soc, nbuf, DP_RX_PATH_REO);
 		/*
 		 * First IF condition:
 		 * The below condition happens when an MSDU is spread
@@ -1668,6 +1669,8 @@ more_data:
 		}
 
 process_reo_err:
+		dp_ipa_rx_err_opt_dp_pkt(soc, ring_desc, link_desc_va,
+					 DP_RX_PATH_REO_ERR);
 		DP_STATS_INC(soc, rx.err.reo_error[reo_error_code], 1);
 		switch (reo_error_code) {
 		case HAL_REO_ERR_PN_CHECK_FAILED:
@@ -1718,6 +1721,8 @@ process_reo_err:
 		goto next_entry;
 
 process_rxdma_err:
+		dp_ipa_rx_err_opt_dp_pkt(soc, ring_desc, link_desc_va,
+					 DP_RX_PATH_WBM_ERR);
 		DP_STATS_INC(soc, rx.err.rxdma_error[rxdma_error_code], 1);
 		DP_STATS_INC(dp_pdev, err.rxdma_error, 1);
 		switch (rxdma_error_code) {
