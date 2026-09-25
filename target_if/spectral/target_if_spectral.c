@@ -2314,7 +2314,7 @@ static const enum phy_ch_width half_bw_map[] = {
  */
 static enum phy_ch_width target_if_get_half_bandwidth(enum phy_ch_width bw)
 {
-	if (bw >= CH_WIDTH_INVALID)
+	if (bw >= QDF_ARRAY_SIZE(half_bw_map))
 		return CH_WIDTH_INVALID;
 
 	return half_bw_map[bw];
