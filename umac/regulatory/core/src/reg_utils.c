@@ -391,7 +391,6 @@ static inline bool reg_is_state_allowed(enum channel_state chan_state)
  * Return: Return QDF_STATUS_SUCCESS if 6 GHz power type supported for
  *         the given channel, else return QDF_STATUS_E_FAILURE.
  */
-static
 QDF_STATUS reg_check_if_6g_pwr_type_supp_for_chan(
 						struct wlan_objmgr_pdev *pdev,
 						enum reg_6g_ap_type pwr_type,

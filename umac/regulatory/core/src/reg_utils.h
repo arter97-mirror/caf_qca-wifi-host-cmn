@@ -298,6 +298,23 @@ QDF_STATUS reg_get_domain_from_country_code(v_REGDOMAIN_t *reg_domain_ptr,
 					    enum country_src source);
 
 #ifdef CONFIG_REG_CLIENT
+#ifdef CONFIG_BAND_6GHZ
+/**
+ * reg_check_if_6g_pwr_type_supp_for_chan() - Check if 6 GHz power type is
+ *                                            supported for the channel
+ * @pdev: Pointer to pdev
+ * @pwr_type: 6 GHz power type
+ * @chan_idx: Connection channel index
+ *
+ * Return: Return QDF_STATUS_SUCCESS if 6 GHz power type supported for
+ *         the given channel, else return QDF_STATUS_E_FAILURE.
+ */
+QDF_STATUS reg_check_if_6g_pwr_type_supp_for_chan(
+						struct wlan_objmgr_pdev *pdev,
+						enum reg_6g_ap_type pwr_type,
+						enum channel_enum chan_idx);
+#endif
+
 /**
  * reg_get_best_6g_power_type() - Return best power type for 6 GHz connection
  * @psoc: pointer to psoc
