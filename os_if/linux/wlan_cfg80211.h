@@ -208,6 +208,8 @@
  * get station sent for ucast cmd
  * @QCA_NL80211_VENDOR_SUBCMD_IDLE_SHUTDOWN_INDEX: Idle shutdown event index
  * @QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX: Power boost event index
+ * @QCA_NL80211_VENDOR_SUBCMD_WOW_INDEX: WoW suspend/resume IPA pipe control
+ * vendor event index.
  */
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -359,6 +361,10 @@ enum qca_nl80211_vendor_subcmds_index {
 #ifdef FEATURE_WLAN_TX_POWERBOOST
 	QCA_NL80211_VENDOR_SUBCMD_TX_POWER_BOOST_INDEX,
 #endif
+#ifdef IPA_OFFLOAD
+	/* WoW suspend/resume prepare vendor event index */
+	QCA_NL80211_VENDOR_SUBCMD_WOW_INDEX,
+#endif /* IPA_OFFLOAD */
 };
 
 #if !defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC) && \
