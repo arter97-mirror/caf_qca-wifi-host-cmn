@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -128,6 +128,22 @@ void qdf_destroy_workqueue(qdf_handle_t hdl, qdf_workqueue_t *wqueue);
  * Return: true if work was pending, false otherwise
  */
 bool qdf_cancel_work(qdf_work_t *work);
+
+/**
+ * qdf_cancel_work_nosync() - Cancel a work without waiting for it to
+ *                            finish
+ * @work: pointer to work
+ *
+ * Non-blocking counterpart to qdf_cancel_work(). Dequeues work if it is
+ * merely pending (queued but not yet started) and returns immediately;
+ * never sleeps, so it is safe to call from any context, including from
+ * work's own currently executing instance. Does NOT wait for an
+ * already-running instance of work to finish
+ *
+ * Return: true if work was pending and has been canceled, false
+ *         otherwise (including when work was already executing)
+ */
+bool qdf_cancel_work_nosync(qdf_work_t *work);
 
 /**
  * qdf_disable_work - disable the deferred task (synchronous)
@@ -404,6 +420,22 @@ static inline bool qdf_sched_work(qdf_handle_t hdl, qdf_work_t *work)
 static inline bool qdf_cancel_work(qdf_work_t *work)
 {
 	return __qdf_cancel_work(work);
+}
+
+/**
+ * qdf_cancel_work_nosync() - Cancel a work without waiting for it to
+ *                            finish
+ * @work: pointer to work
+ *
+ * Non-blocking counterpart to qdf_cancel_work(). Dequeues work if it is
+ * merely pending (queued but not yet started) and returns immediately;
+ *
+ * Return: true if work was pending and has been canceled, false
+ *         otherwise (including when work was already executing)
+ */
+static inline bool qdf_cancel_work_nosync(qdf_work_t *work)
+{
+	return __qdf_cancel_work_nosync(work);
 }
 
 /**

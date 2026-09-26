@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2019,2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -100,6 +100,13 @@ bool qdf_cancel_work(qdf_work_t *work)
 }
 
 qdf_export_symbol(qdf_cancel_work);
+
+bool qdf_cancel_work_nosync(qdf_work_t *work)
+{
+	return __qdf_cancel_work_nosync(work);
+}
+
+qdf_export_symbol(qdf_cancel_work_nosync);
 
 qdf_workqueue_t *qdf_create_workqueue(char *name)
 {
