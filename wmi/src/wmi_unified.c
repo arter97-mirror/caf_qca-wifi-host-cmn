@@ -21,7 +21,7 @@
  * Host WMI unified implementation
  */
 #include "htc_api.h"
-#include "htc_api.h"
+#include "hif.h"
 #include "wmi_unified_priv.h"
 #include "wmi_unified_api.h"
 #include "qdf_module.h"
@@ -2127,6 +2127,8 @@ QDF_STATUS wmi_unified_cmd_send_fl(wmi_unified_t wmi_handle, wmi_buf_t buf,
 	uint16_t htc_tag = 0;
 	bool rtpm_inprogress;
 
+	hif_rtpm_reset_wow_tbtt_nack_delay();
+
 	rtpm_inprogress = wmi_get_runtime_pm_inprogress(wmi_handle);
 	if (rtpm_inprogress) {
 		htc_tag = wmi_handle->ops->wmi_set_htc_tx_tag(wmi_handle, buf,
@@ -2463,6 +2465,20 @@ QDF_STATUS wmi_unified_unregister_event_handler(wmi_unified_t wmi_handle,
 }
 qdf_export_symbol(wmi_unified_unregister_event_handler);
 
+#ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
+static void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
+{
+	nbuf = wbuff_buff_put(nbuf);
+	if (nbuf)
+		qdf_nbuf_free(nbuf);
+}
+#else
+static inline void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
+{
+	return qdf_nbuf_free(nbuf);
+}
+#endif
+
 static void
 wmi_process_rx_diag_event_worker_thread_ctx(struct wmi_unified *wmi_handle,
 					    void *evt_buf)
@@ -2479,7 +2495,7 @@ wmi_process_rx_diag_event_worker_thread_ctx(struct wmi_unified *wmi_handle,
 			wmi_handle->wmi_rx_diag_events_dropped++;
 			wmi_debug_rl("Rx diag events dropped count: %d",
 				     wmi_handle->wmi_rx_diag_events_dropped);
-			qdf_nbuf_free(evt_buf);
+			wmi_rx_nbuf_free(evt_buf);
 			return;
 		}
 	}
@@ -2576,7 +2592,7 @@ wmi_process_fw_event_sched_thread_ctx(struct wmi_unified *wmi,
 	params_buf = qdf_mem_malloc(sizeof(struct wmi_process_fw_event_params));
 	if (!params_buf) {
 		wmi_err("malloc failed");
-		qdf_nbuf_free(ev);
+		wmi_rx_nbuf_free(ev);
 		return QDF_STATUS_E_NOMEM;
 	}
 
@@ -2597,7 +2613,7 @@ wmi_process_fw_event_sched_thread_ctx(struct wmi_unified *wmi,
 		scheduler_post_message(QDF_MODULE_ID_TARGET_IF,
 				       QDF_MODULE_ID_TARGET_IF,
 				       QDF_MODULE_ID_TARGET_IF, &msg)) {
-		qdf_nbuf_free(ev);
+		wmi_rx_nbuf_free(ev);
 		qdf_mem_free(params_buf);
 		return QDF_STATUS_E_FAULT;
 	}
@@ -2653,20 +2669,6 @@ static void wmi_mtrace_rx(uint32_t message_id, uint16_t vdev_id, uint32_t data)
 	qdf_mtrace(QDF_MODULE_ID_WMI, QDF_MODULE_ID_WMA,
 		   mtrace_message_id, vdev_id, data);
 }
-
-#ifdef WLAN_FEATURE_CE_RX_BUFFER_REUSE
-static void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
-{
-	nbuf = wbuff_buff_put(nbuf);
-	if (nbuf)
-		qdf_nbuf_free(nbuf);
-}
-#else
-static inline void wmi_rx_nbuf_free(qdf_nbuf_t nbuf)
-{
-	return qdf_nbuf_free(nbuf);
-}
-#endif
 
 /**
  * wmi_process_control_rx() - process fw events callbacks
@@ -2747,6 +2749,8 @@ static void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 	struct wmi_unified *wmi_handle;
 	wmi_buf_t evt_buf;
 
+	hif_rtpm_reset_wow_tbtt_nack_delay();
+
 	evt_buf = (wmi_buf_t)htc_packet->pPktContext;
 
 	wmi_handle = wmi_get_pdev_ep(soc, htc_packet->Endpoint);
@@ -2775,6 +2779,8 @@ static void wmi_control_diag_rx(void *ctx, HTC_PACKET *htc_packet)
 	struct wmi_unified *wmi_handle;
 	wmi_buf_t evt_buf;
 
+	hif_rtpm_reset_wow_tbtt_nack_delay();
+
 	evt_buf = (wmi_buf_t)htc_packet->pPktContext;
 
 	wmi_handle = soc->wmi_pdev[0];
@@ -2802,6 +2808,8 @@ static void wmi_control_dbr_rx(void *ctx, HTC_PACKET *htc_packet)
 	struct wmi_soc *soc = (struct wmi_soc *)ctx;
 	struct wmi_unified *wmi_handle;
 	wmi_buf_t evt_buf;
+
+	hif_rtpm_reset_wow_tbtt_nack_delay();
 
 	evt_buf = (wmi_buf_t)htc_packet->pPktContext;
 	wmi_handle = soc->wmi_pdev[0];
@@ -3269,6 +3277,8 @@ void *wmi_unified_get_pdev_handle(struct wmi_soc *soc, uint32_t pdev_idx)
 		wmi_handle->evt_phy_id_map = soc->evt_phy_id_map;
 		wmi_interface_logging_init(wmi_handle, pdev_idx);
 		qdf_atomic_init(&wmi_handle->is_target_suspended);
+		qdf_atomic_init(&wmi_handle->is_target_suspend_acked);
+		qdf_atomic_init(&wmi_handle->is_init_cmd_sent);
 		qdf_atomic_init(&wmi_handle->is_wow_enable_ack_failed);
 		wmi_handle->target_type = soc->target_type;
 		wmi_handle->wmi_max_cmds = soc->wmi_max_cmds;
@@ -3408,6 +3418,7 @@ void *wmi_unified_attach(void *scn_handle,
 	qdf_atomic_init(&wmi_handle->pending_cmds);
 	qdf_atomic_init(&wmi_handle->is_target_suspended);
 	qdf_atomic_init(&wmi_handle->is_target_suspend_acked);
+	qdf_atomic_init(&wmi_handle->is_init_cmd_sent);
 	qdf_atomic_init(&wmi_handle->num_stats_over_qmi);
 	qdf_atomic_init(&wmi_handle->is_wow_enable_ack_failed);
 	wmi_runtime_pm_init(wmi_handle);
@@ -3844,6 +3855,18 @@ bool wmi_is_target_suspend_acked(struct wmi_unified *wmi_handle)
 	return qdf_atomic_read(&wmi_handle->is_target_suspend_acked);
 }
 qdf_export_symbol(wmi_is_target_suspend_acked);
+
+void wmi_set_init_cmd_sent(struct wmi_unified *wmi_handle)
+{
+	qdf_atomic_set(&wmi_handle->is_init_cmd_sent, 1);
+}
+qdf_export_symbol(wmi_set_init_cmd_sent);
+
+bool wmi_is_init_cmd_sent(struct wmi_unified *wmi_handle)
+{
+	return !!qdf_atomic_read(&wmi_handle->is_init_cmd_sent);
+}
+qdf_export_symbol(wmi_is_init_cmd_sent);
 
 #ifdef WLAN_FEATURE_WMI_SEND_RECV_QMI
 void wmi_set_qmi_stats(wmi_unified_t wmi_handle, bool val)

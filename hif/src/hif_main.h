@@ -266,6 +266,42 @@ void hif_record_latest_evt(struct ce_desc_hist *ce_hist,
 			   uint32_t hp, uint32_t tp);
 #endif /*HIF_CONFIG_SLUB_DEBUG_ON || HIF_CE_DEBUG_DATA_BUF|| RECORD_DP_CE_EVTS*/
 
+#ifdef HIF_CE_TX_DESC_DATA_DEBUG
+/*
+ * Must be a power of 2 -- hif_ce_tx_desc_data_next_record_index() masks
+ * the atomic index with (HIF_CE_TX_DESC_DATA_HIST_MAX - 1) to derive the
+ * next record index, which only wraps correctly within
+ * [0, HIF_CE_TX_DESC_DATA_HIST_MAX) when this is a power of 2.
+ */
+#define HIF_CE_TX_DESC_DATA_HIST_MAX 8
+#define HIF_CE_TX_DESC_DATA_BYTES 8
+
+/**
+ * struct ce_tx_desc_data_event - CE3 tx completion debug data record
+ * @dma_addr: dma address reaped from the CE3 source descriptor
+ * @pa: physical address corresponding to @dma_addr
+ * @skb_data8: first 8 bytes of skb->data for the completed tx buffer
+ * @va_data8: first 8 bytes read from the VA derived from @pa
+ */
+struct ce_tx_desc_data_event {
+	qdf_dma_addr_t dma_addr;
+	qdf_dma_addr_t pa;
+	uint8_t skb_data8[HIF_CE_TX_DESC_DATA_BYTES];
+	uint8_t va_data8[HIF_CE_TX_DESC_DATA_BYTES];
+};
+
+/**
+ * struct ce_tx_desc_data_hist - circular history of CE3 tx completion
+ *  debug data records
+ * @event: ring of debug data records
+ * @index: next slot to be written into @event
+ */
+struct ce_tx_desc_data_hist {
+	struct ce_tx_desc_data_event event[HIF_CE_TX_DESC_DATA_HIST_MAX];
+	qdf_atomic_t index;
+};
+#endif /* HIF_CE_TX_DESC_DATA_DEBUG */
+
 /**
  * struct hif_cfg() - store ini config parameters in hif layer
  * @ce_status_ring_timer_threshold: ce status ring timer threshold
@@ -455,6 +491,9 @@ struct hif_softc {
 #endif /* defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF) ||
 	* defined(RECORD_DP_CE_EVTS)
 	*/
+#ifdef HIF_CE_TX_DESC_DATA_DEBUG
+	struct ce_tx_desc_data_hist ce_tx_desc_data_hist;
+#endif
 #ifdef IPA_OFFLOAD
 	qdf_shared_mem_t *ipa_ce_ring;
 #endif

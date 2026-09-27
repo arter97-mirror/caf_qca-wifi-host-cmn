@@ -1203,10 +1203,15 @@ static struct cfg80211_bss *osif_cm_get_connected_bss(
 					    rsp->bssid.bytes,
 					    rsp->ssid.ssid,
 					    rsp->ssid.length);
+		osif_debug("BSSID: " QDF_MAC_ADDR_FMT " SSID: " QDF_SSID_FMT,
+				   QDF_MAC_ADDR_REF(rsp->bssid.bytes),
+				   QDF_SSID_REF(rsp->ssid.length, rsp->ssid.ssid));
 		if (!bss) {
 			bss = wlan_cfg80211_get_bss(osif_priv->wdev->wiphy,
 						    chan, rsp->bssid.bytes,
 						    NULL, 0);
+			if (!bss)
+				osif_err("Failed to find BSS");
 		}
 	}
 	return bss;

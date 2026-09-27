@@ -1899,6 +1899,42 @@ uint32_t hal_srng_dst_num_valid(void *hal_soc,
 }
 
 /**
+ * hal_srng_dst_peek_n() - Peek at the Nth entry beyond the current tail
+ *                         pointer without advancing tp/hp (read-only)
+ * @hal_soc: Opaque HAL SOC handle
+ * @hal_ring_hdl: Destination ring pointer
+ * @offset: number of entries beyond the current tp to peek at (0 = entry
+ *          at tp itself)
+ * @num_valid: number of valid entries currently available from tp,
+ *             e.g. as returned by hal_srng_dst_num_valid(). Callers that
+ *             peek repeatedly with an unchanged tp/cached_hp (as in a
+ *             loop) should compute this once and pass it in, instead of
+ *             recomputing it on every call.
+ *
+ * Uses the cached head pointer already synced by the caller; does not
+ * touch any HW registers or advance tp/cached_hp. Caller takes
+ * responsibility for any locking needs.
+ *
+ * Return: Opaque pointer to the requested ring entry; NULL if @offset is
+ *         beyond @num_valid
+ */
+static inline
+void *hal_srng_dst_peek_n(void *hal_soc, hal_ring_handle_t hal_ring_hdl,
+			  uint32_t offset, uint32_t num_valid)
+{
+	struct hal_srng *srng = (struct hal_srng *)hal_ring_hdl;
+	uint32_t idx;
+
+	if (offset >= num_valid)
+		return NULL;
+
+	idx = (srng->u.dst_ring.tp + offset * srng->entry_size) %
+		srng->ring_size;
+
+	return (void *)(&srng->ring_base_vaddr[idx]);
+}
+
+/**
  * hal_srng_dst_inv_cached_descs() - API to invalidate descriptors in batch mode
  * @hal_soc: Opaque HAL SOC handle
  * @hal_ring_hdl: Destination ring pointer

@@ -583,7 +583,7 @@ uint32_t dp_rx_process_be(struct dp_intr *int_ctx,
 	int max_reap_limit, ring_near_full;
 	struct dp_soc *replenish_soc;
 	uint8_t chip_id;
-	uint64_t current_time = 0;
+	uint64_t qtime = 0;
 	uint32_t old_tid;
 	uint32_t peer_ext_stats;
 	uint32_t dsf;
@@ -634,7 +634,7 @@ more_data:
 	rx_pdev = NULL;
 	tid_stats = NULL;
 
-	dp_pkt_get_timestamp(&current_time);
+	dp_pkt_get_timestamp(&qtime);
 
 	ring_near_full = _dp_srng_test_and_update_nf_params(soc, rx_ring,
 							    &max_reap_limit);
@@ -707,7 +707,6 @@ more_data:
 				hal_rx_get_reo_desc_va(ring_desc);
 		dp_rx_desc_sw_cc_check(soc, rx_buf_cookie, &rx_desc);
 
-		dp_rx_ring_desc_invalidate(ring_desc);
 		dp_rx_reset_stale_entry_detection(soc, reo_ring_num);
 
 		status = dp_rx_desc_sanity(soc, hal_soc, hal_ring_hdl,
@@ -723,6 +722,7 @@ more_data:
 					&tail[rx_desc->chip_id][rx_desc->pool_id],
 					rx_desc);
 			}
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
@@ -739,6 +739,7 @@ more_data:
 			dp_info_rl("Reaping rx_desc not in use!");
 			dp_rx_dump_info_and_assert(soc, hal_ring_hdl,
 						   ring_desc, rx_desc);
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
@@ -749,6 +750,7 @@ more_data:
 			dp_rx_dump_info_and_assert(soc, hal_ring_hdl,
 						   ring_desc, rx_desc);
 			rx_desc->in_err_state = 1;
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
@@ -788,10 +790,10 @@ more_data:
 				 * available and number of buffers needed to
 				 * reap this MPDU
 				 */
-				if ((QDF_NBUF_CB_RX_PKT_LEN(rx_desc->nbuf) /
-				     (buf_size -
-				      soc->rx_pkt_tlv_size) + 1) >
-				    num_pending) {
+				if (!dp_rx_can_reap_all_frags(soc, hal_ring_hdl,
+							      num_pending,
+							      num_entries_avail
+							      )) {
 					DP_STATS_INC(soc,
 						     rx.msdu_scatter_wait_break,
 						     1);
@@ -840,9 +842,11 @@ more_data:
 			       soc->stats.rx.err.msdu_done_fail);
 			dp_rx_msdu_done_fail_event_record(soc, rx_desc,
 							  rx_desc->nbuf);
+			dp_rx_ring_desc_invalidate(ring_desc);
 			continue;
 		}
 
+		dp_rx_ring_desc_invalidate(ring_desc);
 		if (!is_prev_msdu_last &&
 		    !(qdf_nbuf_is_rx_chfrag_cont(rx_desc->nbuf)))
 			is_prev_msdu_last = true;
@@ -931,13 +935,6 @@ done:
 	while (nbuf) {
 		next = nbuf->next;
 		dp_rx_prefetch_nbuf_data_be(nbuf, next);
-		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(nbuf))) {
-			nbuf = next;
-			dp_verbose_debug("drop raw frame");
-			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
-			continue;
-		}
-
 		rx_tlv_hdr = qdf_nbuf_data(nbuf);
 		vdev_id = QDF_NBUF_CB_RX_VDEV_ID(nbuf);
 		peer_id = dp_rx_get_peer_id_be(nbuf);
@@ -993,6 +990,13 @@ done:
 				continue;
 			}
 			enh_flag = rx_pdev->enhanced_stats_en;
+		}
+
+		if (qdf_unlikely(dp_rx_is_raw_frame_dropped(vdev, nbuf))) {
+			nbuf = next;
+			dp_verbose_debug("drop raw frame");
+			DP_STATS_INC(soc, rx.err.raw_frm_drop, 1);
+			continue;
 		}
 
 		/*
@@ -1139,6 +1143,15 @@ done:
 							    RX_RECV_FROM_HW);
 		}
 
+		if (vdev->opmode == wlan_op_mode_passthru) {
+			if (next)
+				qdf_nbuf_set_next(nbuf, NULL);
+			dp_rx_deliver_raw_passthru(soc, vdev, txrx_peer, nbuf,
+						   rx_tlv_hdr);
+			nbuf = next;
+			continue;
+		}
+
 		dp_rx_send_pktlog(soc, rx_pdev, nbuf, QDF_TX_RX_STATUS_OK);
 
 		if (!dp_wds_rx_policy_check(rx_tlv_hdr, vdev, txrx_peer)) {
@@ -1272,7 +1285,7 @@ done:
 		dp_rx_update_stats(soc, nbuf);
 
 		dp_pkt_add_timestamp(txrx_peer->vdev, QDF_PKT_RX_DRIVER_ENTRY,
-				     current_time, nbuf);
+				     qtime, nbuf);
 
 		DP_RX_LIST_APPEND(deliver_list_head,
 				  deliver_list_tail,

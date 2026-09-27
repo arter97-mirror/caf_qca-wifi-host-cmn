@@ -31,66 +31,11 @@
 #include "cdp_txrx_ctrl.h"
 #include <wlan_reg_services_api.h>
 
-#define CMN_NOISE_FLOOR       (-96)
 #define NUM_CHAINS_FW_TO_HOST(n) ((1 << ((n) + 1)) - 1)
 
-#define CFR_INVALID_SNR 0x80
 #define CHAIN_SHIFT_INDEX_PINE_SCAN 2
 
 static u_int32_t end_magic = 0xBEAFDEAD;
-
-/**
- * snr_to_signal_strength() - Convert SNR(dB) to signal strength(dBm)
- * @snr: SNR in dB
- *
- * Return: signal strength in dBm
- */
-#if defined(QCA_WIFI_QCA6490) || defined(QCA_WIFI_KIWI)
-static inline
-u_int32_t snr_to_signal_strength(uint8_t snr)
-{
-	/* target onverts snr to dBm */
-	return snr;
-}
-#else
-static inline
-u_int32_t snr_to_signal_strength(uint8_t snr)
-{
-	/* SNR value 0x80 indicates -128dB which is not a valid value */
-	return (snr != CFR_INVALID_SNR) ?
-		(((int8_t)snr) + CMN_NOISE_FLOOR) :
-		((int8_t)snr);
-}
-#endif
-
-/**
- * target_if_snr_to_signal_strength() - wrapper API to snr_to_signal_strength to
- *                                      consider target_type.
- * @target_type: target type of the pdev
- * @meta: pointer to CFR metadata
- * @ppdu: rx ppdu having per chain rssi to be converted to dBm
- *
- * Return: none
- */
-static inline
-void target_if_snr_to_signal_strength(uint32_t target_type,
-				      struct enh_cfr_metadata *meta,
-				      struct cdp_rx_indication_ppdu *ppdu)
-{
-	uint8_t i;
-
-	/* No need to add CMN_NOISE_FLOOR for york */
-	if (target_type == TARGET_TYPE_QCN9160) {
-		for (i = 0; i < MAX_CHAIN; i++) {
-			meta->chain_rssi[i] = (int8_t)ppdu->per_chain_rssi[i];
-		}
-	} else {
-		for (i = 0; i < MAX_CHAIN; i++) {
-			meta->chain_rssi[i] =
-				snr_to_signal_strength(ppdu->per_chain_rssi[i]);
-		}
-	}
-}
 
 /**
  * target_if_cfr_dump_lut_enh() - dump all valid lut entries
@@ -1379,7 +1324,8 @@ void target_if_cfr_rx_tlv_process(struct wlan_objmgr_pdev *pdev, void *nbuf)
 	if (meta->num_mu_users > pcfr->max_mu_users)
 		meta->num_mu_users = pcfr->max_mu_users;
 
-	target_if_snr_to_signal_strength(target_type, meta, cdp_rx_ppdu);
+	for (i = 0; i < MAX_CHAIN; i++)
+		meta->chain_rssi[i] = (int8_t)cdp_rx_ppdu->per_chain_rssi[i];
 
 	if (cdp_rx_ppdu->u.ppdu_type != CDP_RX_TYPE_SU) {
 		for (i = 0 ; i < meta->num_mu_users; i++) {
@@ -2299,6 +2245,7 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 	struct wlan_lmac_if_rx_ops *rx_ops;
 	uint32_t target_type;
 	struct cfr_info_v3 info_v3 = {0};
+	uint8_t srng_id = 0;
 
 	if (!sc || !data) {
 		cfr_err("sc or data is null");
@@ -2423,8 +2370,9 @@ target_if_peer_capture_event(ol_scn_t sc, uint8_t *data, uint32_t datalen)
 	buf_addr = (tx_evt_param.correlation_info_1 |
 		    ((uint64_t)buf_addr_temp << 32));
 
+	srng_id = pcfr->rcc_param.srng_id;
 	if (target_if_dbr_cookie_lookup(pdev, DBR_MODULE_CFR, buf_addr,
-					&cookie, 0)) {
+					&cookie, srng_id)) {
 		cfr_err("Cookie lookup failure for addr: 0x%pK status: 0x%x",
 			(void *)((uintptr_t)buf_addr), tx_evt_param.status);
 		pcfr->tx_dbr_cookie_lookup_fail++;

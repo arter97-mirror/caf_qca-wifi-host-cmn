@@ -60,6 +60,16 @@ cm_fill_failure_resp_from_cm_id(struct cnx_mgr *cm_ctx,
 	resp->cm_id = cm_id;
 	resp->vdev_id = wlan_vdev_get_id(cm_ctx->vdev);
 	resp->reason = reason;
+	/*
+	 * If no candidate found in scan cache, set status code to
+	 * STATUS_NO_NETWORK_FOUND (65528, maps to framework vendor status
+	 * 1025) so that framework handles it as a temporary failure
+	 * (AP not found) rather than permanently disabling the network.
+	 * This aligns the behavior with the CM_JOIN_TIMEOUT path which
+	 * already reports STATUS_NO_NETWORK_FOUND correctly.
+	 */
+	if (reason == CM_NO_CANDIDATE_FOUND)
+		resp->status_code = STATUS_NO_NETWORK_FOUND;
 	/* Get bssid and ssid and freq for the cm id from the req list */
 	cm_fill_bss_info_in_connect_rsp_by_cm_id(cm_ctx, cm_id, resp);
 }
@@ -1077,6 +1087,8 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	uint8_t mlo_link_num;
 	qdf_freq_t freq;
 	bool retry_without_pmkid_cache = false;
+	bool retry_reason_match = false;
+	bool single_candidate = false;
 
 	psoc = wlan_pdev_get_psoc(wlan_vdev_get_pdev(cm_ctx->vdev));
 
@@ -1118,18 +1130,34 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 	if (resp->status_code == STATUS_ASSOC_REJECTED_TEMPORARILY)
 		goto use_same_candidate;
 
-	/* Try again for the JOIN timeout if only one candidate */
-	if (resp->reason == CM_JOIN_TIMEOUT &&
-	    (qdf_list_size(req->candidate_list) == 1 ||
-	     req->num_bss == 1)) {
+	/*
+	 * Try again for the JOIN timeout, or for AUTH/ASSOC timeout on a SAE
+	 * connection or ASSOC timeout on an AP with the reconnect on assoc
+	 * timeout OUI, only if there is one candidate left.
+	 */
+	if (resp->reason == CM_JOIN_TIMEOUT ||
+	    (resp->reason == CM_AUTH_FAILED && sae_connection) ||
+	    (resp->reason == CM_ASSOC_TIMEOUT &&
+	     (sae_connection ||
+	      mlme_get_reconn_after_assoc_timeout_flag(psoc,
+						       resp->vdev_id))))
+		retry_reason_match = true;
+
+	if (qdf_list_size(req->candidate_list) == 1 || req->num_bss == 1)
+		single_candidate = true;
+
+	if (retry_reason_match && single_candidate) {
 		/*
 		 * If there is a interface connected which can lead to MCC,
 		 * do not retry as it can lead to beacon miss on that interface.
 		 * Coz as part of vdev start mac remain on candidate freq for 3
 		 * sec.
 		 */
-		if (policy_mgr_will_freq_lead_to_mcc(psoc, freq))
-			return false;
+		if (resp->reason == CM_JOIN_TIMEOUT ||
+		    resp->reason == CM_ASSOC_TIMEOUT) {
+			if (policy_mgr_will_freq_lead_to_mcc(psoc, freq))
+				return false;
+		}
 
 		/* For some MLO AP, we receive beacon during join time, but
 		 * AP didn't send probe response, and AP sends probe response
@@ -1137,28 +1165,13 @@ static bool cm_is_retry_with_same_candidate(struct cnx_mgr *cm_ctx,
 		 * for join timeout if scan entry age is less than Join timeout
 		 * value.
 		 */
-		max_retry_count +=
-		 cm_increase_retry_by_scan_age(
-				psoc,
-				wlan_vdev_get_pdev(cm_ctx->vdev),
-				req, resp);
-
-		goto use_same_candidate;
-	}
-
-	/*
-	 * Try again for AUTH reject in SAE connection where transient auth
-	 * failures can occur during SAE commit/confirm exchange.
-	 */
-	if (resp->reason == CM_AUTH_FAILED && sae_connection)
-		goto use_same_candidate;
-
-	/*
-	 * Try again for the ASSOC timeout in SAE connection or
-	 * AP has reconnect on assoc timeout OUI.
-	 */
-	if (resp->reason == CM_ASSOC_TIMEOUT && (sae_connection ||
-	    (mlme_get_reconn_after_assoc_timeout_flag(psoc, resp->vdev_id)))) {
+		if (resp->reason == CM_JOIN_TIMEOUT) {
+			max_retry_count +=
+			 cm_increase_retry_by_scan_age(
+					psoc,
+					wlan_vdev_get_pdev(cm_ctx->vdev),
+					req, resp);
+		}
 
 		goto use_same_candidate;
 	}
@@ -3221,6 +3234,8 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	struct wlan_channel channel = {0};
 	struct mlme_legacy_priv *mlme_priv;
 	struct assoc_channel_info *assoc_chan_info;
+	uint8_t cb_mode;
+	QDF_STATUS status;
 
 	mlme_priv = wlan_vdev_mlme_get_ext_hdl(vdev);
 	if (!mlme_priv) {
@@ -3248,6 +3263,12 @@ void cm_update_link_channel_info(struct wlan_objmgr_vdev *vdev,
 	channel.ch_cfreq1 = cache_entry->channel.cfreq0;
 	channel.ch_cfreq2 = cache_entry->channel.cfreq1;
 	channel.ch_width = cm_get_ch_width_from_phymode(cache_entry->phy_mode);
+
+	status = mlo_mlme_get_cb_mode_for_freq(vdev->vdev_objmgr.vdev_id,
+					       freq, &cb_mode);
+
+	if (QDF_IS_STATUS_SUCCESS(status) && !cb_mode)
+		channel.ch_width = CH_WIDTH_20MHZ;
 	/*
 	 * Supplicant needs non zero center_freq1 in case of 20 MHz connection
 	 * also as a response of get_channel request. In case of 20 MHz channel

@@ -89,14 +89,13 @@ void hif_display_ctrl_traffic_pipes_state(struct hif_opaque_softc *hif_ctx)
 	hal_get_sw_hptp(scn->hal_soc,
 			CE_state->status_ring->srng_ctx,
 			&tp, &hp);
-	hif_info_high("CE-2 Dest status ring current snapshot HP:%u TP:%u",
-		      hp, tp);
+	hif_err("CE-2 Dest status ring current snapshot HP:%u TP:%u", hp, tp);
 
 	hp = 0;
 	tp = 0;
 	CE_state = scn->ce_id_to_state[3];
 	hal_get_sw_hptp(scn->hal_soc, CE_state->src_ring->srng_ctx, &tp, &hp);
-	hif_info_high("CE-3 Source ring current snapshot HP:%u TP:%u", hp, tp);
+	hif_err("CE-3 Source ring current snapshot HP:%u TP:%u", hp, tp);
 }
 
 #if defined(HIF_CONFIG_SLUB_DEBUG_ON) || defined(HIF_CE_DEBUG_DATA_BUF)
@@ -604,6 +603,7 @@ ce_completed_send_next_nolock_srng(struct CE_state *CE_state,
 	unsigned int swi = src_ring->sw_index;
 	struct hif_softc *scn = CE_state->scn;
 	struct ce_srng_src_desc *src_desc;
+	void *ctx = NULL;
 
 	if (hal_srng_access_start(scn->hal_soc, src_ring->srng_ctx)) {
 		status = QDF_STATUS_E_FAILURE;
@@ -628,6 +628,12 @@ ce_completed_send_next_nolock_srng(struct CE_state *CE_state,
 		*nbytesp = src_desc->nbytes;
 		*transfer_idp = src_desc->meta_data;
 		*toeplitz_hash_result = 0; /*src_desc->toeplitz_hash_result;*/
+
+		if (CE_state->id == CE_ID_3) {
+			ctx = src_ring->per_transfer_context[swi];
+			hif_ce_tx_desc_data_record(scn, *bufferp,
+						   (qdf_nbuf_t)ctx);
+		}
 
 		if (per_CE_contextp)
 			*per_CE_contextp = CE_state->send_context;

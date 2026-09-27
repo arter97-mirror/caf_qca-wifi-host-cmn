@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -142,6 +142,12 @@ enum cfr_capture_method {
  * @cap_intval_mode_sel: 0 indicates capture_duration mode, 1 indicates the
  * capture_count mode.
  * @rsvd7: reserved bits
+ *
+ * @agc_gain_fixed: Controls whether AGC gain is fixed during CFR capture.
+ * 0: AGC gain is dynamic (adapts during capture)
+ * 1: AGC gain is fixed (locked at capture start)
+ * Fixed AGC gain mode ensures consistent gain across all captured samples,
+ * useful for phase-coherent measurements.
  */
 struct cfr_wlanconfig_param {
 	enum cfr_cwm_width bandwidth;
@@ -196,6 +202,8 @@ struct cfr_wlanconfig_param {
 	uint32_t cap_count                   :16,
 		 cap_intval_mode_sel         :1,
 		 rsvd7                       :15;
+
+	bool agc_gain_fixed;
 #endif
 };
 

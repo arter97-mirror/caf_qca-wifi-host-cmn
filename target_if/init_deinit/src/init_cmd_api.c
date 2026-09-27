@@ -35,6 +35,7 @@
 #include <target_if_reg.h>
 #include <target_if_twt.h>
 #include <cdp_txrx_ctrl.h>
+#include <wmi_unified_api.h>
 
 /**
  *  init_deinit_alloc_host_mem_chunk() - allocates chunk of memory requested
@@ -605,7 +606,9 @@ void init_deinit_prepare_send_init_cmd(
 
 	target_if_set_num_max_mlo_link(psoc, info);
 
-	wmi_unified_init_cmd_send(wmi_handle, &init_param);
+	ret_val = wmi_unified_init_cmd_send(wmi_handle, &init_param);
+	if (QDF_IS_STATUS_SUCCESS(ret_val))
+		wmi_set_init_cmd_sent(wmi_handle);
 
 	/* Set Max scans allowed */
 	target_if_scan_set_max_active_scans(psoc,
