@@ -4243,10 +4243,23 @@ static void update_peer_assoc_smd_params(wmi_peer_assoc_smd_params *smd,
 		  smd->smd_capabilities,
 		  smd->smd_flags);
 }
+
+static uint32_t get_peer_assoc_smd_params_len(struct peer_assoc_params *param)
+{
+	if (qdf_is_macaddr_zero((struct qdf_mac_addr *)param->smd_id))
+		return 0;
+
+	return WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_smd_params);
+}
 #else
 static void update_peer_assoc_smd_params(wmi_peer_assoc_smd_params *smd,
 					 struct peer_assoc_params *param)
 {
+}
+
+static uint32_t get_peer_assoc_smd_params_len(struct peer_assoc_params *param)
+{
+	return 0;
 }
 #endif
 
@@ -4715,9 +4728,11 @@ static QDF_STATUS send_peer_assoc_v2_cmd_tlv(wmi_unified_t wmi_handle,
 	uint32_t peer_ht_rates_align;
 	wmi_peer_assoc_cfp_params *v2_cfp;
 	wmi_peer_assoc_smd_params *smd;
+	uint32_t smd_params_len = 0;
 
 	peer_legacy_rates_align = wmi_align(param->peer_legacy_rates.num_rates);
 	peer_ht_rates_align = wmi_align(param->peer_ht_rates.num_rates);
+	smd_params_len = get_peer_assoc_smd_params_len(param);
 
 	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE +
 		(peer_legacy_rates_align * sizeof(uint8_t)) +
@@ -4813,7 +4828,7 @@ static QDF_STATUS send_peer_assoc_v2_cmd_tlv(wmi_unified_t wmi_handle,
 	smd = (wmi_peer_assoc_smd_params *)buf_ptr;
 	WMITLV_SET_HDR(&smd->tlv_header,
 		       WMITLV_TAG_STRUC_wmi_peer_assoc_smd_params,
-		       WMITLV_GET_STRUCT_TLVLEN(wmi_peer_assoc_smd_params));
+		       smd_params_len);
 	update_peer_assoc_smd_params(smd, param);
 	buf_ptr += sizeof(*smd);
 
