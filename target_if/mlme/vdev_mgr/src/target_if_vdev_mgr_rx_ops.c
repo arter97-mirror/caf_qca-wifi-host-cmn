@@ -40,6 +40,9 @@
 #ifdef DP_UMAC_HW_RESET_SUPPORT
 #include <cdp_txrx_ctrl.h>
 #endif
+#ifdef FEATURE_CQM_RSSI
+#include <wlan_utility.h>
+#endif
 #include <target_if_psoc_timer_tx_ops.h>
 
 static inline
@@ -1611,6 +1614,93 @@ target_if_register_unified_disconnect_event(struct wmi_unified *wmi_handle)
 }
 #endif
 
+#ifdef FEATURE_CQM_RSSI
+/**
+ * target_if_cqm_rssi_breach_event_handler() - adaptive-hysteresis RSSI CQM
+ *                                             breach event handler
+ * @scn: Pointer to scn structure
+ * @event_buff: event data
+ * @len: length
+ *
+ * Return: 0 for success or error code
+ */
+static int target_if_cqm_rssi_breach_event_handler(ol_scn_t scn,
+						   uint8_t *event_buff,
+						   uint32_t len)
+{
+	struct wlan_objmgr_psoc *psoc;
+	struct wmi_unified *wmi_handle;
+	QDF_STATUS status;
+	struct wlan_lmac_if_mlme_rx_ops *rx_ops;
+	struct vdev_cqm_rssi_breach_event event = {0};
+
+	if (!event_buff) {
+		mlme_err("Received NULL event ptr from FW");
+		return -EINVAL;
+	}
+
+	psoc = target_if_get_psoc_from_scn_hdl(scn);
+	if (!psoc) {
+		mlme_err("PSOC is NULL");
+		return -EINVAL;
+	}
+
+	wmi_handle = get_wmi_unified_hdl_from_psoc(psoc);
+	if (!wmi_handle) {
+		mlme_err("wmi_handle is null");
+		return -EINVAL;
+	}
+
+	status = wmi_extract_rssi_adaptive_breach_event(wmi_handle, event_buff,
+							&event);
+	if (QDF_IS_STATUS_ERROR(status)) {
+		mlme_err("Failed to extract CQM rssi breach event");
+		return -EINVAL;
+	}
+
+	if (!wmi_service_enabled(wmi_handle, wmi_service_hw_db2dbm_support))
+		event.curr_rssi += TGT_NOISE_FLOOR_DBM;
+
+	rx_ops = target_if_vdev_mgr_get_rx_ops(psoc);
+	if (!rx_ops || !rx_ops->cqm_rssi_breach_cb) {
+		mlme_err("No Rx Ops");
+		return -EINVAL;
+	}
+
+	rx_ops->cqm_rssi_breach_cb(psoc, &event);
+
+	return 0;
+}
+
+static inline void
+target_if_register_cqm_rssi_breach_event(struct wmi_unified *wmi_handle)
+{
+	int (*handler)(ol_scn_t scn, uint8_t *event_buff, uint32_t len);
+
+	handler = target_if_cqm_rssi_breach_event_handler;
+	wmi_unified_register_event_handler(wmi_handle,
+					   wmi_rssi_adaptive_breach_event_id,
+					   handler, VDEV_RSP_RX_CTX);
+}
+
+static inline void
+target_if_unregister_cqm_rssi_breach_event(struct wmi_unified *wmi_handle)
+{
+	wmi_unified_unregister_event_handler(wmi_handle,
+					     wmi_rssi_adaptive_breach_event_id);
+}
+#else
+static inline void
+target_if_register_cqm_rssi_breach_event(struct wmi_unified *wmi_handle)
+{
+}
+
+static inline void
+target_if_unregister_cqm_rssi_breach_event(struct wmi_unified *wmi_handle)
+{
+}
+#endif /* FEATURE_CQM_RSSI */
+
 QDF_STATUS target_if_vdev_mgr_wmi_event_register(
 				struct wlan_objmgr_psoc *psoc)
 {
@@ -1710,6 +1800,8 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_register(
 			mlme_err("Failed to register vdev oper params event");
 	}
 
+	target_if_register_cqm_rssi_breach_event(wmi_handle);
+
 	return retval;
 }
 
@@ -1733,6 +1825,8 @@ QDF_STATUS target_if_vdev_mgr_wmi_event_unregister(
 				wmi_service_vdev_operating_params_event_support))
 		wmi_unified_unregister_event_handler(wmi_handle,
 						     wmi_vdev_current_operating_param_eventid);
+
+	target_if_unregister_cqm_rssi_breach_event(wmi_handle);
 
 	target_if_unregister_quiet_offload_event(wmi_handle);
 

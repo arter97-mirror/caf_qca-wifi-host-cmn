@@ -6039,6 +6039,7 @@ typedef enum {
 #endif
 	wmi_sched_mode_probe_resp_event_id,
 	wmi_p2p_cli_dfs_ap_bmiss_detected_eventid,
+	wmi_rssi_adaptive_breach_event_id,
 #ifdef FEATURE_MGMT_RX_OVER_SRNG
 	wmi_mgmt_srng_reap_eventid,
 #endif

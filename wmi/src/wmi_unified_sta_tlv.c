@@ -2828,6 +2828,98 @@ static QDF_STATUS send_peer_unmap_conf_cmd_tlv(wmi_unified_t wmi,
 	return QDF_STATUS_SUCCESS;
 }
 
+#ifdef FEATURE_CQM_RSSI
+/**
+ * send_set_cqm_rssi_config_cmd_tlv() - set adaptive-hysteresis RSSI CQM config
+ * @wmi_handle: wmi handle
+ * @req: CQM RSSI configuration request structure
+ *
+ * This function reads the incoming @req and fills in the adaptive breach
+ * monitor WMI structure and sends the CQM RSSI config down to the firmware.
+ *
+ * Return: QDF_STATUS_SUCCESS on success; error status otherwise
+ */
+static QDF_STATUS send_set_cqm_rssi_config_cmd_tlv(wmi_unified_t wmi_handle,
+						   struct cqm_rssi_config_param
+						   *req)
+{
+	wmi_rssi_adaptive_breach_monitor_config_fixed_param *cmd;
+	wmi_buf_t buf;
+	QDF_STATUS ret;
+	uint32_t i;
+	uint32_t len = sizeof(*cmd);
+	uint32_t cmdid = WMI_RSSI_ADAPTIVE_BREACH_MONITOR_CONFIG_CMDID;
+	uint32_t tag =
+	WMITLV_TAG_STRUC_wmi_rssi_adaptive_breach_monitor_config_fixed_param;
+	uint32_t tlvlen = WMITLV_GET_STRUCT_TLVLEN
+	(wmi_rssi_adaptive_breach_monitor_config_fixed_param);
+
+	buf = wmi_buf_alloc(wmi_handle, len);
+	if (!buf)
+		return QDF_STATUS_E_NOMEM;
+
+	cmd = (wmi_rssi_adaptive_breach_monitor_config_fixed_param *)
+			wmi_buf_data(buf);
+	qdf_mem_zero(cmd, sizeof(*cmd));
+	WMITLV_SET_HDR(&cmd->tlv_header, tag, tlvlen);
+
+	cmd->vdev_id = req->vdev_id;
+	cmd->request_id = req->request_id;
+	cmd->enabled_bitmap = req->enabled_bitmap;
+	cmd->rssi_hysteresis = req->rssi_hysteresis;
+	for (i = 0; i < CQM_MAX_RSSI_THRESHOLD_SUPPORTED; i++)
+		cmd->rssi_threshold[i] = req->rssi_threshold[i];
+
+	wmi_mtrace(cmdid, cmd->vdev_id, 0);
+	ret = wmi_unified_cmd_send(wmi_handle, buf, len, cmdid);
+	if (QDF_IS_STATUS_ERROR(ret)) {
+		wmi_err("Failed to send WMI_RSSI_ADAPTIVE_BREACH_MONITOR_CONFIG_CMDID");
+		wmi_buf_free(buf);
+		return ret;
+	}
+
+	wmi_debug("Sent CQM RSSI config: vdev %u req_id %u en 0x%x thr %d hyst %u",
+		  req->vdev_id, req->request_id, req->enabled_bitmap,
+		  req->rssi_threshold[0], req->rssi_hysteresis);
+
+	return ret;
+}
+
+/**
+ * extract_rssi_adaptive_breach_event_tlv() - extract adaptive-hysteresis
+ *					      RSSI CQM breach event
+ * @wmi_handle: wmi handle
+ * @evt_buf: event buffer
+ * @event: adaptive-hysteresis RSSI CQM breach event extracted from the
+ *	   buffer
+ *
+ * Return: QDF_STATUS_SUCCESS on success; QDF_STATUS error code on failure
+ */
+static QDF_STATUS extract_rssi_adaptive_breach_event_tlv(wmi_unified_t
+				wmi_handle, void *evt_buf,
+				struct vdev_cqm_rssi_breach_event *event)
+{
+	WMI_RSSI_ADAPTIVE_BREACH_EVENTID_param_tlvs *param_buf;
+	wmi_rssi_adaptive_breach_event_fixed_param *fixed_param;
+
+	param_buf = (WMI_RSSI_ADAPTIVE_BREACH_EVENTID_param_tlvs *)evt_buf;
+	if (!param_buf) {
+		wmi_err("Invalid CQM rssi breach event buffer");
+		return QDF_STATUS_E_INVAL;
+	}
+	fixed_param = param_buf->fixed_param;
+
+	event->request_id = fixed_param->request_id;
+	event->vdev_id = fixed_param->vdev_id;
+	event->event_type = fixed_param->event_type;
+	event->curr_rssi = fixed_param->rssi;
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(&fixed_param->bssid,
+				   event->curr_bssid.bytes);
+
+	return QDF_STATUS_SUCCESS;
+}
+#endif /* FEATURE_CQM_RSSI */
+
 void wmi_sta_attach_tlv(wmi_unified_t wmi_handle)
 {
 	struct wmi_ops *ops = wmi_handle->ops;
@@ -2870,6 +2962,11 @@ void wmi_sta_attach_tlv(wmi_unified_t wmi_handle)
 	ops->send_set_arp_stats_req_cmd = send_set_arp_stats_req_cmd_tlv;
 	ops->send_get_arp_stats_req_cmd = send_get_arp_stats_req_cmd_tlv;
 	ops->send_peer_unmap_conf_cmd = send_peer_unmap_conf_cmd_tlv;
+#ifdef FEATURE_CQM_RSSI
+	ops->send_set_cqm_rssi_config_cmd = send_set_cqm_rssi_config_cmd_tlv;
+	ops->extract_rssi_adaptive_breach_event =
+					extract_rssi_adaptive_breach_event_tlv;
+#endif
 
 	wmi_tdls_attach_tlv(wmi_handle);
 	wmi_policy_mgr_attach_tlv(wmi_handle);

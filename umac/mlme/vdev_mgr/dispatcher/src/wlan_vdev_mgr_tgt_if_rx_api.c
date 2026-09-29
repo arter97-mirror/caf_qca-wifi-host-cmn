@@ -517,6 +517,28 @@ tgt_vdev_mgr_oper_res_change_evt_handler(struct wlan_objmgr_vdev *vdev,
 	return status;
 }
 
+#ifdef FEATURE_CQM_RSSI
+static QDF_STATUS
+tgt_cqm_rssi_breach_handler(struct wlan_objmgr_psoc *psoc,
+			    struct vdev_cqm_rssi_breach_event *event)
+{
+	mlme_vdev_mgr_notify_cqm_rssi_breach(event);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+tgt_vdev_mgr_reg_cqm_rssi_breach(struct wlan_lmac_if_mlme_rx_ops *mlme_rx_ops)
+{
+	mlme_rx_ops->cqm_rssi_breach_cb = tgt_cqm_rssi_breach_handler;
+}
+#else
+static inline void
+tgt_vdev_mgr_reg_cqm_rssi_breach(struct wlan_lmac_if_mlme_rx_ops *mlme_rx_ops)
+{
+}
+#endif /* FEATURE_CQM_RSSI */
+
 void tgt_vdev_mgr_register_rx_ops(struct wlan_lmac_if_rx_ops *rx_ops)
 {
 	struct wlan_lmac_if_mlme_rx_ops *mlme_rx_ops = &rx_ops->mops;
@@ -550,4 +572,5 @@ void tgt_vdev_mgr_register_rx_ops(struct wlan_lmac_if_rx_ops *rx_ops)
 		tgt_vdev_mgr_unified_disconnect_response;
 	mlme_rx_ops->vdev_mgr_oper_res_change_event =
 		tgt_vdev_mgr_oper_res_change_evt_handler;
+	tgt_vdev_mgr_reg_cqm_rssi_breach(mlme_rx_ops);
 }

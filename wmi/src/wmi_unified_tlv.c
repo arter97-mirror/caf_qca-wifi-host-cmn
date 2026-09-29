@@ -26292,6 +26292,8 @@ static void populate_tlv_events_id(WMI_EVT_ID *event_ids)
 	event_ids[wmi_dbg_mesg_flush_complete_event_id] =
 				WMI_DEBUG_MESG_FLUSH_COMPLETE_EVENTID;
 	event_ids[wmi_rssi_breach_event_id] = WMI_RSSI_BREACH_EVENTID;
+	event_ids[wmi_rssi_adaptive_breach_event_id] =
+					WMI_RSSI_ADAPTIVE_BREACH_EVENTID;
 
 	/* GPIO Event */
 	event_ids[wmi_gpio_input_event_id] = WMI_GPIO_INPUT_EVENTID;

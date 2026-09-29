@@ -900,6 +900,14 @@ QDF_STATUS (*send_set_rssi_monitoring_cmd)(wmi_unified_t wmi_handle,
 					struct rssi_monitor_param *req);
 #endif /* FEATURE_RSSI_MONITOR */
 
+#ifdef FEATURE_CQM_RSSI
+QDF_STATUS (*send_set_cqm_rssi_config_cmd)(wmi_unified_t wmi_handle,
+					   struct cqm_rssi_config_param *req);
+QDF_STATUS
+(*extract_rssi_adaptive_breach_event)(wmi_unified_t wmi_handle, void *evt_buf,
+				      struct vdev_cqm_rssi_breach_event *event);
+#endif /* FEATURE_CQM_RSSI */
+
 QDF_STATUS (*send_roam_scan_offload_rssi_thresh_cmd)(
 			wmi_unified_t wmi_handle,
 			struct wlan_roam_offload_scan_rssi_params *roam_req);

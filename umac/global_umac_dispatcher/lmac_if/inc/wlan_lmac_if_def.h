@@ -118,6 +118,10 @@ struct qsh_stats_event;
 #include "wlan_coap_public_structs.h"
 #endif
 
+#ifdef FEATURE_CQM_RSSI
+struct cqm_rssi_config_param;
+#endif
+
 /**
  * typedef cp_stats_event - Definition of cp stats event
  * Define stats_event from external cp stats component to cp_stats_event
@@ -580,6 +584,8 @@ enum wlan_mlme_cfg_id;
  * @vdev_peer_set_param_send: API to send peer param to FW
  * @sap_suspend_param_send: API to send SAP vdev suspend param
  * @is_sap_suspend_support_enabled: API to check SAP vdev suspend support
+ * @cqm_rssi_config_send: API to send adaptive-hysteresis RSSI CQM config
+ * to FW
  * @vdev_tm_param_send: API to send traffic monitoring params
  * @mlme_vdev_rt_lock_release: API to release rl lock
  */
@@ -700,6 +706,10 @@ QDF_STATUS (*vdev_send_set_mac_addr)(struct qdf_mac_addr mac_addr,
 				 struct traffic_monitoring_params *param);
 	QDF_STATUS (*mlme_vdev_rt_lock_release)(
 				struct wlan_objmgr_vdev *vdev);
+#ifdef FEATURE_CQM_RSSI
+	QDF_STATUS (*cqm_rssi_config_send)(struct wlan_objmgr_vdev *vdev,
+					   struct cqm_rssi_config_param *param);
+#endif
 
 };
 
@@ -3056,6 +3066,7 @@ struct wlan_bss_op_res;
  * @vdev_mgr_unified_connect_response: Function to handle unified connect resp
  * @vdev_mgr_oper_res_change_event: Function to deliver extracted VDEV operating
  * parameters from FW event.
+ * @cqm_rssi_breach_cb: adaptive-hysteresis RSSI CQM breach event callback
  */
 struct wlan_lmac_if_mlme_rx_ops {
 	QDF_STATUS (*vdev_mgr_start_response)(
@@ -3111,6 +3122,11 @@ struct wlan_lmac_if_mlme_rx_ops {
 	QDF_STATUS (*vdev_mgr_oper_res_change_event)
 				(struct wlan_objmgr_vdev *vdev,
 				 struct wlan_bss_op_res *params);
+#ifdef FEATURE_CQM_RSSI
+	QDF_STATUS
+	(*cqm_rssi_breach_cb)(struct wlan_objmgr_psoc *psoc,
+			      struct vdev_cqm_rssi_breach_event *event);
+#endif
 };
 
 #ifdef WLAN_SUPPORT_GREEN_AP

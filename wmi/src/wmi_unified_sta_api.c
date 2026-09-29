@@ -448,3 +448,31 @@ QDF_STATUS wmi_unified_peer_unmap_conf_send(wmi_unified_t wmi_handle,
 
 	return QDF_STATUS_E_FAILURE;
 }
+
+#ifdef FEATURE_CQM_RSSI
+QDF_STATUS
+wmi_unified_set_cqm_rssi_config_cmd(wmi_unified_t wmi_handle,
+				    struct cqm_rssi_config_param *req)
+{
+	if (wmi_handle->ops->send_set_cqm_rssi_config_cmd)
+		return wmi_handle->ops->send_set_cqm_rssi_config_cmd(wmi_handle,
+								     req);
+
+	return QDF_STATUS_E_FAILURE;
+}
+
+QDF_STATUS
+wmi_extract_rssi_adaptive_breach_event(wmi_unified_t wmi_handle,
+				       void *evt_buf,
+				       struct vdev_cqm_rssi_breach_event *event)
+{
+	QDF_STATUS (*extract)(wmi_unified_t wmi_handle, void *evt_buf,
+			      struct vdev_cqm_rssi_breach_event *event);
+
+	extract = wmi_handle->ops->extract_rssi_adaptive_breach_event;
+	if (extract)
+		return extract(wmi_handle, evt_buf, event);
+
+	return QDF_STATUS_E_FAILURE;
+}
+#endif /* FEATURE_CQM_RSSI */
